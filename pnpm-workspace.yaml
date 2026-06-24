@@ -1,3 +1,8 @@
-blockExoticSubdeps: true
-minimumReleaseAge: 10080
-trustPolicy: no-downgrade
+packages:
+  - 'packages/*'
+
+# pnpm >=10 blocks dependency build scripts unless allowlisted here.
+# oxc-parser ships a native NAPI binary and needs its build step. Since pnpm 11
+# this setting lives in pnpm-workspace.yaml (no longer in package.json).
+onlyBuiltDependencies:
+  - oxc-parser

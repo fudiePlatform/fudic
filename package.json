@@ -1,10 +1,11 @@
 {
-  "name": "@fudic/core",
-  "version": "0.0.1",
-  "description": "Placeholder package to reserve the @fudic scope on npm.",
+  "name": "fudic",
+  "version": "0.0.0",
+  "private": true,
+  "description": "fudic monorepo — a UI framework based on Declarative Shadow DOM.",
   "type": "module",
   "license": "MIT",
-  "author": "Fudie",
+  "author": "Pedro Hurtado",
   "homepage": "https://github.com/fudie/fudic#readme",
   "repository": {
     "type": "git",
@@ -13,37 +14,21 @@
   "bugs": {
     "url": "https://github.com/fudie/fudic/issues"
   },
-  "keywords": [
-    "fudic",
-    "fudie"
-  ],
-  "main": "./src/index.js",
-  "types": "./src/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./src/index.d.ts",
-      "import": "./src/index.js"
-    }
-  },
-  "files": [
-    "src",
-    "README.md",
-    "LICENSE"
-  ],
-  "publishConfig": {
-    "access": "public"
-  },
-  "scripts": {
-    "test": "node --test"
-  },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.12.0"
   },
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "^11.1.2",
-      "onFail": "download"
-    }
+  "packageManager": "pnpm@11.9.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "coverage": "pnpm -r coverage"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.0",
+    "@vitest/coverage-v8": "4.1.9",
+    "typescript": "5.9.3",
+    "vite": "8.0.16",
+    "vitest": "4.1.9"
   }
 }
