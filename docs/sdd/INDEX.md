@@ -57,8 +57,8 @@ Todos los SDD siguen la misma estructura fija:
 | SDD | Nombre | Estado | Depende de | Decisiones de gramática |
 |---|---|---|---|---|
 | [00](./SDD-00-toolchain.md) | Toolchain y dependencias de compilación | `Hecho` | — | — |
-| [01](./SDD-01-andamiaje.md) | Andamiaje y tipos base | `Pendiente` | 00 | — |
-| [02](./SDD-02-balanceador.md) | Balanceador de delimitadores | `Pendiente` | 00, 01 | 6 |
+| [01](./SDD-01-andamiaje.md) | Andamiaje y tipos base | `Hecho` | 00 | — |
+| [02](./SDD-02-balanceador.md) | Balanceador de delimitadores | `Listo` | 00, 01 | 6 |
 | [03](./SDD-03-tokenizer.md) | Tokenizer + pila de modos | `Pendiente` | 00–02 | notas (modos) |
 | [04](./SDD-04-transicion-at.md) | Reglas de transición del `@` | `Pendiente` | 00–03 | 1–8 |
 | [05](./SDD-05-parser-html.md) | Parser HTML (subset estricto) | `Pendiente` | 00, 03, 04 | 38–52 |
@@ -158,3 +158,4 @@ cuelga de una base demostrada.
 | Fecha | SDD | Cambio |
 |---|---|---|
 | 2026-06-24 | 00 | Andamiaje montado como monorepo pnpm: `packages/compiler` (`@fudic/compiler`) con TS 5.9.3 (target ES2024), Vite 8.0.16, Vitest 4.1.9, oxc-parser 0.137.0, pnpm 11.9.0. Criterios de aceptación verdes. |
+| 2026-06-24 | 02 | Spec redactada y en estado `Listo`. API: núcleo `scanBalanced(source, openOffset, closer)` + envoltorios `scanParens/Brackets/Braces`. Salida `BalancedGroup` (span, inner, closed, tabla de `LexRegion[]`). Regex vs división por token anterior. Rango `FUD0002`–`FUD0009` reservado. |
