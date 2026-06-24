@@ -1,8 +1,10 @@
 /**
  * Entry point of `@fudic/compiler`.
  *
- * Scaffolding placeholder (SDD-00). The real public API — `Span`, `Diagnostic`,
- * `ParseResult`, `ModeStack` — is defined in SDD-01 (scaffolding and base types).
+ * Public API. SDD-01 lands the shared base types — `Span`, `Diagnostic`,
+ * `ParseResult`, `Mode`/`ModeStack`, and the `Node` root of the AST.
  */
 
 export const VERSION = '0.0.1';
+
+export * from './types/index.js';
