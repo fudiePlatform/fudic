@@ -1,0 +1,42 @@
+<link rel="component" href="./app-button.fud">
+
+@code {
+  type Variant = 'default' | 'highlight';
+
+  @client(viewport) {
+    import { signal } from '@fudic/signals';
+
+    const expanded = signal(false);
+
+    function toggle() {
+      expanded.set(!expanded.peek());
+    }
+  }
+}
+
+<head>
+  <style host="app-card">
+    :host { display: block; }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 1rem;
+      .body { margin-top: 0.5rem; }
+    }
+    .card.highlight { border-color: gold; }
+  </style>
+</head>
+
+<article class="card" class:highlight="@(variant === 'highlight')">
+  <header>
+    <h2>@title</h2>
+  </header>
+  @if (expanded.value) {
+    <div class="body">
+      <slot></slot>
+    </div>
+  }
+  <app-button variant="ghost" @press="@toggle">
+    @if (expanded.value) { Cerrar } else { Abrir }
+  </app-button>
+</article>

@@ -1,0 +1,36 @@
+@code {
+  type Variant = 'primary' | 'ghost';
+
+  @client {
+    function onClick(e: MouseEvent) {
+      const host = (e.currentTarget as HTMLElement).closest('app-button');
+      host?.dispatchEvent(new CustomEvent('press', { bubbles: true }));
+    }
+  }
+}
+
+<head>
+  <style host="app-button">
+    :host { display: inline-block; }
+    .btn {
+      font: inherit;
+      padding: 0.5rem 1rem;
+      border: 1px solid currentColor;
+      border-radius: 6px;
+      cursor: pointer;
+      background: transparent;
+    }
+    .btn.primary { background: #1a73e8; color: white; border-color: #1a73e8; }
+    .btn.ghost { color: #1a73e8; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  </style>
+</head>
+
+<button
+  class="btn"
+  class:primary="@(variant === 'primary')"
+  class:ghost="@(variant === 'ghost')"
+  disabled="@disabled"
+  @click="@onClick">
+  <slot></slot>
+</button>

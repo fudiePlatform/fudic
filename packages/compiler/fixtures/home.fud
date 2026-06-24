@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="component" href="./app-card.fud">
+    <link rel="component" href="./app-button.fud">
+
+    @code {
+      type Item = { id: string; title: string; description: string; featured: boolean };
+      type PageData = { title: string; items: Item[] };
+
+      @server {
+        import { db } from './db';
+
+        async function load(): Promise<PageData> {
+          const items = await db.query('SELECT id, title, description, featured FROM items ORDER BY created_at DESC');
+          return { title: 'Inicio', items };
+        }
+      }
+    }
+
+    <title>@data.title</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  </head>
+  <body>
+    <h1>@data.title</h1>
+
+    @if (data.items.length === 0) {
+      <p class="empty">No hay elementos todavía.</p>
+    } else {
+      <section class="grid">
+        @foreach (const item of data.items) {
+          <app-card
+            title="@item.title"
+            variant="@(item.featured ? 'highlight' : 'default')">
+            @item.description
+          </app-card>
+        }
+      </section>
+    }
+  </body>
+</html>
