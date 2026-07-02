@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fudic REPL · @foreach anidado · runtime de bloque (retiene la vista)</title>
+<style>
+  :root{
+    --ink:#13141a;--paper:#f5f2ec;--panel:#fffdf8;--line:#d8d2c4;
+    --hot:#b5462f;--dead:#9a8f7d;--live:#2f6f4f;
+    --kw:#9a3b8f;--str:#2f6f4f;--com:#a89c84;--at:#b5462f;--fn:#3a5fa8;--num:#b5462f;--tag:#3a5fa8;
+    --mono:ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);font:13px/1.45 var(--mono);
+       display:flex;flex-direction:column}
+  header{padding:11px 18px;border-bottom:1px solid var(--line);display:flex;
+         align-items:baseline;gap:14px;flex-wrap:wrap;background:var(--panel)}
+  header h1{font-size:14px;margin:0}
+  header .tag{font-size:11px;color:var(--dead)}
+  header code{color:var(--hot)}
+
+  .top{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line);min-height:0}
+  @media(max-width:760px){.top{grid-template-columns:1fr;grid-template-rows:auto auto}}
+  .pane{display:flex;flex-direction:column;min-width:0;min-height:0}
+  .pane+.pane{border-left:1px solid var(--line)}
+  .pane h2{margin:0;font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--dead);
+           padding:8px 16px;border-bottom:1px solid var(--line);background:var(--panel);
+           display:flex;justify-content:space-between;gap:10px}
+  .pane h2 .ext{color:var(--hot);text-transform:none;letter-spacing:0}
+  .code{margin:0;padding:13px 16px;overflow:auto;white-space:pre;tab-size:2;
+        font:12px/1.5 var(--mono);max-height:62vh}
+  .ln{color:var(--com);user-select:none}
+  .t-kw{color:var(--kw)} .t-str{color:var(--str)} .t-com{color:var(--com);font-style:italic}
+  .t-at{color:var(--at);font-weight:600} .t-fn{color:var(--fn)} .t-num{color:var(--num)} .t-tag{color:var(--tag)}
+
+  .stage-wrap{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+  .stage-wrap h2{margin:0;font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--dead);
+        padding:8px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .live-area{flex:1;padding:18px;overflow:auto}
+  .controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+  .controls .grp{font-size:10px;color:var(--dead);text-transform:uppercase;letter-spacing:.12em;margin-right:2px}
+  button{font:600 11px/1 var(--mono);color:var(--paper);background:var(--ink);border:0;padding:9px 11px;cursor:pointer}
+  button:hover{background:var(--hot)}
+  button:focus-visible{outline:2px solid var(--hot);outline-offset:2px}
+  .stats{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--dead);margin:10px 0 14px}
+  .stats b{color:var(--ink)} .stats b.live{color:var(--live)}
+  #stage{display:flex;flex-direction:column;gap:10px;min-height:60px;
+         border:1px dashed var(--line);padding:14px;background:var(--panel)}
+  .row{display:flex;flex-wrap:wrap;align-items:center;gap:5px;padding:8px 10px;
+       border:1px solid var(--line);background:#fff}
+  .row > i{font-style:normal;font-size:10px;color:var(--dead);margin-right:8px;min-width:34px}
+  .row b{display:inline-flex;align-items:center;justify-content:center;min-width:40px;height:36px;
+         padding:0 12px;background:var(--live);color:#fff;font:700 15px/1 var(--mono)}
+  .row sup{font-size:10px;color:var(--dead);margin:-12px 10px 0 -2px}
+  .domnote{font-size:11px;color:var(--dead);margin-top:12px} .domnote code{color:var(--hot)}
+  .domnote b{color:var(--ink)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Fudic REPL</h1>
+  <span class="tag"><code>@foreach</code> anidado · el runtime <b>retiene la vista</b> (el «cómo»), no el nodo · región acotada · movimiento por rango · baja con teardown · el <code>#N</code> de cada caja es el <b>id de instancia de la vista</b> (overlay del REPL): si no cambia al barajar/modificar, la vista se reutilizó, no se recreó</span>
+</header>
+
+<div class="top">
+  <div class="pane">
+    <h2>fuente <span class="ext">.fud</span></h2>
+    <pre class="code" id="src"></pre>
+  </div>
+  <div class="pane">
+    <h2>emitido <span class="ext">.js · runtime de bloque</span></h2>
+    <pre class="code" id="out"></pre>
+  </div>
+</div>
+
+<div class="stage-wrap">
+  <h2>componente funcionando · hidratado desde el markup del servidor</h2>
+  <div class="live-area">
+    <div class="controls">
+      <span class="grp">filas</span>
+      <button id="rowAdd">+ fila</button>
+      <button id="rowDel">− del medio</button>
+      <button id="rowShuf">barajar</button>
+      <span class="grp" style="margin-left:14px">celdas (1ª fila)</span>
+      <button id="cellAdd">+ celda</button>
+      <button id="cellDel">− del medio</button>
+      <button id="cellShuf">barajar</button>
+      <button id="cellMod">modificar (+10)</button>
+    </div>
+    <div class="stats">
+      <span>filas vivas <b id="st-rows" class="live">2</b></span>
+      <span>celdas vivas <b id="st-cells" class="live">6</b></span>
+      <span>celdas creadas (total) <b id="st-made">6</b></span>
+    </div>
+    <!-- ▼ HTML EMITIDO POR EL SERVIDOR (nivel 1: HTML puro, cero JS). El cliente solo HIDRATA: si borras todo el <script>, esto se sigue viendo. ▼ -->
+    <div id="stage"><!--rows:[-->
+      <div class="row"><i>fila#1</i><!--cells:[--><b>1</b><sup>#1</sup><b>2</b><sup>#2</sup><b>3</b><sup>#3</sup><!--cells:]--></div>
+      <div class="row"><i>fila#2</i><!--cells:[--><b>4</b><sup>#4</sup><b>5</b><sup>#5</sup><b>6</b><sup>#6</sup><!--cells:]--></div>
+      <!--rows:]--></div>
+    <p class="domnote"><b>modificar</b> cambia el valor pero conserva el <code>#N</code> y no crea nada (grano fino, sin remontar) · <b>barajar</b> mueve los mismos <code>#N</code> (reuse) · <b>barajar filas</b> arrastra la región interna intacta (los <code>#N</code> de las celdas no se inmutan) · <b>eliminar fila</b> da de baja en cascada toda su lista anidada.</p>
+  </div>
+</div>
+
+<script type="text/plain" id="fud-source">
+@* ───────── grid.fud ─ @foreach anidado (filas × celdas) ───────── *@
+@code {
+  @client {
+    import { signal } from '@fudic/signals';
+    @* [[1,2,3],[4,5,6]] → filas con identidad; cada celda, una signal de grano fino *@
+    const rows = signal(
+      [[1,2,3],[4,5,6]].map(cs => ({ cells: signal(cs.map(v => ({ value: signal(v) }))) }))
+    );
+  }
+}
+<body>
+  @foreach (const row of rows) {
+    <div class="row">
+      @foreach (const cell of row.cells) {
+        <b>@cell.value</b>   @* el <sup>#N</sup> de al lado lo añade el REPL: id de instancia de la vista *@
+      }
+    </div>
+  }
+</body>
+</script>
+
+<script type="text/plain" id="js-output">
+/* ═══ @fudic/signals · grano fino ═══ */
+function signal(value){
+  const subs = new Set();
+  const s = () => value; s.peek = () => value;
+  s.set = v => { if(v===value) return; value=v; for(const fn of [...subs]) fn(value); };
+  s.subscribe = fn => { subs.add(fn); return () => subs.delete(fn); };
+  return s;
+}
+
+/* ═══ @fudic/dom · primitivas de bloque que EMITE el compilador ═══
+   Una "vista" (View) es el objeto polimórfico { firstNode, lastNode, create, mount,
+   update, remove }. firstNode..lastNode son los límites de su RANGO de DOM: una vista
+   puede ser un nodo único o un fragmento, y por eso un @foreach anidado es solo otra
+   vista más. El compilador no escribe esto a mano: lo instancia por bloque. */
+
+/* mueve el rango contiguo [first..last] justo antes de `ref` (preserva nodos = reuse) */
+function moveRange(parent, first, last, ref){
+  const nodes = []; for(let n=first; n; n=n.nextSibling){ nodes.push(n); if(n===last) break; }
+  for(const n of nodes) parent.insertBefore(n, ref);
+}
+/* salta whitespace insignificante: una hidratación CORRECTA tolera la sangría/saltos
+   de línea del HTML del servidor; nunca asume markup pegado sin espacios */
+function skipWs(n){ while(n && n.nodeType===3 && !/\S/.test(n.data)) n=n.nextSibling; return n; }
+
+/* @foreach con clave: RETIENE LA VISTA (el «cómo»), nunca el nodo del DOM.
+   El bloque es a su vez una vista → composición recursiva sin caso especial. */
+function foreachBlock({ items, keyOf, makeView, label }, parent){
+  let start, end, unsub, mounted = false;
+  const views = new Map();                     // clave → vista (no nodo)
+  let order = [];
+  function reconcile(){
+    const next = items.peek();
+    const keys = next.map(keyOf);
+    const nextSet = new Set(keys);
+    // BAJAS: la vista se destruye a sí misma (cierra sus suscripciones y las de sus hijos)
+    for(const key of order) if(!nextSet.has(key)){ views.get(key).remove(); views.delete(key); }
+    // colocación en orden: ALTAS crean+montan, supervivientes se MUEVEN (reuse, sin remontar)
+    let prevLast = start;
+    for(let i=0;i<next.length;i++){
+      const key = keys[i]; let view = views.get(key);
+      const ref = prevLast.nextSibling;        // dónde DEBE empezar este item, relativo a la región
+      if(!view){
+        view = makeView(next[i]); views.set(key, view);
+        view.create();
+        moveRange(parent, view.firstNode, view.lastNode, ref);
+        if(mounted) view.mount();              // alta en vivo monta ya; en frío lo hace mount()
+      } else if(view.firstNode !== ref){
+        moveRange(parent, view.firstNode, view.lastNode, ref);   // mover NO dispara lifecycle
+      }
+      prevLast = view.lastNode;
+    }
+    order = keys;
+  }
+  return {
+    get firstNode(){ return start; }, get lastNode(){ return end; },
+    create(){
+      start = document.createComment(label+':[');
+      end   = document.createComment(label+':]');
+      parent.append(start, end);               // región acotada por dos marcas
+      reconcile();
+    },
+    hydrate(){                                 // ADOPTA el DOM del SSR (simétrico a create)
+      for(let n=parent.firstChild; n; n=n.nextSibling){
+        if(n.nodeType===8 && n.data===label+':[') start=n;
+        else if(n.nodeType===8 && n.data===label+':]') end=n;
+      }
+      const next = items.peek(); const keys = next.map(keyOf);
+      let cursor = skipWs(start.nextSibling);  // primer nodo significativo de la región
+      for(let i=0;i<next.length;i++){
+        const view = makeView(next[i]); views.set(keys[i], view);
+        cursor = view.hydrate(cursor);         // cada vista adopta su rango y devuelve el siguiente significativo
+      }
+      order = keys;
+    },
+    mount(){ mounted = true; for(const v of views.values()) v.mount();
+             unsub = items.subscribe(reconcile); },   // suscripción ESTRUCTURAL (alta/baja/orden)
+    update(){ reconcile(); },
+    remove(){ unsub && unsub(); for(const v of views.values()) v.remove();
+              views.clear(); order = []; start.remove(); end.remove(); }
+  };
+}
+
+/* ═══ vista emitida para <b>@cell.value</b> ═══
+   Item HOJA = un RANGO de dos nodos (valor + badge), sin envoltorio. Demuestra que la
+   reconciliación mueve rangos, no solo nodos únicos. Reactividad de GRANO FINO: se
+   suscribe a SU señal; modificar = parche en sitio, no pasa por la reconciliación. */
+let CELL_SEQ = 0;
+function cellView(cell){
+  let b, sup, unsub;
+  const view = {
+    firstNode:null, lastNode:null,
+    create(){
+      const id = ++CELL_SEQ;                   // id de instancia de la VISTA (no es dato)
+      const frag = document.createDocumentFragment();
+      b = document.createElement('b');   b.textContent = String(cell.value.peek());
+      sup = document.createElement('sup'); sup.textContent = '#'+id;
+      frag.append(b, sup);
+      view.firstNode = b; view.lastNode = sup; // el bloque insertará el rango donde toque
+    },
+    hydrate(cursor){                           // adopta valor + badge del SSR (no recrea nada)
+      b = cursor; sup = skipWs(cursor.nextSibling);
+      const id = parseInt(sup.textContent.slice(1), 10);
+      if(id > CELL_SEQ) CELL_SEQ = id;          // las altas en cliente siguen por encima de las del SSR
+      view.firstNode = b; view.lastNode = sup;
+      return skipWs(sup.nextSibling);           // siguiente nodo significativo tras el rango
+    },
+    mount(){ unsub = cell.value.subscribe(v => { b.textContent = String(v); }); }, // grano fino
+    update(){ /* nop: el valor llega por la suscripción propia */ },
+    remove(){ unsub(); b.remove(); sup.remove(); }
+  };
+  return view;
+}
+
+/* ═══ vista emitida para <div class="row"> con @foreach anidado ═══
+   Item = un nodo único (<div>) que POSEE el bloque interno. Su remove() destruye el
+   bloque interno explícitamente: el teardown no depende de disconnectedCallback. */
+let ROW_SEQ = 0;
+function rowView(row){
+  let div, tag, inner;
+  const view = {
+    firstNode:null, lastNode:null,
+    create(){
+      div = document.createElement('div'); div.className = 'row';
+      tag = document.createElement('i'); tag.textContent = 'fila#'+(++ROW_SEQ); div.append(tag);
+      inner = foreachBlock({ items: row.cells, keyOf:c=>c, makeView: cellView, label:'cells' }, div);
+      inner.create();
+      view.firstNode = view.lastNode = div;    // nodo único → el bloque externo lo mueve entero
+    },
+    hydrate(cursor){                           // adopta el <div> y delega la hidratación interna
+      div = cursor; tag = skipWs(div.firstChild); // primer hijo significativo = <i>fila#N</i>
+      const rid = parseInt(tag.textContent.split('#')[1], 10);
+      if(rid > ROW_SEQ) ROW_SEQ = rid;          // las altas de fila en cliente siguen por encima
+      inner = foreachBlock({ items: row.cells, keyOf:c=>c, makeView: cellView, label:'cells' }, div);
+      inner.hydrate();                          // localiza marcas internas dentro del div y adopta celdas
+      view.firstNode = view.lastNode = div;
+      return skipWs(div.nextSibling);
+    },
+    mount(){ inner.mount(); },
+    update(){ inner.update(); },
+    remove(){ inner.remove(); div.remove(); }  // propiedad explícita: baja del subárbol entero
+  };
+  return view;
+}
+
+/* ═══ arranque ═══
+   El markup del SSR ya está en el DOM (marcas + filas + celdas + badges). El cliente
+   NO crea: ADOPTA por posición y abre la suscripción estructural. create() solo se usa
+   en montaje en frío (sin SSR). */
+const rows = signal(
+  [[1,2,3],[4,5,6]].map(cs => ({ cells: signal(cs.map(v => ({ value: signal(v) }))) }))
+);
+const grid = foreachBlock({ items: rows, keyOf:r=>r, makeView: rowView, label:'rows' },
+                          document.getElementById('stage'));
+grid.hydrate();
+grid.mount();
+</script>
+
+<script type="module">
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function hlFud(src){let s=esc(src);
+  s=s.replace(/(@\*[\s\S]*?\*@)/g,'<span class="t-com">$1</span>');
+  s=s.replace(/\b(@if|@code|@client|@server|@foreach)\b/g,'<span class="t-at">$1</span>');
+  s=s.replace(/(@[A-Za-z_]\w*)/g,'<span class="t-at">$1</span>');
+  s=s.replace(/(&lt;\/?)([a-z][\w-]*)/g,'$1<span class="t-tag">$2</span>');
+  s=s.replace(/\b(import|let|const|from|function)\b/g,'<span class="t-kw">$1</span>');
+  s=s.replace(/(&#39;[^&]*?&#39;|'[^']*')/g,'<span class="t-str">$1</span>');
+  return s;}
+function hlJs(src){let s=esc(src);
+  s=s.replace(/(\/\*[\s\S]*?\*\/|\/\/[^\n]*)/g,'<span class="t-com">$1</span>');
+  s=s.replace(/\b(function|class|extends|const|let|return|if|else|new|of|for|null|this|get|in)\b/g,'<span class="t-kw">$1</span>');
+  s=s.replace(/\b(connectedCallback|disconnectedCallback|subscribe|signal|create|mount|update|remove|reconcile|moveRange|foreachBlock|cellView|rowView|peek|insertBefore|createElement|createComment|createDocumentFragment|append)\b/g,'<span class="t-fn">$1</span>');
+  s=s.replace(/('[^']*')/g,'<span class="t-str">$1</span>');
+  s=s.replace(/\b(\d+)\b/g,'<span class="t-num">$1</span>');
+  return s;}
+function withLines(h){return h.split('\n').map((l,i)=>`<span class="ln">${String(i+1).padStart(2,' ')}</span>  ${l}`).join('\n');}
+document.getElementById('src').innerHTML=withLines(hlFud(document.getElementById('fud-source').textContent.replace(/^\n/,'').trimEnd()));
+document.getElementById('out').innerHTML=withLines(hlJs(document.getElementById('js-output').textContent.replace(/^\n/,'').trimEnd()));
+
+/* ═══ EJECUTABLE — idéntico al panel emitido (verificado en headless, 12/12) ═══ */
+function signal(value){
+  const subs=new Set(); const s=()=>value; s.peek=()=>value;
+  s.set=v=>{ if(v===value)return; value=v; for(const fn of [...subs]) fn(value); };
+  s.subscribe=fn=>{ subs.add(fn); return ()=>subs.delete(fn); };
+  return s;
+}
+function moveRange(parent, first, last, ref){
+  const nodes=[]; for(let n=first;n;n=n.nextSibling){ nodes.push(n); if(n===last) break; }
+  for(const n of nodes) parent.insertBefore(n, ref);
+}
+function skipWs(n){ while(n && n.nodeType===3 && !/\S/.test(n.data)) n=n.nextSibling; return n; }
+function foreachBlock({ items, keyOf, makeView, label }, parent){
+  let start, end, unsub, mounted=false;
+  const views=new Map(); let order=[];
+  function reconcile(){
+    const next=items.peek(); const keys=next.map(keyOf); const nextSet=new Set(keys);
+    for(const key of order) if(!nextSet.has(key)){ views.get(key).remove(); views.delete(key); }
+    let prevLast=start;
+    for(let i=0;i<next.length;i++){
+      const key=keys[i]; let view=views.get(key);
+      const ref=prevLast.nextSibling;
+      if(!view){ view=makeView(next[i]); views.set(key,view); view.create();
+                 moveRange(parent, view.firstNode, view.lastNode, ref); if(mounted) view.mount(); }
+      else if(view.firstNode!==ref){ moveRange(parent, view.firstNode, view.lastNode, ref); }
+      prevLast=view.lastNode;
+    }
+    order=keys;
+  }
+  return {
+    get firstNode(){ return start; }, get lastNode(){ return end; },
+    create(){ start=document.createComment(label+':['); end=document.createComment(label+':]');
+              parent.append(start,end); reconcile(); },
+    hydrate(){ for(let n=parent.firstChild;n;n=n.nextSibling){
+                 if(n.nodeType===8&&n.data===label+':[') start=n; else if(n.nodeType===8&&n.data===label+':]') end=n; }
+               const next=items.peek(); const keys=next.map(keyOf); let cursor=skipWs(start.nextSibling);
+               for(let i=0;i<next.length;i++){ const view=makeView(next[i]); views.set(keys[i],view); cursor=view.hydrate(cursor); }
+               order=keys; },
+    mount(){ mounted=true; for(const v of views.values()) v.mount(); unsub=items.subscribe(reconcile); },
+    update(){ reconcile(); },
+    remove(){ unsub&&unsub(); for(const v of views.values()) v.remove(); views.clear(); order=[]; start.remove(); end.remove(); }
+  };
+}
+let CELL_SEQ=0;
+function cellView(cell){
+  let b, sup, unsub;
+  const view={ firstNode:null, lastNode:null,
+    create(){ const id=++CELL_SEQ; const frag=document.createDocumentFragment();
+      b=document.createElement('b'); b.textContent=String(cell.value.peek());
+      sup=document.createElement('sup'); sup.textContent='#'+id;
+      frag.append(b,sup); view.firstNode=b; view.lastNode=sup; },
+    hydrate(cursor){ b=cursor; sup=skipWs(cursor.nextSibling); const id=parseInt(sup.textContent.slice(1),10);
+      if(id>CELL_SEQ) CELL_SEQ=id; view.firstNode=b; view.lastNode=sup; return skipWs(sup.nextSibling); },
+    mount(){ unsub=cell.value.subscribe(v=>{ b.textContent=String(v); }); },
+    update(){},
+    remove(){ unsub(); b.remove(); sup.remove(); } };
+  return view;
+}
+let ROW_SEQ=0;
+function rowView(row){
+  let div, tag, inner;
+  const view={ firstNode:null, lastNode:null,
+    create(){ div=document.createElement('div'); div.className='row';
+      tag=document.createElement('i'); tag.textContent='fila#'+(++ROW_SEQ); div.append(tag);
+      inner=foreachBlock({ items:row.cells, keyOf:c=>c, makeView:cellView, label:'cells' }, div);
+      inner.create(); view.firstNode=view.lastNode=div; },
+    hydrate(cursor){ div=cursor; tag=skipWs(div.firstChild); const rid=parseInt(tag.textContent.split('#')[1],10);
+      if(rid>ROW_SEQ) ROW_SEQ=rid;
+      inner=foreachBlock({ items:row.cells, keyOf:c=>c, makeView:cellView, label:'cells' }, div);
+      inner.hydrate(); view.firstNode=view.lastNode=div; return skipWs(div.nextSibling); },
+    mount(){ inner.mount(); },
+    update(){ inner.update(); },
+    remove(){ inner.remove(); div.remove(); } };
+  return view;
+}
+/* El modelo del cliente coincide con lo que el servidor serializó (mismas props/estado).
+   El HTML del grid YA ESTÁ en #stage (lo emitió el servidor): el cliente NO crea, ADOPTA. */
+const rows=signal([[1,2,3],[4,5,6]].map(cs=>({ cells:signal(cs.map(v=>({ value:signal(v) }))) })));
+const stage=document.getElementById('stage');
+const grid=foreachBlock({ items:rows, keyOf:r=>r, makeView:rowView, label:'rows' }, stage);
+grid.hydrate();
+grid.mount();
+
+/* ═══ instrumentación de la UI (fuera del runtime) ═══ */
+let nextVal=7;
+const cell=v=>({ value:signal(v) });
+const newCells=k=>{ const a=[]; for(let i=0;i<k;i++) a.push(cell(nextVal++)); return a; };
+const shuf=a=>{ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+const stRows=document.getElementById('st-rows'), stCells=document.getElementById('st-cells'), stMade=document.getElementById('st-made');
+function report(){
+  stRows.textContent=stage.querySelectorAll('.row').length;
+  stCells.textContent=stage.querySelectorAll('.row b').length;
+  stMade.textContent=CELL_SEQ;
+}
+report();
+document.getElementById('rowAdd').addEventListener('click',()=>{ rows.set([...rows.peek(), { cells:signal(newCells(3)) }]); report(); });
+document.getElementById('rowDel').addEventListener('click',()=>{ const r=rows.peek(); if(!r.length) return; const i=r.length>>1; rows.set(r.filter((_,j)=>j!==i)); report(); });
+document.getElementById('rowShuf').addEventListener('click',()=>{ rows.set(shuf([...rows.peek()])); report(); });
+document.getElementById('cellAdd').addEventListener('click',()=>{ const r=rows.peek()[0]; if(!r) return; r.cells.set([...r.cells.peek(), cell(nextVal++)]); report(); });
+document.getElementById('cellDel').addEventListener('click',()=>{ const r=rows.peek()[0]; if(!r) return; const c=r.cells.peek(); if(!c.length) return; const i=c.length>>1; r.cells.set(c.filter((_,j)=>j!==i)); report(); });
+document.getElementById('cellShuf').addEventListener('click',()=>{ const r=rows.peek()[0]; if(!r) return; r.cells.set(shuf([...r.cells.peek()])); report(); });
+document.getElementById('cellMod').addEventListener('click',()=>{ const r=rows.peek()[0]; if(!r) return; const c=r.cells.peek()[0]; if(!c) return; c.value.set(c.value.peek()+10); report(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fudic REPL · @if · 3 renders</title>
+<style>
+  :root{
+    --ink:#13141a;--paper:#f5f2ec;--panel:#fffdf8;--line:#d8d2c4;
+    --hot:#b5462f;--dead:#9a8f7d;--live:#2f6f4f;
+    --kw:#9a3b8f;--str:#2f6f4f;--com:#a89c84;--at:#b5462f;--fn:#3a5fa8;--num:#b5462f;--tag:#3a5fa8;
+    --mono:ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);font:13px/1.45 var(--mono);
+       display:flex;flex-direction:column}
+  header{padding:11px 18px;border-bottom:1px solid var(--line);display:flex;
+         align-items:baseline;gap:14px;flex-wrap:wrap;background:var(--panel)}
+  header h1{font-size:14px;margin:0}
+  header .tag{font-size:11px;color:var(--dead)}
+  header code{color:var(--hot)}
+
+  .top{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line);min-height:0}
+  @media(max-width:760px){.top{grid-template-columns:1fr;grid-template-rows:auto auto}}
+  .pane{display:flex;flex-direction:column;min-width:0;min-height:0}
+  .pane+.pane{border-left:1px solid var(--line)}
+  .pane h2{margin:0;font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--dead);
+           padding:8px 16px;border-bottom:1px solid var(--line);background:var(--panel);
+           display:flex;justify-content:space-between;gap:10px}
+  .pane h2 .ext{color:var(--hot);text-transform:none;letter-spacing:0}
+  .code{margin:0;padding:13px 16px;overflow:auto;white-space:pre;tab-size:2;
+        font:12px/1.55 var(--mono);max-height:50vh}
+  .ln{color:var(--com);user-select:none}
+  .t-kw{color:var(--kw)} .t-str{color:var(--str)} .t-com{color:var(--com);font-style:italic}
+  .t-at{color:var(--at);font-weight:600} .t-fn{color:var(--fn)} .t-num{color:var(--num)} .t-tag{color:var(--tag)}
+  .seg{display:block;border-top:1px dashed var(--line);margin:6px 0;padding-top:6px}
+
+  .stage-wrap{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+  .stage-wrap h2{margin:0;font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--dead);
+        padding:8px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .live-area{flex:1;padding:20px 18px;overflow:auto}
+  .controls{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+  .counter{border:1px solid var(--line);background:var(--panel);padding:9px 13px;font-weight:600}
+  .counter b{font-size:20px;margin-left:8px}
+  button{font:600 12px/1 var(--mono);color:var(--paper);background:var(--ink);border:0;padding:10px 15px;cursor:pointer}
+  button:hover{background:var(--hot)}
+  button:focus-visible{outline:2px solid var(--hot);outline-offset:2px}
+  .mflag{font-size:12px;color:var(--dead)} .mflag b.on{color:var(--live)} .mflag b.off{color:var(--dead)}
+  #stage{display:flex;align-items:center;gap:12px;min-height:48px;border:1px dashed var(--line);
+         padding:14px;background:var(--panel)}
+  .domnote{font-size:11px;color:var(--dead);margin-top:10px} .domnote code{color:var(--hot)}
+  app-count{display:inline-flex;align-items:center;justify-content:center;min-width:54px;height:40px;
+            padding:0 16px;background:var(--live);color:#fff;font:700 18px/1 var(--mono)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Fudic REPL</h1>
+  <span class="tag"><code>@if</code> reactivo · tres renders polimórficos: <code>home</code> → <code>if</code> → <code>app-count</code></span>
+</header>
+
+<div class="top">
+  <div class="pane">
+    <h2>fuente <span class="ext">.fud</span></h2>
+    <pre class="code" id="src"></pre>
+  </div>
+  <div class="pane">
+    <h2>emitido <span class="ext">.js incrustado</span></h2>
+    <pre class="code" id="out"></pre>
+  </div>
+</div>
+
+<div class="stage-wrap">
+  <h2>componente funcionando</h2>
+  <div class="live-area">
+    <div class="controls">
+      <span class="counter">count <b id="cval">0</b></span>
+      <button id="dec">← decrementar</button>
+      <button id="inc">incrementar →</button>
+      <span class="mflag">bloque @if: <b id="mflag" class="on">MONTADO</b></span>
+      <span class="mflag">visible en 0 · 1 · 8</span>
+    </div>
+    <div id="stage"><!--fud:if--><app-count data-ssr><template shadowrootmode="open"><style>:host{display:inline-flex;align-items:center;justify-content:center;min-width:54px;height:40px;padding:0 16px;background:#2f6f4f;color:#fff;font:700 18px/1 monospace}</style><span>0</span></template></app-count></div>
+    <p class="domnote">3 renders en cascada · <code>&lt;app-count&gt;</code> conserva su grano fino · el <code>&lt;!--fud:if--&gt;</code> ancla persiste</p>
+  </div>
+</div>
+
+<script type="text/plain" id="fud-source">
+@* ───────── app-count.fud ─ componente N3 ───────── *@
+@code {
+  @client {
+    import { signal } from '@fudic/signals';
+    const count = signal(0);
+  }
+}
+<head>
+  <style host="app-count">
+    :host { background:#2f6f4f; color:#fff; }
+  </style>
+</head>
+<span>@count</span>
+
+
+@* ───────── home.fud ─ el @if que lo monta ───────── *@
+<link rel="component" href="./app-count.fud">
+<body>
+  @if (count === 0 || count === 1 || count === 8) {
+    <app-count></app-count>
+  }
+</body>
+</script>
+
+<script type="text/plain" id="js-output">
+/* ═══ @fudic/signals ═══ */
+function signal(value){
+  const subs = new Set();
+  const s = () => value; s.peek = () => value;
+  s.set = v => { if(v===value) return; value=v;
+                 for(const fn of subs) fn(value); };   // Set vivo → baja inmediata
+  s.subscribe = fn => { subs.add(fn); return () => subs.delete(fn); };
+  return s;
+}
+
+/* ═══ RENDER 1 · block statement del componente <span>@count</span> ═══
+   Polimórfico. Posee SOLO el span (nodo que retoca) y la baja del grano fino. */
+function renderAppCount(ctx, root){
+  let span, unsub;
+  return {
+    create(){                                  // montaje en frío
+      span = document.createElement('span');
+      span.textContent = String(ctx.count.peek());
+      root.append(span);
+    },
+    hydrate(){ span = root.firstChild; },      // adopta el span del SSR (posicional)
+    mount(){                                    // alta: abre el grano fino
+      unsub = ctx.count.subscribe(v => { span.textContent = String(v); });
+    },
+    update(){ /* nop: el grano fino lo hace la suscripción */ },
+    remove(){ unsub(); span.remove(); span=null; unsub=null; }   // baja simétrica
+  };
+}
+
+/* La clase posee el ESTADO y delega al render. El navegador da el lifecycle. */
+class AppCount extends HTMLElement {
+  count = signal(0);
+  #r;
+  connectedCallback(){
+    const root = this.shadowRoot ?? this.attachShadow({ mode:'open' });
+    this.#r = renderAppCount(this, root);
+    this.shadowRoot && root.firstChild ? this.#r.hydrate() : this.#r.create();
+    this.#r.mount();
+  }
+  disconnectedCallback(){ this.#r.remove(); }
+}
+customElements.define('app-count', AppCount);
+
+/* ═══ RENDER 2 · block statement del @if ═══
+   Polimórfico. Posee la decisión existencial y la referencia al hijo (o null).
+   Montar el hijo = anchor.before(el) → el navegador dispara connectedCallback. */
+function renderIf(ctx, anchor){
+  let el = null;
+  const cond = () => { const c = ctx.count.peek(); return c===0||c===1||c===8; };
+  const mountChild = () => {
+    el = document.createElement('app-count');
+    el.count = ctx.count;                       // inyecta estado ANTES de conectar
+    anchor.before(el);                          // → connectedCallback (crea en frío)
+  };
+  return {
+    create(){ if (cond()) mountChild(); },
+    hydrate(){ if (cond()) el = anchor.previousElementSibling; },  // adopta el del SSR
+    mount(){ /* nop */ },
+    update(){                                    // ← corazón del @if reactivo
+      const should = cond();
+      if (should && !el) mountChild();
+      else if (!should && el){ el.remove(); el = null; }   // → disconnectedCallback
+    },
+    remove(){ if (el){ el.remove(); el = null; } }
+  };
+}
+
+/* ═══ RENDER 3 · block statement del padre <body> ═══
+   Polimórfico. Posee el anchor y la suscripción ESTRUCTURAL. Delega el @if. */
+function renderHome(ctx, stage){
+  let anchor, ifBlock, unsub;
+  return {
+    create(){
+      anchor = document.createComment('fud:if'); stage.append(anchor);
+      ifBlock = renderIf(ctx, anchor); ifBlock.create();
+    },
+    hydrate(){
+      anchor = [...stage.childNodes].find(n => n.nodeType===8 && n.data==='fud:if');
+      ifBlock = renderIf(ctx, anchor); ifBlock.hydrate();
+    },
+    mount(){
+      ifBlock.mount();
+      unsub = ctx.count.subscribe(() => this.update());   // count → update del padre
+    },
+    update(){ ifBlock.update(); },               // propaga; NO decide el @if
+    remove(){ unsub(); ifBlock.remove(); }
+  };
+}
+
+/* ═══ arranque ═══ */
+const count = signal(0);
+const home  = renderHome({ count }, document.getElementById('stage'));
+home.hydrate();   // count=0: adopta el <app-count> del SSR
+home.mount();     // abre la suscripción estructural
+</script>
+
+<script type="module">
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function hlFud(src){let s=esc(src);
+  s=s.replace(/(@\*[\s\S]*?\*@)/g,'<span class="t-com">$1</span>');
+  s=s.replace(/\b(@if|@code|@client|@server|@foreach)\b/g,'<span class="t-at">$1</span>');
+  s=s.replace(/(@[A-Za-z_]\w*)/g,'<span class="t-at">$1</span>');
+  s=s.replace(/(&lt;\/?)([a-z][\w-]*)/g,'$1<span class="t-tag">$2</span>');
+  s=s.replace(/\b(import|const|from)\b/g,'<span class="t-kw">$1</span>');
+  s=s.replace(/(&#39;[^&]*?&#39;|'[^']*')/g,'<span class="t-str">$1</span>');
+  return s;}
+function hlJs(src){let s=esc(src);
+  s=s.replace(/(\/\*[\s\S]*?\*\/|\/\/[^\n]*)/g,'<span class="t-com">$1</span>');
+  s=s.replace(/\b(function|class|extends|const|let|return|if|else|new|of|null)\b/g,'<span class="t-kw">$1</span>');
+  s=s.replace(/\b(connectedCallback|disconnectedCallback|subscribe|signal|hydrate|create|mount|update|remove|peek)\b/g,'<span class="t-fn">$1</span>');
+  s=s.replace(/('[^']*')/g,'<span class="t-str">$1</span>');
+  s=s.replace(/\b(\d+)\b/g,'<span class="t-num">$1</span>');
+  return s;}
+function withLines(h){return h.split('\n').map((l,i)=>`<span class="ln">${String(i+1).padStart(2,' ')}</span>  ${l}`).join('\n');}
+document.getElementById('src').innerHTML=withLines(hlFud(document.getElementById('fud-source').textContent.replace(/^\n/,'').trimEnd()));
+document.getElementById('out').innerHTML=withLines(hlJs(document.getElementById('js-output').textContent.replace(/^\n/,'').trimEnd()));
+
+/* ═══ EJECUTABLE — idéntico al panel emitido ═══ */
+function signal(value){
+  const subs=new Set(); const s=()=>value; s.peek=()=>value;
+  s.set=v=>{ if(v===value)return; value=v; for(const fn of subs) fn(value); };
+  s.subscribe=fn=>{ subs.add(fn); return ()=>subs.delete(fn); };
+  return s;
+}
+function renderAppCount(ctx, root){
+  let span, unsub;
+  return {
+    create(){ span=document.createElement('span'); span.textContent=String(ctx.count.peek()); root.append(span); },
+    hydrate(){ span=root.firstChild; },
+    mount(){ unsub=ctx.count.subscribe(v=>{ span.textContent=String(v); }); },
+    update(){},
+    remove(){ unsub(); span.remove(); span=null; unsub=null; }
+  };
+}
+class AppCount extends HTMLElement{
+  count=signal(0); #r;
+  connectedCallback(){
+    const root=this.shadowRoot ?? this.attachShadow({mode:'open'});
+    this.#r=renderAppCount(this, root);
+    this.shadowRoot && root.firstChild ? this.#r.hydrate() : this.#r.create();
+    this.#r.mount();
+  }
+  disconnectedCallback(){ this.#r.remove(); }
+}
+customElements.define('app-count', AppCount);
+
+function renderIf(ctx, anchor){
+  let el=null;
+  const cond=()=>{ const c=ctx.count.peek(); return c===0||c===1||c===8; };
+  const mountChild=()=>{ el=document.createElement('app-count'); el.count=ctx.count; anchor.before(el); };
+  return {
+    create(){ if(cond()) mountChild(); },
+    hydrate(){ if(cond()) el=anchor.previousElementSibling; },
+    mount(){},
+    update(){ const should=cond();
+      if(should&&!el) mountChild();
+      else if(!should&&el){ el.remove(); el=null; } },
+    remove(){ if(el){ el.remove(); el=null; } }
+  };
+}
+function renderHome(ctx, stage){
+  let anchor, ifBlock, unsub;
+  return {
+    create(){ anchor=document.createComment('fud:if'); stage.append(anchor); ifBlock=renderIf(ctx,anchor); ifBlock.create(); },
+    hydrate(){ anchor=[...stage.childNodes].find(n=>n.nodeType===8&&n.data==='fud:if'); ifBlock=renderIf(ctx,anchor); ifBlock.hydrate(); },
+    mount(){ ifBlock.mount(); unsub=ctx.count.subscribe(()=>this.update()); },
+    update(){ ifBlock.update(); },
+    remove(){ unsub(); ifBlock.remove(); }
+  };
+}
+
+const count=signal(0);
+const home=renderHome({count}, document.getElementById('stage'));
+home.hydrate();
+home.mount();
+
+/* instrumentación de la UI (fuera del componente) */
+const cval=document.getElementById('cval'), mflag=document.getElementById('mflag');
+count.subscribe(v=>{
+  cval.textContent=v;
+  const on=(v===0||v===1||v===8);
+  mflag.textContent=on?'MONTADO':'desmontado'; mflag.className=on?'on':'off';
+});
+document.getElementById('inc').addEventListener('click',()=>count.set(count.peek()+1));
+document.getElementById('dec').addEventListener('click',()=>count.set(Math.max(0, count.peek()-1)));
+</script>
+</body>
+</html>

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fudic REPL · @foreach · lista con clave + reconciliación</title>
+<style>
+  :root{
+    --ink:#13141a;--paper:#f5f2ec;--panel:#fffdf8;--line:#d8d2c4;
+    --hot:#b5462f;--dead:#9a8f7d;--live:#2f6f4f;
+    --kw:#9a3b8f;--str:#2f6f4f;--com:#a89c84;--at:#b5462f;--fn:#3a5fa8;--num:#b5462f;--tag:#3a5fa8;
+    --mono:ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);font:13px/1.45 var(--mono);
+       display:flex;flex-direction:column}
+  header{padding:11px 18px;border-bottom:1px solid var(--line);display:flex;
+         align-items:baseline;gap:14px;flex-wrap:wrap;background:var(--panel)}
+  header h1{font-size:14px;margin:0}
+  header .tag{font-size:11px;color:var(--dead)}
+  header code{color:var(--hot)}
+
+  .top{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line);min-height:0}
+  @media(max-width:760px){.top{grid-template-columns:1fr;grid-template-rows:auto auto}}
+  .pane{display:flex;flex-direction:column;min-width:0;min-height:0}
+  .pane+.pane{border-left:1px solid var(--line)}
+  .pane h2{margin:0;font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--dead);
+           padding:8px 16px;border-bottom:1px solid var(--line);background:var(--panel);
+           display:flex;justify-content:space-between;gap:10px}
+  .pane h2 .ext{color:var(--hot);text-transform:none;letter-spacing:0}
+  .code{margin:0;padding:13px 16px;overflow:auto;white-space:pre;tab-size:2;
+        font:12px/1.55 var(--mono);max-height:50vh}
+  .ln{color:var(--com);user-select:none}
+  .t-kw{color:var(--kw)} .t-str{color:var(--str)} .t-com{color:var(--com);font-style:italic}
+  .t-at{color:var(--at);font-weight:600} .t-fn{color:var(--fn)} .t-num{color:var(--num)} .t-tag{color:var(--tag)}
+
+  .stage-wrap{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+  .stage-wrap h2{margin:0;font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--dead);
+        padding:8px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .live-area{flex:1;padding:20px 18px;overflow:auto}
+  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  button{font:600 12px/1 var(--mono);color:var(--paper);background:var(--ink);border:0;padding:10px 14px;cursor:pointer}
+  button:hover{background:var(--hot)}
+  button:focus-visible{outline:2px solid var(--hot);outline-offset:2px}
+  .stats{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--dead);margin-bottom:14px}
+  .stats b{color:var(--ink)} .stats b.live{color:var(--live)} .stats b.hot{color:var(--hot)}
+  #stage{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:48px;
+         border:1px dashed var(--line);padding:14px;background:var(--panel)}
+  app-item{display:inline-flex;align-items:center;justify-content:center;min-width:46px;height:40px;
+           padding:0 14px;background:var(--live);color:#fff;font:700 16px/1 var(--mono)}
+  .domnote{font-size:11px;color:var(--dead);margin-top:10px} .domnote code{color:var(--hot)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Fudic REPL</h1>
+  <span class="tag"><code>@foreach</code> sobre <code>[1,2,3,4,5,6]</code> · reconciliación con clave = valor · las vistas se <b>reutilizan</b> al barajar/eliminar, no se recrean</span>
+</header>
+
+<div class="top">
+  <div class="pane">
+    <h2>fuente <span class="ext">.fud</span></h2>
+    <pre class="code" id="src"></pre>
+  </div>
+  <div class="pane">
+    <h2>emitido <span class="ext">.js incrustado</span></h2>
+    <pre class="code" id="out"></pre>
+  </div>
+</div>
+
+<div class="stage-wrap">
+  <h2>componente funcionando · partió del HTML del servidor</h2>
+  <div class="live-area">
+    <div class="controls">
+      <button id="add">añadir al final</button>
+      <button id="del">eliminar el del medio</button>
+      <button id="mod">modificar el del medio</button>
+      <button id="shuffle">barajar</button>
+    </div>
+    <div class="stats">
+      <span>vivos <b id="st-live" class="live">6</b></span>
+      <span>reutilizados <b id="st-reuse">6</b></span>
+      <span>nuevos <b id="st-new" class="hot">0</b></span>
+      <span>eliminados <b id="st-del" class="hot">0</b></span>
+    </div>
+    <div id="stage"><app-item><template shadowrootmode="open"><style>:host{display:inline-flex;align-items:center;justify-content:center;min-width:46px;height:40px;padding:0 14px;background:#2f6f4f;color:#fff;font:700 16px/1 monospace}</style><span>1</span></template></app-item><app-item><template shadowrootmode="open"><style>:host{display:inline-flex;align-items:center;justify-content:center;min-width:46px;height:40px;padding:0 14px;background:#2f6f4f;color:#fff;font:700 16px/1 monospace}</style><span>2</span></template></app-item><app-item><template shadowrootmode="open"><style>:host{display:inline-flex;align-items:center;justify-content:center;min-width:46px;height:40px;padding:0 14px;background:#2f6f4f;color:#fff;font:700 16px/1 monospace}</style><span>3</span></template></app-item><app-item><template shadowrootmode="open"><style>:host{display:inline-flex;align-items:center;justify-content:center;min-width:46px;height:40px;padding:0 14px;background:#2f6f4f;color:#fff;font:700 16px/1 monospace}</style><span>4</span></template></app-item><app-item><template shadowrootmode="open"><style>:host{display:inline-flex;align-items:center;justify-content:center;min-width:46px;height:40px;padding:0 14px;background:#2f6f4f;color:#fff;font:700 16px/1 monospace}</style><span>5</span></template></app-item><app-item><template shadowrootmode="open"><style>:host{display:inline-flex;align-items:center;justify-content:center;min-width:46px;height:40px;padding:0 14px;background:#2f6f4f;color:#fff;font:700 16px/1 monospace}</style><span>6</span></template></app-item><!--fud:foreach--></div>
+    <p class="domnote">El servidor serializó los 6 <code>&lt;app-item&gt;</code> con su shadow declarativo + el ancla <code>&lt;!--fud:foreach--&gt;</code> al final. El cliente adopta por traversal posicional · <b>barajar</b> mueve los mismos nodos (reuse) · <b>eliminar</b> baja uno y recoloca el resto · <b>modificar</b> con clave = valor remonta (cambia la clave).</p>
+  </div>
+</div>
+
+<script type="text/plain" id="fud-source">
+@* ───────── app-item.fud ─ componente N3 (presentacional, sin estado) ───────── *@
+@code {
+  @client {
+    @* la clave es el valor → el valor es constante para esta vista; entra por property binding *@
+    let value = 0;
+  }
+}
+<head>
+  <style host="app-item">
+    :host { background:#2f6f4f; color:#fff; }
+  </style>
+</head>
+<span>@value</span>
+
+
+@* ───────── list.fud ─ el @foreach que reconcilia con clave = valor ───────── *@
+<link rel="component" href="./app-item.fud">
+@code {
+  @client {
+    import { signal } from '@fudic/signals';
+    const items = signal([1, 2, 3, 4, 5, 6]);
+  }
+}
+<body>
+  @foreach (const n of items) {
+    <app-item .value="@n"></app-item>
+  }
+</body>
+</script>
+
+<script type="text/plain" id="js-output">
+/* ═══ @fudic/signals ═══ */
+function signal(value){
+  const subs = new Set();
+  const s = () => value; s.peek = () => value;
+  s.set = v => { if(v===value) return; value=v;
+                 for(const fn of subs) fn(value); };   // Set vivo → baja inmediata
+  s.subscribe = fn => { subs.add(fn); return () => subs.delete(fn); };
+  return s;
+}
+
+/* ═══ RENDER 1 · block statement de <span>@value</span> (el item) ═══
+   Polimórfico, pero PRESENTACIONAL: con clave = valor, el valor es constante
+   para esta vista. No hay grano fino que abrir → mount/update son nop. Toda la
+   reactividad de la lista vive en la reconciliación del @foreach (RENDER 2). */
+function renderAppItem(ctx, root){
+  let span;
+  return {
+    create(){                                   // montaje en frío (un item nuevo)
+      span = document.createElement('span');
+      span.textContent = String(ctx.value);
+      root.append(span);
+    },
+    hydrate(){ span = root.childNodes[1]; },     // [0]=<style>, [1]=<span> del SSR (offset conocido)
+    mount(){ /* nop: valor inmutable para esta clave */ },
+    update(){ /* nop: si el valor cambia, cambia la CLAVE → es otro item (remonta) */ },
+    remove(){ span = null; }                     // el shadow se va con el host
+  };
+}
+
+/* La clase posee el property binding y delega al render. El navegador da el lifecycle. */
+class AppItem extends HTMLElement {
+  value;                                         // número plano, inyectado antes de conectar
+  #r;
+  connectedCallback(){
+    const root = this.shadowRoot ?? this.attachShadow({ mode:'open' });
+    this.#r = renderAppItem({ value:this.value }, root);
+    this.shadowRoot && root.firstChild ? this.#r.hydrate() : this.#r.create();
+    this.#r.mount();
+  }
+  disconnectedCallback(){ this.#r.remove(); }
+}
+customElements.define('app-item', AppItem);
+
+/* ═══ RENDER 2 · block statement del @foreach ═══
+   Polimórfico. Posee el ancla y la lista ORDENADA de vistas { key, el }.
+   key = valor del item (clave de identidad de este modelo). El corazón es update():
+   un diff con clave que CREA las altas, ELIMINA las bajas y MUEVE (reutiliza) el
+   resto a su posición — nunca recrea una vista cuya clave persiste. */
+function renderForeach(ctx, anchor){
+  let records = [];                              // [{ key, el }] en orden de pintado
+  const parent = anchor.parentNode;
+  const makeEl = n => { const el = document.createElement('app-item'); el.value = n; return el; };
+  return {
+    create(){                                    // montaje en frío: construye cada item
+      for (const n of ctx.items.peek()){
+        const el = makeEl(n); anchor.before(el); records.push({ key:n, el });
+      }
+    },
+    hydrate(){                                   // adopta los <app-item> del SSR (posicional)
+      const els = [];
+      for (let x = parent.firstChild; x && x !== anchor; x = x.nextSibling)
+        if (x.nodeType === 1) els.push(x);
+      const vals = ctx.items.peek();
+      els.forEach((el, i) => records.push({ key: vals[i], el }));
+    },
+    mount(){ /* nop: cada item se montó solo al conectar */ },
+    update(){                                    // ← reconciliación con clave
+      const next   = ctx.items.peek();
+      const nextSet = new Set(next);
+      const byKey  = new Map(records.map(r => [r.key, r]));
+
+      // 1. BAJAS: quita las vistas cuya clave ya no está → disconnectedCallback
+      for (const r of records) if (!nextSet.has(r.key)) r.el.remove();
+
+      // 2. recorre el orden deseado: crea las altas, mueve (reutiliza) el resto a su sitio
+      let prev = null; const out = [];
+      for (const n of next){
+        let r = byKey.get(n);
+        const ref = prev ? prev.nextSibling : parent.firstChild;   // dónde DEBE ir este item
+        if (!r){                                                   // ALTA: clave nueva
+          const el = makeEl(n); parent.insertBefore(el, ref); r = { key:n, el };
+        } else if (r.el !== ref){                                  // REUSE: ya existía, recolócalo
+          parent.insertBefore(r.el, ref);                          // mover NO dispara lifecycle
+        }
+        out.push(r); prev = r.el;
+      }
+      records = out;
+    },
+    remove(){ for (const r of records) r.el.remove(); records = []; }
+  };
+}
+
+/* ═══ RENDER 3 · block statement del padre <body> ═══
+   Polimórfico. Posee el ancla y la suscripción ESTRUCTURAL. Delega al @foreach. */
+function renderList(ctx, stage){
+  let anchor, fe, unsub;
+  return {
+    create(){
+      anchor = document.createComment('fud:foreach'); stage.append(anchor);
+      fe = renderForeach(ctx, anchor); fe.create();
+    },
+    hydrate(){
+      anchor = [...stage.childNodes].find(n => n.nodeType===8 && n.data==='fud:foreach');
+      fe = renderForeach(ctx, anchor); fe.hydrate();
+    },
+    mount(){
+      fe.mount();
+      unsub = ctx.items.subscribe(() => fe.update());   // items cambia (alta/baja/orden) → reconcilia
+    },
+    update(){ fe.update(); },
+    remove(){ unsub(); fe.remove(); }
+  };
+}
+
+/* ═══ arranque ═══
+   El navegador, al definir el custom element, promociona los <app-item> del SSR y
+   dispara su connectedCallback con el shadowRoot ya poblado → rama hydrate().
+   Luego renderList adopta el ancla y abre la suscripción estructural. */
+const items = signal([1, 2, 3, 4, 5, 6]);
+const list  = renderList({ items }, document.getElementById('stage'));
+list.hydrate();   // adopta el ancla + los 6 <app-item> serializados
+list.mount();     // abre la suscripción estructural items → reconciliación
+</script>
+
+<script type="module">
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function hlFud(src){let s=esc(src);
+  s=s.replace(/(@\*[\s\S]*?\*@)/g,'<span class="t-com">$1</span>');
+  s=s.replace(/\b(@if|@code|@client|@server|@foreach)\b/g,'<span class="t-at">$1</span>');
+  s=s.replace(/(@[A-Za-z_]\w*)/g,'<span class="t-at">$1</span>');
+  s=s.replace(/(&lt;\/?)([a-z][\w-]*)/g,'$1<span class="t-tag">$2</span>');
+  s=s.replace(/\b(import|let|const|from|function)\b/g,'<span class="t-kw">$1</span>');
+  s=s.replace(/(&#39;[^&]*?&#39;|'[^']*')/g,'<span class="t-str">$1</span>');
+  return s;}
+function hlJs(src){let s=esc(src);
+  s=s.replace(/(\/\*[\s\S]*?\*\/|\/\/[^\n]*)/g,'<span class="t-com">$1</span>');
+  s=s.replace(/\b(function|class|extends|const|let|return|if|else|new|of|for|null|this)\b/g,'<span class="t-kw">$1</span>');
+  s=s.replace(/\b(connectedCallback|disconnectedCallback|subscribe|signal|hydrate|create|mount|update|remove|peek|insertBefore|createElement|createComment|attachShadow|append|before|querySelectorAll)\b/g,'<span class="t-fn">$1</span>');
+  s=s.replace(/('[^']*')/g,'<span class="t-str">$1</span>');
+  s=s.replace(/\b(\d+)\b/g,'<span class="t-num">$1</span>');
+  return s;}
+function withLines(h){return h.split('\n').map((l,i)=>`<span class="ln">${String(i+1).padStart(2,' ')}</span>  ${l}`).join('\n');}
+document.getElementById('src').innerHTML=withLines(hlFud(document.getElementById('fud-source').textContent.replace(/^\n/,'').trimEnd()));
+document.getElementById('out').innerHTML=withLines(hlJs(document.getElementById('js-output').textContent.replace(/^\n/,'').trimEnd()));
+
+/* ═══ EJECUTABLE — idéntico al panel emitido ═══ */
+function signal(value){
+  const subs=new Set(); const s=()=>value; s.peek=()=>value;
+  s.set=v=>{ if(v===value)return; value=v; for(const fn of subs) fn(value); };
+  s.subscribe=fn=>{ subs.add(fn); return ()=>subs.delete(fn); };
+  return s;
+}
+function renderAppItem(ctx, root){
+  let span;
+  return {
+    create(){ span=document.createElement('span'); span.textContent=String(ctx.value); root.append(span); },
+    hydrate(){ span=root.childNodes[1]; },
+    mount(){},
+    update(){},
+    remove(){ span=null; }
+  };
+}
+class AppItem extends HTMLElement{
+  value; #r;
+  connectedCallback(){
+    const root=this.shadowRoot ?? this.attachShadow({mode:'open'});
+    this.#r=renderAppItem({value:this.value}, root);
+    this.shadowRoot && root.firstChild ? this.#r.hydrate() : this.#r.create();
+    this.#r.mount();
+  }
+  disconnectedCallback(){ this.#r.remove(); }
+}
+customElements.define('app-item', AppItem);
+
+function renderForeach(ctx, anchor){
+  let records=[];
+  const parent=anchor.parentNode;
+  const makeEl=n=>{ const el=document.createElement('app-item'); el.value=n; return el; };
+  return {
+    create(){ for(const n of ctx.items.peek()){ const el=makeEl(n); anchor.before(el); records.push({key:n,el}); } },
+    hydrate(){
+      const els=[];
+      for(let x=parent.firstChild; x&&x!==anchor; x=x.nextSibling) if(x.nodeType===1) els.push(x);
+      const vals=ctx.items.peek();
+      els.forEach((el,i)=>records.push({key:vals[i],el}));
+    },
+    mount(){},
+    update(){
+      const next=ctx.items.peek();
+      const nextSet=new Set(next);
+      const byKey=new Map(records.map(r=>[r.key,r]));
+      for(const r of records) if(!nextSet.has(r.key)) r.el.remove();
+      let prev=null; const out=[];
+      for(const n of next){
+        let r=byKey.get(n);
+        const ref= prev ? prev.nextSibling : parent.firstChild;
+        if(!r){ const el=makeEl(n); parent.insertBefore(el,ref); r={key:n,el}; }
+        else if(r.el!==ref){ parent.insertBefore(r.el,ref); }
+        out.push(r); prev=r.el;
+      }
+      records=out;
+    },
+    remove(){ for(const r of records) r.el.remove(); records=[]; }
+  };
+}
+function renderList(ctx, stage){
+  let anchor, fe, unsub;
+  return {
+    create(){ anchor=document.createComment('fud:foreach'); stage.append(anchor); fe=renderForeach(ctx,anchor); fe.create(); },
+    hydrate(){ anchor=[...stage.childNodes].find(n=>n.nodeType===8&&n.data==='fud:foreach'); fe=renderForeach(ctx,anchor); fe.hydrate(); },
+    mount(){ fe.mount(); unsub=ctx.items.subscribe(()=>fe.update()); },
+    update(){ fe.update(); },
+    remove(){ unsub(); fe.remove(); }
+  };
+}
+
+const items=signal([1,2,3,4,5,6]);
+const list=renderList({items}, document.getElementById('stage'));
+list.hydrate();
+list.mount();
+
+/* ═══ instrumentación de la UI (fuera del componente) ═══ */
+const stage=document.getElementById('stage');
+let nextVal=7;
+let prevEls=new Set(stage.querySelectorAll('app-item'));
+const stLive=document.getElementById('st-live'), stReuse=document.getElementById('st-reuse'),
+      stNew=document.getElementById('st-new'), stDel=document.getElementById('st-del');
+function report(){
+  const now=new Set(stage.querySelectorAll('app-item'));
+  const reused=[...now].filter(e=>prevEls.has(e)).length;
+  stLive.textContent=now.size;
+  stReuse.textContent=reused;
+  stNew.textContent=now.size-reused;
+  stDel.textContent=[...prevEls].filter(e=>!now.has(e)).length;
+  prevEls=now;
+}
+report();
+document.getElementById('add').addEventListener('click',()=>{
+  items.set([...items.peek(), nextVal++]);                 // alta: una vista nueva al final
+  report();
+});
+document.getElementById('del').addEventListener('click',()=>{
+  const cur=items.peek(); if(!cur.length) return;
+  const i=Math.floor(cur.length/2);
+  items.set(cur.filter((_,j)=>j!==i));                     // baja: el del medio; el resto se reutiliza
+  report();
+});
+document.getElementById('mod').addEventListener('click',()=>{
+  const cur=items.peek(); if(!cur.length) return;
+  const i=Math.floor(cur.length/2);
+  const copy=[...cur]; copy[i]=nextVal++;                   // con clave = valor: cambiar el valor REMONTA
+  items.set(copy);
+  report();
+});
+document.getElementById('shuffle').addEventListener('click',()=>{
+  const a=[...items.peek()];
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  items.set(a);                                            // mismo conjunto, otro orden: reuse puro
+  report();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fudic REPL · app-parent → app-display · props (SSR + hidratación)</title>
+<style>
+  :root{
+    --ink:#13141a;--paper:#f5f2ec;--panel:#fffdf8;--line:#d8d2c4;
+    --hot:#b5462f;--dead:#9a8f7d;--live:#2f6f4f;
+    --kw:#9a3b8f;--str:#2f6f4f;--com:#a89c84;--at:#b5462f;--fn:#3a5fa8;--num:#b5462f;--tag:#3a5fa8;
+    --mono:ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);font:13px/1.45 var(--mono);
+       display:flex;flex-direction:column}
+  header{padding:11px 18px;border-bottom:1px solid var(--line);display:flex;
+         align-items:baseline;gap:14px;flex-wrap:wrap;background:var(--panel)}
+  header h1{font-size:14px;margin:0}
+  header .tag{font-size:11px;color:var(--dead)}
+  header code{color:var(--hot)}
+
+  .top{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line);min-height:0}
+  @media(max-width:760px){.top{grid-template-columns:1fr;grid-template-rows:auto auto}}
+  .pane{display:flex;flex-direction:column;min-width:0;min-height:0}
+  .pane+.pane{border-left:1px solid var(--line)}
+  .pane h2{margin:0;font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--dead);
+           padding:8px 16px;border-bottom:1px solid var(--line);background:var(--panel);
+           display:flex;justify-content:space-between;gap:10px}
+  .pane h2 .ext{color:var(--hot);text-transform:none;letter-spacing:0}
+  .code{margin:0;padding:13px 16px;overflow:auto;white-space:pre;tab-size:2;
+        font:12px/1.55 var(--mono);max-height:54vh}
+  .ln{color:var(--com);user-select:none}
+  .t-kw{color:var(--kw)} .t-str{color:var(--str)} .t-com{color:var(--com);font-style:italic}
+  .t-at{color:var(--at);font-weight:600} .t-fn{color:var(--fn)} .t-num{color:var(--num)} .t-tag{color:var(--tag)}
+  .seg{display:block;border-top:1px dashed var(--line);margin:6px 0;padding-top:6px}
+
+  .stage-wrap{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+  .stage-wrap h2{margin:0;font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--dead);
+        padding:8px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .live-area{flex:1;padding:20px 18px;overflow:auto}
+  .domnote{font-size:11px;color:var(--dead);margin-top:14px} .domnote code{color:var(--hot)}
+  #stage{display:flex;align-items:center;gap:12px;min-height:48px;border:1px dashed var(--line);
+         padding:14px;background:var(--panel)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Fudic REPL</h1>
+  <span class="tag">props · <code>&lt;app-parent&gt;</code> renderiza <code>&lt;app-display&gt;</code> · todo en el stage viene SERIALIZADO del servidor (DSD anidado) · el cliente solo <code>hydrate()</code>, cero <code>createElement</code></span>
+</header>
+
+<div class="top">
+  <div class="pane">
+    <h2>fuente <span class="ext">.fud</span></h2>
+    <pre class="code" id="src"></pre>
+  </div>
+  <div class="pane">
+    <h2>emitido <span class="ext">.js incrustado</span></h2>
+    <pre class="code" id="out"></pre>
+  </div>
+</div>
+
+<div class="stage-wrap">
+  <h2>componente funcionando · partió del HTML del servidor</h2>
+  <div class="live-area">
+    <div id="stage"><app-parent><template shadowrootmode="open"><style>app-parent{display:inline-flex;align-items:center;gap:12px}:host{display:inline-flex;align-items:center;gap:12px}button{font:600 14px/1 ui-monospace,monospace;color:#f5f2ec;background:#13141a;border:0;width:40px;height:40px;cursor:pointer}button:hover{background:#b5462f}</style><button>−</button><app-display><template shadowrootmode="open"><style>:host{display:inline-flex;align-items:center;justify-content:center;min-width:54px;height:40px;padding:0 16px;background:#2f6f4f;color:#fff;font:700 18px/1 ui-monospace,monospace}</style><span>0</span></template></app-display><button>+</button></template></app-parent></div>
+    <p class="domnote">El servidor emitió el árbol completo: <code>&lt;app-parent&gt;</code> con su shadow declarativo y, anidado, <code>&lt;app-display&gt;</code> con el suyo y el <code>&lt;span&gt;0&lt;/span&gt;</code> ya pintado. El cliente adopta por traversal posicional. Sin <code>data-*</code> de estado.</p>
+  </div>
+</div>
+
+<script type="text/plain" id="fud-source">
+@* ───────── app-display.fud ─ componente N3 (el hijo) ───────── *@
+@code {
+  @client {
+    import { signal } from '@fudic/signals';
+    const value = signal(0);          @* la prop entra aquí *@
+  }
+}
+<head>
+  <style host="app-display">
+    :host { background:#2f6f4f; color:#fff; }
+  </style>
+</head>
+<span>@value</span>
+
+
+@* ───────── app-parent.fud ─ componente N3 (el padre) ───────── *@
+<link rel="component" href="./app-display.fud">
+@code {
+  @client {
+    import { signal } from '@fudic/signals';
+    const count = signal(0);
+    function inc() { count.set(count.peek() + 1); }
+    function dec() { count.set(count.peek() - 1); }
+  }
+}
+<button @click="@dec">−</button>
+<app-display .value="@count"></app-display>
+<button @click="@inc">+</button>
+
+
+@* ───────── la página solo instancia ───────── *@
+<body>
+  <app-parent></app-parent>
+</body>
+</script>
+
+<script type="text/plain" id="js-output">
+/* ═══ @fudic/signals ═══ */
+function signal(value){
+  const subs = new Set();
+  const s = () => value; s.peek = () => value;
+  s.set = v => { if(v===value) return; value=v;
+                 for(const fn of subs) fn(value); };   // Set vivo → baja inmediata
+  s.subscribe = fn => { subs.add(fn); return () => subs.delete(fn); };
+  return s;
+}
+
+/* ═══ RENDER 1 · block statement de <span>@value</span> (hijo) ═══
+   La prop NO se serializa como dato: el span ya viene pintado del SSR.
+   El cliente adopta el span y abre el grano fino sobre la signal interna. */
+function renderAppDisplay(ctx, root){
+  let span, unsub;
+  return {
+    create(){ span = document.createElement('span');     // solo en montaje en frío
+              span.textContent = String(ctx.value.peek()); root.append(span); },
+    hydrate(){ span = root.childNodes[1]; },              // [0]=<style>, [1]=<span> (offset conocido por el compilador)
+    mount(){ unsub = ctx.value.subscribe(v => { span.textContent = String(v); }); },
+    update(){ /* nop: grano fino vía suscripción */ },
+    remove(){ unsub(); span = null; unsub = null; }
+  };
+}
+class AppDisplay extends HTMLElement {
+  #value = signal(0); #r;
+  set value(v){ this.#value.set(v); }                     // ← property binding del padre
+  get value(){ return this.#value.peek(); }
+  connectedCallback(){
+    const root = this.shadowRoot ?? this.attachShadow({ mode:'open' });
+    this.#r = renderAppDisplay({ value:this.#value }, root);
+    this.shadowRoot && root.firstChild ? this.#r.hydrate() : this.#r.create();  // SSR → hydrate
+    this.#r.mount();
+  }
+  disconnectedCallback(){ this.#r.remove(); }
+}
+customElements.define('app-display', AppDisplay);
+
+/* ═══ RENDER 2 · block statement de app-parent (padre) ═══
+   Adopta los dos <button> y el <app-display> ya serializados (traversal posicional).
+   Cablea listeners, abre la suscripción ESTRUCTURAL count→display.value (propaga). */
+function renderAppParent(ctx, root){
+  let btnDec, display, btnInc, unsub;
+  const dec = () => ctx.count.set(ctx.count.peek() - 1);
+  const inc = () => ctx.count.set(ctx.count.peek() + 1);
+  return {
+    create(){                                             // solo si NO hubo SSR
+      btnDec = document.createElement('button'); btnDec.textContent='−'; root.append(btnDec);
+      display = document.createElement('app-display'); display.value = ctx.count.peek(); root.append(display);
+      btnInc = document.createElement('button'); btnInc.textContent='+'; root.append(btnInc);
+    },
+    hydrate(){                                            // ADOPTA por posición; [0]=<style> (offset conocido en compile-time)
+      btnDec  = root.childNodes[1];
+      display = root.childNodes[2];
+      btnInc  = root.childNodes[3];
+      display.value = ctx.count.peek();                   // sincroniza la prop con el estado
+    },
+    mount(){
+      btnDec.addEventListener('click', dec);
+      btnInc.addEventListener('click', inc);
+      unsub = ctx.count.subscribe(v => { display.value = v; });   // count → propaga al hijo
+    },
+    update(){ display.value = ctx.count.peek(); },         // propaga; no decide nada del hijo
+    remove(){
+      btnDec.removeEventListener('click', dec);
+      btnInc.removeEventListener('click', inc);
+      unsub(); display.remove(); btnDec = display = btnInc = null;
+    }
+  };
+}
+class AppParent extends HTMLElement {
+  #count = signal(0); #r;
+  connectedCallback(){
+    const root = this.shadowRoot ?? this.attachShadow({ mode:'open' });
+    this.#r = renderAppParent({ count:this.#count }, root);
+    this.shadowRoot && root.firstChild ? this.#r.hydrate() : this.#r.create();  // SSR → hydrate
+    this.#r.mount();
+  }
+  disconnectedCallback(){ this.#r.remove(); }
+}
+customElements.define('app-parent', AppParent);
+
+/* El navegador, al parsear los <template shadowrootmode="open"> del SSR y definir
+   los custom elements, dispara connectedCallback con el shadowRoot ya poblado →
+   la rama hydrate(). No hay arranque manual: el upgrade del custom element basta. */
+</script>
+
+<script type="module">
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function hlFud(src){let s=esc(src);
+  s=s.replace(/(@\*[\s\S]*?\*@)/g,'<span class="t-com">$1</span>');
+  s=s.replace(/\b(@if|@code|@client|@server|@foreach)\b/g,'<span class="t-at">$1</span>');
+  s=s.replace(/(@[A-Za-z_]\w*)/g,'<span class="t-at">$1</span>');
+  s=s.replace(/(&lt;\/?)([a-z][\w-]*)/g,'$1<span class="t-tag">$2</span>');
+  s=s.replace(/\b(import|const|from|function)\b/g,'<span class="t-kw">$1</span>');
+  s=s.replace(/(&#39;[^&]*?&#39;|'[^']*')/g,'<span class="t-str">$1</span>');
+  return s;}
+function hlJs(src){let s=esc(src);
+  s=s.replace(/(\/\*[\s\S]*?\*\/|\/\/[^\n]*)/g,'<span class="t-com">$1</span>');
+  s=s.replace(/\b(function|class|extends|const|let|return|if|else|new|of|null|set|get|this)\b/g,'<span class="t-kw">$1</span>');
+  s=s.replace(/\b(connectedCallback|disconnectedCallback|subscribe|signal|hydrate|create|mount|update|remove|peek|addEventListener|removeEventListener|attachShadow)\b/g,'<span class="t-fn">$1</span>');
+  s=s.replace(/('[^']*')/g,'<span class="t-str">$1</span>');
+  s=s.replace(/\b(\d+)\b/g,'<span class="t-num">$1</span>');
+  return s;}
+function withLines(h){return h.split('\n').map((l,i)=>`<span class="ln">${String(i+1).padStart(2,' ')}</span>  ${l}`).join('\n');}
+document.getElementById('src').innerHTML=withLines(hlFud(document.getElementById('fud-source').textContent.replace(/^\n/,'').trimEnd()));
+document.getElementById('out').innerHTML=withLines(hlJs(document.getElementById('js-output').textContent.replace(/^\n/,'').trimEnd()));
+
+/* ═══ EJECUTABLE — idéntico al panel emitido. Sin arranque manual: el upgrade hidrata. ═══ */
+function signal(value){
+  const subs=new Set(); const s=()=>value; s.peek=()=>value;
+  s.set=v=>{ if(v===value)return; value=v; for(const fn of subs) fn(value); };
+  s.subscribe=fn=>{ subs.add(fn); return ()=>subs.delete(fn); };
+  return s;
+}
+function renderAppDisplay(ctx, root){
+  let span, unsub;
+  return {
+    create(){ span=document.createElement('span'); span.textContent=String(ctx.value.peek()); root.append(span); },
+    hydrate(){ span=root.childNodes[1]; },
+    mount(){ unsub=ctx.value.subscribe(v=>{ span.textContent=String(v); }); },
+    update(){},
+    remove(){ unsub(); span=null; unsub=null; }
+  };
+}
+class AppDisplay extends HTMLElement{
+  #value=signal(0); #r;
+  set value(v){ this.#value.set(v); }
+  get value(){ return this.#value.peek(); }
+  connectedCallback(){
+    const root=this.shadowRoot ?? this.attachShadow({mode:'open'});
+    this.#r=renderAppDisplay({value:this.#value}, root);
+    this.shadowRoot && root.firstChild ? this.#r.hydrate() : this.#r.create();
+    this.#r.mount();
+  }
+  disconnectedCallback(){ this.#r.remove(); }
+}
+customElements.define('app-display', AppDisplay);
+
+function renderAppParent(ctx, root){
+  let btnDec, display, btnInc, unsub;
+  const dec=()=>ctx.count.set(ctx.count.peek()-1);
+  const inc=()=>ctx.count.set(ctx.count.peek()+1);
+  return {
+    create(){
+      btnDec=document.createElement('button'); btnDec.textContent='−'; root.append(btnDec);
+      display=document.createElement('app-display'); display.value=ctx.count.peek(); root.append(display);
+      btnInc=document.createElement('button'); btnInc.textContent='+'; root.append(btnInc);
+    },
+    hydrate(){ btnDec=root.childNodes[1]; display=root.childNodes[2]; btnInc=root.childNodes[3]; display.value=ctx.count.peek(); },
+    mount(){
+      btnDec.addEventListener('click',dec); btnInc.addEventListener('click',inc);
+      unsub=ctx.count.subscribe(v=>{ display.value=v; });
+    },
+    update(){ display.value=ctx.count.peek(); },
+    remove(){ btnDec.removeEventListener('click',dec); btnInc.removeEventListener('click',inc); unsub(); display.remove(); btnDec=display=btnInc=null; }
+  };
+}
+class AppParent extends HTMLElement{
+  #count=signal(0); #r;
+  connectedCallback(){
+    const root=this.shadowRoot ?? this.attachShadow({mode:'open'});
+    this.#r=renderAppParent({count:this.#count}, root);
+    this.shadowRoot && root.firstChild ? this.#r.hydrate() : this.#r.create();
+    this.#r.mount();
+  }
+  disconnectedCallback(){ this.#r.remove(); }
+}
+customElements.define('app-parent', AppParent);
+</script>
+</body>
+</html>
