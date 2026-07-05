@@ -20,7 +20,7 @@ nivel léxico, los casos determinables por *lookahead/lookbehind* de un carácte
 Y dejó **deliberadamente sin resolver** el caso `@` + identificador, emitiéndolo como un
 token `at-trigger` (cuyo span es solo el `@`). **SDD-04 es quien resuelve ese
 `at-trigger`**, que es exactamente el punto donde el `@` deja de ser léxico y necesita
-gramática. Dos salidas posibles:
+gramática. Tres salidas posibles:
 
 1. **Keyword de control / `@code`** (`@if`, `@foreach`, `@for`, `@while`, `@switch`,
    `@else`, `@code`): SDD-04 **reconoce el keyword** y despacha a la capa que parsea el
@@ -31,6 +31,10 @@ gramática. Dos salidas posibles:
    propiedades** y nada más. SDD-04 **calcula la frontera** aplicando las decisiones 2–5 y
    produce un nodo `RazorExpression`. Cualquier cosa que no sea `identificador('.'ident)*`
    (`?.`, llamadas, índices, `!`, genéricos) se escribe con la forma explícita `@(...)`.
+
+3. **Directiva `@raw( … )`** (opción A, decisión 18): la salida-de-escape de la
+   interpolación. SDD-04 la reconoce, delimita el `( … )` con el balanceador y devuelve
+   `kind: 'raw'` con la expresión; el marcado `escaped: false` es de SDD-07 (§4.4b).
 
 Además, SDD-04 define el **nodo unificado `RazorExpression`** (implícita *y* explícita):
 ambas formas son lo mismo aguas abajo —una expresión JS con su span— y SDD-07
@@ -51,7 +55,7 @@ del dispatch por carácter siguiente al `@`.
 |---|---|---|
 | 00 | `Hecho` | Entorno, TS estricto, fixtures. |
 | 01 | `Hecho` | `Span`/`span`/`mergeSpans`, `Diagnostic`, `ParseResult`, `Node`. |
-| 02 | `Hecho` | Tipos `BalancedGroup` y `LexRegion` (para envolver `@(...)`). SDD-04 ya **no** invoca al balanceador: la implícita es solo un camino de propiedades. |
+| 02 | `Hecho` | Tipos `BalancedGroup` y `LexRegion`, y `scanParens`. La implícita es solo un camino de propiedades (no usa balanceador); SDD-04 invoca `scanParens` **solo** para la directiva `@raw( … )` (§4.4b, opción A). |
 | 03 | `Hecho` | `Lexer` (token `at-trigger`, `explicit-expr`, `seekTo`), `JsRegionToken`. |
 
 ```ts
@@ -111,11 +115,13 @@ export type ControlKeyword = 'if' | 'else' | 'for' | 'foreach' | 'while' | 'swit
  * What an `at-trigger` (`@` + identifier) resolves to.
  *  - 'control'    → SDD-06 parses the construct body.
  *  - 'code-block' → @code; SDD-08 parses it.
+ *  - 'raw'        → `@raw( … )` directive (decision 18, option A); expression is the `( … )`.
  *  - 'implicit'   → an implicit expression, fully resolved here.
  */
 export type TriggerResolution =
   | { readonly kind: 'control'; readonly keyword: ControlKeyword; readonly keywordSpan: Span }
   | { readonly kind: 'code-block'; readonly keywordSpan: Span }
+  | { readonly kind: 'raw'; readonly expression: RazorExpression; readonly keywordSpan: Span }
   | { readonly kind: 'implicit'; readonly expression: RazorExpression };
 
 /**
@@ -211,6 +217,15 @@ explícita aporta `regions`, vía el `BalancedGroup` del token.
 completo (`@( ... )`), `expr` = `group.inner`, `regions` = `group.regions`. No se
 re-escanea: se reusa el `BalancedGroup` ya calculado por el balanceador.
 
+### 4.4b. Directiva `@raw( … )` (decisión 18, opción A)
+
+`raw` es la única directiva no-control reconocida tras `@`. `resolveTrigger`, al leer el
+identificador `raw` **seguido de `(`**, lo trata como directiva: delimita el `( … )` con
+`scanParens` (SDD-02), construye el `RazorExpression` interno (explícito: `expr` = lo de
+dentro, `regions` del `BalancedGroup`) y devuelve `{ kind: 'raw', expression, keywordSpan }`.
+`@raw` **sin** `(` no es directiva: es una implícita normal (`raw` como propiedad). El marcado
+`escaped: false` lo aplica SDD-07; un `( … )` sin cerrar aflora `FUD0002` del balanceador.
+
 ### 4.5. Decisiones cerradas y punto abierto
 
 1. **Implícita = solo camino de propiedades (cerrado con Pedro).** Ni `?.`, ni llamadas,
@@ -302,7 +317,11 @@ Entradas reales (fixtures) → resolución esperada. El SDD está `Hecho` cuando
 12. **Email recap (decisión 7).** `soporte@fudic.dev` en texto **no** llega a SDD-04 (el
     tokenizer lo dio como `text`): no hay `at-trigger`, no hay resolución.
 
-13. **Cobertura.** El módulo se acerca al 100 % de líneas/funciones/ramas; los casos de
+13. **Directiva `@raw` (opción A).** `@raw(post.body)` ⇒ `kind: 'raw'`, `expression.expr` =
+    `post.body`, reusando el `BalancedGroup`. `@raw` sin `(` (p. ej. `@raw.x`) ⇒ implícita
+    normal (`kind: 'implicit'`, `expr` = `raw.x`).
+
+14. **Cobertura.** El módulo se acerca al 100 % de líneas/funciones/ramas; los casos de
     arriba cubren las ramas del scanner. Cumple el suelo del SDD-00 (80/80/75).
 
 ---
