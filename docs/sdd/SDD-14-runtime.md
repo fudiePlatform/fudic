@@ -17,16 +17,18 @@ imaginar una API inexistente.
 
 **SDD-14 es ese runtime, cerrado y completo.** No emite nada: **define el contrato contra el que
 el emit escribe** y sus dos implementaciones. La idea central es el **espejo en runtime de "un
-AST, dos ramas"**: el render se emite **una sola vez** contra un contrato `Dom<N>` y corre en dos
-adapters —
+AST, dos ramas"**: la **construcción** se emite **una sola vez** contra el contrato base `Dom<N>`
+y corre en dos adapters —
 
 - **`browserDom`** — sobre la API DOM nativa (cliente: construye e hidrata nodos reales).
 - **`SsrDom`** — sobre un árbol desacoplado que se serializa a HTML (build: SSR/SSG, cero DOM).
 
-El mismo cuerpo de `create()`, dado un adapter u otro, **construye DOM vivo** o **serializa HTML**.
-`hydrate/mount/update/remove` son **solo de cliente**. Con esto, N1 = correr `create()` sobre
-`SsrDom`, serializar y enviar (cero JS de cliente); N2/N3 añaden comportamiento e hidratación sobre
-`browserDom`.
+El mismo cuerpo de construcción, dado un adapter u otro, **construye DOM vivo** o **serializa
+HTML**. Lo que **solo** vive en el navegador —hidratación y mutación reactiva de grano fino— no
+ensucia ese contrato base: va en una interfaz aparte, `DomClient<N>`, que **solo `browserDom`
+implementa** (segregación ISP: `SsrDom` no arrastra métodos que tendría que dejar lanzando). Con
+esto, N1 = correr la construcción sobre `SsrDom`, serializar y enviar (cero JS de cliente); N2/N3
+añaden comportamiento e hidratación sobre `browserDom`.
 
 **Qué NO es.** No es un VDOM ni hace diffing: enmascara las **primitivas** del DOM, no la
 **política**. La reactividad es de grano fino (una señal → escribe en su nodo por identidad, sin
@@ -53,7 +55,7 @@ import { type Diagnostic, errorDiag } from '@fudic/compiler'; // solo el SSG, en
 
 | Paquete | Contenido | Entorno |
 |---|---|---|
-| `@fudic/dom` | `Dom<N>`, `browserDom`, `NS`, `Cursor` | cliente + tipos |
+| `@fudic/dom` | `Dom<N>` (construcción), `DomClient<N>` (cliente), `browserDom`, `NS`, `Cursor` | cliente + tipos |
 | `@fudic/ssr` | `SsrDom`, `renderToString` | build |
 | `@fudic/core` | `signal`, `Render`, `FudicElement`, `delegate`, `styles`, scheduler, bootstrap | cliente |
 
@@ -77,40 +79,44 @@ export const NS = {
 export type Ns = keyof typeof NS;
 
 /**
- * Fina indirección sobre las primitivas del DOM, genérica en `N` (tipo de nodo).
- * Browser: `N = Node` (DOM real). SSR: `N = SsrNode` (árbol desacoplado → string).
+ * Contrato de **construcción** — genérico en `N` (tipo de nodo). Es lo único que `create()`
+ * necesita, y lo único que **ambos** adapters implementan **por completo**. Browser: `N = Node`
+ * (DOM vivo). SSR: `N = SsrNode` (árbol desacoplado → string). Sin traversal ni mutación
+ * reactiva: por eso `SsrDom` lo implementa entero, **sin un solo método que lance** (ISP/LSP).
  * Enmascara primitivas, NO política. No hace diffing.
  */
 export interface Dom<N> {
-  // ── construcción (browser: DOM vivo · SSR: árbol) ──
   element(tag: string, ns?: Ns): N;
   text(data: string): N;
   comment(data: string): N;
-
-  // ── mutación ──
   setAttr(el: N, name: string, value: string): void;
   removeAttr(el: N, name: string): void;
-  /** Propiedad JS (no atributo): props padre→hijo, `.value`, señales. Browser real; SSR no-op. */
-  setProp(el: N, name: string, value: unknown): void;
-  /** Retoca el dato de un text/comment ya existente (el `update()` de grano fino). */
-  setText(node: N, data: string): void;
   append(parent: N, child: N): void;
-  /** `anchor.before(node)`: en browser dispara `connectedCallback`. */
+  /** `anchor.before(node)`: en browser dispara `connectedCallback`; en SSR fija el orden del árbol. */
   before(anchor: N, node: N): void;
   remove(node: N): void;
-
-  // ── shadow / DSD ──
   /** Browser: `host.attachShadow({mode:'open'})`. SSR: abre `<template shadowrootmode="open">`. */
   attachShadow(host: N): N;
+}
 
-  // ── adopción / traversal (SOLO browser; en SSR estos métodos lanzan) ──
+/**
+ * Contrato de **cliente** — extiende el de construcción con lo que **solo existe en el
+ * navegador**: mutación reactiva de grano fino (`setText`/`setProp`) y traversal para hidratar.
+ * `SsrDom` **no** lo implementa (no hidrata, no muta en caliente) → no hay método que lanzar.
+ * La segregación es estructural, no un runtime check.
+ */
+export interface DomClient<N> extends Dom<N> {
+  /** Retoca el dato de un text/comment ya existente (el `update()` de grano fino). */
+  setText(node: N, data: string): void;
+  /** Propiedad JS (no atributo): props padre→hijo, `.value`, señales. */
+  setProp(el: N, name: string, value: unknown): void;
   firstChild(node: N): N | null;
   nextSibling(node: N): N | null;
   previousSibling(node: N): N | null;
   childAt(node: N, index: number): N | null;
 }
 
-export const browserDom: Dom<Node>;
+export const browserDom: DomClient<Node>;
 
 /**
  * Cursor de hidratación sobre nodos existentes (browser). Formaliza el recorrido que hoy cada
@@ -129,7 +135,8 @@ export interface Cursor<N> {
   byBinding(id: string): N | null;
 }
 
-export function cursorOf(dom: Dom<Node>, root: Node): Cursor<Node>;
+/** El cursor exige el contrato de cliente: la hidratación es browser-only por construcción. */
+export function cursorOf(dom: DomClient<Node>, root: Node): Cursor<Node>;
 ```
 
 ### 3.2. `@fudic/ssr` — el adapter de build
@@ -141,10 +148,12 @@ import { type Dom, type Ns } from '@fudic/dom';
 export interface SsrNode { /* opaco: tag/ns/attrs/props/children/kind, gestionado por SsrDom */ }
 
 /**
- * Implementa `Dom<SsrNode>` construyendo un árbol desacoplado (no un string incremental): así el
- * MISMO `create()` del emit corre igual sobre browser y SSR. La adopción no existe en SSR: sus
- * métodos lanzan. `setProp` es no-op (las props padre→hijo las resuelve el SSG pasando valores al
- * `ctx` del hijo, no por propiedad de DOM).
+ * Implementa **solo** `Dom<SsrNode>` (el contrato de construcción) construyendo un árbol
+ * desacoplado, no un string incremental: así la MISMA lógica de construcción del emit corre
+ * igual sobre browser y SSR. No implementa `DomClient`: en SSR no se hidrata ni se muta en
+ * caliente, así que no hay traversal ni mutación reactiva que ofrecer — y por tanto ningún
+ * método que lance. Las props padre→hijo las resuelve el SSG pasando valores al `ctx` del hijo,
+ * no por propiedad de DOM; por eso `setProp` ni siquiera pertenece a este contrato.
  */
 export class SsrDom implements Dom<SsrNode> {
   constructor();
@@ -153,16 +162,10 @@ export class SsrDom implements Dom<SsrNode> {
   comment(data: string): SsrNode;
   setAttr(el: SsrNode, name: string, value: string): void;
   removeAttr(el: SsrNode, name: string): void;
-  setProp(el: SsrNode, name: string, value: unknown): void; // no-op
-  setText(node: SsrNode, data: string): void;
   append(parent: SsrNode, child: SsrNode): void;
   before(anchor: SsrNode, node: SsrNode): void;
   remove(node: SsrNode): void;
   attachShadow(host: SsrNode): SsrNode; // marca el host como DSD → template al serializar
-  firstChild(): never;   // SSR no hidrata
-  nextSibling(): never;
-  previousSibling(): never;
-  childAt(): never;
 }
 
 /**
@@ -177,7 +180,7 @@ export function renderToString(root: SsrNode): string;
 ### 3.3. `@fudic/core` — reactividad, lifecycle, delegación, estilos
 
 ```ts
-import { type Dom, type Cursor } from '@fudic/dom';
+import { type Dom, type DomClient, type Cursor } from '@fudic/dom';
 
 // ── Señal (decisión 72: rehidratación DOM-first) ──
 export interface Signal<T> {
@@ -188,21 +191,29 @@ export interface Signal<T> {
 }
 export function signal<T>(initial: T): Signal<T>;
 
-// ── Contrato del render object (lo que el emit produce por bloque/componente) ──
-/** `N` = tipo de nodo del adapter. `create` corre en ambos entornos; el resto, solo browser. */
+// ── Construcción SSR (build): solo el contrato base `Dom<N>`, sin lifecycle de cliente ──
+/** Construye el árbol inicial de un bloque/componente. Es la mitad que comparte con `create()`. */
+export type SsrBuild<N> = (dom: Dom<N>, ctx: unknown, target: N) => void;
+
+// ── Contrato del render object de CLIENTE (lo que el emit produce por bloque/componente) ──
+/**
+ * `N` = tipo de nodo. Toda la vida del render es browser-only y usa `DomClient<N>`. `create()`
+ * reutiliza la misma lógica de construcción que `SsrBuild` (el contrato base es un subconjunto),
+ * pero el render añade hidratación y reactividad, que solo el navegador ofrece.
+ */
 export interface Render<N> {
   create(): void;                 // montaje en frío: construye nodos y los ancla al target
-  hydrate(cursor: Cursor<N>): void; // adopta los nodos que el SSR ya mandó (browser)
-  mount(): void;                  // abre suscripciones / comportamiento (browser)
-  update(): void;                 // reevaluación reactiva de grano fino (browser)
-  remove(): void;                 // baja simétrica: unsubscribe + detach (browser)
+  hydrate(cursor: Cursor<N>): void; // adopta los nodos que el SSR ya mandó
+  mount(): void;                  // abre suscripciones / comportamiento
+  update(): void;                 // reevaluación reactiva de grano fino
+  remove(): void;                 // baja simétrica: unsubscribe + detach
 }
-export type RenderFactory<N> = (dom: Dom<N>, ctx: unknown, target: N) => Render<N>;
+export type RenderFactory<N> = (dom: DomClient<N>, ctx: unknown, target: N) => Render<N>;
 
 // ── Base del custom element N3 (browser). Posee el ESTADO; delega en el Render. ──
 export abstract class FudicElement extends HTMLElement {
   /** El emit implementa esto: crea el Render sobre el shadow root ya resuelto. */
-  protected abstract render(dom: Dom<Node>, root: ShadowRoot): Render<Node>;
+  protected abstract render(dom: DomClient<Node>, root: ShadowRoot): Render<Node>;
   connectedCallback(): void;      // adopta shadow SSR o lo crea; hydrate|create; mount
   disconnectedCallback(): void;   // remove
 }
@@ -239,26 +250,31 @@ export function defineLazy(tag: string, ctor: CustomElementConstructor, strategy
 
 ### 4.1. El contrato es la única frontera (DIP)
 
-El emit escribe render objects genéricos en `N` contra `Dom<N>`. **Nunca** toca `document` ni
-`SsrNode` directamente. Elegir `browserDom` vs `SsrDom` es lo único que cambia entre cliente y
-build. Esto hace el emit **isomórfico** y testeable con un adapter falso.
+El emit escribe la construcción contra `Dom<N>` y la vida reactiva contra `DomClient<N>`.
+**Nunca** toca `document` ni `SsrNode` directamente. Elegir `browserDom` (que es `DomClient`) vs
+`SsrDom` (solo `Dom`) es lo único que cambia entre cliente y build. Esto hace la construcción
+**isomórfica** y testeable con un adapter falso. La frontera de tipos garantiza que el código de
+build no puede, ni por error, invocar hidratación o mutación reactiva: `SsrDom` no las tiene.
 
-### 4.2. `browserDom` — DOM vivo
+### 4.2. `browserDom` — DOM vivo (implementa `DomClient<Node>`)
 
 Envoltorio directo (decisión 13 del prototipo, *idea* no código): `element` usa
 `createElement`/`createElementNS` según `ns`; `setProp` hace `(el as any)[name] = value`;
 `setText` hace `(node as CharacterData).data = data`; `before` usa `ChildNode.before` (dispara
 `connectedCallback` de custom elements anidados); `attachShadow` devuelve
 `host.attachShadow({mode:'open'})` o el `host.shadowRoot` preexistente (idempotente). La adopción
-mapea a `firstChild`/`nextSibling`/`previousSibling`/`childNodes[i]`.
+mapea a `firstChild`/`nextSibling`/`previousSibling`/`childNodes[i]`. Es el único adapter que
+implementa el contrato de cliente completo.
 
 ### 4.3. `SsrDom` + `renderToString` — árbol desacoplado, luego serializa
 
 **Modelo de árbol, no de string incremental.** `element()` crea un `SsrNode` desacoplado;
 `setAttr`/`append`/`before`/`remove` mutan el árbol como en el DOM. Esto elimina el problema de
 "cerrar el `<tag` antes de escribir hijos": el orden lo da la serialización final, no el orden de
-llamadas. Por eso `before` **sí** funciona en SSR (a diferencia del boceto), y el mismo `create()`
-del emit no necesita ramas por entorno.
+llamadas. Por eso `before` **sí** funciona en SSR (a diferencia del boceto), y la construcción del
+emit no necesita ramas por entorno. `SsrDom` implementa **solo** `Dom<SsrNode>`: no tiene
+traversal ni mutación reactiva (viven en `DomClient`, que no implementa), así que **ningún método
+lanza** — la imposibilidad de hidratar en SSR es una propiedad del tipo, no un `throw` en runtime.
 
 `renderToString(root)` recorre el árbol y emite:
 - **Void elements** (`area base br col embed hr img input link meta param source track wbr`):
@@ -270,7 +286,9 @@ del emit no necesita ramas por entorno.
   HTML estático no hay adopción por referencia; en cliente, `styles.adopt` la deduplica).
 - **Escape**: texto → `& < >`; valor de atributo → `& "`; comentario → se rechaza `-->` interno.
 
-`setProp` es no-op (§3.2). La adopción lanza: en SSR no se hidrata.
+`SsrDom` no implementa `DomClient`: no ofrece `setProp`/`setText` (las props padre→hijo las
+resuelve el SSG vía `ctx`, no por propiedad de DOM) ni traversal (en SSR no se hidrata). No hay
+nada que lanzar; la ausencia es de tipo.
 
 ### 4.4. `signal` — reactividad de grano fino
 
@@ -341,18 +359,24 @@ podrá emitir aquí diagnósticos de serialización en specs posteriores; en v1 
 
 ## 5. Invariantes de runtime
 
-- **Un render, dos adapters.** El código emitido se escribe una vez contra `Dom<N>`; `browserDom`
-  y `SsrDom` son las dos ramas. Ninguna rama toca la otra.
+- **Una construcción, dos adapters.** La construcción se escribe una vez contra `Dom<N>`;
+  `browserDom` y `SsrDom` son las dos ramas. Ninguna rama toca la otra.
+- **Interfaces segregadas (ISP/LSP).** `Dom<N>` es el contrato que ambos cumplen entero;
+  `DomClient<N>` (traversal + mutación reactiva) solo lo implementa el navegador. Ningún adapter
+  implementa un método que lance: lo que un entorno no puede hacer, sencillamente no está en su
+  contrato.
 - **Sin diffing.** Grano fino: una señal escribe en su nodo por identidad (`data-fud-b`). No hay
   VDOM ni reconciliación de árbol.
 - **Baja simétrica.** Todo `create/mount` tiene su `remove` inverso; ningún suscriptor queda vivo
   tras `remove()`.
-- **SSR no hidrata.** La adopción (`firstChild`/…) lanza en `SsrDom`: es un invariante, no un bug.
-  El SSR solo construye y serializa.
+- **SSR no hidrata.** `SsrDom` implementa solo `Dom<SsrNode>`; la adopción vive en `DomClient`,
+  que no implementa. No hay `throw`: la imposibilidad es estructural (de tipo). El SSR solo
+  construye y serializa.
 - **DOM-first.** El estado se rehidrata leyendo el markup pintado; `data-fud-s` es solo el residuo
   no-reconstruible.
-- **Nunca lanza en camino feliz.** El runtime de cliente no propaga excepciones por input normal
-  (sí lanza, a propósito, en la adopción SSR y en errores de programación).
+- **Nunca lanza en camino feliz.** El runtime no propaga excepciones por input normal. Y no hay
+  "camino infeliz por interfaz mal implementada": la segregación `Dom`/`DomClient` elimina los
+  métodos-que-lanzan del boceto original.
 
 ---
 
@@ -371,8 +395,11 @@ o modo browser):
    → `<div>a&lt;b<img><style>.x{}</style></div>` (void sin cierre; rawtext sin escapar; texto
    escapado). Un host con `attachShadow` → `<host><template shadowrootmode="open">…</template></host>`.
 
-4. **`before` real en SSR.** Sobre un árbol, `before(anchor, node)` inserta `node` antes de `anchor`
-   y `renderToString` lo refleja en ese orden. `firstChild()` sobre `SsrDom` **lanza**.
+4. **`before` real en SSR + segregación.** Sobre un árbol, `before(anchor, node)` inserta `node`
+   antes de `anchor` y `renderToString` lo refleja en ese orden. A nivel de **tipo**: `SsrDom`
+   satisface `Dom<SsrNode>` pero **no** `DomClient<SsrNode>` (test de compilación con
+   `expectTypeOf`/`@ts-expect-error`); una función que exija `DomClient` no acepta `SsrDom`. No
+   hay ningún método que lance.
 
 5. **Isomorfismo.** El **mismo** cuerpo `create(dom, target)` corrido con `browserDom` (contra un
    contenedor) y con `SsrDom` produce estructuras equivalentes: el `innerHTML` del contenedor
