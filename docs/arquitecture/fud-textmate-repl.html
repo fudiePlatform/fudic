@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fud · TextMate coloreado</title>
+<style>
+:root{
+  --ink:#13141a;--paper:#f5f2ec;--panel:#fffdf8;--line:#d8d2c4;
+  --hot:#b5462f;--dead:#9a8f7d;
+  --mono:ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;
+  --c-at:#b5462f;--c-kw-fud:#9a3b8f;--c-hydration:#c26a1a;--c-evt:#b5462f;--c-cond:#7a5cb0;--c-tag:#3a5fa8;--c-tagpunct:#8a94a6;--c-attr:#7a8bbf;--c-kw:#9a3b8f;--c-type:#2a8a7a;--c-fn:#3a5fa8;--c-str:#2f6f4f;--c-num:#b5462f;--c-prop:#3a5fa8;--c-var:#13141a;--c-cssprop:#3a5fa8;--c-csssel:#b5462f;--c-com:#a89c84;--c-punct:#6b7280;--c-txt:#13141a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.5}
+header{padding:20px 24px 12px}
+h1{margin:0;font-size:20px;letter-spacing:-.01em}
+.sub{color:var(--dead);font-size:13px;margin-top:2px}
+.wrap{display:grid;grid-template-columns:1fr 320px;gap:16px;padding:0 24px 32px;align-items:start}
+.codecard{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.codecard h2{margin:0;font-size:12px;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--dead);padding:12px 16px;border-bottom:1px solid var(--line)}
+.codecard h2 .ext{color:var(--hot);font-weight:700}
+pre{margin:0;padding:16px;overflow-x:auto;font-family:var(--mono);font-size:13.5px;line-height:1.85;
+  tab-size:2;white-space:pre}
+.ln{display:inline-block;width:2.2em;margin-right:1em;color:var(--dead);
+  user-select:none;text-align:right;opacity:.55}
+.panel{position:sticky;top:16px;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;padding:14px 16px}
+.panel h2{margin:0 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--dead)}
+.panel .hint{font-size:12px;color:var(--dead);margin-bottom:10px}
+.cgroup{margin-top:12px}
+.cgroup h3{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--hot);border-bottom:1px dashed var(--line);padding-bottom:4px}
+.crow{display:flex;align-items:center;gap:8px;padding:3px 0;cursor:pointer;font-size:12.5px}
+.crow input[type=color]{width:0;height:0;opacity:0;position:absolute;pointer-events:none}
+.cswatch{width:20px;height:20px;border-radius:5px;border:1px solid rgba(0,0,0,.15);flex:none;cursor:pointer}
+.clabel{color:var(--ink)}
+.bar{display:flex;gap:8px;padding:0 24px 16px}
+.btn{font:inherit;font-size:13px;background:var(--ink);color:var(--paper);border:0;
+  padding:8px 14px;border-radius:8px;cursor:pointer}
+.btn:hover{background:var(--hot)}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.ghost:hover{background:var(--paper);border-color:var(--hot);color:var(--hot)}
+.note{padding:0 24px 28px;max-width:760px;color:#4a4640;font-size:13.5px;line-height:1.65}
+.note h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--hot);margin:0 0 8px}
+.note code{font-family:var(--mono);background:#efe9dd;padding:1px 5px;border-radius:4px;font-size:.92em}
+.note .bad{color:var(--hot);font-weight:600}
+.note ul{margin:6px 0 0;padding-left:18px}.note li{margin:4px 0}
+.tok[data-c="at"]{color:var(--c-at)}.tok[data-c="kw-fud"]{color:var(--c-kw-fud)}.tok[data-c="hydration"]{color:var(--c-hydration)}.tok[data-c="evt"]{color:var(--c-evt)}.tok[data-c="cond"]{color:var(--c-cond)}.tok[data-c="tag"]{color:var(--c-tag)}.tok[data-c="tagpunct"]{color:var(--c-tagpunct)}.tok[data-c="attr"]{color:var(--c-attr)}.tok[data-c="kw"]{color:var(--c-kw)}.tok[data-c="type"]{color:var(--c-type)}.tok[data-c="fn"]{color:var(--c-fn)}.tok[data-c="str"]{color:var(--c-str)}.tok[data-c="num"]{color:var(--c-num)}.tok[data-c="prop"]{color:var(--c-prop)}.tok[data-c="var"]{color:var(--c-var)}.tok[data-c="cssprop"]{color:var(--c-cssprop)}.tok[data-c="csssel"]{color:var(--c-csssel)}.tok[data-c="com"]{color:var(--c-com)}.tok[data-c="punct"]{color:var(--c-punct)}.tok[data-c="txt"]{color:var(--c-txt)}
+@media(max-width:860px){.wrap{grid-template-columns:1fr}.panel{position:static}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Fud · coloreado con TextMate</h1>
+  <div class="sub">tokenización real (vscode-textmate + gramáticas TS/HTML/CSS inyectadas) · ajusta los colores en vivo</div>
+</header>
+
+<div class="bar">
+  <button class="btn" id="export">Copiar paleta (CSS vars)</button>
+  <button class="btn ghost" id="reset">Restaurar</button>
+</div>
+
+<div class="wrap">
+  <div class="codecard">
+    <h2>app-card<span class="ext">.fud</span></h2>
+    <pre id="code"><span class="ln"> 1</span><span class="tok" data-c="tagpunct">&lt;</span><span class="tok" data-c="tag">link</span><span class="tok" data-c="txt"> </span><span class="tok" data-c="attr">rel</span><span class="tok" data-c="txt">=</span><span class="tok" data-c="str">"component"</span><span class="tok" data-c="txt"> </span><span class="tok" data-c="attr">href</span><span class="tok" data-c="txt">=</span><span class="tok" data-c="str">"./app-button.fud"</span><span class="tok" data-c="tagpunct">&gt;</span>
+<span class="ln"> 2</span>
+<span class="ln"> 3</span><span class="tok" data-c="at">@code</span><span class="tok" data-c="punct"> {</span>
+<span class="ln"> 4</span><span class="tok" data-c="txt">  </span><span class="tok" data-c="kw">type</span><span class="tok" data-c="txt"> </span><span class="tok" data-c="type">Variant</span><span class="tok" data-c="txt"> </span><span class="tok" data-c="txt">=</span><span class="tok" data-c="txt"> </span><span class="tok" data-c="str">'default'</span><span class="tok" data-c="txt"> </span><span class="tok" data-c="txt">|</span><span class="tok" data-c="txt"> </span><span class="tok" data-c="str">'highlight'</span><span class="tok" data-c="punct">;</span>
+<span class="ln"> 5</span>
+<span class="ln"> 6</span><span class="tok" data-c="txt">  </span><span class="tok" data-c="at">@</span><span class="tok" data-c="kw-fud">client</span><span class="tok" data-c="punct">(</span><span class="tok" data-c="hydration">viewport</span><span class="tok" data-c="punct">) {</span>
+<span class="ln"> 7</span><span class="tok" data-c="txt">    </span><span class="tok" data-c="kw">import</span><span class="tok" data-c="var"> { signal } </span><span class="tok" data-c="kw">from</span><span class="tok" data-c="txt"> </span><span class="tok" data-c="str">'@fudic/signals'</span><span class="tok" data-c="punct">;</span>
+<span class="ln"> 8</span>
+<span class="ln"> 9</span><span class="tok" data-c="txt">    </span><span class="tok" data-c="kw">const</span><span class="tok" data-c="txt"> </span><span class="tok" data-c="var">expanded</span><span class="tok" data-c="var"> </span><span class="tok" data-c="txt">=</span><span class="tok" data-c="txt"> </span><span class="tok" data-c="fn">signal</span><span class="tok" data-c="txt">(</span><span class="tok" data-c="txt">false</span><span class="tok" data-c="punct">);</span>
+<span class="ln">10</span>
+<span class="ln">11</span><span class="tok" data-c="txt">    </span><span class="tok" data-c="kw">function</span><span class="tok" data-c="txt"> </span><span class="tok" data-c="fn">toggle</span><span class="tok" data-c="punct">() {</span>
+<span class="ln">12</span><span class="tok" data-c="fn">      expanded.</span><span class="tok" data-c="fn">set</span><span class="tok" data-c="txt">(</span><span class="tok" data-c="txt">!</span><span class="tok" data-c="fn">expanded.</span><span class="tok" data-c="fn">peek</span><span class="tok" data-c="punct">());</span>
+<span class="ln">13</span><span class="tok" data-c="punct">    }</span>
+<span class="ln">14</span><span class="tok" data-c="punct">  }</span>
+<span class="ln">15</span><span class="tok" data-c="punct">}</span>
+<span class="ln">16</span>
+<span class="ln">17</span><span class="tok" data-c="tagpunct">&lt;</span><span class="tok" data-c="tag">head</span><span class="tok" data-c="tagpunct">&gt;</span>
+<span class="ln">18</span><span class="tok" data-c="tagpunct">  &lt;</span><span class="tok" data-c="tag">style</span><span class="tok" data-c="txt"> </span><span class="tok" data-c="attr">host</span><span class="tok" data-c="txt">=</span><span class="tok" data-c="str">"app-card"</span><span class="tok" data-c="tagpunct">&gt;</span>
+<span class="ln">19</span><span class="tok" data-c="txt">    </span><span class="tok" data-c="attr">:host</span><span class="tok" data-c="prop"> { </span><span class="tok" data-c="type">display</span><span class="tok" data-c="prop">: </span><span class="tok" data-c="prop">block</span><span class="tok" data-c="prop">; }</span>
+<span class="ln">20</span><span class="tok" data-c="txt">    </span><span class="tok" data-c="attr">.card</span><span class="tok" data-c="prop"> {</span>
+<span class="ln">21</span><span class="tok" data-c="prop">      </span><span class="tok" data-c="type">border</span><span class="tok" data-c="prop">: </span><span class="tok" data-c="num">1</span><span class="tok" data-c="num">px</span><span class="tok" data-c="prop"> </span><span class="tok" data-c="prop">solid</span><span class="tok" data-c="prop"> </span><span class="tok" data-c="prop">#ddd</span><span class="tok" data-c="prop">;</span>
+<span class="ln">22</span><span class="tok" data-c="prop">      </span><span class="tok" data-c="type">border-radius</span><span class="tok" data-c="prop">: </span><span class="tok" data-c="num">8</span><span class="tok" data-c="num">px</span><span class="tok" data-c="prop">;</span>
+<span class="ln">23</span><span class="tok" data-c="prop">      </span><span class="tok" data-c="type">padding</span><span class="tok" data-c="prop">: </span><span class="tok" data-c="num">1</span><span class="tok" data-c="num">rem</span><span class="tok" data-c="prop">;</span>
+<span class="ln">24</span><span class="tok" data-c="prop">      .</span><span class="tok" data-c="prop">body</span><span class="tok" data-c="prop"> { </span><span class="tok" data-c="type">margin-top</span><span class="tok" data-c="prop">: </span><span class="tok" data-c="num">0.5</span><span class="tok" data-c="num">rem</span><span class="tok" data-c="prop">; }</span>
+<span class="ln">25</span><span class="tok" data-c="txt">    }</span>
+<span class="ln">26</span><span class="tok" data-c="txt">    </span><span class="tok" data-c="attr">.card.highlight</span><span class="tok" data-c="prop"> { </span><span class="tok" data-c="type">border-color</span><span class="tok" data-c="prop">: </span><span class="tok" data-c="prop">gold</span><span class="tok" data-c="prop">; }</span>
+<span class="ln">27</span><span class="tok" data-c="tagpunct">  &lt;/</span><span class="tok" data-c="tag">style</span><span class="tok" data-c="tagpunct">&gt;</span>
+<span class="ln">28</span><span class="tok" data-c="tagpunct">&lt;/</span><span class="tok" data-c="tag">head</span><span class="tok" data-c="tagpunct">&gt;</span>
+<span class="ln">29</span>
+<span class="ln">30</span><span class="tok" data-c="tagpunct">&lt;</span><span class="tok" data-c="tag">article</span><span class="tok" data-c="txt"> </span><span class="tok" data-c="attr">class</span><span class="tok" data-c="txt">=</span><span class="tok" data-c="str">"card"</span><span class="tok" data-c="txt"> </span><span class="tok" data-c="attr">class</span><span class="tok" data-c="txt">:</span><span class="tok" data-c="cond">highlight</span><span class="tok" data-c="txt">=</span><span class="tok" data-c="str">"</span><span class="tok" data-c="at">@</span><span class="tok" data-c="str">(</span><span class="tok" data-c="str">variant</span><span class="tok" data-c="str"> </span><span class="tok" data-c="str">===</span><span class="tok" data-c="str"> 'highlight')"</span><span class="tok" data-c="tagpunct">&gt;</span>
+<span class="ln">31</span><span class="tok" data-c="tagpunct">  &lt;</span><span class="tok" data-c="tag">header</span><span class="tok" data-c="tagpunct">&gt;</span>
+<span class="ln">32</span><span class="tok" data-c="tagpunct">    &lt;</span><span class="tok" data-c="tag">h2</span><span class="tok" data-c="tagpunct">&gt;</span><span class="tok" data-c="at">@</span><span class="tok" data-c="tagpunct">title&lt;/</span><span class="tok" data-c="tag">h2</span><span class="tok" data-c="tagpunct">&gt;</span>
+<span class="ln">33</span><span class="tok" data-c="tagpunct">  &lt;/</span><span class="tok" data-c="tag">header</span><span class="tok" data-c="tagpunct">&gt;</span>
+<span class="ln">34</span><span class="tok" data-c="txt">  </span><span class="tok" data-c="at">@if</span><span class="tok" data-c="prop"> (expanded.value) {</span>
+<span class="ln">35</span><span class="tok" data-c="tagpunct">    &lt;</span><span class="tok" data-c="tag">div</span><span class="tok" data-c="txt"> </span><span class="tok" data-c="attr">class</span><span class="tok" data-c="txt">=</span><span class="tok" data-c="str">"body"</span><span class="tok" data-c="tagpunct">&gt;</span>
+<span class="ln">36</span><span class="tok" data-c="tagpunct">      &lt;</span><span class="tok" data-c="tag">slot</span><span class="tok" data-c="tagpunct">&gt;&lt;/</span><span class="tok" data-c="tag">slot</span><span class="tok" data-c="tagpunct">&gt;</span>
+<span class="ln">37</span><span class="tok" data-c="tagpunct">    &lt;/</span><span class="tok" data-c="tag">div</span><span class="tok" data-c="tagpunct">&gt;</span>
+<span class="ln">38</span><span class="tok" data-c="txt">  }</span>
+<span class="ln">39</span><span class="tok" data-c="tagpunct">  &lt;</span><span class="tok" data-c="tag">app-button</span><span class="tok" data-c="txt"> </span><span class="tok" data-c="attr">variant</span><span class="tok" data-c="txt">=</span><span class="tok" data-c="str">"ghost"</span><span class="tok" data-c="txt"> </span><span class="tok" data-c="at">@</span><span class="tok" data-c="evt">press</span><span class="tok" data-c="txt">=</span><span class="tok" data-c="str">"</span><span class="tok" data-c="at">@</span><span class="tok" data-c="str">toggle</span><span class="tok" data-c="str">"</span><span class="tok" data-c="tagpunct">&gt;</span>
+<span class="ln">40</span><span class="tok" data-c="txt">    </span><span class="tok" data-c="at">@if</span><span class="tok" data-c="prop"> (expanded.value) { Cerrar } </span><span class="tok" data-c="kw-fud">else</span><span class="tok" data-c="txt"> { Abrir }</span>
+<span class="ln">41</span><span class="tok" data-c="tagpunct">  &lt;/</span><span class="tok" data-c="tag">app-button</span><span class="tok" data-c="tagpunct">&gt;</span>
+<span class="ln">42</span><span class="tok" data-c="tagpunct">&lt;/</span><span class="tok" data-c="tag">article</span><span class="tok" data-c="tagpunct">&gt;</span>
+</pre>
+  </div>
+
+  <aside class="panel">
+    <h2>Paleta</h2>
+    <div class="hint">Toca un color para cambiarlo. Se aplica al instante.</div>
+    <div class="cgroup"><h3>Fudic</h3><label class="crow">
+      <input type="color" value="#b5462f" data-target="at">
+      <span class="cswatch" data-sw="at" style="background:#b5462f"></span>
+      <span class="clabel">@ (Razor trigger)</span>
+    </label><label class="crow">
+      <input type="color" value="#9a3b8f" data-target="kw-fud">
+      <span class="cswatch" data-sw="kw-fud" style="background:#9a3b8f"></span>
+      <span class="clabel">Fudic keyword (code/server/client/if…)</span>
+    </label><label class="crow">
+      <input type="color" value="#c26a1a" data-target="hydration">
+      <span class="cswatch" data-sw="hydration" style="background:#c26a1a"></span>
+      <span class="clabel">Hydration strategy (viewport…)</span>
+    </label><label class="crow">
+      <input type="color" value="#b5462f" data-target="evt">
+      <span class="cswatch" data-sw="evt" style="background:#b5462f"></span>
+      <span class="clabel">Event binding (@press)</span>
+    </label><label class="crow">
+      <input type="color" value="#7a5cb0" data-target="cond">
+      <span class="cswatch" data-sw="cond" style="background:#7a5cb0"></span>
+      <span class="clabel">Conditional attr (class:highlight)</span>
+    </label></div><div class="cgroup"><h3>HTML</h3><label class="crow">
+      <input type="color" value="#3a5fa8" data-target="tag">
+      <span class="cswatch" data-sw="tag" style="background:#3a5fa8"></span>
+      <span class="clabel">HTML tag</span>
+    </label><label class="crow">
+      <input type="color" value="#8a94a6" data-target="tagpunct">
+      <span class="cswatch" data-sw="tagpunct" style="background:#8a94a6"></span>
+      <span class="clabel">Tag punctuation</span>
+    </label><label class="crow">
+      <input type="color" value="#7a8bbf" data-target="attr">
+      <span class="cswatch" data-sw="attr" style="background:#7a8bbf"></span>
+      <span class="clabel">Attribute name</span>
+    </label></div><div class="cgroup"><h3>TS</h3><label class="crow">
+      <input type="color" value="#9a3b8f" data-target="kw">
+      <span class="cswatch" data-sw="kw" style="background:#9a3b8f"></span>
+      <span class="clabel">JS/TS keyword</span>
+    </label><label class="crow">
+      <input type="color" value="#2a8a7a" data-target="type">
+      <span class="cswatch" data-sw="type" style="background:#2a8a7a"></span>
+      <span class="clabel">TS type</span>
+    </label><label class="crow">
+      <input type="color" value="#3a5fa8" data-target="fn">
+      <span class="cswatch" data-sw="fn" style="background:#3a5fa8"></span>
+      <span class="clabel">Function</span>
+    </label><label class="crow">
+      <input type="color" value="#2f6f4f" data-target="str">
+      <span class="cswatch" data-sw="str" style="background:#2f6f4f"></span>
+      <span class="clabel">String</span>
+    </label><label class="crow">
+      <input type="color" value="#b5462f" data-target="num">
+      <span class="cswatch" data-sw="num" style="background:#b5462f"></span>
+      <span class="clabel">Number</span>
+    </label><label class="crow">
+      <input type="color" value="#3a5fa8" data-target="prop">
+      <span class="cswatch" data-sw="prop" style="background:#3a5fa8"></span>
+      <span class="clabel">Property</span>
+    </label><label class="crow">
+      <input type="color" value="#13141a" data-target="var">
+      <span class="cswatch" data-sw="var" style="background:#13141a"></span>
+      <span class="clabel">Variable</span>
+    </label></div><div class="cgroup"><h3>CSS</h3><label class="crow">
+      <input type="color" value="#3a5fa8" data-target="cssprop">
+      <span class="cswatch" data-sw="cssprop" style="background:#3a5fa8"></span>
+      <span class="clabel">CSS property</span>
+    </label><label class="crow">
+      <input type="color" value="#b5462f" data-target="csssel">
+      <span class="cswatch" data-sw="csssel" style="background:#b5462f"></span>
+      <span class="clabel">CSS selector</span>
+    </label></div><div class="cgroup"><h3>Base</h3><label class="crow">
+      <input type="color" value="#a89c84" data-target="com">
+      <span class="cswatch" data-sw="com" style="background:#a89c84"></span>
+      <span class="clabel">Comment</span>
+    </label><label class="crow">
+      <input type="color" value="#6b7280" data-target="punct">
+      <span class="cswatch" data-sw="punct" style="background:#6b7280"></span>
+      <span class="clabel">Punctuation</span>
+    </label><label class="crow">
+      <input type="color" value="#13141a" data-target="txt">
+      <span class="cswatch" data-sw="txt" style="background:#13141a"></span>
+      <span class="clabel">Text / plain</span>
+    </label></div>
+  </aside>
+</div>
+
+<div class="note">
+  <h2>Dónde TextMate acierta y dónde falla</h2>
+  <p><strong>Acierta</strong> en casi todo porque la inyección delega el interior de cada región al grammar nativo: <code>Variant</code> se colorea como alias de tipo TS de verdad, <code>signal(</code> como llamada a función, <code>:host</code> y <code>.body</code> anidado como CSS real, <code>viewport</code> con tu scope propio de hidratación.</p>
+  <p><span class="bad">Falla en los bordes</span>, que es justo lo que anticipábamos y lo que el LSP semántico arregla:</p>
+  <ul>
+    <li><code>@(variant === 'highlight')</code> dentro de un atributo: TextMate abre <code>source.ts</code> pero al ser regex sin estado, expresiones con paréntesis anidados o template literals con <code>${}</code> rompen el cierre en casos profundos.</li>
+    <li><code>@if (expanded.value) { Cerrar } else { Abrir }</code>: el texto suelto <code>Cerrar</code>/<code>Abrir</code> no se distingue de markup; no hay forma sin estado de saber que es contenido y no un identificador.</li>
+    <li><code>@press</code> se colorea como evento por posición, pero TextMate no puede validar que sea un custom event declarado — eso es semántico.</li>
+    <li>El anidamiento CSS nativo (<code>.body</code> dentro de <code>.card</code>) depende de que el grammar de CSS lo soporte; en bordes con Razor mezclado, el conteo de llaves se le escapa.</li>
+  </ul>
+  <p>Por eso la estrategia es TextMate para el arranque instantáneo y <strong>semantic tokens desde tu parser</strong> para la verdad. Aquí ves exactamente el suelo del que parte.</p>
+</div>
+
+<script>
+const swatches = document.querySelectorAll('.cswatch');
+const inputs = document.querySelectorAll('input[type=color]');
+const root = document.documentElement;
+const defaults = {};
+inputs.forEach(inp=>{defaults[inp.dataset.target]=inp.value;});
+
+swatches.forEach(sw=>{
+  sw.addEventListener('click',()=>{
+    const inp=document.querySelector('input[data-target="'+sw.dataset.sw+'"]');
+    inp.click();
+  });
+});
+inputs.forEach(inp=>{
+  inp.addEventListener('input',()=>{
+    const t=inp.dataset.target;
+    root.style.setProperty('--c-'+t,inp.value);
+    document.querySelector('.cswatch[data-sw="'+t+'"]').style.background=inp.value;
+  });
+});
+document.getElementById('reset').addEventListener('click',()=>{
+  inputs.forEach(inp=>{
+    const t=inp.dataset.target;const d=defaults[t];
+    inp.value=d;root.style.setProperty('--c-'+t,d);
+    document.querySelector('.cswatch[data-sw="'+t+'"]').style.background=d;
+  });
+});
+document.getElementById('export').addEventListener('click',()=>{
+  let css=':root{\n';
+  inputs.forEach(inp=>{css+='  --c-'+inp.dataset.target+': '+inp.value+';\n';});
+  css+='}';
+  navigator.clipboard.writeText(css).then(()=>{
+    const b=document.getElementById('export');const o=b.textContent;
+    b.textContent='¡Copiado!';setTimeout(()=>b.textContent=o,1200);
+  });
+});
+</script>
+</body>
+</html>

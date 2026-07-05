@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fud · Arquitectura compilador + LSP</title>
+<style>
+:root{
+  --ink:#13141a;--paper:#f5f2ec;--panel:#fffdf8;--line:#d8d2c4;
+  --dead:#9a8f7d;--hot:#b5462f;
+  --purple:#534ab7;--purple-bg:#eeedfe;
+  --teal:#0f6e56;--teal-bg:#e1f5ee;
+  --blue:#185fa5;--blue-bg:#e6f1fb;
+  --coral:#993c1d;--coral-bg:#faece7;
+  --gray:#5f5e5a;--gray-bg:#f1efe8;
+  --font:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);line-height:1.5}
+header{padding:24px 24px 8px;max-width:900px;margin:0 auto}
+h1{margin:0;font-size:22px;letter-spacing:-.01em;font-weight:500}
+.sub{color:var(--dead);font-size:13.5px;margin-top:4px}
+.diagram{max-width:900px;margin:8px auto 0;padding:0 24px}
+svg{width:100%;height:auto;display:block}
+.card-svg{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px}
+.legend{max-width:820px;margin:20px auto 40px;padding:0 24px;color:#4a4640;font-size:14px;line-height:1.7}
+.legend h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--hot);margin:0 0 8px}
+.legend p{margin:0 0 12px}
+.legend code{font-family:ui-monospace,Menlo,Consolas,monospace;background:#efe9dd;padding:1px 5px;border-radius:4px;font-size:.9em}
+.t{font-family:var(--font);font-size:14px;fill:var(--ink)}
+.th{font-family:var(--font);font-size:14px;font-weight:500;fill:var(--ink)}
+.ts{font-family:var(--font);font-size:12px;fill:var(--dead)}
+.arr{stroke:var(--dead);stroke-width:1.5;fill:none}
+@media print{body{background:#fff}.card-svg{border:none}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Fud · arquitectura del compilador y el LSP</h1>
+  <div class="sub">El parser propio es la única fuente. De su AST cuelgan dos ramas que no se hablan entre sí: la cadena de compilación (build) y la infraestructura de editor (IDE).</div>
+</header>
+
+<div class="diagram">
+<div class="card-svg">
+<svg viewBox="0 0 680 620" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>Arquitectura del compilador .fud y el LSP</title>
+<desc>El fichero .fud alimenta al parser propio, que delega JS/TS a Oxc. De ahí salen dos ramas: la cadena de compilación (emit a HTML) y la infraestructura de editor (Volar, TextMate, extensión VS Code).</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+
+<text class="th" x="40" y="30">Fichero fuente</text>
+<rect x="40" y="42" width="150" height="44" rx="8" fill="var(--gray-bg)" stroke="var(--gray)" stroke-width="0.5"/>
+<text class="th" x="115" y="64" text-anchor="middle" dominant-baseline="central">app-card.fud</text>
+
+<line x1="115" y1="86" x2="115" y2="118" class="arr" marker-end="url(#arrow)"/>
+
+<rect x="40" y="118" width="230" height="56" rx="8" fill="var(--purple-bg)" stroke="var(--purple)" stroke-width="0.5"/>
+<text class="th" x="155" y="136" text-anchor="middle" dominant-baseline="central">Parser propio (.fud)</text>
+<text class="ts" x="155" y="156" text-anchor="middle" dominant-baseline="central">spans, regiones, nunca lanza</text>
+
+<text class="ts" x="340" y="132" text-anchor="middle">fragmentos JS/TS</text>
+<line x1="270" y1="146" x2="408" y2="146" class="arr" marker-end="url(#arrow)"/>
+
+<rect x="408" y="118" width="230" height="56" rx="8" fill="var(--teal-bg)" stroke="var(--teal)" stroke-width="0.5"/>
+<text class="th" x="523" y="136" text-anchor="middle" dominant-baseline="central">Oxc</text>
+<text class="ts" x="523" y="156" text-anchor="middle" dominant-baseline="central">parsea JS/TS · 1 vez/fichero</text>
+
+<line x1="155" y1="174" x2="155" y2="210" class="arr" marker-end="url(#arrow)"/>
+<text class="ts" x="230" y="196" text-anchor="start">AST + diagnósticos</text>
+
+<rect x="30" y="210" width="620" height="240" rx="18" fill="var(--gray-bg)" stroke="var(--gray)" stroke-width="0.5"/>
+<text class="th" x="52" y="234">AST con spans + tabla de regiones</text>
+<text class="ts" x="52" y="252">la verdad compartida — de aquí cuelgan las dos ramas</text>
+
+<line x1="155" y1="266" x2="155" y2="298" class="arr" marker-end="url(#arrow)"/>
+<line x1="360" y1="266" x2="360" y2="298" class="arr" marker-end="url(#arrow)"/>
+
+<rect x="52" y="298" width="250" height="136" rx="12" fill="var(--blue-bg)" stroke="var(--blue)" stroke-width="0.5"/>
+<text class="th" x="68" y="320">Cadena de compilación</text>
+<text class="ts" x="68" y="338">corre en build</text>
+<rect x="72" y="352" width="210" height="64" rx="8" fill="#fff" stroke="var(--blue)" stroke-width="0.5"/>
+<text class="th" x="177" y="372" text-anchor="middle" dominant-baseline="central">Emit</text>
+<text class="ts" x="177" y="392" text-anchor="middle" dominant-baseline="central">HTML + DSD + JS mínimo</text>
+
+<rect x="330" y="298" width="298" height="136" rx="12" fill="var(--coral-bg)" stroke="var(--coral)" stroke-width="0.5"/>
+<text class="th" x="346" y="320">Infraestructura de editor</text>
+<text class="ts" x="346" y="338">corre en el IDE</text>
+<rect x="346" y="352" width="130" height="64" rx="8" fill="#fff" stroke="var(--coral)" stroke-width="0.5"/>
+<text class="th" x="411" y="372" text-anchor="middle" dominant-baseline="central">Volar.js</text>
+<text class="ts" x="411" y="392" text-anchor="middle" dominant-baseline="central">virtuales + mapping</text>
+<rect x="486" y="352" width="128" height="64" rx="8" fill="#fff" stroke="var(--coral)" stroke-width="0.5"/>
+<text class="th" x="550" y="372" text-anchor="middle" dominant-baseline="central">TextMate</text>
+<text class="ts" x="550" y="392" text-anchor="middle" dominant-baseline="central">color de arranque</text>
+
+<line x1="411" y1="434" x2="411" y2="470" class="arr" marker-end="url(#arrow)"/>
+<line x1="550" y1="434" x2="550" y2="470" class="arr" marker-end="url(#arrow)"/>
+
+<rect x="330" y="470" width="298" height="56" rx="8" fill="var(--coral-bg)" stroke="var(--coral)" stroke-width="0.5"/>
+<text class="th" x="479" y="488" text-anchor="middle" dominant-baseline="central">Extensión .fud (VS Code)</text>
+<text class="ts" x="479" y="508" text-anchor="middle" dominant-baseline="central">registra lenguaje · arranca servidor</text>
+
+<line x1="479" y1="526" x2="479" y2="558" class="arr" marker-end="url(#arrow)"/>
+
+<rect x="330" y="558" width="298" height="44" rx="8" fill="var(--teal-bg)" stroke="var(--teal)" stroke-width="0.5"/>
+<text class="th" x="479" y="580" text-anchor="middle" dominant-baseline="central">Editor: color, hover, Problems</text>
+
+<line x1="177" y1="416" x2="177" y2="558" class="arr" marker-end="url(#arrow)"/>
+<rect x="52" y="558" width="250" height="44" rx="8" fill="#fff" stroke="var(--blue)" stroke-width="0.5"/>
+<text class="th" x="177" y="580" text-anchor="middle" dominant-baseline="central">HTML puro (deploy)</text>
+</svg>
+</div>
+</div>
+
+<div class="legend">
+<h2>Cómo leerlo</h2>
+<p>El <strong>parser propio</strong> es el único punto del que sale todo. Produce el AST con spans y la tabla de regiones — la verdad compartida. <code>Oxc</code> es una dependencia suya, no una capa aparte: le presta el parsing de los fragmentos JS/TS, una vez por fichero.</p>
+<p>De ese AST cuelgan <strong>dos ramas que no se hablan entre sí</strong>. La azul es la cadena de compilación: corre en build, emite el HTML con DSD y acaba en deploy. La coral es la infraestructura de editor: corre en el IDE, y ahí viven <code>Volar</code> (documentos virtuales + mapping) y <code>TextMate</code> (color instantáneo). Ambas convergen en la extensión de VS Code, que registra el lenguaje y arranca el servidor.</p>
+<p><code>Oxc</code> toca las dos ramas sin ser de ninguna: alimenta el AST y sus diagnósticos de sintaxis JS acaban, vía Volar, en el panel Problems.</p>
+</div>
+</body>
+</html>
