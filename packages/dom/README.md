@@ -1,0 +1,17 @@
+# @fudic/dom
+
+The isomorphic node contract of the fudic runtime (SDD-14).
+
+- **`Dom<N>`** — the construction surface (`element`, `text`, `comment`, `setAttr`,
+  `removeAttr`, `append`, `before`, `remove`, `attachShadow`). Both the browser and the SSR
+  adapter implement it in full.
+- **`DomClient<N>`** — extends `Dom<N>` with the browser-only surface: reactive mutation
+  (`setText`, `setProp`) and hydration traversal (`firstChild`, `nextSibling`, `previousSibling`,
+  `childAt`). The SSR adapter does not implement it — the impossibility of hydrating in SSR is a
+  property of the type, not a runtime throw (ISP/LSP).
+- **`browserDom`** — the client adapter over the native DOM.
+- **`Cursor` / `cursorOf`** — the hydration walk over an existing subtree.
+- **`NS` / `Ns`** — HTML / SVG / MathML namespaces, resolved once at element creation.
+
+The SSR adapter lives in `@fudic/ssr`; the reactive runtime (signal, lifecycle, event
+delegation, `<style host>`) lives in `@fudic/core`.

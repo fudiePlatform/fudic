@@ -1,0 +1,49 @@
+{
+  "name": "@fudic/dom",
+  "version": "0.0.1",
+  "description": "Isomorphic DOM contract and browser adapter for fudic — a UI framework based on Declarative Shadow DOM.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Pedro Hurtado",
+  "homepage": "https://github.com/fudie/fudic/tree/main/packages/dom#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fudie/fudic.git",
+    "directory": "packages/dom"
+  },
+  "bugs": {
+    "url": "https://github.com/fudie/fudic/issues"
+  },
+  "keywords": [
+    "fudic",
+    "fudie",
+    "declarative-shadow-dom",
+    "web-components",
+    "dom"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "happy-dom": "20.10.6"
+  }
+}
