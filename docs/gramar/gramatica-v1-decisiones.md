@@ -183,12 +183,8 @@ code_block
   ;
 
 code_content
-  : neutral_js?
-    server_region?
-    neutral_js?
-    client_region?
-    neutral_js?
-  ;
+  : ( neutral_js | server_region | client_region )*   // orden libre (decisión 34)
+  ;                                                    // "máx. un server/client" (33.b) es regla semántica, no sintáctica
 
 neutral_js
   : js_statements              {mode: js, restricted: no_side_effects}
