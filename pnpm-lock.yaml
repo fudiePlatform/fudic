@@ -36,6 +36,12 @@ importers:
         specifier: 20.10.6
         version: 20.10.6
 
+  packages/ssr:
+    dependencies:
+      '@fudic/dom':
+        specifier: workspace:*
+        version: link:../dom
+
 packages:
 
   '@babel/helper-string-parser@7.29.7':
