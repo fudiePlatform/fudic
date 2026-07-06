@@ -386,8 +386,8 @@ Entradas reales (de los fixtures) → tokens esperados. El SDD está `Hecho` cua
     `tag-open-start`, `tag-open-end`, `at-trigger`, …, `tag-close`. (Test sujeto a la
     confirmación de §4.6.)
 
-11. **`<style>` push css (placeholder §4.7).** `<style host="x">:host{}</style>` ⇒
-    `tag-open-start`(`style`) con atributos, `tag-open-end`, push `css`, cuerpo provisional,
+11. **`<style>` push css (placeholder §4.7).** `<style>:host{}</style>` ⇒
+    `tag-open-start`(`style`), `tag-open-end`, push `css`, cuerpo provisional,
     pop, `tag-close`.
 
 12. **Balanceador sin cerrar aflora.** `@(a + b` ⇒ `explicit-expr` degradado y un

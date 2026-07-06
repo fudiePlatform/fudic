@@ -79,17 +79,26 @@ residuo irreducible.
 }
 
 <head>
-  <style host="app-counter">
+  <style>
     :host { display: inline-flex; align-items: center; gap: 0.5rem; }
     .val { min-width: 2ch; text-align: center; font-variant-numeric: tabular-nums; }
     button { font: inherit; cursor: pointer; }
   </style>
 </head>
 
-<button @click="@dec">−</button>
-<span class="val">@count</span>
-<button @click="@inc">+</button>
+<app-counter>
+  <template shadowrootmode="open">
+    <button @click="@dec">−</button>
+    <span class="val">@count</span>
+    <button @click="@inc">+</button>
+  </template>
+</app-counter>
 ```
+
+(El envoltorio `<app-counter>` + `<template shadowrootmode>` es la identidad del componente,
+decisión 75; el fragment de tres raíces vive **dentro** de la template. El `<style>` del head
+va sin atributo: el scope se deduce del envoltorio y el marcador `host="app-counter"` lo
+añade la serialización — decisión 76.)
 
 `@count` es un binding reactivo (texto). El valor es **derivable del DOM**: vive en el texto de
 `.val`. No necesita `data-fud-s`.

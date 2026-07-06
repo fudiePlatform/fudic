@@ -2,7 +2,7 @@
 
 > **Estado:** `Listo`
 > **Depende de:** 00, 05, 08
-> **Decisiones de gramática:** 53–62
+> **Decisiones de gramática:** 53–62, 75–78
 
 ---
 
@@ -18,9 +18,13 @@ Es una pasada de **validación + clasificación** sobre el árbol de SDD-05: no 
 tokenizar ni parsea contenido nuevo. Consume el `CodeBlockNode` de SDD-08 tal cual.
 
 SDD-10 **no** hace: la extracción/elevación real del `@code` y del `<head>`-fragment en el
-output (eso es **emit, SDD-14**), la deduplicación del head (61/62, emit), ni el análisis
+output (eso es **emit, SDD-15**), la deduplicación del head (61/62, emit), ni el análisis
 semántico profundo (unicidad de regiones `@server`/`@client`, custom element sin `<link>`
 declarado: **SDD-12**).
+
+En modo componente impone además la **identidad DSD** (decisión 75): el markup es un único
+envoltorio host (`prefix-name`) con su `<template shadowrootmode>`; de ahí sale el `name` del
+componente que consumen el resolver, la hoja de estilos del head y el emit.
 
 ---
 
@@ -60,15 +64,21 @@ Ubicación: `packages/compiler/src/document/` (`nodes.ts`, `structure.ts`, reexp
 ```ts
 export type StructuredDocument = PageDocument | ComponentDocument;
 
-/** Component file: `<link rel="component">`* → `@code`? → markup* (decision 53). */
+/** Component file: `<link rel="component">`* → `@code`? → `<head>`? → host wrapper (decisions 53, 62, 75). */
 export interface ComponentDocument extends Node {
   readonly type: 'component-document';
   /** All top-level `<link rel="component">`, in order. Any number (decision 55). */
   readonly links: readonly ElementNode[];
   /** The single `@code`, if present (decision 54). */
   readonly code?: CodeBlockNode;
-  /** Remaining top-level markup, in order (fragments allowed, decision 52; `<head>` allowed, 62). */
-  readonly markup: readonly HtmlContent[];
+  /** The `<head>` fragment, if present (decision 62; holds the component's single `<style>`). */
+  readonly head?: ElementNode;
+  /** The host wrapper element — the component's identity (decision 75). Absent only on FUD0156 degradation. */
+  readonly host?: ElementNode;
+  /** The `<template shadowrootmode>` inside the wrapper (decision 75.a). Absent on FUD0157 degradation. */
+  readonly template?: ElementNode;
+  /** Component tag name, read from `host.name`. Empty string on degradation. */
+  readonly name: string;
 }
 
 /** Page file: `<!DOCTYPE html>` + `<html><head>…</head><body>…</body></html>` (decisions 57, 58). */
@@ -105,17 +115,35 @@ Al validar orden, SDD-10 **ignora** los `TextNode` de solo whitespace, los `Comm
 `RazorCommentNode`: pueden aparecer libremente entre nodos top-level. Se conservan en `markup`
 (componente) para el emit, que los descarta.
 
-### 4.2. Modo componente (decisiones 52–55, 62)
+### 4.2. Modo componente (decisiones 53–55, 62, 75–76)
 
-Recorre `children` con una máquina de estados de **tres fases en orden estricto** (decisión 53):
+Recorre `children` con una máquina de estados de **cuatro fases en orden estricto**
+(decisiones 53, 75):
 
 1. **`links`** — `<link rel="component">` (`isComponentLink`), cualquier número (55).
 2. **`code`** — a lo sumo un `CodeBlockNode` (54). Un segundo `@code` → `FUD0154`.
-3. **`markup`** — todo lo demás (elementos, interpolaciones, control, `<head>`-fragment de 62).
+3. **`head`** — a lo sumo un `<head>`-fragment (62).
+4. **`host`** — **exactamente un** elemento envolvente: el componente (75).
 
 Un nodo que llega **fuera de fase** (un `<link rel="component">` o un `@code` tras haber
-empezado el markup, o un `@code` antes de un link) → `FUD0155`. Se coloca igualmente en su
-campo (recuperación): el documento se estructura, el diagnóstico avisa.
+empezado el head/host, etc.) → `FUD0155`. Se coloca igualmente en su campo (recuperación): el
+documento se estructura, el diagnóstico avisa.
+
+**Validación del envoltorio (75, 75.a, 76):**
+
+- El elemento de la fase 4 debe ser único y su tag un custom element válido (contiene `-`).
+  Falta, sobra (segundo elemento raíz) o tag sin guión → `FUD0156`. Con más de uno, el primero
+  válido se toma como `host` (recuperación).
+- Dentro de `host`, saltando whitespace/comentarios (56), debe haber **exactamente un** hijo
+  elemento y ser `<template>` → si no, `FUD0157` (y `template` queda ausente).
+- Esa template debe llevar `shadowrootmode` estático con valor `open` → si falta o el valor
+  es otro (incluido `closed`, fuera de v1), `FUD0158`. Los demás atributos DSD estándar pasan
+  tal cual (75.a).
+- `name` = `host.name`; es la **única fuente** de la identidad del componente. El
+  `<head>`-fragment admite **a lo sumo un** `<style>`, sin atributo `host` (76): un segundo
+  `<style>` → `FUD0159`; un atributo `host` escrito en el fuente (es un marcador reservado
+  del output) → `FUD0160`. (Búsqueda shallow: hijos directos del `<head>`-fragment; SDD-10
+  no desciende más.)
 
 ### 4.3. Modo página (decisiones 57–60)
 
@@ -135,9 +163,10 @@ campo (recuperación): el documento se estructura, el diagnóstico avisa.
 
 `isComponentLink(el)` = `el.name === 'link'` **y** tiene un `Attribute` `rel` con valor
 **estático** `component`. Un `rel` dinámico (`rel="@x"`) no es estáticamente decidible → se
-trata como link normal (markup). El `<head>`-fragment de un componente (decisión 62) queda en
-`markup`; su elevación al head de la página consumidora y el consumo de sus
-`<link rel="component">` internos son **emit** (SDD-14). SDD-10 no desciende en él.
+trata como link normal. El `<head>`-fragment de un componente (decisión 62) queda en `head`;
+su elevación al head de la página consumidora y el consumo de sus `<link rel="component">`
+internos son **emit** (SDD-15). SDD-10 solo hace la comprobación shallow de los `<style>` del
+fragment (§4.2); no desciende más en él.
 
 ### 4.5. Códigos `FUD`
 
@@ -150,9 +179,14 @@ SDD-10 reserva **`FUD0150`–`FUD0169`**. Definidos:
 | `FUD0152` | `<link rel="component">` fuera de `<head>` en modo página (decisión 59). |
 | `FUD0153` | `@code` fuera de `<head>` en modo página (decisión 60). |
 | `FUD0154` | Más de un `@code` en el documento (decisiones 54, 33.d). |
-| `FUD0155` | Orden top-level inválido en componente: link/code/markup desordenados (decisión 53). |
+| `FUD0155` | Orden top-level inválido en componente: link/code/head/host desordenados (decisión 53). |
+| `FUD0156` | Envoltorio host inválido: ausente, múltiple, o tag sin guión (decisión 75). |
+| `FUD0157` | El envoltorio no contiene exactamente un `<template>` (decisión 75.a). |
+| `FUD0158` | `shadowrootmode` ausente o distinto de `open` — `closed` fuera de v1 (decisión 75.a). |
+| `FUD0159` | Más de un `<style>` en el `<head>`-fragment del componente (decisión 76). |
+| `FUD0160` | Atributo `host` escrito en el fuente — marcador reservado del output (decisión 76). |
 
-`FUD0156`–`FUD0169` libres.
+`FUD0161`–`FUD0169` libres.
 
 ---
 
@@ -173,8 +207,9 @@ Entradas reales (fixtures) → `StructuredDocument`. El SDD está `Hecho` cuando
 1. **Typecheck.** `pnpm typecheck` pasa con §3 definido y reexportado.
 
 2. **Componente (fixture `app-card`).** `<link rel="component" href="./app-button.fud"> @code {…}
-   <article class="card">…</article>` ⇒ `ComponentDocument` con `links` = `[<link>]`, `code` =
-   el `CodeBlockNode`, `markup` = `[<article>]`.
+   <head>…</head> <app-card><template shadowrootmode="open">…</template></app-card>` ⇒
+   `ComponentDocument` con `links` = `[<link>]`, `code` = el `CodeBlockNode`, `head` = el
+   fragment, `host` = `<app-card>`, `template` = la template, `name` = `'app-card'`.
 
 3. **Múltiples links (55).** Dos `<link rel="component">` seguidos ⇒ ambos en `links`, sin error.
 
@@ -199,7 +234,20 @@ Entradas reales (fixtures) → `StructuredDocument`. El SDD está `Hecho` cuando
 10. **Whitespace/comentarios transparentes (56).** Whitespace y `<!-- … -->` entre links y
     `@code` no rompen el orden.
 
-11. **Cobertura.** Cerca del 100 % de líneas/funciones/ramas (los casos cubren ambas máquinas
+11. **Envoltorio host (75).** Componente cuyo markup es `<article>…</article>` (sin envoltorio
+    custom) ⇒ `FUD0156`. Dos elementos raíz custom ⇒ `FUD0156` (el primero queda como `host`).
+    `<appcard>` (sin guión) ⇒ `FUD0156`.
+
+12. **Template DSD (75.a).** `<app-x><div>…</div></app-x>` ⇒ `FUD0157`.
+    `<app-x><template>…</template></app-x>` sin `shadowrootmode` ⇒ `FUD0158`.
+    `shadowrootmode="lazy"` ⇒ `FUD0158`. `shadowrootmode="closed"` ⇒ `FUD0158` (fuera de v1).
+    `shadowrootmode="open"` ⇒ sin error.
+
+13. **`<style>` del head (76).** `<head><style>…</style></head>` con host `<app-x>` ⇒ sin
+    error y `name === 'app-x'`. Dos `<style>` en el head ⇒ `FUD0159` en el segundo.
+    `<style host="app-x">` escrito en el fuente ⇒ `FUD0160`.
+
+14. **Cobertura.** Cerca del 100 % de líneas/funciones/ramas (los casos cubren ambas máquinas
     de estados y las degradaciones). Cumple el suelo del SDD-00.
 
 ---
@@ -207,7 +255,7 @@ Entradas reales (fixtures) → `StructuredDocument`. El SDD está `Hecho` cuando
 ## 7. Fuera de alcance
 
 - **Emit:** extracción del `@code` (60), elevación/dedupe del `<head>` y del `<head>`-fragment
-  (61, 62), consumo de `<link rel="component">`: **SDD-14**.
+  (61, 62), consumo de `<link rel="component">`, materialización del DSD (75/78): **SDD-15**.
 - **Semántica:** custom element usado sin su `<link rel="component">` (decisión 41), unicidad
   de `@server`/`@client` (33.a/b), interpolación de no-primitivas (19): **SDD-12**.
 - **Contenido de los elementos:** ya lo parsearon SDD-05/06/07/08/09. SDD-10 solo el top-level.

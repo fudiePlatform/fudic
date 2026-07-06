@@ -11,10 +11,13 @@ escritos en una **sintaxis estilo Razor adaptada a JS/TS** que compilan a salida
 en estándares (nivel 1 = HTML con DSD inline puro, cero JS; los niveles superiores
 añaden SSR e hidratación en cliente más adelante).
 
-Un fichero `.fud` mezcla HTML, CSS con scope (`<style host>`) y construcciones con
-prefijo `@`: control de flujo, expresiones y bloques `@code` (`@if`, `@foreach`,
-`@(expr)`, `@code { @server / @client }`). Mira `packages/compiler/fixtures/*.fud`
-para los tres ejemplos canónicos que guían los tests de integración.
+Un fichero `.fud` mezcla HTML, CSS con scope (un único `<style>` en el `<head>` del
+componente; el marcador `host="tag"` lo añade solo la serialización) y construcciones
+con prefijo `@`: control de flujo, expresiones y bloques `@code` (`@if`, `@foreach`,
+`@(expr)`, `@code { @server / @client }`). Un componente declara su **identidad** con el
+estándar DSD: su markup es su propio tag (`prefix-name`) envolviendo un
+`<template shadowrootmode>` (decisión 75). Mira `packages/compiler/fixtures/*.fud` para
+los ejemplos canónicos (N1–N3 + página) que guían los tests de integración.
 
 El compilador es **LSP-first**: está diseñado desde el primer commit para sustentar un
 language server (Volar), no solo un build batch. Esa única decisión moldea cada

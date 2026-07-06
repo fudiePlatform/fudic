@@ -130,7 +130,7 @@ Cada SDD reserva su rango; aquí está el registro maestro. Formato `FUD` + 4 d�
 | `FUD0090`–`0109` | 07 | `0090` property sin `@` · `0091` property con concatenación · `0092` event sin `@` único · `0093` `class:`/`style:` sin `@` único · `0094` `ref` no identificador simple · `0095` `class:`/`style:` sin nombre. |
 | `FUD0110`–`0129` | 08 | `0110` falta `{` · `0111` `@server(…)` · `0112` estrategia fuera de whitelist · `0113` parens de estrategia vacío/sin cerrar. |
 | `FUD0130`–`0149` | 09 | `0130` construcción Razor no permitida en `<style>` · `0131` llaves CSS desbalanceadas. |
-| `FUD0150`–`0169` | 10 | `0150` doctype ≠ `html` · `0151` `<html>`/`<head>`/`<body>` faltante o desordenado · `0152` `<link rel="component">` fuera de `<head>` · `0153` `@code` fuera de `<head>` · `0154` más de un `@code` · `0155` orden top-level inválido en componente. |
+| `FUD0150`–`0169` | 10 | `0150` doctype ≠ `html` · `0151` `<html>`/`<head>`/`<body>` faltante o desordenado · `0152` `<link rel="component">` fuera de `<head>` · `0153` `@code` fuera de `<head>` · `0154` más de un `@code` · `0155` orden top-level inválido en componente · `0156` envoltorio host inválido (decisión 75) · `0157` template única ausente en el envoltorio · `0158` `shadowrootmode` inválido · `0159` más de un `<style>` en el head del componente · `0160` atributo `host` escrito en fuente (marcador de output). |
 | `FUD0170`–`0189` | 11 | `0170` error de sintaxis JS/TS de Oxc (span mapeado). |
 | `FUD0190`–`0209` | 12 | `0190` atributo duplicado · `0191` custom element sin `<link rel="component">` · `0192` `ref` en bucle · `0193` `@server`/`@client` anidado · `0194` más de un `@server`/`@client` · `0195` interpolación no-primitiva (literal array/objeto) · `0196` import por efecto en zona neutra (warning). |
 
@@ -194,8 +194,8 @@ decidible y delega el resto:
    capa Volar/tsc; lo no detectable es error en **runtime** (lo dice la propia decisión 19).
 
 2. **Componente declarado (41) — cross-file.** Casar el tag custom con el fichero que lo define
-   exige resolver `<link rel="component">` (cargar el `.fud` enlazado y leer su tag). Eso es un
-   **resolver multi-fichero** (fuera de v1). SDD-12 usa una `ComponentRegistry` inyectada; con
+   exige resolver `<link rel="component">` (cargar el `.fud` enlazado y leer el tag de su
+   envoltorio host, decisión 75). Eso es un **resolver multi-fichero** (fuera de v1). SDD-12 usa una `ComponentRegistry` inyectada; con
    una vacía, en single-file, marca todo custom no registrado.
 
 3. **Pureza del neutro (33.c) — indecidible.** "Sin side effects" no es estáticamente

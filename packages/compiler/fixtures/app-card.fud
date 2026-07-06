@@ -15,7 +15,7 @@
 }
 
 <head>
-  <style host="app-card">
+  <style>
     :host { display: block; }
     .card {
       border: 1px solid #ddd;
@@ -27,16 +27,20 @@
   </style>
 </head>
 
-<article class="card" class:highlight="@(variant === 'highlight')">
-  <header>
-    <h2>@title</h2>
-  </header>
-  @if (expanded.value) {
-    <div class="body">
-      <slot></slot>
-    </div>
-  }
-  <app-button variant="ghost" @press="@toggle">
-    @if (expanded.value) { Cerrar } else { Abrir }
-  </app-button>
-</article>
+<app-card>
+  <template shadowrootmode="open">
+    <article class="card" class:highlight="@(variant === 'highlight')">
+      <header>
+        <h2>@title</h2>
+      </header>
+      @if (expanded.value) {
+        <div class="body">
+          <slot></slot>
+        </div>
+      }
+      <app-button variant="ghost" @press="@toggle">
+        @if (expanded.value) { Cerrar } else { Abrir }
+      </app-button>
+    </article>
+  </template>
+</app-card>

@@ -326,7 +326,12 @@ Subset estricto de HTML5. No se implementa error recovery ni inserciones implíc
 
 **51.** Detección automática de modo: fichero que empieza con `<!DOCTYPE` → modo página. Si no → modo componente.
 
-**52.** Fragments permitidos en modo componente. Múltiples elementos raíz sin wrapper.
+**52.** ~~Fragments permitidos en modo componente. Múltiples elementos raíz sin wrapper.~~
+**Sustituida por la decisión 75:** el markup de un componente tiene exactamente un elemento
+raíz (el envoltorio host). Los fragments (múltiples raíces) siguen permitidos **dentro** del
+`<template>` del componente. A nivel de parser (SDD-05) el top-level sigue admitiendo
+múltiples nodos sintácticamente (links, `@code`, `<head>`, envoltorio); la validación
+estructural es de SDD-10.
 
 ### Gramática de referencia
 
@@ -400,6 +405,45 @@ tag_name
 
 **62.** `<head>` permitido como fragment top-level en modo componente. Se eleva al `<head>` raíz de la página consumidora con deduplicación. `<link rel="component">` se consume, no sube.
 
+> Las decisiones **63–66** están en la sección de `@code`; las **67–74** viven en los docs de
+> runtime (`docs/runtime/style-host-runtime.md`, `docs/runtime/nivel-3-hidratacion-runtime.md`).
+> La numeración continúa aquí en 75.
+
+**75.** **Identidad del componente por el estándar DSD.** En modo componente, el markup es
+**exactamente un** elemento raíz cuyo tag es el **nombre del componente** — un custom element
+`prefix-name` (guión obligatorio por la spec) — y cuyo único hijo elemento es un
+`<template shadowrootmode="…">` que declara el modo del shadow, tal y como marca el estándar de
+Declarative Shadow DOM. El nombre del componente se lee **siempre y solo** de ese tag
+envolvente: **no** del nombre del fichero, **no** del `<style>` del head, **no** del consumidor.
+Esta sintaxis es **obligatoria**: un componente sin envoltorio host o sin su `<template>` es un
+error. Sustituye a la decisión 52. Es la fuente única de la que SDD-12/el resolver "leen el
+tag" de un `.fud` enlazado, y del nombre con el que el emit registra el custom element en N3
+(`customElements.define`).
+
+**75.a.** Dentro del envoltorio host hay **exactamente un** `<template shadowrootmode>` (además
+de whitespace y comentarios, que son transparentes). Cualquier otro hijo → error. `shadowrootmode`
+es obligatorio y su valor en v1 es **`open`**. `closed` queda **fuera de v1**: rompe la
+invariante 68 (todos los shadows fudic son inspeccionables y adoptables desde el documento —
+la adopción de `<style host>` y la hidratación dependen de `host.shadowRoot`); se revisará vía
+`ElementInternals` si un caso lo justifica. Los demás atributos estándar de la template DSD
+(`shadowrootdelegatesfocus`, etc.) pasan tal cual.
+
+**76.** El `<head>`-fragment de un componente (decisión 62) admite **a lo sumo un** `<style>`,
+y va **sin atributo**: esa hoja es, por definición, la hoja del host y su scope es el tag del
+envoltorio (decisión 75). El atributo `host` **no existe en la sintaxis fuente** — escribirlo
+es error. Es un marcador **del output**: al serializar, el emit eleva la hoja al head de la
+página consumidora como `<style host="app-button">`, una sola vez por componente. Más de un
+`<style>` en el `<head>` del componente → error.
+
+**77.** Vías de estilo alternativas dentro del `<template>`: un `<style>` normal permanece
+**inline** en el shadow root — no se extrae ni se deduplica al head —, y un
+`<link rel="stylesheet">` nativo pasa tal cual. El `<style>` del `<head>`-fragment es la
+única vía con hoja única compartida/adoptada (decisiones 67–70).
+
+**78.** En modo página no cambia nada: las **instancias** de componentes (`<app-card …>`) se
+escriben como hasta ahora; el envoltorio + template DSD del punto 75 es la forma de la
+**definición** (el fichero componente), y es el emit quien materializa el DSD en el output.
+
 ### Gramática de referencia
 
 ```
@@ -413,9 +457,27 @@ page_document
   ;
 
 component_document
-  : link_component*              // exactamente en este orden
+  : link_component*              // exactamente en este orden (decisión 53)
     code_block?
-    top_level_markup_node*
+    head_fragment?               // <head> … (decisión 62; aquí vive el único <style>)
+    component_host               // decisión 75: envoltorio obligatorio
+  ;
+
+component_host
+  : LT component_tag attribute* GT
+    whitespace* shadow_template
+    whitespace* LT SLASH component_tag GT
+  ;
+
+shadow_template
+  : LT "template" WS+ "shadowrootmode" EQ DQUOTE "open" DQUOTE   // closed fuera de v1 (75.a)
+    (WS+ attribute)* GT
+    content*
+    LT SLASH "template" GT
+  ;
+
+component_tag
+  : [a-z] [a-z0-9]* ("-" [a-z0-9]+)+   // custom element: guión obligatorio (spec)
   ;
 
 link_component
@@ -462,23 +524,31 @@ html_root
 }
 
 <head>
-  <style host="app-card">
+  <style>
     :host { display: block; }
     .card { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; }
     .card.highlight { border-color: gold; }
   </style>
 </head>
 
-<article class="card" class:highlight="@(variant === 'highlight')">
-  <h2>@title</h2>
-  <div class="body">
-    <slot></slot>
-  </div>
-  <app-button @click="@toggle">
-    @if (expanded.value) { "Cerrar" } else { "Abrir" }
-  </app-button>
-</article>
+<app-card>
+  <template shadowrootmode="open">
+    <article class="card" class:highlight="@(variant === 'highlight')">
+      <h2>@title</h2>
+      <div class="body">
+        <slot></slot>
+      </div>
+      <app-button @click="@toggle">
+        @if (expanded.value) { "Cerrar" } else { "Abrir" }
+      </app-button>
+    </article>
+  </template>
+</app-card>
 ```
+
+El envoltorio `<app-card>` + `<template shadowrootmode>` es la **identidad** del componente
+(decisión 75): de ahí sale el nombre del tag, el scope del `<style>` del head (decisión 76) y
+el nombre de registro en N3.
 
 ### Ejemplo canónico (modo página)
 
@@ -636,7 +706,7 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 49 | HTML | Entities pass-through |
 | 50 | HTML | CDATA solo en SVG/MathML |
 | 51 | HTML | Detección automática componente vs página |
-| 52 | HTML | Fragments permitidos en componente |
+| 52 | HTML | ~~Fragments en componente~~ — sustituida por 75 |
 | 53 | Documento | Orden top-level estricto en componente |
 | 54 | Documento | Cero o un `@code` |
 | 55 | Documento | Múltiples `<link rel="component">` |
@@ -647,3 +717,8 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 60 | Documento | `@code` en `<head>` en modo página |
 | 61 | Documento | Orden en `<head>` recomendado no estricto |
 | 62 | Documento | `<head>` en componente se eleva |
+| 75 | Documento | Identidad: envoltorio host + `<template shadowrootmode>` (DSD) |
+| 75.a | Documento | Un único `<template shadowrootmode="open">` (`closed` fuera de v1) |
+| 76 | Documento | Un único `<style>` en head, sin `host` (atributo solo de output) |
+| 77 | Documento | `<style>`/`<link>` dentro del template quedan inline |
+| 78 | Documento | Las instancias en página no cambian; el DSD lo materializa el emit |

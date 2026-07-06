@@ -86,7 +86,7 @@ desde `html/index.ts`). Todo en inglés.
 ### 3.1. Discriminantes
 
 ```ts
-/** decision 51: file starting with `<!DOCTYPE` ⇒ page; else component (decision 52, fragments). */
+/** decision 51: file starting with `<!DOCTYPE` ⇒ page; else component. */
 export type DocumentMode = 'page' | 'component';
 
 /** Active element namespace (decision 41.b). svg/math are case-sensitive, self-close is free. */
@@ -279,10 +279,11 @@ export function parseDocument(source: string, options?: HtmlParserOptions): Pars
 ### 4.1. Detección de modo (decisión 51)
 
 `parseDocument` mira el **primer token significativo** (saltando whitespace). Si es un
-`doctype` → `mode: 'page'`. Si no → `mode: 'component'` (decisión 52: en componente se
-admiten **múltiples raíces** sin wrapper — un fragment). SDD-05 solo **fija el flag**; las
-reglas estructurales de cada modo (`<html>`/`<head>`/`<body>` obligatorios y ordenados, orden
-top-level, ubicación de `<link rel="component">` y `@code`: decisiones 53–62) son **SDD-10**.
+`doctype` → `mode: 'page'`. Si no → `mode: 'component'`. El parser admite **múltiples nodos
+top-level** sintácticamente (links, `@code`, `<head>`-fragment, envoltorio host); SDD-05 solo
+**fija el flag**. Las reglas estructurales de cada modo (`<html>`/`<head>`/`<body>`
+obligatorios y ordenados, orden top-level, ubicación de `<link rel="component">` y `@code`,
+envoltorio host + `<template shadowrootmode>`: decisiones 53–62 y 75–78) son **SDD-10**.
 
 ### 4.2. El bucle de contenido
 
@@ -469,8 +470,9 @@ Entradas reales (fixtures) → árbol esperado. El SDD está `Hecho` cuando:
 12. **Comentario y doctype.** `<!-- x -->` ⇒ `CommentNode` (`value: ' x '`, emitido). Fuente
     que empieza por `<!DOCTYPE html>` ⇒ `mode: 'page'` y un `DoctypeNode` top-level.
 
-13. **Modo componente / fragment (decisiones 51, 52).** Fichero sin doctype con dos raíces
-    (`<link …>` + `<article>…</article>`) ⇒ `mode: 'component'`, ambas como hijos top-level.
+13. **Modo componente / múltiples nodos top-level (decisión 51).** Fichero sin doctype con dos
+    raíces (`<link …>` + `<app-x>…</app-x>`) ⇒ `mode: 'component'`, ambas como hijos top-level.
+    (La regla del envoltorio único, decisión 75, la valida SDD-10 — no el parser.)
 
 14. **SVG + CDATA (decisiones 41.b, 50).** `<svg><![CDATA[…]]></svg>` ⇒ `svg` con
     `namespace: 'svg'` y un hijo `CdataNode`. Un `<![CDATA[…]]>` en contenido HTML ⇒ `FUD0054`.

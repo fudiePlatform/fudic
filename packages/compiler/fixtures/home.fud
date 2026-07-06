@@ -3,6 +3,7 @@
   <head>
     <link rel="component" href="./app-card.fud">
     <link rel="component" href="./app-button.fud">
+    <link rel="component" href="./app-badge.fud">
 
     @code {
       type Item = { id: string; title: string; description: string; featured: boolean };
@@ -33,6 +34,9 @@
           <app-card
             title="@item.title"
             variant="@(item.featured ? 'highlight' : 'default')">
+            @if (item.featured) {
+              <app-badge tone="success">Destacado</app-badge>
+            }
             @item.description
           </app-card>
         }

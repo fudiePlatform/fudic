@@ -10,7 +10,7 @@
 }
 
 <head>
-  <style host="app-button">
+  <style>
     :host { display: inline-block; }
     .btn {
       font: inherit;
@@ -26,11 +26,15 @@
   </style>
 </head>
 
-<button
-  class="btn"
-  class:primary="@(variant === 'primary')"
-  class:ghost="@(variant === 'ghost')"
-  disabled="@disabled"
-  @click="@onClick">
-  <slot></slot>
-</button>
+<app-button>
+  <template shadowrootmode="open">
+    <button
+      class="btn"
+      class:primary="@(variant === 'primary')"
+      class:ghost="@(variant === 'ghost')"
+      disabled="@disabled"
+      @click="@onClick">
+      <slot></slot>
+    </button>
+  </template>
+</app-button>

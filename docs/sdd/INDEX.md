@@ -66,7 +66,7 @@ Todos los SDD siguen la misma estructura fija:
 | [07](./SDD-07-bindings.md) | Interpolación y bindings | `Listo` | 00, 04, 05 | 18–31 |
 | [08](./SDD-08-code-block.md) | Bloque `@code` (server/client/neutral) | `Listo` | 00, 02, 04, 05 | 32–34, 63–66 |
 | [09](./SDD-09-css-razor.md) | CSS con Razor (`<style>`) | `Listo` | 00, 02, 04, 05 | 42 (a–e) |
-| [10](./SDD-10-documento.md) | Estructura del documento | `Listo` | 00, 05, 08 | 53–62 |
+| [10](./SDD-10-documento.md) | Estructura del documento | `Listo` | 00, 05, 08 | 53–62, 75–78 |
 | [11](./SDD-11-oxc.md) | Integración Oxc | `Listo` | 00, 01, 02 | 6, 32 |
 | [12](./SDD-12-semantica.md) | Análisis semántico | `Listo` | 00, 05–11 | 19, 31, 33.a/b/c, 41, 45, 65 |
 | [13](./SDD-13-source-maps.md) | Source maps y `LineMap` | `Listo` | 00, 01, 11 | notas |

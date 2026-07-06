@@ -47,7 +47,7 @@ Invariantes que la atraviesan:
 }
 
 <head>
-  <style host="app-button">
+  <style>
     :host { display: inline-block; }
     .btn {
       font: inherit;
@@ -63,15 +63,24 @@ Invariantes que la atraviesan:
   </style>
 </head>
 
-<button
-  class="btn"
-  class:primary="@(variant === 'primary')"
-  class:ghost="@(variant === 'ghost')"
-  disabled="@disabled"
-  @click="@onClick">
-  <slot></slot>
-</button>
+<app-button>
+  <template shadowrootmode="open">
+    <button
+      class="btn"
+      class:primary="@(variant === 'primary')"
+      class:ghost="@(variant === 'ghost')"
+      disabled="@disabled"
+      @click="@onClick">
+      <slot></slot>
+    </button>
+  </template>
+</app-button>
 ```
+
+El nombre del componente sale del envoltorio `<app-button>` + `<template shadowrootmode>`
+(decisión 75); el `<style>` del head va sin atributo — su scope se deduce de ese tag
+(decisión 76). El marcador `host="app-button"` lo añade la serialización al elevar la hoja
+al head de la página (§3.1).
 
 ---
 
