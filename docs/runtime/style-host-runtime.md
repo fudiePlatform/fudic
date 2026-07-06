@@ -3,6 +3,17 @@
 > **Estado:** borrador en maduración.
 > **Caso canónico:** `app-button.fud` (nivel 2 — handler sin estado por instancia, sin `signal()` ni lifecycle).
 > **Decisiones de gramática que materializa:** 67–70 (ver §6).
+> **Evidencia ejecutable:** [`demo-style-host-polyfill.html`](./demo-style-host-polyfill.html) —
+> 20 + 20 instancias DSD; el script del head es **el código que emitirá el compilador**
+> (`buildSheets` → `adopt` → `adoptAll` → `observeUntilLoaded`: copia constructable única por
+> componente + `MutationObserver` pre-paint). Medido con Lighthouse: Performance 100,
+> FCP = LCP = Speed Index 0,7 s, CLS 0, ~31 ms de script (`lighthouse.json`).
+> **Prueba de streaming real:** [`serve.js`](./serve.js) (`node docs/runtime/serve.js`) — sin
+> frameworks; sirve la demo con `Transfer-Encoding: chunked`. Modelo realista: **un** delay
+> inicial de TTFB (obtener los datos del render, 150 ms por defecto) y después el cuerpo a
+> velocidad de producción, en trozos de bytes crudos cuyos límites caen en mitad de tags y
+> componentes como en TCP real — se ejercita la ruta `pending` del polyfill sin falsear el
+> transporte. Configurable vía `PORT`/`TTFB_MS`/`CHUNK_SIZE`.
 
 ---
 
@@ -23,12 +34,9 @@ Invariantes que la atraviesan:
 - **Todos los shadow roots emitidos por Fudic son inspeccionables y adoptables desde el
   documento.** Esto es lo que hace la feature posible sin runtime de framework: el script de
   adopción puede recorrer el documento y tocar cada shadow directamente.
-- **Fuente CSSOM, no reconstrucción.** El polyfill toma `styleEl.sheet` —la hoja que el
-  navegador ya parseó al encontrar el `<style host>`— y adopta esa referencia. No hay
-  `new CSSStyleSheet()` + `replaceSync`, no hay copia de reglas. Reutiliza el parseo del
-  navegador.
-- **Una sola hoja, N adopciones.** Adoptar la *referencia* deduplica de verdad; copiar las
-  reglas en cada shadow movería el problema sin resolverlo. La feature adopta referencia.
+- **Una copia por componente, no por instancia.** `adoptedStyleSheets` solo acepta hojas
+  construidas, así que el polyfill construye **una** constructable sheet por `style[host]`
+  (`new CSSStyleSheet()` + `replaceSync`) y adopta esa única referencia en las N instancias.
 
 ---
 
@@ -182,34 +190,117 @@ constructor por instancia.
 
 ### 4.1. Adopción de la hoja `<style host>`
 
-Un único script de adopción por documento (no uno por componente). Toma la hoja del CSSOM y la
-adopta por referencia en cada shadow root cuyo host matchee el selector. Pasada única,
-síncrona, antes del primer paint:
+Un único script bloqueante en el `<head>` (no uno por componente), emitido **solo** si algún
+componente de la página aportó `<head><style>`. Es el código validado en la demo:
 
 ```js
-// fud-style-host.js — uno por documento, ~300 bytes, bloqueante al final del <body>
-for (const styleEl of document.querySelectorAll('style[host]')) {
-  const selector = styleEl.getAttribute('host');
-  const sheet = styleEl.sheet; // hoja ya parseada por el navegador — sin reparseo
+// fud-style-host.js — emitted by the compiler, once per page, blocking in <head>
+(() => {
+  'use strict';
 
-  for (const host of document.querySelectorAll(selector)) {
-    const root = host.shadowRoot; // accesible: todos los shadows son inspeccionables
-    if (root) {
-      root.adoptedStyleSheets = [...root.adoptedStyleSheets, sheet]; // misma referencia, N veces
+  /** Valid custom-element tag for a style[host] marker (hyphen mandatory). */
+  const HOST_TAG = /^[a-z][a-z0-9]*(-[a-z0-9]+)+$/;
+
+  /**
+   * One constructable sheet per component tag, built once from its serialized
+   * <style host>. `selector` is the comma-joined list of every host tag, so the
+   * whole document can be scanned with a single querySelectorAll pass. Tags are
+   * validated so one malformed marker cannot break every selector pass.
+   */
+  function buildSheets() {
+    const sheets = new Map();
+    for (const styleEl of document.querySelectorAll('style[host]')) {
+      const tag = styleEl.getAttribute('host');
+      if (!HOST_TAG.test(tag) || sheets.has(tag)) continue;
+      const sheet = new CSSStyleSheet();
+      sheet.replaceSync(styleEl.textContent); // constructed sheet: adoptable
+      sheets.set(tag, sheet);
     }
+    const selector = [...sheets.keys()].join(',');
+    return { sheets, selector };
   }
-}
+
+  /**
+   * Adopt the component's sheet into one host's shadow root. Idempotent without
+   * any state on the host: membership is checked against the live array, which
+   * is the single source of truth.
+   */
+  function adopt(sheets, host) {
+    const sheet = sheets.get(host.localName);
+    const root = host.shadowRoot;
+    if (!sheet || !root || root.adoptedStyleSheets.includes(sheet)) return false;
+    root.adoptedStyleSheets = [...root.adoptedStyleSheets, sheet];
+    return true;
+  }
+
+  /** Adopt every matching host currently in the document (single QSA pass). */
+  function adoptAll({ sheets, selector }) {
+    if (!selector) return;
+    for (const host of document.querySelectorAll(selector)) adopt(sheets, host);
+  }
+
+  /**
+   * Adopt each shadow root in the same microtask in which the parser inserts its
+   * host, i.e. before that chunk paints. `pending` holds hosts whose declarative
+   * shadow template has not closed yet (shadowRoot still null). On DOMContentLoaded
+   * we drain pending one last time; only if it is empty do we disconnect, so a
+   * late-streamed <template shadowrootmode> is never left unstyled.
+   */
+  function observeUntilLoaded({ sheets, selector }) {
+    if (!selector) return;
+    const pending = new Set();
+
+    const scan = (node) => {
+      // The node itself may be a host...
+      if (sheets.has(node.localName) && !adopt(sheets, node)) pending.add(node);
+      // ...and/or contain hosts. One QSA over the subtree with the joined selector.
+      for (const host of node.querySelectorAll(selector))
+        if (!adopt(sheets, host)) pending.add(host);
+    };
+
+    const observer = new MutationObserver((records) => {
+      // Retry hosts whose template closed since last tick.
+      for (const host of pending) if (adopt(sheets, host)) pending.delete(host);
+      for (const record of records)
+        for (const node of record.addedNodes)
+          if (node.nodeType === Node.ELEMENT_NODE) scan(node);
+    });
+
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+
+    addEventListener('DOMContentLoaded', () => {
+      adoptAll({ sheets, selector });
+      for (const host of pending) if (adopt(sheets, host)) pending.delete(host);
+      if (pending.size === 0) observer.disconnect();
+      else addEventListener('load', () => {
+        for (const host of pending) adopt(sheets, host);
+        observer.disconnect();
+      }, { once: true });
+    });
+  }
+
+  observeUntilLoaded(buildSheets());
+})();
 ```
 
-Propiedades:
+Propiedades (medidas con Lighthouse sobre la demo, 20+20 instancias: Performance 100,
+FCP = LCP = Speed Index, CLS 0, ~31 ms de script):
 
-- **Una sola hoja en memoria**, compartida por las N instancias. Deduplicación real.
-- **Sin reparseo**: se reutiliza `styleEl.sheet`.
-- **Un solo script bloqueante constante** para toda la página — no escala con el número de
-  componentes. Corre antes del paint → cierra la ventana de FOUC para el render estático.
+- **Una hoja por componente en memoria**, compartida por las N instancias. Tags validados
+  (`HOST_TAG`): un marcador malformado se descarta sin romper el selector conjunto.
+- **Adopción pre-paint**: el observer adopta en la microtask en la que el parser inserta cada
+  host — cada chunk pinta ya estilizado. Streaming-safe.
+- **Idempotencia sin estado**: la pertenencia se comprueba contra `adoptedStyleSheets`, la
+  única fuente de verdad; no se marca nada en el host.
+- **Coste constante por documento** — no escala con el número de componentes. Un solo
+  `querySelectorAll` por pasada (selector conjunto).
+- **Desconexión segura**: en `DOMContentLoaded` solo si no queda ningún host pendiente; si un
+  template cerró tarde en el stream, el remate cae en `load`.
 - Para hosts añadidos dinámicamente después del render inicial (nivel 3 con instanciación en
   cliente), la adopción se hace en el `connectedCallback` de esa instancia; afecta solo a su
   propio árbol, sin FOUC de página.
+- **Requiere shadow `open`** (`host.shadowRoot`): coherente con la invariante 68 y con la
+  decisión 75.a — `closed` queda fuera de v1.
 
 ### 4.2. Runtime delegado de eventos (nivel 2)
 
@@ -299,9 +390,11 @@ interacción. `app-button` no genera ninguna clase ni constructor: es DSD + una 
 
 ## 6. Decisiones de gramática (67–70)
 
-**67.** `<style host>`: la fuente de la hoja es el CSSOM (`styleEl.sheet`), ya parseado por el
-navegador. Se adopta **por referencia** en `adoptedStyleSheets` de cada shadow root cuyo host
-matchee el selector. Nunca se copian reglas ni se reconstruye la hoja. Una hoja, N adopciones.
+**67.** `<style host>`: se construye **una** constructable sheet por componente
+(`new CSSStyleSheet()` + `replaceSync` del texto del `style[host]`) y esa única referencia se
+adopta en `adoptedStyleSheets` de cada shadow root cuyo host matchee el tag. La copia es
+obligatoria: `adoptedStyleSheets` solo acepta hojas construidas (adoptar `styleEl.sheet`
+lanza `NotAllowedError`). Una hoja por componente, N adopciones.
 
 **68.** Todos los shadow roots emitidos por Fudic son **inspeccionables y adoptables desde el
 documento**. Es la precondición que hace `<style host>` posible sin runtime: el script de
@@ -313,12 +406,17 @@ No requiere `ElementInternals` para el estilo. `ElementInternals.shadowRoot` se 
 hidratación de estado en nivel 3 cuando la clase lo requiera por otras razones, no como puente
 de adopción de CSS.
 
-**70.** La adopción se emite como un **script bloqueante constante por documento** (no uno por
-componente): pasada única, síncrona, pre-paint, sobre los shadows ya presentes. Cierra el FOUC
-sin escalar con el número de componentes. Para hosts dinámicos (nivel 3 instanciado en
-cliente), la adopción cae en el `connectedCallback` de la instancia. **DSD-inline** (`<style>`
-dentro del `<template>`) queda como escape *above-the-fold* para cero-script absoluto, a costa
-de duplicación que la compresión absorbe.
+**70.** La adopción se emite como un **script bloqueante constante por documento** en el
+`<head>` (no uno por componente), y **solo** si algún componente de la página aporta
+`<head><style>`. Construye las hojas al ejecutarse y adopta cada shadow root en la microtask
+en la que el parser inserta su host (`MutationObserver`), antes del paint de ese chunk;
+barrido en `DOMContentLoaded` y desconexión solo cuando no queda ningún host pendiente
+(remate en `load` si un template cerró tarde). Cierra el FOUC sin escalar con el número
+de componentes y es streaming-safe (validado: Lighthouse 100, FCP = LCP = Speed Index,
+CLS 0). Para hosts dinámicos (nivel 3 instanciado en cliente), la adopción cae en el
+`connectedCallback` de la instancia. **DSD-inline** (`<style>` dentro del `<template>`) queda
+como escape *above-the-fold* para cero-script absoluto, a costa de duplicación que la
+compresión absorbe.
 
 ---
 

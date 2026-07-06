@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Evidencia: polyfill style[host] — 20+20 instancias DSD sin FOUC</title>
+
+<!-- Chrome de la página (light DOM). No participa en la prueba. -->
+<style>
+  body { font: 15px/1.5 system-ui, sans-serif; margin: 0; padding: 1.25rem; color: #222; background: #fafafa; }
+  h1 { font-size: 1.15rem; margin: 0 0 .25rem; }
+  p.hint { margin: 0 0 1rem; color: #666; font-size: .85rem; }
+  section { margin: 1.25rem 0; }
+  section h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: #888; margin: 0 0 .5rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: .5rem; }
+</style>
+
+<!-- ══ Hojas elevadas por la "serialización": una por componente, marcador host="tag" ══ -->
+<style host="app-alpha">
+  :host { display: block; }
+  .card { display: flex; gap: .55rem; align-items: baseline;
+          border: 1px solid #90b4e8; border-left: 6px solid #1a73e8; border-radius: 8px;
+          padding: .55rem .85rem; background: linear-gradient(180deg, #f5f9ff, #e8f0fe);
+          color: #174ea6; box-shadow: 0 1px 2px rgba(26,115,232,.25); }
+  .tag { font-weight: 700; font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: #1a73e8; }
+</style>
+
+<style host="app-beta">
+  :host { display: inline-block; margin: .18rem; }
+  .pill { display: inline-flex; gap: .4rem; align-items: center;
+          border: 2px dashed #f9ab00; border-radius: 999px;
+          padding: .3rem .8rem; background: #fef7e0; color: #b06000; font-size: .82rem; }
+  .dot { width: .55rem; height: .55rem; border-radius: 50%; background: #f9ab00; }
+</style>
+
+<!-- fud-style-host.js — emitted by the compiler, once per page, only when some component
+     contributes a <head><style>. Blocking in <head>: the sheets exist before any shadow
+     root is parsed. -->
+<script>
+(() => {
+  'use strict';
+
+  /** Valid custom-element tag for a style[host] marker (hyphen mandatory). */
+  const HOST_TAG = /^[a-z][a-z0-9]*(-[a-z0-9]+)+$/;
+
+  /**
+   * One constructable sheet per component tag, built once from its serialized
+   * <style host>. `selector` is the comma-joined list of every host tag, so the
+   * whole document can be scanned with a single querySelectorAll pass. Tags are
+   * validated so one malformed marker cannot break every selector pass.
+   */
+  function buildSheets() {
+    const sheets = new Map();
+    for (const styleEl of document.querySelectorAll('style[host]')) {
+      const tag = styleEl.getAttribute('host');
+      if (!HOST_TAG.test(tag) || sheets.has(tag)) continue;
+      const sheet = new CSSStyleSheet();
+      sheet.replaceSync(styleEl.textContent); // constructed sheet: adoptable
+      sheets.set(tag, sheet);
+    }
+    const selector = [...sheets.keys()].join(',');
+    return { sheets, selector };
+  }
+
+  /**
+   * Adopt the component's sheet into one host's shadow root. Idempotent without
+   * any state on the host: membership is checked against the live array, which
+   * is the single source of truth.
+   */
+  function adopt(sheets, host) {
+    const sheet = sheets.get(host.localName);
+    const root = host.shadowRoot;
+    if (!sheet || !root || root.adoptedStyleSheets.includes(sheet)) return false;
+    root.adoptedStyleSheets = [...root.adoptedStyleSheets, sheet];
+    return true;
+  }
+
+  /** Adopt every matching host currently in the document (single QSA pass). */
+  function adoptAll({ sheets, selector }) {
+    if (!selector) return;
+    for (const host of document.querySelectorAll(selector)) adopt(sheets, host);
+  }
+
+  /**
+   * Adopt each shadow root in the same microtask in which the parser inserts its
+   * host, i.e. before that chunk paints. `pending` holds hosts whose declarative
+   * shadow template has not closed yet (shadowRoot still null). On DOMContentLoaded
+   * we drain pending one last time; only if it is empty do we disconnect, so a
+   * late-streamed <template shadowrootmode> is never left unstyled.
+   */
+  function observeUntilLoaded({ sheets, selector }) {
+    if (!selector) return;
+    const pending = new Set();
+
+    const scan = (node) => {
+      // The node itself may be a host...
+      if (sheets.has(node.localName) && !adopt(sheets, node)) pending.add(node);
+      // ...and/or contain hosts. One QSA over the subtree with the joined selector.
+      for (const host of node.querySelectorAll(selector))
+        if (!adopt(sheets, host)) pending.add(host);
+    };
+
+    const observer = new MutationObserver((records) => {
+      // Retry hosts whose template closed since last tick.
+      for (const host of pending) if (adopt(sheets, host)) pending.delete(host);
+      for (const record of records)
+        for (const node of record.addedNodes)
+          if (node.nodeType === Node.ELEMENT_NODE) scan(node);
+    });
+
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+
+    addEventListener('DOMContentLoaded', () => {
+      adoptAll({ sheets, selector });
+      for (const host of pending) if (adopt(sheets, host)) pending.delete(host);
+      if (pending.size === 0) observer.disconnect();
+      else addEventListener('load', () => {
+        for (const host of pending) adopt(sheets, host);
+        observer.disconnect();
+      }, { once: true });
+    });
+  }
+
+  observeUntilLoaded(buildSheets());
+})();
+</script>
+</head>
+<body>
+
+<h1>Polyfill <code>style[host]</code> — 20 × <code>app-alpha</code> + 20 × <code>app-beta</code></h1>
+<p class="hint">DSD puro: ningún template lleva &lt;style&gt; dentro. Todo el CSS de los shadows llega por adopción de las 2 hojas del head.</p>
+
+<section>
+  <h2>app-alpha × 20</h2>
+  <div class="grid">
+    <app-alpha><template shadowrootmode="open"><div class="card"><span class="tag">alpha</span><slot></slot></div></template>Instancia A-01</app-alpha>
+    <app-alpha><template shadowrootmode="open"><div class="card"><span class="tag">alpha</span><slot></slot></div></template>Instancia A-02</app-alpha>
+    <app-alpha><template shadowrootmode="open"><div class="card"><span class="tag">alpha</span><slot></slot></div></template>Instancia A-03</app-alpha>
+    <app-alpha><template shadowrootmode="open"><div class="card"><span class="tag">alpha</span><slot></slot></div></template>Instancia A-04</app-alpha>
+    <app-alpha><template shadowrootmode="open"><div class="card"><span class="tag">alpha</span><slot></slot></div></template>Instancia A-05</app-alpha>
+    <app-alpha><template shadowrootmode="open"><div class="card"><span class="tag">alpha</span><slot></slot></div></template>Instancia A-06</app-alpha>
+    <app-alpha><template shadowrootmode="open"><div class="card"><span class="tag">alpha</span><slot></slot></div></template>Instancia A-07</app-alpha>
+    <app-alpha><template shadowrootmode="open"><div class="card"><span class="tag">alpha</span><slot></slot></div></template>Instancia A-08</app-alpha>
+    <app-alpha><template shadowrootmode="open"><div class="card"><span class="tag">alpha</span><slot></slot></div></template>Instancia A-09</app-alpha>
+    <app-alpha><template shadowrootmode="open"><div class="card"><span class="tag">alpha</span><slot></slot></div></template>Instancia A-10</app-alpha>
+    <app-alpha><template shadowrootmode="open"><div class="card"><span class="tag">alpha</span><slot></slot></div></template>Instancia A-11</app-alpha>
+    <app-alpha><template shadowrootmode="open"><div class="card"><span class="tag">alpha</span><slot></slot></div></template>Instancia A-12</app-alpha>
+    <app-alpha><template shadowrootmode="open"><div class="card"><span class="tag">alpha</span><slot></slot></div></template>Instancia A-13</app-alpha>
+    <app-alpha><template shadowrootmode="open"><div class="card"><span class="tag">alpha</span><slot></slot></div></template>Instancia A-14</app-alpha>
+    <app-alpha><template shadowrootmode="open"><div class="card"><span class="tag">alpha</span><slot></slot></div></template>Instancia A-15</app-alpha>
+    <app-alpha><template shadowrootmode="open"><div class="card"><span class="tag">alpha</span><slot></slot></div></template>Instancia A-16</app-alpha>
+    <app-alpha><template shadowrootmode="open"><div class="card"><span class="tag">alpha</span><slot></slot></div></template>Instancia A-17</app-alpha>
+    <app-alpha><template shadowrootmode="open"><div class="card"><span class="tag">alpha</span><slot></slot></div></template>Instancia A-18</app-alpha>
+    <app-alpha><template shadowrootmode="open"><div class="card"><span class="tag">alpha</span><slot></slot></div></template>Instancia A-19</app-alpha>
+    <app-alpha><template shadowrootmode="open"><div class="card"><span class="tag">alpha</span><slot></slot></div></template>Instancia A-20</app-alpha>
+  </div>
+</section>
+
+<section>
+  <h2>app-beta × 20</h2>
+  <div>
+    <app-beta><template shadowrootmode="open"><span class="pill"><span class="dot"></span><slot></slot></span></template>B-01</app-beta>
+    <app-beta><template shadowrootmode="open"><span class="pill"><span class="dot"></span><slot></slot></span></template>B-02</app-beta>
+    <app-beta><template shadowrootmode="open"><span class="pill"><span class="dot"></span><slot></slot></span></template>B-03</app-beta>
+    <app-beta><template shadowrootmode="open"><span class="pill"><span class="dot"></span><slot></slot></span></template>B-04</app-beta>
+    <app-beta><template shadowrootmode="open"><span class="pill"><span class="dot"></span><slot></slot></span></template>B-05</app-beta>
+    <app-beta><template shadowrootmode="open"><span class="pill"><span class="dot"></span><slot></slot></span></template>B-06</app-beta>
+    <app-beta><template shadowrootmode="open"><span class="pill"><span class="dot"></span><slot></slot></span></template>B-07</app-beta>
+    <app-beta><template shadowrootmode="open"><span class="pill"><span class="dot"></span><slot></slot></span></template>B-08</app-beta>
+    <app-beta><template shadowrootmode="open"><span class="pill"><span class="dot"></span><slot></slot></span></template>B-09</app-beta>
+    <app-beta><template shadowrootmode="open"><span class="pill"><span class="dot"></span><slot></slot></span></template>B-10</app-beta>
+    <app-beta><template shadowrootmode="open"><span class="pill"><span class="dot"></span><slot></slot></span></template>B-11</app-beta>
+    <app-beta><template shadowrootmode="open"><span class="pill"><span class="dot"></span><slot></slot></span></template>B-12</app-beta>
+    <app-beta><template shadowrootmode="open"><span class="pill"><span class="dot"></span><slot></slot></span></template>B-13</app-beta>
+    <app-beta><template shadowrootmode="open"><span class="pill"><span class="dot"></span><slot></slot></span></template>B-14</app-beta>
+    <app-beta><template shadowrootmode="open"><span class="pill"><span class="dot"></span><slot></slot></span></template>B-15</app-beta>
+    <app-beta><template shadowrootmode="open"><span class="pill"><span class="dot"></span><slot></slot></span></template>B-16</app-beta>
+    <app-beta><template shadowrootmode="open"><span class="pill"><span class="dot"></span><slot></slot></span></template>B-17</app-beta>
+    <app-beta><template shadowrootmode="open"><span class="pill"><span class="dot"></span><slot></slot></span></template>B-18</app-beta>
+    <app-beta><template shadowrootmode="open"><span class="pill"><span class="dot"></span><slot></slot></span></template>B-19</app-beta>
+    <app-beta><template shadowrootmode="open"><span class="pill"><span class="dot"></span><slot></slot></span></template>B-20</app-beta>
+  </div>
+</section>
+
+</body>
+</html>
