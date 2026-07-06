@@ -72,6 +72,7 @@ Todos los SDD siguen la misma estructura fija:
 | [13](./SDD-13-source-maps.md) | Source maps y `LineMap` | `Listo` | 00, 01, 11 | notas |
 | [14](./SDD-14-runtime.md) | Runtime (`@fudic/dom`·`ssr`·`core`) | `Listo` | 00, 01 | 67–74 |
 | [15](./SDD-15-emit.md) | Emit (AST → runtime) | `Pendiente` | 00, 05–14 | niveles N1–N3 |
+| [16](./SDD-16-stream.md) | Stream + transporte 3 hilos (`ssr`·`transport`) | `Listo` | 00, 01, 14 | — |
 
 ---
 
@@ -118,9 +119,18 @@ SDD-05  Parser HTML           │
                  ▼
           SDD-14  Runtime  ◄── contrato Dom<N> + adapters browser/SSR + signal/lifecycle/eventos/estilos
                  │            (independiente del parser; prerrequisito del emit)
-                 ▼
-          SDD-15  Emit  ◄── HITO: AST → runtime; home + app-card + app-button compilan y corren
+                 ├───────────────────────────┐
+                 ▼                           ▼
+          SDD-15  Emit             SDD-16  Stream + transporte 3 hilos
+             ◄── HITO: AST →         ◄── renderToStream + shell SW/WW/main
+             runtime; home +            (serializador testeable ya; el shell
+             app-card +                 se prueba con RenderChunk falso, DIP)
+             app-button corren
 ```
+
+`16` amplía `@fudic/ssr` (serialización a stream) y crea `@fudic/transport` (el shell de tres
+hilos). Es **ortogonal al emit**: comparte el runtime (14) y expone las primitivas
+(`htmlToByteStream`, `serializeChunks`, escape) que el `async function*` del emit (15) reutilizará.
 
 ### Camino crítico
 
@@ -165,6 +175,7 @@ confirmada por Pedro: **no se implementa el emit hasta que el runtime esté impl
 
 | Fecha | SDD | Cambio |
 |---|---|---|
+| 2026-07-06 | 16 | **Redactado (`Listo`).** Serialización a **stream** + arquitectura de renderizado en **tres hilos** (`docs/arquitecture/stream`). Amplía `@fudic/ssr`: `renderToStream` (árbol → `ReadableStream<Uint8Array>`, perezoso, con backpressure) + `serializeChunks` (el walk de SDD-14 vuelto generador; `renderToString` pasa a `join`earlo, byte-idéntico) + `htmlToByteStream` (Iterable/AsyncIterable de piezas → byte stream: la costura que el `async function*` del emit hereda) + escape expuesto. Crea `@fudic/transport` (shell cliente): contrato de mensajes tipado (datos por `MessagePort` 1:1/`reqId`; control por `BroadcastChannel`, canales disjuntos), adaptador de transporte WW→SW con degradación Safari aislada en `sendRender`/`receiveRender` (detección de **capacidad** `structuredClone` transfer, no UA), `createRouter` (SW: única rama cache hit/miss → delego a WW → `tee`+`cache.put`), `serveRender`/`installRenderWorker` (WW: `import()` dinámico vía `RenderChunk` inyectable, DIP), `loadManifest` (fuente única ruta→chunk), `controlBus`, `registerRenderServiceWorker`. **Decisión de alcance (Pedro):** todo el documento en una SDD; el shell se cierra y testea con `RenderChunk` falso sin necesitar el emit. **Modelo:** stream sobre el árbol ya construido + primitivas reutilizables; el TTFB incremental real es del emit (15). Depende de 00/01/14. Sin decisiones de gramática (arquitectura de runtime). Rango `FUD0260`–`FUD0289` reservado y vacío. |
 | 2026-07-05 | 14 | **Re-planificado y redactado (`Listo`).** La antigua SDD-14 (emit nivel 1) se descarta: el emit no puede escribirse contra un runtime inexistente. SDD-14 pasa a ser el **Runtime completo** (`@fudic/dom`·`ssr`·`core`), y el emit se mueve a **SDD-15**. Cierra el contrato `Dom<N>` (construcción/mutación/shadow/adopción) + `browserDom` + `SsrDom` (árbol desacoplado → `renderToString`, resuelve void/rawtext/DSD/escape que el boceto `dom-wrapper.ts` dejaba abierto) + `signal` (DOM-first, decisión 72) + `Render<N>` lifecycle + `FudicElement` (decisión 73) + delegación N2 vs listeners N3 + `<style host>` (67–70) + scheduler de hidratación (74) + `Cursor`. Idea central: **un render, dos adapters** (espejo runtime de "un AST, dos ramas"). Rango `FUD0230`–`FUD0259` reservado y vacío. Decisiones 67–74. Depende solo de 00/01 (ortogonal al parser). |
 | 2026-06-24 | 00 | Andamiaje montado como monorepo pnpm: `packages/compiler` (`@fudic/compiler`) con TS 5.9.3 (target ES2024), Vite 8.0.16, Vitest 4.1.9, oxc-parser 0.137.0, pnpm 11.9.0. Criterios de aceptación verdes. |
 | 2026-06-24 | 02 | Spec redactada y en estado `Listo`. API: núcleo `scanBalanced(source, openOffset, closer)` + envoltorios `scanParens/Brackets/Braces`. Salida `BalancedGroup` (span, inner, closed, tabla de `LexRegion[]`). Regex vs división por token anterior. Rango `FUD0002`–`FUD0009` reservado. |
