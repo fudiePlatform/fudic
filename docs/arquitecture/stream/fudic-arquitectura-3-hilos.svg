@@ -1,0 +1,94 @@
+<svg viewBox="0 0 1120 860" xmlns="http://www.w3.org/2000/svg" font-family="ui-monospace,'Cascadia Code',Menlo,Consolas,monospace">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#13141a"/>
+    </marker>
+    <marker id="arrowHot" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b5462f"/>
+    </marker>
+    <marker id="arrowLive" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2f6f4f"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1120" height="860" fill="#f5f2ec"/>
+
+  <!-- Header -->
+  <text x="40" y="52" font-size="26" font-weight="700" fill="#13141a">Fudic — Arquitectura de renderizado en tres hilos</text>
+  <text x="40" y="78" font-size="13" fill="#a89c84">Cada navegación es un FetchEvent(navigate). Sin router en el hilo principal. Un único camino de código.</text>
+
+  <!-- Column headers -->
+  <text x="180" y="126" font-size="15" font-weight="700" fill="#3a5fa8" text-anchor="middle">NAVEGADOR</text>
+  <text x="180" y="144" font-size="11" fill="#a89c84" text-anchor="middle">emite navegación · pinta documento</text>
+
+  <text x="560" y="126" font-size="15" font-weight="700" fill="#b5462f" text-anchor="middle">SERVICE WORKER</text>
+  <text x="560" y="144" font-size="11" fill="#a89c84" text-anchor="middle">intercepta · cachea · enruta · reensambla</text>
+
+  <text x="940" y="126" font-size="15" font-weight="700" fill="#2f6f4f" text-anchor="middle">WEB WORKER</text>
+  <text x="940" y="144" font-size="11" fill="#a89c84" text-anchor="middle">import() · emit SSR · render server local</text>
+
+  <!-- Lifelines -->
+  <line x1="180" y1="158" x2="180" y2="712" stroke="#d8d2c4" stroke-width="2"/>
+  <line x1="560" y1="158" x2="560" y2="712" stroke="#d8d2c4" stroke-width="2"/>
+  <line x1="940" y1="158" x2="940" y2="712" stroke="#d8d2c4" stroke-width="2"/>
+
+  <!-- Actor boxes on lifelines -->
+  <rect x="120" y="158" width="120" height="30" rx="4" fill="#fffdf8" stroke="#3a5fa8" stroke-width="1.5"/>
+  <text x="180" y="178" font-size="12" fill="#13141a" text-anchor="middle">Browser</text>
+  <rect x="500" y="158" width="120" height="30" rx="4" fill="#fffdf8" stroke="#b5462f" stroke-width="1.5"/>
+  <text x="560" y="178" font-size="12" fill="#13141a" text-anchor="middle">SW</text>
+  <rect x="880" y="158" width="120" height="30" rx="4" fill="#fffdf8" stroke="#2f6f4f" stroke-width="1.5"/>
+  <text x="940" y="178" font-size="12" fill="#13141a" text-anchor="middle">WW</text>
+
+  <!-- 1. navigate -->
+  <text x="185" y="222" font-size="11" fill="#13141a" font-weight="700">1 · usuario navega (inicial o link interno)</text>
+  <line x1="180" y1="234" x2="556" y2="234" stroke="#3a5fa8" stroke-width="2" marker-end="url(#arrowHot)"/>
+  <text x="368" y="228" font-size="11" fill="#3a5fa8" text-anchor="middle">FetchEvent · mode==='navigate'</text>
+
+  <!-- SW decision -->
+  <rect x="470" y="252" width="180" height="52" rx="4" fill="#fffdf8" stroke="#b5462f" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <text x="560" y="273" font-size="11" fill="#13141a" text-anchor="middle" font-weight="700">e.respondWith(...)</text>
+  <text x="560" y="292" font-size="11" fill="#b5462f" text-anchor="middle">¿cache hit? — única rama</text>
+
+  <!-- cache hit branch -->
+  <text x="560" y="332" font-size="11" fill="#9a8f7d" text-anchor="middle">hit → Response(cache) ─ (vuelve al paso 5)</text>
+
+  <!-- 2. delegate render -->
+  <text x="565" y="372" font-size="11" fill="#13141a" font-weight="700">2 · miss → delega render</text>
+  <line x1="560" y1="384" x2="936" y2="384" stroke="#13141a" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="748" y="378" font-size="11" fill="#13141a" text-anchor="middle">postMessage · {route, reqId, MessagePort}</text>
+
+  <!-- 3. import + emit -->
+  <rect x="850" y="402" width="180" height="66" rx="4" fill="#fffdf8" stroke="#2f6f4f" stroke-width="1.5"/>
+  <text x="940" y="423" font-size="11" fill="#13141a" text-anchor="middle" font-weight="700">import(chunk)</text>
+  <text x="940" y="441" font-size="11" fill="#13141a" text-anchor="middle">emit = renderHome(ctx)</text>
+  <text x="940" y="459" font-size="11" fill="#2f6f4f" text-anchor="middle">async function*</text>
+  <text x="1006" y="392" font-size="11" fill="#13141a" font-weight="700" text-anchor="end">3</text>
+
+  <!-- 4. stream WW -> SW -->
+  <text x="748" y="500" font-size="11" fill="#2f6f4f" text-anchor="middle" font-weight="700">4 · stream de HTML  (WW → SW)</text>
+  <line x1="940" y1="512" x2="564" y2="512" stroke="#2f6f4f" stroke-width="2.5" marker-end="url(#arrowLive)"/>
+  <text x="748" y="530" font-size="10" fill="#2f6f4f" text-anchor="middle">CAN_TRANSFER ? transfiere ReadableStream : chunks ArrayBuffer + reensambla</text>
+
+  <!-- SW tee -->
+  <rect x="470" y="548" width="180" height="34" rx="4" fill="#fffdf8" stroke="#b5462f" stroke-width="1.5"/>
+  <text x="560" y="570" font-size="11" fill="#13141a" text-anchor="middle">tee() → caches.put()</text>
+
+  <!-- 5. Response stream -> browser -->
+  <text x="368" y="614" font-size="11" fill="#13141a" font-weight="700">5 · Response(stream) — documento</text>
+  <line x1="556" y1="626" x2="180" y2="626" stroke="#b5462f" stroke-width="2.5" marker-end="url(#arrowHot)"/>
+  <text x="368" y="644" font-size="10" fill="#a89c84" text-anchor="middle">el navegador pinta el stream como document response</text>
+
+  <!-- 6. hydrate (main) -->
+  <rect x="120" y="662" width="120" height="46" rx="4" fill="#fffdf8" stroke="#3a5fa8" stroke-width="1.5"/>
+  <text x="180" y="682" font-size="11" fill="#13141a" text-anchor="middle" font-weight="700">6 · hidrata</text>
+  <text x="180" y="699" font-size="10" fill="#13141a" text-anchor="middle">@client · posicional</text>
+
+  <!-- BroadcastChannel band -->
+  <rect x="40" y="736" width="1040" height="52" rx="6" fill="#fffdf8" stroke="#d8d2c4" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="60" y="758" font-size="12" fill="#b5462f" font-weight="700">BroadcastChannel · out-of-band</text>
+  <text x="60" y="776" font-size="11" fill="#13141a">los tres hilos · solo control: invalidación de cache · versionado · purga de ruta — nunca payload de render</text>
+
+  <!-- footer note -->
+  <text x="40" y="820" font-size="11" fill="#a89c84">Manifest ruta→chunk: fuente única, misma URL absoluta cargada por SW y WW al arrancar. El WW nunca toca DOM; el DOM API vive solo en el hilo principal.</text>
+</svg>
