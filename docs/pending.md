@@ -9,13 +9,12 @@
 | Paquete | Spec | Estado |
 |---|---|---|
 | `@fudic/dom` | SDD-14 §3.1 | ✅ Implementado y commiteado (100 % cobertura). `Dom<N>`, `DomClient<N>`, `browserDom`, `NS`, `Cursor`/`cursorOf`. |
-| `@fudic/ssr` | SDD-14 §3.2 | 🟡 Parcial. `SsrDom` + `renderToString` hechos. **Faltan las adiciones de stream de SDD-16.** |
+| `@fudic/ssr` | SDD-14 §3.2 + SDD-16 §3.1 | ✅ Completo: `SsrDom`, `renderToString`, y las adiciones de stream de SDD-16 (`serializeChunks`, `renderToStream`, `htmlToByteStream`, escapes expuestos). |
 | `@fudic/core` | SDD-14 §3.3 | ✅ Implementado (100 % cobertura). Cierra SDD-14 (`Hecho`). |
 | `@fudic/transport` | SDD-16 §3.2 | ❌ **No implementado.** Paquete nuevo. |
 
-**Orden recomendado:** adiciones de stream en `@fudic/ssr` → `@fudic/transport`.
-Justificación: las adiciones de `ssr` son pequeñas y autocontenidas; `transport` es el bloque
-grande y depende solo de tipos de plataforma.
+**Queda:** solo `@fudic/transport` (bloque 3). Depende solo de tipos de plataforma; SDD-16 pasa a
+`Hecho` cuando cierre.
 
 ---
 
@@ -63,22 +62,22 @@ Símbolos a implementar (`packages/core/src/`):
 
 ---
 
-## 2. Adiciones de stream en `@fudic/ssr` — SDD-16 (parte 1)
+## 2. Adiciones de stream en `@fudic/ssr` — SDD-16 (parte 1) — ✅ Hecho (2026-07-07)
 
 **Contrato:** SDD-16 §3.1. **Comportamiento:** SDD-16 §4.1–§4.2. **Criterios:** SDD-16 §6 (2–6).
 
 En `packages/ssr/src/` (ampliar, no romper lo existente):
 
-- [ ] `serializeChunks(root): Generator<string>` — refactor del walk actual de `serialize.ts` a
+- [x] `serializeChunks(root): Generator<string>` — refactor del walk actual de `serialize.ts` a
   generador perezoso, **mismas piezas** (void, rawtext, DSD `<template shadowrootmode="open">`,
   escape, `-->` neutralizado).
-- [ ] `renderToString` — reimplementar como `[...serializeChunks(root)].join('')`. Debe quedar
+- [x] `renderToString` — reimplementar como `[...serializeChunks(root)].join('')`. Debe quedar
   **byte-idéntico**: `serialize.test.ts` (SDD-14 §6.3) sigue verde sin tocarse. **Criterio §6.2.**
-- [ ] `htmlToByteStream(source: Iterable | AsyncIterable<string>, opts?): ReadableStream<Uint8Array>`
+- [x] `htmlToByteStream(source: Iterable | AsyncIterable<string>, opts?): ReadableStream<Uint8Array>`
   — fuente `pull`-based; codifica UTF-8 y `enqueue` hasta `desiredSize <= 0`; `cancel()` → `return()`
   del iterador. Acepta async (la costura que el `async function*` del emit hereda). **Criterios §6.5, §6.6.**
-- [ ] `renderToStream(root, opts?)` = `htmlToByteStream(serializeChunks(root))`. **Criterio §6.4.**
-- [ ] Exponer `escapeText` / `escapeAttr` / `neutralizeComment` (hoy privados en `serialize.ts`) para
+- [x] `renderToStream(root, opts?)` = `htmlToByteStream(serializeChunks(root))`. **Criterio §6.4.**
+- [x] Exponer `escapeText` / `escapeAttr` / `neutralizeComment` (hoy privados en `serialize.ts`) para
   que el emit reuse las mismas reglas sin deriva.
 
 **Gotchas:**

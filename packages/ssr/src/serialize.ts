@@ -1,12 +1,14 @@
 /**
- * `renderToString` — serialize an SSR tree to HTML (SDD-14 §3.2, §4.3).
+ * Tree serialization (SDD-14 §3.2, §4.3 · SDD-16 §4.1). One lazy walk, three
+ * consumers: `renderToString` joins it, `renderToStream` encodes it, and the
+ * emit's `async function*` (SDD-15) reuses the same exported escaping rules.
  *
  * Rules:
  *  - void elements (`img`, `br`, …) self-close: no children, no closing tag;
- *  - rawtext elements (`script`, `style`) emit their text children UNescaped —
- *    this is also how a `<style host>` sheet lands inline inside the DSD template;
+ *  - rawtext elements (`script`, `style`) emit their text children UNescaped;
  *  - a shadow root serializes as `<template shadowrootmode="open">…</template>`,
- *    the first thing inside its host;
+ *    the first thing inside its host (a `<style host>` sheet is NOT inlined here:
+ *    the serialization hoists it into the page head, decisions 75–78);
  *  - text is escaped for text context (`& < >`), attribute values for attribute
  *    context (`& "`); a comment neutralizes an inner `-->`.
  */
@@ -22,58 +24,74 @@ const VOID_ELEMENTS = new Set([
 /** Elements whose text content must NOT be escaped. */
 const RAWTEXT_ELEMENTS = new Set(['script', 'style']);
 
-export function renderToString(root: SsrNode): string {
+/**
+ * The single tree walk, as a LAZY generator of HTML text pieces (one per node
+ * boundary). Emits the exact same pieces `renderToString` used to concatenate.
+ */
+export function serializeChunks(root: SsrNode): Generator<string> {
   return serialize(asImpl(root));
 }
 
-function serialize(n: SsrNodeImpl): string {
+/** Unchanged contract (SDD-14 §3.2), now joined over the shared walk. */
+export function renderToString(root: SsrNode): string {
+  return [...serializeChunks(root)].join('');
+}
+
+function* serialize(n: SsrNodeImpl): Generator<string> {
   switch (n.kind) {
     case 'text':
-      return escapeText(n.data);
+      yield escapeText(n.data);
+      return;
     case 'comment':
-      return `<!--${neutralizeComment(n.data)}-->`;
+      yield `<!--${neutralizeComment(n.data)}-->`;
+      return;
     case 'fragment':
-      return serializeChildren(n);
+      yield* serializeChildren(n);
+      return;
     case 'element':
-      return serializeElement(n);
+      yield* serializeElement(n);
+      return;
   }
 }
 
-function serializeElement(n: SsrNodeImpl): string {
+function* serializeElement(n: SsrNodeImpl): Generator<string> {
   const tag = n.tag as string;
-  const open = `<${tag}${serializeAttrs(n)}>`;
+  yield `<${tag}${serializeAttrs(n)}>`;
 
   if (VOID_ELEMENTS.has(tag.toLowerCase())) {
-    return open; // no children, no closing tag
+    return; // no children, no closing tag
   }
 
-  const shadow =
-    n.shadow !== null
-      ? `<template shadowrootmode="open">${serializeChildren(n.shadow)}</template>`
-      : '';
+  if (n.shadow !== null) {
+    yield '<template shadowrootmode="open">';
+    yield* serializeChildren(n.shadow);
+    yield '</template>';
+  }
 
-  const body = RAWTEXT_ELEMENTS.has(tag.toLowerCase())
-    ? rawChildren(n)
-    : serializeChildren(n);
+  if (RAWTEXT_ELEMENTS.has(tag.toLowerCase())) {
+    yield* rawChildren(n);
+  } else {
+    yield* serializeChildren(n);
+  }
 
-  return `${open}${shadow}${body}</${tag}>`;
+  yield `</${tag}>`;
 }
 
-function serializeChildren(n: SsrNodeImpl): string {
-  let out = '';
+function* serializeChildren(n: SsrNodeImpl): Generator<string> {
   for (const child of n.children) {
-    out += serialize(child);
+    yield* serialize(child);
   }
-  return out;
 }
 
 /** Rawtext children: text emitted verbatim; anything else falls back to normal. */
-function rawChildren(n: SsrNodeImpl): string {
-  let out = '';
+function* rawChildren(n: SsrNodeImpl): Generator<string> {
   for (const child of n.children) {
-    out += child.kind === 'text' ? child.data : serialize(child);
+    if (child.kind === 'text') {
+      yield child.data;
+    } else {
+      yield* serialize(child);
+    }
   }
-  return out;
 }
 
 function serializeAttrs(n: SsrNodeImpl): string {
@@ -84,14 +102,17 @@ function serializeAttrs(n: SsrNodeImpl): string {
   return out;
 }
 
-function escapeText(s: string): string {
+/** Escape for text context: `& < >`. */
+export function escapeText(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-function escapeAttr(s: string): string {
+/** Escape for attribute-value context: `& "`. */
+export function escapeAttr(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 }
 
-function neutralizeComment(s: string): string {
+/** Neutralize an inner `-->` so anchor comments (`<!--fud:if-->`) cannot break out. */
+export function neutralizeComment(s: string): string {
   return s.replace(/-->/g, '--&gt;');
 }
