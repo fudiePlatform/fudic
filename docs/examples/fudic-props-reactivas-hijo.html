@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fudic REPL — props reactivas a hijos N1/N2/N3</title>
+<style>
+:root{--ink:#13141a;--paper:#f5f2ec;--panel:#fffdf8;--line:#d8d2c4;--hot:#b5462f;--dead:#9a8f7d;--live:#2f6f4f;--kw:#9a3b8f;--str:#2f6f4f;--com:#a89c84;--at:#b5462f;--fn:#3a5fa8;--num:#b5462f;--tag:#3a5fa8;--mono:ui-monospace,'Cascadia Code',Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.5;padding:24px}
+header{max-width:1200px;margin:0 auto 20px}
+h1{font-size:1.5rem;margin:0 0 6px}
+h2{font-size:.95rem;margin:0 0 8px;font-weight:600}
+.tag{display:inline-block;font-family:var(--mono);font-size:.78rem;color:var(--hot);border:1px solid var(--line);border-radius:5px;padding:2px 8px;background:var(--panel)}
+.case{max-width:1200px;margin:0 auto 34px;border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow:hidden}
+.case-head{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.case-head h2{margin:0}
+.lvl{font-family:var(--mono);font-size:.72rem;padding:2px 7px;border-radius:4px;border:1px solid var(--line)}
+.lvl.n1{color:var(--dead)}.lvl.n2{color:var(--fn)}.lvl.n3{color:var(--hot);border-color:var(--hot)}
+.top{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.pane{padding:14px 16px;overflow-x:auto}
+.pane:first-child{border-right:1px solid var(--line)}
+.pane h2 .ext{color:var(--hot)}
+pre{margin:0;font-family:var(--mono);font-size:.78rem;line-height:1.55;white-space:pre}
+.ln{display:inline-block;width:2em;color:var(--line);user-select:none;text-align:right;margin-right:1em}
+.seg{display:block;border-top:1px dashed var(--line);margin:8px 0;padding-top:8px}
+.t-kw{color:var(--kw)}.t-str{color:var(--str)}.t-com{color:var(--com);font-style:italic}.t-at{color:var(--at);font-weight:700}.t-fn{color:var(--fn)}.t-num{color:var(--num)}.t-tag{color:var(--tag)}
+.stage-wrap{padding:14px 16px;border-top:1px solid var(--line)}
+.live-area{display:flex;flex-direction:column;gap:12px}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.controls .lbl{font-family:var(--mono);font-size:.76rem;color:var(--dead)}
+button{background:var(--ink);color:var(--paper);border:0;border-radius:6px;padding:7px 13px;font-size:.82rem;cursor:pointer;font-family:var(--mono)}
+button:hover{background:var(--hot)}
+.stage{border:1px dashed var(--line);border-radius:8px;padding:14px;background:var(--paper);min-height:48px;font-family:var(--mono);font-size:.85rem}
+.note{max-width:1200px;margin:0 auto 34px;font-size:.85rem;color:var(--dead)}
+.note code{font-family:var(--mono);color:var(--ink)}
+app-label span,app-badge span{padding:2px 6px;border-radius:4px}
+app-badge span.hot{background:var(--hot);color:var(--paper)}
+app-panel em{color:var(--live);font-style:normal;font-weight:600}
+app-list ul{margin:6px 0 0;padding-left:18px}
+@media(max-width:760px){.top{grid-template-columns:1fr}.pane:first-child{border-right:0;border-bottom:1px solid var(--line)}}
+</style>
+</head>
+<body>
+<header>
+<h1>Fudic REPL</h1>
+<span class="tag">prop reactiva de un N3 padre consumida por un hijo — 5 casos según cómo la consume el hijo</span>
+</header>
+
+<div class="note">
+El nivel del hijo <strong>no lo fija su definición aislada</strong>, lo fija cómo consume la prop entrante.
+Misma regla en todos: el padre inyecta <code>el.prop = ctx.signal</code> antes de <code>anchor.before(el)</code>;
+el setter del hijo discrimina primitivo (rama SSR, sin subscription) vs signal (abre subscription, guarda teardown).
+Teardown en <code>disconnectedCallback</code>.
+</div>
+
+<!-- ========================= CASO 1 ========================= -->
+<div class="case" id="case1">
+<div class="case-head"><h2>Caso 1 — interpolación escalar</h2><span class="lvl n2">N2 · nodo vivo + teardown</span><span class="tag">@prop en textContent + title</span></div>
+<div class="top">
+<div class="pane"><h2>app-label<span class="ext">.fud</span></h2><pre><span class="ln">1</span><span class="t-tag">&lt;span</span> <span class="t-at">title</span>=<span class="t-str">"@text"</span><span class="t-tag">&gt;</span><span class="t-at">@text</span><span class="t-tag">&lt;/span&gt;</span>
+<span class="ln">2</span>
+<span class="ln">3</span><span class="t-com">@* text es prop entrante. Si llega signal,</span>
+<span class="ln">4</span><span class="t-com">   el nodo se vuelve vivo solo en esa instancia *@</span></pre></div>
+<div class="pane"><h2>app-label<span class="ext">.js</span> emitido</h2><pre><span class="ln">1</span><span class="t-kw">function</span> <span class="t-fn">renderAppLabel</span>(host, root){
+<span class="ln">2</span>  <span class="t-kw">let</span> span, unsub=<span class="t-kw">null</span>;
+<span class="ln">3</span>  <span class="t-kw">const</span> apply=v=&gt;{span.textContent=v;span.setAttribute(<span class="t-str">'title'</span>,String(v))};
+<span class="ln">4</span>  <span class="t-kw">return</span>{
+<span class="ln">5</span>    <span class="t-fn">create</span>(){span=el(<span class="t-str">'span'</span>);apply(host._text??<span class="t-str">''</span>);root.append(span)},
+<span class="ln">6</span>    <span class="t-fn">hydrate</span>(){span=root.children[<span class="t-num">0</span>]},
+<span class="ln">7</span>    <span class="t-fn">mount</span>(){<span class="t-kw">const</span> p=host._text;
+<span class="ln">8</span>      <span class="t-kw">if</span>(isSignal(p)){apply(p.peek());unsub=p.subscribe(apply)}
+<span class="ln">9</span>      <span class="t-kw">else</span> apply(p??<span class="t-str">''</span>)},
+<span class="ln">10</span>    <span class="t-fn">update</span>(){}, <span class="t-com">// fine-grained: la subscription trabaja</span>
+<span class="ln">11</span>    <span class="t-fn">remove</span>(){<span class="t-kw">if</span>(unsub)unsub()}
+<span class="ln">12</span>  }
+<span class="ln">13</span>}</pre></div>
+</div>
+<div class="stage-wrap"><div class="live-area">
+<div class="controls"><button data-a="c1-set">text.set(random)</button><button data-a="c1-mount">montar/desmontar hijo</button><span class="lbl" id="c1-subs">subs: 0</span></div>
+<div class="stage" id="c1-stage"></div>
+</div></div>
+</div>
+
+<!-- ========================= CASO 3 ========================= -->
+<div class="case" id="case3">
+<div class="case-head"><h2>Caso 3 — clase condicional</h2><span class="lvl n3">N3 inducido · toggle atributo</span><span class="tag">class:hot="@prop"</span></div>
+<div class="top">
+<div class="pane"><h2>app-badge<span class="ext">.fud</span></h2><pre><span class="ln">1</span><span class="t-tag">&lt;span</span> <span class="t-at">class:hot</span>=<span class="t-str">"@(cond)"</span><span class="t-tag">&gt;</span>badge<span class="t-tag">&lt;/span&gt;</span>
+<span class="ln">2</span>
+<span class="ln">3</span><span class="t-com">@* cond alimenta un toggle de clase.</span>
+<span class="ln">4</span><span class="t-com">   No basta setter escalar: hay decisión *@</span></pre></div>
+<div class="pane"><h2>app-badge<span class="ext">.js</span> emitido</h2><pre><span class="ln">1</span><span class="t-kw">function</span> <span class="t-fn">renderAppBadge</span>(host, root){
+<span class="ln">2</span>  <span class="t-kw">let</span> span, unsub=<span class="t-kw">null</span>;
+<span class="ln">3</span>  <span class="t-kw">const</span> apply=c=&gt;span.toggleClass(<span class="t-str">'hot'</span>,!!c);
+<span class="ln">4</span>  <span class="t-kw">return</span>{
+<span class="ln">5</span>    <span class="t-fn">create</span>(){span=el(<span class="t-str">'span'</span>);span.textContent=<span class="t-str">'badge'</span>;apply(host._cond);root.append(span)},
+<span class="ln">6</span>    <span class="t-fn">hydrate</span>(){span=root.children[<span class="t-num">0</span>]},
+<span class="ln">7</span>    <span class="t-fn">mount</span>(){<span class="t-kw">const</span> p=host._cond;
+<span class="ln">8</span>      <span class="t-kw">if</span>(isSignal(p)){apply(p.peek());unsub=p.subscribe(apply)}
+<span class="ln">9</span>      <span class="t-kw">else</span> apply(p)},
+<span class="ln">10</span>    <span class="t-fn">update</span>(){},
+<span class="ln">11</span>    <span class="t-fn">remove</span>(){<span class="t-kw">if</span>(unsub)unsub()}
+<span class="ln">12</span>  }
+<span class="ln">13</span>}</pre></div>
+</div>
+<div class="stage-wrap"><div class="live-area">
+<div class="controls"><button data-a="c3-toggle">cond.set(!cond)</button><button data-a="c3-mount">montar/desmontar hijo</button><span class="lbl" id="c3-subs">subs: 0</span></div>
+<div class="stage" id="c3-stage"></div>
+</div></div>
+</div>
+
+<!-- ========================= CASO 4 ========================= -->
+<div class="case" id="case4">
+<div class="case-head"><h2>Caso 4 — @if sobre la prop</h2><span class="lvl n3">N3 inducido · update existencial</span><span class="tag">@if (prop) { ... }</span></div>
+<div class="top">
+<div class="pane"><h2>app-panel<span class="ext">.fud</span></h2><pre><span class="ln">1</span><span class="t-at">@if</span> (show) {
+<span class="ln">2</span>  <span class="t-tag">&lt;em&gt;</span>presente<span class="t-tag">&lt;/em&gt;</span>
+<span class="ln">3</span>}
+<span class="ln">4</span>
+<span class="ln">5</span><span class="t-com">@* el @if es su propio render; la prop</span>
+<span class="ln">6</span><span class="t-com">   entrante alimenta su cond via subscription *@</span></pre></div>
+<div class="pane"><h2>app-panel<span class="ext">.js</span> emitido</h2><pre><span class="ln">1</span><span class="t-kw">function</span> <span class="t-fn">renderIfBlock</span>(ctx, anchor){ <span class="t-com">// block statement propio</span>
+<span class="ln">2</span>  <span class="t-kw">let</span> child=<span class="t-kw">null</span>;
+<span class="ln">3</span>  <span class="t-kw">const</span> mountChild=()=&gt;{child=el(<span class="t-str">'em'</span>);child.textContent=<span class="t-str">'presente'</span>;anchor.before(child)};
+<span class="ln">4</span>  <span class="t-kw">return</span>{ create(){<span class="t-kw">if</span>(ctx.cond())mountChild()}, hydrate(){…}, mount(){},
+<span class="ln">5</span>    <span class="t-fn">update</span>(){ <span class="t-com">// decisión existencial SOLO del @if</span>
+<span class="ln">6</span>      <span class="t-kw">const</span> should=ctx.cond();
+<span class="ln">7</span>      <span class="t-kw">if</span>(should&amp;&amp;!child)mountChild();
+<span class="ln">8</span>      <span class="t-kw">else if</span>(!should&amp;&amp;child){child.remove();child=<span class="t-kw">null</span>}},
+<span class="ln">9</span>    remove(){<span class="t-kw">if</span>(child){child.remove();child=<span class="t-kw">null</span>}} };
+<span class="ln">10</span>}
+<span class="ln">11</span><span class="t-kw">function</span> <span class="t-fn">renderAppPanel</span>(host, root){
+<span class="ln">12</span>  <span class="t-kw">let</span> anchor, ifBlock, unsub=<span class="t-kw">null</span>;
+<span class="ln">13</span>  <span class="t-kw">return</span>{ create(){…ifBlock=renderIfBlock({cond:()=&gt;truthy(host._show)},anchor);ifBlock.create()},
+<span class="ln">14</span>    <span class="t-fn">mount</span>(){ifBlock.mount();
+<span class="ln">15</span>      <span class="t-kw">if</span>(isSignal(host._show))unsub=host._show.subscribe(()=&gt;ifBlock.update())}, <span class="t-com">// estructural</span>
+<span class="ln">16</span>    remove(){<span class="t-kw">if</span>(unsub)unsub();ifBlock.remove()} };
+<span class="ln">17</span>}</pre></div>
+</div>
+<div class="stage-wrap"><div class="live-area">
+<div class="controls"><button data-a="c4-toggle">show.set(!show)</button><button data-a="c4-mount">montar/desmontar hijo</button><span class="lbl" id="c4-subs">subs: 0</span></div>
+<div class="stage" id="c4-stage"></div>
+</div></div>
+</div>
+
+<!-- ========================= CASO 5 ========================= -->
+<div class="case" id="case5">
+<div class="case-head"><h2>Caso 5 — @foreach sobre prop-array</h2><span class="lvl n3">N3 inducido · reconciliación, estado de instancia</span><span class="tag">@foreach (x of prop) { ... }</span></div>
+<div class="top">
+<div class="pane"><h2>app-list<span class="ext">.fud</span></h2><pre><span class="ln">1</span><span class="t-tag">&lt;ul&gt;</span>
+<span class="ln">2</span>  <span class="t-at">@foreach</span> (<span class="t-kw">const</span> item <span class="t-kw">of</span> items) {
+<span class="ln">3</span>    <span class="t-tag">&lt;li&gt;</span><span class="t-at">@item</span>.label<span class="t-tag">&lt;/li&gt;</span>
+<span class="ln">4</span>  }
+<span class="ln">5</span><span class="t-tag">&lt;/ul&gt;</span>
+<span class="ln">6</span>
+<span class="ln">7</span><span class="t-com">@* el hijo POSEE la reconciliación.</span>
+<span class="ln">8</span><span class="t-com">   estado de lista = estado de instancia *@</span></pre></div>
+<div class="pane"><h2>app-list<span class="ext">.js</span> emitido</h2><pre><span class="ln">1</span><span class="t-kw">function</span> <span class="t-fn">renderForeach</span>(ctx, anchor){
+<span class="ln">2</span>  <span class="t-kw">let</span> rendered=<span class="t-kw">new</span> Map(); <span class="t-com">// key -&gt; {r, box}  ESTADO DE INSTANCIA</span>
+<span class="ln">3</span>  <span class="t-kw">const</span> keyOf=i=&gt;i.id;
+<span class="ln">4</span>  <span class="t-kw">const</span> reconcile=()=&gt;{
+<span class="ln">5</span>    <span class="t-kw">const</span> next=ctx.items(), nextSet=<span class="t-kw">new</span> Set(next.map(keyOf));
+<span class="ln">6</span>    <span class="t-kw">for</span>(<span class="t-kw">const</span>[k,e] <span class="t-kw">of</span>[...rendered]) <span class="t-com">// bajas</span>
+<span class="ln">7</span>      <span class="t-kw">if</span>(!nextSet.has(k)){e.r.remove();rendered.delete(k)}
+<span class="ln">8</span>    <span class="t-kw">const</span> m=<span class="t-kw">new</span> Map();
+<span class="ln">9</span>    <span class="t-kw">for</span>(<span class="t-kw">const</span> item <span class="t-kw">of</span> next){ <span class="t-com">// altas + reorden + update</span>
+<span class="ln">10</span>      <span class="t-kw">const</span> k=keyOf(item); <span class="t-kw">let</span> e=rendered.get(k);
+<span class="ln">11</span>      <span class="t-kw">if</span>(!e){<span class="t-kw">const</span> box={label:item.label};<span class="t-kw">const</span> r=renderItem(box,anchor);r.create();e={r,box}}
+<span class="ln">12</span>      <span class="t-kw">else</span>{e.box.label=item.label;e.r._node().remove();anchor.before(e.r._node());e.r.update()}
+<span class="ln">13</span>      m.set(k,e)}
+<span class="ln">14</span>    rendered=m;
+<span class="ln">15</span>  };
+<span class="ln">16</span>  <span class="t-kw">return</span>{ create(){reconcile()}, update(){reconcile()},
+<span class="ln">17</span>    remove(){<span class="t-kw">for</span>(<span class="t-kw">const</span>{r} <span class="t-kw">of</span> rendered.values())r.remove();rendered.clear()} };
+<span class="ln">18</span>}
+<span class="ln">19</span><span class="t-com">// app-list.mount(): si items es signal, unsub=items.subscribe(()=&gt;foreach.update())</span></pre></div>
+</div>
+<div class="stage-wrap"><div class="live-area">
+<div class="controls"><button data-a="c5-add">alta</button><button data-a="c5-del">baja (2º)</button><button data-a="c5-shuffle">reordenar</button><button data-a="c5-rename">renombrar 1º</button><button data-a="c5-clear">vaciar</button><button data-a="c5-mount">montar/desmontar hijo</button><span class="lbl" id="c5-subs">subs: 0</span></div>
+<div class="stage" id="c5-stage"></div>
+</div></div>
+</div>
+
+<script type="module">
+// ============================================================
+// MISMO .js verificado en Node (27/27). Idéntico en lógica al
+// mostrado en los paneles. Aquí sobre DOM real.
+// ============================================================
+function signal(initial){
+  let value=initial; const subs=new Set();
+  const s=()=>value; s.peek=()=>value;
+  s.subscribe=fn=>{subs.add(fn);return()=>subs.delete(fn)};
+  s.set=v=>{if(v===value)return;value=v;for(const fn of subs)fn(value)}; // Set VIVO
+  s._subCount=()=>subs.size;
+  return s;
+}
+const isSignal=v=>typeof v==='function'&&typeof v.subscribe==='function';
+const el=t=>document.createElement(t);
+const truthy=p=>isSignal(p)?!!p.peek():!!p;
+
+// ---- CASO 1: app-label (N2) ----
+function renderAppLabel(host,root){
+  let span,unsub=null;
+  const apply=v=>{span.textContent=v;span.setAttribute('title',String(v))};
+  return{
+    create(){span=el('span');apply(host._text??'');root.append(span)},
+    hydrate(){span=root.firstElementChild},
+    mount(){const p=host._text;if(isSignal(p)){apply(p.peek());unsub=p.subscribe(apply)}else apply(p??'')},
+    update(){},
+    remove(){if(unsub)unsub()}
+  };
+}
+// ---- CASO 3: app-badge (N3 inducido) ----
+function renderAppBadge(host,root){
+  let span,unsub=null;
+  const apply=c=>span.classList.toggle('hot',!!c);
+  return{
+    create(){span=el('span');span.textContent='badge';apply(host._cond);root.append(span)},
+    hydrate(){span=root.firstElementChild},
+    mount(){const p=host._cond;if(isSignal(p)){apply(p.peek());unsub=p.subscribe(apply)}else apply(p)},
+    update(){},
+    remove(){if(unsub)unsub()}
+  };
+}
+// ---- CASO 4: app-panel + renderIfBlock (N3 inducido) ----
+function renderIfBlock(ctx,anchor){
+  let child=null;
+  const mountChild=()=>{child=el('em');child.textContent='presente';anchor.before(child)};
+  return{
+    create(){if(ctx.cond())mountChild()},
+    hydrate(){const prev=anchor.previousElementSibling;if(prev&&prev.tagName==='EM')child=prev},
+    mount(){},
+    update(){const should=ctx.cond();if(should&&!child)mountChild();else if(!should&&child){child.remove();child=null}},
+    remove(){if(child){child.remove();child=null}}
+  };
+}
+function renderAppPanel(host,root){
+  let anchor,ifBlock,unsub=null;
+  return{
+    create(){anchor=document.createComment('fud:if');root.append(anchor);ifBlock=renderIfBlock({cond:()=>truthy(host._show)},anchor);ifBlock.create()},
+    hydrate(){anchor=[...root.childNodes].find(n=>n.nodeType===8);ifBlock=renderIfBlock({cond:()=>truthy(host._show)},anchor);ifBlock.hydrate()},
+    mount(){ifBlock.mount();if(isSignal(host._show))unsub=host._show.subscribe(()=>ifBlock.update())},
+    update(){},
+    remove(){if(unsub)unsub();ifBlock.remove()}
+  };
+}
+// ---- CASO 5: app-list + renderForeach (N3 inducido, reconciliación) ----
+function renderItem(box,anchor){
+  let node;
+  return{
+    create(){node=el('li');node.textContent=box.label;anchor.before(node)},
+    hydrate(){},mount(){},update(){node.textContent=box.label},
+    remove(){node.remove()},_node:()=>node
+  };
+}
+function renderForeach(ctx,anchor){
+  let rendered=new Map();
+  const keyOf=i=>i.id;
+  const reconcile=()=>{
+    const next=ctx.items(), nextSet=new Set(next.map(keyOf));
+    for(const[k,e]of[...rendered]) if(!nextSet.has(k)){e.r.remove();rendered.delete(k)}
+    const m=new Map();
+    for(const item of next){
+      const k=keyOf(item); let e=rendered.get(k);
+      if(!e){const box={label:item.label};const r=renderItem(box,anchor);r.create();e={r,box}}
+      else{e.box.label=item.label;e.r._node().remove();anchor.before(e.r._node());e.r.update()}
+      m.set(k,e);
+    }
+    rendered=m;
+  };
+  return{
+    create(){reconcile()},hydrate(){},mount(){},update(){reconcile()},
+    remove(){for(const{r}of rendered.values())r.remove();rendered.clear()},
+    _count:()=>rendered.size
+  };
+}
+function renderAppList(host,root){
+  let ul,anchor,foreach,unsub=null;
+  const itemsOf=()=>{const p=host._items;return isSignal(p)?p.peek():(p??[])};
+  return{
+    create(){ul=el('ul');anchor=document.createComment('fud:foreach');ul.append(anchor);root.append(ul);foreach=renderForeach({items:itemsOf},anchor);foreach.create()},
+    hydrate(){ul=root.querySelector('ul');anchor=[...ul.childNodes].find(n=>n.nodeType===8);foreach=renderForeach({items:itemsOf},anchor);foreach.hydrate()},
+    mount(){foreach.mount();if(isSignal(host._items))unsub=host._items.subscribe(()=>foreach.update())},
+    update(){},
+    remove(){if(unsub)unsub();foreach.remove()}
+  };
+}
+
+// ---- custom element genérico que enruta a un render + inyección de prop ----
+function defineHost(tag, renderFn, propKey){
+  if(customElements.get(tag))return;
+  customElements.define(tag, class extends HTMLElement{
+    #r;
+    connectedCallback(){
+      const root=this.shadowRoot ?? this.attachShadow({mode:'open'});
+      this.#r=renderFn(this,root);
+      this.shadowRoot && root.firstChild ? this.#r.hydrate() : this.#r.create();
+      this.#r.mount();
+    }
+    disconnectedCallback(){ this.#r && this.#r.remove(); }
+  });
+}
+defineHost('app-label',renderAppLabel);
+defineHost('app-badge',renderAppBadge);
+defineHost('app-panel',renderAppPanel);
+defineHost('app-list',renderAppList);
+
+// ============================================================
+// BOOTSTRAP de cada caso: el PADRE (N3) posee la signal y la
+// inyecta al hijo ANTES de anchor.before (aquí .append al stage).
+// ============================================================
+const $=id=>document.getElementById(id);
+const words=['alfa','beta','gamma','delta','epsilon','zeta','eta','theta'];
+const rnd=()=>words[Math.floor(Math.random()*words.length)];
+
+// -- Caso 1 --
+(()=>{
+  const stage=$('c1-stage'); const subs=$('c1-subs');
+  let sig=signal(rnd()), host=null;
+  const upd=()=>subs.textContent='subs: '+sig._subCount();
+  const mountH=()=>{host=el('app-label');host._text=sig;stage.append(host);upd()};
+  const unmountH=()=>{if(host){host.remove();host=null}upd()};
+  mountH();
+  document.querySelector('[data-a=c1-set]').onclick=()=>{sig.set(rnd());upd()};
+  document.querySelector('[data-a=c1-mount]').onclick=()=>host?unmountH():mountH();
+})();
+
+// -- Caso 3 --
+(()=>{
+  const stage=$('c3-stage'); const subs=$('c3-subs');
+  let sig=signal(false), host=null;
+  const upd=()=>subs.textContent='subs: '+sig._subCount();
+  const mountH=()=>{host=el('app-badge');host._cond=sig;stage.append(host);upd()};
+  const unmountH=()=>{if(host){host.remove();host=null}upd()};
+  mountH();
+  document.querySelector('[data-a=c3-toggle]').onclick=()=>{sig.set(!sig.peek());upd()};
+  document.querySelector('[data-a=c3-mount]').onclick=()=>host?unmountH():mountH();
+})();
+
+// -- Caso 4 --
+(()=>{
+  const stage=$('c4-stage'); const subs=$('c4-subs');
+  let sig=signal(false), host=null;
+  const upd=()=>subs.textContent='subs: '+sig._subCount();
+  const mountH=()=>{host=el('app-panel');host._show=sig;stage.append(host);upd()};
+  const unmountH=()=>{if(host){host.remove();host=null}upd()};
+  mountH();
+  document.querySelector('[data-a=c4-toggle]').onclick=()=>{sig.set(!sig.peek());upd()};
+  document.querySelector('[data-a=c4-mount]').onclick=()=>host?unmountH():mountH();
+})();
+
+// -- Caso 5 --
+(()=>{
+  const stage=$('c5-stage'); const subs=$('c5-subs');
+  let nextId=4;
+  let sig=signal([{id:1,label:'uno'},{id:2,label:'dos'},{id:3,label:'tres'}]);
+  let host=null;
+  const upd=()=>subs.textContent='subs: '+sig._subCount();
+  const mountH=()=>{host=el('app-list');host._items=sig;stage.append(host);upd()};
+  const unmountH=()=>{if(host){host.remove();host=null}upd()};
+  mountH();
+  document.querySelector('[data-a=c5-add]').onclick=()=>{const a=[...sig.peek(),{id:nextId,label:rnd()+nextId}];nextId++;sig.set(a)};
+  document.querySelector('[data-a=c5-del]').onclick=()=>{const a=sig.peek().slice();if(a.length>1)a.splice(1,1);sig.set(a)};
+  document.querySelector('[data-a=c5-shuffle]').onclick=()=>{const a=sig.peek().slice().reverse();sig.set(a)};
+  document.querySelector('[data-a=c5-rename]').onclick=()=>{const a=sig.peek().map((it,i)=>i===0?{...it,label:it.label.toUpperCase()}:it);sig.set(a)};
+  document.querySelector('[data-a=c5-clear]').onclick=()=>sig.set([]);
+  document.querySelector('[data-a=c5-mount]').onclick=()=>host?unmountH():mountH();
+})();
+</script>
+</body>
+</html>
