@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "declaration": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    // The build has no workspace imports in src (platform types only); the dev
+    // `paths` above exist for the tests, which build real streams via @fudic/ssr.
+    "paths": {}
+  },
+  "include": ["src"]
+}

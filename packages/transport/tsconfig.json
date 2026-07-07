@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // DOM carries MessagePort/BroadcastChannel/Cache/ServiceWorkerRegistration.
+    // lib.webworker cannot be mixed with DOM in one compilation, so the one
+    // missing SW type (FetchEvent) is declared structurally in src/router.ts.
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "paths": {
+      "@fudic/ssr": ["../ssr/src/index.ts"],
+      "@fudic/dom": ["../dom/src/index.ts"]
+    }
+  },
+  "include": ["src", "test"]
+}

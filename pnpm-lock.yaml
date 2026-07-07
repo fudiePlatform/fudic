@@ -52,6 +52,12 @@ importers:
         specifier: workspace:*
         version: link:../dom
 
+  packages/transport:
+    devDependencies:
+      '@fudic/ssr':
+        specifier: workspace:*
+        version: link:../ssr
+
 packages:
 
   '@babel/helper-string-parser@7.29.7':

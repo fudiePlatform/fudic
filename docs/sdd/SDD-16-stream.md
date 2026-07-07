@@ -1,6 +1,6 @@
 # SDD-16 — Serialización a stream y transporte en tres hilos (`@fudic/ssr` · `@fudic/transport`)
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Depende de:** 00, 01, 14
 > **Decisiones de gramática:** — (arquitectura de runtime; no toca gramática. Motiva la forma `async function*` del emit, futura decisión 75+)
 
