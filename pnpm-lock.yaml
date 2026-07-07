@@ -30,6 +30,16 @@ importers:
         specifier: 0.137.0
         version: 0.137.0
 
+  packages/core:
+    dependencies:
+      '@fudic/dom':
+        specifier: workspace:*
+        version: link:../dom
+    devDependencies:
+      happy-dom:
+        specifier: 20.10.6
+        version: 20.10.6
+
   packages/dom:
     devDependencies:
       happy-dom:
