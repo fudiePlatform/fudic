@@ -10,38 +10,40 @@
 |---|---|---|
 | `@fudic/dom` | SDD-14 §3.1 | ✅ Implementado y commiteado (100 % cobertura). `Dom<N>`, `DomClient<N>`, `browserDom`, `NS`, `Cursor`/`cursorOf`. |
 | `@fudic/ssr` | SDD-14 §3.2 | 🟡 Parcial. `SsrDom` + `renderToString` hechos. **Faltan las adiciones de stream de SDD-16.** |
-| `@fudic/core` | SDD-14 §3.3 | ❌ **No implementado.** Última pieza de SDD-14. |
+| `@fudic/core` | SDD-14 §3.3 | ✅ Implementado (100 % cobertura). Cierra SDD-14 (`Hecho`). |
 | `@fudic/transport` | SDD-16 §3.2 | ❌ **No implementado.** Paquete nuevo. |
 
-**Orden recomendado:** `@fudic/core` → adiciones de stream en `@fudic/ssr` → `@fudic/transport`.
-Justificación: `core` cierra SDD-14 (el hito del emit lo exige entero); las adiciones de `ssr` son
-pequeñas y autocontenidas; `transport` es el bloque grande y depende solo de tipos de plataforma.
+**Orden recomendado:** adiciones de stream en `@fudic/ssr` → `@fudic/transport`.
+Justificación: las adiciones de `ssr` son pequeñas y autocontenidas; `transport` es el bloque
+grande y depende solo de tipos de plataforma.
 
 ---
 
-## 1. `@fudic/core` — cerrar SDD-14
+## 1. `@fudic/core` — cerrar SDD-14 — ✅ Hecho (2026-07-07)
 
 **Contrato:** SDD-14 §3.3. **Comportamiento:** SDD-14 §4.4–§4.8. **Criterios:** SDD-14 §6 (6–13).
 **Depende de:** `@fudic/dom` (solo). **No** depende de `@fudic/ssr`.
 
 Símbolos a implementar (`packages/core/src/`):
 
-- [ ] `signal<T>` / `Signal<T>` — valor + `Set` de suscriptores; `set` notifica solo si
+- [x] `signal<T>` / `Signal<T>` — valor + `Set` de suscriptores; `set` notifica solo si
   `!Object.is(v, prev)`; `peek()` sin efectos; `subscribe` devuelve unsubscribe. Sin tracking
   automático en v1 (SDD-14 §4.4). **Criterio §6.6.**
-- [ ] `Render<N>` / `RenderFactory<N>` / `SsrBuild<N>` — los tipos del render object
+- [x] `Render<N>` / `RenderFactory<N>` / `SsrBuild<N>` — los tipos del render object
   (`create/hydrate/mount/update/remove`). Contrato, sin implementación concreta (la produce el emit).
-- [ ] `FudicElement` (abstract, extends `HTMLElement`) — `connectedCallback`: resuelve
+- [x] `FudicElement` (abstract, extends `HTMLElement`) — `connectedCallback`: resuelve
   `root = shadowRoot ?? attachShadow`; si viene DSD del SSR (`shadowRoot && root.firstChild`) →
-  `hydrate(cursorOf(browserDom, root))`, si no → `create()`; luego `styles.adopt` y `mount()`.
+  `hydrate(cursorOf(browserDom, root))`, si no → `create()` + `styles.adopt` (solo en frío; en el
+  hidratado ya adoptó el polyfill); luego `mount()`.
   `disconnectedCallback` → `remove()` (decisión 73). **Criterios §6.7 (frío) y §6.8 (hidrata).**
-- [ ] `delegate` / `Delegate` — un solo listener por `(type, root)`; `on(handlerId, fn)`;
+- [x] `delegate` / `Delegate` — un solo listener por `(type, root)`; `on(handlerId, fn)`;
   `connect(root, type)` idempotente; despacha por `data-fud-e` (N2). **Criterio §6.9.**
-- [ ] `styles` / `StyleRegistry` — `define(id, cssText)` construye **un** `CSSStyleSheet`;
-  `adopt(root, id)` hace `root.adoptedStyleSheets += sheet` (misma referencia N veces, decisiones
-  67–70). **Criterio §6.10.**
-- [ ] `hydrateRoot` / `mountRoot` — bootstrap de render raíz para bloques que no son custom elements.
-- [ ] `defineLazy` / `HydrationStrategy` — difiere `customElements.define` por estrategia
+- [x] `styles` / `StyleRegistry` — solo camino cliente (`create()` tras `load`): `adopt(root, tag)`
+  construye la hoja **una vez** desde el `<style host="tag">` del head (`replaceSync`, cacheada por
+  tag) y empuja la misma referencia N veces. Sin `define(cssText)`. El SSR/DSD lo adopta el polyfill
+  del compilador (`docs/runtime/demo-style-host-polyfill.html`) — **no es parte de core**. **Criterio §6.10.**
+- [x] `hydrateRoot` / `mountRoot` — bootstrap de render raíz para bloques que no son custom elements.
+- [x] `defineLazy` / `HydrationStrategy` — difiere `customElements.define` por estrategia
   (`eager` inmediato; `interaction` default: al primer `pointerdown` sobre `[data-fud-c]`; `viewport`;
   `idle`) (decisión 74). **Criterio §6.12.**
 

@@ -1,6 +1,6 @@
 # SDD-14 — Runtime (`@fudic/dom` · `@fudic/ssr` · `@fudic/core`)
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Depende de:** 00, 01
 > **Decisiones de gramática:** 67–74 (`<style host>`, identidad de nodos, cruce de estado, hidratación)
 
@@ -227,10 +227,11 @@ export interface Delegate {
 }
 export const delegate: Delegate;
 
-// ── Registro de `<style host>` (decisiones 67–70): hoja única adoptada por referencia ──
+// ── Registro de `<style host>` (decisiones 67–70): la fuente es el <style host="tag"> del <head> ──
+// El polyfill que emite el compilador adopta las instancias DSD del SSR (pre-paint); este registro
+// cubre solo la creación en cliente (camino `create()`): construye la hoja una vez desde el head.
 export interface StyleRegistry {
-  define(id: string, cssText: string): void;    // construye el CSSStyleSheet una vez
-  adopt(root: ShadowRoot, id: string): void;     // root.adoptedStyleSheets += sheet (misma ref, N veces)
+  adopt(root: ShadowRoot, tag: string): void;    // sheet desde style[host=tag] (replaceSync, cacheada); misma ref, N veces
 }
 export const styles: StyleRegistry;
 
@@ -282,8 +283,10 @@ lanza** — la imposibilidad de hidratar en SSR es una propiedad del tipo, no un
 - **Rawtext** (`script`, `style`): contenido **sin escapar**.
 - **Shadow** (nodo marcado por `attachShadow`): `<template shadowrootmode="open">…</template>`
   como primer hijo del host.
-- **`<style host>`**: su hoja se emite **inline** como `<style>…</style>` dentro del template (en
-  HTML estático no hay adopción por referencia; en cliente, `styles.adopt` la deduplica).
+- **`<style host>`**: la hoja **no** va inline en el template (decisiones 75–78): la serialización
+  la eleva al `<head>` de la página como `<style host="tag">`, una por componente; el serializador
+  no necesita caso especial. La adopción en las instancias DSD la hace el polyfill que emite el
+  compilador (`docs/runtime/demo-style-host-polyfill.html`).
 - **Escape**: texto → `& < >`; valor de atributo → `& "`; comentario → se rechaza `-->` interno.
 
 `SsrDom` no implementa `DomClient`: no ofrece `setProp`/`setText` (las props padre→hijo las
@@ -315,7 +318,8 @@ Cada render object **posee solo su nodo** y su baja. Cinco fases:
 `FudicElement` (N3, browser) encapsula el `connectedCallback` que los ejemplos repetían a mano
 (decisión 73): resuelve `root = this.shadowRoot ?? attachShadow`; si el shadow viene del SSR
 (`shadowRoot && root.firstChild`) → `hydrate(cursorOf(browserDom, root))`, si no → `create()`;
-luego `adopt` de `<style host>` y `mount()`. `disconnectedCallback` → `remove()`. El emit genera
+en el camino frío `styles.adopt` (en el hidratado la hoja ya la adoptó el polyfill) y `mount()`.
+`disconnectedCallback` → `remove()`. El emit genera
 la subclase que implementa `render()`; el estado (señales) vive como campos de la clase.
 
 ### 4.6. Delegación N2 vs listeners N3
@@ -329,13 +333,18 @@ la subclase que implementa `render()`; el estado (señales) vive como campos de 
 
 Ambos usan el mismo marcador `data-fud-e="<component>:<handler>"` que el emit pinta.
 
-### 4.7. `<style host>` (decisiones 67–70)
+### 4.7. `<style host>` (decisiones 67–70, reescritas 2026-07-06)
 
-`styles.define(id, css)` construye **un** `CSSStyleSheet` (la fuente es el CSSOM ya parseado por el
-navegador). `styles.adopt(root, id)` empuja **esa misma referencia** a `root.adoptedStyleSheets`
-de cada shadow root cuyo host matchee — cero copia de CSS por instancia. En SSR la hoja va inline
-(§4.3). El día que `<style host>` sea nativo, el código de consumo no cambia (decisión 70): esta
-API es la primitiva estable.
+La fuente única del CSS es el `<style host="tag">` que la serialización eleva al `<head>` (uno por
+componente). Las instancias DSD del SSR las adopta pre-paint el **polyfill que emite el compilador**
+(validado en `docs/runtime/demo-style-host-polyfill.html`); ese script no forma parte de core.
+`styles.adopt(root, tag)` cubre el camino restante — instancias creadas en cliente tras `load`
+(`@if`/`@foreach`, camino `create()`) —: construye la hoja **una vez** desde el `textContent` del
+head con `new CSSStyleSheet()` + `replaceSync` (adoptar `styleEl.sheet` lanza `NotAllowedError`),
+la cachea por tag y empuja **la misma referencia** a cada root — cero copia de CSS por instancia.
+El emit garantiza que el head lleva la hoja de **todo** componente que la página use, incluidas
+ramas `@if` falsas en SSR. El día que `<style host>` sea nativo, el código de consumo no cambia
+(decisión 70): esta API es la primitiva estable.
 
 ### 4.8. Scheduler de hidratación (decisión 74)
 
@@ -420,8 +429,10 @@ o modo browser):
    descendiente de `[data-fud-e="app-x:click"]` llama a `fn` una vez con el elemento marcado; un
    segundo `connect` no duplica el listener.
 
-10. **`<style host>`.** `styles.define('c', '...')` + `adopt(rootA,'c')` + `adopt(rootB,'c')`:
-    ambos shadow roots comparten **la misma** referencia de `CSSStyleSheet` (una sola instancia).
+10. **`<style host>`.** Con `<style host="app-c">` en el head del documento de test,
+    `adopt(rootA,'app-c')` + `adopt(rootB,'app-c')`: ambos shadow roots comparten **la misma**
+    referencia de `CSSStyleSheet` (una sola instancia); repetir `adopt` sobre el mismo root no
+    duplica la hoja.
 
 11. **`Cursor`.** Sobre un shadow hidratado, `cursorOf(browserDom, root).seekComment('fud:if')`
     localiza el ancla y `byBinding('count')` localiza el `[data-fud-b="count"]`.
@@ -448,5 +459,6 @@ o modo browser):
   (`before`/`remove`/identidad) lo habilita, pero la política de reconciliación la fija el emit del
   `@foreach` en SDD-15.
 - **Bundling / tree-shaking / split por estrategia**: build tooling, posterior.
-- **Polyfill de `<style host>` para navegadores sin `adoptedStyleSheets`**: futuro; la API no cambia
-  (decisión 70).
+- **El polyfill `style[host]` de página**: ya existe y está validado
+  (`docs/runtime/demo-style-host-polyfill.html`), pero lo emite el compilador (SDD-15) una vez por
+  página; no forma parte de core ni de este SDD.
