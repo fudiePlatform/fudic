@@ -66,7 +66,11 @@ framework, cuya firma es el punto de anclaje del análisis:
 emit(nombre, detail)
 ```
 
-- Importada de `@fudic/dom`. `this` es el host (contexto de la llamada).
+- Importada de `@fudic/dom`. **El developer solo ve `emit(name, detail)`** — el host
+  **no** aparece en la firma. El compilador lo inyecta oculto: reescribe `emit('x', d)`
+  a `emit.call(host, 'x', d)`, de modo que el host llega como `this` (§5.1). Exponer el
+  host (como parámetro o `this` visible) filtraría un asunto del compilador al código de
+  usuario; por eso se borra del tipo público.
 - La primitiva **fuerza** `bubbles: true` y `composed: true`. El developer no gestiona
   la propagación ni el cruce de shadow: son responsabilidad de `emit`, no suya.
 - `dispatchEvent` crudo sigue siendo válido en runtime (es DOM normal), pero **no
@@ -289,10 +293,11 @@ export function signal<T>(initial: T): {
   subscribe(fn: (v: T) => void): () => void;
 };
 
-// emit: único punto de emisión de eventos de bus.
-// Fuerza bubbles + composed. `this` es el host (o se pasa explícito).
-export function emit(name: string, detail?: unknown): void;               // this === host
-export function emit(host: EventTarget, name: string, detail?: unknown): void;
+// emit: único punto de emisión de eventos de bus. Fuerza bubbles + composed.
+// La superficie del developer es SOLO (name, detail): el host NO aparece en el tipo.
+// El compilador inyecta el host de forma invisible reescribiendo `emit('x', d)` a
+// `emit.call(host, 'x', d)`; el host llega como `this`, borrado del tipo público.
+export const emit: (name: string, detail?: unknown) => void;
 ```
 
 `set` itera `for (const fn of subs)` sobre el `Set` vivo (no `[...subs]`): desuscribir a
