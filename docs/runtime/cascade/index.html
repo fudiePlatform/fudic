@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fudic — Cascada de hidratación padre→hijo (post-orden)</title>
+<style>
+  :root{--ink:#13141a;--paper:#f5f2ec;--panel:#fffdf8;--line:#d8d2c4;--hot:#b5462f;
+    --dead:#9a8f7d;--live:#2f6f4f;--mono:ui-monospace,'Cascadia Code',Menlo,Consolas,monospace}
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 system-ui,sans-serif;color:var(--ink);background:var(--paper);padding:1.5rem}
+  h1{font-size:1.3rem;margin:0 0 .3rem}
+  .sub{color:var(--dead);margin:0 0 1.5rem;font-size:.9rem}
+  #app{max-width:680px;margin:0 auto}
+  .node{padding:.7rem .9rem;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+  app-parent .node,app-child .node,app-grandchild .node,app-greatgrandchild .node{margin-top:.5rem}
+  .lvl0{border-left:4px solid var(--hot)}
+  .lvl1{border-left:4px solid #3a5fa8}
+  .lvl2{border-left:4px solid var(--live)}
+  .lvl3{border-left:4px solid #9a3b8f}
+  .tagline{font:12px var(--mono);color:var(--dead);margin-bottom:.3rem}
+  button{background:var(--ink);color:var(--paper);border:0;border-radius:6px;padding:.4rem .9rem;cursor:pointer;font:inherit;margin-top:.4rem}
+  button:hover{background:var(--hot)}
+  .count{font-weight:700;color:var(--hot);font-variant-numeric:tabular-nums}
+  .panel{max-width:680px;margin:1.5rem auto 0;background:#12131a;color:#d8e6d8;
+    border-radius:10px;padding:.9rem 1rem;font:12.5px/1.6 var(--mono);min-height:120px}
+  .panel .l{white-space:pre-wrap}
+  .panel .casc{color:#e0a24a}
+  .panel .path{color:#7fb3ff}
+  .panel .hnd{color:#7fe0a4}
+  details.fud{max-width:680px;margin:0 auto 1rem;border:1px solid var(--line);border-radius:8px;background:var(--panel);overflow:hidden}
+  details.fud>summary{cursor:pointer;padding:.5rem .8rem;font-size:.85rem;color:var(--dead);user-select:none;list-style:none}
+  details.fud>summary::before{content:'▸ ';color:var(--hot)}
+  details.fud[open]>summary::before{content:'▾ '}
+  details.fud pre{margin:0;padding:.8rem 1rem;border-top:1px solid var(--line);
+    font:12.5px/1.55 var(--mono);color:#2c2a24;overflow-x:auto;background:#fbf9f3;white-space:pre}
+</style>
+</head>
+<body>
+
+<h1>Fudic — cascada de hidratación</h1>
+<p class="sub">Click en el botón del <b>padre</b> → el runtime hidrata todo el subárbol en <b>post-orden</b> (bisnieto → nieto → hijo) y el padre <b>el último</b>, antes de soltar el click.</p>
+
+<details class="fud">
+  <summary>composición — lo que escribe el developer (app-parent.fud)</summary>
+<pre>&lt;link rel="component" href="./app-child.fud"&gt;
+@code {
+  @client {
+    import { signal } from '@fudic/dom';
+    const count = signal(0);
+    function inc() { count.set(count.peek() + 1); }
+  }
+}
+&lt;div class="node lvl0"&gt;
+  padre · &lt;span class="count"&gt;@count.value&lt;/span&gt;
+  &lt;button @click="@inc"&gt;incrementar&lt;/button&gt;
+  &lt;app-child /&gt;      @* hijo, que compone nieto, que compone bisnieto *@
+&lt;/div&gt;</pre>
+</details>
+
+<div id="app">
+
+  <app-parent data-id="p">
+    <template shadowrootmode="open">
+      <div class="node lvl0">
+        <div class="tagline">&lt;app-parent data-id="p"&gt;</div>
+        padre · <span class="count">0</span>
+        <button>incrementar</button>
+        <app-child data-id="c">
+          <template shadowrootmode="open">
+            <div class="node lvl1">
+              <div class="tagline">&lt;app-child data-id="c"&gt;</div>
+              hijo
+              <app-grandchild data-id="g">
+                <template shadowrootmode="open">
+                  <div class="node lvl2">
+                    <div class="tagline">&lt;app-grandchild data-id="g"&gt;</div>
+                    nieto
+                    <app-greatgrandchild data-id="gg">
+                      <template shadowrootmode="open">
+                        <div class="node lvl3">
+                          <div class="tagline">&lt;app-greatgrandchild data-id="gg"&gt;</div>
+                          bisnieto · hoja
+                        </div>
+                      </template>
+                    </app-greatgrandchild>
+                  </div>
+                </template>
+              </app-grandchild>
+            </div>
+          </template>
+        </app-child>
+      </div>
+    </template>
+  </app-parent>
+
+</div>
+
+<!-- Estado completo por instancia hidratable. -->
+<script type="application/json" id="fud-state">
+{
+  "p":  { "count": 0, "label": "padre" },
+  "c":  { "label": "hijo" },
+  "g":  { "label": "nieto" },
+  "gg": { "label": "bisnieto" }
+}
+</script>
+
+<!-- Mapa de composición: tag -> [tags hijos hidratables]. Emitido en compilación. -->
+<script type="application/json" id="fud-tree">
+{
+  "app-parent":     ["app-child"],
+  "app-child":      ["app-grandchild"],
+  "app-grandchild": ["app-greatgrandchild"]
+}
+</script>
+
+<div class="panel" id="log"><div class="l">esperando…</div></div>
+
+<script type="module" src="./runtime.js"></script>
+<script>
+  const panel = document.getElementById('log');
+  let first = true;
+  document.addEventListener('fud:log', (e) => {
+    if (first) { panel.innerHTML = ''; first = false; }
+    const d = document.createElement('div'); d.className = 'l';
+    const t = e.detail.line;
+    if (t.startsWith('cascada')||t.startsWith('  hidrata')) d.classList.add('casc');
+    else if (t.startsWith('camino')||t.startsWith('hidrata')||t.startsWith('replay')) d.classList.add('path');
+    else if (t.startsWith('handler')) d.classList.add('hnd');
+    d.textContent = t; panel.appendChild(d); panel.scrollTop = panel.scrollHeight;
+  });
+</script>
+
+</body>
+</html>
