@@ -2,7 +2,7 @@
 
 > **Estado:** `Listo`
 > **Depende de:** 00, 05–11
-> **Decisiones de gramática:** 19, 31, 33.a/b/c, 41, 45, 65
+> **Decisiones de gramática:** 19, 31, 33.a/b/c, 41, 45, 65 · 28.c (pendiente, §8.4)
 
 ---
 
@@ -127,7 +127,7 @@ Cada SDD reserva su rango; aquí está el registro maestro. Formato `FUD` + 4 d�
 | `FUD0030`–`0049` | 04 | (reservado; `@raw` sin cerrar aflora `0002`). |
 | `FUD0050`–`0069` | 05 | `0050` cierre no casa · `0051` cierre huérfano · `0052` elemento sin cerrar · `0053` cierre de void · `0054` CDATA fuera de svg/math · `0055` construcción `@` sin handler. |
 | `FUD0070`–`0089` | 06 | `0070` falta `(` · `0071` falta `{` · `0072` bloque sin cerrar · `0073` `else` huérfano · `0074` contenido antes del primer `case` · `0075` `case`/`default` sin `:`. |
-| `FUD0090`–`0109` | 07 | `0090` property sin `@` · `0091` property con concatenación · `0092` event sin `@` único · `0093` `class:`/`style:` sin `@` único · `0094` `ref` no identificador simple · `0095` `class:`/`style:` sin nombre. |
+| `FUD0090`–`0109` | 07 | `0090` property sin `@` · `0091` property con concatenación · `0092` event sin `@` único · `0093` `class:`/`style:` sin `@` único · `0094` `ref` no identificador simple · `0095` `class:`/`style:` sin nombre · `0096` `bus:` sin `@` único · `0097` `bus:` sin nombre. |
 | `FUD0110`–`0129` | 08 | `0110` falta `{` · `0111` `@server(…)` · `0112` estrategia fuera de whitelist · `0113` parens de estrategia vacío/sin cerrar. |
 | `FUD0130`–`0149` | 09 | `0130` construcción Razor no permitida en `<style>` · `0131` llaves CSS desbalanceadas. |
 | `FUD0150`–`0169` | 10 | `0150` doctype ≠ `html` · `0151` `<html>`/`<head>`/`<body>` faltante o desordenado · `0152` `<link rel="component">` fuera de `<head>` · `0153` `@code` fuera de `<head>` · `0154` más de un `@code` · `0155` orden top-level inválido en componente · `0156` envoltorio host inválido (decisión 75) · `0157` template única ausente en el envoltorio · `0158` `shadowrootmode` inválido · `0159` más de un `<style>` en el head del componente · `0160` atributo `host` escrito en fuente (marcador de output). |
@@ -201,6 +201,25 @@ decidible y delega el resto:
 3. **Pureza del neutro (33.c) — indecidible.** "Sin side effects" no es estáticamente
    decidible. SDD-12 solo avisa (warning) del caso claro: import por efecto. El resto es
    convención/lint.
+
+4. **Nombre de bus `bus:X`/`bus:(X)` y `emit(X,…)` → resolución a literal (28.c) — pendiente.**
+   Para la hidratación dirigida se necesita el **valor string** del nombre, tanto del
+   `BusBinding.eventName` (suscriptor, 28.a/b) como del primer argumento de `emit` (emisor). La
+   regla (a implementar en el futuro SDD de emit de bus, aún no escrito; aquí **registrada**, no
+   activa):
+   - **Resolución.** `expr` participa en el bus **solo si** resuelve estáticamente a un string
+     literal por **constant folding de una sola rama**: referencia a un `const` / objeto
+     `as const` (importado o local), siguiendo el binding hasta su declaración con el AST de
+     Oxc (SDD-11). Indexación dinámica (`EVENTOS[k]`), template literal interpolado o retorno de
+     llamada **no** resuelven.
+   - **Postura permisiva — NO es error.** Un `bus:(expr)` no resoluble funciona como listener DOM
+     normal en runtime; simplemente **no participa** en la hidratación dirigida. No hay código
+     `FUD` asociado (no protegemos lo que no vemos estáticamente).
+   - **Matching por valor (mecanismo único).** Emisor↔suscriptor se casan por el **string
+     resuelto**, no por identidad de símbolo: `bus:carrito` (literal) y `bus:(EVENTOS.carrito)`
+     que resuelve a `'carrito'` producen la **misma** entrada de bus.
+   - **Salida.** El nombre resuelto es un **hecho del `SemanticModel`** que consume el emit de
+     bus; su forma concreta (mapa `tag → eventos`) la define ese SDD futuro, fuera de v1.
 
 ---
 

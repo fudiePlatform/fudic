@@ -53,6 +53,7 @@ export type Binding =
   | AttributeBinding
   | PropertyBinding
   | EventBinding
+  | BusBinding
   | RefBinding
   | ClassBinding
   | StyleBinding;
@@ -74,11 +75,23 @@ export interface PropertyBinding extends Node {
   readonly value: RazorExpression;
 }
 
-/** `@evt="@h"` — reference or lambda; any event name incl. custom (decisions 26, 27, 28).
- *  `name` has no leading `@`. Whether the value is actually a function is runtime (decision 26). */
+/** `@evt="@h"` — host listener; reference or lambda; any event name incl. custom (decisions 26,
+ *  27, 28). `name` is a literal string with NO leading `@`. Whether the value is actually a
+ *  function is runtime (decision 26). Bus subscription is `BusBinding`, not this (decision 28.d). */
 export interface EventBinding extends Node {
   readonly type: 'event';
   readonly name: string;
+  readonly value: RazorExpression;
+}
+
+/** `bus:evt="@h"` — bus subscriber (decision 28.a–28.d). Listens on the page common ancestor
+ *  (`document`), not the host; handler context is the host. Sibling of Class/StyleBinding (22).
+ *  `eventName` is a literal `string` (`bus:carrito`) OR a `RazorExpression` (`bus:(expr)`, the
+ *  naked explicit expression after `bus:`). Static resolution to a literal and matching-by-value
+ *  are SDD-12 (decision 28.c). The desugaring to `document.addEventListener` is emit. */
+export interface BusBinding extends Node {
+  readonly type: 'bus';
+  readonly eventName: string | RazorExpression;
   readonly value: RazorExpression;
 }
 
@@ -131,11 +144,12 @@ export function interpolate(expr: RazorExpression, escaped: boolean): Interpolat
 
 ## 4. Comportamiento — dispatch por nombre (decisión 29)
 
-`classifyAttribute` mira el **nombre** del `Attribute` (verbatim de SDD-05) y despacha:
+`classifyAttribute` mira el **nombre** del `Attribute` (de SDD-05, `string | RazorExpression`) y despacha:
 
 | Forma del nombre | Binding | Reglas que valida aquí |
 |---|---|---|
-| empieza por `@` (`@click`, `@my-event`) | `EventBinding` | valor = **un** `@` (ref o lambda); nombre sin `@` (decisiones 26–28). |
+| `bus:` + nombre/`(expr)` | `BusBinding` | valor = **un** `@`; `eventName` = literal (`bus:carrito`) o la `RazorExpression` (`bus:(expr)`, 28.a–b); resolución a literal en SDD-12 (28.c). |
+| `string` que empieza por `@` (`@click`, `@my-event`) | `EventBinding` | valor = **un** `@` (ref o lambda); nombre de host, sin `@` (decisiones 26–28). |
 | empieza por `.` (`.value`, `.innerHTML`) | `PropertyBinding` | valor = **un** `@`, sin concatenación; nombre sin `.`, case-sensitive (23, 24, 25). |
 | `class:` + nombre | `ClassBinding` | valor = **un** `@` (22). |
 | `style:` + nombre | `StyleBinding` | valor = **un** `@` (22). |
@@ -147,12 +161,21 @@ tipo `razor-expression`). Si no —vacío, texto literal, o concatenación— es
 `AttributeBinding` no hay restricción: `title="@item.title"`, `href="/x/@id"` y `class="card"`
 son todos válidos (decisión 20).
 
+**`@evento` (host) vs `bus:` (document) — 28.d:** `@click`/`@my-event` es siempre listener de
+host (`EventBinding`, `name` literal sin `@`). El prefijo `bus:` es suscripción de bus
+(`BusBinding`): `eventName` es literal (`bus:carrito`) o la `RazorExpression` de `bus:(expr)`.
+Son opuestos y no se infieren por el nombre (28.d); un mismo componente puede llevar ambos.
+La resolución estática a literal y el matching por valor son de **SDD-12** (28.c); el valor de
+ambos exige un único `@` handler (`FUD0092`/`FUD0096` si no).
+
 **`ref` identificador simple (30):** el `RazorExpression` debe ser implícito y un único
 identificador (sin `.`, sin `(`). `ref="@a.b"` → error.
 
 **Lo que NO se valida aquí:** que el handler evalúe a función (26, runtime); que la
 interpolación sea primitiva (19, SDD-12/runtime); `ref` en bucle (31, SDD-12); el omit de
-atributo booleano (21, emit); `TrustedHTML` (18, SDD-12).
+atributo booleano (21, emit); `TrustedHTML` (18, SDD-12); la **resolución estática** del
+nombre `bus:` a string literal, el **matching de bus por valor** (28.c, SDD-12) y el
+**desugaring** de `bus:` a `document.addEventListener` (emit).
 
 ---
 
@@ -181,8 +204,10 @@ SDD-07 reserva **`FUD0090`–`FUD0109`**. Definidos:
 | `FUD0093` | `class:`/`style:` sin un único valor `@` — decisión 22. |
 | `FUD0094` | `ref` cuyo valor no es un identificador simple — decisión 30. |
 | `FUD0095` | `class:`/`style:` sin nombre tras `:` (`class:="@x"`). |
+| `FUD0096` | `bus:` sin un único handler `@` (decisión 28.a). |
+| `FUD0097` | `bus:` sin nombre tras `:` (`bus:="@x"`). |
 
-`FUD0096`–`FUD0109` libres.
+`FUD0098`–`FUD0109` libres.
 
 ---
 

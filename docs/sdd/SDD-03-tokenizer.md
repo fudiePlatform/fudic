@@ -2,7 +2,7 @@
 
 > **Estado:** `Listo`
 > **Depende de:** 00, 01, 02
-> **Decisiones de gramática:** notas "Modos del parser"; 1, 7 (transición `@` léxica); 38–41, 48, 57 (formas HTML); 43 (`<script>` raw)
+> **Decisiones de gramática:** notas "Modos del parser"; 1, 7 (transición `@` léxica); 28.b (`bus:(` en ranura de nombre → `explicit-expr`); 38–41, 48, 57 (formas HTML); 43 (`<script>` raw)
 
 ---
 
@@ -100,7 +100,7 @@ export type TokenType =
   // Razor atoms resolved lexically by the tokenizer
   | 'at-escape' // `@@` → literal `@` (decision 1)
   | 'razor-comment' // `@* ... *@` (decisions 35–37; not emitted to output, but tokenized)
-  | 'explicit-expr' // `@( ... )` (carries `group`)
+  | 'explicit-expr' // `@( ... )` in content/value, OR `( ... )` after a `bus:` name prefix (decision 28.b); carries `group`
   | 'inline-code' // `@{ ... }` (carries `group`)
   | 'at-trigger' // `@` before a keyword/identifier — deferred to SDD-04. Span = the `@`.
   // Raw element body
@@ -236,7 +236,12 @@ El cierre del elemento correspondiente hace `pop`. La taxonomía `Mode` es cerra
   semántica (SDD-12).
 - **Posición del atributo.** Un `@` en posición de **nombre de atributo** (p. ej.
   `@click`) es parte del `attr-name`, no un disparador Razor (decisión 29). El tokenizer
-  distingue por posición.
+  distingue por posición. **Excepción `bus:(` (decisión 28.b):** tras el prefijo `bus:`, si
+  sigue un `(`, el tokenizer emite el prefijo como `attr-name` (`bus:`) **seguido de** un token
+  **`explicit-expr`** —invocando `scanParens` igual que en valor/contenido, §4.4 caso 4— para el
+  nombre-expresión (`bus:(EVENTOS.carrito)`). La forma literal `bus:carrito` es un `attr-name`
+  verbatim normal (prefijo reservado, como `class:foo`). Ningún `@…` en posición de nombre
+  dispara el balanceador: `@click`/`@mi-evento` son `attr-name` literales (listener de host).
 
 ### 4.4. El carácter `@` en modo `html` (y en valores de atributo)
 
@@ -368,6 +373,12 @@ Entradas reales (de los fixtures) → tokens esperados. El SDD está `Hecho` cua
 5. **`@` en nombre de atributo (event).** `@click="@onClick"` ⇒ `attr-name`(name
    `@click`), `attr-eq`, `attr-quote-open`, `at-trigger`, `attr-quote-close`. El primer
    `@` es parte del nombre (decisión 29); el segundo es disparador.
+
+5.b. **Suscriptor de bus (decisión 28.a/b).** `bus:carrito="@onCarrito(ev)"` ⇒ `attr-name`(name
+   `bus:carrito`), `attr-eq`, `attr-quote-open`, `at-trigger`, `attr-quote-close` (prefijo
+   reservado, como `class:foo`). `bus:(EVENTOS.carrito)="@h"` ⇒ `attr-name`(`bus:`), luego
+   `explicit-expr`(`group.inner` = `EVENTOS.carrito`), `attr-eq`, … : el `(` tras `bus:` dispara
+   `scanParens`. SDD-05/07 lo clasifican como `BusBinding`.
 
 6. **Email (lookbehind, decisión 7).** En texto, `user@dominio.com` ⇒ un único `text`
    sin `at-trigger`: el `@` precedido de identificador es literal.

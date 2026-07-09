@@ -2,7 +2,7 @@
 
 > **Estado:** `Listo`
 > **Depende de:** 00, 03, 04
-> **Decisiones de gramática:** 38–52 (menos las semánticas 45 y 57, que van a SDD-12)
+> **Decisiones de gramática:** 38–52 (menos las semánticas 45 y 57, que van a SDD-12); 28.a/b (`bus:`; `Attribute.name` puede ser `RazorExpression`)
 
 ---
 
@@ -133,8 +133,14 @@ export interface ElementNode extends Node {
  */
 export interface Attribute extends Node {
   readonly type: 'attribute';
-  /** Full name incl. leading `@`/`.` and any `:` (decisions 29, 46). */
-  readonly name: string;
+  /**
+   * Attribute name. Usually a verbatim `string` incl. leading `@`/`.` and any `:`
+   * (decisions 29, 46), incl. the reserved `bus:` prefix. For the `bus:(expr)="@h"` form
+   * (decision 28.b) the name is `RazorExpression` — the tokenizer delivered the `bus:` prefix
+   * plus an `explicit-expr`. SDD-05 stays structural; SDD-07 classifies `bus:` ⇒ BusBinding,
+   * and its static resolution / matching is SDD-12 (decision 28.c).
+   */
+  readonly name: string | RazorExpression;
   /** Ordered parts. Empty array ⇒ boolean OR empty value: `x` ≡ `x=""` (decision 44). */
   readonly value: readonly AttributeValuePart[];
 }
@@ -357,12 +363,18 @@ La forma **explícita** `@( … )` no llega como `at-trigger`: el lexer ya la di
 
 ### 4.6. Atributos (decisiones 20, 29, 44, 46, 47, 49)
 
-Entre el name del start tag y su cierre, el lexer emite `attr-name`, `attr-eq`,
-`attr-quote-open`/`attr-quote-close`, y dentro de comillas `text` + átomos `@`. SDD-05 ensambla
-un `Attribute` por cada `attr-name`:
+Entre el name del start tag y su cierre, el lexer emite `attr-name` (o, en la forma 28.b,
+`explicit-expr` en la ranura de nombre), `attr-eq`, `attr-quote-open`/`attr-quote-close`, y
+dentro de comillas `text` + átomos `@`. SDD-05 ensambla un `Attribute` por cada ranura de
+nombre:
 
 - **Nombre verbatim**, incluidos `@`/`.` iniciales y cualquier `:` (decisiones 29, 46). SDD-05
   **no** interpreta el prefijo; distinguir event/property/`ref`/`class:`/`style:` es SDD-07.
+- **`bus:(expr)` — nombre por expresión (decisión 28.b).** Tras el `attr-name` `bus:`, si sigue
+  un `explicit-expr`, `name` = `expressionFromToken(token)` (una `RazorExpression`), no un
+  `string`. Es la forma `bus:(EVENTOS.carrito)="@h"`. SDD-05 sigue sin clasificar: solo aloja la
+  expresión y su span; que sea `BusBinding` y su resolución a literal es SDD-07/SDD-12 (28.c). La
+  forma literal `bus:carrito` es un `attr-name` normal (prefijo reservado).
 - **Valor** = partes en orden entre las comillas: `text` → `AttributeText` (verbatim, decisión
   49); átomos `@` → `RazorExpression` (implícita/explícita, vía SDD-04). Concatenación uniforme
   de partes (decisión 20); el emit optimiza el caso estático.
@@ -455,6 +467,11 @@ Entradas reales (fixtures) → árbol esperado. El SDD está `Hecho` cuando:
    `value` = `[RazorExpression]` (implícita `item.title`). `class:highlight="@(variant === 'highlight')"`
    ⇒ name verbatim `class:highlight`, `value` = `[RazorExpression]` explícita. La clasificación
    `class:` como binding NO se hace aquí (es SDD-07).
+
+8.b. **Suscriptor de bus (decisión 28.a/b).** `bus:carrito="@onCarrito(ev)"` ⇒ `Attribute` `name`
+   string `bus:carrito`. `bus:(EVENTOS.carrito)="@h"` ⇒ `name` es una `RazorExpression`
+   (`EVENTOS.carrito`), no un `string`. `@click="@onClick"` ⇒ `name` string `@click` (host). Que
+   `bus:` sea `BusBinding` y su resolución a literal NO se hace aquí (SDD-07/SDD-12).
 
 9. **`@` de contenido.** `<h2>@title</h2>` ⇒ `h2` con un hijo `RazorExpression` (implícita
    `title`). `<h1>@data.title</h1>` ⇒ hijo `RazorExpression` `data.title`.

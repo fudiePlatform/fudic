@@ -139,9 +139,32 @@ html_block
 
 **27.** Sin modificadores de evento. El handler es función JS normal; `preventDefault`/`stopPropagation` se llaman en código.
 
-**28.** Cualquier nombre de evento aceptado, incluidos custom events (`@my-event`).
+**28.** Cualquier nombre de evento aceptado, incluidos custom events (`@my-event`). `@evento` es **siempre listener de host** (nombre literal). Para suscripción a eventos de bus entre componentes desacoplados, ver 28.a–28.d (`bus:`).
 
-**29.** (Consecuencia, no decisión.) `@` en posición de nombre de atributo activa event binding; en posición de contenido/valor activa interpolación. El parser distingue por posición.
+**28.a.** *Prefijo `bus:` — suscriptor declarativo.* `bus:carrito="@onCarrito(ev)"` registra un listener en el **ancestro común de página (`document`)**, no en el host, con el host como contexto del handler (emisor y suscriptor son hermanos: un evento que burbujea desde el emisor nunca entra en el host del suscriptor). `bus:` es **prefijo de binding reservado**, hermano de `class:`/`style:` (decisión 22); no es atributo con `:` literal (decisión 46).
+
+**28.b.** *Dos formas del nombre bajo `bus:`.* `bus:carrito` (literal, `attr-name`) y `bus:(EVENTOS.carrito)` (expresión explícita para constante importada; el `(` tras `bus:` abre el balanceador, `scanParens`, y el tokenizer emite `explicit-expr`). El parser **solo distingue las dos formas y guarda el span**; la resolubilidad es semántica (28.c → SDD-12).
+
+**28.c.** *(Regla semántica, no sintáctica — SDD-12.)* El nombre de evento —en `bus:X`/`bus:(X)` y en `emit(X, …)`— participa en **hidratación dirigida** solo si `X` resuelve estáticamente a **string literal** (constant folding de una rama: `const`/`as const` local o importado). Si requiere cómputo (`EVENTOS[k]`, template interpolado, retorno de llamada) **no es error**: funciona como listener DOM normal pero **no participa** en hidratación dirigida (permisivo). *Matching* emisor↔suscriptor **por valor de string resuelto** (mecanismo único): `bus:carrito` y `bus:(EVENTOS.carrito)`→`'carrito'` producen la misma entrada; sin identidad de símbolo.
+
+**28.d.** *`@evento` vs `bus:evento` — opuestos, intención declarada no inferida.* `@carrito` = listener de host; `bus:carrito` = listener de `document`. Un mismo componente puede llevar ambos. El compilador **no infiere** cuál se quería por el nombre: la sintaxis lo declara, simétrico al `emit` del emisor.
+
+**29.** (Consecuencia, no decisión.) `@` en posición de nombre de atributo activa event binding de host; en contenido/valor activa interpolación. El parser distingue por posición. El prefijo `bus:` activa el binding de bus.
+
+### Gramática del binding de bus (sección 7)
+
+```
+bus_binding
+  : bus_name WS* EQ WS* attr_quote AT handler attr_quote
+  ;
+
+bus_name
+  : "bus:" identifier_with_dashes    // bus:carrito              (28.b) → attr-name
+  | "bus:" explicit_expression_naked // bus:(EVENTOS.carrito)    (28.b) → explicit-expr
+  ;
+```
+
+`explicit_expression_naked` es `(expr)` **sin `@`** (el prefijo `bus:` ya abre el binding, como `class:`); balanceador vía `scanParens`, delegado a Oxc (decisión 6). El tokenizer (SDD-03) emite `attr-name` para la forma literal y `explicit-expr` para la forma expresión; SDD-07 lo clasifica como `BusBinding`. Resolución a literal y matching por valor (28.c) → SDD-12.
 
 **30.** `ref="@var"` acepta solo identificador simple. Expresiones complejas no soportadas en v1.
 
@@ -666,8 +689,12 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 25 | Interpolación | Property binding case-sensitive |
 | 26 | Interpolación | Handler como referencia o lambda |
 | 27 | Interpolación | Sin modificadores de evento |
-| 28 | Interpolación | Cualquier nombre de evento |
-| 29 | Interpolación | (Consecuencia) `@` distingue por posición |
+| 28 | Interpolación | Cualquier nombre de evento; `@evento` = host literal |
+| 28.a | Interpolación | Prefijo `bus:` — suscriptor, listener en `document` |
+| 28.b | Interpolación | `bus:literal` y `bus:(expr)` — dos formas del nombre |
+| 28.c | Interpolación | (Semántica, SDD-12) Resolución a literal + matching por valor (`bus:`+`emit`) |
+| 28.d | Interpolación | `@evento` (host) vs `bus:evento` (document), no inferido |
+| 29 | Interpolación | (Consecuencia) `@` distingue por posición; `bus:` activa bus |
 | 30 | Interpolación | `ref` solo identificador simple |
 | 31 | Interpolación | `ref` en bucle → error |
 | 32 | `@code` | `@server`/`@client` sintaxis Razor genuina |
