@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fudic — hidratación real por interacción</title>
+
+<!-- Polyfill <style host>: adopta una sola CSSStyleSheet por tag en cada shadow.
+     Registra sheets dinámicamente y recomputa el selector (soporta streaming). -->
+<script>
+(() => {
+  'use strict';
+  const HOST_TAG = /^[a-z][a-z0-9]*(-[a-z0-9]+)+$/;
+  const sheets = new Map();
+  let selector = '';
+  const pending = new Set();
+
+  function registerStyle(el) {
+    const tag = el.getAttribute('host');
+    if (!HOST_TAG.test(tag) || sheets.has(tag)) return false;
+    const s = new CSSStyleSheet(); s.replaceSync(el.textContent);
+    sheets.set(tag, s); selector = [...sheets.keys()].join(','); return true;
+  }
+  function adopt(host) {
+    const s = sheets.get(host.localName), r = host.shadowRoot;
+    if (!s || !r) return false;
+    if (r.adoptedStyleSheets.includes(s)) return true;
+    r.adoptedStyleSheets = [...r.adoptedStyleSheets, s]; return true;
+  }
+  function adoptAll() { if (selector) for (const h of document.querySelectorAll(selector)) if (!adopt(h)) pending.add(h); }
+  function drain() { for (const h of pending) if (adopt(h)) pending.delete(h); }
+  const scan = (n) => {
+    if (n.tagName === 'STYLE' && n.hasAttribute('host')) { if (registerStyle(n)) { adoptAll(); drain(); } }
+    for (const s of n.querySelectorAll?.('style[host]') ?? []) if (registerStyle(s)) { adoptAll(); drain(); }
+    if (sheets.has(n.localName) && !adopt(n)) pending.add(n);
+    if (selector) for (const h of n.querySelectorAll?.(selector) ?? []) if (!adopt(h)) pending.add(h);
+  };
+  new MutationObserver(recs => { drain(); for (const r of recs) for (const n of r.addedNodes) if (n.nodeType===1) scan(n); })
+    .observe(document.documentElement, { childList: true, subtree: true });
+  addEventListener('DOMContentLoaded', () => {
+    for (const s of document.querySelectorAll('style[host]')) registerStyle(s);
+    adoptAll(); drain();
+  });
+})();
+</script>
+
+<!-- El compilador eleva aquí los <style host> de cada componente: una copia. -->
+<style host="app-counter">
+  :host { display:inline-block; }
+  .box { border:1px solid #d8d2c4; border-radius:8px; padding:.7rem .9rem;
+         font:600 15px ui-monospace,Menlo,Consolas,monospace; background:#fffdf8; color:#13141a; }
+  .n { color:#b5462f; }
+  button { font:inherit; border:0; background:#13141a; color:#f5f2ec; border-radius:6px;
+           padding:.35rem .7rem; cursor:pointer; margin-left:.4rem; }
+  button:hover { background:#b5462f; }
+</style>
+<style host="app-toggle">
+  :host { display:inline-block; }
+  .box { border:1px solid #d8d2c4; border-radius:8px; padding:.7rem .9rem;
+         font:600 15px ui-monospace,Menlo,Consolas,monospace; background:#fffdf8; }
+  .pill { padding:.15rem .55rem; border-radius:999px; font-weight:700; }
+  .pill.on  { background:#dff0e6; color:#2f6f4f; }
+  .pill.off { background:#f0e2dd; color:#9a8f7d; }
+  button { font:inherit; border:0; background:#13141a; color:#f5f2ec; border-radius:6px;
+           padding:.35rem .7rem; cursor:pointer; margin-left:.4rem; }
+  button:hover { background:#b5462f; }
+</style>
+
+<style>
+  :root{ --ink:#13141a; --paper:#f5f2ec; --panel:#fffdf8; --line:#d8d2c4; --hot:#b5462f;
+         --dead:#9a8f7d; --live:#2f6f4f; --mono:ui-monospace,Menlo,Consolas,monospace; }
+  *{box-sizing:border-box} body{margin:0;background:var(--paper);color:var(--ink);
+    font:15px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:24px;}
+  header{border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:18px;}
+  h1{font:700 20px var(--mono);margin:0;}
+  h1 .t{font-size:12px;background:var(--ink);color:var(--paper);padding:2px 8px;border-radius:4px;margin-left:8px;vertical-align:middle;}
+  .grid{display:grid;grid-template-columns:1fr 360px;gap:18px;align-items:start;}
+  @media(max-width:820px){.grid{grid-template-columns:1fr;}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;}
+  .card h2{font:600 12px var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--dead);margin:0 0 12px;}
+  .stage{display:flex;gap:14px;flex-wrap:wrap;min-height:60px;}
+  .log{font:12px/1.55 var(--mono);white-space:pre-wrap;margin:0;max-height:300px;overflow:auto;
+       background:#fbf8f1;border:1px solid var(--line);border-radius:6px;padding:10px;}
+  .log .net{color:var(--hot);} .log .cache{color:var(--live);} .log .dim{color:var(--dead);}
+  .hint{color:var(--dead);font:11px var(--mono);margin-top:10px;}
+  code{background:#efe9dd;padding:1px 5px;border-radius:4px;font:12px var(--mono);}
+</style>
+</head>
+
+<body>
+<header>
+  <h1>Fudic <span class="t">SSR real · descarga por red · SW</span></h1>
+</header>
+
+<div class="grid">
+  <div class="card">
+    <h2>Página SSR — cero JS de componente hasta el primer clic</h2>
+    <div class="stage" id="app">
+
+      <!-- HOSTS SSR con Declarative Shadow DOM real: el parser materializa el
+           shadow al cargar. Se ven sin una gota de JS de componente.
+           data-id enlaza con el estado del payload. -->
+
+      <app-counter data-id="1">
+        <template shadowrootmode="open">
+          <div class="box">contador <span class="n">3</span> <button>+1</button></div>
+        </template>
+      </app-counter>
+
+      <app-counter data-id="2">
+        <template shadowrootmode="open">
+          <div class="box">contador <span class="n">10</span> <button>+1</button></div>
+        </template>
+      </app-counter>
+
+      <app-toggle data-id="3">
+        <template shadowrootmode="open">
+          <div class="box"><span class="pill on">ON</span> <button>toggle</button></div>
+        </template>
+      </app-toggle>
+
+    </div>
+    <p class="hint">
+      Abre <b>DevTools → Network</b> (filtro JS) y <b>Console</b>. Al cargar solo baja
+      <code>runtime.js</code>. Al primer clic en un componente baja su
+      <code>components/&lt;tag&gt;.js</code> (network-first, y el SW lo cachea).
+      Recarga o vuelve a interactuar con otra instancia del mismo tag → el chunk sale
+      de <b>ServiceWorker/cache</b>, no de red. Comprueba en consola:
+      <code>document.querySelectorAll(':not(:defined)')</code> — los tags desaparecen
+      de esa lista a medida que se hidratan.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Trazas</h2>
+    <pre class="log" id="log"></pre>
+  </div>
+</div>
+
+<!-- PAYLOAD SSR: data-id → estado completo del componente al serializar. -->
+<script type="application/json" id="fud-state">
+{ "1": { "count": 3 }, "2": { "count": 10 }, "3": { "on": true } }
+</script>
+
+<!-- Registro del SW (fichero propio, scope raíz). -->
+<script>
+  const log = (msg, cls) => {
+    const el = document.getElementById('log');
+    const s = document.createElement('span'); if (cls) s.className = cls;
+    s.textContent = msg + '\n'; el.appendChild(s); el.scrollTop = el.scrollHeight;
+  };
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').then(() => {
+      log('service worker registrado', 'cache');
+    }).catch(err => log('SW no disponible: ' + err.message, 'dim'));
+  } else {
+    log('sin serviceWorker en este navegador', 'dim');
+  }
+  document.addEventListener('fud:ready', () => log('runtime cargado. cero JS de componente aún.', 'dim'));
+  document.addEventListener('fud:hydrated', (e) => log(
+    `hidrata <${e.detail.tag}> #${e.detail.id}  [${e.detail.ms}ms]`, 'net'));
+  document.addEventListener('fud:change', (e) => {
+    const d = e.detail;
+    log(`  cambio #${d.id} → ${'count' in d ? 'count=' + d.count : (d.on ? 'ON' : 'OFF')}`, 'dim');
+  });
+</script>
+
+<!-- EL ÚNICO JS de app que carga al inicio. Módulo real, se descarga por red. -->
+<script type="module" src="./runtime.js"></script>
+</body>
+</html>
