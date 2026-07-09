@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fudic — Eventos de bus (emisor / suscriptor)</title>
+
+<!-- Polyfill <style host>: una CSSStyleSheet por tag, adoptada en cada shadow. -->
+<script>
+(() => {
+  'use strict';
+  const HOST_TAG = /^[a-z][a-z0-9]*(-[a-z0-9]+)+$/;
+  const sheets = new Map();
+  let selector = '';
+  const pending = new Set();
+  function registerStyle(el) {
+    const tag = el.getAttribute('host');
+    if (!HOST_TAG.test(tag) || sheets.has(tag)) return false;
+    const s = new CSSStyleSheet(); s.replaceSync(el.textContent);
+    sheets.set(tag, s); selector = [...sheets.keys()].join(','); return true;
+  }
+  function adopt(host) {
+    const s = sheets.get(host.localName), r = host.shadowRoot;
+    if (!s || !r) return false;
+    if (r.adoptedStyleSheets.includes(s)) return true;
+    r.adoptedStyleSheets = [...r.adoptedStyleSheets, s]; return true;
+  }
+  function adoptAll() { if (selector) for (const h of document.querySelectorAll(selector)) if (!adopt(h)) pending.add(h); }
+  function drain() { for (const h of pending) if (adopt(h)) pending.delete(h); }
+  const scan = (n) => {
+    if (n.tagName === 'STYLE' && n.hasAttribute('host')) { if (registerStyle(n)) { adoptAll(); drain(); } }
+    for (const s of n.querySelectorAll?.('style[host]') ?? []) if (registerStyle(s)) { adoptAll(); drain(); }
+    if (sheets.has(n.localName) && !adopt(n)) pending.add(n);
+    if (selector) for (const h of n.querySelectorAll?.(selector) ?? []) if (!adopt(h)) pending.add(h);
+  };
+  new MutationObserver(recs => { drain(); for (const r of recs) for (const n of r.addedNodes) if (n.nodeType===1) scan(n); })
+    .observe(document.documentElement, { childList: true, subtree: true });
+  addEventListener('DOMContentLoaded', () => {
+    for (const s of document.querySelectorAll('style[host]')) registerStyle(s);
+    adoptAll(); drain();
+  });
+})();
+</script>
+
+<!-- CSS por tag, una sola copia, adoptado en cada shadow por el polyfill. -->
+<style host="product-list">
+  :host { display:block; }
+  .lista { list-style:none; margin:0; padding:0; display:grid; gap:.5rem; }
+  .lista li { display:grid; grid-template-columns:1fr auto auto; align-items:center;
+    gap:.75rem; padding:.6rem .8rem; background:var(--panel,#fffdf8);
+    border:1px solid var(--line,#d8d2c4); border-radius:8px; }
+  .lista li span:nth-child(2){ color:var(--hot,#b5462f); font-variant-numeric:tabular-nums; }
+  .lista button { background:var(--ink,#13141a); color:var(--paper,#f5f2ec);
+    border:0; border-radius:6px; padding:.4rem .8rem; cursor:pointer; font:inherit; }
+  .lista button:hover { background:var(--hot,#b5462f); }
+</style>
+<style host="shopping-cart">
+  :host { display:block; }
+  .carrito { display:flex; align-items:center; gap:1rem; padding:.8rem 1rem;
+    background:var(--ink,#13141a); color:var(--paper,#f5f2ec); border-radius:10px; }
+  .badge { background:var(--hot,#b5462f); color:#fff; min-width:1.6rem; height:1.6rem;
+    display:inline-grid; place-items:center; border-radius:50%; font-weight:700;
+    font-variant-numeric:tabular-nums; }
+  .importe { margin-left:auto; font-size:1.15rem; font-weight:700;
+    font-variant-numeric:tabular-nums; }
+</style>
+
+<style>
+  :root{--ink:#13141a;--paper:#f5f2ec;--panel:#fffdf8;--line:#d8d2c4;--hot:#b5462f;
+    --dead:#9a8f7d;--live:#2f6f4f;--com:#a89c84;--mono:ui-monospace,'Cascadia Code',Menlo,Consolas,monospace}
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 system-ui,sans-serif;color:var(--ink);background:var(--paper);padding:1.5rem}
+  h1{font-size:1.3rem;margin:0 0 .3rem}
+  .sub{color:var(--dead);margin:0 0 1.5rem;font-size:.9rem}
+  #app{display:grid;gap:1.2rem;max-width:640px;margin:0 auto}
+  .cartline{position:sticky;top:0;z-index:2}
+  .hint{font-size:.85rem;color:var(--dead);margin:.2rem 0 0}
+  .panel{max-width:640px;margin:1.5rem auto 0;background:#12131a;color:#d8e6d8;
+    border-radius:10px;padding:.9rem 1rem;font:12.5px/1.6 var(--mono);min-height:120px}
+  .panel .l{white-space:pre-wrap}
+  .panel .bus{color:#e0a24a}
+  .panel .path{color:#7fb3ff}
+  .panel .cart{color:#7fe0a4}
+  .legend{max-width:640px;margin:.6rem auto 0;font-size:.8rem;color:var(--dead)}
+  code{font-family:var(--mono);background:#0002;padding:.05rem .3rem;border-radius:4px}
+  details.fud{border:1px solid var(--line);border-radius:8px;background:var(--panel);overflow:hidden;margin-bottom:.5rem}
+  details.fud>summary{cursor:pointer;padding:.5rem .8rem;font-size:.85rem;color:var(--dead);user-select:none;list-style:none}
+  details.fud>summary::before{content:'▸ ';color:var(--hot)}
+  details.fud[open]>summary::before{content:'▾ '}
+  details.fud>summary .ext{color:var(--hot);font-family:var(--mono);font-weight:600}
+  details.fud pre{margin:0;padding:.8rem 1rem;border-top:1px solid var(--line);
+    font:12.5px/1.55 var(--mono);color:#2c2a24;overflow-x:auto;background:#fbf9f3;white-space:pre}
+</style>
+</head>
+<body>
+
+<h1>Fudic — eventos de bus</h1>
+<p class="sub">El carrito (suscriptor) se hidrata <em>antes</em> que la lista (emisor), disparado por el primer click en un item.</p>
+
+<div id="app">
+
+  <!-- SUSCRIPTOR arriba. En el .fud: <shopping-cart @carrito="@onCarrito(ev)"> -->
+  <!-- data-id sólo en instancias N3 efectivas. Payload lleva su estado completo. -->
+  <details class="fud">
+    <summary>SUSCRIPTOR — lo que escribe el developer · <span class="ext">shopping-cart.fud</span></summary>
+    <pre>@code {
+  @client {
+    import { signal } from '@fudic/dom';
+
+    const items = signal(0);
+    const total = signal(0);
+
+    function onCarrito(ev) {
+      items.set(items.peek() + 1);
+      total.set(total.peek() + ev.detail.precio);
+    }
+  }
+}
+
+&lt;div class="carrito" @carrito="@onCarrito(ev)"&gt;
+  &lt;span class="badge"&gt;@items.value&lt;/span&gt;
+  &lt;span class="importe"&gt;@total.value €&lt;/span&gt;
+&lt;/div&gt;</pre>
+  </details>
+
+  <div class="cartline">
+    <shopping-cart data-id="cart-1">
+      <template shadowrootmode="open">
+        <div class="carrito">
+          <span class="badge">0</span>
+          <span class="importe">0.00 €</span>
+        </div>
+      </template>
+    </shopping-cart>
+    <p class="hint">Nunca lo tocas tú. Escucha <code>carrito</code>.</p>
+  </div>
+
+  <!-- EMISOR. En el .fud: emit('carrito', p) dentro de añadir(p). -->
+  <details class="fud">
+    <summary>EMISOR — lo que escribe el developer · <span class="ext">product-list.fud</span></summary>
+    <pre>@code {
+  type Producto = { id: string; nombre: string; precio: number };
+
+  @client {
+    import { emit } from '@fudic/dom';
+
+    const productos: Producto[] = [
+      { id: 'a', nombre: 'Café',  precio: 3.5 },
+      { id: 'b', nombre: 'Té',    precio: 2.8 },
+      { id: 'c', nombre: 'Leche', precio: 1.2 },
+    ];
+
+    function añadir(p: Producto) {
+      emit('carrito', p);   // this === host; bubbles+composed los pone emit
+    }
+  }
+}
+
+&lt;ul class="lista"&gt;
+  @foreach (const p of productos) {
+    &lt;li&gt;
+      &lt;span&gt;@p.nombre&lt;/span&gt;
+      &lt;span&gt;@p.precio €&lt;/span&gt;
+      &lt;button @click="@(() =&gt; añadir(p))"&gt;Añadir&lt;/button&gt;
+    &lt;/li&gt;
+  }
+&lt;/ul&gt;</pre>
+  </details>
+
+  <product-list data-id="list-1">
+    <template shadowrootmode="open">
+      <ul class="lista">
+        <li><span>Café</span><span>3.50 €</span><button data-pid="a">Añadir</button></li>
+        <li><span>Té</span><span>2.80 €</span><button data-pid="b">Añadir</button></li>
+        <li><span>Leche</span><span>1.20 €</span><button data-pid="c">Añadir</button></li>
+      </ul>
+    </template>
+  </product-list>
+
+</div>
+
+<!-- Payload de estado: data-id -> estado completo. Sólo N3 efectivo. -->
+<script type="application/json" id="fud-state">
+{
+  "list-1": { "productos": [
+    { "id": "a", "nombre": "Café",  "precio": 3.5 },
+    { "id": "b", "nombre": "Té",    "precio": 2.8 },
+    { "id": "c", "nombre": "Leche", "precio": 1.2 }
+  ] },
+  "cart-1": { "items": 0, "total": 0 }
+}
+</script>
+
+<!-- Mapa de bus emitido por el compilador: emisor -> [receptores].
+     Resuelto en compilación (parser HTML ve @carrito en shopping-cart;
+     walk de Oxc ve emit('carrito') en product-list; se componen). -->
+<script type="application/json" id="fud-bus">
+{ "product-list": ["shopping-cart"] }
+</script>
+
+<div class="panel" id="log"><div class="l com">esperando…</div></div>
+<p class="legend">
+  <span style="color:#e0a24a">bus</span> = pre-hidratación del receptor ·
+  <span style="color:#7fb3ff">camino</span> = decisión del capturador ·
+  <span style="color:#7fe0a4">carrito</span> = evento recibido por el suscriptor
+</p>
+
+<script type="module" src="./runtime.js"></script>
+<script>
+  // Panel de traza (sólo instrumentación de la demo).
+  const panel = document.getElementById('log');
+  let first = true;
+  document.addEventListener('fud:log', (e) => {
+    if (first) { panel.innerHTML = ''; first = false; }
+    const div = document.createElement('div');
+    div.className = 'l';
+    const t = e.detail.line;
+    if (t.startsWith('bus:')) div.classList.add('bus');
+    else if (t.startsWith('camino')) div.classList.add('path');
+    else if (t.startsWith('carrito')) div.classList.add('cart');
+    div.textContent = t;
+    panel.appendChild(div);
+    panel.scrollTop = panel.scrollHeight;
+  });
+  document.addEventListener('fud:hydrated', (e) => {
+    const d = e.detail;
+    document.dispatchEvent(new CustomEvent('fud:log',
+      { detail: { line: `fud:hydrated <${d.tag}> #${d.id} (${d.from}, ${d.ms}ms)` } }));
+  });
+</script>
+
+</body>
+</html>
