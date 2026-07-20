@@ -1,6 +1,6 @@
 # SDD-07 — Interpolación y bindings
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Depende de:** 00, 04, 05
 > **Decisiones de gramática:** 18–31
 
@@ -133,12 +133,39 @@ export interface Interpolation extends Node {
 ```ts
 /** Classify one raw attribute into its binding kind. Validates the structural rules SDD-07
  *  owns (single `@` value, no concat, simple ref id). Never throws. */
-export function classifyAttribute(attr: Attribute): ParseResult<Binding>;
+export function classifyAttribute(attr: Attribute, source: string): ParseResult<Binding>;
 
 /** Wrap a content RazorExpression as an interpolation. `escaped` is true for a plain `@expr`
  *  and false for `@raw( … )` (the pass derives it from the SDD-05 content node kind). */
 export function interpolate(expr: RazorExpression, escaped: boolean): Interpolation;
 ```
+
+**Corrección — `classifyAttribute` necesita `source` (implementación).** La firma original
+(`classifyAttribute(attr)`) era incompatible con dos reglas que el propio SDD le asigna, porque
+ambas hablan del **texto**, no del árbol:
+
+1. **`ref` identificador simple (decisión 30, `FUD0094`).** `RazorExpression` guarda `expr` como
+   `Span`, no como string, y para una implícita `regions` siempre está vacío. Distinguir `@a` de
+   `@a.b` exige leer los caracteres: sin `source` la regla es indecidible.
+2. **El prefijo `bus:` de la forma `bus:(expr)` (decisión 28.b).** Cuando el nombre es una
+   `RazorExpression`, SDD-05 **sustituye el nombre entero** por ella y el prefijo literal deja de
+   estar en el nodo — solo queda en el hueco `[attr.span.start, name.span.start)` del fichero.
+   Sin `source` no hay forma de saber si el atributo era `bus:(x)` o `class:(x)`.
+
+Añadir `source: string` es además coherente con SDD-04, cuyas funciones ya son
+`f(source, offset)`. La función sigue siendo **pura y sin estado**: `source` es un parámetro de
+entrada, no estado compartido.
+
+**Degradación (§7, "el binding que mejor encaje") — política concreta.** Los campos `value` de
+`PropertyBinding`/`EventBinding`/… son `RazorExpression` **obligatorios**, así que un binding
+inválido no siempre se puede materializar. La regla implementada es:
+
+- Si entre las partes del valor hay **exactamente una** `RazorExpression`, se conserva el binding
+  de la clase pedida usando esa expresión (el editor sigue viendo un `property`/`event`/`bus`), y
+  se emite el diagnóstico.
+- Si hay **cero o más de una**, se degrada a `AttributeBinding` con el **nombre verbatim**
+  (prefijo incluido: `.value`, `@click`, `bus:cart`) y las partes tal cual: no se pierde
+  información y el nodo sigue siendo navegable por offset.
 
 ---
 
@@ -206,8 +233,23 @@ SDD-07 reserva **`FUD0090`–`FUD0109`**. Definidos:
 | `FUD0095` | `class:`/`style:` sin nombre tras `:` (`class:="@x"`). |
 | `FUD0096` | `bus:` sin un único handler `@` (decisión 28.a). |
 | `FUD0097` | `bus:` sin nombre tras `:` (`bus:="@x"`). |
+| `FUD0098` | Nombre-expresión (`prefijo:(expr)`) tras un prefijo que no es `bus:` — p. ej. `class:(x)="@a"`. |
+| `FUD0099` | Prefijo de binding sin nombre detrás: `@="@h"` (evento) o `.="@x"` (property). |
 
-`FUD0098`–`FUD0109` libres.
+`FUD0100`–`FUD0109` libres.
+
+**Corrección — huecos de validación de nombre (implementación).** La tabla original reservaba
+código para el prefijo sin nombre solo en `class:`/`style:` (`FUD0095`) y `bus:` (`FUD0097`), y
+dejaba dos formas silenciosas:
+
+- **`FUD0098`.** El lexer de SDD-03 abre un nombre-expresión ante **cualquier** `nombre:` seguido
+  de `(`, no solo ante `bus:` (`ATTR_NAME_STOP` incluye `(`). Sin este código, `class:(x)="@a"` se
+  clasificaría como `BusBinding` — el prefijo real es indistinguible una vez SDD-05 sustituye el
+  nombre. La comprobación pertenece a esta capa, que es la que despacha por nombre (decisión 29).
+- **`FUD0099`.** Por simetría con `FUD0095`/`FUD0097`: `@="@h"` y `.="@x"` producían un
+  `EventBinding`/`PropertyBinding` con nombre vacío, sin error.
+
+Ambos caen dentro del rango `FUD0090`–`FUD0109` que SDD-07 ya tenía reservado.
 
 ---
 
@@ -236,7 +278,64 @@ SDD-07 reserva **`FUD0090`–`FUD0109`**. Definidos:
 
 ---
 
-## 9. Fuera de alcance
+## 9. Criterios de aceptación
+
+**Corrección — sección ausente (implementación).** SDD-07 se redactó sin criterios de
+aceptación: su §6 es la tabla de códigos `FUD`, no la lista de "hecho" que el flujo del proyecto
+exige (cf. SDD-04 §6). Se añaden aquí, derivados de la tabla de dispatch (§4), de la
+interpolación (§5) y de los códigos (§6). Se verifican en
+`packages/compiler/test/binding/`.
+
+**Dispatch por nombre (§4)**
+
+1. `class="card"` → `attr` con una parte `attribute-text`; sin diagnósticos.
+2. `title="@item.title"` y `href="/x/@id"` → `attr`; la concatenación es legal aquí (decisión 20).
+3. `disabled` (sin `=`) → `attr` con `value: []` (decisión 44).
+4. `refx`/`classy` **no** son nombres reservados → `attr`.
+5. `.value="@model.name"` → `property`, `name: 'value'`, sin el `.` inicial.
+6. `.innerHTML="@body"` → `property` conservando el case (decisión 25).
+7. `@click="@onClick"` → `event`, `name: 'click'`, sin el `@`; `@my-event` acepta guiones (27).
+8. `@click="@(() => go(1))"` → `event` (lambda explícita).
+9. `class:success="@(…)"` → `class` con `className: 'success'`; `style:color="@t"` → `style`.
+10. `bus:carrito="@onCart"` → `bus` con `eventName` **string**.
+11. `bus:(EVENTS.cart)="@onCart"` → `bus` con `eventName` **`RazorExpression`** (28.b).
+12. `@click` y `bus:` conviven en el mismo elemento y no se infieren entre sí (28.d).
+13. `ref="@input"` → `ref` con la expresión implícita de un solo identificador (30).
+
+**Errores y degradación (§6)**
+
+14. `FUD0090`: `.value="hola"` y `.value` (vacío) → degrada a `attr` con nombre `.value`.
+15. `FUD0091`: `.value="/x/@b"` (texto + expresión) → `property` con esa única expresión;
+    `.value="@a @b"` (dos expresiones) → degrada a `attr`.
+16. `FUD0092`: `@click="onClick"` y `@click="@a@b"`.
+17. `FUD0093`: `class:on="yes"`, `style:color` con concatenación.
+18. `FUD0094`: `ref="@a.b"` (camino), `ref="@(a)"` (explícita) → se conserva el `RefBinding`;
+    `ref="input"` → degrada a `attr`.
+19. `FUD0095`: `class:="@x"`; combinado con `FUD0093` cuando además falta la expresión.
+20. `FUD0096`: `bus:cart="onCart"`; `FUD0097`: `bus:="@onCart"`.
+21. `FUD0098`: `class:(x)="@a"`. `FUD0099`: `@="@h"`, `.="@a"`.
+
+**Interpolación (§5)**
+
+22. `@post.body` y `@(post.body)` → `Interpolation { escaped: true }` (decisión 18).
+23. `@raw(post.body)` → `Interpolation { escaped: false }`, con el span cubriendo **toda** la
+    directiva `@raw( … )`, para que emit la sustituya entera.
+
+**Invariantes (§7)**
+
+24. Todo `Binding` conserva el span de su `Attribute`; toda `Interpolation`, el de su expresión.
+25. Todo `Diagnostic` lleva span no vacío y dentro del fichero, severidad `error` y código
+    `FUD\d{4}` dentro de `FUD0090`–`FUD0109`.
+26. `classifyAttribute` nunca lanza y es pura: dos llamadas sobre el mismo atributo dan
+    resultados iguales.
+27. Los cuatro fixtures canónicos (`home`, `app-card`, `app-button`, `app-badge`) se clasifican
+    **enteros sin un solo diagnóstico**: `class:` → `class`, `@click`/`@press` → `event`,
+    `disabled="@disabled"` → `attr` (el omit de la decisión 21 es de emit), y `home.fud` produce
+    exclusivamente `attr`.
+
+---
+
+## 10. Fuera de alcance
 
 - **Escape HTML real, `TrustedHTML`, primitivas (18, 19):** emit + semántica (SDD-12).
 - **Omit de atributo booleano (21):** emit (lista estándar de booleanos).
