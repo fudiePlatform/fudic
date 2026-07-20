@@ -1,6 +1,6 @@
 # SDD-08 — Bloque `@code` (server / client / neutral)
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Depende de:** 00, 02, 04, 05
 > **Decisiones de gramática:** 32–34, 66 (63–65 retiradas: ver §1)
 
@@ -80,6 +80,9 @@ export interface ServerRegion extends Node {
   /** Inner of the `{ … }` (to Oxc). */
   readonly js: Span;
 }
+// En una región, `span` cubre el marcador entero (`@server { … }`, `@` incluido) y `js` solo
+// el interior de las llaves. En un `NeutralJs`, `span` y `js` coinciden: el tramo neutro no
+// es más que su JS. (Corrección de implementación: §3 no decía qué era `span` en cada parte.)
 
 /** `@client { js }` (32). Independent client Oxc fragment. No parameter (66). */
 export interface ClientRegion extends Node {
@@ -107,6 +110,18 @@ offsetDe'{')` delimita todo el `@code { … }` (cuenta correctamente las llaves 
 regiones y del JS). Cuerpo = `group.inner`. Si no cierra, `FUD0002` del balanceador aflora.
 `seekTo(group.span.end)`. El `span` del nodo cubre `@code … }`.
 
+> **Corrección (de dónde sale el `@`).** El `span` del nodo debe empezar en el `@`, pero
+> `parseCodeBlock` solo recibe `keywordSpan`, que por contrato de SDD-04 cubre **el
+> identificador `code` y nunca el `@` que lo precede** — y no recibe el offset del trigger.
+> El `@` se deriva, pues, como `keywordSpan.start - 1`, que es exactamente lo que SDD-05
+> hace en su propio `#unhandled`. La implementación comprueba que ahí haya de verdad un
+> `@` y, si no (span construido a mano, jamás producido por SDD-04), arranca el nodo en
+> `keywordSpan.start` en vez de inventarse un offset anterior al construct.
+
+Si tras `@code` no hay `{`, el valor degradado es un `CodeBlockNode` con `parts: []` y
+`span` = `@code`; el lexer no se mueve (SDD-05 ya lo dejó en `keywordSpan.end`, así que el
+bucle de contenido progresa igual y el texto siguiente se tokeniza como HTML).
+
 ### 4.2. Escaneo de marcadores de región
 
 Sobre el cuerpo, SDD-08 avanza a **nivel superior**, saltando —vía el balanceador— strings,
@@ -126,7 +141,40 @@ Al llegar al final del cuerpo, el último tramo neutro se cierra. **SDD-08 no de
 `{ … }` de una región (es JS opaco para Oxc): por eso un `@server`/`@client` **anidado** no lo
 ve SDD-08 (queda dentro del JS de la región) — su detección limpia es semántica (§6, nota 2).
 
-### 4.4. Qué NO valida SDD-08
+> **Corrección (cómo se salta lo opaco: el balanceador no tiene esa API).** §4.2 pedía
+> saltar strings/templates/comentarios/regex «vía el balanceador», pero SDD-02 solo expone
+> `scanBalanced(source, offsetDelAbridor, closer)`: sabe recorrer **grupos**, no «sáltame la
+> siguiente región opaca». Reimplementar aquí un mini-lexer de JS (con la heurística
+> regex-vs-división incluida) sería duplicar SDD-02, así que la implementación reutiliza el
+> trabajo que el balanceador **ya hizo**: el único `scanBraces` del cuerpo devuelve
+> `group.regions`, la lista **completa y ordenada** de regiones opacas a cualquier
+> profundidad. El escaneo de marcadores es entonces una pasada lineal sobre el cuerpo que
+> (a) salta cualquier offset que caiga dentro de una región, avanzando un puntero sobre esa
+> lista ya ordenada, y (b) lleva un **contador de profundidad** de `(`/`[`/`{` para que un
+> `@server` escrito dentro de un grupo anidado no cuente como marcador de nivel superior.
+> Una sola pasada, cero lógica de lexing JS duplicada.
+>
+> El contador se satura en 0 al decrementar: con un bloque sin cerrar el cuerpo llega hasta
+> EOF y puede arrastrar cierres huérfanos, y una profundidad negativa dejaría ciego el
+> escáner para todos los marcadores posteriores.
+
+> **Corrección (recuperación tras `FUD0111`).** §4.2 decía que `@server(…)` es error pero no
+> qué se hace después. Se resuelve por el criterio LSP: **emitir `FUD0111`, saltar el grupo
+> de paréntesis y seguir con el `WS* {` normal**, de modo que la región *sí* se delimita y
+> se emite su nodo. El editor conserva un `ServerRegion`/`ClientRegion` navegable y con su
+> JS listo para Oxc; el usuario solo ve el error del parámetro, no una cascada.
+
+> **Corrección (recuperación tras `FUD0110` en un marcador).** Si tras `@server`/`@client`
+> no hay `{`, se emite `FUD0110` y **no se crea nodo de región**: el marcador se queda
+> dentro del tramo neutro que ya se estaba acumulando (no se corta el chunk). Así el cuerpo
+> sigue cubierto sin huecos, en vez de perderse un trozo de texto entre dos partes.
+
+> **Corrección (frontera de palabra al final del cuerpo).** La regla «seguido de `(`, `{` o
+> whitespace» implica que un `@server` pegado al `}` que cierra el `@code` (o a EOF) **no
+> es** marcador y queda como JS neutro. Es coherente: sin llaves no hay región que delimitar,
+> y Oxc rechazará ese JS de todos modos.
+
+### 4.3. Qué NO valida SDD-08
 
 - **Máximo un `@server` y un `@client`** (33.b) y **no anidación** (33.a): SDD-08 recoge
   **todas** las regiones de nivel superior en `parts` (aunque haya duplicados); el conteo y la
@@ -135,7 +183,7 @@ ve SDD-08 (queda dentro del JS de la región) — su detección limpia es semán
 - **Cero o un `@code`** (33.d) y su ubicación (`<head>` en página): **SDD-10**.
 - **Validez del JS** de cada `NeutralJs`/`ServerRegion`/`ClientRegion`: **Oxc (SDD-11)**.
 
-### 4.5. Códigos `FUD`
+### 4.4. Códigos `FUD`
 
 SDD-08 reserva **`FUD0110`–`FUD0129`**. Definidos:
 
@@ -153,7 +201,10 @@ renumerarse.
 ## 5. Invariantes LSP
 
 - **Spans en todo.** `CodeBlockNode`, cada `CodePart` (`.js`) y cada
-  `Diagnostic` llevan offset UTF-16. Las regiones cubren el cuerpo sin solapes.
+  `Diagnostic` llevan offset UTF-16. Las partes van **en orden de fuente y sin solapes**.
+  *(Corrección: la redacción original decía que «cubren el cuerpo», y no es cierto — §3
+  manda omitir los tramos neutros que son solo whitespace, así que entre dos partes puede
+  quedar hueco en blanco. Lo que sí se garantiza es orden y no solape.)*
 - **Nunca lanza.** Falta de `{`, parámetro en `@server`/`@client` y cuerpo/región sin cerrar
   → resultado degradado + diagnóstico (el `FUD0002` burbujea), nunca excepción.
 - **Fragmentos JS aislados (decisión 32).** Cada `.js` es un span independiente listo para que
@@ -188,6 +239,11 @@ Entradas reales (fixtures) → nodo esperado. El SDD está `Hecho` cuando:
 
 9. **Degradaciones.** `@code type X` (sin `{`) ⇒ `FUD0110`. `@code { @server { …` en EOF ⇒
    `FUD0002` (sin cerrar). Nunca lanza.
+
+   *(Precisión de implementación: ese último caso emite **dos** `FUD0002`, uno por el bloque
+   `@code` sin cerrar y otro por la región sin cerrar. Se aceptan los dos: ambos son ciertos
+   y cada uno apunta a una llave distinta que el usuario tiene que cerrar. El criterio se
+   verifica con «contiene `FUD0002`», no con «es exactamente `[FUD0002]`».)*
 
 10. **Cobertura.** Cerca del 100 % de líneas/funciones/ramas (los casos cubren el escaneo de
     marcadores y las degradaciones). Cumple el suelo del SDD-00 (80/80/75).
