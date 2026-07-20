@@ -61,18 +61,20 @@ Todos los SDD siguen la misma estructura fija:
 | [02](./SDD-02-balanceador.md) | Balanceador de delimitadores | `Listo` | 00, 01 | 6 |
 | [03](./SDD-03-tokenizer.md) | Tokenizer + pila de modos | `Listo` | 00–02 | notas (modos) |
 | [04](./SDD-04-transicion-at.md) | Reglas de transición del `@` | `Listo` | 00–03 | 1–8 |
-| [05](./SDD-05-parser-html.md) | Parser HTML (subset estricto) | `Listo` | 00, 03, 04 | 38–52 |
-| [06](./SDD-06-control-flujo.md) | Construcciones de control de flujo | `Listo` | 00, 04, 05 | 9–17 |
+| [05](./SDD-05-parser-html.md) | Parser HTML (subset estricto) | `Listo` | 00, 02, 03, 04 | 38–52 |
+| [06](./SDD-06-control-flujo.md) | Construcciones de control de flujo | `Listo` | 00, 02, 04, 05 | 9–17, 79, 80 |
 | [07](./SDD-07-bindings.md) | Interpolación y bindings | `Listo` | 00, 04, 05 | 18–31 |
-| [08](./SDD-08-code-block.md) | Bloque `@code` (server/client/neutral) | `Listo` | 00, 02, 04, 05 | 32–34, 63–66 |
+| [08](./SDD-08-code-block.md) | Bloque `@code` (server/client/neutral) | `Listo` | 00, 02, 04, 05 | 32–34, 66 |
 | [09](./SDD-09-css-razor.md) | CSS con Razor (`<style>`) | `Listo` | 00, 02, 04, 05 | 42 (a–e) |
 | [10](./SDD-10-documento.md) | Estructura del documento | `Listo` | 00, 05, 08 | 53–62, 75–78 |
 | [11](./SDD-11-oxc.md) | Integración Oxc | `Listo` | 00, 01, 02 | 6, 32 |
-| [12](./SDD-12-semantica.md) | Análisis semántico | `Listo` | 00, 05–11 | 19, 31, 33.a/b/c, 41, 45, 65 |
+| [12](./SDD-12-semantica.md) | Análisis semántico | `Listo` | 00, 05–11 | 19, 31, 33.a/b/c, 41, 45, 28.c |
 | [13](./SDD-13-source-maps.md) | Source maps y `LineMap` | `Listo` | 00, 01, 11 | notas |
-| [14](./SDD-14-runtime.md) | Runtime (`@fudic/dom`·`ssr`·`core`) | `Hecho` | 00, 01 | 67–74 |
-| [15](./SDD-15-emit.md) | Emit (AST → runtime) | `Pendiente` | 00, 05–14 | niveles N1–N3 |
+| [14](./SDD-14-runtime.md) | Runtime (`@fudic/dom`·`ssr`·`core`) | `Hecho` (recortado) | 00, 01 | 71–73 |
+| [15](./SDD-15-emit.md) | Emit (AST → runtime) | `Listo` | 00, 05–14, 16 | 22, 26–29, 67–85 |
 | [16](./SDD-16-stream.md) | Stream + transporte 3 hilos (`ssr`·`transport`) | `Hecho` | 00, 01, 14 | — |
+| [17](./SDD-17-hidratacion.md) | Runtime de hidratación (`@fudic/core`) | `Listo` | 14, 15 | — |
+| [18](./SDD-18-estilos-compartidos.md) | Estilos compartidos en DSD (`shadowrootadoptedstylesheets`) | `Pendiente` | 15 | 76 |
 
 ---
 
@@ -117,15 +119,22 @@ SDD-05  Parser HTML           │
           SDD-13  Source maps
                  │
                  ▼
-          SDD-14  Runtime  ◄── contrato Dom<N> + adapters browser/SSR + signal/lifecycle/eventos/estilos
+          SDD-14  Runtime  ◄── contrato Dom<N> + adapters browser/SSR + signal + Render de bloque
                  │            (independiente del parser; prerrequisito del emit)
                  ├───────────────────────────┐
                  ▼                           ▼
           SDD-15  Emit             SDD-16  Stream + transporte 3 hilos
              ◄── HITO: AST →         ◄── renderToStream + shell SW/WW/main
              runtime; home +            (serializador testeable ya; el shell
-             app-card +                 se prueba con RenderChunk falso, DIP)
-             app-button corren
+             app-card + app-button      se prueba con RenderChunk falso, DIP)
+             + app-badge corren
+                 │
+                 ├───────────────────────────┐
+                 ▼                           ▼
+          SDD-17  Hidratación      SDD-18  Estilos compartidos
+             ◄── capturador           ◄── shadowrootadoptedstylesheets
+             global: 3 caminos +          + import map + polyfill
+             bus + cascada + warm         (NO bloquea v1: v1 va inline)
 ```
 
 `16` amplía `@fudic/ssr` (serialización a stream) y crea `@fudic/transport` (el shell de tres
@@ -162,19 +171,23 @@ reactividad/lifecycle) y puede implementarse en paralelo. `15 (Emit)` cierra: tr
 
 ## Hito de cierre
 
-El hito se alcanza con **SDD-14 (Runtime) + SDD-15 (Emit)** juntos: primero el runtime define y
-prueba el contrato de ejecución (`Dom<N>`, adapters browser/SSR, `signal`, lifecycle, delegación,
-`<style host>`); luego el emit traduce el AST a llamadas contra ese contrato, y los tres ficheros
-canónicos `home.fud` + `app-card.fud` + `app-button.fud` **compilan y corren** en su nivel inferido
-(N1 = DSD inline cero-JS; N2 = delegación global; N3 = clase + hidratación). Regla de oro
-confirmada por Pedro: **no se implementa el emit hasta que el runtime esté implementado y probado.**
+El hito se alcanza con **SDD-14 (Runtime) + SDD-15 (Emit) + SDD-17 (Hidratación)**: el runtime
+define y prueba el contrato de ejecución (`Dom<N>`, adapters browser/SSR, `signal`, `Render` de
+bloque); el emit traduce el AST a llamadas contra ese contrato y produce los mapas de página; el
+runtime de hidratación los consume. Los cuatro ficheros canónicos `home.fud` + `app-card.fud` +
+`app-button.fud` + `app-badge.fud` **compilan y corren** en su nivel inferido (N1 = DSD inline
+cero-JS; N3 = controlador closure + hidratación por interacción). Regla de oro confirmada por
+Pedro: **no se implementa el emit hasta que el runtime esté implementado y probado** — condición
+satisfecha: 14 y 16 están en `Hecho`.
 
----
+**Orden de implementación a partir de aquí:** 15 (emit) → 17 (hidratación) → los SDD de parser
+que aún están en `Listo` según haga falta. 18 queda fuera del hito.
 
 ## Registro de progreso
 
 | Fecha | SDD | Cambio |
 |---|---|---|
+| 2026-07-19 | 14, 15, 17, 18, 03–08, 12, gramática | **Refundición general y cierre de specs: se arranca la implementación.** Se detectaron dos modelos de runtime incompatibles conviviendo (el implementado en SDD-14 y el de cuatro SDD transversales sueltos fuera del índice), tres formas distintas de payload de estado, dos autoridades de estado contradictorias (DOM-first vs payload), y una primitiva `event` que tres documentos daban por existente sin estarlo. **Decisión de fondo: gana el modelo validado en navegador** (capturador global, unidad = instancia, payload posicional, controlador closure `{c,h,r}`), pero **construyendo contra `Dom<N>`** para no dejar a `@fudic/ssr` sin consumidor. **Nuevos:** `SDD-15-emit.md` (refunde `SDD-emit-estado-hidratacion` + `SDD-eventos-captura-contexto` + las partes de compilador de bus y cascada; añade `fud-chunks`, `Dom.event`/`Dom.bus`, `data-id` base-0, y el desugaring de `bus:` en `s()`/`r()`), `SDD-17-hidratacion.md` (refunde los cuatro transversales de runtime; **fija el orden bus → cascada → host** que ninguno fijaba, y sustituye `hydrateSubtreePostorder` por `prepareTag` porque `define` upgradea todas las instancias del tag y el camino 3 era un no-op incorrecto), `SDD-18-estilos-compartidos.md` (refunde la nota de `shadowrootadoptedstylesheets`; **no bloquea v1**, que va con `<style>` inline). **Retirados:** `FudicElement`, `defineLazy`, `delegate`, `styles`/`<style host>` y los marcadores `data-fud-c`/`data-fud-e` — con ellos, las **decisiones de gramática 63–65 (`@client(estrategia)`)**: un componente se coloca donde el consumidor quiera y su código no puede declarar cuándo se hidrata. `viewport` sobrevive solo como warm de red. **Aplicada la review `2026-07-02-gramatica-vs-sdd`** completa (A1–A4, B1–B7, C1–C3): decisiones 3 y 12 reescritas, decisiones **79 y 80** nuevas (`}` cierra bloque + entidad; corte del test de `case`), EBNF de `if_stmt` y `switch_case` corregidos, precedencia `@@` sobre lookbehind de email fijada, `FUD0056` (valor de atributo sin comillas) con dueño en SDD-05, corte de texto en `}`/`case`/`default` especificado en SDD-03, `<title>`/`<textarea>` confirmados RCDATA, `ConditionalBranch` unificado a `Node`, dependencia 02 declarada en 05/06. **Prototipos:** las cuatro ramas divergentes de `docs/runtime` fusionadas en una. `pnpm typecheck` + `pnpm test` verdes (115 tests). Documentos eliminados por refundición, sin pérdida: los 4 transversales, los 2 de `emit/`, y las 2 reviews. |
 | 2026-07-09 | gramática, 03, 05, 07, 12 | **Suscriptor de bus por prefijo `bus:` (decisión 28.a–d).** Decisión final tras validar el prototipo (`docs/runtime/bus`): el suscriptor es un **prefijo de binding reservado `bus:`**, hermano de `class:`/`style:` (decisión 22), no una sobrecarga de `@evento`. `@carrito` = listener de **host**; `bus:carrito` = listener en **`document`** (emisor/suscriptor son hermanos, no burbujean entre sí); son opuestos, **intención declarada no inferida** (28.d), simétrico al `emit()` del emisor. Dos formas del nombre: `bus:carrito` (literal, `attr-name`) y `bus:(EVENTOS.carrito)` (el `(` tras `bus:` dispara el balanceador → `explicit-expr`). **Toca:** SDD-03 (`bus:(` en ranura de nombre → `explicit-expr` tras el `attr-name` `bus:`), SDD-05 (`Attribute.name: string \| RazorExpression`), SDD-07 (**`BusBinding` nuevo**; `EventBinding` vuelve a `name: string`; `FUD0096/0097`), SDD-12 §8.4 (28.c re-anclada a `bus:`+`emit`: resolución a literal, matching por valor, permisivo). **Sustituye** el intento previo de esta fecha (`@(expr)` en nombre de evento), revertido. Razón decisiva: `bus:` permite compilar el chunk del suscriptor **aislado** (host-vs-document es hecho de página, no de componente); la inferencia acoplaría compilación-de-componente a composición-de-página. **Fuera de alcance:** `emit`, runtime, mapa `fud-bus` de página. |
 | 2026-07-07 | 16 | **Parte 2 implementada: `@fudic/transport` — SDD-16 pasa a `Hecho`.** Paquete nuevo sin dependencias de runtime (solo tipos de plataforma; `@fudic/ssr` como devDependency de tests): contrato de mensajes (`RenderRequest`/`RenderMessage`/`ControlMessage`), adaptador de transporte con degradación Safari aislada (`canTransferStream` por capacidad, `sendRender` nativo/fan-out con copia `value.slice().buffer`, `receiveRender` que procesa `first` antes de cablear `onmessage`), `loadManifest` (fuente única ruta→chunk), WW (`serveRender` con `resolveChunk` inyectado [DIP], rechazo → `end`; `installRenderWorker` con `import()` dinámico), SW (`createRouter`: única rama hit/miss, `MessageChannel` por `reqId`, `tee()` a respuesta+cache, `port.close()` sin residuo), `controlBus` (`BroadcastChannel`, canales disjuntos) y `registerRenderServiceWorker`. Criterios §6.7–§6.13 verdes: 23 tests con dobles (worker/cache/fetchEvent, chunk vía `data:` URL), cobertura 100/100/100; workspace 134 tests. Notas: `FetchEvent` declarado estructuralmente (lib DOM no trae tipos SW y no es mezclable con lib WebWorker); tests en entorno `node` de Vitest (trae `MessageChannel`/`BroadcastChannel`/streams/`structuredClone` reales, sin dobles de plataforma). |
 | 2026-07-07 | 16 | **Parte 1 implementada: serialización a stream en `@fudic/ssr`.** El walk de `serialize.ts` refactorizado a `serializeChunks` (generador perezoso, mismas piezas); `renderToString` = `join` del generador, **byte-idéntico** (la batería de `serialize.test.ts` sigue verde sin tocarse); `htmlToByteStream` (Iterable/AsyncIterable → `ReadableStream<Uint8Array>` UTF-8, pull-based, coalescing hasta `highWaterMark` [default 8192], cede en `desiredSize <= 0`, `cancel()` → `return()`, ningún code point partido); `renderToStream` = composición de ambos; `escapeText`/`escapeAttr`/`neutralizeComment` expuestos para el emit. Criterios §6.2–§6.6 verdes: 32 tests en ssr, cobertura 100/100/100. Queda la parte 2 (`@fudic/transport`) para cerrar la SDD. |
