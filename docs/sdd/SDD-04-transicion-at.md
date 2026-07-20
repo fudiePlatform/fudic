@@ -1,6 +1,6 @@
 # SDD-04 — Reglas de transición del `@`
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Depende de:** 00, 01, 02, 03
 > **Decisiones de gramática:** 1–8
 
@@ -81,7 +81,7 @@ Ubicación canónica: `packages/compiler/src/at/` (`at.ts`, reexportado desde
 ### 3.1. Nodo de expresión Razor (unificado)
 
 ```ts
-/** explicit = @( ... ); implicit = @foo.bar(x). Same node downstream (SDD-07). */
+/** explicit = @( ... ); implicit = @foo.bar. Same node downstream (SDD-07). */
 export type RazorExpressionKind = 'explicit' | 'implicit';
 
 /**
@@ -132,6 +132,9 @@ export type TriggerResolution =
 export function classifyKeyword(identifier: string): ControlKeyword | 'code' | null;
 ```
 
+> **`keywordSpan` cubre solo el identificador**, nunca el `@` de delante: el llamante ya
+> tiene el offset del `@`, y quien posee el átomo completo es `RazorExpression.span`.
+
 ### 3.3. Resolución del disparador y scanner de implícitas
 
 ```ts
@@ -154,7 +157,17 @@ export function scanImplicitExpression(source: string, atOffset: number): ParseR
 
 /** Wrap an `explicit-expr` token (`@( ... )`) into the unified RazorExpression. */
 export function expressionFromToken(token: JsRegionToken): RazorExpression;
+
+/**
+ * Offset just past a resolution: where the caller resumes the lexer with `seekTo`.
+ * `keywordSpan.end` for control/code, the expression span end otherwise.
+ */
+export function resolutionEnd(resolution: TriggerResolution): number;
 ```
+
+> **Por qué `resolutionEnd`.** El punto de reanudación depende de la variante, y §3.3
+> lo dejaba como `result.value...end`. Derivarlo en cada sitio de llamada (SDD-05/06/07/08)
+> es repetir una decisión que pertenece a este módulo: una función lo fija una sola vez.
 
 ---
 
@@ -226,24 +239,29 @@ dentro, `regions` del `BalancedGroup`) y devuelve `{ kind: 'raw', expression, ke
 `@raw` **sin** `(` no es directiva: es una implícita normal (`raw` como propiedad). El marcado
 `escaped: false` lo aplica SDD-07; un `( … )` sin cerrar aflora `FUD0002` del balanceador.
 
+El `(` debe ser **adyacente**: `@raw (x)` con espacio es la implícita `raw`, coherente con
+§4.3 (una implícita no cruza whitespace). El `span` del `RazorExpression` cubre la
+**directiva entera** —`@raw(post.body)`, `@` incluido— para que SDD-07 pueda sustituir el
+átomo completo; `expr` es solo lo de dentro del paréntesis.
+
 ### 4.5. Decisiones cerradas y punto abierto
 
 1. **Implícita = solo camino de propiedades (cerrado con Pedro).** Ni `?.`, ni llamadas,
    ni índices, ni `!`, ni genéricos en la implícita: todo eso se escribe con `@( ... )`. Es
    la regla más simple y cubre el 100 % de los fixtures (todas sus implícitas son
    `@nombre` / `@a.b.c`). Esto **revisa la decisión 3** del documento de gramática (que
-   permitía `?.` en implícita); conviene reflejar ese cambio en
-   `gramatica-v1-decisiones.md`.
+   permitía `?.` en implícita). **Ya reflejado** en `gramatica-v1-decisiones.md`: la
+   decisión 3 y el EBNF de `implicit` dicen "solo camino de propiedades" y quedan marcados
+   "Cerrado en SDD-04, opción A".
 
 2. **Paradas silenciosas sin diagnóstico (decisiones 2, 4, 5).** No se avisa al cortar ante
    `.` / `?` / `!` / `<`, porque el caso dominante es puntuación literal (`@name.`,
    `@name?`, `@name!`) y un diagnóstico daría falsos positivos. La guía "usa `@()`" vive en
    la doc, no en el compilador.
 
-3. **(Abierto) Propiedad del nodo `RazorExpression`.** Lo defino aquí (SDD-04), no en
-   SDD-07, porque es la salida natural de resolver el `@`; SDD-07 lo envolverá en su
-   `Interpolation` / binding. Si lo prefieres en SDD-07, lo movemos y SDD-04 devolvería
-   solo spans.
+3. **(Cerrado) Propiedad del nodo `RazorExpression`.** Vive aquí, en SDD-04, no en SDD-07:
+   es la salida natural de resolver el `@`, y SDD-07 lo envolverá en su `Interpolation` /
+   binding. Implementado así; SDD-07 lo consume sin redefinirlo.
 
 ### 4.6. Decisión 8 — `@` en atributos exige comillas
 
