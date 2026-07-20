@@ -103,6 +103,9 @@ export type TokenType =
   | 'explicit-expr' // `@( ... )` in content/value, OR `( ... )` after a `bus:` name prefix (decision 28.b); carries `group`
   | 'inline-code' // `@{ ... }` (carries `group`)
   | 'at-trigger' // `@` before a keyword/identifier — deferred to SDD-04. Span = the `@`.
+  // Block boundaries surfaced for SDD-06 (§4.3)
+  | 'block-end' // a raw `}` in html mode: always closes a control body (decision 79)
+  | 'switch-label' // `case` / `default` at token start, only under a `switch-body` marker (80)
   // Raw element body
   | 'raw-text' // opaque body of a raw element (carries `element`)
   // Sentinel
@@ -131,7 +134,7 @@ export interface JsRegionToken extends BaseToken {
   readonly group: BalancedGroup;
 }
 
-/** `raw-text` carries the lowercased element name it belongs to (`script`/`title`/…). */
+/** `raw-text` carries the lowercased element name it belongs to (`script`/`style`; §4.6). */
 export interface RawTextToken extends BaseToken {
   readonly type: 'raw-text';
   readonly element: string;
@@ -223,8 +226,23 @@ El cierre del elemento correspondiente hace `pop`. La taxonomía `Mode` es cerra
 
 ### 4.3. Tokenización en modo `html` (backbone)
 
-- **Texto.** Una tirada de contenido hasta el siguiente `<` o `@` significativo se emite
-  como `text`.
+- **Texto.** Una tirada de contenido hasta el siguiente `<`, `@` significativo **o límite de
+  bloque** se emite como `text`.
+- **Límites de bloque (consecuencia de SDD-06, obligatoria aquí).** SDD-06 necesita que el
+  final de un cuerpo de control aflore como límite peek-able en `parseContentUntil`; si el
+  `}` quedara enterrado dentro de un `text`, no podría parar. Por tanto:
+  - **`}` corta siempre** la tirada de texto y se emite como token `block-end`. No hace falta
+    flag: la llave cruda **siempre** cierra bloque, y la llave literal en markup se escribe
+    con entidad (`&#123;` / `&#125;`) — es decisión de gramática, no una heurística del
+    lexer. Un `block-end` sin bloque abierto lo degrada SDD-05 a texto y continúa (el parser
+    nunca lanza).
+  - **`case` / `default` cortan solo dentro de un cuerpo de `@switch`.** Aquí sí hace falta
+    contexto —cortar ante la palabra "case" en prosa sería absurdo—, y lo aporta un marcador
+    `switch-body` que SDD-06 empuja y desapila en el `ModeStack` a través del seam mientras
+    parsea el cuerpo del switch. Con el marcador activo, `case` y `default` en posición
+    inicial de token cortan el texto y se emiten como `switch-label`. El `ModeStack` ya es
+    propiedad del lexer y clonable, así que el marcador viaja con él sin romper la
+    navegabilidad por offset.
 - **Tags.** `<` seguido de letra (decisión 41, `[a-zA-Z]`) abre `tag-open-start` con el
   `name`. Dentro de la lista de atributos se emiten `attr-name`, `attr-eq`,
   `attr-quote-open` / `attr-quote-close` y, entre comillas, `text` + átomos `@`
@@ -272,29 +290,25 @@ Tras el `tag-open-end` de un `<script ...>`, push `raw` con Razor **off**. Todo 
 es **opaco**: un único `raw-text` (con `element: 'script'`) hasta el `</script>` de cierre
 (case-insensitive). Ni tags ni `@` se procesan dentro. Sin cierre antes de EOF → `FUD0014`.
 
-### 4.6. ⚠️ Cuestión a confirmar con Pedro — `<title>` / `<textarea>`
+### 4.6. `<title>` / `<textarea>`: `raw` con Razor activo (cerrado)
 
-Las **notas "Modos del parser"** dicen literalmente que `raw` cubre "`<script>`,
-`<textarea>`, `<title>`. **Opaco** hasta la tag de cierre". Pero el fixture `home.fud`
-contiene:
+Las **notas "Modos del parser"** ponían `<script>`, `<textarea>` y `<title>` en `raw`
+**opaco**. Pero el fixture canónico `home.fud` contiene `<title>@data.title</title>` — Razor
+**dentro** de `<title>`. Las dos cosas no podían ser ciertas a la vez.
 
-```fud
-<title>@data.title</title>
-```
+**Resuelto a favor del fixture.** La decisión 43 solo declara opaco a **`<script>`**; no
+extiende esa opacidad a `title`/`textarea`, y un título dinámico necesita interpolación. Por
+tanto:
 
-— Razor **dentro** de `<title>`. Si `<title>` fuese opaco, `@data.title` no se
-interpolaría y el fixture sería inválido. **Las dos cosas no pueden ser ciertas a la vez.**
+- **`<script>` y `<style>`** son `raw` **opaco** (§4.5): su contenido se emite como un único
+  token `raw-text` y ningún `@` dispara.
+- **`<title>` y `<textarea>`** entran en `raw` con **Razor activo**: se tokenizan como
+  **texto + átomos `@`, sin tags anidados** — equivalente a RCDATA de HTML. No emiten
+  `raw-text`: emiten `text` y átomos `@` como en modo `html`.
 
-La decisión 43 solo declara opaco a **`<script>`** ("`<script>` raw puro. Sin
-procesamiento de Razor"); no extiende esa opacidad a `title`/`textarea`. Y para un título
-dinámico hace falta interpolación.
-
-**Resolución provisional adoptada en esta spec** (a validar): `<script>` es `raw` opaco
-(§4.5); `<title>` y `<textarea>` entran en `raw` pero con **Razor activo**: se tokenizan
-como **texto + átomos `@`, sin tags anidados** (equivalente a RCDATA de HTML). Se mantiene
-dentro de la taxonomía cerrada `Mode` usando un flag interno "Razor on/off" sobre el modo
-`raw`, sin añadir un modo nuevo. Si prefieres opacidad estricta para los tres (y entonces
-corregir `home.fud`), lo cambiamos.
+Se implementa con un flag interno "Razor on/off" sobre el modo `raw`, dentro de la taxonomía
+cerrada `Mode`, sin añadir un modo nuevo. Consecuencia para SDD-05: `<title>`/`<textarea>` se
+parsean con el bucle de contenido normal, restringido a texto y átomos.
 
 ### 4.7. Modo `css`: placeholder hasta SDD-09
 

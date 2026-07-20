@@ -260,8 +260,9 @@ SDD-04 reserva el rango **`FUD0030`–`FUD0049`**. En v1 **no define ningún có
 las reglas de frontera son paradas silenciosas (§4.3), la validez de la expresión la juzga
 Oxc (SDD-11), y la enforcement de la decisión 8 vive en SDD-05. Los diagnósticos del
 balanceador (`FUD0002`…) afloran sin renumerar cuando una llamada/índice implícito o un
-`@(...)` quedan sin cerrar. El rango queda **reservado** para los errores de despacho de
-SDD-06/08 (estructura de control mal formada, `@code` duplicado, etc.).
+`@(...)` quedan sin cerrar. El rango queda **reservado y vacío**: cada SDD posee el suyo, y
+los errores de despacho de estructura de control y de `@code` viven en los rangos propios de
+SDD-06 (`FUD0070`–`FUD0089`) y SDD-08 (`FUD0110`–`FUD0129`), no aquí.
 
 ---
 

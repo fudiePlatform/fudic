@@ -1,7 +1,7 @@
 # SDD-06 — Construcciones de control de flujo
 
 > **Estado:** `Listo`
-> **Depende de:** 00, 04, 05
+> **Depende de:** 00, 02, 04, 05
 > **Decisiones de gramática:** 9–17
 
 ---
@@ -107,8 +107,14 @@ export interface IfNode extends Node {
   readonly elseBody?: readonly HtmlContent[];
 }
 
-/** One `if` / `else if` arm: condition + block body. */
-export interface ConditionalBranch {
+/**
+ * One `if` / `else if` arm: condition + block body. It is a `Node` like
+ * `SwitchCase`: both are addressable pieces of a compound node, and the query by
+ * offset and the visitors need a `type` to dispatch on. Asymmetry here would mean
+ * one of the two is invisible to a visitor.
+ */
+export interface ConditionalBranch extends Node {
+  readonly type: 'conditional-branch';
   readonly header: ControlHeader;
   readonly body: readonly HtmlContent[];
   /** Whole arm span (`if`/`else if` keyword through its closing `}`). */
@@ -366,7 +372,10 @@ SDD-05 (con `parseControl` de SDD-06 cableado). El SDD está `Hecho` cuando:
     - `@if (a) <p>…` (sin `{`) ⇒ `FUD0071`.
     - `@if (a) { <p>` en EOF ⇒ `FUD0072` (bloque sin cerrar).
     - `@if (a + b { … }` (cabecera sin cerrar) ⇒ `FUD0002` del balanceador aflora.
-    - `else { … }` sin `@if` previo ⇒ `FUD0073`.
+    - `@else { … }` sin `@if` previo ⇒ `FUD0073`. **Con `@`, obligatoriamente**: un `else`
+      sin `@` en posición de contenido es texto plano para SDD-05 (no hay `at-trigger`, no
+      hay `resolveTrigger`, no se llama a `parseControl`), así que nadie emitiría el
+      diagnóstico. Solo `@else` alcanza esta ruta.
     - `@switch (x) { case 1 <b/> }` (sin `:`) ⇒ `FUD0075`.
 
 12. **Cobertura.** El módulo se acerca al 100 % de líneas/funciones/ramas (los casos cubren

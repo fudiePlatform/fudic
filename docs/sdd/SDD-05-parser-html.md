@@ -1,7 +1,7 @@
 # SDD-05 — Parser HTML (subset estricto)
 
 > **Estado:** `Listo`
-> **Depende de:** 00, 03, 04
+> **Depende de:** 00, 02, 03, 04
 > **Decisiones de gramática:** 38–52 (menos las semánticas 45 y 57, que van a SDD-12); 28.a/b (`bus:`; `Attribute.name` puede ser `RazorExpression`)
 
 ---
@@ -382,6 +382,12 @@ nombre:
   **mismo AST** (decisión 44). La semántica de atributo booleano HTML (decisión 21) es SDD-07.
 - **Orden preservado** (decisión 47). **Atributos duplicados** (decisión 45) **no** se
   detectan aquí: es análisis semántico (SDD-12); SDD-05 los conserva ambos en orden.
+- **Valor sin comillas ⇒ `FUD0056` (decisión 8).** `href=@url` o `href=algo`: tras `attr-eq`,
+  si el lexer no encuentra `attr-quote-open`, SDD-05 emite `FUD0056` con el span del valor y
+  **recupera** consumiendo hasta el primer whitespace, `>` o `/>`, tratando lo consumido como
+  valor verbatim (`AttributeText`). Es la enforcement que SDD-04 §4.6 delega aquí: la
+  decisión 8 exige comillas siempre, precisamente para que un `@` en posición de valor no
+  tenga que competir con el final del tag. Regla con dueño ejecutable, no solo enunciada.
 
 ### 4.7. Matching de tags y recuperación (decisión 38)
 
@@ -397,6 +403,10 @@ inserciones implícitas; pero "el parser nunca lanza" ⇒ recuperación **determ
   (no cuelga: el bucle avanza).
 - **EOF con elementos abiertos** → `FUD0052` por cada uno; se cierran sin `closeSpan`.
 - **`</br>`** u otro cierre de void → `FUD0053`, se ignora.
+- **`block-end` (`}`) sin cuerpo de control abierto** → se degrada a `TextNode` con el texto
+  `}` y el bucle continúa. Dentro de un cuerpo, `parseContentUntil` lo ve como límite y para
+  (SDD-06). Un `switch-label` solo se emite bajo el marcador `switch-body`, así que fuera de
+  un switch no aparece.
 
 Ningún caso lanza; cada uno emite su diagnóstico localizado y el cursor progresa.
 
@@ -413,8 +423,9 @@ SDD-05 reserva el rango **`FUD0050`–`FUD0069`** (01: `FUD0001`; 02: `0002`–`
 | `FUD0053` | Tag de cierre para un void element (los void no se cierran, decisión 39). |
 | `FUD0054` | `<![CDATA[ … ]]>` fuera de contenido SVG/MathML (decisión 50). |
 | `FUD0055` | Construcción `@` de control/`@code` sin sub-parser inyectado (placeholder degradado). |
+| `FUD0056` | Valor de atributo sin comillas (decisión 8), §4.6. |
 
-`FUD0056`–`FUD0069` quedan libres. Los diagnósticos de SDD-02/03/04 (balanceador,
+`FUD0057`–`FUD0069` quedan libres. Los diagnósticos de SDD-02/03/04 (balanceador,
 tag mal formado, valor de atributo sin cerrar…) **afloran** por el `ParseResult` sin
 renumerarse. *(Nota: `FUD0050` se reserva para el matching descrito en §4.7; la implementación
 puede preferir la recuperación-hacia-ancestro (`FUD0052`) y no emitir `FUD0050` — se mantiene
