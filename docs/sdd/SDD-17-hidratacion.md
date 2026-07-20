@@ -64,7 +64,9 @@ emit**.
 
 ## 3. Interfaz pública
 
-Módulo sin exports funcionales: efecto de instalación al importarse.
+Módulo sin exports funcionales: efecto de instalación al importarse. (`@fudic/core` sí
+exporta `FudicElement`, SDD-15 §3.7, pero es otro módulo del mismo paquete: la base la
+importa el chunk del componente, no la página.)
 
 ```ts
 // Eventos de ciclo de vida emitidos en `document` (instrumentación/telemetría):

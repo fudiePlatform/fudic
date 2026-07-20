@@ -2,6 +2,9 @@
 
 > **Estado:** `Listo`
 > **Paquete:** `@fudic/compiler` (emit), contra `@fudic/dom` · `@fudic/core` · `@fudic/ssr`.
+> **Amplía el runtime:** añade `FudicElement` a `@fudic/core` (§3.7) y `event`/`bus` a
+> `Dom<N>` en `@fudic/dom` (§3.8). Son piezas del contrato de emit, por eso viven aquí y no
+> en SDD-14.
 > **Depende de:** 00, 05–14, 16.
 > **Rango de diagnósticos:** `FUD0290`–`FUD0319`.
 > **Decisiones de gramática:** 22, 26 (revisada: 26.a/26.b), 27, 28 (+28.a–d), 29, 67–85.
@@ -51,7 +54,7 @@ transporta esquema, solo valores.
 | SDD-11 | AST de Oxc por fragmento: base de la distinción de formas de event binding (§4.5) y de la detección de `emit(...)` (§4.4). |
 | SDD-12 | `SemanticModel`: nivel efectivo por componente (N1/N2/N3), resolución de nombres de evento de bus a literal, catálogo de componentes. |
 | SDD-13 | `SourceMapBuilder` y `mapOffset`: cada fragmento emitido se ancla a su origen. |
-| SDD-14 | `Dom<N>` / `DomClient<N>`, `browserDom`, `Cursor`, `signal`, `emit`. Contrato contra el que se emite. |
+| SDD-14 | `Dom<N>` / `DomClient<N>`, `browserDom`, `SsrDom`, `signal`, `emit`. Contrato contra el que se emite; este SDD lo amplía con `FudicElement` (§3.7) y `Dom.event`/`Dom.bus` (§3.8). |
 | SDD-16 | `serializeChunks`, `htmlToByteStream`, `escapeText`/`escapeAttr`. El emit de página reutiliza el escape y compone su `async function*` sobre estas primitivas. |
 | SDD-17 | **Consumidor**, no dependencia: el runtime lee lo que este SDD emite. Los contratos de §3.3–§3.6 son duros hacia él. |
 
@@ -201,23 +204,65 @@ debe pedirlo nunca.
 
 ### 3.7. Firma del artefacto de componente
 
-Cada componente N3 se emite como un módulo que define su custom element:
+**Lo único que el emit genera por componente es el factory `static c($props)` y la llamada a
+`define`.** Todo el andamiaje de instancia es idéntico en todos los componentes y vive en una
+clase base del runtime, `FudicElement` (`@fudic/core`):
 
 ```ts
-class Componente extends HTMLElement {
-  h(props: unknown[]): void;   // instancia venida de SSR: adopta el shadow existente
-  c(props: unknown[]): void;   // instancia creada en runtime: fabrica y monta los nodos
-  disconnectedCallback(): void;
+// @fudic/core — escrito una vez, NO emitido.
+export abstract class FudicElement extends HTMLElement {
+  static c($props: unknown[]): Controller;   // lo implementa cada componente emitido
 
-  static c($props: unknown[]): {
-    c(): void;   // create  — fabrica nodos, monta la estructura (m) y engancha (s)
-    h(): void;   // hydrate — adopta nodos del shadow SSR por traversal posicional y engancha (s)
-    r(): void;   // remove  — teardown simétrico
-    // m (mount) y s (subscription) NO están en la interfaz: son closures privadas
-    // del factory, orquestadas por c y h. Ver §4.3.
-  };
+  /** Instancia venida de SSR: el shadow ya está poblado (DSD). La llama el runtime. */
+  h(props: unknown[]): void;
+  /** Instancia creada en runtime por el controlador padre: no hay shadow que adoptar. */
+  c(props: unknown[]): void;
+  /** Baja simétrica. La dispara el navegador. */
+  disconnectedCallback(): void;
+}
+
+export interface Controller {
+  c(): void;   // create  — fabrica nodos, monta la estructura (m) y engancha (s)
+  h(): void;   // hydrate — adopta nodos del shadow SSR por traversal posicional y engancha (s)
+  r(): void;   // remove  — teardown simétrico
+  // m (mount) y s (subscription) NO están en la interfaz: son closures privadas
+  // del factory, orquestadas por c y h. Ver §4.3.
 }
 ```
+
+Y el módulo emitido por componente se reduce a esto:
+
+```js
+// chunk emitido para <app-counter>
+import { FudicElement } from '@fudic/core';
+
+customElements.define('app-counter', class extends FudicElement {
+  static c($props) { /* … el factory de §4.6, lo único específico … */ }
+});
+```
+
+**Por qué clase base y no boilerplate emitido.** `h(props)`, `c(props)`,
+`disconnectedCallback` y el campo privado del controlador son **carácter por carácter los
+mismos en todos los componentes**: lo único que varía es el factory. Emitirlos repetiría el
+andamiaje en cada chunk, y eso choca con el criterio 22 de SDD-17, que sostiene el INP en
+cache-miss sobre **chunks < 1 kB tras minify+brotli** — la cifra que valida el modelo de
+descarga por interacción. Además convierte el contrato en algo **verificado por herencia**, no
+en una convención que cada chunk emitido tiene que reproducir bien.
+
+**El `import` de la base es gratis, y es un requisito de empaquetado.** `FudicElement` debe
+viajar en el **módulo de runtime que la página ya carga de inicio** (el capturador de SDD-17,
+mismo paquete). Así, cuando un chunk se descarga en la primera interacción, su
+`import { FudicElement }` resuelve contra un módulo **ya evaluado**: cero red adicional, cero
+reevaluación. Si el empaquetado la dejara fuera del runtime inicial, cada chunk pagaría una
+petición extra dentro del gesto y el ahorro de bytes se convertiría en un coste de INP.
+
+**`FudicElement` no tiene lógica en `connectedCallback`.** Es la diferencia de fondo con la
+clase homónima de SDD-14, que hacía allí todo el trabajo. No puede: **el componente no conoce
+su `data-id`** (§3.1, es identidad de página) y por tanto no puede leer su propio tramo del
+payload. Es el runtime quien reparte los tramos, por tag, en el momento de definirlo
+(`attachAll`, SDD-17 §4.4). `h` y `c` son **puntos de entrada que invoca alguien de fuera**,
+no callbacks del ciclo de vida del navegador. El único callback real es
+`disconnectedCallback` → `r()`, porque la baja sí la decide el navegador.
 
 `$props` es siempre `[$dom, $shadow, ...valores]`: el adapter, el shadow root, y los valores
 posicionales del estado detrás. El destructuring dentro del factory los reparte.
@@ -324,7 +369,8 @@ orden, el otro reconstruye variables desde el orden. El mismo AST emite ambos ex
 
 Un componente N3 recibe sus parámetros en exactamente dos momentos, según de dónde nazca la
 instancia. Ambos entran por el **mismo** `$props` y el **mismo** `static c($props)`;
-difieren en el método invocado, en quién lo invoca y en el origen de los props:
+difieren en el método invocado, en quién lo invoca y en el origen de los props. **Los dos los
+implementa `FudicElement` una vez** (§3.7); el emit no los genera.
 
 **Punto 1 — instancia venida de SSR (`h`).** El shadow ya está renderizado (DSD). El
 controlador adopta los nodos existentes por **traversal posicional**
@@ -342,11 +388,15 @@ que la preparación del subárbol. `connectedCallback` no enruta nada: solo el n
 dispara, y en ese instante el tramo aún no ha llegado.
 
 ```js
+// en FudicElement, no en el chunk del componente
 h(props) {                    // invocado por el runtime: host.h(data.slice(...))
-  this.#c = Componente.c([browserDom, this.shadowRoot, ...props]);
+  this.#c = new.target.c([browserDom, this.shadowRoot, ...props]);
   this.#c.h();
 }
 ```
+
+`new.target.c(...)` —o `this.constructor.c(...)`— resuelve al `static c` de la subclase
+emitida: la base invoca el factory del componente concreto sin conocerlo.
 
 **Punto 2 — instancia creada en runtime (`c`).** No viene de SSR: la crea **el controlador
 padre** al mutar un array que vive como su estado (p. ej. push de un 4º elemento a un array
@@ -355,14 +405,17 @@ luego no tiene entrada en el payload. Es la vía no serializada de paso de props
 shadow que adoptar: el factory **fabrica** los nodos.
 
 ```js
+// en FudicElement, no en el chunk del componente
 c(props) {
-  this.#c = Componente.c([browserDom, this.attachShadow({ mode: 'open' }), ...props]);
+  this.#c = new.target.c([browserDom, this.attachShadow({ mode: 'open' }), ...props]);
   this.#c.c();
 }
 ```
 
-**Punto 3 — la rama SSR** usa el mismo `static c`, con el adapter de servidor y sin custom
-element de por medio; el árbol resultante lo serializa `@fudic/ssr` (SDD-16):
+**Punto 3 — la rama SSR** usa el mismo `static c`, con el adapter de servidor y **sin custom
+element ni `FudicElement` de por medio** — en servidor no hay `HTMLElement`. El factory es
+`static` precisamente para poder invocarse sin instancia; el árbol resultante lo serializa
+`@fudic/ssr` (SDD-16):
 
 ```js
 Componente.c([ssrDom, ssrShadow, ...valores]).c();
@@ -691,64 +744,76 @@ por brotli.
    `h()` (adopta → `s`) del mismo factory producen el mismo grafo de nodos vivos y el mismo
    listener funcional, difiriendo solo en cómo obtienen las referencias. El handler observa
    los mismos valores destructurados en ambos caminos.
-8. **Interfaz pública `{c, h, r}`.** El objeto devuelto expone exactamente `c`, `h`, `r`; `m`
-   y `s` no son propiedades. No existe `u`.
-9. **Reparto del tramo por tag.** Con dos instancias del mismo tag y una sola interacción
-   sobre la primera, **ambas** reciben su `h(props)` con su propio tramo. La segunda responde a
-   su primer click sin descarga ni replay (camino 3 de SDD-17). Es el test que falla si el
-   reparto se hace por instancia en vez de por tag.
-10. **Teardown corta el listener.** Tras `r()`, el nodo no responde al evento y el listener de
-   `bus:` deja de recibir: disposers ejecutados, referencias anuladas, cero fugas.
-11. **Un controlador, dos adapters.** El mismo `static c` ejecutado con `SsrDom` produce un
+8. **El chunk emitido solo lleva el factory.** El módulo de un componente contiene su
+   `static c($props)` y el `define`, y **nada más**: ni `h(props)`, ni `c(props)`, ni
+   `disconnectedCallback`, ni campo de controlador. Verificable sobre el texto emitido, y
+   además por sustitución — cambiar el andamiaje en `FudicElement` cambia el comportamiento
+   de todos los componentes sin recompilar ninguno.
+9. **La base enruta al factory de la subclase.** Una subclase de `FudicElement` que declare
+   su propio `static c` recibe en `h(props)`/`c(props)` el controlador de **su** factory, no
+   el de la base ni el de otra subclase (resolución por `new.target`/`this.constructor`).
+10. **Sin `connectedCallback`.** Conectar un host al DOM **no** construye el controlador ni
+    engancha nada: hasta que el runtime llama a `h(props)` la instancia está inerte. Es lo
+    que permite que `define` upgradee N instancias sin que ninguna se auto-arranque con un
+    estado que todavía no tiene.
+11. **Interfaz pública `{c, h, r}`.** El objeto devuelto expone exactamente `c`, `h`, `r`; `m`
+    y `s` no son propiedades. No existe `u`.
+12. **Reparto del tramo por tag.** Con dos instancias del mismo tag y una sola interacción
+    sobre la primera, **ambas** reciben su `h(props)` con su propio tramo. La segunda responde
+    a su primer click sin descarga ni replay (camino 3 de SDD-17). Es el test que falla si el
+    reparto se hace por instancia en vez de por tag.
+13. **Teardown corta el listener.** Tras `r()`, el nodo no responde al evento y el listener de
+    `bus:` deja de recibir: disposers ejecutados, referencias anuladas, cero fugas.
+14. **Un controlador, dos adapters.** El mismo `static c` ejecutado con `SsrDom` produce un
     árbol que `renderToString` (SDD-16) serializa a HTML **byte-idéntico** al markup que el
     camino `h` del navegador adopta sin mover un nodo. `$dom.event`/`$dom.bus` son no-op en
     SSR y no aparecen en la salida.
 
 **Eventos:**
 
-11. **Evento nativo presente en ambas formas.** Lambda y factory: en el disparo, `e.type` y
+15. **Evento nativo presente en ambas formas.** Lambda y factory: en el disparo, `e.type` y
     `e.isTrusted` son los del evento real; `preventDefault()`/`stopPropagation()` surten
     efecto.
-12. **Contexto correcto en ambas formas.** El valor de contexto que llega al cuerpo es el del
+16. **Contexto correcto en ambas formas.** El valor de contexto que llega al cuerpo es el del
     punto de uso.
-13. **Captura por iteración sin bug de captura compartida.** En un `@foreach` de N filas cada
+17. **Captura por iteración sin bug de captura compartida.** En un `@foreach` de N filas cada
     handler recibe el valor de **su** fila, comprobado disparando en orden no secuencial.
-14. **Conteo de frames.** Lambda: 2 frames por disparo. Factory: 1. Medible con
+18. **Conteo de frames.** Lambda: 2 frames por disparo. Factory: 1. Medible con
     `new Error().stack` dentro del cuerpo o en el panel Performance.
-15. **Una sola invocación de la factory por suscripción.** `del(item.id)` se evalúa una vez
+19. **Una sola invocación de la factory por suscripción.** `del(item.id)` se evalúa una vez
     en `s()`, no por disparo. Verificable con un contador en el nivel externo.
-16. **Distinción por AST.** `Identifier` y `Arrow`/`Function` emiten suscripción directa;
+20. **Distinción por AST.** `Identifier` y `Arrow`/`Function` emiten suscripción directa;
     `CallExpression` emite invocación-en-`s()`. Cualquier otro nodo → `FUD0291`.
 
 **Bus:**
 
-17. **`fud-bus` correcto y por valor.** Una página con `product-list` (que llama
+21. **`fud-bus` correcto y por valor.** Una página con `product-list` (que llama
     `emit('carrito', p)`) y `shopping-cart` (con `bus:carrito`) emite
     `{"product-list":["shopping-cart"]}`. Sustituir el literal del suscriptor por
     `bus:(EVENTOS.carrito)` con `EVENTOS` importado como `as const` produce la **misma**
     entrada.
-18. **Nombre no resoluble no participa.** `bus:(EVENTOS[k])` con `k` variable no produce
+22. **Nombre no resoluble no participa.** `bus:(EVENTOS[k])` con `k` variable no produce
     entrada en `fud-bus`, **no emite diagnóstico**, y sigue emitiendo el listener.
-19. **`bus:` desugariza a `document`, con host como contexto, en `s()`.** El emitido llama a
+23. **`bus:` desugariza a `document`, con host como contexto, en `s()`.** El emitido llama a
     `$dom.bus($host, …)` y guarda el disposer en `$d`. Tras `r()`, el listener de `document`
     está retirado.
-20. **`@evento` y `bus:evento` son distintos.** El mismo nombre en las dos formas produce
+24. **`@evento` y `bus:evento` son distintos.** El mismo nombre en las dos formas produce
     enganches distintos (host vs `document`) y solo la segunda entra en `fud-bus`.
 
 **Composición y chunks:**
 
-21. **`fud-tree` por tag.** Una cadena `app-parent → app-child → app-grandchild` emite
+25. **`fud-tree` por tag.** Una cadena `app-parent → app-child → app-grandchild` emite
     `{"app-parent":["app-child"],"app-child":["app-grandchild"]}`. Duplicar a 200 instancias
     de `app-child` **no cambia el mapa**.
-22. **Solo N3 efectivo.** Un hijo N1/N2 puro no lleva `data-id`, no aparece en `fud-tree`, ni
+26. **Solo N3 efectivo.** Un hijo N1/N2 puro no lleva `data-id`, no aparece en `fud-tree`, ni
     tiene tramo en `fud-state`.
-23. **`fud-chunks` completo.** Todo tag que aparezca como clave o valor en `fud-tree` /
+27. **`fud-chunks` completo.** Todo tag que aparezca como clave o valor en `fud-tree` /
     `fud-bus`, o que tenga alguna instancia con `data-id`, tiene entrada en `fud-chunks`. Un
     hueco produce `FUD0293`.
 
 **Hito de cierre:**
 
-24. **Los cuatro fixtures compilan y corren.** `home.fud` + `app-card.fud` +
+28. **Los cuatro fixtures compilan y corren.** `home.fud` + `app-card.fud` +
     `app-button.fud` + `app-badge.fud` producen página y chunks en su nivel inferido, se
     sirven por HTTP, y la primera interacción hidrata y surte efecto (con SDD-17 instalado).
 

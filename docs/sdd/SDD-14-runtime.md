@@ -11,7 +11,7 @@
 >
 > | Retirado | Sustituto | Dónde vive ahora |
 > |---|---|---|
-> | `FudicElement` (base de custom element N3) | controlador closure `{c, h, r}` emitido por componente | **SDD-15 §3.7, §4.3, §4.6** |
+> | `FudicElement` (base de custom element N3) | controlador closure `{c, h, r}` emitido por componente, envuelto por una **`FudicElement` nueva** (misma casa, otra forma: enruta `h`/`c` desde fuera, sin `connectedCallback`) | **SDD-15 §3.7, §4.3, §4.6** |
 > | `defineLazy` / `HydrationStrategy` (`@client(eager\|viewport\|interaction\|idle)`, decisión 74) | capturador global de hidratación | **SDD-17** (y SDD-17 §8 para lo eliminado de v1) |
 > | `delegate` / `Delegate` (delegación N2 con `data-fud-e`) | enganche por instancia en `s()` del controlador | **SDD-15 §4.6** |
 > | `styles` / `StyleRegistry` (`<style host="tag">`, decisiones 67–70) | `<style>` inline dentro de cada `<template shadowrootmode>` | **SDD-15 §4.8**; migración a `shadowrootadoptedstylesheets` en SDD-18 |
