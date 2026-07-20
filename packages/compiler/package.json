@@ -45,5 +45,8 @@
   },
   "dependencies": {
     "oxc-parser": "0.137.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.0"
   }
 }

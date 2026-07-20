@@ -29,6 +29,10 @@ importers:
       oxc-parser:
         specifier: 0.137.0
         version: 0.137.0
+    devDependencies:
+      '@types/node':
+        specifier: 22.20.0
+        version: 22.20.0
 
   packages/core:
     dependencies:
