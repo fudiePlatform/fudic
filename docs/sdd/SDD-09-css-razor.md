@@ -20,7 +20,7 @@ SDD-09 produce una secuencia plana de **texto CSS literal + átomos Razor** (`pa
 interpolación activa en prelude y cuerpo de at-rules (42.d) y **conteo correcto de llaves**
 para validar el anidamiento (42.e). **No** construye un AST CSS completo (selectores/
 declaraciones): el navegador parsea el CSS real; el compilador solo interpola Razor y valida
-balance. **No** hace el scoping de `<style host>` (eso es emit).
+balance. **No** hace el scoping de la hoja del componente (eso es emit, SDD-15 §4.8).
 
 **v1: interpolación, no control de flujo.** `@if`/`@foreach`/`@code` dentro de `<style>` están
 **fuera de alcance** en v1 → diagnóstico (§4.4). Reservado para el futuro.
@@ -188,7 +188,7 @@ Entradas reales (fixtures) → `StyleNode`. El SDD está `Hecho` cuando:
 
 ## 7. Fuera de alcance
 
-- **Scoping de `<style host>`** (`:host`, aislamiento del componente): **emit (SDD-14+)**.
+- **Scoping de la hoja del componente** (`:host`, aislamiento): **emit (SDD-15 §4.8; SDD-18 para la hoja compartida)**.
 - **AST CSS estructurado** (selectores, declaraciones, especificidad): no en v1; el navegador
   parsea el CSS real.
 - **Control de flujo / `@code` en CSS:** fuera de v1 (§4.4).
