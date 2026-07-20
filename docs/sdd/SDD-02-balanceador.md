@@ -1,6 +1,6 @@
 # SDD-02 — Balanceador de delimitadores
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Depende de:** 00, 01
 > **Decisiones de gramática:** 6 (más las notas "Delegación a Oxc")
 
@@ -110,6 +110,13 @@ export interface LexRegion {
   readonly span: Span;
 }
 ```
+
+> **Anidamiento.** Una interpolación `${ ... }` no es opaca y no se lista, pero una zona
+> opaca **dentro** de ella sí es una región propia: un template anidado en la
+> interpolación de otro produce dos regiones `template`, la envolvente y la anidada.
+> SDD-11 necesita saber que ese tramo interior es opaco, y el span de la envolvente no lo
+> distingue del código de la interpolación. Como la anidada se cierra antes que la
+> envolvente, `regions` se entrega **ordenada por `span.start`**, no por orden de cierre.
 
 ### 3.2. Grupo balanceado
 
@@ -226,7 +233,8 @@ Dentro de estas zonas, los delimitadores **no** cuentan. Cada zona reconocida se
 
 - **String** `'...'` / `"..."` — termina en la comilla del mismo tipo. `\` escapa el
   siguiente carácter (incluida la comilla). Si llega un fin de línea o EOF sin cerrar:
-  diagnóstico `FUD0003` y se da por cerrada en EOF (degradación).
+  diagnóstico `FUD0003` y la zona se da por terminada ahí (degradación). Ojo: terminada
+  en el **fin de línea**, no en EOF — el escaneo continúa después (§4.5).
 - **Template** `` `...` `` — termina en el backtick de cierre. `\` escapa. Una secuencia
   `${` abre una **interpolación**: dentro de ella el texto es código otra vez (los
   delimitadores cuentan, y se pueden anidar más templates), y se cierra con el `}` que
@@ -245,8 +253,12 @@ Un `/` en "código" es **inicio de regex** o el **operador división/inicio de c
 Se distingue por la **clase del último token significativo** (los blancos y los comentarios
 no son significativos), método estándar de lexer:
 
-- Si el último token significativo es **value-producing**, el `/` es **división** (o `//`
-  / `/*` si le sigue `/` o `*`). Son value-producing:
+Antes de nada se comprueban los **marcadores de comentario**: si al `/` le sigue `/` o
+`*`, abre un comentario, sea cual sea el token anterior. Un comentario lo es siempre; la
+disyuntiva regex-vs-división solo se plantea para un `/` que no es marcador.
+
+- Si el último token significativo es **value-producing**, el `/` es **división**. Son
+  value-producing:
   - un identificador que **no** sea de los keywords de la lista de abajo,
   - un literal numérico,
   - un string o un template ya cerrados,
@@ -284,6 +296,15 @@ resultado es degradado: `closed: false`, `span` = `[openOffset, source.length)`,
 Si la causa raíz fue una zona opaca sin terminar, el diagnóstico es el específico de esa
 zona (`FUD0003`..`FUD0006`) en lugar de —o además de— `FUD0002`; la implementación emite
 el más específico y no duplica.
+
+**Una zona opaca sin terminar no aborta el escaneo.** Las zonas que terminan en fin de
+línea (string y regex) se dan por cerradas **ahí**, no en EOF: se emite su diagnóstico y
+el conteo de delimitadores **continúa** a partir del salto de línea. Por eso un grupo
+puede acabar `closed: true` *y* traer un diagnóstico — p. ej. `scanParens("('abc\n)", 0)`
+cierra en el `)` con `span [0,7)`, una región `string` en `[1,5)` y un `FUD0003`. Es la
+recuperación que exige un language server: un string sin cerrar en mitad de un `@(...)`
+no debe tragarse el resto del fichero. Las que sí llegan a EOF (template, comentario de
+bloque) terminan el escaneo, y entonces `closed` es `false`.
 
 ### 4.6. Catálogo de códigos `FUD` de este SDD
 
@@ -367,8 +388,12 @@ El SDD está `Hecho` cuando, sobre `@fudic/compiler`:
      `emptySpan(0)`, un diagnóstico `FUD0007`.
 
 8. **Tabla de regiones completa y ordenada:**
-   - `scanParens('( "s" /* c */ /re/ )', 0)` ⇒ `regions` en orden de aparición:
+   - `scanParens('( "s" /* c */ , /re/ )', 0)` ⇒ `regions` en orden de aparición:
      `string`, `block-comment`, `regex`, cada una con su `span` exacto.
+
+   > La coma no es decorativa: sin ella, el último token significativo antes del `/` es
+   > el string `"s"` (los comentarios no cuentan, §4.4) ⇒ **división**, no regex. Es lo
+   > que ocurre en JS real con `"s" / re /`.
 
 9. **Cobertura.** El módulo del balanceador se acerca al 100 % de líneas/funciones/ramas
    (escáner puro, sin dependencias externas; los casos límite de §6 cubren las ramas).
