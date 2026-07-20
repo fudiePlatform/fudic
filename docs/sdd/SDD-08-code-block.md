@@ -2,7 +2,7 @@
 
 > **Estado:** `Listo`
 > **Depende de:** 00, 02, 04, 05
-> **Decisiones de gramática:** 32–34, 63–66
+> **Decisiones de gramática:** 32–34, 66 (63–65 retiradas: ver §1)
 
 ---
 
@@ -13,16 +13,19 @@ SDD-05 delega el `@code` por inversión de dependencias: al resolver el trigger 
 lexer justo tras `code`. **SDD-08 es esa implementación.**
 
 El cuerpo de `@code { … }` es **JS**, no HTML. Dentro aparecen dos regiones Razor genuinas
-(decisión 32) — `@server { … }` y `@client(estrategia) { … }` — separadas por **JS neutro**.
+(decisión 32) — `@server { … }` y `@client { … }` — separadas por **JS neutro**.
 SDD-08 **delimita** las tres cosas (neutro, server, client) como spans independientes que
 Oxc valida por separado (SDD-11); **no** parsea el JS.
 
-SDD-08 posee la puntuación Razor del bloque (`@code`/`@server`/`@client`, las llaves, la
-estrategia de hidratación) y las validaciones **sintácticas** (decisiones 64, 66). **No**
-posee: número de `@code` por componente (33.d) ni su ubicación (SDD-10); "máximo un
-`@server`/`@client`" y "no anidables" (33.a/b) y "neutro sin side-effects" (33.c) →
-**semántica, SDD-12**; el default `interaction` de `@client` sin parámetro (65) →
-**semántica**; la validez del JS → **Oxc, SDD-11**.
+SDD-08 posee la puntuación Razor del bloque (`@code`/`@server`/`@client` y las llaves) y las
+validaciones **sintácticas** (decisión 66). **No** posee: número de `@code` por componente
+(33.d) ni su ubicación (SDD-10); "máximo un `@server`/`@client`" y "no anidables" (33.a/b) y
+"neutro sin side-effects" (33.c) → **semántica, SDD-12**; la validez del JS → **Oxc, SDD-11**.
+
+> **Ni `@server` ni `@client` admiten parámetro** (decisión 66, ampliada). Las estrategias de
+> hidratación declaradas por el componente (antiguas decisiones 63–65) están **retiradas**: un
+> componente se coloca donde el consumidor quiera y su código no puede declarar cuándo se
+> hidrata. La hidratación la gobierna el capturador global de SDD-17.
 
 ---
 
@@ -55,9 +58,6 @@ Ubicación: `packages/compiler/src/code/` (`nodes.ts`, `code.ts`, reexportados d
 `code/index.ts`). Todo en inglés.
 
 ```ts
-/** The four whitelisted hydration strategies (decisions 63, 64). Not a JS expression. */
-export type HydrationStrategy = 'eager' | 'viewport' | 'interaction' | 'idle';
-
 /** `@code { … }` — one container per component (33.d is enforced in SDD-10). */
 export interface CodeBlockNode extends Node {
   readonly type: 'code';
@@ -81,12 +81,9 @@ export interface ServerRegion extends Node {
   readonly js: Span;
 }
 
-/** `@client(strategy)? { js }` (32, 63–65). Independent client Oxc fragment. */
+/** `@client { js }` (32). Independent client Oxc fragment. No parameter (66). */
 export interface ClientRegion extends Node {
   readonly type: 'client-region';
-  /** Written strategy (64). Absent ⇒ defaults to `interaction` in SDD-12 (decision 65). */
-  readonly strategy?: HydrationStrategy;
-  readonly strategySpan?: Span;
   readonly js: Span;
 }
 
@@ -121,20 +118,13 @@ deja para Oxc.
 - El tramo `[inicio, marcador)` es un `NeutralJs` (omitido si es solo whitespace).
 - **`@server`** → si le sigue `(` es error `FUD0111` (decisión 66). Saltar `WS*`, esperar `{`
   (`FUD0110`), `scanBraces` → `ServerRegion` con `js` = inner. Continuar tras el `}`.
-- **`@client`** → estrategia opcional (§4.3), luego `WS*`, `{` (`FUD0110`), `scanBraces` →
-  `ClientRegion`. Continuar tras el `}`.
+- **`@client`** → simétrico a `@server`: si le sigue `(` es error `FUD0111` (decisión 66,
+  ampliada). Saltar `WS*`, esperar `{` (`FUD0110`), `scanBraces` → `ClientRegion`. Continuar
+  tras el `}`.
 
 Al llegar al final del cuerpo, el último tramo neutro se cierra. **SDD-08 no desciende** en el
 `{ … }` de una región (es JS opaco para Oxc): por eso un `@server`/`@client` **anidado** no lo
 ve SDD-08 (queda dentro del JS de la región) — su detección limpia es semántica (§6, nota 2).
-
-### 4.3. Estrategia de hidratación de `@client` (decisiones 63–66)
-
-Tras `@client`, si viene `(`: leer `WS* keyword WS*` `)`. `keyword` debe estar en la whitelist
-cerrada `eager|viewport|interaction|idle` (decisión 64) → `FUD0112` si no; paréntesis vacío o
-sin cerrar → `FUD0113`. Se guarda `strategy` + `strategySpan`. **Sin** `(` → `strategy` se
-**omite** (el default `interaction` lo pone SDD-12, decisión 65 — es semántico, no aquí). La
-estrategia **no** es JS: es un terminal, no se pasa a Oxc. `@server(…)` no existe (66).
 
 ### 4.4. Qué NO valida SDD-08
 
@@ -152,20 +142,19 @@ SDD-08 reserva **`FUD0110`–`FUD0129`**. Definidos:
 | Código | Significado |
 |---|---|
 | `FUD0110` | Falta `{` tras `@code` / `@server` / `@client`. |
-| `FUD0111` | `@server` no admite parámetro (decisión 66): `@server(…)`. |
-| `FUD0112` | Estrategia de hidratación fuera de la whitelist (decisión 64). |
-| `FUD0113` | Paréntesis de estrategia vacío o sin cerrar. |
+| `FUD0111` | `@server` / `@client` no admiten parámetro (decisión 66): `@server(…)`, `@client(…)`. |
 
-`FUD0114`–`FUD0129` libres. El `FUD0002` del balanceador (cuerpo/región sin cerrar) aflora sin
+`FUD0112`–`FUD0129` libres (`FUD0112`/`FUD0113` quedan **quemados**: eran la whitelist y los
+paréntesis de estrategia, retirados con las decisiones 63–65). El `FUD0002` del balanceador (cuerpo/región sin cerrar) aflora sin
 renumerarse.
 
 ---
 
 ## 5. Invariantes LSP
 
-- **Spans en todo.** `CodeBlockNode`, cada `CodePart` (`.js`, `.strategySpan`) y cada
+- **Spans en todo.** `CodeBlockNode`, cada `CodePart` (`.js`) y cada
   `Diagnostic` llevan offset UTF-16. Las regiones cubren el cuerpo sin solapes.
-- **Nunca lanza.** Falta de `{`, estrategia inválida, `@server(…)` y cuerpo/región sin cerrar
+- **Nunca lanza.** Falta de `{`, parámetro en `@server`/`@client` y cuerpo/región sin cerrar
   → resultado degradado + diagnóstico (el `FUD0002` burbujea), nunca excepción.
 - **Fragmentos JS aislados (decisión 32).** Cada `.js` es un span independiente listo para que
   SDD-11 lo acumule en el buffer sintético de Oxc. SDD-08 no invoca a Oxc.
@@ -183,10 +172,9 @@ Entradas reales (fixtures) → nodo esperado. El SDD está `Hecho` cuando:
    ⇒ `CodeBlockNode` con `parts` = `[NeutralJs(type User…), ServerRegion(js = import…load…)]`.
 
 3. **`@client` con neutro.** `@code { @client { import {signal} from '@f'; const s = signal(false); } }`
-   ⇒ `parts` = `[ClientRegion]` sin `strategy` (default `interaction` lo pone SDD-12).
+   ⇒ `parts` = `[ClientRegion]`.
 
-4. **Estrategia (decisiones 63, 64).** `@client(viewport) { … }` ⇒ `ClientRegion.strategy =
-   'viewport'`. `@client(foo) { … }` ⇒ `FUD0112`. `@client() { … }` ⇒ `FUD0113`.
+4. **`@client` no admite parámetro (decisión 66).** `@client(viewport) { … }` ⇒ `FUD0111`.
 
 5. **`@server(…)` (decisión 66).** `@server(x) { … }` ⇒ `FUD0111`.
 
@@ -202,7 +190,7 @@ Entradas reales (fixtures) → nodo esperado. El SDD está `Hecho` cuando:
    `FUD0002` (sin cerrar). Nunca lanza.
 
 10. **Cobertura.** Cerca del 100 % de líneas/funciones/ramas (los casos cubren el escaneo de
-    marcadores, la estrategia y las degradaciones). Cumple el suelo del SDD-00 (80/80/75).
+    marcadores y las degradaciones). Cumple el suelo del SDD-00 (80/80/75).
 
 ---
 
@@ -223,8 +211,7 @@ Entradas reales (fixtures) → nodo esperado. El SDD está `Hecho` cuando:
 
 - **Reglas de documento:** cero/un `@code` (33.d), ubicación en `<head>` en página (60),
   orden top-level (53): **SDD-10**.
-- **Unicidad y anidación de regiones (33.a/b), neutro puro (33.c), default `interaction`
-  (65):** **SDD-12**.
+- **Unicidad y anidación de regiones (33.a/b), neutro puro (33.c):** **SDD-12**.
 - **Elevación/dedupe de imports (33.c):** emit (SDD-14).
 - **Validación del JS** de neutro y regiones: **Oxc (SDD-11)**.
 - **`LineMap` / línea-columna:** **SDD-13**.

@@ -2,7 +2,7 @@
 
 > **Estado:** `Listo`
 > **Depende de:** 00, 05–11
-> **Decisiones de gramática:** 19, 31, 33.a/b/c, 41, 45, 65 · 28.c (pendiente, §8.4)
+> **Decisiones de gramática:** 19, 31, 33.a/b/c, 41, 45 · 28.c (§8.4)
 
 ---
 
@@ -14,7 +14,7 @@ tolerante y estructural; SDD-12 es la pasada que, con el **documento estructurad
 exigen contexto: unicidad, anidamiento, referencias cruzadas y tipos.
 
 Produce **diagnósticos** y un pequeño **modelo semántico** con los hechos resueltos que el emit
-necesita (hoy: la estrategia de hidratación efectiva de cada `@client`, decisión 65).
+necesita (nivel efectivo por componente, catálogo de componentes, mapa de bus).
 
 Diseño **SOLID**: cada regla es un *analyzer* independiente; `analyze()` los corre y agrega sus
 diagnósticos. Añadir una regla nueva es añadir un analyzer, no tocar los demás.
@@ -33,7 +33,7 @@ SDD-01 y la convención del proyecto.
 | 05 | `Hecho` | `ElementNode`, `Attribute`, `HtmlContent` (recorrido del árbol). |
 | 06 | `Hecho` | `ForeachNode`/`ForNode`/`WhileNode` (contexto de bucle, decisión 31). |
 | 07 | `Hecho` | `classifyAttribute` (para localizar `RefBinding`), `Interpolation`. |
-| 08 | `Hecho` | `CodeBlockNode`, `ServerRegion`/`ClientRegion`, `HydrationStrategy`. |
+| 08 | `Hecho` | `CodeBlockNode`, `ServerRegion`/`ClientRegion`. |
 | 10 | `Hecho` | `StructuredDocument` (documento ya validado estructuralmente). |
 | 11 | `Hecho` | `JsBatchResult` (`ast(id)`), `OxcNode` (decisión 19). |
 
@@ -44,7 +44,7 @@ import { type StructuredDocument } from '../document/index.js';
 import { type ElementNode, type Attribute, type HtmlContent } from '../html/index.js';
 import { classifyAttribute } from '../binding/index.js';
 import { type ForeachNode, type ForNode, type WhileNode } from '../control/index.js';
-import { type ClientRegion, type HydrationStrategy } from '../code/index.js';
+import { type ClientRegion } from '../code/index.js';
 import { type JsBatchResult, type OxcNode, type FragmentId } from '../oxc/index.js';
 ```
 
@@ -75,8 +75,6 @@ export interface ComponentRegistry {
 
 /** Resolved semantic facts the emit consumes. */
 export interface SemanticModel {
-  /** Effective hydration strategy per client region (decision 65; absent ⇒ 'interaction'). */
-  readonly strategies: ReadonlyMap<ClientRegion, HydrationStrategy>;
 }
 
 /** One semantic rule. Reports diagnostics and may contribute to the model. */
@@ -105,7 +103,6 @@ export function analyze(input: SemanticInput): ParseResult<SemanticModel>;
 | `neutral-imports` | 33.c | Import **solo por efecto** (sin bindings, `import './x'`) en zona neutra. | `FUD0196` (warning). |
 | `primitive-interpolation` | 19 | Interpolación cuyo `ast` es literal `Array`/`Object` (no-primitiva **evidente**). | `FUD0195`. |
 | `component-declared` | 41 | Elemento custom (nombre con `-`) usado sin estar en `ComponentRegistry`. | `FUD0191`. |
-| `hydration-default` | 65 | `@client` sin `strategy`. | Rellena `model.strategies` con `interaction` (no es diagnóstico). |
 
 **Recorrido.** La mayoría de analyzers recorren el árbol una vez; `ref-in-loop` mantiene un
 contador de profundidad de bucle. `code-region-*` operan sobre el `@code` del documento.
@@ -128,7 +125,7 @@ Cada SDD reserva su rango; aquí está el registro maestro. Formato `FUD` + 4 d�
 | `FUD0050`–`0069` | 05 | `0050` cierre no casa · `0051` cierre huérfano · `0052` elemento sin cerrar · `0053` cierre de void · `0054` CDATA fuera de svg/math · `0055` construcción `@` sin handler. |
 | `FUD0070`–`0089` | 06 | `0070` falta `(` · `0071` falta `{` · `0072` bloque sin cerrar · `0073` `else` huérfano · `0074` contenido antes del primer `case` · `0075` `case`/`default` sin `:`. |
 | `FUD0090`–`0109` | 07 | `0090` property sin `@` · `0091` property con concatenación · `0092` event sin `@` único · `0093` `class:`/`style:` sin `@` único · `0094` `ref` no identificador simple · `0095` `class:`/`style:` sin nombre · `0096` `bus:` sin `@` único · `0097` `bus:` sin nombre. |
-| `FUD0110`–`0129` | 08 | `0110` falta `{` · `0111` `@server(…)` · `0112` estrategia fuera de whitelist · `0113` parens de estrategia vacío/sin cerrar. |
+| `FUD0110`–`0129` | 08 | `0110` falta `{` · `0111` `@server(…)` / `@client(…)` (66). `0112`/`0113` quemados (estrategias retiradas). |
 | `FUD0130`–`0149` | 09 | `0130` construcción Razor no permitida en `<style>` · `0131` llaves CSS desbalanceadas. |
 | `FUD0150`–`0169` | 10 | `0150` doctype ≠ `html` · `0151` `<html>`/`<head>`/`<body>` faltante o desordenado · `0152` `<link rel="component">` fuera de `<head>` · `0153` `@code` fuera de `<head>` · `0154` más de un `@code` · `0155` orden top-level inválido en componente · `0156` envoltorio host inválido (decisión 75) · `0157` template única ausente en el envoltorio · `0158` `shadowrootmode` inválido · `0159` más de un `<style>` en el head del componente · `0160` atributo `host` escrito en fuente (marcador de output). |
 | `FUD0170`–`0189` | 11 | `0170` error de sintaxis JS/TS de Oxc (span mapeado). |
@@ -174,8 +171,9 @@ El SDD está `Hecho` cuando:
 7. **Custom element sin declarar (41).** `<app-card>` con `components.has('app-card') === false`
    ⇒ `FUD0191`. Con registry que lo tiene ⇒ sin error. `<div>` (sin `-`) nunca se comprueba.
 
-8. **Estrategia por defecto (65).** `@client { … }` ⇒ `model.strategies.get(region) ===
-   'interaction'`. `@client(viewport)` ⇒ `'viewport'`.
+8. **Sin estrategia de hidratación.** `model` no expone `strategies`: las decisiones 63–65
+   están retiradas y ningún analyzer las resuelve. Un `.fud` con `@client(viewport)` produce
+   `FUD0111` en SDD-08, no una estrategia.
 
 9. **Import neutro por efecto (33.c).** `@code { import './reset.css'; }` ⇒ `FUD0196` (warning).
 
