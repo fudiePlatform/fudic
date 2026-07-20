@@ -1,6 +1,6 @@
 # SDD-03 — Tokenizer + pila de modos
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Depende de:** 00, 01, 02
 > **Decisiones de gramática:** notas "Modos del parser"; 1, 7 (transición `@` léxica); 28.b (`bus:(` en ranura de nombre → `explicit-expr`); 38–41, 48, 57 (formas HTML); 43 (`<script>` raw)
 
@@ -194,8 +194,28 @@ export class Lexer {
    * header it consumed via the balancer. Clears the lookahead buffer.
    */
   seekTo(offset: number): void;
+
+  /**
+   * Open / close a `@switch` body: with one open, `case` and `default` at token
+   * start cut the text run and surface as `switch-label` (decision 80). SDD-06
+   * brackets the body with these. See the note in §4.3 on why this is cursor
+   * state and not a Mode. A pop with no body open is ignored.
+   */
+  pushSwitchBody(): void;
+  popSwitchBody(): void;
+  get switchDepth(): number;
 }
+
+/** Convenience: tokenize a whole source eagerly. For tests and tooling. */
+export function tokenize(source: string, baseMode?: Mode): ParseResult<readonly Token[]>;
 ```
+
+> **Estado léxico que no es un `Mode`.** Además de la `ModeStack`, el cursor lleva contexto
+> que la pila no puede expresar y que ningún modo captura: si está dentro de la lista de
+> atributos de un start tag, dentro de un valor entrecomillado, el nombre del tag pendiente
+> (para decidir el `push` en el `>`), el último `attr-name` (para la regla `bus:(`), el
+> elemento dueño del cuerpo raw y si su Razor está activo. Es privado, viaja con el cursor y
+> no amplía la taxonomía `Mode`.
 
 ---
 
@@ -209,6 +229,13 @@ insignificante (entre atributos, entre nodos top-level) se emite como `whitespac
 whitespace de contenido va dentro de `text`. Esto mantiene la navegabilidad por offset
 exacta y simplifica el reparseo.
 
+> **Precisión (implementación).** "Entre nodos top-level" no es decidible en esta capa: el
+> tokenizer no construye árbol y no sabe qué es top-level (eso es SDD-05). Emite
+> `whitespace` allí donde el contexto léxico sí se lo dice —**dentro de un start tag**,
+> entre atributos— y deja la whitespace de contenido dentro de `text`. Quién la considera
+> insignificante entre nodos es SDD-05, que ya tiene el árbol. La cobertura total se
+> mantiene en ambos casos.
+
 ### 4.2. Modos y transiciones que el tokenizer posee
 
 El tokenizer es dueño de las transiciones de modo **dirigidas por tag** (léxicas). Las
@@ -217,7 +244,7 @@ transiciones a `js` (cabeceras de control, `@code`) NO son suyas: las hace SDD-0
 | Disparador (en `html`/`svg`/`math`) | Acción | Salida | Decisión |
 |---|---|---|---|
 | `<script>` | push `raw` (Razor **off**) | `raw-text` opaco hasta `</script>` | 43 |
-| `<title>` / `<textarea>` | push `raw` (Razor **on**) | texto + átomos `@`, sin tags, hasta el cierre | ver §4.6 (a confirmar) |
+| `<title>` / `<textarea>` | push `raw` (Razor **on**) | texto + átomos `@`, sin tags, hasta el cierre | §4.6 (cerrado) |
 | `<style>` | push `css` | regiones CSS — **producción en SDD-09** (placeholder §4.7) | 42 |
 | `<svg>` / `<math>` (raíz) | push `svg`/`math` | tokens HTML case-sensitive, self-close libre, CDATA | 41.b, 50 |
 
@@ -238,11 +265,17 @@ El cierre del elemento correspondiente hace `pop`. La taxonomía `Mode` es cerra
     nunca lanza).
   - **`case` / `default` cortan solo dentro de un cuerpo de `@switch`.** Aquí sí hace falta
     contexto —cortar ante la palabra "case" en prosa sería absurdo—, y lo aporta un marcador
-    `switch-body` que SDD-06 empuja y desapila en el `ModeStack` a través del seam mientras
-    parsea el cuerpo del switch. Con el marcador activo, `case` y `default` en posición
-    inicial de token cortan el texto y se emiten como `switch-label`. El `ModeStack` ya es
-    propiedad del lexer y clonable, así que el marcador viaja con él sin romper la
-    navegabilidad por offset.
+    `switch-body` que SDD-06 abre y cierra a través del seam mientras parsea el cuerpo del
+    switch. Con el marcador activo, `case` y `default` en posición inicial de token cortan el
+    texto y se emiten como `switch-label`.
+
+    > **Dónde vive el marcador (resuelto en implementación).** Este SDD lo situaba *en el
+    > `ModeStack`*, pero `switch-body` no es un `Mode`: la taxonomía es **cerrada** en SDD-01
+    > y §4.2 prohíbe ampliarla. Ambas cosas no podían ser ciertas. El marcador es por tanto
+    > estado propio del cursor —un contador de profundidad, porque los `@switch` anidan— con
+    > `pushSwitchBody()` / `popSwitchBody()` en la interfaz del `Lexer` (§3.2). Se conservan
+    > las dos propiedades que motivaban ponerlo en la pila: viaja con el cursor y no rompe la
+    > navegabilidad por offset. Un `pop` sin marcador abierto se ignora, como `ModeStack.pop`.
 - **Tags.** `<` seguido de letra (decisión 41, `[a-zA-Z]`) abre `tag-open-start` con el
   `name`. Dentro de la lista de atributos se emiten `attr-name`, `attr-eq`,
   `attr-quote-open` / `attr-quote-close` y, entre comillas, `text` + átomos `@`
@@ -319,11 +352,23 @@ que SDD-09 aterrice, el modo `css` trata el cuerpo como `raw-text` opaco hasta `
 **provisional y explícitamente marcado** como punto de extensión. No se define aquí ninguna
 regla CSS.
 
+**El modo `js`, en paralelo.** Este SDD tampoco produce tokens en modo `js`: las
+transiciones a `js` son de SDD-04/08 (§4.2), que conducen el balanceador y `seekTo` en vez
+de tirar de `next()`. Mientras tanto, `next()` en modo `js` emite el resto de la fuente
+como un único `text` opaco — placeholder del mismo tipo que el de `css`, para que el cursor
+siga cubriendo el `source` (§4.1) y nunca se cuelgue. SDD-04/08 lo sustituyen.
+
 ### 4.8. Modos `svg` / `math` (decisión 41.b, 50)
 
 Iguales en forma a `html` pero: nombres **case-sensitive**, self-close siempre permitido
 (estilo XML), y `<![CDATA[ ... ]]>` reconocido como `cdata`. Push al entrar en la raíz
 `<svg>`/`<math>`, pop en su cierre. Las reglas de árbol siguen siendo de SDD-05.
+
+**Anidamiento del mismo nombre.** Solo la **raíz** empuja modo, pero un `<svg>` dentro de
+otro `<svg>` es SVG legal, y su `</svg>` no debe desapilar el modo del externo. El cursor
+lleva por tanto la pila de elementos que *pueden* cerrar el modo actual, marcando los
+anidados homónimos como "no dueños": estos se tragan su propio cierre y el modo sobrevive
+hasta el cierre de la raíz.
 
 ### 4.9. EOF y degradación
 
@@ -342,7 +387,7 @@ SDD-03 reserva el rango **`FUD0010`–`FUD0029`** (SDD-01: `FUD0001`; SDD-02:
 | `FUD0011` | Comentario Razor sin terminar (`@*` sin `*@`). |
 | `FUD0012` | Comentario HTML sin terminar (`<!--` sin `-->`). |
 | `FUD0013` | Tag mal formado (`<` no seguido de nombre válido, `/` o `!`). |
-| `FUD0014` | Elemento raw sin cerrar (no aparece la tag de cierre). |
+| `FUD0014` | Elemento raw sin cerrar (no aparece la tag de cierre). Aplica por igual al cuerpo opaco (`<script>`) y al RCDATA (`<title>`/`<textarea>`): el código está definido sobre "elemento raw", no sobre `<script>`. |
 | `FUD0015` | Valor de atributo sin cerrar (falta la comilla de cierre). |
 | `FUD0016` | Sección CDATA sin terminar. |
 
@@ -408,8 +453,7 @@ Entradas reales (de los fixtures) → tokens esperados. El SDD está `Hecho` cua
    (el `@` **no** dispara nada dentro), `tag-close`. Push/pop de modo `raw` verificado.
 
 10. **`<title>` con Razor (resolución §4.6).** `<title>@data.title</title>` ⇒
-    `tag-open-start`, `tag-open-end`, `at-trigger`, …, `tag-close`. (Test sujeto a la
-    confirmación de §4.6.)
+    `tag-open-start`, `tag-open-end`, `at-trigger`, …, `tag-close`.
 
 11. **`<style>` push css (placeholder §4.7).** `<style>:host{}</style>` ⇒
     `tag-open-start`(`style`), `tag-open-end`, push `css`, cuerpo provisional,
