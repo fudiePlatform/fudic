@@ -296,8 +296,13 @@ export class Lexer {
   /**
    * True when the `@` at `i` is literal because the previous character is an
    * identifier character (the email lookbehind of decision 7).
+   *
+   * The `@@` escape (decision 1) is evaluated FIRST and outranks the lookbehind:
+   * on seeing an `@` we look at the NEXT character before the previous one, so
+   * `a@@b` is the literal `a@b` and never `a@` plus an interpolation of `b`.
    */
   #isLiteralAt(i: number): boolean {
+    if (this.#at(i + 1) === '@') return false;
     const prev = this.#at(i - 1);
     return prev !== undefined && IDENT_PART.test(prev);
   }

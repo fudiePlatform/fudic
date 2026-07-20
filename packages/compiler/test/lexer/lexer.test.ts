@@ -230,6 +230,20 @@ describe('email lookbehind (§6.6, decision 7)', () => {
   it('still fires when the @ does not follow an identifier character', () => {
     expect(types(' @foo')).toEqual(['text', 'at-trigger', 'text']);
   });
+
+  it('lets the @@ escape outrank the lookbehind (decision 1 over decision 7)', () => {
+    // Normative consequence in the grammar doc: `a@@b` is the literal `a@b`,
+    // never `a@` followed by an interpolation of `b`.
+    const source = 'a@@b';
+    const tokens = toks(source);
+    expect(tokens.map((t) => t.type)).toEqual(['text', 'at-escape', 'text']);
+    expect(text(source, tokens[0]!)).toBe('a');
+    expect(text(source, tokens[2]!)).toBe('b');
+  });
+
+  it('keeps the lookbehind when there is no escape pair', () => {
+    expect(types('user@dominio.com')).toEqual(['text']);
+  });
 });
 
 describe('escape and Razor comment (§6.7)', () => {

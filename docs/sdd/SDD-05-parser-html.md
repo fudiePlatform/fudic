@@ -1,6 +1,6 @@
 # SDD-05 — Parser HTML (subset estricto)
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Depende de:** 00, 02, 03, 04
 > **Decisiones de gramática:** 38–52 (menos las semánticas 45 y 57, que van a SDD-12); 28.a/b (`bus:`; `Attribute.name` puede ser `RazorExpression`)
 
@@ -213,12 +213,15 @@ export type HtmlContent =
   | RazorConstruct
   | UnhandledConstructNode;
 
+/** Closed set of construct discriminants, derived from SDD-04 so the two cannot drift. */
+export type RazorConstructType = ControlKeyword | 'code';
+
 /**
- * A node produced by an injected @-construct parser. Its concrete `type`
- * (`'if' | 'foreach' | 'for' | 'while' | 'switch' | 'code'`) is narrowed by the owning
- * SDD (06/08); SDD-05 only stores it as a child and never inspects its shape.
+ * A node produced by an injected @-construct parser. Its concrete shape is narrowed by
+ * the owning SDD (06/08), which extends this with its own fields; SDD-05 only stores it
+ * as a child and never inspects it beyond the discriminant.
  */
-export interface RazorConstruct extends Node { readonly type: string; }
+export interface RazorConstruct extends Node { readonly type: RazorConstructType; }
 
 /** Degraded placeholder when a control/@code trigger is met with no injected handler (FUD0055). */
 export interface UnhandledConstructNode extends Node {
@@ -226,6 +229,14 @@ export interface UnhandledConstructNode extends Node {
   readonly keyword: string;
 }
 ```
+
+> **Por qué `RazorConstructType` y no `string`.** Esta spec tipaba `RazorConstruct.type`
+> como `string`, lo que **destruye la unión**: un miembro cuyo discriminante es `string`
+> absorbe a todos los demás, así que un `switch (node.type)` sobre `HtmlContent` recibiría
+> `RazorConstruct` en **todas** las ramas y ningún consumidor (SDD-06/07/10/12, el emit)
+> podría narrowear nada. El propio comentario de §3.4 ya nombraba el conjunto cerrado; solo
+> faltaba escribirlo en el tipo. Se deriva de `ControlKeyword` (SDD-04) para que no puedan
+> divergir.
 
 ### 3.5. Inversión de dependencias: el sub-parser de `@`-construcciones
 
@@ -243,6 +254,10 @@ export interface HtmlParseContext {
    * Parse a run of HTML content until `stop` matches the upcoming (peeked, NOT consumed)
    * token — e.g. the `}` closing an html_block, or a `case`/`default`/`}` in a switch.
    * The sub-parser (SDD-06) owns the braces/keywords around the body; this only fills it.
+   *
+   * Diagnostics produced while filling the body are accumulated by SDD-05 and surface in
+   * `parseDocument`'s result, so the returned ParseResult carries none: a sub-parser that
+   * merged them would emit each one twice.
    */
   parseContentUntil(stop: (next: Token) => boolean): ParseResult<readonly HtmlContent[]>;
 }
@@ -323,17 +338,28 @@ cierre del start tag, y decide el `kind`:
   decisión 39: `area base br col embed hr img input link meta source track wbr`):
   `kind: 'void'`, `children: []`, sin `closeSpan`. **No** se busca `</name>`; si aparece un
   `</br>` explícito → `FUD0053`.
-- **Raw** (`tag-open-end` y name es `script`, decisión 43): `kind: 'raw'`. El `Lexer` ya
-  entregó el cuerpo como un único `raw-text` opaco; `children` = `[RawTextNode]`. El cierre
-  `</script>` da el `closeSpan`. *(nota: `<title>`/`<textarea>` NO son raw opacos aquí —
+- **Raw** (`tag-open-end` y name es `script` —decisión 43— **o `style`**): `kind: 'raw'`. El
+  `Lexer` ya entregó el cuerpo como un único `raw-text` opaco; `children` = `[RawTextNode]`.
+  El cierre da el `closeSpan`. *(nota: `<title>`/`<textarea>` NO son raw opacos aquí —
   SDD-03 §4.6 los tokeniza como texto + átomos `@`; se parsean como `normal`.)*
+
+  > **`<style>` también es `raw`.** Esta lista nombraba solo a `script`, pero §4.4 dice que
+  > el cuerpo de `<style>` llega como `raw-text` y que SDD-05 "lo aloja como tal", y §3.2
+  > define precisamente el hijo `RawTextNode` como lo que caracteriza a `raw`. Un `<style>`
+  > con `kind: 'normal'` e hijo `raw-text` se contradecía con ambas. Es provisional en el
+  > mismo sentido que el placeholder de SDD-03 §4.7: cuando SDD-09 produzca tokens CSS,
+  > `<style>` deja de ser raw.
 - **Normal** en cualquier otro caso: `kind: 'normal'`; se parsea contenido recursivamente
   (§4.2) hasta el `tag-close` que casa (§4.7), que aporta `closeSpan`.
 
 El `name` se guarda **verbatim** (decisión 41: `[a-zA-Z][a-zA-Z0-9-]*`, ya garantizado por el
-lexer). El `namespace` sale del `lexer.mode` activo: al entrar en `<svg>`/`<math>` el lexer
-empuja `svg`/`math` (decisión 41.b, case-sensitive) y sus descendientes quedan marcados; se
-desapila en el cierre. `openSpan` cubre `<name … >`/`<name … />`.
+lexer). `openSpan` cubre `<name … >`/`<name … />`.
+
+El **`namespace` lo lleva el parser en su propia pila**, no se lee de `lexer.mode`. Leerlo del
+lexer no funciona: este empuja `svg`/`math` en el `>` del start tag, así que el propio `<svg>`
+todavía se vería en modo `html`, y un `<script>` reportaría `raw`, que no es un namespace. La
+raíz `<svg>`/`<math>` fija el namespace y los descendientes lo heredan; el matching de nombres
+es case-sensitive dentro de ellos y case-insensitive en `html` (decisión 41.b).
 
 ### 4.4. Elementos `raw` y modos delegados
 
@@ -378,6 +404,13 @@ nombre:
 - **Valor** = partes en orden entre las comillas: `text` → `AttributeText` (verbatim, decisión
   49); átomos `@` → `RazorExpression` (implícita/explícita, vía SDD-04). Concatenación uniforme
   de partes (decisión 20); el emit optimiza el caso estático.
+- **Átomos `@` que no son expresión, en posición de valor.** `AttributeValuePart` es
+  `AttributeText | RazorExpression`, así que los demás átomos no tienen sitio y se resuelven
+  aquí: `@@` produce un `AttributeText` con el carácter que denota (`@`, decisión 1);
+  `@raw( … )` aporta solo su expresión interna (en un valor no hay escape que desactivar; la
+  semántica de escape es de contenido); `@{ … }` y `@* … *@` no contribuyen parte; un keyword
+  de control degrada a `AttributeText` verbatim, porque no puede abrir una construcción dentro
+  de un valor.
 - **Sin `=`** (atributo booleano) **o** `=""` (valor vacío) → `value: []`. Ambos producen el
   **mismo AST** (decisión 44). La semántica de atributo booleano HTML (decisión 21) es SDD-07.
 - **Orden preservado** (decisión 47). **Atributos duplicados** (decisión 45) **no** se

@@ -299,10 +299,18 @@ El cierre del elemento correspondiente hace `pop`. La taxonomía `Mode` es cerra
 Al ver un `@` en posición de contenido o de valor, el tokenizer decide por **lookbehind**
 y **lookahead** de un carácter:
 
-1. **Email (lookbehind, decisión 7).** Si el carácter inmediatamente anterior es de
-   identificador (forma palabra con lo previo, p. ej. `user@`), el `@` es **literal**: se
-   absorbe en el `text` circundante. Permite `user@dominio.com` sin escape.
-2. **`@@` (decisión 1)** → token `at-escape` (representa un `@` literal en el output).
+1. **`@@` (decisión 1)** → token `at-escape` (representa un `@` literal en el output).
+   **Va primero, y es normativo:** al ver un `@` se mira el carácter **siguiente** antes que
+   el anterior. Si es otro `@`, se consume la pareja sin consultar el lookbehind.
+2. **Email (lookbehind, decisión 7).** Solo si no hubo `@@`: si el carácter inmediatamente
+   anterior es de identificador (forma palabra con lo previo, p. ej. `user@`), el `@` es
+   **literal** y se absorbe en el `text` circundante. Permite `user@dominio.com` sin escape.
+
+> **Orden corregido.** Esta lista tenía el email en el punto 1 y `@@` en el 2, lo que
+> invierte la precedencia que fija `gramatica-v1-decisiones.md`: "el escape `@@` se evalúa
+> **antes** que el lookbehind de email … `a@@b` produce el literal `a@b` (nunca `a@` +
+> interpolación de `b`)". La implementación siguió el orden escrito aquí y reprodujo el
+> error; lo cazó un test de SDD-05. Corregido en ambos sitios.
 3. **`@* ... *@`** → token `razor-comment`. El tokenizer escanea hasta el primer `*@`
    (no anidable, decisión 36). Sin `*@` antes de EOF → `FUD0011`, token degradado hasta EOF.
 4. **`@(`** → token `explicit-expr`: el tokenizer llama a `scanParens(source, offsetDe'(')`

@@ -12,3 +12,4 @@ export * from './types/index.js';
 export * from './balancer/index.js';
 export * from './lexer/index.js';
 export * from './at/index.js';
+export * from './html/index.js';
