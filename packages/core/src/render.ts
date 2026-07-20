@@ -1,7 +1,11 @@
 /**
  * The render-object contract (SDD-14 §4.5). The emit produces one render per
- * block/component; core only defines the shape. Each render owns exactly its
- * own nodes and its teardown — no diffing, no tree reconciliation.
+ * BLOCK (`@if` / `@foreach`): core only defines the shape. Each render owns
+ * exactly its own nodes and its teardown — no diffing, no tree reconciliation.
+ *
+ * Blocks are the only place where `update` has real work (existential decision
+ * and parent→child propagation): an N3 component is emitted as a closure
+ * controller `{c, h, r}` with no `update` at all (SDD-15 §3.7, §4.6).
  */
 
 import { type Cursor, type Dom, type DomClient } from '@fudic/dom';

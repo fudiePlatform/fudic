@@ -7,8 +7,9 @@
  *  - void elements (`img`, `br`, …) self-close: no children, no closing tag;
  *  - rawtext elements (`script`, `style`) emit their text children UNescaped;
  *  - a shadow root serializes as `<template shadowrootmode="open">…</template>`,
- *    the first thing inside its host (a `<style host>` sheet is NOT inlined here:
- *    the serialization hoists it into the page head, decisions 75–78);
+ *    the first thing inside its host. No `host="tag"` marker is emitted: the
+ *    `<style host>` mechanism is retired and v1 inlines the component `<style>`
+ *    inside the shadow (SDD-15 §4.8, §7);
  *  - text is escaped for text context (`& < >`), attribute values for attribute
  *    context (`& "`); a comment neutralizes an inner `-->`.
  */

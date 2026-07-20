@@ -10,14 +10,12 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html'],
       thresholds: {
-        // SDD-00 floor for the DOM-bound modules (FudicElement, scheduler)...
+        // SDD-00 floor for the DOM-bound module (bootstrap)...
         lines: 80,
         functions: 80,
         branches: 75,
         // ...and near-100% for the pure runtime pieces (SDD-14 §6.13).
         'src/signal.ts': { lines: 100, functions: 100, branches: 100 },
-        'src/delegate.ts': { lines: 100, functions: 100, branches: 100 },
-        'src/styles.ts': { lines: 100, functions: 100, branches: 100 },
       },
     },
   },

@@ -1,8 +1,30 @@
 # SDD-14 — Runtime (`@fudic/dom` · `@fudic/ssr` · `@fudic/core`)
 
-> **Estado:** `Hecho`
+> **Estado:** `Hecho` (con recorte: ver la nota de retirada)
 > **Depende de:** 00, 01
-> **Decisiones de gramática:** 67–74 (`<style host>`, identidad de nodos, cruce de estado, hidratación)
+> **Decisiones de gramática:** 71–73 (identidad de nodos, cruce de estado, lifecycle del render)
+
+> ### Nota de retirada (2026-07-19)
+>
+> Cuatro mecanismos que esta spec definía **quedan retirados del proyecto**. Su código
+> salió de `@fudic/core` y sus secciones salieron de este documento:
+>
+> | Retirado | Sustituto | Dónde vive ahora |
+> |---|---|---|
+> | `FudicElement` (base de custom element N3) | controlador closure `{c, h, r}` emitido por componente | **SDD-15 §3.7, §4.3, §4.6** |
+> | `defineLazy` / `HydrationStrategy` (`@client(eager\|viewport\|interaction\|idle)`, decisión 74) | capturador global de hidratación | **SDD-17** (y SDD-17 §8 para lo eliminado de v1) |
+> | `delegate` / `Delegate` (delegación N2 con `data-fud-e`) | enganche por instancia en `s()` del controlador | **SDD-15 §4.6** |
+> | `styles` / `StyleRegistry` (`<style host="tag">`, decisiones 67–70) | `<style>` inline dentro de cada `<template shadowrootmode>` | **SDD-15 §4.8**; migración a `shadowrootadoptedstylesheets` en SDD-18 |
+>
+> Con ellos caen los marcadores `data-fud-c`, `data-fud-e` y el atributo `host="tag"` en la
+> serialización: **el único marcador en el host es `data-id`** (SDD-15 §3.1). Lo que **sobrevive
+> íntegro** —y es lo que este documento sigue especificando— es `Dom<N>` / `DomClient<N>`,
+> `browserDom`, `SsrDom` + `renderToString`, `Cursor` / `cursorOf`, `signal` y el contrato
+> `Render<N>` / `RenderFactory<N>` con su bootstrap `hydrateRoot` / `mountRoot`.
+>
+> `Render<N>` se conserva **como contrato de los renders de bloque** (`@if` / `@foreach`), que es
+> el único sitio donde `update()` tiene trabajo real (SDD-15 §2, §4.6). El controlador de
+> componente N3 **no** implementa `Render<N>` y no tiene `update`.
 
 ---
 
@@ -10,8 +32,8 @@
 
 Todo lo especificado hasta aquí (05–13) es **frontend del compilador**: `.fud` → AST → validado
 → posiciones. El **emit** (SDD-15) recorrerá ese AST y producirá código. Pero *ese código llama a
-un runtime*: los "render objects" (`create/hydrate/mount/update/remove`), `signal()`, la
-delegación de eventos, la adopción de `<style host>`, la construcción del DSD. **Ese runtime no
+un runtime*: los "render objects" de bloque (`create/hydrate/mount/update/remove`), `signal()`, la
+adopción de nodos para hidratar, la construcción del DSD. **Ese runtime no
 puede improvisarlo el emit**: si no está definido y probado, cualquier cosa que emitamos es
 imaginar una API inexistente.
 
@@ -57,7 +79,7 @@ import { type Diagnostic, errorDiag } from '@fudic/compiler'; // solo el SSG, en
 |---|---|---|
 | `@fudic/dom` | `Dom<N>` (construcción), `DomClient<N>` (cliente), `browserDom`, `NS`, `Cursor` | cliente + tipos |
 | `@fudic/ssr` | `SsrDom`, `renderToString` | build |
-| `@fudic/core` | `signal`, `Render`, `FudicElement`, `delegate`, `styles`, scheduler, bootstrap | cliente |
+| `@fudic/core` | `signal`, `Render`/`RenderFactory`/`SsrBuild`, bootstrap (`hydrateRoot`/`mountRoot`) | cliente |
 
 `@fudic/ssr` y `@fudic/core` dependen de `@fudic/dom` (el contrato). No hay ciclos.
 
@@ -170,14 +192,14 @@ export class SsrDom implements Dom<SsrNode> {
 
 /**
  * Serializa un árbol SSR a HTML. Reglas: void elements auto-cerrados; rawtext (`script`/`style`)
- * sin escapar; shadow → `<template shadowrootmode="open">`; `<style host>` inline dentro del
- * template (adopción por referencia no se expresa en HTML estático); escape por contexto de texto
- * y de atributo.
+ * sin escapar; shadow → `<template shadowrootmode="open">` como primer hijo del host; escape por
+ * contexto de texto y de atributo. **No emite ningún marcador `host="tag"`**: el mecanismo
+ * `<style host>` está retirado y v1 deja el `<style>` inline dentro del shadow (SDD-15 §4.8).
  */
 export function renderToString(root: SsrNode): string;
 ```
 
-### 3.3. `@fudic/core` — reactividad, lifecycle, delegación, estilos
+### 3.3. `@fudic/core` — reactividad, lifecycle de bloque, bootstrap
 
 ```ts
 import { type Dom, type DomClient, type Cursor } from '@fudic/dom';
@@ -195,11 +217,15 @@ export function signal<T>(initial: T): Signal<T>;
 /** Construye el árbol inicial de un bloque/componente. Es la mitad que comparte con `create()`. */
 export type SsrBuild<N> = (dom: Dom<N>, ctx: unknown, target: N) => void;
 
-// ── Contrato del render object de CLIENTE (lo que el emit produce por bloque/componente) ──
+// ── Contrato del render object de CLIENTE (lo que el emit produce por BLOQUE: @if / @foreach) ──
 /**
  * `N` = tipo de nodo. Toda la vida del render es browser-only y usa `DomClient<N>`. `create()`
  * reutiliza la misma lógica de construcción que `SsrBuild` (el contrato base es un subconjunto),
  * pero el render añade hidratación y reactividad, que solo el navegador ofrece.
+ *
+ * Es el contrato de los **renders de bloque**: el único sitio donde `update()` tiene trabajo real
+ * (decisión existencial y propagación padre→hijo). Un componente N3 NO lo implementa: se emite
+ * como controlador closure `{c, h, r}` sin `update` (SDD-15 §3.7).
  */
 export interface Render<N> {
   create(): void;                 // montaje en frío: construye nodos y los ancla al target
@@ -210,39 +236,9 @@ export interface Render<N> {
 }
 export type RenderFactory<N> = (dom: DomClient<N>, ctx: unknown, target: N) => Render<N>;
 
-// ── Base del custom element N3 (browser). Posee el ESTADO; delega en el Render. ──
-export abstract class FudicElement extends HTMLElement {
-  /** El emit implementa esto: crea el Render sobre el shadow root ya resuelto. */
-  protected abstract render(dom: DomClient<Node>, root: ShadowRoot): Render<Node>;
-  connectedCallback(): void;      // adopta shadow SSR o lo crea; hydrate|create; mount
-  disconnectedCallback(): void;   // remove
-}
-
-// ── Delegación de eventos N2 (decisión: un solo listener por tipo y raíz) ──
-export interface Delegate {
-  /** Registra el handler para `data-fud-e="<handlerId>"`. */
-  on(handlerId: string, fn: (e: Event, el: Element) => void): void;
-  /** Instala UN listener por `type` sobre `root` (document en light DOM). Idempotente. */
-  connect(root: Document | ShadowRoot, type: string): void;
-}
-export const delegate: Delegate;
-
-// ── Registro de `<style host>` (decisiones 67–70): la fuente es el <style host="tag"> del <head> ──
-// El polyfill que emite el compilador adopta las instancias DSD del SSR (pre-paint); este registro
-// cubre solo la creación en cliente (camino `create()`): construye la hoja una vez desde el head.
-export interface StyleRegistry {
-  adopt(root: ShadowRoot, tag: string): void;    // sheet desde style[host=tag] (replaceSync, cacheada); misma ref, N veces
-}
-export const styles: StyleRegistry;
-
 // ── Bootstrap del render raíz (bloques de página que no son custom elements) ──
 export function hydrateRoot(factory: RenderFactory<Node>, ctx: unknown, target: Node): Render<Node>;
 export function mountRoot(factory: RenderFactory<Node>, ctx: unknown, target: Node): Render<Node>;
-
-// ── Scheduler de hidratación (decisión 74) ──
-export type HydrationStrategy = 'eager' | 'viewport' | 'interaction' | 'idle';
-/** Difiere `customElements.define(tag, ctor)` según la estrategia. Default `interaction`. */
-export function defineLazy(tag: string, ctor: CustomElementConstructor, strategy?: HydrationStrategy): void;
 ```
 
 ---
@@ -282,11 +278,9 @@ lanza** — la imposibilidad de hidratar en SSR es una propiedad del tipo, no un
   sin cierre ni hijos.
 - **Rawtext** (`script`, `style`): contenido **sin escapar**.
 - **Shadow** (nodo marcado por `attachShadow`): `<template shadowrootmode="open">…</template>`
-  como primer hijo del host.
-- **`<style host>`**: la hoja **no** va inline en el template (decisiones 75–78): la serialización
-  la eleva al `<head>` de la página como `<style host="tag">`, una por componente; el serializador
-  no necesita caso especial. La adopción en las instancias DSD la hace el polyfill que emite el
-  compilador (`docs/runtime/demo-style-host-polyfill.html`).
+  como primer hijo del host. **Sin marcador `host="tag"`** ni elevación de hoja al `<head>`: el
+  `<style>` del componente queda inline dentro del template (SDD-15 §4.8). El serializador no
+  tiene caso especial de estilos.
 - **Escape**: texto → `& < >`; valor de atributo → `& "`; comentario → se rechaza `-->` interno.
 
 `SsrDom` no implementa `DomClient`: no ofrece `setProp`/`setText` (las props padre→hijo las
@@ -303,9 +297,9 @@ no cambia esta firma. La rehidratación es **DOM-first** (decisión 72): la señ
 leyendo el texto ya pintado, no de un blob paralelo; solo el estado no-reconstruible viaja en
 `data-fud-s` (lo produce el emit, lo lee el `ctx`).
 
-### 4.5. `Render<N>` y `FudicElement` — el patrón de los ejemplos, formalizado
+### 4.5. `Render<N>` — el patrón de los ejemplos, formalizado
 
-Cada render object **posee solo su nodo** y su baja. Cinco fases:
+Cada render object de bloque **posee solo su nodo** y su baja. Cinco fases:
 
 | Fase | Entorno | Qué hace |
 |---|---|---|
@@ -315,49 +309,13 @@ Cada render object **posee solo su nodo** y su baja. Cinco fases:
 | `update()` | browser | reevalúa la parte reactiva; escribe solo en su nodo, sin diffing |
 | `remove()` | browser | `unsubscribe` + `detach`, simétrico a `create/mount` |
 
-`FudicElement` (N3, browser) encapsula el `connectedCallback` que los ejemplos repetían a mano
-(decisión 73): resuelve `root = this.shadowRoot ?? attachShadow`; si el shadow viene del SSR
-(`shadowRoot && root.firstChild`) → `hydrate(cursorOf(browserDom, root))`, si no → `create()`;
-en el camino frío `styles.adopt` (en el hidratado la hoja ya la adoptó el polyfill) y `mount()`.
-`disconnectedCallback` → `remove()`. El emit genera
-la subclase que implementa `render()`; el estado (señales) vive como campos de la clase.
+Los bloques que **no** son custom elements arrancan por `hydrateRoot` / `mountRoot`
+(§3.3): construyen el render sobre el DOM vivo con `browserDom` y corren el camino que toca —
+`hydrate(cursorOf(browserDom, target))` + `mount()` sobre markup ya pintado por el SSR, o
+`create()` + `mount()` en frío. Es un bootstrap independiente de cualquier clase base: la
+identidad de componente la lleva el custom element que emite SDD-15, con su controlador `{c,h,r}`.
 
-### 4.6. Delegación N2 vs listeners N3
-
-- **N2** (handlers puros, sin estado): `delegate.connect(document, 'click')` instala **un** listener
-  que, en cada evento, sube desde `event.target` al primer `[data-fud-e]`, extrae el `handlerId` y
-  llama al `fn` registrado con `on`. Cero constructor por instancia. Es la "delegación global".
-- **N3** (con clase): los listeners son **propios del componente** (`root.querySelector('[data-fud-e="tag:h"]')`),
-  cableados en `mount()`, no delegados en `document`. El shadow retarget hace inviable la delegación
-  global cruzando la frontera del shadow.
-
-Ambos usan el mismo marcador `data-fud-e="<component>:<handler>"` que el emit pinta.
-
-### 4.7. `<style host>` (decisiones 67–70, reescritas 2026-07-06)
-
-La fuente única del CSS es el `<style host="tag">` que la serialización eleva al `<head>` (uno por
-componente). Las instancias DSD del SSR las adopta pre-paint el **polyfill que emite el compilador**
-(validado en `docs/runtime/demo-style-host-polyfill.html`); ese script no forma parte de core.
-`styles.adopt(root, tag)` cubre el camino restante — instancias creadas en cliente tras `load`
-(`@if`/`@foreach`, camino `create()`) —: construye la hoja **una vez** desde el `textContent` del
-head con `new CSSStyleSheet()` + `replaceSync` (adoptar `styleEl.sheet` lanza `NotAllowedError`),
-la cachea por tag y empuja **la misma referencia** a cada root — cero copia de CSS por instancia.
-El emit garantiza que el head lleva la hoja de **todo** componente que la página use, incluidas
-ramas `@if` falsas en SSR. El día que `<style host>` sea nativo, el código de consumo no cambia
-(decisión 70): esta API es la primitiva estable.
-
-### 4.8. Scheduler de hidratación (decisión 74)
-
-`defineLazy(tag, ctor, strategy)` difiere `customElements.define`:
-- `eager` — define ya.
-- `interaction` (**default**) — define en el primer `pointerdown`/`focusin`/`keydown` sobre un host
-  `[data-fud-c="tag"]`.
-- `viewport` — `IntersectionObserver` sobre los hosts.
-- `idle` — `requestIdleCallback` (fallback `setTimeout`).
-
-Antes del upgrade el componente es DSD pintado, con el estado inicial del servidor visible e inerte.
-
-### 4.9. Códigos `FUD`
+### 4.6. Códigos `FUD`
 
 SDD-14 reserva **`FUD0230`–`FUD0259`**. El runtime de **cliente** no emite diagnósticos (es
 comportamiento, no análisis: falla o no falla, y nunca lanza en camino feliz). El **SSG** (build)
@@ -417,32 +375,21 @@ o modo browser):
 6. **`signal`.** `subscribe` se dispara en `set(v')` con `v'` distinto; **no** se dispara si
    `Object.is(v', v)`; el `unsubscribe` devuelto corta la baja. `peek()` no notifica.
 
-7. **`FudicElement` frío.** Definido un componente sin DSD previo y conectado: crea el shadow,
-   corre `create()` y `mount()`; se ve el contenido inicial.
+7. **`mountRoot` en frío.** Sobre un target vacío, construye el render, corre `create()` y luego
+   `mount()`, en ese orden, y devuelve el render.
 
-8. **`FudicElement` hidrata.** Con el host servido como DSD (`<template shadowrootmode="open">` con
-   el estado inicial): al conectar, **adopta** el shadow y corre `hydrate()` (no `create()`), y una
-   mutación de señal actualiza solo su nodo `data-fud-b`. `disconnectedCallback` → `remove()` deja
-   cero suscriptores.
+8. **`hydrateRoot` adopta.** Sobre un target con markup ya pintado por el SSR, corre
+   `hydrate(cursor)` (no `create()`) y después `mount()`; el cursor recibido recorre los hijos
+   existentes. `remove()` deja cero suscriptores.
 
-9. **Delegación N2.** `delegate.on('app-x:click', fn)` + `connect(document,'click')`: un click en un
-   descendiente de `[data-fud-e="app-x:click"]` llama a `fn` una vez con el elemento marcado; un
-   segundo `connect` no duplica el listener.
+9. **`Cursor`.** Sobre un shadow hidratado, `cursorOf(browserDom, root).seekComment('fud:if')`
+   localiza el ancla y `byBinding('count')` localiza el `[data-fud-b="count"]`.
 
-10. **`<style host>`.** Con `<style host="app-c">` en el head del documento de test,
-    `adopt(rootA,'app-c')` + `adopt(rootB,'app-c')`: ambos shadow roots comparten **la misma**
-    referencia de `CSSStyleSheet` (una sola instancia); repetir `adopt` sobre el mismo root no
-    duplica la hoja.
+10. **Sin marcadores retirados en la salida.** `renderToString` de un host con shadow no emite
+    `host="tag"`, `data-fud-c` ni `data-fud-e` en ningún punto.
 
-11. **`Cursor`.** Sobre un shadow hidratado, `cursorOf(browserDom, root).seekComment('fud:if')`
-    localiza el ancla y `byBinding('count')` localiza el `[data-fud-b="count"]`.
-
-12. **Scheduler.** `defineLazy('app-x', C, 'interaction')` no define hasta el primer `pointerdown`
-    sobre un `[data-fud-c="app-x"]`; `'eager'` define de inmediato.
-
-13. **Cobertura.** Cerca del 100 % en `@fudic/dom` (contrato/adapters) y en `signal`/`delegate`/
-    `styles`; el scheduler y `FudicElement` según el suelo del SDD-00 (80/80/75), por depender del
-    entorno DOM.
+11. **Cobertura.** Cerca del 100 % en `@fudic/dom` (contrato/adapters) y en `signal`; el bootstrap
+    según el suelo del SDD-00 (80/80/75), por depender del entorno DOM.
 
 ---
 
@@ -458,7 +405,14 @@ o modo browser):
 - **Reconciliación con keys de listas** (`@foreach` con reordenado eficiente): el contrato
   (`before`/`remove`/identidad) lo habilita, pero la política de reconciliación la fija el emit del
   `@foreach` en SDD-15.
-- **Bundling / tree-shaking / split por estrategia**: build tooling, posterior.
-- **El polyfill `style[host]` de página**: ya existe y está validado
-  (`docs/runtime/demo-style-host-polyfill.html`), pero lo emite el compilador (SDD-15) una vez por
-  página; no forma parte de core ni de este SDD.
+- **Bundling / tree-shaking**: build tooling, posterior.
+- **El artefacto de componente N3.** El controlador closure `{c, h, r}`, sus puntos de entrada y su
+  enganche en `s()`: **SDD-15 §3.7, §4.3, §4.5, §4.6**. Ya no hay clase base en core.
+- **La hidratación como política** (cuándo y en qué orden se levanta cada instancia, captura global
+  de eventos, cascada de composición, bus dirigido, warm): **SDD-17**. Las estrategias
+  `@client(eager|viewport|interaction|idle)` y `defineLazy` están eliminadas de v1 (SDD-17 §8).
+- **Estilos de componente.** v1 los emite inline en el shadow (SDD-15 §4.8); la migración a
+  `shadowrootadoptedstylesheets` + import map es **SDD-18**. `<style host>` y su polyfill quedan
+  retirados.
+- **Delegación de eventos.** Retirada con N2; si vuelve, será con su propio SDD y su propio
+  marcador. El enganche de v1 es por instancia en el `s()` del controlador (SDD-15 §4.6).

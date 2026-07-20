@@ -1,8 +1,8 @@
 /**
  * Root bootstrap (SDD-14 §3.3) for page blocks that are not custom elements:
- * build the render over the live DOM and run the matching path. The N2 page
- * shell calls `hydrateRoot` over SSR-painted markup; `mountRoot` is the cold
- * client-only entry.
+ * build the render over the live DOM and run the matching path. The page shell
+ * calls `hydrateRoot` over SSR-painted markup; `mountRoot` is the cold
+ * client-only entry. Independent of any custom-element base class.
  */
 
 import { browserDom, cursorOf } from '@fudic/dom';
