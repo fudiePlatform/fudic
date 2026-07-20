@@ -8,8 +8,7 @@
  */
 
 import type { Node } from '../types/index.js';
-import type { RazorExpression } from '../at/index.js';
-import type { AtEscapeNode, RazorCommentNode } from '../html/index.js';
+import type { AtEscapeNode, RazorExpression, RazorCommentNode } from '../at/index.js';
 
 /**
  * A literal CSS run. Includes whitelisted at-rule keywords (`@media`), CSS

@@ -38,7 +38,8 @@ Tres rasgos lo definen:
 SDD-05 **no** clasifica bindings (event/property/`ref`/`class:`/`style:`, escape,
 interpolación de primitivas: decisiones 18–31 → **SDD-07**); solo produce el atributo
 sintáctico (nombre verbatim + partes de valor). **No** parsea cuerpos de control ni `@code`.
-**No** produce tokens CSS (decisión 42 → **SDD-09**; hasta entonces `<style>` es opaco).
+**No** produce tokens CSS (decisión 42 → **SDD-09**): SDD-05 invoca `parseStyle` sobre el
+cuerpo de `<style>`, pero no implementa la gramática CSS.
 **No** valida estructura de documento (decisiones 53–62 → **SDD-10**) ni duplicados/doctype
 (decisiones 45, 57 → **SDD-12** semántico).
 
@@ -339,16 +340,11 @@ cierre del start tag, y decide el `kind`:
   `kind: 'void'`, `children: []`, sin `closeSpan`. **No** se busca `</name>`; si aparece un
   `</br>` explícito → `FUD0053`.
 - **Raw** (`tag-open-end` y name es `script` —decisión 43— **o `style`**): `kind: 'raw'`. El
-  `Lexer` ya entregó el cuerpo como un único `raw-text` opaco; `children` = `[RawTextNode]`.
-  El cierre da el `closeSpan`. *(nota: `<title>`/`<textarea>` NO son raw opacos aquí —
-  SDD-03 §4.6 los tokeniza como texto + átomos `@`; se parsean como `normal`.)*
-
-  > **`<style>` también es `raw`.** Esta lista nombraba solo a `script`, pero §4.4 dice que
-  > el cuerpo de `<style>` llega como `raw-text` y que SDD-05 "lo aloja como tal", y §3.2
-  > define precisamente el hijo `RawTextNode` como lo que caracteriza a `raw`. Un `<style>`
-  > con `kind: 'normal'` e hijo `raw-text` se contradecía con ambas. Es provisional en el
-  > mismo sentido que el placeholder de SDD-03 §4.7: cuando SDD-09 produzca tokens CSS,
-  > `<style>` deja de ser raw.
+  `Lexer` entrega el cuerpo como un único `raw-text` opaco. Para `<script>` ese texto es el
+  hijo verbatim (`children` = `[RawTextNode]`). Para `<style>`, SDD-05 pasa ese mismo span a
+  `parseStyle` (SDD-09) y el hijo es el `StyleNode` resultante. El cierre da el `closeSpan`.
+  *(nota: `<title>`/`<textarea>` NO son raw opacos aquí — SDD-03 §4.6 los tokeniza como texto
+  + átomos `@`; se parsean como `normal`.)*
 - **Normal** en cualquier otro caso: `kind: 'normal'`; se parsea contenido recursivamente
   (§4.2) hasta el `tag-close` que casa (§4.7), que aporta `closeSpan`.
 
@@ -364,10 +360,10 @@ es case-sensitive dentro de ellos y case-insensitive en `html` (decisión 41.b).
 ### 4.4. Elementos `raw` y modos delegados
 
 SDD-05 no reimplementa el escaneo opaco: **conduce** los `push/pop` de modo del lexer. Para
-`<script>` el lexer devuelve `raw-text` (Razor off, decisión 43). Para `<style>` el lexer
-empuja `css`, pero la **producción CSS** es de **SDD-09**; hasta entonces el cuerpo llega como
-`raw-text` provisional (SDD-03 §4.7) y SDD-05 lo aloja como tal, sin interpretarlo. SDD-05 no
-añade reglas CSS.
+`<script>` el lexer devuelve `raw-text` (Razor off, decisión 43) y ese texto es el hijo. Para
+`<style>` el lexer entrega igualmente el cuerpo como un span, que SDD-05 pasa a `parseStyle`
+(**SDD-09**) para obtener el `StyleNode`. SDD-05 no implementa reglas CSS: solo invoca la
+pasada y aloja su resultado, propagando sus diagnósticos.
 
 ### 4.5. El `@` en contenido: dispatch a SDD-04 (decisiones 1–8)
 
@@ -558,7 +554,7 @@ Entradas reales (fixtures) → árbol esperado. El SDD está `Hecho` cuando:
 - **`@code`.** El contenedor y sus regiones `@server`/`@client` (decisiones 32–34, 63–66):
   **SDD-08**, inyectado vía `parseCodeBlock`.
 - **Producción CSS.** Lista blanca de at-rules, `@` con desambiguación, nesting (decisión 42):
-  **SDD-09**. SDD-05 solo conduce el push/pop del modo `css` y aloja el cuerpo opaco provisional.
+  **SDD-09**. SDD-05 solo invoca `parseStyle` sobre el cuerpo de `<style>` y aloja el `StyleNode`.
 - **Estructura de documento.** `<html>`/`<head>`/`<body>` obligatorios y ordenados, orden
   top-level, ubicación de `<link rel="component">` y `@code`, elevación de `<head>`
   (decisiones 53–62): **SDD-10**. SDD-05 solo fija `mode`.

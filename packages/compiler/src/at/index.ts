@@ -5,6 +5,8 @@
 export type {
   RazorExpressionKind,
   RazorExpression,
+  AtEscapeNode,
+  RazorCommentNode,
   ControlKeyword,
   TriggerResolution,
 } from './at.js';

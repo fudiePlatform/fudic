@@ -49,12 +49,11 @@ import { type AtEscapeNode, type RazorCommentNode } from '../html/index.js';
 > SDD-09 es una pasada que toma ese span y lo sustituye por un `StyleNode`. No requiere cambiar
 > SDD-05 (no hay dependencia inversa).
 >
-> **Estado del cableado.** SDD-09 está implementado y verificado como **pasada independiente**:
-> `parseStyle(source, rawTextNode.span)` sobre el árbol que ya devuelve `parseDocument`. Falta
-> el paso de *integración* que retira el placeholder — sacar `style` de `RAW_ELEMENTS` y hacer
-> que el parser HTML aloje un `StyleNode` en vez de un `RawTextNode`—, que toca `src/lexer/` y
-> `src/html/` y por tanto se decide fuera de este SDD (ver el informe de implementación). El
-> contrato de §3 no cambia por ello: `parseStyle` seguirá recibiendo el mismo `(source, body)`.
+> **Cableado (hecho).** El parser HTML (SDD-05 §4.4) invoca `parseStyle` sobre el cuerpo de
+> `<style>` y aloja el `StyleNode` como hijo, propagando sus diagnósticos. `style` sigue siendo
+> léxicamente `raw` (el lexer entrega el cuerpo como un span, sin tocar SDD-03); solo cambia el
+> tipo del hijo, de `RawTextNode` a `StyleNode`. Para romper el ciclo de imports que esto crea,
+> `AtEscapeNode` y `RazorCommentNode` viven en `src/at/` (átomos Razor), no en `src/html/`.
 
 ---
 
@@ -92,8 +91,8 @@ export function parseStyle(source: string, body: Span): ParseResult<StyleNode>;
 ```
 
 `StyleNode.span` es **exactamente** `body` (acotado a `source.length` si el llamante pasa un
-span que se sale). `body` es el span que SDD-05 ya guarda en el `RawTextNode` hijo del
-`<style>`, así que esta pasada corre sobre un árbol HTML ya construido sin tocar SDD-03/05.
+span que se sale). `body` es el span del cuerpo que el lexer entrega como `raw-text` para
+`<style>`; el parser (SDD-05) se lo pasa a `parseStyle` en lugar de alojarlo verbatim.
 
 `CSS_AT_RULES` (42.a): `charset`, `import`, `namespace`, `media`, `supports`, `container`,
 `layer`, `scope`, `starting-style`, `keyframes`, `font-face`, `font-feature-values`,

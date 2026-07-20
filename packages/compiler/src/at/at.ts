@@ -38,6 +38,21 @@ export interface RazorExpression extends Node {
   readonly regions: readonly LexRegion[];
 }
 
+/**
+ * `@@` => a literal `@` in the output (decision 1). A trivial Razor atom with no
+ * payload beyond its span. Lives here, next to `RazorExpression`, because both HTML
+ * content (SDD-05) and CSS bodies (SDD-09) produce it: keeping it in either would
+ * force the other to import across a module boundary it should not depend on.
+ */
+export interface AtEscapeNode extends Node {
+  readonly type: 'at-escape';
+}
+
+/** `@* ... *@`. Kept in the AST for spans/LSP, NOT emitted to output (decision 37). */
+export interface RazorCommentNode extends Node {
+  readonly type: 'razor-comment';
+}
+
 /** Control keywords recognized after `@`. Body grammar belongs to SDD-06. */
 export type ControlKeyword = 'if' | 'else' | 'for' | 'foreach' | 'while' | 'switch';
 

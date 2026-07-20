@@ -169,10 +169,25 @@ describe('raw elements (§6.6, decision 43)', () => {
     expect(text(source, el.closeSpan!)).toBe('</script>');
   });
 
-  it('treats style as raw until SDD-09 produces CSS tokens', () => {
-    const el = firstElement('<style>:host{}</style>');
+  it('parses a style body into a StyleNode (SDD-09 wired in)', () => {
+    const source = '<style>:host{}</style>';
+    const el = firstElement(source);
+    // The element is still lexically raw, but its child is the parsed CSS, not
+    // opaque text: parseStyle runs inside the parser now (SDD-05 §4.4).
     expect(el.kind).toBe('raw');
-    expect(el.children[0]).toMatchObject({ type: 'raw-text', element: 'style', value: ':host{}' });
+    const body = el.children[0]!;
+    expect(body.type).toBe('style-content');
+    if (body.type !== 'style-content') throw new Error('unreachable');
+    expect(body.parts.map((p) => p.type)).toEqual(['css-text']);
+    expect(text(source, body.span)).toBe(':host{}');
+  });
+
+  it('interpolates a Razor expression inside a style body', () => {
+    const source = '<style>.a{color:@brand}</style>';
+    const el = firstElement(source);
+    const body = el.children[0]!;
+    if (body.type !== 'style-content') throw new Error('unreachable');
+    expect(body.parts.map((p) => p.type)).toEqual(['css-text', 'razor-expression', 'css-text']);
   });
 
   it('handles an empty raw body', () => {

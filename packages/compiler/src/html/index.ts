@@ -16,8 +16,6 @@ export type {
   DoctypeNode,
   CdataNode,
   RawTextNode,
-  RazorCommentNode,
-  AtEscapeNode,
   InlineCodeNode,
   RawExpressionNode,
   RazorConstruct,

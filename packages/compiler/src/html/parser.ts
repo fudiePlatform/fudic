@@ -17,6 +17,7 @@ import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 import { Lexer, type Token } from '../lexer/index.js';
 import { type ControlKeyword, expressionFromToken, resolveTrigger } from '../at/index.js';
 import type { RazorExpression } from '../at/index.js';
+import { parseStyle } from '../css/index.js';
 import {
   RAW_ELEMENTS,
   VOID_ELEMENTS,
@@ -294,7 +295,12 @@ class HtmlParser {
     return this.#closeElement({ ...base, kind: 'normal', children }, openSpan, name, namespace);
   }
 
-  /** `<script>` / `<style>`: the lexer already handed the body over as one opaque token. */
+  /**
+   * `<script>` / `<style>`: the lexer already handed the body over as one opaque
+   * token. `<script>` stays a verbatim `RawTextNode`; a `<style>` body is parsed
+   * for its Razor interpolations and brace balance (SDD-09), so its child is the
+   * `StyleNode` `parseStyle` returns over that same body span.
+   */
   #finishRawElement(
     base: Omit<ElementNode, 'kind' | 'children' | 'span' | 'closeSpan'>,
     openSpan: Span,
@@ -304,12 +310,18 @@ class HtmlParser {
     const body = this.#lexer.peek();
     if (body.type === 'raw-text') {
       this.#next();
-      children.push({
-        type: 'raw-text',
-        span: body.span,
-        value: this.#slice(body.span),
-        element: body.element,
-      });
+      if (lower === 'style') {
+        const styled = parseStyle(this.#source, body.span);
+        if (styled.diagnostics.length > 0) this.#diagnostics.push(...styled.diagnostics);
+        children.push(styled.value);
+      } else {
+        children.push({
+          type: 'raw-text',
+          span: body.span,
+          value: this.#slice(body.span),
+          element: body.element,
+        });
+      }
     }
     return this.#closeElement({ ...base, kind: 'raw', children }, openSpan, lower, 'html');
   }

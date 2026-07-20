@@ -7,7 +7,13 @@
 
 import type { Node, Span } from '../types/index.js';
 import type { BalancedGroup } from '../balancer/index.js';
-import type { ControlKeyword, RazorExpression } from '../at/index.js';
+import type {
+  AtEscapeNode,
+  ControlKeyword,
+  RazorCommentNode,
+  RazorExpression,
+} from '../at/index.js';
+import type { StyleNode } from '../css/index.js';
 
 /** decision 51: file starting with `<!DOCTYPE` => page; else component. */
 export type DocumentMode = 'page' | 'component';
@@ -101,16 +107,6 @@ export interface RawTextNode extends Node {
   readonly element: string;
 }
 
-/** `@* ... *@`. Kept in the AST for spans/LSP, NOT emitted to output (decision 37). */
-export interface RazorCommentNode extends Node {
-  readonly type: 'razor-comment';
-}
-
-/** `@@` => a literal `@` in the output (decision 1). */
-export interface AtEscapeNode extends Node {
-  readonly type: 'at-escape';
-}
-
 /** `@{ ... }` inline code (decision 16): opaque JS region, validated by Oxc (SDD-11). */
 export interface InlineCodeNode extends Node {
   readonly type: 'inline-code';
@@ -165,6 +161,7 @@ export type HtmlContent =
   | DoctypeNode
   | CdataNode
   | RawTextNode
+  | StyleNode
   | RazorExpression
   | RawExpressionNode
   | RazorCommentNode
@@ -192,7 +189,8 @@ export const VOID_ELEMENTS: ReadonlySet<string> = new Set([
 
 /**
  * Elements whose body the lexer hands over as one opaque `raw-text` token.
- * `script` is decision 43; `style` joins it only until SDD-09 produces real CSS
- * tokens (SDD-03 §4.7, SDD-05 §4.4) — at that point it stops being a raw element.
+ * `script` (decision 43) keeps that body verbatim as a `RawTextNode`. `style` is
+ * lexically raw too, but the parser runs `parseStyle` over the body to interpolate
+ * its Razor (SDD-09), so a `<style>` carries a `StyleNode` child instead.
  */
 export const RAW_ELEMENTS: ReadonlySet<string> = new Set(['script', 'style']);
