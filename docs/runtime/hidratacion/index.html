@@ -3,169 +3,503 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fudic — hidratación real por interacción</title>
-
-<!-- Polyfill <style host>: adopta una sola CSSStyleSheet por tag en cada shadow.
-     Registra sheets dinámicamente y recomputa el selector (soporta streaming). -->
-<script>
-(() => {
-  'use strict';
-  const HOST_TAG = /^[a-z][a-z0-9]*(-[a-z0-9]+)+$/;
-  const sheets = new Map();
-  let selector = '';
-  const pending = new Set();
-
-  function registerStyle(el) {
-    const tag = el.getAttribute('host');
-    if (!HOST_TAG.test(tag) || sheets.has(tag)) return false;
-    const s = new CSSStyleSheet(); s.replaceSync(el.textContent);
-    sheets.set(tag, s); selector = [...sheets.keys()].join(','); return true;
-  }
-  function adopt(host) {
-    const s = sheets.get(host.localName), r = host.shadowRoot;
-    if (!s || !r) return false;
-    if (r.adoptedStyleSheets.includes(s)) return true;
-    r.adoptedStyleSheets = [...r.adoptedStyleSheets, s]; return true;
-  }
-  function adoptAll() { if (selector) for (const h of document.querySelectorAll(selector)) if (!adopt(h)) pending.add(h); }
-  function drain() { for (const h of pending) if (adopt(h)) pending.delete(h); }
-  const scan = (n) => {
-    if (n.tagName === 'STYLE' && n.hasAttribute('host')) { if (registerStyle(n)) { adoptAll(); drain(); } }
-    for (const s of n.querySelectorAll?.('style[host]') ?? []) if (registerStyle(s)) { adoptAll(); drain(); }
-    if (sheets.has(n.localName) && !adopt(n)) pending.add(n);
-    if (selector) for (const h of n.querySelectorAll?.(selector) ?? []) if (!adopt(h)) pending.add(h);
-  };
-  new MutationObserver(recs => { drain(); for (const r of recs) for (const n of r.addedNodes) if (n.nodeType===1) scan(n); })
-    .observe(document.documentElement, { childList: true, subtree: true });
-  addEventListener('DOMContentLoaded', () => {
-    for (const s of document.querySelectorAll('style[host]')) registerStyle(s);
-    adoptAll(); drain();
-  });
-})();
-</script>
-
-<!-- El compilador eleva aquí los <style host> de cada componente: una copia. -->
-<style host="app-counter">
-  :host { display:inline-block; }
-  .box { border:1px solid #d8d2c4; border-radius:8px; padding:.7rem .9rem;
-         font:600 15px ui-monospace,Menlo,Consolas,monospace; background:#fffdf8; color:#13141a; }
-  .n { color:#b5462f; }
-  button { font:inherit; border:0; background:#13141a; color:#f5f2ec; border-radius:6px;
-           padding:.35rem .7rem; cursor:pointer; margin-left:.4rem; }
-  button:hover { background:#b5462f; }
-</style>
-<style host="app-toggle">
-  :host { display:inline-block; }
-  .box { border:1px solid #d8d2c4; border-radius:8px; padding:.7rem .9rem;
-         font:600 15px ui-monospace,Menlo,Consolas,monospace; background:#fffdf8; }
-  .pill { padding:.15rem .55rem; border-radius:999px; font-weight:700; }
-  .pill.on  { background:#dff0e6; color:#2f6f4f; }
-  .pill.off { background:#f0e2dd; color:#9a8f7d; }
-  button { font:inherit; border:0; background:#13141a; color:#f5f2ec; border-radius:6px;
-           padding:.35rem .7rem; cursor:pointer; margin-left:.4rem; }
-  button:hover { background:#b5462f; }
-</style>
+<title>Fudic — runtime de hidratación (SDD-17, prototipo fusionado)</title>
 
 <style>
-  :root{ --ink:#13141a; --paper:#f5f2ec; --panel:#fffdf8; --line:#d8d2c4; --hot:#b5462f;
-         --dead:#9a8f7d; --live:#2f6f4f; --mono:ui-monospace,Menlo,Consolas,monospace; }
-  *{box-sizing:border-box} body{margin:0;background:var(--paper);color:var(--ink);
-    font:15px/1.5 system-ui,Segoe UI,Roboto,sans-serif;padding:24px;}
-  header{border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:18px;}
-  h1{font:700 20px var(--mono);margin:0;}
-  h1 .t{font-size:12px;background:var(--ink);color:var(--paper);padding:2px 8px;border-radius:4px;margin-left:8px;vertical-align:middle;}
-  .grid{display:grid;grid-template-columns:1fr 360px;gap:18px;align-items:start;}
-  @media(max-width:820px){.grid{grid-template-columns:1fr;}}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;}
-  .card h2{font:600 12px var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--dead);margin:0 0 12px;}
-  .stage{display:flex;gap:14px;flex-wrap:wrap;min-height:60px;}
-  .log{font:12px/1.55 var(--mono);white-space:pre-wrap;margin:0;max-height:300px;overflow:auto;
-       background:#fbf8f1;border:1px solid var(--line);border-radius:6px;padding:10px;}
-  .log .net{color:var(--hot);} .log .cache{color:var(--live);} .log .dim{color:var(--dead);}
-  .hint{color:var(--dead);font:11px var(--mono);margin-top:10px;}
-  code{background:#efe9dd;padding:1px 5px;border-radius:4px;font:12px var(--mono);}
+  :root{
+    --ink:#13141a; --paper:#f5f2ec; --panel:#fffdf8; --line:#d8d2c4; --hot:#b5462f;
+    --dead:#9a8f7d; --live:#2f6f4f; --blue:#3a5fa8; --purple:#9a3b8f; --amber:#e0a24a;
+    --mono:ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);padding:20px;
+       font:15px/1.5 system-ui,'Segoe UI',Roboto,sans-serif}
+  header{border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:16px}
+  h1{font:700 19px var(--mono);margin:0}
+  h1 .t{font-size:11px;background:var(--ink);color:var(--paper);padding:2px 8px;
+        border-radius:4px;margin-left:8px;vertical-align:middle}
+  .sub{color:var(--dead);font-size:.88rem;margin:.4rem 0 0}
+  .grid{display:grid;grid-template-columns:1fr 380px;gap:18px;align-items:start}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+        padding:14px;margin-bottom:14px}
+  .card h2{font:600 11px var(--mono);text-transform:uppercase;letter-spacing:.06em;
+           color:var(--dead);margin:0 0 10px}
+  .stage{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .toolbar button{font:12px var(--mono);border:1px solid var(--line);background:var(--panel);
+    color:var(--ink);border-radius:6px;padding:.4rem .7rem;cursor:pointer}
+  .toolbar button:hover{background:var(--ink);color:var(--paper)}
+  .console{position:sticky;top:20px;background:#12131a;color:#d8e6d8;border-radius:10px;
+           padding:12px 14px;font:12px/1.55 var(--mono);max-height:calc(100vh - 40px);overflow:auto}
+  .console h2{font:600 11px var(--mono);text-transform:uppercase;color:var(--amber);margin:0 0 8px}
+  .console .l{white-space:pre-wrap}
+  .l.path{color:#7fb3ff} .l.casc{color:var(--amber)} .l.bus{color:#e08ad8}
+  .l.cart{color:#7fe0a4} .l.hnd{color:#7fe0a4} .l.net{color:#ff8f6a}
+  .l.live{color:#46d9a8} .l.warm{color:#f0c14a} .l.dim{color:#6c7686}
+  .hint{color:var(--dead);font:11.5px/1.6 var(--mono);margin:10px 0 0}
+  code{background:#efe9dd;padding:1px 5px;border-radius:4px;font:12px var(--mono)}
+  .gap{height:130vh;display:grid;place-items:center;color:var(--dead);
+       font:12px var(--mono);border-top:1px dashed var(--line);border-bottom:1px dashed var(--line);
+       margin:16px 0}
+  .miss{border-color:color-mix(in srgb,var(--hot) 45%,var(--line))}
+  .badge-tag{font:10px var(--mono);letter-spacing:.08em;text-transform:uppercase;
+    border:1px solid var(--hot);color:var(--hot);border-radius:4px;padding:.05rem .35rem;margin-left:.4rem}
 </style>
 </head>
 
 <body>
 <header>
-  <h1>Fudic <span class="t">SSR real · descarga por red · SW</span></h1>
+  <h1>Fudic <span class="t">SDD-17 · runtime de hidratación fusionado</span></h1>
+  <p class="sub">Un solo capturador global: tres caminos + replay, cascada de composición en
+  post-orden, pre-hidratación dirigida de receptores de bus, y warm por viewport del cierre
+  transitivo. Cero JS de componente hasta el primer click.</p>
 </header>
 
 <div class="grid">
-  <div class="card">
-    <h2>Página SSR — cero JS de componente hasta el primer clic</h2>
-    <div class="stage" id="app">
+<div>
 
-      <!-- HOSTS SSR con Declarative Shadow DOM real: el parser materializa el
-           shadow al cargar. Se ven sin una gota de JS de componente.
-           data-id enlaza con el estado del payload. -->
-
-      <app-counter data-id="1">
-        <template shadowrootmode="open">
-          <div class="box">contador <span class="n">3</span> <button>+1</button></div>
-        </template>
-      </app-counter>
-
-      <app-counter data-id="2">
-        <template shadowrootmode="open">
-          <div class="box">contador <span class="n">10</span> <button>+1</button></div>
-        </template>
-      </app-counter>
-
-      <app-toggle data-id="3">
-        <template shadowrootmode="open">
-          <div class="box"><span class="pill on">ON</span> <button>toggle</button></div>
-        </template>
-      </app-toggle>
-
-    </div>
-    <p class="hint">
-      Abre <b>DevTools → Network</b> (filtro JS) y <b>Console</b>. Al cargar solo baja
-      <code>runtime.js</code>. Al primer clic en un componente baja su
-      <code>components/&lt;tag&gt;.js</code> (network-first, y el SW lo cachea).
-      Recarga o vuelve a interactuar con otra instancia del mismo tag → el chunk sale
-      de <b>ServiceWorker/cache</b>, no de red. Comprueba en consola:
-      <code>document.querySelectorAll(':not(:defined)')</code> — los tags desaparecen
-      de esa lista a medida que se hidratan.
-    </p>
+  <div class="toolbar">
+    <button id="btn-defined">comprobar <code>:not(:defined)</code></button>
+    <button id="btn-drop-cart">desconectar &lt;shopping-cart&gt;</button>
+    <button id="btn-emit">emitir <code>carrito</code> suelto</button>
+    <button id="btn-caches">listar Cache Storage</button>
+    <button id="btn-clear">limpiar log</button>
   </div>
 
-  <div class="card">
-    <h2>Trazas</h2>
-    <pre class="log" id="log"></pre>
+  <!-- El capturador global vive en #app, en fase de captura. Todo lo hidratable
+       cuelga de aquí, incluido lo que está tras el hueco de scroll. -->
+  <div id="app">
+
+    <!-- ============ BASE: tres caminos, replay, estado por instancia ========= -->
+    <div class="card">
+      <h2>Base · dos app-counter (#0, #1) y un app-toggle (#2)</h2>
+      <div class="stage">
+
+        <app-counter data-id="0">
+          <template shadowrootmode="open">
+            <style>
+              :host{display:inline-block}
+              .box{border:1px solid var(--line);border-radius:8px;padding:.6rem .8rem;
+                   font:600 15px var(--mono);background:var(--panel);color:var(--ink)}
+              .n{color:var(--hot)}
+              button{font:inherit;border:0;background:var(--ink);color:var(--paper);
+                     border-radius:6px;padding:.3rem .65rem;cursor:pointer;margin-left:.4rem}
+              button:hover{background:var(--hot)}
+            </style>
+            <div class="box">contador <span class="n">3</span> <button>+1</button></div>
+          </template>
+        </app-counter>
+
+        <app-counter data-id="1">
+          <template shadowrootmode="open">
+            <style>
+              :host{display:inline-block}
+              .box{border:1px solid var(--line);border-radius:8px;padding:.6rem .8rem;
+                   font:600 15px var(--mono);background:var(--panel);color:var(--ink)}
+              .n{color:var(--hot)}
+              button{font:inherit;border:0;background:var(--ink);color:var(--paper);
+                     border-radius:6px;padding:.3rem .65rem;cursor:pointer;margin-left:.4rem}
+              button:hover{background:var(--hot)}
+            </style>
+            <div class="box">contador <span class="n">10</span> <button>+1</button></div>
+          </template>
+        </app-counter>
+
+        <app-toggle data-id="2">
+          <template shadowrootmode="open">
+            <style>
+              :host{display:inline-block}
+              .box{border:1px solid var(--line);border-radius:8px;padding:.6rem .8rem;
+                   font:600 15px var(--mono);background:var(--panel)}
+              .pill{padding:.15rem .55rem;border-radius:999px;font-weight:700}
+              .pill.on{background:#dff0e6;color:var(--live)}
+              .pill.off{background:#f0e2dd;color:var(--dead)}
+              button{font:inherit;border:0;background:var(--ink);color:var(--paper);
+                     border-radius:6px;padding:.3rem .65rem;cursor:pointer;margin-left:.4rem}
+              button:hover{background:var(--hot)}
+            </style>
+            <div class="box"><span class="pill on">ON</span> <button>toggle</button></div>
+          </template>
+        </app-toggle>
+
+      </div>
+      <p class="hint">Click en #0 → camino 2 (descarga + replay). Click en #1 → camino 3
+      (mismo chunk, sin redescarga). Clicks sucesivos → camino 1, un click = un incremento.</p>
+    </div>
+
+    <!-- ============ CASCADA: dos instancias del mismo tag padre ============= -->
+    <div class="card">
+      <h2>Cascada · app-parent → app-child → app-grandchild → app-greatgrandchild, DOS instancias</h2>
+      <div class="stage">
+
+        <app-parent data-id="3">
+          <template shadowrootmode="open">
+            <style>
+              :host{display:block}
+              .node{padding:.6rem .8rem;border:1px solid var(--line);border-radius:8px;
+                    background:var(--panel);font:13px var(--mono)}
+              .lvl0{border-left:4px solid var(--hot)}
+              .tagline{font-size:11px;color:var(--dead);margin-bottom:.3rem}
+              .tagline[data-live]::after{content:' ● vivo';color:var(--live);font-weight:700}
+              .count{font-weight:700;color:var(--hot)}
+              button{font:inherit;border:0;background:var(--ink);color:var(--paper);
+                     border-radius:6px;padding:.3rem .65rem;cursor:pointer;margin-left:.4rem}
+              button:hover{background:var(--hot)}
+            </style>
+            <div class="node lvl0">
+              <div class="tagline">app-parent · padre A · #3</div>
+              <span class="count">0</span>
+              <button>incrementar</button>
+              <app-child data-id="4">
+                <template shadowrootmode="open">
+                  <style>
+                    :host{display:block;margin-top:.5rem}
+                    .node{padding:.55rem .7rem;border:1px solid var(--line);border-radius:8px;
+                          background:var(--panel);font:13px var(--mono)}
+                    .lvl1{border-left:4px solid var(--blue)}
+                    .tagline{font-size:11px;color:var(--dead)}
+                    .tagline[data-live]::after{content:' ● vivo';color:var(--live);font-weight:700}
+                  </style>
+                  <div class="node lvl1">
+                    <div class="tagline">app-child · hijo · #4</div>
+                    <app-grandchild data-id="5">
+                      <template shadowrootmode="open">
+                        <style>
+                          :host{display:block;margin-top:.5rem}
+                          .node{padding:.5rem .7rem;border:1px solid var(--line);border-radius:8px;
+                                background:var(--panel);font:13px var(--mono)}
+                          .lvl2{border-left:4px solid var(--live)}
+                          .tagline{font-size:11px;color:var(--dead)}
+                          .tagline[data-live]::after{content:' ● vivo';color:var(--live);font-weight:700}
+                        </style>
+                        <div class="node lvl2">
+                          <div class="tagline">app-grandchild · nieto · #5</div>
+                          <app-greatgrandchild data-id="6">
+                            <template shadowrootmode="open">
+                              <style>
+                                :host{display:block;margin-top:.5rem}
+                                .node{padding:.45rem .7rem;border:1px solid var(--line);
+                                      border-radius:8px;background:var(--panel);font:13px var(--mono)}
+                                .lvl3{border-left:4px solid var(--purple)}
+                                .tagline{font-size:11px;color:var(--dead)}
+                                .tagline[data-live]::after{content:' ● vivo';color:var(--live);font-weight:700}
+                              </style>
+                              <div class="node lvl3">
+                                <div class="tagline">app-greatgrandchild · bisnieto · #6</div>
+                              </div>
+                            </template>
+                          </app-greatgrandchild>
+                        </div>
+                      </template>
+                    </app-grandchild>
+                  </div>
+                </template>
+              </app-child>
+            </div>
+          </template>
+        </app-parent>
+
+        <app-parent data-id="7">
+          <template shadowrootmode="open">
+            <style>
+              :host{display:block}
+              .node{padding:.6rem .8rem;border:1px solid var(--line);border-radius:8px;
+                    background:var(--panel);font:13px var(--mono)}
+              .lvl0{border-left:4px solid var(--hot)}
+              .tagline{font-size:11px;color:var(--dead);margin-bottom:.3rem}
+              .tagline[data-live]::after{content:' ● vivo';color:var(--live);font-weight:700}
+              .count{font-weight:700;color:var(--hot)}
+              button{font:inherit;border:0;background:var(--ink);color:var(--paper);
+                     border-radius:6px;padding:.3rem .65rem;cursor:pointer;margin-left:.4rem}
+              button:hover{background:var(--hot)}
+            </style>
+            <div class="node lvl0">
+              <div class="tagline">app-parent · padre B · #7</div>
+              <span class="count">0</span>
+              <button>incrementar</button>
+              <app-child data-id="8">
+                <template shadowrootmode="open">
+                  <style>
+                    :host{display:block;margin-top:.5rem}
+                    .node{padding:.55rem .7rem;border:1px solid var(--line);border-radius:8px;
+                          background:var(--panel);font:13px var(--mono)}
+                    .lvl1{border-left:4px solid var(--blue)}
+                    .tagline{font-size:11px;color:var(--dead)}
+                    .tagline[data-live]::after{content:' ● vivo';color:var(--live);font-weight:700}
+                  </style>
+                  <div class="node lvl1">
+                    <div class="tagline">app-child · hijo · #8</div>
+                    <app-grandchild data-id="9">
+                      <template shadowrootmode="open">
+                        <style>
+                          :host{display:block;margin-top:.5rem}
+                          .node{padding:.5rem .7rem;border:1px solid var(--line);border-radius:8px;
+                                background:var(--panel);font:13px var(--mono)}
+                          .lvl2{border-left:4px solid var(--live)}
+                          .tagline{font-size:11px;color:var(--dead)}
+                          .tagline[data-live]::after{content:' ● vivo';color:var(--live);font-weight:700}
+                        </style>
+                        <div class="node lvl2">
+                          <div class="tagline">app-grandchild · nieto · #9</div>
+                          <app-greatgrandchild data-id="10">
+                            <template shadowrootmode="open">
+                              <style>
+                                :host{display:block;margin-top:.5rem}
+                                .node{padding:.45rem .7rem;border:1px solid var(--line);
+                                      border-radius:8px;background:var(--panel);font:13px var(--mono)}
+                                .lvl3{border-left:4px solid var(--purple)}
+                                .tagline{font-size:11px;color:var(--dead)}
+                                .tagline[data-live]::after{content:' ● vivo';color:var(--live);font-weight:700}
+                              </style>
+                              <div class="node lvl3">
+                                <div class="tagline">app-greatgrandchild · bisnieto · #10</div>
+                              </div>
+                            </template>
+                          </app-greatgrandchild>
+                        </div>
+                      </template>
+                    </app-grandchild>
+                  </div>
+                </template>
+              </app-child>
+            </div>
+          </template>
+        </app-parent>
+
+      </div>
+      <p class="hint">Click en el botón de <b>padre A</b>: el runtime prepara el subárbol de
+      <b>las dos</b> instancias antes de definir el tag (<code>prepareTag</code>), en post-orden
+      bisnieto → nieto → hijo, y el padre el último. Después, click en <b>padre B</b> → camino 3,
+      con su subárbol ya vivo.</p>
+    </div>
+
+    <!-- ============ BUS: emisor / suscriptor ================================ -->
+    <div class="card">
+      <h2>Bus · shopping-cart (#11) escucha, product-list (#12) emite</h2>
+
+      <shopping-cart data-id="11">
+        <template shadowrootmode="open">
+          <style>
+            :host{display:block;margin-bottom:.8rem}
+            .carrito{display:flex;align-items:center;gap:1rem;padding:.7rem .9rem;
+                     background:var(--ink);color:var(--paper);border-radius:10px;font:14px var(--mono)}
+            .badge{background:var(--hot);color:#fff;min-width:1.6rem;height:1.6rem;
+                   display:inline-grid;place-items:center;border-radius:50%;font-weight:700}
+            .importe{margin-left:auto;font-size:1.1rem;font-weight:700}
+          </style>
+          <div class="carrito">
+            <span class="badge">0</span>
+            <span class="importe">0.00 €</span>
+          </div>
+        </template>
+      </shopping-cart>
+
+      <product-list data-id="12">
+        <template shadowrootmode="open">
+          <style>
+            :host{display:block}
+            .lista{list-style:none;margin:0;padding:0;display:grid;gap:.45rem}
+            .lista li{display:grid;grid-template-columns:1fr auto auto;align-items:center;
+                      gap:.75rem;padding:.5rem .7rem;background:var(--panel);
+                      border:1px solid var(--line);border-radius:8px;font:13px var(--mono)}
+            .lista li span:nth-child(2){color:var(--hot)}
+            .lista button{background:var(--ink);color:var(--paper);border:0;border-radius:6px;
+                          padding:.35rem .7rem;cursor:pointer;font:inherit}
+            .lista button:hover{background:var(--hot)}
+          </style>
+          <ul class="lista">
+            <li><span>Café</span><span>3.50 €</span><button data-pid="a">Añadir</button></li>
+            <li><span>Té</span><span>2.80 €</span><button data-pid="b">Añadir</button></li>
+            <li><span>Leche</span><span>1.20 €</span><button data-pid="c">Añadir</button></li>
+          </ul>
+        </template>
+      </product-list>
+
+      <p class="hint">Click en «Añadir» del Café: la traza muestra
+      <code>bus: &lt;shopping-cart&gt; vivo</code> ANTES de la cascada, y la cascada antes del
+      emisor. El <code>carrito</code> nace del handler en el replay; el receptor, ya vivo, lo
+      recibe: badge <b>1</b>, importe <b>3.50 €</b> en ese mismo primer click.</p>
+    </div>
+
+    <!-- ============ CACHE-MISS: tag excluido del warm ======================= -->
+    <div class="card miss">
+      <h2>Cache-miss · app-cold (#13) <span class="badge-tag">excluido del warm</span></h2>
+      <div class="stage">
+        <app-cold data-id="13">
+          <template shadowrootmode="open">
+            <style>
+              :host{display:inline-block}
+              .box{border:1px solid var(--line);border-radius:8px;padding:.6rem .8rem;
+                   font:600 15px var(--mono);background:var(--panel)}
+              .n{color:var(--hot)}
+              button{font:inherit;border:0;background:var(--ink);color:var(--paper);
+                     border-radius:6px;padding:.3rem .65rem;cursor:pointer;margin-left:.4rem}
+              button:hover{background:var(--hot)}
+            </style>
+            <div class="box">frío <span class="n">0</span> <button>+1</button></div>
+          </template>
+        </app-cold>
+      </div>
+      <p class="hint">Su chunk nunca se precachea (<code>NO_WARM</code> en runtime.js). El primer
+      click paga red dentro del gesto: la traza lo marca <code>cache-miss (red)</code>.</p>
+    </div>
+
+    <!-- ============ HUECO DE SCROLL ========================================= -->
+    <div class="gap">↓ hueco de 130vh: lo de abajo NO está en el viewport inicial ↓</div>
+
+    <div class="card">
+      <h2>Warm por scroll · app-note (#14), fuera del viewport inicial</h2>
+      <div class="stage">
+        <app-note data-id="14">
+          <template shadowrootmode="open">
+            <style>
+              :host{display:inline-block}
+              .box{border:1px solid var(--line);border-radius:8px;padding:.6rem .8rem;
+                   font:600 14px var(--mono);background:var(--panel)}
+              .n{color:var(--hot)}
+              button{font:inherit;border:0;background:var(--ink);color:var(--paper);
+                     border-radius:6px;padding:.3rem .65rem;cursor:pointer;margin-left:.4rem}
+              button:hover{background:var(--hot)}
+            </style>
+            <div class="box"><span class="n">Nota fuera del viewport inicial</span>
+              <button>marcar leída</button></div>
+          </template>
+        </app-note>
+      </div>
+      <p class="hint">Su chunk se precachea EN EL MOMENTO en que esta instancia entra en
+      viewport, no antes. Comprueba Cache Storage antes y después de bajar hasta aquí.</p>
+    </div>
+
   </div>
 </div>
 
-<!-- PAYLOAD SSR: data-id → estado completo del componente al serializar. -->
+  <aside class="console" id="log"></aside>
+</div>
+
+<!-- =====================================================================
+     LOS CUATRO MAPAS DE EMIT (SDD-15 §3.3-§3.6). Salen de la MISMA pasada
+     de página, en pre-orden sobre las instancias N3 efectivas.
+     ===================================================================== -->
+
+<!-- fud-state POSICIONAL: [[offsets],[data]]. `data-id` base-0 correlativo ES el
+     índice en offsets. El estado de la instancia id es data.slice(o[id], o[id+1]).
+     No hay claves, no hay mapa id->estado. El payload es autoridad de estado;
+     el DOM es autoridad de posición. -->
 <script type="application/json" id="fud-state">
-{ "1": { "count": 3 }, "2": { "count": 10 }, "3": { "on": true } }
+[[0,1,2,3,5,6,7,8,10,11,12,13,15,16,17,18],
+ [3,
+  10,
+  true,
+  0,"padre A",
+  "hijo",
+  "nieto",
+  "bisnieto",
+  0,"padre B",
+  "hijo",
+  "nieto",
+  "bisnieto",
+  0,0,
+  [{"id":"a","nombre":"Café","precio":3.5},
+   {"id":"b","nombre":"Té","precio":2.8},
+   {"id":"c","nombre":"Leche","precio":1.2}],
+  0,
+  "Nota fuera del viewport inicial"]]
 </script>
 
-<!-- Registro del SW (fichero propio, scope raíz). -->
+<!-- fud-tree: composición, TAG -> [tags hijos directos hidratables]. No crece con el
+     número de instancias, crece con el catálogo de componentes. -->
+<script type="application/json" id="fud-tree">
+{
+  "app-parent":     ["app-child"],
+  "app-child":      ["app-grandchild"],
+  "app-grandchild": ["app-greatgrandchild"]
+}
+</script>
+
+<!-- fud-bus: hidratación dirigida, TAG EMISOR -> [tags que deben estar vivos ANTES].
+     El nombre del evento no aparece: se resolvió en compilación. -->
+<script type="application/json" id="fud-bus">
+{ "product-list": ["shopping-cart"] }
+</script>
+
+<!-- fud-chunks: manifest TAG -> URL. Sustituye a la convención hardcodeada
+     `./components/${tag}.js` que los cuatro prototipos arrastraban. En el emit real
+     estas URLs van hasheadas para cacheado inmutable. Un tag ausente de este mapa
+     NO es hidratable: el runtime no lo pide nunca. -->
+<script type="application/json" id="fud-chunks">
+{
+  "app-counter":          "./components/app-counter.js",
+  "app-toggle":           "./components/app-toggle.js",
+  "app-parent":           "./components/app-parent.js",
+  "app-child":            "./components/app-child.js",
+  "app-grandchild":       "./components/app-grandchild.js",
+  "app-greatgrandchild":  "./components/app-greatgrandchild.js",
+  "product-list":         "./components/product-list.js",
+  "shopping-cart":        "./components/shopping-cart.js",
+  "app-cold":             "./components/app-cold.js",
+  "app-note":             "./components/app-note.js"
+}
+</script>
+
+<!-- Panel de traza y utilidades de verificación. Instrumentación de la demo:
+     NADA de esto forma parte del runtime ni del código emitido. -->
 <script>
-  const log = (msg, cls) => {
-    const el = document.getElementById('log');
-    const s = document.createElement('span'); if (cls) s.className = cls;
-    s.textContent = msg + '\n'; el.appendChild(s); el.scrollTop = el.scrollHeight;
-  };
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').then(() => {
-      log('service worker registrado', 'cache');
-    }).catch(err => log('SW no disponible: ' + err.message, 'dim'));
-  } else {
-    log('sin serviceWorker en este navegador', 'dim');
+  const panel = document.getElementById('log');
+  const t0 = performance.now();
+  function line(text, cls = '') {
+    const d = document.createElement('div');
+    d.className = `l ${cls}`;
+    d.textContent = `+${(performance.now() - t0).toFixed(0).padStart(5)}ms  ${text}`;
+    panel.appendChild(d);
+    panel.scrollTop = panel.scrollHeight;
   }
-  document.addEventListener('fud:ready', () => log('runtime cargado. cero JS de componente aún.', 'dim'));
-  document.addEventListener('fud:hydrated', (e) => log(
-    `hidrata <${e.detail.tag}> #${e.detail.id}  [${e.detail.ms}ms]`, 'net'));
-  document.addEventListener('fud:change', (e) => {
+  document.addEventListener('fud:log', (e) => line(e.detail.line, e.detail.cls || ''));
+  document.addEventListener('fud:ready', () => line('fud:ready — runtime instalado, cero JS de componente aún', 'dim'));
+  document.addEventListener('fud:hydrated', (e) => {
     const d = e.detail;
-    log(`  cambio #${d.id} → ${'count' in d ? 'count=' + d.count : (d.on ? 'ON' : 'OFF')}`, 'dim');
+    line(`fud:hydrated  #${d.id} <${d.tag}>  from=${d.from}  ${d.ms}ms`, 'live');
   });
+
+  // :not(:defined) atravesando shadow roots (criterio 23).
+  document.getElementById('btn-defined').addEventListener('click', () => {
+    const undef = [];
+    (function descend(node) {
+      for (const el of node.querySelectorAll(':not(:defined)')) undef.push(el.localName);
+      for (const el of node.querySelectorAll('*')) if (el.shadowRoot) descend(el.shadowRoot);
+    })(document);
+    line(undef.length ? `:not(:defined) → ${[...new Set(undef)].join(', ')}`
+                      : ':not(:defined) → vacío, también dentro de los shadow roots', 'live');
+  });
+
+  // Baja limpia del suscriptor (criterio 14).
+  document.getElementById('btn-drop-cart').addEventListener('click', () => {
+    const cart = document.querySelector('shopping-cart');
+    if (!cart) return line('shopping-cart ya estaba desconectado', 'dim');
+    cart.remove();
+    line('shopping-cart removido del DOM → disconnectedCallback → r()', 'cart');
+  });
+
+  // Emitir 'carrito' suelto: tras la baja no debe producir efecto ni fuga (criterio 14).
+  document.getElementById('btn-emit').addEventListener('click', () => {
+    line("dispatch de 'carrito' suelto sobre document", 'bus');
+    document.dispatchEvent(new CustomEvent('carrito', {
+      detail: { id: 'z', nombre: 'Test', precio: 9.99 }, bubbles: true, composed: true,
+    }));
+  });
+
+  // Contenido de Cache Storage (criterios 15-18, 20).
+  document.getElementById('btn-caches').addEventListener('click', async () => {
+    for (const name of await caches.keys()) {
+      const keys = await (await caches.open(name)).keys();
+      line(`cache "${name}": ${keys.length ? keys.map(r => r.url.split('/').pop()).join(', ') : '(vacía)'}`, 'warm');
+    }
+  });
+
+  document.getElementById('btn-clear').addEventListener('click', () => { panel.innerHTML = ''; });
 </script>
 
-<!-- EL ÚNICO JS de app que carga al inicio. Módulo real, se descarga por red. -->
+<!-- EL ÚNICO JS que carga al inicio. -->
 <script type="module" src="./runtime.js"></script>
 </body>
 </html>
