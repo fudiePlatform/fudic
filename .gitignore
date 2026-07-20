@@ -1,6 +1,10 @@
 # Dependencies
 node_modules/
 
+# Agent worktrees: transient, created by parallel subagent runs. Their commits
+# are merged to main before removal, so nothing here is ever committed.
+.claude/worktrees/
+
 # Build / emit output
 dist/
 *.tsbuildinfo
