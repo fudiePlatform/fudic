@@ -1,6 +1,6 @@
 # Gramática v1 — Decisiones de diseño
 
-Compendio de las decisiones tomadas durante la definición de la sintaxis Razor adaptada a JS/TS para el compilador. Sirve como referencia de implementación del parser. Numeración 1-62 (v1) + 63-66 (estrategia de hidratación en `@client`).
+Compendio de las decisiones tomadas durante la definición de la sintaxis Razor adaptada a JS/TS para el compilador. Sirve como referencia de implementación del parser. Numeración 1-62 (v1) + 63-66 (`@code`; 63-65 **retiradas**, ver sección 8) + 75-80.
 
 Convenciones de notación EBNF extendida usadas a lo largo del documento:
 
@@ -25,7 +25,11 @@ at_construct
   | AT LBRACE js_block RBRACE         // bloque de código inline @{ ... }
   | AT keyword_control ...            // @if, @foreach, @for, @switch, @code...
   | AT explicit_expression            // @(expr)
-  | AT implicit_expression            // @foo.bar(x)
+  | AT implicit_expression            // @foo.bar  (solo camino de propiedades)
+  ;
+
+implicit_expression
+  : identifier ("." identifier)*      // sin ?., sin llamadas, sin índices, sin ! ni genéricos
   ;
 ```
 
@@ -35,7 +39,10 @@ at_construct
 
 **2.** Punto final de frase no pertenece a expresión implícita si no le sigue identificador. `@foo.` emite `@foo` + `.`.
 
-**3.** Optional chaining `?.` aceptado en expresión implícita (`@user?.name?.toUpperCase()`).
+**3.** La expresión implícita es **solo un camino de propiedades**: `identifier ('.' identifier)*`.
+Todo lo demás —optional chaining `?.`, llamadas, índices `[...]`, non-null `!` y genéricos— exige
+expresión explícita `@(...)`. `@user?.name` se lee como implícita `user` seguida del texto
+literal `?.name`; la forma correcta es `@(user?.name)`. (Cerrado en SDD-04, opción A.)
 
 **4.** Non-null assertion TS `!` **no** soportado en expresión implícita. Si se necesita, usar explícita: `@(user!.name)`.
 
@@ -44,6 +51,12 @@ at_construct
 **6.** Delegación a Oxc en explícita: estrategia (a) — balanceador propio cuenta delimitadores (strings, templates, regex literals, comentarios) hasta el `)` de cierre, luego pasa el substring a Oxc para validar. Migración futura a (b) si Oxc expone modo de parsing de expresión con delimitador.
 
 **7.** Heurística de email mantenida: si el `@` está precedido inmediatamente por carácter identificador (forma palabra con lo anterior), se trata como literal. Permite `user@dominio.com` en texto sin escape.
+
+**Regla de precedencia entre 1 y 7.** El escape `@@` (decisión 1) se evalúa **antes** que el
+lookbehind de email (decisión 7). Es decir: al encontrar un `@`, el parser mira primero si el
+carácter siguiente es otro `@`; si lo es, consume la pareja y emite el literal `@`, sin consultar
+el carácter anterior. Sólo si no hay `@@` se aplica el lookbehind de email. Consecuencia
+normativa: `a@@b` produce el literal `a@b` (nunca `a@` + interpolación de `b`).
 
 **8.** Atributos con `@` exigen comillas. `href=@url` es error; `href="@url"` correcto.
 
@@ -55,13 +68,20 @@ Patrón general: keyword tras `@`, cabecera JS entre paréntesis cuando aplica, 
 
 ### Decisiones
 
-**9.** `@else` y `else` ambas válidas. El parser acepta la forma sin `@` porque el contexto lo permite.
+**9.** `@else` y `else` ambas válidas. El parser acepta la forma sin `@` porque el contexto lo
+permite. Esta doble forma es **exclusiva de `else`**: `case` y `default` van **siempre sin `@`**.
+`@case` / `@default` no existen — un `@case` resolvería como expresión implícita `case` seguida de
+texto (`case` no está en el conjunto cerrado de keywords de SDD-04) y produciría un error críptico.
 
 **10.** Entre `}` del `if` y `else` se permiten whitespace y comentarios `@* *@`.
 
 **11.** `@foreach` separado de `@for`. Iteración declarativa (`for...of`) usa `@foreach`; iteración con índice usa `@for`.
 
-**12.** `for...in` rechazado a nivel de sintaxis Razor. Si se necesita, dentro de `@{ ... }` con iteración manual.
+**12.** `for...in` rechazado, pero **como regla semántica, no sintáctica** (matizado en SDD-06).
+La cabecera de `@foreach` es JS **opaco** para el parser Razor: el balanceador localiza el `)` de
+cierre y delega el substring a Oxc. Distinguir `for...of` de `for...in` exige el AST JS, así que
+el rechazo lo emite la fase semántica (SDD-11/12), no el parser. Si se necesita `for...in`, usarlo
+dentro de `@{ ... }` con iteración manual.
 
 **13.** Sin `@break` / `@continue` en sintaxis Razor. Si se necesita, dentro de `@{ ... }`.
 
@@ -73,13 +93,32 @@ Patrón general: keyword tras `@`, cabecera JS entre paréntesis cuando aplica, 
 
 **17.** Variables declaradas en `@{ ... }` tienen scope léxico del bloque contenedor.
 
+> Las decisiones **79** y **80** cierran también reglas de control de flujo (cerradas en SDD-06),
+> pero llevan numeración al final de la serie para no romper la existente. Se enuncian aquí:
+
+**79.** **El `}` crudo siempre cierra el bloque.** Dentro del cuerpo en modo HTML de una estructura
+de control, un `}` literal en el texto termina el bloque sin excepción: no hay escape con barra
+invertida ni heurística de "llave desbalanceada". Para emitir una llave literal en markup se usa
+la **entidad HTML** `&#123;` / `&#125;` (coherente con la decisión 49, entities pass-through).
+Ejemplo: `@if (a) { <p>&#123;x&#125;</p> }` emite el texto `{x}` y el `}` final cierra el bloque.
+
+**80.** **Corte del test de un `case`.** El test de un `case` se extiende hasta el **primer `:` a
+profundidad 0** — profundidad 0 tanto de delimitadores (`()`, `[]`, `{}`, strings, templates,
+regex, comentarios) **como de ternario** (`?` … `:`). Un `:` que cierra un ternario abierto no
+termina la etiqueta. Ejemplo: en `case cond ? 'a' : 'b':` el primer `:` pertenece al ternario y el
+segundo es el que corta el test.
+
 ### Gramática de referencia
 
 ```
 if_stmt
   : AT "if" WS* LPAREN js_expression RPAREN WS* html_block
-    (WS* "else" WS+ "if" WS* LPAREN js_expression RPAREN WS* html_block)*
-    (WS* "else" WS* html_block)?
+    (else_gap AT? "else" WS+ "if" WS* LPAREN js_expression RPAREN WS* html_block)*
+    (else_gap AT? "else" WS* html_block)?
+  ;
+
+else_gap                                  // decisión 10
+  : ( WS | razor_comment )*
   ;
 
 foreach_stmt
@@ -99,10 +138,14 @@ switch_stmt
     LBRACE WS* switch_case* WS* RBRACE
   ;
 
-switch_case
-  : "case" WS+ js_expression WS* COLON html_content*
+switch_case                               // `case`/`default` SIEMPRE sin AT (decisión 9)
+  : "case" WS+ case_test COLON html_content*
   | "default" WS* COLON html_content*
   ;
+
+case_test                                 // decisión 80
+  : js_expression                         // corta en el 1.er ':' a profundidad 0
+  ;                                       // de delimitadores Y de ternario
 
 code_inline_block
   : AT LBRACE js_statements RBRACE      {mode: js}
@@ -190,13 +233,22 @@ Un solo contenedor `@code` a nivel documento, con tres regiones posibles: zona n
 
 **34.** Orden libre entre regiones; convención recomendada `@server` antes que `@client` se aplica en guía de estilo / lint, no en la gramática.
 
-**63.** `@client` admite un parámetro opcional de estrategia de hidratación entre paréntesis: `@client(viewport) { ... }`. La estrategia es propiedad del código cliente (lo único hidratable), por lo que vive en su región, no en el binding de atributos ni a nivel documento.
+**63-65.** ~~`@client(estrategia)` — parámetro de estrategia de hidratación, whitelist cerrada
+`eager|viewport|interaction|idle`, default `interaction`.~~ **Retiradas de v1.**
 
-**64.** `strategy_keyword` es un conjunto cerrado de cuatro keywords whitelisteadas: `eager`, `viewport`, `interaction`, `idle`. No es expresión JS, no se delega a Oxc: es un terminal resuelto por el parser (mismo patrón que la lista blanca de at-rules CSS, decisión 42.a). Keyword fuera de la lista → error de sintaxis.
+> **Motivo de la retirada.** Un componente se puede colocar donde el consumidor quiera, y su
+> código **no debe declarar cuándo se hidrata**: la hidratación es un hecho **de página**, no de
+> componente. Quien conoce la posición, la visibilidad y la prioridad de una instancia es la
+> página, no la definición del componente. En consecuencia, la hidratación la gobierna el
+> **capturador global** (`docs/sdd/SDD-17-hidratacion.md`), y `@client` no admite paréntesis ni
+> parámetro alguno. De las cuatro keywords, `viewport` sobrevive únicamente como estrategia de
+> **precarga de red (warm)** —traer el chunk antes de necesitarlo—, nunca como estrategia de
+> hidratación. Los números 63-65 quedan **retirados y no reutilizables**, para no romper la
+> numeración del resto.
 
-**65.** `@client` sin paréntesis equivale a `@client(interaction)`. `interaction` es el default.
-
-**66.** `@server` **no** admite parámetro. El servidor no se hidrata. `@server(...)` es error de sintaxis. Asimetría deliberada entre ambas regiones.
+**66.** `@server` **no** admite parámetro. El servidor no se hidrata. `@server(...)` es error de
+sintaxis. Con 63-65 retiradas, `@client` tampoco admite parámetro: ambas regiones son ahora
+simétricas (`@server { … }` / `@client { … }`) y cualquier paréntesis tras la keyword es error.
 
 ### Gramática de referencia
 
@@ -218,19 +270,13 @@ server_region
   ;
 
 client_region
-  : AT "client" hydration_strategy? WS* LBRACE js_statements RBRACE   {mode: js, env: client}
-  ;
-
-hydration_strategy
-  : LPAREN WS* strategy_keyword WS* RPAREN
-  ;
-
-strategy_keyword
-  : "eager" | "viewport" | "interaction" | "idle"
+  : AT "client" WS* LBRACE js_statements RBRACE      {mode: js, env: client}
   ;
 ```
 
-Nota: `server_region` no incluye `hydration_strategy` (decisión 66). El default de ausencia de `hydration_strategy` es `interaction` (decisión 65), resuelto en fase semántica, no sintáctica.
+Nota: ni `client_region` ni `server_region` admiten paréntesis (decisiones 63-65 retiradas, 66).
+Un `(` tras `@client` o `@server` es error de sintaxis. La estrategia de hidratación no se declara
+en el componente: la decide el capturador global (SDD-17).
 
 ### Distinción conceptual
 
@@ -430,7 +476,8 @@ tag_name
 
 > Las decisiones **63–66** están en la sección de `@code`; las **67–74** viven en los docs de
 > runtime (`docs/runtime/style-host-runtime.md`, `docs/runtime/nivel-3-hidratacion-runtime.md`).
-> La numeración continúa aquí en 75.
+> La numeración continúa aquí en 75. Las **79-80** cierran la sección 6 (control de flujo) pero
+> llevan número al final de la serie.
 
 **75.** **Identidad del componente por el estándar DSD.** En modo componente, el markup es
 **exactamente un** elemento raíz cuyo tag es el **nombre del componente** — un custom element
@@ -446,17 +493,19 @@ tag" de un `.fud` enlazado, y del nombre con el que el emit registra el custom e
 **75.a.** Dentro del envoltorio host hay **exactamente un** `<template shadowrootmode>` (además
 de whitespace y comentarios, que son transparentes). Cualquier otro hijo → error. `shadowrootmode`
 es obligatorio y su valor en v1 es **`open`**. `closed` queda **fuera de v1**: rompe la
-invariante 68 (todos los shadows fudic son inspeccionables y adoptables desde el documento —
-la adopción de `<style host>` y la hidratación dependen de `host.shadowRoot`); se revisará vía
+invariante 68 (todos los shadows fudic son inspeccionables desde el documento — la cascada de
+hidratación desciende por `host.shadowRoot`, SDD-17 §4.4); se revisará vía
 `ElementInternals` si un caso lo justifica. Los demás atributos estándar de la template DSD
 (`shadowrootdelegatesfocus`, etc.) pasan tal cual.
 
 **76.** El `<head>`-fragment de un componente (decisión 62) admite **a lo sumo un** `<style>`,
 y va **sin atributo**: esa hoja es, por definición, la hoja del host y su scope es el tag del
 envoltorio (decisión 75). El atributo `host` **no existe en la sintaxis fuente** — escribirlo
-es error. Es un marcador **del output**: al serializar, el emit eleva la hoja al head de la
-página consumidora como `<style host="app-button">`, una sola vez por componente. Más de un
-`<style>` en el `<head>` del componente → error.
+es error. **La forma de emisión la decide el compilador**, y es asunto de emit, no de
+gramática: v1 sirve la hoja inline dentro de cada `<template shadowrootmode>` (SDD-15 §4.8) y
+la migración a `shadowrootadoptedstylesheets` + import map es SDD-18. El marcador
+`<style host="tag">` que el emit usaba antes está **retirado**. Más de un `<style>` en el
+`<head>` del componente → error.
 
 **77.** Vías de estilo alternativas dentro del `<template>`: un `<style>` normal permanece
 **inline** en el shadow root — no se extrae ni se deduplica al head —, y un
@@ -562,12 +611,16 @@ html_root
         <slot></slot>
       </div>
       <app-button @click="@toggle">
-        @if (expanded.value) { "Cerrar" } else { "Abrir" }
+        @if (expanded.value) { Cerrar } else { Abrir }
       </app-button>
     </article>
   </template>
 </app-card>
 ```
+
+Nótese que el `<style>` del `<head>` se escribe **sin atributos**: la sintaxis de autor no expone
+`host` ni ningún specifier. `<style host="app-card">` es **forma de emisión**, la decide el
+compilador al serializar (decisión 76); escribirla en un `.fud` es error.
 
 El envoltorio `<app-card>` + `<template shadowrootmode>` es la **identidad** del componente
 (decisión 75): de ahí sale el nombre del tag, el scope del `<style>` del head (decisión 76) y
@@ -633,7 +686,7 @@ Algunas reglas se expresan como "error de compilación" pero no son detectables 
 - Más de un `@server` o `@client` (decisión 33.b).
 - Interpolación de no-primitivas detectable estáticamente (decisión 19).
 - Custom element usado sin `<link rel="component">` correspondiente (decisión 41).
-- Default de estrategia: `@client` sin `hydration_strategy` se resuelve a `interaction` en fase semántica (decisión 65).
+- `for...in` en la cabecera de `@foreach`: sólo detectable sobre el AST de Oxc (decisión 12).
 
 ### Delegación a Oxc
 
@@ -649,7 +702,9 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 
 ### Pendientes para v2+
 
+- `?.` optional chaining en expresión implícita (decisión 3).
 - `!` non-null assertion TS en expresión implícita (decisión 4).
+- Llamadas, índices `[...]` y genéricos en expresión implícita (decisiones 3, 5).
 - `ref` con expresiones complejas o colecciones (decisión 30, 31).
 - Modificadores de evento (decisión 27).
 - Comentarios Razor dentro de attr list (decisión 35).
@@ -664,16 +719,16 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 |---|---------|---------|
 | 1 | Transición `@` | `@@` → `@` literal |
 | 2 | Transición `@` | Punto final no pertenece sin identificador |
-| 3 | Transición `@` | `?.` aceptado en implícita |
+| 3 | Transición `@` | Implícita = solo camino de propiedades (`?.`, llamadas, índices → explícita) |
 | 4 | Transición `@` | `!` TS no soportado en implícita |
 | 5 | Transición `@` | Genéricos `<T>` obligan a explícita |
 | 6 | Transición `@` | Balanceador propio + Oxc para validar |
-| 7 | Transición `@` | Heurística de email mantenida |
+| 7 | Transición `@` | Heurística de email mantenida (`@@` precede al lookbehind: `a@@b` → `a@b`) |
 | 8 | Transición `@` | Comillas obligatorias con `@` en atributos |
-| 9 | Control flujo | `@else` y `else` ambas válidas |
+| 9 | Control flujo | `@else` y `else` ambas válidas; `case`/`default` siempre sin `@` |
 | 10 | Control flujo | Whitespace y comentarios entre `}` y `else` |
 | 11 | Control flujo | `@foreach` separado de `@for` |
-| 12 | Control flujo | `for...in` rechazado |
+| 12 | Control flujo | `for...in` rechazado en fase semántica (cabecera JS opaca) |
 | 13 | Control flujo | Sin `@break` / `@continue` |
 | 14 | Control flujo | `@switch` sin fall-through |
 | 15 | Control flujo | Expresiones arbitrarias en `case` |
@@ -703,10 +758,10 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 33.c | `@code` | Imports dentro de regiones, elevados en emit |
 | 33.d | `@code` | Cero o un `@code` por componente |
 | 34 | `@code` | Orden libre entre regiones |
-| 63 | `@code` | `@client(estrategia)` parámetro de hidratación |
-| 64 | `@code` | `strategy_keyword` whitelist cerrada (eager/viewport/interaction/idle) |
-| 65 | `@code` | `@client` sin paréntesis ≡ `@client(interaction)` |
-| 66 | `@code` | `@server` no admite parámetro (asimetría) |
+| 63 | `@code` | ~~Estrategia de hidratación en `@client`~~ — **retirada de v1** (SDD-17) |
+| 64 | `@code` | ~~Whitelist `eager/viewport/interaction/idle`~~ — **retirada de v1** |
+| 65 | `@code` | ~~Default `interaction`~~ — **retirada de v1** |
+| 66 | `@code` | Ni `@server` ni `@client` admiten parámetro |
 | 35 | Comentarios | No en attr list |
 | 36 | Comentarios | No anidables |
 | 37 | Comentarios | No se emiten |
@@ -749,3 +804,5 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 76 | Documento | Un único `<style>` en head, sin `host` (atributo solo de output) |
 | 77 | Documento | `<style>`/`<link>` dentro del template quedan inline |
 | 78 | Documento | Las instancias en página no cambian; el DSD lo materializa el emit |
+| 79 | Control flujo | El `}` crudo siempre cierra el bloque; llave literal vía `&#123;`/`&#125;` |
+| 80 | Control flujo | Test de `case` corta en el 1.er `:` a profundidad 0 (delimitadores y ternario) |
