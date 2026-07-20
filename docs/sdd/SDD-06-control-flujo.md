@@ -1,6 +1,6 @@
 # SDD-06 — Construcciones de control de flujo
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Depende de:** 00, 02, 04, 05
 > **Decisiones de gramática:** 9–17
 
@@ -95,13 +95,26 @@ export type ControlNode = IfNode | ForeachNode | ForNode | WhileNode | SwitchNod
  * Oxc (SDD-11). `.inner` is the JS span handed to Oxc; `.regions` are its lexical regions.
  * Used as the condition of `@if`/`@while`, the discriminant of `@switch`, and the for/for-of
  * header of `@for`/`@foreach` (whose for-of vs C-style shape is checked semantically, §4.4).
+ *
+ * Corrección (implementación): el campo es OBLIGATORIO, pero una construcción sin `(`
+ * (FUD0070) tiene que producir nodo igual. En ese caso lleva un header DEGRADADO —
+ * span vacío en el offset donde se esperaba el `(`, `closed: false`, `regions: []` — en
+ * vez de convertir el campo en opcional. Un consumidor distingue el caso por `closed`.
  */
 export type ControlHeader = BalancedGroup;
 
 /** `@if (…) { … } (else if (…) { … })* (else { … })?` — decisions 9, 10. */
 export interface IfNode extends Node {
   readonly type: 'if';
-  /** [0] is the `if`; [1..] are `else if` branches, in source order. Always ≥ 1. */
+  /**
+   * [0] is the `if`; [1..] are `else if` branches, in source order.
+   *
+   * Corrección (implementación): el comentario original decía «Always ≥ 1», lo cual
+   * contradice §4.2 y §6.11, que exigen nodo degradado SIN rama en dos casos: `@if` sin
+   * `(` (FUD0070, no hay nada de la rama que localizar) y `@else` huérfano (FUD0073, no
+   * hay rama en absoluto). Gana §4.2/§6.11: `branches` es no vacío para todo `@if` bien
+   * formado y vacío exactamente en esas dos degradaciones.
+   */
   readonly branches: readonly ConditionalBranch[];
   /** Trailing `else` body, when present. Absent ⇒ no final else. */
   readonly elseBody?: readonly HtmlContent[];
@@ -197,6 +210,22 @@ Salvo `@else` (que no lleva cabecera propia si es el final), todo keyword sigue 
 `@while`, `@for`, `@foreach` son exactamente este patrón, cambiando solo el `type` del nodo y
 la naturaleza JS de la cabecera (§4.4). El `span` del nodo cubre `@keyword … }`.
 
+> **Corrección (implementación): de dónde sale el offset del `@`.** El `span` del nodo debe
+> empezar en el `@` (§4.1, §6.2), pero `parseControl` NO recibe ese offset: SDD-04 excluye
+> deliberadamente el `@` de `keywordSpan`, y SDD-05 se guarda el offset del trigger sin
+> pasarlo. Se resuelve derivándolo: `keywordSpan.start - 1` es el `@` por construcción,
+> porque `resolveTrigger` lee el identificador en `@ + 1`. La implementación comprueba el
+> carácter antes de asumirlo y cae a `keywordSpan.start` si no es un `@`, para que una
+> llamada directa (tests, tooling) no invente un offset. Alternativa descartada: ampliar la
+> firma de `AtConstructParser.parseControl`, que es de SDD-05 y ya está `Hecho`.
+
+> **Corrección (implementación): qué conserva un nodo degradado.** Sin `(` (FUD0070) no se
+> intenta leer cuerpo: no se sabe dónde acaba la cabecera, así que el nodo se cierra en
+> `keywordSpan.end` y el resto vuelve a SDD-05 como contenido normal — los elementos del
+> supuesto cuerpo siguen apareciendo en el árbol, solo que no anidados. Sin `{` (FUD0071)
+> se conserva la cabecera ya leída y el cuerpo queda vacío. Sin `}` (FUD0072) se conserva
+> el cuerpo entero y el nodo acaba en el offset del cursor.
+
 ### 4.2. `@if` / `else` / `else if` (decisiones 9, 10)
 
 `@if` parsea su primera `ConditionalBranch` (cabecera + bloque, §4.1). Luego, en bucle:
@@ -232,6 +261,25 @@ else final). Un `else`/`@else` sin `@if` previo lo detecta SDD-05 al resolver el
 Los cuerpos de `case`/`default` **no van entre llaves** (grammar §6): son runs de contenido
 delimitados por los keywords `case`/`default` y el `}` final (§4.6).
 
+> **Corrección (implementación): SDD-06 abre y cierra el marcador de switch.** §2, §4.6 y
+> §4.8.1 dicen que SDD-05/03 «hacen significativos» `case`/`default` dentro de un cuerpo de
+> control, como si fuera automático. No lo es: en el lexer entregado (SDD-03 §4.3, decisión
+> 80) los labels solo cortan el run de texto y afloran como `switch-label` cuando hay un
+> marcador de switch-body abierto, y ese marcador se abre y cierra **explícitamente** con
+> `lexer.pushSwitchBody()` / `lexer.popSwitchBody()` — que nadie más llama. Por tanto es
+> SDD-06 quien encorcheta el cuerpo del `@switch` con ese par, justo tras consumir el `{` y
+> justo antes de devolver el nodo. Fuera de ese par, `case` y `default` son texto llano,
+> que es exactamente lo que se quiere. El contador del lexer es de profundidad, así que un
+> `@switch` anidado en el cuerpo de un `case` funciona sin más.
+
+> **Corrección (implementación): el descarte de FUD0074 necesita garantía de avance.**
+> «Descartar hasta el siguiente boundary» se hace con `ctx.parseContentUntil`, pero esa
+> llamada también se detiene ante una etiqueta de cierre de un elemento abierto **fuera**
+> del switch (`<div>@switch (x) { </div> }`), y entonces no consume nada: el bucle del
+> `switch` se quedaría colgado. La implementación compara el offset del cursor antes y
+> después y, si no avanzó, consume un token a mano. Se emite **un** FUD0074 por tramo
+> descartado, no uno por token.
+
 ### 4.4. `for` vs `foreach`, y qué NO valida SDD-06 (decisiones 11, 12, 13)
 
 - `@foreach` (decisión 11) espera cabecera **for-of** (`const item of data.items`); `@for`
@@ -253,7 +301,20 @@ hasta el **primer `:` en profundidad 0**, contando como el balanceador (SDD-02):
 `()`, corchetes `[]`, llaves `{}`, strings, templates, regex y comentarios; **más** un
 contador de ternarios (`?` incrementa, `:` decrementa antes de considerarlo etiqueta). El `:`
 etiqueta es el primero con profundidad de delimitadores 0 y de ternario 0. `test` = el span
-del JS entre `case` y ese `:` (a Oxc). Sin `:` antes de `}`/EOF → `FUD0075`.
+del JS entre `case` y ese `:` (a Oxc), con el whitespace de los bordes recortado. Sin `:`
+antes de `}`/EOF → `FUD0075`.
+
+> **Corrección (implementación): no todo `?` abre un ternario.** El contador ingenuo se
+> corrompe con `?.` (encadenamiento opcional) y `??` (nullish coalescing), ambos legales en
+> un test: `case a?.b:` habría quedado sin etiqueta. La implementación mira el carácter
+> siguiente — `?` + `?` y `?` + `.` (salvo `?` + `.` + dígito, que sí es ternario sobre un
+> número tipo `.5`) no tocan el contador.
+>
+> **Reparto con el balanceador.** El anidamiento (`( )`, `[ ]`, `{ }`) se delega en
+> `scanParens`/`scanBrackets`/`scanBraces` de SDD-02, que de paso se tragan los strings y
+> comentarios de dentro; SDD-06 solo recorre el nivel superior, donde sí escribe su propio
+> salto de strings, templates, comentarios y regex (SDD-02 no expone esos escáneres
+> sueltos). Un grupo sin cerrar ⇒ no puede haber etiqueta ⇒ `FUD0075`.
 
 ### 4.6. La frontera del `html_block` (recursión con SDD-05)
 
@@ -371,7 +432,14 @@ SDD-05 (con `parseControl` de SDD-06 cableado). El SDD está `Hecho` cuando:
     - `@if data.x { … }` (sin `(`) ⇒ `FUD0070`, nodo degradado.
     - `@if (a) <p>…` (sin `{`) ⇒ `FUD0071`.
     - `@if (a) { <p>` en EOF ⇒ `FUD0072` (bloque sin cerrar).
-    - `@if (a + b { … }` (cabecera sin cerrar) ⇒ `FUD0002` del balanceador aflora.
+    - `@if (a + b { … }` (cabecera sin cerrar) ⇒ el diagnóstico del balanceador aflora sin
+      renumerar. **Corrección (implementación):** el código concreto depende del contenido,
+      no siempre es `FUD0002`. Con markup dentro de la cabecera desbocada — p. ej.
+      `@if (a + b { <p>x</p> }` — el balanceador llega antes a un específico: el `/` de
+      `</p>` no va precedido de valor, así que abre un literal regex y salta `FUD0006`
+      (SDD-02 §4.5: el genérico `FUD0002` solo se emite cuando no hay uno específico). Con
+      cabecera sin markup (`@if (a + b { x }`) sí sale `FUD0002`. Lo que SDD-06 garantiza
+      es que **no renumera** ninguno de los dos.
     - `@else { … }` sin `@if` previo ⇒ `FUD0073`. **Con `@`, obligatoriamente**: un `else`
       sin `@` en posición de contenido es texto plano para SDD-05 (no hay `at-trigger`, no
       hay `resolveTrigger`, no se llama a `parseControl`), así que nadie emitiría el
