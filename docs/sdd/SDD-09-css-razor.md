@@ -1,6 +1,6 @@
 # SDD-09 — CSS con Razor (`<style>`)
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Depende de:** 00, 02, 04, 05
 > **Decisiones de gramática:** 42 (a–e)
 
@@ -48,6 +48,13 @@ import { type AtEscapeNode, type RazorCommentNode } from '../html/index.js';
 > **Cableado.** SDD-05 produce el `<style>` con su cuerpo como span provisional (SDD-05 §4.4).
 > SDD-09 es una pasada que toma ese span y lo sustituye por un `StyleNode`. No requiere cambiar
 > SDD-05 (no hay dependencia inversa).
+>
+> **Estado del cableado.** SDD-09 está implementado y verificado como **pasada independiente**:
+> `parseStyle(source, rawTextNode.span)` sobre el árbol que ya devuelve `parseDocument`. Falta
+> el paso de *integración* que retira el placeholder — sacar `style` de `RAW_ELEMENTS` y hacer
+> que el parser HTML aloje un `StyleNode` en vez de un `RawTextNode`—, que toca `src/lexer/` y
+> `src/html/` y por tanto se decide fuera de este SDD (ver el informe de implementación). El
+> contrato de §3 no cambia por ello: `parseStyle` seguirá recibiendo el mismo `(source, body)`.
 
 ---
 
@@ -84,6 +91,10 @@ export function isCssAtRule(name: string): boolean;
 export function parseStyle(source: string, body: Span): ParseResult<StyleNode>;
 ```
 
+`StyleNode.span` es **exactamente** `body` (acotado a `source.length` si el llamante pasa un
+span que se sale). `body` es el span que SDD-05 ya guarda en el `RawTextNode` hijo del
+`<style>`, así que esta pasada corre sobre un árbol HTML ya construido sin tocar SDD-03/05.
+
 `CSS_AT_RULES` (42.a): `charset`, `import`, `namespace`, `media`, `supports`, `container`,
 `layer`, `scope`, `starting-style`, `keyframes`, `font-face`, `font-feature-values`,
 `font-palette-values`, `counter-style`, `page`, `property`, `document`.
@@ -102,6 +113,11 @@ como texto literal y **desactivan** la lectura de `@` dentro (un `@media`/`@labe
 comentario es literal). SDD-09 rastrea strings y comentarios solo para que sus `{`/`}` y `/*`
 no afecten al conteo de llaves (§4.3).
 
+Una **string sin cerrar** termina en el salto de línea (igual que en CSS real) y un
+**comentario sin cerrar** llega hasta el final de `body`: ninguno de los dos emite
+diagnóstico. El navegador es quien juzga el CSS; SDD-09 solo necesita que su `{`/`}` no
+contaminen el balance y que el cursor avance.
+
 ### 4.2. Desambiguación del `@` (decisión 42)
 
 | Caso | Resultado |
@@ -117,16 +133,56 @@ El identificador para la prueba de whitelist se lee `[a-zA-Z][a-zA-Z0-9-]*` (cub
 `font-face`, `starting-style`). Ninguna at-rule colisiona con un keyword de control Razor, así
 que la pertenencia a la lista separa limpio.
 
+**Corrección — el `@(` no puede desbordar el `</style>`.** El SDD original no decía sobre qué
+texto opera `scanParens`. Si se le pasa el `source` completo, un `@( … )` sin cerrar dentro del
+`<style>` se traga el `</style>` y el resto del fichero, y las partes dejan de teselar `body`
+(rompiendo §5). Se resuelve escaneando siempre sobre `source.slice(0, body.end)`: al truncar
+desde el offset 0 **todos los offsets siguen siendo absolutos** (cero aritmética de spans) y el
+grupo sin cerrar termina en `body.end`, no en el final del fichero. El `FUD0002` cae entonces
+sobre el final del cuerpo del `<style>`, que es la posición accionable.
+
+**Corrección — `@*` sin cerrar.** El SDD no definía el caso. Se reutiliza **`FUD0011`**
+(*unterminated Razor comment*), el mismo código que ya emite el lexer en SDD-03 para el mismo
+error: un código FUD nombra un **significado**, no un productor, así que reutilizarlo es más
+defendible que gastar un código nuevo del rango de SDD-09. El nodo degrada a un
+`RazorCommentNode` que llega hasta `body.end`, igual que el criterio de arriba.
+
+**Corrección — `@` + identificador no-JS.** Solo se llama a `resolveTrigger` cuando el carácter
+tras `@` abre un identificador JS (`ID_Start`). Sin esa guarda, `resolveTrigger` sobre `@-webkit-…`
+devolvería una expresión implícita degenerada de expresión vacía. Con ella, `@-webkit-keyframes`
+queda como texto literal sin diagnóstico — que es lo correcto: es CSS con prefijo de vendedor,
+no Razor.
+
 ### 4.3. Conteo de llaves y anidamiento (decisión 42.e)
 
 SDD-09 cuenta `{`/`}` fuera de comentarios y strings, soportando nesting CSS nativo. Al llegar
 al final de `body`, si el balance no es 0 → `FUD0131` (bloque CSS sin cerrar). El conteo es
 solo validación; `parts` queda plano (sin árbol de reglas en v1).
 
+**Corrección — el `}` sobrante se reporta donde está.** El SDD decía "al llegar al final de
+`body`", lo que dejaba el desbalance *negativo* (`.a { } }`) sin una posición accionable: el
+error se atribuía al final del bloque en vez de a la llave sobrante. Se refina: un `}` sin
+bloque abierto emite `FUD0131` **en su propio offset** y la profundidad se acota en 0 (el resto
+del cuerpo sigue escaneándose con normalidad); al final de `body`, una profundidad > 0 emite un
+único `FUD0131` en `body.end` indicando cuántos bloques quedaron abiertos. Los dos casos siguen
+siendo el mismo código —el mismo defecto de la decisión 42.e—, solo cambia dónde se localiza.
+
 ### 4.4. Control de flujo en CSS: fuera de v1
 
-`@if`/`@foreach`/`@for`/`@while`/`@switch`/`@code` dentro de `<style>` → `FUD0130`. Se degrada
-(se emite el `@keyword` como texto) y se sigue. Reservado para una extensión futura.
+`@if`/`@else`/`@for`/`@foreach`/`@while`/`@switch`/`@code` **y `@raw(…)`** dentro de `<style>` →
+`FUD0130`. Se degrada (se emite el `@keyword` como texto) y se sigue.  Reservado para una
+extensión futura.
+
+**Corrección — `@raw` faltaba en esta lista.** §4.2 y §4.5 ya lo contaban como no permitido
+("control/`@code`/`raw`"), pero §4.4 lo omitía. Se añade: `@raw(…)` es una directiva de
+*escaping de contenido* (decisión 18) y en CSS no hay nada que escapar, así que no tiene
+semántica que dar en v1. El escaneo se reanuda **justo tras el keyword**, no tras el `(…)`: así
+`@if (x) { … }` sigue aportando sus llaves al balance en vez de descarrilarlo, y los
+diagnósticos del escaneo interno de la construcción rechazada (p. ej. el `FUD0002` de un
+`@raw(` sin cerrar) se **descartan** — no se está parseando esa construcción, sería ruido.
+
+El span del `FUD0130` cubre `@` + keyword (`[at, keywordSpan.end)`), no solo el identificador:
+el `@` es parte de lo que el usuario debe borrar.
 
 ### 4.5. Códigos `FUD`
 
@@ -137,8 +193,9 @@ SDD-09 reserva **`FUD0130`–`FUD0149`**. Definidos:
 | `FUD0130` | Construcción Razor no permitida en `<style>` en v1 (control/`@code`/`raw`). |
 | `FUD0131` | Llaves CSS desbalanceadas en `<style>` (decisión 42.e). |
 
-`FUD0132`–`FUD0149` libres. El `FUD0002` del balanceador (`@( … )` sin cerrar) aflora sin
-renumerarse.
+`FUD0132`–`FUD0149` libres (SDD-09 no ha necesitado ninguno). Los códigos de módulos de los que
+depende afloran **sin renumerarse**: `FUD0002` del balanceador (`@( … )` sin cerrar) y `FUD0011`
+del lexer (`@*` sin cerrar, §4.2).
 
 ---
 
@@ -168,8 +225,17 @@ Entradas reales (fixtures) → `StyleNode`. El SDD está `Hecho` cuando:
 4. **Whitelist (42.b).** `@keyframes spin { … }` ⇒ `@keyframes` es CSS literal. `@bp` (no en
    lista) ⇒ `RazorExpression`.
 
-5. **Escape `@@` (42.c).** `content: "\00a0"; /* @@ */` y `a::before { content: "@@"; }` ⇒
-   `AtEscapeNode` donde haya `@@` (emite `@`).
+5. **Escape `@@` (42.c).** `a::before { content: "@@"; }` y `content: "\00a0"; @@` ⇒
+   `AtEscapeNode` donde haya `@@` (emite `@`). En cambio `/* @@ */` ⇒ **`CssText` literal**,
+   sin `AtEscapeNode`.
+
+   > **Corrección.** El criterio original ponía `content: "\00a0"; /* @@ */` como ejemplo *de*
+   > `AtEscapeNode`, contradiciendo directamente a §4.1, que declara el comentario CSS la única
+   > zona donde el `@` es inerte. Gana §4.1: es la regla normativa de comportamiento, es la que
+   > da coherencia (`@media` y `@@` deben comportarse igual dentro de un comentario) y un
+   > comentario CSS ni se transforma ni se emite reescrito, así que convertir su `@@` en `@`
+   > solo alteraría el texto del comentario sin ganancia. El ejemplo se mueve fuera del
+   > comentario y el caso del comentario queda como test negativo.
 
 6. **Explícita `@( … )`.** `width: @(base * 2);` ⇒ `RazorExpression` explícita `base * 2`.
    `width: @(base * 2;` (sin cerrar) ⇒ `FUD0002`.
