@@ -1,7 +1,8 @@
 /**
- * The main-thread hook (SDD-16 §3.2): register the render Service Worker. The
- * post-navigation hydration is SDD-14 (`hydrateRoot`/`cursorOf`); lifecycle
- * policy (scope, skipWaiting, update flow) is build/deploy, out of scope here.
+ * The main-thread hook (SDD-16 §3.2): register the render Service Worker.
+ * Hydration is not this package's concern: it is driven by the global capturer
+ * of SDD-17, per instance and on interaction. Lifecycle policy (scope,
+ * skipWaiting, update flow) is build/deploy, out of scope here.
  */
 
 export async function registerRenderServiceWorker(url: string): Promise<ServiceWorkerRegistration> {

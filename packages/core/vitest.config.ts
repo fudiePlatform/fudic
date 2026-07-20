@@ -3,19 +3,19 @@ import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
   test: {
-    // The whole package is browser runtime: custom elements, shadow roots, events.
+    // Kept on happy-dom: `signal` is pure, but the emit-side runtime that lands
+    // next (FudicElement, SDD-15 §3.7) is custom elements and shadow roots.
     environment: 'happy-dom',
     include: ['test/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
       thresholds: {
-        // SDD-00 floor for the DOM-bound module (bootstrap)...
-        lines: 80,
-        functions: 80,
-        branches: 75,
-        // ...and near-100% for the pure runtime pieces (SDD-14 §6.13).
-        'src/signal.ts': { lines: 100, functions: 100, branches: 100 },
+        // Everything left in the package is pure runtime, so the SDD-00 floor
+        // (80/80/75) does not apply here: 100% is reachable and expected.
+        lines: 100,
+        functions: 100,
+        branches: 100,
       },
     },
   },
