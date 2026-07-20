@@ -18,3 +18,4 @@ export * from './control/index.js';
 export * from './binding/index.js';
 export * from './code/index.js';
 export * from './css/index.js';
+export * from './document/index.js';

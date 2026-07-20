@@ -1,6 +1,6 @@
 # SDD-10 — Estructura del documento
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Depende de:** 00, 05, 08
 > **Decisiones de gramática:** 53–62, 75–78
 
