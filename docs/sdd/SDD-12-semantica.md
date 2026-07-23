@@ -1,6 +1,6 @@
 # SDD-12 — Análisis semántico
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Depende de:** 00, 05–11
 > **Decisiones de gramática:** 19, 31, 33.a/b/c, 41, 45 · 28.c (§8.4)
 
