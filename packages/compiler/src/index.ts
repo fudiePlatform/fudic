@@ -19,3 +19,4 @@ export * from './binding/index.js';
 export * from './code/index.js';
 export * from './css/index.js';
 export * from './document/index.js';
+export * from './oxc/index.js';

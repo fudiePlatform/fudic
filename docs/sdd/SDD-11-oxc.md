@@ -1,6 +1,6 @@
 # SDD-11 — Integración Oxc
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Depende de:** 00, 01, 02
 > **Decisiones de gramática:** 6, 32
 
