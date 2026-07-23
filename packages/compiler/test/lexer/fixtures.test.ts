@@ -8,8 +8,14 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { tokenize, type Token } from '../../src/lexer/index.js';
+import { parseDocument, type AtConstructParser } from '../../src/html/index.js';
+import { parseControl } from '../../src/control/index.js';
+import { parseCodeBlock } from '../../src/code/index.js';
 
 const FIXTURES = ['home.fud', 'app-card.fud', 'app-button.fud', 'app-badge.fud'] as const;
+
+/** The real @-construct parsers, so @code/control bodies are consumed by the balancer. */
+const constructs: AtConstructParser = { parseControl, parseCodeBlock };
 
 function read(name: string): string {
   return readFileSync(fileURLToPath(new URL(`../../fixtures/${name}`, import.meta.url)), 'utf8');
@@ -28,8 +34,13 @@ describe.each(FIXTURES)('%s', (name) => {
     expect(at).toBe(source.length);
   });
 
-  it('produces no diagnostics', () => {
-    expect(result.diagnostics).toEqual([]);
+  it('the real parse path produces no diagnostics', () => {
+    // Standalone `tokenize()` HTML-scans @code/header bodies, so TS generics inside them
+    // (`props<T>()`, `Promise<T>`) trip tag scanning — that JS is not the tokenizer's to
+    // tile. In the real path the balancer owns those bodies (parseCodeBlock/parseControl),
+    // so the fixtures parse clean; that is the guarantee that matters and we assert it here.
+    const parsed = parseDocument(source, { atConstructs: constructs });
+    expect(parsed.diagnostics).toEqual([]);
   });
 
   it('leaves every balanced JS region closed', () => {

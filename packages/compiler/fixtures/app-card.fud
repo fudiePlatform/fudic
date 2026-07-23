@@ -3,8 +3,10 @@
 @code {
   type Variant = 'default' | 'highlight';
 
+  const { title, variant = 'default' } = props<{ title: string; variant?: Variant }>();
+
   @client {
-    import { signal } from '@fudic/signals';
+    import { signal } from '@fudic/core';
 
     const expanded = signal(false);
 

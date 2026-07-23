@@ -1,5 +1,7 @@
 @code {
   type Tone = 'neutral' | 'success' | 'warning';
+
+  const { tone = 'neutral' } = props<{ tone?: Tone }>();
 }
 
 <head>

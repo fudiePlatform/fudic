@@ -1,6 +1,8 @@
 @code {
   type Variant = 'primary' | 'ghost';
 
+  const { variant = 'primary', disabled = false } = props<{ variant?: Variant; disabled?: boolean }>();
+
   @client {
     function onClick(e: MouseEvent) {
       const host = (e.currentTarget as HTMLElement).closest('app-button');
