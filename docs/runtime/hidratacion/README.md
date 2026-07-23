@@ -155,9 +155,9 @@ de la propia página. Recarga con el SW ya activo cuando el criterio hable de ca
 - **Las URLs de `fud-chunks` no van hasheadas.** Son rutas reales a ficheros del repo; el emit
   real emite nombres hasheados para cacheado inmutable. `sw.js` reconoce los chunks por el
   prefijo `/components/`; con el emit real ese predicado se ajusta.
-- **Los `<style>` van inline en cada `<template shadowrootmode>`** (SDD-15 §4.8), duplicados
-  entre las dos instancias de la cadena de composición. Es lo que el emit hace; el navegador
-  deduplica las hojas idénticas en memoria.
+- **En este prototipo los `<style>` van inline en cada `<template shadowrootmode>`**,
+  duplicados entre las dos instancias de la cadena. **Es solo del prototipo:** el emit real de
+  v1 emite hoja compartida (`<style type="module">` + `shadowrootadoptedstylesheets`, SDD-18).
 - **El paso de props padre→hijo no está ejercitado.** El runtime solo garantiza el **orden**;
   el paso de estado lo resuelve el sistema de props del código emitido, que no está aquí.
 - **Solo `click`.** Los eventos que no burbujean y el replay de eventos con carga no

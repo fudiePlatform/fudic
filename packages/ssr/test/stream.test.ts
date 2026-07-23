@@ -68,7 +68,7 @@ describe('serializeChunks (SDD-16 §6.3)', () => {
     d.append(host, d.text('light'));
     expect([...serializeChunks(host)].join('')).toBe(renderToString(host));
     expect(renderToString(host)).toBe(
-      '<app-x><template shadowrootmode="open">hi</template>light</app-x>',
+      '<app-x><template shadowrootmode="open" shadowrootadoptedstylesheets="app-x">hi</template>light</app-x>',
     );
   });
 

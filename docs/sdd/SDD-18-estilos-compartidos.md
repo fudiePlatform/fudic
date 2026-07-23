@@ -1,14 +1,22 @@
-# SDD-18 — Estilos compartidos en DSD (`shadowrootadoptedstylesheets` + polyfill)
+# SDD-18 — Estilos compartidos en DSD (`<style type="module">` + `shadowrootadoptedstylesheets`)
 
-> **Estado:** `Pendiente` — **no bloquea v1**. El emit v1 sirve `<style>` inline en cada
-> shadow (SDD-15 §4.8); esta spec es la evolución de esa única función del emit.
+> **Estado:** `Listo` — **es la forma de estilos de v1**, con polyfill (vía (b) de §7). No
+> hay vía inline y **el specifier es el tag**: SDD-15 §4.8 emite este mecanismo
+> (`<style type="module" specifier="<tag>">` en `<head>` + `shadowrootadoptedstylesheets="<tag>"`
+> en cada template) desde el primer día, sin marcadores inventados. El polyfill (§5) es
+> condición de emisión mientras el soporte nativo no sea universal. Reverificar §2.2/§6
+> (soporte y polyfill) antes de implementar.
 > **Paquete:** emit del compilador (`@fudic/compiler`) + polyfill de página.
 > **Depende de:** SDD-15 (emit de página: comparte la pasada que resuelve la composición
 > completa y asigna `data-id`).
 > **Rango de diagnósticos:** `FUD0340`–`FUD0359` (reservado, vacío).
 >
 > **Refunde, sin pérdida, `docs/reviews/NOTA-estilos-compartidos-dsd.md`** (ya eliminada).
-> **Verificado contra:** explainers de MSEdge y estado del origin trial a julio de 2026.
+>
+> **Procedencia de cada afirmación.** Todo lo de §2 y §3 está contrastado contra el
+> explainer dedicado de MSEdge y contra el Intent to Experiment de blink-dev, ambos
+> leídos, no recordados. Lo de §4 son decisiones del proyecto, marcadas como tales.
+> El estado de implementación (§2.2) caduca: reverificar antes de implementar (§6).
 
 ---
 
@@ -21,49 +29,59 @@ resumen técnico:
 
 > «El puente declarativo obvio no existe y nadie lo ha propuesto.»
 
-**Es falsa.** La propuesta existe, está activa, tiene explainers formales, review del TAG,
-sesión dedicada en TPAC 2024 y **origin trial en Chrome/Edge 148**. La afirmación se dio por
-buena sin verificar y sobre ella se construyó todo el diseño.
+**Es falsa.** La propuesta existe, está activa, tiene explainer formal con venue esperado
+WHATWG, issue de spec abierto y origin trial en Chromium. La afirmación se dio por buena sin
+verificar y sobre ella se construyó todo el diseño.
 
 **Consecuencia:** `<style host>` era una invención paralela a un estándar en curso. Se
 abandona — el mecanismo, el polyfill y el plan de estandarización. Lo que queda es esta spec:
 alinearse con la propuesta real.
 
+**Lo que cambia respecto al plan anterior es solo el mecanismo.** El objetivo (una copia del
+CSS por documento en vez de N) y el conocimiento que el compilador ya tiene (el mapa
+`tag → hoja`, resuelto en compile time) son los mismos. Cambia la sintaxis emitida.
+
 ---
 
 ## 2. Qué es lo que sí existe
 
-Dos features separables, del equipo de Edge (Kurt Catti-Schmidt, Daniel Clark, Alison Maher,
-Tien Mai, Hoch Hochkeppel):
+### 2.1. Las dos features
 
-| # | Feature | Qué hace | Estado |
-|---|---|---|---|
-| 1 | `shadowrootadoptedstylesheets` | Atributo en `<template>`: lista de specifiers separados por espacio; adopta los `CSSStyleSheet` correspondientes en el `adoptedStyleSheets` del shadow root | **Origin trial activo**, venue esperado WHATWG |
-| 2 | `<style type="module" specifier="...">` | Define un CSS module inline y lo mete en el module map | **En rediseño**, retirado del origin trial en Chrome/Edge 151 |
+Del equipo de Edge (Kurt Catti-Schmidt, Hoch Hochkeppel, Daniel Clark, Alison Maher):
+
+| # | Feature | Qué hace |
+|---|---|---|
+| 1 | `<style type="module" specifier="...">` | Define un CSS module script inline y lo mete en el module map |
+| 2 | `shadowrootadoptedstylesheets` | Atributo en `<template>`: lista de specifiers separados por espacio; adopta los `CSSStyleSheet` correspondientes en el `adoptedStyleSheets` del shadow root |
+
+Ambas están vivas. El explainer dedicado declara que funcionan mejor juntas pero que **pueden
+lanzarse de forma independiente**. Un único CSS module script puede ser compartido por
+cualquier número de shadow roots — que es exactamente el caso de Fudic.
 
 **Documentos de referencia:**
 
-- Explainer del atributo (el que importa): `https://microsoftedge.github.io/MSEdgeExplainers/ShadowDOMAdoptedStyleSheets/explainer.html`
-- Explainer padre (contexto + alternativas descartadas): `https://microsoftedge.github.io/MSEdgeExplainers/ShadowDOM/explainer.html`
+- Explainer dedicado (el que gobierna esta spec):
+  `https://github.com/MicrosoftEdge/MSEdgeExplainers/blob/main/ShadowDOMAdoptedStyleSheets/explainer.md`
+  Estado del documento: **Active**. Venue esperado: WHATWG.
+- Explainer padre (problema, casos de uso, alternativas descartadas, `<style type="module">`):
+  `https://github.com/MicrosoftEdge/MSEdgeExplainers/blob/main/ShadowDOM/explainer.md`
 - Issue de spec: `whatwg/html#10673`
 - Foro de discusión: `WICG/webcomponents#939`
-- Relacionados: `WICG/webcomponents#909` (open-stylable), `w3c/csswg-drafts#10176` (adoptStyles),
-  `w3c/csswg-drafts#5629` (`@sheet`), `w3c/csswg-drafts#10013` (levantar el requisito de
-  constructable en `adoptedStyleSheets`)
+- Issue abierto relevante: `w3c/csswg-drafts#10013` (adopción de hojas no construibles)
 
-### 2.1. El cambio de junio de 2026 — crítico
+### 2.2. Estado de implementación (caduca — reverificar, §6)
 
-`<style type="module">` **se retira del origin trial a partir de Chrome/Edge 151** por
-feedback recibido; se va a rediseñar. El workaround recomendado por los propios autores es
-**import map con data URI**:
+- **Chromium:** origin trial. Milestones estimados en el Intent to Experiment: desktop,
+  Android y WebView de **148 a 153**. Finch feature name `DeclarativeCSSModules`. Tracking
+  bug `issues.chromium.org/issues/448174611`. Entrada de chromestatus
+  `feature/4790543041298432`. Con anterioridad al trial, testeable activando *Experimental
+  Web Platform Features* tras la versión 144.
+- **Gecko:** bug abierto `bugzilla.mozilla.org/show_bug.cgi?id=2037650`. Sin implementar.
+- **WebKit:** bug abierto `bugs.webkit.org/show_bug.cgi?id=314242`. Sin implementar.
 
-```html
-<script type="importmap">
-{ "imports": { "foo": "data:text/css,span{color:blue;}" } }
-</script>
-```
-
-Es decir: hoy solo se puede contar con la feature #1; la #2 hay que suplirla con import map.
+**Consecuencia operativa:** hoy esto no se puede emitir como única vía. Un motor sin soporte
+deja el shadow sin estilos (regla 3 de §3.2: placeholder vacío). El polyfill (§5) no es un
+adorno: es condición de emisión.
 
 ---
 
@@ -73,98 +91,122 @@ Es decir: hoy solo se puede contar con la feature #1; la #2 hay que suplirla con
 
 ```html
 <head>
-  <script type="importmap">
-  { "imports": {
-      "fud:app-card": "data:text/css,%3Ahost%7Bdisplay%3Ablock%7D..."
-  } }
-  </script>
+  <style type="module" specifier="app-card">
+    :host { display: block }
+    .card { border: 1px solid #ddd; border-radius: 8px }
+  </style>
 </head>
 <body>
-  <app-card data-id="0" data-fud-css="fud:app-card">
-    <template shadowrootmode="open" shadowrootadoptedstylesheets="fud:app-card">
+  <app-card data-id="0">
+    <template shadowrootmode="open" shadowrootadoptedstylesheets="app-card">
       <!-- markup SSR -->
     </template>
   </app-card>
 </body>
 ```
 
+Sin import map. Sin data URI. Sin URL-encoding. El `<style type="module">` puebla el module
+map directamente.
+
 ### 3.2. Reglas de evaluación (del explainer; son contrato duro)
 
-1. **Se evalúa una sola vez, al parsear el `<template>`.** No es retroactivo.
-2. **El specifier debe estar en el module map ANTES** de que se parsee el `<template>` que lo
-   referencia. Si no, falla y queda una hoja placeholder vacía.
-3. Si el specifier resuelve a URL y no está en el module map → se lanza un fetch, con hoja
-   placeholder vacía en su posición hasta que llegue. **Esto produce FOUC.**
-4. Si es bare specifier sin entrada en import map → falla, placeholder vacío, sin forma de
-   detectarlo ni de dar fallback.
-5. El orden en el atributo es el orden en `adoptedStyleSheets`, y ese orden determina la
-   cascada.
-6. Solo la **primera** definición de un specifier cuenta (algoritmo de merge de import maps);
-   las duplicadas se ignoran silenciosamente.
+1. **El atributo se evalúa una sola vez, al parsear el `<template>`.** No es retroactivo: un
+   módulo declarativo añadido al module map después no se recoge.
+2. **El módulo declarativo debe estar en el module map ANTES** de que se parsee el
+   `<template>` que lo referencia. El explainer lo demuestra con dos contraejemplos
+   explícitos: `<style type="module">` *después* del template → sin estilos;
+   `<style type="module">` *dentro* del propio template que lo adopta → sin estilos (el
+   template se parsea primero).
+3. **Specifier que no resuelve a URL** (bare specifier sin entrada en import map) → el fetch
+   falla, queda una entrada de hoja placeholder vacía en `adoptedStyleSheets` y no se aplica
+   estilo alguno para ese specifier. Devtools debería avisar.
+4. **Specifier que resuelve a URL y no está en el module map** → se lanza un fetch, con hoja
+   placeholder vacía en su posición hasta que llegue. **Esto produce FOUC.** La recomendación
+   del explainer para ese caso es `<link rel="modulepreload" as="style">` en `<head>`,
+   combinable con `blocking="render"` y con manejo de error vía `onerror`.
+5. **El orden en el atributo es el orden en `adoptedStyleSheets`**, y ese orden determina la
+   cascada. Si hay fetches, el orden de finalización puede no coincidir con el especificado y
+   cada uno puede provocar un FOUC separado.
+6. **Sin detección de fallo de fetch.** Limitación reconocida en el explainer: si el fetch
+   falla (404, error de red), la entrada placeholder queda vacía y **no hay mecanismo para
+   que el desarrollador lo detecte** ni para dar un fallback declarativo.
 
 ### 3.3. Reflection
 
-El `<template>` de DSD lo consume el parser y no queda en el DOM. Se propone una propiedad
-`shadowRootAdoptedStyleSheets` en `HTMLTemplateElement` para reflejar el valor de parse time.
-**Es el punto de feature detection del polyfill:**
+El `<template>` de DSD lo consume el parser y no queda en el DOM, así que el atributo no es
+legible por DOM después del parseo. El explainer **propone** (no existe aún) una propiedad
+`shadowRootAdoptedStyleSheets` en `HTMLTemplateElement` que refleje el valor de parse time.
+Es el punto de feature detection del polyfill, en la forma que el propio explainer da:
 
 ```js
 document.createElement('template').shadowRootAdoptedStyleSheets !== undefined
 ```
+
+### 3.4. Variante sin script (registrada, no adoptada)
+
+El explainer recoge una sugerencia de `whatwg/html#10673` para caer a un `<link>` normal sin
+JavaScript, mediante un atributo nuevo `noadoptedstylesheets` que evitaría la doble
+aplicación:
+
+```html
+<template shadowrootmode="open" shadowrootadoptedstylesheets="foo">
+  <link rel="stylesheet" href="/foo.css" noadoptedstylesheets>
+</template>
+```
+
+No está especificado ni implementado, y no soporta módulos declarativos. Se registra porque,
+si prosperara, elimina el polyfill de §5 — que es la pieza más cara de esta spec. Vigilar.
 
 ---
 
 ## 4. Contrato de emit
 
 El compilador ya conoce en compile time el mapa `tag → hoja CSS`. Eso no cambia; cambia la
-forma de emisión.
+forma de emisión. Las decisiones D-1 a D-6 son **del proyecto**, derivadas de las reglas de
+§3.2 pero no dictadas por el explainer.
 
-- **D-1. Un specifier por hoja compartida, no por instancia.** Convención: `fud:<tag>`. El
-  namespace `fud:` evita colisión con specifiers del usuario y con módulos JS (ver D-8).
-- **D-2. El import map se emite en `<head>`, antes de cualquier `<template>`.** No es
-  preferencia: la regla 2 de §3.2 lo exige. En streaming SSR implica que **el conjunto de
-  hojas debe conocerse al emitir el `<head>`**, es decir, en la pasada única de página tras
+- **D-1. El specifier es el tag, uno por hoja compartida.** Sin prefijo ni namespace
+  inventado: el estándar acepta cualquier specifier y el tag ya identifica la hoja de forma
+  única. `<style type="module" specifier="app-card">` ↔ `shadowrootadoptedstylesheets="app-card"`.
+- **D-2. El `<style type="module">` se emite en `<head>`, antes de cualquier `<template>`.**
+  No es preferencia: la regla 2 de §3.2 lo exige. En streaming SSR implica que **el conjunto
+  de hojas debe conocerse al emitir el `<head>`**, es decir, en la pasada única de página tras
   resolver la composición completa (SDD-15 §3.2). Si una hoja se descubriera tarde, su
-  specifier no estaría en el module map y el componente saldría sin estilo.
-- **D-3. Data URI, no Blob.** Los import maps son declarativos y el Blob URL requiere script.
-  El CSS va URL-encoded — obligatorio: `#`, `%`, `&`, `,` tienen significado en URL, y el `#`
-  de un selector de id rompe la URI si no se codifica.
-- **D-4. El atributo se emite en cada instancia.** `shadowrootadoptedstylesheets="fud:app-card"`
-  por cada `<template shadowrootmode>`. Deja de ser "una sola aparición": es una cadena corta
-  repetida N veces. Con brotli es ruido, pero no es cero.
-- **D-5. `:host` obligatorio en las hojas compartidas.** Limitación reconocida del modelo: no
-  hay forma en HTML de declarar una hoja sin aplicarla al documento donde se declara. Con
-  import map + data URI se evita (la data URI no aplica a nada hasta ser importada), pero la
-  regla se mantiene por robustez y por compatibilidad con el futuro `<style type="module">`.
-- **D-6. Nada de fetch externo desde el atributo.** Todo specifier emitido debe estar en el
-  module map por import map. Un specifier que resuelva a URL externa mete FOUC y no tiene
-  manejo de error. Si se quisiera CSS externo cacheable, la vía es
-  `<link rel="modulepreload" as="style">` en `<head>` con `blocking="render"`, no el atributo
-  a pelo.
-- **D-7. Emitir el specifier también en el host, no solo en el `<template>`.** El host
-  sobrevive al parser; el `<template>` no. Atributo espejo `data-fud-css="fud:<tag>"` en el
-  host. Redundante con soporte nativo (~25 bytes por instancia), imprescindible sin él. Se
-  elimina del emit el día que el soporte sea universal: es una línea, no un rediseño.
-- **D-8. Colisión de specifiers (issue abierto en la propuesta).** Los import maps no conocen
-  el tipo del módulo: un specifier usado para un módulo JS y otro para CSS crea dos entradas
-  y solo la primera se mapea. **Por eso el prefijo `fud:` de D-1 no es cosmético:** separa el
-  namespace de hojas del de chunks de componente, que ya se emiten como módulos JS
-  (`fud-chunks`, SDD-15 §3.6).
+  specifier no estaría en el module map y el componente saldría sin estilo, sin error
+  detectable (regla 3).
+- **D-3. Nada de specifiers que resuelvan a URL externa.** Todo specifier emitido se define
+  con `<style type="module">` en el mismo documento. Un specifier externo mete FOUC (regla 4)
+  y no tiene manejo de error (regla 6). Si algún día se quiere CSS externo cacheable, la vía
+  es `<link rel="modulepreload" as="style">` con `blocking="render"`, nunca el atributo a
+  pelo.
+- **D-4. El atributo se emite en cada instancia, desde el día uno.** `shadowrootadoptedstylesheets="<tag>"`
+  en cada `<template shadowrootmode>`, forma estándar siempre presente, de modo que el día que
+  haya soporte nativo no se toca nada. Es una cadena corta repetida N veces; con brotli es
+  ruido, pero no es cero.
+- **D-5. `:host` en las hojas compartidas.** El `<style type="module">` no aplica al documento
+  donde se declara (es un módulo, no una hoja activa), pero las reglas deben escribirse
+  relativas al shadow porque ahí es donde se adoptan.
+- **D-6. El polyfill obtiene el specifier del tag del host, sin atributo espejo.** El
+  `<template>` no sobrevive al parser y la reflection de §3.3 aún no existe, pero el specifier
+  **es el tag** (D-1), y el `tagName` del host sí es legible del DOM. El polyfill recorre los
+  shadow hosts y adopta la hoja nombrada por su tag. No se emite ningún `data-fud-css` ni
+  marcador inventado: cero bytes extra y cero rediseño el día que haya soporte nativo.
 
-### 4.1. Coste frente a v1
+### 4.1. Coste frente a la alternativa inline (vía (a), descartada)
 
-| | `<style>` inline por instancia (v1, SDD-15 §4.8) | `shadowrootadoptedstylesheets` |
+| | `<style>` inline por instancia (vía (a), descartada) | `<style type="module">` + atributo (vía (b), adoptada) |
 |---|---|---|
-| Bytes de CSS en HTML | N copias | 1 copia (en el import map) |
-| Bytes por instancia | CSS completo | ~40 bytes de atributo |
+| Bytes de CSS en HTML | N copias | 1 copia |
+| Bytes por instancia | CSS completo | ~40 bytes del atributo (sin espejo) |
 | Parse de CSS | 1 vez (el navegador dedupe hojas idénticas) | 1 vez |
 | Objetos `CSSStyleSheet` | 1 compartido | 1 compartido |
-| FOUC | No | No (si está en module map) |
-| Requiere JS | No | No (con polyfill sí, hasta que llegue soporte) |
+| FOUC | No | No (módulo declarativo en `<head>`) |
+| Requiere JS | No | Sí mientras el polyfill sea necesario (§2.2) |
 
 El ahorro real es de **bytes de HTML**, que es exactamente el dolor que motivó todo esto. El
-parse y la memoria ya estaban resueltos por la deduplicación interna del navegador. Por eso
-v1 puede salir con inline sin pagar nada más que bytes.
+parse y la memoria ya estaban resueltos por la deduplicación interna del navegador. La única
+contrapartida de (b) es la dependencia de JS mientras el polyfill sea necesario (§2.2), coste
+aceptado en §7.
 
 ---
 
@@ -173,53 +215,61 @@ v1 puede salir con inline sin pagar nada más que bytes.
 Deja de ser una invención y pasa a ser un polyfill de verdad. Cambia de forma por completo:
 antes observaba custom elements por selector CSS y adoptaba hojas por tag; ahora:
 
-1. **Feature detection:** `document.createElement('template').shadowRootAdoptedStyleSheets !== undefined`.
-   Si hay soporte, el polyfill no hace nada.
+1. **Feature detection:** la de §3.3. Si hay soporte nativo, el polyfill no hace nada.
 2. **Sin soporte:** el atributo `shadowrootadoptedstylesheets` vive en un `<template>` que el
-   parser ya consumió, así que **no es legible del DOM**. Esa es la dificultad central, y se
-   resuelve en el emit (D-7), no en el cliente.
-3. **Rutina:** recorrer `[data-fud-css]`, resolver cada specifier contra un registro (poblado
-   leyendo las entradas del import map o un mapa emitido por el compilador), construir el
-   `CSSStyleSheet` **una vez por specifier** (cacheado en un `Map`), y asignar
-   `shadowRoot.adoptedStyleSheets`. Debe correr también sobre instancias creadas después: el
-   controlador padre crea instancias en runtime al mutar un array (el punto `c()` de
-   SDD-15 §4.3).
+   parser ya consumió, así que **no es legible del DOM**. Se resuelve por convención (D-1/D-6):
+   el specifier **es el tag**, y el `tagName` del host sí es legible.
+3. **Rutina:** recorrer los shadow hosts (descendiendo por `shadowRoot`, que `querySelectorAll`
+   no cruza), tomar el specifier del `tagName`, construir el `CSSStyleSheet` **una vez por tag**
+   (cacheado en un `Map`) a partir del `<style type="module" specifier="<tag>">` del `<head>`, y
+   asignar `shadowRoot.adoptedStyleSheets`. Debe correr también sobre instancias creadas
+   después: el controlador padre crea instancias en runtime al mutar un array (el punto `c()`
+   de SDD-15 §4.3).
 4. **Restricción heredada:** `adoptedStyleSheets` solo acepta hojas construidas
-   (`new CSSStyleSheet()`); asignar `styleEl.sheet` lanza `NotAllowedError`. Puede cambiar si
-   prospera `csswg-drafts#10013`, que levantaría la restricción — vigilar.
+   (`new CSSStyleSheet()`); asignar `styleEl.sheet` lanza. Puede cambiar si prospera
+   `csswg-drafts#10013` — es uno de los issues abiertos que el propio explainer lista.
+
+**Coste que hay que aceptar:** con el polyfill activo, el CSS de un componente depende de
+JavaScript. Eso choca de frente con el invariante de que un N1 se ve sin JS. Mientras el
+soporte nativo no sea universal, esta spec **solo es aplicable si se acepta esa regresión**, o
+bien se restringe a los tags que ya descargan JS. Es la decisión de §7.
 
 ---
 
 ## 6. Qué verificar antes de implementar
 
-1. **Estado del origin trial** en ese momento (`chromestatus.com/feature/4790543041298432`).
-   Si el atributo ya está shipped en algún motor, el polyfill pasa de «siempre» a «fallback».
-2. **Si `<style type="module">` volvió del rediseño.** Si volvió con otra forma, D-3 (import
-   map + data URI) puede quedar obsoleto y convenir migrar. Mientras tanto, import map es lo
-   recomendado por los propios autores.
-3. **Nombre del atributo y de la propiedad de reflection.** Verificados a julio de 2026 como
-   `shadowrootadoptedstylesheets` y `shadowRootAdoptedStyleSheets`, pero están en flujo.
+Nada de §2.2 se da por vigente en el momento de implementar. Contrastar:
+
+1. **Estado del origin trial y del shipping** en `chromestatus.com/feature/4790543041298432`.
+   Si el atributo está shipped en algún motor, el polyfill pasa de «siempre» a «fallback».
+2. **Estado en Gecko y WebKit** (bugs de §2.2). Es lo que decide si el polyfill desaparece.
+3. **Nombre del atributo y de la propiedad de reflection.** Contrastados como
+   `shadowrootadoptedstylesheets` y `shadowRootAdoptedStyleSheets`, pero la reflection es una
+   propuesta, no una API existente.
 4. **`csswg-drafts#10013`.** Si prospera, simplifica el polyfill.
+5. **`noadoptedstylesheets` (§3.4).** Si prosperara, elimina el polyfill.
 
 ---
 
-## 7. Participación en el estándar
+## 7. Decisión (resuelta): vía (b) — adoptada ya, con polyfill
 
-**Se cancela** el plan de presentar `<style host>` en WICG. Llegaría como duplicado de
-`whatwg/html#10673` / `WICG/webcomponents#939` y se cerraría apuntando a ellos.
+**Se adopta (b): es la forma de emisión de estilos de v1, con polyfill.** No hay vía inline;
+SDD-15 §4.8 emite este mecanismo desde el primer día.
 
-**Sustituto viable, y probablemente mejor:** participar en los hilos existentes aportando lo
-que casi nadie en esa discusión tiene — **un SSR real con DSD, en producción, con métricas**.
-El explainer padre dedica una sección entera a «Streaming SSR» y reconoce que es el caso más
-castigado. Hay issues abiertos donde una implementación real tiene algo que decir:
+- **(b) — elegida.** El emit produce `<style type="module" specifier="<tag>">` + el atributo
+  `shadowrootadoptedstylesheets="<tag>"` (el specifier es el tag, sin marcadores inventados), y
+  el **polyfill** (§5) adopta las hojas donde el soporte nativo aún no llega (§2.2). Coste
+  asumido y aceptado: el CSS de un componente depende de JS mientras el polyfill sea necesario
+  (§5) —regresión consciente sobre "un N1 se ve sin JS"—, a cambio de una sola forma de
+  emisión, sin migración posterior.
+- **(a) — descartada.** Servir `<style>` inline por instancia paga bytes de HTML en cada una
+  y obligaría a mantener una segunda forma de emisión que después habría que migrar. No se
+  quiere.
 
-- Detección de fallo de fetch desde `shadowrootadoptedstylesheets` (sin mecanismo hoy).
-- Comportamiento con `Document.parseHTMLUnsafe` y cruce de documentos.
-- El rediseño en curso de `<style type="module">` — es *el* momento de opinar, está abierto.
-- Reflection en `HTMLTemplateElement` (nos afecta directamente por D-7).
-
-Aportar un caso de uso documentado con números en un hilo activo pesa más en el proceso que
-un explainer nuevo, y sigue sirviendo al objetivo de exposición pública.
+Hay una tercera vía que no es esta spec y conviene no confundir con ella: para instancias N3,
+que descargan JS por diseño, `adoptedStyleSheets` imperativo en `connectedCallback` está
+disponible en todos los motores desde 2023 y resuelve el peso de HTML sin depender de la
+propuesta. No sirve para N1/N2, que no descargan JS. Si se explora, va en SDD aparte.
 
 ---
 
@@ -228,8 +278,11 @@ un explainer nuevo, y sigue sirviendo al objetivo de exposición pública.
 - **Qué CSS entra en la hoja por tag y cómo se particiona** si un componente tiene CSS
   condicional. Se decide al redactar la implementación de esta spec.
 - **Interacción con el `<head>` cascade y la deduplicación** ya especificada (decisión 62).
-- **CSS externo cacheable vía `modulepreload`.** Descartado por D-6; reconsiderable con datos.
-- **`@sheet`, open-stylable shadow roots, `adoptStyles`:** propuestas hermanas que compiten
-  por el mismo espacio. No se adoptan. Se vigilan.
+- **CSS externo cacheable vía `modulepreload`.** Descartado por D-3; reconsiderable con datos.
+- **`adoptedStyleSheets` imperativo en `connectedCallback` para N3** (§7). SDD aparte si se
+  aborda.
+- **Alternativas hermanas** que el explainer padre lista como descartadas (`@sheet`,
+  `adoptStyles`, `<link rel="adoptedstylesheet">`, variante basada en `id`). No se adoptan.
+  Se vigilan.
 - **`<style host>` y su polyfill.** Retirados del proyecto: el mecanismo, el código
   (`styles`/`StyleRegistry` de `@fudic/core`, ya borrado) y el plan de estandarización.

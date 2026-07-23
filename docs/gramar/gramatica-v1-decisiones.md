@@ -502,10 +502,11 @@ hidratación desciende por `host.shadowRoot`, SDD-17 §4.4); se revisará vía
 y va **sin atributo**: esa hoja es, por definición, la hoja del host y su scope es el tag del
 envoltorio (decisión 75). El atributo `host` **no existe en la sintaxis fuente** — escribirlo
 es error. **La forma de emisión la decide el compilador**, y es asunto de emit, no de
-gramática: v1 sirve la hoja inline dentro de cada `<template shadowrootmode>` (SDD-15 §4.8) y
-la migración a `shadowrootadoptedstylesheets` + import map es SDD-18. El marcador
-`<style host="tag">` que el emit usaba antes está **retirado**. Más de un `<style>` en el
-`<head>` del componente → error.
+gramática: v1 emite esa hoja como CSS module script compartido —`<style type="module"
+specifier="<tag>">` en el `<head>` de página + `shadowrootadoptedstylesheets="<tag>"` en cada
+template, con polyfill— según SDD-18 (SDD-15 §4.8); el specifier es el tag, sin inventos. El
+marcador `<style host="tag">` que el emit usaba antes está **retirado**. Más de un `<style>` en
+el `<head>` del componente → error.
 
 **77.** Vías de estilo alternativas dentro del `<template>`: un `<style>` normal permanece
 **inline** en el shadow root — no se extrae ni se deduplica al head —, y un

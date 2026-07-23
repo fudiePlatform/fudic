@@ -73,7 +73,7 @@ describe('renderToString — comments and shadow', () => {
     d.append(root, d.text('hi'));
     d.append(host, d.text('light')); // light-DOM child comes after the template
     expect(renderToString(host)).toBe(
-      '<app-x><template shadowrootmode="open">hi</template>light</app-x>',
+      '<app-x><template shadowrootmode="open" shadowrootadoptedstylesheets="app-x">hi</template>light</app-x>',
     );
   });
 

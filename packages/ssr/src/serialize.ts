@@ -6,10 +6,15 @@
  * Rules:
  *  - void elements (`img`, `br`, …) self-close: no children, no closing tag;
  *  - rawtext elements (`script`, `style`) emit their text children UNescaped;
- *  - a shadow root serializes as `<template shadowrootmode="open">…</template>`,
- *    the first thing inside its host. No `host="tag"` marker is emitted: the
- *    `<style host>` mechanism is retired and v1 inlines the component `<style>`
- *    inside the shadow (SDD-15 §4.8, §7);
+ *  - a shadow root serializes as
+ *    `<template shadowrootmode="open" shadowrootadoptedstylesheets="<host-tag>">…</template>`,
+ *    the first thing inside its host. No `host="tag"` marker is emitted; the
+ *    `<style host>` mechanism is retired. Component styles are a shared sheet
+ *    named by the host tag: `<style type="module" specifier="<tag>">` in the page
+ *    head (emit, SDD-15 §4.8) plus `shadowrootadoptedstylesheets="<tag>"` here.
+ *    Standard attributes only — the specifier IS the tag, no invented namespace;
+ *    the polyfill is a pure feature-detected fallback, so native support needs
+ *    zero change (SDD-18);
  *  - text is escaped for text context (`& < >`), attribute values for attribute
  *    context (`& "`); a comment neutralizes an inner `-->`.
  */
@@ -64,7 +69,9 @@ function* serializeElement(n: SsrNodeImpl): Generator<string> {
   }
 
   if (n.shadow !== null) {
-    yield '<template shadowrootmode="open">';
+    // DSD template adopts the component's shared stylesheet, named by the host tag
+    // (SDD-18). Standard form emitted day one so native support needs zero change.
+    yield `<template shadowrootmode="open" shadowrootadoptedstylesheets="${escapeAttr(tag)}">`;
     yield* serializeChildren(n.shadow);
     yield '</template>';
   }

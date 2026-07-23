@@ -29,5 +29,6 @@ Retired with SDD-15 / SDD-17:
 - `defineLazy` / `HydrationStrategy` — hydration is decided by the page, not
   declared by the component (grammar decisions 63-65 retired).
 - `delegate` — hookup is per instance in the controller's `s()`.
-- `styles` / `StyleRegistry` — `<style host>` abandoned; v1 inlines `<style>` in
-  the shadow (SDD-15 §4.8), with `shadowrootadoptedstylesheets` in SDD-18.
+- `styles` / `StyleRegistry` — `<style host>` abandoned; component styles are a
+  shared sheet (`<style type="module">` + `shadowrootadoptedstylesheets`, SDD-18,
+  emitted by SDD-15 §4.8), with a polyfill until native support is universal.

@@ -84,9 +84,10 @@ Cada instancia **N3 efectiva** se emite como su custom element con DSD y un `dat
 - **Solo N3 efectivo lo lleva.** Los N1/N2 puros no se hidratan, no llevan `data-id` ni
   entrada en ningún mapa, y son inertes para el runtime. El nivel efectivo lo da SDD-12
   (nivel intrínseco o inducido por props reactivas entrantes).
-- **`data-id` es el único marcador en el host.** No se emite `data-fud-c` (tag),
-  `data-fud-e` (delegación) ni `data-fud-css`: los tres mecanismos que los pedían están
-  retirados (§7).
+- **`data-id` es el único marcador emitido en el host.** No se emite `data-fud-c` (tag),
+  `data-fud-e` (delegación) ni ningún `data-fud-css`: retirados o innecesarios (§7). El
+  specifier de estilos **no** necesita marcador propio: es el tag del host, y el serializador
+  lo emite en el `<template>` como `shadowrootadoptedstylesheets="<tag>"` (§4.8, SDD-18 D-1/D-6).
 - El shadow es **declarativo y `open`** (decisión 75.a): el parser del navegador lo
   materializa en la carga, el componente se ve sin JavaScript, y el descubrimiento de
   instancias dentro de un subárbol (§3.4) lo exige.
@@ -678,20 +679,29 @@ conviviendo en el mismo scope léxico con las variables que el compilador genera
 - Hermana de la decisión 22 (`bus:` como prefijo reservado): mismo patrón de reservar un
   prefijo para separar dos mundos.
 
-### 4.8. Estilos (v1)
+### 4.8. Estilos: hoja compartida vía `<style type="module">` (SDD-18)
 
-El `<style>` único del `<head>` del componente (decisión 76) se emite **inline dentro de cada
-`<template shadowrootmode>`**. El navegador deduplica hojas idénticas: se parsea una vez y
-hay un solo `CSSStyleSheet` en memoria; el coste real es de bytes de HTML, muy amortiguados
-por brotli.
+El `<style>` único del `<head>` del componente (decisión 76) se emite como **CSS module
+script compartido**, según **SDD-18** —la forma de estilos de v1, con polyfill—. **No hay
+vía inline.** El **specifier es el tag** del componente (SDD-18 D-1), sin prefijo ni namespace
+inventado. El emit produce, en la pasada única de página (§3.2):
 
-- No se emite `<style host="tag">` en el `<head>` ni marcador `host` de ningún tipo: el
-  mecanismo está retirado (§7).
-- No se emite `shadowrootadoptedstylesheets` ni import map: es la evolución natural de esta
-  pieza y tiene SDD propio pendiente (§7), pero **no bloquea v1** — el cambio afecta a una
-  función del emit, no al modelo.
-- `<style>` / `<link rel="stylesheet">` escritos dentro de la template quedan inline en el
-  shadow, sin elevar (decisión 77).
+- un `<style type="module" specifier="<tag>">` en el `<head>` de la página, **una copia por
+  tag** y **antes de cualquier `<template>`** (SDD-18 §3.2 regla 2 / D-2): el conjunto de hojas
+  debe conocerse al emitir el `<head>`, por eso sale de la misma pasada que resuelve la
+  composición;
+- `shadowrootadoptedstylesheets="<tag>"` en cada `<template shadowrootmode>` (D-4). Lo emite el
+  serializador de `@fudic/ssr` a partir del tag del host, **siempre** (forma estándar desde el
+  día uno), de modo que el día que haya soporte nativo no se toca nada.
+
+El **polyfill** (SDD-18 §5) es una pura _fallback_ con feature-detección: mientras no haya
+soporte nativo, recorre los shadow hosts, toma el specifier del `tagName` y adopta la hoja; no
+resuelve nada más. No hay `data-fud-css` ni marcador inventado.
+
+- No se emite `<style host="tag">` ni marcador `host` de ningún tipo: retirado (§7).
+- `<style>` / `<link rel="stylesheet">` escritos **dentro** de la template quedan inline en
+  el shadow, sin elevar (decisión 77): es la vía de escape del autor, distinta de la hoja del
+  host.
 
 ---
 
@@ -837,13 +847,12 @@ por brotli.
   homogéneos a escalares con un reconstructor recursivo horneado. Se prefiere la vía B
   (§4.1). Reconsiderable si aparece un caso con arrays largos donde los bytes de claves
   repetidas se midan como problema real.
-- **Estilos compartidos vía `shadowrootadoptedstylesheets` + import map.** v1 emite `<style>`
-  inline (§4.8). La migración —specifier `fud:<tag>`, import map en `<head>` antes de todo
-  `<template>`, data URI URL-encoded, `:host` obligatorio, y polyfill con feature detection
-  por `HTMLTemplateElement.shadowRootAdoptedStyleSheets`— tiene **SDD propio pendiente**
-  (`SDD-18`, ver INDEX). Todo el análisis de la propuesta (origin trial de Chrome/Edge 148,
-  `whatwg/html#10673`, `WICG/webcomponents#939`, la retirada de `<style type="module">` en
-  151 y el workaround de import map) se conserva ahí.
+- **El polyfill de estilos y el detalle interno de SDD-18.** SDD-15 §4.8 emite la *forma*
+  estándar (`<style type="module" specifier="<tag>">` en `<head>` + `shadowrootadoptedstylesheets="<tag>"`
+  en cada template; el specifier es el tag, sin marcadores inventados). El **polyfill de
+  página** que adopta las hojas donde no hay soporte nativo, el particionado del CSS por tag y
+  la feature detection son de **SDD-18** (paquete: emit + polyfill de página). Aquí solo se
+  emite la forma estándar.
 - **`<style host>` y su polyfill.** Retirados: eran una invención paralela a un estándar en
   curso. No se emite el marcador `host="tag"`, y `styles`/`StyleRegistry` sale de
   `@fudic/core`.

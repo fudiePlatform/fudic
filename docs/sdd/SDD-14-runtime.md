@@ -14,7 +14,7 @@
 > | `FudicElement` (base de custom element N3) | controlador closure `{c, h, r}` emitido por componente, envuelto por una **`FudicElement` nueva** (misma casa, otra forma: enruta `h`/`c` desde fuera, sin `connectedCallback`) | **SDD-15 §3.7, §4.3, §4.6** |
 > | `defineLazy` / `HydrationStrategy` (`@client(eager\|viewport\|interaction\|idle)`, decisión 74) | capturador global de hidratación | **SDD-17** (y SDD-17 §8 para lo eliminado de v1) |
 > | `delegate` / `Delegate` (delegación N2 con `data-fud-e`) | enganche por instancia en `s()` del controlador | **SDD-15 §4.6** |
-> | `styles` / `StyleRegistry` (`<style host="tag">`, decisiones 67–70) | `<style>` inline dentro de cada `<template shadowrootmode>` | **SDD-15 §4.8**; migración a `shadowrootadoptedstylesheets` en SDD-18 |
+> | `styles` / `StyleRegistry` (`<style host="tag">`, decisiones 67–70) | hoja compartida `<style type="module">` + `shadowrootadoptedstylesheets` + polyfill | **SDD-18**, emitido por **SDD-15 §4.8** |
 >
 > Con ellos caen los marcadores `data-fud-c`, `data-fud-e` y el atributo `host="tag"` en la
 > serialización: **el único marcador en el host es `data-id`** (SDD-15 §3.1). Lo que **sobrevive
@@ -194,7 +194,10 @@ export class SsrDom implements Dom<SsrNode> {
  * Serializa un árbol SSR a HTML. Reglas: void elements auto-cerrados; rawtext (`script`/`style`)
  * sin escapar; shadow → `<template shadowrootmode="open">` como primer hijo del host; escape por
  * contexto de texto y de atributo. **No emite ningún marcador `host="tag"`**: el mecanismo
- * `<style host>` está retirado y v1 deja el `<style>` inline dentro del shadow (SDD-15 §4.8).
+ * `<style host>` está retirado. Los estilos son hoja compartida nombrada por el tag del host:
+ * el serializador emite `shadowrootadoptedstylesheets="<tag>"` en el `<template>` (forma
+ * estándar de SDD-18), y el `<style type="module" specifier="<tag>">` de página lo pone el
+ * emit (SDD-15 §4.8).
  */
 export function renderToString(root: SsrNode): string;
 ```
@@ -277,10 +280,11 @@ lanza** — la imposibilidad de hidratar en SSR es una propiedad del tipo, no un
 - **Void elements** (`area base br col embed hr img input link meta param source track wbr`):
   sin cierre ni hijos.
 - **Rawtext** (`script`, `style`): contenido **sin escapar**.
-- **Shadow** (nodo marcado por `attachShadow`): `<template shadowrootmode="open">…</template>`
-  como primer hijo del host. **Sin marcador `host="tag"`** ni elevación de hoja al `<head>`: el
-  `<style>` del componente queda inline dentro del template (SDD-15 §4.8). El serializador no
-  tiene caso especial de estilos.
+- **Shadow** (nodo marcado por `attachShadow`): `<template shadowrootmode="open"
+  shadowrootadoptedstylesheets="<host-tag>">…</template>` como primer hijo del host. **Sin
+  marcador `host="tag"`**. El atributo `shadowrootadoptedstylesheets` lo emite el serializador a
+  partir del tag del host (forma estándar de SDD-18); el `<style type="module"
+  specifier="<tag>">` de página lo pone el emit (SDD-15 §4.8).
 - **Escape**: texto → `& < >`; valor de atributo → `& "`; comentario → se rechaza `-->` interno.
 
 `SsrDom` no implementa `DomClient`: no ofrece `setProp`/`setText` (las props padre→hijo las
@@ -411,8 +415,8 @@ o modo browser):
 - **La hidratación como política** (cuándo y en qué orden se levanta cada instancia, captura global
   de eventos, cascada de composición, bus dirigido, warm): **SDD-17**. Las estrategias
   `@client(eager|viewport|interaction|idle)` y `defineLazy` están eliminadas de v1 (SDD-17 §8).
-- **Estilos de componente.** v1 los emite inline en el shadow (SDD-15 §4.8); la migración a
-  `shadowrootadoptedstylesheets` + import map es **SDD-18**. `<style host>` y su polyfill quedan
-  retirados.
+- **Estilos de componente.** v1 los emite como hoja compartida (`<style type="module">` +
+  `shadowrootadoptedstylesheets`, con polyfill) según **SDD-18**, producida por el emit
+  (SDD-15 §4.8). El viejo `<style host>` y su polyfill por tag quedan retirados.
 - **Delegación de eventos.** Retirada con N2; si vuelve, será con su propio SDD y su propio
   marcador. El enganche de v1 es por instancia en el `s()` del controlador (SDD-15 §4.6).
