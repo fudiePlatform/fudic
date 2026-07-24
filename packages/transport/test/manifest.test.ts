@@ -1,18 +1,22 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { loadManifest } from '../src/index.js';
+import { type RouteManifestFile, loadManifest } from '../src/index.js';
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const MANIFEST_JSON = {
-  '/': { dynamic: true, chunk: './home.chunk.js' },
-  '/static/logo': { dynamic: false, chunk: '' },
-};
+// Ordered by descending specificity (the plugin emits it so): the static
+// `/customer/new` sits before the param `/customer/:id`.
+const MANIFEST: RouteManifestFile = [
+  { pattern: '/', dynamic: true, chunk: './home.chunk.js' },
+  { pattern: '/static/logo', dynamic: false, chunk: '' },
+  { pattern: '/customer/new', dynamic: true, chunk: './customer-new.chunk.js' },
+  { pattern: '/customer/:id', dynamic: true, chunk: './customer.chunk.js' },
+];
 
-describe('loadManifest (SDD-16 §6.12)', () => {
+describe('loadManifest (SDD-16 §6.12, SDD-19 §4.7)', () => {
   it('two loads from the same URL give the same match (single source)', async () => {
-    const fetchFake = vi.fn(async () => new Response(JSON.stringify(MANIFEST_JSON)));
+    const fetchFake = vi.fn(async () => new Response(JSON.stringify(MANIFEST)));
     vi.stubGlobal('fetch', fetchFake);
 
     const url = 'https://app.test/manifest.json';
@@ -27,8 +31,32 @@ describe('loadManifest (SDD-16 §6.12)', () => {
   });
 
   it('an absent route matches null', async () => {
-    vi.stubGlobal('fetch', async () => new Response(JSON.stringify(MANIFEST_JSON)));
+    vi.stubGlobal('fetch', async () => new Response(JSON.stringify(MANIFEST)));
     const manifest = await loadManifest('https://app.test/manifest.json');
     expect(manifest.match('/nowhere')).toBeNull();
+    expect(manifest.match('/customer')).toBeNull(); // segment count differs
+    expect(manifest.match('/customer/1/extra')).toBeNull();
+  });
+
+  it('a param segment matches any concrete id', async () => {
+    vi.stubGlobal('fetch', async () => new Response(JSON.stringify(MANIFEST)));
+    const manifest = await loadManifest('https://app.test/manifest.json');
+    expect(manifest.match('/customer/42')).toEqual({ dynamic: true, chunk: './customer.chunk.js' });
+    expect(manifest.match('/customer/43')).toEqual({ dynamic: true, chunk: './customer.chunk.js' });
+  });
+
+  it('a static route wins over a param route by manifest order (specificity)', async () => {
+    vi.stubGlobal('fetch', async () => new Response(JSON.stringify(MANIFEST)));
+    const manifest = await loadManifest('https://app.test/manifest.json');
+    expect(manifest.match('/customer/new')).toEqual({
+      dynamic: true,
+      chunk: './customer-new.chunk.js',
+    });
+  });
+
+  it('ignores the query string when matching', async () => {
+    vi.stubGlobal('fetch', async () => new Response(JSON.stringify(MANIFEST)));
+    const manifest = await loadManifest('https://app.test/manifest.json');
+    expect(manifest.match('/customer/42?tab=orders')?.chunk).toBe('./customer.chunk.js');
   });
 });

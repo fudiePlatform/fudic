@@ -1,0 +1,25 @@
+/**
+ * Entry point of `@fudic/vite` — the fudic Vite plugin (SDD-19).
+ *
+ * The plugin is the LINKER over the fs-free compiler emit: it discovers `.fud`
+ * files, drives the emit, resolves URLs through Vite (hash/base/immutable cache),
+ * produces the route→chunk manifest that `@fudic/transport` consumes, and emits
+ * the three-thread bootstraps. Vite is bundler/dev-server only — it never parses
+ * `.fud`.
+ *
+ * This module grows as the Slice-1 pieces land; the pure, Vite-free core (routing,
+ * the render-chunk wrapper, the `@server` hooks) is exported for testing and reuse.
+ */
+
+export const VERSION = '0.0.1';
+
+export {
+  type FudicDiagnostic,
+  FUD_MALFORMED_PARAM,
+  FUD_ROUTE_COLLISION,
+  FUD_PATHS_INCOMPLETE,
+  FUD_ASSET_NOT_FOUND,
+  FUD_UNKNOWN_ROUTE_OVERRIDE,
+  FUD_MANIFEST_URL_NOT_ABSOLUTE,
+} from './diagnostics.js';
+export { type Route, type RoutingResult, routesFromFiles } from './routing.js';

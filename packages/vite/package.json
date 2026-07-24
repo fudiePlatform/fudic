@@ -1,0 +1,52 @@
+{
+  "name": "@fudic/vite",
+  "version": "0.0.1",
+  "description": "Vite plugin for fudic — compiles .fud, filesystem routing, incremental SSG.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Pedro Hurtado",
+  "homepage": "https://github.com/fudie/fudic/tree/main/packages/vite#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fudie/fudic.git",
+    "directory": "packages/vite"
+  },
+  "bugs": {
+    "url": "https://github.com/fudie/fudic/issues"
+  },
+  "keywords": [
+    "fudic",
+    "fudie",
+    "declarative-shadow-dom",
+    "vite-plugin",
+    "ssg"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@fudic/compiler": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.0"
+  }
+}

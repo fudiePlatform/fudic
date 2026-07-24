@@ -17,7 +17,13 @@ export {
   type ControlMessage,
 } from './messages.js';
 export { canTransferStream, sendRender, receiveRender } from './adapter.js';
-export { type ManifestEntry, type RouteManifest, loadManifest } from './manifest.js';
+export {
+  type ManifestEntry,
+  type RouteRecord,
+  type RouteManifestFile,
+  type RouteManifest,
+  loadManifest,
+} from './manifest.js';
 export { type RenderChunk, serveRender, installRenderWorker } from './worker.js';
 export { type FetchEvent, type Router, type RouterConfig, createRouter } from './router.js';
 export { type ControlBus, controlBus } from './control.js';
