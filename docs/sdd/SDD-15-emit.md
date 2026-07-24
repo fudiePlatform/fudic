@@ -1,7 +1,23 @@
 # SDD-15 — Emit (AST → runtime)
 
-> **Estado:** `Listo`
+> **Estado:** `Listo` — con la **slice de emit SSR de servidor en `Hecho`** (ver *Slices* abajo).
 > **Paquete:** `@fudic/compiler` (emit), contra `@fudic/dom` · `@fudic/core` · `@fudic/ssr`.
+>
+> **Slices.** Este SDD se implementa por partes. La **rama de servidor SSR está `Hecho`**
+> (commits `7623a49` + refactor `44c31ad`): `emitComponentModule` produce el
+> `render($dom, $shadow, props)` ejecutable contra `SsrDom` (elementos, texto, interpolación
+> de contenido, `@if`/`@foreach`, atributos estáticos e interpolados, `class:`, composición de
+> hijos vía `data-adopt` + `attachShadow` + llamada al `render` del hijo, defaults de
+> `props<T>()` y **signals inertes** —valor inicial, sin reactividad—), y `emitPageModule`
+> produce `page(data, io)` → documento HTML completo (DSD por instancia) con el hoisting de
+> estilos y el polyfill de §4.8 (SDD-18). Es exactamente lo que hace falta para el HTML DSD
+> cero-JS. **Pendiente** (rama de cliente/hidratación, la consume SDD-17): §3.1 `data-id`,
+> §3.3–3.6 los cuatro mapas JSON (`fud-state`/`fud-tree`/`fud-bus`/`fud-chunks`), §3.7
+> controlador `{c,h,r}` / `FudicElement`, §3.8 `Dom.event`/`Dom.bus`, §4.2 deserialización,
+> §4.4 bus, §4.5 event bindings, §4.6 factory. **Motivo del cierre parcial (Pedro):** la rama
+> de servidor es **totalmente aislada del resto** —no comparte artefactos con los mapas JSON ni
+> con el controlador—, así que se da por hecha sin bloquear ni ser bloqueada por el emit de
+> cliente. Esto es lo que sostiene a **SDD-18 en `Hecho`**, que solo depende de esta slice.
 > **Amplía el runtime:** añade `FudicElement` a `@fudic/core` (§3.7) y `event`/`bus` a
 > `Dom<N>` en `@fudic/dom` (§3.8). Son piezas del contrato de emit, por eso viven aquí y no
 > en SDD-14.

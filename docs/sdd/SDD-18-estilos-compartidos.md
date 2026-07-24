@@ -1,11 +1,14 @@
 # SDD-18 — Estilos compartidos en DSD (`<style type="module">` + `shadowrootadoptedstylesheets`)
 
-> **Estado:** `Listo` — **es la forma de estilos de v1**, con polyfill (vía (b) de §7). No
-> hay vía inline y **el specifier es el tag**: SDD-15 §4.8 emite este mecanismo
-> (`<style type="module" specifier="<tag>">` en `<head>` + `shadowrootadoptedstylesheets="<tag>"`
-> en cada template) desde el primer día, sin marcadores inventados. El polyfill (§5) es
-> condición de emisión mientras el soporte nativo no sea universal. Reverificar §2.2/§6
-> (soporte y polyfill) antes de implementar.
+> **Estado:** `Hecho` — **es la forma de estilos de v1**, con polyfill (vía (b) de §7). No
+> hay vía inline y **el specifier es el tag**. Implementado y verificado end-to-end contra el
+> golden de página: SDD-15 (`emitPageModule`) hoista una copia por tag de
+> `<style type="module" specifier="<tag>">` al `<head>`, antes de todo `<template>`, y emite el
+> polyfill (§5) inline en `<head>` antes de las hojas; el serializador de `@fudic/ssr`
+> (`serialize.ts`) emite `shadowrootadoptedstylesheets="<tag>"` en cada `<template>`, sin
+> marcadores inventados. El polyfill sigue siendo condición de emisión mientras el soporte
+> nativo no sea universal; §2.2/§6 pasan de "verificar antes de implementar" a **vigilancia**:
+> el día que el atributo ship en los motores, el polyfill pasa de "siempre" a fallback.
 > **Paquete:** emit del compilador (`@fudic/compiler`) + polyfill de página.
 > **Depende de:** SDD-15 (emit de página: comparte la pasada que resuelve la composición
 > completa y asigna `data-id`).
