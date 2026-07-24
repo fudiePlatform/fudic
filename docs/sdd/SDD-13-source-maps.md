@@ -1,6 +1,6 @@
 # SDD-13 — Source maps y `LineMap`
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Depende de:** 00, 01, 11
 > **Decisiones de gramática:** — (transversal: la conversión offset↔posición que todo SDD difirió aquí)
 
