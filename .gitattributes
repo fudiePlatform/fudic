@@ -1,0 +1,9 @@
+# Normalize all text files to LF in the repo and on checkout (every platform).
+# The SSR emit embeds fixture whitespace verbatim, so a fixture's line endings become
+# part of the generated output; pinning LF keeps the emit deterministic and the golden
+# `.mjs` snapshots byte-identical on Windows, macOS and Linux alike.
+* text=auto eol=lf
+
+# Belt-and-braces for the inputs and snapshots the golden test compares byte-for-byte.
+*.fud text eol=lf
+*.mjs text eol=lf

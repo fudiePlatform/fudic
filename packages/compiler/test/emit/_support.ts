@@ -14,7 +14,6 @@ import { parseControl } from '../../src/control/index.js';
 import { parseCodeBlock } from '../../src/code/index.js';
 import {
   structureDocument,
-  type ComponentDocument,
   type StructuredDocument,
 } from '../../src/document/index.js';
 import type { ResolveIo } from '../../src/emit/index.js';
@@ -24,13 +23,6 @@ const constructs: AtConstructParser = { parseControl, parseCodeBlock };
 /** Parse a `.fud` source to its structured document (same path the emit uses). */
 export function parse(source: string): StructuredDocument {
   return structureDocument(source, parseDocument(source, { atConstructs: constructs }).value).value;
-}
-
-/** Parse and assert the result is a component document. */
-export function parseComponent(source: string): ComponentDocument {
-  const doc = parse(source);
-  if (doc.type !== 'component-document') throw new Error('expected a component document');
-  return doc;
 }
 
 const here = dirname(fileURLToPath(import.meta.url));

@@ -206,3 +206,41 @@ describe('emitPageModule — executed end to end', () => {
     expect(html).toContain('<section class="grid">');
   });
 });
+
+describe('emitComponentModule — head edge cases', () => {
+  // A component whose <head> style has no closing </style> (the head trails the component
+  // so the raw-text run ends at EOF, not by eating the template): the CSS slice must fall
+  // back to the element's span end instead of a missing close span.
+  it('slices the CSS to the element end when the <style> has no close tag', () => {
+    const io = memoryIo({
+      '/home.fud':
+        '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
+      '/m.fud':
+        '<m-el>\n  <template shadowrootmode="open"><span></span></template>\n</m-el>\n<head><style>.x{color:red}',
+    });
+    const g = resolveComponents('/home.fud', io);
+    const src = emitComponentModule(g, g.components.get('m-el')!);
+    expect(src).toContain('export const css = `.x{color:red}`;');
+  });
+});
+
+describe('emitPageModule — <title> child shapes', () => {
+  const pageWithTitle = (title: string): string => {
+    const io = memoryIo({
+      '/home.fud': `<!DOCTYPE html>\n<html><head>${title}</head><body></body></html>`,
+    });
+    return emitPageModule(resolveComponents('/home.fud', io));
+  };
+
+  it('emits a plain-text title as a JSON string literal', () => {
+    expect(pageWithTitle('<title>Static</title>')).toContain('head += \'<title>\' + ("Static") + \'</title>\\n\';');
+  });
+
+  it('emits an empty title as the empty-string fallback', () => {
+    expect(pageWithTitle('<title></title>')).toContain('head += \'<title>\' + (\'\') + \'</title>\\n\';');
+  });
+
+  it('emits the empty-string fallback for a non-text, non-expression child (razor comment)', () => {
+    expect(pageWithTitle('<title>@* c *@</title>')).toContain('head += \'<title>\' + (\'\') + \'</title>\\n\';');
+  });
+});
