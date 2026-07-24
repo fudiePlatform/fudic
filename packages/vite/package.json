@@ -43,9 +43,6 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage"
   },
-  "dependencies": {
-    "@fudic/compiler": "workspace:*"
-  },
   "devDependencies": {
     "@types/node": "22.20.0"
   }

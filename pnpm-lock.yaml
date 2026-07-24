@@ -63,10 +63,6 @@ importers:
         version: link:../ssr
 
   packages/vite:
-    dependencies:
-      '@fudic/compiler':
-        specifier: workspace:*
-        version: link:../compiler
     devDependencies:
       '@types/node':
         specifier: 22.20.0
