@@ -21,3 +21,4 @@ export * from './css/index.js';
 export * from './document/index.js';
 export * from './oxc/index.js';
 export * from './semantic/index.js';
+export * from './emit/index.js';
