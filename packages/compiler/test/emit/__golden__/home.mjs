@@ -57,8 +57,17 @@ const STYLE_POLYFILL = `(function () {
   }, { once: true });
 })();`;
 
-export function page(data, io) {
+export function* page(data, io) {
   const { createDom, serialize, escapeText } = io;
+  let head = '';
+  head += '<title>' + (escapeText(String((data.title) ?? ''))) + '</title>\n';
+  head += "  <meta charset=\"utf-8\">\n";
+  head += "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n";
+  // The style-adoption polyfill (SDD-18 §5) goes in <head>, live BEFORE the body streams,
+  // so its observer adopts each host sheet as it arrives; the style modules follow it.
+  head += '  <script>' + STYLE_POLYFILL + '</script>\n';
+  head += COMPONENTS.map(function (c) { return '  <style type="module" specifier="' + c.tag + '">' + c.css + '</style>'; }).join('\n') + '\n';
+  yield '<!DOCTYPE html>\n<html lang="es">\n<head>\n' + head + '</head>\n';
   const $dom = createDom();
   const $body = $dom.element('body');
   const $n0 = $dom.text("\n    "); $dom.append($body, $n0);
@@ -106,14 +115,6 @@ export function page(data, io) {
     const $n25 = $dom.text("\n    "); $dom.append($body, $n25);
   }
   const $n26 = $dom.text("\n  "); $dom.append($body, $n26);
-  const bodyHtml = serialize($body);
-  let head = '';
-  head += '<title>' + (escapeText(String((data.title) ?? ''))) + '</title>\n';
-  head += "  <meta charset=\"utf-8\">\n";
-  head += "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n";
-  // The style-adoption polyfill (SDD-18 §5) goes in <head>, live BEFORE the body streams,
-  // so its observer adopts each host sheet as it arrives; the style modules follow it.
-  head += '  <script>' + STYLE_POLYFILL + '</script>\n';
-  head += COMPONENTS.map(function (c) { return '  <style type="module" specifier="' + c.tag + '">' + c.css + '</style>'; }).join('\n') + '\n';
-  return '<!DOCTYPE html>\n<html lang="es">\n<head>\n' + head + '</head>\n' + bodyHtml + '\n</html>\n';
+  yield* serialize($body);
+  yield '\n</html>\n';
 }

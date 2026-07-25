@@ -29,6 +29,15 @@ import { STYLE_POLYFILL } from './polyfill.js';
 
 const slice = (source: string, sp: Span): string => source.slice(sp.start, sp.end);
 
+/**
+ * Emit options. `importExt` is the extension used for sibling module imports: `.mjs`
+ * for the standalone emit (build.ts / goldens), `.fud` for the Vite plugin so Vite
+ * owns the module-graph resolution (SDD-19 §4.11.1).
+ */
+export interface EmitOptions {
+  readonly importExt?: string;
+}
+
 /** The `<head>` `<style>` CSS of a component (the shared sheet body). */
 function componentCss(source: string, doc: ComponentDocument): string {
   const style = doc.head?.children.find(
@@ -38,14 +47,19 @@ function componentCss(source: string, doc: ComponentDocument): string {
   return source.slice(style.openSpan.end, style.closeSpan ? style.closeSpan.start : style.span.end);
 }
 
-export function emitComponentModule(graph: ComponentGraph, comp: ResolvedComponent): string {
+export function emitComponentModule(
+  graph: ComponentGraph,
+  comp: ResolvedComponent,
+  options: EmitOptions = {},
+): string {
+  const ext = options.importExt ?? '.mjs';
   const { props, signals } = extractCode(comp.source, comp.doc);
   const bodyW = new CodeWriter();
   const em = new MarkupEmitter(comp.source, bodyW, (t) => graph.components.has(t));
   for (const child of comp.doc.template!.children) em.emit(child, '$shadow');
 
   const w = new CodeWriter();
-  for (const tag of em.used) w.line(`import { render as ${renderName(tag)} } from './${tag}.mjs';`);
+  for (const tag of em.used) w.line(`import { render as ${renderName(tag)} } from './${tag}${ext}';`);
   if (em.used.size > 0) w.line('');
   w.line(`export const tag = ${JSON.stringify(comp.tag)};`);
   w.line(`export const css = ${tpl(componentCss(comp.source, comp.doc))};`);
@@ -65,7 +79,8 @@ export function emitComponentModule(graph: ComponentGraph, comp: ResolvedCompone
   return w.toString();
 }
 
-export function emitPageModule(graph: ComponentGraph): string {
+export function emitPageModule(graph: ComponentGraph, options: EmitOptions = {}): string {
+  const ext = options.importExt ?? '.mjs';
   const page = graph.entry as PageDocument;
   const source = graph.entrySource;
   const comps = [...graph.components.values()];
@@ -97,26 +112,30 @@ export function emitPageModule(graph: ComponentGraph): string {
 
   const w = new CodeWriter();
   for (const c of comps) {
-    w.line(`import { render as ${renderName(c.tag)}, tag as ${renderName(c.tag)}Tag, css as ${renderName(c.tag)}Css } from './${c.tag}.mjs';`);
+    w.line(`import { render as ${renderName(c.tag)}, tag as ${renderName(c.tag)}Tag, css as ${renderName(c.tag)}Css } from './${c.tag}${ext}';`);
   }
   w.line('');
   w.line(`const COMPONENTS = [${comps.map((c) => `{ tag: ${renderName(c.tag)}Tag, css: ${renderName(c.tag)}Css }`).join(', ')}];`);
   w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL)};`);
   w.line('');
-  w.line('export function page(data, io) {');
+  // Streaming a trozos (SDD-19 §4.3): a generator that yields the <head> FIRST, then the
+  // body by pieces via `serialize` (serializeChunks), then the close. `io.serialize` is a
+  // generator; joining the pieces is byte-identical to the previous whole-string return.
+  w.line('export function* page(data, io) {');
   w.indent();
   w.line('const { createDom, serialize, escapeText } = io;');
-  w.line('const $dom = createDom();');
-  w.line('const $body = $dom.element(\'body\');');
-  for (const line of bodyW.toString().split('\n')) w.line(line);
-  w.line('const bodyHtml = serialize($body);');
   w.line("let head = '';");
   for (const line of headW.toString().split('\n')) w.line(line);
   w.line('// The style-adoption polyfill (SDD-18 §5) goes in <head>, live BEFORE the body streams,');
   w.line('// so its observer adopts each host sheet as it arrives; the style modules follow it.');
   w.line("head += '  <script>' + STYLE_POLYFILL + '</script>\\n';");
   w.line("head += COMPONENTS.map(function (c) { return '  <style type=\"module\" specifier=\"' + c.tag + '\">' + c.css + '</style>'; }).join('\\n') + '\\n';");
-  w.line('return \'<!DOCTYPE html>\\n<html lang="es">\\n<head>\\n\' + head + \'</head>\\n\' + bodyHtml + \'\\n</html>\\n\';');
+  w.line('yield \'<!DOCTYPE html>\\n<html lang="es">\\n<head>\\n\' + head + \'</head>\\n\';');
+  w.line('const $dom = createDom();');
+  w.line('const $body = $dom.element(\'body\');');
+  for (const line of bodyW.toString().split('\n')) w.line(line);
+  w.line('yield* serialize($body);');
+  w.line("yield '\\n</html>\\n';");
   w.dedent();
   w.line('}');
   return w.toString();

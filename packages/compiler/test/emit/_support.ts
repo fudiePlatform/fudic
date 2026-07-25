@@ -128,7 +128,7 @@ function serializeNode(node: TreeNode): string {
 
 export function minimalSsr(): {
   createDom: () => Record<string, (...a: unknown[]) => unknown>;
-  serialize: (root: unknown) => string;
+  serialize: (root: unknown) => Iterable<string>;
   escapeText: (s: string) => string;
 } {
   const createDom = () => ({
@@ -148,7 +148,8 @@ export function minimalSsr(): {
   });
   return {
     createDom: createDom as unknown as () => Record<string, (...a: unknown[]) => unknown>,
-    serialize: (root: unknown) => serializeNode(root as TreeNode),
+    // A generator-shaped serialize (one chunk) — `page` yields* it, streaming a trozos.
+    serialize: (root: unknown) => [serializeNode(root as TreeNode)],
     escapeText: escapeHtml,
   };
 }

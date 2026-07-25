@@ -6,4 +6,4 @@
 export { CodeWriter } from './writer.js';
 export { resolveComponents, linkHref } from './resolve.js';
 export type { ResolveIo, ResolvedComponent, ComponentGraph } from './resolve.js';
-export { emitComponentModule, emitPageModule } from './module.js';
+export { emitComponentModule, emitPageModule, type EmitOptions } from './module.js';

@@ -136,7 +136,7 @@ describe('emitPageModule — home.mjs', () => {
 
   it('builds a COMPONENTS array and a page(data, io) that destructures io', () => {
     expect(src).toContain('const COMPONENTS = [');
-    expect(src).toContain('export function page(data, io) {');
+    expect(src).toContain('export function* page(data, io) {'); // streaming generator (SDD-19 §4.3)
     expect(src).toContain('const { createDom, serialize, escapeText } = io;');
   });
 
@@ -173,13 +173,14 @@ describe('emitPageModule — executed end to end', () => {
     }
     writeFileSync(join(dir, 'home.mjs'), emitPageModule(graph), 'utf8');
     const mod = (await import(pathToFileURL(join(dir, 'home.mjs')).href)) as {
-      page: (data: unknown, io: unknown) => string;
+      page: (data: unknown, io: unknown) => Iterable<string>;
     };
     const data = {
       title: 'Inicio',
       items: [{ id: '1', title: 'Primero', description: 'Desc', featured: true }],
     };
-    html = mod.page(data, minimalSsr());
+    // `page` streams a trozos: join the pieces into the full document (SDD-19 §4.3).
+    html = [...mod.page(data, minimalSsr())].join('');
   });
 
   it('produces a full HTML document with the interpolated title', () => {
