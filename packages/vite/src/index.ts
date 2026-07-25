@@ -32,3 +32,4 @@ export {
   type ModeDecision,
   resolveMode,
 } from './mode.js';
+export { type PageAnalysis, analyzePage } from './analyze.js';
