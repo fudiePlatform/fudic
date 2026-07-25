@@ -23,3 +23,12 @@ export {
   FUD_MANIFEST_URL_NOT_ABSOLUTE,
 } from './diagnostics.js';
 export { type Route, type RoutingResult, routesFromFiles } from './routing.js';
+export { type RenderChunkOptions, emitRenderChunk } from './wrapper.js';
+export {
+  type RouteMode,
+  type ModeOverride,
+  type ParamFallback,
+  type PageFacts,
+  type ModeDecision,
+  resolveMode,
+} from './mode.js';
