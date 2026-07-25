@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:packages/tsconfig
       '@types/node':
         specifier: 22.20.0
         version: 22.20.0
@@ -30,6 +33,9 @@ importers:
         specifier: 0.137.0
         version: 0.137.0
     devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
       '@types/node':
         specifier: 22.20.0
         version: 22.20.0
@@ -40,12 +46,18 @@ importers:
         specifier: workspace:*
         version: link:../dom
     devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
       happy-dom:
         specifier: 20.10.6
         version: 20.10.6
 
   packages/dom:
     devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
       happy-dom:
         specifier: 20.10.6
         version: 20.10.6
@@ -55,15 +67,31 @@ importers:
       '@fudic/dom':
         specifier: workspace:*
         version: link:../dom
+    devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
 
   packages/transport:
     devDependencies:
       '@fudic/ssr':
         specifier: workspace:*
         version: link:../ssr
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+
+  packages/tsconfig: {}
 
   packages/vite:
+    dependencies:
+      '@fudic/compiler':
+        specifier: workspace:*
+        version: link:../compiler
     devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
       '@types/node':
         specifier: 22.20.0
         version: 22.20.0

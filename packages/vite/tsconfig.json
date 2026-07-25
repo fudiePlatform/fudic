@@ -1,7 +1,10 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "@fudic/tsconfig/tsconfig.base.json",
   "compilerOptions": {
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@fudic/compiler": ["../compiler/src/index.ts"]
+    }
   },
   "include": ["src", "test"]
 }

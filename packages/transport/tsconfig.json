@@ -1,5 +1,5 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "@fudic/tsconfig/tsconfig.base.json",
   "compilerOptions": {
     // DOM carries MessagePort/BroadcastChannel/Cache/ServiceWorkerRegistration.
     // lib.webworker cannot be mixed with DOM in one compilation, so the one

@@ -1,0 +1,26 @@
+{
+  "name": "@fudic/tsconfig",
+  "version": "0.0.1",
+  "description": "Shared strict TypeScript base config for fudic packages.",
+  "license": "MIT",
+  "author": "Pedro Hurtado",
+  "homepage": "https://github.com/fudie/fudic/tree/main/packages/tsconfig#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fudie/fudic.git",
+    "directory": "packages/tsconfig"
+  },
+  "bugs": {
+    "url": "https://github.com/fudie/fudic/issues"
+  },
+  "keywords": [
+    "fudic",
+    "tsconfig"
+  ],
+  "files": [
+    "tsconfig.base.json"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -45,5 +45,8 @@
   },
   "dependencies": {
     "@fudic/dom": "workspace:*"
+  },
+  "devDependencies": {
+    "@fudic/tsconfig": "workspace:*"
   }
 }

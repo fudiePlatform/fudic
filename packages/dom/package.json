@@ -44,6 +44,7 @@
     "coverage": "vitest run --coverage"
   },
   "devDependencies": {
+    "@fudic/tsconfig": "workspace:*",
     "happy-dom": "20.10.6"
   }
 }

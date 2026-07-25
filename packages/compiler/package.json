@@ -47,6 +47,7 @@
     "oxc-parser": "0.137.0"
   },
   "devDependencies": {
+    "@fudic/tsconfig": "workspace:*",
     "@types/node": "22.20.0"
   }
 }

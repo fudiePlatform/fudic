@@ -45,6 +45,7 @@
     "coverage": "vitest run --coverage"
   },
   "devDependencies": {
-    "@fudic/ssr": "workspace:*"
+    "@fudic/ssr": "workspace:*",
+    "@fudic/tsconfig": "workspace:*"
   }
 }
