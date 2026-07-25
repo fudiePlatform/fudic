@@ -33,3 +33,10 @@ export {
   resolveMode,
 } from './mode.js';
 export { type PageAnalysis, analyzePage } from './analyze.js';
+export {
+  type RouteOverride,
+  type FudicOptions,
+  type ResolvedOptions,
+  type ResolveOptionsResult,
+  resolveOptions,
+} from './options.js';
