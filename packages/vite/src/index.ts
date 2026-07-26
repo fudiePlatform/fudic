@@ -40,3 +40,5 @@ export {
   type ResolveOptionsResult,
   resolveOptions,
 } from './options.js';
+export { nodeIo } from './io.js';
+export { type TransformResult, transformFud } from './transform.js';
