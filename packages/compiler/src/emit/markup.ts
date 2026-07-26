@@ -56,7 +56,11 @@ export class MarkupEmitter {
       }
       case 'razor-expression': {
         const v = this.#fresh();
-        this.#w.line(`const ${v} = $dom.text(String((${this.#slice(node.expr)}) ?? '')); $dom.append(${parent}, ${v});`);
+        this.#w.mappedLine(
+          `const ${v} = $dom.text(String((`,
+          { text: this.#slice(node.expr), src: node.expr.start },
+          `) ?? '')); $dom.append(${parent}, ${v});`,
+        );
         return;
       }
       case 'element':
@@ -105,7 +109,7 @@ export class MarkupEmitter {
   #if(node: IfNode, parent: string): void {
     node.branches.forEach((branch, i) => {
       const head = i === 0 ? 'if' : '} else if';
-      this.#w.line(`${head} (${this.#slice(branch.header.inner)}) {`);
+      this.#w.mappedLine(`${head} (`, { text: this.#slice(branch.header.inner), src: branch.header.inner.start }, ') {');
       this.#w.indent();
       for (const child of branch.body) this.emit(child, parent);
       this.#w.dedent();
@@ -120,7 +124,7 @@ export class MarkupEmitter {
   }
 
   #foreach(loop: ForeachNode, parent: string): void {
-    this.#w.line(`for (${this.#slice(loop.header.inner)}) {`);
+    this.#w.mappedLine('for (', { text: this.#slice(loop.header.inner), src: loop.header.inner.start }, ') {');
     this.#w.indent();
     for (const child of loop.body) this.emit(child, parent);
     this.#w.dedent();

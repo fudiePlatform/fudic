@@ -4,6 +4,14 @@
  */
 
 export { CodeWriter } from './writer.js';
+export type { EmitMapping, MappedPart, LinePart } from './writer.js';
 export { resolveComponents, linkHref } from './resolve.js';
 export type { ResolveIo, ResolvedComponent, ComponentGraph } from './resolve.js';
-export { emitComponentModule, emitPageModule, type EmitOptions } from './module.js';
+export {
+  emitComponentModule,
+  emitComponentModuleMapped,
+  emitPageModule,
+  emitPageModuleMapped,
+  type EmitOptions,
+  type EmitOutput,
+} from './module.js';

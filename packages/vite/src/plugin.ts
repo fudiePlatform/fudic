@@ -138,7 +138,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         return { code: emitServerModule(readFileSync(path, 'utf8')) };
       }
       const result = transformFud(path, io);
-      return result === null ? null : { code: result.code };
+      // The map is passed as a JSON string (a valid Vite `SourceMapInput`), which also
+      // sidesteps the readonly/mutable array mismatch with Rollup's raw-map type.
+      return result === null ? null : { code: result.code, map: JSON.stringify(result.map) };
     },
 
     generateBundle() {

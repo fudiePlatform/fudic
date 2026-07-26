@@ -22,7 +22,7 @@ import type { ComponentGraph, ResolvedComponent } from './resolve.js';
 import type { ElementNode } from '../html/index.js';
 import type { Span } from '../types/index.js';
 import type { PageDocument, ComponentDocument } from '../document/index.js';
-import { CodeWriter } from './writer.js';
+import { CodeWriter, type EmitMapping } from './writer.js';
 import { MarkupEmitter, renderName, tpl } from './markup.js';
 import { extractCode } from './oxc-code.js';
 import { STYLE_POLYFILL } from './polyfill.js';
@@ -38,6 +38,16 @@ export interface EmitOptions {
   readonly importExt?: string;
 }
 
+/**
+ * A module's emitted text plus its output↔source mappings (SDD-19 §4.6). The plain
+ * `emit*Module` functions return `.code`; the `*Mapped` variants add the mappings the
+ * Vite plugin feeds to `SourceMapBuilder`.
+ */
+export interface EmitOutput {
+  readonly code: string;
+  readonly mappings: readonly EmitMapping[];
+}
+
 /** The `<head>` `<style>` CSS of a component (the shared sheet body). */
 function componentCss(source: string, doc: ComponentDocument): string {
   const style = doc.head?.children.find(
@@ -47,11 +57,7 @@ function componentCss(source: string, doc: ComponentDocument): string {
   return source.slice(style.openSpan.end, style.closeSpan ? style.closeSpan.start : style.span.end);
 }
 
-export function emitComponentModule(
-  graph: ComponentGraph,
-  comp: ResolvedComponent,
-  options: EmitOptions = {},
-): string {
+function buildComponentModule(graph: ComponentGraph, comp: ResolvedComponent, options: EmitOptions): CodeWriter {
   const ext = options.importExt ?? '.mjs';
   const { props, signals } = extractCode(comp.source, comp.doc);
   const bodyW = new CodeWriter();
@@ -73,13 +79,31 @@ export function emitComponentModule(
   for (const s of signals) {
     w.line(`const ${s.name} = { value: (${s.init}) }; // inert signal (SSR; hydration is client-side)`);
   }
-  for (const line of bodyW.toString().split('\n')) w.line(line);
+  w.appendWriter(bodyW); // carries the markup's source anchors, unlike a toString()/split copy
   w.dedent();
   w.line('}');
-  return w.toString();
+  return w;
 }
 
-export function emitPageModule(graph: ComponentGraph, options: EmitOptions = {}): string {
+export function emitComponentModule(
+  graph: ComponentGraph,
+  comp: ResolvedComponent,
+  options: EmitOptions = {},
+): string {
+  return buildComponentModule(graph, comp, options).toString();
+}
+
+/** As `emitComponentModule`, plus the output↔source mappings (SDD-19 §4.6). */
+export function emitComponentModuleMapped(
+  graph: ComponentGraph,
+  comp: ResolvedComponent,
+  options: EmitOptions = {},
+): EmitOutput {
+  const w = buildComponentModule(graph, comp, options);
+  return { code: w.toString(), mappings: w.mappings() };
+}
+
+function buildPageModule(graph: ComponentGraph, options: EmitOptions): CodeWriter {
   const ext = options.importExt ?? '.mjs';
   const page = graph.entry as PageDocument;
   const source = graph.entrySource;
@@ -125,7 +149,7 @@ export function emitPageModule(graph: ComponentGraph, options: EmitOptions = {})
   w.indent();
   w.line('const { createDom, serialize, escapeText } = io;');
   w.line("let head = '';");
-  for (const line of headW.toString().split('\n')) w.line(line);
+  w.appendWriter(headW);
   w.line('// The style-adoption polyfill (SDD-18 §5) goes in <head>, live BEFORE the body streams,');
   w.line('// so its observer adopts each host sheet as it arrives; the style modules follow it.');
   w.line("head += '  <script>' + STYLE_POLYFILL + '</script>\\n';");
@@ -133,10 +157,20 @@ export function emitPageModule(graph: ComponentGraph, options: EmitOptions = {})
   w.line('yield \'<!DOCTYPE html>\\n<html lang="es">\\n<head>\\n\' + head + \'</head>\\n\';');
   w.line('const $dom = createDom();');
   w.line('const $body = $dom.element(\'body\');');
-  for (const line of bodyW.toString().split('\n')) w.line(line);
+  w.appendWriter(bodyW);
   w.line('yield* serialize($body);');
   w.line("yield '\\n</html>\\n';");
   w.dedent();
   w.line('}');
-  return w.toString();
+  return w;
+}
+
+export function emitPageModule(graph: ComponentGraph, options: EmitOptions = {}): string {
+  return buildPageModule(graph, options).toString();
+}
+
+/** As `emitPageModule`, plus the output↔source mappings (SDD-19 §4.6). */
+export function emitPageModuleMapped(graph: ComponentGraph, options: EmitOptions = {}): EmitOutput {
+  const w = buildPageModule(graph, options);
+  return { code: w.toString(), mappings: w.mappings() };
 }

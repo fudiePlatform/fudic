@@ -42,4 +42,13 @@ describe('transformFud', () => {
   it('returns null for a non-.fud id', () => {
     expect(transformFud('/some/module.ts', nodeIo())).toBeNull();
   });
+
+  it('produces a Source Map v3 anchored to the .fud (SDD-19 §4.6)', () => {
+    const id = fixture('home.fud');
+    const result = transformFud(id, nodeIo())!;
+    expect(result.map.version).toBe(3);
+    expect(result.map.sources).toEqual([id.replace(/\\/gu, '/')]);
+    expect(result.map.sourcesContent[0]).toContain('<!DOCTYPE html>'); // the real .fud text
+    expect(result.map.mappings.length).toBeGreaterThan(0); // Base64 VLQ segments present
+  });
 });

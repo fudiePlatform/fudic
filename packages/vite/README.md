@@ -69,5 +69,10 @@ interface FudicOptions {
 
 Slice 1 (this package) targets SSR / zero-JS pages served through the three-thread shell.
 The client hydration emit of SDD-15 is paused (performance study); its chunks and the
-`tag→chunk` hydration manifest plug in here later. Source maps and asset URL rewriting
-depend on the emit anchoring output↔source offsets, and are follow-ups.
+`tag→chunk` hydration manifest plug in here later.
+
+`transform` emits a Source Map v3: the compiler anchors each verbatim source slice
+(interpolation, `@if`/`@foreach` headers) to its `.fud` offset, so a runtime error in the
+served JS navigates back to the source. Still follow-ups: asset URL rewriting (the same
+anchoring, applied to `src`/`url()`), eager static prerender (v1 is all-incremental), and
+the dev server.
