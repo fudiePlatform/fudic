@@ -32,4 +32,20 @@ describe('discoverRoutes', () => {
     const { routes } = discoverRoutes(root, resolveOptions({ routesDir: 'no-such-dir' }).options);
     expect(routes).toEqual([]);
   });
+
+  it('applies a matching route override to the mode decision', () => {
+    const { routes } = discoverRoutes(
+      root,
+      resolveOptions({ routesDir: 'fixtures', routes: { '/home': { mode: 'incremental' } } }).options,
+    );
+    expect(routes[0]?.decision.mode).toBe('incremental');
+  });
+
+  it('marks an excluded route as excluded', () => {
+    const { routes } = discoverRoutes(
+      root,
+      resolveOptions({ routesDir: 'fixtures', routes: { '/home': { mode: 'exclude' } } }).options,
+    );
+    expect(routes[0]?.decision.mode).toBe('excluded');
+  });
 });
