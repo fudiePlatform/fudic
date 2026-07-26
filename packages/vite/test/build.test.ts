@@ -32,6 +32,9 @@ beforeAll(async () => {
   for (const f of ['home.fud', 'app-card.fud', 'app-button.fud', 'app-badge.fud']) {
     writeFileSync(join(routes, f), readFileSync(join(fixtures, f), 'utf8'));
   }
+  // home's `@server load` imports its data source `./db`; stub it so the ?server module
+  // resolves (home stays incremental — hasLoad ⇒ dynamic:true — so it is not prerendered).
+  writeFileSync(join(routes, 'db.ts'), 'export const db = { query: async () => [] };\n');
   const result = (await build({
     root,
     logLevel: 'silent',

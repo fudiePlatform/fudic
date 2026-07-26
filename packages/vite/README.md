@@ -38,7 +38,10 @@ specificity (static before param), which the emitted manifest matches first-hit.
 
 Two modes map onto SDD-16's `dynamic` flag, so the Service Worker router is unchanged:
 
-- **static** — data is build-known → prerendered (eager).
+- **static** — data is build-known → prerendered eagerly. The build runs the route's
+  RenderChunk and writes its HTML (`/about` → `about/index.html`); the manifest entry is
+  `dynamic:false`, so the SW never intercepts and the browser fetches the file directly.
+  (Enumerated param prerender via `@server paths()` is the remaining prerender follow-up.)
 - **incremental** — rendered by the WW on first request, then persisted by the SW cache
   (lazy SSG). Param routes are incremental by default; `@server paths()` warms a subset.
 
@@ -78,5 +81,8 @@ served JS navigates back to the source.
 Static relative asset URLs — `src`/`poster`, `<link href>`, and CSS `url(…)` — are
 linked through Vite: the emit rewrites them to ES imports, so Vite resolves, hashes and
 emits each asset (absolute/`data:`/`<a href>`/dynamic refs are left untouched). `srcset`
-(a multi-URL list) is the one remaining asset follow-up. Still ahead: eager static
-prerender (v1 is all-incremental) and the dev server.
+(a multi-URL list) is the one remaining asset follow-up.
+
+The `@server` region (typed `load`/`paths`) is served through the `?server` module,
+type-stripped to plain JS by Vite's Oxc transform. Still ahead: `@server paths()`
+enumeration for param prerender, and the dev server.

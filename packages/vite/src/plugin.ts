@@ -6,8 +6,10 @@
  * Vite is bundler/dev-server only — the parser is always `@fudic/compiler`.
  */
 
-import { readFileSync } from 'node:fs';
-import { type Plugin } from 'vite';
+import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { type Plugin, transformWithOxc } from 'vite';
 import { type FudicOptions, type ResolvedOptions, resolveOptions } from './options.js';
 import { discoverRoutes, type RouteBuild } from './discover.js';
 import { buildManifest } from './manifest.js';
@@ -16,6 +18,7 @@ import { emitServerModule } from './server.js';
 import { emitWwBootstrap, emitSwBootstrap, emitMainBootstrap } from './bootstrap.js';
 import { transformFud } from './transform.js';
 import { nodeIo } from './io.js';
+import { htmlPathFor, materializeBundle, renderChunkToHtml, type BundleItem } from './prerender.js';
 
 const WRAPPER_PREFIX = '\0fudic-wrapper:';
 const WW_ID = '\0fudic-ww';
@@ -129,13 +132,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       return null;
     },
 
-    transform(_code, id) {
+    async transform(_code, id) {
       const { path, query } = splitId(id);
       if (!path.endsWith('.fud')) {
         return null;
       }
       if (query === 'server') {
-        return { code: emitServerModule(readFileSync(path, 'utf8')) };
+        // The `@server` region is TS (typed `load`/`paths`); strip types to plain JS so
+        // the bundler parses it (Vite's own Oxc transform, as it does for any `.ts`).
+        const code = emitServerModule(readFileSync(path, 'utf8'));
+        const stripped = await transformWithOxc(code, `${path}.ts`, { lang: 'ts' });
+        return stripped.map ? { code: stripped.code, map: stripped.map } : { code: stripped.code };
       }
       const result = transformFud(path, io);
       // The map is passed as a JSON string (a valid Vite `SourceMapInput`), which also
@@ -143,7 +150,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       return result === null ? null : { code: result.code, map: JSON.stringify(result.map) };
     },
 
-    generateBundle() {
+    async generateBundle(_outputOptions, bundle) {
       const chunkOf = (rb: RouteBuild): string => {
         const ref = wrapperRefs.get(rb.route.pattern);
         return ref === undefined ? '' : base + this.getFileName(ref);
@@ -154,6 +161,35 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         fileName: manifestFileName,
         source: JSON.stringify(buildManifest(builds, chunkOf)),
       });
+
+      // Static prerender (mode 1, §4.4): run each prerenderable route's built RenderChunk
+      // and emit its `.html`. Param patterns need `paths()` enumeration (a follow-up), so
+      // only param-free routes are prerendered here.
+      const prerenders = builds.filter(
+        (b) => b.decision.prerender && !b.route.pattern.includes(':'),
+      );
+      if (prerenders.length === 0) {
+        return;
+      }
+      const dir = mkdtempSync(join(tmpdir(), 'fudic-prerender-'));
+      try {
+        materializeBundle(bundle as unknown as Record<string, BundleItem>, dir);
+        for (const rb of prerenders) {
+          const ref = wrapperRefs.get(rb.route.pattern);
+          if (ref === undefined) {
+            continue;
+          }
+          try {
+            const html = await renderChunkToHtml(join(dir, this.getFileName(ref)), rb.route.pattern);
+            this.emitFile({ type: 'asset', fileName: htmlPathFor(rb.route.pattern), source: html });
+          } catch (err) {
+            // A broken page must not abort the build (invariant §5): warn and skip its file.
+            this.warn(`[prerender] ${rb.route.pattern}: ${(err as Error).message}`);
+          }
+        }
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
     },
   };
 }
