@@ -73,6 +73,10 @@ The client hydration emit of SDD-15 is paused (performance study); its chunks an
 
 `transform` emits a Source Map v3: the compiler anchors each verbatim source slice
 (interpolation, `@if`/`@foreach` headers) to its `.fud` offset, so a runtime error in the
-served JS navigates back to the source. Still follow-ups: asset URL rewriting (the same
-anchoring, applied to `src`/`url()`), eager static prerender (v1 is all-incremental), and
-the dev server.
+served JS navigates back to the source.
+
+Static relative asset URLs — `src`/`poster`, `<link href>`, and CSS `url(…)` — are
+linked through Vite: the emit rewrites them to ES imports, so Vite resolves, hashes and
+emits each asset (absolute/`data:`/`<a href>`/dynamic refs are left untouched). `srcset`
+(a multi-URL list) is the one remaining asset follow-up. Still ahead: eager static
+prerender (v1 is all-incremental) and the dev server.

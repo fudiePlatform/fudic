@@ -16,6 +16,7 @@ import type { IfNode, ForeachNode } from '../control/index.js';
 import type { Span } from '../types/index.js';
 import { classifyAttribute } from '../binding/index.js';
 import { CodeWriter } from './writer.js';
+import { AssetLinker } from './assets.js';
 
 /** `render` + PascalCase of a `prefix-name` tag: `app-button` → `renderAppButton`. */
 export const renderName = (tag: string): string =>
@@ -32,13 +33,15 @@ export class MarkupEmitter {
   readonly #source: string;
   readonly #w: CodeWriter;
   readonly #isComponent: (tag: string) => boolean;
+  readonly #linker: AssetLinker;
   readonly #used = new Set<string>();
   #id = 0;
 
-  constructor(source: string, w: CodeWriter, isComponent: (tag: string) => boolean) {
+  constructor(source: string, w: CodeWriter, isComponent: (tag: string) => boolean, linker: AssetLinker) {
     this.#source = source;
     this.#w = w;
     this.#isComponent = isComponent;
+    this.#linker = linker;
   }
 
   /** The child component tags rendered so far, in first-use order (for ES imports). */
@@ -143,7 +146,10 @@ export class MarkupEmitter {
         if (isStatic) {
           const literal = b.value.map((p) => (p as { value: string }).value).join('');
           if (b.name === 'class') baseClass = literal;
-          else this.#w.line(`$dom.setAttr(${v}, ${JSON.stringify(b.name)}, ${JSON.stringify(literal)});`);
+          else if (this.#isAssetAttr(el, b.name) && AssetLinker.linkable(literal)) {
+            // A static, relative asset URL: reference the import Vite resolves (SDD-19 §4.5).
+            this.#w.line(`$dom.setAttr(${v}, ${JSON.stringify(b.name)}, ${this.#linker.ref(literal)});`);
+          } else this.#w.line(`$dom.setAttr(${v}, ${JSON.stringify(b.name)}, ${JSON.stringify(literal)});`);
         } else {
           // interpolated: omit when falsy (boolean attributes, decision 21), else set.
           const name = JSON.stringify(b.name);
@@ -160,6 +166,13 @@ export class MarkupEmitter {
       );
       this.#w.line(`$dom.setAttr(${v}, 'class', [${arr.join(', ')}].filter(Boolean).join(' '));`);
     }
+  }
+
+  /** A single-URL asset attribute the linker should rewrite: `src`/`poster`, or `<link href>`. */
+  #isAssetAttr(el: ElementNode, name: string): boolean {
+    if (!this.#linker.enabled) return false;
+    if (name === 'src' || name === 'poster') return true;
+    return name === 'href' && el.name === 'link'; // stylesheet/icon; never <a href> navigation
   }
 
   #componentProps(el: ElementNode): string {

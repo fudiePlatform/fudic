@@ -9,6 +9,10 @@
  * control-flow headers) to its `.fud` offset; `SourceMapBuilder` (SDD-13) turns those
  * output↔source pairs into a Source Map v3, so a runtime error in the served JS
  * navigates back to the `.fud`. Vite chains this map through the rest of its pipeline.
+ *
+ * Asset linking (§4.5): `linkAssets` makes the emit rewrite static relative asset URLs
+ * (`src`/`poster`/`<link href>`, CSS `url(…)`) into ES imports, which Vite then
+ * resolves, hashes and emits — the plugin is the linker, Vite owns the asset pipeline.
  */
 
 import {
@@ -55,7 +59,7 @@ export function transformFud(id: string, io: ResolveIo): TransformResult | null 
   const source = graph.entrySource;
   let out: EmitOutput;
   if (entry.type === 'page-document') {
-    out = emitPageModuleMapped(graph, { importExt: IMPORT_EXT });
+    out = emitPageModuleMapped(graph, { importExt: IMPORT_EXT, linkAssets: true });
   } else {
     // A component entry: resolveComponents does not add the entry itself to the graph,
     // so build its ResolvedComponent from the parsed entry (its deps are already resolved).
@@ -66,7 +70,7 @@ export function transformFud(id: string, io: ResolveIo): TransformResult | null 
       doc: entry,
       deps: graph.entryDeps,
     };
-    out = emitComponentModuleMapped(graph, comp, { importExt: IMPORT_EXT });
+    out = emitComponentModuleMapped(graph, comp, { importExt: IMPORT_EXT, linkAssets: true });
   }
   return { code: out.code, map: buildMap(id, source, out) };
 }

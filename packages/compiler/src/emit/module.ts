@@ -24,6 +24,7 @@ import type { Span } from '../types/index.js';
 import type { PageDocument, ComponentDocument } from '../document/index.js';
 import { CodeWriter, type EmitMapping } from './writer.js';
 import { MarkupEmitter, renderName, tpl } from './markup.js';
+import { AssetLinker } from './assets.js';
 import { extractCode } from './oxc-code.js';
 import { STYLE_POLYFILL } from './polyfill.js';
 
@@ -36,6 +37,12 @@ const slice = (source: string, sp: Span): string => source.slice(sp.start, sp.en
  */
 export interface EmitOptions {
   readonly importExt?: string;
+  /**
+   * Rewrite static, relative asset URLs (`src`/`poster`/`<link href>`, CSS `url(…)`) to
+   * ES imports Vite resolves and hashes (SDD-19 §4.5). Off by default so the standalone
+   * `.mjs` emit stays runnable under Node (which cannot import a `.png`).
+   */
+  readonly linkAssets?: boolean;
 }
 
 /**
@@ -59,16 +66,20 @@ function componentCss(source: string, doc: ComponentDocument): string {
 
 function buildComponentModule(graph: ComponentGraph, comp: ResolvedComponent, options: EmitOptions): CodeWriter {
   const ext = options.importExt ?? '.mjs';
+  const linker = new AssetLinker(options.linkAssets ?? false);
   const { props, signals } = extractCode(comp.source, comp.doc);
   const bodyW = new CodeWriter();
-  const em = new MarkupEmitter(comp.source, bodyW, (t) => graph.components.has(t));
+  const em = new MarkupEmitter(comp.source, bodyW, (t) => graph.components.has(t), linker);
   for (const child of comp.doc.template!.children) em.emit(child, '$shadow');
+  // css uses the linker too (may register more imports), so build it before the imports.
+  const css = linker.cssTemplate(componentCss(comp.source, comp.doc));
 
   const w = new CodeWriter();
   for (const tag of em.used) w.line(`import { render as ${renderName(tag)} } from './${tag}${ext}';`);
-  if (em.used.size > 0) w.line('');
+  for (const line of linker.imports()) w.line(line);
+  if (em.used.size > 0 || linker.imports().length > 0) w.line('');
   w.line(`export const tag = ${JSON.stringify(comp.tag)};`);
-  w.line(`export const css = ${tpl(componentCss(comp.source, comp.doc))};`);
+  w.line(`export const css = ${css};`);
   w.line('');
   w.line('export function render($dom, $shadow, props) {');
   w.indent();
@@ -105,13 +116,14 @@ export function emitComponentModuleMapped(
 
 function buildPageModule(graph: ComponentGraph, options: EmitOptions): CodeWriter {
   const ext = options.importExt ?? '.mjs';
+  const linker = new AssetLinker(options.linkAssets ?? false);
   const page = graph.entry as PageDocument;
   const source = graph.entrySource;
   const comps = [...graph.components.values()];
 
   // Body codegen.
   const bodyW = new CodeWriter();
-  const em = new MarkupEmitter(source, bodyW, (t) => graph.components.has(t));
+  const em = new MarkupEmitter(source, bodyW, (t) => graph.components.has(t), linker);
   for (const child of page.body.children) em.emit(child, '$body');
 
   // Head codegen (page's own head elements + hoisted style modules at runtime).
@@ -138,6 +150,7 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): CodeWrite
   for (const c of comps) {
     w.line(`import { render as ${renderName(c.tag)}, tag as ${renderName(c.tag)}Tag, css as ${renderName(c.tag)}Css } from './${c.tag}${ext}';`);
   }
+  for (const line of linker.imports()) w.line(line); // asset imports Vite resolves (SDD-19 §4.5)
   w.line('');
   w.line(`const COMPONENTS = [${comps.map((c) => `{ tag: ${renderName(c.tag)}Tag, css: ${renderName(c.tag)}Css }`).join(', ')}];`);
   w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL)};`);
