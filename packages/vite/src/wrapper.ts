@@ -23,6 +23,8 @@ export interface RenderChunkOptions {
   readonly pattern: string;
   /** Whether the page's `@server` region exports a `load(ctx)` data hook. */
   readonly hasLoad: boolean;
+  /** Whether it exports `paths()`; the wrapper re-exports it so the build can enumerate. */
+  readonly hasPaths?: boolean;
 }
 
 /** Segments of a pattern, empty ones dropped. `/` → `[]`; `/customer/:id` → `['customer', ':id']`. */
@@ -41,6 +43,10 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   lines.push(`import { SsrDom, serializeChunks, htmlToByteStream, escapeText } from "@fudic/ssr";`);
   if (options.hasLoad) {
     lines.push(`import { load } from ${JSON.stringify(`${options.pageModule}?server`)};`);
+  }
+  if (options.hasPaths) {
+    // Re-exported so the build can enumerate the param space at prerender time (§4.4/§6.6).
+    lines.push(`export { paths } from ${JSON.stringify(`${options.pageModule}?server`)};`);
   }
   lines.push('');
   if (hasParams) {

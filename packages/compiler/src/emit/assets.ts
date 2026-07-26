@@ -16,18 +16,43 @@
 /** Escape a literal chunk for embedding in a template literal (backtick/backslash/`$`). */
 const escapeTpl = (s: string): string => s.replace(/[`\\$]/gu, '\\$&');
 
+/** Injected existence check: does a linkable specifier resolve to a real file? */
+export type AssetExists = (spec: string) => boolean;
+
 export class AssetLinker {
   readonly #enabled: boolean;
+  readonly #exists: AssetExists | undefined;
   readonly #imports: string[] = [];
   readonly #bySpec = new Map<string, string>();
+  readonly #missing: string[] = [];
   #id = 0;
 
-  constructor(enabled: boolean) {
+  constructor(enabled: boolean, exists?: AssetExists) {
     this.#enabled = enabled;
+    this.#exists = exists;
   }
 
   get enabled(): boolean {
     return this.#enabled;
+  }
+
+  /** Linkable specifiers that did not resolve to a file — the plugin reports them as FUD0363. */
+  missing(): readonly string[] {
+    return this.#missing;
+  }
+
+  /**
+   * The binding for a linkable, existing asset — or `null` to keep the literal. `null`
+   * means: linking off, an already-final URL, or a missing file (recorded for FUD0363,
+   * left as a literal so the build does not abort — §4.5/§6.13).
+   */
+  maybeRef(spec: string): string | null {
+    if (!this.#enabled || !AssetLinker.linkable(spec)) return null;
+    if (this.#exists && !this.#exists(spec)) {
+      this.#missing.push(spec);
+      return null;
+    }
+    return this.ref(spec);
   }
 
   /**
@@ -72,9 +97,9 @@ export class AssetLinker {
     let last = 0;
     let m: RegExpExecArray | null;
     while ((m = re.exec(css)) !== null) {
-      const spec = m[2]!;
-      if (!AssetLinker.linkable(spec)) continue;
-      out += escapeTpl(css.slice(last, m.index)) + 'url(${' + this.ref(spec) + '})';
+      const binding = this.maybeRef(m[2]!);
+      if (binding === null) continue; // absolute or missing → keep the literal url(...)
+      out += escapeTpl(css.slice(last, m.index)) + 'url(${' + binding + '})';
       last = m.index + m[0].length;
     }
     return out + escapeTpl(css.slice(last)) + '`';

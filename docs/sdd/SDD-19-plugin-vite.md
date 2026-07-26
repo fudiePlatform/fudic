@@ -1,6 +1,6 @@
 # SDD-19 — Build + plugin Vite (routing por FS · SSG incremental)
 
-> **Estado:** `Listo` (borrador para revisión de Pedro).
+> **Estado:** `Hecho` (Slice 1; los 18 criterios de §6 verdes. Hidratación de SDD-15 y `srcset` fuera de alcance, §7).
 > **Paquete:** `@fudic/vite` (nuevo), contra `@fudic/compiler` (emit) · `@fudic/ssr` · `@fudic/transport`.
 > **Depende de:** 13, 15 (slice SSR-servidor), 16.
 > **Rango de diagnósticos:** `FUD0360`–`FUD0389`.

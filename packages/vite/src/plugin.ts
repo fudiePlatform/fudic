@@ -18,7 +18,14 @@ import { emitServerModule } from './server.js';
 import { emitWwBootstrap, emitSwBootstrap, emitMainBootstrap } from './bootstrap.js';
 import { transformFud } from './transform.js';
 import { nodeIo } from './io.js';
-import { htmlPathFor, materializeBundle, renderChunkToHtml, type BundleItem } from './prerender.js';
+import {
+  htmlPathFor,
+  materializeBundle,
+  renderChunkToHtml,
+  prerenderEnumerated,
+  type BundleItem,
+} from './prerender.js';
+import { FUD_PATHS_INCOMPLETE, FUD_ASSET_NOT_FOUND } from './diagnostics.js';
 import { devUrl, devManifest } from './dev.js';
 import {
   WRAPPER_PREFIX,
@@ -180,6 +187,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           pageModule: rb.absPath.replace(/\\/gu, '/'),
           pattern,
           hasLoad: rb.analysis.hasLoad,
+          hasPaths: rb.analysis.hasPaths,
         });
       }
       return null;
@@ -198,9 +206,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         return stripped.map ? { code: stripped.code, map: stripped.map } : { code: stripped.code };
       }
       const result = transformFud(path, io);
+      if (result === null) {
+        return null;
+      }
+      // A literal asset URL with no file on disk: warn (FUD0363) and keep the literal —
+      // the emit already left it un-linked, so the build does not abort (§6.13).
+      for (const spec of result.missingAssets) {
+        this.warn(`[${FUD_ASSET_NOT_FOUND}] asset "${spec}" not found (referenced by ${path})`);
+      }
       // The map is passed as a JSON string (a valid Vite `SourceMapInput`), which also
       // sidesteps the readonly/mutable array mismatch with Rollup's raw-map type.
-      return result === null ? null : { code: result.code, map: JSON.stringify(result.map) };
+      return { code: result.code, map: JSON.stringify(result.map) };
     },
 
     async generateBundle(_outputOptions, bundle) {
@@ -216,11 +232,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       });
 
       // Static prerender (mode 1, §4.4): run each prerenderable route's built RenderChunk
-      // and emit its `.html`. Param patterns need `paths()` enumeration (a follow-up), so
-      // only param-free routes are prerendered here.
-      const prerenders = builds.filter(
-        (b) => b.decision.prerender && !b.route.pattern.includes(':'),
-      );
+      // and emit its `.html`. A param route with `paths()` (decision.enumerate) prerenders
+      // one file per enumerated id; a param-free static route prerenders its single file.
+      const prerenders = builds.filter((b) => b.decision.prerender);
       if (prerenders.length === 0) {
         return;
       }
@@ -232,9 +246,20 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           if (ref === undefined) {
             continue;
           }
+          const chunkPath = join(dir, this.getFileName(ref));
           try {
-            const html = await renderChunkToHtml(join(dir, this.getFileName(ref)), rb.route.pattern);
-            this.emitFile({ type: 'asset', fileName: htmlPathFor(rb.route.pattern), source: html });
+            if (rb.decision.enumerate) {
+              const { files, incomplete } = await prerenderEnumerated(chunkPath, rb.route.pattern);
+              for (const f of files) {
+                this.emitFile({ type: 'asset', fileName: f.path, source: f.html });
+              }
+              for (const bad of incomplete) {
+                this.warn(`[${FUD_PATHS_INCOMPLETE}] paths() entry ${bad} does not cover every param of ${rb.route.pattern}`);
+              }
+            } else if (!rb.route.pattern.includes(':')) {
+              const html = await renderChunkToHtml(chunkPath, rb.route.pattern);
+              this.emitFile({ type: 'asset', fileName: htmlPathFor(rb.route.pattern), source: html });
+            }
           } catch (err) {
             // A broken page must not abort the build (invariant §5): warn and skip its file.
             this.warn(`[prerender] ${rb.route.pattern}: ${(err as Error).message}`);

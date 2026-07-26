@@ -16,7 +16,7 @@ import type { IfNode, ForeachNode } from '../control/index.js';
 import type { Span } from '../types/index.js';
 import { classifyAttribute } from '../binding/index.js';
 import { CodeWriter } from './writer.js';
-import { AssetLinker } from './assets.js';
+import { type AssetLinker } from './assets.js';
 
 /** `render` + PascalCase of a `prefix-name` tag: `app-button` → `renderAppButton`. */
 export const renderName = (tag: string): string =>
@@ -146,9 +146,12 @@ export class MarkupEmitter {
         if (isStatic) {
           const literal = b.value.map((p) => (p as { value: string }).value).join('');
           if (b.name === 'class') baseClass = literal;
-          else if (this.#isAssetAttr(el, b.name) && AssetLinker.linkable(literal)) {
-            // A static, relative asset URL: reference the import Vite resolves (SDD-19 §4.5).
-            this.#w.line(`$dom.setAttr(${v}, ${JSON.stringify(b.name)}, ${this.#linker.ref(literal)});`);
+          else if (this.#isAssetAttr(el, b.name)) {
+            // A static, relative asset URL: reference the import Vite resolves (SDD-19 §4.5);
+            // a missing/absolute one stays a literal (`maybeRef` → null, missing → FUD0363).
+            const binding = this.#linker.maybeRef(literal);
+            const value = binding ?? JSON.stringify(literal);
+            this.#w.line(`$dom.setAttr(${v}, ${JSON.stringify(b.name)}, ${value});`);
           } else this.#w.line(`$dom.setAttr(${v}, ${JSON.stringify(b.name)}, ${JSON.stringify(literal)});`);
         } else {
           // interpolated: omit when falsy (boolean attributes, decision 21), else set.

@@ -15,6 +15,8 @@
  * resolves, hashes and emits — the plugin is the linker, Vite owns the asset pipeline.
  */
 
+import { existsSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import {
   resolveComponents,
   emitComponentModuleMapped,
@@ -33,6 +35,8 @@ const IMPORT_EXT = '.fud';
 export interface TransformResult {
   readonly code: string;
   readonly map: SourceMapV3;
+  /** Linkable asset specifiers that did not resolve to a file (reported as FUD0363). */
+  readonly missingAssets: readonly string[];
 }
 
 /** Build a Source Map v3 for one emitted module from the emit's output↔source anchors. */
@@ -57,9 +61,16 @@ export function transformFud(id: string, io: ResolveIo): TransformResult | null 
   const graph = resolveComponents(id, io);
   const entry = graph.entry;
   const source = graph.entrySource;
+  // A linkable asset exists when it resolves to a real file next to the `.fud` (§6.13).
+  const baseDir = dirname(id);
+  const emitOptions = {
+    importExt: IMPORT_EXT,
+    linkAssets: true,
+    assetExists: (spec: string): boolean => existsSync(resolve(baseDir, spec)),
+  };
   let out: EmitOutput;
   if (entry.type === 'page-document') {
-    out = emitPageModuleMapped(graph, { importExt: IMPORT_EXT, linkAssets: true });
+    out = emitPageModuleMapped(graph, emitOptions);
   } else {
     // A component entry: resolveComponents does not add the entry itself to the graph,
     // so build its ResolvedComponent from the parsed entry (its deps are already resolved).
@@ -70,7 +81,7 @@ export function transformFud(id: string, io: ResolveIo): TransformResult | null 
       doc: entry,
       deps: graph.entryDeps,
     };
-    out = emitComponentModuleMapped(graph, comp, { importExt: IMPORT_EXT, linkAssets: true });
+    out = emitComponentModuleMapped(graph, comp, emitOptions);
   }
-  return { code: out.code, map: buildMap(id, source, out) };
+  return { code: out.code, map: buildMap(id, source, out), missingAssets: out.missingAssets };
 }

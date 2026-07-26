@@ -92,4 +92,10 @@ prerendering on each save) and the three bootstraps at stable root URLs, the Ser
 Worker with `Service-Worker-Allowed` so it registers at root scope. The wrapper and page
 modules are served by Vite's module graph with live source maps.
 
-Remaining follow-ups: `@server paths()` enumeration for param prerender, and `srcset`.
+A param route with `@server paths()` prerenders one file per enumerated id
+(`customer/1/index.html`…); `paramFallback:'lazy'` keeps a `dynamic:true` entry for
+unknown ids, `'notFound'` does not. A literal `src`/`url()` to a missing file raises
+`FUD0363` and stays a literal — the build does not abort.
+
+Out of scope (SDD-19 §7): the SDD-15 client hydration branch (paused) and `srcset`
+multi-URL linking.

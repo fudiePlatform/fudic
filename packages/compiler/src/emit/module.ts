@@ -24,7 +24,7 @@ import type { Span } from '../types/index.js';
 import type { PageDocument, ComponentDocument } from '../document/index.js';
 import { CodeWriter, type EmitMapping } from './writer.js';
 import { MarkupEmitter, renderName, tpl } from './markup.js';
-import { AssetLinker } from './assets.js';
+import { AssetLinker, type AssetExists } from './assets.js';
 import { extractCode } from './oxc-code.js';
 import { STYLE_POLYFILL } from './polyfill.js';
 
@@ -43,16 +43,23 @@ export interface EmitOptions {
    * `.mjs` emit stays runnable under Node (which cannot import a `.png`).
    */
   readonly linkAssets?: boolean;
+  /**
+   * Existence check for a linkable asset specifier (relative to the module). A linked
+   * asset that fails it is left as a literal and surfaced in `EmitOutput.missingAssets`
+   * so the plugin can report FUD0363 without aborting the build (§6.13).
+   */
+  readonly assetExists?: AssetExists;
 }
 
 /**
- * A module's emitted text plus its output↔source mappings (SDD-19 §4.6). The plain
- * `emit*Module` functions return `.code`; the `*Mapped` variants add the mappings the
- * Vite plugin feeds to `SourceMapBuilder`.
+ * A module's emitted text plus its output↔source mappings (SDD-19 §4.6) and the linkable
+ * asset specifiers that did not resolve (§6.13). The plain `emit*Module` functions return
+ * `.code`; the `*Mapped` variants add the rest.
  */
 export interface EmitOutput {
   readonly code: string;
   readonly mappings: readonly EmitMapping[];
+  readonly missingAssets: readonly string[];
 }
 
 /** The `<head>` `<style>` CSS of a component (the shared sheet body). */
@@ -64,9 +71,13 @@ function componentCss(source: string, doc: ComponentDocument): string {
   return source.slice(style.openSpan.end, style.closeSpan ? style.closeSpan.start : style.span.end);
 }
 
-function buildComponentModule(graph: ComponentGraph, comp: ResolvedComponent, options: EmitOptions): CodeWriter {
+function buildComponentModule(
+  graph: ComponentGraph,
+  comp: ResolvedComponent,
+  options: EmitOptions,
+): { writer: CodeWriter; linker: AssetLinker } {
   const ext = options.importExt ?? '.mjs';
-  const linker = new AssetLinker(options.linkAssets ?? false);
+  const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
   const { props, signals } = extractCode(comp.source, comp.doc);
   const bodyW = new CodeWriter();
   const em = new MarkupEmitter(comp.source, bodyW, (t) => graph.components.has(t), linker);
@@ -93,7 +104,7 @@ function buildComponentModule(graph: ComponentGraph, comp: ResolvedComponent, op
   w.appendWriter(bodyW); // carries the markup's source anchors, unlike a toString()/split copy
   w.dedent();
   w.line('}');
-  return w;
+  return { writer: w, linker };
 }
 
 export function emitComponentModule(
@@ -101,22 +112,22 @@ export function emitComponentModule(
   comp: ResolvedComponent,
   options: EmitOptions = {},
 ): string {
-  return buildComponentModule(graph, comp, options).toString();
+  return buildComponentModule(graph, comp, options).writer.toString();
 }
 
-/** As `emitComponentModule`, plus the output↔source mappings (SDD-19 §4.6). */
+/** As `emitComponentModule`, plus the output↔source mappings and missing assets (§4.6/§6.13). */
 export function emitComponentModuleMapped(
   graph: ComponentGraph,
   comp: ResolvedComponent,
   options: EmitOptions = {},
 ): EmitOutput {
-  const w = buildComponentModule(graph, comp, options);
-  return { code: w.toString(), mappings: w.mappings() };
+  const { writer, linker } = buildComponentModule(graph, comp, options);
+  return { code: writer.toString(), mappings: writer.mappings(), missingAssets: linker.missing() };
 }
 
-function buildPageModule(graph: ComponentGraph, options: EmitOptions): CodeWriter {
+function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer: CodeWriter; linker: AssetLinker } {
   const ext = options.importExt ?? '.mjs';
-  const linker = new AssetLinker(options.linkAssets ?? false);
+  const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
   const page = graph.entry as PageDocument;
   const source = graph.entrySource;
   const comps = [...graph.components.values()];
@@ -175,15 +186,15 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): CodeWrite
   w.line("yield '\\n</html>\\n';");
   w.dedent();
   w.line('}');
-  return w;
+  return { writer: w, linker };
 }
 
 export function emitPageModule(graph: ComponentGraph, options: EmitOptions = {}): string {
-  return buildPageModule(graph, options).toString();
+  return buildPageModule(graph, options).writer.toString();
 }
 
-/** As `emitPageModule`, plus the output↔source mappings (SDD-19 §4.6). */
+/** As `emitPageModule`, plus the output↔source mappings and missing assets (§4.6/§6.13). */
 export function emitPageModuleMapped(graph: ComponentGraph, options: EmitOptions = {}): EmitOutput {
-  const w = buildPageModule(graph, options);
-  return { code: w.toString(), mappings: w.mappings() };
+  const { writer, linker } = buildPageModule(graph, options);
+  return { code: writer.toString(), mappings: writer.mappings(), missingAssets: linker.missing() };
 }

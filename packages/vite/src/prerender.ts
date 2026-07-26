@@ -27,6 +27,21 @@ export interface BundleItem {
 /** The route's default renderer: the wrapper's default export, `(route) => ReadableStream`. */
 type RenderChunk = (route: string) => ReadableStream<Uint8Array>;
 
+/** One `paths()` entry: a single param value, or an object mapping param name → value. */
+type PathsEntry = string | number | Record<string, string | number>;
+
+/** The wrapper module: the render fn, plus `paths()` when the page enumerates its param space. */
+interface RenderModule {
+  readonly default: RenderChunk;
+  readonly paths?: () => PathsEntry[] | Promise<PathsEntry[]>;
+}
+
+/** A prerendered file, or a `paths()` entry that failed to cover every param (FUD0362). */
+export interface EnumeratedResult {
+  readonly files: ReadonlyArray<{ readonly path: string; readonly html: string }>;
+  readonly incomplete: readonly string[];
+}
+
 /** The output file path for a prerendered pattern: `/` → `index.html`, `/about` → `about/index.html`. */
 export function htmlPathFor(pattern: string): string {
   const segments = pattern.split('/').filter((s) => s.length > 0);
@@ -56,8 +71,60 @@ async function drain(stream: ReadableStream<Uint8Array>): Promise<string> {
   return out + decoder.decode();
 }
 
+/** Import a materialized wrapper chunk (its `default` renderer and optional `paths`). */
+async function importRenderModule(chunkPath: string): Promise<RenderModule> {
+  return (await import(pathToFileURL(chunkPath).href)) as RenderModule;
+}
+
 /** Import a materialized wrapper chunk and render one route to an HTML string. */
 export async function renderChunkToHtml(chunkPath: string, route: string): Promise<string> {
-  const mod = (await import(pathToFileURL(chunkPath).href)) as { default: RenderChunk };
+  const mod = await importRenderModule(chunkPath);
   return drain(mod.default(route));
+}
+
+/**
+ * Build the concrete URL for a `paths()` entry against a param pattern, or report the
+ * first param the entry does not cover (FUD0362). A primitive entry fills the sole param;
+ * an object fills params by name.
+ */
+export function urlForEntry(
+  pattern: string,
+  entry: PathsEntry,
+): { readonly url: string } | { readonly missing: string } {
+  const segments = pattern.split('/').filter((s) => s.length > 0);
+  const params = segments.filter((s) => s.startsWith(':')).map((s) => s.slice(1));
+  const values = new Map<string, string>();
+  if (typeof entry === 'object') {
+    for (const name of params) {
+      const value = entry[name];
+      if (value === undefined) return { missing: name };
+      values.set(name, String(value));
+    }
+  } else {
+    // A primitive only makes sense for a single-param pattern.
+    if (params.length !== 1) return { missing: params.find((p) => true) ?? '' };
+    values.set(params[0]!, String(entry));
+  }
+  const path = segments.map((s) => (s.startsWith(':') ? encodeURIComponent(values.get(s.slice(1))!) : s));
+  return { url: `/${path.join('/')}` };
+}
+
+/** Enumerate a param route via its `paths()`, prerendering one HTML per covered entry. */
+export async function prerenderEnumerated(chunkPath: string, pattern: string): Promise<EnumeratedResult> {
+  const mod = await importRenderModule(chunkPath);
+  if (typeof mod.paths !== 'function') {
+    return { files: [], incomplete: [] };
+  }
+  const entries = await mod.paths();
+  const files: Array<{ path: string; html: string }> = [];
+  const incomplete: string[] = [];
+  for (const entry of entries) {
+    const built = urlForEntry(pattern, entry);
+    if ('missing' in built) {
+      incomplete.push(typeof entry === 'object' ? JSON.stringify(entry) : String(entry));
+      continue;
+    }
+    files.push({ path: htmlPathFor(built.url), html: await drain(mod.default(built.url)) });
+  }
+  return { files, incomplete };
 }
