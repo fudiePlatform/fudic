@@ -46,6 +46,8 @@ export { parseFud } from './parse.js';
 export { emitServerModule } from './server.js';
 export { type RouteBuild, type DiscoverResult, discoverRoutes } from './discover.js';
 export { buildManifest } from './manifest.js';
+export { type BundleItem, htmlPathFor, materializeBundle, renderChunkToHtml } from './prerender.js';
+export { devModuleUrl, devUrl, devManifest } from './dev.js';
 export { emitWwBootstrap, emitSwBootstrap, emitMainBootstrap } from './bootstrap.js';
 export { fudic } from './plugin.js';
 export { fudic as default } from './plugin.js';

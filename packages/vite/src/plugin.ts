@@ -19,12 +19,17 @@ import { emitWwBootstrap, emitSwBootstrap, emitMainBootstrap } from './bootstrap
 import { transformFud } from './transform.js';
 import { nodeIo } from './io.js';
 import { htmlPathFor, materializeBundle, renderChunkToHtml, type BundleItem } from './prerender.js';
-
-const WRAPPER_PREFIX = '\0fudic-wrapper:';
-const WW_ID = '\0fudic-ww';
-const SW_ID = '\0fudic-sw';
-const MAIN_ID = '\0fudic-main';
-const CACHE_NAME = 'fudic-v1';
+import { devUrl, devManifest } from './dev.js';
+import {
+  WRAPPER_PREFIX,
+  WW_ID,
+  SW_ID,
+  MAIN_ID,
+  CACHE_NAME,
+  DEV_MAIN_URL,
+  DEV_SW_URL,
+  DEV_WW_URL,
+} from './constants.js';
 
 /** A `import.meta.ROLLUP_FILE_URL_<ref>` expression: Rollup fills the real hashed URL. */
 const fileUrl = (ref: string): string => `import.meta.ROLLUP_FILE_URL_${ref}`;
@@ -45,6 +50,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let options: ResolvedOptions;
   let root = process.cwd();
   let base = '/';
+  let isDev = false;
   let builds: readonly RouteBuild[] = [];
   const wrapperRefs = new Map<string, string>(); // route pattern → emitFile referenceId
   let wwRef = '';
@@ -67,10 +73,48 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     configResolved(config) {
       root = config.root;
       base = config.base;
+      isDev = config.command === 'serve';
       options = resolveOptions(userOptions, config.base).options;
       manifestUrl = options.manifestUrl;
       // The manifest is emitted at a FIXED path (SW and WW load the same absolute URL).
       manifestFileName = manifestUrl.startsWith(base) ? manifestUrl.slice(base.length) : 'fudic-routes.json';
+    },
+
+    configureServer(server) {
+      builds = discoverRoutes(root, options).routes;
+      // The three bootstraps served at stable root URLs (so the SW registers at root
+      // scope); their code comes from the same virtual modules, transformed by Vite.
+      const scripts = new Map<string, string>([
+        [devUrl(base, DEV_MAIN_URL), MAIN_ID],
+        [devUrl(base, DEV_SW_URL), SW_ID],
+        [devUrl(base, DEV_WW_URL), WW_ID],
+      ]);
+      server.middlewares.use((req, res, next) => {
+        const url = (req.url ?? '').split('?')[0] ?? '';
+        if (url === manifestUrl) {
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(devManifest(builds, base)));
+          return;
+        }
+        const id = scripts.get(url);
+        if (id === undefined) {
+          next();
+          return;
+        }
+        server
+          .transformRequest(id)
+          .then((result) => {
+            res.setHeader('Content-Type', 'text/javascript');
+            if (id === SW_ID) {
+              res.setHeader('Service-Worker-Allowed', base); // let the SW claim root scope
+            }
+            res.end(result?.code ?? '');
+          })
+          .catch((err) => {
+            res.statusCode = 500;
+            res.end(`// fudic dev: failed to serve ${url}: ${(err as Error).message}`);
+          });
+      });
     },
 
     buildStart() {
@@ -78,6 +122,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       builds = discovered.routes;
       for (const d of discovered.diagnostics) {
         this.warn(`[${d.code}] ${d.message}`);
+      }
+      if (isDev) {
+        // Dev has no emitFile/generateBundle: the module graph serves the wrappers and
+        // bootstraps, and configureServer serves the manifest (SDD-19 §4.10).
+        return;
       }
 
       for (const rb of builds) {
@@ -108,14 +157,18 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     },
 
     load(id) {
+      // Dev references stable root URLs (configureServer serves them); build references
+      // the hashed chunks via `import.meta.ROLLUP_FILE_URL_<ref>`.
       if (id === MAIN_ID) {
-        return emitMainBootstrap(fileUrl(swRef));
+        const swUrl = isDev ? JSON.stringify(devUrl(base, DEV_SW_URL)) : fileUrl(swRef);
+        return emitMainBootstrap(swUrl);
       }
       if (id === WW_ID) {
         return emitWwBootstrap(JSON.stringify(manifestUrl));
       }
       if (id === SW_ID) {
-        return emitSwBootstrap(JSON.stringify(manifestUrl), fileUrl(wwRef), CACHE_NAME);
+        const wwUrl = isDev ? JSON.stringify(devUrl(base, DEV_WW_URL)) : fileUrl(wwRef);
+        return emitSwBootstrap(JSON.stringify(manifestUrl), wwUrl, CACHE_NAME);
       }
       if (id.startsWith(WRAPPER_PREFIX)) {
         const pattern = id.slice(WRAPPER_PREFIX.length);

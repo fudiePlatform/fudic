@@ -84,5 +84,12 @@ emits each asset (absolute/`data:`/`<a href>`/dynamic refs are left untouched). 
 (a multi-URL list) is the one remaining asset follow-up.
 
 The `@server` region (typed `load`/`paths`) is served through the `?server` module,
-type-stripped to plain JS by Vite's Oxc transform. Still ahead: `@server paths()`
-enumeration for param prerender, and the dev server.
+type-stripped to plain JS by Vite's Oxc transform.
+
+`vite dev` serves what `generateBundle` produces in build: the manifest (from
+`manifestUrl`, every route incremental — mode-1 pages render on-demand rather than
+prerendering on each save) and the three bootstraps at stable root URLs, the Service
+Worker with `Service-Worker-Allowed` so it registers at root scope. The wrapper and page
+modules are served by Vite's module graph with live source maps.
+
+Remaining follow-ups: `@server paths()` enumeration for param prerender, and `srcset`.
