@@ -11,17 +11,12 @@
  */
 
 import {
-  parseDocument,
-  parseControl,
-  parseCodeBlock,
-  structureDocument,
   JsBatch,
   type OxcNode,
-  type AtConstructParser,
-  type StructuredDocument,
   type PageDocument,
   type ServerRegion,
 } from '@fudic/compiler';
+import { parseFud } from './parse.js';
 
 export interface PageAnalysis {
   /** True when the file is a page document (has a doctype), not a component. */
@@ -32,21 +27,15 @@ export interface PageAnalysis {
   readonly hasPaths: boolean;
 }
 
-const constructs: AtConstructParser = { parseControl, parseCodeBlock };
-
 // ── Typed access over the untyped Oxc node (quarantined, as in the emit) ──
 const is = (node: OxcNode | undefined, type: string): boolean => node?.type === type;
 const field = (node: OxcNode, key: string): OxcNode | undefined => node[key] as OxcNode | undefined;
 const fieldArray = (node: OxcNode, key: string): OxcNode[] => (node[key] as OxcNode[] | undefined) ?? [];
 const nameOf = (node: OxcNode): string => String(node['name']);
 
-function parse(source: string): StructuredDocument {
-  return structureDocument(source, parseDocument(source, { atConstructs: constructs }).value).value;
-}
-
 /** Analyze a `.fud` source: page vs component, and which `@server` hooks it exports. */
 export function analyzePage(source: string): PageAnalysis {
-  const doc = parse(source);
+  const doc = parseFud(source);
   if (doc.type !== 'page-document') {
     return { isPage: false, hasLoad: false, hasPaths: false };
   }

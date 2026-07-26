@@ -44,10 +44,16 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@fudic/compiler": "workspace:*"
+    "@fudic/compiler": "workspace:*",
+    "@fudic/ssr": "workspace:*",
+    "@fudic/transport": "workspace:*"
+  },
+  "peerDependencies": {
+    "vite": "8.0.16"
   },
   "devDependencies": {
     "@fudic/tsconfig": "workspace:*",
-    "@types/node": "22.20.0"
+    "@types/node": "22.20.0",
+    "vite": "8.0.16"
   }
 }

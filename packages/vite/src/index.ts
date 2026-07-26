@@ -42,3 +42,10 @@ export {
 } from './options.js';
 export { nodeIo } from './io.js';
 export { type TransformResult, transformFud } from './transform.js';
+export { parseFud } from './parse.js';
+export { emitServerModule } from './server.js';
+export { type RouteBuild, type DiscoverResult, discoverRoutes } from './discover.js';
+export { buildManifest } from './manifest.js';
+export { emitWwBootstrap, emitSwBootstrap, emitMainBootstrap } from './bootstrap.js';
+export { fudic } from './plugin.js';
+export { fudic as default } from './plugin.js';
