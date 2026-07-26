@@ -10,7 +10,7 @@ import { routesFromFiles, type Route } from './routing.js';
 import { analyzePage, type PageAnalysis } from './analyze.js';
 import { resolveMode, type ModeDecision, type PageFacts } from './mode.js';
 import { type ResolvedOptions } from './options.js';
-import { type FudicDiagnostic } from './diagnostics.js';
+import { type FudicDiagnostic, FUD_UNKNOWN_ROUTE_OVERRIDE } from './diagnostics.js';
 
 export interface RouteBuild {
   readonly route: Route;
@@ -40,6 +40,7 @@ function listFud(dir: string): string[] {
 export function discoverRoutes(root: string, options: ResolvedOptions): DiscoverResult {
   const routesRoot = join(root, options.routesDir);
   const { routes, diagnostics } = routesFromFiles(listFud(routesRoot));
+  const diags: FudicDiagnostic[] = [...diagnostics];
 
   const builds: RouteBuild[] = [];
   for (const route of routes) {
@@ -57,5 +58,18 @@ export function discoverRoutes(root: string, options: ResolvedOptions): Discover
     const decision = resolveMode(route.params.length > 0, facts, options.paramFallback);
     builds.push({ route, absPath, analysis, decision });
   }
-  return { routes: builds, diagnostics };
+
+  // A route override that matches no discovered route is almost certainly a typo.
+  const known = new Set(builds.map((b) => b.route.pattern));
+  for (const pattern of Object.keys(options.routes)) {
+    if (!known.has(pattern)) {
+      diags.push({
+        code: FUD_UNKNOWN_ROUTE_OVERRIDE,
+        message: `Route override for "${pattern}" matches no route`,
+        file: pattern,
+      });
+    }
+  }
+
+  return { routes: builds, diagnostics: diags };
 }
