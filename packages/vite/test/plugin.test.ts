@@ -5,6 +5,9 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fudic } from '../src/index.js';
 import { WRAPPER_PREFIX, WW_ID, SW_ID, MAIN_ID } from '../src/constants.js';
@@ -18,8 +21,8 @@ type AnyHook = any;
 
 function setup(command: 'build' | 'serve', userOptions: Record<string, unknown> = {}): AnyHook {
   const plugin = fudic({ routesDir: 'fixtures', ...userOptions }) as AnyHook;
-  plugin.config();
-  plugin.configResolved({ root, base: '/', command });
+  plugin.config({});
+  plugin.configResolved({ root, base: '/', command, build: { outDir: 'dist' } });
   return plugin;
 }
 
@@ -31,7 +34,7 @@ const emitCtx = (): { emitFile: ReturnType<typeof vi.fn>; warn: ReturnType<typeo
 describe('config / configResolved', () => {
   it('config declares the custom three-thread shell entry', () => {
     const plugin = fudic() as AnyHook;
-    expect(plugin.config()).toMatchObject({ appType: 'custom' });
+    expect(plugin.config({})).toMatchObject({ appType: 'custom' });
   });
 
   it('accepts a manifestUrl that does not sit under base (fallback file name)', () => {
@@ -53,8 +56,8 @@ describe('load — build vs dev URLs', () => {
   it('build mode references ROLLUP_FILE_URL for the SW/WW', () => {
     const p = setup('build');
     p.buildStart.call(emitCtx());
-    expect(p.load(MAIN_ID)).toContain('ROLLUP_FILE_URL');
-    expect(p.load(SW_ID)).toContain('ROLLUP_FILE_URL');
+    expect(p.load(MAIN_ID)).toContain('ROLLUP_FILE_URL'); // both the SW and the WW urls
+    expect(p.load(SW_ID)).toContain('createRouter');
     expect(p.load(WW_ID)).toContain('installRenderWorker');
     expect(p.load(WRAPPER_PREFIX + '/home')).toContain('htmlToByteStream'); // known wrapper
   });
@@ -62,7 +65,7 @@ describe('load — build vs dev URLs', () => {
   it('dev mode references the stable root URLs', () => {
     const p = setup('serve');
     expect(p.load(MAIN_ID)).toContain('fudic-sw.js');
-    expect(p.load(SW_ID)).toContain('fudic-ww.js');
+    expect(p.load(MAIN_ID)).toContain('fudic-ww.js'); // the main thread creates the WW
   });
 
   it('returns null for an unknown wrapper pattern and any other id', () => {
@@ -156,6 +159,47 @@ describe('configureServer middleware', () => {
     await flush();
     expect(res.statusCode).toBe(500);
     expect(res.body).toContain('boom');
+  });
+});
+
+describe('configurePreviewServer middleware', () => {
+  // `appType:'custom'` removes Vite's html fallback, so preview must map a route to its
+  // prerendered file itself — and 404 when there is none (an incremental route).
+  function withPreview(outDir: string): (req: { url: string; method: string; headers: Record<string, string> }, res: FakeRes, next: () => void) => void {
+    let handler!: (req: { url: string; method: string; headers: Record<string, string> }, res: FakeRes, next: () => void) => void;
+    const plugin = fudic({ routesDir: 'fixtures' }) as AnyHook;
+    plugin.config({});
+    plugin.configResolved({ root, base: '/', command: 'build', build: { outDir } });
+    plugin.configurePreviewServer({ middlewares: { use: (fn: typeof handler) => (handler = fn) } });
+    return handler;
+  }
+
+  const navigation = (url: string): { url: string; method: string; headers: Record<string, string> } => ({
+    url,
+    method: 'GET',
+    headers: { accept: 'text/html,application/xhtml+xml' },
+  });
+
+  it('serves the prerendered file of a route', () => {
+    const outDir = mkdtempSync(join(tmpdir(), 'fudic-preview-'));
+    mkdirSync(join(outDir, 'about'), { recursive: true });
+    writeFileSync(join(outDir, 'about', 'index.html'), '<!DOCTYPE html><p>about</p>');
+    const handler = withPreview(outDir);
+    const res = fakeRes();
+    handler(navigation('/about'), res, () => expect.unreachable('should not fall through'));
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toContain('text/html');
+    expect(res.body).toContain('<p>about</p>');
+  });
+
+  it('falls through when the route has no prerendered file, and for non-navigations', () => {
+    const outDir = mkdtempSync(join(tmpdir(), 'fudic-preview-'));
+    const handler = withPreview(outDir);
+    const next = vi.fn();
+    handler(navigation('/blog'), fakeRes(), next); // incremental: the SW's job
+    handler({ url: '/x.css', method: 'GET', headers: { accept: 'text/css' } }, fakeRes(), next);
+    handler({ url: '/', method: 'POST', headers: { accept: 'text/html' } }, fakeRes(), next);
+    expect(next).toHaveBeenCalledTimes(3);
   });
 });
 

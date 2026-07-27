@@ -276,11 +276,29 @@ Vite convirtiendo su `span` en `Range` con `rangeOf(lineMap, span)`.
 `main.ts` de SDD-16 declara que el ciclo de vida del SW es "build/deploy, out of scope here" → es
 **aquí**. El plugin genera:
 
-- **Entry del WW:** `installRenderWorker(await loadManifest(manifestUrl))`.
+- **Entry del WW:** espera el `MessagePort` que le transfiere el hilo principal y hace
+  `installRenderWorker(await loadManifest(manifestUrl), port)`.
 - **Entry del SW:** `createRouter({ manifest, worker, cache })` cableado a `self.addEventListener
-  ('fetch', e => router.handle(e))`, **más** un listener de control (§4.9).
-- **Bootstrap de main:** `registerRenderServiceWorker(swUrl)` (la hidratación de SDD-17, cuando
-  exista, es un módulo aparte; aquí no).
+  ('fetch', e => router.handle(e))`, **más** un listener de control (§4.9). Su `worker` es el puerto
+  recibido del hilo principal; mientras no haya puerto, **no intercepta** (deja pasar a la red).
+- **Bootstrap de main:** `registerRenderServiceWorker(swUrl)` y después `connectRenderWorker(wwUrl)`
+  (la hidratación de SDD-17, cuando exista, es un módulo aparte; aquí no).
+
+**Corrección (verificada en Chrome).** La versión anterior de esta sección hacía que el SW creara el
+WW (`new Worker(wwUrl, { type: 'module' })`). Es imposible: un `ServiceWorkerGlobalScope` no expone
+`Worker` ni permite `import()` (ver SDD-16 §3.3). El hilo principal crea el WW y transfiere un
+extremo del `MessageChannel` a cada lado.
+
+**Nombres de fichero de los bootstraps.** Dos de los tres necesitan nombre estable en la RAÍZ —
+los mismos URLs que publica el dev server (§4.10), de modo que dev y build se comporten igual:
+
+- `fudic-sw.js`: un Service Worker solo controla su directorio y por debajo; servido desde
+  `assets/` jamás vería una navegación.
+- `fudic-main.js`: una página lo referencia literalmente (`<script type="module" src>`), y un
+  nombre hasheado no se puede escribir a mano.
+
+El resto conserva el hash de contenido de Vite. Si el usuario configura `rollupOptions.output`, el
+plugin no lo toca: los nombres pasan a ser suyos.
 
 ### 4.9. Invalidación y versión (cierra un hueco de SDD-16)
 
@@ -304,6 +322,17 @@ incremental). TTL por ruta queda fuera (§7). Es el "revalidate" del modo increm
   a incremental) para no prerenderizar en cada guardado. Source maps vivos.
 - **Build:** hash, manifests con nombres finales, prerender de modo 1, bootstraps emitidos.
 
+**Render on-demand en dev.** El middleware de navegación resuelve la ruta contra las rutas
+descubiertas (primer hit por especificidad, la misma regla del manifest), importa el wrapper por el
+grafo SSR de Vite y drena su stream. Es el MISMO `RenderChunk` que correría el WW, así que dev y
+build no divergen. La respuesta pasa por `transformIndexHtml`, que inyecta el cliente de Vite (HMR).
+Sin ruta que case, `next()`.
+
+**Preview.** `appType:'custom'` (que impone este plugin) quita el fallback a `index.html` de Vite,
+así que `vite preview` necesita que el plugin mapee la navegación a su fichero prerenderizado
+(`/about` → `about/index.html`). Sin fichero, `next()` → 404: una ruta incremental es cosa del
+Service Worker, y así el preview enseña exactamente lo que serviría un host estático.
+
 ### 4.11. Dos ajustes que el plugin requiere del emit (SDD-15)
 
 Menores, pero sin ellos el plugin no puede enlazar. Se implementan en el emit coordinadamente:
@@ -320,6 +349,20 @@ Menores, pero sin ellos el plugin no puede enlazar. Se implementan en el emit co
    `yield* serializeChunks($body)`, luego el cierre; y su `io` recibe `serialize: serializeChunks`
    en vez de `renderToString`. Es una evolución de la **rama SSR-servidor de SDD-15 (ya `Hecho`)**,
    no de la rama de hidratación en pausa — no colisiona con el estudio de rendimiento de Pedro.
+
+Durante la implementación aparecieron dos más, del mismo tipo (el plugin es el único consumidor,
+la implementación vive en el emit):
+
+4. **`componentSpecifier` inyectado.** El emit escribía siempre `./<tag><ext>`: un componente solo
+   resolvía si vivía en el mismo directorio que la página. El compilador no puede calcular una ruta
+   relativa (no toca `node:path`), así que el especificador se **inyecta**; el plugin lo computa
+   desde el importador. Un `components/` compartido fuera de `routesDir` ya resuelve, desde
+   cualquier profundidad de ruta.
+5. **`<head>` de página verbatim.** El emit solo copiaba `<title>` y `<meta>`: se perdían el
+   favicon, la hoja de estilos y cualquier `<script src>` — incluido el bootstrap de main, sin el
+   cual ninguna página puede registrar el Service Worker. Ahora **todo** elemento del `<head>` pasa
+   verbatim salvo `<title>` (interpolado) y `<link rel="component">` (grafo de componentes, nunca
+   salida), con el linker de assets (§4.5) aplicado a `<link href>` / `<script src>` estáticos.
 
 Se declaran aquí porque **solo el plugin los consume**; su implementación vive en el módulo emit.
 

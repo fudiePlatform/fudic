@@ -31,7 +31,8 @@ Pages live under `routesDir` (default `routes/`). The directory path is the URL:
 | `routes/customer/[id].fud` | `/customer/:id` |
 
 Only page documents (a `<!DOCTYPE html>`) are routes; component `.fud` files are pulled in
-transitively through `<link rel="component">`. Routes are ordered by descending
+transitively through `<link rel="component">` and may live anywhere — a shared
+`components/` directory outside `routesDir` resolves from any route depth. Routes are ordered by descending
 specificity (static before param), which the emitted manifest matches first-hit.
 
 ## SSG modes
@@ -90,7 +91,33 @@ type-stripped to plain JS by Vite's Oxc transform.
 `manifestUrl`, every route incremental — mode-1 pages render on-demand rather than
 prerendering on each save) and the three bootstraps at stable root URLs, the Service
 Worker with `Service-Worker-Allowed` so it registers at root scope. The wrapper and page
-modules are served by Vite's module graph with live source maps.
+modules are served by Vite's module graph with live source maps. A navigation is rendered
+on demand by running the same `RenderChunk` the Web Worker runs, through Vite's SSR graph,
+with the dev client injected — so an edit reloads.
+
+`vite preview` serves each route's prerendered file (`/about` → `about/index.html`); a
+route with no file 404s, which is what a static host does and what the Service Worker is
+for.
+
+## The three-thread bootstraps
+
+A page opts into the shell by referencing the main-thread bootstrap in its `<head>`:
+
+```html
+<script type="module" src="/fudic-main.js"></script>
+```
+
+It registers the Service Worker **and creates the render Web Worker**, handing each side
+one end of a `MessageChannel`. The main thread owns that creation because a
+`ServiceWorkerGlobalScope` exposes neither `Worker` nor `import()` — so the plugin emits
+`fudic-sw.js` and `fudic-main.js` with stable, root-level names (a Service Worker under
+`assets/` would be scoped to `assets/`, and a hashed name cannot be written by hand).
+Everything else keeps Vite's content hash. Configure `build.rollupOptions.output` and
+those names become yours to keep.
+
+Until a client has connected a render worker, the Service Worker does not intercept: the
+network answers. A prerendered route is a file; an incremental one needs a live client,
+which is what navigating from any page of the app gives you.
 
 A param route with `@server paths()` prerenders one file per enumerated id
 (`customer/1/index.html`…); `paramFallback:'lazy'` keeps a `dynamic:true` entry for

@@ -16,7 +16,7 @@
  */
 
 import { existsSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, relative, resolve } from 'node:path';
 import {
   resolveComponents,
   emitComponentModuleMapped,
@@ -37,6 +37,12 @@ export interface TransformResult {
   readonly map: SourceMapV3;
   /** Linkable asset specifiers that did not resolve to a file (reported as FUD0363). */
   readonly missingAssets: readonly string[];
+}
+
+/** A POSIX, explicitly-relative specifier from `fromDir` to `target` (`./x.fud`, `../y/x.fud`). */
+export function relativeSpecifier(fromDir: string, target: string): string {
+  const rel = relative(fromDir, target).replace(/\\/gu, '/');
+  return rel.startsWith('.') ? rel : `./${rel}`;
 }
 
 /** Build a Source Map v3 for one emitted module from the emit's output↔source anchors. */
@@ -67,6 +73,11 @@ export function transformFud(id: string, io: ResolveIo): TransformResult | null 
     importExt: IMPORT_EXT,
     linkAssets: true,
     assetExists: (spec: string): boolean => existsSync(resolve(baseDir, spec)),
+    // The compiler is filesystem-free and would emit the sibling default `./<tag>.fud`;
+    // here the real path is known, so a component may live outside the importer's
+    // directory (`components/app-card.fud` linked from `routes/blog/index.fud`).
+    componentSpecifier: (component: ResolvedComponent): string =>
+      relativeSpecifier(baseDir, component.path),
   };
   let out: EmitOutput;
   if (entry.type === 'page-document') {

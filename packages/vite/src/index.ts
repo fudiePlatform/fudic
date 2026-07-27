@@ -56,6 +56,13 @@ export {
   prerenderEnumerated,
 } from './prerender.js';
 export { devModuleUrl, devUrl, devManifest } from './dev.js';
+export {
+  type RenderModule,
+  type ModuleLoader,
+  matchRouteBuild,
+  drainStream,
+  renderRouteHtml,
+} from './serve.js';
 export { emitWwBootstrap, emitSwBootstrap, emitMainBootstrap } from './bootstrap.js';
 export { fudic } from './plugin.js';
 export { fudic as default } from './plugin.js';

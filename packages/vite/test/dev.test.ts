@@ -71,5 +71,21 @@ describe('vite dev server (SDD-19 §4.10)', () => {
     const main = await (await fetch(`${origin}/fudic-main.js`)).text();
     expect(main).toContain('registerRenderServiceWorker');
     expect(main).toContain('fudic-sw.js'); // main points at the root SW URL
+    expect(main).toContain('fudic-ww.js'); // and creates the WW itself (the SW cannot)
+  });
+
+  it('renders a navigation on demand (§4.10)', async () => {
+    const res = await fetch(`${origin}/about`, { headers: { accept: 'text/html' } });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/html');
+    const html = await res.text();
+    expect(html.startsWith('<!DOCTYPE html>')).toBe(true);
+    expect(html).toContain('About us'); // the page body, rendered by the wrapper chunk
+    expect(html).toContain('/@vite/client'); // dev client injected, so edits reload
+  });
+
+  it('leaves a non-route path to the rest of the middlewares', async () => {
+    const res = await fetch(`${origin}/nope`, { headers: { accept: 'text/html' } });
+    expect(res.status).toBe(404);
   });
 });

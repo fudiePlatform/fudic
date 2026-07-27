@@ -6,9 +6,9 @@
  * Vite is bundler/dev-server only — the parser is always `@fudic/compiler`.
  */
 
-import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve as resolvePath } from 'node:path';
 import { type Plugin, transformWithOxc } from 'vite';
 import { type FudicOptions, type ResolvedOptions, resolveOptions } from './options.js';
 import { discoverRoutes, type RouteBuild } from './discover.js';
@@ -27,6 +27,7 @@ import {
 } from './prerender.js';
 import { FUD_PATHS_INCOMPLETE, FUD_ASSET_NOT_FOUND } from './diagnostics.js';
 import { devUrl, devManifest } from './dev.js';
+import { matchRouteBuild, renderRouteHtml, type RenderModule } from './serve.js';
 import {
   WRAPPER_PREFIX,
   WW_ID,
@@ -57,6 +58,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let options: ResolvedOptions;
   let root = process.cwd();
   let base = '/';
+  let outDir = '';
   let isDev = false;
   let builds: readonly RouteBuild[] = [];
   const wrapperRefs = new Map<string, string>(); // route pattern → emitFile referenceId
@@ -69,17 +71,41 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   return {
     name: 'fudic',
 
-    config() {
+    config(userConfig) {
       // The app is the three-thread shell: the main-thread bootstrap is the entry.
+      // Two of the three bootstraps need STABLE, ROOT-LEVEL file names — the same URLs
+      // the dev server publishes (§4.10), so dev and build behave alike:
+      //  - `fudic-sw.js`: a Service Worker only controls its own directory and below, so
+      //    served from `assets/` it would never see a navigation;
+      //  - `fudic-main.js`: a page references it literally (`<script src>`), and a hashed
+      //    name cannot be written by hand.
+      // Everything else keeps Vite's content hash. A user who configures output file
+      // names owns them entirely (their config is left untouched — see the README).
+      const hasOutputConfig = userConfig?.build?.rollupOptions?.output !== undefined;
+      const pinned = (fixed: string) => (chunk: { name: string }) =>
+        chunk.name === fixed ? `${fixed}.js` : 'assets/[name]-[hash].js';
       return {
         appType: 'custom',
-        build: { rollupOptions: { input: { 'fudic-main': MAIN_ID } } },
+        build: {
+          rollupOptions: {
+            input: { 'fudic-main': MAIN_ID },
+            ...(hasOutputConfig
+              ? {}
+              : {
+                  output: {
+                    entryFileNames: pinned('fudic-main'),
+                    chunkFileNames: pinned('fudic-sw'),
+                  },
+                }),
+          },
+        },
       };
     },
 
     configResolved(config) {
       root = config.root;
       base = config.base;
+      outDir = resolvePath(config.root, config.build.outDir);
       isDev = config.command === 'serve';
       options = resolveOptions(userOptions, config.base).options;
       manifestUrl = options.manifestUrl;
@@ -121,6 +147,73 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             res.statusCode = 500;
             res.end(`// fudic dev: failed to serve ${url}: ${(err as Error).message}`);
           });
+      });
+
+      // Navigations: render the route on demand (§4.10). Registered with `post` so it runs
+      // after Vite's own middlewares (module requests, public files) — it is the fallback
+      // for a real page request, not a catch-all.
+      return () => {
+        server.middlewares.use((req, res, next) => {
+          if (req.method !== 'GET' && req.method !== 'HEAD') {
+            next();
+            return;
+          }
+          if (!(req.headers.accept ?? '').includes('text/html')) {
+            next();
+            return;
+          }
+          const url = req.url ?? '/';
+          const pathname = url.split('?')[0] ?? '/';
+          // Route discovery is cheap and dev adds/removes files: re-read on navigation so a
+          // new `.fud` is routable without restarting the server.
+          builds = discoverRoutes(root, options).routes;
+          const rb = matchRouteBuild(builds, pathname.startsWith(base) ? pathname.slice(base.length - 1) : pathname);
+          if (rb === null) {
+            next();
+            return;
+          }
+          renderRouteHtml(
+            (id) => server.ssrLoadModule(id) as Promise<RenderModule>,
+            WRAPPER_PREFIX + rb.route.pattern,
+            pathname,
+          )
+            .then((html) => server.transformIndexHtml(url, html)) // injects the dev client
+            .then((html) => {
+              res.statusCode = 200;
+              res.setHeader('Content-Type', 'text/html; charset=utf-8');
+              res.end(html);
+            })
+            .catch((err: Error) => {
+              server.ssrFixStacktrace(err);
+              next(err); // Vite's error middleware shows it in the browser overlay
+            });
+        });
+      };
+    },
+
+    configurePreviewServer(server) {
+      // `appType:'custom'` (this plugin's own doing) removes Vite's html fallback, so
+      // `/about` would not find `about/index.html`. Preview must show exactly what a
+      // static host serves: the prerendered file when there is one, 404 otherwise — an
+      // incremental route has no file and is the Service Worker's job.
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'GET' && req.method !== 'HEAD') {
+          next();
+          return;
+        }
+        if (!(req.headers.accept ?? '').includes('text/html')) {
+          next();
+          return;
+        }
+        const pathname = (req.url ?? '/').split('?')[0] ?? '/';
+        const file = join(outDir, htmlPathFor(pathname.startsWith(base) ? pathname.slice(base.length - 1) : pathname));
+        if (!existsSync(file)) {
+          next();
+          return;
+        }
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.end(readFileSync(file, 'utf8'));
       });
     },
 
@@ -167,15 +260,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // Dev references stable root URLs (configureServer serves them); build references
       // the hashed chunks via `import.meta.ROLLUP_FILE_URL_<ref>`.
       if (id === MAIN_ID) {
+        // The main thread owns both: it registers the SW and creates the WW (the SW can
+        // do neither for itself — see bootstrap.ts).
         const swUrl = isDev ? JSON.stringify(devUrl(base, DEV_SW_URL)) : fileUrl(swRef);
-        return emitMainBootstrap(swUrl);
+        const wwUrl = isDev ? JSON.stringify(devUrl(base, DEV_WW_URL)) : fileUrl(wwRef);
+        return emitMainBootstrap(swUrl, wwUrl);
       }
       if (id === WW_ID) {
         return emitWwBootstrap(JSON.stringify(manifestUrl));
       }
       if (id === SW_ID) {
-        const wwUrl = isDev ? JSON.stringify(devUrl(base, DEV_WW_URL)) : fileUrl(wwRef);
-        return emitSwBootstrap(JSON.stringify(manifestUrl), wwUrl, CACHE_NAME);
+        return emitSwBootstrap(JSON.stringify(manifestUrl), CACHE_NAME);
       }
       if (id.startsWith(WRAPPER_PREFIX)) {
         const pattern = id.slice(WRAPPER_PREFIX.length);
