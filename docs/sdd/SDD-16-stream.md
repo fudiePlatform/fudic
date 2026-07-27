@@ -198,20 +198,28 @@ export function serveRender(
 
 /**
  * WW bootstrap: build the production `resolveChunk` over `manifest` (+ dynamic `import()`) and wire
- * `self.onmessage = e => serveRender(e.ports[0], e.data, resolveChunk)` — each request carries its
- * reply port transferred alongside the `RenderRequest`.
+ * `serveRender(e.ports[0], e.data, resolveChunk)` — each request carries its reply port transferred
+ * alongside the `RenderRequest`. `source` es el `MessagePort` que el hilo principal transfiere (ver
+ * `connectRenderWorker`); sin él escucha en `self`, el cableado de worker dedicado normal.
  */
-export function installRenderWorker(manifest: RouteManifest): void;
+export function installRenderWorker(manifest: RouteManifest, source?: MessagePort): void;
 
 // ── Service Worker: intercepta navegación, enruta, cachea ──
 export interface Router {
   /** Handle a navigation `FetchEvent`: calls `event.respondWith(...)`. Cache-first, then delegate. */
   handle(event: FetchEvent): void;
 }
+/**
+ * Destino al que el SW postea un `RenderRequest`. Estructural a propósito: en el navegador es el
+ * `MessagePort` que le transfiere el hilo principal, en tests un doble, en una ventana un `Worker`.
+ */
+export interface RenderTarget {
+  postMessage(message: RenderRequest, transfer: Transferable[]): void;
+}
 export interface RouterConfig {
   manifest: RouteManifest;
-  worker: Worker;   // the render Web Worker
-  cache: Cache;     // target of `caches.open(...)`
+  worker: RenderTarget;   // the render Web Worker, reached through its port
+  cache: Cache;           // target of `caches.open(...)`
 }
 /**
  * One decision branch in the whole system: cache hit → `Response(cache)`; miss → open a
@@ -228,9 +236,42 @@ export interface ControlBus {
 }
 export function controlBus(channelName?: string): ControlBus; // default 'fudic'
 
-// ── Hilo principal: registrar el SW. La hidratación ya es SDD-14 (hydrateRoot/cursorOf). ──
-export function registerRenderServiceWorker(url: string): Promise<ServiceWorkerRegistration>;
+// ── Hilo principal: registrar el SW y crear el WW. La hidratación ya es SDD-14. ──
+/**
+ * `options` por defecto `{ type: 'module' }`: el SW emitido es un módulo ES (importa el router de
+ * este paquete desde un chunk hermano), y registrado como script clásico el navegador lo rechaza.
+ */
+export function registerRenderServiceWorker(
+  url: string,
+  options?: RegistrationOptions,
+): Promise<ServiceWorkerRegistration>;
+
+/**
+ * Crea el Web Worker de render y lo une al Service Worker activo: un extremo de un `MessageChannel`
+ * a cada uno, de modo que el SW postea render requests directamente al WW, sin salto por el hilo
+ * principal. Devuelve `null` si no hay SW activo todavía (no hay a quién unir).
+ */
+export function connectRenderWorker(workerUrl: string): Promise<Worker | null>;
 ```
+
+### 3.3. Quién crea el Web Worker (corrección — verificado en Chrome)
+
+**El hilo principal.** Un `ServiceWorkerGlobalScope` **no expone `Worker`**
+(`ReferenceError: Worker is not defined`) y **prohíbe `import()`**
+("import() is disallowed on ServiceWorkerGlobalScope by the HTML specification",
+[w3c/ServiceWorker#1356](https://github.com/w3c/ServiceWorker/issues/1356)). Ambas cosas
+comprobadas ejecutando un SW real en Chrome headless. Es decir, el SW **ni puede instanciar el
+renderer ni puede cargar un chunk** por sí mismo: la única topología posible es que el hilo
+principal cree el WW y transfiera a cada lado un extremo de un `MessageChannel`.
+
+Consecuencias de diseño, todas dentro del contrato ya existente:
+
+- `RouterConfig.worker` se ensancha de `Worker` a `RenderTarget` (un `Worker` real lo satisface).
+- `installRenderWorker` acepta el puerto transferido además de `self`.
+- Una ruta incremental **exige un cliente vivo**. El SW no intercepta hasta tener puerto conectado:
+  sin él deja pasar la petición a la red, que es exactamente lo correcto para una ruta
+  prerenderizada y un 404 para una incremental (coherente con §4.2: el cache incremental es
+  por cliente, no un store de origen).
 
 ---
 

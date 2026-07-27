@@ -22,10 +22,19 @@ export interface Router {
   handle(event: FetchEvent): void;
 }
 
+/**
+ * Where the SW posts a `RenderRequest`. Structural on purpose: in the browser it is the
+ * `MessagePort` the main thread transferred (a `ServiceWorkerGlobalScope` cannot create
+ * the render `Worker` itself), in tests a double, and in a plain window a real `Worker`.
+ */
+export interface RenderTarget {
+  postMessage(message: RenderRequest, transfer: Transferable[]): void;
+}
+
 export interface RouterConfig {
   manifest: RouteManifest;
-  worker: Worker; // the render Web Worker
-  cache: Cache;   // target of `caches.open(...)`
+  worker: RenderTarget; // the render Web Worker, reached through its port
+  cache: Cache;         // target of `caches.open(...)`
 }
 
 const HTML_HEADERS = { 'content-type': 'text/html; charset=utf-8' };

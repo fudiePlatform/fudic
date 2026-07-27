@@ -12,6 +12,16 @@ describe('registerRenderServiceWorker', () => {
     vi.stubGlobal('navigator', { serviceWorker: { register } });
 
     await expect(registerRenderServiceWorker('/sw.js')).resolves.toBe(registration);
-    expect(register).toHaveBeenCalledWith('/sw.js');
+    // The emitted SW is an ES module chunk: registering it as a classic script fails.
+    expect(register).toHaveBeenCalledWith('/sw.js', { type: 'module' });
+  });
+
+  it('lets the caller override the registration options', async () => {
+    const registration = { scope: '/' } as unknown as ServiceWorkerRegistration;
+    const register = vi.fn(async () => registration);
+    vi.stubGlobal('navigator', { serviceWorker: { register } });
+
+    await registerRenderServiceWorker('/sw.js', { type: 'classic', scope: '/app/' });
+    expect(register).toHaveBeenCalledWith('/sw.js', { type: 'classic', scope: '/app/' });
   });
 });

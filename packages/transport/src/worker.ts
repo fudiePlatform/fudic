@@ -33,10 +33,14 @@ export async function serveRender(
 
 /**
  * WW bootstrap: build the production `resolveChunk` over the manifest (the
- * other half of the single route source) and wire `self.onmessage` — each
+ * other half of the single route source) and wire the message source — each
  * request carries its reply port transferred alongside the `RenderRequest`.
+ *
+ * `source` is the `MessagePort` the main thread transferred (the SW's end of the
+ * channel is the other one); with no port the worker listens on `self`, the plain
+ * dedicated-worker wiring.
  */
-export function installRenderWorker(manifest: RouteManifest): void {
+export function installRenderWorker(manifest: RouteManifest, source?: MessagePort): void {
   const resolveChunk = async (route: string): Promise<RenderChunk> => {
     const entry = manifest.match(route);
     if (entry === null) {
@@ -45,11 +49,17 @@ export function installRenderWorker(manifest: RouteManifest): void {
     const module = (await import(/* @vite-ignore */ entry.chunk)) as { default: RenderChunk };
     return module.default;
   };
-  self.onmessage = (e: MessageEvent): void => {
+  const handle = (e: MessageEvent): void => {
     const port = e.ports[0];
     if (port === undefined) {
       return;
     }
     void serveRender(port, e.data as RenderRequest, resolveChunk);
   };
+  if (source !== undefined) {
+    source.onmessage = handle;
+    source.start(); // a transferred port stays paused until started
+    return;
+  }
+  self.onmessage = handle;
 }
