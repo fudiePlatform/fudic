@@ -13,6 +13,7 @@ export {
   emitComponentModuleMapped,
   emitPageModule,
   emitPageModuleMapped,
+  type ComponentSpecifier,
   type EmitOptions,
   type EmitOutput,
 } from './module.js';

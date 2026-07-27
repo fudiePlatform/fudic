@@ -25,6 +25,14 @@ export const renderName = (tag: string): string =>
 /** Wrap a CSS/text body in a template literal, escaping backticks, backslashes and `${`. */
 export const tpl = (s: string): string => '`' + s.replace(/[`\\$]/gu, '\\$&') + '`';
 
+/**
+ * A single-URL asset attribute the linker rewrites: `src`/`poster` on any element, or
+ * `href` on a `<link>` (stylesheet/icon) — never `<a href>`, which is navigation. Shared
+ * by the body codegen and the page `<head>` passthrough.
+ */
+export const isAssetAttr = (element: string, attribute: string): boolean =>
+  attribute === 'src' || attribute === 'poster' || (attribute === 'href' && element === 'link');
+
 // A control construct is stored as its base RazorConstruct; recover the concrete node.
 const asIf = (node: HtmlContent): IfNode => node as unknown as IfNode;
 const asForeach = (node: HtmlContent): ForeachNode => node as unknown as ForeachNode;
@@ -173,9 +181,7 @@ export class MarkupEmitter {
 
   /** A single-URL asset attribute the linker should rewrite: `src`/`poster`, or `<link href>`. */
   #isAssetAttr(el: ElementNode, name: string): boolean {
-    if (!this.#linker.enabled) return false;
-    if (name === 'src' || name === 'poster') return true;
-    return name === 'href' && el.name === 'link'; // stylesheet/icon; never <a href> navigation
+    return this.#linker.enabled && isAssetAttr(el.name, name);
   }
 
   #componentProps(el: ElementNode): string {
