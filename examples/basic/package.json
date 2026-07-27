@@ -1,0 +1,20 @@
+{
+  "name": "@fudic/example-basic",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Basic fudic example — filesystem routing, static + incremental SSG, zero-JS Declarative Shadow DOM.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fudic/ssr": "workspace:*",
+    "@fudic/transport": "workspace:*"
+  },
+  "devDependencies": {
+    "@fudic/vite": "workspace:*",
+    "vite": "8.0.16"
+  }
+}

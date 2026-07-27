@@ -54,14 +54,17 @@ nunca `T | undefined`; omite los campos opcionales, no les asignes `undefined`.
 │   │   └── SDD-NN-*.md
 │   └── gramar/
 │       └── gramatica-v1-decisiones.md   # decisiones de gramática v1 numeradas (1–66)
-└── packages/
-    └── compiler/            # @fudic/compiler — el único paquete por ahora
-        ├── src/             # código fuente (entrada: src/index.ts)
-        ├── test/            # specs de Vitest (test/**/*.test.ts)
-        └── fixtures/        # ficheros .fud canónicos para tests de integración
+├── packages/                # compiler · dom · ssr · core · transport · vite · tsconfig
+│   └── compiler/
+│       ├── src/             # código fuente (entrada: src/index.ts)
+│       ├── test/            # specs de Vitest (test/**/*.test.ts)
+│       └── fixtures/        # ficheros .fud canónicos para tests de integración
+└── examples/                # apps ejecutables (`examples/*` está en el workspace)
+    └── basic/               # @fudic/example-basic — vite dev / build / preview
 ```
 
-Previstos pero aún no creados: `@fudic/core` y sus capas `ssr` / `dom`.
+Los ejemplos consumen los paquetes por su `dist` (como un usuario tras `npm install`), y
+`pnpm build` los construye después de los paquetes: si un ejemplo se rompe, el build falla.
 
 ## Cómo se organiza el trabajo: flujo SDD
 

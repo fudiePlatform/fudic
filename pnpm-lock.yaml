@@ -27,6 +27,22 @@ importers:
         specifier: 4.1.9
         version: 4.1.9(@types/node@22.20.0)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.6)(vite@8.0.16(@types/node@22.20.0))
 
+  examples/basic:
+    dependencies:
+      '@fudic/ssr':
+        specifier: workspace:*
+        version: link:../../packages/ssr
+      '@fudic/transport':
+        specifier: workspace:*
+        version: link:../../packages/transport
+    devDependencies:
+      '@fudic/vite':
+        specifier: workspace:*
+        version: link:../../packages/vite
+      vite:
+        specifier: 8.0.16
+        version: 8.0.16(@types/node@22.20.0)
+
   packages/compiler:
     dependencies:
       oxc-parser:

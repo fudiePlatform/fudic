@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <link rel="component" href="../components/site-nav.fud">
+
+    <title>Acerca de — fudic</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script type="module" src="/fudic-main.js"></script>
+  </head>
+  <body>
+    <site-nav current="about"></site-nav>
+
+    <main>
+      <h1>Acerca de este ejemplo</h1>
+      <p>
+        Cuatro rutas que ejercitan lo que el framework tiene montado hoy: routing por
+        sistema de ficheros, los dos modos de SSG, el manifest route→chunk y el par
+        Service Worker + Web Worker que renderiza lo incremental en el cliente.
+      </p>
+      <ul>
+        <li><code>/</code> — estática: sin params ni <code>load</code> ⇒ prerenderizada.</li>
+        <li><code>/about</code> — estática, esta misma página.</li>
+        <li><code>/blog</code> — <code>@@server load</code> ⇒ incremental (Web Worker).</li>
+        <li><code>/blog/:slug</code> — <code>paths()</code> ⇒ prerender enumerado + fallback incremental.</li>
+      </ul>
+      <p>
+        La hidratación (SDD-15 cliente y SDD-17) todavía no existe: no hay ningún
+        <code>customElements.define</code> en la salida. Lo que ves está pintado por el
+        navegador desde el HTML, con el shadow root declarativo.
+      </p>
+    </main>
+  </body>
+</html>

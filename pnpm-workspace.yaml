@@ -1,5 +1,8 @@
 packages:
   - 'packages/*'
+  # Runnable example apps. They consume the published entry points (`dist`) of the
+  # workspace packages, exactly as a user's project would after `npm install`.
+  - 'examples/*'
 
 # pnpm >=10 blocks dependency build scripts unless allowlisted here.
 # oxc-parser ships a native NAPI binary and needs its build step. Since pnpm 11
