@@ -10,7 +10,10 @@
       type PageData = { title: string; posts: Post[] };
 
       @server {
+        import { strategy } from '@fudic/core';
         import { listPosts } from '../../data/posts';
+
+        strategy({ mode: 'sw', data: { ttl: '5m', policy: 'cache-first' } });
 
         export async function load(): Promise<PageData> {
           const posts = await listPosts();
@@ -31,7 +34,8 @@
       <h1>@data.title</h1>
       <p class="lede">
         Esta página tiene <code>@@server load</code>: el build no puede probar que su dato
-        sea estático, así que queda <code>dynamic:true</code> y la renderiza el Web Worker.
+        sea estático, así que la renderiza el Service Worker, que pide el dato al
+        endpoint generado y lo cachea con el TTL de la ruta.
       </p>
 
       @if (data.posts.length === 0) {

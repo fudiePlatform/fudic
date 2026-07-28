@@ -29,6 +29,9 @@ importers:
 
   examples/basic:
     dependencies:
+      '@fudic/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@fudic/ssr':
         specifier: workspace:*
         version: link:../../packages/ssr

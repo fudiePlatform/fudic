@@ -2,8 +2,8 @@
 
 La aplicación mínima que demuestra **todo lo que fudic tiene montado hoy** (todo menos la
 hidratación, SDD-15 cliente y SDD-17, que aún no existen): routing por sistema de
-ficheros, los dos modos de SSG, componentes con CSS con scope, assets enlazados por Vite
-y el shell de tres hilos (main → Service Worker → Web Worker).
+ficheros, los tres modos de render, componentes con CSS con scope, assets enlazados por
+Vite y el render dentro del **Service Worker** (SDD-20).
 
 ## Arrancar
 
@@ -33,13 +33,15 @@ routes/                 # el routing ES el árbol de ficheros
   about.fud             # /about               estática   → dist/about/index.html
   logo.svg              #                      asset enlazado por Vite desde <link rel="icon">
   blog/
-    index.fud           # /blog                incremental (tiene @server load)
-    [slug].fud          # /blog/:slug          enumerada con paths() + fallback incremental
+    index.fud           # /blog                sw (tiene @server load + strategy())
+    [slug].fud          # /blog/:slug          enumerada con paths() + render local del resto
 components/             # componentes compartidos, FUERA de routes/
   site-nav.fud
   app-card.fud          # enlaza a su vez app-badge.fud
   app-badge.fud
 data/posts.ts           # la "base de datos"; solo la ve el servidor
+sw.json                 # shell + políticas de cache. Sin este fichero NO hay Service Worker
+scripts/sw-check.mjs    # verificación en Chrome real por CDP (pnpm check:sw)
 vite.config.ts          # plugins: [fudic()] — y nada más
 ```
 
@@ -49,13 +51,15 @@ vite.config.ts          # plugins: [fudic()] — y nada más
 |---|---|---|---|
 | `/` | estática | Sin params y sin `load`: el dato es build-known | Fichero `index.html` |
 | `/about` | estática | Igual | Fichero `about/index.html` |
-| `/blog` | incremental | Tiene `@server load`: el build no puede probar que sea estático | Web Worker, cacheado por el SW |
-| `/blog/:slug` | estática enumerada | `paths()` enumera los slugs → un `.html` por artículo | Fichero; un slug no enumerado cae al Web Worker (`paramFallback: 'lazy'`) |
+| `/blog` | `sw` | Tiene `@server load` y declara `strategy({mode:'sw', data:{ttl:'5m'}})` | Lo renderiza el Service Worker; el dato sale de `/_fudic/data/blog` |
+| `/blog/:slug` | `sw` enumerada | `paths()` enumera los slugs → un `.html` por artículo | El fichero prerenderizado cuando existe; un slug no enumerado lo renderiza el SW (`paramFallback: 'lazy'`) |
 
-Después de `vite build`, `dist/fudic-routes.json` es el manifest que cargan el Service
-Worker y el Web Worker desde la misma URL absoluta.
+Después de `vite build`, `dist/fudic-routes.json` es el manifest —build id, CSP y rutas—
+que leen el servidor y el Service Worker. Los chunks enlazables viven en `dist/sw/c/`, en
+formato `exports`/`require`: es lo único que el SW puede evaluar, porque su scope prohíbe
+`import()`.
 
-## Los tres hilos
+## El render en el Service Worker
 
 Cada página incluye en su `<head>`:
 
@@ -63,17 +67,26 @@ Cada página incluye en su `<head>`:
 <script type="module" src="/fudic-main.js"></script>
 ```
 
-Ese bootstrap (lo emite el plugin) registra el Service Worker **y crea el Web Worker**,
-pasándoles los dos extremos de un `MessageChannel`. A partir de ahí el SW responde a cada
-navegación: cache hit, o render delegado al WW y cacheado.
+Ese bootstrap (lo emite el plugin) hace dos cosas: registra el Service Worker y le dice en
+qué URL está el usuario. Ese aviso es el **único** disparador de calentado: el SW se trae
+el chunk de esa plantilla y sus dependencias por detrás de la navegación que ya se está
+sirviendo. A partir de la siguiente, la pinta él.
 
-El hilo principal es quien crea el Web Worker porque el scope de un Service Worker no
-expone `Worker` ni permite `import()` — verificado en Chrome. Consecuencia visible: una
-ruta incremental necesita una pestaña de la app viva (se llega a ella navegando desde una
-página del sitio). Si escribes `/blog` en una pestaña recién abierta sin Service Worker
-todavía activo, responde el servidor — y para una ruta incremental eso es un 404. El
-recorrido natural (entrar por una página estática y navegar) funciona en dev y en el
-build.
+No hay Web Worker. Medido en Chromium 151 y WebKit 26.5: un WW pertenece a su documento y
+muere con él, así que un render pedido durante una navegación no termina nunca — el stream
+se queda abierto. El Service Worker no pertenece a ningún documento.
+
+La primera navegación siempre la sirve el servidor (o el fichero prerenderizado): mientras
+la plantilla no esté caliente, el SW **no intercepta**, que es justo lo que evita duplicar
+la petición del documento.
+
+Para comprobarlo en un navegador de verdad:
+
+```sh
+pnpm --filter @fudic/example-basic build
+pnpm --filter @fudic/example-basic preview   # http://localhost:4173
+pnpm --filter @fudic/example-basic check:sw  # 14 comprobaciones sobre Chrome, por CDP
+```
 
 ## Qué NO hay aquí
 

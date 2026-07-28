@@ -43,8 +43,8 @@
           </p>
         } else {
           <p class="note">
-            Este slug no estaba en <code>paths()</code>: lo ha renderizado el Web Worker
-            en el momento de la navegación (fallback <code>lazy</code>).
+            Este slug no estaba en <code>paths()</code>: lo ha renderizado el Service
+            Worker en el momento de la navegación (fallback <code>lazy</code>).
           </p>
         }
         <p><a href="/blog">← volver al blog</a></p>

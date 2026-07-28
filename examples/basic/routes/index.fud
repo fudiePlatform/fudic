@@ -11,7 +11,7 @@
     <link rel="icon" href="./logo.svg">
 
     <!-- The main-thread bootstrap: registers the render Service Worker, which from
-         then on serves every incremental route from the Web Worker. -->
+         then on renders every `sw` route locally, and tells it where the user is. -->
     <script type="module" src="/fudic-main.js"></script>
   </head>
   <body>
@@ -25,10 +25,10 @@
       </p>
 
       <section class="grid">
-        <app-card title="Blog (incremental)" href="/blog" variant="highlight">
-          <app-badge slot="meta" tone="info">dynamic</app-badge>
+        <app-card title="Blog (render en el SW)" href="/blog" variant="highlight">
+          <app-badge slot="meta" tone="info">sw</app-badge>
           El listado tiene <code>@@server load</code>, así que no se prerenderiza: lo
-          renderiza el Web Worker en la primera visita y el Service Worker lo cachea.
+          renderiza el Service Worker con su chunk enlazado, en 3-8 ms.
         </app-card>
 
         <app-card title="Acerca de (estático)" href="/about">

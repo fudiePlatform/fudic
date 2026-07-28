@@ -15,14 +15,14 @@
       <h1>Acerca de este ejemplo</h1>
       <p>
         Cuatro rutas que ejercitan lo que el framework tiene montado hoy: routing por
-        sistema de ficheros, los dos modos de SSG, el manifest route→chunk y el par
-        Service Worker + Web Worker que renderiza lo incremental en el cliente.
+        sistema de ficheros, los tres modos de render, el manifest como contrato único y
+        el Service Worker que enlaza el chunk de una ruta y la pinta él mismo.
       </p>
       <ul>
         <li><code>/</code> — estática: sin params ni <code>load</code> ⇒ prerenderizada.</li>
         <li><code>/about</code> — estática, esta misma página.</li>
-        <li><code>/blog</code> — <code>@@server load</code> ⇒ incremental (Web Worker).</li>
-        <li><code>/blog/:slug</code> — <code>paths()</code> ⇒ prerender enumerado + fallback incremental.</li>
+        <li><code>/blog</code> — <code>@@server load</code> ⇒ <code>sw</code>: lo pinta el Service Worker.</li>
+        <li><code>/blog/:slug</code> — <code>paths()</code> ⇒ prerender enumerado + render local para el resto.</li>
       </ul>
       <p>
         La hidratación (SDD-15 cliente y SDD-17) todavía no existe: no hay ningún
