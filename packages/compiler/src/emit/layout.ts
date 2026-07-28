@@ -29,7 +29,14 @@ import { AssetLinker } from './assets.js';
 import { STYLE_POLYFILL } from './polyfill.js';
 import type { DocumentGraph, ResolvedLayout } from './resolve.js';
 import type { EmitOptions, EmitOutput } from './module.js';
-import { quoteSpecifier, slice, specifierResolver, writeHeadElements } from './parts.js';
+import {
+  quoteSpecifier,
+  slice,
+  specifierResolver,
+  writeHeadElements,
+  writeNonceBinding,
+  writeSharedHead,
+} from './parts.js';
 
 /** The slots object a layout receives, and the `$dom`/parent names its callbacks use. */
 const SLOTS = 'route';
@@ -49,20 +56,6 @@ function layoutSpecifierOf(layout: ResolvedLayout, options: EmitOptions): string
 function componentPairs(graph: DocumentGraph): readonly string[] {
   return [...graph.components.values()].map(
     (c) => `{ tag: ${renderName(c.tag)}Tag, css: ${renderName(c.tag)}Css }`,
-  );
-}
-
-/**
- * The head contribution shared by every route: the style-adoption polyfill (SDD-18 §5) and
- * one `<style type="module" specifier>` per component of the WHOLE graph — the route's and
- * every layout's, deduplicated by tag (decision 88).
- */
-function writeSharedHead(w: CodeWriter): void {
-  w.line('// The style-adoption polyfill (SDD-18 §5) goes in <head>, live BEFORE the body streams,');
-  w.line('// so its observer adopts each host sheet as it arrives; the style modules follow it.');
-  w.line("head += '  <script>' + STYLE_POLYFILL + '</script>\\n';");
-  w.line(
-    "head += COMPONENTS.map(function (c) { return '  <style type=\"module\" specifier=\"' + c.tag + '\">' + c.css + '</style>'; }).join('\\n') + '\\n';",
   );
 }
 
@@ -250,6 +243,9 @@ function buildRouteModule(
   w.line('export function* page(data, io) {');
   w.indent();
   w.line('const { escapeText } = io;');
+  // The nonce belongs to the RESPONSE, so it is read here, where `io` is, and closed over
+  // by the head slot the layout calls (SDD-20 §4.9).
+  writeNonceBinding(w);
   w.line('yield* layout(data, io, {');
   w.indent();
   w.line('head() {');

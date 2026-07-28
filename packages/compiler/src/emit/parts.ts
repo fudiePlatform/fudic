@@ -84,6 +84,34 @@ export function titleExpr(source: string, el: ElementNode): string {
 }
 
 /**
+ * The `$nonce` binding of the CSP nonce of THIS response (SDD-20 §4.9). The style-adoption
+ * polyfill is an inline script, so without it a strict `script-src 'self'` kills it and no
+ * shadow root adopts a sheet. Absent (a plain `renderToString`), the output is unchanged.
+ *
+ * It is written HERE, once, because two roles emit that polyfill — a page and a route. A
+ * copy in either would silently drift: the nonce is invisible in any test whose `io` does
+ * not carry one, and the failure only shows up in a browser under a real CSP.
+ */
+export function writeNonceBinding(w: CodeWriter): void {
+  w.line("const $nonce = io.nonce ? ' nonce=\"' + io.nonce + '\"' : '';");
+}
+
+/**
+ * The head contribution every rendered document shares: the style-adoption polyfill (SDD-18
+ * §5) with its nonce, then one `<style type="module" specifier>` per component of the graph.
+ * The polyfill goes out BEFORE the body streams, so its observer adopts each host sheet as
+ * it arrives; the style modules follow it.
+ */
+export function writeSharedHead(w: CodeWriter): void {
+  w.line('// The style-adoption polyfill (SDD-18 §5) goes in <head>, live BEFORE the body streams,');
+  w.line('// so its observer adopts each host sheet as it arrives; the style modules follow it.');
+  w.line("head += '  <script' + $nonce + '>' + STYLE_POLYFILL + '</script>\\n';");
+  w.line(
+    "head += COMPONENTS.map(function (c) { return '  <style type=\"module\" specifier=\"' + c.tag + '\">' + c.css + '</style>'; }).join('\\n') + '\\n';",
+  );
+}
+
+/**
  * Write the `head += …` statements for the elements of a `<head>`: every element the author
  * wrote passes VERBATIM (so a page keeps its favicon, its stylesheet and its `<script src>`),
  * except `<title>`, which is interpolated, and the framework links, which are the component /

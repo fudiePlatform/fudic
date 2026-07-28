@@ -67,10 +67,17 @@ const DATA = {
   ],
 };
 
-/** Run a `page(data, io)` generator to completion. */
+/**
+ * Run a `page(data, io)` generator to completion. The `io` carries a CSP nonce (SDD-20
+ * §4.9) BECAUSE an `io` without one hides the whole nonce path: the emitted code reads
+ * `io.nonce ? … : ''`, so a page and a route that disagree about it still look identical
+ * under a nonce-less `io`, and the divergence only surfaces in a browser under a real CSP.
+ */
 function render(page: PageFn): string {
-  return [...page(DATA, minimalSsr())].join('');
+  return [...page(DATA, { ...minimalSsr(), nonce: NONCE })].join('');
 }
+
+const NONCE = 'n0nc3-t3st';
 
 const TAGS = ['app-badge', 'app-card', 'app-button'];
 
@@ -307,9 +314,15 @@ describe('composed output equals the monolithic page (§6.10, §6.11)', () => {
     expect(html).toContain('<title>Blog</title>');
   });
 
+  it('carries the CSP nonce into the composed polyfill (SDD-20 §4.9)', () => {
+    // Without this, a route under a strict `script-src 'self'` loses its polyfill and
+    // every shadow root renders unstyled — while the equivalent page works.
+    expect(renderComposed()).toContain(`<script nonce="${NONCE}">`);
+  });
+
   it('emits the style polyfill once and the union of both graphs (§6.11)', () => {
     const html = renderComposed();
-    expect(html.match(/<script>/gu)).toHaveLength(1);
+    expect(html.match(/<script nonce=/gu)).toHaveLength(1);
     // app-badge comes from the layout, app-card + app-button from the route.
     for (const tag of TAGS) {
       expect(html.match(new RegExp(`<style type="module" specifier="${tag}">`, 'gu'))).toHaveLength(1);

@@ -31,6 +31,8 @@ import {
   type LayoutSpecifier,
   specifierResolver,
   writeHeadElements,
+  writeNonceBinding,
+  writeSharedHead,
 } from './parts.js';
 
 /**
@@ -184,16 +186,10 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
   w.line('export function* page(data, io) {');
   w.indent();
   w.line('const { createDom, serialize, escapeText } = io;');
-  // The CSP nonce of THIS response (SDD-20 §4.9): the polyfill is an inline script, so
-  // without it a strict `script-src 'self'` kills it and no shadow root adopts a sheet.
-  // Absent (a plain `renderToString`), the output is byte-identical to before.
-  w.line("const $nonce = io.nonce ? ' nonce=\"' + io.nonce + '\"' : '';");
+  writeNonceBinding(w);
   w.line("let head = '';");
   w.appendWriter(headW);
-  w.line('// The style-adoption polyfill (SDD-18 §5) goes in <head>, live BEFORE the body streams,');
-  w.line('// so its observer adopts each host sheet as it arrives; the style modules follow it.');
-  w.line("head += '  <script' + $nonce + '>' + STYLE_POLYFILL + '</script>\\n';");
-  w.line("head += COMPONENTS.map(function (c) { return '  <style type=\"module\" specifier=\"' + c.tag + '\">' + c.css + '</style>'; }).join('\\n') + '\\n';");
+  writeSharedHead(w);
   w.line('yield \'<!DOCTYPE html>\\n<html lang="es">\\n<head>\\n\' + head + \'</head>\\n\';');
   w.line('const $dom = createDom();');
   w.line('const $body = $dom.element(\'body\');');
