@@ -17,7 +17,7 @@ describe('resolveOptions — defaults', () => {
       manifestUrl: '/fudic-routes.json',
       prerender: true,
       paramFallback: 'lazy',
-      routes: {},
+      defaults: {},
     });
   });
 
@@ -32,12 +32,12 @@ describe('resolveOptions — defaults', () => {
       routesDir: 'pages',
       prerender: false,
       paramFallback: 'notFound',
-      routes: { '/admin': { mode: 'exclude' } },
+      defaults: { '/admin': { mode: 'exclude' } },
     });
     expect(options.routesDir).toBe('pages');
     expect(options.prerender).toBe(false);
     expect(options.paramFallback).toBe('notFound');
-    expect(options.routes).toEqual({ '/admin': { mode: 'exclude' } });
+    expect(options.defaults).toEqual({ '/admin': { mode: 'exclude' } });
   });
 });
 

@@ -1,24 +1,23 @@
 /**
- * On-demand HTML rendering for the dev server (SDD-19 §4.10: "los `.html` de modo 1 se
- * renderizan on-demand [en dev] para no prerenderizar en cada guardado").
+ * On-demand HTML rendering for the dev and preview servers (SDD-20 §4.11). They are
+ * the *edge* of §9 of the source document: the first visit to any route, the data
+ * endpoints, and the CSP header with a per-response nonce.
  *
- * In build, a mode-1 route resolves to a real `.html` written by `generateBundle`, and a
- * mode-2 route is served by the Service Worker out of the Web Worker. In dev neither
- * exists on the first navigation — the SW is not registered yet and nothing is
- * prerendered — so the dev server renders the route itself by running the SAME wrapper
- * module (`RenderChunk`) the WW would, through Vite's SSR module graph. Once the page
- * has registered the SW, navigations go the three-thread way and this path is the
- * fallback (and the only path for a browser without Service Workers).
+ * The server runs the SAME wrapper the Service Worker links — one emit target, not
+ * two. What differs is the caller: here `load(ctx)` runs in process; in the SW the
+ * data arrives from the generated endpoint.
  *
- * Pure and Vite-free: the module loader is INJECTED, so the matcher and the drain are
- * testable without a dev server.
+ * Pure and Vite-free: the module loader is INJECTED, so matching, param extraction and
+ * the drain are testable without a dev server.
  */
 
+import { type RenderContext } from '@fudic/transport';
 import { type RouteBuild } from './discover.js';
 
-/** The wrapper module of a route: the render fn the Web Worker also calls. */
+/** The route wrapper module: the render fn, and `data` when the page has `load`. */
 export interface RenderModule {
-  readonly default: (route: string) => ReadableStream<Uint8Array>;
+  readonly render: (ctx: RenderContext) => ReadableStream<Uint8Array>;
+  readonly data?: (ctx: Omit<RenderContext, 'nonce'>) => Promise<unknown>;
 }
 
 /** Injected loader: import a module id through the host's SSR module graph. */
@@ -32,8 +31,8 @@ function segmentsOf(path: string): string[] {
 
 /**
  * The route whose pattern matches `pathname`, or `null`. `builds` is already ordered by
- * descending specificity (SDD-19 §4.1), so the FIRST hit wins — the same first-hit rule
- * the runtime manifest matcher uses, kept identical on purpose.
+ * descending specificity, so the FIRST hit wins — the same first-hit rule the runtime
+ * manifest matcher uses, kept identical on purpose.
  */
 export function matchRouteBuild(
   builds: readonly RouteBuild[],
@@ -55,6 +54,37 @@ export function matchRouteBuild(
   return null;
 }
 
+/** The params a concrete path fills in a pattern. */
+export function paramsOf(pattern: string, pathname: string): Record<string, string> {
+  const segments = segmentsOf(pattern);
+  const parts = segmentsOf(pathname);
+  const params: Record<string, string> = {};
+  for (let i = 0; i < segments.length; i += 1) {
+    const seg = segments[i]!;
+    const part = parts[i];
+    if (seg.startsWith(':') && part !== undefined) {
+      params[seg.slice(1)] = decodeURIComponent(part);
+    }
+  }
+  return params;
+}
+
+/** The edge render context for one concrete URL. */
+export function edgeContext(
+  pattern: string,
+  url: string,
+  nonce: string,
+  origin: RenderContext['origin'] = 'edge',
+): RenderContext {
+  return {
+    origin,
+    url: new URL(url, 'http://localhost'),
+    params: paramsOf(pattern, url),
+    mode: 'sw',
+    nonce,
+  };
+}
+
 /** Drain a web `ReadableStream<Uint8Array>` into a UTF-8 string. */
 export async function drainStream(stream: ReadableStream<Uint8Array>): Promise<string> {
   const reader = stream.getReader();
@@ -72,8 +102,25 @@ export async function drainStream(stream: ReadableStream<Uint8Array>): Promise<s
 export async function renderRouteHtml(
   load: ModuleLoader,
   wrapperId: string,
-  route: string,
+  pattern: string,
+  url: string,
+  nonce: string,
 ): Promise<string> {
   const mod = await load(wrapperId);
-  return drainStream(mod.default(route));
+  return drainStream(mod.render(edgeContext(pattern, url, nonce)));
+}
+
+/** Run a route's `@server load(ctx)` for one concrete URL — the data endpoint (§4.5). */
+export async function loadRouteData(
+  load: ModuleLoader,
+  wrapperId: string,
+  pattern: string,
+  url: string,
+): Promise<unknown> {
+  const mod = await load(wrapperId);
+  if (typeof mod.data !== 'function') {
+    return {};
+  }
+  const { nonce: _nonce, ...ctx } = edgeContext(pattern, url, '');
+  return mod.data(ctx);
 }

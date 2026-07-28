@@ -16,6 +16,8 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { NONCE_TOKEN, type RenderContext } from '@fudic/transport';
+import { edgeContext } from './serve.js';
 
 /** A minimal structural view of a Rollup output bundle (chunks carry code, assets a source). */
 export interface BundleItem {
@@ -24,15 +26,12 @@ export interface BundleItem {
   readonly source?: string | Uint8Array;
 }
 
-/** The route's default renderer: the wrapper's default export, `(route) => ReadableStream`. */
-type RenderChunk = (route: string) => ReadableStream<Uint8Array>;
-
 /** One `paths()` entry: a single param value, or an object mapping param name → value. */
 type PathsEntry = string | number | Record<string, string | number>;
 
 /** The wrapper module: the render fn, plus `paths()` when the page enumerates its param space. */
 interface RenderModule {
-  readonly default: RenderChunk;
+  readonly render: (ctx: RenderContext) => ReadableStream<Uint8Array>;
   readonly paths?: () => PathsEntry[] | Promise<PathsEntry[]>;
 }
 
@@ -76,10 +75,25 @@ async function importRenderModule(chunkPath: string): Promise<RenderModule> {
   return (await import(pathToFileURL(chunkPath).href)) as RenderModule;
 }
 
-/** Import a materialized wrapper chunk and render one route to an HTML string. */
-export async function renderChunkToHtml(chunkPath: string, route: string): Promise<string> {
+/**
+ * Import a materialized wrapper chunk and render one route to an HTML string.
+ *
+ * The nonce is the literal `__FUDIC_NONCE__` token: a nonce baked at build time is a
+ * constant, and a constant nonce is not a nonce. Whoever serves the file — the SW from
+ * cache, or the server from disk — swaps it for a fresh one (SDD-20 §4.9.3).
+ */
+export async function renderChunkToHtml(
+  chunkPath: string,
+  pattern: string,
+  url = pattern,
+): Promise<string> {
   const mod = await importRenderModule(chunkPath);
-  return drain(mod.default(route));
+  return drain(mod.render(prerenderContext(pattern, url)));
+}
+
+/** The prerender context: `origin: 'ssg'` and the nonce placeholder. */
+function prerenderContext(pattern: string, url: string): RenderContext {
+  return edgeContext(pattern, url, NONCE_TOKEN, 'ssg');
 }
 
 /**
@@ -124,7 +138,10 @@ export async function prerenderEnumerated(chunkPath: string, pattern: string): P
       incomplete.push(typeof entry === 'object' ? JSON.stringify(entry) : String(entry));
       continue;
     }
-    files.push({ path: htmlPathFor(built.url), html: await drain(mod.default(built.url)) });
+    files.push({
+      path: htmlPathFor(built.url),
+      html: await drain(mod.render(prerenderContext(pattern, built.url))),
+    });
   }
   return { files, incomplete };
 }

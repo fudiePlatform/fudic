@@ -1,89 +1,105 @@
 /**
- * SDD-19 §6.4–§6.7: SSG mode resolution — the escalera that decides static (mode 1)
- * vs incremental (mode 2), default-safe to incremental.
+ * SDD-20 §6.21–§6.23: mode resolution. One authority — the page — with the filesystem
+ * facts as the default when it declares nothing.
  */
 
 import { describe, it, expect } from 'vitest';
-import { resolveMode } from '../src/mode.js';
+import { resolveMode, type PageFacts } from '../src/mode.js';
+import { NO_STRATEGY, type StrategyDecl } from '../src/strategy.js';
+import { FUD_SSG_WITHOUT_PATHS, FUD_STRATEGY_AND_DEFAULT } from '../src/diagnostics.js';
 
-describe('resolveMode — inference', () => {
-  it('static inferred: no params, no load → prerender, dynamic:false (crit. #4)', () => {
-    expect(resolveMode(false, { hasLoad: false, hasPaths: false }, 'lazy')).toEqual({
-      mode: 'static',
+function facts(over: Partial<PageFacts> = {}): PageFacts {
+  return { hasLoad: false, hasPaths: false, strategy: NO_STRATEGY, ...over };
+}
+
+function declared(strategy: StrategyDecl): PageFacts['strategy'] {
+  return { declared: true, strategy, diagnostics: [] };
+}
+
+describe('resolveMode — the defaults (§4.8.3)', () => {
+  it('no params, no load → ssg, prerendered', () => {
+    expect(resolveMode(false, facts(), 'lazy').decision).toEqual({
+      mode: 'ssg',
       prerender: true,
       enumerate: false,
-      dynamic: false,
+      prerenderedHtml: true,
     });
   });
 
-  it('incremental inferred: params, no paths() → dynamic:true, no prerender (crit. #5)', () => {
-    expect(resolveMode(true, { hasLoad: true, hasPaths: false }, 'lazy')).toEqual({
-      mode: 'incremental',
+  it('no params but load present → sw (the data is not build-known)', () => {
+    expect(resolveMode(false, facts({ hasLoad: true }), 'lazy').decision).toEqual({
+      mode: 'sw',
       prerender: false,
       enumerate: false,
-      dynamic: true,
+      prerenderedHtml: false,
     });
   });
 
-  it('paths() warm: params + paths + lazy → prerender+enumerate and a dynamic entry (crit. #6)', () => {
-    expect(resolveMode(true, { hasLoad: true, hasPaths: true }, 'lazy')).toEqual({
-      mode: 'static',
+  it('params without paths() → sw, nothing to enumerate', () => {
+    expect(resolveMode(true, facts({ hasLoad: true }), 'lazy').decision.mode).toBe('sw');
+  });
+
+  it('params + paths() + lazy → prerender the enumerated ids AND render unknown ones', () => {
+    expect(resolveMode(true, facts({ hasLoad: true, hasPaths: true }), 'lazy').decision).toEqual({
+      mode: 'sw',
       prerender: true,
       enumerate: true,
-      dynamic: true,
+      prerenderedHtml: true,
     });
   });
 
-  it('paths() with notFound fallback: no dynamic entry for unknown ids (crit. #6)', () => {
-    expect(resolveMode(true, { hasLoad: true, hasPaths: true }, 'notFound')).toEqual({
-      mode: 'static',
+  it('params + paths() + notFound → pure ssg: an unknown id is a 404', () => {
+    expect(resolveMode(true, facts({ hasLoad: true, hasPaths: true }), 'notFound').decision).toEqual({
+      mode: 'ssg',
       prerender: true,
       enumerate: true,
-      dynamic: false,
+      prerenderedHtml: true,
     });
   });
 
-  it('default-safe: no params but load present → incremental (crit. #7)', () => {
-    expect(resolveMode(false, { hasLoad: true, hasPaths: false }, 'lazy')).toEqual({
-      mode: 'incremental',
-      prerender: false,
-      enumerate: false,
-      dynamic: true,
-    });
+  it('never infers ssr: it has to be declared', () => {
+    expect(resolveMode(false, facts({ hasLoad: true }), 'lazy').decision.mode).not.toBe('ssr');
   });
 });
 
-describe('resolveMode — overrides', () => {
-  it('exclude wins over inference', () => {
-    expect(resolveMode(false, { hasLoad: false, hasPaths: false, override: 'exclude' }, 'lazy').mode).toBe(
-      'excluded',
+describe('resolveMode — the page is the authority (§4.8.2)', () => {
+  it('a declared mode wins over the inference', () => {
+    const result = resolveMode(false, facts({ strategy: declared({ mode: 'ssr' }) }), 'lazy');
+    expect(result.decision).toEqual({
+      mode: 'ssr',
+      prerender: false,
+      enumerate: false,
+      prerenderedHtml: false,
+    });
+  });
+
+  it('a declared sw route is not prerendered even when it could be', () => {
+    const result = resolveMode(
+      true,
+      facts({ hasPaths: true, strategy: declared({ mode: 'sw' }) }),
+      'lazy',
     );
+    expect(result.decision.prerender).toBe(false);
   });
 
-  it('forced incremental on an otherwise-static route', () => {
-    expect(resolveMode(false, { hasLoad: false, hasPaths: false, override: 'incremental' }, 'lazy')).toEqual({
-      mode: 'incremental',
-      prerender: false,
-      enumerate: false,
-      dynamic: true,
-    });
+  it('a declared ssg param route without paths() falls back to sw with FUD0398', () => {
+    const result = resolveMode(true, facts({ strategy: declared({ mode: 'ssg' }) }), 'lazy');
+    expect(result.decision.mode).toBe('sw');
+    expect(result.diagnostics[0]?.code).toBe(FUD_SSG_WITHOUT_PATHS);
   });
 
-  it('forced static on a non-param route prerenders a single file', () => {
-    expect(resolveMode(false, { hasLoad: true, hasPaths: false, override: 'static' }, 'lazy')).toEqual({
-      mode: 'static',
-      prerender: true,
-      enumerate: false,
-      dynamic: false,
-    });
+  it('a config default only fills in for a page that declares nothing', () => {
+    expect(resolveMode(false, facts({ fallback: 'ssr' }), 'lazy').decision.mode).toBe('ssr');
+    const both = resolveMode(
+      false,
+      facts({ fallback: 'ssr', strategy: declared({ mode: 'ssg' }) }),
+      'lazy',
+    );
+    expect(both.decision.mode).toBe('ssg'); // the page wins
+    expect(both.diagnostics[0]?.code).toBe(FUD_STRATEGY_AND_DEFAULT);
   });
 
-  it('forced static on a param route without paths() prerenders nothing (no enumeration)', () => {
-    expect(resolveMode(true, { hasLoad: true, hasPaths: false, override: 'static' }, 'lazy')).toEqual({
-      mode: 'static',
-      prerender: false,
-      enumerate: false,
-      dynamic: false,
-    });
+  it('exclude drops the route entirely', () => {
+    expect(resolveMode(false, facts({ fallback: 'exclude' }), 'lazy').decision.mode).toBe('excluded');
   });
 });

@@ -45,27 +45,35 @@ export function discoverRoutes(root: string, options: ResolvedOptions): Discover
   const builds: RouteBuild[] = [];
   for (const route of routes) {
     const absPath = join(routesRoot, route.file);
-    const analysis = analyzePage(readFileSync(absPath, 'utf8'));
+    const analysis = analyzePage(readFileSync(absPath, 'utf8'), absPath);
     if (!analysis.isPage) {
       continue; // a component living under routesDir is not a route
     }
-    const override = options.routes[route.pattern]?.mode;
+    diags.push(...analysis.strategy.diagnostics);
+    const fallback = options.defaults[route.pattern]?.mode;
     const facts: PageFacts = {
       hasLoad: analysis.hasLoad,
       hasPaths: analysis.hasPaths,
-      ...(override ? { override } : {}),
+      strategy: analysis.strategy,
+      ...(fallback ? { fallback } : {}),
     };
-    const decision = resolveMode(route.params.length > 0, facts, options.paramFallback);
-    builds.push({ route, absPath, analysis, decision });
+    const resolved = resolveMode(
+      route.params.length > 0,
+      facts,
+      options.paramFallback,
+      absPath,
+    );
+    diags.push(...resolved.diagnostics);
+    builds.push({ route, absPath, analysis, decision: resolved.decision });
   }
 
-  // A route override that matches no discovered route is almost certainly a typo.
+  // A route default that matches no discovered route is almost certainly a typo.
   const known = new Set(builds.map((b) => b.route.pattern));
-  for (const pattern of Object.keys(options.routes)) {
+  for (const pattern of Object.keys(options.defaults)) {
     if (!known.has(pattern)) {
       diags.push({
         code: FUD_UNKNOWN_ROUTE_OVERRIDE,
-        message: `Route override for "${pattern}" matches no route`,
+        message: `Route default for "${pattern}" matches no route`,
         file: pattern,
       });
     }

@@ -1,28 +1,41 @@
 /**
- * Unit coverage of the plugin hooks (SDD-19 §3.1) driven with fake Rollup/Vite contexts,
- * so the dev/build branches, the middleware paths and the diagnostics wiring are exercised
- * deterministically without a full `vite build` (which the build-*.test.ts files cover).
+ * Unit coverage of the plugin hooks (SDD-19 §3.1, SDD-20 §4.7/§4.11) driven with fake
+ * Rollup/Vite contexts, so the dev/build branches, the middleware paths and the
+ * diagnostics wiring are exercised deterministically without a full `vite build`
+ * (which the build-*.test.ts files cover).
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fudic } from '../src/index.js';
-import { WRAPPER_PREFIX, WW_ID, SW_ID, MAIN_ID } from '../src/constants.js';
+import { WRAPPER_PREFIX, SW_ID, MAIN_ID } from '../src/constants.js';
 
 // The compiler fixtures act as a routes dir: `home.fud` is the single page route.
 const root = fileURLToPath(new URL('../../compiler', import.meta.url));
 const homeFud = fileURLToPath(new URL('../../compiler/fixtures/home.fud', import.meta.url));
 
+/** A project root that DOES have a `sw.json`, so the Service Worker is emitted. */
+function swRoot(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'fudic-swroot-'));
+  cpSync(join(root, 'fixtures'), join(dir, 'fixtures'), { recursive: true });
+  writeFileSync(join(dir, 'sw.json'), JSON.stringify({ shell: ['/style.css'] }));
+  return dir;
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type AnyHook = any;
 
-function setup(command: 'build' | 'serve', userOptions: Record<string, unknown> = {}): AnyHook {
+function setup(
+  command: 'build' | 'serve',
+  userOptions: Record<string, unknown> = {},
+  projectRoot = root,
+): AnyHook {
   const plugin = fudic({ routesDir: 'fixtures', ...userOptions }) as AnyHook;
   plugin.config({});
-  plugin.configResolved({ root, base: '/', command, build: { outDir: 'dist' } });
+  plugin.configResolved({ root: projectRoot, base: '/', command, build: { outDir: 'dist' } });
   return plugin;
 }
 
@@ -32,13 +45,12 @@ const emitCtx = (): { emitFile: ReturnType<typeof vi.fn>; warn: ReturnType<typeo
 });
 
 describe('config / configResolved', () => {
-  it('config declares the custom three-thread shell entry', () => {
+  it('config declares the custom shell entry', () => {
     const plugin = fudic() as AnyHook;
     expect(plugin.config({})).toMatchObject({ appType: 'custom' });
   });
 
   it('accepts a manifestUrl that does not sit under base (fallback file name)', () => {
-    // Exercises the else branch of manifestFileName without throwing.
     expect(() => setup('build', { manifestUrl: '/elsewhere.json' })).not.toThrow();
   });
 });
@@ -52,20 +64,27 @@ describe('resolveId', () => {
   });
 });
 
-describe('load — build vs dev URLs', () => {
-  it('build mode references ROLLUP_FILE_URL for the SW/WW', () => {
+describe('load — with and without sw.json', () => {
+  it('no sw.json: the main bootstrap is empty and no SW is emitted (§4.7)', () => {
     const p = setup('build');
-    p.buildStart.call(emitCtx());
-    expect(p.load(MAIN_ID)).toContain('ROLLUP_FILE_URL'); // both the SW and the WW urls
-    expect(p.load(SW_ID)).toContain('createRouter');
-    expect(p.load(WW_ID)).toContain('installRenderWorker');
-    expect(p.load(WRAPPER_PREFIX + '/home')).toContain('htmlToByteStream'); // known wrapper
+    const ctx = emitCtx();
+    p.buildStart.call(ctx);
+    expect(p.load(MAIN_ID)).toBe('export {};\n');
+    expect(ctx.emitFile).toHaveBeenCalledTimes(1); // the home wrapper only
   });
 
-  it('dev mode references the stable root URLs', () => {
-    const p = setup('serve');
-    expect(p.load(MAIN_ID)).toContain('fudic-sw.js');
-    expect(p.load(MAIN_ID)).toContain('fudic-ww.js'); // the main thread creates the WW
+  it('with sw.json: main registers the SW and the SW bootstrap renders locally', () => {
+    const p = setup('build', {}, swRoot());
+    p.buildStart.call(emitCtx());
+    expect(p.load(MAIN_ID)).toContain('ROLLUP_FILE_URL');
+    expect(p.load(MAIN_ID)).toContain('registerRenderServiceWorker');
+    expect(p.load(SW_ID)).toContain('createRouter');
+    expect(p.load(SW_ID)).toContain('"/style.css"');
+    expect(p.load(WRAPPER_PREFIX + '/home')).toContain('htmlToByteStream');
+  });
+
+  it('dev does not register the SW unless sw.json asks for it (§4.11)', () => {
+    expect(setup('serve', {}, swRoot()).load(MAIN_ID)).toBe('export {};\n');
   });
 
   it('returns null for an unknown wrapper pattern and any other id', () => {
@@ -76,21 +95,21 @@ describe('load — build vs dev URLs', () => {
 });
 
 describe('buildStart', () => {
-  it('emits a wrapper per route plus the WW and SW chunks', () => {
+  it('emits a wrapper per route plus the SW chunk', () => {
     const ctx = emitCtx();
-    setup('build').buildStart.call(ctx);
-    expect(ctx.emitFile).toHaveBeenCalledTimes(3); // home wrapper + ww + sw
+    setup('build', {}, swRoot()).buildStart.call(ctx);
+    expect(ctx.emitFile).toHaveBeenCalledTimes(2); // home wrapper + sw
   });
 
   it('skips an excluded route', () => {
     const ctx = emitCtx();
-    setup('build', { routes: { '/home': { mode: 'exclude' } } }).buildStart.call(ctx);
-    expect(ctx.emitFile).toHaveBeenCalledTimes(2); // only ww + sw
+    setup('build', { defaults: { '/home': { mode: 'exclude' } } }, swRoot()).buildStart.call(ctx);
+    expect(ctx.emitFile).toHaveBeenCalledTimes(1); // only sw
   });
 
-  it('warns route diagnostics (FUD0364 override with no match)', () => {
+  it('warns route diagnostics (FUD0364 default with no match)', () => {
     const ctx = emitCtx();
-    setup('build', { routes: { '/nope': { mode: 'exclude' } } }).buildStart.call(ctx);
+    setup('build', { defaults: { '/nope': { mode: 'exclude' } } }).buildStart.call(ctx);
     expect(ctx.warn).toHaveBeenCalledWith(expect.stringContaining('FUD0364'));
   });
 
@@ -121,27 +140,31 @@ const fakeRes = (): FakeRes => ({
 const flush = (): Promise<void> => new Promise((r) => setImmediate(r));
 
 describe('configureServer middleware', () => {
-  function withServer(transformRequest: (id: string) => Promise<{ code: string }>): (req: { url: string }, res: FakeRes, next: () => void) => void {
+  function withServer(
+    transformRequest: (id: string) => Promise<{ code: string }>,
+  ): (req: { url: string }, res: FakeRes, next: () => void) => void {
     let handler!: (req: { url: string }, res: FakeRes, next: () => void) => void;
     const server = { middlewares: { use: (fn: typeof handler) => (handler = fn) }, transformRequest };
     setup('serve').configureServer(server);
     return handler;
   }
 
-  it('serves the manifest as JSON', () => {
+  it('serves the manifest as JSON, every route rendered by the edge in dev', () => {
     const handler = withServer(async () => ({ code: '' }));
     const res = fakeRes();
     handler({ url: '/fudic-routes.json' }, res, () => undefined);
     expect(res.headers['content-type']).toContain('application/json');
-    expect(JSON.parse(res.body)[0]).toMatchObject({ pattern: '/home', dynamic: true });
+    expect(JSON.parse(res.body).routes[0]).toMatchObject({ pattern: '/home', mode: 'ssr' });
   });
 
-  it('serves the SW with a root-scope header', async () => {
+  it('serves the SW with a root-scope header and its own CSP', async () => {
     const handler = withServer(async () => ({ code: 'createRouter(...)' }));
     const res = fakeRes();
     handler({ url: '/fudic-sw.js' }, res, () => undefined);
     await flush();
     expect(res.headers['service-worker-allowed']).toBe('/');
+    expect(res.headers['content-security-policy']).toContain('unsafe-eval');
+    expect(res.headers['cache-control']).toBe('no-cache');
     expect(res.body).toContain('createRouter');
   });
 
@@ -155,7 +178,7 @@ describe('configureServer middleware', () => {
   it('responds 500 when the transform fails', async () => {
     const handler = withServer(() => Promise.reject(new Error('boom')));
     const res = fakeRes();
-    handler({ url: '/fudic-ww.js' }, res, () => undefined);
+    handler({ url: '/fudic-sw.js' }, res, () => undefined);
     await flush();
     expect(res.statusCode).toBe(500);
     expect(res.body).toContain('boom');
@@ -163,10 +186,16 @@ describe('configureServer middleware', () => {
 });
 
 describe('configurePreviewServer middleware', () => {
-  // `appType:'custom'` removes Vite's html fallback, so preview must map a route to its
-  // prerendered file itself — and 404 when there is none (an incremental route).
-  function withPreview(outDir: string): (req: { url: string; method: string; headers: Record<string, string> }, res: FakeRes, next: () => void) => void {
-    let handler!: (req: { url: string; method: string; headers: Record<string, string> }, res: FakeRes, next: () => void) => void;
+  // Preview is the production edge: the prerendered file when there is one, with the
+  // CSP header and this response's nonce stamped into the document.
+  function withPreview(
+    outDir: string,
+  ): (req: { url: string; method: string; headers: Record<string, string> }, res: FakeRes, next: () => void) => void {
+    let handler!: (
+      req: { url: string; method: string; headers: Record<string, string> },
+      res: FakeRes,
+      next: () => void,
+    ) => void;
     const plugin = fudic({ routesDir: 'fixtures' }) as AnyHook;
     plugin.config({});
     plugin.configResolved({ root, base: '/', command: 'build', build: { outDir } });
@@ -174,32 +203,56 @@ describe('configurePreviewServer middleware', () => {
     return handler;
   }
 
-  const navigation = (url: string): { url: string; method: string; headers: Record<string, string> } => ({
+  const navigation = (
+    url: string,
+  ): { url: string; method: string; headers: Record<string, string> } => ({
     url,
     method: 'GET',
     headers: { accept: 'text/html,application/xhtml+xml' },
   });
 
-  it('serves the prerendered file of a route', () => {
+  /** A built output dir: the manifest plus one prerendered page. */
+  function outputWith(routes: unknown[]): string {
     const outDir = mkdtempSync(join(tmpdir(), 'fudic-preview-'));
+    writeFileSync(
+      join(outDir, 'fudic-routes.json'),
+      JSON.stringify({
+        build: 'b1',
+        csp: { document: "script-src 'nonce-{nonce}'", sw: "script-src 'unsafe-eval'" },
+        routes,
+      }),
+    );
+    return outDir;
+  }
+
+  it('serves the prerendered file with a CSP and the nonce substituted', () => {
+    const outDir = outputWith([{ pattern: '/about', mode: 'ssg', html: '/about/index.html' }]);
     mkdirSync(join(outDir, 'about'), { recursive: true });
-    writeFileSync(join(outDir, 'about', 'index.html'), '<!DOCTYPE html><p>about</p>');
+    writeFileSync(join(outDir, 'about', 'index.html'), '<script nonce="__FUDIC_NONCE__"></script>');
     const handler = withPreview(outDir);
     const res = fakeRes();
     handler(navigation('/about'), res, () => expect.unreachable('should not fall through'));
     expect(res.statusCode).toBe(200);
-    expect(res.headers['content-type']).toContain('text/html');
-    expect(res.body).toContain('<p>about</p>');
+    expect(res.body).not.toContain('__FUDIC_NONCE__');
+    const nonce = /nonce="([^"]+)"/u.exec(res.body)?.[1] ?? '';
+    expect(res.headers['content-security-policy']).toContain(`'nonce-${nonce}'`);
   });
 
-  it('falls through when the route has no prerendered file, and for non-navigations', () => {
-    const outDir = mkdtempSync(join(tmpdir(), 'fudic-preview-'));
+  it('falls through for an unknown route, a non-GET, and a route with no output', () => {
+    const outDir = outputWith([{ pattern: '/blog', mode: 'sw' }]);
     const handler = withPreview(outDir);
     const next = vi.fn();
-    handler(navigation('/blog'), fakeRes(), next); // incremental: the SW's job
-    handler({ url: '/x.css', method: 'GET', headers: { accept: 'text/css' } }, fakeRes(), next);
+    handler(navigation('/blog'), fakeRes(), next); // no html, no esm
+    handler(navigation('/nope'), fakeRes(), next);
     handler({ url: '/', method: 'POST', headers: { accept: 'text/html' } }, fakeRes(), next);
     expect(next).toHaveBeenCalledTimes(3);
+  });
+
+  it('falls through when there is no manifest at all', () => {
+    const handler = withPreview(mkdtempSync(join(tmpdir(), 'fudic-empty-')));
+    const next = vi.fn();
+    handler(navigation('/about'), fakeRes(), next);
+    expect(next).toHaveBeenCalled();
   });
 });
 

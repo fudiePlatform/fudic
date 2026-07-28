@@ -1,6 +1,6 @@
 /**
  * SDD-19 §4.1/§4.2/§6.4: route discovery over the real fixtures. Only the page is a
- * route (the components under the dir are skipped), and an override for a missing
+ * route (the components under the dir are skipped), and a default for a missing
  * route is flagged (FUD0364).
  */
 
@@ -20,10 +20,10 @@ describe('discoverRoutes', () => {
     expect(routes[0]?.analysis.isPage).toBe(true);
   });
 
-  it('flags a route override that matches no route (FUD0364)', () => {
+  it('flags a route default that matches no route (FUD0364)', () => {
     const { diagnostics } = discoverRoutes(
       root,
-      resolveOptions({ routesDir: 'fixtures', routes: { '/nope': { mode: 'exclude' } } }).options,
+      resolveOptions({ routesDir: 'fixtures', defaults: { '/nope': { mode: 'exclude' } } }).options,
     );
     expect(diagnostics.map((d) => d.code)).toContain(FUD_UNKNOWN_ROUTE_OVERRIDE);
   });
@@ -33,18 +33,18 @@ describe('discoverRoutes', () => {
     expect(routes).toEqual([]);
   });
 
-  it('applies a matching route override to the mode decision', () => {
+  it('applies a matching route default to the mode decision', () => {
     const { routes } = discoverRoutes(
       root,
-      resolveOptions({ routesDir: 'fixtures', routes: { '/home': { mode: 'incremental' } } }).options,
+      resolveOptions({ routesDir: 'fixtures', defaults: { '/home': { mode: 'sw' } } }).options,
     );
-    expect(routes[0]?.decision.mode).toBe('incremental');
+    expect(routes[0]?.decision.mode).toBe('sw');
   });
 
   it('marks an excluded route as excluded', () => {
     const { routes } = discoverRoutes(
       root,
-      resolveOptions({ routesDir: 'fixtures', routes: { '/home': { mode: 'exclude' } } }).options,
+      resolveOptions({ routesDir: 'fixtures', defaults: { '/home': { mode: 'exclude' } } }).options,
     );
     expect(routes[0]?.decision.mode).toBe('excluded');
   });

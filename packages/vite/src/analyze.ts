@@ -17,6 +17,7 @@ import {
   type ServerRegion,
 } from '@fudic/compiler';
 import { parseFud } from './parse.js';
+import { NO_STRATEGY, strategyFrom, type StrategyAnalysis } from './strategy.js';
 
 export interface PageAnalysis {
   /** True when the file is a page document (has a doctype), not a component. */
@@ -25,6 +26,8 @@ export interface PageAnalysis {
   readonly hasLoad: boolean;
   /** The `@server` region exports `paths()`. */
   readonly hasPaths: boolean;
+  /** The `strategy()` call, read statically (SDD-20 §4.8). */
+  readonly strategy: StrategyAnalysis;
 }
 
 // ── Typed access over the untyped Oxc node (quarantined, as in the emit) ──
@@ -33,36 +36,45 @@ const field = (node: OxcNode, key: string): OxcNode | undefined => node[key] as 
 const fieldArray = (node: OxcNode, key: string): OxcNode[] => (node[key] as OxcNode[] | undefined) ?? [];
 const nameOf = (node: OxcNode): string => String(node['name']);
 
-/** Analyze a `.fud` source: page vs component, and which `@server` hooks it exports. */
-export function analyzePage(source: string): PageAnalysis {
+/**
+ * Analyze a `.fud` source: page vs component, which `@server` hooks it exports, and the
+ * strategy it declares. ONE parse and ONE Oxc batch answer all three questions —
+ * "Oxc runs exactly once per file" is a repo invariant, not an optimization.
+ */
+export function analyzePage(source: string, file = ''): PageAnalysis {
   const doc = parseFud(source);
   if (doc.type !== 'page-document') {
-    return { isPage: false, hasLoad: false, hasPaths: false };
+    return { isPage: false, hasLoad: false, hasPaths: false, strategy: NO_STRATEGY };
   }
-  const names = serverExports(source, doc);
-  return { isPage: true, hasLoad: names.has('load'), hasPaths: names.has('paths') };
+  const statements = serverStatements(source, doc);
+  const names = new Set<string>();
+  for (const statement of statements) {
+    collectExports(statement, names);
+  }
+  return {
+    isPage: true,
+    hasLoad: names.has('load'),
+    hasPaths: names.has('paths'),
+    strategy: strategyFrom(statements, file),
+  };
 }
 
-/** The set of names exported from the page's `@server` region(s). */
-function serverExports(source: string, doc: PageDocument): Set<string> {
-  const names = new Set<string>();
+/** Top-level statements of the page's `@server` region(s), parsed in one batch. */
+function serverStatements(source: string, doc: PageDocument): OxcNode[] {
   const regions =
     doc.code?.parts.filter((p): p is ServerRegion => p.type === 'server-region') ?? [];
   if (regions.length === 0) {
-    return names;
+    return [];
   }
-
   const batch = new JsBatch(source);
   const ids = regions.map((r) => batch.add('module-statements', r.js));
   const result = batch.parse();
+  const statements: OxcNode[] = [];
   for (const id of ids) {
     const root = result.value.ast(id);
-    const stmts = Array.isArray(root) ? (root as OxcNode[]) : [root as OxcNode];
-    for (const stmt of stmts) {
-      collectExports(stmt, names);
-    }
+    statements.push(...(Array.isArray(root) ? (root as OxcNode[]) : [root as OxcNode]));
   }
-  return names;
+  return statements;
 }
 
 /** Add the names exported by one `export …` statement (declaration or specifier list). */

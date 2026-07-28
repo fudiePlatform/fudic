@@ -1,7 +1,7 @@
 /**
  * SDD-19 §6.6 end-to-end: a `/customer/[id]` page with `@server paths()` prerenders one
- * HTML per enumerated id. `paramFallback:'lazy'` (default) also keeps a `dynamic:true`
- * entry for unknown ids; `'notFound'` does not (the route is `dynamic:false`).
+ * HTML per enumerated id. `paramFallback:'lazy'` (default) also renders
+ * unknown ids in the Service Worker; `'notFound'` does not (the route stays `ssg`).
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
@@ -42,6 +42,7 @@ async function buildWith(options: FudicOptions): Promise<OutFile[]> {
   const root = mkdtempSync(join(tmpdir(), 'fudic-paths-'));
   mkdirSync(join(root, 'routes', 'customer'), { recursive: true });
   writeFileSync(join(root, 'routes', 'customer', '[id].fud'), PAGE);
+  writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
   const result = (await build({
     root,
     logLevel: 'silent',
@@ -53,7 +54,11 @@ async function buildWith(options: FudicOptions): Promise<OutFile[]> {
 }
 
 const manifestOf = (output: OutFile[]): Array<Record<string, unknown>> =>
-  JSON.parse(output.find((o) => o.fileName === 'fudic-routes.json')!.source as string);
+  (
+    JSON.parse(output.find((o) => o.fileName === 'fudic-routes.json')!.source as string) as {
+      routes: Array<Record<string, unknown>>;
+    }
+  ).routes;
 
 describe('vite build — paths() enumeration (lazy fallback)', () => {
   let output: OutFile[];
@@ -70,8 +75,12 @@ describe('vite build — paths() enumeration (lazy fallback)', () => {
     expect(two!.source as string).toContain('Customer 2');
   });
 
-  it('keeps a dynamic:true entry for unknown ids (lazy)', () => {
-    expect(manifestOf(output)[0]).toMatchObject({ pattern: '/customer/:id', dynamic: true });
+  it('renders unknown ids locally, preferring the prerendered file when there is one', () => {
+    expect(manifestOf(output)[0]).toMatchObject({
+      pattern: '/customer/:id',
+      mode: 'sw',
+      html: '/customer/:id/index.html',
+    });
   });
 });
 
@@ -85,7 +94,8 @@ describe('vite build — paths() enumeration (notFound fallback)', () => {
     expect(output.some((o) => o.fileName === 'customer/1/index.html')).toBe(true);
   });
 
-  it('has no dynamic entry for unknown ids (notFound)', () => {
-    expect(manifestOf(output)[0]).toMatchObject({ pattern: '/customer/:id', dynamic: false });
+  it('is pure ssg: an unknown id is a 404, never a local render', () => {
+    expect(manifestOf(output)[0]).toMatchObject({ pattern: '/customer/:id', mode: 'ssg' });
+    expect(manifestOf(output)[0]!['chunk']).toBeUndefined();
   });
 });

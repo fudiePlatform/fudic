@@ -6,6 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { analyzePage } from '../src/analyze.js';
+import { NO_STRATEGY } from '../src/strategy.js';
 
 /** A minimal valid page document with the given `@code` body in its `<head>`. */
 function page(code = ''): string {
@@ -39,11 +40,21 @@ describe('analyzePage — page vs component', () => {
   </template>
 </app-badge>
 `;
-    expect(analyzePage(component)).toEqual({ isPage: false, hasLoad: false, hasPaths: false });
+    expect(analyzePage(component)).toEqual({
+      isPage: false,
+      hasLoad: false,
+      hasPaths: false,
+      strategy: NO_STRATEGY,
+    });
   });
 
   it('a page with no @code exports nothing', () => {
-    expect(analyzePage(page())).toEqual({ isPage: true, hasLoad: false, hasPaths: false });
+    expect(analyzePage(page())).toEqual({
+      isPage: true,
+      hasLoad: false,
+      hasPaths: false,
+      strategy: NO_STRATEGY,
+    });
   });
 });
 

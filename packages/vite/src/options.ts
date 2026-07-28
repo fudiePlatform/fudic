@@ -7,11 +7,15 @@
  */
 
 import { type FudicDiagnostic, FUD_MANIFEST_URL_NOT_ABSOLUTE } from './diagnostics.js';
-import { type ModeOverride, type ParamFallback } from './mode.js';
+import { type ModeDefault, type ParamFallback } from './mode.js';
 
-/** A per-route override keyed by route pattern in `FudicOptions.routes`. */
-export interface RouteOverride {
-  readonly mode: ModeOverride;
+/**
+ * A per-route DEFAULT keyed by route pattern. Not an override: a page that calls
+ * `strategy()` is the single authority for its own mode (SDD-20 §4.8.2), and this only
+ * fills in for routes that declare nothing.
+ */
+export interface RouteDefault {
+  readonly mode: ModeDefault;
 }
 
 export interface FudicOptions {
@@ -23,8 +27,8 @@ export interface FudicOptions {
   readonly prerender?: boolean;
   /** A dynamic segment absent from `paths()`: render lazily or 404. Default: `'lazy'`. */
   readonly paramFallback?: ParamFallback;
-  /** Per-route overrides keyed by route pattern (e.g. `'/admin'`). */
-  readonly routes?: Readonly<Record<string, RouteOverride>>;
+  /** Per-route defaults keyed by route pattern (e.g. `'/admin'`). The page wins. */
+  readonly defaults?: Readonly<Record<string, RouteDefault>>;
 }
 
 export interface ResolvedOptions {
@@ -33,7 +37,7 @@ export interface ResolvedOptions {
   readonly manifestUrl: string;
   readonly prerender: boolean;
   readonly paramFallback: ParamFallback;
-  readonly routes: Readonly<Record<string, RouteOverride>>;
+  readonly defaults: Readonly<Record<string, RouteDefault>>;
 }
 
 export interface ResolveOptionsResult {
@@ -70,7 +74,7 @@ export function resolveOptions(user: FudicOptions = {}, base = '/'): ResolveOpti
       manifestUrl,
       prerender: user.prerender ?? true,
       paramFallback: user.paramFallback ?? 'lazy',
-      routes: user.routes ?? {},
+      defaults: user.defaults ?? {},
     },
     diagnostics,
   };

@@ -1,6 +1,6 @@
 /**
  * SDD-19 §6.17 (hito): a real `vite build` over the four fixtures produces the route
- * manifest, a per-route RenderChunk, and the SW/WW/main bootstraps — the plugin as a
+ * manifest, a per-route chunk in both formats, and the SW/main bootstraps — the plugin as a
  * whole, exercised by Vite itself (never parsing `.fud`, only bundling the emit).
  */
 
@@ -35,6 +35,8 @@ beforeAll(async () => {
   // home's `@server load` imports its data source `./db`; stub it so the ?server module
   // resolves (home stays incremental — hasLoad ⇒ dynamic:true — so it is not prerendered).
   writeFileSync(join(routes, 'db.ts'), 'export const db = { query: async () => [] };\n');
+  // With a `sw.json` the build also emits the Service Worker and the linkable chunks.
+  writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: ['/style.css'] }));
   const result = (await build({
     root,
     logLevel: 'silent',
@@ -52,11 +54,19 @@ describe('vite build over the fixtures (hito §6.17)', () => {
   it('emits the route manifest at a fixed path with the home route', () => {
     const asset = output.find((o) => o.type === 'asset' && o.fileName === 'fudic-routes.json');
     expect(asset).toBeDefined();
-    const manifest = JSON.parse(asset!.source as string) as Array<Record<string, unknown>>;
+    const manifest = JSON.parse(asset!.source as string) as {
+      build: string;
+      csp: { document: string; sw: string };
+      routes: Array<Record<string, unknown>>;
+    };
     // home.fud → /home (only index.fud maps to /); the components are not routes.
-    expect(manifest).toHaveLength(1);
-    expect(manifest[0]).toMatchObject({ pattern: '/home', dynamic: true });
-    expect(manifest[0]!['chunk']).toMatch(/\/assets\/c\/home-.*\.js$/u);
+    expect(manifest.routes).toHaveLength(1);
+    expect(manifest.build).toMatch(/^[0-9a-f]{8}$/u);
+    expect(manifest.csp.document).toContain('{nonce}');
+    // `home` has `@server load`, so its data is not build-known: rendered in the SW.
+    expect(manifest.routes[0]).toMatchObject({ pattern: '/home', mode: 'sw' });
+    expect(manifest.routes[0]!['chunk']).toMatch(/\/sw\/c\/home-.*\.js$/u);
+    expect(manifest.routes[0]!['data']).toBe('/_fudic/data/home');
   });
 
   it('emits a per-route RenderChunk', () => {
@@ -64,10 +74,21 @@ describe('vite build over the fixtures (hito §6.17)', () => {
     expect(wrapper).toBeDefined();
   });
 
-  it('emits the three-thread bootstraps (main, sw, ww)', () => {
+  it('emits the two bootstraps, and no Web Worker one', () => {
     expect(named('fudic-main')).toBe(true);
     expect(named('fudic-sw')).toBe(true);
-    expect(named('fudic-ww')).toBe(true);
+    expect(named('fudic-ww')).toBe(false);
+  });
+
+  it('emits a linkable chunk in exports/require form, with the build id inlined', () => {
+    const linked = output.find((o) => o.fileName.startsWith('sw/c/home'));
+    expect(linked).toBeDefined();
+    const code = (linked!.source ?? linked!.code ?? '') as string;
+    // The exact shape the linker's `new Function('exports','require','module')` runs.
+    expect(code).toMatch(/exports\.render\s*=/u);
+    expect(code).toMatch(/require\(["']@fudic\/ssr["']\)/u);
+    const sw = chunks().find((o) => o.fileName === 'fudic-sw.js');
+    expect(sw!.code).not.toContain('__FUDIC_BUILD__');
   });
 
   it('bundles the streaming page (compiler emit, not Vite parsing .fud)', () => {

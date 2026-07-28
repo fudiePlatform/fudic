@@ -1,23 +1,35 @@
 /**
- * The fudic Vite plugin (SDD-19 §3.1). The LINKER over the fs-free compiler emit:
- * it discovers page `.fud` under `routesDir`, transforms every `.fud` to a module
- * (Vite owns the graph), emits a `RenderChunk` wrapper per route, the `route→chunk`
- * manifest `@fudic/transport` loads, and the three-thread bootstraps (SW/WW/main).
- * Vite is bundler/dev-server only — the parser is always `@fudic/compiler`.
+ * The fudic Vite plugin (SDD-19 §3.1, rewired by SDD-20). The LINKER over the fs-free
+ * compiler emit: it discovers page `.fud` under `routesDir`, transforms every `.fud` to
+ * a module (Vite owns the graph), emits one wrapper per route in TWO formats — ESM for
+ * the edge and prerender, `exports`/`require` for the Service Worker's own linker — the
+ * manifest both sides read, and the two bootstraps.
+ *
+ * Vite is bundler and dev server only; the parser is always `@fudic/compiler`.
  */
 
 import { existsSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join, resolve as resolvePath } from 'node:path';
 import { type Plugin, transformWithOxc } from 'vite';
+import {
+  applyNonce,
+  cspFor,
+  newNonce,
+  type ManifestFile,
+  type RouteRecord,
+} from '@fudic/transport';
 import { type FudicOptions, type ResolvedOptions, resolveOptions } from './options.js';
 import { discoverRoutes, type RouteBuild } from './discover.js';
 import { buildManifest } from './manifest.js';
 import { emitRenderChunk } from './wrapper.js';
 import { emitServerModule } from './server.js';
-import { emitWwBootstrap, emitSwBootstrap, emitMainBootstrap } from './bootstrap.js';
+import { emitMainBootstrap, emitSwBootstrap } from './bootstrap.js';
 import { transformFud } from './transform.js';
 import { nodeIo } from './io.js';
+import { readSwConfig, type ResolvedSwConfig } from './swconfig.js';
+import { runLinkPass, safeName, type LinkResult } from './link.js';
 import {
   htmlPathFor,
   materializeBundle,
@@ -25,33 +37,41 @@ import {
   prerenderEnumerated,
   type BundleItem,
 } from './prerender.js';
-import { FUD_PATHS_INCOMPLETE, FUD_ASSET_NOT_FOUND } from './diagnostics.js';
+import {
+  FUD_PATHS_INCOMPLETE,
+  FUD_ASSET_NOT_FOUND,
+  FUD_CHUNK_NOT_EMITTED,
+} from './diagnostics.js';
 import { devUrl, devManifest } from './dev.js';
-import { matchRouteBuild, renderRouteHtml, type RenderModule } from './serve.js';
+import {
+  matchRouteBuild,
+  renderRouteHtml,
+  loadRouteData,
+  type RenderModule,
+} from './serve.js';
 import {
   WRAPPER_PREFIX,
-  WW_ID,
   SW_ID,
   MAIN_ID,
-  CACHE_NAME,
+  DATA_PREFIX,
+  BUILD_TOKEN,
   DEV_MAIN_URL,
   DEV_SW_URL,
-  DEV_WW_URL,
 } from './constants.js';
 
 /** A `import.meta.ROLLUP_FILE_URL_<ref>` expression: Rollup fills the real hashed URL. */
 const fileUrl = (ref: string): string => `import.meta.ROLLUP_FILE_URL_${ref}`;
 
-/** A filesystem-safe chunk base name from a route pattern. */
-function safeName(pattern: string): string {
-  const s = pattern.replace(/[^a-z0-9]+/giu, '-').replace(/^-+|-+$/gu, '');
-  return s.length > 0 ? s : 'index';
-}
-
 /** Split a module id into its path and query (without the `?`). */
 function splitId(id: string): { path: string; query: string } {
   const q = id.indexOf('?');
-  return q === -1 ? { path: id, query: '' } : { path: id.slice(0, q), query: id.slice(q + 1) };
+  return q === -1 ? { path: id, query: id.slice(0, 0) } : { path: id.slice(0, q), query: id.slice(q + 1) };
+}
+
+/** Strip the site base from a request path, so routes are matched at root. */
+function pathnameOf(url: string, base: string): string {
+  const path = url.split('?')[0] ?? '/';
+  return path.startsWith(base) ? path.slice(base.length - 1) : path;
 }
 
 export function fudic(userOptions: FudicOptions = {}): Plugin {
@@ -61,8 +81,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let outDir = '';
   let isDev = false;
   let builds: readonly RouteBuild[] = [];
+  let swConfig: ResolvedSwConfig | null = null;
   const wrapperRefs = new Map<string, string>(); // route pattern → emitFile referenceId
-  let wwRef = '';
   let swRef = '';
   let manifestUrl = '/fudic-routes.json';
   let manifestFileName = 'fudic-routes.json';
@@ -72,15 +92,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     name: 'fudic',
 
     config(userConfig) {
-      // The app is the three-thread shell: the main-thread bootstrap is the entry.
-      // Two of the three bootstraps need STABLE, ROOT-LEVEL file names — the same URLs
-      // the dev server publishes (§4.10), so dev and build behave alike:
-      //  - `fudic-sw.js`: a Service Worker only controls its own directory and below, so
-      //    served from `assets/` it would never see a navigation;
-      //  - `fudic-main.js`: a page references it literally (`<script src>`), and a hashed
-      //    name cannot be written by hand.
-      // Everything else keeps Vite's content hash. A user who configures output file
-      // names owns them entirely (their config is left untouched — see the README).
+      // The app is the client shell: the main-thread bootstrap is the entry. Two files
+      // need STABLE, ROOT-LEVEL names — the same URLs the dev server publishes:
+      //  - `fudic-sw.js`: a Service Worker only controls its own directory and below;
+      //  - `fudic-main.js`: a page references it literally in a `<script src>`.
       const hasOutputConfig = userConfig?.build?.rollupOptions?.output !== undefined;
       const pinned = (fixed: string) => (chunk: { name: string }) =>
         chunk.name === fixed ? `${fixed}.js` : 'assets/[name]-[hash].js';
@@ -109,24 +124,27 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       isDev = config.command === 'serve';
       options = resolveOptions(userOptions, config.base).options;
       manifestUrl = options.manifestUrl;
-      // The manifest is emitted at a FIXED path (SW and WW load the same absolute URL).
       manifestFileName = manifestUrl.startsWith(base) ? manifestUrl.slice(base.length) : 'fudic-routes.json';
+      // No `sw.json`, no Service Worker: everything is server/SSG (SDD-20 §4.7).
+      swConfig = readSwConfig(root, {
+        exists: (p) => existsSync(p),
+        read: (p) => readFileSync(p, 'utf8'),
+      }).config;
     },
 
     configureServer(server) {
       builds = discoverRoutes(root, options).routes;
-      // The three bootstraps served at stable root URLs (so the SW registers at root
-      // scope); their code comes from the same virtual modules, transformed by Vite.
+      // Dev serves the bootstraps at stable root URLs (so the SW would register at root
+      // scope), but registers nothing unless `sw.json` says `"dev": "preview"` (§4.11).
       const scripts = new Map<string, string>([
         [devUrl(base, DEV_MAIN_URL), MAIN_ID],
         [devUrl(base, DEV_SW_URL), SW_ID],
-        [devUrl(base, DEV_WW_URL), WW_ID],
       ]);
       server.middlewares.use((req, res, next) => {
         const url = (req.url ?? '').split('?')[0] ?? '';
         if (url === manifestUrl) {
           res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify(devManifest(builds, base)));
+          res.end(JSON.stringify(devManifest(builds)));
           return;
         }
         const id = scripts.get(url);
@@ -139,8 +157,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           .then((result) => {
             res.setHeader('Content-Type', 'text/javascript');
             if (id === SW_ID) {
-              res.setHeader('Service-Worker-Allowed', base); // let the SW claim root scope
+              res.setHeader('Service-Worker-Allowed', base); // root scope
+              res.setHeader('Content-Security-Policy', devManifest(builds).csp.sw);
             }
+            res.setHeader('Cache-Control', 'no-cache'); // these two govern updates
             res.end(result?.code ?? '');
           })
           .catch((err) => {
@@ -149,38 +169,69 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           });
       });
 
-      // Navigations: render the route on demand (§4.10). Registered with `post` so it runs
-      // after Vite's own middlewares (module requests, public files) — it is the fallback
-      // for a real page request, not a catch-all.
+      // The dev server IS the edge (§4.11): data endpoints and on-demand navigation
+      // rendering. Registered with `post` so it runs after Vite's own middlewares.
       return () => {
         server.middlewares.use((req, res, next) => {
           if (req.method !== 'GET' && req.method !== 'HEAD') {
             next();
             return;
           }
+          const url = req.url ?? '/';
+          const pathname = pathnameOf(url, base);
+          // Route discovery is cheap and dev adds/removes files: re-read on each request
+          // so a new `.fud` is routable without restarting the server.
+          builds = discoverRoutes(root, options).routes;
+
+          // The generated `@server load` endpoint (§4.5).
+          if (pathname.startsWith(DATA_PREFIX)) {
+            const routePath = pathname.slice(DATA_PREFIX.length) || '/';
+            const rb = matchRouteBuild(builds, routePath);
+            if (rb === null) {
+              next();
+              return;
+            }
+            loadRouteData(
+              (id) => server.ssrLoadModule(id) as Promise<RenderModule>,
+              WRAPPER_PREFIX + rb.route.pattern,
+              rb.route.pattern,
+              routePath,
+            )
+              .then((data) => {
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify(data));
+              })
+              .catch((err: Error) => {
+                server.ssrFixStacktrace(err);
+                next(err);
+              });
+            return;
+          }
+
           if (!(req.headers.accept ?? '').includes('text/html')) {
             next();
             return;
           }
-          const url = req.url ?? '/';
-          const pathname = url.split('?')[0] ?? '/';
-          // Route discovery is cheap and dev adds/removes files: re-read on navigation so a
-          // new `.fud` is routable without restarting the server.
-          builds = discoverRoutes(root, options).routes;
-          const rb = matchRouteBuild(builds, pathname.startsWith(base) ? pathname.slice(base.length - 1) : pathname);
+          const rb = matchRouteBuild(builds, pathname);
           if (rb === null) {
             next();
             return;
           }
+          const nonce = newNonce();
           renderRouteHtml(
             (id) => server.ssrLoadModule(id) as Promise<RenderModule>,
             WRAPPER_PREFIX + rb.route.pattern,
+            rb.route.pattern,
             pathname,
+            nonce,
           )
             .then((html) => server.transformIndexHtml(url, html)) // injects the dev client
             .then((html) => {
               res.statusCode = 200;
               res.setHeader('Content-Type', 'text/html; charset=utf-8');
+              // In dev the HMR client is injected inline and evaluates at load; a strict
+              // policy would kill it. The CSP is exercised in preview and production,
+              // which is where the emitted output is what ships.
               res.end(html);
             })
             .catch((err: Error) => {
@@ -192,28 +243,81 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     },
 
     configurePreviewServer(server) {
-      // `appType:'custom'` (this plugin's own doing) removes Vite's html fallback, so
-      // `/about` would not find `about/index.html`. Preview must show exactly what a
-      // static host serves: the prerendered file when there is one, 404 otherwise — an
-      // incremental route has no file and is the Service Worker's job.
+      // Preview is the production edge: it serves what a static host serves, adds the
+      // CSP with a fresh nonce, and stamps that nonce into the prerendered HTML.
+      const manifestPath = join(outDir, manifestFileName);
+      const readManifest = (): ManifestFile | null => {
+        try {
+          return JSON.parse(readFileSync(manifestPath, 'utf8')) as ManifestFile;
+        } catch {
+          return null;
+        }
+      };
       server.middlewares.use((req, res, next) => {
         if (req.method !== 'GET' && req.method !== 'HEAD') {
           next();
           return;
         }
-        if (!(req.headers.accept ?? '').includes('text/html')) {
+        const manifest = readManifest();
+        const pathname = pathnameOf(req.url ?? '/', base);
+        if (manifest === null) {
           next();
           return;
         }
-        const pathname = (req.url ?? '/').split('?')[0] ?? '/';
-        const file = join(outDir, htmlPathFor(pathname.startsWith(base) ? pathname.slice(base.length - 1) : pathname));
-        if (!existsSync(file)) {
+        if (pathname === `/${manifestFileName}` || pathname === `/${DEV_SW_URL}`) {
+          res.setHeader('Cache-Control', 'no-cache');
+          if (pathname === `/${DEV_SW_URL}`) {
+            res.setHeader('Service-Worker-Allowed', base);
+            res.setHeader('Content-Security-Policy', manifest.csp.sw);
+          }
           next();
           return;
         }
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'text/html; charset=utf-8');
-        res.end(readFileSync(file, 'utf8'));
+
+        // The generated data endpoint (§4.5): run the built ESM chunk's `data(ctx)`
+        // in process. This is what the Service Worker fetches before rendering.
+        if (pathname.startsWith(DATA_PREFIX)) {
+          const routePath = pathname.slice(DATA_PREFIX.length) || '/';
+          const dataRecord = matchRecord(manifest.routes, routePath);
+          if (dataRecord?.esm === undefined) {
+            next();
+            return;
+          }
+          previewData(outDir, dataRecord, routePath)
+            .then((data) => {
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify(data));
+            })
+            .catch(() => next());
+          return;
+        }
+
+        const record = matchRecord(manifest.routes, pathname);
+        if (record === null) {
+          next();
+          return;
+        }
+        const nonce = newNonce();
+        const file = join(outDir, htmlPathFor(pathname));
+        if (existsSync(file)) {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          res.setHeader('Content-Security-Policy', cspFor(manifest.csp.document, nonce));
+          res.end(applyNonce(readFileSync(file, 'utf8'), nonce));
+          return;
+        }
+        if (record.esm === undefined) {
+          next();
+          return;
+        }
+        previewRender(outDir, record, pathname, nonce)
+          .then((html) => {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            res.setHeader('Content-Security-Policy', cspFor(manifest.csp.document, nonce));
+            res.end(html);
+          })
+          .catch(() => next());
       });
     },
 
@@ -225,7 +329,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       }
       if (isDev) {
         // Dev has no emitFile/generateBundle: the module graph serves the wrappers and
-        // bootstraps, and configureServer serves the manifest (SDD-19 §4.10).
+        // bootstraps, and configureServer serves the manifest.
         return;
       }
 
@@ -239,38 +343,39 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             type: 'chunk',
             id: WRAPPER_PREFIX + rb.route.pattern,
             name: `c/${safeName(rb.route.pattern)}`,
-            // The WW imports this chunk at runtime via the manifest URL, not via a
-            // static import Rollup can see — keep its default export (RenderChunk).
+            // Imported at runtime through the manifest, not via a static import Rollup
+            // can see — keep its exports.
             preserveSignature: 'strict',
           }),
         );
       }
-      wwRef = this.emitFile({ type: 'chunk', id: WW_ID, name: 'fudic-ww' });
-      swRef = this.emitFile({ type: 'chunk', id: SW_ID, name: 'fudic-sw' });
+      if (swConfig !== null) {
+        swRef = this.emitFile({ type: 'chunk', id: SW_ID, name: 'fudic-sw' });
+      }
     },
 
     resolveId(id) {
-      if (id === MAIN_ID || id === WW_ID || id === SW_ID || id.startsWith(WRAPPER_PREFIX)) {
+      if (id === MAIN_ID || id === SW_ID || id.startsWith(WRAPPER_PREFIX)) {
         return id;
       }
       return null;
     },
 
     load(id) {
-      // Dev references stable root URLs (configureServer serves them); build references
-      // the hashed chunks via `import.meta.ROLLUP_FILE_URL_<ref>`.
       if (id === MAIN_ID) {
-        // The main thread owns both: it registers the SW and creates the WW (the SW can
-        // do neither for itself — see bootstrap.ts).
+        if (swConfig === null || (isDev && swConfig.dev !== 'preview')) {
+          // No Service Worker: nothing for the main thread to do (§4.7, §4.11).
+          return 'export {};\n';
+        }
         const swUrl = isDev ? JSON.stringify(devUrl(base, DEV_SW_URL)) : fileUrl(swRef);
-        const wwUrl = isDev ? JSON.stringify(devUrl(base, DEV_WW_URL)) : fileUrl(wwRef);
-        return emitMainBootstrap(swUrl, wwUrl);
-      }
-      if (id === WW_ID) {
-        return emitWwBootstrap(JSON.stringify(manifestUrl));
+        return emitMainBootstrap(swUrl);
       }
       if (id === SW_ID) {
-        return emitSwBootstrap(JSON.stringify(manifestUrl), CACHE_NAME);
+        return emitSwBootstrap({
+          manifestUrlExpr: JSON.stringify(manifestUrl),
+          shell: swConfig?.shell ?? [],
+          resources: swConfig?.resources ?? [],
+        });
       }
       if (id.startsWith(WRAPPER_PREFIX)) {
         const pattern = id.slice(WRAPPER_PREFIX.length);
@@ -280,9 +385,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         }
         return emitRenderChunk({
           pageModule: rb.absPath.replace(/\\/gu, '/'),
-          pattern,
           hasLoad: rb.analysis.hasLoad,
           hasPaths: rb.analysis.hasPaths,
+          withLoad: true, // the edge resolves data in process
         });
       }
       return null;
@@ -305,30 +410,60 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         return null;
       }
       // A literal asset URL with no file on disk: warn (FUD0363) and keep the literal —
-      // the emit already left it un-linked, so the build does not abort (§6.13).
+      // the emit already left it un-linked, so the build does not abort.
       for (const spec of result.missingAssets) {
         this.warn(`[${FUD_ASSET_NOT_FOUND}] asset "${spec}" not found (referenced by ${path})`);
       }
-      // The map is passed as a JSON string (a valid Vite `SourceMapInput`), which also
-      // sidesteps the readonly/mutable array mismatch with Rollup's raw-map type.
       return { code: result.code, map: JSON.stringify(result.map) };
     },
 
     async generateBundle(_outputOptions, bundle) {
-      const chunkOf = (rb: RouteBuild): string => {
-        const ref = wrapperRefs.get(rb.route.pattern);
-        return ref === undefined ? '' : base + this.getFileName(ref);
-      };
-      // Fixed path so SW and WW load the SAME absolute manifest URL (SDD-19 §4.7).
-      this.emitFile({
-        type: 'asset',
-        fileName: manifestFileName,
-        source: JSON.stringify(buildManifest(builds, chunkOf)),
-      });
+      // 1. The link pass: the chunks the Service Worker will link by hand (§4.3).
+      const link: LinkResult =
+        swConfig === null ? { chunks: [], entries: new Map(), deps: new Map() } : await runLinkPass(root, base, builds, io);
+      for (const chunk of link.chunks) {
+        this.emitFile({ type: 'asset', fileName: chunk.fileName, source: chunk.code });
+      }
 
-      // Static prerender (mode 1, §4.4): run each prerenderable route's built RenderChunk
-      // and emit its `.html`. A param route with `paths()` (decision.enumerate) prerenders
-      // one file per enumerated id; a param-free static route prerenders its single file.
+      // 2. The build id: it names every cache and lives inside the SW, so a new build
+      //    changes the SW's own bytes → the browser updates → activate purges (§4.10).
+      const buildId = createHash('sha256')
+        .update([...Object.keys(bundle), ...link.chunks.map((c) => c.fileName)].sort().join('|'))
+        .digest('hex')
+        .slice(0, 8);
+      for (const item of Object.values(bundle)) {
+        if (item.type === 'chunk' && item.code.includes(BUILD_TOKEN)) {
+          item.code = item.code.split(BUILD_TOKEN).join(buildId);
+        }
+      }
+
+      // 3. The manifest: the one contract, emitted at a fixed URL.
+      const urlOf = (fileName: string): string => `${base}${fileName}`.replace(/\/{2,}/gu, '/');
+      const esmOf = (rb: RouteBuild): string => {
+        const ref = wrapperRefs.get(rb.route.pattern);
+        return ref === undefined ? '' : urlOf(this.getFileName(ref));
+      };
+      const { file, diagnostics } = buildManifest(builds, {
+        build: buildId,
+        base,
+        serviceWorker: swConfig !== null,
+        esmOf,
+        linkChunkOf: (rb) => {
+          const fileName = link.entries.get(rb.route.pattern);
+          if (fileName === undefined) {
+            this.warn(`[${FUD_CHUNK_NOT_EMITTED}] no linkable chunk for ${rb.route.pattern}`);
+            return '';
+          }
+          return urlOf(fileName);
+        },
+        depsOf: (rb) => (link.deps.get(rb.route.pattern) ?? []).map(urlOf),
+      });
+      for (const d of diagnostics) {
+        this.warn(`[${d.code}] ${d.message} (${d.file})`);
+      }
+      this.emitFile({ type: 'asset', fileName: manifestFileName, source: JSON.stringify(file) });
+
+      // 4. Prerender: run each prerenderable route's BUILT chunk and write its `.html`.
       const prerenders = builds.filter((b) => b.decision.prerender);
       if (prerenders.length === 0) {
         return;
@@ -356,7 +491,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               this.emitFile({ type: 'asset', fileName: htmlPathFor(rb.route.pattern), source: html });
             }
           } catch (err) {
-            // A broken page must not abort the build (invariant §5): warn and skip its file.
+            // A broken page must not abort the build: warn and skip its file.
             this.warn(`[prerender] ${rb.route.pattern}: ${(err as Error).message}`);
           }
         }
@@ -365,4 +500,50 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       }
     },
   };
+}
+
+/** First-hit match of a manifest record against a concrete path (preview server). */
+function matchRecord(routes: readonly RouteRecord[], pathname: string): RouteRecord | null {
+  const parts = pathname.split('/').filter((s) => s.length > 0);
+  for (const record of routes) {
+    const pattern = record.pattern.split('/').filter((s) => s.length > 0);
+    if (pattern.length === parts.length && pattern.every((seg, i) => seg.startsWith(':') || seg === parts[i])) {
+      return record;
+    }
+  }
+  return null;
+}
+
+/** Import a route's built ESM chunk (the edge half of the two output formats). */
+async function importEsmChunk(outDir: string, record: RouteRecord): Promise<RenderModule> {
+  const { pathToFileURL } = await import('node:url');
+  const file = join(outDir, (record.esm ?? '').replace(/^\//u, ''));
+  return (await import(pathToFileURL(file).href)) as RenderModule;
+}
+
+/** Render a route in preview by importing its built ESM chunk. */
+async function previewRender(
+  outDir: string,
+  record: RouteRecord,
+  pathname: string,
+  nonce: string,
+): Promise<string> {
+  const mod = await importEsmChunk(outDir, record);
+  const { drainStream, edgeContext } = await import('./serve.js');
+  return drainStream(mod.render(edgeContext(record.pattern, pathname, nonce)));
+}
+
+/** Run a route's `@server load` in preview — the generated data endpoint. */
+async function previewData(
+  outDir: string,
+  record: RouteRecord,
+  pathname: string,
+): Promise<unknown> {
+  const mod = await importEsmChunk(outDir, record);
+  if (typeof mod.data !== 'function') {
+    return {};
+  }
+  const { edgeContext } = await import('./serve.js');
+  const { nonce: _nonce, ...ctx } = edgeContext(record.pattern, pathname, '');
+  return mod.data(ctx);
 }

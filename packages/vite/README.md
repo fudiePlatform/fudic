@@ -1,11 +1,12 @@
 # @fudic/vite
 
-The Vite plugin for **fudic** (SDD-19). It is the **linker** over the filesystem-free
-compiler emit: it discovers `.fud` pages, transforms every `.fud` to a module (Vite owns
-the graph), emits a `RenderChunk` per route, the `route→chunk` manifest that
-`@fudic/transport` loads, and the three-thread bootstraps (Service Worker, Web Worker,
-main). Vite is bundler/dev-server only — the parser is always `@fudic/compiler`; Vite
-never parses `.fud`.
+The Vite plugin for **fudic** (SDD-19, rewired by SDD-20). It is the **linker** over the
+filesystem-free compiler emit: it discovers `.fud` pages, transforms every `.fud` to a
+module (Vite owns the graph), emits each route's chunk in **two formats** — ESM for the
+edge and prerender, `exports`/`require` for the Service Worker's own linker — the manifest
+both sides read, and the two bootstraps (Service Worker, main thread). Vite is
+bundler/dev-server only — the parser is always `@fudic/compiler`; Vite never parses
+`.fud`.
 
 ## Usage
 
@@ -37,14 +38,26 @@ specificity (static before param), which the emitted manifest matches first-hit.
 
 ## SSG modes
 
-Two modes map onto SDD-16's `dynamic` flag, so the Service Worker router is unchanged:
+Three modes, and the page is the one that decides (`strategy()`); the filesystem facts
+only fill in when it declares nothing:
 
-- **static** — data is build-known → prerendered eagerly. The build runs the route's
-  RenderChunk and writes its HTML (`/about` → `about/index.html`); the manifest entry is
-  `dynamic:false`, so the SW never intercepts and the browser fetches the file directly.
-  (Enumerated param prerender via `@server paths()` is the remaining prerender follow-up.)
-- **incremental** — rendered by the WW on first request, then persisted by the SW cache
-  (lazy SSG). Param routes are incremental by default; `@server paths()` warms a subset.
+- **`ssg`** — data is build-known → prerendered. The build runs the route's chunk and
+  writes its HTML (`/about` → `about/index.html`) and the browser fetches the file.
+- **`sw`** — rendered locally by the Service Worker from its linked chunk, with the data
+  coming from the endpoint the plugin generates for `@server load`.
+- **`ssr`** — always the server. Never inferred: declare it for session or permissions.
+
+```
+@code {
+  @server {
+    import { strategy } from '@fudic/core';
+    strategy({ mode: 'sw', data: { ttl: '5m', policy: 'cache-first' } });
+  }
+}
+```
+
+**No `sw.json` at the project root, no Service Worker**: every route is then served by the
+server, which is an explicit decision rather than a silent default.
 
 A page declares its data with a `@server` region:
 
@@ -87,19 +100,17 @@ emits each asset (absolute/`data:`/`<a href>`/dynamic refs are left untouched). 
 The `@server` region (typed `load`/`paths`) is served through the `?server` module,
 type-stripped to plain JS by Vite's Oxc transform.
 
-`vite dev` serves what `generateBundle` produces in build: the manifest (from
-`manifestUrl`, every route incremental — mode-1 pages render on-demand rather than
-prerendering on each save) and the three bootstraps at stable root URLs, the Service
-Worker with `Service-Worker-Allowed` so it registers at root scope. The wrapper and page
-modules are served by Vite's module graph with live source maps. A navigation is rendered
-on demand by running the same `RenderChunk` the Web Worker runs, through Vite's SSR graph,
-with the dev client injected — so an edit reloads.
+`vite dev` is the edge: it serves the manifest (every route `ssr` — Vite serves ESM
+untransformed, so there is nothing to link in dev), the generated `/_fudic/data/…`
+endpoints, and every navigation rendered on demand through Vite's SSR graph with the dev
+client injected. The Service Worker is **not registered in dev** unless `sw.json` says
+`"dev": "preview"`, which is what SvelteKit, Next and Nuxt do and what keeps HMR sane.
 
-`vite preview` serves each route's prerendered file (`/about` → `about/index.html`); a
-route with no file 404s, which is what a static host does and what the Service Worker is
-for.
+`vite preview` is the production edge: prerendered files where they exist, the data
+endpoints, on-demand render for the rest, and on every document a CSP header with a fresh
+nonce stamped into the page.
 
-## The three-thread bootstraps
+## The two bootstraps
 
 A page opts into the shell by referencing the main-thread bootstrap in its `<head>`:
 
@@ -107,21 +118,19 @@ A page opts into the shell by referencing the main-thread bootstrap in its `<hea
 <script type="module" src="/fudic-main.js"></script>
 ```
 
-It registers the Service Worker **and creates the render Web Worker**, handing each side
-one end of a `MessageChannel`. The main thread owns that creation because a
-`ServiceWorkerGlobalScope` exposes neither `Worker` nor `import()` — so the plugin emits
-`fudic-sw.js` and `fudic-main.js` with stable, root-level names (a Service Worker under
-`assets/` would be scoped to `assets/`, and a hashed name cannot be written by hand).
-Everything else keeps Vite's content hash. Configure `build.rollupOptions.output` and
-those names become yours to keep.
+It registers the Service Worker and tells it where the user is — the single warm trigger,
+which is what pulls that route's chunk and its dependencies into the cache behind the
+navigation already in flight. The plugin emits `fudic-sw.js` and `fudic-main.js` with
+stable, root-level names (a Service Worker under `assets/` would be scoped to `assets/`,
+and a hashed name cannot be written by hand). Everything else keeps Vite's content hash.
+Configure `build.rollupOptions.output` and those names become yours to keep.
 
-Until a client has connected a render worker, the Service Worker does not intercept: the
-network answers. A prerendered route is a file; an incremental one needs a live client,
-which is what navigating from any page of the app gives you.
+Until the router is ready and its template warm, the Service Worker does not intercept:
+the network answers, which is exactly right for a prerendered route.
 
 A param route with `@server paths()` prerenders one file per enumerated id
-(`customer/1/index.html`…); `paramFallback:'lazy'` keeps a `dynamic:true` entry for
-unknown ids, `'notFound'` does not. A literal `src`/`url()` to a missing file raises
+(`customer/1/index.html`…); `paramFallback:'lazy'` lets the Service Worker render unknown
+ids locally, `'notFound'` leaves them a 404. A literal `src`/`url()` to a missing file raises
 `FUD0363` and stays a literal — the build does not abort.
 
 Out of scope (SDD-19 §7): the SDD-15 client hydration branch (paused) and `srcset`

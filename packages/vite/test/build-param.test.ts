@@ -43,6 +43,7 @@ beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-param-'));
   mkdirSync(join(root, 'routes', 'customer'), { recursive: true });
   writeFileSync(join(root, 'routes', 'customer', '[id].fud'), PAGE);
+  writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
   const result = (await build({
     root,
     logLevel: 'silent',
@@ -54,20 +55,32 @@ beforeAll(async () => {
 }, 120000);
 
 describe('vite build — param route with @server load', () => {
-  it('emits an incremental /customer/:id manifest entry', () => {
+  it('emits a sw /customer/:id entry with its chunk and generated data endpoint', () => {
     const asset = output.find((o) => o.type === 'asset' && o.fileName === 'fudic-routes.json');
-    const manifest = JSON.parse(asset!.source as string) as Array<Record<string, unknown>>;
-    expect(manifest).toHaveLength(1);
-    expect(manifest[0]).toMatchObject({ pattern: '/customer/:id', dynamic: true });
+    const manifest = JSON.parse(asset!.source as string) as {
+      routes: Array<Record<string, unknown>>;
+    };
+    expect(manifest.routes).toHaveLength(1);
+    expect(manifest.routes[0]).toMatchObject({
+      pattern: '/customer/:id',
+      mode: 'sw',
+      data: '/_fudic/data/customer/:id',
+    });
   });
 
-  it('bundles a chunk that extracts params and runs load', () => {
-    const code = output
+  it('bundles the @server load into the EDGE chunk, never into the linked one', () => {
+    const edge = output
       .filter((o) => o.type === 'chunk')
       .map((c) => c.code ?? '')
       .join('\n');
-    expect(code).toContain('SEGMENTS'); // the baked pattern, param extraction
-    expect(code).toContain('extractParams');
-    expect(code).toContain('ctx.params.id'); // the @server load, bundled from ?server
+    expect(edge).toContain('ctx.params.id'); // the @server load, bundled from ?server
+
+    // Server code does not ship to the client: the SW gets its data already resolved
+    // from the generated endpoint (SDD-20 §4.5).
+    const linked = output.find((o) => o.fileName.startsWith('sw/c/'));
+    expect(linked).toBeDefined();
+    const code = (linked!.source ?? '') as string;
+    expect(code).not.toContain('ctx.params.id');
+    expect(code).toMatch(/exports\.render\s*=/u);
   });
 });
