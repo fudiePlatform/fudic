@@ -20,3 +20,9 @@
 export const VERSION = '0.0.1';
 
 export { signal, type Signal } from './signal.js';
+export {
+  strategy,
+  type StrategyDecl,
+  type RouteMode,
+  type CachePolicy,
+} from './strategy.js';
