@@ -148,7 +148,8 @@ describe('emitPageModule — home.mjs', () => {
   it('emits the style polyfill and places its <script> BEFORE the style modules', () => {
     expect(src).toContain('const STYLE_POLYFILL = `');
     expect(src).toContain('new MutationObserver');
-    const scriptAt = src.indexOf("'  <script>' + STYLE_POLYFILL");
+    // The `<script>` carries the per-response CSP nonce (SDD-20 §4.9); empty without one.
+    const scriptAt = src.indexOf("'  <script' + $nonce + '>' + STYLE_POLYFILL");
     const stylesAt = src.indexOf('<style type="module" specifier=');
     expect(scriptAt).toBeGreaterThan(-1);
     expect(stylesAt).toBeGreaterThan(scriptAt); // head order: polyfill first, then sheets
