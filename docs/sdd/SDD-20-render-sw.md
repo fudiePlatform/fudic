@@ -1,6 +1,6 @@
 # SDD-20 — Renderizado en el Service Worker (`@fudic/transport` · `@fudic/vite` · `@fudic/core`)
 
-> **Estado:** `Listo` · **Rango de diagnósticos:** `FUD0390`–`FUD0419`
+> **Estado:** `Hecho` · **Rango de diagnósticos:** `FUD0390`–`FUD0419`
 > **Depende de:** 14, 15 (slice SSR servidor), 16 (parte 1: `@fudic/ssr`), 18, 19
 > **Sustituye a:** SDD-16 §3.2 (contrato de mensajes de datos), §3.3, §4.3 (canal de
 > datos), §4.4 (adaptador y degradación Safari), §4.5 (delegación al WW), §4.6;
@@ -117,6 +117,7 @@ export interface RouteRecord {
   readonly dataPolicy?: DataPolicy;
   readonly page?: PagePolicy;
   readonly html?: string;                   // mode 'ssg': URL del HTML precalculado
+  readonly esm?: string;                    // el chunk ESM del edge; el SW no lo lee nunca
 }
 
 export interface CspTemplates {
@@ -219,6 +220,8 @@ export interface RenderContext {
   readonly mode: RouteMode;
   /** Nonce de ESTA respuesta; el chunk lo pasa al `io` para el polyfill (§4.9). */
   readonly nonce: string;
+  /** Datos ya resueltos: el SW los pide al endpoint, el edge llama a `load` en proceso. */
+  readonly data?: unknown;
 }
 
 /** Lo que exporta un chunk de ruta enlazado. Lo genera el plugin (SDD-19 §4.3, reescrito). */
@@ -265,6 +268,10 @@ export interface Router {
   handle(event: FetchEvent): void;
   /** Calienta la plantilla de una ruta: chunk + deps a `routes-<build>`. Idempotente. */
   warm(pathname: string): Promise<void>;
+  /** Siembra el índice de páginas en memoria desde la cache; se espera antes del `fetch`. */
+  ready(): Promise<void>;
+  /** Purga la página y el dato cacheados de una ruta concreta (canal de control). */
+  invalidate(pathname: string): Promise<void>;
 }
 
 export function createRouter(config: RouterConfig): Router;
@@ -396,7 +403,7 @@ producción) y el SW. **Nadie más escribe rutas.**
 {
   "build": "a3f9c1",
   "csp": {
-    "document": "default-src 'self'; script-src 'self' 'nonce-{nonce}'; style-src 'self' 'nonce-{nonce}'; object-src 'none'; base-uri 'self'",
+    "document": "default-src 'self'; script-src 'self' 'nonce-{nonce}'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'",
     "sw": "default-src 'self'; script-src 'self' 'unsafe-eval'"
   },
   "routes": [
@@ -488,6 +495,13 @@ async function load(url: string): Promise<ModuleExports> {
   compilación** `FUD0395`, nunca un silencio que aparezca en runtime dentro de un
   `new Function`.
 
+**Dos ajustes que salieron al implementarlo.** (a) La salida enlazable necesita
+`preserveEntrySignatures: 'strict'`: el enlazador llama a `render` **a través del
+manifest**, no por un import que el bundler pueda ver, así que sin eso los exports del
+entry se van con el tree-shaking y el chunk queda vacío. (b) Un módulo cuya evaluación
+**lanza se desregistra**: el registro temprano que soporta ciclos dejaría, si no, un
+cascarón a medio construir para el siguiente llamante.
+
 **Aislamiento deliberado.** El enlazador es el único módulo que sabe que no hay `import()`.
 El día que los SW lo soporten, `createLinker` se sustituye por una implementación de tres
 líneas sobre `import()` y **nada más cambia**: ni el router, ni el manifest (los `deps`
@@ -503,6 +517,14 @@ plantillas ya cacheadas viven en variables del SW. Tras un reciclado (~30 s de
 inactividad) el SW vuelve con la memoria vacía y se rehidrata desde su **propia cache, sin
 red** (`loadManifest(url, shellCache)`); hasta que termina, esa primera navegación va al
 servidor. El arranque **no** hace `fetch` del manifest: entró en el precache del `install`.
+
+**Corrección de implementación — el arranque compite con el `install`.** En un registro
+nuevo, el módulo del SW se evalúa **antes** de que `install` haya llenado la cache del
+shell, así que ese primer `loadManifest` falla legítimamente. El arranque es por tanto una
+función memoizada que **se olvida de sí misma al fallar** (`booting = null`) y se
+reintenta al final del `activate`, cuando el shell ya está. En un rearranque tras reciclado
+la primera llamada ya acierta. Sin esto, el SW de una instalación nueva no renderiza
+nunca: verificado en Chrome, era exactamente el síntoma.
 
 #### 4.4.2. `respondWith()` solo cuando se va a renderizar de verdad
 
@@ -718,10 +740,15 @@ Tres realms, independientes (verificado en las dos direcciones):
    coste despreciable, un solo mecanismo para los tres orígenes.
 4. **`style-src`**: el documento fuente da por hecho que hace falta `'unsafe-inline'`
    porque los `<style>` de un shadow root declarativo son estilos inline a efectos de CSP.
-   Con SDD-18 **todos** nuestros `<style>` los emite nuestro serializador y pueden llevar
-   `nonce`. La spec **exige medir** si `nonce` basta en Chromium y WebKit (§6.19): si
-   basta, `style-src` va sin `'unsafe-inline'`; si no, se añade y se documenta como peaje
-   conocido de hacer DSD con CSP estricta. Ninguna de las dos ramas bloquea el resto.
+   Con SDD-18 **todos** nuestros `<style>` los emite nuestro serializador y podrían llevar
+   `nonce`. **v1 sale con `'unsafe-inline'`** —el peaje conocido de hacer DSD con CSP
+   estricta— y la medición de §6.26 queda como vigilancia: el día que se compruebe que el
+   nonce basta en los dos motores, se cambia la plantilla y nada más. Ojo al cambiarlo: si
+   una directiva lleva nonce, el navegador **ignora** `'unsafe-inline'` en ella, así que no
+   pueden convivir.
+5. **`img-src 'self' data:`**: hace falta en la plantilla por defecto. Sin él, el icono de
+   respaldo que el propio Chrome inyecta como `data:` URL cuando el favicon falla dispara
+   una violación de CSP en consola. Salió en la verificación en navegador.
 
 ### 4.10. Build id, invalidación y versión
 
@@ -897,7 +924,9 @@ Unitarios salvo donde se indique. Los de navegador corren con Playwright
     `examples/basic` (sin `strategy()` en ninguno, el manifest sale idéntico en modos a lo
     que hoy produce `dynamic`).
 
-**Navegador (Playwright, Chromium y WebKit)**
+**Navegador** — implementados en `examples/basic/scripts/sw-check.mjs`, sobre CDP crudo y
+sin dependencias nuevas (`pnpm build && pnpm preview`, luego `pnpm check:sw`). **Verdes en
+Chromium**; el mismo script sirve para WebKit el día que se añada un runner.
 
 24. **Cadena ruta→ruta**, que es la que mata al Web Worker: `/` → `/blog/a` → `/blog/b`,
     las tres completan, con el HTML íntegro y `document.querySelector('app-card').shadowRoot`
