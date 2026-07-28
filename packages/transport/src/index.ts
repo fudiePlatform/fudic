@@ -1,38 +1,69 @@
 /**
  * Entry point of `@fudic/transport`.
  *
- * The three-thread client shell of fudic (SDD-16): typed message contract,
- * the WW→SW transport adapter with isolated Safari degradation, the single
- * route→chunk manifest, the WW render server, the SW router (one decision
- * branch: cache hit/miss), the `BroadcastChannel` control bus, and the
- * main-thread SW registration hook. Runtime dependencies: platform types only.
+ * The client shell of fudic (SDD-20): the render lives in the Service Worker, which
+ * belongs to no document and therefore owns the `Response` of a navigation from start
+ * to finish. Pieces: the manifest (the single route contract), the linker that stands
+ * in for the forbidden `import()`, cache access with policy and in-flight dedup, the
+ * router with its one synchronous decision, CSP with a per-response nonce, the control
+ * bus and the main-thread hooks. Runtime dependencies: platform types only.
  */
 
 export const VERSION = '0.0.1';
 
 export {
-  type ReqId,
-  type RenderRequest,
-  type RenderMessage,
   type ControlMessage,
-  type WorkerPortMessage,
-  WORKER_PORT_MESSAGE,
+  type LocationMessage,
+  LOCATION_MESSAGE,
 } from './messages.js';
-export { canTransferStream, sendRender, receiveRender } from './adapter.js';
 export {
-  type ManifestEntry,
+  type RouteMode,
+  type CachePolicy,
+  type DataPolicy,
+  type PagePolicy,
   type RouteRecord,
-  type RouteManifestFile,
-  type RouteManifest,
+  type CspTemplates,
+  type ManifestFile,
+  type RouteMatch,
+  type RouteTable,
+  compileManifest,
   loadManifest,
+  fillParams,
+  segmentsOf,
 } from './manifest.js';
-export { type RenderChunk, serveRender, installRenderWorker } from './worker.js';
+export {
+  type ModuleExports,
+  type Linker,
+  type LinkerConfig,
+  LinkError,
+  canLink,
+  createLinker,
+} from './linker.js';
+export {
+  type CacheNames,
+  type Store,
+  type StoreConfig,
+  STAMP_HEADER,
+  cacheNames,
+  createStore,
+  isStaleCache,
+} from './store.js';
+export {
+  NONCE_TOKEN,
+  DEFAULT_CSP,
+  applyNonce,
+  cspFor,
+  newNonce,
+} from './csp.js';
 export {
   type FetchEvent,
-  type RenderTarget,
+  type RenderContext,
+  type RouteChunk,
+  type ResourceRule,
   type Router,
   type RouterConfig,
+  type RouterStores,
   createRouter,
 } from './router.js';
 export { type ControlBus, controlBus } from './control.js';
-export { registerRenderServiceWorker, connectRenderWorker } from './main.js';
+export { registerRenderServiceWorker, notifyLocation } from './main.js';

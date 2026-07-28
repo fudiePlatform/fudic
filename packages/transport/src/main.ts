@@ -1,43 +1,36 @@
 /**
- * The main-thread hooks (SDD-16 §3.2): register the render Service Worker, and create
- * the render Web Worker joining the two with a `MessageChannel`. The main thread owns
- * that creation because a `ServiceWorkerGlobalScope` exposes neither `Worker` nor
- * `import()` — the SW can neither spawn the renderer nor load a chunk itself (verified
- * in Chrome; see https://github.com/w3c/ServiceWorker/issues/1356).
+ * The main-thread hooks (SDD-20 §3.6). Two jobs, and only two: register the render
+ * Service Worker, and tell it where the user is. It creates no workers, no channels,
+ * and does not hand over the manifest — the SW reads that from its own cache.
  *
  * Hydration is not this package's concern: it is driven by the global capturer of
  * SDD-17, per instance and on interaction.
  */
 
-import { WORKER_PORT_MESSAGE, type WorkerPortMessage } from './messages.js';
+import { LOCATION_MESSAGE, type LocationMessage } from './messages.js';
 
 export async function registerRenderServiceWorker(
   url: string,
-  options: RegistrationOptions = { type: 'module' },
+  options: RegistrationOptions = { type: 'module', updateViaCache: 'none' },
 ): Promise<ServiceWorkerRegistration> {
-  // `type: 'module'` is the default because the emitted Service Worker is an ES module
-  // (it imports this package's router from a sibling chunk); registered as a classic
-  // script the browser rejects it at parse time.
+  // `type: 'module'` because the emitted Service Worker is an ES module; registered as
+  // a classic script the browser rejects it at parse time. `updateViaCache: 'none'`
+  // because the SW script governs updates: it must never come from the HTTP cache.
   return navigator.serviceWorker.register(url, options);
 }
 
 /**
- * Create the render Web Worker and join it to the active Service Worker: one end of a
- * `MessageChannel` goes to each, so from then on the SW posts render requests straight
- * to the worker with no main-thread hop. Returns the worker, or `null` when no Service
- * Worker is active yet (nothing to join — the page still renders, it just falls through
- * to the network).
+ * The SINGLE warm trigger (SDD-20 §4.6.2). The document says "the user is here" and
+ * the SW warms THAT template — chunk plus deps — behind the navigation that is already
+ * being served. Two triggers is how the prototype ended up downloading everything
+ * twice, so `activate` deliberately warms nothing.
  */
-export async function connectRenderWorker(workerUrl: string): Promise<Worker | null> {
+export async function notifyLocation(url: string = location.href): Promise<void> {
   const registration = await navigator.serviceWorker.ready;
   const serviceWorker = navigator.serviceWorker.controller ?? registration.active;
   if (serviceWorker === null) {
-    return null;
+    return; // nothing to tell yet; the next navigation will be controlled
   }
-  const worker = new Worker(workerUrl, { type: 'module' });
-  const { port1, port2 } = new MessageChannel();
-  const message: WorkerPortMessage = { type: WORKER_PORT_MESSAGE };
-  worker.postMessage(message, [port2]); // WW: serve renders on this port
-  serviceWorker.postMessage(message, [port1]); // SW: request renders on this port
-  return worker;
+  const message: LocationMessage = { type: LOCATION_MESSAGE, url };
+  serviceWorker.postMessage(message);
 }

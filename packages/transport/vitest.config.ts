@@ -12,13 +12,13 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html'],
       thresholds: {
-        // SDD-00 floor for the double-driven modules (router, worker, main)...
+        // SDD-00 floor for the double-driven modules (router, main)...
         lines: 80,
         functions: 80,
         branches: 75,
-        // ...and near-100% for the transport adapter (SDD-16 §6.13).
-        'src/adapter.ts': { lines: 100, functions: 100, branches: 100 },
+        // ...and near-100% for the pure ones (SDD-20 §6.1–§6.12).
         'src/manifest.ts': { lines: 100, functions: 100, branches: 100 },
+        'src/linker.ts': { lines: 100, functions: 100, branches: 100 },
         'src/control.ts': { lines: 100, functions: 100, branches: 100 },
       },
     },

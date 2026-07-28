@@ -1,37 +1,40 @@
 # @fudic/transport
 
-The three-thread client transport shell of fudic (SDD-16). Every navigation is
-a `FetchEvent` a **Service Worker** intercepts; dynamic routes delegate to a
-**Web Worker** that `import()`s the view chunk and produces the HTML byte
-stream; the SW pipes it to the `Response` (with `tee()` to cache) and the
-browser paints while streaming. The **main thread** registers the SW, creates the
-WW, and hydrates (SDD-14). Zero distributed routing runtime: one decision branch
-in the whole system — cache hit or miss.
+The client shell of fudic (SDD-20). Every navigation is a `FetchEvent` a **Service
+Worker** intercepts, and the SW is the one that renders: it links the route's chunk,
+fetches its data and streams the HTML into the `Response`, so the browser paints while
+streaming and materializes the declarative shadow roots natively. One decision branch in
+the whole system, and it is synchronous.
 
-**Who creates the Web Worker: the main thread** (SDD-16 §3.3). A
-`ServiceWorkerGlobalScope` exposes neither `Worker` nor `import()`
-([w3c/ServiceWorker#1356](https://github.com/w3c/ServiceWorker/issues/1356)), so
-the SW can neither spawn the renderer nor load a chunk. `connectRenderWorker`
-creates the worker and gives the SW one end of a `MessageChannel`; from then on
-the SW posts render requests straight to it, with no main-thread hop. Until a
-port is connected the SW does not intercept — the network answers.
+**Why not a Web Worker.** Measured in Chromium 151 and WebKit 26.5: a WW belongs to its
+document and dies with it, so a render requested during a navigation never finishes — the
+stream stays open forever (a spinner, not truncated HTML), and in WebKit the WW cannot
+even reach the network while its document unloads. The Service Worker belongs to no
+document: it owns the `Response` from start to finish.
 
-- **Message contract** — `RenderRequest` / `RenderMessage` / `ControlMessage`.
-  Data travels on a 1:1 `MessagePort` per request; control on a
-  `BroadcastChannel` (`controlBus`). The two channels never mix.
-- **Transport adapter** — `canTransferStream` (capability probe, not UA),
-  `sendRender` / `receiveRender`: native `ReadableStream` transfer, or the
-  isolated degraded fan-out of `ArrayBuffer` chunks for Safari.
-- **Manifest** — `loadManifest(url)`: the single route→chunk source SW and WW
-  share (same absolute URL, versioned with the build).
-- **WW** — `serveRender` / `installRenderWorker(manifest, port?)`: a local render
-  server running the same emitted generator an edge worker would, listening on
-  the transferred port (or on `self`). `RenderChunk` is injected (DIP), so the
-  shell tests without the emit.
-- **SW** — `createRouter`: cache hit → cached response; miss → delegate to the
-  render target, `tee()` to response + cache, close the per-request port.
-- **Main** — `registerRenderServiceWorker(url)` (module SW by default) and
-  `connectRenderWorker(workerUrl)`.
+**Why a hand-written linker.** A `ServiceWorkerGlobalScope` forbids `import()`
+([w3c/ServiceWorker#1356](https://github.com/w3c/ServiceWorker/issues/1356)) and only
+allows `importScripts()` during `install`, which would mean loading every route at once.
+So chunks are linked with `new Function`, and `/fudic-sw.js` — and only it — is served
+with `'unsafe-eval'`. A Service Worker does not inherit the document's CSP, so documents
+stay strict.
+
+- **Manifest** — `compileManifest` / `loadManifest(url, cache)`: the single route
+  contract (`build`, `csp`, `routes` with mode, chunk, topological `deps`, data endpoint
+  and policies). Read from the SW's own cache, never the network, so the fetch decision
+  can be synchronous.
+- **Linker** — `createLinker` / `canLink`: `exports`/`require` modules evaluated once,
+  registered globally (a component shared by 50 routes compiles once), cycle-safe, with
+  `//# sourceURL` so DevTools can show the code.
+- **Store** — `createStore` / `cacheNames`: the four build-namespaced caches, cache
+  policies, TTL by stored stamp, in-flight deduplication and FIFO pruning.
+- **Router** — `createRouter`: `respondWith` ONLY when it will actually serve; render →
+  `Response`, prerendered page from cache, warm behind a cold navigation, and a single
+  rescue `fetch` when a chunk fails to link.
+- **CSP** — `newNonce` / `cspFor` / `applyNonce`: a nonce per response, and the
+  `__FUDIC_NONCE__` token that prerendered HTML carries until someone serves it.
+- **Main** — `registerRenderServiceWorker(url)` (module SW, `updateViaCache: 'none'`) and
+  `notifyLocation()`: the single warm trigger.
 
 No runtime dependencies: the whole surface is platform types. `@fudic/ssr` is a
 devDependency, used by the tests to build real render streams.
