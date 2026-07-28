@@ -82,6 +82,11 @@ export function transformFud(id: string, io: ResolveIo): TransformResult | null 
   let out: EmitOutput;
   if (entry.type === 'page-document') {
     out = emitPageModuleMapped(graph, emitOptions);
+  } else if (entry.type !== 'component-document') {
+    // A route or a layout (SDD-21): composing them is the plugin's SLICE 2 — the compiler
+    // already emits them (`emitRouteModule`/`emitLayoutModule`), but wiring the layout
+    // chain into discovery, the specifier and dev invalidation lands with that slice.
+    throw new Error(`layouts are not wired into the Vite plugin yet: ${id}`);
   } else {
     // A component entry: resolveComponents does not add the entry itself to the graph,
     // so build its ResolvedComponent from the parsed entry (its deps are already resolved).

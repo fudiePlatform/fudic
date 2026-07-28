@@ -8,10 +8,12 @@ export type {
   AtEscapeNode,
   RazorCommentNode,
   ControlKeyword,
+  LayoutDirective,
   TriggerResolution,
 } from './at.js';
 export {
   classifyKeyword,
+  classifyDirective,
   resolveTrigger,
   scanImplicitExpression,
   expressionFromToken,

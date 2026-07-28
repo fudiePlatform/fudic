@@ -13,6 +13,7 @@
 
 import type { HtmlContent, ElementNode, Attribute } from '../html/index.js';
 import type { IfNode, ForeachNode } from '../control/index.js';
+import type { RenderSectionNode } from '../layout/index.js';
 import type { Span } from '../types/index.js';
 import { classifyAttribute } from '../binding/index.js';
 import { CodeWriter } from './writer.js';
@@ -36,20 +37,35 @@ export const isAssetAttr = (element: string, attribute: string): boolean =>
 // A control construct is stored as its base RazorConstruct; recover the concrete node.
 const asIf = (node: HtmlContent): IfNode => node as unknown as IfNode;
 const asForeach = (node: HtmlContent): ForeachNode => node as unknown as ForeachNode;
+const asRenderSection = (node: HtmlContent): RenderSectionNode => node as unknown as RenderSectionNode;
 
 export class MarkupEmitter {
   readonly #source: string;
   readonly #w: CodeWriter;
   readonly #isComponent: (tag: string) => boolean;
   readonly #linker: AssetLinker;
+  readonly #slots: string | undefined;
   readonly #used = new Set<string>();
   #id = 0;
 
-  constructor(source: string, w: CodeWriter, isComponent: (tag: string) => boolean, linker: AssetLinker) {
+  /**
+   * `slots` is the name of the layout's slots object (SDD-21 §4.5). When given, the layout
+   * directives resolve to calls on it — `@RenderBody()` becomes `route.body($dom, parent)`.
+   * When absent (a page, a component), a directive emits nothing: it was already reported
+   * as out of place by SDD-10, and the emit must not invent markup for it.
+   */
+  constructor(
+    source: string,
+    w: CodeWriter,
+    isComponent: (tag: string) => boolean,
+    linker: AssetLinker,
+    slots?: string,
+  ) {
     this.#source = source;
     this.#w = w;
     this.#isComponent = isComponent;
     this.#linker = linker;
+    this.#slots = slots;
   }
 
   /** The child component tags rendered so far, in first-use order (for ES imports). */
@@ -83,6 +99,18 @@ export class MarkupEmitter {
       case 'foreach':
         this.#foreach(asForeach(node), parent);
         return;
+      case 'render-body':
+        // `@RenderBody()`: the route appends its nodes under the SAME parent, with the
+        // layout's own `$dom` — one tree, one serialization (SDD-21 §4.5).
+        if (this.#slots) this.#w.line(`${this.#slots}.body($dom, ${parent});`);
+        return;
+      case 'render-section': {
+        if (this.#slots) {
+          const name = asRenderSection(node).name;
+          this.#w.line(`${this.#slots}.section(${JSON.stringify(name)}, $dom, ${parent});`);
+        }
+        return;
+      }
       default:
         return; // comments, @code, and constructs with no server markup
     }

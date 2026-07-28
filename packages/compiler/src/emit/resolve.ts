@@ -11,9 +11,27 @@
 import { parseDocument, type AtConstructParser, type ElementNode } from '../html/index.js';
 import { parseControl } from '../control/index.js';
 import { parseCodeBlock } from '../code/index.js';
-import { structureDocument, type StructuredDocument, type ComponentDocument } from '../document/index.js';
+import { parseDirective } from '../layout/index.js';
+import {
+  structureDocument,
+  type StructuredDocument,
+  type ComponentDocument,
+  type LayoutDocument,
+  type RouteDocument,
+} from '../document/index.js';
+import { type Diagnostic, errorDiag, warningDiag } from '../types/index.js';
+import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 
-const constructs: AtConstructParser = { parseControl, parseCodeBlock };
+const constructs: AtConstructParser = { parseControl, parseCodeBlock, parseDirective };
+
+/** A cycle in the layout chain (decision 87). */
+const FUD_LAYOUT_CYCLE = 'FUD0422';
+/** A file used as a layout that holds no `@RenderBody()` (decision 82). */
+const FUD_NO_RENDER_BODY = 'FUD0423';
+/** A `@section` no `@RenderSection` in the chain consumes: its content would vanish. */
+const FUD_ORPHAN_SECTION = 'FUD0429';
+/** `<link rel="layout">` pointing at a file that is not a layout (decision 82). */
+const FUD_NOT_A_LAYOUT = 'FUD0435';
 
 /** Host filesystem, injected so the compiler never touches `node:fs`/`node:path`. */
 export interface ResolveIo {
@@ -61,7 +79,18 @@ export function resolveComponents(entryPath: string, io: ResolveIo): ComponentGr
   const entrySource = io.read(entryPath);
   const entry = parse(entrySource);
   const components = new Map<string, ResolvedComponent>();
+  visitComponents(entry.links, entryPath, io, components);
+  const entryDeps = entry.links.map(linkHref).filter((h): h is string => h !== undefined);
+  return { entry, entrySource, entryDeps, components };
+}
 
+/** Walk the `<link rel="component">` graph from `links`, filling `components` by tag. */
+function visitComponents(
+  links: readonly ElementNode[],
+  fromPath: string,
+  io: ResolveIo,
+  components: Map<string, ResolvedComponent>,
+): void {
   const visit = (path: string): void => {
     const source = io.read(path);
     const doc = parse(source);
@@ -71,9 +100,138 @@ export function resolveComponents(entryPath: string, io: ResolveIo): ComponentGr
     components.set(doc.name, { tag: doc.name, path, source, doc, deps });
     for (const href of deps) visit(io.resolve(path, href));
   };
+  for (const href of links.map(linkHref)) {
+    if (href !== undefined) visit(io.resolve(fromPath, href));
+  }
+}
+
+// --- Layouts (SDD-21 §3.3) ---------------------------------------------------------
+
+/** A layout reached through the `rel="layout"` chain. */
+export interface ResolvedLayout {
+  readonly path: string;
+  readonly source: string;
+  readonly doc: LayoutDocument;
+  /** This layout's own `<link rel="component">` hrefs. */
+  readonly deps: readonly string[];
+  /** The specifier of its own parent layout, when it has one (decision 87). */
+  readonly parentHref?: string;
+}
+
+/**
+ * The entry plus its layout chain and every component either of them reaches. Extends
+ * `ComponentGraph`, so every consumer of the component-only graph keeps working.
+ */
+export interface DocumentGraph extends ComponentGraph {
+  /** The layout chain of the entry, INNERMOST FIRST. Empty for a page/component entry. */
+  readonly layouts: readonly ResolvedLayout[];
+}
+
+/** The layout href a document declares, or undefined when it declares none. */
+function layoutHrefOf(doc: StructuredDocument): string | undefined {
+  if (doc.type === 'route-document') return doc.layoutHref === '' ? undefined : doc.layoutHref;
+  if (doc.type === 'layout-document') return doc.layoutHref;
+  return undefined;
+}
+
+/**
+ * Resolve the transitive graph from an entry `.fud`: its layout chain (decision 87) plus
+ * every component reachable from the entry AND from every layout in the chain.
+ *
+ * Never throws and never loops: a cycle is reported and cut. Diagnostics about a link are
+ * anchored on the link element, which may live in a layout rather than in the entry — the
+ * message names the file, and the host (SDD-19) maps it back when it reports.
+ */
+export function resolveDocument(entryPath: string, io: ResolveIo): ParseResult<DocumentGraph> {
+  const diagnostics: Diagnostic[] = [];
+  const entrySource = io.read(entryPath);
+  const entry = parse(entrySource);
+  const components = new Map<string, ResolvedComponent>();
+  const layouts: ResolvedLayout[] = [];
+
+  const seen = new Set<string>([entryPath]);
+  let fromPath = entryPath;
+  let fromDoc: StructuredDocument = entry;
+  let href = layoutHrefOf(entry);
+  while (href !== undefined) {
+    const path = io.resolve(fromPath, href);
+    const at = (fromDoc.type === 'route-document' || fromDoc.type === 'layout-document'
+      ? fromDoc.layoutLink?.span
+      : undefined) ?? fromDoc.span;
+    if (seen.has(path)) {
+      diagnostics.push(errorDiag(FUD_LAYOUT_CYCLE, `layout cycle: ${path} is already in the chain`, at));
+      break;
+    }
+    seen.add(path);
+
+    const source = io.read(path);
+    const doc = parse(source);
+    if (doc.type !== 'layout-document') {
+      // A shell with no `@RenderBody()` structures as a page: it was MEANT to be a layout
+      // (something points at it), so name the missing directive rather than the role.
+      diagnostics.push(
+        doc.type === 'page-document'
+          ? errorDiag(FUD_NO_RENDER_BODY, `a layout must contain @RenderBody(): ${path}`, at)
+          : errorDiag(FUD_NOT_A_LAYOUT, `<link rel="layout"> must point at a layout: ${path}`, at),
+      );
+      break;
+    }
+
+    const deps = doc.links.map(linkHref).filter((h): h is string => h !== undefined);
+    const parentHref = doc.layoutHref;
+    layouts.push({
+      path,
+      source,
+      doc,
+      deps,
+      ...(parentHref !== undefined ? { parentHref } : {}),
+    });
+
+    fromPath = path;
+    fromDoc = doc;
+    href = parentHref;
+  }
+
+  // Components are collected OUTERMOST LAYOUT FIRST and the entry last, so the order of
+  // the emitted `<style type="module">` block matches the head cascade of decision 88 —
+  // and therefore matches the equivalent monolithic page.
+  for (const layout of [...layouts].reverse()) {
+    visitComponents(layout.doc.links, layout.path, io, components);
+  }
+  visitComponents(entry.links, entryPath, io, components);
+
+  reportOrphanSections(entry, layouts, diagnostics);
 
   const entryDeps = entry.links.map(linkHref).filter((h): h is string => h !== undefined);
-  for (const href of entryDeps) visit(io.resolve(entryPath, href));
+  const graph: DocumentGraph = { entry, entrySource, entryDeps, components, layouts };
+  return diagnostics.length === 0 ? ok(graph) : withDiagnostics(graph, diagnostics);
+}
 
-  return { entry, entrySource, entryDeps, components };
+/**
+ * A `@section x` that no `@RenderSection(x)` in the chain consumes is a warning (decision
+ * 86): the content silently disappears from the output, which is always an author bug. The
+ * reverse — a rendered section the route does not declare — is silence by design.
+ */
+function reportOrphanSections(
+  entry: StructuredDocument,
+  layouts: readonly ResolvedLayout[],
+  diagnostics: Diagnostic[],
+): void {
+  if (entry.type !== 'route-document') return;
+  const route: RouteDocument = entry;
+  const rendered = new Set<string>();
+  for (const layout of layouts) {
+    for (const rs of layout.doc.renderSections) rendered.add(rs.name);
+  }
+  for (const section of route.sections) {
+    if (section.name !== '' && !rendered.has(section.name)) {
+      diagnostics.push(
+        warningDiag(
+          FUD_ORPHAN_SECTION,
+          `no @RenderSection(${section.name}) in the layout chain: this section is not rendered`,
+          section.span,
+        ),
+      );
+    }
+  }
 }

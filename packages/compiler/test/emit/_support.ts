@@ -28,9 +28,22 @@ export function parse(source: string): StructuredDocument {
 const here = dirname(fileURLToPath(import.meta.url));
 export const fixturesDir = resolve(here, '../../fixtures');
 
+/**
+ * The SDD-21 fixtures (layouts and routes) live under `test/`, NOT in `fixtures/`: that
+ * directory doubles as the routes dir of the `@fudic/vite` tests, which scan it recursively
+ * and treat every page-shaped file as a route. A layout is not a route (SDD-21 §4.7), and a
+ * monolithic comparison page is not one either.
+ */
+export const layoutFixturesDir = resolve(here, '../fixtures');
+
 /** Read a fixture `.fud` by file name. */
 export function fixture(name: string): string {
   return readFileSync(join(fixturesDir, name), 'utf8');
+}
+
+/** Read an SDD-21 fixture `.fud` (layout / route) by file name. */
+export function layoutFixture(name: string): string {
+  return readFileSync(join(layoutFixturesDir, name), 'utf8');
 }
 
 /** Filesystem-backed IO pointed at the fixtures dir, for `resolveComponents`. */

@@ -1,6 +1,6 @@
 # Gramática v1 — Decisiones de diseño
 
-Compendio de las decisiones tomadas durante la definición de la sintaxis Razor adaptada a JS/TS para el compilador. Sirve como referencia de implementación del parser. Numeración 1-62 (v1) + 63-66 (`@code`; 63-65 **retiradas**, ver sección 8) + 75-80.
+Compendio de las decisiones tomadas durante la definición de la sintaxis Razor adaptada a JS/TS para el compilador. Sirve como referencia de implementación del parser. Numeración 1-62 (v1) + 63-66 (`@code`; 63-65 **retiradas**, ver sección 8) + 75-80 + 81-90 (layouts, sección 12).
 
 Convenciones de notación EBNF extendida usadas a lo largo del documento:
 
@@ -662,6 +662,159 @@ el nombre de registro en N3.
 
 ---
 
+## Sección 12. Layouts y composición del documento
+
+Un **layout** es el documento que posee el shell (`<!DOCTYPE>`, `<html>`, `<head>`, `<body>`) y
+declara dónde se inserta una **ruta**, que pasa a ser un fragmento sin shell. Trae de Razor las
+directivas `@RenderBody` / `@RenderSection` y el bloque `@section`, y añade `@RenderHead`, que en
+Razor no existe porque una vista de .NET no puede escribir en el `<head>`; aquí sí, y hace
+innecesario el `ViewBag.Title`. Especificado en `docs/sdd/SDD-21-layout.md`.
+
+### Decisiones
+
+**81.** **La ruta es el tercer rol de documento, y se declara con `<link rel="layout" href>`.**
+Un `.fud` sin doctype que declara ese link es una **ruta**: un fragmento de cuerpo, sin envoltorio
+host, cuyo shell lo pone el layout. La detección es **sintáctica y local** —basta el fichero,
+nunca su ruta en disco— para no romper el LSP-first. `href` estático obligatorio; **a lo sumo uno**
+por documento. La decisión 51 no cambia: el parser sigue clasificando por doctype, y el rol se
+afina en la pasada de estructura (SDD-10).
+
+**82.** **Un layout se identifica por su forma, no por su nombre de fichero.** Es un documento con
+doctype (page-shaped) que contiene **exactamente un** `@RenderBody()`. Un documento con doctype sin
+`@RenderBody()` sigue siendo una página autónoma. `_layout.fud` es convención de estilo, no regla.
+
+**83.** **Orden top-level de una ruta:** `<link rel="layout">` (uno, el primero) →
+`<link rel="component">`* → `@code`? → `<head>`-fragment? → markup. El markup de una ruta admite
+**múltiples raíces** y **no** lleva envoltorio host (contraste deliberado con la decisión 75, que
+gobierna los componentes: un componente es una definición con identidad; una ruta es contenido).
+
+**84.** **Cuatro directivas nuevas, con la ortografía exacta de Razor:** `@RenderBody()`,
+`@RenderHead()`, `@RenderSection(name)` en PascalCase (en Razor son invocaciones) y `@section
+name { … }` en minúscula (es una keyword de bloque, como `@if`). Entran en el conjunto cerrado de
+keywords de la decisión 3/SDD-04: se **resuelven siempre**, en cualquier fichero; su validez
+posicional —`Render*` solo en layout, `@section` solo en ruta— es **regla semántica**, no
+sintáctica.
+
+**85.** **Forma de las directivas.** `@RenderBody()` y `@RenderHead()` llevan **paréntesis
+obligatorios y ningún argumento**: sin paréntesis, `@RenderBody` sería una expresión implícita
+válida (decisión 3) y emitiría el texto literal. `@RenderSection` toma un **identificador desnudo**
+—`@RenderSection(scripts)`, nunca un string—, resoluble estáticamente por construcción, sin
+constant folding (contraste deliberado con la regla permisiva del bus, 28.c: aquí el nombre es
+estructura del documento, no dato). Una sección que el layout renderiza y la ruta no declara **no
+es error**: no emite nada (el `required: false` de Razor por defecto).
+
+**86.** **Cardinalidad.** Por layout: **exactamente un** `@RenderBody()`, **a lo sumo un**
+`@RenderHead()` (y dentro de su `<head>`), y `@RenderSection` con **nombre único**. Por ruta:
+`@section` con nombre único. Un layout sin `@RenderHead()` **no es error**: las contribuciones de
+la ruta se inyectan al final del `<head>` con un aviso. Una `@section` que nadie consume sí avisa:
+su contenido no aparecería en la salida, y eso siempre es un bug del autor.
+
+**87.** **Layouts anidados.** Un layout puede declarar su propio `<link rel="layout">`: la cadena
+se compone **de dentro afuera** y es el equivalente jerárquico del `_ViewStart` de Razor. Un ciclo
+en la cadena es error de compilación, detectado como ya se detecta en el grafo de componentes.
+
+**88.** **Cascada del `<head>`, con orden determinista.** En el punto del `@RenderHead()` entran,
+en este orden: los elementos del `<head>`-fragment de la ruta (verbatim, `<title>` interpolado), el
+polyfill de adopción de estilos (SDD-18 §5) una sola vez, y los `<style type="module"
+specifier>` de la **unión** de los componentes del layout y de la ruta, deduplicados por tag.
+Deduplicación v1 acotada: `<title>` y `<meta name=X>` deduplican y **gana la ruta** (la capa más
+interna); el resto concatena en orden. Es la promesa de la decisión 61 limitada a lo que se puede
+hacer sin adivinar.
+
+**89.** **En v1 el layout no carga datos.** No exporta `load()`: recibe el `data` de la ruta en
+solo lectura. Así la inferencia de modo SSG (SDD-19 §4.2) y la clave de caché no cambian, y no hay
+orden de resolución que especificar. El layout **sí** puede tener `@code` con zona neutra y
+`@client`, y sus propios `<link rel="component">`.
+
+**90.** **`@section` es exclusivo del par ruta↔layout.** No existe en componentes: ahí la
+proyección de contenido es `<slot>`, el mecanismo estándar de DSD, y dos mecanismos compitiendo
+sería un error de diseño. Su cuerpo es un `html_block` y no es anidable.
+
+### Gramática de referencia
+
+```
+route_document                            // decisiones 81, 83
+  : layout_link                           // exactamente uno, el primero
+    link_component*
+    code_block?
+    head_fragment?
+    ( top_level_markup_node | section_block )*
+  ;
+
+layout_link
+  : LT "link" WS+ "rel" EQ DQUOTE "layout" DQUOTE
+    (WS+ attribute)* GT                   // href estático obligatorio
+  ;
+
+layout_document                           // decisión 82: page_document + @RenderBody()
+  : doctype whitespace* html_root
+  ;
+
+render_directive                          // decisión 85: paréntesis obligatorios
+  : AT "RenderBody" WS* LPAREN WS* RPAREN
+  | AT "RenderHead" WS* LPAREN WS* RPAREN
+  | AT "RenderSection" WS* LPAREN WS* identifier WS* RPAREN
+  ;
+
+section_block                             // decisión 84
+  : AT "section" WS+ identifier WS* html_block
+  ;
+```
+
+### Ejemplo canónico
+
+```fud
+@* layouts/_layout.fud — el shell, escrito una vez *@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <link rel="component" href="../components/app-nav.fud">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="./favicon.svg">
+    <link rel="stylesheet" href="./global.css">
+    <script type="module" src="/fudic-main.js"></script>
+    @RenderHead()
+  </head>
+  <body>
+    <app-nav></app-nav>
+    <main>@RenderBody()</main>
+    <footer>© 2026</footer>
+    @RenderSection(scripts)
+  </body>
+</html>
+```
+
+```fud
+@* routes/index.fud — la ruta: solo lo suyo *@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/app-card.fud">
+
+@code {
+  @server {
+    import { db } from './db';
+    export async function load() {
+      return { title: 'Inicio', items: await db.query('SELECT …') };
+    }
+  }
+}
+
+<head>
+  <title>@data.title</title>
+</head>
+
+<h1>@data.title</h1>
+@foreach (const item of data.items) {
+  <app-card title="@item.title">@item.description</app-card>
+}
+
+@section scripts {
+  <script src="./analytics.js"></script>
+}
+```
+
+---
+
 ## Notas para implementación
 
 ### Modos del parser
@@ -807,3 +960,13 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 78 | Documento | Las instancias en página no cambian; el DSD lo materializa el emit |
 | 79 | Control flujo | El `}` crudo siempre cierra el bloque; llave literal vía `&#123;`/`&#125;` |
 | 80 | Control flujo | Test de `case` corta en el 1.er `:` a profundidad 0 (delimitadores y ternario) |
+| 81 | Layouts | La ruta es el 3.er rol de documento, declarado con `<link rel="layout" href>` |
+| 82 | Layouts | Un layout se identifica por su forma (doctype + `@RenderBody()`), no por su nombre |
+| 83 | Layouts | Orden top-level de la ruta; markup multi-raíz, sin envoltorio host |
+| 84 | Layouts | `@RenderBody` / `@RenderHead` / `@RenderSection` / `@section`, ortografía de Razor |
+| 85 | Layouts | Paréntesis obligatorios; `@RenderSection` toma identificador desnudo; sección ausente = silencio |
+| 86 | Layouts | Cardinalidad: 1 `@RenderBody`, ≤1 `@RenderHead`, nombres de sección únicos |
+| 87 | Layouts | Layouts anidados: cadena de dentro afuera; ciclo → error |
+| 88 | Layouts | Cascada del `<head>` con orden determinista; gana la capa más interna |
+| 89 | Layouts | En v1 el layout no declara `load`: recibe el `data` de la ruta |
+| 90 | Layouts | `@section` exclusivo del par ruta↔layout; en componentes es `<slot>` |

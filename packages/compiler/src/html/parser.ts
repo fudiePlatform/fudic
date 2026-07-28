@@ -15,7 +15,12 @@ import { type Span, span, emptySpan } from '../types/index.js';
 import { type Diagnostic, errorDiag } from '../types/index.js';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 import { Lexer, type Token } from '../lexer/index.js';
-import { type ControlKeyword, expressionFromToken, resolveTrigger } from '../at/index.js';
+import {
+  type ControlKeyword,
+  type LayoutDirective,
+  expressionFromToken,
+  resolveTrigger,
+} from '../at/index.js';
 import type { RazorExpression } from '../at/index.js';
 import { parseStyle } from '../css/index.js';
 import {
@@ -65,6 +70,17 @@ export interface AtConstructParser {
     keywordSpan: Span,
   ): ParseResult<RazorConstruct>;
   parseCodeBlock(ctx: HtmlParseContext, keywordSpan: Span): ParseResult<RazorConstruct>;
+  /**
+   * Layout directives (SDD-21). OPTIONAL for the same reason `atConstructs` itself is:
+   * a caller that only exercises the HTML/control grammar need not know SDD-21 exists.
+   * Omitted ⇒ a directive degrades to an UnhandledConstructNode + FUD0055, exactly like
+   * an omitted `parseControl`.
+   */
+  parseDirective?(
+    ctx: HtmlParseContext,
+    directive: LayoutDirective,
+    keywordSpan: Span,
+  ): ParseResult<RazorConstruct>;
 }
 
 export interface HtmlParserOptions {
@@ -479,8 +495,10 @@ class HtmlParser {
         this.#lexer.seekTo(resolution.expression.span.end);
         return resolution.expression;
       case 'control':
-      case 'code-block': {
-        // A control keyword cannot open a construct inside an attribute value.
+      case 'code-block':
+      case 'directive': {
+        // A control keyword or a layout directive cannot open a construct inside an
+        // attribute value: what the author wrote is literal text there.
         this.#lexer.seekTo(resolution.keywordSpan.end);
         const at = span(trigger.span.start, resolution.keywordSpan.end);
         return { type: 'attribute-text', span: at, value: this.#slice(at) };
@@ -548,6 +566,21 @@ class HtmlParser {
         }
         return this.#delegate(
           handler.parseCodeBlock(this.#context(namespace), resolution.keywordSpan),
+        );
+      }
+
+      case 'directive': {
+        this.#lexer.seekTo(resolution.keywordSpan.end);
+        const handler = this.#atConstructs;
+        if (handler?.parseDirective === undefined) {
+          return this.#unhandled(at, resolution.keywordSpan, resolution.directive);
+        }
+        return this.#delegate(
+          handler.parseDirective(
+            this.#context(namespace),
+            resolution.directive,
+            resolution.keywordSpan,
+          ),
         );
       }
     }

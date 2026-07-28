@@ -19,16 +19,19 @@
  */
 
 import type { ComponentGraph, ResolvedComponent } from './resolve.js';
-import type { ElementNode } from '../html/index.js';
-import type { Span } from '../types/index.js';
+import type { ElementNode, HtmlContent } from '../html/index.js';
 import type { PageDocument, ComponentDocument } from '../document/index.js';
 import { CodeWriter, type EmitMapping } from './writer.js';
-import { MarkupEmitter, isAssetAttr, renderName, tpl } from './markup.js';
+import { MarkupEmitter, renderName, tpl } from './markup.js';
 import { AssetLinker, type AssetExists } from './assets.js';
 import { extractCode } from './oxc-code.js';
 import { STYLE_POLYFILL } from './polyfill.js';
-
-const slice = (source: string, sp: Span): string => source.slice(sp.start, sp.end);
+import {
+  type ComponentSpecifier,
+  type LayoutSpecifier,
+  specifierResolver,
+  writeHeadElements,
+} from './parts.js';
 
 /**
  * Emit options. `importExt` is the extension used for sibling module imports: `.mjs`
@@ -57,10 +60,15 @@ export interface EmitOptions {
    * (`components/app-card.fud` linked from `routes/blog/index.fud`).
    */
   readonly componentSpecifier?: ComponentSpecifier;
+  /**
+   * Module specifier under which a route imports its layout, and a nested layout its parent
+   * (SDD-21 §3.4). INJECTED for the same reason as `componentSpecifier`. Default:
+   * `./<file base name><importExt>`, the sibling-file convention.
+   */
+  readonly layoutSpecifier?: LayoutSpecifier;
 }
 
-/** Injected resolver: the specifier under which the importing module imports `component`. */
-export type ComponentSpecifier = (component: ResolvedComponent) => string;
+export type { ComponentSpecifier, LayoutSpecifier };
 
 /**
  * A module's emitted text plus its output↔source mappings (SDD-19 §4.6) and the linkable
@@ -71,49 +79,6 @@ export interface EmitOutput {
   readonly code: string;
   readonly mappings: readonly EmitMapping[];
   readonly missingAssets: readonly string[];
-}
-
-/**
- * The specifier of a linked component BY TAG: the injected resolver when the host
- * provides one (it knows where the file lives), else the sibling-file default.
- */
-function specifierResolver(
-  graph: ComponentGraph,
-  options: EmitOptions,
-  ext: string,
-): (tag: string) => string {
-  const injected = options.componentSpecifier;
-  return (tag: string): string => {
-    const component = graph.components.get(tag);
-    const spec =
-      injected !== undefined && component !== undefined ? injected(component) : `./${tag}${ext}`;
-    return `'${spec.replace(/\\/gu, '\\\\').replace(/'/gu, "\\'")}'`;
-  };
-}
-
-/**
- * A page `<head>` element as a JS string expression: its verbatim source, with a static,
- * relative asset URL (`<link href>`, `<script src>`) spliced out and replaced by the import
- * binding Vite resolves and hashes (SDD-19 §4.5). Without a linkable URL this is just the
- * quoted source slice.
- */
-function headElementExpr(source: string, el: ElementNode, linker: AssetLinker): string {
-  for (const attr of el.attributes) {
-    if (typeof attr.name !== 'string' || !isAssetAttr(el.name, attr.name)) continue;
-    const parts = attr.value;
-    const first = parts[0];
-    const last = parts[parts.length - 1];
-    if (parts.length === 0 || first === undefined || last === undefined) continue;
-    if (!parts.every((p) => p.type === 'attribute-text')) continue; // interpolated: leave alone
-    const binding = linker.maybeRef(parts.map((p) => (p as { value: string }).value).join(''));
-    if (binding === null) continue; // linking off, already-final URL, or missing file
-    return (
-      JSON.stringify('  ' + source.slice(el.span.start, first.span.start)) +
-      ` + ${binding} + ` +
-      JSON.stringify(source.slice(last.span.end, el.span.end) + '\n')
-    );
-  }
-  return JSON.stringify('  ' + source.slice(el.span.start, el.span.end) + '\n');
 }
 
 /** The `<head>` `<style>` CSS of a component (the shared sheet body). */
@@ -140,7 +105,7 @@ function buildComponentModule(
   const css = linker.cssTemplate(componentCss(comp.source, comp.doc));
 
   const w = new CodeWriter();
-  const specifier = specifierResolver(graph, options, ext);
+  const specifier = specifierResolver(graph, options.componentSpecifier, ext);
   for (const tag of em.used) w.line(`import { render as ${renderName(tag)} } from ${specifier(tag)};`);
   for (const line of linker.imports()) w.line(line);
   if (em.used.size > 0 || linker.imports().length > 0) w.line('');
@@ -197,28 +162,12 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
   // — `meta`, `link`, `script`, `base`, `style` — passes through VERBATIM, so a page keeps
   // its favicon, its stylesheet and its `<script src>`. The `<link rel="component">`
   // elements are the component graph, not output, and are skipped.
-  const componentLinks = new Set<ElementNode>(page.links);
+  const componentLinks = new Set<HtmlContent>(page.links);
   const headW = new CodeWriter();
-  for (const child of page.head.children) {
-    if (child.type !== 'element' || componentLinks.has(child)) continue;
-    if (child.name === 'title') {
-      const inner = child.children
-        .map((c) =>
-          c.type === 'razor-expression'
-            ? `escapeText(String((${slice(source, c.expr)}) ?? ''))`
-            : c.type === 'text'
-              ? JSON.stringify(c.value)
-              : "''",
-        )
-        .join(' + ');
-      headW.line(`head += '<title>' + (${inner || "''"}) + '</title>\\n';`);
-    } else {
-      headW.line(`head += ${headElementExpr(source, child, linker)};`);
-    }
-  }
+  writeHeadElements(source, page.head, { skip: componentLinks, linker }, headW);
 
   const w = new CodeWriter();
-  const specifier = specifierResolver(graph, options, ext);
+  const specifier = specifierResolver(graph, options.componentSpecifier, ext);
   for (const c of comps) {
     w.line(
       `import { render as ${renderName(c.tag)}, tag as ${renderName(c.tag)}Tag, css as ${renderName(c.tag)}Css } from ${specifier(c.tag)};`,

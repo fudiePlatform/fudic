@@ -10,6 +10,7 @@
 
 import type { HtmlContent, ElementNode, RawExpressionNode } from '../html/index.js';
 import type { IfNode, ForeachNode, ForNode, WhileNode, SwitchNode } from '../control/index.js';
+import type { SectionNode } from '../layout/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { StructuredDocument } from '../document/index.js';
 import type { CodeBlockNode } from '../code/index.js';
@@ -33,9 +34,17 @@ export interface TreeVisitor {
  * analyzers read it from `documentCode`, so it is not walked here.
  */
 export function documentRoots(document: StructuredDocument): readonly HtmlContent[] {
-  if (document.type === 'page-document') return [document.html];
+  // A shell (page or layout) is fully reachable from its `<html>`.
+  if (document.type === 'page-document' || document.type === 'layout-document') {
+    return [document.html];
+  }
   const roots: HtmlContent[] = [...document.links];
   if (document.head) roots.push(document.head);
+  if (document.type === 'route-document') {
+    // A route has no host wrapper: its markup IS the fragment, and its sections are
+    // markup too — they render at the layout's `@RenderSection` points (SDD-21 §4.5).
+    return [...roots, ...document.markup, ...document.sections];
+  }
   if (document.host) roots.push(document.host);
   return roots;
 }
@@ -82,6 +91,11 @@ function walkNode(node: HtmlContent, visitor: TreeVisitor): void {
       for (const branch of switchNode.cases) walk(branch.body, visitor);
       return;
     }
+    case 'section':
+      // `@section name { … }` (SDD-21): its body is ordinary markup, so the analyzers
+      // must see inside it — a duplicate attribute there is just as wrong.
+      walk((node as unknown as SectionNode).children, visitor);
+      return;
     default:
       // Leaves and JS-only nodes (text, comment, style, inline-code, @code, …): nothing to descend.
       return;

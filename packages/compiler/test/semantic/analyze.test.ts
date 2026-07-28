@@ -1,5 +1,5 @@
 /**
- * SDD-12 acceptance criteria (§7): the semantic pass and its seven analyzers.
+ * SDD-12 acceptance criteria (§7): the semantic pass and its analyzers.
  *
  * Inputs are parsed with the REAL SDD-05 parser wired to the REAL SDD-06 control parser and
  * SDD-08 `@code` parser, then structured (SDD-10) and batched through Oxc (SDD-11) exactly as
@@ -72,8 +72,8 @@ function withCode(code: string, inner = ''): string {
 }
 
 describe('analyze — runner', () => {
-  it('exposes the seven analyzers and returns an empty model (§3, crit. #8)', () => {
-    expect(ANALYZERS).toHaveLength(7);
+  it('exposes every analyzer and returns an empty model (§3, crit. #8)', () => {
+    expect(ANALYZERS).toHaveLength(8); // 7 of SDD-12 + layout-load (SDD-21)
     const { value } = analyze(buildInput(component('<p>hi</p>')));
     expect(value).toEqual({});
     expect('strategies' in value).toBe(false); // decisions 63–65 retired: no hydration strategy

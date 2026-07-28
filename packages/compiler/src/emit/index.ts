@@ -6,14 +6,27 @@
 export { CodeWriter } from './writer.js';
 export type { EmitMapping, MappedPart, LinePart } from './writer.js';
 export { AssetLinker, type AssetExists } from './assets.js';
-export { resolveComponents, linkHref } from './resolve.js';
-export type { ResolveIo, ResolvedComponent, ComponentGraph } from './resolve.js';
+export { resolveComponents, resolveDocument, linkHref } from './resolve.js';
+export type {
+  ResolveIo,
+  ResolvedComponent,
+  ComponentGraph,
+  ResolvedLayout,
+  DocumentGraph,
+} from './resolve.js';
 export {
   emitComponentModule,
   emitComponentModuleMapped,
   emitPageModule,
   emitPageModuleMapped,
   type ComponentSpecifier,
+  type LayoutSpecifier,
   type EmitOptions,
   type EmitOutput,
 } from './module.js';
+export {
+  emitLayoutModule,
+  emitLayoutModuleMapped,
+  emitRouteModule,
+  emitRouteModuleMapped,
+} from './layout.js';

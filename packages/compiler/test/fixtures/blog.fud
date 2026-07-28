@@ -1,0 +1,29 @@
+<link rel="layout" href="./_layout.fud">
+<link rel="component" href="../../fixtures/app-card.fud">
+
+@code {
+  type Post = { id: string; title: string; summary: string };
+  type BlogData = { title: string; posts: Post[] };
+
+  @server {
+    import { db } from './db';
+
+    export async function load(): Promise<BlogData> {
+      const posts = await db.query('SELECT id, title, summary FROM posts ORDER BY published_at DESC');
+      return { title: 'Blog', posts };
+    }
+  }
+}
+
+<head>
+  <title>@data.title</title>
+</head>
+
+<h1>@data.title</h1>
+@foreach (const post of data.posts) {
+  <app-card title="@post.title" variant="default">@post.summary</app-card>
+}
+
+@section scripts {
+  <p class="analytics">@data.title</p>
+}

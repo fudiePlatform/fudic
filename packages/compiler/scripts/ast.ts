@@ -89,6 +89,18 @@ if (doc.type === 'component-document') {
   if (doc.head) line(1, `head: yes`);
   if (doc.host) line(1, `host: <${doc.host.name}>`);
   if (doc.template) line(1, `template: shadowrootmode`);
+} else if (doc.type === 'route-document') {
+  line(1, `layout: ${JSON.stringify(doc.layoutHref)}`);
+  line(1, `links: ${doc.links.length}`, doc.code ? '· code: yes' : '', doc.head ? '· head: yes' : '');
+  line(1, `markup roots: ${doc.markup.length} · sections: ${doc.sections.map((s) => s.name).join(', ') || 'none'}`);
+} else if (doc.type === 'layout-document') {
+  line(1, `links: ${doc.links.length}`, doc.code ? '· code: yes' : '');
+  line(
+    1,
+    `@RenderBody: ${doc.renderBody ? 'yes' : 'MISSING'} · @RenderHead: ${doc.renderHead ? 'yes' : 'none'}` +
+      ` · @RenderSection: ${doc.renderSections.map((s) => s.name).join(', ') || 'none'}`,
+  );
+  if (doc.layoutHref) line(1, `parent layout: ${JSON.stringify(doc.layoutHref)}`);
 } else {
   line(1, `links: ${doc.links.length}`, doc.code ? '· code: yes' : '');
 }
@@ -99,15 +111,17 @@ if (doc.code) {
 
 // ── Markup tree ─────────────────────────────────────────────────────────────
 console.log(`\n${CYAN}markup tree${RESET}`);
-const roots: readonly HtmlContent[] =
-  doc.type === 'page-document' ? [doc.html] : rootsOfComponent(doc);
+const roots: readonly HtmlContent[] = rootsOf(doc);
 for (const node of roots) dumpNode(node, 1);
 console.log();
 
 // ── Dumpers ─────────────────────────────────────────────────────────────────
-function rootsOfComponent(d: Extract<typeof doc, { type: 'component-document' }>): HtmlContent[] {
+/** The element-bearing roots of any of the four document roles. */
+function rootsOf(d: typeof doc): HtmlContent[] {
+  if (d.type === 'page-document' || d.type === 'layout-document') return [d.html];
   const out: HtmlContent[] = [...d.links];
   if (d.head) out.push(d.head);
+  if (d.type === 'route-document') return [...out, ...d.markup, ...d.sections];
   if (d.host) out.push(d.host);
   return out;
 }

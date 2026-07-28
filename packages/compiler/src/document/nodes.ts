@@ -11,11 +11,24 @@
  */
 
 import type { Node } from '../types/index.js';
-import type { ElementNode, DoctypeNode } from '../html/index.js';
+import type { ElementNode, DoctypeNode, HtmlContent } from '../html/index.js';
 import type { CodeBlockNode } from '../code/index.js';
+import type { RenderDirectiveNode, RenderSectionNode, SectionNode } from '../layout/index.js';
 
-/** The two top-level shapes a `.fud` file can take (decision 51). */
-export type StructuredDocument = PageDocument | ComponentDocument;
+/**
+ * The top-level roles a `.fud` file can take. Two of them come from decision 51 (doctype ⇒
+ * page, else component); SDD-21 splits each by whether the file declares a layout:
+ *
+ *   doctype + `@RenderBody()`   ⇒ LayoutDocument   (owns the shell)
+ *   doctype, no `@RenderBody()` ⇒ PageDocument     (a standalone route, as before)
+ *   no doctype + `rel="layout"` ⇒ RouteDocument    (a body fragment)
+ *   no doctype, no layout link  ⇒ ComponentDocument
+ */
+export type StructuredDocument =
+  | PageDocument
+  | ComponentDocument
+  | RouteDocument
+  | LayoutDocument;
 
 /**
  * Component file: `<link rel="component">`* → `@code`? → `<head>`? → host wrapper
@@ -49,4 +62,54 @@ export interface PageDocument extends Node {
   readonly links: readonly ElementNode[];
   /** `@code` found inside `<head>` (decision 60). */
   readonly code?: CodeBlockNode;
+}
+
+/**
+ * Route file (SDD-21, decisions 81, 83): a body fragment that delegates its shell to a
+ * layout. Same four-phase order as a component, with two differences that are the whole
+ * point of the role — a leading `<link rel="layout">`, and markup with any number of roots
+ * and no host wrapper.
+ */
+export interface RouteDocument extends Node {
+  readonly type: 'route-document';
+  /** The `<link rel="layout" href>` that makes this file a route (decision 81). */
+  readonly layoutLink: ElementNode;
+  /** Its static `href`. Empty string when absent or interpolated (FUD0436 degradation). */
+  readonly layoutHref: string;
+  /** `<link rel="component">`, any number (decision 55). */
+  readonly links: readonly ElementNode[];
+  /** The single `@code`, if present (decision 54). */
+  readonly code?: CodeBlockNode;
+  /** The `<head>` fragment: this route's head contributions (decisions 62, 88). */
+  readonly head?: ElementNode;
+  /** The body fragment, in source order. Multiple roots allowed (decision 83). */
+  readonly markup: readonly HtmlContent[];
+  /** `@section name { … }` blocks, in source order (decision 84). */
+  readonly sections: readonly SectionNode[];
+}
+
+/**
+ * Layout file (SDD-21, decision 82): a page-shaped document that owns the shell and
+ * renders a route into it. Identified by its FORM — doctype plus exactly one
+ * `@RenderBody()` — never by its file name.
+ */
+export interface LayoutDocument extends Node {
+  readonly type: 'layout-document';
+  readonly doctype: DoctypeNode;
+  readonly html: ElementNode;
+  readonly head: ElementNode;
+  readonly body: ElementNode;
+  /** `<link rel="component">` found inside `<head>` (decision 59). */
+  readonly links: readonly ElementNode[];
+  /** `@code` found inside `<head>` (decision 60). */
+  readonly code?: CodeBlockNode;
+  /** A nested layout's `<link rel="layout">`, when this layout has a parent (decision 87). */
+  readonly layoutLink?: ElementNode;
+  readonly layoutHref?: string;
+  /** The single `@RenderBody()`. Absent only on FUD0423 degradation. */
+  readonly renderBody?: RenderDirectiveNode;
+  /** The `@RenderHead()`, at most one (decision 86). Absent ⇒ FUD0425, injected at head end. */
+  readonly renderHead?: RenderDirectiveNode;
+  /** Every `@RenderSection(name)`, in source order. */
+  readonly renderSections: readonly RenderSectionNode[];
 }

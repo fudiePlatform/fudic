@@ -57,10 +57,20 @@ export interface RazorCommentNode extends Node {
 export type ControlKeyword = 'if' | 'else' | 'for' | 'foreach' | 'while' | 'switch';
 
 /**
+ * Layout directives (SDD-21, decision 84). Razor's own spelling: `@section` lowercase
+ * because it is a block keyword like `@if`; the three `Render*` in PascalCase because in
+ * Razor they are invocations. They are resolved HERE, in any file — WHERE each one is
+ * valid (`Render*` only in a layout, `@section` only in a route) is a semantic rule
+ * (SDD-21 §4.2), consistent with the syntactic/semantic split of the compiler.
+ */
+export type LayoutDirective = 'RenderBody' | 'RenderHead' | 'RenderSection' | 'section';
+
+/**
  * What an `at-trigger` (`@` + identifier) resolves to.
  *  - 'control'    -> SDD-06 parses the construct body.
  *  - 'code-block' -> @code; SDD-08 parses it.
  *  - 'raw'        -> `@raw( ... )` directive (decision 18, option A).
+ *  - 'directive'  -> a layout directive; SDD-21 parses its parentheses/body.
  *  - 'implicit'   -> an implicit expression, fully resolved here.
  *
  * `keywordSpan` covers the IDENTIFIER only, never the leading `@`: the caller
@@ -71,6 +81,7 @@ export type TriggerResolution =
   | { readonly kind: 'control'; readonly keyword: ControlKeyword; readonly keywordSpan: Span }
   | { readonly kind: 'code-block'; readonly keywordSpan: Span }
   | { readonly kind: 'raw'; readonly expression: RazorExpression; readonly keywordSpan: Span }
+  | { readonly kind: 'directive'; readonly directive: LayoutDirective; readonly keywordSpan: Span }
   | { readonly kind: 'implicit'; readonly expression: RazorExpression };
 
 /** The closed set of control keywords (decisions 9-17). */
@@ -81,6 +92,14 @@ const CONTROL_KEYWORDS: ReadonlySet<string> = new Set<ControlKeyword>([
   'foreach',
   'while',
   'switch',
+]);
+
+/** The closed set of layout directives (decision 84). */
+const LAYOUT_DIRECTIVES: ReadonlySet<string> = new Set<LayoutDirective>([
+  'RenderBody',
+  'RenderHead',
+  'RenderSection',
+  'section',
 ]);
 
 const IDENT_START = /[\p{ID_Start}$_]/u;
@@ -110,6 +129,15 @@ function identifierEnd(source: string, from: number): number {
 export function classifyKeyword(identifier: string): ControlKeyword | 'code' | null {
   if (identifier === 'code') return 'code';
   return CONTROL_KEYWORDS.has(identifier) ? (identifier as ControlKeyword) : null;
+}
+
+/**
+ * Classify the identifier that follows `@` as a layout directive (decision 84), or null.
+ * Separate from `classifyKeyword` because the two sets have different owners and different
+ * body grammars: SDD-06 parses a control body, SDD-21 parses a directive's parentheses.
+ */
+export function classifyDirective(identifier: string): LayoutDirective | null {
+  return LAYOUT_DIRECTIVES.has(identifier) ? (identifier as LayoutDirective) : null;
 }
 
 /**
@@ -196,6 +224,12 @@ export function resolveTrigger(
   if (keyword === 'code') return ok({ kind: 'code-block', keywordSpan });
   if (keyword !== null) return ok({ kind: 'control', keyword, keywordSpan });
 
+  // Layout directives (SDD-21). Resolved before `@raw` and before the implicit
+  // expression: they are reserved words, so `@RenderBody` never degrades to the literal
+  // text `RenderBody` — a missing `(` is a diagnostic (FUD0432), not silence.
+  const directive = classifyDirective(identifier);
+  if (directive !== null) return ok({ kind: 'directive', directive, keywordSpan });
+
   // `@raw( ... )` is the one non-control directive (decision 18, option A). The
   // `(` must be adjacent: `@raw (x)` is the implicit expression `raw`, since an
   // implicit expression never crosses whitespace (§4.3).
@@ -228,6 +262,7 @@ export function resolutionEnd(resolution: TriggerResolution): number {
   switch (resolution.kind) {
     case 'control':
     case 'code-block':
+    case 'directive':
       return resolution.keywordSpan.end;
     case 'raw':
     case 'implicit':

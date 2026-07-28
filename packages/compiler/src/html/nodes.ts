@@ -132,7 +132,15 @@ export interface RawExpressionNode extends Node {
  * (SDD-06/07/10/12, the emit) could narrow anything. The SDD's own comment already
  * named the closed set; it just was not written into the type.
  */
-export type RazorConstructType = ControlKeyword | 'code';
+export type RazorConstructType =
+  | ControlKeyword
+  | 'code'
+  // Layout directives (SDD-21). Same contract: SDD-05 hosts them as children and never
+  // inspects them beyond this discriminant; SDD-21 narrows them to its own node types.
+  | 'render-body'
+  | 'render-head'
+  | 'render-section'
+  | 'section';
 
 /**
  * A node produced by an injected @-construct parser. Its concrete shape is narrowed

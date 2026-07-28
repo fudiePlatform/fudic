@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <link rel="layout" href="./_layout.fud">
+
+    <meta name="robots" content="noindex">
+    @RenderHead()
+  </head>
+  <body>
+    <nav class="admin">Panel</nav>
+    <section class="admin-body">@RenderBody()</section>
+  </body>
+</html>

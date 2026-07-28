@@ -3,5 +3,11 @@
  * Canonical re-export.
  */
 
-export type { StructuredDocument, PageDocument, ComponentDocument } from './nodes.js';
-export { structureDocument, isComponentLink } from './structure.js';
+export type {
+  StructuredDocument,
+  PageDocument,
+  ComponentDocument,
+  RouteDocument,
+  LayoutDocument,
+} from './nodes.js';
+export { structureDocument, isComponentLink, isLayoutLink } from './structure.js';

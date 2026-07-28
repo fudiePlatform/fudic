@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <link rel="component" href="../../fixtures/app-badge.fud">
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    @RenderHead()
+  </head>
+  <body>
+    <header class="site"><app-badge tone="info">fudic</app-badge></header>
+    <main>@RenderBody()</main>
+    <footer>fudic 2026</footer>
+    @RenderSection(scripts)
+  </body>
+</html>
