@@ -160,10 +160,15 @@ function buildLayoutModule(
   return { writer: w, linker };
 }
 
-/** The parent layout of `layout` in the chain, which is its next link (innermost first). */
+/**
+ * The parent layout of `layout`: its next link in the chain (innermost first). When the
+ * layout is not IN the chain it is the graph's own entry — the plugin emits one module per
+ * file, so `resolveDocument('_layout.fud')` returns a graph whose `layouts` are that
+ * layout's ancestry — and then its parent is the first link.
+ */
 function layoutParent(graph: DocumentGraph, layout: ResolvedLayout): ResolvedLayout | undefined {
   const i = graph.layouts.findIndex((l) => l.path === layout.path);
-  return i === -1 ? undefined : graph.layouts[i + 1];
+  return i === -1 ? graph.layouts[0] : graph.layouts[i + 1];
 }
 
 /** Emit the module of one layout of the graph's chain. */

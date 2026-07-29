@@ -1,14 +1,15 @@
 # SDD-21 — Layouts (`@RenderBody` · `@RenderHead` · `@section`)
 
-> **Estado:** **Fase A (`@fudic/compiler`) `Hecho`** · Fase B (`@fudic/vite`) `Bloqueado` por SDD-20.
+> **Estado:** `Hecho` — los 16 criterios de §6 verdes.
 > **Paquete:** `@fudic/compiler` (parser/documento/emit) + `@fudic/vite` (descubrimiento y grafo).
 >
-> **Troceado en dos fases.** La **fase A** es todo el compilador: las keywords de SDD-04, los dos
-> roles de documento en SDD-10, la regla semántica de SDD-12, la cadena de layouts y el emit
-> compuesto. Se verifica entera con el emit standalone `.mjs`, sin Vite y sin navegador: cubre 15
-> de los 16 criterios de §6. La **fase B** es el único criterio restante (§6.15, integración con
-> el plugin) y espera a que SDD-20 aterrice en `main`: reescribe `wrapper.ts`, `mode.ts`,
-> `bootstrap.ts` y amplía `analyze.ts` — exactamente los ficheros que esa integración toca.
+> **Se implementó en dos fases.** La **fase A** fue todo el compilador (keywords de SDD-04, los
+> dos roles de documento en SDD-10, la regla semántica de SDD-12, la cadena de layouts y el emit
+> compuesto), verificable entera con el emit standalone `.mjs`, sin Vite ni navegador: 15 de los
+> 16 criterios. La **fase B** fue el criterio restante (§6.15) y se hizo **después** de que SDD-20
+> aterrizara en `main`, porque esa spec reescribe `wrapper.ts`, `mode.ts` y `bootstrap.ts` y
+> amplía `analyze.ts` — los ficheros de la integración. El troceado evitó escribir código contra
+> interfaces que ya se sabía que iban a morir.
 > **Depende de:** 05, 08, 10, 12, 15 (slice SSR-servidor), 19.
 > **Rango de diagnósticos:** `FUD0420`–`FUD0449`.
 > **Decisiones de gramática:** 81–90 (nuevas, `docs/gramar/gramatica-v1-decisiones.md` §12).
@@ -601,6 +602,11 @@ está `Hecho` cuando:
     **no** produce ruta ni entrada de manifest, viva donde viva; `vite build` escribe el `.html`
     de modo 1 con el shell del layout; en dev, editar el layout invalida la ruta. Un layout bajo
     `routesDir` al que nadie apunta ⇒ `FUD0434`.
+
+    **La invalidación en dev no se implementa: se hereda.** El módulo de ruta *importa* el módulo
+    de layout, así que la arista está en el grafo de Vite y es el mismo mecanismo que ya
+    invalida una página cuando cambia uno de sus componentes. El criterio se verifica leyendo
+    `ssrImportedModules` de la ruta tras servirla — comprobar la arista, no reimplementarla.
 
 16. **Cobertura.** Cumple el suelo del SDD-00 (80/80/75); los módulos nuevos de estructura y de
     directivas, cerca del 100 % (las máquinas de estados y sus degradaciones están cubiertas por

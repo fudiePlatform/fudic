@@ -12,15 +12,24 @@
 
 import {
   JsBatch,
+  type CodeBlockNode,
   type OxcNode,
-  type PageDocument,
   type ServerRegion,
+  type StructuredDocument,
 } from '@fudic/compiler';
 import { parseFud } from './parse.js';
 import { NO_STRATEGY, strategyFrom, type StrategyAnalysis } from './strategy.js';
 
+/**
+ * What a `.fud` under `routesDir` IS (SDD-21 §4.7). Only `page` and `route` are routes: a
+ * `layout` enters through the `rel="layout"` edge and a `component` through `rel="component"`,
+ * exactly as a component under `routesDir` has never been a route.
+ */
+export type DocumentRole = 'page' | 'route' | 'layout' | 'component';
+
 export interface PageAnalysis {
-  /** True when the file is a page document (has a doctype), not a component. */
+  readonly role: DocumentRole;
+  /** True when the file is a route: a page (doctype) or a route fragment (SDD-21). */
   readonly isPage: boolean;
   /** The `@server` region exports `load(ctx)`. */
   readonly hasLoad: boolean;
@@ -28,6 +37,8 @@ export interface PageAnalysis {
   readonly hasPaths: boolean;
   /** The `strategy()` call, read statically (SDD-20 §4.8). */
   readonly strategy: StrategyAnalysis;
+  /** The `href` of `<link rel="layout">`, when the file declares one (SDD-21). */
+  readonly layoutHref?: string;
 }
 
 // ── Typed access over the untyped Oxc node (quarantined, as in the emit) ──
@@ -43,26 +54,50 @@ const nameOf = (node: OxcNode): string => String(node['name']);
  */
 export function analyzePage(source: string, file = ''): PageAnalysis {
   const doc = parseFud(source);
-  if (doc.type !== 'page-document') {
-    return { isPage: false, hasLoad: false, hasPaths: false, strategy: NO_STRATEGY };
+  const role = roleOf(doc);
+  const layoutHref = doc.type === 'route-document' || doc.type === 'layout-document' ? doc.layoutHref : undefined;
+  if (role !== 'page' && role !== 'route') {
+    return {
+      role,
+      isPage: false,
+      hasLoad: false,
+      hasPaths: false,
+      strategy: NO_STRATEGY,
+      ...(layoutHref ? { layoutHref } : {}),
+    };
   }
-  const statements = serverStatements(source, doc);
+  const statements = serverStatements(source, doc.code);
   const names = new Set<string>();
   for (const statement of statements) {
     collectExports(statement, names);
   }
   return {
+    role,
     isPage: true,
     hasLoad: names.has('load'),
     hasPaths: names.has('paths'),
     strategy: strategyFrom(statements, file),
+    ...(layoutHref ? { layoutHref } : {}),
   };
 }
 
-/** Top-level statements of the page's `@server` region(s), parsed in one batch. */
-function serverStatements(source: string, doc: PageDocument): OxcNode[] {
-  const regions =
-    doc.code?.parts.filter((p): p is ServerRegion => p.type === 'server-region') ?? [];
+/** The role of a structured document, in the plugin's vocabulary. */
+function roleOf(doc: StructuredDocument): DocumentRole {
+  switch (doc.type) {
+    case 'page-document':
+      return 'page';
+    case 'route-document':
+      return 'route';
+    case 'layout-document':
+      return 'layout';
+    default:
+      return 'component';
+  }
+}
+
+/** Top-level statements of a `@server` region, parsed in one batch. */
+function serverStatements(source: string, code: CodeBlockNode | undefined): OxcNode[] {
+  const regions = code?.parts.filter((p): p is ServerRegion => p.type === 'server-region') ?? [];
   if (regions.length === 0) {
     return [];
   }

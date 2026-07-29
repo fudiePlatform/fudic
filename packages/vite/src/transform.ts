@@ -18,13 +18,18 @@
 import { existsSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import {
-  resolveComponents,
+  resolveDocument,
   emitComponentModuleMapped,
   emitPageModuleMapped,
+  emitLayoutModuleMapped,
+  emitRouteModuleMapped,
   SourceMapBuilder,
   LineMap,
+  type Diagnostic,
+  type DocumentGraph,
   type ResolveIo,
   type ResolvedComponent,
+  type ResolvedLayout,
   type EmitOutput,
   type SourceMapV3,
 } from '@fudic/compiler';
@@ -37,6 +42,12 @@ export interface TransformResult {
   readonly map: SourceMapV3;
   /** Linkable asset specifiers that did not resolve to a file (reported as FUD0363). */
   readonly missingAssets: readonly string[];
+  /**
+   * Graph-level diagnostics from following the layout chain (SDD-21: FUD0422 cycle,
+   * FUD0423/FUD0435 the target is not a layout, FUD0429 orphan section). They concern the
+   * relation between two files, so only the resolver can see them.
+   */
+  readonly diagnostics: readonly Diagnostic[];
 }
 
 /** A POSIX, explicitly-relative specifier from `fromDir` to `target` (`./x.fud`, `../y/x.fud`). */
@@ -64,7 +75,10 @@ export function transformFud(id: string, io: ResolveIo): TransformResult | null 
   if (!id.endsWith('.fud')) {
     return null;
   }
-  const graph = resolveComponents(id, io);
+  // `resolveDocument` is `resolveComponents` plus the layout chain: for a page or a
+  // component the chain is empty and the graph is the same one the emit always saw.
+  const resolved = resolveDocument(id, io);
+  const graph = resolved.value;
   const entry = graph.entry;
   const source = graph.entrySource;
   // A linkable asset exists when it resolves to a real file next to the `.fud` (§6.13).
@@ -78,26 +92,54 @@ export function transformFud(id: string, io: ResolveIo): TransformResult | null 
     // directory (`components/app-card.fud` linked from `routes/blog/index.fud`).
     componentSpecifier: (component: ResolvedComponent): string =>
       relativeSpecifier(baseDir, component.path),
+    // Same seam for the layout chain (SDD-21 §3.4), so `layouts/` may live anywhere.
+    layoutSpecifier: (layout: ResolvedLayout): string =>
+      relativeSpecifier(baseDir, layout.path),
   };
-  let out: EmitOutput;
-  if (entry.type === 'page-document') {
-    out = emitPageModuleMapped(graph, emitOptions);
-  } else if (entry.type !== 'component-document') {
-    // A route or a layout (SDD-21): composing them is the plugin's SLICE 2 — the compiler
-    // already emits them (`emitRouteModule`/`emitLayoutModule`), but wiring the layout
-    // chain into discovery, the specifier and dev invalidation lands with that slice.
-    throw new Error(`layouts are not wired into the Vite plugin yet: ${id}`);
-  } else {
-    // A component entry: resolveComponents does not add the entry itself to the graph,
-    // so build its ResolvedComponent from the parsed entry (its deps are already resolved).
-    const comp: ResolvedComponent = {
-      tag: entry.name,
-      path: id,
-      source,
-      doc: entry,
-      deps: graph.entryDeps,
-    };
-    out = emitComponentModuleMapped(graph, comp, emitOptions);
+  const out = emitFor(id, graph, emitOptions);
+  return {
+    code: out.code,
+    map: buildMap(id, source, out),
+    missingAssets: out.missingAssets,
+    diagnostics: resolved.diagnostics,
+  };
+}
+
+/** Pick the emitter for the entry's role (SDD-21 §4.7). */
+function emitFor(
+  id: string,
+  graph: DocumentGraph,
+  emitOptions: Parameters<typeof emitPageModuleMapped>[1],
+): EmitOutput {
+  const entry = graph.entry;
+  switch (entry.type) {
+    case 'page-document':
+      return emitPageModuleMapped(graph, emitOptions);
+    case 'route-document':
+      return emitRouteModuleMapped(graph, emitOptions);
+    case 'layout-document': {
+      // The entry layout is not part of `graph.layouts` — that list is its ANCESTRY, the
+      // chain above it — so its `ResolvedLayout` is built here, mirroring the component case.
+      const self: ResolvedLayout = {
+        path: id,
+        source: graph.entrySource,
+        doc: entry,
+        deps: graph.entryDeps,
+        ...(entry.layoutHref !== undefined ? { parentHref: entry.layoutHref } : {}),
+      };
+      return emitLayoutModuleMapped(graph, self, emitOptions);
+    }
+    default: {
+      // A component entry: the resolver does not add the entry itself to the graph, so
+      // build its ResolvedComponent from the parsed entry (its deps are already resolved).
+      const comp: ResolvedComponent = {
+        tag: entry.name,
+        path: id,
+        source: graph.entrySource,
+        doc: entry,
+        deps: graph.entryDeps,
+      };
+      return emitComponentModuleMapped(graph, comp, emitOptions);
+    }
   }
-  return { code: out.code, map: buildMap(id, source, out), missingAssets: out.missingAssets };
 }

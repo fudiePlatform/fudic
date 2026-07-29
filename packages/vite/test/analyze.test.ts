@@ -41,6 +41,7 @@ describe('analyzePage — page vs component', () => {
 </app-badge>
 `;
     expect(analyzePage(component)).toEqual({
+      role: 'component',
       isPage: false,
       hasLoad: false,
       hasPaths: false,
@@ -50,6 +51,7 @@ describe('analyzePage — page vs component', () => {
 
   it('a page with no @code exports nothing', () => {
     expect(analyzePage(page())).toEqual({
+      role: 'page',
       isPage: true,
       hasLoad: false,
       hasPaths: false,

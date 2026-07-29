@@ -29,3 +29,7 @@ export const FUD_TWO_TTLS = 'FUD0396';
 export const FUD_STRATEGY_AND_DEFAULT = 'FUD0397';
 export const FUD_SSG_WITHOUT_PATHS = 'FUD0398';
 export const FUD_CHUNK_NOT_EMITTED = 'FUD0399';
+
+// SDD-21 (FUD0420–FUD0449): layouts. Only the build-level one lives here; the rest are
+// span-carrying diagnostics the compiler emits (structure + resolveDocument).
+export const FUD_ORPHAN_LAYOUT = 'FUD0434';

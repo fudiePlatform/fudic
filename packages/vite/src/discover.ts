@@ -5,12 +5,16 @@
  */
 
 import { readdirSync, readFileSync } from 'node:fs';
-import { join, sep } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 import { routesFromFiles, type Route } from './routing.js';
 import { analyzePage, type PageAnalysis } from './analyze.js';
 import { resolveMode, type ModeDecision, type PageFacts } from './mode.js';
 import { type ResolvedOptions } from './options.js';
-import { type FudicDiagnostic, FUD_UNKNOWN_ROUTE_OVERRIDE } from './diagnostics.js';
+import {
+  type FudicDiagnostic,
+  FUD_ORPHAN_LAYOUT,
+  FUD_UNKNOWN_ROUTE_OVERRIDE,
+} from './diagnostics.js';
 
 export interface RouteBuild {
   readonly route: Route;
@@ -43,11 +47,21 @@ export function discoverRoutes(root: string, options: ResolvedOptions): Discover
   const diags: FudicDiagnostic[] = [...diagnostics];
 
   const builds: RouteBuild[] = [];
+  // A layout is never a route (SDD-21 §4.7), wherever it lives; these two sets turn the
+  // ones nobody points at into FUD0434 instead of silence.
+  const layouts = new Set<string>();
+  const usedLayouts = new Set<string>();
   for (const route of routes) {
     const absPath = join(routesRoot, route.file);
     const analysis = analyzePage(readFileSync(absPath, 'utf8'), absPath);
+    if (analysis.role === 'layout') {
+      layouts.add(absPath);
+    }
+    if (analysis.layoutHref !== undefined && analysis.layoutHref !== '') {
+      usedLayouts.add(resolve(dirname(absPath), analysis.layoutHref));
+    }
     if (!analysis.isPage) {
-      continue; // a component living under routesDir is not a route
+      continue; // a component or a layout living under routesDir is not a route
     }
     diags.push(...analysis.strategy.diagnostics);
     const fallback = options.defaults[route.pattern]?.mode;
@@ -65,6 +79,17 @@ export function discoverRoutes(root: string, options: ResolvedOptions): Discover
     );
     diags.push(...resolved.diagnostics);
     builds.push({ route, absPath, analysis, decision: resolved.decision });
+  }
+
+  // A layout under routesDir that no route (nor another layout) points at renders nothing.
+  for (const path of layouts) {
+    if (!usedLayouts.has(path)) {
+      diags.push({
+        code: FUD_ORPHAN_LAYOUT,
+        message: 'Layout is not referenced by any route: it renders nothing',
+        file: path,
+      });
+    }
   }
 
   // A route default that matches no discovered route is almost certainly a typo.

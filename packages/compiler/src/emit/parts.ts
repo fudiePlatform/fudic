@@ -9,7 +9,7 @@
 
 import type { ElementNode, HtmlContent } from '../html/index.js';
 import type { Span } from '../types/index.js';
-import type { ComponentGraph, ResolvedComponent } from './resolve.js';
+import type { ComponentGraph, ResolvedComponent, ResolvedLayout } from './resolve.js';
 import type { CodeWriter } from './writer.js';
 import { AssetLinker } from './assets.js';
 import { isAssetAttr } from './markup.js';
@@ -20,7 +20,7 @@ export const slice = (source: string, sp: Span): string => source.slice(sp.start
 export type ComponentSpecifier = (component: ResolvedComponent) => string;
 
 /** Injected resolver: the specifier under which a route/layout imports its layout. */
-export type LayoutSpecifier = (layout: { readonly path: string }) => string;
+export type LayoutSpecifier = (layout: ResolvedLayout) => string;
 
 /** A module specifier as a quoted JS string literal. */
 export function quoteSpecifier(spec: string): string {

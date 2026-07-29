@@ -21,7 +21,7 @@ const build = (pattern: string, params: string[] = [], mode = 'ssg'): RouteBuild
   ({
     route: { file: `${pattern}.fud`, pattern, params },
     absPath: `/root/routes${pattern}.fud`,
-    analysis: { isPage: true, hasLoad: false, hasPaths: false, strategy: NO_STRATEGY },
+    analysis: { role: 'page' as const, isPage: true, hasLoad: false, hasPaths: false, strategy: NO_STRATEGY },
     decision: { mode, prerender: mode === 'ssg', enumerate: false, prerenderedHtml: mode === 'ssg' },
   }) as RouteBuild;
 

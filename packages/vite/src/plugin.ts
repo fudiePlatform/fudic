@@ -414,6 +414,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       for (const spec of result.missingAssets) {
         this.warn(`[${FUD_ASSET_NOT_FOUND}] asset "${spec}" not found (referenced by ${path})`);
       }
+      // Layout-chain diagnostics (SDD-21): a broken chain is an error, an unrendered
+      // section a warning. Neither aborts the build — the other routes still compile.
+      for (const d of result.diagnostics) {
+        const message = `[${d.code}] ${d.message} (${path})`;
+        if (d.severity === 'error') this.error(message);
+        else this.warn(message);
+      }
       return { code: result.code, map: JSON.stringify(result.map) };
     },
 

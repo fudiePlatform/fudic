@@ -8,12 +8,13 @@ import {
   parseDocument,
   parseControl,
   parseCodeBlock,
+  parseDirective,
   structureDocument,
   type AtConstructParser,
   type StructuredDocument,
 } from '@fudic/compiler';
 
-const constructs: AtConstructParser = { parseControl, parseCodeBlock };
+const constructs: AtConstructParser = { parseControl, parseCodeBlock, parseDirective };
 
 /** Parse a `.fud` source to its structured document. */
 export function parseFud(source: string): StructuredDocument {
