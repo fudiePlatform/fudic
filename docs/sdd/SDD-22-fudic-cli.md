@@ -1,9 +1,10 @@
 # SDD-22 — CLI de scaffolding (`@fudic/cli`)
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho` (los 15 criterios de §6 verdes; §2–§6 corregidos contra el código
+> real de SDD-19/20/21 antes de implementar)
 > **Paquete:** `@fudic/cli` (binario `fudic`; monorepo pnpm, ver SDD-00 §3.5)
-> **Depende de:** SDD-00, SDD-01, SDD-05, SDD-10, SDD-21
-> **Decisiones de gramática:** 41, 51, 53, 55, 58, 59, 60, 62
+> **Depende de:** SDD-00, SDD-01, SDD-05, SDD-10, SDD-19, SDD-20, SDD-21
+> **Decisiones de gramática:** 41, 51, 53, 55, 58, 59, 60, 62, 81, 83, 84
 
 ---
 
@@ -38,10 +39,21 @@ bastará para el language server. Este SDD la ejercita antes de que el LSP depen
 | **SDD-00** | Monorepo pnpm, TS estricto, Vitest. `@fudic/cli` es un paquete más bajo `packages/`. |
 | **SDD-01** | `Span`, `Diagnostic`, `ParseResult`. La CLI reutiliza el tipo de diagnóstico del compilador; no define uno propio. |
 | **SDD-05** | Parser HTML: AST con spans y navegación por offset. Necesario para `--in` (§4.4). |
-| **SDD-10** | Estructura de documento: detección de modo (página / componente) y orden top-level. La CLI **consulta**, no reimplementa. |
-| **SDD-21** | `@layout`, `@renderbody()`, `@renderheader()`, `@rendersection()`; resolución del layout aplicable a una ruta y distinción sección obligatoria / opcional. La CLI **consume** esas reglas tal como las fija ese SDD; aquí no se redefinen. |
+| **SDD-10** | Estructura de documento: `structureDocument` clasifica el fichero en uno de los cuatro roles y expone el orden top-level con spans. La CLI **consulta**, no reimplementa. |
+| **SDD-19** | Convención de proyecto: `routesDir` (defecto `routes`) y el mapeo *árbol de directorios → path de ruta*. La CLI genera dentro de esa convención; no la redefine. |
+| **SDD-20** | El Service Worker no es un fichero de usuario: el plugin emite `fudic-sw.js` y el proyecto solo declara `sw.json`. Eso es lo que `fudic new` escribe. |
+| **SDD-21** | Los cuatro roles de documento (`ComponentDocument` · `RouteDocument` · `PageDocument` · `LayoutDocument`), el orden top-level de una ruta (decisión 83), la arista `<link rel="layout" href>` y las directivas `@RenderBody()` / `@RenderHead()` / `@RenderSection(name)` / `@section name { … }`. La CLI **consume** esas reglas tal como las fija ese SDD; aquí no se redefinen. |
 
 La CLI no depende del emit ni del runtime. Genera fuentes, no artefactos compilados.
+
+> **Lo que SDD-21 NO aporta, y esta CLI por tanto no puede consumir.** (a) No existe
+> *resolución* del layout aplicable a una ruta: SDD-21 deja el layout implícito por carpeta
+> explícitamente **fuera de v1**; la arista es un `<link rel="layout" href>` local y escrito a
+> mano. La CLI, que sí ve el disco, **elige** el layout por convención propia (§4.5) y escribe
+> ese link. (b) No existe la distinción sección obligatoria / opcional:
+> `@RenderSection(name)` toma un identificador desnudo y sin sección que lo llene **no emite
+> nada ni diagnostica** — es el `required: false` de Razor, siempre. Todo lo que en este SDD
+> dependía de secciones obligatorias se ha reescrito (§4.5, §6.8).
 
 ---
 
@@ -73,36 +85,36 @@ fudic generate <tipo> <nombre>        agrega una pieza      (alias: g)
 | `--pm <pnpm\|npm\|yarn>` | `pnpm` | Gestor de paquetes (SDD-00 §3.3). |
 | `--no-install` | — | Genera el árbol sin instalar dependencias. |
 | `--no-git` | — | Omite `git init` y commit inicial. |
-| `--no-sw` | — | Sin Service Worker. |
-| `--layout <nombre>` | `main` | Nombre del layout inicial. |
+| `--no-sw` | — | Sin `sw.json`: el plugin no emite Service Worker (SDD-20 §4.7). |
+| `--layout <nombre>` | `_layout` | Nombre del layout inicial, bajo `layouts/`. |
 | `--target <nombre>` | `static` | Adapter de despliegue. Ver §4.6 (feature diferida). |
 
 **`fudic g component <tag>`**
 
 | Flag | Defecto | Efecto |
 |---|---|---|
-| `--dir <ruta>` | `src/components` | Directorio destino. |
+| `--dir <ruta>` | `components` | Directorio destino. |
 | `--in <fichero>` | — | Cablea el `<link rel="component">` en `<fichero>`. **Repetible.** |
-| `--no-style` | — | Omite el bloque `<style host="<tag>">`. |
+| `--no-style` | — | Omite el `<head>` con el `<style>` del componente. |
 | `--slot` | — | Emite `<slot></slot>` en el markup. |
 
 **`fudic g page <ruta>`**
 
 | Flag | Defecto | Efecto |
 |---|---|---|
-| `--dir <ruta>` | `src/pages` | Directorio destino. |
-| `--layout <nombre>` | resuelto | Fuerza un layout concreto. |
-| `--no-layout` | — | Página autónoma (documento completo). |
+| `--dir <ruta>` | `routes` | Directorio destino (`routesDir` de SDD-19). |
+| `--layout <ruta>` | resuelto | Fuerza un layout concreto (path del `.fud`, relativo a `--cwd`). |
+| `--no-layout` | — | Página autónoma (documento completo con doctype). |
 | `--server` | — | Emite `@code { @server { ... } }` con `load()`. |
-| `--sections <a,b,c>` | obligatorias | Subconjunto de secciones a pre-rellenar. |
+| `--sections <a,b,c>` | todas | Subconjunto de las secciones del layout a pre-rellenar. |
 
 **`fudic g layout <nombre>`**
 
 | Flag | Defecto | Efecto |
 |---|---|---|
-| `--dir <ruta>` | `src/layouts` | Directorio destino. |
-| `--sections <a,b,c>` | — | Un `@rendersection` por nombre. Sufijo `?` ⇒ opcional: `--sections aside?,scripts`. |
-| `--no-header` | — | Omite `@renderheader()`. |
+| `--dir <ruta>` | `layouts` | Directorio destino. |
+| `--sections <a,b,c>` | — | Un `@RenderSection(nombre)` por nombre. |
+| `--no-head` | — | Omite `@RenderHead()` (acepta `FUD0425`). |
 
 ### 3.2. API programática
 
@@ -116,9 +128,46 @@ export type FileChange =
   | { readonly kind: 'modify'; readonly path: string; readonly contents: string;
       readonly before: string };
 
+/**
+ * Un efecto que no es un fichero: `pnpm install`, `git init`, `git commit`. `apply` los
+ * ejecuta DESPUÉS de escribir los ficheros, en orden. `--dry-run` los lista sin ejecutar.
+ * Sin esto el plan no sería exacto: `fudic new` haría cosas que el plan no describe.
+ */
+export interface PlanCommand {
+  readonly command: string;
+  readonly args: readonly string[];
+  /** Relativo a `cwd`. */
+  readonly dir: string;
+}
+
+/**
+ * Un error de la CLI que NO viene de un fichero fuente: tag inválido, colisión, adapter
+ * inexistente. No puede ser un `Diagnostic` — `Diagnostic` exige un `span` y aquí no hay
+ * fuente donde señalar (SDD-01 §3.2: "un error sin localización no es accionable").
+ */
+export interface CliError {
+  readonly code: string;      // FUD0440–FUD0459 (§3.3)
+  readonly message: string;
+  readonly file?: string;
+}
+
+/**
+ * Un diagnóstico del compilador más el fichero al que pertenece. El span solo no es
+ * accionable en una herramienta que lee varios ficheros en un comando: el editor sabe en
+ * qué buffer está, una CLI no.
+ */
+export interface PlanDiagnostic {
+  readonly file: string;          // relativo a cwd
+  readonly diagnostic: Diagnostic;
+}
+
 export interface Plan {
   readonly changes: readonly FileChange[];
-  readonly diagnostics: readonly Diagnostic[];
+  readonly commands: readonly PlanCommand[];
+  /** Del compilador, con span, sobre ficheros ajenos que la CLI ha tenido que leer. */
+  readonly diagnostics: readonly PlanDiagnostic[];
+  /** De la CLI, sin span. Un plan con `errors` no vacío NO se aplica. */
+  readonly errors: readonly CliError[];
 }
 
 export interface BaseOptions {
@@ -144,18 +193,20 @@ export interface ComponentOptions extends BaseOptions {
 
 export interface PageOptions extends BaseOptions {
   readonly dir: string;
-  readonly layout: string | null;   // null ⇒ --no-layout
+  /** Path del `.fud` del layout, relativo a `cwd`. `null` ⇒ --no-layout. `undefined` ⇒ resolver. */
+  readonly layout?: string | null;
   readonly server: boolean;
-  readonly sections: readonly string[] | null;  // null ⇒ las obligatorias del layout
+  /** null ⇒ todas las `@RenderSection` de la cadena de layouts. */
+  readonly sections: readonly string[] | null;
 }
 
 export interface LayoutOptions extends BaseOptions {
   readonly dir: string;
-  readonly sections: readonly SectionDecl[];
-  readonly header: boolean;
+  /** Un `@RenderSection(name)` por nombre. No hay obligatorias: SDD-21 §4.2. */
+  readonly sections: readonly string[];
+  /** Emitir `@RenderHead()` dentro del `<head>` (decisión 86). */
+  readonly head: boolean;
 }
-
-export interface SectionDecl { readonly name: string; readonly required: boolean }
 
 export function planNew(name: string, opts: NewOptions): Promise<Plan>;
 export function planComponent(tag: string, opts: ComponentOptions): Promise<Plan>;
@@ -174,6 +225,24 @@ permite testear cada comando sin tocar el sistema de ficheros.
 
 **Códigos de salida:** `0` éxito; `1` error de uso o colisión sin `--force`; `2`
 diagnóstico del compilador sobre un fichero a modificar (parseo fallido en `--in`).
+
+### 3.3. Rango de diagnósticos
+
+La CLI reserva **`FUD0440`–`FUD0459`** (SDD-21 llega hasta `FUD0436`). Se emiten como
+`CliError`, no como `Diagnostic`: no tienen span.
+
+| Código | Significado |
+|---|---|
+| `FUD0440` | Nombre de tag inválido: falta el guión o no es kebab-case (decisión 41). |
+| `FUD0441` | El tag ya existe en el proyecto. |
+| `FUD0442` | El tag colisiona con un nombre reservado por la spec de custom elements. |
+| `FUD0443` | El destino ya existe y no se ha pasado `--force`. |
+| `FUD0444` | El fichero de `--in` no existe. |
+| `FUD0445` | El fichero de `--in` no parsea: la CLI no lo toca (exit 2). |
+| `FUD0446` | Sección pedida que el layout no declara. |
+| `FUD0447` | Adapter de despliegue no disponible (§4.6). |
+| `FUD0448` | Error de uso: comando, tipo o argumento ausente o desconocido. |
+| `FUD0449` | El layout indicado con `--layout` no existe o no es un layout. |
 
 ---
 
@@ -198,9 +267,14 @@ un usuario. Una CLI de scaffolding que escupe ficheros rotos es peor que no tene
 
 ### 4.3. `g component` — nivel inferido, nunca declarado
 
-La plantilla de componente sale **sin `@code`**. Un componente recién creado es N1: markup
-y, salvo `--no-style`, un `<style host="<tag>">`. Si el usuario quiere estado, escribe el
+La plantilla de componente sale **sin `@code`**. Un componente recién creado es N1: el
+envoltorio host con su `<template shadowrootmode="open">` (decisión 75) y, salvo `--no-style`,
+un `<head>` con un único `<style>`. Si el usuario quiere estado, escribe el
 `@code { @client { ... } }` él.
+
+El `<style>` de la fuente **no lleva `host="<tag>"`**: ese marcador lo añade la serialización
+(decisiones 67/70), no el autor. Una plantilla que lo escribiera estaría enseñando a mano una
+cosa que el compilador pone solo.
 
 **No existe un flag `--level` ni `--client`.** El nivel efectivo lo infiere el compilador
 (`nivel_efectivo = max(intrínseco, inducido por props entrantes)`); un flag que lo fuerce
@@ -224,37 +298,58 @@ Cualquiera de los tres ⇒ exit 1 sin escribir nada. `fudic g component card` fa
 
 La inserción se hace sobre el AST del fichero destino, no con expresiones regulares:
 
-1. Se parsea con `@fudic/compiler` y se resuelve el modo del documento (decisión 51 y
-   las reglas del SDD-21).
-2. **Modo componente:** el `<link>` va en el bloque de `link_component*` inicial, que por
-   decisión 53 precede a `@code` y al markup. Si ya hay links, se añade tras el último;
-   si no, en el offset 0.
-3. **Modo página / layout:** va dentro de `<head>` (decisión 59), tras los `<link>`
-   existentes. Múltiples links son válidos sin límite (decisión 55).
-4. Si el `href` ya está presente, la operación es **idempotente**: no duplica, no
+1. Se parsea con `@fudic/compiler` y se clasifica el documento en uno de los **cuatro**
+   roles de SDD-10 + SDD-21 (decisión 51 y §4.1 del SDD-21). Son cuatro, no dos, y el punto
+   de inserción es distinto en dos de ellos.
+2. **`ComponentDocument`:** el `<link>` va en el bloque de `link_component*` inicial, que por
+   decisión 53 precede a `@code`, al `<head>` y al envoltorio host. Si ya hay links, se añade
+   tras el último; si no, en el offset 0.
+3. **`RouteDocument`:** también **top-level**, no dentro de `<head>` — el orden de una ruta
+   (decisión 83) es `rel="layout"` → `rel="component"*` → `@code` → `<head>` → markup. Se añade
+   tras el último `rel="component"`, o si no hay, tras el `<link rel="layout">`.
+4. **`PageDocument` / `LayoutDocument`:** ahí sí va dentro de `<head>` (decisión 59), tras los
+   `<link>` existentes. Múltiples links son válidos sin límite (decisión 55).
+5. Si el `href` ya está presente, la operación es **idempotente**: no duplica, no
    diagnostica, no cuenta como modificación.
-5. Si el fichero no parsea, la CLI **no lo toca**: emite los diagnósticos del compilador
+6. Si el fichero no parsea, la CLI **no lo toca**: emite los diagnósticos del compilador
    con su span y sale con código `2`. No se edita a ciegas un fichero roto.
 
 El `href` se calcula relativo al fichero destino, con `./` explícito y extensión `.fud`.
 
 ### 4.5. `g page` — una sola forma, resuelta
 
+**Mapeo `<ruta>` → fichero** (convención de SDD-19, invertida): `/` ⇒ `routes/index.fud`;
+`blog` ⇒ `routes/blog.fud`; `blog/` ⇒ `routes/blog/index.fud`; un segmento `:x` o `[x]` ⇒
+`[x].fud`. El path que el usuario escribe es el path de la URL, no el del disco: quien usa la
+CLI piensa en rutas.
+
 `g page` **no ofrece dos plantillas** (con layout / sin layout) para que el usuario elija.
-Esa elección es una trampa: se elige mal y el error aparece al compilar. El comando
-resuelve el layout aplicable con las reglas del SDD-21 y emite la forma que
-corresponda, ya cableada. Solo emite página autónoma si el proyecto no tiene ningún layout
-o si se pasa `--no-layout`.
+Esa elección es una trampa: se elige mal y el error aparece al compilar. El comando **elige**
+el layout y emite la forma que corresponda, ya cableada. Solo emite página autónoma si el
+proyecto no tiene ningún layout o si se pasa `--no-layout`.
 
-Resuelto el layout, la CLI **parsea el layout y recolecta sus `@rendersection`**, y emite
-en la página nueva un `@section` por cada sección **obligatoria**. Sin esto el comando
-apenas ahorra teclas: el usuario compilaría, leería el error, volvería y escribiría la
-sección. `--sections` restringe o amplía ese conjunto; una sección pedida que el layout no
-declara ⇒ exit 1.
+**Cómo elige el layout, y por qué le toca a la CLI hacerlo.** SDD-21 no resuelve layouts: la
+arista es un `<link rel="layout" href>` escrito a mano, y el layout implícito por carpeta queda
+fuera de v1 *porque el compilador es fs-free*. La CLI **sí** ve el disco, así que aporta lo que
+al compilador le está vedado, con una regla explícita y local:
 
-`--server` añade la región `@server` con un `load()` esqueleto (decisión 60: el `@code` de
-una página vive en su `<head>`; para una página bajo layout, donde el SDD-21 lo
-sitúe).
+1. `--layout <ruta>` gana siempre. Si no existe o no es un `LayoutDocument` ⇒ `FUD0449`, exit 1.
+2. Si no, se busca el `_layout.fud` más cercano subiendo desde el directorio de la página
+   nueva, primero dentro de `--dir` y después en `layouts/` en la raíz del proyecto.
+3. Si no aparece ninguno, página autónoma, sin error.
+
+Elegido el layout, la CLI **lo parsea, sigue su cadena de `rel="layout"` y recolecta los
+`@RenderSection(name)`**, y emite en la página nueva un `@section name { … }` por cada uno.
+Sin esto el comando apenas ahorra teclas. `--sections` restringe ese conjunto; una sección
+pedida que la cadena no declara ⇒ `FUD0446`, exit 1 (emitirla igual solo produciría un
+`FUD0429` al compilar: contenido que no sale a ninguna parte).
+
+Ninguna sección es obligatoria (SDD-21 §4.2), así que el defecto no puede ser "las
+obligatorias": es **todas**, y quitar las que sobren es un `--sections` o borrar tres líneas.
+
+`--server` añade la región `@server` con un `load()` esqueleto. En una **ruta** el `@code` es
+la fase 3 del orden top-level (decisión 83), no va dentro del `<head>`; la decisión 60 (`@code`
+en el `<head>`) aplica a la **página autónoma** y al layout, que son documentos con doctype.
 
 ### 4.6. `--target` — adapter de despliegue (feature diferida)
 
@@ -276,7 +371,7 @@ plataforma, servida por cualquier servidor de ficheros.
 Hasta que exista el primero:
 
 - `--target static` se acepta y es equivalente a no pasar el flag.
-- Cualquier otro valor ⇒ **exit 1** con el mensaje `adapter '<nombre>' no disponible` y la
+- Cualquier otro valor ⇒ **exit 1** con `FUD0447` (`adapter '<nombre>' is not available`) y la
   lista de adapters instalados. **No se acepta silenciosamente.** Un flag que aparece en
   `--help`, se acepta y no hace nada es documentación falsa: el usuario cree que ha
   seleccionado una plataforma y el bug queda en su cabeza, no en el código.
@@ -290,16 +385,19 @@ que se crea el proyecto. Ambos comparten la misma implementación: aplicar un ad
 
 ### 4.7. Salida
 
-La salida distingue **creado** de **modificado**, porque el riesgo no es el mismo:
+La salida distingue **creado** de **modificado**, porque el riesgo no es el mismo. Los
+mensajes van **en inglés**, como todo string del repo (CLAUDE.md); solo esta spec está en
+español:
 
 ```
-  creado     src/components/app-card.fud
-  modificado src/pages/home.fud
+  create  components/app-card.fud
+  modify  routes/index.fud
+  run     pnpm install
 ```
 
 Con `--dry-run`, una creación se lista por nombre; una **modificación se muestra como
-diff** de la inserción. Es la única forma de que el usuario pueda revisar antes de aceptar
-un cambio sobre un fichero suyo.
+diff** de la inserción, y un comando se lista sin ejecutarse. Es la única forma de que el
+usuario pueda revisar antes de aceptar un cambio sobre un fichero suyo.
 
 Con `--json`, el plan completo va a stdout y todo lo humano a stderr, de modo que
 `fudic g component app-card --json | jq` funcione sin filtrado previo.
@@ -320,42 +418,59 @@ API que el LSP usará**, y por eso hereda sus invariantes sin excepción:
 - **Los spans se preservan en la edición.** Una modificación por `--in` es una inserción en
   un offset exacto: no reformatea, no reordena atributos (decisión 47), no normaliza
   whitespace, no toca una sola línea que no sea la insertada.
-- **Los diagnósticos de la CLI son los del compilador.** Mismo tipo, mismo formato, mismos
-  spans que verá el usuario en el editor. Si la CLI y el LSP describen el mismo error de
-  forma distinta, uno de los dos miente.
+- **Todo error sobre una fuente es un diagnóstico del compilador.** Mismo tipo, mismo formato,
+  mismos spans que verá el usuario en el editor. Si la CLI y el LSP describen el mismo error de
+  forma distinta, uno de los dos miente. Los errores que **no** son sobre una fuente (colisión
+  de fichero, tag inválido en `argv`, adapter inexistente) son `CliError` (§3.2): no tienen
+  span, y falsear uno para encajarlos en `Diagnostic` sería exactamente la mentira que esta
+  regla prohíbe.
 
 ---
 
 ## 6. Criterios de aceptación
 
-1. **Proyecto nuevo compilable.** `fudic new demo` produce un árbol donde
-   `pnpm install && pnpm build` pasa sin error. Incluye `src/layouts/main.fud`, una página
-   raíz cableada contra él, y `sw.js` salvo `--no-sw`.
+1. **Proyecto nuevo compilable.** `fudic new demo` produce un árbol con `layouts/_layout.fud`,
+   `routes/index.fud` cableada contra él con `<link rel="layout">`, `vite.config.ts`,
+   `package.json` (script `build: vite build`) y `sw.json` salvo `--no-sw`. El árbol **pasa un
+   `vite build` real** con el plugin `@fudic/vite` del workspace y produce el HTML de `/`.
+   *(El build del test se ejecuta con la API de Vite y las deps del workspace resueltas por
+   alias: un `pnpm install` de verdad exigiría los `@fudic/*` publicados en npm, que no lo
+   están. Lo que el criterio verifica —que el árbol generado compila— se verifica entero.)*
 
-2. **Componente en N1.** `fudic g component app-card` crea un `.fud` sin `@code`. El
-   compilador lo clasifica como **nivel 1** y su emit no produce ningún JS.
+2. **Componente en N1.** `fudic g component app-card` crea un `.fud` **sin `@code`**, que
+   `structureDocument` clasifica como `ComponentDocument` con `code === undefined`, envoltorio
+   host + `<template shadowrootmode>` y un único `<style>` sin `host=`. *(La clasificación por
+   nivel efectivo N1/N2/N3 la difiere SDD-12 —`SemanticModel` aún no la calcula—, así que el
+   criterio se ancla en lo que hoy es observable: ausencia de `@code`, que es la condición que
+   la plantilla debe garantizar.)*
 
-3. **Validación de tag.** `fudic g component card` ⇒ exit 1, mensaje sobre el guión
-   obligatorio, **cero ficheros escritos**. Ídem para un tag ya existente y para `section`.
+3. **Validación de tag.** `fudic g component card` ⇒ exit 1, `FUD0440` sobre el guión
+   obligatorio, **cero ficheros escritos**. Ídem `FUD0441` para un tag ya existente y
+   `FUD0442` para `font-face` (un tag reservado por la spec; `section` ya cae en `FUD0440`
+   por no llevar guión).
 
-4. **Cableado en modo componente.** `fudic g component app-icon --in src/components/app-card.fud`
+4. **Cableado en un componente.** `fudic g component app-icon --in components/app-card.fud`
    inserta el `<link>` antes del `@code` del destino. El fichero resultante parsea y
    respeta la decisión 53. Repetir el mismo comando **no duplica** el link ni reporta
-   modificación (idempotencia, §4.4.4).
+   modificación (idempotencia, §4.4.5).
 
-5. **Cableado en modo página.** El mismo comando con `--in` sobre una página inserta el
-   `<link>` dentro de `<head>` (decisión 59), no al principio del fichero.
+5. **Cableado en los otros tres roles.** Sobre una **ruta** el `<link>` se inserta top-level,
+   tras el `<link rel="layout">` (decisión 83), **no** dentro de su `<head>`-fragmento. Sobre
+   una **página autónoma** y sobre un **layout** se inserta dentro de `<head>` (decisión 59).
+   Los tres resultados parsean y conservan su rol.
 
 6. **Fichero destino roto.** `--in` sobre un `.fud` que no parsea ⇒ exit 2, diagnóstico con
    span, **fichero destino byte a byte idéntico** al de partida.
 
 7. **Plantillas válidas por construcción.** Un test recorre `templates/`, materializa cada
-   plantilla con valores de ejemplo y la compila. Cualquier plantilla que no parsee o que
-   viole una decisión de gramática **rompe el build del repositorio**.
+   plantilla con valores de ejemplo y la parsea + estructura con el compilador. Cualquier
+   plantilla que no parsee, que produzca diagnósticos de error o que caiga en un rol distinto
+   del que le toca **rompe el build del repositorio**.
 
-8. **Secciones desde el layout.** Un layout con `@rendersection("aside")` opcional y
-   `@rendersection("scripts")` obligatoria ⇒ `fudic g page perfil` genera la página con
-   `@section scripts` y **sin** `@section aside`. `--sections nope` ⇒ exit 1.
+8. **Secciones desde el layout.** Un layout con `@RenderSection(aside)` y
+   `@RenderSection(scripts)` ⇒ `fudic g page perfil` genera la página con `@section aside` y
+   `@section scripts` (todas: ninguna es obligatoria, SDD-21 §4.2). `--sections scripts` deja
+   solo esa; `--sections nope` ⇒ `FUD0446`, exit 1, cero ficheros escritos.
 
 9. **`--dry-run` exacto.** Para todo comando, el conjunto de ficheros listados por
    `--dry-run` coincide exactamente con el que escribe la ejecución real. Una modificación
@@ -365,14 +480,23 @@ API que el LSP usará**, y por eso hereda sus invariantes sin excepción:
     sobrescribe y lo reporta como modificación.
 
 11. **`--target` diferido.** `fudic new demo --target static` se comporta como sin flag.
-    `fudic new demo --target cloudflare` ⇒ **exit 1**, mensaje `adapter 'cloudflare' no
-    disponible`, **cero ficheros escritos** (§4.6).
+    `fudic new demo --target cloudflare` ⇒ **exit 1**, `FUD0447`
+    (`adapter 'cloudflare' is not available`), **cero ficheros escritos** (§4.6).
 
 12. **`--json` limpio.** `fudic g component app-card --json` emite JSON válido y **solo**
     JSON en stdout; los mensajes legibles van a stderr.
 
 13. **Sin interactividad.** Todos los comandos ejecutados con stdin cerrado terminan
     normalmente. Ningún comando bloquea esperando entrada.
+
+14. **Comandos en el plan.** `fudic new demo --dry-run` lista `pnpm install`, `git init` y el
+    commit inicial **sin ejecutarlos**; con `--no-install --no-git` el plan no los contiene.
+    Tras `--dry-run`, el directorio destino no existe.
+
+15. **Mapeo ruta → fichero.** `fudic g page /` ⇒ `routes/index.fud`; `fudic g page blog` ⇒
+    `routes/blog.fud`; `fudic g page blog/` ⇒ `routes/blog/index.fud`;
+    `fudic g page "blog/:slug"` ⇒ `routes/blog/[slug].fud`. Las cuatro son rutas que
+    `@fudic/vite` descubre con los patrones que el usuario pidió.
 
 ---
 

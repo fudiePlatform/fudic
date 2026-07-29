@@ -1,0 +1,8 @@
+import { defineConfig } from 'vite';
+import { fudic } from '@fudic/vite';
+
+// Nothing else to configure: the plugin discovers `{{routesDir}}/`, infers each route's
+// mode, emits the route→chunk manifest and the bootstraps, and prerenders what it can.
+export default defineConfig({
+  plugins: [fudic()],
+});

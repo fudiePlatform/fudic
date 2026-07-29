@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="{{lang}}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    @* The main-thread bootstrap: it registers the render Service Worker. It lives here,
+       once, so no route can forget it. *@
+    <script type="module" src="/fudic-main.js"></script>
+
+    @* Everything each route contributes to the head — its <title>, its component
+       stylesheets, the style-adoption polyfill — is inserted exactly here. *@
+{{renderHead}}
+  </head>
+  <body>
+{{sections}}
+    <main>@RenderBody()</main>
+  </body>
+</html>

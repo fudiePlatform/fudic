@@ -46,6 +46,25 @@ importers:
         specifier: 8.0.16
         version: 8.0.16(@types/node@22.20.0)
 
+  packages/cli:
+    dependencies:
+      '@fudic/compiler':
+        specifier: workspace:*
+        version: link:../compiler
+    devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@fudic/vite':
+        specifier: workspace:*
+        version: link:../vite
+      '@types/node':
+        specifier: 22.20.0
+        version: 22.20.0
+      vite:
+        specifier: 8.0.16
+        version: 8.0.16(@types/node@22.20.0)
+
   packages/compiler:
     dependencies:
       oxc-parser:

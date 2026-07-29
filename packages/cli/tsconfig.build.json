@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "declaration": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    // Same rule as @fudic/vite: the build resolves @fudic/compiler through its published
+    // types (node_modules → dist), built first by the topological `pnpm -r build`.
+    "paths": {}
+  },
+  "include": ["src"]
+}

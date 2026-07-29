@@ -1,0 +1,7 @@
+<link rel="layout" href="{{layoutHref}}">
+{{code}}
+<head>
+  <title>{{title}}</title>
+</head>
+{{sections}}
+<h1>{{title}}</h1>

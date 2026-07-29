@@ -1,0 +1,28 @@
+# {{name}}
+
+A [fudic](https://github.com/fudie/fudic) app: single-file `.fud` components compiled to
+Declarative Shadow DOM.
+
+```sh
+{{pm}} install
+{{pm}} run dev        # dev server
+{{pm}} run build      # static + incremental SSG build
+{{pm}} run preview    # serve the build
+```
+
+## Layout
+
+```
+{{layoutsDir}}/{{layout}}.fud   the shell every route shares (@RenderBody / @RenderHead)
+{{routesDir}}/index.fud        the `/` route
+{{componentsDir}}/             components, wired with <link rel="component">
+sw.json               Service Worker policy; delete it and no SW is emitted
+```
+
+Add pieces with the CLI — it writes the wiring for you:
+
+```sh
+fudic g component app-card --in {{routesDir}}/index.fud
+fudic g page blog
+fudic g layout admin --sections aside
+```
