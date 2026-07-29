@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-24 — Servidor de lenguaje](./SDD-24-language-server.md)
 > **Paquete:** `@fudic/language-server` · **Rama:** `feat/sdd-24-language-server`
-> **Progreso:** 12 / 36 — fases 0–2 hechas (la tarea 12 se adelantó: el índice necesita parsear).
+> **Progreso:** 15 / 36 — fases 0–3 hechas.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Los ficheros son relativos a `packages/language-server/` salvo cuando
@@ -113,17 +113,22 @@ piden decisión de Pedro; los dos últimos son elecciones que las tareas ya asum
       `parseDirective`) + `structureDocument`, devolviendo también sus diagnósticos. Se
       adelantó porque el índice tiene que parsear para saber el rol, y ninguna tarea puede
       depender de una posterior.
-- [ ] **13. Batch de Oxc del documento.**
+- [x] **13. Batch de Oxc del documento.**
       Crear `src/js-batch.ts`: registra los fragmentos del documento (interpolaciones,
       cabeceras, regiones de `@code`) en **un** `JsBatch` y expone el `fragmentId(node)` que
       `SemanticInput` pide.
-- [ ] **14. Caché por versión de documento.**
+- [x] **14. Caché por versión de documento.**
       Crear `src/document-cache.ts`: AST, batch y virtuals cacheados por `uri` + versión
       (§4.5). Un `.fud` no se parsea dos veces por pulsación.
-- [ ] **15. Un solo Oxc por fichero (toca `language-core`).**
+- [x] **15. Un solo Oxc por fichero (toca `language-core`).**
       Modificar `packages/language-core/src/emit.ts`: `EmitInput.js?: JsBatchResult`
       opcional; con él, el emisor no abre batch propio. Ver nota 3. Actualizar los tests de
       `language-core` manteniendo su **100 %**. Crear `test/document-cache.test.ts`.
+      La caché lleva **dos claves**: el AST por versión de documento, y los virtuals por
+      versión **y** revisión del índice — lo que un tag resuelve no es propiedad del fichero,
+      así que dar de alta `app-card.fud` cambia la proyección de toda página que lo enlace. Se
+      recalcula en la siguiente petición de ese fichero, no en el alta: el AST y su batch, que
+      son la mitad cara, sobreviven.
 
 ## Fase 4 — Puente con Volar (4)
 

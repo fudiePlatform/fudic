@@ -28,9 +28,21 @@ export interface IndexEntry {
 export class WorkspaceIndex {
   readonly #scanner: FileSystemScanner;
   readonly #entries = new Map<string, IndexEntry>();
+  #revision = 0;
 
   constructor(scanner: FileSystemScanner) {
     this.#scanner = scanner;
+  }
+
+  /**
+   * Bumped whenever the set of `.fud` changes.
+   *
+   * What a tag resolves to is not a property of one file: creating `app-card.fud` changes the
+   * projection of every page that links it. This counter is how the document cache notices,
+   * without anyone walking the workspace to find out who cared.
+   */
+  get revision(): number {
+    return this.#revision;
   }
 
   /** The start-up sweep. Replaces whatever the index held for `root`'s files. */
@@ -49,10 +61,11 @@ export class WorkspaceIndex {
     const key = toPosix(path);
     const source = this.#scanner.readFile(key);
     if (source === undefined) {
-      this.#entries.delete(key);
+      this.remove(key);
       return;
     }
 
+    this.#revision++;
     const { document } = parseFud(source);
     this.#entries.set(key, {
       path: key,
@@ -62,8 +75,9 @@ export class WorkspaceIndex {
     });
   }
 
+  /** Drop a file. The revision only moves when something was actually there to drop. */
   remove(path: string): void {
-    this.#entries.delete(toPosix(path));
+    if (this.#entries.delete(toPosix(path))) this.#revision++;
   }
 
   /** A rename is a removal plus a read: the role travels with the content, not with the name. */

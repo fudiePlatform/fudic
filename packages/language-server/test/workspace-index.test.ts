@@ -137,6 +137,24 @@ describe('maintenance', () => {
     expect(index.get('/p/components/badge.fud')?.tag).toBe('app-badge');
   });
 
+  it('moves the revision only when the set of .fud actually changed', () => {
+    const files: Record<string, string> = { ...WORKSPACE };
+    const index = indexOf(files);
+    const swept = index.revision;
+
+    expect(swept).toBe(5); // one per file of the sweep
+
+    index.remove('/p/components/ghost.fud');
+    expect(index.revision).toBe(swept);
+
+    index.upsert('/p/components/ghost.fud'); // unreadable: nothing enters
+    expect(index.revision).toBe(swept);
+
+    files['/p/components/app-card.fud'] = component('app-card');
+    index.upsert('/p/components/app-card.fud');
+    expect(index.revision).toBe(swept + 1);
+  });
+
   it('leaves every other entry untouched: invalidation is per file, not global', () => {
     const files: Record<string, string> = { ...WORKSPACE };
     const index = indexOf(files);

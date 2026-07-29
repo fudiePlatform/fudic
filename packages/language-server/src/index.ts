@@ -38,3 +38,5 @@ export { WorkspaceIndex, type IndexEntry } from './workspace-index.js';
 export { createFileRegistry } from './file-registry.js';
 export { nodeFileSystem } from './node-fs.js';
 export { toPosix, dirName, baseName, resolveFrom, relativeHref } from './paths.js';
+export { batchDocumentJs, type DocumentJs, type CodeRegion } from './js-batch.js';
+export { DocumentCache, type CachedDocument } from './document-cache.js';

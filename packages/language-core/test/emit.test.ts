@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { JsBatch } from '@fudic/compiler';
 import { emitVirtualFiles } from '../src/emit.js';
+import { partitionCode } from '../src/code.js';
 import { parseFud, registryOf } from './_support.js';
 
 const BADGE = `@code {
@@ -83,6 +85,41 @@ describe('emitVirtualFiles', () => {
 
     expect(client!.text).toContain('$text(a);');
     expect(client!.text).toContain('export type $Props');
+  });
+
+  it('takes a batch someone else already ran, and emits the very same bytes', () => {
+    // The language server parses every fragment of the document once — the semantic pass and
+    // its own rules need the same AST this emitter needs — so it hands the result over
+    // rather than paying for a second Oxc invocation per keystroke (SDD-24 §4.5).
+    const document = parseFud(BADGE);
+    const batch = new JsBatch(BADGE);
+    const neutral = partitionCode(document.code).neutral.map((chunk) =>
+      batch.add('module-statements', chunk),
+    );
+    const shared = emitVirtualFiles({
+      source: BADGE,
+      fileName: 'app-badge.fud',
+      document,
+      registry: registryOf({}),
+      js: { result: batch.parse().value, neutral },
+    });
+
+    expect(shared.map((f) => f.text)).toEqual(emit(BADGE).map((f) => f.text));
+    expect(shared[0]!.text).toContain('const $p0 = props<{ tone?: Tone }>();');
+  });
+
+  it('finds no contract in a handed-over batch that registered no neutral chunk', () => {
+    const source = `<app-x>\n  <template shadowrootmode="open"><i>hi</i></template>\n</app-x>\n`;
+    const [client] = emitVirtualFiles({
+      source,
+      fileName: 'app-x.fud',
+      document: parseFud(source),
+      registry: registryOf({}),
+      js: { result: new JsBatch(source).parse().value, neutral: [] },
+    });
+
+    expect(client!.text).not.toContain('$p0');
+    expect(client!.text).toContain('export type $Props = never;');
   });
 
   it('maps every user stretch back to the exact source text', () => {
