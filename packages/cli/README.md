@@ -24,6 +24,68 @@ It is also the **first external consumer of the compiler's API** — parsing, qu
 offset, editing by span. If that API cannot place a `<link rel="component">` at the right
 offset of someone else's file, it will not carry a language server either.
 
+## Manual testing without publishing to npm
+
+None of the `@fudic/*` packages is published yet, so a generated project cannot resolve
+them from the registry. This is the loop that lets anyone drive the real binary from
+anywhere on their machine, with no registry and no tarballs. It is the same code the tests
+exercise, resolved the way a user's install resolves it.
+
+**1. Build and link the CLI globally.** The link points at this working copy, so a later
+`pnpm build` is picked up with no re-link.
+
+```sh
+cd <repo>
+pnpm build                      # dist/ is what the binary runs
+cd packages/cli
+pnpm link --global              # exposes `fudic` on PATH (pnpm's global bin dir)
+fudic --help                    # from any directory
+```
+
+`pnpm bin -g` prints the directory that must be on `PATH`; `pnpm setup` puts it there once
+and for all. To undo it: `pnpm uninstall --global @fudic/cli`.
+
+**2. Create a project anywhere, skipping the install the CLI cannot satisfy.**
+
+```sh
+cd /some/scratch/dir
+fudic new demo --no-install --no-git
+```
+
+**3. Point its four `@fudic/*` dependencies at this repo, then install for real.** The
+generated `package.json` pins `0.0.1` from npm; rewriting them to `link:` makes pnpm
+resolve them from disk, dist and all.
+
+```sh
+cd demo
+node -e "
+const fs = require('fs');
+const repo = '<absolute path to this repo>';
+const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+for (const field of ['dependencies', 'devDependencies'])
+  for (const name of Object.keys(pkg[field] ?? {}))
+    if (name.startsWith('@fudic/')) pkg[field][name] = 'link:' + repo + '/packages/' + name.slice(7);
+fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+"
+pnpm install --ignore-workspace   # --ignore-workspace: the scratch dir is not this monorepo
+pnpm build                        # or: pnpm dev
+```
+
+**4. Drive the generators against it.**
+
+```sh
+fudic g component app-card --in routes/index.fud
+fudic g page blog
+fudic g layout admin --sections aside
+pnpm build
+```
+
+Two notes on what this proves and what it does not. It exercises the published entry
+points (`bin`, `exports`, `dist`, and the `templates/` directory the binary reads at
+runtime), which is where packaging bugs live. It does **not** exercise a registry install:
+step 3 replaces it. Once the packages ship to npm, steps 2–3 collapse into plain
+`fudic new demo`, and this section can go.
+
 ## Design
 
 Every command is `plan → apply`:
