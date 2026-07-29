@@ -36,6 +36,15 @@ Todos los SDD siguen la misma estructura fija:
 6. **Criterios de aceptación** — la batería de tests que define "hecho". Entradas concretas → salidas esperadas.
 7. **Fuera de alcance** — qué NO implementar aquí, para evitar invasión del SDD siguiente.
 
+### Defectos: los BUG
+
+Un defecto que sobrevive a la revisión de un SDD no se arregla con un parche: se
+especifica. Los BUG viven en [`bugs/`](./bugs/INDEX.md) con la **misma estructura de siete
+secciones**, reinterpretada para un defecto (síntoma, causa raíz con fichero y línea,
+contrato, comportamiento corregido, invariantes, criterios de aceptación, fuera de
+alcance), y el **mismo par de ficheros** que un SDD: `BUG-NN-<slug>.md` +
+`BUG-NN-Task.md`. Un BUG declara qué SDD corrige y reutiliza su rango `FUD`.
+
 ### Reglas de oro (aplican a todos los SDD)
 
 - **Repo limpio.** El parser se construye desde cero. Del prototipo `compiler-master` (2019)
