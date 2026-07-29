@@ -1,0 +1,19 @@
+@code {
+  const { current = '' } = props<{ current?: string }>();
+}
+
+<head>
+  <style>
+    nav { display: flex; gap: 8px; }
+    .active { font-weight: bold; }
+  </style>
+</head>
+
+<site-nav>
+  <template shadowrootmode="open">
+    <nav>
+      <a href="/" class:active="@(current === 'home')">Inicio</a>
+      <a href="/blog" class:active="@(current === 'blog')">Blog</a>
+    </nav>
+  </template>
+</site-nav>

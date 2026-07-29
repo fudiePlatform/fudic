@@ -1,0 +1,71 @@
+{
+  "name": "@fudic/language-server",
+  "version": "0.0.1",
+  "description": "Editor-agnostic LSP server for .fud files — Volar over the virtual TypeScript projection.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Pedro Hurtado",
+  "homepage": "https://github.com/fudie/fudic/tree/main/packages/language-server#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fudie/fudic.git",
+    "directory": "packages/language-server"
+  },
+  "bugs": {
+    "url": "https://github.com/fudie/fudic/issues"
+  },
+  "keywords": [
+    "fudic",
+    "fudie",
+    "declarative-shadow-dom",
+    "language-server",
+    "lsp",
+    "volar"
+  ],
+  "bin": {
+    "fudic-language-server": "./bin/fudic-language-server.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "bin",
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@fudic/compiler": "workspace:*",
+    "@fudic/language-core": "workspace:*",
+    "@volar/language-core": "2.4.28",
+    "@volar/language-server": "2.4.28",
+    "@volar/language-service": "2.4.28",
+    "@volar/typescript": "2.4.28",
+    "typescript": "5.9.3",
+    "volar-service-css": "0.0.71",
+    "volar-service-html": "0.0.71",
+    "volar-service-typescript": "0.0.71",
+    "vscode-languageserver": "9.0.1",
+    "vscode-languageserver-textdocument": "1.0.12",
+    "vscode-uri": "3.1.0"
+  },
+  "devDependencies": {
+    "@fudic/tsconfig": "workspace:*",
+    "@types/node": "22.20.0",
+    "vscode-languageserver-protocol": "3.17.5"
+  }
+}
