@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-24 — Servidor de lenguaje](./SDD-24-language-server.md)
 > **Paquete:** `@fudic/language-server` · **Rama:** `feat/sdd-24-language-server`
-> **Progreso:** 4 / 36 — fase 0 hecha.
+> **Progreso:** 7 / 36 — fases 0 y 1 hechas.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Los ficheros son relativos a `packages/language-server/` salvo cuando
@@ -70,14 +70,17 @@ piden decisión de Pedro; los dos últimos son elecciones que las tareas ya asum
 
 ## Fase 1 — Contratos y catálogo (3)
 
-- [ ] **5. Tipos públicos del servidor.**
+- [x] **5. Tipos públicos del servidor.**
       Crear `src/types.ts`: `FudicInitializationOptions` (§3.3), sus opciones ya resueltas con
       los defaults aplicados, y los puertos inyectables — `FileSystemScanner` y `Logger` —
-      para que ningún módulo de dominio importe `node:fs`.
-- [ ] **6. Catálogo de diagnósticos.**
+      para que ningún módulo de dominio importe `node:fs`. La resolución vive en
+      `src/options.ts`: los `initializationOptions` llegan como `unknown`, y un `tsdk` que
+      falta tiene que llegar como cadena vacía, no como `TypeError`, o la degradación de §6.1
+      es inalcanzable.
+- [x] **6. Catálogo de diagnósticos.**
       Crear `src/diagnostics.ts`: rango `FUD0460`–`FUD0479`. `FUD0460` = `href` que no
       resuelve; `FUD0461` = identificador de usuario con prefijo `$`. El resto, reservado.
-- [ ] **7. Capacidades y leyenda de tokens.**
+- [x] **7. Capacidades y leyenda de tokens.**
       Crear `src/capabilities.ts` con el objeto exacto de §3.2 y la leyenda de §4.3
       (`fudDirective`, `fudInterpolation`, `fudBinding`, `fudComponentTag` sobre los tipos
       estándar). Formateo **se declara y se delega**: SDD-26 no existe aún, así que el

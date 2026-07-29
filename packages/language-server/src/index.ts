@@ -10,3 +10,25 @@
  */
 
 export const VERSION = '0.0.1';
+
+export type {
+  FudicInitializationOptions,
+  FudicUserOptions,
+  FudicOptions,
+  FileSystemScanner,
+  Logger,
+} from './types.js';
+export { DEFAULT_OPTIONS, resolveOptions } from './options.js';
+export {
+  FUDIC_TOKEN_TYPES,
+  SEMANTIC_TOKENS_LEGEND,
+  SERVER_CAPABILITIES,
+  tokenTypeIndex,
+  type FudicTokenType,
+} from './capabilities.js';
+export {
+  FUD_HREF_UNRESOLVED,
+  FUD_RESERVED_DOLLAR,
+  hrefUnresolved,
+  reservedDollar,
+} from './diagnostics.js';
