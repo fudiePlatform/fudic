@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-24 — Servidor de lenguaje](./SDD-24-language-server.md)
 > **Paquete:** `@fudic/language-server` · **Rama:** `feat/sdd-24-language-server`
-> **Progreso:** 7 / 36 — fases 0 y 1 hechas.
+> **Progreso:** 12 / 36 — fases 0–2 hechas (la tarea 12 se adelantó: el índice necesita parsear).
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Los ficheros son relativos a `packages/language-server/` salvo cuando
@@ -88,25 +88,31 @@ piden decisión de Pedro; los dos últimos son elecciones que las tareas ya asum
 
 ## Fase 2 — Índice del workspace (4)
 
-- [ ] **8. Rol de un `.fud`.**
+- [x] **8. Rol de un `.fud`.**
       Crear `src/mode.ts`: del `StructuredDocument` al rol (`component` / `page` / `route` /
-      `layout`, decisión 51 y SDD-21). Puro, sin I/O — el disco entra en la tarea 9.
-- [ ] **9. Índice del workspace.**
+      `layout`, decisión 51 y SDD-21) más `tagOf` y `layoutHrefOf`. Puro, sin I/O — el disco
+      entra en la tarea 9. También `src/paths.ts`: aritmética POSIX (`resolveFrom`,
+      `relativeHref`), sin `node:path`, porque el editor manda los dos separadores para el
+      mismo fichero y un `href` siempre se escribe con `/`.
+- [x] **9. Índice del workspace.**
       Crear `src/workspace-index.ts`: barrido `**/*.fud` al arrancar y mapa ruta → rol,
-      mantenido por alta / baja / renombrado (§4.5). Nunca lee disco por pulsación.
-- [ ] **10. `FileRegistry` por fichero.**
+      mantenido por alta / baja / renombrado (§4.5). Nunca lee disco por pulsación. El único
+      módulo que importa `node:fs` es `src/node-fs.ts`, tras el puerto `FileSystemScanner`.
+- [x] **10. `FileRegistry` por fichero.**
       Crear `src/file-registry.ts`: resuelve los `<link>` de **un** fichero contra el índice y
       cumple el puerto que SDD-23 consume. La invalidación es por fichero, no global.
-- [ ] **11. Tests del índice.**
+- [x] **11. Tests del índice.**
       Crear `test/workspace-index.test.ts` y `test/file-registry.test.ts`: barrido inicial,
       alta en caliente, `href` relativo resuelto, y que un alta invalide **solo** el fichero
       afectado.
 
 ## Fase 3 — Parseo, caché y un solo Oxc (4)
 
-- [ ] **12. Pipeline de parseo.**
+- [x] **12. Pipeline de parseo.** *(hecha en la fase 2)*
       Crear `src/parse.ts`: `parseDocument` + constructs (`parseControl`, `parseCodeBlock`,
-      `parseDirective`) + `structureDocument`, devolviendo también sus diagnósticos.
+      `parseDirective`) + `structureDocument`, devolviendo también sus diagnósticos. Se
+      adelantó porque el índice tiene que parsear para saber el rol, y ninguna tarea puede
+      depender de una posterior.
 - [ ] **13. Batch de Oxc del documento.**
       Crear `src/js-batch.ts`: registra los fragmentos del documento (interpolaciones,
       cabeceras, regiones de `@code`) en **un** `JsBatch` y expone el `fragmentId(node)` que

@@ -32,3 +32,9 @@ export {
   hrefUnresolved,
   reservedDollar,
 } from './diagnostics.js';
+export { parseFud, type ParsedFud } from './parse.js';
+export { roleOf, tagOf, layoutHrefOf, type FudRole } from './mode.js';
+export { WorkspaceIndex, type IndexEntry } from './workspace-index.js';
+export { createFileRegistry } from './file-registry.js';
+export { nodeFileSystem } from './node-fs.js';
+export { toPosix, dirName, baseName, resolveFrom, relativeHref } from './paths.js';
