@@ -144,6 +144,32 @@ pnpm test         # vitest run
 pnpm build        # tsc -p tsconfig.build.json
 ```
 
-Extras por paquete (`packages/compiler`): `test:watch`, `coverage`. El suelo de
-cobertura es 80/80/75 (líneas/funciones/ramas), elevado por módulo en SDD posteriores —
-los módulos de tipos y las utilidades puras pequeñas deberían acercarse al 100%.
+Extras por paquete: `test:watch`, `coverage`.
+
+## Cobertura: el código nuevo nace al 100 %
+
+**Todo paquete nuevo se configura con `thresholds` al 100 en las cuatro métricas**
+—`lines`, `functions`, `branches`, `statements`— desde su primer commit. No es una meta a
+la que se llega al final: es la condición bajo la que se escribe. Un umbral que se sube
+*después* obliga a inventar tests para código que ya nació sin ellos; uno que está desde el
+principio hace que el código se escriba probable — menos ramas muertas, menos parámetros
+que nadie usa, menos `catch` decorativos. La cobertura no es la nota del test, es una nota
+sobre el **diseño** del código.
+
+Reglas que hacen que el número signifique algo:
+
+- **Las cuatro métricas, no tres.** Dejar `branches` por detrás es dejar sin probar
+  exactamente los caminos de error, que en un compilador son la mitad del producto.
+- **`coverage.include: ['src/**/*.ts']`.** Sin esto, un fichero que ningún test importa
+  simplemente no cuenta —y la cobertura sube al borrar tests—. El denominador es el paquete
+  entero, no lo que los tests decidieron mirar. Los helpers de `test/` quedan fuera.
+- **Nada de `/* v8 ignore */` para llegar al número.** Si una rama no se puede provocar, o
+  sobra código o falta un test. El `ignore` solo se admite con un comentario que explique
+  por qué la rama es inalcanzable.
+- **Un SDD no se cierra por debajo de su umbral.** Igual que `pnpm typecheck`: no es
+  negociable al final, cuando siempre hay prisa.
+
+**Deuda heredada.** `@fudic/compiler`, `@fudic/transport` y `@fudic/vite` nacieron con un
+suelo de 80/80/75 y hoy están por debajo del 100 (ramas: 95,6 / 83,8 / 83,1). Se saldan
+cuando el framework esté terminado, en su propia tanda. Esa deuda **no rebaja el listón de
+lo nuevo**: no se toma como precedente ni se cita para justificar un umbral menor.
