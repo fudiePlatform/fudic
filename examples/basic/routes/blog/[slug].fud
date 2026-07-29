@@ -1,54 +1,48 @@
-<!DOCTYPE html>
-<html lang="es">
-  <head>
-    <link rel="component" href="../../components/site-nav.fud">
-    <link rel="component" href="../../components/app-badge.fud">
+<link rel="layout" href="../../layouts/_layout.fud">
+<link rel="component" href="../../components/site-nav.fud">
+<link rel="component" href="../../components/app-badge.fud">
 
-    @code {
-      type PageData = { title: string; tag: string; body: string; found: boolean };
+@code {
+  type PageData = { title: string; tag: string; body: string; found: boolean };
 
-      @server {
-        import { findPost, listSlugs } from '../../data/posts';
+  @server {
+    import { findPost, listSlugs } from '../../data/posts';
 
-        export async function load({ params }: { params: { slug: string } }): Promise<PageData> {
-          const post = await findPost(params.slug);
-          if (post === undefined) {
-            return { title: 'Artículo no encontrado', tag: '404', body: `No hay ningún artículo con el slug "${params.slug}".`, found: false };
-          }
-          return { title: post.title, tag: post.tag, body: post.body, found: true };
-        }
-
-        export async function paths(): Promise<string[]> {
-          return [...(await listSlugs())];
-        }
+    export async function load({ params }: { params: { slug: string } }): Promise<PageData> {
+      const post = await findPost(params.slug);
+      if (post === undefined) {
+        return { title: 'Artículo no encontrado', tag: '404', body: `No hay ningún artículo con el slug "${params.slug}".`, found: false };
       }
+      return { title: post.title, tag: post.tag, body: post.body, found: true };
     }
 
-    <title>@data.title — fudic</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script type="module" src="/fudic-main.js"></script>
-  </head>
-  <body>
-    <site-nav current="blog"></site-nav>
+    export async function paths(): Promise<string[]> {
+      return [...(await listSlugs())];
+    }
+  }
+}
 
-    <main>
-      <article>
-        <app-badge tone="@(data.found ? 'info' : 'neutral')">@data.tag</app-badge>
-        <h1>@data.title</h1>
-        <p>@data.body</p>
-        @if (data.found) {
-          <p class="note">
-            Este HTML lo escribió el build porque <code>paths()</code> enumeró el slug.
-          </p>
-        } else {
-          <p class="note">
-            Este slug no estaba en <code>paths()</code>: lo ha renderizado el Service
-            Worker en el momento de la navegación (fallback <code>lazy</code>).
-          </p>
-        }
-        <p><a href="/blog">← volver al blog</a></p>
-      </article>
-    </main>
-  </body>
-</html>
+<head>
+  <title>@data.title — fudic</title>
+</head>
+
+@section nav {
+  <site-nav current="blog"></site-nav>
+}
+
+<article>
+  <app-badge tone="@(data.found ? 'info' : 'neutral')">@data.tag</app-badge>
+  <h1>@data.title</h1>
+  <p>@data.body</p>
+  @if (data.found) {
+    <p class="note">
+      Este HTML lo escribió el build porque <code>paths()</code> enumeró el slug.
+    </p>
+  } else {
+    <p class="note">
+      Este slug no estaba en <code>paths()</code>: lo ha renderizado el Service
+      Worker en el momento de la navegación (fallback <code>lazy</code>).
+    </p>
+  }
+  <p><a href="/blog">← volver al blog</a></p>
+</article>

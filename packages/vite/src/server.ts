@@ -10,10 +10,15 @@ import { parseFud } from './parse.js';
 
 const EMPTY = 'export {};\n';
 
-/** Emit the `?server` module for a page: its `@server` region code, or an empty module. */
+/**
+ * Emit the `?server` module for a route: its `@server` region code, or an empty module.
+ * Any role that can BE a route qualifies — a page (doctype) and a route fragment
+ * (SDD-21), which carries its `@code` at the top level instead of inside `<head>`.
+ */
 export function emitServerModule(source: string): string {
   const doc = parseFud(source);
-  if (doc.type !== 'page-document' || !doc.code) {
+  const isRoute = doc.type === 'page-document' || doc.type === 'route-document';
+  if (!isRoute || !doc.code) {
     return EMPTY;
   }
   const body = doc.code.parts

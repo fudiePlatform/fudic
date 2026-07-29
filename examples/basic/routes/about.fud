@@ -1,34 +1,34 @@
-<!DOCTYPE html>
-<html lang="es">
-  <head>
-    <link rel="component" href="../components/site-nav.fud">
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
 
-    <title>Acerca de — fudic</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script type="module" src="/fudic-main.js"></script>
-  </head>
-  <body>
-    <site-nav current="about"></site-nav>
+<head>
+  <title>Acerca de — fudic</title>
+</head>
 
-    <main>
-      <h1>Acerca de este ejemplo</h1>
-      <p>
-        Cuatro rutas que ejercitan lo que el framework tiene montado hoy: routing por
-        sistema de ficheros, los tres modos de render, el manifest como contrato único y
-        el Service Worker que enlaza el chunk de una ruta y la pinta él mismo.
-      </p>
-      <ul>
-        <li><code>/</code> — estática: sin params ni <code>load</code> ⇒ prerenderizada.</li>
-        <li><code>/about</code> — estática, esta misma página.</li>
-        <li><code>/blog</code> — <code>@@server load</code> ⇒ <code>sw</code>: lo pinta el Service Worker.</li>
-        <li><code>/blog/:slug</code> — <code>paths()</code> ⇒ prerender enumerado + render local para el resto.</li>
-      </ul>
-      <p>
-        La hidratación (SDD-15 cliente y SDD-17) todavía no existe: no hay ningún
-        <code>customElements.define</code> en la salida. Lo que ves está pintado por el
-        navegador desde el HTML, con el shadow root declarativo.
-      </p>
-    </main>
-  </body>
-</html>
+@section nav {
+  <site-nav current="about"></site-nav>
+}
+
+<h1>Acerca de este ejemplo</h1>
+<p>
+  Cuatro rutas que ejercitan lo que el framework tiene montado hoy: routing por
+  sistema de ficheros, los tres modos de render, el manifest como contrato único, el
+  Service Worker que enlaza el chunk de una ruta y la pinta él mismo, y el layout
+  compartido que pone el shell de las cuatro.
+</p>
+<ul>
+  <li><code>/</code> — estática: sin params ni <code>load</code> ⇒ prerenderizada.</li>
+  <li><code>/about</code> — estática, esta misma página.</li>
+  <li><code>/blog</code> — <code>@@server load</code> ⇒ <code>sw</code>: lo pinta el Service Worker.</li>
+  <li><code>/blog/:slug</code> — <code>paths()</code> ⇒ prerender enumerado + render local para el resto.</li>
+</ul>
+<p>
+  Ninguna de las cuatro escribe <code>&lt;html&gt;</code>, <code>&lt;head&gt;</code> ni
+  el <code>&lt;script&gt;</code> que registra el Service Worker: eso lo pone el layout
+  una sola vez. Cada ruta aporta su <code>&lt;title&gt;</code>, su nav y su cuerpo.
+</p>
+<p>
+  La hidratación (SDD-15 cliente y SDD-17) todavía no existe: no hay ningún
+  <code>customElements.define</code> en la salida. Lo que ves está pintado por el
+  navegador desde el HTML, con el shadow root declarativo.
+</p>

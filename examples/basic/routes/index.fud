@@ -1,47 +1,38 @@
-<!DOCTYPE html>
-<html lang="es">
-  <head>
-    <link rel="component" href="../components/site-nav.fud">
-    <link rel="component" href="../components/app-card.fud">
-    <link rel="component" href="../components/app-badge.fud">
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/app-card.fud">
+<link rel="component" href="../components/app-badge.fud">
 
-    <title>fudic — ejemplo básico</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="icon" href="./logo.svg">
+<head>
+  <title>fudic — ejemplo básico</title>
+</head>
 
-    <!-- The main-thread bootstrap: registers the render Service Worker, which from
-         then on renders every `sw` route locally, and tells it where the user is. -->
-    <script type="module" src="/fudic-main.js"></script>
-  </head>
-  <body>
-    <site-nav current="home"></site-nav>
+@section nav {
+  <site-nav current="home"></site-nav>
+}
 
-    <main>
-      <h1>fudic</h1>
-      <p class="lede">
-        Un componente por fichero, compilado a Declarative Shadow DOM. Esta página es
-        estática: la generó el build y se sirve sin una línea de JavaScript.
-      </p>
+<h1>fudic</h1>
+<p class="lede">
+  Un componente por fichero, compilado a Declarative Shadow DOM. Esta página es
+  estática: la generó el build y se sirve sin una línea de JavaScript. Su shell
+  —doctype, head, nav, footer— vive en <code>layouts/_layout.fud</code>.
+</p>
 
-      <section class="grid">
-        <app-card title="Blog (render en el SW)" href="/blog" variant="highlight">
-          <app-badge slot="meta" tone="info">sw</app-badge>
-          El listado tiene <code>@@server load</code>, así que no se prerenderiza: lo
-          renderiza el Service Worker con su chunk enlazado, en 3-8 ms.
-        </app-card>
+<section class="grid">
+  <app-card title="Blog (render en el SW)" href="/blog" variant="highlight">
+    <app-badge slot="meta" tone="info">sw</app-badge>
+    El listado tiene <code>@@server load</code>, así que no se prerenderiza: lo
+    renderiza el Service Worker con su chunk enlazado, en 3-8 ms.
+  </app-card>
 
-        <app-card title="Acerca de (estático)" href="/about">
-          <app-badge slot="meta" tone="success">prerender</app-badge>
-          Sin params y sin <code>load</code>: el build escribe su <code>about/index.html</code>.
-        </app-card>
+  <app-card title="Acerca de (estático)" href="/about">
+    <app-badge slot="meta" tone="success">prerender</app-badge>
+    Sin params y sin <code>load</code>: el build escribe su <code>about/index.html</code>.
+  </app-card>
 
-        <app-card title="Un artículo (enumerado)" href="/blog/declarative-shadow-dom">
-          <app-badge slot="meta" tone="success">paths()</app-badge>
-          <code>/blog/:slug</code> enumera su espacio de params con <code>paths()</code>,
-          así que cada artículo tiene su HTML prerenderizado.
-        </app-card>
-      </section>
-    </main>
-  </body>
-</html>
+  <app-card title="Un artículo (enumerado)" href="/blog/declarative-shadow-dom">
+    <app-badge slot="meta" tone="success">paths()</app-badge>
+    <code>/blog/:slug</code> enumera su espacio de params con <code>paths()</code>,
+    así que cada artículo tiene su HTML prerenderizado.
+  </app-card>
+</section>
