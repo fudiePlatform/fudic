@@ -8,6 +8,8 @@ import { planNew } from '../src/plans/new.js';
 import { apply } from '../src/apply.js';
 import { parseFud } from '../src/parse.js';
 import { FUD_ADAPTER_UNAVAILABLE, FUD_TARGET_EXISTS } from '../src/diagnostics.js';
+import { TYPESCRIPT_VERSION } from '../src/project.js';
+import { GLOBALS_DTS } from '@fudic/language-core';
 import { MemoryFs, RecordingRunner } from './helpers.js';
 import type { NewOptions } from '../src/types.js';
 
@@ -38,6 +40,8 @@ describe('fudic new', () => {
       'demo/vite.config.ts',
       'demo/README.md',
       'demo/.gitignore',
+      'demo/tsconfig.json',
+      'demo/fudic-globals.d.ts',
       'demo/sw.json',
       'demo/layouts/_layout.fud',
       'demo/routes/index.fud',
@@ -53,6 +57,27 @@ describe('fudic new', () => {
     const pkg = JSON.parse(plan.changes[0]!.contents) as { name: string; scripts: Record<string, string> };
     expect(pkg.name).toBe('demo');
     expect(pkg.scripts['build']).toBe('vite build');
+  });
+
+  it('writes the ambient globals and a tsconfig that includes the .fud files', async () => {
+    const plan = await planNew('demo', options(), new MemoryFs({}, CWD));
+    const file = (path: string): string =>
+      plan.changes.find((change) => change.path === path)!.contents;
+
+    // The very text the language server mounts in memory: one source, two consumers.
+    expect(file('demo/fudic-globals.d.ts')).toBe(GLOBALS_DTS);
+    expect(file('demo/fudic-globals.d.ts')).toContain('declare function props<T>(): T;');
+
+    const tsconfig = JSON.parse(file('demo/tsconfig.json')) as {
+      include: string[];
+      compilerOptions: Record<string, unknown>;
+    };
+    expect(tsconfig.include).toContain('**/*.fud');
+    expect(tsconfig.compilerOptions['exactOptionalPropertyTypes']).toBe(true);
+
+    // The project pins its own TypeScript: the server typechecks with THAT one (SDD-24 §2).
+    const pkg = JSON.parse(file('demo/package.json')) as { devDependencies: Record<string, string> };
+    expect(pkg.devDependencies['typescript']).toBe(TYPESCRIPT_VERSION);
   });
 
   it('--no-sw drops sw.json: the SW itself is never a user file (SDD-20)', async () => {

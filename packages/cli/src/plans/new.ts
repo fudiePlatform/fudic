@@ -5,10 +5,11 @@
  * project only declares the policy (SDD-20 §4.7).
  */
 
+import { GLOBALS_DTS, GLOBALS_FILE_NAME } from '@fudic/language-core';
 import { cliError, FUD_ADAPTER_UNAVAILABLE, FUD_TARGET_EXISTS } from '../diagnostics.js';
 import { absolute, hrefBetween, joinPosix } from '../paths.js';
 import { LAYOUTS_DIR } from '../layout.js';
-import { FUDIC_VERSION, VITE_VERSION } from '../project.js';
+import { FUDIC_VERSION, TYPESCRIPT_VERSION, VITE_VERSION } from '../project.js';
 import { renderSectionBlocks, renderTemplate } from '../templates.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
 import type { CliError, FileChange, NewOptions, Plan, PlanCommand } from '../types.js';
@@ -48,7 +49,15 @@ export function planNew(name: string, opts: NewOptions, io: ReadIo = nodeReadIo(
   const indexFile = joinPosix(name, ROUTES_DIR, 'index.fud');
 
   const files: readonly (readonly [string, string])[] = [
-    [joinPosix(name, 'package.json'), renderTemplate('package.json.tmpl', { name, version: FUDIC_VERSION, viteVersion: VITE_VERSION })],
+    [
+      joinPosix(name, 'package.json'),
+      renderTemplate('package.json.tmpl', {
+        name,
+        version: FUDIC_VERSION,
+        viteVersion: VITE_VERSION,
+        tsVersion: TYPESCRIPT_VERSION,
+      }),
+    ],
     [joinPosix(name, 'vite.config.ts'), renderTemplate('vite.config.ts.tmpl', { routesDir: ROUTES_DIR })],
     [
       joinPosix(name, 'README.md'),
@@ -62,6 +71,12 @@ export function planNew(name: string, opts: NewOptions, io: ReadIo = nodeReadIo(
       }),
     ],
     [joinPosix(name, '.gitignore'), renderTemplate('gitignore.tmpl', {})],
+    [joinPosix(name, 'tsconfig.json'), renderTemplate('tsconfig.json.tmpl', {})],
+    // The ambient declarations the templates are typed against. Written from the same
+    // constant the language server mounts in memory (SDD-23 §3.3), so the editor and `tsc`
+    // can never disagree about what `props<T>()` or `$text` mean. Generated, hence the
+    // "do not edit" banner the constant carries.
+    [joinPosix(name, GLOBALS_FILE_NAME), GLOBALS_DTS],
     ...(opts.sw ? ([[joinPosix(name, 'sw.json'), renderTemplate('sw.json.tmpl', {})]] as const) : []),
     [layoutFile, renderTemplate('layout.fud', { lang: 'en', renderHead: '    @RenderHead()', sections: renderSectionBlocks([]) })],
     [

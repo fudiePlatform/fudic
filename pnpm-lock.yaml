@@ -51,6 +51,9 @@ importers:
       '@fudic/compiler':
         specifier: workspace:*
         version: link:../compiler
+      '@fudic/language-core':
+        specifier: workspace:*
+        version: link:../language-core
     devDependencies:
       '@fudic/tsconfig':
         specifier: workspace:*
@@ -99,6 +102,22 @@ importers:
       happy-dom:
         specifier: 20.10.6
         version: 20.10.6
+
+  packages/language-core:
+    dependencies:
+      '@fudic/compiler':
+        specifier: workspace:*
+        version: link:../compiler
+    devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/node':
+        specifier: 22.20.0
+        version: 22.20.0
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
 
   packages/ssr:
     dependencies:

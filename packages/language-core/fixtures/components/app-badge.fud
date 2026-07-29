@@ -1,0 +1,24 @@
+@code {
+  type Tone = 'neutral' | 'success' | 'info';
+
+  const { tone = 'neutral' } = props<{ tone?: Tone }>();
+}
+
+<head>
+  <style>
+    :host { display: inline-block; }
+    .badge { border-radius: 4px; padding: 2px 8px; }
+    .success { background: green; }
+    .info { background: blue; }
+  </style>
+</head>
+
+<app-badge>
+  <template shadowrootmode="open">
+    <span
+      class="badge"
+      class:success="@(tone === 'success')"
+      class:info="@(tone === 'info')"
+    ><slot></slot></span>
+  </template>
+</app-badge>

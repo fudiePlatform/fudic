@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "declaration": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    // Same rule as the other packages: the build resolves @fudic/compiler through its
+    // published types (node_modules → dist). Source `paths` is a dev-only convenience
+    // for typecheck and tests, never for emit.
+    "paths": {}
+  },
+  "include": ["src"]
+}

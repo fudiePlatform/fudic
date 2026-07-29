@@ -13,6 +13,12 @@ import type { CliError, FileChange } from './types.js';
 /** Exact dependency versions the generated project pins (repo rule: no `^`, no `~`). */
 export const FUDIC_VERSION = '0.0.1';
 export const VITE_VERSION = '8.0.16';
+/**
+ * The TypeScript the generated project pins. It matters beyond the build: the language
+ * server typechecks with the project's own version (SDD-24 §2), so a project that pins none
+ * would get diagnostics in the editor that its CI cannot reproduce.
+ */
+export const TYPESCRIPT_VERSION = '5.9.3';
 
 /**
  * Every custom element already defined in the project. Read from the AST — a component's
