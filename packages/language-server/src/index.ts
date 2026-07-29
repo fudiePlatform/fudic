@@ -40,3 +40,20 @@ export { nodeFileSystem } from './node-fs.js';
 export { toPosix, dirName, baseName, resolveFrom, relativeHref } from './paths.js';
 export { batchDocumentJs, type DocumentJs, type CodeRegion } from './js-batch.js';
 export { DocumentCache, type CachedDocument } from './document-cache.js';
+export { uriToPath, pathToUri, isFudUri } from './uri.js';
+export {
+  toCodeInformation,
+  toCodeMapping,
+  toCodeMappings,
+  identityMapping,
+} from './mappings.js';
+export {
+  createFudicVirtualCode,
+  snapshotOf,
+  styleCodeId,
+  CLIENT_CODE_ID,
+  SERVER_CODE_ID,
+  FUD_LANGUAGE_ID,
+  type FudicVirtualCode,
+} from './virtual-code.js';
+export { createFudicLanguagePlugin } from './language-plugin.js';

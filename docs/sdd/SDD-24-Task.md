@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-24 — Servidor de lenguaje](./SDD-24-language-server.md)
 > **Paquete:** `@fudic/language-server` · **Rama:** `feat/sdd-24-language-server`
-> **Progreso:** 15 / 36 — fases 0–3 hechas.
+> **Progreso:** 19 / 36 — fases 0–4 hechas.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Los ficheros son relativos a `packages/language-server/` salvo cuando
@@ -132,17 +132,22 @@ piden decisión de Pedro; los dos últimos son elecciones que las tareas ya asum
 
 ## Fase 4 — Puente con Volar (4)
 
-- [ ] **16. Traducción del mapeo.**
+- [x] **16. Traducción del mapeo.**
       Crear `src/mappings.ts`: `Mapping[]` de SDD-23 → `CodeMapping[]` de Volar, con las **dos
       longitudes** (`length` / `sourceLength`) y `MappingCaps` → `CodeInformation` uno a uno.
-- [ ] **17. Código virtual del documento.**
+- [x] **17. Código virtual del documento.**
       Crear `src/virtual-code.ts`: el `VirtualCode` raíz del `.fud` y sus embebidos — cliente
-      `.fud.ts`, servidor `.fud.server.ts` y un `.fud.<n>.css` por `<style>`.
-- [ ] **18. Language plugin.**
+      `.fud.ts`, servidor `.fud.server.ts` y un `.fud.<n>.css` por `<style>`. Cliente y servidor
+      son **campos**, no búsquedas: SDD-23 emite los dos siempre, y hacerlos opcionales
+      repartiría un «¿y si falta?» por cada consumidor. También `src/uri.ts`, la frontera
+      URI ↔ ruta (Volar indexa por `URI`, el índice por ruta).
+- [x] **18. Language plugin.**
       Crear `src/language-plugin.ts`: `LanguagePlugin<URI>` con `getLanguageId`,
       `createVirtualCode` / `updateVirtualCode` sobre la caché, `extraFileExtensions` para
-      `.fud` y `getServiceScript` apuntando al virtual de cliente.
-- [ ] **19. Tests del puente.**
+      `.fud` y `getServiceScript` apuntando al virtual de cliente, más
+      `getExtraServiceScripts` para el virtual de servidor: el cliente deriva `$Data` de
+      `typeof import('./x.fud.server')`, así que ese nombre tiene que existir para TypeScript.
+- [x] **19. Tests del puente.**
       Crear `test/mappings.test.ts` y `test/virtual-code.test.ts`: identidad de offsets en las
       copias literales, andamiaje con las seis capacidades a `false`, y un AST parcial que
       sigue produciendo virtuals.
