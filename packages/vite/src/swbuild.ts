@@ -86,8 +86,10 @@ export async function buildServiceWorker(
         output: {
           format: 'es',
           // One realm, one FILE. Without this the worker is split again and we are back
-          // to a script graph the fetch handler never sees.
-          inlineDynamicImports: true,
+          // to a script graph the fetch handler never sees. This is the option formerly
+          // spelled `inlineDynamicImports: true`, which Rolldown deprecated: it keeps that
+          // name as a getter for `!codeSplitting`, so the meaning is unchanged.
+          codeSplitting: false,
           entryFileNames: DEV_SW_URL,
         },
       },

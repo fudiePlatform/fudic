@@ -129,7 +129,7 @@ Se emite desde su **propio `build()`**, con `write: false`, dentro de `generateB
 exactamente como el link pass:
 
 - Entrada única: `SW_ID`.
-- Salida única: un fichero, sin code splitting. `inlineDynamicImports` y un solo
+- Salida única: un fichero, sin code splitting. `codeSplitting: false` y un solo
   `entryFileNames: 'fudic-sw.js'`.
 - `@fudic/ssr` y `@fudic/transport` se bundlean **dentro**. Ya era la intención declarada:
   «el runtime va bundleado DENTRO de este worker y se entrega a los chunks como builtin»
