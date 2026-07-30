@@ -1,0 +1,55 @@
+{
+  "name": "fudic-vscode",
+  "displayName": "Fudic",
+  "version": "0.0.1",
+  "description": "VS Code client for .fud files — starts the Fudic language server and paints the first frame.",
+  "publisher": "fudic",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "author": "Pedro Hurtado",
+  "homepage": "https://github.com/fudie/fudic/tree/main/packages/vscode#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fudie/fudic.git",
+    "directory": "packages/vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/fudie/fudic/issues"
+  },
+  "keywords": [
+    "fudic",
+    "fudie",
+    "declarative-shadow-dom",
+    "language-server",
+    "vscode"
+  ],
+  "categories": [
+    "Programming Languages"
+  ],
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "main": "./dist/extension.cjs",
+  "scripts": {
+    "build": "rolldown -c",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@fudic/language-server": "workspace:*",
+    "vscode-languageclient": "9.0.1"
+  },
+  "devDependencies": {
+    "@fudic/tsconfig": "workspace:*",
+    "@types/node": "22.20.0",
+    "@types/vscode": "1.90.0",
+    "@vscode/vsce": "3.9.2",
+    "rolldown": "1.2.1",
+    "typescript": "5.9.3",
+    "vscode-oniguruma": "2.0.1",
+    "vscode-textmate": "9.3.2"
+  }
+}

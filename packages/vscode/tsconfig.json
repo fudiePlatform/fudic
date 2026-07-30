@@ -1,0 +1,9 @@
+{
+  "extends": "@fudic/tsconfig/tsconfig.base.json",
+  "compilerOptions": {
+    // `vscode` is an ambient module declared by @types/vscode: without it in this list
+    // the explicit `types` array would keep it out and every `import 'vscode'` would fail.
+    "types": ["node", "vscode"]
+  },
+  "include": ["src", "test"]
+}
