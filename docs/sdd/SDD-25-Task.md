@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-25 — Extensión de VS Code](./SDD-25-extension-vscode.md)
 > **Paquete:** `fudic-vscode` · **Rama:** `feat/sdd-25-extension-vscode`
-> **Progreso:** 16 / 34 — fases 0–2 hechas.
+> **Progreso:** 22 / 34 — fases 0–3 hechas.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Los ficheros son relativos a `packages/vscode/` salvo cuando se diga
@@ -175,29 +175,36 @@ de Pedro; los cuatro últimos son elecciones que las tareas ya asumen.
 
 ## Fase 3 — Arranque del cliente (6)
 
-- [ ] **17. Puertos del host.**
+- [x] **17. Puertos del host.**
       Crear `src/ports.ts`: `WorkspaceApi`, `WindowApi`, `CommandsApi`, `ClientFactory` y
       `Logger` — solo los métodos que se usan. Es la frontera de la nota 5: a partir de aquí
       ningún módulo de dominio importa `vscode`.
-- [ ] **18. Lectura de ajustes.**
+- [x] **18. Lectura de ajustes.**
       Crear `src/settings.ts`: los cinco de §3.2 resueltos con sus defaults desde un
       `unknown`. Un ajuste ausente o a `null` tiene que llegar como su default, nunca como
       `TypeError`: el arranque no se aborta por una configuración mal escrita.
-- [ ] **19. Resolución del servidor.**
+- [x] **19. Resolución del servidor.**
       Crear `src/server-path.ts`: `fudic.server.path` si apunta a algo, si no el empaquetado
       (`dist/server.cjs`). El orden es el contrato — el ajuste existe para desarrollar el
       servidor sin reinstalar la extensión.
-- [ ] **20. Resolución del `tsdk`.**
+- [x] **20. Resolución del `tsdk`.**
+      **Ambigüedad del SDD resuelta aquí, y merece revisión.** §4.1 pone el TypeScript de la
+      propia VS Code como último recurso, pero §6.9 espera que un workspace *sin* TypeScript
+      muestre el estado degradado — cosa que nunca ocurriría si esa copia contara como éxito.
+      Manda el invariante de §5, «la versión de TypeScript es la del proyecto»: se arranca con
+      la de VS Code, y se marca **degradado** igual, porque typechequear contra una versión
+      que el build no usa produce diagnósticos que el CI no reproduce. Dos mensajes distintos:
+      *no hay ninguno* y *no es el tuyo*.
       Crear `src/tsdk.ts`: `typescript.tsdk` del workspace → `node_modules/typescript/lib` →
       el TypeScript de la propia VS Code. Si no hay ninguno, devuelve cadena vacía y marca
       **degradado**; nunca lanza y nunca aborta el arranque (§4.1, criterio §6.9).
-- [ ] **21. Opciones del cliente.**
+- [x] **21. Opciones del cliente.**
       Crear `src/client-options.ts`: `documentSelector: [{ scheme: 'file', language: 'fudic' }]`,
       `synchronize.fileEvents` sobre `**/*.fud`, `**/tsconfig*.json` y `**/package.json`,
       `initializationOptions` con el `tsdk` y `fudic.{templateDiagnostics, exposeVirtualFiles}`,
       canal de salida y `trace`. Más `test/client-options.test.ts`: los tres watchers y el
       `tsdk` vacío en degradado.
-- [ ] **22. Activación.**
+- [x] **22. Activación.**
       Crear `src/activate.ts` — la función de activación sobre los puertos, que resuelve
       servidor y `tsdk`, arranca el cliente y avisa **una sola vez** en degradado — y dejar
       `src/extension.ts` como el adaptador sin ramas que construye los puertos desde `vscode`.

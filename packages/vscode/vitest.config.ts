@@ -25,6 +25,12 @@ export default defineConfig({
       // needed by the one adapter that does import it — and with the alias in place that
       // adapter still loads, and still counts towards coverage.
       vscode: fileURLToPath(new URL('./test/_vscode-stub.ts', import.meta.url)),
+      // The real client spawns the server process on `start()`. Doubling it keeps the
+      // adapter's wiring assertable — the client id, the transport, the selector — without
+      // testing Microsoft's client along the way.
+      'vscode-languageclient/node': fileURLToPath(
+        new URL('./test/_languageclient-stub.ts', import.meta.url),
+      ),
     },
   },
 });
