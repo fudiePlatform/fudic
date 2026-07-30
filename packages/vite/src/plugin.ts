@@ -30,6 +30,7 @@ import { transformFud } from './transform.js';
 import { nodeIo } from './io.js';
 import { readSwConfig, type ResolvedSwConfig } from './swconfig.js';
 import { runLinkPass, safeName, type LinkResult } from './link.js';
+import { buildServiceWorker } from './swbuild.js';
 import {
   htmlPathFor,
   materializeBundle,
@@ -41,6 +42,7 @@ import {
   FUD_PATHS_INCOMPLETE,
   FUD_ASSET_NOT_FOUND,
   FUD_CHUNK_NOT_EMITTED,
+  FUD_SW_SHELL_MISSING,
 } from './diagnostics.js';
 import { devUrl, devManifest } from './dev.js';
 import {
@@ -59,9 +61,6 @@ import {
   DEV_SW_URL,
 } from './constants.js';
 
-/** A `import.meta.ROLLUP_FILE_URL_<ref>` expression: Rollup fills the real hashed URL. */
-const fileUrl = (ref: string): string => `import.meta.ROLLUP_FILE_URL_${ref}`;
-
 /** Split a module id into its path and query (without the `?`). */
 function splitId(id: string): { path: string; query: string } {
   const q = id.indexOf('?');
@@ -79,11 +78,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let root = process.cwd();
   let base = '/';
   let outDir = '';
+  let publicDir = '';
   let isDev = false;
   let builds: readonly RouteBuild[] = [];
   let swConfig: ResolvedSwConfig | null = null;
   const wrapperRefs = new Map<string, string>(); // route pattern → emitFile referenceId
-  let swRef = '';
+  let resolveAlias: unknown;
   let manifestUrl = '/fudic-routes.json';
   let manifestFileName = 'fudic-routes.json';
   const io = nodeIo();
@@ -96,6 +96,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // need STABLE, ROOT-LEVEL names — the same URLs the dev server publishes:
       //  - `fudic-sw.js`: a Service Worker only controls its own directory and below;
       //  - `fudic-main.js`: a page references it literally in a `<script src>`.
+      // `fudic-sw.js` is NOT a chunk of this output any more: it has its own build, so
+      // nothing here has to pin its name (BUG-03 §4.1). `chunkFileNames` goes back to
+      // Vite's default.
       const hasOutputConfig = userConfig?.build?.rollupOptions?.output !== undefined;
       const pinned = (fixed: string) => (chunk: { name: string }) =>
         chunk.name === fixed ? `${fixed}.js` : 'assets/[name]-[hash].js';
@@ -104,14 +107,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         build: {
           rollupOptions: {
             input: { 'fudic-main': MAIN_ID },
-            ...(hasOutputConfig
-              ? {}
-              : {
-                  output: {
-                    entryFileNames: pinned('fudic-main'),
-                    chunkFileNames: pinned('fudic-sw'),
-                  },
-                }),
+            ...(hasOutputConfig ? {} : { output: { entryFileNames: pinned('fudic-main') } }),
           },
         },
       };
@@ -121,7 +117,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       root = config.root;
       base = config.base;
       outDir = resolvePath(config.root, config.build.outDir);
+      // Copied verbatim into the output, so a shell entry may legitimately point there
+      // without ever appearing in the bundle (BUG-01 §4.4).
+      publicDir = typeof config.publicDir === 'string' ? config.publicDir : '';
       isDev = config.command === 'serve';
+      // Forwarded to the Service Worker's nested build, which runs `configFile: false`.
+      resolveAlias = config.resolve?.alias;
       options = resolveOptions(userOptions, config.base).options;
       manifestUrl = options.manifestUrl;
       manifestFileName = manifestUrl.startsWith(base) ? manifestUrl.slice(base.length) : 'fudic-routes.json';
@@ -349,9 +350,6 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           }),
         );
       }
-      if (swConfig !== null) {
-        swRef = this.emitFile({ type: 'chunk', id: SW_ID, name: 'fudic-sw' });
-      }
     },
 
     resolveId(id) {
@@ -367,8 +365,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           // No Service Worker: nothing for the main thread to do (§4.7, §4.11).
           return 'export {};\n';
         }
-        const swUrl = isDev ? JSON.stringify(devUrl(base, DEV_SW_URL)) : fileUrl(swRef);
-        return emitMainBootstrap(swUrl);
+        // One expression for dev and build: `/fudic-sw.js` has a fixed, unhashed name
+        // because a Service Worker only controls its own directory and below (§4.2).
+        return emitMainBootstrap(JSON.stringify(devUrl(base, DEV_SW_URL)));
       }
       if (id === SW_ID) {
         return emitSwBootstrap({
@@ -425,26 +424,61 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     },
 
     async generateBundle(_outputOptions, bundle) {
+      // Every file name this build produces. The declared `shell` is checked against it
+      // at the end: an entry that does not exist is a BUILD diagnostic (BUG-01 §4.4),
+      // not something to swallow in the install's `catch` on the client.
+      const emitted = new Set<string>(Object.keys(bundle));
+
       // 1. The link pass: the chunks the Service Worker will link by hand (§4.3).
       const link: LinkResult =
         swConfig === null ? { chunks: [], entries: new Map(), deps: new Map() } : await runLinkPass(root, base, builds, io);
       for (const chunk of link.chunks) {
         this.emitFile({ type: 'asset', fileName: chunk.fileName, source: chunk.code });
+        emitted.add(chunk.fileName);
       }
 
-      // 2. The build id: it names every cache and lives inside the SW, so a new build
+      // 2. The Service Worker's own bundle: one realm, one bundle (BUG-03 §4.1). Its
+      //    code still carries BUILD_TOKEN — the id is computed from it, below.
+      const sw =
+        swConfig === null
+          ? null
+          : await buildServiceWorker(
+              root,
+              base,
+              {
+                manifestUrlExpr: JSON.stringify(manifestUrl),
+                shell: swConfig.shell,
+                resources: swConfig.resources,
+              },
+              resolveAlias,
+            );
+
+      // 3. The build id: it names every cache and lives inside the SW, so a new build
       //    changes the SW's own bytes → the browser updates → activate purges (§4.10).
+      //
+      //    It hashes the worker's CODE, not its file name. `fudic-sw.js` has a fixed,
+      //    unhashed name, and now that the runtime is bundled inside it instead of shared
+      //    under `/assets/`, a change to `@fudic/transport` moves no file name at all. An
+      //    id derived from names would then never move — and a browser that never sees a
+      //    new SW never purges the old caches (BUG-03 §4.3).
       const buildId = createHash('sha256')
         .update([...Object.keys(bundle), ...link.chunks.map((c) => c.fileName)].sort().join('|'))
+        .update(sw === null ? '' : `|${sw.fileName}|${sw.code}`)
         .digest('hex')
         .slice(0, 8);
-      for (const item of Object.values(bundle)) {
-        if (item.type === 'chunk' && item.code.includes(BUILD_TOKEN)) {
-          item.code = item.code.split(BUILD_TOKEN).join(buildId);
-        }
+      if (sw !== null) {
+        // Substituted in the SW's code BEFORE emitting it. A surviving `__FUDIC_BUILD__`
+        // produces caches called `shell-__FUDIC_BUILD__` that `isStaleCache` never
+        // purges — silently, forever. That is what §6.4 exists to catch.
+        this.emitFile({
+          type: 'asset',
+          fileName: sw.fileName,
+          source: sw.code.split(BUILD_TOKEN).join(buildId),
+        });
+        emitted.add(sw.fileName);
       }
 
-      // 3. The manifest: the one contract, emitted at a fixed URL.
+      // 4. The manifest: the one contract, emitted at a fixed URL.
       const urlOf = (fileName: string): string => `${base}${fileName}`.replace(/\/{2,}/gu, '/');
       const esmOf = (rb: RouteBuild): string => {
         const ref = wrapperRefs.get(rb.route.pattern);
@@ -469,44 +503,83 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         this.warn(`[${d.code}] ${d.message} (${d.file})`);
       }
       this.emitFile({ type: 'asset', fileName: manifestFileName, source: JSON.stringify(file) });
+      emitted.add(manifestFileName);
 
-      // 4. Prerender: run each prerenderable route's BUILT chunk and write its `.html`.
+      // 5. Prerender: run each prerenderable route's BUILT chunk and write its `.html`.
       const prerenders = builds.filter((b) => b.decision.prerender);
-      if (prerenders.length === 0) {
-        return;
-      }
-      const dir = mkdtempSync(join(tmpdir(), 'fudic-prerender-'));
-      try {
-        materializeBundle(bundle as unknown as Record<string, BundleItem>, dir);
-        for (const rb of prerenders) {
-          const ref = wrapperRefs.get(rb.route.pattern);
-          if (ref === undefined) {
-            continue;
-          }
-          const chunkPath = join(dir, this.getFileName(ref));
-          try {
-            if (rb.decision.enumerate) {
-              const { files, incomplete } = await prerenderEnumerated(chunkPath, rb.route.pattern);
-              for (const f of files) {
-                this.emitFile({ type: 'asset', fileName: f.path, source: f.html });
-              }
-              for (const bad of incomplete) {
-                this.warn(`[${FUD_PATHS_INCOMPLETE}] paths() entry ${bad} does not cover every param of ${rb.route.pattern}`);
-              }
-            } else if (!rb.route.pattern.includes(':')) {
-              const html = await renderChunkToHtml(chunkPath, rb.route.pattern);
-              this.emitFile({ type: 'asset', fileName: htmlPathFor(rb.route.pattern), source: html });
+      if (prerenders.length > 0) {
+        const dir = mkdtempSync(join(tmpdir(), 'fudic-prerender-'));
+        try {
+          materializeBundle(bundle as unknown as Record<string, BundleItem>, dir);
+          for (const rb of prerenders) {
+            const ref = wrapperRefs.get(rb.route.pattern);
+            if (ref === undefined) {
+              continue;
             }
-          } catch (err) {
-            // A broken page must not abort the build: warn and skip its file.
-            this.warn(`[prerender] ${rb.route.pattern}: ${(err as Error).message}`);
+            const chunkPath = join(dir, this.getFileName(ref));
+            try {
+              if (rb.decision.enumerate) {
+                const { files, incomplete } = await prerenderEnumerated(chunkPath, rb.route.pattern);
+                for (const f of files) {
+                  this.emitFile({ type: 'asset', fileName: f.path, source: f.html });
+                  emitted.add(f.path);
+                }
+                for (const bad of incomplete) {
+                  this.warn(`[${FUD_PATHS_INCOMPLETE}] paths() entry ${bad} does not cover every param of ${rb.route.pattern}`);
+                }
+              } else if (!rb.route.pattern.includes(':')) {
+                const html = await renderChunkToHtml(chunkPath, rb.route.pattern);
+                this.emitFile({ type: 'asset', fileName: htmlPathFor(rb.route.pattern), source: html });
+                emitted.add(htmlPathFor(rb.route.pattern));
+              }
+            } catch (err) {
+              // A broken page must not abort the build: warn and skip its file.
+              this.warn(`[prerender] ${rb.route.pattern}: ${(err as Error).message}`);
+            }
           }
+        } finally {
+          rmSync(dir, { recursive: true, force: true });
         }
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
+      }
+
+      // 6. The declared shell, checked against what the build actually produced. The
+      //    install's `catch` stays as the last safety net, not as the detector.
+      for (const entry of missingShellEntries(swConfig?.shell ?? [], base, emitted, publicDir)) {
+        this.warn(`[${FUD_SW_SHELL_MISSING}] shell entry "${entry}" is not in the build output`);
       }
     },
   };
+}
+
+/**
+ * The `shell` entries the build did not produce (BUG-01 §4.4). FUD0391 was declared and
+ * never emitted: a shell entry that does not exist used to be swallowed by the install's
+ * `catch`, at runtime and on the client — the one place nobody can fix it.
+ *
+ * Two things are legitimately absent from the bundle and must NOT be reported: files
+ * under `publicDir` (copied verbatim) and cross-origin URLs (not ours to check).
+ */
+export function missingShellEntries(
+  shell: readonly string[],
+  base: string,
+  emitted: ReadonlySet<string>,
+  publicDir: string,
+): string[] {
+  const missing: string[] = [];
+  for (const entry of shell) {
+    if (!entry.startsWith('/')) {
+      continue; // an absolute URL to another origin: outside this build
+    }
+    const path = (entry.split('?')[0] ?? entry).slice(entry.startsWith(base) ? base.length : 1);
+    if (emitted.has(path)) {
+      continue;
+    }
+    if (publicDir !== '' && existsSync(join(publicDir, path))) {
+      continue;
+    }
+    missing.push(entry);
+  }
+  return missing;
 }
 
 /** First-hit match of a manifest record against a concrete path (preview server). */

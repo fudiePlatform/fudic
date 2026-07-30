@@ -87,8 +87,11 @@ describe('vite build over the fixtures (hito §6.17)', () => {
     // The exact shape the linker's `new Function('exports','require','module')` runs.
     expect(code).toMatch(/exports\.render\s*=/u);
     expect(code).toMatch(/require\(["']@fudic\/ssr["']\)/u);
-    const sw = chunks().find((o) => o.fileName === 'fudic-sw.js');
-    expect(sw!.code).not.toContain('__FUDIC_BUILD__');
+    // BUG-03: the SW is now an ASSET of this output — its own bundle, emitted whole —
+    // and the build id was substituted into its code before emitting.
+    const sw = output.find((o) => o.fileName === 'fudic-sw.js');
+    expect(sw!.type).toBe('asset');
+    expect(sw!.source).not.toContain('__FUDIC_BUILD__');
   });
 
   it('bundles the streaming page (compiler emit, not Vite parsing .fud)', () => {

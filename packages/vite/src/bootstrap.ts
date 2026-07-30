@@ -36,13 +36,26 @@ const MANIFEST_URL = ${options.manifestUrlExpr};
 const SHELL = ${JSON.stringify(options.shell)};
 const RESOURCES = ${JSON.stringify(options.resources)};
 const NAMES = cacheNames(BUILD);
+// ONE list, absolute, for the two things that must never drift: what install writes and
+// what the router will serve by identity. A Store key is an absolute URL (BUG-04 §3.1).
+const PRECACHE = [...SHELL, MANIFEST_URL].map((url) => new URL(url, self.location.href).href);
 
 self.addEventListener('install', (e) => e.waitUntil((async () => {
   // The install precaches the SHELL and nothing else. Not one route chunk: with 100
   // routes, precaching them all is unacceptable (SDD-20 §4.6.1).
-  const cache = await caches.open(NAMES.shell);
-  for (const url of [...SHELL, MANIFEST_URL]) {
-    try { await cache.add(url); } catch { /* a missing shell entry must not fail install */ }
+  //
+  // It writes through the STORE — not straight into the Cache — for two reasons
+  // (BUG-04 §4.5). The key is then the canonical URL and the entry is sealed like every
+  // other, so the shell stops being the one cache the Store did not write. And
+  // \`cache: 'reload'\` skips the browser's HTTP cache: the shell has fixed unhashed names,
+  // so a host with a long max-age would otherwise let a new build precache the OLD bytes
+  // — served forever, since the policy is cache-first with no TTL.
+  const shell = createStore({ cache: await caches.open(NAMES.shell) });
+  for (const url of PRECACHE) {
+    try {
+      const response = await fetch(url, { cache: 'reload' });
+      if (response.ok) await shell.put(url, response);
+    } catch { /* a missing shell entry must not fail install */ }
   }
   await self.skipWaiting();
 })()));
@@ -79,17 +92,22 @@ async function build() {
   const shell = await caches.open(NAMES.shell);
   const table = await loadManifest(MANIFEST_URL, shell);
   const stores = {
+    // What install precached is ALSO what fetch serves: a write-only cache is a bug by
+    // construction, and \`shell-<build>\` was one (BUG-01).
+    shell: createStore({ cache: shell }),
     routes: createStore({ cache: await caches.open(NAMES.routes) }),
     pages: createStore({ cache: await caches.open(NAMES.pages) }),
     data: createStore({ cache: await caches.open(NAMES.data) }),
   };
   const linker = createLinker({
-    fetchSource: (url) => stores.routes.get(new Request(url), 'cache-first', null).then((r) => r.text()),
+    fetchSource: (url) => stores.routes.get(url, 'cache-first', null).then((r) => r.text()),
     // The runtime is bundled INTO this worker and handed to chunks as a builtin: it
     // would otherwise be downloaded and evaluated again per chunk.
     builtins: { '@fudic/ssr': ssr },
   });
-  const r = createRouter({ table, linker, stores, resources: RESOURCES });
+  // The router is handed exactly the URLs install put in the cache — the manifest
+  // included: what is precached is served, and served BY IDENTITY (BUG-01 §4.1, §4.3).
+  const r = createRouter({ table, linker, stores, resources: RESOURCES, shell: PRECACHE });
   await r.ready();
   controlBus().on((msg) => {
     if (msg.type === 'version') { linker.reset(); caches.delete(NAMES.pages); }

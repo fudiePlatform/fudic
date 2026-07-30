@@ -16,8 +16,18 @@ describe('emitSwBootstrap', () => {
 
   it('renders in the Service Worker itself: linker, stores and router', () => {
     expect(code).toContain('createLinker');
-    expect(code).toContain('createRouter({ table, linker, stores, resources: RESOURCES })');
+    expect(code).toContain('createRouter({ table, linker, stores, resources: RESOURCES');
     expect(code).toContain("addEventListener('fetch'");
+  });
+
+  it('BUG-01 §6.7 hands the router exactly what install precached, manifest included', () => {
+    // The shell cache is opened once and used for BOTH: reading the manifest and
+    // serving. Without the store there is no reader, and the precache is decoration.
+    expect(code).toContain('shell: createStore({ cache: shell })');
+    expect(code).toContain('shell: PRECACHE');
+    // The very list the install loop iterates: the two cannot drift.
+    const install = code.slice(code.indexOf("addEventListener('install'"), code.indexOf("addEventListener('activate'"));
+    expect(install).toContain('for (const url of PRECACHE)');
   });
 
   it('never constructs a Worker or a MessageChannel: nothing streams between threads', () => {
@@ -32,10 +42,26 @@ describe('emitSwBootstrap', () => {
 
   it('precaches the shell and the manifest, and nothing else', () => {
     expect(code).toContain('const SHELL = ["/style.css"];');
+    // ONE list, absolute, shared by the install and the router: they cannot drift.
+    expect(code).toContain('const PRECACHE = [...SHELL, MANIFEST_URL].map(');
+    expect(code).toContain('new URL(url, self.location.href).href');
     // Not one route chunk is fetched at install time: warming is a separate trigger.
     const install = code.slice(code.indexOf("addEventListener('install'"), code.indexOf("addEventListener('activate'"));
-    expect(install).toContain('[...SHELL, MANIFEST_URL]');
+    expect(install).toContain('for (const url of PRECACHE)');
     expect(install).not.toContain('warm');
+  });
+
+  it('BUG-04 §6.11 the install writes through the Store, and bypasses the HTTP cache', () => {
+    const install = code.slice(code.indexOf("addEventListener('install'"), code.indexOf("addEventListener('activate'"));
+    // `cache.add` is what wrote an entry the page's own request could not match.
+    expect(install).not.toContain('cache.add');
+    expect(install).toContain('createStore({ cache: await caches.open(NAMES.shell) })');
+    expect(install).toContain('shell.put(url, response)');
+    // A fixed unhashed name plus a long max-age would let a new build precache the OLD
+    // bytes, and cache-first with no TTL would serve them forever.
+    expect(install).toContain("fetch(url, { cache: 'reload' })");
+    // The safety net stays: a missing entry is a build diagnostic (FUD0391), not a crash.
+    expect(install).toContain('catch');
   });
 
   it('does not intercept until the router is ready (the decision is synchronous)', () => {

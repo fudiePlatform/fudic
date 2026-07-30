@@ -4,9 +4,12 @@
  * specificity (which the route order already encodes).
  *
  * Per route: its mode, the linkable chunk and its TOPOLOGICAL deps (the SW's `require`
- * is synchronous, so it must know what to load before what), the generated data
- * endpoint with its policy, and — when the build wrote HTML — the URL template of the
- * prerendered file. `csp` lives here so server and SW cannot diverge.
+ * is synchronous, so it must know what to load before what), and the generated data
+ * endpoint with its policy. `csp` lives here so server and SW cannot diverge.
+ *
+ * What this does NOT emit is the URL of a prerendered HTML file. That file belongs to
+ * the edge and exists for the first visit; naming it here made the Service Worker
+ * download a document per route instead of rendering it (BUG-02).
  */
 
 import {
@@ -18,7 +21,7 @@ import {
   DEFAULT_CSP,
 } from '@fudic/transport';
 import { type RouteBuild } from './discover.js';
-import { htmlPathFor } from './prerender.js';
+import { isLinkable } from './mode.js';
 import { DATA_PREFIX } from './constants.js';
 import { parseTtl } from './swconfig.js';
 import { type FudicDiagnostic, FUD_TTL_INVALID, FUD_TWO_TTLS } from './diagnostics.js';
@@ -42,11 +45,6 @@ export interface ManifestResult {
 }
 
 const DEFAULT_DATA_POLICY: DataPolicy = { policy: 'cache-first', ttl: null };
-
-/** `/` → `/index.html`, `/blog/:slug` → `/blog/:slug/index.html` (a URL template). */
-function htmlUrlFor(base: string, pattern: string): string {
-  return `${base}${htmlPathFor(pattern)}`.replace(/\/{2,}/gu, '/');
-}
 
 /** Read the route's data policy from its declared strategy. */
 function dataPolicyOf(rb: RouteBuild, out: FudicDiagnostic[]): DataPolicy {
@@ -102,14 +100,16 @@ export function buildManifest(
     // With no Service Worker a `sw` route still has to be reachable: the server renders
     // it on demand, which is exactly what `ssr` means to the client.
     const mode = decision.mode === 'sw' && !inputs.serviceWorker ? 'ssr' : decision.mode;
-    const html = decision.prerenderedHtml ? htmlUrlFor(inputs.base, rb.route.pattern) : undefined;
     const esm = inputs.esmOf(rb);
 
-    if (mode !== 'sw') {
+    // Everything the SW may render carries the same payload — `ssg` included, which is
+    // the whole of BUG-02 §4.6. What it may render is `isLinkable`, the same predicate
+    // the link pass uses, so the manifest can never promise a chunk that was not built.
+    // Without a Service Worker nothing links at all.
+    if (!inputs.serviceWorker || !isLinkable(decision)) {
       records.push({
         pattern: rb.route.pattern,
         mode,
-        ...(html === undefined ? {} : { html }),
         ...(esm === '' ? {} : { esm }),
       });
       continue;
@@ -118,10 +118,13 @@ export function buildManifest(
     const dataPolicy = dataPolicyOf(rb, diagnostics);
     const page = pagePolicyOf(rb, dataPolicy, diagnostics);
     const deps = inputs.depsOf(rb);
+    const chunk = inputs.linkChunkOf(rb);
     records.push({
       pattern: rb.route.pattern,
-      mode: 'sw',
-      chunk: inputs.linkChunkOf(rb),
+      mode,
+      // Omitted when the link pass produced nothing (FUD0399): the router asks for what
+      // the record HAS, so an absent chunk means "the server serves this one".
+      ...(chunk === '' ? {} : { chunk }),
       ...(deps.length === 0 ? {} : { deps }),
       // The data endpoint is GENERATED from `@server load`, never hand-written: one
       // source, two callers — the edge in process, the SW over HTTP (§4.5).
@@ -129,7 +132,6 @@ export function buildManifest(
         ? { data: `${inputs.base}${DATA_PREFIX.slice(1)}${rb.route.pattern}`.replace(/\/{2,}/gu, '/'), dataPolicy }
         : {}),
       ...(page === undefined ? {} : { page }),
-      ...(html === undefined ? {} : { html }),
       ...(esm === '' ? {} : { esm }),
     });
   }

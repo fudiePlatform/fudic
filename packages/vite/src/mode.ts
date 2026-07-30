@@ -55,6 +55,25 @@ export interface ModeResult {
   readonly diagnostics: readonly FudicDiagnostic[];
 }
 
+/**
+ * Whether the Service Worker may render this route for ANY url matching its pattern —
+ * which is what "it gets a linkable chunk" means (BUG-02 §4.6).
+ *
+ * Not `mode === 'sw'`: a prerendered route renders in the SW too, because prerendering
+ * is a fact about the BUILD and says nothing about the client. But not an enumerated
+ * `ssg` either: that is precisely `paramFallback: 'notFound'` (an enumerated route with
+ * `lazy` is `sw`), and it declares that ids outside `paths()` are a 404. The SW does not
+ * carry the enumeration, so it cannot tell a known id from an unknown one; giving it a
+ * chunk would turn every unknown id into a local render.
+ */
+export function isLinkable(decision: ModeDecision): boolean {
+  return (
+    decision.mode !== 'ssr' &&
+    decision.mode !== 'excluded' &&
+    !(decision.mode === 'ssg' && decision.enumerate)
+  );
+}
+
 function decision(
   mode: ModeDecision['mode'],
   prerender: boolean,

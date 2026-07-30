@@ -11,6 +11,9 @@ export default defineConfig({
         lines: 80,
         functions: 80,
         branches: 75,
+        // New code is born at 100 (SDD-00): `swbuild.ts` arrived with BUG-03, so the
+        // floor it was written under is the one it keeps.
+        'src/swbuild.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
       },
     },
   },

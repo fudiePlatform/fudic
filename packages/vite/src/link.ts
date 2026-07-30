@@ -15,6 +15,7 @@
 import { build, type Plugin } from 'vite';
 import { type ResolveIo } from '@fudic/compiler';
 import { type RouteBuild } from './discover.js';
+import { isLinkable } from './mode.js';
 import { emitRenderChunk } from './wrapper.js';
 import { transformFud } from './transform.js';
 import { LINK_DIR, LINK_PREFIX } from './constants.js';
@@ -117,20 +118,28 @@ function topologicalDeps(
   return ordered;
 }
 
-/** Run the link pass for every `sw` route. Returns nothing when there are none. */
+/**
+ * Run the link pass for every LINKABLE route (`isLinkable`, not `mode === 'sw'`).
+ * Returns nothing when there are none.
+ *
+ * A prerendered route needs a chunk too: once the Service Worker is in control it
+ * renders every navigation, and without a chunk it had to fall back to downloading the
+ * HTML file, which is BUG-02. The cost is bytes in `sw/c/` at build time; nothing extra
+ * is downloaded, because `warm` still only brings the template being visited (§4.7).
+ */
 export async function runLinkPass(
   root: string,
   base: string,
   builds: readonly RouteBuild[],
   io: ResolveIo,
 ): Promise<LinkResult> {
-  const swRoutes = builds.filter((rb) => rb.decision.mode === 'sw');
-  if (swRoutes.length === 0) {
+  const linkable = builds.filter((rb) => isLinkable(rb.decision));
+  if (linkable.length === 0) {
     return EMPTY;
   }
 
   const input: Record<string, string> = {};
-  for (const rb of swRoutes) {
+  for (const rb of linkable) {
     input[safeName(rb.route.pattern)] = LINK_PREFIX + rb.route.pattern;
   }
 
@@ -139,7 +148,7 @@ export async function runLinkPass(
     root,
     base,
     logLevel: 'error',
-    plugins: [linkPlugin(swRoutes, io)],
+    plugins: [linkPlugin(linkable, io)],
     build: {
       write: false,
       emptyOutDir: false,
@@ -181,7 +190,7 @@ export async function runLinkPass(
 
   const entries = new Map<string, string>();
   const deps = new Map<string, readonly string[]>();
-  for (const rb of swRoutes) {
+  for (const rb of linkable) {
     const fileName = byModuleId.get(LINK_PREFIX + rb.route.pattern);
     if (fileName === undefined) {
       continue;

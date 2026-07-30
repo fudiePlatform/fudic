@@ -76,7 +76,9 @@ describe('load — with and without sw.json', () => {
   it('with sw.json: main registers the SW and the SW bootstrap renders locally', () => {
     const p = setup('build', {}, swRoot());
     p.buildStart.call(emitCtx());
-    expect(p.load(MAIN_ID)).toContain('ROLLUP_FILE_URL');
+    // BUG-03 §4.2: a literal URL, the same expression dev uses. `/fudic-sw.js` has a
+    // fixed name because a Service Worker only controls its own directory and below.
+    expect(p.load(MAIN_ID)).toContain('"/fudic-sw.js"');
     expect(p.load(MAIN_ID)).toContain('registerRenderServiceWorker');
     expect(p.load(SW_ID)).toContain('createRouter');
     expect(p.load(SW_ID)).toContain('"/style.css"');
@@ -95,16 +97,18 @@ describe('load — with and without sw.json', () => {
 });
 
 describe('buildStart', () => {
-  it('emits a wrapper per route plus the SW chunk', () => {
+  it('emits one wrapper per route — and NOT the SW, which has its own build', () => {
     const ctx = emitCtx();
     setup('build', {}, swRoot()).buildStart.call(ctx);
-    expect(ctx.emitFile).toHaveBeenCalledTimes(2); // home wrapper + sw
+    // BUG-03: `fudic-sw.js` is no longer a chunk of this output, so `buildStart` does
+    // not emit it. Code splitting can therefore never share a file between the two.
+    expect(ctx.emitFile).toHaveBeenCalledTimes(1); // the home wrapper only
   });
 
   it('skips an excluded route', () => {
     const ctx = emitCtx();
     setup('build', { defaults: { '/home': { mode: 'exclude' } } }, swRoot()).buildStart.call(ctx);
-    expect(ctx.emitFile).toHaveBeenCalledTimes(1); // only sw
+    expect(ctx.emitFile).not.toHaveBeenCalled();
   });
 
   it('warns route diagnostics (FUD0364 default with no match)', () => {
@@ -138,6 +142,8 @@ const fakeRes = (): FakeRes => ({
   },
 });
 const flush = (): Promise<void> => new Promise((r) => setImmediate(r));
+/** A dynamic `import()` of a built chunk outside the root needs real time, not ticks. */
+const settle = (): Promise<void> => new Promise((r) => setTimeout(r, 1500));
 
 describe('configureServer middleware', () => {
   function withServer(
@@ -225,8 +231,10 @@ describe('configurePreviewServer middleware', () => {
     return outDir;
   }
 
-  it('serves the prerendered file with a CSP and the nonce substituted', () => {
-    const outDir = outputWith([{ pattern: '/about', mode: 'ssg', html: '/about/index.html' }]);
+  it('BUG-02 §6.13 serves the prerendered file with a CSP and a fresh nonce, without record.html', () => {
+    // The record carries NO html URL: the edge locates the file by convention
+    // (`htmlPathFor`), which is why removing it from the manifest costs the edge nothing.
+    const outDir = outputWith([{ pattern: '/about', mode: 'ssg', chunk: '/sw/c/about.js' }]);
     mkdirSync(join(outDir, 'about'), { recursive: true });
     writeFileSync(join(outDir, 'about', 'index.html'), '<script nonce="__FUDIC_NONCE__"></script>');
     const handler = withPreview(outDir);
@@ -236,6 +244,26 @@ describe('configurePreviewServer middleware', () => {
     expect(res.body).not.toContain('__FUDIC_NONCE__');
     const nonce = /nonce="([^"]+)"/u.exec(res.body)?.[1] ?? '';
     expect(res.headers['content-security-policy']).toContain(`'nonce-${nonce}'`);
+  });
+
+  it('BUG-02 the generated data endpoint answers for an `ssg` route too', async () => {
+    // A prerendered route with `@server load` needs its endpoint: the SW renders it
+    // from chunk + data like any other, and `load` never ships to the client (§4.6.4).
+    const outDir = outputWith([{ pattern: '/about', mode: 'ssg', esm: '/assets/about.mjs' }]);
+    mkdirSync(join(outDir, 'assets'), { recursive: true });
+    writeFileSync(
+      join(outDir, 'assets', 'about.mjs'),
+      'export function data(ctx) { return { at: ctx.url.pathname }; }\nexport function render() {}\n',
+    );
+    const handler = withPreview(outDir);
+    const res = fakeRes();
+    handler(
+      { url: '/_fudic/data/about', method: 'GET', headers: {} },
+      res,
+      () => expect.unreachable('should not fall through'),
+    );
+    await settle();
+    expect(JSON.parse(res.body)).toEqual({ at: '/about' });
   });
 
   it('falls through for an unknown route, a non-GET, and a route with no output', () => {

@@ -75,12 +75,13 @@ describe('vite build — paths() enumeration (lazy fallback)', () => {
     expect(two!.source as string).toContain('Customer 2');
   });
 
-  it('renders unknown ids locally, preferring the prerendered file when there is one', () => {
-    expect(manifestOf(output)[0]).toMatchObject({
-      pattern: '/customer/:id',
-      mode: 'sw',
-      html: '/customer/:id/index.html',
-    });
+  it('renders unknown ids locally, from its chunk — never from a per-route HTML file', () => {
+    const record = manifestOf(output)[0];
+    expect(record).toMatchObject({ pattern: '/customer/:id', mode: 'sw' });
+    expect(record!['chunk']).toMatch(/\/sw\/c\/customer-id-.*\.js$/u);
+    // BUG-02: the prerendered files still exist, for the FIRST visit. The manifest —
+    // the client contract — does not name them.
+    expect(record).not.toHaveProperty('html');
   });
 });
 

@@ -34,11 +34,16 @@ interface OutFile {
 }
 
 let output: OutFile[];
+let withSw: OutFile[];
 
-beforeAll(async () => {
+/** Build the same page with and without a `sw.json` — the two are different worlds. */
+async function buildAbout(serviceWorker: boolean): Promise<OutFile[]> {
   const root = mkdtempSync(join(tmpdir(), 'fudic-prerender-'));
   mkdirSync(join(root, 'routes'), { recursive: true });
   writeFileSync(join(root, 'routes', 'about.fud'), PAGE);
+  if (serviceWorker) {
+    writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
+  }
   const result = (await build({
     root,
     logLevel: 'silent',
@@ -46,18 +51,39 @@ beforeAll(async () => {
     plugins: [fudic()],
     build: { write: false, minify: false },
   })) as unknown as { output: OutFile[] };
-  output = result.output;
-}, 120000);
+  return result.output;
+}
+
+const manifestOf = (files: OutFile[]): Array<Record<string, unknown>> =>
+  (
+    JSON.parse(files.find((o) => o.fileName === 'fudic-routes.json')!.source as string) as {
+      routes: Array<Record<string, unknown>>;
+    }
+  ).routes;
+
+beforeAll(async () => {
+  output = await buildAbout(false);
+  withSw = await buildAbout(true);
+}, 180000);
 
 describe('vite build — static prerender (mode 1)', () => {
-  it('marks the route ssg in the manifest, with the URL of its HTML', () => {
-    const asset = output.find((o) => o.type === 'asset' && o.fileName === 'fudic-routes.json');
-    const manifest = JSON.parse(asset!.source as string) as { routes: Array<Record<string, unknown>> };
-    expect(manifest.routes[0]).toMatchObject({
-      pattern: '/about',
-      mode: 'ssg',
-      html: '/about/index.html',
-    });
+  it('marks the route ssg in the manifest, and never names its HTML file', () => {
+    const record = manifestOf(output)[0];
+    expect(record).toMatchObject({ pattern: '/about', mode: 'ssg' });
+    // With no `sw.json` nothing links: the server serves the prerendered file. Either
+    // way the manifest — the client contract — does not carry an HTML URL (BUG-02 §3.1).
+    expect(record).not.toHaveProperty('html');
+    expect(record!['chunk']).toBeUndefined();
+  });
+
+  it('BUG-02 §6.4 with a Service Worker the same ssg route gets a linkable chunk', () => {
+    const record = manifestOf(withSw)[0];
+    expect(record).toMatchObject({ pattern: '/about', mode: 'ssg' });
+    // `ssg` is a fact about the BUILD. In the client the route renders like any other,
+    // so it needs its chunk — the alternative was downloading the HTML file per route.
+    expect(record!['chunk']).toMatch(/^\/sw\/c\/about-.*\.js$/u);
+    expect(record).not.toHaveProperty('html');
+    expect(withSw.some((o) => o.fileName === 'about/index.html')).toBe(true);
   });
 
   it('emits the prerendered HTML file at the route path', () => {

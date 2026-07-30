@@ -8,7 +8,7 @@ import { buildManifest, type ManifestInputs } from '../src/manifest.js';
 import { type RouteBuild } from '../src/discover.js';
 import { type ModeDecision } from '../src/mode.js';
 import { NO_STRATEGY, type StrategyAnalysis } from '../src/strategy.js';
-import { FUD_TWO_TTLS } from '../src/diagnostics.js';
+import { FUD_TTL_INVALID, FUD_TWO_TTLS } from '../src/diagnostics.js';
 
 function routeBuild(
   pattern: string,
@@ -71,12 +71,56 @@ describe('buildManifest', () => {
     expect(file.routes[0]?.data).toBeUndefined();
   });
 
-  it('an ssg route carries the URL of its prerendered HTML', () => {
+  it('BUG-02 §6.3 no record names an HTML file: the manifest is the client contract', () => {
     const { file } = buildManifest(
-      [routeBuild('/about', { mode: 'ssg', prerender: true, prerenderedHtml: true })],
+      [
+        routeBuild('/about', { mode: 'ssg', prerender: true, prerenderedHtml: true }),
+        routeBuild('/blog/:slug', { mode: 'sw' }, { hasLoad: true }),
+        routeBuild('/account', { mode: 'ssr' }),
+      ],
       INPUTS,
     );
-    expect(file.routes[0]).toMatchObject({ mode: 'ssg', html: '/about/index.html' });
+    for (const record of file.routes) {
+      expect(record).not.toHaveProperty('html');
+    }
+  });
+
+  it('BUG-02 §6.4 an ssg route gets chunk, deps and — with load — its data endpoint', () => {
+    const { file } = buildManifest(
+      [routeBuild('/about', { mode: 'ssg', prerender: true, prerenderedHtml: true }, { hasLoad: true })],
+      INPUTS,
+    );
+    expect(file.routes[0]).toMatchObject({
+      pattern: '/about',
+      mode: 'ssg',
+      chunk: '/sw/c/about.js',
+      deps: ['/sw/c/dep.js'],
+      data: '/_fudic/data/about',
+      dataPolicy: { policy: 'cache-first', ttl: null },
+    });
+  });
+
+  it('an ENUMERATED ssg route gets no chunk: paramFallback "notFound" means 404', () => {
+    // `lazy` makes an enumerated route `sw`; `ssg` + `enumerate` is exactly the
+    // declaration that an id outside paths() must not be rendered locally. The SW does
+    // not carry the enumeration, so the only way to honour that is to give it no chunk.
+    const { file } = buildManifest(
+      [routeBuild('/customer/:id', { mode: 'ssg', prerender: true, enumerate: true, prerenderedHtml: true })],
+      INPUTS,
+    );
+    expect(file.routes[0]).toMatchObject({ pattern: '/customer/:id', mode: 'ssg' });
+    expect(file.routes[0]?.chunk).toBeUndefined();
+  });
+
+  it('BUG-02 a route whose chunk was not emitted keeps its record, without a chunk', () => {
+    // FUD0399: only the server can serve it. The router asks for what it HAS, so an
+    // absent `chunk` is a decision, not a crash.
+    const { file } = buildManifest([routeBuild('/about', { mode: 'ssg', prerenderedHtml: true })], {
+      ...INPUTS,
+      linkChunkOf: () => '',
+    });
+    expect(file.routes[0]).toMatchObject({ pattern: '/about', mode: 'ssg' });
+    expect(file.routes[0]?.chunk).toBeUndefined();
   });
 
   it('the data ttl comes from the declared strategy', () => {
@@ -90,6 +134,21 @@ describe('buildManifest', () => {
       INPUTS,
     );
     expect(file.routes[0]?.dataPolicy).toEqual({ policy: 'stale-while-revalidate', ttl: 300_000 });
+  });
+
+  it('an unparseable data ttl is reported (FUD0392) and the default policy stands', () => {
+    const strategy: StrategyAnalysis = {
+      declared: true,
+      strategy: { data: { ttl: 'a fortnight' } },
+      diagnostics: [],
+    };
+    const { file, diagnostics } = buildManifest(
+      [routeBuild('/blog/:slug', { mode: 'sw' }, { hasLoad: true, strategy })],
+      INPUTS,
+    );
+    expect(diagnostics[0]?.code).toBe(FUD_TTL_INVALID);
+    // The route stays reachable: a bad TTL is a diagnostic, never a dropped record.
+    expect(file.routes[0]?.dataPolicy).toEqual({ policy: 'cache-first', ttl: null });
   });
 
   it('persist takes the data TTL, and a second one is reported (FUD0396)', () => {

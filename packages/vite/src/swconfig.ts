@@ -6,6 +6,13 @@
  * **No `sw.json`, no Service Worker.** Everything is then server/SSG. That is an
  * explicit decision, not a silent default.
  *
+ * One rule the author of a `resources` class has to know (BUG-04 §4.3): **the cache key is
+ * the URL, and only the URL**. `Vary` on the response is not consulted, because this
+ * framework does not negotiate content and will not negotiate halfway. So if a response
+ * depends on a request header, that axis belongs IN THE URL — a resource class pointed at
+ * an endpoint that varies by `Accept-Language` is an application error, not a case the
+ * framework resolves. The `shell` is stricter still: exact URLs, served by identity.
+ *
  * Reading it is pure text work: `read` is injected so this stays testable without a
  * filesystem, and it NEVER throws — a malformed file is a diagnostic and no SW.
  */
