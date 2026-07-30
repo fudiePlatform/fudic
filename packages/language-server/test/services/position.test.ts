@@ -15,6 +15,7 @@ import {
   linksOf,
   sectionContextAt,
   tagContextAt,
+  tagNameAt,
 } from '../../src/services/position.js';
 import { component, LAYOUT, NESTED_LAYOUT, PAGE, route } from '../_support.js';
 
@@ -148,6 +149,34 @@ describe('tagContextAt', () => {
 
   it.each([['plain text'], ['<div> '], ['@if (x) {']])('says nothing at %s', (source) => {
     expect(tagContextAt(source, source.length)).toBeUndefined();
+  });
+});
+
+describe('tagNameAt', () => {
+  it.each([
+    // The cursor anywhere in the name, and both ends of it, in an opening and a closing tag.
+    ['<app-badge>', 1, 'app-badge'],
+    ['<app-badge>', 5, 'app-badge'],
+    ['<app-badge>', 10, 'app-badge'],
+    ['</app-badge>', 4, 'app-badge'],
+    ['<div><app-badge tone="x">', 8, 'app-badge'],
+  ])('reads %s at %i as %s', (source, offset, expected) => {
+    const name = tagNameAt(source, offset);
+
+    expect(name?.text).toBe(expected);
+    expect(source.slice(name?.span.start, name?.span.end)).toBe(expected);
+  });
+
+  it.each([
+    // Not on a name at all: the delimiter itself, and whitespace.
+    ['<app-badge>', 0],
+    ['<app-badge> ', 12],
+    // A word that opens nothing: plain text, a path, and an attribute value.
+    ['plain text', 3],
+    ['see a/app-badge', 10],
+    ['<div class="app-badge">', 15],
+  ])('says nothing in %s at %i', (source, offset) => {
+    expect(tagNameAt(source, offset)).toBeUndefined();
   });
 });
 

@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest';
 import { DocumentCache } from '../../src/document-cache.js';
 import { WorkspaceIndex } from '../../src/workspace-index.js';
-import { declaredTags, documentLinks } from '../../src/services/tags.js';
+import { declaredTags, documentLinks, tagDefinitionAt } from '../../src/services/tags.js';
 import { component, LAYOUT, memoryFs, PAGE, route } from '../_support.js';
 
 const SLUG = '/p/blog/[slug].fud';
@@ -62,6 +62,42 @@ describe('declaredTags', () => {
     );
 
     expect(declaredTags(document, index)).toEqual([]);
+  });
+});
+
+describe('tagDefinitionAt', () => {
+  const SOURCE = route('../layouts/_layout.fud', ['../components/app-badge.fud']).replace(
+    '<article>hi</article>',
+    '<article><app-badge>hi</app-badge><div>x</div></article>',
+  );
+
+  it.each([
+    ['the opening tag', '<app-badge>', 3],
+    ['the closing tag', '</app-badge>', 4],
+  ])('points %s at the file that defines it', (_label, needle, delta) => {
+    const { index, document } = setup(SLUG, SOURCE);
+    const found = tagDefinitionAt(document, index, SOURCE.indexOf(needle) + delta);
+
+    expect(found?.target).toBe('/p/components/app-badge.fud');
+    // The name only: the editor underlines what it will navigate from.
+    expect(SOURCE.slice(found?.span.start, found?.span.end)).toBe('app-badge');
+  });
+
+  it('says nothing over a native tag or away from any tag', () => {
+    const { index, document } = setup(SLUG, SOURCE);
+
+    expect(tagDefinitionAt(document, index, SOURCE.indexOf('<div>') + 2)).toBeUndefined();
+    expect(tagDefinitionAt(document, index, SOURCE.indexOf('hi</app-badge>'))).toBeUndefined();
+  });
+
+  it('says nothing over a tag whose <link> is missing: FUD0191 already does', () => {
+    const source = SOURCE.replace(
+      '<link rel="component" href="../components/app-badge.fud">\n',
+      '',
+    );
+    const { index, document } = setup(SLUG, source);
+
+    expect(tagDefinitionAt(document, index, source.indexOf('<app-badge>') + 3)).toBeUndefined();
   });
 });
 

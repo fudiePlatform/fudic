@@ -34,7 +34,7 @@ import { fudicDiagnostics } from './compiler-diagnostics.js';
 import { hrefCompletions, unresolvedHrefs } from './href.js';
 import { hrefContextAt, sectionContextAt, tagContextAt } from './position.js';
 import { sectionCompletions } from './sections.js';
-import { declaredTags, documentLinks } from './tags.js';
+import { declaredTags, documentLinks, tagDefinitionAt } from './tags.js';
 import { semanticTokens } from './semantic-tokens.js';
 
 /** What the service needs from the server around it. */
@@ -71,6 +71,11 @@ export function toLspDiagnostic(document: TextDocument, diagnostic: Diagnostic):
  *
  * The `CachedDocument` travels attached to the root virtual code, so asking for it costs nothing
  * and cannot disagree with what TypeScript was shown.
+ *
+ * The URI needs decoding first: Volar hands even the ROOT code over as an embedded document —
+ * `volar-embedded-content://root/<encoded source uri>` — because the root is a virtual code like
+ * any other. Its text and offsets are the source's, one to one, so once the real URI is
+ * recovered everything downstream works in `.fud` coordinates.
  */
 export function fudicDocumentOf(
   context: LanguageServiceContext,
@@ -78,7 +83,9 @@ export function fudicDocumentOf(
 ): CachedDocument | undefined {
   if (document.languageId !== FUD_LANGUAGE_ID) return undefined;
 
-  const root = context.language.scripts.get(URI.parse(document.uri))?.generated?.root as
+  const uri = URI.parse(document.uri);
+  const decoded = context.decodeEmbeddedDocumentUri(uri);
+  const root = context.language.scripts.get(decoded?.[0] ?? uri)?.generated?.root as
     | FudicVirtualCode
     | undefined;
   return root?.document;
@@ -104,6 +111,8 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
       // an href, `<` for a tag, and the space after `@section`.
       completionProvider: { triggerCharacters: ['@', '<', '"', '/', ' '] },
       documentLinkProvider: { resolveProvider: false },
+      // Only the tag: everything inside it is answered by TypeScript over the projection.
+      definitionProvider: true,
       semanticTokensProvider: { legend: SEMANTIC_TOKENS_LEGEND },
       diagnosticProvider: { interFileDependencies: true, workspaceDiagnostics: false },
       codeActionProvider: {},
@@ -113,6 +122,33 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
       return {
         provideCompletionItems(document, position, _completionContext, token) {
           return stats.run(token, () => completions(context, document, position, index), undefined);
+        },
+
+        provideDefinition(document, position, token) {
+          return stats.run(
+            token,
+            () => {
+              const cached = fudicDocumentOf(context, document);
+              if (cached === undefined) return undefined;
+
+              const found = tagDefinitionAt(cached, index, document.offsetAt(position));
+              if (found === undefined) return undefined;
+
+              // The top of the file: a component's identity is the whole file, and the index
+              // holds its role and its tag, not the span of its root element. Opening it where
+              // it starts is the honest answer, and it costs no second parse.
+              const top: Range = { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } };
+              return [
+                {
+                  targetUri: URI.file(found.target).toString(),
+                  targetRange: top,
+                  targetSelectionRange: top,
+                  originSelectionRange: rangeOf(document, found.span),
+                },
+              ];
+            },
+            undefined,
+          );
         },
 
         provideDocumentLinks(document, token) {

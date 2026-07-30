@@ -42,7 +42,39 @@ describe('component tags', () => {
     );
 
     expect(text).toContain("import type { $Props as $C0 } from './app-badge.fud';");
-    expect(text).toContain('$attrs<$C0>({\n  tone: (x),\n});');
+    // The blank line after `({` is the completion anchor: the attribute area of the start tag
+    // stands for the inside of the object literal, so `<app-badge |>` has somewhere to ask.
+    expect(text).toContain('$attrs<$C0>({\n  \n  tone: (x),\n});');
+  });
+
+  it('anchors completion inside a self-closing tag, and has nowhere to anchor without a gap', () => {
+    const closed = emitClient(component('    <app-badge />'), 'x.fud', registry);
+    const anchor = closed.mappings.find((m) => m.caps.completion && !m.caps.navigation);
+
+    // `<app-badge />` — the area between the name and `/>` is one space, and it is where the
+    // first prop will be typed.
+    expect(anchor).toBeDefined();
+    expect(anchor?.length).toBe('\n  '.length);
+
+    // `<app-badge>` has no gap at all: nothing to stand for, so nothing is emitted.
+    const tight = emitClient(component('    <app-badge>hi</app-badge>'), 'x.fud', registry);
+    expect(tight.mappings.some((m) => m.caps.completion && !m.caps.navigation)).toBe(false);
+  });
+
+  it('keeps a position inside an empty @() so the value can be asked about', () => {
+    // `tone="@()"` is the half-written attribute: the user opened the parentheses and is about
+    // to type. There is nothing to copy, so a space stands for the empty span — without it the
+    // cursor maps nowhere and nobody can say which values the prop accepts.
+    const { text, mappings } = emitClient(
+      component('    <app-badge tone="@()"></app-badge>'),
+      'x.fud',
+      registry,
+    );
+
+    expect(text).toContain('tone: ( ),');
+    const empty = mappings.filter((m) => m.caps.completion && m.sourceLength === 0);
+    expect(empty.length).toBe(1);
+    expect(empty[0]?.length).toBe(1);
   });
 
   it('projects an unregistered tag as an undeclared name, so TS2304 lands on the tag', () => {

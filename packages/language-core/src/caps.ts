@@ -45,6 +45,23 @@ export const DIAGNOSTIC_ONLY_CAPS: MappingCaps = {
 };
 
 /**
+ * A stretch that exists so the editor can ask «what may go here?», and for nothing else.
+ *
+ * The gap inside `<app-badge |>` is not text the user wrote and carries no error of its own —
+ * but it is where a prop is about to be typed, and the object literal it stands for is what
+ * knows the answer. Completion alone routes: a diagnostic there would be about a stretch the
+ * user cannot see, and rename or hover would reach into invented braces.
+ */
+export const COMPLETION_ONLY_CAPS: MappingCaps = {
+  completion: true,
+  verification: false,
+  semantic: false,
+  navigation: false,
+  structure: false,
+  format: false,
+};
+
+/**
  * Scaffolding the emitter invented: nothing routes. No diagnostic lands on it, no rename
  * reaches it, no hover answers for it — the user never sees text they did not write.
  */

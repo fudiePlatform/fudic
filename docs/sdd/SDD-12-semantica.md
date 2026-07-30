@@ -131,7 +131,14 @@ Cada SDD reserva su rango; aquí está el registro maestro. Formato `FUD` + 4 d�
 | `FUD0170`–`0189` | 11 | `0170` error de sintaxis JS/TS de Oxc (span mapeado). |
 | `FUD0190`–`0209` | 12 | `0190` atributo duplicado · `0191` custom element sin `<link rel="component">` · `0192` `ref` en bucle · `0193` `@server`/`@client` anidado · `0194` más de un `@server`/`@client` · `0195` interpolación no-primitiva (literal array/objeto) · `0196` import por efecto en zona neutra (warning). |
 
+| `FUD0460`–`0479` | 24 | `0460` `href` de un `<link>` que no resuelve a ningún `.fud` · `0461` identificador de usuario con prefijo `$` (namespace reservado al compilador). |
+
 `FUD0197`–`0209` libres para SDD-12. Severidades: todos `error` salvo `0196` (`warning`).
+
+Los rangos de los SDD 13–23 se anotan aquí a medida que cada spec define códigos propios; los
+que faltan viven documentados en su propio SDD (`FUD0420`–`0439` en SDD-21, `FUD0440`–`0459` en
+SDD-22, que además no son `Diagnostic` sino `CliError`: una colisión de ficheros no tiene span).
+`FUD0462`–`0479` quedan libres para SDD-24.
 
 ---
 

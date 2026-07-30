@@ -9,7 +9,12 @@
 export const VERSION = '0.0.1';
 
 export type { VirtualFile, Mapping, MappingCaps, FileRegistry } from './types.js';
-export { USER_CAPS, SCAFFOLD_CAPS, DIAGNOSTIC_ONLY_CAPS } from './caps.js';
+export {
+  USER_CAPS,
+  SCAFFOLD_CAPS,
+  DIAGNOSTIC_ONLY_CAPS,
+  COMPLETION_ONLY_CAPS,
+} from './caps.js';
 export { GLOBALS_DTS, GLOBALS_FILE_NAME } from './globals.js';
 export { emitVirtualFiles, type EmitInput, type EmitJs } from './emit.js';
 export {

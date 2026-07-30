@@ -33,22 +33,35 @@ export interface FakeConnection {
   onDidChangeWatchedFiles?: (params: { changes: { uri: string; type: number }[] }) => void;
   readonly requests: Map<string, (params: never) => unknown>;
   listened: boolean;
+  /** Make every further write to the console throw, as a disposed connection does. */
+  disposeChannel(error: Error): void;
 }
 
 /** A connection that records instead of talking to anybody. */
 export function fakeConnection(): FakeConnection {
+  let disposed: Error | undefined;
+
   const fake: FakeConnection = {
     connection: undefined as unknown as Connection,
     log: [],
     errors: [],
     requests: new Map(),
     listened: false,
+    disposeChannel: (error: Error) => {
+      disposed = error;
+    },
   };
 
   const connection = {
     console: {
-      log: (message: string) => fake.log.push(message),
-      error: (message: string) => fake.errors.push(message),
+      log: (message: string) => {
+        if (disposed !== undefined) throw disposed;
+        fake.log.push(message);
+      },
+      error: (message: string) => {
+        if (disposed !== undefined) throw disposed;
+        fake.errors.push(message);
+      },
     },
     onInitialize: (handler: (params: unknown) => InitializeResult) => {
       fake.onInitialize = handler;
@@ -103,8 +116,10 @@ export function fakeVolarServer(documents: Map<string, TextDocument> = new Map()
  */
 export function fakeServiceContext(
   documents: Readonly<Record<string, CachedDocument>>,
+  decode: (uri: URI) => [URI, string] | undefined = () => undefined,
 ): LanguageServiceContext {
   return {
+    decodeEmbeddedDocumentUri: decode,
     language: {
       scripts: {
         get: (uri: URI) => {

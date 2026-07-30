@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-24 — Servidor de lenguaje](./SDD-24-language-server.md)
 > **Paquete:** `@fudic/language-server` · **Rama:** `feat/sdd-24-language-server`
-> **Progreso:** 31 / 36 — fases 0–6 hechas.
+> **Progreso:** 36 / 36 — todas las tareas hechas; falta el cierre.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Los ficheros son relativos a `packages/language-server/` salvo cuando
@@ -22,8 +22,10 @@ piden decisión de Pedro; los dos últimos son elecciones que las tareas ya asum
    cuando la página no rellena una sección del layout; SDD-21 dice literalmente que el
    silencio es el comportamiento correcto — «es el `required: false` de Razor por defecto»
    — y no existe `SectionDecl.required`. **Recomendación:** retirar esa validación de §4.4
-   y quedarse con el completado de sección (criterio §6.6), que sí es implementable. La
-   tarea 22 queda **suspendida** hasta que Pedro decida.
+   y quedarse con el completado de sección (criterio §6.6), que sí es implementable. Se cerró
+   así: el completado está hecho, el diagnóstico **no se implementa** mientras la contradicción
+   siga en pie, y `FUD0462`–`FUD0479` quedan libres por si Pedro decide lo contrario. Ningún
+   criterio de §6 lo pide, así que no bloquea el cierre.
 3. **Oxc se invocaría dos veces por fichero.** `emitVirtualFiles` monta su propio `JsBatch`
    para localizar `props<T>()`, y el servidor necesita otro para la semántica y para la
    regla del `$`. Dos batches por pulsación rompen la regla de oro. **Recomendación:**
@@ -212,35 +214,58 @@ piden decisión de Pedro; los dos últimos son elecciones que las tareas ya asum
 
 ## Fase 7 — Criterios de aceptación del SDD (5)
 
-- [ ] **32. Arnés LSP en proceso.**
-      Crear `test/_harness.ts`: conexión cliente ↔ servidor sobre `PassThrough` dúplex,
-      `initialize` contra el workspace de fixtures, y helpers de posición (`|` en el fuente →
-      offset). Sin proceso hijo: la cobertura tiene que contar.
-- [ ] **33. Criterios 1–2: arranque y diagnósticos.**
-      Crear `test/acceptance/startup.test.ts`: capacidades declaradas, degradación sin `tsdk`,
-      y los nueve casos de SDD-23 §6 como diagnósticos LSP **en el span del `.fud`**.
-- [ ] **34. Criterios 3–6: completados.**
-      Crear `test/acceptance/completion.test.ts`: atributo `tone`, valores de la unión dentro
-      de `tone="@(|)"`, tags declarados tras `<`, `href` filtrado por rol y `@section nav`.
-- [ ] **35. Criterios 7–9: navegación e inter-fichero.**
-      Crear `test/acceptance/navigation.test.ts`: definición sobre tag, sobre `@data.title` y
-      sobre `tone`; rename acotado con `prepareRename` vacío en andamiaje; cambiar `Tone` en
-      `app-badge.fud` repinta `[slug].fud` sin tocarlo.
-- [ ] **36. Criterios 10–15: CSS, `$`, tolerancia, invalidación, cancelación y virtuals.**
-      Crear `test/acceptance/robustness.test.ts`: completado CSS con `:host`/`::slotted()`
-      limpios, `const $x = 1` con span exacto mientras se escribe, `<div>` sin cerrar que no
-      mata al servidor, alta de `.fud` que resuelve sin reiniciar, ráfaga de N ediciones que
-      deja **una** petición completada y N−1 canceladas según el contador, y
-      `fudic/virtualFiles` devolviendo los tres virtuals de `[slug].fud`.
+- [x] **32. Arnés LSP en proceso.**
+      Crear `test/acceptance/_harness.ts`: conexión cliente ↔ servidor sobre `PassThrough`
+      dúplex, `initialize` contra el workspace de fixtures y helpers de posición (`|` en el
+      fuente → offset). Sin proceso hijo: la cobertura tiene que contar. Tres piezas que salieron
+      de usarlo: **calentar** el programa de TypeScript en el arranque (la primera petición cuesta
+      segundos y las demás milisegundos: pagarlo en el `beforeAll` es medir la función, no el
+      arranque en frío), **pausar el transporte** (lo que hace cancelable una petición es llegar
+      sin leer, y sostener la tubería lo vuelve seguro en vez de probable — es como se mide §6.14
+      sin reloj) y **no cerrar el lado del servidor** (con `interFileDependencies` Volar también
+      *empuja* diagnósticos 250 ms después de cada edición: escribir en una conexión que alguien
+      cerró es un detalle del teardown disfrazado de defecto).
+- [x] **33. Criterios 1–2 y 15: arranque, diagnósticos y virtuals.**
+      Crear `test/acceptance/startup.test.ts` (capacidades declaradas, degradación sin `tsdk`,
+      índice por rol y `fudic/virtualFiles`) y `test/acceptance/diagnostics.test.ts`: los nueve
+      casos de SDD-23 §6 como diagnósticos LSP **en el span del `.fud`**, más §6.9 (inter-fichero),
+      §6.11 (`$` mientras se escribe) y §6.12 (tolerancia con `<div>` sin cerrar).
+- [x] **34. Criterios 3–6 y 10: completados y CSS.**
+      Crear `test/acceptance/completion.test.ts`: atributo `tone`, valores de la unión dentro de
+      `tone="@(|)"`, tags declarados tras `<`, `href` filtrado por rol, `@section nav`, y el CSS
+      de §6.10 por sus dos mitades — se completan propiedades dentro de `<style>`, y `:host`,
+      `:host()`, `:host-context()` y `::slotted()` **no** producen diagnóstico mientras un
+      `colour: red` sí. La supresión de pseudos que la spec preveía no hizo falta:
+      `vscode-css-languageservice` ya conoce los cuatro, y comprobarlo era más barato que
+      escribir un filtro que no filtra nada.
+- [x] **35. Criterios 7–8: navegación.**
+      Crear `test/acceptance/navigation.test.ts`: definición sobre el tag, sobre `@data.title`,
+      sobre `data` (typeDefinition) y sobre un prop desde la plantilla, propia y ajena; rename de
+      un prop con sus tres ediciones y `prepareRename` **vacío** sobre un tramo que solo lleva
+      diagnósticos. Hueco encontrado aquí: **F12 sobre `<app-badge>` no la contestaba nadie** — el
+      tag se proyecta con el perfil diagnostics-only a propósito (un error tiene que aterrizar en
+      él, una navegación no, o renombrar un tag renombraría un alias que el usuario no escribió),
+      así que nada rutaba. Añadidos `tagNameAt` (`src/services/position.ts`), `tagDefinitionAt`
+      (`src/services/tags.ts`) y `provideDefinition` en el service: la existencia de un tag y el
+      fichero del que vino son conocimiento de este paquete, no de TypeScript.
+- [x] **36. Criterios 13–14: invalidación y cancelación.**
+      Crear `test/acceptance/robustness.test.ts`: un `.fud` escrito en disco más el aviso del
+      watcher hace que el tag resuelva sin reiniciar —y borrarlo lo devuelve a `FUD0460` +
+      `FUD0191` + `TS2304`—, y una ráfaga de N ediciones con el transporte en pausa deja
+      **exactamente una** petición completada según el contador. Segundo hueco: el canal de trazas
+      **lanzaba** si el cliente ya se había ido (un proyecto de TypeScript que acaba de cargar
+      escribe en una conexión cerrada), lo que tiraba el proceso por un log; `loggerFor` se lo
+      traga, que es lo que dice §5.
 
 ---
 
 ## Cierre de la SDD
 
-- [ ] `pnpm typecheck`, `pnpm test` y `pnpm build` en verde (incluida la vuelta a
+- [x] `pnpm typecheck`, `pnpm test` y `pnpm build` en verde (incluida la vuelta a
       `@fudic/language-core` de la tarea 15).
-- [ ] Cobertura **100 %** en líneas, funciones, ramas y sentencias, con `coverage.include`
-      sobre `src/**`.
-- [ ] Anotar `FUD0460`–`FUD0479` en el catálogo de SDD-12.
-- [ ] Marcar SDD-24 como `Hecho` y anotarlo en [INDEX.md](./INDEX.md) (tabla + registro de
+- [x] Cobertura **100 %** en líneas, funciones, ramas y sentencias, con `coverage.include`
+      sobre `src/**` — 343 tests en `@fudic/language-server`; `@fudic/language-core` vuelve a su
+      100 % con el caso del `@()` vacío, que es lo que hace posible el criterio §6.3.
+- [x] Anotar `FUD0460`–`FUD0479` en el catálogo de SDD-12.
+- [x] Marcar SDD-24 como `Hecho` y anotarlo en [INDEX.md](./INDEX.md) (tabla + registro de
       progreso).

@@ -1,8 +1,12 @@
 # SDD-24 — Servidor de lenguaje (`@fudic/language-server`)
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho` — los 15 criterios de §6 verdes; 343 tests, cobertura 100 %
+> (líneas, funciones, ramas, sentencias). Tareas en [SDD-24-Task.md](./SDD-24-Task.md).
 > **Paquete:** `@fudic/language-server` (ejecutable), sobre `@fudic/language-core` (SDD-23)
 > **Naturaleza:** servidor. Editor-agnóstico: ningún símbolo de VS Code entra aquí.
+> **Rango de diagnósticos:** `FUD0460`–`FUD0479` (`0460` `href` sin resolver, `0461` prefijo
+> `$` reservado). La validación de "sección obligatoria ausente" de §4.4 **no** se implementa:
+> contradice SDD-21 §4.2, que fija el silencio como comportamiento correcto.
 
 ---
 

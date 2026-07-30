@@ -11,6 +11,7 @@
  */
 
 import type { SectionNode, StructuredDocument } from '@fudic/compiler';
+import { DIAGNOSTIC_ONLY_CAPS } from '../caps.js';
 import type { VirtualWriter } from '../writer.js';
 import type { TemplateContext } from './context.js';
 
@@ -18,9 +19,20 @@ export function emitSection(ctx: TemplateContext, node: SectionNode): void {
   // Without a layout there is no union to check against. `string` accepts any name rather
   // than inventing an error the file cannot be responsible for: a route with no layout link
   // already has its own diagnostic, and piling a second one on every section would bury it.
-  ctx.w.scaffold(`$section<${ctx.aliases.layout ?? 'string'}>('`, node.keywordSpan);
-  ctx.w.copy(node.nameSpan);
-  ctx.w.scaffold("');\n");
+  ctx.w.scaffold(`$section<${ctx.aliases.layout ?? 'string'}>(`, node.keywordSpan);
+  // The literal is ONE stretch standing for the bare name, quotes included, under the same
+  // profile as a projected tag: the diagnostic must reach the source, nothing else may.
+  //
+  // TypeScript reports the `TS2345` over `'nav'` WITH its quotes, and a reported range only
+  // maps back when BOTH its ends land in one stretch that carries `verification`. Written as
+  // scaffold + copy + scaffold, the range began on mute scaffolding and the error reached
+  // nobody — the projection produced the right error and the editor never showed it.
+  ctx.w.projected(
+    `'${ctx.source.slice(node.nameSpan.start, node.nameSpan.end)}'`,
+    node.nameSpan,
+    DIAGNOSTIC_ONLY_CAPS,
+  );
+  ctx.w.scaffold(');\n');
   ctx.emit(node.children);
 }
 

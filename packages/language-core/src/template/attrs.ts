@@ -23,7 +23,7 @@ import {
   type Span,
   span,
 } from '@fudic/compiler';
-import { DIAGNOSTIC_ONLY_CAPS } from '../caps.js';
+import { COMPLETION_ONLY_CAPS, DIAGNOSTIC_ONLY_CAPS } from '../caps.js';
 import type { TemplateContext } from './context.js';
 
 /** A JS identifier, i.e. an object key that needs no quoting. */
@@ -40,6 +40,23 @@ export function emitElementBindings(ctx: TemplateContext, el: ElementNode): void
   else emitNativeAttrs(ctx, bindings);
 
   for (const { attr, binding } of bindings) emitBehaviour(ctx, el, attr, binding);
+}
+
+/**
+ * The stretch of a start tag where attributes go: after the tag name, before the `>`.
+ *
+ * Everything the user may type there — a prop name, another attribute — belongs to the same
+ * object literal, so one stretch is enough for the editor to ask about any position in it.
+ */
+function attributeArea(el: ElementNode): Span {
+  const afterName = el.openSpan.start + 1 + el.name.length;
+  const beforeClose = el.openSpan.end - (ctxSelfClosing(el) ? 2 : 1);
+  return span(Math.min(afterName, beforeClose), beforeClose);
+}
+
+/** `<x/>` closes with two characters, `<x>` with one. */
+function ctxSelfClosing(el: ElementNode): boolean {
+  return el.children.length === 0 && el.closeSpan === undefined;
 }
 
 /** A custom element: the hyphen is what makes it one (decision 41). */
@@ -61,6 +78,11 @@ function emitProps(
   // the user never wrote.
   ctx.w.projected(ctx.aliases.aliasOf(el.name), tagSpan(el), DIAGNOSTIC_ONLY_CAPS);
   ctx.w.scaffold('>({');
+  // The attribute area of the start tag, standing for the inside of the object literal: it is
+  // what makes completion work at `<app-badge |>`, where there is no text yet to map from and
+  // the contract that knows the answer lives in the projection.
+  const area = attributeArea(el);
+  if (area.end > area.start) ctx.w.projected('\n  ', area, COMPLETION_ONLY_CAPS);
 
   for (const { attr, binding } of props) {
     ctx.w.scaffold('\n  ');
@@ -192,7 +214,11 @@ function emitValue(ctx: TemplateContext, binding: Binding): void {
 /** `(expr)` — parenthesized so that a comma or an arrow inside cannot break the object. */
 function emitExpression(ctx: TemplateContext, expr: RazorExpression): void {
   ctx.w.scaffold('(');
-  ctx.w.copy(expr.expr);
+  if (expr.expr.end > expr.expr.start) ctx.w.copy(expr.expr);
+  // `tone="@()"` is where the value is about to be typed. There is no text to copy, so a
+  // space stands for the empty span: without it the position maps nowhere and the editor
+  // cannot ask TypeScript what this attribute accepts (SDD-24 §6.3).
+  else ctx.w.projected(' ', expr.expr, COMPLETION_ONLY_CAPS);
   ctx.w.scaffold(')');
 }
 

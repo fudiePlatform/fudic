@@ -97,6 +97,30 @@ export function tagContextAt(source: string, offset: number): PartialName | unde
   return { span: span(offset - text.length, offset), text };
 }
 
+/**
+ * The tag name the cursor is inside, in an opening or a closing tag alike.
+ *
+ * Text again, and for a weaker reason than the two above: the tree does hold the element, but
+ * finding the name under an offset in it means a second traversal of everything — the one the
+ * semantic tokens already own — while a tag name is two delimiters and a word. The name may be
+ * half typed, and both ends of it matter, so it is read outwards from the cursor rather than
+ * backwards from it.
+ */
+export function tagNameAt(source: string, offset: number): PartialName | undefined {
+  let start = offset;
+  while (start > 0 && /[-\w]/.test(source[start - 1] as string)) start--;
+  let end = offset;
+  while (end < source.length && /[-\w]/.test(source[end] as string)) end++;
+  if (start === end) return undefined;
+
+  // A word is a tag name only when a `<` or a `</` opens it. Nothing else is checked: a name
+  // inside a comment answers too, and pointing at the component it names is the right answer.
+  const opensTag = source[start - 1] === '<' || (source[start - 1] === '/' && source[start - 2] === '<');
+  if (!opensTag) return undefined;
+
+  return { span: span(start, end), text: source.slice(start, end) };
+}
+
 /** A section name being typed after `@section `. */
 export function sectionContextAt(source: string, offset: number): PartialName | undefined {
   const match = /@section[ \t]+([A-Za-z_$][\w$]*)?$/.exec(source.slice(0, offset));

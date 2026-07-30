@@ -150,6 +150,7 @@ describe('documents that are not ours', () => {
 
     expect(fudicDocumentOf(context, other)).toBeUndefined();
     expect(await completionsOf(service, other, position)).toBeUndefined();
+    expect(await service.provideDefinition?.(other, position, TOKEN)).toBeUndefined();
     expect(await service.provideDocumentLinks?.(other, TOKEN)).toBeUndefined();
     expect(await service.provideDiagnostics?.(other, TOKEN)).toBeUndefined();
     expect(
@@ -175,6 +176,37 @@ describe('documents that are not ours', () => {
     const unknown = TextDocument.create('file:///p/other.fud', 'fud', 1, '<p>x</p>');
 
     expect(await completionsOf(service, unknown, position)).toBeUndefined();
+  });
+});
+
+describe('definition', () => {
+  const SOURCE = `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="component" href="../components/app-badge.fud">\n<article><app-badge>hi</app-badge><div>x</div></article>\n`;
+
+  it('sends a component tag to the top of the file that defines it (§6.7)', async () => {
+    const { service, document, cached } = setup(SOURCE);
+    const at = cached.source.indexOf('<app-badge>') + 3;
+    const links = await service.provideDefinition?.(document, document.positionAt(at), TOKEN);
+
+    expect(links?.length).toBe(1);
+    const top = { line: 0, character: 0 };
+    expect(links?.[0]).toEqual({
+      targetUri: URI.file('/p/components/app-badge.fud').toString(),
+      targetRange: { start: top, end: top },
+      targetSelectionRange: { start: top, end: top },
+      originSelectionRange: rangeOf(document, {
+        start: cached.source.indexOf('<app-badge>') + 1,
+        end: cached.source.indexOf('<app-badge>') + 1 + 'app-badge'.length,
+      }),
+    });
+  });
+
+  it('leaves a native tag to whoever owns HTML', async () => {
+    const { service, document, cached } = setup(SOURCE);
+    const at = cached.source.indexOf('<div>') + 2;
+
+    expect(
+      await service.provideDefinition?.(document, document.positionAt(at), TOKEN),
+    ).toBeUndefined();
   });
 });
 
@@ -274,6 +306,7 @@ describe('cancellation', () => {
       await service.provideCompletionItems?.(document, position, { triggerKind: 1 }, CANCELLED),
     ).toBeUndefined();
     expect(await service.provideDiagnostics?.(document, CANCELLED)).toBeUndefined();
-    expect([stats.completed, stats.cancelled]).toEqual([0, 2]);
+    expect(await service.provideDefinition?.(document, position, CANCELLED)).toBeUndefined();
+    expect([stats.completed, stats.cancelled]).toEqual([0, 3]);
   });
 });

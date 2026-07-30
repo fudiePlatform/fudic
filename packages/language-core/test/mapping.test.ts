@@ -138,17 +138,24 @@ describe('criterion 11 — scaffolding is mute', () => {
     expect(source).not.toContain('$p0');
   });
 
-  it('the only diagnostics-only stretch is the tag projected as a type name', () => {
+  it('a diagnostics-only stretch is invented text whose error must still reach the user', () => {
     const { source, virtuals } = clientOf('blog/[slug].fud');
     const client = virtuals[0]!;
     const only = client.mappings.filter((m) => m.caps.verification && !m.caps.navigation);
 
     expect(only.length).toBeGreaterThan(0);
     for (const m of only) {
-      // Resolved (`$C0`) or not (`$C_app_missing`), it is always the tag alias — and it
-      // always stands for the tag name the user wrote.
-      expect(client.text.slice(m.generatedOffset, m.generatedOffset + m.length)).toMatch(/^\$C/);
-      expect(source.slice(m.sourceOffset, m.sourceOffset + m.sourceLength)).toMatch(/^[a-z]+-/);
+      const generated = client.text.slice(m.generatedOffset, m.generatedOffset + m.length);
+      const stands = source.slice(m.sourceOffset, m.sourceOffset + m.sourceLength);
+
+      // Two of them, and for the same reason. The tag alias — resolved (`$C0`) or not
+      // (`$C_app_missing`) — stands for the tag name the user wrote. The section literal
+      // (`'nav'`) stands for the bare name: TypeScript reports over the literal WITH its
+      // quotes, and a range whose ends fall in different stretches maps back to nothing.
+      const isTagAlias = generated.startsWith('$C') && /^[a-z]+-/.test(stands);
+      const isSectionName = generated === `'${stands}'`;
+
+      expect(isTagAlias || isSectionName).toBe(true);
     }
   });
 });

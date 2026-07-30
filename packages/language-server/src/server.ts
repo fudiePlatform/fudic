@@ -82,12 +82,29 @@ const DEFAULTS: FudicServerDeps = {
   createSimpleProject,
 };
 
-/** The trace channel of §5: everything swallowed ends up in the client's log. */
+/**
+ * The trace channel of §5: everything swallowed ends up in the client's log.
+ *
+ * A write to it may fail, and the failure is not the server's business: a TypeScript project
+ * finishes loading after the editor disconnected, the channel is gone, and the message it wanted
+ * to log takes the process down with it. §5 says a request never throws; the log even less so.
+ */
 function loggerFor(connection: Connection): Logger {
+  const write = (channel: (message: string) => void, message: string): void => {
+    try {
+      channel(message);
+    } catch {
+      // Nowhere left to report to — reporting THAT is what would be absurd.
+    }
+  };
+
   return {
-    info: (message) => connection.console.log(message),
+    info: (message) => write((text) => connection.console.log(text), message),
     error: (message, cause) =>
-      connection.console.error(cause === undefined ? message : `${message}: ${String(cause)}`),
+      write(
+        (text) => connection.console.error(text),
+        cause === undefined ? message : `${message}: ${String(cause)}`,
+      ),
   };
 }
 
@@ -133,9 +150,13 @@ export function createFudicServer(
     const typescript = deps.loadTypeScript(options.tsdk, params.locale, logger);
     const languagePlugins = [createFudicLanguagePlugin(cache)];
     const plugins: LanguageServicePlugin[] = [
-      createHtmlService(),
-      createCssService(),
+      // Ours goes first: where two services answer the same position — an `href`, a tag —
+      // §4.1 gives this one the answer, and Volar asks them in order.
       createFudicService({ index, stats }),
+      // The whole `.fud` is the HTML document: its markup is HTML with `@` in it, and the
+      // native tags and attributes have to come from somewhere (§4.1, §6.4).
+      createHtmlService({ documentSelector: ['fud'] }),
+      createCssService(),
     ];
 
     let project: LanguageServerProject;

@@ -286,4 +286,22 @@ describe('the trace channel (§5)', () => {
 
     expect(fake.errors).toContain('something: Error: because');
   });
+
+  it('survives a channel that is already gone', () => {
+    // A project can finish loading after the client disconnected, and then the console throws.
+    // Both halves of the channel are exercised: whichever one is used, the failure to log is
+    // not a failure of the server (§5).
+    const { fake } = setup({
+      loadTypeScript: (_tsdk, _locale, logger) => {
+        logger.info('mounted something');
+        logger.error('and then this');
+        return { origin: 'none' };
+      },
+    });
+    const disposed = new Error('Connection is disposed.');
+    fake.disposeChannel(disposed);
+
+    expect(() => fake.onInitialize?.(params())).not.toThrow();
+    expect(fake.log).toEqual([]);
+  });
 });
