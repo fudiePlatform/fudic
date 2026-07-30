@@ -26,10 +26,25 @@ const REQUIRED = [
   ['the light icon', 'icons/fud-light.svg'],
   ['the dark icon', 'icons/fud-dark.svg'],
   ['the manifest', 'package.json'],
+  ['the parser loader', 'dist/node_modules/oxc-parser/src-js/bindings.js'],
 ];
 
-/** Nothing here should ever ship: source, tests, or the colour corpus. */
-const FORBIDDEN = [/^src\//, /^test\//, /^bundle\//, /^fixtures\//, /^node_modules\//, /\.ts$/];
+/**
+ * The native parser binary, whatever this platform's is called.
+ *
+ * Checked as a pattern rather than a name because the file is per target, and its absence
+ * is the failure this whole script exists for: the server starts, dies on its first parse,
+ * and the editor simply shows nothing.
+ */
+const REQUIRED_BINDING = /^dist\/node_modules\/@oxc-parser\/binding-[^/]+\/parser\..+\.node$/;
+
+/**
+ * Nothing here should ever ship: source, tests, or the colour corpus.
+ *
+ * `node_modules/` is anchored on purpose — `dist/node_modules/` is not the dependency tree,
+ * it is the vendored parser, and it has to travel.
+ */
+const FORBIDDEN = [/^src\//, /^test\//, /^bundle\//, /^fixtures\//, /^node_modules\//, /^[^/]*\.ts$/];
 
 const cwd = fileURLToPath(new URL('..', import.meta.url));
 const listed = execFileSync('pnpm', ['exec', 'vsce', 'ls', '--no-dependencies'], {
@@ -46,6 +61,9 @@ const problems = [];
 for (const [what, path] of REQUIRED) {
   if (!listed.includes(path)) problems.push(`missing ${what}: ${path}`);
 }
+if (!listed.some((path) => REQUIRED_BINDING.test(path))) {
+  problems.push('missing the native parser binding: dist/node_modules/@oxc-parser/binding-*/*.node');
+}
 for (const path of listed) {
   const rule = FORBIDDEN.find((pattern) => pattern.test(path));
   if (rule !== undefined) problems.push(`should not ship: ${path} (matches ${String(rule)})`);
@@ -57,4 +75,4 @@ if (problems.length > 0) {
   process.exit(1);
 }
 
-console.log(`vsix verified: ${String(listed.length)} files, all seven required entries present.`);
+console.log(`vsix verified: ${String(listed.length)} files, every required entry present, native binding included.`);

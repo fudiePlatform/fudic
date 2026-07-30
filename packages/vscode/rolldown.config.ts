@@ -28,10 +28,26 @@ export default defineConfig([
      */
     input: { server: 'bundle/server-entry.ts' },
     platform: 'node',
-    // Never statically imported by the server — it is loaded by path at runtime, from the
-    // `tsdk` the client resolves. Bundling ten megabytes of compiler for a `require` that
-    // only runs as a last resort would be the wrong trade.
-    external: ['typescript'],
+    /**
+     * ESM builds, not the UMD ones.
+     *
+     * `vscode-html-languageservice` and `vscode-css-languageservice` ship both, and `main`
+     * points at the UMD build — whose factory calls `require('./parser/htmlScanner')`, a
+     * relative require a bundler cannot follow. It bundles without a word and then dies on
+     * the first load, looking for a file next to `server.mjs` that was never there. Their
+     * `module` entry is plain ESM and inlines cleanly.
+     */
+    resolve: { mainFields: ['module', 'main'] },
+    external: [
+      // Never statically imported by the server — it is loaded by path at runtime, from the
+      // `tsdk` the client resolves. Bundling ten megabytes of compiler for a `require` that
+      // only runs as a last resort would be the wrong trade.
+      'typescript',
+      // A NAPI addon: its loader reaches for `parser.<target>.node`, and a bundler rewrites
+      // that into something that resolves to nothing. `scripts/vendor-native.mjs` puts it in
+      // `dist/node_modules` instead, where Node finds it with no install.
+      'oxc-parser',
+    ],
     output: { dir: 'dist', format: 'esm', entryFileNames: '[name].mjs' },
   },
 ]);

@@ -93,6 +93,18 @@ En `blog/[slug].fud`:
 - [ ] Abrir una carpeta con `typescript` instalado: `Fudic ✓` y el completado funciona sin
       instalar nada más.
 
+> **El `.vsix` es específico de plataforma.** El parser es un addon NAPI y su `.node` no se
+> puede bundlear, así que `scripts/vendor-native.mjs` copia a `dist/node_modules/` el binding
+> de la máquina que empaquetó. Una release real se publica por target
+> (`vsce package --target win32-x64`, `linux-x64`, `darwin-arm64`, …), que es el mecanismo que
+> VS Code tiene justo para esto. Un `.vsix` empaquetado en Windows **no** sirve en Linux: el
+> servidor arranca y muere en el primer parseo.
+>
+> Ya verificado en local (Windows, VS Code 1.130.0): instalado con
+> `code --install-extension`, el `dist/server.mjs` **instalado** contesta `initialize` y
+> devuelve los tres virtuales de `[slug].fud`, o sea que parsea con oxc desde el binding
+> vendorizado. Lo que este paso añade es la máquina limpia.
+
 ### 8. Activación por workspace — criterio §6.12
 
 - [ ] Abrir la carpeta de fixtures **por un `.ts`** (`data/posts.ts`), sin tocar ningún

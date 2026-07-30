@@ -258,6 +258,17 @@ de Pedro; los cuatro últimos son elecciones que las tareas ya asumen.
       dentro del bundle, y comprobar que `dist/extension.cjs` carga bajo `require` con
       `vscode` doblado.
 - [x] **31. Bundle del servidor.**
+      **Aquí estaba el fallo que solo aparece al ejecutar el bundle**, y ninguna suite lo
+      veía: (a) `oxc-parser` es un addon NAPI y su `.node` **no se puede bundlear** — el
+      loader hace `require('./parser.<target>.node')` y el bundler lo reescribe a nada, así
+      que se marca externo y `scripts/vendor-native.mjs` lo copia a `dist/node_modules/`,
+      donde Node lo encuentra sin instalar nada; **consecuencia: el `.vsix` es específico de
+      plataforma** y una release va por target, que es el mecanismo que VS Code tiene para
+      esto; (b) `vscode-html-languageservice` y `vscode-css-languageservice` resolvían por
+      `main`, que es su build **UMD**, cuya factoría hace `require('./parser/htmlScanner')`
+      —relativo, no seguible— y moría al cargar: `resolve.mainFields: ['module','main']` toma
+      el ESM. Verificado ejecutando el bundle de verdad: contesta `initialize` y devuelve los
+      tres virtuales de `[slug].fud`.
       Añadir la segunda entrada: `@fudic/language-server` → `dist/server.cjs`, un único
       fichero (§4.5). Instalar la extensión no debe requerir instalar nada más — es el
       criterio §6.11 en su parte de construcción.
