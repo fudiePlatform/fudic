@@ -3,7 +3,7 @@
 > **BUG:** [BUG-09 — El código y el fuente de `@server` se publican al cliente](./BUG-09-frontera-servidor.md)
 > **Paquetes:** `@fudic/vite` · `@fudic/compiler` · **Rama:** worktree `fix-build-output`
 > **Depende de:** [BUG-05](./BUG-05-Task.md) en `Hecho`
-> **Progreso:** 0 / 11
+> **Progreso:** 3 / 11
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Las rutas son
 relativas a la raíz del repo.
@@ -17,13 +17,13 @@ revés, B pasaría en verde sobre un `dist/` que sigue publicando el código.
 
 ## Fase 1 — Rojo primero (3)
 
-- [ ] **1. El fuente de `@server` está en el `dist`.**
+- [x] **1. El fuente de `@server` está en el `dist`.**
       Test de build en `packages/vite/test/` con una ruta con `@server` que importe un módulo
       reconocible: ningún fichero del output —`.js` ni `.map`— contiene ese identificador.
       **Verlo fallar** con las tres coincidencias de hoy (§6.1).
-- [ ] **2. El manifest publica `esm`.**
+- [x] **2. El manifest publica `esm`.**
       Mismo build: ningún registro de `fudic-routes.json` trae `esm`. **Verlo fallar** (§6.3).
-- [ ] **3. El `sourcesContent` lleva el bloque `@server`.**
+- [x] **3. El `sourcesContent` lleva el bloque `@server`.**
       Sobre el mapa de un chunk del link pass: no contiene el cuerpo de `@server`, y sí el
       markup y el `@code` de cliente. **Verlo fallar** (§6.4).
 
