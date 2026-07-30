@@ -104,6 +104,7 @@ describe('runLinkPass', () => {
         routeBuild('/account', 'account.fud', mode('ssr')),
       ],
       nodeIo(),
+      { sourcemap: true },
     );
   }, 180000);
 
@@ -144,6 +145,7 @@ describe('runLinkPass', () => {
       '/',
       [routeBuild('/account', 'account.fud', mode('ssr'))],
       nodeIo(),
+      { sourcemap: false },
     );
     expect(empty.chunks).toEqual([]);
     expect(empty.entries.size).toBe(0);

@@ -3,7 +3,7 @@
 > **BUG:** [BUG-05 — El Service Worker y los chunks enlazables se emiten sin source map](./BUG-05-sourcemaps-builds-anidados.md)
 > **Paquete:** `@fudic/vite` · **Rama:** worktree `fix-build-output`
 > **Depende de:** nada
-> **Progreso:** 0 / 12
+> **Progreso:** 11 / 12
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Las rutas son relativas a la raíz del repo.
@@ -16,40 +16,40 @@ generado, no al `.fud`—, y un mapa falso pasa cualquier test que solo comprueb
 
 ## Fase 1 — Rojo primero (4)
 
-- [ ] **1. No hay `.map` para el SW.**
+- [x] **1. No hay `.map` para el SW.**
       En `packages/vite/test/build-sw-selfcontained.test.ts`: build con
       `build.sourcemap: true` → el bundle contiene `fudic-sw.js.map` y `fudic-sw.js` termina
       en `//# sourceMappingURL=fudic-sw.js.map`. **Verlo fallar** (§6.1).
-- [ ] **2. No hay `.map` para los chunks enlazables.**
+- [x] **2. No hay `.map` para los chunks enlazables.**
       En `packages/vite/test/link.test.ts`: mismo build → cada `sw/c/*.js` tiene `.map`
       hermano y comentario. **Verlo fallar** (§6.2).
-- [ ] **3. El mapa del link pass no lleva al `.fud`.**
+- [x] **3. El mapa del link pass no lleva al `.fud`.**
       Mismo fichero: el `sources` del mapa de un chunk contiene una ruta `.fud`.
       **Verlo fallar** — y comprobar que falla *por el contenido*, no por ausencia: es el
       test que separa un mapa útil de uno presente (§6.3, §2.2).
-- [ ] **4. El default sigue sin mapas.**
+- [x] **4. El default sigue sin mapas.**
       Sin `build.sourcemap`: cero `.map`, cero `sourceMappingURL`. Este **pasa en verde
       desde el principio** y está para que la corrección no se lleve el default por delante
       (§6.5).
 
 ## Fase 2 — La costura compartida (2)
 
-- [ ] **5. `NestedOutputOptions` y su captura.**
+- [x] **5. `NestedOutputOptions` y su captura.**
       Crear la interfaz (§3.1) donde vivan las constantes del plugin, y capturar
       `config.build.sourcemap` en `configResolved`
       (`packages/vite/src/plugin.ts:116-134`), junto a `resolveAlias`. Pensada para que
       BUG-06 le añada `minify` y nada más.
-- [ ] **6. Las dos firmas la reciben.**
+- [x] **6. Las dos firmas la reciben.**
       `buildServiceWorker` (`packages/vite/src/swbuild.ts:67-72`) y `runLinkPass`
       (`packages/vite/src/link.ts:130-135`) toman el nuevo parámetro y lo pasan a
       `build.sourcemap` de su build anidado. `pnpm typecheck` señala los dos llamantes.
 
 ## Fase 3 — Que el mapa exista y sirva (3)
 
-- [ ] **7. El link pass deja de tirar el mapa del `.fud`.**
+- [x] **7. El link pass deja de tirar el mapa del `.fud`.**
       `packages/vite/src/link.ts:95`: devolver `{ code, map }` de `transformFud`. Verde
       en 3. **Esta tarea es la que da valor a todo el resto.**
-- [ ] **8. Los resultados llevan mapa.**
+- [x] **8. Los resultados llevan mapa.**
       `SwBuildResult` y `LinkChunk` ganan `map?: string` (§3.2, campo **omitido** cuando no
       hay mapa — `exactOptionalPropertyTypes`). `swChunkOf`
       (`packages/vite/src/swbuild.ts:110-113`) pasa a devolver `{ code, map? }` (§3.3),
@@ -62,12 +62,12 @@ generado, no al `.fud`—, y un mapa falso pasa cualquier test que solo comprueb
 
 ## Fase 4 — Emisión (2)
 
-- [ ] **10. El `.map` se emite como asset hermano.**
+- [x] **10. El `.map` se emite como asset hermano.**
       En `generateBundle` (`packages/vite/src/plugin.ts:436` y `:473-477`): por cada salida
       con mapa, `emitFile` del `.map` y `//# sourceMappingURL=` al final del código (§4.3).
       Honrar `'hidden'` (mapa sin comentario) e `'inline'` (data URI, sin fichero). Verde
       en 2, 3 y 6.
-- [ ] **11. El mapa apunta donde debe.**
+- [x] **11. El mapa apunta donde debe.**
       Test de resolución posicional (§6.7): una posición conocida del `fudic-sw.js`
       **emitido** resuelve a la línea correcta del fuente. Y §6.4: `sources` del mapa del SW
       incluye una ruta bajo `packages/transport`.

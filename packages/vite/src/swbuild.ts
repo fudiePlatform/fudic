@@ -19,12 +19,15 @@
 import { build, type Plugin } from 'vite';
 import { emitSwBootstrap, type SwBootstrapOptions } from './bootstrap.js';
 import { SW_ID, DEV_SW_URL } from './constants.js';
+import { serializeMap, type NestedOutputOptions } from './nested.js';
 
 export interface SwBuildResult {
   /** Always `fudic-sw.js`: a Service Worker only controls its own directory and below. */
   readonly fileName: string;
   /** Its code, with `BUILD_TOKEN` still in place — the caller substitutes (§4.3). */
   readonly code: string;
+  /** Its Source Map v3, when the host asked for one. Omitted otherwise (BUG-05 §3.2). */
+  readonly map?: string;
 }
 
 /**
@@ -35,6 +38,7 @@ export interface OutputChunkLike {
   readonly type: string;
   readonly fileName: string;
   readonly code?: string;
+  readonly map?: unknown;
 }
 interface BundleOutputLike {
   readonly output: readonly OutputChunkLike[];
@@ -69,6 +73,7 @@ export async function buildServiceWorker(
   base: string,
   options: SwBootstrapOptions,
   alias: unknown,
+  nested: NestedOutputOptions,
 ): Promise<SwBuildResult> {
   const output = (await build({
     configFile: false,
@@ -81,6 +86,9 @@ export async function buildServiceWorker(
       write: false,
       emptyOutDir: false,
       minify: false,
+      // Always the plain map when the host wants any: the caller composes `'inline'` and
+      // `'hidden'` from it (§4.3), so there is one code path here instead of three.
+      sourcemap: nested.sourcemap !== false,
       rollupOptions: {
         input: { 'fudic-sw': SW_ID },
         output: {
@@ -96,18 +104,22 @@ export async function buildServiceWorker(
     },
   })) as unknown as BundleOutputLike;
 
-  return { fileName: DEV_SW_URL, code: swChunkOf(output.output) };
+  return { fileName: DEV_SW_URL, ...swChunkOf(output.output) };
 }
 
 /**
- * The code of the ONE chunk a single-input, no-splitting build produces.
+ * The code and map of the ONE chunk a single-input, no-splitting build produces.
  *
  * Extracted so the "there is no such chunk" case is a tested branch rather than an
  * unreachable `??` nobody can provoke: the caller pins `entryFileNames`, so an output
  * without it would mean the bundler changed its contract, and returning empty is what
  * turns that into a visible empty worker instead of a crash mid-build.
  */
-export function swChunkOf(output: readonly OutputChunkLike[]): string {
+export function swChunkOf(
+  output: readonly OutputChunkLike[],
+): { readonly code: string; readonly map?: string } {
   const entry = output.find((item) => item.type === 'chunk' && item.fileName === DEV_SW_URL);
-  return entry?.code ?? '';
+  const map = serializeMap(entry?.map);
+  // The field is omitted, not set to `undefined`: `exactOptionalPropertyTypes`.
+  return map === undefined ? { code: entry?.code ?? '' } : { code: entry?.code ?? '', map };
 }

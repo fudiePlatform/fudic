@@ -24,15 +24,15 @@ describe('swChunkOf', () => {
         { type: 'asset', fileName: 'x.css' },
         { type: 'chunk', fileName: 'fudic-sw.js', code: 'self.addEventListener()' },
       ]),
-    ).toBe('self.addEventListener()');
+    ).toEqual({ code: 'self.addEventListener()' });
   });
 
   it('returns empty when the bundler produced no such chunk', () => {
     // Not reachable through `buildServiceWorker` — it pins `entryFileNames` — but the
     // shape is the bundler's, not ours, so the fallback is a decision and not an
     // accident: an empty worker is visible, a crash mid-build is not.
-    expect(swChunkOf([{ type: 'asset', fileName: 'x.css' }])).toBe('');
-    expect(swChunkOf([{ type: 'chunk', fileName: 'fudic-sw.js' }])).toBe('');
+    expect(swChunkOf([{ type: 'asset', fileName: 'x.css' }])).toEqual({ code: '' });
+    expect(swChunkOf([{ type: 'chunk', fileName: 'fudic-sw.js' }])).toEqual({ code: '' });
   });
 });
 
@@ -57,7 +57,7 @@ describe('buildServiceWorker', () => {
   const root = fileURLToPath(new URL('..', import.meta.url));
 
   it('emits one self-contained file with the runtime bundled in', async () => {
-    const result = await buildServiceWorker(root, '/', OPTIONS, undefined);
+    const result = await buildServiceWorker(root, '/', OPTIONS, undefined, { sourcemap: false });
     expect(result.fileName).toBe('fudic-sw.js');
     expect(result.code).toContain('createRouter');
     // The whole point: nothing left to fetch through a loader the fetch handler cannot see.
@@ -72,10 +72,13 @@ describe('buildServiceWorker', () => {
     const transport = fileURLToPath(new URL('../../transport/dist/index.js', import.meta.url));
     const empty = mkdtempSync(join(tmpdir(), 'fudic-swbuild-'));
     // A root with no `node_modules` at all: only the alias can resolve `@fudic/*`.
-    const result = await buildServiceWorker(empty, '/', OPTIONS, {
-      '@fudic/ssr': ssr,
-      '@fudic/transport': transport,
-    });
+    const result = await buildServiceWorker(
+      empty,
+      '/',
+      OPTIONS,
+      { '@fudic/ssr': ssr, '@fudic/transport': transport },
+      { sourcemap: false },
+    );
     expect(result.code).toContain('createRouter');
   }, 180000);
 });

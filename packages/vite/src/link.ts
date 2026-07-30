@@ -19,10 +19,13 @@ import { isLinkable } from './mode.js';
 import { emitRenderChunk } from './wrapper.js';
 import { transformFud } from './transform.js';
 import { LINK_DIR, LINK_PREFIX } from './constants.js';
+import { serializeMap, type NestedOutputOptions } from './nested.js';
 
 export interface LinkChunk {
   readonly fileName: string;
   readonly code: string;
+  /** Its Source Map v3, when the host asked for one. Omitted otherwise (BUG-05 §3.2). */
+  readonly map?: string;
 }
 
 export interface LinkResult {
@@ -45,6 +48,7 @@ interface OutputChunkLike {
   readonly type: string;
   readonly fileName: string;
   readonly code?: string;
+  readonly map?: unknown;
   readonly imports?: readonly string[];
   readonly isEntry?: boolean;
   readonly facadeModuleId?: string | null;
@@ -92,7 +96,10 @@ function linkPlugin(builds: readonly RouteBuild[], io: ResolveIo): Plugin {
         return null;
       }
       const result = transformFud(path, io);
-      return result === null ? null : { code: result.code };
+      // The map goes back too (BUG-05 §4.2). Dropping it was not a missing feature but a
+      // silent one: the nested build would chain its own map onto the GENERATED module and
+      // produce a map that is valid, resolves, and never mentions the `.fud`.
+      return result === null ? null : { code: result.code, map: JSON.stringify(result.map) };
     },
   };
 }
@@ -132,6 +139,7 @@ export async function runLinkPass(
   base: string,
   builds: readonly RouteBuild[],
   io: ResolveIo,
+  nested: NestedOutputOptions,
 ): Promise<LinkResult> {
   const linkable = builds.filter((rb) => isLinkable(rb.decision));
   if (linkable.length === 0) {
@@ -153,6 +161,8 @@ export async function runLinkPass(
       write: false,
       emptyOutDir: false,
       minify: false,
+      // As in the SW build: the plain map, and the caller composes the host's mode (§4.3).
+      sourcemap: nested.sourcemap !== false,
       rollupOptions: {
         input,
         // The linker calls `render` through the manifest, not through a static import
@@ -178,7 +188,12 @@ export async function runLinkPass(
     if (item.type !== 'chunk') {
       continue;
     }
-    chunks.push({ fileName: item.fileName, code: item.code ?? '' });
+    const map = serializeMap(item.map);
+    chunks.push(
+      map === undefined
+        ? { fileName: item.fileName, code: item.code ?? '' }
+        : { fileName: item.fileName, code: item.code ?? '', map },
+    );
     importsOf.set(
       item.fileName,
       (item.imports ?? []).filter((i: string) => !i.startsWith('@fudic/')),

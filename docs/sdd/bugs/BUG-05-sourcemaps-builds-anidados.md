@@ -119,11 +119,14 @@ línea de código.
   página revienta al prerenderizar, el `catch` de
   [`plugin.ts:535`](../../../packages/vite/src/plugin.ts#L535) reporta un stack sobre JS
   generado sin mapa. Node además exige `--enable-source-maps` para consumirlo.
-- **El SW encadena hasta el `.ts` de `@fudic/transport`, gratis.** El bundle del SW se
-  construye desde el **`dist`** de transport, y ese `dist` ya emite sus `.js.map`. Con
-  `sourcemap` activo en el build anidado, la cadena llega sola hasta el fuente TypeScript
-  del router y del `store` — que es justo el código que se quiere depurar. No hay que
-  inventar nada: basta con dejar de cortar.
+- **El SW mapea al `dist` de `@fudic/transport`.** Su bundle se construye desde ese `dist`,
+  así que el mapa lleva a `packages/transport/dist/router.js`, `store.js`, `linker.js` —
+  salida de `tsc` sin minificar, con sus nombres y sus comentarios. Es donde vive la lógica
+  que se quiere depurar y es lo que resuelve el síntoma.
+  Lo que **no** ocurre solo: llegar hasta el `.ts`. El `dist` emite sus `.js.map`, pero el
+  bundler no consume los mapas de sus entradas por su cuenta; haría falta que el build
+  anidado los cargara fichero a fichero. Medido, no supuesto: los 12 `sources` del mapa del
+  SW son todos `.js`. Queda fuera de alcance (§7).
 - **Dev no está afectado.** En `serve` el grafo de módulos de Vite sirve los bootstraps y
   el mapa fluye por el camino normal ([`plugin.ts:331-334`](../../../packages/vite/src/plugin.ts#L331-L334)).
 
@@ -278,8 +281,8 @@ Tests en `packages/vite/test/swbuild.test.ts`, `link.test.ts` y
 3. **(rojo primero)** El `sources` del mapa de un chunk del link pass contiene la ruta de un
    `.fud`. Es el criterio que cubre §2.2 y el único que distingue un mapa útil de uno
    meramente presente.
-4. El mapa del SW resuelve a `.ts` de `@fudic/transport`: `sources` incluye al menos una
-   ruta bajo `packages/transport`.
+4. El mapa del SW alcanza el runtime que bundlea: `sources` incluye al menos una ruta bajo
+   `packages/transport`.
 5. **(rojo primero)** Con `build.sourcemap: false` (el default) no se emite ningún `.map` ni
    ningún `sourceMappingURL`. La corrección no cambia el default de Vite.
 6. `sourcemap: 'hidden'` emite el `.map` y **no** el comentario. `'inline'` emite el data URI
@@ -311,4 +314,8 @@ su cifra actual de ramas.
   es el stack de un fallo *durante* el prerender.
 - **Reescribir `SourceMapBuilder`** (SDD-13). Aquí no se construye ningún mapa nuevo: se
   propagan los que ya existen.
+- **Encadenar el mapa del SW hasta el `.ts` de `@fudic/transport`** (§2.5). Exigiría que el
+  build anidado cargara el `.js.map` hermano de cada entrada. El salto de «31,7 kB sin
+  nombres» a «`dist/store.js` con sus nombres» ya resuelve el síntoma; el salto siguiente es
+  otra conversación, con su propia medición.
 - **`--enable-source-maps` en el proceso de build.** Es una bandera de quien ejecuta.

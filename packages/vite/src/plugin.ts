@@ -31,6 +31,7 @@ import { nodeIo } from './io.js';
 import { readSwConfig, type ResolvedSwConfig } from './swconfig.js';
 import { runLinkPass, safeName, type LinkResult } from './link.js';
 import { buildServiceWorker } from './swbuild.js';
+import { emitPlan, type NestedArtifact, type NestedOutputOptions } from './nested.js';
 import {
   htmlPathFor,
   materializeBundle,
@@ -85,6 +86,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let swConfig: ResolvedSwConfig | null = null;
   const wrapperRefs = new Map<string, string>(); // route pattern → emitFile referenceId
   let resolveAlias: unknown;
+  // What the two nested builds inherit from the host (BUG-05 §3.1). BUG-06 adds `minify`.
+  let nested: NestedOutputOptions = { sourcemap: false };
   let manifestUrl = '/fudic-routes.json';
   let manifestFileName = 'fudic-routes.json';
   const io = nodeIo();
@@ -124,6 +127,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       isDev = config.command === 'serve';
       // Forwarded to the Service Worker's nested build, which runs `configFile: false`.
       resolveAlias = config.resolve?.alias;
+      // A nested build inherits the host's OUTPUT configuration; what it does not inherit
+      // is a decision, not an oversight (BUG-05 §4.1). `build.sourcemap` was neither
+      // applied nor reported: the option simply did nothing for these two outputs.
+      nested = { sourcemap: config.build.sourcemap };
       options = resolveOptions(userOptions, config.base).options;
       manifestUrl = options.manifestUrl;
       manifestFileName = manifestUrl.startsWith(base) ? manifestUrl.slice(base.length) : 'fudic-routes.json';
@@ -432,10 +439,22 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
 
       // 1. The link pass: the chunks the Service Worker will link by hand (§4.3).
       const link: LinkResult =
-        swConfig === null ? { chunks: [], entries: new Map(), deps: new Map() } : await runLinkPass(root, base, builds, io);
+        swConfig === null
+          ? { chunks: [], entries: new Map(), deps: new Map() }
+          : await runLinkPass(root, base, builds, io, nested);
+      // A nested build's output is emitted as an ASSET, so nothing writes its `.map` or
+      // appends its `sourceMappingURL` unless we do (BUG-05 §4.3).
+      const emitWithMap = (artifact: NestedArtifact): void => {
+        const plan = emitPlan(artifact, nested.sourcemap);
+        this.emitFile({ type: 'asset', fileName: artifact.fileName, source: plan.code });
+        emitted.add(artifact.fileName);
+        if (plan.map !== undefined) {
+          this.emitFile({ type: 'asset', fileName: plan.map.fileName, source: plan.map.source });
+          emitted.add(plan.map.fileName);
+        }
+      };
       for (const chunk of link.chunks) {
-        this.emitFile({ type: 'asset', fileName: chunk.fileName, source: chunk.code });
-        emitted.add(chunk.fileName);
+        emitWithMap(chunk);
       }
 
       // 2. The Service Worker's own bundle: one realm, one bundle (BUG-03 §4.1). Its
@@ -452,6 +471,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
                 resources: swConfig.resources,
               },
               resolveAlias,
+              nested,
             );
 
       // 3. The build id: it names every cache and lives inside the SW, so a new build
@@ -475,12 +495,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         // The id measures exactly what the token measures, so this rewrite preserves every
         // offset and the map generated for `sw.code` still describes what is emitted
         // (BUG-05 §4.4).
-        this.emitFile({
-          type: 'asset',
-          fileName: sw.fileName,
-          source: sw.code.split(BUILD_TOKEN).join(buildId),
-        });
-        emitted.add(sw.fileName);
+        emitWithMap({ ...sw, code: sw.code.split(BUILD_TOKEN).join(buildId) });
       }
 
       // 4. The manifest: the one contract, emitted at a fixed URL.
