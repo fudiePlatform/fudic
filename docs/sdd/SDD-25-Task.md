@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-25 — Extensión de VS Code](./SDD-25-extension-vscode.md)
 > **Paquete:** `fudic-vscode` · **Rama:** `feat/sdd-25-extension-vscode`
-> **Progreso:** 8 / 34 — fases 0–1 hechas.
+> **Progreso:** 16 / 34 — fases 0–2 hechas.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Los ficheros son relativos a `packages/vscode/` salvo cuando se diga
@@ -129,33 +129,45 @@ de Pedro; los cuatro últimos son elecciones que las tareas ya asumen.
 
 ## Fase 2 — Gramática TextMate (8)
 
-- [ ] **9. Esqueleto y arnés de tokenización.**
+- [x] **9. Esqueleto y arnés de tokenización.**
       Crear `syntaxes/fudic.tmLanguage.json` con `scopeName: "text.html.fudic"` y patrón raíz
       vacío, y `test/_tokenize.ts`: registro de gramáticas con `vscode-textmate` +
       `vscode-oniguruma`, gramáticas **vacías** para `source.ts`, `source.css`, `source.js` y
       `text.html` (nota 6), y un helper que devuelve, por offset, la pila de scopes. Es la
       herramienta de la que viven las siete tareas siguientes.
-- [ ] **10. Regiones de código.**
+      Lo que costó de verdad: **balancear llaves sin poder contar**. Una expresión regular no
+      cierra bloques, así que `@code` no puede terminar en `\}` a secas — el primer `}` de un
+      `if` dentro del TS cerraría la región y el resto del fichero pasaría a ser markup. Se
+      resuelve con una regla recursiva (`#ts-braces`) que consume cada bloque anidado *antes*
+      de que el patrón de cierre lo vea, más guardas de cadena y comentario para que un `}`
+      dentro de `"…"` o de `//` no cuente. Es lo que hacen las gramáticas de Razor, y no hay
+      atajo.
+- [x] **10. Regiones de código.**
       `@code`, `@server` y `@client` → `source.ts` embebido, con el bloque delimitado por sus
       llaves. Prioridad 1 de §4.2: es donde más texto hay y donde peor se ve un fallo.
-- [ ] **11. `<style>` y `<script>`.**
+- [x] **11. `<style>` y `<script>`.**
       `<style>` → `source.css`; `<script>` → `source.js` **raw**, sin transiciones `@`
       (decisión 43).
-- [ ] **12. Markup.**
+- [x] **12. Markup.**
       Tags, nombres y valores de atributo, y comentarios `<!-- -->`. Incluye `<link rel href>`,
       que es el markup que el usuario escribe primero en cada fichero.
-- [ ] **13. Directivas de control.**
+- [x] **13. Directivas de control.**
       `@if`, `@else`, `@foreach`, `@for`, `@while`, `@switch`, `@section` y `@{ … }`: la palabra
       clave como directiva y la cabecera como `source.ts`.
-- [ ] **14. Bindings.**
+- [x] **14. Bindings.**
       `class:`, `style:`, `.prop`, `@evento` y `ref` como un scope propio, distinguible de un
       atributo nativo.
-- [ ] **15. Interpolación, escape y comentario.**
+- [x] **15. Interpolación, escape y comentario.**
       `@(…)` delimitada — la fiable — y `@ident.path` heurística; `@@` como escape y `@* *@`
       como comentario; heurística de email (decisión 7): un `@` precedido de carácter de
       identificador es literal, no directiva. La imprecisión de `@ident.path` es **aceptable
       por diseño** (§4.2): la corrigen los semantic tokens del servidor.
-- [ ] **16. Tests de la gramática.**
+- [x] **16. Tests de la gramática.**
+      Una precisión sobre el «sin arrastre» al escribir los tests: un `@if (a) {` sin cerrar
+      **sí** tiñe el resto del fichero, y eso es correcto — es el bloque, no un fallo; todo
+      lenguaje se comporta así. Arrastre es una construcción que **tenía** terminador y lo
+      falló. Lo que se exige, y se prueba, es que valor de atributo, tag abierto y `@` suelto
+      tengan salida (fin de línea, el siguiente `<`) y la tomen.
       Crear `test/grammar.test.ts` sobre los dos fixtures: las regiones embebidas empiezan y
       acaban donde deben, las directivas y bindings tienen scope propio, y —el criterio que
       de verdad importa, §6.2— **sin arrastre**: el último token de cada fichero conserva la

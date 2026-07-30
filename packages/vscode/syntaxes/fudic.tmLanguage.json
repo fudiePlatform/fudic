@@ -2,6 +2,364 @@
   "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
   "name": "Fudic",
   "scopeName": "text.html.fudic",
-  "patterns": [],
-  "repository": {}
+  "patterns": [
+    { "include": "#razor-comment" },
+    { "include": "#at-escape" },
+    { "include": "#code-block" },
+    { "include": "#section" },
+    { "include": "#control" },
+    { "include": "#at-block" },
+    { "include": "#style-element" },
+    { "include": "#script-element" },
+    { "include": "#html-comment" },
+    { "include": "#doctype" },
+    { "include": "#tag" },
+    { "include": "#interpolation" },
+    { "include": "#implicit-expression" }
+  ],
+  "repository": {
+    "razor-comment": {
+      "name": "comment.block.fudic",
+      "begin": "@\\*",
+      "end": "\\*@",
+      "beginCaptures": { "0": { "name": "punctuation.definition.comment.begin.fudic" } },
+      "endCaptures": { "0": { "name": "punctuation.definition.comment.end.fudic" } }
+    },
+
+    "at-escape": {
+      "name": "constant.character.escape.at.fudic",
+      "match": "@@"
+    },
+
+    "code-block": {
+      "name": "meta.block.code.fudic",
+      "begin": "(@)(code)\\b\\s*(\\{)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.keyword.fudic" },
+        "2": { "name": "keyword.control.directive.code.fudic" },
+        "3": { "name": "punctuation.section.block.begin.fudic" }
+      },
+      "end": "\\}",
+      "endCaptures": { "0": { "name": "punctuation.section.block.end.fudic" } },
+      "contentName": "source.ts",
+      "patterns": [{ "include": "#region-block" }, { "include": "#balanced-ts" }]
+    },
+
+    "region-block": {
+      "name": "meta.block.region.fudic",
+      "begin": "(@)(server|client)\\b\\s*(\\{)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.keyword.fudic" },
+        "2": { "name": "keyword.control.directive.region.fudic" },
+        "3": { "name": "punctuation.section.block.begin.fudic" }
+      },
+      "end": "\\}",
+      "endCaptures": { "0": { "name": "punctuation.section.block.end.fudic" } },
+      "contentName": "source.ts",
+      "patterns": [{ "include": "#balanced-ts" }]
+    },
+
+    "section": {
+      "name": "meta.block.section.fudic",
+      "begin": "(@)(section)\\s+([A-Za-z_][\\w-]*)\\s*(\\{)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.keyword.fudic" },
+        "2": { "name": "keyword.control.directive.section.fudic" },
+        "3": { "name": "entity.name.section.fudic" },
+        "4": { "name": "punctuation.section.block.begin.fudic" }
+      },
+      "end": "\\}",
+      "endCaptures": { "0": { "name": "punctuation.section.block.end.fudic" } },
+      "patterns": [{ "include": "$self" }]
+    },
+
+    "control": {
+      "name": "meta.block.control.fudic",
+      "begin": "(@)(if|foreach|for|while|switch)\\b([^{]*)(\\{)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.keyword.fudic" },
+        "2": { "name": "keyword.control.directive.fudic" },
+        "3": { "name": "meta.expression.fudic source.ts" },
+        "4": { "name": "punctuation.section.block.begin.fudic" }
+      },
+      "end": "(\\})(?!\\s*else\\b)",
+      "endCaptures": { "1": { "name": "punctuation.section.block.end.fudic" } },
+      "patterns": [{ "include": "#control-else" }, { "include": "$self" }]
+    },
+
+    "control-else": {
+      "match": "(\\})\\s*(else)(\\s+if\\b[^{]*?)?\\s*(\\{)",
+      "captures": {
+        "1": { "name": "punctuation.section.block.end.fudic" },
+        "2": { "name": "keyword.control.directive.fudic" },
+        "3": { "name": "meta.expression.fudic source.ts" },
+        "4": { "name": "punctuation.section.block.begin.fudic" }
+      }
+    },
+
+    "at-block": {
+      "name": "meta.block.statement.fudic",
+      "begin": "(@)(\\{)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.keyword.fudic" },
+        "2": { "name": "punctuation.section.block.begin.fudic" }
+      },
+      "end": "\\}",
+      "endCaptures": { "0": { "name": "punctuation.section.block.end.fudic" } },
+      "contentName": "source.ts",
+      "patterns": [{ "include": "#balanced-ts" }]
+    },
+
+    "interpolation": {
+      "name": "meta.interpolation.fudic",
+      "begin": "(@)(\\()",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.template-expression.begin.fudic" },
+        "2": { "name": "punctuation.section.parens.begin.fudic" }
+      },
+      "end": "\\)",
+      "endCaptures": { "0": { "name": "punctuation.section.parens.end.fudic" } },
+      "contentName": "source.ts",
+      "patterns": [{ "include": "#balanced-parens" }, { "include": "#balanced-ts" }]
+    },
+
+    "balanced-parens": {
+      "begin": "\\(",
+      "end": "\\)",
+      "patterns": [{ "include": "#balanced-parens" }, { "include": "#balanced-ts" }]
+    },
+
+    "implicit-expression": {
+      "name": "meta.interpolation.implicit.fudic",
+      "match": "(?<![\\w.@])(@)([A-Za-z_$][\\w$]*(?:\\.[A-Za-z_$][\\w$]*)*)",
+      "captures": {
+        "1": { "name": "punctuation.definition.template-expression.begin.fudic" },
+        "2": { "name": "variable.other.fudic source.ts" }
+      }
+    },
+
+    "style-element": {
+      "name": "meta.element.style.fudic",
+      "begin": "(<)(style)\\b([^>]*)(>)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "entity.name.tag.style.html" },
+        "3": { "patterns": [{ "include": "#tag-attributes" }] },
+        "4": { "name": "punctuation.definition.tag.end.html" }
+      },
+      "end": "(</)(style)\\s*(>)",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "entity.name.tag.style.html" },
+        "3": { "name": "punctuation.definition.tag.end.html" }
+      },
+      "contentName": "source.css",
+      "patterns": [
+        { "include": "#razor-comment" },
+        { "include": "#at-escape" },
+        { "include": "#css-at-rule" },
+        { "include": "#interpolation" },
+        { "include": "#implicit-expression" },
+        { "include": "source.css" }
+      ]
+    },
+
+    "css-at-rule": {
+      "name": "keyword.control.at-rule.css",
+      "match": "@(media|import|charset|supports|keyframes|font-face|layer|container|page|namespace|property|scope|starting-style)\\b"
+    },
+
+    "script-element": {
+      "name": "meta.element.script.fudic",
+      "begin": "(<)(script)\\b([^>]*)(>)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "entity.name.tag.script.html" },
+        "3": { "patterns": [{ "include": "#tag-attributes" }] },
+        "4": { "name": "punctuation.definition.tag.end.html" }
+      },
+      "end": "(</)(script)\\s*(>)",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "entity.name.tag.script.html" },
+        "3": { "name": "punctuation.definition.tag.end.html" }
+      },
+      "contentName": "source.js",
+      "patterns": [{ "include": "source.js" }]
+    },
+
+    "html-comment": {
+      "name": "comment.block.html",
+      "begin": "<!--",
+      "end": "-->",
+      "beginCaptures": { "0": { "name": "punctuation.definition.comment.begin.html" } },
+      "endCaptures": { "0": { "name": "punctuation.definition.comment.end.html" } }
+    },
+
+    "doctype": {
+      "name": "meta.tag.metadata.doctype.html",
+      "match": "<!\\w+[^>]*>"
+    },
+
+    "tag": {
+      "patterns": [{ "include": "#tag-custom" }, { "include": "#tag-native" }]
+    },
+
+    "tag-custom": {
+      "name": "meta.tag.custom.fudic",
+      "begin": "(</?)([a-zA-Z][a-zA-Z0-9]*(?:-[a-zA-Z0-9]+)+)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "entity.name.tag.custom.fudic" }
+      },
+      "end": "(/?>)|(?=<)",
+      "endCaptures": { "1": { "name": "punctuation.definition.tag.end.html" } },
+      "patterns": [{ "include": "#tag-attributes" }]
+    },
+
+    "tag-native": {
+      "name": "meta.tag.html",
+      "begin": "(</?)([a-zA-Z][\\w.:-]*)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "entity.name.tag.html" }
+      },
+      "end": "(/?>)|(?=<)",
+      "endCaptures": { "1": { "name": "punctuation.definition.tag.end.html" } },
+      "patterns": [{ "include": "#tag-attributes" }]
+    },
+
+    "tag-attributes": {
+      "patterns": [
+        { "include": "#razor-comment" },
+        { "include": "#binding-class-style" },
+        { "include": "#binding-property" },
+        { "include": "#binding-event" },
+        { "include": "#binding-ref" },
+        { "include": "#attribute-value" },
+        { "include": "#attribute-name" }
+      ]
+    },
+
+    "binding-class-style": {
+      "match": "\\b(class|style)(:)([A-Za-z_][\\w-]*)",
+      "captures": {
+        "1": { "name": "entity.other.attribute-name.binding.fudic" },
+        "2": { "name": "punctuation.separator.binding.fudic" },
+        "3": { "name": "entity.other.attribute-name.binding.fudic" }
+      }
+    },
+
+    "binding-property": {
+      "match": "(?<=\\s)(\\.)([A-Za-z_][\\w-]*)",
+      "captures": {
+        "1": { "name": "punctuation.definition.binding.fudic" },
+        "2": { "name": "entity.other.attribute-name.binding.property.fudic" }
+      }
+    },
+
+    "binding-event": {
+      "match": "(?<=\\s)(@)([A-Za-z_][\\w-]*)",
+      "captures": {
+        "1": { "name": "punctuation.definition.binding.fudic" },
+        "2": { "name": "entity.other.attribute-name.binding.event.fudic" }
+      }
+    },
+
+    "binding-ref": {
+      "name": "entity.other.attribute-name.binding.ref.fudic",
+      "match": "(?<=\\s)ref(?=[=\\s>])"
+    },
+
+    "attribute-name": {
+      "name": "entity.other.attribute-name.html",
+      "match": "[A-Za-z_:][\\w.:-]*"
+    },
+
+    "attribute-value": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.html",
+          "begin": "\"",
+          "end": "\"|(?=$)",
+          "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.html" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.string.end.html" } },
+          "patterns": [
+            { "include": "#at-escape" },
+            { "include": "#interpolation" },
+            { "include": "#implicit-expression" }
+          ]
+        },
+        {
+          "name": "string.quoted.single.html",
+          "begin": "'",
+          "end": "'|(?=$)",
+          "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.html" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.string.end.html" } },
+          "patterns": [
+            { "include": "#at-escape" },
+            { "include": "#interpolation" },
+            { "include": "#implicit-expression" }
+          ]
+        }
+      ]
+    },
+
+    "balanced-ts": {
+      "patterns": [
+        { "include": "#ts-line-comment" },
+        { "include": "#ts-block-comment" },
+        { "include": "#ts-template-string" },
+        { "include": "#ts-double-string" },
+        { "include": "#ts-single-string" },
+        { "include": "#ts-braces" },
+        { "include": "source.ts" }
+      ]
+    },
+
+    "ts-braces": {
+      "begin": "\\{",
+      "end": "\\}",
+      "patterns": [{ "include": "#balanced-ts" }]
+    },
+
+    "ts-line-comment": {
+      "name": "comment.line.double-slash.ts",
+      "match": "//[^\\n]*"
+    },
+
+    "ts-block-comment": {
+      "name": "comment.block.ts",
+      "begin": "/\\*",
+      "end": "\\*/"
+    },
+
+    "ts-double-string": {
+      "name": "string.quoted.double.ts",
+      "begin": "\"",
+      "end": "\"|(?=$)",
+      "patterns": [{ "match": "\\\\." }]
+    },
+
+    "ts-single-string": {
+      "name": "string.quoted.single.ts",
+      "begin": "'",
+      "end": "'|(?=$)",
+      "patterns": [{ "match": "\\\\." }]
+    },
+
+    "ts-template-string": {
+      "name": "string.template.ts",
+      "begin": "`",
+      "end": "`",
+      "patterns": [
+        { "match": "\\\\." },
+        {
+          "begin": "\\$\\{",
+          "end": "\\}",
+          "patterns": [{ "include": "#balanced-ts" }]
+        }
+      ]
+    }
+  }
 }
