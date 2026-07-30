@@ -8,14 +8,14 @@ import {
   type ManifestFile,
 } from '../src/manifest.js';
 import { DEFAULT_CSP } from '../src/csp.js';
-import { fakeCache } from './helpers.js';
+import { fakeCache, varyingCache } from './helpers.js';
 
 const FILE: ManifestFile = {
   build: 'a3f9c1',
   csp: DEFAULT_CSP,
   routes: [
     // Ordered by DESCENDING specificity: static before param.
-    { pattern: '/blog/new', mode: 'ssg', html: '/blog/new/index.html' },
+    { pattern: '/blog/new', mode: 'ssg', chunk: '/sw/c/blog-new.js' },
     { pattern: '/blog/:slug', mode: 'sw', chunk: '/sw/c/blog.js', deps: ['/sw/c/badge.js'] },
     { pattern: '/account', mode: 'ssr' },
   ],
@@ -73,5 +73,20 @@ describe('loadManifest', () => {
     await expect(loadManifest('https://app.test/fudic-routes.json', cache)).rejects.toThrow(
       /not in cache/u,
     );
+  });
+
+  it('BUG-04 §6.9 finds it even when another kind of request wrote the entry', async () => {
+    // `/fudic-routes.json` is a SERVABLE shell entry (BUG-01 §4.3), so a document can ask
+    // for it — with an `Origin` header. On a `Vary: Origin` response that rewrites the
+    // entry under a key this string-based lookup would no longer match, `build()` would
+    // throw, and the router would never become ready: the Service Worker stops
+    // intercepting ALTOGETHER, silently, until the next build. Total loss of function.
+    const { cache, fake } = varyingCache();
+    await fake.put(
+      new Request('https://app.test/fudic-routes.json', { headers: { origin: 'https://app.test' } }),
+      new Response(JSON.stringify(FILE), { headers: { vary: 'Origin' } }),
+    );
+    const table = await loadManifest('https://app.test/fudic-routes.json', cache);
+    expect(table.build).toBe('a3f9c1');
   });
 });

@@ -35,6 +35,16 @@ describe('createLinker', () => {
     expect((main['render'] as () => number)()).toBe(2);
   });
 
+  it('a BARE specifier that is not a builtin is a LinkError, not a resolution attempt', async () => {
+    // A bare name is never resolved against the requirer's URL: either the SW handed it
+    // in as a builtin (`@fudic/ssr`, bundled inside the worker) or the chunk asked for
+    // something that does not exist in this realm. Silently turning it into a relative
+    // URL would produce a request for `/lodash` and a much more confusing failure.
+    const { fetchSource } = sources({ '/main.js': 'exports.x = require("lodash").map;' });
+    const linker = createLinker({ fetchSource });
+    await expect(linker.link('/main.js')).rejects.toThrow(LinkError);
+  });
+
   it('§6.5 a module shared by two chunks is evaluated exactly once', async () => {
     const { fetchSource, calls } = sources({
       '/shared.js': 'exports.n = 1;',

@@ -20,6 +20,11 @@ export default defineConfig({
         'src/manifest.ts': { lines: 100, functions: 100, branches: 100 },
         'src/linker.ts': { lines: 100, functions: 100, branches: 100 },
         'src/control.ts': { lines: 100, functions: 100, branches: 100 },
+        // `store.ts` joins them (BUG-04 close-out). 170 lines, no dependencies, and with
+        // the `VaryingCache` double every branch is provokable — which is exactly why the
+        // defect of BUG-04 could hide here: against a `Map` keyed by URL, it cannot.
+        'src/store.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/csp.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
       },
     },
   },

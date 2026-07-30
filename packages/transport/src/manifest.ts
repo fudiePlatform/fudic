@@ -12,6 +12,16 @@
  *    has to know what to load before what without parsing the source (§4.3).
  */
 
+/**
+ * What the BUILD decided. Only one of the three is a runtime decision for the SW:
+ *
+ *  - `ssr` the server, always. The SW does not intercept and does not download its chunk.
+ *  - `ssg` the build wrote HTML for a cold start. In the SW it behaves exactly like `sw`.
+ *  - `sw`  no prerendered HTML. Nothing else changes.
+ *
+ * So for the fetch handler the partition is `ssr` against EVERYTHING ELSE (BUG-02 §3.2).
+ * `ssg` keeps its meaning in the build (prerender) and loses it in the client.
+ */
 export type RouteMode = 'ssr' | 'ssg' | 'sw';
 
 export type CachePolicy =
@@ -33,19 +43,25 @@ export interface PagePolicy {
   readonly ttl: number | null;
 }
 
+/**
+ * One route. Note what is NOT here: the URL of a prerendered HTML file.
+ *
+ * The prerendered document is a file of the EDGE, and its whole job is the first visit —
+ * TTFB, SEO, no-JS. Whoever serves it locates it by convention (`htmlPathFor`), never
+ * through this contract. Naming it here turned the router into a per-route document
+ * cache and switched the render off (BUG-02 §3.1).
+ */
 export interface RouteRecord {
   readonly pattern: string;
   readonly mode: RouteMode;
-  /** `sw`: absolute URL of the linkable chunk. */
+  /** Absolute URL of the linkable chunk. Absent: only the server can serve this route. */
   readonly chunk?: string;
-  /** `sw`: absolute URLs of its dependencies, in TOPOLOGICAL order. */
+  /** Absolute URLs of its dependencies, in TOPOLOGICAL order. */
   readonly deps?: readonly string[];
-  /** `sw`: data endpoint template, `:param` placeholders included. */
+  /** Data endpoint template, `:param` placeholders included. */
   readonly data?: string;
   readonly dataPolicy?: DataPolicy;
   readonly page?: PagePolicy;
-  /** `ssg` (or an enumerated `sw` route): URL template of the prerendered HTML. */
-  readonly html?: string;
   /** The ESM chunk for the edge (dev/preview/prerender). The SW never reads it. */
   readonly esm?: string;
 }
@@ -85,7 +101,11 @@ interface CompiledRoute {
 
 /** Path segments, query stripped, empty ones dropped. `/` → `[]`. */
 export function segmentsOf(path: string): string[] {
-  const pathname = path.split('?', 1)[0] ?? path;
+  // `indexOf` rather than `split(...)[0]`: an index access under
+  // `noUncheckedIndexedAccess` needs a fallback for a case `split` cannot produce, and an
+  // unreachable fallback is a branch no test can ever cover.
+  const query = path.indexOf('?');
+  const pathname = query === -1 ? path : path.slice(0, query);
   return pathname.split('/').filter((s) => s.length > 0);
 }
 
@@ -160,7 +180,11 @@ export function compileManifest(file: ManifestFile): RouteTable {
  * simply does not intercept.
  */
 export async function loadManifest(url: string, cache: Cache): Promise<RouteTable> {
-  const response = await cache.match(url);
+  // `ignoreVary` for the reason of BUG-04 §2.4.1, and it is not a degraded failure: the
+  // manifest is a SERVABLE shell entry, so a document can rewrite its key by asking for
+  // it. A miss here throws, `boot()` gives up, the router never becomes ready and the
+  // Service Worker stops intercepting altogether — silently, until the next build.
+  const response = await cache.match(url, { ignoreVary: true });
   if (response === undefined) {
     throw new Error(`fudic: manifest not in cache (${url})`);
   }

@@ -52,6 +52,7 @@ export {
   NONCE_TOKEN,
   DEFAULT_CSP,
   applyNonce,
+  applyNonceStream,
   cspFor,
   newNonce,
 } from './csp.js';
