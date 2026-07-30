@@ -14,6 +14,8 @@ export class LanguageClient {
   static readonly created: LanguageClient[] = [];
   /** Set by a test to make the next `start()` reject, as a failing server would. */
   static failNextStart = false;
+  /** Set by a test to make every `start()` reject, as a server that is simply not there. */
+  static failAllStarts = false;
 
   started = 0;
   stopped = 0;
@@ -34,11 +36,13 @@ export class LanguageClient {
   static reset(): void {
     LanguageClient.created.length = 0;
     LanguageClient.failNextStart = false;
+    LanguageClient.failAllStarts = false;
     LanguageClient.answers = {};
   }
 
   async start(): Promise<void> {
     this.started += 1;
+    if (LanguageClient.failAllStarts) throw new Error('server unavailable');
     if (LanguageClient.failNextStart) {
       LanguageClient.failNextStart = false;
       throw new Error('server unavailable');

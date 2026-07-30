@@ -11,6 +11,9 @@ fixtures/**
 scripts/**
 coverage/**
 node_modules/**
+# The manual verification script is for whoever develops the extension, not for whoever
+# installs it. README.md does ship: VS Code shows it on the extension page.
+docs/**
 
 tsconfig.json
 vitest.config.ts

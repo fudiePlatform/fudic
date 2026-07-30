@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-25 — Extensión de VS Code](./SDD-25-extension-vscode.md)
 > **Paquete:** `fudic-vscode` · **Rama:** `feat/sdd-25-extension-vscode`
-> **Progreso:** 32 / 34 — fases 0–6 hechas.
+> **Progreso:** 34 / 34 — todas las tareas hechas.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Los ficheros son relativos a `packages/vscode/` salvo cuando se diga
@@ -269,13 +269,13 @@ de Pedro; los cuatro últimos son elecciones que las tareas ya asumen.
 
 ## Fase 7 — Criterios de aceptación del SDD (2)
 
-- [ ] **33. Los criterios automatizables.**
+- [x] **33. Los criterios automatizables.**
       Crear `test/acceptance/*.test.ts`: §6.2 completo (color sin arrastre en los dos
       fixtures), §6.5 y §6.6 en su parte declarativa, §6.8 (los tres virtuals contra un
       servidor doble), §6.9 (arranque degradado: avisa una vez, estado `⚠`, cliente arrancado
       igual), §6.10 (caída → `✕`, tres reintentos, reinicio ofrecido) y §6.12 (activación por
       `workspaceContains`). Con los puertos de la tarea 17 no hace falta VS Code para ninguno.
-- [ ] **34. Guion de verificación manual.**
+- [x] **34. Guion de verificación manual.**
       Crear `docs/verificacion-manual.md` en el paquete: los criterios que exigen un editor
       vivo o un `.vsix` instalado —§6.1, §6.3, §6.4, §6.7, §6.11 y las partes de §6.5, §6.6 y
       §6.12 que solo se ven en el host— como pasos numerados con casilla y resultado
@@ -287,10 +287,11 @@ de Pedro; los cuatro últimos son elecciones que las tareas ya asumen.
 
 ## Cierre de la SDD
 
-- [ ] `pnpm typecheck`, `pnpm test` y `pnpm build` en verde.
-- [ ] Cobertura **100 %** en líneas, funciones, ramas y sentencias, con `coverage.include`
+- [x] `pnpm typecheck`, `pnpm test` y `pnpm build` en verde.
+- [x] Cobertura **100 %** en líneas, funciones, ramas y sentencias, con `coverage.include`
       sobre `src/**`.
-- [ ] `pnpm --filter fudic-vscode package` y `verify-vsix` en verde (tarea 32).
-- [ ] Guion de verificación manual ejecutado y anotado (tarea 34).
-- [ ] Marcar SDD-25 como `Hecho` y anotarlo en [INDEX.md](./INDEX.md) (tabla + registro de
+- [x] `pnpm --filter fudic-vscode package` y `verify-vsix` en verde (tarea 32).
+- [ ] Guion de verificación manual ejecutado y anotado (tarea 34) — **pendiente de Pedro**:
+      son los ocho pasos que exigen un VS Code vivo o el `.vsix` instalado.
+- [x] Marcar SDD-25 como `Hecho` y anotarlo en [INDEX.md](./INDEX.md) (tabla + registro de
       progreso).
