@@ -3,7 +3,7 @@
 > **BUG:** [BUG-05 — El Service Worker y los chunks enlazables se emiten sin source map](./BUG-05-sourcemaps-builds-anidados.md)
 > **Paquete:** `@fudic/vite` · **Rama:** worktree `fix-build-output`
 > **Depende de:** nada
-> **Progreso:** 11 / 12
+> **Progreso:** 12 / 12
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Las rutas son relativas a la raíz del repo.
@@ -74,7 +74,7 @@ generado, no al `.fud`—, y un mapa falso pasa cualquier test que solo comprueb
 
 ## Fase 5 — El prerender (1)
 
-- [ ] **12. `materializeBundle` escribe los mapas.**
+- [x] **12. `materializeBundle` escribe los mapas.**
       `packages/vite/src/prerender.ts:51-58`: escribir el `.map` de cada chunk que lo tenga,
       para que el `catch` de `plugin.ts:535` reporte stacks legibles (§4.5).
 

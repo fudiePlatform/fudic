@@ -18,12 +18,15 @@ import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { NONCE_TOKEN, type RenderContext } from '@fudic/transport';
 import { edgeContext } from './serve.js';
+import { serializeMap } from './nested.js';
 
 /** A minimal structural view of a Rollup output bundle (chunks carry code, assets a source). */
 export interface BundleItem {
   readonly type: 'chunk' | 'asset';
   readonly code?: string;
   readonly source?: string | Uint8Array;
+  /** Present when the host build asked for maps; written beside the chunk (BUG-05 §4.5). */
+  readonly map?: unknown;
 }
 
 /** One `paths()` entry: a single param value, or an object mapping param name → value. */
@@ -47,13 +50,25 @@ export function htmlPathFor(pattern: string): string {
   return segments.length === 0 ? 'index.html' : `${segments.join('/')}/index.html`;
 }
 
-/** Write every chunk and asset of a bundle to `dir`, preserving its fileName layout. */
+/**
+ * Write every chunk and asset of a bundle to `dir`, preserving its fileName layout.
+ *
+ * A chunk's map is written beside it (BUG-05 §4.5). This directory is temporary and only
+ * ever read by the prerender, so the map buys exactly one thing — and it is the thing that
+ * was missing: when a page throws while prerendering, the warning the plugin reports
+ * carries a stack over generated JS. With the map beside the chunk, Node can resolve it
+ * (`--enable-source-maps`) instead of naming a line nobody wrote.
+ */
 export function materializeBundle(bundle: Record<string, BundleItem>, dir: string): void {
   for (const [fileName, item] of Object.entries(bundle)) {
     const abs = join(dir, fileName);
     mkdirSync(dirname(abs), { recursive: true });
     const content = item.type === 'chunk' ? (item.code ?? '') : (item.source ?? '');
     writeFileSync(abs, content);
+    const map = serializeMap(item.map);
+    if (map !== undefined) {
+      writeFileSync(`${abs}.map`, map);
+    }
   }
 }
 

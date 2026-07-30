@@ -4,7 +4,10 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { htmlPathFor, urlForEntry } from '../src/prerender.js';
+import { mkdtempSync, existsSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { htmlPathFor, materializeBundle, urlForEntry, type BundleItem } from '../src/prerender.js';
 
 describe('htmlPathFor', () => {
   it('maps the root to index.html', () => {
@@ -14,6 +17,27 @@ describe('htmlPathFor', () => {
   it('maps a nested route to <path>/index.html', () => {
     expect(htmlPathFor('/about')).toBe('about/index.html');
     expect(htmlPathFor('/customer/new')).toBe('customer/new/index.html');
+  });
+});
+
+describe('materializeBundle', () => {
+  it('BUG-05 §4.5 writes a chunk’s map beside it, so a prerender stack is readable', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'fudic-materialize-'));
+    const bundle: Record<string, BundleItem> = {
+      'c/page.js': { type: 'chunk', code: 'export const x = 1;', map: { version: 3, sources: ['a.fud'] } },
+      'plain.js': { type: 'chunk', code: 'export const y = 2;' },
+      'data.json': { type: 'asset', source: '{}' },
+    };
+    materializeBundle(bundle, dir);
+
+    expect(readFileSync(join(dir, 'c/page.js'), 'utf8')).toBe('export const x = 1;');
+    expect(JSON.parse(readFileSync(join(dir, 'c/page.js.map'), 'utf8'))).toEqual({
+      version: 3,
+      sources: ['a.fud'],
+    });
+    // No map, no file: the temp dir mirrors the bundle and invents nothing.
+    expect(existsSync(join(dir, 'plain.js.map'))).toBe(false);
+    expect(existsSync(join(dir, 'data.json.map'))).toBe(false);
   });
 });
 
