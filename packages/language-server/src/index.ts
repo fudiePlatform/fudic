@@ -85,3 +85,22 @@ export { sectionCompletions } from './services/sections.js';
 export { reservedDollarDiagnostics } from './services/reserved-dollar.js';
 export { fudicDiagnostics, semanticDiagnostics } from './services/compiler-diagnostics.js';
 export { semanticTokens, keywordSpanAt, type FudicToken } from './services/semantic-tokens.js';
+export { createFudicService, rangeOf, toLspDiagnostic, fudicDocumentOf } from './services/plugin.js';
+export { RequestStats } from './stats.js';
+export { loadTypeScript, hasTypeScript, DEFAULT_LOADERS, type TypeScriptSource, type TsdkLoaders } from './tsdk.js';
+export { mountGlobals, GLOBALS_DTS, GLOBALS_FILE_NAME } from './globals.js';
+export {
+  VIRTUAL_FILES_REQUEST,
+  COMPONENT_REGISTRY_REQUEST,
+  virtualFilesPayload,
+  componentRegistryPayload,
+  type VirtualFilePayload,
+  type ComponentPayload,
+} from './requests.js';
+export {
+  createFudicServer,
+  type FudicServer,
+  type FudicServerDeps,
+  type VolarServer,
+} from './server.js';
+export { main, parseTransport, type Transport, type CliDeps } from './cli.js';

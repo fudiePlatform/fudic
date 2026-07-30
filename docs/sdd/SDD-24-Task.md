@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-24 — Servidor de lenguaje](./SDD-24-language-server.md)
 > **Paquete:** `@fudic/language-server` · **Rama:** `feat/sdd-24-language-server`
-> **Progreso:** 26 / 36 — fases 0–5 hechas.
+> **Progreso:** 31 / 36 — fases 0–6 hechas.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Los ficheros son relativos a `packages/language-server/` salvo cuando
@@ -186,24 +186,26 @@ piden decisión de Pedro; los dos últimos son elecciones que las tareas ya asum
 
 ## Fase 6 — Ensamblado del servidor (5)
 
-- [ ] **27. Resolución del `tsdk`.**
+- [x] **27. Resolución del `tsdk`.**
       Crear `src/tsdk.ts`: carga el TypeScript del proyecto desde `initializationOptions`; si
-      falla, degrada a HTML+CSS, lo escribe en el log y **no muere** (criterio §6.1).
-- [ ] **28. Ambientes globales como lib virtual.**
+      falla, degrada a HTML+CSS, lo escribe en el log y **no muere** (criterio §6.1). El orden es
+      el contrato: el del proyecto, luego el empaquetado, luego nada.
+- [x] **28. Ambientes globales como lib virtual.**
       Crear `src/globals.ts`: monta `GLOBALS_DTS` como `fudic-globals.d.ts` en memoria,
       envolviendo el `LanguageServiceHost` (`getScriptFileNames`, `getScriptSnapshot`,
       `getScriptVersion`). Si el fichero existe en disco declara lo mismo: no hay conflicto.
-- [ ] **29. Servidor.**
+- [x] **29. Servidor.** *(las piezas de Volar se inyectan: el cableado se prueba en proceso, y los
+      valores por defecto son los reales — un test que nunca los ejercita prueba otra cosa)*
       Crear `src/server.ts`: `createFudicServer(connection)` — `initialize` con las capacidades
       de la tarea 7, los tres services de Volar más los propios, watchers explícitos sobre
       `tsconfig*.json`, `package.json` y altas/bajas/renombrados de `.fud`, y `shutdown`/`exit`
       limpios. Aquí viven los dos invariantes de §5 que son fontanería: el envoltorio que
       **nunca lanza** (traza + respuesta vacía) y la comprobación del token de cancelación.
-- [ ] **30. Peticiones propias e instrumentación.**
+- [x] **30. Peticiones propias e instrumentación.**
       Crear `src/requests.ts` (`fudic/virtualFiles`, `fudic/componentRegistry`) y `src/stats.ts`
       con el contador de peticiones **completadas** frente a **canceladas** que el criterio
       §6.14 exige medir.
-- [ ] **31. Entrada ejecutable.**
+- [x] **31. Entrada ejecutable.**
       Crear `src/cli.ts` (`main(argv, deps)`: `--stdio | --node-ipc | --socket=<port>`),
       `src/index.ts` (API pública) y `bin/fudic-language-server.js`, el shim sin ramas de la
       nota 5.
