@@ -57,6 +57,7 @@ import {
   MAIN_ID,
   DATA_PREFIX,
   BUILD_TOKEN,
+  BUILD_ID_LENGTH,
   DEV_MAIN_URL,
   DEV_SW_URL,
 } from './constants.js';
@@ -465,11 +466,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         .update([...Object.keys(bundle), ...link.chunks.map((c) => c.fileName)].sort().join('|'))
         .update(sw === null ? '' : `|${sw.fileName}|${sw.code}`)
         .digest('hex')
-        .slice(0, 8);
+        .slice(0, BUILD_ID_LENGTH);
       if (sw !== null) {
-        // Substituted in the SW's code BEFORE emitting it. A surviving `__FUDIC_BUILD__`
-        // produces caches called `shell-__FUDIC_BUILD__` that `isStaleCache` never
-        // purges — silently, forever. That is what §6.4 exists to catch.
+        // Substituted in the SW's code BEFORE emitting it. A surviving token produces
+        // caches called `shell-<token>` that `isStaleCache` never purges — silently,
+        // forever. That is what §6.4 exists to catch.
+        //
+        // The id measures exactly what the token measures, so this rewrite preserves every
+        // offset and the map generated for `sw.code` still describes what is emitted
+        // (BUG-05 §4.4).
         this.emitFile({
           type: 'asset',
           fileName: sw.fileName,

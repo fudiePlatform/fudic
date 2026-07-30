@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildServiceWorker, swChunkOf, swPlugin } from '../src/swbuild.js';
-import { SW_ID } from '../src/constants.js';
+import { SW_ID, BUILD_TOKEN } from '../src/constants.js';
 
 const OPTIONS = {
   manifestUrlExpr: '"/fudic-routes.json"',
@@ -64,7 +64,7 @@ describe('buildServiceWorker', () => {
     expect(result.code).not.toMatch(/^\s*import\s/mu);
     expect(result.code).not.toMatch(/\bfrom\s*["']/u);
     // The token is still in place: the caller computes the id FROM this code (§4.3).
-    expect(result.code).toContain('__FUDIC_BUILD__');
+    expect(result.code).toContain(BUILD_TOKEN);
   }, 180000);
 
   it('forwards the host build’s alias, since the nested build reads no config file', async () => {

@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fudic } from '../src/index.js';
+import { BUILD_TOKEN } from '../src/constants.js';
 
 const fixtures = fileURLToPath(new URL('../../compiler/fixtures', import.meta.url));
 const ssrDist = fileURLToPath(new URL('../../ssr/dist/index.js', import.meta.url));
@@ -91,7 +92,7 @@ describe('vite build over the fixtures (hito §6.17)', () => {
     // and the build id was substituted into its code before emitting.
     const sw = output.find((o) => o.fileName === 'fudic-sw.js');
     expect(sw!.type).toBe('asset');
-    expect(sw!.source).not.toContain('__FUDIC_BUILD__');
+    expect(sw!.source).not.toContain(BUILD_TOKEN);
   });
 
   it('bundles the streaming page (compiler emit, not Vite parsing .fud)', () => {

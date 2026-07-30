@@ -54,7 +54,7 @@ generado, no al `.fud`—, y un mapa falso pasa cualquier test que solo comprueb
       hay mapa — `exactOptionalPropertyTypes`). `swChunkOf`
       (`packages/vite/src/swbuild.ts:110-113`) pasa a devolver `{ code, map? }` (§3.3),
       conservando su rama de «no hay tal chunk». `link.ts:181` propaga el `map` del chunk.
-- [ ] **9. La sustitución de `BUILD_TOKEN` deja de mover el código.**
+- [x] **9. La sustitución de `BUILD_TOKEN` deja de mover el código.**
       `packages/vite/src/constants.ts:26`: `BUILD_TOKEN` pasa a 8 caracteres, la longitud del
       `buildId`, para que la sustitución de `packages/vite/src/plugin.ts:476` preserve
       offsets (§4.4). Actualizar el literal en los dos asserts de BUG-03 que lo nombran.

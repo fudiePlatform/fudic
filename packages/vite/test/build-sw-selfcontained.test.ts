@@ -16,6 +16,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fudic } from '../src/index.js';
+import { BUILD_TOKEN } from '../src/constants.js';
 
 const ssrDist = fileURLToPath(new URL('../../ssr/dist/index.js', import.meta.url));
 const transportDist = fileURLToPath(new URL('../../transport/dist/index.js', import.meta.url));
@@ -125,7 +126,7 @@ describe('vite build — the Service Worker is a self-contained bundle', () => {
 
   it('§6.4 no emitted artifact keeps the build token, and the SW carries the real id', () => {
     for (const file of output) {
-      expect(textOf(file)).not.toContain('__FUDIC_BUILD__');
+      expect(textOf(file)).not.toContain(BUILD_TOKEN);
     }
     // The same id the manifest declares: they name the same caches.
     const id = idOf(output);
