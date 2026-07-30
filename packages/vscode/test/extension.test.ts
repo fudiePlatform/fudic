@@ -9,10 +9,10 @@
  */
 
 import { join } from 'node:path';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { activate, createClient, deactivate } from '../src/extension.js';
 import { LanguageClient } from './_languageclient-stub.js';
-import { reset, state } from './_vscode-stub.js';
+import { focusEditor, reset, state } from './_vscode-stub.js';
 import type { ExtensionContext, OutputChannel } from 'vscode';
 import type { ClientLaunch } from '../src/ports.js';
 
@@ -35,7 +35,7 @@ describe('activate', () => {
     const client = LanguageClient.created[0];
     expect(client?.id).toBe('fudic');
     expect(client?.started).toBe(1);
-    expect(ctx.subscriptions).toHaveLength(1);
+    expect(ctx.subscriptions).toHaveLength(4);
   });
 
   it('points the server at the bundled bundle and watches the three globs', async () => {
@@ -56,9 +56,59 @@ describe('activate', () => {
   });
 
   it('comes up even when the server refuses to start', async () => {
+    // The adapter's clock is the real `setTimeout`, so the supervisor's backoff is faked
+    // here rather than waited out — this is the one place the two meet.
+    vi.useFakeTimers();
     LanguageClient.failNextStart = true;
 
-    await expect(activate(context())).resolves.toBeUndefined();
+    const activation = activate(context());
+    await vi.runAllTimersAsync();
+
+    await expect(activation).resolves.toBeUndefined();
+    expect(LanguageClient.created[0]?.started).toBe(2);
+    vi.useRealTimers();
+  });
+});
+
+describe('the status bar', () => {
+  it('shows the state of a .fud that was already open at activation', async () => {
+    // The editor open when the extension wakes never fires the change event, so this is the
+    // path a cold start actually takes — and the one that shows nothing if it is forgotten.
+    state.activeEditor = { document: { languageId: 'fudic' } };
+    await activate(context());
+
+    expect(state.bar.visible).toBe(true);
+    expect(state.bar.text).toBe('Fudic ⚠');
+  });
+
+  it('follows the focus between languages', async () => {
+    await activate(context());
+
+    focusEditor({ document: { languageId: 'fudic' } });
+    expect(state.bar.visible).toBe(true);
+
+    focusEditor({ document: { languageId: 'markdown' } });
+    expect(state.bar.visible).toBe(false);
+
+    focusEditor(undefined);
+    expect(state.bar.visible).toBe(false);
+  });
+
+  it('ignores focus changes that arrive without a session', async () => {
+    // The listener is registered before the server is started and outlives deactivation, so
+    // a tab switch in either window must not throw inside the event handler.
+    await activate(context());
+    await deactivate();
+
+    expect(() => focusEditor({ document: { languageId: 'fudic' } })).not.toThrow();
+  });
+
+  it('opens the output channel when clicked', async () => {
+    await activate(context());
+
+    expect(state.bar.command).toBe('fudic.showOutput');
+    state.commandHandlers.get('fudic.showOutput')?.();
+    expect(state.outputShown).toBe(1);
   });
 });
 

@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-25 — Extensión de VS Code](./SDD-25-extension-vscode.md)
 > **Paquete:** `fudic-vscode` · **Rama:** `feat/sdd-25-extension-vscode`
-> **Progreso:** 22 / 34 — fases 0–3 hechas.
+> **Progreso:** 25 / 34 — fases 0–4 hechas.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Los ficheros son relativos a `packages/vscode/` salvo cuando se diga
@@ -212,15 +212,15 @@ de Pedro; los cuatro últimos son elecciones que las tareas ya asumen.
 
 ## Fase 4 — Estado visible y resiliencia (3)
 
-- [ ] **23. Barra de estado.**
+- [x] **23. Barra de estado.**
       Crear `src/status.ts`: los cuatro estados de §4.4 (`Fudic ✓ ⟳ ⚠ ✕`), visible **solo**
       con un `.fud` activo, y click → canal de salida. Un fallo silencioso es indistinguible
       de un LSP lento; esto convierte «no me funciona» en un dato.
-- [ ] **24. Supervisión del servidor.**
+- [x] **24. Supervisión del servidor.**
       Crear `src/supervisor.ts`: tres reintentos con retroceso exponencial y, después,
       `Fudic ✕` más oferta de reinicio manual. **No se reintenta en bucle.** El reloj se
       inyecta: un test que espera de verdad no es un test.
-- [ ] **25. Tests de estado y supervisión.**
+- [x] **25. Tests de estado y supervisión.**
       Crear `test/status.test.ts` y `test/supervisor.test.ts`: transición entre los cuatro
       estados, ocultarse al cambiar a un fichero que no es `.fud`, exactamente tres
       reintentos con sus esperas, y que tras el tercero el reinicio manual sigue disponible

@@ -14,10 +14,13 @@ import { existsSync } from 'node:fs';
 import * as vscode from 'vscode';
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node';
 import { activateFudic, type FudicSession } from './activate.js';
-import { bundledServerPath, folderPaths, vscodeTsdkPath } from './vscode-shape.js';
+import { bundledServerPath, folderPaths, languageOf, vscodeTsdkPath } from './vscode-shape.js';
 import type { ClientLaunch, LanguageClientPort } from './ports.js';
 
 let session: FudicSession | undefined;
+
+/** The command behind the status bar item. Not contributed: it is not a user command. */
+const SHOW_OUTPUT = 'fudic.showOutput';
 
 /**
  * Exported so the narrowing below is reachable from a test.
@@ -64,7 +67,17 @@ export const createClient = (
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const output = vscode.window.createOutputChannel('Fudic');
-  context.subscriptions.push(output);
+  const bar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+  bar.command = SHOW_OUTPUT;
+
+  context.subscriptions.push(
+    output,
+    bar,
+    vscode.commands.registerCommand(SHOW_OUTPUT, () => output.show()),
+    vscode.window.onDidChangeActiveTextEditor((editor) =>
+      session?.status.setActiveLanguage(languageOf(editor)),
+    ),
+  );
 
   session = await activateFudic({
     config: { get: (id) => vscode.workspace.getConfiguration().get(id) },
@@ -73,9 +86,25 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     notifications: { warn: (message) => void vscode.window.showWarningMessage(message) },
     logger: { info: (message) => output.appendLine(message) },
     createClient: (launch) => createClient(launch, output),
+    statusBar: {
+      setText: (text) => {
+        bar.text = text;
+      },
+      setTooltip: (tooltip) => {
+        bar.tooltip = tooltip;
+      },
+      show: () => bar.show(),
+      hide: () => bar.hide(),
+    },
+    delay: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     bundledServerPath: bundledServerPath(context.extensionPath),
     vscodeTsdk: vscodeTsdkPath(vscode.env.appRoot),
   });
+
+  // The editor that is already open when the extension activates never fires the change
+  // event, so the first state has to be pushed by hand — otherwise opening a `.fud` from a
+  // cold start shows nothing at all in the status bar.
+  session.status.setActiveLanguage(languageOf(vscode.window.activeTextEditor));
 }
 
 export async function deactivate(): Promise<void> {

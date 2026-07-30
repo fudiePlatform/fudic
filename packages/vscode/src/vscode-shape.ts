@@ -18,6 +18,15 @@ export interface FolderLike {
 export const folderPaths = (folders: readonly FolderLike[] | undefined): readonly string[] =>
   (folders ?? []).map((folder) => folder.uri.fsPath);
 
+/** The shape of `vscode.TextEditor`, reduced to what the status bar needs. */
+export interface EditorLike {
+  readonly document: { readonly languageId: string };
+}
+
+/** `window.activeTextEditor` is `undefined` whenever the focus is not on an editor. */
+export const languageOf = (editor: EditorLike | undefined): string | undefined =>
+  editor?.document.languageId;
+
 /** Where the bundled server sits inside the installed extension (§4.5). */
 export const bundledServerPath = (extensionPath: string): string =>
   join(extensionPath, 'dist', 'server.cjs');

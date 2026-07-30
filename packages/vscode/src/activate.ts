@@ -12,17 +12,21 @@
 
 import { buildClientLaunch } from './client-options.js';
 import { createOnce, type Once } from './once.js';
+import { createStatus, type Status } from './status.js';
 import { readSettings, type FudicSettings } from './settings.js';
 import { resolveServerPath, type ResolvedServer } from './server-path.js';
+import { RESTART_HINT, superviseStart } from './supervisor.js';
 import { degradedMessage, resolveTsdk, type ResolvedTsdk } from './tsdk.js';
 import type {
   ClientFactory,
   ClientLaunch,
   ConfigurationPort,
+  DelayPort,
   FileSystemPort,
   LanguageClientPort,
   LoggerPort,
   NotificationPort,
+  StatusBarPort,
   WorkspacePort,
 } from './ports.js';
 
@@ -33,6 +37,8 @@ export interface FudicHost {
   readonly notifications: NotificationPort;
   readonly logger: LoggerPort;
   readonly createClient: ClientFactory;
+  readonly statusBar: StatusBarPort;
+  readonly delay: DelayPort;
   /** The server shipped inside the `.vsix` (§4.5). */
   readonly bundledServerPath: string;
   /** The lib directory inside VS Code itself, when the adapter can locate it. */
@@ -45,8 +51,9 @@ export interface FudicSession {
   readonly server: ResolvedServer;
   readonly tsdk: ResolvedTsdk;
   readonly launch: ClientLaunch;
-  /** Whether the client is currently up. False after a failed start. */
+  /** Whether the client is currently up. False after three failed attempts. */
   readonly running: boolean;
+  readonly status: Status;
   /** Shared with the supervisor so a crash loop cannot repeat the degraded warning. */
   readonly warnOnce: Once;
 }
@@ -71,17 +78,20 @@ export const activateFudic = async (host: FudicHost): Promise<FudicSession> => {
 
   const launch = buildClientLaunch(settings, server.path, tsdk.path);
   const client = host.createClient(launch);
+  const status = createStatus(host.statusBar);
 
   // A server that will not start must not take the editor with it: TextMate colour and the
   // language configuration still work, the file is still editable, and the restart command
   // is still there. Reporting it and carrying on is the behaviour §5 asks for.
-  let running = true;
-  try {
-    await client.start();
-  } catch (error) {
-    running = false;
-    host.logger.info(`the language server failed to start: ${String(error)}`);
-  }
+  const running = await superviseStart({
+    start: () => client.start(),
+    onState: (state) => status.setState(state),
+    delay: host.delay,
+    log: (message) => host.logger.info(message),
+    offerRestart: () => host.notifications.warn(RESTART_HINT),
+  });
 
-  return { client, settings, server, tsdk, launch, running, warnOnce };
+  if (running) status.setState(tsdk.degraded ? 'degraded' : 'ready');
+
+  return { client, settings, server, tsdk, launch, running, status, warnOnce };
 };

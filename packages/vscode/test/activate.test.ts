@@ -18,6 +18,8 @@ interface Recording {
   readonly warnings: string[];
   readonly log: string[];
   readonly launches: ClientLaunch[];
+  readonly waits: number[];
+  readonly bar: { text: string; visible: boolean };
   readonly client: LanguageClientPort & { started: number; stopped: number };
 }
 
@@ -26,21 +28,25 @@ const hostWith = (
     settings?: Record<string, unknown>;
     present?: readonly string[];
     folders?: readonly string[];
-    failStart?: boolean;
+    /** How many `start()` calls reject before one succeeds. */
+    failures?: number;
   } = {},
 ): { host: FudicHost; recording: Recording } => {
   const settings = overrides.settings ?? {};
   const present = overrides.present ?? [join(PROJECT_TSDK, 'typescript.js')];
+  const failures = overrides.failures ?? 0;
   const warnings: string[] = [];
   const log: string[] = [];
   const launches: ClientLaunch[] = [];
+  const waits: number[] = [];
+  const bar = { text: '', visible: false };
 
   const client = {
     started: 0,
     stopped: 0,
     start: async () => {
       client.started += 1;
-      if (overrides.failStart === true) throw new Error('server unavailable');
+      if (client.started <= failures) throw new Error('server unavailable');
     },
     stop: async () => {
       client.stopped += 1;
@@ -58,11 +64,26 @@ const hostWith = (
       launches.push(launch);
       return client;
     },
+    statusBar: {
+      setText: (text) => {
+        bar.text = text;
+      },
+      setTooltip: () => undefined,
+      show: () => {
+        bar.visible = true;
+      },
+      hide: () => {
+        bar.visible = false;
+      },
+    },
+    delay: async (ms) => {
+      waits.push(ms);
+    },
     bundledServerPath: '/ext/dist/server.cjs',
     vscodeTsdk: null,
   };
 
-  return { host, recording: { warnings, log, launches, client } };
+  return { host, recording: { warnings, log, launches, waits, bar, client } };
 };
 
 describe('activateFudic', () => {
@@ -111,11 +132,30 @@ describe('activateFudic', () => {
   it('survives a server that will not start', async () => {
     // §5: the editor must not go down with the server. Colour and the language
     // configuration still work, and the restart command still exists.
-    const { host, recording } = hostWith({ failStart: true });
+    const { host, recording } = hostWith({ failures: Number.POSITIVE_INFINITY });
     const session = await activateFudic(host);
 
     expect(session.running).toBe(false);
-    expect(recording.log.some((line) => line.includes('failed to start'))).toBe(true);
+    expect(session.status.state).toBe('stopped');
+    expect(recording.log.some((line) => line.includes('failed'))).toBe(true);
+    expect(recording.warnings.some((w) => w.includes('Reiniciar'))).toBe(true);
+  });
+
+  it('retries a server that is slow to come up, and settles on ready', async () => {
+    const { host, recording } = hostWith({ failures: 2 });
+    const session = await activateFudic(host);
+
+    expect(session.running).toBe(true);
+    expect(session.status.state).toBe('ready');
+    expect(recording.waits).toEqual([1000, 2000]);
+  });
+
+  it('settles on degraded rather than ready when the TypeScript is not the project’s', async () => {
+    // The status bar is the only place this is visible, and it is the difference between
+    // "my types are wrong" and "my types are someone else's".
+    const { host } = hostWith({ present: [] });
+
+    expect((await activateFudic(host)).status.state).toBe('degraded');
   });
 
   it('reads typescript.tsdk from the same configuration as its own settings', async () => {

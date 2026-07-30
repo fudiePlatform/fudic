@@ -36,6 +36,17 @@ export interface LoggerPort {
   info(message: string): void;
 }
 
+/** The status bar item of §4.4, reduced to the four things done to it. */
+export interface StatusBarPort {
+  setText(text: string): void;
+  setTooltip(text: string): void;
+  show(): void;
+  hide(): void;
+}
+
+/** The injected clock. Nothing in this package sleeps against the real one in a test. */
+export type DelayPort = (ms: number) => Promise<void>;
+
 /** What the client is asked to launch. Everything here is already resolved. */
 export interface ClientLaunch {
   readonly serverPath: string;
