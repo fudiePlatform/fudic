@@ -374,6 +374,12 @@ El bootstrap del Web Worker (`fudic-ww.js`) **desaparece**.
 
 ### 4.1. Las tres restricciones que gobiernan el diseño
 
+> **Corregido por [BUG-03](./bugs/BUG-03-chunks-compartidos-sw.md).** A las tres se les
+> suma una cuarta regla, del mismo rango: **un realm con su propio cargador tiene su propio
+> bundle**. El SW se emitía como chunk del mismo output que `fudic-main`, así que el code
+> splitting les daba un chunk compartido bajo `/assets/`: una URL con dos cargadores que no
+> se conocen. `dist/fudic-sw.js` es hoy autocontenido, sin un solo import.
+
 Medidas en Chromium 151 y WebKit 26.5. No se rediscuten; se citan aquí para que esta spec
 sea autocontenida.
 
@@ -395,6 +401,11 @@ golpe en el `install`), **render en el SW** y **CSP propia para `/sw.js`**.
 registra el handler de `fetch`**, y la app degrada a servidor/SSG en vez de romperse.
 
 ### 4.2. El manifest v2 — el contrato entre compilador, servidor y SW
+
+> **Corregido por [BUG-02](./bugs/BUG-02-html-por-ruta.md).** El record **ya no lleva
+> `html`**. El HTML prerenderizado es un fichero del edge y se agota en la primera visita;
+> quien lo sirve lo localiza por convención (`htmlPathFor`), nunca por el manifest. Nombrarlo
+> aquí convertía al router en una caché de documentos por ruta y desactivaba el render.
 
 Lo emite el plugin; lo leen el servidor (dev/preview y, en el futuro, el adaptador de
 producción) y el SW. **Nadie más escribe rutas.**
@@ -509,6 +520,12 @@ pasan a ser información redundante), ni el emit.
 
 ### 4.4. El router
 
+> **Corregido por [BUG-02](./bugs/BUG-02-html-por-ruta.md).** La decisión **no mira `mode`,
+> mira `chunk`**: `ssr` es la única etiqueta que es decisión de runtime, y una `ssg` se
+> comporta como una `sw`. La clave de la caché de páginas es la **URL de navegación**, y
+> `pages` solo contiene renders (`page.cache: 'persist'`), nunca descargas. El nonce se
+> aplica **al servir**, no al renderizar: un nonce reutilizado no es un nonce.
+
 #### 4.4.1. Todo lo necesario para decidir vive en memoria
 
 `respondWith()` solo puede llamarse durante el dispatch del evento: la decisión de
@@ -601,6 +618,20 @@ endpoint.
 
 ### 4.6. Reglas de carga — no negociables
 
+> **Corregido por [BUG-01](./bugs/BUG-01-shell-sin-politica.md),
+> [BUG-02](./bugs/BUG-02-html-por-ruta.md) y [BUG-04](./bugs/BUG-04-clave-de-cache.md).**
+> Tres reglas más, cada una con su regresión real detrás:
+>
+> - **Lo que se precachea, se sirve.** Ninguna URL entra en `shell-<build>` sin quedar
+>   registrada como servible desde ahí. Una caché de solo escritura es un bug por
+>   construcción, y `shell-<build>` lo fue.
+> - **`warm` calienta chunks, nunca documentos.** Su segunda mitad descargaba el `.html` de
+>   la ruta, lo que producía dos peticiones de documento en la primera carga.
+> - **La clave de un `Store` es la URL, y nada más** (§4.6.3). El `Vary` de la respuesta
+>   almacenada no se consulta: `ignoreVary: true` en toda lectura y todo borrado. Sin eso,
+>   una entrada escrita por `cache.add` no la encontraba la petición real de la página y un
+>   `cache-first` se comportaba como `network-first` sin decirlo.
+
 Cada una tiene una regresión real detrás.
 
 1. **El `install` precachea el shell y nada más.** Ni un chunk de ruta. Con 100 rutas,
@@ -636,6 +667,18 @@ Las siguientes páginas de `/blog/:slug` no piden nada más que su JSON de datos
 TTL no ha vencido, ni eso.
 
 ### 4.7. `sw.json` — configuración de la aplicación
+
+> **Corregido por [BUG-01](./bugs/BUG-01-shell-sin-politica.md) y
+> [BUG-04](./bugs/BUG-04-clave-de-cache.md).** El `shell` **tiene política**: se sirve por
+> identidad —URLs exactas, evaluadas antes que las clases de recurso— con `cache-first` y
+> `ttl: null`, y no es configurable (el nombre de caché lleva el build id, así que dentro de
+> un build el shell es inmutable por construcción). Una entrada de `shell` que el build no
+> produce emite **`FUD0391`** como warning de Vite.
+>
+> Y una regla que el desarrollador debe conocer al declarar `resources`: **si una respuesta
+> depende de una cabecera de la petición, ese eje va en la URL**. El framework no negocia
+> contenido y no va a negociar a medias; una clase de recurso sobre un endpoint que
+> negocia (`Vary: Accept-Language`, por ejemplo) es un error de la aplicación.
 
 Lo escribe el desarrollador, en la raíz del proyecto. Define **el shell y las políticas de
 cache por clase de recurso**. No define rutas: eso es de cada página (§4.8).
@@ -751,6 +794,12 @@ Tres realms, independientes (verificado en las dos direcciones):
    una violación de CSP en consola. Salió en la verificación en navegador.
 
 ### 4.10. Build id, invalidación y versión
+
+> **Corregido por [BUG-03](./bugs/BUG-03-chunks-compartidos-sw.md).** El id hashea el
+> **código** del Service Worker, no su nombre de fichero. `fudic-sw.js` tiene nombre fijo
+> sin hash y, desde que el runtime va bundleado dentro en vez de compartido bajo `/assets/`,
+> un cambio en `@fudic/transport` no mueve ningún nombre: un id derivado de nombres no
+> cambiaría nunca, y un navegador que no ve un SW nuevo no purga las cachés viejas.
 
 - El plugin calcula `build` (hash corto del contenido del bundle) y lo inyecta tanto en el
   manifest como en el texto de `fudic-sw.js`. Como el contenido del SW cambia en cada

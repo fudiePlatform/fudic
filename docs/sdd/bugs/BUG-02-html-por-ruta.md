@@ -1,6 +1,6 @@
 # BUG-02 — El router cachea HTML por ruta en lugar de renderizar
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Corrige:** [SDD-20 — Render en el Service Worker](../SDD-20-render-sw.md) §4.2, §4.4, §4.6
 > **Paquetes:** `@fudic/transport` · `@fudic/vite`
 > **Rama sugerida:** `fix/bug-02-render-not-html`

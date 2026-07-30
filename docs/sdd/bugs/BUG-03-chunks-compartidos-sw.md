@@ -1,6 +1,6 @@
 # BUG-03 — Chunk servido desde caché y pedido a red a la vez
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Corrige:** [SDD-20 — Render en el Service Worker](../SDD-20-render-sw.md) §4.1, §4.10
 > **Paquete:** `@fudic/vite`
 > **Rama sugerida:** `fix/bug-03-sw-self-contained`

@@ -1,6 +1,6 @@
 # BUG-01 — El shell precacheado nunca se sirve desde caché
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Corrige:** [SDD-20 — Render en el Service Worker](../SDD-20-render-sw.md) §4.6.1, §4.7
 > **Paquetes:** `@fudic/transport` · `@fudic/vite`
 > **Rama sugerida:** `fix/bug-01-shell-policy`
