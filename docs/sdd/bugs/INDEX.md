@@ -61,6 +61,7 @@ Las siete secciones del SDD, reinterpretadas para un defecto:
 | [BUG-06](./BUG-06-minify-no-heredado.md) | Los builds anidados ignoran el `build.minify` del host | SDD-20 §4.1, §4.3 · BUG-03 §7 | `vite` | `Listo` |
 | [BUG-07](./BUG-07-html-sin-minificar.md) | Ningún HTML emitido pasa por minificación | SDD-19 §4.4 | `compiler` | `Listo` |
 | [BUG-08](./BUG-08-css-verbatim.md) | El CSS de componente nunca se minifica, en ninguna salida | SDD-15 · SDD-09 | `compiler` | `Listo` |
+| [BUG-09](./BUG-09-frontera-servidor.md) | El código y el fuente de `@server` se publican al cliente | SDD-19 §4.3, §4.6 · SDD-20 §4.5 | `vite` · `compiler` | `Listo` |
 
 ## Grafo de dependencias
 
@@ -80,6 +81,11 @@ BUG-05  ──▶ BUG-06   la misma causa (`configFile: false` sin nada reenviad
 
 BUG-07 ──┬─ los dos son minificación propia en el emit del compilador y no tocan
 BUG-08 ──┘  `@fudic/vite`: pueden ir en paralelo a BUG-05/06, o entre ellos.
+
+BUG-09  destapado por BUG-05: los mapas del ejemplo hicieron visible que el `.fud`
+        viaja entero en `sourcesContent` — y al mirar, que el wrapper del edge ya
+        publicaba el CÓDIGO de `@server` desde mucho antes. Va primero: es el
+        único de la tanda que es un problema de seguridad y no de tamaño.
 ```
 
 `BUG-03` puede ir en paralelo en su propio worktree: no comparte ni un fichero con los
