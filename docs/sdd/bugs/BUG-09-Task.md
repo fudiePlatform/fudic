@@ -3,7 +3,7 @@
 > **BUG:** [BUG-09 — El código y el fuente de `@server` se publican al cliente](./BUG-09-frontera-servidor.md)
 > **Paquetes:** `@fudic/vite` · `@fudic/compiler` · **Rama:** worktree `fix-build-output`
 > **Depende de:** [BUG-05](./BUG-05-Task.md) en `Hecho`
-> **Progreso:** 7 / 11
+> **Progreso:** 11 / 11
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Las rutas son
 relativas a la raíz del repo.
@@ -49,20 +49,20 @@ revés, B pasaría en verde sobre un `dist/` que sigue publicando el código.
 
 ## Fase 3 — Vía B: el fuente redactado (2)
 
-- [ ] **8. `redactServerRegions`.**
+- [x] **8. `redactServerRegions`.**
       En `@fudic/compiler`: sustituir cada región `@server` por espacios **carácter a
       carácter**, conservando los saltos de línea (§4.3). Misma longitud, mismas líneas — es
       lo que mantiene válidos los `mappings` (§6.5).
-- [ ] **9. `buildMap` lo usa.**
+- [x] **9. `buildMap` lo usa.**
       `packages/vite/src/transform.ts:65`: pasar el fuente redactado como `sourceContent`.
       Verde en 3, y el test posicional de BUG-05 §6.7 **tiene que seguir verde** (§6.6).
 
 ## Fase 4 — Que no se haya roto nada (2)
 
-- [ ] **10. El prerender y el resto, intactos.**
+- [x] **10. El prerender y el resto, intactos.**
       Los `.html` prerenderizados salen byte a byte iguales que antes (§6.8), y las
       regresiones de BUG-03 §6.1 y BUG-05 §6.1-§6.3 siguen verdes (§6.9).
-- [ ] **11. Extremo a extremo.**
+- [x] **11. Extremo a extremo.**
       `pnpm build && grep -rl "listPosts" examples/basic/dist/` no devuelve nada (§6.10), y
       los 16 tests de `examples/basic/tests/` en verde. Comprobar además que
       `.fudic/` está en `.gitignore` y que `vite preview` sigue sirviendo una ruta no

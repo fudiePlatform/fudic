@@ -25,6 +25,7 @@ import {
   emitRouteModuleMapped,
   SourceMapBuilder,
   LineMap,
+  redactServerRegions,
   type Diagnostic,
   type DocumentGraph,
   type ResolveIo,
@@ -56,7 +57,14 @@ export function relativeSpecifier(fromDir: string, target: string): string {
   return rel.startsWith('.') ? rel : `./${rel}`;
 }
 
-/** Build a Source Map v3 for one emitted module from the emit's output↔source anchors. */
+/**
+ * Build a Source Map v3 for one emitted module from the emit's output↔source anchors.
+ *
+ * The `source` it receives is already REDACTED of its `@server` regions (BUG-09 §4.3): a
+ * map embeds the original file in `sourcesContent`, and the original file of a page holds
+ * server-only code. The redaction is character for character, so every offset the emit
+ * anchored still lands where it did — which is why the same text feeds `sourceLineMap`.
+ */
 function buildMap(id: string, source: string, out: EmitOutput): SourceMapV3 {
   const file = id.replace(/\\/gu, '/');
   const builder = new SourceMapBuilder({
@@ -99,7 +107,7 @@ export function transformFud(id: string, io: ResolveIo): TransformResult | null 
   const out = emitFor(id, graph, emitOptions);
   return {
     code: out.code,
-    map: buildMap(id, source, out),
+    map: buildMap(id, redactServerRegions(source, entry.code), out),
     missingAssets: out.missingAssets,
     diagnostics: resolved.diagnostics,
   };
