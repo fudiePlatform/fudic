@@ -10,7 +10,7 @@
  */
 
 import { parseFud } from './parse.js';
-import { layoutHrefOf, roleOf, tagOf, type FudRole } from './mode.js';
+import { layoutHrefOf, roleOf, sectionsOf, tagOf, type FudRole } from './mode.js';
 import { resolveFrom, toPosix } from './paths.js';
 import type { FileSystemScanner } from './types.js';
 
@@ -23,6 +23,14 @@ export interface IndexEntry {
   readonly tag: string;
   /** Its `<link rel="layout">` href, `''` when it declares none. */
   readonly layoutHref: string;
+  /**
+   * The sections a layout declares with `@RenderSection`, in source order. Empty for
+   * everything else.
+   *
+   * Kept here because the alternative is parsing the layout on every keystroke of
+   * `@section `: the file was already parsed to learn its role, so the names are free.
+   */
+  readonly sections: readonly string[];
 }
 
 export class WorkspaceIndex {
@@ -72,6 +80,7 @@ export class WorkspaceIndex {
       role: roleOf(document),
       tag: tagOf(document),
       layoutHref: layoutHrefOf(document),
+      sections: sectionsOf(document),
     });
   }
 

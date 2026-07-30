@@ -57,3 +57,31 @@ export {
   type FudicVirtualCode,
 } from './virtual-code.js';
 export { createFudicLanguagePlugin } from './language-plugin.js';
+export {
+  linksOf,
+  attributeOf,
+  attributeValueSpan,
+  hrefContextAt,
+  tagContextAt,
+  sectionContextAt,
+  type LinkRef,
+  type HrefContext,
+  type PartialName,
+} from './services/position.js';
+export {
+  hrefCompletions,
+  hrefDiagnostics,
+  unresolvedHrefs,
+  type HrefCompletion,
+  type UnresolvedHref,
+} from './services/href.js';
+export {
+  declaredTags,
+  documentLinks,
+  type TagCompletion,
+  type DocumentLinkRef,
+} from './services/tags.js';
+export { sectionCompletions } from './services/sections.js';
+export { reservedDollarDiagnostics } from './services/reserved-dollar.js';
+export { fudicDiagnostics, semanticDiagnostics } from './services/compiler-diagnostics.js';
+export { semanticTokens, keywordSpanAt, type FudicToken } from './services/semantic-tokens.js';

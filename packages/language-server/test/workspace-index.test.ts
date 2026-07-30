@@ -43,12 +43,14 @@ describe('scan', () => {
       role: 'component',
       tag: 'app-badge',
       layoutHref: '',
+      sections: [],
     });
     expect(index.get('/p/blog/[slug].fud')).toEqual({
       path: '/p/blog/[slug].fud',
       role: 'route',
       tag: '',
       layoutHref: '../layouts/_layout.fud',
+      sections: [],
     });
   });
 

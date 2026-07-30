@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-24 — Servidor de lenguaje](./SDD-24-language-server.md)
 > **Paquete:** `@fudic/language-server` · **Rama:** `feat/sdd-24-language-server`
-> **Progreso:** 19 / 36 — fases 0–4 hechas.
+> **Progreso:** 26 / 36 — fases 0–5 hechas.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Los ficheros son relativos a `packages/language-server/` salvo cuando
@@ -154,30 +154,35 @@ piden decisión de Pedro; los dos últimos son elecciones que las tareas ya asum
 
 ## Fase 5 — Services propios (6)
 
-- [ ] **20. Completado y validación de `href`.**
+- [x] **20. Completado y validación de `href`.**
       Crear `src/services/href.ts` (§4.2): lista los `.fud` del workspace en ruta relativa,
       filtrados por rol según `rel="component"` o `rel="layout"`; `href` que no resuelve →
       `FUD0460` sobre el valor del atributo, más code action de creación del fichero.
-- [ ] **21. Completado de tag y `documentLink`.**
+- [x] **21. Completado de tag y `documentLink`.**
       Crear `src/services/tags.ts`: tras `<`, los tags con `<link>` declarado en un grupo
       distinto de los nativos (criterio §6.4); `documentLink` sobre el `href` de cada `<link>`.
-- [ ] **22. Completado de sección.** *(suspendida — ver nota 2)*
+- [x] **22. Completado de sección.** *(el completado, hecho; el diagnóstico sigue suspendido — nota 2)*
       Crear `src/services/sections.ts`: tras `@section `, los nombres de `@RenderSection` del
       layout resuelto (criterio §6.6). El **diagnóstico** de sección ausente no se implementa
-      mientras contradiga SDD-21 §4.2.
-- [ ] **23. Namespace `$` reservado.**
+      mientras contradiga SDD-21 §4.2. `IndexEntry` gana `sections`: el layout ya se parseó para
+      saber su rol, así que los nombres salen gratis y el completado no cuesta un parseo.
+- [x] **23. Namespace `$` reservado.**
       Crear `src/services/reserved-dollar.ts`: `FUD0461` sobre nodos `Identifier` de Oxc en las
       regiones `@client` / `@server` — declaración o referencia libre. Nunca sobre texto:
       `foo$` y `obj.$bar` son válidos.
-- [ ] **24. Reenvío de diagnósticos del compilador.**
+- [x] **24. Reenvío de diagnósticos del compilador.**
       Crear `src/services/compiler-diagnostics.ts`: los de parseo y los de `analyze()` (SDD-12)
       tal cual, con su span, montando el `SemanticInput` desde la caché de la tarea 14.
-- [ ] **25. Tokens semánticos.**
+- [x] **25. Tokens semánticos.**
       Crear `src/services/semantic-tokens.ts`: recorrido del AST que emite los cuatro tipos
       propios de §4.3; un tag resuelto a `.fud` es `fudComponentTag`, uno nativo no.
-- [ ] **26. Tests de los services propios.**
+- [x] **26. Tests de los services propios.**
       Crear `test/services/*.test.ts`: uno por service, contra el AST y el índice, sin conexión
-      LSP de por medio — la integración es la fase 7.
+      LSP de por medio — la integración es la fase 7. Toda la lógica es **pura** y devuelve
+      spans; el envoltorio `LanguageServicePlugin` de Volar y la conversión a posiciones LSP
+      caen en la fase 6, donde vive la conexión. Añadido `src/services/position.ts`: qué hay
+      bajo el cursor — `href` desde el AST, y `<`/`@section ` desde el texto, porque se teclean
+      *antes* de que haya nada que parsear.
 
 ## Fase 6 — Ensamblado del servidor (5)
 

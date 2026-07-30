@@ -39,6 +39,18 @@ export function tagOf(document: StructuredDocument): string {
 }
 
 /**
+ * The sections a layout declares with `@RenderSection`, in source order.
+ *
+ * Only a layout declares any: a route FILLS sections, it does not declare them. A directive
+ * whose argument was not an identifier (FUD0433) carries an empty name and is dropped — it
+ * would complete to nothing.
+ */
+export function sectionsOf(document: StructuredDocument): readonly string[] {
+  if (document.type !== 'layout-document') return [];
+  return document.renderSections.map((section) => section.name).filter((name) => name !== '');
+}
+
+/**
  * The `href` of this file's `<link rel="layout">`, or `''` when it declares none.
  *
  * Both a route and a nested layout may declare one (decisions 81, 87); the empty string is
