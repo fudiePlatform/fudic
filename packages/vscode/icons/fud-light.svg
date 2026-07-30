@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="Fudic">
+  <!-- Two boxes: the host element and the shadow root behind it. The whole language is
+       that relationship, and it is the one thing that still reads at 16 pixels. -->
+  <rect x="12" y="3" width="17" height="17" rx="4" fill="#1f2933" opacity="0.3"/>
+  <rect x="3" y="12" width="17" height="17" rx="4" fill="#1f2933"/>
+  <!-- The mark of a construct that is not markup: the `@`. -->
+  <circle cx="11.5" cy="20.5" r="3.4" fill="none" stroke="#ffffff" stroke-width="1.8"/>
+  <path d="M14.9 20.5v1.9a2 2 0 0 0 2 -2" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>
+</svg>

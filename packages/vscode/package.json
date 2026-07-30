@@ -31,6 +31,105 @@
     "vscode": "^1.90.0"
   },
   "main": "./dist/extension.cjs",
+  "activationEvents": [
+    "onLanguage:fudic",
+    "workspaceContains:**/*.fud"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "fudic",
+        "aliases": [
+          "Fudic",
+          "fud"
+        ],
+        "extensions": [
+          ".fud"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/fud-light.svg",
+          "dark": "./icons/fud-dark.svg"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "fudic",
+        "scopeName": "text.html.fudic",
+        "path": "./syntaxes/fudic.tmLanguage.json",
+        "embeddedLanguages": {
+          "source.ts": "typescript",
+          "source.css": "css",
+          "text.html": "html"
+        }
+      }
+    ],
+    "commands": [
+      {
+        "command": "fudic.restartServer",
+        "title": "Fudic: Reiniciar el servidor de lenguaje"
+      },
+      {
+        "command": "fudic.showVirtualFiles",
+        "title": "Fudic: Ver ficheros virtuales"
+      },
+      {
+        "command": "fudic.showRegistry",
+        "title": "Fudic: Ver registro de componentes"
+      },
+      {
+        "command": "fudic.formatDocument",
+        "title": "Fudic: Formatear documento"
+      }
+    ],
+    "configuration": {
+      "title": "Fudic",
+      "properties": {
+        "fudic.server.path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Ruta a un servidor de lenguaje propio, para desarrollarlo sin reinstalar la extensión. Vacío usa el servidor empaquetado."
+        },
+        "fudic.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Traza de la comunicación con el servidor de lenguaje."
+        },
+        "fudic.templateDiagnostics": {
+          "type": "boolean",
+          "default": true,
+          "description": "Comprobar la plantilla contra los tipos declarados en @code."
+        },
+        "fudic.format.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Permitir que la extensión formatee ficheros .fud."
+        },
+        "fudic.exposeVirtualFiles": {
+          "type": "boolean",
+          "default": false,
+          "description": "Exponer los ficheros virtuales que el servidor entrega a TypeScript. Solo para depurar."
+        }
+      }
+    },
+    "configurationDefaults": {
+      "[fudic]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.defaultFormatter": "fudic.fudic-vscode",
+        "editor.suggest.insertMode": "replace"
+      }
+    }
+  },
   "scripts": {
     "build": "rolldown -c",
     "typecheck": "tsc --noEmit",

@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-25 — Extensión de VS Code](./SDD-25-extension-vscode.md)
 > **Paquete:** `fudic-vscode` · **Rama:** `feat/sdd-25-extension-vscode`
-> **Progreso:** 4 / 34 — fase 0 hecha.
+> **Progreso:** 8 / 34 — fases 0–1 hechas.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Los ficheros son relativos a `packages/vscode/` salvo cuando se diga
@@ -93,23 +93,33 @@ de Pedro; los cuatro últimos son elecciones que las tareas ya asumen.
 
 ## Fase 1 — Contribuciones declarativas (4)
 
-- [ ] **5. Lenguaje e iconos.**
+- [x] **5. Lenguaje e iconos.**
       Añadir a `package.json` el bloque `languages` de §3.1 (`id: "fudic"`, alias, `.fud`,
       `configuration`, `icon`) y crear `icons/fud-light.svg` / `icons/fud-dark.svg`. Es el
       criterio §6.1 en su parte declarativa.
-- [ ] **6. Configuración del lenguaje.**
+- [x] **6. Configuración del lenguaje.**
       Crear `language-configuration.json` (§3.3): comentario de bloque `@* *@` y **ningún**
       `lineComment` — ofrecer `//` haría que `Ctrl+/` genere ficheros que no compilan;
       pares y autocierre `{} () [] "" '' `` ` ``; autocierre de tags y salto entre `>` y `</`;
       `folding` por indentación más marcadores para `@code`, `@server`, `@client`, `@if` y
       `@foreach`; `wordPattern` que no parte en `@` ni en `:`, para que doble clic seleccione
-      `@foreach` y `class:foo` enteros.
-- [ ] **7. Gramática, ajustes, defaults y comandos.**
+      `@foreach` y `class:foo` enteros. Dos elecciones que el SDD no fija: el marcador de
+      cierre es `^\s*\}` y no `^\s*\}\s*$`, para que `} else {` **cierre** el `@if` — si
+      abriera, el pliegue del `@if` se comería el resto del fichero; y el autocierre de tags
+      es lo único de §3.3 que un `language-configuration.json` **no** puede expresar (VS Code
+      lo implementa en la extensión de HTML, no de forma declarativa), así que se cubre con
+      `onEnterRules` — el salto inteligente entre `>` y `</` — y se anota.
+- [x] **7. Gramática, ajustes, defaults y comandos.**
       Añadir a `package.json` el bloque `grammars` de §3.1 (`text.html.fudic` con los tres
       `embeddedLanguages`), los cinco ajustes de §3.2 con sus defaults, el
       `configurationDefaults` de `[fudic]` y los cuatro `commands`. Cinco ajustes y no más:
-      cada uno es una rama de comportamiento que hay que probar.
-- [ ] **8. Test del manifiesto.**
+      cada uno es una rama de comportamiento que hay que probar. Incluye el
+      `syntaxes/fudic.tmLanguage.json` **esqueleto** por la misma razón que la tarea 3 creó
+      el config de Rolldown: un manifiesto que declara una gramática inexistente es un
+      manifiesto incoherente. La tarea 9 le pone contenido.
+      La UI contribuida va en **español**, como los títulos que §3.1 fija literalmente; el
+      código, los comentarios y los tests siguen en inglés.
+- [x] **8. Test del manifiesto.**
       Crear `test/manifest.test.ts`: lee `package.json` y `language-configuration.json` y
       afirma id y extensión del lenguaje, `scopeName` y los tres `embeddedLanguages`, los
       cinco ajustes con sus defaults exactos, los cuatro comandos, que `defaultFormatter`
