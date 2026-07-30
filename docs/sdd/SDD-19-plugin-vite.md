@@ -261,6 +261,22 @@ lo resuelve `mapOffset` (SDD-11) **antes** de `addMapping` (SDD-13 §Composició
 map por el resto de su pipeline. Los `Diagnostic` del compilador se elevan a errores/avisos de
 Vite convirtiendo su `span` en `Range` con `rangeOf(lineMap, span)`.
 
+**Los dos builds anidados también** ([BUG-05](./bugs/BUG-05-sourcemaps-builds-anidados.md)). El
+del Service Worker y el del link pass corren con `configFile: false`, así que heredan lo que se
+les pase explícitamente y nada más: `NestedOutputOptions` es esa costura, y `build.sourcemap` va
+por ella. Dos consecuencias que no son opcionales:
+
+- El plugin del link pass devuelve `{ code, map }` de `transformFud`, no solo el `code`. Sin eso
+  el mapa del chunk encadena sobre el **módulo generado** y nunca menciona el `.fud`: válido y
+  falso.
+- Su salida se emite como **asset**, así que el `.map` y el `//# sourceMappingURL=` los escribe el
+  plugin (`emitPlan`), no Vite. Los cuatro modos —`false`, `true`, `'hidden'`, `'inline'`— se
+  componen ahí a partir del mapa plano que producen los builds anidados.
+
+Y una invariante de longitud que sostiene lo anterior: `BUILD_TOKEN` mide lo que mide el build id,
+porque su sustitución corre sobre el código ya generado y un cambio de longitud desplazaría cada
+columna posterior.
+
 ### 4.7. El manifest y el `match` por patrón (amplía SDD-16)
 
 - El plugin emite el `RouteManifestFile` (§3.4) en una **URL absoluta única** (`manifestUrl`), que

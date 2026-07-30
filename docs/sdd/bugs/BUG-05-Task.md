@@ -82,16 +82,18 @@ generado, no al `.fud`—, y un mapa falso pasa cualquier test que solo comprueb
 
 ## Cierre del BUG
 
-- [ ] `pnpm typecheck`, `pnpm test` y `pnpm build` en verde.
-- [ ] `swbuild.ts` sigue al **100 %** en las cuatro métricas; `link.ts` y `plugin.ts` no
+- [x] `pnpm typecheck`, `pnpm test` y `pnpm build` en verde. (`language-server` tiene un test
+      de cancelación intermitente, §6.14, ajeno a esta rama: verde al repetirlo, y esta rama
+      no toca ese paquete.)
+- [x] `swbuild.ts` sigue al **100 %** en las cuatro métricas; `link.ts` y `plugin.ts` no
       bajan su cobertura de ramas respecto a `main`.
-- [ ] Extremo a extremo (§6.10): `pnpm --filter @fudic/example-basic exec vite build --sourcemap`
+- [x] Extremo a extremo (§6.10): `pnpm --filter @fudic/example-basic exec vite build --sourcemap`
       produce `dist/fudic-sw.js.map` y siete `dist/sw/c/*.js.map`. Comprobar a mano **una**
-      vez en DevTools que el paso a paso del SW cae en el `.ts` de transport — es el síntoma
+      vez en DevTools que el paso a paso del SW cae en el `dist` de transport — es el síntoma
       original y ningún test unitario lo cubre del todo.
-- [ ] Regresión de BUG-03 §6.4 en verde: ningún artefacto con `__FUDIC_BUILD__`, id de 8
+- [x] Regresión de BUG-03 §6.4 en verde: ningún artefacto con `__FUDIC_BUILD__`, id de 8
       hexadecimales.
-- [ ] Marcar BUG-05 como `Hecho` en [INDEX.md](./INDEX.md) (tabla + registro de progreso).
-- [ ] Anotar en [SDD-19](../SDD-19-plugin-vite.md) §4.6 que los builds anidados heredan
+- [x] Marcar BUG-05 como `Hecho` en [INDEX.md](./INDEX.md) (tabla + registro de progreso).
+- [x] Anotar en [SDD-19](../SDD-19-plugin-vite.md) §4.6 que los builds anidados heredan
       `build.sourcemap` y que el mapa del link pass encadena hasta el `.fud`, con enlace a
       este BUG.

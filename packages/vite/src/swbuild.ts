@@ -119,7 +119,8 @@ export function swChunkOf(
   output: readonly OutputChunkLike[],
 ): { readonly code: string; readonly map?: string } {
   const entry = output.find((item) => item.type === 'chunk' && item.fileName === DEV_SW_URL);
+  const code = entry?.code ?? '';
   const map = serializeMap(entry?.map);
   // The field is omitted, not set to `undefined`: `exactOptionalPropertyTypes`.
-  return map === undefined ? { code: entry?.code ?? '' } : { code: entry?.code ?? '', map };
+  return map === undefined ? { code } : { code, map };
 }

@@ -27,6 +27,14 @@ describe('swChunkOf', () => {
     ).toEqual({ code: 'self.addEventListener()' });
   });
 
+  it('carries the chunk’s map when the build produced one (BUG-05 §3.3)', () => {
+    expect(
+      swChunkOf([
+        { type: 'chunk', fileName: 'fudic-sw.js', code: 'boot()', map: { version: 3 } },
+      ]),
+    ).toEqual({ code: 'boot()', map: '{"version":3}' });
+  });
+
   it('returns empty when the bundler produced no such chunk', () => {
     // Not reachable through `buildServiceWorker` — it pins `entryFileNames` — but the
     // shape is the bundler's, not ours, so the fallback is a decision and not an
