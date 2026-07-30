@@ -43,7 +43,6 @@ data/posts.ts           # la "base de datos"; solo la ve el servidor
 sw.json                 # shell + políticas de cache. Sin este fichero NO hay Service Worker
 playwright.config.ts    # arnés E2E sobre el build real (`pnpm test:e2e`)
 tests/                  # tráfico de red y render, medidos en Chrome
-scripts/sw-check.mjs    # verificación en Chrome real por CDP (pnpm check:sw)
 vite.config.ts          # plugins: [fudic()] — y nada más
 ```
 
@@ -82,13 +81,16 @@ La primera navegación siempre la sirve el servidor (o el fichero prerenderizado
 la plantilla no esté caliente, el SW **no intercepta**, que es justo lo que evita duplicar
 la petición del documento.
 
-Para comprobarlo en un navegador de verdad:
+Para comprobarlo en un navegador de verdad, el arnés de `tests/` construye, levanta el
+preview y mide el tráfico real de Chrome —quién sirve cada respuesta en las cargas 1, 2 y
+3, y qué hay dentro de Cache Storage con sus claves:
 
 ```sh
-pnpm --filter @fudic/example-basic build
-pnpm --filter @fudic/example-basic preview   # http://localhost:4173
-pnpm --filter @fudic/example-basic check:sw  # 14 comprobaciones sobre Chrome, por CDP
+pnpm --filter @fudic/example-basic test:e2e   # vite build + playwright test
 ```
+
+Es lo que hizo visible [BUG-04](../../docs/sdd/bugs/BUG-04-clave-de-cache.md): un fallo que
+por inspección del código no se veía.
 
 ## Qué NO hay aquí
 
