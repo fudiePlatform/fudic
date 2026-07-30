@@ -41,6 +41,8 @@ components/             # componentes compartidos, FUERA de routes/
   app-badge.fud
 data/posts.ts           # la "base de datos"; solo la ve el servidor
 sw.json                 # shell + políticas de cache. Sin este fichero NO hay Service Worker
+playwright.config.ts    # arnés E2E sobre el build real (`pnpm test:e2e`)
+tests/                  # tráfico de red y render, medidos en Chrome
 scripts/sw-check.mjs    # verificación en Chrome real por CDP (pnpm check:sw)
 vite.config.ts          # plugins: [fudic()] — y nada más
 ```

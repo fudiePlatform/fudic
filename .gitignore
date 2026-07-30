@@ -12,6 +12,9 @@ out/
 
 # Test / coverage
 coverage/
+# Playwright run artifacts (traces, screenshots): regenerated on every run.
+test-results/
+playwright-report/
 
 # Forbidden lockfiles: pnpm is the only package manager (SDD-00 §3.3).
 # Only pnpm-lock.yaml is committed.
