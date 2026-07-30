@@ -42,7 +42,7 @@ export const fudUriOf = (editor: EditorLike | undefined): string | undefined =>
 
 /** Where the bundled server sits inside the installed extension (§4.5). */
 export const bundledServerPath = (extensionPath: string): string =>
-  join(extensionPath, 'dist', 'server.cjs');
+  join(extensionPath, 'dist', 'server.mjs');
 
 /** Where VS Code keeps the TypeScript it ships with — the last resort of §4.1. */
 export const vscodeTsdkPath = (appRoot: string): string =>

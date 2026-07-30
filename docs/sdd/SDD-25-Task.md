@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-25 — Extensión de VS Code](./SDD-25-extension-vscode.md)
 > **Paquete:** `fudic-vscode` · **Rama:** `feat/sdd-25-extension-vscode`
-> **Progreso:** 29 / 34 — fases 0–5 hechas.
+> **Progreso:** 32 / 34 — fases 0–6 hechas.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Los ficheros son relativos a `packages/vscode/` salvo cuando se diga
@@ -253,15 +253,15 @@ de Pedro; los cuatro últimos son elecciones que las tareas ya asumen.
 
 ## Fase 6 — Empaquetado (3)
 
-- [ ] **30. Bundle de la extensión.**
+- [x] **30. Bundle de la extensión.**
       Completar `rolldown.config.ts` (el mínimo lo creó la tarea 3): `dependencies` reales
       dentro del bundle, y comprobar que `dist/extension.cjs` carga bajo `require` con
       `vscode` doblado.
-- [ ] **31. Bundle del servidor.**
+- [x] **31. Bundle del servidor.**
       Añadir la segunda entrada: `@fudic/language-server` → `dist/server.cjs`, un único
       fichero (§4.5). Instalar la extensión no debe requerir instalar nada más — es el
       criterio §6.11 en su parte de construcción.
-- [ ] **32. Empaquetado del `.vsix` y su verificación.**
+- [x] **32. Empaquetado del `.vsix` y su verificación.**
       Crear `.vscodeignore`, el script `package` (`vsce package`) y `scripts/verify-vsix.ts`,
       que abre el `.vsix` producido y comprueba que dentro están la extensión, el servidor, la
       gramática, la configuración del lenguaje y los iconos. No es un test de Vitest: no debe

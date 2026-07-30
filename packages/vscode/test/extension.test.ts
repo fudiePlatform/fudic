@@ -46,7 +46,7 @@ describe('activate', () => {
     await activate(context());
 
     const options = LanguageClient.created[0]?.serverOptions as { run: { module: string } };
-    expect(options.run.module).toBe(join('/ext', 'dist', 'server.cjs'));
+    expect(options.run.module).toBe(join('/ext', 'dist', 'server.mjs'));
     expect(state.watchers).toEqual(['**/*.fud', '**/tsconfig*.json', '**/package.json']);
   });
 

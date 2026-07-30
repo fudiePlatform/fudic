@@ -7,6 +7,8 @@ node_modules/
 
 # Build / emit output
 dist/
+# Packaged VS Code extension: a build artefact of `pnpm --filter fudic-vscode package`.
+*.vsix
 out/
 *.tsbuildinfo
 

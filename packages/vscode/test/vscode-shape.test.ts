@@ -41,7 +41,7 @@ describe('folderPaths', () => {
 
 describe('paths inside the installation', () => {
   it('finds the bundled server next to the extension', () => {
-    expect(bundledServerPath('/ext')).toBe(join('/ext', 'dist', 'server.cjs'));
+    expect(bundledServerPath('/ext')).toBe(join('/ext', 'dist', 'server.mjs'));
   });
 
   it("finds VS Code's own TypeScript under the app root", () => {
