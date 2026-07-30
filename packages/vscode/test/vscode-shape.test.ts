@@ -4,7 +4,27 @@
 
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { bundledServerPath, folderPaths, vscodeTsdkPath } from '../src/vscode-shape.js';
+import { bundledServerPath, folderPaths, fudUriOf, vscodeTsdkPath } from '../src/vscode-shape.js';
+
+const editor = (languageId: string) => ({
+  document: { languageId, uri: { toString: () => 'file:///x.fud' } },
+});
+
+describe('fudUriOf', () => {
+  it('gives the URI of an active .fud', () => {
+    expect(fudUriOf(editor('fudic'))).toBe('file:///x.fud');
+  });
+
+  it('gives nothing for another language', () => {
+    // Asking the server for the virtual files of a `package.json` is not a smaller version
+    // of the right question; it is a different one.
+    expect(fudUriOf(editor('json'))).toBeUndefined();
+  });
+
+  it('gives nothing when there is no editor', () => {
+    expect(fudUriOf(undefined)).toBeUndefined();
+  });
+});
 
 describe('folderPaths', () => {
   it('reads an open workspace', () => {

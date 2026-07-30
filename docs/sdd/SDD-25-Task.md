@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-25 — Extensión de VS Code](./SDD-25-extension-vscode.md)
 > **Paquete:** `fudic-vscode` · **Rama:** `feat/sdd-25-extension-vscode`
-> **Progreso:** 25 / 34 — fases 0–4 hechas.
+> **Progreso:** 29 / 34 — fases 0–5 hechas.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Los ficheros son relativos a `packages/vscode/` salvo cuando se diga
@@ -228,19 +228,24 @@ de Pedro; los cuatro últimos son elecciones que las tareas ya asumen.
 
 ## Fase 5 — Comandos (4)
 
-- [ ] **26. `fudic.restartServer`.**
+- [x] **26. `fudic.restartServer`.**
+      Reiniciar **re-resuelve todo** (ajustes, servidor, `tsdk`), no solo vuelve a llamar a
+      `start()`. Es lo que §4.3 pide de verdad: las causas —dependencia recién instalada,
+      cambio de rama, `tsdk` distinto— cambian *las respuestas*, así que relanzar el mismo
+      `launch` no arreglaría ninguna. El `warnOnce` sobrevive al reinicio, para que un
+      servidor que cae tres veces no avise tres veces de lo mismo.
       Crear `src/commands/restart.ts`: para y relanza. Disponible **también** con el servidor
       caído — es la válvula de escape de §4.3, y una extensión sin ella se queda colgada sin
       salida cuando la invalidación falla.
-- [ ] **27. `fudic.showVirtualFiles`.**
+- [x] **27. `fudic.showVirtualFiles`.**
       Crear `src/commands/virtual-files.ts` y `src/virtual-doc-provider.ts`: petición
       `fudic/virtualFiles` sobre el fichero activo y un documento de **solo lectura** por
       virtual, con su `languageId`, tras un esquema propio (`fudic-virtual:`). Criterio §6.8.
-- [ ] **28. `fudic.showRegistry`.**
+- [x] **28. `fudic.showRegistry`.**
       Crear `src/commands/registry.ts`: `fudic/componentRegistry` volcado como tabla
       `tag → href → resuelto`. Diagnostica en un segundo el «por qué mi componente no
       completa».
-- [ ] **29. `fudic.formatDocument` y registro.**
+- [x] **29. `fudic.formatDocument` y registro.**
       Crear `src/commands/format.ts` —delega en el servidor (SDD-26) y respeta
       `fudic.format.enable`— y `src/commands/index.ts`, que registra los cuatro. Más
       `test/commands/*.test.ts` contra un cliente doble: cada comando con el servidor vivo y

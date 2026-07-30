@@ -18,14 +18,27 @@ export interface FolderLike {
 export const folderPaths = (folders: readonly FolderLike[] | undefined): readonly string[] =>
   (folders ?? []).map((folder) => folder.uri.fsPath);
 
-/** The shape of `vscode.TextEditor`, reduced to what the status bar needs. */
+/** The shape of `vscode.TextEditor`, reduced to what the client reads. */
 export interface EditorLike {
-  readonly document: { readonly languageId: string };
+  readonly document: {
+    readonly languageId: string;
+    readonly uri: { toString(): string };
+  };
 }
 
 /** `window.activeTextEditor` is `undefined` whenever the focus is not on an editor. */
 export const languageOf = (editor: EditorLike | undefined): string | undefined =>
   editor?.document.languageId;
+
+/**
+ * The URI of the active document when it is a `.fud`, and nothing otherwise.
+ *
+ * The commands that need one need it to *be* a `.fud`: asking the server for the virtual
+ * files of a `package.json` is not a smaller version of the right question, it is a
+ * different one.
+ */
+export const fudUriOf = (editor: EditorLike | undefined): string | undefined =>
+  editor?.document.languageId === 'fudic' ? editor.document.uri.toString() : undefined;
 
 /** Where the bundled server sits inside the installed extension (§4.5). */
 export const bundledServerPath = (extensionPath: string): string =>

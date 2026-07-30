@@ -1,5 +1,5 @@
 /**
- * Activation, as plain code (SDD-25 §4.1, §5).
+ * Activation, as plain code (SDD-25 §4.1, §4.6, §5).
  *
  * Everything the extension decides at startup happens here, over the ports: which server,
  * which TypeScript, what the client is launched with, and what the user is told when the
@@ -56,9 +56,29 @@ export interface FudicSession {
   readonly status: Status;
   /** Shared with the supervisor so a crash loop cannot repeat the degraded warning. */
   readonly warnOnce: Once;
+  /** Stops the old server and resolves everything again. Resolves to whether it came up. */
+  restart(): Promise<boolean>;
+  stop(): Promise<void>;
 }
 
-export const activateFudic = async (host: FudicHost): Promise<FudicSession> => {
+interface Boot {
+  readonly settings: FudicSettings;
+  readonly server: ResolvedServer;
+  readonly tsdk: ResolvedTsdk;
+  readonly launch: ClientLaunch;
+  readonly client: LanguageClientPort;
+  readonly running: boolean;
+}
+
+/**
+ * One full resolution: settings, server, tsdk, client, start.
+ *
+ * A restart re-runs *this*, not just `client.start()`. That is the whole point of §4.3: the
+ * causes are a dependency that was just installed, a branch that was just changed, a `tsdk`
+ * that moved — all of them things that change what the answers are, not just whether the
+ * process is alive. Restarting without re-resolving would relaunch the stale state.
+ */
+const boot = async (host: FudicHost, status: Status, warnOnce: Once): Promise<Boot> => {
   const settings = readSettings(host.config);
   const server = resolveServerPath(settings.serverPath, host.bundledServerPath, host.fs);
   const tsdk = resolveTsdk({
@@ -68,7 +88,6 @@ export const activateFudic = async (host: FudicHost): Promise<FudicSession> => {
     fs: host.fs,
   });
 
-  const warnOnce = createOnce();
   if (server.warning !== undefined) host.notifications.warn(server.warning);
   if (tsdk.degraded) warnOnce(() => host.notifications.warn(degradedMessage(tsdk.source)));
 
@@ -78,7 +97,6 @@ export const activateFudic = async (host: FudicHost): Promise<FudicSession> => {
 
   const launch = buildClientLaunch(settings, server.path, tsdk.path);
   const client = host.createClient(launch);
-  const status = createStatus(host.statusBar);
 
   // A server that will not start must not take the editor with it: TextMate colour and the
   // language configuration still work, the file is still editable, and the restart command
@@ -93,5 +111,57 @@ export const activateFudic = async (host: FudicHost): Promise<FudicSession> => {
 
   if (running) status.setState(tsdk.degraded ? 'degraded' : 'ready');
 
-  return { client, settings, server, tsdk, launch, running, status, warnOnce };
+  return { settings, server, tsdk, launch, client, running };
+};
+
+/**
+ * Stopping a server that may already be gone.
+ *
+ * `stop()` on a client whose process died rejects, and a restart that fails because the
+ * previous server was *already* dead is the exact case the restart command exists for.
+ */
+const stopQuietly = async (client: LanguageClientPort, host: FudicHost): Promise<void> => {
+  try {
+    await client.stop();
+  } catch (error) {
+    host.logger.info(`stopping the previous server failed, continuing: ${String(error)}`);
+  }
+};
+
+export const activateFudic = async (host: FudicHost): Promise<FudicSession> => {
+  const status = createStatus(host.statusBar);
+  const warnOnce = createOnce();
+  let current = await boot(host, status, warnOnce);
+
+  return {
+    get client() {
+      return current.client;
+    },
+    get settings() {
+      return current.settings;
+    },
+    get server() {
+      return current.server;
+    },
+    get tsdk() {
+      return current.tsdk;
+    },
+    get launch() {
+      return current.launch;
+    },
+    get running() {
+      return current.running;
+    },
+    status,
+    warnOnce,
+    restart: async () => {
+      await stopQuietly(current.client, host);
+      current = await boot(host, status, warnOnce);
+      return current.running;
+    },
+    stop: async () => {
+      await stopQuietly(current.client, host);
+      status.setState('stopped');
+    },
+  };
 };

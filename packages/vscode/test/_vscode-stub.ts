@@ -32,11 +32,25 @@ export interface StubState {
   editorListeners: ((editor: EditorStub | undefined) => void)[];
   activeEditor: EditorStub | undefined;
   outputShown: number;
+  /** Content providers registered by scheme. */
+  contentProviders: Map<string, { provideTextDocumentContent(uri: { toString(): string }): string }>;
+  /** Documents opened read-only, in order: `[uri, languageId]`. */
+  openedDocuments: [string, string][];
+  /** Commands run through `executeCommand`. */
+  executed: string[];
 }
 
 export interface EditorStub {
-  readonly document: { readonly languageId: string };
+  readonly document: {
+    readonly languageId: string;
+    readonly uri: { toString(): string };
+  };
 }
+
+/** Builds an editor stub the way `fudUriOf` expects to find one. */
+export const editorFor = (languageId: string, uri = 'file:///x.fud'): EditorStub => ({
+  document: { languageId, uri: { toString: () => uri } },
+});
 
 const emptyBar = () => ({ text: '', tooltip: '', visible: false, command: '' });
 
@@ -53,6 +67,9 @@ export const state: StubState = {
   editorListeners: [],
   activeEditor: undefined,
   outputShown: 0,
+  contentProviders: new Map(),
+  openedDocuments: [],
+  executed: [],
 };
 
 export const reset = (): void => {
@@ -68,6 +85,9 @@ export const reset = (): void => {
   state.editorListeners = [];
   state.activeEditor = undefined;
   state.outputShown = 0;
+  state.contentProviders = new Map();
+  state.openedDocuments = [];
+  state.executed = [];
 };
 
 /** Fires `onDidChangeActiveTextEditor`, as focusing another tab would. */
@@ -124,6 +144,7 @@ export const window = {
   get activeTextEditor() {
     return state.activeEditor;
   },
+  showTextDocument: (_document: unknown, _options: unknown) => Promise.resolve(undefined),
   showWarningMessage: (message: string) => {
     state.warnings.push(message);
     return Promise.resolve(undefined);
@@ -135,6 +156,21 @@ export const commands = {
     state.commandHandlers.set(id, handler);
     return { dispose: () => undefined };
   },
+  executeCommand: (id: string) => {
+    state.executed.push(id);
+    return Promise.resolve(undefined);
+  },
+};
+
+export const languages = {
+  setTextDocumentLanguage: (document: { uri: string }, languageId: string) => {
+    state.openedDocuments.push([document.uri, languageId]);
+    return Promise.resolve(document);
+  },
+};
+
+export const Uri = {
+  parse: (value: string) => ({ toString: () => value, uri: value }),
 };
 
 export const workspace = {
@@ -146,6 +182,14 @@ export const workspace = {
     state.watchers.push(glob);
     return { dispose: () => undefined };
   },
+  registerTextDocumentContentProvider: (
+    scheme: string,
+    provider: { provideTextDocumentContent(uri: { toString(): string }): string },
+  ) => {
+    state.contentProviders.set(scheme, provider);
+    return { dispose: () => undefined };
+  },
+  openTextDocument: (uri: { toString(): string }) => Promise.resolve({ uri: uri.toString() }),
 };
 
 export const env = {

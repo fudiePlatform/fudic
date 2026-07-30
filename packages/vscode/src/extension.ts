@@ -14,7 +14,15 @@ import { existsSync } from 'node:fs';
 import * as vscode from 'vscode';
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node';
 import { activateFudic, type FudicSession } from './activate.js';
-import { bundledServerPath, folderPaths, languageOf, vscodeTsdkPath } from './vscode-shape.js';
+import { registerCommands } from './commands/index.js';
+import { createVirtualDocStore, VIRTUAL_SCHEME } from './virtual-doc-provider.js';
+import {
+  bundledServerPath,
+  folderPaths,
+  fudUriOf,
+  languageOf,
+  vscodeTsdkPath,
+} from './vscode-shape.js';
 import type { ClientLaunch, LanguageClientPort } from './ports.js';
 
 let session: FudicSession | undefined;
@@ -69,6 +77,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const output = vscode.window.createOutputChannel('Fudic');
   const bar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   bar.command = SHOW_OUTPUT;
+  const virtuals = createVirtualDocStore();
 
   context.subscriptions.push(
     output,
@@ -77,6 +86,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.onDidChangeActiveTextEditor((editor) =>
       session?.status.setActiveLanguage(languageOf(editor)),
     ),
+    vscode.workspace.registerTextDocumentContentProvider(VIRTUAL_SCHEME, {
+      provideTextDocumentContent: (uri) => virtuals.get(uri.toString()),
+    }),
   );
 
   session = await activateFudic({
@@ -100,6 +112,35 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     bundledServerPath: bundledServerPath(context.extensionPath),
     vscodeTsdk: vscodeTsdkPath(vscode.env.appRoot),
   });
+
+  registerCommands(
+    {
+      register: (id, handler) =>
+        context.subscriptions.push(vscode.commands.registerCommand(id, handler)),
+    },
+    {
+      session,
+      editor: { activeFudUri: () => fudUriOf(vscode.window.activeTextEditor) },
+      documents: {
+        openReadOnly: async (name, languageId, text) => {
+          const document = await vscode.workspace.openTextDocument(
+            vscode.Uri.parse(virtuals.put(name, text)),
+          );
+          await vscode.languages.setTextDocumentLanguage(document, languageId);
+          await vscode.window.showTextDocument(document, { preview: false });
+        },
+      },
+      // Through the editor rather than straight to the server: that is what routes to the
+      // default formatter the `[fudic]` defaults set, and from there to SDD-26.
+      formatter: {
+        formatActiveDocument: async () => {
+          await vscode.commands.executeCommand('editor.action.formatDocument');
+        },
+      },
+      notifications: { warn: (message) => void vscode.window.showWarningMessage(message) },
+      logger: { info: (message) => output.appendLine(message) },
+    },
+  );
 
   // The editor that is already open when the extension activates never fires the change
   // event, so the first state has to be pushed by hand — otherwise opening a `.fud` from a

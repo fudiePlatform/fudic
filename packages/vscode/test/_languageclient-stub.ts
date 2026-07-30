@@ -28,9 +28,13 @@ export class LanguageClient {
     LanguageClient.created.push(this);
   }
 
+  /** What `sendRequest` resolves to, by method. */
+  static answers: Record<string, unknown> = {};
+
   static reset(): void {
     LanguageClient.created.length = 0;
     LanguageClient.failNextStart = false;
+    LanguageClient.answers = {};
   }
 
   async start(): Promise<void> {
@@ -47,6 +51,6 @@ export class LanguageClient {
 
   async sendRequest<T>(method: string, params: unknown): Promise<T> {
     this.requests.push({ method, params });
-    return undefined as T;
+    return LanguageClient.answers[method] as T;
   }
 }

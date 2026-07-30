@@ -47,6 +47,27 @@ export interface StatusBarPort {
 /** The injected clock. Nothing in this package sleeps against the real one in a test. */
 export type DelayPort = (ms: number) => Promise<void>;
 
+/** What the commands need to know about the active editor. */
+export interface EditorPort {
+  /** The URI of the active `.fud`, or `undefined` when the active document is not one. */
+  activeFudUri(): string | undefined;
+}
+
+/** Opening the read-only views the debugging commands produce (§4.3). */
+export interface DocumentsPort {
+  openReadOnly(name: string, languageId: string, text: string): Promise<void>;
+}
+
+/** Formatting, which is delegated all the way to SDD-26 through the server. */
+export interface FormatterPort {
+  formatActiveDocument(): Promise<void>;
+}
+
+/** Command registration. The adapter binds it to `vscode.commands`. */
+export interface CommandsPort {
+  register(id: string, handler: () => Promise<void>): void;
+}
+
 /** What the client is asked to launch. Everything here is already resolved. */
 export interface ClientLaunch {
   readonly serverPath: string;

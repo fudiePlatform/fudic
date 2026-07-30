@@ -30,6 +30,8 @@ const hostWith = (
     folders?: readonly string[];
     /** How many `start()` calls reject before one succeeds. */
     failures?: number;
+    /** Whether `stop()` rejects, as it does on a client whose process already died. */
+    stopThrows?: boolean;
   } = {},
 ): { host: FudicHost; recording: Recording } => {
   const settings = overrides.settings ?? {};
@@ -50,6 +52,7 @@ const hostWith = (
     },
     stop: async () => {
       client.stopped += 1;
+      if (overrides.stopThrows === true) throw new Error('connection already closed');
     },
     sendRequest: async <T>() => undefined as T,
   };
@@ -168,6 +171,45 @@ describe('activateFudic', () => {
     const session = await activateFudic(host);
 
     expect(session.tsdk).toEqual({ path: '/custom/lib', source: 'setting', degraded: false });
+  });
+
+  it('re-resolves everything on restart, not just the process', async () => {
+    // §4.3: the causes of a restart are a dependency just installed, a branch just changed,
+    // a moved tsdk — all of them things that change the answers. Relaunching the previous
+    // launch would fix none of them, which is the whole point of the escape valve.
+    const { host, recording } = hostWith({ present: [] });
+    const session = await activateFudic(host);
+    expect(session.tsdk.degraded).toBe(true);
+
+    recording.warnings.length = 0;
+    host.fs.exists = (path) => path === join(PROJECT_TSDK, 'typescript.js');
+
+    expect(await session.restart()).toBe(true);
+    expect(session.tsdk.path).toBe(PROJECT_TSDK);
+    expect(session.status.state).toBe('ready');
+    // The degraded warning is spent for good: the guard survives the restart.
+    expect(recording.warnings).toEqual([]);
+  });
+
+  it('restarts even when stopping the old server fails', async () => {
+    // Which is the normal case for the command that exists because the server died.
+    const { host, recording } = hostWith({ stopThrows: true });
+    const session = await activateFudic(host);
+
+    expect(await session.restart()).toBe(true);
+    expect(recording.log.some((line) => line.includes('stopping the previous server failed'))).toBe(
+      true,
+    );
+  });
+
+  it('stops on request and says so in the status bar', async () => {
+    const { host, recording } = hostWith();
+    const session = await activateFudic(host);
+
+    await session.stop();
+
+    expect(recording.client.stopped).toBe(1);
+    expect(session.status.state).toBe('stopped');
   });
 
   it('logs what it resolved, because the output channel is the only trace of it', async () => {

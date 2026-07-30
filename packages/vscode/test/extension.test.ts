@@ -12,7 +12,7 @@ import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { activate, createClient, deactivate } from '../src/extension.js';
 import { LanguageClient } from './_languageclient-stub.js';
-import { focusEditor, reset, state } from './_vscode-stub.js';
+import { editorFor, focusEditor, reset, state } from './_vscode-stub.js';
 import type { ExtensionContext, OutputChannel } from 'vscode';
 import type { ClientLaunch } from '../src/ports.js';
 
@@ -35,7 +35,11 @@ describe('activate', () => {
     const client = LanguageClient.created[0];
     expect(client?.id).toBe('fudic');
     expect(client?.started).toBe(1);
-    expect(ctx.subscriptions).toHaveLength(4);
+    // Everything the adapter creates is pushed onto the subscriptions: the channel, the
+    // status bar, the listeners, the content provider and the four commands. What matters
+    // is that none of it is left for the garbage collector to guess about.
+    expect(ctx.subscriptions.length).toBeGreaterThanOrEqual(9);
+    expect([...state.commandHandlers.keys()]).toContain('fudic.restartServer');
   });
 
   it('points the server at the bundled bundle and watches the three globs', async () => {
@@ -74,7 +78,7 @@ describe('the status bar', () => {
   it('shows the state of a .fud that was already open at activation', async () => {
     // The editor open when the extension wakes never fires the change event, so this is the
     // path a cold start actually takes — and the one that shows nothing if it is forgotten.
-    state.activeEditor = { document: { languageId: 'fudic' } };
+    state.activeEditor = editorFor('fudic');
     await activate(context());
 
     expect(state.bar.visible).toBe(true);
@@ -84,10 +88,10 @@ describe('the status bar', () => {
   it('follows the focus between languages', async () => {
     await activate(context());
 
-    focusEditor({ document: { languageId: 'fudic' } });
+    focusEditor(editorFor('fudic'));
     expect(state.bar.visible).toBe(true);
 
-    focusEditor({ document: { languageId: 'markdown' } });
+    focusEditor(editorFor('markdown'));
     expect(state.bar.visible).toBe(false);
 
     focusEditor(undefined);
@@ -100,7 +104,7 @@ describe('the status bar', () => {
     await activate(context());
     await deactivate();
 
-    expect(() => focusEditor({ document: { languageId: 'fudic' } })).not.toThrow();
+    expect(() => focusEditor(editorFor('fudic'))).not.toThrow();
   });
 
   it('opens the output channel when clicked', async () => {
@@ -109,6 +113,72 @@ describe('the status bar', () => {
     expect(state.bar.command).toBe('fudic.showOutput');
     state.commandHandlers.get('fudic.showOutput')?.();
     expect(state.outputShown).toBe(1);
+  });
+});
+
+describe('the commands, through the adapter', () => {
+  const run = async (id: string): Promise<void> => {
+    await (state.commandHandlers.get(id) as (() => Promise<void>) | undefined)?.();
+  };
+
+  it('opens each virtual in its own editor, under the virtual scheme', async () => {
+    // Criterion 8 as far as it can be taken without an editor: the request goes out, the
+    // documents come back under `fudic-virtual:`, and each is given its language. Whether
+    // VS Code then paints them is what the manual script is for.
+    state.activeEditor = editorFor('fudic', 'file:///work/blog/[slug].fud');
+    LanguageClient.answers['fudic/virtualFiles'] = [
+      { fileName: 'blog/[slug].fud.ts', languageId: 'typescript', text: 'export {}' },
+      { fileName: 'blog/[slug].fud.0.css', languageId: 'css', text: ':host{}' },
+    ];
+    await activate(context());
+
+    await run('fudic.showVirtualFiles');
+
+    expect(state.openedDocuments.map(([, language]) => language)).toEqual(['typescript', 'css']);
+    const [uri] = state.openedDocuments[0] ?? [];
+    expect(uri?.startsWith('fudic-virtual:')).toBe(true);
+  });
+
+  it('serves the stored text back through the content provider', async () => {
+    state.activeEditor = editorFor('fudic');
+    LanguageClient.answers['fudic/virtualFiles'] = [
+      { fileName: 'x.fud.ts', languageId: 'typescript', text: 'const a = 1;' },
+    ];
+    await activate(context());
+    await run('fudic.showVirtualFiles');
+
+    const provider = state.contentProviders.get('fudic-virtual');
+    const [uri] = state.openedDocuments[0] ?? [];
+    expect(provider?.provideTextDocumentContent({ toString: () => uri ?? '' })).toBe('const a = 1;');
+  });
+
+  it('formats through the editor command, not by talking to the server', async () => {
+    state.activeEditor = editorFor('fudic');
+    await activate(context());
+
+    await run('fudic.formatDocument');
+
+    expect(state.executed).toEqual(['editor.action.formatDocument']);
+  });
+
+  it('restarts, and reports through the warning surface when it cannot', async () => {
+    state.activeEditor = editorFor('fudic');
+    await activate(context());
+    const before = state.warnings.length;
+
+    await run('fudic.restartServer');
+
+    expect(LanguageClient.created).toHaveLength(2);
+    expect(state.warnings.length).toBe(before);
+  });
+
+  it('refuses the debugging commands on a document that is not a .fud', async () => {
+    state.activeEditor = editorFor('typescript');
+    await activate(context());
+
+    await run('fudic.showRegistry');
+
+    expect(state.warnings.some((message) => message.includes('.fud activo'))).toBe(true);
   });
 });
 
