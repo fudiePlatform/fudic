@@ -1,9 +1,14 @@
 /**
  * SDD-19 §6.17 (closing hito): the four fixtures compile through the plugin, home renders
  * in its inferred mode, and the document is served over HTTP and painted with zero client
- * JavaScript (N1 / SSR). We build the fixtures, run home's built RenderChunk (the same the
- * WW runs), serve the HTML over a throwaway HTTP server, fetch it, and assert it is a
- * Declarative-Shadow-DOM document with NO hydration artifacts (SDD-15 client is paused).
+ * JavaScript (N1 / SSR). We build the fixtures, run home's EDGE chunk — the one that calls
+ * `@server load` in process, exactly as the prerender and the preview do — serve the HTML
+ * over a throwaway HTTP server, fetch it, and assert it is a Declarative-Shadow-DOM
+ * document with NO hydration artifacts (SDD-15 client is paused).
+ *
+ * It used to render the chunk out of the client bundle. Since BUG-09 that chunk carries no
+ * `load` — server code does not travel in the client output — so the render came out with
+ * no data. The edge pass is where the loading variant lives now.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -15,6 +20,10 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type AddressInfo } from 'node:net';
 import { fudic } from '../src/index.js';
+import { runEdgePass } from '../src/edge.js';
+import { discoverRoutes } from '../src/discover.js';
+import { resolveOptions } from '../src/options.js';
+import { nodeIo } from '../src/io.js';
 import { materializeBundle, renderChunkToHtml, type BundleItem } from '../src/prerender.js';
 
 const fixtures = fileURLToPath(new URL('../../compiler/fixtures', import.meta.url));
@@ -39,22 +48,24 @@ beforeAll(async () => {
   );
 
   const bundleDir = mkdtempSync(join(tmpdir(), 'fudic-serve-out-'));
-  const result = (await build({
+  await build({
     root,
     logLevel: 'silent',
     resolve: { alias: { '@fudic/ssr': ssrDist, '@fudic/transport': transportDist } },
     plugins: [fudic()],
     build: { write: false, minify: false },
-  })) as unknown as { output: Array<{ type: 'chunk' | 'asset'; fileName: string }> };
+  });
 
-  // Materialize the bundle and render home's built RenderChunk (as the WW would).
+  // The edge wrappers, built the way the plugin builds them, and run from a temp dir —
+  // never from `outDir`, which is the whole point of BUG-09.
+  const { routes: builds } = discoverRoutes(root, resolveOptions({}, '/').options);
+  const edge = await runEdgePass(root, '/', builds, nodeIo(), { sourcemap: false });
   const bundle: Record<string, BundleItem> = {};
-  for (const o of result.output) {
-    bundle[o.fileName] = o as unknown as BundleItem;
+  for (const chunk of edge.chunks) {
+    bundle[chunk.fileName] = { type: 'chunk', code: chunk.code };
   }
   materializeBundle(bundle, bundleDir);
-  const homeChunk = result.output.find((o) => o.type === 'chunk' && /c\/home-.*\.js$/u.test(o.fileName))!;
-  html = await renderChunkToHtml(join(bundleDir, homeChunk.fileName), '/home');
+  html = await renderChunkToHtml(join(bundleDir, edge.entries.get('/home')!), '/home');
 
   // Serve the rendered document over HTTP (no client JS involved in producing it).
   httpServer = createServer((_req, res) => {

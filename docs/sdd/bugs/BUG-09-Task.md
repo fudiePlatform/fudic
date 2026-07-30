@@ -3,7 +3,7 @@
 > **BUG:** [BUG-09 — El código y el fuente de `@server` se publican al cliente](./BUG-09-frontera-servidor.md)
 > **Paquetes:** `@fudic/vite` · `@fudic/compiler` · **Rama:** worktree `fix-build-output`
 > **Depende de:** [BUG-05](./BUG-05-Task.md) en `Hecho`
-> **Progreso:** 3 / 11
+> **Progreso:** 7 / 11
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Las rutas son
 relativas a la raíz del repo.
@@ -29,20 +29,20 @@ revés, B pasaría en verde sobre un `dist/` que sigue publicando el código.
 
 ## Fase 2 — Vía A: el wrapper del edge sale de `outDir` (4)
 
-- [ ] **4. `runEdgePass`.**
+- [x] **4. `runEdgePass`.**
       Nuevo `packages/vite/src/edge.ts` (§3.1), calcado del link pass: build anidado con
       `write: false`, un input por ruta no excluida, `withLoad: true`, y
       `NestedOutputOptions` heredado como en BUG-05. Devuelve patrón → fichero.
-- [ ] **5. Se escribe fuera de `outDir`.**
+- [x] **5. Se escribe fuera de `outDir`.**
       Los ficheros van a `EDGE_DIR` (`.fudic/edge`), hermano de `outDir` y **nunca** dentro.
       Escritura directa, no `emitFile`: `emitFile` significa «esto se publica», que es justo
       lo que este BUG corrige.
-- [ ] **6. Fuera el `emitFile` del wrapper.**
+- [x] **6. Fuera el `emitFile` del wrapper.**
       `packages/vite/src/plugin.ts:349-359`: dejar de emitirlo como chunk del build de
       cliente. `wrapperRefs` y `this.getFileName(ref)` desaparecen o pasan a resolverse
       contra `EDGE_DIR`; ojo con los dos usos en el prerender (`plugin.ts:515-519`) y en
       `esmOf` del manifest. Verde en 1 y 2.
-- [ ] **7. La preview lee de `EDGE_DIR`.**
+- [x] **7. La preview lee de `EDGE_DIR`.**
       `importEsmChunk` (`plugin.ts:620`) resuelve `EDGE_DIR/<safeName(pattern)>.js` en vez de
       `join(outDir, record.esm)`, y `previewRender`/`previewData` dejan de exigir
       `record.esm`. Verde en §6.7.

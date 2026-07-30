@@ -68,19 +68,20 @@ describe('vite build — param route with @server load', () => {
     });
   });
 
-  it('bundles the @server load into the EDGE chunk, never into the linked one', () => {
-    const edge = output
-      .filter((o) => o.type === 'chunk')
-      .map((c) => c.code ?? '')
-      .join('\n');
-    expect(edge).toContain('ctx.params.id'); // the @server load, bundled from ?server
+  it('BUG-09 keeps the @server load out of EVERY published file', () => {
+    // This used to read «the edge chunk has it, the linked one does not». The edge chunk
+    // was a chunk of the CLIENT build, so «has it» meant «publishes it». The edge wrapper
+    // is built apart now and written outside `outDir`, and the answer is the same for the
+    // whole output: nobody carries `load`.
+    for (const file of output) {
+      const text = file.code ?? ((file.source ?? '') as string);
+      expect(text).not.toContain('ctx.params.id');
+    }
 
-    // Server code does not ship to the client: the SW gets its data already resolved
-    // from the generated endpoint (SDD-20 §4.5).
-    const linked = output.find((o) => o.fileName.startsWith('sw/c/'));
+    // The linked chunk keeps its shape: the SW gets its data already resolved from the
+    // generated endpoint (SDD-20 §4.5).
+    const linked = output.find((o) => o.fileName.startsWith('sw/c/') && o.fileName.endsWith('.js'));
     expect(linked).toBeDefined();
-    const code = (linked!.source ?? '') as string;
-    expect(code).not.toContain('ctx.params.id');
-    expect(code).toMatch(/exports\.render\s*=/u);
+    expect((linked!.source ?? '') as string).toMatch(/exports\.render\s*=/u);
   });
 });

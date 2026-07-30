@@ -9,6 +9,8 @@
 export const WRAPPER_PREFIX = '\0fudic-wrapper:';
 /** Per-route LINKABLE wrapper (the SW link pass): same page, no `load` (§4.5). */
 export const LINK_PREFIX = '\0fudic-link:';
+/** Per-route EDGE wrapper in its own nested build (BUG-09 §3.1): same page, WITH `load`. */
+export const EDGE_PREFIX = '\0fudic-edge:';
 export const SW_ID = '\0fudic-sw';
 export const MAIN_ID = '\0fudic-main';
 
@@ -21,6 +23,13 @@ export const DATA_PREFIX = '/_fudic/data';
 
 /** Output directory of the linkable chunks, inside the build output. */
 export const LINK_DIR = 'sw/c';
+
+/**
+ * Where the SERVER-ONLY artifacts are written: sibling of `outDir`, never inside it
+ * (BUG-09 §4.1). `outDir` is what a static host publishes; the edge wrappers call
+ * `@server load` and drag its whole import graph, so they must not be in there.
+ */
+export const EDGE_DIR = '.fudic/edge';
 
 /**
  * Replaced in the emitted Service Worker with the real build id (§4.10).

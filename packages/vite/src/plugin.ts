@@ -8,10 +8,10 @@
  * Vite is bundler and dev server only; the parser is always `@fudic/compiler`.
  */
 
-import { existsSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
-import { join, resolve as resolvePath } from 'node:path';
+import { dirname, join, resolve as resolvePath } from 'node:path';
 import { type Plugin, transformWithOxc } from 'vite';
 import {
   applyNonce,
@@ -30,6 +30,7 @@ import { transformFud } from './transform.js';
 import { nodeIo } from './io.js';
 import { readSwConfig, type ResolvedSwConfig } from './swconfig.js';
 import { runLinkPass, safeName, type LinkResult } from './link.js';
+import { runEdgePass } from './edge.js';
 import { buildServiceWorker } from './swbuild.js';
 import { emitPlan, type NestedArtifact, type NestedOutputOptions } from './nested.js';
 import {
@@ -57,6 +58,7 @@ import {
   SW_ID,
   MAIN_ID,
   DATA_PREFIX,
+  EDGE_DIR,
   BUILD_TOKEN,
   BUILD_ID_LENGTH,
   DEV_MAIN_URL,
@@ -84,7 +86,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let isDev = false;
   let builds: readonly RouteBuild[] = [];
   let swConfig: ResolvedSwConfig | null = null;
-  const wrapperRefs = new Map<string, string>(); // route pattern → emitFile referenceId
+  let writeToDisk = true;
   let resolveAlias: unknown;
   // What the two nested builds inherit from the host (BUG-05 §3.1). BUG-06 adds `minify`.
   let nested: NestedOutputOptions = { sourcemap: false };
@@ -131,6 +133,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // is a decision, not an oversight (BUG-05 §4.1). `build.sourcemap` was neither
       // applied nor reported: the option simply did nothing for these two outputs.
       nested = { sourcemap: config.build.sourcemap };
+      // `write: false` is a build that produces no files (tests, programmatic callers), so
+      // the edge artifacts are not written either — they are still materialized for the
+      // prerender, which needs them in a temp dir regardless.
+      writeToDisk = config.build.write !== false;
       options = resolveOptions(userOptions, config.base).options;
       manifestUrl = options.manifestUrl;
       manifestFileName = manifestUrl.startsWith(base) ? manifestUrl.slice(base.length) : 'fudic-routes.json';
@@ -288,11 +294,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         if (pathname.startsWith(DATA_PREFIX)) {
           const routePath = pathname.slice(DATA_PREFIX.length) || '/';
           const dataRecord = matchRecord(manifest.routes, routePath);
-          if (dataRecord?.esm === undefined) {
+          if (dataRecord === null || !existsSync(edgeChunkPath(root, dataRecord.pattern))) {
             next();
             return;
           }
-          previewData(outDir, dataRecord, routePath)
+          previewData(root, dataRecord, routePath)
             .then((data) => {
               res.setHeader('Content-Type', 'application/json');
               res.end(JSON.stringify(data));
@@ -315,11 +321,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           res.end(applyNonce(readFileSync(file, 'utf8'), nonce));
           return;
         }
-        if (record.esm === undefined) {
+        // No prerendered file and no edge wrapper: this route produced nothing to serve.
+        // Checked before importing so the fall-through stays synchronous.
+        if (!existsSync(edgeChunkPath(root, record.pattern))) {
           next();
           return;
         }
-        previewRender(outDir, record, pathname, nonce)
+        previewRender(root, record, pathname, nonce)
           .then((html) => {
             res.statusCode = 200;
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -342,21 +350,25 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         return;
       }
 
+      // One chunk per route, and it is the CLIENT-SAFE variant (BUG-09 §4.1): `load` and
+      // the `@server` graph now live only in the edge pass, outside `outDir`.
+      //
+      // The chunk itself stays, and not for the render: it is what pulls each page and its
+      // components into the client graph, which is how the linked assets of §4.5 get
+      // emitted and hashed. Drop it and a page's `<img>` points at a file the build never
+      // produced.
       for (const rb of builds) {
         if (rb.decision.mode === 'excluded') {
           continue;
         }
-        wrapperRefs.set(
-          rb.route.pattern,
-          this.emitFile({
-            type: 'chunk',
-            id: WRAPPER_PREFIX + rb.route.pattern,
-            name: `c/${safeName(rb.route.pattern)}`,
-            // Imported at runtime through the manifest, not via a static import Rollup
-            // can see — keep its exports.
-            preserveSignature: 'strict',
-          }),
-        );
+        this.emitFile({
+          type: 'chunk',
+          id: WRAPPER_PREFIX + rb.route.pattern,
+          name: `c/${safeName(rb.route.pattern)}`,
+          // Imported at runtime through the manifest, not via a static import Rollup
+          // can see — keep its exports.
+          preserveSignature: 'strict',
+        });
       }
     },
 
@@ -394,7 +406,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           pageModule: rb.absPath.replace(/\\/gu, '/'),
           hasLoad: rb.analysis.hasLoad,
           hasPaths: rb.analysis.hasPaths,
-          withLoad: true, // the edge resolves data in process
+          // In DEV this module IS the edge: the dev server renders through the module
+          // graph and resolves data in process. In BUILD it is a chunk of the client
+          // output, and the client never gets `load` (BUG-09 §4.1) — the edge pass builds
+          // the variant that does, outside `outDir`.
+          withLoad: isDev,
         });
       }
       return null;
@@ -457,6 +473,21 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         emitWithMap(chunk);
       }
 
+      // 1b. The edge pass: the wrappers that run `@server load` in process. They are NOT
+      //     emitted into the bundle — `emitFile` means "this gets published", and this is
+      //     precisely what must not (BUG-09 §4.1). They are written beside `outDir` for the
+      //     preview, and materialized into the prerender's temp dir below.
+      const edge = await runEdgePass(root, base, builds, io, nested);
+      if (writeToDisk) {
+        const edgeDir = resolvePath(root, EDGE_DIR);
+        rmSync(edgeDir, { recursive: true, force: true });
+        for (const chunk of edge.chunks) {
+          const abs = join(edgeDir, chunk.fileName);
+          mkdirSync(dirname(abs), { recursive: true });
+          writeFileSync(abs, chunk.code);
+        }
+      }
+
       // 2. The Service Worker's own bundle: one realm, one bundle (BUG-03 §4.1). Its
       //    code still carries BUILD_TOKEN — the id is computed from it, below.
       const sw =
@@ -500,15 +531,14 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
 
       // 4. The manifest: the one contract, emitted at a fixed URL.
       const urlOf = (fileName: string): string => `${base}${fileName}`.replace(/\/{2,}/gu, '/');
-      const esmOf = (rb: RouteBuild): string => {
-        const ref = wrapperRefs.get(rb.route.pattern);
-        return ref === undefined ? '' : urlOf(this.getFileName(ref));
-      };
       const { file, diagnostics } = buildManifest(builds, {
         build: buildId,
         base,
         serviceWorker: swConfig !== null,
-        esmOf,
+        // No `esm` in the PUBLISHED manifest (BUG-09 §3.2). It was a client URL for a file
+        // no client ever fetches: `importEsmChunk` reads it from disk, in Node, for the
+        // preview and the data endpoint. Publishing it announced the leak.
+        esmOf: () => '',
         linkChunkOf: (rb) => {
           const fileName = link.entries.get(rb.route.pattern);
           if (fileName === undefined) {
@@ -531,12 +561,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         const dir = mkdtempSync(join(tmpdir(), 'fudic-prerender-'));
         try {
           materializeBundle(bundle as unknown as Record<string, BundleItem>, dir);
+          // The wrapper it runs is the EDGE one, which is no longer in the bundle: it is
+          // materialized here from the edge pass, and dies with the temp dir.
+          materializeBundle(Object.fromEntries(
+            edge.chunks.map((c) => [c.fileName, { type: 'chunk' as const, code: c.code }]),
+          ), dir);
           for (const rb of prerenders) {
-            const ref = wrapperRefs.get(rb.route.pattern);
-            if (ref === undefined) {
+            const fileName = edge.entries.get(rb.route.pattern);
+            if (fileName === undefined) {
               continue;
             }
-            const chunkPath = join(dir, this.getFileName(ref));
+            const chunkPath = join(dir, fileName);
             try {
               if (rb.decision.enumerate) {
                 const { files, incomplete } = await prerenderEnumerated(chunkPath, rb.route.pattern);
@@ -614,32 +649,42 @@ function matchRecord(routes: readonly RouteRecord[], pathname: string): RouteRec
   return null;
 }
 
-/** Import a route's built ESM chunk (the edge half of the two output formats). */
-async function importEsmChunk(outDir: string, record: RouteRecord): Promise<RenderModule> {
+/** Where a route's edge wrapper lives: by convention, outside `outDir` (BUG-09 §3.2). */
+function edgeChunkPath(root: string, pattern: string): string {
+  return join(resolvePath(root, EDGE_DIR), `${safeName(pattern)}.js`);
+}
+
+/**
+ * Import a route's built EDGE wrapper — by CONVENTION, from outside `outDir`.
+ *
+ * It used to be `join(outDir, record.esm)`: a URL published in the manifest, pointing at a
+ * file inside the directory a static host serves. That is the shape BUG-09 removes. The
+ * name is derived exactly as the edge pass derives it, so nothing has to be announced.
+ */
+async function importEdgeChunk(root: string, pattern: string): Promise<RenderModule> {
   const { pathToFileURL } = await import('node:url');
-  const file = join(outDir, (record.esm ?? '').replace(/^\//u, ''));
-  return (await import(pathToFileURL(file).href)) as RenderModule;
+  return (await import(pathToFileURL(edgeChunkPath(root, pattern)).href)) as RenderModule;
 }
 
 /** Render a route in preview by importing its built ESM chunk. */
 async function previewRender(
-  outDir: string,
+  root: string,
   record: RouteRecord,
   pathname: string,
   nonce: string,
 ): Promise<string> {
-  const mod = await importEsmChunk(outDir, record);
+  const mod = await importEdgeChunk(root, record.pattern);
   const { drainStream, edgeContext } = await import('./serve.js');
   return drainStream(mod.render(edgeContext(record.pattern, pathname, nonce)));
 }
 
 /** Run a route's `@server load` in preview — the generated data endpoint. */
 async function previewData(
-  outDir: string,
+  root: string,
   record: RouteRecord,
   pathname: string,
 ): Promise<unknown> {
-  const mod = await importEsmChunk(outDir, record);
+  const mod = await importEdgeChunk(root, record.pattern);
   if (typeof mod.data !== 'function') {
     return {};
   }

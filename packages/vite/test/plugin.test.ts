@@ -196,6 +196,7 @@ describe('configurePreviewServer middleware', () => {
   // CSP header and this response's nonce stamped into the document.
   function withPreview(
     outDir: string,
+    previewRoot: string = root,
   ): (req: { url: string; method: string; headers: Record<string, string> }, res: FakeRes, next: () => void) => void {
     let handler!: (
       req: { url: string; method: string; headers: Record<string, string> },
@@ -204,7 +205,7 @@ describe('configurePreviewServer middleware', () => {
     ) => void;
     const plugin = fudic({ routesDir: 'fixtures' }) as AnyHook;
     plugin.config({});
-    plugin.configResolved({ root, base: '/', command: 'build', build: { outDir } });
+    plugin.configResolved({ root: previewRoot, base: '/', command: 'build', build: { outDir } });
     plugin.configurePreviewServer({ middlewares: { use: (fn: typeof handler) => (handler = fn) } });
     return handler;
   }
@@ -249,13 +250,17 @@ describe('configurePreviewServer middleware', () => {
   it('BUG-02 the generated data endpoint answers for an `ssg` route too', async () => {
     // A prerendered route with `@server load` needs its endpoint: the SW renders it
     // from chunk + data like any other, and `load` never ships to the client (§4.6.4).
-    const outDir = outputWith([{ pattern: '/about', mode: 'ssg', esm: '/assets/about.mjs' }]);
-    mkdirSync(join(outDir, 'assets'), { recursive: true });
+    //
+    // BUG-09: the wrapper that answers it lives OUTSIDE the published output and is found
+    // by convention — there is no `esm` URL in the manifest any more.
+    const outDir = outputWith([{ pattern: '/about', mode: 'ssg' }]);
+    const previewRoot = mkdtempSync(join(tmpdir(), 'fudic-preview-root-'));
+    mkdirSync(join(previewRoot, '.fudic', 'edge'), { recursive: true });
     writeFileSync(
-      join(outDir, 'assets', 'about.mjs'),
+      join(previewRoot, '.fudic', 'edge', 'about.js'),
       'export function data(ctx) { return { at: ctx.url.pathname }; }\nexport function render() {}\n',
     );
-    const handler = withPreview(outDir);
+    const handler = withPreview(outDir, previewRoot);
     const res = fakeRes();
     handler(
       { url: '/_fudic/data/about', method: 'GET', headers: {} },
