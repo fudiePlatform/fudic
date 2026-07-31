@@ -1,0 +1,16 @@
+<app-opaque>
+  <template shadowrootmode="open">
+    <div>
+      <pre>
+   keep   this
+        exactly as it is
+</pre>
+      <textarea>  raw
+  text  </textarea>
+      <script>
+    const a = {b:1};
+        console.log( a )
+      </script>
+    </div>
+  </template>
+</app-opaque>

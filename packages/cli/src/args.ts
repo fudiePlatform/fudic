@@ -8,6 +8,7 @@ import { cliError, FUD_USAGE } from './diagnostics.js';
 import type {
   CliError,
   ComponentOptions,
+  FmtOptions,
   LayoutOptions,
   NewOptions,
   PackageManager,
@@ -24,11 +25,13 @@ export type ParsedCommand =
   | { readonly kind: 'component'; readonly tag: string; readonly opts: ComponentOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'page'; readonly route: string; readonly opts: PageOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'layout'; readonly name: string; readonly opts: LayoutOptions; readonly flags: GlobalFlags }
+  | { readonly kind: 'fmt'; readonly paths: readonly string[]; readonly opts: FmtOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'help' }
   | { readonly kind: 'error'; readonly error: CliError };
 
 export const USAGE = `fudic — scaffolding for Declarative Shadow DOM apps
 
+  fudic fmt [path…]             format .fud files in place            (default: .)
   fudic new <name>              create a project
   fudic generate <type> <name>  add a piece                     (alias: g)
     fudic g page <route>                                        (alias: p)
@@ -40,6 +43,14 @@ Global flags
   --force, -f        overwrite existing targets
   --cwd <path>       project root to operate on          (default: .)
   --json             serialize the plan to stdout; human output goes to stderr
+
+fudic fmt
+  --check                report what would change and exit non-zero; writes nothing
+  --print-width <n>      target column                        (default: 100)
+  --tab-width <n>        indentation width                    (default: 2)
+  --use-tabs             indent with tabs
+  --quote <double|single>  attribute quote                    (default: double)
+  --end-of-line <lf|crlf|auto>  line terminator               (default: lf)
 
 fudic new
   --pm <pnpm|npm|yarn>   package manager                 (default: pnpm)
@@ -78,7 +89,7 @@ interface Tokens {
 function tokenize(argv: readonly string[]): Tokens {
   const positionals: string[] = [];
   const flags = new Map<string, string[]>();
-  const valued = new Set(['cwd', 'pm', 'layout', 'target', 'dir', 'in', 'sections']);
+  const valued = new Set(['cwd', 'pm', 'layout', 'target', 'dir', 'in', 'sections', 'print-width', 'tab-width', 'quote', 'end-of-line']);
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i] ?? '';
@@ -147,6 +158,7 @@ export function parseArgs(argv: readonly string[]): ParsedCommand {
   const force = bool(tokens, 'force');
   const [command, ...rest] = tokens.positionals;
 
+  if (command === 'fmt') return parseFmt(tokens, rest, { cwd, force }, flags);
   if (command === 'new') return parseNew(tokens, rest, { cwd, force }, flags);
   if (command === 'generate' || command === 'g') return parseGenerate(tokens, rest, { cwd, force }, flags);
   return { kind: 'error', error: cliError(FUD_USAGE, `unknown command "${command ?? ''}"`) };
@@ -155,6 +167,50 @@ export function parseArgs(argv: readonly string[]): ParsedCommand {
 interface Base {
   readonly cwd: string;
   readonly force: boolean;
+}
+
+const FMT_FLAGS = ['check', 'print-width', 'tab-width', 'use-tabs', 'quote', 'end-of-line'];
+
+function parseFmt(tokens: Tokens, rest: readonly string[], base: Base, flags: GlobalFlags): ParsedCommand {
+  const unknown = unknownFlag(tokens, [...GLOBAL, ...FMT_FLAGS]);
+  if (unknown !== null) return { kind: 'error', error: unknown };
+
+  const quote = single(tokens, 'quote', 'double');
+  if (quote !== 'double' && quote !== 'single') {
+    return { kind: 'error', error: cliError(FUD_USAGE, `unknown quote style "${quote}"`) };
+  }
+  const endOfLine = single(tokens, 'end-of-line', 'lf');
+  if (endOfLine !== 'lf' && endOfLine !== 'crlf' && endOfLine !== 'auto') {
+    return { kind: 'error', error: cliError(FUD_USAGE, `unknown line terminator "${endOfLine}"`) };
+  }
+  const printWidth = number(tokens, 'print-width', 100);
+  if (printWidth === undefined) {
+    return { kind: 'error', error: cliError(FUD_USAGE, '--print-width needs a number') };
+  }
+  const tabWidth = number(tokens, 'tab-width', 2);
+  if (tabWidth === undefined) {
+    return { kind: 'error', error: cliError(FUD_USAGE, '--tab-width needs a number') };
+  }
+
+  const opts: FmtOptions = {
+    ...base,
+    check: bool(tokens, 'check'),
+    printWidth,
+    tabWidth,
+    useTabs: bool(tokens, 'use-tabs'),
+    quote,
+    endOfLine,
+  };
+  // No path is every `.fud` under the working directory: a formatter with no argument
+  // formats the project, which is what every other one does and what CI will type.
+  return { kind: 'fmt', paths: rest.length === 0 ? ['.'] : rest, opts, flags };
+}
+
+/** A numeric flag, or `undefined` when what was given is not one. */
+function number(tokens: Tokens, name: string, fallback: number): number | undefined {
+  const raw = single(tokens, name, String(fallback));
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : undefined;
 }
 
 function parseNew(tokens: Tokens, rest: readonly string[], base: Base, flags: GlobalFlags): ParsedCommand {

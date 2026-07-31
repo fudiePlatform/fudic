@@ -1,0 +1,26 @@
+@code {
+  @* a comment in the code block is content, not trivia *@
+  const tone = 'neutral';
+}
+
+<app-comments>
+  <template shadowrootmode="open">
+    @* before the construct *@
+    @if (tone === 'neutral') {
+      <p>neutral</p>
+    } @* between the brace and the else *@ else if (tone === 'warm') {
+      <p>warm</p>
+    } @* and before the final else *@ else {
+      <p>other</p>
+    }
+
+    @switch (tone) { @* before the first label *@
+      case 'neutral':
+        <b>n</b>
+      @* between two labels *@
+      default:
+        <b>d</b>
+      @* after the last one *@
+    }
+  </template>
+</app-comments>

@@ -4,7 +4,8 @@
  *
  *   0  success
  *   1  usage error, or a collision without --force
- *   2  a compiler diagnostic on a file the CLI was asked to modify (--in)
+ *   2  a compiler diagnostic on a file the CLI was asked to modify (--in), or a file
+ *      `fudic fmt` was asked to format and could not read
  *
  * It never throws: an unexpected error becomes an exit code, because a Node stack trace in
  * the terminal is a failure of the CLI (SDD-22 §5).
@@ -12,15 +13,19 @@
 
 import { parseArgs, USAGE } from './args.js';
 import { apply } from './apply.js';
-import { FUD_WIRE_TARGET_BROKEN } from './diagnostics.js';
+import { FUD_FORMAT_UNPARSEABLE, FUD_WIRE_TARGET_BROKEN } from './diagnostics.js';
 import { absolute } from './paths.js';
 import { planComponent } from './plans/component.js';
 import { planLayout } from './plans/layout.js';
+import { planFmt } from './plans/fmt.js';
 import { planNew } from './plans/new.js';
 import { planPage } from './plans/page.js';
 import { formatDiff, formatError, formatDiagnostic, formatPlan, planToJson } from './report.js';
 import { nodeCommandRunner, nodeReadIo, nodeWriteIo, type CommandRunner, type ReadIo, type WriteIo } from './io.js';
 import type { Plan } from './types.js';
+
+/** The errors that mean "a source file could not be read", which is exit code 2. */
+const BROKEN_SOURCE: ReadonlySet<string> = new Set([FUD_WIRE_TARGET_BROKEN, FUD_FORMAT_UNPARSEABLE]);
 
 /** Output seam: tests capture, the binary writes to the real streams. */
 export interface Streams {
@@ -77,10 +82,17 @@ async function execute(argv: readonly string[], deps: RunDeps): Promise<number> 
   if (plan.errors.length > 0) {
     for (const error of plan.errors) human(`${formatError(error)}\n`);
     if (flags.json) deps.streams.out(`${planToJson(plan)}\n`);
-    return plan.errors.some((error) => error.code === FUD_WIRE_TARGET_BROKEN) ? 2 : 1;
+    return plan.errors.some((error) => BROKEN_SOURCE.has(error.code)) ? 2 : 1;
   }
 
   if (flags.json) deps.streams.out(`${planToJson(plan)}\n`);
+
+  // `--check` is the plan read for its size instead of applied: exactly what `--dry-run`
+  // computes, with an exit code CI can branch on (SDD-26 §3).
+  if (command.kind === 'fmt' && command.opts.check) {
+    for (const change of plan.changes) human(`  would format  ${change.path}\n`);
+    return plan.changes.length > 0 ? 1 : 0;
+  }
 
   if (flags.dryRun) {
     human(`${['dry run — nothing written', ...formatPlan(plan)].join('\n')}\n`);
@@ -111,5 +123,7 @@ function build(command: Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } |
       return planPage(command.route, command.opts, io);
     case 'layout':
       return planLayout(command.name, command.opts, io);
+    case 'fmt':
+      return planFmt(command.paths, command.opts, io);
   }
 }

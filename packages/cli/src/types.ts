@@ -68,6 +68,22 @@ export interface BaseOptions {
 
 export type PackageManager = 'pnpm' | 'npm' | 'yarn';
 
+/**
+ * `fudic fmt`. The five formatter options of SDD-26 §3 plus `--check`.
+ *
+ * They are carried here rather than read from a file because SDD-26 §7 has no config file:
+ * the options come from the editor's settings or from this command line, and nowhere else.
+ */
+export interface FmtOptions extends BaseOptions {
+  /** Report what would change and exit non-zero, without writing (for CI). */
+  readonly check: boolean;
+  readonly printWidth: number;
+  readonly tabWidth: number;
+  readonly useTabs: boolean;
+  readonly quote: 'double' | 'single';
+  readonly endOfLine: 'lf' | 'crlf' | 'auto';
+}
+
 export interface NewOptions extends BaseOptions {
   readonly pm: PackageManager;
   readonly install: boolean;

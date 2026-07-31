@@ -18,7 +18,7 @@ import {
   type InitializeParams,
   type InitializeResult,
   type LanguageServerProject,
-} from '@volar/language-server/node';
+} from '@volar/language-server/node.js';
 import type { LanguageServicePlugin } from '@volar/language-service';
 import { create as createTypeScriptServices } from 'volar-service-typescript';
 import { create as createHtmlService } from 'volar-service-html';

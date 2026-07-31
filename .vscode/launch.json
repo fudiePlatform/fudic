@@ -1,0 +1,39 @@
+{
+  // Ver INSTALAR-EXTENSION-DEV.md en la raíz del repo.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Fudic: extensión (Extension Development Host)",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/packages/vscode",
+        // Se abre el proyecto de fixtures de SDD-24: es el workspace real de los criterios
+        // de aceptación, con las cuatro piezas (ruta, layout y dos componentes).
+        "${workspaceFolder}/packages/language-server/fixtures"
+      ],
+      "outFiles": ["${workspaceFolder}/packages/vscode/dist/**/*.cjs"],
+      "preLaunchTask": "fudic: construir extensión"
+    },
+    {
+      // Se adjunta al *servidor*, que corre en su propio proceso. Requiere haber lanzado
+      // antes la configuración de arriba: el cliente forkea el servidor con
+      // `--inspect=6009` en su perfil de depuración.
+      "name": "Fudic: adjuntar al servidor de lenguaje",
+      "type": "node",
+      "request": "attach",
+      "port": 6009,
+      "restart": true,
+      "outFiles": ["${workspaceFolder}/packages/vscode/dist/**/*.mjs"]
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Fudic: extensión + servidor",
+      "configurations": [
+        "Fudic: extensión (Extension Development Host)",
+        "Fudic: adjuntar al servidor de lenguaje"
+      ]
+    }
+  ]
+}

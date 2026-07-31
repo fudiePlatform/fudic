@@ -1,18 +1,26 @@
 @code {
-  const { current = '' } = props<{ current?: string }>();
+  const { current = "" } = props<{ current?: string }>();
 }
 
 <head>
   <style>
-    :host { display: block; }
+    :host {
+      display: block;
+    }
     nav {
       display: flex;
       gap: 1.25rem;
       align-items: baseline;
       padding: 0.9rem 0;
       border-bottom: 1px solid #e6e6e6;
-      a { color: #1a73e8; text-decoration: none; font-weight: 500; }
-      a[aria-current="page"] { color: #202124; }
+      a {
+        color: #1a73e8;
+        text-decoration: none;
+        font-weight: 500;
+      }
+      a[aria-current="page"] {
+        color: #202124;
+      }
     }
   </style>
 </head>

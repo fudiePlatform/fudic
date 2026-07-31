@@ -1,0 +1,157 @@
+{
+  "name": "fudic-vscode",
+  "displayName": "Fudic",
+  "version": "0.0.1",
+  "description": "VS Code client for .fud files — starts the Fudic language server and paints the first frame.",
+  "publisher": "fudic",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "author": "Pedro Hurtado",
+  "homepage": "https://github.com/fudie/fudic/tree/main/packages/vscode#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fudie/fudic.git",
+    "directory": "packages/vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/fudie/fudic/issues"
+  },
+  "keywords": [
+    "fudic",
+    "fudie",
+    "declarative-shadow-dom",
+    "language-server",
+    "vscode"
+  ],
+  "categories": [
+    "Programming Languages"
+  ],
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "main": "./dist/extension.cjs",
+  "activationEvents": [
+    "onLanguage:fudic",
+    "workspaceContains:**/*.fud"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "fudic",
+        "aliases": [
+          "Fudic",
+          "fud"
+        ],
+        "extensions": [
+          ".fud"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/fud-light.svg",
+          "dark": "./icons/fud-dark.svg"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "fudic",
+        "scopeName": "text.html.fudic",
+        "path": "./syntaxes/fudic.tmLanguage.json",
+        "embeddedLanguages": {
+          "source.ts": "typescript",
+          "source.css": "css",
+          "text.html": "html"
+        }
+      }
+    ],
+    "commands": [
+      {
+        "command": "fudic.restartServer",
+        "title": "Fudic: Reiniciar el servidor de lenguaje"
+      },
+      {
+        "command": "fudic.showVirtualFiles",
+        "title": "Fudic: Ver ficheros virtuales"
+      },
+      {
+        "command": "fudic.showRegistry",
+        "title": "Fudic: Ver registro de componentes"
+      },
+      {
+        "command": "fudic.formatDocument",
+        "title": "Fudic: Formatear documento"
+      }
+    ],
+    "configuration": {
+      "title": "Fudic",
+      "properties": {
+        "fudic.server.path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Ruta a un servidor de lenguaje propio, para desarrollarlo sin reinstalar la extensión. Vacío usa el servidor empaquetado."
+        },
+        "fudic.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Traza de la comunicación con el servidor de lenguaje."
+        },
+        "fudic.templateDiagnostics": {
+          "type": "boolean",
+          "default": true,
+          "description": "Comprobar la plantilla contra los tipos declarados en @code."
+        },
+        "fudic.format.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Permitir que la extensión formatee ficheros .fud."
+        },
+        "fudic.exposeVirtualFiles": {
+          "type": "boolean",
+          "default": false,
+          "description": "Exponer los ficheros virtuales que el servidor entrega a TypeScript. Solo para depurar."
+        }
+      }
+    },
+    "configurationDefaults": {
+      "[fudic]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.defaultFormatter": "fudic.fudic-vscode",
+        "editor.suggest.insertMode": "replace"
+      }
+    }
+  },
+  "scripts": {
+    "build": "rolldown -c && node scripts/vendor-native.mjs",
+    "dev": "rolldown -c --watch",
+    "package": "vsce package --no-dependencies --out fudic-vscode.vsix",
+    "verify:vsix": "node scripts/verify-vsix.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@fudic/language-server": "workspace:*",
+    "vscode-languageclient": "9.0.1"
+  },
+  "devDependencies": {
+    "@fudic/tsconfig": "workspace:*",
+    "@types/node": "22.20.0",
+    "@types/vscode": "1.90.0",
+    "@vscode/vsce": "3.9.2",
+    "rolldown": "1.2.1",
+    "typescript": "5.9.3",
+    "vscode-oniguruma": "2.0.1",
+    "vscode-textmate": "9.3.2"
+  }
+}

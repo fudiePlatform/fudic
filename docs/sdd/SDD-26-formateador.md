@@ -1,6 +1,6 @@
 # SDD-26 — Formateador (`@fudic/formatter`)
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Paquete:** `@fudic/formatter`
 > **Consumidores:** el servidor LSP (SDD-24) y la CLI (`fudic fmt`). **El mismo binario en
 > los dos caminos**: si el editor y el pipeline formatean distinto, el producto está roto.

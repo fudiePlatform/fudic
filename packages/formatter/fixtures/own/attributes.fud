@@ -1,0 +1,17 @@
+@code {
+  const tone = 'neutral';
+  const on = true;
+}
+
+<app-attrs>
+  <template shadowrootmode="open">
+    <span
+      class="badge"
+      class:success="@(tone === 'success')"
+      class:warning="@(tone === 'warning')">
+      <slot></slot>
+    </span>
+    <a href="/blog/@tone/" title="one line" hidden>link</a>
+    <input type="checkbox" .checked="@(on)" @change="@(handle)">
+  </template>
+</app-attrs>

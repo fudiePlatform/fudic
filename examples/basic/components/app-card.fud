@@ -1,25 +1,45 @@
 <link rel="component" href="./app-badge.fud">
 
 @code {
-  type Variant = 'default' | 'highlight';
+  type Variant = "default" | "highlight";
 
-  const { title, href, variant = 'default' } = props<{ title: string; href: string; variant?: Variant }>();
+  const {
+    title,
+    href,
+    variant = "default",
+  } = props<{ title: string; href: string; variant?: Variant }>();
 }
 
 <head>
   <style>
-    :host { display: block; }
+    :host {
+      display: block;
+    }
     .card {
       border: 1px solid #dcdcdc;
       border-radius: 10px;
       padding: 1rem 1.15rem;
       background: white;
-      h2 { margin: 0 0 0.35rem; font-size: 1.05rem; }
-      a { color: inherit; text-decoration: none; }
-      a:hover { text-decoration: underline; }
-      .body { color: #555; line-height: 1.45; }
+      h2 {
+        margin: 0 0 0.35rem;
+        font-size: 1.05rem;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      .body {
+        color: #555;
+        line-height: 1.45;
+      }
     }
-    .card.highlight { border-color: #1a73e8; box-shadow: 0 1px 6px rgb(26 115 232 / 15%); }
+    .card.highlight {
+      border-color: #1a73e8;
+      box-shadow: 0 1px 6px rgb(26 115 232 / 15%);
+    }
   </style>
 </head>
 

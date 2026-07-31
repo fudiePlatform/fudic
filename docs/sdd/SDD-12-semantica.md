@@ -132,6 +132,7 @@ Cada SDD reserva su rango; aquí está el registro maestro. Formato `FUD` + 4 d�
 | `FUD0190`–`0209` | 12 | `0190` atributo duplicado · `0191` custom element sin `<link rel="component">` · `0192` `ref` en bucle · `0193` `@server`/`@client` anidado · `0194` más de un `@server`/`@client` · `0195` interpolación no-primitiva (literal array/objeto) · `0196` import por efecto en zona neutra (warning). |
 
 | `FUD0460`–`0479` | 24 | `0460` `href` de un `<link>` que no resuelve a ningún `.fud` · `0461` identificador de usuario con prefijo `$` (namespace reservado al compilador). |
+| `FUD0480`–`0499` | 26 | `0480` `<style>` dejado sin formatear (placeholder Razor irreconstruible, o el CSS no parsea) · `0481` fragmento JS/TS dejado como estaba escrito porque no parsea · `0482` fallo interno del formateador (el único `error` del rango; el fichero se devuelve intacto). |
 
 `FUD0197`–`0209` libres para SDD-12. Severidades: todos `error` salvo `0196` (`warning`).
 
@@ -139,6 +140,12 @@ Los rangos de los SDD 13–23 se anotan aquí a medida que cada spec define cód
 que faltan viven documentados en su propio SDD (`FUD0420`–`0439` en SDD-21, `FUD0440`–`0459` en
 SDD-22, que además no son `Diagnostic` sino `CliError`: una colisión de ficheros no tiene span).
 `FUD0462`–`0479` quedan libres para SDD-24.
+
+`FUD0450` lo define SDD-26 dentro del rango de SDD-22, y es deliberado: `fudic fmt` rechaza con
+él un fichero que no parsea, y ese es un error de la CLI, no del formateador — su sitio es el
+rango de la CLI. `0480` y `0481` son `info`: no son fallos, son el formateador diciendo qué
+dejó como lo encontró. Un `.fud` que no parsea no produce ninguno de los tres: no se formatea
+en absoluto, en silencio (§4.6).
 
 ---
 

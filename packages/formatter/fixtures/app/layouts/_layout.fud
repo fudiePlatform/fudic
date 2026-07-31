@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="./logo.svg">
+
+    <!-- The main-thread bootstrap: registers the render Service Worker, which from
+         then on renders every `sw` route locally, and tells it where the user is.
+         It lives HERE, once: before layouts every route had to remember it, and a
+         route that forgot it silently lost the Service Worker. -->
+    <script type="module" src="/fudic-main.js"></script>
+
+    @* Everything each route contributes to the head — its <title>, its component
+       stylesheets, the style-adoption polyfill — goes exactly here. *@
+    @RenderHead()
+  </head>
+  <body>
+    @* The nav is route-specific (it highlights the current section), so the route
+       fills this hole with `@section nav { … }`. A route that declares no `nav`
+       renders nothing here, without an error. *@
+    @RenderSection(nav)
+
+    <main>@RenderBody()</main>
+
+    <footer class="site">
+      <p>fudic — ejemplo básico. El shell de esta página lo escribe un solo fichero.</p>
+    </footer>
+  </body>
+</html>

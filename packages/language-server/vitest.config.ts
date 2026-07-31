@@ -22,6 +22,8 @@ export default defineConfig({
     // Dev-time source resolution of the workspace siblings: no build coupling.
     alias: {
       '@fudic/compiler': fileURLToPath(new URL('../compiler/src/index.ts', import.meta.url)),
+      '@fudic/cli': fileURLToPath(new URL('../cli/src/index.ts', import.meta.url)),
+      '@fudic/formatter': fileURLToPath(new URL('../formatter/src/index.ts', import.meta.url)),
       '@fudic/language-core': fileURLToPath(
         new URL('../language-core/src/index.ts', import.meta.url),
       ),

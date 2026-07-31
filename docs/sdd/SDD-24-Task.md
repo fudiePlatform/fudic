@@ -37,7 +37,19 @@ piden decisión de Pedro; los dos últimos son elecciones que las tareas ya asum
    `volar-service-typescript|html|css` a `0.0.71`; `vscode-languageserver` a `9.0.1` (es la
    que Volar 2.4 resuelve: la 10.x es LSP 3.18 y se saldría del rango de sus pares),
    `vscode-languageserver-textdocument` `1.0.12`, `vscode-uri` `3.1.0`.
-5. **El `bin` no esconde código.** El lanzador `bin/fudic-language-server.js` es un shim de
+5. **~~El `bin` no esconde código.~~ Cierto, pero el humo nunca se encendió (arreglado 2026-07-31).**
+   La nota decía bien que la cobertura de un proceso hijo no la recoge v8 y que el `spawn`
+   quedaba «como humo, no como cobertura» — lo que faltó es que nadie lo encendiera nunca.
+   `src/cli.ts` importaba `@volar/language-server/node` **sin extensión**: TypeScript lo
+   acepta con `moduleResolution: bundler` y lo emite tal cual, y Node en ESM lo rechaza,
+   porque ese paquete no tiene `exports` y una subruta es una ruta de fichero — el fichero es
+   `node.js`. Los 344 tests pasaban porque Vitest resuelve como un bundler y ninguno ejecutaba
+   `dist/`. Arreglado en `cli.ts`, `server.ts` y `tsdk.ts`, y `scripts/verify-bin.mjs`
+   —lanzado por `build`, no por `test`, porque el defecto está en el **artefacto** y no se
+   reproduce desde el fuente— arranca el binario y le exige contestar `initialize`.
+   El texto original, que sigue valiendo:
+
+   **El `bin` no esconde código.** El lanzador `bin/fudic-language-server.js` es un shim de
    dos líneas sin ninguna rama (`import('../dist/cli.js').then(m => m.main(...))`): la
    elección de transporte, el manejo de argumentos y los errores viven en `src/cli.ts`, que
    los tests ejercitan en proceso. La cobertura de un proceso hijo no la recoge v8, así que

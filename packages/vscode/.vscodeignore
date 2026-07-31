@@ -1,0 +1,25 @@
+# What does NOT travel in the .vsix (SDD-25 §4.5).
+#
+# Both bundles are self-contained, so `vsce package --no-dependencies` ships no
+# node_modules at all — which also sidesteps pnpm's symlinked tree, something vsce has
+# never handled. Everything below is either source for those bundles or tooling.
+
+src/**
+bundle/**
+test/**
+fixtures/**
+scripts/**
+coverage/**
+node_modules/**
+# The manual verification script is for whoever develops the extension, not for whoever
+# installs it. README.md does ship: VS Code shows it on the extension page.
+docs/**
+
+tsconfig.json
+vitest.config.ts
+rolldown.config.ts
+.vscodeignore
+
+**/*.ts
+**/*.map
+**/tsconfig.tsbuildinfo

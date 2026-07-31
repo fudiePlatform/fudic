@@ -1,0 +1,4 @@
+@code {
+  const a = 1;
+
+<p>the code block never closes</p>

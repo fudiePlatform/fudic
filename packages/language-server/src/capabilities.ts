@@ -4,9 +4,10 @@
  *
  * The list is a contract with the client, not a wish: a capability declared here must route
  * through the mapping to some service, and one that is missing makes the editor stop asking.
- * Formatting is the single deliberate exception — the capability is declared and delegated,
- * because the algorithm is SDD-26 and the client must not have to be re-configured when it
- * lands.
+ * Formatting was the single deliberate exception — declared and delegated from the first
+ * commit, so the client would not have to be re-configured when SDD-26 landed. It has: the
+ * three formatting capabilities now route to `@fudic/formatter`, the same function the CLI
+ * calls.
  */
 
 import {
@@ -63,6 +64,9 @@ export const SERVER_CAPABILITIES: ServerCapabilities = {
   semanticTokensProvider: { legend: SEMANTIC_TOKENS_LEGEND, full: true, range: true },
   documentFormattingProvider: true,
   documentRangeFormattingProvider: true,
+  // The two characters of SDD-26 §4.7, and the only two: formatting while typing reindents
+  // the current line and reorganizes nothing.
+  documentOnTypeFormattingProvider: { firstTriggerCharacter: '}', moreTriggerCharacter: ['>'] },
   documentLinkProvider: { resolveProvider: false },
   codeActionProvider: true,
   diagnosticProvider: { interFileDependencies: true, workspaceDiagnostics: false },

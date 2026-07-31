@@ -1,6 +1,6 @@
 # SDD-25 — Extensión de VS Code (`fudic-vscode`)
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Paquete:** `fudic-vscode` (extensión; no se publica en npm)
 > **Naturaleza:** cliente. **Fina por diseño**: cero lógica de lenguaje.
 

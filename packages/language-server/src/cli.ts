@@ -10,8 +10,8 @@
  * The `bin/` launcher has no branches at all — nothing it could hide.
  */
 
-import { createConnection as createVolarConnection } from '@volar/language-server/node';
-import type { Connection } from '@volar/language-server/node';
+import { createConnection as createVolarConnection } from '@volar/language-server/node.js';
+import type { Connection } from '@volar/language-server/node.js';
 import { createFudicServer } from './server.js';
 
 /** How the client talks to this process. */

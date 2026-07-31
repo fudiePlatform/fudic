@@ -1,7 +1,7 @@
 {
   "name": "@fudic/cli",
   "version": "0.0.1",
-  "description": "fudic scaffolding CLI — creates projects and generates pages, components and layouts.",
+  "description": "fudic scaffolding CLI \u2014 creates projects and generates pages, components and layouts.",
   "type": "module",
   "license": "MIT",
   "author": "Pedro Hurtado",
@@ -49,6 +49,7 @@
   },
   "dependencies": {
     "@fudic/compiler": "workspace:*",
+    "@fudic/formatter": "workspace:*",
     "@fudic/language-core": "workspace:*"
   },
   "devDependencies": {

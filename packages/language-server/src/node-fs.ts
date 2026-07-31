@@ -20,20 +20,35 @@ const SKIPPED = new Set(['node_modules', 'dist', '.git']);
 /** The real filesystem, narrowed to what the workspace index needs. */
 export function nodeFileSystem(): FileSystemScanner {
   return {
+    /**
+     * The sweep PRUNES as it descends; it does not walk everything and filter afterwards.
+     *
+     * The difference is not stylistic. `node_modules` is where almost all the files in a
+     * project are, and a recursive read that visits it before discarding it pays for the
+     * whole store — seconds, on the one operation §4.5 promised would happen once at
+     * startup and never per keystroke.
+     */
     fudFiles(root: string): readonly string[] {
-      let entries: readonly string[];
-      try {
-        entries = readdirSync(root, { recursive: true }) as string[];
-      } catch {
-        return []; // the folder is not there: an empty workspace, not an error
-      }
-
       const base = toPosix(root);
-      return entries
-        .map(toPosix)
-        .filter((entry) => entry.endsWith('.fud'))
-        .filter((entry) => !entry.split('/').some((segment) => SKIPPED.has(segment)))
-        .map((entry) => `${base}/${entry}`);
+      const found: string[] = [];
+
+      const visit = (dir: string, prefix: string): void => {
+        let entries;
+        try {
+          entries = readdirSync(dir, { withFileTypes: true });
+        } catch {
+          return; // the folder is not there: an empty workspace, not an error
+        }
+        for (const entry of entries) {
+          if (SKIPPED.has(entry.name)) continue;
+          const relative = prefix === '' ? entry.name : `${prefix}/${entry.name}`;
+          if (entry.isDirectory()) visit(`${dir}/${entry.name}`, relative);
+          else if (entry.name.endsWith('.fud')) found.push(`${base}/${relative}`);
+        }
+      };
+
+      visit(root, '');
+      return found;
     },
 
     readFile(path: string): string | undefined {
