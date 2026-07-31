@@ -61,12 +61,14 @@ export function headElementExpr(source: string, el: ElementNode, linker: AssetLi
     const binding = linker.maybeRef(parts.map((p) => (p as { value: string }).value).join(''));
     if (binding === null) continue; // linking off, already-final URL, or missing file
     return (
-      JSON.stringify('  ' + source.slice(el.span.start, first.span.start)) +
+      JSON.stringify(source.slice(el.span.start, first.span.start)) +
       ` + ${binding} + ` +
-      JSON.stringify(source.slice(last.span.end, el.span.end) + '\n')
+      JSON.stringify(source.slice(last.span.end, el.span.end))
     );
   }
-  return JSON.stringify('  ' + source.slice(el.span.start, el.span.end) + '\n');
+  // The element ALONE: no indent, no newline around it (BUG-07 §4.2). Whitespace between
+  // the children of `<head>` is dropped by the parser before the tree exists.
+  return JSON.stringify(source.slice(el.span.start, el.span.end));
 }
 
 /** The JS expression for a `<title>`'s content: text runs plus escaped interpolations. */
@@ -105,9 +107,9 @@ export function writeNonceBinding(w: CodeWriter): void {
 export function writeSharedHead(w: CodeWriter): void {
   w.line('// The style-adoption polyfill (SDD-18 §5) goes in <head>, live BEFORE the body streams,');
   w.line('// so its observer adopts each host sheet as it arrives; the style modules follow it.');
-  w.line("head += '  <script' + $nonce + '>' + STYLE_POLYFILL + '</script>\\n';");
+  w.line("head += '<script' + $nonce + '>' + STYLE_POLYFILL + '</script>';");
   w.line(
-    "head += COMPONENTS.map(function (c) { return '  <style type=\"module\" specifier=\"' + c.tag + '\">' + c.css + '</style>'; }).join('\\n') + '\\n';",
+    "head += COMPONENTS.map(function (c) { return '<style type=\"module\" specifier=\"' + c.tag + '\">' + c.css + '</style>'; }).join('');",
   );
 }
 
@@ -140,7 +142,7 @@ export function writeHeadElements(
     }
     if (child.type !== 'element' || options.skip.has(child)) continue;
     if (child.name === 'title') {
-      w.line(`head += '<title>' + (${titleExpr(source, child)}) + '</title>\\n';`);
+      w.line(`head += '<title>' + (${titleExpr(source, child)}) + '</title>';`);
     } else {
       w.line(`head += ${headElementExpr(source, child, options.linker)};`);
     }

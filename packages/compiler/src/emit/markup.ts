@@ -18,6 +18,7 @@ import type { Span } from '../types/index.js';
 import { classifyAttribute } from '../binding/index.js';
 import { CodeWriter } from './writer.js';
 import { type AssetLinker } from './assets.js';
+import { collapseSpace, nestedSpaceMode, type SpaceMode } from './space.js';
 
 /** `render` + PascalCase of a `prefix-name` tag: `app-button` → `renderAppButton`. */
 export const renderName = (tag: string): string =>
@@ -47,12 +48,18 @@ export class MarkupEmitter {
   readonly #slots: string | undefined;
   readonly #used = new Set<string>();
   #id = 0;
+  /** The whitespace mode of the node being emitted; `white-space` inherits (BUG-07 §4.4). */
+  #space: SpaceMode;
 
   /**
    * `slots` is the name of the layout's slots object (SDD-21 §4.5). When given, the layout
    * directives resolve to calls on it — `@RenderBody()` becomes `route.body($dom, parent)`.
    * When absent (a page, a component), a directive emits nothing: it was already reported
    * as out of place by SDD-10, and the emit must not invent markup for it.
+   *
+   * `space` is the mode AROUND the nodes this emitter walks: a component's own `<style>`
+   * can put its whole template in a preserving context, and a page body starts in the
+   * default one. Everything below it is derived per element by `nestedSpaceMode`.
    */
   constructor(
     source: string,
@@ -60,12 +67,14 @@ export class MarkupEmitter {
     isComponent: (tag: string) => boolean,
     linker: AssetLinker,
     slots?: string,
+    space: SpaceMode = 'collapse',
   ) {
     this.#source = source;
     this.#w = w;
     this.#isComponent = isComponent;
     this.#linker = linker;
     this.#slots = slots;
+    this.#space = space;
   }
 
   /** The child component tags rendered so far, in first-use order (for ES imports). */
@@ -78,7 +87,11 @@ export class MarkupEmitter {
     switch (node.type) {
       case 'text': {
         const v = this.#fresh();
-        this.#w.line(`const ${v} = $dom.text(${JSON.stringify(node.value)}); $dom.append(${parent}, ${v});`);
+        // Collapsed here, on the AST, not by a pass over the generated HTML (BUG-07 §4.1).
+        // A run becomes ONE space and the node always survives — never trimmed, never
+        // dropped: `collapseSpace` says what that protects.
+        const value = this.#space === 'preserve' ? node.value : collapseSpace(node.value);
+        this.#w.line(`const ${v} = $dom.text(${JSON.stringify(value)}); $dom.append(${parent}, ${v});`);
         return;
       }
       case 'razor-expression': {
@@ -126,6 +139,10 @@ export class MarkupEmitter {
 
   #element(el: ElementNode, parent: string): void {
     const v = this.#fresh();
+    // `white-space` inherits, so the mode is a stack, not a per-node lookup: entering a
+    // `<pre>` puts everything below it in preserve until the walk leaves again.
+    const outer = this.#space;
+    this.#space = nestedSpaceMode(outer, el);
     if (this.#isComponent(el.name)) {
       this.#used.add(el.name);
       const s = this.#fresh();
@@ -142,6 +159,7 @@ export class MarkupEmitter {
       this.#elementAttrs(el, v);
       for (const child of el.children) this.emit(child, v);
     }
+    this.#space = outer;
     this.#w.line(`$dom.append(${parent}, ${v});`);
   }
 

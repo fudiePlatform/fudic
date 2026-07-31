@@ -15,13 +15,13 @@ export const css = `
 
 export function render($dom, $shadow, props) {
   const { tone = 'neutral' } = props ?? {};
-  const $n0 = $dom.text("\n    "); $dom.append($shadow, $n0);
+  const $n0 = $dom.text(" "); $dom.append($shadow, $n0);
   const $n1 = $dom.element("span");
   $dom.setAttr($n1, 'class', ["badge", (tone === 'success') && "success", (tone === 'warning') && "warning"].filter(Boolean).join(' '));
-  const $n2 = $dom.text("\n      "); $dom.append($n1, $n2);
+  const $n2 = $dom.text(" "); $dom.append($n1, $n2);
   const $n3 = $dom.element("slot");
   $dom.append($n1, $n3);
-  const $n4 = $dom.text("\n    "); $dom.append($n1, $n4);
+  const $n4 = $dom.text(" "); $dom.append($n1, $n4);
   $dom.append($shadow, $n1);
-  const $n5 = $dom.text("\n  "); $dom.append($shadow, $n5);
+  const $n5 = $dom.text(" "); $dom.append($shadow, $n5);
 }

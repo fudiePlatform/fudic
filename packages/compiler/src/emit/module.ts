@@ -20,12 +20,14 @@
 
 import type { ComponentGraph, ResolvedComponent } from './resolve.js';
 import type { ElementNode, HtmlContent } from '../html/index.js';
+import type { StyleNode } from '../css/index.js';
 import type { PageDocument, ComponentDocument } from '../document/index.js';
+import { spaceModeOf } from './space.js';
 import { CodeWriter, type EmitMapping } from './writer.js';
 import { MarkupEmitter, renderName, tpl } from './markup.js';
 import { AssetLinker, type AssetExists } from './assets.js';
 import { extractCode } from './oxc-code.js';
-import { STYLE_POLYFILL } from './polyfill.js';
+import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import {
   type ComponentSpecifier,
   type LayoutSpecifier,
@@ -83,13 +85,29 @@ export interface EmitOutput {
   readonly missingAssets: readonly string[];
 }
 
-/** The `<head>` `<style>` CSS of a component (the shared sheet body). */
-function componentCss(source: string, doc: ComponentDocument): string {
-  const style = doc.head?.children.find(
+/** The component's single `<style>` element, if it wrote one (decision 62). */
+function styleElement(doc: ComponentDocument): ElementNode | undefined {
+  return doc.head?.children.find(
     (c): c is ElementNode => c.type === 'element' && c.name === 'style',
   );
+}
+
+/** The `<head>` `<style>` CSS of a component (the shared sheet body). */
+function componentCss(source: string, doc: ComponentDocument): string {
+  const style = styleElement(doc);
   if (!style) return '';
   return source.slice(style.openSpan.end, style.closeSpan ? style.closeSpan.start : style.span.end);
+}
+
+/**
+ * The PARSED body of that `<style>` — a `<style>` carries a `StyleNode` child, because
+ * the parser runs `parseStyle` over its body for the Razor (SDD-09). It is what tells the
+ * whitespace model whether this component declared a preserving `white-space` (BUG-07
+ * §4.4), which is precisely the fact an external HTML minifier cannot know.
+ */
+function componentStyleNode(doc: ComponentDocument): StyleNode | null {
+  const child = styleElement(doc)?.children[0];
+  return child !== undefined && child.type === 'style-content' ? child : null;
 }
 
 function buildComponentModule(
@@ -101,7 +119,8 @@ function buildComponentModule(
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
   const { props, signals } = extractCode(comp.source, comp.doc);
   const bodyW = new CodeWriter();
-  const em = new MarkupEmitter(comp.source, bodyW, (t) => graph.components.has(t), linker);
+  const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
+  const em = new MarkupEmitter(comp.source, bodyW, (t) => graph.components.has(t), linker, undefined, space);
   for (const child of comp.doc.template!.children) em.emit(child, '$shadow');
   // css uses the linker too (may register more imports), so build it before the imports.
   const css = linker.cssTemplate(componentCss(comp.source, comp.doc));
@@ -178,7 +197,8 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
   for (const line of linker.imports()) w.line(line); // asset imports Vite resolves (SDD-19 §4.5)
   w.line('');
   w.line(`const COMPONENTS = [${comps.map((c) => `{ tag: ${renderName(c.tag)}Tag, css: ${renderName(c.tag)}Css }`).join(', ')}];`);
-  w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL)};`);
+  // The MINIFIED form: it is inline in every page's head, once per page (BUG-07 §4.3).
+  w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL_MIN)};`);
   w.line('');
   // Streaming a trozos (SDD-19 §4.3): a generator that yields the <head> FIRST, then the
   // body by pieces via `serialize` (serializeChunks), then the close. `io.serialize` is a
@@ -190,12 +210,15 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
   w.line("let head = '';");
   w.appendWriter(headW);
   writeSharedHead(w);
-  w.line('yield \'<!DOCTYPE html>\\n<html lang="es">\\n<head>\\n\' + head + \'</head>\\n\';');
+  // No whitespace in the skeleton (BUG-07 §4.2). Between the doctype, `<html>`, `<head>`
+  // and its elements there is no context where a newline or an indent renders: the HTML
+  // parser drops it before the tree is built. It is the free half of this BUG.
+  w.line('yield \'<!DOCTYPE html><html lang="es"><head>\' + head + \'</head>\';');
   w.line('const $dom = createDom();');
   w.line('const $body = $dom.element(\'body\');');
   w.appendWriter(bodyW);
   w.line('yield* serialize($body);');
-  w.line("yield '\\n</html>\\n';");
+  w.line("yield '</html>';");
   w.dedent();
   w.line('}');
   return { writer: w, linker };

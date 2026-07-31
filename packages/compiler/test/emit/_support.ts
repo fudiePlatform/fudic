@@ -3,9 +3,11 @@
  * constructs + SDD-10 structure) exactly like the emit's own entry points do, so the
  * AST the emitters receive is authentic — never hand-forged.
  */
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { readFileSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
+import { emitComponentModule, emitPageModule, type ComponentGraph } from '../../src/emit/index.js';
 import {
   parseDocument,
   type AtConstructParser,
@@ -165,6 +167,29 @@ export function minimalSsr(): {
     serialize: (root: unknown) => [serializeNode(root as TreeNode)],
     escapeText: escapeHtml,
   };
+}
+
+/**
+ * Emit every module of a graph to a temp dir, import the page and RUN it: the real
+ * document, produced the way `build.ts` produces one.
+ *
+ * It has to go through the filesystem — the page module imports its components by
+ * specifier, so there is no evaluating it in isolation. Shared because two suites need
+ * the rendered HTML and not the emitted source: the codegen tests, and BUG-07, whose
+ * whole subject is the bytes of the document.
+ */
+export async function renderPageHtml(graph: ComponentGraph, data: unknown): Promise<string> {
+  const dir = mkdtempSync(join(tmpdir(), 'fudic-emit-'));
+  mkdirSync(dir, { recursive: true });
+  for (const comp of graph.components.values()) {
+    writeFileSync(join(dir, `${comp.tag}.mjs`), emitComponentModule(graph, comp), 'utf8');
+  }
+  writeFileSync(join(dir, 'home.mjs'), emitPageModule(graph), 'utf8');
+  const mod = (await import(pathToFileURL(join(dir, 'home.mjs')).href)) as {
+    page: (data: unknown, io: unknown) => Iterable<string>;
+  };
+  // `page` streams a trozos: join the pieces into the full document (SDD-19 §4.3).
+  return [...mod.page(data, minimalSsr())].join('');
 }
 
 /**

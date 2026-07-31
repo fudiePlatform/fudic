@@ -30,3 +30,5 @@ export {
   emitRouteModule,
   emitRouteModuleMapped,
 } from './layout.js';
+
+export { spaceModeOf, collapseSpace, nestedSpaceMode, SPACE_ATTR, type SpaceMode } from './space.js';

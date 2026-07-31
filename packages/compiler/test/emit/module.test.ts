@@ -147,9 +147,10 @@ describe('emitPageModule — home.mjs', () => {
 
   it('emits the style polyfill and places its <script> BEFORE the style modules', () => {
     expect(src).toContain('const STYLE_POLYFILL = `');
-    expect(src).toContain('new MutationObserver');
+    expect(src).toContain('MutationObserver');
     // The `<script>` carries the per-response CSP nonce (SDD-20 §4.9); empty without one.
-    const scriptAt = src.indexOf("'  <script' + $nonce + '>' + STYLE_POLYFILL");
+    // No indent before it since BUG-07 §4.2: head whitespace never reaches the tree.
+    const scriptAt = src.indexOf("'<script' + $nonce + '>' + STYLE_POLYFILL");
     const stylesAt = src.indexOf('<style type="module" specifier=');
     expect(scriptAt).toBeGreaterThan(-1);
     expect(stylesAt).toBeGreaterThan(scriptAt); // head order: polyfill first, then sheets
@@ -185,13 +186,15 @@ describe('emitPageModule — executed end to end', () => {
   });
 
   it('produces a full HTML document with the interpolated title', () => {
-    expect(html.startsWith('<!DOCTYPE html>\n<html lang="es">')).toBe(true);
+    expect(html.startsWith('<!DOCTYPE html><html lang="es">')).toBe(true);
     expect(html).toContain('<title>Inicio</title>');
   });
 
   it('emits the blocking style polyfill and the per-component style modules in <head>', () => {
-    expect(html).toContain('<script>(function () {');
-    expect(html).toContain('new MutationObserver');
+    // Minified since BUG-07 §4.3, so this asserts the polyfill is THERE, not how it reads.
+    // What it still does is pinned by `minify.test.ts`, which runs the emitted text.
+    expect(html).toContain('<script>(function(){');
+    expect(html).toContain('MutationObserver');
     expect(html).toContain('<style type="module" specifier="app-card">');
     expect(html).toContain('<style type="module" specifier="app-badge">');
   });
@@ -235,14 +238,14 @@ describe('emitPageModule — <title> child shapes', () => {
   };
 
   it('emits a plain-text title as a JSON string literal', () => {
-    expect(pageWithTitle('<title>Static</title>')).toContain('head += \'<title>\' + ("Static") + \'</title>\\n\';');
+    expect(pageWithTitle('<title>Static</title>')).toContain('head += \'<title>\' + ("Static") + \'</title>\';');
   });
 
   it('emits an empty title as the empty-string fallback', () => {
-    expect(pageWithTitle('<title></title>')).toContain('head += \'<title>\' + (\'\') + \'</title>\\n\';');
+    expect(pageWithTitle('<title></title>')).toContain('head += \'<title>\' + (\'\') + \'</title>\';');
   });
 
   it('emits the empty-string fallback for a non-text, non-expression child (razor comment)', () => {
-    expect(pageWithTitle('<title>@* c *@</title>')).toContain('head += \'<title>\' + (\'\') + \'</title>\\n\';');
+    expect(pageWithTitle('<title>@* c *@</title>')).toContain('head += \'<title>\' + (\'\') + \'</title>\';');
   });
 });

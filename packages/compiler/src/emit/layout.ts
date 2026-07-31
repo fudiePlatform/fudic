@@ -26,7 +26,7 @@ import type { SectionNode } from '../layout/index.js';
 import { CodeWriter } from './writer.js';
 import { MarkupEmitter, renderName, tpl } from './markup.js';
 import { AssetLinker } from './assets.js';
-import { STYLE_POLYFILL } from './polyfill.js';
+import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import type { DocumentGraph, ResolvedLayout } from './resolve.js';
 import type { EmitOptions, EmitOutput } from './module.js';
 import {
@@ -148,12 +148,13 @@ function buildLayoutModule(
     w.line('const { createDom, serialize, escapeText } = io;');
     w.line("let head = '';");
     w.appendWriter(headW);
-    w.line(`yield ${JSON.stringify(`<!DOCTYPE html>\n${slice(source, doc.html.openSpan)}\n<head>\n`)} + head + '</head>\\n';`);
+    // No whitespace in the skeleton, as in `module.ts` (BUG-07 §4.2).
+    w.line(`yield ${JSON.stringify(`<!DOCTYPE html>${slice(source, doc.html.openSpan)}<head>`)} + head + '</head>';`);
     w.line(`const ${DOM} = createDom();`);
     w.line(`const $body = ${DOM}.element('body');`);
     w.appendWriter(bodyW);
     w.line('yield* serialize($body);');
-    w.line("yield '\\n</html>\\n';");
+    w.line("yield '</html>';");
   }
   w.dedent();
   w.line('}');
@@ -242,7 +243,8 @@ function buildRouteModule(
   for (const line of linker.imports()) w.line(line);
   w.line('');
   w.line(`const COMPONENTS = [${componentPairs(graph).join(', ')}];`);
-  w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL)};`);
+  // The MINIFIED form: it is inline in every page's head, once per page (BUG-07 §4.3).
+  w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL_MIN)};`);
   w.line('');
   // Same public shape as a standalone page: the composition is invisible downstream.
   w.line('export function* page(data, io) {');
