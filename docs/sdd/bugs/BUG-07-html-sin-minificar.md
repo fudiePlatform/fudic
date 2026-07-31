@@ -1,6 +1,6 @@
 # BUG-07 — Ningún HTML emitido pasa por minificación
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Corrige:** [SDD-19 — Plugin de Vite](../SDD-19-plugin-vite.md) §4.4
 > **Paquete:** `@fudic/compiler` — la minificación es propia y vive en el emit (§4.1)
 > **Rama sugerida:** worktree compartido `fix-build-output`
@@ -38,6 +38,14 @@ pnpm build && head -12 examples/basic/dist/index.html
 Esa tabla es el argumento entero de este BUG: **la opción arriesgada paga 0,4 % más que la
 segura**, porque gzip ya se come la indentación repetida. Lo que sí paga es el polyfill, que
 es un tercio de cada página y hoy va tal cual.
+
+> **Resultado, al cerrar.** Las cuatro filas de arriba miden cada estrategia de whitespace
+> **por separado**; lo implementado son las tres juntas —esqueleto, markup y polyfill—, y
+> ahí `index.html` queda en **5.792 B raw / 2.293 B gzip** (−17,6 % / −7,7 %). Los cinco
+> `.html` del ejemplo: 26.131 → 20.918 B raw (−20,0 %), 10.750 → 9.872 B gzip (−8,2 %). El
+> desglose por fichero está en el registro de progreso de [INDEX.md](./INDEX.md) (§6.7).
+> Que el gzip pague menos de la mitad que el raw confirma la tesis de la tabla, y confirma
+> también cuál de las tres partes era la que valía: el polyfill.
 
 ---
 
@@ -103,7 +111,21 @@ export type SpaceMode = 'collapse' | 'preserve';
 
 /** Modo con el que se emite el contenido de un elemento, por su tag y su CSS. */
 export function spaceModeOf(tag: string, style: StyleNode | null): SpaceMode;
+
+/** El modo DENTRO de `el`, dado el de fuera: `white-space` se hereda (§4.4). */
+export function nestedSpaceMode(inherited: SpaceMode, el: ElementNode): SpaceMode;
+
+/** Toda tirada de whitespace a un espacio. Nunca recorta, nunca devuelve vacío (§4.5). */
+export function collapseSpace(text: string): string;
+
+/** `data-fud-space="preserve"`: la vía de escape del único caso indeducible (§4.4). */
+export const SPACE_ATTR = 'data-fud-space';
 ```
+
+`spaceModeOf` sola no basta: la spec la describía como «por su tag y su CSS», pero la
+hoja solo existe en la raíz del componente, y `white-space` **se hereda** hacia todo lo
+que hay debajo. De ahí `nestedSpaceMode`, que es la forma de pila de la misma regla y es
+la que `MarkupEmitter` usa al descender.
 
 El colapso ocurre **en el emit**, sobre el AST, no como pasada de texto sobre el HTML ya
 generado. Lo emitido ya sale minificado; no hay segunda etapa que mantener.
@@ -214,8 +236,17 @@ beneficio con el 0 % del riesgo.
    fuera de `<pre>`, `<textarea>`, `<script>` y `<style>` (§4.4).
 4. Un componente con `white-space: pre` en su propio `<style>` conserva su whitespace
    íntegro (§4.4).
-8. **Lighthouse deja de avisar.** La auditoría que hoy marca el HTML del ejemplo pasa a
-   verde. Es el síntoma que originó el BUG y ningún test unitario lo cubre.
+8. ~~**Lighthouse deja de avisar.** La auditoría que hoy marca el HTML del ejemplo pasa a
+   verde. Es el síntoma que originó el BUG y ningún test unitario lo cubre.~~
+   **Retirado al implementar: no había tal aviso.** Lighthouse 12.8.2 sobre el `preview`
+   del ejemplo, categoría *performance*, puntúa **1 en las dos ejecuciones** —antes y
+   después— en `unminified-javascript`, `unminified-css`, `unused-javascript`,
+   `render-blocking-resources` y `legacy-javascript`, con score global 100 en ambas. Las
+   dos ejecuciones vieron builds distintos (documento de 7.033 B → 5.799 B, *total byte
+   weight* 8.124 → 6.890 B), así que no es que la medición no distinga: es que la
+   auditoría nunca marcó esto. `unminified-javascript` sí mira los scripts inline, pero
+   solo reporta por encima de su umbral, y 1,1 kB de ahorro queda por debajo. El criterio
+   que sostiene el BUG es §6.7, la medición, no una auditoría de terceros.
 5. **Ningún nodo de texto desaparece.** Contar nodos de texto del DOM antes y después: la
    cifra es la misma. Es el criterio que blinda §4.5.
 6. **Extremo a extremo:** los 16 tests de `examples/basic/tests/` siguen en verde, y una

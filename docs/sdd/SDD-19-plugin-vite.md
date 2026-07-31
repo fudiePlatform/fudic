@@ -256,6 +256,15 @@ o `index.html` en la raíz). `load` (y `paths` para el fan-out) corren en build.
 generalizado, sin datos hardcodeados. El streaming solo importa en el WW (modo 2); en build el
 documento es un fichero, así que se colapsa a string — mismas piezas, distinto consumo.
 
+**Ese `.html` sale ya minificado, y no lo minifica el plugin**
+([BUG-07](./bugs/BUG-07-html-sin-minificar.md)). El documento se escribe con `emitFile` como
+asset: Vite nunca lo ve *como HTML de entrada* —el `input` del build no lleva ningún `.html`
+y `appType` es `'custom'`—, así que aquí no falta una opción, falta la etapa entera. La
+minificación vive por tanto en el emit de `@fudic/compiler`, sobre el AST, que es donde se
+sabe lo que un minificador de texto tiene que adivinar. El plugin no añade ninguna pasada
+sobre el string, y el contrato de esta sección no cambia: mismos nombres y mismo número de
+ficheros, distintos bytes dentro.
+
 ### 4.5. El linker de assets (el único enlazado a mano)
 
 Vite es ciego a las URLs dentro de strings emitidos (`setAttr($n,'src',"…")`) y dentro del

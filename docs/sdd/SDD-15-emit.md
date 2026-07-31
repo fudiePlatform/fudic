@@ -719,6 +719,34 @@ resuelve nada más. No hay `data-fud-css` ni marcador inventado.
   el shadow, sin elevar (decisión 77): es la vía de escape del autor, distinta de la hoja del
   host.
 
+### 4.9. Whitespace: se colapsa a un espacio, no se elimina ningún nodo
+
+Añadido por [BUG-07](./bugs/BUG-07-html-sin-minificar.md) §4.4/§4.5. Lo que el emit produce
+sale ya minificado —no hay pasada posterior sobre el HTML generado, porque en el emit está
+el AST y un minificador de texto tendría que adivinarlo—. Tres reglas, y la tercera es la
+que hay que leer antes de tocar nada:
+
+- **El esqueleto no lleva whitespace.** Entre el doctype, `<html>`, `<head>` y sus hijos no
+  hay contexto donde un salto o un indent rendericen: el parser los descarta antes de
+  construir el árbol. Y el polyfill de adopción de estilos (§4.8) se **incrusta minificado**
+  —`polyfill.ts` conserva la constante legible; lo que se emite es `polyfill.min.ts`, que se
+  genera con `scripts/minify-polyfill.ts` y se commitea, porque el minificador no puede
+  entrar en el grafo de runtime del compilador—.
+- **En el markup, toda tirada de whitespace se colapsa a UN espacio.** Es exactamente lo que
+  el navegador iba a hacer bajo `white-space: normal`: render idéntico por construcción, no
+  por heurística. `preserve` en `<pre>` y `<textarea>`, y en un componente cuyo propio
+  `<style>` declare `white-space: pre*`, que el compilador **puede ver** porque el CSS está
+  en el mismo fichero. El modo es una **pila** en el emisor de markup, no un lookup por
+  nodo, porque `white-space` se hereda. Para el único caso indeducible —un ancestro de otro
+  fichero que cruza el shadow boundary—, el atributo explícito `data-fud-space="preserve"`.
+- **Ningún nodo de texto desaparece.** Es donde este emit se separa de todo minificador
+  clásico, y a propósito: ellos borran el nodo de solo-whitespace entre dos elementos de
+  **bloque**, y deciden qué es bloque con una lista fija de tags donde un custom element no
+  está. Un tag desconocido es un custom element y su `display` por defecto es `inline`, así
+  que en una página fudic esa heurística no falla en el caso raro, falla en el normal.
+  Borrarlo cambiaría tres cosas observables —el contenido asignado a un `<slot>`, `:empty` y
+  el espaciado inline entre componentes— y, medido, paga 0,4 % gzip sobre colapsar.
+
 ---
 
 ## 5. Invariantes LSP
