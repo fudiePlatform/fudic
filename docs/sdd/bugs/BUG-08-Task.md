@@ -3,7 +3,7 @@
 > **BUG:** [BUG-08 — El CSS de componente nunca se minifica, en ninguna salida](./BUG-08-css-verbatim.md)
 > **Paquete:** `@fudic/compiler` · **Rama:** worktree `fix-build-output`
 > **Depende de:** nada
-> **Progreso:** 5 / 8
+> **Progreso:** 8 / 8
 
 Cada tarea es un paso cerrado. Las rutas son relativas a la raíz del repo.
 
@@ -48,15 +48,15 @@ tener el compactador ya hecho, se escribe para que pase.
 
 ## Fase 3 — Lo que no se puede romper (3)
 
-- [ ] **6. El enlazado de assets sigue igual.**
+- [x] **6. El enlazado de assets sigue igual.**
       Un `url(./logo.png)` dentro del CSS compactado se sigue convirtiendo en import y
       `linker.cssTemplate` (`module.ts:107`) lo resuelve igual (§6.4). El orden de
       `componentCss` → `cssTemplate` no cambia.
-- [ ] **7. Los source maps no se degradan.**
+- [x] **7. Los source maps no se degradan.**
       Las posiciones de las interpolaciones del `<style>` siguen resolviendo a su offset del
       `.fud` (§6.6). Es la regresión de SDD-13 sobre CSS y la razón de que las partes no
       `css-text` se emitan verbatim.
-- [ ] **8. Extremo a extremo.**
+- [x] **8. Extremo a extremo.**
       Los 16 tests de `examples/basic/tests/` en verde y las cinco páginas sin diferencias
       visuales (§6.7).
 

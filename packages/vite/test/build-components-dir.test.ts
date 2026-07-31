@@ -86,7 +86,9 @@ describe('a component outside routesDir', () => {
   it('hoists the shared component stylesheet into each page head', () => {
     for (const file of output.filter((o) => o.fileName.endsWith('index.html'))) {
       expect(file.source).toContain('<style type="module" specifier="app-badge">');
-      expect(file.source).toContain('.badge { border: 1px solid #ccc; }');
+      // Compacted: the emit builds the sheet from the AST, not from a slice of the
+      // source (BUG-08). What this test is about is that the sheet is HOISTED here.
+      expect(file.source).toContain('.badge{border:1px solid #ccc;}');
     }
   });
 });
