@@ -72,14 +72,16 @@ revés, B pasaría en verde sobre un `dist/` que sigue publicando el código.
 
 ## Cierre del BUG
 
-- [ ] `pnpm typecheck`, `pnpm test` y `pnpm build` en verde.
-- [ ] `edge.ts` y lo nuevo del compilador al **100 %** en las cuatro métricas; `plugin.ts` y
-      `link.ts` no bajan de ramas respecto a `main`.
-- [ ] Marcar BUG-09 como `Hecho` en [INDEX.md](./INDEX.md) (tabla + registro de progreso),
+- [x] `pnpm typecheck`, `pnpm test` y `pnpm build` en verde. (`language-server` tiene un test
+      de cancelación intermitente, §6.14, ajeno a esta rama: verde al repetirlo.)
+- [x] `edge.ts` y lo nuevo del compilador al **100 %** en las cuatro métricas; `plugin.ts` y
+      `link.ts` no bajan de ramas respecto a `main`. Medido: `edge.ts` y `redact.ts` al 100 %;
+      ramas de `plugin.ts` 75,5 → 77,1 y `link.ts` sin cambio en 72,2.
+- [x] Marcar BUG-09 como `Hecho` en [INDEX.md](./INDEX.md) (tabla + registro de progreso),
       anotando **qué se publicaba y desde cuándo**: es lo que hace que un defecto de
       frontera no se repita.
-- [ ] Anotar en [SDD-19](../SDD-19-plugin-vite.md) §4.3 la regla de §4.1 —`outDir` es lo que
+- [x] Anotar en [SDD-19](../SDD-19-plugin-vite.md) §4.3 la regla de §4.1 —`outDir` es lo que
       se publica; el artefacto del edge se escribe fuera— y en §4.6 que el `sourcesContent`
       va redactado.
-- [ ] Corregir la cabecera de `examples/basic/data/posts.ts`: hoy afirma que nunca llega al
+- [x] Corregir la cabecera de `examples/basic/data/posts.ts`: hoy afirma que nunca llega al
       bundle del navegador, y eso pasa a ser cierto en este commit y no antes.
