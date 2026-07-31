@@ -12,7 +12,7 @@
  */
 
 import { createRequire } from 'node:module';
-import { loadTsdkByPath } from '@volar/language-server/node';
+import { loadTsdkByPath } from '@volar/language-server/node.js';
 import type * as ts from 'typescript';
 import type { Logger } from './types.js';
 
