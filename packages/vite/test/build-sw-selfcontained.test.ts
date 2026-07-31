@@ -17,6 +17,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fudic } from '../src/index.js';
 import { BUILD_TOKEN } from '../src/constants.js';
+import { specifiersOf } from './helpers/specifiers.js';
 
 const ssrDist = fileURLToPath(new URL('../../ssr/dist/index.js', import.meta.url));
 const transportDist = fileURLToPath(new URL('../../transport/dist/index.js', import.meta.url));
@@ -33,22 +34,6 @@ interface OutFile {
   readonly fileName: string;
   readonly code?: string;
   readonly source?: string | Uint8Array;
-}
-
-/** Every module specifier a file references — static or dynamic. */
-function specifiersOf(code: string): string[] {
-  const found: string[] = [];
-  const patterns = [
-    /\bimport\s*\(\s*["']([^"']+)["']\s*\)/gu, // dynamic import
-    /\bfrom\s*["']([^"']+)["']/gu, // import … from / export … from
-    /\bimport\s*["']([^"']+)["']/gu, // bare side-effect import
-  ];
-  for (const pattern of patterns) {
-    for (const match of code.matchAll(pattern)) {
-      found.push(match[1]!);
-    }
-  }
-  return found;
 }
 
 const textOf = (file: OutFile): string =>

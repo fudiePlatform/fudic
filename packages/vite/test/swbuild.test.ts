@@ -65,7 +65,7 @@ describe('buildServiceWorker', () => {
   const root = fileURLToPath(new URL('..', import.meta.url));
 
   it('emits one self-contained file with the runtime bundled in', async () => {
-    const result = await buildServiceWorker(root, '/', OPTIONS, undefined, { sourcemap: false });
+    const result = await buildServiceWorker(root, '/', OPTIONS, undefined, { sourcemap: false, minify: false });
     expect(result.fileName).toBe('fudic-sw.js');
     expect(result.code).toContain('createRouter');
     // The whole point: nothing left to fetch through a loader the fetch handler cannot see.
@@ -85,7 +85,7 @@ describe('buildServiceWorker', () => {
       '/',
       OPTIONS,
       { '@fudic/ssr': ssr, '@fudic/transport': transport },
-      { sourcemap: false },
+      { sourcemap: false, minify: false },
     );
     expect(result.code).toContain('createRouter');
   }, 180000);

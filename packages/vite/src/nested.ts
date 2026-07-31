@@ -13,9 +13,16 @@
  * this module's job.
  */
 
-/** The host output settings a nested build honours. BUG-06 adds `minify` here. */
+/** The host output settings a nested build honours. */
 export interface NestedOutputOptions {
   readonly sourcemap: boolean | 'inline' | 'hidden';
+  /**
+   * BUG-06. It cannot be applied from the outside: both outputs enter the host bundle as
+   * ASSETS, and minification runs in `renderChunk`, which an asset never traverses. The
+   * only minification these files can get is the one their own nested build does — which
+   * is why this is an inherited option and not a `renderChunk` hook.
+   */
+  readonly minify: boolean | 'oxc' | 'esbuild' | 'terser';
 }
 
 /** One file a nested build produced, with its map when one was asked for. */

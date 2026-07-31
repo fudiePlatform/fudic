@@ -77,7 +77,7 @@ describe('runEdgePass', () => {
       [routeBuild('/about', 'about.fud', mode('ssg'))],
       nodeIo(),
       undefined,
-      { sourcemap: false },
+      { sourcemap: false, minify: false },
     );
   }, 300000);
 
@@ -99,7 +99,7 @@ describe('runEdgePass', () => {
       '/',
       [routeBuild('/about', 'about.fud', mode('sw'))],
       nodeIo(),
-      { sourcemap: false },
+      { sourcemap: false, minify: false },
     );
     for (const chunk of linked.chunks) {
       expect(chunk.code).not.toContain('sk-live-do-not-publish');
@@ -115,7 +115,7 @@ describe('runEdgePass', () => {
       [routeBuild('/about', 'about.fud', mode('ssg'))],
       nodeIo(),
       undefined,
-      { sourcemap: true },
+      { sourcemap: true, minify: false },
     );
     expect(mapped.chunks.every((c) => c.map !== undefined)).toBe(true);
   }, 300000);
@@ -127,7 +127,7 @@ describe('runEdgePass', () => {
       [routeBuild('/about', 'about.fud', mode('excluded'))],
       nodeIo(),
       undefined,
-      { sourcemap: false },
+      { sourcemap: false, minify: false },
     );
     expect(empty.chunks).toEqual([]);
     expect(empty.entries.size).toBe(0);

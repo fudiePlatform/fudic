@@ -88,8 +88,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let swConfig: ResolvedSwConfig | null = null;
   let writeToDisk = true;
   let resolveAlias: unknown;
-  // What the two nested builds inherit from the host (BUG-05 §3.1). BUG-06 adds `minify`.
-  let nested: NestedOutputOptions = { sourcemap: false };
+  // What the nested builds inherit from the host (BUG-05 §3.1, BUG-06 §3.1). Replaced
+  // wholesale in `configResolved`; these are only the values before one has run.
+  let nested: NestedOutputOptions = { sourcemap: false, minify: false };
   let manifestUrl = '/fudic-routes.json';
   let manifestFileName = 'fudic-routes.json';
   const io = nodeIo();
@@ -131,8 +132,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       resolveAlias = config.resolve?.alias;
       // A nested build inherits the host's OUTPUT configuration; what it does not inherit
       // is a decision, not an oversight (BUG-05 §4.1). `build.sourcemap` was neither
-      // applied nor reported: the option simply did nothing for these two outputs.
-      nested = { sourcemap: config.build.sourcemap };
+      // applied nor reported: the option simply did nothing for these two outputs, and
+      // `build.minify` did nothing for them either (BUG-06 §2.2) — the same hole, found
+      // twice, which is why the list is now a type and not two ad-hoc fields.
+      nested = { sourcemap: config.build.sourcemap, minify: config.build.minify };
       // `write: false` is a build that produces no files (tests, programmatic callers), so
       // the edge artifacts are not written either — they are still materialized for the
       // prerender, which needs them in a temp dir regardless.

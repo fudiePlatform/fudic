@@ -160,7 +160,11 @@ export async function runLinkPass(
     build: {
       write: false,
       emptyOutDir: false,
-      minify: false,
+      // As in the SW build: the host's (BUG-06 §4.1). Safe for a chunk the linker
+      // evaluates by hand, because a minifier renames LOCALS: the names it must not
+      // touch are properties of `exports`, and `preserveEntrySignatures: 'strict'` below
+      // is what keeps the entry's own exports from being tree-shaken away.
+      minify: nested.minify,
       // As in the SW build: the plain map, and the caller composes the host's mode (§4.3).
       sourcemap: nested.sourcemap !== false,
       rollupOptions: {

@@ -139,6 +139,13 @@ export async function runEdgePass(
     build: {
       write: false,
       emptyOutDir: false,
+      // The one nested build that does NOT inherit `nested.minify`, and the reason is
+      // written down because that is the rule (BUG-06 §5). This output is never
+      // published — it is written outside `outDir` and read by Node, for the prerender
+      // and for `vite preview` (BUG-09 §4.1). `build.minify` is a decision about the
+      // bytes a user downloads, and no user downloads these. What minifying them would
+      // cost is real: a `@server load` that throws during the prerender is a stack trace
+      // someone has to read.
       minify: false,
       sourcemap: nested.sourcemap !== false,
       rollupOptions: {

@@ -10,6 +10,8 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createLinker, type ModuleExports } from '@fudic/transport';
+import * as ssr from '@fudic/ssr';
 import { runLinkPass, safeName, type LinkResult } from '../src/link.js';
 import { isLinkable, type ModeDecision } from '../src/mode.js';
 import { type RouteBuild } from '../src/discover.js';
@@ -63,6 +65,32 @@ const mode = (
   over: Partial<ModeDecision> = {},
 ): ModeDecision => ({ mode: m, prerender: false, enumerate: false, prerenderedHtml: false, ...over });
 
+/**
+ * Everything the Service Worker does with a chunk, done here: link its deps in
+ * topological order, then run `render`.
+ *
+ * This is not a shape check. `exports.render` matching a regex proves nothing about a
+ * minified chunk — the linker EVALUATES the code with `new Function`, and what has to
+ * survive is the CJS interface (`exports`, `require`, the entry's named exports under
+ * `preserveEntrySignatures: 'strict'`) plus whatever the page renders. So it is linked,
+ * run, and the HTML compared (BUG-06 §4.3, §6.2).
+ *
+ * `@fudic/ssr` is injected as a linker builtin, exactly as the worker does: it is
+ * bundled INSIDE the worker so a chunk never downloads its own copy.
+ */
+async function renderThroughLinker(result: LinkResult, pattern: string): Promise<string> {
+  const codeOf = new Map(result.chunks.map((c) => [`/${c.fileName}`, c.code]));
+  const linker = createLinker({
+    fetchSource: (url: string) => Promise.resolve(codeOf.get(url) ?? ''),
+    builtins: { '@fudic/ssr': ssr as unknown as ModuleExports },
+  });
+  const entry = `/${result.entries.get(pattern)!}`;
+  const deps = (result.deps.get(pattern) ?? []).map((dep) => `/${dep}`);
+  const exports = await linker.link(entry, deps);
+  const render = exports['render'] as (ctx: unknown) => ReadableStream<Uint8Array>;
+  return new Response(render({})).text();
+}
+
 describe('isLinkable — what the Service Worker may render', () => {
   it('links a prerendered route: `ssg` is a build fact, not a client one', () => {
     expect(isLinkable(mode('ssg', { prerender: true, prerenderedHtml: true }))).toBe(true);
@@ -104,7 +132,7 @@ describe('runLinkPass', () => {
         routeBuild('/account', 'account.fud', mode('ssr')),
       ],
       nodeIo(),
-      { sourcemap: true },
+      { sourcemap: true, minify: false },
     );
   }, 180000);
 
@@ -134,6 +162,39 @@ describe('runLinkPass', () => {
     expect(entry!.code).toMatch(/require\(["']@fudic\/ssr["']\)/u);
   });
 
+  it('BUG-06 §6.2 a chunk of the pass links and renders through the SW linker', async () => {
+    // The baseline: what unminified output renders. Minifying may not change one byte
+    // of it — that is the whole risk of BUG-06 and the reason it is a criterion.
+    const html = await renderThroughLinker(result, '/about');
+    expect(html).toContain('<app-badge data-adopt="app-badge">');
+    expect(html).toContain('<template shadowrootmode="open"');
+    expect(html).toContain('<h1>About</h1>');
+  });
+
+  it('BUG-06 §6.2 a MINIFIED chunk links and renders exactly the same HTML', async () => {
+    // The criterion that justifies the whole BUG. A minifier renames locals, and the
+    // linker reaches `render` as a property of `exports` — but that is an argument, and
+    // an argument is not a test. This runs the pass again with minification on, links the
+    // result by hand and compares the bytes it renders against the baseline above.
+    const minified = await runLinkPass(
+      root,
+      '/',
+      [routeBuild('/about', 'about.fud', mode('ssg', { prerender: true, prerenderedHtml: true }))],
+      nodeIo(),
+      { sourcemap: false, minify: 'oxc' },
+    );
+    const entryOf = (r: LinkResult): string =>
+      r.chunks.find((c) => c.fileName === r.entries.get('/about'))!.code;
+    // It really is minified. Measured, not pattern-matched: the compiled page carries the
+    // style-adoption polyfill inside a template literal, and no JS minifier goes in there
+    // (BUG-07, BUG-08) — so the unminified SHAPES survive minification and only the size
+    // separates the two.
+    expect(entryOf(minified).length).toBeLessThan(entryOf(result).length);
+    expect(await renderThroughLinker(minified, '/about')).toBe(
+      await renderThroughLinker(result, '/about'),
+    );
+  }, 180000);
+
   it('produces nothing at all for an `ssr` route', () => {
     expect(result.entries.has('/account')).toBe(false);
     expect(result.deps.has('/account')).toBe(false);
@@ -145,7 +206,7 @@ describe('runLinkPass', () => {
       '/',
       [routeBuild('/account', 'account.fud', mode('ssr'))],
       nodeIo(),
-      { sourcemap: false },
+      { sourcemap: false, minify: false },
     );
     expect(empty.chunks).toEqual([]);
     expect(empty.entries.size).toBe(0);

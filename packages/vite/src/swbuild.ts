@@ -85,7 +85,11 @@ export async function buildServiceWorker(
     build: {
       write: false,
       emptyOutDir: false,
-      minify: false,
+      // The host's, whatever it is (BUG-06 §4.1). Nothing outside can minify this file:
+      // it is emitted as an ASSET, and minification runs in `renderChunk`. It used to be
+      // a hardcoded `false` — scaffolding left in, which made `build.minify` mean nothing
+      // for the one artifact that is re-downloaded on every worker update.
+      minify: nested.minify,
       // Always the plain map when the host wants any: the caller composes `'inline'` and
       // `'hidden'` from it (§4.3), so there is one code path here instead of three.
       sourcemap: nested.sourcemap !== false,
