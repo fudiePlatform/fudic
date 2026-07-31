@@ -71,10 +71,19 @@ const MIN_WIDTH = 20;
 /**
  * The width asked for when a fragment must not break.
  *
- * A number rather than a flag because that is the only knob the formatter has: no real
- * source line reaches it, so nothing breaks.
+ * A number rather than a flag because that is the only knob the formatter has. It is the
+ * LARGEST oxfmt accepts — the engine validates its configuration and rejects anything over
+ * 320, and a rejected configuration comes back as an error, which this package would read
+ * as "it does not parse". An attribute value longer than that still breaks, and §4.5 covers
+ * it: the fragment then comes back as the author wrote it.
  */
-const NO_BREAK_WIDTH = 10_000;
+const MAX_WIDTH = 320;
+
+/** The width to ask the leaf for, never outside what it accepts. */
+function widthFor(request: LeafRequest, options: ResolvedOptions): number {
+  if (request.singleLine) return MAX_WIDTH;
+  return Math.min(Math.max(options.printWidth - request.indentColumns, MIN_WIDTH), MAX_WIDTH);
+}
 
 const FILE_NAME: Readonly<Record<LeafLanguage, string>> = {
   ts: 'fragment.ts',
@@ -85,9 +94,7 @@ const FILE_NAME: Readonly<Record<LeafLanguage, string>> = {
 export const oxfmtEngine: LeafEngine = {
   async format(request: LeafRequest, options: ResolvedOptions): Promise<LeafOutput> {
     const result = await oxfmt(FILE_NAME[request.language], request.source, {
-      printWidth: request.singleLine
-        ? NO_BREAK_WIDTH
-        : Math.max(options.printWidth - request.indentColumns, MIN_WIDTH),
+      printWidth: widthFor(request, options),
       singleQuote: request.singleQuote,
       useTabs: options.useTabs,
       tabWidth: options.tabWidth,

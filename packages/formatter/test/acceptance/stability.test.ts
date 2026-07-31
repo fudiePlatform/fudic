@@ -34,6 +34,24 @@ describe('criterion 4 — stability over an already formatted file', () => {
   });
 });
 
+describe('the corpus formats without a single note', () => {
+  /**
+   * One fixture is expected to note, and it is the one written to: a `@*…*@` inside a
+   * `@code` body is content for the leaf, which reads it as JavaScript and finds none. The
+   * block then stays exactly as its author wrote it, with FUD0481 saying so.
+   */
+  const silent = corpus.filter((fixture) => fixture.name !== 'own/comments.fud');
+
+  it.each(silent)('$name leaves nothing unformatted', async (fixture) => {
+    // A note is the formatter admitting it left something as it found it (FUD0480/FUD0481),
+    // and on a corpus of files that all parse there should be nothing to admit. It is also
+    // the only signal that would catch a leaf misconfigured rather than broken: the fallback
+    // hands back the author's text, so the output still looks plausible.
+    const result = await format(fixture.source);
+    expect(result.ok && result.notes).toEqual([]);
+  });
+});
+
 describe('criterion 5 — files that do not parse', () => {
   it.each(broken)('$name is refused, with diagnostics and no exception', async (fixture) => {
     const result = await attempt(fixture);

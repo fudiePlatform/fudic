@@ -169,6 +169,29 @@ describe('documents that are not ours', () => {
         TOKEN,
       ),
     ).toBeUndefined();
+    // Formatting answers `undefined` for a document that is not ours — and an empty LIST for
+    // one that is and has nothing to change (SDD-26 task 33): Volar walks on after a nullish
+    // answer, and a `.fud` handed to the HTML service would be laid out by a formatter that
+    // has never heard of `@if`.
+    expect(
+      await service.provideDocumentFormattingEdits?.(
+        other,
+        { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+        { tabSize: 2, insertSpaces: true },
+        undefined,
+        TOKEN,
+      ),
+    ).toBeUndefined();
+    expect(
+      await service.provideOnTypeFormattingEdits?.(
+        other,
+        position,
+        '}',
+        { tabSize: 2, insertSpaces: true },
+        undefined,
+        TOKEN,
+      ),
+    ).toBeUndefined();
   });
 
   it('answers nothing for a .fud the language has never seen', async () => {

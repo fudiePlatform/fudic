@@ -54,6 +54,9 @@ importers:
       '@fudic/compiler':
         specifier: workspace:*
         version: link:../compiler
+      '@fudic/formatter':
+        specifier: workspace:*
+        version: link:../formatter
       '@fudic/language-core':
         specifier: workspace:*
         version: link:../language-core
@@ -146,6 +149,9 @@ importers:
       '@fudic/compiler':
         specifier: workspace:*
         version: link:../compiler
+      '@fudic/formatter':
+        specifier: workspace:*
+        version: link:../formatter
       '@fudic/language-core':
         specifier: workspace:*
         version: link:../language-core
@@ -186,6 +192,9 @@ importers:
         specifier: 3.1.0
         version: 3.1.0
     devDependencies:
+      '@fudic/cli':
+        specifier: workspace:*
+        version: link:../cli
       '@fudic/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig

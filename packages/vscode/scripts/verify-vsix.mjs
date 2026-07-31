@@ -27,16 +27,20 @@ const REQUIRED = [
   ['the dark icon', 'icons/fud-dark.svg'],
   ['the manifest', 'package.json'],
   ['the parser loader', 'dist/node_modules/oxc-parser/src-js/bindings.js'],
+  ['the formatter leaf', 'dist/node_modules/oxfmt/dist/index.js'],
 ];
 
 /**
- * The native parser binary, whatever this platform's is called.
+ * The native binaries, whatever this platform's are called.
  *
- * Checked as a pattern rather than a name because the file is per target, and its absence
- * is the failure this whole script exists for: the server starts, dies on its first parse,
- * and the editor simply shows nothing.
+ * Checked as patterns rather than names because the files are per target, and their absence
+ * is the failure this whole script exists for: the server starts, dies on its first parse or
+ * its first format, and the editor simply shows nothing.
  */
-const REQUIRED_BINDING = /^dist\/node_modules\/@oxc-parser\/binding-[^/]+\/parser\..+\.node$/;
+const REQUIRED_BINDINGS = [
+  ['parser', /^dist\/node_modules\/@oxc-parser\/binding-[^/]+\/parser\..+\.node$/],
+  ['formatter', /^dist\/node_modules\/@oxfmt\/binding-[^/]+\/oxfmt\..+\.node$/],
+];
 
 /**
  * Nothing here should ever ship: source, tests, or the colour corpus.
@@ -61,8 +65,10 @@ const problems = [];
 for (const [what, path] of REQUIRED) {
   if (!listed.includes(path)) problems.push(`missing ${what}: ${path}`);
 }
-if (!listed.some((path) => REQUIRED_BINDING.test(path))) {
-  problems.push('missing the native parser binding: dist/node_modules/@oxc-parser/binding-*/*.node');
+for (const [what, pattern] of REQUIRED_BINDINGS) {
+  if (!listed.some((path) => pattern.test(path))) {
+    problems.push(`missing the native ${what} binding: ${String(pattern)}`);
+  }
 }
 for (const path of listed) {
   const rule = FORBIDDEN.find((pattern) => pattern.test(path));

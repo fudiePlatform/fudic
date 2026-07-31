@@ -54,6 +54,12 @@ export function toCodeMappings(mappings: readonly Mapping[]): CodeMapping[] {
  *
  * Volar's root virtual code needs it so that features which do not go through any embedded
  * language — document links, the server's own completions — still have a table to travel on.
+ *
+ * `format` has to be TRUE here, and it is the one place in the server where it is: Volar
+ * skips any code whose mappings do not allow formatting, so with it false the `.fud` itself
+ * is never offered to a formatting service and this server's own handler is never reached.
+ * The embedded codes keep the `false` of SDD-23's `USER_CAPS` — formatting is over the
+ * source, never over the projection — so the only thing this enables is our own handler.
  */
 export function identityMapping(length: number): CodeMapping {
   return {

@@ -17,6 +17,9 @@ export const FUD_ADAPTER_UNAVAILABLE = 'FUD0447';
 export const FUD_USAGE = 'FUD0448';
 export const FUD_LAYOUT_INVALID = 'FUD0449';
 
+/** `fudic fmt`: a file that does not parse. Reported, and left exactly as it was (SDD-26 §4.6). */
+export const FUD_FORMAT_UNPARSEABLE = 'FUD0450';
+
 /** Build a `CliError`, omitting `file` when absent (exactOptionalPropertyTypes). */
 export function cliError(code: string, message: string, file?: string): CliError {
   return file === undefined ? { code, message } : { code, message, file };

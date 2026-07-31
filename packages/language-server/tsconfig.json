@@ -4,6 +4,8 @@
     "types": ["node"],
     "paths": {
       "@fudic/compiler": ["../compiler/src/index.ts"],
+      "@fudic/cli": ["../cli/src/index.ts"],
+      "@fudic/formatter": ["../formatter/src/index.ts"],
       "@fudic/language-core": ["../language-core/src/index.ts"]
     }
   },

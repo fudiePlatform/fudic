@@ -30,6 +30,7 @@ export {
 } from './diagnostics.js';
 
 export { format, formatRange, formatRangeWith, formatWith } from './format.js';
+export { reindentLine, type Reindent } from './on-type.js';
 export { childrenOf, smallestNodeAround } from './range.js';
 export { OPAQUE_ELEMENTS } from './tags.js';
 export { breaksInside, displayOf, isInlineLevel, type Display } from './space/index.js';

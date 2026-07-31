@@ -107,8 +107,22 @@ export async function startHarness(
   const uriOf = (relative: string): string => URI.file(`${root}/${relative}`).toString();
   const textOf = (relative: string): string => readFileSync(`${root}/${relative}`, 'utf8');
 
+  // Two hops towards the server, so that a held burst can be delivered as ONE chunk.
+  // Pausing the server's own pipe is not enough: a paused stream releases what it buffered
+  // one write at a time, and the reader may dispatch a request before it has read the
+  // cancellation that follows it in the same burst — which turns §6.14 into a measurement of
+  // how busy the machine was. Holding the bytes here and writing them concatenated makes the
+  // whole burst arrive in a single read, which is what "unread when the cancellation arrives"
+  // means.
+  const fromClient = new PassThrough();
   const toServer = new PassThrough();
   const toClient = new PassThrough();
+
+  let held: Buffer[] | undefined;
+  fromClient.on('data', (chunk: Buffer) => {
+    if (held === undefined) toServer.write(chunk);
+    else held.push(chunk);
+  });
 
   const serverConnection = createConnection(
     new ServerReader(toServer),
@@ -117,7 +131,7 @@ export async function startHarness(
   const server = createFudicServer(serverConnection);
   serverConnection.listen();
 
-  const client = createProtocolConnection(new ClientReader(toClient), new ClientWriter(toServer));
+  const client = createProtocolConnection(new ClientReader(toClient), new ClientWriter(fromClient));
   client.listen();
 
   const capabilities = await client.sendRequest(InitializeRequest.type, {
@@ -174,11 +188,13 @@ export async function startHarness(
     uriOf,
 
     pause() {
-      toServer.pause();
+      held = [];
     },
 
     resume() {
-      toServer.resume();
+      const pending = held ?? [];
+      held = undefined;
+      if (pending.length > 0) toServer.write(Buffer.concat(pending));
     },
 
     async open(relative, text) {

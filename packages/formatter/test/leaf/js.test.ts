@@ -126,6 +126,19 @@ describe('formatJsFragment', () => {
       options({ printWidth: 20 }),
     );
     expect(wide.text).not.toContain(BREAK);
+    // And it was FORMATTED, not merely returned: asking for a width the engine rejects comes
+    // back as an error, which reads as "it does not parse" — every binding in the corpus
+    // silently kept whatever spacing its author typed.
+    expect(wide.ok).toBe(true);
+    expect(
+      (
+        await formatJsFragment(
+          oxfmtEngine,
+          fragment({ source: "a===   'x'", singleLine: true, singleQuote: true }),
+          options({ printWidth: 20 }),
+        )
+      ).text,
+    ).toBe("a === 'x'");
 
     const broken = await formatJsFragment(
       oxfmtEngine,
@@ -200,6 +213,17 @@ describe('the oxfmt engine', () => {
     );
     expect(deep.code.split('\n').length).toBeGreaterThan(1);
     expect(deep.ok).toBe(true);
+  });
+
+  it('never asks for more columns than it accepts either', async () => {
+    // The engine validates its configuration and refuses a width over 320. A refusal comes
+    // back as an error, so an option nobody thought twice about would turn every fragment of
+    // the file into "does not parse" — and the file would come out with its JS untouched.
+    const wide = await oxfmtEngine.format(
+      { language: 'ts', source: 'const  a = 1;', indentColumns: 0, singleQuote: false, singleLine: false },
+      options({ printWidth: 400 }),
+    );
+    expect(wide).toEqual({ code: 'const a = 1;', ok: true });
   });
 
   it('honours tabs and tab width', async () => {

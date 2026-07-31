@@ -43,10 +43,13 @@ export default defineConfig([
       // `tsdk` the client resolves. Bundling ten megabytes of compiler for a `require` that
       // only runs as a last resort would be the wrong trade.
       'typescript',
-      // A NAPI addon: its loader reaches for `parser.<target>.node`, and a bundler rewrites
-      // that into something that resolves to nothing. `scripts/vendor-native.mjs` puts it in
-      // `dist/node_modules` instead, where Node finds it with no install.
+      // NAPI addons: their loaders reach for `<pkg>.<target>.node`, and a bundler rewrites
+      // that into something that resolves to nothing. `scripts/vendor-native.mjs` puts them
+      // in `dist/node_modules` instead, where Node finds them with no install.
       'oxc-parser',
+      // The formatter's only leaf (SDD-26 §4.4). Same shape as the parser, same treatment —
+      // and the one whose absence is silent: formatting would simply never answer.
+      'oxfmt',
     ],
     output: { dir: 'dist', format: 'esm', entryFileNames: '[name].mjs' },
   },

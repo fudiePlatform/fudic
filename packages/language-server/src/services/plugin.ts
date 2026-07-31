@@ -30,7 +30,9 @@ import type { CachedDocument } from '../document-cache.js';
 import { FUD_LANGUAGE_ID, type FudicVirtualCode } from '../virtual-code.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
 import type { RequestStats } from '../stats.js';
+import { reindentLine } from '@fudic/formatter';
 import { fudicDiagnostics } from './compiler-diagnostics.js';
+import { formattedText } from './formatting.js';
 import { hrefCompletions, unresolvedHrefs } from './href.js';
 import { hrefContextAt, sectionContextAt, tagContextAt } from './position.js';
 import { sectionCompletions } from './sections.js';
@@ -116,6 +118,11 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
       semanticTokensProvider: { legend: SEMANTIC_TOKENS_LEGEND },
       diagnosticProvider: { interFileDependencies: true, workspaceDiagnostics: false },
       codeActionProvider: {},
+      // Declared here at last: SDD-24 §3.2 announced formatting to the client from the first
+      // commit and answered empty, so that nothing had to be reconfigured when SDD-26 landed.
+      documentFormattingProvider: true,
+      // `}` and `>` are the two characters of §4.7, and the only two.
+      documentOnTypeFormattingProvider: { triggerCharacters: ['}', '>'] },
     },
 
     create(context) {
@@ -146,6 +153,55 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
                   originSelectionRange: rangeOf(document, found.span),
                 },
               ];
+            },
+            undefined,
+          );
+        },
+
+        provideDocumentFormattingEdits(document, range, options, _embedded, token) {
+          return stats.run(
+            token,
+            async () => {
+              if (fudicDocumentOf(context, document) === undefined) return undefined;
+
+              const source = document.getText();
+              const selection: Span = {
+                start: document.offsetAt(range.start),
+                end: document.offsetAt(range.end),
+              };
+              // A selection that covers the file IS the file: `formatRange` would splice a
+              // node back in and skip the single terminating newline the whole-file path adds.
+              const whole = selection.start === 0 && selection.end === source.length;
+              const text = await formattedText(
+                source,
+                { tabSize: options.tabSize, insertSpaces: options.insertSpaces },
+                whole ? undefined : selection,
+              );
+              // An EMPTY list, not `undefined`, when there is nothing to do. Volar walks the
+              // services in order and moves to the next one on a nullish answer — so a `.fud`
+              // that is already formatted, or that does not parse, would be handed to the HTML
+              // service, which has its own idea of layout and no idea of `@if`. Answering
+              // "nothing to change" is what stops the walk.
+              if (text === undefined) return [];
+
+              // One edit over the whole document. The formatter returns a document, not a
+              // diff, and inventing a minimal diff here would be a second layout algorithm.
+              return [{ range: rangeOf(document, { start: 0, end: source.length }), newText: text }];
+            },
+            undefined,
+          );
+        },
+
+        provideOnTypeFormattingEdits(document, position, _key, _options, _embedded, token) {
+          return stats.run(
+            token,
+            () => {
+              if (fudicDocumentOf(context, document) === undefined) return undefined;
+
+              const edit = reindentLine(document.getText(), document.offsetAt(position));
+              // Empty rather than nullish, for the same reason as above.
+              if (edit === undefined) return [];
+              return [{ range: rangeOf(document, edit.span), newText: edit.text }];
             },
             undefined,
           );

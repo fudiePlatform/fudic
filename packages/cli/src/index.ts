@@ -10,6 +10,7 @@ export type {
   CliError,
   ComponentOptions,
   FileChange,
+  FmtOptions,
   LayoutOptions,
   NewOptions,
   PackageManager,
@@ -19,6 +20,7 @@ export type {
   PlanDiagnostic,
 } from './types.js';
 
+export { planFmt, filesOf } from './plans/fmt.js';
 export { planNew } from './plans/new.js';
 export { planComponent } from './plans/component.js';
 export { planPage } from './plans/page.js';
