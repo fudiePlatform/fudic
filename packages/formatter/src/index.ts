@@ -24,4 +24,8 @@ export {
   FUD_STYLE_NOT_FORMATTED,
   fragmentNotFormatted,
   styleNotFormatted,
+  type StyleFailure,
 } from './diagnostics.js';
+
+export { OPAQUE_ELEMENTS } from './tags.js';
+export { oxfmtEngine, type LeafEngine, type LeafRequest, type LeafOutput } from './leaf/index.js';

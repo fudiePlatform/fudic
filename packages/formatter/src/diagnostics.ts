@@ -22,17 +22,29 @@ export const FUD_FRAGMENT_NOT_FORMATTED = 'FUD0481';
 
 // `FUD0482`–`FUD0499` are reserved.
 
+/** Why a `<style>` was left alone. Both end the same way; the author deserves to know which. */
+export type StyleFailure =
+  /** The CSS came back without a placeholder, or with one twice. */
+  | 'placeholder'
+  /** The body does not parse as CSS. */
+  | 'parse';
+
+const STYLE_REASON: Readonly<Record<StyleFailure, string>> = {
+  placeholder: 'a Razor region could not be restored after formatting',
+  parse: 'it does not parse as CSS',
+};
+
 /**
- * The CSS came back without a placeholder, or with one twice.
+ * The `<style>` is emitted exactly as written.
  *
- * Losing the user's code is not an option, so the whole `<style>` is emitted verbatim. The
- * span is the style BODY: that is the region that did not change, and pointing at the
- * element would suggest the tag is the problem.
+ * Losing the user's code is not an option, so the whole body is copied verbatim. The span
+ * is the style BODY: that is the region that did not change, and pointing at the element
+ * would suggest the tag is the problem.
  */
-export function styleNotFormatted(span: Span): Diagnostic {
+export function styleNotFormatted(span: Span, reason: StyleFailure): Diagnostic {
   return infoDiag(
     FUD_STYLE_NOT_FORMATTED,
-    'Left <style> unformatted: a Razor region could not be restored after formatting',
+    `Left <style> unformatted: ${STYLE_REASON[reason]}`,
     span,
   );
 }
