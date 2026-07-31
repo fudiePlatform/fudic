@@ -8,3 +8,20 @@
  */
 
 export const VERSION = '0.0.1';
+
+export type {
+  EndOfLine,
+  FormatOptions,
+  FormatResult,
+  QuoteStyle,
+  ResolvedOptions,
+} from './types.js';
+
+export { DEFAULT_OPTIONS, indentUnit, resolveOptions } from './options.js';
+export { applyEndOfLine, detectEndOfLine, resolveEndOfLine, stripCr } from './eol.js';
+export {
+  FUD_FRAGMENT_NOT_FORMATTED,
+  FUD_STYLE_NOT_FORMATTED,
+  fragmentNotFormatted,
+  styleNotFormatted,
+} from './diagnostics.js';
