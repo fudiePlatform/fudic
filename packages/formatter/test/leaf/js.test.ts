@@ -75,32 +75,32 @@ describe('unwrapFragment', () => {
 
 describe('formatJsFragment', () => {
   it('formats through the engine and comes back without the sentinel', async () => {
-    const out = await formatJsFragment(oxfmtEngine, 'condition', 'x>0&&y', 0, options());
+    const out = await formatJsFragment(oxfmtEngine, 'condition', 'x>0&&y', 0, false, options());
     expect(out).toEqual({ text: 'x > 0 && y', ok: true });
   });
 
   it('formats a real ternary, a real for-of and a real @code body', async () => {
     const o = options();
-    expect((await formatJsFragment(oxfmtEngine, 'expression', "a?'x':'y'", 0, o)).text).toBe(
+    expect((await formatJsFragment(oxfmtEngine, 'expression', "a?'x':'y'", 0, false, o)).text).toBe(
       'a ? "x" : "y"',
     );
     expect(
-      (await formatJsFragment(oxfmtEngine, 'iteration', 'const item of data.items', 0, o)).text,
+      (await formatJsFragment(oxfmtEngine, 'iteration', 'const item of data.items', 0, false, o)).text,
     ).toBe('const item of data.items');
     expect(
-      (await formatJsFragment(oxfmtEngine, 'statements', 'const  a={b:1}', 0, o)).text,
+      (await formatJsFragment(oxfmtEngine, 'statements', 'const  a={b:1}', 0, false, o)).text,
     ).toBe('const a = { b: 1 };');
   });
 
   it('leaves a fragment that does not parse exactly as written, and says so', async () => {
-    const out = await formatJsFragment(oxfmtEngine, 'expression', 'a ===', 0, options());
+    const out = await formatJsFragment(oxfmtEngine, 'expression', 'a ===', 0, false, options());
     expect(out).toEqual({ text: 'a ===', ok: false });
   });
 
   it('never asks the engine about an empty fragment', async () => {
     // `@()` is legal to type: wrapping it would manufacture a syntax error out of nothing.
     const engine = new FakeEngine();
-    expect(await formatJsFragment(engine, 'expression', '  ', 0, options())).toEqual({
+    expect(await formatJsFragment(engine, 'expression', '  ', 0, false, options())).toEqual({
       text: '  ',
       ok: true,
     });
@@ -109,11 +109,12 @@ describe('formatJsFragment', () => {
 
   it('asks for the width that will be left once the fragment is indented', async () => {
     const engine = new FakeEngine();
-    await formatJsFragment(engine, 'statements', 'const a = 1;', 4, options());
+    await formatJsFragment(engine, 'statements', 'const a = 1;', 4, false, options());
     expect(engine.requests[0]).toEqual({
       language: 'ts',
       source: 'const a = 1;',
       indentColumns: 4,
+      singleQuote: false,
     });
   });
 });
@@ -123,7 +124,7 @@ describe('the oxfmt engine', () => {
     // Deep nesting would otherwise drive the width to zero, and a formatter with no columns
     // breaks after every token.
     const deep = await oxfmtEngine.format(
-      { language: 'ts', source: 'const a = { one: 1, two: 2, three: 3, four: 4 };', indentColumns: 400 },
+      { language: 'ts', source: 'const a = { one: 1, two: 2, three: 3, four: 4 };', indentColumns: 400, singleQuote: false },
       options(),
     );
     expect(deep.code.split('\n').length).toBeGreaterThan(1);
@@ -132,7 +133,7 @@ describe('the oxfmt engine', () => {
 
   it('honours tabs and tab width', async () => {
     const tabbed = await oxfmtEngine.format(
-      { language: 'ts', source: 'function f() {\nreturn 1;\n}', indentColumns: 0 },
+      { language: 'ts', source: 'function f() {\nreturn 1;\n}', indentColumns: 0, singleQuote: false },
       options({ useTabs: true }),
     );
     expect(tabbed.code).toContain('\treturn 1;');
@@ -140,7 +141,7 @@ describe('the oxfmt engine', () => {
 
   it('formats CSS through the same door', async () => {
     const css = await oxfmtEngine.format(
-      { language: 'css', source: '.a{color:red}', indentColumns: 0 },
+      { language: 'css', source: '.a{color:red}', indentColumns: 0, singleQuote: false },
       options(),
     );
     expect(css).toEqual({ code: '.a {\n  color: red;\n}', ok: true });

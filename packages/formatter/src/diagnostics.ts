@@ -12,7 +12,7 @@
  * typing.
  */
 
-import { infoDiag, type Diagnostic, type Span } from '@fudic/compiler';
+import { errorDiag, infoDiag, span as spanOf, type Diagnostic, type Span } from '@fudic/compiler';
 
 /** A `<style>` left untouched because its placeholders did not survive the CSS pass (§4.3). */
 export const FUD_STYLE_NOT_FORMATTED = 'FUD0480';
@@ -20,7 +20,27 @@ export const FUD_STYLE_NOT_FORMATTED = 'FUD0480';
 /** A JS/TS fragment left untouched because it does not parse (§4.2). */
 export const FUD_FRAGMENT_NOT_FORMATTED = 'FUD0481';
 
-// `FUD0482`–`FUD0499` are reserved.
+/** The formatter itself failed. The one code here that IS an error. */
+export const FUD_INTERNAL_FAILURE = 'FUD0482';
+
+// `FUD0483`–`FUD0499` are reserved.
+
+/**
+ * Something below the formatter threw.
+ *
+ * §5 says it never throws, and "never" has to mean something when the thing underneath is a
+ * native binary in another process's worker pool. The file is returned unformatted, with the
+ * reason attached, which is the same outcome the user gets from a syntax error: nothing
+ * changed, and they can see why.
+ */
+export function internalFailure(source: string, error: unknown): Diagnostic {
+  const reason = error instanceof Error ? error.message : String(error);
+  return errorDiag(
+    FUD_INTERNAL_FAILURE,
+    `The formatter could not finish: ${reason}`,
+    spanOf(0, source.length),
+  );
+}
 
 /** Why a `<style>` was left alone. Both end the same way; the author deserves to know which. */
 export type StyleFailure =

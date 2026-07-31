@@ -48,6 +48,8 @@ interface Job {
   readonly start: number;
   readonly end: number;
   readonly depth: number;
+  /** True for a fragment that lives inside an attribute value. See `LeafRequest`. */
+  readonly inAttribute: boolean;
 }
 
 /** What the printer consults: formatted text by span, plus what was left alone. */
@@ -74,17 +76,22 @@ export class LeafTable {
   }
 }
 
-function js(kind: JsFragmentKind, span: { start: number; end: number }, depth: number): Job {
-  return { language: 'ts', kind, start: span.start, end: span.end, depth };
+function js(
+  kind: JsFragmentKind,
+  span: { start: number; end: number },
+  depth: number,
+  inAttribute = false,
+): Job {
+  return { language: 'ts', kind, start: span.start, end: span.end, depth, inAttribute };
 }
 
 function collectAttribute(attribute: Attribute, depth: number, jobs: Job[]): void {
   // `bus:(expr)="…"` (decision 28.b) is the only attribute whose NAME is an expression.
   if (typeof attribute.name !== 'string') {
-    jobs.push(js('expression', attribute.name.expr, depth));
+    jobs.push(js('expression', attribute.name.expr, depth, true));
   }
   for (const part of attribute.value) {
-    if (part.type === 'razor-expression') jobs.push(js('expression', part.expr, depth));
+    if (part.type === 'razor-expression') jobs.push(js('expression', part.expr, depth, true));
   }
 }
 
@@ -134,6 +141,7 @@ function collectContent(nodes: readonly HtmlContent[], depth: number, jobs: Job[
           start: node.span.start,
           end: node.span.end,
           depth,
+          inAttribute: false,
         });
         break;
       case 'razor-expression':
@@ -216,6 +224,8 @@ export async function collectLeaves(
         job.kind,
         source.slice(job.start, job.end),
         indentColumns,
+        // The attribute delimiter decides which quote the JS inside it may not use.
+        job.inAttribute && options.quote === 'double',
         options,
       );
       return out.ok

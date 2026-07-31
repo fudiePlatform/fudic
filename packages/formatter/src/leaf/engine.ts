@@ -29,6 +29,15 @@ export interface LeafRequest {
    * and two columns wide, and the option the user set stops meaning anything.
    */
   readonly indentColumns: number;
+  /**
+   * Whether the JS in this fragment should prefer single quotes.
+   *
+   * True for an attribute value, and only there: `class:on="@(t === 'x')"` is delimited by
+   * the attribute's own quote, so a JS string that reaches for the same one forces the
+   * attribute to swap its delimiters and the line the author wrote comes back inside out.
+   * The rule is symmetric — the fragment takes the quote the attribute did not.
+   */
+  readonly singleQuote: boolean;
 }
 
 /** What came back. `ok: false` means "this does not parse"; the code is then the input. */
@@ -61,6 +70,7 @@ export const oxfmtEngine: LeafEngine = {
   async format(request: LeafRequest, options: ResolvedOptions): Promise<LeafOutput> {
     const result = await oxfmt(FILE_NAME[request.language], request.source, {
       printWidth: Math.max(options.printWidth - request.indentColumns, MIN_WIDTH),
+      singleQuote: request.singleQuote,
       useTabs: options.useTabs,
       tabWidth: options.tabWidth,
       endOfLine: 'lf',

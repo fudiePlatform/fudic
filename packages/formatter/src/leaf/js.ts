@@ -66,7 +66,11 @@ export function dedent(text: string): string {
     if (l.trim() === '') continue;
     base = Math.min(base, l.length - l.trimStart().length);
   }
-  return lines.map((l) => l.slice(Math.min(base, l.length - l.trimStart().length))).join('\n');
+  // `trimEnd` as well: a fragment sliced out of the source carries the space that separated
+  // it from its closing brace, and `@{ const a = 1; }` would come back with two.
+  return lines
+    .map((l) => l.slice(Math.min(base, l.length - l.trimStart().length)).trimEnd())
+    .join('\n');
 }
 
 /**
@@ -114,12 +118,13 @@ export async function formatJsFragment(
   kind: JsFragmentKind,
   source: string,
   indentColumns: number,
+  singleQuote: boolean,
   options: ResolvedOptions,
 ): Promise<{ readonly text: string; readonly ok: boolean }> {
   if (source.trim() === '') return { text: source, ok: true };
 
   const out = await engine.format(
-    { language: 'ts', source: wrapFragment(kind, source), indentColumns },
+    { language: 'ts', source: wrapFragment(kind, source), indentColumns, singleQuote },
     options,
   );
   if (!out.ok) return { text: source, ok: false };

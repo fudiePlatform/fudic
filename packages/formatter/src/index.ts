@@ -24,8 +24,13 @@ export {
   FUD_STYLE_NOT_FORMATTED,
   fragmentNotFormatted,
   styleNotFormatted,
+  internalFailure,
+  FUD_INTERNAL_FAILURE,
   type StyleFailure,
 } from './diagnostics.js';
 
+export { format, formatRange, formatRangeWith, formatWith } from './format.js';
+export { childrenOf, smallestNodeAround } from './range.js';
 export { OPAQUE_ELEMENTS } from './tags.js';
+export { breaksInside, displayOf, isInlineLevel, type Display } from './space/index.js';
 export { oxfmtEngine, type LeafEngine, type LeafRequest, type LeafOutput } from './leaf/index.js';

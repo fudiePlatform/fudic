@@ -80,6 +80,13 @@ function fits(next: Command, rest: readonly Command[], width: number, unit: stri
 function trimTrailingSpace(out: string[]): void {
   while (out.length > 0) {
     const last = out[out.length - 1]!;
+    // An empty chunk is not the end of the trim: a blank line inside a reindented leaf is
+    // pushed as '' between two breaks, and stopping there leaves the indentation before it
+    // hanging off the end of the line.
+    if (last === '') {
+      out.pop();
+      continue;
+    }
     const trimmed = last.replace(/[ \t]+$/, '');
     if (trimmed === last) return;
     if (trimmed === '') out.pop();
