@@ -49,6 +49,7 @@
   "devDependencies": {
     "@fudic/tsconfig": "workspace:*",
     "@types/node": "22.20.0",
+    "happy-dom": "20.10.6",
     "oxc-minify": "0.137.0"
   }
 }

@@ -83,6 +83,9 @@ importers:
       '@types/node':
         specifier: 22.20.0
         version: 22.20.0
+      happy-dom:
+        specifier: 20.10.6
+        version: 20.10.6
       oxc-minify:
         specifier: 0.137.0
         version: 0.137.0

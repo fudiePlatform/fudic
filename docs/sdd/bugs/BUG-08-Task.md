@@ -3,7 +3,7 @@
 > **BUG:** [BUG-08 — El CSS de componente nunca se minifica, en ninguna salida](./BUG-08-css-verbatim.md)
 > **Paquete:** `@fudic/compiler` · **Rama:** worktree `fix-build-output`
 > **Depende de:** nada
-> **Progreso:** 0 / 8
+> **Progreso:** 3 / 8
 
 Cada tarea es un paso cerrado. Las rutas son relativas a la raíz del repo.
 
@@ -18,16 +18,16 @@ tener el compactador ya hecho, se escribe para que pase.
 
 ## Fase 1 — Rojo primero (3)
 
-- [ ] **1. El CSS emitido sale con su indentación.**
+- [x] **1. El CSS emitido sale con su indentación.**
       En `packages/compiler/test/`: el `export const css` de un componente con CSS indentado
       contiene saltos de línea y tiradas de espacios. **Verlo pasar en verde hoy** — es la
       afirmación que la corrección invierte (§6.1).
-- [ ] **2. La interpolación a mitad de declaración.**
+- [x] **2. La interpolación a mitad de declaración.**
       Fixture nuevo: `.badge { padding: @(size)rem @(size * 2)rem; }`. Assert de que la
       expresión se emite **byte a byte** y de que el espacio que separaba las dos se
       conserva. Contra el código de hoy pasa (todo es verbatim); tiene que **seguir
       pasando** después de la tarea 4. Es el guardarraíl del BUG (§6.2, §4.2).
-- [ ] **3. Equivalencia del CSS.**
+- [x] **3. Equivalencia del CSS.**
       Helper de test que parsea dos hojas con `CSSStyleSheet` y compara reglas y
       declaraciones. Sobre los fixtures canónicos, hoy compara el CSS consigo mismo y pasa;
       después de la tarea 4 es lo que demuestra que compactar no cambió nada (§6.5).
