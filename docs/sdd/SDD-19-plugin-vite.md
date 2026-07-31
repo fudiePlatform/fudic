@@ -233,6 +233,21 @@ export default function (route) {
 - **Un `page`, dos `io`:** el WW inyecta `serialize: serializeChunks` (streaming); el build de
   modo 1 (§4.4) inyecta el mismo generador y **junta** las piezas a un string para el `.html`.
 
+**Dónde acaba cada uno** ([BUG-09](./bugs/BUG-09-frontera-servidor.md)). Los dos formatos no
+solo se emiten distinto: se escriben en sitios distintos, y esa es la frontera.
+
+- El **linkable** (SW, `withLoad: false`) y el **de cliente** (`withLoad: false` en build) van a
+  `outDir`. El de cliente no está ahí para renderizar, sino para arrastrar cada página y sus
+  componentes al grafo de cliente, que es lo que emite y hashea los assets enlazados de §4.5.
+- El **del edge** (`withLoad: true`) lo produce un tercer build anidado, `runEdgePass`, y se
+  escribe en `.fudic/edge/`, **fuera de `outDir`**. Llama a `@server load` en proceso, así que
+  su grafo arrastra la región `@server` y todo lo que importe.
+
+La regla, en una línea: **`outDir` es lo que se publica; lo que solo ejecuta el servidor no se
+escribe ahí.** Por eso el manifest tampoco publica `esm` — era una URL de cliente para un
+fichero que ningún cliente pide: el prerender lo materializa en su temporal y la preview lo
+importa del disco, por convención `<safeName(patrón)>.js`.
+
 ### 4.4. Emit de página estática (modo 1)
 
 Para una ruta `dynamic:false`, el build consume el **mismo generador `page`** (§4.3), **junta** sus
@@ -276,6 +291,13 @@ por ella. Dos consecuencias que no son opcionales:
 Y una invariante de longitud que sostiene lo anterior: `BUILD_TOKEN` mide lo que mide el build id,
 porque su sustitución corre sobre el código ya generado y un cambio de longitud desplazaría cada
 columna posterior.
+
+**El `sourcesContent` va redactado** ([BUG-09](./bugs/BUG-09-frontera-servidor.md) §4.3). Un mapa
+embebe el fichero original, y el original de una página contiene su región `@server`: publicar el
+mapa publicaba el código de servidor sobre un build cuya salida ya estaba limpia.
+`redactServerRegions` la deja en blanco **carácter a carácter** — misma longitud, mismas líneas,
+mismas columnas—, que es la única forma de que los `mappings` sigan cayendo donde caían. El
+`@client` y el JS neutro se conservan: son lo que se depura.
 
 ### 4.7. El manifest y el `match` por patrón (amplía SDD-16)
 

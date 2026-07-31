@@ -11,7 +11,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { build } from 'vite';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -137,5 +137,49 @@ describe('vite build — nothing of `@server` reaches the published output', () 
     expect(fud).toContain('<h1>');
     expect(fud).not.toContain('listPosts');
     expect(fud).not.toContain('../data/secrets');
+  });
+});
+
+describe('vite build — written to disk, the boundary is a directory', () => {
+  let root = '';
+
+  beforeAll(async () => {
+    root = mkdtempSync(join(tmpdir(), 'fudic-boundary-disk-'));
+    mkdirSync(join(root, 'routes'), { recursive: true });
+    mkdirSync(join(root, 'components'), { recursive: true });
+    mkdirSync(join(root, 'data'), { recursive: true });
+    writeFileSync(join(root, 'routes', 'index.fud'), PAGE);
+    writeFileSync(join(root, 'components', 'app-badge.fud'), BADGE);
+    writeFileSync(join(root, 'data', 'secrets.ts'), SECRETS);
+    writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
+    await build({
+      root,
+      logLevel: 'silent',
+      resolve: { alias: { '@fudic/ssr': ssrDist, '@fudic/transport': transportDist } },
+      plugins: [fudic()],
+      build: { minify: false, sourcemap: true },
+    });
+  }, 300000);
+
+  /** Every file under a directory, recursively, as absolute paths. */
+  function walk(dir: string): string[] {
+    return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+      e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)],
+    );
+  }
+
+  it('§6.10 the published tree carries nothing of `@server`', () => {
+    const leaking = walk(join(root, 'dist')).filter((f) =>
+      readFileSync(f, 'utf8').includes('SECRET_TOKEN'),
+    );
+    expect(leaking).toEqual([]);
+  });
+
+  it('§4.1 and the wrapper that does carry it lives outside `outDir`', () => {
+    // The boundary is not a flag or a naming convention: it is which directory the file
+    // is written to. `dist/` is published; this one is not.
+    const edge = join(root, '.fudic', 'edge', 'index.js');
+    expect(existsSync(edge)).toBe(true);
+    expect(readFileSync(edge, 'utf8')).toContain('SECRET_TOKEN');
   });
 });

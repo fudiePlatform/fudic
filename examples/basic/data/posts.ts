@@ -2,6 +2,11 @@
  * The example's "database": a plain module read from the `@server` regions of the
  * pages. It only ever runs on the server (build time for a prerendered route, in the
  * Web Worker for an incremental one) — it never reaches the browser bundle.
+ *
+ * That last sentence was written as an intention and was false until BUG-09: the edge
+ * wrapper that imports this module was emitted as a chunk of the CLIENT build, so these
+ * posts shipped in the clear as `dist/assets/posts-*.js`. The wrapper now lives in
+ * `.fudic/edge/`, outside the published directory, and the claim holds.
  */
 
 export interface Post {

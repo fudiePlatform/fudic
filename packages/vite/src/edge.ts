@@ -13,7 +13,9 @@
  * The plugin writes it OUTSIDE `outDir`, because `outDir` is what gets published.
  *
  * `withLoad: true` is what separates it from the link pass, which emits the same routes
- * with `withLoad: false` precisely so the Service Worker never receives server code.
+ * with `withLoad: false` precisely so the Service Worker never receives server code. That
+ * difference is also why this pass needs the host's `resolve.alias`: its wrappers BUNDLE
+ * `@fudic/ssr` instead of leaving it external, so they have to be able to resolve it.
  */
 
 import { build, type Plugin } from 'vite';
@@ -55,7 +57,7 @@ interface BundleOutputLike {
  * the link pass's — has to handle the `?server` module too: the edge wrapper is the only
  * consumer that imports it, and it is TypeScript.
  */
-function edgePlugin(builds: readonly RouteBuild[], io: ResolveIo): Plugin {
+export function edgePlugin(builds: readonly RouteBuild[], io: ResolveIo): Plugin {
   return {
     name: 'fudic:edge',
     resolveId(id) {
@@ -88,9 +90,11 @@ function edgePlugin(builds: readonly RouteBuild[], io: ResolveIo): Plugin {
         const stripped = await transformWithOxc(emitServerModule(readFileSync(path, 'utf8')), `${path}.ts`, {
           lang: 'ts',
         });
+        /* v8 ignore next -- Oxc always returns a map for a `.ts` input; the guard is for the type, not for a case. */
         return stripped.map ? { code: stripped.code, map: stripped.map } : { code: stripped.code };
       }
       const result = transformFud(path, io);
+      /* v8 ignore next -- `transformFud` returns null only for a non-`.fud` id, and that was checked above. */
       return result === null ? null : { code: result.code, map: JSON.stringify(result.map) };
     },
   };
@@ -109,6 +113,7 @@ export async function runEdgePass(
   base: string,
   builds: readonly RouteBuild[],
   io: ResolveIo,
+  alias: unknown,
   nested: NestedOutputOptions,
 ): Promise<EdgeResult> {
   const routes = builds.filter((rb) => rb.decision.mode !== 'excluded');
@@ -127,6 +132,10 @@ export async function runEdgePass(
     base,
     logLevel: 'error',
     plugins: [edgePlugin(routes, io)],
+    // Forwarded verbatim, for the same reason as the Service Worker's build: this one runs
+    // with `configFile: false`, so a project that resolves `@fudic/*` through aliases —
+    // every project the CLI scaffolds — would not resolve them here.
+    ...(alias === undefined ? {} : { resolve: { alias: alias as never } }),
     build: {
       write: false,
       emptyOutDir: false,
@@ -154,11 +163,13 @@ export async function runEdgePass(
     if (item.type !== 'chunk') {
       continue;
     }
+    /* v8 ignore next -- a bundler item of type `chunk` always carries its code. */
+    const code = item.code ?? '';
     const map = serializeMap(item.map);
     chunks.push(
       map === undefined
-        ? { fileName: item.fileName, code: item.code ?? '' }
-        : { fileName: item.fileName, code: item.code ?? '', map },
+        ? { fileName: item.fileName, code }
+        : { fileName: item.fileName, code, map },
     );
     if (item.isEntry === true && item.facadeModuleId != null) {
       byModuleId.set(item.facadeModuleId, item.fileName);
@@ -167,6 +178,7 @@ export async function runEdgePass(
 
   for (const rb of routes) {
     const fileName = byModuleId.get(EDGE_PREFIX + rb.route.pattern);
+    /* v8 ignore next -- every listed route is an input of this build, so it has an entry chunk. */
     if (fileName !== undefined) {
       entries.set(rb.route.pattern, fileName);
     }

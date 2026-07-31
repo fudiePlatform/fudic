@@ -59,7 +59,7 @@ beforeAll(async () => {
   // The edge wrappers, built the way the plugin builds them, and run from a temp dir —
   // never from `outDir`, which is the whole point of BUG-09.
   const { routes: builds } = discoverRoutes(root, resolveOptions({}, '/').options);
-  const edge = await runEdgePass(root, '/', builds, nodeIo(), { sourcemap: false });
+  const edge = await runEdgePass(root, '/', builds, nodeIo(), { '@fudic/ssr': ssrDist, '@fudic/transport': transportDist }, { sourcemap: false });
   const bundle: Record<string, BundleItem> = {};
   for (const chunk of edge.chunks) {
     bundle[chunk.fileName] = { type: 'chunk', code: chunk.code };

@@ -477,7 +477,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       //     emitted into the bundle — `emitFile` means "this gets published", and this is
       //     precisely what must not (BUG-09 §4.1). They are written beside `outDir` for the
       //     preview, and materialized into the prerender's temp dir below.
-      const edge = await runEdgePass(root, base, builds, io, nested);
+      const edge = await runEdgePass(root, base, builds, io, resolveAlias, nested);
       if (writeToDisk) {
         const edgeDir = resolvePath(root, EDGE_DIR);
         rmSync(edgeDir, { recursive: true, force: true });
@@ -564,7 +564,14 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           // The wrapper it runs is the EDGE one, which is no longer in the bundle: it is
           // materialized here from the edge pass, and dies with the temp dir.
           materializeBundle(Object.fromEntries(
-            edge.chunks.map((c) => [c.fileName, { type: 'chunk' as const, code: c.code }]),
+            edge.chunks.map((c) => [
+              c.fileName,
+              // Its map goes with it: the code carries a `sourceMappingURL`, and a chunk
+              // whose map is missing makes Node warn on every prerendered route.
+              c.map === undefined
+                ? { type: 'chunk' as const, code: c.code }
+                : { type: 'chunk' as const, code: c.code, map: c.map },
+            ]),
           ), dir);
           for (const rb of prerenders) {
             const fileName = edge.entries.get(rb.route.pattern);
