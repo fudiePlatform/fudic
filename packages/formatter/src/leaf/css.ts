@@ -67,7 +67,7 @@ export async function formatStyleBody(
   if (masked.trim() === '') return { text: verbatim };
 
   const out = await engine.format(
-    { language: 'css', source: masked, indentColumns, singleQuote: false },
+    { language: 'css', source: masked, indentColumns, singleQuote: false, singleLine: false },
     options,
   );
   if (!out.ok) return { text: verbatim, note: styleNotFormatted(span, 'parse') };

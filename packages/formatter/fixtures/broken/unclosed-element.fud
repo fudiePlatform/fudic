@@ -1,0 +1,6 @@
+<app-x>
+  <template shadowrootmode="open">
+    <div>
+      <p>never closed
+  </template>
+</app-x>

@@ -1,0 +1,6 @@
+<app-x>
+  <template shadowrootmode="open">
+    <p>a</p>
+    </div>
+  </template>
+</app-x>

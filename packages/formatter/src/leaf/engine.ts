@@ -38,6 +38,14 @@ export interface LeafRequest {
    * The rule is symmetric — the fragment takes the quote the attribute did not.
    */
   readonly singleQuote: boolean;
+  /**
+   * Whether this fragment must come back on one line.
+   *
+   * An attribute value is the case: §4.5 does not break a binding from within, and the
+   * margin is not the right question there — the fragment is delimited by quotes, not by
+   * columns.
+   */
+  readonly singleLine: boolean;
 }
 
 /** What came back. `ok: false` means "this does not parse"; the code is then the input. */
@@ -60,6 +68,14 @@ export interface LeafEngine {
  */
 const MIN_WIDTH = 20;
 
+/**
+ * The width asked for when a fragment must not break.
+ *
+ * A number rather than a flag because that is the only knob the formatter has: no real
+ * source line reaches it, so nothing breaks.
+ */
+const NO_BREAK_WIDTH = 10_000;
+
 const FILE_NAME: Readonly<Record<LeafLanguage, string>> = {
   ts: 'fragment.ts',
   css: 'fragment.css',
@@ -69,7 +85,9 @@ const FILE_NAME: Readonly<Record<LeafLanguage, string>> = {
 export const oxfmtEngine: LeafEngine = {
   async format(request: LeafRequest, options: ResolvedOptions): Promise<LeafOutput> {
     const result = await oxfmt(FILE_NAME[request.language], request.source, {
-      printWidth: Math.max(options.printWidth - request.indentColumns, MIN_WIDTH),
+      printWidth: request.singleLine
+        ? NO_BREAK_WIDTH
+        : Math.max(options.printWidth - request.indentColumns, MIN_WIDTH),
       singleQuote: request.singleQuote,
       useTabs: options.useTabs,
       tabWidth: options.tabWidth,

@@ -221,11 +221,15 @@ export async function collectLeaves(
       }
       const out = await formatJsFragment(
         engine,
-        job.kind,
-        source.slice(job.start, job.end),
-        indentColumns,
-        // The attribute delimiter decides which quote the JS inside it may not use.
-        job.inAttribute && options.quote === 'double',
+        {
+          kind: job.kind,
+          source: source.slice(job.start, job.end),
+          indentColumns,
+          // The attribute delimiter decides which quote the JS inside it may not use, and
+          // that it is delimited at all is why it may not break either.
+          singleQuote: job.inAttribute && options.quote === 'double',
+          singleLine: job.inAttribute,
+        },
         options,
       );
       return out.ok

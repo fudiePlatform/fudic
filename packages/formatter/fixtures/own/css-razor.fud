@@ -1,0 +1,20 @@
+@code {
+  const bp = { tablet: '48rem' };
+  const theme = { fg: '#222', accent: 'rebeccapurple' };
+}
+
+<head>
+  <style>
+    :host { display: block; color: @(theme.fg); }
+
+    @media (min-width: @bp.tablet) {
+      .wide { padding: 1rem 2rem; --accent: @(theme.accent); }
+    }
+  </style>
+</head>
+
+<app-css>
+  <template shadowrootmode="open">
+    <div class="wide"><slot></slot></div>
+  </template>
+</app-css>

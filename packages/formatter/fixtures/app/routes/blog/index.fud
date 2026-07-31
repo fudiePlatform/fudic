@@ -1,0 +1,53 @@
+<link rel="layout" href="../../layouts/_layout.fud">
+<link rel="component" href="../../components/site-nav.fud">
+<link rel="component" href="../../components/app-card.fud">
+<link rel="component" href="../../components/app-badge.fud">
+
+@code {
+  type Post = { slug: string; title: string; summary: string; tag: string; featured: boolean };
+  type PageData = { title: string; posts: Post[] };
+
+  @server {
+    import { strategy } from '@fudic/core';
+    import { listPosts } from '../../data/posts';
+
+    strategy({ mode: 'sw', data: { ttl: '5m', policy: 'cache-first' } });
+
+    export async function load(): Promise<PageData> {
+      const posts = await listPosts();
+      return { title: 'Blog', posts: [...posts] };
+    }
+  }
+}
+
+<head>
+  <title>@data.title — fudic</title>
+</head>
+
+@section nav {
+  <site-nav current="blog"></site-nav>
+}
+
+<h1>@data.title</h1>
+<p class="lede">
+  Esta página tiene <code>@@server load</code>: el build no puede probar que su dato
+  sea estático, así que la renderiza el Service Worker, que pide el dato al
+  endpoint generado y lo cachea con el TTL de la ruta. El layout es el mismo que el de
+  las rutas estáticas — quien decide el modo es el dato, no el shell.
+</p>
+
+@if (data.posts.length === 0) {
+  <p class="empty">Todavía no hay artículos.</p>
+} else {
+  <section class="grid">
+    @foreach (const post of data.posts) {
+      <app-card
+        title="@post.title"
+        href="@('/blog/' + post.slug)"
+        variant="@(post.featured ? 'highlight' : 'default')">
+        <app-badge slot="meta" tone="@(post.featured ? 'success' : 'neutral')">@post.tag</app-badge>
+        @post.summary
+      </app-card>
+    }
+  </section>
+}

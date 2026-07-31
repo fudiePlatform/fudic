@@ -33,6 +33,24 @@ export type JsFragmentKind =
   /** `@code`, `@server`, `@client`, `@{ … }` — already a list of statements. */
   | 'statements';
 
+/** One fragment to format, and the two things its surroundings impose on it. */
+export interface JsFragment {
+  readonly kind: JsFragmentKind;
+  readonly source: string;
+  readonly indentColumns: number;
+  /** The JS must prefer the quote its container does not use. See `LeafRequest`. */
+  readonly singleQuote: boolean;
+  /**
+   * The result must come back on ONE line.
+   *
+   * True inside an attribute value: §4.5 says a long binding is never broken from within,
+   * and `class:success="@(tone === 'success')"` split over three lines is a shape no author
+   * would recognize as theirs — even though the value is compiled JS and the render is
+   * unaffected either way.
+   */
+  readonly singleLine: boolean;
+}
+
 const WRAPPERS: Readonly<Record<JsFragmentKind, readonly [string, string]>> = {
   expression: ['(', ');'],
   condition: ['if (', ') {}'],
@@ -115,18 +133,29 @@ export function unwrapFragment(
  */
 export async function formatJsFragment(
   engine: LeafEngine,
-  kind: JsFragmentKind,
-  source: string,
-  indentColumns: number,
-  singleQuote: boolean,
+  fragment: JsFragment,
   options: ResolvedOptions,
 ): Promise<{ readonly text: string; readonly ok: boolean }> {
-  if (source.trim() === '') return { text: source, ok: true };
+  if (fragment.source.trim() === '') return { text: fragment.source, ok: true };
 
   const out = await engine.format(
-    { language: 'ts', source: wrapFragment(kind, source), indentColumns, singleQuote },
+    {
+      language: 'ts',
+      source: wrapFragment(fragment.kind, fragment.source),
+      indentColumns: fragment.indentColumns,
+      singleQuote: fragment.singleQuote,
+      singleLine: fragment.singleLine,
+    },
     options,
   );
-  if (!out.ok) return { text: source, ok: false };
-  return { text: unwrapFragment(kind, out.code, source), ok: true };
+  if (!out.ok) return { text: fragment.source, ok: false };
+
+  const text = unwrapFragment(fragment.kind, out.code, fragment.source);
+  // The engine is asked for one line and normally gives it; when something inside forces a
+  // break anyway — a comment, a template literal — the author's own version wins. A binding
+  // is never broken from within, and this is the only place that promise can be kept.
+  if (fragment.singleLine && text.includes('\n') && !fragment.source.includes('\n')) {
+    return { text: fragment.source, ok: true };
+  }
+  return { text, ok: true };
 }
