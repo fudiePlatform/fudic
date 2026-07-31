@@ -72,17 +72,21 @@ function dumpSheet(css: string): string {
     .replace(/\s*([{};:])\s*/gu, '$1');
 }
 
-describe('BUG-08 §6.1 — the CSS is emitted with its indentation intact', () => {
+describe('BUG-08 §6.1 — the CSS is emitted compacted', () => {
   const css = cssOfComponent('app-badge');
 
-  // RED FIRST: this is the state the fix inverts. Green today, and it has to be seen
-  // green today, or the assertion that replaces it proves nothing.
-  it('ships the newlines of the source', () => {
-    expect(css).toMatch(/\n/u);
+  // These two were asserted the other way around first, and seen green, so that inverting
+  // them is a result and not a description of whatever the compactor happened to do.
+  it('ships no newline of the source', () => {
+    expect(css).not.toMatch(/\n/u);
   });
 
-  it('ships runs of more than one space', () => {
-    expect(css).toMatch(/ {2}/u);
+  it('ships no run of more than one space', () => {
+    expect(css).not.toMatch(/ {2}/u);
+  });
+
+  it('drops the whitespace around the punctuation that never needs it', () => {
+    expect(css).toContain(':host{display:inline-block;}');
   });
 });
 

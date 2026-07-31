@@ -1,16 +1,7 @@
 import { render as renderAppButton } from './app-button.mjs';
 
 export const tag = "app-card";
-export const css = `
-    :host { display: block; }
-    .card {
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 1rem;
-      .body { margin-top: 0.5rem; }
-    }
-    .card.highlight { border-color: gold; }
-  `;
+export const css = `:host{display:block;}.card{border:1px solid #ddd;border-radius:8px;padding:1rem;.body{margin-top:0.5rem;}}.card.highlight{border-color:gold;}`;
 
 export function render($dom, $shadow, props) {
   const { title, variant = 'default' } = props ?? {};

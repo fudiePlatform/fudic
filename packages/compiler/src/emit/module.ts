@@ -26,6 +26,7 @@ import { spaceModeOf } from './space.js';
 import { CodeWriter, type EmitMapping } from './writer.js';
 import { MarkupEmitter, renderName, tpl } from './markup.js';
 import { AssetLinker, type AssetExists } from './assets.js';
+import { compactStyleCss } from './css-compact.js';
 import { extractCode } from './oxc-code.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import {
@@ -92,11 +93,18 @@ function styleElement(doc: ComponentDocument): ElementNode | undefined {
   );
 }
 
-/** The `<head>` `<style>` CSS of a component (the shared sheet body). */
+/**
+ * The `<head>` `<style>` CSS of a component (the shared sheet body), COMPACTED.
+ *
+ * It is built from the `StyleNode` and not from a `source.slice(...)` of the file: the
+ * body was already parsed, and walking it is what lets the whitespace go while every
+ * interpolation stays byte for byte (BUG-08 §3.1). A slice of the source in the emit is a
+ * sign that a node is going unused.
+ */
 function componentCss(source: string, doc: ComponentDocument): string {
-  const style = styleElement(doc);
+  const style = componentStyleNode(doc);
   if (!style) return '';
-  return source.slice(style.openSpan.end, style.closeSpan ? style.closeSpan.start : style.span.end);
+  return compactStyleCss(source, style);
 }
 
 /**

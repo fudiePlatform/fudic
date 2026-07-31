@@ -3,7 +3,7 @@
 > **BUG:** [BUG-08 — El CSS de componente nunca se minifica, en ninguna salida](./BUG-08-css-verbatim.md)
 > **Paquete:** `@fudic/compiler` · **Rama:** worktree `fix-build-output`
 > **Depende de:** nada
-> **Progreso:** 3 / 8
+> **Progreso:** 5 / 8
 
 Cada tarea es un paso cerrado. Las rutas son relativas a la raíz del repo.
 
@@ -34,14 +34,14 @@ tener el compactador ya hecho, se escribe para que pase.
 
 ## Fase 2 — Usar el AST que ya existe (2)
 
-- [ ] **4. `componentCss` se construye desde `StyleNode`.**
+- [x] **4. `componentCss` se construye desde `StyleNode`.**
       `packages/compiler/src/emit/module.ts:87-93`: dejar el `source.slice(...)` y recorrer
       `StyleNode.parts` (§3.1). `CssText` se compacta; `RazorExpression`, `AtEscapeNode` y
       `RazorCommentNode` van verbatim (§4.1). Aprovechar que los `parts` tapizan el span sin
       huecos ni solapes — está documentado en `packages/compiler/src/css/nodes.ts` y es lo
       que hace que el recorrido sea completo por construcción.
       Verde en 1 invertido; **2 y 3 tienen que seguir verdes**.
-- [ ] **5. Compactar sin cruzar interpolaciones.**
+- [x] **5. Compactar sin cruzar interpolaciones.**
       Dentro de cada `CssText`: tiradas de whitespace a un espacio, sin espacio alrededor de
       `{`, `}`, `;` y `:`. **Nunca** entre dos partes (§4.2). Los comentarios CSS se
       conservan (§4.3).
