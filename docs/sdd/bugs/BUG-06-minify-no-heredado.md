@@ -1,6 +1,6 @@
 # BUG-06 — Los builds anidados ignoran el `build.minify` del host
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Corrige:** [SDD-20 — Render en el Service Worker](../SDD-20-render-sw.md) §4.1 y §4.3,
 > y matiza el *Fuera de alcance* de [BUG-03](./BUG-03-chunks-compartidos-sw.md) §7
 > **Paquete:** `@fudic/vite`
@@ -196,6 +196,13 @@ Tests en `packages/vite/test/swbuild.test.ts`, `link.test.ts` y
 
 ## 7. Fuera de alcance
 
+- **El edge pass**, el tercer build anidado, que no existía cuando se escribió esta spec
+  ([BUG-09](./BUG-09-frontera-servidor.md) §3.1). **No hereda** `minify`, y por eso lleva su
+  porqué escrito en [`edge.ts`](../../../packages/vite/src/edge.ts): su salida no se publica
+  —se escribe fuera de `outDir` y la lee Node, para el prerender y para `vite preview`—, así
+  que `build.minify`, que es una decisión sobre los bytes que alguien se descarga, no le
+  aplica; y minificarla solo costaría la traza de un `@server load` que falle al prerenderizar.
+  Es el «lo que no herede se justifica por escrito» de §5, ejercido.
 - **Reabrir si el SW debe ser un bundle autocontenido.** BUG-03 §4.1 lo decidió; aquí solo
   se minifica lo que ya se emite.
 - **Elegir minificador o afinar sus opciones** (`terser` vs `oxc`, `mangle`, `drop_console`).

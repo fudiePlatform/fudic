@@ -244,6 +244,13 @@ sobre el artefacto real de `examples/basic`.
 - **Minificar o dividir el SW por tamaño.** Un SW autocontenido es más grande; se descarga
   una vez por build y se sirve desde el script cache del navegador. Si algún día molesta,
   es una decisión de rendimiento con medición, no un bug.
+  > **Dejó de estar fuera de alcance en [BUG-06](./BUG-06-minify-no-heredado.md)**, y no
+  > por el argumento que este punto rechaza. Lo que BUG-06 corrige no es que el SW pese
+  > mucho: es que el build anidado llevaba `minify: false` a mano y `configResolved` no
+  > capturaba `build.minify`, así que **una opción que el usuario configura se ignoraba en
+  > silencio**, en los dos sentidos (BUG-06 §2.5). El tamaño es la consecuencia —31,77 →
+  > 11,31 kB—, no el motivo. **Dividir** el SW sigue fuera de alcance, y este punto lo
+  > sigue rigiendo.
 - **Tocar `sw.json` o la clase `/assets/**`.** §4.4 es un efecto derivado; la configuración
   del ejemplo no cambia.
 - **El shell y sus políticas:** [BUG-01](./BUG-01-shell-sin-politica.md).
