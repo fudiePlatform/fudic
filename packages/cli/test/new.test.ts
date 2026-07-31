@@ -48,6 +48,13 @@ describe('fudic new', () => {
     ]);
     expect(plan.changes.every((change) => change.kind === 'create')).toBe(true);
 
+    // `.fudic/` is where the build writes the edge wrappers: server code, outside `outDir`
+    // so no static host publishes it (BUG-09). Ignoring it is the other half of that —
+    // without this line the first build commits `@server` code, and whatever it imports,
+    // into the user's repository.
+    const gitignore = plan.changes.find((change) => change.path === 'demo/.gitignore')!.contents;
+    expect(gitignore).toContain('.fudic/');
+
     const layout = plan.changes.find((change) => change.path === 'demo/layouts/_layout.fud')!.contents;
     const index = plan.changes.find((change) => change.path === 'demo/routes/index.fud')!.contents;
     expect(parseFud(layout).doc.type).toBe('layout-document');
