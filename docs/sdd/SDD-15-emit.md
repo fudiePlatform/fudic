@@ -747,6 +747,24 @@ que hay que leer antes de tocar nada:
   Borrarlo cambiaría tres cosas observables —el contenido asignado a un `<slot>`, `:empty` y
   el espaciado inline entre componentes— y, medido, paga 0,4 % gzip sobre colapsar.
 
+### 4.10. `componentCss` sale del AST, no del fuente
+
+Añadido por [BUG-08](./bugs/BUG-08-css-verbatim.md). El cuerpo del `<style>` del componente
+—el que §4.8 emite como hoja compartida y el que viaja dentro de `export const css`— se
+construye recorriendo el `StyleNode` que el parser ya produjo, **no** con un
+`source.slice(...)` del fichero. Era el único sitio del emit que volvía al texto fuente
+teniendo el nodo delante, y le costaba al proyecto el whitespace entero del CSS en las tres
+salidas: un minificador de JS no entra en el contenido de un template literal, por definición
+del lenguaje, así que ese CSS no lo alcanzaba ninguna herramienta posterior.
+
+El recorrido es completo por construcción —las partes tapizan el span sin huecos ni solapes
+(`css/nodes.ts`)— y compacta **solo** las de tipo `CssText`: `RazorExpression`,
+`AtEscapeNode` y `RazorCommentNode` salen verbatim. Las reglas de compactación y por qué no
+se compacta nunca **entre** dos partes están en SDD-09 §4.6.
+
+**La regla que queda para el futuro:** un `slice` del fuente dentro del emit es la señal de
+que falta usar un nodo.
+
 ---
 
 ## 5. Invariantes LSP

@@ -198,6 +198,27 @@ del lexer (`@*` sin cerrar, §4.2).
 
 ---
 
+### 4.6. Qué hace el emit con estas partes (BUG-08)
+
+Añadido por [BUG-08](./bugs/BUG-08-css-verbatim.md) §4.1/§4.2. SDD-09 no minifica nada —sigue
+siendo passthrough verbatim, decisión 49—, pero el consumidor de estas partes sí, y conviene
+que esté escrito junto a la forma que consume:
+
+- **`CssText` se compacta** en el emit: tiradas de whitespace a un espacio, sin espacio
+  alrededor de `{`, `}`, `;` y sin espacio **después** de `:`. El espacio **antes** del `:` se
+  conserva, porque `a :hover` y `a:hover` son reglas distintas.
+- **`RazorExpression`, `AtEscapeNode` y `RazorCommentNode` salen verbatim, siempre.** Sus
+  spans son lo único que resuelve una posición dentro de `export const css` de vuelta al
+  `.fud`: no hay ancla de emit para una interpolación de CSS.
+- **Nunca se compacta entre dos partes.** Una interpolación puede caer en mitad de una
+  declaración —`padding: @(size)rem @(size * 2)rem`— y el espacio contiguo separa dos valores
+  cuyo contenido no se conoce en compilación. Cada `CssText` se compacta por su cuenta.
+- Los **comentarios CSS** y las **strings** que §4.1 absorbe como texto literal se copian tal
+  cual: el whitespace de dentro de una string lo renderiza la página, y borrar un comentario
+  es una segunda decisión que se llevaría por delante un `/*! license */`.
+
+---
+
 ## 5. Invariantes LSP
 
 - **Spans en todo.** `StyleNode`, cada `CssPart` y cada `Diagnostic` llevan offset UTF-16. Las

@@ -1,6 +1,6 @@
 # BUG-08 — El CSS de componente nunca se minifica, en ninguna salida
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Corrige:** [SDD-15 — Emit](../SDD-15-emit.md) y
 > [SDD-09 — CSS con Razor](../SDD-09-css-razor.md), en el punto donde el emit toma el CSS
 > **Paquete:** `@fudic/compiler`

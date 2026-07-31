@@ -64,12 +64,12 @@ tener el compactador ya hecho, se escribe para que pase.
 
 ## Cierre del BUG
 
-- [ ] `pnpm typecheck`, `pnpm test` y `pnpm build` en verde.
-- [ ] Lo nuevo al **100 %** en las cuatro métricas; `packages/compiler` no baja de ramas
+- [x] `pnpm typecheck`, `pnpm test` y `pnpm build` en verde.
+- [x] Lo nuevo al **100 %** en las cuatro métricas; `packages/compiler` no baja de ramas
       respecto a `main`.
-- [ ] Anotar en el registro de progreso el tamaño del `<style>` de `dist/index.html` y de un
+- [x] Anotar en el registro de progreso el tamaño del `<style>` de `dist/index.html` y de un
       chunk representativo, antes y después.
-- [ ] Marcar BUG-08 como `Hecho` en [INDEX.md](./INDEX.md) (tabla + registro de progreso).
-- [ ] Anotar en [SDD-09](../SDD-09-css-razor.md) que el emit compacta el `CssText` y deja
+- [x] Marcar BUG-08 como `Hecho` en [INDEX.md](./INDEX.md) (tabla + registro de progreso).
+- [x] Anotar en [SDD-09](../SDD-09-css-razor.md) que el emit compacta el `CssText` y deja
       verbatim las demás partes, y en [SDD-15](../SDD-15-emit.md) que `componentCss` sale del
       AST y no del fuente, con enlace a este BUG.
