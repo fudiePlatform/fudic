@@ -20,7 +20,8 @@
   <li><code>/</code> — estática: sin params ni <code>load</code> ⇒ prerenderizada.</li>
   <li><code>/about</code> — estática, esta misma página.</li>
   <li><code>/blog</code> — <code>@@server load</code> ⇒ <code>sw</code>: lo pinta el Service Worker.</li>
-  <li><code>/blog/:slug</code> — <code>paths()</code> ⇒ prerender enumerado + render local para el resto.</li>
+  <li><code>/blog/:slug</code> — <code>paths()</code> ⇒ prerender enumerado + render local para el
+    resto.</li>
 </ul>
 <p>
   Ninguna de las cuatro escribe <code>&lt;html&gt;</code>, <code>&lt;head&gt;</code> ni
