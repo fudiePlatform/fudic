@@ -51,6 +51,27 @@ export default defineConfig([
       // and the one whose absence is silent: formatting would simply never answer.
       'oxfmt',
     ],
-    output: { dir: 'dist', format: 'esm', entryFileNames: '[name].mjs' },
+    output: {
+      dir: 'dist',
+      format: 'esm',
+      entryFileNames: '[name].mjs',
+      /**
+       * A `require` for the code that asks for it through `eval`.
+       *
+       * Volar's `loadTsdkByPath` reaches the project's TypeScript with `eval('require')` — its
+       * own comment says "webpack compatibility" — and a string is invisible to a bundler, so
+       * the call survives into an ESM bundle where `require` is not defined. Rolldown rewrites
+       * the real `require(…)` calls to a `createRequire` of its own; this puts the same thing
+       * under the name the eval will look for, in module scope, where a direct eval finds it.
+       *
+       * The failure without it is quiet and total: loading the project TypeScript throws
+       * `ReferenceError: require is not defined`, the server degrades to HTML and CSS, and the
+       * extension shows colour and no types at all.
+       */
+      banner: [
+        "import { createRequire as __createRequire } from 'node:module';",
+        'const require = __createRequire(import.meta.url);',
+      ].join('\n'),
+    },
   },
 ]);

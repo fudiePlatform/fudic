@@ -130,7 +130,7 @@
     }
   },
   "scripts": {
-    "build": "rolldown -c && node scripts/vendor-native.mjs",
+    "build": "rolldown -c && node scripts/vendor-native.mjs && node scripts/verify-server-bundle.mjs",
     "dev": "rolldown -c --watch",
     "package": "vsce package --no-dependencies --out fudic-vscode.vsix",
     "verify:vsix": "node scripts/verify-vsix.mjs",
