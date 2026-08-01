@@ -1,22 +1,32 @@
 # @fudic/core
 
-The client runtime of fudic (SDD-14).
+The client runtime of fudic (SDD-14, SDD-15 §3.7).
 
 - **`signal`** — fine-grained reactivity: value + live subscriber set, explicit
   subscribe/unsubscribe (no automatic tracking in v1), DOM-first rehydration.
+- **`FudicElement`** — the base class of every N3 custom element. The emitted
+  chunk of a component carries its `static c($props)` factory and the
+  `customElements.define`, and nothing else; the instance scaffolding lives here.
+  - `h(props)` — the instance came from SSR: the shadow root is already populated
+    by the DSD, so the controller adopts those nodes. `props` is the instance's
+    slice of the payload, handed over by the runtime.
+  - `c(props)` — the instance was created at runtime by the parent controller:
+    a shadow is opened and the nodes are fabricated.
+  - `disconnectedCallback()` → `r()`, the only real lifecycle callback.
+  - **No `connectedCallback`.** A component does not know its own `data-id`, so
+    it cannot read its own slice: the runtime hands out slices per tag, at the
+    moment it defines the tag. `h`/`c` are invoked from outside.
+- **`Controller` / `FudicElementCtor`** — the types of that contract. The second
+  exists because TypeScript has no `static abstract` member.
 
-That is the whole surface for now, and the emptiness is deliberate: everything
-else this package used to hold was shaped for a runtime model that has been
-retired, and the pieces that replace it are emit contracts that will land with
-the emit itself (SDD-15), not before it.
+The base must travel in the runtime module the page already loads on startup, so
+that a chunk downloaded on the first interaction resolves its
+`import { FudicElement }` against an already-evaluated module: no extra request
+inside the gesture, and the bytes saved by not emitting the scaffolding do not
+turn into an INP cost.
 
 Retired with SDD-15 / SDD-17:
 
-- `FudicElement` — the N3 base class returns as part of the emit implementation,
-  but with a different shape: it wraps the emitted `static c($props)` factory,
-  routes `h`/`c` from outside (the runtime hands each instance its state slice,
-  since a component cannot know its own `data-id`), and calls `r()` from
-  `disconnectedCallback`. It has no `connectedCallback` logic at all.
 - `Render` / `RenderFactory` / `SsrBuild` — this was the *component* lifecycle of
   SDD-14, driven by the old `FudicElement`. Keeping it relabelled as the block
   contract was a mistake: its `mount` meant subscription where the emit's `m`

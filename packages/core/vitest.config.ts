@@ -10,12 +10,19 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
+      // The denominator is the whole package, not what the tests chose to look
+      // at: without this, a file no test imports simply does not count, and
+      // coverage goes UP by deleting tests.
+      include: ['src/**/*.ts'],
       thresholds: {
         // Everything left in the package is pure runtime, so the SDD-00 floor
         // (80/80/75) does not apply here: 100% is reachable and expected.
+        // Four metrics, not three: leaving `statements` out leaves exactly the
+        // error paths unmeasured.
         lines: 100,
         functions: 100,
         branches: 100,
+        statements: 100,
       },
     },
   },

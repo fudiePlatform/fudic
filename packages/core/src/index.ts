@@ -1,11 +1,12 @@
 /**
  * Entry point of `@fudic/core`.
  *
- * What is left of the client runtime (SDD-14 §3.3) is `signal`, and that is on
- * purpose. The component artifact is emitted, not inherited from here yet: the
- * emit produces a closure controller `{c, h, r}` (SDD-15 §3.7) wrapped by an
- * `FudicElement` base that lands with the emit implementation. Hydration is
- * driven by the global capturer of SDD-17, not by this package.
+ * Two pieces, and the split is the emit contract (SDD-15 §3.7): the emitted chunk
+ * of a component carries only its `static c($props)` factory, which returns a
+ * closure controller `{c, h, r}`; the instance scaffolding around it is
+ * `FudicElement`, inherited from here. `signal` is the reactivity the factory
+ * closes over. Hydration itself — who downloads what, and in which order — is
+ * driven by the global capturer of SDD-17, not by this module.
  *
  * `Render`/`RenderFactory`/`SsrBuild` and the `hydrateRoot`/`mountRoot` bootstrap
  * were removed rather than kept: they were the SDD-14 *component* lifecycle, and
@@ -19,6 +20,8 @@
 
 export const VERSION = '0.0.1';
 
+export { FudicElement } from './element.js';
+export type { Controller, FudicElementCtor } from './controller.js';
 export { signal, type Signal } from './signal.js';
 export {
   strategy,
