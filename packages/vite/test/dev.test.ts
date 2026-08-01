@@ -72,6 +72,16 @@ describe('vite dev server (SDD-19 §4.10)', () => {
     expect((await fetch(`${origin}/fudic-ww.js`)).status).toBe(404);
   });
 
+  it('resolves the bootstrap URLs in the module pipeline, not just in the middleware', async () => {
+    // What `transformIndexHtml` warms up for every module `<script src>` it sees. That
+    // path skips the middlewares, so before this resolved the URL it threw and Vite
+    // logged `Pre-transform error: Failed to load url /fudic-main.js`.
+    expect((await server.transformRequest('/fudic-main.js'))?.code).toBe('export {};\n');
+    expect((await server.transformRequest('/fudic-sw.js'))?.code).toContain('createRouter');
+    // A name that is not a bootstrap still falls through to Vite's own resolution.
+    await expect(server.transformRequest('/nope.js')).rejects.toThrow(/Failed to load url/u);
+  });
+
   it('renders a navigation on demand (§4.10)', async () => {
     const res = await fetch(`${origin}/about`, { headers: { accept: 'text/html' } });
     expect(res.status).toBe(200);

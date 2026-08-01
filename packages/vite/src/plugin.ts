@@ -77,6 +77,23 @@ function pathnameOf(url: string, base: string): string {
   return path.startsWith(base) ? path.slice(base.length - 1) : path;
 }
 
+/**
+ * The stable dev URLs (base already stripped) → the virtual id served at each one.
+ *
+ * In dev these two are middleware URLs, not files, and that is invisible to the part of
+ * Vite that PRE-TRANSFORMS: `transformIndexHtml` warms up every `<script type="module"
+ * src>` it finds in the HTML we serve, and a warmup goes straight into the module
+ * pipeline — it never reaches a connect middleware. With nothing resolving
+ * `/fudic-main.js`, the warmup failed and logged `Pre-transform error: Failed to load
+ * url /fudic-main.js`; the page still worked, because the BROWSER's request does go
+ * through the middleware. Resolving the URL to the same id the middleware serves closes
+ * the gap: one module, one graph entry, both paths.
+ */
+const DEV_SCRIPT_IDS: ReadonlyMap<string, string> = new Map([
+  [`/${DEV_MAIN_URL}`, MAIN_ID],
+  [`/${DEV_SW_URL}`, SW_ID],
+]);
+
 export function fudic(userOptions: FudicOptions = {}): Plugin {
   let options: ResolvedOptions;
   let root = process.cwd();
@@ -378,6 +395,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     resolveId(id) {
       if (id === MAIN_ID || id === SW_ID || id.startsWith(WRAPPER_PREFIX)) {
         return id;
+      }
+      // Only in dev: in build these names are real emitted files (see `DEV_SCRIPT_IDS`).
+      if (isDev) {
+        return DEV_SCRIPT_IDS.get(pathnameOf(id, base)) ?? null;
       }
       return null;
     },

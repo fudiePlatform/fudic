@@ -825,6 +825,12 @@ y cada cambio purgaría y recalentaría todo, con un reload extra por el
 Con `"dev": "preview"` sí se registra, y el middleware de dev sirve además los chunks
 enlazables bajo `/sw/c/…` transformándolos a `cjs` con `transformWithOxc`.
 
+`/fudic-main.js` y `/fudic-sw.js` las conoce el middleware **y** el `resolveId` del plugin,
+no solo el primero: `transformIndexHtml` precalienta cada `<script type="module" src>` del
+HTML que servimos, y ese camino entra directo al pipeline de módulos sin pasar por los
+middlewares ([BUG-10](./bugs/BUG-10-url-de-dev-sin-resolver.md)). Publicar una URL de dev
+significa darla de alta en los dos sitios.
+
 En **dev y preview** el middleware existente ([`plugin.ts`](../../packages/vite/src/plugin.ts))
 asume además el papel de *edge* de §9 del documento fuente:
 
