@@ -123,11 +123,25 @@ y luego `Ctrl+R`. Para un bucle más corto sobre el servidor, mira §5.
 Para usar Fudic mientras trabajas en otro proyecto.
 
 ```sh
+pnpm --filter fudic-vscode install:vsix
+```
+
+Eso es todo: el script construye, verifica, empaqueta e instala. Antes de nada comprueba
+que tienes `code` en el `PATH`, porque es lo que más veces falta y lo que más caro sale
+descubrir al final, cuando el build ya se ha llevado su minuto.
+
+Los cuatro pasos, si los quieres sueltos:
+
+```sh
 pnpm --filter "fudic-vscode..." build
 pnpm --filter fudic-vscode verify:vsix     # comprueba qué entraría en el paquete
 pnpm --filter fudic-vscode package         # produce packages/vscode/fudic-vscode.vsix
 code --install-extension packages/vscode/fudic-vscode.vsix --force
 ```
+
+El script **no** se llama `install`: ese nombre es un *hook* de ciclo de vida de
+npm/pnpm y se ejecutaría en cada `pnpm install` del workspace, reempaquetando y
+reinstalando la extensión cuando lo único que pediste fue instalar dependencias.
 
 `verify:vsix` no es opcional por costumbre: pregunta a `vsce ls` qué ficheros entrarían y
 exige que estén el bundle, el servidor, la gramática, la configuración del lenguaje, los
@@ -144,7 +158,7 @@ code --list-extensions --show-versions | grep fudic
 
 Recarga la ventana (`Ctrl+R`) y abre cualquier `.fud`.
 
-**Reinstalar tras un cambio:** repite los cuatro comandos. El `--force` sobrescribe la
+**Reinstalar tras un cambio:** vuelve a lanzar `install:vsix`. El `--force` sobrescribe la
 versión anterior sin desinstalar.
 
 ---

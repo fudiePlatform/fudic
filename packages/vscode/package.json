@@ -134,6 +134,7 @@
     "dev": "rolldown -c --watch",
     "package": "vsce package --no-dependencies --out fudic-vscode.vsix",
     "verify:vsix": "node scripts/verify-vsix.mjs",
+    "install:vsix": "node scripts/install-dev.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
