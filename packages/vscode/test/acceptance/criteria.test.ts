@@ -149,7 +149,7 @@ describe('criterion 10 — the server dies', () => {
     expect(LanguageClient.created[0]?.started).toBe(3);
     expect(state.bar.text).toBe('Fudic ✕');
     expect(state.commandHandlers.has('fudic.restartServer')).toBe(true);
-    expect(state.warnings.some((message) => message.includes('tres intentos'))).toBe(true);
+    expect(state.warnings.some((message) => message.includes('three attempts'))).toBe(true);
   });
 });
 

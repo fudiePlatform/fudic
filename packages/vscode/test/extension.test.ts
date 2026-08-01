@@ -178,7 +178,7 @@ describe('the commands, through the adapter', () => {
 
     await run('fudic.showRegistry');
 
-    expect(state.warnings.some((message) => message.includes('.fud activo'))).toBe(true);
+    expect(state.warnings.some((message) => message.includes('active .fud'))).toBe(true);
   });
 });
 

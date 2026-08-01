@@ -1,59 +1,82 @@
-# `fudic-vscode`
+# Fudic for VS Code
 
-The VS Code client for `.fud` files (SDD-25). **Thin by design: zero language logic.** It
-registers the language, starts the server from
-[`@fudic/language-server`](../language-server) (SDD-24), and contributes the things that
-can only live on the client — the TextMate grammar that colours the first frame, the
-language configuration, and the commands.
+Language support for `.fud` — single-file components built on Declarative Shadow DOM.
 
-The rule that governs this package: *if something can live in the server, it lives in the
-server*. Every line of intelligence that leaks in here is a line Zed and Neovim will not
-have.
+A `.fud` file is markup, scoped CSS and a `@code` block in one place. This extension makes
+the editor read it as one language instead of three: the types you declare in `@code` reach
+the markup, and the markup answers back with completion, hovers and errors.
 
-## What is client-only, and why
+## Features
 
-| Piece | Why it cannot live in the server |
+**Types across the boundary.** The types in `@code` are the types the template is checked
+against. Get the return type of `load()` wrong and the error lands on the expression that
+uses it, in the `.fud`, on the line you wrote — not in a generated file you have never seen.
+
+**Component-aware completion.** Typing inside a `<my-card |>` offers the attributes that
+component actually declares, and an expression inside one is completed with its type.
+`F12` on the tag opens the file that defines it.
+
+**Colour that never bleeds.** Highlighting arrives with the first frame, before the language
+server has answered, and is corrected by the server about a hundred milliseconds later.
+TypeScript inside `@code`, CSS inside `<style>` and the `@` directives are each shown as
+what they are.
+
+**Formatting.** Markup, directives, embedded TS and embedded CSS in one pass — from the
+palette, or on save.
+
+**The editor conveniences you expect.** `Ctrl+/` produces `@* … *@`, never a `//` that would
+not compile. `@code`, `@if` and `@foreach` fold by their own structure.
+
+## Requirements
+
+- VS Code 1.90 or newer.
+- TypeScript installed in the project you open. Without it, markup and CSS still work, and
+  the status bar says so — types, completion and diagnostics are what go missing.
+
+## Status bar
+
+While a `.fud` is the active file, one item reports the language server:
+
+| | Meaning |
 |---|---|
-| TextMate grammar | Colours before the server has answered. It is **data**, not code. |
-| `language-configuration.json` | Comments, brackets, folding: the editor reads it directly. |
-| Commands, status bar | The editor's own UI surface. |
-| Starting the process, resolving the `tsdk` | Only the client knows the workspace's TypeScript. |
+| `Fudic ✓` | Ready. |
+| `Fudic ⟳` | Starting. |
+| `Fudic ⚠` | Running without the project's TypeScript. HTML and CSS still work. |
+| `Fudic ✕` | Not running. |
 
-The grammar is **deliberately approximate** on `@` transitions — real disambiguation needs
-the delimiter balancer (SDD-02), which no regular expression can express. The server's
-semantic tokens correct it about a hundred milliseconds later. The bar the grammar has to
-clear is *no bleed*: broken colour must never propagate to the end of the file.
-
-## Layout
-
-```
-src/          the client — every module takes the host API through a port
-test/         Vitest specs; `_vscode-stub.ts` is the double for the `vscode` module
-syntaxes/     fudic.tmLanguage.json — the grammar
-fixtures/     frozen .fud corpus the grammar tests tokenise
-docs/         the manual verification script for what no suite can check
-```
-
-## Two things that differ from every other package here
-
-**It builds to CommonJS.** VS Code loads `main` as CJS; this repo is ESM with
-`verbatimModuleSyntax`. The source stays TS/ESM and Rolldown emits `dist/extension.cjs`.
-That is why this package has no `tsconfig.build.json`: `tsc` only typechecks, and `build`
-is the bundle.
-
-**`vscode` is aliased in tests.** The module only exists inside the extension host. All of
-`src/` takes the API it needs as a parameter, and `src/extension.ts` is the only file that
-imports `vscode` — an adapter with no branches. Under Vitest that import resolves to
-`test/_vscode-stub.ts`, so even the adapter loads and counts. Without that rule either the
-package never reaches 100 %, or its 100 % means nothing.
+Click it to open the **Fudic** output channel, where the reason is.
 
 ## Commands
 
-| Command | What it is for |
+| Command | What it does |
 |---|---|
-| `Fudic: Reiniciar el servidor de lenguaje` | The escape valve for stale state no watcher saw. |
-| `Fudic: Ver ficheros virtuales` | What the server is actually showing `tsserver`. Daily debugging. |
-| `Fudic: Ver registro de componentes` | `tag → href → resolved`. Answers "why does my component not complete". |
-| `Fudic: Formatear documento` | Formats through the server (SDD-26). |
+| `Fudic: Restart Language Server` | Re-resolves settings, server and TypeScript, then restarts. The answer to a freshly installed dependency or a branch switch. |
+| `Fudic: Format Document` | Formats the active `.fud`. |
+| `Fudic: Show Virtual Files` | What the server is showing TypeScript. For debugging. |
+| `Fudic: Show Component Registry` | `tag → href → resolved`. Answers "why does my component not complete". |
+
+## Settings
+
+| Setting | Default | What it does |
+|---|---|---|
+| `fudic.templateDiagnostics` | `true` | Check the template against the types declared in `@code`. |
+| `fudic.format.enable` | `true` | Let the extension format `.fud` files. |
+| `fudic.trace.server` | `off` | Trace the traffic between the editor and the language server. |
+| `fudic.server.path` | `null` | Run your own language server instead of the bundled one. |
+| `fudic.exposeVirtualFiles` | `false` | Expose the virtual files handed to TypeScript. Debugging only. |
+
+## Notes
+
+The extension carries its own language server; nothing else needs installing. All the
+language intelligence lives in that server, which is editor-agnostic on purpose — this
+package contributes only what an editor cannot delegate: the grammar, the language
+configuration, the commands and the status bar.
+
+Builds are per platform, because the parser and the formatter are native addons. Install the
+build for your own.
 
 No telemetry.
+
+## Contributing
+
+Building, running and debugging the extension: **EXTENSION-DEV.md** at the repository root.

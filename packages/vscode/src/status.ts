@@ -19,15 +19,15 @@ interface Face {
 }
 
 const FACES: Readonly<Record<ServerState, Face>> = {
-  starting: { text: 'Fudic ⟳', tooltip: 'Fudic: iniciando el servidor de lenguaje…' },
-  ready: { text: 'Fudic ✓', tooltip: 'Fudic: el servidor de lenguaje está listo.' },
+  starting: { text: 'Fudic ⟳', tooltip: 'Fudic: starting the language server…' },
+  ready: { text: 'Fudic ✓', tooltip: 'Fudic: the language server is ready.' },
   degraded: {
     text: 'Fudic ⚠',
-    tooltip: 'Fudic: sin el TypeScript del proyecto. HTML y CSS siguen funcionando.',
+    tooltip: "Fudic: running without the project's TypeScript. HTML and CSS still work.",
   },
   stopped: {
     text: 'Fudic ✕',
-    tooltip: 'Fudic: el servidor de lenguaje no está en marcha. Pulsa para ver el registro.',
+    tooltip: 'Fudic: the language server is not running. Click to see the log.',
   },
 };
 

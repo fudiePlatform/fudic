@@ -51,10 +51,10 @@ tendrán. El cliente arranca un proceso y contribuye metadatos declarativos; nad
       }
     }],
     "commands": [
-      { "command": "fudic.restartServer",  "title": "Fudic: Reiniciar el servidor de lenguaje" },
-      { "command": "fudic.showVirtualFiles","title": "Fudic: Ver ficheros virtuales" },
-      { "command": "fudic.showRegistry",    "title": "Fudic: Ver registro de componentes" },
-      { "command": "fudic.formatDocument",  "title": "Fudic: Formatear documento" }
+      { "command": "fudic.restartServer",  "title": "Fudic: Restart Language Server" },
+      { "command": "fudic.showVirtualFiles","title": "Fudic: Show Virtual Files" },
+      { "command": "fudic.showRegistry",    "title": "Fudic: Show Component Registry" },
+      { "command": "fudic.formatDocument",  "title": "Fudic: Format Document" }
     ],
     "configuration": { /* §3.2 */ },
     "configurationDefaults": {

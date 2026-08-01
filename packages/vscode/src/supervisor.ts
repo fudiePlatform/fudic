@@ -48,4 +48,4 @@ export const superviseStart = async (deps: SupervisorDeps): Promise<boolean> => 
 
 /** What the user is told when the retries are spent — the escape valve of §4.3. */
 export const RESTART_HINT =
-  'Fudic: el servidor de lenguaje no arrancó tras tres intentos. Ejecuta «Fudic: Reiniciar el servidor de lenguaje» cuando esté resuelto.';
+  'Fudic: the language server did not start after three attempts. Run "Fudic: Restart Language Server" once the cause is fixed.';

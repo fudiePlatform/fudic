@@ -1,8 +1,8 @@
 /**
  * Builds, verifies, packages and installs the extension into the local VS Code.
  *
- * This is mode B of `INSTALAR-EXTENSION-DEV.md` §4 — using Fudic while working on something
- * else — in one command. The four steps were always meant to run together: packaging without
+ * This is "Install the .vsix" from `EXTENSION-DEV.md` — using Fudic while working on
+ * something else — in one command. The four steps belong together: packaging without
  * building the dependencies produces a `.vsix` around a stale `dist`, and installing without
  * `verify:vsix` produces one that installs, activates and then quietly does nothing.
  *

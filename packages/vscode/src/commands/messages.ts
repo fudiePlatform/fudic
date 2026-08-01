@@ -6,20 +6,19 @@
  * appears to do nothing is indistinguishable from a broken extension.
  */
 
-export const NO_ACTIVE_FUD = 'Fudic: este comando necesita un fichero .fud activo.';
+export const NO_ACTIVE_FUD = 'Fudic: this command needs an active .fud file.';
 
 export const SERVER_DOWN =
-  'Fudic: el servidor de lenguaje no está en marcha. Ejecuta «Fudic: Reiniciar el servidor de lenguaje».';
+  'Fudic: the language server is not running. Run "Fudic: Restart Language Server".';
 
 export const RESTART_FAILED =
-  'Fudic: el servidor de lenguaje no arrancó. Mira el registro de Fudic para ver por qué.';
+  'Fudic: the language server did not start. See the Fudic output channel for why.';
 
 export const NO_VIRTUAL_FILES =
-  'Fudic: el servidor no devolvió ficheros virtuales para este documento.';
+  'Fudic: the server returned no virtual files for this document.';
 
-export const FORMAT_DISABLED =
-  'Fudic: el formateo está desactivado por el ajuste «fudic.format.enable».';
+export const FORMAT_DISABLED = 'Fudic: formatting is off — see the "fudic.format.enable" setting.';
 
 /** The reply when a request dies with the server that was answering it. */
 export const requestFailed = (method: string, error: unknown): string =>
-  `Fudic: la petición ${method} falló: ${String(error)}`;
+  `Fudic: the ${method} request failed: ${String(error)}`;

@@ -1,25 +1,25 @@
 {
-  // Ver INSTALAR-EXTENSION-DEV.md en la raíz del repo.
+  // See EXTENSION-DEV.md at the repo root.
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Fudic: extensión (Extension Development Host)",
+      "name": "Fudic: extension (Extension Development Host)",
       "type": "extensionHost",
       "request": "launch",
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}/packages/vscode",
-        // Se abre el proyecto de fixtures de SDD-24: es el workspace real de los criterios
-        // de aceptación, con las cuatro piezas (ruta, layout y dos componentes).
+        // Opens the language server fixtures: the real workspace of the acceptance criteria,
+        // with all four pieces (a route, a layout and two components).
         "${workspaceFolder}/packages/language-server/fixtures"
       ],
       "outFiles": ["${workspaceFolder}/packages/vscode/dist/**/*.cjs"],
-      "preLaunchTask": "fudic: construir extensión"
+      "preLaunchTask": "fudic: build extension"
     },
     {
-      // Se adjunta al *servidor*, que corre en su propio proceso. Requiere haber lanzado
-      // antes la configuración de arriba: el cliente forkea el servidor con
-      // `--inspect=6009` en su perfil de depuración.
-      "name": "Fudic: adjuntar al servidor de lenguaje",
+      // Attaches to the *server*, which runs in its own process. Requires the configuration
+      // above to have been launched first: the client forks the server with `--inspect=6009`
+      // when the host is in debug.
+      "name": "Fudic: attach to language server",
       "type": "node",
       "request": "attach",
       "port": 6009,
@@ -29,10 +29,10 @@
   ],
   "compounds": [
     {
-      "name": "Fudic: extensión + servidor",
+      "name": "Fudic: extension + server",
       "configurations": [
-        "Fudic: extensión (Extension Development Host)",
-        "Fudic: adjuntar al servidor de lenguaje"
+        "Fudic: extension (Extension Development Host)",
+        "Fudic: attach to language server"
       ]
     }
   ]

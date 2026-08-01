@@ -67,19 +67,19 @@
     "commands": [
       {
         "command": "fudic.restartServer",
-        "title": "Fudic: Reiniciar el servidor de lenguaje"
+        "title": "Fudic: Restart Language Server"
       },
       {
         "command": "fudic.showVirtualFiles",
-        "title": "Fudic: Ver ficheros virtuales"
+        "title": "Fudic: Show Virtual Files"
       },
       {
         "command": "fudic.showRegistry",
-        "title": "Fudic: Ver registro de componentes"
+        "title": "Fudic: Show Component Registry"
       },
       {
         "command": "fudic.formatDocument",
-        "title": "Fudic: Formatear documento"
+        "title": "Fudic: Format Document"
       }
     ],
     "configuration": {
@@ -91,7 +91,7 @@
             "null"
           ],
           "default": null,
-          "description": "Ruta a un servidor de lenguaje propio, para desarrollarlo sin reinstalar la extensión. Vacío usa el servidor empaquetado."
+          "description": "Path to your own language server, to develop it without reinstalling the extension. Empty uses the bundled one."
         },
         "fudic.trace.server": {
           "type": "string",
@@ -101,22 +101,22 @@
             "verbose"
           ],
           "default": "off",
-          "description": "Traza de la comunicación con el servidor de lenguaje."
+          "description": "Trace the traffic between the editor and the language server."
         },
         "fudic.templateDiagnostics": {
           "type": "boolean",
           "default": true,
-          "description": "Comprobar la plantilla contra los tipos declarados en @code."
+          "description": "Check the template against the types declared in @code."
         },
         "fudic.format.enable": {
           "type": "boolean",
           "default": true,
-          "description": "Permitir que la extensión formatee ficheros .fud."
+          "description": "Let the extension format .fud files."
         },
         "fudic.exposeVirtualFiles": {
           "type": "boolean",
           "default": false,
-          "description": "Exponer los ficheros virtuales que el servidor entrega a TypeScript. Solo para depurar."
+          "description": "Expose the virtual files the server hands to TypeScript. For debugging only."
         }
       }
     },

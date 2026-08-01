@@ -74,7 +74,7 @@ describe('fudic.restartServer', () => {
     const { deps, recording } = commandFixture({ restartSucceeds: false });
     await restartServer(deps);
 
-    expect(recording.warnings[0]).toContain('registro de Fudic');
+    expect(recording.warnings[0]).toContain('Fudic output channel');
   });
 });
 
@@ -105,7 +105,7 @@ describe('fudic.showVirtualFiles', () => {
     const { deps, recording } = commandFixture({ activeUri: undefined });
     await showVirtualFiles(deps);
 
-    expect(recording.warnings[0]).toContain('.fud activo');
+    expect(recording.warnings[0]).toContain('active .fud');
     expect(recording.requests).toEqual([]);
   });
 
@@ -113,7 +113,7 @@ describe('fudic.showVirtualFiles', () => {
     const { deps, recording } = commandFixture({ activeUri: URI, running: false });
     await showVirtualFiles(deps);
 
-    expect(recording.warnings[0]).toContain('Reiniciar');
+    expect(recording.warnings[0]).toContain('Restart Language Server');
     expect(recording.requests).toEqual([]);
   });
 
@@ -131,7 +131,7 @@ describe('fudic.showVirtualFiles', () => {
     const { deps, recording } = commandFixture({ activeUri: URI, answers: { 'fudic/virtualFiles': [] } });
     await showVirtualFiles(deps);
 
-    expect(recording.warnings[0]).toContain('ficheros virtuales');
+    expect(recording.warnings[0]).toContain('no virtual files');
   });
 });
 
@@ -156,7 +156,7 @@ describe('fudic.showRegistry', () => {
     const { deps, recording } = commandFixture({});
     await showRegistry(deps);
 
-    expect(recording.warnings[0]).toContain('.fud activo');
+    expect(recording.warnings[0]).toContain('active .fud');
   });
 
   it('survives a server that dies mid-request', async () => {
@@ -209,6 +209,6 @@ describe('fudic.formatDocument', () => {
     await formatDocument(deps);
 
     expect(recording.formatted).toEqual([]);
-    expect(recording.warnings[0]).toContain('.fud activo');
+    expect(recording.warnings[0]).toContain('active .fud');
   });
 });

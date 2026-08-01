@@ -141,7 +141,7 @@ describe('activateFudic', () => {
     expect(session.running).toBe(false);
     expect(session.status.state).toBe('stopped');
     expect(recording.log.some((line) => line.includes('failed'))).toBe(true);
-    expect(recording.warnings.some((w) => w.includes('Reiniciar'))).toBe(true);
+    expect(recording.warnings.some((w) => w.includes('Restart Language Server'))).toBe(true);
   });
 
   it('retries a server that is slow to come up, and settles on ready', async () => {

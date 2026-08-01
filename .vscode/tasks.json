@@ -1,12 +1,12 @@
 {
-  // Ver INSTALAR-EXTENSION-DEV.md en la raíz del repo.
+  // See EXTENSION-DEV.md at the repo root.
   "version": "2.0.0",
   "tasks": [
     {
-      // `fudic-vscode...` (con los tres puntos) construye el paquete **y sus dependencias**:
-      // compiler → language-core → language-server → vscode. Sin ellas, el bundle del
-      // servidor no tiene qué empaquetar, porque se arma desde el `dist` de sus hermanos.
-      "label": "fudic: construir extensión",
+      // `fudic-vscode...` (with the three dots) builds the package **and its dependencies**:
+      // compiler → language-core → language-server → vscode. Without them the server bundle
+      // has nothing to package, because it is assembled from its siblings' `dist`.
+      "label": "fudic: build extension",
       "type": "shell",
       "command": "pnpm --filter \"fudic-vscode...\" build",
       "group": "build",
@@ -14,7 +14,7 @@
       "presentation": { "reveal": "silent", "panel": "shared" }
     },
     {
-      "label": "fudic: vigilar la extensión",
+      "label": "fudic: watch extension",
       "type": "shell",
       "command": "pnpm --filter fudic-vscode dev",
       "isBackground": true,

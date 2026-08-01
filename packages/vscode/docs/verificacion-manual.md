@@ -78,7 +78,7 @@ En `blog/[slug].fud`:
 
 - [ ] Con el editor abierto, instalar una dependencia en el workspace (`pnpm add -D
       typescript`, por ejemplo).
-- [ ] Ejecutar **«Fudic: Reiniciar el servidor de lenguaje»** desde la paleta.
+- [ ] Ejecutar **«Fudic: Restart Language Server»** desde la paleta.
 - [ ] El estado pasa por `Fudic ⟳` y vuelve a `Fudic ✓` en **menos de tres segundos**, sin
       recargar la ventana.
 - [ ] El `tsdk` del registro (canal de salida de Fudic) es ahora el del proyecto.

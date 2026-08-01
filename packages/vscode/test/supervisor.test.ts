@@ -85,6 +85,6 @@ describe('superviseStart', () => {
 
   it('points at the command by the name the palette shows', () => {
     // The hint is useless if it names something the user cannot find.
-    expect(RESTART_HINT).toContain('Fudic: Reiniciar el servidor de lenguaje');
+    expect(RESTART_HINT).toContain('Fudic: Restart Language Server');
   });
 });

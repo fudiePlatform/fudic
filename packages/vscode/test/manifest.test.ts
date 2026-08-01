@@ -135,10 +135,10 @@ describe('settings', () => {
 describe('commands', () => {
   it('contributes the four commands of §4.3 with their titles', () => {
     expect(at(manifest, 'contributes', 'commands')).toEqual([
-      { command: 'fudic.restartServer', title: 'Fudic: Reiniciar el servidor de lenguaje' },
-      { command: 'fudic.showVirtualFiles', title: 'Fudic: Ver ficheros virtuales' },
-      { command: 'fudic.showRegistry', title: 'Fudic: Ver registro de componentes' },
-      { command: 'fudic.formatDocument', title: 'Fudic: Formatear documento' },
+      { command: 'fudic.restartServer', title: 'Fudic: Restart Language Server' },
+      { command: 'fudic.showVirtualFiles', title: 'Fudic: Show Virtual Files' },
+      { command: 'fudic.showRegistry', title: 'Fudic: Show Component Registry' },
+      { command: 'fudic.formatDocument', title: 'Fudic: Format Document' },
     ]);
   });
 });
