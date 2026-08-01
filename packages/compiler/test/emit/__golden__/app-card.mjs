@@ -5,7 +5,7 @@ export const css = `:host{display:block;}.card{border:1px solid #ddd;border-radi
 
 export function render($dom, $shadow, props) {
   const { title, variant = 'default' } = props ?? {};
-  const expanded = { value: (false) }; // inert signal (SSR; hydration is client-side)
+  const expanded = { peek: () => (false) }; // inert signal (SSR; hydration is client-side)
   const $n0 = $dom.text(" "); $dom.append($shadow, $n0);
   const $n1 = $dom.element("article");
   $dom.setAttr($n1, 'class', ["card", (variant === 'highlight') && "highlight"].filter(Boolean).join(' '));
@@ -18,7 +18,7 @@ export function render($dom, $shadow, props) {
   const $n7 = $dom.text(" "); $dom.append($n3, $n7);
   $dom.append($n1, $n3);
   const $n8 = $dom.text(" "); $dom.append($n1, $n8);
-  if (expanded.value) {
+  if (expanded.peek()) {
     const $n9 = $dom.text(" "); $dom.append($n1, $n9);
     const $n10 = $dom.element("div");
     $dom.setAttr($n10, 'class', ["body"].filter(Boolean).join(' '));
@@ -35,7 +35,7 @@ export function render($dom, $shadow, props) {
   const $n17 = $dom.attachShadow($n16);
   renderAppButton($dom, $n17, { "variant": "ghost" });
   const $n18 = $dom.text(" "); $dom.append($n16, $n18);
-  if (expanded.value) {
+  if (expanded.peek()) {
     const $n19 = $dom.text(" Cerrar "); $dom.append($n16, $n19);
   } else {
     const $n20 = $dom.text(" Abrir "); $dom.append($n16, $n20);

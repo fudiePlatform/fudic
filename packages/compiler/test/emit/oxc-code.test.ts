@@ -43,6 +43,42 @@ describe('extractCode', () => {
 
   it('returns nothing for a component with no @code', () => {
     const source = '<m-el>\n  <template shadowrootmode="open"><span></span></template>\n</m-el>\n';
-    expect(extractCode(source, componentDoc(source))).toEqual({ props: [], signals: [] });
+    expect(extractCode(source, componentDoc(source))).toEqual({
+      props: [],
+      signals: [],
+      client: { imports: [], body: [] },
+    });
+  });
+
+  it('splits @client into hoisted imports and closure body, verbatim', () => {
+    const source = wrap(
+      '@code {\n' +
+        '  const { a } = props<{ a: string }>();\n' +
+        '  @client {\n' +
+        "    import { signal } from '@fudic/core';\n" +
+        '    const open = signal(false);\n' +
+        '    function toggle() { open.set(!open.peek()); }\n' +
+        '  }\n' +
+        '}\n',
+    );
+    const { client } = extractCode(source, componentDoc(source));
+    // An `import` is only legal at the top level of a module; everything else belongs in
+    // the factory closure, where it is per instance.
+    expect(client.imports).toEqual(["import { signal } from '@fudic/core';"]);
+    expect(client.body).toEqual([
+      'const open = signal(false);',
+      'function toggle() { open.set(!open.peek()); }',
+    ]);
+  });
+
+  it('leaves the @server region out of the client body', () => {
+    const source = wrap(
+      '@code {\n' +
+        '  @server { const secret = 1; }\n' +
+        '  @client { const visible = 2; }\n' +
+        '}\n',
+    );
+    const { client } = extractCode(source, componentDoc(source));
+    expect(client.body).toEqual(['const visible = 2;']);
   });
 });

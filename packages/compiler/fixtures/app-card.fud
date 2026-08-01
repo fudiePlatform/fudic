@@ -1,4 +1,4 @@
-<link rel="component" href="./app-button.fud">
+﻿<link rel="component" href="./app-button.fud">
 
 @code {
   type Variant = 'default' | 'highlight';
@@ -35,13 +35,13 @@
       <header>
         <h2>@title</h2>
       </header>
-      @if (expanded.value) {
+      @if (expanded.peek()) {
         <div class="body">
           <slot></slot>
         </div>
       }
       <app-button variant="ghost" @press="@toggle">
-        @if (expanded.value) { Cerrar } else { Abrir }
+        @if (expanded.peek()) { Cerrar } else { Abrir }
       </app-button>
     </article>
   </template>

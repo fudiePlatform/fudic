@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Module emit (SDD-15 server branch) — the real deliverable: one `.mjs` per component
  * and one for the page, produced from the AST + the resolved dependency graph. The
  * compiler emits TEXT and imports no runtime; these tests assert the generated source
@@ -70,7 +70,7 @@ describe('emitComponentModule — composition & control flow (app-card)', () => 
   });
 
   it('emits an inert signal (SSR contributes only the initial value)', () => {
-    expect(src).toContain('const expanded = { value: (false) };');
+    expect(src).toContain('const expanded = { peek: () => (false) };');
   });
 
   it('renders a nested component host with data-adopt + attachShadow + its render call', () => {
@@ -80,7 +80,7 @@ describe('emitComponentModule — composition & control flow (app-card)', () => 
   });
 
   it('lowers @if/@else to real JS control flow', () => {
-    expect(src).toContain('if (expanded.value) {');
+    expect(src).toContain('if (expanded.peek()) {');
     expect(src).toContain('} else {');
   });
 

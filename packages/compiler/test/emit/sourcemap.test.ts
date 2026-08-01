@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Emit source anchors (SDD-19 §4.6): the `*Mapped` emitters return output↔source
  * pairs so a runtime error in the served JS navigates back to the `.fud`. These tests
  * prove the anchoring is BYTE-PRECISE — a mapping's generated offset lands exactly on
@@ -35,10 +35,10 @@ describe('emitComponentModuleMapped — precise anchors (app-card)', () => {
   });
 
   it('anchors an @if header to its source offset', () => {
-    const gen = code.indexOf('if (expanded.value) {') + 'if ('.length;
+    const gen = code.indexOf('if (expanded.peek()) {') + 'if ('.length;
     const src = at(gen);
     expect(src).toBeDefined();
-    expect(source.slice(src!, src! + 'expanded.value'.length)).toBe('expanded.value');
+    expect(source.slice(src!, src! + 'expanded.peek()'.length)).toBe('expanded.peek()');
   });
 });
 

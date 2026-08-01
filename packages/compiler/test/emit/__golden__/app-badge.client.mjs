@@ -1,0 +1,47 @@
+import { FudicElement } from '@fudic/core';
+
+customElements.define("app-badge", class extends FudicElement {
+  static c($props) {
+    let $n0, $n1, $n2, $n3, $n4, $n5;
+    const $r = [];
+    const $d = []; // teardowns
+    let [$dom, $shadow, tone = 'neutral'] = $props;
+
+    const m = () => { for (const $n of $r) $dom.append($shadow, $n); };
+    const s = () => {};
+
+    return {
+      c: () => {
+        $n0 = $dom.text(" ");
+        $r.push($n0);
+        $n1 = $dom.element("span");
+        $dom.setAttr($n1, 'class', ["badge", (tone === 'success') && "success", (tone === 'warning') && "warning"].filter(Boolean).join(' '));
+        $n2 = $dom.text(" ");
+        $dom.append($n1, $n2);
+        $n3 = $dom.element("slot");
+        $dom.append($n1, $n3);
+        $n4 = $dom.text(" ");
+        $dom.append($n1, $n4);
+        $r.push($n1);
+        $n5 = $dom.text(" ");
+        $r.push($n5);
+        m();
+        s();
+      },
+      h: () => {
+        let $c0 = $dom.firstChild($shadow);
+        $n0 = $c0; $c0 = $dom.nextSibling($c0);
+        $n1 = $c0; $c0 = $dom.nextSibling($c0);
+        {
+          let $c1 = $dom.firstChild($n1);
+          $n2 = $c1; $c1 = $dom.nextSibling($c1);
+          $n3 = $c1; $c1 = $dom.nextSibling($c1);
+          $n4 = $c1; $c1 = $dom.nextSibling($c1);
+        }
+        $n5 = $c0; $c0 = $dom.nextSibling($c0);
+        s();
+      },
+      r: () => { $n0 = $n1 = $n2 = $n3 = $n4 = $n5 = $shadow = null; $d.forEach((d) => d()); },
+    };
+  }
+});

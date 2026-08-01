@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest';
 import {
   resolveComponents,
   emitComponentModule,
+  emitComponentClientModule,
   emitPageModule,
   type ComponentGraph,
 } from '../../src/emit/index.js';
@@ -34,4 +35,16 @@ describe('SSR emit — golden output (byte-for-byte)', () => {
   it('emits home.mjs exactly', () => {
     expect(emitPageModule(graph)).toBe(golden('home.mjs'));
   });
+});
+
+describe('client emit — golden output (byte-for-byte)', () => {
+  // Every component gets a chunk, with no level filter: a component becomes N3 the moment
+  // an ancestor hands it a reactive prop, and only the page knows that. `app-badge` has no
+  // `@code { @client }` at all and still gets one.
+  for (const tag of ['app-badge', 'app-button', 'app-card']) {
+    it(`emits ${tag}.client.mjs exactly`, () => {
+      const src = emitComponentClientModule(graph, graph.components.get(tag)!);
+      expect(src).toBe(golden(`${tag}.client.mjs`));
+    });
+  }
 });

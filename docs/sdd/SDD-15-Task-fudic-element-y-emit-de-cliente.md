@@ -3,7 +3,7 @@
 > **SDD:** [SDD-15 — Emit (AST → runtime)](./SDD-15-emit.md)
 > **Paquetes:** `@fudic/core` (base de custom element) · `@fudic/compiler` (emit)
 > **Rama:** `worktree-sdd-15-17-hidratacion`
-> **Progreso:** 8 / 19
+> **Progreso:** 14 / 19
 
 Primera tanda de la rama de cliente de SDD-15. La rama de servidor ya está `Hecho`
 (`emitComponentModule` / `emitPageModule`); aquí se abre la de cliente por su base, y solo
@@ -101,7 +101,7 @@ del prefijo `$` (`FUD0290`), reactividad fina de signals. Y todo SDD-17.
 
 ## Fase 2 — Codegen de cliente en `@fudic/compiler` (6)
 
-- [ ] **9. El emisor de markup de cliente.**
+- [x] **9. El emisor de markup de cliente.**
       Crear `packages/compiler/src/emit/markup-client.ts`. Una **sola** pasada sobre el AST
       que escribe tres cuerpos en paralelo, porque calcularlos por separado los desalinea:
       - **fabricar** (`$n1 = $dom.element(...)`, sin ensamblar),
@@ -112,19 +112,19 @@ del prefijo `$` (`FUD0290`), reactividad fina de signals. Y todo SDD-17.
       asignen los dos caminos. Reutilizar `spaceModeOf`/`collapseSpace`/`nestedSpaceMode` sin
       variación: si el whitespace del cliente no es byte a byte el del servidor, `h` adopta
       corrido.
-- [ ] **10. Travesía posicional sobre `childNodes`, no sobre `children`.**
+- [x] **10. Travesía posicional sobre `childNodes`, no sobre `children`.**
       En `markup-client.ts`: los índices cuentan **todos** los nodos, texto incluido —
       `browserDom.childAt` ya usa `childNodes`. Es lo que hace determinista la adopción, y
       se apoya en §4.9: el emit colapsa el whitespace a un espacio pero **no elimina ningún
       nodo de texto**, así que las posiciones de servidor y cliente coinciden por
       construcción. El ejemplo de §4.6 usa `$shadow.children[i]`, que **no** sirve: saltaría
       los nodos de texto que el propio emit garantiza. Dejarlo escrito en el fichero.
-- [ ] **11. Control de flujo en los dos caminos.**
+- [x] **11. Control de flujo en los dos caminos.**
       En `markup-client.ts`: `@if`/`@foreach` se emiten como el mismo JS en `c` y en `h`. Con
       los mismos props y el mismo estado inicial se toma la misma rama, luego las posiciones
       casan. Es la razón de que el payload sea **completo y no proyección** (§3.3): el DOM
       refleja la rama pintada; el estado la contiene entera.
-- [ ] **12. El módulo emitido.**
+- [x] **12. El módulo emitido.**
       Crear `packages/compiler/src/emit/client.ts` con `emitComponentClientModule(graph,
       comp, options)` y su variante `…Mapped` (misma pareja que `module.ts`, mismo
       `EmitOutput`). Produce **exactamente** lo que §6.8 exige y nada más:
@@ -141,13 +141,13 @@ del prefijo `$` (`FUD0290`), reactividad fina de signals. Y todo SDD-17.
       el cuerpo de `@code { @client }` copiado literal, `m` y `s` como closures locales, y el
       `return { c, h, r }`. `s` se emite **vacío** en esta tanda; `r` anula referencias y
       recorre `$d`.
-- [ ] **13. Exportar y emitir para todos.**
+- [x] **13. Exportar y emitir para todos.**
       Modificar `packages/compiler/src/emit/index.ts` (reexport) y
       `packages/compiler/scripts/build.ts`: además del `.mjs` de servidor, escribir
       `<tag>.client.mjs` **por cada componente del grafo**, sin filtro de nivel — el hito B.
       La URL real y el hashing son de `fud-chunks` (§3.6) y del plugin de Vite (SDD-19): aquí
       basta la convención de fichero hermano.
-- [ ] **14. Goldens de cliente.**
+- [x] **14. Goldens de cliente.**
       Crear `packages/compiler/test/emit/__golden__/{app-badge,app-button,app-card}.client.mjs`
       y ampliar `test/emit/golden.test.ts`. Byte a byte, como los de servidor: cualquier
       refactor que mueva un carácter del codegen falla en voz alta en vez de derivar en
