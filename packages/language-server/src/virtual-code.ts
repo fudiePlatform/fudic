@@ -26,6 +26,7 @@ import { identityMapping, toCodeMappings } from './mappings.js';
 export const FUD_LANGUAGE_ID = 'fud';
 
 /** Embedded code ids. Stable strings: Volar uses them as map keys across updates. */
+export const ROOT_CODE_ID = 'root';
 export const CLIENT_CODE_ID = 'client_ts';
 export const SERVER_CODE_ID = 'server_ts';
 export const styleCodeId = (index: number): string => `style_${index}`;
@@ -97,7 +98,7 @@ export function createFudicVirtualCode(document: CachedDocument): FudicVirtualCo
   const { client, server, styles } = sortVirtuals(document);
 
   return {
-    id: 'root',
+    id: ROOT_CODE_ID,
     languageId: FUD_LANGUAGE_ID,
     snapshot: snapshotOf(document.source),
     mappings: [identityMapping(document.source.length)],

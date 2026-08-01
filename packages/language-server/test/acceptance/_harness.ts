@@ -45,6 +45,16 @@ import { FIXTURES } from '../_support.js';
 // talk to a live server — a unit test that hangs must still fail fast.
 vi.setConfig({ testTimeout: 30_000 });
 
+/**
+ * The id a real editor sends in `didOpen` — VS Code's, which is the only client that exists.
+ *
+ * Deliberately NOT the server's own `FUD_LANGUAGE_ID`. An editor registers `.fud` under a name
+ * of its choosing (`fudic`, per SDD-25 §3.1) and Volar passes that name straight through, so a
+ * harness that sends `fud` is a harness that exercises a client nobody ships. That gap once hid
+ * a server that answered every request with nothing when driven from VS Code.
+ */
+const EDITOR_LANGUAGE_ID = 'fudic';
+
 /** The `tsdk` of this very workspace: the server must typecheck with the project's TypeScript. */
 export const TSDK = dirname(createRequire(import.meta.url).resolve('typescript'));
 
@@ -170,7 +180,7 @@ export async function startHarness(
   await client.sendNotification(DidOpenTextDocumentNotification.type, {
     textDocument: {
       uri: uriOf('layouts/_layout.fud'),
-      languageId: 'fud',
+      languageId: EDITOR_LANGUAGE_ID,
       version: 1,
       text: textOf('layouts/_layout.fud'),
     },
@@ -203,7 +213,7 @@ export async function startHarness(
       // Awaited: the notification has to be on the wire before the request that reads it, or
       // the server answers about the version it had a moment ago.
       await client.sendNotification(DidOpenTextDocumentNotification.type, {
-        textDocument: { uri, languageId: 'fud', version: 1, text: source },
+        textDocument: { uri, languageId: EDITOR_LANGUAGE_ID, version: 1, text: source },
       });
       return { uri, text: source };
     },

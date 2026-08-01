@@ -23,3 +23,21 @@ export function pathToUri(path: string): URI {
 export function isFudUri(uri: URI): boolean {
   return uri.path.endsWith('.fud');
 }
+
+/**
+ * The suffix Volar appends while formatting.
+ *
+ * `provideDocumentFormattingEdits` rebuilds the document as a throwaway script under
+ * `<uri>.tmp`, so that formatting one embedded language at a time cannot disturb the real one.
+ * A URI check that does not see through the suffix refuses to build that throwaway, and Volar
+ * answers the format request with nothing at all.
+ */
+const FORMATTING_TEMP_SUFFIX = '.tmp';
+
+/** Whether a URI names a `.fud` — including the temporary copy Volar formats through. */
+export function isFudSourceUri(uri: URI): boolean {
+  const path = uri.path.endsWith(FORMATTING_TEMP_SUFFIX)
+    ? uri.path.slice(0, -FORMATTING_TEMP_SUFFIX.length)
+    : uri.path;
+  return path.endsWith('.fud');
+}

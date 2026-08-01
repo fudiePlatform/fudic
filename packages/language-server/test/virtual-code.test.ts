@@ -142,7 +142,20 @@ describe('the language plugin', () => {
 
     const code = plugin.createVirtualCode?.(uri, FUD_LANGUAGE_ID, snapshotOf(BADGE), ctx);
     expect(code?.document.path).toBe(BADGE_PATH);
-    expect(plugin.createVirtualCode?.(uri, 'typescript', snapshotOf(''), ctx)).toBeUndefined();
+    expect(
+      plugin.createVirtualCode?.(URI.file('/p/data/posts.ts'), 'typescript', snapshotOf(''), ctx),
+    ).toBeUndefined();
+  });
+
+  it('builds it under whatever id the editor registered .fud as', () => {
+    // VS Code contributes `fudic`, not `fud` (SDD-25 §3.1), and Volar passes the client's id
+    // straight through. Keying on the id alone builds nothing for a real editor, and a server
+    // with no virtual code answers every request with nothing at all.
+    const { plugin } = setup();
+    const ctx = { getAssociatedScript: () => undefined };
+
+    const code = plugin.createVirtualCode?.(uri, 'fudic', snapshotOf(BADGE), ctx);
+    expect(code?.document.path).toBe(BADGE_PATH);
   });
 
   it('re-parses the whole document on update, which is what §7 defers', () => {

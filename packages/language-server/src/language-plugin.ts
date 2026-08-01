@@ -18,7 +18,7 @@ import type {} from '@volar/typescript';
 import type { URI } from 'vscode-uri';
 import { serverFileName } from '@fudic/language-core';
 import type { DocumentCache } from './document-cache.js';
-import { isFudUri, uriToPath } from './uri.js';
+import { isFudSourceUri, isFudUri, uriToPath } from './uri.js';
 import { createFudicVirtualCode, FUD_LANGUAGE_ID, type FudicVirtualCode } from './virtual-code.js';
 
 /**
@@ -55,7 +55,15 @@ export function createFudicLanguagePlugin(
     },
 
     createVirtualCode(uri, languageId, snapshot) {
-      return languageId === FUD_LANGUAGE_ID ? build(uri, snapshot) : undefined;
+      // The URI decides, not the id — because the id is the EDITOR's to choose. Volar passes
+      // through whatever the client sent in `didOpen`, and each editor registers `.fud` under
+      // its own name: VS Code contributes `fudic` (SDD-25 §3.1), another will contribute
+      // something else. Matching only `FUD_LANGUAGE_ID` here builds no virtual code for any of
+      // them, and a server with no virtual code answers every request with nothing — which
+      // looks exactly like an extension that installed correctly and does nothing at all.
+      return languageId === FUD_LANGUAGE_ID || isFudSourceUri(uri)
+        ? build(uri, snapshot)
+        : undefined;
     },
 
     updateVirtualCode(uri, _code, snapshot) {

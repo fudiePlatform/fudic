@@ -24,10 +24,19 @@ const vsix = join(cwd, 'fudic-vscode.vsix');
 /** Windows resolves `pnpm` and `code` as `.cmd` shims, which `execFile` will not run on its own. */
 const shell = process.platform === 'win32';
 
+/**
+ * Quoting is ours to do once a shell is involved.
+ *
+ * With `shell: true` the arguments are pasted into a command line instead of being passed as
+ * a vector, so a path with a space in it arrives as two arguments — and a repository checked
+ * out under `Documents\My Projects\` fails at the last step, after the whole build.
+ */
+const quote = (arg) => (shell && /\s/.test(arg) ? `"${arg}"` : arg);
+
 function run(what, file, args) {
   console.log(`\n> ${what}: ${file} ${args.join(' ')}`);
   try {
-    execFileSync(file, args, { cwd, stdio: 'inherit', shell });
+    execFileSync(file, args.map(quote), { cwd, stdio: 'inherit', shell });
   } catch {
     console.error(`\n${what} failed. Nothing was installed.`);
     process.exit(1);

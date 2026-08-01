@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { URI } from 'vscode-uri';
-import { isFudUri, pathToUri, uriToPath } from '../src/uri.js';
+import { isFudSourceUri, isFudUri, pathToUri, uriToPath } from '../src/uri.js';
 
 describe('uriToPath', () => {
   it('normalizes to the POSIX spelling the index is keyed by', () => {
@@ -31,5 +31,19 @@ describe('isFudUri', () => {
     ['/p/fud', false],
   ])('%s → %s', (path, expected) => {
     expect(isFudUri(URI.file(path))).toBe(expected);
+  });
+});
+
+describe('isFudSourceUri', () => {
+  // Volar formats through a throwaway script at `<uri>.tmp`. A check that stops at `.fud`
+  // refuses to build a virtual code for it, and the format request comes back empty.
+  it.each([
+    ['/p/blog/[slug].fud', true],
+    ['/p/blog/[slug].fud.tmp', true],
+    ['/p/data/posts.ts', false],
+    ['/p/data/posts.ts.tmp', false],
+    ['/p/fud.tmp', false],
+  ])('%s → %s', (path, expected) => {
+    expect(isFudSourceUri(URI.file(path))).toBe(expected);
   });
 });

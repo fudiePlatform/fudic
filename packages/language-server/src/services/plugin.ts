@@ -27,7 +27,8 @@ import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import { SEMANTIC_TOKENS_LEGEND } from '../capabilities.js';
 import type { CachedDocument } from '../document-cache.js';
-import { FUD_LANGUAGE_ID, type FudicVirtualCode } from '../virtual-code.js';
+import { ROOT_CODE_ID, type FudicVirtualCode } from '../virtual-code.js';
+import { isFudSourceUri } from '../uri.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
 import type { RequestStats } from '../stats.js';
 import { reindentLine } from '@fudic/formatter';
@@ -78,16 +79,31 @@ export function toLspDiagnostic(document: TextDocument, diagnostic: Diagnostic):
  * `volar-embedded-content://root/<encoded source uri>` — because the root is a virtual code like
  * any other. Its text and offsets are the source's, one to one, so once the real URI is
  * recovered everything downstream works in `.fud` coordinates.
+ *
+ * "Ours" is decided by the URI and the code id, never by `languageId`. Formatting and on-type
+ * formatting are handed the SOURCE document, whose id is whatever the editor registered `.fud`
+ * under — `fudic` in VS Code (SDD-25 §3.1), not the `fud` this server uses internally. Comparing
+ * the two names silently hands `.fud` files to Volar's built-in TypeScript formatter, which is a
+ * different formatter with different output: the same file then comes out of the editor and out
+ * of `fudic format` with different quotes.
+ *
+ * The other embedded codes are excluded by id, for the same reason in reverse: the client and
+ * server projections decode back to this very `.fud`, so a URI check alone accepts them — and
+ * then every diagnostic of ours is reported twice, the second time on whatever span the
+ * projection's own mapping table happens to point at.
  */
 export function fudicDocumentOf(
   context: LanguageServiceContext,
   document: TextDocument,
 ): CachedDocument | undefined {
-  if (document.languageId !== FUD_LANGUAGE_ID) return undefined;
-
   const uri = URI.parse(document.uri);
   const decoded = context.decodeEmbeddedDocumentUri(uri);
-  const root = context.language.scripts.get(decoded?.[0] ?? uri)?.generated?.root as
+  if (decoded !== undefined && decoded[1] !== ROOT_CODE_ID) return undefined;
+
+  const source = decoded?.[0] ?? uri;
+  if (!isFudSourceUri(source)) return undefined;
+
+  const root = context.language.scripts.get(source)?.generated?.root as
     | FudicVirtualCode
     | undefined;
   return root?.document;
