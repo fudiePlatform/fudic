@@ -59,7 +59,12 @@ describe('activation', () => {
     // Criterion 12. Without this the extension would only wake on opening a `.fud`, and a
     // project entered through a `.ts` would have no inter-file diagnostics until then.
     expect(manifest['activationEvents']).toContain('workspaceContains:**/*.fud');
-    expect(manifest['activationEvents']).toContain('onLanguage:fudic');
+  });
+
+  it('leaves `onLanguage:fudic` implicit', () => {
+    // VS Code >=1.74 derives it from the `contributes.languages` entry, and declaring it
+    // by hand is flagged as redundant by the manifest linter.
+    expect(manifest['activationEvents']).not.toContain('onLanguage:fudic');
   });
 });
 

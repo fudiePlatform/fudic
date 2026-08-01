@@ -66,13 +66,17 @@ tendrán. El cliente arranca un proceso y contribuye metadatos declarativos; nad
       }
     }
   },
-  "activationEvents": ["onLanguage:fudic", "workspaceContains:**/*.fud"]
+  "activationEvents": ["workspaceContains:**/*.fud"]
 }
 ```
 
 `workspaceContains` importa: activa la extensión al abrir un proyecto Fudic aunque el
 primer fichero abierto sea un `.ts`, de modo que los diagnósticos inter-fichero funcionan
 desde el principio.
+
+`onLanguage:fudic` **no** se declara: VS Code ≥ 1.74 lo genera a partir de la entrada de
+`contributes.languages`, y escribirlo a mano lo marca el linter del manifiesto como
+redundante.
 
 ### 3.2. Ajustes
 
