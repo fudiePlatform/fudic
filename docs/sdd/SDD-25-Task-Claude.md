@@ -3,7 +3,7 @@
 > **SDD:** [SDD-25 — Extensión de VS Code](./SDD-25-extension-vscode.md)
 > **Tareas de implementación cerradas:** [SDD-25-Task.md](./SDD-25-Task.md) — 34/34.
 > **Tareas de Pedro:** [SDD-25-Task-Pedro.md](./SDD-25-Task-Pedro.md)
-> **Rama:** `worktree-vscode-install-script` (worktree `.claude/worktrees/vscode-install-script`)
+> **Estado:** todo lo hecho está en `main` (`0a59b1d`). El worktree y su rama ya no existen.
 
 Lo que queda del lado del código, después de instalar la extensión de verdad y usarla. Las
 34 tareas del fichero original construyeron la extensión; estas salen de **ejecutarla**, que
@@ -13,47 +13,14 @@ El orden importa: la tarea 1 bloquea el cierre de la SDD, el resto no.
 
 ---
 
-## Bloqueantes del cierre de la SDD
+## Cerrado tras probarlo en el editor
 
-- [ ] **1. El reinicio deja el editor sin IntelliSense — criterio §6.7.**
-
-      Es el criterio 7 del SDD (*«el reinicio deja el servidor operativo en menos de tres
-      segundos, sin recargar la ventana»*), así que la SDD **no se puede cerrar** hasta que
-      esto funcione. El servidor nuevo arranca —loguea `Mounted the fudic ambient
-      declarations in memory`— pero el editor se queda sin completado, hover ni
-      diagnósticos.
-
-      **Ya descartado, para no repetir el trabajo:**
-      - La línea `[Error] Server process exited with code 0.` **no es el fallo.**
-        `vscode-languageclient` registra un `on('exit')` sobre el proceso del servidor y lo
-        loguea como error sin mirar si la parada la pedimos nosotros
-        (`lib/node/main.js:468-477`). Cualquier código, incluido `0`, sale como `[Error]`.
-        Es el servidor **viejo** apagándose limpiamente, y pasa también en cada `deactivate`.
-      - **El cliente sí reenvía los documentos ya abiertos.** `DidOpenTextDocumentFeature.register`
-        recorre `workspace.textDocuments` y emite `didOpen` por cada uno que case con el
-        selector (`lib/common/textSynchronization.js:32-54`), sobre un `_syncedDocuments`
-        nuevo. Un cliente recién creado no debería quedarse sin documentos.
-      - **El canal de salida sobrevive.** `cleanUpChannel` solo dispone el canal si lo creó
-        él (`_disposeOutputChannel`), y nosotros le pasamos el nuestro.
-
-      **Qué mirar, con el trace que capture Pedro (su tarea 1):**
-      1. ¿Sale `textDocument/didOpen` **después** del segundo `initialize`? Si no, el fallo
-         es de cliente: el selector, o `boot()` creando el cliente antes de que el viejo
-         termine de soltar sus registros.
-      2. ¿El segundo `initialize` **result** trae las mismas `capabilities` que el primero?
-         Si vienen recortadas, el fallo es del servidor: la segunda instancia no monta el
-         proyecto de TypeScript.
-      3. Al pedir completado, ¿sale `textDocument/completion` por el cable? Si sale y vuelve
-         vacío, es servidor; si no sale, los providers del cliente no están registrados.
-
-      Según dónde caiga, el arreglo va en `src/activate.ts` (orden de parada/arranque) o en
-      `@fudic/language-server`. **En ambos casos hace falta una prueba de regresión**: hoy
-      `activate.test.ts` comprueba que el reinicio re-resuelve y relanza, que es justo lo que
-      sí funciona — lo que nadie comprueba es que el servidor nuevo *responda*. La prueba
-      natural es de nivel servidor, al estilo de
-      [`scripts/verify-server-bundle.mjs`](../../packages/vscode/scripts/verify-server-bundle.mjs):
-      dos sesiones LSP consecutivas contra el bundle instalado, y la segunda tiene que
-      completar igual que la primera.
+- [x] **1. El reinicio deja el editor sin IntelliSense — criterio §6.7.**
+      Cerrado por Pedro (2026-08-02): tras reinstalar la extensión, el reinicio deja el
+      servidor operativo y el IntelliSense sigue ahí. El `[Error] Server process exited with
+      code 0.` que se veía no era el fallo — es el servidor viejo apagándose limpiamente, y
+      `vscode-languageclient` lo loguea como error sin mirar si la parada la pedimos nosotros.
+      Queda como tarea 3 la decisión sobre ese ruido.
 
 ## Correcciones
 
@@ -80,10 +47,12 @@ El orden importa: la tarea 1 bloquea el cierre de la SDD, el resto no.
       cuando corren los once paquetes en paralelo y pasa en aislado. No lo toca ningún cambio
       reciente; hay que quitarle la dependencia del reloj real.
 
-## La página de la extensión
+## La página de la extensión — aplazada
 
 Los tres huecos de la pestaña **Details** que VS Code muestra al instalar. Ninguno afecta al
-funcionamiento; los tres se ven a la primera.
+funcionamiento. **Decisión de Pedro (2026-08-02): no se tocan.** No hay publicación a la
+vista, así que la página de la extensión no es trabajo que rinda hoy; se retoman si algún día
+se publica.
 
 - [ ] **6. Icono de la extensión.**
       El manifiesto no declara `icon`, así que la extensión sale con el marcador gris. El
@@ -116,9 +85,9 @@ funcionamiento; los tres se ven a la primera.
       promesa es falsa. O se vendoriza TypeScript en el `.vsix` (~10 MB más) o se cambia el
       texto de la spec. **Decisión de Pedro** (punto c).
 
-## Emmet
+## Hecho
 
-- [x] **11. Emmet, solo en el markup.** Hecho.
+- [x] **11. Emmet, solo en el markup.**
       No funcionaba en ningún `.fud` porque la extensión integrada de VS Code solo activa
       Emmet para los lenguajes de su lista, y `fudic` no está. El camino corto era mapearlo a
       HTML con `emmet.includeLanguages`, pero eso reparsea **el fichero entero** como HTML y
@@ -132,6 +101,22 @@ funcionamiento; los tres se ven a la primera.
       secas, y no hay *Wrap with Abbreviation* ni *Balance In/Out* — esos comandos son de la
       extensión de VS Code, no del protocolo. Si alguno hace falta, se recupera añadiendo el
       mapeo al manifiesto, con el ruido de vuelta.
+      Y un segundo commit encima: los caracteres que continúan una abreviatura (`* > + } $ ] ! )`)
+      no llegaban al editor, porque las capacidades que se anuncian al cliente se declaran a
+      mano en `capabilities.ts`. Sin `*`, `ul>li*2` no expandía. Ahora las dos listas salen de
+      una constante.
+
+- [x] **12. IntelliSense dentro de un atributo, y dentro de una expresión a medio escribir.**
+      Dos agujeros distintos que se veían como el mismo síntoma.
+      **El editor no preguntaba:** el valor de un atributo es un *string* para la gramática, y
+      VS Code no dispara sugerencias dentro de comillas. La extensión contribuye ahora
+      `editor.quickSuggestions.strings` para `[fudic]`.
+      **La proyección no tenía dónde mapear:** una expresión se proyecta copiando su span
+      `expr`, que mientras se teclea está vacío — y una copia vacía no escribe texto ni deja
+      mapping. Los props de componente tenían un sustituto para eso; ningún otro constructo lo
+      tenía. Ahora vive en `copyExpression` y pasan por él contenido, atributos nativos,
+      bindings, manejadores, `ref` y cabeceras de control. Medido contra el servidor instalado:
+      `name="@()"` pasó de 0 a 979 completados.
 
 ---
 
@@ -144,10 +129,11 @@ funcionamiento; los tres se ven a la primera.
 
 ## Cierre
 
-- [ ] Los cinco bloques de arriba, o descartados por decisión explícita.
-- [ ] `pnpm typecheck`, `pnpm test`, `pnpm build` del workspace en verde, y cobertura del
-      paquete al 100 % en las cuatro métricas.
-- [ ] `verify:vsix` y `verify-server-bundle` en verde sobre el `.vsix` que se instale.
+- [ ] Los bloques de arriba, o descartados por decisión explícita.
+- [x] `pnpm typecheck` y `pnpm test` del workspace en verde (2176 tests), con cobertura 100 %
+      en las cuatro métricas en `language-core`, `language-server` y `vscode`.
+- [x] `verify:vsix` y `verify-server-bundle` en verde sobre el `.vsix` instalado — los dos
+      corren dentro de `install:vsix`, que es como se instaló el que Pedro tiene.
 - [ ] Guion manual anotado por Pedro (su tarea 2) — es la última casilla de
       [SDD-25-Task.md](./SDD-25-Task.md#cierre-de-la-sdd).
-- [ ] Merge de la rama a `main` (solo cuando Pedro lo pida).
+- [x] Merge a `main`: fast-forward a `0a59b1d`, siete commits.
