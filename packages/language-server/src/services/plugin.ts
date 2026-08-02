@@ -33,6 +33,7 @@ import type { WorkspaceIndex } from '../workspace-index.js';
 import type { RequestStats } from '../stats.js';
 import { reindentLine } from '@fudic/formatter';
 import { fudicDiagnostics } from './compiler-diagnostics.js';
+import { EMMET_TRIGGER_CHARACTERS, emmetCompletions } from './emmet.js';
 import { formattedText } from './formatting.js';
 import { hrefCompletions, unresolvedHrefs } from './href.js';
 import { hrefContextAt, sectionContextAt, tagContextAt } from './position.js';
@@ -126,8 +127,11 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
     name: 'fudic',
     capabilities: {
       // The trigger characters of §3.2 that this service is the one to answer: `"` and `/` inside
-      // an href, `<` for a tag, and the space after `@section`.
-      completionProvider: { triggerCharacters: ['@', '<', '"', '/', ' '] },
+      // an href, `<` for a tag, and the space after `@section`. Plus Emmet's, which are what
+      // keep the editor asking while an abbreviation grows.
+      completionProvider: {
+        triggerCharacters: ['@', '<', '"', '/', ' ', ...EMMET_TRIGGER_CHARACTERS],
+      },
       documentLinkProvider: { resolveProvider: false },
       // Only the tag: everything inside it is answered by TypeScript over the projection.
       definitionProvider: true,
@@ -361,7 +365,10 @@ function completions(
       })),
     );
   }
-  return undefined;
+
+  // Last, and only in markup: an abbreviation is anything, so it cannot be allowed to shadow
+  // the three contexts above, which are exact.
+  return emmetCompletions(cached, document, position);
 }
 
 /** A completion list is never incomplete here: the candidates are a finite, known set. */

@@ -56,6 +56,7 @@
     "@volar/language-server": "2.4.28",
     "@volar/language-service": "2.4.28",
     "@volar/typescript": "2.4.28",
+    "@vscode/emmet-helper": "2.11.0",
     "typescript": "5.9.3",
     "volar-service-css": "0.0.71",
     "volar-service-html": "0.0.71",

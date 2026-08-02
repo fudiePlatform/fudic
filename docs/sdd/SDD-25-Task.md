@@ -304,5 +304,11 @@ de Pedro; los cuatro últimos son elecciones que las tareas ya asumen.
 - [x] `pnpm --filter fudic-vscode package` y `verify-vsix` en verde (tarea 32).
 - [ ] Guion de verificación manual ejecutado y anotado (tarea 34) — **pendiente de Pedro**:
       son los ocho pasos que exigen un VS Code vivo o el `.vsix` instalado.
+
+> **Lo que salió de instalar la extensión y usarla** no cabe aquí: estas 34 tareas la
+> construyeron, y lo demás aparece al ejecutarla. Vive en dos ficheros —
+> [SDD-25-Task-Claude.md](./SDD-25-Task-Claude.md) y
+> [SDD-25-Task-Pedro.md](./SDD-25-Task-Pedro.md) —, e incluye el criterio §6.7, que hoy falla
+> y bloquea el cierre.
 - [x] Marcar SDD-25 como `Hecho` y anotarlo en [INDEX.md](./INDEX.md) (tabla + registro de
       progreso).
