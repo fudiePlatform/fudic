@@ -47,6 +47,17 @@ describe('identity', () => {
     );
   });
 
+  it('asks the editor for suggestions inside quotes', () => {
+    // An attribute value is a string to the grammar, and VS Code will not auto-trigger
+    // suggestions inside a string: `strings` is off by default. Without this, typing
+    // `name="@my` in the markup answers nothing — the server has the completion, but the
+    // editor never asks for it. It is one default, and it is the difference between working
+    // IntelliSense in attributes and none.
+    expect(
+      at(manifest, 'contributes', 'configurationDefaults', '[fudic]', 'editor.quickSuggestions'),
+    ).toEqual({ other: 'on', comments: 'off', strings: 'on' });
+  });
+
   it('is private and targets the declared VS Code baseline', () => {
     expect(manifest['private']).toBe(true);
     expect(at(manifest, 'engines', 'vscode')).toBe('^1.90.0');

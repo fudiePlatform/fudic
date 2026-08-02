@@ -22,6 +22,7 @@ import type {
 } from '@fudic/compiler';
 import { isEmptySpan } from '@fudic/compiler';
 import type { TemplateContext } from './context.js';
+import { copyExpression } from './expr.js';
 
 /** Every control construct this module projects. */
 export type ControlLike = IfNode | ForeachNode | ForNode | WhileNode | SwitchNode;
@@ -90,7 +91,7 @@ function emitSwitch(ctx: TemplateContext, node: SwitchNode): void {
       ctx.w.scaffold('default: {\n', branch.span);
     } else {
       ctx.w.scaffold('case ', branch.span);
-      ctx.w.copy(branch.test);
+      copyExpression(ctx, branch.test);
       ctx.w.scaffold(': {\n');
     }
     ctx.emit(branch.body);
@@ -105,7 +106,7 @@ function emitSwitch(ctx: TemplateContext, node: SwitchNode): void {
 /** `@{ … }` — a lexically scoped block of statements, copied verbatim. */
 export function emitInlineCode(ctx: TemplateContext, node: InlineCodeNode): void {
   ctx.w.scaffold('{\n', node.span);
-  ctx.w.copy(node.group.inner);
+  copyExpression(ctx, node.group.inner);
   ctx.w.scaffold('\n}\n');
 }
 
@@ -119,5 +120,5 @@ export function emitInlineCode(ctx: TemplateContext, node: InlineCodeNode): void
  */
 function emitHeader(ctx: TemplateContext, inner: Span, fallback: string): void {
   if (isEmptySpan(inner)) ctx.w.scaffold(fallback);
-  else ctx.w.copy(inner);
+  else copyExpression(ctx, inner);
 }

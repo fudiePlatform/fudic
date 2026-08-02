@@ -31,6 +31,33 @@ describe('interpolation', () => {
   });
 });
 
+describe('half-written expressions', () => {
+  /** A stretch that stands for an empty span and only answers "what may go here". */
+  const standIns = (file: { mappings: readonly { caps: { completion: boolean }; sourceLength: number }[] }) =>
+    file.mappings.filter((m) => m.caps.completion && m.sourceLength === 0);
+
+  it('stands in for an empty content interpolation', () => {
+    const file = emitClient(component('    <p>@()</p>'));
+
+    expect(file.text).toContain('$text( );');
+    expect(standIns(file).length).toBe(1);
+  });
+
+  it('stands in for an empty interpolation in a native attribute', () => {
+    const file = emitClient(component('    <div title="@()"></div>'));
+
+    expect(file.text).toContain('$attr( );');
+    expect(standIns(file).length).toBe(1);
+  });
+
+  it('stands in for an empty binding value', () => {
+    const file = emitClient(component('    <div class:on="@()"></div>'));
+
+    expect(file.text).toContain('$cls( );');
+    expect(standIns(file).length).toBe(1);
+  });
+});
+
 describe('component tags', () => {
   const registry = registryOf({ 'app-badge': './app-badge.fud' });
 

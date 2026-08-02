@@ -25,6 +25,7 @@ import {
 } from '@fudic/compiler';
 import { COMPLETION_ONLY_CAPS, DIAGNOSTIC_ONLY_CAPS } from '../caps.js';
 import type { TemplateContext } from './context.js';
+import { copyExpression } from './expr.js';
 
 /** A JS identifier, i.e. an object key that needs no quoting. */
 const PLAIN_KEY = /^[\p{ID_Start}$_][\p{ID_Continue}$]*$/u;
@@ -103,7 +104,7 @@ function emitNativeAttrs(
   for (const { binding } of bindings) {
     if (binding.type === 'property') {
       ctx.w.scaffold('$attr(', binding.span);
-      ctx.w.copy(binding.value.expr);
+      copyExpression(ctx, binding.value.expr);
       ctx.w.scaffold(');\n');
       continue;
     }
@@ -111,7 +112,7 @@ function emitNativeAttrs(
     for (const part of binding.value) {
       if (part.type !== 'razor-expression') continue;
       ctx.w.scaffold('$attr(', part.span);
-      ctx.w.copy(part.expr);
+      copyExpression(ctx, part.expr);
       ctx.w.scaffold(');\n');
     }
   }
@@ -131,7 +132,7 @@ function emitBehaviour(
       // (decision 28). A standard name stays typed, so `e` is a `MouseEvent` in `@click`.
       ctx.w.scaffold('$on(', attr.span);
       ctx.w.scaffold(`'${binding.name}'${binding.name.includes('-') ? ' as never' : ''}, `);
-      ctx.w.copy(binding.value.expr);
+      copyExpression(ctx, binding.value.expr);
       ctx.w.scaffold(');\n');
       return;
 
@@ -140,21 +141,21 @@ function emitBehaviour(
       // type is unknowable, so the handler is checked and the event is not.
       ctx.w.scaffold('$on(', attr.span);
       if (typeof binding.eventName === 'string') ctx.w.scaffold(`'${binding.eventName}'`);
-      else ctx.w.copy(binding.eventName.expr);
+      else copyExpression(ctx, binding.eventName.expr);
       ctx.w.scaffold(' as never, ');
-      ctx.w.copy(binding.value.expr);
+      copyExpression(ctx, binding.value.expr);
       ctx.w.scaffold(');\n');
       return;
 
     case 'class':
       ctx.w.scaffold('$cls(', attr.span);
-      ctx.w.copy(binding.value.expr);
+      copyExpression(ctx, binding.value.expr);
       ctx.w.scaffold(');\n');
       return;
 
     case 'style':
       ctx.w.scaffold('$sty(', attr.span);
-      ctx.w.copy(binding.value.expr);
+      copyExpression(ctx, binding.value.expr);
       ctx.w.scaffold(');\n');
       return;
 
@@ -162,7 +163,7 @@ function emitBehaviour(
       // An assignment, never a declaration: by decision 30 the variable is the user's own,
       // already declared in `@code`. `const` here would redeclare it (TS2451) and steal the
       // definition go-to-definition should land on.
-      ctx.w.copy(binding.value.expr);
+      copyExpression(ctx, binding.value.expr);
       ctx.w.scaffold(` = $ref<$El<'${el.name}'>>();\n`, attr.span);
       return;
 
@@ -214,11 +215,7 @@ function emitValue(ctx: TemplateContext, binding: Binding): void {
 /** `(expr)` — parenthesized so that a comma or an arrow inside cannot break the object. */
 function emitExpression(ctx: TemplateContext, expr: RazorExpression): void {
   ctx.w.scaffold('(');
-  if (expr.expr.end > expr.expr.start) ctx.w.copy(expr.expr);
-  // `tone="@()"` is where the value is about to be typed. There is no text to copy, so a
-  // space stands for the empty span: without it the position maps nowhere and the editor
-  // cannot ask TypeScript what this attribute accepts (SDD-24 §6.3).
-  else ctx.w.projected(' ', expr.expr, COMPLETION_ONLY_CAPS);
+  copyExpression(ctx, expr.expr);
   ctx.w.scaffold(')');
 }
 
@@ -231,7 +228,7 @@ function emitTemplateLiteral(ctx: TemplateContext, parts: readonly AttributeValu
       continue;
     }
     ctx.w.scaffold('${');
-    ctx.w.copy(part.expr);
+    copyExpression(ctx, part.expr);
     ctx.w.scaffold('}');
   }
   ctx.w.scaffold('`');

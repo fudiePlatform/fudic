@@ -125,7 +125,12 @@
         "editor.insertSpaces": true,
         "editor.tabSize": 2,
         "editor.defaultFormatter": "fudic.fudic-vscode",
-        "editor.suggest.insertMode": "replace"
+        "editor.suggest.insertMode": "replace",
+        "editor.quickSuggestions": {
+          "other": "on",
+          "comments": "off",
+          "strings": "on"
+        }
       }
     }
   },
