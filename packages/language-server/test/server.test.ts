@@ -102,6 +102,14 @@ describe('initialize', () => {
       '"',
       '/',
       ' ',
+      '!',
+      '}',
+      '*',
+      '$',
+      ']',
+      '>',
+      '+',
+      ')',
     ]);
     expect(result?.capabilities.diagnosticProvider).toEqual({
       interFileDependencies: true,

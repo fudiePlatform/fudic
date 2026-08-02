@@ -17,6 +17,7 @@ import {
   type SemanticTokensLegend,
   type ServerCapabilities,
 } from 'vscode-languageserver-protocol';
+import { EMMET_TRIGGER_CHARACTERS } from './services/emmet.js';
 
 /**
  * The token types this server adds to the standard ones (§4.3).
@@ -52,9 +53,23 @@ export function tokenTypeIndex(type: string): number {
  * to repaint the errors of every page that uses it (§6.9). `workspaceDiagnostics` stays
  * false — diagnostics are for open files; the whole-project check is `fudic check` in CI.
  */
+/**
+ * What makes the editor ask for completions.
+ *
+ * The list the CLIENT is told, so it is the one that decides whether a request is made at all:
+ * a character that is not here produces no request, and the service's own list never gets a
+ * chance to matter. That is why Emmet's characters are here and not only on the service —
+ * without `*` the editor stops asking after the `*` of `ul>li*2`, and it never asks again,
+ * because the word left under the cursor is a number and VS Code does not auto-trigger on
+ * numbers.
+ */
+export const COMPLETION_TRIGGER_CHARACTERS: readonly string[] = [
+  ...new Set(['@', '<', '.', ':', '"', '/', ' ', ...EMMET_TRIGGER_CHARACTERS]),
+];
+
 export const SERVER_CAPABILITIES: ServerCapabilities = {
   textDocumentSync: TextDocumentSyncKind.Incremental,
-  completionProvider: { triggerCharacters: ['@', '<', '.', ':', '"', '/', ' '] },
+  completionProvider: { triggerCharacters: [...COMPLETION_TRIGGER_CHARACTERS] },
   hoverProvider: true,
   definitionProvider: true,
   typeDefinitionProvider: true,

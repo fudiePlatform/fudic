@@ -25,7 +25,7 @@ import type {
 import type { Diagnostic, Severity, Span } from '@fudic/compiler';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
-import { SEMANTIC_TOKENS_LEGEND } from '../capabilities.js';
+import { COMPLETION_TRIGGER_CHARACTERS, SEMANTIC_TOKENS_LEGEND } from '../capabilities.js';
 import type { CachedDocument } from '../document-cache.js';
 import { ROOT_CODE_ID, type FudicVirtualCode } from '../virtual-code.js';
 import { isFudSourceUri } from '../uri.js';
@@ -33,7 +33,7 @@ import type { WorkspaceIndex } from '../workspace-index.js';
 import type { RequestStats } from '../stats.js';
 import { reindentLine } from '@fudic/formatter';
 import { fudicDiagnostics } from './compiler-diagnostics.js';
-import { EMMET_TRIGGER_CHARACTERS, emmetCompletions } from './emmet.js';
+import { emmetCompletions } from './emmet.js';
 import { formattedText } from './formatting.js';
 import { hrefCompletions, unresolvedHrefs } from './href.js';
 import { hrefContextAt, sectionContextAt, tagContextAt } from './position.js';
@@ -129,9 +129,7 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
       // The trigger characters of §3.2 that this service is the one to answer: `"` and `/` inside
       // an href, `<` for a tag, and the space after `@section`. Plus Emmet's, which are what
       // keep the editor asking while an abbreviation grows.
-      completionProvider: {
-        triggerCharacters: ['@', '<', '"', '/', ' ', ...EMMET_TRIGGER_CHARACTERS],
-      },
+      completionProvider: { triggerCharacters: [...COMPLETION_TRIGGER_CHARACTERS] },
       documentLinkProvider: { resolveProvider: false },
       // Only the tag: everything inside it is answered by TypeScript over the projection.
       definitionProvider: true,

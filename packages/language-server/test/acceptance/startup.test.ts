@@ -30,6 +30,14 @@ describe('§6.1 — start-up', () => {
       '"',
       '/',
       ' ',
+      '!',
+      '}',
+      '*',
+      '$',
+      ']',
+      '>',
+      '+',
+      ')',
     ]);
     expect(capabilities.hoverProvider).toBe(true);
     expect(capabilities.definitionProvider).toBe(true);
