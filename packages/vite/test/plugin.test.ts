@@ -44,6 +44,10 @@ const emitCtx = (): { emitFile: ReturnType<typeof vi.fn>; warn: ReturnType<typeo
   warn: vi.fn(),
 });
 
+/** The `name` of every chunk a `buildStart` emitted, in call order. */
+const emittedNames = (ctx: { emitFile: ReturnType<typeof vi.fn> }): string[] =>
+  ctx.emitFile.mock.calls.map((call) => (call[0] as { name: string }).name);
+
 describe('config / configResolved', () => {
   it('config declares the custom shell entry', () => {
     const plugin = fudic() as AnyHook;
@@ -70,7 +74,9 @@ describe('load — with and without sw.json', () => {
     const ctx = emitCtx();
     p.buildStart.call(ctx);
     expect(p.load(MAIN_ID)).toBe('export {};\n');
-    expect(ctx.emitFile).toHaveBeenCalledTimes(1); // the home wrapper only
+    // The home wrapper, and no Service Worker chunk. (The client chunks of the three
+    // components are also emitted here; `buildStart` below is where they are asserted.)
+    expect(emittedNames(ctx).filter((n) => !n.startsWith('h/'))).toEqual(['c/home']);
   });
 
   it('with sw.json: main registers the SW and the SW bootstrap renders locally', () => {
@@ -102,7 +108,19 @@ describe('buildStart', () => {
     setup('build', {}, swRoot()).buildStart.call(ctx);
     // BUG-03: `fudic-sw.js` is no longer a chunk of this output, so `buildStart` does
     // not emit it. Code splitting can therefore never share a file between the two.
-    expect(ctx.emitFile).toHaveBeenCalledTimes(1); // the home wrapper only
+    expect(emittedNames(ctx).filter((n) => n.startsWith('c/'))).toEqual(['c/home']);
+  });
+
+  it('emits one client chunk per component of the graph (SDD-15 §6.8)', () => {
+    const ctx = emitCtx();
+    setup('build', {}, swRoot()).buildStart.call(ctx);
+    // Every component the page reaches, with no level filter: which of them hydrates is
+    // decided at render time — on the edge and in the Service Worker — with data in hand.
+    expect(emittedNames(ctx).filter((n) => n.startsWith('h/')).sort()).toEqual([
+      'h/app-badge',
+      'h/app-button',
+      'h/app-card',
+    ]);
   });
 
   it('skips an excluded route', () => {

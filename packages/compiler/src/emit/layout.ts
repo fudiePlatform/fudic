@@ -90,7 +90,7 @@ function buildLayoutModule(
   const bodyW = new CodeWriter();
   const em = new MarkupEmitter(source, bodyW, (t) => graph.components.has(t), linker, SLOTS);
   const bodyParent = nested ? PARENT : '$body';
-  for (const child of doc.body.children) em.emit(child, bodyParent);
+  em.emitChildren(doc.body.children, bodyParent);
 
   // Head codegen: the layout's own elements, with the route's contributions injected at
   // `@RenderHead()` — or appended at the end when there is none (FUD0425).
@@ -207,7 +207,7 @@ function buildRouteModule(
 
   const bodyW = new CodeWriter();
   const em = new MarkupEmitter(source, bodyW, (t) => graph.components.has(t), linker, SLOTS);
-  for (const child of route.markup) em.emit(child, PARENT);
+  em.emitChildren(route.markup, PARENT);
 
   // One `if` arm per declared section; an unknown name renders nothing (decision 85). Its
   // own emitter, because a section builds into the layout's `@RenderSection` point — NOT
@@ -218,7 +218,7 @@ function buildRouteModule(
     if (section.name === '') continue;
     sectionW.line(`if (name === ${JSON.stringify(section.name)}) {`);
     sectionW.indent();
-    for (const child of section.children) sectionEm.emit(child, PARENT);
+    sectionEm.emitChildren(section.children, PARENT);
     sectionW.dedent();
     sectionW.line('}');
   }

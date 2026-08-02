@@ -25,6 +25,10 @@ export {
   type EmitOutput,
 } from './module.js';
 export {
+  emitComponentClientModule,
+  emitComponentClientModuleMapped,
+} from './client.js';
+export {
   emitLayoutModule,
   emitLayoutModuleMapped,
   emitRouteModule,

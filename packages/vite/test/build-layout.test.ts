@@ -10,16 +10,14 @@ import { build, createServer, type ViteDevServer } from 'vite';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { fudic } from '../src/index.js';
+import { runtimeAlias } from './helpers/alias.js';
 import { discoverRoutes } from '../src/discover.js';
 import { resolveOptions } from '../src/options.js';
 import { transformFud } from '../src/transform.js';
 import { nodeIo } from '../src/io.js';
 import { FUD_ORPHAN_LAYOUT } from '../src/diagnostics.js';
 
-const ssrDist = fileURLToPath(new URL('../../ssr/dist/index.js', import.meta.url));
-const transportDist = fileURLToPath(new URL('../../transport/dist/index.js', import.meta.url));
 
 const LAYOUT = `<!DOCTYPE html>
 <html lang="es">
@@ -125,7 +123,7 @@ describe('vite build (§6.15)', () => {
     const result = (await build({
       root,
       logLevel: 'silent',
-      resolve: { alias: { '@fudic/ssr': ssrDist, '@fudic/transport': transportDist } },
+      resolve: { alias: { ...runtimeAlias } },
       plugins: [fudic()],
       build: { write: false, minify: false },
     })) as unknown as { output: { fileName: string; code?: string; source?: string }[] };
@@ -164,7 +162,7 @@ describe('vite dev (§6.15)', () => {
     server = await createServer({
       root,
       logLevel: 'silent',
-      resolve: { alias: { '@fudic/ssr': ssrDist, '@fudic/transport': transportDist } },
+      resolve: { alias: { ...runtimeAlias } },
       plugins: [fudic()],
       server: { port: 0 },
     });

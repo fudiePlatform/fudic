@@ -53,17 +53,15 @@ export function* page(data, io) {
         $dom.append($n12, $n16);
         const $n19 = $dom.text(" "); $dom.append($n12, $n19);
       }
-      const $n20 = $dom.text(" "); $dom.append($n12, $n20);
-      const $n21 = $dom.text(String((item.description) ?? '')); $dom.append($n12, $n21);
-      const $n22 = $dom.text(" "); $dom.append($n12, $n22);
+      const $n20 = $dom.text(` ${(item.description) ?? ''} `); $dom.append($n12, $n20);
       $dom.append($n9, $n12);
-      const $n23 = $dom.text(" "); $dom.append($n9, $n23);
+      const $n21 = $dom.text(" "); $dom.append($n9, $n21);
     }
-    const $n24 = $dom.text(" "); $dom.append($n9, $n24);
+    const $n22 = $dom.text(" "); $dom.append($n9, $n22);
     $dom.append($body, $n9);
-    const $n25 = $dom.text(" "); $dom.append($body, $n25);
+    const $n23 = $dom.text(" "); $dom.append($body, $n23);
   }
-  const $n26 = $dom.text(" "); $dom.append($body, $n26);
+  const $n24 = $dom.text(" "); $dom.append($body, $n24);
   yield* serialize($body);
   yield '</html>';
 }

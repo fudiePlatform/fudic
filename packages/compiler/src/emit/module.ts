@@ -113,7 +113,7 @@ function componentCss(source: string, doc: ComponentDocument): string {
  * whitespace model whether this component declared a preserving `white-space` (BUG-07
  * §4.4), which is precisely the fact an external HTML minifier cannot know.
  */
-function componentStyleNode(doc: ComponentDocument): StyleNode | null {
+export function componentStyleNode(doc: ComponentDocument): StyleNode | null {
   const child = styleElement(doc)?.children[0];
   return child !== undefined && child.type === 'style-content' ? child : null;
 }
@@ -129,7 +129,7 @@ function buildComponentModule(
   const bodyW = new CodeWriter();
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
   const em = new MarkupEmitter(comp.source, bodyW, (t) => graph.components.has(t), linker, undefined, space);
-  for (const child of comp.doc.template!.children) em.emit(child, '$shadow');
+  em.emitChildren(comp.doc.template!.children, '$shadow');
   // css uses the linker too (may register more imports), so build it before the imports.
   const css = linker.cssTemplate(componentCss(comp.source, comp.doc));
 
@@ -148,7 +148,12 @@ function buildComponentModule(
     w.line(`const { ${pattern} } = props ?? {};`);
   }
   for (const s of signals) {
-    w.line(`const ${s.name} = { value: (${s.init}) }; // inert signal (SSR; hydration is client-side)`);
+    // Inert signal: SSR contributes the initial value and nothing else. It exposes `peek`
+    // and not a `value` field so a template reads a signal the SAME way on both branches —
+    // on the client the very same expression runs against the real `signal` of
+    // `@fudic/core`, whose API is `peek()`/`set()`. A parallel shape here would mean a
+    // template that works on the server and breaks on hydration.
+    w.line(`const ${s.name} = { peek: () => (${s.init}) }; // inert signal (SSR; hydration is client-side)`);
   }
   w.appendWriter(bodyW); // carries the markup's source anchors, unlike a toString()/split copy
   w.dedent();
@@ -184,7 +189,7 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
   // Body codegen.
   const bodyW = new CodeWriter();
   const em = new MarkupEmitter(source, bodyW, (t) => graph.components.has(t), linker);
-  for (const child of page.body.children) em.emit(child, '$body');
+  em.emitChildren(page.body.children, '$body');
 
   // Head codegen (page's own head elements + hoisted style modules at runtime). `<title>`
   // is the one interpolated element (`@data.title`); every other element the author wrote

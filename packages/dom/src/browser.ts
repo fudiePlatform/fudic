@@ -62,4 +62,13 @@ export const browserDom: DomClient<Node> = {
   childAt(node: Node, index: number): Node | null {
     return node.childNodes[index] ?? null;
   },
+  firstElementChild(node: Node): Node | null {
+    return (node as ParentNode).firstElementChild;
+  },
+  nextElementSibling(node: Node): Node | null {
+    return (node as Element).nextElementSibling;
+  },
+  lastChild(node: Node): Node | null {
+    return node.lastChild;
+  },
 };

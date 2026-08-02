@@ -82,11 +82,38 @@ interface FudicOptions {
 }
 ```
 
+## Client chunks
+
+Every component of the graph also leaves a **client chunk** in the output —
+`assets/h/<tag>-<hash>.js` — carrying its `static c($props)` factory and its
+`customElements.define` (SDD-15 §6.8). One per component, with **no level filter**:
+
+```
+dist/assets/h/app-card-ZMxPH5VP.js     the factory + define of <app-card>
+dist/assets/element-Czbkvc-4.js        FudicElement, split out and shared by all of them
+```
+
+There is no filter because there is nothing to filter on. A component has no level of its
+own — one that is N1 in isolation becomes N3 the moment an ancestor hands it a reactive
+prop — and rendering happens in two places, both of them with data in hand: the server (or
+the edge) at request time, and the Service Worker at navigation time. What a template
+paints is not known until the data reaches it, so the chunk has to exist before anyone can
+ask who hydrates. A chunk nobody requests costs nothing; one that was never emitted cannot
+be invented at run time.
+
+Components are reached through the graph (`<link rel="component">`, transitively and
+through the layout chain), so a component nobody links gets no chunk, and an excluded route
+contributes none. The chunk is bundler input: its `@code { @client }` region is copied
+verbatim, TypeScript included, and type-stripped here — which is also why a broken one
+fails at build time instead of at hydration.
+
+What is **not** wired yet: the map from tag to chunk URL (`fud-chunks`) and the page's
+`data-id`. The files are emitted, named and validated; linking them is the next stage.
+
 ## Status
 
-Slice 1 (this package) targets SSR / zero-JS pages served through the three-thread shell.
-The client hydration emit of SDD-15 is paused (performance study); its chunks and the
-`tag→chunk` hydration manifest plug in here later.
+Slice 1 (this package) targets SSR / zero-JS pages served through the three-thread shell,
+plus the client chunks above.
 
 `transform` emits a Source Map v3: the compiler anchors each verbatim source slice
 (interpolation, `@if`/`@foreach` headers) to its `.fud` offset, so a runtime error in the
@@ -133,5 +160,5 @@ A param route with `@server paths()` prerenders one file per enumerated id
 ids locally, `'notFound'` leaves them a 404. A literal `src`/`url()` to a missing file raises
 `FUD0363` and stays a literal — the build does not abort.
 
-Out of scope (SDD-19 §7): the SDD-15 client hydration branch (paused) and `srcset`
-multi-URL linking.
+Out of scope (SDD-19 §7): the hydration LINKING of SDD-15 — `data-id` and the four page
+maps, `fud-chunks` among them — and `srcset` multi-URL linking.

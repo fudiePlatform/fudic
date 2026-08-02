@@ -80,6 +80,12 @@ importers:
         specifier: 0.137.0
         version: 0.137.0
     devDependencies:
+      '@fudic/core':
+        specifier: workspace:*
+        version: link:../core
+      '@fudic/ssr':
+        specifier: workspace:*
+        version: link:../ssr
       '@fudic/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig

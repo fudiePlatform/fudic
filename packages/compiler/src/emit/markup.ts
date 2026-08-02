@@ -11,14 +11,15 @@
  * cast happens, instead of one at every use site.
  */
 
-import type { HtmlContent, ElementNode, Attribute } from '../html/index.js';
+import type { HtmlContent, ElementNode } from '../html/index.js';
 import type { IfNode, ForeachNode } from '../control/index.js';
 import type { RenderSectionNode } from '../layout/index.js';
 import type { Span } from '../types/index.js';
-import { classifyAttribute } from '../binding/index.js';
 import { CodeWriter } from './writer.js';
 import { type AssetLinker } from './assets.js';
-import { collapseSpace, nestedSpaceMode, type SpaceMode } from './space.js';
+import { componentPropsExpr, writeElementAttrs } from './attrs.js';
+import { nestedSpaceMode, type SpaceMode } from './space.js';
+import { emitItems, type TextRun } from './runs.js';
 
 /** `render` + PascalCase of a `prefix-name` tag: `app-button` → `renderAppButton`. */
 export const renderName = (tag: string): string =>
@@ -27,13 +28,7 @@ export const renderName = (tag: string): string =>
 /** Wrap a CSS/text body in a template literal, escaping backticks, backslashes and `${`. */
 export const tpl = (s: string): string => '`' + s.replace(/[`\\$]/gu, '\\$&') + '`';
 
-/**
- * A single-URL asset attribute the linker rewrites: `src`/`poster` on any element, or
- * `href` on a `<link>` (stylesheet/icon) — never `<a href>`, which is navigation. Shared
- * by the body codegen and the page `<head>` passthrough.
- */
-export const isAssetAttr = (element: string, attribute: string): boolean =>
-  attribute === 'src' || attribute === 'poster' || (attribute === 'href' && element === 'link');
+export { isAssetAttr } from './attrs.js';
 
 // A control construct is stored as its base RazorConstruct; recover the concrete node.
 const asIf = (node: HtmlContent): IfNode => node as unknown as IfNode;
@@ -82,27 +77,33 @@ export class MarkupEmitter {
     return this.#used;
   }
 
+  /**
+   * Emit the build statements for a child list, appending each under `parent`.
+   *
+   * The list is walked as ITEMS, not as nodes: adjacent text and interpolation siblings
+   * are coalesced into one run, because that is the tree the browser will hand back after
+   * the markup makes the round trip (see `runs.ts`). Emitting them one by one would build
+   * a server tree the client cannot adopt.
+   */
+  emitChildren(children: readonly HtmlContent[], parent: string): void {
+    for (const item of emitItems(this.#source, children, this.#space)) {
+      if (item.kind === 'run') this.#run(item, parent);
+      else this.#emit(item.node, parent);
+    }
+  }
+
+  /** One coalesced text run — one node, because that is what the parser will give back. */
+  #run(run: TextRun, parent: string): void {
+    const v = this.#fresh();
+    // Collapsed here, on the AST, not by a pass over the generated HTML (BUG-07 §4.1).
+    // A run becomes ONE space and the node always survives — never trimmed, never
+    // dropped: `collapseSpace` says what that protects.
+    this.#w.mappedLine(`const ${v} = $dom.text(`, ...run.value, `); $dom.append(${parent}, ${v});`);
+  }
+
   /** Emit the build statements for a node and append it under `parent`. */
-  emit(node: HtmlContent, parent: string): void {
+  #emit(node: HtmlContent, parent: string): void {
     switch (node.type) {
-      case 'text': {
-        const v = this.#fresh();
-        // Collapsed here, on the AST, not by a pass over the generated HTML (BUG-07 §4.1).
-        // A run becomes ONE space and the node always survives — never trimmed, never
-        // dropped: `collapseSpace` says what that protects.
-        const value = this.#space === 'preserve' ? node.value : collapseSpace(node.value);
-        this.#w.line(`const ${v} = $dom.text(${JSON.stringify(value)}); $dom.append(${parent}, ${v});`);
-        return;
-      }
-      case 'razor-expression': {
-        const v = this.#fresh();
-        this.#w.mappedLine(
-          `const ${v} = $dom.text(String((`,
-          { text: this.#slice(node.expr), src: node.expr.start },
-          `) ?? '')); $dom.append(${parent}, ${v});`,
-        );
-        return;
-      }
       case 'element':
         this.#element(node, parent);
         return;
@@ -152,12 +153,12 @@ export class MarkupEmitter {
       // polyfill can read it (SDD-18 D-6). The native attribute still rides the template.
       this.#w.line(`$dom.setAttr(${v}, 'data-adopt', ${JSON.stringify(el.name)});`);
       this.#w.line(`const ${s} = $dom.attachShadow(${v});`);
-      this.#w.line(`${renderName(el.name)}($dom, ${s}, ${this.#componentProps(el)});`);
-      for (const child of el.children) this.emit(child, v); // light DOM (projected by <slot>)
+      this.#w.line(`${renderName(el.name)}($dom, ${s}, ${componentPropsExpr(this.#source, el)});`);
+      this.emitChildren(el.children, v); // light DOM (projected by <slot>)
     } else {
       this.#w.line(`const ${v} = $dom.element(${JSON.stringify(el.name)});`);
       this.#elementAttrs(el, v);
-      for (const child of el.children) this.emit(child, v);
+      this.emitChildren(el.children, v);
     }
     this.#space = outer;
     this.#w.line(`$dom.append(${parent}, ${v});`);
@@ -168,13 +169,13 @@ export class MarkupEmitter {
       const head = i === 0 ? 'if' : '} else if';
       this.#w.mappedLine(`${head} (`, { text: this.#slice(branch.header.inner), src: branch.header.inner.start }, ') {');
       this.#w.indent();
-      for (const child of branch.body) this.emit(child, parent);
+      this.emitChildren(branch.body, parent);
       this.#w.dedent();
     });
     if (node.elseBody) {
       this.#w.line('} else {');
       this.#w.indent();
-      for (const child of node.elseBody) this.emit(child, parent);
+      this.emitChildren(node.elseBody, parent);
       this.#w.dedent();
     }
     this.#w.line('}');
@@ -183,78 +184,12 @@ export class MarkupEmitter {
   #foreach(loop: ForeachNode, parent: string): void {
     this.#w.mappedLine('for (', { text: this.#slice(loop.header.inner), src: loop.header.inner.start }, ') {');
     this.#w.indent();
-    for (const child of loop.body) this.emit(child, parent);
+    this.emitChildren(loop.body, parent);
     this.#w.dedent();
     this.#w.line('}');
   }
 
   #elementAttrs(el: ElementNode, v: string): void {
-    let baseClass: string | undefined;
-    const classExprs: string[] = [];
-    for (const attr of el.attributes) {
-      const b = classifyAttribute(attr, this.#source).value;
-      if (b.type === 'class') {
-        classExprs.push(`(${this.#slice(b.value.expr)}) && ${JSON.stringify(b.className)}`);
-      } else if (b.type === 'attr') {
-        const isStatic = b.value.every((p) => p.type === 'attribute-text');
-        if (isStatic) {
-          const literal = b.value.map((p) => (p as { value: string }).value).join('');
-          if (b.name === 'class') baseClass = literal;
-          else if (this.#isAssetAttr(el, b.name)) {
-            // A static, relative asset URL: reference the import Vite resolves (SDD-19 §4.5);
-            // a missing/absolute one stays a literal (`maybeRef` → null, missing → FUD0363).
-            const binding = this.#linker.maybeRef(literal);
-            const value = binding ?? JSON.stringify(literal);
-            this.#w.line(`$dom.setAttr(${v}, ${JSON.stringify(b.name)}, ${value});`);
-          } else this.#w.line(`$dom.setAttr(${v}, ${JSON.stringify(b.name)}, ${JSON.stringify(literal)});`);
-        } else {
-          // interpolated: omit when falsy (boolean attributes, decision 21), else set.
-          const name = JSON.stringify(b.name);
-          this.#w.line(
-            `{ const $a = ${this.#attrExpr(attr)}; if ($a === true) $dom.setAttr(${v}, ${name}, ''); ` +
-              `else if ($a !== false && $a != null) $dom.setAttr(${v}, ${name}, String($a)); }`,
-          );
-        }
-      } // event / property / bus / ref: not emitted for SSR
-    }
-    if (baseClass !== undefined || classExprs.length > 0) {
-      const arr = [baseClass !== undefined ? JSON.stringify(baseClass) : null, ...classExprs].filter(
-        (x) => x !== null,
-      );
-      this.#w.line(`$dom.setAttr(${v}, 'class', [${arr.join(', ')}].filter(Boolean).join(' '));`);
-    }
-  }
-
-  /** A single-URL asset attribute the linker should rewrite: `src`/`poster`, or `<link href>`. */
-  #isAssetAttr(el: ElementNode, name: string): boolean {
-    return this.#linker.enabled && isAssetAttr(el.name, name);
-  }
-
-  #componentProps(el: ElementNode): string {
-    const entries: string[] = [];
-    for (const attr of el.attributes) {
-      const b = classifyAttribute(attr, this.#source).value;
-      if (b.type === 'attr') entries.push(`${JSON.stringify(b.name)}: ${this.#attrExpr(attr)}`);
-    }
-    return `{ ${entries.join(', ')} }`;
-  }
-
-  /** JS expression for an attribute's value (string literal, lone `@expr`, or template). */
-  #attrExpr(attr: Attribute): string {
-    const parts = attr.value as ReadonlyArray<{ type: string; value?: string; expr?: Span }>;
-    if (parts.every((p) => p.type === 'attribute-text')) {
-      return JSON.stringify(parts.map((p) => p.value ?? '').join(''));
-    }
-    if (parts.length === 1 && parts[0]!.type === 'razor-expression') {
-      return `(${this.#slice(parts[0]!.expr!)})`;
-    }
-    const template = parts
-      .map((p) =>
-        p.type === 'attribute-text'
-          ? (p.value ?? '').replace(/[`\\$]/gu, '\\$&')
-          : '${' + this.#slice(p.expr!) + '}',
-      )
-      .join('');
-    return '`' + template + '`';
+    writeElementAttrs(this.#source, el, v, this.#w, this.#linker);
   }
 }

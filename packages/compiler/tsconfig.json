@@ -1,7 +1,15 @@
 {
   "extends": "@fudic/tsconfig/tsconfig.base.json",
   "compilerOptions": {
-    "types": ["node"]
+    "types": ["node"],
+    // `DOM` is for the hydration equivalence suite under `test/`, which drives the emitted
+    // client chunk against a real DOM. `src/` neither imports nor targets a browser.
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "paths": {
+      "@fudic/dom": ["../dom/src/index.ts"],
+      "@fudic/core": ["../core/src/index.ts"],
+      "@fudic/ssr": ["../ssr/src/index.ts"]
+    }
   },
   "include": ["src", "test", "scripts", "vitest.config.ts"]
 }

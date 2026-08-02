@@ -26,7 +26,8 @@ import { buildManifest } from './manifest.js';
 import { emitRenderChunk } from './wrapper.js';
 import { emitServerModule } from './server.js';
 import { emitMainBootstrap, emitSwBootstrap } from './bootstrap.js';
-import { transformFud } from './transform.js';
+import { transformFud, transformFudClient } from './transform.js';
+import { CLIENT_QUERY, clientChunkName, clientId, discoverComponents } from './client.js';
 import { nodeIo } from './io.js';
 import { readSwConfig, type ResolvedSwConfig } from './swconfig.js';
 import { runLinkPass, safeName, type LinkResult } from './link.js';
@@ -390,6 +391,22 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           preserveSignature: 'strict',
         });
       }
+
+      // One client chunk per component of the graph, with no level filter (SDD-15 §6.8).
+      // Which of them ends up hydrating is decided where rendering happens — the edge at
+      // request time, the Service Worker at navigation time — and always with data in hand.
+      // Nothing here can know it, so everything is emitted; a chunk nobody requests costs
+      // nothing, and one that is missing cannot be invented at run time.
+      for (const comp of discoverComponents(builds, io)) {
+        this.emitFile({
+          type: 'chunk',
+          id: clientId(comp.path),
+          name: clientChunkName(comp.tag),
+          // Loaded by URL for its side effect (`customElements.define`), never imported by
+          // a module Rollup can see: nothing may be dropped for looking unused.
+          preserveSignature: 'strict',
+        });
+      }
     },
 
     resolveId(id) {
@@ -450,6 +467,21 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         // the bundler parses it (Vite's own Oxc transform, as it does for any `.ts`).
         const code = emitServerModule(readFileSync(path, 'utf8'));
         const stripped = await transformWithOxc(code, `${path}.ts`, { lang: 'ts' });
+        return stripped.map ? { code: stripped.code, map: stripped.map } : { code: stripped.code };
+      }
+      if (query === CLIENT_QUERY) {
+        const chunk = transformFudClient(path, io);
+        if (chunk === null) {
+          return null;
+        }
+        for (const spec of chunk.missingAssets) {
+          this.warn(`[${FUD_ASSET_NOT_FOUND}] asset "${spec}" not found (referenced by ${path})`);
+        }
+        // Same reason as `?server`: the `@code { @client }` region is copied VERBATIM, so
+        // the chunk is TypeScript whenever the author wrote TypeScript. The map is the one
+        // Oxc produces for that strip — chaining it back to the `.fud` is the same open
+        // seam the `?server` module has, and it belongs with the linking stage.
+        const stripped = await transformWithOxc(chunk.code, `${path}.ts`, { lang: 'ts' });
         return stripped.map ? { code: stripped.code, map: stripped.map } : { code: stripped.code };
       }
       const result = transformFud(path, io);

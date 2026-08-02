@@ -9,11 +9,9 @@ import { build } from 'vite';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { fudic, type FudicOptions } from '../src/index.js';
+import { runtimeAlias } from './helpers/alias.js';
 
-const ssrDist = fileURLToPath(new URL('../../ssr/dist/index.js', import.meta.url));
-const transportDist = fileURLToPath(new URL('../../transport/dist/index.js', import.meta.url));
 
 const PAGE = `<!DOCTYPE html>
 <html>
@@ -46,7 +44,7 @@ async function buildWith(options: FudicOptions): Promise<OutFile[]> {
   const result = (await build({
     root,
     logLevel: 'silent',
-    resolve: { alias: { '@fudic/ssr': ssrDist, '@fudic/transport': transportDist } },
+    resolve: { alias: { ...runtimeAlias } },
     plugins: [fudic(options)],
     build: { write: false, minify: false },
   })) as unknown as { output: OutFile[] };

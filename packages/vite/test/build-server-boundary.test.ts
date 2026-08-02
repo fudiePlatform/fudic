@@ -14,11 +14,9 @@ import { build } from 'vite';
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { fudic } from '../src/index.js';
+import { runtimeAlias } from './helpers/alias.js';
 
-const ssrDist = fileURLToPath(new URL('../../ssr/dist/index.js', import.meta.url));
-const transportDist = fileURLToPath(new URL('../../transport/dist/index.js', import.meta.url));
 
 /** The server-only module. Its name and its contents must not reach `outDir`. */
 const SECRETS = `export const SECRET_TOKEN = 'sk-live-do-not-publish';
@@ -90,7 +88,7 @@ describe('vite build — nothing of `@server` reaches the published output', () 
     const result = (await build({
       root,
       logLevel: 'silent',
-      resolve: { alias: { '@fudic/ssr': ssrDist, '@fudic/transport': transportDist } },
+      resolve: { alias: { ...runtimeAlias } },
       plugins: [fudic()],
       // Source maps ON: it is the configuration the example ships, and half of this BUG
       // only exists under it.
@@ -155,7 +153,7 @@ describe('vite build — written to disk, the boundary is a directory', () => {
     await build({
       root,
       logLevel: 'silent',
-      resolve: { alias: { '@fudic/ssr': ssrDist, '@fudic/transport': transportDist } },
+      resolve: { alias: { ...runtimeAlias } },
       plugins: [fudic()],
       build: { minify: false, sourcemap: true },
     });

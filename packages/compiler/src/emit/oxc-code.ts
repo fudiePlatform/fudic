@@ -24,9 +24,26 @@ export interface Signal {
   readonly init: string;
 }
 
+/**
+ * The `@code { @client }` body, split where the JS module grammar forces it: an `import`
+ * declaration is only legal at the top level of a module, but the rest of the region has
+ * to live INSIDE the factory closure, because that is where it is per instance (§4.7).
+ *
+ * Both halves are the author's source, copied verbatim — including its TypeScript. The
+ * emitted chunk is bundler input, and stripping types is the bundler's job (esbuild, via
+ * the Vite plugin); the compiler parses JS/TS, it does not transpile it.
+ */
+export interface ClientCode {
+  /** `import` declarations, hoisted to module scope. */
+  readonly imports: string[];
+  /** Everything else, in source order, for the body of the factory closure. */
+  readonly body: string[];
+}
+
 export interface ExtractedCode {
   readonly props: Prop[];
   readonly signals: Signal[];
+  readonly client: ClientCode;
 }
 
 // ── Typed access over the untyped Oxc node (the only place that indexes by name) ──
@@ -37,28 +54,47 @@ const name = (node: OxcNode): string => String(node['name']);
 
 type MapOffset = (bufferOffset: number) => number;
 
-/** Extract `props<T>()` defaults and inert `signal()` initials from a component's `@code`. */
+/**
+ * Extract, in ONE Oxc invocation for the whole file, everything the two emit branches need
+ * out of `@code`: the `props<T>()` pattern (with its defaults), the `signal()` initials the
+ * server branch renders inert, and the `@client` region split into imports and body.
+ */
 export function extractCode(source: string, doc: ComponentDocument): ExtractedCode {
   const props: Prop[] = [];
   const signals: Signal[] = [];
-  if (!doc.code) return { props, signals };
+  const client: ClientCode = { imports: [], body: [] };
+  if (!doc.code) return { props, signals, client };
 
   const batch = new JsBatch(source);
-  const ids = doc.code.parts.map((p) => batch.add('module-statements', p.js));
+  const parts = doc.code.parts;
+  const ids = parts.map((p) => batch.add('module-statements', p.js));
   const result = batch.parse();
   const map = result.value.mapOffset;
 
-  for (const id of ids) {
+  ids.forEach((id, i) => {
     const root = result.value.ast(id);
     const stmts = Array.isArray(root) ? (root as OxcNode[]) : [root as OxcNode];
+    const isClient = parts[i]!.type === 'client-region';
     for (const stmt of stmts) {
+      if (isClient) readClientStatement(stmt, source, map, client);
       if (!is(stmt, 'VariableDeclaration')) continue;
       for (const decl of fieldArray(stmt, 'declarations')) {
         readDeclarator(decl, source, map, props, signals);
       }
     }
-  }
-  return { props, signals };
+  });
+  return { props, signals, client };
+}
+
+/** Route one top-level statement of `@client` to the module scope or to the closure. */
+function readClientStatement(
+  stmt: OxcNode,
+  source: string,
+  map: MapOffset,
+  client: ClientCode,
+): void {
+  const text = source.slice(map(stmt.start), map(stmt.end));
+  (is(stmt, 'ImportDeclaration') ? client.imports : client.body).push(text);
 }
 
 /** Route a single `const … = call(...)` declarator to props (ObjectPattern) or signals. */
