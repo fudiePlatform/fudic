@@ -46,4 +46,21 @@ export interface DomClient<N> extends Dom<N> {
   nextSibling(node: N): N | null;
   previousSibling(node: N): N | null;
   childAt(node: N, index: number): N | null;
+  /**
+   * Element-only traversal — how hydration actually walks a level.
+   *
+   * A tree that goes through HTML and back does not preserve text-node boundaries:
+   * two adjacent text nodes serialize to one run of characters and the parser hands
+   * back ONE node. Elements have no such ambiguity, so an element cursor is the only
+   * position that survives the round trip. Text is reached from the element beside
+   * it, not by counting.
+   */
+  firstElementChild(node: N): N | null;
+  nextElementSibling(node: N): N | null;
+  /**
+   * The other end of a level, for the text that no element follows: with the element
+   * cursor spent, an interpolated run is the parent's last node — everything after it
+   * is text, and text adjacent to text is the same node.
+   */
+  lastChild(node: N): N | null;
 }

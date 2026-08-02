@@ -70,30 +70,45 @@ describe('emitComponentClientModule — the module shape (§6.8)', () => {
     expect(hydrate).toContain('s();'); // but the hookup is the same one
   });
 
-  it('adopts with a cursor over every node, text included (§4.9)', () => {
-    expect(src).toContain('let $c0 = $dom.firstChild($shadow);');
-    expect(src).toContain('$n0 = $c0; $c0 = $dom.nextSibling($c0);');
-    expect(src).not.toContain('.children['); // would skip the text nodes the emit keeps
+  it('adopts with an ELEMENT cursor, never by counting nodes (§4.9)', () => {
+    expect(src).toContain('let $c0 = $dom.firstElementChild($shadow);');
+    expect(src).toContain('$n0 = $c0; $c0 = $dom.nextElementSibling($c0);');
+    // Counting nodes is what a round trip through HTML breaks: two adjacent text nodes
+    // serialize with no boundary between them and come back as one.
+    expect(src).not.toContain('$dom.nextSibling($c');
+    expect(src).not.toContain('$dom.childAt');
+    expect(src).not.toContain('.children[');
     expect(src).not.toContain('querySelector');
     expect(src).not.toContain('cloneNode');
   });
 
+  it('gives a reference only to the text that can change', () => {
+    // `@title` is adopted, from the <h2> that holds it; every whitespace run is created
+    // inline on the fabricate path and never looked up again — nobody rewrites a space.
+    expect(src).toContain('$n3 = $dom.lastChild($n2);');
+    expect(src).toContain('$dom.append($n0, $dom.text(" "));');
+    expect(src).toContain('$r.push($dom.text(" "));');
+    expect(src).toContain('$dom.append($n6, $dom.text(" Abrir "));');
+  });
+
   it('fabricates a child host without opening its shadow or driving it', () => {
-    expect(src).toContain('$n16 = $dom.element("app-button");');
-    expect(src).toContain(`$dom.setAttr($n16, 'data-adopt', "app-button");`);
+    expect(src).toContain('$n6 = $dom.element("app-button");');
+    expect(src).toContain(`$dom.setAttr($n6, 'data-adopt', "app-button");`);
     expect(src).not.toContain('attachShadow'); // the runtime owns the child (SDD-17)
     expect(src).not.toContain('renderAppButton');
   });
 
   it('releases every node reference and runs the disposers on r()', () => {
-    expect(src).toContain('$n22 = $shadow = null; $d.forEach((d) => d());');
+    expect(src).toContain('$n6 = $shadow = null; $d.forEach((d) => d());');
   });
 
-  it('emits the same control flow into both bodies', () => {
+  it('emits the same control flow into both bodies — where there is anything to adopt', () => {
     // One instance takes create OR hydrate, never both: the condition is written twice and
-    // still evaluated once.
-    expect(src.match(/if \(expanded\.peek\(\)\) \{/gu)).toHaveLength(4); // 2 per body
-    expect(src.match(/\} else \{/gu)).toHaveLength(2);
+    // still evaluated once. The `@if` inside <app-button> is the exception: its branches
+    // hold nothing but static text, so the adopt body never asks the question — it has no
+    // reference to take, and no element to step the cursor over.
+    expect(src.match(/if \(expanded\.peek\(\)\) \{/gu)).toHaveLength(3);
+    expect(src.match(/\} else \{/gu)).toHaveLength(1);
   });
 });
 
@@ -119,8 +134,21 @@ describe('emitComponentClientModule — a component with no @code', () => {
       'x-empty',
       '<x-empty>\n  <template shadowrootmode="open"></template>\n</x-empty>\n',
     );
-    expect(src2).not.toContain('$dom.firstChild');
+    expect(src2).not.toContain('$dom.firstElementChild');
     expect(src2).toContain('r: () => { $shadow = null;');
+  });
+
+  it('opens no cursor and no block for a subtree that is pure static markup', () => {
+    const src2 = inlineChunk(
+      'x-static',
+      '<x-static>\n  <template shadowrootmode="open"><b>hi <u>there</u></b></template>\n</x-static>\n',
+    );
+    const hydrate = src2.slice(src2.indexOf('h: () => {'), src2.indexOf('r: () => {'));
+    // The <b> and the <u> are still adopted — an element is always a reference — but the
+    // text inside them writes nothing at all.
+    expect(hydrate).toContain('$n1 = $c1; $c1 = $dom.nextElementSibling($c1);');
+    expect(hydrate).not.toContain('$dom.text');
+    expect(hydrate).not.toContain('lastChild');
   });
 });
 
@@ -135,7 +163,8 @@ describe('emitComponentClientModule — shapes the fixtures do not cover', () =>
     );
     expect(src.match(/for \(const item of items\) \{/gu)).toHaveLength(2);
     expect(src).toContain('$n2 = $dom.text(String((item) ?? \'\'));');
-    expect(src).toContain('$n1 = $c1; $c1 = $dom.nextSibling($c1);');
+    expect(src).toContain('$n1 = $c1; $c1 = $dom.nextElementSibling($c1);');
+    expect(src).toContain('$n2 = $dom.lastChild($n1);'); // @item, from the <li> of its turn
   });
 
   it('lowers an else-if chain into both bodies', () => {
@@ -164,7 +193,31 @@ describe('emitComponentClientModule — shapes the fixtures do not cover', () =>
       'x-pre',
       '<x-pre>\n  <template shadowrootmode="open"><pre>a   b</pre></template>\n</x-pre>\n',
     );
-    expect(src).toContain('$n1 = $dom.text("a   b");'); // collapsed would be "a b"
+    expect(src).toContain('$dom.append($n0, $dom.text("a   b"));'); // collapsed would be "a b"
+  });
+
+  it('keeps it verbatim inside a run that is part text, part interpolation', () => {
+    const src = inlineChunk(
+      'x-premix',
+      '@code {\n  const { name } = props<{ name: string }>();\n}\n' +
+        '<x-premix>\n  <template shadowrootmode="open"><pre>a   @name</pre></template>\n</x-premix>\n',
+    );
+    // One node for the whole run, and the literal half of it untouched: a `<pre>` does not
+    // stop being a `<pre>` because there is an expression in the middle of it.
+    expect(src).toContain("$n1 = $dom.text(`a   ${(name) ?? ''}`);");
+  });
+
+  it('emits a @foreach on the fabricate path alone when it holds nothing to adopt', () => {
+    const src = inlineChunk(
+      'x-plainloop',
+      '@code {\n  const { items } = props<{ items: string[] }>();\n}\n' +
+        '<x-plainloop>\n  <template shadowrootmode="open">' +
+        '<ul>@foreach (const item of items) { x }</ul>' +
+        '</template>\n</x-plainloop>\n',
+    );
+    const hydrate = src.slice(src.indexOf('h: () => {'), src.indexOf('r: () => {'));
+    expect(src.match(/for \(const item of items\) \{/gu)).toHaveLength(1);
+    expect(hydrate).not.toContain('for (');
   });
 
   it('emits nothing for a node with no client markup, and keeps the walk aligned', () => {
@@ -195,6 +248,56 @@ describe('emitComponentClientModule — shapes the fixtures do not cover', () =>
         '<x-mix>\n  <template shadowrootmode="open"><a href="/p/@id/x"></a></template>\n</x-mix>\n',
     );
     expect(src).toContain('const $a = `/p/${id}/x`;');
+  });
+});
+
+/**
+ * How the adopt path FINDS a text node it may have to rewrite. It never counts: a run is
+ * reached from the element beside it, and which element that is decides the form. The four
+ * cases below are every form the emit can write, and the fixtures only ever produce one.
+ */
+describe('emitComponentClientModule — anchoring an interpolated run', () => {
+  const runChunk = (tag: string, markup: string): string =>
+    inlineChunk(
+      tag,
+      '@code {\n  const { name, on } = props<{ name: string; on: boolean }>();\n}\n' +
+        `<${tag}>\n  <template shadowrootmode="open">${markup}</template>\n</${tag}>\n`,
+    );
+
+  it('coalesces a run of text and interpolation into ONE node', () => {
+    // The reason the anchors work at all: HTML has no boundary between two text nodes, so
+    // what the parser gives back is one. The emit builds one to match — on both paths.
+    const src = runChunk('x-run', '<b>hello @name<i></i></b>');
+    expect(src).toContain('$n1 = $dom.text(`hello ${(name) ?? \'\'}`);');
+    expect(src.match(/\$dom\.text\(/gu)).toHaveLength(1);
+  });
+
+  it('takes the previous sibling of the cursor when an element follows', () => {
+    const src = runChunk('x-prev', '<b>@name<i></i></b>');
+    expect(src).toContain('$n1 = $dom.previousSibling($c1);');
+  });
+
+  it('asks at runtime when only a construct follows, because it may render nothing', () => {
+    const src = runChunk('x-tern', '<b>@name @if (on) { <i></i> }</b>');
+    expect(src).toContain('$n1 = $c1 ? $dom.previousSibling($c1) : $dom.lastChild($n0);');
+  });
+
+  it('takes the last node when nothing that follows can be an element', () => {
+    const src = runChunk('x-notxt', '<b>@name @if (on) { x }</b>');
+    expect(src).toContain('$n1 = $dom.lastChild($n0);');
+    expect(src).not.toContain('let $c1'); // no element at that level: no cursor either
+  });
+
+  it('takes the last node for a trailing run, past the elements before it', () => {
+    const src = runChunk('x-last', '<b><i></i>@name</b>');
+    expect(src).toContain('$n2 = $dom.lastChild($n0);');
+  });
+
+  it('adopts through a branch whose element is only in the else', () => {
+    const src = runChunk('x-else', '<b>@if (on) { x } else { <i></i> }</b>');
+    const hydrate = src.slice(src.indexOf('h: () => {'), src.indexOf('r: () => {'));
+    expect(hydrate).toContain('} else {');
+    expect(hydrate).toContain('$n1 = $c1; $c1 = $dom.nextElementSibling($c1);');
   });
 });
 

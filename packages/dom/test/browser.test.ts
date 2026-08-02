@@ -89,4 +89,35 @@ describe('browserDom traversal', () => {
     expect(dom.childAt(parent, 3)).toBeNull();
     expect(dom.nextSibling(c)).toBeNull();
   });
+
+  it('walks elements only, stepping over the text between them', () => {
+    // The shape hydration actually meets: a tree that went through HTML and back, where
+    // the whitespace between the elements is text the parser may have merged into one node
+    // or split differently. The element cursor is blind to all of it.
+    const parent = dom.element('div');
+    const a = dom.element('a');
+    const b = dom.element('b');
+    dom.append(parent, dom.text(' '));
+    dom.append(parent, a);
+    dom.append(parent, dom.text(' '));
+    dom.append(parent, dom.text(' ')); // two adjacent text nodes: HTML cannot tell them apart
+    dom.append(parent, b);
+    dom.append(parent, dom.text(' '));
+
+    expect(dom.firstElementChild(parent)).toBe(a);
+    expect(dom.nextElementSibling(a)).toBe(b);
+    expect(dom.nextElementSibling(b)).toBeNull();
+    expect(dom.firstElementChild(a)).toBeNull();
+  });
+
+  it('lastChild reaches the trailing text no element follows', () => {
+    const parent = dom.element('div');
+    const a = dom.element('a');
+    const tail = dom.text('x');
+    dom.append(parent, a);
+    dom.append(parent, tail);
+
+    expect(dom.lastChild(parent)).toBe(tail);
+    expect(dom.lastChild(a)).toBeNull();
+  });
 });

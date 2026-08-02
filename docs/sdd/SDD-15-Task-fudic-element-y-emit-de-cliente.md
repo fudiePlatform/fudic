@@ -3,7 +3,7 @@
 > **SDD:** [SDD-15 — Emit (AST → runtime)](./SDD-15-emit.md)
 > **Paquetes:** `@fudic/core` (base de custom element) · `@fudic/compiler` (emit)
 > **Rama:** `worktree-sdd-15-17-hidratacion`
-> **Progreso:** 14 / 19
+> **Progreso:** 19 / 19
 
 Primera tanda de la rama de cliente de SDD-15. La rama de servidor ya está `Hecho`
 (`emitComponentModule` / `emitPageModule`); aquí se abre la de cliente por su base, y solo
@@ -106,19 +106,32 @@ del prefijo `$` (`FUD0290`), reactividad fina de signals. Y todo SDD-17.
       que escribe tres cuerpos en paralelo, porque calcularlos por separado los desalinea:
       - **fabricar** (`$n1 = $dom.element(...)`, sin ensamblar),
       - **montar** (`m`: los `append` en orden de árbol),
-      - **adoptar** (`h`: travesía posicional con `$dom.childAt` / `$dom.firstChild` /
-        `$dom.nextSibling`, nunca `querySelector`, nunca `cloneNode`).
+      - **adoptar** (`h`: travesía con cursor, nunca `querySelector`, nunca `cloneNode`).
       Las variables de nodo se declaran `let` en la cabecera de la closure para que las
       asignen los dos caminos. Reutilizar `spaceModeOf`/`collapseSpace`/`nestedSpaceMode` sin
       variación: si el whitespace del cliente no es byte a byte el del servidor, `h` adopta
       corrido.
-- [x] **10. Travesía posicional sobre `childNodes`, no sobre `children`.**
-      En `markup-client.ts`: los índices cuentan **todos** los nodos, texto incluido —
-      `browserDom.childAt` ya usa `childNodes`. Es lo que hace determinista la adopción, y
-      se apoya en §4.9: el emit colapsa el whitespace a un espacio pero **no elimina ningún
-      nodo de texto**, así que las posiciones de servidor y cliente coinciden por
-      construcción. El ejemplo de §4.6 usa `$shadow.children[i]`, que **no** sirve: saltaría
-      los nodos de texto que el propio emit garantiza. Dejarlo escrito en el fichero.
+- [x] **10. El cursor cuenta ELEMENTOS, y el texto se ancla al elemento de al lado.**
+      *(Reescrita en la fase 3: la travesía posicional sobre `childNodes` que decía esta
+      tarea no sobrevive al viaje por HTML, y la fase 3 lo demostró en ejecución.)*
+      El ida y vuelta por HTML **no conserva las fronteras entre nodos de texto**: dos textos
+      adyacentes se serializan sin nada en medio y el parser devuelve **uno**. Un cursor que
+      cuenta nodos se descuadra la primera vez que un `@if` cerrado deja dos espacios juntos,
+      que es casi cualquier plantilla. Los elementos no tienen esa ambigüedad: sobreviven uno
+      a uno, y la misma condición toma la misma rama en los dos caminos, así que el cursor
+      avanza en paralelo. En `markup-client.ts`:
+      - `$dom.firstElementChild` para entrar en un nivel, `$dom.nextElementSibling` para
+        avanzar (dos métodos nuevos en `DomClient`, más `lastChild`);
+      - el texto **no se localiza contando**: un run con interpolación se ancla al elemento
+        vecino (`previousSibling` del cursor) o al final de su nivel (`lastChild`); un run
+        estático no se adopta siquiera — nadie reescribe un espacio, así que no necesita ni
+        variable;
+      - los runs se funden en UN nodo (`runs.ts`, compartido con la rama SSR): un run emitido,
+        un nodo del DOM, que es lo que hace que el ancla caiga donde debe.
+      Queda **una** forma sin resolver, documentada en el fichero: dos runs interpolados
+      separados solo por un constructo que puede no pintar nada (`@a @if (x) { } @b`). Si no
+      pinta, los dos runs **son** un único nodo y ninguna travesía puede distinguirlos: eso
+      necesita ancla de bloque de verdad, y es el SDD de bloques con su `u`.
 - [x] **11. Control de flujo en los dos caminos.**
       En `markup-client.ts`: `@if`/`@foreach` se emiten como el mismo JS en `c` y en `h`. Con
       los mismos props y el mismo estado inicial se toma la misma rama, luego las posiciones
@@ -155,7 +168,7 @@ del prefijo `$` (`FUD0290`), reactividad fina de signals. Y todo SDD-17.
 
 ## Fase 3 — Equivalencia servidor ↔ cliente (3)
 
-- [ ] **15. Arnés de integración.**
+- [x] **15. Arnés de integración.**
       Crear `packages/compiler/test/emit/hydrate/_harness.ts`: renderiza un componente con la
       rama SSR contra `SsrDom`, lo serializa con `@fudic/ssr`, monta ese HTML como DSD en
       happy-dom, evalúa el módulo de cliente emitido y devuelve host + factory. Requiere
@@ -163,33 +176,54 @@ del prefijo `$` (`FUD0290`), reactividad fina de signals. Y todo SDD-17.
       `@fudic/core`, `@fudic/ssr` y `happy-dom` como **devDependencies** de
       `@fudic/compiler` — dependencias de test, no de runtime: el compilador sigue sin
       importar runtime en `src/`.
-- [ ] **16. Criterio §6.7 — equivalencia `c` ↔ `h`, convergencia en `s`.**
+- [x] **16. Criterio §6.7 — equivalencia `c` ↔ `h`, convergencia en `s`.**
       Crear `test/emit/hydrate/equivalence.test.ts`: `c()` (fabrica → `m` → `s`) y `h()`
       (adopta → `s`) del mismo factory producen el mismo grafo de nodos vivos y los mismos
       valores destructurados, difiriendo solo en cómo obtienen las referencias.
-- [ ] **17. Criterio §6.14 — un controlador, dos adapters.**
-      En el mismo directorio: el camino `h` adopta el markup de SSR **sin mover un nodo** —
-      comparar el HTML del shadow antes y después de `h()`, byte a byte. Es el test que
-      detecta cualquier divergencia de whitespace, de orden o de índice entre las dos ramas.
+- [x] **17. Criterio §6.14 — un controlador, dos adapters.**
+      En el mismo directorio (`adopt.test.ts`): el camino `h` adopta el markup de SSR **sin
+      mover un nodo** — `adoptOnly` prohíbe `element`/`text`/`append`, y las identidades de
+      nodo se comparan por referencia antes y después de `h()`. El contador de pasos añade lo
+      que la tarea 10 volvió comprobable: la travesía **no llama** a `firstChild`,
+      `nextSibling` ni `childAt` — no cuenta nodos —, y el único texto que localiza es el
+      interpolado.
 
 ## Fase 4 — Cierre de la tanda (2)
 
-- [ ] **18. Verde en los tres comandos.**
+- [x] **18. Verde en los tres comandos.**
       `pnpm typecheck`, `pnpm test` y `pnpm build` en la raíz. Los ejemplos se construyen
       después de los paquetes: si `examples/basic` se rompe, el build falla.
-- [ ] **19. Cobertura.**
-      `@fudic/core` al **100 %** en las cuatro métricas (código nuevo, sin excepción).
-      `@fudic/compiler` arrastra el suelo heredado 80/80/75, pero los ficheros nuevos
-      (`markup-client.ts`, `client.ts`) nacen al 100 %: la deuda heredada no rebaja el listón
-      de lo nuevo. Nada de `/* v8 ignore */` para llegar al número.
+- [x] **19. Cobertura.**
+      `@fudic/core` al **100 %** en las cuatro métricas (código nuevo, sin excepción), y
+      `@fudic/dom` igual. `@fudic/compiler` arrastra el suelo heredado 80/80/75, pero los
+      ficheros nuevos (`markup-client.ts`, `client.ts`, `runs.ts`) nacen al 100 %: la deuda
+      heredada no rebaja el listón de lo nuevo. Nada de `/* v8 ignore */` para llegar al
+      número.
 
 ---
+
+## Lo que la fase 3 cambió
+
+La equivalencia servidor ↔ cliente no confirmó el diseño: lo corrigió. Ejecutar las dos
+ramas sobre un DOM real destapó que el ida y vuelta por HTML funde los nodos de texto
+adyacentes, y con eso se cayó la travesía posicional de la tarea 10. La respuesta —cursor de
+elementos, runs fundidos, texto anclado al elemento vecino y solo cuando es interpolado— está
+escrita en la tarea 10 reescrita, y toca tres sitios además del emisor de cliente:
+
+- **`runs.ts`** (nuevo) y `MarkupEmitter.emitChildren`: la rama **SSR** emite por runs
+  también. Un run emitido tiene que ser un nodo del DOM en las dos ramas, o el ancla del
+  cliente no cae donde el servidor pintó.
+- **`DomClient`**: `firstElementChild`, `nextElementSibling` y `lastChild`.
+- **`packages/formatter/test/acceptance/_emit.ts`**: el oráculo de whitespace del formateador
+  leía solo los `$dom.text("…")` literales, y ahora el whitespace pegado a una interpolación
+  viaja dentro del template literal del run. Se le enseña a leerlo — si no, el criterio 3 deja
+  de ver justo lo que existe para ver.
 
 ## Nada bloquea
 
 Un apunte de corrección, no una pregunta: `signal` es `peek()`/`set()`, así que
-`fixtures/app-card.fud` tiene un error (`expanded.value`) y la rama SSR lo copia emitiendo un
-`{ value: … }` inerte. Se arregla el fixture, el emit SSR y sus goldens dentro de la tarea 14.
+`fixtures/app-card.fud` tenía un error (`expanded.value`) y la rama SSR lo copiaba emitiendo
+un `{ value: … }` inerte. Arreglado con el fixture, el emit SSR y sus goldens en la tarea 14.
 
 En el camino `c`, el host del hijo se fabrica y se le cuelgan sus hijos de luz, sin llamar a
 su `c(props)`: quién descarga y en qué orden se registra es la tanda siguiente, no ésta.

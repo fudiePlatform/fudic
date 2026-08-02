@@ -68,9 +68,48 @@ export function emitModule(path: string, source: string, read: (p: string) => st
   });
 }
 
-const TEXT_CALL = /\$dom\.text\((".*?(?<!\\)")\)/gu;
+/**
+ * A baked text node, in either form the emit writes it: a plain literal, or the template
+ * literal of a RUN — a stretch of text and interpolation that becomes ONE node, because
+ * that is the node the browser hands back after the markup goes through HTML. The run form
+ * is the one that carries the whitespace AROUND an interpolation, which is exactly the
+ * whitespace this criterion is here to watch.
+ */
+const TEXT_CALL = /\$dom\.text\((".*?(?<!\\)"|`(?:[^`\\]|\\.)*`)\)/gu;
 const BUILD_CALL = /\$dom\.(element|attachShadow)\("([^"]*)"/gu;
 const ATTR_CALL = /\$dom\.setAttr\(\$n\d+, '([^']*)'/gu;
+
+/** The end of a `${…}` hole: the index of its closing brace, braces inside it counted. */
+function endOfHole(body: string, from: number): number {
+  let depth = 1;
+  for (let i = from; i < body.length; i += 1) {
+    if (body[i] === '{') depth += 1;
+    else if (body[i] === '}' && --depth === 0) return i;
+  }
+  return body.length;
+}
+
+/**
+ * The STATIC text of a run's template literal, with each interpolation reduced to a mark.
+ * What an expression evaluates to is not this criterion's business; whether there is a
+ * space beside it is.
+ */
+function runText(literal: string): string {
+  const body = literal.slice(1, -1);
+  let out = '';
+  for (let i = 0; i < body.length; i += 1) {
+    if (body[i] === '\\') {
+      out += body[i + 1] ?? '';
+      i += 1;
+    } else if (body[i] === '$' && body[i + 1] === '{') {
+      i = endOfHole(body, i + 2);
+      out += '@';
+    } else {
+      out += body[i];
+    }
+  }
+  return out;
+}
 
 /**
  * What the emit says about the DOM, with the runs collapsed.
@@ -81,7 +120,7 @@ const ATTR_CALL = /\$dom\.setAttr\(\$n\d+, '([^']*)'/gu;
 export function domSignature(module: string): readonly string[] {
   const out: string[] = [];
   const collapse = (literal: string): string =>
-    (JSON.parse(literal) as string).replace(/\s+/gu, ' ');
+    (literal.startsWith('`') ? runText(literal) : (JSON.parse(literal) as string)).replace(/\s+/gu, ' ');
 
   for (const match of module.matchAll(TEXT_CALL)) out.push(`text:${collapse(match[1]!)}`);
   for (const match of module.matchAll(BUILD_CALL)) out.push(`${match[1]!}:${match[2]!}`);

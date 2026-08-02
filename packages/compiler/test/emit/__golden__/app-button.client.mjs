@@ -2,7 +2,7 @@ import { FudicElement } from '@fudic/core';
 
 customElements.define("app-button", class extends FudicElement {
   static c($props) {
-    let $n0, $n1, $n2, $n3, $n4, $n5;
+    let $n0, $n1;
     const $r = [];
     const $d = []; // teardowns
     let [$dom, $shadow, variant = 'primary', disabled = false] = $props;
@@ -16,37 +16,29 @@ customElements.define("app-button", class extends FudicElement {
 
     return {
       c: () => {
-        $n0 = $dom.text(" ");
+        $r.push($dom.text(" "));
+        $n0 = $dom.element("button");
+        { const $a = (disabled); if ($a === true) $dom.setAttr($n0, "disabled", ''); else if ($a !== false && $a != null) $dom.setAttr($n0, "disabled", String($a)); }
+        $dom.setAttr($n0, 'class', ["btn", (variant === 'primary') && "primary", (variant === 'ghost') && "ghost"].filter(Boolean).join(' '));
+        $dom.append($n0, $dom.text(" "));
+        $n1 = $dom.element("slot");
+        $dom.append($n0, $n1);
+        $dom.append($n0, $dom.text(" "));
         $r.push($n0);
-        $n1 = $dom.element("button");
-        { const $a = (disabled); if ($a === true) $dom.setAttr($n1, "disabled", ''); else if ($a !== false && $a != null) $dom.setAttr($n1, "disabled", String($a)); }
-        $dom.setAttr($n1, 'class', ["btn", (variant === 'primary') && "primary", (variant === 'ghost') && "ghost"].filter(Boolean).join(' '));
-        $n2 = $dom.text(" ");
-        $dom.append($n1, $n2);
-        $n3 = $dom.element("slot");
-        $dom.append($n1, $n3);
-        $n4 = $dom.text(" ");
-        $dom.append($n1, $n4);
-        $r.push($n1);
-        $n5 = $dom.text(" ");
-        $r.push($n5);
+        $r.push($dom.text(" "));
         m();
         s();
       },
       h: () => {
-        let $c0 = $dom.firstChild($shadow);
-        $n0 = $c0; $c0 = $dom.nextSibling($c0);
-        $n1 = $c0; $c0 = $dom.nextSibling($c0);
+        let $c0 = $dom.firstElementChild($shadow);
+        $n0 = $c0; $c0 = $dom.nextElementSibling($c0);
         {
-          let $c1 = $dom.firstChild($n1);
-          $n2 = $c1; $c1 = $dom.nextSibling($c1);
-          $n3 = $c1; $c1 = $dom.nextSibling($c1);
-          $n4 = $c1; $c1 = $dom.nextSibling($c1);
+          let $c1 = $dom.firstElementChild($n0);
+          $n1 = $c1; $c1 = $dom.nextElementSibling($c1);
         }
-        $n5 = $c0; $c0 = $dom.nextSibling($c0);
         s();
       },
-      r: () => { $n0 = $n1 = $n2 = $n3 = $n4 = $n5 = $shadow = null; $d.forEach((d) => d()); },
+      r: () => { $n0 = $n1 = $shadow = null; $d.forEach((d) => d()); },
     };
   }
 });

@@ -18,7 +18,8 @@ import type { Span } from '../types/index.js';
 import { CodeWriter } from './writer.js';
 import { type AssetLinker } from './assets.js';
 import { componentPropsExpr, writeElementAttrs } from './attrs.js';
-import { collapseSpace, nestedSpaceMode, type SpaceMode } from './space.js';
+import { nestedSpaceMode, type SpaceMode } from './space.js';
+import { emitItems, type TextRun } from './runs.js';
 
 /** `render` + PascalCase of a `prefix-name` tag: `app-button` → `renderAppButton`. */
 export const renderName = (tag: string): string =>
@@ -76,27 +77,33 @@ export class MarkupEmitter {
     return this.#used;
   }
 
+  /**
+   * Emit the build statements for a child list, appending each under `parent`.
+   *
+   * The list is walked as ITEMS, not as nodes: adjacent text and interpolation siblings
+   * are coalesced into one run, because that is the tree the browser will hand back after
+   * the markup makes the round trip (see `runs.ts`). Emitting them one by one would build
+   * a server tree the client cannot adopt.
+   */
+  emitChildren(children: readonly HtmlContent[], parent: string): void {
+    for (const item of emitItems(this.#source, children, this.#space)) {
+      if (item.kind === 'run') this.#run(item, parent);
+      else this.#emit(item.node, parent);
+    }
+  }
+
+  /** One coalesced text run — one node, because that is what the parser will give back. */
+  #run(run: TextRun, parent: string): void {
+    const v = this.#fresh();
+    // Collapsed here, on the AST, not by a pass over the generated HTML (BUG-07 §4.1).
+    // A run becomes ONE space and the node always survives — never trimmed, never
+    // dropped: `collapseSpace` says what that protects.
+    this.#w.mappedLine(`const ${v} = $dom.text(`, ...run.value, `); $dom.append(${parent}, ${v});`);
+  }
+
   /** Emit the build statements for a node and append it under `parent`. */
-  emit(node: HtmlContent, parent: string): void {
+  #emit(node: HtmlContent, parent: string): void {
     switch (node.type) {
-      case 'text': {
-        const v = this.#fresh();
-        // Collapsed here, on the AST, not by a pass over the generated HTML (BUG-07 §4.1).
-        // A run becomes ONE space and the node always survives — never trimmed, never
-        // dropped: `collapseSpace` says what that protects.
-        const value = this.#space === 'preserve' ? node.value : collapseSpace(node.value);
-        this.#w.line(`const ${v} = $dom.text(${JSON.stringify(value)}); $dom.append(${parent}, ${v});`);
-        return;
-      }
-      case 'razor-expression': {
-        const v = this.#fresh();
-        this.#w.mappedLine(
-          `const ${v} = $dom.text(String((`,
-          { text: this.#slice(node.expr), src: node.expr.start },
-          `) ?? '')); $dom.append(${parent}, ${v});`,
-        );
-        return;
-      }
       case 'element':
         this.#element(node, parent);
         return;
@@ -147,11 +154,11 @@ export class MarkupEmitter {
       this.#w.line(`$dom.setAttr(${v}, 'data-adopt', ${JSON.stringify(el.name)});`);
       this.#w.line(`const ${s} = $dom.attachShadow(${v});`);
       this.#w.line(`${renderName(el.name)}($dom, ${s}, ${componentPropsExpr(this.#source, el)});`);
-      for (const child of el.children) this.emit(child, v); // light DOM (projected by <slot>)
+      this.emitChildren(el.children, v); // light DOM (projected by <slot>)
     } else {
       this.#w.line(`const ${v} = $dom.element(${JSON.stringify(el.name)});`);
       this.#elementAttrs(el, v);
-      for (const child of el.children) this.emit(child, v);
+      this.emitChildren(el.children, v);
     }
     this.#space = outer;
     this.#w.line(`$dom.append(${parent}, ${v});`);
@@ -162,13 +169,13 @@ export class MarkupEmitter {
       const head = i === 0 ? 'if' : '} else if';
       this.#w.mappedLine(`${head} (`, { text: this.#slice(branch.header.inner), src: branch.header.inner.start }, ') {');
       this.#w.indent();
-      for (const child of branch.body) this.emit(child, parent);
+      this.emitChildren(branch.body, parent);
       this.#w.dedent();
     });
     if (node.elseBody) {
       this.#w.line('} else {');
       this.#w.indent();
-      for (const child of node.elseBody) this.emit(child, parent);
+      this.emitChildren(node.elseBody, parent);
       this.#w.dedent();
     }
     this.#w.line('}');
@@ -177,7 +184,7 @@ export class MarkupEmitter {
   #foreach(loop: ForeachNode, parent: string): void {
     this.#w.mappedLine('for (', { text: this.#slice(loop.header.inner), src: loop.header.inner.start }, ') {');
     this.#w.indent();
-    for (const child of loop.body) this.emit(child, parent);
+    this.emitChildren(loop.body, parent);
     this.#w.dedent();
     this.#w.line('}');
   }
