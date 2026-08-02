@@ -10,11 +10,9 @@ import { build } from 'vite';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { fudic } from '../src/index.js';
+import { runtimeAlias } from './helpers/alias.js';
 
-const ssrDist = fileURLToPath(new URL('../../ssr/dist/index.js', import.meta.url));
-const transportDist = fileURLToPath(new URL('../../transport/dist/index.js', import.meta.url));
 
 const BADGE = `@code {
   const { tone = 'neutral' } = props<{ tone?: string }>();
@@ -64,7 +62,7 @@ beforeAll(async () => {
   const result = (await build({
     root,
     logLevel: 'silent',
-    resolve: { alias: { '@fudic/ssr': ssrDist, '@fudic/transport': transportDist } },
+    resolve: { alias: { ...runtimeAlias } },
     plugins: [fudic()],
     build: { write: false, minify: false },
   })) as unknown as { output: OutFile[] };

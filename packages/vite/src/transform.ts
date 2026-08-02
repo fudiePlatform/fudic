@@ -20,6 +20,7 @@ import { dirname, relative, resolve } from 'node:path';
 import {
   resolveDocument,
   emitComponentModuleMapped,
+  emitComponentClientModuleMapped,
   emitPageModuleMapped,
   emitLayoutModuleMapped,
   emitRouteModuleMapped,
@@ -78,20 +79,11 @@ function buildMap(id: string, source: string, out: EmitOutput): SourceMapV3 {
   return builder.build();
 }
 
-/** Transform one `.fud` file into its ES module, or `null` when `id` is not a `.fud`. */
-export function transformFud(id: string, io: ResolveIo): TransformResult | null {
-  if (!id.endsWith('.fud')) {
-    return null;
-  }
-  // `resolveDocument` is `resolveComponents` plus the layout chain: for a page or a
-  // component the chain is empty and the graph is the same one the emit always saw.
-  const resolved = resolveDocument(id, io);
-  const graph = resolved.value;
-  const entry = graph.entry;
-  const source = graph.entrySource;
+/** The emit options for one `.fud`: asset linking and the two injected specifiers. */
+function emitOptionsFor(id: string): Parameters<typeof emitPageModuleMapped>[1] {
   // A linkable asset exists when it resolves to a real file next to the `.fud` (§6.13).
   const baseDir = dirname(id);
-  const emitOptions = {
+  return {
     importExt: IMPORT_EXT,
     linkAssets: true,
     assetExists: (spec: string): boolean => existsSync(resolve(baseDir, spec)),
@@ -104,10 +96,57 @@ export function transformFud(id: string, io: ResolveIo): TransformResult | null 
     layoutSpecifier: (layout: ResolvedLayout): string =>
       relativeSpecifier(baseDir, layout.path),
   };
-  const out = emitFor(id, graph, emitOptions);
+}
+
+/** Transform one `.fud` file into its ES module, or `null` when `id` is not a `.fud`. */
+export function transformFud(id: string, io: ResolveIo): TransformResult | null {
+  if (!id.endsWith('.fud')) {
+    return null;
+  }
+  // `resolveDocument` is `resolveComponents` plus the layout chain: for a page or a
+  // component the chain is empty and the graph is the same one the emit always saw.
+  const resolved = resolveDocument(id, io);
+  const graph = resolved.value;
+  const entry = graph.entry;
+  const source = graph.entrySource;
+  const out = emitFor(id, graph, emitOptionsFor(id));
   return {
     code: out.code,
     map: buildMap(id, redactServerRegions(source, entry.code), out),
+    missingAssets: out.missingAssets,
+    diagnostics: resolved.diagnostics,
+  };
+}
+
+/**
+ * Transform one component `.fud` into its CLIENT chunk (SDD-15 §6.8) — the `?client` id.
+ *
+ * Returns `null` for anything that is not a component: a page, a route and a layout are
+ * rendered, not hydrated, and the thing that comes alive in the browser is always a custom
+ * element. The result is bundler INPUT and carries the `@code { @client }` region verbatim,
+ * TypeScript included; stripping types is the caller's job, as it is for `?server`.
+ */
+export function transformFudClient(id: string, io: ResolveIo): TransformResult | null {
+  if (!id.endsWith('.fud')) {
+    return null;
+  }
+  const resolved = resolveDocument(id, io);
+  const graph = resolved.value;
+  const entry = graph.entry;
+  if (entry.type !== 'component-document') {
+    return null;
+  }
+  const comp: ResolvedComponent = {
+    tag: entry.name,
+    path: id,
+    source: graph.entrySource,
+    doc: entry,
+    deps: graph.entryDeps,
+  };
+  const out = emitComponentClientModuleMapped(graph, comp, emitOptionsFor(id));
+  return {
+    code: out.code,
+    map: buildMap(id, redactServerRegions(graph.entrySource, entry.code), out),
     missingAssets: out.missingAssets,
     diagnostics: resolved.diagnostics,
   };

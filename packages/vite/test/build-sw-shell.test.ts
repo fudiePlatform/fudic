@@ -10,12 +10,10 @@ import { build, type Rollup } from 'vite';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { fudic } from '../src/index.js';
+import { runtimeAlias } from './helpers/alias.js';
 import { missingShellEntries } from '../src/plugin.js';
 
-const ssrDist = fileURLToPath(new URL('../../ssr/dist/index.js', import.meta.url));
-const transportDist = fileURLToPath(new URL('../../transport/dist/index.js', import.meta.url));
 
 const PAGE = `<!DOCTYPE html>
 <html>
@@ -36,7 +34,7 @@ async function buildWithShell(shell: readonly string[]): Promise<string[]> {
   await build({
     root,
     logLevel: 'silent',
-    resolve: { alias: { '@fudic/ssr': ssrDist, '@fudic/transport': transportDist } },
+    resolve: { alias: { ...runtimeAlias } },
     plugins: [fudic()],
     build: {
       write: false,

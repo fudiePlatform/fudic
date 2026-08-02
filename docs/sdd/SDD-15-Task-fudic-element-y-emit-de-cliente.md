@@ -3,7 +3,7 @@
 > **SDD:** [SDD-15 — Emit (AST → runtime)](./SDD-15-emit.md)
 > **Paquetes:** `@fudic/core` (base de custom element) · `@fudic/compiler` (emit)
 > **Rama:** `worktree-sdd-15-17-hidratacion`
-> **Progreso:** 19 / 19
+> **Progreso:** 22 / 22
 
 Primera tanda de la rama de cliente de SDD-15. La rama de servidor ya está `Hecho`
 (`emitComponentModule` / `emitPageModule`); aquí se abre la de cliente por su base, y solo
@@ -39,6 +39,11 @@ estáticos e interpolados, `class:`, hosts de componente hijo y defaults de `pro
 **Fuera de esta tanda** (van a `SDD-15-Task-*` posteriores): §3.1 `data-id`, §3.3–§3.6 los
 cuatro mapas JSON, §3.8 `Dom.event`/`Dom.bus`, §4.4 bus, §4.5 event bindings, §4.7 validación
 del prefijo `$` (`FUD0290`), reactividad fina de signals. Y todo SDD-17.
+
+**Dentro, y añadido al cierre** (fase 5): que el **plugin de Vite** emita el chunk de cada
+componente en el build. El hito B no está terminado mientras los ficheros solo salgan de un
+script suelto: emitirlos es lo que los somete al bundler y convierte cualquier error del emit
+en un fallo de build. El enlace sigue fuera.
 
 ---
 
@@ -199,6 +204,35 @@ del prefijo `$` (`FUD0290`), reactividad fina de signals. Y todo SDD-17.
       ficheros nuevos (`markup-client.ts`, `client.ts`, `runs.ts`) nacen al 100 %: la deuda
       heredada no rebaja el listón de lo nuevo. Nada de `/* v8 ignore */` para llegar al
       número.
+
+## Fase 5 — el plugin los emite (3)
+
+Añadida al cerrar la tanda, por decisión de Pedro: un emisor que solo escribe ficheros
+cuando lo llama un script suelto es deuda, y deja pendiente algo difícil de tener presente.
+La emisión se cierra aquí; el **enlace** (`data-id` y los cuatro mapas) es la etapa
+siguiente. No hace falta saber quién se hidrata para emitir: la hidratación ocurrirá en dos
+sitios y en los dos **con datos delante** —el servidor en tiempo de ejecución y el SW en la
+navegación—, así que el fichero tiene que existir antes de que nadie pueda preguntarlo.
+
+- [x] **20. El módulo de cliente del plugin.**
+      Crear `packages/vite/src/client.ts`: la query `?client` que convierte un componente en
+      su chunk, el nombre de salida (`h/<tag>` → `assets/h/<tag>-<hash>.js`) y
+      `discoverComponents`, que recorre las rutas construidas y saca **todos** los
+      componentes alcanzables por el grafo (`<link rel="component">` transitivo y la cadena
+      de layouts), deduplicados por tag y ordenados. Una ruta `excluded` no aporta ninguno.
+- [x] **21. `?client` en el transform, y un chunk por componente en `buildStart`.**
+      `transformFudClient` en `transform.ts` (devuelve `null` para todo lo que no sea un
+      componente: una página, una ruta y un layout se **renderizan**), la rama `?client` en
+      el `transform` del plugin —con el strip de TypeScript por Oxc, igual que `?server`, y
+      el FUD0363 de los assets que faltan— y el `emitFile` por componente en `buildStart`.
+      `FudicElement` sale como chunk compartido solo: es un `import` real, y Rollup lo separa.
+- [x] **22. Verde, cobertura y el ejemplo.**
+      `test/client.test.ts` + `test/build-client-chunks.test.ts` (13 + 5 casos), `client.ts`
+      al 100 % en las cuatro métricas. Los proyectos temporales de los tests de build pasan a
+      un alias compartido (`test/helpers/alias.ts`): un proyecto que use el plugin necesita
+      `@fudic/core` y `@fudic/dom` resueltos, que es un requisito real del framework y no un
+      artefacto de test. En `examples/basic`, `pnpm build` escribe hoy
+      `dist/assets/h/{app-badge,app-card,site-nav}-<hash>.js` y `dist/assets/element-<hash>.js`.
 
 ---
 

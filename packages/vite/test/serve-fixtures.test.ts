@@ -20,6 +20,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type AddressInfo } from 'node:net';
 import { fudic } from '../src/index.js';
+import { runtimeAlias } from './helpers/alias.js';
 import { runEdgePass } from '../src/edge.js';
 import { discoverRoutes } from '../src/discover.js';
 import { resolveOptions } from '../src/options.js';
@@ -51,7 +52,7 @@ beforeAll(async () => {
   await build({
     root,
     logLevel: 'silent',
-    resolve: { alias: { '@fudic/ssr': ssrDist, '@fudic/transport': transportDist } },
+    resolve: { alias: { ...runtimeAlias } },
     plugins: [fudic()],
     build: { write: false, minify: false },
   });
