@@ -105,7 +105,7 @@ describe('fudic new', () => {
     const plan = await planNew('demo', options(), fs);
     expect(plan.commands.map((command) => [command.command, ...command.args].join(' '))).toEqual([
       'pnpm install',
-      'git init',
+      'git init -b main',
       'git add -A',
       'git commit -m chore: scaffold fudic app',
     ]);

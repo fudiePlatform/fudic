@@ -40,7 +40,7 @@ describe('nodeCommandRunner', () => {
     const dir = mkdtempSync(join(tmpdir(), 'fudic-git-'));
     const runner = nodeCommandRunner();
 
-    expect(runner.run('git', ['init'], dir)).toBe(0);
+    expect(runner.run('git', ['init', '-b', 'main'], dir)).toBe(0);
     // An identity and no signing, so the commit does not depend on the machine's git config.
     runner.run('git', ['config', 'user.email', 'test@fudic.invalid'], dir);
     runner.run('git', ['config', 'user.name', 'Fudic Test'], dir);
@@ -52,6 +52,10 @@ describe('nodeCommandRunner', () => {
 
     const subject = spawnSync('git', ['log', '-1', '--format=%s'], { cwd: dir, encoding: 'utf8' });
     expect(subject.stdout.trim()).toBe(MESSAGE);
+
+    // And the branch is the one the plan asks for, not whatever `init.defaultBranch` says.
+    const branch = spawnSync('git', ['branch', '--show-current'], { cwd: dir, encoding: 'utf8' });
+    expect(branch.stdout.trim()).toBe('main');
   });
 
   it('reports a non-zero exit, and a command that could not start at all', () => {
