@@ -24,7 +24,7 @@ Una tanda, un worktree. Dentro de una tanda, el orden importa.
 | T-07 | Plantilla de `fudic g component` con `@code` | 1 · scaffold | `cli` | **Hecho** |
 | T-08 | `Show virtual files` abre los editores vacíos | 2 · extensión | `vscode` | **Hecho** |
 | T-09 | Cada reinicio filtra tres watchers | 2 · extensión | `vscode` | **Hecho** |
-| T-10 | Documentar el `[Error]` del reinicio | 2 · extensión | `vscode` | Pendiente |
+| T-10 | Documentar el `[Error]` del reinicio | 2 · extensión | `vscode` | **Hecho** |
 | T-11 | BUG: `slot=` se proyecta como prop | 3 · slots | `language-core` | Pendiente |
 | T-12 | Contrato de slots: `$Slots` | 3 · slots | `language-core` | Pendiente |
 | T-13 | Tags de componente: snippet + auto-link | 4 · edición | `language-server` | Pendiente |
@@ -375,9 +375,15 @@ muerte del proceso como error sin mirar si la parada la pedimos nosotros
 por coincidencia de texto es acoplarse a la cadena literal de una dependencia, y el día que
 cambie el filtro se queda mudo sin avisar.
 
-**Ficheros:** `packages/vscode/EXTENSION-DEV.md` — un párrafo en la sección de diagnóstico.
+**Ficheros:** [`EXTENSION-DEV.md`](../../EXTENSION-DEV.md) §«When it doesn't» — está en la raíz
+del repo, no dentro de `packages/vscode`.
 
 **Hecho cuando:** está escrito.
+
+**HECHO.** Anotado junto a los otros dos síntomas de arranque, diciendo además **por qué no se
+filtra**: envolver el canal para descartar una línea por coincidencia literal con la cadena de
+una dependencia deja el filtro mudo el día que esa cadena cambie —y precisamente en el canal
+cuyo trabajo es ser el único sitio donde asoma un fallo de verdad—.
 
 ---
 
