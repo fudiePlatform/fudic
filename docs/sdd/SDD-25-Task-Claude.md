@@ -25,7 +25,7 @@ Una tanda, un worktree. Dentro de una tanda, el orden importa.
 | T-08 | `Show virtual files` abre los editores vacíos | 2 · extensión | `vscode` | **Hecho** |
 | T-09 | Cada reinicio filtra tres watchers | 2 · extensión | `vscode` | **Hecho** |
 | T-10 | Documentar el `[Error]` del reinicio | 2 · extensión | `vscode` | **Hecho** |
-| T-11 | BUG: `slot=` se proyecta como prop | 3 · slots | `language-core` | Pendiente |
+| T-11 | BUG: `slot=` se proyecta como prop | 3 · slots | `language-core` | **Hecho** |
 | T-12 | Contrato de slots: `$Slots` | 3 · slots | `language-core` | Pendiente |
 | T-13 | Tags de componente: snippet + auto-link | 4 · edición | `language-server` | Pendiente |
 | T-14 | Completado de directivas `@` | 4 · edición | `language-server` | Pendiente |
@@ -434,6 +434,15 @@ descartada — el mapping del área de atributos usa `COMPLETION_ONLY_CAPS`, con
 que por ahí no rutan diagnósticos. Hay que mirar el virtual real.
 
 **Hecho cuando:** el BUG está en `Listo` y su §6 tiene un test escrito contra el código roto.
+
+**HECHO.** [`bugs/BUG-11-slot-como-prop.md`](./bugs/BUG-11-slot-como-prop.md) +
+[`BUG-11-Task.md`](./bugs/BUG-11-Task.md), en `Listo`, en el índice y en el registro de
+progreso. El contrato de §4 **se midió con `tsc` antes de escribir emisor**, que es lo que
+cambia el diseño: `$attrs<T>(a: T & $GlobalAttrs)` acepta los globales **sin una sola rama
+nueva** —el emisor no aprende que `id` existe; el vocabulario de HTML vive en el `.d.ts`— y
+conserva el `TS2561` *con la sugerencia* del nombre mal escrito, que era el riesgo real de la
+intersección. Y §2.4 responde la pregunta incómoda: la cobertura al 100 % no lo vio porque los
+tests afirman el **texto** emitido, no lo que TypeScript dice de él.
 
 ## T-12. Contrato de slots: `$Slots`
 
