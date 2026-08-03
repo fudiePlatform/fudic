@@ -8,14 +8,14 @@
   "type": "module",
   "license": "MIT",
   "author": "Pedro Hurtado",
-  "homepage": "https://github.com/fudie/fudic/tree/main/packages/vscode#readme",
+  "homepage": "https://github.com/fudiePlatform/fudic/tree/main/packages/vscode#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fudie/fudic.git",
+    "url": "git+https://github.com/fudiePlatform/fudic.git",
     "directory": "packages/vscode"
   },
   "bugs": {
-    "url": "https://github.com/fudie/fudic/issues"
+    "url": "https://github.com/fudiePlatform/fudic/issues"
   },
   "keywords": [
     "fudic",

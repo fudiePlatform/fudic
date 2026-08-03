@@ -6,13 +6,13 @@
   "type": "module",
   "license": "MIT",
   "author": "Pedro Hurtado",
-  "homepage": "https://github.com/fudie/fudic#readme",
+  "homepage": "https://github.com/fudiePlatform/fudic#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fudie/fudic.git"
+    "url": "git+https://github.com/fudiePlatform/fudic.git"
   },
   "bugs": {
-    "url": "https://github.com/fudie/fudic/issues"
+    "url": "https://github.com/fudiePlatform/fudic/issues"
   },
   "engines": {
     "node": ">=22.12.0"

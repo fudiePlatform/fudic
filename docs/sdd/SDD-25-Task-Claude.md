@@ -15,7 +15,7 @@ Una tanda, un worktree. Dentro de una tanda, el orden importa.
 
 | # | Tarea | Tanda | Paquete | Estado |
 |---|---|---|---|---|
-| T-01 | Corregir el remoto de los `package.json` | 0 · base | repo | Pendiente |
+| T-01 | Corregir el remoto de los `package.json` | 0 · base | repo | **Hecho** |
 | T-02 | Test frágil de reloj | 0 · base | `language-server` | Pendiente |
 | T-03 | `fudic new` debe fallar cuando un comando falla | 1 · scaffold | `cli` | Pendiente |
 | T-04 | El `git commit` del scaffold falla en Windows | 1 · scaffold | `cli` | Pendiente |
@@ -60,6 +60,11 @@ del open source. Viene de specs redactadas en Claude Web.
 [`packages/cli/templates/README.md.tmpl`](../../packages/cli/templates/README.md.tmpl). 14 en total.
 
 **Hecho cuando:** `grep -r "fudie/fudic"` no devuelve nada.
+
+**HECHO.** 14 ficheros: los 13 `package.json` (raíz + doce paquetes — eran doce, no once) y
+`README.md.tmpl`. Las dos únicas apariciones que quedan son las de este fichero y las de
+`SDD-25-Task-Pedro.md`, que *describen* el error y no deben cambiar. Sin test: es metadata de
+empaquetado y ningún test la afirmaba; verificado que los 13 JSON siguen parseando.
 
 ## T-02. Test frágil de reloj
 
