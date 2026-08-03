@@ -17,6 +17,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fudic } from '@fudic/vite';
 import { planNew } from '../src/plans/new.js';
+import { planComponent } from '../src/plans/component.js';
 import { apply } from '../src/apply.js';
 import { nodeReadIo, nodeWriteIo } from '../src/io.js';
 import { RecordingRunner } from './helpers.js';
@@ -24,6 +25,9 @@ import type { NewOptions } from '../src/types.js';
 
 const ssrDist = fileURLToPath(new URL('../../ssr/dist/index.js', import.meta.url));
 const transportDist = fileURLToPath(new URL('../../transport/dist/index.js', import.meta.url));
+// The client chunk of a component imports the runtime: `@fudic/core` is only needed once
+// there is a component in the tree, which is why the alias arrived with this test's component.
+const coreDist = fileURLToPath(new URL('../../core/dist/index.js', import.meta.url));
 
 describe('fudic new → vite build (§6.1)', () => {
   let output: { fileName: string; code?: string; source?: string }[];
@@ -49,6 +53,15 @@ describe('fudic new → vite build (§6.1)', () => {
     expect(runner.commands).toEqual([]); // --no-install --no-git: nothing spawned
 
     root = join(cwd, 'demo');
+
+    // A generated COMPONENT goes through the same build, wired into the generated route.
+    // Its `@code` carries an empty `@client {}`, and this is what proves that costs nothing:
+    // the build emits a client chunk for every component regardless of level (SDD-15), so if
+    // an empty client region broke that emit, it would break here.
+    const componentOpts = { cwd: root, force: false, dir: 'components', wireInto: ['routes/index.fud'], style: true, slot: true };
+    const component = await planComponent('app-button', componentOpts, nodeReadIo());
+    expect(component.errors).toEqual([]);
+    await apply(component, componentOpts, nodeWriteIo(), runner);
     const result = (await build({
       root,
       logLevel: 'silent',
@@ -56,7 +69,7 @@ describe('fudic new → vite build (§6.1)', () => {
       // `@fudic/vite` imports would need the install this test deliberately replaces with
       // workspace aliases. Its content is asserted separately in new.test.ts.
       configFile: false,
-      resolve: { alias: { '@fudic/ssr': ssrDist, '@fudic/transport': transportDist } },
+      resolve: { alias: { '@fudic/ssr': ssrDist, '@fudic/transport': transportDist, '@fudic/core': coreDist } },
       plugins: [fudic()],
       build: { write: false, minify: false },
     })) as unknown as { output: { fileName: string; code?: string; source?: string }[] };
@@ -83,5 +96,12 @@ describe('fudic new → vite build (§6.1)', () => {
 
   it('emits the Service Worker, because the tree declares sw.json', () => {
     expect(output.some((file) => file.fileName === 'fudic-sw.js')).toBe(true);
+  });
+
+  it('emits the client chunk of a generated component, empty @client and all', () => {
+    // `assets/h/app-button-<hash>.js`: the chunk SDD-15 emits per component. Its presence is
+    // the answer to the one thing the new `@code` template left unverified — an empty
+    // `@client {}` is inert, not a syntax the emit chokes on.
+    expect(output.some((file) => /^assets\/h\/app-button-.*\.js$/u.test(file.fileName))).toBe(true);
   });
 });

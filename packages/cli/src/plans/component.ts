@@ -1,15 +1,22 @@
 /**
- * `fudic g component <tag>` (SDD-22 §4.3): a component in N1 — markup and, unless
- * `--no-style`, its single `<style>`. No `@code`, and no flag to force a level: the
- * effective level is inferred by the compiler, and a flag that overrides it is a way to
- * lie to that inference.
+ * `fudic g component <tag>` (SDD-22 §4.3): the shape of a component, empty.
+ *
+ * Its `@code` with a `Props` type and an empty `@client`, its single `<style>` unless
+ * `--no-style`, and its host wrapper around an empty shadow template. Nothing else: no
+ * placeholder `<div>`, no invented CSS rule, no comment standing in for markup.
+ *
+ * The `@code` is there for every component, and that is deliberate. Writing the type and the
+ * `props<T>()` call by hand is the part that costs, a component that is only markup and style
+ * is the rare case, and an empty `@client {}` reclassifies nothing: a component has no level
+ * of its own — the client chunk is emitted for every one of them regardless (SDD-15) — so
+ * there is no inference here to lie to.
  */
 
 import { cliError, FUD_WIRE_TARGET_BROKEN, FUD_WIRE_TARGET_MISSING } from '../diagnostics.js';
 import { absolute, hrefBetween, joinPosix, toPosix } from '../paths.js';
 import { hasErrors, parseFud } from '../parse.js';
 import { existingTags, targetChange } from '../project.js';
-import { renderTemplate, styleBlock } from '../templates.js';
+import { codeBlock, renderTemplate, styleBlock } from '../templates.js';
 import { validateTag } from '../tag.js';
 import { wireComponentLink } from '../wire.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
@@ -27,10 +34,12 @@ export function planComponent(tag: string, opts: ComponentOptions, io: ReadIo = 
 
   const file = joinPosix(opts.dir, `${tag}.fud`);
   const contents = renderTemplate('component.fud', {
-    head: opts.style ? styleBlock(tag) : '',
+    code: codeBlock(),
+    head: opts.style ? styleBlock() : '',
     tag,
-    className: tag,
-    body: opts.slot ? '      <slot></slot>' : `      <!-- ${tag} markup -->`,
+    // Without `--slot` the shadow template is left EMPTY rather than filled with a comment:
+    // a placeholder is text the user has to delete before writing anything.
+    body: opts.slot ? '    <slot></slot>\n' : '',
   });
 
   const target = targetChange(opts.cwd, file, contents, opts.force, io);

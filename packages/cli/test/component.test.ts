@@ -37,7 +37,7 @@ const CARD = `<link rel="component" href="./app-badge.fud">
 `;
 
 describe('g component', () => {
-  it('creates an N1 component: no @code, host wrapper, one style without host=', async () => {
+  it('creates the shape of a component and nothing else (§6.2)', async () => {
     const fs = new MemoryFs();
     const plan = await planComponent('app-card', options(), fs);
     expect(plan.errors).toEqual([]);
@@ -50,12 +50,46 @@ describe('g component', () => {
     const doc = parseFud(change.contents).doc;
     expect(doc.type).toBe('component-document');
     if (doc.type !== 'component-document') return;
-    expect(doc.code).toBeUndefined();
     expect(doc.name).toBe('app-card');
     expect(doc.template).toBeDefined();
     expect(doc.head).toBeDefined();
+
+    // The `@code` is there for every component: writing the type and the `props<T>()` call
+    // by hand is the part that costs, and a component that is only markup and style is the
+    // rare case. `@client {}` empty reclassifies nothing — a component has no level of its
+    // own and gets its client chunk regardless (SDD-15).
+    expect(doc.code).toBeDefined();
+    expect(change.contents).toContain('const {} = props<Props>();');
+    expect(change.contents).toContain('@client {}');
+
+    // And nothing invented on top of it: no placeholder node, no made-up CSS rule, no
+    // comment standing in for markup. The `host=` marker is serialization's, not ours.
     expect(change.contents).not.toContain('host=');
-    expect(change.contents).not.toContain('@code');
+    expect(change.contents).not.toContain('<div');
+    expect(change.contents).not.toContain('<!--');
+    expect(change.contents).toContain('<style></style>');
+  });
+
+  it('is written whole: exactly the file the user is shown', async () => {
+    const plan = await planComponent('app-button', options(), new MemoryFs());
+    expect(plan.changes[0]!.contents).toBe(`@code {
+  type Props = {
+  };
+
+  const {} = props<Props>();
+
+  @client {}
+}
+
+<head>
+  <style></style>
+</head>
+
+<app-button>
+  <template shadowrootmode="open">
+  </template>
+</app-button>
+`);
   });
 
   it('--no-style drops the head, --slot emits a slot', async () => {

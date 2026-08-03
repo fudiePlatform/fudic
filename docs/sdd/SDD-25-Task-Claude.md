@@ -21,7 +21,7 @@ Una tanda, un worktree. Dentro de una tanda, el orden importa.
 | T-04 | El `git commit` del scaffold falla en Windows | 1 · scaffold | `cli` | **Hecho** |
 | T-05 | `git init` crea la rama `master` | 1 · scaffold | `cli` | **Hecho** |
 | T-06 | Registry local con Verdaccio | 1 · scaffold | repo | **Hecho** |
-| T-07 | Plantilla de `fudic g component` con `@code` | 1 · scaffold | `cli` | Pendiente |
+| T-07 | Plantilla de `fudic g component` con `@code` | 1 · scaffold | `cli` | **Hecho** |
 | T-08 | `Show virtual files` abre los editores vacíos | 2 · extensión | `vscode` | Pendiente |
 | T-09 | Cada reinicio filtra tres watchers | 2 · extensión | `vscode` | Pendiente |
 | T-10 | Documentar el `[Error]` del reinicio | 2 · extensión | `vscode` | Pendiente |
@@ -252,6 +252,32 @@ raro, no el común.
 **Hecho cuando:** el fichero generado parsea como `component-document`, y un test afirma que un
 `@client {}` **vacío** no dispara diagnóstico ni rompe el emit del chunk de cliente. Eso último
 es lo único de la tarea que no está verificado por lectura.
+
+**HECHO, con las props que pidió Pedro.** La plantilla emite además el tipo y la llamada:
+
+```
+@code {
+  type Props = {
+  };
+
+  const {} = props<Props>();
+
+  @client {}
+}
+```
+
+`props<T>()` vive en la zona neutral, fuera de `@client`, que es donde el emisor lo busca — así
+que la plantilla abre justo ese hueco. Fuera el `<div class="<tag>">`, la regla CSS de ejemplo y
+el comentario de relleno: un placeholder es texto que hay que borrar antes de escribir nada.
+`<style></style>` vacío y `<template shadowrootmode="open">` vacío salvo `--slot`.
+
+**El `@client {}` vacío está verificado, y no por inspección:** `new-build.test.ts` genera un
+componente, lo cablea en la ruta generada y pasa el árbol por un `vite build` real; el chunk
+`assets/h/app-button-<hash>.js` sale. De paso destapó un hueco del propio arnés — faltaba el
+alias de `@fudic/core`, que solo hace falta cuando hay un componente en el árbol.
+
+SDD-22 §4.3 reescrito. `plans/component.ts` pasa a 100 % en las cuatro métricas; paquete 93,25 →
+93,78 stmts y 86,57 → 87,39 ramas. 80 tests.
 
 ---
 
