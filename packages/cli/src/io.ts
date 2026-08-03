@@ -52,16 +52,33 @@ export function nodeWriteIo(): WriteIo {
   };
 }
 
+/** The executables that ship as `.cmd` shims on Windows, and cannot be spawned without one. */
+const SHIMMED_ON_WINDOWS: ReadonlySet<string> = new Set(['pnpm', 'npm', 'yarn']);
+
+/**
+ * Whether this command has to go through a shell.
+ *
+ * Per command, not per platform, and that distinction is the whole point. A package manager
+ * on Windows is a `.cmd` and `spawnSync` cannot start it directly, so it needs one. `git` is a
+ * real executable and must NOT get one: with `shell: true` Node joins the argv into a single
+ * command line WITHOUT quoting anything, so `git commit -m "chore: scaffold fudic app"`
+ * reaches `cmd.exe` as five bare words and git reads `scaffold`, `fudic` and `app` as
+ * pathspecs. The scaffold's initial commit never happened on Windows because of this.
+ */
+export function needsShell(command: string, platform: NodeJS.Platform): boolean {
+  return platform === 'win32' && SHIMMED_ON_WINDOWS.has(command);
+}
+
 export function nodeCommandRunner(): CommandRunner {
   return {
     run: (command, args, dir) => {
       mkdirSync(dir, { recursive: true });
-      // `shell: true` on Windows: `pnpm`/`git` are `.cmd` shims there. stdio inherited so
-      // the user sees the install output — the CLI never asks anything itself (§4.1).
+      // stdio inherited so the user sees the install output — the CLI never asks anything
+      // itself (§4.1).
       const result = spawnSync(command, [...args], {
         cwd: dir,
         stdio: 'inherit',
-        shell: process.platform === 'win32',
+        shell: needsShell(command, process.platform),
       });
       // A process killed by a signal has no exit code but did not succeed either, so it is
       // reported as "never ran" rather than as a zero that never happened.
