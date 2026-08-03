@@ -1,0 +1,62 @@
+<link rel="component" href="./value-display.fud">
+
+@code {
+  @client {
+    import { signal } from '@fudic/core';
+
+    // `.value="@(count.peek())"` hands over the NUMBER: the expression is a call, so
+    // what crosses the shadow boundary is 0, 1, 2 — and the signal stays here.
+    const count = signal(0);
+
+    function inc() {
+      count.set(count.peek() + 1);
+    }
+  }
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    .panel {
+      display: grid;
+      gap: 0.75rem;
+      border: 1px solid #dcdcdc;
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
+      background: white;
+    }
+    .row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    .inc {
+      font: inherit;
+      padding: 0.4rem 0.9rem;
+      border: 1px solid #1a73e8;
+      border-radius: 6px;
+      background: #1a73e8;
+      color: white;
+      cursor: pointer;
+    }
+    .own {
+      margin: 0;
+      color: #555;
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+
+<value-counter>
+  <template shadowrootmode="open">
+    <section class="panel">
+      <div class="row">
+        <button class="inc" @click="@inc">+1</button>
+        <p class="own">El padre tiene @(count.peek()).</p>
+      </div>
+      <value-display .value="@(count.peek())"></value-display>
+    </section>
+  </template>
+</value-counter>
