@@ -22,7 +22,7 @@ Una tanda, un worktree. Dentro de una tanda, el orden importa.
 | T-05 | `git init` crea la rama `master` | 1 · scaffold | `cli` | **Hecho** |
 | T-06 | Registry local con Verdaccio | 1 · scaffold | repo | **Hecho** |
 | T-07 | Plantilla de `fudic g component` con `@code` | 1 · scaffold | `cli` | **Hecho** |
-| T-08 | `Show virtual files` abre los editores vacíos | 2 · extensión | `vscode` | Pendiente |
+| T-08 | `Show virtual files` abre los editores vacíos | 2 · extensión | `vscode` | **Hecho** |
 | T-09 | Cada reinicio filtra tres watchers | 2 · extensión | `vscode` | Pendiente |
 | T-10 | Documentar el `[Error]` del reinicio | 2 · extensión | `vscode` | Pendiente |
 | T-11 | BUG: `slot=` se proyecta como prop | 3 · slots | `language-core` | Pendiente |
@@ -315,6 +315,30 @@ causa es otra y este diagnóstico no vale.
 - `packages/vscode/test/` — un test de round-trip `put` → `Uri.parse` → `toString` → `get`.
 
 **Hecho cuando:** los tres virtuales se abren con su contenido y su lenguaje.
+
+**HECHO.** Las dos mediciones primero, y las dos zanjan el diagnóstico:
+
+```
+encodeURIComponent : fudic-virtual:c%3A%2FUsers%2F…%2Fapp-button.fud.ts
+Uri.parse+toString : fudic-virtual:c%3A/Users/…/app-button.fud.ts        ← nunca coinciden
+emitVirtualFiles   : componente con <style> → 3 virtuales; el de cliente, 91 chars
+```
+
+El de cliente **no** salía vacío, así que era la URI, tal y como decía el discriminante. Y el
+recuento es correcto: 3 con `<style>` no vacío, 2 con el `<style></style>` de la plantilla nueva
+—un estilo vacío no produce nodo, así que no hay CSS que proyectar—. El emisor nunca tuvo culpa.
+
+**La clave pasa a ser el NOMBRE, no el texto de la URI**, y el provider consulta con `uri.path`,
+que es lo que `Uri.parse` devuelve decodificado. Simétrico por construcción, sin depender de que
+dos codificadores distintos se pongan de acuerdo.
+
+**Por qué el 100 % no lo vio:** el doble de `vscode` tenía
+`Uri.parse: (v) => ({ toString: () => v })` —la identidad— y el test del store hacía
+`get(put(...))` con su propia cadena. Los dos round-trippeaban su propia codificación. Ahora el
+doble usa `vscode-uri`, que es la implementación que VS Code embarca, y los tests preguntan al
+provider con el objeto `Uri` que tiene el editor. `vscode-uri@3.1.0` entra como devDependency.
+
+Cobertura de `vscode`: sigue en 100/100/100/100. 157 tests.
 
 ## T-09. Cada reinicio filtra tres watchers
 

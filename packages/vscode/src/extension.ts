@@ -87,7 +87,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       session?.status.setActiveLanguage(languageOf(editor)),
     ),
     vscode.workspace.registerTextDocumentContentProvider(VIRTUAL_SCHEME, {
-      provideTextDocumentContent: (uri) => virtuals.get(uri.toString()),
+      // `uri.path`, not `uri.toString()`: the path is what `Uri.parse` decoded back into the
+      // name the store was keyed on. The full text is re-encoded by VS Code's own table, which
+      // does not agree with `encodeURIComponent` about `/`.
+      provideTextDocumentContent: (uri) => virtuals.get(uri.path),
     }),
   );
 
