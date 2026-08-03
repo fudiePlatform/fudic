@@ -3,7 +3,7 @@
  * things: argv → command, command → plan, plan → (print | apply). Exit codes:
  *
  *   0  success
- *   1  usage error, or a collision without --force
+ *   1  usage error, a collision without --force, or a command of the plan that failed
  *   2  a compiler diagnostic on a file the CLI was asked to modify (--in), or a file
  *      `fudic fmt` was asked to format and could not read
  *
@@ -13,7 +13,7 @@
 
 import { parseArgs, USAGE } from './args.js';
 import { apply } from './apply.js';
-import { FUD_FORMAT_UNPARSEABLE, FUD_WIRE_TARGET_BROKEN } from './diagnostics.js';
+import { commandFailed, FUD_FORMAT_UNPARSEABLE, FUD_WIRE_TARGET_BROKEN } from './diagnostics.js';
 import { absolute } from './paths.js';
 import { planComponent } from './plans/component.js';
 import { planLayout } from './plans/layout.js';
@@ -103,7 +103,16 @@ async function execute(argv: readonly string[], deps: RunDeps): Promise<number> 
   }
 
   const applied = await apply(plan, command.opts, deps.writeIo, deps.runner);
-  if (!flags.json) human(`${applied.map((change) => (change.kind === 'create' ? `  create  ${change.path}` : `  modify  ${change.path}`)).join('\n')}\n`);
+  if (!flags.json) human(`${applied.changes.map((change) => (change.kind === 'create' ? `  create  ${change.path}` : `  modify  ${change.path}`)).join('\n')}\n`);
+
+  // Reported AFTER the changes, because those really did happen: the files are written
+  // before the first command runs, and a failure here does not unwrite them. Exit 1, the
+  // code of "the CLI could not do what was asked" — not 2, which means a source file the
+  // CLI was pointed at could not be read.
+  if (applied.failed !== undefined) {
+    human(`${formatError(commandFailed(applied.failed))}\n`);
+    return 1;
+  }
   return 0;
 }
 

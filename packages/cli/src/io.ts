@@ -22,9 +22,16 @@ export interface WriteIo {
   write(path: string, contents: string): void;
 }
 
-/** External processes: `pnpm install`, `git init`. Injected so tests never spawn. */
+/**
+ * External processes: `pnpm install`, `git init`. Injected so tests never spawn.
+ *
+ * It reports the exit code because the CLI has to: an install that dies leaves a project that
+ * does not build, and a command whose result nobody reads turns that into a silent success.
+ * `null` means the process never ran — the binary is not there — which is a different failure
+ * and gets a different message.
+ */
 export interface CommandRunner {
-  run(command: string, args: readonly string[], dir: string): void;
+  run(command: string, args: readonly string[], dir: string): number | null;
 }
 
 export function nodeReadIo(): ReadIo {
@@ -51,7 +58,14 @@ export function nodeCommandRunner(): CommandRunner {
       mkdirSync(dir, { recursive: true });
       // `shell: true` on Windows: `pnpm`/`git` are `.cmd` shims there. stdio inherited so
       // the user sees the install output — the CLI never asks anything itself (§4.1).
-      spawnSync(command, [...args], { cwd: dir, stdio: 'inherit', shell: process.platform === 'win32' });
+      const result = spawnSync(command, [...args], {
+        cwd: dir,
+        stdio: 'inherit',
+        shell: process.platform === 'win32',
+      });
+      // A process killed by a signal has no exit code but did not succeed either, so it is
+      // reported as "never ran" rather than as a zero that never happened.
+      return result.error === undefined ? result.status : null;
     },
   };
 }

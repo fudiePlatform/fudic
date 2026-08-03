@@ -17,7 +17,7 @@ Una tanda, un worktree. Dentro de una tanda, el orden importa.
 |---|---|---|---|---|
 | T-01 | Corregir el remoto de los `package.json` | 0 · base | repo | **Hecho** |
 | T-02 | Test frágil de reloj | 0 · base | `language-server` | **Hecho** |
-| T-03 | `fudic new` debe fallar cuando un comando falla | 1 · scaffold | `cli` | Pendiente |
+| T-03 | `fudic new` debe fallar cuando un comando falla | 1 · scaffold | `cli` | **Hecho** |
 | T-04 | El `git commit` del scaffold falla en Windows | 1 · scaffold | `cli` | Pendiente |
 | T-05 | `git init` crea la rama `master` | 1 · scaffold | `cli` | Pendiente |
 | T-06 | Registry local con Verdaccio | 1 · scaffold | repo | Pendiente |
@@ -115,6 +115,18 @@ escriben antes que los comandos y eso no cambia.
 - `packages/cli/test/` — los dobles de `CommandRunner` en `helpers.ts` y `new.test.ts`.
 
 **Hecho cuando:** un test con un runner que devuelve `status: 1` hace que `run` salga 1.
+
+**HECHO.** `CommandRunner.run` devuelve `number | null` —`null` es «el proceso no llegó a
+arrancar», que no es lo mismo que salir distinto de cero y no merece el mismo mensaje—. `apply`
+devuelve `ApplyResult { changes, failed? }` y **para en el primer fallo**: si el install muere,
+los tres `git` que venían detrás son ruido encima de un árbol que no compila. Los ficheros ya
+escritos **no** se revierten: se escriben antes de cualquier comando y borrarlos le quitaría al
+usuario el árbol que va a mirar. `FUD0451` nuevo, y `run` sale 1 **después** de listar lo
+creado, así que los dos hechos llegan.
+
+`apply.ts` y `diagnostics.ts` pasan a 100 % en las cuatro métricas; `run.ts` 80,4 → 85,7 stmts.
+`io.ts` sigue en su deuda heredada (los `node*Io` no los ejercita nadie). Paquete: 91,66 → 92,70
+stmts, 84,29 → 85,95 ramas. 75 tests.
 
 ## T-04. El `git commit` del scaffold falla en Windows
 
