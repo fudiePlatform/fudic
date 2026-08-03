@@ -20,7 +20,7 @@ Una tanda, un worktree. Dentro de una tanda, el orden importa.
 | T-03 | `fudic new` debe fallar cuando un comando falla | 1 · scaffold | `cli` | **Hecho** |
 | T-04 | El `git commit` del scaffold falla en Windows | 1 · scaffold | `cli` | **Hecho** |
 | T-05 | `git init` crea la rama `master` | 1 · scaffold | `cli` | **Hecho** |
-| T-06 | Registry local con Verdaccio | 1 · scaffold | repo | Pendiente |
+| T-06 | Registry local con Verdaccio | 1 · scaffold | repo | **Hecho** |
 | T-07 | Plantilla de `fudic g component` con `@code` | 1 · scaffold | `cli` | Pendiente |
 | T-08 | `Show virtual files` abre los editores vacíos | 2 · extensión | `vscode` | Pendiente |
 | T-09 | Cada reinicio filtra tres watchers | 2 · extensión | `vscode` | Pendiente |
@@ -190,6 +190,26 @@ Verdaccio rechaza republicar la misma `0.0.1`: el script limpia su storage en ca
 **Hecho cuando:** `fudic new demo` → install desde el registry local → `pnpm build` →
 `vite build`, todo en verde, con rama `main` y commit inicial hecho. Eso cierra de rebote el
 aviso de TypeScript degradado de la extensión, sin tocar `vscode`.
+
+**HECHO.** `pnpm registry` → [`scripts/local-registry.mjs`](../../scripts/local-registry.mjs) +
+[`scripts/verdaccio.yaml`](../../scripts/verdaccio.yaml). Construye, borra el storage —Verdaccio
+rechaza republicar `0.0.1` sobre `0.0.1`, y un registry sirviendo el tarball de un build
+anterior es peor que ninguno—, levanta Verdaccio 6.9.1 en `localhost:4873`, publica los **once**
+paquetes publicables y se queda arriba. `@fudic/*` sin uplink a propósito: caer a npm sería
+probar en silencio una versión que nadie construyó.
+
+**Verificado de punta a punta**, y de paso cierra T-04 y T-05 sobre el terreno:
+
+```
+npm_config_registry=http://localhost:4873 fudic new demo
+  → [main (root-commit) 429c250] chore: scaffold fudic app     ← un solo mensaje, rama main
+  → node_modules/{typescript,@fudic/{core,ssr,transport,vite}}  ← install real, sin 404
+vite build → dist/index.html + fudic-sw.js + fudic-main.js + chunks    ✓ 166 ms
+```
+
+Que exista `node_modules/typescript/lib` es lo que cierra el aviso degradado de la extensión.
+Sin test unitario: es un script de andamiaje que arranca un servidor y publica: lo que lo
+verifica es el ciclo completo de arriba, no un doble.
 
 ## T-07. Plantilla de `fudic g component` con `@code`
 

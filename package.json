@@ -20,6 +20,7 @@
   "packageManager": "pnpm@11.9.0",
   "scripts": {
     "build": "pnpm -r build",
+    "registry": "node scripts/local-registry.mjs",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "coverage": "pnpm -r coverage"
@@ -29,6 +30,7 @@
     "@types/node": "22.20.0",
     "@vitest/coverage-v8": "4.1.9",
     "typescript": "5.9.3",
+    "verdaccio": "6.9.1",
     "vite": "8.0.16",
     "vitest": "4.1.9"
   }
