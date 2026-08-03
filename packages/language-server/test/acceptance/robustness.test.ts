@@ -157,7 +157,11 @@ describe('§6.14 — cancellation', () => {
     // the answer it asked for is about text that no longer exists.
     for (const token of sources.slice(0, -1)) token.cancel();
 
-    harness.resume();
+    // Resumed only once the WHOLE burst is held: BURST edits, BURST requests and BURST−1
+    // cancellations. `sendRequest` and `cancel()` return before their bytes reach the pipe, so
+    // releasing without counting releases whatever had arrived — and how much that is depends on
+    // how busy the machine is, which is exactly the clock §6.14 refuses to be measured by.
+    await harness.resume(BURST * 3 - 1);
     await Promise.all(pending);
 
     // One region of rest, one completed request. The other four never did the work: the token

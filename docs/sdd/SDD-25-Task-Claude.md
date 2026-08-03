@@ -16,7 +16,7 @@ Una tanda, un worktree. Dentro de una tanda, el orden importa.
 | # | Tarea | Tanda | Paquete | Estado |
 |---|---|---|---|---|
 | T-01 | Corregir el remoto de los `package.json` | 0 · base | repo | **Hecho** |
-| T-02 | Test frágil de reloj | 0 · base | `language-server` | Pendiente |
+| T-02 | Test frágil de reloj | 0 · base | `language-server` | **Hecho** |
 | T-03 | `fudic new` debe fallar cuando un comando falla | 1 · scaffold | `cli` | Pendiente |
 | T-04 | El `git commit` del scaffold falla en Windows | 1 · scaffold | `cli` | Pendiente |
 | T-05 | `git init` crea la rama `master` | 1 · scaffold | `cli` | Pendiente |
@@ -77,6 +77,17 @@ corren los once paquetes en paralelo y pasa en aislado: depende del reloj real.
 `src/` si hay que abrirle la costura.
 
 **Hecho cuando:** `pnpm test` en la raíz sale verde tres veces seguidas.
+
+**HECHO.** El diagnóstico de partida era equivocado: el test **ya** evitaba el reloj con
+`harness.pause()`/`resume()`. Lo que quedaba suelto es que `sendRequest` y `token.cancel()`
+retornan **antes** de que sus bytes lleguen al pipe, así que `resume()` soltaba lo que hubiera
+llegado — y cuánto es eso sí depende de lo cargada que esté la máquina. Ahora `resume(frames)`
+espera a tener retenida la ráfaga entera (`BURST*3−1`: 5 ediciones, 5 peticiones, 4
+cancelaciones) contando cabeceras `Content-Length`. Sigue sin haber reloj: se espera un
+**evento**, no una duración.
+
+Solo `test/`, `src/` intacto — cobertura de `language-server` sigue en 100/100/100/100.
+`pnpm test` en la raíz, verde tres veces seguidas: 2254 tests.
 
 ---
 

@@ -103,7 +103,16 @@ export interface Harness {
    * pipe makes it certain instead of likely.
    */
   pause(): void;
-  resume(): void;
+  /**
+   * Release the held bytes, optionally waiting until `frames` messages have been held.
+   *
+   * The count is what makes the burst a measurement instead of a race. `sendRequest` and
+   * `token.cancel()` return before their bytes reach the pipe, so resuming right after issuing
+   * them releases whatever happened to have arrived — which on a loaded machine is not the whole
+   * burst. Waiting for the frames waits for an EVENT, not for a duration: there is still no
+   * clock in §6.14.
+   */
+  resume(frames?: number): Promise<void>;
   stop(): Promise<void>;
 }
 
@@ -129,9 +138,25 @@ export async function startHarness(
   const toClient = new PassThrough();
 
   let held: Buffer[] | undefined;
+  let waiting: { readonly frames: number; readonly resolve: () => void } | undefined;
+
+  // How many JSON-RPC messages are held. Counted by their header, which is the only part of the
+  // framing that is fixed: a body could in principle contain the string, but these bodies are
+  // `.fud` sources and LSP positions, and none of them does.
+  const framesHeld = (chunks: readonly Buffer[]): number =>
+    Buffer.concat(chunks).toString('utf8').split('Content-Length:').length - 1;
+
   fromClient.on('data', (chunk: Buffer) => {
-    if (held === undefined) toServer.write(chunk);
-    else held.push(chunk);
+    if (held === undefined) {
+      toServer.write(chunk);
+      return;
+    }
+    held.push(chunk);
+    if (waiting !== undefined && framesHeld(held) >= waiting.frames) {
+      const { resolve } = waiting;
+      waiting = undefined;
+      resolve();
+    }
   });
 
   const serverConnection = createConnection(
@@ -201,7 +226,12 @@ export async function startHarness(
       held = [];
     },
 
-    resume() {
+    async resume(frames?: number) {
+      if (frames !== undefined && held !== undefined && framesHeld(held) < frames) {
+        await new Promise<void>((resolve) => {
+          waiting = { frames, resolve };
+        });
+      }
       const pending = held ?? [];
       held = undefined;
       if (pending.length > 0) toServer.write(Buffer.concat(pending));
