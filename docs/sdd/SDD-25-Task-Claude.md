@@ -23,7 +23,7 @@ Una tanda, un worktree. Dentro de una tanda, el orden importa.
 | T-06 | Registry local con Verdaccio | 1 · scaffold | repo | **Hecho** |
 | T-07 | Plantilla de `fudic g component` con `@code` | 1 · scaffold | `cli` | **Hecho** |
 | T-08 | `Show virtual files` abre los editores vacíos | 2 · extensión | `vscode` | **Hecho** |
-| T-09 | Cada reinicio filtra tres watchers | 2 · extensión | `vscode` | Pendiente |
+| T-09 | Cada reinicio filtra tres watchers | 2 · extensión | `vscode` | **Hecho** |
 | T-10 | Documentar el `[Error]` del reinicio | 2 · extensión | `vscode` | Pendiente |
 | T-11 | BUG: `slot=` se proyecta como prop | 3 · slots | `language-core` | Pendiente |
 | T-12 | Contrato de slots: `$Slots` | 3 · slots | `language-core` | Pendiente |
@@ -356,6 +356,13 @@ el cliente LSP solo dispone los *listeners* que engancha, nunca los watchers.
 - `packages/vscode/test/activate.test.ts`.
 
 **Hecho cuando:** un test afirma que N reinicios dejan N·3 disposiciones, no N·3 watchers vivos.
+
+**HECHO.** `LanguageClientPort` gana `dispose()`, los watchers se retienen por nombre en
+`createClient` y `stopQuietly` los suelta en un **`finally`**, no tras el `await`: el cliente que
+no se pudo parar es justamente aquel cuyos watchers no va a soltar nadie más, y saltárselo ahí es
+como un bucle de reinicios acaba reteniendo un juego por intento. El doble del watcher ahora
+**cuenta** sus `dispose`, que es lo que hacía falta para que el defecto fuese observable.
+Cobertura de `vscode`: 100/100/100/100. 158 tests.
 
 ## T-10. Documentar el `[Error]` del reinicio
 

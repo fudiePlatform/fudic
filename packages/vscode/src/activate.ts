@@ -115,16 +115,22 @@ const boot = async (host: FudicHost, status: Status, warnOnce: Once): Promise<Bo
 };
 
 /**
- * Stopping a server that may already be gone.
+ * Stopping a server that may already be gone, and releasing what it held.
  *
  * `stop()` on a client whose process died rejects, and a restart that fails because the
  * previous server was *already* dead is the exact case the restart command exists for.
+ *
+ * `dispose()` therefore runs in a `finally`, not after the `await`: the client that could not
+ * be stopped is exactly the one whose watchers nobody else is going to release, and skipping it
+ * there is how a crash loop ends up holding a set of watchers per attempt.
  */
 const stopQuietly = async (client: LanguageClientPort, host: FudicHost): Promise<void> => {
   try {
     await client.stop();
   } catch (error) {
     host.logger.info(`stopping the previous server failed, continuing: ${String(error)}`);
+  } finally {
+    client.dispose();
   }
 };
 

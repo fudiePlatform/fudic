@@ -191,7 +191,13 @@ export const workspace = {
   },
   createFileSystemWatcher: (glob: string) => {
     state.watchers.push(glob);
-    return { dispose: () => undefined };
+    // Counted, because a watcher that is never disposed is the defect: the client releases
+    // the listeners it hangs on one, never the watcher itself.
+    return {
+      dispose: () => {
+        state.disposed += 1;
+      },
+    };
   },
   registerTextDocumentContentProvider: (
     scheme: string,

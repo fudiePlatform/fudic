@@ -41,6 +41,11 @@ export const createClient = (
   launch: ClientLaunch,
   output: vscode.OutputChannel,
 ): LanguageClientPort => {
+  // Held by name, because they have to be disposed by hand later: the client disposes the
+  // listeners it attaches to a watcher, never the watcher, which belongs to whoever made it.
+  // Left to the client, every restart registered three more with the editor.
+  const watchers = launch.fileEvents.map((glob) => vscode.workspace.createFileSystemWatcher(glob));
+
   const client = new LanguageClient(
     // The id is `fudic` because `vscode-languageclient` derives the trace setting from it:
     // registering under this name is what makes `fudic.trace.server` work.
@@ -57,9 +62,7 @@ export const createClient = (
     {
       documentSelector: [...launch.documentSelector],
       initializationOptions: launch.initializationOptions,
-      synchronize: {
-        fileEvents: launch.fileEvents.map((glob) => vscode.workspace.createFileSystemWatcher(glob)),
-      },
+      synchronize: { fileEvents: watchers },
       outputChannel: output,
     },
   );
@@ -70,6 +73,9 @@ export const createClient = (
     start: () => client.start(),
     stop: () => client.stop(),
     sendRequest: (method, params) => client.sendRequest(method, params),
+    dispose: () => {
+      for (const watcher of watchers) watcher.dispose();
+    },
   };
 };
 

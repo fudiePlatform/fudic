@@ -187,14 +187,14 @@ describe('the commands, through the adapter', () => {
 });
 
 describe('createClient', () => {
-  it('narrows the client to the three things this package does with it', async () => {
+  it('narrows the client to the four things this package does with it', async () => {
     // The port exists so the rest of the package cannot reach for the client's other four
     // hundred members. Which means the narrowing itself is the contract, and it gets driven
     // here rather than being the one wrapper nobody exercises.
     const launch: ClientLaunch = {
       serverPath: '/srv.js',
       documentSelector: [{ scheme: 'file', language: 'fudic' }],
-      fileEvents: ['**/*.fud'],
+      fileEvents: ['**/*.fud', '**/package.json'],
       initializationOptions: {
         typescript: { tsdk: '/lib' },
         fudic: { templateDiagnostics: true, exposeVirtualFiles: false },
@@ -212,6 +212,13 @@ describe('createClient', () => {
     expect(client?.requests).toEqual([
       { method: 'fudic/virtualFiles', params: { uri: 'file:///x.fud' } },
     ]);
+
+    // `dispose` is the fourth, and the reason it exists: the watchers are created here, and
+    // the client only ever disposes the listeners it hangs on them.
+    expect(state.watchers).toEqual(['**/*.fud', '**/package.json']);
+    expect(state.disposed).toBe(0);
+    port.dispose();
+    expect(state.disposed).toBe(2);
   });
 });
 
