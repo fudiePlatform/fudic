@@ -1,8 +1,11 @@
 # BUG-11 — Un hijo que recibe un valor no tiene canal de actualización
 
 > **Estado:** `Listo`
-> **Corrige:** [SDD-15 — Emit](../SDD-15-emit.md) §3.7, §7 ·
+> **Corrige:** [SDD-15 — Emit](../SDD-15-emit.md) §3.7, §4.7, §7 ·
 > [props-spec](../props-spec.md) decisión 76
+> **Y de paso:** la colisión de namespace de `m`/`s` en la closure del factory (§2.5). No es un
+> BUG aparte porque la corrección de §3.3 **añade una tercera función** a esa misma closure:
+> separarlo sería publicar a sabiendas un nombre desprotegido más.
 > **Paquetes:** `@fudic/core` · `@fudic/compiler`
 > **Rama sugerida:** `fix/bug-11-update-de-props`
 > **Depende de:** nada. Va **antes** que el resto de la rama de cliente de SDD-15 (event
@@ -142,7 +145,42 @@ atributos: [`markup-client.ts:233-238`](../../../packages/compiler/src/emit/mark
 pone `data-adopt` y salta `writeElementAttrs` entero. `.value="@count"` se parsea, se clasifica
 y se descarta.
 
-### 2.5. Alcance
+### 2.5. El namespace del factory está reservado a medias, y este BUG lo empeora
+
+El cuerpo de `@code { @client }` se copia **verbatim** a la closure del factory
+([`client.ts:73`](../../../packages/compiler/src/emit/client.ts#L73)), y dos líneas después
+el emit declara ahí mismo `const m` y `const s`
+([:75](../../../packages/compiler/src/emit/client.ts#L75),
+[:78](../../../packages/compiler/src/emit/client.ts#L78)). Mismo bloque, mismo scope léxico.
+
+[SDD-15 §4.7](../SDD-15-emit.md) reserva el prefijo **`$`** para el compilador y sanciona con
+`FUD0290` al usuario que lo invada. `$dom`, `$shadow`, `$r`, `$d`, `$n0` están dentro de esa
+reserva. **`m` y `s` no.** Y son dos de los nombres de una letra más plausibles que existe.
+
+Medido sobre `packages/compiler/dist`, con un `@client` que declara `const s = signal(0)` y
+`const m = 2`:
+
+```js
+    let [$dom, $shadow] = $props;
+    const s = signal(0);            // ← del usuario
+    const m = 2;                    // ← del usuario
+
+    const m = () => { for (const $n of $r) $dom.append($shadow, $n); };
+    const s = () => {};
+```
+```
+SyntaxError: Identifier 'm' has already been declared
+```
+
+**El compilador no emite ni un diagnóstico**: entrega un chunk que el navegador no puede ni
+parsear, y `FUD0290` —que tampoco existe todavía en `packages/compiler/src`— no lo cubriría,
+porque el identificador del usuario es legal según la regla escrita.
+
+Esto entra en **este** BUG y no en uno aparte por un motivo que no es de comodidad: la
+corrección de §3.3 añade una **tercera** función a esa closure, `a`. Arreglarlo en otro sitio
+significaría publicar a sabiendas un nombre desprotegido más.
+
+### 2.6. Alcance
 
 - **Toda prop que no sea una signal**, es decir —por decisión 84— toda prop, en cualquier
   componente, en cualquier página.
@@ -201,7 +239,7 @@ export abstract class FudicElement extends HTMLElement {
 Es el **tercer** punto de entrada invocado desde fuera, hermano de `h` y `c`, no un callback del
 navegador. Su llamador es el padre, que es quien posee la signal.
 
-### 3.3. El factory emitido gana `u`, y las escrituras de valor salen a `a()`
+### 3.3. El factory emitido gana `u`, y las escrituras de valor salen a `$a()`
 
 ```js
 static c($props) {
@@ -209,24 +247,26 @@ static c($props) {
   const $r = [], $d = [];
   let [$dom, $shadow, title, variant = 'default'] = $props;
 
-  const m = () => { … };                       // montar (privada, solo c)
-  const s = () => { … };                       // enganchar (privada, c y h)
-  const a = () => {                            // aplicar valores (privada, c y u)
+  const $m = () => { … };                      // montar (privada, solo c)
+  const $s = () => { … };                      // enganchar (privada, c y h)
+  const $a = () => {                           // aplicar valores (privada, c y u)
     $dom.setText($n3, String((title) ?? ''));
     $dom.setAttr($n0, 'class', [...].filter(Boolean).join(' '));
   };
 
   return {
-    c: () => { /* fabricar */ a(); m(); s(); },
-    h: () => { /* adoptar  */ s(); },
-    u: ($p) => { [, , title, variant = 'default'] = $p; a(); },
+    c: () => { /* fabricar */ $a(); $m(); $s(); },
+    h: () => { /* adoptar  */ $s(); },
+    u: ($p) => { [, , title, variant = 'default'] = $p; $a(); },
     r: () => { … },
   };
 }
 ```
 
-- `a()` es **la única** función que escribe un valor en un nodo. `c` la llama tras fabricar;
+- `$a()` es **la única** función que escribe un valor en un nodo. `c` la llama tras fabricar;
   `u` tras reasignar; `h` **no** la llama (§4.3).
+- Las tres son `$m`, `$s` y `$a`, **no** `m`, `s` y `a`: entran en la reserva de namespace de
+  SDD-15 §4.7, que es lo que impide que un `@client` del usuario las machaque (§2.5, §3.5).
 - El patrón de asignación de `u` es el mismo que el del destructuring, con los **dos primeros
   huecos vacíos**: `$dom` y `$shadow` no se reasignan nunca. Los defaults se repiten, porque una
   actualización puede volver a traer `undefined`.
@@ -236,7 +276,7 @@ static c($props) {
 ### 3.4. El lado del padre: pase inicial y suscripción
 
 En un host de componente con `PropertyBinding`, `markup-client.ts` deja de saltar los atributos
-y emite en `s()`:
+y emite en `$s()`:
 
 ```js
 $n6.u([, , count.peek()]);                                   // valor inicial
@@ -247,9 +287,19 @@ Un `PropertyBinding` cuyo valor **no** es una signal (literal o expresión const
 nada: cruza una vez, ya está en el HTML que el servidor pintó, y `const` es su semántica exacta
 (decisión 75, intacta).
 
-### 3.5. Sin cambios
+### 3.5. Las funciones privadas del factory entran en la reserva `$`
 
-- `h`, `r`, `m`, `s`, `data-adopt` y el hoisting de estilos.
+`m` → **`$m`**, `s` → **`$s`**, y la nueva nace ya como **`$a`**. Es el arreglo de §2.5, y es
+un renombrado del **código emitido**, no de la interfaz: siguen siendo closures privadas, no
+salen en `{c, h, u, r}` y nadie fuera del chunk las nombra. `$r`, `$d`, `$dom`, `$shadow` y
+`$nN` ya estaban dentro.
+
+No se toca `FUD0290` ni se reserva ninguna letra nueva al usuario: el arreglo consiste
+precisamente en **no ocupar** nombres que son suyos.
+
+### 3.6. Sin cambios
+
+- `h`, `r`, `data-adopt` y el hoisting de estilos.
 - El reparto de tramos por tag del runtime (SDD-17 §4.4): `u` no es un camino de hidratación.
 - La forma del payload: mismo array posicional, mismo orden, sin esquema.
 - `Dom<N>`: `setText` y `setAttr` ya existen
@@ -272,7 +322,7 @@ llegar al controlador. Un solo método posicional cierra el canal con una entrad
 ### 4.2. `u` reasigna y reaplica; no reconstruye
 
 `u` no toca la estructura: no crea nodos, no monta, no vuelve a suscribir. Reasigna los bindings
-de prop y llama a `a()`. El coste es proporcional al número de **escrituras de valor** del
+de prop y llama a `$a()`. El coste es proporcional al número de **escrituras de valor** del
 componente, no al tamaño de su árbol.
 
 Reaplica **todas** las props, no la que cambió: son posicionales y el array llega entero. El
@@ -280,7 +330,7 @@ filtro que evita trabajo ya está donde debe, en la signal —`Object.is` en
 [`signal.ts:27`](../../../packages/core/src/signal.ts#L27)—, que no notifica si el valor no
 cambió.
 
-### 4.3. `h` no llama a `a()`, y es deliberado
+### 4.3. `h` no llama a `$a()`, y es deliberado
 
 El servidor ya pintó esos valores. Reaplicarlos en la hidratación sería reescribir cada
 `textContent` del subárbol con el string que ya tiene: trabajo dentro del gesto del usuario,
@@ -289,7 +339,7 @@ todo el modelo — *el payload es autoridad de estado, el DOM es autoridad de po
 **adopta** posiciones, no reimprime estado.
 
 La equivalencia SSR↔cliente que ya está testeada es la comprobación de que esto es seguro: si
-`a()` produjera algo distinto de lo que pintó el servidor, ese test lo diría.
+`$a()` produjera algo distinto de lo que pintó el servidor, ese test lo diría.
 
 ### 4.4. `u` sobre una instancia sin controlador es un no-op
 
@@ -298,7 +348,7 @@ Misma razón que `disconnectedCallback` ([`element.ts:65-70`](../../../packages/
 hidrata. Un `u` sobre una de ellas no debe fallar. Tras `r()`, el controlador ya es `null` y
 `u` vuelve a ser no-op sin caso especial.
 
-Esto **no** es el buffer de props que §2.5 descarta: no guarda nada ni lo aplica después. Es la
+Esto **no** es el buffer de props que §2.6 descarta: no guarda nada ni lo aplica después. Es la
 tolerancia mínima que exige el modelo de upgrade del navegador.
 
 ---
@@ -313,15 +363,21 @@ tolerancia mínima que exige el modelo de upgrade del navegador.
   padre queda congelado en el valor con el que se pintó, se hidrate o no.
 - ***El emit consume lo que el parser clasifica.*** `PropertyBinding` existe en el AST desde
   SDD-07 y no tiene lector (§2.4): sintaxis aceptada que no produce nada.
+- ***El prefijo `$` está reservado al código emitido*** ([SDD-15 §4.7](../SDD-15-emit.md)) — y el
+  propio emit se salía de él con `m` y `s` (§2.5). Una reserva que el reservador no respeta.
+- ***El compilador no emite código roto en silencio.*** Un `@client` con `const m` produce hoy un
+  chunk con un `SyntaxError`, sin diagnóstico.
 
 **Los que la corrección añade**
 
 - **`u` es la única superficie de escritura de un componente.** No hay setters, ni atributos
   observados, ni propiedades públicas: un solo método, posicional, con el mismo orden que el
   payload.
-- **`a()` es el único sitio donde un valor llega a un nodo.** Create y update convergen ahí, así
+- **`$a()` es el único sitio donde un valor llega a un nodo.** Create y update convergen ahí, así
   que no pueden divergir. Verificable por forma sobre el chunk emitido.
 - **`h` nunca reescribe lo que el servidor pintó.**
+- **Todo identificador que el emit introduce en la closure del factory empieza por `$`.** Sin
+  excepciones que recordar: la regla se comprueba mirando el chunk.
 
 ---
 
@@ -333,13 +389,13 @@ Tests en `packages/core/test/` y `packages/compiler/test/emit/`.
    cual, tras una alta por `h` y tras una alta por `c`.
 2. **(rojo primero)** `u` sobre una instancia que nunca recibió props no lanza y no crea
    controlador; `u` después de `disconnectedCallback` no lanza y no llega al controlador.
-3. **(rojo primero)** El chunk de un componente con una prop interpolada contiene `a: `/`const a
-   = ` y una entrada `u:`; `c` invoca `a()`, `u` invoca `a()`, y el cuerpo de `h` **no** contiene
-   ninguna llamada a `a()`.
+3. **(rojo primero)** El chunk de un componente con una prop interpolada declara `const $a = ` y
+   tiene una entrada `u:`; `c` invoca `$a()`, `u` invoca `$a()`, y el cuerpo de `h` **no**
+   contiene ninguna llamada a `$a()`.
 4. **(rojo primero)** El patrón de asignación de `u` deja vacíos los dos primeros huecos y
    conserva los defaults: `[, , title, variant = 'default'] = $p`.
 5. **(rojo primero)** Un host de componente con `.value="@count"`, siendo `count` una signal del
-   padre, emite en `s()` el pase inicial con `peek()` y una suscripción que llama a `u`, con el
+   padre, emite en `$s()` el pase inicial con `peek()` y una suscripción que llama a `u`, con el
    disposer en `$d`.
 6. Un `PropertyBinding` cuyo valor no es una signal **no** emite ni pase ni suscripción (decisión
    75 intacta).
@@ -348,8 +404,12 @@ Tests en `packages/core/test/` y `packages/compiler/test/emit/`.
    cambia el texto dentro del shadow root del hijo. **Es el criterio que define el BUG.**
 8. La equivalencia SSR↔cliente (`equivalence.test.ts`) sigue verde sin tocarla: `h` no reimprime.
 9. `r()` sigue liberando; un `u` posterior a `r` no resucita ningún nodo.
-10. Goldens regenerados y **revisados a mano**, los tres: la única diferencia esperada es la
-    salida de las escrituras de valor a `a()` y la nueva entrada `u`.
+10. **(rojo primero)** Un componente cuyo `@client` declara `const s` y `const m` produce un
+    chunk que **parsea y ejecuta**. Hoy no: `SyntaxError: Identifier 'm' has already been
+    declared`, sin ningún diagnóstico del compilador (§2.5).
+11. Goldens regenerados y **revisados a mano**, los tres: las únicas diferencias esperadas son
+    el renombrado `m`/`s` → `$m`/`$s`, la salida de las escrituras de valor a `$a()` y la nueva
+    entrada `u`.
 
 **Cobertura.** `@fudic/core` está al **100 %** en las cuatro métricas y no baja. `client.ts` y
 `markup-client.ts` nacieron al 100 % y no bajan.
@@ -369,14 +429,12 @@ Tests en `packages/core/test/` y `packages/compiler/test/emit/`.
 - **`.prop` sobre un elemento HTML nativo** (`<input .value="@x">`). Comparte el
   `PropertyBinding` sin lector, pero su destino es `setProp`, no `u`, y no cruza ningún shadow
   boundary.
-- **Las suscripciones finas de las signals propias del componente** (`s` con trabajo
+- **Las suscripciones finas de las signals propias del componente** (`$s` con trabajo
   estructural). Siguen siendo tarea pendiente de SDD-15; este BUG solo cablea el host de un hijo.
 - **El pase inicial de props a un hijo fabricado en runtime** por un `@if`/`@foreach` del padre.
   Necesita el render de bloque que aún no existe; cuando exista, su canal de alta es `c` y el de
   actualización es el `u` que este BUG deja hecho.
-
-**Hallazgo preexistente, fuera de alcance.** `m`, `s` —y el `a` que se añade— **no llevan `$`**,
-así que la reserva de namespace de [SDD-15 §4.7](../SDD-15-emit.md) (`FUD0290`, prefijo `$`) no
-los protege: un `@client` que declare `const s = …` machaca la función de enganche del propio
-componente. No lo causa este BUG y no lo arregla —renombrar toca los tres goldens y el
-formateador—: candidato a BUG propio.
+- **Implementar `FUD0290`.** El diagnóstico de SDD-15 §4.7 no existe en `packages/compiler/src`:
+  hoy nada impide que un `@client` declare `$dom`. Es tarea pendiente de SDD-15 y sigue siéndolo.
+  Este BUG hace lo contrario y suficiente: mete **sus propios** nombres dentro de la reserva, para
+  que cuando el diagnóstico llegue no haya que ampliarlo con excepciones.
