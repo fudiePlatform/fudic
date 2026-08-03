@@ -18,8 +18,8 @@ Una tanda, un worktree. Dentro de una tanda, el orden importa.
 | T-01 | Corregir el remoto de los `package.json` | 0 · base | repo | **Hecho** |
 | T-02 | Test frágil de reloj | 0 · base | `language-server` | **Hecho** |
 | T-03 | `fudic new` debe fallar cuando un comando falla | 1 · scaffold | `cli` | **Hecho** |
-| T-04 | El `git commit` del scaffold falla en Windows | 1 · scaffold | `cli` | Pendiente |
-| T-05 | `git init` crea la rama `master` | 1 · scaffold | `cli` | Pendiente |
+| T-04 | El `git commit` del scaffold falla en Windows | 1 · scaffold | `cli` | **Hecho** |
+| T-05 | `git init` crea la rama `master` | 1 · scaffold | `cli` | **Hecho** |
 | T-06 | Registry local con Verdaccio | 1 · scaffold | repo | Pendiente |
 | T-07 | Plantilla de `fudic g component` con `@code` | 1 · scaffold | `cli` | Pendiente |
 | T-08 | `Show virtual files` abre los editores vacíos | 2 · extensión | `vscode` | Pendiente |
@@ -145,6 +145,12 @@ la decisión pasa a ser por comando en vez de por plataforma.
 **Hecho cuando:** un test afirma que el comando `git` se lanza sin shell y que el mensaje llega
 como **un** argumento; y `fudic new` deja un commit real en Windows.
 
+**HECHO.** La decisión pasa a ser **por comando**, no por plataforma: `needsShell` da shell a
+`pnpm`/`npm`/`yarn` en Windows —son shims `.cmd` que `spawnSync` no puede arrancar de otra
+forma— y a nada más. El test **commitea de verdad** en un repo temporal con el mensaje del
+scaffold: es la única forma de que el defecto sea observable, y falla contra el código anterior.
+`io.ts` 77,8 → 89,7 stmts y 62,5 → 77,8 ramas.
+
 ## T-05. `git init` crea la rama `master`
 
 El plan emite `git init` a secas, así que manda `init.defaultBranch`, que sin configurar es
@@ -156,6 +162,9 @@ El plan emite `git init` a secas, así que manda `init.defaultBranch`, que sin c
 y la aserción de comandos en `packages/cli/test/new.test.ts`.
 
 **Hecho cuando:** el plan contiene `['init','-b','main']` y el proyecto generado está en `main`.
+
+**HECHO.** Afirmado en los dos niveles: el plan lo contiene (`new.test.ts`) y el repo temporal
+de `io.test.ts` sale en `main` tras pasar por el runner real.
 
 ## T-06. Registry local con Verdaccio
 
