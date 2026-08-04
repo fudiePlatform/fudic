@@ -1,0 +1,136 @@
+# SDD-28 — Tareas
+
+> **SDD:** [SDD-28 — Snippets y andamiaje en el editor](./SDD-28-snippets.md)
+> **Paquete:** `@fudic/language-server` (más una mudanza a `@fudic/compiler`)
+> **Rama:** `feat/sdd-28-snippets`, dentro del worktree `sdd-25-pendientes`
+> **Progreso:** 0 / 22
+
+Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
+tareas posteriores. Salvo donde se diga otra cosa, los ficheros son relativos a
+`packages/language-server/`.
+
+**El orden importa dentro de cada fase.** La fase 0 va primero porque las fases 4 y 5 escriben
+contra la firma que deja; la 1 antes que la 2 porque el catálogo no se puede probar sin las
+puertas; y la 5 (la cadena de `completions`) al final, porque es el único punto donde una
+regresión no rompe un test propio sino uno ajeno —el de Emmet—.
+
+---
+
+## Fase 0 — La mudanza del ancla (3)
+
+- [ ] **1. `componentLinkAnchor` en el compilador.**
+      Crear `packages/compiler/src/document/anchor.ts` con `LinkAnchor`,
+      `componentLinkAnchor(source, doc)` y `componentLinkTag(href)`, movidas literalmente desde
+      [`cli/src/wire.ts:23-76`](../../packages/cli/src/wire.ts#L23-L76) —incluido `lineIndent`—,
+      y exportarlas en `packages/compiler/src/index.ts`. Puras, sin I/O.
+- [ ] **2. La CLI importa desde el compilador.**
+      Modificar `packages/cli/src/wire.ts`: `alreadyLinked` y `wireComponentLink` **se quedan**;
+      `anchorFor` y `componentLinkTag` pasan a reexportarse desde `@fudic/compiler` para no
+      romper `src/index.ts`. `pnpm --filter @fudic/cli test` en verde **sin tocar sus tests**:
+      si alguno cambia, la mudanza no fue mecánica.
+- [ ] **3. Anotar SDD-22 §4.4.**
+      Modificar [`SDD-22-fudic-cli.md`](./SDD-22-fudic-cli.md) §4.4: el ancla vive ahora en el
+      compilador y por qué (una regla, dos consumidores).
+
+## Fase 1 — Las puertas (3)
+
+- [ ] **4. Contextos de texto.**
+      Modificar `src/services/position.ts`: `isEmptyDocument(source)`, `wordContextAt` (palabra
+      en markup **sin** `<`) y `directiveContextAt` (`@` + identificador parcial, con el span
+      **incluyendo el `@`**).
+- [ ] **5. Tests de los contextos.**
+      Modificar `test/services/position.test.ts`: palabra a medias, palabra pegada a `<` (que
+      sigue siendo `tagContextAt`), `@` solo, `@Ren` a medias, y el fichero de solo espacios.
+- [ ] **6. Resolución de scope.**
+      Crear `src/services/snippets.ts` con `SnippetScope` y la función que decide el scope de un
+      offset: `empty-document` por `isEmptyDocument`, `code-block` por el span de
+      `document.code`, `markup` por `isMarkupOffset`. Tests de los tres y del cuarto caso —el
+      cuerpo de un `<style>`, que no es ninguno—.
+
+## Fase 2 — El catálogo (5)
+
+- [ ] **7. Tipos y esqueletos de documento.**
+      Modificar `src/services/snippets.ts`: `FudSnippet`, `SNIPPETS` y los cuatro cuerpos de
+      `component`, `route`, `page` y `layout` (§5.1.a), como constantes.
+- [ ] **8. Control de flujo.**
+      Añadir los seis de §5.1.c: `@if`, `@if else`, `@foreach`, `@for`, `@while` y `@switch`,
+      este último con `case`/`default` y sin llaves por caso (decisión 14).
+- [ ] **9. Bloque `@code` por rol.**
+      Añadir los de §5.1.b con `requiresNoCodeBlock`: `props` + `@client` en un componente,
+      `@server load` en ruta y página, y `@code { }` a secas en un layout —**un layout no
+      declara `load`** (`FUD0430`)—.
+- [ ] **10. Directivas y zonas.**
+      Añadir los de §5.1.d: `@RenderBody`, `@RenderHead`, `@RenderSection` y `@section` en
+      markup por rol; `props`, `load`, `@server` y `@client` dentro del `@code`.
+- [ ] **11. `snippetsAt` y sus puertas.**
+      Implementar el filtro por scope, rol y `requiresNoCodeBlock`, y probarlo: ningún control
+      de flujo dentro de `@code`, ningún `@RenderBody` en una ruta, ningún `@client` fuera de un
+      componente, y el `@code` que desaparece en cuanto el documento ya tiene uno.
+
+## Fase 3 — Que el catálogo no mienta (3)
+
+- [ ] **12. Equivalencia con las plantillas de la CLI** (criterio 2).
+      Crear `test/services/snippets-templates.test.ts`: para los cuatro esqueletos, comparar
+      **byte a byte** el cuerpo del catálogo con `renderTemplate(file, vars)` de `@fudic/cli`,
+      pasando los tabstops como valores. Comprobado que muerde: cambiar un espacio del catálogo
+      lo pone en rojo.
+- [ ] **13. Todo cuerpo parsea** (criterios 3 y 6).
+      Crear `test/services/snippets-parse.test.ts`: sustituir cada tabstop por su valor por
+      defecto y pasar el resultado por `parseFud` —los esqueletos, cada uno con su rol y **cero
+      diagnósticos**; los de markup, insertados en un componente mínimo—.
+- [ ] **14. Escapes.**
+      Test que afirma que todo `$` de un cuerpo pertenece a un tabstop declarado, y que ningún
+      cuerpo lleva `\` suelto. Un `$` sin escapar es un cuerpo que se inserta mutilado y ningún
+      otro test lo vería.
+
+## Fase 4 — Tags y auto-enlace (4)
+
+- [ ] **15. Los componentes que este fichero PUEDE escribir.**
+      Modificar `src/services/tags.ts`: `TagCompletion` gana `linked`, y `componentTags` une los
+      enlazados (orden de `<link>`) con los del workspace vía `index.byRole('component')`,
+      excluyendo el propio fichero y calculando su `href` con `relativeHref`. `declaredTags` y
+      `tagDefinitionAt` **no se tocan** (criterio 15).
+- [ ] **16. La edición que enlaza.**
+      Añadir `linkInsertionFor(document, href)` sobre `componentLinkAnchor`: devuelve el `Span`
+      vacío y el texto a insertar, o nada si `alreadyLinked` (criterio 14).
+- [ ] **17. Tests de tags.**
+      Modificar `test/services/tags.test.ts`: los dos grupos, el orden, el fichero propio
+      ausente, la idempotencia y que F12 sigue sin resolver un tag no enlazado.
+- [ ] **18. El ancla es la misma que la de la CLI** (criterio 13).
+      Crear `test/acceptance/wiring.test.ts`: sobre un corpus con los cuatro roles, con y sin
+      links previos, aplicar el `TextEdit` del servidor y comparar con `wireComponentLink` de
+      `@fudic/cli`. Mismo patrón que
+      [`acceptance/formatting.test.ts`](../../packages/language-server/test/acceptance/formatting.test.ts).
+
+## Fase 5 — La cadena de `completions` (4)
+
+- [ ] **19. La rama de directivas.**
+      Modificar `src/services/plugin.ts`: tras `href` y `@section`, un contexto `@` que devuelve
+      los snippets de markup del rol, con `textEdit` sobre el span que incluye el `@`. Va
+      **antes** de Emmet.
+- [ ] **20. Fusión con Emmet** (invariante §5.3).
+      Modificar `completions()`: la rama de palabra-sin-`<` **añade** sus ítems a los de Emmet en
+      vez de retornar; la lista conserva `isIncomplete` si Emmet lo puso. La rama **con** `<`
+      sigue devolviendo la lista sola.
+- [ ] **21. La forma de los ítems.**
+      `insertTextFormat: Snippet` en todo lo de este SDD, `sortText` `0_` para lo enlazado y `1_`
+      para lo que aún no lo está, `labelDetails.description` distinto en cada grupo, y
+      `additionalTextEdits` solo cuando falta el `<link>`.
+- [ ] **22. El test que impide la regresión** (criterio 11).
+      Modificar `test/services/plugin.test.ts`: en la misma posición y en la **misma respuesta**,
+      los ítems de Emmet (`div` → `<div>$0</div>`) y los nuestros. **Comprobar que muerde**
+      contra la implementación que retorna en vez de fusionar.
+
+---
+
+## Cierre de la SDD
+
+- [ ] Aceptación sobre la conexión LSP viva: crear `test/acceptance/snippets.test.ts` con los
+      criterios 1, 5, 7, 8, 9, 10 y 12 contra el workspace de fixtures, como hace
+      [`acceptance/completion.test.ts`](../../packages/language-server/test/acceptance/completion.test.ts).
+- [ ] `pnpm typecheck`, `pnpm test` y `pnpm build` en verde en todo el workspace.
+- [ ] Cobertura **100 %** en las cuatro métricas en `@fudic/language-server`, y sin bajar en
+      `@fudic/compiler` ni en `@fudic/cli` tras la mudanza.
+- [ ] Marcar SDD-28 como `Hecho` y anotarlo en [INDEX.md](./INDEX.md) (tabla + registro de
+      progreso), más el estado de T-13/T-14 en
+      [SDD-25-Task-Claude.md](./SDD-25-Task-Claude.md).

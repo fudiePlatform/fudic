@@ -27,8 +27,8 @@ Una tanda, un worktree. Dentro de una tanda, el orden importa.
 | T-10 | Documentar el `[Error]` del reinicio | 2 · extensión | `vscode` | **Hecho** |
 | T-11 | BUG: `slot=` se proyecta como prop | 3 · slots | `language-core` | **Hecho** |
 | T-12 | Contrato de slots: `$Slots` | 3 · slots | `language-core` | **Hecho** |
-| T-13 | Tags de componente: snippet + auto-link | 4 · edición | `language-server` | Pendiente |
-| T-14 | Completado de directivas `@` | 4 · edición | `language-server` | Pendiente |
+| T-13 | Tags de componente: snippet + auto-link | 4 · edición | `language-server` | **Absorbida por [SDD-28](./SDD-28-snippets.md)** |
+| T-14 | Completado de directivas `@` | 4 · edición | `language-server` | **Absorbida por [SDD-28](./SDD-28-snippets.md)** |
 | T-15 | `@RenderSection(` y la query inversa del índice | 4 · edición | `language-server` | Pendiente |
 | T-16 | Anotar el guion de verificación manual | 5 · cierre | `vscode` | Pendiente |
 | T-17 | `<link rel="modulepreload">` | Aplazada · SDD-15/17 | `compiler` · `vite` | Aplazada |
@@ -517,6 +517,13 @@ tocar una tarea ya cerrada; merece tarea propia.
 Va después de la 3 porque esa toca `language-core`, que `language-server` consume vía
 `document-cache`. Dentro de la tanda, T-13 y T-14 extienden **la misma cadena** de
 `completions()`: en paralelo conflictan seguro.
+
+> **T-13 y T-14 ya no se implementan desde aquí.** Al empezar T-13 quedó claro que lo que se
+> pedía no era una tarea sino un catálogo —esqueletos de documento, control de flujo, zonas de
+> `@code`, directivas por rol y tags con auto-enlace—, y que **la mitad del valor es la
+> puerta**: dónde se ofrece cada cosa. Eso es una interfaz pública y un contrato con las
+> plantillas de la CLI, así que se especifica: [SDD-28](./SDD-28-snippets.md). **T-15 se queda
+> aquí**: la query inversa del índice es un problema del índice, no del catálogo.
 
 ## T-13. Tags de componente: snippet + auto-link
 
