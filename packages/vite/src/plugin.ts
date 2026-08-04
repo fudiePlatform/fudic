@@ -64,6 +64,7 @@ import {
   BUILD_ID_LENGTH,
   DEV_MAIN_URL,
   DEV_SW_URL,
+  PAGE_NAME_PREFIX,
 } from './constants.js';
 
 /** Split a module id into its path and query (without the `?`). */
@@ -385,7 +386,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         this.emitFile({
           type: 'chunk',
           id: WRAPPER_PREFIX + rb.route.pattern,
-          name: `c/${safeName(rb.route.pattern)}`,
+          name: `${PAGE_NAME_PREFIX}/${safeName(rb.route.pattern)}`,
           // Imported at runtime through the manifest, not via a static import Rollup
           // can see — keep its exports.
           preserveSignature: 'strict',

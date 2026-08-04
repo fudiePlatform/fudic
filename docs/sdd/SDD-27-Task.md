@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-27 — Artefactos de build y manifiesto](./SDD-27-artefactos-y-manifiesto.md)
 > **Paquetes:** `@fudic/vite`, `@fudic/transport` · **Rama:** `feat/sdd-27-artefactos`
-> **Progreso:** 0 / 24
+> **Progreso:** 3 / 24
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Los ficheros son relativos a `packages/vite/` salvo cuando se diga
@@ -10,17 +10,19 @@ otra cosa.
 
 ---
 
-## Fase 0 — Nomenclatura (3)
+## Fase 0 — Nomenclatura (3) ✅
 
-- [ ] **1. Nombrar las cuatro pasadas.**
+- [x] **1. Nombrar las cuatro pasadas.**
       Modificar `src/constants.ts`: la tabla de §3 del SDD como comentario de cabecera y
-      `PAGE_DIR = 'assets/c'`, `CLIENT_DIR = 'assets/h'` junto a `LINK_DIR`/`EDGE_DIR`.
-- [ ] **2. Sustituir los literales dispersos.**
+      `PAGE_NAME_PREFIX`/`CLIENT_NAME_PREFIX` junto a `LINK_DIR`/`EDGE_DIR`. Se nombran por
+      **prefijo de `chunk.name`**, no por ruta de salida: `assetsDir` es configurable, y el
+      prune y el rename deben casar contra algo que el usuario no pueda mover.
+- [x] **2. Sustituir los literales dispersos.**
       Modificar `src/client.ts` (`clientChunkName`) y `src/plugin.ts` para usar las
       constantes. Sin cambio de comportamiento: el `dist` emitido es idéntico.
-- [ ] **3. Comprobar que nada se movió.**
-      `pnpm build` en `examples/basic`; la lista de ficheros de `dist/` es la misma que
-      antes de la fase.
+- [x] **3. Comprobar que nada se movió.**
+      `pnpm build` en `examples/basic`; la lista de ficheros de `dist/` y los 5 HTML son
+      idénticos byte a byte a los de antes de la fase.
 
 ## Fase 1 — Contratos en `@fudic/transport` (4)
 
