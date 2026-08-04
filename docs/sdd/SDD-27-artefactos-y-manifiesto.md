@@ -2,7 +2,7 @@
 
 > **Paquetes:** `@fudic/vite`, `@fudic/transport`
 > **Rango de diagnósticos:** `FUD0500`–`FUD0519`
-> **Estado:** `Listo` · **Tareas:** [SDD-27-Task.md](./SDD-27-Task.md)
+> **Estado:** `Hecho` · **Tareas:** [SDD-27-Task.md](./SDD-27-Task.md)
 
 ---
 
@@ -86,40 +86,49 @@ export interface RouteRecord {
 }
 
 export interface UrlResolver {
-  /** El chunk de render de la ruta (pasada `link`). */
-  renderUrl(record: RouteRecord): string;
+  /** El chunk de render de la ruta, o `null` si el SW no puede renderizarla (§5.4). */
+  renderUrl(record: RouteRecord): string | null;
   /** El chunk de render de un componente (pasada `link`). */
   depUrl(name: string): string;
   /** El chunk de hidratación de un componente (pasada `client`). */
   hydrateUrl(name: string): string;
-  /** El endpoint de datos, con `:param` sin rellenar. `null` si la ruta no tiene `load`. */
-  dataUrl(record: RouteRecord): string | null;
+  /**
+   * El endpoint de datos de un patrón, con `:param` sin rellenar. **Total**: si la ruta
+   * tiene datos lo dice `dataPolicy`, y juntar las dos preguntas en una llamada dejaba al
+   * llamante una rama que no podía tomar.
+   */
+  dataUrl(pattern: string): string;
 }
 
 export function createUrlResolver(base: string, build: string): UrlResolver;
 ```
 
 `RouteRecord` **pierde** `chunk`, `deps` como URLs, `data` y `esm`. `RouteTable` gana
-`urls: UrlResolver`.
+`urls: UrlResolver`, y `ManifestFile` gana `base` — antes iba horneado en cada URL.
+
+La **presencia** de `deps` es la señal de capacidad: un registro sin `deps` es una ruta que
+solo sirve el servidor (una `ssg` enumerada es justo ese caso). Lista vacía **no** es lo
+mismo que ausente, y por eso `renderUrl` devuelve `null` en vez de una URL inventada.
 
 ### 4.2 `@fudic/vite`
 
 ```ts
-/** Nombres de chunk de una ruta. Única fuente para las pasadas link, client y el manifiesto. */
-export interface ChunkNames {
-  readonly entry: string;              // safeName(pattern)
-  readonly deps: readonly string[];    // tags, topológicos
-}
-export function chunkNamesOf(builds: readonly RouteBuild[]): ReadonlyMap<string, ChunkNames>;
+// names.ts — nombre de chunk desde su fichero. Parte por ANCHURA, no por el último `-`:
+// el hash de Rollup es base64url y lleva guiones (`site-nav-Bq-vwUs5.js`).
+export function chunkNameOf(fileName: string): string | null;
+export function chunkNamesOf(fileNames: readonly string[]): readonly string[];
 
-/**
- * Sustituye el hash de 8 caracteres por el build id en nombres de fichero, en el `.map`,
- * en el `sourceMappingURL` y en toda referencia dentro del código. Misma longitud.
- */
-export function renameToBuildId(
-  files: readonly EmittedFile[],
-  build: string,
-): { readonly files: readonly EmittedFile[]; readonly diagnostics: readonly FudicDiagnostic[] };
+// rename.ts — el renombrado se parte en decidir y reescribir, que es lo que lo hace
+// probable: el plan es puro y el reescrito es una sustitución de texto.
+export function planRename(fileNames: readonly string[], build: string): RenamePlan;
+export function rewriteReferences(code: string, plan: ReadonlyMap<string, string>): string;
+export function mapNameOf(fileName: string): string;
+
+// prune.ts — qué sobrevive al borrado de la pasada `page`, por ALCANZABILIDAD.
+export function keepSet(
+  items: readonly PruneItem[],
+  isRoot: (item: PruneItem) => boolean,
+): ReadonlySet<string>;
 ```
 
 ---
@@ -142,8 +151,10 @@ lo inlinea como data-URI.
 
 En `generateBundle`, **después** de que Vite haya resuelto y nombrado los assets, se
 borran del bundle los chunks alcanzables solo desde las entradas de página. Se conservan
-siempre: `fudic-main`, `fudic-sw`, los chunks de *client* y su clausura de imports, y
-**todo** `type === 'asset'`.
+`fudic-main`, `fudic-sw`, los chunks de *client* y su **clausura de imports** —lo que salva
+el `element-*` compartido sin nombrarlo— y todo `type === 'asset'`, **con una excepción**:
+un `.map` es un asset, y el de un chunk borrado se va con su chunk. Conservarlo publicaría
+las fuentes de código que ya no está.
 
 ### 5.2 Los nombres de *link* y *client* llevan el build id
 
@@ -156,8 +167,10 @@ originales ([plugin.ts:572-576](../../packages/vite/src/plugin.ts#L572-L576)) y 
 sustitución ocurre después. Y como no mueve ningún offset, los source maps siguen siendo
 válidos por construcción — que es exactamente la razón por la que el truco existe.
 
-Alcance: `sw/c/*` y `assets/h/*` + `element-*`. **Los assets de Vite conservan su hash de
-contenido**: son su pipeline, no el nuestro, y ahí el hash sí trabaja.
+Alcance: **solo lo que el cliente deriva** — `sw/c/*` y `assets/h/*`. `assets/element-*`
+**conserva su hash de contenido**, porque nadie deriva su URL (es un `import` estático
+dentro de los chunks de `h/`) y ahí el hash sigue ahorrando una descarga entre deploys.
+Los assets de Vite lo conservan por la misma razón: son su pipeline, no el nuestro.
 
 ### 5.3 Lo que se pierde, dicho en voz alta
 
@@ -189,7 +202,7 @@ cada build.
   ] }
 ```
 
-**Después** (≈430 B estimados, **con hidratación dentro**):
+**Después** (**639 B medidos**, con hidratación dentro):
 
 ```json
 { "build": "605477d3",
@@ -217,6 +230,17 @@ dataUrl(r)     = `${base}_fudic/data${r.pattern}`     // null si no hay dataPoli
 
 **`/h` entra con coste cero**: es la misma lista `deps` con otro prefijo. No hay array
 nuevo.
+
+Medido en `examples/basic`: **989 → 639 B**. El reparto importa más que el total, porque
+solo una mitad crece con la app:
+
+| | Antes | Después |
+|---|---|---|
+| Bloque fijo (`csp` + `build` + `base`) | 252 B | 265 B |
+| Rutas — **lo único que escala** | ~737 B | **410 B** |
+
+El bloque de CSP no baja: son dos plantillas literales que no dependen del número de rutas.
+Lo que se recorta es el coste **por ruta**, un 45 % menos.
 
 `deps` **conserva el orden topológico** que produce `topologicalDeps`: el `require` del
 linker es síncrono y depende de él. Que en `examples/basic` ningún componente importe a
@@ -257,12 +281,16 @@ para el par afectado.
 6. Los `.map` de *link* y *client* validan: un error en el navegador navega al `.fud`.
 7. `fudic-routes.json` no contiene ninguna URL: ni `chunk`, ni `data`, ni URLs en `deps`.
 8. `deps` conserva el orden que produce `topologicalDeps`.
-9. El hilo principal resuelve el chunk de hidratación de cualquier tag del grafo sin leer
-   del manifiesto nada salvo `build`.
+9. La URL del chunk de hidratación de cualquier tag del grafo es derivable con `build` y
+   nada más: `hydrateUrl(tag)`. **Quién la pide y cuándo no es de este SDD** — el hilo
+   principal detecta tags con un IntersectionObserver y se lo dice al Service Worker, que
+   es quien los descarga y los cachea (SDD-17).
 10. `FUD0500` ante un `hashCharacters` distinto de 8; `FUD0501` ante colisión de nombres.
     Ninguno rompe el build.
-11. El manifiesto de `examples/basic` baja de 989 B a **≤ 500 B**, incluyendo la
-    hidratación.
+11. El manifiesto de `examples/basic` baja de 989 B a **639 B**, incluyendo la hidratación,
+    con el coste **por ruta** de ~184 a **~102 B**. El presupuesto de ≤ 500 B que este
+    criterio pedía antes de implementar era una estimación a mano que no contaba con que el
+    bloque de CSP son 265 B fijos; lo que se mide es el coste por ruta, que es lo que crece.
 12. `pnpm typecheck`, `pnpm test` y `pnpm build` verdes en todo el workspace; los tests
     e2e de `examples/basic` (`sw-render`, `sw-network`) verdes contra el build nuevo.
 
