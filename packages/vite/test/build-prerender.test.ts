@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fudic } from '../src/index.js';
 import { runtimeAlias } from './helpers/alias.js';
+import { renderUrlOf } from './helpers/manifest.js';
 
 
 const PAGE = `<!DOCTYPE html>
@@ -79,7 +80,7 @@ describe('vite build — static prerender (mode 1)', () => {
     expect(record).toMatchObject({ pattern: '/about', mode: 'ssg' });
     // `ssg` is a fact about the BUILD. In the client the route renders like any other,
     // so it needs its chunk — the alternative was downloading the HTML file per route.
-    expect(record!['chunk']).toMatch(/^\/sw\/c\/about-.*\.js$/u);
+    expect(renderUrlOf(withSw, '/about')).toMatch(/^\/sw\/c\/about-[\w-]+\.js$/u);
     expect(record).not.toHaveProperty('html');
     expect(withSw.some((o) => o.fileName === 'about/index.html')).toBe(true);
   });

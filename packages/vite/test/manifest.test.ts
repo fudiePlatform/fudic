@@ -1,5 +1,5 @@
 /**
- * SDD-20 §4.2: manifest assembly — mode, linkable chunk, topological deps, the
+ * SDD-20 §4.2 + SDD-27 §5.4: manifest assembly — mode, topological dep NAMES, the
  * generated data endpoint and the prerendered HTML template.
  */
 
@@ -33,9 +33,7 @@ const INPUTS: ManifestInputs = {
   build: 'b1',
   base: '/',
   serviceWorker: true,
-  linkChunkOf: (rb) => `/sw/c${rb.route.pattern}.js`,
-  depsOf: () => ['/sw/c/dep.js'],
-  esmOf: (rb) => `/assets/c${rb.route.pattern}.js`,
+  depsOf: () => ['dep'],
 };
 
 describe('buildManifest', () => {
@@ -53,22 +51,21 @@ describe('buildManifest', () => {
     expect(file.routes.map((r) => r.pattern)).toEqual(['/about', '/blog/:slug']);
   });
 
-  it('a sw route carries its chunk, its topological deps and the generated data endpoint', () => {
+  it('a sw route carries its topological dep NAMES and its data policy — no URLs', () => {
     const { file } = buildManifest([routeBuild('/blog/:slug', { mode: 'sw' }, { hasLoad: true })], INPUTS);
     expect(file.routes[0]).toEqual({
       pattern: '/blog/:slug',
       mode: 'sw',
-      chunk: '/sw/c/blog/:slug.js',
-      deps: ['/sw/c/dep.js'],
-      data: '/_fudic/data/blog/:slug',
+      deps: ['dep'],
       dataPolicy: { policy: 'cache-first', ttl: null },
-      esm: '/assets/c/blog/:slug.js',
     });
+    expect(file.base).toBe('/');
   });
 
-  it('a route without load gets no data endpoint', () => {
+  it('a route without load gets no data policy, which is what says it has no endpoint', () => {
     const { file } = buildManifest([routeBuild('/now', { mode: 'sw' })], INPUTS);
-    expect(file.routes[0]?.data).toBeUndefined();
+    expect(file.routes[0]?.dataPolicy).toBeUndefined();
+    expect(file.routes[0]?.deps).toEqual(['dep']); // still renderable
   });
 
   it('BUG-02 §6.3 no record names an HTML file: the manifest is the client contract', () => {
@@ -85,7 +82,7 @@ describe('buildManifest', () => {
     }
   });
 
-  it('BUG-02 §6.4 an ssg route gets chunk, deps and — with load — its data endpoint', () => {
+  it('BUG-02 §6.4 an ssg route gets deps and — with load — its data policy', () => {
     const { file } = buildManifest(
       [routeBuild('/about', { mode: 'ssg', prerender: true, prerenderedHtml: true }, { hasLoad: true })],
       INPUTS,
@@ -93,14 +90,12 @@ describe('buildManifest', () => {
     expect(file.routes[0]).toMatchObject({
       pattern: '/about',
       mode: 'ssg',
-      chunk: '/sw/c/about.js',
-      deps: ['/sw/c/dep.js'],
-      data: '/_fudic/data/about',
+      deps: ['dep'],
       dataPolicy: { policy: 'cache-first', ttl: null },
     });
   });
 
-  it('an ENUMERATED ssg route gets no chunk: paramFallback "notFound" means 404', () => {
+  it('an ENUMERATED ssg route gets no deps key: paramFallback "notFound" means 404', () => {
     // `lazy` makes an enumerated route `sw`; `ssg` + `enumerate` is exactly the
     // declaration that an id outside paths() must not be rendered locally. The SW does
     // not carry the enumeration, so the only way to honour that is to give it no chunk.
@@ -109,18 +104,18 @@ describe('buildManifest', () => {
       INPUTS,
     );
     expect(file.routes[0]).toMatchObject({ pattern: '/customer/:id', mode: 'ssg' });
-    expect(file.routes[0]?.chunk).toBeUndefined();
+    expect(file.routes[0]?.deps).toBeUndefined();
   });
 
-  it('BUG-02 a route whose chunk was not emitted keeps its record, without a chunk', () => {
+  it('BUG-02 a route whose chunk was not emitted keeps its record, without deps', () => {
     // FUD0399: only the server can serve it. The router asks for what it HAS, so an
     // absent `chunk` is a decision, not a crash.
     const { file } = buildManifest([routeBuild('/about', { mode: 'ssg', prerenderedHtml: true })], {
       ...INPUTS,
-      linkChunkOf: () => '',
+      depsOf: () => null,
     });
     expect(file.routes[0]).toMatchObject({ pattern: '/about', mode: 'ssg' });
-    expect(file.routes[0]?.chunk).toBeUndefined();
+    expect(file.routes[0]?.deps).toBeUndefined();
   });
 
   it('the data ttl comes from the declared strategy', () => {
@@ -171,7 +166,7 @@ describe('buildManifest', () => {
       serviceWorker: false,
     });
     expect(file.routes[0]).toMatchObject({ mode: 'ssr' });
-    expect(file.routes[0]?.chunk).toBeUndefined();
+    expect(file.routes[0]?.deps).toBeUndefined();
   });
 
   it('is empty when every route is excluded', () => {

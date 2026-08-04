@@ -24,7 +24,11 @@ export function devUrl(base: string, name: string): string {
 }
 
 /** The dev manifest: every non-excluded route rendered by the dev server. */
-export function devManifest(builds: readonly RouteBuild[], build = 'dev'): ManifestFile {
+export function devManifest(
+  builds: readonly RouteBuild[],
+  build = 'dev',
+  base = '/',
+): ManifestFile {
   const routes: RouteRecord[] = [];
   for (const rb of builds) {
     if (rb.decision.mode === 'excluded') {
@@ -32,5 +36,5 @@ export function devManifest(builds: readonly RouteBuild[], build = 'dev'): Manif
     }
     routes.push({ pattern: rb.route.pattern, mode: 'ssr' });
   }
-  return { build, csp: DEFAULT_CSP, routes };
+  return { build, base, csp: DEFAULT_CSP, routes };
 }

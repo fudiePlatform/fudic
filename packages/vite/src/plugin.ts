@@ -66,6 +66,8 @@ import {
   DEV_SW_URL,
   PAGE_NAME_PREFIX,
 } from './constants.js';
+import { chunkNamesOf } from './names.js';
+import { planRename, rewriteReferences, mapNameOf } from './rename.js';
 
 /** Split a module id into its path and query (without the `?`). */
 function splitId(id: string): { path: string; query: string } {
@@ -526,9 +528,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           emitted.add(plan.map.fileName);
         }
       };
-      for (const chunk of link.chunks) {
-        emitWithMap(chunk);
-      }
+      // The link chunks are NOT emitted yet: their names still carry a content hash, and
+      // step 3b replaces it with the build id (§5.2) — which is not known until step 3.
 
       // 1b. The edge pass: the wrappers that run `@server load` in process. They are NOT
       //     emitted into the bundle — `emitFile` means "this gets published", and this is
@@ -586,25 +587,69 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         emitWithMap({ ...sw, code: sw.code.split(BUILD_TOKEN).join(buildId) });
       }
 
+      // 3b. Build-id naming (SDD-27 §5.2). The chunks whose URL the client DERIVES —
+      //     the link pass and the hydration chunks — trade their content hash for the
+      //     build id, so the manifest can state names instead of URLs. Same length, so no
+      //     offset moves and every source map stays valid; and no circularity, because the
+      //     id above was computed from the ORIGINAL names.
+      // Identified by their FACADE MODULE, not by their output path: `assetsDir` and the
+      // output naming are the host's to configure, and the one thing that cannot move is
+      // which module a chunk is the facade of.
+      const clientChunks = Object.values(bundle).filter(
+        (item): item is typeof item & { code: string; fileName: string } =>
+          item.type === 'chunk' &&
+          typeof item.facadeModuleId === 'string' &&
+          item.facadeModuleId.endsWith(`?${CLIENT_QUERY}`),
+      );
+      const rename = planRename(
+        [...link.chunks.map((c) => c.fileName), ...clientChunks.map((c) => c.fileName)],
+        buildId,
+      );
+      for (const d of rename.diagnostics) {
+        this.warn(`[${d.code}] ${d.message}`);
+      }
+      for (const chunk of clientChunks) {
+        const to = rename.files.get(chunk.fileName);
+        chunk.code = rewriteReferences(chunk.code, rename.files);
+        if (to === undefined) {
+          continue;
+        }
+        // `fileName` is mutated IN PLACE and the bundle key is left alone. Deleting the
+        // old key and re-adding under the new one drops the chunk from the output
+        // altogether — Rollup's output list is built from the entries it had, not from a
+        // re-read of the object — and the file silently stops being written. What decides
+        // the written path is `fileName`, so moving that is enough.
+        //
+        // Its `.map` is a separate entry and follows; the `sourceMappingURL` inside the
+        // code was already rewritten above, because it names the map by base name.
+        const mapAsset = bundle[mapNameOf(chunk.fileName)];
+        if (mapAsset !== undefined) {
+          mapAsset.fileName = mapNameOf(to);
+          emitted.add(mapNameOf(to));
+        }
+        chunk.fileName = to;
+        emitted.add(to);
+      }
+      for (const chunk of link.chunks) {
+        emitWithMap({
+          ...chunk,
+          fileName: rename.files.get(chunk.fileName) ?? chunk.fileName,
+          code: rewriteReferences(chunk.code, rename.files),
+        });
+      }
+
       // 4. The manifest: the one contract, emitted at a fixed URL.
-      const urlOf = (fileName: string): string => `${base}${fileName}`.replace(/\/{2,}/gu, '/');
       const { file, diagnostics } = buildManifest(builds, {
         build: buildId,
         base,
         serviceWorker: swConfig !== null,
-        // No `esm` in the PUBLISHED manifest (BUG-09 §3.2). It was a client URL for a file
-        // no client ever fetches: `importEsmChunk` reads it from disk, in Node, for the
-        // preview and the data endpoint. Publishing it announced the leak.
-        esmOf: () => '',
-        linkChunkOf: (rb) => {
-          const fileName = link.entries.get(rb.route.pattern);
-          if (fileName === undefined) {
+        depsOf: (rb) => {
+          if (!link.entries.has(rb.route.pattern)) {
             this.warn(`[${FUD_CHUNK_NOT_EMITTED}] no linkable chunk for ${rb.route.pattern}`);
-            return '';
+            return null;
           }
-          return urlOf(fileName);
+          return chunkNamesOf(link.deps.get(rb.route.pattern) ?? []);
         },
-        depsOf: (rb) => (link.deps.get(rb.route.pattern) ?? []).map(urlOf),
       });
       for (const d of diagnostics) {
         this.warn(`[${d.code}] ${d.message} (${d.file})`);

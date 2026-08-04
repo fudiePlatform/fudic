@@ -32,17 +32,16 @@ exports.render = function (ctx) {
 
 const FILE: ManifestFile = {
   build: 'b1',
+  base: '/',
   csp: DEFAULT_CSP,
   routes: [
     // Prerendered at build time. For the Service Worker that is a fact about the BUILD:
     // at runtime it renders like any other route (BUG-02 §3.2).
-    { pattern: '/about', mode: 'ssg', chunk: '/sw/c/about.js' },
+    { pattern: '/about', mode: 'ssg', deps: [] },
     {
       pattern: '/blog/:slug',
       mode: 'sw',
-      chunk: '/sw/c/blog.js',
-      deps: ['/sw/c/dep.js'],
-      data: '/_fudic/data/blog/:slug',
+      deps: ['dep'],
       dataPolicy: { policy: 'cache-first', ttl: null },
     },
     // A route whose chunk never made it into the build (FUD0399): only the server can
@@ -62,9 +61,9 @@ function harness(): {
 } {
   const network: string[] = [];
   const sources = new Map<string, string>([
-    [`${ORIGIN}sw/c/blog.js`, CHUNK_SOURCE],
-    [`${ORIGIN}sw/c/dep.js`, 'exports.v = 1;'],
-    [`${ORIGIN}sw/c/about.js`, ABOUT_SOURCE],
+    [`${ORIGIN}sw/c/blog-slug-b1.js`, CHUNK_SOURCE],
+    [`${ORIGIN}sw/c/dep-b1.js`, 'exports.v = 1;'],
+    [`${ORIGIN}sw/c/about-b1.js`, ABOUT_SOURCE],
   ]);
   const data = new Map<string, string>([[`${ORIGIN}_fudic/data/blog/x`, '{"n":42}']]);
 
@@ -173,7 +172,7 @@ describe('createRouter.handle — the synchronous decision', () => {
     expect(event.waits).toHaveLength(1);
     await Promise.all(event.waits);
     // Deps first, then the chunk: `require` is synchronous, so order is the contract.
-    expect(h.network).toEqual([`${ORIGIN}sw/c/dep.js`, `${ORIGIN}sw/c/blog.js`]);
+    expect(h.network).toEqual([`${ORIGIN}sw/c/dep-b1.js`, `${ORIGIN}sw/c/blog-slug-b1.js`]);
   });
 
   it('§6.14/§6.15 a warm `sw` route renders locally, once, with a fresh nonce', async () => {
@@ -199,7 +198,7 @@ describe('createRouter.handle — the synchronous decision', () => {
 
   it('§6.16 a link failure rescues once and then stops retrying that route', async () => {
     const h = harness();
-    h.sources.set(`${ORIGIN}sw/c/blog.js`, 'require("./absent.js");');
+    h.sources.set(`${ORIGIN}sw/c/blog-slug-b1.js`, 'require("./absent.js");');
     const dead: string[] = [];
     const errors: unknown[] = [];
     const r = router(h, { onDead: (p: string) => dead.push(p), onError: (_p: string, e: unknown) => errors.push(e) });
@@ -326,7 +325,7 @@ describe('createRouter — the SW renders, it does not cache documents (BUG-02)'
   it('§6.1 warming a prerendered route downloads its chunk and deps, never a document', async () => {
     const h = harness();
     await router(h).warm('/about');
-    expect(h.network).toEqual([`${ORIGIN}sw/c/about.js`]);
+    expect(h.network).toEqual([`${ORIGIN}sw/c/about-b1.js`]);
   });
 
   it('§6.2 no URL ending in .html is ever requested, in a whole install→warm→nav→nav cycle', async () => {
@@ -364,7 +363,7 @@ describe('createRouter — the SW renders, it does not cache documents (BUG-02)'
     expect(event.responded).toBeNull();
     expect(event.waits).toHaveLength(1);
     await Promise.all(event.waits);
-    expect(h.network).toEqual([`${ORIGIN}sw/c/about.js`]);
+    expect(h.network).toEqual([`${ORIGIN}sw/c/about-b1.js`]);
   });
 
   it('§6.7 an `ssr` route is never intercepted and its chunk is never downloaded', async () => {
@@ -465,8 +464,8 @@ describe('createRouter — the shell has a policy (BUG-01)', () => {
     const network: string[] = [];
     const net = async (request: Request): Promise<Response> => {
       network.push(request.url);
-      if (request.url.endsWith('sw/c/blog.js')) return new Response(CHUNK_SOURCE);
-      if (request.url.endsWith('sw/c/dep.js')) return new Response('exports.v = 1;');
+      if (request.url.endsWith('sw/c/blog-slug-b1.js')) return new Response(CHUNK_SOURCE);
+      if (request.url.endsWith('sw/c/dep-b1.js')) return new Response('exports.v = 1;');
       if (request.url.endsWith('_fudic/data/blog/x')) return new Response('{"n":42}');
       return new Response('[]');
     };
@@ -569,7 +568,7 @@ describe('createRouter — resources, ready and invalidate', () => {
         net: h.net,
       });
       await r.warm('/about');
-      expect(h.network).toEqual(['https://stub.test/sw/c/about.js']);
+      expect(h.network).toEqual(['https://stub.test/sw/c/about-b1.js']);
     } finally {
       vi.unstubAllGlobals();
     }
@@ -608,6 +607,6 @@ describe('createRouter — resources, ready and invalidate', () => {
     await r.warm('/blog/y');
     await r.warm('/account');
     await r.warm('/nope');
-    expect(h.network.filter((u) => u.endsWith('blog.js'))).toHaveLength(1);
+    expect(h.network.filter((u) => u.endsWith('blog-slug-b1.js'))).toHaveLength(1);
   });
 });

@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { fudic } from '../src/index.js';
 import { runtimeAlias } from './helpers/alias.js';
 import { BUILD_TOKEN } from '../src/constants.js';
+import { renderUrlOf, emitted, routeTable } from './helpers/manifest.js';
 
 const fixtures = fileURLToPath(new URL('../../compiler/fixtures', import.meta.url));
 
@@ -65,8 +66,11 @@ describe('vite build over the fixtures (hito §6.17)', () => {
     expect(manifest.csp.document).toContain('{nonce}');
     // `home` has `@server load`, so its data is not build-known: rendered in the SW.
     expect(manifest.routes[0]).toMatchObject({ pattern: '/home', mode: 'sw' });
-    expect(manifest.routes[0]!['chunk']).toMatch(/\/sw\/c\/home-.*\.js$/u);
-    expect(manifest.routes[0]!['data']).toBe('/_fudic/data/home');
+    // The record names components; the URL is DERIVED, and it has to land on a real file.
+    const chunk = renderUrlOf(output, '/home');
+    expect(chunk).toMatch(/^\/sw\/c\/home-[\w-]+\.js$/u);
+    expect(emitted(output, chunk!)).toBe(true);
+    expect(routeTable(output).urls.dataUrl('/home')).toBe('/_fudic/data/home');
   });
 
   it('emits a per-route RenderChunk', () => {
