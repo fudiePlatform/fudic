@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-27 — Artefactos de build y manifiesto](./SDD-27-artefactos-y-manifiesto.md)
 > **Paquetes:** `@fudic/vite`, `@fudic/transport` · **Rama:** `feat/sdd-27-artefactos`
-> **Progreso:** 23 / 23 — todas las tareas hechas; falta el cierre.
+> **Progreso:** 23 / 23 · SDD `Hecho`
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Los ficheros son relativos a `packages/vite/` salvo cuando se diga
@@ -153,7 +153,7 @@ otra cosa.
 
 ## Cierre de la SDD
 
-- [ ] `pnpm typecheck`, `pnpm test` y `pnpm build` en verde en todo el workspace.
-- [ ] Los 12 criterios de §7 del SDD verificados uno a uno.
-- [ ] `FUD0500` y `FUD0501` anotados en el catálogo consolidado de [SDD-12](./SDD-12-semantica.md).
-- [ ] Marcar SDD-27 como `Hecho` y anotarlo en [INDEX.md](./INDEX.md) (tabla + registro de progreso).
+- [x] `pnpm typecheck`, `pnpm test` y `pnpm build` en verde en todo el workspace: **2293 tests**.
+- [x] Los 12 criterios de §7 del SDD verificados uno a uno.
+- [x] `FUD0500` y `FUD0501` anotados en el catálogo consolidado de [SDD-12](./SDD-12-semantica.md).
+- [x] Marcar SDD-27 como `Hecho` y anotarlo en [INDEX.md](./INDEX.md) (tabla + registro de progreso).
