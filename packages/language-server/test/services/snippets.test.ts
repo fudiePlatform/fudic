@@ -66,11 +66,19 @@ function labelsAt(marked: string): readonly string[] {
 
 const HOST = '<app-x>\n  <template shadowrootmode="open">\n    |\n  </template>\n</app-x>\n';
 
+/** The same component, with the cursor at top level — where a `@code` may go. */
+const HOST_TOP = '|\n<app-x>\n  <template shadowrootmode="open"></template>\n</app-x>\n';
+
 const CONTROL_FLOW = ['@if', '@if else', '@foreach', '@for', '@while', '@switch'];
 
 const ROUTE = `<link rel="layout" href="../layouts/_layout.fud">
 
 <article>|</article>
+`;
+
+const ROUTE_TOP = `<link rel="layout" href="../layouts/_layout.fud">
+|
+<article>hi</article>
 `;
 
 const LAYOUT = `<!DOCTYPE html>
@@ -80,6 +88,19 @@ const LAYOUT = `<!DOCTYPE html>
   </head>
   <body>
     <main>|@RenderBody()</main>
+  </body>
+</html>
+`;
+
+const LAYOUT_HEAD = `<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    |
+    @RenderHead()
+  </head>
+  <body>
+    <main>@RenderBody()</main>
   </body>
 </html>
 `;
@@ -99,9 +120,15 @@ describe('snippetsAt — the skeletons', () => {
   });
 });
 
+/** The snippet of this label at the `|`, for the cases where the body is what matters. */
+function bodyAt(marked: string, label: string): string | undefined {
+  const offset = marked.indexOf('|');
+  return snippetsAt(cached(marked.replace('|', '')), offset).find((s) => s.label === label)?.body;
+}
+
 describe('snippetsAt — by role', () => {
-  it('a component gets control flow and its own @code', () => {
-    expect(labelsAt(HOST)).toEqual([...CONTROL_FLOW, '@code']);
+  it('a component gets control flow inside its template, and no @code there', () => {
+    expect(labelsAt(HOST)).toEqual(CONTROL_FLOW);
   });
 
   it('a layout gets its three directives, and a route does not', () => {
@@ -111,33 +138,45 @@ describe('snippetsAt — by role', () => {
     expect(labelsAt(ROUTE)).not.toContain('@RenderBody');
   });
 
-  it('a route gets @section, and a layout does not', () => {
-    expect(labelsAt(ROUTE)).toContain('@section');
+  it('a route gets @section at top level, and a layout never does', () => {
+    expect(labelsAt(ROUTE_TOP)).toContain('@section');
     expect(labelsAt(LAYOUT)).not.toContain('@section');
   });
 
   it('the @code of a component is not the @code of a route', () => {
-    const component = snippetsAt(cached(HOST.replace('|', '')), HOST.indexOf('|'));
-    const route = snippetsAt(cached(ROUTE.replace('|', '')), ROUTE.indexOf('|'));
-
-    expect(component.find((s) => s.label === '@code')?.body).toContain('props<');
-    expect(route.find((s) => s.label === '@code')?.body).toContain('async function load');
+    expect(bodyAt(HOST_TOP, '@code')).toContain('props<');
+    expect(bodyAt(ROUTE_TOP, '@code')).toContain('async function load');
   });
 
   it('a layout gets a bare @code: it never declares load (FUD0430)', () => {
-    const layout = snippetsAt(cached(LAYOUT.replace('|', '')), LAYOUT.indexOf('|'));
-    const code = layout.find((snippet) => snippet.label === '@code');
-
-    expect(code?.body).not.toContain('load');
-    expect(code?.body).toBe('@code {\n  $0\n}');
+    expect(bodyAt(LAYOUT_HEAD, '@code')).toBe('@code {\n  $0\n}');
   });
 });
 
-describe('snippetsAt — the @code block appears once', () => {
-  it('disappears as soon as the document has one', () => {
-    const withCode = `@code {\n  const a = 1;\n}\n${HOST}`;
+describe('snippetsAt — where a @code may go', () => {
+  it('is offered at top level in a component and in a route, not inside an element', () => {
+    expect(labelsAt(HOST_TOP)).toContain('@code');
+    expect(labelsAt(HOST)).not.toContain('@code');
+    expect(labelsAt(ROUTE_TOP)).toContain('@code');
+    expect(labelsAt(ROUTE)).not.toContain('@code');
+  });
 
-    expect(labelsAt(HOST)).toContain('@code');
+  it('is offered inside <head> in a layout, not in the body (decision 59)', () => {
+    // The cursor sits right after a `<meta>`: a tag with no closing tag has no content, so it
+    // is never what the cursor is inside of — otherwise the offset would read as "inside a
+    // meta" and the placement would fail.
+    expect(labelsAt(LAYOUT_HEAD)).toContain('@code');
+    expect(labelsAt(LAYOUT)).not.toContain('@code');
+  });
+
+  it('and a @section only at top level of the route (structure.ts)', () => {
+    expect(labelsAt(ROUTE)).not.toContain('@section');
+  });
+
+  it('disappears as soon as the document has one', () => {
+    const withCode = `@code {\n  const a = 1;\n}\n|\n<app-x>\n  <template shadowrootmode="open"></template>\n</app-x>\n`;
+
+    expect(labelsAt(HOST_TOP)).toContain('@code');
     expect(labelsAt(withCode)).not.toContain('@code');
   });
 });

@@ -35,6 +35,17 @@ export { resolveLayout, LAYOUTS_DIR, type LayoutResolution } from './layout.js';
 export { anchorFor, alreadyLinked, componentLinkTag, wireComponentLink } from './wire.js';
 export { parseFud, staticAttr, type ParsedFud } from './parse.js';
 export { renderTemplate, templatePath, TEMPLATES, type TemplateSpec, type TemplateRole } from './templates.js';
+// The block builders are public because a second consumer materializes the same templates:
+// the editor's document skeletons (SDD-28 §3.2), which must come out byte for byte identical
+// to what `fudic g` writes.
+export {
+  codeBlock,
+  indent,
+  renderSectionBlocks,
+  sectionBlocks,
+  serverCodeBlock,
+  styleBlock,
+} from './templates.js';
 export { formatChange, formatDiagnostic, formatDiff, formatError, formatPlan, planToJson } from './report.js';
 export {
   nodeReadIo,

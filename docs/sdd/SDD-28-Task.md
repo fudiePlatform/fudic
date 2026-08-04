@@ -3,7 +3,7 @@
 > **SDD:** [SDD-28 — Snippets y andamiaje en el editor](./SDD-28-snippets.md)
 > **Paquete:** `@fudic/language-server` (más una mudanza a `@fudic/compiler`)
 > **Rama:** `feat/sdd-28-snippets`, dentro del worktree `sdd-25-pendientes`
-> **Progreso:** 11 / 22 — fases 0, 1 y 2 hechas.
+> **Progreso:** 14 / 22 — fases 0 a 3 hechas.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Salvo donde se diga otra cosa, los ficheros son relativos a
@@ -87,16 +87,29 @@ regresión no rompe un test propio sino uno ajeno —el de Emmet—.
 
 ## Fase 3 — Que el catálogo no mienta (3)
 
-- [ ] **12. Equivalencia con las plantillas de la CLI** (criterio 2).
+- [x] **12. Equivalencia con las plantillas de la CLI** (criterio 2).
       Crear `test/services/snippets-templates.test.ts`: para los cuatro esqueletos, comparar
       **byte a byte** el cuerpo del catálogo con `renderTemplate(file, vars)` de `@fudic/cli`,
       pasando los tabstops como valores. Comprobado que muerde: cambiar un espacio del catálogo
       lo pone en rojo.
-- [ ] **13. Todo cuerpo parsea** (criterios 3 y 6).
+      **Hecho.** Los *block builders* (`codeBlock`, `serverCodeBlock`, `styleBlock`, `indent`,
+      `sectionBlocks`, `renderSectionBlocks`) no estaban en el `index.ts` de la CLI, así que
+      pasan a estarlo: un segundo consumidor materializa las mismas plantillas y necesita las
+      mismas piezas.
+- [x] **13. Todo cuerpo parsea** (criterios 3 y 6).
       Crear `test/services/snippets-parse.test.ts`: sustituir cada tabstop por su valor por
       defecto y pasar el resultado por `parseFud` —los esqueletos, cada uno con su rol y **cero
       diagnósticos**; los de markup, insertados en un componente mínimo—.
-- [ ] **14. Escapes.**
+      **Hecho, y el test destapó un hueco del catálogo antes de estar acabado.** Un `@code` es
+      un nodo **top-level** en un componente y en una ruta (decisiones 53, 83) y vive **dentro
+      de `<head>`** en una página y en un layout (59); un `@section` es top-level de su ruta.
+      Ofrecerlos en medio del cuerpo andamiaba un fichero en rojo —`FUD0153`/`FUD0155`—, así
+      que `FudSnippet` gana `placement: 'top-level' | 'in-head'` y la entrada de `@code` se
+      parte en cuatro, una por rol. Un elemento **sin tag de cierre** (`<meta>`, `<link>`) no
+      tiene contenido y por tanto nunca es aquello en cuyo interior está el cursor.
+      *El primer rojo fue del propio test*, no del catálogo: `\$\{?\d+\}?` se comía la llave de
+      cierre de `@client {$0}`. Las tres formas de tabstop se sustituyen con tres expresiones.
+- [x] **14. Escapes.**
       Test que afirma que todo `$` de un cuerpo pertenece a un tabstop declarado, y que ningún
       cuerpo lleva `\` suelto. Un `$` sin escapar es un cuerpo que se inserta mutilado y ningún
       otro test lo vería.

@@ -11,6 +11,7 @@
  * into a `CompletionItem` is the plugin's job.
  */
 
+import { documentRoots, walk, type ElementNode } from '@fudic/compiler';
 import type { CachedDocument } from '../document-cache.js';
 import { roleOf, type FudRole } from '../mode.js';
 import { isEmptyDocument } from './position.js';
@@ -46,6 +47,45 @@ export function scopeAt(document: CachedDocument, offset: number): SnippetScope 
   return isMarkupOffset(document, offset) ? 'markup' : undefined;
 }
 
+/**
+ * Where a construct is allowed to sit, for the ones that cannot sit anywhere.
+ *
+ * A `@code` block and a `@section` are top-level nodes of their document (decisions 53, 83
+ * and `FUD0155`/`FUD0153`/"@section must be a top-level node of the route"), and in a page or
+ * a layout `@code` lives inside `<head>` (decision 59/60). Offering them in the middle of the
+ * body would scaffold a file that is red the moment it lands, which is worse than not
+ * offering them at all.
+ */
+export type SnippetPlacement = 'top-level' | 'in-head';
+
+/**
+ * The innermost element whose CONTENT contains this offset, if any.
+ *
+ * An element with no closing tag — `<meta>`, `<link>` — has no content, so it can never be
+ * what an offset is inside of, and it is skipped rather than given an empty range.
+ *
+ * The last match wins, and that is not an arbitrary choice: `walk` is pre-order, so of two
+ * elements that both contain the offset the deeper one is always visited second.
+ */
+function innermostElementAt(document: CachedDocument, offset: number): ElementNode | undefined {
+  let found: ElementNode | undefined;
+  walk(documentRoots(document.document), {
+    element: (element) => {
+      const close = element.closeSpan;
+      if (close === undefined) return;
+      if (offset >= element.openSpan.end && offset <= close.start) found = element;
+    },
+  });
+  return found;
+}
+
+/** Whether this offset satisfies a placement. */
+function placedAt(document: CachedDocument, offset: number, placement: SnippetPlacement): boolean {
+  const element = innermostElementAt(document, offset);
+  if (placement === 'top-level') return element === undefined;
+  return element !== undefined && element.name === 'head';
+}
+
 /** One entry of the catalogue. */
 export interface FudSnippet {
   /** What is typed and what is shown. */
@@ -58,6 +98,8 @@ export interface FudSnippet {
   readonly roles?: readonly FudRole[];
   /** Only while the document has no `@code` yet — SDD-10 allows exactly one. */
   readonly requiresNoCodeBlock?: true;
+  /** Where it is legal. Absent means anywhere the scope allows. */
+  readonly placement?: SnippetPlacement;
 }
 
 // ── The document skeletons ────────────────────────────────────────────────────
@@ -236,7 +278,9 @@ export const SNIPPETS: readonly FudSnippet[] = [
     body: "@switch (${1:value}) {\n  case ${2:'a'}:\n    $0\n  default:\n}",
   },
 
-  // The `@code` block itself, while there is not one already.
+  // The `@code` block itself, while there is not one already, and only where one is legal:
+  // top-level in a component and in a route (decisions 53, 83), inside `<head>` in a page and
+  // in a layout (59).
   {
     label: '@code',
     detail: 'props and the client zone',
@@ -244,14 +288,25 @@ export const SNIPPETS: readonly FudSnippet[] = [
     body: COMPONENT_CODE,
     roles: ['component'],
     requiresNoCodeBlock: true,
+    placement: 'top-level',
+  },
+  {
+    label: '@code',
+    detail: 'the server load of this route',
+    scope: 'markup',
+    body: SERVER_CODE,
+    roles: ['route'],
+    requiresNoCodeBlock: true,
+    placement: 'top-level',
   },
   {
     label: '@code',
     detail: 'the server load of this page',
     scope: 'markup',
     body: SERVER_CODE,
-    roles: ['route', 'page'],
+    roles: ['page'],
     requiresNoCodeBlock: true,
+    placement: 'in-head',
   },
   {
     label: '@code',
@@ -260,6 +315,7 @@ export const SNIPPETS: readonly FudSnippet[] = [
     body: LAYOUT_CODE,
     roles: ['layout'],
     requiresNoCodeBlock: true,
+    placement: 'in-head',
   },
 
   // Directives, each one only where it is legal.
@@ -278,6 +334,7 @@ export const SNIPPETS: readonly FudSnippet[] = [
     scope: 'markup',
     roles: ['route'],
     body: '@section ${1:nav} {\n  $0\n}',
+    placement: 'top-level',
   },
 
   // The zones inside `@code`. Here the language is TypeScript, so nothing of markup applies.
@@ -296,9 +353,10 @@ export const SNIPPETS: readonly FudSnippet[] = [
 /**
  * The snippets that apply at this offset.
  *
- * Three filters and nothing else: the scope, the role of the document, and whether a `@code`
- * block is already there. In an empty file the role is `component` — that is what an empty
- * `.fud` structures as — but the skeletons declare no roles, so all four are offered.
+ * Four filters and nothing else: the scope, the role of the document, whether a `@code` block
+ * is already there, and where the construct is allowed to sit. In an empty file the role is
+ * `component` — that is what an empty `.fud` structures as — but the skeletons declare no
+ * roles, so all four are offered.
  */
 export function snippetsAt(document: CachedDocument, offset: number): readonly FudSnippet[] {
   const scope = scopeAt(document, offset);
@@ -310,6 +368,7 @@ export function snippetsAt(document: CachedDocument, offset: number): readonly F
     (snippet) =>
       snippet.scope === scope &&
       (snippet.roles === undefined || snippet.roles.includes(role)) &&
-      (snippet.requiresNoCodeBlock === undefined || !hasCode),
+      (snippet.requiresNoCodeBlock === undefined || !hasCode) &&
+      (snippet.placement === undefined || placedAt(document, offset, snippet.placement)),
   );
 }
