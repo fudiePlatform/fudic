@@ -3,7 +3,7 @@
 > **SDD:** [SDD-28 — Snippets y andamiaje en el editor](./SDD-28-snippets.md)
 > **Paquete:** `@fudic/language-server` (más una mudanza a `@fudic/compiler`)
 > **Rama:** `feat/sdd-28-snippets`, dentro del worktree `sdd-25-pendientes`
-> **Progreso:** 3 / 22 — fase 0 hecha.
+> **Progreso:** 6 / 22 — fases 0 y 1 hechas.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Salvo donde se diga otra cosa, los ficheros son relativos a
@@ -39,18 +39,26 @@ regresión no rompe un test propio sino uno ajeno —el de Emmet—.
 
 ## Fase 1 — Las puertas (3)
 
-- [ ] **4. Contextos de texto.**
+- [x] **4. Contextos de texto.**
       Modificar `src/services/position.ts`: `isEmptyDocument(source)`, `wordContextAt` (palabra
       en markup **sin** `<`) y `directiveContextAt` (`@` + identificador parcial, con el span
       **incluyendo el `@`**).
-- [ ] **5. Tests de los contextos.**
+      **Hecho, con dos guardas que la spec no detallaba.** `wordContextAt` calla dentro de un
+      tag abierto —ahí una palabra es un **atributo**, y los atributos los contesta la
+      proyección de SDD-23—, leído retrocediendo hasta un `<` antes que un `>`; un `>` dentro
+      de un valor de atributo lo engaña, y el coste de que lo engañe es una sugerencia de más
+      en una lista, nunca una edición equivocada. Y `directiveContextAt` calla tras `@@`, que
+      es el escape de la decisión 1, y tras un carácter de palabra (`hola@ejemplo.com`).
+- [x] **5. Tests de los contextos.**
       Modificar `test/services/position.test.ts`: palabra a medias, palabra pegada a `<` (que
       sigue siendo `tagContextAt`), `@` solo, `@Ren` a medias, y el fichero de solo espacios.
-- [ ] **6. Resolución de scope.**
+- [x] **6. Resolución de scope.**
       Crear `src/services/snippets.ts` con `SnippetScope` y la función que decide el scope de un
       offset: `empty-document` por `isEmptyDocument`, `code-block` por el span de
       `document.code`, `markup` por `isMarkupOffset`. Tests de los tres y del cuarto caso —el
       cuerpo de un `<style>`, que no es ninguno—.
+      **Hecho.** El cuarto caso son dos: el cuerpo de un `<style>` y el interior de una
+      interpolación. `scopeAt` devuelve `undefined` en los dos.
 
 ## Fase 2 — El catálogo (5)
 

@@ -98,6 +98,77 @@ export function tagContextAt(source: string, offset: number): PartialName | unde
 }
 
 /**
+ * A bare word being typed, with no `<` in front of it (SDD-28 §5.3).
+ *
+ * This is how a component tag is actually typed: `app-button`, then Tab. Without it the list
+ * of components is unreachable unless the user remembers to open the tag first, which is the
+ * one thing an editor is supposed to save them.
+ *
+ * Two guards, and both are why this is not simply "any word":
+ *
+ *  - a word that a `<` opens is `tagContextAt`'s, not this one's;
+ *  - a word INSIDE an open tag is an attribute name, and attributes are answered by the
+ *    projection (SDD-23). Being inside is read by scanning back for a `<` before a `>` — the
+ *    same class of textual rule as the two contexts above. A `>` inside an attribute value
+ *    fools it, and the cost of being fooled is a component offered where an attribute was
+ *    meant: a wrong suggestion in a list, never a wrong edit.
+ */
+export function wordContextAt(source: string, offset: number): PartialName | undefined {
+  const match = /([A-Za-z][-\w]*)$/.exec(source.slice(0, offset));
+  if (match === null) return undefined;
+
+  const text = match[1] as string;
+  const start = offset - text.length;
+  if (source[start - 1] === '<') return undefined;
+  if (insideOpenTag(source, start)) return undefined;
+
+  return { span: span(start, offset), text };
+}
+
+/** Whether `offset` sits between a `<` and its `>`. */
+function insideOpenTag(source: string, offset: number): boolean {
+  for (let i = offset - 1; i >= 0; i--) {
+    const c = source[i];
+    if (c === '>') return false;
+    if (c === '<') return true;
+  }
+  return false;
+}
+
+/**
+ * A directive being typed: `@`, or `@` plus a half-written name (SDD-28 §5.4).
+ *
+ * The span INCLUDES the `@`, because that is what gets replaced — a completion that inserted
+ * `@if` over the name alone would leave `@@if`, which is the escape of decision 1.
+ *
+ * A `@` that follows another `@` is that escape, and a `@` that follows a word character is
+ * text (`hola@ejemplo.com`). Neither is a directive, and neither is offered one.
+ */
+export function directiveContextAt(source: string, offset: number): PartialName | undefined {
+  const match = /@([A-Za-z]\w*)?$/.exec(source.slice(0, offset));
+  if (match === null) return undefined;
+
+  const name = match[1] ?? '';
+  const at = offset - name.length - 1;
+  const before = source[at - 1];
+  if (before === '@' || (before !== undefined && /\w/.test(before))) return undefined;
+
+  return { span: span(at, offset), text: `@${name}` };
+}
+
+/**
+ * Whether the document has nothing in it yet.
+ *
+ * The gate for the document skeletons, and it has to be the content rather than the role: an
+ * empty `.fud` structures as a `component-document` with `FUD0156`, because without a doctype
+ * and without a `<link rel="layout">` there is nothing else to decide on. Gating on the role
+ * would mean the `route` and `layout` skeletons could never be offered at all.
+ */
+export function isEmptyDocument(source: string): boolean {
+  return source.trim() === '';
+}
+
+/**
  * The tag name the cursor is inside, in an opening or a closing tag alike.
  *
  * Text again, and for a weaker reason than the two above: the tree does hold the element, but
