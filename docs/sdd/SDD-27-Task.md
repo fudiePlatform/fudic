@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-27 — Artefactos de build y manifiesto](./SDD-27-artefactos-y-manifiesto.md)
 > **Paquetes:** `@fudic/vite`, `@fudic/transport` · **Rama:** `feat/sdd-27-artefactos`
-> **Progreso:** 18 / 23
+> **Progreso:** 23 / 23 — todas las tareas hechas; falta el cierre.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Los ficheros son relativos a `packages/vite/` salvo cuando se diga
@@ -54,23 +54,29 @@ otra cosa.
       lista vacía ≠ ausente, y que todo se mueve cuando se mueve el build id.
 
 
-## Fase 2 — Purga de la pasada *page* (4)
+## Fase 2 — Purga de la pasada *page* (4) ✅
 
-- [ ] **8. Conjunto a conservar.**
-      Crear `src/prune.ts`: `keepSet(bundle, clientChunkNames)` → `fudic-main`, `fudic-sw`,
-      los chunks de *client* y su **clausura de imports**, más todo `type === 'asset'`.
-- [ ] **9. Tests del conjunto.**
-      Crear `test/prune.test.ts`: `element-*.js` dentro, `assets/c/about-*.js` fuera, un asset
-      siempre dentro, y un chunk compartido entre *page* y *client* dentro.
-- [ ] **10. Borrar del bundle.**
-      Modificar `src/plugin.ts` (`generateBundle`): aplicar `keepSet` **después** de que los
-      assets estén emitidos y nombrados. Verificar en `examples/basic` que `dist/assets/c/`
-      desaparece y `assets/h/` sigue.
-- [ ] **11. Regresión del linker de assets.**
-      Crear `test/build-asset-survives-prune.test.ts`: variante de `build-asset.test.ts` con
-      `assetsInlineLimit: 0` que afirma que el `logo-<hash>.png` **se sigue emitiendo** y que el
-      chunk de `sw/c/` apunta a él. **Este test es lo único que impide que alguien borre los
-      `emitFile` de página de `plugin.ts:381-393` al ver `assets/c/` vacío.**
+- [x] **8. Conjunto a conservar.**
+      `src/prune.ts`: `keepSet(items, isRoot)` → todo asset, más los chunks raíz y su
+      **clausura de imports**. Raíz es lo que algo carga de verdad: `fudic-main` y los chunks
+      de hidratación, identificados por `facadeModuleId`. Un `.map` se va con su chunk: es un
+      asset, y «conservar todo asset» dejaba los mapas de lo que se acababa de borrar.
+
+- [x] **9. Tests del conjunto.**
+      `test/prune.test.ts`, 9 tests: `element-*` sobrevive **sin nombrarlo** (es alcanzable),
+      `stream`/`app-card` caen porque solo los alcanza *page*, el asset enlazado siempre
+      dentro, y el mapa de un chunk borrado fuera.
+
+- [x] **10. Borrar del bundle.**
+      `plugin.ts` paso 3c, después del renombrado y con las claves **originales** del bundle
+      (`imports` sigue hablando en claves). `examples/basic`: 47 → 33 ficheros.
+
+- [x] **11. Regresión del linker de assets.**
+      `test/build-asset-survives-prune.test.ts`. **Verificado que muerde**: quitando el
+      `emitFile` de página del plugin, 2 de sus 3 tests fallan. Usa un asset por encima del
+      límite de inline en **los dos** builds — el anidado no hereda `assetsInlineLimit`, y un
+      data-URI no probaría nada porque entonces no hace falta que exista ningún fichero.
+
 
 ## Fase 3 — Nombres por build id (6) ✅
 
@@ -127,11 +133,12 @@ otra cosa.
 > dejar la URL **derivable**, que es lo que hace `hydrateUrl`. Quién la pide y cuándo no se
 > decide aquí.
 
-## Fase 5 — Aceptación (3)
+## Fase 5 — Aceptación (3) ✅
 
-- [ ] **21. El manifiesto de `examples/basic`.**
-      Crear `test/manifest-shape.test.ts`: el `fudic-routes.json` del build real casa byte a
-      byte con §5.4 del SDD, no contiene ninguna URL y pesa **≤ 500 B**.
+- [x] **21. El manifiesto de `examples/basic`.**
+      `test/manifest-shape.test.ts`, 6 tests sobre un build real: ni una URL en el fichero,
+      `base` una sola vez, presupuesto de 500 B, y —lo que sostiene el SDD entero— que **cada
+      URL derivada (render, dep e hidratación) aterriza en un fichero que el build escribió**.
 
 - [x] **22. Prerender y e2e.**
       Los 5 HTML de `examples/basic` **idénticos byte a byte** al baseline. `test:e2e`

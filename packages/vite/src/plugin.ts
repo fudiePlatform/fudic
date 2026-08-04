@@ -68,6 +68,7 @@ import {
 } from './constants.js';
 import { chunkNamesOf } from './names.js';
 import { planRename, rewriteReferences, mapNameOf } from './rename.js';
+import { keepSet } from './prune.js';
 
 /** Split a module id into its path and query (without the `?`). */
 function splitId(id: string): { path: string; query: string } {
@@ -636,6 +637,35 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           fileName: rename.files.get(chunk.fileName) ?? chunk.fileName,
           code: rewriteReferences(chunk.code, rename.files),
         });
+      }
+
+      // 3c. Prune the `page` pass (SDD-27 §5.1). Its chunks have no consumer, but the pass
+      //     is what made Vite emit the linked ASSET files, so only the chunks go — and
+      //     only now, once every asset has been emitted and named.
+      //
+      //     Reachability, not names: the roots are what something actually loads, and
+      //     everything they import comes along. That is what keeps the shared `element-*`
+      //     without this file ever having heard of it.
+      //
+      //     Keyed by the ORIGINAL bundle keys: the rename above moved `fileName`, never the
+      //     key, and `imports` still speaks in keys.
+      const keep = keepSet(
+        Object.entries(bundle).map(([fileName, item]) => ({
+          type: item.type,
+          fileName,
+          ...(item.type === 'chunk' ? { imports: item.imports } : {}),
+        })),
+        (item) => {
+          const entry = bundle[item.fileName];
+          const facade = entry?.type === 'chunk' ? entry.facadeModuleId : null;
+          return facade === MAIN_ID || (facade?.endsWith(`?${CLIENT_QUERY}`) ?? false);
+        },
+      );
+      for (const fileName of Object.keys(bundle)) {
+        if (!keep.has(fileName)) {
+          delete bundle[fileName];
+          emitted.delete(fileName);
+        }
       }
 
       // 4. The manifest: the one contract, emitted at a fixed URL.

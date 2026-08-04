@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fudic } from '../src/index.js';
 import { runtimeAlias } from './helpers/alias.js';
+import { allCode } from './helpers/output.js';
 
 
 const PAGE = `<!DOCTYPE html>
@@ -37,8 +38,12 @@ beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-asset-'));
   mkdirSync(join(root, 'routes'), { recursive: true });
   writeFileSync(join(root, 'routes', 'index.fud'), PAGE);
-  // Arbitrary bytes with a .png extension — Vite hashes and emits it by content.
-  writeFileSync(join(root, 'routes', 'logo.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]));
+  // Arbitrary bytes with a .png extension — Vite hashes and emits it by content. Big
+  // enough to clear the DEFAULT inline limit, because the link pass is a nested build that
+  // does not inherit `assetsInlineLimit`: under the limit it would inline a data URI and
+  // the published chunk would name no file at all.
+  writeFileSync(join(root, 'routes', 'logo.png'), Buffer.alloc(5000, 7));
+  writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: ['/fudic-main.js'] }));
   const result = (await build({
     root,
     logLevel: 'silent',
@@ -55,12 +60,12 @@ describe('vite build — asset linking', () => {
     expect(asset).toBeDefined();
   });
 
-  it('references the hashed URL from the page chunk, not the dead ./logo.png', () => {
+  it('references the hashed URL from the chunk that ships, not the dead ./logo.png', () => {
+    // Since SDD-27 §5.1 the `page` chunks are pruned, so the published render code is
+    // `sw/c`. That makes this a STRONGER check: the chunk the Service Worker will link is
+    // the one asserted to point at a file the build really wrote.
     const png = output.find((o) => o.type === 'asset' && /logo-[\w-]+\.png$/u.test(o.fileName))!;
-    const code = output
-      .filter((o) => o.type === 'chunk')
-      .map((c) => c.code ?? '')
-      .join('\n');
+    const code = allCode(output);
     expect(code).toContain(png.fileName.replace(/^.*\//u, '')); // the hashed basename appears
     expect(code).not.toContain('"./logo.png"'); // the source specifier is gone
     expect(code).toContain('https://cdn.example/remote.png'); // absolute URL left as-is

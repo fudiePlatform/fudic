@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fudic } from '../src/index.js';
 import { runtimeAlias } from './helpers/alias.js';
+import { allCode } from './helpers/output.js';
 import { BUILD_TOKEN } from '../src/constants.js';
 import { renderUrlOf, emitted, routeTable } from './helpers/manifest.js';
 
@@ -99,9 +100,7 @@ describe('vite build over the fixtures (hito §6.17)', () => {
   });
 
   it('bundles the streaming page (compiler emit, not Vite parsing .fud)', () => {
-    const all = chunks()
-      .map((c) => c.code ?? '')
-      .join('\n');
+    const all = allCode(output);
     // The emitted page generator and the DSD composition survive into the bundle.
     expect(all).toContain('data-adopt');
     expect(all).toContain('shadowrootmode');

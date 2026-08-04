@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fudic } from '../src/index.js';
 import { runtimeAlias } from './helpers/alias.js';
+import { allCode } from './helpers/output.js';
 
 
 const PAGE = `<!DOCTYPE html>
@@ -37,6 +38,9 @@ beforeAll(async () => {
   mkdirSync(join(root, 'routes'), { recursive: true });
   writeFileSync(join(root, 'routes', 'index.fud'), PAGE);
   writeFileSync(join(root, 'routes', 'present.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47, 9]));
+  // A Service Worker, so the build publishes a render chunk to assert on: since SDD-27
+  // §5.1 the `page` chunks are pruned, and `sw/c` is the render code that ships.
+  writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: ['/fudic-main.js'] }));
   const result = (await build({
     root,
     logLevel: 'silent',
@@ -59,10 +63,7 @@ describe('vite build — missing asset (FUD0363)', () => {
   });
 
   it('leaves the missing URL as a literal but links the existing asset', () => {
-    const code = output
-      .filter((o) => o.type === 'chunk')
-      .map((c) => c.code ?? '')
-      .join('\n');
+    const code = allCode(output);
     expect(code).toContain('"./missing.png"'); // kept as a literal (not an import → no abort)
     const present = output.find((o) => o.type === 'asset' && /present-[\w-]+\.png$/u.test(o.fileName));
     expect(present).toBeDefined(); // the existing sibling WAS linked and emitted hashed
