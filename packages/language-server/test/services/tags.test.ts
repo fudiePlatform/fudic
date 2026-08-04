@@ -9,7 +9,13 @@
 import { describe, expect, it } from 'vitest';
 import { DocumentCache } from '../../src/document-cache.js';
 import { WorkspaceIndex } from '../../src/workspace-index.js';
-import { declaredTags, documentLinks, tagDefinitionAt } from '../../src/services/tags.js';
+import {
+  componentTags,
+  declaredTags,
+  documentLinks,
+  linkInsertionFor,
+  tagDefinitionAt,
+} from '../../src/services/tags.js';
 import { component, LAYOUT, memoryFs, PAGE, route } from '../_support.js';
 
 const SLUG = '/p/blog/[slug].fud';
@@ -52,6 +58,7 @@ describe('declaredTags', () => {
       tag: 'app-badge',
       href: '../components/app-badge.fud',
       path: '/p/components/app-badge.fud',
+      linked: true,
     });
   });
 
@@ -62,6 +69,88 @@ describe('declaredTags', () => {
     );
 
     expect(declaredTags(document, index)).toEqual([]);
+  });
+});
+
+describe('componentTags (SDD-28 §5.3)', () => {
+  it('offers the linked ones first, then the rest of the workspace by name', () => {
+    const { index, document } = setup(SLUG, route('../layouts/_layout.fud', ['../components/site-nav.fud']));
+
+    expect(componentTags(document, index)).toEqual([
+      { tag: 'site-nav', href: '../components/site-nav.fud', path: '/p/components/site-nav.fud', linked: true },
+      { tag: 'app-badge', href: '../components/app-badge.fud', path: '/p/components/app-badge.fud', linked: false },
+    ]);
+  });
+
+  it('writes the href of an unlinked one relative to this file', () => {
+    const { index, document } = setup('/p/components/app-card.fud', component('app-card'));
+    const badge = componentTags(document, index).find((tag) => tag.tag === 'app-badge');
+
+    expect(badge?.href).toBe('./app-badge.fud');
+  });
+
+  it('never offers the file itself, and never a page or a layout', () => {
+    const { index, document } = setup('/p/components/app-badge.fud', component('app-badge'));
+
+    expect(componentTags(document, index).map((tag) => tag.tag)).toEqual(['site-nav']);
+  });
+
+  it('does not offer a second file for a tag that is already in scope', () => {
+    const files = {
+      ...WORKSPACE,
+      '/p/other/app-badge.fud': component('app-badge'),
+      [SLUG]: route('../layouts/_layout.fud', ['../components/app-badge.fud']),
+    };
+    const index = new WorkspaceIndex(memoryFs(files));
+    index.scan('/p');
+    const document = new DocumentCache(index).get(SLUG, 1, files[SLUG] as string);
+
+    expect(componentTags(document, index).filter((tag) => tag.tag === 'app-badge')).toHaveLength(1);
+  });
+});
+
+describe('linkInsertionFor (SDD-28 §5.3)', () => {
+  /** The source with the insertion applied — what the editor would end up with. */
+  function applied(path: string, source: string, href: string): string | undefined {
+    const { document } = setup(path, source);
+    const insertion = linkInsertionFor(document, href);
+    if (insertion === undefined) return undefined;
+    return source.slice(0, insertion.span.start) + insertion.newText + source.slice(insertion.span.end);
+  }
+
+  it('puts the link after the one that is already there, in a route', () => {
+    const source = route('../layouts/_layout.fud', ['../components/site-nav.fud']);
+    const next = applied(SLUG, source, '../components/app-badge.fud') as string;
+
+    expect(next.split('\n').slice(0, 3)).toEqual([
+      '<link rel="layout" href="../layouts/_layout.fud">',
+      '<link rel="component" href="../components/site-nav.fud">',
+      '<link rel="component" href="../components/app-badge.fud">',
+    ]);
+  });
+
+  it('puts it first in a component that links nothing yet', () => {
+    const source = component('app-card');
+    const next = applied('/p/components/app-card.fud', source, './app-badge.fud') as string;
+
+    expect(next.startsWith('<link rel="component" href="./app-badge.fud">\n')).toBe(true);
+  });
+
+  it('says nothing when the href is already linked — no duplicate (criterion 14)', () => {
+    const source = route('../layouts/_layout.fud', ['../components/app-badge.fud']);
+
+    expect(applied(SLUG, source, '../components/app-badge.fud')).toBeUndefined();
+    // And `./x.fud` and `x.fud` are the same href.
+    expect(applied(SLUG, source, './../components/app-badge.fud')).toBeUndefined();
+  });
+
+  it('the result of applying it parses, with the link in scope', () => {
+    const source = route('../layouts/_layout.fud').replace('<article>hi</article>', '<article><app-badge>x</app-badge></article>');
+    const next = applied(SLUG, source, '../components/app-badge.fud') as string;
+    const { index, document } = setup(SLUG, next);
+
+    expect(document.diagnostics).toEqual([]);
+    expect(declaredTags(document, index).map((tag) => tag.tag)).toEqual(['app-badge']);
   });
 });
 

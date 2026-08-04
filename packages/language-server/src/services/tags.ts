@@ -9,17 +9,26 @@
  */
 
 import type { Span } from '@fudic/compiler';
-import { linkHref } from '@fudic/compiler';
+import {
+  alreadyLinked,
+  componentLinkAnchor,
+  componentLinkTag,
+  linkHref,
+  span,
+} from '@fudic/compiler';
 import type { CachedDocument } from '../document-cache.js';
+import { relativeHref } from '../paths.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
 import { attributeOf, attributeValueSpan, linksOf, tagNameAt } from './position.js';
 
 /** A component this file may write as an element. */
 export interface TagCompletion {
   readonly tag: string;
-  /** The href it was declared with, as written. */
+  /** The href it was declared with, or the one that would have to be written for it. */
   readonly href: string;
   readonly path: string;
+  /** `false` when the component exists in the workspace but this file does not link it. */
+  readonly linked: boolean;
 }
 
 /** A clickable `href`. */
@@ -49,9 +58,73 @@ export function declaredTags(
     const entry = index.resolve(document.path, href);
     if (entry === undefined || entry.tag === '') continue;
 
-    tags.push({ tag: entry.tag, href, path: entry.path });
+    tags.push({ tag: entry.tag, href, path: entry.path, linked: true });
   }
   return tags;
+}
+
+/**
+ * Every component this file MAY write as an element (SDD-28 §5.3).
+ *
+ * Two groups, and the difference between them is an edit. The ones this file linked are in
+ * scope already; the rest exist in the workspace and are offered too, because the alternative
+ * is that the user has to know they exist, go up to write the `<link>`, and come back. What
+ * makes that safe is that accepting one carries its `<link>` along.
+ *
+ * The file itself never appears — a component that links itself is a cycle — and neither does
+ * a workspace component whose tag is already in scope: two files defining the same tag is a
+ * conflict, and offering the second one would be offering to create it.
+ */
+export function componentTags(
+  document: CachedDocument,
+  index: WorkspaceIndex,
+): readonly TagCompletion[] {
+  const declared = declaredTags(document, index);
+  const inScope = new Set(declared.map((item) => item.tag));
+
+  const unlinked = index
+    .byRole('component')
+    .filter((entry) => entry.path !== document.path && entry.tag !== '' && !inScope.has(entry.tag))
+    .map((entry) => ({
+      tag: entry.tag,
+      href: relativeHref(document.path, entry.path),
+      path: entry.path,
+      linked: false,
+    }))
+    .sort((a, b) => a.tag.localeCompare(b.tag));
+
+  // Declaration order first — the user wrote those in the order they think about them — and
+  // then the rest, alphabetically, because nothing about the workspace suggests an order.
+  return [...declared, ...unlinked];
+}
+
+/** An edit that adds a `<link rel="component">` to this file. */
+export interface LinkInsertion {
+  /** Empty span: an insertion point, not a replacement. */
+  readonly span: Span;
+  readonly newText: string;
+}
+
+/**
+ * The edit that brings `href` into scope, or nothing when it is already there.
+ *
+ * The anchor and the idempotency are the compiler's (`componentLinkAnchor`, `alreadyLinked`),
+ * which is the same pair `fudic g component --in` writes with. What is local here is turning
+ * them into an insertion: an empty span plus the text, which is what an `additionalTextEdits`
+ * is made of.
+ */
+export function linkInsertionFor(
+  document: CachedDocument,
+  href: string,
+): LinkInsertion | undefined {
+  if (alreadyLinked(document.document, href)) return undefined;
+
+  const { offset, indent } = componentLinkAnchor(document.source, document.document);
+  const tag = componentLinkTag(href);
+  // At offset 0 there is nothing above to hang off, so the line goes first and the newline
+  // after it; anywhere else the link opens a new line below the node it follows.
+  const newText = offset === 0 ? `${tag}\n` : `\n${indent}${tag}`;
+  return { span: span(offset, offset), newText };
 }
 
 /** A component tag under the cursor, and the file that defines it. */

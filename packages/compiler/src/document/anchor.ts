@@ -11,6 +11,7 @@
  * the CLI splices a string, the language server emits a `TextEdit`.
  */
 
+import type { ElementNode } from '../html/index.js';
 import type { StructuredDocument } from './nodes.js';
 
 /** Where the new `<link>` goes, and how deep the line it lands on is indented. */
@@ -22,6 +23,43 @@ export interface LinkAnchor {
 /** The `<link>` itself. One definition, so the CLI and the editor write the same bytes. */
 export function componentLinkTag(href: string): string {
   return `<link rel="component" href="${href}">`;
+}
+
+/** `./a.fud` and `a.fud` are the same href; so are `\` and `/` as separators. */
+function normalizeHref(href: string): string {
+  return href.replace(/\\/gu, '/').replace(/^\.\//u, '');
+}
+
+/**
+ * The value of an attribute, or `null` when any part of it is interpolated.
+ *
+ * Strict on purpose: `href="./a@(x).fud"` is not a href anybody can compare, and treating the
+ * interpolation as empty text would make it match a file that has nothing to do with it.
+ */
+function staticAttribute(element: ElementNode, name: string): string | null {
+  const attribute = element.attributes.find((candidate) => candidate.name === name);
+  if (attribute === undefined) return null;
+
+  let text = '';
+  for (const part of attribute.value) {
+    if (part.type !== 'attribute-text') return null;
+    text += part.value;
+  }
+  return text;
+}
+
+/**
+ * Whether the document already links this href.
+ *
+ * The idempotency both writers need: the CLI's `--in` does not duplicate a link, and neither
+ * does the editor when the same component is accepted twice (SDD-22 §4.4.5, SDD-28 §5.3).
+ */
+export function alreadyLinked(doc: StructuredDocument, href: string): boolean {
+  const wanted = normalizeHref(href);
+  return doc.links.some((link) => {
+    const value = staticAttribute(link, 'href');
+    return value !== null && normalizeHref(value) === wanted;
+  });
 }
 
 /**

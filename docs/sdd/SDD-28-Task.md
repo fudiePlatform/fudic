@@ -3,7 +3,7 @@
 > **SDD:** [SDD-28 — Snippets y andamiaje en el editor](./SDD-28-snippets.md)
 > **Paquete:** `@fudic/language-server` (más una mudanza a `@fudic/compiler`)
 > **Rama:** `feat/sdd-28-snippets`, dentro del worktree `sdd-25-pendientes`
-> **Progreso:** 14 / 22 — fases 0 a 3 hechas.
+> **Progreso:** 18 / 22 — fases 0 a 4 hechas.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Salvo donde se diga otra cosa, los ficheros son relativos a
@@ -116,22 +116,40 @@ regresión no rompe un test propio sino uno ajeno —el de Emmet—.
 
 ## Fase 4 — Tags y auto-enlace (4)
 
-- [ ] **15. Los componentes que este fichero PUEDE escribir.**
+- [x] **15. Los componentes que este fichero PUEDE escribir.**
       Modificar `src/services/tags.ts`: `TagCompletion` gana `linked`, y `componentTags` une los
       enlazados (orden de `<link>`) con los del workspace vía `index.byRole('component')`,
       excluyendo el propio fichero y calculando su `href` con `relativeHref`. `declaredTags` y
       `tagDefinitionAt` **no se tocan** (criterio 15).
-- [ ] **16. La edición que enlaza.**
+      **Hecho.** Una exclusión más de la que pedía la tarea: un componente del workspace cuyo
+      **tag ya está en scope** tampoco se ofrece. Dos ficheros que definen el mismo tag son un
+      conflicto, y ofrecer el segundo sería ofrecer crearlo. Enlazados en orden de `<link>`;
+      los demás alfabéticos, porque nada en el workspace sugiere otro orden.
+- [x] **16. La edición que enlaza.**
       Añadir `linkInsertionFor(document, href)` sobre `componentLinkAnchor`: devuelve el `Span`
       vacío y el texto a insertar, o nada si `alreadyLinked` (criterio 14).
-- [ ] **17. Tests de tags.**
+      **Hecho, y `alreadyLinked` se muda también al compilador.** Es la misma regla de la
+      fase 0 con el mismo argumento: dos consumidores. Se lleva consigo su lector estricto de
+      atributos —un `href="./@(x).fud"` **no** es una ruta que nadie pueda comparar, así que no
+      cuenta como enlace—, que es justo donde `linkHref` habría dado otra respuesta.
+- [x] **17. Tests de tags.**
       Modificar `test/services/tags.test.ts`: los dos grupos, el orden, el fichero propio
       ausente, la idempotencia y que F12 sigue sin resolver un tag no enlazado.
-- [ ] **18. El ancla es la misma que la de la CLI** (criterio 13).
+- [x] **18. El ancla es la misma que la de la CLI** (criterio 13).
       Crear `test/acceptance/wiring.test.ts`: sobre un corpus con los cuatro roles, con y sin
       links previos, aplicar el `TextEdit` del servidor y comparar con `wireComponentLink` de
       `@fudic/cli`. Mismo patrón que
       [`acceptance/formatting.test.ts`](../../packages/language-server/test/acceptance/formatting.test.ts).
+      **Hecho.** Compartida ya la regla, lo que este test guarda es la otra mitad: las dos
+      **aplicaciones** de ella, una inserción LSP y un splice sobre string. Seis casos y la
+      idempotencia; cada uno afirma además que el enlace se escribió de verdad, para que dos
+      caminos no puedan coincidir en no hacer nada.
+
+> **Anotado, no es de esta fase.** Corriendo la cobertura completa cayó una vez
+> `§6.14 — cancellation > a burst of edits leaves exactly one request completed` (4 en vez de
+> 1), y volvió a pasar en aislado y en la siguiente pasada completa. Es la fragilidad bajo
+> carga que el cierre de T-12 en [SDD-25-Task-Claude](./SDD-25-Task-Claude.md) ya dejó abierta
+> y que merece tarea propia; no la toca nada de SDD-28.
 
 ## Fase 5 — La cadena de `completions` (4)
 

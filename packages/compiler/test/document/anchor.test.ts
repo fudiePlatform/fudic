@@ -15,6 +15,7 @@ import { parseControl } from '../../src/control/index.js';
 import { parseCodeBlock } from '../../src/code/index.js';
 import { parseDirective } from '../../src/layout/index.js';
 import {
+  alreadyLinked,
   componentLinkAnchor,
   componentLinkTag,
   structureDocument,
@@ -108,6 +109,42 @@ describe('componentLinkAnchor — no link yet', () => {
 
   it('a layout takes it inside <head> too', () => {
     expect(around(insert(LAYOUT))).toEqual(['  <head>', `    ${LINK}`, '    @RenderHead()']);
+  });
+});
+
+describe('alreadyLinked', () => {
+  const linked = (href: string, written = './app-badge.fud'): boolean => {
+    const source = `<link rel="component" href="${written}">\n${COMPONENT}`;
+    return alreadyLinked(structure(source), href);
+  };
+
+  it('is true for the same href', () => {
+    expect(linked('./app-badge.fud')).toBe(true);
+  });
+
+  it.each([
+    ['a missing ./', 'app-badge.fud'],
+    ['a backslash separator', '.\\app-badge.fud'],
+  ])('is true through %s', (_label, href) => {
+    expect(linked(href)).toBe(true);
+  });
+
+  it('is false for another file', () => {
+    expect(linked('./site-nav.fud')).toBe(false);
+  });
+
+  it('is false against an interpolated href: it is not a path anyone can compare', () => {
+    expect(linked('./app-badge.fud', './@(name).fud')).toBe(false);
+  });
+
+  it('is false when the link has no href at all', () => {
+    const source = `<link rel="component">\n${COMPONENT}`;
+
+    expect(alreadyLinked(structure(source), './app-badge.fud')).toBe(false);
+  });
+
+  it('is false in a document with no links', () => {
+    expect(alreadyLinked(structure(COMPONENT), './app-badge.fud')).toBe(false);
   });
 });
 

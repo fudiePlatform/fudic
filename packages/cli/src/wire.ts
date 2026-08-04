@@ -13,34 +13,15 @@
  */
 
 import {
+  alreadyLinked,
   componentLinkAnchor,
   componentLinkTag,
-  type ElementNode,
   type StructuredDocument,
 } from '@fudic/compiler';
-import { staticAttr } from './parse.js';
 
-// The two names SDD-22 §4.4 published. They are re-exported, not reimplemented: the public
+// The three names SDD-22 §4.4 published. They are re-exported, not reimplemented: the public
 // surface of the CLI does not change because the rule moved house.
-export { componentLinkAnchor as anchorFor, componentLinkTag };
-
-/** `./a.fud` and `a.fud` are the same href; so are `\` and `/` separators. */
-function normalizeHref(href: string): string {
-  return href.replace(/\\/gu, '/').replace(/^\.\//u, '');
-}
-
-/** True when the document already links that href — the idempotency of §4.4.5. */
-export function alreadyLinked(doc: StructuredDocument, href: string): boolean {
-  const wanted = normalizeHref(href);
-  return links(doc).some((link) => {
-    const value = staticAttr(link, 'href');
-    return value !== null && normalizeHref(value) === wanted;
-  });
-}
-
-function links(doc: StructuredDocument): readonly ElementNode[] {
-  return doc.links;
-}
+export { alreadyLinked, componentLinkAnchor as anchorFor, componentLinkTag };
 
 /**
  * The source with the link inserted, or `null` when it is already there (idempotent: no
