@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fudic } from '../src/index.js';
 import { runtimeAlias } from './helpers/alias.js';
+import { routeTable } from './helpers/manifest.js';
 
 
 const PAGE = `<!DOCTYPE html>
@@ -59,11 +60,10 @@ describe('vite build — param route with @server load', () => {
       routes: Array<Record<string, unknown>>;
     };
     expect(manifest.routes).toHaveLength(1);
-    expect(manifest.routes[0]).toMatchObject({
-      pattern: '/customer/:id',
-      mode: 'sw',
-      data: '/_fudic/data/customer/:id',
-    });
+    expect(manifest.routes[0]).toMatchObject({ pattern: '/customer/:id', mode: 'sw' });
+    // The endpoint is DERIVED from the pattern; `dataPolicy` is what says it exists.
+    expect(manifest.routes[0]!['dataPolicy']).toBeDefined();
+    expect(routeTable(output).urls.dataUrl('/customer/:id')).toBe('/_fudic/data/customer/:id');
   });
 
   it('BUG-09 keeps the @server load out of EVERY published file', () => {

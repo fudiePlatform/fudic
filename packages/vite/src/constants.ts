@@ -3,6 +3,30 @@
  * marks a module Rollup/Vite will not try to resolve on disk; the plugin owns them via
  * `resolveId`/`load`. Kept in one place so the plugin, the link pass and the dev server
  * agree on the exact ids and on the stable URLs the two bootstraps are served at.
+ *
+ * ## The four passes (SDD-27 §3)
+ *
+ * A build produces four families of artifacts. They are NOT interchangeable and each one
+ * has exactly one consumer:
+ *
+ * | Pass       | Driver                          | Output                      | Format | `@server load`? | Consumer                              |
+ * |------------|---------------------------------|-----------------------------|--------|-----------------|---------------------------------------|
+ * | **edge**   | `runEdgePass`                   | `EDGE_DIR` (outside `dist`) | ESM    | **yes**         | Node: prerender, preview, data endpoint |
+ * | **page**   | the main Vite build             | `PAGE_DIR`                  | ESM    | no              | nobody — see below                    |
+ * | **link**   | `runLinkPass`                   | `LINK_DIR`                  | **CJS**| no              | the Service Worker linker (`new Function`) |
+ * | **client** | `discoverComponents` + `?client`| `CLIENT_DIR`                | ESM    | —               | hydration                             |
+ *
+ * The first three emit the SAME `render`. That is not redundancy waiting to be cleaned up:
+ * `edge` carries `load` and therefore may never be published (BUG-09 §4.1), and `link` is
+ * CJS because a Service Worker may not `import()`. `client` is a different artifact
+ * altogether — `customElements.define` + `static c($props)`, not `render`.
+ *
+ * `page` is the subtle one: nothing loads its chunks, but the pass CANNOT be removed. It is
+ * what pulls each route and its components into the client graph, and it is the ONLY pass
+ * that writes the linked asset FILES — `link` runs with `write: false` and re-emits chunks
+ * only, so it references `logo-<hash>.png` while `page` produces it. Hence the invariant:
+ *
+ *   From the `page` pass the CHUNKS are dead weight; the ASSETS never are.
  */
 
 /** Per-route ESM wrapper (edge/prerender): the pattern is appended. */
@@ -21,8 +45,21 @@ export const DEV_SW_URL = 'fudic-sw.js';
 /** Where the generated `@server load` endpoints live (SDD-20 §4.5). */
 export const DATA_PREFIX = '/_fudic/data';
 
-/** Output directory of the linkable chunks, inside the build output. */
+/** Output directory of the `link` pass: the linkable CJS chunks, inside the build output. */
 export const LINK_DIR = 'sw/c';
+
+/**
+ * Chunk-NAME prefixes of the two passes that ride inside the main build. A chunk emitted
+ * with `name: 'h/app-badge'` lands in `<assetsDir>/h/app-badge-<hash>.js`, so these name
+ * the pass independently of where `assetsDir` happens to point — which is why the prune
+ * and the rename match on `chunk.name`, never on the output path.
+ *
+ * `page` chunks have no consumer (SDD-27 §5.1) and are pruned before the bundle is
+ * written. `client` chunks get their own prefix because they are keyed by TAG, and a flat
+ * directory would mix them with the render chunks that share the same tag names.
+ */
+export const PAGE_NAME_PREFIX = 'c';
+export const CLIENT_NAME_PREFIX = 'h';
 
 /**
  * Where the SERVER-ONLY artifacts are written: sibling of `outDir`, never inside it

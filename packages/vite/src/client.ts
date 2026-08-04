@@ -18,6 +18,7 @@
 
 import { resolveDocument, type ResolveIo } from '@fudic/compiler';
 import { type RouteBuild } from './discover.js';
+import { CLIENT_NAME_PREFIX } from './constants.js';
 
 /** The query that turns a component id into its client chunk: `<path>.fud?client`. */
 export const CLIENT_QUERY = 'client';
@@ -30,7 +31,7 @@ export const clientId = (path: string): string => `${path}?${CLIENT_QUERY}`;
  * directory, because the next stage keys these by tag and a flat `assets/` would mix them
  * with the render chunks that share the same tag names.
  */
-export const clientChunkName = (tag: string): string => `h/${tag}`;
+export const clientChunkName = (tag: string): string => `${CLIENT_NAME_PREFIX}/${tag}`;
 
 /** A component that gets a client chunk. */
 export interface ClientChunk {

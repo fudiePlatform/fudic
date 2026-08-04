@@ -133,6 +133,7 @@ Cada SDD reserva su rango; aquí está el registro maestro. Formato `FUD` + 4 d�
 
 | `FUD0460`–`0479` | 24 | `0460` `href` de un `<link>` que no resuelve a ningún `.fud` · `0461` identificador de usuario con prefijo `$` (namespace reservado al compilador). |
 | `FUD0480`–`0499` | 26 | `0480` `<style>` dejado sin formatear (placeholder Razor irreconstruible, o el CSS no parsea) · `0481` fragmento JS/TS dejado como estaba escrito porque no parsea · `0482` fallo interno del formateador (el único `error` del rango; el fichero se devuelve intacto). |
+| `FUD0500`–`0519` | 27 | `0500` un chunk no termina en un hash de 8 caracteres, así que el nombrado por build id **no se aplica a ninguno** (media nomenclatura es peor que ninguna) · `0501` dos chunks quedarían con el mismo nombre al quitarles el hash; ese par lo conserva. Ninguno de los dos rompe el build. |
 
 `FUD0197`–`0209` libres para SDD-12. Severidades: todos `error` salvo `0196` (`warning`).
 

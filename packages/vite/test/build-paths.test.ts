@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fudic, type FudicOptions } from '../src/index.js';
 import { runtimeAlias } from './helpers/alias.js';
+import { renderUrlOf } from './helpers/manifest.js';
 
 
 const PAGE = `<!DOCTYPE html>
@@ -76,7 +77,7 @@ describe('vite build — paths() enumeration (lazy fallback)', () => {
   it('renders unknown ids locally, from its chunk — never from a per-route HTML file', () => {
     const record = manifestOf(output)[0];
     expect(record).toMatchObject({ pattern: '/customer/:id', mode: 'sw' });
-    expect(record!['chunk']).toMatch(/\/sw\/c\/customer-id-.*\.js$/u);
+    expect(renderUrlOf(output, '/customer/:id')).toMatch(/^\/sw\/c\/customer-id-[\w-]+\.js$/u);
     // BUG-02: the prerendered files still exist, for the FIRST visit. The manifest —
     // the client contract — does not name them.
     expect(record).not.toHaveProperty('html');
@@ -95,6 +96,8 @@ describe('vite build — paths() enumeration (notFound fallback)', () => {
 
   it('is pure ssg: an unknown id is a 404, never a local render', () => {
     expect(manifestOf(output)[0]).toMatchObject({ pattern: '/customer/:id', mode: 'ssg' });
-    expect(manifestOf(output)[0]!['chunk']).toBeUndefined();
+    // No `deps` key at all: its absence is what makes the route unrenderable in the SW.
+    expect(manifestOf(output)[0]!['deps']).toBeUndefined();
+    expect(renderUrlOf(output, '/customer/:id')).toBeNull();
   });
 });

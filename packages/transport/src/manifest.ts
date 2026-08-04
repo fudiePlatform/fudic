@@ -12,6 +12,8 @@
  *    has to know what to load before what without parsing the source (§4.3).
  */
 
+import { createUrlResolver, type UrlResolver } from './urls.js';
+
 /**
  * What the BUILD decided. Only one of the three is a runtime decision for the SW:
  *
@@ -44,26 +46,50 @@ export interface PagePolicy {
 }
 
 /**
- * One route. Note what is NOT here: the URL of a prerendered HTML file.
+ * A filesystem-safe chunk base name from a route pattern: `/blog/:slug` → `blog-slug`,
+ * `/` → `index`.
  *
- * The prerendered document is a file of the EDGE, and its whole job is the first visit —
- * TTFB, SEO, no-JS. Whoever serves it locates it by convention (`htmlPathFor`), never
- * through this contract. Naming it here turned the router into a per-route document
- * cache and switched the render off (BUG-02 §3.1).
+ * It lives HERE, not in the build, because both sides need it and they must agree. The
+ * build names the route's chunk with it; the runtime derives that name back from the
+ * pattern (SDD-27 §5.4). Two copies of this function would drift without a single test
+ * failing — the files would exist and nobody would ask for them.
+ */
+export function safeName(pattern: string): string {
+  const s = pattern.replace(/[^a-z0-9]+/giu, '-').replace(/^-+|-+$/gu, '');
+  return s.length > 0 ? s : 'index';
+}
+
+/**
+ * One route. Note what is NOT here: URLs.
+ *
+ * Not the URL of a prerendered HTML file — that is a file of the EDGE, whose whole job is
+ * the first visit (TTFB, SEO, no-JS); whoever serves it locates it by convention, never
+ * through this contract. Naming it here turned the router into a per-route document cache
+ * and switched the render off (BUG-02 §3.1).
+ *
+ * And not the URL of any chunk either (SDD-27 §5.4). Chunk names are derivable from the
+ * pattern and the tag, and they carry the build id rather than a content hash, so the only
+ * thing a record has to state is WHICH components the route needs. `UrlResolver` does the
+ * rest, in one place.
  */
 export interface RouteRecord {
   readonly pattern: string;
   readonly mode: RouteMode;
-  /** Absolute URL of the linkable chunk. Absent: only the server can serve this route. */
-  readonly chunk?: string;
-  /** Absolute URLs of its dependencies, in TOPOLOGICAL order. */
+  /**
+   * Component chunk NAMES — no directory, no hash, no extension — in TOPOLOGICAL order,
+   * because the linker's `require` is synchronous and must load what comes first, first.
+   *
+   * Its PRESENCE is the capability signal: a record with `deps` is one the Service Worker
+   * can render, whatever its `mode` says; a record without it is a route only the server
+   * can serve. An enumerated `ssg` route is exactly that case — it is prerendered, so its
+   * mode is not `ssr`, but the SW does not carry the enumeration and must not render an
+   * id that `paths()` never listed. An empty list is a renderable route with no
+   * components, which is a different thing from an absent one.
+   */
   readonly deps?: readonly string[];
-  /** Data endpoint template, `:param` placeholders included. */
-  readonly data?: string;
+  /** Present exactly when the route declares `@server load`, and thus has a data endpoint. */
   readonly dataPolicy?: DataPolicy;
   readonly page?: PagePolicy;
-  /** The ESM chunk for the edge (dev/preview/prerender). The SW never reads it. */
-  readonly esm?: string;
 }
 
 export interface CspTemplates {
@@ -75,6 +101,12 @@ export interface CspTemplates {
 
 export interface ManifestFile {
   readonly build: string;
+  /**
+   * The app's public base path (Vite's `base`). It used to be baked into every URL of
+   * every record; now that the records carry names instead, it is stated once and the
+   * resolver applies it.
+   */
+  readonly base: string;
   readonly csp: CspTemplates;
   /** Ordered by DESCENDING specificity: `match` returns the FIRST hit. */
   readonly routes: readonly RouteRecord[];
@@ -89,6 +121,8 @@ export interface RouteMatch {
 export interface RouteTable {
   readonly build: string;
   readonly csp: CspTemplates;
+  /** Record → URLs. The only implementation of that arithmetic (SDD-27 §5.4). */
+  readonly urls: UrlResolver;
   match(pathname: string): RouteMatch | null;
   /** The `sw` template that owns `pathname` — the unit of warming is the TEMPLATE. */
   templateOf(pathname: string): RouteRecord | null;
@@ -165,6 +199,7 @@ export function compileManifest(file: ManifestFile): RouteTable {
   return {
     build: file.build,
     csp: file.csp,
+    urls: createUrlResolver(file.base, file.build),
     match,
     templateOf(pathname: string): RouteRecord | null {
       const hit = match(pathname);

@@ -12,11 +12,12 @@ import { fakeCache, varyingCache } from './helpers.js';
 
 const FILE: ManifestFile = {
   build: 'a3f9c1',
+  base: '/',
   csp: DEFAULT_CSP,
   routes: [
     // Ordered by DESCENDING specificity: static before param.
-    { pattern: '/blog/new', mode: 'ssg', chunk: '/sw/c/blog-new.js' },
-    { pattern: '/blog/:slug', mode: 'sw', chunk: '/sw/c/blog.js', deps: ['/sw/c/badge.js'] },
+    { pattern: '/blog/new', mode: 'ssg', deps: [] },
+    { pattern: '/blog/:slug', mode: 'sw', deps: ['badge'] },
     { pattern: '/account', mode: 'ssr' },
   ],
 };
@@ -47,6 +48,15 @@ describe('compileManifest', () => {
     const table = compileManifest(FILE);
     expect(table.build).toBe('a3f9c1');
     expect(table.csp.sw).toContain('unsafe-eval');
+  });
+
+  it('exposes a resolver already bound to this build (SDD-27 §5.4)', () => {
+    const table = compileManifest(FILE);
+    const hit = table.match('/blog/x')!;
+    expect(table.urls.renderUrl(hit.record)).toBe('/sw/c/blog-slug-a3f9c1.js');
+    expect(table.urls.depUrl('badge')).toBe('/sw/c/badge-a3f9c1.js');
+    // A route with no `deps` is not renderable here, whatever its mode says.
+    expect(table.urls.renderUrl(table.match('/account')!.record)).toBeNull();
   });
 });
 

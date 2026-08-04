@@ -18,6 +18,7 @@ import { fudic } from '../src/index.js';
 import { runtimeAlias } from './helpers/alias.js';
 import { BUILD_TOKEN } from '../src/constants.js';
 import { specifiersOf } from './helpers/specifiers.js';
+import { renderUrlOf, emitted } from './helpers/manifest.js';
 
 
 const PAGE = `<!DOCTYPE html>
@@ -125,12 +126,9 @@ describe('vite build — the Service Worker is a self-contained bundle', () => {
   }, 180000);
 
   it('§6.7 the link pass still emits its chunks and the manifest still points at them', () => {
-    const manifest = JSON.parse(
-      output.find((o) => o.fileName === 'fudic-routes.json')!.source as string,
-    ) as { routes: Array<Record<string, unknown>> };
-    const chunk = manifest.routes[0]!['chunk'] as string;
-    expect(chunk).toMatch(/^\/sw\/c\/index-.*\.js$/u);
-    expect(output.some((o) => `/${o.fileName}` === chunk)).toBe(true);
+    const chunk = renderUrlOf(output, '/');
+    expect(chunk).toMatch(/^\/sw\/c\/index-[\w-]+\.js$/u);
+    expect(emitted(output, chunk!)).toBe(true);
   });
 
   it('§6.5 rebuilding the SAME tree produces the same build id', async () => {

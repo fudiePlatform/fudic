@@ -23,6 +23,7 @@ import { runtimeAlias } from './helpers/alias.js';
 import { BUILD_TOKEN } from '../src/constants.js';
 import { decodeMappings } from './helpers/vlq.js';
 import { specifiersOf } from './helpers/specifiers.js';
+import { routeTable, manifestFile, emitted } from './helpers/manifest.js';
 
 
 const PAGE = `<!DOCTYPE html>
@@ -173,14 +174,14 @@ describe('vite build — a nested build minifies what the host says', () => {
   });
 
   it('§6.7 the chunks of `sw/c/` still exist and the manifest still points at them', () => {
-    const manifest = JSON.parse(textOf(find(output, 'fudic-routes.json')!)) as {
-      routes: Array<Record<string, unknown>>;
-    };
-    const declared = manifest.routes.map((r) => r['chunk'] as string);
+    const table = routeTable(output);
+    const declared = manifestFile(output)
+      .routes.map((r) => table.urls.renderUrl(r))
+      .filter((u): u is string => u !== null);
     expect(declared.length).toBeGreaterThan(0);
     for (const chunk of declared) {
       expect(chunk).toMatch(/^\/sw\/c\/.*\.js$/u);
-      expect(output.some((o) => `/${o.fileName}` === chunk)).toBe(true);
+      expect(emitted(output, chunk)).toBe(true);
     }
   });
 
