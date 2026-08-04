@@ -44,15 +44,37 @@ export function emitElementBindings(ctx: TemplateContext, el: ElementNode): void
 }
 
 /**
- * The stretch of a start tag where attributes go: after the tag name, before the `>`.
+ * The GAPS of a start tag: the stretches where another attribute could be typed.
  *
- * Everything the user may type there — a prop name, another attribute — belongs to the same
- * object literal, so one stretch is enough for the editor to ask about any position in it.
+ * Between the tag name and the first attribute, between two attributes, and between the last
+ * one and the `>`. Each becomes a completion anchor, so `<app-badge |>`, `<app-badge | tone="x">`
+ * and `<app-badge tone="x" |>` all have somewhere to ask.
+ *
+ * The gaps and not the whole area, and the difference is not cosmetic. One stretch covering
+ * everything between the name and the `>` also covers the attribute VALUES — so a position
+ * inside `tone="@(|)"` mapped both to the interpolation and to the anchor, and Volar answers
+ * with the first mapped position that yields anything. While the object literal offered no
+ * key completions there the anchor came back empty and the interpolation won; the moment
+ * `$GlobalAttrs` gave it eleven names to offer, the union of `tone` stopped being reachable.
+ * An anchor for "where a new attribute goes" must not stand over text that is already
+ * something else.
  */
-function attributeArea(el: ElementNode): Span {
+function attributeGaps(el: ElementNode): readonly Span[] {
   const afterName = el.openSpan.start + 1 + el.name.length;
   const beforeClose = el.openSpan.end - (ctxSelfClosing(el) ? 2 : 1);
-  return span(Math.min(afterName, beforeClose), beforeClose);
+
+  const gaps: Span[] = [];
+  let cursor = Math.min(afterName, beforeClose);
+  for (const attribute of el.attributes) {
+    gaps.push(span(cursor, attribute.span.start));
+    cursor = attribute.span.end;
+  }
+  gaps.push(span(cursor, beforeClose));
+
+  // Emptied in one place rather than guarded at each push: a zero-length gap is a stretch no
+  // position can ever fall inside, so it is noise in the mapping table. `<app-badge>` has no
+  // gap at all, and `<app-badge tone="x">` has one at the front and none at the back.
+  return gaps.filter((gap) => gap.end > gap.start);
 }
 
 /** `<x/>` closes with two characters, `<x>` with one. */
@@ -65,13 +87,23 @@ function isComponent(tag: string): boolean {
   return tag.includes('-');
 }
 
-/** The attributes that make up a component's props — everything that is not behaviour. */
+/**
+ * The attributes that make up a component's props — everything that is not behaviour, and not
+ * `slot`.
+ *
+ * `slot` comes out of the literal and is checked against the component's OWN slot union
+ * (BUG-11 §4.2). The rest of HTML's global vocabulary — `id`, `part`, `data-*`, `aria-*` and
+ * the others — stays in the literal and is accepted by `$GlobalAttrs`, which is a type and not
+ * a list in this file: the emitter does not know those attributes exist, and does not need to.
+ */
 function emitProps(
   ctx: TemplateContext,
   el: ElementNode,
   bindings: readonly { attr: Attribute; binding: Binding }[],
 ): void {
-  const props = bindings.filter((b) => b.binding.type === 'attr' || b.binding.type === 'property');
+  const props = bindings.filter(
+    (b) => (b.binding.type === 'attr' || b.binding.type === 'property') && !isSlot(b),
+  );
 
   ctx.w.scaffold('$attrs<', el.openSpan);
   // The tag's own span carries this one, under diagnostics-only capabilities: an
@@ -79,11 +111,10 @@ function emitProps(
   // the user never wrote.
   ctx.w.projected(ctx.aliases.aliasOf(el.name), tagSpan(el), DIAGNOSTIC_ONLY_CAPS);
   ctx.w.scaffold('>({');
-  // The attribute area of the start tag, standing for the inside of the object literal: it is
-  // what makes completion work at `<app-badge |>`, where there is no text yet to map from and
-  // the contract that knows the answer lives in the projection.
-  const area = attributeArea(el);
-  if (area.end > area.start) ctx.w.projected('\n  ', area, COMPLETION_ONLY_CAPS);
+  // One anchor per gap of the start tag, all standing for the inside of the object literal:
+  // this is what makes completion work at `<app-badge |>`, where there is no text yet to map
+  // from and the contract that knows the answer lives in the projection.
+  for (const gap of attributeGaps(el)) ctx.w.projected('\n  ', gap, COMPLETION_ONLY_CAPS);
 
   for (const { attr, binding } of props) {
     ctx.w.scaffold('\n  ');
@@ -94,6 +125,46 @@ function emitProps(
   }
 
   ctx.w.scaffold(props.length === 0 ? '});\n' : '\n});\n');
+
+  const slot = bindings.find(isSlot);
+  if (slot !== undefined) emitIntoSlot(ctx, el, slot.binding);
+}
+
+/** A `slot="…"` written plainly: never `.slot`, never `@slot`. Narrows the binding with it. */
+interface SlotBinding {
+  readonly attr: Attribute;
+  readonly binding: Extract<Binding, { type: 'attr' }>;
+}
+
+function isSlot(entry: { attr: Attribute; binding: Binding }): entry is SlotBinding {
+  return entry.binding.type === 'attr' && entry.attr.name === 'slot';
+}
+
+/**
+ * `slot="meta"` → `$intoSlot<$S0>('meta');`
+ *
+ * The literal is ONE stretch, quotes included, under the same profile as a projected tag —
+ * exactly as `emitSection` writes a section name, and for the same reason: TypeScript reports
+ * the `TS2345` over `'meta'` WITH its quotes, and a reported range only maps back when both of
+ * its ends land in a single stretch carrying `verification`. Written as scaffold + copy +
+ * scaffold, the error would reach nobody.
+ *
+ * An interpolated name is not projected at all: `slot="@(x)"` is a slot whose identity is not
+ * known until it runs, and checking it against a union of literals would be checking a value
+ * the projection cannot see.
+ */
+function emitIntoSlot(ctx: TemplateContext, el: ElementNode, binding: SlotBinding['binding']): void {
+  const alias = ctx.aliases.slotsAliasOf(el.name);
+  // No `<link>` for this tag: it already fails with TS2304 on its name, and its `$Slots` was
+  // never imported. A second error on the same tag adds nothing (BUG-11 §4.4).
+  if (alias === undefined) return;
+
+  const only = binding.value.length === 1 ? binding.value[0] : undefined;
+  if (only?.type !== 'attribute-text') return;
+
+  ctx.w.scaffold(`$intoSlot<${alias}>(`, binding.span);
+  ctx.w.projected(quote(only.value), only.span, DIAGNOSTIC_ONLY_CAPS);
+  ctx.w.scaffold(');\n');
 }
 
 /** Native tags: only the interpolations are checked, one `$attr` each. */

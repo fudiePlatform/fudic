@@ -1,6 +1,6 @@
 # BUG-11 — `slot=` viaja en el literal de props, y con él todo atributo global de HTML
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Corrige:** [SDD-23 — Emisor de TS virtual](../SDD-23-emisor-ts-virtual.md) §4.4, y amplía §7
 > **Paquete:** `@fudic/language-core`
 > **Rama sugerida:** la del backlog de uso; no comparte fichero con ningún BUG abierto
@@ -171,10 +171,16 @@ $attrs<$C0>({});
 $intoSlot<$S0>('meta');
 ```
 
-- Un nombre que el componente no declara ⇒ `TS2345` **sugiriendo los que sí existen**.
+- Un nombre que el componente no declara ⇒ `TS2345` **sobre el nombre que se escribió**.
 - Un componente sin `<slot name>` ⇒ `$Slots = never` ⇒ cualquier `slot=` falla.
 - **Completado gratis**: en `slot="|"` TypeScript está completando una unión de literales, que
   es la misma razón por la que ya funciona tras `@section `.
+
+> **Corregido al implementar.** Este párrafo decía «sugiriendo los que sí existen». No es así:
+> el mensaje nombra el **alias** (`$S0`), no expande la unión, porque el tipo llega por un
+> `import type`. Es exactamente lo que `$Sections` lleva haciendo desde SDD-23 y sus tests solo
+> afirman código y span por la misma razón. Quien enseña los nombres válidos es el completado y
+> el hover, no el texto del error.
 
 El literal del nombre se emite como **un solo tramo** bajo `DIAGNOSTIC_ONLY_CAPS`, comillas
 incluidas, por la razón que `emitSection` ya documenta: TypeScript reporta el `TS2345` sobre
@@ -228,7 +234,8 @@ virtual al checker de verdad.
    `export type $Slots = never;`.
 4. `slot="meta"` sobre un componente emite `$intoSlot<$S0>('meta')` y **no** aparece en el
    literal de `$attrs`.
-5. `slot="noexiste"` produce `TS2345`, y el mensaje nombra las ranuras válidas.
+5. `slot="noexiste"` produce `TS2345` **sobre el nombre escrito**. El mensaje nombra el alias,
+   no la unión (ver la nota de §4.2); los nombres válidos los da el completado.
 6. `id`, `part`, `exportparts`, `role`, `hidden`, `tabindex`, `lang`, `dir`, `title`, un
    `class` estático, un `style` estático, un `data-*` y un `aria-*` sobre un componente:
    **cero diagnósticos**.

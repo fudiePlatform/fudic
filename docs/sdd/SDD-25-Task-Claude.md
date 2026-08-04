@@ -26,7 +26,7 @@ Una tanda, un worktree. Dentro de una tanda, el orden importa.
 | T-09 | Cada reinicio filtra tres watchers | 2 · extensión | `vscode` | **Hecho** |
 | T-10 | Documentar el `[Error]` del reinicio | 2 · extensión | `vscode` | **Hecho** |
 | T-11 | BUG: `slot=` se proyecta como prop | 3 · slots | `language-core` | **Hecho** |
-| T-12 | Contrato de slots: `$Slots` | 3 · slots | `language-core` | Pendiente |
+| T-12 | Contrato de slots: `$Slots` | 3 · slots | `language-core` | **Hecho** |
 | T-13 | Tags de componente: snippet + auto-link | 4 · edición | `language-server` | Pendiente |
 | T-14 | Completado de directivas `@` | 4 · edición | `language-server` | Pendiente |
 | T-15 | `@RenderSection(` y la query inversa del índice | 4 · edición | `language-server` | Pendiente |
@@ -482,6 +482,33 @@ se implementa aquí.
 **Hecho cuando:** `examples/basic/routes/blog/index.fud:48` deja de dar `TS2353` **por tipos**;
 un `slot="noexiste"` da `TS2345` sugiriendo los válidos; F12 sobre el nombre abre el `<slot>`
 del componente; y `language-core` sigue al 100 % en las cuatro métricas.
+
+**HECHO.** BUG-11 cerrado: 8/8 tareas, `Hecho` en el índice y en el registro. Rojo primero —7
+tests cayendo con `TS2353`— y verde después. 138 tests, 100/100/100/100.
+
+**Dos cosas que la implementación desmintió del documento**, corregidas en él:
+
+- El `TS2345` nombra el **alias** (`$S0`), no expande la unión: el tipo llega por `import type`.
+  Es lo que `$Sections` lleva haciendo desde SDD-23. Los nombres válidos los da el completado y
+  el hover, no el texto del error.
+- `$Slots` se exporta **siempre**, `never` incluido. Un consumidor importa el símbolo de lo que
+  enlaza, y un export ausente sería `TS2305` sobre andamiaje en vez del `TS2345` accionable.
+
+**Hallazgo colateral, arreglado aquí porque este cambio lo destapó.** Rompió el criterio §6.3
+de SDD-24 —el completado de una unión dentro de `tone="@(|)"`— y la causa no era el tipo: el
+ancla de completado se emitía como **un** tramo sobre toda el área de atributos, así que cubría
+también los **valores**. Esa posición mapeaba al ancla *y* a la interpolación, y Volar contesta
+con la primera posición mapeada que devuelve algo; mientras el literal no ofrecía claves ahí el
+ancla volvía vacía y ganaba la interpolación, pero en cuanto `$GlobalAttrs` le dio once nombres
+que ofrecer, la unión dejó de ser alcanzable. Ahora se emite **un ancla por hueco** del tag
+—antes del primer atributo, entre dos, y tras el último—, que es lo que el ancla decía ser.
+
+**Abierto, y no es de esta tarea:** `pnpm test` en la raíz **no** es fiable bajo carga. En seis
+pasadas completas cayeron dos tests distintos, una vez cada uno, y ninguno de los dos vuelve a
+caer en aislado: `§6.14 — cancellation` otra vez, y
+`vite/test/build-client-chunks.test.ts > carries the factory and the define`. O sea que **T-02
+no cerró la fragilidad**, solo una de sus causas. Queda anotado aquí en vez de en T-02 para no
+tocar una tarea ya cerrada; merece tarea propia.
 
 ---
 

@@ -20,7 +20,7 @@ import { emitPropsProjection, type PropsCall } from './props.js';
 import { emitElementBindings } from './template/attrs.js';
 import type { TemplateContext } from './template/context.js';
 import { emitControl, emitInlineCode, type ControlLike } from './template/control.js';
-import { emitSection, emitSectionsContract, emitSlot } from './template/sections.js';
+import { emitSection, emitSectionsContract, emitSlot, emitSlotsContract } from './template/sections.js';
 import { emitInterpolation } from './template/text.js';
 import type { FileRegistry, VirtualFile } from './types.js';
 import { VirtualWriter } from './writer.js';
@@ -50,6 +50,7 @@ export function emitClientVirtual(
 
   emitNeutralZone(w, source, doc, props);
   emitSectionsContract(w, doc);
+  emitSlotsContract(w, doc);
 
   for (const region of partitionCode(doc.code).client) {
     w.copy(region);

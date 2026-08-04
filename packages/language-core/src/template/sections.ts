@@ -10,8 +10,16 @@
  * point TypeScript is completing a string-literal union.
  */
 
-import type { SectionNode, StructuredDocument } from '@fudic/compiler';
+import type {
+  AttributeValuePart,
+  ElementNode,
+  HtmlContent,
+  SectionNode,
+  Span,
+  StructuredDocument,
+} from '@fudic/compiler';
 import { DIAGNOSTIC_ONLY_CAPS } from '../caps.js';
+import { nestedContent, templateContent } from '../imports.js';
 import type { VirtualWriter } from '../writer.js';
 import type { TemplateContext } from './context.js';
 
@@ -36,9 +44,88 @@ export function emitSection(ctx: TemplateContext, node: SectionNode): void {
   ctx.emit(node.children);
 }
 
-/** `<slot>` — a marker with no type of its own, for now (SDD-23 §7). */
+/** `<slot>` — a marker inside the component. What its NAME means is `$Slots`, below. */
 export function emitSlot(ctx: TemplateContext, at: SectionNode['span']): void {
   ctx.w.scaffold('$slot();\n', at);
+}
+
+/**
+ * The slots a component declares, in source order, without duplicates (BUG-11 §4.3).
+ *
+ * Only a `<slot name="…">` counts. The default slot has no name to check anything against, so
+ * a component with only a default slot declares nothing — which is what makes `slot=` on a
+ * child of it an error, correctly.
+ */
+export function collectSlots(content: readonly HtmlContent[]): readonly NamedSlot[] {
+  const found = new Map<string, NamedSlot>();
+  walkSlots(content, found);
+  return [...found.values()];
+}
+
+/** A `<slot name="meta">`, with the span of `meta` inside its quotes. */
+export interface NamedSlot {
+  readonly name: string;
+  readonly span: Span;
+}
+
+function walkSlots(content: readonly HtmlContent[], out: Map<string, NamedSlot>): void {
+  for (const node of content) {
+    if (node.type !== 'element') {
+      for (const nested of nestedContent(node)) walkSlots(nested, out);
+      continue;
+    }
+    if (node.name === 'slot') {
+      const named = nameOf(node);
+      if (named !== undefined && !out.has(named.name)) out.set(named.name, named);
+    }
+    walkSlots(node.children, out);
+  }
+}
+
+/**
+ * The static `name` of a `<slot>`, or nothing.
+ *
+ * Static only, and on purpose: `name="@(x)"` is a slot whose identity is not known until it
+ * runs, and putting it in a union of literals would be inventing a name the user did not write.
+ */
+function nameOf(element: ElementNode): NamedSlot | undefined {
+  const attribute = element.attributes.find((a) => a.name === 'name');
+  if (attribute === undefined) return undefined;
+
+  // `value` is always an array — empty for `name` and for `name=""` (decision 44) — so an
+  // empty or interpolated name simply yields nothing to declare.
+  const only = attribute.value.length === 1 ? attribute.value[0] : undefined;
+  if (only?.type !== 'attribute-text' || only.value === '') return undefined;
+
+  return { name: only.value, span: only.span };
+}
+
+/**
+ * The other half of the contract: what a component declares it can be filled with (BUG-11 §3.2).
+ *
+ *     <slot name="meta">  →  export type $Slots = 'meta';
+ *
+ * Each name is copied from its `<slot>`, so go-to-definition on a `slot=` in a consumer lands
+ * on the very element that will host it — the same trick `$Sections` plays with its layout.
+ *
+ * `never` for everything else. A page, a route and a layout have no shadow root, so exporting
+ * a slot union from one would invite a `slot=` against something that cannot host it.
+ */
+export function emitSlotsContract(w: VirtualWriter, doc: StructuredDocument): void {
+  const slots = doc.type === 'component-document' ? collectSlots(templateContent(doc)) : [];
+  if (slots.length === 0) {
+    w.scaffold('export type $Slots = never;\n');
+    return;
+  }
+
+  w.scaffold('export type $Slots = ');
+  slots.forEach((slot, i) => {
+    if (i > 0) w.scaffold(' | ');
+    w.scaffold("'");
+    w.copy(slot.span);
+    w.scaffold("'");
+  });
+  w.scaffold(';\n');
 }
 
 /**
