@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-27 — Artefactos de build y manifiesto](./SDD-27-artefactos-y-manifiesto.md)
 > **Paquetes:** `@fudic/vite`, `@fudic/transport` · **Rama:** `feat/sdd-27-artefactos`
-> **Progreso:** 18 / 24
+> **Progreso:** 18 / 23
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Los ficheros son relativos a `packages/vite/` salvo cuando se diga
@@ -105,7 +105,7 @@ otra cosa.
       **conserva su hash**: nadie deriva su URL, y ahí el hash sí ahorra descargas.
 
 
-## Fase 4 — El manifiesto (4)
+## Fase 4 — El manifiesto (3) ✅
 
 - [x] **18. Nombres de chunk como única fuente.**
       `src/names.ts`: `chunkNameOf`/`chunkNamesOf`, con la misma partición por anchura.
@@ -118,21 +118,26 @@ otra cosa.
       `router.ts` pide las URLs a `table.urls` en `warm`, `render`, `fetchData` e
       `invalidate`. Ya no lee `record.chunk` ni `record.data`.
 
-- [ ] **21. El hilo principal resuelve la hidratación.**
-      Modificar `src/bootstrap.ts` (`emitMainBootstrap`): dado un tag, la URL de su chunk de
-      hidratación sale de `hydrateUrl(tag)`, con el `build` que ya viaja en el manifiesto.
-      **Solo la URL** — el disparador es SDD-17 y no se toca.
+> **El hilo principal no aparece en este SDD.** Aquí había una tarea que le hacía resolver
+> la URL de hidratación. Se eliminó: el hilo principal no descarga chunks de hidratación.
+> Detecta tags con un IntersectionObserver, se lo dice al Service Worker por `postMessage`,
+> y el SW los descarga y los deja en caché junto a los de render. Cuando el usuario
+> interactúa, el capturador global de eventos hace `import` y **no va a red** — sale de la
+> caché del SW. Ese diseño es de Pedro y está medido (INP 16 ms); este SDD solo tiene que
+> dejar la URL **derivable**, que es lo que hace `hydrateUrl`. Quién la pide y cuándo no se
+> decide aquí.
 
 ## Fase 5 — Aceptación (3)
 
-- [ ] **22. El manifiesto de `examples/basic`.**
+- [ ] **21. El manifiesto de `examples/basic`.**
       Crear `test/manifest-shape.test.ts`: el `fudic-routes.json` del build real casa byte a
       byte con §5.4 del SDD, no contiene ninguna URL y pesa **≤ 500 B**.
-- [x] **23. Prerender y e2e.**
+
+- [x] **22. Prerender y e2e.**
       Los 5 HTML de `examples/basic` **idénticos byte a byte** al baseline. `test:e2e`
       (Playwright, Chromium real): **16/16**, recarga sin red incluida.
 
-- [x] **24. Cobertura.**
+- [x] **23. Cobertura.**
       `src/rename.ts`, `src/names.ts` y `packages/transport/src/urls.ts` al **100 %** en las
       cuatro métricas. Agregados: vite 87,1 % de ramas, transport 91,2 % — ambos por encima
       del suelo heredado (83,1 / 83,8).
