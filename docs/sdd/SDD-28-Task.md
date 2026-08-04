@@ -3,7 +3,7 @@
 > **SDD:** [SDD-28 — Snippets y andamiaje en el editor](./SDD-28-snippets.md)
 > **Paquete:** `@fudic/language-server` (más una mudanza a `@fudic/compiler`)
 > **Rama:** `feat/sdd-28-snippets`, dentro del worktree `sdd-25-pendientes`
-> **Progreso:** 6 / 22 — fases 0 y 1 hechas.
+> **Progreso:** 11 / 22 — fases 0, 1 y 2 hechas.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Salvo donde se diga otra cosa, los ficheros son relativos a
@@ -62,23 +62,28 @@ regresión no rompe un test propio sino uno ajeno —el de Emmet—.
 
 ## Fase 2 — El catálogo (5)
 
-- [ ] **7. Tipos y esqueletos de documento.**
+- [x] **7. Tipos y esqueletos de documento.**
       Modificar `src/services/snippets.ts`: `FudSnippet`, `SNIPPETS` y los cuatro cuerpos de
       `component`, `route`, `page` y `layout` (§5.1.a), como constantes.
-- [ ] **8. Control de flujo.**
+- [x] **8. Control de flujo.**
       Añadir los seis de §5.1.c: `@if`, `@if else`, `@foreach`, `@for`, `@while` y `@switch`,
       este último con `case`/`default` y sin llaves por caso (decisión 14).
-- [ ] **9. Bloque `@code` por rol.**
+- [x] **9. Bloque `@code` por rol.**
       Añadir los de §5.1.b con `requiresNoCodeBlock`: `props` + `@client` en un componente,
       `@server load` en ruta y página, y `@code { }` a secas en un layout —**un layout no
       declara `load`** (`FUD0430`)—.
-- [ ] **10. Directivas y zonas.**
+- [x] **10. Directivas y zonas.**
       Añadir los de §5.1.d: `@RenderBody`, `@RenderHead`, `@RenderSection` y `@section` en
       markup por rol; `props`, `load`, `@server` y `@client` dentro del `@code`.
-- [ ] **11. `snippetsAt` y sus puertas.**
+- [x] **11. `snippetsAt` y sus puertas.**
       Implementar el filtro por scope, rol y `requiresNoCodeBlock`, y probarlo: ningún control
       de flujo dentro de `@code`, ningún `@RenderBody` en una ruta, ningún `@client` fuera de un
       componente, y el `@code` que desaparece en cuanto el documento ya tiene uno.
+      **Hecho.** 21 entradas. Tres comparten el label `@code` sobre roles **disjuntos**, que es
+      lo que permite que un componente reciba `props` y una ruta reciba `load` sin que el
+      catálogo tenga una rama. Un detalle que el test destapó y que se queda como está: un
+      fichero con **solo un comentario** ya no es vacío, así que pierde los esqueletos y gana
+      markup — un comentario es contenido, y `@* … *@` es markup.
 
 ## Fase 3 — Que el catálogo no mienta (3)
 
