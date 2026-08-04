@@ -3,7 +3,7 @@
 > **SDD:** [SDD-28 — Snippets y andamiaje en el editor](./SDD-28-snippets.md)
 > **Paquete:** `@fudic/language-server` (más una mudanza a `@fudic/compiler`)
 > **Rama:** `feat/sdd-28-snippets`, dentro del worktree `sdd-25-pendientes`
-> **Progreso:** 0 / 22
+> **Progreso:** 3 / 22 — fase 0 hecha.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Salvo donde se diga otra cosa, los ficheros son relativos a
@@ -18,17 +18,22 @@ regresión no rompe un test propio sino uno ajeno —el de Emmet—.
 
 ## Fase 0 — La mudanza del ancla (3)
 
-- [ ] **1. `componentLinkAnchor` en el compilador.**
+- [x] **1. `componentLinkAnchor` en el compilador.**
       Crear `packages/compiler/src/document/anchor.ts` con `LinkAnchor`,
       `componentLinkAnchor(source, doc)` y `componentLinkTag(href)`, movidas literalmente desde
       [`cli/src/wire.ts:23-76`](../../packages/cli/src/wire.ts#L23-L76) —incluido `lineIndent`—,
       y exportarlas en `packages/compiler/src/index.ts`. Puras, sin I/O.
-- [ ] **2. La CLI importa desde el compilador.**
+      **Hecho.** Una sola cosa no se movió literal: `lineIndent` usaba `match?.[0] ?? ''` sobre
+      `^[ \t]*`, que **siempre** casa, así que el `??` era una rama que ningún test podía tomar
+      —invisible en un paquete con deuda, inaceptable en un fichero nuevo al 100 %—. Se escanea.
+      `anchor.ts` nace en **100/100/100/100** (13 sentencias, 9 ramas, 3 funciones).
+- [x] **2. La CLI importa desde el compilador.**
       Modificar `packages/cli/src/wire.ts`: `alreadyLinked` y `wireComponentLink` **se quedan**;
       `anchorFor` y `componentLinkTag` pasan a reexportarse desde `@fudic/compiler` para no
       romper `src/index.ts`. `pnpm --filter @fudic/cli test` en verde **sin tocar sus tests**:
       si alguno cambia, la mudanza no fue mecánica.
-- [ ] **3. Anotar SDD-22 §4.4.**
+      **Hecho.** 80 tests de `cli` en verde sin tocar ni una línea de `test/`.
+- [x] **3. Anotar SDD-22 §4.4.**
       Modificar [`SDD-22-fudic-cli.md`](./SDD-22-fudic-cli.md) §4.4: el ancla vive ahora en el
       compilador y por qué (una regla, dos consumidores).
 

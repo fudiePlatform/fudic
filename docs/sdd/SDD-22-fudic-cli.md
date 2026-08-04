@@ -342,6 +342,15 @@ La inserción se hace sobre el AST del fichero destino, no con expresiones regul
 
 El `href` se calcula relativo al fichero destino, con `./` explícito y extensión `.fud`.
 
+> **Dónde vive la regla, desde SDD-28.** Los puntos 2–4 —el punto de inserción por rol— los
+> implementa hoy `componentLinkAnchor` en **`@fudic/compiler`**
+> ([`src/document/anchor.ts`](../../packages/compiler/src/document/anchor.ts)), no la CLI. El
+> motivo es que dejó de tener un solo consumidor: el editor inserta el mismo `<link>` al
+> aceptar el completado de un componente no enlazado ([SDD-28](./SDD-28-snippets.md) §3.3), y
+> dos copias de una regla que depende del rol del documento divergen en silencio. `anchorFor`
+> y `componentLinkTag` siguen exportándose desde `@fudic/cli` —la superficie pública de §3 no
+> cambia—, y `wireComponentLink`, que es la escritura sobre el texto, sigue siendo suya.
+
 ### 4.5. `g page` — una sola forma, resuelta
 
 **Mapeo `<ruta>` → fichero** (convención de SDD-19, invertida): `/` ⇒ `routes/index.fud`;
