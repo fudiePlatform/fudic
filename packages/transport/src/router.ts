@@ -172,14 +172,16 @@ export function createRouter(config: RouterConfig): Router {
   };
 
   const fetchData = async (record: RouteRecord, params: Readonly<Record<string, string>>): Promise<unknown> => {
-    if (record.data === undefined) {
+    // `dataPolicy` IS the "this route has data" signal now: it is emitted exactly when the
+    // page declares `@server load`. One question, one branch.
+    const { dataPolicy } = record;
+    if (dataPolicy === undefined) {
       return {};
     }
-    const policy = record.dataPolicy ?? { policy: 'cache-first' as CachePolicy, ttl: null };
     const response = await stores.data.get(
-      abs(fillParams(record.data, params)),
-      policy.policy,
-      policy.ttl,
+      abs(fillParams(table.urls.dataUrl(record.pattern), params)),
+      dataPolicy.policy,
+      dataPolicy.ttl,
     );
     return response.json();
   };
@@ -194,7 +196,10 @@ export function createRouter(config: RouterConfig): Router {
     request: Request,
   ): Promise<Response> => {
     try {
-      const exports = await linker.link(abs(chunkUrl), (record.deps ?? []).map(abs));
+      const exports = await linker.link(
+        abs(chunkUrl),
+        (record.deps ?? []).map((name) => abs(table.urls.depUrl(name))),
+      );
       const chunk = exports as unknown as RouteChunk;
       const data = await fetchData(record, params);
       // The chunk renders with the TOKEN, not with this response's nonce: the same bytes
@@ -275,11 +280,12 @@ export function createRouter(config: RouterConfig): Router {
       return;
     }
     const { record } = hit;
-    if (record.mode !== 'ssr' && record.chunk !== undefined && !warmed.has(record.pattern)) {
+    const chunkUrl = table.urls.renderUrl(record);
+    if (record.mode !== 'ssr' && chunkUrl !== null && !warmed.has(record.pattern)) {
       for (const dep of record.deps ?? []) {
-        await stores.routes.get(abs(dep), 'cache-first', null);
+        await stores.routes.get(abs(table.urls.depUrl(dep)), 'cache-first', null);
       }
-      await stores.routes.get(abs(record.chunk), 'cache-first', null);
+      await stores.routes.get(abs(chunkUrl), 'cache-first', null);
       warmed.add(record.pattern);
     }
   };
@@ -312,8 +318,8 @@ export function createRouter(config: RouterConfig): Router {
       }
       // Capability, not label: a record with no chunk cannot be rendered here, whatever
       // its mode says. That is also what removes the `record.chunk!` assertion (§4.6.3).
-      const chunkUrl = record.chunk;
-      if (chunkUrl === undefined || !warmed.has(record.pattern)) {
+      const chunkUrl = table.urls.renderUrl(record);
+      if (chunkUrl === null || !warmed.has(record.pattern)) {
         // Cold: the network serves this one and the template warms behind it.
         event.waitUntil(warm(url.pathname));
         return;
@@ -337,8 +343,10 @@ export function createRouter(config: RouterConfig): Router {
       const pageUrl = pageUrlOf(pathname);
       pages.delete(pageUrl);
       await stores.pages.delete(pageUrl);
-      if (hit.record.data !== undefined) {
-        await stores.data.delete(abs(fillParams(hit.record.data, hit.params)));
+      if (hit.record.dataPolicy !== undefined) {
+        await stores.data.delete(
+          abs(fillParams(table.urls.dataUrl(hit.record.pattern), hit.params)),
+        );
       }
     },
   };

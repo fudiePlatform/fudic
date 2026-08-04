@@ -30,7 +30,15 @@ export {
   loadManifest,
   fillParams,
   segmentsOf,
+  safeName,
 } from './manifest.js';
+export {
+  type UrlResolver,
+  DATA_PREFIX,
+  LINK_DIR,
+  CLIENT_DIR,
+  createUrlResolver,
+} from './urls.js';
 export {
   type ModuleExports,
   type Linker,

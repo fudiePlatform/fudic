@@ -70,6 +70,7 @@ interface OutFile {
   readonly type: 'chunk' | 'asset';
   readonly fileName: string;
   readonly code?: string;
+  readonly source?: string;
 }
 
 let output: OutFile[];
@@ -143,6 +144,10 @@ describe('the client chunks in the build output', () => {
     // modules, with its DSD in place — which is what these chunks will later adopt.
     const html = output.find((o) => o.fileName === 'index.html');
     expect(html).toBeDefined();
-    expect(output.some((o) => /^assets\/c\/index-/u.test(o.fileName))).toBe(true);
+    expect(String(html!.source)).toContain('shadowrootmode');
+    // And since SDD-27 §5.1 there is no `page` chunk left to replace anything: with no
+    // Service Worker this project publishes prerendered HTML and hydration chunks, and
+    // nothing else — `ssr` is served from `.fudic/edge`, outside the output.
+    expect(output.some((o) => /^assets\/c\//u.test(o.fileName))).toBe(false);
   });
 });

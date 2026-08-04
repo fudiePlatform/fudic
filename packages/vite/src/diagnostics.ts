@@ -30,6 +30,11 @@ export const FUD_STRATEGY_AND_DEFAULT = 'FUD0397';
 export const FUD_SSG_WITHOUT_PATHS = 'FUD0398';
 export const FUD_CHUNK_NOT_EMITTED = 'FUD0399';
 
+// SDD-27 (FUD0500–FUD0519): build artifacts and manifest. Neither breaks the build:
+// the first disables the rename entirely, the second only for the colliding pair.
+export const FUD_HASH_LENGTH = 'FUD0500';
+export const FUD_NAME_COLLISION = 'FUD0501';
+
 // SDD-21 (FUD0420–FUD0449): layouts. Only the build-level one lives here; the rest are
 // span-carrying diagnostics the compiler emits (structure + resolveDocument).
 export const FUD_ORPHAN_LAYOUT = 'FUD0434';

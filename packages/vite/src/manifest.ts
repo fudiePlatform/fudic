@@ -3,13 +3,16 @@
  * the server and the Service Worker both read. Single source, matched first-hit by
  * specificity (which the route order already encodes).
  *
- * Per route: its mode, the linkable chunk and its TOPOLOGICAL deps (the SW's `require`
- * is synchronous, so it must know what to load before what), and the generated data
- * endpoint with its policy. `csp` lives here so server and SW cannot diverge.
+ * Per route: its mode, its TOPOLOGICAL deps (the SW's `require` is synchronous, so it
+ * must know what to load before what), and the policy of its generated data endpoint.
+ * `csp` lives here so server and SW cannot diverge.
  *
- * What this does NOT emit is the URL of a prerendered HTML file. That file belongs to
- * the edge and exists for the first visit; naming it here made the Service Worker
- * download a document per route instead of rendering it (BUG-02).
+ * What this does NOT emit is a URL — any URL (SDD-27 §5.4). Not the prerendered HTML
+ * file, which belongs to the edge and whose naming here made the Service Worker download
+ * a document per route instead of rendering it (BUG-02); and not a chunk either, because
+ * chunk names derive from the pattern and the tag, and carry the build id rather than a
+ * content hash. The record states what cannot be derived: WHICH components, in WHICH
+ * order, and whether the route has data.
  */
 
 import {
@@ -22,19 +25,21 @@ import {
 } from '@fudic/transport';
 import { type RouteBuild } from './discover.js';
 import { isLinkable } from './mode.js';
-import { DATA_PREFIX } from './constants.js';
 import { parseTtl } from './swconfig.js';
 import { type FudicDiagnostic, FUD_TTL_INVALID, FUD_TWO_TTLS } from './diagnostics.js';
 
 export interface ManifestInputs {
   readonly build: string;
   readonly base: string;
-  /** Absolute URL of the linkable chunk of a `sw` route (empty when there is none). */
-  readonly linkChunkOf: (route: RouteBuild) => string;
-  /** Its dependencies, in topological order. */
-  readonly depsOf: (route: RouteBuild) => readonly string[];
-  /** The ESM chunk for the edge (dev/preview/prerender). */
-  readonly esmOf: (route: RouteBuild) => string;
+  /**
+   * The component chunk NAMES a route needs, topologically ordered, or `null` when the
+   * link pass produced no entry chunk for it (FUD0399).
+   *
+   * Names, not URLs (SDD-27 §5.4): where a chunk lives is derivable from its name and the
+   * build id, so the manifest states only what cannot be derived — which components, in
+   * which order.
+   */
+  readonly depsOf: (route: RouteBuild) => readonly string[] | null;
   /** Emit `sw` records at all (no `sw.json` → no Service Worker). */
   readonly serviceWorker: boolean;
 }
@@ -100,44 +105,36 @@ export function buildManifest(
     // With no Service Worker a `sw` route still has to be reachable: the server renders
     // it on demand, which is exactly what `ssr` means to the client.
     const mode = decision.mode === 'sw' && !inputs.serviceWorker ? 'ssr' : decision.mode;
-    const esm = inputs.esmOf(rb);
 
     // Everything the SW may render carries the same payload — `ssg` included, which is
     // the whole of BUG-02 §4.6. What it may render is `isLinkable`, the same predicate
     // the link pass uses, so the manifest can never promise a chunk that was not built.
     // Without a Service Worker nothing links at all.
-    if (!inputs.serviceWorker || !isLinkable(decision)) {
-      records.push({
-        pattern: rb.route.pattern,
-        mode,
-        ...(esm === '' ? {} : { esm }),
-      });
+    const deps = !inputs.serviceWorker || !isLinkable(decision) ? null : inputs.depsOf(rb);
+    if (deps === null) {
+      // No `deps` key at all: its ABSENCE is what tells the router this route is the
+      // server's, whatever its mode says (SDD-27 §5.4). An empty list would mean the
+      // opposite — renderable, with no components.
+      records.push({ pattern: rb.route.pattern, mode });
       continue;
     }
 
     const dataPolicy = dataPolicyOf(rb, diagnostics);
     const page = pagePolicyOf(rb, dataPolicy, diagnostics);
-    const deps = inputs.depsOf(rb);
-    const chunk = inputs.linkChunkOf(rb);
     records.push({
       pattern: rb.route.pattern,
       mode,
-      // Omitted when the link pass produced nothing (FUD0399): the router asks for what
-      // the record HAS, so an absent chunk means "the server serves this one".
-      ...(chunk === '' ? {} : { chunk }),
-      ...(deps.length === 0 ? {} : { deps }),
+      deps,
       // The data endpoint is GENERATED from `@server load`, never hand-written: one
-      // source, two callers — the edge in process, the SW over HTTP (§4.5).
-      ...(rb.analysis.hasLoad
-        ? { data: `${inputs.base}${DATA_PREFIX.slice(1)}${rb.route.pattern}`.replace(/\/{2,}/gu, '/'), dataPolicy }
-        : {}),
+      // source, two callers — the edge in process, the SW over HTTP (§4.5). The URL is
+      // derived from the pattern, so its POLICY is what states the route has one.
+      ...(rb.analysis.hasLoad ? { dataPolicy } : {}),
       ...(page === undefined ? {} : { page }),
-      ...(esm === '' ? {} : { esm }),
     });
   }
 
   return {
-    file: { build: inputs.build, csp: DEFAULT_CSP, routes: records },
+    file: { build: inputs.build, base: inputs.base, csp: DEFAULT_CSP, routes: records },
     diagnostics,
   };
 }
