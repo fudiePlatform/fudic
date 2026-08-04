@@ -255,11 +255,23 @@ describe('directiveContextAt (SDD-28 §5.4)', () => {
 });
 
 describe('isEmptyDocument', () => {
-  it.each([[''], ['   '], ['\n\n  \t\n']])('is true for %j', (source) => {
+  it.each([
+    [''],
+    ['   '],
+    ['\n\n  \t\n'],
+    // Nothing but the word being typed: still a file nobody has written yet, and the only
+    // state in which a skeleton is ever asked for.
+    ['x'],
+    ['rou'],
+    ['  app-b\n'],
+  ])('is true for %j', (source) => {
     expect(isEmptyDocument(source)).toBe(true);
   });
 
-  it.each([['<div></div>'], ['@* a comment *@'], ['x']])('is false for %j', (source) => {
-    expect(isEmptyDocument(source)).toBe(false);
-  });
+  it.each([['<div></div>'], ['@* a comment *@'], ['two words'], ['@code {}']])(
+    'is false for %j',
+    (source) => {
+      expect(isEmptyDocument(source)).toBe(false);
+    },
+  );
 });

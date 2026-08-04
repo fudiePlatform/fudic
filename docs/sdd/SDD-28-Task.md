@@ -3,7 +3,7 @@
 > **SDD:** [SDD-28 — Snippets y andamiaje en el editor](./SDD-28-snippets.md)
 > **Paquete:** `@fudic/language-server` (más una mudanza a `@fudic/compiler`)
 > **Rama:** `feat/sdd-28-snippets`, dentro del worktree `sdd-25-pendientes`
-> **Progreso:** 18 / 22 — fases 0 a 4 hechas.
+> **Progreso:** 22 / 22 — las cinco fases hechas; queda el cierre.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Salvo donde se diga otra cosa, los ficheros son relativos a
@@ -153,22 +153,35 @@ regresión no rompe un test propio sino uno ajeno —el de Emmet—.
 
 ## Fase 5 — La cadena de `completions` (4)
 
-- [ ] **19. La rama de directivas.**
+- [x] **19. La rama de directivas.**
       Modificar `src/services/plugin.ts`: tras `href` y `@section`, un contexto `@` que devuelve
       los snippets de markup del rol, con `textEdit` sobre el span que incluye el `@`. Va
       **antes** de Emmet.
-- [ ] **20. Fusión con Emmet** (invariante §5.3).
+      **Hecho, con una condición que no estaba prevista: solo gana si tiene algo que decir.**
+      Dentro de un `<style>` un `@` es una **at-rule de CSS**, y contestar con una lista vacía
+      ahí tapa al servicio de CSS —que es de quien es ese `@media`—. La rama devuelve solo
+      cuando el catálogo aporta algo.
+- [x] **20. Fusión con Emmet** (invariante §5.3).
       Modificar `completions()`: la rama de palabra-sin-`<` **añade** sus ítems a los de Emmet en
       vez de retornar; la lista conserva `isIncomplete` si Emmet lo puso. La rama **con** `<`
       sigue devolviendo la lista sola.
-- [ ] **21. La forma de los ítems.**
+- [x] **21. La forma de los ítems.**
       `insertTextFormat: Snippet` en todo lo de este SDD, `sortText` `0_` para lo enlazado y `1_`
       para lo que aún no lo está, `labelDetails.description` distinto en cada grupo, y
       `additionalTextEdits` solo cuando falta el `<link>`.
-- [ ] **22. El test que impide la regresión** (criterio 11).
+      **Hecho.** El `newText` del tag depende del contexto: con `<` ya escrito se completa
+      **hacia dentro** (`app-badge>$0</app-badge>`), y sin él se escribe el tag entero.
+- [x] **22. El test que impide la regresión** (criterio 11).
       Modificar `test/services/plugin.test.ts`: en la misma posición y en la **misma respuesta**,
       los ítems de Emmet (`div` → `<div>$0</div>`) y los nuestros. **Comprobar que muerde**
       contra la implementación que retorna en vez de fusionar.
+      **Hecho, y la puerta del esqueleto estaba mal.** El test de fichero vacío falló y tenía
+      razón: `isEmptyDocument` exigía un fichero **sin nada**, pero nadie completa sin teclear
+      antes, y al teclear `rou` el fichero deja de estar vacío — una puerta que se cierra con
+      una sola pulsación es una puerta por la que no pasa nadie. Ahora vale también «nada más
+      que la palabra que se está escribiendo». Y la aserción de Emmet acabó siendo mejor de lo
+      escrito: sobre `app`, Emmet no expande `<app>` sino **`applet`**, que es lo que de verdad
+      demuestra que su lista sigue entera.
 
 ---
 

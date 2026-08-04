@@ -157,15 +157,19 @@ export function directiveContextAt(source: string, offset: number): PartialName 
 }
 
 /**
- * Whether the document has nothing in it yet.
+ * Whether the document has nothing in it yet — or nothing but the word being typed.
  *
  * The gate for the document skeletons, and it has to be the content rather than the role: an
  * empty `.fud` structures as a `component-document` with `FUD0156`, because without a doctype
  * and without a `<link rel="layout">` there is nothing else to decide on. Gating on the role
  * would mean the `route` and `layout` skeletons could never be offered at all.
+ *
+ * The lone word is not a concession, it is the whole case: nobody completes on an empty file
+ * without typing something first, and the moment they type `rou` the file stops being empty.
+ * A gate that a single keystroke closes is a gate nobody would ever get through.
  */
 export function isEmptyDocument(source: string): boolean {
-  return source.trim() === '';
+  return /^([A-Za-z][-\w]*)?$/u.test(source.trim());
 }
 
 /**

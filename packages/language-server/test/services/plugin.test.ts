@@ -115,17 +115,23 @@ describe('completion', () => {
       `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="component" href="../components/app-badge.fud">\n<article><|</article>\n`,
     );
     const list = await completionsOf(service, document, position);
+    const badge = list?.items[0];
 
-    expect(list?.items.map((item) => item.label)).toEqual(['app-badge']);
-    expect(list?.items[0]?.sortText).toBe('0_app-badge');
-    expect(list?.items[0]?.labelDetails?.description).toBe('fudic component');
+    // The linked one first, then the one the workspace has and this file does not (SDD-28).
+    expect(list?.items.map((item) => item.label)).toEqual(['app-badge', 'site-nav']);
+    expect(badge?.sortText).toBe('0_app-badge');
+    expect(badge?.labelDetails?.description).toBe('fudic component');
+    // With the `<` already written, the tag completes into what follows it.
+    expect(badge?.textEdit?.newText).toBe('app-badge>$0</app-badge>');
+    expect(badge?.insertTextFormat).toBe(2);
   });
 
-  it('says nothing where none of the three contexts apply', async () => {
+  it('says nothing outside markup, where no context applies', async () => {
     const { service, document, position } = setup(
-      `<link rel="layout" href="../layouts/_layout.fud">\n<article>plain |text</article>\n`,
+      `<link rel="layout" href="../layouts/_layout.fud">\n@code {\n  const a = |1;\n}\n<p>x</p>\n`,
     );
 
+    // Inside `@code` the language is TypeScript: no tag, no Emmet, and `1` is not a word.
     expect(await completionsOf(service, document, position)).toBeUndefined();
   });
 
@@ -140,6 +146,114 @@ describe('completion', () => {
     expect(edit).toMatchObject({
       range: rangeOf(document, { start: value, end: value + '../comp'.length }),
     });
+  });
+});
+
+describe('completion — snippets and Emmet (SDD-28 §5.3–§5.5)', () => {
+  const item = (list: CompletionList | undefined, label: string) =>
+    list?.items.find((candidate) => candidate.label === label);
+
+  it('a bare word offers the components AND keeps Emmet whole', async () => {
+    const { service, document, position } = setup(
+      `<link rel="layout" href="../layouts/_layout.fud">\n<article>\n  app|\n</article>\n`,
+    );
+    const list = await completionsOf(service, document, position);
+
+    // Ours, with the `<` we write ourselves because the user did not type one.
+    expect(item(list, 'app-badge')?.textEdit?.newText).toBe('<app-badge>$0</app-badge>');
+    // And Emmet's, in the SAME response — here it reads `app` as the `applet` element.
+    // Losing this is the regression of §5.3: every abbreviation the user has ever typed
+    // would silently stop expanding.
+    expect(item(list, 'applet')?.textEdit?.newText).toBe('<applet>${0}</applet>');
+    expect(list?.isIncomplete).toBe(true);
+  });
+
+  it('an unlinked component carries its <link> along (criterion 12)', async () => {
+    const { service, document, position, cached } = setup(
+      `<link rel="layout" href="../layouts/_layout.fud">\n<article>\n  site|\n</article>\n`,
+    );
+    const list = await completionsOf(service, document, position);
+    const nav = item(list, 'site-nav');
+    const edit = nav?.additionalTextEdits?.[0];
+
+    expect(nav?.sortText).toBe('1_site-nav');
+    expect(nav?.labelDetails?.description).toBe('fudic component · adds <link>');
+    expect(edit?.newText).toBe('\n<link rel="component" href="../components/site-nav.fud">');
+    expect(edit?.range.start).toEqual(document.positionAt(cached.source.indexOf('\n')));
+  });
+
+  it('a linked one carries nothing: no duplicate link (criterion 14)', async () => {
+    const { service, document, position } = setup(
+      `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="component" href="../components/site-nav.fud">\n<article>\n  site|\n</article>\n`,
+    );
+    const list = await completionsOf(service, document, position);
+
+    expect(item(list, 'site-nav')?.additionalTextEdits).toBeUndefined();
+    expect(item(list, 'site-nav')?.sortText).toBe('0_site-nav');
+  });
+
+  it('a `@` offers the directives of the role, and replaces the `@` with them', async () => {
+    const { service, document, position } = setup(
+      `<link rel="layout" href="../layouts/_layout.fud">\n<article>\n  @|\n</article>\n`,
+    );
+    const list = await completionsOf(service, document, position);
+
+    expect(list?.items.map((entry) => entry.label)).toContain('@foreach');
+    expect(list?.items.map((entry) => entry.label)).not.toContain('@RenderBody');
+    expect(item(list, '@if')?.textEdit?.newText).toBe('@if (${1:condition}) {\n  $0\n}');
+    expect(item(list, '@if')?.insertTextFormat).toBe(2);
+  });
+
+  it('and in a layout it offers @RenderBody instead of @section', async () => {
+    const { service, document, position } = setup(
+      LAYOUT_WITH_NAV.replace('<main>', '<main>@|'),
+      '/p/layouts/_other.fud',
+    );
+    const list = await completionsOf(service, document, position);
+    const labels = list?.items.map((entry) => entry.label);
+
+    expect(labels).toContain('@RenderBody');
+    expect(labels).not.toContain('@section');
+  });
+
+  it('a file with nothing but the word being typed offers the four skeletons', async () => {
+    const { service, document, position } = setup('rou|', '/p/new.fud');
+    const list = await completionsOf(service, document, position);
+    const labels = list?.items.map((entry) => entry.label);
+
+    // Ours are there — the editor is the one that filters `rou` down to `route`.
+    expect(labels).toContain('component');
+    expect(labels).toContain('route');
+    expect(labels).toContain('page');
+    expect(labels).toContain('layout');
+    expect(item(list, 'route')?.textEdit?.newText).toContain('<link rel="layout"');
+  });
+
+  const STYLED = (cursor: string): string =>
+    `<head>\n  <style>\n    ${cursor}\n  </style>\n</head>\n\n<app-x>\n  <template shadowrootmode="open"></template>\n</app-x>\n`;
+
+  it('offers nothing inside a <style>: there a `@` is a CSS at-rule', async () => {
+    const { service, document, position } = setup(STYLED('@|'), '/p/components/app-x.fud');
+
+    // The `@` context matched and came up empty, and it must not answer with an empty list:
+    // that would shadow the CSS service, whose `@media` this is.
+    expect(await completionsOf(service, document, position)).toBeUndefined();
+  });
+
+  it('offers nothing for a word inside a <style> either', async () => {
+    const { service, document, position } = setup(STYLED('col|or: red'), '/p/components/app-x.fud');
+
+    expect(await completionsOf(service, document, position)).toBeUndefined();
+  });
+
+  it('inside @code it offers the zones, and no tag and no Emmet', async () => {
+    const { service, document, position } = setup(
+      `@code {\n  pro|\n}\n<app-x>\n  <template shadowrootmode="open"></template>\n</app-x>\n`,
+      '/p/components/app-x.fud',
+    );
+    const list = await completionsOf(service, document, position);
+
+    expect(list?.items.map((entry) => entry.label)).toEqual(['props']);
   });
 });
 

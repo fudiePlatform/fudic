@@ -10,7 +10,11 @@
  * any work. That is the invariant of §5 made mechanical rather than remembered.
  */
 
-import { CompletionItemKind, DiagnosticSeverity } from 'vscode-languageserver-protocol';
+import {
+  CompletionItemKind,
+  DiagnosticSeverity,
+  InsertTextFormat,
+} from 'vscode-languageserver-protocol';
 import type {
   CodeAction,
   CompletionItem,
@@ -36,9 +40,17 @@ import { fudicDiagnostics } from './compiler-diagnostics.js';
 import { emmetCompletions } from './emmet.js';
 import { formattedText } from './formatting.js';
 import { hrefCompletions, unresolvedHrefs } from './href.js';
-import { hrefContextAt, sectionContextAt, tagContextAt } from './position.js';
+import {
+  directiveContextAt,
+  hrefContextAt,
+  sectionContextAt,
+  tagContextAt,
+  wordContextAt,
+  type PartialName,
+} from './position.js';
 import { sectionCompletions } from './sections.js';
-import { declaredTags, documentLinks, tagDefinitionAt } from './tags.js';
+import { scopeAt, snippetsAt } from './snippets.js';
+import { componentTags, documentLinks, linkInsertionFor, tagDefinitionAt } from './tags.js';
 import { semanticTokens } from './semantic-tokens.js';
 
 /** What the service needs from the server around it. */
@@ -313,7 +325,19 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
   };
 }
 
-/** The three completions the server owns, in the order they can apply. */
+/**
+ * The completions the server owns, in the order they can apply (SDD-24 §4.2, SDD-28 §5.5).
+ *
+ * The first three contexts are EXACT — inside an `href`, after `@section `, after a `<` — and
+ * each answers alone: in those positions a word cannot mean anything else, so shadowing Emmet
+ * is the right thing to do.
+ *
+ * The last one is not exact. A bare word in markup may be a component tag, a snippet, or an
+ * Emmet abbreviation, and there is no way to tell which from the text. So it MERGES: our items
+ * are added to Emmet's rather than replacing them. Returning early there would silently kill
+ * every abbreviation the user has ever typed — `div`, `ul>li*3` — which is the regression
+ * SDD-28 §5.3 exists to prevent.
+ */
 function completions(
   context: LanguageServiceContext,
   document: TextDocument,
@@ -350,23 +374,92 @@ function completions(
 
   const tag = tagContextAt(cached.source, offset);
   if (tag !== undefined) {
-    return list(
-      declaredTags(cached, index).map((item) => ({
-        label: item.tag,
-        kind: CompletionItemKind.Class,
-        detail: item.href,
-        // Sorted ahead of the native tags the HTML service contributes, and labelled, so the
-        // two groups are told apart in the list (§6.4).
-        sortText: `0_${item.tag}`,
-        labelDetails: { description: 'fudic component' },
-        textEdit: { range: rangeOf(document, tag.span), newText: item.tag },
-      })),
-    );
+    // The `<` is already written, so the tag name completes into what follows it.
+    return list(tagItems(cached, index, document, tag, (name) => `${name}>$0</${name}>`));
   }
 
-  // Last, and only in markup: an abbreviation is anything, so it cannot be allowed to shadow
-  // the three contexts above, which are exact.
-  return emmetCompletions(cached, document, position);
+  // A `@` is unambiguous too, but it can come up empty — in an empty file nothing starts with
+  // one — and an empty list would suppress what Emmet has to say. So it only wins when it has
+  // something.
+  const directive = directiveContextAt(cached.source, offset);
+  if (directive !== undefined) {
+    const items = snippetItems(cached, document, directive, (label) => label.startsWith('@'));
+    if (items.length > 0) return list(items);
+  }
+
+  const emmet = emmetCompletions(cached, document, position);
+  const word = wordContextAt(cached.source, offset);
+  if (word === undefined) return emmet;
+
+  const ours = [
+    ...(scopeAt(cached, offset) === 'markup'
+      ? tagItems(cached, index, document, word, (name) => `<${name}>$0</${name}>`)
+      : []),
+    ...snippetItems(cached, document, word, (label) => !label.startsWith('@')),
+  ];
+  if (ours.length === 0) return emmet;
+
+  // Ours first, and Emmet's kept whole: an abbreviation grows with characters no local filter
+  // would keep, which is why `isIncomplete` has to survive the merge.
+  return { isIncomplete: emmet?.isIncomplete ?? false, items: [...ours, ...(emmet?.items ?? [])] };
+}
+
+/**
+ * The component tags of this file as completion items.
+ *
+ * Two groups: the ones already linked, and the ones that exist in the workspace and are not.
+ * Accepting one of the second kind carries its `<link>` in `additionalTextEdits`, so the tag
+ * and the declaration that makes it legal land in the same keystroke (SDD-28 §5.3).
+ */
+function tagItems(
+  cached: CachedDocument,
+  index: WorkspaceIndex,
+  document: TextDocument,
+  context: PartialName,
+  write: (tag: string) => string,
+): readonly CompletionItem[] {
+  return componentTags(cached, index).map((item): CompletionItem => {
+    const insertion = item.linked ? undefined : linkInsertionFor(cached, item.href);
+    return {
+      label: item.tag,
+      kind: CompletionItemKind.Class,
+      detail: item.href,
+      // Sorted ahead of the native tags the HTML service contributes, and labelled, so the
+      // groups are told apart in the list (§6.4). The unlinked ones come after the linked
+      // ones: they cost an edit the others do not.
+      sortText: `${item.linked ? '0' : '1'}_${item.tag}`,
+      labelDetails: { description: item.linked ? 'fudic component' : 'fudic component · adds <link>' },
+      insertTextFormat: InsertTextFormat.Snippet,
+      textEdit: { range: rangeOf(document, context.span), newText: write(item.tag) },
+      ...(insertion === undefined
+        ? {}
+        : {
+            additionalTextEdits: [
+              { range: rangeOf(document, insertion.span), newText: insertion.newText },
+            ],
+          }),
+    };
+  });
+}
+
+/** The snippets that apply here, filtered by how they are typed. */
+function snippetItems(
+  cached: CachedDocument,
+  document: TextDocument,
+  context: PartialName,
+  wanted: (label: string) => boolean,
+): readonly CompletionItem[] {
+  return snippetsAt(cached, context.span.start)
+    .filter((snippet) => wanted(snippet.label))
+    .map((snippet) => ({
+      label: snippet.label,
+      kind: CompletionItemKind.Snippet,
+      detail: snippet.detail,
+      sortText: `0_${snippet.label}`,
+      labelDetails: { description: 'fudic' },
+      insertTextFormat: InsertTextFormat.Snippet,
+      textEdit: { range: rangeOf(document, context.span), newText: snippet.body },
+    }));
 }
 
 /** A completion list is never incomplete here: the candidates are a finite, known set. */
