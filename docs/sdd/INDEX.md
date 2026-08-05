@@ -94,6 +94,7 @@ alcance), y el **mismo par de ficheros** que un SDD: `BUG-NN-<slug>.md` +
 | [26](./SDD-26-formateador.md) · [tareas](./SDD-26-Task.md) | Formateador (`@fudic/formatter`) | `Hecho` (los 12 criterios de §6 verdes; cobertura 100 %) | 01–10, 15, 22 | 10, 37, 43 |
 | [27](./SDD-27-artefactos-y-manifiesto.md) · [tareas](./SDD-27-Task.md) | Artefactos de build y manifiesto (`@fudic/vite` · `@fudic/transport`) | `Hecho` (los 12 criterios de §7 verdes; `dist` de `examples/basic` 47 → 33 ficheros) | 15, 19, 20 | — |
 | [28](./SDD-28-snippets.md) · [tareas](./SDD-28-Task.md) | Snippets y andamiaje en el editor (`@fudic/language-server`) | `Hecho` (los 19 criterios de §7 verdes; cobertura 100 %) | 06, 08, 21, 22, 23, 24, 25 | 14, 15, 53, 59, 60, 83, 84, 85 |
+| [29](./SDD-29-code-snippets.md) | Snippets de markup reutilizables (`@snippet` / `@render`) | `Listo` | 05, 06, 10, 11, 12 | 6, 41, 45, 53, 55, 62 |
 
 ---
 
