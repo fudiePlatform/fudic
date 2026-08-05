@@ -11,6 +11,7 @@ export const VERSION = '0.0.1';
 export type { VirtualFile, Mapping, MappingCaps, FileRegistry } from './types.js';
 export {
   USER_CAPS,
+  USER_ECHO_CAPS,
   SCAFFOLD_CAPS,
   DIAGNOSTIC_ONLY_CAPS,
   COMPLETION_ONLY_CAPS,

@@ -30,6 +30,18 @@ export interface PlanCommand {
 }
 
 /**
+ * A `PlanCommand` that did not succeed, and how.
+ *
+ * `status` is the exit code, or `null` when the process never ran at all — a missing `pnpm`
+ * and a `pnpm install` that resolved nothing are different failures, and the message the user
+ * gets has to be able to tell them apart.
+ */
+export interface CommandFailure {
+  readonly command: PlanCommand;
+  readonly status: number | null;
+}
+
+/**
  * A CLI error that does NOT come from a source file: an invalid tag, a collision, a
  * missing adapter. It cannot be a `Diagnostic` — a `Diagnostic` requires a span, and here
  * there is no source to point at. Faking one would be exactly the lie SDD-22 §5 forbids.

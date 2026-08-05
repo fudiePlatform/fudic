@@ -22,13 +22,29 @@ const LAYOUT = `<!DOCTYPE html>
 </html>
 `;
 
-function deps(fs: MemoryFs): RunDeps & { capture: ReturnType<typeof captureStreams>; runner: RecordingRunner } {
+function deps(
+  fs: MemoryFs,
+  statuses: Readonly<Record<string, number | null>> = {},
+): RunDeps & { capture: ReturnType<typeof captureStreams>; runner: RecordingRunner } {
   const capture = captureStreams();
-  const runner = new RecordingRunner();
+  const runner = new RecordingRunner(statuses);
   return { readIo: fs, writeIo: fs, runner, streams: capture.streams, capture };
 }
 
 describe('run()', () => {
+  it('exits 1 when a command of the plan fails, after listing what was written', async () => {
+    const fs = new MemoryFs({}, CWD);
+    const d = deps(fs, { pnpm: 1 });
+
+    expect(await run(['new', 'demo', '--cwd', CWD], d)).toBe(1);
+
+    // The files are reported as created, because they were: a failing install does not
+    // unwrite them. The failure comes after, so both facts reach the user.
+    expect(d.capture.stdout()).toContain('create  demo/package.json');
+    expect(d.capture.stdout()).toContain('error FUD0451');
+    expect(d.capture.stdout()).toContain('`pnpm install` exited with code 1');
+  });
+
   it('--dry-run lists exactly what the real run writes, and writes nothing (§6.9)', async () => {
     const argv = ['g', 'component', 'app-card', '--cwd', CWD];
 

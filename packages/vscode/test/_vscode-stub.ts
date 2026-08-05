@@ -12,6 +12,8 @@
  * against the real API.
  */
 
+import { URI } from 'vscode-uri';
+
 export interface StubState {
   /** Backing store for `workspace.getConfiguration().get(id)`. */
   settings: Record<string, unknown>;
@@ -33,9 +35,9 @@ export interface StubState {
   activeEditor: EditorStub | undefined;
   outputShown: number;
   /** Content providers registered by scheme. */
-  contentProviders: Map<string, { provideTextDocumentContent(uri: { toString(): string }): string }>;
-  /** Documents opened read-only, in order: `[uri, languageId]`. */
-  openedDocuments: [string, string][];
+  contentProviders: Map<string, { provideTextDocumentContent(uri: URI): string }>;
+  /** Documents opened read-only, in order, with the URI as the object the editor holds. */
+  openedDocuments: [URI, string][];
   /** Commands run through `executeCommand`. */
   executed: string[];
 }
@@ -163,14 +165,23 @@ export const commands = {
 };
 
 export const languages = {
-  setTextDocumentLanguage: (document: { uri: string }, languageId: string) => {
+  setTextDocumentLanguage: (document: { uri: URI }, languageId: string) => {
     state.openedDocuments.push([document.uri, languageId]);
     return Promise.resolve(document);
   },
 };
 
+/**
+ * The REAL `Uri`, not an identity over the string.
+ *
+ * `vscode-uri` is the same implementation VS Code ships, and using it here is not
+ * over-engineering the double: the previous stub returned `{ toString: () => value }`, so every
+ * test round-tripped its own string and none of them could see that a URI does not come back
+ * out as the text it went in as. That is exactly how `fudic.showVirtualFiles` shipped opening
+ * blank editors with a suite at 100%.
+ */
 export const Uri = {
-  parse: (value: string) => ({ toString: () => value, uri: value }),
+  parse: (value: string) => URI.parse(value),
 };
 
 export const workspace = {
@@ -180,16 +191,24 @@ export const workspace = {
   },
   createFileSystemWatcher: (glob: string) => {
     state.watchers.push(glob);
-    return { dispose: () => undefined };
+    // Counted, because a watcher that is never disposed is the defect: the client releases
+    // the listeners it hangs on one, never the watcher itself.
+    return {
+      dispose: () => {
+        state.disposed += 1;
+      },
+    };
   },
   registerTextDocumentContentProvider: (
     scheme: string,
-    provider: { provideTextDocumentContent(uri: { toString(): string }): string },
+    provider: { provideTextDocumentContent(uri: URI): string },
   ) => {
     state.contentProviders.set(scheme, provider);
     return { dispose: () => undefined };
   },
-  openTextDocument: (uri: { toString(): string }) => Promise.resolve({ uri: uri.toString() }),
+  // The document keeps the `Uri`, not its text: the adapter opens by `Uri` and the provider
+  // is later asked with the same object, which is how the editor behaves.
+  openTextDocument: (uri: URI) => Promise.resolve({ uri }),
 };
 
 export const env = {

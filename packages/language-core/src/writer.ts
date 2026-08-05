@@ -46,8 +46,12 @@ export class VirtualWriter {
    *
    * An empty span writes nothing and records no mapping: a zero-length mapping would be a
    * stretch no position can ever fall inside, so it is noise in the table.
+   *
+   * `caps` is still user text, never scaffolding: the only caller that passes one is the
+   * server virtual copying the neutral zone, which the client virtual already owns for
+   * completion (`USER_ECHO_CAPS`). It is a profile, not a third door.
    */
-  copy(span: Span): void {
+  copy(span: Span, caps: MappingCaps = USER_CAPS): void {
     const text = this.#source.slice(span.start, span.end);
     if (text.length === 0) return;
     this.#mappings.push({
@@ -55,7 +59,7 @@ export class VirtualWriter {
       generatedOffset: this.#offset,
       length: text.length,
       sourceLength: text.length,
-      caps: USER_CAPS,
+      caps,
     });
     this.#push(text);
   }

@@ -11,6 +11,7 @@
  */
 
 import type { CodeBlockNode } from '@fudic/compiler';
+import { USER_ECHO_CAPS } from './caps.js';
 import { partitionCode } from './code.js';
 import { serverFileName } from './paths.js';
 import type { VirtualFile } from './types.js';
@@ -31,8 +32,11 @@ export function emitServerVirtual(
   const { neutral, server } = partitionCode(code);
   const w = new VirtualWriter(source);
 
+  // The neutral zone is the client virtual's for completion (`USER_ECHO_CAPS`): it lives in
+  // both files, and with two projections answering the same offset the editor would show
+  // every identifier twice. Everything else about it still routes from here.
   for (const chunk of neutral) {
-    w.copy(chunk);
+    w.copy(chunk, USER_ECHO_CAPS);
     w.scaffold('\n');
   }
   for (const region of server) {

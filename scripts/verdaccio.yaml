@@ -1,0 +1,33 @@
+# Verdaccio for the LOCAL registry (SDD-25-Task-Claude, T-06).
+#
+# Nothing here is production configuration: it exists so a generated project can run a real
+# `pnpm install` against real tarballs before `@fudic/*` is published anywhere. Anonymous
+# publish is on for exactly that reason — the alternative is an auth token in a script.
+
+storage: ../.local-registry/storage
+
+# Everything that is not ours comes from npm and is cached, so an install of the generated
+# project resolves `vite` and `typescript` too.
+uplinks:
+  npmjs:
+    url: https://registry.npmjs.org/
+    cache: true
+
+packages:
+  '@fudic/*':
+    # No uplink: ours are only ever the ones published here. Falling through to npm would
+    # silently test a version nobody built.
+    access: $all
+    publish: $anonymous
+    unpublish: $anonymous
+
+  '**':
+    access: $all
+    publish: $anonymous
+    proxy: npmjs
+
+# Quiet by default: the interesting output is the publish summary, not every fetch.
+log:
+  type: stdout
+  format: pretty
+  level: warn

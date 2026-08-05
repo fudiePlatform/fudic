@@ -52,10 +52,10 @@ export const TEMPLATES: readonly TemplateSpec[] = [
     file: 'component.fud',
     role: 'component-document',
     sample: {
-      head: styleBlock('app-card'),
+      code: codeBlock(),
+      head: styleBlock(),
       tag: 'app-card',
-      className: 'app-card',
-      body: '      <slot></slot>',
+      body: '    <slot></slot>\n',
     },
   },
   {
@@ -83,20 +83,43 @@ export const TEMPLATES: readonly TemplateSpec[] = [
 // ── Block builders: the parts that vary structurally ──────────────────────────
 
 /**
- * The component's `<head>` with its single `<style>` (decision 62). The `host="<tag>"`
- * marker is NOT written here: serialization adds it (decisions 67/70), and a template that
- * wrote it by hand would be teaching the user to do the compiler's job.
+ * The component's `<head>` with its single `<style>` (decision 62), empty.
+ *
+ * Empty on purpose. A generated `:host { display: block }` and a `.<tag>` rule are decisions
+ * about a component nobody has written yet, and the wrapper `<div class="<tag>">` they styled
+ * was a node the user did not ask for. The `host="<tag>"` marker is NOT written here either:
+ * serialization adds it (decisions 67/70), and a template that wrote it by hand would be
+ * teaching the user to do the compiler's job.
  */
-export function styleBlock(tag: string): string {
+export function styleBlock(): string {
   return `<head>
-  <style>
-    :host { display: block; }
-
-    .${tag} {
-      /* ${tag} styles */
-    }
-  </style>
+  <style></style>
 </head>
+
+`;
+}
+
+/**
+ * The component's `@code`: a `Props` type, its destructuring, and an empty `@client`.
+ *
+ * Every component gets one. A component that is only markup and style is the rare case, not
+ * the common one, and writing the type and the `props<T>()` call by hand is the part that
+ * costs — while the shape of `@code { … @client { … } }` is exactly what a scaffold should
+ * hand over already built.
+ *
+ * `@client {}` empty costs nothing: a component has no level of its own (SDD-15), the client
+ * chunk is emitted for every component regardless, so this reclassifies nothing. And `props`
+ * lives in the NEUTRAL zone, outside `@client`, which is where `props<T>()` is looked for.
+ */
+export function codeBlock(): string {
+  return `@code {
+  type Props = {
+  };
+
+  const {} = props<Props>();
+
+  @client {}
+}
 
 `;
 }

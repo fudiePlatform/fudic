@@ -20,7 +20,7 @@ interface Recording {
   readonly launches: ClientLaunch[];
   readonly waits: number[];
   readonly bar: { text: string; visible: boolean };
-  readonly client: LanguageClientPort & { started: number; stopped: number };
+  readonly client: LanguageClientPort & { started: number; stopped: number; disposed: number };
 }
 
 const hostWith = (
@@ -46,6 +46,7 @@ const hostWith = (
   const client = {
     started: 0,
     stopped: 0,
+    disposed: 0,
     start: async () => {
       client.started += 1;
       if (client.started <= failures) throw new Error('server unavailable');
@@ -55,6 +56,9 @@ const hostWith = (
       if (overrides.stopThrows === true) throw new Error('connection already closed');
     },
     sendRequest: async <T>() => undefined as T,
+    dispose: () => {
+      client.disposed += 1;
+    },
   };
 
   const host: FudicHost = {
@@ -200,6 +204,26 @@ describe('activateFudic', () => {
     expect(recording.log.some((line) => line.includes('stopping the previous server failed'))).toBe(
       true,
     );
+    // And the client is disposed anyway. A client that could not be stopped is exactly the
+    // one whose watchers nobody else will release.
+    expect(recording.client.disposed).toBe(1);
+  });
+
+  it('disposes the old client on every restart, and on stop', async () => {
+    // The client disposes the listeners it attaches to a watcher, never the watcher. Left to
+    // it, each restart registered another three with the editor and none of them ever went.
+    const { host, recording } = hostWith();
+    const session = await activateFudic(host);
+    expect(recording.client.disposed).toBe(0);
+
+    await session.restart();
+    await session.restart();
+    await session.restart();
+    expect(recording.client.disposed).toBe(3);
+
+    await session.stop();
+    expect(recording.client.disposed).toBe(4);
+    expect(recording.client.disposed).toBe(recording.client.stopped);
   });
 
   it('stops on request and says so in the status bar', async () => {

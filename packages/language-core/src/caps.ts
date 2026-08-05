@@ -11,9 +11,36 @@ import type { MappingCaps } from './types.js';
 /**
  * User code, copied verbatim: everything routes. `format` stays `false` — formatting is
  * SDD-26 over the source, never over the projection.
+ *
+ * Completion is `isAdditional`, and that is not a downgrade — it is what keeps TypeScript
+ * from being the ONLY voice at these offsets. Volar claims a position for the first embedded
+ * code that answers it and skips the rest, and the root code is visited last; so with a plain
+ * `true` here, everything the server itself offers inside `@code` or over a half-written `@`
+ * expression is computed and thrown away. TypeScript still answers exactly as before: its
+ * items are merged rather than exclusive (SDD-28 §5.5).
  */
 export const USER_CAPS: MappingCaps = {
-  completion: true,
+  completion: { isAdditional: true },
+  verification: true,
+  semantic: true,
+  navigation: true,
+  structure: true,
+  format: false,
+};
+
+/**
+ * User code that ANOTHER projection already owns for completion.
+ *
+ * The neutral zone of `@code` is emitted into both virtuals (§4.1), so at those offsets two
+ * TypeScript files answer the same question. Volar used to hide that: the first projection to
+ * answer claimed the position and the second was skipped. With completion additional
+ * (`USER_CAPS`) nothing claims anything any more, and the same identifier list would arrive
+ * twice. So the echo says so: the client virtual is canonical for the neutral zone — the same
+ * rule the server already applies to its duplicate diagnostics — and the server virtual keeps
+ * every other capability while offering no completions of its own.
+ */
+export const USER_ECHO_CAPS: MappingCaps = {
+  completion: false,
   verification: true,
   semantic: true,
   navigation: true,

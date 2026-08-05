@@ -11,3 +11,4 @@ export type {
   LayoutDocument,
 } from './nodes.js';
 export { structureDocument, isComponentLink, isLayoutLink } from './structure.js';
+export { alreadyLinked, componentLinkAnchor, componentLinkTag, type LinkAnchor } from './anchor.js';

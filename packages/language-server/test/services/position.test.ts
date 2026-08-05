@@ -11,11 +11,14 @@ import { parseFud } from '../../src/parse.js';
 import {
   attributeOf,
   attributeValueSpan,
+  directiveContextAt,
   hrefContextAt,
+  isEmptyDocument,
   linksOf,
   sectionContextAt,
   tagContextAt,
   tagNameAt,
+  wordContextAt,
 } from '../../src/services/position.js';
 import { component, LAYOUT, NESTED_LAYOUT, PAGE, route } from '../_support.js';
 
@@ -192,4 +195,83 @@ describe('sectionContextAt', () => {
   it.each([['@section'], ['@sections nav'], ['@if (x) {']])('says nothing at %s', (source) => {
     expect(sectionContextAt(source, source.length)).toBeUndefined();
   });
+});
+
+describe('wordContextAt (SDD-28 §5.3)', () => {
+  it.each([
+    ['app-button', 'app-button'],
+    ['<div>\n  app-b', 'app-b'],
+    ['<div></div>\ntext app', 'app'],
+  ])('reads %s as the word %s', (prefix, expected) => {
+    const context = wordContextAt(prefix, prefix.length);
+
+    expect(context?.text).toBe(expected);
+    expect(prefix.slice(context?.span.start, context?.span.end)).toBe(expected);
+  });
+
+  it.each([
+    // A word a `<` opens belongs to tagContextAt, not here.
+    ['<app-b'],
+    // Inside an open tag a word is an attribute name, and those are the projection's.
+    ['<app-button ton'],
+    ['<div class="a" hidd'],
+    // Not a word at all: whitespace, a delimiter, and something that starts with a digit.
+    ['<div> '],
+    ['<div>'],
+    ['123'],
+  ])('says nothing at %s', (source) => {
+    expect(wordContextAt(source, source.length)).toBeUndefined();
+  });
+
+  it('is a word again once the tag is closed', () => {
+    const source = '<div class="a">app';
+
+    expect(wordContextAt(source, source.length)?.text).toBe('app');
+  });
+});
+
+describe('directiveContextAt (SDD-28 §5.4)', () => {
+  it.each([
+    ['@', '@'],
+    ['@i', '@i'],
+    ['<div>\n  @fore', '@fore'],
+  ])('reads %s as %s, the `@` included', (prefix, expected) => {
+    const context = directiveContextAt(prefix, prefix.length);
+
+    expect(context?.text).toBe(expected);
+    expect(prefix.slice(context?.span.start, context?.span.end)).toBe(expected);
+  });
+
+  it.each([
+    // `@@` is the escape of decision 1, and a `@` after a word is text, not a directive.
+    ['@@'],
+    ['@@i'],
+    ['hola@ejemplo'],
+    ['x@'],
+    ['plain'],
+  ])('says nothing at %s', (source) => {
+    expect(directiveContextAt(source, source.length)).toBeUndefined();
+  });
+});
+
+describe('isEmptyDocument', () => {
+  it.each([
+    [''],
+    ['   '],
+    ['\n\n  \t\n'],
+    // Nothing but the word being typed: still a file nobody has written yet, and the only
+    // state in which a skeleton is ever asked for.
+    ['x'],
+    ['rou'],
+    ['  app-b\n'],
+  ])('is true for %j', (source) => {
+    expect(isEmptyDocument(source)).toBe(true);
+  });
+
+  it.each([['<div></div>'], ['@* a comment *@'], ['two words'], ['@code {}']])(
+    'is false for %j',
+    (source) => {
+      expect(isEmptyDocument(source)).toBe(false);
+    },
+  );
 });

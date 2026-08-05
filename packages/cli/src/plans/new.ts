@@ -108,7 +108,9 @@ export function planNew(name: string, opts: NewOptions, io: ReadIo = nodeReadIo(
   const commands: PlanCommand[] = [];
   if (opts.install) commands.push({ command: opts.pm, args: ['install'], dir: name });
   if (opts.git) {
-    commands.push({ command: 'git', args: ['init'], dir: name });
+    // `-b main`, not a bare `git init`: without it the branch is whatever `init.defaultBranch`
+    // happens to be, which is `master` when nobody configured one. The scaffold has an opinion.
+    commands.push({ command: 'git', args: ['init', '-b', 'main'], dir: name });
     commands.push({ command: 'git', args: ['add', '-A'], dir: name });
     commands.push({ command: 'git', args: ['commit', '-m', 'chore: scaffold fudic app'], dir: name });
   }

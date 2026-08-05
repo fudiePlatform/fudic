@@ -4,7 +4,7 @@
  * source span — a collision or a bad `argv` is not a place in a file.
  */
 
-import type { CliError } from './types.js';
+import type { CliError, CommandFailure } from './types.js';
 
 export const FUD_TAG_INVALID = 'FUD0440';
 export const FUD_TAG_EXISTS = 'FUD0441';
@@ -20,7 +20,27 @@ export const FUD_LAYOUT_INVALID = 'FUD0449';
 /** `fudic fmt`: a file that does not parse. Reported, and left exactly as it was (SDD-26 §4.6). */
 export const FUD_FORMAT_UNPARSEABLE = 'FUD0450';
 
+/** A command of the plan that exited non-zero, or that could not be started at all. */
+export const FUD_COMMAND_FAILED = 'FUD0451';
+
 /** Build a `CliError`, omitting `file` when absent (exactOptionalPropertyTypes). */
 export function cliError(code: string, message: string, file?: string): CliError {
   return file === undefined ? { code, message } : { code, message, file };
+}
+
+/**
+ * The command failed, said in the two ways it can fail.
+ *
+ * A `null` status is a process that never started — the binary is not on the PATH — and
+ * saying "exited with null" would send the user looking for a bug in a tool that was never
+ * there. The command is echoed whole so it can be re-run by hand.
+ */
+export function commandFailed(failure: CommandFailure): CliError {
+  const line = [failure.command.command, ...failure.command.args].join(' ');
+  return cliError(
+    FUD_COMMAND_FAILED,
+    failure.status === null
+      ? `could not run \`${line}\`: is it installed and on your PATH?`
+      : `\`${line}\` exited with code ${failure.status}`,
+  );
 }

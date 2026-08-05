@@ -265,22 +265,48 @@ repositorio. El test de aceptación §6.7 los compila. Si una plantilla genera c
 parsea o que viola una decisión de gramática, **rompe el build del repo**, no la mañana de
 un usuario. Una CLI de scaffolding que escupe ficheros rotos es peor que no tenerla.
 
-### 4.3. `g component` — nivel inferido, nunca declarado
+### 4.3. `g component` — la forma de un componente, vacía
 
-La plantilla de componente sale **sin `@code`**. Un componente recién creado es N1: el
-envoltorio host con su `<template shadowrootmode="open">` (decisión 75) y, salvo `--no-style`,
-un `<head>` con un único `<style>`. Si el usuario quiere estado, escribe el
-`@code { @client { ... } }` él.
+La plantilla emite **la estructura completa y nada dentro**: su `@code` con un tipo `Props`,
+su desestructuración y un `@client {}` vacío; su `<head>` con un `<style></style>` salvo
+`--no-style`; y el envoltorio host con su `<template shadowrootmode="open">` (decisión 75)
+vacío, salvo `--slot`.
+
+```
+@code {
+  type Props = {
+  };
+
+  const {} = props<Props>();
+
+  @client {}
+}
+
+<head>
+  <style></style>
+</head>
+
+<app-button>
+  <template shadowrootmode="open">
+  </template>
+</app-button>
+```
+
+**Por qué el `@code` va siempre.** Lo que de verdad cuesta escribir a mano son las props: el
+tipo, la llamada a `props<T>()` y saber que vive en la zona **neutral** de `@code`, fuera de
+`@client`. Un componente que es solo HTML y estilo es el caso raro, no el común. Y un
+`@client {}` vacío **no reclasifica nada**: un componente no tiene nivel propio —el chunk de
+cliente se emite para todos, sin filtro de nivel (SDD-15)— así que aquí no hay inferencia a
+la que mentir. Sigue sin existir un flag `--level` ni `--client`: el nivel efectivo es
+`max(intrínseco, inducido por props entrantes)` y eso no se declara desde la línea de órdenes.
+
+**Nada inventado encima.** Sin `<div class="<tag>">` de relleno, sin regla CSS de ejemplo, sin
+comentario haciendo de markup: son decisiones sobre un componente que nadie ha escrito todavía,
+y un placeholder es texto que el usuario tiene que borrar antes de escribir nada.
 
 El `<style>` de la fuente **no lleva `host="<tag>"`**: ese marcador lo añade la serialización
 (decisiones 67/70), no el autor. Una plantilla que lo escribiera estaría enseñando a mano una
 cosa que el compilador pone solo.
-
-**No existe un flag `--level` ni `--client`.** El nivel efectivo lo infiere el compilador
-(`nivel_efectivo = max(intrínseco, inducido por props entrantes)`); un flag que lo fuerce
-desde la CLI es una vía para mentirle a esa inferencia. Emitir un `@client {}` vacío "de
-plantilla" es peor todavía: empuja a N3 falso desde el minuto cero, y N3 es exactamente lo
-que el diseño mantiene al mínimo.
 
 **Validación del tag, en el comando y no en el navegador** (decisión 41):
 
@@ -315,6 +341,15 @@ La inserción se hace sobre el AST del fichero destino, no con expresiones regul
    con su span y sale con código `2`. No se edita a ciegas un fichero roto.
 
 El `href` se calcula relativo al fichero destino, con `./` explícito y extensión `.fud`.
+
+> **Dónde vive la regla, desde SDD-28.** Los puntos 2–4 —el punto de inserción por rol— los
+> implementa hoy `componentLinkAnchor` en **`@fudic/compiler`**
+> ([`src/document/anchor.ts`](../../packages/compiler/src/document/anchor.ts)), no la CLI. El
+> motivo es que dejó de tener un solo consumidor: el editor inserta el mismo `<link>` al
+> aceptar el completado de un componente no enlazado ([SDD-28](./SDD-28-snippets.md) §3.3), y
+> dos copias de una regla que depende del rol del documento divergen en silencio. `anchorFor`
+> y `componentLinkTag` siguen exportándose desde `@fudic/cli` —la superficie pública de §3 no
+> cambia—, y `wireComponentLink`, que es la escritura sobre el texto, sigue siendo suya.
 
 ### 4.5. `g page` — una sola forma, resuelta
 

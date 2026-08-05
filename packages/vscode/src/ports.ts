@@ -88,6 +88,15 @@ export interface LanguageClientPort {
   start(): Promise<void>;
   stop(): Promise<void>;
   sendRequest<T>(method: string, params: unknown): Promise<T>;
+  /**
+   * Release what this client owns besides its process: its file watchers.
+   *
+   * `stop()` is not enough. `vscode-languageclient` disposes the LISTENERS it attaches to a
+   * watcher, never the watcher itself — those belong to whoever created them — so a restart
+   * that only stops the client leaves the old ones registered with the editor, and every
+   * restart adds another set.
+   */
+  dispose(): void;
 }
 
 /** Builds a client for a launch. The adapter binds this to `vscode-languageclient`. */

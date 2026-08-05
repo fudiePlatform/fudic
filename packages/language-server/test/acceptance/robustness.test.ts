@@ -129,7 +129,11 @@ describe('§6.14 — cancellation', () => {
     // request that reaches the work is a request the counter sees.
     const position = harness.positionAt(source, source.indexOf('href="../layouts') + 6);
 
-    const before = harness.server.stats.completed;
+    // Completions only, and that is the whole difference between a criterion and a race. The
+    // TOTAL also grows with the validation Volar pushes 250 ms after every edit, for every open
+    // document — so on a machine slow enough for the burst to outlast that timer, the total says
+    // five where the burst asked for one. Counted per kind, the number is the burst's alone.
+    const before = harness.server.stats.of('completion').completed;
     const BURST = 5;
 
     const sources = Array.from({ length: BURST }, () => new CancellationTokenSource());
@@ -157,12 +161,16 @@ describe('§6.14 — cancellation', () => {
     // the answer it asked for is about text that no longer exists.
     for (const token of sources.slice(0, -1)) token.cancel();
 
-    harness.resume();
+    // Resumed only once the WHOLE burst is held: BURST edits, BURST requests and BURST−1
+    // cancellations. `sendRequest` and `cancel()` return before their bytes reach the pipe, so
+    // releasing without counting releases whatever had arrived — and how much that is depends on
+    // how busy the machine is, which is exactly the clock §6.14 refuses to be measured by.
+    await harness.resume(BURST * 3 - 1);
     await Promise.all(pending);
 
     // One region of rest, one completed request. The other four never did the work: the token
     // was already cancelled, so the burst cost one answer instead of five.
-    expect(harness.server.stats.completed - before).toBe(1);
+    expect(harness.server.stats.of('completion').completed - before).toBe(1);
   });
 
   it('counts a request cancelled before its work as cancelled, not as completed', async () => {
@@ -171,12 +179,12 @@ describe('§6.14 — cancellation', () => {
     // matters once a request is already in flight — the connection can only drop the ones it
     // has not dispatched yet.
     const stats = harness.server.stats;
-    const before = { completed: stats.completed, cancelled: stats.cancelled };
+    const before = stats.of('completion');
     const token = new CancellationTokenSource();
     token.cancel();
 
-    expect(stats.run(token.token, () => 'answer', undefined)).toBeUndefined();
-    expect(stats.cancelled - before.cancelled).toBe(1);
-    expect(stats.completed - before.completed).toBe(0);
+    expect(stats.run('completion', token.token, () => 'answer', undefined)).toBeUndefined();
+    expect(stats.of('completion').cancelled - before.cancelled).toBe(1);
+    expect(stats.of('completion').completed - before.completed).toBe(0);
   });
 });

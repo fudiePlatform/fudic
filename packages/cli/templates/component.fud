@@ -1,7 +1,4 @@
-{{head}}<{{tag}}>
+{{code}}{{head}}<{{tag}}>
   <template shadowrootmode="open">
-    <div class="{{className}}">
-{{body}}
-    </div>
-  </template>
+{{body}}  </template>
 </{{tag}}>

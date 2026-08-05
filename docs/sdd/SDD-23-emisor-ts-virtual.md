@@ -405,6 +405,12 @@ no con `tsc`):
   de `params` desde el patrón de la ruta es un SDD aparte.
 - **Emisión de runtime.** Este documento no toca el emisor de producción; comparten AST y
   nada más.
-- **Tipado de `<slot>` nombrado y de contenido proyectado.** `$slot()` es hoy una marca
-  sin tipo.
+- ~~**Tipado de `<slot>` nombrado.**~~ **Ya no.** Lo trae
+  [BUG-11](./bugs/BUG-11-slot-como-prop.md): un componente exporta `$Slots` con los nombres de
+  sus `<slot name>`, copiados desde su span, y un `slot=` en el consumidor se comprueba contra
+  esa unión con `$intoSlot<$S0>(…)` en vez de entrar en el literal de props. `$slot()` sigue
+  siendo la marca sin tipo **dentro** del componente; lo que ganó tipo es el nombre.
+- **Tipado del contenido proyectado.** Prohibir hijos en un componente que no declara ninguna
+  ranura (`$Slots = never` ⇒ nada puede ir dentro) pide un `$children<T>()` que no existe.
+  Apuntado al final de BUG-11 como lo que viene después.
 - **Two-way binding** — no existe en la gramática v1.

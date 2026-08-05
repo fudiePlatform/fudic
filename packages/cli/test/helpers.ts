@@ -60,10 +60,20 @@ export class MemoryFs implements ReadIo, WriteIo {
   }
 }
 
+/**
+ * Records what was run and reports success, unless a status was given for a command name.
+ *
+ * `statuses` keys on the executable alone (`pnpm`, `git`) because that is what a test wants
+ * to say: "the install fails". `null` stands for a process that never started.
+ */
 export class RecordingRunner implements CommandRunner {
   readonly commands: string[] = [];
-  run(command: string, args: readonly string[], dir: string): void {
+
+  constructor(private readonly statuses: Readonly<Record<string, number | null>> = {}) {}
+
+  run(command: string, args: readonly string[], dir: string): number | null {
     this.commands.push(`${[command, ...args].join(' ')} @ ${dir.replace(/\\/gu, '/')}`);
+    return command in this.statuses ? (this.statuses[command] as number | null) : 0;
   }
 }
 

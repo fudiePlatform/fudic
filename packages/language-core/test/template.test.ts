@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { VirtualFile } from '../src/types.js';
 import { collectTags, unresolvedAlias } from '../src/imports.js';
 import { emitClient, parseFud, registryOf } from './_support.js';
 import { templateContent } from '../src/imports.js';
@@ -32,9 +33,14 @@ describe('interpolation', () => {
 });
 
 describe('half-written expressions', () => {
-  /** A stretch that stands for an empty span and only answers "what may go here". */
-  const standIns = (file: { mappings: readonly { caps: { completion: boolean }; sourceLength: number }[] }) =>
-    file.mappings.filter((m) => m.caps.completion && m.sourceLength === 0);
+  /**
+   * A stretch that stands for an empty span and only answers "what may go here".
+   *
+   * `completion` is truthy rather than `true`: a user stretch carries the object Volar reads
+   * `isAdditional` from (SDD-28 §5.5), and a stand-in carries a plain `true`.
+   */
+  const standIns = (file: VirtualFile) =>
+    file.mappings.filter((m) => Boolean(m.caps.completion) && m.sourceLength === 0);
 
   it('stands in for an empty content interpolation', () => {
     const file = emitClient(component('    <p>@()</p>'));
@@ -68,7 +74,11 @@ describe('component tags', () => {
       registry,
     );
 
-    expect(text).toContain("import type { $Props as $C0 } from './app-badge.fud';");
+    // Both contracts of a component travel on one line, numbered together: `$C0` and `$S0`
+    // are always the same component (BUG-11 §3.3).
+    expect(text).toContain(
+      "import type { $Props as $C0, $Slots as $S0 } from './app-badge.fud';",
+    );
     // The blank line after `({` is the completion anchor: the attribute area of the start tag
     // stands for the inside of the object literal, so `<app-badge |>` has somewhere to ask.
     expect(text).toContain('$attrs<$C0>({\n  \n  tone: (x),\n});');
@@ -86,6 +96,25 @@ describe('component tags', () => {
     // `<app-badge>` has no gap at all: nothing to stand for, so nothing is emitted.
     const tight = emitClient(component('    <app-badge>hi</app-badge>'), 'x.fud', registry);
     expect(tight.mappings.some((m) => m.caps.completion && !m.caps.navigation)).toBe(false);
+  });
+
+  it('anchors every gap of a start tag, and never the attributes themselves', () => {
+    // Three places another attribute can be typed: before the first, between the two, and
+    // after the last. Each gets its own anchor.
+    const { text, mappings } = emitClient(
+      component('    <app-badge  tone="@(x)"  id="a"  ></app-badge>'),
+      'x.fud',
+      registry,
+    );
+    const anchors = mappings.filter((m) => m.caps.completion && !m.caps.navigation);
+    expect(anchors).toHaveLength(3);
+    expect(text).toContain('$attrs<$C0>({\n  \n  \n  \n  tone: (x),\n  id: "a",\n});');
+
+    // And none of them stands over an attribute. One stretch covering the whole area also
+    // covered the VALUES, so a position inside `tone="@(|)"` mapped to the anchor as well as
+    // to the interpolation — and the anchor's key completions shadowed the union of `tone`.
+    const cursor = component('    <app-badge  tone="@(x)"  id="a"  ></app-badge>').indexOf('@(x)') + 2;
+    expect(anchors.some((m) => cursor > m.sourceOffset && cursor < m.sourceOffset + m.sourceLength)).toBe(false);
   });
 
   it('keeps a position inside an empty @() so the value can be asked about', () => {

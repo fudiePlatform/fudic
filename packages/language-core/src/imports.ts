@@ -2,7 +2,7 @@
  * Synthetic imports: the contracts of the components and the layout this file uses
  * (SDD-23 §4.4).
  *
- *     <link rel="component" href="./app-badge.fud">  →  import type { $Props as $C0 } from './app-badge.fud';
+ *     <link rel="component" href="./app-badge.fud">  →  import type { $Props as $C0, $Slots as $S0 } from './app-badge.fud';
  *     <link rel="layout" href="./_layout.fud">       →  import type { $Sections as $L0 } from './_layout.fud';
  *
  * `import type` and nothing else: the projection must never pull a value into the program
@@ -36,6 +36,14 @@ export const LAYOUT_ALIAS = '$L0';
 export interface Aliases {
   /** The type name a tag is projected as. Always defined; only registered tags are imported. */
   aliasOf(tag: string): string;
+  /**
+   * The alias of a tag's slot union, or `undefined` when the tag has no `<link>`.
+   *
+   * Undefined rather than an undeclared name on purpose (BUG-11 §4.4): an unregistered tag
+   * already fails with `TS2304` on its name, and a second error about its slots on the very
+   * same tag adds no information.
+   */
+  slotsAliasOf(tag: string): string | undefined;
   /** `$L0` when a layout was imported, `undefined` otherwise. */
   readonly layout: string | undefined;
 }
@@ -64,13 +72,20 @@ export function emitImports(
   for (const tag of collectTags(content)) {
     const href = registry.component(tag);
     if (href === undefined) continue;
-    const alias = `$C${aliases.size}`;
-    aliases.set(tag, alias);
-    w.scaffold(`import type { $Props as ${alias} } from '${componentModuleSpecifier(href)}';\n`);
+    // One number for both contracts, so `$C0` and `$S0` are always the same component.
+    const n = aliases.size;
+    aliases.set(tag, `$C${n}`);
+    w.scaffold(
+      `import type { $Props as $C${n}, $Slots as $S${n} } from '${componentModuleSpecifier(href)}';\n`,
+    );
   }
 
   return {
     aliasOf: (tag) => aliases.get(tag) ?? unresolvedAlias(tag),
+    slotsAliasOf: (tag) => {
+      const alias = aliases.get(tag);
+      return alias === undefined ? undefined : `$S${alias.slice(2)}`;
+    },
     layout: layoutHref === undefined ? undefined : LAYOUT_ALIAS,
   };
 }

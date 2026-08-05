@@ -108,6 +108,16 @@ never built.
 **No colour at all** — check the language is recognised as *Fudic* (bottom right), and that
 `packages/vscode/dist/extension.cjs` exists. If it does not, the build did not run.
 
+**`[Error] Server process exited with code 0.` on every restart** — not a failure, and
+nothing to fix. It is the OLD server shutting down cleanly. `vscode-languageclient` logs the
+death of the process as an error without asking whether we were the ones who requested the
+stop (`vscode-languageclient/lib/node/main.js`), and code 0 is a clean exit by definition.
+
+It is left alone deliberately. Filtering it means wrapping the output channel and dropping a
+line by matching the literal string of a dependency — and the day that string changes, the
+filter goes quiet without saying so, over a channel whose whole job is to be the one place a
+real failure shows up.
+
 **Want the wire traffic** — set `"fudic.trace.server": "verbose"`. It goes to the Fudic
 output channel.
 

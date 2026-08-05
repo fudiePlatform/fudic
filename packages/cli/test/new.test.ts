@@ -7,7 +7,12 @@ import { describe, expect, it } from 'vitest';
 import { planNew } from '../src/plans/new.js';
 import { apply } from '../src/apply.js';
 import { parseFud } from '../src/parse.js';
-import { FUD_ADAPTER_UNAVAILABLE, FUD_TARGET_EXISTS } from '../src/diagnostics.js';
+import {
+  commandFailed,
+  FUD_ADAPTER_UNAVAILABLE,
+  FUD_COMMAND_FAILED,
+  FUD_TARGET_EXISTS,
+} from '../src/diagnostics.js';
 import { TYPESCRIPT_VERSION } from '../src/project.js';
 import { GLOBALS_DTS } from '@fudic/language-core';
 import { MemoryFs, RecordingRunner } from './helpers.js';
@@ -100,7 +105,7 @@ describe('fudic new', () => {
     const plan = await planNew('demo', options(), fs);
     expect(plan.commands.map((command) => [command.command, ...command.args].join(' '))).toEqual([
       'pnpm install',
-      'git init',
+      'git init -b main',
       'git add -A',
       'git commit -m chore: scaffold fudic app',
     ]);
@@ -114,6 +119,37 @@ describe('fudic new', () => {
 
     const quiet = await planNew('other', options({ install: false, git: false }), fs);
     expect(quiet.commands).toEqual([]);
+  });
+
+  it('stops at the first command that fails, and keeps the files it already wrote', async () => {
+    const fs = new MemoryFs({}, CWD);
+    const runner = new RecordingRunner({ pnpm: 1 });
+
+    const plan = await planNew('demo', options(), fs);
+    const applied = await apply(plan, options(), fs, runner);
+
+    // The install failed, so the three `git` commands never ran: they would be noise on top
+    // of a tree that does not build.
+    expect(runner.commands).toHaveLength(1);
+    expect(applied.failed?.status).toBe(1);
+    expect(applied.failed?.command.command).toBe('pnpm');
+
+    // The files stay. They are written before any command runs, and taking them away would
+    // remove the very tree the user is about to look at.
+    expect(applied.changes).toHaveLength(plan.changes.length);
+    expect(fs.paths()).toContain('demo/package.json');
+  });
+
+  it('reports a command that could never start apart from one that exited non-zero', async () => {
+    const fs = new MemoryFs({}, CWD);
+    const plan = await planNew('demo', options(), fs);
+
+    const missing = await apply(plan, options(), fs, new RecordingRunner({ pnpm: null }));
+    expect(commandFailed(missing.failed!).message).toContain('could not run `pnpm install`');
+
+    const broken = await apply(plan, options(), fs, new RecordingRunner({ pnpm: 1 }));
+    expect(commandFailed(broken.failed!).message).toContain('exited with code 1');
+    expect(commandFailed(broken.failed!).code).toBe(FUD_COMMAND_FAILED);
   });
 
   it('rejects an unknown adapter and writes nothing (§6.11)', async () => {

@@ -5,14 +5,14 @@
   "type": "module",
   "license": "MIT",
   "author": "Pedro Hurtado",
-  "homepage": "https://github.com/fudie/fudic/tree/main/packages/dom#readme",
+  "homepage": "https://github.com/fudiePlatform/fudic/tree/main/packages/dom#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fudie/fudic.git",
+    "url": "git+https://github.com/fudiePlatform/fudic.git",
     "directory": "packages/dom"
   },
   "bugs": {
-    "url": "https://github.com/fudie/fudic/issues"
+    "url": "https://github.com/fudiePlatform/fudic/issues"
   },
   "keywords": [
     "fudic",

@@ -24,7 +24,9 @@ describe('toCodeInformation', () => {
   it('carries user capabilities across as they are', () => {
     expect(toCodeInformation(USER_CAPS)).toEqual({
       verification: true,
-      completion: true,
+      // Additional, and it travels as the object it is: Volar reads `isAdditional` off this
+      // very field to decide whether the projection's answer is the only one (SDD-28 §5.5).
+      completion: { isAdditional: true },
       semantic: true,
       navigation: true,
       structure: true,

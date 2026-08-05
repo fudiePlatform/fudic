@@ -37,3 +37,7 @@ npm-debug.log*
 
 # Server-only build artifacts: never published (BUG-09)
 .fudic/
+
+# Storage of the local Verdaccio (`pnpm registry`): rebuilt from scratch on every run,
+# because a registry serving a tarball from a previous build is worse than no registry.
+.local-registry/

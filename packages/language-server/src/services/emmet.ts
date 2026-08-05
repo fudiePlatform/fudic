@@ -65,7 +65,11 @@ export function isMarkupOffset(cached: CachedDocument, offset: number): boolean 
       if (element.kind === 'raw' && contains(rawBodySpan(element), offset)) markup = false;
     },
     interpolation: (expression) => {
-      if (contains(expression.span, offset)) markup = false;
+      // Start-exclusive, and that is not a detail: a half-written `@fore` parses as an
+      // implicit expression, so an inclusive test would say "this is an expression" about the
+      // very position where a directive is being typed. The `@` is the boundary — the place
+      // the construct BEGINS — and at the boundary the answer is still markup.
+      if (offset > expression.span.start && offset <= expression.span.end) markup = false;
     },
   });
   return markup;
