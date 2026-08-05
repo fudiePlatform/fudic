@@ -50,6 +50,6 @@
   propio hijo. Ni siquiera el primer valor cruza.
 </p>
 <p>
-  Eso es <strong>BUG-11</strong>, y esta página es su criterio de aceptación: cuando un
+  Eso es <strong>BUG-12</strong>, y esta página es su criterio de aceptación: cuando un
   click en <code>+1</code> cambie el número del recuadro rojo, está arreglado.
 </p>

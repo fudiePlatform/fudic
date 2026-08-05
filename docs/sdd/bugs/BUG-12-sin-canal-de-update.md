@@ -1,4 +1,4 @@
-# BUG-11 — Un hijo que recibe un valor no tiene canal de actualización
+# BUG-12 — Un hijo que recibe un valor no tiene canal de actualización
 
 > **Estado:** `Listo`
 > **Corrige:** [SDD-15 — Emit](../SDD-15-emit.md) §3.7, §4.7, §7 ·

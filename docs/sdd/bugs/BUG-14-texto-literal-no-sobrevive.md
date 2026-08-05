@@ -1,12 +1,12 @@
-# BUG-13 — El texto literal del autor no llega intacto al output
+# BUG-14 — El texto literal del autor no llega intacto al output
 
 > **Estado:** `Listo`
 > **Corrige:** [SDD-05 — Parser HTML](../SDD-05-parser-html.md) ·
 > [SDD-15 — Emit](../SDD-15-emit.md) §4.4 ·
 > [gramática](../../gramar/gramatica-v1-decisiones.md) decisiones 1 y 49
 > **Paquetes:** `@fudic/compiler` · `@fudic/ssr`
-> **Rama sugerida:** `fix/bug-13-texto-literal`
-> **Independiente de BUG-11 y BUG-12:** ni un fichero en común.
+> **Rama sugerida:** `fix/bug-14-texto-literal`
+> **Independiente de BUG-12 y BUG-13:** ni un fichero en común.
 
 ---
 
@@ -113,7 +113,7 @@ compilador que solo emite texto; deja de serlo en cuanto la otra mitad construye
 ### 2.4. Alcance
 
 - **Todo `.fud` con `@@` en contenido** y **todo `.fud` con entidades en texto**. En el repo:
-  `examples/basic/routes/about.fud` y las páginas de demostración de BUG-11.
+  `examples/basic/routes/about.fud` y las páginas de demostración de BUG-12.
 - **Las dos salidas**: HTML prerenderizado y chunk de cliente.
 - **Los atributos NO están afectados** por 2.1 (ahí sí se resuelve) y **sí** por el fondo de
   2.2, que hay que comprobar aparte (§6.6).

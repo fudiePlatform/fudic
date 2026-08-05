@@ -1,65 +1,64 @@
 # BUG-13 — Tareas
 
-> **BUG:** [BUG-13 — El texto literal del autor no llega intacto al output](./BUG-13-texto-literal-no-sobrevive.md)
-> **Paquetes:** `@fudic/compiler` · `@fudic/ssr` · **Rama:** `fix/bug-13-texto-literal`
-> **Progreso:** 0 / 9
+> **BUG:** [BUG-13 — Un comentario Razor dentro de `@code` borra todo el bloque](./BUG-13-comentario-razor-en-code.md)
+> **Paquetes:** `@fudic/compiler` · **Rama:** `fix/bug-13-comentario-en-code`
+> **Progreso:** 0 / 8
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Las rutas son relativas a la raíz del repo.
 
 ---
 
-## Fase 0 — Rojo primero (4)
+## Fase 0 — Rojo primero (3)
 
-- [ ] **1. Test del `@@` en contenido.**
-      En `packages/compiler/test/emit/`: `@@server` produce el texto `@server` en el módulo
-      SSR y en el chunk de cliente. **Verlo fallar** — hoy emite `server` (§6.1).
-- [ ] **2. Test de la entidad.**
-      Mismo sitio: `&lt;html&gt;` produce el HTML `&lt;html&gt;`, escapado **una** vez.
-      **Verlo fallar** — hoy sale `&amp;lt;html&amp;gt;` (§6.2).
-- [ ] **3. Test de que la interpolación sigue escapándose.**
-      Una expresión que devuelve `<script>alert(1)</script>` sale escapada. **Debe pasar en
-      verde ya**: es la red que impide que las tareas 5-7 abran un agujero (§6.4).
-- [ ] **4. Test extremo a extremo sobre el ejemplo.**
-      `dist/about/index.html` contiene `@server load` y `&lt;html&gt;`. **Verlo fallar**
-      (§6.3). No se toca `about.fud`: está bien escrito, y por eso sirve de test.
+- [ ] **1. Test del comentario en las tres posiciones.**
+      En `packages/compiler/test/emit/` (o `test/code/`): un componente con
+      `const count = signal(0)` en `@client` y un `@* c *@` antes, dentro y después del
+      bloque. Los tres casos emiten el módulo SSR con la signal inerte y el chunk con
+      `signal(0)`. **Verlos fallar** los tres (§6.1, §6.2).
+- [ ] **2. Test de que las props también caen.**
+      Mismo componente con `props<{ x: number }>()`: con comentario, el destructuring
+      desaparece del emit. **Verlo fallar** (§6.5) — es lo que prueba que la causa es el
+      batch, no la región de cliente.
+- [ ] **3. Test del fallo mudo.**
+      Un `@code` con JS realmente roto (`const = ;`) produce al menos un diagnóstico con su
+      span dentro del bloque. **Verlo fallar**: hoy devuelve un `ExtractedCode` vacío y
+      cero diagnósticos (§6.3).
 
-## Fase 1 — El `@@` de contenido (2)
+## Fase 1 — El troceado (2)
 
-- [ ] **5. Resolver `at-escape` al construir los runs de texto.**
-      Modificar el emit de runs (`packages/compiler/src/emit/runs.ts`, compartido por las dos
-      ramas) para que un `AtEscapeNode` contribuya el carácter `@` al run, como ya hace
-      `parser.ts:472-476` en un valor de atributo. El nodo se queda en el AST con su span
-      —lo necesitan el LSP y el formateador—; lo que cambia es que el emit lo lee. Verde en 1.
-- [ ] **6. Ningún token del lexer sin consumidor.**
-      Dejar el caso cubierto de forma que no se pueda repetir: un `switch` exhaustivo sobre el
-      tipo de contenido, o un test que recorra los tipos de `HtmlContent` y falle si alguno no
-      produce salida. Es la invariante nueva de §5, y es lo que habría cazado esto.
+- [ ] **4. `#closeChunk` parte por regiones de comentario.**
+      Modificar `packages/compiler/src/code/code.ts:229-236`: en vez de un span continuo
+      `[#chunkStart, upTo)`, emitir un `neutral-js` por cada tramo **entre** las regiones de
+      comentario que el `RegionCursor` ya conoce (`code.ts:141-147`). Sin reescribir texto y
+      sin blanquear: los spans siguen siendo offsets del fuente (§3). Tramo en blanco, ningún
+      part — la condición `NON_WHITESPACE` que ya existe. Verde en 1 y 2.
+- [ ] **5. Un comentario que parece código no descuadra nada.**
+      Cubrir §6.4: un `@* … { … @client { … } … *@` no abre región ni mueve `#depth`. Si el
+      `RegionCursor` ya lo garantiza, el test lo deja escrito; si no, se arregla aquí.
 
-## Fase 2 — Las entidades (2)
+## Fase 2 — El fallo deja de ser mudo (1)
 
-- [ ] **7. Decodificar en compilación.**
-      Aplicar §3.2: el dato del nodo de texto lleva el carácter, no la entidad. Subset
-      estricto (decisión 38): las cinco de XML más las numéricas; una entidad fuera del subset
-      es un diagnóstico con su span, no una tabla de 2.200 entradas. `escapeText`
-      (`packages/ssr/src/serialize.ts:49`) **no se toca**. Verde en 2 y 4, y 3 sigue verde.
-- [ ] **8. Derogar el «pass-through» de la decisión 49.**
-      Modificar `docs/gramar/gramatica-v1-decisiones.md` (decisión 49 y su fila del índice) y
-      el comentario de `packages/compiler/src/html/nodes.ts:80`, que hoy afirma lo contrario.
-      El porqué, en una línea: **el cliente no tiene serializador**, y `textContent` no
-      interpreta entidades, así que verbatim hace divergir SSR e hidratación.
+- [ ] **6. `extractCode` propaga los diagnósticos del batch.**
+      Modificar `packages/compiler/src/emit/oxc-code.ts`: hoy hace `batch.parse()` y descarta
+      `result.diagnostics`. Devolverlos con `ExtractedCode`, mapeados al fuente original por
+      `mapOffset`, y que el emit los propague como cualquier otro diagnóstico. Verde en 3.
+      Si hace falta un código nuevo, se reserva en el rango de SDD-11 y se anota en SDD-12.
 
-## Fase 3 — Cierre (1)
+## Fase 3 — Cierre (2)
 
-- [ ] **9. Verde, equivalencia y goldens.**
-      `pnpm typecheck`, `pnpm test` y `pnpm build`. Añadir a `equivalence.test.ts` un caso con
-      entidad y otro con `@@` (§6.5). Comprobar §6.6 (atributos) y §6.7 (el CSS sigue
-      verbatim). Los goldens solo se mueven donde haya `@@` o entidades.
+- [ ] **7. Los goldens no se mueven.**
+      Ningún fixture tiene comentarios en `@code`, así que los cuatro goldens deben salir
+      **byte a byte idénticos** (§6.6). Un golden que cambia es un fallo de la Fase 1.
+- [ ] **8. Verde y cobertura.**
+      `pnpm typecheck`, `pnpm test` y `pnpm build`. `code.ts` y `oxc-code.ts` no bajan de
+      ramas. Comprobar además §6.7: un `@*` en el markup sigue funcionando.
 
 ---
 
 ## Cierre del BUG
 
+- [ ] Devolver a los componentes de la demo de BUG-12 sus comentarios `@* … *@` en `@code`
+      —se escribieron con ellos y hubo que quitarlos para esquivar esto— y ver el ejemplo
+      construir.
 - [ ] Marcar BUG-13 como `Hecho` en [INDEX.md](./INDEX.md) (tabla + registro de progreso).
-- [ ] Anotar en la decisión 1 de la gramática que el escape ya se cumple en las dos
-      posiciones, contenido y atributo.

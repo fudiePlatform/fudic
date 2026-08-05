@@ -1,10 +1,10 @@
-# BUG-12 — Un comentario Razor dentro de `@code` borra todo el bloque
+# BUG-13 — Un comentario Razor dentro de `@code` borra todo el bloque
 
 > **Estado:** `Listo`
 > **Corrige:** [SDD-08 — Bloque `@code`](../SDD-08-code-block.md) · [SDD-11 — Oxc](../SDD-11-oxc.md)
 > **Paquetes:** `@fudic/compiler`
-> **Rama sugerida:** `fix/bug-12-comentario-en-code`
-> **Independiente de BUG-11:** no comparte ni un fichero. Sale de escribir sus páginas de
+> **Rama sugerida:** `fix/bug-13-comentario-en-code`
+> **Independiente de BUG-12:** no comparte ni un fichero. Sale de escribir sus páginas de
 > demostración en `examples/basic`.
 
 ---
@@ -90,7 +90,7 @@ distancia.
 - **Cualquier otro texto no-JS que acabe en un chunk neutral** comparte la causa exacta.
   El comentario es el caso que existe hoy en la gramática.
 - **`examples/basic` no lo sufre** porque ningún `.fud` del ejemplo tiene un `@*` dentro de
-  `@code` — apareció al escribir los componentes de la demo de BUG-11, que sí lo tenían.
+  `@code` — apareció al escribir los componentes de la demo de BUG-12, que sí lo tenían.
 
 ---
 
