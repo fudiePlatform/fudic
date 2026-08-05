@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { VirtualFile } from '../src/types.js';
 import { collectTags, unresolvedAlias } from '../src/imports.js';
 import { emitClient, parseFud, registryOf } from './_support.js';
 import { templateContent } from '../src/imports.js';
@@ -32,9 +33,14 @@ describe('interpolation', () => {
 });
 
 describe('half-written expressions', () => {
-  /** A stretch that stands for an empty span and only answers "what may go here". */
-  const standIns = (file: { mappings: readonly { caps: { completion: boolean }; sourceLength: number }[] }) =>
-    file.mappings.filter((m) => m.caps.completion && m.sourceLength === 0);
+  /**
+   * A stretch that stands for an empty span and only answers "what may go here".
+   *
+   * `completion` is truthy rather than `true`: a user stretch carries the object Volar reads
+   * `isAdditional` from (SDD-28 §5.5), and a stand-in carries a plain `true`.
+   */
+  const standIns = (file: VirtualFile) =>
+    file.mappings.filter((m) => Boolean(m.caps.completion) && m.sourceLength === 0);
 
   it('stands in for an empty content interpolation', () => {
     const file = emitClient(component('    <p>@()</p>'));

@@ -3,7 +3,7 @@
 > **SDD:** [SDD-28 — Snippets y andamiaje en el editor](./SDD-28-snippets.md)
 > **Paquete:** `@fudic/language-server` (más una mudanza a `@fudic/compiler`)
 > **Rama:** `feat/sdd-28-snippets`, dentro del worktree `sdd-25-pendientes`
-> **Progreso:** 22 / 22 — las cinco fases hechas; queda el cierre.
+> **Progreso:** 22 / 22 — hecho, cierre incluido.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Salvo donde se diga otra cosa, los ficheros son relativos a
@@ -187,12 +187,35 @@ regresión no rompe un test propio sino uno ajeno —el de Emmet—.
 
 ## Cierre de la SDD
 
-- [ ] Aceptación sobre la conexión LSP viva: crear `test/acceptance/snippets.test.ts` con los
+- [x] Aceptación sobre la conexión LSP viva: crear `test/acceptance/snippets.test.ts` con los
       criterios 1, 5, 7, 8, 9, 10 y 12 contra el workspace de fixtures, como hace
       [`acceptance/completion.test.ts`](../../packages/language-server/test/acceptance/completion.test.ts).
-- [ ] `pnpm typecheck`, `pnpm test` y `pnpm build` en verde en todo el workspace.
-- [ ] Cobertura **100 %** en las cuatro métricas en `@fudic/language-server`, y sin bajar en
+      **Hecho, y es lo que ha justificado el paso.** Cuatro de sus casos fallaron y ninguno era
+      culpa del test: **parte del catálogo no llegaba al editor**. Volar reparte cada posición
+      al **primer** documento embebido que la contesta y descarta al resto, y la raíz se visita
+      **la última**, así que allí donde TypeScript responde —dentro de `@code`, y sobre un `@`
+      con letras ya escritas, que proyecta como interpolación— lo nuestro se calculaba y se
+      tiraba. Medido antes de tocar nada: `@code { pro| }` 1082 ítems, **0 nuestros**; `@co|`
+      1195, **0 nuestros**. Se cierra con `USER_CAPS.completion = { isAdditional: true }`
+      —Volar deja de considerar exclusiva la respuesta de la proyección—, y eso destapa la
+      duplicación que el reparto tapaba: la zona neutra vive en los **dos** virtuales y
+      TypeScript pasaba a contestar dos veces (2164 donde había 1082). `USER_ECHO_CAPS` le da
+      un solo dueño, el virtual de cliente, que es la misma regla que ya rige sus diagnósticos
+      duplicados. Detalle final: el arnés declaraba `snippetSupport: false`, así que el
+      protocolo degradaba **todo** snippet a texto plano — declaraba un cliente que no existe.
+      Todo esto es §5.6 de la spec y los criterios 17–19.
+- [x] `pnpm typecheck`, `pnpm test` y `pnpm build` en verde en todo el workspace.
+      **2469 tests**, build incluido `examples/basic` y el `.vsix`.
+- [x] Cobertura **100 %** en las cuatro métricas en `@fudic/language-server`, y sin bajar en
       `@fudic/compiler` ni en `@fudic/cli` tras la mudanza.
-- [ ] Marcar SDD-28 como `Hecho` y anotarlo en [INDEX.md](./INDEX.md) (tabla + registro de
+      **Hecho.** `language-server` 790/454/221/673 al 100 %; `language-core` sigue al 100 % tras
+      `USER_ECHO_CAPS`; `anchor.ts` del compilador nace al 100 %.
+- [x] Marcar SDD-28 como `Hecho` y anotarlo en [INDEX.md](./INDEX.md) (tabla + registro de
       progreso), más el estado de T-13/T-14 en
       [SDD-25-Task-Claude.md](./SDD-25-Task-Claude.md).
+
+> **Queda abierto, y no es de esta SDD.** `§6.14 — cancellation` volvió a caer bajo carga dos
+> veces durante estas fases (4 peticiones completadas en vez de 1) y pasa siempre en aislado
+> —tres de tres—. Es la fragilidad que el cierre de T-12 dejó anotada; la sospecha de partida
+> es que `resume(BURST*3−1)` garantiza que las cancelaciones han **llegado**, no que se hayan
+> **procesado**. Merece tarea propia.

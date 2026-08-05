@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { span } from '@fudic/compiler';
 import { VirtualWriter } from '../src/writer.js';
-import { SCAFFOLD_CAPS, USER_CAPS } from '../src/caps.js';
+import { SCAFFOLD_CAPS, USER_CAPS, USER_ECHO_CAPS } from '../src/caps.js';
 import { GLOBALS_DTS, GLOBALS_FILE_NAME } from '../src/globals.js';
 import { VERSION } from '../src/index.js';
 
@@ -126,13 +126,22 @@ describe('VirtualWriter.build', () => {
 describe('package surface', () => {
   it('exposes user capabilities with formatting off: a virtual is never formatted', () => {
     expect(USER_CAPS).toEqual({
-      completion: true,
+      // Additional, not exclusive: Volar gives a position to the first projection that
+      // answers it and skips the rest, and the root code — where the server's own snippets
+      // and links come from — is visited last (SDD-28 §5.5).
+      completion: { isAdditional: true },
       verification: true,
       semantic: true,
       navigation: true,
       structure: true,
       format: false,
     });
+  });
+
+  it('the echo of the neutral zone offers no completion, and everything else', () => {
+    // The neutral zone lives in both virtuals; the client one is canonical, exactly as it
+    // already is for the duplicate diagnostics.
+    expect(USER_ECHO_CAPS).toEqual({ ...USER_CAPS, completion: false });
   });
 
   it('exposes the ambient globals as one source for server and CLI', () => {

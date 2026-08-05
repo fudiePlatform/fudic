@@ -1,8 +1,9 @@
 # SDD-28 — Snippets y andamiaje en el editor
 
 > **Paquetes:** `@fudic/language-server`, `@fudic/compiler` (una mudanza), `@fudic/cli` (la
-> pierde) · **Rango de diagnósticos:** `FUD0520`–`FUD0539` (reservado, hoy vacío)
-> **Estado:** `Listo`, pendiente de autorización de Pedro · **Tareas:** [SDD-28-Task.md](./SDD-28-Task.md)
+> pierde), `@fudic/language-core` (§5.6) · **Rango de diagnósticos:** `FUD0520`–`FUD0539`
+> (reservado, hoy vacío)
+> **Estado:** `Hecho` · **Tareas:** [SDD-28-Task.md](./SDD-28-Task.md)
 
 ---
 
@@ -167,6 +168,9 @@ export type SnippetScope =
   | 'markup'          // isMarkupOffset === true
   | 'code-block';     // dentro del `@code`
 
+/** Dónde es legal un constructo que no puede ir en cualquier sitio (§5.1.b). */
+export type SnippetPlacement = 'top-level' | 'in-head';
+
 export interface FudSnippet {
   /** Lo que se teclea y lo que se ve en la lista. */
   readonly label: string;
@@ -178,6 +182,8 @@ export interface FudSnippet {
   readonly roles?: readonly FudRole[];
   /** Solo si el documento aún no tiene `@code` (SDD-10: como máximo uno). */
   readonly requiresNoCodeBlock?: true;
+  /** Dónde es legal. Ausente = donde el scope lo permita. */
+  readonly placement?: SnippetPlacement;
 }
 
 /** El catálogo entero, en orden de presentación. */
@@ -254,13 +260,20 @@ Un hueco que aparece dos veces en la plantilla (el `{{title}}` de `route.fud` y 
 vez lo escribe en los dos sitios. Eso no es un efecto colateral, es la razón de que el
 snippet valga más que el fichero.
 
-**b) Bloque `@code`** — `scope: 'markup'`, `requiresNoCodeBlock`, por rol:
+**b) Bloque `@code`** — `scope: 'markup'`, `requiresNoCodeBlock`, por rol **y por posición**:
 
-| Rol | Cuerpo |
-|---|---|
-| `component` | `codeBlock()` — `type Props`, `props<Props>()` y `@client {}` |
-| `route`, `page` | `serverCodeBlock()` — `@server { export async function load() … }` |
-| `layout` | `@code {\n  $0\n}` a secas: **un layout no declara `load`** (SDD-21 §4.3, `FUD0430`) |
+| Rol | Dónde | Cuerpo |
+|---|---|---|
+| `component` | top-level | `type Props`, `props<Props>()` y `@client {}` |
+| `route` | top-level | `@server { export async function load() … }` |
+| `page` | dentro de `<head>` | el mismo `@server load` |
+| `layout` | dentro de `<head>` | `@code {\n  $0\n}` a secas: **un layout no declara `load`** (SDD-21 §4.3, `FUD0430`) |
+
+La columna **dónde** la añadió la implementación, y no es cosmética: un `@code` es un nodo
+top-level en un componente y en una ruta (decisiones 53, 83) y vive dentro de `<head>` en una
+página y en un layout (59). Ofrecerlo en medio del cuerpo andamiaba un fichero en rojo
+(`FUD0153`/`FUD0155`). Lo mismo vale para `@section`, que es top-level de su ruta. De ahí el
+campo `placement` de §4.2.
 
 **c) Control de flujo** — `scope: 'markup'`, cualquier rol:
 
@@ -304,7 +317,12 @@ Un fichero vacío **siempre** es un componente: sin doctype y sin `<link rel="la
 `structureDocument` no tiene con qué decidir otra cosa
 ([structure.ts:246-248](../../packages/compiler/src/document/structure.ts#L246-L248)). Si la
 puerta del esqueleto fuese el rol, `route` y `layout` no se ofrecerían nunca. La puerta es
-por tanto **el contenido**: `isEmptyDocument(source)` — nada o solo espacios.
+por tanto **el contenido**: `isEmptyDocument(source)` — nada, o **nada más que la palabra que
+se está escribiendo**.
+
+Esa segunda mitad la corrigió un test en rojo y no es una concesión: nadie completa sin
+teclear antes, y al teclear `rou` el fichero deja de estar vacío. Una puerta que se cierra con
+una sola pulsación es una puerta por la que no pasa nadie.
 
 Y es la puerta correcta por una segunda razón: insertar un `<!DOCTYPE html>` en un fichero
 que ya tiene markup no es lo que nadie quiso pedir jamás.
@@ -357,6 +375,48 @@ lo demás: son contextos donde una palabra no puede significar otra cosa. El ord
 ```
 href  →  @section <nombre>  →  directiva @  →  [tags + snippets + Emmet]  (fusionados)
 ```
+
+La rama de `@` tiene una condición que la implementación añadió: **solo gana si tiene algo que
+decir**. Dentro de un `<style>` un `@` es una at-rule de CSS, y contestar ahí con una lista
+vacía tapa al servicio de CSS, que es de quien es ese `@media`.
+
+### 5.6 Volar reparte el completado a **un solo** documento, y la raíz es el último
+
+Esto no se descubrió escribiendo la spec sino ejecutándola contra un servidor y un cliente
+reales, y **decide si media spec llega o no al editor**.
+[`provideCompletionItems.js:134`](../../node_modules/.pnpm/@volar+language-service@2.4.28/node_modules/@volar/language-service/lib/features/provideCompletionItems.js)
+hace un reparto **winner-takes-all**: el primer código embebido que responde a una posición la
+reclama (`mainCompletionUri`) y **todos los demás se saltan**. Y `forEachEmbeddedDocument`
+recorre en post-orden, así que el **root** —de donde salen los snippets, los tags y los
+`href`— se visita **el último**. Medido en el workspace de fixtures:
+
+| Posición | Antes | Nuestros ítems |
+|---|---|---|
+| `@code { pro| }` | 1082 ítems de TypeScript | **0** |
+| `@code { @| }` | 3086 | **0** |
+| `@co|` en markup (proyecta como interpolación) | 1195 | **0** |
+| `@|` a secas | 8 | 8 |
+| `rou|` en fichero vacío | 4 | 4 |
+
+O sea: las cuatro entradas de scope `code-block` y toda la rama `@` con una letra escrita se
+calculaban y se tiraban. **Los tests unitarios no podían verlo** porque llaman al servicio
+directamente; solo el criterio sobre la conexión viva lo enseña.
+
+El propio Volar tiene la salida: una zona puede declarar su completado como **`isAdditional`**,
+y entonces responde **sin reclamar la posición**. `USER_CAPS` pasa de `completion: true` a
+`completion: { isAdditional: true }` en `@fudic/language-core`. TypeScript sigue contestando
+exactamente igual; lo que cambia es que deja de ser el **único** que contesta.
+
+**Y eso destapa lo que el reparto estaba tapando:** la zona neutra de `@code` se emite en los
+**dos** virtuales (SDD-23 §4.1), así que sin nadie reclamando, TypeScript contestaba **dos
+veces** (2164 ítems donde había 1082). Se cierra con `USER_ECHO_CAPS`: el virtual de **cliente
+es el canónico** para la zona neutra —la misma regla que el servidor ya aplica a los
+diagnósticos duplicados de esa zona— y el de servidor conserva todas las demás capacidades
+pero no ofrece completado ahí.
+
+> **Invariante.** Una posición que dos virtuales proyectan tiene **un** dueño de completado, y
+> es el de cliente. Lo que la hace compatible con la raíz es que ninguno de los dos la
+> *reclame*.
 
 ---
 
@@ -414,6 +474,15 @@ andamiaje sería diagnosticar el editor en vez del fichero.
     componente no enlazado no lo convierte en navegable hasta que el `<link>` está escrito.
 16. `pnpm typecheck` y `pnpm test` verdes en todo el workspace, y **`@fudic/language-server`
     sigue al 100 %** en las cuatro métricas — igual que `@fudic/compiler` en el módulo mudado.
+17. **Todo lo del catálogo llega al editor, no solo al servicio** (§5.6). Sobre la conexión
+    viva: `props` dentro de un `@code`, `@client`/`@server` tras un `@` dentro de él, y las
+    directivas sobre un `@` con letras ya escritas. Añadido tras medir que **ninguno de los
+    tres llegaba**.
+18. **TypeScript no se duplica.** La lista de una posición de la zona neutra tiene el mismo
+    número de ítems de TypeScript que antes del cambio de §5.6, no el doble.
+19. **El arnés declara lo que declara VS Code**: `snippetSupport: true`. Con `false`, el
+    protocolo degrada todo snippet a texto plano y el criterio 1 estaría midiendo un cliente
+    que no existe.
 
 ---
 
@@ -449,3 +518,6 @@ andamiaje sería diagnosticar el editor en vez del fichero.
 | Demasiado ruido en la lista | Las puertas de §5.2 y `sortText`: en markup solo entran control de flujo, directivas del rol y tags; en `@code`, solo zonas. |
 | El `$` de un cuerpo se interpreta como tabstop | Regla de escape en el catálogo y un test que afirma que todo `$` del cuerpo pertenece a un tabstop declarado. |
 | Mudar `anchorFor` rompe la CLI | La mudanza es mecánica y `packages/cli/test/` ya cubre `--in` en los cuatro roles; SDD-22 §4.4 se anota con el destino nuevo. |
+| El catálogo no llega al editor aunque el servicio lo devuelva | **Ocurrió** (§5.6). Lo caza el criterio 17, que solo existe sobre la conexión viva; el unitario es ciego a esto por construcción. |
+| Marcar la proyección como `isAdditional` duplica a TypeScript | **Ocurrió también**, y es lo que el reparto tapaba: `USER_ECHO_CAPS` da un solo dueño a la zona neutra. Criterio 18. |
+| Un snippet ofrecido donde no es legal | `placement`, y los criterios 3 y 6 pasan cada cuerpo por el parser en la posición que el catálogo dice. |

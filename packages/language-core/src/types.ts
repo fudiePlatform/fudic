@@ -56,8 +56,16 @@ export interface Mapping {
  * `$tpl`.
  */
 export interface MappingCaps {
-  /** Completion inside the stretch. */
-  readonly completion: boolean;
+  /**
+   * Completion inside the stretch.
+   *
+   * `{ isAdditional: true }` means «completions here are one voice, not the only one». Volar
+   * runs a winner-takes-all merge: the first embedded code that answers a position claims it
+   * and every other code is skipped — and since the root code is visited LAST, a projection
+   * that answers would silence the server's own list (SDD-28). Marking a stretch additional
+   * keeps TypeScript's answer and lets the others through beside it.
+   */
+  readonly completion: boolean | { readonly isAdditional: true };
   /** Diagnostics: reported back onto the source, or dropped. */
   readonly verification: boolean;
   /** Hover, inlay hints, signature help, semantic tokens. */

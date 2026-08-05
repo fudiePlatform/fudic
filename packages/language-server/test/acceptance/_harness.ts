@@ -176,7 +176,11 @@ export async function startHarness(
     capabilities: {
       textDocument: {
         synchronization: { dynamicRegistration: false },
-        completion: { completionItem: { snippetSupport: false } },
+        // What VS Code declares, and it has to match: with `snippetSupport: false` the
+        // protocol layer downgrades every snippet to plain text, so a `.fud` skeleton would
+        // arrive here as a wall of `${1:…}` and this harness would be testing a client
+        // nobody uses (SDD-28).
+        completion: { completionItem: { snippetSupport: true, labelDetailsSupport: true } },
         diagnostic: {},
         semanticTokens: {
           requests: { full: true },
