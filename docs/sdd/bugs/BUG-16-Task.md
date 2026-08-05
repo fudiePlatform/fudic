@@ -3,8 +3,8 @@
 > **BUG:** [BUG-16 — Pasar una prop tiene dos formas](./BUG-16-props-con-punto.md)
 > **Paquetes:** `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server`
 > **Rama:** la del backlog de uso
-> **Depende de:** [BUG-15](./BUG-15-clases-sin-completado.md) — hasta que el espacio deje de
-> disparar, la zona de atributos devuelve cero ítems y ningún criterio del editor es observable
+> **Depende de:** [BUG-15](./BUG-15-clases-sin-completado.md) **solo en las fases 5 y 6**. Las
+> fases 1-4 no comparten un fichero con él y arrancan el mismo día (§1.2 del BUG)
 > **Progreso:** 0 / 12
 
 Cada tarea es un paso cerrado. Las rutas son relativas a la raíz del repo.
@@ -37,9 +37,9 @@ ejemplos antes de que el punto se emita los deja en rojo y sin salida que compar
       21— con el nombre sin el punto. Un tag **nativo** no cambia: sigue sin emitirse (§4.1,
       §6.3). Verde en 1.
 - [ ] **4. Los `.fud` del repo, migrados.**
-      `examples/basic` y las fixtures de `compiler` y `language-server` pasan a `.prop`. La
-      salida de nivel 1 tiene que quedar **idéntica** a la de antes, documento a documento
-      (§4.5, §6.4).
+      `examples/basic` y las fixtures de `compiler` pasan a `.prop`. La salida de nivel 1 tiene
+      que quedar **idéntica** a la de antes, documento a documento (§4.5, §6.4). Las fixtures del
+      `language-server` **no** se tocan aquí: van en la tarea 11, para no pisar la rama de BUG-15.
 
 ## Fase 3 — La proyección: dos literales (2)
 
@@ -76,8 +76,9 @@ ejemplos antes de que el punto se emita los deja en rojo y sin salida que compar
 
 ## Fase 6 — Lo que no se puede romper (2)
 
-- [ ] **11. Los criterios de antes, con la sintaxis nueva.**
-      §6.3 y §6.4 de SDD-24 y §6.9 de BUG-11 siguen verdes; los tres contextos del editor se
+- [ ] **11. Las fixtures del `language-server`, migradas, y los criterios de antes verdes.**
+      Aquí y no en la 4: es el fichero que la rama de BUG-15 también toca. Con la sintaxis nueva,
+      §6.3 y §6.4 de SDD-24 y §6.9 de BUG-11 siguen verdes, y los tres contextos del editor se
       piden **con `context`**, como los pide un editor (§6.13, §6.14).
 - [ ] **12. El build entero.**
       `pnpm build` construye `examples/basic` migrado y los E2E siguen pasando sobre las páginas

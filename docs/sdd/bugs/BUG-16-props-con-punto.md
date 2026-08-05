@@ -6,8 +6,10 @@
 > [SDD-24 — Language server](../SDD-24-language-server.md) §4.2
 > **Paquetes:** `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server`
 > **Rama sugerida:** la del backlog de uso
-> **Depende de:** [BUG-15](./BUG-15-clases-sin-completado.md) — mientras el espacio siga
-> disparando, la zona de atributos devuelve cero ítems y ningún criterio de aquí es observable
+> **Depende de:** [BUG-15](./BUG-15-clases-sin-completado.md), y **solo su mitad de editor**:
+> los criterios 8-13 no son observables mientras el espacio siga disparando. Los criterios 1-7
+> —compilador y proyección— no dependen de nada y no comparten un fichero con BUG-15: **las dos
+> ramas pueden ir a la vez desde el primer día** (§1.2)
 > **Reserva:** ningún código `FUD` nuevo (§3.3)
 
 ---
@@ -63,6 +65,24 @@ Lo que eso obliga, y es la mitad del trabajo: **si el punto es la única forma, 
 llegar a la salida**. Nivel 1 es HTML puro sin JS, y una prop que solo existe en la proyección no
 es una prop.
 
+### 1.2. Cómo se reparte con BUG-15, y por qué no hay que esperar
+
+Este BUG tiene dos mitades y **solo una espera**:
+
+| Mitad | Paquetes | Depende de BUG-15 |
+|---|---|---|
+| El punto se emite, la proyección reparte, el nombre del evento viaja (fases 1-4, criterios 1-7) | `compiler` · `language-core` | **no**, y no comparte un fichero con él |
+| Los contextos del editor (fases 5-6, criterios 8-13) | `language-server` | **sí** |
+
+La razón de que la segunda espere es una sola línea: mientras el espacio sea carácter de disparo,
+el editor devuelve cero ítems en la zona de atributos (BUG-15 §2.3), así que los criterios 8-13
+fallarían todos por una causa que no es la suya.
+
+De modo que las dos ramas arrancan **el mismo día**: una sesión con BUG-15, otra con las fases
+1-4 de este, que son ocho de las doce tareas y la parte cara. Cuando BUG-15 aterrice, quien esté
+libre remata las fases 5 y 6. Las fixtures del `language-server` se migran en la fase 5 y no en
+la 2, precisamente para que las dos ramas no se pisen ni un fichero.
+
 ---
 
 ## 2. Causa raíz
@@ -104,9 +124,12 @@ ctx.w.scaffold('$on(', attr.span);
 ctx.w.scaffold(`'${binding.name}'${…}, `);   // ← inventado, no copiado
 ```
 
-Andamiaje no rutea nada: ni completado, ni diagnóstico, ni hover. `$on` está declarado sobre
-`keyof HTMLElementEventMap` —la lista exacta que el usuario quiere, y sin `on` porque así está
-tecleado el mapa— y no hay una sola posición del fuente desde la que preguntársela.
+Andamiaje es texto que el emisor **inventa**, y no rutea nada: ni completado, ni diagnóstico, ni
+hover. Y la lista está ahí al lado sin poder pedirse: `$on` —la función que la proyección usa
+para representar un evento, declarada en las globales de SDD-23— toma como primer parámetro un
+`keyof HTMLElementEventMap`, que es el diccionario de eventos del DOM de TypeScript, tecleado sin
+`on`. Justo lo que hay que ofrecer. Pero no hay una sola posición del fuente desde la que
+preguntárselo.
 
 ---
 
@@ -178,35 +201,48 @@ usado ahora en los dos sentidos.
 
 ### 4.3. El punto ofrece los props
 
-El nombre ya viaja: `emitKey` copia el span del nombre —sin el punto— como clave del literal
-([`attrs.ts:246-255`](../../../packages/language-core/src/template/attrs.ts#L246-L255)), así que
-un `.ton|` a medio escribir mapea dentro del objeto y TypeScript contesta con las claves que
-faltan. Lo que falta es el caso **vacío**: `.|` no tiene nombre que copiar, y ahí se emite un
-ancla `COMPLETION_ONLY_CAPS` sobre el punto, apuntando a la posición de clave — el mismo recurso
-que BUG-11 usó para el hueco del tag, aplicado un carácter más allá.
+**Lo que el desarrollador ve.** Dentro del tag de un componente escribe `.` y aparece la lista de
+props de ese componente. Sigue escribiendo, `.ton`, y la lista se filtra. Acepta uno y queda
+escrito `.tone`, sin duplicar lo tecleado y sin comerse el punto. En esa posición no aparece nada
+más: ni Emmet, ni tags, ni snippets.
+
+Da igual lo que venga después del `=`: una constante (`.tone="info"`), una expresión
+(`.tone="@(t)"`) o un binding. La lista es la misma porque la pregunta es la misma.
+
+**Cómo se consigue.** Casi está: la proyección ya copia el nombre del prop —sin el punto— como
+clave del objeto de props (`emitKey`,
+[`attrs.ts:246-255`](../../../packages/language-core/src/template/attrs.ts#L246-L255)), así que un
+`.ton|` a medio escribir cae dentro de ese objeto y TypeScript contesta con las claves que faltan.
+Lo único que falta es el caso **vacío**: `.|` no tiene nombre que copiar, así que se emite un
+tramo de completado sobre el punto que apunta a la posición de clave — el mismo recurso que
+BUG-11 usó para el hueco del tag, un carácter más allá.
 
 El servidor no inventa la lista: la lista es el contrato del componente y quien lo sabe es
-TypeScript. `propertyContextAt` existe para lo contrario — para **no** estorbar: es la señal de
-que ahí no entran ni Emmet, ni los tags, ni los snippets.
+TypeScript. `propertyContextAt` existe para lo contrario, para **no** estorbar.
 
 ### 4.4. La arroba ofrece los eventos, sin `on`
 
-El nombre del evento pasa de andamiaje a **tramo proyectado con las comillas incluidas**, que es
-el recurso que SDD-24 ya usó para el literal de `@section`: un rango cuyos extremos caen en
-tramos distintos no vuelve a ninguna parte, así que el literal entero es un solo tramo mapeado al
-nombre del fuente. Con eso, `@cli|` pregunta dentro de `$on('cli')`, cuyo parámetro es
-`keyof HTMLElementEventMap`, y la lista que vuelve es `click`, `change`, `input`… — sin `on`,
-porque así está tecleado el mapa del DOM.
+**Lo que el desarrollador ve.** Dentro del tag escribe `@` y aparece la lista de eventos del DOM:
+`click`, `change`, `input`, `submit`, `keydown`… **sin el prefijo `on`**, que es como se escriben
+en fudic. Sigue escribiendo, `@cli`, y la lista se filtra. En esa posición tampoco aparece nada
+más — y en particular **no** aparecen las directivas Razor: dentro de un tag abierto un `@` es un
+evento y nunca un `@if`.
 
-Para `@|` sin nombre, ancla, igual que en §4.3.
+**De dónde sale la lista, y por qué no la escribimos nosotros.** De TypeScript, igual que los
+props. La proyección traduce cada evento a una llamada a `$on`, una función declarada en las
+globales de la proyección (SDD-23) cuyo primer parámetro es `keyof HTMLElementEventMap` — el
+diccionario de eventos del DOM que trae TypeScript, tecleado exactamente sin `on`. Preguntarle a
+esa posición **es** pedir la lista, siempre al día y sin tabla que mantener aquí.
 
-Y una regla que hay que escribir porque el `@` es la transición de Razor en todas partes menos
-aquí: **dentro de un tag abierto, un `@` es un evento y nunca una directiva.** `directiveContextAt`
-no entra en esa zona; su guarda es la misma `insideOpenTag` que `wordContextAt` ya usa.
+**Qué hay que cambiar para poder preguntar.** Hoy ese nombre no existe para el editor: el emisor
+lo escribe como texto inventado (§2.5), y el texto inventado no rutea nada. Pasa a ser un tramo
+copiado del fuente **con las comillas incluidas** — el recurso que SDD-24 ya usó para el literal
+de `@section`, y por la misma razón: un rango cuyos extremos caen en tramos distintos no vuelve a
+ninguna parte. Y para `@|` sin nombre, un tramo de completado sobre la arroba, igual que en §4.3.
 
-Los eventos personalizados (nombre con guion) siguen como están: `as never` y el manejador
-comprobado como función, decisión 28. No se ofrecen — no hay lista de dónde sacarlos — y eso no
-es una carencia de este BUG, es que no existe tal lista.
+**El único caso que no se ofrece** es el evento personalizado (nombre con guion): no hay
+diccionario del que sacarlo, decisión 28. Sigue comprobándose el manejador como función, como
+hasta ahora.
 
 ### 4.5. Migración
 

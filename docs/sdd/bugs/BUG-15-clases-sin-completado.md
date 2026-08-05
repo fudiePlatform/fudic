@@ -6,8 +6,8 @@
 > **Paquete:** `@fudic/language-server`
 > **Rama sugerida:** la del backlog de uso
 > **Depende de:** nada
-> **Hermano:** [BUG-16](./BUG-16-props-con-punto.md), que se lleva el `.` y el `@` dentro del tag
-> porque los dos dependen de un cambio de gramática
+> **No cubre:** las props ni los eventos — son de [BUG-16](./BUG-16-props-con-punto.md) enteros,
+> y aquí solo se citan en §7
 
 ---
 
@@ -150,11 +150,6 @@ completado de atributos.
 
 No comparte la causa el **valor**, `class:x="@(…)"`: eso ya funciona, lo contesta la proyección,
 y este BUG no lo roza.
-
-Tampoco lo comparten `.prop` ni `@evento` dentro del tag, aunque el usuario los viva como el
-mismo hueco: los dos dependen de que la gramática deje **una** forma de pasar props, y eso es
-[BUG-16](./BUG-16-props-con-punto.md). Aquí se arregla que la zona conteste; allí, quién contesta
-tras un punto.
 
 ### 2.6. Por qué la cobertura al 100 % no lo vio
 

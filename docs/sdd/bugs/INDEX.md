@@ -103,11 +103,14 @@ BUG-15  del editor también, y hermano de BUG-11 por la causa —una directiva c
         pertenece a otro fichero y necesitaba un tipo; el de la clase está en el
         `<style>` de este, y lo contesta el servidor sin tocar `language-core`.
    │
-   └──▶ BUG-16  el interior del tag entero, y va DESPUÉS: mientras el espacio siga
-                siendo carácter de disparo, la zona de atributos devuelve cero
-                ítems y ningún criterio de completado de BUG-16 es observable —
-                fallarían todos por una causa que no es la suya. No paralelizable
-                con BUG-15: los dos tocan `completions()` y `position.ts`.
+   └──▶ BUG-16  las props y los eventos, y solo su MITAD DE EDITOR espera. Las
+                fases 1-4 —el emisor, la proyección, el nombre del evento— viven
+                en `compiler` y `language-core`, no comparten un fichero con
+                BUG-15 y arrancan el mismo día: son 8 de las 12 tareas. Las fases
+                5-6 sí esperan, porque mientras el espacio dispare el editor
+                devuelve cero ítems y sus criterios fallarían por una causa
+                ajena. Las fixtures del `language-server` se migran en la fase 5
+                para que las dos ramas no se pisen ni un fichero.
 ```
 
 > Los números **12-14** están reservados por trabajo en curso en otros worktrees; la serie de
