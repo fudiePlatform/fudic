@@ -158,11 +158,17 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
     create(context) {
       return {
         provideCompletionItems(document, position, _completionContext, token) {
-          return stats.run(token, () => completions(context, document, position, index), undefined);
+          return stats.run(
+            'completion',
+            token,
+            () => completions(context, document, position, index),
+            undefined,
+          );
         },
 
         provideDefinition(document, position, token) {
           return stats.run(
+            'definition',
             token,
             () => {
               const cached = fudicDocumentOf(context, document);
@@ -190,6 +196,7 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
 
         provideDocumentFormattingEdits(document, range, options, _embedded, token) {
           return stats.run(
+            'formatting',
             token,
             async () => {
               if (fudicDocumentOf(context, document) === undefined) return undefined;
@@ -224,6 +231,7 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
 
         provideOnTypeFormattingEdits(document, position, _key, _options, _embedded, token) {
           return stats.run(
+            'onTypeFormatting',
             token,
             () => {
               if (fudicDocumentOf(context, document) === undefined) return undefined;
@@ -239,6 +247,7 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
 
         provideDocumentLinks(document, token) {
           return stats.run(
+            'documentLinks',
             token,
             () => {
               const cached = fudicDocumentOf(context, document);
@@ -257,6 +266,7 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
 
         provideDiagnostics(document, token) {
           return stats.run(
+            'diagnostics',
             token,
             () => {
               const cached = fudicDocumentOf(context, document);
@@ -272,6 +282,7 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
 
         provideDocumentSemanticTokens(document, _range, legend, token) {
           return stats.run(
+            'semanticTokens',
             token,
             () => {
               const cached = fudicDocumentOf(context, document);
@@ -294,6 +305,7 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
 
         provideCodeActions(document, range, _codeActionContext, token) {
           return stats.run(
+            'codeActions',
             token,
             () => {
               const cached = fudicDocumentOf(context, document);

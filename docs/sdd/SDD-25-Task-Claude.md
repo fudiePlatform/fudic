@@ -510,6 +510,13 @@ caer en aislado: `§6.14 — cancellation` otra vez, y
 no cerró la fragilidad**, solo una de sus causas. Queda anotado aquí en vez de en T-02 para no
 tocar una tarea ya cerrada; merece tarea propia.
 
+> **`§6.14` cerrado el 2026-08-05** (ver SDD-28-Task). No era el transporte —la ráfaga sí llega
+> entera y sin leer—: con `interFileDependencies` Volar valida cada documento abierto 250 ms
+> después de cada edición, esa validación pasa por `stats.run` y engordaba el **total** que el
+> criterio leía (+1 al momento, +14 un segundo y medio después). El contador se atribuye ahora
+> por tipo de petición. Lo de `build-client-chunks` no ha vuelto a aparecer y sigue sin
+> diagnosticar.
+
 ---
 
 # Tanda 4 — Experiencia de edición

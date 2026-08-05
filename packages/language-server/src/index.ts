@@ -86,7 +86,7 @@ export { reservedDollarDiagnostics } from './services/reserved-dollar.js';
 export { fudicDiagnostics, semanticDiagnostics } from './services/compiler-diagnostics.js';
 export { semanticTokens, keywordSpanAt, type FudicToken } from './services/semantic-tokens.js';
 export { createFudicService, rangeOf, toLspDiagnostic, fudicDocumentOf } from './services/plugin.js';
-export { RequestStats } from './stats.js';
+export { RequestStats, type RequestCounts, type RequestKind } from './stats.js';
 export { loadTypeScript, hasTypeScript, DEFAULT_LOADERS, type TypeScriptSource, type TsdkLoaders } from './tsdk.js';
 export { mountGlobals, GLOBALS_DTS, GLOBALS_FILE_NAME } from './globals.js';
 export {

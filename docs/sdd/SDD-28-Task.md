@@ -214,8 +214,19 @@ regresión no rompe un test propio sino uno ajeno —el de Emmet—.
       progreso), más el estado de T-13/T-14 en
       [SDD-25-Task-Claude.md](./SDD-25-Task-Claude.md).
 
-> **Queda abierto, y no es de esta SDD.** `§6.14 — cancellation` volvió a caer bajo carga dos
-> veces durante estas fases (4 peticiones completadas en vez de 1) y pasa siempre en aislado
-> —tres de tres—. Es la fragilidad que el cierre de T-12 dejó anotada; la sospecha de partida
-> es que `resume(BURST*3−1)` garantiza que las cancelaciones han **llegado**, no que se hayan
-> **procesado**. Merece tarea propia.
+> **Cerrado después de esta SDD, y la sospecha de partida era falsa.** `§6.14 — cancellation`
+> volvió a caer bajo carga dos veces durante estas fases (4 peticiones completadas en vez de 1)
+> y pasaba siempre en aislado. No era el transporte: `resume(BURST*3−1)` entrega la ráfaga en
+> una sola lectura y el `Semaphore` del lector la reparte entera antes de que la cola de
+> `vscode-jsonrpc` despache el primer mensaje, así que las cinco peticiones y las cuatro
+> cancelaciones llegan a la cola juntas —eso funciona—. Lo que fallaba era **lo que se contaba**:
+> el servicio declara `interFileDependencies`, con lo que Volar entra también en el modelo push
+> y valida **cada documento abierto 250 ms después de cada edición**; esa validación pasa por
+> `provideDiagnostics` → `stats.run`, y sube el total. Medido con una sonda: la ráfaga deja
+> `completed` en +1 leído al momento y en **+14** un segundo y medio más tarde. En una máquina
+> cargada la ráfaga dura más que los 250 ms, así que el total ya incluía diagnósticos que nadie
+> pidió — el reloj del que §6.14 dice explícitamente que no quiere depender, entrando por la
+> puerta de atrás. Arreglado atribuyendo el contador por tipo de petición
+> (`RequestStats.of('completion')`), que es lo que el criterio afirma; el total sigue publicado
+> y sigue contándolo todo. Cinco rondas de la sonda con 1,5 s de espera: `completionDelta=1`
+> siempre, `totalDelta=14` siempre.

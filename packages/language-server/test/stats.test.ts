@@ -11,16 +11,17 @@ import { RequestStats } from '../src/stats.js';
 import { CANCELLED, TOKEN } from './_lsp.js';
 
 describe('RequestStats', () => {
-  it('starts at zero', () => {
+  it('starts at zero, and so does every kind', () => {
     const stats = new RequestStats();
 
     expect([stats.completed, stats.cancelled]).toEqual([0, 0]);
+    expect(stats.of('completion')).toEqual({ completed: 0, cancelled: 0 });
   });
 
   it('runs the work and counts one completed', () => {
     const stats = new RequestStats();
 
-    expect(stats.run(TOKEN, () => 'answer', undefined)).toBe('answer');
+    expect(stats.run('completion', TOKEN, () => 'answer', undefined)).toBe('answer');
     expect([stats.completed, stats.cancelled]).toEqual([1, 0]);
   });
 
@@ -29,6 +30,7 @@ describe('RequestStats', () => {
     let ran = false;
 
     const answer = stats.run(
+      'completion',
       CANCELLED,
       () => {
         ran = true;
@@ -47,6 +49,7 @@ describe('RequestStats', () => {
     const token = { ...TOKEN, isCancellationRequested: false };
 
     const answer = stats.run(
+      'completion',
       token,
       () => {
         token.isCancellationRequested = true; // the user typed again
@@ -63,16 +66,34 @@ describe('RequestStats', () => {
     const stats = new RequestStats();
     const tokens = [CANCELLED, CANCELLED, CANCELLED, TOKEN];
 
-    for (const token of tokens) stats.run(token, () => 'answer', undefined);
+    for (const token of tokens) stats.run('completion', token, () => 'answer', undefined);
 
     expect([stats.completed, stats.cancelled]).toEqual([1, 3]);
+    expect(stats.of('completion')).toEqual({ completed: 1, cancelled: 3 });
+  });
+
+  it('keeps the kinds apart, which is what makes a burst measurable', () => {
+    // The reason the criterion is read per kind: while the user types, the server also validates
+    // every open document on its own account, and that work completes too. A total that mixes
+    // both says whatever the machine's speed made it say.
+    const stats = new RequestStats();
+
+    stats.run('completion', TOKEN, () => 'answer', undefined);
+    stats.run('diagnostics', TOKEN, () => [], undefined);
+    stats.run('diagnostics', TOKEN, () => [], undefined);
+
+    expect(stats.completed).toBe(3);
+    expect(stats.of('completion')).toEqual({ completed: 1, cancelled: 0 });
+    expect(stats.of('diagnostics')).toEqual({ completed: 2, cancelled: 0 });
+    expect(stats.of('definition')).toEqual({ completed: 0, cancelled: 0 });
   });
 
   it('starts over on reset: the counts are per session', () => {
     const stats = new RequestStats();
-    stats.run(TOKEN, () => 1, 0);
+    stats.run('completion', TOKEN, () => 1, 0);
     stats.reset();
 
     expect([stats.completed, stats.cancelled]).toEqual([0, 0]);
+    expect(stats.of('completion')).toEqual({ completed: 0, cancelled: 0 });
   });
 });
