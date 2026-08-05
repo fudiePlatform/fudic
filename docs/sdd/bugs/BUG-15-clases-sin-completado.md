@@ -1,11 +1,13 @@
-# BUG-15 — El completado se detiene en el `:` de `class:`, y las clases del fichero no las ofrece nadie
+# BUG-15 — Dentro de un tag abierto no contesta nadie: ni las clases de `class:`, ni los atributos de HTML
 
 > **Estado:** `Listo`
-> **Corrige:** [SDD-24 — Language server](../SDD-24-language-server.md) §3.2, §4.2, y amplía
+> **Corrige:** [SDD-24 — Language server](../SDD-24-language-server.md) §3.2, §4.1, §4.2, y amplía
 > [SDD-28 — Snippets y completado](../SDD-28-snippets.md) §4.3, §5.5
 > **Paquete:** `@fudic/language-server`
 > **Rama sugerida:** la del backlog de uso
 > **Depende de:** nada
+> **Hermano:** [BUG-16](./BUG-16-props-con-punto.md), que se lleva el `.` y el `@` dentro del tag
+> porque los dos dependen de un cambio de gramática
 
 ---
 
@@ -34,6 +36,30 @@ Lo único roto es el editor — que es exactamente lo que SDD-24 existe para no 
 El caso es el de una **lista finita, local y ya parseada**: los tres contextos exactos que el
 servidor ya sirve —un `href`, un nombre tras `@section `, un tag tras `<`— tienen esa misma
 forma, y en los tres el servidor contesta.
+
+### 1.1. Y no es solo `class:`: dentro de un tag abierto no contesta nadie
+
+Al ir a reproducirlo se vieron dos síntomas más, que el usuario describe como uno solo —«en un
+`.fud` no sale el IntelliSense de HTML que sí sale en un `.html`»— y que están **medidos** contra
+el servidor vivo, no supuestos:
+
+| Petición | Ítems | Quién contesta |
+|---|---|---|
+| `<div rol\|>` invocada (`triggerKind: 1`) | **151** | el servicio HTML: `role`, `class`, `aria-label`… con el rango correcto sobre `rol` |
+| `<div rol\|>` con `triggerCharacter: ' '` | **0** | nadie |
+| `<app-badge \|>` invocada | 12 | TypeScript: `tone?`, `role?`, `id?`… |
+| `<app-badge \|>` con `triggerCharacter: ' '` | **0** | nadie |
+| `<di\|` invocada | 2 | solo los componentes fudic: **ningún tag nativo**, ni `div` |
+
+Las dos primeras filas son la misma posición y el mismo servidor: lo único que cambia es el
+`context` que manda el editor. Y el editor manda **siempre** ese contexto — teclear el espacio
+que abre la zona de atributos es exactamente lo que hace un desarrollador antes de escribir
+`role`. La cuarta fila es la peor: ahí se apaga el criterio §6.3 de SDD-24, los props de un
+componente, que es una función que sí existe y hoy se pierde por el camino.
+
+La quinta es un defecto distinto y visible por sí solo: tras `<di` el editor ofrece los dos
+componentes del workspace y **ninguno** de los tags nativos, cuando SDD-24 §4.1 dice
+explícitamente de dónde salen los nativos.
 
 ---
 
@@ -80,7 +106,42 @@ contrato**. El nombre de una ranura pertenece a otro fichero, así que tenía qu
 El nombre de una clase pertenece al `<style>` de **este** fichero, y quien lo tiene delante es
 el servidor, no TypeScript.
 
-### 2.3. Alcance
+### 2.3. El espacio es un carácter de disparo, y dispara para apagar
+
+`COMPLETION_TRIGGER_CHARACTERS`
+([`capabilities.ts:66-68`](../../../packages/language-server/src/capabilities.ts#L66-L68))
+anuncia el espacio, junto al `@`, el `<` y los de Emmet. Anunciar un carácter tiene una
+consecuencia que no está escrita en ningún sitio de SDD-24: cuando el editor pide completado
+**por ese carácter**, Volar recorre los plugins y **salta todo el que no lo declare**
+(`provideCompletionItems.js:128-131`). El servicio HTML declara `. : < " = /`. Los de TypeScript,
+los suyos. Ninguno de los dos declara el espacio.
+
+De modo que el espacio deja en la sala a un solo plugin —el nuestro— y el nuestro, en la zona de
+atributos, no tiene nada que decir: `wordContextAt` se aparta (§2.1) y Emmet tampoco contesta
+dentro de un tag. Resultado medido: **cero ítems**. No es que la lista salga peor; es que no sale.
+
+Lo que hace de esto la causa principal y no una más: **apaga también lo que funciona**. Los props
+de un componente los contesta la proyección desde SDD-23 y el ancla de BUG-11; el espacio los
+tira igual que tira los atributos de HTML. Un carácter de disparo declarado de más no añade una
+respuesta: quita todas las demás.
+
+### 2.4. La rama de tag reclama la posición y deja fuera al servicio HTML
+
+Para `<di|` la causa es otra, y está en el reparto de Volar. El primer plugin que devuelve
+**ítems no vacíos** con capacidad de completado *no adicional* fija `mainCompletionUri`, y a
+partir de ahí todo plugin no adicional del mismo documento se salta
+(`provideCompletionItems.js:132-150`). El mapping del root es `identityMapping`, cuyo
+`completion` es `true` a secas —no el `{ isAdditional: true }` que SDD-28 §5.5 puso en
+`USER_CAPS`—, y nuestro servicio va **antes** que el HTML en la lista de plugins
+([`server.ts:152-160`](../../../packages/language-server/src/server.ts#L152-L160)).
+
+Así que `tagContextAt` no es solo el primero que contesta: es el último. Devuelve los componentes
+del workspace con un `return` temprano ([`plugin.ts:387-391`](../../../packages/language-server/src/services/plugin.ts#L387-L391))
+y con eso apaga al servicio que tiene los ciento y pico tags de HTML. La misma mecánica que
+SDD-28 §5.5 descubrió entre documentos embebidos, ocurriendo aquí entre plugins del mismo
+documento.
+
+### 2.5. Alcance
 
 Comparten la causa exacta —prefijo de binding cuyo nombre nadie ofrece— las otras dos directivas
 de la decisión 22/28.a: `style:foo` y `bus:foo`. Ninguna se arregla aquí (§7): sus nombres no
@@ -90,12 +151,24 @@ completado de atributos.
 No comparte la causa el **valor**, `class:x="@(…)"`: eso ya funciona, lo contesta la proyección,
 y este BUG no lo roza.
 
-### 2.4. Por qué la cobertura al 100 % no lo vio
+Tampoco lo comparten `.prop` ni `@evento` dentro del tag, aunque el usuario los viva como el
+mismo hueco: los dos dependen de que la gramática deje **una** forma de pasar props, y eso es
+[BUG-16](./BUG-16-props-con-punto.md). Aquí se arregla que la zona conteste; allí, quién contesta
+tras un punto.
 
-`language-server` está al 100 % en las cuatro métricas. No hay rama sin ejercitar: **es que no
-hay rama**. La cobertura mide el código que existe, y un contexto que nadie escribió no aparece
-en ningún denominador. Es el complemento exacto de lo que BUG-11 §2.4 anotó para `language-core`:
-allí el código corría sin significar; aquí ni siquiera existe.
+### 2.6. Por qué la cobertura al 100 % no lo vio
+
+`language-server` está al 100 % en las cuatro métricas. Para `class:` no hay rama sin ejercitar:
+**es que no hay rama**. La cobertura mide el código que existe, y un contexto que nadie escribió
+no aparece en ningún denominador. Es el complemento exacto de lo que BUG-11 §2.4 anotó para
+`language-core`: allí el código corría sin significar; aquí ni siquiera existe.
+
+Para §2.3 y §2.4 la explicación es otra, y es más incómoda: **el código sí existe y los tests sí
+lo cubren — con una petición que ningún editor manda nunca**. Los criterios de SDD-24 y SDD-28
+piden completado **sin `context`**, y el defecto del espacio solo aparece con `context`. Un
+arnés que habla el protocolo a medias mide un cliente que no existe, que es exactamente lo que
+SDD-28 ya se encontró con `snippetSupport: false`. La cobertura no puede ver eso: un parámetro
+que nadie manda no es una rama muerta, es una pregunta sin hacer.
 
 ---
 
@@ -121,6 +194,12 @@ reemplazar y el texto escrito hasta ahora. El span **no** incluye el `class:`, a
 
 `styleClassNames` devuelve los nombres **sin el punto**, deduplicados, en orden de aparición en
 el fuente.
+
+**Lo único publicado que cambia es la lista de caracteres de disparo** que el servidor anuncia
+en `initialize` (`COMPLETION_TRIGGER_CHARACTERS`, y con ella `SERVER_CAPABILITIES` y el
+`completionProvider` del servicio): **sale el espacio** (§4.5). Es un cambio de contrato con el
+cliente y por eso está aquí y no en §4: un editor que hoy pide completado al pulsar espacio
+dejará de pedirlo, que es precisamente lo que se busca.
 
 ---
 
@@ -187,6 +266,38 @@ una clase que no está en el `<style>` de este fichero —una global que llega p
 correcto, se queda tal cual y **no produce diagnóstico**. Por eso este BUG no reserva ningún
 código `FUD`: lo que añade es una lista, no una regla.
 
+### 4.5. El espacio deja de disparar, y la zona de atributos vuelve a ser de HTML
+
+Sale el espacio de los caracteres de disparo. Lo que queda entonces es lo que pasa en un `.html`
+y lo que el usuario espera: se pulsa espacio, no se pide nada, y en cuanto se teclea la primera
+letra el editor pide completado **invocado** —sin `triggerCharacter`— con todos los plugins
+vivos. Ahí contestan el servicio HTML con los atributos nativos y TypeScript con los props del
+componente, que es lo que ya hacían.
+
+La regla que queda escrita, y es la que el usuario formuló: **una palabra dentro de un tag
+abierto es HTML, y la contesta quien sabe de HTML.** El servidor no la disputa — su guarda de
+[`position.ts:123`](../../../packages/language-server/src/services/position.ts#L123) ya decía
+eso; lo que faltaba era no callar a los demás antes de que hablen.
+
+Por qué **quitarlo** y no declararlo en los otros servicios: los otros servicios no son nuestros.
+`createHtmlService` y los de TypeScript declaran sus caracteres, y envolverlos para añadirles uno
+es sostener un parche sobre dos dependencias para conservar un disparo que no aporta nada — nadie
+pidió que el espacio abriera la lista. Y el precio de quitarlo está acotado: el espacio solo
+entró para el hueco de atributos, que es justo la posición donde hoy devuelve cero.
+
+### 4.6. La rama de tag fusiona, no reclama
+
+`tagContextAt` deja de contestar con un `return` que apaga al resto. Sus ítems son **una voz
+más** en el hueco de después del `<`: los componentes del workspace, ordenados delante por su
+`sortText` como ya lo están (§6.4 de SDD-24), y detrás los tags nativos que pone el servicio
+HTML. Es la misma decisión que SDD-28 §5.5 tomó entre documentos, aplicada entre plugins: el
+servidor sabe cosas que el servicio HTML no sabe, y ninguna de ellas es motivo para tapar las
+que sí sabe.
+
+Los otros contextos exactos **no** cambian: un `href`, un `@section ` y un `class:` siguen
+contestando solos, porque ahí una respuesta de HTML no es una voz más — es ruido sobre una
+posición cuyo conjunto de respuestas es cerrado y local.
+
 ---
 
 ## 5. Invariantes
@@ -197,6 +308,8 @@ código `FUD`: lo que añade es una lista, no una regla.
   respuestas es finito, local y **ya parseado**, y el servidor no contestaba.
 - *Lo que el parser construye se usa.* El `StyleNode` estaba ahí desde SDD-09 y el editor no lo
   miraba ni una vez.
+- *Un `.fud` es HTML con cosas dentro.* En la mitad del vocabulario que es HTML puro, el editor
+  daba menos que un `.html` — y no por no saber, sino por callar a quien sabía.
 
 **Los que la corrección añade**
 
@@ -204,6 +317,12 @@ código `FUD`: lo que añade es una lista, no una regla.
   `.foo` es la que decide si es un nombre; no hay lista de excepciones que mantener.
 - **Una lista de completado no es una validación.** Ofrecer los nombres que existen no prohíbe
   los que no.
+- **Un carácter de disparo se declara solo si este servidor tiene algo que decir al pulsarlo.**
+  Declararlo excluye a todos los demás servicios: no es una invitación, es una exclusiva.
+- **Donde el servidor sabe *además*, fusiona; donde sabe *en exclusiva*, contesta solo.** Un tag
+  y una palabra suelta son lo primero; un `href`, un `@section` y un `class:`, lo segundo.
+- **Un criterio de completado se pide como lo pide un editor.** Con su `context`: sin él, el test
+  mide un cliente que no existe.
 
 ---
 
@@ -238,6 +357,21 @@ Tests en `packages/language-server/test/`.
     contestando lo mismo, y una palabra suelta sigue fusionando con Emmet.
 12. Escribir una clase que no está en ningún `<style>` no produce **ningún** diagnóstico nuevo.
 
+Los cinco siguientes son de §2.3 y §2.4, y **todos se piden con el `context` que manda un
+editor** — sin él, ninguno falla contra el código de hoy:
+
+13. **(rojo primero)** `<div rol|>` con `context: { triggerKind: 2, triggerCharacter: ' ' }`
+    ofrece los atributos de HTML —`role` entre ellos—. Contra el código anterior devuelve **cero
+    ítems**, que es lo que hace de este el test del defecto.
+14. **(rojo primero)** `<app-badge |>` con ese mismo contexto ofrece los props del componente
+    (`tone?`). Es el criterio §6.3 de SDD-24, pedido como lo pide el editor.
+15. El espacio **no** está entre los caracteres de disparo que anuncia `initialize`, y el `@`,
+    el `<` y los de Emmet **sí** siguen estando.
+16. **(rojo primero)** `<di|` ofrece `app-badge` y también `div`: los componentes primero por
+    `sortText`, los nativos detrás. Contra el código anterior no hay un solo tag nativo.
+17. Los contextos exactos siguen siendo exclusivos con el contexto puesto: en `href="|"` y en
+    `@section |` la lista sigue siendo solo la del servidor.
+
 **Cobertura.** `language-server` no baja del 100 % en las cuatro métricas; `classes.ts` nace al
 100 %.
 
@@ -245,7 +379,12 @@ Tests en `packages/language-server/test/`.
 
 ## 7. Fuera de alcance
 
-- **`style:foo` y `bus:foo`.** Comparten la causa (§2.3) y no la corrección: los nombres de
+- **La segunda forma de pasar props, y el completado tras `.` y tras `@`.** Que un componente
+  acepte `tone="success"` *y* `.tone="@(t)"` es un problema de **gramática**, no de editor, y
+  el completado de props tras el punto solo tiene sentido cuando esa forma es la única. Los dos
+  van juntos en [BUG-16](./BUG-16-props-con-punto.md), que toca `compiler` y `language-core`
+  además de este paquete. Aquí se arregla que la zona conteste; allí, con qué.
+- **`style:foo` y `bus:foo`.** Comparten la causa (§2.5) y no la corrección: los nombres de
   propiedad CSS son una tabla estática y los del bus son un `emit()` de otro fichero, resuelto por
   valor (decisión 28.c). Cada uno es su propio trabajo.
 - **Completar el **prefijo** —ofrecer `class:` / `style:` / `bus:` / `ref` en un hueco del tag—.

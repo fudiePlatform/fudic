@@ -1,10 +1,10 @@
 # BUG-15 — Tareas
 
-> **BUG:** [BUG-15 — El completado se detiene en el `:` de `class:`](./BUG-15-clases-sin-completado.md)
+> **BUG:** [BUG-15 — Dentro de un tag abierto no contesta nadie](./BUG-15-clases-sin-completado.md)
 > **Paquete:** `@fudic/language-server`
 > **Rama:** la del backlog de uso
 > **Depende de:** nada
-> **Progreso:** 0 / 7
+> **Progreso:** 0 / 10
 
 Cada tarea es un paso cerrado. Las rutas son relativas a la raíz del repo.
 
@@ -56,6 +56,25 @@ Emmet y no se distingue de no haberla escrito.
 - [ ] **7. Ofrecer no es validar.**
       Una clase que no está en ningún `<style>` se queda escrita y **no** produce diagnóstico:
       ni uno nuevo, ni uno de los que ya existen (§4.4, §6.12).
+
+## Fase 5 — El interior del tag vuelve a contestar (3)
+
+Estas tres salen de §2.3 y §2.4, y **todas se piden con el `context` que manda un editor**: sin
+él ninguna falla contra el código de hoy, que es exactamente cómo se colaron.
+
+- [ ] **8. Rojo primero, con el contexto puesto.**
+      En `packages/language-server/test/acceptance/completion.test.ts`, pedir completado en
+      `<div rol|>` y en `<app-badge |>` con `context: { triggerKind: 2, triggerCharacter: ' ' }`.
+      **Verlo devolver cero ítems hoy** (§6.13, §6.14).
+- [ ] **9. Fuera el espacio de los caracteres de disparo.**
+      `packages/language-server/src/capabilities.ts`: sale `' '` de
+      `COMPLETION_TRIGGER_CHARACTERS`; el `@`, el `<`, el `:` y los de Emmet se quedan. Es un
+      cambio de contrato con el cliente y está en §3 por eso (§4.5, §6.15). Verde en 8.
+- [ ] **10. La rama de tag fusiona.**
+      `packages/language-server/src/services/plugin.ts`: `tagContextAt` deja de contestar con un
+      `return` que apaga al servicio HTML — sus ítems son una voz más, ordenados delante por
+      `sortText`. Los contextos exactos (`href`, `@section `, `class:`) **siguen** siendo
+      exclusivos (§4.6, §6.16, §6.17).
 
 ---
 
