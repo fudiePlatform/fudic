@@ -44,7 +44,7 @@ Este SDD convierte al servidor en la fuente de todo el andamiaje que se escribe 
 y **T-14** (completado de directivas `@`) pasan a estar cubiertas por esta spec y dejan de
 implementarse desde aquel documento. **T-15** —la query inversa del índice para
 `@RenderSection(`— **no** entra: es un problema del índice del workspace, no del catálogo de
-snippets (§8).
+snippets (§8). Después quedó **anulada** allí, sin consecuencias para este SDD.
 
 **No** cambia el lenguaje, ni el compilador, ni lo que la CLI genera.
 
@@ -489,9 +489,11 @@ andamiaje sería diagnosticar el editor en vez del fichero.
 ## 8. Fuera de alcance
 
 - **T-15 — la query inversa del índice.** `@RenderSection(${1:nav})` se ofrece como snippet con
-  un tabstop; **qué secciones existen de verdad** exige que el índice sepa qué páginas apuntan
-  a un layout, y eso es una tarea del índice con su propia invalidación incremental. Este SDD
-  no la prepara ni la bloquea.
+  un tabstop; **qué secciones existen de verdad** exigiría que el índice sepa qué páginas apuntan
+  a un layout. Este SDD no la prepara ni la bloquea, y ya no la espera nadie: **T-15 quedó
+  anulada** —el layout es quien declara las secciones, así que ofrecerle los nombres que sus
+  páginas ya usan no es un contrato sino arqueología (ver
+  [SDD-25-Task-Claude](./SDD-25-Task-Claude.md) T-15)—. El tabstop es lo que hay y basta.
 - **Un catálogo configurable por el usuario.** El de aquí es cerrado y es del lenguaje. Los
   snippets propios del usuario ya los sirve el editor por su cuenta y no se tocan.
 - **`contributes.snippets` en el manifiesto** (§3.1), y con él cualquier andamiaje que solo

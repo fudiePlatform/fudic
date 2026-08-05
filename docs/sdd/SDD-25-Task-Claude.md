@@ -29,7 +29,7 @@ Una tanda, un worktree. Dentro de una tanda, el orden importa.
 | T-12 | Contrato de slots: `$Slots` | 3 · slots | `language-core` | **Hecho** |
 | T-13 | Tags de componente: snippet + auto-link | 4 · edición | `language-server` | **Absorbida por [SDD-28](./SDD-28-snippets.md)** |
 | T-14 | Completado de directivas `@` | 4 · edición | `language-server` | **Absorbida por [SDD-28](./SDD-28-snippets.md)** |
-| T-15 | `@RenderSection(` y la query inversa del índice | 4 · edición | `language-server` | Pendiente |
+| T-15 | `@RenderSection(` y la query inversa del índice | 4 · edición | `language-server` | **Anulada** |
 | T-16 | Anotar el guion de verificación manual | 5 · cierre | `vscode` | Pendiente |
 | T-17 | `<link rel="modulepreload">` | Aplazada · SDD-15/17 | `compiler` · `vite` | Aplazada |
 | T-18 | El template acepta TypeScript que no debería | Aplazada · spec propia | `compiler` | Aplazada |
@@ -522,8 +522,9 @@ Va después de la 3 porque esa toca `language-core`, que `language-server` consu
 > pedía no era una tarea sino un catálogo —esqueletos de documento, control de flujo, zonas de
 > `@code`, directivas por rol y tags con auto-enlace—, y que **la mitad del valor es la
 > puerta**: dónde se ofrece cada cosa. Eso es una interfaz pública y un contrato con las
-> plantillas de la CLI, así que se especifica: [SDD-28](./SDD-28-snippets.md). **T-15 se queda
-> aquí**: la query inversa del índice es un problema del índice, no del catálogo.
+> plantillas de la CLI, así que se especifica: [SDD-28](./SDD-28-snippets.md). **T-15 se quedó
+> aquí** —la query inversa del índice es un problema del índice, no del catálogo— y desde aquí
+> se anula: ver abajo. **La tanda 4 queda vacía.**
 
 ## T-13. Tags de componente: snippet + auto-link
 
@@ -581,27 +582,42 @@ ruta, `@code`/`@if`/`@foreach` en todos—. El rol ya lo da `roleOf`. Solo en ma
 **Hecho cuando:** teclear `@` en un layout ofrece `@RenderBody` y `@RenderHead`, y en una ruta
 no; y dentro de `@code` no ofrece ninguna.
 
-## T-15. `@RenderSection(` y la query inversa del índice
+## T-15. `@RenderSection(` y la query inversa del índice — **ANULADA**
 
-`sectionContextAt` casa `/@section[ \t]+…$/`, que no matchea `@RenderSection(`. Pero el problema
-de fondo es otro: **el índice solo conoce la dirección contraria.** `IndexEntry.sections` guarda
+**El diagnóstico era correcto y la tarea no.** `sectionContextAt` casa `/@section[ \t]+…$/`, que
+no matchea `@RenderSection(`, y el índice solo conoce una dirección: `IndexEntry.sections` guarda
 lo que *declara un layout*, y `sectionCompletions` lo lee resolviendo el layout **desde la
-página**. Dentro del layout no hay fuente de nombres.
+página** ([`services/sections.ts:24-32`](../../packages/language-server/src/services/sections.ts#L24-L32)).
+Dentro del layout no hay fuente de nombres. Todo eso es cierto. Lo que no se sostiene es que
+haga falta arreglarlo.
 
-**Qué:** se hace, con la query inversa —qué páginas apuntan a este layout y qué `@section`
-declaran—, mantenida **incrementalmente en `upsert`/`invalidate`**, nunca con un barrido: el
-índice ya tiene `revision` justo para no repintar el workspace en cada `fudic generate`.
-`sectionContextAt` se generaliza para reconocer también `@RenderSection(`.
+**Por qué se anula: quien manda es el layout.** `@RenderSection` **declara** una sección;
+`@section` de la ruta la **rellena**. Esa asimetría no es un detalle de implementación, es la
+relación entre los dos ficheros (decisión 84), y de ella sale que solo una de las dos direcciones
+puede ofrecer una lista con autoridad:
 
-**Ficheros:**
-- [`packages/language-server/src/workspace-index.ts:17-70`](../../packages/language-server/src/workspace-index.ts#L17-L70) — `IndexEntry` y la query inversa.
-- [`packages/language-server/src/services/sections.ts:24-32`](../../packages/language-server/src/services/sections.ts#L24-L32) — la otra dirección.
-- [`packages/language-server/src/services/position.ts:124-131`](../../packages/language-server/src/services/position.ts#L124-L131) — `sectionContextAt`.
-- [`packages/language-server/src/services/plugin.ts:339-349`](../../packages/language-server/src/services/plugin.ts#L339-L349) — la rama de completado.
-- `packages/language-server/test/`.
+- **La que ya existe** —la ruta escribe `@section ` y le salen las secciones de su layout— ofrece
+  el **contrato**: esos nombres son los que hay. Es SDD-24 §6.6 y está cerrada.
+- **La inversa** —el layout escribe `@RenderSection(` y le salen los nombres que sus rutas ya
+  usan— no ofrece un contrato, ofrece **arqueología**. Que una página rellene `sidebar` no es
+  evidencia de que `sidebar` deba existir: eso lo decide el layout, y es justo lo que está
+  tecleando en ese momento. Y en el caso donde una ayuda valdría algo —un layout nuevo— la
+  lista sale **vacía**, porque todavía no hay páginas que lo apunten.
 
-**Hecho cuando:** dentro de un layout, `@RenderSection(` ofrece las secciones que sus páginas
-declaran, y crear un `@section` nuevo en una página lo hace aparecer sin reiniciar el servidor.
+Así que el completado que se pedía llegaba tarde por construcción: o el nombre ya existe en el
+sitio equivocado, o no hay nada que ofrecer.
+
+**Lo que costaba, para que conste lo que se ahorra:** un campo nuevo en `IndexEntry` con los
+`@section` que rellena cada ruta ([`mode.ts:48-51`](../../packages/language-server/src/mode.ts#L48-L51)
+devuelve `[]` para todo lo que no sea layout), la query inversa con su invalidación incremental
+en `upsert`/`remove`/`rename` —la mitad del trabajo y toda la superficie de bugs: una ruta que
+cambia de layout deja una arista huérfana—, generalizar `sectionContextAt` y una rama más en la
+cadena de `completions()`. Cuatro ficheros de `src` al 100 % en cuatro métricas, para completar
+un nombre que el propio layout está inventando.
+
+**Escribir la directiva sigue asistido:** `@RenderSection(${1:nav})` se ofrece como snippet con
+tabstop desde [SDD-28](./SDD-28-snippets.md). Lo que se anula es **rellenar el argumento con
+nombres de otro fichero**, no la directiva.
 
 ---
 
