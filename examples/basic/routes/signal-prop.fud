@@ -1,0 +1,47 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/signal-counter.fud">
+
+<head>
+  <title>Pasar la signal — fudic</title>
+</head>
+
+@section nav {
+  <site-nav current="signal-prop"></site-nav>
+}
+
+<h1>1 · El padre pasa la signal</h1>
+<p class="lede">
+  El padre tiene la signal. Lo que escribe en el host del hijo es el
+  <strong>identificador</strong>, no una llamada:
+  <code>@('<signal-display .value="@count">')</code>. Lo que cruza el shadow boundary es
+  el objeto signal.
+</p>
+
+<signal-counter></signal-counter>
+
+<h2>Qué debería pasar</h2>
+<p>
+  Nadie tiene que avisar al hijo. El hijo <em>tiene</em> la signal, así que la lee él
+  mismo con <code>@("@(value())")</code> y su suscripción fina reescribe su propio nodo de
+  texto cuando el valor cambia. El padre no participa: no hay pase de props, no hay
+  actualización, no hay canal. Este es el caso que
+  <a href="/value-prop">la otra página</a> <em>no</em> puede resolver así.
+</p>
+
+<h2>Qué pasa hoy</h2>
+<p>
+  Nada. El botón no incrementa nada visible: los event bindings del cliente
+  (<code>@("@click")</code>) todavía no se emiten, así que el chunk no engancha el listener.
+  El HTML que ves está pintado por el servidor, y el número del recuadro verde sale del
+  <em>default</em> del hijo: el <code>.value</code> del host no lo lee ningún emisor, así
+  que el padre renderiza al hijo con las props vacías.
+</p>
+<p>
+  Y hay una decisión de diseño que esta página deja a la vista, porque es la que hace
+  falta cerrar: <strong>una signal no sobrevive al payload</strong>. Este componente solo
+  puede recibirla si el padre lo fabrica en runtime, en el mismo realm de JavaScript. En
+  cuanto la instancia viene del servidor —que es el caso de esta misma página— su tramo
+  de estado viaja serializado, y una función con suscriptores dentro no se serializa. Por
+  eso el caso normal es el otro.
+</p>

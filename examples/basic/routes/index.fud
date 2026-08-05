@@ -35,4 +35,16 @@
     <code>/blog/:slug</code> enumera su espacio de params con <code>paths()</code>,
     así que cada artículo tiene su HTML prerenderizado.
   </app-card>
+
+  <app-card title="Pasar la signal a un hijo" href="/signal-prop">
+    <app-badge slot="meta" tone="neutral">wip</app-badge>
+    <code>@('.value="@count"')</code>: cruza el objeto signal y el hijo se lee solo. Todavía
+    no funciona — falta el enganche de eventos del cliente.
+  </app-card>
+
+  <app-card title="Pasar el valor a un hijo" href="/value-prop">
+    <app-badge slot="meta" tone="neutral">wip</app-badge>
+    <code>@('.value="@(count.peek())"')</code>: cruza un número y el hijo no puede leer nada más.
+    Necesita que el padre se lo escriba — es BUG-12.
+  </app-card>
 </section>
