@@ -2,7 +2,7 @@
 
 > **BUG:** [BUG-12 — Un hijo que recibe un valor no tiene canal de actualización](./BUG-12-sin-canal-de-update.md)
 > **Paquetes:** `@fudic/core` · `@fudic/compiler` · **Rama:** `fix/bug-12-update-de-props`
-> **Progreso:** 5 / 19
+> **Progreso:** 7 / 19
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Las rutas son relativas a la raíz del repo.
@@ -55,13 +55,13 @@ en el BUG):
 
 ## Fase 1 — El contrato en `@fudic/core` (2)
 
-- [ ] **6. `Controller` gana `u`.**
+- [x] **6. `Controller` gana `u`.**
       Modificar `packages/core/src/controller.ts` (§3.1): `u(props: readonly unknown[]): void`
       entre `h` y `r`. Sustituir el párrafo *«There is no `u` (update)…»* (líneas 18-20) por el
       porqué de que sí lo haya —el valor cruza, la signal no— con enlace a este BUG. El párrafo
       es la causa raíz escrita en el código: dejarlo sería dejar el defecto documentado como
       diseño.
-- [ ] **7. `FudicElement` gana el punto de entrada.**
+- [x] **7. `FudicElement` gana el punto de entrada.**
       Modificar `packages/core/src/element.ts` (§3.2): `u(props)` reenvía a `#controller`, con
       la guarda `null` de `disconnectedCallback`. Documentar que es el **tercer** punto de
       entrada externo (no un callback) y que la ausencia de buffer es deliberada: la cascada
