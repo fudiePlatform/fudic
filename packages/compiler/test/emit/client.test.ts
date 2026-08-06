@@ -42,13 +42,22 @@ describe('emitComponentClientModule — the module shape (§6.8)', () => {
     expect(src).not.toContain('#controller');
   });
 
-  it('returns exactly {c, h, r}: m and s are closures, and there is no u (§6.11)', () => {
-    expect(src).toContain('const m = () =>');
-    expect(src).toContain('const s = () => {};');
+  it('returns exactly {c, h, u, r}: $m, $s and $a are closures (§6.11, BUG-12 §3.3)', () => {
+    expect(src).toContain('const $m = () =>');
+    expect(src).toContain('const $s = () => {};');
+    expect(src).toContain('const $a = () => {');
     expect(src).toMatch(/return \{\n\s+c: \(\) => \{/u);
     expect(src).toContain('h: () => {');
+    expect(src).toContain('u: ($p) => {');
     expect(src).toContain('r: () => {');
-    expect(src).not.toMatch(/^\s+[mu]: /mu);
+    expect(src).not.toMatch(/^\s+[msa]: /mu);
+  });
+
+  it('keeps every identifier the emit introduces inside the $ reserve (BUG-12 §3.5)', () => {
+    // The `@client` body is copied verbatim into this same closure, so a name the emit
+    // takes outside the reserve is a name it can collide with. `m` and `s` were two.
+    const factory = src.slice(src.indexOf('static c($props) {'));
+    expect(factory).not.toMatch(/^\s+const [ms] = \(\) =>/mu);
   });
 
   it('bakes the positional destructuring of $props, defaults included (§4.2)', () => {
@@ -61,13 +70,13 @@ describe('emitComponentClientModule — the module shape (§6.8)', () => {
     expect(src.indexOf("import { signal }")).toBeLessThan(src.indexOf('customElements.define'));
   });
 
-  it('mounts the roots through m() on create, and never on hydrate', () => {
+  it('mounts the roots through $m() on create, and never on hydrate', () => {
     const create = src.slice(src.indexOf('c: () => {'), src.indexOf('h: () => {'));
-    const hydrate = src.slice(src.indexOf('h: () => {'), src.indexOf('r: () => {'));
-    expect(create).toContain('m();');
-    expect(create).toContain('s();');
-    expect(hydrate).not.toContain('m();'); // the structure came mounted from SSR
-    expect(hydrate).toContain('s();'); // but the hookup is the same one
+    const hydrate = src.slice(src.indexOf('h: () => {'), src.indexOf('u: ($p) => {'));
+    expect(create).toContain('$m();');
+    expect(create).toContain('$s();');
+    expect(hydrate).not.toContain('$m();'); // the structure came mounted from SSR
+    expect(hydrate).toContain('$s();'); // but the hookup is the same one
   });
 
   it('adopts with an ELEMENT cursor, never by counting nodes (§4.9)', () => {
@@ -298,6 +307,204 @@ describe('emitComponentClientModule — anchoring an interpolated run', () => {
     const hydrate = src.slice(src.indexOf('h: () => {'), src.indexOf('r: () => {'));
     expect(hydrate).toContain('} else {');
     expect(hydrate).toContain('$n1 = $c1; $c1 = $dom.nextElementSibling($c1);');
+  });
+});
+
+/**
+ * BUG-12 — the update channel. A child receives a VALUE (decision 84), so receiving it
+ * again is a call: `u` reassigns the positional bindings and `$a()` re-applies the writes
+ * that depend on them. Create and update converge on `$a()`, so they cannot diverge; `h`
+ * stays out of it, because the server already painted those values (§4.3).
+ */
+describe('emitComponentClientModule — u, the update channel (BUG-12)', () => {
+  const src = chunk('app-card');
+  const between = (from: string, to: string): string =>
+    src.slice(src.indexOf(from), src.indexOf(to));
+
+  it('routes every value write through $a(), the single place a value reaches a node (§6.3)', () => {
+    expect(src).toContain('const $a = () => {');
+    expect(src).toContain('$dom.setText($n3, $v);');
+    expect(src).toContain(`$dom.setAttr($n0, 'class', $v);`);
+    // The fabricate body creates the node and nothing else: the value is `$a`'s.
+    expect(src).toContain('$n3 = $dom.text(\'\');');
+    expect(between('c: () => {', 'h: () => {')).not.toContain('setText');
+  });
+
+  it('calls $a() from c and from u, and never from h (§6.3, §4.3)', () => {
+    expect(between('c: () => {', 'h: () => {')).toContain('$a();');
+    expect(between('u: ($p) => {', 'r: () => {')).toContain('$a();');
+    expect(between('h: () => {', 'u: ($p) => {')).not.toContain('$a();');
+  });
+
+  it('orders create as fabricate → $a() → $m() → $s()', () => {
+    const create = between('c: () => {', 'h: () => {');
+    expect(create.indexOf('$a();')).toBeLessThan(create.indexOf('$m();'));
+    expect(create.indexOf('$m();')).toBeLessThan(create.indexOf('$s();'));
+  });
+
+  it('reassigns with the two leading holes empty and the defaults kept (§6.4)', () => {
+    // `$dom` and `$shadow` are never reassigned: an update carries state, not the adapter.
+    // The defaults are repeated because an update may bring `undefined` back.
+    expect(src).toContain("u: ($p) => { [, , title, variant = 'default'] = $p; $a(); },");
+  });
+
+  it('touches the DOM only where the value actually changed', () => {
+    // The positional payload arrives whole and `$a()` re-applies all of it, so the filter
+    // has to be per WRITE: `$w` holds what was last applied, and a write that would not
+    // change a byte is not a write. A component with ten props must not repaint ten nodes
+    // because one signal moved.
+    expect(src).toContain('const $w = []; // last applied, per value write');
+    expect(src).toMatch(/if \(\$v !== \$w\[0\]\) \{ \$w\[0\] = \$v; /u);
+    expect(src).toMatch(/if \(\$v !== \$w\[1\]\) \{ \$w\[1\] = \$v; /u);
+  });
+
+  it('gives a component with nothing to re-apply an empty $a and no cache', () => {
+    const src2 = inlineChunk(
+      'x-nodyn',
+      '<x-nodyn>\n  <template shadowrootmode="open"><b class="hi">hola</b></template>\n</x-nodyn>\n',
+    );
+    expect(src2).toContain('const $a = () => {};');
+    expect(src2).not.toContain('const $w');
+    expect(src2).toContain('u: () => { $a(); },'); // no props: nothing to reassign
+  });
+
+  it('re-applies inside the branch that owns the write, not outside it', () => {
+    const src2 = inlineChunk(
+      'x-cond',
+      '@code {\n  const { on, name } = props<{ on: boolean; name: string }>();\n}\n' +
+        '<x-cond>\n  <template shadowrootmode="open">' +
+        '@if (on) { <b title="@name"></b> }' +
+        '</template>\n</x-cond>\n',
+    );
+    const apply = src2.slice(src2.indexOf('const $a = () => {'), src2.indexOf('return {'));
+    // `$n0` only exists when the branch rendered, so the guard travels with the write.
+    expect(apply).toContain('if (on) {');
+    expect(apply).toContain('$dom.setAttr($n0, "title", String($v));');
+  });
+
+  it('leaves a write inside a @foreach fused with its node, out of $a', () => {
+    const src2 = inlineChunk(
+      'x-loop',
+      '@code {\n  const { items } = props<{ items: string[] }>();\n}\n' +
+        '<x-loop>\n  <template shadowrootmode="open">' +
+        '<ul>@foreach (const item of items) {<li>@item</li>}</ul>' +
+        '</template>\n</x-loop>\n',
+    );
+    // A loop variable is not a stable reference — it holds the LAST node of the run — so
+    // there is nothing for `$a` to write to. Updating a loop needs the block render that
+    // BUG-12 §7 leaves to its own SDD; until then the value rides its creation.
+    expect(src2).toContain("$n2 = $dom.text(String((item) ?? ''));");
+    expect(src2).toContain('const $a = () => {};');
+  });
+});
+
+/**
+ * BUG-12 §3.4 — the parent side. `PropertyBinding` has existed in the AST since SDD-07
+ * with no reader at all (§2.4); this is the first one. The parent owns the signal, so the
+ * parent is who calls `u`: once up front with `peek()`, and again on every notification.
+ */
+describe('emitComponentClientModule — a child host that receives a value (BUG-12 §3.4)', () => {
+  const CHILD =
+    '@code {\n  const { value = 0 } = props<{ value?: number }>();\n}\n' +
+    '<x-child>\n  <template shadowrootmode="open"><span>@value</span></template>\n</x-child>\n';
+
+  /** A two-component graph: `x-host` holds an `x-child`, with the given host attributes. */
+  const hostChunk = (attrs: string, child = CHILD, code = ''): string => {
+    const io = memoryIo({
+      '/page.fud':
+        '<link rel="component" href="./x-host.fud">\n' +
+        '<html><head></head><body><x-host></x-host></body></html>\n',
+      '/x-host.fud':
+        '<link rel="component" href="./x-child.fud">\n' +
+        '@code {\n  @client {\n    import { signal } from \'@fudic/core\';\n' +
+        `    const count = signal(0);\n${code}  }\n}\n` +
+        '<x-host>\n  <template shadowrootmode="open">' +
+        `<x-child ${attrs}></x-child>` +
+        '</template>\n</x-host>\n',
+      '/x-child.fud': child,
+    });
+    const g = resolveComponents('/page.fud', io);
+    return emitComponentClientModule(g, g.components.get('x-host')!, {});
+  };
+
+  it('emits the initial pass and the subscription in $s(), with the disposer in $d (§6.5)', () => {
+    const src = hostChunk('.value="@count"');
+    const hook = src.slice(src.indexOf('const $s = () => {'), src.indexOf('return {'));
+    expect(hook).toContain('$n0.u([, , count.peek()]);');
+    expect(hook).toContain('$d.push(count.subscribe((v) => { $n0.u([, , v]); }));');
+  });
+
+  it('sends the child its WHOLE positional payload, not just the slot that moved', () => {
+    // `u` reassigns every binding it destructures, so a partial array would reset the
+    // props the parent did not send to their defaults — and `$a()` would repaint them.
+    const src = hostChunk(
+      'label="Hola" .value="@count"',
+      '@code {\n  const { label, value = 0 } = props<{ label: string; value?: number }>();\n}\n' +
+        '<x-child>\n  <template shadowrootmode="open"><span>@label @value</span></template>\n</x-child>\n',
+    );
+    const hook = src.slice(src.indexOf('const $s = () => {'), src.indexOf('return {'));
+    expect(hook).toContain('$n0.u([, , "Hola", count.peek()]);');
+    expect(hook).toContain('$d.push(count.subscribe((v) => { $n0.u([, , "Hola", v]); }));');
+  });
+
+  it('keeps the host itself untouched: still fabricated, still not driven', () => {
+    const src = hostChunk('.value="@count"');
+    expect(src).toContain('$n0 = $dom.element("x-child");');
+    expect(src).toContain(`$dom.setAttr($n0, 'data-adopt', "x-child");`);
+    expect(src).not.toContain('attachShadow'); // the runtime owns the child (SDD-17)
+  });
+
+  it('emits no channel at all when the value is not a signal (§6.6)', () => {
+    // Decision 75 intact: a constant crosses once, it is already in the HTML the server
+    // painted, and `const` is exactly its semantics. A channel would be scaffolding.
+    const src = hostChunk('.value="@41"');
+    expect(src).not.toContain('.u([');
+    expect(src).not.toContain('.subscribe(');
+    expect(src).toContain('const $s = () => {};');
+  });
+
+  it('does not mistake a plain local for a signal', () => {
+    const src = hostChunk('.value="@plain"', CHILD, '    const plain = 7;\n');
+    expect(src).not.toContain('.u([');
+    expect(src).not.toContain('plain.peek()');
+  });
+});
+
+/**
+ * BUG-12 §2.5 — the factory closure is shared with the `@client` body, copied verbatim.
+ * Every name the emit takes there is a name the author cannot use, and `m`/`s` are two of
+ * the most plausible one-letter names there are.
+ */
+describe('emitComponentClientModule — the factory namespace (BUG-12 §6.10)', () => {
+  it('survives a @client that declares const s and const m', () => {
+    const src = inlineChunk(
+      'x-collide',
+      '@code {\n  @client {\n    import { signal } from \'@fudic/core\';\n' +
+        '    const s = signal(0);\n    const m = 2;\n  }\n}\n' +
+        '<x-collide>\n  <template shadowrootmode="open"><b>hi</b></template>\n</x-collide>\n',
+    );
+    expect(src).toContain('const s = signal(0);');
+    expect(src).toContain('const m = 2;');
+    // The chunk has to PARSE. Before BUG-12 this threw `SyntaxError: Identifier 'm' has
+    // already been declared`, and the compiler emitted it without a single diagnostic.
+    const body = src.replace(/^import .*$/gmu, '');
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    expect(() => new Function('FudicElement', 'signal', 'customElements', body)).not.toThrow();
+  });
+
+  it('runs it: the collided names belong to the author, and keep their values', () => {
+    const src = inlineChunk(
+      'x-collide2',
+      '@code {\n  @client {\n    const s = 41;\n    const m = 1;\n    globalThis.__fudSum = s + m;\n  }\n}\n' +
+        '<x-collide2>\n  <template shadowrootmode="open"><b>hi</b></template>\n</x-collide2>\n',
+    );
+    const body = src.replace(/^import .*$/gmu, '');
+    let captured: { c(props: readonly unknown[]): unknown } | undefined;
+    const registry = { define: (_n: string, ctor: { c(p: readonly unknown[]): unknown }) => { captured = ctor; } };
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    new Function('FudicElement', 'customElements', body)(class {}, registry);
+    captured!.c([{}, {}]);
+    expect((globalThis as unknown as { __fudSum: number }).__fudSum).toBe(42);
   });
 });
 

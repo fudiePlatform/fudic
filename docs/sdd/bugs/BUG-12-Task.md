@@ -1,36 +1,53 @@
 # BUG-12 — Tareas
 
 > **BUG:** [BUG-12 — Un hijo que recibe un valor no tiene canal de actualización](./BUG-12-sin-canal-de-update.md)
-> **Paquetes:** `@fudic/core` · `@fudic/compiler` · **Rama:** `fix/bug-11-update-de-props`
-> **Progreso:** 0 / 18
+> **Paquetes:** `@fudic/core` · `@fudic/compiler` · **Rama:** `fix/bug-12-update-de-props`
+> **Progreso:** 5 / 19
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Las rutas son relativas a la raíz del repo.
+
+**Tres cosas que la implementación cierra y la spec dejaba abiertas** (la Fase 4 las escribe
+en el BUG):
+
+1. **El padre manda el payload ENTERO del hijo**, no solo el hueco del `.prop` que se movió.
+   `u` reasigna *todas* las props que destructura, así que un array parcial devolvería a su
+   default las que no viajan y `$a()` las repintaría. El padre resuelve el orden de props del
+   hijo desde su AST y rellena también los atributos estáticos del host.
+2. **`$a()` cachea lo último que escribió** (`$w`) y no toca el DOM si el valor no cambió. Sin
+   eso, un componente de diez props repinta diez nodos cada vez que se mueve una signal: el
+   `Object.is` de la signal evita la *llamada*, no las escrituras. Es la tarea **10b**.
+3. **El e2e dispara el click con un listener de `document`** declarado en el `@client` del
+   fixture padre. Los event bindings no están emitidos —este BUG va antes que ellos— y un
+   click dentro de un shadow root es `composed`, así que llega a `document`: la cadena que el
+   test recorre sigue siendo código emitido de punta a punta.
 
 ---
 
 ## Fase 0 — Rojo primero (5)
 
-- [ ] **1. Test extremo a extremo del contador.**
+- [x] **1. Test extremo a extremo del contador.**
       Con el arnés de `packages/compiler/test/emit/hydrate/_harness.ts`: dos fixtures nuevos
       —padre con `signal` + `@click`, hijo con `props<{ value: number }>()` y `.value="@count"`
       en el host— compilados, renderizados por SSR e hidratados sobre DOM real; un click cambia
       el texto dentro del shadow del hijo. **Verlo fallar** (§6.7). Es el test que define el BUG:
       si no falla hoy, el diagnóstico está mal.
-- [ ] **2. Test de `u` en `FudicElement`.**
+      → `packages/compiler/test/emit/hydrate/update.test.ts`; los fixtures son en memoria, para
+      no mover los goldens de `fixtures/`.
+- [x] **2. Test de `u` en `FudicElement`.**
       En `packages/core/test/element.test.ts`: `u` reenvía el array al controlador tras `h` y
       tras `c`; no lanza sin alta previa; no lanza ni alcanza al controlador tras
       `disconnectedCallback`. **Verlo fallar** (§6.1, §6.2).
-- [ ] **3. Test de forma del chunk emitido.**
+- [x] **3. Test de forma del chunk emitido.**
       En `packages/compiler/test/emit/client.test.ts`: el chunk de un componente con prop
       interpolada declara `const $a = `, tiene entrada `u:`, `c` y `u` llaman a `$a()`, el cuerpo
       de `h` **no**; el patrón de asignación de `u` deja los dos primeros huecos vacíos y conserva
       los defaults. **Verlo fallar** (§6.3, §6.4).
-- [ ] **4. Test del lado del padre.**
+- [x] **4. Test del lado del padre.**
       Mismo fichero: un host de componente con `.value="@count"` sobre una signal emite en `$s()`
       el pase inicial con `peek()` y una suscripción que llama a `u`, con disposer en `$d`.
       **Verlo fallar** (§6.5).
-- [ ] **5. Test de colisión de namespace.**
+- [x] **5. Test de colisión de namespace.**
       Mismo fichero, con `inlineChunk`: un componente cuyo `@client` declara `const s = signal(0)`
       y `const m = 2` produce un chunk **parseable** (`new Function` sobre el cuerpo sin los
       `import`). **Verlo fallar** con `SyntaxError: Identifier 'm' has already been declared`
@@ -51,7 +68,7 @@ tareas posteriores. Las rutas son relativas a la raíz del repo.
       post-orden de SDD-17 §5 garantiza el subárbol upgradeado antes de que corra el handler
       del host. Verde en 2.
 
-## Fase 2 — El factory emitido (4)
+## Fase 2 — El factory emitido (5)
 
 > Va **antes** que las fases 3-5 y en este orden: el renombrado toca las mismas líneas que la
 > extracción de `$a()`, y hacerlo después obligaría a regenerar los goldens dos veces.
@@ -70,6 +87,13 @@ tareas posteriores. Las rutas son relativas a la raíz del repo.
       `setAttr` de un atributo con interpolación o `class:`—, dejando en el cuerpo de `c` la
       creación del nodo. Emitir `const $a = () => { … }` en `client.ts` junto a `$m` y `$s`, y
       llamarla desde `c` **antes** de `$m()`.
+- [ ] **10b. El cache de escritura `$w`.**
+      En el mismo `$a()`: cada escritura calcula su valor en `$v`, lo compara con `$w[k]` —lo
+      último que esa escritura aplicó— y solo toca el DOM si difiere. `u` reaplica *todas* las
+      props porque el array llega entero, así que el filtro tiene que estar por **escritura**:
+      sin él, un componente de diez props repinta diez nodos cada vez que se mueve una signal.
+      El `Object.is` de `signal.ts:27` evita la llamada, no las escrituras. `$w` y el `let $v`
+      solo se emiten cuando hay al menos una escritura.
 - [ ] **11. La entrada `u` del objeto devuelto.**
       En `client.ts`: `u: ($p) => { <asignación>; $a(); },` entre `h` y `r`. `h` **no** llama a
       `$a()` (§4.3) — el servidor ya pintó esos valores y reimprimirlos gasta INP dentro del
