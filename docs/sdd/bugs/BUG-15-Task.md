@@ -4,7 +4,7 @@
 > **Paquete:** `@fudic/language-server`
 > **Rama:** la del backlog de uso
 > **Depende de:** nada
-> **Progreso:** 5 / 10
+> **Progreso:** 7 / 10
 
 Cada tarea es un paso cerrado. Las rutas son relativas a la raíz del repo.
 
@@ -50,10 +50,10 @@ Emmet y no se distingue de no haberla escrito.
 
 ## Fase 4 — Lo que no se puede romper (2)
 
-- [ ] **6. Los otros cuatro contextos, intactos.**
+- [x] **6. Los otros cuatro contextos, intactos.**
       `href`, `@section `, `<tag` y `@directiva` contestan lo mismo, y una palabra suelta sigue
       fusionando con Emmet en vez de reemplazarlo (§6.11).
-- [ ] **7. Ofrecer no es validar.**
+- [x] **7. Ofrecer no es validar.**
       Una clase que no está en ningún `<style>` se queda escrita y **no** produce diagnóstico:
       ni uno nuevo, ni uno de los que ya existen (§4.4, §6.12).
 

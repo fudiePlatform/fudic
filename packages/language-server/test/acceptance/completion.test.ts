@@ -178,6 +178,62 @@ describe('BUG-15 §6.1 — the classes this file declares', () => {
   });
 });
 
+describe('BUG-15 §6.11 — the fifth context takes nothing from the other four', () => {
+  // The four are pinned by §6.3–§6.6 above and by the snippet suite; what these add is that
+  // they still answer with a `class:` written into the same file, which is the one thing a
+  // new branch in `completions()` could plausibly have broken.
+  const WITH_CLASS = `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="component" href="../components/app-badge.fud">\n<article>\n  <app-badge class:x="@(true)"`;
+
+  it('an href still answers alone', async () => {
+    const items = await completeAt(SLUG, `${WITH_CLASS}></app-badge>\n</article>\n`.replace(
+      '<link rel="component" href="../components/app-badge.fud">',
+      '<link rel="component" href="|">',
+    ));
+
+    const list = items.filter((item) => typeof item.detail === 'string' && item.detail.includes('·'));
+    expect(labels(list)).toEqual(['../components/app-badge.fud', '../components/site-nav.fud']);
+  });
+
+  it('@section still answers alone', async () => {
+    const items = await completeAt(
+      SLUG,
+      `<link rel="layout" href="../layouts/_layout.fud">\n@section |\n<article>\n  <span class:a="@(x)"></span>\n</article>\n`,
+    );
+
+    expect(labels(items)).toEqual(['nav']);
+  });
+
+  it('a tag after `<` still offers the component, sorted ahead', async () => {
+    const items = await completeAt(
+      SLUG,
+      `${WITH_CLASS}></app-badge>\n  <|\n</article>\n`,
+    );
+
+    const badge = items.find((item) => item.label === 'app-badge');
+    expect(badge?.sortText).toBe('0_app-badge');
+  });
+
+  it('a bare word still merges with Emmet instead of replacing it', async () => {
+    const items = await completeAt(
+      SLUG,
+      `<link rel="layout" href="../layouts/_layout.fud">\n<article>\n  <span class:a="@(x)"></span>\n  ul|\n</article>\n`,
+    );
+
+    // Emmet's abbreviation and ours in the same list: the merge of SDD-28 §5.3 survives.
+    expect(items.length).toBeGreaterThan(1);
+    expect(labels(items)).toContain('ul');
+  });
+
+  it('a @directive still answers', async () => {
+    const items = await completeAt(
+      SLUG,
+      `<link rel="layout" href="../layouts/_layout.fud">\n<article>\n  <span class:a="@(x)"></span>\n  @fore|\n</article>\n`,
+    );
+
+    expect(labels(items)).toContain('@foreach');
+  });
+});
+
 describe('§6.10 — CSS', () => {
   it('reports a real mistake and says nothing about the shadow pseudos', async () => {
     // The four selectors a component is written with, and one typo. The virtual CSS starts at
