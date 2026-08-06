@@ -15,7 +15,7 @@
  * gets a variable.
  */
 
-import type { HtmlContent } from '../html/index.js';
+import { decodeEntities, type HtmlContent } from '../html/index.js';
 import type { Span } from '../types/index.js';
 import type { LinePart } from './writer.js';
 import { collapseSpace, type SpaceMode } from './space.js';
@@ -132,8 +132,12 @@ export function literalText(node: HtmlContent): string {
 function textRun(source: string, pieces: readonly HtmlContent[], space: SpaceMode): TextRun {
   const slice = (sp: Span): string => source.slice(sp.start, sp.end);
   const expr = (node: HtmlContent): Span => (node as { expr: Span }).expr;
-  const literal = (node: HtmlContent): string =>
-    space === 'preserve' ? literalText(node) : collapseSpace(literalText(node));
+  // Collapse FIRST, decode after: `&#32;` is a space the author asked for by name, and a
+  // collapse that ran afterwards would eat it along with the formatting whitespace.
+  const literal = (node: HtmlContent): string => {
+    const text = literalText(node);
+    return decodeEntities(space === 'preserve' ? text : collapseSpace(text));
+  };
   const interpolated = pieces.some((p) => ROLE[p.type] === 'expression');
 
   // No hole anywhere: ONE string literal, however many pieces contributed to it. `@@` beside

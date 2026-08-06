@@ -71,13 +71,22 @@ export interface Attribute extends Node {
 
 export type AttributeValuePart = AttributeText | RazorExpression;
 
-/** A literal run inside a quoted attribute value. Verbatim (entities pass-through, decision 49). */
+/** A literal run inside a quoted attribute value. Verbatim, like `TextNode` — see there. */
 export interface AttributeText extends Node {
   readonly type: 'attribute-text';
   readonly value: string;
 }
 
-/** Literal text run. Verbatim: no entity decoding/re-escaping (decision 49). */
+/**
+ * Literal text run, VERBATIM: `value` holds the author's bytes, entities included.
+ *
+ * That is a fact about the AST, not about the pipeline. Decision 49 used to make it both —
+ * "pass-through, no decoding, no re-escape" — and BUG-14 derogated the second half: the data
+ * of a NODE is text, not markup, so the emit decodes the source's entities (`decodeEntities`)
+ * and each output re-encodes them as its medium demands. Verbatim here is what the formatter
+ * and the LSP need — they print the author's source back — and it is the emit, one step
+ * later, that turns `&lt;` into a `<`.
+ */
 export interface TextNode extends Node {
   readonly type: 'text';
   readonly value: string;

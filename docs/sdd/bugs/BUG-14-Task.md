@@ -2,7 +2,7 @@
 
 > **BUG:** [BUG-14 — El texto literal del autor no llega intacto al output](./BUG-14-texto-literal-no-sobrevive.md)
 > **Paquetes:** `@fudic/compiler` · `@fudic/ssr` · **Rama:** `fix/bug-14-texto-literal`
-> **Progreso:** 6 / 9
+> **Progreso:** 8 / 9
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Las rutas son relativas a la raíz del repo.
@@ -44,16 +44,23 @@ tareas posteriores. Las rutas son relativas a la raíz del repo.
 
 ## Fase 2 — Las entidades (2)
 
-- [ ] **7. Decodificar en compilación.**
+- [x] **7. Decodificar en compilación.**
       Aplicar §3.2: el dato del nodo de texto lleva el carácter, no la entidad. Subset
       estricto (decisión 38): las cinco de XML más las numéricas; una entidad fuera del subset
       es un diagnóstico con su span, no una tabla de 2.200 entradas. `escapeText`
       (`packages/ssr/src/serialize.ts:49`) **no se toca**. Verde en 2 y 4, y 3 sigue verde.
-- [ ] **8. Derogar el «pass-through» de la decisión 49.**
+      El **AST se queda verbatim** y decodifica el emit: el formateador y el LSP reimprimen
+      `TextNode.value` / `AttributeText.value`, así que decodificar ahí reescribiría el fuente
+      del autor. `html/entities.ts` posee la gramática; el parser reporta lo que no resuelve
+      (`FUD0057`), el emit decodifica el resto.
+- [x] **8. Derogar el «pass-through» de la decisión 49.**
       Modificar `docs/gramar/gramatica-v1-decisiones.md` (decisión 49 y su fila del índice) y
       el comentario de `packages/compiler/src/html/nodes.ts:80`, que hoy afirma lo contrario.
       El porqué, en una línea: **el cliente no tiene serializador**, y `textContent` no
       interpreta entidades, así que verbatim hace divergir SSR e hidratación.
+      Anotados también la decisión 79 (que citaba el pass-through para sus `&#123;`), el
+      `CssText` de `css/nodes.ts` (donde el verbatim **sigue** vigente: un `<style>` no es el
+      dato de un nodo) y el catálogo: `FUD0057` en SDD-05 §diagnósticos y en SDD-12 §5.
 
 ## Fase 3 — Cierre (1)
 

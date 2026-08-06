@@ -25,5 +25,8 @@ export type {
 } from './nodes.js';
 export { VOID_ELEMENTS, RAW_ELEMENTS } from './nodes.js';
 
+export type { UnknownReference } from './entities.js';
+export { decodeEntities, unknownReferences } from './entities.js';
+
 export type { HtmlParseContext, AtConstructParser, HtmlParserOptions } from './parser.js';
 export { parseDocument } from './parser.js';

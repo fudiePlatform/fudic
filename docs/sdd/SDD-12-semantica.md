@@ -122,7 +122,7 @@ Cada SDD reserva su rango; aquí está el registro maestro. Formato `FUD` + 4 d�
 | `FUD0002`–`0009` | 02 | `0002` grupo balanceado sin cerrar (resto reservado). |
 | `FUD0010`–`0029` | 03 | `0010` char tras `@` inválido · `0011` comentario Razor sin cerrar · `0012` comentario HTML sin cerrar · `0013` tag mal formado · `0014` raw sin cerrar · `0015` valor de atributo sin cerrar · `0016` CDATA sin terminar. |
 | `FUD0030`–`0049` | 04 | (reservado; `@raw` sin cerrar aflora `0002`). |
-| `FUD0050`–`0069` | 05 | `0050` cierre no casa · `0051` cierre huérfano · `0052` elemento sin cerrar · `0053` cierre de void · `0054` CDATA fuera de svg/math · `0055` construcción `@` sin handler. |
+| `FUD0050`–`0069` | 05 | `0050` cierre no casa · `0051` cierre huérfano · `0052` elemento sin cerrar · `0053` cierre de void · `0054` CDATA fuera de svg/math · `0055` construcción `@` sin handler · `0056` valor de atributo sin comillas · `0057` referencia de carácter bien formada fuera del subset estricto (BUG-14). |
 | `FUD0070`–`0089` | 06 | `0070` falta `(` · `0071` falta `{` · `0072` bloque sin cerrar · `0073` `else` huérfano · `0074` contenido antes del primer `case` · `0075` `case`/`default` sin `:`. |
 | `FUD0090`–`0109` | 07 | `0090` property sin `@` · `0091` property con concatenación · `0092` event sin `@` único · `0093` `class:`/`style:` sin `@` único · `0094` `ref` no identificador simple · `0095` `class:`/`style:` sin nombre · `0096` `bus:` sin `@` único · `0097` `bus:` sin nombre. |
 | `FUD0110`–`0129` | 08 | `0110` falta `{` · `0111` `@server(…)` / `@client(…)` (66). `0112`/`0113` quemados (estrategias retiradas). |
