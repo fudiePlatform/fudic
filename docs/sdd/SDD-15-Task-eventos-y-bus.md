@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-15 — Emit (AST → runtime)](./SDD-15-emit.md)
 > **Paquetes:** `@fudic/dom` (contrato + `browserDom`) · `@fudic/ssr` (`SsrDom`) ·
-> `@fudic/core` (`FudicElement`) · `@fudic/compiler` (emit)
+> `@fudic/compiler` (emit)
 > **Rama:** `sdd-15-eventos-y-bus`
 > **Progreso:** 0 / 23
 
@@ -32,14 +32,18 @@ tareas posteriores.
 
 ## Los tres hitos
 
-**Hito A — `$host` viaja en el controller.** `$props` pasa de `[$dom, $shadow, ...valores]` a
-`[$dom, $shadow, $host, ...valores]`. Es el hueco que el SDD deja abierto sin darse cuenta:
+**Hito A — el host sale del adapter.** Es el hueco que el SDD deja abierto sin darse cuenta:
 §4.4 emite `$dom.bus($host, …)` y reescribe `emit('x', d)` a `emit.call($host, 'x', d)`, pero
-`FudicElement.h/c` pasa `this.shadowRoot` y **nunca `this`**, así que no había ningún `$host`
-de donde sacarlo. Se resuelve por posición en `$props` y no derivándolo del shadow (`host(shadow)`
-en `Dom<N>`) por **decisión de Pedro**: el host es una referencia que el controlador va a
-necesitar más veces —refs, `emit`, el contexto de cualquier handler—, y tenerla siempre delante
-es más barato que una llamada al adapter cada vez que aparezca un caso nuevo.
+`FudicElement.h/c` pasa `this.shadowRoot` y **nunca `this`**, así que no había ningún `$host` de
+donde sacarlo. `Dom<N>` gana `host(shadow)`, y el factory materializa
+`const $host = $dom.host($shadow);` **solo cuando el componente lo usa**.
+
+Se descartó pasarlo por posición en `$props` (`[$dom, $shadow, $host, …]`) porque el shadow ya
+lo lleva encima: `shadow.host` en el navegador, y en el árbol de SSR el enlace inverso ya existe
+—`attachShadow` deja `shadow.parent = h`—, así que las dos implementaciones son una línea y
+ninguna estructura cambia. Ampliar `$props` habría movido el destructuring horneado, los tres
+goldens de cliente, `FudicElement` y el arnés de hidratación para no ganar nada: una posición
+más en un contrato cuyo valor es ser el simétrico exacto de `Object.values` (§4.1/§4.2).
 
 **Hito B — los event bindings se emiten, en sus dos formas.** §4.5, decisión 26 revisada: la
 distinción es por **tipo de nodo AST de Oxc** del valor, no por heurística sobre el texto.
@@ -102,33 +106,30 @@ módulos, que el `SemanticModel` de un fichero no tiene).
 
 ---
 
-## Fase 1 — `$host` viaja en el controller (4)
+## Fase 1 — El host sale del adapter (4)
 
-- [ ] **1. `FudicElement` pasa `this`.**
-      Modificar `packages/core/src/element.ts`: `h(props)` → `c([browserDom, this.shadowRoot,
-      this, ...props])` y `c(props)` → `c([browserDom, this.attachShadow({ mode: 'open' }),
-      this, ...props])`. La base es el único sitio del sistema que conoce a la vez el adapter,
-      el shadow y el host; el chunk emitido no ve ninguno de los tres. Actualizar
-      `packages/core/test/element.test.ts`: la posición 2 de `$props` es el host, y es la misma
-      instancia en los dos caminos.
-- [ ] **2. El destructuring horneado, y `r()`.**
-      Modificar `destructuring()` en `packages/compiler/src/emit/client.ts`: `let [$dom,
-      $shadow, $host, …] = $props;`. El slot se emite **siempre**, lo use el componente o no —
-      es una posición del contrato, no una optimización: omitirlo cuando no hay `bus:` haría que
-      la forma de `$props` dependiera del contenido del template, y el simétrico de §4.1/§4.2 es
-      posicional en los dos extremos. Añadir `$host` a la lista que `r()` anula, junto a
-      `$shadow`.
-- [ ] **3. La rama SSR del factory recibe su host.**
-      El criterio §6.14 ejecuta el **mismo** `static c` contra `SsrDom`, luego la llamada del
-      arnés pasa a `Componente.c([ssrDom, ssrShadow, ssrHost, ...valores]).c()`. Modificar
-      `packages/compiler/test/emit/hydrate/_harness.ts` y lo que en `adopt.test.ts` /
-      `equivalence.test.ts` construya `$props` a mano. El `render($dom, $shadow, props)` de la
-      rama de servidor (`module.ts`) **no se toca**: es otra firma, otro artefacto, y sigue
-      siendo la que produce el HTML DSD cero-JS.
-- [ ] **4. Goldens de cliente regenerados.**
-      Los tres `test/emit/__golden__/*.client.mjs` cambian en dos líneas cada uno (el
-      destructuring y el `r()`). Regenerarlos y **leer el diff**: un golden que cambia en más
-      sitios de los previstos es la señal de que la tarea tocó algo que no le tocaba.
+- [ ] **1. `host(shadow)` en el contrato y en `browserDom`.**
+      Modificar `packages/dom/src/dom.ts` y `browser.ts`: `host(shadow: N): N` va en **`Dom<N>`**
+      —no en `DomClient<N>`— porque el factory que lo llama es el mismo que corre contra el
+      adapter de servidor (§6.14), y una llamada que solo existiera en el cliente rompería esa
+      ejecución. En el navegador es `(shadow as ShadowRoot).host`.
+- [ ] **2. `SsrDom.host`.**
+      Modificar `packages/ssr/src/ssr-dom.ts`: el enlace inverso **ya existe** —`attachShadow`
+      deja `shadow.parent = h` (`tree.ts`)—, así que es devolver ese padre. No hay que tocar
+      `SsrNodeImpl`: es exactamente la comprobación que hace que este hito no cueste nada.
+- [ ] **3. El factory lo materializa solo si lo usa.**
+      En `packages/compiler/src/emit/client.ts`: cuando el componente tiene algún `bus:` o alguna
+      llamada a `emit` reescrita, emitir `const $host = $dom.host($shadow);` en la cabecera de la
+      closure y añadir `$host` a lo que `r()` anula. Cuando no, **no se emite nada**: el chunk de
+      un componente sin bus no paga una línea por una referencia que nadie lee, y §3.7 sostiene
+      el INP sobre chunks de menos de 1 kB tras minify+brotli. Es información que el emisor de
+      markup ya tiene al terminar su pasada; no hace falta un análisis aparte.
+- [ ] **4. Tests y goldens.**
+      `@fudic/dom` y `@fudic/ssr` siguen al 100 %: `host()` de vuelta al host en los dos
+      adapters. Los tres `__golden__/*.client.mjs` actuales **no deben cambiar** —ninguno de los
+      tres fixtures usa el bus todavía—: un golden que se mueva aquí es la señal de que la
+      materialización no está condicionada como dice la tarea 3. `FudicElement`, el arnés de
+      hidratación y `render($dom, $shadow, props)` de la rama de servidor no se tocan.
 
 ## Fase 2 — `Dom.event` y `Dom.bus` (§3.8) (4)
 
@@ -237,6 +238,12 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       El developer nunca ve el host: exponerlo en la firma filtraría un asunto del compilador al
       código de usuario, y por eso el tipo exportado en `@fudic/dom` miente por omisión a
       propósito.
+      **Por qué el host es una elección segura y no una decisión de diseño delicada:** `emit`
+      fuerza `composed: true`, y un evento composed se **retargetea al host** en cuanto sale del
+      shadow. Da igual desde qué nodo interno se despache —un `<button>` de dentro serviría—
+      porque lo que el suscriptor ve como `e.target` es el host de todas formas. El host es
+      simplemente el nodo que el controlador ya tiene a mano y el que no depende de dónde esté
+      escrito el binding.
 - [ ] **17. Teardown (§6.13).**
       `r()` recorre `$d` y anula referencias; con eventos, eso pasa a ser comprobable: tras
       `r()`, el nodo no responde al evento **y** el listener de `bus:` deja de recibir. El
@@ -285,8 +292,8 @@ módulos, que el `SemanticModel` de un fichero no tiene).
 
 - [ ] **23. Verde y cobertura.**
       `pnpm typecheck`, `pnpm test` y `pnpm build` en la raíz —los ejemplos se construyen
-      después de los paquetes: si `examples/basic` se rompe, el build falla—. `@fudic/dom`,
-      `@fudic/ssr` y `@fudic/core` al **100 %** en las cuatro métricas, y `events.ts` nace al
+      después de los paquetes: si `examples/basic` se rompe, el build falla—. `@fudic/dom` y
+      `@fudic/ssr` al **100 %** en las cuatro métricas, y `events.ts` nace al
       100 %: la deuda heredada de `@fudic/compiler` no rebaja el listón de lo nuevo. Nada de
       `/* v8 ignore */` para llegar al número. Anotar el avance en
       [INDEX.md](./INDEX.md) (registro de progreso); SDD-15 **no** pasa a `Hecho` aquí: quedan
