@@ -38,7 +38,7 @@ import {
   VIRTUAL_FILES_REQUEST,
   virtualFilesPayload,
 } from './requests.js';
-import { createFudicService } from './services/plugin.js';
+import { createFudicService, createFudicTagService } from './services/plugin.js';
 import { RequestStats } from './stats.js';
 import { hasTypeScript, loadTypeScript } from './tsdk.js';
 import type { FileSystemScanner, Logger } from './types.js';
@@ -150,13 +150,18 @@ export function createFudicServer(
     const typescript = deps.loadTypeScript(options.tsdk, params.locale, logger);
     const languagePlugins = [createFudicLanguagePlugin(cache)];
     const plugins: LanguageServicePlugin[] = [
-      // Ours goes first: where two services answer the same position — an `href`, a tag —
-      // §4.1 gives this one the answer, and Volar asks them in order.
+      // Ours goes first: where two services answer the same position — an `href`, a
+      // `@section `, a `class:` — §4.1 gives this one the answer, and Volar asks them in order.
       createFudicService({ index, stats }),
       // The whole `.fud` is the HTML document: its markup is HTML with `@` in it, and the
       // native tags and attributes have to come from somewhere (§4.1, §6.4).
       createHtmlService({ documentSelector: ['fud'] }),
       createCssService(),
+      // The one position where this server ADDS instead of deciding: after a `<`, the workspace
+      // components are a voice next to the native tags rather than in place of them. It is
+      // additional, so it neither claims the position nor is silenced by the service above it
+      // (BUG-15 §4.6).
+      createFudicTagService({ index, stats }),
     ];
 
     let project: LanguageServerProject;

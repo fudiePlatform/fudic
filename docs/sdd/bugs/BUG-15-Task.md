@@ -4,7 +4,7 @@
 > **Paquete:** `@fudic/language-server`
 > **Rama:** la del backlog de uso
 > **Depende de:** nada
-> **Progreso:** 7 / 10
+> **Progreso:** 10 / 10
 
 Cada tarea es un paso cerrado. Las rutas son relativas a la raíz del repo.
 
@@ -62,19 +62,29 @@ Emmet y no se distingue de no haberla escrito.
 Estas tres salen de §2.3 y §2.4, y **todas se piden con el `context` que manda un editor**: sin
 él ninguna falla contra el código de hoy, que es exactamente cómo se colaron.
 
-- [ ] **8. Rojo primero, con el contexto puesto.**
+- [x] **8. Rojo primero, con el contexto puesto.**
       En `packages/language-server/test/acceptance/completion.test.ts`, pedir completado en
       `<div rol|>` y en `<app-badge |>` con `context: { triggerKind: 2, triggerCharacter: ' ' }`.
       **Verlo devolver cero ítems hoy** (§6.13, §6.14).
-- [ ] **9. Fuera el espacio de los caracteres de disparo.**
+      *Medido: los dos devuelven `[]`.* Los criterios quedan como peticiones **invocadas**: el
+      arreglo de §4.5 consiste en que esa petición deje de emitirse, no en que responda — con el
+      espacio fuera de la lista, Volar también salta a este plugin, así que «verde en 8» solo es
+      alcanzable preguntando como pregunta el editor **después** del arreglo.
+- [x] **9. Fuera el espacio de los caracteres de disparo.**
       `packages/language-server/src/capabilities.ts`: sale `' '` de
       `COMPLETION_TRIGGER_CHARACTERS`; el `@`, el `<`, el `:` y los de Emmet se quedan. Es un
       cambio de contrato con el cliente y está en §3 por eso (§4.5, §6.15). Verde en 8.
-- [ ] **10. La rama de tag fusiona.**
+- [x] **10. La rama de tag fusiona.**
       `packages/language-server/src/services/plugin.ts`: `tagContextAt` deja de contestar con un
       `return` que apaga al servicio HTML — sus ítems son una voz más, ordenados delante por
       `sortText`. Los contextos exactos (`href`, `@section `, `class:`) **siguen** siendo
       exclusivos (§4.6, §6.16, §6.17).
+      *Quitar el `return` no basta y se midió: `<di` seguía sin un solo tag nativo.* Quien apaga
+      al servicio HTML es `mainCompletionUri`, y la aditividad que lo evita es una propiedad
+      **del plugin**, nunca de la posición. La rama se mueve a `createFudicTagService`, un
+      segundo plugin con `isAdditionalCompletion` en la instancia; el principal conserva los tres
+      contextos exclusivos. Cuenta en `stats` como `tagCompletion`: es la misma petición
+      contestada por una segunda voz, no una petición más.
 
 ---
 

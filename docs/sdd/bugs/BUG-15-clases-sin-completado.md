@@ -173,6 +173,10 @@ que nadie manda no es una rama muerta, es una pregunta sin hacer.
 toca, ninguna firma de `@fudic/compiler` ni de `@fudic/language-core` se mueve, y no se reserva
 ningún código `FUD` — este BUG **no emite diagnósticos**, solo ofrece (§4.4).
 
+Un plugin nuevo, `createFudicTagService` (§4.6), que el servidor registra **detrás** del
+servicio HTML y que solo contesta el hueco de después del `<`. No amplía lo que el servidor
+anuncia en `initialize`: es un reparto interno entre plugins de Volar.
+
 Dos funciones nuevas, internas a `@fudic/language-server`:
 
 ```ts
@@ -282,12 +286,26 @@ entró para el hueco de atributos, que es justo la posición donde hoy devuelve 
 
 ### 4.6. La rama de tag fusiona, no reclama
 
-`tagContextAt` deja de contestar con un `return` que apaga al resto. Sus ítems son **una voz
-más** en el hueco de después del `<`: los componentes del workspace, ordenados delante por su
-`sortText` como ya lo están (§6.4 de SDD-24), y detrás los tags nativos que pone el servicio
-HTML. Es la misma decisión que SDD-28 §5.5 tomó entre documentos, aplicada entre plugins: el
-servidor sabe cosas que el servicio HTML no sabe, y ninguna de ellas es motivo para tapar las
-que sí sabe.
+`tagContextAt` deja de reclamar la posición. Sus ítems son **una voz más** en el hueco de
+después del `<`: los componentes del workspace, ordenados delante por su `sortText` como ya lo
+están (§6.4 de SDD-24), y detrás los tags nativos que pone el servicio HTML. Es la misma
+decisión que SDD-28 §5.5 tomó entre documentos, aplicada entre plugins: el servidor sabe cosas
+que el servicio HTML no sabe, y ninguna de ellas es motivo para tapar las que sí sabe.
+
+**Dónde vive el arreglo, y por qué no es el `return`.** Quitar el `return` temprano no cambia
+nada, y está medido: `<di` seguía devolviendo los dos componentes y ni un tag nativo. Lo que
+apaga al servicio HTML es `mainCompletionUri` — lo fija el primer plugin que devuelve ítems con
+capacidad de completado **no aditiva**, y a partir de ahí se salta todo plugin no aditivo del
+mismo documento. Esa aditividad es una propiedad **del plugin**, jamás de la posición, así que
+un solo plugin no puede tapar a Emmet dentro de un `href` y apartarse dentro de un `<`.
+
+De modo que la rama que tiene que fusionar se va a un plugin propio —`createFudicTagService`,
+con `isAdditionalCompletion` **en la instancia** que devuelve `create()`, que es de donde Volar
+lo lee— y las que tienen que contestar solas se quedan en el que no es aditivo. Un plugin de una
+sola rama parece de más hasta que se ve qué decide la pregunta: no es un `if`, es una capacidad.
+
+Su trabajo se cuenta aparte, como `tagCompletion`: es la misma petición contestada por una
+segunda voz, no una petición más, y §6.14 afirma cuántas peticiones hizo una ráfaga.
 
 Los otros contextos exactos **no** cambian: un `href`, un `@section ` y un `class:` siguen
 contestando solos, porque ahí una respuesta de HTML no es una voz más — es ruido sobre una
@@ -353,13 +371,20 @@ Tests en `packages/language-server/test/`.
 12. Escribir una clase que no está en ningún `<style>` no produce **ningún** diagnóstico nuevo.
 
 Los cinco siguientes son de §2.3 y §2.4, y **todos se piden con el `context` que manda un
-editor** — sin él, ninguno falla contra el código de hoy:
+editor** — sin él, ninguno falla contra el código de hoy.
+
+Con una precisión que solo se ve al medirlos: para §6.13 y §6.14 el `triggerCharacter: ' '` es
+lo que **descubre** el defecto, no lo que verifica el arreglo. La corrección de §4.5 consiste en
+que esa petición **deje de emitirse**; con el espacio fuera de la lista, Volar salta también a
+este plugin, así que pedirla seguiría devolviendo cero para siempre. El criterio se verifica
+como pregunta el editor **después** del arreglo: invocado, que es lo que manda al teclear la
+primera letra.
 
 13. **(rojo primero)** `<div rol|>` con `context: { triggerKind: 2, triggerCharacter: ' ' }`
-    ofrece los atributos de HTML —`role` entre ellos—. Contra el código anterior devuelve **cero
-    ítems**, que es lo que hace de este el test del defecto.
-14. **(rojo primero)** `<app-badge |>` con ese mismo contexto ofrece los props del componente
-    (`tone?`). Es el criterio §6.3 de SDD-24, pedido como lo pide el editor.
+    devuelve **cero ítems**, que es lo que hace de este el test del defecto. Verificado
+    invocado: ofrece los atributos de HTML, `role` entre ellos.
+14. **(rojo primero)** `<app-badge |>` con ese mismo contexto devuelve cero. Verificado
+    invocado: ofrece los props del componente (`tone?`). Es el criterio §6.3 de SDD-24.
 15. El espacio **no** está entre los caracteres de disparo que anuncia `initialize`, y el `@`,
     el `<` y los de Emmet **sí** siguen estando.
 16. **(rojo primero)** `<di|` ofrece `app-badge` y también `div`: los componentes primero por

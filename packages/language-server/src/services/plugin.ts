@@ -133,6 +133,66 @@ function overlaps(a: Range, b: Range): boolean {
   return !before && !after;
 }
 
+/**
+ * The tag after a `<`, as a plugin of its own (BUG-15 §4.6).
+ *
+ * A second plugin for one branch looks like too much until you see what decides the question in
+ * Volar. The first plugin that returns non-empty items with a completion capability that is not
+ * ADDITIONAL sets `mainCompletionUri`, and from then on every non-additional plugin over the
+ * same document is skipped. That flag is a property of the PLUGIN, never of the position — so
+ * one plugin cannot shadow Emmet inside an `href` and step aside inside a `<` at the same time.
+ * Removing the early `return` from the tag branch changes nothing at all: measured, `<di` still
+ * came back with the two workspace components and not one native tag.
+ *
+ * So the branch that has to merge moves to a plugin that is additional, and the ones that have
+ * to answer alone stay in the one that is not. What that buys is the list a `.html` gives:
+ * `app-badge` sorted ahead by its `sortText` (§6.4 of SDD-24), and behind it the hundred and
+ * fifty native tags the HTML service owns. The server knows things the HTML service does not,
+ * and not one of them is a reason to cover up the things it does.
+ *
+ * `href`, `@section ` and `class:` are untouched by this and stay exclusive: there a reply from
+ * HTML is not one more voice, it is noise over a position whose answers are closed and local.
+ */
+export function createFudicTagService(deps: FudicServiceContext): LanguageServicePlugin {
+  const { index, stats } = deps;
+
+  return {
+    name: 'fudic-tags',
+    capabilities: {
+      completionProvider: { triggerCharacters: [...COMPLETION_TRIGGER_CHARACTERS] },
+    },
+    create(context) {
+      return {
+        // The whole reason this plugin exists, and it goes on the INSTANCE: Volar reads the
+        // flag off what `create()` returns, never off the plugin around it. It also sorts this
+        // one last, which is where a voice that adds to another one belongs.
+        isAdditionalCompletion: true,
+
+        provideCompletionItems(document, position, _completionContext, token) {
+          return stats.run(
+            'tagCompletion',
+            token,
+            () => {
+              const cached = fudicDocumentOf(context, document);
+              if (cached === undefined) return undefined;
+
+              const offset = document.offsetAt(position);
+              const tag = tagContextAt(cached.source, offset);
+              if (tag === undefined) return undefined;
+
+              // The `<` is already written, so the tag name completes into what follows it.
+              return list(
+                tagItems(cached, index, document, tag, (name) => `${name}>$0</${name}>`),
+              );
+            },
+            undefined,
+          );
+        },
+      };
+    },
+  };
+}
+
 /** The service. */
 export function createFudicService(deps: FudicServiceContext): LanguageServicePlugin {
   const { index, stats } = deps;
@@ -342,9 +402,10 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
 /**
  * The completions the server owns, in the order they can apply (SDD-24 §4.2, SDD-28 §5.5).
  *
- * The first contexts are EXACT — inside an `href`, after `@section `, after `class:`, after a
- * `<` — and each answers alone: in those positions a word cannot mean anything else, so
- * shadowing Emmet is the right thing to do.
+ * The contexts here are EXACT — inside an `href`, after `@section `, after `class:` — and each
+ * answers alone: in those positions a word cannot mean anything else, so shadowing Emmet is
+ * the right thing to do. The tag after a `<` is deliberately NOT one of them; see
+ * `createFudicTagService`.
  *
  * The last one is not exact. A bare word in markup may be a component tag, a snippet, or an
  * Emmet abbreviation, and there is no way to tell which from the text. So it MERGES: our items
@@ -402,11 +463,8 @@ function completions(
     if (items.length > 0) return list(items);
   }
 
-  const tag = tagContextAt(cached.source, offset);
-  if (tag !== undefined) {
-    // The `<` is already written, so the tag name completes into what follows it.
-    return list(tagItems(cached, index, document, tag, (name) => `${name}>$0</${name}>`));
-  }
+  // The tag after a `<` is NOT here: it merges instead of claiming, and in Volar that is a
+  // property of a plugin rather than of a branch. It lives in `createFudicTagService`.
 
   // A `@` is unambiguous too, but it can come up empty — in an empty file nothing starts with
   // one — and an empty list would suppress what Emmet has to say. So it only wins when it has

@@ -52,6 +52,34 @@ async function completeAt(relative: string, marked: string): Promise<CompletionI
   return completeIn(relative, marked.replace('|', ''), marked.indexOf('|'));
 }
 
+/**
+ * The same request an editor makes when the user types a character (BUG-15 §2.3).
+ *
+ * `triggerKind: 2` plus the character is not a decoration: Volar SKIPS every plugin that does
+ * not declare that character, so what the client is told in `initialize` decides who is even
+ * in the room. A harness that always sends an invoked request measures a client that does not
+ * exist — which is exactly how the defects of §2.3 and §2.4 got in.
+ */
+async function completeTyping(
+  relative: string,
+  marked: string,
+  triggerCharacter: string,
+): Promise<CompletionItem[]> {
+  const text = marked.replace('|', '');
+  const { uri } = await harness.open(relative);
+  await harness.change(uri, text, ++version);
+
+  const answer = await harness.client.sendRequest(CompletionRequest.type, {
+    textDocument: { uri },
+    position: harness.positionAt(text, marked.indexOf('|')),
+    context: { triggerKind: 2, triggerCharacter },
+  });
+
+  const list = answer as CompletionList | CompletionItem[] | null;
+  if (list === null) return [];
+  return Array.isArray(list) ? list : list.items;
+}
+
 const labels = (items: CompletionItem[]): string[] => items.map((item) => item.label);
 
 beforeAll(async () => {
@@ -175,6 +203,11 @@ describe('BUG-15 §6.1 — the classes this file declares', () => {
     // Nothing of ours, and the chain carried on: an empty list must not silence the rest.
     expect(items.some((item) => item.detail === 'class of this file')).toBe(false);
     expect(items.length).toBeGreaterThan(0);
+
+    // Put the fixture back. This source has no `@code`, so leaving it behind would mean
+    // app-badge stops declaring `tone` for every test that runs after this one.
+    const { uri } = await harness.open(BADGE);
+    await harness.change(uri, fixtureText(BADGE), ++version);
   });
 });
 
@@ -231,6 +264,65 @@ describe('BUG-15 §6.11 — the fifth context takes nothing from the other four'
     );
 
     expect(labels(items)).toContain('@foreach');
+  });
+});
+
+describe('BUG-15 §6.13–§6.17 — inside an open tag, asked the way an editor asks', () => {
+  const ROUTE = `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="component" href="../components/app-badge.fud">\n`;
+
+  // §6.13 and §6.14 are asked INVOKED, which is what an editor sends once the space stops
+  // being a trigger character. Asking them with `triggerCharacter: ' '` is what measured the
+  // defect (the request came back with zero items), but it cannot measure the fix: the fix is
+  // that the request is never made. After it, the space asks nothing and the first letter after
+  // it asks an invoked completion with every plugin alive — which is what happens in a `.html`.
+  it('§6.13 — a half-typed attribute offers the HTML ones', async () => {
+    const items = await completeAt(SLUG, `${ROUTE}<article>\n  <div rol|>\n</article>\n`);
+
+    expect(labels(items)).toContain('role');
+  });
+
+  it('§6.14 — the gap of a component tag offers its props', async () => {
+    const items = await completeAt(
+      SLUG,
+      `${ROUTE}<article>\n  <app-badge |></app-badge>\n</article>\n`,
+    );
+
+    // TypeScript's, over the projection, through the completion anchor BUG-11 left in the tag
+    // gap. It is criterion §6.3 of SDD-24 — the one the space was quietly turning off.
+    expect(labels(items)).toContain('tone?');
+  });
+
+  it('§6.15 — the space is not a trigger character, and the others still are', async () => {
+    const declared = harness.capabilities.capabilities.completionProvider?.triggerCharacters ?? [];
+
+    expect(declared).not.toContain(' ');
+    expect(declared).toEqual(expect.arrayContaining(['@', '<', ':', '.']));
+  });
+
+  it('§6.16 — a tag offers the component AND the native elements', async () => {
+    const items = await completeTyping(SLUG, `${ROUTE}<article>\n  <di|\n</article>\n`, '<');
+
+    // Ours is a voice more, not the last word: sorted ahead, with the native tags behind it.
+    expect(labels(items)).toContain('app-badge');
+    expect(labels(items)).toContain('div');
+    expect(items.find((item) => item.label === 'app-badge')?.sortText).toBe('0_app-badge');
+  });
+
+  it('§6.17 — the exact contexts stay exclusive with the context set', async () => {
+    // `"` is a trigger character of both this server and the HTML service, so this is the one
+    // that shows the exclusivity is real and not an artefact of who got asked.
+    const href = await completeTyping(
+      SLUG,
+      `${ROUTE}<link rel="component" href="|">\n<article>hi</article>\n`,
+      '"',
+    );
+    expect(labels(href).every((label) => label.endsWith('.fud'))).toBe(true);
+
+    const section = await completeAt(
+      SLUG,
+      `<link rel="layout" href="../layouts/_layout.fud">\n@section |\n<article>hi</article>\n`,
+    );
+    expect(labels(section)).toEqual(['nav']);
   });
 });
 

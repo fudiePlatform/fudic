@@ -13,10 +13,18 @@
 
 import type { CancellationToken } from 'vscode-languageserver-protocol';
 
-/** The kinds of work the counter attributes, one per feature the service answers. */
+/**
+ * The kinds of work the counter attributes, one per feature the service answers.
+ *
+ * `tagCompletion` is the tag branch of BUG-15 §4.6, and it is a kind of its own precisely
+ * because it is NOT a second request: it is the same completion, answered a second time by the
+ * additional plugin. Counting it as `completion` would make one keystroke read as two, and
+ * §6.14 is a claim about how many requests a burst made.
+ */
 export type RequestKind =
   | 'codeActions'
   | 'completion'
+  | 'tagCompletion'
   | 'definition'
   | 'diagnostics'
   | 'documentLinks'
