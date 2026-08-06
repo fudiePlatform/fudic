@@ -23,20 +23,33 @@ const BADGE = 'components/app-badge.fud';
 let harness: Harness;
 let version = 1;
 
-/** Rewrite `relative` with the cursor at `|` and ask for completion there. */
-async function completeAt(relative: string, marked: string): Promise<CompletionItem[]> {
+/**
+ * Write `text` into `relative` and ask for completion at `offset`.
+ *
+ * Takes an offset rather than a `|` marker because the marker cannot be used on a file that
+ * already contains one, and `app-badge.fud` does: its `Tone` is a union type.
+ */
+async function completeIn(
+  relative: string,
+  text: string,
+  offset: number,
+): Promise<CompletionItem[]> {
   const { uri } = await harness.open(relative);
-  const { text, position } = harness.cursor(marked);
   await harness.change(uri, text, ++version);
 
   const answer = await harness.client.sendRequest(CompletionRequest.type, {
     textDocument: { uri },
-    position,
+    position: harness.positionAt(text, offset),
   });
 
   const list = answer as CompletionList | CompletionItem[] | null;
   if (list === null) return [];
   return Array.isArray(list) ? list : list.items;
+}
+
+/** Rewrite `relative` with the cursor at `|` and ask for completion there. */
+async function completeAt(relative: string, marked: string): Promise<CompletionItem[]> {
+  return completeIn(relative, marked.replace('|', ''), marked.indexOf('|'));
 }
 
 const labels = (items: CompletionItem[]): string[] => items.map((item) => item.label);
@@ -127,6 +140,18 @@ describe('§6.6 — sections', () => {
     );
 
     expect(labels(items)).toEqual(['nav']);
+  });
+});
+
+describe('BUG-15 §6.1 — the classes this file declares', () => {
+  it('offers them after `class:`', async () => {
+    // The component's own `<style>`, thirty lines up, declares exactly these three and there
+    // is no fourth possible. The `class:success` written here is replaced by the prefix alone,
+    // which is the position the editor asks about.
+    const source = fixtureText(BADGE).replace(`class:success="@(tone === 'success')"`, 'class:');
+    const items = await completeIn(BADGE, source, source.indexOf('class:') + 'class:'.length);
+
+    expect(labels(items)).toEqual(expect.arrayContaining(['badge', 'success', 'info']));
   });
 });
 

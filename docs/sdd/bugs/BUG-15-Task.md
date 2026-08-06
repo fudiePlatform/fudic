@@ -4,7 +4,7 @@
 > **Paquete:** `@fudic/language-server`
 > **Rama:** la del backlog de uso
 > **Depende de:** nada
-> **Progreso:** 0 / 10
+> **Progreso:** 1 / 10
 
 Cada tarea es un paso cerrado. Las rutas son relativas a la raíz del repo.
 
@@ -17,7 +17,7 @@ Emmet y no se distingue de no haberla escrito.
 
 ## Fase 1 — Rojo primero (1)
 
-- [ ] **1. El ejemplo del repo no ofrece sus propias clases.**
+- [x] **1. El ejemplo del repo no ofrece sus propias clases.**
       En `packages/language-server/test/acceptance/completion.test.ts`, pedir completado en
       `class:|` sobre `examples/basic/components/app-badge.fud` y afirmar `badge`, `success`,
       `info`. **Verlo fallar hoy**: hoy contesta Emmet, o nada (§6.1).
