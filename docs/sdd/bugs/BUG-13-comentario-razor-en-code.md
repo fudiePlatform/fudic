@@ -238,10 +238,13 @@ Tests en `packages/compiler/test/`.
 - **`@{ … }` (código inline) y las cabeceras de control.** Comparten la causa: el texto entre
   llaves acaba en el batch. La decisión de §3 les aplica en espíritu, pero cada uno es otro
   constructo y otro parser; este BUG posee `@code`.
-- **La mudez de `resolveComponents`.** Los diagnósticos del parse (`FUD0110`, `FUD0111`, el
-  nuevo `FUD0114`) se descartan en `emit/resolve.ts:parse`, así que el `FUD0114` lo ve el
-  editor pero no el build. Es un agujero **anterior** a este BUG y más ancho que él: BUG
-  propio.
+- ~~**La mudez de `resolveComponents`.**~~ **Entra en el alcance** (decisión de Pedro): un
+  diagnóstico que solo ve el editor no existe. `emit/resolve.ts:parse` tomaba `.value` dos
+  veces y descartaba las dos listas —la del parser y la del pase estructural—, así que
+  `FUD0110`, `FUD0111`, `FUD0114` y los `FUD0150`–`FUD0160` no llegaban al build. Ahora
+  `parse` devuelve `ParseResult` y `resolveDocument` propaga los del **fichero de entrada**;
+  los de una dependencia salen cuando esa dependencia se compila, que es donde sus spans
+  significan algo.
 - **El `@@` como escape en texto y las entidades HTML.** Salieron de la misma sesión y **no**
   son esto: `@@count` en markup emite el texto `count` (se come la `@` en vez de dejar una), y
   `&lt;` llega al nodo de texto sin decodificar y el serializador lo vuelve a escapar

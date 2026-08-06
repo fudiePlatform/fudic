@@ -13,6 +13,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   resolveComponents,
+  resolveDocument,
   emitComponentModule,
   emitComponentClientModule,
   emitComponentModuleMapped,
@@ -100,6 +101,38 @@ describe('BUG-13 — a failed parse is not an empty parse (§7.3)', () => {
   it('says nothing for a component with no @code at all', () => {
     const source = `<${TAG}>\n  <template shadowrootmode="open"><span></span></template>\n</${TAG}>\n`;
     expect(extractCode(source, componentDoc(source)).diagnostics).toEqual([]);
+  });
+
+  it('hands the parse diagnostics to the build, FUD0114 included', () => {
+    // `resolveDocument`'s `parse` took `.value` twice and dropped both lists, so a
+    // diagnostic the editor showed was absent from the build. The entry's own come out.
+    const source = component('  @* c *@\n' + CLIENT);
+    const io = memoryIo({
+      '/page.fud':
+        `<link rel="component" href="./${TAG}.fud">\n` +
+        `<html><head></head><body><${TAG}></${TAG}></body></html>\n`,
+      [`/${TAG}.fud`]: source,
+    });
+    const { diagnostics } = resolveDocument(`/${TAG}.fud`, io);
+    const fud0114 = diagnostics.find((d) => d.code === 'FUD0114');
+    expect(fud0114).toBeDefined();
+    expect(source.slice(fud0114!.span.start, fud0114!.span.end)).toBe('@* c *@');
+  });
+
+  it("reports the entry's own, not a dependency's — the spans belong to another file", () => {
+    // Every dependency is a module of its own and comes back through here, so its
+    // diagnostics surface against its own source instead of being pinned on this one.
+    // The page is spelled out in full here — doctype and links inside the `<head>` —
+    // because this is the one test that asserts the entry reports NOTHING.
+    const io = memoryIo({
+      '/page.fud':
+        '<!DOCTYPE html>\n<html>\n  <head>\n' +
+        `    <link rel="component" href="./${TAG}.fud">\n` +
+        `  </head>\n  <body><${TAG}></${TAG}></body>\n</html>\n`,
+      [`/${TAG}.fud`]: component('  @* c *@\n' + CLIENT),
+    });
+    expect(resolveDocument('/page.fud', io).diagnostics).toEqual([]);
+    expect(resolveDocument(`/${TAG}.fud`, io).diagnostics.map((d) => d.code)).toContain('FUD0114');
   });
 
   it('carries the diagnostics out of the emit, so a build can stop on them (§7.3)', () => {
