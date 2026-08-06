@@ -18,30 +18,30 @@ import { describe, expect, it } from 'vitest';
 import { join } from 'node:path';
 import { browserDom } from '@fudic/dom';
 import { resolveComponents, type ComponentGraph } from '../../../src/emit/index.js';
-import { fixturesDir, fixtureIo } from '../_support.js';
+import { fixturesDir, fixtureIo, memoryIo } from '../_support.js';
 import { clientFactory, controller, mountAsDsd, serverShadowHtml } from './_harness.js';
 
 const graph: ComponentGraph = resolveComponents(join(fixturesDir, 'home.fud'), fixtureIo);
 
 /** The server's markup, mounted as the parser would leave it. */
-function painted(tag: string, props: unknown): { shadow: ShadowRoot; html: string } {
-  const { shadow } = mountAsDsd(tag, serverShadowHtml(graph, tag, props));
+function painted(tag: string, props: unknown, g: ComponentGraph = graph): { shadow: ShadowRoot; html: string } {
+  const { shadow } = mountAsDsd(tag, serverShadowHtml(g, tag, props));
   return { shadow, html: shadow.innerHTML };
 }
 
 /** The tree `c()` builds, as HTML — a fresh host, nothing adopted. */
-function created(tag: string, values: readonly unknown[]): string {
+function created(tag: string, values: readonly unknown[], g: ComponentGraph = graph): string {
   const host = document.createElement(tag);
   const shadow = host.attachShadow({ mode: 'open' });
   document.body.append(host);
-  controller(clientFactory(graph, tag), browserDom, shadow, values).c();
+  controller(clientFactory(g, tag), browserDom, shadow, values).c();
   return shadow.innerHTML;
 }
 
 /** The tree `h()` holds, as HTML — adopted from the server's. */
-function hydrated(tag: string, props: unknown, values: readonly unknown[]): string {
-  const { shadow } = painted(tag, props);
-  controller(clientFactory(graph, tag), browserDom, shadow, values).h();
+function hydrated(tag: string, props: unknown, values: readonly unknown[], g: ComponentGraph = graph): string {
+  const { shadow } = painted(tag, props, g);
+  controller(clientFactory(g, tag), browserDom, shadow, values).h();
   return shadow.innerHTML;
 }
 
@@ -100,5 +100,50 @@ describe('create ↔ hydrate — composition and control flow (app-card)', () =>
   it('composes class from the base plus the binding, identically', () => {
     expect(html).toContain('class="card highlight"');
     expect(created('app-card', ['Hola', 'default'])).toContain('class="card"');
+  });
+});
+
+/**
+ * BUG-14 §6.5 — the two escapes, over the same comparison.
+ *
+ * This is the case that decided the design and it belongs HERE, not in a text assertion:
+ * the server writes HTML and the client writes `textContent`, and `textContent` does not
+ * interpret entities. With the data left verbatim the two paths would paint different
+ * characters from one template, and no amount of reading either branch would show it —
+ * only running both and comparing does.
+ */
+describe('create ↔ hydrate — `@@` and an entity (§6.5)', () => {
+  const literals: ComponentGraph = resolveComponents(
+    '/page.fud',
+    memoryIo({
+      '/page.fud':
+        '<link rel="component" href="./doc-escape.fud">\n' +
+        '<html><head></head><body><doc-escape></doc-escape></body></html>\n',
+      '/doc-escape.fud': `<head>
+  <style>:host { display: block; }</style>
+</head>
+
+<doc-escape>
+  <template shadowrootmode="open">
+    <code>@@server load</code>
+    <code>&lt;html&gt;</code>
+  </template>
+</doc-escape>
+`,
+    }),
+  );
+  const { html } = painted('doc-escape', {}, literals);
+
+  it('the server paints the characters the author meant', () => {
+    expect(html).toContain('<code>@server load</code>');
+    expect(html).toContain('<code>&lt;html&gt;</code>');
+  });
+
+  it('c() builds exactly what the server painted', () => {
+    expect(created('doc-escape', [], literals)).toBe(html);
+  });
+
+  it('h() leaves it untouched', () => {
+    expect(hydrated('doc-escape', {}, [], literals)).toBe(html);
   });
 });

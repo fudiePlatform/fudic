@@ -26,7 +26,7 @@ const COMPONENT = `@code {
 }
 
 <head>
-  <style>:host { display: block; }</style>
+  <style>:host { display: block; content: "@@ &lt;"; }</style>
 </head>
 
 <app-doc>
@@ -87,6 +87,14 @@ describe('an entity in content (§6.2)', () => {
 describe('an attribute value behaves like content (§6.6)', () => {
   it('the same characters reach the final HTML', () => {
     expect(painted('')).toContain('title="@x <y>"');
+  });
+});
+
+describe('the CSS branch is NOT touched (§6.7)', () => {
+  // A `<style>` body is not a node's data: it is CSS, where `@@` and `&lt;` mean the
+  // characters they spell. BUG-08 made that explicit and this correction leaves it alone.
+  it('keeps `@@` and an entity verbatim in the sheet', () => {
+    expect(serverModule).toContain('content:"@@ &lt;"');
   });
 });
 

@@ -2,7 +2,7 @@
 
 > **BUG:** [BUG-14 — El texto literal del autor no llega intacto al output](./BUG-14-texto-literal-no-sobrevive.md)
 > **Paquetes:** `@fudic/compiler` · `@fudic/ssr` · **Rama:** `fix/bug-14-texto-literal`
-> **Progreso:** 8 / 9
+> **Progreso:** 9 / 9
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Las rutas son relativas a la raíz del repo.
@@ -64,10 +64,13 @@ tareas posteriores. Las rutas son relativas a la raíz del repo.
 
 ## Fase 3 — Cierre (1)
 
-- [ ] **9. Verde, equivalencia y goldens.**
+- [x] **9. Verde, equivalencia y goldens.**
       `pnpm typecheck`, `pnpm test` y `pnpm build`. Añadir a `equivalence.test.ts` un caso con
       entidad y otro con `@@` (§6.5). Comprobar §6.6 (atributos) y §6.7 (el CSS sigue
       verbatim). Los goldens solo se mueven donde haya `@@` o entidades.
+      **No se movió ni un byte de golden**: ningún fixture tiene `@@` ni entidades (§6.8).
+      Y sobre el ejemplo real, tras `pnpm build`, `examples/basic/dist/about/index.html`
+      trae `@server load` y `&lt;html&gt;`, y ni un `&amp;lt;` (§6.3).
 
 ---
 
