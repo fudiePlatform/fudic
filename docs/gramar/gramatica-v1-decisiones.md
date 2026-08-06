@@ -220,13 +220,40 @@ html_block
 
 **25.** Property binding case-sensitive, tal cual. `.innerHTML`, `.textContent`.
 
-**26.** Handler de evento puede ser referencia (`@click="@handler"`) o lambda (`@click="@(e => ...)"`). Si evalúa a función, se llama con `(event)`; si evalúa a otra cosa, error.
+**26.** ~~Handler de evento puede ser referencia (`@click="@handler"`) o lambda (`@click="@(e => ...)"`). Si evalúa a función, se llama con `(event)`; si evalúa a otra cosa, error.~~ — **revisada por la 96** (2026-08-06). La forma *factory* que SDD-15 §4.5 derivó de esta decisión (una `CallExpression` invocada al suscribir, con handler declarado curried) **se retira**: ningún framework la usa como sintaxis de template y obligaba a escribir `const del = (id) => (e) => {…}` para ahorrar un frame por disparo. Ver 96–98.
+
+**96.** **Un event binding es una invocación, y recibe `$event` más los datos que se le escriban.**
+Lo que va a la derecha del `=` se **llama en el disparo**, no al suscribir. `$event` es la
+variable que el compilador inyecta con el evento nativo; el resto de argumentos son datos del
+punto de uso. El handler se declara **plano**:
+
+```razor
+@click="@del($event, item.id)"        <!-- function del(ev, id) {…}  -->
+@click="@del(item.id)"                <!-- function del(id) {…}      -->
+@click="@del($event)"                 <!-- function del(ev) {…}      -->
+@click="@del()"                       <!-- function del() {…}        -->
+```
+
+Es la forma de Angular y de Vue, y es la que un developer ya trae aprendida. **No hay handler
+curried**: si alguien quiere una función que devuelve una función, que la llame como tal — el
+compilador no le da un significado especial.
+
+**97.** **`$event` es del compilador, no del usuario.** Encaja en la reserva del prefijo `$`
+(SDD-15 §4.7): el usuario no puede declarar identificadores que empiecen por `$`, y `$event` es
+exactamente una variable que el compilador inyecta. Solo tiene sentido dentro de la lista de
+argumentos de un event binding; fuera es un identificador libre como cualquier otro y no se
+sustituye.
+
+**98.** **La referencia desnuda sigue valiendo.** `@click="@toggle"` —sin paréntesis— suscribe
+`toggle` tal cual, y el DOM lo invoca con el evento nativo. Es la única forma de un solo frame y
+no cuesta nada al que la escribe: es el caso «no necesito datos del punto de uso». Con paréntesis
+(`@toggle()`) es una invocación y entra en la 96, que es lo mismo que hace Angular.
 
 **27.** Sin modificadores de evento. El handler es función JS normal; `preventDefault`/`stopPropagation` se llaman en código.
 
 **28.** Cualquier nombre de evento aceptado, incluidos custom events (`@my-event`). `@evento` es **siempre listener de host** (nombre literal). Para suscripción a eventos de bus entre componentes desacoplados, ver 28.a–28.d (`bus:`).
 
-**28.a.** *Prefijo `bus:` — suscriptor declarativo.* `bus:carrito="@onCarrito(ev)"` registra un listener en el **ancestro común de página (`document`)**, no en el host, con el host como contexto del handler (emisor y suscriptor son hermanos: un evento que burbujea desde el emisor nunca entra en el host del suscriptor). `bus:` es **prefijo de binding reservado**, hermano de `class:`/`style:` (decisión 22); no es atributo con `:` literal (decisión 46).
+**28.a.** *Prefijo `bus:` — suscriptor declarativo.* `bus:carrito="@onCarrito($event)"` (la regla de la 96) registra un listener en el **ancestro común de página (`document`)**, no en el host, con el host como contexto del handler (emisor y suscriptor son hermanos: un evento que burbujea desde el emisor nunca entra en el host del suscriptor). `bus:` es **prefijo de binding reservado**, hermano de `class:`/`style:` (decisión 22); no es atributo con `:` literal (decisión 46).
 
 **28.b.** *Dos formas del nombre bajo `bus:`.* `bus:carrito` (literal, `attr-name`) y `bus:(EVENTOS.carrito)` (expresión explícita para constante importada; el `(` tras `bus:` abre el balanceador, `scanParens`, y el tokenizer emite `explicit-expr`). El parser **solo distingue las dos formas y guarda el span**; la resolubilidad es semántica (28.c → SDD-12).
 
@@ -1028,3 +1055,6 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 93 | Control flujo | La key va FUERA del paréntesis: la cabecera llega a Oxc intacta y el `;` del `for` ya está tomado |
 | 94 | Control flujo | `@if` / `@switch` no llevan key (`FUD0542`): su identidad es la rama tomada |
 | 95 | Control flujo | Key duplicada no es error de compilación; gana la primera aparición |
+| 96 | Interpolación | Un event binding es una **invocación**: `$event` + datos, handler plano (revisa la 26; retira la forma curried) |
+| 97 | Interpolación | `$event` lo inyecta el compilador y vive en la reserva `$`; solo en la lista de argumentos de un event binding |
+| 98 | Interpolación | La referencia desnuda (`@click="@toggle"`) sigue valiendo: el DOM la invoca con el evento |

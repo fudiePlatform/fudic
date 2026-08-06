@@ -47,11 +47,19 @@ ninguna estructura cambia. Ampliar `$props` habría movido el destructuring horn
 goldens de cliente, `FudicElement` y el arnés de hidratación para no ganar nada: una posición
 más en un contrato cuyo valor es ser el simétrico exacto de `Object.values` (§4.1/§4.2).
 
-**Hito B — los event bindings se emiten, en sus dos formas.** §4.5, decisión 26 revisada: la
-distinción es por **tipo de nodo AST de Oxc** del valor, no por heurística sobre el texto.
-`Identifier` y `Arrow`/`Function` se suscriben tal cual; una `CallExpression` se **invoca una
-vez en `s()`** y se suscribe su retorno; cualquier otra forma es `FUD0291`. El default es la
-lambda (2 frames, plano y obvio); la forma factory (1 frame) es opt-in y no se infiere.
+**Hito B — un event binding es una invocación.** §4.5, reescrita el 2026-08-06 (decisiones de
+gramática 96–98). Lo que va a la derecha del `=` se llama **en el disparo**, con `$event` como
+evento nativo y los datos que se escriban:
+
+```razor
+@click="@del($event, item.id)"      <!-- function del(ev, id) {…} -->
+```
+
+El handler se declara **plano**, como en Angular y en Vue. La forma *factory* que la versión
+anterior de la spec derivaba de la decisión 26 —una `CallExpression` invocada **al suscribir**,
+con handler curried `const del = (id) => (e) => {…}`— **se retira**: ahorraba un frame por
+disparo a cambio de una sintaxis que ningún framework usa y que el developer paga en cada línea.
+La referencia desnuda (`@click="@toggle"`) sigue valiendo y sigue siendo la de un solo frame.
 
 **Hito C — el bus engancha, y `emit` recibe su host.** `bus:evt` desugariza en `s()` a un
 listener sobre `document` con el host como contexto, y se da de baja en `r()` —un `bus:` sin
@@ -185,14 +193,18 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       valor, devuelve la expresión que se suscribe.
       | Nodo raíz | Emitido | Frames |
       |---|---|---|
-      | `Identifier` | `$dom.event($n, 'click', toggle)` | 1 |
+      | `Identifier` (`@toggle`) | `$dom.event($n, 'click', toggle)` | 1 |
+      | `CallExpression` (`@del($event, x)`) | `$dom.event($n, 'click', ($event) => del($event, x))` | 2 |
       | `ArrowFunctionExpression` / `FunctionExpression` | `$dom.event($n, 'click', e => …)` | 2 |
-      | `CallExpression` | `$dom.event($n, 'click', del(item.id))` | 1 |
       | cualquier otro | — | `FUD0291` |
-      La `CallExpression` se evalúa **una vez al suscribir** (§6.19): su retorno es el listener
-      que el DOM invoca sin reordenar nada, y ahí está el frame que se ahorra. El compilador
-      **no valida** que devuelva una función: eso pide análisis de flujo que Fudic no hace, y el
-      contrato del usuario es explícito en §4.5.
+      La `CallExpression` se evalúa **en el disparo**, no al suscribir: el emit la envuelve en una
+      arrow cuyo parámetro se llama literalmente `$event`, de modo que la sustitución es copiar el
+      texto del argumento tal cual. El emit **no reordena** la lista: `@del(item.id, $event)`
+      llega como `(id, ev)`.
+      Con esto desaparecen dos cosas de la versión anterior: el contrato de usuario que el
+      compilador no podía validar («si escribes `@f(x)`, `f` **debe** devolver el listener») y su
+      error más probable —escribir `@del(item.id)` esperando que se llame en el click, que era
+      justo lo que no hacía—. Ahora hace lo que parece.
 - [ ] **11. El tercer cuerpo del emisor de markup de cliente.**
       `ClientMarkupEmitter` (`markup-client.ts`) escribe hoy dos cuerpos en una sola pasada
       —fabricar y adoptar— por la razón que su cabecera explica: calcularlos por separado los
@@ -220,7 +232,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
 - [ ] **13. `bus:` desugariza a `document`, con el host como contexto.**
       En el cuerpo `hook`, un `BusBinding` produce:
       ```js
-      $d.push($dom.bus($host, 'carrito', ev => onCarrito.call($host, ev)));
+      $d.push($dom.bus($host, 'carrito', ($event) => onCarrito.call($host, $event)));
       ```
       El listener va sobre el documento —lo resuelve `browserDom.bus`, no el emitido—, y el
       contexto es el host, para que el handler alcance las signals de **su** instancia. El
@@ -262,14 +274,15 @@ módulos, que el `SemanticModel` de un fichero no tiene).
 
 ## Fase 5 — Fixtures, goldens y equivalencia (5)
 
-- [ ] **17. El fixture que ejercita las cuatro formas.**
-      `fixtures/app-button.fud` ya escribe `@click="@onClick"` (forma `Identifier`) y su handler
+- [ ] **17. El fixture que ejercita los cuatro casos.**
+      `fixtures/app-button.fud` ya escribe `@click="@onClick"` (referencia desnuda) y su handler
       se busca el host a mano con `closest('app-button')` para lanzar un `CustomEvent` — que es
       literalmente lo que `emit` existe para no tener que escribir. Pasarlo a `emit('press')` y
-      quedarse ahí: ese fixture cubre `Identifier` + `emit`. Para el resto hace falta un fixture
-      nuevo con `@foreach`, la forma factory (`@click="@del(item.id)"`), la forma lambda
-      (`@click="@(e => del(e, item.id))"`) y un `bus:`. Enlazarlo desde `home.fud` para que
-      entre en el hito de cierre §6.28.
+      quedarse ahí: ese fixture cubre la referencia desnuda + `emit`. Para el resto hace falta un
+      fixture nuevo con `@foreach` (con su `key`, SDD-30) y los cuatro casos de §4.5 —`@del()`,
+      `@del($event)`, `@del(item.id)`, `@del($event, item.id)`— más un `bus:` y **un handler
+      declarado plano en los cuatro**, que es lo que el fixture tiene que demostrar. Enlazarlo
+      desde `home.fud` para que entre en el hito de cierre §6.28.
 - [ ] **18. Goldens.**
       Regenerar los `.client.mjs` y añadir el del fixture nuevo. Byte a byte, como los de
       servidor: es lo que hace que un refactor del codegen falle en voz alta en vez de derivar
@@ -277,19 +290,19 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       fixture nuevo — el enganche no existe en SSR, y si aparece en un `.mjs` de servidor es que
       algo se emitió en la rama equivocada.
 - [ ] **19. Criterios §6.15, §6.16 y §6.17 en el arnés.**
-      Nuevo `test/emit/hydrate/events.test.ts`, sobre el DOM real que el arnés ya monta: el
-      evento nativo llega entero en las dos formas (`e.type`, `preventDefault()` surte efecto);
-      el valor de contexto que llega al cuerpo es el del punto de uso; y en un `@foreach` de N
-      filas cada handler recibe el valor de su fila, disparando en orden no secuencial.
-- [ ] **20. Criterios §6.19 y §6.20, y la nota sobre §6.18.**
-      §6.19 —una sola invocación de la factory por suscripción— es un contador en el nivel
-      externo del handler curried: determinista, va al mismo fichero. §6.20 —la distinción por
-      AST— se comprueba sobre el **texto emitido**, que es donde la decisión es observable, más
-      el caso `FUD0291`. **§6.18 (conteo de frames) no se testea con `new Error().stack`**: la
-      profundidad de pila depende del motor y del inlining, y un test así falla por razones que
-      no son las suyas. Lo que se verifica es lo que determina el número de frames: la forma
-      emitida (una llamada directa frente a una arrow que reenvía), que es exactamente §6.20.
-      Anotarlo en el fichero de test, no dejarlo como criterio silenciosamente saltado.
+      Nuevo `test/emit/hydrate/events.test.ts`, sobre el DOM real que el arnés ya monta:
+      `$event` es el evento nativo (`type`, `isTrusted`, `preventDefault()` surte efecto); los
+      **cuatro casos** llegan al cuerpo como `()`, `(ev)`, `(id)` y `(ev, id)` con la función
+      declarada plana; y en un `@foreach` de N filas cada handler recibe el valor de su fila,
+      disparando en orden no secuencial.
+- [ ] **20. Criterios §6.18, §6.19, §6.20 y §6.20.b.**
+      §6.18 —el orden de los argumentos es el escrito— con `@del(item.id, $event)` llegando como
+      `(id, ev)`: es lo que impide que alguien meta una convención de reordenamiento implícito.
+      §6.19 —la invocación ocurre **en el disparo**, no al suscribir— con un contador dentro de
+      `del` que sigue a cero tras montar y sube una vez por click; es el criterio que separa
+      esta regla de la forma factory retirada, que hacía lo contrario. §6.20 —la distinción por
+      AST— sobre el **texto emitido**, más el caso `FUD0291`. §6.20.b —`$event` fuera de un
+      event binding no se sustituye—, que es lo que mantiene honesta la reserva `$`.
 - [ ] **21. §6.7 y §6.14 siguen verdes con enganche.**
       Los dos criterios que la tanda anterior cerró vuelven a comprobarse ahora que `s()` hace
       trabajo: `c()` y `h()` producen el mismo listener funcional difiriendo solo en cómo
@@ -313,10 +326,13 @@ módulos, que el `SemanticModel` de un fichero no tiene).
 
 ## Enlaces
 
-- Criterios de aceptación cubiertos: §6.13, §6.15, §6.16, §6.17, §6.19, §6.20, §6.23, §6.24 y
-  la mitad de §6.22 que no es de página, de
+- Criterios de aceptación cubiertos: §6.13, §6.15–§6.20, §6.20.b, §6.23, §6.24 y la mitad de
+  §6.22 que no es de página, de
   [SDD-15](./SDD-15-emit.md#6-criterios-de-aceptación). Se revalidan §6.7 y §6.14.
-- Criterios que esta tanda **deja abiertos** y por qué: §6.18 (no medible de forma determinista;
-  se sustituye por la forma emitida, tarea 20), §6.21 y la otra mitad de §6.22 (`fud-bus` es de
-  página), §6.1–§6.6 y §6.25–§6.27 (mapas de página), §6.28 (necesita SDD-17 instalado).
+  El antiguo §6.18 —conteo de frames, no medible de forma determinista con `new Error().stack`—
+  desapareció al reescribirse §4.5: con la forma factory retirada ya no hay dos formas cuyo
+  coste comparar, y el criterio 18 es ahora el orden de los argumentos.
+- Criterios que esta tanda **deja abiertos** y por qué: §6.21 y la otra mitad de §6.22
+  (`fud-bus` es de página), §6.1–§6.6 y §6.25–§6.27 (mapas de página), §6.28 (necesita SDD-17
+  instalado).
 - Tanda anterior: [`SDD-15-Task-fudic-element-y-emit-de-cliente.md`](./SDD-15-Task-fudic-element-y-emit-de-cliente.md).

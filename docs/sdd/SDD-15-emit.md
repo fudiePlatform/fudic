@@ -30,7 +30,10 @@
 > colgadas las N−1 filas anteriores. Los eventos delante escribirían un parche que SDD-30 tira.
 > **Depende de:** 00, 05–14, 16.
 > **Rango de diagnósticos:** `FUD0290`–`FUD0319`.
-> **Decisiones de gramática:** 22, 26 (revisada: 26.a/26.b), 27, 28 (+28.a–d), 29, 67–85.
+> **Decisiones de gramática:** 22, 27, 28 (+28.a–d), 29, 67–85, **96–98** (event bindings).
+> La 26 —y con ella la forma *factory* que §4.5 derivaba de ella— queda **revisada por la 96**
+> el 2026-08-06: un event binding es una invocación con `$event` y datos, y el handler se
+> declara plano.
 >
 > **Refunde, sin pérdida, cuatro documentos previos** (ya eliminados; su contenido vive
 > aquí en su totalidad):
@@ -512,10 +515,11 @@ participa** en hidratación dirigida — el compilador no lo reconoce como emisi
 verificado: emisor y suscriptor son **hermanos**, no padre/hijo. Un `CustomEvent` que
 burbujea desde el emisor sube por **sus** ancestros (`emisor → #app → body → document`) y
 **nunca entra** en el suscriptor. Un listener sobre el host del suscriptor no dispararía
-jamás. Por tanto `bus:carrito="@onCarrito(ev)"` **desugariza en `s()`** a:
+jamás. Por tanto `bus:carrito="@onCarrito($event)"` —la misma regla de §4.5: una invocación,
+con `$event` y los datos que se le escriban— **desugariza en `s()`** a:
 
 ```js
-$d.push($dom.bus($host, 'carrito', ev => onCarrito.call($host, ev)));
+$d.push($dom.bus($host, 'carrito', ($event) => onCarrito.call($host, $event)));
 ```
 
 - El listener va sobre **`document`** (ancestro común garantizado de la página), no sobre el
@@ -540,97 +544,99 @@ del emisor. `bus:` es prefijo de binding reservado, hermano de `class:`/`style:`
 > Host-vs-document es un hecho de página, no de componente; inferirlo acoplaría la
 > compilación de un componente a la composición de la página.
 
-### 4.5. Event bindings: las dos formas
+### 4.5. Event bindings: una invocación, con `$event` y datos
 
-Un handler casi siempre necesita **dos cosas**: el evento nativo (`e`) y algún **valor de
-contexto** del punto de uso (el `item.id` de la fila de un `@foreach`, un índice). El evento
-lo aporta el DOM en el disparo; el contexto solo existe donde se escribe el binding.
+> **Reescrita el 2026-08-06 por decisión de Pedro** (decisiones de gramática 96–98, que revisan
+> la 26). La versión anterior derivaba de la 26 una segunda forma —*factory*: una
+> `CallExpression` invocada **al suscribir**, cuyo retorno era el listener— para ahorrar un frame
+> por disparo, y a cambio obligaba a declarar el handler curried:
+> `const del = (id) => (e) => {…}`. **Se retira.** El coste estaba en el sitio equivocado: el
+> frame se mide con un profiler, la sintaxis la escribe el developer en cada línea. Y no existe:
+> el patrón curried se ve como idioma de usuario en React, pero ningún framework lo hace su
+> sintaxis de template. Los que atacan el mismo problema lo resuelven sin currificar —Angular y
+> Vue con `$event` + argumentos, Solid con una tupla `[handler, data]`—.
 
-La forma universal de unir ambos es una lambda que cierra sobre el contexto. Es correcta y
-la entiende todo el mundo, pero introduce un **frame de trampolín** por disparo: la arrow no
-hace trabajo útil, solo reordena argumentos. A escala de un click suelto es irrelevante; en
-un `@foreach` de miles de filas, en eventos de ráfaga (`input`, `pointermove`), o con un
-handler `async` (cada trampolín arrastra su microtask), el frame de más se paga siempre.
+**La regla, y es una sola:** lo que va a la derecha del `=` es una **invocación**, y se evalúa
+**en el disparo**. `$event` es la variable que el compilador inyecta con el evento nativo; los
+demás argumentos son datos del punto de uso. El handler se declara **plano**.
 
-Conviven **dos formas**, distinguidas por la forma sintáctica del valor — **sin sigilo
-nuevo, sin ampliar la gramática**. La complejidad es **opt-in**: el default es plano y
-obvio; la forma afilada existe para quien la pide.
-
-**Forma lambda — 2 frames (default ergonómico).**
-
-```
-@click="@(e => del(e, item.id))"
+```razor
+@click="@del($event, item.id)"
 ```
 ```js
-// usuario, en @code { @client }
-function del(e, id){ /* usa e (nativo) e id (contexto) */ }
+// usuario, en @code { @client } — una función normal
+function del(ev, id) { ev.stopPropagation(); /* … */ }
 
 // emitido en s()
-$d.push($dom.event($n2, 'click', e => del(e, item.id)));
+$d.push($dom.event($n2, 'click', ($event) => del($event, item.id)));
 ```
 
-El valor **es** el listener; se suscribe tal cual. El contexto viaja por closure léxica; el
-evento nativo llega como parámetro. Coste: dos frames por disparo.
+Los cuatro casos que un developer se encuentra salen de la misma regla, sin aprender nada más:
 
-**Forma factory — 1 frame (opt-in, afilada).**
+| Quiere | Escribe | Declara |
+|---|---|---|
+| nada | `@click="@del()"` | `function del() {…}` |
+| solo el evento | `@click="@del($event)"` | `function del(ev) {…}` |
+| solo datos | `@click="@del(item.id)"` | `function del(id) {…}` |
+| evento y datos | `@click="@del($event, item.id)"` | `function del(ev, id) {…}` |
 
-```
-@click="@del(item.id)"
+El orden de los argumentos lo elige quien escribe el binding: `@del(item.id, $event)` es igual de
+válido y llega como `(id, ev)`. No hay convención que memorizar porque no hay reordenamiento
+implícito — el emit copia la lista tal cual.
+
+**`$event` es del compilador** (decisión 97). Cae dentro de la reserva del prefijo `$` (§4.7):
+el usuario no puede declarar identificadores que empiecen por `$`, así que no hay colisión
+posible, y la sustitución es literal —el parámetro de la arrow emitida se llama `$event`—. Fuera
+de la lista de argumentos de un event binding no significa nada especial.
+
+**La referencia desnuda sigue valiendo** (decisión 98):
+
+```razor
+@click="@toggle"
 ```
 ```js
-// usuario, declarado curried
-const del = (id) => (e) => { /* usa e (nativo) e id (ya horneado) */ };
-
-// emitido en s()
-$d.push($dom.event($n2, 'click', del(item.id)));
+$d.push($dom.event($n2, 'click', toggle));   // sin envoltorio: un solo frame
 ```
 
-El valor **no es** el listener: lo **produce**. La llamada se evalúa **una vez al
-suscribir**, hornea `item.id` en la closure y devuelve `(e) => {...}`, que es lo que el DOM
-invoca directamente: **un solo frame**. El evento nativo no se pierde — entra por la segunda
-invocación; el contexto entró por la primera.
+Es el caso «no necesito datos del punto de uso», es lo que ya escribe `fixtures/app-button.fud`,
+y es la única forma de un frame — pero **no cuesta nada al que la escribe**, que es la diferencia
+con la factory retirada. Con paréntesis (`@toggle()`) es una invocación y entra en la regla de
+arriba, igual que en Angular.
 
-**Regla de distinción (decisión 26 revisada).** Se decide por el **tipo de nodo AST** del
-valor, tal como lo produce Oxc. No hay heurística: el compilador no interpreta la semántica
-del fragmento (es opaco), solo mira la forma del nodo raíz.
+**Regla de distinción, por tipo de nodo AST** (lo que Oxc devuelve para el valor):
 
-| Nodo AST del valor | Semántica | Emitido en `s()` | Frames/disparo |
+| Nodo AST del valor | Semántica | Emitido en `s()` | Frames |
 |---|---|---|---|
 | `Identifier` (`@click="@toggle"`) | **es** el listener | `$dom.event(n,'click',toggle)` | 1 |
-| `ArrowFunctionExpression` / `FunctionExpression` | **es** el listener | `$dom.event(n,'click', e => …)` | 2 (si reenvía) |
-| `CallExpression` (`@click="@del(item.id)"`) | **produce** el listener | `$dom.event(n,'click', del(item.id))` | 1 |
+| `CallExpression` (`@click="@del($event,x)"`) | invocación en el disparo | `$dom.event(n,'click', ($event) => del($event,x))` | 2 |
+| `ArrowFunctionExpression` / `FunctionExpression` | **es** el listener | `$dom.event(n,'click', e => …)` | 2 |
+| cualquier otra forma | — | **`FUD0291`** | — |
 
-- **26.a — `Identifier` y `Arrow`/`Function` → suscripción directa.** El valor es el
-  listener; se pasa tal cual.
-- **26.b — `CallExpression` → invocación en suscripción.** El valor se invoca en `s()` y su
-  retorno se suscribe.
-- Cualquier otra forma de nodo → **`FUD0291`** (valor de event binding no suscribible),
-  consistente con la 26 original.
+La lambda explícita (`@click="@(e => del(e, item.id))"`) **no se retira**: es JS válido en el
+punto donde el compilador pega el binding y quitarla sería prohibir algo que funciona. Deja de
+ser necesaria, que es distinto: `@del($event, item.id)` dice lo mismo con menos ceremonia.
 
-Esto **cierra** la decisión 26 original ("si evalúa a función se llama con `(event)`; si
-evalúa a otra cosa, error"): sigue siendo cierto que lo suscrito debe ser función; lo que se
-añade es que un `CallExpression` se resuelve una vez al suscribir para obtenerla.
+**Nadie declara curried, y el compilador no lo premia.** Una `CallExpression` ya no se evalúa al
+suscribir, luego una función que devuelve una función se comporta como se comportaría en JS
+normal: se llama en el disparo y su retorno se descarta. Con eso desaparece el error más
+probable de la sintaxis anterior —escribir `@del(item.id)` esperando que se llame en el click,
+que era precisamente lo que **no** hacía— y desaparece también el contrato de usuario que el
+compilador no podía validar.
 
-**Por qué no hay una tercera forma (plano + 1 frame).** No se pueden tener a la vez usuario
-plano, 1 frame y sin reescribir el cuerpo del handler. Si el usuario escribe `del(e, id)`
-plano, el frame que reordena `(e)` → `(e, id)` es inevitable en el disparo; envolverlo en una
-IIFE curried hornea el contexto al suscribir pero **sigue dejando dos frames**. El único modo
-de 1 frame real es que el contexto esté horneado **dentro** del cuerpo que el DOM llama sin
-reordenar, y eso lo da únicamente la declaración curried del usuario. Por tanto: **1 frame ⇒
-el usuario declara curried.** No se reescribe el cuerpo (rompería la correspondencia 1:1
-`.fud`↔emitido y fallaría si el mismo handler se usa con contextos distintos).
+**Sobre el frame.** Un event binding con datos cuesta dos frames por disparo: la arrow emitida no
+hace trabajo útil, solo reordena. Es medible en eventos de ráfaga (`input`, `pointermove`) y en
+un `@foreach` de miles de filas. Se acepta: la alternativa era una sintaxis que el developer paga
+siempre, y la mejora que de verdad importa —no crear una closure por fila— es del render de
+bloque ([SDD-30](./SDD-30-renders-de-bloque.md)), donde el handler vive en el `s()` de la fila y
+se registra una vez por instancia, no por disparo.
 
-**Contrato del usuario (forma factory), que el compilador no valida:** si el binding es
-`@click="@f(ctx)"`, `f` **debe** devolver el listener. Si no devuelve función, el fallo es en
-**runtime**; validarlo requeriría análisis de flujo que Fudic no hace. La forma lambda no
-tiene contrato adicional: es el default seguro.
+**Interacción con el resto de la sintaxis.** Decisión 27 (sin modificadores de evento) intacta:
+`preventDefault`/`stopPropagation` se llaman en el cuerpo, y ahora el developer tiene `$event`
+para hacerlo sin ceremonia. Decisión 28 (cualquier nombre de evento) intacta: la regla vale para
+custom events. Decisión 29 (`@` distingue por posición) intacta. En `@foreach`, la variable de
+iteración está en scope donde el compilador pega el binding, y el argumento `item.id` se evalúa
+en el disparo dentro de la closure de la fila.
 
-**Interacción con el resto de la sintaxis.** Decisión 27 (sin modificadores de evento)
-intacta: `preventDefault`/`stopPropagation` se llaman en el cuerpo. Decisión 28 (cualquier
-nombre de evento) intacta: ambas formas valen para custom events. Decisión 29 (`@` distingue
-por posición) intacta. En `@foreach`, la variable de iteración está en scope donde el
-compilador pega el binding (mecánica en el SDD de `@foreach`); en forma factory, ese
-`item.id` es el argumento de la `CallExpression` emitida en el `s()` de la fila.
 
 ### 4.6. Forma del factory emitido
 
@@ -912,19 +918,25 @@ que falta usar un nodo.
 
 **Eventos:**
 
-15. **Evento nativo presente en ambas formas.** Lambda y factory: en el disparo, `e.type` y
-    `e.isTrusted` son los del evento real; `preventDefault()`/`stopPropagation()` surten
-    efecto.
-16. **Contexto correcto en ambas formas.** El valor de contexto que llega al cuerpo es el del
-    punto de uso.
+15. **`$event` es el evento nativo.** En el disparo de `@click="@del($event, x)"`, lo que llega
+    como primer argumento tiene el `type` y el `isTrusted` del evento real, y
+    `preventDefault()`/`stopPropagation()` sobre él surten efecto.
+16. **Los cuatro casos, con handler plano.** `@del()`, `@del($event)`, `@del(item.id)` y
+    `@del($event, item.id)` llegan al cuerpo como `()`, `(ev)`, `(id)` y `(ev, id)`, con la
+    función declarada **plana** en los cuatro. Ningún caso pide currificar.
 17. **Captura por iteración sin bug de captura compartida.** En un `@foreach` de N filas cada
     handler recibe el valor de **su** fila, comprobado disparando en orden no secuencial.
-18. **Conteo de frames.** Lambda: 2 frames por disparo. Factory: 1. Medible con
-    `new Error().stack` dentro del cuerpo o en el panel Performance.
-19. **Una sola invocación de la factory por suscripción.** `del(item.id)` se evalúa una vez
-    en `s()`, no por disparo. Verificable con un contador en el nivel externo.
-20. **Distinción por AST.** `Identifier` y `Arrow`/`Function` emiten suscripción directa;
-    `CallExpression` emite invocación-en-`s()`. Cualquier otro nodo → `FUD0291`.
+18. **El orden de los argumentos es el escrito.** `@del(item.id, $event)` llega como
+    `(id, ev)`: el emit copia la lista tal cual y no reordena.
+19. **La invocación ocurre en el disparo, no al suscribir.** Un contador dentro de `del` no se
+    incrementa al montar el componente y sí una vez por click. Es el criterio que distingue esta
+    regla de la forma *factory* retirada, que hacía exactamente lo contrario.
+20. **Distinción por AST.** `Identifier` → suscripción directa (un frame, sin envoltorio);
+    `CallExpression` → arrow emitida que invoca en el disparo; `Arrow`/`Function` → suscripción
+    directa. Cualquier otro nodo → `FUD0291`.
+20.b. **`$event` fuera de un event binding no se sustituye.** Es un identificador libre como
+    cualquier otro, y como empieza por `$` el usuario no puede declararlo (§4.7): no hay
+    colisión posible.
 
 **Bus:**
 
