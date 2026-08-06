@@ -2,7 +2,7 @@
 
 > **BUG:** [BUG-13 — Un comentario Razor dentro de `@code` borra todo el bloque](./BUG-13-comentario-razor-en-code.md)
 > **Paquetes:** `@fudic/compiler` · **Rama:** `fix/bug-13-comentario-en-code`
-> **Progreso:** 7 / 9
+> **Progreso:** 9 / 9
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Las rutas son relativas a la raíz del repo.
@@ -59,11 +59,11 @@ tareas posteriores. Las rutas son relativas a la raíz del repo.
 
 ## Fase 3 — Cierre (2)
 
-- [ ] **8. Los goldens no se mueven y los comentarios JS siguen bien.**
+- [x] **8. Los goldens no se mueven y los comentarios JS siguen bien.**
       Ningún fixture tiene comentarios en `@code`, y el troceado no se ha tocado, así que los
       cuatro goldens deben salir **byte a byte idénticos** (§7.7). Y el test de §7.6: `//` y
       `/* */` en las tres posiciones, sin diagnóstico y sin perder nada.
-- [ ] **9. Verde y cobertura.**
+- [x] **9. Verde y cobertura.**
       `pnpm typecheck`, `pnpm test` y `pnpm build`. `code.ts`, `balancer.ts` y `oxc-code.ts`
       no bajan de ramas; lo nuevo al 100 %. Comprobar además §7.8: un `@*` en el markup sigue
       funcionando.
