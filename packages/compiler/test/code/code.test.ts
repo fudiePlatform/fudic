@@ -248,6 +248,82 @@ describe('parseCodeBlock — degradations (§6.9)', () => {
   });
 });
 
+/**
+ * BUG-13 — inside `@code` you comment in JavaScript.
+ *
+ * A Razor comment buys one thing: commenting without publishing. In markup and in CSS that
+ * is real, because the native comment does reach the browser; in JS the bundler already
+ * drops `//`. So `@* … *@` here is FUD0114 (decision 35.a) — and, either way, it may never
+ * decide where the block ends.
+ */
+describe('parseCodeBlock — Razor comments are not JavaScript (BUG-13)', () => {
+  const CLIENT = '@client { const count = signal(0); }';
+
+  const positions: ReadonlyArray<readonly [string, string]> = [
+    ['before @client', `@code { @* c *@ ${CLIENT} }`],
+    ['inside @client', '@code { @client { @* c *@ const count = signal(0); } }'],
+    ['after @client', `@code { ${CLIENT} @* c *@ }`],
+  ];
+
+  for (const [where, source] of positions) {
+    it(`reports exactly one FUD0114, spanning the whole comment — ${where} (§7.1, §7.2)`, () => {
+      const { diagnostics, source: s } = run(source);
+      expect(codes(diagnostics)).toEqual(['FUD0114']);
+      // From the `@` to the `@`: the diagnostic covers what has to go, nothing more.
+      expect(s.slice(diagnostics[0]!.span.start, diagnostics[0]!.span.end)).toBe('@* c *@');
+    });
+  }
+
+  it('is not fooled by braces or an @client written inside the comment (§7.4)', () => {
+    const source = `@code { @* deja una { abierta, un } suelto y un @client { *@ ${CLIENT} }<p>after</p>`;
+    const { node, diagnostics, lexer } = run(source);
+
+    expect(codes(diagnostics)).toEqual(['FUD0114']); // the comment, and nothing else
+    // The block closed at ITS `}`, so the markup after it is still there to be parsed.
+    expect(source[node.span.end - 1]).toBe('}');
+    expect(source.slice(node.span.end)).toBe('<p>after</p>');
+    expect(lexer.offset).toBe(node.span.end);
+    // One `@client`: the one in the comment is text, not a marker. The comment itself
+    // stays where the author wrote it, inside the neutral chunk (§4).
+    expect(types(node.parts)).toEqual(['neutral-js', 'client-region']);
+    expect(text(source, node.parts[0]!.js)).toBe('@* deja una { abierta, un } suelto y un @client { *@');
+  });
+
+  it('never hangs or throws on an unterminated Razor comment (§7.5)', () => {
+    const source = '@code { @* sin cerrar\n  const a = 1;\n';
+    const { node, diagnostics } = run(source);
+
+    expect(codes(diagnostics)).toContain('FUD0114');
+    // The group ran out of source, which is FUD0002 — the comment adds no second word for it.
+    expect(codes(diagnostics)).toContain('FUD0002');
+    for (const d of diagnostics) {
+      expect(d.span.start).toBeGreaterThanOrEqual(0);
+      expect(d.span.end).toBeLessThanOrEqual(source.length);
+    }
+    expect(node.span.end).toBe(source.length);
+  });
+
+  it('leaves JS comments alone, in the three positions (§7.6)', () => {
+    const source =
+      '@code { // neutral\n  /* also neutral */\n  type T = 1;\n' +
+      '  @server { // in server\n    const s = 1; }\n' +
+      '  @client { /* in client */ const count = signal(0); } }';
+    const { node, diagnostics } = run(source);
+
+    expect(diagnostics).toEqual([]);
+    expect(types(node.parts)).toEqual(['neutral-js', 'server-region', 'client-region']);
+  });
+
+  it('does not invent the region for the callers that did not ask for it (§7.8)', () => {
+    // SDD-02's own contract is untouched: only `@code` opts in, so `@(a @* b)` still
+    // scans as it did — a bare `@`, an operator, no opaque region.
+    const source = '(a @* b)';
+    const group = scanParens(source, 0).value;
+    expect(group.regions).toEqual([]);
+    expect(group.closed).toBe(true);
+  });
+});
+
 describe('parseCodeBlock — integration with parseDocument', () => {
   const source = readFileSync(
     fileURLToPath(new URL('../../fixtures/home.fud', import.meta.url)),

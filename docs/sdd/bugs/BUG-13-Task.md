@@ -2,7 +2,7 @@
 
 > **BUG:** [BUG-13 — Un comentario Razor dentro de `@code` borra todo el bloque](./BUG-13-comentario-razor-en-code.md)
 > **Paquetes:** `@fudic/compiler` · **Rama:** `fix/bug-13-comentario-en-code`
-> **Progreso:** 3 / 9
+> **Progreso:** 5 / 9
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Las rutas son relativas a la raíz del repo.
@@ -31,14 +31,14 @@ tareas posteriores. Las rutas son relativas a la raíz del repo.
 
 ## Fase 1 — El comentario deja de descuadrar el bloque (2)
 
-- [ ] **4. El balanceador aprende `razor-comment`, opt-in.**
+- [x] **4. El balanceador aprende `razor-comment`, opt-in.**
       `packages/compiler/src/balancer/balancer.ts`: `LexRegionKind` gana `'razor-comment'` y
       `scanBalanced`/`scanBraces` un parámetro opcional `{ razorComments?: boolean }`. Con él
       activo, `@*` abre región opaca hasta el primer `*@` (decisión 36) y sus llaves dejan de
       contar. Sin él, byte a byte lo de hoy: los demás llamantes de SDD-02 no se enteran
       (§4, §7.8). `parseCodeBlock` lo activa en los dos `scanBraces` que hace — el del bloque
       y el de cada región.
-- [ ] **5. `FUD0114` por cada comentario del bloque.**
+- [x] **5. `FUD0114` por cada comentario del bloque.**
       `packages/compiler/src/code/code.ts`: recorrer las regiones `razor-comment` que el
       balanceador ya devuelve y emitir un `FUD0114` por cada una, con el span completo del
       comentario. Sale gratis para las tres posiciones: el escaneo del cuerpo cubre también

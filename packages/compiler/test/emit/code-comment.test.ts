@@ -1,20 +1,22 @@
 /**
- * BUG-13 — a Razor comment inside `@code` wipes the whole block.
+ * BUG-13, the emit half — a `@code` that does not parse is not a `@code` that was empty.
  *
- * `@* … *@` is Fudic syntax, not JavaScript, so it must never reach the Oxc batch. It did:
- * the neutral chunk was emitted as one continuous span, comment included, Oxc rejected the
- * batch — which is ONE per file — and every part fell with it: props, signals and the
- * `@client` body. Silently, because `extractCode` dropped the batch diagnostics.
+ * `extractCode` used to call `batch.parse()` and drop `result.diagnostics` on the floor. A
+ * failed parse then looked exactly like a component with no code at all, so the emit wrote
+ * a syntactically valid module referencing identifiers nobody declares, and the failure
+ * surfaced as a `ReferenceError` in the prerender, in a file that never mentioned the cause.
  *
- * The three positions are asserted separately even though the cause is shared: the batch is
- * single, so a fix that only handles the neutral zone would still lose a comment written
- * inside `@client`.
+ * The Razor comment that started all this is now FUD0114 at parse time (see
+ * `test/code/code.test.ts`); what is asserted here is the other half of the decision: the
+ * JavaScript comment that replaces it loses nothing.
  */
 import { describe, expect, it } from 'vitest';
 import {
   resolveComponents,
   emitComponentModule,
   emitComponentClientModule,
+  emitComponentModuleMapped,
+  emitComponentClientModuleMapped,
 } from '../../src/emit/index.js';
 import { extractCode } from '../../src/emit/oxc-code.js';
 import type { ComponentDocument } from '../../src/document/index.js';
@@ -33,7 +35,7 @@ const componentDoc = (source: string): ComponentDocument => {
   return doc;
 };
 
-/** The SSR module and the client chunk of one in-memory component, the way the plugin builds them. */
+/** The SSR module and the client chunk of one in-memory component, as the plugin builds them. */
 function emitBoth(source: string): { module: string; chunk: string } {
   const io = memoryIo({
     '/page.fud':
@@ -51,53 +53,33 @@ function emitBoth(source: string): { module: string; chunk: string } {
 
 const CLIENT = '  @client {\n    const count = signal(0);\n  }';
 
-const positions: ReadonlyArray<readonly [string, string]> = [
-  ['before @client', `  @* c *@\n${CLIENT}`],
-  ['inside @client', '  @client {\n    @* c *@\n    const count = signal(0);\n  }'],
-  ['after @client', `${CLIENT}\n  @* c *@`],
-];
-
-describe('BUG-13 — a Razor comment in @code (§6.1, §6.2)', () => {
-  const clean = emitBoth(component(CLIENT));
-
-  it('emits the inert signal and the client signal with no comment at all (the baseline)', () => {
-    expect(clean.module).toContain('const count = { peek: () => (0) };');
-    expect(clean.chunk).toContain('const count = signal(0);');
-  });
+describe('BUG-13 — a JS comment in @code costs nothing (§7.6)', () => {
+  const positions: ReadonlyArray<readonly [string, string]> = [
+    ['in the neutral zone', `  // c\n  /* c */\n${CLIENT}`],
+    ['inside @client', '  @client {\n    // c\n    /* c */\n    const count = signal(0);\n  }'],
+    ['after @client', `${CLIENT}\n  // c`],
+  ];
 
   for (const [where, code] of positions) {
-    it(`survives a comment ${where}`, () => {
+    it(`keeps the inert signal and the client signal — comment ${where}`, () => {
       const out = emitBoth(component(code));
       expect(out.module).toContain('const count = { peek: () => (0) };');
       expect(out.chunk).toContain('const count = signal(0);');
     });
   }
 
-  it('keeps props<T>() too — the batch is one, so it falls whole or not at all (§6.5)', () => {
+  it('keeps props<T>() too — the batch is one, so it stands or falls whole (§7.6)', () => {
     const source = component(
-      '  @* c *@\n' +
-        '  const { label } = props<{ label: string }>();\n' +
-        `${CLIENT}`,
+      '  // c\n  const { label } = props<{ label: string }>();\n' + `${CLIENT}`,
     );
     const out = emitBoth(source);
     expect(out.module).toContain('const { label } = props ?? {};');
     expect(out.module).toContain('const count = { peek: () => (0) };');
     expect(out.chunk).toContain('label');
   });
-
-  it('is not fooled by braces or an @client written INSIDE the comment (§6.4)', () => {
-    const source = component(
-      '  @* deja una { abierta, un } suelto y un @client { que no lo es *@\n' + `${CLIENT}`,
-    );
-    const out = emitBoth(source);
-    expect(out.module).toContain('const count = { peek: () => (0) };');
-    expect(out.chunk).toContain('const count = signal(0);');
-    // The comment is not a region: exactly one `@client` was found, the real one.
-    expect(out.chunk.match(/const count = signal\(0\);/gu)).toHaveLength(1);
-  });
 });
 
-describe('BUG-13 — a failed parse is not an empty parse (§6.3)', () => {
+describe('BUG-13 — a failed parse is not an empty parse (§7.3)', () => {
   it('reports a diagnostic, with its span inside the block, for JS that is really broken', () => {
     const source = component('  const = ;');
     const doc = componentDoc(source);
@@ -111,6 +93,25 @@ describe('BUG-13 — a failed parse is not an empty parse (§6.3)', () => {
   });
 
   it('says nothing when the JS is fine — empty means "there was no code"', () => {
-    expect(extractCode(component(CLIENT), componentDoc(component(CLIENT))).diagnostics).toEqual([]);
+    const source = component(CLIENT);
+    expect(extractCode(source, componentDoc(source)).diagnostics).toEqual([]);
+  });
+
+  it('says nothing for a component with no @code at all', () => {
+    const source = `<${TAG}>\n  <template shadowrootmode="open"><span></span></template>\n</${TAG}>\n`;
+    expect(extractCode(source, componentDoc(source)).diagnostics).toEqual([]);
+  });
+
+  it('carries the diagnostics out of the emit, so a build can stop on them (§7.3)', () => {
+    const io = memoryIo({
+      '/page.fud':
+        `<link rel="component" href="./${TAG}.fud">\n` +
+        `<html><head></head><body><${TAG}></${TAG}></body></html>\n`,
+      [`/${TAG}.fud`]: component('  const = ;'),
+    });
+    const graph = resolveComponents('/page.fud', io);
+    const comp = graph.components.get(TAG)!;
+    expect(emitComponentModuleMapped(graph, comp).diagnostics.length).toBeGreaterThan(0);
+    expect(emitComponentClientModuleMapped(graph, comp).diagnostics.length).toBeGreaterThan(0);
   });
 });
