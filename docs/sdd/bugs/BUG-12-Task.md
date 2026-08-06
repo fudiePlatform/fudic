@@ -2,7 +2,7 @@
 
 > **BUG:** [BUG-12 — Un hijo que recibe un valor no tiene canal de actualización](./BUG-12-sin-canal-de-update.md)
 > **Paquetes:** `@fudic/core` · `@fudic/compiler` · **Rama:** `fix/bug-12-update-de-props`
-> **Progreso:** 17 / 19
+> **Progreso:** 19 / 19
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Las rutas son relativas a la raíz del repo.
@@ -158,7 +158,7 @@ en el BUG):
 
 ## Fase 5 — Cierre técnico (2)
 
-- [ ] **17. Goldens regenerados y revisados a mano.**
+- [x] **17. Goldens regenerados y revisados a mano.**
       `packages/compiler/test/emit/__golden__/{app-badge,app-card,app-button}.client.mjs`. Las
       únicas diferencias esperadas son el renombrado `$m`/`$s`, la salida de las escrituras de
       valor a `$a()` (con su `$w`) y la entrada `u`. Cualquier otra es un fallo de la Fase 2, no
@@ -166,18 +166,22 @@ en el BUG):
       el temporal `$a` de los atributos interpolados pasa a `$v` (tarea 10).
       → Regenerados ya en la Fase 2, donde nació el cambio; aquí solo se confirma que no se ha
       movido nada más.
-- [ ] **18. Regresiones y cobertura.**
+- [x] **18. Regresiones y cobertura.**
       `equivalence.test.ts` verde **sin tocarlo** (§6.8) y un `u` posterior a `r()` que no
       resucita nodos (§6.9). `@fudic/core` sigue al 100 % en las cuatro métricas; `client.ts` y
       `markup-client.ts` no bajan de ramas.
+      → `@fudic/core` 100/100/100/100. `client.ts`, `markup-client.ts` y `attrs.ts`, los tres al
+      100 en las cuatro. `writer.ts` conserva su rama sin cubrir de `appendWriter` (línea 72),
+      que ya estaba en `main` y no la toca este BUG; el getter `empty` que se le añade sí sale
+      al 100. Workspace entero: `typecheck`, `build` y 2499 tests en verde.
 
 ---
 
 ## Cierre del BUG
 
-- [ ] `pnpm typecheck`, `pnpm test` y `pnpm build` en verde.
-- [ ] El criterio §6.7 —el click del padre cambiando el texto del hijo— verde sobre DOM real.
-- [ ] Marcar BUG-12 como `Hecho` en [INDEX.md](./INDEX.md) (tabla + registro de progreso).
-- [ ] Anotar en [SDD-15-Task](../SDD-15-Task-fudic-element-y-emit-de-cliente.md) que el contrato
+- [x] `pnpm typecheck`, `pnpm test` y `pnpm build` en verde (2499 tests).
+- [x] El criterio §6.7 —el click del padre cambiando el texto del hijo— verde sobre DOM real.
+- [x] Marcar BUG-12 como `Hecho` en [INDEX.md](./INDEX.md) (tabla + registro de progreso).
+- [x] Anotar en [SDD-15-Task](../SDD-15-Task-fudic-element-y-emit-de-cliente.md) que el contrato
       del controlador cambió antes de las tareas pendientes de event bindings, y que las closures
       privadas se llaman `$m`/`$s`/`$a`.

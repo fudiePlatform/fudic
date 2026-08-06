@@ -1,6 +1,6 @@
 # BUG-12 — Un hijo que recibe un valor no tiene canal de actualización
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Corrige:** [SDD-15 — Emit](../SDD-15-emit.md) §3.7, §4.7, §7 ·
 > [props-spec](../props-spec.md) decisión 76
 > **Y de paso:** la colisión de namespace de `m`/`s` en la closure del factory (§2.5). No es un
