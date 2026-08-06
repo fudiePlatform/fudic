@@ -135,6 +135,34 @@ ficheros en **modo componente** (decisión 51), `rel="layout"` solo layouts. Un 
 no resuelve produce diagnóstico con span sobre el valor del atributo, más una code action
 de creación del fichero.
 
+#### 4.2.a. Los contextos exactos, y el que fusiona
+
+Añadido por [BUG-15](./bugs/BUG-15-clases-sin-completado.md). El servidor contesta cinco
+posiciones, y se reparten en dos grupos según lo que sabe de ellas.
+
+**Contesta solo** —una respuesta ajena ahí es ruido sobre un conjunto cerrado y local— en un
+`href`, tras `@section `, y tras **`class:`**, que es el quinto. Los nombres de clase salen del
+`<style>` de este mismo fichero, ya parseado como `StyleNode` desde SDD-09: se leen del AST, se
+ofrecen sin el punto y **no validan nada** — una clase que llega de una hoja externa se escribe
+igual y no produce diagnóstico. La lista abierta es la decisión, no una limitación.
+
+**Fusiona** tras un `<`: los componentes del workspace son una voz más junto a los tags nativos
+del servicio HTML, ordenados delante por su `sortText`. Eso vive en un **plugin aparte**
+(`createFudicTagService`, aditivo) porque en Volar la aditividad es una propiedad del plugin y
+nunca de la posición: un solo plugin no puede tapar a los demás en un `href` y apartarse en un
+`<`. Una palabra suelta fusiona con Emmet desde SDD-28 §5.3.
+
+Y lo que **no** se disputa: una palabra dentro de un tag abierto es un nombre de atributo, y la
+contesta quien sabe de HTML o la proyección. Por eso el espacio dejó de ser carácter de disparo
+(§3.2) — declarar uno excluye a todo servicio que no lo declare, así que anunciarlo dejaba a
+este servidor solo justo donde no tiene nada que decir.
+
+**Lo que viene después:** `style:` y `bus:` comparten la forma de `class:` y no su respuesta —
+los nombres de propiedad CSS son una tabla estática y los del bus son un `emit()` de otro
+fichero (decisión 28.c)—, así que cada uno es su propio trabajo. Completar el **prefijo** en un
+hueco del tag (`class:` / `style:` / `bus:` / `ref`) es la otra mitad, y toca el ancla de
+completado de BUG-11.
+
 ### 4.3. Semantic tokens
 
 El servidor emite tokens semánticos desde el AST real. Corrigen la gramática TextMate de

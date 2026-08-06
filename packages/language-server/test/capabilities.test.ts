@@ -19,7 +19,10 @@ describe('SERVER_CAPABILITIES', () => {
     expect(SERVER_CAPABILITIES.textDocumentSync).toBe(TextDocumentSyncKind.Incremental);
   });
 
-  it('declares the trigger characters of §3.2 in order', () => {
+  it('declares the trigger characters of §3.2 in order, and never the space', () => {
+    // The space is gone (BUG-15 §4.5): declaring a character excludes every service that does
+    // not declare it too, and neither HTML nor TypeScript declares this one — so announcing it
+    // left this server alone in the attribute gap, where it has nothing to say.
     expect(SERVER_CAPABILITIES.completionProvider?.triggerCharacters).toEqual([
       '@',
       '<',
@@ -27,7 +30,6 @@ describe('SERVER_CAPABILITIES', () => {
       ':',
       '"',
       '/',
-      ' ',
       '!',
       '}',
       '*',

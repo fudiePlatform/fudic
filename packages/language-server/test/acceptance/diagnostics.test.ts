@@ -216,6 +216,27 @@ describe('§6.11 — the reserved $ namespace, while typing', () => {
   });
 });
 
+describe('BUG-15 §6.12 — offering is not validating', () => {
+  it('a class no <style> declares produces no diagnostic at all', async () => {
+    const badge = await harness.open(BADGE);
+    // A class this file cannot know about and that is perfectly legitimate: one that arrives
+    // from an external stylesheet, or that an ancestor paints, or that is not written yet.
+    const source = fixtureText(BADGE).replace(
+      `class:info="@(tone === 'info')"`,
+      `class:info="@(tone === 'info')"\n      class:from-a-global-sheet="@(tone === 'info')"`,
+    );
+
+    // Not «no NEW code»: no diagnostic whatsoever over it. The list is open (§4.4), and an
+    // open list that quietly tightened some other rule would be the same bug in reverse.
+    const onTheClass = (await diagnosticsOf(badge.uri, source)).filter((diagnostic) =>
+      textAt(source, diagnostic).includes('from-a-global-sheet'),
+    );
+    expect(onTheClass).toEqual([]);
+
+    await harness.change(badge.uri, fixtureText(BADGE), ++version);
+  });
+});
+
 describe('§6.12 — tolerance', () => {
   it('survives an unclosed <div> and still answers', async () => {
     const slug = await harness.open(SLUG);

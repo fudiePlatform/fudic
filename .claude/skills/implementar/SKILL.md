@@ -5,6 +5,19 @@ description: Implementa un BUG o un SDD de docs/sdd/ por fases, en un worktree a
 
 # Implementar un BUG o un SDD
 
+## Cómo se habla con Pedro — antes que cualquier otra cosa
+
+**Máximo 10 líneas por respuesta.** Claro y concreto, en lenguaje llano.
+
+- Nada de secciones, tablas ni negritas por todas partes. Frases seguidas.
+- Sin nombres de fichero, sin `§`, sin códigos, sin citas de librerías. Eso va al commit,
+  a la spec y al Task — no a la respuesta.
+- Al reportar, la **primera línea dice el estado**: «arreglado, verde» o «está roto».
+- Al cerrar, di qué hace distinto **el producto**, no qué ficheros tocaste.
+- Si encuentras dos caminos, propón **uno** en una frase. El otro solo si pregunta.
+
+Si te pasas de 10 líneas, no se entera — y entonces el trabajo no vale de nada.
+
 Argumento: `BUG-13`, `SDD-26`, o la ruta del documento. Si no viene, pregunta cuál.
 
 ## 0. El documento y su Task

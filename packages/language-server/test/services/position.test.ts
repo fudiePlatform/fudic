@@ -11,6 +11,7 @@ import { parseFud } from '../../src/parse.js';
 import {
   attributeOf,
   attributeValueSpan,
+  classContextAt,
   directiveContextAt,
   hrefContextAt,
   isEmptyDocument,
@@ -194,6 +195,50 @@ describe('sectionContextAt', () => {
 
   it.each([['@section'], ['@sections nav'], ['@if (x) {']])('says nothing at %s', (source) => {
     expect(sectionContextAt(source, source.length)).toBeUndefined();
+  });
+});
+
+describe('classContextAt (BUG-15 §6.2)', () => {
+  it.each([
+    ['<span class:', ''],
+    ['<span class:suc', 'suc'],
+    ['<span class="badge" class:', ''],
+    ['<span\n  class="badge"\n  class:in', 'in'],
+    ['<span class:a="@(x)" class:b-c', 'b-c'],
+  ])('reads %s as the partial name %s', (prefix, expected) => {
+    const context = classContextAt(prefix, prefix.length);
+
+    // The span covers what was typed after the colon and nothing else: the prefix stays,
+    // it is what opens the context.
+    expect(context?.text).toBe(expected);
+    expect(prefix.slice(context?.span.start, context?.span.end)).toBe(expected);
+  });
+
+  it.each([
+    // Same shape, different answer: their names come from somewhere else entirely (§7).
+    ['<span style:'],
+    ['<span bus:'],
+    // The static attribute, not the directive.
+    ['<span class="'],
+    ['<span class="bad'],
+    // Somebody else's string.
+    ['<div title="class:'],
+    ["<div title='class:fo"],
+    // Markup text, not an attribute.
+    ['<p>class:'],
+    ['<p>hello class:foo'],
+    ['class:'],
+    // A name that merely ends in `class`.
+    ['<span subclass:'],
+    ['<span data-class:'],
+  ])('says nothing at %s', (source) => {
+    expect(classContextAt(source, source.length)).toBeUndefined();
+  });
+
+  it('is the context again in the tag that follows a quoted one', () => {
+    const source = '<div title="class:x"></div>\n<span class:su';
+
+    expect(classContextAt(source, source.length)?.text).toBe('su');
   });
 });
 
