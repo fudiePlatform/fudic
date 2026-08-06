@@ -127,12 +127,60 @@ export function wordContextAt(source: string, offset: number): PartialName | und
 
 /** Whether `offset` sits between a `<` and its `>`. */
 function insideOpenTag(source: string, offset: number): boolean {
+  return openTagStart(source, offset) !== undefined;
+}
+
+/** Offset of the `<` that opens the tag `offset` sits in, or `undefined` when it sits in none. */
+function openTagStart(source: string, offset: number): number | undefined {
   for (let i = offset - 1; i >= 0; i--) {
     const c = source[i];
-    if (c === '>') return false;
-    if (c === '<') return true;
+    if (c === '>') return undefined;
+    if (c === '<') return i;
   }
-  return false;
+  return undefined;
+}
+
+/** Whether the scan from `from` to `to` ends inside an unclosed `"` or `'`. */
+function insideQuotes(source: string, from: number, to: number): boolean {
+  let quote: string | undefined;
+  for (let i = from; i < to; i++) {
+    const c = source[i];
+    if (quote === undefined) {
+      if (c === '"' || c === "'") quote = c;
+    } else if (c === quote) {
+      quote = undefined;
+    }
+  }
+  return quote !== undefined;
+}
+
+/**
+ * A class name being typed after `class:` — the fifth exact context (BUG-15 §3, §4.3).
+ *
+ * The span does NOT include the `class:`, the opposite of `directiveContextAt` with its `@`:
+ * there the prefix is replaced, here it is what opens the context and it stays.
+ *
+ * Three things are not this context, and each needs its own guard because the text alone
+ * cannot tell them apart from the real one (§6.2):
+ *
+ *  - `style:` and `bus:` share the shape and not the answer — their names come from elsewhere
+ *    entirely (§7), so only the literal `class:` is recognised;
+ *  - a `class:` that is not inside an open tag is markup text, and `<p>class:x</p>` is a
+ *    sentence, not an attribute;
+ *  - a `class:` inside a quoted attribute value is somebody else's string: `title="class:x"`.
+ *
+ * `wordContextAt` is untouched. Its second guard sends every word inside an open tag to the
+ * projection, and that is still right: what was missing was not a word, it was a prefix.
+ */
+export function classContextAt(source: string, offset: number): PartialName | undefined {
+  const match = /(?:^|[^-\w])class:([-\w]*)$/.exec(source.slice(0, offset));
+  if (match === null) return undefined;
+
+  const tag = openTagStart(source, offset);
+  if (tag === undefined || insideQuotes(source, tag, offset)) return undefined;
+
+  const text = match[1] as string;
+  return { span: span(offset - text.length, offset), text };
 }
 
 /**

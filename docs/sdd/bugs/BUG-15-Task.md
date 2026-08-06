@@ -4,7 +4,7 @@
 > **Paquete:** `@fudic/language-server`
 > **Rama:** la del backlog de uso
 > **Depende de:** nada
-> **Progreso:** 0 / 10
+> **Progreso:** 10 / 10
 
 Cada tarea es un paso cerrado. Las rutas son relativas a la raíz del repo.
 
@@ -17,19 +17,19 @@ Emmet y no se distingue de no haberla escrito.
 
 ## Fase 1 — Rojo primero (1)
 
-- [ ] **1. El ejemplo del repo no ofrece sus propias clases.**
+- [x] **1. El ejemplo del repo no ofrece sus propias clases.**
       En `packages/language-server/test/acceptance/completion.test.ts`, pedir completado en
       `class:|` sobre `examples/basic/components/app-badge.fud` y afirmar `badge`, `success`,
       `info`. **Verlo fallar hoy**: hoy contesta Emmet, o nada (§6.1).
 
 ## Fase 2 — Los nombres, desde el AST (2)
 
-- [ ] **2. `styleClassNames`.**
+- [x] **2. `styleClassNames`.**
       `packages/language-server/src/services/classes.ts` (nuevo). Recorre `document.head` y el
       árbol del `<template>`, toma el hijo `style-content` de cada `<style>` y escanea **solo**
       las partes `CssText`: nada de `source.slice(...)` teniendo el nodo delante (§4.1). Nombres
       sin punto, deduplicados, en orden de aparición.
-- [ ] **3. El escáner de preludios.**
+- [x] **3. El escáner de preludios.**
       La regla única de §4.2: un `.nombre` cuenta solo entre el principio del cuerpo / `{` / `}` /
       `;` y el siguiente `{`. Con ella caen solos los decimales, los strings y los `url(...)`.
       Más: un `.` seguido de dígito no abre nada, los comentarios CSS se saltan, y un `.ident`
@@ -37,12 +37,12 @@ Emmet y no se distingue de no haberla escrito.
 
 ## Fase 3 — El quinto contexto (2)
 
-- [ ] **4. `classContextAt`.**
+- [x] **4. `classContextAt`.**
       `packages/language-server/src/services/position.ts`: el `PartialName` tras `class:`, con el
       prefijo **fuera** del span — se queda, es lo que abre el contexto (§3). No reconoce
       `style:`, ni un `class:` dentro de un valor entrecomillado, ni uno en texto de markup
       (§6.2). `wordContextAt` y su guarda de `insideOpenTag` no se tocan.
-- [ ] **5. La rama en `completions()`.**
+- [x] **5. La rama en `completions()`.**
       `packages/language-server/src/services/plugin.ts`: contexto exacto, contesta solo, antes de
       Emmet — y **solo si tiene algo**, calcado de la condición que la rama de `@` ya usa
       (§4.3, §6.10). `:` ya es trigger character (`capabilities.ts`), así que no se toca.
@@ -50,10 +50,10 @@ Emmet y no se distingue de no haberla escrito.
 
 ## Fase 4 — Lo que no se puede romper (2)
 
-- [ ] **6. Los otros cuatro contextos, intactos.**
+- [x] **6. Los otros cuatro contextos, intactos.**
       `href`, `@section `, `<tag` y `@directiva` contestan lo mismo, y una palabra suelta sigue
       fusionando con Emmet en vez de reemplazarlo (§6.11).
-- [ ] **7. Ofrecer no es validar.**
+- [x] **7. Ofrecer no es validar.**
       Una clase que no está en ningún `<style>` se queda escrita y **no** produce diagnóstico:
       ni uno nuevo, ni uno de los que ya existen (§4.4, §6.12).
 
@@ -62,26 +62,39 @@ Emmet y no se distingue de no haberla escrito.
 Estas tres salen de §2.3 y §2.4, y **todas se piden con el `context` que manda un editor**: sin
 él ninguna falla contra el código de hoy, que es exactamente cómo se colaron.
 
-- [ ] **8. Rojo primero, con el contexto puesto.**
+- [x] **8. Rojo primero, con el contexto puesto.**
       En `packages/language-server/test/acceptance/completion.test.ts`, pedir completado en
       `<div rol|>` y en `<app-badge |>` con `context: { triggerKind: 2, triggerCharacter: ' ' }`.
       **Verlo devolver cero ítems hoy** (§6.13, §6.14).
-- [ ] **9. Fuera el espacio de los caracteres de disparo.**
+      *Medido: los dos devuelven `[]`.* Los criterios quedan como peticiones **invocadas**: el
+      arreglo de §4.5 consiste en que esa petición deje de emitirse, no en que responda — con el
+      espacio fuera de la lista, Volar también salta a este plugin, así que «verde en 8» solo es
+      alcanzable preguntando como pregunta el editor **después** del arreglo.
+- [x] **9. Fuera el espacio de los caracteres de disparo.**
       `packages/language-server/src/capabilities.ts`: sale `' '` de
       `COMPLETION_TRIGGER_CHARACTERS`; el `@`, el `<`, el `:` y los de Emmet se quedan. Es un
       cambio de contrato con el cliente y está en §3 por eso (§4.5, §6.15). Verde en 8.
-- [ ] **10. La rama de tag fusiona.**
+- [x] **10. La rama de tag fusiona.**
       `packages/language-server/src/services/plugin.ts`: `tagContextAt` deja de contestar con un
       `return` que apaga al servicio HTML — sus ítems son una voz más, ordenados delante por
       `sortText`. Los contextos exactos (`href`, `@section `, `class:`) **siguen** siendo
       exclusivos (§4.6, §6.16, §6.17).
+      *Quitar el `return` no basta y se midió: `<di` seguía sin un solo tag nativo.* Quien apaga
+      al servicio HTML es `mainCompletionUri`, y la aditividad que lo evita es una propiedad
+      **del plugin**, nunca de la posición. La rama se mueve a `createFudicTagService`, un
+      segundo plugin con `isAdditionalCompletion` en la instancia; el principal conserva los tres
+      contextos exclusivos. Cuenta en `stats` como `tagCompletion`: es la misma petición
+      contestada por una segunda voz, no una petición más.
 
 ---
 
 ## Cierre del BUG
 
-- [ ] `pnpm typecheck` y `pnpm test` en verde en `@fudic/language-server`.
-- [ ] `language-server` sigue al **100 %** en las cuatro métricas; `classes.ts` nace al 100 %.
-- [ ] Marcar BUG-15 como `Hecho` en [INDEX.md](./INDEX.md) (tabla + registro de progreso).
-- [ ] Anotar en [SDD-24 §4.2](../SDD-24-language-server.md) el quinto contexto, con enlace a este
-      BUG, y dejar `style:` y `bus:` apuntados como lo que viene después.
+- [x] `pnpm typecheck` y `pnpm test` en verde en `@fudic/language-server` (576 tests). Y en todo
+      el workspace: `pnpm typecheck`, `pnpm test` (2.538 tests, 11 paquetes) y `pnpm build`
+      —`examples/basic` incluido— en verde.
+- [x] `language-server` sigue al **100 %** en las cuatro métricas; `classes.ts` nace al 100 %.
+- [x] Marcar BUG-15 como `Hecho` en [INDEX.md](./INDEX.md) (tabla + registro de progreso).
+- [x] Anotar en [SDD-24 §4.2](../SDD-24-language-server.md) el quinto contexto, con enlace a este
+      BUG, y dejar `style:` y `bus:` apuntados como lo que viene después. Queda en §4.2.a, con
+      los cinco contextos repartidos entre los que contestan solos y el que fusiona.

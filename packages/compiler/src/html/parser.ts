@@ -23,6 +23,7 @@ import {
 } from '../at/index.js';
 import type { RazorExpression } from '../at/index.js';
 import { parseStyle } from '../css/index.js';
+import { unknownReferences } from './entities.js';
 import {
   RAW_ELEMENTS,
   VOID_ELEMENTS,
@@ -183,6 +184,7 @@ class HtmlParser {
       case 'text':
       case 'whitespace': {
         this.#next();
+        this.#checkReferences(token.span);
         return { type: 'text', span: token.span, value: this.#slice(token.span) };
       }
 
@@ -250,6 +252,17 @@ class HtmlParser {
         this.#next();
         return null;
       }
+    }
+  }
+
+  /**
+   * Report every well-formed character reference the strict subset cannot resolve (decision
+   * 38 / decision 49 as BUG-14 §3.2 leaves it). The text stays VERBATIM in the AST — the
+   * formatter and the LSP read the author's bytes there; the emit is what decodes.
+   */
+  #checkReferences(at: Span): void {
+    for (const unknown of unknownReferences(this.#slice(at), at.start)) {
+      this.#error('FUD0057', `unknown character reference ${unknown.text}`, unknown.span);
     }
   }
 
@@ -460,6 +473,7 @@ class HtmlParser {
       this.#next();
       switch (token.type) {
         case 'text':
+          this.#checkReferences(token.span);
           parts.push({
             type: 'attribute-text',
             span: token.span,
@@ -515,6 +529,7 @@ class HtmlParser {
     if (token.type === 'text') {
       this.#next();
       this.#error('FUD0056', 'attribute value must be quoted', token.span);
+      this.#checkReferences(token.span);
       parts.push({ type: 'attribute-text', span: token.span, value: this.#slice(token.span) });
       return token.span.end;
     }

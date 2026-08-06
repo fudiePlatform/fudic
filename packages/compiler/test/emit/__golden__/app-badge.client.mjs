@@ -5,24 +5,30 @@ customElements.define("app-badge", class extends FudicElement {
     let $n0, $n1;
     const $r = [];
     const $d = []; // teardowns
+    const $w = []; // last applied, per value write
     let [$dom, $shadow, tone = 'neutral'] = $props;
 
-    const m = () => { for (const $n of $r) $dom.append($shadow, $n); };
-    const s = () => {};
+    const $m = () => { for (const $n of $r) $dom.append($shadow, $n); };
+    const $s = () => {};
+    const $a = () => {
+      let $v;
+      $v = ["badge", (tone === 'success') && "success", (tone === 'warning') && "warning"].filter(Boolean).join(' ');
+      if ($v !== $w[0]) { $w[0] = $v; $dom.setAttr($n0, 'class', $v); }
+    };
 
     return {
       c: () => {
         $r.push($dom.text(" "));
         $n0 = $dom.element("span");
-        $dom.setAttr($n0, 'class', ["badge", (tone === 'success') && "success", (tone === 'warning') && "warning"].filter(Boolean).join(' '));
         $dom.append($n0, $dom.text(" "));
         $n1 = $dom.element("slot");
         $dom.append($n0, $n1);
         $dom.append($n0, $dom.text(" "));
         $r.push($n0);
         $r.push($dom.text(" "));
-        m();
-        s();
+        $a();
+        $m();
+        $s();
       },
       h: () => {
         let $c0 = $dom.firstElementChild($shadow);
@@ -31,8 +37,9 @@ customElements.define("app-badge", class extends FudicElement {
           let $c1 = $dom.firstElementChild($n0);
           $n1 = $c1; $c1 = $dom.nextElementSibling($c1);
         }
-        s();
+        $s();
       },
+      u: ($p) => { [, , tone = 'neutral'] = $p; $a(); },
       r: () => { $n0 = $n1 = $shadow = null; $d.forEach((d) => d()); },
     };
   }

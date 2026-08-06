@@ -6,24 +6,30 @@
  */
 
 /**
- * What a component's `static c($props)` returns. Exactly the three methods with an
- * EXTERNAL caller: `c` and `h` are routed by the instance entry points according to where
- * the instance came from (SSR markup vs created at runtime), and `r` is fired by the
- * browser through `disconnectedCallback`.
+ * What a component's `static c($props)` returns. Exactly the four methods with an EXTERNAL
+ * caller: `c` and `h` are routed by the instance entry points according to where the
+ * instance came from (SSR markup vs created at runtime), `u` is called by whoever owns the
+ * values, and `r` is fired by the browser through `disconnectedCallback`.
  *
- * `m` (mount) and `s` (subscription) are deliberately absent: they are private closures of
- * the factory, orchestrated by `c` and `h`. Exposing them would offer methods no external
- * consumer may call.
+ * `$m` (mount), `$s` (subscription) and `$a` (apply) are deliberately absent: they are
+ * private closures of the factory, orchestrated by the four above. Exposing them would
+ * offer methods no external consumer may call.
  *
- * There is no `u` (update). An N3 component has no external write surface — signals, props
- * and nodes live only inside the controller's closure — so nothing could invoke a
- * recomposition. A signal that changes notifies its fine-grained subscription directly.
+ * **Why there IS a `u` (BUG-12).** What crosses a shadow boundary is a VALUE, never the
+ * signal object: decision 84 says so, and SDD-17 makes it structural — the props of a
+ * hydrated instance travel serialized in `fud-state`, and a signal is a function with a
+ * live `Set` inside, which no payload can carry. So a child cannot subscribe to what its
+ * parent owns. The property of a signal belongs to the parent; the child receives values,
+ * and receiving one again is a CALL, not a property. `u` is that call, and the only write
+ * surface a component has: one positional array, the same order as the payload.
  */
 export interface Controller {
   /** create — fabricate the nodes, mount the structure and hook up. */
   c(): void;
   /** hydrate — adopt the SSR nodes by positional traversal and hook up. */
   h(): void;
+  /** update — take a fresh positional payload and re-apply the values it carries. */
+  u(props: readonly unknown[]): void;
   /** remove — symmetric teardown. */
   r(): void;
 }

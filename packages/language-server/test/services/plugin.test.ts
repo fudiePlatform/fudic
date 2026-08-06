@@ -14,7 +14,12 @@ import { DocumentCache } from '../../src/document-cache.js';
 import { WorkspaceIndex } from '../../src/workspace-index.js';
 import { RequestStats } from '../../src/stats.js';
 import { SEMANTIC_TOKENS_LEGEND } from '../../src/capabilities.js';
-import { createFudicService, fudicDocumentOf, rangeOf } from '../../src/services/plugin.js';
+import {
+  createFudicService,
+  createFudicTagService,
+  fudicDocumentOf,
+  rangeOf,
+} from '../../src/services/plugin.js';
 import { component, LAYOUT, memoryFs, route } from '../_support.js';
 import { CANCELLED, fakeServiceContext, TOKEN } from '../_lsp.js';
 
@@ -41,9 +46,13 @@ function setup(source: string, path = SLUG) {
   const stats = new RequestStats();
   const context = fakeServiceContext({ [URI.file(path).toString()]: cached });
   const service = createFudicService({ index, stats }).create(context);
+  // The tag branch is a second plugin, and for the reason in BUG-15 §4.6: it merges instead of
+  // claiming, and in Volar that is a property of a plugin rather than of a branch.
+  const tagService = createFudicTagService({ index, stats }).create(context);
 
   return {
     service,
+    tagService,
     context,
     document,
     cached,
@@ -110,20 +119,14 @@ describe('completion', () => {
     expect(list?.items.map((item) => item.label)).toEqual(['nav']);
   });
 
-  it('offers the declared tags after `<`, ahead of the native ones (§6.4)', async () => {
+  it('says nothing after a `<`: the tag is the additional plugin’s (BUG-15 §4.6)', async () => {
     const { service, document, position } = setup(
       `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="component" href="../components/app-badge.fud">\n<article><|</article>\n`,
     );
-    const list = await completionsOf(service, document, position);
-    const badge = list?.items[0];
 
-    // The linked one first, then the one the workspace has and this file does not (SDD-28).
-    expect(list?.items.map((item) => item.label)).toEqual(['app-badge', 'site-nav']);
-    expect(badge?.sortText).toBe('0_app-badge');
-    expect(badge?.labelDetails?.description).toBe('fudic component');
-    // With the `<` already written, the tag completes into what follows it.
-    expect(badge?.textEdit?.newText).toBe('app-badge>$0</app-badge>');
-    expect(badge?.insertTextFormat).toBe(2);
+    // Staying quiet here is the fix: an answer from this plugin sets Volar's
+    // `mainCompletionUri` and the HTML service never gets to add the native tags.
+    expect(await completionsOf(service, document, position)).toBeUndefined();
   });
 
   it('says nothing outside markup, where no context applies', async () => {
@@ -146,6 +149,70 @@ describe('completion', () => {
     expect(edit).toMatchObject({
       range: rangeOf(document, { start: value, end: value + '../comp'.length }),
     });
+  });
+});
+
+describe('the tag plugin (BUG-15 §4.6)', () => {
+  it('declares itself additional, which is the whole reason it is a plugin', () => {
+    const deps = { index: new WorkspaceIndex(memoryFs({})), stats: new RequestStats() };
+    const plugin = createFudicTagService(deps);
+
+    expect(plugin.name).toBe('fudic-tags');
+    expect(plugin.capabilities.completionProvider?.triggerCharacters).toContain('<');
+    // On the INSTANCE, not on the plugin: that is where Volar reads it from.
+    expect(plugin.create(fakeServiceContext({})).isAdditionalCompletion).toBe(true);
+  });
+
+  it('offers the declared tags after `<`, ahead of the native ones (§6.4)', async () => {
+    const { tagService, document, position } = setup(
+      `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="component" href="../components/app-badge.fud">\n<article><|</article>\n`,
+    );
+    const list = await completionsOf(tagService, document, position);
+    const badge = list?.items[0];
+
+    // The linked one first, then the one the workspace has and this file does not (SDD-28).
+    expect(list?.items.map((item) => item.label)).toEqual(['app-badge', 'site-nav']);
+    expect(badge?.sortText).toBe('0_app-badge');
+    expect(badge?.labelDetails?.description).toBe('fudic component');
+    // With the `<` already written, the tag completes into what follows it.
+    expect(badge?.textEdit?.newText).toBe('app-badge>$0</app-badge>');
+    expect(badge?.insertTextFormat).toBe(2);
+  });
+
+  it('says nothing where there is no `<` to complete', async () => {
+    const { tagService, document, position } = setup(
+      `<link rel="layout" href="../layouts/_layout.fud">\n<article>\n  app|\n</article>\n`,
+    );
+
+    expect(await completionsOf(tagService, document, position)).toBeUndefined();
+  });
+
+  it('says nothing about a document that is not ours', async () => {
+    const { tagService, position } = setup(
+      `<link rel="layout" href="../layouts/_layout.fud">\n<article><|</article>\n`,
+    );
+    const alien = TextDocument.create(URI.file('/p/other.txt').toString(), 'plaintext', 1, '<');
+
+    expect(await completionsOf(tagService, alien, position)).toBeUndefined();
+  });
+
+  it('does not work when the request was already cancelled', async () => {
+    const { tagService, document, position, stats } = setup(
+      `<link rel="layout" href="../layouts/_layout.fud">\n<article><|</article>\n`,
+    );
+
+    const answer = await tagService.provideCompletionItems?.(
+      document,
+      position,
+      { triggerKind: 1 },
+      CANCELLED,
+    );
+
+    expect(answer).toBeUndefined();
+    // Counted apart from `completion`: it is the same request answered a second time, not a
+    // second request, and §6.14 is a claim about how many requests a burst made.
+    expect(stats.of('tagCompletion').cancelled).toBe(1);
+    expect(stats.of('completion').cancelled).toBe(0);
   });
 });
 

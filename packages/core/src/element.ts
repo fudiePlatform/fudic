@@ -57,6 +57,23 @@ export abstract class FudicElement extends HTMLElement {
   }
 
   /**
+   * Entry point 3 — the owner of the value writes it again (BUG-12). Not a lifecycle
+   * callback: its caller is the PARENT, the one holding the signal, because what crossed
+   * the shadow boundary was a value and a value cannot notify anyone. The array is the
+   * same positional payload `h`/`c` take, forwarded verbatim — this base reshapes nothing.
+   *
+   * A no-op with no controller, for the same reason `disconnectedCallback` is: `define`
+   * upgrades every instance of a tag at once, the ones the runtime never hydrates
+   * included, and after `r()` the controller is already released. That tolerance is NOT a
+   * props buffer — nothing is stored and nothing is replayed. There is no window to
+   * buffer: the hydration cascade is strict post-order (SDD-17 §5), so by the time a
+   * host's handler runs, every descendant of its subtree is defined and upgraded.
+   */
+  u(props: readonly unknown[]): void {
+    this.#controller?.u(props);
+  }
+
+  /**
    * Symmetric teardown. A no-op on an instance that was never handed its props: `define`
    * upgrades every instance of a tag at once, including ones the runtime never hydrates,
    * and disconnecting those must not fail. Releasing the controller first also makes a

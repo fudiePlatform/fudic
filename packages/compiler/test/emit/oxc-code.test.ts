@@ -47,6 +47,9 @@ describe('extractCode', () => {
       props: [],
       signals: [],
       client: { imports: [], body: [] },
+      // Empty AND silent: that is what tells the emit there was no code to begin with,
+      // as opposed to code it could not read (BUG-13 §5.3).
+      diagnostics: [],
     });
   });
 

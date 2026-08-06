@@ -35,7 +35,11 @@ implicit_expression
 
 ### Decisiones
 
-**1.** `@@` → `@` literal (escape doble-arroba).
+**1.** `@@` → `@` literal (escape doble-arroba). Se cumple en las **dos** posiciones desde
+BUG-14: en un valor de atributo lo resuelve el parser (`AttributeValuePart` no tiene nodo de
+escape); en contenido, el `AtEscapeNode` se queda en el AST con su span —lo leen el LSP y el
+formateador— y es el emit quien lo convierte en el carácter al construir el run de texto.
+En el cuerpo de un `<style>` sale verbatim, y es lo correcto: ahí `@@` es CSS (BUG-08 §4).
 
 **2.** Punto final de frase no pertenece a expresión implícita si no le sigue identificador. `@foo.` emite `@foo` + `.`.
 
@@ -99,7 +103,9 @@ dentro de `@{ ... }` con iteración manual.
 **79.** **El `}` crudo siempre cierra el bloque.** Dentro del cuerpo en modo HTML de una estructura
 de control, un `}` literal en el texto termina el bloque sin excepción: no hay escape con barra
 invertida ni heurística de "llave desbalanceada". Para emitir una llave literal en markup se usa
-la **entidad HTML** `&#123;` / `&#125;` (coherente con la decisión 49, entities pass-through).
+la **entidad HTML** `&#123;` / `&#125;` (decisión 49, que desde BUG-14 la **decodifica** en
+compilación en vez de dejarla pasar: el nodo lleva la llave, no la entidad, y por eso el
+cliente pinta lo mismo que el servidor).
 Ejemplo: `@if (a) { <p>&#123;x&#125;</p> }` emite el texto `{x}` y el `}` final cierra el bloque.
 
 **80.** **Corte del test de un `case`.** El test de un `case` se extiende hasta el **primer `:` a
@@ -325,6 +331,8 @@ Los tres bloques no son tres entornos de ejecución paralelos:
 
 **35.** Comentarios Razor **no** permitidos dentro de attr list (`<div @* *@ class="x">` es error). Posible extensión futura.
 
+**35.a.** Comentarios Razor **no** permitidos dentro de `@code` — ni en la zona neutra, ni dentro de `@server`, ni dentro de `@client`: ahí se comenta en JavaScript, con `//` y `/* */` (`FUD0114`, BUG-13). Un comentario Razor sirve para comentar **sin publicar**; en HTML y en CSS eso lo da (decisión 37), pero en JavaScript ya lo hace `//` — el bundler lo tira. Dentro de `@code` no añade ninguna capacidad y sí una sintaxis que hay que arrancar de las manos del parser de JS. Misma línea que la 35, extendida al otro sitio donde el texto no es contenido sino código. El balanceador **sí** lo reconoce ahí como región opaca: sus llaves no cuentan y el bloque cierra en su `}`.
+
 **36.** Comentarios Razor **no anidables**. El primer `*@` cierra siempre (consistente con JS `/* */` y HTML `<!-- -->`).
 
 **37.** Comentarios Razor **no se emiten** en output (ni HTML final ni JS cliente). Distinción frente a `<!-- -->` que sí se emite como comentario DOM.
@@ -389,7 +397,15 @@ Subset estricto de HTML5. No se implementa error recovery ni inserciones implíc
 
 **48.** Comentarios HTML `<!-- -->` se emiten tal cual al output.
 
-**49.** Entities HTML pass-through literal (lo que escribe el usuario es lo que va al output). Sin decodificación/re-escape.
+**49.** ~~Entities HTML pass-through literal (lo que escribe el usuario es lo que va al output). Sin decodificación/re-escape.~~ **Derogada por BUG-14 §3.2.** El pass-through era coherente mientras el compilador solo emitía texto; deja de serlo en cuanto la otra mitad construye DOM: **el cliente no tiene serializador**, y `textContent` no interpreta entidades, así que la misma plantilla pintaba `<html>` por SSR y `&lt;html&gt;` tras hidratar. La regla que sí cumplen las dos salidas:
+
+> El **dato de un nodo** —el texto de un nodo de texto, el valor que recibe `setAttr`— es **texto, no markup**: las entidades del fuente se **decodifican en compilación**, y cada salida lo vuelve a codificar como su medio exige (el serializador escapa; el DOM no lo necesita).
+
+Tres precisiones que la regla no cambia:
+
+- **El AST sigue verbatim.** `TextNode.value` y `AttributeText.value` guardan los bytes del autor —el formateador y el LSP leen ahí—; quien decodifica es el emit.
+- **El paso de markup crudo sigue siendo crudo.** Lo que no llega a ser un nodo sino bytes de HTML —los elementos del `<head>`, el interior de un `<title>`, el cuerpo de un `<style>`— pasa tal cual: ya es markup.
+- **Subset estricto (decisión 38).** Las cinco de XML (`&lt; &gt; &amp; &quot; &apos;`) más las numéricas (`&#…;`, `&#x…;`). Una referencia bien formada fuera del subset es `FUD0057`, no una tabla de ~2.200 entradas. Una `&` suelta no es una referencia y no se toca.
 
 **50.** CDATA `<![CDATA[...]]>` permitido solo dentro de `<svg>` / `<math>`. Fuera, error.
 
@@ -917,6 +933,7 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 65 | `@code` | ~~Default `interaction`~~ — **retirada de v1** |
 | 66 | `@code` | Ni `@server` ni `@client` admiten parámetro |
 | 35 | Comentarios | No en attr list |
+| 35.a | Comentarios | No dentro de `@code`: ahí se comenta en JS (`FUD0114`) |
 | 36 | Comentarios | No anidables |
 | 37 | Comentarios | No se emiten |
 | 38 | HTML | Subset estricto |
@@ -939,7 +956,7 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 46 | HTML | `:` en nombre de atributo |
 | 47 | HTML | Orden de atributos preservado |
 | 48 | HTML | Comentarios HTML se emiten |
-| 49 | HTML | Entities pass-through |
+| 49 | HTML | ~~Entities pass-through~~ — derogada por BUG-14: se decodifican en compilación |
 | 50 | HTML | CDATA solo en SVG/MathML |
 | 51 | HTML | Detección automática componente vs página |
 | 52 | HTML | ~~Fragments en componente~~ — sustituida por 75 |

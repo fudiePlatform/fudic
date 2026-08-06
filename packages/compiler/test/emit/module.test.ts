@@ -106,8 +106,11 @@ describe('emitComponentModule — attrExpr shapes', () => {
 
   it('emits a template literal for a mixed attribute and omits it when falsy', () => {
     expect(src).toContain('`x-${y}`');
-    expect(src).toContain('if ($a === true)');
-    expect(src).toContain("$a !== false && $a != null");
+    // `$v`, not `$a`: `$a` is the client's apply closure now (BUG-12 §3.3), and a bound
+    // value that shadowed it inside its own body is a trap waiting for the next edit.
+    expect(src).toContain('if ($v === true)');
+    expect(src).toContain('$v !== false && $v != null');
+    expect(src).not.toContain('removeAttr'); // the server writes once: nothing to take back
   });
 
   it('emits a static non-class attribute as a setAttr with a JSON value', () => {

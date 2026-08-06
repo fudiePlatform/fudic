@@ -1,5 +1,5 @@
 @code {
-  @* a comment in the code block is content, not trivia *@
+  // inside @code the comment is JavaScript's own (BUG-13): @* … *@ is FUD0114 here
   const tone = 'neutral';
 }
 

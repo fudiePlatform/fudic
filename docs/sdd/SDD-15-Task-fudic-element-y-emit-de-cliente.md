@@ -262,6 +262,23 @@ un `{ value: … }` inerte. Arreglado con el fixture, el emit SSR y sus goldens 
 En el camino `c`, el host del hijo se fabrica y se le cuelgan sus hijos de luz, sin llamar a
 su `c(props)`: quién descarga y en qué orden se registra es la tanda siguiente, no ésta.
 
+## El contrato del controlador cambió después de esta tanda
+
+[BUG-12](./bugs/BUG-12-sin-canal-de-update.md), 2026-08-06. Léelo **antes** de las tareas
+pendientes de event bindings y suscripciones finas: se escriben contra este contrato, y el
+contrato es justo lo que estaba mal.
+
+- **La interfaz es `{c, h, u, r}`.** `u(props)` es el canal descendente: reasigna las props
+  desde el array posicional y reaplica las escrituras. `FudicElement` gana el punto de entrada
+  del mismo nombre, el **tercero**, cuyo llamador es el padre.
+- **Las closures privadas se llaman `$m`, `$s` y `$a`.** El renombrado no es de estilo: el
+  cuerpo de `@client` se copia verbatim a esa misma closure, y un `const m` del autor producía
+  un chunk que no parseaba. Toda función privada nueva nace dentro de la reserva `$` (§4.7).
+- **`$a()` es el único sitio donde un valor llega a un nodo**, y cachea lo último que escribió
+  en `$w`. Una escritura nueva se añade ahí, no al cuerpo de `c`.
+- **`$s()` ya no está vacío**: lleva el pase inicial y la suscripción de las props que un hijo
+  recibe. Los listeners de host se suman a lo que ya hay, no lo sustituyen.
+
 ---
 
 ## Enlaces

@@ -4,7 +4,8 @@
  * down only when the browser says so.
  *
  * Acceptance criteria covered: §6.9 (the base routes to the subclass's factory), §6.10
- * (no `connectedCallback`), §6.11 (the public interface is exactly `{c, h, r}`).
+ * (no `connectedCallback`), §6.11 (the public interface is exactly `{c, h, u, r}`), and
+ * BUG-12 §6.1–§6.2 (`u` is the third entry point, and a no-op with no controller).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -21,6 +22,8 @@ interface Spy {
   readonly props: (readonly unknown[])[];
   /** Controller methods called, in order, prefixed by the label of the factory. */
   readonly calls: string[];
+  /** The array each `u` was handed, per invocation. */
+  readonly updates: (readonly unknown[])[];
 }
 
 /** A subclass whose `static c` records what it was handed and what was called on it. */
@@ -34,6 +37,10 @@ function define(spy: Spy, label = ''): string {
         return {
           c: () => spy.calls.push(`${label}c`),
           h: () => spy.calls.push(`${label}h`),
+          u: (next: readonly unknown[]) => {
+            spy.calls.push(`${label}u`);
+            spy.updates.push(next);
+          },
           r: () => spy.calls.push(`${label}r`),
         };
       }
@@ -42,7 +49,7 @@ function define(spy: Spy, label = ''): string {
   return tag;
 }
 
-const spy = (): Spy => ({ props: [], calls: [] });
+const spy = (): Spy => ({ props: [], calls: [], updates: [] });
 
 describe('FudicElement — instance entry points', () => {
   it('hydrates against the shadow root the DSD already populated', () => {
@@ -81,6 +88,81 @@ describe('FudicElement — instance entry points', () => {
 
     expect(s.props[0]!.slice(2)).toEqual([1, 'Pedro', bar]);
     expect(s.props[0]![4]).toBe(bar); // by reference: the base does not copy or reshape
+  });
+});
+
+/**
+ * BUG-12 — `u` is the third entry point, and its caller is the PARENT: the owner of the
+ * signal writes the value again. It is not a lifecycle callback, and it does not build
+ * anything, so an instance with no controller has nothing to forward to and says nothing.
+ */
+describe('FudicElement — u, the update entry point (BUG-12 §6.1, §6.2)', () => {
+  it('forwards the array to the controller after an h', () => {
+    const s = spy();
+    const host = document.createElement(define(s)) as FudicElement;
+    host.attachShadow({ mode: 'open' });
+    document.body.append(host);
+    host.h([1]);
+
+    host.u([2]);
+
+    expect(s.calls).toEqual(['h', 'u']);
+    expect(s.updates).toEqual([[2]]);
+    host.remove();
+  });
+
+  it('forwards the array to the controller after a c', () => {
+    const s = spy();
+    const host = document.createElement(define(s)) as FudicElement;
+    document.body.append(host);
+    host.c([1]);
+
+    host.u([2]);
+    host.u([3]);
+
+    expect(s.calls).toEqual(['c', 'u', 'u']);
+    expect(s.updates).toEqual([[2], [3]]);
+    host.remove();
+  });
+
+  it('hands the array over verbatim, by reference and unreshaped', () => {
+    const s = spy();
+    const host = document.createElement(define(s)) as FudicElement;
+    host.attachShadow({ mode: 'open' });
+    host.h([]);
+    const next = [undefined, 'Pedro'];
+
+    host.u(next);
+
+    // No `$dom`/`$shadow` prepended: `u` is not an intake, it is the payload itself.
+    expect(s.updates[0]).toBe(next);
+  });
+
+  it('is a no-op on an instance that was never handed its props', () => {
+    const s = spy();
+    const host = document.createElement(define(s)) as FudicElement;
+    document.body.append(host);
+
+    // `define` upgrades every instance of the tag at once, the ones the runtime never
+    // hydrates included. A `u` on one of those must not build a controller behind its back.
+    expect(() => host.u([1])).not.toThrow();
+    expect(s.props).toEqual([]);
+    expect(s.calls).toEqual([]);
+    host.remove();
+  });
+
+  it('is a no-op after disconnectedCallback, and does not resurrect the controller', () => {
+    const s = spy();
+    const host = document.createElement(define(s)) as FudicElement;
+    host.attachShadow({ mode: 'open' });
+    document.body.append(host);
+    host.h([1]);
+
+    host.remove();
+    expect(() => host.u([2])).not.toThrow();
+
+    expect(s.calls).toEqual(['h', 'r']); // the `u` never reached the controller
+    expect(s.updates).toEqual([]);
   });
 });
 
@@ -155,7 +237,7 @@ describe('FudicElement — teardown', () => {
   });
 });
 
-describe('FudicElement — §6.11 the controller interface is exactly {c, h, r}', () => {
+describe('FudicElement — §6.11 the controller interface is exactly {c, h, u, r}', () => {
   it('the base calls nothing else on it, and exposes no controller surface', () => {
     const seen: string[] = [];
     const tag = freshTag();
@@ -179,7 +261,9 @@ describe('FudicElement — §6.11 the controller interface is exactly {c, h, r}'
     host.h([]);
     host.remove();
 
-    expect(seen).toEqual(['h', 'r']); // never `m`, never `s`, never `u`
+    // Never `m`, never `s` — those are private closures of the factory. `u` is part of
+    // the contract, but the base never invokes it on its own: its caller is the parent.
+    expect(seen).toEqual(['h', 'r']);
     expect(Object.keys(host)).toEqual([]); // `#controller` is private, not a property
   });
 });

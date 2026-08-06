@@ -25,7 +25,19 @@ export type LexRegionKind =
   | 'template' // `...` (including its `${}` substitutions, as one region)
   | 'line-comment' // // ... up to end of line
   | 'block-comment' // /* ... */
-  | 'regex'; // /.../flags
+  | 'regex' // /.../flags
+  | 'razor-comment'; // @* ... *@ — Fudic, not JS; only when the caller opts in
+
+/** Per-call scanning options. Absent means the JS-only behaviour every caller had. */
+export interface ScanOptions {
+  /**
+   * Recognize `@* … *@` as an opaque region (BUG-13 §4). Off by default: the balancer
+   * scans JavaScript, and only the body of `@code` can hold a Razor comment mixed into
+   * it. With it on, the braces and the `@client` written inside a comment stop counting,
+   * so a comment can never move where the block ends.
+   */
+  readonly razorComments?: boolean;
+}
 
 /**
  * One opaque region found inside a balanced group. Its span covers the region in
@@ -121,12 +133,14 @@ function isLineTerminator(c: string): boolean {
 class Scanner {
   readonly #source: string;
   readonly #length: number;
+  readonly #razorComments: boolean;
   readonly #regions: LexRegion[] = [];
   readonly #diagnostics: Diagnostic[] = [];
 
-  constructor(source: string) {
+  constructor(source: string, options: ScanOptions) {
     this.#source = source;
     this.#length = source.length;
+    this.#razorComments = options.razorComments ?? false;
   }
 
   /**
@@ -212,6 +226,12 @@ class Scanner {
       if (c === '`') {
         i = this.#scanTemplate(i);
         valueBefore = true;
+        continue;
+      }
+
+      if (c === '@' && this.#razorComments && this.#source[i + 1] === '*') {
+        i = this.#scanRazorComment(i);
+        valueBefore = false;
         continue;
       }
 
@@ -347,6 +367,27 @@ class Scanner {
   }
 
   /**
+   * `@* … *@`, when the caller asked for it. Not nestable: the first `*@` closes
+   * (decision 36), as a JS block comment and an HTML comment also do.
+   *
+   * An unterminated one gets no code of its own. It runs to the end of the source, so
+   * the group that contains it cannot close either, and that is already FUD0002 — a
+   * second diagnostic would only say the same thing twice.
+   */
+  #scanRazorComment(start: number): number {
+    let i = start + 2;
+    while (i < this.#length) {
+      if (this.#source[i] === '*' && this.#source[i + 1] === '@') {
+        this.#region('razor-comment', start, i + 2);
+        return i + 2;
+      }
+      i++;
+    }
+    this.#region('razor-comment', start, this.#length);
+    return this.#length;
+  }
+
+  /**
    * A regex literal with its flags. The closing slash is the first unescaped one
    * outside a `[...]` class. May not span a line break.
    */
@@ -396,6 +437,7 @@ export function scanBalanced(
   source: string,
   openOffset: number,
   closer: Closer,
+  options: ScanOptions = {},
 ): ParseResult<BalancedGroup> {
   const opener = OPENER_OF[closer];
   if (source[openOffset] !== opener) {
@@ -405,7 +447,7 @@ export function scanBalanced(
     ]);
   }
 
-  const scanner = new Scanner(source);
+  const scanner = new Scanner(source, options);
   const { end, closed } = scanner.scan(openOffset, closer);
   const group: BalancedGroup = {
     span: span(openOffset, end),
@@ -436,6 +478,10 @@ export function scanBrackets(source: string, at: number): ParseResult<BalancedGr
 }
 
 /** Thin wrapper: scans a `{ ... }` group. `at` points at the `{`. */
-export function scanBraces(source: string, at: number): ParseResult<BalancedGroup> {
-  return scanBalanced(source, at, '}');
+export function scanBraces(
+  source: string,
+  at: number,
+  options: ScanOptions = {},
+): ParseResult<BalancedGroup> {
+  return scanBalanced(source, at, '}', options);
 }
