@@ -191,8 +191,9 @@ SDD-08 reserva **`FUD0110`–`FUD0129`**. Definidos:
 |---|---|
 | `FUD0110` | Falta `{` tras `@code` / `@server` / `@client`. |
 | `FUD0111` | `@server` / `@client` no admiten parámetro (decisión 66): `@server(…)`, `@client(…)`. |
+| `FUD0114` | Comentario Razor dentro de `@code` (decisión 35.a, BUG-13): dentro del bloque se comenta con `//` y `/* */`. Uno por comentario, con el span completo del `@*` al `*@`, en cualquiera de las tres posiciones —zona neutra, `@server`, `@client`—. El texto **no** se recorta: el comentario se queda en su chunk, como el marcador sin `{` se queda tras un `FUD0110`. El balanceador lo trata como región opaca, así que sus llaves no cuentan y el bloque cierra en su `}`. |
 
-`FUD0112`–`FUD0129` libres (`FUD0112`/`FUD0113` quedan **quemados**: eran la whitelist y los
+`FUD0112`–`FUD0129` libres salvo `FUD0114` (`FUD0112`/`FUD0113` quedan **quemados**: eran la whitelist y los
 paréntesis de estrategia, retirados con las decisiones 63–65). El `FUD0002` del balanceador (cuerpo/región sin cerrar) aflora sin
 renumerarse.
 

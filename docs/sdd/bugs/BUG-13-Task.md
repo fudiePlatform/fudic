@@ -72,9 +72,9 @@ tareas posteriores. Las rutas son relativas a la raíz del repo.
 
 ## Cierre del BUG
 
-- [ ] Anotar la decisión **35.a** en [gramatica-v1-decisiones.md](../../gramar/gramatica-v1-decisiones.md)
+- [x] Anotar la decisión **35.a** en [gramatica-v1-decisiones.md](../../gramar/gramatica-v1-decisiones.md)
       (sección 9) y `FUD0114` en [SDD-08](../SDD-08-code-block.md) §5 y en
       [SDD-12](../SDD-12-semantica.md) §catálogo.
-- [ ] Devolver a los componentes de la demo de BUG-12 sus comentarios —**ahora como
+- [x] Devolver a los componentes de la demo de BUG-12 sus comentarios —**ahora como
       comentarios JS**— y ver el ejemplo construir.
-- [ ] Marcar BUG-13 como `Hecho` en [INDEX.md](./INDEX.md) (tabla + registro de progreso).
+- [x] Marcar BUG-13 como `Hecho` en [INDEX.md](./INDEX.md) (tabla + registro de progreso).

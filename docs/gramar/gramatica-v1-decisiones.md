@@ -325,6 +325,8 @@ Los tres bloques no son tres entornos de ejecución paralelos:
 
 **35.** Comentarios Razor **no** permitidos dentro de attr list (`<div @* *@ class="x">` es error). Posible extensión futura.
 
+**35.a.** Comentarios Razor **no** permitidos dentro de `@code` — ni en la zona neutra, ni dentro de `@server`, ni dentro de `@client`: ahí se comenta en JavaScript, con `//` y `/* */` (`FUD0114`, BUG-13). Un comentario Razor sirve para comentar **sin publicar**; en HTML y en CSS eso lo da (decisión 37), pero en JavaScript ya lo hace `//` — el bundler lo tira. Dentro de `@code` no añade ninguna capacidad y sí una sintaxis que hay que arrancar de las manos del parser de JS. Misma línea que la 35, extendida al otro sitio donde el texto no es contenido sino código. El balanceador **sí** lo reconoce ahí como región opaca: sus llaves no cuentan y el bloque cierra en su `}`.
+
 **36.** Comentarios Razor **no anidables**. El primer `*@` cierra siempre (consistente con JS `/* */` y HTML `<!-- -->`).
 
 **37.** Comentarios Razor **no se emiten** en output (ni HTML final ni JS cliente). Distinción frente a `<!-- -->` que sí se emite como comentario DOM.
@@ -917,6 +919,7 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 65 | `@code` | ~~Default `interaction`~~ — **retirada de v1** |
 | 66 | `@code` | Ni `@server` ni `@client` admiten parámetro |
 | 35 | Comentarios | No en attr list |
+| 35.a | Comentarios | No dentro de `@code`: ahí se comenta en JS (`FUD0114`) |
 | 36 | Comentarios | No anidables |
 | 37 | Comentarios | No se emiten |
 | 38 | HTML | Subset estricto |
