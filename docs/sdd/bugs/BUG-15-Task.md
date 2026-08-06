@@ -4,7 +4,7 @@
 > **Paquete:** `@fudic/language-server`
 > **Rama:** la del backlog de uso
 > **Depende de:** nada
-> **Progreso:** 1 / 10
+> **Progreso:** 3 / 10
 
 Cada tarea es un paso cerrado. Las rutas son relativas a la raíz del repo.
 
@@ -24,12 +24,12 @@ Emmet y no se distingue de no haberla escrito.
 
 ## Fase 2 — Los nombres, desde el AST (2)
 
-- [ ] **2. `styleClassNames`.**
+- [x] **2. `styleClassNames`.**
       `packages/language-server/src/services/classes.ts` (nuevo). Recorre `document.head` y el
       árbol del `<template>`, toma el hijo `style-content` de cada `<style>` y escanea **solo**
       las partes `CssText`: nada de `source.slice(...)` teniendo el nodo delante (§4.1). Nombres
       sin punto, deduplicados, en orden de aparición.
-- [ ] **3. El escáner de preludios.**
+- [x] **3. El escáner de preludios.**
       La regla única de §4.2: un `.nombre` cuenta solo entre el principio del cuerpo / `{` / `}` /
       `;` y el siguiente `{`. Con ella caen solos los decimales, los strings y los `url(...)`.
       Más: un `.` seguido de dígito no abre nada, los comentarios CSS se saltan, y un `.ident`
