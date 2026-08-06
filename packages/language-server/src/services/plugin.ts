@@ -41,6 +41,7 @@ import { emmetCompletions } from './emmet.js';
 import { formattedText } from './formatting.js';
 import { hrefCompletions, unresolvedHrefs } from './href.js';
 import {
+  classContextAt,
   directiveContextAt,
   hrefContextAt,
   sectionContextAt,
@@ -48,6 +49,7 @@ import {
   wordContextAt,
   type PartialName,
 } from './position.js';
+import { styleClassNames } from './classes.js';
 import { sectionCompletions } from './sections.js';
 import { scopeAt, snippetsAt } from './snippets.js';
 import { componentTags, documentLinks, linkInsertionFor, tagDefinitionAt } from './tags.js';
@@ -340,9 +342,9 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
 /**
  * The completions the server owns, in the order they can apply (SDD-24 §4.2, SDD-28 §5.5).
  *
- * The first three contexts are EXACT — inside an `href`, after `@section `, after a `<` — and
- * each answers alone: in those positions a word cannot mean anything else, so shadowing Emmet
- * is the right thing to do.
+ * The first contexts are EXACT — inside an `href`, after `@section `, after `class:`, after a
+ * `<` — and each answers alone: in those positions a word cannot mean anything else, so
+ * shadowing Emmet is the right thing to do.
  *
  * The last one is not exact. A bare word in markup may be a component tag, a snippet, or an
  * Emmet abbreviation, and there is no way to tell which from the text. So it MERGES: our items
@@ -382,6 +384,22 @@ function completions(
         textEdit: { range: rangeOf(document, section.span), newText: name },
       })),
     );
+  }
+
+  // Exact too: after those two colons a word can be neither an Emmet abbreviation nor a tag.
+  // With the condition the `@` branch already uses — a file with no `<style>` has nothing to
+  // say, and an empty list would silence Emmet without putting anything in its place (§4.3).
+  const classes = classContextAt(cached.source, offset);
+  if (classes !== undefined) {
+    const items = styleClassNames(cached).map(
+      (name): CompletionItem => ({
+        label: name,
+        kind: CompletionItemKind.Value,
+        detail: 'class of this file',
+        textEdit: { range: rangeOf(document, classes.span), newText: name },
+      }),
+    );
+    if (items.length > 0) return list(items);
   }
 
   const tag = tagContextAt(cached.source, offset);

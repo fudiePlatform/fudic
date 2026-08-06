@@ -153,6 +153,29 @@ describe('BUG-15 §6.1 — the classes this file declares', () => {
 
     expect(labels(items)).toEqual(expect.arrayContaining(['badge', 'success', 'info']));
   });
+
+  it('replaces what is already written rather than appending to it (§6.3)', async () => {
+    const source = fixtureText(BADGE).replace(`class:success="@(tone === 'success')"`, 'class:suc');
+    const at = source.indexOf('class:suc') + 'class:suc'.length;
+    const items = await completeIn(BADGE, source, at);
+
+    const success = items.find((item) => item.label === 'success');
+    const range = success?.textEdit && 'range' in success.textEdit ? success.textEdit.range : undefined;
+    // The edit covers the three characters typed after the colon, and not the `class:` itself.
+    expect(range).toEqual({
+      start: harness.positionAt(source, at - 'suc'.length),
+      end: harness.positionAt(source, at),
+    });
+  });
+
+  it('falls back to Emmet in a file with no <style> at all (§6.10)', async () => {
+    const source = `<app-badge>\n  <template shadowrootmode="open">\n    <span class:></span>\n  </template>\n</app-badge>\n`;
+    const items = await completeIn(BADGE, source, source.indexOf('class:') + 'class:'.length);
+
+    // Nothing of ours, and the chain carried on: an empty list must not silence the rest.
+    expect(items.some((item) => item.detail === 'class of this file')).toBe(false);
+    expect(items.length).toBeGreaterThan(0);
+  });
 });
 
 describe('§6.10 — CSS', () => {

@@ -4,7 +4,7 @@
 > **Paquete:** `@fudic/language-server`
 > **Rama:** la del backlog de uso
 > **Depende de:** nada
-> **Progreso:** 3 / 10
+> **Progreso:** 5 / 10
 
 Cada tarea es un paso cerrado. Las rutas son relativas a la raíz del repo.
 
@@ -37,12 +37,12 @@ Emmet y no se distingue de no haberla escrito.
 
 ## Fase 3 — El quinto contexto (2)
 
-- [ ] **4. `classContextAt`.**
+- [x] **4. `classContextAt`.**
       `packages/language-server/src/services/position.ts`: el `PartialName` tras `class:`, con el
       prefijo **fuera** del span — se queda, es lo que abre el contexto (§3). No reconoce
       `style:`, ni un `class:` dentro de un valor entrecomillado, ni uno en texto de markup
       (§6.2). `wordContextAt` y su guarda de `insideOpenTag` no se tocan.
-- [ ] **5. La rama en `completions()`.**
+- [x] **5. La rama en `completions()`.**
       `packages/language-server/src/services/plugin.ts`: contexto exacto, contesta solo, antes de
       Emmet — y **solo si tiene algo**, calcado de la condición que la rama de `@` ya usa
       (§4.3, §6.10). `:` ya es trigger character (`capabilities.ts`), así que no se toca.
