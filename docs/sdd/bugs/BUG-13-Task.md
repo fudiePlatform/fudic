@@ -2,7 +2,7 @@
 
 > **BUG:** [BUG-13 — Un comentario Razor dentro de `@code` borra todo el bloque](./BUG-13-comentario-razor-en-code.md)
 > **Paquetes:** `@fudic/compiler` · **Rama:** `fix/bug-13-comentario-en-code`
-> **Progreso:** 0 / 8
+> **Progreso:** 3 / 8
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Las rutas son relativas a la raíz del repo.
@@ -11,16 +11,16 @@ tareas posteriores. Las rutas son relativas a la raíz del repo.
 
 ## Fase 0 — Rojo primero (3)
 
-- [ ] **1. Test del comentario en las tres posiciones.**
+- [x] **1. Test del comentario en las tres posiciones.**
       En `packages/compiler/test/emit/` (o `test/code/`): un componente con
       `const count = signal(0)` en `@client` y un `@* c *@` antes, dentro y después del
       bloque. Los tres casos emiten el módulo SSR con la signal inerte y el chunk con
       `signal(0)`. **Verlos fallar** los tres (§6.1, §6.2).
-- [ ] **2. Test de que las props también caen.**
+- [x] **2. Test de que las props también caen.**
       Mismo componente con `props<{ x: number }>()`: con comentario, el destructuring
       desaparece del emit. **Verlo fallar** (§6.5) — es lo que prueba que la causa es el
       batch, no la región de cliente.
-- [ ] **3. Test del fallo mudo.**
+- [x] **3. Test del fallo mudo.**
       Un `@code` con JS realmente roto (`const = ;`) produce al menos un diagnóstico con su
       span dentro del bloque. **Verlo fallar**: hoy devuelve un `ExtractedCode` vacío y
       cero diagnósticos (§6.3).
