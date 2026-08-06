@@ -35,7 +35,11 @@ implicit_expression
 
 ### Decisiones
 
-**1.** `@@` → `@` literal (escape doble-arroba).
+**1.** `@@` → `@` literal (escape doble-arroba). Se cumple en las **dos** posiciones desde
+BUG-14: en un valor de atributo lo resuelve el parser (`AttributeValuePart` no tiene nodo de
+escape); en contenido, el `AtEscapeNode` se queda en el AST con su span —lo leen el LSP y el
+formateador— y es el emit quien lo convierte en el carácter al construir el run de texto.
+En el cuerpo de un `<style>` sale verbatim, y es lo correcto: ahí `@@` es CSS (BUG-08 §4).
 
 **2.** Punto final de frase no pertenece a expresión implícita si no le sigue identificador. `@foo.` emite `@foo` + `.`.
 

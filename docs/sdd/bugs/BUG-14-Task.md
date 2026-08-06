@@ -76,6 +76,6 @@ tareas posteriores. Las rutas son relativas a la raíz del repo.
 
 ## Cierre del BUG
 
-- [ ] Marcar BUG-14 como `Hecho` en [INDEX.md](./INDEX.md) (tabla + registro de progreso).
-- [ ] Anotar en la decisión 1 de la gramática que el escape ya se cumple en las dos
+- [x] Marcar BUG-14 como `Hecho` en [INDEX.md](./INDEX.md) (tabla + registro de progreso).
+- [x] Anotar en la decisión 1 de la gramática que el escape ya se cumple en las dos
       posiciones, contenido y atributo.
