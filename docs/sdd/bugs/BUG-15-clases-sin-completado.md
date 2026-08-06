@@ -1,6 +1,6 @@
 # BUG-15 — Dentro de un tag abierto no contesta nadie: ni las clases de `class:`, ni los atributos de HTML
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Corrige:** [SDD-24 — Language server](../SDD-24-language-server.md) §3.2, §4.1, §4.2, y amplía
 > [SDD-28 — Snippets y completado](../SDD-28-snippets.md) §4.3, §5.5
 > **Paquete:** `@fudic/language-server`

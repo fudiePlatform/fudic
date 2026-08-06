@@ -90,8 +90,11 @@ Estas tres salen de §2.3 y §2.4, y **todas se piden con el `context` que manda
 
 ## Cierre del BUG
 
-- [ ] `pnpm typecheck` y `pnpm test` en verde en `@fudic/language-server`.
-- [ ] `language-server` sigue al **100 %** en las cuatro métricas; `classes.ts` nace al 100 %.
-- [ ] Marcar BUG-15 como `Hecho` en [INDEX.md](./INDEX.md) (tabla + registro de progreso).
-- [ ] Anotar en [SDD-24 §4.2](../SDD-24-language-server.md) el quinto contexto, con enlace a este
-      BUG, y dejar `style:` y `bus:` apuntados como lo que viene después.
+- [x] `pnpm typecheck` y `pnpm test` en verde en `@fudic/language-server` (576 tests). Y en todo
+      el workspace: `pnpm typecheck`, `pnpm test` (2.538 tests, 11 paquetes) y `pnpm build`
+      —`examples/basic` incluido— en verde.
+- [x] `language-server` sigue al **100 %** en las cuatro métricas; `classes.ts` nace al 100 %.
+- [x] Marcar BUG-15 como `Hecho` en [INDEX.md](./INDEX.md) (tabla + registro de progreso).
+- [x] Anotar en [SDD-24 §4.2](../SDD-24-language-server.md) el quinto contexto, con enlace a este
+      BUG, y dejar `style:` y `bus:` apuntados como lo que viene después. Queda en §4.2.a, con
+      los cinco contextos repartidos entre los que contestan solos y el que fusiona.
