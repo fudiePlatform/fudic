@@ -51,7 +51,7 @@ El compilador nunca ejecuta esta función: la intercepta y la elimina.
 **67.** `props<T>()` se declara en la **zona neutra** de `@code`, no en `@client`
 ni `@server`. Razón: la declaración es un **contrato de tipos**, no estado de
 instancia. Sirve por igual al emit SSR (donde una prop constante se resuelve en el
-HTML) y al emit cliente (donde una prop reactiva emite un setter). La zona neutra
+HTML) y al emit cliente (donde una prop reactiva abre el canal `u`). La zona neutra
 —"tipos, constantes puras, se resuelve sin efectos"— es su lugar natural.
 
 **68.** El destructuring debe cubrir **todas** las claves de `T`. `T` define la
@@ -97,7 +97,9 @@ un default en una prop requerida es contradicción (el semántico lo señala).
 - Si el default se usa porque el consumidor no pasa nada → la prop es **constante**
   y se resuelve en SSR (ver §3), cero JS.
 - Si el consumidor pasa una fuente **reactiva** cuyo valor inicial es `undefined` →
-  el setter aplica el fallback: `set variant(v) { apply(v ?? 'default'); }`.
+  el default vuelve a aplicarse, porque va en el propio patrón de reasignación de
+  `u`: `[, , variant = 'default'] = $p`. Una actualización puede traer `undefined`
+  otra vez, así que el fallback se repite en cada paso, no solo en el alta.
 
 ---
 
@@ -117,19 +119,45 @@ pasa es una fuente reactiva (una signal), por el canal de property binding.
 |---|---|---|
 | `label="Total"` (atributo literal) | No reactiva | `const`, resuelta en SSR, en el HTML. Cero JS. |
 | `.value="@(x)"` que evalúa a valor | No reactiva | `const`, resuelta en SSR. Cero JS. |
-| `.value="@count"` (signal) | Reactiva | Setter en el hijo + subscription en el padre. |
+| `.value="@count"` (signal) | Reactiva | `u(props)` en el hijo + subscription en el padre. |
 
 ### Materialización en el hijo
 
-**75.** Una prop **no reactiva** se compila como `const` en el hijo. Su valor se
-resuelve en compile-time / SSR y se interpola directamente en el HTML del shadow
-root. El hijo **no emite setter, ni signal, ni clase** por esa prop. Un `const a =
-"x"` no se puede modificar: es exactamente la semántica de una prop que no cambia.
+**75.** Una prop **no reactiva** es `const` en el sentido que importa: nadie la
+reescribe nunca. Su valor se resuelve en compile-time / SSR y se interpola
+directamente en el HTML del shadow root, y el **padre no emite nada** por ella —ni
+pase, ni suscripción—, que es lo que hace de ella una constante. El hijo tampoco
+emite signal ni clase por esa prop.
 
-**76.** Una prop **reactiva** no puede ser `const` (necesita reasignación). El hijo
-emite un **setter** que escribe el nodo del DOM directamente. Esto es N2: nodo vivo
-+ setter, **sin signal interna, sin lifecycle de reconciliación**. La signal vive en
-el padre; el hijo solo expone el punto de escritura.
+> El destructuring del factory es uno solo y con `let`, porque `u` reasigna el array
+> entero (BUG-12 §3.3). Eso no abre una superficie de escritura: `let` es una variable
+> de la closure, alcanzable solo desde dentro, y quien la mueve es el padre llamando a
+> `u` — cosa que para una prop constante no ocurre nunca.
+
+**76. — DEROGADA** por [BUG-12](./bugs/BUG-12-sin-canal-de-update.md) §4.1.
+
+> *Decía:* «Una prop **reactiva** no puede ser `const` (necesita reasignación). El hijo
+> emite un **setter** que escribe el nodo del DOM directamente.»
+
+Un setter por prop es incompatible con el diseño de closure de SDD-15: las props del
+hijo son variables de la closure del factory, y un setter en la clase no las alcanza
+sin un canal hacia el controlador — que es exactamente lo que habría que añadir. Y
+multiplicaría la superficie pública por el número de props, obligando a nombrarlas en
+el artefacto emitido, cuando el payload no lleva esquema: solo valores, en orden.
+
+**El canal es `u`, y es uno solo.** El controlador expone
+`u(props: readonly unknown[])`, y `FudicElement` el punto de entrada del mismo nombre
+—el **tercero**, hermano de `h` y `c`, no un callback del navegador—. Reasigna los
+bindings de prop desde el array posicional y reaplica las escrituras que dependen de
+ellos. La parte de la 76 que sí valía sigue en pie: la prop reactiva **no es `const`**
+(se declara con `let`, porque `u` la reasigna), la signal vive en el padre, y el hijo
+no tiene signal interna ni reconciliación.
+
+```js
+// el hijo, en su factory
+let [$dom, $shadow, value = 0] = $props;
+u: ($p) => { [, , value = 0] = $p; $a(); },
+```
 
 **77.** **La declaración no fuerza el nivel.** `props<T>()` fija el contrato; el
 nivel lo sigue decidiendo `nivel_efectivo`. Tener props no convierte un componente
@@ -146,16 +174,23 @@ decisión de cierre ya tomada para N1/N2/N3).
 
 **Principio transversal (ya fijado, reafirmado aquí):** a través del shadow boundary
 cruza un **valor**, nunca el objeto signal. El padre conserva su signal; en su propia
-subscription reescribe la prop del hijo por el setter.
+subscription vuelve a escribir el valor en el hijo, llamando a su `u`.
 
 ```js
-// En el connectedCallback del padre (N3, posee ctx.count):
-this.#display.value = this.#count.peek();                 // valor inicial
-this.#unsub = this.#count.subscribe(v => { this.#display.value = v; });
+// En el $s() del padre, el punto donde create e hydrate convergen:
+$n6.u([, , count.peek()]);                                  // valor inicial
+$d.push(count.subscribe(($v) => { $n6.u([, , $v]); }));     // cambios
 ```
 
-Cruza un número (`this.#display.value = v`). La signal del padre se queda en el
-padre. Cada shadow root es una isla.
+Cruza un número. La signal del padre se queda en el padre. Cada shadow root es una
+isla, y por eso el hijo no puede suscribirse a nada: quien posee el valor es quien lo
+vuelve a escribir. El array es el payload **entero** del hijo, en el orden en que él
+destructura, porque su `u` reasigna todas las props que destructura — mandar solo la
+que se movió devolvería las demás a su default.
+
+Que esto no es una preferencia sino una restricción lo cierra SDD-17: el tramo de
+props de una instancia hidratada viaja **serializado** en `fud-state`, y una signal es
+una función con un `Set` vivo dentro. No sobrevive a la serialización, ni podría.
 
 ---
 
@@ -173,18 +208,33 @@ padre. Cada shadow root es una isla.
 <span class="val">@value</span>
 ```
 
-emitido:
+emitido — el hijo no expone nada por prop: `u` toma el array posicional entero y `$a()`
+lo aplica. `$a` es la única función que escribe un valor en un nodo, y la llaman `c` y
+`u`; `h` no, porque el servidor ya pintó ese texto:
 
 ```js
-class AppDisplay extends HTMLElement {
-  #val;
-  connectedCallback() {
-    const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
-    this.#val = root.childNodes[1];        // [0]=<style>, [1]=<span>
+customElements.define('app-display', class extends FudicElement {
+  static c($props) {
+    let $n0;
+    const $r = [], $d = [], $w = [];
+    let [$dom, $shadow, value] = $props;
+
+    const $m = () => { for (const $n of $r) $dom.append($shadow, $n); };
+    const $s = () => {};
+    const $a = () => {
+      let $v;
+      $v = String((value) ?? '');
+      if ($v !== $w[0]) { $w[0] = $v; $dom.setText($n0, $v); }
+    };
+
+    return {
+      c: () => { /* fabrica */ $a(); $m(); $s(); },
+      h: () => { /* adopta  */ $s(); },
+      u: ($p) => { [, , value] = $p; $a(); },
+      r: () => { $n0 = $shadow = null; $d.forEach((d) => d()); },
+    };
   }
-  set value(v) { if (this.#val) this.#val.textContent = String(v); }
-}
-customElements.define('app-display', AppDisplay);
+});
 ```
 
 **parent — `app-counter.fud`**
@@ -201,26 +251,14 @@ customElements.define('app-display', AppDisplay);
 <app-display .value="@count"></app-display>
 ```
 
-emitido:
+emitido — el pase inicial y la suscripción viven en `$s()`, el punto donde create e
+hydrate convergen, y el disposer en `$d`:
 
 ```js
-class AppCounter extends HTMLElement {
-  #count = signal(0);
-  #btn; #display; #unsub;
-
-  connectedCallback() {
-    const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
-    this.#btn = root.childNodes[1];
-    this.#display = root.childNodes[2];
-
-    this.#btn.addEventListener('click', () => this.#count.set(this.#count.peek() + 1));
-
-    this.#display.value = this.#count.peek();                 // set inicial
-    this.#unsub = this.#count.subscribe(v => { this.#display.value = v; });
-  }
-  disconnectedCallback() { this.#unsub?.(); }
-}
-customElements.define('app-counter', AppCounter);
+const $s = () => {
+  $n1.u([, , count.peek()]);                                  // valor inicial
+  $d.push(count.subscribe(($v) => { $n1.u([, , $v]); }));      // cambios
+};
 ```
 
 ### 4.2 Dos props: una constante, una reactiva
@@ -236,19 +274,13 @@ customElements.define('app-counter', AppCounter);
 <span class="val">@value</span>
 ```
 
-emitido — `label` es constante (llega literal), va al HTML en SSR y **no emite
-setter**; solo `value` (reactiva) lo emite:
+emitido — el hijo destructura las dos, en orden, y `u` reasigna las dos. `label` sigue
+siendo constante en el sentido que importa: nadie la mueve nunca, así que su escritura
+en `$a()` no vuelve a tocar el DOM (la compara `$w` y sale igual):
 
 ```js
-class AppDisplay extends HTMLElement {
-  #val;
-  connectedCallback() {
-    const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
-    this.#val = root.childNodes[2];        // [1]=<span.lbl> ya tiene el texto del SSR
-  }
-  set value(v) { if (this.#val) this.#val.textContent = String(v); }
-}
-customElements.define('app-display', AppDisplay);
+let [$dom, $shadow, label, value] = $props;
+u: ($p) => { [, , label, value] = $p; $a(); },
 ```
 
 **parent:**
@@ -257,12 +289,18 @@ customElements.define('app-display', AppDisplay);
 <app-display label="Total" .value="@count"></app-display>
 ```
 
-emitido — `label` no se asigna (ya está en el HTML del hijo); solo `value`:
+emitido — el padre manda el payload **entero** del hijo, `label` incluida. No es
+redundancia: `u` reasigna todas las props que destructura, así que un array que solo
+llevara `value` devolvería `label` a `undefined` y `$a()` borraría el texto que el
+servidor pintó.
 
 ```js
-this.#display.value = this.#count.peek();
-this.#unsub = this.#count.subscribe(v => { this.#display.value = v; });
+$n1.u([, , "Total", count.peek()]);
+$d.push(count.subscribe(($v) => { $n1.u([, , "Total", $v]); }));
 ```
+
+Una prop que el host **no nombra** sí se queda como hueco: no hay valor que el padre
+pueda mandar, y el default del hijo es exactamente el que ya tenía.
 
 ### 4.3 Valor inicial constante que siembra una signal propia del hijo
 
@@ -360,7 +398,7 @@ una llamada directa a una referencia de función: **no cruza el shadow boundary 
 evento, no hay listener entre componentes, no hay problema de propagación de shadow.**
 
 **84.** **Ninguna signal cruza el boundary.** `bind:` es azúcar sobre one-way +
-callback: baja el valor por el setter, sube el cambio por la función. La fuente de la
+callback: baja el valor por `u`, sube el cambio por la función. La fuente de la
 verdad permanece en el padre. Se preserva el aislamiento de islas (principio de la
 decisión 74–78).
 
@@ -454,7 +492,7 @@ this.#unsub = this.#name.subscribe(v => { this.#input.value = v; });  // baja: c
 this.#input.onChange = v => this.#name.set(v);                        // sube: cambios del hijo
 ```
 
-`name` vive siempre en el padre. Baja como valor por el setter, sube como argumento
+`name` vive siempre en el padre. Baja como valor por `u`, sube como argumento
 por el callback. La signal nunca cruza.
 
 ### Requisito semántico
@@ -490,7 +528,7 @@ canal de vuelta que enganchar → error de compilación.
 | 73 | Props | Default = valor en el destructuring |
 | 74 | Props | La reactividad la decide el consumidor, no la declaración |
 | 75 | Props | Prop no reactiva → `const`, resuelta en SSR, cero JS |
-| 76 | Props | Prop reactiva → setter en el hijo, sin signal interna (N2) |
+| 76 | Props | ~~Prop reactiva → setter en el hijo~~ · **derogada**: el canal es `u(props)`, uno solo y posicional ([BUG-12](./bugs/BUG-12-sin-canal-de-update.md)) |
 | 77 | Props | La declaración no fuerza el nivel |
 | 78 | Props | Variante única por cierre de proyecto |
 | 79 | Spread | `{...item}` expande a property bindings contra `T` |

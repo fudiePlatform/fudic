@@ -5,7 +5,7 @@ export function render($dom, $shadow, props) {
   const { variant = 'primary', disabled = false } = props ?? {};
   const $n0 = $dom.text(" "); $dom.append($shadow, $n0);
   const $n1 = $dom.element("button");
-  { const $a = (disabled); if ($a === true) $dom.setAttr($n1, "disabled", ''); else if ($a !== false && $a != null) $dom.setAttr($n1, "disabled", String($a)); }
+  { const $v = (disabled); if ($v === true) $dom.setAttr($n1, "disabled", ''); else if ($v !== false && $v != null) $dom.setAttr($n1, "disabled", String($v)); }
   $dom.setAttr($n1, 'class', ["btn", (variant === 'primary') && "primary", (variant === 'ghost') && "ghost"].filter(Boolean).join(' '));
   const $n2 = $dom.text(" "); $dom.append($n1, $n2);
   const $n3 = $dom.element("slot");

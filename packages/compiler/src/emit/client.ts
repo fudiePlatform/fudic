@@ -21,19 +21,45 @@ import { spaceModeOf } from './space.js';
 import { CodeWriter } from './writer.js';
 import { ClientMarkupEmitter } from './markup-client.js';
 import { AssetLinker } from './assets.js';
-import { extractCode, type Prop } from './oxc-code.js';
+import { extractCode, type ExtractedCode, type Prop } from './oxc-code.js';
 import { componentStyleNode, type EmitOptions, type EmitOutput } from './module.js';
+
+/**
+ * `@code` of a component, memoized on the resolved component itself.
+ *
+ * A parent now needs its CHILD's prop order to compose the positional array `u` takes
+ * (BUG-12 §3.4), so the same file would otherwise be handed to Oxc once per parent that
+ * holds it, plus once for its own chunk. The graph resolves each component to a single
+ * object, so a `WeakMap` keyed by it keeps the invariant the compiler is built on: Oxc is
+ * invoked exactly once per file.
+ */
+const codeCache = new WeakMap<ResolvedComponent, ExtractedCode>();
+
+function codeOf(comp: ResolvedComponent): ExtractedCode {
+  const cached = codeCache.get(comp);
+  if (cached !== undefined) return cached;
+  const code = extractCode(comp.source, comp.doc);
+  codeCache.set(comp, code);
+  return code;
+}
 
 /**
  * The positional destructuring of `$props` (§4.2) — the exact mirror of the `Object.values`
  * the server does. `$props` is always `[$dom, $shadow, ...values]`, and the compiler knows
  * the order of the props from the AST, so the payload carries no schema: only values.
  *
- * `let`, not `const`: `r()` releases `$shadow` on teardown.
+ * Two forms over the SAME list, because a prop crosses more than once (BUG-12 §3.3):
+ *
+ * - `declare` — the intake. `let`, not `const`: `r()` releases `$shadow` on teardown, and
+ *   `u` reassigns the props.
+ * - `assign` — the update. The two leading holes stay EMPTY: `$dom` and `$shadow` are the
+ *   adapter and the root, and an update carries state, not plumbing. The defaults are
+ *   repeated because an update may perfectly well bring `undefined` back.
  */
-function destructuring(props: readonly Prop[]): string {
+function destructuring(props: readonly Prop[], form: 'declare' | 'assign'): string {
   const names = props.map((p) => (p.def !== undefined ? `${p.name} = ${p.def}` : p.name));
-  return `let [$dom, $shadow${names.map((n) => `, ${n}`).join('')}] = $props;`;
+  if (form === 'declare') return `let [$dom, $shadow${names.map((n) => `, ${n}`).join('')}] = $props;`;
+  return `[, , ${names.join(', ')}] = $p;`;
 }
 
 function buildComponentClientModule(
@@ -42,19 +68,23 @@ function buildComponentClientModule(
   options: EmitOptions,
 ): { writer: CodeWriter; linker: AssetLinker } {
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
-  const { props, client } = extractCode(comp.source, comp.doc);
+  const { props, signals, client } = codeOf(comp);
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
 
-  const fab = new CodeWriter();
-  const adopt = new CodeWriter();
-  const em = new ClientMarkupEmitter(
-    comp.source,
-    fab,
-    adopt,
-    (t) => graph.components.has(t),
-    linker,
-    space,
-  );
+  const bodies = {
+    fab: new CodeWriter(),
+    adopt: new CodeWriter(),
+    apply: new CodeWriter(),
+    hook: new CodeWriter(),
+  };
+  const scope = {
+    childProps: (tag: string): readonly Prop[] | undefined => {
+      const child = graph.components.get(tag);
+      return child === undefined ? undefined : codeOf(child).props;
+    },
+    signals: new Set(signals.map((s) => s.name)),
+  };
+  const em = new ClientMarkupEmitter(comp.source, bodies, scope, linker, space);
   em.emitRoots(comp.doc.template!.children);
 
   const w = new CodeWriter();
@@ -67,31 +97,54 @@ function buildComponentClientModule(
   w.line('static c($props) {');
   w.indent();
   if (em.nodes.length > 0) w.line(`let ${em.nodes.join(', ')};`);
-  w.line('const $r = [];'); // the roots, mounted by m()
+  w.line('const $r = [];'); // the roots, mounted by $m()
   w.line('const $d = []; // teardowns');
-  w.line(destructuring(props));
+  if (em.writes > 0) w.line('const $w = []; // last applied, per value write');
+  w.line(destructuring(props, 'declare'));
   for (const line of client.body) w.line(line);
   w.line('');
-  w.line('const m = () => { for (const $n of $r) $dom.append($shadow, $n); };');
-  // `s` is where listeners and fine-grained subscriptions will be registered: the single
-  // point create and hydrate converge on. Empty until event bindings land (§4.5, §3.8).
-  w.line('const s = () => {};');
+  // Every name from here down starts with `$`, and that is not cosmetic: the `@client`
+  // body above was copied VERBATIM into this same scope, so a private closure called `m`
+  // is a private closure the author cannot shadow — it is a `SyntaxError` in their face,
+  // with no diagnostic (BUG-12 §2.5). The `$` reserve of SDD-15 §4.7 binds the emit too.
+  w.line('const $m = () => { for (const $n of $r) $dom.append($shadow, $n); };');
+  // `$s` is where hookup is registered: the single point create and hydrate converge on.
+  // It carries the values a child receives and their subscriptions (BUG-12 §3.4); host
+  // listeners and the component's own fine-grained subscriptions are still to come
+  // (§4.5, §3.8).
+  writeClosure(w, '$s', bodies.hook);
+  // `$a` — the only place a value reaches a node. `c` calls it after fabricating and `u`
+  // after reassigning, so create and update converge here and cannot drift apart; that the
+  // invariant holds is checkable by looking at the chunk.
+  writeClosure(w, '$a', bodies.apply, 'let $v;');
   w.line('');
   w.line('return {');
   w.indent();
-  w.line('c: () => {'); // fabricate → mount → hook up
+  w.line('c: () => {'); // fabricate → write the values → mount → hook up
   w.indent();
-  w.appendWriter(fab);
-  w.line('m();');
-  w.line('s();');
+  w.appendWriter(bodies.fab);
+  w.line('$a();');
+  w.line('$m();');
+  w.line('$s();');
   w.dedent();
   w.line('},');
-  w.line('h: () => {'); // adopt → hook up; no m(), the structure came mounted
+  // Adopt → hook up. No `$m()`: the structure came mounted. And no `$a()` either — the
+  // server already painted those values, so re-applying them would rewrite every text node
+  // of the subtree with the string it already holds, inside the gesture that INP measures,
+  // to change nothing. `h` adopts positions; the payload stays the authority on state.
+  w.line('h: () => {');
   w.indent();
-  w.appendWriter(adopt);
-  w.line('s();');
+  w.appendWriter(bodies.adopt);
+  w.line('$s();');
   w.dedent();
   w.line('},');
+  // The update channel: reassign the positional bindings and re-apply. No node is created,
+  // nothing is mounted and nothing is subscribed again — `u` is of VALUE (BUG-12 §4.2).
+  w.line(
+    props.length > 0
+      ? `u: ($p) => { ${destructuring(props, 'assign')} $a(); },`
+      : 'u: () => { $a(); },',
+  );
   w.line(`r: () => { ${[...em.nodes, '$shadow'].join(' = ')} = null; $d.forEach((d) => d()); },`);
   w.dedent();
   w.line('};');
@@ -100,6 +153,24 @@ function buildComponentClientModule(
   w.dedent();
   w.line('});');
   return { writer: w, linker };
+}
+
+/**
+ * One private closure of the factory. An empty body is written as `() => {}` and not as a
+ * block: a component that hooks up nothing, or has no value to apply, should not pay three
+ * lines of chunk to say so.
+ */
+function writeClosure(w: CodeWriter, name: string, body: CodeWriter, head?: string): void {
+  if (body.empty) {
+    w.line(`const ${name} = () => {};`);
+    return;
+  }
+  w.line(`const ${name} = () => {`);
+  w.indent();
+  if (head !== undefined) w.line(head);
+  w.appendWriter(body);
+  w.dedent();
+  w.line('};');
 }
 
 /** The client chunk of one component: `static c($props)` plus its `define`. */

@@ -239,11 +239,12 @@ export abstract class FudicElement extends HTMLElement {
 }
 
 export interface Controller {
-  c(): void;   // create  — fabrica nodos, monta la estructura (m) y engancha (s)
-  h(): void;   // hydrate — adopta nodos del shadow SSR por traversal posicional y engancha (s)
+  c(): void;   // create  — fabrica nodos, aplica los valores ($a), monta ($m) y engancha ($s)
+  h(): void;   // hydrate — adopta nodos del shadow SSR por traversal posicional y engancha ($s)
+  u(props: readonly unknown[]): void; // update — reasigna las props y reaplica los valores
   r(): void;   // remove  — teardown simétrico
-  // m (mount) y s (subscription) NO están en la interfaz: son closures privadas
-  // del factory, orquestadas por c y h. Ver §4.3.
+  // $m (mount), $s (subscription) y $a (apply) NO están en la interfaz: son closures
+  // privadas del factory, orquestadas por c, h y u. Ver §4.3 y §4.6.
 }
 ```
 
@@ -284,22 +285,28 @@ no callbacks del ciclo de vida del navegador. El único callback real es
 `$props` es siempre `[$dom, $shadow, ...valores]`: el adapter, el shadow root, y los valores
 posicionales del estado detrás. El destructuring dentro del factory los reparte.
 
-**La interfaz pública del controlador es exactamente `{c, h, r}`** — el conjunto de métodos
+**La interfaz pública del controlador es exactamente `{c, h, u, r}`** — el conjunto de métodos
 con **llamador externo**: `c` y `h` los enruta el punto de entrada de instancia según el
-origen (§4.3); `r` lo dispara el navegador vía `disconnectedCallback`. Todo lo demás es
-privado.
+origen (§4.3); `u` lo llama quien posee el valor; `r` lo dispara el navegador vía
+`disconnectedCallback`. Todo lo demás es privado.
 
-**`m` (mount) y `s` (subscription) son closures privadas del factory**, no propiedades del
-objeto devuelto, porque solo tienen llamadores internos (`c` y `h`). Exponerlas sería
-ofrecer métodos que ningún consumidor externo debe invocar.
+**`$m` (mount), `$s` (subscription) y `$a` (apply) son closures privadas del factory**, no
+propiedades del objeto devuelto, porque solo tienen llamadores internos. Exponerlas sería
+ofrecer métodos que ningún consumidor externo debe invocar. Empiezan por `$` y eso no es
+cosmética: el cuerpo de `@code { @client }` se copia **verbatim** a esa misma closure, así que
+un nombre que el emit tome fuera de la reserva de §4.7 es un nombre que el autor no puede usar
+([BUG-12](./bugs/BUG-12-sin-canal-de-update.md) §2.5).
 
-**No hay `u` (update) en esta interfaz.** Un componente N3 no expone getter/setter: signals,
-props y nodos viven exclusivamente en la closure del controlador. No existe superficie de
-escritura externa que dispare una recomposición, luego no hay quién invoque un `update` ni
-qué haría. Las mutaciones son internas: un signal que cambia notifica **directamente** a la
-suscripción fina que `s` registró (el `textContent`, el atributo). La actualización **es** la
-suscripción, no un método con nombre. (`u` sí existe, con trabajo real, en los renders de
-bloque `@if`/`@foreach`: §4.6.)
+**`u` (update) sí está en esta interfaz, y es `u` de VALOR**
+([BUG-12](./bugs/BUG-12-sin-canal-de-update.md) §3.1). Por el shadow boundary cruza un
+**valor**, nunca el objeto signal: lo dice la decisión 84 y lo hace estructural SDD-17 —el
+tramo de props de una instancia hidratada viaja serializado en `fud-state`, y una signal es una
+función con un `Set` vivo dentro—. Luego un hijo **no puede suscribirse** a lo que el padre
+posee: la propiedad de la signal es del padre, el hijo recibe valores, y recibirlos otra vez es
+una **llamada**. `u` toma el mismo array posicional que el payload, reasigna los bindings de
+prop y llama a `$a()`, que es la única función que escribe un valor en un nodo. No crea nodos,
+no monta y no vuelve a suscribir. `u` **con recomposición estructural** —`@if`, `@foreach`,
+reconciliación, decisión existencial— sigue siendo de los renders de bloque (§4.6).
 
 ### 3.8. `Dom<N>` — dos métodos nuevos
 
@@ -620,34 +627,47 @@ compilador pega el binding (mecánica en el SDD de `@foreach`); en forma factory
 
 ### 4.6. Forma del factory emitido
 
-El factory devuelve `{c, h, r}`. `m` y `s` son funciones locales de la closure. Los nodos
-vivos se capturan con `let`; los teardowns se acumulan en `$d`.
+El factory devuelve `{c, h, u, r}`. `$m`, `$s` y `$a` son funciones locales de la closure. Los
+nodos vivos se capturan con `let`; los teardowns se acumulan en `$d`.
 
 ```js
 static c($props) {
   let $n1, $n2;
   const $d = [];
-  let [$dom, $shadow, $v1, $v2] = $props;
+  const $w = [];                                // lo último aplicado, por escritura
+  let [$dom, $shadow, title, variant = 'default'] = $props;
   const click = (ev) => { /* … */ };
 
   // Privada: monta la estructura (ensambla nodos ya fabricados en el shadow).
-  const m = () => { $dom.append($shadow, $n1, $n2); };
+  const $m = () => { $dom.append($shadow, $n1, $n2); };
 
   // Privada: engancha listeners/suscripciones una vez que hay referencias.
   // Punto común de create e hydrate; vive una sola vez.
-  const s = () => { $n2 && $d.push($dom.event($n2, 'click', click)); };
+  const $s = () => { $n2 && $d.push($dom.event($n2, 'click', click)); };
+
+  // Privada: la ÚNICA función que escribe un valor en un nodo. La llaman c y u.
+  const $a = () => {
+    let $v;
+    $v = String((title) ?? '');
+    if ($v !== $w[0]) { $w[0] = $v; $dom.setText($n1, $v); }
+  };
 
   return {
-    c: () => {                                  // create: fabrica → monta → engancha
+    c: () => {                                  // create: fabrica → aplica → monta → engancha
       $n1 = $dom.el('span');
       $n2 = $dom.el('button');
-      m();
-      s();
+      $a();
+      $m();
+      $s();
     },
-    h: () => {                                  // hydrate: adopta → engancha
+    h: () => {                                  // hydrate: adopta → engancha. SIN $a()
       $n1 = $shadow.children[0];
       $n2 = $shadow.children[1];
-      s();
+      $s();
+    },
+    u: ($p) => {                                // update: reasigna → reaplica
+      [, , title, variant = 'default'] = $p;
+      $a();
     },
     r: () => {                                  // remove: teardown simétrico
       $n1 = null; $n2 = null; $shadow = null;
@@ -657,12 +677,38 @@ static c($props) {
 }
 ```
 
-- **`m` fabrica-vs-adopta:** solo `c` la llama; `h` no, porque la estructura vino montada.
-- **`s` compartida:** el enganche no se duplica entre caminos.
+- **`$m` fabrica-vs-adopta:** solo `c` la llama; `h` no, porque la estructura vino montada.
+- **`$s` compartida:** el enganche no se duplica entre caminos.
+- **`$a` es el único sitio donde un valor llega a un nodo.** `c` y `u` convergen ahí, así que
+  no pueden divergir, y eso se comprueba mirando el chunk. **`h` no la llama**: el servidor ya
+  pintó esos valores, y reimprimirlos sería reescribir cada `textContent` del subárbol con el
+  string que ya tiene, dentro del gesto donde se mide el INP, para no cambiar un byte. `h`
+  **adopta posiciones**; el payload sigue siendo autoridad de estado.
+- **`u` reasigna y reaplica; no reconstruye.** Los dos primeros huecos del patrón van vacíos
+  —`$dom` y `$shadow` no se reasignan nunca— y los defaults se repiten, porque una
+  actualización puede volver a traer `undefined`. Reaplica **todas** las props: son
+  posicionales y el array llega entero.
+- **`$w` es el filtro, y va por escritura.** El `Object.is` de la signal evita la *llamada*,
+  no las escrituras; sin `$w`, un componente de diez props repintaría diez nodos cada vez que
+  se mueve una signal. La comparación es de strings; lo que ahorra es una mutación del DOM.
 - **`$d.push($dom.event(...))`** registra y recoge el teardown en una línea.
 - **`$n2 && …`** — un nodo puede no existir (proyección de un `@if`, hijo condicional). El
   registro se guarda solo si el nodo está. El DOM es autoridad de posición.
 - **`r()`** anula referencias vivas y dispara cada disposer. Simétrico a `c`/`h`.
+
+**El lado del padre.** En el host de un componente hijo, `$s()` lleva el pase inicial y la
+suscripción que renuevan el valor
+([BUG-12](./bugs/BUG-12-sin-canal-de-update.md) §3.4). El array es el payload **entero** del
+hijo, en el orden en que él destructura, porque su `u` reasigna todas las props que
+destructura:
+
+```js
+$n6.u([, , "Hola", count.peek()]);                                  // valor inicial
+$d.push(count.subscribe(($v) => { $n6.u([, , "Hola", $v]); }));     // cambios
+```
+
+Un valor que **no** es una signal no emite nada: cruzó una vez, ya está en el HTML que el
+servidor pintó, y `const` es su semántica exacta (decisión 75).
 
 > **Distinción de nivel (frontera con otro SDD).** Lo anterior es el caso N3: el hijo creado
 > en runtime **es un web component** y `c` es su canal de props. Es **distinto** del caso en
@@ -676,9 +722,18 @@ static c($props) {
 
 El cuerpo de `@code { @client }` se **copia textualmente** a la closure del factory,
 conviviendo en el mismo scope léxico con las variables que el compilador genera (`$dom`,
-`$shadow`, `$n1`, `$d`, `$props`, `$v1`, `m`, `s`, …). Para que no colisionen, **el prefijo
-`$` queda reservado al código emitido**:
+`$shadow`, `$n1`, `$d`, `$w`, `$props`, `$m`, `$s`, `$a`, …). Para que no colisionen, **el
+prefijo `$` queda reservado al código emitido**:
 
+- **La reserva obliga TAMBIÉN al emit, y esa mitad es la que faltaba.** Las closures privadas
+  del factory se llamaron `m` y `s` hasta
+  [BUG-12](./bugs/BUG-12-sin-canal-de-update.md) §2.5, y son dos de los nombres de una letra
+  más plausibles que existe: un `@client` con `const m = 2` producía un chunk con
+  `SyntaxError: Identifier 'm' has already been declared` y **ningún diagnóstico** —el
+  identificador del usuario era legal según la regla escrita, así que `FUD0290` tampoco lo
+  habría cubierto—. Se arregló **no ocupando** nombres que son suyos: `$m`, `$s`, `$a`. Todo
+  identificador que el emit introduzca en esa closure empieza por `$`, sin excepciones que
+  recordar.
 - **Regla:** ningún identificador **de usuario** en `@client` puede empezar por `$`. Aplica a
   **declaraciones** (`const`/`let`/`var`, parámetros, targets de destructuring, nombres de
   función/clase) **y a referencias libres** (usar `$shadow` sin declararlo = tocar una
@@ -828,8 +883,10 @@ que falta usar un nodo.
     engancha nada: hasta que el runtime llama a `h(props)` la instancia está inerte. Es lo
     que permite que `define` upgradee N instancias sin que ninguna se auto-arranque con un
     estado que todavía no tiene.
-11. **Interfaz pública `{c, h, r}`.** El objeto devuelto expone exactamente `c`, `h`, `r`; `m`
-    y `s` no son propiedades. No existe `u`.
+11. **Interfaz pública `{c, h, u, r}`.** El objeto devuelto expone exactamente `c`, `h`, `u` y
+    `r`; `$m`, `$s` y `$a` no son propiedades. `u` es de valor: reasigna las props y llama a
+    `$a()`, que es la única función que escribe un valor en un nodo — `c` la llama también, y
+    `h` nunca ([BUG-12](./bugs/BUG-12-sin-canal-de-update.md) §6.3).
 12. **Reparto del tramo por tag.** Con dos instancias del mismo tag y una sola interacción
     sobre la primera, **ambas** reciben su `h(props)` con su propio tramo. La segunda responde
     a su primer click sin descarga ni replay (camino 3 de SDD-17). Es el test que falla si el
@@ -895,9 +952,13 @@ que falta usar un nodo.
 
 - **Runtime de captura, tres caminos, cascada, bus dirigido y warm.** Es **SDD-17**. Este SDD
   emite los mapas que aquél consume; no implementa hidratación.
-- **`update` (`u`) con recomposición** (`@if`, `@foreach`, reconciliación). No existe en la
-  interfaz del controlador N3 (§3.7). `u` con trabajo real vive en los renders de bloque, en
-  los SDD de control de flujo y `@foreach`.
+- **`update` (`u`) con recomposición estructural** (`@if`, `@foreach`, reconciliación,
+  decisión existencial). El `u` que sí está en la interfaz del controlador (§3.7) es **de
+  valor**: reasigna los bindings de prop y reaplica las escrituras sobre nodos que ya existen.
+  Crear, mover o destruir nodos sigue siendo de los renders de bloque, en los SDD de control
+  de flujo y `@foreach`. Un corolario práctico: una escritura dentro de un `@foreach` se queda
+  **fusionada** con la creación de su nodo, porque la variable del bucle solo guarda el último
+  nodo del turno y no hay referencia estable que `$a` pueda reescribir.
 - **Creación de items N1 en `@foreach`** (fila/tarjeta sin estado por función de render, no
   web component). Distinto del `c` de un hijo N3 (§4.3); vive en el SDD de `@foreach`.
 - **Signals y suscripciones finas** (`s` con trabajo estructural). Este SDD fija la forma del
