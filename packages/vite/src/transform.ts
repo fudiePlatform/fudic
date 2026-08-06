@@ -47,7 +47,8 @@ export interface TransformResult {
   /**
    * Graph-level diagnostics from following the layout chain (SDD-21: FUD0422 cycle,
    * FUD0423/FUD0435 the target is not a layout, FUD0429 orphan section). They concern the
-   * relation between two files, so only the resolver can see them.
+   * relation between two files, so only the resolver can see them. Plus the emit's own
+   * (BUG-13): the syntax errors of a `@code` that Oxc could not parse.
    */
   readonly diagnostics: readonly Diagnostic[];
 }
@@ -114,7 +115,10 @@ export function transformFud(id: string, io: ResolveIo): TransformResult | null 
     code: out.code,
     map: buildMap(id, redactServerRegions(source, entry.code), out),
     missingAssets: out.missingAssets,
-    diagnostics: resolved.diagnostics,
+    // The emit's own: a `@code` whose JS does not parse (BUG-13 §5.3). Without them the
+    // module still gets written — degraded — and the build only trips later, in the
+    // prerender, on an identifier the emit never declared.
+    diagnostics: [...resolved.diagnostics, ...out.diagnostics],
   };
 }
 
@@ -148,7 +152,10 @@ export function transformFudClient(id: string, io: ResolveIo): TransformResult |
     code: out.code,
     map: buildMap(id, redactServerRegions(graph.entrySource, entry.code), out),
     missingAssets: out.missingAssets,
-    diagnostics: resolved.diagnostics,
+    // The emit's own: a `@code` whose JS does not parse (BUG-13 §5.3). Without them the
+    // module still gets written — degraded — and the build only trips later, in the
+    // prerender, on an identifier the emit never declared.
+    diagnostics: [...resolved.diagnostics, ...out.diagnostics],
   };
 }
 

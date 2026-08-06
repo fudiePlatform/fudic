@@ -23,6 +23,7 @@ import { ClientMarkupEmitter } from './markup-client.js';
 import { AssetLinker } from './assets.js';
 import { extractCode, type Prop } from './oxc-code.js';
 import { componentStyleNode, type EmitOptions, type EmitOutput } from './module.js';
+import type { Diagnostic } from '../types/index.js';
 
 /**
  * The positional destructuring of `$props` (§4.2) — the exact mirror of the `Object.values`
@@ -40,9 +41,9 @@ function buildComponentClientModule(
   graph: ComponentGraph,
   comp: ResolvedComponent,
   options: EmitOptions,
-): { writer: CodeWriter; linker: AssetLinker } {
+): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
-  const { props, client } = extractCode(comp.source, comp.doc);
+  const { props, client, diagnostics } = extractCode(comp.source, comp.doc);
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
 
   const fab = new CodeWriter();
@@ -99,7 +100,7 @@ function buildComponentClientModule(
   w.line('}');
   w.dedent();
   w.line('});');
-  return { writer: w, linker };
+  return { writer: w, linker, diagnostics };
 }
 
 /** The client chunk of one component: `static c($props)` plus its `define`. */
@@ -117,6 +118,11 @@ export function emitComponentClientModuleMapped(
   comp: ResolvedComponent,
   options: EmitOptions = {},
 ): EmitOutput {
-  const { writer, linker } = buildComponentClientModule(graph, comp, options);
-  return { code: writer.toString(), mappings: writer.mappings(), missingAssets: linker.missing() };
+  const { writer, linker, diagnostics } = buildComponentClientModule(graph, comp, options);
+  return {
+    code: writer.toString(),
+    mappings: writer.mappings(),
+    missingAssets: linker.missing(),
+    diagnostics,
+  };
 }

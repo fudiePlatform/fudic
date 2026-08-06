@@ -22,6 +22,7 @@ import type { ComponentGraph, ResolvedComponent } from './resolve.js';
 import type { ElementNode, HtmlContent } from '../html/index.js';
 import type { StyleNode } from '../css/index.js';
 import type { PageDocument, ComponentDocument } from '../document/index.js';
+import type { Diagnostic } from '../types/index.js';
 import { spaceModeOf } from './space.js';
 import { CodeWriter, type EmitMapping } from './writer.js';
 import { MarkupEmitter, renderName, tpl } from './markup.js';
@@ -84,6 +85,13 @@ export interface EmitOutput {
   readonly code: string;
   readonly mappings: readonly EmitMapping[];
   readonly missingAssets: readonly string[];
+  /**
+   * Syntax diagnostics from the `@code` the module was built out of (BUG-13 §5.3). The
+   * emit does not stop for them — the text is already written, degraded — but it must not
+   * hide them either: a `@code` that does not parse used to reach the prerender as a
+   * `ReferenceError` in a file that never mentioned the cause.
+   */
+  readonly diagnostics: readonly Diagnostic[];
 }
 
 /** The component's single `<style>` element, if it wrote one (decision 62). */
@@ -122,10 +130,10 @@ function buildComponentModule(
   graph: ComponentGraph,
   comp: ResolvedComponent,
   options: EmitOptions,
-): { writer: CodeWriter; linker: AssetLinker } {
+): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const ext = options.importExt ?? '.mjs';
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
-  const { props, signals } = extractCode(comp.source, comp.doc);
+  const { props, signals, diagnostics } = extractCode(comp.source, comp.doc);
   const bodyW = new CodeWriter();
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
   const em = new MarkupEmitter(comp.source, bodyW, (t) => graph.components.has(t), linker, undefined, space);
@@ -158,7 +166,7 @@ function buildComponentModule(
   w.appendWriter(bodyW); // carries the markup's source anchors, unlike a toString()/split copy
   w.dedent();
   w.line('}');
-  return { writer: w, linker };
+  return { writer: w, linker, diagnostics };
 }
 
 export function emitComponentModule(
@@ -175,8 +183,13 @@ export function emitComponentModuleMapped(
   comp: ResolvedComponent,
   options: EmitOptions = {},
 ): EmitOutput {
-  const { writer, linker } = buildComponentModule(graph, comp, options);
-  return { code: writer.toString(), mappings: writer.mappings(), missingAssets: linker.missing() };
+  const { writer, linker, diagnostics } = buildComponentModule(graph, comp, options);
+  return {
+    code: writer.toString(),
+    mappings: writer.mappings(),
+    missingAssets: linker.missing(),
+    diagnostics,
+  };
 }
 
 function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer: CodeWriter; linker: AssetLinker } {
@@ -244,5 +257,12 @@ export function emitPageModule(graph: ComponentGraph, options: EmitOptions = {})
 /** As `emitPageModule`, plus the output↔source mappings and missing assets (§4.6/§6.13). */
 export function emitPageModuleMapped(graph: ComponentGraph, options: EmitOptions = {}): EmitOutput {
   const { writer, linker } = buildPageModule(graph, options);
-  return { code: writer.toString(), mappings: writer.mappings(), missingAssets: linker.missing() };
+  // No `diagnostics`: a page / layout / route does not go through `extractCode` — its
+  // `@code` is the `?server` module, which the plugin parses on its own.
+  return {
+    code: writer.toString(),
+    mappings: writer.mappings(),
+    missingAssets: linker.missing(),
+    diagnostics: [],
+  };
 }

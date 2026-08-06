@@ -2,7 +2,7 @@
 
 > **BUG:** [BUG-13 — Un comentario Razor dentro de `@code` borra todo el bloque](./BUG-13-comentario-razor-en-code.md)
 > **Paquetes:** `@fudic/compiler` · **Rama:** `fix/bug-13-comentario-en-code`
-> **Progreso:** 5 / 9
+> **Progreso:** 7 / 9
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Las rutas son relativas a la raíz del repo.
@@ -47,11 +47,11 @@ tareas posteriores. Las rutas son relativas a la raíz del repo.
 
 ## Fase 2 — El fallo deja de ser mudo (2)
 
-- [ ] **6. `extractCode` propaga los diagnósticos del batch.**
+- [x] **6. `extractCode` propaga los diagnósticos del batch.**
       `packages/compiler/src/emit/oxc-code.ts`: hoy hace `batch.parse()` y descarta
       `result.diagnostics`. `ExtractedCode` gana `diagnostics`, ya mapeados al fuente por
       `mapOffset` (el batch los devuelve así). Verde en §7.3.
-- [ ] **7. El emit los saca por `EmitOutput`.**
+- [x] **7. El emit los saca por `EmitOutput`.**
       `EmitOutput` gana `diagnostics`; los emisores de componente y de chunk de cliente los
       pasan; `packages/vite/src/transform.ts` los une a los que ya lleva `TransformResult`,
       que el plugin convierte en error de build. Es lo que hace que un `@code` roto pare el

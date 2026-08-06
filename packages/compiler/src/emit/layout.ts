@@ -188,7 +188,14 @@ export function emitLayoutModuleMapped(
   options: EmitOptions = {},
 ): EmitOutput {
   const { writer, linker } = buildLayoutModule(graph, layout, options);
-  return { code: writer.toString(), mappings: writer.mappings(), missingAssets: linker.missing() };
+  // No `diagnostics`: a page / layout / route does not go through `extractCode` — its
+  // `@code` is the `?server` module, which the plugin parses on its own.
+  return {
+    code: writer.toString(),
+    mappings: writer.mappings(),
+    missingAssets: linker.missing(),
+    diagnostics: [],
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -287,5 +294,12 @@ export function emitRouteModule(graph: DocumentGraph, options: EmitOptions = {})
 /** As `emitRouteModule`, plus the output↔source mappings and missing assets. */
 export function emitRouteModuleMapped(graph: DocumentGraph, options: EmitOptions = {}): EmitOutput {
   const { writer, linker } = buildRouteModule(graph, options);
-  return { code: writer.toString(), mappings: writer.mappings(), missingAssets: linker.missing() };
+  // No `diagnostics`: a page / layout / route does not go through `extractCode` — its
+  // `@code` is the `?server` module, which the plugin parses on its own.
+  return {
+    code: writer.toString(),
+    mappings: writer.mappings(),
+    missingAssets: linker.missing(),
+    diagnostics: [],
+  };
 }

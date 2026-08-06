@@ -10,6 +10,7 @@
  */
 
 import type { ComponentDocument } from '../document/index.js';
+import type { Diagnostic } from '../types/index.js';
 import { JsBatch, type OxcNode } from '../oxc/index.js';
 
 /** One destructured prop from `props<T>()`, with its default expression source if any. */
@@ -44,6 +45,14 @@ export interface ExtractedCode {
   readonly props: Prop[];
   readonly signals: Signal[];
   readonly client: ClientCode;
+  /**
+   * What Oxc had to say about this `@code`, already in source coordinates (BUG-13 §5.3).
+   *
+   * Without them the three lists above are ambiguous: empty reads as "there was no code"
+   * whether the block was absent or unparseable, and the emit then writes a module that
+   * references identifiers nobody declares. Empty here means the JS parsed.
+   */
+  readonly diagnostics: readonly Diagnostic[];
 }
 
 // ── Typed access over the untyped Oxc node (the only place that indexes by name) ──
@@ -58,12 +67,15 @@ type MapOffset = (bufferOffset: number) => number;
  * Extract, in ONE Oxc invocation for the whole file, everything the two emit branches need
  * out of `@code`: the `props<T>()` pattern (with its defaults), the `signal()` initials the
  * server branch renders inert, and the `@client` region split into imports and body.
+ *
+ * The batch's diagnostics come out with them. A parse that failed is not a component
+ * without code, and the caller is the only one that can still tell the difference.
  */
 export function extractCode(source: string, doc: ComponentDocument): ExtractedCode {
   const props: Prop[] = [];
   const signals: Signal[] = [];
   const client: ClientCode = { imports: [], body: [] };
-  if (!doc.code) return { props, signals, client };
+  if (!doc.code) return { props, signals, client, diagnostics: [] };
 
   const batch = new JsBatch(source);
   const parts = doc.code.parts;
@@ -83,7 +95,7 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
       }
     }
   });
-  return { props, signals, client };
+  return { props, signals, client, diagnostics: result.diagnostics };
 }
 
 /** Route one top-level statement of `@client` to the module scope or to the closure. */
