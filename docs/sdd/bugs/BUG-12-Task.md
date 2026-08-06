@@ -2,7 +2,7 @@
 
 > **BUG:** [BUG-12 — Un hijo que recibe un valor no tiene canal de actualización](./BUG-12-sin-canal-de-update.md)
 > **Paquetes:** `@fudic/core` · `@fudic/compiler` · **Rama:** `fix/bug-12-update-de-props`
-> **Progreso:** 12 / 19
+> **Progreso:** 14 / 19
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Las rutas son relativas a la raíz del repo.
@@ -110,13 +110,22 @@ en el BUG):
 
 ## Fase 3 — El lado del padre (2)
 
-- [ ] **12. Consumir `PropertyBinding` en un host de componente.**
+- [x] **12. Consumir `PropertyBinding` en un host de componente.**
       Modificar `packages/compiler/src/emit/markup-client.ts:233-238`: la rama de componente deja
       de saltar los atributos y clasifica los suyos. Por cada `PropertyBinding` cuyo valor sea
       una signal del padre, emitir en `$s()` el pase inicial y la suscripción de §3.4, con el
       disposer en `$d`. Es el primer lector de `PropertyBinding`
       (`packages/compiler/src/binding/nodes.ts:46`): hoy no lo consume ningún emisor.
-- [ ] **13. Distinguir signal de valor constante.**
+      → El array es el payload **entero** del hijo, en el orden en que él destructura: los
+      `.prop` y también los atributos planos del host, que es lo mismo que `componentPropsExpr`
+      manda por SSR. Los huecos que el padre no nombra se quedan vacíos y los finales ni se
+      escriben. Con varias signals sale una suscripción por signal, y cada una recompone el
+      array entero: la que notifica pone el valor que le dan, las demás se leen con `peek()`.
+      → El parámetro del callback es `$v`, no `v` como en §3.4: el array que lo rodea es código
+      del autor, y un `v` suyo quedaría sombreado. Cumple el invariante de §5.
+      → El orden de props del hijo obliga a leer su `@code`; `client.ts` memoiza `extractCode`
+      en un `WeakMap` sobre el `ResolvedComponent` para que Oxc siga siendo uno por fichero.
+- [x] **13. Distinguir signal de valor constante.**
       La discriminación no es heurística: `extractCode` ya devuelve `signals` con los nombres de
       cada `const x = signal(...)` del componente (`packages/compiler/src/emit/oxc-code.ts`). Un
       valor que es `Identifier` y está en esa lista → canal reactivo; cualquier otra cosa → no

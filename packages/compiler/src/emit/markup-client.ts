@@ -35,11 +35,13 @@
 import type { HtmlContent, ElementNode } from '../html/index.js';
 import type { IfNode, ForeachNode } from '../control/index.js';
 import type { Span } from '../types/index.js';
+import { classifyAttribute } from '../binding/index.js';
 import { CodeWriter, type LinePart } from './writer.js';
 import { type AssetLinker } from './assets.js';
-import { hasValueAttrs, inlineSink, writeElementAttrs, type ValueSink } from './attrs.js';
+import { attrExpr, hasValueAttrs, inlineSink, writeElementAttrs, type ValueSink } from './attrs.js';
 import { nestedSpaceMode, type SpaceMode } from './space.js';
 import { emitItems, type EmitItem, type TextRun } from './runs.js';
+import type { Prop } from './oxc-code.js';
 
 // A control construct is stored as its base RazorConstruct; recover the concrete node.
 const asIf = (node: HtmlContent): IfNode => node as unknown as IfNode;
@@ -104,6 +106,29 @@ export interface ClientBodies {
   readonly adopt: CodeWriter;
   /** `$a` — put a value on a node. The ONLY body that does (BUG-12 §3.3). */
   readonly apply: CodeWriter;
+  /** `$s` — hook up: the values a child receives, and the subscriptions that renew them. */
+  readonly hook: CodeWriter;
+}
+
+/**
+ * What this component knows about the ones around it and about itself:
+ *
+ * - `childProps(tag)` — the prop order of a child component, or `undefined` when the tag is
+ *   not a component. A parent needs its child's ORDER to compose the positional array `u`
+ *   takes: the payload carries no schema, only values in the order the child destructures.
+ * - `signals` — the names its own `@code` declares with `signal(...)`. It is what tells a
+ *   reactive `.prop` from a constant one, and it is a lookup, not a heuristic.
+ */
+export interface ClientScope {
+  childProps(tag: string): readonly Prop[] | undefined;
+  readonly signals: ReadonlySet<string>;
+}
+
+/** One slot of a child's positional payload: the expression, and the signal behind it. */
+interface Slot {
+  readonly expr: string;
+  /** The parent signal this value reads, when there is one; absent for a constant. */
+  readonly signal?: string;
 }
 
 export class ClientMarkupEmitter {
@@ -111,7 +136,8 @@ export class ClientMarkupEmitter {
   readonly #fab: CodeWriter;
   readonly #adopt: CodeWriter;
   readonly #apply: CodeWriter;
-  readonly #isComponent: (tag: string) => boolean;
+  readonly #hook: CodeWriter;
+  readonly #scope: ClientScope;
   readonly #linker: AssetLinker;
   readonly #nodes: string[] = [];
   #id = 0;
@@ -126,7 +152,7 @@ export class ClientMarkupEmitter {
   constructor(
     source: string,
     bodies: ClientBodies,
-    isComponent: (tag: string) => boolean,
+    scope: ClientScope,
     linker: AssetLinker,
     space: SpaceMode = 'collapse',
   ) {
@@ -134,9 +160,15 @@ export class ClientMarkupEmitter {
     this.#fab = bodies.fab;
     this.#adopt = bodies.adopt;
     this.#apply = bodies.apply;
-    this.#isComponent = isComponent;
+    this.#hook = bodies.hook;
+    this.#scope = scope;
     this.#linker = linker;
     this.#space = space;
+  }
+
+  /** Whether this tag is a component of the graph — the only thing `#applies` needs. */
+  #isComponent(tag: string): boolean {
+    return this.#scope.childProps(tag) !== undefined;
   }
 
   /** Every node variable the walk created, for the closure's `let` header and for `r()`. */
@@ -317,6 +349,7 @@ export class ClientMarkupEmitter {
       // its instances come alive, is the runtime's decision (SDD-17), not the parent's.
       // `data-adopt` carries the style specifier the shared sheet is keyed by (SDD-18 D-6).
       this.#fab.line(`$dom.setAttr(${v}, 'data-adopt', ${JSON.stringify(el.name)});`);
+      this.#childValues(el, v);
     } else {
       writeElementAttrs(this.#source, el, v, this.#fab, this.#linker, this.#sink());
     }
@@ -326,6 +359,64 @@ export class ClientMarkupEmitter {
     this.#children(el, v);
     this.#space = outer;
     this.#place(v, level.fab); // parent last: a node is filled before it joins the tree
+  }
+
+  /**
+   * The values a child host receives, written into `$s()` — the point create and hydrate
+   * converge on, so the child is served whichever way this instance came alive.
+   *
+   * The property of a signal is the PARENT's: decision 84 lets only a value cross the
+   * shadow boundary, and SDD-17 makes it structural, because the props of a hydrated
+   * instance travel serialized in `fud-state` and a signal is a function with a live `Set`
+   * inside. A child therefore cannot subscribe to anything; the owner of the value is the
+   * one who writes it again, once at hookup and once per notification.
+   *
+   * A host with no signal among its values emits NOTHING (decision 75): a constant crossed
+   * once, it is already in the markup the server painted, and `const` is its exact
+   * semantics — a channel for it would be scaffolding around a value that cannot move.
+   */
+  #childValues(el: ElementNode, v: string): void {
+    const slots = this.#slots(el);
+    if (![...slots.values()].some((s) => s.signal !== undefined)) return;
+
+    // The whole payload, in the CHILD's declared order — not just the slot that moved.
+    // `u` reassigns every binding it destructures, so a partial array would send the props
+    // the parent did not name back to their defaults, and `$a()` would repaint them.
+    const cells = this.#scope.childProps(el.name)!.map((p) => slots.get(p.name));
+    const last = cells.reduce((n, cell, i) => (cell === undefined ? n : i + 1), 0);
+    const payload = (read: (slot: Slot) => string): string =>
+      `[, , ${cells
+        .slice(0, last)
+        .map((cell) => (cell === undefined ? '' : read(cell)))
+        .join(', ')}]`;
+
+    this.#hook.line(`${v}.u(${payload((s) => (s.signal === undefined ? s.expr : `${s.signal}.peek()`))});`);
+    for (const source of new Set([...slots.values()].flatMap((s) => (s.signal !== undefined ? [s.signal] : [])))) {
+      // One subscription per signal, each rebuilding the whole array: the slot that
+      // notified takes the value it was handed, the rest are read as they stand.
+      const body = payload((s) => (s.signal === source ? '$v' : s.signal === undefined ? s.expr : `${s.signal}.peek()`));
+      this.#hook.line(`$d.push(${source}.subscribe(($v) => { ${v}.u(${body}); }));`);
+    }
+  }
+
+  /**
+   * The values a host hands its child, by prop name. A plain attribute is one — that is
+   * what the server does with it too (`componentPropsExpr`) — and `.prop="@x"` is the
+   * other. Which of them can MOVE is not a guess: a value whose source is exactly the name
+   * of a `signal(...)` this component declares is reactive, and everything else is not.
+   */
+  #slots(el: ElementNode): Map<string, Slot> {
+    const out = new Map<string, Slot>();
+    for (const attr of el.attributes) {
+      const b = classifyAttribute(attr, this.#source).value;
+      if (b.type === 'attr') {
+        out.set(b.name, { expr: attrExpr(this.#source, attr) });
+      } else if (b.type === 'property') {
+        const expr = this.#slice(b.value.expr);
+        out.set(b.name, this.#scope.signals.has(expr) ? { expr, signal: expr } : { expr });
+      }
+    }
+    return out;
   }
 
   /** Descend into an element: a level of its own, with its own cursor. */

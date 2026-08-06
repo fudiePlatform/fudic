@@ -386,6 +386,35 @@ describe('emitComponentClientModule — u, the update channel (BUG-12)', () => {
     expect(apply).toContain('$dom.setAttr($n0, "title", String($v));');
   });
 
+  it('replicates the whole chain when the write is a bare interpolation in a branch', () => {
+    const src2 = inlineChunk(
+      'x-branch',
+      '@code {\n  const { on, name } = props<{ on: boolean; name: string }>();\n}\n' +
+        '<x-branch>\n  <template shadowrootmode="open">' +
+        '@if (on) { @name } else { nada }' +
+        '</template>\n</x-branch>\n',
+    );
+    const apply = src2.slice(src2.indexOf('const $a = () => {'), src2.indexOf('return {'));
+    // The `else` is written even though it applies nothing: the branches of one `@if` are
+    // one statement, and half a statement does not parse.
+    expect(apply).toContain('if (on) {');
+    expect(apply).toContain('} else {');
+    expect(apply).toContain('$dom.setText($n0, $v);');
+  });
+
+  it('sees a class: binding inside a branch as a write of its own', () => {
+    const src2 = inlineChunk(
+      'x-clsif',
+      '@code {\n  const { on } = props<{ on: boolean }>();\n}\n' +
+        '<x-clsif>\n  <template shadowrootmode="open">' +
+        '@if (on) { <b class:hot="@on"></b> }' +
+        '</template>\n</x-clsif>\n',
+    );
+    const apply = src2.slice(src2.indexOf('const $a = () => {'), src2.indexOf('return {'));
+    expect(apply).toContain('if (on) {');
+    expect(apply).toContain(`$dom.setAttr($n0, 'class', $v);`);
+  });
+
   it('leaves a write inside a @foreach fused with its node, out of $a', () => {
     const src2 = inlineChunk(
       'x-loop',
@@ -434,8 +463,10 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
   it('emits the initial pass and the subscription in $s(), with the disposer in $d (§6.5)', () => {
     const src = hostChunk('.value="@count"');
     const hook = src.slice(src.indexOf('const $s = () => {'), src.indexOf('return {'));
+    // `$v` and not `v`: every identifier the emit introduces starts with `$` (§5), and the
+    // payload around it is the author's code — a `v` of theirs would be shadowed here.
     expect(hook).toContain('$n0.u([, , count.peek()]);');
-    expect(hook).toContain('$d.push(count.subscribe((v) => { $n0.u([, , v]); }));');
+    expect(hook).toContain('$d.push(count.subscribe(($v) => { $n0.u([, , $v]); }));');
   });
 
   it('sends the child its WHOLE positional payload, not just the slot that moved', () => {
@@ -448,7 +479,35 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
     );
     const hook = src.slice(src.indexOf('const $s = () => {'), src.indexOf('return {'));
     expect(hook).toContain('$n0.u([, , "Hola", count.peek()]);');
-    expect(hook).toContain('$d.push(count.subscribe((v) => { $n0.u([, , "Hola", v]); }));');
+    expect(hook).toContain('$d.push(count.subscribe(($v) => { $n0.u([, , "Hola", $v]); }));');
+  });
+
+  it('leaves a hole where the host passes nothing, at either end of the array', () => {
+    const two =
+      '@code {\n  const { label = "x", value = 0 } = props<{ label?: string; value?: number }>();\n}\n' +
+      '<x-child>\n  <template shadowrootmode="open"><span>@label @value</span></template>\n</x-child>\n';
+    // A prop the host never names has no value the parent could send: the hole leaves the
+    // child's own default in charge, which is the value it was built with in the first place.
+    expect(hostChunk('.value="@count"', two)).toContain('$n0.u([, , , count.peek()]);');
+
+    const flipped =
+      '@code {\n  const { value = 0, label = "x" } = props<{ value?: number; label?: string }>();\n}\n' +
+      '<x-child>\n  <template shadowrootmode="open"><span>@label @value</span></template>\n</x-child>\n';
+    // Trailing holes are not written at all — an array that stops short says the same thing.
+    expect(hostChunk('.value="@count"', flipped)).toContain('$n0.u([, , count.peek()]);');
+  });
+
+  it('subscribes once per signal, and each rebuilds the whole array', () => {
+    const two =
+      '@code {\n  const { a = 0, b = 0 } = props<{ a?: number; b?: number }>();\n}\n' +
+      '<x-child>\n  <template shadowrootmode="open"><span>@a @b</span></template>\n</x-child>\n';
+    const src = hostChunk('.a="@count" .b="@other"', two, '    const other = signal(1);\n');
+    const hook = src.slice(src.indexOf('const $s = () => {'), src.indexOf('return {'));
+
+    expect(hook).toContain('$n0.u([, , count.peek(), other.peek()]);');
+    // The signal that notified hands its value in; the rest are read where they stand.
+    expect(hook).toContain('$d.push(count.subscribe(($v) => { $n0.u([, , $v, other.peek()]); }));');
+    expect(hook).toContain('$d.push(other.subscribe(($v) => { $n0.u([, , count.peek(), $v]); }));');
   });
 
   it('keeps the host itself untouched: still fabricated, still not driven', () => {
