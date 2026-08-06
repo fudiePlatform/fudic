@@ -35,9 +35,9 @@
 import type { HtmlContent, ElementNode } from '../html/index.js';
 import type { IfNode, ForeachNode } from '../control/index.js';
 import type { Span } from '../types/index.js';
-import { CodeWriter } from './writer.js';
+import { CodeWriter, type LinePart } from './writer.js';
 import { type AssetLinker } from './assets.js';
-import { writeElementAttrs } from './attrs.js';
+import { hasValueAttrs, inlineSink, writeElementAttrs, type ValueSink } from './attrs.js';
 import { nestedSpaceMode, type SpaceMode } from './space.js';
 import { emitItems, type EmitItem, type TextRun } from './runs.js';
 
@@ -92,29 +92,48 @@ const isElement = (node: HtmlContent): boolean => node.type === 'element';
 const isAdopted = (node: HtmlContent): boolean =>
   node.type === 'element' || node.type === 'razor-expression';
 
+/**
+ * The four bodies one walk fills. `fab` and `adopt` are the two alternative ways to end up
+ * holding the same tree; `apply` and `hook` are the two things every instance does whichever
+ * way it got there.
+ */
+export interface ClientBodies {
+  /** `c` — create the nodes and assemble the structure. */
+  readonly fab: CodeWriter;
+  /** `h` — take the SSR nodes with an element cursor. */
+  readonly adopt: CodeWriter;
+  /** `$a` — put a value on a node. The ONLY body that does (BUG-12 §3.3). */
+  readonly apply: CodeWriter;
+}
+
 export class ClientMarkupEmitter {
   readonly #source: string;
   readonly #fab: CodeWriter;
   readonly #adopt: CodeWriter;
+  readonly #apply: CodeWriter;
   readonly #isComponent: (tag: string) => boolean;
   readonly #linker: AssetLinker;
   readonly #nodes: string[] = [];
   #id = 0;
   #depth = 0;
+  /** How many value writes `$a` owns so far — each one gets its own slot in `$w`. */
+  #writes = 0;
+  /** Nesting depth of `@foreach`: inside one, a node variable is not a stable reference. */
+  #loops = 0;
   /** The whitespace mode of the node being emitted; `white-space` inherits (BUG-07 §4.4). */
   #space: SpaceMode;
 
   constructor(
     source: string,
-    fab: CodeWriter,
-    adopt: CodeWriter,
+    bodies: ClientBodies,
     isComponent: (tag: string) => boolean,
     linker: AssetLinker,
     space: SpaceMode = 'collapse',
   ) {
     this.#source = source;
-    this.#fab = fab;
-    this.#adopt = adopt;
+    this.#fab = bodies.fab;
+    this.#adopt = bodies.adopt;
+    this.#apply = bodies.apply;
     this.#isComponent = isComponent;
     this.#linker = linker;
     this.#space = space;
@@ -123,6 +142,60 @@ export class ClientMarkupEmitter {
   /** Every node variable the walk created, for the closure's `let` header and for `r()`. */
   get nodes(): readonly string[] {
     return this.#nodes;
+  }
+
+  /** How many slots `$w` needs: one per value write, so each is compared against its own. */
+  get writes(): number {
+    return this.#writes;
+  }
+
+  /**
+   * One value write, guarded by what it last applied. `u` re-applies the WHOLE payload —
+   * the array arrives entire and the props are positional — so the filter has to sit on
+   * each write, not on the call: a component with ten props must not repaint ten nodes
+   * because one signal moved. The comparison is a string against a string; the write it
+   * saves is a DOM mutation.
+   */
+  #applyValue(value: readonly LinePart[], write: (v: string) => string): void {
+    const slot = this.#writes++;
+    this.#apply.mappedLine('$v = ', ...value, ';');
+    this.#apply.line(`if ($v !== $w[${slot}]) { $w[${slot}] = $v; ${write('$v')} }`);
+  }
+
+  /**
+   * Where an element's value writes go. Inside a `@foreach` they stay in the fabricate
+   * body, fused with the node they belong to: the loop variable holds only the LAST node
+   * of the run, so there is nothing stable for `$a` to write to. Updating a loop needs the
+   * block render of SDD-15 §4.6, which BUG-12 §7 leaves where it is.
+   */
+  #sink(): ValueSink {
+    if (this.#loops > 0) return inlineSink(this.#fab);
+    return {
+      repeats: true,
+      once: (expr, write) => this.#applyValue([expr], write),
+      bound: (expr, write) => this.#applyValue([expr], write),
+    };
+  }
+
+  /**
+   * Whether this subtree holds a write `$a` owns, so a construct around it has to have its
+   * condition replicated there. A `@foreach` never does: what is inside it is fused.
+   */
+  #applies(nodes: readonly HtmlContent[]): boolean {
+    return nodes.some((node) => {
+      if (node.type === 'razor-expression') return true;
+      if (node.type === 'element') {
+        const el = node as ElementNode;
+        if (!this.#isComponent(el.name) && hasValueAttrs(this.#source, el)) return true;
+        return this.#applies(el.children);
+      }
+      if (node.type === 'if') {
+        const n = asIf(node);
+        if (n.branches.some((b) => this.#applies(b.body))) return true;
+        return n.elseBody !== undefined && this.#applies(n.elseBody);
+      }
+      return false; // text, comments, @foreach, layout directives
+    });
   }
 
   /** Emit both bodies for the component template: the direct children of the shadow root. */
@@ -192,7 +265,15 @@ export class ClientMarkupEmitter {
       return;
     }
     const v = this.#fresh();
-    this.#fab.mappedLine(`${v} = $dom.text(`, ...run.value, ');');
+    if (this.#loops > 0) {
+      this.#fab.mappedLine(`${v} = $dom.text(`, ...run.value, ');');
+    } else {
+      // The node is structure and the text is state: fabricate one, let `$a` write the
+      // other. Create and update then converge on the same statement, so they cannot
+      // disagree about what this run says.
+      this.#fab.line(`${v} = $dom.text('');`);
+      this.#applyValue(run.value, ($v) => `$dom.setText(${v}, ${$v});`);
+    }
     this.#place(v, level.fab);
     this.#adopt.line(`${v} = ${this.#anchor(level, tail)};`);
   }
@@ -237,7 +318,7 @@ export class ClientMarkupEmitter {
       // `data-adopt` carries the style specifier the shared sheet is keyed by (SDD-18 D-6).
       this.#fab.line(`$dom.setAttr(${v}, 'data-adopt', ${JSON.stringify(el.name)});`);
     } else {
-      writeElementAttrs(this.#source, el, v, this.#fab, this.#linker);
+      writeElementAttrs(this.#source, el, v, this.#fab, this.#linker, this.#sink());
     }
     // Take the element the cursor is on, then advance it — before descending, so the
     // levels below are walked with this element already accounted for.
@@ -270,11 +351,16 @@ export class ClientMarkupEmitter {
    * cursor stays in step across the branch.
    */
   #if(node: IfNode, level: Level, tail: Tail, adopts: boolean): void {
+    // The condition is replicated into `$a` for the same reason it is into `h`: a node
+    // inside a branch that did not render does not exist, so the write that touches it
+    // must be asked the same question. It is evaluated once per path, never twice.
+    const applies = this.#applies([node]);
     node.branches.forEach((branch, i) => {
       const head = i === 0 ? 'if' : '} else if';
       const inner = this.#slice(branch.header.inner);
       this.#fab.mappedLine(`${head} (`, { text: inner, src: branch.header.inner.start }, ') {');
       if (adopts) this.#adopt.line(`${head} (${inner}) {`);
+      if (applies) this.#apply.line(`${head} (${inner}) {`);
       this.#indent();
       this.#items(this.#itemsOf(branch.body), level, tail);
       this.#dedent();
@@ -282,21 +368,31 @@ export class ClientMarkupEmitter {
     if (node.elseBody !== undefined) {
       this.#fab.line('} else {');
       if (adopts) this.#adopt.line('} else {');
+      if (applies) this.#apply.line('} else {');
       this.#indent();
       this.#items(this.#itemsOf(node.elseBody), level, tail);
       this.#dedent();
     }
     this.#fab.line('}');
     if (adopts) this.#adopt.line('}');
+    if (applies) this.#apply.line('}');
   }
 
+  /**
+   * A loop is never replicated into `$a`. Its node variables are overwritten on every turn
+   * and end up holding the last one, so re-running the loop there would write every value
+   * onto a single node. What is inside stays fused with its creation until the block render
+   * of SDD-15 §4.6 gives a loop real anchors (BUG-12 §7).
+   */
   #foreach(loop: ForeachNode, level: Level, tail: Tail, adopts: boolean): void {
     const inner = this.#slice(loop.header.inner);
     this.#fab.mappedLine('for (', { text: inner, src: loop.header.inner.start }, ') {');
     if (adopts) this.#adopt.line(`for (${inner}) {`);
+    this.#loops += 1;
     this.#indent();
     this.#items(this.#itemsOf(loop.body), level, tail);
     this.#dedent();
+    this.#loops -= 1;
     this.#fab.line('}');
     if (adopts) this.#adopt.line('}');
   }
@@ -304,10 +400,12 @@ export class ClientMarkupEmitter {
   #indent(): void {
     this.#fab.indent();
     this.#adopt.indent();
+    this.#apply.indent();
   }
 
   #dedent(): void {
     this.#fab.dedent();
     this.#adopt.dedent();
+    this.#apply.dedent();
   }
 }

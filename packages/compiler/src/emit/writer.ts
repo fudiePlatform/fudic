@@ -74,6 +74,11 @@ export class CodeWriter {
     return this;
   }
 
+  /** Whether nothing has been written yet — an empty body is emitted as `() => {}`. */
+  get empty(): boolean {
+    return this.#lines.length === 0;
+  }
+
   indent(): this {
     this.#depth += 1;
     return this;

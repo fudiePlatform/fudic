@@ -194,7 +194,9 @@ describe('emitComponentClientModule — shapes the fixtures do not cover', () =>
       '@code {\n  const { on } = props<{ on: boolean }>();\n}\n' +
         '<x-cls>\n  <template shadowrootmode="open"><b class:hot="@on"></b></template>\n</x-cls>\n',
     );
-    expect(src).toContain(`$dom.setAttr($n0, 'class', [(on) && "hot"].filter(Boolean).join(' '));`);
+    // The composition is a value now — a `class:` binding can move — so it rides `$a()`.
+    expect(src).toContain(`$v = [(on) && "hot"].filter(Boolean).join(' ');`);
+    expect(src).toContain(`$dom.setAttr($n0, 'class', $v);`);
   });
 
   it('keeps whitespace verbatim where the browser would, and drops nothing', () => {
@@ -213,7 +215,8 @@ describe('emitComponentClientModule — shapes the fixtures do not cover', () =>
     );
     // One node for the whole run, and the literal half of it untouched: a `<pre>` does not
     // stop being a `<pre>` because there is an expression in the middle of it.
-    expect(src).toContain("$n1 = $dom.text(`a   ${(name) ?? ''}`);");
+    expect(src).toContain("$n1 = $dom.text('');");
+    expect(src).toContain("$v = `a   ${(name) ?? ''}`;");
   });
 
   it('emits a @foreach on the fabricate path alone when it holds nothing to adopt', () => {
@@ -256,7 +259,7 @@ describe('emitComponentClientModule — shapes the fixtures do not cover', () =>
       '@code {\n  const { id } = props<{ id: string }>();\n}\n' +
         '<x-mix>\n  <template shadowrootmode="open"><a href="/p/@id/x"></a></template>\n</x-mix>\n',
     );
-    expect(src).toContain('const $a = `/p/${id}/x`;');
+    expect(src).toContain('$v = `/p/${id}/x`;');
   });
 });
 
@@ -277,7 +280,8 @@ describe('emitComponentClientModule — anchoring an interpolated run', () => {
     // The reason the anchors work at all: HTML has no boundary between two text nodes, so
     // what the parser gives back is one. The emit builds one to match — on both paths.
     const src = runChunk('x-run', '<b>hello @name<i></i></b>');
-    expect(src).toContain('$n1 = $dom.text(`hello ${(name) ?? \'\'}`);');
+    expect(src).toContain("$v = `hello ${(name) ?? ''}`;");
+    expect(src).toContain('$dom.setText($n1, $v);');
     expect(src.match(/\$dom\.text\(/gu)).toHaveLength(1);
   });
 

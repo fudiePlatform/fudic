@@ -29,11 +29,18 @@ import { componentStyleNode, type EmitOptions, type EmitOutput } from './module.
  * the server does. `$props` is always `[$dom, $shadow, ...values]`, and the compiler knows
  * the order of the props from the AST, so the payload carries no schema: only values.
  *
- * `let`, not `const`: `r()` releases `$shadow` on teardown.
+ * Two forms over the SAME list, because a prop crosses more than once (BUG-12 §3.3):
+ *
+ * - `declare` — the intake. `let`, not `const`: `r()` releases `$shadow` on teardown, and
+ *   `u` reassigns the props.
+ * - `assign` — the update. The two leading holes stay EMPTY: `$dom` and `$shadow` are the
+ *   adapter and the root, and an update carries state, not plumbing. The defaults are
+ *   repeated because an update may perfectly well bring `undefined` back.
  */
-function destructuring(props: readonly Prop[]): string {
+function destructuring(props: readonly Prop[], form: 'declare' | 'assign'): string {
   const names = props.map((p) => (p.def !== undefined ? `${p.name} = ${p.def}` : p.name));
-  return `let [$dom, $shadow${names.map((n) => `, ${n}`).join('')}] = $props;`;
+  if (form === 'declare') return `let [$dom, $shadow${names.map((n) => `, ${n}`).join('')}] = $props;`;
+  return `[, , ${names.join(', ')}] = $p;`;
 }
 
 function buildComponentClientModule(
@@ -45,12 +52,10 @@ function buildComponentClientModule(
   const { props, client } = extractCode(comp.source, comp.doc);
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
 
-  const fab = new CodeWriter();
-  const adopt = new CodeWriter();
+  const bodies = { fab: new CodeWriter(), adopt: new CodeWriter(), apply: new CodeWriter() };
   const em = new ClientMarkupEmitter(
     comp.source,
-    fab,
-    adopt,
+    bodies,
     (t) => graph.components.has(t),
     linker,
     space,
@@ -67,31 +72,49 @@ function buildComponentClientModule(
   w.line('static c($props) {');
   w.indent();
   if (em.nodes.length > 0) w.line(`let ${em.nodes.join(', ')};`);
-  w.line('const $r = [];'); // the roots, mounted by m()
+  w.line('const $r = [];'); // the roots, mounted by $m()
   w.line('const $d = []; // teardowns');
-  w.line(destructuring(props));
+  if (em.writes > 0) w.line('const $w = []; // last applied, per value write');
+  w.line(destructuring(props, 'declare'));
   for (const line of client.body) w.line(line);
   w.line('');
-  w.line('const m = () => { for (const $n of $r) $dom.append($shadow, $n); };');
-  // `s` is where listeners and fine-grained subscriptions will be registered: the single
+  // Every name from here down starts with `$`, and that is not cosmetic: the `@client`
+  // body above was copied VERBATIM into this same scope, so a private closure called `m`
+  // is a private closure the author cannot shadow — it is a `SyntaxError` in their face,
+  // with no diagnostic (BUG-12 §2.5). The `$` reserve of SDD-15 §4.7 binds the emit too.
+  w.line('const $m = () => { for (const $n of $r) $dom.append($shadow, $n); };');
+  // `$s` is where listeners and fine-grained subscriptions are registered: the single
   // point create and hydrate converge on. Empty until event bindings land (§4.5, §3.8).
-  w.line('const s = () => {};');
+  w.line('const $s = () => {};');
+  writeApply(w, bodies.apply);
   w.line('');
   w.line('return {');
   w.indent();
-  w.line('c: () => {'); // fabricate → mount → hook up
+  w.line('c: () => {'); // fabricate → write the values → mount → hook up
   w.indent();
-  w.appendWriter(fab);
-  w.line('m();');
-  w.line('s();');
+  w.appendWriter(bodies.fab);
+  w.line('$a();');
+  w.line('$m();');
+  w.line('$s();');
   w.dedent();
   w.line('},');
-  w.line('h: () => {'); // adopt → hook up; no m(), the structure came mounted
+  // Adopt → hook up. No `$m()`: the structure came mounted. And no `$a()` either — the
+  // server already painted those values, so re-applying them would rewrite every text node
+  // of the subtree with the string it already holds, inside the gesture that INP measures,
+  // to change nothing. `h` adopts positions; the payload stays the authority on state.
+  w.line('h: () => {');
   w.indent();
-  w.appendWriter(adopt);
-  w.line('s();');
+  w.appendWriter(bodies.adopt);
+  w.line('$s();');
   w.dedent();
   w.line('},');
+  // The update channel: reassign the positional bindings and re-apply. No node is created,
+  // nothing is mounted and nothing is subscribed again — `u` is of VALUE (BUG-12 §4.2).
+  w.line(
+    props.length > 0
+      ? `u: ($p) => { ${destructuring(props, 'assign')} $a(); },`
+      : 'u: () => { $a(); },',
+  );
   w.line(`r: () => { ${[...em.nodes, '$shadow'].join(' = ')} = null; $d.forEach((d) => d()); },`);
   w.dedent();
   w.line('};');
@@ -100,6 +123,24 @@ function buildComponentClientModule(
   w.dedent();
   w.line('});');
   return { writer: w, linker };
+}
+
+/**
+ * `$a` — the only place a value reaches a node. `c` calls it after fabricating and `u`
+ * after reassigning, so create and update converge here and cannot drift apart; that the
+ * invariant holds is checkable by looking at the chunk.
+ */
+function writeApply(w: CodeWriter, apply: CodeWriter): void {
+  if (apply.empty) {
+    w.line('const $a = () => {};');
+    return;
+  }
+  w.line('const $a = () => {');
+  w.indent();
+  w.line('let $v;');
+  w.appendWriter(apply);
+  w.dedent();
+  w.line('};');
 }
 
 /** The client chunk of one component: `static c($props)` plus its `define`. */

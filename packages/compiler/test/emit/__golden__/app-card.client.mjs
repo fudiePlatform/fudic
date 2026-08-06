@@ -6,25 +6,32 @@ customElements.define("app-card", class extends FudicElement {
     let $n0, $n1, $n2, $n3, $n4, $n5, $n6;
     const $r = [];
     const $d = []; // teardowns
+    const $w = []; // last applied, per value write
     let [$dom, $shadow, title, variant = 'default'] = $props;
     const expanded = signal(false);
     function toggle() {
       expanded.set(!expanded.peek());
     }
 
-    const m = () => { for (const $n of $r) $dom.append($shadow, $n); };
-    const s = () => {};
+    const $m = () => { for (const $n of $r) $dom.append($shadow, $n); };
+    const $s = () => {};
+    const $a = () => {
+      let $v;
+      $v = ["card", (variant === 'highlight') && "highlight"].filter(Boolean).join(' ');
+      if ($v !== $w[0]) { $w[0] = $v; $dom.setAttr($n0, 'class', $v); }
+      $v = String((title) ?? '');
+      if ($v !== $w[1]) { $w[1] = $v; $dom.setText($n3, $v); }
+    };
 
     return {
       c: () => {
         $r.push($dom.text(" "));
         $n0 = $dom.element("article");
-        $dom.setAttr($n0, 'class', ["card", (variant === 'highlight') && "highlight"].filter(Boolean).join(' '));
         $dom.append($n0, $dom.text(" "));
         $n1 = $dom.element("header");
         $dom.append($n1, $dom.text(" "));
         $n2 = $dom.element("h2");
-        $n3 = $dom.text(String((title) ?? ''));
+        $n3 = $dom.text('');
         $dom.append($n2, $n3);
         $dom.append($n1, $n2);
         $dom.append($n1, $dom.text(" "));
@@ -55,8 +62,9 @@ customElements.define("app-card", class extends FudicElement {
         $dom.append($n0, $dom.text(" "));
         $r.push($n0);
         $r.push($dom.text(" "));
-        m();
-        s();
+        $a();
+        $m();
+        $s();
       },
       h: () => {
         let $c0 = $dom.firstElementChild($shadow);
@@ -78,8 +86,9 @@ customElements.define("app-card", class extends FudicElement {
           }
           $n6 = $c1; $c1 = $dom.nextElementSibling($c1);
         }
-        s();
+        $s();
       },
+      u: ($p) => { [, , title, variant = 'default'] = $p; $a(); },
       r: () => { $n0 = $n1 = $n2 = $n3 = $n4 = $n5 = $n6 = $shadow = null; $d.forEach((d) => d()); },
     };
   }

@@ -2,7 +2,7 @@
 
 > **BUG:** [BUG-12 — Un hijo que recibe un valor no tiene canal de actualización](./BUG-12-sin-canal-de-update.md)
 > **Paquetes:** `@fudic/core` · `@fudic/compiler` · **Rama:** `fix/bug-12-update-de-props`
-> **Progreso:** 7 / 19
+> **Progreso:** 12 / 19
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Las rutas son relativas a la raíz del repo.
@@ -73,28 +73,37 @@ en el BUG):
 > Va **antes** que las fases 3-5 y en este orden: el renombrado toca las mismas líneas que la
 > extracción de `$a()`, y hacerlo después obligaría a regenerar los goldens dos veces.
 
-- [ ] **8. `m` → `$m`, `s` → `$s`.**
+- [x] **8. `m` → `$m`, `s` → `$s`.**
       Modificar `packages/compiler/src/emit/client.ts:75-78` y sus llamadas en los cuerpos de
       `c` y `h` (§2.5, §3.5). Es el arreglo de la colisión: mete los nombres del emit dentro de
       la reserva `$` de SDD-15 §4.7, en vez de reservarle al usuario tres letras más. Verde en 5.
-- [ ] **9. `destructuring()` gana la forma de asignación.**
+- [x] **9. `destructuring()` gana la forma de asignación.**
       Modificar `packages/compiler/src/emit/client.ts:34-37` (§3.3): sobre la misma lista de
       `Prop`, una segunda forma sin `let` y con los dos primeros huecos vacíos, defaults
       incluidos. Verde en la parte de 3 que mira el patrón.
-- [ ] **10. `$a()`: las escrituras de valor salen del cuerpo de fabricación.**
+- [x] **10. `$a()`: las escrituras de valor salen del cuerpo de fabricación.**
       Modificar `packages/compiler/src/emit/markup-client.ts` para llevar a un tercer
       `CodeWriter` cada escritura que dependa de una expresión —`setText` de un run interpolado,
       `setAttr` de un atributo con interpolación o `class:`—, dejando en el cuerpo de `c` la
       creación del nodo. Emitir `const $a = () => { … }` en `client.ts` junto a `$m` y `$s`, y
       llamarla desde `c` **antes** de `$m()`.
-- [ ] **10b. El cache de escritura `$w`.**
+      → Dos cosas que la tarea no decía y el código pedía: (a) un `@if` que envuelve una
+      escritura replica su condición en `$a()`, porque el nodo no existe si la rama no pintó;
+      (b) dentro de un `@foreach` la escritura se queda **fusionada** con la creación del nodo,
+      porque la variable del bucle solo guarda el último nodo del turno — actualizar un bucle
+      necesita el render de bloque que §7 deja fuera. El reparto fijo/valor vive en `attrs.ts`
+      (`ValueSink`), compartido con el servidor para que las dos ramas no se separen.
+      → Y el temporal `const $a` de los atributos interpolados pasa a `$v`: dejarlo habría
+      sombreado a la closure `$a` dentro de su propio cuerpo. Toca el golden **de servidor**
+      `app-button.mjs` (única diferencia ahí).
+- [x] **10b. El cache de escritura `$w`.**
       En el mismo `$a()`: cada escritura calcula su valor en `$v`, lo compara con `$w[k]` —lo
       último que esa escritura aplicó— y solo toca el DOM si difiere. `u` reaplica *todas* las
       props porque el array llega entero, así que el filtro tiene que estar por **escritura**:
       sin él, un componente de diez props repinta diez nodos cada vez que se mueve una signal.
       El `Object.is` de `signal.ts:27` evita la llamada, no las escrituras. `$w` y el `let $v`
       solo se emiten cuando hay al menos una escritura.
-- [ ] **11. La entrada `u` del objeto devuelto.**
+- [x] **11. La entrada `u` del objeto devuelto.**
       En `client.ts`: `u: ($p) => { <asignación>; $a(); },` entre `h` y `r`. `h` **no** llama a
       `$a()` (§4.3) — el servidor ya pintó esos valores y reimprimirlos gasta INP dentro del
       gesto para no cambiar un byte. Verde en 3.
@@ -136,8 +145,11 @@ en el BUG):
 - [ ] **17. Goldens regenerados y revisados a mano.**
       `packages/compiler/test/emit/__golden__/{app-badge,app-card,app-button}.client.mjs`. Las
       únicas diferencias esperadas son el renombrado `$m`/`$s`, la salida de las escrituras de
-      valor a `$a()` y la entrada `u`. Cualquier otra es un fallo de la Fase 2, no un golden que
-      actualizar (§6.11).
+      valor a `$a()` (con su `$w`) y la entrada `u`. Cualquier otra es un fallo de la Fase 2, no
+      un golden que actualizar (§6.11). Más una en el golden de **servidor** `app-button.mjs`:
+      el temporal `$a` de los atributos interpolados pasa a `$v` (tarea 10).
+      → Regenerados ya en la Fase 2, donde nació el cambio; aquí solo se confirma que no se ha
+      movido nada más.
 - [ ] **18. Regresiones y cobertura.**
       `equivalence.test.ts` verde **sin tocarlo** (§6.8) y un `u` posterior a `r()` que no
       resucita nodos (§6.9). `@fudic/core` sigue al 100 % en las cuatro métricas; `client.ts` y
