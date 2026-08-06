@@ -23,6 +23,7 @@ import { ClientMarkupEmitter } from './markup-client.js';
 import { AssetLinker } from './assets.js';
 import { extractCode, type ExtractedCode, type Prop } from './oxc-code.js';
 import { componentStyleNode, type EmitOptions, type EmitOutput } from './module.js';
+import type { Diagnostic } from '../types/index.js';
 
 /**
  * `@code` of a component, memoized on the resolved component itself.
@@ -66,9 +67,9 @@ function buildComponentClientModule(
   graph: ComponentGraph,
   comp: ResolvedComponent,
   options: EmitOptions,
-): { writer: CodeWriter; linker: AssetLinker } {
+): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
-  const { props, signals, client } = codeOf(comp);
+  const { props, signals, client, diagnostics } = codeOf(comp);
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
 
   const bodies = {
@@ -152,7 +153,7 @@ function buildComponentClientModule(
   w.line('}');
   w.dedent();
   w.line('});');
-  return { writer: w, linker };
+  return { writer: w, linker, diagnostics };
 }
 
 /**
@@ -188,6 +189,11 @@ export function emitComponentClientModuleMapped(
   comp: ResolvedComponent,
   options: EmitOptions = {},
 ): EmitOutput {
-  const { writer, linker } = buildComponentClientModule(graph, comp, options);
-  return { code: writer.toString(), mappings: writer.mappings(), missingAssets: linker.missing() };
+  const { writer, linker, diagnostics } = buildComponentClientModule(graph, comp, options);
+  return {
+    code: writer.toString(),
+    mappings: writer.mappings(),
+    missingAssets: linker.missing(),
+    diagnostics,
+  };
 }

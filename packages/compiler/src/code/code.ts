@@ -11,6 +11,11 @@
  * regions (semantic, SDD-12), and does not police where the block may appear
  * (SDD-10). It never throws: broken input degrades the value and emits a located
  * diagnostic, and the cursor always moves forward.
+ *
+ * One thing it does police, because nobody downstream can: a Razor comment written in
+ * here is FUD0114 (decision 35.a, BUG-13). The body is JavaScript, `@* … *@` is not, and
+ * the balancer is told to treat it as opaque so a comment can never decide where the
+ * block ends.
  */
 
 import { type Span, span, emptySpan } from '../types/index.js';
@@ -24,6 +29,16 @@ import type { CodeBlockNode, CodePart, ClientRegion, ServerRegion } from './node
 const FUD_EXPECTED_BRACE = 'FUD0110';
 /** `@server` / `@client` take no parameter (decision 66). */
 const FUD_UNEXPECTED_PARAMETER = 'FUD0111';
+/** A Razor comment inside `@code` (decision 35.a, BUG-13 §3). FUD0112/0113 are burned. */
+const FUD_RAZOR_COMMENT_IN_CODE = 'FUD0114';
+
+/**
+ * The body of `@code` is JavaScript, and JavaScript has its own two comment forms.
+ * A Razor comment exists to comment WITHOUT publishing — which is what it buys in markup
+ * and in CSS, where the native comment does reach the browser. In JS the bundler already
+ * drops `//`, so `@* … *@` adds nothing here except text the JS parser cannot read.
+ */
+const RAZOR_COMMENTS: Readonly<{ razorComments: true }> = { razorComments: true };
 
 const WHITESPACE = /\s/u;
 const NON_WHITESPACE = /\S/u;
@@ -215,7 +230,7 @@ class BodySplitter {
       return brace;
     }
 
-    const group = scanBraces(this.#source, brace);
+    const group = scanBraces(this.#source, brace, RAZOR_COMMENTS);
     this.#diagnostics.push(...group.diagnostics);
     this.#closeChunk(atOffset);
     this.#parts.push({
@@ -269,7 +284,7 @@ export function parseCodeBlock(
     ]);
   }
 
-  const block = scanBraces(source, brace);
+  const block = scanBraces(source, brace, RAZOR_COMMENTS);
   const group: BalancedGroup = block.value;
   const splitter = new BodySplitter(source, group.inner, group.regions);
   const parts = splitter.split();
@@ -279,6 +294,34 @@ export function parseCodeBlock(
   ctx.lexer.seekTo(group.span.end);
 
   const node: CodeBlockNode = { type: 'code', span: span(start, group.span.end), parts };
-  const diagnostics = [...block.diagnostics, ...splitter.diagnostics];
+  const diagnostics = [
+    ...block.diagnostics,
+    ...razorCommentErrors(group.regions),
+    ...splitter.diagnostics,
+  ];
   return diagnostics.length === 0 ? ok(node) : withDiagnostics(node, diagnostics);
+}
+
+/**
+ * One `FUD0114` per Razor comment written anywhere in the block (decision 35.a).
+ *
+ * The balancer walked the WHOLE body — the inside of `@server` / `@client` included, since
+ * it counts braces rather than recursing — so a single pass over its regions covers the
+ * three positions the bug reported, and covers them identically. The text is not carved out
+ * of the chunk: SDD-08 recovers the same way from `FUD0110`, leaving the offending source
+ * where the author wrote it and saying so with a span.
+ */
+function razorCommentErrors(regions: readonly LexRegion[]): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  for (const region of regions) {
+    if (region.kind !== 'razor-comment') continue;
+    out.push(
+      errorDiag(
+        FUD_RAZOR_COMMENT_IN_CODE,
+        'Razor comments are not allowed inside @code; comment the JavaScript with // or /*…*/',
+        region.span,
+      ),
+    );
+  }
+  return out;
 }

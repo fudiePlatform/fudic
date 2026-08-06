@@ -70,14 +70,27 @@ export function linkHref(link: ElementNode): string | undefined {
   return undefined;
 }
 
-function parse(source: string): StructuredDocument {
-  return structureDocument(source, parseDocument(source, { atConstructs: constructs }).value).value;
+/**
+ * Parse one `.fud` into its structured document, keeping what the two passes had to say.
+ *
+ * Both of them report — the HTML/`@` parser (`FUD0110`, `FUD0111`, `FUD0114`, …) and the
+ * structural pass (`FUD0150`–`FUD0160`) — and this function used to take `.value` twice and
+ * drop both lists. That is what left a diagnostic visible in the editor and absent from the
+ * build: the language server parses on its own, the build only ever came through here.
+ */
+function parse(source: string): ParseResult<StructuredDocument> {
+  const parsed = parseDocument(source, { atConstructs: constructs });
+  const structured = structureDocument(source, parsed.value);
+  const diagnostics = [...parsed.diagnostics, ...structured.diagnostics];
+  return diagnostics.length === 0
+    ? ok(structured.value)
+    : withDiagnostics(structured.value, diagnostics);
 }
 
 /** Resolve the transitive component graph from an entry `.fud` (page or component). */
 export function resolveComponents(entryPath: string, io: ResolveIo): ComponentGraph {
   const entrySource = io.read(entryPath);
-  const entry = parse(entrySource);
+  const entry = parse(entrySource).value;
   const components = new Map<string, ResolvedComponent>();
   visitComponents(entry.links, entryPath, io, components);
   const entryDeps = entry.links.map(linkHref).filter((h): h is string => h !== undefined);
@@ -93,7 +106,7 @@ function visitComponents(
 ): void {
   const visit = (path: string): void => {
     const source = io.read(path);
-    const doc = parse(source);
+    const doc = parse(source).value;
     if (doc.type !== 'component-document') return; // a linked file must be a component
     if (components.has(doc.name)) return; // already resolved (shared dependency)
     const deps = doc.links.map(linkHref).filter((h): h is string => h !== undefined);
@@ -143,9 +156,14 @@ function layoutHrefOf(doc: StructuredDocument): string | undefined {
  * message names the file, and the host (SDD-19) maps it back when it reports.
  */
 export function resolveDocument(entryPath: string, io: ResolveIo): ParseResult<DocumentGraph> {
-  const diagnostics: Diagnostic[] = [];
   const entrySource = io.read(entryPath);
-  const entry = parse(entrySource);
+  const parsedEntry = parse(entrySource);
+  // The entry's OWN syntax errors, first because they come first in the file. Only the
+  // entry's: a dependency's spans are offsets into a different file, and every dependency
+  // — component or layout — is a module of its own that comes back through here, so its
+  // diagnostics surface against its own source instead of being reported on this one.
+  const diagnostics: Diagnostic[] = [...parsedEntry.diagnostics];
+  const entry = parsedEntry.value;
   const components = new Map<string, ResolvedComponent>();
   const layouts: ResolvedLayout[] = [];
 
@@ -165,7 +183,7 @@ export function resolveDocument(entryPath: string, io: ResolveIo): ParseResult<D
     seen.add(path);
 
     const source = io.read(path);
-    const doc = parse(source);
+    const doc = parse(source).value;
     if (doc.type !== 'layout-document') {
       // A shell with no `@RenderBody()` structures as a page: it was MEANT to be a layout
       // (something points at it), so name the missing directive rather than the role.
