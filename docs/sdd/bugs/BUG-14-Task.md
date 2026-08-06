@@ -2,7 +2,7 @@
 
 > **BUG:** [BUG-14 — El texto literal del autor no llega intacto al output](./BUG-14-texto-literal-no-sobrevive.md)
 > **Paquetes:** `@fudic/compiler` · `@fudic/ssr` · **Rama:** `fix/bug-14-texto-literal`
-> **Progreso:** 0 / 9
+> **Progreso:** 4 / 9
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Las rutas son relativas a la raíz del repo.
@@ -11,18 +11,20 @@ tareas posteriores. Las rutas son relativas a la raíz del repo.
 
 ## Fase 0 — Rojo primero (4)
 
-- [ ] **1. Test del `@@` en contenido.**
+- [x] **1. Test del `@@` en contenido.**
       En `packages/compiler/test/emit/`: `@@server` produce el texto `@server` en el módulo
       SSR y en el chunk de cliente. **Verlo fallar** — hoy emite `server` (§6.1).
-- [ ] **2. Test de la entidad.**
+- [x] **2. Test de la entidad.**
       Mismo sitio: `&lt;html&gt;` produce el HTML `&lt;html&gt;`, escapado **una** vez.
       **Verlo fallar** — hoy sale `&amp;lt;html&amp;gt;` (§6.2).
-- [ ] **3. Test de que la interpolación sigue escapándose.**
+- [x] **3. Test de que la interpolación sigue escapándose.**
       Una expresión que devuelve `<script>alert(1)</script>` sale escapada. **Debe pasar en
       verde ya**: es la red que impide que las tareas 5-7 abran un agujero (§6.4).
-- [ ] **4. Test extremo a extremo sobre el ejemplo.**
+- [x] **4. Test extremo a extremo sobre el ejemplo.**
       `dist/about/index.html` contiene `@server load` y `&lt;html&gt;`. **Verlo fallar**
       (§6.3). No se toca `about.fud`: está bien escrito, y por eso sirve de test.
+      Vive en `packages/vite/test/build-text-literal.test.ts`: el criterio habla del
+      **fichero que escribe el build**, y solo un `vite build` real lo produce.
 
 ## Fase 1 — El `@@` de contenido (2)
 
