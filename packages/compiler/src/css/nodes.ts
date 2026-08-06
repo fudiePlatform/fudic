@@ -13,7 +13,9 @@ import type { AtEscapeNode, RazorExpression, RazorCommentNode } from '../at/inde
 /**
  * A literal CSS run. Includes whitelisted at-rule keywords (`@media`), CSS
  * comments, and any `@` the disambiguation resolved as literal. Verbatim
- * passthrough: no decoding, no re-escaping (decision 49).
+ * passthrough: no decoding, no re-escaping. BUG-14 changed that for HTML text
+ * and attribute values — a node's data is text — but a `<style>` body is not a
+ * node's data: it is CSS, where `&lt;` means the four characters it spells.
  */
 export interface CssText extends Node {
   readonly type: 'css-text';

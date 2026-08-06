@@ -1,6 +1,6 @@
 # BUG-14 — El texto literal del autor no llega intacto al output
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Corrige:** [SDD-05 — Parser HTML](../SDD-05-parser-html.md) ·
 > [SDD-15 — Emit](../SDD-15-emit.md) §4.4 ·
 > [gramática](../../gramar/gramatica-v1-decisiones.md) decisiones 1 y 49

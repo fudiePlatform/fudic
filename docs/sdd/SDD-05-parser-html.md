@@ -453,8 +453,9 @@ SDD-05 reserva el rango **`FUD0050`–`FUD0069`** (01: `FUD0001`; 02: `0002`–`
 | `FUD0054` | `<![CDATA[ … ]]>` fuera de contenido SVG/MathML (decisión 50). |
 | `FUD0055` | Construcción `@` de control/`@code` sin sub-parser inyectado (placeholder degradado). |
 | `FUD0056` | Valor de atributo sin comillas (decisión 8), §4.6. |
+| `FUD0057` | Referencia de carácter bien formada fuera del subset estricto (decisión 38 / 49, BUG-14). |
 
-`FUD0057`–`FUD0069` quedan libres. Los diagnósticos de SDD-02/03/04 (balanceador,
+`FUD0058`–`FUD0069` quedan libres. Los diagnósticos de SDD-02/03/04 (balanceador,
 tag mal formado, valor de atributo sin cerrar…) **afloran** por el `ParseResult` sin
 renumerarse. *(Nota: `FUD0050` se reserva para el matching descrito en §4.7; la implementación
 puede preferir la recuperación-hacia-ancestro (`FUD0052`) y no emitir `FUD0050` — se mantiene

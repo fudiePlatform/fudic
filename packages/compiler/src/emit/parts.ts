@@ -13,6 +13,7 @@ import type { ComponentGraph, ResolvedComponent, ResolvedLayout } from './resolv
 import type { CodeWriter } from './writer.js';
 import { AssetLinker } from './assets.js';
 import { isAssetAttr } from './markup.js';
+import { isLiteralText, literalText } from './runs.js';
 
 export const slice = (source: string, sp: Span): string => source.slice(sp.start, sp.end);
 
@@ -71,14 +72,19 @@ export function headElementExpr(source: string, el: ElementNode, linker: AssetLi
   return JSON.stringify(source.slice(el.span.start, el.span.end));
 }
 
-/** The JS expression for a `<title>`'s content: text runs plus escaped interpolations. */
+/**
+ * The JS expression for a `<title>`'s content: text runs plus escaped interpolations.
+ *
+ * A title is text like any other, so its literal pieces go through `literalText` — which is
+ * what makes `<title>@@fudic</title>` print an `@` here too, and not only in the body.
+ */
 export function titleExpr(source: string, el: ElementNode): string {
   const inner = el.children
     .map((c) =>
       c.type === 'razor-expression'
         ? `escapeText(String((${slice(source, c.expr)}) ?? ''))`
-        : c.type === 'text'
-          ? JSON.stringify(c.value)
+        : isLiteralText(c)
+          ? JSON.stringify(literalText(c))
           : "''",
     )
     .join(' + ');
