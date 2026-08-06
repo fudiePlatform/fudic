@@ -2,7 +2,7 @@
 
 > **BUG:** [BUG-14 — El texto literal del autor no llega intacto al output](./BUG-14-texto-literal-no-sobrevive.md)
 > **Paquetes:** `@fudic/compiler` · `@fudic/ssr` · **Rama:** `fix/bug-14-texto-literal`
-> **Progreso:** 4 / 9
+> **Progreso:** 6 / 9
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Las rutas son relativas a la raíz del repo.
@@ -28,15 +28,19 @@ tareas posteriores. Las rutas son relativas a la raíz del repo.
 
 ## Fase 1 — El `@@` de contenido (2)
 
-- [ ] **5. Resolver `at-escape` al construir los runs de texto.**
+- [x] **5. Resolver `at-escape` al construir los runs de texto.**
       Modificar el emit de runs (`packages/compiler/src/emit/runs.ts`, compartido por las dos
       ramas) para que un `AtEscapeNode` contribuya el carácter `@` al run, como ya hace
       `parser.ts:472-476` en un valor de atributo. El nodo se queda en el AST con su span
       —lo necesitan el LSP y el formateador—; lo que cambia es que el emit lo lee. Verde en 1.
-- [ ] **6. Ningún token del lexer sin consumidor.**
+- [x] **6. Ningún token del lexer sin consumidor.**
       Dejar el caso cubierto de forma que no se pueda repetir: un `switch` exhaustivo sobre el
       tipo de contenido, o un test que recorra los tipos de `HtmlContent` y falle si alguno no
       produce salida. Es la invariante nueva de §5, y es lo que habría cazado esto.
+      Resuelto con una **tabla total** `Record<HtmlContent['type'], ContentRole>` en
+      `runs.ts`: un tipo de nodo nuevo no compila hasta que esa tabla decide qué es. Un
+      `switch` con guarda `never` habría dejado una rama inalcanzable, y por tanto sin
+      cubrir.
 
 ## Fase 2 — Las entidades (2)
 
