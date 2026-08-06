@@ -7,7 +7,7 @@
 > BUG aparte porque la corrección de §3.3 **añade una tercera función** a esa misma closure:
 > separarlo sería publicar a sabiendas un nombre desprotegido más.
 > **Paquetes:** `@fudic/core` · `@fudic/compiler`
-> **Rama sugerida:** `fix/bug-11-update-de-props`
+> **Rama:** `fix/bug-12-update-de-props`
 > **Depende de:** nada. Va **antes** que el resto de la rama de cliente de SDD-15 (event
 > bindings, suscripciones finas): esas tareas se escriben contra el contrato del controlador,
 > y el contrato es justo lo que está mal.
@@ -273,19 +273,76 @@ static c($props) {
 - `destructuring()` ([`client.ts:34`](../../../packages/compiler/src/emit/client.ts#L34)) pasa a
   tener dos formas —declaración y asignación— sobre la misma lista de props.
 
+#### 3.3.b. `$a()` no escribe lo que no ha cambiado
+
+`u` reaplica **todas** las props, porque el array llega entero (§4.2). Con diez props, una
+signal que se mueve dispararía diez escrituras de DOM para cambiar una. El filtro va, por
+tanto, en **cada escritura**, no en la llamada: `$w` guarda lo último que esa escritura aplicó.
+
+```js
+const $w = [];                                 // lo último aplicado, por escritura
+const $a = () => {
+  let $v;
+  $v = ["card", (variant === 'highlight') && "highlight"].filter(Boolean).join(' ');
+  if ($v !== $w[0]) { $w[0] = $v; $dom.setAttr($n0, 'class', $v); }
+  $v = String((title) ?? '');
+  if ($v !== $w[1]) { $w[1] = $v; $dom.setText($n3, $v); }
+};
+```
+
+Una comparación de strings por escritura, y lo que ahorra es una mutación del DOM. El
+`Object.is` de [`signal.ts:27`](../../../packages/core/src/signal.ts#L27) evita la *llamada*;
+`$w` evita las *escrituras*, que es lo que cuesta.
+
+`h` sigue sin llamar a `$a()` (§4.3), así que tras hidratar `$w` está vacío y el **primer** `u`
+repinta todo una vez. Es intencional y es una sola vez por instancia: cebar `$w` en `h`
+significaría calcular cada valor dentro del gesto, que es justo lo que §4.3 evita, y ese primer
+repaso hace además de red de seguridad si el servidor pintó desde un estado distinto.
+
+#### 3.3.c. Una escritura dentro de un `@foreach` no sale a `$a()`
+
+La variable de un nodo creado en un bucle guarda solo el **último** nodo del turno, así que no
+hay referencia estable que `$a` pueda reescribir: la escritura se queda fusionada con la
+creación, como hasta ahora. Es el mismo hueco que §7 deja a los renders de bloque. Un `@if`, en
+cambio, **sí** replica su condición en `$a()`: sus nodos son estables, solo puede que no
+existan.
+
 ### 3.4. El lado del padre: pase inicial y suscripción
 
 En un host de componente con `PropertyBinding`, `markup-client.ts` deja de saltar los atributos
 y emite en `$s()`:
 
 ```js
-$n6.u([, , count.peek()]);                                   // valor inicial
-$d.push(count.subscribe((v) => { $n6.u([, , v]); }));         // cambios
+$n6.u([, , count.peek()]);                                    // valor inicial
+$d.push(count.subscribe(($v) => { $n6.u([, , $v]); }));       // cambios
 ```
 
 Un `PropertyBinding` cuyo valor **no** es una signal (literal o expresión constante) no emite
 nada: cruza una vez, ya está en el HTML que el servidor pintó, y `const` es su semántica exacta
 (decisión 75, intacta).
+
+**El array es el payload entero del hijo, no el hueco que se movió.** El `u` del hijo reasigna
+*todas* las props que destructura, así que mandar solo la que cambió devolvería las demás a su
+default y `$a()` las repintaría. El padre resuelve el orden de props del hijo desde su AST y
+rellena cada hueco que conoce —los `.prop` y también los atributos planos del host, que son los
+mismos valores que `componentPropsExpr` manda por SSR—; los que no nombra se quedan vacíos, y
+los finales ni se escriben:
+
+```js
+// hijo: props<{ label: string; value?: number }>  ·  <app-x label="Hola" .value="@count">
+$n6.u([, , "Hola", count.peek()]);
+$d.push(count.subscribe(($v) => { $n6.u([, , "Hola", $v]); }));
+```
+
+Con varias signals sale **una suscripción por signal**, y cada una recompone el array entero: la
+que notifica pone el valor que le dan, las demás se leen con `peek()`.
+
+El parámetro del callback es `$v`, no `v`: el array que lo rodea es código del autor, y un `v`
+suyo quedaría sombreado. Es el mismo invariante de §5 que obliga a `$m`/`$s`/`$a`.
+
+Leer el orden de props del hijo obliga a leer su `@code`, así que `client.ts` memoiza
+`extractCode` en un `WeakMap` sobre el `ResolvedComponent`: Oxc sigue invocándose exactamente
+una vez por fichero.
 
 ### 3.5. Las funciones privadas del factory entran en la reserva `$`
 
@@ -325,10 +382,12 @@ llegar al controlador. Un solo método posicional cierra el canal con una entrad
 de prop y llama a `$a()`. El coste es proporcional al número de **escrituras de valor** del
 componente, no al tamaño de su árbol.
 
-Reaplica **todas** las props, no la que cambió: son posicionales y el array llega entero. El
-filtro que evita trabajo ya está donde debe, en la signal —`Object.is` en
-[`signal.ts:27`](../../../packages/core/src/signal.ts#L27)—, que no notifica si el valor no
-cambió.
+Reaplica **todas** las props, no la que cambió: son posicionales y el array llega entero. Eso
+deja el trabajo proporcional al número de props, no al de las que se movieron, así que el
+filtro va por **escritura**: `$w` guarda lo último aplicado y `$a()` no toca el DOM si el valor
+sale igual (§3.3.b). El `Object.is` de
+[`signal.ts:27`](../../../packages/core/src/signal.ts#L27) evita la llamada; `$w` evita las
+escrituras.
 
 ### 4.3. `h` no llama a `$a()`, y es deliberado
 
@@ -375,6 +434,8 @@ tolerancia mínima que exige el modelo de upgrade del navegador.
   payload.
 - **`$a()` es el único sitio donde un valor llega a un nodo.** Create y update convergen ahí, así
   que no pueden divergir. Verificable por forma sobre el chunk emitido.
+- **Una escritura que no cambia nada no toca el DOM.** El coste de un `u` es proporcional a las
+  props que se movieron, no a las que tiene el componente.
 - **`h` nunca reescribe lo que el servidor pintó.**
 - **Todo identificador que el emit introduce en la closure del factory empieza por `$`.** Sin
   excepciones que recordar: la regla se comprueba mirando el chunk.
@@ -402,14 +463,25 @@ Tests en `packages/core/test/` y `packages/compiler/test/emit/`.
 7. **(rojo primero, extremo a extremo)** Con el arnés de `test/emit/hydrate/`: padre y hijo
    compilados, servidos por SSR e hidratados sobre un DOM real; un click en el botón del padre
    cambia el texto dentro del shadow root del hijo. **Es el criterio que define el BUG.**
+   El `@click="@inc"` de §1 no cablea nada todavía —los event bindings van *después* de este
+   BUG—, así que el `@client` del fixture padre escucha en `document`: un click dentro de un
+   shadow root es `composed` y llega hasta allí. La cadena que el test recorre sigue siendo
+   código emitido de punta a punta, sin andamiaje en el test.
 8. La equivalencia SSR↔cliente (`equivalence.test.ts`) sigue verde sin tocarla: `h` no reimprime.
 9. `r()` sigue liberando; un `u` posterior a `r` no resucita ningún nodo.
 10. **(rojo primero)** Un componente cuyo `@client` declara `const s` y `const m` produce un
     chunk que **parsea y ejecuta**. Hoy no: `SyntaxError: Identifier 'm' has already been
     declared`, sin ningún diagnóstico del compilador (§2.5).
 11. Goldens regenerados y **revisados a mano**, los tres: las únicas diferencias esperadas son
-    el renombrado `m`/`s` → `$m`/`$s`, la salida de las escrituras de valor a `$a()` y la nueva
-    entrada `u`.
+    el renombrado `m`/`s` → `$m`/`$s`, la salida de las escrituras de valor a `$a()` (con su
+    `$w`) y la nueva entrada `u`. Y una más en el golden de **servidor** `app-button.mjs`: el
+    temporal `const $a` de los atributos interpolados pasa a `$v`, porque si no sombrearía a la
+    closure `$a` dentro de su propio cuerpo.
+12. **(rojo primero)** Una escritura cuyo valor no cambia no llega al DOM: `$a()` compara contra
+    `$w` antes de escribir (§3.3.b). Verificable por forma sobre el chunk.
+13. Un `PropertyBinding` sobre un hijo de varias props manda el array **entero** —los `.prop` y
+    los atributos planos del host, en el orden del hijo—, con hueco donde el host no pasa nada
+    (§3.4).
 
 **Cobertura.** `@fudic/core` está al **100 %** en las cuatro métricas y no baja. `client.ts` y
 `markup-client.ts` nacieron al 100 % y no bajan.
@@ -420,7 +492,8 @@ Tests en `packages/core/test/` y `packages/compiler/test/emit/`.
 
 - **`u` con recomposición estructural** (`@if`, `@foreach`, reconciliación, decisión existencial).
   Sigue siendo de los renders de bloque, en sus SDD ([SDD-15 §4.6](../SDD-15-emit.md)). Este BUG
-  añade `u` **de valor**: reasignar y reaplicar escrituras sobre nodos que ya existen.
+  añade `u` **de valor**: reasignar y reaplicar escrituras sobre nodos que ya existen. Corolario:
+  una escritura dentro de un `@foreach` se queda fusionada con la creación de su nodo (§3.3.c).
 - **`bind:` y las props callback** (decisiones 83-85). El canal ascendente es otro documento;
   este cierra el descendente.
 - **El spread `{...item}`** (decisiones 79-82).

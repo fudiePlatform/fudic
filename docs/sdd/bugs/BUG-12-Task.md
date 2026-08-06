@@ -2,7 +2,7 @@
 
 > **BUG:** [BUG-12 — Un hijo que recibe un valor no tiene canal de actualización](./BUG-12-sin-canal-de-update.md)
 > **Paquetes:** `@fudic/core` · `@fudic/compiler` · **Rama:** `fix/bug-12-update-de-props`
-> **Progreso:** 14 / 19
+> **Progreso:** 17 / 19
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de
 tareas posteriores. Las rutas son relativas a la raíz del repo.
@@ -133,21 +133,28 @@ en el BUG):
 
 ## Fase 4 — Las specs que decían lo contrario (3)
 
-- [ ] **14. SDD-15 §3.7 y §7.**
+- [x] **14. SDD-15 §3.7 y §7.**
       Modificar `docs/sdd/SDD-15-emit.md`: el párrafo *«No hay `u` (update) en esta interfaz»*
       (línea 296) pasa a describir `u` **de valor** —reasignar y reaplicar— y a mantener fuera
       solo `u` con recomposición estructural; el bullet correspondiente de §7 se ajusta igual.
       Actualizar el bloque de código de la interfaz `Controller`.
-- [ ] **15. SDD-15 §4.6 y §4.7 — el namespace.**
+- [x] **15. SDD-15 §4.6 y §4.7 — el namespace.**
       Mismo fichero: el ejemplo del factory de §4.6 pasa a `$m`/`$s`/`$a`, y §4.7 deja escrito
       que la reserva `$` obliga **también al emit**, con la colisión de §2.5 como el porqué. Es
       la mitad de la corrección que impide que vuelva a pasar: sin esto, la próxima función
       privada nace otra vez sin prefijo.
-- [ ] **16. Derogar la decisión 76 de props-spec.**
+- [x] **16. Derogar la decisión 76 de props-spec.**
       Modificar `docs/sdd/props-spec.md`: la 76 (*«prop reactiva → setter en el hijo»*) queda
       **derogada** por `u`, con el porqué (§4.1) y enlace a este BUG; ajustar los ejemplos
       emitidos de §4.1, §4.2 y la fila de la tabla del índice de decisiones. Las 74, 75, 77, 78
       y 84 se quedan como están — este BUG las **cumple**, no las cambia.
+      → De la 75 se conserva la decisión y se precisa el enunciado: «constante» significa que el
+      **padre no emite nada** por ella, no que el hijo la declare `const` — el destructuring del
+      factory es uno solo y con `let`, porque `u` reasigna el array entero. Y donde la 84 y §4.4
+      decían «baja el valor por el setter» ahora dicen «por `u`»: mismo contrato, el nombre del
+      canal que ya no existe.
+      → Este BUG también se actualiza a sí mismo: §3.3.b (`$w`), §3.3.c (`@foreach`), §3.4 (el
+      payload entero) y §6.12-13 no estaban escritos.
 
 ## Fase 5 — Cierre técnico (2)
 
