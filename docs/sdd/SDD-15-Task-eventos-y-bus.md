@@ -4,7 +4,9 @@
 > **Paquetes:** `@fudic/dom` (contrato + `browserDom`) · `@fudic/ssr` (`SsrDom`) ·
 > `@fudic/compiler` (emit)
 > **Rama:** `sdd-15-eventos-y-bus`
-> **Progreso:** 0 / 23
+> **Progreso:** 0 / 22
+> **Va DESPUÉS de:** [SDD-30 — Renders de bloque](./SDD-30-renders-de-bloque.md)
+> ([tareas](./SDD-30-Task.md)). No es una preferencia de orden: ver *Por qué va detrás* abajo.
 
 Segunda tanda de la rama de cliente de SDD-15. La primera
 ([`SDD-15-Task-fudic-element-y-emit-de-cliente.md`](./SDD-15-Task-fudic-element-y-emit-de-cliente.md),
@@ -72,32 +74,42 @@ siguiente compone mapas*:
 
 ---
 
+## Por qué va detrás de SDD-30
+
+La primera versión de este documento llevaba una tarea 12 que era un parche, y la revisión con
+Pedro la eliminó de raíz. Queda anotado el razonamiento porque explica el orden y porque el
+parche era plausible:
+
+§4.6 dibuja `s` como una closure única que lee las variables `$nX` con un guard (`$n2 && …`).
+Eso es correcto fuera de un bucle —incluido dentro de un `@if`, que es justo lo que el guard
+existe para cubrir—. Dentro de un `@foreach` no lo es: **la variable de nodo se reasigna en cada
+iteración** y al salir solo sobrevive la última, así que una `s()` posterior engancharía N veces
+sobre la última fila. El criterio §6.17 falla por construcción. Está comprobado sobre el emit
+real, no razonado: `h()` de un `@foreach` con dos botones por fila reasigna `$n1`…`$n5` cada
+vuelta y llama a `$s()` **después** del bucle.
+
+El parche era emitir el enganche inline dentro del bucle, en los dos cuerpos. Habría funcionado
+y se tira entero en cuanto los bloques sean funciones — y además no arreglaba lo que ya está
+roto sin eventos: `r()` anula una referencia por variable, de modo que las N−1 filas anteriores
+nunca se limpian.
+
+**[SDD-30](./SDD-30-renders-de-bloque.md) convierte cada bloque en una función con sus nodos, su
+`$d` y su `s()` propios.** Con eso, un `@click` dentro de un `@foreach` es un `$dom.event` en el
+`s()` de la fila, sin ningún caso especial y sin nada que anotar. Por eso esta tanda va detrás:
+no por comodidad, sino porque delante escribiría código para tirarlo.
+
 ## Lo que hay que decidir antes de escribir código
 
-Tres puntos que el SDD no cierra y que la implementación no puede esquivar. Los dos primeros se
-resuelven aquí, en su tarea; el tercero solo se anota.
+Dos puntos que el SDD no cierra. El primero se resuelve aquí, en su tarea; el segundo solo se
+anota.
 
-**1. `s()` única no puede enganchar dentro de un `@foreach`.** §4.6 dibuja `s` como una closure
-única que lee las variables `$nX` con un guard (`$n2 && …`). Eso es correcto para todo lo que
-está fuera de un bucle —incluido lo que está dentro de un `@if`, que es justo lo que el guard
-existe para cubrir—. Dentro de un `@foreach` no lo es: la variable de nodo se **reasigna en cada
-iteración** y al salir del bucle solo sobrevive la última, de modo que una `s()` posterior
-engancharía N veces sobre la última fila. El criterio §6.17 (cada handler recibe el valor de
-**su** fila) falla por construcción.
-
-La respuesta, en la tarea 12: **fuera de bucle el enganche va a `s()` con su guard; dentro de un
-`@foreach` se emite inline en los dos cuerpos**, en el punto donde el nodo está vivo y la
-variable de iteración en scope. No es una excepción inventada: es exactamente lo que ya se hace
-con el propio `for`, que `#if`/`#foreach` escriben duplicado en `fab` y en `adopt` porque los
-escribe la misma pasada y no pueden derivar. El enganche viaja con ellos.
-
-**2. `document` u `ownerDocument`.** §4.4 dice «el listener va sobre `document`». La
+**1. `document` u `ownerDocument`.** §4.4 dice «el listener va sobre `document`». La
 implementación de `browserDom.bus` usa `host.ownerDocument ?? document`: es el mismo nodo en
 cualquier página real, y es el único que existe cuando el host vive en un documento que no es el
 global —el arnés de tests, y cualquier render fuera del documento principal—. La semántica que el
 SDD fija (ancestro común garantizado de la página) se conserva entera.
 
-**3. SDD-12 §8.4 dice que el mapa de bus está fuera de v1**, mientras SDD-15 §3.5 y §4.4 lo dan
+**2. SDD-12 §8.4 dice que el mapa de bus está fuera de v1**, mientras SDD-15 §3.5 y §4.4 lo dan
 por resuelto en el `SemanticModel` —que hoy está literalmente vacío (`{ _empty?: never }`)—. No
 bloquea esta tanda porque el mapa no se toca aquí. **Hay que reconciliar los dos SDD antes de
 abrir la tanda de mapas de página**, y decidir en cuál vive la resolución estática del nombre
@@ -158,7 +170,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       retire el listener, que `bus` enganche en el documento del host y no en el host, y que dos
       suscripciones al mismo tipo den dos bajas independientes.
 
-## Fase 3 — Los event bindings en `s()` (§4.5) (5)
+## Fase 3 — Los event bindings en `s()` (§4.5) (4)
 
 - [ ] **9. El valor del binding entra en el batch de Oxc.**
       Ampliar `extractCode` (`packages/compiler/src/emit/oxc-code.ts`) para registrar también,
@@ -189,15 +201,13 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       `$nX && …` de §4.6 (un nodo puede no existir: proyección de un `@if`). `attrs.ts` sigue
       sin tocarlos — el reparto atributo/enganche que su cabecera describe no cambia, solo deja
       de tener un lado vacío.
-- [ ] **12. Dentro de un `@foreach`, el enganche va inline en los dos caminos.**
-      La desviación de §4.6 razonada arriba (punto 1). Un contador de profundidad de bucle en el
-      emisor: a cero, el enganche va al cuerpo `hook`; dentro de un `@foreach`, se emite en
-      `fab` y en `adopt`, en el punto donde el nodo acaba de asignarse y la variable de
-      iteración está en scope. El criterio §6.17 se comprueba disparando en orden **no
-      secuencial**, que es lo que distingue captura por iteración de un array que casualmente
-      sale ordenado. El `@foreach` completo —identidad por iteración, `u`, reconciliación— sigue
-      siendo del SDD de bloques: aquí solo se garantiza que el handler de cada fila ve su fila.
-- [ ] **13. `FUD0291` y el canal de diagnósticos del emit.**
+      **Dentro de un bloque, el cuerpo `hook` es el del bloque.** Con SDD-30 hecho, un elemento
+      dentro de un `@if`/`@foreach` pertenece a la función de ese bloque, y su enganche va al
+      `s()` de esa función, con sus variables de nodo y su `$d`. No hay caso especial que
+      escribir: el emisor de bloques ya lleva el enganche donde toca, y el criterio §6.17
+      —cada handler recibe el valor de **su** fila, disparando en orden no secuencial— sale del
+      scope, no de una regla de este emisor.
+- [ ] **12. `FUD0291` y el canal de diagnósticos del emit.**
       `EmitOutput` (`module.ts`) tiene hoy `missingAssets`, un canal de hechos que el plugin de
       Vite eleva a `FUD0363` sin tumbar el build. Añadir junto a él `diagnostics: readonly
       Diagnostic[]` —el `Diagnostic` con span de `types/diagnostic.ts`, `errorDiag`— y emitir
@@ -207,7 +217,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
 
 ## Fase 4 — El bus (§4.4) (4)
 
-- [ ] **14. `bus:` desugariza a `document`, con el host como contexto.**
+- [ ] **13. `bus:` desugariza a `document`, con el host como contexto.**
       En el cuerpo `hook`, un `BusBinding` produce:
       ```js
       $d.push($dom.bus($host, 'carrito', ev => onCarrito.call($host, ev)));
@@ -217,7 +227,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       hallazgo estructural que lo obliga: emisor y suscriptor son **hermanos**, no padre/hijo, y
       un `CustomEvent` que burbujea desde el emisor sube por *sus* ancestros y no entra nunca en
       el suscriptor. Un listener sobre el host no dispararía jamás.
-- [ ] **15. El nombre del canal: literal o expresión, sin resolución estática.**
+- [ ] **14. El nombre del canal: literal o expresión, sin resolución estática.**
       `bus:carrito` emite el string; `bus:(EVENTOS.carrito)` emite la expresión, evaluada en
       `s()` donde se suscribe. Las dos producen un listener que funciona. La **resolución
       estática** del nombre (decisión 28.c) no se hace aquí porque lo único que decide es quién
@@ -225,7 +235,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       siguiente. Lo que sí se verifica aquí es la mitad de §6.22 que sí es de esta tanda: un
       nombre no resoluble **no es error** y **sigue emitiendo el listener** — postura permisiva,
       no protegemos lo que no podemos ver.
-- [ ] **16. `emit(…)` recibe su host.**
+- [ ] **15. `emit(…)` recibe su host.**
       Reescribir, en el cuerpo copiado de `@code { @client }`, cada `CallExpression` cuyo callee
       sea el binding local de `emit` importado de `@fudic/dom`, a `emit.call($host, …)`. Tres
       cosas que hacen que esto no sea un `replace` de texto:
@@ -244,7 +254,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       porque lo que el suscriptor ve como `e.target` es el host de todas formas. El host es
       simplemente el nodo que el controlador ya tiene a mano y el que no depende de dónde esté
       escrito el binding.
-- [ ] **17. Teardown (§6.13).**
+- [ ] **16. Teardown (§6.13).**
       `r()` recorre `$d` y anula referencias; con eventos, eso pasa a ser comprobable: tras
       `r()`, el nodo no responde al evento **y** el listener de `bus:` deja de recibir. El
       segundo es el que importa —el de `document` sobrevive al host si nadie lo retira— y es el
@@ -252,7 +262,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
 
 ## Fase 5 — Fixtures, goldens y equivalencia (5)
 
-- [ ] **18. El fixture que ejercita las cuatro formas.**
+- [ ] **17. El fixture que ejercita las cuatro formas.**
       `fixtures/app-button.fud` ya escribe `@click="@onClick"` (forma `Identifier`) y su handler
       se busca el host a mano con `closest('app-button')` para lanzar un `CustomEvent` — que es
       literalmente lo que `emit` existe para no tener que escribir. Pasarlo a `emit('press')` y
@@ -260,18 +270,18 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       nuevo con `@foreach`, la forma factory (`@click="@del(item.id)"`), la forma lambda
       (`@click="@(e => del(e, item.id))"`) y un `bus:`. Enlazarlo desde `home.fud` para que
       entre en el hito de cierre §6.28.
-- [ ] **19. Goldens.**
+- [ ] **18. Goldens.**
       Regenerar los `.client.mjs` y añadir el del fixture nuevo. Byte a byte, como los de
       servidor: es lo que hace que un refactor del codegen falle en voz alta en vez de derivar
       en silencio. Comprobar de paso que los goldens **de servidor** no cambian salvo por el
       fixture nuevo — el enganche no existe en SSR, y si aparece en un `.mjs` de servidor es que
       algo se emitió en la rama equivocada.
-- [ ] **20. Criterios §6.15, §6.16 y §6.17 en el arnés.**
+- [ ] **19. Criterios §6.15, §6.16 y §6.17 en el arnés.**
       Nuevo `test/emit/hydrate/events.test.ts`, sobre el DOM real que el arnés ya monta: el
       evento nativo llega entero en las dos formas (`e.type`, `preventDefault()` surte efecto);
       el valor de contexto que llega al cuerpo es el del punto de uso; y en un `@foreach` de N
       filas cada handler recibe el valor de su fila, disparando en orden no secuencial.
-- [ ] **21. Criterios §6.19 y §6.20, y la nota sobre §6.18.**
+- [ ] **20. Criterios §6.19 y §6.20, y la nota sobre §6.18.**
       §6.19 —una sola invocación de la factory por suscripción— es un contador en el nivel
       externo del handler curried: determinista, va al mismo fichero. §6.20 —la distinción por
       AST— se comprueba sobre el **texto emitido**, que es donde la decisión es observable, más
@@ -280,7 +290,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       no son las suyas. Lo que se verifica es lo que determina el número de frames: la forma
       emitida (una llamada directa frente a una arrow que reenvía), que es exactamente §6.20.
       Anotarlo en el fichero de test, no dejarlo como criterio silenciosamente saltado.
-- [ ] **22. §6.7 y §6.14 siguen verdes con enganche.**
+- [ ] **21. §6.7 y §6.14 siguen verdes con enganche.**
       Los dos criterios que la tanda anterior cerró vuelven a comprobarse ahora que `s()` hace
       trabajo: `c()` y `h()` producen el mismo listener funcional difiriendo solo en cómo
       obtienen las referencias (§6.7, la convergencia en `s` deja de ser una afirmación sobre una
@@ -290,7 +300,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
 
 ## Fase 6 — Cierre (1)
 
-- [ ] **23. Verde y cobertura.**
+- [ ] **22. Verde y cobertura.**
       `pnpm typecheck`, `pnpm test` y `pnpm build` en la raíz —los ejemplos se construyen
       después de los paquetes: si `examples/basic` se rompe, el build falla—. `@fudic/dom` y
       `@fudic/ssr` al **100 %** en las cuatro métricas, y `events.ts` nace al
@@ -307,6 +317,6 @@ módulos, que el `SemanticModel` de un fichero no tiene).
   la mitad de §6.22 que no es de página, de
   [SDD-15](./SDD-15-emit.md#6-criterios-de-aceptación). Se revalidan §6.7 y §6.14.
 - Criterios que esta tanda **deja abiertos** y por qué: §6.18 (no medible de forma determinista;
-  se sustituye por la forma emitida, tarea 21), §6.21 y la otra mitad de §6.22 (`fud-bus` es de
+  se sustituye por la forma emitida, tarea 20), §6.21 y la otra mitad de §6.22 (`fud-bus` es de
   página), §6.1–§6.6 y §6.25–§6.27 (mapas de página), §6.28 (necesita SDD-17 instalado).
 - Tanda anterior: [`SDD-15-Task-fudic-element-y-emit-de-cliente.md`](./SDD-15-Task-fudic-element-y-emit-de-cliente.md).

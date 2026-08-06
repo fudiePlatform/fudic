@@ -21,6 +21,13 @@
 > **Amplía el runtime:** añade `FudicElement` a `@fudic/core` (§3.7) y `event`/`bus` a
 > `Dom<N>` en `@fudic/dom` (§3.8). Son piezas del contrato de emit, por eso viven aquí y no
 > en SDD-14.
+> **Orden de las tandas de cliente pendientes** (2026-08-06): la primera está `Hecho`
+> ([`FudicElement` y emit de cliente](./SDD-15-Task-fudic-element-y-emit-de-cliente.md), 22/22);
+> la siguiente es **[SDD-30 — Renders de bloque](./SDD-30-renders-de-bloque.md)**, y solo
+> detrás van los [event bindings y el bus](./SDD-15-Task-eventos-y-bus.md). El motivo está en
+> el propio emit: con `@if`/`@foreach` aplanados en `c`/`h`, la variable de nodo se reasigna
+> cada iteración, así que el enganche de un `@foreach` no tiene dónde vivir y `r()` deja
+> colgadas las N−1 filas anteriores. Los eventos delante escribirían un parche que SDD-30 tira.
 > **Depende de:** 00, 05–14, 16.
 > **Rango de diagnósticos:** `FUD0290`–`FUD0319`.
 > **Decisiones de gramática:** 22, 26 (revisada: 26.a/26.b), 27, 28 (+28.a–d), 29, 67–85.
@@ -717,6 +724,11 @@ servidor pintó, y `const` es su semántica exacta (decisión 75).
 > markup y lo cuelga — y es ahí, en los renders de bloque, donde `u` (update) tiene trabajo
 > real: decisión existencial y propagación padre→hijo. Vive en los SDD de control de flujo y
 > `@foreach`, fuera de este (§7).
+>
+> **Desde 2026-08-06 ese SDD existe: [SDD-30 — Renders de bloque](./SDD-30-renders-de-bloque.md)**,
+> y va **antes** que los event bindings de este SDD. Un bloque es una función
+> `($parent, $anchor, …deps)` con `{key, c, h, m, s, u, move, r}` propios; el `s()` de un bloque
+> es donde se engancha lo que está dentro de un `@if` o de un `@foreach`.
 
 ### 4.7. Namespace `$` reservado del compilador
 
@@ -955,12 +967,14 @@ que falta usar un nodo.
 - **`update` (`u`) con recomposición estructural** (`@if`, `@foreach`, reconciliación,
   decisión existencial). El `u` que sí está en la interfaz del controlador (§3.7) es **de
   valor**: reasigna los bindings de prop y reaplica las escrituras sobre nodos que ya existen.
-  Crear, mover o destruir nodos sigue siendo de los renders de bloque, en los SDD de control
-  de flujo y `@foreach`. Un corolario práctico: una escritura dentro de un `@foreach` se queda
-  **fusionada** con la creación de su nodo, porque la variable del bucle solo guarda el último
-  nodo del turno y no hay referencia estable que `$a` pueda reescribir.
+  Crear, mover o destruir nodos sigue siendo de los renders de bloque:
+  **[SDD-30](./SDD-30-renders-de-bloque.md)**, desde 2026-08-06. Un corolario práctico mientras
+  aquél no aterrice: una escritura dentro de un `@foreach` se queda **fusionada** con la creación
+  de su nodo, porque la variable del bucle solo guarda el último nodo del turno y no hay
+  referencia estable que `$a` pueda reescribir. SDD-30 §4.5 lo cierra.
 - **Creación de items N1 en `@foreach`** (fila/tarjeta sin estado por función de render, no
-  web component). Distinto del `c` de un hijo N3 (§4.3); vive en el SDD de `@foreach`.
+  web component). Distinto del `c` de un hijo N3 (§4.3); vive en
+  [SDD-30](./SDD-30-renders-de-bloque.md).
 - **Signals y suscripciones finas** (`s` con trabajo estructural). Este SDD fija la forma del
   factory y el punto de enganche; el detalle de la suscripción fina es del SDD de signals.
 - **Output / callback hacia el padre.** Un callback no es serializable (`JSON.stringify` no
