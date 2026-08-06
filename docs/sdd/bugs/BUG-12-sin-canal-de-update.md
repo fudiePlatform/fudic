@@ -307,6 +307,11 @@ creación, como hasta ahora. Es el mismo hueco que §7 deja a los renders de blo
 cambio, **sí** replica su condición en `$a()`: sus nodos son estables, solo puede que no
 existan.
 
+> **Cerrado por [SDD-30 — Renders de bloque](../SDD-30-renders-de-bloque.md) §4.5** (redactado
+> 2026-08-06). Cuando un bloque es una función, sus nodos **sí** son estables durante la vida de
+> la instancia, así que la escritura sale a un `$a()` propio con su `$w`, igual que fuera del
+> bucle. Es el criterio §6.13 de aquella spec.
+
 ### 3.4. El lado del padre: pase inicial y suscripción
 
 En un host de componente con `PropertyBinding`, `markup-client.ts` deja de saltar los atributos
@@ -491,9 +496,10 @@ Tests en `packages/core/test/` y `packages/compiler/test/emit/`.
 ## 7. Fuera de alcance
 
 - **`u` con recomposición estructural** (`@if`, `@foreach`, reconciliación, decisión existencial).
-  Sigue siendo de los renders de bloque, en sus SDD ([SDD-15 §4.6](../SDD-15-emit.md)). Este BUG
-  añade `u` **de valor**: reasignar y reaplicar escrituras sobre nodos que ya existen. Corolario:
-  una escritura dentro de un `@foreach` se queda fusionada con la creación de su nodo (§3.3.c).
+  Sigue siendo de los renders de bloque — que desde 2026-08-06 tienen SDD propio:
+  **[SDD-30](../SDD-30-renders-de-bloque.md)**. Este BUG añade `u` **de valor**: reasignar y
+  reaplicar escrituras sobre nodos que ya existen. Corolario: una escritura dentro de un
+  `@foreach` se queda fusionada con la creación de su nodo (§3.3.c).
 - **`bind:` y las props callback** (decisiones 83-85). El canal ascendente es otro documento;
   este cierra el descendente.
 - **El spread `{...item}`** (decisiones 79-82).
@@ -507,6 +513,8 @@ Tests en `packages/core/test/` y `packages/compiler/test/emit/`.
 - **El pase inicial de props a un hijo fabricado en runtime** por un `@if`/`@foreach` del padre.
   Necesita el render de bloque que aún no existe; cuando exista, su canal de alta es `c` y el de
   actualización es el `u` que este BUG deja hecho.
+  → **Ya existe: [SDD-30 §4.6](../SDD-30-renders-de-bloque.md)**, criterio §6.18. El `s()` del
+  bloque emite el pase inicial y la suscripción; su `r()` da de baja el disposer.
 - **Implementar `FUD0290`.** El diagnóstico de SDD-15 §4.7 no existe en `packages/compiler/src`:
   hoy nada impide que un `@client` declare `$dom`. Es tarea pendiente de SDD-15 y sigue siéndolo.
   Este BUG hace lo contrario y suficiente: mete **sus propios** nombres dentro de la reserva, para

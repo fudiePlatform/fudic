@@ -114,6 +114,38 @@ regex, comentarios) **como de ternario** (`?` … `:`). Un `:` que cierra un ter
 termina la etiqueta. Ejemplo: en `case cond ? 'a' : 'b':` el primer `:` pertenece al ternario y el
 segundo es el que corta el test.
 
+**91.** **`key (…)` es obligatoria en todo bucle con markup.** `@foreach`, `@for` y `@while`
+llevan, **tras el paréntesis de la cabecera y antes del cuerpo**, una cláusula `key (expr)` cuya
+expresión identifica la iteración. Sin ella el compilador para (`FUD0540`). No hay default
+—ni el índice, ni la identidad de objeto—: un default aquí es una reconciliación incorrecta que
+nadie ve hasta que la lista se reordena, y entonces aparece como estado pegado a la fila
+equivocada. La expresión se evalúa en el scope del cuerpo, así que ve lo que declara la cabecera.
+
+```razor
+@foreach (const { id, name } of rows) key (id) { … }
+@for (let i = 0; i < n; i++)          key (i)  { … }
+@while (cur !== null)                 key (cur.id) { … }
+```
+
+**92.** **La key va en la cabecera, no en un elemento.** La vía de React —`key` como atributo del
+elemento raíz del bloque— exige que el bloque **tenga** un raíz único, y un cuerpo con dos
+elementos hermanos, o con solo texto, no lo tiene. En la cabecera el cuerpo puede ser cualquier
+cosa.
+
+**93.** **La key va FUERA del paréntesis, no dentro.** La cabecera se manda a Oxc tal cual, y esa
+validez JS es lo que hace que el header no necesite tratamiento propio. La vía de Angular
+(`; track expr` dentro del paréntesis) obligaría a partir el header antes de parsearlo, y en el
+`for` clásico (`@for (let i = 0; i < n; i++)`) el `;` ya está tomado: habría que contar
+separadores según el constructo. Fuera del paréntesis, `key (…)` es un grupo balanceado más y la
+misma forma sirve para los tres bucles.
+
+**94.** **`@if` y `@switch` no llevan key**, y escribirla es error (`FUD0542`). No iteran: su
+instancia es una o ninguna, y su identidad es la rama tomada.
+
+**95.** **Una key duplicada no es un error de compilación.** Depende de los datos, que el
+compilador no ve. El comportamiento queda fijado y es determinista: gana la primera aparición y
+la segunda se trata como una fila nueva. El aviso en desarrollo es del runtime.
+
 ### Gramática de referencia
 
 ```
@@ -127,16 +159,20 @@ else_gap                                  // decisión 10
   : ( WS | razor_comment )*
   ;
 
-foreach_stmt
-  : AT "foreach" WS* LPAREN js_for_of_header RPAREN WS* html_block
+foreach_stmt                              // decisiones 91-93
+  : AT "foreach" WS* LPAREN js_for_of_header RPAREN WS* key_clause WS* html_block
   ;
 
-for_stmt
-  : AT "for" WS* LPAREN js_for_header RPAREN WS* html_block
+for_stmt                                  // decisiones 91-93
+  : AT "for" WS* LPAREN js_for_header RPAREN WS* key_clause WS* html_block
   ;
 
-while_stmt
-  : AT "while" WS* LPAREN js_expression RPAREN WS* html_block
+while_stmt                                // decisiones 91-93
+  : AT "while" WS* LPAREN js_expression RPAREN WS* key_clause WS* html_block
+  ;
+
+key_clause                                // OBLIGATORIA en los tres bucles (FUD0540);
+  : "key" WS* LPAREN js_expression RPAREN // prohibida en if/switch (FUD0542, decisión 94)
   ;
 
 switch_stmt
@@ -184,13 +220,40 @@ html_block
 
 **25.** Property binding case-sensitive, tal cual. `.innerHTML`, `.textContent`.
 
-**26.** Handler de evento puede ser referencia (`@click="@handler"`) o lambda (`@click="@(e => ...)"`). Si evalúa a función, se llama con `(event)`; si evalúa a otra cosa, error.
+**26.** ~~Handler de evento puede ser referencia (`@click="@handler"`) o lambda (`@click="@(e => ...)"`). Si evalúa a función, se llama con `(event)`; si evalúa a otra cosa, error.~~ — **revisada por la 96** (2026-08-06). La forma *factory* que SDD-15 §4.5 derivó de esta decisión (una `CallExpression` invocada al suscribir, con handler declarado curried) **se retira**: ningún framework la usa como sintaxis de template y obligaba a escribir `const del = (id) => (e) => {…}` para ahorrar un frame por disparo. Ver 96–98.
+
+**96.** **Un event binding es una invocación, y recibe `$event` más los datos que se le escriban.**
+Lo que va a la derecha del `=` se **llama en el disparo**, no al suscribir. `$event` es la
+variable que el compilador inyecta con el evento nativo; el resto de argumentos son datos del
+punto de uso. El handler se declara **plano**:
+
+```razor
+@click="@del($event, item.id)"        <!-- function del(ev, id) {…}  -->
+@click="@del(item.id)"                <!-- function del(id) {…}      -->
+@click="@del($event)"                 <!-- function del(ev) {…}      -->
+@click="@del()"                       <!-- function del() {…}        -->
+```
+
+Es la forma de Angular y de Vue, y es la que un developer ya trae aprendida. **No hay handler
+curried**: si alguien quiere una función que devuelve una función, que la llame como tal — el
+compilador no le da un significado especial.
+
+**97.** **`$event` es del compilador, no del usuario.** Encaja en la reserva del prefijo `$`
+(SDD-15 §4.7): el usuario no puede declarar identificadores que empiecen por `$`, y `$event` es
+exactamente una variable que el compilador inyecta. Solo tiene sentido dentro de la lista de
+argumentos de un event binding; fuera es un identificador libre como cualquier otro y no se
+sustituye.
+
+**98.** **La referencia desnuda sigue valiendo.** `@click="@toggle"` —sin paréntesis— suscribe
+`toggle` tal cual, y el DOM lo invoca con el evento nativo. Es la única forma de un solo frame y
+no cuesta nada al que la escribe: es el caso «no necesito datos del punto de uso». Con paréntesis
+(`@toggle()`) es una invocación y entra en la 96, que es lo mismo que hace Angular.
 
 **27.** Sin modificadores de evento. El handler es función JS normal; `preventDefault`/`stopPropagation` se llaman en código.
 
 **28.** Cualquier nombre de evento aceptado, incluidos custom events (`@my-event`). `@evento` es **siempre listener de host** (nombre literal). Para suscripción a eventos de bus entre componentes desacoplados, ver 28.a–28.d (`bus:`).
 
-**28.a.** *Prefijo `bus:` — suscriptor declarativo.* `bus:carrito="@onCarrito(ev)"` registra un listener en el **ancestro común de página (`document`)**, no en el host, con el host como contexto del handler (emisor y suscriptor son hermanos: un evento que burbujea desde el emisor nunca entra en el host del suscriptor). `bus:` es **prefijo de binding reservado**, hermano de `class:`/`style:` (decisión 22); no es atributo con `:` literal (decisión 46).
+**28.a.** *Prefijo `bus:` — suscriptor declarativo.* `bus:carrito="@onCarrito($event)"` (la regla de la 96) registra un listener en el **ancestro común de página (`document`)**, no en el host, con el host como contexto del handler (emisor y suscriptor son hermanos: un evento que burbujea desde el emisor nunca entra en el host del suscriptor). `bus:` es **prefijo de binding reservado**, hermano de `class:`/`style:` (decisión 22); no es atributo con `:` literal (decisión 46).
 
 **28.b.** *Dos formas del nombre bajo `bus:`.* `bus:carrito` (literal, `attr-name`) y `bus:(EVENTOS.carrito)` (expresión explícita para constante importada; el `(` tras `bus:` abre el balanceador, `scanParens`, y el tokenizer emite `explicit-expr`). El parser **solo distingue las dos formas y guarda el span**; la resolubilidad es semántica (28.c → SDD-12).
 
@@ -987,3 +1050,11 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 88 | Layouts | Cascada del `<head>` con orden determinista; gana la capa más interna |
 | 89 | Layouts | En v1 el layout no declara `load`: recibe el `data` de la ruta |
 | 90 | Layouts | `@section` exclusivo del par ruta↔layout; en componentes es `<slot>` |
+| 91 | Control flujo | `key (…)` obligatoria en `@foreach`/`@for`/`@while` con markup (`FUD0540`); sin default |
+| 92 | Control flujo | La key va en la cabecera, no en un elemento raíz: un bloque puede no tener raíz único |
+| 93 | Control flujo | La key va FUERA del paréntesis: la cabecera llega a Oxc intacta y el `;` del `for` ya está tomado |
+| 94 | Control flujo | `@if` / `@switch` no llevan key (`FUD0542`): su identidad es la rama tomada |
+| 95 | Control flujo | Key duplicada no es error de compilación; gana la primera aparición |
+| 96 | Interpolación | Un event binding es una **invocación**: `$event` + datos, handler plano (revisa la 26; retira la forma curried) |
+| 97 | Interpolación | `$event` lo inyecta el compilador y vive en la reserva `$`; solo en la lista de argumentos de un event binding |
+| 98 | Interpolación | La referencia desnuda (`@click="@toggle"`) sigue valiendo: el DOM la invoca con el evento |
