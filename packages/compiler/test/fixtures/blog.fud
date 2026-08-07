@@ -21,7 +21,7 @@
 
 <h1>@data.title</h1>
 @foreach (const post of data.posts) {
-  <app-card title="@post.title" variant="default">@post.summary</app-card>
+  <app-card .title="@post.title" .variant="default">@post.summary</app-card>
 }
 
 @section scripts {

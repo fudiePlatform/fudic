@@ -473,7 +473,7 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
     // `u` reassigns every binding it destructures, so a partial array would reset the
     // props the parent did not send to their defaults — and `$a()` would repaint them.
     const src = hostChunk(
-      'label="Hola" .value="@count"',
+      '.label="Hola" .value="@count"',
       '@code {\n  const { label, value = 0 } = props<{ label: string; value?: number }>();\n}\n' +
         '<x-child>\n  <template shadowrootmode="open"><span>@label @value</span></template>\n</x-child>\n',
     );

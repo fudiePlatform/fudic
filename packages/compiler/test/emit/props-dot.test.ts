@@ -93,6 +93,62 @@ describe('a `.prop` on a component host reaches the output (§6.1)', () => {
   });
 });
 
+describe('a bare `.prop` is `true` (decision 44)', () => {
+  it('crosses as true, and writes the empty attribute HTML asks for', () => {
+    const { page: p, server, client } = outputs('<app-badge .featured></app-badge>');
+    for (const src of [p, server, client]) {
+      expect(src).toMatch(/\$dom\.setAttr\(\$n\d+, "featured", ""\);/u);
+    }
+    // `true` and not `""`: the prop is a value the child destructures, not markup.
+    expect(p).toContain('{ "featured": true }');
+    expect(server).toContain('{ "featured": true }');
+  });
+});
+
+describe('a signal crosses its VALUE, never the object (decision 84)', () => {
+  /** A host whose parent declares a signal, so `.prop="@count"` has something to resolve. */
+  const withSignal = (host: string): { server: string; client: string } => {
+    const parentWithSignal = `<link rel="component" href="./app-badge.fud">
+
+@code {
+  @client {
+    import { signal } from '@fudic/core';
+
+    const count = signal(3);
+  }
+}
+
+<app-card>
+  <template shadowrootmode="open">${host}</template>
+</app-card>
+`;
+    const io = memoryIo({
+      '/nested.fud': page('<app-card></app-card>', '<link rel="component" href="./app-card.fud">'),
+      '/app-card.fud': parentWithSignal,
+      '/app-badge.fud': BADGE,
+    });
+    const g = resolveComponents('/nested.fud', io);
+    const card = g.components.get('app-card')!;
+    return {
+      server: emitComponentModule(g, card),
+      client: emitComponentClientModule(g, card),
+    };
+  };
+
+  it('the server paints `count.peek()`, not the inert signal object', () => {
+    const { server } = withSignal('<app-badge .tone="@count"></app-badge>');
+    expect(server).toContain('{ "tone": count.peek() }');
+    expect(server).toContain('const $v = count.peek();');
+  });
+
+  it('a bare `.prop` beside a signal still crosses as true', () => {
+    const { client } = withSignal('<app-badge .tone="@count" .featured></app-badge>');
+    // The payload carries both: the signal read at hookup, the constant as written.
+    expect(client).toMatch(/\.u\(\[, , [^\]]*count\.peek\(\)[^\]]*\]\)/u);
+    expect(client).toContain('true');
+  });
+});
+
 describe('a plain attribute on a component host is an HTML attribute (§4.2)', () => {
   it('is written on the host and is NOT a prop of the child', () => {
     const { page: p, server, client } = outputs('<app-badge slot="meta"></app-badge>');

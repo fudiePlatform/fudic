@@ -136,7 +136,15 @@ function buildComponentModule(
   const { props, signals, diagnostics } = extractCode(comp.source, comp.doc);
   const bodyW = new CodeWriter();
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
-  const em = new MarkupEmitter(comp.source, bodyW, (t) => graph.components.has(t), linker, undefined, space);
+  const em = new MarkupEmitter(
+    comp.source,
+    bodyW,
+    (t) => graph.components.has(t),
+    linker,
+    undefined,
+    space,
+    new Set(signals.map((s) => s.name)),
+  );
   em.emitChildren(comp.doc.template!.children, '$shadow');
   // css uses the linker too (may register more imports), so build it before the imports.
   const css = linker.cssTemplate(componentCss(comp.source, comp.doc));

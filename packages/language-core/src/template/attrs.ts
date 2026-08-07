@@ -173,13 +173,9 @@ function emitNativeAttrs(
   bindings: readonly { attr: Attribute; binding: Binding }[],
 ): void {
   for (const { binding } of bindings) {
-    if (binding.type === 'property') {
-      ctx.w.scaffold('$attr(', binding.span);
-      copyExpression(ctx, binding.value.expr);
-      ctx.w.scaffold(');\n');
-      continue;
-    }
-    if (binding.type !== 'attr') continue;
+    // `.prop` and a plain attribute carry the same shape of value, so a native tag checks
+    // them the same way: whatever interpolation is inside, and nothing else.
+    if (binding.type !== 'attr' && binding.type !== 'property') continue;
     for (const part of binding.value) {
       if (part.type !== 'razor-expression') continue;
       ctx.w.scaffold('$attr(', part.span);
@@ -265,12 +261,8 @@ function nameSpan(attr: Attribute, binding: Binding, name: string): Span {
 
 /** The property value: exact type for a lone expression, `string` for a concatenation. */
 function emitValue(ctx: TemplateContext, binding: Binding): void {
-  if (binding.type === 'property') {
-    emitExpression(ctx, binding.value);
-    return;
-  }
   /* c8 ignore next -- emitProps only ever passes 'attr' and 'property' bindings here. */
-  if (binding.type !== 'attr') return;
+  if (binding.type !== 'attr' && binding.type !== 'property') return;
 
   const parts = binding.value;
   const only = parts.length === 1 ? parts[0]! : undefined;

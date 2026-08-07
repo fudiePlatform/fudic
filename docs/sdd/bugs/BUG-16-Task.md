@@ -5,7 +5,7 @@
 > **Rama:** la del backlog de uso
 > **Depende de:** [BUG-15](./BUG-15-clases-sin-completado.md) **solo en las fases 5 y 6**. Las
 > fases 1-4 no comparten un fichero con él y arrancan el mismo día (§1.2 del BUG)
-> **Progreso:** 2 / 12
+> **Progreso:** 4 / 12
 
 Cada tarea es un paso cerrado. Las rutas son relativas a la raíz del repo.
 
@@ -39,15 +39,32 @@ ejemplos antes de que el punto se emita los deja en rojo y sin salida que compar
 
 ## Fase 2 — El emisor: el punto se escribe (2)
 
-- [ ] **3. `property` sobre un componente se serializa.**
+- [x] **3. `property` sobre un componente se serializa.**
       `packages/compiler/src/emit/attrs.ts`: en un tag con guion (decisión 41), un binding
       `property` toma las dos ramas que `attr` ya tiene —literal y omitir-si-falsy de la decisión
       21— con el nombre sin el punto. Un tag **nativo** no cambia: sigue sin emitirse (§4.1,
       §6.3). Verde en 1.
-- [ ] **4. Los `.fud` del repo, migrados.**
+      *Tres cosas que la tarea no preveía y hubo que cerrar.* (a) **La gramática tenía que ceder**:
+      `.tone="info"` era `FUD0090` («el valor debe ser un `@` único», decisión 23), así que la
+      forma que §4.3 declara legal no compilaba. `PropertyBinding.value` pasa a ser
+      `AttributeValuePart[]` —la misma forma que un atributo— y acepta constante, expresión o
+      nada (`.disabled` = `true`, decisión 44). `FUD0090` **se retira**; la concatenación sigue
+      siendo `FUD0091`, pero ya no degrada a atributo plano: un prop escondido del editor por un
+      valor mal escrito no ayuda a nadie. (b) **El atributo plano sale del literal de props** y
+      pasa a escribirse en el host, que es lo que §4.2 pide y lo que hace que `slot="meta"`
+      proyecte por fin. (c) **Una signal cruza su valor, no el objeto**: al ver el servidor los
+      props por primera vez, `.value="@count"` pintaba `[object Object]`. `crossingExpr` aplica la
+      decisión 84 en los dos emisores —era una regla que solo tenía el cliente— y `MarkupEmitter`
+      recibe los nombres de signals para poder aplicarla.
+- [x] **4. Los `.fud` del repo, migrados.**
       `examples/basic` y las fixtures de `compiler` pasan a `.prop`. La salida de nivel 1 tiene
       que quedar **idéntica** a la de antes, documento a documento (§4.5, §6.4). Las fixtures del
       `language-server` **no** se tocan aquí: van en la tarea 11, para no pisar la rama de BUG-15.
+      *Medido sobre los goldens*: el diff son **cinco líneas, todas añadidas**, y las cinco son
+      `setAttr` sobre un host de componente. El shadow no se mueve un byte porque los props que
+      llegan al `render` del hijo son los mismos de antes, con el mismo nombre y el mismo valor
+      —solo cambia por qué puerta entran—. En `dist/index.html` los hosts salen ya con su
+      `slot="meta"`, su `tone` y su `title`/`href`/`variant`.
 
 ## Fase 3 — La proyección: dos literales (2)
 
