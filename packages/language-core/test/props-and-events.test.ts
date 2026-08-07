@@ -86,12 +86,13 @@ describe('the event name is projected, not invented (§4.4)', () => {
     expect(text).toContain("$on('my-press' as never, h);");
   });
 
-  it('writes a mute empty literal when the `@` names nothing', () => {
-    // `@="@h"` is already FUD0099. The projection still has to parse, and the literal it
-    // writes stands for nothing: there is no name to route to.
+  it('anchors the literal when the `@` names nothing yet', () => {
+    // `@="@h"` is already FUD0099, but it is also where the developer is standing, so the
+    // inside of the literal becomes a completion anchor rather than a name.
     const file = project('<app-badge @="@h"></app-badge>');
 
-    expect(file.text).toContain("$on('', h);");
-    expect(nameStretch(file).some((m) => m.length === "''".length)).toBe(false);
+    expect(file.text).toContain("$on('  ', h);");
+    // An anchor, not a name: it offers and it does not report.
+    expect(nameStretch(file)).toEqual([]);
   });
 });

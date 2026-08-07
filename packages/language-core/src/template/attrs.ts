@@ -30,6 +30,27 @@ import { copyExpression } from './expr.js';
 /** A JS identifier, i.e. an object key that needs no quoting. */
 const PLAIN_KEY = /^[\p{ID_Start}$_][\p{ID_Continue}$]*$/u;
 
+/** In fudic an event is written with an at-sign, and a property with a dot. */
+const EVENT_PREFIX = '@';
+
+/**
+ * The event name of an attribute the author opened with `@`, or `undefined` when it is not
+ * one.
+ *
+ * It reads the VERBATIM name and not the classification on purpose. `@cli` with no value yet
+ * is a half-written event, and classification degrades it to a plain attribute called `@cli`
+ * (`FUD0092`, no handler) — which is exactly the moment the editor has to answer, so the
+ * projection cannot afford to have lost the fact that an `@` opened it.
+ */
+function eventNameOf(attr: Attribute, binding: Binding): string | undefined {
+  if (binding.type === 'event') return binding.name;
+  // A `bus:(expr)` name is a RazorExpression, never a string, and never an event.
+  if (typeof attr.name !== 'string') return undefined;
+  return attr.name.startsWith(EVENT_PREFIX)
+    ? attr.name.slice(EVENT_PREFIX.length)
+    : undefined;
+}
+
 /** Project every attribute of an element. */
 export function emitElementBindings(ctx: TemplateContext, el: ElementNode): void {
   const bindings = el.attributes.map((attr) => ({
@@ -113,7 +134,15 @@ function emitProps(
   bindings: readonly { attr: Attribute; binding: Binding }[],
 ): void {
   const props = bindings.filter((b) => b.binding.type === 'property');
-  const globals = bindings.filter((b) => b.binding.type === 'attr' && !isSlot(b));
+  const globals = bindings.filter(
+    (b) =>
+      b.binding.type === 'attr' &&
+      !isSlot(b) &&
+      // A half-written `@cli` degraded to a plain attribute is still an event, and an event
+      // is not HTML's vocabulary: it would report TS2353 on a name that is not wrong, only
+      // unfinished.
+      eventNameOf(b.attr, b.binding) === undefined,
+  );
 
   ctx.w.scaffold('$attrs<', el.openSpan);
   // The tag's own span carries this one, under diagnostics-only capabilities: an
@@ -141,12 +170,23 @@ function emitProps(
   if (slot !== undefined) emitIntoSlot(ctx, el, slot.binding);
 }
 
-/** The `key: value,` lines of one literal, each key copied from the source. */
+/**
+ * The `key: value,` lines of one literal, each key copied from the source.
+ *
+ * A dot with no name yet is the exception, and it is the whole of BUG-16 §4.3: `.|` has no
+ * name to copy, so it gets an ANCHOR instead — the same recourse the gaps of the start tag
+ * use, one character further in. Writing a key there would be inventing a name; writing
+ * nothing would leave the one position where the prop list is wanted unable to ask.
+ */
 function emitEntries(
   ctx: TemplateContext,
   entries: readonly { attr: Attribute; binding: Binding }[],
 ): void {
   for (const { attr, binding } of entries) {
+    if (binding.type === 'property' && binding.name.length === 0) {
+      ctx.w.projected('\n  ', attr.span, COMPLETION_ONLY_CAPS);
+      continue;
+    }
     ctx.w.scaffold('\n  ');
     emitKey(ctx, attr, binding);
     ctx.w.scaffold(': ');
@@ -217,6 +257,18 @@ function emitBehaviour(
   attr: Attribute,
   binding: Binding,
 ): void {
+  // An event still being written: `@` alone, or `@cli` with no handler yet. Classification
+  // degraded it to a plain attribute, but the `@` is the author's and the editor is asking
+  // right now, so the call is projected without a handler — the name is the whole point,
+  // and the arity error lands on scaffolding that routes to nobody.
+  const opening = eventNameOf(attr, binding);
+  if (opening !== undefined && binding.type !== 'event') {
+    ctx.w.scaffold('$on(', attr.span);
+    emitEventName(ctx, attr, opening);
+    ctx.w.scaffold(');\n');
+    return;
+  }
+
   switch (binding.type) {
     case 'event':
       // A hyphen means a custom event, which has no entry in `HTMLElementEventMap`; `as
@@ -281,9 +333,17 @@ function emitBehaviour(
  */
 function emitEventName(ctx: TemplateContext, attr: Attribute, name: string): void {
   if (name.length === 0) {
-    // `@="@h"` — the prefix names nothing. It is already `FUD0099`; the literal is written
-    // so the projection still parses, and stands for nothing.
-    ctx.w.scaffold("''");
+    // `@|` — the at-sign is typed and nothing else. There is no name to project, so the
+    // INSIDE of the literal becomes an anchor: a position whose contextual type is
+    // `keyof HTMLElementEventMap`, which is the list the developer is asking for. Same
+    // recourse as the dot in `emitEntries`, and as the gaps of the start tag before it.
+    // Two characters for one, so that BOTH ends of the source stretch land inside the
+    // literal: the cursor at `@|` sits at the end of the `@`, and a one-character anchor
+    // would map it onto the closing quote, where nothing is offered. Same reason the gaps
+    // of a start tag are three characters wide for a gap of one.
+    ctx.w.scaffold("'");
+    ctx.w.projected('  ', attr.span, COMPLETION_ONLY_CAPS);
+    ctx.w.scaffold("'");
     return;
   }
   // The name starts one character in: the `@` opens the binding and is not part of it.

@@ -148,6 +148,22 @@ Lo que eso rompe hoy, en el propio ejemplo del repositorio: `<app-badge slot="me
 `<slot name="meta">`. Es la misma causa —nadie escribe atributos en un host de componente— y
 por la regla de este índice se arregla aquí, no en un BUG aparte.
 
+### 2.7. La tabla de mapeo mide el lado del fuente con la longitud del generado (hallazgo)
+
+`mapToGenerated` acotaba la búsqueda con `m.length` —la longitud del tramo **generado**—
+teniendo que acotarla con `m.sourceLength`, y `mapToSource` hacía la simétrica al recortar. Da
+igual mientras los dos lados midan lo mismo, que es el caso de todo `copy()`; deja de dar igual
+en cuanto un tramo representa más de lo que ocupa, que es exactamente lo que hace un **ancla**.
+
+Efecto medido: con `<app-badge @|>`, el ancla de hueco del tag —tres caracteres generados por
+uno de fuente— se tragaba las dos posiciones siguientes, así que el cursor tras la arroba caía
+dentro del literal de props y el editor ofrecía **nombres de atributo en vez de eventos**.
+
+No lo causa este BUG y lo destapa: sin anclas nuevas no había ningún tramo asimétrico en una
+posición que el usuario visitara. Se arregla aquí porque las anclas de §4.3 y §4.4 no funcionan
+sin ello. El arnés de aceptación de SDD-23 ya recortaba por `sourceLength` y lo explicaba por
+escrito: la producción no lo hacía.
+
 ---
 
 ## 3. Interfaz pública

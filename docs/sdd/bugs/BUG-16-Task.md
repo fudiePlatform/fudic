@@ -5,7 +5,7 @@
 > **Rama:** la del backlog de uso
 > **Depende de:** [BUG-15](./BUG-15-clases-sin-completado.md) **solo en las fases 5 y 6**. Las
 > fases 1-4 no comparten un fichero con él y arrancan el mismo día (§1.2 del BUG)
-> **Progreso:** 6 / 12
+> **Progreso:** 8 / 12
 
 Cada tarea es un paso cerrado. Las rutas son relativas a la raíz del repo.
 
@@ -92,12 +92,21 @@ ejemplos antes de que el punto se emita los deja en rojo y sin salida que compar
 
 ## Fase 4 — Las anclas del caso vacío (2)
 
-- [ ] **7. Ancla para `.|`.**
+- [x] **7. Ancla para `.|`.**
       Un tramo `COMPLETION_ONLY_CAPS` sobre el punto, apuntando a la posición de clave del
       literal de props. El caso con nombre ya funciona por `emitKey`, que copia el span (§4.3,
       §6.8, §6.9).
-- [ ] **8. Ancla para `@|`.**
+      *Medido contra el servicio de TypeScript de verdad*, no contra el texto emitido: en `.|`
+      la lista trae `tone` y los items vienen **sin rango de reemplazo**, que es lo que impide
+      que el punto se lo coma (§6.8).
+- [x] **8. Ancla para `@|`.**
       Lo mismo sobre la arroba, apuntando dentro del literal de `$on` (§4.4, §6.11).
+      *Dos cosas que aparecieron al medirlo.* (a) **Un `@` a medio escribir se degrada a atributo
+      plano** (`@cli` sin manejador es `FUD0092`), que es justo el instante en que el editor
+      pregunta; la proyección lee ahora el **nombre verbatim** y no la clasificación, así que
+      `@cli` sigue siendo un evento y no reporta `TS2353` como si fuera vocabulario de HTML.
+      (b) **El ancla mide dos caracteres por uno**: el cursor de `@|` está en el final del `@`, y
+      con un ancla de un carácter caía sobre la comilla de cierre, donde no se ofrece nada.
 
 ## Fase 5 — El editor: quién contesta y quién se aparta (2)
 
