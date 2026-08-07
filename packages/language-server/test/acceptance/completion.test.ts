@@ -326,6 +326,89 @@ describe('BUG-15 §6.13–§6.17 — inside an open tag, asked the way an editor
   });
 });
 
+describe('BUG-16 §6.8–§6.13 — the dot and the at-sign, asked the way an editor asks', () => {
+  const ROUTE = `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="component" href="../components/app-badge.fud">\n`;
+
+  /** Labels without TypeScript's `?`, which is how it marks an optional property. */
+  const names = (items: CompletionItem[]): string[] =>
+    labels(items).map((label) => label.replace(/\?$/u, ''));
+
+  // Every one of these is asked with the trigger character the user just typed (§6.13). It is
+  // not a decoration: Volar skips any plugin that does not declare the character, so the
+  // request an editor makes and the request a test makes have different plugins in the room.
+  it('§6.8 — `.` offers the props of the component', async () => {
+    const items = await completeTyping(
+      SLUG,
+      `${ROUTE}<article>\n  <app-badge .|></app-badge>\n</article>\n`,
+      '.',
+    );
+
+    expect(names(items)).toContain('tone');
+  });
+
+  it('§6.8 — and the item does not eat the dot', async () => {
+    const text = `${ROUTE}<article>\n  <app-badge .`;
+    const source = `${text}></app-badge>\n</article>\n`;
+    const items = await completeTyping(SLUG, `${text}|></app-badge>\n</article>\n`, '.');
+    const tone = items.find((item) => item.label.replace(/\?$/u, '') === 'tone');
+    expect(tone).toBeDefined();
+
+    // Nothing is written there yet, so there is nothing to replace: what the editor gets is an
+    // insertion at the cursor. An edit that started one character earlier would swallow the
+    // dot and leave `tone` — a plain attribute, which is the form this bug removes.
+    const range = tone?.textEdit && 'range' in tone.textEdit ? tone.textEdit.range : undefined;
+    const cursor = harness.positionAt(source, text.length);
+    expect(range?.start ?? cursor).toEqual(cursor);
+    expect(range?.end ?? cursor).toEqual(cursor);
+  });
+
+  it('§6.9 — `.ton` replaces what is written, and no more', async () => {
+    const text = `${ROUTE}<article>\n  <app-badge .ton`;
+    const source = `${text}></app-badge>\n</article>\n`;
+    const items = await completeTyping(SLUG, `${text}|></app-badge>\n</article>\n`, '.');
+    const tone = items.find((item) => item.label.replace(/\?$/u, '') === 'tone');
+    const range = tone?.textEdit && 'range' in tone.textEdit ? tone.textEdit.range : undefined;
+
+    expect(range).toEqual({
+      start: harness.positionAt(source, text.length - 'ton'.length),
+      end: harness.positionAt(source, text.length),
+    });
+  });
+
+  it('§6.10 — `@cli` offers the events of the DOM, none of them with `on`', async () => {
+    const items = await completeTyping(
+      SLUG,
+      `${ROUTE}<article>\n  <app-badge @cli|></app-badge>\n</article>\n`,
+      '@',
+    );
+
+    expect(labels(items)).toContain('click');
+    expect(labels(items).filter((label) => label.startsWith('on'))).toEqual([]);
+  });
+
+  it('§6.11 — `@` offers the events and not the Razor directives', async () => {
+    const items = await completeTyping(
+      SLUG,
+      `${ROUTE}<article>\n  <app-badge @|></app-badge>\n</article>\n`,
+      '@',
+    );
+
+    expect(labels(items)).toEqual(expect.arrayContaining(['click', 'change', 'input']));
+    expect(labels(items)).not.toContain('@if');
+    expect(labels(items)).not.toContain('@foreach');
+  });
+
+  it('§6.12 — outside the tag a `@` is the transition of always', async () => {
+    const items = await completeTyping(
+      SLUG,
+      `${ROUTE}<article>\n  <app-badge></app-badge>\n  @fore|\n</article>\n`,
+      '@',
+    );
+
+    expect(labels(items)).toContain('@foreach');
+  });
+});
+
 describe('§6.10 — CSS', () => {
   it('reports a real mistake and says nothing about the shadow pseudos', async () => {
     // The four selectors a component is written with, and one typo. The virtual CSS starts at

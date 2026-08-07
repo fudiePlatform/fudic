@@ -5,7 +5,7 @@
 > **Rama:** la del backlog de uso
 > **Depende de:** [BUG-15](./BUG-15-clases-sin-completado.md) **solo en las fases 5 y 6**. Las
 > fases 1-4 no comparten un fichero con él y arrancan el mismo día (§1.2 del BUG)
-> **Progreso:** 10 / 12
+> **Progreso:** 12 / 12
 
 Cada tarea es un paso cerrado. Las rutas son relativas a la raíz del repo.
 
@@ -133,13 +133,22 @@ ejemplos antes de que el punto se emita los deja en rojo y sin salida que compar
 
 ## Fase 6 — Lo que no se puede romper (2)
 
-- [ ] **11. Las fixtures del `language-server`, migradas, y los criterios de antes verdes.**
+- [x] **11. Las fixtures del `language-server`, migradas, y los criterios de antes verdes.**
       Aquí y no en la 4: es el fichero que la rama de BUG-15 también toca. Con la sintaxis nueva,
       §6.3 y §6.4 de SDD-24 y §6.9 de BUG-11 siguen verdes, y los tres contextos del editor se
       piden **con `context`**, como los pide un editor (§6.13, §6.14).
-- [ ] **12. El build entero.**
+      *Los cinco criterios del editor, medidos por LSP* con `triggerKind: 2` y el carácter que el
+      usuario acaba de teclear: en `.` la lista trae `tone` y el item **no** lleva rango —una
+      inserción, así que el punto sobrevive—; en `.ton` el rango cubre `ton` y nada más; en `@cli`
+      viene `click` y **ningún** nombre empieza por `on`; en `@` vienen los eventos y no `@if`; y
+      fuera del tag `@fore` sigue ofreciendo `@foreach`. Y el reparto de §4.2 también end-to-end:
+      `id`/`class`/`role`/`data-*`/`aria-*` sobre un componente no reportan nada, `tone="info"`
+      plano da `TS2353` sobre el nombre y `titel` conserva su sugerencia.
+- [x] **12. El build entero.**
       `pnpm build` construye `examples/basic` migrado y los E2E siguen pasando sobre las páginas
       prerenderizadas (§6.15).
+      *Verde*: `pnpm build` completo —paquetes, ejemplo y el `.vsix`— y los 16 E2E de Playwright
+      sobre el `dist` prerenderizado, incluido el arranque con la red apagada.
 
 ---
 

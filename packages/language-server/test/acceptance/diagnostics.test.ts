@@ -173,6 +173,50 @@ describe('§6.2 — the nine mutants of SDD-23, as LSP diagnostics on the .fud',
   });
 });
 
+describe('BUG-16 §6.14 — the two literals of a component tag, end to end', () => {
+  let slugUri: string;
+  let slug: string;
+
+  beforeAll(async () => {
+    const opened = await harness.open(SLUG);
+    slugUri = opened.uri;
+    slug = opened.text;
+    await harness.open(BADGE);
+  });
+
+  it('takes the global vocabulary of HTML on a component (BUG-11 §6.9)', async () => {
+    const source = mutate(
+      slug,
+      '<app-badge .tone',
+      '<app-badge id="b" class="x" role="note" data-k="1" aria-label="badge" .tone',
+    );
+
+    // They are not props and they never were: they go to the second literal, checked against
+    // `$GlobalAttrs`, and nothing there is wrong.
+    expect(await diagnosticsOf(slugUri, source)).toEqual([]);
+  });
+
+  it('a prop written as a plain attribute is an error on its name (§4.2)', async () => {
+    const source = mutate(slug, '<app-badge .tone', '<app-badge tone="info" .tone');
+    const [diagnostic, ...rest] = await diagnosticsOf(slugUri, source);
+
+    // TypeScript's, and better than one of ours: it lands on the name the user wrote.
+    expect(rest).toEqual([]);
+    expect(diagnostic?.code).toBe(2353);
+    expect(textAt(source, diagnostic!)).toBe('tone');
+  });
+
+  it('a misspelt global keeps the suggestion (§6.6)', async () => {
+    const source = mutate(slug, '<app-badge .tone', '<app-badge titel="b" .tone');
+    const [diagnostic, ...rest] = await diagnosticsOf(slugUri, source);
+
+    expect(rest).toEqual([]);
+    expect(diagnostic?.code).toBe(2561);
+    expect(textAt(source, diagnostic!)).toBe('titel');
+    expect(String(diagnostic?.message)).toContain('title');
+  });
+});
+
 describe('§6.9 — inter-file', () => {
   it('changing Tone in app-badge.fud repaints [slug].fud, untouched', async () => {
     const badge = await harness.open(BADGE);
