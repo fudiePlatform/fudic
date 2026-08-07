@@ -27,10 +27,10 @@ Las dos llegan al mismo literal de props de la proyección, así que TypeScript 
 igual y el editor enseña que son intercambiables. **No lo son**, y la diferencia es la que
 importa:
 
-| | Se escribe en la salida | La comprueba la proyección |
-|---|---|---|
-| `tone="info"` | **sí**, `setAttr(v, 'tone', 'info')` | sí, como prop |
-| `.tone="@(t)"` | **no** | sí, como prop |
+| | Llega al hijo (props de SSR) | Se escribe en el host | La comprueba la proyección |
+|---|---|---|---|
+| `tone="info"` | sí, `render(…, { "tone": "info" })` | **no** (§2.6) | sí, como prop |
+| `.tone="@(t)"` | **no** | **no** | sí, como prop |
 
 `property` es enganche de cliente y no se emite:
 [`emit/attrs.ts:63`](../../../packages/compiler/src/emit/attrs.ts#L63) lo dice —*«they are hookup…
@@ -131,6 +131,23 @@ para representar un evento, declarada en las globales de SDD-23— toma como pri
 `on`. Justo lo que hay que ofrecer. Pero no hay una sola posición del fuente desde la que
 preguntárselo.
 
+### 2.6. Un tag de componente no escribe NINGÚN atributo (hallazgo, medido)
+
+La tabla de §1 daba por hecho que el atributo plano sí llega a la salida. **No llega.** El
+emisor de servidor, ante un tag con guion, escribe `data-adopt`, abre el shadow y llama al
+`render` del hijo con el literal de props
+([`markup.ts:147-157`](../../../packages/compiler/src/emit/markup.ts#L147-L157)): nunca pasa por
+`writeElementAttrs`. El de cliente hace lo propio
+([`markup-client.ts:346-352`](../../../packages/compiler/src/emit/markup-client.ts#L346-L352)).
+
+Medido sobre el `dist` de `examples/basic` construido desde `main`: los cinco hosts de
+`<app-badge>` de `index.html` salen como `<app-badge data-adopt="app-badge">` y nada más.
+
+Lo que eso rompe hoy, en el propio ejemplo del repositorio: `<app-badge slot="meta">` pierde su
+`slot`, así que la insignia cae en la ranura por defecto de `app-card` en vez de en
+`<slot name="meta">`. Es la misma causa —nadie escribe atributos en un host de componente— y
+por la regla de este índice se arregla aquí, no en un BUG aparte.
+
 ---
 
 ## 3. Interfaz pública
@@ -183,6 +200,16 @@ el punto, por las dos ramas que `attr` ya tiene en
 - valor estático (`.tone="info"`) → `setAttr(v, 'tone', 'info')`;
 - valor interpolado (`.tone="@(t)"`) → la rama de omitir-si-falsy de la decisión 21, idéntica a
   la de un atributo dinámico.
+
+Y **además** entra en el literal de props con el que se llama al `render` del hijo, que es de
+donde SSR pinta el shadow: el atributo es lo que el nivel 1 deja escrito en el documento, y el
+literal es lo que el componente lee al renderizarse. Las dos cosas, y por eso `.tone` deja de
+ser silencioso por los dos lados.
+
+El atributo **plano** hace el camino inverso: sale del literal de props (§4.2) y pasa a
+escribirse en el host, que es lo que un atributo de HTML es. Con §2.6 encima, eso no es una
+mudanza sino la primera vez que se escribe — y es lo que hace que `slot="meta"` empiece a
+proyectar en su ranura.
 
 Con eso el nivel 1 sigue siendo lo que dice ser: HTML puro, sin JS, con las props del componente
 donde el componente las lee.
@@ -284,8 +311,11 @@ Tests en los tres paquetes.
    misma que hoy produce `tone="@(t)"`.
 3. Un `.prop` sobre un tag **nativo** sigue sin emitirse: `<input .value="@(x)">` no escribe
    atributo, exactamente como hoy.
-4. La salida de nivel 1 de `examples/basic` reescrito con puntos es **idéntica** a la de hoy con
-   atributos planos, documento a documento.
+4. La salida de nivel 1 de `examples/basic` reescrito con puntos es, documento a documento, la de
+   hoy **más los atributos del host que hoy se pierden** (§2.6) y nada más: el shadow que cada
+   componente pinta no cambia un byte, y el host gana su `slot`, su `tone` y sus planos. El
+   criterio original pedía identidad estricta; con §2.6 medido eso sería pedir que el arreglo no
+   arreglara nada.
 
 **El reparto (proyección)**
 

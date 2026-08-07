@@ -5,7 +5,7 @@
 > **Rama:** la del backlog de uso
 > **Depende de:** [BUG-15](./BUG-15-clases-sin-completado.md) **solo en las fases 5 y 6**. Las
 > fases 1-4 no comparten un fichero con él y arrancan el mismo día (§1.2 del BUG)
-> **Progreso:** 0 / 12
+> **Progreso:** 2 / 12
 
 Cada tarea es un paso cerrado. Las rutas son relativas a la raíz del repo.
 
@@ -19,15 +19,23 @@ ejemplos antes de que el punto se emita los deja en rojo y sin salida que compar
 
 ## Fase 1 — Rojo primero, y la medida del contrato (2)
 
-- [ ] **1. El punto no llega a la salida.**
+- [x] **1. El punto no llega a la salida.**
       En `packages/compiler/test/`, compilar `<app-badge .tone="info">` y afirmar que la salida
       lleva el atributo `tone`. **Verlo fallar hoy**: hoy no emite nada (§6.1). Mismo test para
       la forma interpolada (§6.2).
-- [ ] **2. El contrato, medido con `tsc`.**
+      *Visto en rojo*: `test/emit/props-dot.test.ts`, 4 de 5 casos fallan contra `main` —el punto,
+      el interpolado, el `slot="meta"` del plano (§2.6)—; el único verde es el `.prop` sobre tag
+      nativo, que no cambia. Y el rojo destapó §2.6: **ningún** atributo de un host de componente
+      se escribe hoy, medido sobre el `dist` del ejemplo.
+- [x] **2. El contrato, medido con `tsc`.**
       Un fichero de sonda con `$attrs<{}>({ tone: 'info' })` contra `GLOBALS_DTS`: comprobar que
       el error cae sobre el **nombre** y que un global mal escrito conserva la sugerencia
       (`titel` → `title`). Si el mensaje no aterriza ahí, se replantea el mecanismo antes de
       tocar el emisor (§3.3, §6.6).
+      *Medido* en `packages/language-core/test/globals-attrs.test.ts`: `TS2353` sobre `tone`,
+      `TS2561` sobre `titel` **con** la sugerencia `'title'`, los globales y los `data-*`/`aria-*`
+      aceptados, y un prop declarado sigue dando `TS2322` sobre su nombre. El mecanismo aguanta:
+      cero códigos `FUD` nuevos.
 
 ## Fase 2 — El emisor: el punto se escribe (2)
 
