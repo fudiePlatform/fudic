@@ -17,7 +17,7 @@ import { type Span, span, emptySpan } from '../types/index.js';
 import { type Diagnostic, errorDiag } from '../types/index.js';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 import { scanBrackets, scanBraces, scanParens } from '../balancer/index.js';
-import type { ControlKeyword } from '../at/index.js';
+import type { ControlKeyword, RazorExpression } from '../at/index.js';
 import type { HtmlContent, HtmlParseContext } from '../html/index.js';
 import type { Token } from '../lexer/index.js';
 import type {
@@ -98,6 +98,43 @@ function trimmedSpan(source: string, start: number, end: number): Span {
 function missingHeader(at: number): ControlHeader {
   const empty = emptySpan(at);
   return { span: empty, inner: empty, closed: false, regions: [] };
+}
+
+// ----------------------------------------------------------------------
+// The `key (…)` clause (decisions 91-93, SDD-30 §3.5)
+// ----------------------------------------------------------------------
+
+/**
+ * Match the bare word `key` at `at`, on a word boundary. Bare on purpose: `@key` is not
+ * grammar (decision 91 writes `key (…)`), and `@` before a non-keyword identifier is an
+ * implicit expression — accepting it here would invent a second spelling for a clause the
+ * grammar gives exactly one.
+ */
+function matchKey(source: string, at: number): number | null {
+  if (!source.startsWith('key', at)) return null;
+  return IDENT_PART.test(charAt(source, at + 3)) ? null : at + 3;
+}
+
+/** A `key (…)` clause as read from source, whether or not it yielded an expression. */
+interface KeyClause {
+  /** The expression, or `null` when the clause is malformed (FUD0541). */
+  readonly key: RazorExpression | null;
+  /** Offset just past the clause: where the body's `{` is looked for. */
+  readonly end: number;
+}
+
+/**
+ * What a body has to hold for its loop to need an identity. A loop that paints nothing has
+ * no rows to reconcile, so demanding a key of it would be ceremony: `FUD0540` is about a
+ * list whose order can change, and text nobody can see is not one.
+ *
+ * Razor comments and `@{ … }` are not markup — neither reaches the DOM.
+ */
+function hasMarkup(source: string, body: readonly HtmlContent[]): boolean {
+  return body.some((node) => {
+    if (node.type === 'text') return source.slice(node.span.start, node.span.end).trim() !== '';
+    return node.type !== 'razor-comment' && node.type !== 'inline-code';
+  });
 }
 
 // ----------------------------------------------------------------------
@@ -305,12 +342,19 @@ function isCaseBoundary(next: Token): boolean {
   return next.type === 'switch-label' || next.type === 'block-end';
 }
 
-/** The header + body pieces every non-`if` construct is made of. */
+/** The header + key + body pieces every non-`if` construct is made of. */
 interface BlockParts {
   readonly header: ControlHeader;
+  /** The `key (…)` of the loop, when it was written and well formed. */
+  readonly key: RazorExpression | null;
   readonly body: readonly HtmlContent[];
   /** Offset just past the construct (its closing `}`, or where it degraded). */
   readonly end: number;
+}
+
+/** Spread helper: an absent key is an OMITTED field, never `undefined` (strict TS). */
+function withKey(key: RazorExpression | null): { key?: RazorExpression } {
+  return key === null ? {} : { key };
 }
 
 /**
@@ -351,9 +395,10 @@ class ControlParser {
         const parts = this.#blockParts(keywordSpan);
         const at = span(start, parts.end);
         const { header, body } = parts;
-        if (keyword === 'for') return { type: 'for', span: at, header, body };
-        if (keyword === 'foreach') return { type: 'foreach', span: at, header, body };
-        return { type: 'while', span: at, header, body };
+        const key = withKey(parts.key);
+        if (keyword === 'for') return { type: 'for', span: at, header, body, ...key };
+        if (keyword === 'foreach') return { type: 'foreach', span: at, header, body, ...key };
+        return { type: 'while', span: at, header, body, ...key };
       }
     }
   }
@@ -423,15 +468,81 @@ class ControlParser {
     return { body, end: closing.span.end };
   }
 
-  /** Header + block for `@for`/`@foreach`/`@while`; degradations keep what was read. */
+  /**
+   * `key ( … )` between the header and the body (decision 91). `null` ⇒ the clause was not
+   * written at all; a clause that IS written but holds nothing yields `key: null` and is
+   * still consumed, so the body behind it still parses.
+   */
+  #keyClause(from: number): KeyClause | null {
+    const at = skipTrivia(this.#source, from);
+    const keywordEnd = matchKey(this.#source, at);
+    if (keywordEnd === null) return null;
+
+    const parenAt = skipTrivia(this.#source, keywordEnd);
+    if (charAt(this.#source, parenAt) !== '(') return { key: null, end: keywordEnd };
+
+    const scanned = scanParens(this.#source, parenAt);
+    // An unterminated key group is the balancer's FUD0002; it surfaces unrenumbered.
+    if (scanned.diagnostics.length > 0) this.#diagnostics.push(...scanned.diagnostics);
+    const group = scanned.value;
+    this.#ctx.lexer.seekTo(group.span.end);
+    const expr = trimmedSpan(this.#source, group.inner.start, group.inner.end);
+    if (!group.closed || expr.start === expr.end) return { key: null, end: group.span.end };
+    return {
+      key: {
+        type: 'razor-expression',
+        kind: 'explicit',
+        // The atom is the WHOLE clause — `key ( … )` — so a consumer that rewrites it
+        // (the formatter, a code action) replaces the clause and not just its inside.
+        span: span(at, group.span.end),
+        expr,
+        regions: group.regions,
+      },
+      end: group.span.end,
+    };
+  }
+
+  /**
+   * The key rule of a loop (§3.5). Both diagnostics point at the HEADER: that is the piece
+   * the author has to change, and it is there whether the clause was written or not.
+   */
+  #checkLoopKey(header: ControlHeader, clause: KeyClause | null, body: readonly HtmlContent[]): void {
+    if (clause === null) {
+      if (hasMarkup(this.#source, body)) {
+        this.#error('FUD0540', "a loop that renders markup must declare 'key (…)'", header.span);
+      }
+      return;
+    }
+    if (clause.key === null) {
+      this.#error('FUD0541', "'key (…)' must hold an expression", header.span);
+    }
+  }
+
+  /**
+   * The key clause where it is forbidden (decision 94): `@if` and `@switch` do not iterate,
+   * so their identity is the branch taken and a key would have nothing to identify. It is
+   * still CONSUMED — otherwise the `{` behind it would go missing too, and one mistake would
+   * report as two.
+   */
+  #rejectKey(header: ControlHeader): KeyClause {
+    const clause = this.#keyClause(header.span.end);
+    if (clause === null) return { key: null, end: header.span.end };
+    this.#error('FUD0542', "'key (…)' is only valid on a loop", header.span);
+    return clause;
+  }
+
+  /** Header + key + block for `@for`/`@foreach`/`@while`; degradations keep what was read. */
   #blockParts(keywordSpan: Span): BlockParts {
     const header = this.#header(keywordSpan.end);
     if (header === null) {
-      return { header: missingHeader(keywordSpan.end), body: [], end: keywordSpan.end };
+      return { header: missingHeader(keywordSpan.end), key: null, body: [], end: keywordSpan.end };
     }
-    const block = this.#block(header.span.end);
-    if (block === null) return { header, body: [], end: header.span.end };
-    return { header, body: block.body, end: block.end };
+    const clause = this.#keyClause(header.span.end);
+    const afterKey = clause === null ? header.span.end : clause.end;
+    const block = this.#block(afterKey);
+    const body = block === null ? [] : block.body;
+    this.#checkLoopKey(header, clause, body);
+    return { header, key: clause?.key ?? null, body, end: block === null ? afterKey : block.end };
   }
 
   // ------------------------------------------------------------------
@@ -446,6 +557,10 @@ class ControlParser {
 
     const branches: ConditionalBranch[] = [first.branch];
     let end = first.end;
+    // The key of the first arm that wrote one. It is an error (FUD0542) whatever arm it sits
+    // on; keeping it makes the node describe what the author typed, which is what a
+    // formatter or a code action needs to put it back — or take it away.
+    let key: RazorExpression | null = first.key;
     let elseBody: readonly HtmlContent[] | null = null;
 
     for (;;) {
@@ -463,6 +578,7 @@ class ControlParser {
         const arm = this.#branch(otherwise.start, chained.end);
         if (arm === null) break;
         branches.push(arm.branch);
+        key = key ?? arm.key;
         end = arm.end;
         continue;
       }
@@ -475,21 +591,26 @@ class ControlParser {
       break;
     }
 
-    const node: IfNode = { type: 'if', span: span(start, end), branches };
+    const node: IfNode = { type: 'if', span: span(start, end), branches, ...withKey(key) };
     // `elseBody` is OMITTED when there is no final else, never set to undefined
     // (exactOptionalPropertyTypes).
     return elseBody === null ? node : { ...node, elseBody };
   }
 
   /** One `if` / `else if` arm. `armStart` is where the arm's own span begins. */
-  #branch(armStart: number, from: number): { branch: ConditionalBranch; end: number } | null {
+  #branch(
+    armStart: number,
+    from: number,
+  ): { branch: ConditionalBranch; key: RazorExpression | null; end: number } | null {
     const header = this.#header(from);
     if (header === null) return null;
-    const block = this.#block(header.span.end);
+    const clause = this.#rejectKey(header);
+    const block = this.#block(clause.end);
     const body = block === null ? [] : block.body;
-    const end = block === null ? header.span.end : block.end;
+    const end = block === null ? clause.end : block.end;
     return {
       branch: { type: 'conditional-branch', span: span(armStart, end), header, body },
+      key: clause.key,
       end,
     };
   }
@@ -515,10 +636,12 @@ class ControlParser {
       };
     }
 
-    const braceAt = skipTrivia(this.#source, header.span.end);
+    const clause = this.#rejectKey(header);
+    const key = withKey(clause.key);
+    const braceAt = skipTrivia(this.#source, clause.end);
     if (charAt(this.#source, braceAt) !== '{') {
       this.#error('FUD0071', "expected '{' to open the @switch body", emptySpan(braceAt));
-      return { type: 'switch', span: span(start, header.span.end), header, cases: [] };
+      return { type: 'switch', span: span(start, clause.end), header, cases: [], ...key };
     }
 
     const lexer = this.#ctx.lexer;
@@ -553,7 +676,7 @@ class ControlParser {
     }
 
     lexer.popSwitchBody();
-    return { type: 'switch', span: span(start, end), header, cases };
+    return { type: 'switch', span: span(start, end), header, cases, ...key };
   }
 
   /** Whitespace between the `{` and the first label is not "content" (§4.3). */

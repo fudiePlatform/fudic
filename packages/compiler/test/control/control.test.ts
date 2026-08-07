@@ -207,7 +207,7 @@ describe('else if chains (§6.4, decision 9)', () => {
 
 describe('@foreach (§6.5, decision 11)', () => {
   const source =
-    '@foreach (const item of data.items) { <app-card title="@item.title">@item.description</app-card> }';
+    '@foreach (const item of data.items) key (item.id) { <app-card title="@item.title">@item.description</app-card> }';
 
   it('keeps the for-of header opaque and recurses into the body', () => {
     const node = control(source);
@@ -224,15 +224,17 @@ describe('@foreach (§6.5, decision 11)', () => {
 
 describe('@for and @while (§6.6)', () => {
   it('parses a C-style @for with its header opaque', () => {
-    const source = '@for (let i = 0; i < n; i++) { <li>x</li> }';
+    const source = '@for (let i = 0; i < n; i++) key (i) { <li>x</li> }';
     const node = control(source);
     expect(node.type).toBe('for');
+    // The `;` of the C-style header stays inside the parenthesis: the key is written
+    // OUTSIDE it (decision 93), so the header still reaches Oxc whole.
     expect(text(source, (node as ForNode).header.inner)).toBe('let i = 0; i < n; i++');
     expect(codes(source)).toEqual([]);
   });
 
   it('parses a @while', () => {
-    const source = '@while (cond) { <li>x</li> }';
+    const source = '@while (cond) key (cond.id) { <li>x</li> }';
     const node = control(source);
     expect(node.type).toBe('while');
     expect(text(source, (node as WhileNode).header.inner)).toBe('cond');
@@ -381,7 +383,7 @@ describe('case test delimitation (§6.8, §4.5)', () => {
 
 describe('nesting (§6.9)', () => {
   it('closes every } at its own level', () => {
-    const source = '@foreach (const x of xs) { @if (x.active) { <li>@x.name</li> } }';
+    const source = '@foreach (const x of xs) key (x.id) { @if (x.active) { <li>@x.name</li> } }';
     const node = control(source);
     expect(node.type).toBe('foreach');
     const inner = (node as ForeachNode).body.find((n) => n.type === 'if') as IfNode | undefined;
@@ -393,7 +395,7 @@ describe('nesting (§6.9)', () => {
   });
 
   it('parses a control inside an element inside a control', () => {
-    const source = '@if (a) { <ul>@foreach (const x of xs) { <li>x</li> }</ul> }';
+    const source = '@if (a) { <ul>@foreach (const x of xs) key (x) { <li>x</li> }</ul> }';
     const node = asIf(source);
     const ul = elements(branchOf(node, 0).body)[0];
     expect(ul?.name).toBe('ul');

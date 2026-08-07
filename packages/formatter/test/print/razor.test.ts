@@ -43,9 +43,9 @@ describe('control flow', () => {
   });
 
   it('prints the three loops', async () => {
-    const foreach = '@foreach (const i of xs) {\n  <p>@i</p>\n}';
-    const forLoop = '@for (let i = 0; i < 3; i++) {\n  <p>@i</p>\n}';
-    const whileLoop = '@while (go) {\n  <p>x</p>\n}';
+    const foreach = '@foreach (const i of xs) key (i) {\n  <p>@i</p>\n}';
+    const forLoop = '@for (let i = 0; i < 3; i++) key (i) {\n  <p>@i</p>\n}';
+    const whileLoop = '@while (go) key (go.id) {\n  <p>x</p>\n}';
     expect(await print(foreach)).toBe(foreach + '\n');
     expect(await print(forLoop)).toBe(forLoop + '\n');
     expect(await print(whileLoop)).toBe(whileLoop + '\n');

@@ -40,7 +40,7 @@
   <p class="empty">Todavía no hay artículos.</p>
 } else {
   <section class="grid">
-    @foreach (const post of data.posts) {
+    @foreach (const post of data.posts) key (post.slug) {
       <app-card
         title="@post.title"
         href="@('/blog/' + post.slug)"

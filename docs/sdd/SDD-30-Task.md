@@ -3,7 +3,7 @@
 > **SDD:** [SDD-30 — Renders de bloque](./SDD-30-renders-de-bloque.md)
 > **Paquetes:** `@fudic/compiler` (emit de cliente, parser de la key)
 > **Rama:** `sdd-30-renders-de-bloque`
-> **Progreso:** 0 / 21
+> **Progreso:** 4 / 21
 
 Convierte los cinco constructos de control —`@if`, `@switch`, `@for`, `@foreach`, `@while`— de
 markup aplanado en `c`/`h` a **funciones de bloque** con vida propia. Va **antes** que los event
@@ -35,25 +35,28 @@ cuatro mapas de página, `FUD0290`, y el recorte de dependencias por uso real.
 
 ## Fase 1 — La key en la gramática (4)
 
-- [ ] **1. Decisiones 91–95 en el doc de gramática.**
+- [x] **1. Decisiones 91–95 en el doc de gramática.**
       Modificar `docs/gramar/gramatica-v1-decisiones.md`: la sección 6 (control de flujo) gana la
       key —dónde va, por qué no en el elemento raíz, por qué no dentro del paréntesis, en qué
       constructos es obligatoria y en cuáles es error— y el índice de decisiones al final gana
       sus cinco filas. Es el documento que fija la sintaxis; el SDD la implementa.
-- [ ] **2. `key (…)` en el parser de control de flujo.**
+- [x] **2. `key (…)` en el parser de control de flujo.**
       Modificar SDD-06 (`packages/compiler/src/control/`): tras cerrar el `)` de la cabecera y
       antes del `{` del cuerpo, aceptar `key` seguido de un grupo balanceado. El contenido es un
       fragmento `expression` más, con su `Span`, registrado en el mismo `JsBatch`: **Oxc se sigue
       invocando una vez por fichero**. El nodo gana un campo `key?: RazorExpression`; los cinco
       tipos de nodo lo declaran, y los dos que no iteran lo declaran para poder diagnosticarlo.
-- [ ] **3. `FUD0540`, `FUD0541`, `FUD0542`, `FUD0543`.**
-      Bucle con markup y sin key; key vacía o que no parsea; key en `@if`/`@switch`; cabecera de
-      bucle que no declara ningún binding. Los cuatro con el span de la cabecera y **sin abortar**
-      —el emit no lanza (§5)—. El catálogo consolidado de SDD-12 gana el rango `FUD0540`–`FUD0569`.
-- [ ] **4. Tests del parser y de los diagnósticos.**
+- [x] **3. `FUD0540`, `FUD0541`, `FUD0542`.**
+      Bucle con markup y sin key; key vacía, sin paréntesis o sin cerrar; key en `@if`/`@switch`.
+      Los tres con el span de la cabecera y **sin abortar** —el emit no lanza (§5)—. El catálogo
+      consolidado de SDD-12 gana el rango `FUD0540`–`FUD0569`.
+      **`FUD0543` se movió a la tarea 6**: su regla —«la cabecera no declara ningún binding»— se
+      decide sobre el `ObjectPattern`/`ArrayPattern` del AST de Oxc, que es exactamente lo que la
+      tarea 6 construye. En el parser solo cabría como heurística sobre el texto del header.
+- [x] **4. Tests del parser y de los diagnósticos.**
       Las tres formas (`@foreach`/`@for`/`@while`) con key, el `@for` clásico cuyo header lleva dos
       `;` y **no** se parte, la key con destructuring en la cabecera (`{ id, name }` → la key ve
-      `id`), y los cuatro diagnósticos con su span exacto.
+      `id`), y los diagnósticos con su span exacto.
 
 ## Fase 2 — El bloque como función (6)
 
@@ -63,13 +66,15 @@ cuatro mapas de página, `FUD0290`, y el recorte de dependencias por uso real.
       recolección de `Identifier`: hay que distinguir referencia de declaración y de clave de
       propiedad (`obj.a` no referencia `a`), y descender por los scopes que el propio fragmento
       abre (una arrow dentro de un handler declara sus parámetros). Nace al 100 % de cobertura.
-- [ ] **6. La lista de dependencias.**
+- [ ] **6. La lista de dependencias, y `FUD0543`.**
       Sobre lo anterior: restar lo que el bloque declara —el patrón de la cabecera, vía
       `ObjectPattern`/`ArrayPattern`, más lo que declare un `@{ … }` interno— y lo que **no puede
       cambiar de valor** —un binding `const` o `function` del `@code { @client }` sin ninguna
       asignación—. Orden determinista: cabecera primero en orden del patrón, externas después en
       orden de primera aparición. La regla puede pasar de más y **no puede quedarse corta**: es
       la propiedad que se testea, no el tamaño de la lista.
+      Con los bindings de la cabecera en la mano cae `FUD0543`: un `@foreach`/`@for` que no
+      declara ninguno, con el span de la cabecera (`@while` queda fuera, §3.5).
 - [ ] **7. El emisor de bloques.**
       Nuevo `packages/compiler/src/emit/block.ts`: dado un nodo de control, escribir el
       `const $bN = ($parent, $anchor, …) => {…}` con sus seis cuerpos (`c`, `h`, `m`, `s`, `u`,
@@ -165,6 +170,17 @@ los constructos aplanados, el enganche de un `@foreach` no tenía dónde vivir �
 nodo se pisan cada vuelta— y la tanda de eventos habría tenido que inventarse un parche que este
 SDD tira entero. Con el bloque como función, un `@click` dentro de un bucle es un `$dom.event`
 en el `s()` de la fila, sin ningún caso especial.
+
+## Notas de implementación
+
+- **La key es sintaxis, así que sale del compilador.** Un `.fud` con un bucle sin key deja de
+  parsear limpio en TODO el repo, no solo en el emit de cliente: los seis `.fud` con `@foreach`
+  (fixtures del compilador, del formateador y `examples/basic`) llevan ya su key.
+- **El formateador la imprime** (`printLoop` / `printWhile`) y la manda a formatear como un
+  fragmento más. Sin eso, `fudic fmt` borraría la cláusula: un documento con diagnósticos no se
+  formatea (SDD-26 §4.6), así que solo llega al printer la key de un bucle **válido**.
+- **`@fudic/language-core` la proyecta** como primera sentencia del cuerpo del bucle: es donde
+  la key se evalúa (decisión 91), y es lo que le da completado y diagnóstico propios.
 
 ## Enlaces
 

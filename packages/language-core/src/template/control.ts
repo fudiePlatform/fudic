@@ -77,6 +77,14 @@ function emitLoop(
   // `for ()` is a syntax error where an empty `if ()` merely needs a value.
   emitHeader(ctx, node.header.inner, LOOP_FALLBACK[node.type]);
   ctx.w.scaffold(') {\n');
+  // `key (…)` is evaluated in the scope of the BODY (decision 91), so it is projected as the
+  // first statement inside the loop: that is what makes the key see `x` in
+  // `@foreach (const x of xs) key (x.id)`, and what gives it completions and a diagnostic
+  // of its own when it names something that does not exist.
+  if (node.key !== undefined) {
+    copyExpression(ctx, node.key.expr);
+    ctx.w.scaffold(';\n');
+  }
   ctx.emit(node.body);
   ctx.w.scaffold('}\n');
 }

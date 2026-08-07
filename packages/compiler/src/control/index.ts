@@ -5,6 +5,7 @@
 export type {
   ControlNode,
   ControlHeader,
+  KeyedNode,
   IfNode,
   ConditionalBranch,
   ForeachNode,
