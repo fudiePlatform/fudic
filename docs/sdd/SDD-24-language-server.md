@@ -157,6 +157,23 @@ contesta quien sabe de HTML o la proyección. Por eso el espacio dejó de ser ca
 (§3.2) — declarar uno excluye a todo servicio que no lo declare, así que anunciarlo dejaba a
 este servidor solo justo donde no tiene nada que decir.
 
+#### 4.2.b. Los dos contextos que contestan callando
+
+Añadidos por [BUG-16](./bugs/BUG-16-props-con-punto.md): `propertyContextAt` y `eventContextAt`,
+el nombre que se está escribiendo tras un `.` y tras un `@` dentro de un tag abierto, con el
+prefijo **fuera** del span. Son los dos primeros contextos que existen para **no** contestar.
+
+La lista no es del servidor en ninguno de los dos: los props son el contrato del componente y
+los eventos son `HTMLElementEventMap`, y quien sabe de los dos es TypeScript sobre la proyección
+(SDD-23 §4.4). Lo que hace falta ahí es apartarse — ni Emmet, ni tags, ni snippets — y apartarse
+es devolver `undefined`, no una lista vacía: una lista vacía fija el `mainCompletionUri` de
+Volar y silencia a los demás, que es exactamente el defecto de BUG-15 §2.3 por otra puerta.
+
+Con ellos, el interior de un tag queda cerrado y sin ambigüedad: `.` el contrato del componente,
+`@` el DOM, `class:` el `<style>` de este fichero, nada el vocabulario de HTML. Y `@` deja de
+ofrecer directivas Razor dentro de un tag, con la misma guarda `insideOpenTag` que `wordContextAt`
+ya usaba: ahí un `@` es un evento, nunca un `@if`.
+
 **Lo que viene después:** `style:` y `bus:` comparten la forma de `class:` y no su respuesta —
 los nombres de propiedad CSS son una tabla estática y los del bus son un `emit()` de otro
 fichero (decisión 28.c)—, así que cada uno es su propio trabajo. Completar el **prefijo** en un

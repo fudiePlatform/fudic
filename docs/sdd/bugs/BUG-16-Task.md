@@ -154,11 +154,19 @@ ejemplos antes de que el punto se emita los deja en rojo y sin salida que compar
 
 ## Cierre del BUG
 
-- [ ] `pnpm typecheck`, `pnpm test` y `pnpm build` en verde en todo el workspace.
-- [ ] `language-core` y `language-server` siguen al **100 %** en las cuatro métricas;
+- [x] `pnpm typecheck`, `pnpm test` y `pnpm build` en verde en todo el workspace.
+      *2705 tests* en los once paquetes, el `.vsix` construido y los 16 E2E de Playwright
+      sobre el `dist` prerenderizado.
+- [x] `language-core` y `language-server` siguen al **100 %** en las cuatro métricas;
       `@fudic/compiler` no baja de donde estaba.
-- [ ] Marcar BUG-16 como `Hecho` en [INDEX.md](./INDEX.md) (tabla + registro de progreso).
-- [ ] Anotar la regla en [la gramática](../../gramar/gramatica-v1-decisiones.md) §10: sobre un tag
+      *Medido*: 100/100/100/100 en los dos, y las ramas de `compiler` **suben** de 95,6 a 96,59.
+- [x] Marcar BUG-16 como `Hecho` en [INDEX.md](./INDEX.md) (tabla + registro de progreso).
+- [x] Anotar la regla en [la gramática](../../gramar/gramatica-v1-decisiones.md) §10: sobre un tag
       de componente, `property_binding` es la única vía de prop.
-- [ ] Anotar en [SDD-23 §4.4](../SDD-23-emisor-ts-virtual.md) los dos literales, y en
+      *Decisión **41.c**, junto a la 41 que define el tag con guion. Y de paso las dos que este
+      BUG dejó desfasadas en §7: la **23** se deroga —el punto acepta constante, expresión o
+      nada— y la **24** se precisa —el error ya no degrada el binding a atributo plano.*
+- [x] Anotar en [SDD-23 §4.4](../SDD-23-emisor-ts-virtual.md) los dos literales, y en
       [SDD-24 §4.2](../SDD-24-language-server.md) los dos contextos nuevos.
+      *En SDD-23, además, el nombre del evento copiado 1:1 y por qué las comillas quedan fuera;
+      en SDD-24, el §4.2.b: los dos primeros contextos que existen para no contestar.*

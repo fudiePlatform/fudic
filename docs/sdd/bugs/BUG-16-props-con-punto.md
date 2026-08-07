@@ -1,6 +1,6 @@
 # BUG-16 — Pasar una prop tiene dos formas, y la que el editor valida no llega a la salida
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Corrige:** [gramática v1](../../gramar/gramatica-v1-decisiones.md) §10 (regla `attribute`),
 > [SDD-23 — Proyección](../SDD-23-emisor-ts-virtual.md) §4.4 y
 > [SDD-24 — Language server](../SDD-24-language-server.md) §4.2

@@ -267,14 +267,14 @@ Cambiar el contrato de `load()` rompe la plantilla sin tocar la plantilla. Verif
 | `<link rel="component" href="./x.fud">` | `import type { $Props as $C<n> } from './x.fud';` |
 | `<link rel="layout" href="./l.fud">` | `import type { $Sections as $L0 } from './l.fud';` |
 | `props<T>()` en `@code` | `const $p0 = props<T>();` + `export type $Props = typeof $p0;` + el destructuring del usuario copiado literalmente sobre `$p0` |
-| `<app-badge …>` (tag registrado) | `$attrs<$C<n>>({ …atributos… });` |
+| `<app-badge …>` (tag registrado) | `$attrs<$C<n>>({ …props… });` + `$attrs<{}>({ …atributos planos… });` |
 | `<app-foo …>` (tag **no** registrado) | `$attrs<$C_app_foo>({ … });` con `$C_app_foo` **no declarado** ⇒ `TS2304` sobre el tag (decisión 41) |
 | `attr="@expr"` (único `at_construct`) | propiedad del objeto con el valor **tal cual**: tipo exacto contra la prop |
 | `attr="pre-@expr-post"` (concatenación) | propiedad con *template literal*: se comprueba como `string` (decisión 20) |
-| `.prop="@expr"` | propiedad con el valor tal cual, tipo exacto (decisión 24) |
+| `.prop="@expr"` / `.prop="v"` / `.prop` | propiedad con el valor tal cual, tipo exacto (decisiones 23, 24, 44) |
 | atributo estático `attr="v"` | propiedad con literal de string |
 | atributo booleano `disabled` | propiedad `true` (decisión 44) |
-| `@click="@h"` | `$on('click', h);` |
+| `@click="@h"` | `$on('click', h);` — `'click'` **copiado** del fuente, 1:1 y sin las comillas |
 | `@click="@(e => …)"` | `$on('click', e => …);` — `e` tipado como `MouseEvent` |
 | `@my-event="@h"` | `$on('my-event' as never, h);` — evento custom, sin tipo de evento (decisión 28) |
 | `class:foo="@x"` | `$cls(x);` ⇒ exige `boolean` |
@@ -289,6 +289,24 @@ Cambiar el contrato de `load()` rompe la plantilla sin tocar la plantilla. Verif
 | `@section nav { … }` | `$section<$L0>('nav');` + los hijos en el mismo ámbito |
 | `<slot>` | `$slot();` |
 | `@* … *@` | nada (decisión 37); el span queda sin mapeo |
+
+**Un tag de componente proyecta DOS literales (BUG-16 §4.2).** Un `.prop` y un atributo plano
+no son dos maneras de decir lo mismo: el punto es la única vía de prop (decisión 41.c), así que
+solo los `property` entran en el literal de contrato `$attrs<$C<n>>`. Los planos van a un
+`$attrs<{}>({ … })` propio —que es `{} & $GlobalAttrs`, o sea el vocabulario de HTML y nada
+más—, y así `id`, `role`, `data-*` y `aria-*` pasan mientras `tone="info"` reporta `TS2353`
+sobre el nombre, con la sugerencia de TypeScript cuando se parece a un global. El segundo
+literal se emite **solo si hay algún atributo plano**, y las anclas del hueco del tag apuntan al
+de **contrato**, que es lo que se quiere completar ahí. `slot` sigue fuera de los dos, con
+`$intoSlot` (BUG-11).
+
+**El nombre de un evento se copia, no se inventa (BUG-16 §4.4).** Es lo que hace que el `@`
+ofrezca la lista: el primer parámetro de `$on` es `keyof HTMLElementEventMap`, el diccionario
+del DOM tecleado sin `on`, y preguntarle a esa posición **es** pedir la lista. El tramo mide
+**1:1** con el fuente y las comillas quedan de andamiaje a los lados: TypeScript devuelve el
+rango de reemplazo sin ellas, así que sus dos extremos ya caen dentro del tramo, mientras que un
+tramo dos caracteres más largo desplaza cada offset de su interior — con `@cli` el rango volvía
+sobre `li` y aceptar `click` escribía `@cclick`.
 
 **`ref` proyecta una asignación porque la variable es del usuario.** Por la decisión 30,
 `ref="@v"` es un identificador simple que el usuario **ya declaró** en `@code` (`let v`);
