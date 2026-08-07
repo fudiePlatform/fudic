@@ -107,7 +107,7 @@ describe('§6.3 — attributes and their values', () => {
   it('offers the members of the union inside the value', async () => {
     const items = await completeAt(
       SLUG,
-      `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="component" href="../components/app-badge.fud">\n<article>\n  <app-badge tone="@(|)"></app-badge>\n</article>\n`,
+      `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="component" href="../components/app-badge.fud">\n<article>\n  <app-badge .tone="@(|)"></app-badge>\n</article>\n`,
     );
 
     // String-literal completions come quoted, as they are written in the source.

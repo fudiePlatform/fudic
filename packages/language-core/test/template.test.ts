@@ -69,7 +69,7 @@ describe('component tags', () => {
 
   it('imports the contract of a used tag and checks its attributes against it', () => {
     const { text } = emitClient(
-      component('    <app-badge tone="@(x)">hi</app-badge>'),
+      component('    <app-badge .tone="@(x)">hi</app-badge>'),
       'x.fud',
       registry,
     );
@@ -82,6 +82,9 @@ describe('component tags', () => {
     // The blank line after `({` is the completion anchor: the attribute area of the start tag
     // stands for the inside of the object literal, so `<app-badge |>` has somewhere to ask.
     expect(text).toContain('$attrs<$C0>({\n  \n  tone: (x),\n});');
+    // Only one literal: with no plain attribute there is nothing to check against
+    // `$GlobalAttrs`, and an empty `$attrs<{}>({})` would be scaffolding that says nothing.
+    expect(text).not.toContain('$attrs<{}>');
   });
 
   it('anchors completion inside a self-closing tag, and has nowhere to anchor without a gap', () => {
@@ -102,18 +105,21 @@ describe('component tags', () => {
     // Three places another attribute can be typed: before the first, between the two, and
     // after the last. Each gets its own anchor.
     const { text, mappings } = emitClient(
-      component('    <app-badge  tone="@(x)"  id="a"  ></app-badge>'),
+      component('    <app-badge  .tone="@(x)"  id="a"  ></app-badge>'),
       'x.fud',
       registry,
     );
     const anchors = mappings.filter((m) => m.caps.completion && !m.caps.navigation);
     expect(anchors).toHaveLength(3);
-    expect(text).toContain('$attrs<$C0>({\n  \n  \n  \n  tone: (x),\n  id: "a",\n});');
+    // The two literals of BUG-16 §4.2: the prop against the component's contract, the plain
+    // attribute against HTML's own vocabulary and nothing else.
+    expect(text).toContain('$attrs<$C0>({\n  \n  \n  \n  tone: (x),\n});');
+    expect(text).toContain('$attrs<{}>({\n  id: "a",\n});');
 
     // And none of them stands over an attribute. One stretch covering the whole area also
-    // covered the VALUES, so a position inside `tone="@(|)"` mapped to the anchor as well as
+    // covered the VALUES, so a position inside `.tone="@(|)"` mapped to the anchor as well as
     // to the interpolation — and the anchor's key completions shadowed the union of `tone`.
-    const cursor = component('    <app-badge  tone="@(x)"  id="a"  ></app-badge>').indexOf('@(x)') + 2;
+    const cursor = component('    <app-badge  .tone="@(x)"  id="a"  ></app-badge>').indexOf('@(x)') + 2;
     expect(anchors.some((m) => cursor > m.sourceOffset && cursor < m.sourceOffset + m.sourceLength)).toBe(false);
   });
 

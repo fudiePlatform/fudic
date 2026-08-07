@@ -5,7 +5,7 @@
 > **Rama:** la del backlog de uso
 > **Depende de:** [BUG-15](./BUG-15-clases-sin-completado.md) **solo en las fases 5 y 6**. Las
 > fases 1-4 no comparten un fichero con él y arrancan el mismo día (§1.2 del BUG)
-> **Progreso:** 4 / 12
+> **Progreso:** 6 / 12
 
 Cada tarea es un paso cerrado. Las rutas son relativas a la raíz del repo.
 
@@ -68,14 +68,27 @@ ejemplos antes de que el punto se emita los deja en rojo y sin salida que compar
 
 ## Fase 3 — La proyección: dos literales (2)
 
-- [ ] **5. `emitProps` reparte.**
+- [x] **5. `emitProps` reparte.**
       `packages/language-core/src/template/attrs.ts`: en el literal de `$attrs<$C0>` solo los
       `property`; los `attr` planos a un `$attrs<{}>({…})` propio. `slot` sigue fuera de los dos
       (BUG-11) y las anclas de hueco no se tocan todavía (§4.2, §6.5, §6.7).
-- [ ] **6. El nombre del evento deja de ser andamiaje.**
+      *Dos decisiones al escribirlo.* El segundo literal se emite **solo si hay algún atributo
+      plano**: uno vacío sería andamiaje que no dice nada. Y las anclas de hueco se quedan en el
+      literal de **contrato**, no en el de globales: un hueco es donde va a escribirse un
+      atributo, y lo que el developer quiere ahí es el contrato del componente — que es además
+      lo que fija §6.3 de SDD-24.
+- [x] **6. El nombre del evento deja de ser andamiaje.**
       El literal de `$on` pasa a tramo **proyectado con las comillas incluidas**, mapeado al
       nombre del fuente — el recurso del `@section` de SDD-24, por la misma razón: un rango con
       los extremos en tramos distintos no vuelve a ninguna parte (§4.4).
+      *Perfil nuevo*, `LITERAL_NAME_CAPS`: completado **y** diagnóstico, y nada más. El de
+      `@section` (`DIAGNOSTIC_ONLY_CAPS`) no vale aquí porque la lista de eventos ES el objetivo;
+      y navegación y rename se quedan fuera porque el tramo mide dos caracteres más que el nombre
+      que representa.
+- [x] **11.a. Las fixtures del `language-server` y de `vscode`, migradas** — adelantadas aquí
+      desde la tarea 11. El motivo para aplazarlas era no pisar la rama de BUG-15, y BUG-15 ya
+      está `Hecho`: dejar el workspace en rojo entre dos commits pesa más. La tarea 11 conserva
+      lo suyo, que son los criterios con `context`.
 
 ## Fase 4 — Las anclas del caso vacío (2)
 

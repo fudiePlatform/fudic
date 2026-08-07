@@ -99,7 +99,7 @@ describe('§6.2 — the nine mutants of SDD-23, as LSP diagnostics on the .fud',
 
   it('D — a tag with no <link>', async () => {
     const source = slug
-      .replace('<app-badge tone', '<app-missing tone')
+      .replace('<app-badge .tone', '<app-missing .tone')
       .replace('</app-badge>', '</app-missing>');
     const diagnostics = await diagnosticsOf(slugUri, source);
 
@@ -126,7 +126,7 @@ describe('§6.2 — the nine mutants of SDD-23, as LSP diagnostics on the .fud',
   });
 
   it('F — a misspelt attribute, with its suggestion', async () => {
-    const source = mutate(slug, '<site-nav current=', '<site-nav currnt=');
+    const source = mutate(slug, '<site-nav .current=', '<site-nav .currnt=');
     const [diagnostic, ...rest] = await diagnosticsOf(slugUri, source);
 
     expect(rest).toEqual([]);

@@ -23,7 +23,7 @@ import {
   type Span,
   span,
 } from '@fudic/compiler';
-import { COMPLETION_ONLY_CAPS, DIAGNOSTIC_ONLY_CAPS } from '../caps.js';
+import { COMPLETION_ONLY_CAPS, DIAGNOSTIC_ONLY_CAPS, LITERAL_NAME_CAPS } from '../caps.js';
 import type { TemplateContext } from './context.js';
 import { copyExpression } from './expr.js';
 
@@ -88,22 +88,32 @@ function isComponent(tag: string): boolean {
 }
 
 /**
- * The attributes that make up a component's props — everything that is not behaviour, and not
- * `slot`.
+ * A component tag becomes TWO object literals, and which one a binding lands in is the whole
+ * of BUG-16 §4.2.
  *
- * `slot` comes out of the literal and is checked against the component's OWN slot union
- * (BUG-11 §4.2). The rest of HTML's global vocabulary — `id`, `part`, `data-*`, `aria-*` and
- * the others — stays in the literal and is accepted by `$GlobalAttrs`, which is a type and not
- * a list in this file: the emitter does not know those attributes exist, and does not need to.
+ *     <app-badge .tone="@(t)" id="x">
+ *       →  $attrs<$C0>({ tone: (t) });   // the component's contract
+ *          $attrs<{}>({ id: "x" });      // `{} & $GlobalAttrs`: HTML's vocabulary, nothing else
+ *
+ * In fudic a property is written with a dot, so a plain attribute on a component is not a
+ * prop — it is what HTML says an element understands. Checking it against `{}` is what makes
+ * `tone="info"` an error, with TypeScript's own message on the name and its own suggestion
+ * when the name is a misspelt global. No list of attributes lives in this file, and no `FUD`
+ * code was minted for it.
+ *
+ * `slot` is in neither: it is checked against the component's OWN slot union (BUG-11 §4.2).
+ *
+ * The gap anchors stay on the PROPS literal. A gap is where a new attribute is about to be
+ * typed, and what the developer wants offered there is the component's contract — which is
+ * also what SDD-24 §6.3 pins.
  */
 function emitProps(
   ctx: TemplateContext,
   el: ElementNode,
   bindings: readonly { attr: Attribute; binding: Binding }[],
 ): void {
-  const props = bindings.filter(
-    (b) => (b.binding.type === 'attr' || b.binding.type === 'property') && !isSlot(b),
-  );
+  const props = bindings.filter((b) => b.binding.type === 'property');
+  const globals = bindings.filter((b) => b.binding.type === 'attr' && !isSlot(b));
 
   ctx.w.scaffold('$attrs<', el.openSpan);
   // The tag's own span carries this one, under diagnostics-only capabilities: an
@@ -115,19 +125,34 @@ function emitProps(
   // this is what makes completion work at `<app-badge |>`, where there is no text yet to map
   // from and the contract that knows the answer lives in the projection.
   for (const gap of attributeGaps(el)) ctx.w.projected('\n  ', gap, COMPLETION_ONLY_CAPS);
+  emitEntries(ctx, props);
+  ctx.w.scaffold(props.length === 0 ? '});\n' : '\n});\n');
 
-  for (const { attr, binding } of props) {
+  if (globals.length > 0) {
+    // `{}` and not the component's type: an empty intersection with `$GlobalAttrs` is exactly
+    // "HTML's vocabulary and nothing else". Emitted only when there is something to check —
+    // an empty literal would be scaffolding that says nothing.
+    ctx.w.scaffold('$attrs<{}>({', el.openSpan);
+    emitEntries(ctx, globals);
+    ctx.w.scaffold('\n});\n');
+  }
+
+  const slot = bindings.find(isSlot);
+  if (slot !== undefined) emitIntoSlot(ctx, el, slot.binding);
+}
+
+/** The `key: value,` lines of one literal, each key copied from the source. */
+function emitEntries(
+  ctx: TemplateContext,
+  entries: readonly { attr: Attribute; binding: Binding }[],
+): void {
+  for (const { attr, binding } of entries) {
     ctx.w.scaffold('\n  ');
     emitKey(ctx, attr, binding);
     ctx.w.scaffold(': ');
     emitValue(ctx, binding);
     ctx.w.scaffold(',');
   }
-
-  ctx.w.scaffold(props.length === 0 ? '});\n' : '\n});\n');
-
-  const slot = bindings.find(isSlot);
-  if (slot !== undefined) emitIntoSlot(ctx, el, slot.binding);
 }
 
 /** A `slot="…"` written plainly: never `.slot`, never `@slot`. Narrows the binding with it. */
@@ -198,7 +223,9 @@ function emitBehaviour(
       // never` keeps the handler checked as a function while giving up on the event type
       // (decision 28). A standard name stays typed, so `e` is a `MouseEvent` in `@click`.
       ctx.w.scaffold('$on(', attr.span);
-      ctx.w.scaffold(`'${binding.name}'${binding.name.includes('-') ? ' as never' : ''}, `);
+      emitEventName(ctx, attr, binding.name);
+      if (binding.name.includes('-')) ctx.w.scaffold(' as never');
+      ctx.w.scaffold(', ');
       copyExpression(ctx, binding.value.expr);
       ctx.w.scaffold(');\n');
       return;
@@ -237,6 +264,31 @@ function emitBehaviour(
     default:
       return;
   }
+}
+
+/**
+ * The event name, as a string literal PROJECTED from the source — quotes included.
+ *
+ * It used to be scaffolding: the emitter wrote `'click'` out of the binding, so the name the
+ * user typed did not exist for the editor and there was no position from which to ask what a
+ * valid event is. Now it is one stretch standing for the name, the same recourse `@section`
+ * uses and for one more reason than it: `$on`'s first parameter is
+ * `keyof HTMLElementEventMap`, so asking THIS position for completions IS asking the DOM for
+ * its event names, spelled without `on`, with no table kept here to go stale.
+ *
+ * The quotes are inside the stretch on purpose. A range whose ends fall in different
+ * stretches maps back nowhere, and TypeScript reports over the literal WITH its quotes.
+ */
+function emitEventName(ctx: TemplateContext, attr: Attribute, name: string): void {
+  if (name.length === 0) {
+    // `@="@h"` — the prefix names nothing. It is already `FUD0099`; the literal is written
+    // so the projection still parses, and stands for nothing.
+    ctx.w.scaffold("''");
+    return;
+  }
+  // The name starts one character in: the `@` opens the binding and is not part of it.
+  const start = attr.span.start + 1;
+  ctx.w.projected(`'${name}'`, span(start, start + name.length), LITERAL_NAME_CAPS);
 }
 
 /** The property name, copied from the source so a typo reports on the user's characters. */

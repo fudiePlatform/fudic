@@ -69,7 +69,7 @@ describe('mutants', () => {
   it('D — a tag with no <link> is TS2304 on the tag', () => {
     const diags = typecheckCorpus({
       [SLUG]: read(SLUG)
-        .replace('<app-badge tone', '<app-missing tone')
+        .replace('<app-badge .tone', '<app-missing .tone')
         .replace('</app-badge>', '</app-missing>'),
     });
 
@@ -87,7 +87,7 @@ describe('mutants', () => {
   });
 
   it('F — a misspelt attribute is TS2561, with the right suggestion', () => {
-    const diags = typecheckCorpus(mutate(SLUG, '<site-nav current=', '<site-nav currnt='));
+    const diags = typecheckCorpus(mutate(SLUG, '<site-nav .current=', '<site-nav .currnt='));
 
     expect(diags).toHaveLength(1);
     expect(diags[0]!.code).toBe(2561);
