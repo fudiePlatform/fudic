@@ -346,9 +346,15 @@ function emitEventName(ctx: TemplateContext, attr: Attribute, name: string): voi
     ctx.w.scaffold("'");
     return;
   }
-  // The name starts one character in: the `@` opens the binding and is not part of it.
+  // The quotes are SCAFFOLDING and the name is a 1:1 stretch, which is the opposite of what
+  // `@section` does — and the difference is completion. A stretch that carries the quotes is
+  // two characters longer than what it stands for, so every offset inside it is shifted and
+  // the range TypeScript hands back for `@cli|` would land on `li`, eating the `@` when the
+  // item is accepted. Aligned 1:1, the replacement range is exactly the name.
   const start = attr.span.start + 1;
-  ctx.w.projected(`'${name}'`, span(start, start + name.length), LITERAL_NAME_CAPS);
+  ctx.w.scaffold("'");
+  ctx.w.projected(name, span(start, start + name.length), LITERAL_NAME_CAPS);
+  ctx.w.scaffold("'");
 }
 
 /** The property name, copied from the source so a typo reports on the user's characters. */

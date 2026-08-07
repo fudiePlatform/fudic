@@ -12,7 +12,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import ts from 'typescript';
-import { mapToGenerated } from '../src/mapping.js';
+import { mapToGenerated, mapToSource } from '../src/mapping.js';
 import type { VirtualFile } from '../src/types.js';
 import { languageServiceFor, projectCorpus } from './typecheck.js';
 
@@ -115,6 +115,15 @@ describe('the completion item replaces what is written, and no more (§6.9)', ()
     const span = click!.replacementSpan ?? info!.optionalReplacementSpan;
     expect(span).toBeDefined();
     expect(virtual.text.slice(span!.start, span!.start + span!.length)).toBe('cli');
+
+    // And it has to come BACK: what the editor edits is the source, so the range is only right
+    // if both of its ends map home. This is the assertion the name stretch is shaped by — with
+    // the quotes inside it the ends landed on `li`, and accepting `click` wrote `@cclick`.
+    const from = mapToSource(virtual, span!.start, 'completion');
+    const to = mapToSource(virtual, span!.start + span!.length, 'completion');
+    expect(from).toBeDefined();
+    expect(to).toBeDefined();
+    expect(source.slice(from!, to!)).toBe('cli');
   });
 });
 

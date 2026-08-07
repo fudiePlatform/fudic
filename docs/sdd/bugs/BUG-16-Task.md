@@ -5,7 +5,7 @@
 > **Rama:** la del backlog de uso
 > **Depende de:** [BUG-15](./BUG-15-clases-sin-completado.md) **solo en las fases 5 y 6**. Las
 > fases 1-4 no comparten un fichero con él y arrancan el mismo día (§1.2 del BUG)
-> **Progreso:** 8 / 12
+> **Progreso:** 10 / 12
 
 Cada tarea es un paso cerrado. Las rutas son relativas a la raíz del repo.
 
@@ -82,9 +82,11 @@ ejemplos antes de que el punto se emita los deja en rojo y sin salida que compar
       nombre del fuente — el recurso del `@section` de SDD-24, por la misma razón: un rango con
       los extremos en tramos distintos no vuelve a ninguna parte (§4.4).
       *Perfil nuevo*, `LITERAL_NAME_CAPS`: completado **y** diagnóstico, y nada más. El de
-      `@section` (`DIAGNOSTIC_ONLY_CAPS`) no vale aquí porque la lista de eventos ES el objetivo;
-      y navegación y rename se quedan fuera porque el tramo mide dos caracteres más que el nombre
-      que representa.
+      `@section` (`DIAGNOSTIC_ONLY_CAPS`) no vale aquí porque la lista de eventos ES el objetivo.
+      *Corregido en la fase 5*: las comillas se quedan **fuera** y el tramo mide 1:1. Medido
+      contra TypeScript, el rango de reemplazo vuelve sin comillas —sus dos extremos caen ya
+      dentro del tramo del nombre—, y en cambio la asimetría desplazaba cada offset de dentro:
+      en `@cli` el rango volvía sobre `li` y aceptar `click` escribía `@cclick` (§4.4).
 - [x] **11.a. Las fixtures del `language-server` y de `vscode`, migradas** — adelantadas aquí
       desde la tarea 11. El motivo para aplazarlas era no pisar la rama de BUG-15, y BUG-15 ya
       está `Hecho`: dejar el workspace en rojo entre dos commits pesa más. La tarea 11 conserva
@@ -110,16 +112,24 @@ ejemplos antes de que el punto se emita los deja en rojo y sin salida que compar
 
 ## Fase 5 — El editor: quién contesta y quién se aparta (2)
 
-- [ ] **9. `propertyContextAt` y `eventContextAt`.**
+- [x] **9. `propertyContextAt` y `eventContextAt`.**
       `packages/language-server/src/services/position.ts`: el `PartialName` tras el `.` y tras el
       `@` dentro de un tag abierto, con el prefijo **fuera** del span (§3.4). No reconocen un
       punto dentro de un valor entrecomillado ni una arroba en texto de markup.
-- [ ] **10. La regla del tag en `completions()`.**
+      *Los dos son la misma función con otra expresión regular*, `prefixedNameAt`, y con las tres
+      guardas de `classContextAt`: fuera de un tag abierto un punto es texto (`3.14`) y una arroba
+      es la transición; dentro de un valor entrecomillado los dos son cadena ajena; y un prefijo
+      que continúa una palabra (`x.`, `a@`, `@@`) no abre nada.
+- [x] **10. La regla del tag en `completions()`.**
       `packages/language-server/src/services/plugin.ts`: dentro de un tag abierto, ni Emmet, ni
       tags, ni snippets — el `.` y el `@` los contesta la proyección, y estos contextos existen
       para **no** estorbar. `directiveContextAt` deja de entrar en la zona, con la misma guarda
       `insideOpenTag` que `wordContextAt` ya usa: dentro de un tag el `@` es un evento, nunca una
       directiva (§4.4, §6.10-§6.12).
+      *La rama no devuelve lista vacía, devuelve `undefined`*: una lista vacía fija el
+      `mainCompletionUri` de Volar y silencia a los demás, que es lo contrario de apartarse. Va
+      **después** de `class:` —el prefijo con dos puntos no colisiona con ninguno de los dos— y
+      antes de la directiva, que ya no llega a la zona por su propia guarda.
 
 ## Fase 6 — Lo que no se puede romper (2)
 

@@ -184,6 +184,43 @@ export function classContextAt(source: string, offset: number): PartialName | un
 }
 
 /**
+ * A property name being typed after `.`, and an event name being typed after `@` — the two
+ * contexts of BUG-16 §3.4.
+ *
+ * In fudic a property is written with a dot and an event with an at-sign, and both lists come
+ * from TypeScript over the projection: the component's contract for one, `HTMLElementEventMap`
+ * for the other. So these two functions exist to do the OPPOSITE of what the other contexts
+ * do — they answer nothing. What they contribute is the SPAN: the stretch the accepted item
+ * replaces, which is what the user has typed after the prefix and never the prefix itself.
+ * Without them the range would come from the projection's own stretch, and that stretch stands
+ * for the `.` or the `@`, which would then be eaten.
+ *
+ * Same three guards as `classContextAt`, for the same reasons: a prefix in markup text is a
+ * sentence, one inside a quoted value is somebody else's string, and one that continues a word
+ * is neither.
+ */
+export function propertyContextAt(source: string, offset: number): PartialName | undefined {
+  return prefixedNameAt(source, offset, /(?:^|[^-\w.])\.([-\w]*)$/);
+}
+
+export function eventContextAt(source: string, offset: number): PartialName | undefined {
+  // `@@` is the escape of decision 1, never an event.
+  return prefixedNameAt(source, offset, /(?:^|[^-\w@])@([-\w]*)$/);
+}
+
+/** The shared shape: a name typed after a one-character prefix, inside an open tag. */
+function prefixedNameAt(source: string, offset: number, pattern: RegExp): PartialName | undefined {
+  const match = pattern.exec(source.slice(0, offset));
+  if (match === null) return undefined;
+
+  const tag = openTagStart(source, offset);
+  if (tag === undefined || insideQuotes(source, tag, offset)) return undefined;
+
+  const text = match[1] as string;
+  return { span: span(offset - text.length, offset), text };
+}
+
+/**
  * A directive being typed: `@`, or `@` plus a half-written name (SDD-28 §5.4).
  *
  * The span INCLUDES the `@`, because that is what gets replaced — a completion that inserted
@@ -191,6 +228,11 @@ export function classContextAt(source: string, offset: number): PartialName | un
  *
  * A `@` that follows another `@` is that escape, and a `@` that follows a word character is
  * text (`hola@ejemplo.com`). Neither is a directive, and neither is offered one.
+ *
+ * And a `@` INSIDE an open tag is an event, never a directive (BUG-16 §4.4). The same guard
+ * `wordContextAt` already uses, for the same reason: inside a tag the answer belongs to
+ * somebody else, and offering `@if` where an event name goes is not a shorter list — it is
+ * the wrong one.
  */
 export function directiveContextAt(source: string, offset: number): PartialName | undefined {
   const match = /@([A-Za-z]\w*)?$/.exec(source.slice(0, offset));
@@ -200,6 +242,7 @@ export function directiveContextAt(source: string, offset: number): PartialName 
   const at = offset - name.length - 1;
   const before = source[at - 1];
   if (before === '@' || (before !== undefined && /\w/.test(before))) return undefined;
+  if (insideOpenTag(source, at)) return undefined;
 
   return { span: span(at, offset), text: `@${name}` };
 }

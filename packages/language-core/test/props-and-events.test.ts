@@ -65,13 +65,17 @@ describe('the event name is projected, not invented (§4.4)', () => {
       (m) => m.caps.completion === true && m.caps.verification && !m.caps.navigation,
     );
 
-  it('writes the name as ONE stretch, quotes included, mapped to the source', () => {
+  it('writes the name as a stretch that measures 1:1 with the source', () => {
     const source = component('    <app-badge @click="@onClick"></app-badge>');
     const file = emitClient(source, 'x.fud', registry);
 
     expect(file.text).toContain("$on('click', onClick);");
 
-    const stretch = nameStretch(file).find((m) => m.length === "'click'".length);
+    // The quotes stay OUT of it. TypeScript hands the replacement range back without them, so
+    // both of its ends already fall inside this one stretch — and a stretch two characters
+    // longer than what it stands for shifts every offset in it: the range for `@cli` would
+    // come back over `li`, and accepting `click` would write `@cclick`.
+    const stretch = nameStretch(file).find((m) => m.length === 'click'.length);
     expect(stretch).toBeDefined();
     // It stands for the bare name — the `@` opens the binding and is not part of it.
     expect(stretch!.sourceLength).toBe('click'.length);

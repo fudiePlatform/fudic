@@ -279,9 +279,17 @@ esa posición **es** pedir la lista, siempre al día y sin tabla que mantener aq
 
 **Qué hay que cambiar para poder preguntar.** Hoy ese nombre no existe para el editor: el emisor
 lo escribe como texto inventado (§2.5), y el texto inventado no rutea nada. Pasa a ser un tramo
-copiado del fuente **con las comillas incluidas** — el recurso que SDD-24 ya usó para el literal
-de `@section`, y por la misma razón: un rango cuyos extremos caen en tramos distintos no vuelve a
-ninguna parte. Y para `@|` sin nombre, un tramo de completado sobre la arroba, igual que en §4.3.
+copiado del fuente, **1:1 con él y sin las comillas** — las comillas se quedan de andamiaje a los
+lados. Y para `@|` sin nombre, un tramo de completado sobre la arroba, igual que en §4.3.
+
+> **Corregido al medirlo.** Este párrafo pedía el tramo *con las comillas incluidas*, por
+> analogía con el literal de `@section` de SDD-24: un rango cuyos extremos caen en tramos
+> distintos no vuelve a ninguna parte. No es el caso aquí, y medido contra TypeScript sale al
+> revés: el rango de reemplazo que devuelve **no lleva las comillas**, así que sus dos extremos
+> ya caen dentro del tramo del nombre. Lo que sí rompe es la asimetría — un tramo de siete
+> caracteres que representa cinco desplaza cada offset de su interior, y en `@cli` el rango
+> volvía sobre `li`: aceptar `click` escribía `@cclick`. Con el tramo 1:1 vuelve sobre `cli`,
+> exacto.
 
 **El único caso que no se ofrece** es el evento personalizado (nombre con guion): no hay
 diccionario del que sacarlo, decisión 28. Sigue comprobándose el manejador como función, como
