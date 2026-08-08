@@ -47,6 +47,26 @@ export const browserDom: DomClient<Node> = {
     return (shadow as ShadowRoot).host;
   },
 
+  event(node: Node, type: string, cb: (ev: Event) => void): () => void {
+    // The SAME reference goes to both calls. Wrapping `cb` to normalize anything would add
+    // a frame per dispatch to every binding in the page, and there is nothing to normalize.
+    node.addEventListener(type, cb);
+    return () => {
+      node.removeEventListener(type, cb);
+    };
+  },
+  bus(host: Node, name: string, cb: (ev: Event) => void): () => void {
+    // `ownerDocument` and not the global `document`: the same node in any real page, and
+    // the only one that exists when the host lives in a document that is not the global one
+    // (a test harness, a render off the main document). The semantics SDD-15 §4.4 fixes —
+    // a guaranteed common ancestor of the page — are kept whole.
+    const doc = host.ownerDocument ?? document;
+    doc.addEventListener(name, cb);
+    return () => {
+      doc.removeEventListener(name, cb);
+    };
+  },
+
   setText(node: Node, data: string): void {
     (node as CharacterData).data = data;
   },

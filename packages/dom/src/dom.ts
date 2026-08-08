@@ -8,6 +8,15 @@
  *
  * A fina indirection over the DOM primitives: it masks the primitives, NOT the
  * policy. No VDOM, no diffing.
+ *
+ * **`event` and `bus` are methods of the adapter, and that is a deliberate
+ * deviation** from the refunded `SDD-eventos-captura-contexto`, where `event`
+ * was a free function imported from `@fudic/core/dom`. The semantics are
+ * identical (subscribe, do not reorder, return the unsubscription with the same
+ * reference); what changes is that a free import would tie the EMITTED code to
+ * the browser and force a second emit for SSR. As methods they sit in `Dom<N>`,
+ * so one controller runs against both adapters: the server fabricates and
+ * mounts, and the hookup simply does nothing.
  */
 
 import { type Ns } from './ns.js';
@@ -40,6 +49,25 @@ export interface Dom<N> {
    * it from here instead of taking one more position in `$props`.
    */
   host(shadow: N): N;
+
+  /**
+   * Subscribe `cb` to `type` on `node`. Returns the unsubscription (SDD-15 §3.8).
+   *
+   * It neither wraps `cb` nor reorders its arguments: the unsubscription is handed the
+   * IDENTICAL reference, because any wrapper would add the very frame the emitted binding
+   * exists not to pay (§4.5).
+   */
+  event(node: N, type: string, cb: (ev: Event) => void): () => void;
+
+  /**
+   * Subscribe `cb` to a bus channel (§4.4). Returns the unsubscription.
+   *
+   * The listener goes on the DOCUMENT, never on `host` — emitter and subscriber are
+   * SIBLINGS, so a `CustomEvent` bubbling out of the emitter climbs ITS ancestors and never
+   * enters the subscriber. `host` is what says WHICH document, and the handler's context is
+   * the caller's business: the emitted binding calls it with the host itself.
+   */
+  bus(host: N, name: string, cb: (ev: Event) => void): () => void;
 }
 
 /**

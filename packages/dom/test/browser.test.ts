@@ -77,6 +77,60 @@ describe('browserDom shadow', () => {
   });
 });
 
+describe('browserDom hookup (SDD-15 §3.8)', () => {
+  it('event subscribes, and the disposer takes the SAME listener off again', () => {
+    const node = dom.element('button');
+    let hits = 0;
+    const off = dom.event(node, 'click', () => {
+      hits += 1;
+    });
+    (node as HTMLElement).dispatchEvent(new Event('click'));
+    off();
+    (node as HTMLElement).dispatchEvent(new Event('click'));
+    expect(hits).toBe(1);
+  });
+
+  it('two subscriptions to the same type give two independent disposers', () => {
+    const node = dom.element('button');
+    const seen: string[] = [];
+    const offA = dom.event(node, 'click', () => seen.push('a'));
+    dom.event(node, 'click', () => seen.push('b'));
+    offA();
+    (node as HTMLElement).dispatchEvent(new Event('click'));
+    expect(seen).toEqual(['b']); // taking one off must not take the other with it
+  });
+
+  it('bus listens on the host DOCUMENT, not on the host', () => {
+    // Emitter and subscriber are siblings: an event bubbling out of the emitter climbs ITS
+    // ancestors, so a listener on the subscriber's host would never fire.
+    const host = dom.element('shopping-cart');
+    document.body.append(host as ChildNode);
+    let hits = 0;
+    const off = dom.bus(host, 'carrito', () => {
+      hits += 1;
+    });
+    (host as HTMLElement).dispatchEvent(new Event('carrito')); // no bubbling: nothing
+    document.dispatchEvent(new Event('carrito'));
+    expect(hits).toBe(1);
+    off();
+    document.dispatchEvent(new Event('carrito'));
+    expect(hits).toBe(1);
+    (host as ChildNode).remove();
+  });
+
+  it('falls back to the global document for a host that IS one', () => {
+    // `ownerDocument` is null exactly for a document node; the page still has one ancestor
+    // everything shares, and that is the one the bus uses.
+    let hits = 0;
+    const off = dom.bus(document, 'carrito', () => {
+      hits += 1;
+    });
+    document.dispatchEvent(new Event('carrito'));
+    off();
+    expect(hits).toBe(1);
+  });
+});
+
 describe('browserDom traversal', () => {
   it('walks first/next/previous/childAt', () => {
     const parent = dom.element('div');

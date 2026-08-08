@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/dom` (contrato + `browserDom`) · `@fudic/ssr` (`SsrDom`) ·
 > `@fudic/compiler` (emit)
 > **Rama:** `sdd-15-eventos-y-bus`
-> **Progreso:** 4 / 22
+> **Progreso:** 8 / 22
 > **Va DESPUÉS de:** [SDD-30 — Renders de bloque](./SDD-30-renders-de-bloque.md)
 > ([tareas](./SDD-30-Task.md)). No es una preferencia de orden: ver *Por qué va detrás* abajo.
 
@@ -153,7 +153,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
 
 ## Fase 2 — `Dom.event` y `Dom.bus` (§3.8) (4)
 
-- [ ] **5. Los dos métodos en el contrato.**
+- [x] **5. Los dos métodos en el contrato.**
       Modificar `packages/dom/src/dom.ts`: `event(node, type, cb): () => void` y `bus(host,
       name, cb): () => void` van en **`Dom<N>`**, no en `DomClient<N>`. Es lo que permite que el
       mismo factory corra contra los dos adapters (§3.8): el servidor fabrica y monta, y el
@@ -161,17 +161,17 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       respecto al documento refundido `SDD-eventos-captura-contexto`, donde `event` era una
       función libre importada: como método del adapter no ata el código emitido al navegador y
       no obliga a un segundo emit para el SSR.
-- [ ] **6. `browserDom`.**
+- [x] **6. `browserDom`.**
       Modificar `packages/dom/src/browser.ts`: `event` es `addEventListener` y devuelve el
       `removeEventListener` con la **referencia idéntica** —no envuelve `cb`, no reordena
       argumentos: cualquier envoltorio añadiría el frame que §4.5 existe para no pagar—. `bus`
       suscribe sobre `host.ownerDocument ?? document` (punto 2 de arriba) y devuelve su baja.
-- [ ] **7. `SsrDom` no-op.**
+- [x] **7. `SsrDom` no-op.**
       Modificar `packages/ssr/src/ssr-dom.ts`: ambos métodos no hacen nada y devuelven un
       disposer no-op **compartido** (una constante del módulo, no una función nueva por llamada:
       un disposer que nadie distingue no necesita identidad). El criterio §6.14 exige además que
       no aparezcan en la salida: no tocan el árbol, luego `renderToString` no los ve.
-- [ ] **8. Tests y cobertura de los dos paquetes.**
+- [x] **8. Tests y cobertura de los dos paquetes.**
       `@fudic/dom` y `@fudic/ssr` están al 100 % en las cuatro métricas y siguen estándolo: el
       disposer no-op de SSR **hay que invocarlo** en su test —en producción no lo llama nadie, y
       esa es exactamente la rama que el 100 % obliga a escribir—. En `browserDom`: que la baja
