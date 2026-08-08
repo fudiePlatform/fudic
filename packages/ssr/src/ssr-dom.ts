@@ -64,6 +64,18 @@ export class SsrDom implements Dom<SsrNode> {
     }
     return h.shadow;
   }
+
+  /**
+   * The host of a shadow root. The inverse link already exists — `attachShadow` above
+   * leaves `shadow.parent = host` — so this adapter needs no extra field to answer it,
+   * which is the check that keeps `Dom.host` free of cost on this side.
+   *
+   * A fragment that no `attachShadow` produced has no host, and the cast says so: the only
+   * caller is the emitted `$host = $dom.host($shadow)`, whose `$shadow` came from there.
+   */
+  host(shadow: SsrNode): SsrNode {
+    return asImpl(shadow).parent as SsrNode;
+  }
 }
 
 /** Unlink a node from its current parent, if any. */

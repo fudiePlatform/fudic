@@ -70,7 +70,7 @@ function buildComponentClientModule(
   options: EmitOptions,
 ): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
-  const { props, signals, client, template, mutable, diagnostics } = codeOf(comp);
+  const { props, signals, client, template, mutable, emitCalls, diagnostics } = codeOf(comp);
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
 
   const bodies = newBodies();
@@ -112,6 +112,12 @@ function buildComponentClientModule(
   w.line('const $d = []; // teardowns');
   if (em.writes > 0) w.line('const $w = []; // last applied, per value write');
   w.line(destructuring(props, 'declare'));
+  // The host, materialized ONLY where something reads it (§4.4). A component with no bus
+  // subscription and no `emit` does not pay a line of chunk for a reference nobody looks
+  // at, and the chunk budget that keeps INP flat on a cache miss is what pays for that.
+  // `let`, not `const`: `r()` releases it along with the nodes and the shadow root.
+  const needsHost = emitCalls.length > 0;
+  if (needsHost) w.line('let $host = $dom.host($shadow);');
   for (const line of client.body) w.line(line);
   w.line('');
   // The blocks: one function per construct, plus the registry of what is alive (SDD-30
@@ -162,7 +168,7 @@ function buildComponentClientModule(
       : `u: () => { $a();${reconcile} },`,
   );
   w.line(
-    `r: () => { ${releaseCalls(bodies.registries)}${[...em.nodes, '$shadow'].join(' = ')} = null; $d.forEach((d) => d()); },`,
+    `r: () => { ${releaseCalls(bodies.registries)}${[...em.nodes, '$shadow', ...(needsHost ? ['$host'] : [])].join(' = ')} = null; $d.forEach((d) => d()); },`,
   );
   w.dedent();
   w.line('};');

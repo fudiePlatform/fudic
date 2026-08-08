@@ -29,6 +29,17 @@ export interface Dom<N> {
   remove(node: N): void;
   /** Browser: `host.attachShadow({mode:'open'})`. SSR: opens `<template shadowrootmode="open">`. */
   attachShadow(host: N): N;
+  /**
+   * The host a shadow root hangs from — the inverse of `attachShadow`.
+   *
+   * It belongs to `Dom<N>` and not to `DomClient<N>` because the factory that calls it is
+   * the same one that runs against the SERVER adapter (SDD-15 §6.14): a call that only
+   * existed on the client would break that execution. Nothing had to be added to carry it,
+   * either — the shadow already knows its host on both sides (`shadow.host` in the browser,
+   * the parent link `attachShadow` leaves in the SSR tree), which is why the compiler reads
+   * it from here instead of taking one more position in `$props`.
+   */
+  host(shadow: N): N;
 }
 
 /**

@@ -627,6 +627,32 @@ describe('emitComponentClientModule — the factory namespace (BUG-12 §6.10)', 
   });
 });
 
+describe('emitComponentClientModule — $host, materialized only where it is read (§4.4)', () => {
+  const withEmit = (tag: string): string =>
+    inlineChunk(
+      tag,
+      '@code {\n  @client {\n' +
+        "    import { emit } from '@fudic/dom';\n" +
+        "    function press() { emit('press'); }\n" +
+        '  }\n}\n' +
+        `<${tag}>\n  <template shadowrootmode="open"><b>hi</b></template>\n</${tag}>\n`,
+    );
+
+  it('declares it from the shadow root, and releases it in r()', () => {
+    const src = withEmit('x-emitter');
+    // From the adapter, not from a fourth position in `$props`: the shadow root already
+    // carries its host on both branches, so nothing about the contract had to move.
+    expect(src).toContain('let $host = $dom.host($shadow);');
+    expect(controller(src)).toContain('$shadow = $host = null;');
+  });
+
+  it('emits nothing at all for a component that neither emits nor subscribes', () => {
+    // A chunk under 1 kB is what keeps INP flat on a cache miss (§3.7): a reference nobody
+    // reads is not free, it is a line every instance of the tag downloads.
+    expect(chunk('app-button')).not.toContain('$host');
+  });
+});
+
 describe('emitComponentClientModuleMapped', () => {
   it('anchors an interpolation back to its offset in the .fud', () => {
     const comp = graph.components.get('app-card')!;

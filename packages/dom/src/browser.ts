@@ -43,6 +43,9 @@ export const browserDom: DomClient<Node> = {
     // Idempotent: reuse an existing shadow root (e.g. one built by DSD).
     return el.shadowRoot ?? el.attachShadow({ mode: 'open' });
   },
+  host(shadow: Node): Node {
+    return (shadow as ShadowRoot).host;
+  },
 
   setText(node: Node, data: string): void {
     (node as CharacterData).data = data;

@@ -64,6 +64,12 @@ describe('SsrDom tree mutation', () => {
     expect(d.attachShadow(host)).toBe(first);
   });
 
+  it('host gives the shadow root back its host, with no extra link (SDD-15 §4.4)', () => {
+    const d = new SsrDom();
+    const host = d.element('app-x');
+    expect(d.host(d.attachShadow(host))).toBe(host);
+  });
+
   it('detaching a node held outside its parent children list is safe', () => {
     // A shadow root is parented to its host but lives in `.shadow`, not `children`.
     const d = new SsrDom();

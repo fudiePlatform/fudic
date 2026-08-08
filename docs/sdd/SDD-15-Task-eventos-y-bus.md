@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/dom` (contrato + `browserDom`) · `@fudic/ssr` (`SsrDom`) ·
 > `@fudic/compiler` (emit)
 > **Rama:** `sdd-15-eventos-y-bus`
-> **Progreso:** 0 / 22
+> **Progreso:** 4 / 22
 > **Va DESPUÉS de:** [SDD-30 — Renders de bloque](./SDD-30-renders-de-bloque.md)
 > ([tareas](./SDD-30-Task.md)). No es una preferencia de orden: ver *Por qué va detrás* abajo.
 
@@ -128,23 +128,23 @@ módulos, que el `SemanticModel` de un fichero no tiene).
 
 ## Fase 1 — El host sale del adapter (4)
 
-- [ ] **1. `host(shadow)` en el contrato y en `browserDom`.**
+- [x] **1. `host(shadow)` en el contrato y en `browserDom`.**
       Modificar `packages/dom/src/dom.ts` y `browser.ts`: `host(shadow: N): N` va en **`Dom<N>`**
       —no en `DomClient<N>`— porque el factory que lo llama es el mismo que corre contra el
       adapter de servidor (§6.14), y una llamada que solo existiera en el cliente rompería esa
       ejecución. En el navegador es `(shadow as ShadowRoot).host`.
-- [ ] **2. `SsrDom.host`.**
+- [x] **2. `SsrDom.host`.**
       Modificar `packages/ssr/src/ssr-dom.ts`: el enlace inverso **ya existe** —`attachShadow`
       deja `shadow.parent = h` (`tree.ts`)—, así que es devolver ese padre. No hay que tocar
       `SsrNodeImpl`: es exactamente la comprobación que hace que este hito no cueste nada.
-- [ ] **3. El factory lo materializa solo si lo usa.**
+- [x] **3. El factory lo materializa solo si lo usa.**
       En `packages/compiler/src/emit/client.ts`: cuando el componente tiene algún `bus:` o alguna
       llamada a `emit` reescrita, emitir `const $host = $dom.host($shadow);` en la cabecera de la
       closure y añadir `$host` a lo que `r()` anula. Cuando no, **no se emite nada**: el chunk de
       un componente sin bus no paga una línea por una referencia que nadie lee, y §3.7 sostiene
       el INP sobre chunks de menos de 1 kB tras minify+brotli. Es información que el emisor de
       markup ya tiene al terminar su pasada; no hace falta un análisis aparte.
-- [ ] **4. Tests y goldens.**
+- [x] **4. Tests y goldens.**
       `@fudic/dom` y `@fudic/ssr` siguen al 100 %: `host()` de vuelta al host en los dos
       adapters. Los tres `__golden__/*.client.mjs` actuales **no deben cambiar** —ninguno de los
       tres fixtures usa el bus todavía—: un golden que se mueva aquí es la señal de que la

@@ -70,6 +70,11 @@ describe('browserDom shadow', () => {
     expect((root as ShadowRoot).mode).toBe('open');
     expect(dom.attachShadow(host)).toBe(root);
   });
+
+  it('host gives the shadow root back its host (SDD-15 §4.4)', () => {
+    const host = dom.element('app-x');
+    expect(dom.host(dom.attachShadow(host))).toBe(host);
+  });
 });
 
 describe('browserDom traversal', () => {
