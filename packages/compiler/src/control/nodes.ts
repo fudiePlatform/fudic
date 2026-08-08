@@ -9,10 +9,30 @@
 
 import type { Node, Span } from '../types/index.js';
 import type { BalancedGroup } from '../balancer/index.js';
+import type { RazorExpression } from '../at/index.js';
 import type { HtmlContent } from '../html/index.js';
 
 /** Every control construct SDD-06 produces. Assignable to SDD-05's RazorConstruct. */
 export type ControlNode = IfNode | ForeachNode | ForNode | WhileNode | SwitchNode;
+
+/**
+ * The `key (…)` clause that follows a control header (decisions 91–93, SDD-30 §3.5).
+ *
+ * It is written OUTSIDE the parenthesis so the header still reaches Oxc verbatim, and it
+ * carries an ordinary `expression` fragment: one more `RazorExpression`, registered in the
+ * same `JsBatch` as everything else — Oxc is still invoked once per file.
+ *
+ * All five constructs declare it, including the two that do not iterate: `@if` and
+ * `@switch` need somewhere to PUT a key in order to report `FUD0542` on it, and a field
+ * they cannot express is a field the parser would have to throw away.
+ */
+export interface KeyedNode {
+  /**
+   * The key expression. `span` covers the whole `key (…)` clause, `expr` only its JS.
+   * Absent when the clause was not written, or was written malformed (`FUD0541`).
+   */
+  readonly key?: RazorExpression;
+}
 
 /**
  * A parenthesized control header `( … )`: opaque JS delimited by the balancer, validated by
@@ -27,7 +47,7 @@ export type ControlNode = IfNode | ForeachNode | ForNode | WhileNode | SwitchNod
 export type ControlHeader = BalancedGroup;
 
 /** `@if (…) { … } (else if (…) { … })* (else { … })?` — decisions 9, 10. */
-export interface IfNode extends Node {
+export interface IfNode extends Node, KeyedNode {
   readonly type: 'if';
   /**
    * [0] is the `if`; [1..] are `else if` branches, in source order. Non-empty for every
@@ -57,29 +77,29 @@ export interface ConditionalBranch extends Node {
   readonly span: Span;
 }
 
-/** `@foreach (const x of xs) { … }` — declarative for-of iteration (decision 11). */
-export interface ForeachNode extends Node {
+/** `@foreach (const x of xs) key (…) { … }` — for-of iteration (decisions 11, 91). */
+export interface ForeachNode extends Node, KeyedNode {
   readonly type: 'foreach';
   readonly header: ControlHeader;
   readonly body: readonly HtmlContent[];
 }
 
-/** `@for (let i = 0; i < n; i++) { … }` — C-style indexed iteration (decision 11). */
-export interface ForNode extends Node {
+/** `@for (let i = 0; i < n; i++) key (…) { … }` — indexed iteration (decisions 11, 91). */
+export interface ForNode extends Node, KeyedNode {
   readonly type: 'for';
   readonly header: ControlHeader;
   readonly body: readonly HtmlContent[];
 }
 
-/** `@while (cond) { … }`. */
-export interface WhileNode extends Node {
+/** `@while (cond) key (…) { … }` — decision 91. */
+export interface WhileNode extends Node, KeyedNode {
   readonly type: 'while';
   readonly header: ControlHeader;
   readonly body: readonly HtmlContent[];
 }
 
 /** `@switch (expr) { case …: … default: … }` — no fall-through (decision 14). */
-export interface SwitchNode extends Node {
+export interface SwitchNode extends Node, KeyedNode {
   readonly type: 'switch';
   readonly header: ControlHeader;
   readonly cases: readonly SwitchCase[];

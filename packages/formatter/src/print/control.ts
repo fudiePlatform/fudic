@@ -67,16 +67,41 @@ export function printIf(ctx: PrintContext, node: IfNode): Doc {
   return group(concat(parts));
 }
 
+/**
+ * `key (…)` between a loop's header and its body (decision 91).
+ *
+ * Always present on a loop the printer ever sees: without it the parse carries `FUD0540`,
+ * and a document with diagnostics is not formatted at all (§4.6). The guard is what makes
+ * that a fact of the code and not of the caller.
+ */
+function keyClause(ctx: PrintContext, node: ForeachNode | WhileNode): Doc {
+  return node.key === undefined ? '' : concat(['key (', leafOf(ctx, node.key.expr), ') ']);
+}
+
 /** `@foreach` and `@for`: same shape, different header, both already delegated. */
 export function printLoop(ctx: PrintContext, keyword: string, node: ForeachNode): Doc {
   return group(
-    concat([`@${keyword} (`, leafOf(ctx, node.header.inner), ') ', block(ctx, node.body)]),
+    concat([
+      `@${keyword} (`,
+      leafOf(ctx, node.header.inner),
+      ') ',
+      keyClause(ctx, node),
+      block(ctx, node.body),
+    ]),
   );
 }
 
 /** `@while`. */
 export function printWhile(ctx: PrintContext, node: WhileNode): Doc {
-  return group(concat(['@while (', leafOf(ctx, node.header.inner), ') ', block(ctx, node.body)]));
+  return group(
+    concat([
+      '@while (',
+      leafOf(ctx, node.header.inner),
+      ') ',
+      keyClause(ctx, node),
+      block(ctx, node.body),
+    ]),
+  );
 }
 
 /**

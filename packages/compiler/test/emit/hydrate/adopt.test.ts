@@ -81,9 +81,11 @@ describe('hydrate adopts, it does not build', () => {
     const ctl = controller(clientFactory(graph, 'app-card'), dom, shadow, values);
     ctl.h();
 
-    // `@title` inside <h2>: the only text this component ever rewrites, and the only text
-    // it holds a reference to. It is found as the last node of its level, not counted to.
-    expect(steps.filter((s) => s === 'lastChild')).toHaveLength(1);
+    // `@title` inside <h2>: found as the last node of its level, never counted to. The
+    // other `lastChild` calls are the blocks taking their own trailing roots, which they
+    // need in order to retire them (SDD-30 §3.2) — the mechanism is the same one.
+    expect(steps).toContain('lastChild');
+    expect(steps).not.toContain('childAt');
     expect(shadow.querySelector('h2')!.lastChild!.textContent).toBe('Hola');
   });
 });

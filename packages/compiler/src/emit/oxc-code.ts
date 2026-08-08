@@ -10,8 +10,11 @@
  */
 
 import type { ComponentDocument } from '../document/index.js';
-import type { Diagnostic } from '../types/index.js';
+import type { Diagnostic, Span } from '../types/index.js';
+import { isEmptySpan } from '../types/index.js';
 import { JsBatch, type OxcNode } from '../oxc/index.js';
+import { collectTemplateJs } from './constructs.js';
+import { changeableBindings, type FragmentAst } from './scope.js';
 
 /** One destructured prop from `props<T>()`, with its default expression source if any. */
 export interface Prop {
@@ -41,10 +44,34 @@ export interface ClientCode {
   readonly body: string[];
 }
 
+/**
+ * The AST of every JS fragment the TEMPLATE holds — interpolations, attribute values,
+ * control headers, keys and `@{ … }` — keyed by its source span.
+ *
+ * It exists because the block render has to tell a reference from a declaration (SDD-30
+ * §3.3), and that is a question only the AST answers. Registering these in the SAME batch
+ * as `@code` is what keeps the golden rule intact: one Oxc invocation per file, whether it
+ * is asked one question or a hundred.
+ */
+export interface TemplateJs {
+  /** The AST at `span`, or an empty list when nothing was registered there. */
+  ast(span: Span): FragmentAst;
+}
+
 export interface ExtractedCode {
   readonly props: Prop[];
   readonly signals: Signal[];
   readonly client: ClientCode;
+  /** The parsed JS of the template. Empty for a document with no renderable tree. */
+  readonly template: TemplateJs;
+  /**
+   * The `@code { @client }` names whose VALUE can change (§3.3).
+   *
+   * They are what a block has to take by parameter. A `const` or a `function` nobody
+   * reassigns is not here: `u` would have nothing new to hand it, so it reaches the block
+   * through the closure and a parameter for it would be noise in the signature.
+   */
+  readonly mutable: ReadonlySet<string>;
   /**
    * What Oxc had to say about this `@code`, already in source coordinates (BUG-13 §5.3).
    *
@@ -75,28 +102,55 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
   const props: Prop[] = [];
   const signals: Signal[] = [];
   const client: ClientCode = { imports: [], body: [] };
-  if (!doc.code) return { props, signals, client, diagnostics: [] };
 
   const batch = new JsBatch(source);
-  const parts = doc.code.parts;
+  const parts = doc.code?.parts ?? [];
   const ids = parts.map((p) => batch.add('module-statements', p.js));
+  // The template's fragments go into the SAME batch, after `@code`: registration order is
+  // only the order of the synthetic buffer, and the spans are what anyone looks them up by.
+  const fragments = new Map<string, number>();
+  collectTemplateJs(doc.template?.children ?? [], (kind, at) => {
+    if (isEmptySpan(at)) return; // a degraded header has its own diagnostic already
+    fragments.set(spanKey(at), batch.add(kind, at));
+  });
+
   const result = batch.parse();
   const map = result.value.mapOffset;
 
+  const clientStatements: OxcNode[] = [];
   ids.forEach((id, i) => {
     const root = result.value.ast(id);
     const stmts = Array.isArray(root) ? (root as OxcNode[]) : [root as OxcNode];
     const isClient = parts[i]!.type === 'client-region';
     for (const stmt of stmts) {
-      if (isClient) readClientStatement(stmt, source, map, client);
+      if (isClient) {
+        readClientStatement(stmt, source, map, client);
+        clientStatements.push(stmt);
+      }
       if (!is(stmt, 'VariableDeclaration')) continue;
       for (const decl of fieldArray(stmt, 'declarations')) {
         readDeclarator(decl, source, map, props, signals);
       }
     }
   });
-  return { props, signals, client, diagnostics: result.diagnostics };
+
+  const template: TemplateJs = {
+    ast: (at) => {
+      const id = fragments.get(spanKey(at));
+      return id === undefined ? [] : result.value.ast(id);
+    },
+  };
+  return {
+    props,
+    signals,
+    client,
+    template,
+    mutable: changeableBindings(clientStatements),
+    diagnostics: result.diagnostics,
+  };
 }
+
+const spanKey = (at: Span): string => `${at.start},${at.end}`;
 
 /** Route one top-level statement of `@client` to the module scope or to the closure. */
 function readClientStatement(

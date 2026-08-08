@@ -20,6 +20,7 @@ import { type AssetLinker } from './assets.js';
 import { componentPropsExpr, writeElementAttrs, type HostContext } from './attrs.js';
 import { nestedSpaceMode, type SpaceMode } from './space.js';
 import { emitItems, type TextRun } from './runs.js';
+import { markerSite } from './marker.js';
 
 /** `render` + PascalCase of a `prefix-name` tag: `app-button` → `renderAppButton`. */
 export const renderName = (tag: string): string =>
@@ -90,10 +91,20 @@ export class MarkupEmitter {
    * a server tree the client cannot adopt.
    */
   emitChildren(children: readonly HtmlContent[], parent: string): void {
-    for (const item of emitItems(this.#source, children, this.#space)) {
+    const items = emitItems(this.#source, children, this.#space);
+    // The one comment the DOM ever gets (SDD-30 §3.4). It is painted HERE too, and by the
+    // same rule: two interpolated runs a block separates come back from HTML as one text
+    // node, so the client plants a boundary — and a boundary the server did not paint is a
+    // node of difference between the two trees, which is a hydration that adopts nothing.
+    const marker = markerSite(items);
+    items.forEach((item, i) => {
+      if (marker !== undefined && marker.at === i) {
+        const v = this.#fresh();
+        this.#w.line(`const ${v} = $dom.comment(''); $dom.append(${parent}, ${v});`);
+      }
       if (item.kind === 'run') this.#run(item, parent);
       else this.#emit(item.node, parent);
-    }
+    });
   }
 
   /** One coalesced text run — one node, because that is what the parser will give back. */

@@ -30,7 +30,7 @@
       <p class="empty">No hay elementos todavía.</p>
     } else {
       <section class="grid">
-        @foreach (const item of data.items) {
+        @foreach (const item of data.items) key (item.id) {
           <app-card
             title="@item.title"
             variant="@(item.featured ? 'highlight' : 'default')">

@@ -102,6 +102,11 @@ function collectElement(element: ElementNode, depth: number, jobs: Job[]): void 
   collectContent(element.children, depth + 1, jobs);
 }
 
+/** The `key (…)` of a loop (decision 91): one more expression to hand over. */
+function collectKey(loop: ForeachNode | WhileNode, depth: number, jobs: Job[]): void {
+  if (loop.key !== undefined) jobs.push(js('expression', loop.key.expr, depth));
+}
+
 function collectIf(node: IfNode, depth: number, jobs: Job[]): void {
   for (const branch of node.branches) {
     jobs.push(js('condition', branch.header.inner, depth));
@@ -160,12 +165,14 @@ function collectContent(nodes: readonly HtmlContent[], depth: number, jobs: Job[
       case 'for': {
         const loop = asLoop(node);
         jobs.push(js('iteration', loop.header.inner, depth));
+        collectKey(loop, depth, jobs);
         collectContent(loop.body, depth + 1, jobs);
         break;
       }
       case 'while': {
         const loop = asWhile(node);
         jobs.push(js('condition', loop.header.inner, depth));
+        collectKey(loop, depth, jobs);
         collectContent(loop.body, depth + 1, jobs);
         break;
       }

@@ -1,6 +1,6 @@
 # SDD-30 — Renders de bloque (`@if` · `@for` · `@foreach` · `@while` · `@switch`)
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Paquete:** `@fudic/compiler` (emit de cliente), contra `@fudic/dom`
 > **Depende de:** 06, 11, 12, 13, 14, 15 · [BUG-12](./bugs/BUG-12-sin-canal-de-update.md)
 > **Rango de diagnósticos:** `FUD0540`–`FUD0569`
@@ -209,6 +209,11 @@ texto** al volver del HTML y ninguna travesía los distingue. Ahí —y solo ah�
 detectable estáticamente— el bloque emite un **comentario vacío** como ancla real. Cero
 marcadores en el caso general; uno donde la forma lo exige.
 
+Y lo emiten **las dos ramas**: el HTML que pinta el servidor lleva ese comentario igual que el
+árbol que fabrica el cliente. Un marcador en un solo lado es peor que ninguno — los dos árboles
+difieren en un nodo y la hidratación adopta uno que no reconoce—, así que la regla se decide una
+sola vez, sobre los mismos ítems que las dos ramas ya recorren, y ninguna tiene opinión propia.
+
 ### 3.5. `key` es obligatoria en los tres constructos que iteran
 
 ```razor
@@ -311,14 +316,19 @@ En `h` el anchor es `null`: no se inserta nada, se adopta lo que el servidor ya 
 
 ```js
 const $u0 = () => {
-  const $prev = new Map($k0.map(($i) => [$i.key, $i]));
+  const $prev = new Map();
+  const $gone = [];
+  // El índice se llena a mano, y a propósito: gana la PRIMERA de dos keys iguales, y la que
+  // pierde la plaza va derecha a la lista de retirados en vez de quedarse sin dueño.
+  for (const $i of $k0) { if ($prev.has($i.key)) $gone.push($i); else $prev.set($i.key, $i); }
   const $next = [];
   for (const { id, name } of rows) {
     const $hit = $prev.get(id);
     if ($hit !== undefined) { $prev.delete(id); $hit.u(id, name, a); $next.push($hit); }
     else { const $i = $b0($n3, $n4, id, name, a); $i.c(); $i.m(); $i.s(); $next.push($i); }
   }
-  for (const $dead of $prev.values()) $dead.r();
+  for (const $i of $prev.values()) $gone.push($i);
+  for (const $i of $gone) $i.r();
   // reordenar: de atrás hacia delante, cada bloque ante el que le sigue
   for (let $j = $next.length - 1, $ref = $n4; $j >= 0; $j -= 1) $ref = $next[$j].move($ref);
   $k0 = $next;
@@ -333,6 +343,12 @@ bloque que se acaba de colocar.
 datos). El comportamiento es determinista y documentado: gana la primera aparición y la segunda
 se trata como una fila nueva. No se emite diagnóstico en batch; en dev, el runtime puede
 avisarlo (fuera de alcance, §7).
+
+Y de ahí que el índice **no** se construya con `new Map($k0.map(…))`. Un `Map` hecho de pares se
+queda con la última, que es la regla contraria; y lo grave no es el orden, es que la instancia
+que pierde la plaza deja de estar en ninguna estructura, así que **nadie llama a su `r()`**: sus
+nodos y sus disposers se quedan detrás. Es la misma fuga que §1 existe para cerrar, reaparecida
+por el camino de atrás. Con dos filas de key igual y un `u`, la lista crece.
 
 ### 4.5. `$a()` dentro de un bloque: se cierra BUG-12 §3.3.c
 
