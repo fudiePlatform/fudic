@@ -43,7 +43,7 @@ describe('extractCode', () => {
 
   it('returns nothing for a component with no @code', () => {
     const source = '<m-el>\n  <template shadowrootmode="open"><span></span></template>\n</m-el>\n';
-    expect(extractCode(source, componentDoc(source))).toEqual({
+    expect(extractCode(source, componentDoc(source))).toMatchObject({
       props: [],
       signals: [],
       client: { imports: [], body: [] },
@@ -72,6 +72,37 @@ describe('extractCode', () => {
       'const open = signal(false);',
       'function toggle() { open.set(!open.peek()); }',
     ]);
+  });
+
+  it('parses the template’s own JS into the same batch, reachable by span', () => {
+    const source = wrap('@code {\n  const { a } = props<{ a: string }>();\n}\n').replace(
+      '<span></span>',
+      '<span>@a</span>',
+    );
+    const { template } = extractCode(source, componentDoc(source));
+    const at = source.indexOf('@a') + 1;
+    expect((template.ast({ start: at, end: at + 1 }) as { type: string }).type).toBe('Identifier');
+    // A span nobody registered is not an error: it is a fragment the walk never saw, and
+    // the caller reads that as "nothing declared here" rather than as a crash.
+    expect(template.ast({ start: 0, end: 0 })).toEqual([]);
+  });
+
+  it('registers nothing for a degraded header, which has no text to parse', () => {
+    // `@foreach` with no `(` leaves an EMPTY header span (FUD0070). Handing it to the batch
+    // would register a fragment of zero characters and make the buffer say `for () {}`.
+    const source = wrap('').replace('<span></span>', '<ul>@foreach const r of rows { <li></li> }</ul>');
+    const { template } = extractCode(source, componentDoc(source));
+    const at = source.indexOf('@foreach') + '@foreach'.length;
+    expect(template.ast({ start: at, end: at })).toEqual([]);
+  });
+
+  it('reads the code of a component whose template degraded away entirely', () => {
+    // FUD0157: the wrapper's child is not a `<template shadowrootmode>`, so there is no
+    // template at all. `@code` is still a fact about the file and still has to come out.
+    const source = '@code {\n  const { a } = props<{ a: string }>();\n}\n<m-el><span></span></m-el>\n';
+    const doc = componentDoc(source);
+    expect(doc.template).toBeUndefined();
+    expect(extractCode(source, doc).props).toEqual([{ name: 'a' }]);
   });
 
   it('leaves the @server region out of the client body', () => {

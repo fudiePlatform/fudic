@@ -96,6 +96,23 @@ Acotado a un paquete: `pnpm --filter @fudic/<pkg> <script>` — `test`, `test:wa
 Paquetes: `cli` `compiler` `core` `dom` `formatter` `language-core` `language-server`
 `ssr` `transport` `vite` (+ `fudic-vscode`, `@fudic/example-basic`).
 
+### Cómo se escriben, para no pedir permiso a cada paso
+
+`.claude/settings.json` ya trae permitidos `pnpm`, `git` y las utilidades de lectura
+(`ls`, `cat`, `head`, `tail`, `grep`, `rg`, `wc`, `sort`, `uniq`, `diff`, `find`, `echo`).
+Pero la regla casa contra el comando **entero**, y un comando compuesto se comprueba
+trozo a trozo: basta con que uno no esté permitido para que se pregunte por el conjunto.
+De ahí dos reglas:
+
+- **Sin `cd`.** La sesión ya está dentro del worktree. Un `cd … && pnpm test` empieza por
+  `cd`, así que la regla de `pnpm` ni se mira.
+- **Tuberías, las que quieras, con programas de la lista.** `pnpm test | tail -40` pasa;
+  `pnpm test | sed -n '1,20p'` pregunta, porque `sed` escribe y está fuera a propósito.
+
+Fuera de la lista, y **es deliberado**: `sed`, `python`, `node`, `npx`. Modifican
+ficheros o ejecutan código arbitrario, y abrirlos en blanco vacía la lista de sentido.
+Si hace falta uno, se pide — que es justo lo que debe pasar.
+
 ## 5. Commits
 
 - **En inglés**, asunto + cuerpo. **Sin** `Co-Authored-By`, firmas ni trailer alguno.

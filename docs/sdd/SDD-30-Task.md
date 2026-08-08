@@ -3,7 +3,7 @@
 > **SDD:** [SDD-30 — Renders de bloque](./SDD-30-renders-de-bloque.md)
 > **Paquetes:** `@fudic/compiler` (emit de cliente, parser de la key)
 > **Rama:** `sdd-30-renders-de-bloque`
-> **Progreso:** 4 / 21
+> **Progreso:** 10 / 21
 
 Convierte los cinco constructos de control —`@if`, `@switch`, `@for`, `@foreach`, `@while`— de
 markup aplanado en `c`/`h` a **funciones de bloque** con vida propia. Va **antes** que los event
@@ -60,13 +60,13 @@ cuatro mapas de página, `FUD0290`, y el recorte de dependencias por uso real.
 
 ## Fase 2 — El bloque como función (6)
 
-- [ ] **5. Análisis de scope sobre los fragmentos de un bloque.**
+- [x] **5. Análisis de scope sobre los fragmentos de un bloque.**
       Nuevo `packages/compiler/src/emit/scope.ts`: dado el conjunto de fragmentos JS del cuerpo de
       un bloque, devolver sus **referencias libres**. Es análisis real sobre el AST de Oxc, no
       recolección de `Identifier`: hay que distinguir referencia de declaración y de clave de
       propiedad (`obj.a` no referencia `a`), y descender por los scopes que el propio fragmento
       abre (una arrow dentro de un handler declara sus parámetros). Nace al 100 % de cobertura.
-- [ ] **6. La lista de dependencias, y `FUD0543`.**
+- [x] **6. La lista de dependencias, y `FUD0543`.**
       Sobre lo anterior: restar lo que el bloque declara —el patrón de la cabecera, vía
       `ObjectPattern`/`ArrayPattern`, más lo que declare un `@{ … }` interno— y lo que **no puede
       cambiar de valor** —un binding `const` o `function` del `@code { @client }` sin ninguna
@@ -75,22 +75,26 @@ cuatro mapas de página, `FUD0290`, y el recorte de dependencias por uso real.
       la propiedad que se testea, no el tamaño de la lista.
       Con los bindings de la cabecera en la mano cae `FUD0543`: un `@foreach`/`@for` que no
       declara ninguno, con el span de la cabecera (`@while` queda fuera, §3.5).
-- [ ] **7. El emisor de bloques.**
+- [x] **7. El emisor de bloques.**
       Nuevo `packages/compiler/src/emit/block.ts`: dado un nodo de control, escribir el
       `const $bN = ($parent, $anchor, …) => {…}` con sus seis cuerpos (`c`, `h`, `m`, `s`, `u`,
       `move`, `r`) y su `key`. Reutiliza el `ClientMarkupEmitter` para el markup del cuerpo —el
       cuerpo de un bloque es markup como cualquier otro— pero con **sus propias** variables de
       nodo, su `$d`, su `$w` y su `$a`.
-- [ ] **8. El cursor entra y sale.**
+- [x] **8. El cursor entra y sale.**
       `h(cursor)` recibe el cursor del nivel y devuelve el avanzado; un bloque que no pinta lo
       devuelve **sin tocar**. El padre lo encadena. Es lo que mantiene alineados los dos caminos
       cuando una condición cierra un bloque, y lo que hace que `@if`/`@foreach` dejen de emitirse
       dos veces (una en `fab`, otra en `adopt`) para pasar a emitirse **una** dentro de la función.
-- [ ] **9. El anchor estático.**
+- [x] **9. El anchor estático.**
       El anchor de un bloque es la variable del siguiente nodo de su nivel, o `null` → `append`.
       Bloques consecutivos comparten anchor y el orden lo da el orden de inserción. `Dom<N>` no
       se toca: `before` y `append` ya existen.
-- [ ] **10. El ancla del caso que la forma exige.**
+      **Matiz que salió al implementarlo:** un bloque a nivel raíz se monta más tarde (`$m`),
+      y su anchor es una variable que la travesía asigna *después* — leída durante `c` vale
+      `undefined`. Por eso `m` admite el anchor de nuevo (`m($ref = $anchor)`) y el montaje
+      diferido se lo pasa; §3.2 lo escribía como `m(): void`.
+- [x] **10. El ancla del caso que la forma exige.**
       Detectar estáticamente el único caso que el anchor no resuelve —dos runs de texto
       **interpolados** separados solo por un bloque— y emitir ahí un comentario vacío. Es el hueco
       que la tarea 10 de la primera tanda de cliente dejó anotado sin resolver; se cierra aquí y

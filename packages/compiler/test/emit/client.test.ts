@@ -18,6 +18,15 @@ import { fixturesDir, fixtureIo, memoryIo } from './_support.js';
 const graph: ComponentGraph = resolveComponents(join(fixturesDir, 'home.fud'), fixtureIo);
 const chunk = (tag: string): string => emitComponentClientModule(graph, graph.components.get(tag)!);
 
+/**
+ * The COMPONENT's own controller, past every block function.
+ *
+ * A block returns the same shape as a component (SDD-30 §3.2), so a chunk with blocks in
+ * it holds several `c: () => {`. The component's is the last one, because its blocks are
+ * declared above it — in the closure they read through.
+ */
+const controller = (src: string): string => src.slice(src.lastIndexOf('return {'));
+
 /** A one-component graph from an in-memory page that links it. */
 function inlineChunk(tag: string, component: string, options: EmitOptions = {}): string {
   const io = memoryIo({
@@ -50,7 +59,9 @@ describe('emitComponentClientModule — the module shape (§6.8)', () => {
     expect(src).toContain('h: () => {');
     expect(src).toContain('u: ($p) => {');
     expect(src).toContain('r: () => {');
-    expect(src).not.toMatch(/^\s+[msa]: /mu);
+    // A BLOCK does expose `m` and `s` — its parent decides when it mounts (SDD-30 §3.2) —
+    // but the component's own controller is still the four of BUG-12 §3.1.
+    expect(controller(src)).not.toMatch(/^\s+[msa]: /mu);
   });
 
   it('keeps every identifier the emit introduces inside the $ reserve (BUG-12 §3.5)', () => {
@@ -71,8 +82,9 @@ describe('emitComponentClientModule — the module shape (§6.8)', () => {
   });
 
   it('mounts the roots through $m() on create, and never on hydrate', () => {
-    const create = src.slice(src.indexOf('c: () => {'), src.indexOf('h: () => {'));
-    const hydrate = src.slice(src.indexOf('h: () => {'), src.indexOf('u: ($p) => {'));
+    const own = controller(src);
+    const create = own.slice(own.indexOf('c: () => {'), own.indexOf('h: () => {'));
+    const hydrate = own.slice(own.indexOf('h: () => {'), own.indexOf('u: ($p) => {'));
     expect(create).toContain('$m();');
     expect(create).toContain('$s();');
     expect(hydrate).not.toContain('$m();'); // the structure came mounted from SSR
@@ -91,33 +103,57 @@ describe('emitComponentClientModule — the module shape (§6.8)', () => {
     expect(src).not.toContain('cloneNode');
   });
 
-  it('gives a reference only to the text that can change', () => {
-    // `@title` is adopted, from the <h2> that holds it; every whitespace run is created
-    // inline on the fabricate path and never looked up again — nobody rewrites a space.
-    expect(src).toContain('$n3 = $dom.lastChild($n2);');
-    expect(src).toContain('$dom.append($n0, $dom.text(" "));');
-    expect(src).toContain('$r.push($dom.text(" "));');
-    expect(src).toContain('$dom.append($n6, $dom.text(" Abrir "));');
+  it('gives a reference only to the text that needs one', () => {
+    // `@title` is adopted, from the <h2> that holds it. A whitespace run OUTSIDE a block
+    // gets none — nobody rewrites a space — unless a construct sits in front of it, and
+    // then the run is the anchor an update inserts before (SDD-30 §3.4).
+    expect(controller(src)).toContain('$n5 = $dom.lastChild($n4);');
+    expect(src).toContain('$dom.append($n0, $dom.text(" "));'); // no construct behind it
+    expect(src).toContain('$n2 = $dom.text(" ");'); // the run right after the first @if
+  });
+
+  it('names every root of a BLOCK, whitespace included', () => {
+    // A block moves and removes what it rendered, so a root it cannot name is a node its
+    // `r()` would leave behind — which is exactly the second defect of SDD-30 §1.
+    const block = src.slice(src.indexOf('const $b0 ='), src.indexOf('const $q0 ='));
+    expect(block).toContain('$n6 = $dom.text(" ");');
+    expect(block).toContain('$r.push($n6);');
+    expect(block).toContain('for (const $n of $r) $dom.remove($n);');
   });
 
   it('fabricates a child host without opening its shadow or driving it', () => {
-    expect(src).toContain('$n6 = $dom.element("app-button");');
-    expect(src).toContain(`$dom.setAttr($n6, 'data-adopt', "app-button");`);
+    expect(src).toContain('$n3 = $dom.element("app-button");');
+    expect(src).toContain(`$dom.setAttr($n3, 'data-adopt', "app-button");`);
     expect(src).not.toContain('attachShadow'); // the runtime owns the child (SDD-17)
     expect(src).not.toContain('renderAppButton');
   });
 
-  it('releases every node reference and runs the disposers on r()', () => {
-    expect(src).toContain('$n6 = $shadow = null; $d.forEach((d) => d());');
+  it('retires the blocks and releases every node reference on r()', () => {
+    // The registries first: nulling a variable per node released ONE row of a construct
+    // and left the rest — with their disposers — hanging off a DOM nobody owns (§1).
+    expect(controller(src)).toContain(
+      'r: () => { $k0.forEach(($i) => $i.r()); $k1.forEach(($i) => $i.r()); ',
+    );
+    expect(controller(src)).toContain('$shadow = null; $d.forEach((d) => d()); },');
   });
 
-  it('emits the same control flow into both bodies — where there is anything to adopt', () => {
-    // One instance takes create OR hydrate, never both: the condition is written twice and
-    // still evaluated once. The `@if` inside <app-button> is the exception: its branches
-    // hold nothing but static text, so the adopt body never asks the question — it has no
-    // reference to take, and no element to step the cursor over.
-    expect(src.match(/if \(expanded\.peek\(\)\) \{/gu)).toHaveLength(3);
-    expect(src.match(/\} else \{/gu)).toHaveLength(1);
+  it('asks the condition ONCE, in the selector the three bodies share', () => {
+    // Flattened, the condition was written into `c`, into `h` and into `$a` — three copies
+    // of one question, three chances to answer it differently. Now `$qN` is the answer and
+    // create, adopt and update all read it.
+    expect(src).toContain('const $q0 = () => (expanded.peek() ? 0 : -1);');
+    expect(src).toContain('const $q1 = () => (expanded.peek() ? 0 : 1);');
+    expect(src.match(/expanded\.peek\(\) \?/gu)).toHaveLength(2);
+    // And no branch is written as control flow in a body any more.
+    expect(controller(src)).not.toContain('if (expanded.peek())');
+  });
+
+  it('gives every branch its own block, with its own nodes', () => {
+    // Two arms of an `@if` share neither nodes nor signature (§4.1): `$b1` is the `then`
+    // of the inner `@if` and `$b2` its `else`, and `$f1` is what picks between them.
+    expect(src).toContain('const $b1 = ($parent, $anchor) => {');
+    expect(src).toContain('const $b2 = ($parent, $anchor) => {');
+    expect(src).toContain('const $f1 = ($x, $an) => $x === 0 ? $b1($n3, $an) : $x === 1 ? $b2($n3, $an) : null;');
   });
 });
 
@@ -162,21 +198,26 @@ describe('emitComponentClientModule — a component with no @code', () => {
 });
 
 describe('emitComponentClientModule — shapes the fixtures do not cover', () => {
-  it('lowers @foreach into both bodies, sharing the cursor', () => {
+  it('drives a @foreach through the block, chaining the cursor on the adopt path', () => {
     const src = inlineChunk(
       'x-list',
       '@code {\n  const { items } = props<{ items: string[] }>();\n}\n' +
         '<x-list>\n  <template shadowrootmode="open">' +
-        '<ul>@foreach (const item of items) {<li>@item</li>}</ul>' +
+        '<ul>@foreach (const item of items) key (item) {<li>@item</li>}</ul>' +
         '</template>\n</x-list>\n',
     );
-    expect(src.match(/for \(const item of items\) \{/gu)).toHaveLength(2);
-    expect(src).toContain('$n2 = $dom.text(String((item) ?? \'\'));');
-    expect(src).toContain('$n1 = $c1; $c1 = $dom.nextElementSibling($c1);');
-    expect(src).toContain('$n2 = $dom.lastChild($n1);'); // @item, from the <li> of its turn
+    // The loop runs in the PARENT — the header is the author's, spliced whole — and each
+    // turn builds one instance of the block, which owns the row's nodes.
+    expect(src).toContain('const $b0 = ($parent, $anchor, item) => {');
+    expect(src).toContain('const $i = $b0($n0, null, item);');
+    expect(src).toContain('$c1 = $i.h($c1);'); // the block takes the cursor and gives it back
+    expect(src).toContain('$k0.push($i);');
+    // The row's own text is the block's, written by the block's `$a` — not fused any more.
+    expect(src).toContain("$dom.setText($n2, $v);");
+    expect(src).toContain('key: item,');
   });
 
-  it('lowers an else-if chain into both bodies', () => {
+  it('gives an else-if chain three blocks and one selector', () => {
     const src = inlineChunk(
       'x-chain',
       '@code {\n  const { n } = props<{ n: number }>();\n}\n' +
@@ -184,8 +225,11 @@ describe('emitComponentClientModule — shapes the fixtures do not cover', () =>
         '@if (n === 1) { <i></i> } else if (n === 2) { <b></b> } else { <u></u> }' +
         '</template>\n</x-chain>\n',
     );
-    expect(src.match(/\} else if \(n === 2\) \{/gu)).toHaveLength(2);
-    expect(src.match(/if \(n === 1\) \{/gu)).toHaveLength(2);
+    expect(src).toContain('const $q0 = () => (n === 1 ? 0 : n === 2 ? 1 : 2);');
+    expect(src.match(/const \$b\d = \(\$parent, \$anchor\) => \{/gu)).toHaveLength(3);
+    // The conditions are written once each, in the selector, and nowhere else.
+    expect(src.match(/n === 1/gu)).toHaveLength(1);
+    expect(src.match(/n === 2/gu)).toHaveLength(1);
   });
 
   it('composes class from the bindings alone when there is no static class', () => {
@@ -219,17 +263,19 @@ describe('emitComponentClientModule — shapes the fixtures do not cover', () =>
     expect(src).toContain("$v = `a   ${(name) ?? ''}`;");
   });
 
-  it('emits a @foreach on the fabricate path alone when it holds nothing to adopt', () => {
+  it('runs a loop on the adopt path too, even with nothing but text in it', () => {
     const src = inlineChunk(
       'x-plainloop',
       '@code {\n  const { items } = props<{ items: string[] }>();\n}\n' +
         '<x-plainloop>\n  <template shadowrootmode="open">' +
-        '<ul>@foreach (const item of items) { x }</ul>' +
+        '<ul>@foreach (const item of items) key (item) { x }</ul>' +
         '</template>\n</x-plainloop>\n',
     );
-    const hydrate = src.slice(src.indexOf('h: () => {'), src.indexOf('r: () => {'));
-    expect(src.match(/for \(const item of items\) \{/gu)).toHaveLength(1);
-    expect(hydrate).not.toContain('for (');
+    // A hydrated row still has to be a row: without an instance nothing could retire it,
+    // reorder it, or hand it a value again. The loop is now in the parent's THREE bodies —
+    // create, adopt and reconcile — and the block is what differs between them.
+    expect(src.match(/for \(const item of items\) \{/gu)).toHaveLength(3);
+    expect(controller(src)).toContain('$i.h(null);');
   });
 
   it('emits nothing for a node with no client markup, and keeps the walk aligned', () => {
@@ -308,9 +354,11 @@ describe('emitComponentClientModule — anchoring an interpolated run', () => {
 
   it('adopts through a branch whose element is only in the else', () => {
     const src = runChunk('x-else', '<b>@if (on) { x } else { <i></i> }</b>');
-    const hydrate = src.slice(src.indexOf('h: () => {'), src.indexOf('r: () => {'));
-    expect(hydrate).toContain('} else {');
-    expect(hydrate).toContain('$n1 = $c1; $c1 = $dom.nextElementSibling($c1);');
+    // The cursor crosses the construct whichever arm is live: the block takes it in and
+    // gives back the advanced one, and the arm with only text gives it back untouched.
+    expect(src).toContain('$c1 = $i.h($c1);');
+    // The `<i>` is the ELSE arm's, so the step over it belongs to that arm's block.
+    expect(src).toContain('$n3 = $c; $c = $dom.nextElementSibling($c);');
   });
 });
 
@@ -322,15 +370,16 @@ describe('emitComponentClientModule — anchoring an interpolated run', () => {
  */
 describe('emitComponentClientModule — u, the update channel (BUG-12)', () => {
   const src = chunk('app-card');
+  const own = controller(src);
   const between = (from: string, to: string): string =>
-    src.slice(src.indexOf(from), src.indexOf(to));
+    own.slice(own.indexOf(from), own.indexOf(to));
 
   it('routes every value write through $a(), the single place a value reaches a node (§6.3)', () => {
     expect(src).toContain('const $a = () => {');
-    expect(src).toContain('$dom.setText($n3, $v);');
+    expect(src).toContain('$dom.setText($n5, $v);');
     expect(src).toContain(`$dom.setAttr($n0, 'class', $v);`);
     // The fabricate body creates the node and nothing else: the value is `$a`'s.
-    expect(src).toContain('$n3 = $dom.text(\'\');');
+    expect(src).toContain('$n5 = $dom.text(\'\');');
     expect(between('c: () => {', 'h: () => {')).not.toContain('setText');
   });
 
@@ -346,10 +395,13 @@ describe('emitComponentClientModule — u, the update channel (BUG-12)', () => {
     expect(create.indexOf('$m();')).toBeLessThan(create.indexOf('$s();'));
   });
 
-  it('reassigns with the two leading holes empty and the defaults kept (§6.4)', () => {
+  it('reassigns, re-applies, and then reconciles its blocks (§6.4, SDD-30 §4.2)', () => {
     // `$dom` and `$shadow` are never reassigned: an update carries state, not the adapter.
-    // The defaults are repeated because an update may bring `undefined` back.
-    expect(src).toContain("u: ($p) => { [, , title, variant = 'default'] = $p; $a(); },");
+    // The defaults are repeated because an update may bring `undefined` back. And `$a()`
+    // comes FIRST: the values of this level, then what the constructs below make of them.
+    expect(own).toContain(
+      "u: ($p) => { [, , title, variant = 'default'] = $p; $a(); $u0(); $u1(); },",
+    );
   });
 
   it('touches the DOM only where the value actually changed', () => {
@@ -372,7 +424,7 @@ describe('emitComponentClientModule — u, the update channel (BUG-12)', () => {
     expect(src2).toContain('u: () => { $a(); },'); // no props: nothing to reassign
   });
 
-  it('re-applies inside the branch that owns the write, not outside it', () => {
+  it('puts the write of a branch in the BLOCK’s $a, with no condition around it', () => {
     const src2 = inlineChunk(
       'x-cond',
       '@code {\n  const { on, name } = props<{ on: boolean; name: string }>();\n}\n' +
@@ -380,13 +432,16 @@ describe('emitComponentClientModule — u, the update channel (BUG-12)', () => {
         '@if (on) { <b title="@name"></b> }' +
         '</template>\n</x-cond>\n',
     );
-    const apply = src2.slice(src2.indexOf('const $a = () => {'), src2.indexOf('return {'));
-    // `$n0` only exists when the branch rendered, so the guard travels with the write.
-    expect(apply).toContain('if (on) {');
-    expect(apply).toContain('$dom.setAttr($n0, "title", String($v));');
+    const block = src2.slice(src2.indexOf('const $b0 ='), src2.indexOf('const $q0 ='));
+    // `$n0` belongs to the block and exists for as long as the block does, so the write
+    // needs no guard: the instance not being alive IS the guard.
+    expect(block).toContain('$dom.setAttr($n1, "title", String($v));');
+    expect(block).not.toContain('if (on)');
+    // And the component's own `$a` has nothing left to do.
+    expect(controller(src2)).not.toContain('setAttr');
   });
 
-  it('replicates the whole chain when the write is a bare interpolation in a branch', () => {
+  it('takes as parameters what the branch reads and cannot declare (§3.3)', () => {
     const src2 = inlineChunk(
       'x-branch',
       '@code {\n  const { on, name } = props<{ on: boolean; name: string }>();\n}\n' +
@@ -394,15 +449,14 @@ describe('emitComponentClientModule — u, the update channel (BUG-12)', () => {
         '@if (on) { @name } else { nada }' +
         '</template>\n</x-branch>\n',
     );
-    const apply = src2.slice(src2.indexOf('const $a = () => {'), src2.indexOf('return {'));
-    // The `else` is written even though it applies nothing: the branches of one `@if` are
-    // one statement, and half a statement does not parse.
-    expect(apply).toContain('if (on) {');
-    expect(apply).toContain('} else {');
-    expect(apply).toContain('$dom.setText($n0, $v);');
+    // The `then` reads `name`; the `else` reads nothing. Two arms, two signatures.
+    expect(src2).toContain('const $b0 = ($parent, $anchor, name) => {');
+    expect(src2).toContain('const $b1 = ($parent, $anchor) => {');
+    expect(src2).toContain('$dom.setText($n0, $v);');
+    expect(src2).toContain('u: (...$p) => { [name] = $p; $a(); },');
   });
 
-  it('sees a class: binding inside a branch as a write of its own', () => {
+  it('sees a class: binding inside a branch as a write of the block', () => {
     const src2 = inlineChunk(
       'x-clsif',
       '@code {\n  const { on } = props<{ on: boolean }>();\n}\n' +
@@ -410,24 +464,26 @@ describe('emitComponentClientModule — u, the update channel (BUG-12)', () => {
         '@if (on) { <b class:hot="@on"></b> }' +
         '</template>\n</x-clsif>\n',
     );
-    const apply = src2.slice(src2.indexOf('const $a = () => {'), src2.indexOf('return {'));
-    expect(apply).toContain('if (on) {');
-    expect(apply).toContain(`$dom.setAttr($n0, 'class', $v);`);
+    const block = src2.slice(src2.indexOf('const $b0 ='), src2.indexOf('const $q0 ='));
+    expect(block).toContain(`$dom.setAttr($n1, 'class', $v);`);
+    // `on` decides the branch AND is read inside it, so it travels both ways.
+    expect(src2).toContain('const $b0 = ($parent, $anchor, on) => {');
   });
 
-  it('leaves a write inside a @foreach fused with its node, out of $a', () => {
+  it('writes inside a @foreach through the row’s own $a — BUG-12 §3.3.c', () => {
     const src2 = inlineChunk(
       'x-loop',
       '@code {\n  const { items } = props<{ items: string[] }>();\n}\n' +
         '<x-loop>\n  <template shadowrootmode="open">' +
-        '<ul>@foreach (const item of items) {<li>@item</li>}</ul>' +
+        '<ul>@foreach (const item of items) key (item) {<li>@item</li>}</ul>' +
         '</template>\n</x-loop>\n',
     );
-    // A loop variable is not a stable reference — it holds the LAST node of the run — so
-    // there is nothing for `$a` to write to. Updating a loop needs the block render that
-    // BUG-12 §7 leaves to its own SDD; until then the value rides its creation.
-    expect(src2).toContain("$n2 = $dom.text(String((item) ?? ''));");
-    expect(src2).toContain('const $a = () => {};');
+    // The nodes of a row belong to its instance and live as long as it does, so the value
+    // stops being fused with the creation and becomes reapplicable — which is the hole
+    // BUG-12 left open for the inside of a loop.
+    expect(src2).toContain("$n2 = $dom.text('');");
+    expect(src2).toContain('$dom.setText($n2, $v);');
+    expect(src2).toContain('u: (...$p) => { [item] = $p; $a(); },');
   });
 });
 

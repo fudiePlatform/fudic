@@ -19,7 +19,8 @@
 import type { ComponentGraph, ResolvedComponent } from './resolve.js';
 import { spaceModeOf } from './space.js';
 import { CodeWriter } from './writer.js';
-import { ClientMarkupEmitter } from './markup-client.js';
+import { ClientMarkupEmitter, nodeIds } from './markup-client.js';
+import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js';
 import { AssetLinker } from './assets.js';
 import { extractCode, type ExtractedCode, type Prop } from './oxc-code.js';
 import { componentStyleNode, type EmitOptions, type EmitOutput } from './module.js';
@@ -69,15 +70,10 @@ function buildComponentClientModule(
   options: EmitOptions,
 ): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
-  const { props, signals, client, diagnostics } = codeOf(comp);
+  const { props, signals, client, template, mutable, diagnostics } = codeOf(comp);
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
 
-  const bodies = {
-    fab: new CodeWriter(),
-    adopt: new CodeWriter(),
-    apply: new CodeWriter(),
-    hook: new CodeWriter(),
-  };
+  const bodies = newBodies();
   const scope = {
     childProps: (tag: string): readonly Prop[] | undefined => {
       const child = graph.components.get(tag);
@@ -85,7 +81,21 @@ function buildComponentClientModule(
     },
     signals: new Set(signals.map((s) => s.name)),
   };
-  const em = new ClientMarkupEmitter(comp.source, bodies, scope, linker, space);
+  // What a block may be handed: the props (an update reassigns every one of them) and the
+  // `@client` bindings the author can move. Everything else reaches it through the closure.
+  const changeable = new Set([...props.map((p) => p.name), ...mutable]);
+  const blockDiagnostics: Diagnostic[] = [];
+  const ids = nodeIds();
+  const ctx = blockContext(comp.source, scope, linker, ids, template, blockDiagnostics);
+  const em = new ClientMarkupEmitter({
+    source: comp.source,
+    bodies,
+    scope,
+    linker,
+    sink: new BlockEmitter(ctx, changeable),
+    ids,
+    space,
+  });
   em.emitRoots(comp.doc.template!.children);
 
   const w = new CodeWriter();
@@ -104,11 +114,15 @@ function buildComponentClientModule(
   w.line(destructuring(props, 'declare'));
   for (const line of client.body) w.line(line);
   w.line('');
+  // The blocks: one function per construct, plus the registry of what is alive (SDD-30
+  // §3.1, §3.6). Declared HERE, so each one reads `$dom`, the props and the `@client` body
+  // above through lexical scope instead of through its signature.
+  w.appendWriter(bodies.decls);
   // Every name from here down starts with `$`, and that is not cosmetic: the `@client`
   // body above was copied VERBATIM into this same scope, so a private closure called `m`
   // is a private closure the author cannot shadow — it is a `SyntaxError` in their face,
   // with no diagnostic (BUG-12 §2.5). The `$` reserve of SDD-15 §4.7 binds the emit too.
-  w.line('const $m = () => { for (const $n of $r) $dom.append($shadow, $n); };');
+  writeMount(w, bodies.mount);
   // `$s` is where hookup is registered: the single point create and hydrate converge on.
   // It carries the values a child receives and their subscriptions (BUG-12 §3.4); host
   // listeners and the component's own fine-grained subscriptions are still to come
@@ -141,19 +155,55 @@ function buildComponentClientModule(
   w.line('},');
   // The update channel: reassign the positional bindings and re-apply. No node is created,
   // nothing is mounted and nothing is subscribed again — `u` is of VALUE (BUG-12 §4.2).
+  const reconcile = bodies.update.empty ? '' : ` ${lines(bodies.update)}`;
   w.line(
     props.length > 0
-      ? `u: ($p) => { ${destructuring(props, 'assign')} $a(); },`
-      : 'u: () => { $a(); },',
+      ? `u: ($p) => { ${destructuring(props, 'assign')} $a();${reconcile} },`
+      : `u: () => { $a();${reconcile} },`,
   );
-  w.line(`r: () => { ${[...em.nodes, '$shadow'].join(' = ')} = null; $d.forEach((d) => d()); },`);
+  w.line(
+    `r: () => { ${releaseCalls(bodies.registries)}${[...em.nodes, '$shadow'].join(' = ')} = null; $d.forEach((d) => d()); },`,
+  );
   w.dedent();
   w.line('};');
   w.dedent();
   w.line('}');
   w.dedent();
   w.line('});');
-  return { writer: w, linker, diagnostics };
+  // The blocks' own diagnostics travel with `@code`'s: a loop whose header declares nothing
+  // (FUD0543) is as much a fact about this file as a `@code` that does not parse, and the
+  // emit does not stop for either (§5).
+  return { writer: w, linker, diagnostics: [...diagnostics, ...blockDiagnostics] };
+}
+
+/**
+ * `$m` — the roots into the shadow root.
+ *
+ * A block at the root level is mounted HERE and not while `c` fabricates, and its anchor is
+ * a sibling root that this loop has already put in place: inserting during `c` would land
+ * the block's rows ahead of every root still waiting in `$r` (SDD-30 §3.4).
+ */
+function writeMount(w: CodeWriter, mount: CodeWriter): void {
+  if (mount.empty) {
+    w.line('const $m = () => { for (const $n of $r) $dom.append($shadow, $n); };');
+    return;
+  }
+  w.line('const $m = () => {');
+  w.indent();
+  w.line('for (const $n of $r) $dom.append($shadow, $n);');
+  w.appendWriter(mount);
+  w.dedent();
+  w.line('};');
+}
+
+/** A writer's body as one line: `u` and `r` are single-line closures. */
+function lines(body: CodeWriter): string {
+  return body
+    .toString()
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== '')
+    .join(' ');
 }
 
 /**
