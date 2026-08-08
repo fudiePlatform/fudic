@@ -5,9 +5,9 @@ layouts) to an existing one. **It is not a bundler, a dev server or a watcher** 
 Vite with `@fudic/vite`. The analogy is `ng generate`, not `vite`.
 
 ```sh
-fudic new demo                                  # a project that builds
-fudic g component app-card --in routes/index.fud # a component, already wired
-fudic g page blog/:slug                          # a route under its layout
+fudic new demo                                       # a project that builds
+fudic g component app-card --in src/routes/index.fud # a component, already wired
+fudic g page blog/:slug                              # a route under its layout
 fudic g layout admin --sections aside
 ```
 
@@ -74,7 +74,7 @@ pnpm build                        # or: pnpm dev
 **4. Drive the generators against it.**
 
 ```sh
-fudic g component app-card --in routes/index.fud
+fudic g component app-card --in src/routes/index.fud
 fudic g page blog
 fudic g layout admin --sections aside
 pnpm build
@@ -86,14 +86,38 @@ runtime), which is where packaging bugs live. It does **not** exercise a registr
 step 3 replaces it. Once the packages ship to npm, steps 2–3 collapse into plain
 `fudic new demo`, and this section can go.
 
+## Project layout
+
+Sources live under `src/`; the root belongs to the tooling:
+
+```
+demo/
+├── src/
+│   ├── components/
+│   ├── layouts/
+│   └── routes/
+├── fudic-globals.d.ts
+├── package.json
+├── sw.json
+├── tsconfig.json
+├── vite.config.ts
+└── .gitignore
+```
+
+Those four names are not literals of this package: they come from `@fudic/conventions`, which
+`@fudic/vite` reads too — the directory the CLI writes to and the one the plugin discovers routes
+in are the same name, from the same place. `--dir` overrides the default per command if you want a
+different layout; `src/` itself is a convention, not an option.
+
 ## Design
 
 Every command is `plan → apply`:
 
 ```ts
 import { planComponent, apply } from '@fudic/cli';
+import { COMPONENTS_DIR } from '@fudic/conventions';
 
-const plan = await planComponent('app-card', { cwd: '.', force: false, dir: 'components', wireInto: [], style: true, slot: false });
+const plan = await planComponent('app-card', { cwd: '.', force: false, dir: COMPONENTS_DIR, wireInto: [], style: true, slot: false });
 await apply(plan, { cwd: '.', force: false });
 ```
 

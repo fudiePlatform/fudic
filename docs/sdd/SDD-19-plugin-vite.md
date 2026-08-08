@@ -94,7 +94,7 @@ campos). El **modo de cada ruta se infiere** (§4.2); estas opciones fijan defau
 
 ```ts
 export interface FudicOptions {
-  /** Directory of page `.fud` files, relative to project root. Default: `'routes'`. */
+  /** Directory of page `.fud` files, relative to project root. Default: `ROUTES_DIR` (`'src/routes'`). */
   readonly routesDir?: string;
   /** Absolute URL where the route manifest is published (SW and WW load the SAME one). Default: `${base}fudic-routes.json`. */
   readonly manifestUrl?: string;
@@ -114,6 +114,12 @@ export type RouteOverride =
 
 `outDir` y `base` **no** se declaran aquí: se leen de la config de Vite (`config.build.outDir`,
 `config.base`), fuente única. `manifestUrl` deriva de `base` si se omite.
+
+> **Corregido por [BUG-20](./bugs/BUG-20-fuentes-en-src.md) §3.2.** El defecto de `routesDir` era el
+> literal `'routes'`, escrito aquí y otras tres veces en `@fudic/cli`. Ahora es `ROUTES_DIR` de
+> **`@fudic/conventions`** —`'src/routes'`—, el mismo nombre que escribe el scaffold: el plugin no
+> declara ningún directorio de proyecto, lo importa. El tipo no cambia y la opción sigue mandando
+> sobre el defecto.
 
 ### 3.3. Los hooks de servidor de una página (`@server`)
 

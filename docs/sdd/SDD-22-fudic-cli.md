@@ -40,7 +40,7 @@ bastará para el language server. Este SDD la ejercita antes de que el LSP depen
 | **SDD-01** | `Span`, `Diagnostic`, `ParseResult`. La CLI reutiliza el tipo de diagnóstico del compilador; no define uno propio. |
 | **SDD-05** | Parser HTML: AST con spans y navegación por offset. Necesario para `--in` (§4.4). |
 | **SDD-10** | Estructura de documento: `structureDocument` clasifica el fichero en uno de los cuatro roles y expone el orden top-level con spans. La CLI **consulta**, no reimplementa. |
-| **SDD-19** | Convención de proyecto: `routesDir` (defecto `routes`) y el mapeo *árbol de directorios → path de ruta*. La CLI genera dentro de esa convención; no la redefine. |
+| **SDD-19** | Convención de proyecto: `routesDir` (defecto `src/routes` desde BUG-20, declarado en `@fudic/conventions`) y el mapeo *árbol de directorios → path de ruta*. La CLI genera dentro de esa convención; no la redefine. |
 | **SDD-20** | El Service Worker no es un fichero de usuario: el plugin emite `fudic-sw.js` y el proyecto solo declara `sw.json`. Eso es lo que `fudic new` escribe. |
 | **SDD-21** | Los cuatro roles de documento (`ComponentDocument` · `RouteDocument` · `PageDocument` · `LayoutDocument`), el orden top-level de una ruta (decisión 83), la arista `<link rel="layout" href>` y las directivas `@RenderBody()` / `@RenderHead()` / `@RenderSection(name)` / `@section name { … }`. La CLI **consume** esas reglas tal como las fija ese SDD; aquí no se redefinen. |
 
@@ -86,14 +86,14 @@ fudic generate <tipo> <nombre>        agrega una pieza      (alias: g)
 | `--no-install` | — | Genera el árbol sin instalar dependencias. |
 | `--no-git` | — | Omite `git init` y commit inicial. |
 | `--no-sw` | — | Sin `sw.json`: el plugin no emite Service Worker (SDD-20 §4.7). |
-| `--layout <nombre>` | `_layout` | Nombre del layout inicial, bajo `layouts/`. |
+| `--layout <nombre>` | `_layout` | Nombre del layout inicial, bajo `src/layouts/`. |
 | `--target <nombre>` | `static` | Adapter de despliegue. Ver §4.6 (feature diferida). |
 
 **`fudic g component <tag>`**
 
 | Flag | Defecto | Efecto |
 |---|---|---|
-| `--dir <ruta>` | `components` | Directorio destino. |
+| `--dir <ruta>` | `src/components` | Directorio destino. |
 | `--in <fichero>` | — | Cablea el `<link rel="component">` en `<fichero>`. **Repetible.** |
 | `--no-style` | — | Omite el `<head>` con el `<style>` del componente. |
 | `--slot` | — | Emite `<slot></slot>` en el markup. |
@@ -102,7 +102,7 @@ fudic generate <tipo> <nombre>        agrega una pieza      (alias: g)
 
 | Flag | Defecto | Efecto |
 |---|---|---|
-| `--dir <ruta>` | `routes` | Directorio destino (`routesDir` de SDD-19). |
+| `--dir <ruta>` | `src/routes` | Directorio destino (`routesDir` de SDD-19). |
 | `--layout <ruta>` | resuelto | Fuerza un layout concreto (path del `.fud`, relativo a `--cwd`). |
 | `--no-layout` | — | Página autónoma (documento completo con doctype). |
 | `--server` | — | Emite `@code { @server { ... } }` con `load()`. |
@@ -112,9 +112,15 @@ fudic generate <tipo> <nombre>        agrega una pieza      (alias: g)
 
 | Flag | Defecto | Efecto |
 |---|---|---|
-| `--dir <ruta>` | `layouts` | Directorio destino. |
+| `--dir <ruta>` | `src/layouts` | Directorio destino. |
 | `--sections <a,b,c>` | — | Un `@RenderSection(nombre)` por nombre. |
 | `--no-head` | — | Omite `@RenderHead()` (acepta `FUD0425`). |
+
+> **Corregido por [BUG-20](./bugs/BUG-20-fuentes-en-src.md) §3.1.** Los tres defectos de `--dir` eran
+> los literales `'components'`, `'routes'` y `'layouts'` en la raíz del proyecto. Ahora bajan a
+> `src/` y salen de **`@fudic/conventions`**, el mismo paquete del que el plugin toma su `routesDir`
+> (SDD-19 §3.2): la CLI no declara ningún directorio de proyecto, lo importa. `--dir` no cambia y
+> sigue mandando sobre el defecto — es la vía de escape para otra convención.
 
 ### 3.2. API programática
 
@@ -353,10 +359,14 @@ El `href` se calcula relativo al fichero destino, con `./` explícito y extensi�
 
 ### 4.5. `g page` — una sola forma, resuelta
 
-**Mapeo `<ruta>` → fichero** (convención de SDD-19, invertida): `/` ⇒ `routes/index.fud`;
-`blog` ⇒ `routes/blog.fud`; `blog/` ⇒ `routes/blog/index.fud`; un segmento `:x` o `[x]` ⇒
+**Mapeo `<ruta>` → fichero** (convención de SDD-19, invertida): `/` ⇒ `src/routes/index.fud`;
+`blog` ⇒ `src/routes/blog.fud`; `blog/` ⇒ `src/routes/blog/index.fud`; un segmento `:x` o `[x]` ⇒
 `[x].fud`. El path que el usuario escribe es el path de la URL, no el del disco: quien usa la
 CLI piensa en rutas.
+
+> **Corregido por [BUG-20](./bugs/BUG-20-fuentes-en-src.md) §4.1.** El mapeo es el mismo: es
+> relativo a `--dir`, y lo único que se movió es dónde cae `--dir` por defecto. `route.ts` no se
+> tocó.
 
 `g page` **no ofrece dos plantillas** (con layout / sin layout) para que el usuario elija.
 Esa elección es una trampa: se elige mal y el error aparece al compilar. El comando **elige**
@@ -370,7 +380,7 @@ al compilador le está vedado, con una regla explícita y local:
 
 1. `--layout <ruta>` gana siempre. Si no existe o no es un `LayoutDocument` ⇒ `FUD0449`, exit 1.
 2. Si no, se busca el `_layout.fud` más cercano subiendo desde el directorio de la página
-   nueva, primero dentro de `--dir` y después en `layouts/` en la raíz del proyecto.
+   nueva, primero dentro de `--dir` y después en `src/layouts/` (BUG-20 §4.5).
 3. Si no aparece ninguno, página autónoma, sin error.
 
 Elegido el layout, la CLI **lo parsea, sigue su cadena de `rel="layout"` y recolecta los
@@ -425,8 +435,8 @@ mensajes van **en inglés**, como todo string del repo (CLAUDE.md); solo esta sp
 español:
 
 ```
-  create  components/app-card.fud
-  modify  routes/index.fud
+  create  src/components/app-card.fud
+  modify  src/routes/index.fud
   run     pnpm install
 ```
 
@@ -464,8 +474,8 @@ API que el LSP usará**, y por eso hereda sus invariantes sin excepción:
 
 ## 6. Criterios de aceptación
 
-1. **Proyecto nuevo compilable.** `fudic new demo` produce un árbol con `layouts/_layout.fud`,
-   `routes/index.fud` cableada contra él con `<link rel="layout">`, `vite.config.ts`,
+1. **Proyecto nuevo compilable.** `fudic new demo` produce un árbol con `src/layouts/_layout.fud`,
+   `src/routes/index.fud` cableada contra él con `<link rel="layout">`, `vite.config.ts`,
    `package.json` (script `build: vite build`) y `sw.json` salvo `--no-sw`. El árbol **pasa un
    `vite build` real** con el plugin `@fudic/vite` del workspace y produce el HTML de `/`.
    *(El build del test se ejecuta con la API de Vite y las deps del workspace resueltas por
@@ -484,7 +494,7 @@ API que el LSP usará**, y por eso hereda sus invariantes sin excepción:
    `FUD0442` para `font-face` (un tag reservado por la spec; `section` ya cae en `FUD0440`
    por no llevar guión).
 
-4. **Cableado en un componente.** `fudic g component app-icon --in components/app-card.fud`
+4. **Cableado en un componente.** `fudic g component app-icon --in src/components/app-card.fud`
    inserta el `<link>` antes del `@code` del destino. El fichero resultante parsea y
    respeta la decisión 53. Repetir el mismo comando **no duplica** el link ni reporta
    modificación (idempotencia, §4.4.5).
@@ -528,10 +538,15 @@ API que el LSP usará**, y por eso hereda sus invariantes sin excepción:
     commit inicial **sin ejecutarlos**; con `--no-install --no-git` el plan no los contiene.
     Tras `--dry-run`, el directorio destino no existe.
 
-15. **Mapeo ruta → fichero.** `fudic g page /` ⇒ `routes/index.fud`; `fudic g page blog` ⇒
-    `routes/blog.fud`; `fudic g page blog/` ⇒ `routes/blog/index.fud`;
-    `fudic g page "blog/:slug"` ⇒ `routes/blog/[slug].fud`. Las cuatro son rutas que
+15. **Mapeo ruta → fichero.** `fudic g page /` ⇒ `src/routes/index.fud`; `fudic g page blog` ⇒
+    `src/routes/blog.fud`; `fudic g page blog/` ⇒ `src/routes/blog/index.fud`;
+    `fudic g page "blog/:slug"` ⇒ `src/routes/blog/[slug].fud`. Las cuatro son rutas que
     `@fudic/vite` descubre con los patrones que el usuario pidió.
+
+> **Corregido por [BUG-20](./bugs/BUG-20-fuentes-en-src.md).** Los criterios 1, 4 y 15 se escribieron
+> con el fuente en la raíz del proyecto y hoy se verifican con él bajo `src/`. Lo que comprueban no
+> cambia —el árbol compila, el `<link>` se inserta por span, la ruta se mapea a fichero— porque el
+> movimiento es de prefijo y ni un `href` relativo se movió con él.
 
 ---
 

@@ -210,6 +210,13 @@ y `20` (`sw.json`), y de la forma de ruta/layout de `21`. Su valor estructural e
 pruebas: si la API del compilador no basta para insertar un `<link rel="component">` en el offset
 correcto de un fichero ajeno, tampoco bastará para el language server.
 
+Los directorios que `22` escribe y `19` descubre son el **mismo** contrato, y desde
+[BUG-20](./bugs/BUG-20-fuentes-en-src.md) viven en un paquete hoja propio, **`@fudic/conventions`**
+(`SRC_DIR`, `ROUTES_DIR`, `COMPONENTS_DIR`, `LAYOUTS_DIR`, todos bajo `src/`), que los dos declaran
+como dependencia de runtime. No tiene SDD: no es una fase, es el sitio donde vive un nombre que dos
+paquetes tienen que acordar y ninguno de los dos posee. Cualquier consumidor futuro entra por ahí,
+y ningún literal de directorio vuelve a `cli/src` ni a `vite/src`.
+
 ### Camino crítico
 
 `00 → 01 → 02 → 03 → 04 → 05` en serie. El toolchain (00) y el andamiaje de tipos (01)

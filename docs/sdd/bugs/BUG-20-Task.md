@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/conventions` (**nuevo**) · `@fudic/cli` (`args.ts`, `layout.ts`,
 > `plans/new.ts`, plantillas) · `@fudic/vite` (`options.ts`) · `examples/basic`
 > **Rama:** `fix/bug-20-fuentes-en-src`
-> **Progreso:** 7 / 10
+> **Progreso:** 10 / 10
 > **No espera a nada.** Ningún SDD ni BUG en curso toca estos cuatro sitios
 
 La convención de directorios está escrita cuatro veces, en dos paquetes, y **no hay ningún sitio en
@@ -99,16 +99,16 @@ cualquier otra constante dentro del paquete nuevo ([§3.4, §7](./BUG-20-fuentes
 
 ## Fase 5 — Las specs y la documentación (3)
 
-- [ ] **8. El paquete nuevo, en el mapa del repo.**
+- [x] **8. El paquete nuevo, en el mapa del repo.**
       `@fudic/conventions` en la tabla de paquetes de [`CLAUDE.md`](../../../.claude/CLAUDE.md) —la
       línea de `packages/` los enumera— y en [`docs/sdd/INDEX.md`](../INDEX.md) donde corresponda.
       Un paquete que no aparece en el mapa es un paquete que el siguiente duplicará.
-- [ ] **9. Los SDD que fijan la convención vieja.**
+- [x] **9. Los SDD que fijan la convención vieja.**
       SDD-22 §3.1, §4.2, §4.5 y §6.1 —tabla de `--dir`, mapeo `<ruta>` → fichero, árbol de `fudic
       new`, ejemplos de salida— y SDD-19 §3.2 (el defecto de `routesDir`). Son documentos `Hecho`:
       la nota va donde estaba el valor, sin reescribir la sección. Un SDD que sigue diciendo
       `routes/` es lo que hace volver el defecto ([§2.4](./BUG-20-fuentes-en-src.md)).
-- [ ] **10. READMEs, índice y estado.**
+- [x] **10. READMEs, índice y estado.**
       [`cli/README.md:96`](../../../packages/cli/README.md#L96) y
       [`vite/README.md:19,25,36,77`](../../../packages/vite/README.md#L19). Marcar BUG-20 como
       `Hecho` en [`bugs/INDEX.md`](./INDEX.md) y anotar la tanda en el registro de progreso.
