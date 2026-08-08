@@ -3,7 +3,7 @@
 > **SDD:** [SDD-30 — Renders de bloque](./SDD-30-renders-de-bloque.md)
 > **Paquetes:** `@fudic/compiler` (emit de cliente, parser de la key)
 > **Rama:** `sdd-30-renders-de-bloque`
-> **Progreso:** 10 / 21
+> **Progreso:** 15 / 21
 
 Convierte los cinco constructos de control —`@if`, `@switch`, `@for`, `@foreach`, `@while`— de
 markup aplanado en `c`/`h` a **funciones de bloque** con vida propia. Va **antes** que los event
@@ -102,23 +102,28 @@ cuatro mapas de página, `FUD0290`, y el recorte de dependencias por uso real.
 
 ## Fase 3 — El padre y la reconciliación (5)
 
-- [ ] **11. El registro de bloques vivos.**
+- [x] **11. El registro de bloques vivos.**
       Por constructo, un `let $kN = []` en la closure del factory. Un `@if` lo usa con cero o un
       elemento: no hay dos mecanismos. `r()` del componente lo recorre —y es lo que arregla el
       teardown de las N−1 filas que hoy quedan colgadas.
-- [ ] **12. `c` y `h` del padre delegan.**
+- [x] **12. `c` y `h` del padre delegan.**
       En `c`: fabricar la instancia, `c()`, `m()`, `s()`, y guardarla. En `h`: fabricar la
       instancia con anchor `null`, encadenar el cursor por `h()`, `s()`, y guardarla. El markup
       del bloque desaparece de los cuerpos del padre.
-- [ ] **13. `$uN` — la reconciliación por key.**
+- [x] **13. `$uN` — la reconciliación por key.**
       Los tres casos de §4.4: hit → `u` con las dependencias nuevas; miss → `c`+`m`+`s`; lo que
       sobra del mapa anterior → `r()`. Key duplicada: gana la primera aparición, la segunda es una
       fila nueva, sin diagnóstico (depende de los datos).
-- [ ] **14. Reordenado con `move`.**
+      **Bug corregido al ejecutarlo:** el índice no puede construirse con `new Map($kN.map(…))`.
+      De dos keys iguales un `Map` se queda con la última —regla contraria a §4.4— y la instancia
+      que pierde la plaza deja de estar en ninguna estructura, así que nadie llama a su `r()`:
+      nodos y disposers se quedaban detrás, un juego por `u`. Se llena a mano y las repetidas van
+      a la lista de retirados. §4.4 del SDD queda alineado con su propio párrafo.
+- [x] **14. Reordenado con `move`.**
       De atrás hacia delante, cada bloque ante el que le sigue; `move` devuelve el **primer** nodo
       del bloque para encadenar, y un bloque que no pintó devuelve la referencia sin tocar. Cero
       marcadores: el ancla de cada paso es el nodo que se acaba de colocar.
-- [ ] **15. `@if` y `@switch`: cambio de rama.**
+- [x] **15. `@if` y `@switch`: cambio de rama.**
       Misma rama → `u` de la instancia viva. Rama distinta → `r()` de la vieja, `c`+`m`+`s` de la
       nueva. Cada rama es **su propio** bloque, con su función y su lista de dependencias: dos
       ramas no comparten ni nodos ni firma.

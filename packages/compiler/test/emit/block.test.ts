@@ -242,6 +242,51 @@ describe('the one marker the DOM gets (§3.4)', () => {
   });
 });
 
+describe('the registry, and the index the reconciliation walks (§3.6, §4.4)', () => {
+  const list = chunk(
+    'x-reg',
+    component(
+      'x-reg',
+      '@code {\n  const { rows } = props<{ rows: { id: string }[] }>();\n}\n',
+      '<ul>@foreach (const row of rows) key (row.id) {<li>@row.id</li>}</ul>',
+    ),
+  );
+
+  it('gives every construct one registry, and r() of the component walks it', () => {
+    expect(list).toContain('let $k0 = [];');
+    expect(list).toContain('$k0.forEach(($i) => $i.r());');
+  });
+
+  it('builds the index by hand, so the FIRST of two equal keys wins', () => {
+    // `new Map(entries)` would keep the last — the opposite rule — and, worse, the instance
+    // that lost the slot would be reachable from nowhere: nothing would ever call its `r()`
+    // and its nodes would pile up one per update. That is the leak §1 exists to close.
+    expect(list).toContain('const $prev = new Map();');
+    expect(list).toContain(
+      'for (const $i of $k0) { if ($prev.has($i.key)) $gone.push($i); else $prev.set($i.key, $i); }',
+    );
+    expect(list).toContain('for (const $i of $prev.values()) $gone.push($i);');
+    expect(list).toContain('for (const $i of $gone) $i.r();');
+  });
+
+  it('uses the same registry for an @if, with zero or one instance in it', () => {
+    // No second mechanism: what a branching construct keeps is which arm is live (`$x0`),
+    // and the instance itself sits in the same list a loop would use.
+    const branch = chunk(
+      'x-one',
+      component(
+        'x-one',
+        '@code {\n  const { on } = props<{ on: boolean }>();\n}\n',
+        '<div>@if (on) {<b></b>}</div>',
+      ),
+    );
+    expect(branch).toContain('let $k0 = [];');
+    expect(branch).toContain('let $x0 = -1;');
+    expect(branch).toContain('for (const $i of $k0) $i.r();');
+    expect(branch).not.toContain('$prev'); // nothing to reconcile by key
+  });
+});
+
 describe('a child component built inside a block (§4.6)', () => {
   const src = ((): string => {
     const io = memoryIo({

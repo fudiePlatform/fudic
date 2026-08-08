@@ -314,10 +314,16 @@ export class BlockEmitter implements BlockSink {
 
   /**
    * `$uN` — the three cases of §4.4, and no heuristic anywhere: the key says whether the row
-   * is the same one. A hit is updated in place, a miss is built, and whatever is left over
-   * in the previous map is retired. A duplicate key is not a compile error — it depends on
-   * the data — and the behaviour is fixed instead: the first occurrence wins and the second
-   * is simply a new row, because `delete` has already taken the first out of the map.
+   * is the same one. A hit is updated in place, a miss is built, and everything the new list
+   * did not claim is retired.
+   *
+   * **Why the index is built by hand and not with `new Map(entries)`.** A duplicate key is
+   * not a compile error — it depends on the data — so the behaviour is fixed instead: the
+   * FIRST occurrence wins. Built from a list of pairs, a `Map` keeps the last, which is the
+   * opposite rule; and, worse, the instance that loses the slot is then reachable from
+   * nowhere, so nothing ever calls its `r()`. Its nodes and its disposers would stay behind
+   * — the very leak §1 exists to close. The ones that lose the slot go straight to the
+   * retire list, where the leftovers of the index join them.
    *
    * The reorder walks BACKWARDS, each block before the one that follows it, so the reference
    * every step needs is the node the previous step just placed. That is why `move` gives
@@ -336,7 +342,11 @@ export class BlockEmitter implements BlockSink {
     const w = at.bodies.decls;
     w.line(`const $u${id} = () => {`);
     w.indent();
-    w.line(`const $prev = new Map(${registry}.map(($i) => [$i.key, $i]));`);
+    w.line('const $prev = new Map();');
+    w.line('const $gone = [];');
+    w.line(
+      `for (const $i of ${registry}) { if ($prev.has($i.key)) $gone.push($i); else $prev.set($i.key, $i); }`,
+    );
     w.line('const $next = [];');
     w.line(`${this.#loopHead(node)} {`);
     w.indent();
@@ -348,7 +358,8 @@ export class BlockEmitter implements BlockSink {
     );
     w.dedent();
     w.line('}');
-    w.line('for (const $dead of $prev.values()) $dead.r();');
+    w.line('for (const $i of $prev.values()) $gone.push($i);');
+    w.line('for (const $i of $gone) $i.r();');
     w.line(
       `for (let $j = $next.length - 1, $ref = ${anchor}; $j >= 0; $j -= 1) $ref = $next[$j].move($ref);`,
     );
