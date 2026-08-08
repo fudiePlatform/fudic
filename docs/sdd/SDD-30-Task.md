@@ -3,7 +3,7 @@
 > **SDD:** [SDD-30 — Renders de bloque](./SDD-30-renders-de-bloque.md)
 > **Paquetes:** `@fudic/compiler` (emit de cliente, parser de la key)
 > **Rama:** `sdd-30-renders-de-bloque`
-> **Progreso:** 15 / 21
+> **Progreso:** 17 / 21
 
 Convierte los cinco constructos de control —`@if`, `@switch`, `@for`, `@foreach`, `@while`— de
 markup aplanado en `c`/`h` a **funciones de bloque** con vida propia. Va **antes** que los event
@@ -130,12 +130,12 @@ cuatro mapas de página, `FUD0290`, y el recorte de dependencias por uso real.
 
 ## Fase 4 — Lo que esto desbloquea (2)
 
-- [ ] **16. `$a()` dentro de un bloque: cerrar BUG-12 §3.3.c.**
+- [x] **16. `$a()` dentro de un bloque: cerrar BUG-12 §3.3.c.**
       Los nodos de una instancia de bloque **sí** son estables, así que la escritura de valor
       dentro de un bucle sale a `$a()` con su `$w`, como fuera. `h` sigue sin llamar a `$a()`
       (BUG-12 §4.3). Marcar el §3.3.c de
       [BUG-12](./bugs/BUG-12-sin-canal-de-update.md) como resuelto por este SDD.
-- [ ] **17. Props a un hijo N3 creado dentro de un bloque.**
+- [x] **17. Props a un hijo N3 creado dentro de un bloque.**
       El `s()` del bloque emite el pase inicial y la suscripción con la forma de BUG-12 §3.4, y su
       `r()` da de baja el disposer. Cierra el pendiente que BUG-12 §7 dejó con nombre: *«necesita
       el render de bloque que aún no existe»*.

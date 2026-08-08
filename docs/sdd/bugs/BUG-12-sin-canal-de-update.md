@@ -307,10 +307,14 @@ creación, como hasta ahora. Es el mismo hueco que §7 deja a los renders de blo
 cambio, **sí** replica su condición en `$a()`: sus nodos son estables, solo puede que no
 existan.
 
-> **Cerrado por [SDD-30 — Renders de bloque](../SDD-30-renders-de-bloque.md) §4.5** (redactado
-> 2026-08-06). Cuando un bloque es una función, sus nodos **sí** son estables durante la vida de
-> la instancia, así que la escritura sale a un `$a()` propio con su `$w`, igual que fuera del
-> bucle. Es el criterio §6.13 de aquella spec.
+> **Cerrado por [SDD-30 — Renders de bloque](../SDD-30-renders-de-bloque.md) §4.5.** Cuando un
+> bloque es una función, sus nodos **sí** son estables durante la vida de la instancia, así que
+> la escritura sale a un `$a()` propio con su `$w`, igual que fuera del bucle.
+>
+> **Implementado** (2026-08-08, SDD-30 fase 4). Y el `$w` propio no es un detalle de dónde vive
+> la variable: es lo que hace que solo repinte la fila que cambió. Con tres filas y un `u` que
+> mueve una, el DOM recibe **una** escritura de texto — medido en
+> `test/emit/hydrate/block-values.test.ts`. Un `$w` único del componente no podría distinguirlas.
 
 ### 3.4. El lado del padre: pase inicial y suscripción
 
@@ -515,6 +519,10 @@ Tests en `packages/core/test/` y `packages/compiler/test/emit/`.
   actualización es el `u` que este BUG deja hecho.
   → **Ya existe: [SDD-30 §4.6](../SDD-30-renders-de-bloque.md)**, criterio §6.18. El `s()` del
   bloque emite el pase inicial y la suscripción; su `r()` da de baja el disposer.
+  **Implementado** (2026-08-08, SDD-30 fase 4): cada fila sirve a su propio hijo, una
+  notificación de la signal llega a todas las vivas, y una fila retirada deja de recibir — la
+  suscripción se va con ella. Si sobreviviera, seguiría escribiendo en un host que el DOM ya no
+  tiene: una fuga de listeners con forma de actualización.
 - **Implementar `FUD0290`.** El diagnóstico de SDD-15 §4.7 no existe en `packages/compiler/src`:
   hoy nada impide que un `@client` declare `$dom`. Es tarea pendiente de SDD-15 y sigue siéndolo.
   Este BUG hace lo contrario y suficiente: mete **sus propios** nombres dentro de la reserva, para
