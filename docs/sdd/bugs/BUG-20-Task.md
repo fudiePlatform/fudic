@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/conventions` (**nuevo**) · `@fudic/cli` (`args.ts`, `layout.ts`,
 > `plans/new.ts`, plantillas) · `@fudic/vite` (`options.ts`) · `examples/basic`
 > **Rama:** `fix/bug-20-fuentes-en-src`
-> **Progreso:** 0 / 10
+> **Progreso:** 2 / 10
 > **No espera a nada.** Ningún SDD ni BUG en curso toca estos cuatro sitios
 
 La convención de directorios está escrita cuatro veces, en dos paquetes, y **no hay ningún sitio en
@@ -35,7 +35,7 @@ cualquier otra constante dentro del paquete nuevo ([§3.4, §7](./BUG-20-fuentes
 
 ## Fase 1 — El paquete (2)
 
-- [ ] **1. `@fudic/conventions`.**
+- [x] **1. `@fudic/conventions`.**
       Crear `packages/conventions` con la forma de cualquier paquete del repo —`package.json`
       (versión exacta, `exports`, `files`, `publishConfig`), `tsconfig.json` extendiendo
       `@fudic/tsconfig`, `tsconfig.build.json`, `vitest.config.ts` con `thresholds` al **100 %** en
@@ -44,7 +44,7 @@ cualquier otra constante dentro del paquete nuevo ([§3.4, §7](./BUG-20-fuentes
       esta tarea no cambia comportamiento, solo crea el sitio. **Cero dependencias del workspace**:
       es una hoja, y si acaba dependiendo de algo, ya no lo es. Un README corto en inglés
       (convención de docs del repo).
-- [ ] **2. Los cuatro literales se van.**
+- [x] **2. Los cuatro literales se van.**
       `@fudic/cli` y `@fudic/vite` declaran `@fudic/conventions` en **`dependencies`**, no en
       `devDependencies` (el plugin lo necesita en el build del usuario). Borrar los literales de
       [`plans/new.ts:17-18`](../../../packages/cli/src/plans/new.ts#L17-L18),

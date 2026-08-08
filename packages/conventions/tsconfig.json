@@ -1,0 +1,4 @@
+{
+  "extends": "@fudic/tsconfig/tsconfig.base.json",
+  "include": ["src", "test"]
+}

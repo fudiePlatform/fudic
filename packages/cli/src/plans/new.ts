@@ -5,17 +5,14 @@
  * project only declares the policy (SDD-20 §4.7).
  */
 
+import { COMPONENTS_DIR, LAYOUTS_DIR, ROUTES_DIR } from '@fudic/conventions';
 import { GLOBALS_DTS, GLOBALS_FILE_NAME } from '@fudic/language-core';
 import { cliError, FUD_ADAPTER_UNAVAILABLE, FUD_TARGET_EXISTS } from '../diagnostics.js';
 import { absolute, hrefBetween, joinPosix } from '../paths.js';
-import { LAYOUTS_DIR } from '../layout.js';
 import { FUDIC_VERSION, TYPESCRIPT_VERSION, VITE_VERSION } from '../project.js';
 import { renderSectionBlocks, renderTemplate } from '../templates.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
 import type { CliError, FileChange, NewOptions, Plan, PlanCommand } from '../types.js';
-
-const ROUTES_DIR = 'routes';
-const COMPONENTS_DIR = 'components';
 
 /** The only adapter that exists: none. Anything else is rejected, never ignored (§4.6). */
 const AVAILABLE_TARGETS = ['static'];

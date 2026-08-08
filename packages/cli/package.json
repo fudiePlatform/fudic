@@ -49,6 +49,7 @@
   },
   "dependencies": {
     "@fudic/compiler": "workspace:*",
+    "@fudic/conventions": "workspace:*",
     "@fudic/formatter": "workspace:*",
     "@fudic/language-core": "workspace:*"
   },

@@ -31,7 +31,10 @@ export { run, defaultDeps, type RunDeps, type Streams } from './run.js';
 export { parseArgs, USAGE, type ParsedCommand, type GlobalFlags } from './args.js';
 export { validateTag } from './tag.js';
 export { routeToFile } from './route.js';
-export { resolveLayout, LAYOUTS_DIR, type LayoutResolution } from './layout.js';
+// `LAYOUTS_DIR` is no longer re-exported here: the directory convention has an owner of its
+// own now (`@fudic/conventions`), and a second way to reach the same name is the shape the
+// bug had.
+export { resolveLayout, type LayoutResolution } from './layout.js';
 export { anchorFor, alreadyLinked, componentLinkTag, wireComponentLink } from './wire.js';
 export { parseFud, staticAttr, type ParsedFud } from './parse.js';
 export { renderTemplate, templatePath, TEMPLATES, type TemplateSpec, type TemplateRole } from './templates.js';

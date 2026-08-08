@@ -4,6 +4,7 @@
  * missing argument is an exit code with the usage text, never a selector.
  */
 
+import { COMPONENTS_DIR, LAYOUTS_DIR, ROUTES_DIR } from '@fudic/conventions';
 import { cliError, FUD_USAGE } from './diagnostics.js';
 import type {
   CliError,
@@ -249,7 +250,7 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
     if (unknown !== null) return { kind: 'error', error: unknown };
     const opts: ComponentOptions = {
       ...base,
-      dir: single(tokens, 'dir', 'components'),
+      dir: single(tokens, 'dir', COMPONENTS_DIR),
       wireInto: list(tokens, 'in') ?? [],
       style: !bool(tokens, 'no-style'),
       slot: bool(tokens, 'slot'),
@@ -263,7 +264,7 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
     const forced = tokens.flags.get('layout')?.at(-1);
     const opts: PageOptions = {
       ...base,
-      dir: single(tokens, 'dir', 'routes'),
+      dir: single(tokens, 'dir', ROUTES_DIR),
       ...(bool(tokens, 'no-layout') ? { layout: null } : forced !== undefined ? { layout: forced } : {}),
       server: bool(tokens, 'server'),
       sections: list(tokens, 'sections'),
@@ -276,7 +277,7 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
     if (unknown !== null) return { kind: 'error', error: unknown };
     const opts: LayoutOptions = {
       ...base,
-      dir: single(tokens, 'dir', 'layouts'),
+      dir: single(tokens, 'dir', LAYOUTS_DIR),
       sections: list(tokens, 'sections') ?? [],
       head: !bool(tokens, 'no-head'),
     };
