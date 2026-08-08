@@ -62,20 +62,20 @@ fudic new
   --target <name>        deployment adapter              (default: static)
 
 fudic g component <tag>
-  --dir <path>       target directory                    (default: components)
+  --dir <path>       target directory                    (default: src/components)
   --in <file>        wire <link rel="component"> into <file>; repeatable
   --no-style         omit the <head> with the component's <style>
   --slot             emit <slot></slot> in the markup
 
 fudic g page <route>
-  --dir <path>       target directory                    (default: routes)
+  --dir <path>       target directory                    (default: src/routes)
   --layout <path>    force a layout
   --no-layout        standalone page (full document)
   --server           emit @code { @server { load() } }
   --sections <a,b>   subset of the layout's sections     (default: all)
 
 fudic g layout <name>
-  --dir <path>       target directory                    (default: layouts)
+  --dir <path>       target directory                    (default: src/layouts)
   --sections <a,b>   one @RenderSection(name) per name
   --no-head          omit @RenderHead()
 `;

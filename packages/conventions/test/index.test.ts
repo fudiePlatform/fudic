@@ -5,9 +5,9 @@ import * as conventions from '../src/index.js';
 describe('@fudic/conventions', () => {
   it('names the four project directories', () => {
     expect(conventions.SRC_DIR).toBe('src');
-    expect(conventions.ROUTES_DIR).toBe('routes');
-    expect(conventions.COMPONENTS_DIR).toBe('components');
-    expect(conventions.LAYOUTS_DIR).toBe('layouts');
+    expect(conventions.ROUTES_DIR).toBe('src/routes');
+    expect(conventions.COMPONENTS_DIR).toBe('src/components');
+    expect(conventions.LAYOUTS_DIR).toBe('src/layouts');
   });
 
   it('exports those four names and nothing else', () => {

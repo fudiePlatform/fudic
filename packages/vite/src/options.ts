@@ -21,7 +21,7 @@ export interface RouteDefault {
 }
 
 export interface FudicOptions {
-  /** Directory of page `.fud` files, relative to project root. Default: `'routes'`. */
+  /** Directory of page `.fud` files, relative to project root. Default: `ROUTES_DIR`. */
   readonly routesDir?: string;
   /** Absolute URL where the route manifest is published. Default: `${base}fudic-routes.json`. */
   readonly manifestUrl?: string;

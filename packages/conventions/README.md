@@ -9,9 +9,9 @@ import { SRC_DIR, ROUTES_DIR, COMPONENTS_DIR, LAYOUTS_DIR } from '@fudic/convent
 | Export | Value |
 | --- | --- |
 | `SRC_DIR` | `src` |
-| `ROUTES_DIR` | `routes` |
-| `COMPONENTS_DIR` | `components` |
-| `LAYOUTS_DIR` | `layouts` |
+| `ROUTES_DIR` | `src/routes` |
+| `COMPONENTS_DIR` | `src/components` |
+| `LAYOUTS_DIR` | `src/layouts` |
 
 ## Why a package
 

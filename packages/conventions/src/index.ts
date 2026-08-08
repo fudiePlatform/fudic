@@ -15,6 +15,6 @@
 
 /** Where a fudic project keeps its sources. Not an option: a convention (§4.2). */
 export const SRC_DIR = 'src';
-export const ROUTES_DIR = 'routes';
-export const COMPONENTS_DIR = 'components';
-export const LAYOUTS_DIR = 'layouts';
+export const ROUTES_DIR = 'src/routes';
+export const COMPONENTS_DIR = 'src/components';
+export const LAYOUTS_DIR = 'src/layouts';

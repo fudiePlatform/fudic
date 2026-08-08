@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/conventions` (**nuevo**) · `@fudic/cli` (`args.ts`, `layout.ts`,
 > `plans/new.ts`, plantillas) · `@fudic/vite` (`options.ts`) · `examples/basic`
 > **Rama:** `fix/bug-20-fuentes-en-src`
-> **Progreso:** 2 / 10
+> **Progreso:** 4 / 10
 > **No espera a nada.** Ningún SDD ni BUG en curso toca estos cuatro sitios
 
 La convención de directorios está escrita cuatro veces, en dos paquetes, y **no hay ningún sitio en
@@ -56,14 +56,14 @@ cualquier otra constante dentro del paquete nuevo ([§3.4, §7](./BUG-20-fuentes
 
 ## Fase 2 — La convención pasa a `src/` (2)
 
-- [ ] **3. Una línea, y ver el árbol moverse.**
+- [x] **3. Una línea, y ver el árbol moverse.**
       Cambiar los cuatro valores de `packages/conventions/src/index.ts` a `src`, `src/routes`,
       `src/components`, `src/layouts`. Es **la tarea que demuestra el hito A**: un solo fichero
       cambia el scaffold y el descubrimiento de rutas a la vez. Ejecutar
       [`cli/test/new-build.test.ts`](../../../packages/cli/test/new-build.test.ts) y comprobar que
       **sigue en verde** — los dos lados se movieron juntos, que es justo lo que hoy no puede pasar.
       Actualizar el `dir` y el `wireInto` que ese test escribe a mano.
-- [ ] **4. El texto que acompaña al código.**
+- [x] **4. El texto que acompaña al código.**
       El `USAGE` de [`args.ts:64,70,76`](../../../packages/cli/src/args.ts#L64) —la ayuda es
       interfaz— y la alineación del árbol de
       [`templates/README.md.tmpl`](../../../packages/cli/templates/README.md.tmpl), que recibe los
