@@ -1,6 +1,6 @@
 # SDD-30 — Renders de bloque (`@if` · `@for` · `@foreach` · `@while` · `@switch`)
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Paquete:** `@fudic/compiler` (emit de cliente), contra `@fudic/dom`
 > **Depende de:** 06, 11, 12, 13, 14, 15 · [BUG-12](./bugs/BUG-12-sin-canal-de-update.md)
 > **Rango de diagnósticos:** `FUD0540`–`FUD0569`

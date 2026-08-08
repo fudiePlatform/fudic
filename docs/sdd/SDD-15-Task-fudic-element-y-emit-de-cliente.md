@@ -137,6 +137,10 @@ en un fallo de build. El enlace sigue fuera.
       separados solo por un constructo que puede no pintar nada (`@a @if (x) { } @b`). Si no
       pinta, los dos runs **son** un único nodo y ninguna travesía puede distinguirlos: eso
       necesita ancla de bloque de verdad, y es el SDD de bloques con su `u`.
+      → **Resuelto por [SDD-30 §3.4](./SDD-30-renders-de-bloque.md)** (2026-08-08). Es el único
+      sitio donde se emite un marcador, un comentario vacío, y lo pintan **las dos** ramas: la
+      regla vive en `emit/marker.ts` porque un marcador en un solo lado hace que los dos árboles
+      difieran en un nodo, que es una hidratación que adopta lo que no reconoce.
 - [x] **11. Control de flujo en los dos caminos.**
       En `markup-client.ts`: `@if`/`@foreach` se emiten como el mismo JS en `c` y en `h`. Con
       los mismos props y el mismo estado inicial se toma la misma rama, luego las posiciones

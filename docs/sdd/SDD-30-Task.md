@@ -3,7 +3,7 @@
 > **SDD:** [SDD-30 — Renders de bloque](./SDD-30-renders-de-bloque.md)
 > **Paquetes:** `@fudic/compiler` (emit de cliente, parser de la key)
 > **Rama:** `sdd-30-renders-de-bloque`
-> **Progreso:** 20 / 21
+> **Progreso:** 21 / 21 — **Hecho**
 
 Convierte los cinco constructos de control —`@if`, `@switch`, `@for`, `@foreach`, `@while`— de
 markup aplanado en `c`/`h` a **funciones de bloque** con vida propia. Va **antes** que los event
@@ -172,7 +172,7 @@ cuatro mapas de página, `FUD0290`, y el recorte de dependencias por uso real.
 
 ## Fase 6 — Cierre (1)
 
-- [ ] **21. Verde, cobertura e índice.**
+- [x] **21. Verde, cobertura e índice.**
       `pnpm typecheck`, `pnpm test` y `pnpm build` en la raíz. `scope.ts`, `block.ts` y todo lo
       nuevo al **100 %** en las cuatro métricas; `markup-client.ts` y `client.ts` nacieron al
       100 % y no bajan. Nada de `/* v8 ignore */` para llegar al número. Anotar el avance en
