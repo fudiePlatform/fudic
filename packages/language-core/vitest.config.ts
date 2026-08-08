@@ -4,6 +4,10 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   test: {
     include: ['test/**/*.test.ts'],
+    // The first test to touch a LanguageService pays for building the whole program, and
+    // under `pnpm -r test` the other packages have the CPUs. That cold start is well over
+    // the 5s default, so the timeout would fail tests that are only slow, never wrong.
+    testTimeout: 60_000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
