@@ -1,8 +1,8 @@
 /**
  * Markup codegen for the CLIENT branch (SDD-15 §4.3, §4.6). One walk over the AST writing
- * two bodies at once — fabricate and adopt — because computing them separately is how they
- * drift out of alignment, and alignment is the whole contract: `h` adopts exactly the tree
- * `c` (or the server) built.
+ * three bodies at once — fabricate, adopt and hook up — because computing them separately
+ * is how they drift out of alignment, and alignment is the whole contract: `h` adopts
+ * exactly the tree `c` (or the server) built.
  *
  * - **fabricate** — `$nX = $dom.element(...)`, attributes, and the assembly of every
  *   non-root relationship. The roots are collected in `$r` instead, so `m` — the mount
@@ -10,6 +10,11 @@
  * - **adopt** — an ELEMENT cursor: `$dom.firstElementChild` to enter a level,
  *   `$dom.nextElementSibling` to advance. Never `querySelector`, never `cloneNode`, never
  *   an index.
+ * - **hook up** — the listeners of an element's `@event` / `bus:` bindings, which is the
+ *   one body the two paths SHARE: `$s()` runs whichever way the instance came alive. It
+ *   comes in through the same door as the other two because it is the same fact about the
+ *   same element, and `attrs.ts` goes on ignoring those bindings — the split it describes
+ *   between attribute and hookup does not change, it just stops having an empty side.
  *
  * **Why the cursor counts elements and not nodes.** A tree that goes through HTML and back
  * does not preserve text-node boundaries: `text("a")` beside `text("b")` serializes to `ab`
@@ -42,6 +47,8 @@ import { isControlNode, markerSite } from './marker.js';
 import { nestedSpaceMode, type SpaceMode } from './space.js';
 import { emitItems, type EmitItem, type TextRun } from './runs.js';
 import type { Prop } from './oxc-code.js';
+import { eventHandler, FUD_UNSUITABLE_HANDLER, type HookupContext } from './events.js';
+import { errorDiag } from '../types/index.js';
 
 const isControl = isControlNode;
 const asControl = (node: HtmlContent): ControlNode => node as unknown as ControlNode;
@@ -218,6 +225,8 @@ export interface MarkupOptions {
   readonly linker: AssetLinker;
   readonly sink: BlockSink;
   readonly ids: NodeIds;
+  /** The template's JS and where an unsuitable handler is reported (§4.5). */
+  readonly hookup: HookupContext;
   /** The whitespace mode in force where this walk starts (BUG-07 §4.4). */
   readonly space: SpaceMode;
   /**
@@ -239,6 +248,7 @@ export class ClientMarkupEmitter {
   readonly #linker: AssetLinker;
   readonly #sink: BlockSink;
   readonly #ids: NodeIds;
+  readonly #hookup: HookupContext;
   readonly #trackRoots: boolean;
   readonly #nodes: string[] = [];
   readonly #rootItems: RootItem[] = [];
@@ -259,6 +269,7 @@ export class ClientMarkupEmitter {
     this.#linker = options.linker;
     this.#sink = options.sink;
     this.#ids = options.ids;
+    this.#hookup = options.hookup;
     this.#trackRoots = options.trackRoots ?? false;
     this.#space = options.space;
   }
@@ -554,6 +565,7 @@ export class ClientMarkupEmitter {
         this.#sinkFor(),
       );
     }
+    this.#listeners(el, v);
     // Take the element the cursor is on, then advance it — before descending, so the
     // levels below are walked with this element already accounted for.
     this.#adopt.line(`${v} = ${level.cursor!}; ${level.cursor} = $dom.nextElementSibling(${level.cursor});`);
@@ -561,6 +573,37 @@ export class ClientMarkupEmitter {
     this.#children(el, v);
     this.#space = outer;
     this.#place(v, level.fab); // parent last: a node is filled before it joins the tree
+  }
+
+  /**
+   * The listeners of one element, written into `$s()` (§4.5).
+   *
+   * `$nX && …` because a node may not be there: the DOM is the authority on position, and a
+   * projection can leave a variable unassigned. Inside a block the body written to is the
+   * BLOCK's, so a `@click` in a row of a `@foreach` registers in the `s()` of that row, with
+   * its own nodes and its own `$d` — there is no special case to write here, and §6.17 falls
+   * out of the scope rather than out of a rule of this emitter.
+   */
+  #listeners(el: ElementNode, v: string): void {
+    for (const attr of el.attributes) {
+      const b = classifyAttribute(attr, this.#source).value;
+      if (b.type !== 'event') continue;
+      const handler = eventHandler(this.#source, b.value.expr, this.#hookup);
+      if (handler === undefined) {
+        // The emit does not throw (§5): the binding is dropped and the page still emits.
+        this.#hookup.diagnostics.push(
+          errorDiag(
+            FUD_UNSUITABLE_HANDLER,
+            'event binding value must be a reference, a lambda or a call: this expression cannot be subscribed',
+            b.value.expr,
+          ),
+        );
+        continue;
+      }
+      this.#hook.line(
+        `${v} && $d.push($dom.event(${v}, ${JSON.stringify(b.name)}, ${handler}));`,
+      );
+    }
   }
 
   /**

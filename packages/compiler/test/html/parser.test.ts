@@ -329,6 +329,58 @@ describe('bus: subscriber (§6.8.b, decision 28.a/b)', () => {
   });
 });
 
+describe('the call suffix of a handler value (decision 99)', () => {
+  /** The lone value part of the first attribute, as source text. */
+  const value = (source: string): { parts: number; text: string } => {
+    const parts = firstElement(source).attributes[0]!.value;
+    const only = parts[0]!;
+    return {
+      parts: parts.length,
+      text: only.type === 'attribute-text' ? only.value : text(source, only.expr),
+    };
+  };
+
+  it('takes `@del($event, item.id)` as ONE expression in an event binding', () => {
+    // Without this the value came apart into the path `del` and the literal text
+    // `($event, item.id)`, which is FUD0092 and a listener that never sees the data.
+    const source = '<a @click="@del($event, item.id)"></a>';
+    expect(value(source)).toEqual({ parts: 1, text: 'del($event, item.id)' });
+    expect(codes(source)).toEqual([]);
+  });
+
+  it('takes it in a bus subscription too, in both forms of the name', () => {
+    expect(value('<a bus:carrito="@onCarrito($event)"></a>').text).toBe('onCarrito($event)');
+    expect(value('<a bus:(EVENTOS.carrito)="@onCarrito($event)"></a>').text).toBe(
+      'onCarrito($event)',
+    );
+  });
+
+  it('is the balancer that closes it, so a `)` inside a string does not', () => {
+    expect(value(`<a @click="@del('a)b')"></a>`).text).toBe(`del('a)b')`);
+  });
+
+  it('requires the `(` to be adjacent, like `@raw(`', () => {
+    // An implicit expression never crosses whitespace: this is the path `del`, and the
+    // rest is text the value carries as its second part.
+    expect(value('<a @click="@del ($event)"></a>')).toEqual({ parts: 2, text: 'del' });
+  });
+
+  it('reports an unterminated call and degrades, never throws', () => {
+    // The balancer's own unterminated-group diagnostic, carried up by the trigger.
+    expect(codes('<a @click="@del($event"></a>')).toContain('FUD0003');
+  });
+
+  it('does NOT apply outside a handler value: elsewhere a `(` still stops the path', () => {
+    // In an ordinary attribute, and in content, `@total(x)` is the interpolation `total`
+    // followed by the literal `(x)` — which is what it means today (decision 29).
+    expect(value('<a title="@total(2)"></a>')).toEqual({ parts: 2, text: 'total' });
+    const content = parse('<a>@total(2)</a>').value;
+    const el = content.children.find((c) => c.type === 'element') as ElementNode;
+    const first = el.children[0]!;
+    expect(text('<a>@total(2)</a>', (first as { expr: Span }).expr)).toBe('total');
+  });
+});
+
 describe('unquoted values (§4.6, decision 8)', () => {
   it('reports FUD0056 and recovers with the run as verbatim text', () => {
     const source = '<a href=@url>x</a>';

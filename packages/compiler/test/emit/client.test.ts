@@ -627,6 +627,53 @@ describe('emitComponentClientModule — the factory namespace (BUG-12 §6.10)', 
   });
 });
 
+describe('emitComponentClientModule — event bindings hook up in $s() (§4.5)', () => {
+  it('registers the listener and collects its teardown, guarded by the node', () => {
+    const src = chunk('app-button');
+    expect(src).toContain('$n0 && $d.push($dom.event($n0, "click", onClick));');
+  });
+
+  it('a listener inside a @foreach belongs to the row, not to the component', () => {
+    const src = inlineChunk(
+      'x-rows',
+      '@code {\n  const { rows } = props<{ rows: { id: string }[] }>();\n' +
+        '  @client {\n    function del(ev, id) { ev.preventDefault(); }\n  }\n}\n' +
+        '<x-rows>\n  <template shadowrootmode="open"><ul>\n' +
+        '    @foreach (const row of rows) key (row.id) {\n' +
+        '      <li><button @click="@del($event, row.id)">x</button></li>\n' +
+        '    }\n' +
+        '  </ul></template>\n</x-rows>\n',
+    );
+    // The block function owns the hookup, so `$d` is the ROW's and `row` is its own
+    // parameter: N rows give N subscriptions, and `r()` of a row takes its own away.
+    expect(src).toMatch(
+      /\$n\d+ && \$d\.push\(\$dom\.event\(\$n\d+, "click", \(\$event\) => del\(\$event, row\.id\)\)\);/u,
+    );
+    // And the component's own `$s` has nothing to do with it.
+    expect(controller(src)).not.toContain('$dom.event');
+  });
+});
+
+describe('emitComponentClientModule — a value that cannot be subscribed (FUD0291)', () => {
+  it('reports it with its span, skips the binding, and emits the rest', () => {
+    const source =
+      '@code {\n  @client {\n    const label = 1;\n  }\n}\n' +
+      '<x-bad>\n  <template shadowrootmode="open"><button @click="@(1 + 2)">x</button></template>\n</x-bad>\n';
+    const io = memoryIo({
+      '/page.fud': '<link rel="component" href="./x-bad.fud">\n<html><head></head><body><x-bad></x-bad></body></html>\n',
+      '/x-bad.fud': source,
+    });
+    const g = resolveComponents('/page.fud', io);
+    const out = emitComponentClientModuleMapped(g, g.components.get('x-bad')!);
+    const bad = out.diagnostics.find((d) => d.code === 'FUD0291')!;
+    expect(bad).toBeDefined();
+    expect(source.slice(bad.span.start, bad.span.end)).toBe('1 + 2');
+    // The emit does not stop for it (§5): the button is still fabricated, unhooked.
+    expect(out.code).toContain('$dom.element("button")');
+    expect(out.code).not.toContain('$dom.event');
+  });
+});
+
 describe('emitComponentClientModule — $host, materialized only where it is read (§4.4)', () => {
   const withEmit = (tag: string): string =>
     inlineChunk(

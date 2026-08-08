@@ -74,6 +74,12 @@ export interface ClientCode {
 export interface TemplateJs {
   /** The AST at `span`, or an empty list when nothing was registered there. */
   ast(span: Span): FragmentAst;
+  /**
+   * A node offset back in the `.fud`. Oxc node offsets are BUFFER coordinates (§4.4), and
+   * an emitter that has to slice a sub-expression out of a fragment — the callee of an
+   * event binding, its argument list — needs the source positions to do it.
+   */
+  offset(bufferOffset: number): number;
 }
 
 export interface ExtractedCode {
@@ -166,6 +172,7 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
       const id = fragments.get(spanKey(at));
       return id === undefined ? [] : result.value.ast(id);
     },
+    offset: map,
   };
   const binding = emitBinding(clientStatements);
   const emitCalls: EmitCall[] = [];

@@ -13,7 +13,9 @@ customElements.define("app-button", class extends FudicElement {
     }
 
     const $m = () => { for (const $n of $r) $dom.append($shadow, $n); };
-    const $s = () => {};
+    const $s = () => {
+      $n0 && $d.push($dom.event($n0, "click", onClick));
+    };
     const $a = () => {
       let $v;
       $v = (disabled);

@@ -18,13 +18,13 @@
  */
 
 import type { ControlNode } from '../control/index.js';
-import { errorDiag, type Diagnostic, type Span } from '../types/index.js';
+import { errorDiag, type Span } from '../types/index.js';
 import type { OxcNode } from '../oxc/index.js';
 import { CodeWriter } from './writer.js';
 import type { AssetLinker } from './assets.js';
 import { branchesOf, collectTemplateJs, isLoop, type Branch, type LoopNode } from './constructs.js';
 import { freeReferences, patternBindings, type FragmentAst } from './scope.js';
-import type { TemplateJs } from './oxc-code.js';
+import type { HookupContext } from './events.js';
 import {
   ClientMarkupEmitter,
   type BlockSink,
@@ -41,10 +41,11 @@ export interface BlockContext {
   readonly scope: ClientScope;
   readonly linker: AssetLinker;
   readonly ids: NodeIds;
-  /** The Oxc AST of every JS fragment of the template, by span (§3.3). */
-  readonly template: TemplateJs;
-  /** What the emit has to say about a construct. Never thrown (§5). */
-  readonly diagnostics: Diagnostic[];
+  /**
+   * The template's JS by span (§3.3), where a diagnostic of the emit lands, and whether
+   * `$host` is read — the three facts every walk of this file shares, block or component.
+   */
+  readonly hookup: HookupContext;
   nextBlock(): number;
   nextConstruct(): number;
 }
@@ -68,8 +69,7 @@ export function blockContext(
   scope: ClientScope,
   linker: AssetLinker,
   ids: NodeIds,
-  template: TemplateJs,
-  diagnostics: Diagnostic[],
+  hookup: HookupContext,
 ): BlockContext {
   let blocks = 0;
   let constructs = 0;
@@ -78,8 +78,7 @@ export function blockContext(
     scope,
     linker,
     ids,
-    template,
-    diagnostics,
+    hookup,
     nextBlock: () => blocks++,
     nextConstruct: () => constructs++,
   };
@@ -144,12 +143,12 @@ export class BlockEmitter implements BlockSink {
   #headerBindings(node: ControlNode): readonly string[] {
     if (!isLoop(node)) return [];
     if (node.type === 'while') return [];
-    const header = this.#ctx.template.ast(node.header.inner);
+    const header = this.#ctx.hookup.template.ast(node.header.inner);
     const root = Array.isArray(header) ? undefined : (header as OxcNode);
     const declaration = root === undefined ? undefined : root[node.type === 'foreach' ? 'left' : 'init'];
     const names = patternBindings(declarationTarget(declaration));
     if (names.length === 0) {
-      this.#ctx.diagnostics.push(
+      this.#ctx.hookup.diagnostics.push(
         errorDiag(
           'FUD0543',
           'a loop header that declares no binding cannot have a key that identifies its rows',
@@ -176,7 +175,7 @@ export class BlockEmitter implements BlockSink {
     if (isLoop(node) && node.key !== undefined) spans.push(node.key.expr);
     collectTemplateJs(branch.body, (_kind, span) => spans.push(span));
 
-    const asts: FragmentAst[] = spans.map((span) => this.#ctx.template.ast(span));
+    const asts: FragmentAst[] = spans.map((span) => this.#ctx.hookup.template.ast(span));
     const owned = new Set(own);
     return freeReferences(asts).filter((name) => !owned.has(name) && this.#changeable.has(name));
   }
@@ -203,6 +202,7 @@ export class BlockEmitter implements BlockSink {
       linker: this.#ctx.linker,
       sink: inner,
       ids: this.#ctx.ids,
+      hookup: this.#ctx.hookup,
       space: at.space,
       trackRoots: true,
     });

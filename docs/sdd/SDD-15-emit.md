@@ -30,10 +30,11 @@
 > colgadas las N−1 filas anteriores. Los eventos delante escribirían un parche que SDD-30 tira.
 > **Depende de:** 00, 05–14, 16.
 > **Rango de diagnósticos:** `FUD0290`–`FUD0319`.
-> **Decisiones de gramática:** 22, 27, 28 (+28.a–d), 29, 67–85, **96–98** (event bindings).
+> **Decisiones de gramática:** 22, 27, 28 (+28.a–d), 29, 67–85, **96–99** (event bindings).
 > La 26 —y con ella la forma *factory* que §4.5 derivaba de ella— queda **revisada por la 96**
 > el 2026-08-06: un event binding es una invocación con `$event` y datos, y el handler se
-> declara plano.
+> declara plano. La **99** es lo que hace escribible a la 96: sin ella una expresión implícita
+> se corta en el `(` (decisiones 2/4/5) y `@click="@del($event, item.id)"` no parsea.
 >
 > **Refunde, sin pérdida, cuatro documentos previos** (ya eliminados; su contenido vive
 > aquí en su totalidad):
@@ -559,6 +560,13 @@ del emisor. `bus:` es prefijo de binding reservado, hermano de `class:`/`style:`
 **La regla, y es una sola:** lo que va a la derecha del `=` es una **invocación**, y se evalúa
 **en el disparo**. `$event` es la variable que el compilador inyecta con el evento nativo; los
 demás argumentos son datos del punto de uso. El handler se declara **plano**.
+
+> **Lo que la 96 necesitaba del parser (decisión 99, 2026-08-08).** Una expresión implícita es
+> *solo* un camino de propiedades y se corta en el `(` (decisiones 2/4/5), así que
+> `@click="@del($event, item.id)"` llegaba al emit partido en dos —`del` más el texto literal
+> `($event, item.id)`— con `FUD0092` y suscribiendo la referencia desnuda. La **99** admite un
+> sufijo de llamada balanceado **en el valor de un `@evento` / `bus:`, y solo ahí**: es la 29
+> aplicada, y en contenido `@total(x)` sigue significando lo que significa hoy.
 
 ```razor
 @click="@del($event, item.id)"

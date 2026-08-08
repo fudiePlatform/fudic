@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/dom` (contrato + `browserDom`) · `@fudic/ssr` (`SsrDom`) ·
 > `@fudic/compiler` (emit)
 > **Rama:** `sdd-15-eventos-y-bus`
-> **Progreso:** 8 / 22
+> **Progreso:** 12 / 22
 > **Va DESPUÉS de:** [SDD-30 — Renders de bloque](./SDD-30-renders-de-bloque.md)
 > ([tareas](./SDD-30-Task.md)). No es una preferencia de orden: ver *Por qué va detrás* abajo.
 
@@ -124,6 +124,17 @@ abrir la tanda de mapas de página**, y decidir en cuál vive la resolución est
 (decisión 28.c: literal, `const` local, `as const` importado — este último necesita el grafo de
 módulos, que el `SemanticModel` de un fichero no tiene).
 
+**3. Apareció un tercero, y se resolvió aquí (2026-08-08): la sintaxis de la 96 no parseaba.**
+Una expresión implícita es *solo* un camino de propiedades y se corta en el `(` (decisiones
+2/4/5), así que `@click="@del($event, item.id)"` llegaba partido en dos —`del` más el texto
+literal `($event, item.id)`—, con `FUD0092`, y lo que se habría suscrito es la referencia
+desnuda. Sin esto, la tabla de §4.5, el fixture de la tarea 17 y los criterios §6.15–§6.20 no
+tenían base. Decisión de Pedro: se arregla en esta tanda, no se emparcha con `@(del(...))`
+—que es ceremonia alrededor del caso normal—. Sale la **decisión de gramática 99**: la
+expresión implícita admite un sufijo de llamada balanceado **en el valor de un `@evento` /
+`bus:`, y solo ahí**. En contenido `@total(x)` sigue significando lo de siempre. Vive en la
+fase 3, con el resto del enganche.
+
 ---
 
 ## Fase 1 — El host sale del adapter (4)
@@ -180,7 +191,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
 
 ## Fase 3 — Los event bindings en `s()` (§4.5) (4)
 
-- [ ] **9. El valor del binding entra en el batch de Oxc.**
+- [x] **9. El valor del binding entra en el batch de Oxc.**
       Ampliar `extractCode` (`packages/compiler/src/emit/oxc-code.ts`) para registrar también,
       como fragmentos `expression`, el valor de cada `EventBinding` y `BusBinding` del template
       —un recorrido del árbol que los recoja antes de `batch.parse()`—. **Regla de oro: Oxc se
@@ -188,7 +199,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       al que ya existe. Lo que la extracción devuelve es un mapa del `Span` del valor a **el
       tipo del nodo raíz** (`node.type`), que es lo único que la tabla de §4.5 necesita: el
       compilador no interpreta la semántica del fragmento, solo mira su forma.
-- [ ] **10. La tabla de formas.**
+- [x] **10. La tabla de formas.**
       Nuevo `packages/compiler/src/emit/events.ts`: dado el tipo de nodo raíz y el texto del
       valor, devuelve la expresión que se suscribe.
       | Nodo raíz | Emitido | Frames |
@@ -205,7 +216,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       compilador no podía validar («si escribes `@f(x)`, `f` **debe** devolver el listener») y su
       error más probable —escribir `@del(item.id)` esperando que se llame en el click, que era
       justo lo que no hacía—. Ahora hace lo que parece.
-- [ ] **11. El tercer cuerpo del emisor de markup de cliente.**
+- [x] **11. El tercer cuerpo del emisor de markup de cliente.**
       `ClientMarkupEmitter` (`markup-client.ts`) escribe hoy dos cuerpos en una sola pasada
       —fabricar y adoptar— por la razón que su cabecera explica: calcularlos por separado los
       desalinea. El enganche es el tercero, y entra por la misma puerta. Por cada elemento, tras
@@ -219,7 +230,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       escribir: el emisor de bloques ya lleva el enganche donde toca, y el criterio §6.17
       —cada handler recibe el valor de **su** fila, disparando en orden no secuencial— sale del
       scope, no de una regla de este emisor.
-- [ ] **12. `FUD0291` y el canal de diagnósticos del emit.**
+- [x] **12. `FUD0291` y el canal de diagnósticos del emit.**
       `EmitOutput` (`module.ts`) tiene hoy `missingAssets`, un canal de hechos que el plugin de
       Vite eleva a `FUD0363` sin tumbar el build. Añadir junto a él `diagnostics: readonly
       Diagnostic[]` —el `Diagnostic` con span de `types/diagnostic.ts`, `errorDiag`— y emitir

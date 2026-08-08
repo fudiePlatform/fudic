@@ -98,6 +98,20 @@ interface OpenElement {
 /** decision 51: the mode is fixed by whether the file opens with a doctype. */
 const DOCTYPE_START = /^\s*<!DOCTYPE/iu;
 
+/**
+ * Whether this attribute's value is a HANDLER — an event binding (`@click`) or a bus
+ * subscription (`bus:carrito`, `bus:(EVENTOS.carrito)`). It is the one position where an
+ * implicit expression may end in a call (decision 99).
+ *
+ * The two prefixes are spelled out here rather than imported from SDD-07: that module
+ * classifies bindings and already depends on this one, and the dependency only runs one
+ * way. The tokenizer holds the same knowledge for the same reason (the `bus:(` rule).
+ */
+function isHandlerName(name: string | RazorExpression): boolean {
+  // An expression name is only legal after `bus:`, and the lexer produces one nowhere else.
+  return typeof name !== 'string' || name.startsWith('@') || name.startsWith('bus:');
+}
+
 class HtmlParser {
   readonly #source: string;
   readonly #lexer: Lexer;
@@ -441,7 +455,7 @@ class HtmlParser {
       const quote = this.#lexer.peek();
       end =
         quote.type === 'attr-quote-open'
-          ? this.#parseQuotedValue(value)
+          ? this.#parseQuotedValue(value, isHandlerName(name))
           : this.#parseUnquotedValue(value);
     }
 
@@ -453,7 +467,7 @@ class HtmlParser {
     while (this.#lexer.peek().type === 'whitespace') this.#next();
   }
 
-  #parseQuotedValue(parts: AttributeValuePart[]): number {
+  #parseQuotedValue(parts: AttributeValuePart[], call = false): number {
     this.#next(); // the opening quote
     for (;;) {
       const token = this.#lexer.peek();
@@ -465,7 +479,7 @@ class HtmlParser {
       if (token.type === 'eof') return this.#lexer.offset;
 
       if (token.type === 'at-trigger') {
-        const part = this.#attributeAtom();
+        const part = this.#attributeAtom(call);
         if (part !== null) parts.push(part);
         continue;
       }
@@ -494,10 +508,16 @@ class HtmlParser {
     }
   }
 
-  /** An `@` atom in value position. Only expressions are value parts. */
-  #attributeAtom(): AttributeValuePart | null {
+  /**
+   * An `@` atom in value position. Only expressions are value parts.
+   *
+   * `call` carries decision 99 down: in the value of an `@event` / `bus:` binding an
+   * implicit expression may end in a balanced call, so `@del($event, item.id)` is ONE
+   * atom instead of the path `del` plus literal text.
+   */
+  #attributeAtom(call: boolean): AttributeValuePart | null {
     const trigger = this.#next();
-    const resolved = resolveTrigger(this.#source, trigger.span.start);
+    const resolved = resolveTrigger(this.#source, trigger.span.start, { call });
     if (resolved.diagnostics.length > 0) this.#diagnostics.push(...resolved.diagnostics);
     const resolution = resolved.value;
 

@@ -23,6 +23,7 @@ import { ClientMarkupEmitter, nodeIds } from './markup-client.js';
 import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js';
 import { AssetLinker } from './assets.js';
 import { extractCode, type ExtractedCode, type Prop } from './oxc-code.js';
+import { hookupContext } from './events.js';
 import { componentStyleNode, type EmitOptions, type EmitOutput } from './module.js';
 import type { Diagnostic } from '../types/index.js';
 
@@ -84,9 +85,12 @@ function buildComponentClientModule(
   // What a block may be handed: the props (an update reassigns every one of them) and the
   // `@client` bindings the author can move. Everything else reaches it through the closure.
   const changeable = new Set([...props.map((p) => p.name), ...mutable]);
-  const blockDiagnostics: Diagnostic[] = [];
+  // One channel for everything the emit has to SAY about this file, and one for what every
+  // walk of it shares: a block three levels down reports through the same two.
+  const emitDiagnostics: Diagnostic[] = [];
+  const hookup = hookupContext(template, emitDiagnostics);
   const ids = nodeIds();
-  const ctx = blockContext(comp.source, scope, linker, ids, template, blockDiagnostics);
+  const ctx = blockContext(comp.source, scope, linker, ids, hookup);
   const em = new ClientMarkupEmitter({
     source: comp.source,
     bodies,
@@ -94,6 +98,7 @@ function buildComponentClientModule(
     linker,
     sink: new BlockEmitter(ctx, changeable),
     ids,
+    hookup,
     space,
   });
   em.emitRoots(comp.doc.template!.children);
@@ -176,10 +181,10 @@ function buildComponentClientModule(
   w.line('}');
   w.dedent();
   w.line('});');
-  // The blocks' own diagnostics travel with `@code`'s: a loop whose header declares nothing
-  // (FUD0543) is as much a fact about this file as a `@code` that does not parse, and the
-  // emit does not stop for either (§5).
-  return { writer: w, linker, diagnostics: [...diagnostics, ...blockDiagnostics] };
+  // The emit's own diagnostics travel with `@code`'s: a loop whose header declares nothing
+  // (FUD0543) or a binding that cannot be subscribed (FUD0291) is as much a fact about this
+  // file as a `@code` that does not parse, and the emit does not stop for any of them (§5).
+  return { writer: w, linker, diagnostics: [...diagnostics, ...emitDiagnostics] };
 }
 
 /**
