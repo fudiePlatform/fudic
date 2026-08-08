@@ -105,14 +105,15 @@ describe('classifyAttribute — plain attributes (decision 20)', () => {
   });
 });
 
-describe('classifyAttribute — property bindings (decisions 23–25)', () => {
+describe('classifyAttribute — property bindings (decisions 24, 25; 23 retired by BUG-16)', () => {
   it('strips the leading `.` and keeps the single expression', () => {
     const { binding, diagnostics, source } = classifyOne('<x .value="@model.name"></x>');
     expect(diagnostics).toEqual([]);
     expect(binding.type).toBe('property');
     if (binding.type !== 'property') return;
     expect(binding.name).toBe('value');
-    expect(text(source, binding.value)).toBe('@model.name');
+    expect(binding.value).toHaveLength(1);
+    expect(text(source, binding.value[0]!)).toBe('@model.name');
   });
 
   it('preserves the case of the property name (decision 25)', () => {
@@ -122,30 +123,51 @@ describe('classifyAttribute — property bindings (decisions 23–25)', () => {
     expect(binding.name).toBe('innerHTML');
   });
 
-  it('FUD0090: a literal value is not a property value', () => {
-    const { binding, diagnostics } = classifyOne('<x .value="hola"></x>');
-    expect(codes(diagnostics)).toEqual(['FUD0090']);
-    // Degraded to the plain attribute, verbatim name included.
-    expect(binding.type).toBe('attr');
-    if (binding.type !== 'attr') return;
-    expect(binding.name).toBe('.value');
+  // BUG-16: the dot is the ONLY way to write a prop, so it accepts what a prop can be.
+  it('accepts a constant value, with no diagnostic (FUD0090 retired)', () => {
+    const { binding, diagnostics, source } = classifyOne('<x .value="hola"></x>');
+    expect(diagnostics).toEqual([]);
+    expect(binding.type).toBe('property');
+    if (binding.type !== 'property') return;
+    expect(binding.name).toBe('value');
+    expect(text(source, binding.value[0]!)).toBe('hola');
   });
 
-  it('FUD0090: an empty value is not a property value', () => {
-    const { diagnostics } = classifyOne('<x .value></x>');
-    expect(codes(diagnostics)).toEqual(['FUD0090']);
+  it('accepts a bare property: no value at all is `true` (decision 44)', () => {
+    const { binding, diagnostics } = classifyOne('<x .disabled></x>');
+    expect(diagnostics).toEqual([]);
+    expect(binding.type).toBe('property');
+    if (binding.type !== 'property') return;
+    expect(binding.value).toEqual([]);
   });
 
   it('FUD0091: concatenating text and an expression (decision 24)', () => {
     const { binding, diagnostics } = classifyOne('<x .value="/x/@b"></x>');
     expect(codes(diagnostics)).toEqual(['FUD0091']);
-    // Best fit: the single expression is still attached to a PropertyBinding.
+    // The binding survives the error: a prop hidden from the editor over a bad value
+    // helps nobody.
     expect(binding.type).toBe('property');
   });
 
-  it('FUD0091: two expressions degrade to the plain attribute', () => {
+  it('FUD0091: two expressions are a concatenation too, and stay a property', () => {
     const { binding, diagnostics } = classifyOne('<x .value="@a @b"></x>');
     expect(codes(diagnostics)).toEqual(['FUD0091']);
+    expect(binding.type).toBe('property');
+  });
+
+  // The two shapes only the OTHER bindings can still reach, now that a property takes its
+  // value as it comes: no value at all, and more than one expression.
+  it('a binding with no value at all is blamed on the whole attribute', () => {
+    const { diagnostics } = classifyOne('<x @click></x>');
+    expect(codes(diagnostics)).toEqual(['FUD0092']);
+    // No value text to point at, so the span is the attribute: an empty span contains no
+    // offset and would make the diagnostic unclickable.
+    expect(diagnostics[0]!.span).toEqual({ start: 3, end: 9 });
+  });
+
+  it('two expressions in a handler are a concatenation, and none of them is the handler', () => {
+    const { binding, diagnostics } = classifyOne('<x @click="@a @b"></x>');
+    expect(codes(diagnostics)).toEqual(['FUD0092']);
     expect(binding.type).toBe('attr');
   });
 
@@ -349,8 +371,8 @@ describe('classifyAttribute — LSP invariants', () => {
 
   it('every diagnostic carries a non-empty, in-range span', () => {
     for (const markup of [
-      '<x .value="hola"></x>',
-      '<x .value></x>',
+      '<x .value="/x/@b"></x>',
+      '<x .="@a"></x>',
       '<x @click="x"></x>',
       '<x class:="@a"></x>',
       '<x bus:="nope"></x>',

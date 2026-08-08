@@ -76,7 +76,7 @@ describe('§6.7 — definition', () => {
   it('over a component tag, opens the .fud that defines it', async () => {
     // The opening tag and the closing one: the same knowledge, and the editor asks about both.
     for (const [needle, delta] of [
-      ['<app-badge tone', 2],
+      ['<app-badge .tone', 2],
       ['</app-badge>', 4],
     ] as const) {
       const [location, ...rest] = await definitionAt(SLUG, needle, delta);
@@ -124,7 +124,7 @@ describe('§6.7 — definition', () => {
 
     // And the same question asked from the file that USES the component: the attribute is a
     // property of the other file's contract, and F12 crosses the file boundary.
-    const [other] = await definitionAt(SLUG, '<site-nav current=', 11);
+    const [other] = await definitionAt(SLUG, '<site-nav .current=', 11);
 
     expect(fileOf(other!)).toBe('components/site-nav.fud');
     expect(textOf('components/site-nav.fud', other!.range)).toBe('current?: string');
@@ -197,7 +197,7 @@ describe('§6.8 — rename', () => {
     const uri = fixtureUri(SLUG);
     const edit = (await harness.client.sendRequest(RenameRequest.type, {
       textDocument: { uri },
-      position: positionIn(SLUG, '<app-badge tone', 2),
+      position: positionIn(SLUG, '<app-badge .tone', 2),
       newName: 'app-other',
     })) as WorkspaceEdit;
 

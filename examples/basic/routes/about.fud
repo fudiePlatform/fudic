@@ -6,7 +6,7 @@
 </head>
 
 @section nav {
-  <site-nav current="about"></site-nav>
+  <site-nav .current="about"></site-nav>
 }
 
 <h1>Acerca de este ejemplo</h1>

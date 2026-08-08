@@ -48,13 +48,14 @@ Luego, dentro del worktree: `pnpm install`. Un worktree nace **sin** `node_modul
 
 Por cada fase del Task, en su orden:
 
-1. Implementa **todas** sus tareas. Ninguna depende de fases posteriores; si parece que
+1. Al inicio de cada fase muestra las fases como **TODOS**.
+2. Implementa **todas** sus tareas. Ninguna depende de fases posteriores; si parece que
    sí, es un fallo del Task y hay que decirlo.
-2. Verifica: `typecheck` + `test` + `coverage` de los paquetes tocados (§4).
-3. Marca `[x]` cada tarea de la fase y actualiza la línea `Progreso: N / M` del Task.
+3. Verifica: `typecheck` + `test` + `coverage` de los paquetes tocados (§4).
+4. Marca `[x]` cada tarea de la fase y actualiza la línea `Progreso: N / M` del Task.
    Sin esto no hay forma de saber por dónde vamos.
-4. **Commit** con todo lo de la fase, spec y Task actualizados incluidos (§5).
-5. Escribe exactamente `Fase N — completada.` y pasa a la siguiente.
+5. **Commit** con todo lo de la fase, spec y Task actualizados incluidos (§5).
+6. Escribe exactamente `Fase N — completada.` y pasa a la siguiente.
 
 **Sin resúmenes al terminar una fase.** Ni recapitulación, ni lista de ficheros, ni
 explicación de lo hecho: el commit ya lo cuenta.

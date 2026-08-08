@@ -8,7 +8,7 @@
 </head>
 
 @section nav {
-  <site-nav current="home"></site-nav>
+  <site-nav .current="home"></site-nav>
 }
 
 <h1>fudic</h1>
@@ -19,31 +19,31 @@
 </p>
 
 <section class="grid">
-  <app-card title="Blog (render en el SW)" href="/blog" variant="highlight">
-    <app-badge slot="meta" tone="info">sw</app-badge>
+  <app-card .title="Blog (render en el SW)" .href="/blog" .variant="highlight">
+    <app-badge slot="meta" .tone="info">sw</app-badge>
     El listado tiene <code>@@server load</code>, así que no se prerenderiza: lo
     renderiza el Service Worker con su chunk enlazado, en 3-8 ms.
   </app-card>
 
-  <app-card title="Acerca de (estático)" href="/about">
-    <app-badge slot="meta" tone="success">prerender</app-badge>
+  <app-card .title="Acerca de (estático)" .href="/about">
+    <app-badge slot="meta" .tone="success">prerender</app-badge>
     Sin params y sin <code>load</code>: el build escribe su <code>about/index.html</code>.
   </app-card>
 
-  <app-card title="Un artículo (enumerado)" href="/blog/declarative-shadow-dom">
-    <app-badge slot="meta" tone="success">paths()</app-badge>
+  <app-card .title="Un artículo (enumerado)" .href="/blog/declarative-shadow-dom">
+    <app-badge slot="meta" .tone="success">paths()</app-badge>
     <code>/blog/:slug</code> enumera su espacio de params con <code>paths()</code>,
     así que cada artículo tiene su HTML prerenderizado.
   </app-card>
 
-  <app-card title="Pasar la signal a un hijo" href="/signal-prop">
-    <app-badge slot="meta" tone="neutral">wip</app-badge>
+  <app-card .title="Pasar la signal a un hijo" .href="/signal-prop">
+    <app-badge slot="meta" .tone="neutral">wip</app-badge>
     <code>@('.value="@count"')</code>: cruza el objeto signal y el hijo se lee solo. Todavía
     no funciona — falta el enganche de eventos del cliente.
   </app-card>
 
-  <app-card title="Pasar el valor a un hijo" href="/value-prop">
-    <app-badge slot="meta" tone="neutral">wip</app-badge>
+  <app-card .title="Pasar el valor a un hijo" .href="/value-prop">
+    <app-badge slot="meta" .tone="neutral">wip</app-badge>
     <code>@('.value="@(count.peek())"')</code>: cruza un número y el hijo no puede leer nada más.
     Necesita que el padre se lo escriba — es BUG-12.
   </app-card>

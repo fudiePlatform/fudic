@@ -99,7 +99,7 @@ describe('§6.2 — the nine mutants of SDD-23, as LSP diagnostics on the .fud',
 
   it('D — a tag with no <link>', async () => {
     const source = slug
-      .replace('<app-badge tone', '<app-missing tone')
+      .replace('<app-badge .tone', '<app-missing .tone')
       .replace('</app-badge>', '</app-missing>');
     const diagnostics = await diagnosticsOf(slugUri, source);
 
@@ -126,7 +126,7 @@ describe('§6.2 — the nine mutants of SDD-23, as LSP diagnostics on the .fud',
   });
 
   it('F — a misspelt attribute, with its suggestion', async () => {
-    const source = mutate(slug, '<site-nav current=', '<site-nav currnt=');
+    const source = mutate(slug, '<site-nav .current=', '<site-nav .currnt=');
     const [diagnostic, ...rest] = await diagnosticsOf(slugUri, source);
 
     expect(rest).toEqual([]);
@@ -170,6 +170,50 @@ describe('§6.2 — the nine mutants of SDD-23, as LSP diagnostics on the .fud',
         (diagnostic) => diagnostic.code === 2339 && textAt(source, diagnostic) === 'nope',
       ),
     ).toBe(true);
+  });
+});
+
+describe('BUG-16 §6.14 — the two literals of a component tag, end to end', () => {
+  let slugUri: string;
+  let slug: string;
+
+  beforeAll(async () => {
+    const opened = await harness.open(SLUG);
+    slugUri = opened.uri;
+    slug = opened.text;
+    await harness.open(BADGE);
+  });
+
+  it('takes the global vocabulary of HTML on a component (BUG-11 §6.9)', async () => {
+    const source = mutate(
+      slug,
+      '<app-badge .tone',
+      '<app-badge id="b" class="x" role="note" data-k="1" aria-label="badge" .tone',
+    );
+
+    // They are not props and they never were: they go to the second literal, checked against
+    // `$GlobalAttrs`, and nothing there is wrong.
+    expect(await diagnosticsOf(slugUri, source)).toEqual([]);
+  });
+
+  it('a prop written as a plain attribute is an error on its name (§4.2)', async () => {
+    const source = mutate(slug, '<app-badge .tone', '<app-badge tone="info" .tone');
+    const [diagnostic, ...rest] = await diagnosticsOf(slugUri, source);
+
+    // TypeScript's, and better than one of ours: it lands on the name the user wrote.
+    expect(rest).toEqual([]);
+    expect(diagnostic?.code).toBe(2353);
+    expect(textAt(source, diagnostic!)).toBe('tone');
+  });
+
+  it('a misspelt global keeps the suggestion (§6.6)', async () => {
+    const source = mutate(slug, '<app-badge .tone', '<app-badge titel="b" .tone');
+    const [diagnostic, ...rest] = await diagnosticsOf(slugUri, source);
+
+    expect(rest).toEqual([]);
+    expect(diagnostic?.code).toBe(2561);
+    expect(textAt(source, diagnostic!)).toBe('titel');
+    expect(String(diagnostic?.message)).toContain('title');
   });
 });
 

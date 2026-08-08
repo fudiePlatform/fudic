@@ -32,7 +32,9 @@ import {
 // Diagnostic codes — SDD-07 owns FUD0090..FUD0109 (§6)
 // ---------------------------------------------------------------------------
 
-const FUD_PROPERTY_NO_EXPRESSION = 'FUD0090';
+// FUD0090 (property value must be a lone `@`) is RETIRED by BUG-16: the dot is the only way
+// to write a prop, so a constant has to be one of the things it accepts. The code stays
+// reserved in SDD-07's range and is emitted by nobody.
 const FUD_PROPERTY_CONCATENATION = 'FUD0091';
 const FUD_EVENT_NO_HANDLER = 'FUD0092';
 const FUD_CLASS_STYLE_NO_EXPRESSION = 'FUD0093';
@@ -190,6 +192,14 @@ function classifyEvent(attr: Attribute, eventName: string): ParseResult<Binding>
   );
 }
 
+/**
+ * `.prop="…"` — the only way to pass a property (BUG-16 §3.1).
+ *
+ * Being the only way is what widens the value: a constant, a lone `@` and a bare name are
+ * all legitimate things to hand a component, so the value is taken as it comes, exactly
+ * like an attribute's. `FUD0090` — decision 23's "the value must be a lone `@`" — retires
+ * here, because it forbade the very form the plain attribute used to cover.
+ */
 function classifyProperty(attr: Attribute, propertyName: string): ParseResult<Binding> {
   const diagnostics: Diagnostic[] = [];
 
@@ -203,30 +213,21 @@ function classifyProperty(attr: Attribute, propertyName: string): ParseResult<Bi
     );
   }
 
-  const handler = requireSingleExpression(attr);
-  if (handler.reason === 'concatenation') {
-    // Decision 24: a property carries a VALUE, not a string built by concatenation.
+  if (attr.value.length > 1) {
+    // Decision 24: a property carries a VALUE, not a string built by concatenation. The
+    // binding survives it — degrading to a plain attribute named `.prop` would hide the
+    // prop from the editor over a mistake in its value.
     diagnostics.push(
       errorDiag(
         FUD_PROPERTY_CONCATENATION,
-        'property binding value must not concatenate parts: use a single `@` expression',
-        valueSpan(attr),
-      ),
-    );
-  } else if (handler.reason === 'missing') {
-    diagnostics.push(
-      errorDiag(
-        FUD_PROPERTY_NO_EXPRESSION,
-        'property binding value must be a single `@` expression',
+        'property binding value must not concatenate parts: use one value or one `@` expression',
         valueSpan(attr),
       ),
     );
   }
-  if (handler.expr === null) {
-    return withDiagnostics(plainAttribute(attr, PROPERTY_PREFIX + propertyName), diagnostics);
-  }
+
   return withDiagnostics(
-    { type: 'property', span: attr.span, name: propertyName, value: handler.expr },
+    { type: 'property', span: attr.span, name: propertyName, value: attr.value },
     diagnostics,
   );
 }

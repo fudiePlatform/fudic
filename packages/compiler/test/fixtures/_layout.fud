@@ -8,7 +8,7 @@
     @RenderHead()
   </head>
   <body>
-    <header class="site"><app-badge tone="info">fudic</app-badge></header>
+    <header class="site"><app-badge .tone="info">fudic</app-badge></header>
     <main>@RenderBody()</main>
     <footer>fudic 2026</footer>
     @RenderSection(scripts)

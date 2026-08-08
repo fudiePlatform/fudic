@@ -9,10 +9,16 @@
  * against a tree it does not recognise. Two copies of this logic would drift; one cannot.
  */
 
-import { decodeEntities, type ElementNode, type Attribute, type AttributeText } from '../html/index.js';
+import {
+  decodeEntities,
+  type ElementNode,
+  type Attribute,
+  type AttributeText,
+  type AttributeValuePart,
+} from '../html/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { Span } from '../types/index.js';
-import { classifyAttribute } from '../binding/index.js';
+import { classifyAttribute, type Binding } from '../binding/index.js';
 import type { CodeWriter } from './writer.js';
 import type { AssetLinker } from './assets.js';
 
@@ -55,12 +61,89 @@ export function attrExpr(source: string, attr: Attribute): string {
   return '`' + template + '`';
 }
 
-/** The props object literal a component host is rendered/created with. */
-export function componentPropsExpr(source: string, el: ElementNode): string {
+/**
+ * What the emitters need to know ABOUT the element they are writing attributes for, beyond
+ * the node itself.
+ *
+ * Two facts, and both are about the host rather than the attribute, which is why they
+ * travel together instead of as two more positional arguments.
+ */
+export interface HostContext {
+  /** A component tag (decision 41): what decides whether a `.prop` is an attribute at all. */
+  readonly isComponent: boolean;
+  /** The names this component declares with `signal(...)`. See `crossingExpr`. */
+  readonly signals: ReadonlySet<string>;
+}
+
+/** A host with nothing declared around it — a page body, a template with no `@client`. */
+export const NO_SIGNALS: HostContext = { isComponent: false, signals: new Set() };
+
+/**
+ * The expression a value crosses the shadow boundary with.
+ *
+ * Decision 84: a VALUE crosses, never the signal object. So a value whose text is exactly
+ * the name of a `signal(...)` this component declares crosses as `name.peek()` — otherwise
+ * the server would paint `[object Object]` and the client would hand the child a live
+ * object it cannot serialize (SDD-17). Anything else crosses as written.
+ *
+ * The rule lives here, next to the two branches that apply it, because the client's payload
+ * builder needs the same answer and a second copy of it would drift.
+ */
+export function crossingExpr(
+  source: string,
+  attr: Attribute,
+  value: readonly AttributeValuePart[],
+  signals: ReadonlySet<string>,
+): string {
+  const only = value.length === 1 ? value[0] : undefined;
+  if (only?.type === 'razor-expression') {
+    const text = source.slice(only.expr.start, only.expr.end);
+    if (signals.has(text)) return `${text}.peek()`;
+  }
+  return attrExpr(source, attr);
+}
+
+/**
+ * What a binding writes as an ATTRIBUTE of its element — its name and value parts — or
+ * `null` when it writes none. The one place the rule lives, because the two branches must
+ * agree about it byte for byte.
+ *
+ * In fudic a property is written with a dot and an attribute is written plain, and BUG-16
+ * makes that the whole of it: on a COMPONENT both reach the output, because level 1 is HTML
+ * with no JS and the host's attributes are the only place a value can live there. On a
+ * NATIVE tag a `.prop` is what it always was — a DOM property, client hookup, absent from
+ * SSR — so it writes nothing here.
+ */
+function attributeOf(
+  b: Binding,
+  isComponent: boolean,
+): { readonly name: string; readonly value: readonly AttributeValuePart[] } | null {
+  if (b.type === 'attr') return b;
+  if (b.type === 'property' && isComponent) return b;
+  return null;
+}
+
+/**
+ * The props object literal a component host is rendered/created with: its `.prop` bindings,
+ * and only those.
+ *
+ * A plain attribute is NOT in here (BUG-16 §4.2). It is HTML's own vocabulary — `id`,
+ * `class`, `slot`, `data-*` — and handing it to the child's `render` made a component
+ * declare props for things that were never its own.
+ */
+export function componentPropsExpr(
+  source: string,
+  el: ElementNode,
+  signals: ReadonlySet<string>,
+): string {
   const entries: string[] = [];
   for (const attr of el.attributes) {
     const b = classifyAttribute(attr, source).value;
-    if (b.type === 'attr') entries.push(`${JSON.stringify(b.name)}: ${attrExpr(source, attr)}`);
+    if (b.type !== 'property') continue;
+    // A bare `.disabled` is `true` (decision 44), which is what the projection checks it
+    // as; `attrExpr` would give the `""` an attribute wants and a prop does not.
+    const expr = b.value.length === 0 ? 'true' : crossingExpr(source, attr, b.value, signals);
+    entries.push(`${JSON.stringify(b.name)}: ${expr}`);
   }
   return `{ ${entries.join(', ')} }`;
 }
@@ -74,11 +157,12 @@ export function componentPropsExpr(source: string, el: ElementNode): string {
  * its condition replicated there. A purely literal attribute is markup, and markup is
  * fabricated once.
  */
-export function hasValueAttrs(source: string, el: ElementNode): boolean {
+export function hasValueAttrs(source: string, el: ElementNode, host: HostContext): boolean {
   return el.attributes.some((attr) => {
     const b = classifyAttribute(attr, source).value;
     if (b.type === 'class') return true;
-    return b.type === 'attr' && !b.value.every((p) => p.type === 'attribute-text');
+    const written = attributeOf(b, host.isComponent);
+    return written !== null && !written.value.every((p) => p.type === 'attribute-text');
   });
 }
 
@@ -124,8 +208,9 @@ export function inlineSink(w: CodeWriter): ValueSink {
  * the whole reason this module is shared: the two branches must agree byte for byte on
  * what an attribute becomes, and one of them now writes it twice.
  *
- * Event / property / bus / ref bindings are not written: they are hookup, which belongs in
- * the controller's `$s()`, and they are absent from SSR entirely.
+ * `host.isComponent` decides one thing only, and `attributeOf` owns it: whether a `.prop` is
+ * an attribute of this element. Event / bus / ref bindings are never written here — they are
+ * hookup, which belongs in the controller's `$s()`, and they are absent from SSR entirely.
  */
 export function writeElementAttrs(
   source: string,
@@ -133,6 +218,7 @@ export function writeElementAttrs(
   v: string,
   fixed: CodeWriter,
   linker: AssetLinker,
+  host: HostContext,
   values: ValueSink = inlineSink(fixed),
 ): void {
   const slice = (sp: Span): string => source.slice(sp.start, sp.end);
@@ -142,34 +228,38 @@ export function writeElementAttrs(
     const b = classifyAttribute(attr, source).value;
     if (b.type === 'class') {
       classExprs.push(`(${slice(b.value.expr)}) && ${JSON.stringify(b.className)}`);
-    } else if (b.type === 'attr') {
-      const isStatic = b.value.every((p) => p.type === 'attribute-text');
-      if (isStatic) {
-        const literal = b.value.map((p) => attrText(p as AttributeText)).join('');
-        if (b.name === 'class') baseClass = literal;
-        else if (linker.enabled && isAssetAttr(el.name, b.name)) {
-          // A static, relative asset URL: reference the import Vite resolves (SDD-19 §4.5);
-          // a missing/absolute one stays a literal (`maybeRef` → null, missing → FUD0363).
-          const binding = linker.maybeRef(literal);
-          const value = binding ?? JSON.stringify(literal);
-          fixed.line(`$dom.setAttr(${v}, ${JSON.stringify(b.name)}, ${value});`);
-        } else {
-          fixed.line(`$dom.setAttr(${v}, ${JSON.stringify(b.name)}, ${JSON.stringify(literal)});`);
-        }
+      continue;
+    }
+    const written = attributeOf(b, host.isComponent);
+    if (written === null) continue; // event / bus / ref, and `.prop` on a native tag
+    const isStatic = written.value.every((p) => p.type === 'attribute-text');
+    if (isStatic) {
+      const literal = written.value.map((p) => attrText(p as AttributeText)).join('');
+      if (written.name === 'class') baseClass = literal;
+      else if (linker.enabled && isAssetAttr(el.name, written.name)) {
+        // A static, relative asset URL: reference the import Vite resolves (SDD-19 §4.5);
+        // a missing/absolute one stays a literal (`maybeRef` → null, missing → FUD0363).
+        const binding = linker.maybeRef(literal);
+        const value = binding ?? JSON.stringify(literal);
+        fixed.line(`$dom.setAttr(${v}, ${JSON.stringify(written.name)}, ${value});`);
       } else {
-        // interpolated: omit when falsy (boolean attributes, decision 21), else set. A sink
-        // that repeats also has to CLEAR it: a value that turned falsy on an update would
-        // otherwise leave the attribute the previous value put there.
-        const name = JSON.stringify(b.name);
-        const clear = values.repeats ? ` else $dom.removeAttr(${v}, ${name});` : '';
-        values.bound(
-          attrExpr(source, attr),
-          ($v) =>
-            `if (${$v} === true) $dom.setAttr(${v}, ${name}, ''); ` +
-            `else if (${$v} !== false && ${$v} != null) $dom.setAttr(${v}, ${name}, String(${$v}));${clear}`,
+        fixed.line(
+          `$dom.setAttr(${v}, ${JSON.stringify(written.name)}, ${JSON.stringify(literal)});`,
         );
       }
-    } // event / property / bus / ref: not emitted here
+    } else {
+      // interpolated: omit when falsy (boolean attributes, decision 21), else set. A sink
+      // that repeats also has to CLEAR it: a value that turned falsy on an update would
+      // otherwise leave the attribute the previous value put there.
+      const name = JSON.stringify(written.name);
+      const clear = values.repeats ? ` else $dom.removeAttr(${v}, ${name});` : '';
+      values.bound(
+        crossingExpr(source, attr, written.value, host.signals),
+        ($v) =>
+          `if (${$v} === true) $dom.setAttr(${v}, ${name}, ''); ` +
+          `else if (${$v} !== false && ${$v} != null) $dom.setAttr(${v}, ${name}, String(${$v}));${clear}`,
+      );
+    }
   }
   if (baseClass !== undefined || classExprs.length > 0) {
     const arr = [baseClass !== undefined ? JSON.stringify(baseClass) : null, ...classExprs].filter(

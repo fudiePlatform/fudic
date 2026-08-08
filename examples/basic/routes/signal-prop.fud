@@ -7,7 +7,7 @@
 </head>
 
 @section nav {
-  <site-nav current="signal-prop"></site-nav>
+  <site-nav .current="signal-prop"></site-nav>
 }
 
 <h1>1 · El padre pasa la signal</h1>

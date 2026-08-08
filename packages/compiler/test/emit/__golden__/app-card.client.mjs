@@ -190,6 +190,7 @@ customElements.define("app-card", class extends FudicElement {
         $dom.append($n0, $n2);
         $n3 = $dom.element("app-button");
         $dom.setAttr($n3, 'data-adopt', "app-button");
+        $dom.setAttr($n3, "variant", "ghost");
         $dom.append($n3, $dom.text(" "));
         {
           const $q = $q1();

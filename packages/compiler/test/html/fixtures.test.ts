@@ -127,8 +127,10 @@ describe('home.fud specifics', () => {
       if (n.type === 'element' && (n as ElementNode).name === 'app-card') card = n as ElementNode;
     });
     expect(card).not.toBeNull();
+    // SDD-05 keeps the name VERBATIM: the dot is the author's, and the prefix is stripped
+    // one layer up, by the classification of SDD-07.
     const names = card!.attributes.map((a) => a.name);
-    expect(names).toEqual(['title', 'variant']);
+    expect(names).toEqual(['.title', '.variant']);
     const variant = card!.attributes[1]!.value[0]!;
     if (variant.type !== 'razor-expression') throw new Error('unreachable');
     expect(source.slice(variant.expr.start, variant.expr.end)).toBe(

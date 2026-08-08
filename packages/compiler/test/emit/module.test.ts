@@ -202,9 +202,14 @@ describe('emitPageModule — executed end to end', () => {
     expect(html).toContain('<style type="module" specifier="app-badge">');
   });
 
-  it('renders component hosts as DSD with data-adopt and projected light DOM', () => {
-    expect(html).toContain('<app-card data-adopt="app-card"><template shadowrootmode="open">');
-    expect(html).toContain('<app-badge data-adopt="app-badge">');
+  it('renders component hosts as DSD with data-adopt, its props and projected light DOM', () => {
+    // The props are ON the host since BUG-16: level 1 is HTML with no JS, so a `.prop`
+    // that lived only in the props literal would not have reached the document at all.
+    expect(html).toContain(
+      '<app-card data-adopt="app-card" title="Primero" variant="highlight">' +
+        '<template shadowrootmode="open">',
+    );
+    expect(html).toContain('<app-badge data-adopt="app-badge" tone="success">');
     expect(html).toContain('Destacado'); // badge light DOM projected through <slot>
   });
 

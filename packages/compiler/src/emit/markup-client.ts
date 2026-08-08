@@ -36,7 +36,7 @@ import type { Span } from '../types/index.js';
 import { classifyAttribute } from '../binding/index.js';
 import { CodeWriter, type LinePart } from './writer.js';
 import { type AssetLinker } from './assets.js';
-import { attrExpr, writeElementAttrs, type ValueSink } from './attrs.js';
+import { crossingExpr, writeElementAttrs, type HostContext, type ValueSink } from './attrs.js';
 import { branchesOf } from './constructs.js';
 import { nestedSpaceMode, type SpaceMode } from './space.js';
 import { emitItems, type EmitItem, type TextRun } from './runs.js';
@@ -321,6 +321,11 @@ export class ClientMarkupEmitter {
     };
   }
 
+  /** What `attrs.ts` needs to know about the element it is writing: see `HostContext`. */
+  #host(isComponent: boolean): HostContext {
+    return { isComponent, signals: this.#scope.signals };
+  }
+
   /** The component template: the direct children of the shadow root. */
   emitRoots(children: readonly HtmlContent[]): void {
     const cursor = this.#cursorFor(children);
@@ -550,9 +555,28 @@ export class ClientMarkupEmitter {
       // its instances come alive, is the runtime's decision (SDD-17), not the parent's.
       // `data-adopt` carries the style specifier the shared sheet is keyed by (SDD-18 D-6).
       this.#fab.line(`$dom.setAttr(${v}, 'data-adopt', ${JSON.stringify(el.name)});`);
+      // The host's own attributes, same as the server writes them (BUG-16 §4.1): the two
+      // branches have to agree byte for byte, or `h` adopts a tree it does not recognise.
+      writeElementAttrs(
+        this.#source,
+        el,
+        v,
+        this.#fab,
+        this.#linker,
+        this.#host(true),
+        this.#sinkFor(),
+      );
       this.#childValues(el, v);
     } else {
-      writeElementAttrs(this.#source, el, v, this.#fab, this.#linker, this.#sinkFor());
+      writeElementAttrs(
+        this.#source,
+        el,
+        v,
+        this.#fab,
+        this.#linker,
+        this.#host(false),
+        this.#sinkFor(),
+      );
     }
     // Take the element the cursor is on, then advance it — before descending, so the
     // levels below are walked with this element already accounted for.
@@ -602,20 +626,29 @@ export class ClientMarkupEmitter {
   }
 
   /**
-   * The values a host hands its child, by prop name. A plain attribute is one — that is
-   * what the server does with it too (`componentPropsExpr`) — and `.prop="@x"` is the
-   * other. Which of them can MOVE is not a guess: a value whose source is exactly the name
-   * of a `signal(...)` this component declares is reactive, and everything else is not.
+   * The values a host hands its child, by prop name: its `.prop` bindings, and only those
+   * — the same set `componentPropsExpr` sends by SSR (BUG-16 §4.2). A plain attribute is
+   * HTML's own vocabulary and belongs to the host, not to the child's contract.
+   *
+   * Which of them can MOVE is not a guess: a value whose source is exactly the name of a
+   * `signal(...)` this component declares is reactive, and everything else is not. A
+   * constant `.prop="info"` is therefore never a signal — it has no expression at all.
    */
   #slots(el: ElementNode): Map<string, Slot> {
     const out = new Map<string, Slot>();
     for (const attr of el.attributes) {
       const b = classifyAttribute(attr, this.#source).value;
-      if (b.type === 'attr') {
-        out.set(b.name, { expr: attrExpr(this.#source, attr) });
-      } else if (b.type === 'property') {
-        const expr = this.#slice(b.value.expr);
-        out.set(b.name, this.#scope.signals.has(expr) ? { expr, signal: expr } : { expr });
+      if (b.type !== 'property') continue;
+      const only = b.value.length === 1 ? b.value[0] : undefined;
+      const naked = only?.type === 'razor-expression' ? this.#slice(only.expr) : undefined;
+      if (naked !== undefined && this.#scope.signals.has(naked)) {
+        out.set(b.name, { expr: naked, signal: naked });
+      } else {
+        const expr =
+          b.value.length === 0
+            ? 'true'
+            : crossingExpr(this.#source, attr, b.value, this.#scope.signals);
+        out.set(b.name, { expr });
       }
     }
     return out;

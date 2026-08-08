@@ -23,12 +23,33 @@ import {
   type Span,
   span,
 } from '@fudic/compiler';
-import { COMPLETION_ONLY_CAPS, DIAGNOSTIC_ONLY_CAPS } from '../caps.js';
+import { COMPLETION_ONLY_CAPS, DIAGNOSTIC_ONLY_CAPS, LITERAL_NAME_CAPS } from '../caps.js';
 import type { TemplateContext } from './context.js';
 import { copyExpression } from './expr.js';
 
 /** A JS identifier, i.e. an object key that needs no quoting. */
 const PLAIN_KEY = /^[\p{ID_Start}$_][\p{ID_Continue}$]*$/u;
+
+/** In fudic an event is written with an at-sign, and a property with a dot. */
+const EVENT_PREFIX = '@';
+
+/**
+ * The event name of an attribute the author opened with `@`, or `undefined` when it is not
+ * one.
+ *
+ * It reads the VERBATIM name and not the classification on purpose. `@cli` with no value yet
+ * is a half-written event, and classification degrades it to a plain attribute called `@cli`
+ * (`FUD0092`, no handler) — which is exactly the moment the editor has to answer, so the
+ * projection cannot afford to have lost the fact that an `@` opened it.
+ */
+function eventNameOf(attr: Attribute, binding: Binding): string | undefined {
+  if (binding.type === 'event') return binding.name;
+  // A `bus:(expr)` name is a RazorExpression, never a string, and never an event.
+  if (typeof attr.name !== 'string') return undefined;
+  return attr.name.startsWith(EVENT_PREFIX)
+    ? attr.name.slice(EVENT_PREFIX.length)
+    : undefined;
+}
 
 /** Project every attribute of an element. */
 export function emitElementBindings(ctx: TemplateContext, el: ElementNode): void {
@@ -88,21 +109,39 @@ function isComponent(tag: string): boolean {
 }
 
 /**
- * The attributes that make up a component's props — everything that is not behaviour, and not
- * `slot`.
+ * A component tag becomes TWO object literals, and which one a binding lands in is the whole
+ * of BUG-16 §4.2.
  *
- * `slot` comes out of the literal and is checked against the component's OWN slot union
- * (BUG-11 §4.2). The rest of HTML's global vocabulary — `id`, `part`, `data-*`, `aria-*` and
- * the others — stays in the literal and is accepted by `$GlobalAttrs`, which is a type and not
- * a list in this file: the emitter does not know those attributes exist, and does not need to.
+ *     <app-badge .tone="@(t)" id="x">
+ *       →  $attrs<$C0>({ tone: (t) });   // the component's contract
+ *          $attrs<{}>({ id: "x" });      // `{} & $GlobalAttrs`: HTML's vocabulary, nothing else
+ *
+ * In fudic a property is written with a dot, so a plain attribute on a component is not a
+ * prop — it is what HTML says an element understands. Checking it against `{}` is what makes
+ * `tone="info"` an error, with TypeScript's own message on the name and its own suggestion
+ * when the name is a misspelt global. No list of attributes lives in this file, and no `FUD`
+ * code was minted for it.
+ *
+ * `slot` is in neither: it is checked against the component's OWN slot union (BUG-11 §4.2).
+ *
+ * The gap anchors stay on the PROPS literal. A gap is where a new attribute is about to be
+ * typed, and what the developer wants offered there is the component's contract — which is
+ * also what SDD-24 §6.3 pins.
  */
 function emitProps(
   ctx: TemplateContext,
   el: ElementNode,
   bindings: readonly { attr: Attribute; binding: Binding }[],
 ): void {
-  const props = bindings.filter(
-    (b) => (b.binding.type === 'attr' || b.binding.type === 'property') && !isSlot(b),
+  const props = bindings.filter((b) => b.binding.type === 'property');
+  const globals = bindings.filter(
+    (b) =>
+      b.binding.type === 'attr' &&
+      !isSlot(b) &&
+      // A half-written `@cli` degraded to a plain attribute is still an event, and an event
+      // is not HTML's vocabulary: it would report TS2353 on a name that is not wrong, only
+      // unfinished.
+      eventNameOf(b.attr, b.binding) === undefined,
   );
 
   ctx.w.scaffold('$attrs<', el.openSpan);
@@ -115,19 +154,45 @@ function emitProps(
   // this is what makes completion work at `<app-badge |>`, where there is no text yet to map
   // from and the contract that knows the answer lives in the projection.
   for (const gap of attributeGaps(el)) ctx.w.projected('\n  ', gap, COMPLETION_ONLY_CAPS);
+  emitEntries(ctx, props);
+  ctx.w.scaffold(props.length === 0 ? '});\n' : '\n});\n');
 
-  for (const { attr, binding } of props) {
+  if (globals.length > 0) {
+    // `{}` and not the component's type: an empty intersection with `$GlobalAttrs` is exactly
+    // "HTML's vocabulary and nothing else". Emitted only when there is something to check —
+    // an empty literal would be scaffolding that says nothing.
+    ctx.w.scaffold('$attrs<{}>({', el.openSpan);
+    emitEntries(ctx, globals);
+    ctx.w.scaffold('\n});\n');
+  }
+
+  const slot = bindings.find(isSlot);
+  if (slot !== undefined) emitIntoSlot(ctx, el, slot.binding);
+}
+
+/**
+ * The `key: value,` lines of one literal, each key copied from the source.
+ *
+ * A dot with no name yet is the exception, and it is the whole of BUG-16 §4.3: `.|` has no
+ * name to copy, so it gets an ANCHOR instead — the same recourse the gaps of the start tag
+ * use, one character further in. Writing a key there would be inventing a name; writing
+ * nothing would leave the one position where the prop list is wanted unable to ask.
+ */
+function emitEntries(
+  ctx: TemplateContext,
+  entries: readonly { attr: Attribute; binding: Binding }[],
+): void {
+  for (const { attr, binding } of entries) {
+    if (binding.type === 'property' && binding.name.length === 0) {
+      ctx.w.projected('\n  ', attr.span, COMPLETION_ONLY_CAPS);
+      continue;
+    }
     ctx.w.scaffold('\n  ');
     emitKey(ctx, attr, binding);
     ctx.w.scaffold(': ');
     emitValue(ctx, binding);
     ctx.w.scaffold(',');
   }
-
-  ctx.w.scaffold(props.length === 0 ? '});\n' : '\n});\n');
-
-  const slot = bindings.find(isSlot);
-  if (slot !== undefined) emitIntoSlot(ctx, el, slot.binding);
 }
 
 /** A `slot="…"` written plainly: never `.slot`, never `@slot`. Narrows the binding with it. */
@@ -173,13 +238,9 @@ function emitNativeAttrs(
   bindings: readonly { attr: Attribute; binding: Binding }[],
 ): void {
   for (const { binding } of bindings) {
-    if (binding.type === 'property') {
-      ctx.w.scaffold('$attr(', binding.span);
-      copyExpression(ctx, binding.value.expr);
-      ctx.w.scaffold(');\n');
-      continue;
-    }
-    if (binding.type !== 'attr') continue;
+    // `.prop` and a plain attribute carry the same shape of value, so a native tag checks
+    // them the same way: whatever interpolation is inside, and nothing else.
+    if (binding.type !== 'attr' && binding.type !== 'property') continue;
     for (const part of binding.value) {
       if (part.type !== 'razor-expression') continue;
       ctx.w.scaffold('$attr(', part.span);
@@ -196,13 +257,27 @@ function emitBehaviour(
   attr: Attribute,
   binding: Binding,
 ): void {
+  // An event still being written: `@` alone, or `@cli` with no handler yet. Classification
+  // degraded it to a plain attribute, but the `@` is the author's and the editor is asking
+  // right now, so the call is projected without a handler — the name is the whole point,
+  // and the arity error lands on scaffolding that routes to nobody.
+  const opening = eventNameOf(attr, binding);
+  if (opening !== undefined && binding.type !== 'event') {
+    ctx.w.scaffold('$on(', attr.span);
+    emitEventName(ctx, attr, opening);
+    ctx.w.scaffold(');\n');
+    return;
+  }
+
   switch (binding.type) {
     case 'event':
       // A hyphen means a custom event, which has no entry in `HTMLElementEventMap`; `as
       // never` keeps the handler checked as a function while giving up on the event type
       // (decision 28). A standard name stays typed, so `e` is a `MouseEvent` in `@click`.
       ctx.w.scaffold('$on(', attr.span);
-      ctx.w.scaffold(`'${binding.name}'${binding.name.includes('-') ? ' as never' : ''}, `);
+      emitEventName(ctx, attr, binding.name);
+      if (binding.name.includes('-')) ctx.w.scaffold(' as never');
+      ctx.w.scaffold(', ');
       copyExpression(ctx, binding.value.expr);
       ctx.w.scaffold(');\n');
       return;
@@ -243,6 +318,45 @@ function emitBehaviour(
   }
 }
 
+/**
+ * The event name, as a string literal PROJECTED from the source — quotes included.
+ *
+ * It used to be scaffolding: the emitter wrote `'click'` out of the binding, so the name the
+ * user typed did not exist for the editor and there was no position from which to ask what a
+ * valid event is. Now it is one stretch standing for the name, the same recourse `@section`
+ * uses and for one more reason than it: `$on`'s first parameter is
+ * `keyof HTMLElementEventMap`, so asking THIS position for completions IS asking the DOM for
+ * its event names, spelled without `on`, with no table kept here to go stale.
+ *
+ * The quotes are inside the stretch on purpose. A range whose ends fall in different
+ * stretches maps back nowhere, and TypeScript reports over the literal WITH its quotes.
+ */
+function emitEventName(ctx: TemplateContext, attr: Attribute, name: string): void {
+  if (name.length === 0) {
+    // `@|` — the at-sign is typed and nothing else. There is no name to project, so the
+    // INSIDE of the literal becomes an anchor: a position whose contextual type is
+    // `keyof HTMLElementEventMap`, which is the list the developer is asking for. Same
+    // recourse as the dot in `emitEntries`, and as the gaps of the start tag before it.
+    // Two characters for one, so that BOTH ends of the source stretch land inside the
+    // literal: the cursor at `@|` sits at the end of the `@`, and a one-character anchor
+    // would map it onto the closing quote, where nothing is offered. Same reason the gaps
+    // of a start tag are three characters wide for a gap of one.
+    ctx.w.scaffold("'");
+    ctx.w.projected('  ', attr.span, COMPLETION_ONLY_CAPS);
+    ctx.w.scaffold("'");
+    return;
+  }
+  // The quotes are SCAFFOLDING and the name is a 1:1 stretch, which is the opposite of what
+  // `@section` does — and the difference is completion. A stretch that carries the quotes is
+  // two characters longer than what it stands for, so every offset inside it is shifted and
+  // the range TypeScript hands back for `@cli|` would land on `li`, eating the `@` when the
+  // item is accepted. Aligned 1:1, the replacement range is exactly the name.
+  const start = attr.span.start + 1;
+  ctx.w.scaffold("'");
+  ctx.w.projected(name, span(start, start + name.length), LITERAL_NAME_CAPS);
+  ctx.w.scaffold("'");
+}
+
 /** The property name, copied from the source so a typo reports on the user's characters. */
 function emitKey(ctx: TemplateContext, attr: Attribute, binding: Binding): void {
   const name = binding.type === 'property' ? binding.name : (attr.name as string);
@@ -265,12 +379,8 @@ function nameSpan(attr: Attribute, binding: Binding, name: string): Span {
 
 /** The property value: exact type for a lone expression, `string` for a concatenation. */
 function emitValue(ctx: TemplateContext, binding: Binding): void {
-  if (binding.type === 'property') {
-    emitExpression(ctx, binding.value);
-    return;
-  }
   /* c8 ignore next -- emitProps only ever passes 'attr' and 'property' bindings here. */
-  if (binding.type !== 'attr') return;
+  if (binding.type !== 'attr' && binding.type !== 'property') return;
 
   const parts = binding.value;
   const only = parts.length === 1 ? parts[0]! : undefined;

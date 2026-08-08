@@ -152,6 +152,39 @@ describe('completion', () => {
   });
 });
 
+describe('completion — the dot and the at-sign (BUG-16 §6.10–§6.12)', () => {
+  /** A route whose markup is `markup`, with `app-badge` linked. */
+  const withBadge = (markup: string): string =>
+    `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="component" href="../components/app-badge.fud">\n<article>${markup}</article>\n`;
+
+  it.each([
+    ['a property with no name yet', '<app-badge .|>'],
+    ['a property being typed', '<app-badge .ton|>'],
+    ['an event with no name yet', '<app-badge @|>'],
+    ['an event being typed', '<app-badge @cli|>'],
+  ])('says nothing at %s: the projection owns that list', async (_title, markup) => {
+    const { service, document, position } = setup(withBadge(markup));
+
+    // Silence is the answer. An item from this plugin would claim the position in Volar and
+    // the projection — which is where the props and the DOM's events come from — would never
+    // be asked.
+    expect(await completionsOf(service, document, position)).toBeUndefined();
+  });
+
+  it('offers no Razor directive inside a tag: there a `@` is an event', async () => {
+    const { service, document, position } = setup(withBadge('<app-badge @fore|>'));
+
+    expect(await completionsOf(service, document, position)).toBeUndefined();
+  });
+
+  it('is the transition again outside the tag (§6.12)', async () => {
+    const { service, document, position } = setup(withBadge('<app-badge></app-badge>\n@fore|'));
+    const list = await completionsOf(service, document, position);
+
+    expect(list?.items.map((item) => item.label)).toContain('@foreach');
+  });
+});
+
 describe('the tag plugin (BUG-15 §4.6)', () => {
   it('declares itself additional, which is the whole reason it is a plugin', () => {
     const deps = { index: new WorkspaceIndex(memoryFs({})), stats: new RequestStats() };

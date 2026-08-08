@@ -27,11 +27,11 @@
 </head>
 
 @section nav {
-  <site-nav current="blog"></site-nav>
+  <site-nav .current="blog"></site-nav>
 }
 
 <article>
-  <app-badge tone="@(data.found ? 'info' : 'neutral')">@data.tag</app-badge>
+  <app-badge .tone="@(data.found ? 'info' : 'neutral')">@data.tag</app-badge>
   <h1>@data.title</h1>
   <p>@data.body</p>
 </article>

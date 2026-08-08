@@ -13,9 +13,11 @@ import {
   attributeValueSpan,
   classContextAt,
   directiveContextAt,
+  eventContextAt,
   hrefContextAt,
   isEmptyDocument,
   linksOf,
+  propertyContextAt,
   sectionContextAt,
   tagContextAt,
   tagNameAt,
@@ -242,6 +244,68 @@ describe('classContextAt (BUG-15 §6.2)', () => {
   });
 });
 
+describe('propertyContextAt and eventContextAt (BUG-16 §3.4)', () => {
+  it.each([
+    ['<app-badge .', ''],
+    ['<app-badge .ton', 'ton'],
+    ['<app-badge id="x" .', ''],
+    ['<app-badge\n  .tone="@(t)"\n  .var', 'var'],
+    ['<app-badge .data-id', 'data-id'],
+  ])('reads the property being typed at %s as %s', (prefix, expected) => {
+    const context = propertyContextAt(prefix, prefix.length);
+
+    // The dot stays out of the span: it is what opens the context, not what gets replaced.
+    expect(context?.text).toBe(expected);
+    expect(prefix.slice(context?.span.start, context?.span.end)).toBe(expected);
+  });
+
+  it.each([
+    ['<app-badge @', ''],
+    ['<app-badge @cli', 'cli'],
+    ['<app-badge .tone="@(t)" @', ''],
+    ['<app-badge @my-press', 'my-press'],
+  ])('reads the event being typed at %s as %s', (prefix, expected) => {
+    const context = eventContextAt(prefix, prefix.length);
+
+    expect(context?.text).toBe(expected);
+    expect(prefix.slice(context?.span.start, context?.span.end)).toBe(expected);
+  });
+
+  it.each([
+    // Markup text: `<p>3.14</p>` is a sentence, and so is an email address.
+    ['<p>3.'],
+    ['.tone'],
+    ['<p>hello.wor'],
+    // Somebody else's string, inside a quoted value.
+    ['<app-badge title="a.'],
+    ["<app-badge title='a.b"],
+    // A dot that continues a word or another dot is neither.
+    ['<app-badge x.'],
+    ['<app-badge ..'],
+  ])('offers no property at %s', (source) => {
+    expect(propertyContextAt(source, source.length)).toBeUndefined();
+  });
+
+  it.each([
+    // Outside a tag an `@` is the Razor transition, and that is directiveContextAt's.
+    ['<p>@'],
+    ['@fore'],
+    // Somebody else's string.
+    ['<app-badge title="@'],
+    // `@@` is the escape of decision 1, and a `@` after a word is text.
+    ['<app-badge @@'],
+    ['<app-badge a@'],
+  ])('offers no event at %s', (source) => {
+    expect(eventContextAt(source, source.length)).toBeUndefined();
+  });
+
+  it('is the context again in the tag that follows a quoted one', () => {
+    const source = '<div title="a.b"></div>\n<app-badge .to';
+
+    expect(propertyContextAt(source, source.length)?.text).toBe('to');
+  });
+});
+
 describe('wordContextAt (SDD-28 §5.3)', () => {
   it.each([
     ['app-button', 'app-button'],
@@ -294,8 +358,18 @@ describe('directiveContextAt (SDD-28 §5.4)', () => {
     ['hola@ejemplo'],
     ['x@'],
     ['plain'],
+    // Inside an open tag an `@` is an event, never a directive (BUG-16 §4.4).
+    ['<app-badge @'],
+    ['<app-badge @cli'],
+    ['<app-badge .tone="@(t)" @i'],
   ])('says nothing at %s', (source) => {
     expect(directiveContextAt(source, source.length)).toBeUndefined();
+  });
+
+  it('is a directive again once the tag is closed', () => {
+    const source = '<app-badge @click="@h"></app-badge>\n@fore';
+
+    expect(directiveContextAt(source, source.length)?.text).toBe('@fore');
   });
 });
 
