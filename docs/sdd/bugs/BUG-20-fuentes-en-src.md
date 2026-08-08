@@ -4,11 +4,12 @@
 > **Corrige:** [SDD-22 §3.1, §4.2, §4.5, §6.1](../SDD-22-fudic-cli.md) (la convención de
 > directorios que la CLI escribe) · [SDD-19 §3.2](../SDD-19-plugin-vite.md) (el defecto de
 > `routesDir`, que es la otra mitad del mismo contrato)
-> **Paquetes:** `@fudic/cli` (`args.ts`, `layout.ts`, `plans/new.ts`, plantillas) ·
+> **Paquetes:** `@fudic/conventions` (**nuevo**, y es la corrección de fondo) ·
+> `@fudic/cli` (`args.ts`, `layout.ts`, `plans/new.ts`, plantillas) ·
 > `@fudic/vite` (`options.ts`) · `examples/basic` (el árbol, movido)
 > **Rama:** `fix/bug-20-fuentes-en-src`
 > **Depende de:** nada. Ningún SDD ni BUG en curso toca estos cuatro sitios
-> **Reserva:** ningún código `FUD` nuevo (§3.4)
+> **Reserva:** ningún código `FUD` nuevo (§3.5)
 
 ---
 
@@ -102,19 +103,27 @@ De ahí sale la propiedad que hace que esta corrección no sea un rediseño:
 `../../layouts/_layout.fud` — las profundidades relativas son las mismas. El movimiento es un `git
 mv` puro: el diff de contenido de los `.fud` es vacío.
 
-### 2.3. El contrato entre la CLI y el plugin lo sostiene exactamente un test
+### 2.3. Entre la CLI y el plugin no hay nada que importar, y por eso el contrato es un test
 
 `@fudic/vite` es **devDependency** de `@fudic/cli`
 ([`cli/package.json`](../../../packages/cli/package.json)), no dependencia de runtime: la CLI no
-puede importar el defecto del plugin, y no debe — invertiría la frontera de paquetes. Lo único que
-impide que los dos lados diverjan es
-[`cli/test/new-build.test.ts`](../../../packages/cli/test/new-build.test.ts), que aplica
-`planNew` sobre un directorio real y lo pasa por un `vite build` con `fudic()` **sin opciones**.
+puede importar el defecto del plugin. Y al revés tampoco —el plugin no puede depender de la CLI—,
+porque invertiría la frontera: el que genera no manda sobre el que compila. Los dos comparten
+`@fudic/compiler`, pero **ahí no cabe**: el compilador es *fs-free* por diseño (SDD-21 §1, CLAUDE.md
+§Reglas de oro) y no conoce directorios; meterle la convención sería contradecir su invariante
+central para ahorrarse un paquete.
 
-Ese test es el oráculo de este BUG: si se cambia un lado y no el otro, falla —el prerender de `/`
-no encuentra ruta— y falla por la razón correcta. Merece decirse en positivo, porque define cómo se
-implementa: **la primera tarea que se escriba deja el test en rojo, y solo vuelve a verde cuando
-los dos paquetes están de acuerdo.**
+Resultado: no hay **ningún** sitio del grafo de dependencias donde la convención pueda vivir hoy, y
+por eso está copiada. Lo único que impide que los dos lados diverjan es
+[`cli/test/new-build.test.ts`](../../../packages/cli/test/new-build.test.ts), que aplica `planNew`
+sobre un directorio real y lo pasa por un `vite build` con `fudic()` **sin opciones**.
+
+Pero un test es un detector, no un contrato: detecta la divergencia **después** de escribirla, y
+solo la que atraviesa un `vite build` entero. La corrección de fondo es crear el sitio que falta
+(§3.1). Con él, la prueba de que el BUG está cerrado cambia de forma y a mejor: cambiar la
+convención pasa a ser **una línea en un paquete**, y `new-build.test.ts` **se queda en verde
+mientras el árbol entero se mueve**. Un test que hoy solo puede estar verde por coincidencia pasa a
+estarlo por construcción.
 
 ### 2.4. Alcance: los otros sitios que repiten la convención a mano
 
@@ -150,10 +159,10 @@ Misma causa —ningún sitio la declara—, vista desde sus consumidores:
 
 ## 3. Interfaz pública
 
-### 3.1. Un módulo que declara la convención, en la CLI
+### 3.1. `@fudic/conventions`: un paquete hoja que declara dónde vive un proyecto fudic
 
 ```ts
-// packages/cli/src/convention.ts
+// packages/conventions/src/index.ts
 /** Where a fudic project keeps its sources. Not an option: a convention (§4.2). */
 export const SRC_DIR = 'src';
 export const ROUTES_DIR = 'src/routes';
@@ -161,15 +170,34 @@ export const COMPONENTS_DIR = 'src/components';
 export const LAYOUTS_DIR = 'src/layouts';
 ```
 
-`args.ts`, `plans/new.ts` y `layout.ts` lo consumen; ninguno vuelve a escribir un literal.
-`LAYOUTS_DIR` **se muda** aquí desde `layout.ts:23` —donde está por accidente histórico, porque el
-resolutor fue quien primero lo necesitó— y `layout.ts` lo importa. Es la única forma de que el
-siguiente cambio de convención sea una línea y no cuatro.
+**Un paquete, no un módulo de la CLI**, y la razón es §2.3: el problema no es que la constante esté
+repetida dentro de `@fudic/cli`, es que **las dos puntas del contrato viven en paquetes distintos y
+no hay nada entre ellas**. Un `cli/src/convention.ts` arregla tres de los cuatro literales y deja el
+cuarto —el del plugin— exactamente igual de suelto que hoy, con lo que la causa raíz sobrevive a su
+propia corrección.
+
+- **Es una hoja del grafo.** No depende de nada del workspace. `@fudic/cli` y `@fudic/vite` lo
+  declaran como dependencia de **runtime** (`workspace:*`, se publica): el plugin lo necesita en el
+  build del usuario, no solo en el nuestro.
+- **La dirección de la dependencia es la correcta.** Nadie manda sobre nadie: los dos consumidores
+  apuntan al mismo sitio, que es lo que hoy no existe (§2.3).
+- **Cambiar la convención vuelve a ser una línea**, y el cambio llega a los dos paquetes por
+  `pnpm install`, no por revisión.
+- **El coste es un paquete de cuatro constantes**, con su `package.json`, su `tsconfig.build.json`
+  y su umbral de cobertura al 100 % desde el primer commit (CLAUDE.md). Se paga a sabiendas: el
+  precedente de un paquete diminuto ya está en el repo (`@fudic/tsconfig` publica **un** fichero de
+  configuración), y la alternativa es seguir sin un sitio donde poner esto.
+
+`LAYOUTS_DIR` **se muda** aquí desde
+[`layout.ts:23`](../../../packages/cli/src/layout.ts#L23), donde está por accidente histórico —el
+resolutor de layouts fue el primero que lo necesitó—. Tras la corrección, `args.ts`,
+`plans/new.ts`, `layout.ts` y `options.ts` **no contienen ni un literal de directorio**: lo
+importan.
 
 ### 3.2. `FudicOptions.routesDir` cambia de defecto
 
 ```ts
-const DEFAULT_ROUTES_DIR = 'src/routes'; // era 'routes'
+import { ROUTES_DIR } from '@fudic/conventions'; // 'src/routes'; era el literal 'routes'
 ```
 
 Es un **cambio de comportamiento observable**, y el único de este BUG: un proyecto existente con
@@ -187,7 +215,26 @@ El tipo no cambia: `routesDir` sigue siendo opcional y sigue ganando sobre el de
 `fudic g page about --dir routes` sigue escribiendo en `routes/`. Quien quiera otra convención la
 tiene con la misma bandera de siempre; lo que cambia es lo que ocurre cuando **no** se dice nada.
 
-### 3.4. Sin códigos `FUD` nuevos
+### 3.4. Qué entra en `@fudic/conventions` y qué no
+
+**Entra:** los cuatro directorios de §3.1. Nada más, y el criterio para lo que venga después es
+estrecho: *un nombre que dos paquetes tienen que acordar y ninguno de los dos posee*.
+
+**No entra**, aunque parezca de la misma familia:
+
+- **Las versiones que el scaffold pincha** (`FUDIC_VERSION`, `VITE_VERSION`, `TYPESCRIPT_VERSION`,
+  [`cli/src/project.ts:14-21`](../../../packages/cli/src/project.ts#L14-L21)). Son de la CLI y solo
+  de ella: el plugin no pincha versiones en nada.
+- **`fudic-globals.d.ts`.** Ya tiene dueño —`@fudic/language-core` exporta `GLOBALS_FILE_NAME` junto
+  al contenido que lo llena—, y ese dueño es el correcto: quien genera el fichero es quien nombra
+  el fichero.
+- **`fudic-routes.json`, `fudic-sw.js`, `sw.json`.** Son de la salida del plugin, no de la forma del
+  proyecto. Mudarlas aquí convertiría un paquete de convención en un cajón de constantes, que es
+  cómo mueren estos paquetes.
+- **`_layout.fud`.** Lo conocen la CLI y el compilador —no el plugin—, y el compilador no puede
+  depender de esto (§2.3). Se queda donde está.
+
+### 3.5. Sin códigos `FUD` nuevos
 
 No hay nada que diagnosticar: ningún estado de disco pasa a ser ilegal. Mismo caso que BUG-16 a
 BUG-19.
@@ -275,9 +322,11 @@ migración es más barata que el período de gracia que la evitaría.
 
 **Los que la corrección añade**
 
-- **La convención vive en `convention.ts`**, y cambiarla es cambiar ese fichero.
-- **La CLI y el plugin están de acuerdo, y hay un test que lo comprueba con `fudic()` sin
-  opciones** (§2.3, §6.6).
+- **La convención vive en `@fudic/conventions`**, y cambiarla es cambiar una línea de un paquete
+  que las dos puntas importan. Un literal de directorio en `cli/src` o en `vite/src` pasa a ser un
+  defecto por sí solo, aunque acierte.
+- **La CLI y el plugin están de acuerdo por construcción**, no por revisión — y además hay un test
+  de extremo a extremo que lo comprueba con `fudic()` sin opciones (§2.3, §6.8).
 - **Lo que baja a `src/` baja junto**, para que ninguna ruta relativa escrita por un autor dependa
   de una decisión de layout de directorios.
 
@@ -285,8 +334,16 @@ migración es más barata que el período de gracia que la evitaría.
 
 ## 6. Criterios de aceptación
 
-Tests en `packages/cli/test/` y `packages/vite/test/`. Los tres marcados **rojo primero** se
-escriben contra el código actual y se ven fallar.
+Tests en `packages/conventions/test/`, `packages/cli/test/` y `packages/vite/test/`. Los dos
+marcados **rojo primero** se escriben contra el código actual y se ven fallar.
+
+**El paquete**
+
+0. `@fudic/conventions` exporta los cuatro nombres de §3.1 y **nada más** (§3.4); no declara ni una
+   dependencia del workspace; `@fudic/cli` y `@fudic/vite` lo llevan en `dependencies`, no en
+   `devDependencies`. Después de la tanda, **ni `packages/cli/src` ni `packages/vite/src` contienen
+   un literal de directorio de proyecto** —`'routes'`, `'components'`, `'layouts'`—: es el criterio
+   que dice que la causa raíz está cerrada, y se comprueba leyendo los dos `src`, no de memoria.
 
 **El scaffold**
 
@@ -311,10 +368,11 @@ escriben contra el código actual y se ven fallar.
 
 **El contrato CLI ↔ plugin** (el oráculo de §2.3)
 
-8. **(rojo primero)** `new-build.test.ts`: `fudic new demo` + `vite build` con `fudic()` **sin
-   opciones** prerenderiza `/` desde el layout y la ruta generados, y publica la ruta en el
-   manifest. Cambiar un solo lado deja este test en rojo — es lo que hay que ver antes de tocar el
-   segundo.
+8. `new-build.test.ts`: `fudic new demo` + `vite build` con `fudic()` **sin opciones** prerenderiza
+   `/` desde el layout y la ruta generados, y publica la ruta en el manifest. **Verde antes y verde
+   después**, con el árbol cambiado de sitio entre medias — y esa es la demostración: con la
+   convención en un paquete, el escenario que hoy rompería este test (mover un lado y no el otro)
+   ya no se puede escribir.
 9. `resolveOptions()` sin opciones resuelve `routesDir: 'src/routes'`; con `{ routesDir: 'routes' }`
    resuelve `'routes'`. La perilla no se pierde.
 
@@ -331,9 +389,10 @@ escriben contra el código actual y se ven fallar.
     bajo `src/`, y sus specs de Playwright pasan. El diff de contenido de los `.fud` es **vacío**:
     solo hay renombrados (§4.4).
 
-**Cobertura.** `convention.ts` nace al **100 %** en las cuatro métricas. Ni `@fudic/cli` ni
-`@fudic/vite` bajan de donde están; la deuda heredada de `@fudic/vite` no se cita para rebajar nada
-(CLAUDE.md). Nada de `/* v8 ignore */`.
+**Cobertura.** `@fudic/conventions` nace con `thresholds` al **100 %** en las cuatro métricas y
+`coverage.include: ['src/**/*.ts']`, como todo paquete nuevo (CLAUDE.md). Ni `@fudic/cli` ni
+`@fudic/vite` bajan de donde están; la deuda heredada de `@fudic/vite` no se cita para rebajar nada.
+Nada de `/* v8 ignore */`.
 
 ---
 
@@ -349,6 +408,12 @@ escriben contra el código actual y se ven fallar.
 - **`fudic migrate`.** La migración son dos líneas de shell (§4.6); un comando para eso es producto,
   no corrección.
 - **Renombrar `routesDir`** o añadir opciones nuevas al plugin. Cambia el defecto, no la interfaz.
+- **Meter en `@fudic/conventions` cualquier otra constante.** La lista de §3.4 es cerrada, y la
+  regla —*un nombre que dos paquetes tienen que acordar y ninguno posee*— está para que este paquete
+  no se convierta en el cajón donde acaba todo string compartido.
+- **Migrar a `@fudic/conventions` a los demás paquetes.** Ninguno lo necesita: el compilador, el
+  formateador y el language server no conocen directorios (§2.5). Un consumidor nuevo entra cuando
+  tenga el problema, no por simetría.
 - **El compilador, el formateador y el language server.** No conocen directorios (§2.5) y no se
   tocan.
 - **La deuda de cobertura de `@fudic/cli` y `@fudic/vite`.** Se salda en su propia tanda.
