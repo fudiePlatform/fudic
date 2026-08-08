@@ -4,6 +4,7 @@
  * missing argument is an exit code with the usage text, never a selector.
  */
 
+import { COMPONENTS_DIR, LAYOUTS_DIR, ROUTES_DIR } from '@fudic/conventions';
 import { cliError, FUD_USAGE } from './diagnostics.js';
 import type {
   CliError,
@@ -61,20 +62,20 @@ fudic new
   --target <name>        deployment adapter              (default: static)
 
 fudic g component <tag>
-  --dir <path>       target directory                    (default: components)
+  --dir <path>       target directory                    (default: src/components)
   --in <file>        wire <link rel="component"> into <file>; repeatable
   --no-style         omit the <head> with the component's <style>
   --slot             emit <slot></slot> in the markup
 
 fudic g page <route>
-  --dir <path>       target directory                    (default: routes)
+  --dir <path>       target directory                    (default: src/routes)
   --layout <path>    force a layout
   --no-layout        standalone page (full document)
   --server           emit @code { @server { load() } }
   --sections <a,b>   subset of the layout's sections     (default: all)
 
 fudic g layout <name>
-  --dir <path>       target directory                    (default: layouts)
+  --dir <path>       target directory                    (default: src/layouts)
   --sections <a,b>   one @RenderSection(name) per name
   --no-head          omit @RenderHead()
 `;
@@ -249,7 +250,7 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
     if (unknown !== null) return { kind: 'error', error: unknown };
     const opts: ComponentOptions = {
       ...base,
-      dir: single(tokens, 'dir', 'components'),
+      dir: single(tokens, 'dir', COMPONENTS_DIR),
       wireInto: list(tokens, 'in') ?? [],
       style: !bool(tokens, 'no-style'),
       slot: bool(tokens, 'slot'),
@@ -263,7 +264,7 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
     const forced = tokens.flags.get('layout')?.at(-1);
     const opts: PageOptions = {
       ...base,
-      dir: single(tokens, 'dir', 'routes'),
+      dir: single(tokens, 'dir', ROUTES_DIR),
       ...(bool(tokens, 'no-layout') ? { layout: null } : forced !== undefined ? { layout: forced } : {}),
       server: bool(tokens, 'server'),
       sections: list(tokens, 'sections'),
@@ -276,7 +277,7 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
     if (unknown !== null) return { kind: 'error', error: unknown };
     const opts: LayoutOptions = {
       ...base,
-      dir: single(tokens, 'dir', 'layouts'),
+      dir: single(tokens, 'dir', LAYOUTS_DIR),
       sections: list(tokens, 'sections') ?? [],
       head: !bool(tokens, 'no-head'),
     };

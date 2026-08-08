@@ -12,6 +12,7 @@
  * (decision 87), so the generated page arrives with its sections already declared.
  */
 
+import { LAYOUTS_DIR } from '@fudic/conventions';
 import { cliError, FUD_LAYOUT_INVALID } from './diagnostics.js';
 import { absolute, dirname, joinPosix, resolveHref } from './paths.js';
 import { parseFud } from './parse.js';
@@ -19,8 +20,6 @@ import type { ReadIo } from './io.js';
 import type { CliError, PlanDiagnostic } from './types.js';
 
 const LAYOUT_FILE = '_layout.fud';
-/** The conventional home of shared layouts, outside `routesDir`. */
-export const LAYOUTS_DIR = 'layouts';
 
 export interface LayoutResolution {
   /** `cwd`-relative path of the layout, or `null` for a standalone page. */

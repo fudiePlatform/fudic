@@ -21,7 +21,7 @@ interface OutFile {
 async function buildRoutes(files: Record<string, string>): Promise<{ output: OutFile[]; warnings: string[] }> {
   const root = mkdtempSync(join(tmpdir(), 'fudic-prerr-'));
   for (const [rel, content] of Object.entries(files)) {
-    const abs = join(root, 'routes', rel);
+    const abs = join(root, 'src', 'routes', rel);
     mkdirSync(join(abs, '..'), { recursive: true });
     writeFileSync(abs, content);
   }

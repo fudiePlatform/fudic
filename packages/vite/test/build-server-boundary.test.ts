@@ -78,12 +78,12 @@ describe('vite build — nothing of `@server` reaches the published output', () 
 
   beforeAll(async () => {
     const root = mkdtempSync(join(tmpdir(), 'fudic-boundary-'));
-    mkdirSync(join(root, 'routes'), { recursive: true });
-    mkdirSync(join(root, 'components'), { recursive: true });
-    mkdirSync(join(root, 'data'), { recursive: true });
-    writeFileSync(join(root, 'routes', 'index.fud'), PAGE);
-    writeFileSync(join(root, 'components', 'app-badge.fud'), BADGE);
-    writeFileSync(join(root, 'data', 'secrets.ts'), SECRETS);
+    mkdirSync(join(root, 'src', 'routes'), { recursive: true });
+    mkdirSync(join(root, 'src', 'components'), { recursive: true });
+    mkdirSync(join(root, 'src', 'data'), { recursive: true });
+    writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
+    writeFileSync(join(root, 'src', 'components', 'app-badge.fud'), BADGE);
+    writeFileSync(join(root, 'src', 'data', 'secrets.ts'), SECRETS);
     writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
     const result = (await build({
       root,
@@ -143,12 +143,12 @@ describe('vite build — written to disk, the boundary is a directory', () => {
 
   beforeAll(async () => {
     root = mkdtempSync(join(tmpdir(), 'fudic-boundary-disk-'));
-    mkdirSync(join(root, 'routes'), { recursive: true });
-    mkdirSync(join(root, 'components'), { recursive: true });
-    mkdirSync(join(root, 'data'), { recursive: true });
-    writeFileSync(join(root, 'routes', 'index.fud'), PAGE);
-    writeFileSync(join(root, 'components', 'app-badge.fud'), BADGE);
-    writeFileSync(join(root, 'data', 'secrets.ts'), SECRETS);
+    mkdirSync(join(root, 'src', 'routes'), { recursive: true });
+    mkdirSync(join(root, 'src', 'components'), { recursive: true });
+    mkdirSync(join(root, 'src', 'data'), { recursive: true });
+    writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
+    writeFileSync(join(root, 'src', 'components', 'app-badge.fud'), BADGE);
+    writeFileSync(join(root, 'src', 'data', 'secrets.ts'), SECRETS);
     writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
     await build({
       root,

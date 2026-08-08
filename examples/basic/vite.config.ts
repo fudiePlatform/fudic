@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import { fudic } from '@fudic/vite';
 
-// Almost nothing to configure: the plugin discovers `routes/`, infers each route's SSG
+// Almost nothing to configure: the plugin discovers `src/routes/`, infers each route's SSG
 // mode, emits the route→chunk manifest and the three-thread bootstraps, and prerenders
 // what it can. `outDir` and `base` come from Vite, as always.
 //

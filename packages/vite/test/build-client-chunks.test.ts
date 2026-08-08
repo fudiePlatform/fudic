@@ -77,11 +77,11 @@ let output: OutFile[];
 
 beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-hydrate-'));
-  mkdirSync(join(root, 'components'), { recursive: true });
-  mkdirSync(join(root, 'routes'), { recursive: true });
-  writeFileSync(join(root, 'components', 'app-button.fud'), BUTTON);
-  writeFileSync(join(root, 'components', 'app-card.fud'), CARD);
-  writeFileSync(join(root, 'routes', 'index.fud'), PAGE);
+  mkdirSync(join(root, 'src', 'components'), { recursive: true });
+  mkdirSync(join(root, 'src', 'routes'), { recursive: true });
+  writeFileSync(join(root, 'src', 'components', 'app-button.fud'), BUTTON);
+  writeFileSync(join(root, 'src', 'components', 'app-card.fud'), CARD);
+  writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
 
   const result = (await build({
     root,

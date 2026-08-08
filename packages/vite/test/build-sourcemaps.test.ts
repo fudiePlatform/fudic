@@ -66,10 +66,10 @@ const mapOf = (files: OutFile[], name: string): SourceMapV3Like =>
 
 function projectRoot(): string {
   const root = mkdtempSync(join(tmpdir(), 'fudic-swmap-'));
-  mkdirSync(join(root, 'routes'), { recursive: true });
-  mkdirSync(join(root, 'components'), { recursive: true });
-  writeFileSync(join(root, 'routes', 'index.fud'), PAGE);
-  writeFileSync(join(root, 'components', 'app-badge.fud'), BADGE);
+  mkdirSync(join(root, 'src', 'routes'), { recursive: true });
+  mkdirSync(join(root, 'src', 'components'), { recursive: true });
+  writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
+  writeFileSync(join(root, 'src', 'components', 'app-badge.fud'), BADGE);
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: ['/fudic-main.js'] }));
   return root;
 }

@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { run, type RunDeps } from '../src/run.js';
-import { parseArgs } from '../src/args.js';
+import { parseArgs, USAGE } from '../src/args.js';
 import { captureStreams, MemoryFs, RecordingRunner } from './helpers.js';
 
 const CWD = '/project';
@@ -52,12 +52,12 @@ describe('run()', () => {
     const dryDeps = deps(dry);
     expect(await run([...argv, '--dry-run'], dryDeps)).toBe(0);
     expect(dry.paths()).toEqual([]);
-    expect(dryDeps.capture.stdout()).toContain('components/app-card.fud');
+    expect(dryDeps.capture.stdout()).toContain('src/components/app-card.fud');
 
     const real = new MemoryFs({}, CWD);
     const realDeps = deps(real);
     expect(await run(argv, realDeps)).toBe(0);
-    expect(real.paths()).toEqual(['components/app-card.fud']);
+    expect(real.paths()).toEqual(['src/components/app-card.fud']);
 
     const listed = dryDeps.capture
       .stdout()
@@ -70,17 +70,17 @@ describe('run()', () => {
 
   it('--dry-run shows a modification as a diff (§6.9)', async () => {
     const fs = new MemoryFs(
-      { 'components/app-card.fud': '<app-card>\n  <template shadowrootmode="open"></template>\n</app-card>\n' },
+      { 'src/components/app-card.fud': '<app-card>\n  <template shadowrootmode="open"></template>\n</app-card>\n' },
       CWD,
     );
     const d = deps(fs);
     const code = await run(
-      ['g', 'component', 'app-icon', '--cwd', CWD, '--in', 'components/app-card.fud', '--dry-run'],
+      ['g', 'component', 'app-icon', '--cwd', CWD, '--in', 'src/components/app-card.fud', '--dry-run'],
       d,
     );
     expect(code).toBe(0);
     expect(d.capture.stdout()).toContain('+<link rel="component" href="./app-icon.fud">');
-    expect(fs.at('components/app-card.fud')).not.toContain('app-icon');
+    expect(fs.at('src/components/app-card.fud')).not.toContain('app-icon');
   });
 
   it('--json puts JSON and only JSON on stdout (§6.12)', async () => {
@@ -89,7 +89,7 @@ describe('run()', () => {
     expect(await run(['g', 'component', 'app-card', '--cwd', CWD, '--json', '--dry-run'], d)).toBe(0);
 
     const parsed = JSON.parse(d.capture.stdout()) as { changes: { path: string }[] };
-    expect(parsed.changes.map((change) => change.path)).toEqual(['components/app-card.fud']);
+    expect(parsed.changes.map((change) => change.path)).toEqual(['src/components/app-card.fud']);
     expect(d.capture.stderr()).toContain('dry run');
   });
 
@@ -113,10 +113,10 @@ describe('run()', () => {
   });
 
   it('generates a page against the project layout end to end', async () => {
-    const fs = new MemoryFs({ 'layouts/_layout.fud': LAYOUT }, CWD);
+    const fs = new MemoryFs({ 'src/layouts/_layout.fud': LAYOUT }, CWD);
     const d = deps(fs);
     expect(await run(['g', 'p', 'blog', '--cwd', CWD], d)).toBe(0);
-    expect(fs.at('routes/blog.fud')).toContain('@section nav {');
+    expect(fs.at('src/routes/blog.fud')).toContain('@section nav {');
     expect(d.runner.commands).toEqual([]); // g never spawns anything
   });
 });
@@ -128,6 +128,22 @@ describe('parseArgs', () => {
     if (parsed.kind !== 'component') return;
     expect(parsed.opts.dir).toBe('components');
     expect(parsed.opts.wireInto).toEqual(['a.fud', 'b.fud']);
+  });
+
+  it('defaults --dir to src/, and the usage text says the same thing (§6.5)', () => {
+    const dirOf = (argv: readonly string[]): string => {
+      const parsed = parseArgs([...argv]);
+      return 'opts' in parsed && 'dir' in parsed.opts ? parsed.opts.dir : '';
+    };
+    expect(dirOf(['g', 'c', 'app-card'])).toBe('src/components');
+    expect(dirOf(['g', 'p', 'blog'])).toBe('src/routes');
+    expect(dirOf(['g', 'l', 'admin'])).toBe('src/layouts');
+
+    // Help output is interface: a default that is right in the code and stale in the text is
+    // still a wrong default for whoever reads it before running anything.
+    expect(USAGE).toContain('(default: src/components)');
+    expect(USAGE).toContain('(default: src/routes)');
+    expect(USAGE).toContain('(default: src/layouts)');
   });
 
   it('maps the --no-* flags onto their positive options', () => {

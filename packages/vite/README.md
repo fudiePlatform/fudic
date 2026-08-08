@@ -16,25 +16,35 @@ import { defineConfig } from 'vite';
 import { fudic } from '@fudic/vite';
 
 export default defineConfig({
-  plugins: [fudic({ routesDir: 'routes' })],
+  plugins: [fudic()],
 });
 ```
 
 ## Filesystem routing
 
-Pages live under `routesDir` (default `routes/`). The directory path is the URL:
+Pages live under `routesDir`, which defaults to `ROUTES_DIR` of `@fudic/conventions` —
+`src/routes` — the same name `fudic new` writes to, so a generated project needs no options at
+all. The directory path is the URL:
 
 | File | Route |
 |---|---|
-| `routes/index.fud` | `/` |
-| `routes/about.fud` | `/about` |
-| `routes/customer/index.fud` | `/customer` |
-| `routes/customer/[id].fud` | `/customer/:id` |
+| `src/routes/index.fud` | `/` |
+| `src/routes/about.fud` | `/about` |
+| `src/routes/customer/index.fud` | `/customer` |
+| `src/routes/customer/[id].fud` | `/customer/:id` |
 
 Only page documents (a `<!DOCTYPE html>`) are routes; component `.fud` files are pulled in
 transitively through `<link rel="component">` and may live anywhere — a shared
-`components/` directory outside `routesDir` resolves from any route depth. Routes are ordered by descending
+`src/components/` directory outside `routesDir` resolves from any route depth. Routes are ordered by descending
 specificity (static before param), which the emitted manifest matches first-hit.
+
+A project that keeps its routes elsewhere says so, and the option always wins over the default:
+
+```ts
+export default defineConfig({
+  plugins: [fudic({ routesDir: 'routes' })],
+});
+```
 
 ## SSG modes
 
@@ -74,7 +84,7 @@ A page declares its data with a `@server` region:
 
 ```ts
 interface FudicOptions {
-  routesDir?: string;                              // default 'routes'
+  routesDir?: string;                              // default ROUTES_DIR ('src/routes')
   manifestUrl?: string;                            // default `${base}fudic-routes.json`
   prerender?: boolean;                             // default true
   paramFallback?: 'lazy' | 'notFound';             // default 'lazy'

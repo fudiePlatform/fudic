@@ -22,6 +22,7 @@ export default defineConfig({
     // as transport → ssr).
     alias: {
       '@fudic/compiler': fileURLToPath(new URL('../compiler/src/index.ts', import.meta.url)),
+      '@fudic/conventions': fileURLToPath(new URL('../conventions/src/index.ts', import.meta.url)),
     },
   },
 });

@@ -58,7 +58,17 @@ describe('fudic new → vite build (§6.1)', () => {
     // Its `@code` carries an empty `@client {}`, and this is what proves that costs nothing:
     // the build emits a client chunk for every component regardless of level (SDD-15), so if
     // an empty client region broke that emit, it would break here.
-    const componentOpts = { cwd: root, force: false, dir: 'components', wireInto: ['routes/index.fud'], style: true, slot: true };
+    // Written by hand, not imported from `@fudic/conventions`: this test is the end-to-end
+    // check that the two sides agree, and a literal is what keeps it from agreeing with
+    // itself.
+    const componentOpts = {
+      cwd: root,
+      force: false,
+      dir: 'src/components',
+      wireInto: ['src/routes/index.fud'],
+      style: true,
+      slot: true,
+    };
     const component = await planComponent('app-button', componentOpts, nodeReadIo());
     expect(component.errors).toEqual([]);
     await apply(component, componentOpts, nodeWriteIo(), runner);

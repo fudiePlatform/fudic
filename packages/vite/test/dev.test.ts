@@ -28,8 +28,8 @@ let origin: string;
 
 beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-dev-'));
-  mkdirSync(join(root, 'routes'), { recursive: true });
-  writeFileSync(join(root, 'routes', 'about.fud'), PAGE);
+  mkdirSync(join(root, 'src', 'routes'), { recursive: true });
+  writeFileSync(join(root, 'src', 'routes', 'about.fud'), PAGE);
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
   server = await createServer({
     root,

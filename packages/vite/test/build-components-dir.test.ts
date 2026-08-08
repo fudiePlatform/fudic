@@ -53,11 +53,11 @@ let output: OutFile[];
 
 beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-components-'));
-  mkdirSync(join(root, 'components'), { recursive: true });
-  mkdirSync(join(root, 'routes', 'blog'), { recursive: true });
-  writeFileSync(join(root, 'components', 'app-badge.fud'), BADGE);
-  writeFileSync(join(root, 'routes', 'index.fud'), page('../'));
-  writeFileSync(join(root, 'routes', 'blog', 'index.fud'), page('../../'));
+  mkdirSync(join(root, 'src', 'components'), { recursive: true });
+  mkdirSync(join(root, 'src', 'routes', 'blog'), { recursive: true });
+  writeFileSync(join(root, 'src', 'components', 'app-badge.fud'), BADGE);
+  writeFileSync(join(root, 'src', 'routes', 'index.fud'), page('../'));
+  writeFileSync(join(root, 'src', 'routes', 'blog', 'index.fud'), page('../../'));
 
   const result = (await build({
     root,

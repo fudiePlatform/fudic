@@ -1,15 +1,15 @@
 {
-  "name": "@fudic/vite",
+  "name": "@fudic/conventions",
   "version": "0.0.1",
-  "description": "Vite plugin for fudic — compiles .fud, filesystem routing, incremental SSG.",
+  "description": "Where a fudic project keeps its sources — the directory convention the CLI writes and the Vite plugin reads.",
   "type": "module",
   "license": "MIT",
   "author": "Pedro Hurtado",
-  "homepage": "https://github.com/fudiePlatform/fudic/tree/main/packages/vite#readme",
+  "homepage": "https://github.com/fudiePlatform/fudic/tree/main/packages/conventions#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/fudiePlatform/fudic.git",
-    "directory": "packages/vite"
+    "directory": "packages/conventions"
   },
   "bugs": {
     "url": "https://github.com/fudiePlatform/fudic/issues"
@@ -17,9 +17,8 @@
   "keywords": [
     "fudic",
     "fudie",
-    "declarative-shadow-dom",
-    "vite-plugin",
-    "ssg"
+    "conventions",
+    "scaffold"
   ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -43,18 +42,7 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage"
   },
-  "dependencies": {
-    "@fudic/compiler": "workspace:*",
-    "@fudic/conventions": "workspace:*",
-    "@fudic/ssr": "workspace:*",
-    "@fudic/transport": "workspace:*"
-  },
-  "peerDependencies": {
-    "vite": "8.0.16"
-  },
   "devDependencies": {
-    "@fudic/tsconfig": "workspace:*",
-    "@types/node": "22.20.0",
-    "vite": "8.0.16"
+    "@fudic/tsconfig": "workspace:*"
   }
 }

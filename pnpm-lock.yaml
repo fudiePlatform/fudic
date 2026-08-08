@@ -57,6 +57,9 @@ importers:
       '@fudic/compiler':
         specifier: workspace:*
         version: link:../compiler
+      '@fudic/conventions':
+        specifier: workspace:*
+        version: link:../conventions
       '@fudic/formatter':
         specifier: workspace:*
         version: link:../formatter
@@ -101,6 +104,12 @@ importers:
       oxc-minify:
         specifier: 0.137.0
         version: 0.137.0
+
+  packages/conventions:
+    devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
 
   packages/core:
     dependencies:
@@ -246,6 +255,9 @@ importers:
       '@fudic/compiler':
         specifier: workspace:*
         version: link:../compiler
+      '@fudic/conventions':
+        specifier: workspace:*
+        version: link:../conventions
       '@fudic/ssr':
         specifier: workspace:*
         version: link:../ssr

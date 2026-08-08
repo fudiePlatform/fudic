@@ -6,6 +6,8 @@
  * SW and WW must load the SAME url, so a relative one would drift.
  */
 
+import { ROUTES_DIR } from '@fudic/conventions';
+
 import { type FudicDiagnostic, FUD_MANIFEST_URL_NOT_ABSOLUTE } from './diagnostics.js';
 import { type ModeDefault, type ParamFallback } from './mode.js';
 
@@ -19,7 +21,7 @@ export interface RouteDefault {
 }
 
 export interface FudicOptions {
-  /** Directory of page `.fud` files, relative to project root. Default: `'routes'`. */
+  /** Directory of page `.fud` files, relative to project root. Default: `ROUTES_DIR`. */
   readonly routesDir?: string;
   /** Absolute URL where the route manifest is published. Default: `${base}fudic-routes.json`. */
   readonly manifestUrl?: string;
@@ -45,7 +47,6 @@ export interface ResolveOptionsResult {
   readonly diagnostics: readonly FudicDiagnostic[];
 }
 
-const DEFAULT_ROUTES_DIR = 'routes';
 const DEFAULT_MANIFEST_NAME = 'fudic-routes.json';
 
 /** Absolute = a root-absolute path (`/…`) or a full URL with a scheme (`https:…`). */
@@ -69,7 +70,7 @@ export function resolveOptions(user: FudicOptions = {}, base = '/'): ResolveOpti
 
   return {
     options: {
-      routesDir: user.routesDir ?? DEFAULT_ROUTES_DIR,
+      routesDir: user.routesDir ?? ROUTES_DIR,
       base: normalizedBase,
       manifestUrl,
       prerender: user.prerender ?? true,

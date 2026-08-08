@@ -54,7 +54,8 @@ nunca `T | undefined`; omite los campos opcionales, no les asignes `undefined`.
 │   │   └── SDD-NN-*.md
 │   └── gramar/
 │       └── gramatica-v1-decisiones.md   # decisiones de gramática v1 numeradas (1–66)
-├── packages/                # compiler · dom · ssr · core · transport · vite · tsconfig
+├── packages/                # compiler · dom · ssr · core · transport · vite · cli · formatter
+│                            # language-core · language-server · conventions · tsconfig · vscode
 │   └── compiler/
 │       ├── src/             # código fuente (entrada: src/index.ts)
 │       ├── test/            # specs de Vitest (test/**/*.test.ts)

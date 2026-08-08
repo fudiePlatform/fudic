@@ -79,9 +79,12 @@ function project(): string {
 }
 
 const root = project();
+// `routesDir` explicit, and deliberately the old convention: this file and plugin.test.ts
+// are the two that keep the knob exercised, so the default moving under `src/` must not move
+// them (BUG-20 §6.10).
 const builds = discoverRoutes(
   root,
-  resolveOptions({ defaults: { '/hidden': { mode: 'exclude' } } }).options,
+  resolveOptions({ routesDir: 'routes', defaults: { '/hidden': { mode: 'exclude' } } }).options,
 ).routes;
 
 describe('discoverComponents', () => {

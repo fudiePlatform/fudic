@@ -14,8 +14,10 @@ import type { PageOptions } from '../src/types.js';
 
 const CWD = '/project';
 
+// The default `--dir`, spelled out rather than imported from `@fudic/conventions`: a test
+// that reads the constant agrees with whatever the constant says, including a wrong value.
 function options(overrides: Partial<PageOptions> = {}): PageOptions {
-  return { cwd: CWD, force: false, dir: 'routes', server: false, sections: null, ...overrides };
+  return { cwd: CWD, force: false, dir: 'src/routes', server: false, sections: null, ...overrides };
 }
 
 const LAYOUT = `<!DOCTYPE html>
@@ -52,12 +54,14 @@ describe('route → file (§6.15)', () => {
 
 describe('g page', () => {
   it('declares every section the layout chain renders (§6.8)', async () => {
-    const fs = new MemoryFs({ 'layouts/_layout.fud': LAYOUT });
+    const fs = new MemoryFs({ 'src/layouts/_layout.fud': LAYOUT });
     const plan = await planPage('perfil', options(), fs);
     expect(plan.errors).toEqual([]);
 
     const change = plan.changes[0]!;
-    expect(change.path).toBe('routes/perfil.fud');
+    expect(change.path).toBe('src/routes/perfil.fud');
+    // Byte for byte what it was before the tree moved: `src/routes` and `src/layouts` went
+    // down together, so the relative depth between them never changed (BUG-20 §4.4).
     expect(change.contents).toContain('<link rel="layout" href="../layouts/_layout.fud">');
     expect(change.contents).toContain('@section aside {');
     expect(change.contents).toContain('@section scripts {');
@@ -70,7 +74,7 @@ describe('g page', () => {
   });
 
   it('--sections restricts the set, and an unknown one is an error (§6.8)', async () => {
-    const fs = new MemoryFs({ 'layouts/_layout.fud': LAYOUT });
+    const fs = new MemoryFs({ 'src/layouts/_layout.fud': LAYOUT });
 
     const restricted = await planPage('perfil', options({ sections: ['scripts'] }), fs);
     expect(restricted.errors).toEqual([]);
@@ -95,15 +99,15 @@ describe('g page', () => {
   </body>
 </html>
 `;
-    const fs = new MemoryFs({ 'layouts/_layout.fud': LAYOUT, 'layouts/_layout-admin.fud': nested });
-    const plan = await planPage('admin', options({ layout: 'layouts/_layout-admin.fud' }), fs);
+    const fs = new MemoryFs({ 'src/layouts/_layout.fud': LAYOUT, 'src/layouts/_layout-admin.fud': nested });
+    const plan = await planPage('admin', options({ layout: 'src/layouts/_layout-admin.fud' }), fs);
     expect(plan.errors).toEqual([]);
     expect(plan.changes[0]!.contents).toContain('@section admin {');
     expect(plan.changes[0]!.contents).toContain('@section aside {');
   });
 
-  it('picks the nearest _layout.fud walking up from the page', async () => {
-    const fs = new MemoryFs({ 'layouts/_layout.fud': LAYOUT, 'routes/admin/_layout.fud': LAYOUT });
+  it('picks the nearest _layout.fud walking up from the page (§6.7)', async () => {
+    const fs = new MemoryFs({ 'src/layouts/_layout.fud': LAYOUT, 'src/routes/admin/_layout.fud': LAYOUT });
     const near = await planPage('admin/users', options(), fs);
     expect(near.changes[0]!.contents).toContain('href="./_layout.fud"');
 
@@ -117,24 +121,35 @@ describe('g page', () => {
     expect(plan.errors).toEqual([]);
     const doc = parseFud(plan.changes[0]!.contents).doc;
     expect(doc.type).toBe('page-document');
-    expect(plan.changes[0]!.path).toBe('routes/index.fud');
+    expect(plan.changes[0]!.path).toBe('src/routes/index.fud');
+  });
+
+  it('--dir outside src/ writes where it is told (§6.6)', async () => {
+    // The escape hatch of §3.3: `src/` is the convention, not a cage. A project that keeps
+    // the old layout says so once per command and nothing else changes.
+    const fs = new MemoryFs({ 'routes/_layout.fud': LAYOUT });
+    const plan = await planPage('perfil', options({ dir: 'routes' }), fs);
+    expect(plan.errors).toEqual([]);
+    expect(plan.changes[0]!.path).toBe('routes/perfil.fud');
+    // The walk-up cuts at `--dir`, so the layout next to the page is found there too.
+    expect(plan.changes[0]!.contents).toContain('<link rel="layout" href="./_layout.fud">');
   });
 
   it('--no-layout forces a standalone page even when a layout exists', async () => {
-    const fs = new MemoryFs({ 'layouts/_layout.fud': LAYOUT });
+    const fs = new MemoryFs({ 'src/layouts/_layout.fud': LAYOUT });
     const plan = await planPage('solo', options({ layout: null }), fs);
     expect(parseFud(plan.changes[0]!.contents).doc.type).toBe('page-document');
   });
 
   it('rejects a --layout that is not a layout (FUD0449)', async () => {
-    const fs = new MemoryFs({ 'components/app-card.fud': '<app-card><template shadowrootmode="open"></template></app-card>' });
-    const plan = await planPage('perfil', options({ layout: 'components/app-card.fud' }), fs);
+    const fs = new MemoryFs({ 'src/components/app-card.fud': '<app-card><template shadowrootmode="open"></template></app-card>' });
+    const plan = await planPage('perfil', options({ layout: 'src/components/app-card.fud' }), fs);
     expect(plan.changes).toEqual([]);
     expect(plan.errors.map((e) => e.code)).toEqual([FUD_LAYOUT_INVALID]);
   });
 
   it('--server puts @code top-level in a route, and inside <head> in a standalone page', async () => {
-    const withLayout = new MemoryFs({ 'layouts/_layout.fud': LAYOUT });
+    const withLayout = new MemoryFs({ 'src/layouts/_layout.fud': LAYOUT });
     const route = await planPage('blog', options({ server: true }), withLayout);
     const routeDoc = parseFud(route.changes[0]!.contents);
     expect(routeDoc.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);

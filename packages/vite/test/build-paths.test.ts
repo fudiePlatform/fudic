@@ -39,8 +39,8 @@ interface OutFile {
 
 async function buildWith(options: FudicOptions): Promise<OutFile[]> {
   const root = mkdtempSync(join(tmpdir(), 'fudic-paths-'));
-  mkdirSync(join(root, 'routes', 'customer'), { recursive: true });
-  writeFileSync(join(root, 'routes', 'customer', '[id].fud'), PAGE);
+  mkdirSync(join(root, 'src', 'routes', 'customer'), { recursive: true });
+  writeFileSync(join(root, 'src', 'routes', 'customer', '[id].fud'), PAGE);
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
   const result = (await build({
     root,
