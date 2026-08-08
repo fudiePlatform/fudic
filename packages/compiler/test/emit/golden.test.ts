@@ -25,7 +25,7 @@ const golden = (file: string): string => readFileSync(join(goldenDir, file), 'ut
 const graph: ComponentGraph = resolveComponents(join(fixturesDir, 'home.fud'), fixtureIo);
 
 describe('SSR emit — golden output (byte-for-byte)', () => {
-  for (const tag of ['app-badge', 'app-button', 'app-card']) {
+  for (const tag of ['app-badge', 'app-button', 'app-card', 'app-list']) {
     it(`emits ${tag}.mjs exactly`, () => {
       const src = emitComponentModule(graph, graph.components.get(tag)!);
       expect(src).toBe(golden(`${tag}.mjs`));
@@ -41,7 +41,7 @@ describe('client emit — golden output (byte-for-byte)', () => {
   // Every component gets a chunk, with no level filter: a component becomes N3 the moment
   // an ancestor hands it a reactive prop, and only the page knows that. `app-badge` has no
   // `@code { @client }` at all and still gets one.
-  for (const tag of ['app-badge', 'app-button', 'app-card']) {
+  for (const tag of ['app-badge', 'app-button', 'app-card', 'app-list']) {
     it(`emits ${tag}.client.mjs exactly`, () => {
       const src = emitComponentClientModule(graph, graph.components.get(tag)!);
       expect(src).toBe(golden(`${tag}.client.mjs`));

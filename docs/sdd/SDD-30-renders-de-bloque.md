@@ -209,6 +209,11 @@ texto** al volver del HTML y ninguna travesía los distingue. Ahí —y solo ah�
 detectable estáticamente— el bloque emite un **comentario vacío** como ancla real. Cero
 marcadores en el caso general; uno donde la forma lo exige.
 
+Y lo emiten **las dos ramas**: el HTML que pinta el servidor lleva ese comentario igual que el
+árbol que fabrica el cliente. Un marcador en un solo lado es peor que ninguno — los dos árboles
+difieren en un nodo y la hidratación adopta uno que no reconoce—, así que la regla se decide una
+sola vez, sobre los mismos ítems que las dos ramas ya recorren, y ninguna tiene opinión propia.
+
 ### 3.5. `key` es obligatoria en los tres constructos que iteran
 
 ```razor

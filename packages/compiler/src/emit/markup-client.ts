@@ -38,14 +38,12 @@ import { CodeWriter, type LinePart } from './writer.js';
 import { type AssetLinker } from './assets.js';
 import { crossingExpr, writeElementAttrs, type HostContext, type ValueSink } from './attrs.js';
 import { branchesOf } from './constructs.js';
+import { isControlNode, markerSite } from './marker.js';
 import { nestedSpaceMode, type SpaceMode } from './space.js';
 import { emitItems, type EmitItem, type TextRun } from './runs.js';
 import type { Prop } from './oxc-code.js';
 
-/** The closed set of control discriminants, as they appear among HTML children. */
-const CONTROL_TYPES: ReadonlySet<string> = new Set(['if', 'switch', 'for', 'foreach', 'while']);
-
-const isControl = (node: HtmlContent): boolean => CONTROL_TYPES.has(node.type);
+const isControl = isControlNode;
 const asControl = (node: HtmlContent): ControlNode => node as unknown as ControlNode;
 
 /** Where one DOM level is being written: its parent on each path, and its element cursor. */
@@ -154,12 +152,6 @@ function levelHas(children: readonly HtmlContent[], pred: (node: HtmlContent) =>
 }
 
 const isElement = (node: HtmlContent): boolean => node.type === 'element';
-
-/** Whether item `i` of a level is a control construct. Past the end it is not one. */
-function isConstructAt(items: readonly EmitItem[], i: number): boolean {
-  const item = items[i];
-  return item !== undefined && item.kind === 'node' && isControl(item.node);
-}
 
 /**
  * The four bodies one walk fills. `fab` and `adopt` are the two alternative ways to end up
@@ -433,37 +425,21 @@ export class ClientMarkupEmitter {
   }
 
   /**
-   * The ONE marker the DOM gets (§3.4), and the shape that forces it: two INTERPOLATED runs
-   * with nothing between them but constructs.
+   * The ONE marker the DOM gets, where `marker.ts` says it goes — the rule is stated there
+   * because the SERVER has to paint the same comment, and a marker on one side only is
+   * worse than none: the two trees would differ by a node.
    *
-   * When those constructs render nothing, the two runs are a single text node coming back
-   * from HTML — text has no boundary in markup — and no traversal can tell one from the
-   * other. Every other shape is resolved by the anchor, so this is where a marker earns its
-   * place and the only place it is written.
-   *
-   * `run` is the run in FRONT, the one that loses its anchor; `at` is the item the empty
-   * comment is emitted at, just before the constructs.
+   * What this adds is what only the client needs: the comment's own variable, and the node
+   * the run in front is stepped from on the adopt path.
    */
   #markerFor(
     items: readonly EmitItem[],
     names: readonly (string | undefined)[],
   ): Marker | undefined {
-    for (let i = 0; i < items.length - 1; i += 1) {
-      const first = items[i]!;
-      if (first.kind !== 'run' || !first.interpolated) continue;
-      let j = i + 1;
-      while (isConstructAt(items, j)) j += 1;
-      if (j === i + 1 || j >= items.length) continue;
-      const second = items[j]!;
-      if (second.kind !== 'run' || !second.interpolated) continue;
-      // The run in front has to be reached FORWARD — from the level's start, or from the
-      // node before it — because backwards it would walk into whatever the constructs
-      // painted. With no node before it to step from, the shape stays unresolved.
-      if (i > 0 && names[i - 1] === undefined) continue;
-      const front = i === 0 ? null : names[i - 1]!;
-      return { run: i, at: i + 1, name: this.#fresh(), front, runName: names[i]! };
-    }
-    return undefined;
+    const site = markerSite(items);
+    if (site === undefined) return undefined;
+    const front = site.run === 0 ? null : names[site.run - 1]!;
+    return { ...site, name: this.#fresh(), front, runName: names[site.run]! };
   }
 
   /** The empty comment, on both paths: created here, found from the run in front of it. */

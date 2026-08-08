@@ -120,6 +120,7 @@ describe('buildStart', () => {
       'h/app-badge',
       'h/app-button',
       'h/app-card',
+      'h/app-list',
     ]);
   });
 

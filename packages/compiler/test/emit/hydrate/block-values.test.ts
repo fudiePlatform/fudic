@@ -43,13 +43,13 @@ const HOSTS =
   '}\n' +
   '<x-parent>\n' +
   '  <template shadowrootmode="open">' +
-  '<ul>@foreach (const r of rows) key (r) {<li><x-kid .n="@tick"></x-kid></li>}</ul>' +
+  '<ul>@foreach (const r of rows) key (r) {<li><x-kid .n="@tick" .m="@r"></x-kid></li>}</ul>' +
   '</template>\n' +
   '</x-parent>\n';
 
 const KID =
-  '@code {\n  const { n = 0 } = props<{ n?: number }>();\n}\n' +
-  '<x-kid>\n  <template shadowrootmode="open"><span>@n</span></template>\n</x-kid>\n';
+  '@code {\n  const { n = 0, m = "" } = props<{ n?: number; m?: string }>();\n}\n' +
+  '<x-kid>\n  <template shadowrootmode="open"><span>@n @m</span></template>\n</x-kid>\n';
 
 function graphOf(files: Record<string, string>, tag: string): ComponentGraph {
   return resolveComponents(
@@ -124,18 +124,21 @@ describe('a write inside a loop, re-applied by the row (§4.5 — BUG-12 §3.3.c
  * `document` outlives its instance — the parents of the earlier tests are still subscribed,
  * and only the element says which shadow root a payload belongs to.
  */
-const served: { el: Element; n: unknown }[] = [];
+const served: { el: Element; n: unknown; m: unknown }[] = [];
 customElements.define(
   'x-kid',
   class extends HTMLElement {
     u(payload: unknown[]): void {
-      served.push({ el: this, n: payload[2] });
+      served.push({ el: this, n: payload[2], m: payload[3] });
     }
   },
 );
 
 const servedIn = (shadow: ShadowRoot): unknown[] =>
   served.filter((c) => shadow.contains(c.el)).map((c) => c.n);
+
+const rowsServedIn = (shadow: ShadowRoot): unknown[] =>
+  served.filter((c) => shadow.contains(c.el)).map((c) => c.m);
 
 describe('a child fabricated by a loop (§4.6 — BUG-12 §7)', () => {
   const graph = graphOf({ '/x-parent.fud': HOSTS, '/x-kid.fud': KID }, 'x-parent');
@@ -166,5 +169,39 @@ describe('a child fabricated by a loop (§4.6 — BUG-12 §7)', () => {
     // One payload, not two. A subscription that outlived its row would keep writing into
     // a host the DOM no longer holds — a listener leak wearing the shape of an update.
     expect(servedIn(shadow)).toHaveLength(1);
+  });
+
+  it('§6.11 — each row carries ITS OWN value out of the loop, not the last one', () => {
+    // The criterion the SDD was written for. Its literal form is a `@click` per row, and
+    // event bindings are the tanda after this one (§7) — but the defect is not about
+    // events: it is about what a closure created inside the loop captured. The props
+    // channel is the same closure, and it is emitted today.
+    //
+    // Flattened in line, `$n1`…`$n5` were the component's variables reassigned every turn,
+    // so after the loop only the LAST row survived. Here every row is served its own.
+    const { shadow } = drive(graph, 'x-parent', browserDom, [['a', 'b', 'c']]);
+
+    served.length = 0;
+    document.dispatchEvent(new Event('tick'));
+    expect(rowsServedIn(shadow)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('§6.12 — r() of the component retires every row, not just the last', () => {
+    const { ctl, shadow } = drive(graph, 'x-parent', browserDom, [['a', 'b', 'c']]);
+    expect(shadow.querySelectorAll('li')).toHaveLength(3);
+    // Held by hand: after the teardown these are out of the tree, so `shadow.contains`
+    // could no longer find them — and "nobody answers" has to be asked of THEM.
+    const kids = [...shadow.querySelectorAll('x-kid')];
+
+    served.length = 0;
+    ctl.r!();
+    // The N rows are out of the tree — a block's `r()` removes its own nodes, because a
+    // block is not a custom element and nobody else will.
+    expect(shadow.querySelectorAll('li')).toHaveLength(0);
+
+    // And the N disposers ran, not one: none of the three answers a notification any more.
+    // Nulling one variable per node — what the flattened emit did — released a single row.
+    document.dispatchEvent(new Event('tick'));
+    expect(served.filter((c) => kids.includes(c.el))).toEqual([]);
   });
 });

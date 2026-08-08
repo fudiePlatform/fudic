@@ -37,7 +37,7 @@ function write(name: string, source: string): void {
   process.stdout.write(`${name}\n`);
 }
 
-for (const tag of ['app-badge', 'app-button', 'app-card']) {
+for (const tag of ['app-badge', 'app-button', 'app-card', 'app-list']) {
   const component = graph.components.get(tag)!;
   write(`${tag}.mjs`, emitComponentModule(graph, component));
   write(`${tag}.client.mjs`, emitComponentClientModule(graph, component));

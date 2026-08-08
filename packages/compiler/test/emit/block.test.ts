@@ -44,6 +44,112 @@ const component = (tag: string, code: string, markup: string): string =>
 
 const codes = (out: EmitOutput): string[] => out.diagnostics.map((d) => d.code);
 
+/**
+ * The six criteria of §6 that are checkable on the text alone: what a block IS, what it
+ * takes, in what order, and what the emit refuses to put in the DOM.
+ */
+describe('the shape of a block (§6.1–§6.6)', () => {
+  // The example of §3.3, verbatim: it is the one the spec pins a signature to.
+  const EXAMPLE = component(
+    'x-ex',
+    '@code {\n' +
+      '  const { rows } = props<{ rows: { id: string; name: string }[] }>();\n' +
+      '  @client {\n' +
+      "    let a = 'Hello';\n" +
+      '    const pick = (id) => (e) => { console.log(id); };\n' +
+      '  }\n' +
+      '}\n',
+    '<ul>@foreach (const { id, name } of rows) key (id) {' +
+      '<li><span data-a="@a">@name</span><button @click="@pick(id)">elegir</button></li>' +
+      '}</ul>',
+  );
+
+  it('§6.1 — every block is a function returning the whole interface', () => {
+    const src = chunk(
+      'x-iface',
+      component(
+        'x-iface',
+        '@code {\n  const { on } = props<{ on: boolean }>();\n}\n',
+        '<div>@if (on) {<b></b>} else {<i></i>}</div>',
+      ),
+    );
+    // Two arms, two functions, declared inside `static c($props)`. The component's own
+    // controller is the LAST `return {` of the chunk; everything above it is the blocks.
+    const blocks = src.slice(0, src.lastIndexOf('return {'));
+    expect(blocks.match(/const \$b\d = \(\$parent, \$anchor[^)]*\) => \{/gu)).toHaveLength(2);
+    for (const member of [
+      'key: undefined,',
+      'c: () => {',
+      'h: ($c) => {',
+      'm: ($ref = $anchor) => {',
+      's: $s,',
+      'u: () => {',
+      'move: ($ref) => {',
+      'r: () => {',
+    ]) {
+      expect(blocks.split(member)).toHaveLength(3); // two occurrences ⇒ three pieces
+    }
+  });
+
+  it('§6.2 — the parameters are exactly the dependencies of §3.3', () => {
+    // `pick` is a `const` nobody reassigns — closure, not signature. `rows` is consumed by
+    // the header, which runs in the PARENT. `a` is a mutable `@client` the body reads.
+    expect(chunk('x-ex', EXAMPLE)).toContain('const $b0 = ($parent, $anchor, id, name, a) => {');
+  });
+
+  it('§6.3 — the same source gives the same signature, in the order of the pattern', () => {
+    expect(chunk('x-ex', EXAMPLE)).toBe(chunk('x-ex', EXAMPLE));
+    // `{ id, name }` yields `id` then `name`, and never the other way round.
+    const swapped = EXAMPLE.replace('const { id, name } of', 'const { name, id } of');
+    expect(chunk('x-ex', swapped)).toContain('($parent, $anchor, name, id, a)');
+  });
+
+  it('§6.4 — a nested block inherits the iteration variables of every ancestor', () => {
+    const src = chunk(
+      'x-deep',
+      component(
+        'x-deep',
+        '@code {\n  const { rows } = props<{ rows: { id: string; cs: { c: string }[] }[] }>();\n}\n',
+        '<ul>@foreach (const row of rows) key (row.id) {' +
+          '<li>@foreach (const cell of row.cs) key (cell.c) {' +
+          '<b>@if (cell.c) {<i>@row.id @cell.c</i>}</b>' +
+          '}</li>}</ul>',
+      ),
+    );
+    expect(src).toContain('const $b0 = ($parent, $anchor, row) => {'); // outer loop
+    expect(src).toContain('const $b1 = ($parent, $anchor, cell, row) => {'); // inner: both
+    // The `@if` declares nothing at all and still receives the two it reads.
+    expect(src).toContain('const $b2 = ($parent, $anchor, row, cell) => {');
+  });
+
+  it('§6.5 — no marker in the DOM but the one §3.4 forces', () => {
+    const plain = chunk(
+      'x-nomark',
+      component(
+        'x-nomark',
+        '@code {\n  const { rows, on } = props<{ rows: string[]; on: boolean }>();\n}\n',
+        '<ul>@foreach (const r of rows) key (r) {<li>@r</li>}@if (on) {<li></li>}</ul>',
+      ),
+    );
+    expect(plain).not.toContain('$dom.comment');
+  });
+
+  it('§6.6 — every name the emit introduces starts with $, except the author’s', () => {
+    const src = chunk('x-ex', EXAMPLE);
+    const factory = src.slice(src.indexOf('static c($props)'));
+    // The names that are the AUTHOR's: their props, their `@client` bindings, and what the
+    // loop header declares. Everything else in the factory was written by the emit.
+    const authors = new Set(['rows', 'a', 'pick', 'id', 'name']);
+    const declared = [...factory.matchAll(/^\s*(?:let|const) ([^=;]+?)\s*=/gmu)]
+      .flatMap(([, names]) => names!.split(',').map((n) => n.replace(/[[\]{}]/gu, '').trim()))
+      .filter((n) => n !== '');
+    expect(declared.length).toBeGreaterThan(0);
+    expect(declared.filter((n) => !n.startsWith('$') && !authors.has(n))).toEqual([]);
+    // And the dependency parameters are the author's, which is the one exception (§4.7).
+    expect(factory).toContain('($parent, $anchor, id, name, a)');
+  });
+});
+
 describe('@switch — one block per case, one selector for all of them', () => {
   const src = chunk(
     'x-switch',

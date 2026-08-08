@@ -3,7 +3,7 @@
 > **SDD:** [SDD-30 — Renders de bloque](./SDD-30-renders-de-bloque.md)
 > **Paquetes:** `@fudic/compiler` (emit de cliente, parser de la key)
 > **Rama:** `sdd-30-renders-de-bloque`
-> **Progreso:** 17 / 21
+> **Progreso:** 20 / 21
 
 Convierte los cinco constructos de control —`@if`, `@switch`, `@for`, `@foreach`, `@while`— de
 markup aplanado en `c`/`h` a **funciones de bloque** con vida propia. Va **antes** que los event
@@ -142,20 +142,28 @@ cuatro mapas de página, `FUD0290`, y el recorte de dependencias por uso real.
 
 ## Fase 5 — Verificación (3)
 
-- [ ] **18. Los criterios de forma (§6.1–§6.6) sobre el texto emitido.**
+- [x] **18. Los criterios de forma (§6.1–§6.6) sobre el texto emitido.**
       Una función por bloque con la interfaz completa; la firma exacta del ejemplo de §3.3
       (`pick` fuera por `const`, `rows` fuera por ser de la cabecera); orden determinista al
       recompilar; anidamiento heredando las variables de todos los ancestros; ningún marcador
       salvo el de §3.4; y la reserva `$` respetada salvo en los parámetros de dependencia, que
       son nombres del autor.
-- [ ] **19. Los criterios de comportamiento (§6.11–§6.19) en el arnés.**
+- [x] **19. Los criterios de comportamiento (§6.11–§6.19) en el arnés.**
+      **Dos notas de lo que salió al hacerlo.**
+      §6.11 pide un `@click` por fila, y los event bindings son la tanda siguiente (§7): el
+      criterio se verifica en su sustancia —qué capturó una closure creada dentro del bucle—
+      por el canal de props, que es la misma closure y sí está emitido. Cuando lleguen los
+      eventos, el test se reescribe en su forma literal.
+      §6.19 destapó un fallo: el ancla de §3.4 la emitía el cliente y **no** el servidor, así
+      que al hidratar los dos runs caían sobre el mismo nodo de texto y el primer `u` escribía
+      uno encima del otro. La regla vive ahora en `emit/marker.ts` y la deciden las dos ramas.
       Sobre DOM real, en `test/emit/hydrate/`: captura por iteración disparando en orden **no
       secuencial** (el test que hoy falla y motiva el SDD); teardown de las N filas, no de la
       última; `u` que escribe en una fila y solo en esa; los tres casos de reconciliación;
       **estado que sobrevive al reordenado** —un `<input>` escrito a mano conserva su valor—;
       cambio de rama de `@if`; equivalencia SSR↔cliente con `@if` cerrado, abierto y `@foreach`
       de 0, 1 y N; y el caso del ancla de §3.4 con la condición en los dos valores.
-- [ ] **20. Fixtures y goldens.**
+- [x] **20. Fixtures y goldens.**
       El `@foreach` del repo vive hoy en `home.fud` (una página) y ninguno de los tres componentes
       tiene uno, así que ningún golden de cliente muestra un bloque. Añadir un fixture de
       componente con `@foreach` + key, `@if`/`else` y un `@foreach` anidado; regenerar los

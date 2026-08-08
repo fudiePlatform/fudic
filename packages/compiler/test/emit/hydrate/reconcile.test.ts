@@ -108,6 +108,27 @@ describe('a keyed loop under u (§4.4)', () => {
     expect(list.html()).toBe('<ul><li>1</li><li>2</li></ul>');
   });
 
+  it('§6.15 — a row’s own state survives the reorder', () => {
+    // What the key actually buys. An `<input>` the user typed into holds state no data
+    // knows about; reconciling by index would leave it sitting on the wrong row, and the
+    // author would see the text jump between fields for no reason they can name.
+    const WITH_INPUT = shadowOf(
+      'x-in',
+      '<ul>@foreach (const row of rows) key (row.id) {<li><input><span>@row.n</span></li>}</ul>',
+      '@code {\n  const { rows } = props<{ rows: { id: string; n: string }[] }>();\n}\n',
+    );
+    const list = drive('x-in', WITH_INPUT, [[row('a', '1'), row('b', '2'), row('c', '3')]]);
+    const typed = list.shadow.querySelectorAll('input')[1]!;
+    typed.value = 'escrito a mano';
+
+    list.u([row('c', '3'), row('b', '2'), row('a', '1')]);
+
+    const moved = list.shadow.querySelectorAll('input')[1]!;
+    expect(moved).toBe(typed);
+    expect(moved.value).toBe('escrito a mano');
+    expect(list.shadow.textContent).toBe('321');
+  });
+
   it('reconciles a nested loop per row, from the row’s own u', () => {
     const nest = drive('x-nest', NESTED, [[{ id: 'a', cs: ['1', '2'] }]]);
     expect(nest.html()).toBe('<ul><li><b>1</b><b>2</b></li></ul>');

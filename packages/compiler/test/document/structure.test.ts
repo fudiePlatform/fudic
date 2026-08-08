@@ -245,7 +245,7 @@ describe('structureDocument — page mode (§6.6)', () => {
     expect(doc.html.name).toBe('html');
     expect(doc.head.name).toBe('head');
     expect(doc.body.name).toBe('body');
-    expect(doc.links).toHaveLength(3);
+    expect(doc.links).toHaveLength(4);
     expect(doc.code?.type).toBe('code');
   });
 });
