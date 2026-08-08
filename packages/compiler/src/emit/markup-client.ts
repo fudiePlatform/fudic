@@ -37,6 +37,7 @@
 
 import type { HtmlContent, ElementNode } from '../html/index.js';
 import type { ControlNode } from '../control/index.js';
+import type { RazorExpression } from '../at/index.js';
 import type { Span } from '../types/index.js';
 import { classifyAttribute } from '../binding/index.js';
 import { CodeWriter, type LinePart } from './writer.js';
@@ -47,7 +48,7 @@ import { isControlNode, markerSite } from './marker.js';
 import { nestedSpaceMode, type SpaceMode } from './space.js';
 import { emitItems, type EmitItem, type TextRun } from './runs.js';
 import type { Prop } from './oxc-code.js';
-import { eventHandler, FUD_UNSUITABLE_HANDLER, type HookupContext } from './events.js';
+import { busHandler, eventHandler, FUD_UNSUITABLE_HANDLER, type HookupContext } from './events.js';
 import { errorDiag } from '../types/index.js';
 
 const isControl = isControlNode;
@@ -587,23 +588,46 @@ export class ClientMarkupEmitter {
   #listeners(el: ElementNode, v: string): void {
     for (const attr of el.attributes) {
       const b = classifyAttribute(attr, this.#source).value;
-      if (b.type !== 'event') continue;
-      const handler = eventHandler(this.#source, b.value.expr, this.#hookup);
+      if (b.type !== 'event' && b.type !== 'bus') continue;
+      const at = b.value.expr;
+      const handler =
+        b.type === 'event'
+          ? eventHandler(this.#source, at, this.#hookup)
+          : busHandler(this.#source, at, this.#hookup);
       if (handler === undefined) {
         // The emit does not throw (§5): the binding is dropped and the page still emits.
         this.#hookup.diagnostics.push(
           errorDiag(
             FUD_UNSUITABLE_HANDLER,
             'event binding value must be a reference, a lambda or a call: this expression cannot be subscribed',
-            b.value.expr,
+            at,
           ),
         );
         continue;
       }
-      this.#hook.line(
-        `${v} && $d.push($dom.event(${v}, ${JSON.stringify(b.name)}, ${handler}));`,
-      );
+      if (b.type === 'event') {
+        this.#hook.line(`${v} && $d.push($dom.event(${v}, ${JSON.stringify(b.name)}, ${handler}));`);
+        continue;
+      }
+      // A bus subscription reads no node — the listener goes on the document and the
+      // context is the host — so it carries no `$nX &&` guard. What it does read is
+      // `$host`, and saying so here is what makes the factory declare it.
+      this.#hookup.hostUsed = true;
+      this.#hook.line(`$d.push($dom.bus($host, ${this.#channel(b.eventName)}, ${handler}));`);
     }
+  }
+
+  /**
+   * The channel a `bus:` subscribes, as an expression evaluated in `s()`.
+   *
+   * `bus:carrito` is the string; `bus:(EVENTOS.carrito)` is the expression, read where the
+   * subscription happens. Both produce a listener that works. Resolving the name STATICALLY
+   * (decision 28.c) is a different question and not this one: all it decides is who goes
+   * into `fud-bus`, which is a fact about the page. A name that cannot be resolved is not
+   * an error and still emits its listener — we do not protect what we cannot see.
+   */
+  #channel(name: string | RazorExpression): string {
+    return typeof name === 'string' ? JSON.stringify(name) : `(${this.#slice(name.expr)})`;
   }
 
   /**

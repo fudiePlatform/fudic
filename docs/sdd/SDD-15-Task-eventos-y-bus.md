@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/dom` (contrato + `browserDom`) · `@fudic/ssr` (`SsrDom`) ·
 > `@fudic/compiler` (emit)
 > **Rama:** `sdd-15-eventos-y-bus`
-> **Progreso:** 12 / 22
+> **Progreso:** 16 / 22
 > **Va DESPUÉS de:** [SDD-30 — Renders de bloque](./SDD-30-renders-de-bloque.md)
 > ([tareas](./SDD-30-Task.md)). No es una preferencia de orden: ver *Por qué va detrás* abajo.
 
@@ -240,7 +240,7 @@ fase 3, con el resto del enganche.
 
 ## Fase 4 — El bus (§4.4) (4)
 
-- [ ] **13. `bus:` desugariza a `document`, con el host como contexto.**
+- [x] **13. `bus:` desugariza a `document`, con el host como contexto.**
       En el cuerpo `hook`, un `BusBinding` produce:
       ```js
       $d.push($dom.bus($host, 'carrito', ($event) => onCarrito.call($host, $event)));
@@ -250,7 +250,7 @@ fase 3, con el resto del enganche.
       hallazgo estructural que lo obliga: emisor y suscriptor son **hermanos**, no padre/hijo, y
       un `CustomEvent` que burbujea desde el emisor sube por *sus* ancestros y no entra nunca en
       el suscriptor. Un listener sobre el host no dispararía jamás.
-- [ ] **14. El nombre del canal: literal o expresión, sin resolución estática.**
+- [x] **14. El nombre del canal: literal o expresión, sin resolución estática.**
       `bus:carrito` emite el string; `bus:(EVENTOS.carrito)` emite la expresión, evaluada en
       `s()` donde se suscribe. Las dos producen un listener que funciona. La **resolución
       estática** del nombre (decisión 28.c) no se hace aquí porque lo único que decide es quién
@@ -258,7 +258,7 @@ fase 3, con el resto del enganche.
       siguiente. Lo que sí se verifica aquí es la mitad de §6.22 que sí es de esta tanda: un
       nombre no resoluble **no es error** y **sigue emitiendo el listener** — postura permisiva,
       no protegemos lo que no podemos ver.
-- [ ] **15. `emit(…)` recibe su host.**
+- [x] **15. `emit(…)` recibe su host.**
       Reescribir, en el cuerpo copiado de `@code { @client }`, cada `CallExpression` cuyo callee
       sea el binding local de `emit` importado de `@fudic/dom`, a `emit.call($host, …)`. Tres
       cosas que hacen que esto no sea un `replace` de texto:
@@ -277,7 +277,7 @@ fase 3, con el resto del enganche.
       porque lo que el suscriptor ve como `e.target` es el host de todas formas. El host es
       simplemente el nodo que el controlador ya tiene a mano y el que no depende de dónde esté
       escrito el binding.
-- [ ] **16. Teardown (§6.13).**
+- [x] **16. Teardown (§6.13).**
       `r()` recorre `$d` y anula referencias; con eventos, eso pasa a ser comprobable: tras
       `r()`, el nodo no responde al evento **y** el listener de `bus:` deja de recibir. El
       segundo es el que importa —el de `document` sobrevive al host si nadie lo retira— y es el

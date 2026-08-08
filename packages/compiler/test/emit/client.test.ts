@@ -654,6 +654,49 @@ describe('emitComponentClientModule — event bindings hook up in $s() (§4.5)',
   });
 });
 
+describe('emitComponentClientModule — bus subscriptions (§4.4, §6.23, §6.24)', () => {
+  const cart = (tag: string, name: string): string =>
+    inlineChunk(
+      tag,
+      '@code {\n  @client {\n' +
+        "    import { emit } from '@fudic/dom';\n" +
+        '    const EVENTOS = { carrito: \'carrito\' };\n' +
+        '    function onCarrito(ev) { this.dataset.seen = ev.type; }\n' +
+        "    function press() { emit('press', 1); }\n" +
+        '  }\n}\n' +
+        `<${tag}>\n  <template shadowrootmode="open">` +
+        `<button ${name}="@onCarrito($event)" @click="@press()">x</button>` +
+        `</template>\n</${tag}>\n`,
+    );
+
+  it('desugars to a document listener with the host as context, and keeps the disposer', () => {
+    const src = cart('x-cart', 'bus:carrito');
+    expect(src).toContain(
+      '$d.push($dom.bus($host, "carrito", ($event) => onCarrito.call($host, $event)));',
+    );
+    // `@evento` and `bus:evento` are opposites (§6.24): one takes the node, the other the
+    // host, and only the second reaches the document.
+    expect(src).toContain('$d.push($dom.event($n0, "click", ($event) => press()));');
+    expect(src).toContain('let $host = $dom.host($shadow);');
+  });
+
+  it('takes an expression name as an expression, evaluated where it subscribes (§6.22)', () => {
+    // Not resolvable statically? Not an error, and the listener is emitted all the same:
+    // what resolution decides is who enters `fud-bus`, and that is a fact about the page.
+    const src = cart('x-cart2', 'bus:(EVENTOS.carrito)');
+    expect(src).toContain(
+      '$d.push($dom.bus($host, (EVENTOS.carrito), ($event) => onCarrito.call($host, $event)));',
+    );
+  });
+
+  it('gives emit(...) its host, invisibly to the developer', () => {
+    // The signature the author imports stays `(name, detail?)`; the host arrives as `this`.
+    expect(cart('x-cart3', 'bus:carrito')).toContain(
+      "function press() { emit.call($host, 'press', 1); }",
+    );
+  });
+});
+
 describe('emitComponentClientModule — a value that cannot be subscribed (FUD0291)', () => {
   it('reports it with its span, skips the binding, and emits the rest', () => {
     const source =

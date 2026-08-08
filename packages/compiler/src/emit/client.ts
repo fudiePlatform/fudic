@@ -121,7 +121,7 @@ function buildComponentClientModule(
   // subscription and no `emit` does not pay a line of chunk for a reference nobody looks
   // at, and the chunk budget that keeps INP flat on a cache miss is what pays for that.
   // `let`, not `const`: `r()` releases it along with the nodes and the shadow root.
-  const needsHost = emitCalls.length > 0;
+  const needsHost = emitCalls.length > 0 || hookup.hostUsed;
   if (needsHost) w.line('let $host = $dom.host($shadow);');
   for (const line of client.body) w.line(line);
   w.line('');

@@ -156,10 +156,7 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
     const stmts = Array.isArray(root) ? (root as OxcNode[]) : [root as OxcNode];
     const isClient = parts[i]!.type === 'client-region';
     for (const stmt of stmts) {
-      if (isClient) {
-        readClientStatement(stmt, source, map, client);
-        clientStatements.push(stmt);
-      }
+      if (isClient) clientStatements.push(stmt);
       if (!is(stmt, 'VariableDeclaration')) continue;
       for (const decl of fieldArray(stmt, 'declarations')) {
         readDeclarator(decl, source, map, props, signals);
@@ -177,6 +174,9 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
   const binding = emitBinding(clientStatements);
   const emitCalls: EmitCall[] = [];
   if (binding !== undefined) collectEmitCalls(clientStatements, binding, map, emitCalls);
+  // The body is read AFTER the calls are known: each statement is copied with the host
+  // spliced into every `emit(...)` it holds (§4.4).
+  for (const stmt of clientStatements) readClientStatement(stmt, source, map, client, emitCalls);
 
   return {
     props,
@@ -245,9 +245,37 @@ function readClientStatement(
   source: string,
   map: MapOffset,
   client: ClientCode,
+  calls: readonly EmitCall[],
 ): void {
-  const text = source.slice(map(stmt.start), map(stmt.end));
+  const start = map(stmt.start);
+  const text = withHost(source.slice(start, map(stmt.end)), start, calls);
   (is(stmt, 'ImportDeclaration') ? client.imports : client.body).push(text);
+}
+
+/**
+ * Splice the host into every `emit(...)` of one statement: `emit('x', d)` becomes
+ * `emit.call($host, 'x', d)`, so the host arrives as `this` (§4.4).
+ *
+ * The developer never sees it. Putting it in the signature would leak a compiler concern
+ * into user code, which is why the type `@fudic/dom` exports lies by omission on purpose.
+ * Nor is the host a delicate choice: `emit` forces `composed: true`, and a composed event
+ * is RETARGETED to the host the moment it leaves the shadow — dispatching from any inner
+ * node would look the same to the subscriber. The host is simply the node the controller
+ * already holds, and the one that does not depend on where the call is written.
+ *
+ * The edits are applied by OFFSET and back to front, never by regular expression: an
+ * `emit` inside a string or a comment is not a call, and a call nested in another one's
+ * arguments must not move the offsets of the call around it.
+ */
+function withHost(text: string, offset: number, calls: readonly EmitCall[]): string {
+  const edits: { at: number; text: string }[] = [];
+  for (const call of calls) {
+    if (call.calleeEnd <= offset || call.calleeEnd > offset + text.length) continue;
+    edits.push({ at: call.calleeEnd - offset, text: '.call' });
+    edits.push({ at: call.hostAt - offset, text: call.hasArgs ? '$host, ' : '$host' });
+  }
+  edits.sort((a, b) => b.at - a.at);
+  return edits.reduce((out, edit) => out.slice(0, edit.at) + edit.text + out.slice(edit.at), text);
 }
 
 /** Route a single `const … = call(...)` declarator to props (ObjectPattern) or signals. */
