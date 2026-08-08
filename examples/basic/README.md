@@ -28,18 +28,19 @@ pnpm --filter @fudic/example-basic preview    # sirve dist/ como lo haría un ho
 ## Qué hay dentro
 
 ```
-routes/                 # el routing ES el árbol de ficheros
-  index.fud             # /                    estática   → dist/index.html
-  about.fud             # /about               estática   → dist/about/index.html
-  logo.svg              #                      asset enlazado por Vite desde <link rel="icon">
-  blog/
-    index.fud           # /blog                sw (tiene @server load + strategy())
-    [slug].fud          # /blog/:slug          enumerada con paths() + render local del resto
-components/             # componentes compartidos, FUERA de routes/
-  site-nav.fud
-  app-card.fud          # enlaza a su vez app-badge.fud
-  app-badge.fud
-data/posts.ts           # la "base de datos"; solo la ve el servidor
+src/                    # el fuente; la raíz es del tooling
+  routes/               # el routing ES el árbol de ficheros
+    index.fud           # /                    estática   → dist/index.html
+    about.fud           # /about               estática   → dist/about/index.html
+    logo.svg            #                      asset enlazado por Vite desde <link rel="icon">
+    blog/
+      index.fud         # /blog                sw (tiene @server load + strategy())
+      [slug].fud        # /blog/:slug          enumerada con paths() + render local del resto
+  components/           # componentes compartidos, FUERA de routes/
+    site-nav.fud
+    app-card.fud        # enlaza a su vez app-badge.fud
+    app-badge.fud
+  data/posts.ts         # la "base de datos"; solo la ve el servidor
 sw.json                 # shell + políticas de cache. Sin este fichero NO hay Service Worker
 playwright.config.ts    # arnés E2E sobre el build real (`pnpm test:e2e`)
 tests/                  # tráfico de red y render, medidos en Chrome

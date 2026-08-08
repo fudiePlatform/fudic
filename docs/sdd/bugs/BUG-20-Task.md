@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/conventions` (**nuevo**) · `@fudic/cli` (`args.ts`, `layout.ts`,
 > `plans/new.ts`, plantillas) · `@fudic/vite` (`options.ts`) · `examples/basic`
 > **Rama:** `fix/bug-20-fuentes-en-src`
-> **Progreso:** 6 / 10
+> **Progreso:** 7 / 10
 > **No espera a nada.** Ningún SDD ni BUG en curso toca estos cuatro sitios
 
 La convención de directorios está escrita cuatro veces, en dos paquetes, y **no hay ningún sitio en
@@ -89,7 +89,7 @@ cualquier otra constante dentro del paquete nuevo ([§3.4, §7](./BUG-20-fuentes
 
 ## Fase 4 — El ejemplo (1)
 
-- [ ] **7. `examples/basic` baja a `src/`.**
+- [x] **7. `examples/basic` baja a `src/`.**
       `git mv routes components layouts data src/` — las cuatro **juntas**, que es lo que hace que
       ni un `href` ni un `import` de `@server` cambie ([§4.4](./BUG-20-fuentes-en-src.md)).
       Comprobar exactamente eso: `git diff -M --stat` no debe mostrar más que renombrados.
