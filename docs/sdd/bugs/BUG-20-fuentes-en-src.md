@@ -1,6 +1,6 @@
 # BUG-20 — El scaffold siembra la raíz del proyecto: no hay `src/`
 
-> **Estado:** `Listo` — causa raíz confirmada sobre el código, con fichero y línea
+> **Estado:** `Hecho` — los 12 criterios de §6 verdes
 > **Corrige:** [SDD-22 §3.1, §4.2, §4.5, §6.1](../SDD-22-fudic-cli.md) (la convención de
 > directorios que la CLI escribe) · [SDD-19 §3.2](../SDD-19-plugin-vite.md) (el defecto de
 > `routesDir`, que es la otra mitad del mismo contrato)
