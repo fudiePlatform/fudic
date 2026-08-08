@@ -47,13 +47,13 @@ const ROUTE = `<link rel="layout" href="../layouts/_layout.fud">
 }
 `;
 
-/** A project with `routes/index.fud` + `layouts/_layout.fud`, plus whatever `extra` adds. */
+/** A project with `src/routes/index.fud` + `src/layouts/_layout.fud`, plus whatever `extra` adds. */
 function project(extra: Record<string, string> = {}): string {
   const root = mkdtempSync(join(tmpdir(), 'fudic-layout-'));
-  mkdirSync(join(root, 'routes'), { recursive: true });
-  mkdirSync(join(root, 'layouts'), { recursive: true });
-  writeFileSync(join(root, 'routes', 'index.fud'), ROUTE);
-  writeFileSync(join(root, 'layouts', '_layout.fud'), LAYOUT);
+  mkdirSync(join(root, 'src', 'routes'), { recursive: true });
+  mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+  writeFileSync(join(root, 'src', 'routes', 'index.fud'), ROUTE);
+  writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), LAYOUT);
   for (const [rel, content] of Object.entries(extra)) {
     mkdirSync(join(root, rel, '..'), { recursive: true });
     writeFileSync(join(root, rel), content);
@@ -71,19 +71,19 @@ describe('discovery (§6.15, SDD-21 §4.7)', () => {
   });
 
   it('never treats a layout as a route, even inside routesDir', () => {
-    const root = project({ 'routes/_layout.fud': LAYOUT });
+    const root = project({ 'src/routes/_layout.fud': LAYOUT });
     const { routes } = discoverRoutes(root, resolveOptions({}).options);
     expect(routes.map((r) => r.route.pattern)).toEqual(['/']);
   });
 
   it('reports a layout under routesDir that nobody points at (FUD0434)', () => {
-    const root = project({ 'routes/_layout.fud': LAYOUT });
+    const root = project({ 'src/routes/_layout.fud': LAYOUT });
     const { diagnostics } = discoverRoutes(root, resolveOptions({}).options);
     expect(diagnostics.map((d) => d.code)).toEqual([FUD_ORPHAN_LAYOUT]);
   });
 
   it('stays silent for the layout the route actually uses', () => {
-    const root = project({ 'routes/_used.fud': LAYOUT, 'routes/r.fud': '<link rel="layout" href="./_used.fud"><p>x</p>' });
+    const root = project({ 'src/routes/_used.fud': LAYOUT, 'src/routes/r.fud': '<link rel="layout" href="./_used.fud"><p>x</p>' });
     const { diagnostics } = discoverRoutes(root, resolveOptions({}).options);
     expect(diagnostics.map((d) => d.code)).not.toContain(FUD_ORPHAN_LAYOUT);
   });
@@ -92,7 +92,7 @@ describe('discovery (§6.15, SDD-21 §4.7)', () => {
 describe('transform (§6.15, SDD-21 §3.4)', () => {
   it('emits the route composed with its layout, with the injected specifier', () => {
     const root = project();
-    const out = transformFud(join(root, 'routes', 'index.fud'), nodeIo());
+    const out = transformFud(join(root, 'src', 'routes', 'index.fud'), nodeIo());
     expect(out).not.toBeNull();
     // The layout lives outside routesDir: only an injected specifier can reach it.
     expect(out!.code).toContain("import { layout } from '../layouts/_layout.fud';");
@@ -102,15 +102,15 @@ describe('transform (§6.15, SDD-21 §3.4)', () => {
 
   it('emits the layout module itself, owning the shell', () => {
     const root = project();
-    const out = transformFud(join(root, 'layouts', '_layout.fud'), nodeIo());
+    const out = transformFud(join(root, 'src', 'layouts', '_layout.fud'), nodeIo());
     expect(out!.code).toContain('export function* layout(data, io, route) {');
     expect(out!.code).toContain('<!DOCTYPE html>');
     expect(out!.code).toContain('route.body($dom, ');
   });
 
   it('surfaces a broken chain as a graph diagnostic instead of emitting silence', () => {
-    const root = project({ 'routes/bad.fud': '<link rel="layout" href="./nope.fud"><p>x</p>', 'routes/nope.fud': '<app-x><template shadowrootmode="open"><p>x</p></template></app-x>' });
-    const out = transformFud(join(root, 'routes', 'bad.fud'), nodeIo());
+    const root = project({ 'src/routes/bad.fud': '<link rel="layout" href="./nope.fud"><p>x</p>', 'src/routes/nope.fud': '<app-x><template shadowrootmode="open"><p>x</p></template></app-x>' });
+    const out = transformFud(join(root, 'src', 'routes', 'bad.fud'), nodeIo());
     expect(out!.diagnostics.map((d) => d.code)).toContain('FUD0435');
   });
 });
@@ -192,9 +192,9 @@ describe('vite dev (§6.15)', () => {
     // invalidates a page when one of its components changes.
     await navigate('/');
     const id = (...parts: string[]): string => join(root, ...parts).replace(/\\/gu, '/');
-    const routeModule = server.moduleGraph.getModuleById(id('routes', 'index.fud'));
+    const routeModule = server.moduleGraph.getModuleById(id('src', 'routes', 'index.fud'));
     expect(routeModule).toBeDefined();
     const deps = [...(routeModule?.ssrImportedModules ?? [])].map((m) => m.id?.replace(/\\/gu, '/'));
-    expect(deps).toContain(id('layouts', '_layout.fud'));
+    expect(deps).toContain(id('src', 'layouts', '_layout.fud'));
   });
 });

@@ -41,9 +41,9 @@ const textOf = (file: OutFile): string =>
 /** A project root: one route, and a `sw.json` unless told otherwise. */
 function projectRoot(options: { serviceWorker: boolean; shell?: readonly string[] }): string {
   const root = mkdtempSync(join(tmpdir(), 'fudic-swself-'));
-  mkdirSync(join(root, 'routes'), { recursive: true });
+  mkdirSync(join(root, 'src', 'routes'), { recursive: true });
   mkdirSync(join(root, 'public'), { recursive: true });
-  writeFileSync(join(root, 'routes', 'index.fud'), PAGE);
+  writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
   writeFileSync(join(root, 'public', 'logo.svg'), '<svg/>');
   if (options.serviceWorker) {
     writeFileSync(

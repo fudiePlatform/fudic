@@ -39,8 +39,8 @@ let html: string;
 
 beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-literal-'));
-  mkdirSync(join(root, 'routes'), { recursive: true });
-  writeFileSync(join(root, 'routes', 'about.fud'), PAGE);
+  mkdirSync(join(root, 'src', 'routes'), { recursive: true });
+  writeFileSync(join(root, 'src', 'routes', 'about.fud'), PAGE);
   const result = (await build({
     root,
     logLevel: 'silent',

@@ -48,10 +48,28 @@ describe('fudic new', () => {
       'demo/tsconfig.json',
       'demo/fudic-globals.d.ts',
       'demo/sw.json',
-      'demo/layouts/_layout.fud',
-      'demo/routes/index.fud',
+      'demo/src/layouts/_layout.fud',
+      'demo/src/routes/index.fud',
     ]);
     expect(plan.changes.every((change) => change.kind === 'create')).toBe(true);
+
+    // §6.1: the source lives under `src/` and the root belongs to the tooling. The list of
+    // what may sit outside is written out, not derived — a file that lands in the root from
+    // now on has to be added here on purpose, which is the only way this stays a rule.
+    const ROOT_FILES = [
+      'package.json',
+      'vite.config.ts',
+      'README.md',
+      '.gitignore',
+      'tsconfig.json',
+      'fudic-globals.d.ts',
+      'sw.json',
+    ];
+    for (const change of plan.changes) {
+      const relative = change.path.slice('demo/'.length);
+      if (ROOT_FILES.includes(relative)) continue;
+      expect(relative, change.path).toMatch(/^src\//u);
+    }
 
     // `.fudic/` is where the build writes the edge wrappers: server code, outside `outDir`
     // so no static host publishes it (BUG-09). Ignoring it is the other half of that —
@@ -60,10 +78,12 @@ describe('fudic new', () => {
     const gitignore = plan.changes.find((change) => change.path === 'demo/.gitignore')!.contents;
     expect(gitignore).toContain('.fudic/');
 
-    const layout = plan.changes.find((change) => change.path === 'demo/layouts/_layout.fud')!.contents;
-    const index = plan.changes.find((change) => change.path === 'demo/routes/index.fud')!.contents;
+    const layout = plan.changes.find((change) => change.path === 'demo/src/layouts/_layout.fud')!.contents;
+    const index = plan.changes.find((change) => change.path === 'demo/src/routes/index.fud')!.contents;
     expect(parseFud(layout).doc.type).toBe('layout-document');
     expect(parseFud(index).doc.type).toBe('route-document');
+    // §6.2: byte for byte the href it was before the move. The four directories went down
+    // together, so no relative depth changed (BUG-20 §4.4).
     expect(index).toContain('<link rel="layout" href="../layouts/_layout.fud">');
 
     const pkg = JSON.parse(plan.changes[0]!.contents) as { name: string; scripts: Record<string, string> };
@@ -90,6 +110,23 @@ describe('fudic new', () => {
     // The project pins its own TypeScript: the server typechecks with THAT one (SDD-24 §2).
     const pkg = JSON.parse(file('demo/package.json')) as { devDependencies: Record<string, string> };
     expect(pkg.devDependencies['typescript']).toBe(TYPESCRIPT_VERSION);
+  });
+
+  it('leaves the generated config empty and shows src/ in the README (§6.3, §6.4)', async () => {
+    const plan = await planNew('demo', options(), new MemoryFs({}, CWD));
+    const file = (path: string): string => plan.changes.find((change) => change.path === path)!.contents;
+
+    // The scaffold configures nothing because it does not have to: the plugin's default and
+    // the directory the CLI just wrote come from the same constant. A generated config that
+    // had to declare `routesDir` would be the proof that the two disagree (§4.3).
+    expect(file('demo/vite.config.ts')).toContain('plugins: [fudic()]');
+    expect(file('demo/vite.config.ts')).not.toContain('routesDir');
+
+    const readme = file('demo/README.md');
+    expect(readme).toContain('src/layouts/_layout.fud');
+    expect(readme).toContain('src/routes/index.fud');
+    expect(readme).toContain('src/components/');
+    expect(readme).toContain('fudic g component app-card --in src/routes/index.fud');
   });
 
   it('--no-sw drops sw.json: the SW itself is never a user file (SDD-20)', async () => {

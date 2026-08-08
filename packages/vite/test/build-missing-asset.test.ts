@@ -35,9 +35,9 @@ const warnings: string[] = [];
 
 beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-missing-'));
-  mkdirSync(join(root, 'routes'), { recursive: true });
-  writeFileSync(join(root, 'routes', 'index.fud'), PAGE);
-  writeFileSync(join(root, 'routes', 'present.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47, 9]));
+  mkdirSync(join(root, 'src', 'routes'), { recursive: true });
+  writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
+  writeFileSync(join(root, 'src', 'routes', 'present.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47, 9]));
   // A Service Worker, so the build publishes a render chunk to assert on: since SDD-27
   // §5.1 the `page` chunks are pruned, and `sw/c` is the render code that ships.
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: ['/fudic-main.js'] }));

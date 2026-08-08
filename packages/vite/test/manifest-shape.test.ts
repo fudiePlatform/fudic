@@ -45,12 +45,12 @@ let output: OutFile[];
 
 beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-manifest-shape-'));
-  mkdirSync(join(root, 'routes', 'blog'), { recursive: true });
-  mkdirSync(join(root, 'components'), { recursive: true });
-  writeFileSync(join(root, 'components', 'site-nav.fud'), NAV);
-  writeFileSync(join(root, 'routes', 'index.fud'), page('Home', '../'));
-  writeFileSync(join(root, 'routes', 'about.fud'), page('About', '../'));
-  writeFileSync(join(root, 'routes', 'blog', 'index.fud'), page('Blog', '../../'));
+  mkdirSync(join(root, 'src', 'routes', 'blog'), { recursive: true });
+  mkdirSync(join(root, 'src', 'components'), { recursive: true });
+  writeFileSync(join(root, 'src', 'components', 'site-nav.fud'), NAV);
+  writeFileSync(join(root, 'src', 'routes', 'index.fud'), page('Home', '../'));
+  writeFileSync(join(root, 'src', 'routes', 'about.fud'), page('About', '../'));
+  writeFileSync(join(root, 'src', 'routes', 'blog', 'index.fud'), page('Blog', '../../'));
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: ['/fudic-main.js'] }));
   const result = (await build({
     root,

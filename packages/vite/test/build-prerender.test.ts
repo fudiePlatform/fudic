@@ -38,8 +38,8 @@ let withSw: OutFile[];
 /** Build the same page with and without a `sw.json` — the two are different worlds. */
 async function buildAbout(serviceWorker: boolean): Promise<OutFile[]> {
   const root = mkdtempSync(join(tmpdir(), 'fudic-prerender-'));
-  mkdirSync(join(root, 'routes'), { recursive: true });
-  writeFileSync(join(root, 'routes', 'about.fud'), PAGE);
+  mkdirSync(join(root, 'src', 'routes'), { recursive: true });
+  writeFileSync(join(root, 'src', 'routes', 'about.fud'), PAGE);
   if (serviceWorker) {
     writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
   }

@@ -12,7 +12,9 @@ describe('resolveOptions — defaults', () => {
     const { options, diagnostics } = resolveOptions();
     expect(diagnostics).toEqual([]);
     expect(options).toEqual({
-      routesDir: 'routes',
+      // BUG-20 §6.9: the same constant the CLI writes with, spelled out here — a test that
+      // imports the constant cannot tell a right default from a wrong one.
+      routesDir: 'src/routes',
       base: '/',
       manifestUrl: '/fudic-routes.json',
       prerender: true,
@@ -25,6 +27,11 @@ describe('resolveOptions — defaults', () => {
     const { options } = resolveOptions({}, '/app');
     expect(options.base).toBe('/app/');
     expect(options.manifestUrl).toBe('/app/fudic-routes.json');
+  });
+
+  it('lets an explicit routesDir win, including the old convention (§6.9)', () => {
+    // The escape hatch of §4.6: a project that keeps `routes/` at the root says so once.
+    expect(resolveOptions({ routesDir: 'routes' }).options.routesDir).toBe('routes');
   });
 
   it('applies user overrides', () => {

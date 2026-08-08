@@ -71,11 +71,11 @@ const linkChunks = (files: OutFile[]): OutFile[] =>
 
 function projectRoot(): string {
   const root = mkdtempSync(join(tmpdir(), 'fudic-minify-'));
-  mkdirSync(join(root, 'routes'), { recursive: true });
-  mkdirSync(join(root, 'components'), { recursive: true });
-  writeFileSync(join(root, 'routes', 'index.fud'), PAGE);
-  writeFileSync(join(root, 'routes', 'about.fud'), PAGE);
-  writeFileSync(join(root, 'components', 'app-badge.fud'), BADGE);
+  mkdirSync(join(root, 'src', 'routes'), { recursive: true });
+  mkdirSync(join(root, 'src', 'components'), { recursive: true });
+  writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
+  writeFileSync(join(root, 'src', 'routes', 'about.fud'), PAGE);
+  writeFileSync(join(root, 'src', 'components', 'app-badge.fud'), BADGE);
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: ['/fudic-main.js'] }));
   return root;
 }

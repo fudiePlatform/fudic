@@ -39,11 +39,11 @@ let output: OutFile[];
 
 beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-prune-asset-'));
-  mkdirSync(join(root, 'routes'), { recursive: true });
-  writeFileSync(join(root, 'routes', 'index.fud'), PAGE);
+  mkdirSync(join(root, 'src', 'routes'), { recursive: true });
+  writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
   // Over the default inline limit in BOTH builds: an inlined data URI would prove nothing,
   // because then no file has to exist for the reference to resolve.
-  writeFileSync(join(root, 'routes', 'logo.png'), Buffer.alloc(5000, 7));
+  writeFileSync(join(root, 'src', 'routes', 'logo.png'), Buffer.alloc(5000, 7));
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: ['/fudic-main.js'] }));
   const result = (await build({
     root,

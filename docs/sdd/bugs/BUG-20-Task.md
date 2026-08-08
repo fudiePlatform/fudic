@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/conventions` (**nuevo**) · `@fudic/cli` (`args.ts`, `layout.ts`,
 > `plans/new.ts`, plantillas) · `@fudic/vite` (`options.ts`) · `examples/basic`
 > **Rama:** `fix/bug-20-fuentes-en-src`
-> **Progreso:** 4 / 10
+> **Progreso:** 6 / 10
 > **No espera a nada.** Ningún SDD ni BUG en curso toca estos cuatro sitios
 
 La convención de directorios está escrita cuatro veces, en dos paquetes, y **no hay ningún sitio en
@@ -73,14 +73,14 @@ cualquier otra constante dentro del paquete nuevo ([§3.4, §7](./BUG-20-fuentes
 
 ## Fase 3 — Los tests (2)
 
-- [ ] **5. Los tests de la CLI.**
+- [x] **5. Los tests de la CLI.**
       `cli.test.ts`, `component.test.ts`, `page.test.ts`, `wire.test.ts`, `new.test.ts` y
       `fmt.test.ts`. No es un `sed`: los que fijan un `dir` explícito en su *helper* de opciones
       **siguen fijándolo** —son los que prueban que `--dir` manda
       ([§3.3](./BUG-20-fuentes-en-src.md))— y los que prueban el defecto pasan a esperar `src/…`.
       Añadir el criterio §6.1 tal como está escrito: la lista de lo que puede vivir fuera de `src/`
       es explícita, no deducida.
-- [ ] **6. Los fixtures del plugin.**
+- [x] **6. Los fixtures del plugin.**
       Los tests de build de `packages/vite/test` montan `root/routes` y llaman a `fudic()` sin
       opciones: migrar el fixture a `src/routes` para que la suite ejercite el defecto nuevo.
       **`plugin.test.ts` (`routesDir: 'fixtures'`) y `client.test.ts` (`routesDir: 'routes'`) no se

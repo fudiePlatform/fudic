@@ -36,13 +36,13 @@ let output: OutFile[];
 
 beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-asset-'));
-  mkdirSync(join(root, 'routes'), { recursive: true });
-  writeFileSync(join(root, 'routes', 'index.fud'), PAGE);
+  mkdirSync(join(root, 'src', 'routes'), { recursive: true });
+  writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
   // Arbitrary bytes with a .png extension — Vite hashes and emits it by content. Big
   // enough to clear the DEFAULT inline limit, because the link pass is a nested build that
   // does not inherit `assetsInlineLimit`: under the limit it would inline a data URI and
   // the published chunk would name no file at all.
-  writeFileSync(join(root, 'routes', 'logo.png'), Buffer.alloc(5000, 7));
+  writeFileSync(join(root, 'src', 'routes', 'logo.png'), Buffer.alloc(5000, 7));
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: ['/fudic-main.js'] }));
   const result = (await build({
     root,
