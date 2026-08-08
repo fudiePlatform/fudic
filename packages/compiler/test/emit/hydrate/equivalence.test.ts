@@ -75,7 +75,7 @@ describe('create ↔ hydrate — composition and control flow (app-card)', () =>
     expect(built).toBe(html);
     // The child host is there, with its style specifier — and empty on both sides: opening
     // its shadow and driving it belongs to the runtime, not to the parent.
-    expect(built).toContain('<app-button data-adopt="app-button">');
+    expect(built).toContain('<app-button data-adopt="app-button" variant="ghost">');
   });
 
   it('h() leaves it untouched', () => {

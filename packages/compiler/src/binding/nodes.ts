@@ -40,13 +40,23 @@ export interface AttributeBinding extends Node {
 }
 
 /**
- * `.prop="@x"` — exactly one expression, no concatenation, case-sensitive name
- * (decisions 23, 24, 25). `name` has no leading `.`.
+ * `.prop="…"` — the ONE way to pass a property, case-sensitive name (decisions 23, 25).
+ * `name` has no leading `.`.
+ *
+ * The value is shaped exactly like an attribute's, and that is BUG-16: since the dot is the
+ * only way to write a prop, it has to accept everything a prop can be — a constant
+ * (`.tone="info"`), a single expression (`.tone="@(t)"`) or nothing at all (`.disabled`,
+ * which is `true` by decision 44). Decision 23 required the value to be a lone `@`, which
+ * left a constant with no way to be written at all once the plain attribute stopped being
+ * one; `FUD0090` retires with it.
+ *
+ * What stays rejected is CONCATENATION (decision 24, `FUD0091`): a property carries a value,
+ * not a string assembled from pieces.
  */
 export interface PropertyBinding extends Node {
   readonly type: 'property';
   readonly name: string;
-  readonly value: RazorExpression;
+  readonly value: readonly AttributeValuePart[];
 }
 
 /**

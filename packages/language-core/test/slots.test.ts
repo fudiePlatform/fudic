@@ -42,7 +42,7 @@ describe('BUG-11 §6.1 — the example of this repository', () => {
   it('typechecks a component tag carrying slot=, with no TS2353', () => {
     // The line is `examples/basic/routes/blog/index.fud:48`, reproduced over the corpus:
     // `slot` is a global HTML attribute, not a prop of anybody.
-    const diagnostics = typecheckCorpus(badgeLine(`slot="meta" tone="success"`));
+    const diagnostics = typecheckCorpus(badgeLine(`slot="meta" .tone="success"`));
     expect(diagnostics.filter((d) => d.code === 2353)).toEqual([]);
   });
 });
@@ -62,7 +62,7 @@ describe('BUG-11 §6.6 — the global attributes', () => {
 
 describe('BUG-11 §6.7 — the contract is still strict', () => {
   it('still reports a misspelt prop, with the suggestion', () => {
-    const diagnostics = typecheckCorpus(badgeLine(`tonee="success"`));
+    const diagnostics = typecheckCorpus(badgeLine(`.tonee="success"`));
     const excess = diagnostics.filter((d) => d.code === 2561 || d.code === 2353);
 
     expect(excess).toHaveLength(1);
@@ -72,7 +72,7 @@ describe('BUG-11 §6.7 — the contract is still strict', () => {
   });
 
   it('still reports a value of the wrong type', () => {
-    const diagnostics = typecheckCorpus(badgeLine(`tone="nope"`));
+    const diagnostics = typecheckCorpus(badgeLine(`.tone="nope"`));
     expect(diagnostics.map((d) => d.code)).toContain(2322);
   });
 });

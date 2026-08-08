@@ -40,6 +40,8 @@ export function* page(data, io) {
       const $n11 = $dom.text(" "); $dom.append($n9, $n11);
       const $n12 = $dom.element("app-card");
       $dom.setAttr($n12, 'data-adopt', "app-card");
+      { const $v = (item.title); if ($v === true) $dom.setAttr($n12, "title", ''); else if ($v !== false && $v != null) $dom.setAttr($n12, "title", String($v)); }
+      { const $v = (item.featured ? 'highlight' : 'default'); if ($v === true) $dom.setAttr($n12, "variant", ''); else if ($v !== false && $v != null) $dom.setAttr($n12, "variant", String($v)); }
       const $n13 = $dom.attachShadow($n12);
       renderAppCard($dom, $n13, { "title": (item.title), "variant": (item.featured ? 'highlight' : 'default') });
       const $n14 = $dom.text(" "); $dom.append($n12, $n14);
@@ -47,6 +49,7 @@ export function* page(data, io) {
         const $n15 = $dom.text(" "); $dom.append($n12, $n15);
         const $n16 = $dom.element("app-badge");
         $dom.setAttr($n16, 'data-adopt', "app-badge");
+        $dom.setAttr($n16, "tone", "success");
         const $n17 = $dom.attachShadow($n16);
         renderAppBadge($dom, $n17, { "tone": "success" });
         const $n18 = $dom.text("Destacado"); $dom.append($n16, $n18);

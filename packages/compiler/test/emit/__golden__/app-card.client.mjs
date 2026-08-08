@@ -51,6 +51,7 @@ customElements.define("app-card", class extends FudicElement {
         $dom.append($n0, $dom.text(" "));
         $n6 = $dom.element("app-button");
         $dom.setAttr($n6, 'data-adopt', "app-button");
+        $dom.setAttr($n6, "variant", "ghost");
         $dom.append($n6, $dom.text(" "));
         if (expanded.peek()) {
           $dom.append($n6, $dom.text(" Cerrar "));

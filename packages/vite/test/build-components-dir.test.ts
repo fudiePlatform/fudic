@@ -38,7 +38,7 @@ const page = (depth: string): string => `<!DOCTYPE html>
     <title>Deep</title>
   </head>
   <body>
-    <app-badge tone="success">ok</app-badge>
+    <app-badge .tone="success">ok</app-badge>
   </body>
 </html>
 `;

@@ -7,7 +7,7 @@
 </head>
 
 @section nav {
-  <site-nav current="value-prop"></site-nav>
+  <site-nav .current="value-prop"></site-nav>
 }
 
 <h1>2 · El padre pasa el valor</h1>

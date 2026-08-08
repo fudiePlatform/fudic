@@ -40,7 +40,7 @@
           <slot></slot>
         </div>
       }
-      <app-button variant="ghost" @press="@toggle">
+      <app-button .variant="ghost" @press="@toggle">
         @if (expanded.peek()) { Cerrar } else { Abrir }
       </app-button>
     </article>

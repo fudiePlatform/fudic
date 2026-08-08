@@ -127,12 +127,14 @@ describe('BUG-12 §6.7 — the parent moves, the child follows', () => {
     host.remove();
   });
 
-  it('hands the child its initial value at hookup, before anything moves', () => {
-    // `$s()` runs on both paths, so the value is there whether the child was hydrated or
-    // fabricated. The server painted the child's own default — it never saw the parent's
-    // signal — and the owner of the value writes the real one as the parent comes alive.
+  it('hands the child its initial value at hookup, and it AGREES with what SSR painted', () => {
+    // Since BUG-16 the server sees the prop: `.value="@count"` crosses as `count.peek()`
+    // (decision 84 — the value, never the signal object), so the markup already says 5.
+    // What `$s()` must not do is reset it: the initial pass runs on both paths, and a pass
+    // that sent the child's own default would repaint 0 over correct markup. Before
+    // BUG-16 this read 0 → 5, and the 0 was the defect, not the criterion.
     const { host, text } = mounted();
-    expect(text()).toBe('0');
+    expect(text()).toBe('5');
 
     hydrate(host);
 

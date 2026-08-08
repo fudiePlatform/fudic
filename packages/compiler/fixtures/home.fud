@@ -32,10 +32,10 @@
       <section class="grid">
         @foreach (const item of data.items) {
           <app-card
-            title="@item.title"
-            variant="@(item.featured ? 'highlight' : 'default')">
+            .title="@item.title"
+            .variant="@(item.featured ? 'highlight' : 'default')">
             @if (item.featured) {
-              <app-badge tone="success">Destacado</app-badge>
+              <app-badge .tone="success">Destacado</app-badge>
             }
             @item.description
           </app-card>

@@ -43,7 +43,9 @@ import { hrefCompletions, unresolvedHrefs } from './href.js';
 import {
   classContextAt,
   directiveContextAt,
+  eventContextAt,
   hrefContextAt,
+  propertyContextAt,
   sectionContextAt,
   tagContextAt,
   wordContextAt,
@@ -462,6 +464,17 @@ function completions(
     );
     if (items.length > 0) return list(items);
   }
+
+  // The dot and the at-sign: the two contexts the server answers by saying NOTHING.
+  //
+  // In fudic a property is written with a `.` and an event with an `@`, and both lists belong
+  // to TypeScript over the projection — the component's contract for one, the DOM's event map
+  // for the other. What the server has to do there is get out of the way: no Emmet, no tags,
+  // no snippets. Returning `undefined` is exactly that — this plugin has nothing to say, so
+  // the projection is the only voice left.
+  const inside =
+    propertyContextAt(cached.source, offset) ?? eventContextAt(cached.source, offset);
+  if (inside !== undefined) return undefined;
 
   // The tag after a `<` is NOT here: it merges instead of claiming, and in Volar that is a
   // property of a plugin rather than of a branch. It lives in `createFudicTagService`.

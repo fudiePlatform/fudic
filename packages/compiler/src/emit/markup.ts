@@ -17,7 +17,7 @@ import type { RenderSectionNode } from '../layout/index.js';
 import type { Span } from '../types/index.js';
 import { CodeWriter } from './writer.js';
 import { type AssetLinker } from './assets.js';
-import { componentPropsExpr, writeElementAttrs } from './attrs.js';
+import { componentPropsExpr, writeElementAttrs, type HostContext } from './attrs.js';
 import { nestedSpaceMode, type SpaceMode } from './space.js';
 import { emitItems, type TextRun } from './runs.js';
 
@@ -41,6 +41,8 @@ export class MarkupEmitter {
   readonly #isComponent: (tag: string) => boolean;
   readonly #linker: AssetLinker;
   readonly #slots: string | undefined;
+  /** The names this component declares with `signal(...)`: decision 84, see `crossingExpr`. */
+  readonly #signals: ReadonlySet<string>;
   readonly #used = new Set<string>();
   #id = 0;
   /** The whitespace mode of the node being emitted; `white-space` inherits (BUG-07 §4.4). */
@@ -63,6 +65,7 @@ export class MarkupEmitter {
     linker: AssetLinker,
     slots?: string,
     space: SpaceMode = 'collapse',
+    signals: ReadonlySet<string> = new Set(),
   ) {
     this.#source = source;
     this.#w = w;
@@ -70,6 +73,7 @@ export class MarkupEmitter {
     this.#linker = linker;
     this.#slots = slots;
     this.#space = space;
+    this.#signals = signals;
   }
 
   /** The child component tags rendered so far, in first-use order (for ES imports). */
@@ -152,12 +156,17 @@ export class MarkupEmitter {
       // from the DOM; project the specifier onto the host as data-adopt so the style
       // polyfill can read it (SDD-18 D-6). The native attribute still rides the template.
       this.#w.line(`$dom.setAttr(${v}, 'data-adopt', ${JSON.stringify(el.name)});`);
+      // The host's own attributes — its `.prop`s and its plain HTML ones (BUG-16 §4.1).
+      // Level 1 is HTML with no JS, so this is the only place they can live.
+      this.#elementAttrs(el, v, true);
       this.#w.line(`const ${s} = $dom.attachShadow(${v});`);
-      this.#w.line(`${renderName(el.name)}($dom, ${s}, ${componentPropsExpr(this.#source, el)});`);
+      this.#w.line(
+        `${renderName(el.name)}($dom, ${s}, ${componentPropsExpr(this.#source, el, this.#signals)});`,
+      );
       this.emitChildren(el.children, v); // light DOM (projected by <slot>)
     } else {
       this.#w.line(`const ${v} = $dom.element(${JSON.stringify(el.name)});`);
-      this.#elementAttrs(el, v);
+      this.#elementAttrs(el, v, false);
       this.emitChildren(el.children, v);
     }
     this.#space = outer;
@@ -189,7 +198,8 @@ export class MarkupEmitter {
     this.#w.line('}');
   }
 
-  #elementAttrs(el: ElementNode, v: string): void {
-    writeElementAttrs(this.#source, el, v, this.#w, this.#linker);
+  #elementAttrs(el: ElementNode, v: string, isComponent: boolean): void {
+    const host: HostContext = { isComponent, signals: this.#signals };
+    writeElementAttrs(this.#source, el, v, this.#w, this.#linker, host);
   }
 }

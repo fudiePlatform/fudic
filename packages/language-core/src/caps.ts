@@ -89,6 +89,28 @@ export const COMPLETION_ONLY_CAPS: MappingCaps = {
 };
 
 /**
+ * A name the user wrote, projected as a string literal — quotes included.
+ *
+ * Two capabilities, and each is there for a reason the other cannot cover. `verification`,
+ * because TypeScript reports over the literal WITH its quotes and a reported range only maps
+ * back when both of its ends land in one stretch that carries it — the `@section` precedent.
+ * `completion`, because for an event name the list IS the point: `@cli|` asks
+ * `keyof HTMLElementEventMap` and gets `click`, `change`, `input`, with no table kept here.
+ *
+ * Navigation, rename and hover stay off: the stretch is two characters longer than the name
+ * it stands for, so a rename through it would rewrite the source through a range of a
+ * different length.
+ */
+export const LITERAL_NAME_CAPS: MappingCaps = {
+  completion: true,
+  verification: true,
+  semantic: false,
+  navigation: false,
+  structure: false,
+  format: false,
+};
+
+/**
  * Scaffolding the emitter invented: nothing routes. No diagnostic lands on it, no rename
  * reaches it, no hover answers for it — the user never sees text they did not write.
  */

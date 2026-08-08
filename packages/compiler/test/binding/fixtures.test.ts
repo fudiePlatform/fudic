@@ -162,14 +162,14 @@ describe('fixture-specific classifications', () => {
     expect(kinds(bindings)).not.toContain('bus');
   });
 
-  it('home.fud: interpolations are found and attributes stay plain', () => {
+  it('home.fud: interpolations are found, and a prop is a prop (BUG-16)', () => {
     const source = read('home.fud');
     const classified = classifyAll(
       parseDocument(source, { atConstructs: constructs }).value,
       source,
     );
     expect(classified.interpolations).toBeGreaterThan(0);
-    // The page uses only plain attributes: `title="@item.title"`, `variant="@( ... )"`, ...
-    expect(new Set(kinds(classified.bindings))).toEqual(new Set(['attr']));
+    // Two vocabularies and no third: `.title`/`.variant`/`.tone` are props, `class` is HTML.
+    expect(new Set(kinds(classified.bindings))).toEqual(new Set(['attr', 'property']));
   });
 });

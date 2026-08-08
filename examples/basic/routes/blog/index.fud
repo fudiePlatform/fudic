@@ -25,7 +25,7 @@
 </head>
 
 @section nav {
-  <site-nav current="blog"></site-nav>
+  <site-nav .current="blog"></site-nav>
 }
 
 <h1>@data.title</h1>
@@ -45,7 +45,7 @@
         title="@post.title"
         href="@('/blog/' + post.slug)"
         variant="@(post.featured ? 'highlight' : 'default')">
-        <app-badge slot="meta" tone="@(post.featured ? 'success' : 'neutral')">@post.tag</app-badge>
+        <app-badge slot="meta" .tone="@(post.featured ? 'success' : 'neutral')">@post.tag</app-badge>
         @post.summary
       </app-card>
     }

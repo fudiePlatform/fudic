@@ -214,9 +214,9 @@ html_block
 
 **22.** `class:foo="@x"` y `style:foo="@x"` como sintaxis condicional dedicada (estilo Svelte). `class=` y `style=` sin magia (string puro). No se soporta sintaxis tipo Vue con array/objeto mágico.
 
-**23.** Property binding exige valor `@...`. `.value="hola"` es error; `.value="@('hola')"` correcto.
+**23.** ~~Property binding exige valor `@...`. `.value="hola"` es error; `.value="@('hola')"` correcto.~~ — **derogada por BUG-16** (2026-08-07). Con el punto como **única** vía de prop sobre un componente (41.c), exigir `@` dejaba fuera el caso más común de todos: `.tone="info"`. El valor de un `property_binding` toma ahora la misma forma que la de un atributo —constante, expresión o nada (`.disabled`, decisión 44)—, y `FUD0090` se retira.
 
-**24.** Property binding sin concatenación. Un único `at_construct` o error.
+**24.** Property binding sin concatenación. Un único `at_construct` o error (`FUD0091`). **Precisado por BUG-16:** el error ya no degrada el binding a atributo plano. Un prop escondido del editor por tener el valor mal escrito no ayuda a nadie: sigue siendo un prop, y sigue completándose como tal.
 
 **25.** Property binding case-sensitive, tal cual. `.innerHTML`, `.textContent`.
 
@@ -430,6 +430,12 @@ Subset estricto de HTML5. No se implementa error recovery ni inserciones implíc
 
 **41.b.** Detección de `<svg>` y `<math>` como raíz activa modo SVG/MathML en el parser (case-sensitive, self-close permitido estilo XML).
 
+**41.c.** *(BUG-16.)* **Sobre un tag de componente, `property_binding` es la única vía de prop.** La regla `attribute` es plana y no dice sobre qué tag aparece; sobre un tag con guion sí importa, porque ahí las alternativas dejan de ser hermanas:
+
+> `.prop="…"` es una **propiedad del componente** — se serializa como atributo del host y entra en el literal de props con el que se renderiza. `attr="…"` es un **atributo de HTML** y nada más: se comprueba contra el vocabulario global (`id`, `class`, `role`, `data-*`, `aria-*`…) y `tone="info"` sobre un componente es un error de TypeScript, no un prop.
+
+El prefijo dice quién contesta: `.` el contrato del componente, `@` el diccionario de eventos del DOM, `class:` el `<style>` de este fichero, nada el vocabulario de HTML. **Sobre un tag nativo no cambia nada**: ahí un `.prop` sigue siendo propiedad del DOM (enganche de cliente, ausente de SSR) y un atributo sigue siendo un atributo.
+
 **42.** Razor activo dentro de `<style>`. Desambiguación por lista blanca de at-rules CSS.
 
 **42.a.** Lista blanca de at-rules mantenida en el compilador. Lista inicial: `@charset`, `@import`, `@namespace`, `@media`, `@supports`, `@container`, `@layer`, `@scope`, `@starting-style`, `@keyframes`, `@font-face`, `@font-feature-values`, `@font-palette-values`, `@counter-style`, `@page`, `@property`, `@document` (obsoleto).
@@ -507,9 +513,11 @@ raw_text_element
   : LT raw_tag_name attribute* GT raw_content LT SLASH raw_tag_name GT
   ;
 
+// Sobre un tag con guion, las alternativas NO son hermanas (decisión 41.c):
+// `property_binding` es la única vía de prop y las otras son atributos de HTML.
 attribute
   : dynamic_attribute           // attr="@expr" o attr="pre-@expr-post"
-  | property_binding            // .prop="@expr"
+  | property_binding            // .prop="valor" | .prop="@expr" | .prop (decisiones 23, 44)
   | event_binding               // @evt="@handler"
   | ref_binding                 // ref="@var"
   | class_conditional           // class:foo="@expr"
@@ -972,8 +980,8 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 20 | Interpolación | Atributos como concatenación uniforme |
 | 21 | Interpolación | Atributos booleanos: falsy omite, truthy sin valor |
 | 22 | Interpolación | `class:foo` / `style:foo` condicionales |
-| 23 | Interpolación | Property binding exige `@...` |
-| 24 | Interpolación | Property binding sin concatenación |
+| 23 | Interpolación | ~~Property binding exige `@...`~~ — **derogada por BUG-16**: acepta constante, expresión o nada |
+| 24 | Interpolación | Property binding sin concatenación (y el error ya no lo degrada a atributo plano) |
 | 25 | Interpolación | Property binding case-sensitive |
 | 26 | Interpolación | Handler como referencia o lambda |
 | 27 | Interpolación | Sin modificadores de evento |
@@ -1004,6 +1012,7 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 40 | HTML | Self-closing JSX-style permitido |
 | 41 | HTML | Tag names alfanuméricos con guión |
 | 41.b | HTML | Modo SVG/MathML |
+| 41.c | HTML | Sobre un componente, `property_binding` es la única vía de prop (BUG-16) |
 | 42 | HTML | Razor en `<style>` activo |
 | 42.a | HTML | Lista blanca de at-rules CSS |
 | 42.b | HTML | Lista cerrada estricta |

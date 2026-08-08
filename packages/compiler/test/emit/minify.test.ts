@@ -151,7 +151,7 @@ describe('BUG-07 §6.3–§6.5 — the markup collapses, and nothing disappears'
   it('§6.5 keeps every text node: a whitespace run becomes one space, not nothing', () => {
     // The criterion that blinds §4.5. A whitespace-only node counts as assigned slot
     // content and defeats `:empty`; deleting it is observable and buys 0.4 % gzip.
-    expect(html).toContain('<app-badge data-adopt="app-badge">');
+    expect(html).toContain('<app-badge data-adopt="app-badge" tone="success">');
     // The light DOM of the badge and the space around it both survive.
     expect(html).toMatch(/<\/template>[^<]*Destacado/u);
   });
