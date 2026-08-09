@@ -3,7 +3,7 @@
 > **BUG:** [BUG-19 — Tres de los cinco constructos no existen en la rama de servidor](./BUG-19-tres-constructos-sin-servidor.md)
 > **Paquetes:** `@fudic/compiler` (`emit/markup.ts`, `emit/constructs.ts`)
 > **Rama:** `fix/bug-19-servidor-tres-constructos`
-> **Progreso:** 6 / 10
+> **Progreso:** 9 / 10
 > **No espera a nada.** [SDD-30](../SDD-30-renders-de-bloque.md) está `Hecho` y es lo que abarata
 > la corrección; [SDD-31](../SDD-31-signals-derivadas.md), [BUG-18](./BUG-18-update-denso.md) y
 > [SDD-15-Task-eventos-y-bus](../SDD-15-Task-eventos-y-bus.md) **no comparten un fichero** con esta
@@ -87,19 +87,19 @@ goldens nuevos, y cualquier semántica de `key` en el servidor.
 
 ## Fase 4 — Verificación (3)
 
-- [ ] **7. Los criterios de forma, sobre el texto y sobre el HTML (§6.1–§6.7).**
+- [x] **7. Los criterios de forma, sobre el texto y sobre el HTML (§6.1–§6.7).**
       Con componentes **en memoria**, al modo de
       [`block.test.ts`](../../../packages/compiler/test/emit/block.test.ts) —que ya prueba estos
       mismos tres constructos, pero solo contra el chunk de cliente—. Nada de fixtures nuevas: es lo
       que mantiene la rama paralelizable con las tres tandas en vuelo (§2.5, §7).
-- [ ] **8. Equivalencia SSR ↔ cliente, los tres constructos (§6.11–§6.14).**
+- [x] **8. Equivalencia SSR ↔ cliente, los tres constructos (§6.11–§6.14).**
       En [`hydrate/block-equivalence.test.ts`](../../../packages/compiler/test/emit/hydrate/block-equivalence.test.ts),
       con `adoptOnly`: si `h()` fabrica **un** nodo, las dos ramas ya divergieron. `@switch` con la
       rama `case`, con la `default` y **sin ninguna coincidencia**; `@for` con 0, 1 y N vueltas;
       `@while` con 0 y N. Y el criterio que solo se ha verificado con `@if` hasta hoy: un constructo
       que no pinta devuelve el cursor **intacto**, comprobado con un elemento hermano detrás.
       Este es el test que da sentido al BUG: es el que hoy falla y el que nadie escribió.
-- [ ] **9. Goldens (§6.10).**
+- [x] **9. Goldens (§6.10).**
       `pnpm test` con los goldens sin regenerar: ni los `__golden__/*.mjs` de servidor ni los
       `*.client.mjs` pueden moverse un byte —ninguna fixture usa los tres constructos, y la tarea 1
       es una mudanza, no un cambio de salida—. Un golden que cambie aquí señala que se tocó la rama
