@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/dom` (contrato + `browserDom`) · `@fudic/ssr` (`SsrDom`) ·
 > `@fudic/compiler` (emit)
 > **Rama:** `sdd-15-eventos-y-bus`
-> **Progreso:** 21 / 22
+> **Progreso:** 22 / 22
 > **Va DESPUÉS de:** [SDD-30 — Renders de bloque](./SDD-30-renders-de-bloque.md)
 > ([tareas](./SDD-30-Task.md)). No es una preferencia de orden: ver *Por qué va detrás* abajo.
 
@@ -324,7 +324,7 @@ fase 3, con el resto del enganche.
 
 ## Fase 6 — Cierre (1)
 
-- [ ] **22. Verde y cobertura.**
+- [x] **22. Verde y cobertura.**
       `pnpm typecheck`, `pnpm test` y `pnpm build` en la raíz —los ejemplos se construyen
       después de los paquetes: si `examples/basic` se rompe, el build falla—. `@fudic/dom` y
       `@fudic/ssr` al **100 %** en las cuatro métricas, y `events.ts` nace al
