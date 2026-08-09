@@ -1,39 +1,45 @@
 # SDD-31 — Tareas · `computed`, `effect`, `batch`
 
 > **SDD:** [SDD-31 — Signals derivadas](./SDD-31-signals-derivadas.md)
-> **Paquetes:** `@fudic/core` (las tres primitivas) · `@fudic/compiler` (el enganche de §4.7 y
-> el stub inerte de §4.6)
+> **Paquetes:** `@fudic/core` (las primitivas y el recorte de `Signal`) · `@fudic/compiler` (el
+> emit de §4.6–§4.8) · `@fudic/example-basic` (los `.fud` que usan `peek()`)
 > **Rama:** `sdd-31-computed-effect`
-> **Progreso:** 0 / 14
+> **Progreso:** 0 / 17
 > **No depende de:** SDD-30 ni de la tanda de eventos. Puede ir en paralelo, en su propio
 > worktree: no comparte un fichero con ninguna de las dos.
 
-Da a `@fudic/core` las tres primitivas que le faltan y a `sig()` el significado que su propio tipo
-anunciaba. Es **ampliación, no rediseño**: la tarea 12 lo verifica exigiendo que ningún golden se
-mueva.
+Da a `@fudic/core` las tres primitivas que le faltan y le quita a `signal` los dos métodos que
+sobran. Es un **recorte de API con un enganche de emit**, no un rediseño: la tarea 13 lo verifica
+exigiendo que los goldens se muevan **solo** en las tres formas de §4.5.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de tareas
 posteriores.
 
 ---
 
-## Los tres hitos
+## Los cuatro hitos
 
 **Hito A — el rastreo existe.** Una variable de módulo (`$active`) y un contador de versión por
 signal. Con eso `sig()` deja de ser un alias de `peek()` y pasa a registrar dependencias. Nada del
-código emitido lo nota, porque el emit escribe `peek()` y `subscribe()`.
+código emitido lo nota todavía, porque el emit sigue escribiendo `peek()` y `subscribe()`.
 
 **Hito B — las tres primitivas.** `computed` **pull** (versión cacheada, sin suscripciones, sin
 disposer), `effect` **push** (se suscribe a las hojas, devuelve baja, recalcula dependencias en
 cada vuelta) y `batch` (escribe ya, notifica al salir, una vez por efecto).
 
-**Hito C — el compilador se entera.** Un nombre declarado con `computed(...)` entra en el mismo
-conjunto que uno declarado con `signal(...)`, porque si no, `.value="@total"` cruzaría el objeto
-derivado. Y el stub inerte del servidor pasa a ser invocable, que es el fallo que `()` con
-significado destapa.
+**Hito C — la superficie se recorta.** `subscribe` pasa a ser función suelta —el canal del emit,
+fuera del IntelliSense de una vista—, `peek` desaparece, y el emit escribe `x()` y `$sub(x, …)`.
+Es el único hito que mueve goldens, y por eso va entero en una sola fase: dejar el recorte y el
+emit en commits distintos deja el repo en rojo por medio.
+
+**Hito D — el compilador se entera de `computed`.** Un nombre declarado con `computed(...)` entra
+en el mismo conjunto que uno declarado con `signal(...)`, porque si no, `.value="@total"` cruzaría
+el objeto derivado. Y el stub inerte del servidor pasa a ser invocable, que es el fallo que `()`
+como única forma de leer destapa.
 
 **Fuera de esta tanda:** props como signals (§7, con su condición de reapertura), que el emit
-envuelva `u` en `batch`, la planificación asíncrona de efectos y el completado del LSP.
+envuelva `u` en `batch`, la planificación asíncrona de efectos, el completado del LSP y cualquier
+diagnóstico por el `.peek()` retirado.
 
 ---
 
@@ -52,7 +58,7 @@ envuelva `u` en `batch`, la planificación asíncrona de efectos y el completado
 - [ ] **3. `untrack`.**
       Guarda `$active`, lo pone a `null`, ejecuta y lo restaura en `finally` —si `fn` lanza, el
       contexto no puede quedarse desarmado—. Cinco líneas, y es lo que permite leer dentro de un
-      efecto sin depender.
+      efecto sin depender. Con `peek()` en retirada (tarea 12), esta es **la** lectura suelta.
 
 ## Fase 2 — `computed` (3)
 
@@ -67,9 +73,9 @@ envuelva `u` en `batch`, la planificación asíncrona de efectos y el completado
       un caso especial escrito para el anidamiento (criterio §6.4).
 - [ ] **6. Tests de `computed`.**
       Criterios §6.1–§6.5: no recomputa sin movimiento; recomputa una vez por movimiento observado
-      y no una por lectura; `peek()` comparte caché y **no** registra dependencia; la cascada
-      propaga y **corta** cuando el valor intermedio no cambia; y un derivado que nadie lee **no
-      ejecuta su `fn` nunca**, que es la propiedad que define «pull». Nace al 100 %.
+      y no una por lectura; `untrack(() => c())` comparte caché y **no** registra dependencia; la
+      cascada propaga y **corta** cuando el valor intermedio no cambia; y un derivado que nadie lee
+      **no ejecuta su `fn` nunca**, que es la propiedad que define «pull». Nace al 100 %.
 
 ## Fase 3 — `effect` y `batch` (4)
 
@@ -95,41 +101,68 @@ envuelva `u` en `batch`, la planificación asíncrona de efectos y el completado
       qué sirve la primitiva. Y §6.10 tiene que terminar: una realimentación que colgara el runner
       no es un test. Los dos ficheros al 100 %.
 
-## Fase 4 — Que el compilador se entere (3)
+## Fase 4 — El recorte de la API y el emit que lo sigue (3)
 
-- [ ] **11. `computed` entra en el conjunto de nombres reactivos.**
+Las tres tareas van **en el mismo commit**: separar el recorte del emit deja el repo en rojo por
+medio, porque los tests de hidratación del compilador ejecutan el código emitido contra el core de
+verdad.
+
+- [ ] **11. `subscribe` como función suelta.**
+      Nuevo `packages/core/src/subscribe.ts`: `subscribe(source, fn)` devuelve la baja y **no**
+      entrega nada al suscribirse. Dos caminos, y el segundo es lo que cierra §4.7: sobre una
+      **signal** se engancha a la hoja directamente —mismo coste que el método de hoy—; sobre un
+      **derivado** monta un `effect` que se salta su primera pasada y llama al callback dentro de
+      `untrack`, para que lo que el callback lea no se convierta en dependencia suya. El emit no
+      tiene que saber cuál de las dos le han dado. Criterios §6.18–§6.19, al 100 %.
+- [ ] **12. `Signal<T>` se queda en `()` y `set()`.**
+      Fuera `peek()` y fuera el método `subscribe`. `Computed<T>` es solo la llamada. `index.ts`
+      exporta `computed`, `effect`, `batch`, `untrack`, `subscribe` y los tipos `Computed` y
+      `Readable`. Reescribir `signal.test.ts` a la superficie nueva: lo que probaba `peek` pasa a
+      probar la lectura fuera de todo consumidor, y lo que probaba `s.subscribe` vive ya en la
+      tarea 11.
+- [ ] **13. El emit escribe `x()` y `$sub(x, …)`.**
+      Las tres líneas de §4.8: `attrs.ts` y el pase inicial de `markup-client.ts` sueltan el
+      `.peek()`; la suscripción pasa a `$sub(source, ($v) => …)`; y el chunk de cliente emite
+      `import { FudicElement, subscribe as $sub } from '@fudic/core';` **solo si hay al menos una
+      suscripción** (criterio §6.20), con el alias `$` que la reserva de SDD-15 §4.7 protege.
+      Actualizar los goldens, los tests del compilador que citan `peek()`/`subscribe(` y los
+      `.fud` de `examples/basic`. **Criterio §6.14 es el que manda:** el diff de los goldens se lee
+      a mano y solo puede contener las tres formas de §4.5; una cuarta es un fallo.
+
+## Fase 5 — Que el compilador se entere de `computed` (3)
+
+
+- [ ] **14. `computed` entra en el conjunto de nombres reactivos.**
       Modificar `extractCode` (`packages/compiler/src/emit/oxc-code.ts`) para reconocer también
       `const x = computed(...)`, y `ClientScope.signals` para incluirlos. Es una entrada más en
       una extracción que ya existe, no un análisis nuevo. **Sin esto el SDD no entrega nada
       usable:** `.value="@total"` cruzaría el objeto derivado —`[object Object]` en el HTML, el
       síntoma de BUG-16 (b)— y el padre no emitiría suscripción, así que el hijo quedaría
       congelado. Criterio §6.15.
-- [ ] **12. El stub inerte del servidor pasa a ser invocable.**
+- [ ] **15. El stub inerte del servidor pasa a ser invocable.**
       Modificar [`module.ts:172`](../../packages/compiler/src/emit/module.ts#L172): el
-      `{ peek: () => (init) }` de hoy **no es una función**, y mientras `sig()` fuera un alias de
-      `peek()` daba igual porque nadie escribía la forma de llamada. Con la tarea 2 hecha, un
-      `@client` que lea `expanded()` compila en cliente y revienta en el prerender. Emitir
-      `Object.assign(() => (init), { peek: () => (init) })`, y las dos formas nuevas por la misma
-      puerta: `computed` → stub inerte que evalúa su `fn`; `effect` → **no se emite**; `batch(fn)`
-      → `fn()`. Criterio §6.16.
-- [ ] **13. `FUD0570` y el rango.**
+      `{ peek: () => (init) }` de hoy **no es una función**, y con `()` como única forma de leer un
+      `@client` que lea `expanded()` revienta en el prerender. Pasa a ser `() => (init)`, más
+      simple que lo que sustituye. Y las dos formas nuevas por la misma puerta: `computed` → stub
+      inerte que **evalúa su `fn` al leerlo**; `effect` → **no se emite**; `batch(fn)` → `fn()`.
+      Criterio §6.16.
+- [ ] **16. `FUD0570` y el rango.**
       `effect(...)` fuera de `@code { @client }` → diagnóstico con su span, por el canal
       `diagnostics` de `EmitOutput` que BUG-13 dejó abierto. **El emit no lanza**: se omite el
       efecto y el resto del fichero se emite. El catálogo consolidado de SDD-12 gana el rango
       `FUD0570`–`FUD0589`. `computed` y `batch` **no** reciben diagnóstico: los dos tienen
       semántica de servidor bien definida. Criterio §6.17.
 
-## Fase 5 — Cierre (1)
+## Fase 6 — Cierre (1)
 
-- [ ] **14. Verde, goldens intactos, cobertura e índice.**
-      `pnpm typecheck`, `pnpm test` y `pnpm build` en la raíz. **Criterio §6.14 es el que manda
-      aquí:** los tres `__golden__/*.client.mjs` y los `*.mjs` de servidor salen **byte a byte
-      idénticos** a los de `main` — excepto el stub inerte de la tarea 12, que sí mueve una línea
-      por signal declarada en los goldens de servidor, y hay que leerla a mano. Un golden de
-      **cliente** que se mueva es la señal de que algo se ha colado en el emit que no debía.
-      `tracking.ts`, `computed.ts` y `effect.ts` al **100 %** en las cuatro métricas; `@fudic/core`
-      estaba al 100 % y no baja. Nada de `/* v8 ignore */`. Anotar el avance en
-      [INDEX.md](./INDEX.md) y pasar SDD-31 a `Hecho` si los 17 criterios de §6 están verdes.
+- [ ] **17. Verde, goldens revisados, cobertura e índice.**
+      `pnpm typecheck`, `pnpm test` y `pnpm build` en la raíz —el build incluye `examples/basic`,
+      así que es donde se ve si algún `.fud` se quedó con un `peek()`—. Releer el diff completo de
+      `__golden__/` contra `main` y comprobar que solo contiene las tres formas de §4.5.
+      `tracking.ts`, `computed.ts`, `effect.ts`, `batch.ts` y `subscribe.ts` al **100 %** en las
+      cuatro métricas; `@fudic/core` estaba al 100 % y no baja. Nada de `/* v8 ignore */`. Anotar
+      el avance en [INDEX.md](./INDEX.md) y pasar SDD-31 a `Hecho` si los 20 criterios de §6 están
+      verdes.
 
 ---
 
@@ -150,7 +183,7 @@ en modo denso— sino el **corte estático**, un solo modo por componente decidi
 
 ## Enlaces
 
-- Criterios de aceptación: los 17 de
+- Criterios de aceptación: los 20 de
   [SDD-31 §6](./SDD-31-signals-derivadas.md#6-criterios-de-aceptación).
 - Cierra el pendiente que [BUG-12 §7](./bugs/BUG-12-sin-canal-de-update.md) y
   [SDD-15 §7](./SDD-15-emit.md#7-fuera-de-alcance) llaman *«las suscripciones finas de las signals
