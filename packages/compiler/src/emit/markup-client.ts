@@ -211,6 +211,20 @@ interface Slot {
   readonly signal?: string;
 }
 
+/**
+ * What the chunk turns out to need from `@fudic/core`, discovered while walking.
+ * Shared by every emitter of a file — a block is a separate walk, but its import
+ * line is the module's (SDD-31 §4.8, criterion §6.20).
+ */
+export interface CoreUsage {
+  subscribes: boolean;
+}
+
+/** A file starts owing `@fudic/core` nothing but `FudicElement`. */
+export function coreUsage(): CoreUsage {
+  return { subscribes: false };
+}
+
 export interface MarkupOptions {
   readonly source: string;
   readonly bodies: ClientBodies;
@@ -218,6 +232,8 @@ export interface MarkupOptions {
   readonly linker: AssetLinker;
   readonly sink: BlockSink;
   readonly ids: NodeIds;
+  /** Where this walk records what it made the module import. */
+  readonly usage: CoreUsage;
   /** The whitespace mode in force where this walk starts (BUG-07 §4.4). */
   readonly space: SpaceMode;
   /**
@@ -239,6 +255,7 @@ export class ClientMarkupEmitter {
   readonly #linker: AssetLinker;
   readonly #sink: BlockSink;
   readonly #ids: NodeIds;
+  readonly #usage: CoreUsage;
   readonly #trackRoots: boolean;
   readonly #nodes: string[] = [];
   readonly #rootItems: RootItem[] = [];
@@ -259,6 +276,7 @@ export class ClientMarkupEmitter {
     this.#linker = options.linker;
     this.#sink = options.sink;
     this.#ids = options.ids;
+    this.#usage = options.usage;
     this.#trackRoots = options.trackRoots ?? false;
     this.#space = options.space;
   }
@@ -592,12 +610,15 @@ export class ClientMarkupEmitter {
         .map((cell) => (cell === undefined ? '' : read(cell)))
         .join(', ')}]`;
 
-    this.#hook.line(`${v}.u(${payload((s) => (s.signal === undefined ? s.expr : `${s.signal}.peek()`))});`);
+    this.#hook.line(`${v}.u(${payload((s) => (s.signal === undefined ? s.expr : `${s.signal}()`))});`);
     for (const source of new Set([...slots.values()].flatMap((s) => (s.signal !== undefined ? [s.signal] : [])))) {
       // One subscription per signal, each rebuilding the whole array: the slot that
       // notified takes the value it was handed, the rest are read as they stand.
-      const body = payload((s) => (s.signal === source ? '$v' : s.signal === undefined ? s.expr : `${s.signal}.peek()`));
-      this.#hook.line(`$d.push(${source}.subscribe(($v) => { ${v}.u(${body}); }));`);
+      const body = payload((s) => (s.signal === source ? '$v' : s.signal === undefined ? s.expr : `${s.signal}()`));
+      // `$sub`, not a method: subscription left the `Signal` surface in SDD-31 §4.0, and
+      // the alias lives in the `$` reserve so the author cannot shadow it.
+      this.#usage.subscribes = true;
+      this.#hook.line(`$d.push($sub(${source}, ($v) => { ${v}.u(${body}); }));`);
     }
   }
 

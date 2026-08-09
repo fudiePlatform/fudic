@@ -44,7 +44,7 @@
 
   <app-card .title="Pasar el valor a un hijo" .href="/value-prop">
     <app-badge slot="meta" .tone="neutral">wip</app-badge>
-    <code>@('.value="@(count.peek())"')</code>: cruza un número y el hijo no puede leer nada más.
+    <code>@('.value="@(count())"')</code>: cruza un número y el hijo no puede leer nada más.
     Necesita que el padre se lo escriba — es BUG-12.
   </app-card>
 </section>

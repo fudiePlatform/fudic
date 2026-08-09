@@ -70,7 +70,7 @@ describe('emitComponentModule — composition & control flow (app-card)', () => 
   });
 
   it('emits an inert signal (SSR contributes only the initial value)', () => {
-    expect(src).toContain('const expanded = { peek: () => (false) };');
+    expect(src).toContain('const expanded = () => (false);');
   });
 
   it('renders a nested component host with data-adopt + attachShadow + its render call', () => {
@@ -80,7 +80,7 @@ describe('emitComponentModule — composition & control flow (app-card)', () => 
   });
 
   it('lowers @if/@else to real JS control flow', () => {
-    expect(src).toContain('if (expanded.peek()) {');
+    expect(src).toContain('if (expanded()) {');
     expect(src).toContain('} else {');
   });
 

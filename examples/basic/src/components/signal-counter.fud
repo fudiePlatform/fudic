@@ -9,7 +9,7 @@
     const count = signal(0);
 
     function inc() {
-      count.set(count.peek() + 1);
+      count.set(count() + 1);
     }
   }
 }
@@ -54,7 +54,7 @@
     <section class="panel">
       <div class="row">
         <button class="inc" @click="@inc">+1</button>
-        <p class="own">El padre tiene @(count.peek()).</p>
+        <p class="own">El padre tiene @(count()).</p>
       </div>
       <signal-display .value="@count"></signal-display>
     </section>

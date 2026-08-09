@@ -28,7 +28,7 @@ const TAG = 'app-x';
 /** A component whose markup reads `count`, so a lost signal shows up as broken output. */
 const component = (code: string): string =>
   `@code {\n${code}\n}\n` +
-  `<${TAG}>\n  <template shadowrootmode="open"><p>@(count.peek())</p></template>\n</${TAG}>\n`;
+  `<${TAG}>\n  <template shadowrootmode="open"><p>@(count())</p></template>\n</${TAG}>\n`;
 
 const componentDoc = (source: string): ComponentDocument => {
   const doc = parse(source);
@@ -64,7 +64,7 @@ describe('BUG-13 — a JS comment in @code costs nothing (§7.6)', () => {
   for (const [where, code] of positions) {
     it(`keeps the inert signal and the client signal — comment ${where}`, () => {
       const out = emitBoth(component(code));
-      expect(out.module).toContain('const count = { peek: () => (0) };');
+      expect(out.module).toContain('const count = () => (0);');
       expect(out.chunk).toContain('const count = signal(0);');
     });
   }
@@ -75,7 +75,7 @@ describe('BUG-13 — a JS comment in @code costs nothing (§7.6)', () => {
     );
     const out = emitBoth(source);
     expect(out.module).toContain('const { label } = props ?? {};');
-    expect(out.module).toContain('const count = { peek: () => (0) };');
+    expect(out.module).toContain('const count = () => (0);');
     expect(out.chunk).toContain('label');
   });
 });

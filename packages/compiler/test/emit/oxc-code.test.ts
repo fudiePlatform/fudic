@@ -60,7 +60,7 @@ describe('extractCode', () => {
         '  @client {\n' +
         "    import { signal } from '@fudic/core';\n" +
         '    const open = signal(false);\n' +
-        '    function toggle() { open.set(!open.peek()); }\n' +
+        '    function toggle() { open.set(!open()); }\n' +
         '  }\n' +
         '}\n',
     );
@@ -70,7 +70,7 @@ describe('extractCode', () => {
     expect(client.imports).toEqual(["import { signal } from '@fudic/core';"]);
     expect(client.body).toEqual([
       'const open = signal(false);',
-      'function toggle() { open.set(!open.peek()); }',
+      'function toggle() { open.set(!open()); }',
     ]);
   });
 

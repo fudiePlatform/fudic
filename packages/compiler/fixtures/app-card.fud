@@ -11,7 +11,7 @@
     const expanded = signal(false);
 
     function toggle() {
-      expanded.set(!expanded.peek());
+      expanded.set(!expanded());
     }
   }
 }
@@ -35,13 +35,13 @@
       <header>
         <h2>@title</h2>
       </header>
-      @if (expanded.peek()) {
+      @if (expanded()) {
         <div class="body">
           <slot></slot>
         </div>
       }
       <app-button .variant="ghost" @press="@toggle">
-        @if (expanded.peek()) { Cerrar } else { Abrir }
+        @if (expanded()) { Cerrar } else { Abrir }
       </app-button>
     </article>
   </template>

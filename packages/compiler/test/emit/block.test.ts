@@ -419,8 +419,8 @@ describe('a child component built inside a block (§4.6)', () => {
     // subscription per row, registered in the block that built it (BUG-12 §7).
     const block = src.slice(src.indexOf('const $b0 ='), src.indexOf('const $u0 ='));
     expect(block).toContain('const $s = () => {');
-    expect(block).toContain('$n2.u([, , count.peek()]);');
-    expect(block).toContain('$d.push(count.subscribe(($v) => { $n2.u([, , $v]); }));');
+    expect(block).toContain('$n2.u([, , count()]);');
+    expect(block).toContain('$d.push($sub(count, ($v) => { $n2.u([, , $v]); }));');
     // And retiring the row runs them: `r()` empties `$d` before it takes the nodes away.
     expect(block).toContain('r: () => { $d.forEach(($f) => $f());');
   });

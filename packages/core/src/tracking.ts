@@ -34,6 +34,24 @@ export interface Consumer {
   add(dep: Dependency): void;
 }
 
+/**
+ * A signal's back-reference to its own leaf, hidden behind a symbol. It is how
+ * `subscribe` tells a signal from a derived value without either of them
+ * carrying a method the public surface would then have to explain.
+ */
+const LEAF = Symbol('fudic.leaf');
+
+/** Brand `value` as a signal backed by `leaf`, and hand it back. */
+export function tagLeaf<T extends object>(value: T, leaf: LeafSource): T {
+  Object.defineProperty(value, LEAF, { value: leaf });
+  return value;
+}
+
+/** The leaf behind a signal, or `null` for anything else — a derived value included. */
+export function leafOf(value: unknown): LeafSource | null {
+  return (value as Record<symbol, LeafSource | undefined>)[LEAF] ?? null;
+}
+
 let active: Consumer | null = null;
 
 /** Called by a tracked read. Outside any consumer it is a no-op. */

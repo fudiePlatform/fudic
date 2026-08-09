@@ -164,12 +164,12 @@ function buildComponentModule(
     w.line(`const { ${pattern} } = props ?? {};`);
   }
   for (const s of signals) {
-    // Inert signal: SSR contributes the initial value and nothing else. It exposes `peek`
-    // and not a `value` field so a template reads a signal the SAME way on both branches —
-    // on the client the very same expression runs against the real `signal` of
-    // `@fudic/core`, whose API is `peek()`/`set()`. A parallel shape here would mean a
-    // template that works on the server and breaks on hydration.
-    w.line(`const ${s.name} = { peek: () => (${s.init}) }; // inert signal (SSR; hydration is client-side)`);
+    // Inert signal: SSR contributes the initial value and nothing else. A FUNCTION, because
+    // that is the shape the client has — since SDD-31 §4.0 the call form is the only way to
+    // read a signal, so a template that says `expanded()` has to mean the same thing on both
+    // branches. The object with a `peek` this used to be was not callable, and the day the
+    // author wrote the call form it compiled on the client and threw in the prerender.
+    w.line(`const ${s.name} = () => (${s.init}); // inert signal (SSR; hydration is client-side)`);
   }
   w.appendWriter(bodyW); // carries the markup's source anchors, unlike a toString()/split copy
   w.dedent();

@@ -20,7 +20,7 @@
  */
 
 import { describe, expect, it, beforeAll } from 'vitest';
-import { FudicElement, signal } from '@fudic/core';
+import { FudicElement, signal, subscribe } from '@fudic/core';
 import {
   resolveComponents,
   emitComponentClientModule,
@@ -49,7 +49,7 @@ const COUNTER =
   // initial pass invisible — and an invisible pass is one the test cannot claim happened.
   '    const count = signal(5);\n' +
   '\n' +
-  "    document.addEventListener('click', () => count.set(count.peek() + 1));\n" +
+  "    document.addEventListener('click', () => count.set(count() + 1));\n" +
   '  }\n' +
   '}\n' +
   '\n' +
@@ -83,7 +83,7 @@ beforeAll(() => {
       '',
     );
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    new Function('FudicElement', 'signal', body)(FudicElement, signal);
+    new Function('FudicElement', 'signal', '$sub', body)(FudicElement, signal, subscribe);
   }
 });
 
@@ -128,7 +128,7 @@ describe('BUG-12 §6.7 — the parent moves, the child follows', () => {
   });
 
   it('hands the child its initial value at hookup, and it AGREES with what SSR painted', () => {
-    // Since BUG-16 the server sees the prop: `.value="@count"` crosses as `count.peek()`
+    // Since BUG-16 the server sees the prop: `.value="@count"` crosses as `count()`
     // (decision 84 — the value, never the signal object), so the markup already says 5.
     // What `$s()` must not do is reset it: the initial pass runs on both paths, and a pass
     // that sent the child's own default would repaint 0 over correct markup. Before

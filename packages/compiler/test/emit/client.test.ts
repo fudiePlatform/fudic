@@ -141,11 +141,11 @@ describe('emitComponentClientModule — the module shape (§6.8)', () => {
     // Flattened, the condition was written into `c`, into `h` and into `$a` — three copies
     // of one question, three chances to answer it differently. Now `$qN` is the answer and
     // create, adopt and update all read it.
-    expect(src).toContain('const $q0 = () => (expanded.peek() ? 0 : -1);');
-    expect(src).toContain('const $q1 = () => (expanded.peek() ? 0 : 1);');
-    expect(src.match(/expanded\.peek\(\) \?/gu)).toHaveLength(2);
+    expect(src).toContain('const $q0 = () => (expanded() ? 0 : -1);');
+    expect(src).toContain('const $q1 = () => (expanded() ? 0 : 1);');
+    expect(src.match(/expanded\(\) \?/gu)).toHaveLength(2);
     // And no branch is written as control flow in a body any more.
-    expect(controller(src)).not.toContain('if (expanded.peek())');
+    expect(controller(src)).not.toContain('if (expanded())');
   });
 
   it('gives every branch its own block, with its own nodes', () => {
@@ -521,8 +521,8 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
     const hook = src.slice(src.indexOf('const $s = () => {'), src.indexOf('return {'));
     // `$v` and not `v`: every identifier the emit introduces starts with `$` (§5), and the
     // payload around it is the author's code — a `v` of theirs would be shadowed here.
-    expect(hook).toContain('$n0.u([, , count.peek()]);');
-    expect(hook).toContain('$d.push(count.subscribe(($v) => { $n0.u([, , $v]); }));');
+    expect(hook).toContain('$n0.u([, , count()]);');
+    expect(hook).toContain('$d.push($sub(count, ($v) => { $n0.u([, , $v]); }));');
   });
 
   it('sends the child its WHOLE positional payload, not just the slot that moved', () => {
@@ -534,8 +534,8 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
         '<x-child>\n  <template shadowrootmode="open"><span>@label @value</span></template>\n</x-child>\n',
     );
     const hook = src.slice(src.indexOf('const $s = () => {'), src.indexOf('return {'));
-    expect(hook).toContain('$n0.u([, , "Hola", count.peek()]);');
-    expect(hook).toContain('$d.push(count.subscribe(($v) => { $n0.u([, , "Hola", $v]); }));');
+    expect(hook).toContain('$n0.u([, , "Hola", count()]);');
+    expect(hook).toContain('$d.push($sub(count, ($v) => { $n0.u([, , "Hola", $v]); }));');
   });
 
   it('leaves a hole where the host passes nothing, at either end of the array', () => {
@@ -544,13 +544,13 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
       '<x-child>\n  <template shadowrootmode="open"><span>@label @value</span></template>\n</x-child>\n';
     // A prop the host never names has no value the parent could send: the hole leaves the
     // child's own default in charge, which is the value it was built with in the first place.
-    expect(hostChunk('.value="@count"', two)).toContain('$n0.u([, , , count.peek()]);');
+    expect(hostChunk('.value="@count"', two)).toContain('$n0.u([, , , count()]);');
 
     const flipped =
       '@code {\n  const { value = 0, label = "x" } = props<{ value?: number; label?: string }>();\n}\n' +
       '<x-child>\n  <template shadowrootmode="open"><span>@label @value</span></template>\n</x-child>\n';
     // Trailing holes are not written at all — an array that stops short says the same thing.
-    expect(hostChunk('.value="@count"', flipped)).toContain('$n0.u([, , count.peek()]);');
+    expect(hostChunk('.value="@count"', flipped)).toContain('$n0.u([, , count()]);');
   });
 
   it('subscribes once per signal, and each rebuilds the whole array', () => {
@@ -560,10 +560,10 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
     const src = hostChunk('.a="@count" .b="@other"', two, '    const other = signal(1);\n');
     const hook = src.slice(src.indexOf('const $s = () => {'), src.indexOf('return {'));
 
-    expect(hook).toContain('$n0.u([, , count.peek(), other.peek()]);');
+    expect(hook).toContain('$n0.u([, , count(), other()]);');
     // The signal that notified hands its value in; the rest are read where they stand.
-    expect(hook).toContain('$d.push(count.subscribe(($v) => { $n0.u([, , $v, other.peek()]); }));');
-    expect(hook).toContain('$d.push(other.subscribe(($v) => { $n0.u([, , count.peek(), $v]); }));');
+    expect(hook).toContain('$d.push($sub(count, ($v) => { $n0.u([, , $v, other()]); }));');
+    expect(hook).toContain('$d.push($sub(other, ($v) => { $n0.u([, , count(), $v]); }));');
   });
 
   it('keeps the host itself untouched: still fabricated, still not driven', () => {
@@ -585,7 +585,7 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
   it('does not mistake a plain local for a signal', () => {
     const src = hostChunk('.value="@plain"', CHILD, '    const plain = 7;\n');
     expect(src).not.toContain('.u([');
-    expect(src).not.toContain('plain.peek()');
+    expect(src).not.toContain('plain()');
   });
 });
 

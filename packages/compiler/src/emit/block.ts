@@ -31,6 +31,7 @@ import {
   type BlockSite,
   type ClientBodies,
   type ClientScope,
+  type CoreUsage,
   type NodeIds,
   type RootItem,
 } from './markup-client.js';
@@ -41,6 +42,8 @@ export interface BlockContext {
   readonly scope: ClientScope;
   readonly linker: AssetLinker;
   readonly ids: NodeIds;
+  /** What the module ends up importing from `@fudic/core` — one record for the file. */
+  readonly usage: CoreUsage;
   /** The Oxc AST of every JS fragment of the template, by span (§3.3). */
   readonly template: TemplateJs;
   /** What the emit has to say about a construct. Never thrown (§5). */
@@ -68,6 +71,7 @@ export function blockContext(
   scope: ClientScope,
   linker: AssetLinker,
   ids: NodeIds,
+  usage: CoreUsage,
   template: TemplateJs,
   diagnostics: Diagnostic[],
 ): BlockContext {
@@ -78,6 +82,7 @@ export function blockContext(
     scope,
     linker,
     ids,
+    usage,
     template,
     diagnostics,
     nextBlock: () => blocks++,
@@ -203,6 +208,7 @@ export class BlockEmitter implements BlockSink {
       linker: this.#ctx.linker,
       sink: inner,
       ids: this.#ctx.ids,
+      usage: this.#ctx.usage,
       space: at.space,
       trackRoots: true,
     });

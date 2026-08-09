@@ -2,9 +2,14 @@
  * `signal` — fine-grained reactivity (SDD-14 §4.4, decision 72). A signal holds a
  * value, a version counter and a live `Set` of subscribers.
  *
- * Since SDD-31 the call form is a TRACKED read: inside an `effect` or a
- * `computed` it registers the dependency, while `peek()` never does. The emitted
- * code is untouched by that — it writes `peek()` and `subscribe()`, never `sig()`.
+ * Two operations, and only two: read it and write it (SDD-31 §4.0). The call form
+ * is a TRACKED read — inside an `effect` or a `computed` it registers the
+ * dependency, and outside one, which is where handlers and `h()` live, it does
+ * nothing at all. `peek()` is gone because it was the same function; the loose
+ * read inside a consumer is `untrack`, spelled out where it matters. Subscription
+ * is not a method either: it is the emit's channel, imported as a function, and
+ * a view author who needs to react has `effect`, which hands back its teardown.
+ *
  * The version counter is what lets a derived value cache without subscribing to
  * anything (SDD-31 §4.2): one integer per signal, not one more `Set`.
  *
@@ -13,17 +18,13 @@
  */
 
 import { notify } from './batch.js';
-import { type LeafSource, report } from './tracking.js';
+import { type LeafSource, report, tagLeaf } from './tracking.js';
 
 export interface Signal<T> {
   /** Tracked read: inside an `effect` or a `computed`, registers the dependency. */
   (): T;
-  /** Loose read: never registers anything. */
-  peek(): T;
   /** Write; notifies subscribers only when the value changes (`Object.is`). */
   set(v: T): void;
-  /** Subscribe to changes; returns the unsubscribe. */
-  subscribe(fn: (v: T) => void): () => void;
 }
 
 export function signal<T>(initial: T): Signal<T> {
@@ -50,7 +51,6 @@ export function signal<T>(initial: T): Signal<T> {
     report(source);
     return value;
   }) as Signal<T>;
-  sig.peek = () => value;
   sig.set = (v: T) => {
     if (Object.is(v, value)) {
       return;
@@ -61,9 +61,5 @@ export function signal<T>(initial: T): Signal<T> {
     version += 1;
     notify(subscribers);
   };
-  sig.subscribe = (fn: (v: T) => void) =>
-    source.subscribe(() => {
-      fn(value);
-    });
-  return sig;
+  return tagLeaf(sig, source);
 }

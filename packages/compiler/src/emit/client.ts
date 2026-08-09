@@ -19,7 +19,7 @@
 import type { ComponentGraph, ResolvedComponent } from './resolve.js';
 import { spaceModeOf } from './space.js';
 import { CodeWriter } from './writer.js';
-import { ClientMarkupEmitter, nodeIds } from './markup-client.js';
+import { ClientMarkupEmitter, coreUsage, nodeIds } from './markup-client.js';
 import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js';
 import { AssetLinker } from './assets.js';
 import { extractCode, type ExtractedCode, type Prop } from './oxc-code.js';
@@ -86,7 +86,8 @@ function buildComponentClientModule(
   const changeable = new Set([...props.map((p) => p.name), ...mutable]);
   const blockDiagnostics: Diagnostic[] = [];
   const ids = nodeIds();
-  const ctx = blockContext(comp.source, scope, linker, ids, template, blockDiagnostics);
+  const usage = coreUsage();
+  const ctx = blockContext(comp.source, scope, linker, ids, usage, template, blockDiagnostics);
   const em = new ClientMarkupEmitter({
     source: comp.source,
     bodies,
@@ -94,12 +95,16 @@ function buildComponentClientModule(
     linker,
     sink: new BlockEmitter(ctx, changeable),
     ids,
+    usage,
     space,
   });
   em.emitRoots(comp.doc.template!.children);
 
   const w = new CodeWriter();
-  w.line("import { FudicElement } from '@fudic/core';");
+  // Written after the walk on purpose: `$sub` is imported only if the walk found a value
+  // to keep in sync, so a component with no reactive prop carries no dead import (§6.20).
+  const core = usage.subscribes ? 'FudicElement, subscribe as $sub' : 'FudicElement';
+  w.line(`import { ${core} } from '@fudic/core';`);
   for (const line of client.imports) w.line(line); // hoisted: only legal at module scope
   for (const line of linker.imports()) w.line(line);
   w.line('');

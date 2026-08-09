@@ -35,10 +35,10 @@ describe('emitComponentModuleMapped — precise anchors (app-card)', () => {
   });
 
   it('anchors an @if header to its source offset', () => {
-    const gen = code.indexOf('if (expanded.peek()) {') + 'if ('.length;
+    const gen = code.indexOf('if (expanded()) {') + 'if ('.length;
     const src = at(gen);
     expect(src).toBeDefined();
-    expect(source.slice(src!, src! + 'expanded.peek()'.length)).toBe('expanded.peek()');
+    expect(source.slice(src!, src! + 'expanded()'.length)).toBe('expanded()');
   });
 });
 

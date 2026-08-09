@@ -82,9 +82,12 @@ export const NO_SIGNALS: HostContext = { isComponent: false, signals: new Set() 
  * The expression a value crosses the shadow boundary with.
  *
  * Decision 84: a VALUE crosses, never the signal object. So a value whose text is exactly
- * the name of a `signal(...)` this component declares crosses as `name.peek()` — otherwise
+ * the name of a `signal(...)` this component declares crosses as `name()` — otherwise
  * the server would paint `[object Object]` and the client would hand the child a live
  * object it cannot serialize (SDD-17). Anything else crosses as written.
+ *
+ * The call form is the only read since SDD-31 §4.0, and it costs nothing here: this
+ * expression is evaluated by `$s`/`$a`, outside any effect, so it tracks nobody.
  *
  * The rule lives here, next to the two branches that apply it, because the client's payload
  * builder needs the same answer and a second copy of it would drift.
@@ -98,7 +101,7 @@ export function crossingExpr(
   const only = value.length === 1 ? value[0] : undefined;
   if (only?.type === 'razor-expression') {
     const text = source.slice(only.expr.start, only.expr.end);
-    if (signals.has(text)) return `${text}.peek()`;
+    if (signals.has(text)) return `${text}()`;
   }
   return attrExpr(source, attr);
 }

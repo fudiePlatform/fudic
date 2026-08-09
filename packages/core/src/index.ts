@@ -27,6 +27,7 @@ export { computed, type Computed, type Readable } from './computed.js';
 export { effect, type Cleanup } from './effect.js';
 export { batch } from './batch.js';
 export { untrack } from './tracking.js';
+export { subscribe } from './subscribe.js';
 export {
   strategy,
   type StrategyDecl,

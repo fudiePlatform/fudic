@@ -13,7 +13,7 @@
 <h1>2 · El padre pasa el valor</h1>
 <p class="lede">
   La misma signal, en el mismo padre. Lo único que cambia es un par de paréntesis:
-  <code>@('<value-display .value="@(count.peek())">')</code>. Lo que cruza el shadow boundary
+  <code>@('<value-display .value="@(count())">')</code>. Lo que cruza el shadow boundary
   ya no es la signal, es un número.
 </p>
 

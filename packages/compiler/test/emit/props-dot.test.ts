@@ -135,16 +135,16 @@ describe('a signal crosses its VALUE, never the object (decision 84)', () => {
     };
   };
 
-  it('the server paints `count.peek()`, not the inert signal object', () => {
+  it('the server paints `count()`, not the inert signal object', () => {
     const { server } = withSignal('<app-badge .tone="@count"></app-badge>');
-    expect(server).toContain('{ "tone": count.peek() }');
-    expect(server).toContain('const $v = count.peek();');
+    expect(server).toContain('{ "tone": count() }');
+    expect(server).toContain('const $v = count();');
   });
 
   it('a bare `.prop` beside a signal still crosses as true', () => {
     const { client } = withSignal('<app-badge .tone="@count" .featured></app-badge>');
     // The payload carries both: the signal read at hookup, the constant as written.
-    expect(client).toMatch(/\.u\(\[, , [^\]]*count\.peek\(\)[^\]]*\]\)/u);
+    expect(client).toMatch(/\.u\(\[, , [^\]]*count\(\)[^\]]*\]\)/u);
     expect(client).toContain('true');
   });
 });

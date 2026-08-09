@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/core` (las primitivas y el recorte de `Signal`) · `@fudic/compiler` (el
 > emit de §4.6–§4.8) · `@fudic/example-basic` (los `.fud` que usan `peek()`)
 > **Rama:** `sdd-31-computed-effect`
-> **Progreso:** 10 / 17
+> **Progreso:** 14 / 17
 > **No depende de:** SDD-30 ni de la tanda de eventos. Puede ir en paralelo, en su propio
 > worktree: no comparte un fichero con ninguna de las dos.
 
@@ -104,26 +104,31 @@ diagnóstico por el `.peek()` retirado.
       qué sirve la primitiva. Y §6.10 tiene que terminar: una realimentación que colgara el runner
       no es un test. Los dos ficheros al 100 %.
 
-## Fase 4 — El recorte de la API y el emit que lo sigue (3)
+## Fase 4 — El recorte de la API y el emit que lo sigue (4)
 
-Las tres tareas van **en el mismo commit**: separar el recorte del emit deja el repo en rojo por
+Las cuatro tareas van **en el mismo commit**: separar el recorte del emit deja el repo en rojo por
 medio, porque los tests de hidratación del compilador ejecutan el código emitido contra el core de
 verdad.
 
-- [ ] **11. `subscribe` como función suelta.**
+> **Corrección de este Task.** La tarea **15** estaba puesta en la fase 5 y no puede estar ahí:
+> en cuanto el fixture `app-card.fud` deja de escribir `expanded.peek()` y escribe `expanded()`,
+> el módulo de servidor tiene que emitir un stub **invocable** o el prerender revienta en el mismo
+> commit. Es la misma media línea del mismo recorte. Se mueve aquí; la fase 5 se queda con dos.
+
+- [x] **11. `subscribe` como función suelta.**
       Nuevo `packages/core/src/subscribe.ts`: `subscribe(source, fn)` devuelve la baja y **no**
       entrega nada al suscribirse. Dos caminos, y el segundo es lo que cierra §4.7: sobre una
       **signal** se engancha a la hoja directamente —mismo coste que el método de hoy—; sobre un
       **derivado** monta un `effect` que se salta su primera pasada y llama al callback dentro de
       `untrack`, para que lo que el callback lea no se convierta en dependencia suya. El emit no
       tiene que saber cuál de las dos le han dado. Criterios §6.18–§6.19, al 100 %.
-- [ ] **12. `Signal<T>` se queda en `()` y `set()`.**
+- [x] **12. `Signal<T>` se queda en `()` y `set()`.**
       Fuera `peek()` y fuera el método `subscribe`. `Computed<T>` es solo la llamada. `index.ts`
       exporta `computed`, `effect`, `batch`, `untrack`, `subscribe` y los tipos `Computed` y
       `Readable`. Reescribir `signal.test.ts` a la superficie nueva: lo que probaba `peek` pasa a
       probar la lectura fuera de todo consumidor, y lo que probaba `s.subscribe` vive ya en la
       tarea 11.
-- [ ] **13. El emit escribe `x()` y `$sub(x, …)`.**
+- [x] **13. El emit escribe `x()` y `$sub(x, …)`.**
       Las tres líneas de §4.8: `attrs.ts` y el pase inicial de `markup-client.ts` sueltan el
       `.peek()`; la suscripción pasa a `$sub(source, ($v) => …)`; y el chunk de cliente emite
       `import { FudicElement, subscribe as $sub } from '@fudic/core';` **solo si hay al menos una
@@ -131,9 +136,14 @@ verdad.
       Actualizar los goldens, los tests del compilador que citan `peek()`/`subscribe(` y los
       `.fud` de `examples/basic`. **Criterio §6.14 es el que manda:** el diff de los goldens se lee
       a mano y solo puede contener las tres formas de §4.5; una cuarta es un fallo.
+- [x] **15. El stub inerte del servidor pasa a ser invocable.**
+      Modificar [`module.ts:172`](../../packages/compiler/src/emit/module.ts#L172): el
+      `{ peek: () => (init) }` de hoy **no es una función**, y con `()` como única forma de leer un
+      `@client` que lea `expanded()` revienta en el prerender. Pasa a ser `() => (init)`, más
+      simple que lo que sustituye. Criterio §6.16 (la parte de `signal`; las dos formas nuevas
+      entran por la misma puerta en la fase 5).
 
-## Fase 5 — Que el compilador se entere de `computed` (3)
-
+## Fase 5 — Que el compilador se entere de `computed` (2)
 
 - [ ] **14. `computed` entra en el conjunto de nombres reactivos.**
       Modificar `extractCode` (`packages/compiler/src/emit/oxc-code.ts`) para reconocer también
@@ -142,14 +152,10 @@ verdad.
       usable:** `.value="@total"` cruzaría el objeto derivado —`[object Object]` en el HTML, el
       síntoma de BUG-16 (b)— y el padre no emitiría suscripción, así que el hijo quedaría
       congelado. Criterio §6.15.
-- [ ] **15. El stub inerte del servidor pasa a ser invocable.**
-      Modificar [`module.ts:172`](../../packages/compiler/src/emit/module.ts#L172): el
-      `{ peek: () => (init) }` de hoy **no es una función**, y con `()` como única forma de leer un
-      `@client` que lea `expanded()` revienta en el prerender. Pasa a ser `() => (init)`, más
-      simple que lo que sustituye. Y las dos formas nuevas por la misma puerta: `computed` → stub
-      inerte que **evalúa su `fn` al leerlo**; `effect` → **no se emite**; `batch(fn)` → `fn()`.
-      Criterio §6.16.
-- [ ] **16. `FUD0570` y el rango.**
+- [ ] **16. `FUD0570`, el rango, y las dos formas nuevas en el servidor.**
+      Las derivadas y la agrupación entran en el módulo de servidor por la misma puerta que el
+      stub de la tarea 15: `computed` → stub inerte que **evalúa su `fn` al leerlo**; `effect` →
+      **no se emite**; `batch(fn)` → `fn()`. Y el diagnóstico:
       `effect(...)` fuera de `@code { @client }` → diagnóstico con su span, por el canal
       `diagnostics` de `EmitOutput` que BUG-13 dejó abierto. **El emit no lanza**: se omite el
       efecto y el resto del fichero se emite. El catálogo consolidado de SDD-12 gana el rango

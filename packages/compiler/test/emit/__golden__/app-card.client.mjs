@@ -10,7 +10,7 @@ customElements.define("app-card", class extends FudicElement {
     let [$dom, $shadow, title, variant = 'default'] = $props;
     const expanded = signal(false);
     function toggle() {
-      expanded.set(!expanded.peek());
+      expanded.set(!expanded());
     }
 
     let $k0 = [];
@@ -66,7 +66,7 @@ customElements.define("app-card", class extends FudicElement {
         r: () => { $d.forEach(($f) => $f()); for (const $n of $r) $dom.remove($n); },
       };
     };
-    const $q0 = () => (expanded.peek() ? 0 : -1);
+    const $q0 = () => (expanded() ? 0 : -1);
     const $f0 = ($x, $an) => $x === 0 ? $b0($n0, $an) : null;
     const $g0 = ($x, $i) => $i.u();
     const $u0 = () => {
@@ -144,7 +144,7 @@ customElements.define("app-card", class extends FudicElement {
         r: () => { $d.forEach(($f) => $f()); for (const $n of $r) $dom.remove($n); },
       };
     };
-    const $q1 = () => (expanded.peek() ? 0 : 1);
+    const $q1 = () => (expanded() ? 0 : 1);
     const $f1 = ($x, $an) => $x === 0 ? $b1($n3, $an) : $x === 1 ? $b2($n3, $an) : null;
     const $g1 = ($x, $i) => $i.u();
     const $u1 = () => {
