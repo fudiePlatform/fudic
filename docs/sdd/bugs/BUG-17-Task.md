@@ -3,11 +3,11 @@
 > **BUG:** [BUG-17 — La `key` de un bucle es sintaxis nueva sin mitad de editor](./BUG-17-key-sin-editor.md)
 > **Paquetes:** `@fudic/language-core` · `@fudic/language-server` · `@fudic/formatter` ·
 > `fudic-vscode`
-> **Rama:** la del backlog de uso
+> **Rama:** `bug-17-editor-key`
 > **Depende de:** [SDD-30](../SDD-30-renders-de-bloque.md) **solo para el campo del AST**, y solo
 > las fases 1, 2 y 4. La fase 3 —la cabecera no es markup— no lo necesita y arregla un defecto
 > que ya está vivo hoy (§1.2.a del BUG)
-> **Progreso:** 0 / 10
+> **Progreso:** 1 / 10
 
 Cada tarea es un paso cerrado. Las rutas son relativas a la raíz del repo.
 
@@ -21,10 +21,19 @@ que la 9**: el snippet escribe la sintaxis que el formateador tiene que saber re
 
 ## Fase 0 — Comprobar que el AST trae la key (1)
 
-- [ ] **0. La dependencia, verificada antes de escribir nada.**
+- [x] **0. La dependencia, verificada antes de escribir nada.**
       `ForeachNode`, `ForNode` y `WhileNode` traen el campo de la key con `span` e `inner`, igual
       que las cabeceras (§3.5). Si no está, el BUG se queda `Bloqueado` y esta tarea es lo único
       que se hace: **no** se inventa el campo aquí ni se toca el parser, que es de SDD-30.
+      **Está**: `KeyedNode.key?: RazorExpression`, con `span` de la cláusula entera y `expr` del
+      JS, declarado por los cinco constructos. El BUG pasa a `Listo`.
+
+      Y el suelo de cobertura, medido antes de tocar: la tanda de SDD-30 dejó **su propio código
+      de key sin un solo test**, así que los dos paquetes que este BUG toca están hoy **por
+      debajo** del 100 % que su §6 exige — `@fudic/formatter` en 99,66 % de ramas (la guarda de
+      `keyClause`) y `@fudic/language-core` en 99,6 / 99,55 (las dos líneas que copian la key).
+      No es deuda heredada que se salde aparte: son exactamente las líneas de las fases 1, 2 y 4,
+      y el rojo que esas fases piden ver ya está puesto por el informe de cobertura.
 
 ## Fase 1 — Rojo primero: la key no llega a la proyección (2)
 

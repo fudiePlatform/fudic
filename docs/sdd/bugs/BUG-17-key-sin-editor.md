@@ -1,7 +1,7 @@
 # BUG-17 — La `key` de un bucle es sintaxis nueva sin mitad de editor, y por el camino salen tres cabos sueltos
 
-> **Estado:** `Bloqueado` — por [SDD-30](../SDD-30-renders-de-bloque.md), que es quien mete la
-> `key` en el AST. Pasa a `Listo` en cuanto ese campo exista (§3.5)
+> **Estado:** `Listo` — desbloqueado: [SDD-30](../SDD-30-renders-de-bloque.md) está `Hecho` y el
+> campo del AST existe (`KeyedNode`, §3.5)
 > **Corrige:** [SDD-30 §3.5](../SDD-30-renders-de-bloque.md) (la mitad de editor que no declara),
 > [SDD-23 §4.4](../SDD-23-emisor-ts-virtual.md) y [SDD-24 §4.2](../SDD-24-language-server.md)
 > **Paquetes:** `@fudic/language-core` · `@fudic/language-server` · `@fudic/formatter` ·
@@ -178,6 +178,14 @@ El AST tiene que traer la key: `ForeachNode`, `ForNode` y `WhileNode` con un cam
 que ya tienen las cabeceras (`span` del constructo entero e `inner` de la expresión, para poder
 copiarla). **Lo pone SDD-30**, y hasta entonces este BUG está `Bloqueado`: no hay nada que
 proyectar ni nada que imprimir.
+
+**Puesto, y con una forma algo mejor que la que este § pedía.** SDD-30 lo entrega como
+`KeyedNode`, que declaran los **cinco** constructos —también `@if` y `@switch`, que necesitan
+dónde poner una key para poder reportarla con `FUD0542`—, y el campo es un `RazorExpression`:
+`span` cubre la cláusula `key (…)` entera, para que quien la reescriba sustituya la cláusula y no
+solo su interior, y `expr` es el JS, que es el tramo que se copia. Ausente cuando la cláusula no
+se escribió o salió malformada (`FUD0541`), de modo que la proyección y el formateador tienen
+exactamente **un** caso que mirar y ninguna forma de cabecera añade otro.
 
 ---
 
