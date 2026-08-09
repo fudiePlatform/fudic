@@ -7,7 +7,7 @@
 > **Depende de:** [SDD-30](../SDD-30-renders-de-bloque.md) **solo para el campo del AST**, y solo
 > las fases 1, 2 y 4. La fase 3 —la cabecera no es markup— no lo necesita y arregla un defecto
 > que ya está vivo hoy (§1.2.a del BUG)
-> **Progreso:** 7 / 11 — la 1b no estaba en el plan; la puso el hueco de §4.1.1
+> **Progreso:** 9 / 11 — la 1b no estaba en el plan; la puso el hueco de §4.1.1
 
 Cada tarea es un paso cerrado. Las rutas son relativas a la raíz del repo.
 
@@ -102,14 +102,22 @@ que la 9**: el snippet escribe la sintaxis que el formateador tiene que saber re
 
 ## Fase 4 — Formatear no borra la key (2)
 
-- [ ] **7. Rojo primero: el formateador la pierde.**
+- [x] **7. Rojo primero: el formateador la pierde.**
       Formatear un bucle con key y afirmar que vuelve con ella. **Verlo fallar**: `printLoop`
       concatena por campos conocidos y el campo nuevo no está (§2.3, §6.14).
-- [ ] **8. Idempotencia como criterio, no «imprime la key».**
+      El rojo lo puso el informe de cobertura, como anticipó la fase 0: la tanda de SDD-30 ya
+      había añadido `keyClause` al impresor y lo había dejado **sin un solo test**, con su guarda
+      sin ejercitar. Se mide donde de verdad se ve —`)key(i){` vuelve como `) key (i) {`—, que es
+      la afirmación de que la key aterriza en su sitio y no simplemente sobrevive.
+- [x] **8. Idempotencia como criterio, no «imprime la key».**
       `packages/formatter/src/print/control.ts`: la key tras el paréntesis de la cabecera y antes
       del cuerpo, en los tres bucles. El test que se queda es que **formatear dos veces da el
       mismo texto** — la afirmación que sobrevive a que mañana el AST crezca otra vez. Un bucle
       sin key se formatea como hoy (§6.15, §6.16).
+      El bucle sin key existe y no es un caso inventado: un cuerpo que no pinta nada no debe key
+      (`FUD0540` va de listas cuyo orden cambia), y es la única forma en que el impresor ve un
+      bucle sin ella — un bucle en rojo no se formatea. Con eso `@fudic/formatter` vuelve al
+      100 % en las cuatro métricas.
 
 ## Fase 5 — El snippet de la extensión (1)
 
