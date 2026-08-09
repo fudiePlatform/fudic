@@ -34,6 +34,19 @@ export function isLoop(node: ControlNode): node is LoopNode {
   return LOOP_TYPES.has(node.type);
 }
 
+/**
+ * `for (…)` / `while (…)` — the author's header, spliced whole (decision 93).
+ *
+ * Both emit branches split it with THIS function, and that is the point: a `@for` whose
+ * header holds an unusual `;`, or a `@while` written with a comma operator, cannot compile
+ * to one shape on the server and another on the client. Same argument that makes `marker.ts`
+ * a module instead of a method (SDD-30 §3.4).
+ */
+export function loopHead(node: LoopNode, source: string): string {
+  const inner = source.slice(node.header.inner.start, node.header.inner.end);
+  return node.type === 'while' ? `while (${inner})` : `for (${inner})`;
+}
+
 /** One block of a construct: what it renders, and what the parent evaluates to reach it. */
 export interface Branch {
   readonly body: readonly HtmlContent[];

@@ -23,7 +23,14 @@ import { errorDiag, type Span } from '../types/index.js';
 import type { OxcNode } from '../oxc/index.js';
 import { CodeWriter } from './writer.js';
 import type { AssetLinker } from './assets.js';
-import { branchesOf, collectTemplateJs, isLoop, type Branch, type LoopNode } from './constructs.js';
+import {
+  branchesOf,
+  collectTemplateJs,
+  isLoop,
+  loopHead,
+  type Branch,
+  type LoopNode,
+} from './constructs.js';
 import { freeReferences, patternBindings, type FragmentAst } from './scope.js';
 import type { HookupContext } from './events.js';
 import {
@@ -296,7 +303,7 @@ export class BlockEmitter implements BlockSink {
     parent: string,
     at: BlockSite,
   ): void {
-    const head = this.#loopHead(node);
+    const head = loopHead(node, this.#ctx.source);
     const args = block.params.join(', ');
     // Always built with a `null` anchor: on the adopt path nothing is inserted, and on the
     // create path the anchor is either irrelevant (the block mounts in its turn) or not yet
@@ -362,7 +369,7 @@ export class BlockEmitter implements BlockSink {
       `for (const $i of ${registry}) { if ($prev.has($i.key)) $gone.push($i); else $prev.set($i.key, $i); }`,
     );
     w.line('const $next = [];');
-    w.line(`${this.#loopHead(node)} {`);
+    w.line(`${loopHead(node, this.#ctx.source)} {`);
     w.indent();
     w.line(`const $ky = ${this.#keyOf(node)};`);
     w.line('const $hit = $prev.get($ky);');
@@ -468,12 +475,6 @@ export class BlockEmitter implements BlockSink {
       expression = `${this.#slice(branch.test)} ? ${i} : ${expression}`;
     }
     return [`const ${name} = () => (${expression});`];
-  }
-
-  /** `for (…)` / `while (…)` — the author's header, spliced whole (decision 93). */
-  #loopHead(node: LoopNode): string {
-    const inner = this.#slice(node.header.inner);
-    return node.type === 'while' ? `while (${inner})` : `for (${inner})`;
   }
 
   /**

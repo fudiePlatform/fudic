@@ -5,14 +5,15 @@
  * parent — through the injected `Dom<N>` adapter. Component hosts get a shadow root and
  * a call to the child's `render`; light-DOM children are projected by `<slot>`.
  *
- * Control-flow nodes (`@if`/`@foreach`) live in `HtmlContent` as the base `RazorConstruct`
- * (only `type` survives the union), but the parser produced the concrete node. They are
- * recovered by discriminant in `asIf` / `asForeach` — the single, documented place the
- * cast happens, instead of one at every use site.
+ * The five control-flow nodes (`@if`, `@switch`, `@foreach`, `@for`, `@while`) live in
+ * `HtmlContent` as the base `RazorConstruct` (only `type` survives the union), but the parser
+ * produced the concrete node. They are recovered by discriminant in `asIf` / `asLoop` /
+ * `asSwitch` — the single, documented place the cast happens, instead of one at every use
+ * site.
  */
 
 import type { HtmlContent, ElementNode } from '../html/index.js';
-import type { IfNode, ForeachNode } from '../control/index.js';
+import type { IfNode, SwitchNode } from '../control/index.js';
 import type { RenderSectionNode } from '../layout/index.js';
 import type { Span } from '../types/index.js';
 import { CodeWriter } from './writer.js';
@@ -21,6 +22,7 @@ import { componentPropsExpr, writeElementAttrs, type HostContext } from './attrs
 import { nestedSpaceMode, type SpaceMode } from './space.js';
 import { emitItems, type TextRun } from './runs.js';
 import { markerSite } from './marker.js';
+import { loopHead, type LoopNode } from './constructs.js';
 
 /** `render` + PascalCase of a `prefix-name` tag: `app-button` → `renderAppButton`. */
 export const renderName = (tag: string): string =>
@@ -33,8 +35,67 @@ export { isAssetAttr } from './attrs.js';
 
 // A control construct is stored as its base RazorConstruct; recover the concrete node.
 const asIf = (node: HtmlContent): IfNode => node as unknown as IfNode;
-const asForeach = (node: HtmlContent): ForeachNode => node as unknown as ForeachNode;
+const asLoop = (node: HtmlContent): LoopNode => node as unknown as LoopNode;
+const asSwitch = (node: HtmlContent): SwitchNode => node as unknown as SwitchNode;
 const asRenderSection = (node: HtmlContent): RenderSectionNode => node as unknown as RenderSectionNode;
+
+/** Which painter takes a kind of content — `'none'` when the server writes nothing for it. */
+type ServerRole = 'element' | 'if' | 'loop' | 'switch' | 'render-body' | 'render-section' | 'none';
+
+/**
+ * What the server paints for every kind of content — and the reason this is a TABLE.
+ *
+ * Its type names each member of `HtmlContent`, so a node type cannot be added to the AST
+ * without this file deciding what the server does with it. The `default` this replaces
+ * declared its silence as *«constructs with no server markup»* while three constructs that DO
+ * have server markup fell through it (BUG-19 §2.1) — the same shape BUG-14 §5 found in the
+ * emit, and the same answer it left in `runs.ts`: a total table cannot leave the next one out.
+ *
+ * Everything mapped to `'none'` paints nothing HERE, each for its own reason, written beside
+ * it. None of them is a hole waiting to be filled by omission.
+ */
+const SERVER_ROLE: Record<HtmlContent['type'], ServerRole> = {
+  element: 'element',
+  if: 'if',
+  foreach: 'loop',
+  for: 'loop',
+  while: 'loop',
+  switch: 'switch',
+  'render-body': 'render-body',
+  'render-section': 'render-section',
+  // Coalesced into a text run by `emitItems` before the dispatch ever sees them: their markup
+  // is `#run`'s, and reaching this table would mean the grouping changed underneath.
+  text: 'none',
+  'at-escape': 'none',
+  'razor-expression': 'none',
+  // Author comments do not travel to the output. The one comment the DOM ever gets is the
+  // marker of `marker.ts`, planted by `emitChildren` and by nobody else (SDD-30 §3.4).
+  comment: 'none',
+  'razor-comment': 'none',
+  // `@raw(…)` is an interpolation that is not escaped (decision 18); the emit has no consumer
+  // for it until SDD-07 fixes the escape semantics. Same state `runs.ts` leaves it in.
+  'raw-expression': 'none',
+  // Author JS, not markup: `@{ … }` and `@code { … }` are hoisted by `module.ts`.
+  'inline-code': 'none',
+  code: 'none',
+  // A `@section` is collected by SDD-21 through another door — the layout reads it by name
+  // and calls it back where `@RenderSection` sits; painting it in place would render it twice.
+  section: 'none',
+  // The component's `<style>` body is the component's stylesheet (`module.ts`), and a `<script>`
+  // body is opaque author text: neither is a node this walk fabricates.
+  'style-content': 'none',
+  'raw-text': 'none',
+  // Document-level lexical nodes. The page's doctype is written by the serializer, not by build
+  // statements, and CDATA only exists inside foreign content.
+  doctype: 'none',
+  cdata: 'none',
+  // `@RenderHead()` is resolved by the page assembler (SDD-21), not by the markup walk.
+  'render-head': 'none',
+  // Degraded nodes: an orphan `@else` (FUD0073) and a construct with no handler (FUD0055).
+  // Both were already reported; inventing markup for them would paint over the diagnostic.
+  else: 'none',
+  'unhandled-construct': 'none',
+};
 
 export class MarkupEmitter {
   readonly #source: string;
@@ -118,15 +179,18 @@ export class MarkupEmitter {
 
   /** Emit the build statements for a node and append it under `parent`. */
   #emit(node: HtmlContent, parent: string): void {
-    switch (node.type) {
+    switch (SERVER_ROLE[node.type]) {
       case 'element':
-        this.#element(node, parent);
+        this.#element(node as ElementNode, parent);
         return;
       case 'if':
         this.#if(asIf(node), parent);
         return;
-      case 'foreach':
-        this.#foreach(asForeach(node), parent);
+      case 'loop':
+        this.#loop(asLoop(node), parent);
+        return;
+      case 'switch':
+        this.#switch(asSwitch(node), parent);
         return;
       case 'render-body':
         // `@RenderBody()`: the route appends its nodes under the SAME parent, with the
@@ -140,8 +204,9 @@ export class MarkupEmitter {
         }
         return;
       }
-      default:
-        return; // comments, @code, and constructs with no server markup
+      case 'none':
+        // Every silent kind is named in `SERVER_ROLE`, each with the reason it paints nothing.
+        return;
     }
   }
 
@@ -201,10 +266,55 @@ export class MarkupEmitter {
     this.#w.line('}');
   }
 
-  #foreach(loop: ForeachNode, parent: string): void {
-    this.#w.mappedLine('for (', { text: this.#slice(loop.header.inner), src: loop.header.inner.start }, ') {');
+  /**
+   * `@foreach` / `@for` / `@while` — one loop, three headers.
+   *
+   * The header is spliced WHOLE from the source (decision 93) by the same `loopHead` the
+   * client uses, and anchored at the author's offset. The body goes out under the SAME
+   * `parent`: a block is not a level of the DOM. Its node variables are `const` inside the
+   * loop's braces, so every turn declares its own and there is nothing else to do — the
+   * server builds and serializes, it does not reconcile.
+   *
+   * The `key` is NOT read here, and that is the whole difference between the two branches:
+   * row identity belongs to the client's reconciliation (§4.4).
+   */
+  #loop(loop: LoopNode, parent: string): void {
+    const head = loopHead(loop, this.#source);
+    // `while (` or `for (` — the keyword holds no parenthesis, so the first one is the head's.
+    const open = head.slice(0, head.indexOf('(') + 1);
+    this.#w.mappedLine(open, { text: this.#slice(loop.header.inner), src: loop.header.inner.start }, ') {');
     this.#w.indent();
     this.emitChildren(loop.body, parent);
+    this.#w.dedent();
+    this.#w.line('}');
+  }
+
+  /**
+   * `@switch` — one arm per `case`, in source order, `default` included.
+   *
+   * Two things the shape depends on. `break` is written in EVERY arm, the last one too:
+   * decision 14 says there is no fall-through and each `SwitchCase` carries an independent
+   * body, so without it one match would paint two arms. And every arm gets braces, because
+   * the body declares `const $nN` and the lexical scope of a bare `case` is the whole
+   * `switch` — the ids are unique per emission, so today nothing would collide, and the
+   * braces are there so it does not depend on that (SDD-30 §4.1).
+   */
+  #switch(node: SwitchNode, parent: string): void {
+    this.#w.mappedLine(
+      'switch (',
+      { text: this.#slice(node.header.inner), src: node.header.inner.start },
+      ') {',
+    );
+    this.#w.indent();
+    for (const branch of node.cases) {
+      if (branch.test === undefined) this.#w.line('default: {');
+      else this.#w.mappedLine('case ', { text: this.#slice(branch.test), src: branch.test.start }, ': {');
+      this.#w.indent();
+      this.emitChildren(branch.body, parent);
+      this.#w.line('break;');
+      this.#w.dedent();
+      this.#w.line('}');
+    }
     this.#w.dedent();
     this.#w.line('}');
   }

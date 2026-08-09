@@ -96,6 +96,118 @@ describe('create ↔ hydrate with blocks (§6.17)', () => {
   });
 });
 
+/**
+ * BUG-19 §6.11–§6.14 — the three constructs the server did not paint at all.
+ *
+ * This is the test the defect survived for lack of: the harness above only ever wrote `@if`
+ * and `@foreach`, so a `@switch` whose body reached no output looked exactly like a `@switch`
+ * that rendered nothing. Every case here ends in a SIBLING element, because a block that
+ * paints nothing has to hand the cursor back untouched (§4.3) — and the sibling is the only
+ * witness of that.
+ */
+const SWITCH = wrap(
+  'x-sw',
+  '@code {\n  const { kind } = props<{ kind: string }>();\n}\n',
+  "<section><h1>t</h1>@switch (kind) { case 'a': <p>A</p> default: <i>D</i> }<hr></section>",
+);
+
+/** No `default`: with nothing matching, the construct paints nothing at all. */
+const SWITCH_BARE = wrap(
+  'x-sw0',
+  '@code {\n  const { kind } = props<{ kind: string }>();\n}\n',
+  "<section><h1>t</h1>@switch (kind) { case 'a': <p>A</p> }<hr></section>",
+);
+
+const FOR = wrap(
+  'x-forq',
+  '@code {\n  const { n } = props<{ n: number }>();\n}\n',
+  '<section>@for (let i = 0; i < n; i++) {<b>@i</b>}<hr></section>',
+);
+
+/**
+ * A `@while` needs something that changes, and props are all it can reach here — hence the
+ * countdown box. Each render pass gets its OWN, which is what `treesFresh` is for: `c()` and
+ * `h()` are two independent renders of the same state, not one continued.
+ */
+const WHILE = wrap(
+  'x-whileq',
+  '@code {\n  const { box } = props<{ box: { n: number } }>();\n}\n',
+  '<section>@while (box.n-- > 0) {<b>w</b>}<hr></section>',
+);
+
+/** As `trees`, with the props and the values rebuilt per pass (a `@while` consumes them). */
+function treesFresh(
+  graph: ComponentGraph,
+  tag: string,
+  props: () => Record<string, unknown>,
+  values: () => readonly unknown[],
+): { painted: string; created: string; hydrated: string } {
+  const server = mountAsDsd(tag, serverShadowHtml(graph, tag, props()));
+  const painted = server.shadow.innerHTML;
+
+  const fresh = document.createElement(tag);
+  const shadow = fresh.attachShadow({ mode: 'open' });
+  document.body.append(fresh);
+  controller(clientFactory(graph, tag), browserDom, shadow, values()).c();
+
+  controller(clientFactory(graph, tag), adoptOnly(browserDom), server.shadow, values()).h();
+  return { painted, created: shadow.innerHTML, hydrated: server.shadow.innerHTML };
+}
+
+describe('@switch, hydrated (§6.11)', () => {
+  const graph = graphOf('x-sw', SWITCH);
+
+  it('agrees with the case arm taken', () => {
+    const t = trees(graph, 'x-sw', { kind: 'a' }, ['a']);
+    expect(t.painted).toContain('<p>A</p>');
+    expect(t.created).toBe(t.painted);
+    expect(t.hydrated).toBe(t.painted);
+  });
+
+  it('agrees with the default arm taken', () => {
+    const t = trees(graph, 'x-sw', { kind: 'zzz' }, ['zzz']);
+    expect(t.painted).toContain('<i>D</i>');
+    expect(t.created).toBe(t.painted);
+    expect(t.hydrated).toBe(t.painted);
+  });
+
+  it('agrees with no arm at all, and the sibling behind it is still adopted (§6.14)', () => {
+    const bare = graphOf('x-sw0', SWITCH_BARE);
+    const t = trees(bare, 'x-sw0', { kind: 'zzz' }, ['zzz']);
+    expect(t.painted).toContain('<h1>t</h1><hr>'); // nothing between them: the cursor did not move
+    expect(t.created).toBe(t.painted);
+    expect(t.hydrated).toBe(t.painted);
+  });
+});
+
+describe('@for, hydrated (§6.12)', () => {
+  const graph = graphOf('x-forq', FOR);
+
+  for (const n of [0, 1, 3]) {
+    it(`agrees with ${n} turn(s)`, () => {
+      const t = trees(graph, 'x-forq', { n }, [n]);
+      expect(t.painted).toContain('<hr>'); // the sibling survives every turn count (§6.14)
+      expect((t.painted.match(/<b>/gu) ?? []).length).toBe(n);
+      expect(t.created).toBe(t.painted);
+      expect(t.hydrated).toBe(t.painted);
+    });
+  }
+});
+
+describe('@while, hydrated (§6.13)', () => {
+  const graph = graphOf('x-whileq', WHILE);
+
+  for (const n of [0, 3]) {
+    it(`agrees with ${n} turn(s)`, () => {
+      const t = treesFresh(graph, 'x-whileq', () => ({ box: { n } }), () => [{ n }]);
+      expect(t.painted).toContain('<hr>');
+      expect((t.painted.match(/<b>w<\/b>/gu) ?? []).length).toBe(n);
+      expect(t.created).toBe(t.painted);
+      expect(t.hydrated).toBe(t.painted);
+    });
+  }
+});
+
 describe('the anchor §3.4 forces, hydrated (§6.19)', () => {
   const graph = graphOf('x-anchor', ANCHORED);
 
