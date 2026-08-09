@@ -9,7 +9,14 @@
  */
 
 import type { HtmlContent, ElementNode, RawExpressionNode } from '../html/index.js';
-import type { IfNode, ForeachNode, ForNode, WhileNode, SwitchNode } from '../control/index.js';
+import type {
+  ControlNode,
+  IfNode,
+  ForeachNode,
+  ForNode,
+  WhileNode,
+  SwitchNode,
+} from '../control/index.js';
 import type { SectionNode } from '../layout/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { StructuredDocument } from '../document/index.js';
@@ -25,6 +32,15 @@ export interface TreeVisitor {
   exitLoop?(): void;
   /** A content-level interpolation: a bare `@expr` or the inner expr of `@raw(…)`. */
   interpolation?(expr: RazorExpression): void;
+  /**
+   * Every control construct, before its bodies are descended.
+   *
+   * The walk has always gone THROUGH these nodes and never handed one over, which is fine for
+   * an analyzer that only cares about elements — and wrong for anyone asking what a given
+   * offset *is*. The text between the parentheses of an `@if` is JavaScript, not markup, and
+   * only the node knows where those parentheses are (BUG-17 §4.3).
+   */
+  control?(node: ControlNode): void;
 }
 
 /**
@@ -73,6 +89,7 @@ function walkNode(node: HtmlContent, visitor: TreeVisitor): void {
       return;
     case 'if': {
       const ifNode = node as unknown as IfNode;
+      visitor.control?.(ifNode);
       for (const branch of ifNode.branches) walk(branch.body, visitor);
       if (ifNode.elseBody) walk(ifNode.elseBody, visitor);
       return;
@@ -81,6 +98,7 @@ function walkNode(node: HtmlContent, visitor: TreeVisitor): void {
     case 'for':
     case 'while': {
       const loop = node as unknown as ForeachNode | ForNode | WhileNode;
+      visitor.control?.(loop);
       visitor.enterLoop?.();
       walk(loop.body, visitor);
       visitor.exitLoop?.();
@@ -88,6 +106,7 @@ function walkNode(node: HtmlContent, visitor: TreeVisitor): void {
     }
     case 'switch': {
       const switchNode = node as unknown as SwitchNode;
+      visitor.control?.(switchNode);
       for (const branch of switchNode.cases) walk(branch.body, visitor);
       return;
     }

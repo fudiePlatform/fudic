@@ -32,8 +32,8 @@ export interface RazorExpression extends Node {
   readonly expr: Span;
   /**
    * Lexical regions inside `expr` (from the balancer): strings, templates, comments,
-   * regex. Always empty for implicit expressions (a plain property path has none); only
-   * the explicit form `@( ... )` contributes regions.
+   * regex. Empty for a plain property path, which has none; the explicit form `@( ... )`
+   * and the call suffix of decision 99 (`@del('a)b')`) contribute theirs.
    */
   readonly regions: readonly LexRegion[];
 }
@@ -140,6 +140,20 @@ export function classifyDirective(identifier: string): LayoutDirective | null {
   return LAYOUT_DIRECTIVES.has(identifier) ? (identifier as LayoutDirective) : null;
 }
 
+/** What an implicit expression may end with — a question of POSITION (decision 99). */
+export interface ImplicitOptions {
+  /**
+   * Accept ONE balanced call suffix after the path: `@del($event, item.id)`.
+   *
+   * True ONLY in the value of an `@event` / `bus:` binding, where a call is what the
+   * author means every time: a handler takes data from the point of use (decision 96),
+   * and `@(del($event, item.id))` is ceremony around the ordinary case. In content
+   * position it stays off — there `@total(x)` is an interpolation followed by literal
+   * text, and decision 29 already says the `@` means what its position says.
+   */
+  readonly call?: boolean;
+}
+
 /**
  * Scan an implicit expression starting at `atOffset` (`@` included). An implicit
  * expression is ONLY a property path: identifier ('.' identifier)*. It stops —
@@ -150,10 +164,16 @@ export function classifyDirective(identifier: string): LayoutDirective | null {
  * The stops carry NO diagnostic on purpose (§4.5.2): the dominant case is literal
  * punctuation after an interpolation (`@name.`, `@name!`), and warning there would
  * be all false positives.
+ *
+ * `options.call` adds the one exception (decision 99): an adjacent `(` opens the
+ * balancer and the group joins the expression, so `@del($event, item.id)` is one atom.
+ * Adjacency is the same rule `@raw(` already follows — `@del (x)` is the path `del`,
+ * because an implicit expression never crosses whitespace.
  */
 export function scanImplicitExpression(
   source: string,
   atOffset: number,
+  options: ImplicitOptions = {},
 ): ParseResult<RazorExpression> {
   const exprStart = atOffset + 1;
   let i = identifierEnd(source, exprStart);
@@ -177,6 +197,20 @@ export function scanImplicitExpression(
     const next = identifierEnd(source, i + 1);
     if (next === i + 1) break;
     i = next;
+  }
+
+  // The call suffix (decision 99). The balancer owns the boundary, so a `)` inside a
+  // string argument does not close it, and the regions it walked travel with the node.
+  if (options.call === true && source[i] === '(') {
+    const group = scanParens(source, i);
+    const called: RazorExpression = {
+      type: 'razor-expression',
+      kind: 'implicit',
+      span: span(atOffset, group.value.span.end),
+      expr: span(exprStart, group.value.span.end),
+      regions: group.value.regions,
+    };
+    return group.diagnostics.length === 0 ? ok(called) : withDiagnostics(called, group.diagnostics);
   }
 
   return ok({
@@ -208,6 +242,7 @@ export function expressionFromToken(token: JsRegionToken): RazorExpression {
 export function resolveTrigger(
   source: string,
   atOffset: number,
+  options: ImplicitOptions = {},
 ): ParseResult<TriggerResolution> {
   const identStart = atOffset + 1;
   const identEnd = identifierEnd(source, identStart);
@@ -249,8 +284,12 @@ export function resolveTrigger(
       : withDiagnostics(resolution, group.diagnostics);
   }
 
-  const expression = scanImplicitExpression(source, atOffset);
-  return ok({ kind: 'implicit', expression: expression.value });
+  const expression = scanImplicitExpression(source, atOffset, options);
+  const resolution: TriggerResolution = { kind: 'implicit', expression: expression.value };
+  // An unterminated call suffix has something to say; a bare path never does.
+  return expression.diagnostics.length === 0
+    ? ok(resolution)
+    : withDiagnostics(resolution, expression.diagnostics);
 }
 
 /**

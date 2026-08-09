@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/dom` (contrato + `browserDom`) · `@fudic/ssr` (`SsrDom`) ·
 > `@fudic/compiler` (emit)
 > **Rama:** `sdd-15-eventos-y-bus`
-> **Progreso:** 0 / 22
+> **Progreso:** 22 / 22
 > **Va DESPUÉS de:** [SDD-30 — Renders de bloque](./SDD-30-renders-de-bloque.md)
 > ([tareas](./SDD-30-Task.md)). No es una preferencia de orden: ver *Por qué va detrás* abajo.
 
@@ -124,27 +124,38 @@ abrir la tanda de mapas de página**, y decidir en cuál vive la resolución est
 (decisión 28.c: literal, `const` local, `as const` importado — este último necesita el grafo de
 módulos, que el `SemanticModel` de un fichero no tiene).
 
+**3. Apareció un tercero, y se resolvió aquí (2026-08-08): la sintaxis de la 96 no parseaba.**
+Una expresión implícita es *solo* un camino de propiedades y se corta en el `(` (decisiones
+2/4/5), así que `@click="@del($event, item.id)"` llegaba partido en dos —`del` más el texto
+literal `($event, item.id)`—, con `FUD0092`, y lo que se habría suscrito es la referencia
+desnuda. Sin esto, la tabla de §4.5, el fixture de la tarea 17 y los criterios §6.15–§6.20 no
+tenían base. Decisión de Pedro: se arregla en esta tanda, no se emparcha con `@(del(...))`
+—que es ceremonia alrededor del caso normal—. Sale la **decisión de gramática 99**: la
+expresión implícita admite un sufijo de llamada balanceado **en el valor de un `@evento` /
+`bus:`, y solo ahí**. En contenido `@total(x)` sigue significando lo de siempre. Vive en la
+fase 3, con el resto del enganche.
+
 ---
 
 ## Fase 1 — El host sale del adapter (4)
 
-- [ ] **1. `host(shadow)` en el contrato y en `browserDom`.**
+- [x] **1. `host(shadow)` en el contrato y en `browserDom`.**
       Modificar `packages/dom/src/dom.ts` y `browser.ts`: `host(shadow: N): N` va en **`Dom<N>`**
       —no en `DomClient<N>`— porque el factory que lo llama es el mismo que corre contra el
       adapter de servidor (§6.14), y una llamada que solo existiera en el cliente rompería esa
       ejecución. En el navegador es `(shadow as ShadowRoot).host`.
-- [ ] **2. `SsrDom.host`.**
+- [x] **2. `SsrDom.host`.**
       Modificar `packages/ssr/src/ssr-dom.ts`: el enlace inverso **ya existe** —`attachShadow`
       deja `shadow.parent = h` (`tree.ts`)—, así que es devolver ese padre. No hay que tocar
       `SsrNodeImpl`: es exactamente la comprobación que hace que este hito no cueste nada.
-- [ ] **3. El factory lo materializa solo si lo usa.**
+- [x] **3. El factory lo materializa solo si lo usa.**
       En `packages/compiler/src/emit/client.ts`: cuando el componente tiene algún `bus:` o alguna
       llamada a `emit` reescrita, emitir `const $host = $dom.host($shadow);` en la cabecera de la
       closure y añadir `$host` a lo que `r()` anula. Cuando no, **no se emite nada**: el chunk de
       un componente sin bus no paga una línea por una referencia que nadie lee, y §3.7 sostiene
       el INP sobre chunks de menos de 1 kB tras minify+brotli. Es información que el emisor de
       markup ya tiene al terminar su pasada; no hace falta un análisis aparte.
-- [ ] **4. Tests y goldens.**
+- [x] **4. Tests y goldens.**
       `@fudic/dom` y `@fudic/ssr` siguen al 100 %: `host()` de vuelta al host en los dos
       adapters. Los tres `__golden__/*.client.mjs` actuales **no deben cambiar** —ninguno de los
       tres fixtures usa el bus todavía—: un golden que se mueva aquí es la señal de que la
@@ -153,7 +164,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
 
 ## Fase 2 — `Dom.event` y `Dom.bus` (§3.8) (4)
 
-- [ ] **5. Los dos métodos en el contrato.**
+- [x] **5. Los dos métodos en el contrato.**
       Modificar `packages/dom/src/dom.ts`: `event(node, type, cb): () => void` y `bus(host,
       name, cb): () => void` van en **`Dom<N>`**, no en `DomClient<N>`. Es lo que permite que el
       mismo factory corra contra los dos adapters (§3.8): el servidor fabrica y monta, y el
@@ -161,17 +172,17 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       respecto al documento refundido `SDD-eventos-captura-contexto`, donde `event` era una
       función libre importada: como método del adapter no ata el código emitido al navegador y
       no obliga a un segundo emit para el SSR.
-- [ ] **6. `browserDom`.**
+- [x] **6. `browserDom`.**
       Modificar `packages/dom/src/browser.ts`: `event` es `addEventListener` y devuelve el
       `removeEventListener` con la **referencia idéntica** —no envuelve `cb`, no reordena
       argumentos: cualquier envoltorio añadiría el frame que §4.5 existe para no pagar—. `bus`
       suscribe sobre `host.ownerDocument ?? document` (punto 2 de arriba) y devuelve su baja.
-- [ ] **7. `SsrDom` no-op.**
+- [x] **7. `SsrDom` no-op.**
       Modificar `packages/ssr/src/ssr-dom.ts`: ambos métodos no hacen nada y devuelven un
       disposer no-op **compartido** (una constante del módulo, no una función nueva por llamada:
       un disposer que nadie distingue no necesita identidad). El criterio §6.14 exige además que
       no aparezcan en la salida: no tocan el árbol, luego `renderToString` no los ve.
-- [ ] **8. Tests y cobertura de los dos paquetes.**
+- [x] **8. Tests y cobertura de los dos paquetes.**
       `@fudic/dom` y `@fudic/ssr` están al 100 % en las cuatro métricas y siguen estándolo: el
       disposer no-op de SSR **hay que invocarlo** en su test —en producción no lo llama nadie, y
       esa es exactamente la rama que el 100 % obliga a escribir—. En `browserDom`: que la baja
@@ -180,7 +191,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
 
 ## Fase 3 — Los event bindings en `s()` (§4.5) (4)
 
-- [ ] **9. El valor del binding entra en el batch de Oxc.**
+- [x] **9. El valor del binding entra en el batch de Oxc.**
       Ampliar `extractCode` (`packages/compiler/src/emit/oxc-code.ts`) para registrar también,
       como fragmentos `expression`, el valor de cada `EventBinding` y `BusBinding` del template
       —un recorrido del árbol que los recoja antes de `batch.parse()`—. **Regla de oro: Oxc se
@@ -188,7 +199,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       al que ya existe. Lo que la extracción devuelve es un mapa del `Span` del valor a **el
       tipo del nodo raíz** (`node.type`), que es lo único que la tabla de §4.5 necesita: el
       compilador no interpreta la semántica del fragmento, solo mira su forma.
-- [ ] **10. La tabla de formas.**
+- [x] **10. La tabla de formas.**
       Nuevo `packages/compiler/src/emit/events.ts`: dado el tipo de nodo raíz y el texto del
       valor, devuelve la expresión que se suscribe.
       | Nodo raíz | Emitido | Frames |
@@ -205,7 +216,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       compilador no podía validar («si escribes `@f(x)`, `f` **debe** devolver el listener») y su
       error más probable —escribir `@del(item.id)` esperando que se llame en el click, que era
       justo lo que no hacía—. Ahora hace lo que parece.
-- [ ] **11. El tercer cuerpo del emisor de markup de cliente.**
+- [x] **11. El tercer cuerpo del emisor de markup de cliente.**
       `ClientMarkupEmitter` (`markup-client.ts`) escribe hoy dos cuerpos en una sola pasada
       —fabricar y adoptar— por la razón que su cabecera explica: calcularlos por separado los
       desalinea. El enganche es el tercero, y entra por la misma puerta. Por cada elemento, tras
@@ -219,7 +230,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       escribir: el emisor de bloques ya lleva el enganche donde toca, y el criterio §6.17
       —cada handler recibe el valor de **su** fila, disparando en orden no secuencial— sale del
       scope, no de una regla de este emisor.
-- [ ] **12. `FUD0291` y el canal de diagnósticos del emit.**
+- [x] **12. `FUD0291` y el canal de diagnósticos del emit.**
       `EmitOutput` (`module.ts`) tiene hoy `missingAssets`, un canal de hechos que el plugin de
       Vite eleva a `FUD0363` sin tumbar el build. Añadir junto a él `diagnostics: readonly
       Diagnostic[]` —el `Diagnostic` con span de `types/diagnostic.ts`, `errorDiag`— y emitir
@@ -229,7 +240,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
 
 ## Fase 4 — El bus (§4.4) (4)
 
-- [ ] **13. `bus:` desugariza a `document`, con el host como contexto.**
+- [x] **13. `bus:` desugariza a `document`, con el host como contexto.**
       En el cuerpo `hook`, un `BusBinding` produce:
       ```js
       $d.push($dom.bus($host, 'carrito', ($event) => onCarrito.call($host, $event)));
@@ -239,7 +250,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       hallazgo estructural que lo obliga: emisor y suscriptor son **hermanos**, no padre/hijo, y
       un `CustomEvent` que burbujea desde el emisor sube por *sus* ancestros y no entra nunca en
       el suscriptor. Un listener sobre el host no dispararía jamás.
-- [ ] **14. El nombre del canal: literal o expresión, sin resolución estática.**
+- [x] **14. El nombre del canal: literal o expresión, sin resolución estática.**
       `bus:carrito` emite el string; `bus:(EVENTOS.carrito)` emite la expresión, evaluada en
       `s()` donde se suscribe. Las dos producen un listener que funciona. La **resolución
       estática** del nombre (decisión 28.c) no se hace aquí porque lo único que decide es quién
@@ -247,7 +258,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       siguiente. Lo que sí se verifica aquí es la mitad de §6.22 que sí es de esta tanda: un
       nombre no resoluble **no es error** y **sigue emitiendo el listener** — postura permisiva,
       no protegemos lo que no podemos ver.
-- [ ] **15. `emit(…)` recibe su host.**
+- [x] **15. `emit(…)` recibe su host.**
       Reescribir, en el cuerpo copiado de `@code { @client }`, cada `CallExpression` cuyo callee
       sea el binding local de `emit` importado de `@fudic/dom`, a `emit.call($host, …)`. Tres
       cosas que hacen que esto no sea un `replace` de texto:
@@ -266,7 +277,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       porque lo que el suscriptor ve como `e.target` es el host de todas formas. El host es
       simplemente el nodo que el controlador ya tiene a mano y el que no depende de dónde esté
       escrito el binding.
-- [ ] **16. Teardown (§6.13).**
+- [x] **16. Teardown (§6.13).**
       `r()` recorre `$d` y anula referencias; con eventos, eso pasa a ser comprobable: tras
       `r()`, el nodo no responde al evento **y** el listener de `bus:` deja de recibir. El
       segundo es el que importa —el de `document` sobrevive al host si nadie lo retira— y es el
@@ -274,7 +285,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
 
 ## Fase 5 — Fixtures, goldens y equivalencia (5)
 
-- [ ] **17. El fixture que ejercita los cuatro casos.**
+- [x] **17. El fixture que ejercita los cuatro casos.**
       `fixtures/app-button.fud` ya escribe `@click="@onClick"` (referencia desnuda) y su handler
       se busca el host a mano con `closest('app-button')` para lanzar un `CustomEvent` — que es
       literalmente lo que `emit` existe para no tener que escribir. Pasarlo a `emit('press')` y
@@ -283,19 +294,19 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       `@del($event)`, `@del(item.id)`, `@del($event, item.id)`— más un `bus:` y **un handler
       declarado plano en los cuatro**, que es lo que el fixture tiene que demostrar. Enlazarlo
       desde `home.fud` para que entre en el hito de cierre §6.28.
-- [ ] **18. Goldens.**
+- [x] **18. Goldens.**
       Regenerar los `.client.mjs` y añadir el del fixture nuevo. Byte a byte, como los de
       servidor: es lo que hace que un refactor del codegen falle en voz alta en vez de derivar
       en silencio. Comprobar de paso que los goldens **de servidor** no cambian salvo por el
       fixture nuevo — el enganche no existe en SSR, y si aparece en un `.mjs` de servidor es que
       algo se emitió en la rama equivocada.
-- [ ] **19. Criterios §6.15, §6.16 y §6.17 en el arnés.**
+- [x] **19. Criterios §6.15, §6.16 y §6.17 en el arnés.**
       Nuevo `test/emit/hydrate/events.test.ts`, sobre el DOM real que el arnés ya monta:
       `$event` es el evento nativo (`type`, `isTrusted`, `preventDefault()` surte efecto); los
       **cuatro casos** llegan al cuerpo como `()`, `(ev)`, `(id)` y `(ev, id)` con la función
       declarada plana; y en un `@foreach` de N filas cada handler recibe el valor de su fila,
       disparando en orden no secuencial.
-- [ ] **20. Criterios §6.18, §6.19, §6.20 y §6.20.b.**
+- [x] **20. Criterios §6.18, §6.19, §6.20 y §6.20.b.**
       §6.18 —el orden de los argumentos es el escrito— con `@del(item.id, $event)` llegando como
       `(id, ev)`: es lo que impide que alguien meta una convención de reordenamiento implícito.
       §6.19 —la invocación ocurre **en el disparo**, no al suscribir— con un contador dentro de
@@ -303,7 +314,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
       esta regla de la forma factory retirada, que hacía lo contrario. §6.20 —la distinción por
       AST— sobre el **texto emitido**, más el caso `FUD0291`. §6.20.b —`$event` fuera de un
       event binding no se sustituye—, que es lo que mantiene honesta la reserva `$`.
-- [ ] **21. §6.7 y §6.14 siguen verdes con enganche.**
+- [x] **21. §6.7 y §6.14 siguen verdes con enganche.**
       Los dos criterios que la tanda anterior cerró vuelven a comprobarse ahora que `s()` hace
       trabajo: `c()` y `h()` producen el mismo listener funcional difiriendo solo en cómo
       obtienen las referencias (§6.7, la convergencia en `s` deja de ser una afirmación sobre una
@@ -313,7 +324,7 @@ módulos, que el `SemanticModel` de un fichero no tiene).
 
 ## Fase 6 — Cierre (1)
 
-- [ ] **22. Verde y cobertura.**
+- [x] **22. Verde y cobertura.**
       `pnpm typecheck`, `pnpm test` y `pnpm build` en la raíz —los ejemplos se construyen
       después de los paquetes: si `examples/basic` se rompe, el build falla—. `@fudic/dom` y
       `@fudic/ssr` al **100 %** en las cuatro métricas, y `events.ts` nace al

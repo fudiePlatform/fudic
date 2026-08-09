@@ -258,19 +258,28 @@ export const SNIPPETS: readonly FudSnippet[] = [
     scope: 'markup',
     body: '@if (${1:condition}) {\n  $2\n} else {\n  $0\n}',
   },
+  // The three loops carry their `key (…)`, and not as decoration: a loop that renders markup
+  // must declare one (decision 91, `FUD0540`), so a snippet without it hands over a file that
+  // is red the moment the user types the first row inside it. The name of the item is ONE
+  // tabstop across the header and the key, so renaming it there renames it in both.
   {
     label: '@foreach',
-    detail: 'declarative iteration (decision 11)',
+    detail: 'declarative iteration (decisions 11, 91)',
     scope: 'markup',
-    body: '@foreach (const ${1:item} of ${2:items}) {\n  $0\n}',
+    body: '@foreach (const ${1:item} of ${2:items}) key (${1:item}.${3:id}) {\n  $0\n}',
   },
   {
     label: '@for',
-    detail: 'iteration with an index (decision 11)',
+    detail: 'iteration with an index (decisions 11, 91)',
     scope: 'markup',
-    body: '@for (let ${1:i} = 0; ${1:i} < ${2:items}.length; ${1:i}++) {\n  $0\n}',
+    body: '@for (let ${1:i} = 0; ${1:i} < ${2:items}.length; ${1:i}++) key (${1:i}) {\n  $0\n}',
   },
-  { label: '@while', detail: 'loop', scope: 'markup', body: '@while (${1:condition}) {\n  $0\n}' },
+  {
+    label: '@while',
+    detail: 'loop (decision 91)',
+    scope: 'markup',
+    body: '@while (${1:condition}) key (${2:id}) {\n  $0\n}',
+  },
   {
     label: '@switch',
     detail: 'multi-way branch, no fall-through (decision 14)',

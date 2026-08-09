@@ -1,7 +1,7 @@
 # BUG-17 — La `key` de un bucle es sintaxis nueva sin mitad de editor, y por el camino salen tres cabos sueltos
 
-> **Estado:** `Bloqueado` — por [SDD-30](../SDD-30-renders-de-bloque.md), que es quien mete la
-> `key` en el AST. Pasa a `Listo` en cuanto ese campo exista (§3.5)
+> **Estado:** `Hecho` — [Task](./BUG-17-Task.md) al 11 / 11; `language-core`, `language-server` y
+> `formatter` al 100 % en las cuatro métricas
 > **Corrige:** [SDD-30 §3.5](../SDD-30-renders-de-bloque.md) (la mitad de editor que no declara),
 > [SDD-23 §4.4](../SDD-23-emisor-ts-virtual.md) y [SDD-24 §4.2](../SDD-24-language-server.md)
 > **Paquetes:** `@fudic/language-core` · `@fudic/language-server` · `@fudic/formatter` ·
@@ -143,7 +143,7 @@ que este documento enumera para que no se quede fuera.
 ### 3.1. `GLOBALS_DTS` — un global nuevo
 
 ```ts
-declare function $key(k: unknown): void;
+declare function $key(k?: unknown): void;
 ```
 
 **`unknown` a propósito.** Ofrecer no es validar, que es la regla con la que BUG-15 dejó abierta
@@ -151,6 +151,12 @@ la lista de clases. Un tipo más estrecho —`string | number`— rechazaría cl
 reconciliación de SDD-30 §4.4 usa un `Map`, y en un `Map` la identidad de objeto es una clave
 perfectamente válida. `$key` existe para **abrir un scope donde preguntar**, no para juzgar lo
 que se escribe.
+
+**Y opcional, por la misma razón.** Un `key (|)` a medio escribir se proyecta como un argumento
+vacío —es §4.1 y es justo el instante en que la lista hace falta—; con el parámetro obligatorio
+TypeScript contestaría ahí `TS2554`, un error sobre un tramo que el autor no ha escrito. Que la
+cláusula esté sin terminar ya está dicho **una vez**, y lo dice `FUD0541`, que es del compilador.
+Dos quejas por el mismo carácter es exactamente lo que la regla «ofrecer no es validar» prohíbe.
 
 **Ningún código `FUD` nuevo.** `FUD0540` (falta la key), `FUD0541` (key vacía) y `FUD0542` (key
 donde no itera) son de SDD-30 y los da el compilador. Esta mitad no añade diagnósticos propios:
@@ -179,6 +185,14 @@ que ya tienen las cabeceras (`span` del constructo entero e `inner` de la expres
 copiarla). **Lo pone SDD-30**, y hasta entonces este BUG está `Bloqueado`: no hay nada que
 proyectar ni nada que imprimir.
 
+**Puesto, y con una forma algo mejor que la que este § pedía.** SDD-30 lo entrega como
+`KeyedNode`, que declaran los **cinco** constructos —también `@if` y `@switch`, que necesitan
+dónde poner una key para poder reportarla con `FUD0542`—, y el campo es un `RazorExpression`:
+`span` cubre la cláusula `key (…)` entera, para que quien la reescriba sustituya la cláusula y no
+solo su interior, y `expr` es el JS, que es el tramo que se copia. Ausente cuando la cláusula no
+se escribió o salió malformada (`FUD0541`), de modo que la proyección y el formateador tienen
+exactamente **un** caso que mirar y ninguna forma de cabecera añade otro.
+
 ---
 
 ## 4. Comportamiento corregido
@@ -206,6 +220,45 @@ especiales por forma de cabecera** — la cabecera ya está proyectada y hace el
 problema.** Los tramos no tienen por qué ir en orden; BUG-16 lo dejó demostrado con los dos
 literales de un tag de componente, donde los atributos se reparten y se reordenan y cada uno
 sigue volviendo a su sitio.
+
+**Y va envuelta en `$key(…)`, no suelta como sentencia.** Una llamada pone la expresión en
+posición de argumento, que es una posición para la que TypeScript **tiene un tipo esperado**; una
+sentencia suelta no. La diferencia se ve exactamente donde importa: con `key (|)` vacío, el
+argumento vacío de una llamada es una pregunta que el servicio contesta, y una sentencia vacía no
+es nada. Es la misma razón por la que los props se proyectan como un literal de objeto y no como
+asignaciones sueltas.
+
+### 4.1.1. La cláusula vacía tiene que sobrevivir al parser
+
+Y aquí salió el hueco que este BUG no vio al redactarse, porque no se ve leyendo: **el parser
+tiraba la cláusula entera cuando no había nada dentro**. `key ()` no producía nodo, así que no
+quedaba ni un offset del fuente al que mapear — y `key (|)` **es** lo que un editor enseña en el
+instante en que se teclea `key (` y el `)` se autocierra. O sea: el primer momento en que la
+lista hace falta era precisamente el único en que no podía existir. El criterio §6.5 pedía algo
+que ninguna cantidad de trabajo en la proyección podía dar.
+
+Lo llamativo es que el mismo parser ya hacía lo contrario con las cabeceras: una cabecera a la
+que le falta el `(` **sobrevive degradada**, con un span vacío, para que el fichero que se está
+editando siga contestando (`missingHeader`, y la regla de `emitHeader` que §6.3 cita). La key era
+la única pieza que desaparecía.
+
+**La regla, dicha una vez:** una cláusula que llegó a abrir paréntesis **siempre** deja nodo, con
+`expr` vacío cuando no hay nada legible dentro. Cubre los dos casos degradados —`key ()` y una
+cláusula sin cerrar, que además degrada al hueco tras el `(` en vez de tragarse el resto del
+fichero— y deja fuera solo `key` sin paréntesis, donde no se abrió nada y un span vacío señalaría
+a prosa. `FUD0541` no se mueve: lo decide quien mira si hay expresión, no quien construye el nodo.
+
+Eso parte el campo en dos audiencias, y por eso la distinción tiene **un dueño y no tres**: el
+editor quiere la cláusula vacía —es donde está el cursor— y todo lo que **genera código** la
+quiere fuera, porque un span vacío se corta a la cadena vacía y `key: ,` no es JavaScript. Lo
+resuelve un predicado, `keyExpression(node)`, que devuelve el span solo cuando hay JS que leer;
+lo consultan las dos piezas del emit que escriben la identidad de un bloque, y así ningún emisor
+futuro tiene que acordarse. La proyección, en cambio, usa el campo tal cual: la cláusula vacía es
+lo que quiere.
+
+Es cambio en el parser, que §7 pone en SDD-30. **Se hace aquí igualmente**, y con eso el criterio
+§6.5 pasa de imposible a verificado; dejarlo para otro documento habría sido entregar la mitad de
+editor con el agujero justo en el sitio por el que este BUG existe.
 
 ### 4.2. Lo que el desarrollador ve
 
@@ -256,6 +309,11 @@ snippet deja un fichero que compila.
 - **Una zona, un dueño.** Dentro de unos paréntesis de control contesta TypeScript; en markup,
   quien ya contestaba. Y el arreglo vive en **una** función, no en tres ramas paralelas.
 - **Ofrecer no es validar.** `$key` no rechaza nada: abre el scope y se aparta.
+- **Lo que el autor no ha terminado de escribir sigue teniendo sitio.** Un constructo a medias
+  degrada a un span vacío, nunca a nada: si el nodo desaparece, el editor se queda sin la
+  posición desde la que preguntar justo en el instante en que se pregunta (§4.1.1).
+- **Una regla, un dueño.** Que una cláusula vacía no lleve JS lo decide un predicado, no cada
+  emisor por su cuenta — porque el que se olvide no falla al compilar, falla al ejecutar.
 
 ---
 
@@ -322,6 +380,10 @@ métricas.
   función por bloque, la reconciliación, el teardown y `FUD0540`–`FUD0542`. Este BUG no emite ni
   una línea de cliente.
 - **La sintaxis de la key en el parser** y el campo del AST: también SDD-30 (§3.5 de aquí).
+  **Con una excepción, y está hecha:** que una cláusula abierta y vacía sobreviva al parseo
+  (§4.1.1). Es una línea del parser, pero sin ella el criterio §6.5 no se puede cumplir desde
+  ningún otro sitio, así que se hace aquí en vez de dejar la mitad de editor con el agujero
+  justo en el punto por el que este BUG existe.
 - **Si `@foreach (item of xs)` sin declarador es legal en fudic** (§1.3). Es gramática, la decide
   SDD-06/SDD-30, y la corrección de §4.1 no cambia con la respuesta.
 - **Diagnóstico de key duplicada.** Depende de los datos; SDD-30 §4.4 lo deja fijado y el aviso

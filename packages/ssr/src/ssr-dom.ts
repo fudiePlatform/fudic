@@ -64,7 +64,39 @@ export class SsrDom implements Dom<SsrNode> {
     }
     return h.shadow;
   }
+
+  /**
+   * The host of a shadow root. The inverse link already exists — `attachShadow` above
+   * leaves `shadow.parent = host` — so this adapter needs no extra field to answer it,
+   * which is the check that keeps `Dom.host` free of cost on this side.
+   *
+   * A fragment that no `attachShadow` produced has no host, and the cast says so: the only
+   * caller is the emitted `$host = $dom.host($shadow)`, whose `$shadow` came from there.
+   */
+  host(shadow: SsrNode): SsrNode {
+    return asImpl(shadow).parent as SsrNode;
+  }
+
+  /**
+   * Hookup, in SSR: nothing (SDD-15 §3.8). This is what lets the SAME `static c($props)`
+   * run on both sides — the server fabricates and mounts the nodes, and the listeners
+   * simply do not happen. Neither method touches the tree, so `renderToString` cannot see
+   * them: hookup leaves no trace in the HTML.
+   */
+  event(_node: SsrNode, _type: string, _cb: (ev: Event) => void): () => void {
+    return NOOP;
+  }
+  bus(_host: SsrNode, _name: string, _cb: (ev: Event) => void): () => void {
+    return NOOP;
+  }
 }
+
+/**
+ * The disposer both no-ops hand back — one constant for the whole module, not a fresh
+ * closure per call: a disposer nobody can tell apart from another needs no identity, and
+ * `$d` may hold one per binding of every instance the page renders.
+ */
+const NOOP = (): void => {};
 
 /** Unlink a node from its current parent, if any. */
 function detach(n: SsrNodeImpl): void {

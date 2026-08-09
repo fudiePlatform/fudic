@@ -284,6 +284,7 @@ Cambiar el contrato de `load()` rompe la plantilla sin tocar la plantilla. Verif
 | `@if (c) { A } else { B }` | `if (c) { …A… } else { …B… }` |
 | `@foreach (const x of xs) { … }` | `for (const x of xs) { … }` |
 | `@for (…) { … }` / `@while (…) { … }` | la sentencia homóloga |
+| `key (e)` de un bucle | `$key(e);` como **primera sentencia del cuerpo**, con `e` copiado del fuente (BUG-17 §4.1) |
 | `@switch (e) { case k: … }` | `switch (e) { case k: { … } break; }` — `break` sintético por decisión 14 |
 | `@{ … }` | bloque `{ … }` copiado literalmente |
 | `@section nav { … }` | `$section<$L0>('nav');` + los hijos en el mismo ámbito |

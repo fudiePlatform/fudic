@@ -23,6 +23,7 @@ import { ClientMarkupEmitter, coreUsage, nodeIds } from './markup-client.js';
 import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js';
 import { AssetLinker } from './assets.js';
 import { extractCode, type ExtractedCode, type Prop } from './oxc-code.js';
+import { hookupContext } from './events.js';
 import { componentStyleNode, type EmitOptions, type EmitOutput } from './module.js';
 import type { Diagnostic } from '../types/index.js';
 
@@ -70,7 +71,7 @@ function buildComponentClientModule(
   options: EmitOptions,
 ): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
-  const { props, signals, client, template, mutable, diagnostics } = codeOf(comp);
+  const { props, signals, client, template, mutable, emitCalls, diagnostics } = codeOf(comp);
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
 
   const bodies = newBodies();
@@ -84,10 +85,13 @@ function buildComponentClientModule(
   // What a block may be handed: the props (an update reassigns every one of them) and the
   // `@client` bindings the author can move. Everything else reaches it through the closure.
   const changeable = new Set([...props.map((p) => p.name), ...mutable]);
-  const blockDiagnostics: Diagnostic[] = [];
+  // One channel for everything the emit has to SAY about this file, and one for what every
+  // walk of it shares: a block three levels down reports through the same two.
+  const emitDiagnostics: Diagnostic[] = [];
+  const hookup = hookupContext(template, emitDiagnostics);
   const ids = nodeIds();
   const usage = coreUsage();
-  const ctx = blockContext(comp.source, scope, linker, ids, usage, template, blockDiagnostics);
+  const ctx = blockContext(comp.source, scope, linker, ids, usage, hookup);
   const em = new ClientMarkupEmitter({
     source: comp.source,
     bodies,
@@ -96,6 +100,7 @@ function buildComponentClientModule(
     sink: new BlockEmitter(ctx, changeable),
     ids,
     usage,
+    hookup,
     space,
   });
   em.emitRoots(comp.doc.template!.children);
@@ -117,6 +122,12 @@ function buildComponentClientModule(
   w.line('const $d = []; // teardowns');
   if (em.writes > 0) w.line('const $w = []; // last applied, per value write');
   w.line(destructuring(props, 'declare'));
+  // The host, materialized ONLY where something reads it (§4.4). A component with no bus
+  // subscription and no `emit` does not pay a line of chunk for a reference nobody looks
+  // at, and the chunk budget that keeps INP flat on a cache miss is what pays for that.
+  // `let`, not `const`: `r()` releases it along with the nodes and the shadow root.
+  const needsHost = emitCalls.length > 0 || hookup.hostUsed;
+  if (needsHost) w.line('let $host = $dom.host($shadow);');
   for (const line of client.body) w.line(line);
   w.line('');
   // The blocks: one function per construct, plus the registry of what is alive (SDD-30
@@ -167,7 +178,7 @@ function buildComponentClientModule(
       : `u: () => { $a();${reconcile} },`,
   );
   w.line(
-    `r: () => { ${releaseCalls(bodies.registries)}${[...em.nodes, '$shadow'].join(' = ')} = null; $d.forEach((d) => d()); },`,
+    `r: () => { ${releaseCalls(bodies.registries)}${[...em.nodes, '$shadow', ...(needsHost ? ['$host'] : [])].join(' = ')} = null; $d.forEach((d) => d()); },`,
   );
   w.dedent();
   w.line('};');
@@ -175,10 +186,10 @@ function buildComponentClientModule(
   w.line('}');
   w.dedent();
   w.line('});');
-  // The blocks' own diagnostics travel with `@code`'s: a loop whose header declares nothing
-  // (FUD0543) is as much a fact about this file as a `@code` that does not parse, and the
-  // emit does not stop for either (§5).
-  return { writer: w, linker, diagnostics: [...diagnostics, ...blockDiagnostics] };
+  // The emit's own diagnostics travel with `@code`'s: a loop whose header declares nothing
+  // (FUD0543) or a binding that cannot be subscribed (FUD0291) is as much a fact about this
+  // file as a `@code` that does not parse, and the emit does not stop for any of them (§5).
+  return { writer: w, linker, diagnostics: [...diagnostics, ...emitDiagnostics] };
 }
 
 /**

@@ -1,0 +1,28 @@
+@code {
+  type Row = { id: string; label: string };
+  type Group = { id: string; rows: Row[] };
+
+  const { groups } = props<{ groups: Group[] }>();
+}
+
+<head>
+  <style>
+    ul { margin: 0; padding: 0; }
+  </style>
+</head>
+
+<app-list>
+  <template shadowrootmode="open">
+    <ul>
+      @foreach (const group of groups) key (group.id) {
+        <li>
+          <ol>
+            @foreach (const item of group.rows) key (group.id + item.id) {
+              <li>@item.label</li>
+            }
+          </ol>
+        </li>
+      }
+    </ul>
+  </template>
+</app-list>

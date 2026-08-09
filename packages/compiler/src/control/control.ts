@@ -13,7 +13,7 @@
  * degrade to a partial node plus a located diagnostic, and the cursor always advances.
  */
 
-import { type Span, span, emptySpan } from '../types/index.js';
+import { type Span, span, emptySpan, isEmptySpan } from '../types/index.js';
 import { type Diagnostic, errorDiag } from '../types/index.js';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 import { scanBrackets, scanBraces, scanParens } from '../balancer/index.js';
@@ -117,7 +117,12 @@ function matchKey(source: string, at: number): number | null {
 
 /** A `key (…)` clause as read from source, whether or not it yielded an expression. */
 interface KeyClause {
-  /** The expression, or `null` when the clause is malformed (FUD0541). */
+  /**
+   * The clause, or `null` when it was written with no `(` at all — the one shape that opens
+   * nothing and so leaves no inside to point at. An opened clause is always a node, with an
+   * EMPTY `expr` when it holds nothing readable (`#keyClause`); `keyExpression()` is what
+   * tells the two apart for everyone downstream.
+   */
   readonly key: RazorExpression | null;
   /** Offset just past the clause: where the body's `{` is looked for. */
   readonly end: number;
@@ -470,8 +475,17 @@ class ControlParser {
 
   /**
    * `key ( … )` between the header and the body (decision 91). `null` ⇒ the clause was not
-   * written at all; a clause that IS written but holds nothing yields `key: null` and is
-   * still consumed, so the body behind it still parses.
+   * written at all, or was written with no `(` yet; either way nothing was opened. A clause
+   * that WAS opened always yields a node, so the body behind it still parses.
+   *
+   * **An opened clause survives even when it holds nothing**, with an empty `expr`, and that
+   * is the whole of BUG-17 §3.5: `key (|)` is what an editor shows the instant the author
+   * types `key (` and the `)` auto-closes, so it is the first moment the list of what may go
+   * inside is wanted — and a clause that the parser threw away leaves no position from which
+   * to ask for it. It is the rule the header already follows when its `(` is missing
+   * (`missingHeader`): degrade to an empty span, never to nothing.
+   *
+   * `FUD0541` is unaffected — it is `#checkLoopKey` that reads the emptiness, not this.
    */
   #keyClause(from: number): KeyClause | null {
     const at = skipTrivia(this.#source, from);
@@ -486,8 +500,6 @@ class ControlParser {
     if (scanned.diagnostics.length > 0) this.#diagnostics.push(...scanned.diagnostics);
     const group = scanned.value;
     this.#ctx.lexer.seekTo(group.span.end);
-    const expr = trimmedSpan(this.#source, group.inner.start, group.inner.end);
-    if (!group.closed || expr.start === expr.end) return { key: null, end: group.span.end };
     return {
       key: {
         type: 'razor-expression',
@@ -495,7 +507,11 @@ class ControlParser {
         // The atom is the WHOLE clause — `key ( … )` — so a consumer that rewrites it
         // (the formatter, a code action) replaces the clause and not just its inside.
         span: span(at, group.span.end),
-        expr,
+        // An unclosed group runs to the end of the file, so its inside is not what the
+        // author meant by a key: it degrades to the caret's own position, just past the `(`.
+        expr: group.closed
+          ? trimmedSpan(this.#source, group.inner.start, group.inner.end)
+          : emptySpan(group.inner.start),
         regions: group.regions,
       },
       end: group.span.end,
@@ -513,7 +529,10 @@ class ControlParser {
       }
       return;
     }
-    if (clause.key === null) {
+    // Written but holding nothing — `key`, `key ()`, `key (   )`, `key (r.id` — all reach
+    // here the same way: no expression to read. The clause still travels in the AST so the
+    // editor can ask inside it; the diagnostic is what tells the AUTHOR it is not finished.
+    if (clause.key === null || isEmptySpan(clause.key.expr)) {
       this.#error('FUD0541', "'key (…)' must hold an expression", header.span);
     }
   }

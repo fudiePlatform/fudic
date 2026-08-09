@@ -59,6 +59,20 @@ declare function $slot(): void;
 declare function $intoSlot<T extends string>(name: T): void;
 declare function $ref<E extends Element>(): E;
 
+/**
+ * The identity of one iteration of a loop (BUG-17 §3.1).
+ *
+ * \`unknown\` on purpose. Offering is not validating: reconciliation keys a \`Map\`, and in a
+ * \`Map\` object identity is a perfectly good key, so \`string | number\` would reject keys
+ * that work. \`$key\` exists to open a scope to ask questions in, not to judge the answer.
+ *
+ * OPTIONAL for the same reason. A \`key (|)\` the author has not finished projects as an empty
+ * argument, and that is the one moment the list is wanted; a required parameter would answer
+ * it with \`TS2554\` about a stretch nobody typed. The clause being unfinished is already said,
+ * once, by \`FUD0541\` — and the compiler is who owns that sentence.
+ */
+declare function $key(k?: unknown): void;
+
 type $El<T extends string> = T extends keyof HTMLElementTagNameMap
   ? HTMLElementTagNameMap[T]
   : HTMLElement;

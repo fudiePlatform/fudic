@@ -4,9 +4,13 @@
   const { variant = 'primary', disabled = false } = props<{ variant?: Variant; disabled?: boolean }>();
 
   @client {
-    function onClick(e: MouseEvent) {
-      const host = (e.currentTarget as HTMLElement).closest('app-button');
-      host?.dispatchEvent(new CustomEvent('press', { bubbles: true }));
+    import { emit } from '@fudic/dom';
+
+    // `emit` forces `bubbles` and `composed`, and the compiler injects the host as its
+    // `this`. Finding that host by hand with `closest('app-button')` was exactly what
+    // this primitive exists so nobody has to write.
+    function onClick() {
+      emit('press');
     }
   }
 }

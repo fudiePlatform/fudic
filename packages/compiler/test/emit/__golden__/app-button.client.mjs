@@ -1,4 +1,5 @@
 import { FudicElement } from '@fudic/core';
+import { emit } from '@fudic/dom';
 
 customElements.define("app-button", class extends FudicElement {
   static c($props) {
@@ -7,13 +8,15 @@ customElements.define("app-button", class extends FudicElement {
     const $d = []; // teardowns
     const $w = []; // last applied, per value write
     let [$dom, $shadow, variant = 'primary', disabled = false] = $props;
-    function onClick(e: MouseEvent) {
-      const host = (e.currentTarget as HTMLElement).closest('app-button');
-      host?.dispatchEvent(new CustomEvent('press', { bubbles: true }));
+    let $host = $dom.host($shadow);
+    function onClick() {
+      emit.call($host, 'press');
     }
 
     const $m = () => { for (const $n of $r) $dom.append($shadow, $n); };
-    const $s = () => {};
+    const $s = () => {
+      $n0 && $d.push($dom.event($n0, "click", onClick));
+    };
     const $a = () => {
       let $v;
       $v = (disabled);
@@ -46,7 +49,7 @@ customElements.define("app-button", class extends FudicElement {
         $s();
       },
       u: ($p) => { [, , variant = 'primary', disabled = false] = $p; $a(); },
-      r: () => { $n0 = $n1 = $shadow = null; $d.forEach((d) => d()); },
+      r: () => { $n0 = $n1 = $shadow = $host = null; $d.forEach((d) => d()); },
     };
   }
 });

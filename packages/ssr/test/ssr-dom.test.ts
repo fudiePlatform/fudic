@@ -64,6 +64,23 @@ describe('SsrDom tree mutation', () => {
     expect(d.attachShadow(host)).toBe(first);
   });
 
+  it('host gives the shadow root back its host, with no extra link (SDD-15 §4.4)', () => {
+    const d = new SsrDom();
+    const host = d.element('app-x');
+    expect(d.host(d.attachShadow(host))).toBe(host);
+  });
+
+  it('event and bus do nothing, share one disposer, and leave no trace (SDD-15 §3.8, §6.14)', () => {
+    const d = new SsrDom();
+    const host = d.element('app-x');
+    const off = d.event(host, 'click', () => undefined);
+    expect(d.bus(host, 'carrito', () => undefined)).toBe(off); // one constant, not a closure per call
+    // In production nobody calls it — `r()` on the server never runs — and that is exactly
+    // the branch a 100% floor makes us write.
+    expect(off()).toBeUndefined();
+    expect(renderToString(host)).toBe('<app-x></app-x>');
+  });
+
   it('detaching a node held outside its parent children list is safe', () => {
     // A shadow root is parented to its host but lives in `.shadow`, not `children`.
     const d = new SsrDom();

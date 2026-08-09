@@ -18,13 +18,14 @@
  */
 
 import type { ControlNode } from '../control/index.js';
-import { errorDiag, type Diagnostic, type Span } from '../types/index.js';
+import { keyExpression } from '../control/index.js';
+import { errorDiag, type Span } from '../types/index.js';
 import type { OxcNode } from '../oxc/index.js';
 import { CodeWriter } from './writer.js';
 import type { AssetLinker } from './assets.js';
 import { branchesOf, collectTemplateJs, isLoop, type Branch, type LoopNode } from './constructs.js';
 import { freeReferences, patternBindings, type FragmentAst } from './scope.js';
-import type { TemplateJs } from './oxc-code.js';
+import type { HookupContext } from './events.js';
 import {
   ClientMarkupEmitter,
   type BlockSink,
@@ -44,10 +45,11 @@ export interface BlockContext {
   readonly ids: NodeIds;
   /** What the module ends up importing from `@fudic/core` — one record for the file. */
   readonly usage: CoreUsage;
-  /** The Oxc AST of every JS fragment of the template, by span (§3.3). */
-  readonly template: TemplateJs;
-  /** What the emit has to say about a construct. Never thrown (§5). */
-  readonly diagnostics: Diagnostic[];
+  /**
+   * The template's JS by span (§3.3), where a diagnostic of the emit lands, and whether
+   * `$host` is read — the three facts every walk of this file shares, block or component.
+   */
+  readonly hookup: HookupContext;
   nextBlock(): number;
   nextConstruct(): number;
 }
@@ -72,8 +74,7 @@ export function blockContext(
   linker: AssetLinker,
   ids: NodeIds,
   usage: CoreUsage,
-  template: TemplateJs,
-  diagnostics: Diagnostic[],
+  hookup: HookupContext,
 ): BlockContext {
   let blocks = 0;
   let constructs = 0;
@@ -83,8 +84,7 @@ export function blockContext(
     linker,
     ids,
     usage,
-    template,
-    diagnostics,
+    hookup,
     nextBlock: () => blocks++,
     nextConstruct: () => constructs++,
   };
@@ -149,12 +149,12 @@ export class BlockEmitter implements BlockSink {
   #headerBindings(node: ControlNode): readonly string[] {
     if (!isLoop(node)) return [];
     if (node.type === 'while') return [];
-    const header = this.#ctx.template.ast(node.header.inner);
+    const header = this.#ctx.hookup.template.ast(node.header.inner);
     const root = Array.isArray(header) ? undefined : (header as OxcNode);
     const declaration = root === undefined ? undefined : root[node.type === 'foreach' ? 'left' : 'init'];
     const names = patternBindings(declarationTarget(declaration));
     if (names.length === 0) {
-      this.#ctx.diagnostics.push(
+      this.#ctx.hookup.diagnostics.push(
         errorDiag(
           'FUD0543',
           'a loop header that declares no binding cannot have a key that identifies its rows',
@@ -178,10 +178,11 @@ export class BlockEmitter implements BlockSink {
     const spans: Span[] = [];
     // The block's own key belongs to the block: it is read in the scope of the body, and
     // the instance computes it from the very parameters this list decides.
-    if (isLoop(node) && node.key !== undefined) spans.push(node.key.expr);
+    const key = isLoop(node) ? keyExpression(node) : undefined;
+    if (key !== undefined) spans.push(key);
     collectTemplateJs(branch.body, (_kind, span) => spans.push(span));
 
-    const asts: FragmentAst[] = spans.map((span) => this.#ctx.template.ast(span));
+    const asts: FragmentAst[] = spans.map((span) => this.#ctx.hookup.template.ast(span));
     const owned = new Set(own);
     return freeReferences(asts).filter((name) => !owned.has(name) && this.#changeable.has(name));
   }
@@ -209,6 +210,7 @@ export class BlockEmitter implements BlockSink {
       sink: inner,
       ids: this.#ctx.ids,
       usage: this.#ctx.usage,
+      hookup: this.#ctx.hookup,
       space: at.space,
       trackRoots: true,
     });
@@ -270,10 +272,16 @@ export class BlockEmitter implements BlockSink {
     w.line('};');
   }
 
-  /** The key expression of a loop, evaluated once per instance: it IS the identity (§3.5). */
+  /**
+   * The key expression of a loop, evaluated once per instance: it IS the identity (§3.5).
+   *
+   * A loop with no key —or with one the author has not finished writing, which carries
+   * `FUD0541`— identifies every instance as `undefined`. That is a broken reconciliation and
+   * it is meant to be: the diagnostic is the answer, and the chunk still has to be JS.
+   */
   #keyOf(node: ControlNode): string {
-    if (!isLoop(node) || node.key === undefined) return 'undefined';
-    return this.#slice(node.key.expr);
+    const expr = isLoop(node) ? keyExpression(node) : undefined;
+    return expr === undefined ? 'undefined' : this.#slice(expr);
   }
 
   // ------------------------------------------------------------------

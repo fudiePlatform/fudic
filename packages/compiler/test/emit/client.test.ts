@@ -646,6 +646,140 @@ describe('emitComponentClientModule — the factory namespace (BUG-12 §6.10)', 
   });
 });
 
+describe('emitComponentClientModule — event bindings hook up in $s() (§4.5)', () => {
+  it('registers the listener and collects its teardown, guarded by the node', () => {
+    const src = chunk('app-button');
+    expect(src).toContain('$n0 && $d.push($dom.event($n0, "click", onClick));');
+  });
+
+  it('a listener inside a @foreach belongs to the row, not to the component', () => {
+    const src = inlineChunk(
+      'x-rows',
+      '@code {\n  const { rows } = props<{ rows: { id: string }[] }>();\n' +
+        '  @client {\n    function del(ev, id) { ev.preventDefault(); }\n  }\n}\n' +
+        '<x-rows>\n  <template shadowrootmode="open"><ul>\n' +
+        '    @foreach (const row of rows) key (row.id) {\n' +
+        '      <li><button @click="@del($event, row.id)">x</button></li>\n' +
+        '    }\n' +
+        '  </ul></template>\n</x-rows>\n',
+    );
+    // The block function owns the hookup, so `$d` is the ROW's and `row` is its own
+    // parameter: N rows give N subscriptions, and `r()` of a row takes its own away.
+    expect(src).toMatch(
+      /\$n\d+ && \$d\.push\(\$dom\.event\(\$n\d+, "click", \(\$event\) => del\(\$event, row\.id\)\)\);/u,
+    );
+    // And the component's own `$s` has nothing to do with it.
+    expect(controller(src)).not.toContain('$dom.event');
+  });
+});
+
+describe('emitComponentClientModule — bus subscriptions (§4.4, §6.23, §6.24)', () => {
+  const cart = (tag: string, name: string): string =>
+    inlineChunk(
+      tag,
+      '@code {\n  @client {\n' +
+        "    import { emit } from '@fudic/dom';\n" +
+        '    const EVENTOS = { carrito: \'carrito\' };\n' +
+        '    function onCarrito(ev) { this.dataset.seen = ev.type; }\n' +
+        "    function press() { emit('press', 1); }\n" +
+        '  }\n}\n' +
+        `<${tag}>\n  <template shadowrootmode="open">` +
+        `<button ${name}="@onCarrito($event)" @click="@press()">x</button>` +
+        `</template>\n</${tag}>\n`,
+    );
+
+  it('desugars to a document listener with the host as context, and keeps the disposer', () => {
+    const src = cart('x-cart', 'bus:carrito');
+    expect(src).toContain(
+      '$d.push($dom.bus($host, "carrito", ($event) => onCarrito.call($host, $event)));',
+    );
+    // `@evento` and `bus:evento` are opposites (§6.24): one takes the node, the other the
+    // host, and only the second reaches the document.
+    expect(src).toContain('$d.push($dom.event($n0, "click", ($event) => press()));');
+    expect(src).toContain('let $host = $dom.host($shadow);');
+  });
+
+  it('takes an expression name as an expression, evaluated where it subscribes (§6.22)', () => {
+    // Not resolvable statically? Not an error, and the listener is emitted all the same:
+    // what resolution decides is who enters `fud-bus`, and that is a fact about the page.
+    const src = cart('x-cart2', 'bus:(EVENTOS.carrito)');
+    expect(src).toContain(
+      '$d.push($dom.bus($host, (EVENTOS.carrito), ($event) => onCarrito.call($host, $event)));',
+    );
+  });
+
+  it('gives emit(...) its host, invisibly to the developer', () => {
+    // The signature the author imports stays `(name, detail?)`; the host arrives as `this`.
+    expect(cart('x-cart3', 'bus:carrito')).toContain(
+      "function press() { emit.call($host, 'press', 1); }",
+    );
+  });
+});
+
+describe('emitComponentClientModule — `$event` outside a handler (§6.20.b)', () => {
+  it('is a free identifier like any other, copied and never substituted', () => {
+    const src = inlineChunk(
+      'x-free',
+      '<x-free>\n  <template shadowrootmode="open">' +
+        '<span title="@($event)">@($event)</span></template>\n</x-free>\n',
+    );
+    // The compiler never rewrites `$event`: what it does is NAME the parameter of the arrow
+    // it emits for an event binding. Outside that list the text means nothing special, and
+    // the `$` reserve (§4.7) is what guarantees the author cannot have declared it either.
+    expect(src).toContain('$v = ($event);');
+    expect(src).toContain("String(($event) ?? '')");
+    expect(src).not.toContain('($event) =>');
+  });
+});
+
+describe('emitComponentClientModule — a value that cannot be subscribed (FUD0291)', () => {
+  it('reports it with its span, skips the binding, and emits the rest', () => {
+    const source =
+      '@code {\n  @client {\n    const label = 1;\n  }\n}\n' +
+      '<x-bad>\n  <template shadowrootmode="open"><button @click="@(1 + 2)">x</button></template>\n</x-bad>\n';
+    const io = memoryIo({
+      '/page.fud': '<link rel="component" href="./x-bad.fud">\n<html><head></head><body><x-bad></x-bad></body></html>\n',
+      '/x-bad.fud': source,
+    });
+    const g = resolveComponents('/page.fud', io);
+    const out = emitComponentClientModuleMapped(g, g.components.get('x-bad')!);
+    const bad = out.diagnostics.find((d) => d.code === 'FUD0291')!;
+    expect(bad).toBeDefined();
+    expect(source.slice(bad.span.start, bad.span.end)).toBe('1 + 2');
+    // The emit does not stop for it (§5): the button is still fabricated, unhooked.
+    expect(out.code).toContain('$dom.element("button")');
+    expect(out.code).not.toContain('$dom.event');
+  });
+});
+
+describe('emitComponentClientModule — $host, materialized only where it is read (§4.4)', () => {
+  const withEmit = (tag: string): string =>
+    inlineChunk(
+      tag,
+      '@code {\n  @client {\n' +
+        "    import { emit } from '@fudic/dom';\n" +
+        "    function press() { emit('press'); }\n" +
+        '  }\n}\n' +
+        `<${tag}>\n  <template shadowrootmode="open"><b>hi</b></template>\n</${tag}>\n`,
+    );
+
+  it('declares it from the shadow root, and releases it in r()', () => {
+    const src = withEmit('x-emitter');
+    // From the adapter, not from a fourth position in `$props`: the shadow root already
+    // carries its host on both branches, so nothing about the contract had to move.
+    expect(src).toContain('let $host = $dom.host($shadow);');
+    expect(controller(src)).toContain('$shadow = $host = null;');
+  });
+
+  it('emits nothing at all for a component that neither emits nor subscribes', () => {
+    // A chunk under 1 kB is what keeps INP flat on a cache miss (§3.7): a reference nobody
+    // reads is not free, it is a line every instance of the tag downloads.
+    // `app-card` has a listener of its own and still needs no host: a `@evento` takes the
+    // node, and only a `bus:` or an `emit` reaches for the host.
+    expect(chunk('app-card')).not.toContain('$host');
+  });
+});
+
 describe('emitComponentClientModuleMapped', () => {
   it('anchors an interpolation back to its offset in the .fud', () => {
     const comp = graph.components.get('app-card')!;

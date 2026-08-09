@@ -157,7 +157,9 @@ customElements.define("app-card", class extends FudicElement {
       if ($i !== null) { $i.c(); $i.m(); $i.s(); $k1.push($i); }
     };
     const $m = () => { for (const $n of $r) $dom.append($shadow, $n); };
-    const $s = () => {};
+    const $s = () => {
+      $n3 && $d.push($dom.event($n3, "press", toggle));
+    };
     const $a = () => {
       let $v;
       $v = ["card", (variant === 'highlight') && "highlight"].filter(Boolean).join(' ');

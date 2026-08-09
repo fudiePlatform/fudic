@@ -483,6 +483,11 @@ autor, porque el cuerpo del bloque es su código.
   cierra aquí es el **canal** por el que un hijo creado en runtime recibe sus props (§4.6).
 - **Diagnóstico de key duplicada en runtime.** Depende de los datos; el comportamiento queda
   fijado en §4.4 y el aviso en dev es del runtime (SDD-17), no del compilador.
+- **La mitad de editor de la `key`** (§3.5): proyectarla para que `key (item.` complete,
+  imprimirla al formatear y ofrecerla en el snippet del bucle. **La cierra
+  [BUG-17](./bugs/BUG-17-key-sin-editor.md)**, y queda anotado aquí porque el hueco no fue una
+  omisión de detalle sino de **dueño**: una sintaxis nueva sin mitad de editor es texto que el
+  editor no ve, y eso hay que asignarlo en la misma spec que estrena la sintaxis.
 - **Recortar la lista de dependencias por uso real por rama.** Optimización, no corrección
   (§3.3).
 - **`FUD0290`** (prefijo `$` en `@client`). Sigue siendo tarea pendiente de SDD-15 §4.7 y este

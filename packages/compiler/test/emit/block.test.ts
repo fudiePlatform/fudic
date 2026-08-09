@@ -202,6 +202,27 @@ describe('@while and @for — the two loops the fixtures never write', () => {
     expect(src).toContain('key: cur.id,');
   });
 
+  /**
+   * BUG-17 §3.5: an unfinished `key ()` now survives parsing so the editor has somewhere to
+   * ask from, and that puts an EMPTY span in front of an emitter that slices spans. Sliced
+   * as-is it writes `key: ,` — a chunk that does not parse — so the loop has to fall back to
+   * the same `undefined` a keyless one gets. The author already has `FUD0541`; what they
+   * must not also get is a broken bundle.
+   */
+  it('falls back to an undefined identity when the key is opened but unfinished', () => {
+    const out = emitted(
+      'x-halfkey',
+      component(
+        'x-halfkey',
+        '@code {\n  const { rows } = props<{ rows: { id: string }[] }>();\n}\n',
+        '<ul>@foreach (const r of rows) key () { <li>x</li> }</ul>',
+      ),
+    );
+
+    expect(out.code).toContain('key: undefined,');
+    expect(out.code).not.toContain('key: ,');
+  });
+
   it('reads the bindings of a classic @for out of the `init` of its header', () => {
     const src = chunk(
       'x-for',

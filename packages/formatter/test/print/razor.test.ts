@@ -51,6 +51,34 @@ describe('control flow', () => {
     expect(await print(whileLoop)).toBe(whileLoop + '\n');
   });
 
+  it('puts the key back in its place, however it was spaced (BUG-17 §6.14)', async () => {
+    // Between the header's `)` and the body's `{`, which is the one place the grammar has for
+    // it. Reprinting is total: a field that is not written is a field the author loses.
+    expect(await print('@foreach (const i of xs)key(i){ <p>@i</p> }')).toBe(
+      '@foreach (const i of xs) key (i) { <p>@i</p> }\n',
+    );
+  });
+
+  it.each([
+    ['@foreach', '@foreach (const i of xs) key (i) {\n  <p>@i</p>\n}'],
+    ['@for', '@for (let i = 0; i < 3; i++) key (i) {\n  <p>@i</p>\n}'],
+    ['@while', '@while (go) key (go.id) {\n  <p>x</p>\n}'],
+    ['a key of several words', "@foreach (const i of xs) key (i.id + '-' + i.n) {\n  <p>@i</p>\n}"],
+    ['a key written tight', '@while (go)key(go.id){ <p>x</p> }'],
+  ])('formatting %s twice gives the same text (BUG-17 §6.15)', async (_case, source) => {
+    // The claim that survives the AST growing again: not "it prints the key" but that a second
+    // pass changes nothing. A field silently dropped shows up here the moment it is added.
+    const once = await print(source);
+    expect(await print(once)).toBe(once);
+  });
+
+  it('leaves a loop with no key exactly as it is (BUG-17 §6.16)', async () => {
+    // A loop that paints nothing needs no key (FUD0540 is about a list whose order can
+    // change), so this is the one shape where the printer meets a loop without one.
+    const source = '@foreach (const i of xs) {\n  @* nothing to paint *@\n}';
+    expect(await print(source)).toBe(source + '\n');
+  });
+
   it('prints a @switch with its case and default labels', async () => {
     const source = '@switch (t) {\n  case 1:\n    <p>a</p>\n  default:\n    <p>b</p>\n}';
     expect(await print(source)).toBe(source + '\n');
