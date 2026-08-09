@@ -19,6 +19,7 @@ import type {
   SwitchNode,
   WhileNode,
 } from '../control/index.js';
+import { keyExpression } from '../control/index.js';
 import type { SectionNode } from '../layout/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { JsFragmentKind } from '../oxc/index.js';
@@ -137,8 +138,10 @@ function collectNode(node: HtmlContent, visit: JsFragmentVisitor): void {
     case 'for':
     case 'while': {
       const control = node as unknown as ControlNode;
-      // The key is read in the scope of the BODY (decision 91), so it travels with it.
-      if (isLoop(control) && control.key !== undefined) visit('expression', control.key.expr);
+      // The key is read in the scope of the BODY (decision 91), so it travels with it. An
+      // unfinished one carries no JS to hand to Oxc, which is what `keyExpression` filters.
+      const key = isLoop(control) ? keyExpression(control) : undefined;
+      if (key !== undefined) visit('expression', key);
       if (isLoop(control)) visit(LOOP_KIND[control.type], control.header.inner);
       else for (const span of headerSpans(control)) visit('expression', span);
       for (const branch of branchesOf(control)) {

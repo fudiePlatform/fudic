@@ -185,6 +185,47 @@ describe('completion — the dot and the at-sign (BUG-16 §6.10–§6.12)', () =
   });
 });
 
+describe('a control header is not markup (BUG-17 §6.10–§6.13)', () => {
+  /** A route whose `<article>` holds `markup`, with `app-badge` linked. */
+  const inMarkup = (markup: string): string =>
+    `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="component" href="../components/app-badge.fud">\n<article>\n  ${markup}\n</article>\n`;
+
+  it.each([
+    ['@if', '@if (us|) { <p>x</p> }'],
+    ['an else-if arm', '@if (a) { <p>x</p> } else if (us|) { <p>y</p> }'],
+    ['@switch', "@switch (us|) { case 'a': <p>x</p> default: <p>y</p> }"],
+    ['@foreach', '@foreach (const item of us|) key (item.id) { <p>x</p> }'],
+    ['@for', '@for (let i = 0; i < us|; i++) key (i) { <p>x</p> }'],
+    ['@while', '@while (us|) key (1) { <p>x</p> }'],
+    ['a key clause', '@foreach (const item of items) key (us|) { <p>x</p> }'],
+  ])('offers nothing inside the parentheses of %s', async (_case, markup) => {
+    const { service, document, position } = setup(inMarkup(markup));
+
+    // The three voices at once: `us` is a word, so before the fix it drew the workspace tags,
+    // the snippets and Emmet's `<us></us>`. Here the position is an expression, and the only
+    // list that belongs to it is TypeScript's over the projection.
+    expect(await completionsOf(service, document, position)).toBeUndefined();
+  });
+
+  it('merges the tags with Emmet again just past the `)` (§6.12)', async () => {
+    const { service, document, position } = setup(inMarkup('@if (a) { ul>li| }'));
+    const labels = (await completionsOf(service, document, position))?.items.map(
+      (item) => item.label,
+    );
+
+    // Both voices, and in that order: the body of a branch is markup like any other.
+    expect(labels).toContain('app-badge');
+    expect(labels).toContain('ul>li');
+  });
+
+  it('is still the transition for a `@` in the body of a branch (§6.12)', async () => {
+    const { service, document, position } = setup(inMarkup('@if (a) { @fore| }'));
+    const list = await completionsOf(service, document, position);
+
+    expect(list?.items.map((item) => item.label)).toContain('@foreach');
+  });
+});
+
 describe('the tag plugin (BUG-15 §4.6)', () => {
   it('declares itself additional, which is the whole reason it is a plugin', () => {
     const deps = { index: new WorkspaceIndex(memoryFs({})), stats: new RequestStats() };

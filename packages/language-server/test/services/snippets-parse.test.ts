@@ -72,6 +72,18 @@ describe('the markup bodies parse where they are offered', () => {
     },
   );
 
+  it.each(['@foreach', '@for', '@while'])(
+    '%s paints a row and still has nothing to report (BUG-17 §6.17)',
+    (label) => {
+      // With `$0` empty a loop owes no key, so the case above says nothing about the one
+      // shape that matters: the user types the row. A snippet that then needs a key it did
+      // not write hands over a file born in FUD0540.
+      const painted = of(label, 'markup').body.replace('$0', '<li>x</li>');
+
+      expect(codes(inTemplate(materialize(painted)))).toEqual([]);
+    },
+  );
+
   it('a layout directive parses inside its layout', () => {
     const source = `<!DOCTYPE html>
 <html lang="es">

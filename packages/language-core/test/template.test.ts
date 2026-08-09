@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { VirtualFile } from '../src/types.js';
 import { collectTags, unresolvedAlias } from '../src/imports.js';
 import { emitClient, parseFud, registryOf } from './_support.js';
+import { mapToGenerated, mapToSource } from '../src/mapping.js';
 import { templateContent } from '../src/imports.js';
 
 /** A component file wrapping `markup` in the mandatory host + template (decision 75). */
@@ -330,6 +331,74 @@ describe('control flow', () => {
 
   it('projects nothing for an @if with no arm', () => {
     expect(emitClient(component('    @else {\n      <i>x</i>\n    }')).text).not.toContain('if (');
+  });
+});
+
+/**
+ * The key of a loop (BUG-17 §4.1).
+ *
+ * It goes INSIDE the body, as its first statement, and that placement is the whole trick:
+ * the header is already projected as a real `for`, so whatever it declares exists there and
+ * nothing needs a branch per header shape. What travels is the author's own characters —
+ * copied, mapped — because a name emitted as scaffolding does not exist for the editor.
+ */
+describe('the key of a loop', () => {
+  const keyed = (markup: string) => {
+    const source = component(markup);
+    return { source, virtual: emitClient(source) };
+  };
+
+  it('projects it as $key(…), first statement of the body, copied from the source', () => {
+    const { source, virtual } = keyed(
+      '    @foreach (const item of collection) key (item.id) {\n      <i>@item.n</i>\n    }',
+    );
+
+    expect(virtual.text).toContain('for (const item of collection) {\n$key(item.id);\n');
+    // Copied, not scaffolding: the offsets of `item.id` route back to the ones the author typed.
+    const at = virtual.text.indexOf('item.id');
+    expect(mapToSource(virtual, at, 'navigation')).toBe(source.indexOf('item.id'));
+    expect(mapToSource(virtual, at, 'verification')).toBe(source.indexOf('item.id'));
+  });
+
+  it('treats the four header shapes alike, with no branch of its own', () => {
+    const forms: readonly [string, string][] = [
+      ['@foreach (const item of xs) key (item.id)', '$key(item.id);'],
+      ['@foreach (const { id, name } of rows) key (id)', '$key(id);'],
+      ['@for (let i = 0; i < n; i++) key (i)', '$key(i);'],
+      ['@while (cur !== null) key (cur.id)', '$key(cur.id);'],
+    ];
+
+    for (const [head, projected] of forms) {
+      expect(emitClient(component(`    ${head} {\n      <i>x</i>\n    }`)).text).toContain(projected);
+    }
+  });
+
+  it('leaves a place to ask from when the parentheses are still empty', () => {
+    // `key (|)` is what an editor shows the moment `key (` is typed and the `)` auto-closes.
+    // The clause survives parsing for exactly this, and the stand-in carries completion only:
+    // nothing the author cannot see gets a diagnostic, a hover or a rename.
+    const { source, virtual } = keyed('    @foreach (const item of xs) key () {\n      <i>x</i>\n    }');
+    const caret = source.indexOf('key (') + 5;
+
+    expect(virtual.text).toContain('$key( );');
+    expect(mapToGenerated(virtual, caret, 'completion')).toBeDefined();
+    expect(mapToGenerated(virtual, caret, 'verification')).toBeUndefined();
+  });
+
+  it('keeps the virtual whole when the key never closes', () => {
+    const { text } = emitClient(component('    @foreach (const item of xs) key (item.id\n'));
+
+    expect(text).toContain('for (const item of xs) {');
+    expect(text).toContain('$key( );');
+  });
+
+  it('adds nothing at all to a loop that has no key', () => {
+    const markup = (key: string) => `    @foreach (const item of xs) ${key}{\n      <i>@item.n</i>\n    }`;
+    const without = emitClient(component(markup(''))).text;
+
+    expect(without).not.toContain('$key');
+    // The only difference the clause makes is its own line: everything else is byte for byte.
+    expect(emitClient(component(markup('key (item.id) '))).text.replace('$key(item.id);\n', '')).toBe(without);
   });
 });
 

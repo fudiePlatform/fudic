@@ -223,7 +223,9 @@ describe('criterion 13 — partial emission', () => {
   it('a broken file does not stop the other files of the corpus', () => {
     const broken = read(BADGE).replace('<span', '<div><span');
 
-    expect(projectCorpus({ [BADGE]: broken })).toHaveLength(4);
+    // Counted against the healthy corpus rather than a literal: what the test claims is
+    // "none of the others dropped out", and a number goes stale the next time one is added.
+    expect(projectCorpus({ [BADGE]: broken })).toHaveLength(projectCorpus().length);
   });
 });
 
