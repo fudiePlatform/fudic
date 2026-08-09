@@ -23,6 +23,8 @@ export const VERSION = '0.0.1';
 export { FudicElement } from './element.js';
 export type { Controller, FudicElementCtor } from './controller.js';
 export { signal, type Signal } from './signal.js';
+export { computed, type Computed, type Readable } from './computed.js';
+export { untrack } from './tracking.js';
 export {
   strategy,
   type StrategyDecl,

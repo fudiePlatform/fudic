@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/core` (las primitivas y el recorte de `Signal`) · `@fudic/compiler` (el
 > emit de §4.6–§4.8) · `@fudic/example-basic` (los `.fud` que usan `peek()`)
 > **Rama:** `sdd-31-computed-effect`
-> **Progreso:** 3 / 17
+> **Progreso:** 6 / 17
 > **No depende de:** SDD-30 ni de la tanda de eventos. Puede ir en paralelo, en su propio
 > worktree: no comparte un fichero con ninguna de las dos.
 
@@ -62,16 +62,16 @@ diagnóstico por el `.peek()` retirado.
 
 ## Fase 2 — `computed` (3)
 
-- [ ] **4. Pull con caché por versión.**
+- [x] **4. Pull con caché por versión.**
       Nuevo `packages/core/src/computed.ts`: sin caché → ejecutar y guardar valor + pares
       (fuente, versión); con caché → recorrer las fuentes y comparar enteros, y ejecutar solo si
       alguna se movió. **Ninguna suscripción, ningún disposer**: es la asimetría con `effect` y la
       razón de que un derivado no pueda tener fuga.
-- [ ] **5. El derivado lleva su propia versión.**
+- [x] **5. El derivado lleva su propia versión.**
       Sube cuando el recómputo produce un valor distinto por `Object.is`. Es lo único que la
       cascada necesita: un `computed` sobre otro compara versiones igual que sobre una signal, sin
       un caso especial escrito para el anidamiento (criterio §6.4).
-- [ ] **6. Tests de `computed`.**
+- [x] **6. Tests de `computed`.**
       Criterios §6.1–§6.5: no recomputa sin movimiento; recomputa una vez por movimiento observado
       y no una por lectura; `untrack(() => c())` comparte caché y **no** registra dependencia; la
       cascada propaga y **corta** cuando el valor intermedio no cambia; y un derivado que nadie lee
