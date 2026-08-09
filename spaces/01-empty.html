@@ -1,0 +1,82 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>:empty y el whitespace</title>
+<style>
+  body { font: 14px/1.6 system-ui, sans-serif; padding: 1rem; }
+  .caja { width: 120px; height: 40px; border: 2px solid #999; margin: 0 0 .4rem; }
+  .caja:empty { border-color: gold; background: gold; }   /* <-- la regla bajo prueba */
+  code { background: #eee; padding: 0 .2rem; }
+</style>
+
+<p>Amarillo = el navegador dice <code>:empty</code>. Gris = no lo dice.</p>
+
+<!-- 1 · nada entre las etiquetas -->
+<div class="caja" id="v1"></div>
+
+<!-- 2 · un espacio escrito a mano -->
+<div class="caja" id="v2"> </div>
+
+<!-- 3 · salto de línea + sangrado: EL CASO QUE EMITE EL COMPILADOR -->
+<div class="caja" id="v3">
+</div>
+
+<!-- 4 · solo un comentario -->
+<div class="caja" id="v4"><!-- nada que ver aquí --></div>
+
+<!-- 5 · un elemento vacío dentro -->
+<div class="caja" id="v5"><span></span></div>
+
+<!-- 6 · texto de verdad -->
+<div class="caja" id="v6">hola</div>
+
+<!-- 7 · se le mete por JS un nodo de texto cuyo data es "" -->
+<div class="caja" id="v7"></div>
+
+<script>
+  // Caso 7: un nodo de texto VACÍO, que es lo que fabrica hoy la rama de cliente
+  // para un run interpolado antes de que $a() lo llene.
+  document.getElementById('v7').appendChild(document.createTextNode(''));
+
+  const casos = {
+    v1: 'nada entre las etiquetas',
+    v2: 'un espacio " "',
+    v3: 'salto + sangrado  ← lo que emite el compilador',
+    v4: 'solo un comentario',
+    v5: 'un <span> vacío dentro',
+    v6: 'texto "hola"',
+    v7: 'un nodo de texto con data === "" (por JS)',
+  };
+
+  console.table(Object.entries(casos).map(([id, desc]) => {
+    const el = document.getElementById(id);
+    return {
+      caso: id,
+      contenido: desc,
+      'childNodes': el.childNodes.length,
+      'data del texto': JSON.stringify(el.firstChild && el.firstChild.nodeType === 3
+        ? el.firstChild.data : null),
+      ':empty': el.matches(':empty'),
+    };
+  }));
+
+  console.log('navegador:', navigator.userAgent);
+</script>
+
+<hr>
+
+<h3>La consecuencia práctica</h3>
+<style>
+  .card { border: 2px solid #39f; padding: .5rem; min-height: 2rem; }
+  .card:empty { display: none; }        /* patrón muy común: no pintes la tarjeta vacía */
+</style>
+
+<p>Las dos tarjetas tienen el MISMO contenido de autor (ninguno):</p>
+
+<!-- tal cual sale hoy del compilador: lleva el salto de línea -->
+<div class="card">
+</div>
+
+<!-- tal cual saldría si el nodo de whitespace se descartara -->
+<div class="card"></div>
+
+<p>La primera se ve. La segunda ha desaparecido, y nadie tocó el <code>.fud</code>.</p>

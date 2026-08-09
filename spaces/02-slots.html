@@ -1,0 +1,23 @@
+<!doctype html>
+<meta charset="utf-8">
+<style> mi-caja { display: block; border: 2px solid red; margin: 1rem 0; } </style>
+
+<!-- host A: entre las etiquetas hay un salto de línea -->
+<mi-caja>
+</mi-caja>
+
+<!-- host B: las etiquetas están pegadas -->
+<mi-caja></mi-caja>
+
+<script>
+  customElements.define('mi-caja', class extends HTMLElement {
+    connectedCallback() {
+      this.attachShadow({ mode: 'open' }).innerHTML = '<slot>SIN CONTENIDO</slot>';
+    }
+  });
+
+  for (const c of document.querySelectorAll('mi-caja')) {
+    const slot = c.shadowRoot.querySelector('slot');
+    console.log('asignados:', slot.assignedNodes().length, slot.assignedNodes());
+  }
+</script>

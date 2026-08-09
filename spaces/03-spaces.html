@@ -1,0 +1,33 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  .fila { border: 2px solid red; margin: 1rem 0; }
+  .fila > i { width: 60px; height: 40px; background: #39f; font-style: normal; }
+  .a > i { display: inline-block; }   /* padre block, hijos inline-block */
+  .b     { display: flex; }           /* padre flex */
+  .b > i { display: inline-block; }
+  .c > i { display: block; }          /* hijos de bloque */
+</style>
+
+<div class="fila a">
+  <i></i>
+  <i></i>
+</div>
+
+<div class="fila b">
+  <i></i>
+  <i></i>
+</div>
+
+<div class="fila c">
+  <i></i>
+  <i></i>
+</div>
+
+<script>
+  for (const f of document.querySelectorAll('.fila')) {
+    const r = f.getBoundingClientRect();
+    console.log(f.className, '| nodos hijo:', f.childNodes.length,
+                '| ancho:', Math.round(r.width), '| alto:', Math.round(r.height));
+  }
+</script>
