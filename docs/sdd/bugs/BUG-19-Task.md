@@ -3,7 +3,7 @@
 > **BUG:** [BUG-19 — Tres de los cinco constructos no existen en la rama de servidor](./BUG-19-tres-constructos-sin-servidor.md)
 > **Paquetes:** `@fudic/compiler` (`emit/markup.ts`, `emit/constructs.ts`)
 > **Rama:** `fix/bug-19-servidor-tres-constructos`
-> **Progreso:** 5 / 10
+> **Progreso:** 6 / 10
 > **No espera a nada.** [SDD-30](../SDD-30-renders-de-bloque.md) está `Hecho` y es lo que abarata
 > la corrección; [SDD-31](../SDD-31-signals-derivadas.md), [BUG-18](./BUG-18-update-denso.md) y
 > [SDD-15-Task-eventos-y-bus](../SDD-15-Task-eventos-y-bus.md) **no comparten un fichero** con esta
@@ -77,7 +77,7 @@ goldens nuevos, y cualquier semántica de `key` en el servidor.
 
 ## Fase 3 — Lo que el paseo arrastra (1)
 
-- [ ] **6. Imports y assets, ahora alcanzables.**
+- [x] **6. Imports y assets, ahora alcanzables.**
       Sin tocar código: el cuerpo recorrido llena `#used`
       ([`markup.ts:163`](../../../packages/compiler/src/emit/markup.ts#L163)) y registra los assets
       en el `AssetLinker`, así que un `<app-x>` dentro de un `@switch` aporta su
