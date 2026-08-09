@@ -7,7 +7,7 @@
 > **Depende de:** [SDD-30](../SDD-30-renders-de-bloque.md) **solo para el campo del AST**, y solo
 > las fases 1, 2 y 4. La fase 3 —la cabecera no es markup— no lo necesita y arregla un defecto
 > que ya está vivo hoy (§1.2.a del BUG)
-> **Progreso:** 9 / 11 — la 1b no estaba en el plan; la puso el hueco de §4.1.1
+> **Progreso:** 11 / 11 — la 1b no estaba en el plan; la puso el hueco de §4.1.1
 
 Cada tarea es un paso cerrado. Las rutas son relativas a la raíz del repo.
 
@@ -121,9 +121,17 @@ que la 9**: el snippet escribe la sintaxis que el formateador tiene que saber re
 
 ## Fase 5 — El snippet de la extensión (1)
 
-- [ ] **9. `@foreach`, `@for` y `@while` con su `key (…)`.**
+- [x] **9. `@foreach`, `@for` y `@while` con su `key (…)`.**
       `packages/vscode`: el snippet escribe la forma completa con su tabstop, de modo que
       aceptarlo deja un fichero que compila y no uno que nace en `FUD0540` (§4.5, §6.17).
+      **El fichero no era ese.** La extensión no contribuye snippets: el catálogo es del
+      servidor (SDD-28), justamente para poder cerrar la puerta por posición —un `@if` no se
+      ofrece dentro de `@code`—, así que lo que §2.4 sitúa en `packages/vscode` vive en
+      `language-server/src/services/snippets.ts`. El arreglo es el mismo y tiene un solo dueño.
+      El nombre del elemento es **un** tabstop compartido por la cabecera y la key, de modo que
+      renombrarlo lo renombra en las dos. Y el test no mide el texto del snippet sino lo que
+      pasa al aceptarlo con una fila dentro: con `$0` vacío el bucle no debe key y el caso no
+      probaría nada.
 
 ---
 
