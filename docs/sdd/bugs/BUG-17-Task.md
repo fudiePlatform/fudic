@@ -137,11 +137,14 @@ que la 9**: el snippet escribe la sintaxis que el formateador tiene que saber re
 
 ## Cierre del BUG
 
-- [ ] `pnpm typecheck`, `pnpm test` y `pnpm build` en verde en todo el workspace.
-- [ ] `language-core`, `language-server` y `formatter` siguen al **100 %** en las cuatro métricas.
-- [ ] Los criterios de SDD-24, BUG-15 y BUG-16 siguen verdes (§6.18).
-- [ ] Marcar BUG-17 como `Hecho` en [INDEX.md](./INDEX.md) (tabla + registro de progreso).
-- [ ] Anotar en [SDD-23 §4.4](../SDD-23-emisor-ts-virtual.md) la fila de la key, y en
+- [x] `pnpm typecheck`, `pnpm test` y `pnpm build` en verde en todo el workspace.
+- [x] `language-core`, `language-server` y `formatter` siguen al **100 %** en las cuatro métricas.
+- [x] Los criterios de SDD-24, BUG-15 y BUG-16 siguen verdes (§6.18).
+- [x] Marcar BUG-17 como `Hecho` en [INDEX.md](./INDEX.md) (tabla + registro de progreso).
+- [x] Anotar en [SDD-23 §4.4](../SDD-23-emisor-ts-virtual.md) la fila de la key, y en
       [SDD-24 §4.2](../SDD-24-language-server.md) que una cabecera de control no es markup.
-- [ ] Anotar en [SDD-30 §7](../SDD-30-renders-de-bloque.md) que su mitad de editor la cierra este
+      La segunda es un **§4.2.c** propio, junto a los dos contextos que contestan callando: la
+      cabecera es el mismo caso —una zona donde la lista es de TypeScript— en la otra mitad del
+      fichero.
+- [x] Anotar en [SDD-30 §7](../SDD-30-renders-de-bloque.md) que su mitad de editor la cierra este
       BUG — que es lo que evita que la próxima sintaxis nueva vuelva a salir sin dueño.

@@ -1,7 +1,7 @@
 # BUG-17 — La `key` de un bucle es sintaxis nueva sin mitad de editor, y por el camino salen tres cabos sueltos
 
-> **Estado:** `Listo` — desbloqueado: [SDD-30](../SDD-30-renders-de-bloque.md) está `Hecho` y el
-> campo del AST existe (`KeyedNode`, §3.5)
+> **Estado:** `Hecho` — [Task](./BUG-17-Task.md) al 11 / 11; `language-core`, `language-server` y
+> `formatter` al 100 % en las cuatro métricas
 > **Corrige:** [SDD-30 §3.5](../SDD-30-renders-de-bloque.md) (la mitad de editor que no declara),
 > [SDD-23 §4.4](../SDD-23-emisor-ts-virtual.md) y [SDD-24 §4.2](../SDD-24-language-server.md)
 > **Paquetes:** `@fudic/language-core` · `@fudic/language-server` · `@fudic/formatter` ·

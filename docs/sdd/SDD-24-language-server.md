@@ -174,6 +174,23 @@ Con ellos, el interior de un tag queda cerrado y sin ambigüedad: `.` el contrat
 ofrecer directivas Razor dentro de un tag, con la misma guarda `insideOpenTag` que `wordContextAt`
 ya usaba: ahí un `@` es un evento, nunca un `@if`.
 
+#### 4.2.c. Una cabecera de control no es markup
+
+Añadido por [BUG-17](./bugs/BUG-17-key-sin-editor.md). Dentro de los paréntesis de `@if`,
+`@else if`, `@switch`, `@for`, `@foreach` y `@while` —y dentro de `key ( … )`— no se ofrece
+Emmet, ni tags, ni snippets. Es una expresión, y la contesta la proyección, igual que en 4.2.b.
+
+`isMarkupOffset` decidía **por exclusión** —no es `@code`, no es un cuerpo `raw`, no es una
+interpolación, luego es markup— y una cabecera no está en esa lista, así que en `@if (us|)` se
+ofrecían `<ul>`, la abreviatura de Emmet y los componentes del workspace. La zona la sabe el
+**nodo** y no el texto, de modo que el walk de `@fudic/compiler` entrega cada constructo
+(`TreeVisitor.control`) y el servidor pregunta por el span de la cabecera de **cada arma** más
+el de la cláusula. Los paréntesis son el límite y quedan **fuera**: sobre el `(` el autor aún
+está escribiendo `@if `, y pasado el `)` empieza el cuerpo, que es markup como cualquier otro.
+
+Una función, tres voces: Emmet se apoya en ella directamente y `scopeAt` —tags y snippets—
+hereda la respuesta, que es la razón de que el arreglo no viva en tres ramas paralelas.
+
 **Lo que viene después:** `style:` y `bus:` comparten la forma de `class:` y no su respuesta —
 los nombres de propiedad CSS son una tabla estática y los del bus son un `emit()` de otro
 fichero (decisión 28.c)—, así que cada uno es su propio trabajo. Completar el **prefijo** en un
