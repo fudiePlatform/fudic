@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` (`client.ts`, `markup-client.ts`) · `@fudic/core` (solo el
 > comentario del contrato)
 > **Rama:** `fix/bug-18-update-disperso`
-> **Progreso:** 9 / 10
+> **Progreso:** 10 / 10 — cerrado
 > **Va DESPUÉS de:** [SDD-30 — Renders de bloque](../SDD-30-renders-de-bloque.md)
 > ([tareas](../SDD-30-Task.md)). No es preferencia de orden: ver
 > [§2.5](./BUG-18-update-denso.md) — su tarea 17 emite **esta misma forma** dentro de un bloque, y
@@ -125,7 +125,7 @@ todo `@if` y todo `@foreach`, que es donde más instancias hay.
 
 ## Fase 4 — Cierre (1)
 
-- [ ] **10. Verde, cobertura e índice.**
+- [x] **10. Verde, cobertura e índice.**
       `pnpm typecheck`, `pnpm test` y `pnpm build` en la raíz —los ejemplos se construyen después
       de los paquetes: si `examples/basic` se rompe, el build falla—. `client.ts` y
       `markup-client.ts` nacieron al **100 %** en las cuatro métricas y no bajan; `@fudic/core`
