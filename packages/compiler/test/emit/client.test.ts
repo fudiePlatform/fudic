@@ -619,6 +619,98 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
 });
 
 /**
+ * BUG-18 §6.1–§6.6 — the shape of the two channels, on four props and two signals.
+ *
+ * Four and two because that is where the defect showed: with a single prop the dense and
+ * the sparse channel coincide, and with a single signal there is nothing to `peek()`. Here
+ * one prop is constant, one has no default, and two are fed by different signals — so the
+ * emitted text has to say, in one place, that handing over is delivering the whole state
+ * and updating is saying what moved.
+ */
+describe('emitComponentClientModule — dense handover, sparse update (BUG-18)', () => {
+  const CHILD =
+    '@code {\n' +
+    "  const { title, tone = 'plain', n = 0, m = 0 } =\n" +
+    '    props<{ title: string; tone?: string; n?: number; m?: number }>();\n' +
+    '}\n' +
+    '<y-child>\n  <template shadowrootmode="open">' +
+    '<b>@title @tone</b><span>@n @m</span></template>\n</y-child>\n';
+
+  const src = ((): string => {
+    const io = memoryIo({
+      '/page.fud':
+        '<link rel="component" href="./y-host.fud">\n' +
+        '<html><head></head><body><y-host></y-host></body></html>\n',
+      '/y-host.fud':
+        '<link rel="component" href="./y-child.fud">\n' +
+        "@code {\n  @client {\n    import { signal } from '@fudic/core';\n" +
+        '    const count = signal(0);\n    const other = signal(1);\n  }\n}\n' +
+        '<y-host>\n  <template shadowrootmode="open">' +
+        '<y-child .title="Total" .tone="dark" .n="@count" .m="@other"></y-child>' +
+        '</template>\n</y-host>\n',
+      '/y-child.fud': CHILD,
+    });
+    const g = resolveComponents('/page.fud', io);
+    return emitComponentClientModule(g, g.components.get('y-host')!, {});
+  })();
+
+  const child = ((): string => {
+    const io = memoryIo({
+      '/page.fud':
+        '<link rel="component" href="./y-child.fud">\n' +
+        '<html><head></head><body><y-child></y-child></body></html>\n',
+      '/y-child.fud': CHILD,
+    });
+    const g = resolveComponents('/page.fud', io);
+    return emitComponentClientModule(g, g.components.get('y-child')!, {});
+  })();
+
+  const update = child.slice(child.indexOf('u: ($p) =>'), child.indexOf('r: () =>'));
+  const subs = src
+    .split('\n')
+    .filter((l) => l.includes('$d.push($sub'))
+    .map((l) => l.trim());
+
+  it('§6.1 — the child asks for presence, and no longer destructures', () => {
+    expect(update).toContain('if (2 in $p) title = $p[2];');
+    expect(update).toContain('if (4 in $p) n = $p[4] === undefined ? 0 : $p[4];');
+    // The pattern is gone: what made a hole and an `undefined` the same thing.
+    expect(update).not.toContain('] = $p;');
+    expect(update).not.toContain('[, ,');
+  });
+
+  it('§6.2 — the default lives in the present branch, and only a prop that has one gets it', () => {
+    expect(update).toContain("if (3 in $p) tone = $p[3] === undefined ? 'plain' : $p[3];");
+    // `title` has no default: the guard is bare, and an absent hole is its own answer.
+    expect(update).toContain('if (2 in $p) title = $p[2];');
+    expect(update).not.toContain('title = $p[2] === undefined');
+  });
+
+  it('§6.3 — one subscription per signal, each writing exactly one hole', () => {
+    expect(subs).toHaveLength(2);
+    expect(subs[0]).toBe('$d.push($sub(count, ($v) => { const $p = []; $p[4] = $v; $n0.u($p); }));');
+    expect(subs[1]).toBe('$d.push($sub(other, ($v) => { const $p = []; $p[5] = $v; $n0.u($p); }));');
+    for (const line of subs) expect(line.match(/\$p\[\d+\] = \$v;/gu)).toHaveLength(1);
+  });
+
+  it('§6.4 — the handover is untouched: dense, read at the source, constants included', () => {
+    expect(src).toContain('$n0.u([, , "Total", "dark", count(), other()]);');
+  });
+
+  it('§6.5 — a constant prop crosses once and appears in no subscription', () => {
+    for (const line of subs) {
+      expect(line).not.toContain('"Total"');
+      expect(line).not.toContain('"dark"');
+    }
+  });
+
+  it('§6.6 — every name the emit introduces is in the `$` reserve', () => {
+    for (const line of subs) expect(line).toContain('const $p = [];');
+    expect(src).not.toMatch(/const (?!\$)[a-z]+ = \[\];/u);
+  });
+});
+
+/**
  * BUG-12 §2.5 — the factory closure is shared with the `@client` body, copied verbatim.
  * Every name the emit takes there is a name the author cannot use, and `m`/`s` are two of
  * the most plausible one-letter names there are.

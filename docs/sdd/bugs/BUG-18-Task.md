@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` (`client.ts`, `markup-client.ts`) · `@fudic/core` (solo el
 > comentario del contrato)
 > **Rama:** `fix/bug-18-update-disperso`
-> **Progreso:** 3 / 10
+> **Progreso:** 9 / 10
 > **Va DESPUÉS de:** [SDD-30 — Renders de bloque](../SDD-30-renders-de-bloque.md)
 > ([tareas](../SDD-30-Task.md)). No es preferencia de orden: ver
 > [§2.5](./BUG-18-update-denso.md) — su tarea 17 emite **esta misma forma** dentro de un bloque, y
@@ -91,12 +91,17 @@ todo `@if` y todo `@foreach`, que es donde más instancias hay.
 
 ## Fase 3 — Verificación (3)
 
-- [ ] **7. Los criterios de forma, sobre el texto emitido (§6.1–§6.6).**
+- [x] **7. Los criterios de forma, sobre el texto emitido (§6.1–§6.6).**
       Guardas `in` en vez de patrón; el default en la rama presente; la suscripción con dos
       sentencias y un solo índice; el alta densa e intacta; una prop constante ausente de toda
       suscripción; y `$p` dentro de la reserva. Con **dos signals sobre cuatro props**, para que
       el caso que crece se vea: dos suscripciones, un hueco cada una.
-- [ ] **8. Los criterios de comportamiento, sobre DOM real (§6.7–§6.12).**
+- [x] **8. Los criterios de comportamiento, sobre DOM real (§6.7–§6.12).**
+      *(§6.11 y §6.12 ya estaban verdes y siguen sin tocarse: `hydrate/update.test.ts` y el
+      arnés de equivalencia. Y una acotación sobre **qué puede medir** §6.7: con `$w` en medio,
+      el canal denso de hoy tampoco reescribe el nodo de la constante, así que el observador no
+      distingue el antes del después — lo que sí distingue es §6.8, y ese es el test que el
+      canal denso convertido a parcial suspende.)*
       En el arnés de `test/emit/hydrate/`. Tres que no se pueden saltar:
       **§6.7** —mover una signal no toca el nodo de la otra prop— comprobado con un
       `MutationObserver` o marcando el nodo antes de disparar, **no** con `$w` como oráculo: `$w`
@@ -106,7 +111,13 @@ todo `@if` y todo `@foreach`, que es donde más instancias hay.
       fallo exacto que BUG-12 §3.4 razonó para no hacer el canal parcial, y el test que lo
       demuestra imposible ahora.
       **§6.11** —el criterio §6.7 de BUG-12 sigue verde de punta a punta—.
-- [ ] **9. Goldens (§6.13).**
+- [x] **9. Goldens (§6.13).**
+      *(son **cinco** y no tres: SDD-30 añadió `app-list` y la tanda de eventos `app-actions`
+      —esta última al test pero no a `scripts/goldens.ts`, que se corrige aquí—. Cada uno se
+      mueve en **una** línea, el cuerpo de `u`, y ningún `.mjs` de servidor cambia un byte.
+      **Las suscripciones del padre no aparecen en ningún golden**: ninguna fixture entrega una
+      prop reactiva a un hijo, así que esa mitad de §6.13 no tiene dónde verse y queda anclada,
+      línea a línea y con `toBe`, en `client.test.ts`.)*
       Regenerar los tres `.client.mjs` y **leerlos a mano**: las únicas diferencias esperadas son
       el cuerpo de `u` y las suscripciones del padre. Los `.mjs` de **servidor** no cambian ni un
       byte, y si cambian es que algo se emitió en la rama equivocada — el SSR no tiene canal de
