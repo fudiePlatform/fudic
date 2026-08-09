@@ -28,7 +28,15 @@ export interface Controller {
   c(): void;
   /** hydrate — adopt the SSR nodes by positional traversal and hook up. */
   h(): void;
-  /** update — take a fresh positional payload and re-apply the values it carries. */
+  /**
+   * update — take a positional payload and re-apply the values it CARRIES.
+   *
+   * The array may be SPARSE, and the two operations differ on purpose (BUG-18 §4.1):
+   * handing over is delivering the whole state, updating is saying what moved. So the
+   * initial handover — `h` from `fud-state`, `c` from the parent — is always dense, and
+   * here a hole means "unchanged" while a present `undefined` means "apply the default".
+   * `readonly unknown[]` admits both; what was missing was the rule.
+   */
   u(props: readonly unknown[]): void;
   /** remove — symmetric teardown. */
   r(): void;

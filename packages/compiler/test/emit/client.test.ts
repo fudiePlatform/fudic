@@ -397,10 +397,12 @@ describe('emitComponentClientModule — u, the update channel (BUG-12)', () => {
 
   it('reassigns, re-applies, and then reconciles its blocks (§6.4, SDD-30 §4.2)', () => {
     // `$dom` and `$shadow` are never reassigned: an update carries state, not the adapter.
-    // The defaults are repeated because an update may bring `undefined` back. And `$a()`
-    // comes FIRST: the values of this level, then what the constructs below make of them.
+    // One guard per prop, asking for PRESENCE (BUG-18 §3.1): the payload may be sparse, and
+    // a hole means "unchanged". The defaults are repeated because a PRESENT `undefined` may
+    // bring the default back. And `$a()` comes FIRST, once: the values of this level, then
+    // what the constructs below make of them.
     expect(own).toContain(
-      "u: ($p) => { [, , title, variant = 'default'] = $p; $a(); $u0(); $u1(); },",
+      "u: ($p) => { if (2 in $p) title = $p[2]; if (3 in $p) variant = $p[3] === undefined ? 'default' : $p[3]; $a(); $u0(); $u1(); },",
     );
   });
 
@@ -522,20 +524,23 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
     // `$v` and not `v`: every identifier the emit introduces starts with `$` (§5), and the
     // payload around it is the author's code — a `v` of theirs would be shadowed here.
     expect(hook).toContain('$n0.u([, , count()]);');
-    expect(hook).toContain('$d.push($sub(count, ($v) => { $n0.u([, , $v]); }));');
+    expect(hook).toContain('$d.push($sub(count, ($v) => { const $p = []; $p[2] = $v; $n0.u($p); }));');
   });
 
-  it('sends the child its WHOLE positional payload, not just the slot that moved', () => {
-    // `u` reassigns every binding it destructures, so a partial array would reset the
-    // props the parent did not send to their defaults — and `$a()` would repaint them.
+  it('sends the child ONLY the slot that moved, and the constant stays behind (§6.3, §6.5)', () => {
+    // The handover carries `"Hola"` because every prop has to land. The update does not:
+    // `label` is `const` in the sense decision 75 means, and a channel that rewrites it on
+    // every notification of `count` is the whole of BUG-18.
     const src = hostChunk(
       '.label="Hola" .value="@count"',
       '@code {\n  const { label, value = 0 } = props<{ label: string; value?: number }>();\n}\n' +
         '<x-child>\n  <template shadowrootmode="open"><span>@label @value</span></template>\n</x-child>\n',
     );
     const hook = src.slice(src.indexOf('const $s = () => {'), src.indexOf('return {'));
-    expect(hook).toContain('$n0.u([, , "Hola", count()]);');
-    expect(hook).toContain('$d.push($sub(count, ($v) => { $n0.u([, , "Hola", $v]); }));');
+    expect(hook).toContain('$n0.u([, , "Hola", count()]);'); // §6.4 — the handover is dense
+    expect(hook).toContain('$d.push($sub(count, ($v) => { const $p = []; $p[3] = $v; $n0.u($p); }));');
+    // §6.5 — the constant appears in the handover and in no subscription at all.
+    expect(hook.slice(hook.indexOf('$d.push'))).not.toContain('"Hola"');
   });
 
   it('leaves a hole where the host passes nothing, at either end of the array', () => {
@@ -553,7 +558,7 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
     expect(hostChunk('.value="@count"', flipped)).toContain('$n0.u([, , count()]);');
   });
 
-  it('subscribes once per signal, and each rebuilds the whole array', () => {
+  it('subscribes once per signal, and each writes ONE hole (§6.3)', () => {
     const two =
       '@code {\n  const { a = 0, b = 0 } = props<{ a?: number; b?: number }>();\n}\n' +
       '<x-child>\n  <template shadowrootmode="open"><span>@a @b</span></template>\n</x-child>\n';
@@ -561,9 +566,14 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
     const hook = src.slice(src.indexOf('const $s = () => {'), src.indexOf('return {'));
 
     expect(hook).toContain('$n0.u([, , count(), other()]);');
-    // The signal that notified hands its value in; the rest are read where they stand.
-    expect(hook).toContain('$d.push($sub(count, ($v) => { $n0.u([, , $v, other()]); }));');
-    expect(hook).toContain('$d.push($sub(other, ($v) => { $n0.u([, , count(), $v]); }));');
+    // Neither subscription reads the other signal: this is where the O(P) reads per
+    // notification die, and with them the S × P holes of emitted text.
+    expect(hook).toContain('$d.push($sub(count, ($v) => { const $p = []; $p[2] = $v; $n0.u($p); }));');
+    expect(hook).toContain('$d.push($sub(other, ($v) => { const $p = []; $p[3] = $v; $n0.u($p); }));');
+    // Each subscription writes ONE hole: two statements, and no read of the other signal.
+    for (const line of hook.split('\n').filter((l) => l.includes('$d.push'))) {
+      expect(line.match(/\$p\[\d+\] = \$v;/gu)).toHaveLength(1);
+    }
   });
 
   it('keeps the host itself untouched: still fabricated, still not driven', () => {
@@ -595,7 +605,7 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
     const src = hostChunk('.value="@total"', CHILD, '    const total = computed(() => count() * 2);\n');
     const hook = src.slice(src.indexOf('const $s = () => {'), src.indexOf('return {'));
     expect(hook).toContain('$n0.u([, , total()]);');
-    expect(hook).toContain('$d.push($sub(total, ($v) => { $n0.u([, , $v]); }));');
+    expect(hook).toContain('$d.push($sub(total, ($v) => { const $p = []; $p[2] = $v; $n0.u($p); }));');
   });
 
   it('SDD-31 §6.20 — the `$sub` import is emitted only where it is used', () => {
@@ -605,6 +615,98 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
     // No reactive value crosses, so nothing subscribes and the import would be dead.
     expect(hostChunk('.value="@41"')).toContain("import { FudicElement } from '@fudic/core';");
     expect(hostChunk('.value="@41"')).not.toContain('$sub');
+  });
+});
+
+/**
+ * BUG-18 §6.1–§6.6 — the shape of the two channels, on four props and two signals.
+ *
+ * Four and two because that is where the defect showed: with a single prop the dense and
+ * the sparse channel coincide, and with a single signal there is nothing to `peek()`. Here
+ * one prop is constant, one has no default, and two are fed by different signals — so the
+ * emitted text has to say, in one place, that handing over is delivering the whole state
+ * and updating is saying what moved.
+ */
+describe('emitComponentClientModule — dense handover, sparse update (BUG-18)', () => {
+  const CHILD =
+    '@code {\n' +
+    "  const { title, tone = 'plain', n = 0, m = 0 } =\n" +
+    '    props<{ title: string; tone?: string; n?: number; m?: number }>();\n' +
+    '}\n' +
+    '<y-child>\n  <template shadowrootmode="open">' +
+    '<b>@title @tone</b><span>@n @m</span></template>\n</y-child>\n';
+
+  const src = ((): string => {
+    const io = memoryIo({
+      '/page.fud':
+        '<link rel="component" href="./y-host.fud">\n' +
+        '<html><head></head><body><y-host></y-host></body></html>\n',
+      '/y-host.fud':
+        '<link rel="component" href="./y-child.fud">\n' +
+        "@code {\n  @client {\n    import { signal } from '@fudic/core';\n" +
+        '    const count = signal(0);\n    const other = signal(1);\n  }\n}\n' +
+        '<y-host>\n  <template shadowrootmode="open">' +
+        '<y-child .title="Total" .tone="dark" .n="@count" .m="@other"></y-child>' +
+        '</template>\n</y-host>\n',
+      '/y-child.fud': CHILD,
+    });
+    const g = resolveComponents('/page.fud', io);
+    return emitComponentClientModule(g, g.components.get('y-host')!, {});
+  })();
+
+  const child = ((): string => {
+    const io = memoryIo({
+      '/page.fud':
+        '<link rel="component" href="./y-child.fud">\n' +
+        '<html><head></head><body><y-child></y-child></body></html>\n',
+      '/y-child.fud': CHILD,
+    });
+    const g = resolveComponents('/page.fud', io);
+    return emitComponentClientModule(g, g.components.get('y-child')!, {});
+  })();
+
+  const update = child.slice(child.indexOf('u: ($p) =>'), child.indexOf('r: () =>'));
+  const subs = src
+    .split('\n')
+    .filter((l) => l.includes('$d.push($sub'))
+    .map((l) => l.trim());
+
+  it('§6.1 — the child asks for presence, and no longer destructures', () => {
+    expect(update).toContain('if (2 in $p) title = $p[2];');
+    expect(update).toContain('if (4 in $p) n = $p[4] === undefined ? 0 : $p[4];');
+    // The pattern is gone: what made a hole and an `undefined` the same thing.
+    expect(update).not.toContain('] = $p;');
+    expect(update).not.toContain('[, ,');
+  });
+
+  it('§6.2 — the default lives in the present branch, and only a prop that has one gets it', () => {
+    expect(update).toContain("if (3 in $p) tone = $p[3] === undefined ? 'plain' : $p[3];");
+    // `title` has no default: the guard is bare, and an absent hole is its own answer.
+    expect(update).toContain('if (2 in $p) title = $p[2];');
+    expect(update).not.toContain('title = $p[2] === undefined');
+  });
+
+  it('§6.3 — one subscription per signal, each writing exactly one hole', () => {
+    expect(subs).toHaveLength(2);
+    expect(subs[0]).toBe('$d.push($sub(count, ($v) => { const $p = []; $p[4] = $v; $n0.u($p); }));');
+    expect(subs[1]).toBe('$d.push($sub(other, ($v) => { const $p = []; $p[5] = $v; $n0.u($p); }));');
+    for (const line of subs) expect(line.match(/\$p\[\d+\] = \$v;/gu)).toHaveLength(1);
+  });
+
+  it('§6.4 — the handover is untouched: dense, read at the source, constants included', () => {
+    expect(src).toContain('$n0.u([, , "Total", "dark", count(), other()]);');
+  });
+
+  it('§6.5 — a constant prop crosses once and appears in no subscription', () => {
+    for (const line of subs) {
+      expect(line).not.toContain('"Total"');
+      expect(line).not.toContain('"dark"');
+    }
+  });
+
+  it('§6.6 — every name the emit introduces is in the `$` reserve', () => {
+    for (const line of subs) expect(line).toContain('const $p = [];');
+    expect(src).not.toMatch(/const (?!\$)[a-z]+ = \[\];/u);
   });
 });
 

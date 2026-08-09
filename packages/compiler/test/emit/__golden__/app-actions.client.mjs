@@ -189,7 +189,7 @@ customElements.define("app-actions", class extends FudicElement {
         }
         $s();
       },
-      u: ($p) => { [, , rows = []] = $p; $a(); $u0(); },
+      u: ($p) => { if (2 in $p) rows = $p[2] === undefined ? [] : $p[2]; $a(); $u0(); },
       r: () => { $k0.forEach(($i) => $i.r()); $n0 = $n1 = $shadow = $host = null; $d.forEach((d) => d()); },
     };
   }

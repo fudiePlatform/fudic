@@ -124,12 +124,15 @@ describe('a write inside a loop, re-applied by the row (§4.5 — BUG-12 §3.3.c
  * `document` outlives its instance — the parents of the earlier tests are still subscribed,
  * and only the element says which shadow root a payload belongs to.
  */
-const served: { el: Element; n: unknown; m: unknown }[] = [];
+const served: { el: Element; n: unknown; m: unknown; hasM: boolean }[] = [];
 customElements.define(
   'x-kid',
   class extends HTMLElement {
     u(payload: unknown[]): void {
-      served.push({ el: this, n: payload[2], m: payload[3] });
+      // `hasM` and not `m !== undefined`: an update payload is sparse, and telling an absent
+      // hole from a present `undefined` is the whole point of BUG-18 — `in` is what tells
+      // them apart, on this side of the channel exactly as on the emitted one.
+      served.push({ el: this, n: payload[2], m: payload[3], hasM: 3 in payload });
     }
   },
 );
@@ -179,11 +182,22 @@ describe('a child fabricated by a loop (§4.6 — BUG-12 §7)', () => {
     //
     // Flattened in line, `$n1`…`$n5` were the component's variables reassigned every turn,
     // so after the loop only the LAST row survived. Here every row is served its own.
+    served.length = 0;
     const { shadow } = drive(graph, 'x-parent', browserDom, [['a', 'b', 'c']]);
+    // Measured on the HANDOVER, which is where a row's own value crosses: `r` is the loop
+    // variable, not a signal, so BUG-18 keeps it out of every later notification.
+    expect(rowsServedIn(shadow)).toEqual(['a', 'b', 'c']);
 
     served.length = 0;
     document.dispatchEvent(new Event('tick'));
-    expect(rowsServedIn(shadow)).toEqual(['a', 'b', 'c']);
+    // And the notification carries the slot that moved and nothing else (BUG-18 §6.5): `n`
+    // is present in all three, `r` is a HOLE — not `undefined`, absent.
+    expect(servedIn(shadow)).toEqual([1, 1, 1]);
+    expect(served.filter((c) => shadow.contains(c.el)).map((c) => c.hasM)).toEqual([
+      false,
+      false,
+      false,
+    ]);
   });
 
   it('§6.12 — r() of the component retires every row, not just the last', () => {

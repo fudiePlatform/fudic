@@ -1,7 +1,7 @@
 # BUG-18 — El padre recompone la tupla entera del hijo en cada notificación
 
-> **Estado:** `Bloqueado` — por [SDD-30](../SDD-30-renders-de-bloque.md). Pasa a `Listo` en cuanto
-> esa tanda esté en `Hecho`
+> **Estado:** `Hecho` — los 13 criterios de §6 en verde. Se desbloqueó cuando
+> [SDD-30](../SDD-30-renders-de-bloque.md) pasó a `Hecho`, que era la condición escrita aquí
 > **Corrige:** [BUG-12 §3.4](./BUG-12-sin-canal-de-update.md) · [SDD-15 §4.6](../SDD-15-emit.md)
 > (el lado del padre) · [props-spec §3](../props-spec.md) (el ejemplo del canal)
 > **Paquetes:** `@fudic/compiler` (`markup-client.ts`, `client.ts`) · `@fudic/core`

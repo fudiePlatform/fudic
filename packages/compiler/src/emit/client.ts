@@ -51,18 +51,41 @@ function codeOf(comp: ResolvedComponent): ExtractedCode {
  * the server does. `$props` is always `[$dom, $shadow, ...values]`, and the compiler knows
  * the order of the props from the AST, so the payload carries no schema: only values.
  *
- * Two forms over the SAME list, because a prop crosses more than once (BUG-12 §3.3):
- *
- * - `declare` — the intake. `let`, not `const`: `r()` releases `$shadow` on teardown, and
- *   `u` reassigns the props.
- * - `assign` — the update. The two leading holes stay EMPTY: `$dom` and `$shadow` are the
- *   adapter and the root, and an update carries state, not plumbing. The defaults are
- *   repeated because an update may perfectly well bring `undefined` back.
+ * The INTAKE, and only the intake: `let`, not `const`, because `r()` releases `$shadow` on
+ * teardown and `u` reassigns the props. Handing over is delivering the whole state, so a
+ * pattern — which assigns everything it names — is exactly the right shape here.
  */
-function destructuring(props: readonly Prop[], form: 'declare' | 'assign'): string {
+function declaration(props: readonly Prop[]): string {
   const names = props.map((p) => (p.def !== undefined ? `${p.name} = ${p.def}` : p.name));
-  if (form === 'declare') return `let [$dom, $shadow${names.map((n) => `, ${n}`).join('')}] = $props;`;
-  return `[, , ${names.join(', ')}] = $p;`;
+  return `let [$dom, $shadow${names.map((n) => `, ${n}`).join('')}] = $props;`;
+}
+
+/**
+ * The UPDATE, over the same list and in the same order — but not with the same shape
+ * (BUG-18 §3.1). A destructuring pattern assigns everything it names, and that is what
+ * forced the parent to recompose the child's whole tuple on every notification: a hole and
+ * a present `undefined` are indistinguishable to a pattern, so a partial array would send
+ * the props the parent did not name back to their defaults (BUG-12 §3.4, whose reasoning
+ * was correct FOR THAT SHAPE).
+ *
+ * One guard per prop, asking for PRESENCE, tells the two apart:
+ *
+ *     if (2 in $p) label = $p[2];
+ *     if (3 in $p) variant = $p[3] === undefined ? 'default' : $p[3];
+ *
+ * An absent hole leaves the prop as it stands; a present `undefined` applies the default,
+ * which is the rule of BUG-12 §3.3 — an update may perfectly well bring `undefined` back —
+ * carried over intact. The offset is `+2` because the two leading slots are `$dom` and
+ * `$shadow`: an update carries state, not plumbing.
+ */
+function updateGuards(props: readonly Prop[]): string {
+  return props
+    .map((p, i) => {
+      const cell = `$p[${i + 2}]`;
+      const value = p.def !== undefined ? `${cell} === undefined ? ${p.def} : ${cell}` : cell;
+      return `if (${i + 2} in $p) ${p.name} = ${value};`;
+    })
+    .join(' ');
 }
 
 function buildComponentClientModule(
@@ -121,7 +144,7 @@ function buildComponentClientModule(
   w.line('const $r = [];'); // the roots, mounted by $m()
   w.line('const $d = []; // teardowns');
   if (em.writes > 0) w.line('const $w = []; // last applied, per value write');
-  w.line(destructuring(props, 'declare'));
+  w.line(declaration(props));
   // The host, materialized ONLY where something reads it (§4.4). A component with no bus
   // subscription and no `emit` does not pay a line of chunk for a reference nobody looks
   // at, and the chunk budget that keeps INP flat on a cache miss is what pays for that.
@@ -169,12 +192,17 @@ function buildComponentClientModule(
   w.line('$s();');
   w.dedent();
   w.line('},');
-  // The update channel: reassign the positional bindings and re-apply. No node is created,
-  // nothing is mounted and nothing is subscribed again — `u` is of VALUE (BUG-12 §4.2).
+  // The update channel: reassign the positional bindings the payload CARRIES and re-apply.
+  // No node is created, nothing is mounted and nothing is subscribed again — `u` is of
+  // VALUE (BUG-12 §4.2). The payload may be sparse: handing over is delivering the whole
+  // state, updating is saying what moved (BUG-18 §4.1).
+  //
+  // `$a()` is called ONCE, after every guard and not one per prop: with two props moving in
+  // the same call there is no intermediate state anyone can observe.
   const reconcile = bodies.update.empty ? '' : ` ${lines(bodies.update)}`;
   w.line(
     props.length > 0
-      ? `u: ($p) => { ${destructuring(props, 'assign')} $a();${reconcile} },`
+      ? `u: ($p) => { ${updateGuards(props)} $a();${reconcile} },`
       : `u: () => { $a();${reconcile} },`,
   );
   w.line(

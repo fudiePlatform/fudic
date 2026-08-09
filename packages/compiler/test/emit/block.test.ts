@@ -441,7 +441,9 @@ describe('a child component built inside a block (§4.6)', () => {
     const block = src.slice(src.indexOf('const $b0 ='), src.indexOf('const $u0 ='));
     expect(block).toContain('const $s = () => {');
     expect(block).toContain('$n2.u([, , count()]);');
-    expect(block).toContain('$d.push($sub(count, ($v) => { $n2.u([, , $v]); }));');
+    // Sparse inside a block too (BUG-18): a row is where most instances are, so a channel
+    // that recomposed the whole tuple would be at its most expensive exactly here.
+    expect(block).toContain('$d.push($sub(count, ($v) => { const $p = []; $p[2] = $v; $n2.u($p); }));');
     // And retiring the row runs them: `r()` empties `$d` before it takes the nodes away.
     expect(block).toContain('r: () => { $d.forEach(($f) => $f());');
   });

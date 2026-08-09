@@ -39,7 +39,7 @@ customElements.define("app-badge", class extends FudicElement {
         }
         $s();
       },
-      u: ($p) => { [, , tone = 'neutral'] = $p; $a(); },
+      u: ($p) => { if (2 in $p) tone = $p[2] === undefined ? 'neutral' : $p[2]; $a(); },
       r: () => { $n0 = $n1 = $shadow = null; $d.forEach((d) => d()); },
     };
   }
