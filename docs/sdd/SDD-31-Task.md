@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/core` (las primitivas y el recorte de `Signal`) · `@fudic/compiler` (el
 > emit de §4.6–§4.8) · `@fudic/example-basic` (los `.fud` que usan `peek()`)
 > **Rama:** `sdd-31-computed-effect`
-> **Progreso:** 0 / 17
+> **Progreso:** 3 / 17
 > **No depende de:** SDD-30 ni de la tanda de eventos. Puede ir en paralelo, en su propio
 > worktree: no comparte un fichero con ninguna de las dos.
 
@@ -45,17 +45,17 @@ diagnóstico por el `.peek()` retirado.
 
 ## Fase 1 — El rastreo (3)
 
-- [ ] **1. Versión por signal.**
+- [x] **1. Versión por signal.**
       Modificar `packages/core/src/signal.ts`: un contador entero interno que sube en cada `set`
       que pase el `Object.is`. No sale en la interfaz pública `Signal<T>` —es maquinaria del
       rastreo—, pero sí en el tipo interno que `computed` consume. Cuesta un entero por signal, no
       un `Set` más, y es lo que hace posible que un derivado no se suscriba a nada.
-- [ ] **2. `$active` y la lectura rastreada.**
+- [x] **2. `$active` y la lectura rastreada.**
       Nuevo `packages/core/src/tracking.ts`: la variable de módulo, el tipo `Consumer` (lo que
       puede registrar fuentes) y las dos funciones que lo mueven. `sig()` consulta `$active` y se
       apunta; `sig.peek()` **no lo consulta nunca**. Es la única diferencia entre las dos, y hasta
       esta tarea eran la misma función.
-- [ ] **3. `untrack`.**
+- [x] **3. `untrack`.**
       Guarda `$active`, lo pone a `null`, ejecuta y lo restaura en `finally` —si `fn` lanza, el
       contexto no puede quedarse desarmado—. Cinco líneas, y es lo que permite leer dentro de un
       efecto sin depender. Con `peek()` en retirada (tarea 12), esta es **la** lectura suelta.
