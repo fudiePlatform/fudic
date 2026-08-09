@@ -697,6 +697,22 @@ describe('emitComponentClientModule — bus subscriptions (§4.4, §6.23, §6.24
   });
 });
 
+describe('emitComponentClientModule — `$event` outside a handler (§6.20.b)', () => {
+  it('is a free identifier like any other, copied and never substituted', () => {
+    const src = inlineChunk(
+      'x-free',
+      '<x-free>\n  <template shadowrootmode="open">' +
+        '<span title="@($event)">@($event)</span></template>\n</x-free>\n',
+    );
+    // The compiler never rewrites `$event`: what it does is NAME the parameter of the arrow
+    // it emits for an event binding. Outside that list the text means nothing special, and
+    // the `$` reserve (§4.7) is what guarantees the author cannot have declared it either.
+    expect(src).toContain('$v = ($event);');
+    expect(src).toContain("String(($event) ?? '')");
+    expect(src).not.toContain('($event) =>');
+  });
+});
+
 describe('emitComponentClientModule — a value that cannot be subscribed (FUD0291)', () => {
   it('reports it with its span, skips the binding, and emits the rest', () => {
     const source =
@@ -739,7 +755,9 @@ describe('emitComponentClientModule — $host, materialized only where it is rea
   it('emits nothing at all for a component that neither emits nor subscribes', () => {
     // A chunk under 1 kB is what keeps INP flat on a cache miss (§3.7): a reference nobody
     // reads is not free, it is a line every instance of the tag downloads.
-    expect(chunk('app-button')).not.toContain('$host');
+    // `app-card` has a listener of its own and still needs no host: a `@evento` takes the
+    // node, and only a `bus:` or an `emit` reaches for the host.
+    expect(chunk('app-card')).not.toContain('$host');
   });
 });
 

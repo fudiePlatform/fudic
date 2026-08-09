@@ -1,0 +1,64 @@
+@code {
+  type Row = { id: string; label: string };
+
+  const { rows = [] } = props<{ rows?: Row[] }>();
+
+  @client {
+    import { emit } from '@fudic/dom';
+
+    // The four shapes of an event binding, and all four handlers are declared FLAT
+    // (decision 96): nobody curries, and the order of the arguments is the one written
+    // in the template rather than a convention to remember.
+    function del() {
+      emit('cleared');
+    }
+
+    function delEvent(ev) {
+      ev.preventDefault();
+    }
+
+    function delRow(id) {
+      emit('removed', id);
+    }
+
+    function delRowEvent(ev, id) {
+      ev.preventDefault();
+      emit('removed', id);
+    }
+
+    function delRowReversed(id, ev) {
+      delRowEvent(ev, id);
+    }
+
+    function onCleared(ev) {
+      this.dataset.last = ev.type;
+    }
+  }
+}
+
+<head>
+  <style>
+    :host { display: block; }
+    .list { margin: 0; padding: 0; list-style: none; }
+    .row { display: flex; gap: 0.5rem; align-items: baseline; }
+    .row button { font: inherit; cursor: pointer; }
+  </style>
+</head>
+
+<app-actions>
+  <template shadowrootmode="open">
+    <ul class="list" bus:cleared="@onCleared($event)">
+      @foreach (const row of rows) key (row.id) {
+        <li class="row">
+          <span>@row.label</span>
+          <button class="none" @click="@del()">-</button>
+          <button class="event" @click="@delEvent($event)">e</button>
+          <button class="data" @click="@delRow(row.id)">d</button>
+          <button class="both" @click="@delRowEvent($event, row.id)">ed</button>
+          <button class="reversed" @click="@delRowReversed(row.id, $event)">de</button>
+          <button class="bare" @click="@del">x</button>
+        </li>
+      }
+    </ul>
+  </template>
+</app-actions>

@@ -117,6 +117,7 @@ describe('buildStart', () => {
     // Every component the page reaches, with no level filter: which of them hydrates is
     // decided at render time — on the edge and in the Service Worker — with data in hand.
     expect(emittedNames(ctx).filter((n) => n.startsWith('h/')).sort()).toEqual([
+      'h/app-actions',
       'h/app-badge',
       'h/app-button',
       'h/app-card',

@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/dom` (contrato + `browserDom`) · `@fudic/ssr` (`SsrDom`) ·
 > `@fudic/compiler` (emit)
 > **Rama:** `sdd-15-eventos-y-bus`
-> **Progreso:** 16 / 22
+> **Progreso:** 21 / 22
 > **Va DESPUÉS de:** [SDD-30 — Renders de bloque](./SDD-30-renders-de-bloque.md)
 > ([tareas](./SDD-30-Task.md)). No es una preferencia de orden: ver *Por qué va detrás* abajo.
 
@@ -285,7 +285,7 @@ fase 3, con el resto del enganche.
 
 ## Fase 5 — Fixtures, goldens y equivalencia (5)
 
-- [ ] **17. El fixture que ejercita los cuatro casos.**
+- [x] **17. El fixture que ejercita los cuatro casos.**
       `fixtures/app-button.fud` ya escribe `@click="@onClick"` (referencia desnuda) y su handler
       se busca el host a mano con `closest('app-button')` para lanzar un `CustomEvent` — que es
       literalmente lo que `emit` existe para no tener que escribir. Pasarlo a `emit('press')` y
@@ -294,19 +294,19 @@ fase 3, con el resto del enganche.
       `@del($event)`, `@del(item.id)`, `@del($event, item.id)`— más un `bus:` y **un handler
       declarado plano en los cuatro**, que es lo que el fixture tiene que demostrar. Enlazarlo
       desde `home.fud` para que entre en el hito de cierre §6.28.
-- [ ] **18. Goldens.**
+- [x] **18. Goldens.**
       Regenerar los `.client.mjs` y añadir el del fixture nuevo. Byte a byte, como los de
       servidor: es lo que hace que un refactor del codegen falle en voz alta en vez de derivar
       en silencio. Comprobar de paso que los goldens **de servidor** no cambian salvo por el
       fixture nuevo — el enganche no existe en SSR, y si aparece en un `.mjs` de servidor es que
       algo se emitió en la rama equivocada.
-- [ ] **19. Criterios §6.15, §6.16 y §6.17 en el arnés.**
+- [x] **19. Criterios §6.15, §6.16 y §6.17 en el arnés.**
       Nuevo `test/emit/hydrate/events.test.ts`, sobre el DOM real que el arnés ya monta:
       `$event` es el evento nativo (`type`, `isTrusted`, `preventDefault()` surte efecto); los
       **cuatro casos** llegan al cuerpo como `()`, `(ev)`, `(id)` y `(ev, id)` con la función
       declarada plana; y en un `@foreach` de N filas cada handler recibe el valor de su fila,
       disparando en orden no secuencial.
-- [ ] **20. Criterios §6.18, §6.19, §6.20 y §6.20.b.**
+- [x] **20. Criterios §6.18, §6.19, §6.20 y §6.20.b.**
       §6.18 —el orden de los argumentos es el escrito— con `@del(item.id, $event)` llegando como
       `(id, ev)`: es lo que impide que alguien meta una convención de reordenamiento implícito.
       §6.19 —la invocación ocurre **en el disparo**, no al suscribir— con un contador dentro de
@@ -314,7 +314,7 @@ fase 3, con el resto del enganche.
       esta regla de la forma factory retirada, que hacía lo contrario. §6.20 —la distinción por
       AST— sobre el **texto emitido**, más el caso `FUD0291`. §6.20.b —`$event` fuera de un
       event binding no se sustituye—, que es lo que mantiene honesta la reserva `$`.
-- [ ] **21. §6.7 y §6.14 siguen verdes con enganche.**
+- [x] **21. §6.7 y §6.14 siguen verdes con enganche.**
       Los dos criterios que la tanda anterior cerró vuelven a comprobarse ahora que `s()` hace
       trabajo: `c()` y `h()` producen el mismo listener funcional difiriendo solo en cómo
       obtienen las referencias (§6.7, la convergencia en `s` deja de ser una afirmación sobre una

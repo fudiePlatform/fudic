@@ -5,6 +5,7 @@
     <link rel="component" href="./app-button.fud">
     <link rel="component" href="./app-badge.fud">
     <link rel="component" href="./app-list.fud">
+    <link rel="component" href="./app-actions.fud">
 
     @code {
       type Item = { id: string; title: string; description: string; featured: boolean };

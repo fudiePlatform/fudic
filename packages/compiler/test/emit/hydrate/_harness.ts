@@ -17,7 +17,7 @@
 
 import { SsrDom, renderToString } from '@fudic/ssr';
 import { FudicElement, signal, type Controller, type FudicElementCtor } from '@fudic/core';
-import type { Dom, DomClient } from '@fudic/dom';
+import { emit, type Dom, type DomClient } from '@fudic/dom';
 import {
   emitComponentModule,
   emitComponentClientModule,
@@ -88,7 +88,12 @@ export function clientFactory(graph: ComponentGraph, tag: string): FudicElementC
       },
     };
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    new Function('FudicElement', 'signal', 'customElements', body)(FudicElement, signal, registry);
+    new Function('FudicElement', 'signal', 'emit', 'customElements', body)(
+      FudicElement,
+      signal,
+      emit,
+      registry,
+    );
     factory = captured!;
     factories.set(tag, factory);
   }
