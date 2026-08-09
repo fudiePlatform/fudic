@@ -524,20 +524,23 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
     // `$v` and not `v`: every identifier the emit introduces starts with `$` (§5), and the
     // payload around it is the author's code — a `v` of theirs would be shadowed here.
     expect(hook).toContain('$n0.u([, , count()]);');
-    expect(hook).toContain('$d.push($sub(count, ($v) => { $n0.u([, , $v]); }));');
+    expect(hook).toContain('$d.push($sub(count, ($v) => { const $p = []; $p[2] = $v; $n0.u($p); }));');
   });
 
-  it('sends the child its WHOLE positional payload, not just the slot that moved', () => {
-    // `u` reassigns every binding it destructures, so a partial array would reset the
-    // props the parent did not send to their defaults — and `$a()` would repaint them.
+  it('sends the child ONLY the slot that moved, and the constant stays behind (§6.3, §6.5)', () => {
+    // The handover carries `"Hola"` because every prop has to land. The update does not:
+    // `label` is `const` in the sense decision 75 means, and a channel that rewrites it on
+    // every notification of `count` is the whole of BUG-18.
     const src = hostChunk(
       '.label="Hola" .value="@count"',
       '@code {\n  const { label, value = 0 } = props<{ label: string; value?: number }>();\n}\n' +
         '<x-child>\n  <template shadowrootmode="open"><span>@label @value</span></template>\n</x-child>\n',
     );
     const hook = src.slice(src.indexOf('const $s = () => {'), src.indexOf('return {'));
-    expect(hook).toContain('$n0.u([, , "Hola", count()]);');
-    expect(hook).toContain('$d.push($sub(count, ($v) => { $n0.u([, , "Hola", $v]); }));');
+    expect(hook).toContain('$n0.u([, , "Hola", count()]);'); // §6.4 — the handover is dense
+    expect(hook).toContain('$d.push($sub(count, ($v) => { const $p = []; $p[3] = $v; $n0.u($p); }));');
+    // §6.5 — the constant appears in the handover and in no subscription at all.
+    expect(hook.slice(hook.indexOf('$d.push'))).not.toContain('"Hola"');
   });
 
   it('leaves a hole where the host passes nothing, at either end of the array', () => {
@@ -555,7 +558,7 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
     expect(hostChunk('.value="@count"', flipped)).toContain('$n0.u([, , count()]);');
   });
 
-  it('subscribes once per signal, and each rebuilds the whole array', () => {
+  it('subscribes once per signal, and each writes ONE hole (§6.3)', () => {
     const two =
       '@code {\n  const { a = 0, b = 0 } = props<{ a?: number; b?: number }>();\n}\n' +
       '<x-child>\n  <template shadowrootmode="open"><span>@a @b</span></template>\n</x-child>\n';
@@ -563,9 +566,14 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
     const hook = src.slice(src.indexOf('const $s = () => {'), src.indexOf('return {'));
 
     expect(hook).toContain('$n0.u([, , count(), other()]);');
-    // The signal that notified hands its value in; the rest are read where they stand.
-    expect(hook).toContain('$d.push($sub(count, ($v) => { $n0.u([, , $v, other()]); }));');
-    expect(hook).toContain('$d.push($sub(other, ($v) => { $n0.u([, , count(), $v]); }));');
+    // Neither subscription reads the other signal: this is where the O(P) reads per
+    // notification die, and with them the S × P holes of emitted text.
+    expect(hook).toContain('$d.push($sub(count, ($v) => { const $p = []; $p[2] = $v; $n0.u($p); }));');
+    expect(hook).toContain('$d.push($sub(other, ($v) => { const $p = []; $p[3] = $v; $n0.u($p); }));');
+    // Each subscription writes ONE hole: two statements, and no read of the other signal.
+    for (const line of hook.split('\n').filter((l) => l.includes('$d.push'))) {
+      expect(line.match(/\$p\[\d+\] = \$v;/gu)).toHaveLength(1);
+    }
   });
 
   it('keeps the host itself untouched: still fabricated, still not driven', () => {
@@ -597,7 +605,7 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
     const src = hostChunk('.value="@total"', CHILD, '    const total = computed(() => count() * 2);\n');
     const hook = src.slice(src.indexOf('const $s = () => {'), src.indexOf('return {'));
     expect(hook).toContain('$n0.u([, , total()]);');
-    expect(hook).toContain('$d.push($sub(total, ($v) => { $n0.u([, , $v]); }));');
+    expect(hook).toContain('$d.push($sub(total, ($v) => { const $p = []; $p[2] = $v; $n0.u($p); }));');
   });
 
   it('SDD-31 §6.20 — the `$sub` import is emitted only where it is used', () => {

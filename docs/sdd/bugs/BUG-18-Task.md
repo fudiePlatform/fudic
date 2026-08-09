@@ -67,7 +67,7 @@ todo `@if` y todo `@foreach`, que es donde más instancias hay.
 
 ## Fase 2 — El padre (3)
 
-- [ ] **4. La suscripción escribe un hueco.**
+- [x] **4. La suscripción escribe un hueco.**
       Modificar `packages/compiler/src/emit/markup-client.ts`: por cada `Slot` con `signal`,
       emitir `const $p = []; $p[<i>] = $v; $nN.u($p);` en vez del array literal completo. **Dos
       sentencias y no una expresión**, y es obligatorio: no existe literal disperso —`[, , , $v]`
@@ -75,11 +75,14 @@ todo `@if` y todo `@foreach`, que es donde más instancias hay.
       `Slot.signal` dice qué hueco lleva qué signal
       ([`markup-client.ts:134-139`](../../../packages/compiler/src/emit/markup-client.ts#L134-L139)).
       `$p` entra en la reserva del prefijo `$` (SDD-15 §4.7). Criterio §6.3.
-- [ ] **5. El alta no se toca, y hay que comprobarlo.**
+- [x] **5. El alta no se toca, y hay que comprobarlo.**
       El pase inicial sigue siendo el array **denso** con `peek()`, con las props constantes
       dentro. Es la mitad del BUG que consiste en **no** cambiar algo, y por eso lleva criterio
       propio: §6.4 y §6.5 —una prop constante está en el alta y en ninguna suscripción—.
-- [ ] **6. El contrato, escrito donde se lee.**
+- [x] **6. El contrato, escrito donde se lee.**
+      *(y en `FudicElement.u` se escribe además lo que NO se puede hacer: reenviar el array
+      verbatim es hoy correcto por accidente y mañana obligatorio — copiarlo convertiría cada
+      hueco en un `undefined` presente, que es justo la orden de «aplica el default».)*
       Modificar el comentario de `Controller.u` en `packages/core/src/controller.ts` y el de
       `FudicElement.u` en `element.ts`: *el array puede ser disperso; un hueco significa «sin
       cambio», un `undefined` presente significa «aplica el default»; el alta es siempre densa*.

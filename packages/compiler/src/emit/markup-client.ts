@@ -666,26 +666,35 @@ export class ClientMarkupEmitter {
     const slots = this.#slots(el);
     if (![...slots.values()].some((s) => s.signal !== undefined)) return;
 
-    // The whole payload, in the CHILD's declared order — not just the slot that moved.
-    // `u` reassigns every binding it destructures, so a partial array would send the props
-    // the parent did not name back to their defaults, and `$a()` would repaint them.
+    // The slots in the CHILD's declared order: the payload carries no schema, so the index
+    // is the whole contract. A slot the parent does not bind is a hole in both passes.
     const cells = this.#scope.childProps(el.name)!.map((p) => slots.get(p.name));
-    const last = cells.reduce((n, cell, i) => (cell === undefined ? n : i + 1), 0);
-    const payload = (read: (slot: Slot) => string): string =>
-      `[, , ${cells
-        .slice(0, last)
-        .map((cell) => (cell === undefined ? '' : read(cell)))
-        .join(', ')}]`;
 
-    this.#hook.line(`${v}.u(${payload((s) => (s.signal === undefined ? s.expr : `${s.signal}()`))});`);
+    // The handover is DENSE, and stays dense (BUG-18 §4.1): every prop has to land, and the
+    // array is the exact mirror of the `Object.values` the server serialized. The two
+    // leading holes are `$dom` and `$shadow`, which the parent does not own.
+    const last = cells.reduce((n, cell, i) => (cell === undefined ? n : i + 1), 0);
+    const initial = cells
+      .slice(0, last)
+      .map((cell) => (cell === undefined ? '' : cell.signal === undefined ? cell.expr : `${cell.signal}()`))
+      .join(', ');
+    this.#hook.line(`${v}.u([, , ${initial}]);`);
+
     for (const source of new Set([...slots.values()].flatMap((s) => (s.signal !== undefined ? [s.signal] : [])))) {
-      // One subscription per signal, each rebuilding the whole array: the slot that
-      // notified takes the value it was handed, the rest are read as they stand.
-      const body = payload((s) => (s.signal === source ? '$v' : s.signal === undefined ? s.expr : `${s.signal}()`));
+      // The update is SPARSE: one subscription per signal, and each writes ONLY the slots
+      // that signal feeds. No `peek()` of the others, and a constant prop — `const` in the
+      // sense decision 75 means — never travels again after the handover.
+      //
+      // Two statements and not an expression, and that is forced: there is no sparse array
+      // literal. `[, , , $v]` is DENSE in its first three holes, each holding `undefined`,
+      // which is precisely the value the child reads as "apply the default".
+      const writes = cells
+        .flatMap((cell, i) => (cell?.signal === source ? [`$p[${i + 2}] = $v;`] : []))
+        .join(' ');
       // `$sub`, not a method: subscription left the `Signal` surface in SDD-31 §4.0, and
-      // the alias lives in the `$` reserve so the author cannot shadow it.
+      // the alias lives in the `$` reserve so the author cannot shadow it — as does `$p`.
       this.#usage.subscribes = true;
-      this.#hook.line(`$d.push($sub(${source}, ($v) => { ${v}.u(${body}); }));`);
+      this.#hook.line(`$d.push($sub(${source}, ($v) => { const $p = []; ${writes} ${v}.u($p); }));`);
     }
   }
 

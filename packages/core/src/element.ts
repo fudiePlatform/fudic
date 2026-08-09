@@ -60,7 +60,10 @@ export abstract class FudicElement extends HTMLElement {
    * Entry point 3 — the owner of the value writes it again (BUG-12). Not a lifecycle
    * callback: its caller is the PARENT, the one holding the signal, because what crossed
    * the shadow boundary was a value and a value cannot notify anyone. The array is the
-   * same positional payload `h`/`c` take, forwarded verbatim — this base reshapes nothing.
+   * same positional payload `h`/`c` take, forwarded verbatim — this base reshapes nothing,
+   * SPARSE ARRAYS INCLUDED, and that matters here: an update carries only the slots that
+   * moved (BUG-18 §4.1), a hole means "unchanged", and copying the array would turn every
+   * hole into a present `undefined`, which is the child's signal to apply the default.
    *
    * A no-op with no controller, for the same reason `disconnectedCallback` is: `define`
    * upgrades every instance of a tag at once, the ones the runtime never hydrates
