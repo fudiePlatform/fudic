@@ -3,7 +3,7 @@
 > **BUG:** [BUG-19 — Tres de los cinco constructos no existen en la rama de servidor](./BUG-19-tres-constructos-sin-servidor.md)
 > **Paquetes:** `@fudic/compiler` (`emit/markup.ts`, `emit/constructs.ts`)
 > **Rama:** `fix/bug-19-servidor-tres-constructos`
-> **Progreso:** 0 / 10
+> **Progreso:** 5 / 10
 > **No espera a nada.** [SDD-30](../SDD-30-renders-de-bloque.md) está `Hecho` y es lo que abarata
 > la corrección; [SDD-31](../SDD-31-signals-derivadas.md), [BUG-18](./BUG-18-update-denso.md) y
 > [SDD-15-Task-eventos-y-bus](../SDD-15-Task-eventos-y-bus.md) **no comparten un fichero** con esta
@@ -36,7 +36,7 @@ goldens nuevos, y cualquier semántica de `key` en el servidor.
 
 ## Fase 1 — El vocabulario compartido (2)
 
-- [ ] **1. `loopHead()` sube a `constructs.ts`.**
+- [x] **1. `loopHead()` sube a `constructs.ts`.**
       Mover el método privado `#loopHead` de
       [`block.ts:460-463`](../../../packages/compiler/src/emit/block.ts#L460-L463) a
       `packages/compiler/src/emit/constructs.ts` como `loopHead(node: LoopNode, source: string)`, y
@@ -44,7 +44,7 @@ goldens nuevos, y cualquier semántica de `key` en el servidor.
       **la misma función** es lo que impide que un `@for` con un `;` inusual compile distinto a cada
       lado; es el mismo argumento por el que `marker.ts` es un módulo (SDD-30 §3.4). El chunk de
       cliente no puede cambiar ni un byte con esta tarea: los goldens `*.client.mjs` son el testigo.
-- [ ] **2. El despacho del servidor pasa a ser total.**
+- [x] **2. El despacho del servidor pasa a ser total.**
       Modificar `MarkupEmitter.#emit` en
       [`markup.ts:120-146`](../../../packages/compiler/src/emit/markup.ts#L120-L146): fuera el
       `default` que devuelve en silencio; cada miembro de `HtmlContent['type']` nombrado, al modo de
@@ -57,19 +57,19 @@ goldens nuevos, y cualquier semántica de `key` en el servidor.
 
 ## Fase 2 — Los tres constructos (3)
 
-- [ ] **3. `@for` y `@while`.**
+- [x] **3. `@for` y `@while`.**
       Un solo método con `loopHead`: `for (…) { … }` y `while (…) { … }`, cabecera empalmada entera
       (decisión 93) y anclada con `mappedLine` como ya hace `#foreach`
       ([`markup.ts:204-210`](../../../packages/compiler/src/emit/markup.ts#L204-L210)). El cuerpo
       sale por `emitChildren` bajo el mismo `parent`: un bloque **no** es un nivel del DOM.
       Criterios §6.2, §6.3.
-- [ ] **4. `@switch`.**
+- [x] **4. `@switch`.**
       Una rama por `SwitchCase`, **con llaves y con `break` explícito en todas**, la última incluida
       —decisión 14: no hay caída, y sin `break` el emitido pintaría dos ramas—. El orden del fuente
       se respeta, `default` incluido: la semántica de JS es la misma elección que implementa el
       selector del cliente ([`block.ts:439-447`](../../../packages/compiler/src/emit/block.ts#L439-L447)).
       El discriminante y el test de cada `case` se anclan al source map. Criterios §6.1, §6.4, §6.7.
-- [ ] **5. La `key` no se evalúa, y hay que comprobarlo.**
+- [x] **5. La `key` no se evalúa, y hay que comprobarlo.**
       El servidor renderiza una vez y no reconcilia: la expresión de `key (…)` **no aparece** en el
       módulo emitido. Es media línea de código —no leerla— y un criterio propio, porque es la
       diferencia entre las dos ramas y el sitio donde alguien la «arreglaría» por simetría.
