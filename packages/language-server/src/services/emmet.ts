@@ -9,11 +9,18 @@
  * This server does know better, because it has the tree. So Emmet is answered here, gated by
  * the one question the AST can answer and the editor cannot: is this offset markup? The regions
  * that are NOT markup are the `@code` block, the body of a raw element (`<style>`, `<script>` —
- * decision 43) and the interpolations, which are all expressions.
+ * decision 43), the interpolations and the headers of the control constructs, which are all
+ * expressions.
  */
 
 import { doComplete, type VSCodeEmmetConfig } from '@vscode/emmet-helper';
-import { documentRoots, walk, type ElementNode, type Span } from '@fudic/compiler';
+import {
+  documentRoots,
+  walk,
+  type ControlNode,
+  type ElementNode,
+  type Span,
+} from '@fudic/compiler';
 import type { CompletionList, Position } from '@volar/language-service';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import type { CachedDocument } from '../document-cache.js';
@@ -49,6 +56,35 @@ function rawBodySpan(element: ElementNode): Span {
 }
 
 /**
+ * Strictly between the delimiters of a group, so the `(` and the `)` themselves stay markup.
+ *
+ * The distinction earns its keep at the two boundaries. Just before the `(` the author has
+ * typed `@if ` and is about to open the header — still markup, and the `@` transition has to
+ * keep working there. Just past the `)` the body begins, and that is where `<ul>` belongs.
+ */
+const inside = (span: Span, offset: number): boolean => offset > span.start && offset < span.end;
+
+/**
+ * The stretches of a control construct that are JavaScript, not markup (BUG-17 §4.3).
+ *
+ * Every header of every arm — an `@if` chain has one per `else if` — plus the `key (…)`
+ * clause. They are collected rather than tested one by one so that the rule lives in a single
+ * place: three voices (Emmet, tags, snippets) go quiet through `isMarkupOffset`, and a sixth
+ * construct would be one entry here, not three branches scattered across the services.
+ *
+ * A construct whose `(` never arrived (FUD0070) has an empty header span, and an empty span
+ * has no inside — so a degraded node contributes nothing and the file stays markup.
+ */
+function jsSpansOf(node: ControlNode): readonly Span[] {
+  const spans: Span[] =
+    node.type === 'if'
+      ? node.branches.map((branch) => branch.header.span)
+      : [node.header.span];
+  if (node.key !== undefined) spans.push(node.key.span);
+  return spans;
+}
+
+/**
  * Whether this offset is markup, and not one of the regions that only look like it.
  *
  * The `@code` block is taken from the document rather than walked: it is JS, not element
@@ -70,6 +106,9 @@ export function isMarkupOffset(cached: CachedDocument, offset: number): boolean 
       // very position where a directive is being typed. The `@` is the boundary — the place
       // the construct BEGINS — and at the boundary the answer is still markup.
       if (offset > expression.span.start && offset <= expression.span.end) markup = false;
+    },
+    control: (node) => {
+      if (jsSpansOf(node).some((span) => inside(span, offset))) markup = false;
     },
   });
   return markup;

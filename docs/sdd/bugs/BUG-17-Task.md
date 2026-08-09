@@ -7,7 +7,7 @@
 > **Depende de:** [SDD-30](../SDD-30-renders-de-bloque.md) **solo para el campo del AST**, y solo
 > las fases 1, 2 y 4. La fase 3 —la cabecera no es markup— no lo necesita y arregla un defecto
 > que ya está vivo hoy (§1.2.a del BUG)
-> **Progreso:** 5 / 11 — la 1b no estaba en el plan; la puso el hueco de §4.1.1
+> **Progreso:** 7 / 11 — la 1b no estaba en el plan; la puso el hueco de §4.1.1
 
 Cada tarea es un paso cerrado. Las rutas son relativas a la raíz del repo.
 
@@ -82,15 +82,23 @@ que la 9**: el snippet escribe la sintaxis que el formateador tiene que saber re
 > Esta fase **no depende de SDD-30**. Es el defecto que ya está vivo: en `@if (us|)` se ofrecen
 > `<ul>`, la abreviatura de Emmet y los componentes del workspace.
 
-- [ ] **5. Rojo primero, y luego la guarda.**
+- [x] **5. Rojo primero, y luego la guarda.**
       `packages/language-server/src/services/emmet.ts`: `isMarkupOffset` excluye también el
       interior de los paréntesis de los cinco constructos y el de `key ( … )`, del mismo modo que
       ya excluye `@code`, un cuerpo `raw` y una interpolación. Una sola función, tres voces
       calladas: `scopeAt` se apoya en ella (§2.2, §4.3, §6.10, §6.11).
-- [ ] **6. Lo de fuera no se mueve.**
+      Ocho rojos vistos antes del arreglo. La zona la da el **nodo**, no el texto, así que el
+      walk del compilador gana una llamada `control(node)` —descendía por dentro de los
+      constructos sin entregar ninguno— y el servidor pregunta por los spans de las cabeceras de
+      **cada arma** más el de la cláusula. Los paréntesis son el límite y quedan fuera: sobre el
+      `(` el autor aún está escribiendo `@if `, y pasado el `)` empieza el cuerpo.
+- [x] **6. Lo de fuera no se mueve.**
       `@fore|` en markup sigue ofreciendo `@foreach` y una palabra suelta sigue fusionando con
       Emmet. Los tres contextos se piden **con `context`**, como los pide un editor (§6.12,
       §6.13).
+      Medido dentro del cuerpo de una rama, que es el sitio donde un fallo de límite se vería:
+      ahí siguen llegando los tags del workspace **y** la expansión de Emmet, y el `@` sigue
+      siendo la transición de siempre.
 
 ## Fase 4 — Formatear no borra la key (2)
 

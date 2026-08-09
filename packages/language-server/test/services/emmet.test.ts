@@ -73,6 +73,44 @@ describe('isMarkupOffset', () => {
   });
 });
 
+describe('isMarkupOffset — a control header is not markup (BUG-17 §4.3)', () => {
+  /** The component of `SOURCE`, with `inner` as the whole of its shadow content. */
+  const wrap = (inner: string): string =>
+    `<app-card>\n  <template shadowrootmode="open">\n    ${inner}\n  </template>\n</app-card>\n`;
+
+  /** Whether the offset marked with `|` — which is removed — is markup. */
+  function markupAtCaret(inner: string): boolean {
+    const marked = wrap(inner);
+    const offset = marked.indexOf('|');
+    expect(offset, 'the case must mark a caret with |').toBeGreaterThan(-1);
+    const source = marked.replace('|', '');
+    return isMarkupOffset(setup(source), offset);
+  }
+
+  it.each([
+    ['an @if header', '@if (us|ed) { <p>a</p> }'],
+    ['an else-if header, which is an arm of its own', '@if (a) { <p>a</p> } else if (us|ed) { <p>b</p> }'],
+    ['a @foreach header', '@foreach (const item of it|ems) key (item.id) { <p>x</p> }'],
+    ['a @for header', '@for (let i = 0; i < n|; i++) key (i) { <p>x</p> }'],
+    ['a @while header', '@while (co|nd) key (1) { <p>x</p> }'],
+    ['a @switch header', "@switch (va|l) { case 'a': <p>x</p> default: <p>y</p> }"],
+    ['a key clause', '@foreach (const item of items) key (item.i|d) { <p>x</p> }'],
+    ['a key clause with nothing in it yet', '@foreach (const item of items) key (|) { <p>x</p> }'],
+  ])('says no inside %s, which is JavaScript', (_case, inner) => {
+    expect(markupAtCaret(inner)).toBe(false);
+  });
+
+  it.each([
+    ['on the `(` itself, where `@if ` is still what is being typed', '@if |(a) { <p>x</p> }'],
+    ['just past the `)`, where the body begins', '@if (a)| { <p>x</p> }'],
+    ['in the body of a branch', '@if (a) { |<p>x</p> }'],
+    ['in the body of a loop that has a key', '@foreach (const i of xs) key (i) { |<p>x</p> }'],
+    ['in an @if whose `(` never arrived, so there is no inside to be in', '@if | { <p>x</p> }'],
+  ])('says yes %s', (_case, inner) => {
+    expect(markupAtCaret(inner)).toBe(true);
+  });
+});
+
 describe('emmetCompletions', () => {
   const documentOf = (source: string): TextDocument =>
     TextDocument.create(`file://${PATH}`, 'fud', 1, source);
