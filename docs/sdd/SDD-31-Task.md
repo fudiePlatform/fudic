@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/core` (las primitivas y el recorte de `Signal`) · `@fudic/compiler` (el
 > emit de §4.6–§4.8) · `@fudic/example-basic` (los `.fud` que usan `peek()`)
 > **Rama:** `sdd-31-computed-effect`
-> **Progreso:** 6 / 17
+> **Progreso:** 10 / 17
 > **No depende de:** SDD-30 ni de la tanda de eventos. Puede ir en paralelo, en su propio
 > worktree: no comparte un fichero con ninguna de las dos.
 
@@ -79,23 +79,26 @@ diagnóstico por el `.peek()` retirado.
 
 ## Fase 3 — `effect` y `batch` (4)
 
-- [ ] **7. `effect`: correr, rastrear, resuscribirse.**
+- [x] **7. `effect`: correr, rastrear, resuscribirse.**
       Nuevo `packages/core/src/effect.ts`: ejecuta una vez al crearse; las fuentes de esa
       ejecución son las signals **hoja** —un `computed` leído dentro recomputa en el contexto del
       efecto, así que lo que queda apuntado es el fondo—; se suscribe a ellas; y en cada
       reejecución **limpia y vuelve a rastrear**, porque un `if` dentro del cuerpo cambia de qué
       depende. Devuelve un disposer **idempotente**.
-- [ ] **8. La guarda de realimentación.**
+      Y **limpieza por vuelta**: si `fn` devuelve una función, corre antes de cada reejecución y
+      al dar de baja, `untrack`eada. Sin ella, un efecto que da de alta un listener de `window`
+      registra uno más en cada vuelta y no hay forma de quitarlo (criterio §6.21).
+- [x] **8. La guarda de realimentación.**
       Un contador de ejecuciones encadenadas; pasado el límite, **lanza un `Error`** cuyo mensaje
       nombra el problema. No es un `Diagnostic`: el runtime de fudic no diagnostica y el
       compilador no puede ver esto. El límite es una constante del módulo, documentada.
-- [ ] **9. `batch`.**
+- [x] **9. `batch`.**
       Dentro: `set` escribe valor y versión **inmediatamente** —una lectura dentro del batch ve lo
       nuevo— pero acumula los suscriptores afectados en vez de notificar. Al salir del batch **más
       externo**, cada uno corre una vez. Anidar no anida flushes. Devuelve lo que devuelva `fn`, y
       vacía también si `fn` lanza.
-- [ ] **10. Tests de `effect` y `batch`.**
-      Criterios §6.6–§6.13. Dos que no se pueden saltar: §6.7 (dependencias **dinámicas** — el
+- [x] **10. Tests de `effect` y `batch`.**
+      Criterios §6.6–§6.13 y §6.21. Dos que no se pueden saltar: §6.7 (dependencias **dinámicas** — el
       efecto deja de reejecutarse por `x` cuando el `if` deja de leerlo) y §6.11, que se escribe
       **de las dos formas** —con `batch` y sin él— porque el contraste es lo que demuestra para
       qué sirve la primitiva. Y §6.10 tiene que terminar: una realimentación que colgara el runner
@@ -161,7 +164,7 @@ verdad.
       `__golden__/` contra `main` y comprobar que solo contiene las tres formas de §4.5.
       `tracking.ts`, `computed.ts`, `effect.ts`, `batch.ts` y `subscribe.ts` al **100 %** en las
       cuatro métricas; `@fudic/core` estaba al 100 % y no baja. Nada de `/* v8 ignore */`. Anotar
-      el avance en [INDEX.md](./INDEX.md) y pasar SDD-31 a `Hecho` si los 20 criterios de §6 están
+      el avance en [INDEX.md](./INDEX.md) y pasar SDD-31 a `Hecho` si los 21 criterios de §6 están
       verdes.
 
 ---
@@ -183,7 +186,7 @@ en modo denso— sino el **corte estático**, un solo modo por componente decidi
 
 ## Enlaces
 
-- Criterios de aceptación: los 20 de
+- Criterios de aceptación: los 21 de
   [SDD-31 §6](./SDD-31-signals-derivadas.md#6-criterios-de-aceptación).
 - Cierra el pendiente que [BUG-12 §7](./bugs/BUG-12-sin-canal-de-update.md) y
   [SDD-15 §7](./SDD-15-emit.md#7-fuera-de-alcance) llaman *«las suscripciones finas de las signals

@@ -24,6 +24,8 @@ export { FudicElement } from './element.js';
 export type { Controller, FudicElementCtor } from './controller.js';
 export { signal, type Signal } from './signal.js';
 export { computed, type Computed, type Readable } from './computed.js';
+export { effect, type Cleanup } from './effect.js';
+export { batch } from './batch.js';
 export { untrack } from './tracking.js';
 export {
   strategy,

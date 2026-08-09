@@ -12,6 +12,7 @@
  * from a parallel state blob.
  */
 
+import { notify } from './batch.js';
 import { type LeafSource, report } from './tracking.js';
 
 export interface Signal<T> {
@@ -54,12 +55,11 @@ export function signal<T>(initial: T): Signal<T> {
     if (Object.is(v, value)) {
       return;
     }
+    // Value and version move immediately, batch or no batch: a read on the next
+    // line has to see what was just written. Only the delivery can be deferred.
     value = v;
     version += 1;
-    // Live set: a subscriber removed mid-notification is not called afterwards.
-    for (const fn of subscribers) {
-      fn();
-    }
+    notify(subscribers);
   };
   sig.subscribe = (fn: (v: T) => void) =>
     source.subscribe(() => {

@@ -92,8 +92,14 @@ export function computed<T>(fn: () => T): Computed<T>;
 export type Readable<T> = () => T;
 
 // packages/core/src/effect.ts
-/** Ejecuta `fn`, rastrea lo que lee, y lo vuelve a ejecutar cuando algo de eso cambia. */
-export function effect(fn: () => void): () => void;
+/** Lo que un efecto puede devolver para deshacer lo que acaba de hacer. */
+export type Cleanup = () => void;
+/**
+ * Ejecuta `fn`, rastrea lo que lee, y lo vuelve a ejecutar cuando algo de eso cambia.
+ * Si `fn` devuelve una función, esa es su limpieza: corre antes de cada reejecución y
+ * al dar de baja el efecto. Devuelve la baja.
+ */
+export function effect(fn: () => void | Cleanup): () => void;
 
 /** Agrupa: dentro de `fn` nada notifica; al salir, cada efecto afectado corre UNA vez. */
 export function batch<T>(fn: () => T): T;
@@ -116,6 +122,11 @@ Cuatro cosas de la firma que son decisiones, no notación:
 - **`effect` devuelve la baja y no toma dependencias.** El array de dependencias explícito
   (`effect([a, b], fn)`) se descartó: es el modelo que el desarrollador olvida actualizar, y el
   rastreo cuesta quince líneas (§4.1).
+- **La limpieza es el valor de retorno de `fn`, no un segundo parámetro.** Un efecto que hace
+  `window.addEventListener(...)` tiene que poder quitarlo, y tiene que quitarlo **también entre
+  vuelta y vuelta**, no solo al morir el componente: si las dependencias se recalculan en cada
+  ejecución, lo que la ejecución montó se desmonta con ellas. Devolverla desde el cuerpo la deja
+  escrita a dos líneas del alta, que es donde se lee (§4.3).
 - **`batch` devuelve lo que devuelva `fn`.** Así envuelve una expresión sin obligar a partirla en
   dos sentencias, que es como se usa dentro de un handler.
 
@@ -227,8 +238,24 @@ igual, recursivamente, hasta las signals del fondo. Es la asimetría entera del 
 > derivado costaría que el `computed` mantenga suscriptores —y con ellos disposer, y con él la
 > fuga que §4.2 no tiene—. El corte se paga donde se cobra.
 
-**Baja.** `effect` devuelve un disposer idempotente que retira las suscripciones. En un componente
-va a `$d`, como cualquier otro enganche, y `r()` lo ejecuta.
+**Limpieza por vuelta.** Si `fn` devuelve una función, es su limpieza, y corre **antes de la
+siguiente ejecución** y **al dar de baja el efecto** — en ese orden y en ningún otro momento.
+Corre siempre `untrack`eada: deshacer algo no es leer estado del que depender. El caso que la
+obliga es el más común que hay:
+
+```ts
+effect(() => {
+  const onKey = (e) => cerrar(e);
+  window.addEventListener('keydown', onKey);
+  return () => window.removeEventListener('keydown', onKey);
+});
+```
+
+Sin ella, un efecto que reacciona a una signal registra un listener más en cada vuelta. Con ella,
+el alta y la baja se leen juntas y el efecto no puede acumular nada.
+
+**Baja.** `effect` devuelve un disposer idempotente que ejecuta la limpieza pendiente y retira las
+suscripciones. En un componente va a `$d`, como cualquier otro enganche, y `r()` lo ejecuta.
 
 **Reentrada.** Un efecto que escribe una signal que él mismo lee es un bucle. Se acota con un
 contador de ejecuciones encadenadas; pasado el límite, `effect` **lanza un `Error`** con el
@@ -361,6 +388,8 @@ que saber cuál de las dos cosas le han dado, que es justo lo que §4.7 pide.
   sin baja es una fuga que sobrevive al host, igual que un `bus:` sin baja (SDD-15 §4.4).
 - **Las dependencias se recalculan en cada ejecución.** Un efecto no acumula fuentes de
   ejecuciones anteriores; si un `if` dejó de leer algo, deja de depender de ello.
+- **Y lo que una ejecución montó, se desmonta con ella.** La limpieza que `fn` devuelve corre
+  antes de la siguiente vuelta y al dar de baja. Un efecto no puede acumular listeners.
 - **Dentro de un `batch` se lee lo nuevo y no notifica nadie.** Salir del batch más externo
   ejecuta cada efecto afectado exactamente una vez.
 - **El servidor pinta el estado inicial.** Las derivadas se evalúan una vez y los efectos no
@@ -386,7 +415,7 @@ que saber cuál de las dos cosas le han dado, que es justo lo que §4.7 pide.
 
 ## 6. Criterios de aceptación
 
-Tests en `packages/core/test/` (1–13, 18–19) y `packages/compiler/test/emit/` (14–17, 20).
+Tests en `packages/core/test/` (1–13, 18–19, 21) y `packages/compiler/test/emit/` (14–17, 20).
 
 **Rastreo y derivadas**
 
@@ -416,6 +445,10 @@ Tests en `packages/core/test/` (1–13, 18–19) y `packages/compiler/test/emit/
 10. **Realimentación acotada.** Un efecto que escribe una signal que lee **lanza** un `Error` con
     un mensaje que nombra el problema, y lo hace tras un número acotado de vueltas — no cuelga el
     hilo.
+21. **Limpieza por vuelta.** La función que `fn` devuelve corre **antes** de cada reejecución y
+    **una vez** al dar de baja, nunca después de la baja, y va `untrack`eada: lo que lea dentro no
+    crea dependencia. Un efecto que da de alta un listener y devuelve su baja acaba con exactamente
+    un listener vivo tras N movimientos de su fuente, y con ninguno tras el disposer.
 
 **Agrupación**
 
