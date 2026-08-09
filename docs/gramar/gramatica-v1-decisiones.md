@@ -249,6 +249,23 @@ sustituye.
 no cuesta nada al que la escribe: es el caso «no necesito datos del punto de uso». Con paréntesis
 (`@toggle()`) es una invocación y entra en la 96, que es lo mismo que hace Angular.
 
+**99.** **La expresión implícita admite una llamada, y solo en el valor de un `@evento` o de
+un `bus:`.** La 96 se escribe `@click="@del($event, item.id)"`, y una expresión implícita es
+—decisiones 2, 4 y 5— *solo* un camino de propiedades: se corta en el `(`. Sin esta decisión
+la 96 no se puede escribir, y la única forma que parseaba era `@click="@(del($event, item.id))"`,
+que es ceremonia alrededor del caso normal: lo que uno escribe es `@fn` o `@fn(...)`, no
+`@(fn(...))`.
+
+Regla: tras el camino de propiedades, un `(` **adyacente** abre el balanceador (`scanParens`) y
+el grupo entra en la expresión. Es la misma adyacencia que ya rige en `@raw(` — `@del (x)` sigue
+siendo el camino `del`, porque una expresión implícita no cruza espacios—. Un `)` dentro de una
+cadena no cierra: el boundary lo pone el balanceador, no un `indexOf`.
+
+**Solo en esa posición**, y es la 29 aplicada: en contenido, `@total(x)` sigue siendo la
+interpolación `total` seguida del texto literal `(x)`, que es lo que hoy significa y lo que la
+gente escribe en prosa. En valor de un binding de handler no hay ambigüedad posible: ahí una
+llamada es siempre una llamada.
+
 **27.** Sin modificadores de evento. El handler es función JS normal; `preventDefault`/`stopPropagation` se llaman en código.
 
 **28.** Cualquier nombre de evento aceptado, incluidos custom events (`@my-event`). `@evento` es **siempre listener de host** (nombre literal). Para suscripción a eventos de bus entre componentes desacoplados, ver 28.a–28.d (`bus:`).
@@ -1067,3 +1084,4 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 96 | Interpolación | Un event binding es una **invocación**: `$event` + datos, handler plano (revisa la 26; retira la forma curried) |
 | 97 | Interpolación | `$event` lo inyecta el compilador y vive en la reserva `$`; solo en la lista de argumentos de un event binding |
 | 98 | Interpolación | La referencia desnuda (`@click="@toggle"`) sigue valiendo: el DOM la invoca con el evento |
+| 99 | Interpolación | La expresión implícita admite un sufijo de llamada balanceado, solo en valor de `@evento` / `bus:` |

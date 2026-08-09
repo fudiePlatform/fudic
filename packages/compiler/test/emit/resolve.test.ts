@@ -97,7 +97,7 @@ describe('resolveComponents', () => {
 
   it('resolves the real home.fud fixture graph from disk', () => {
     const graph = resolveComponents(join(fixturesDir, 'home.fud'), fixtureIo);
-    expect([...graph.components.keys()].sort()).toEqual(['app-badge', 'app-button', 'app-card', 'app-list']);
+    expect([...graph.components.keys()].sort()).toEqual(['app-actions', 'app-badge', 'app-button', 'app-card', 'app-list']);
     expect(graph.components.get('app-card')!.deps).toEqual(['./app-button.fud']);
   });
 });

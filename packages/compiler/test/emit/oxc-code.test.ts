@@ -105,6 +105,45 @@ describe('extractCode', () => {
     expect(extractCode(source, doc).props).toEqual([{ name: 'a' }]);
   });
 
+  it('finds every emit(...) of @client, whatever the binding is called (SDD-15 §4.4)', () => {
+    const source = wrap(
+      '@code {\n' +
+        '  @client {\n' +
+        "    import { emit as fire } from '@fudic/dom';\n" +
+        '    function press() { console.log(1); helper(); fire(); }\n' +
+        "    const later = () => { const f = () => fire('press', 1); return f; };\n" +
+        '  }\n' +
+        '}\n',
+    );
+    const { emitCalls } = extractCode(source, componentDoc(source));
+    // Both calls, however deep the second one sits — and each one knows where `.call` and
+    // `$host` go: `fire()` has no argument to insert before, `fire('press', 1)` has.
+    expect(emitCalls).toHaveLength(2);
+    const text = (at: number): string => source.slice(at, at + 8);
+    const [first, second] = emitCalls as [(typeof emitCalls)[0], (typeof emitCalls)[0]];
+    expect(first.hasArgs).toBe(false);
+    expect(source.slice(first.calleeEnd - 4, first.calleeEnd)).toBe('fire');
+    expect(source[first.hostAt]).toBe(')');
+    expect(second.hasArgs).toBe(true);
+    expect(text(second.hostAt)).toBe("'press',");
+  });
+
+  it('finds nothing when emit is not the one imported from @fudic/dom', () => {
+    const source = wrap(
+      '@code {\n' +
+        '  @client {\n' +
+        "    import { browserDom } from '@fudic/dom';\n" +
+        "    import * as dom from '@fudic/dom';\n" +
+        "    import { emit } from './my-bus';\n" +
+        '    function press() { emit("press"); dom.emit("press"); }\n' +
+        '  }\n' +
+        '}\n',
+    );
+    // A raw `dispatchEvent`, an `emit` of the author's own, and a namespace import: none of
+    // them is the bus primitive, and none is rewritten. We do not protect what we cannot see.
+    expect(extractCode(source, componentDoc(source)).emitCalls).toEqual([]);
+  });
+
   it('leaves the @server region out of the client body', () => {
     const source = wrap(
       '@code {\n' +

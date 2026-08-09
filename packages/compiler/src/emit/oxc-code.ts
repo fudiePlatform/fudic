@@ -29,6 +29,24 @@ export interface Signal {
 }
 
 /**
+ * One call to the `emit` of `@fudic/dom` inside `@code { @client }`, in SOURCE coordinates
+ * (SDD-15 §4.4). The developer writes `emit(name, detail)` and never sees the host; the
+ * compiler splices it in as the `this` of the call, so the exported type stays honest.
+ *
+ * Three offsets and not a text match, because none of this is a `replace` over the source:
+ * `import { emit as fire }` is legal and then the name to patch is `fire`, and an `emit`
+ * inside a string or a comment is not a call at all. Both facts are the AST's to state.
+ */
+export interface EmitCall {
+  /** End of the callee identifier: where `.call` is spliced in. */
+  readonly calleeEnd: number;
+  /** Where `$host` goes: before the first argument, or before the `)` of a call with none. */
+  readonly hostAt: number;
+  /** Whether the call already carries arguments, and so needs a comma after `$host`. */
+  readonly hasArgs: boolean;
+}
+
+/**
  * The `@code { @client }` body, split where the JS module grammar forces it: an `import`
  * declaration is only legal at the top level of a module, but the rest of the region has
  * to live INSIDE the factory closure, because that is where it is per instance (§4.7).
@@ -56,6 +74,12 @@ export interface ClientCode {
 export interface TemplateJs {
   /** The AST at `span`, or an empty list when nothing was registered there. */
   ast(span: Span): FragmentAst;
+  /**
+   * A node offset back in the `.fud`. Oxc node offsets are BUFFER coordinates (§4.4), and
+   * an emitter that has to slice a sub-expression out of a fragment — the callee of an
+   * event binding, its argument list — needs the source positions to do it.
+   */
+  offset(bufferOffset: number): number;
 }
 
 export interface ExtractedCode {
@@ -72,6 +96,15 @@ export interface ExtractedCode {
    * through the closure and a parameter for it would be noise in the signature.
    */
   readonly mutable: ReadonlySet<string>;
+  /**
+   * Every `emit(...)` of `@client` (§4.4), as the walk finds them — the patches are applied
+   * by descending offset, so the order they arrive in is not one of. Empty when the
+   * component does
+   * not import `emit` from `@fudic/dom`, and that is the whole test: a raw
+   * `host.dispatchEvent(...)` is valid DOM and stays untouched, because it does not
+   * participate in directed hydration — which is exactly the distinction `emit` buys.
+   */
+  readonly emitCalls: readonly EmitCall[];
   /**
    * What Oxc had to say about this `@code`, already in source coordinates (BUG-13 §5.3).
    *
@@ -123,10 +156,7 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
     const stmts = Array.isArray(root) ? (root as OxcNode[]) : [root as OxcNode];
     const isClient = parts[i]!.type === 'client-region';
     for (const stmt of stmts) {
-      if (isClient) {
-        readClientStatement(stmt, source, map, client);
-        clientStatements.push(stmt);
-      }
+      if (isClient) clientStatements.push(stmt);
       if (!is(stmt, 'VariableDeclaration')) continue;
       for (const decl of fieldArray(stmt, 'declarations')) {
         readDeclarator(decl, source, map, props, signals);
@@ -139,15 +169,72 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
       const id = fragments.get(spanKey(at));
       return id === undefined ? [] : result.value.ast(id);
     },
+    offset: map,
   };
+  const binding = emitBinding(clientStatements);
+  const emitCalls: EmitCall[] = [];
+  if (binding !== undefined) collectEmitCalls(clientStatements, binding, map, emitCalls);
+  // The body is read AFTER the calls are known: each statement is copied with the host
+  // spliced into every `emit(...)` it holds (§4.4).
+  for (const stmt of clientStatements) readClientStatement(stmt, source, map, client, emitCalls);
+
   return {
     props,
     signals,
     client,
     template,
     mutable: changeableBindings(clientStatements),
+    emitCalls,
     diagnostics: result.diagnostics,
   };
+}
+
+/** The package `emit` comes from. Anything else of that name is the author's own. */
+const DOM_PACKAGE = '@fudic/dom';
+
+/**
+ * The local name `emit` was imported under, or `undefined` when it was not imported.
+ *
+ * `import { emit as fire }` is legal JS, and then the name to rewrite is `fire`. Reading it
+ * off the `ImportDeclaration` is what makes the rewrite a fact about bindings rather than a
+ * search for a word — a component that never imports `emit` has none, whatever it spells.
+ */
+function emitBinding(statements: readonly OxcNode[]): string | undefined {
+  for (const stmt of statements) {
+    if (!is(stmt, 'ImportDeclaration') || field(stmt, 'source')!['value'] !== DOM_PACKAGE) continue;
+    for (const spec of fieldArray(stmt, 'specifiers')) {
+      // A default or namespace specifier imports no NAME: `emit` cannot be reached that way.
+      const imported = field(spec, 'imported');
+      if (imported !== undefined && name(imported) === 'emit') return name(field(spec, 'local')!);
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Every call of `binding`, however deep — a handler nested three functions down emits just
+ * as much as a statement at the top of the region. The walk is generic on purpose: what it
+ * must never do is match text, and a node it does not know about cannot hide a call.
+ */
+function collectEmitCalls(node: unknown, binding: string, map: MapOffset, out: EmitCall[]): void {
+  if (Array.isArray(node)) {
+    for (const child of node) collectEmitCalls(child, binding, map, out);
+    return;
+  }
+  if (node === null || typeof node !== 'object') return;
+  const current = node as OxcNode;
+  const callee = is(current, 'CallExpression') ? field(current, 'callee') : undefined;
+  if (is(callee, 'Identifier') && name(callee!) === binding) {
+    const first = fieldArray(current, 'arguments')[0];
+    out.push({
+      calleeEnd: map(callee!.end),
+      // With no arguments there is nothing to insert BEFORE, so `$host` goes where the
+      // call closes: a `CallExpression` always ends at its `)`.
+      hostAt: first === undefined ? map(current.end - 1) : map(first.start),
+      hasArgs: first !== undefined,
+    });
+  }
+  for (const value of Object.values(current)) collectEmitCalls(value, binding, map, out);
 }
 
 const spanKey = (at: Span): string => `${at.start},${at.end}`;
@@ -158,9 +245,37 @@ function readClientStatement(
   source: string,
   map: MapOffset,
   client: ClientCode,
+  calls: readonly EmitCall[],
 ): void {
-  const text = source.slice(map(stmt.start), map(stmt.end));
+  const start = map(stmt.start);
+  const text = withHost(source.slice(start, map(stmt.end)), start, calls);
   (is(stmt, 'ImportDeclaration') ? client.imports : client.body).push(text);
+}
+
+/**
+ * Splice the host into every `emit(...)` of one statement: `emit('x', d)` becomes
+ * `emit.call($host, 'x', d)`, so the host arrives as `this` (§4.4).
+ *
+ * The developer never sees it. Putting it in the signature would leak a compiler concern
+ * into user code, which is why the type `@fudic/dom` exports lies by omission on purpose.
+ * Nor is the host a delicate choice: `emit` forces `composed: true`, and a composed event
+ * is RETARGETED to the host the moment it leaves the shadow — dispatching from any inner
+ * node would look the same to the subscriber. The host is simply the node the controller
+ * already holds, and the one that does not depend on where the call is written.
+ *
+ * The edits are applied by OFFSET and back to front, never by regular expression: an
+ * `emit` inside a string or a comment is not a call, and a call nested in another one's
+ * arguments must not move the offsets of the call around it.
+ */
+function withHost(text: string, offset: number, calls: readonly EmitCall[]): string {
+  const edits: { at: number; text: string }[] = [];
+  for (const call of calls) {
+    if (call.calleeEnd <= offset || call.calleeEnd > offset + text.length) continue;
+    edits.push({ at: call.calleeEnd - offset, text: '.call' });
+    edits.push({ at: call.hostAt - offset, text: call.hasArgs ? '$host, ' : '$host' });
+  }
+  edits.sort((a, b) => b.at - a.at);
+  return edits.reduce((out, edit) => out.slice(0, edit.at) + edit.text + out.slice(edit.at), text);
 }
 
 /** Route a single `const … = call(...)` declarator to props (ObjectPattern) or signals. */

@@ -89,3 +89,33 @@ describe('hydrate adopts, it does not build', () => {
     expect(shadow.querySelector('h2')!.lastChild!.textContent).toBe('Hola');
   });
 });
+
+describe('one controller, two adapters — with hookup (§6.14)', () => {
+  const rows = [
+    { id: 'a', label: 'A' },
+    { id: 'b', label: 'B' },
+  ];
+  const painted = serverShadowHtml(graph, 'app-actions', { rows });
+
+  it('the hookup leaves no trace in the HTML the server serializes', () => {
+    // `$dom.event` / `$dom.bus` are no-ops in SSR and touch no node, so `renderToString`
+    // cannot see them. The markup is the same one the client will adopt.
+    expect(painted).toContain('class="both"');
+    expect(painted).not.toContain('onclick');
+    expect(painted).not.toContain('bus');
+    expect(painted).not.toContain('$dom');
+  });
+
+  it('h() adopts that markup without building a node, listeners included', () => {
+    const { shadow } = mountAsDsd('app-actions', painted);
+    const ctl = controller(
+      clientFactory(graph, 'app-actions'),
+      adoptOnly(browserDom),
+      shadow,
+      [rows],
+    );
+    // `adoptOnly` forbids element/text/append: `s()` now does real work on this path, and
+    // registering a listener must still not fabricate anything.
+    expect(() => ctl.h()).not.toThrow();
+  });
+});
