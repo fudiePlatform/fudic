@@ -14,6 +14,8 @@
  *
  * Verdaccio refuses to republish a version it already has, so the storage is wiped on every
  * run. That is also what keeps the registry honest: what it serves is what this build produced.
+ * The client's cached manifests for this registry go with it — see `forgetCachedMetadata`;
+ * republishing `0.0.1` over `0.0.1` is invisible to a package manager otherwise.
  *
  * Usage:
  *   node scripts/local-registry.mjs              build, publish, stay up until Ctrl-C
@@ -22,7 +24,8 @@
  */
 
 import { spawn, spawnSync } from 'node:child_process';
-import { rmSync } from 'node:fs';
+import { existsSync, readdirSync, rmSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -33,6 +36,9 @@ const CONFIG = join(HERE, 'verdaccio.yaml');
 
 export const PORT = 4873;
 export const REGISTRY = `http://localhost:${PORT}`;
+
+/** How pnpm names this registry's folder inside its metadata cache. */
+const CACHE_KEY = `localhost+${PORT}`;
 
 /** How long to wait for the registry to answer before giving up, and how often to ask. */
 const READY_TIMEOUT_MS = 30_000;
@@ -49,6 +55,50 @@ function run(command, args, cwd = ROOT) {
   });
   if (result.status !== 0) {
     throw new Error(`${command} ${args.join(' ')} exited with ${result.status ?? 'no code'}`);
+  }
+}
+
+/**
+ * Where pnpm keeps the registry manifests it caches. `pnpm config get cacheDir` only answers
+ * when somebody set it explicitly, so the platform default has to be reproduced here.
+ */
+function pnpmCacheDir() {
+  const asked = spawnSync('pnpm', ['config', 'get', 'cacheDir'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    shell: process.platform === 'win32',
+  });
+  const configured = (asked.stdout ?? '').trim();
+  if (configured && configured !== 'undefined') return configured;
+  if (process.platform === 'win32') return join(process.env.LOCALAPPDATA ?? homedir(), 'pnpm-cache');
+  if (process.platform === 'darwin') return join(homedir(), 'Library', 'Caches', 'pnpm');
+  return join(process.env.XDG_CACHE_HOME ?? join(homedir(), '.cache'), 'pnpm');
+}
+
+/**
+ * Forget every manifest this registry ever served.
+ *
+ * This is the client half of the storage wipe below, and without it the whole rehearsal is a
+ * lie. The workspace publishes `0.0.1` on every run, and to a package manager `name@version`
+ * is immutable: pnpm keeps the manifest under `<cache>/metadata-vN/localhost+4873/@fudic/` and,
+ * on the next install, resolves from that copy without asking the registry at all. A
+ * brand-new project with no lockfile then installs a tarball from a previous build — one whose
+ * `dependencies` predate whatever was added since. The symptom is not a version conflict but a
+ * silent hole: a transitive `@fudic/*` that simply never gets installed.
+ *
+ * Only this registry's folder is removed. `registry.npmjs.org` sits next to it and is real
+ * cache worth keeping.
+ */
+function forgetCachedMetadata() {
+  const cache = pnpmCacheDir();
+  if (!existsSync(cache)) return;
+  for (const entry of readdirSync(cache, { withFileTypes: true })) {
+    // `metadata-v1.3` and `metadata-full-v1.3` today; the suffix moves with pnpm's format.
+    if (!entry.isDirectory() || !entry.name.startsWith('metadata')) continue;
+    const stale = join(cache, entry.name, CACHE_KEY);
+    if (!existsSync(stale)) continue;
+    console.log(`› forgetting pnpm's cached metadata in ${join(entry.name, CACHE_KEY)}`);
+    rmSync(stale, { recursive: true, force: true });
   }
 }
 
@@ -77,6 +127,7 @@ async function main() {
   // registry serving a tarball from a previous build is worse than no registry at all.
   console.log(`› wiping ${STORAGE}`);
   rmSync(STORAGE, { recursive: true, force: true });
+  forgetCachedMetadata();
 
   console.log(`› starting verdaccio on ${REGISTRY}`);
   const verdaccio = spawn(
