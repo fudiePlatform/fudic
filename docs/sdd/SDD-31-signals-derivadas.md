@@ -1,6 +1,6 @@
 # SDD-31 — Signals derivadas: `computed`, `effect`, `batch` (`@fudic/core`)
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Paquete:** `@fudic/core` (runtime de cliente) · `@fudic/compiler` (el emit de §4.6–§4.8)
 > **Depende de:** 14 (`signal`), 15 (la forma del factory y el `Set` de nombres de signal que
 > el emit ya mantiene)

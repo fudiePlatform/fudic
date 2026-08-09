@@ -95,7 +95,9 @@ export interface ExtractedCode {
 }
 
 // ── Typed access over the untyped Oxc node (the only place that indexes by name) ──
-const is = (node: OxcNode | undefined, type: string): boolean => node?.type === type;
+// A type predicate, not just a boolean: a node reached by `field` may be absent, and the
+// check that says which kind it is is also the check that says it is there.
+const is = (node: OxcNode | undefined, type: string): node is OxcNode => node?.type === type;
 const field = (node: OxcNode, key: string): OxcNode | undefined => node[key] as OxcNode | undefined;
 const fieldArray = (node: OxcNode, key: string): OxcNode[] => (node[key] as OxcNode[] | undefined) ?? [];
 const name = (node: OxcNode): string => String(node['name']);
@@ -182,7 +184,7 @@ function checkNeutralEffect(stmt: OxcNode, map: MapOffset, out: Diagnostic[]): v
   for (const call of calls) {
     if (!is(call, 'CallExpression')) continue;
     const callee = field(call, 'callee');
-    if (!is(callee, 'Identifier') || name(callee!) !== 'effect') continue;
+    if (!is(callee, 'Identifier') || name(callee) !== 'effect') continue;
     out.push(
       errorDiag(
         'FUD0570',

@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/core` (las primitivas y el recorte de `Signal`) · `@fudic/compiler` (el
 > emit de §4.6–§4.8) · `@fudic/example-basic` (los `.fud` que usan `peek()`)
 > **Rama:** `sdd-31-computed-effect`
-> **Progreso:** 16 / 17
+> **Progreso:** 17 / 17
 > **No depende de:** SDD-30 ni de la tanda de eventos. Puede ir en paralelo, en su propio
 > worktree: no comparte un fichero con ninguna de las dos.
 
@@ -164,7 +164,7 @@ verdad.
 
 ## Fase 6 — Cierre (1)
 
-- [ ] **17. Verde, goldens revisados, cobertura e índice.**
+- [x] **17. Verde, goldens revisados, cobertura e índice.**
       `pnpm typecheck`, `pnpm test` y `pnpm build` en la raíz —el build incluye `examples/basic`,
       así que es donde se ve si algún `.fud` se quedó con un `peek()`—. Releer el diff completo de
       `__golden__/` contra `main` y comprobar que solo contiene las tres formas de §4.5.
