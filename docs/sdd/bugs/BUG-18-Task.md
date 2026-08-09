@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` (`client.ts`, `markup-client.ts`) · `@fudic/core` (solo el
 > comentario del contrato)
 > **Rama:** `fix/bug-18-update-disperso`
-> **Progreso:** 0 / 10
+> **Progreso:** 3 / 10
 > **Va DESPUÉS de:** [SDD-30 — Renders de bloque](../SDD-30-renders-de-bloque.md)
 > ([tareas](../SDD-30-Task.md)). No es preferencia de orden: ver
 > [§2.5](./BUG-18-update-denso.md) — su tarea 17 emite **esta misma forma** dentro de un bloque, y
@@ -43,19 +43,24 @@ todo `@if` y todo `@foreach`, que es donde más instancias hay.
 
 ## Fase 1 — El hijo (3)
 
-- [ ] **1. `destructuring()` gana una tercera forma.**
+- [x] **1. `destructuring()` gana una tercera forma.**
+      *(implementado como **dos funciones**, `declaration()` y `updateGuards()`, y no como una
+      tercera rama de un `form`: la vieja `'assign'` desaparece con el patrón, así que una
+      tercera forma sería una rama que ningún emit puede provocar — y eso es cobertura
+      inalcanzable, no diseño. Las dos operaciones dejan de compartir función, que es
+      exactamente lo que dice §4.1.)*
       Modificar `packages/compiler/src/emit/client.ts`: la función que hoy produce dos formas sobre
       la misma lista de props —declaración (alta) y asignación (`u`), BUG-12 §3.3— pasa a producir
       tres. La de `u` deja de ser un patrón y pasa a ser una guarda por prop:
       `if (2 in $p) label = $p[2];`. **La declaración de alta no se toca**: sigue siendo el
       simétrico exacto de `Object.values` (SDD-15 §4.2), que es lo que la justifica.
-- [ ] **2. El default, en la rama presente.**
+- [x] **2. El default, en la rama presente.**
       `if (3 in $p) variant = $p[3] === undefined ? 'default' : $p[3];`. Es la regla de BUG-12
       §3.3 —*«los defaults se repiten, porque una actualización puede volver a traer
       `undefined`»*— trasladada a la forma nueva. Lo que deja de ocurrir es que una prop que el
       padre **no menciona** vuelva a su default; una prop sin default emite la guarda a secas.
       Criterios §6.1, §6.2.
-- [ ] **3. `$a()` sigue llamándose una vez, al final.**
+- [x] **3. `$a()` sigue llamándose una vez, al final.**
       Después de todas las guardas, no una por prop. Es lo que mantiene la pasada consistente
       cuando se mueven dos props en la misma llamada: sin estado intermedio observable. Criterio
       §6.10.

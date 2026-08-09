@@ -77,7 +77,7 @@ Las siete secciones del SDD, reinterpretadas para un defecto:
 | [BUG-15](./BUG-15-clases-sin-completado.md) | Dentro de un tag abierto no contesta nadie: ni `class:`, ni los atributos de HTML | SDD-24 §3.2, §4.1, §4.2 · SDD-28 §4.3, §5.5 | `language-server` | `Hecho` |
 | [BUG-16](./BUG-16-props-con-punto.md) | Pasar una prop tiene dos formas, y la que el editor valida no llega a la salida | gramática §10 · SDD-23 §4.4 · SDD-24 §4.2 | `compiler` · `language-core` · `language-server` | `Hecho` |
 | [BUG-17](./BUG-17-key-sin-editor.md) | La `key` de un bucle es sintaxis nueva sin mitad de editor | SDD-30 §3.5 · SDD-23 §4.4 · SDD-24 §4.2 | `language-core` · `language-server` · `formatter` · `vscode` | `Hecho` |
-| [BUG-18](./BUG-18-update-denso.md) | El padre recompone la tupla entera del hijo en cada notificación | BUG-12 §3.4 · SDD-15 §4.6 · props-spec 75 | `compiler` · `core` | `Bloqueado` |
+| [BUG-18](./BUG-18-update-denso.md) | El padre recompone la tupla entera del hijo en cada notificación | BUG-12 §3.4 · SDD-15 §4.6 · props-spec 75 | `compiler` · `core` | `Listo` |
 | [BUG-19](./BUG-19-tres-constructos-sin-servidor.md) | Tres de los cinco constructos no existen en la rama de servidor | SDD-15 §4.1 (slice SSR) · SDD-30 §6.17 | `compiler` | `Listo` |
 | [BUG-20](./BUG-20-fuentes-en-src.md) | El scaffold siembra la raíz del proyecto: no hay `src/` | SDD-22 §3.1, §4.2, §4.5, §6.1 · SDD-19 §3.2 | `conventions` (nuevo) · `cli` · `vite` | `Hecho` |
 | [BUG-21](./BUG-21-nodos-de-whitespace.md) | El árbol lleva un nodo de texto por cada salto de línea del autor | BUG-07 §4.5 · SDD-15 §4.4 · SDD-17 §6.22 | `compiler` | `Bloqueado` |

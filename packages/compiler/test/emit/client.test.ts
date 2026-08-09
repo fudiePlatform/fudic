@@ -397,10 +397,12 @@ describe('emitComponentClientModule — u, the update channel (BUG-12)', () => {
 
   it('reassigns, re-applies, and then reconciles its blocks (§6.4, SDD-30 §4.2)', () => {
     // `$dom` and `$shadow` are never reassigned: an update carries state, not the adapter.
-    // The defaults are repeated because an update may bring `undefined` back. And `$a()`
-    // comes FIRST: the values of this level, then what the constructs below make of them.
+    // One guard per prop, asking for PRESENCE (BUG-18 §3.1): the payload may be sparse, and
+    // a hole means "unchanged". The defaults are repeated because a PRESENT `undefined` may
+    // bring the default back. And `$a()` comes FIRST, once: the values of this level, then
+    // what the constructs below make of them.
     expect(own).toContain(
-      "u: ($p) => { [, , title, variant = 'default'] = $p; $a(); $u0(); $u1(); },",
+      "u: ($p) => { if (2 in $p) title = $p[2]; if (3 in $p) variant = $p[3] === undefined ? 'default' : $p[3]; $a(); $u0(); $u1(); },",
     );
   });
 

@@ -328,7 +328,7 @@ customElements.define("app-list", class extends FudicElement {
         $n0 = $dom.lastChild($shadow);
         $s();
       },
-      u: ($p) => { [, , rows, empty = 'Sin elementos'] = $p; $a(); $u0(); },
+      u: ($p) => { if (2 in $p) rows = $p[2]; if (3 in $p) empty = $p[3] === undefined ? 'Sin elementos' : $p[3]; $a(); $u0(); },
       r: () => { $k0.forEach(($i) => $i.r()); $n0 = $shadow = null; $d.forEach((d) => d()); },
     };
   }

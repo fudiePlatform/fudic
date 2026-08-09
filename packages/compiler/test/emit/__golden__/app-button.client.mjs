@@ -48,7 +48,7 @@ customElements.define("app-button", class extends FudicElement {
         }
         $s();
       },
-      u: ($p) => { [, , variant = 'primary', disabled = false] = $p; $a(); },
+      u: ($p) => { if (2 in $p) variant = $p[2] === undefined ? 'primary' : $p[2]; if (3 in $p) disabled = $p[3] === undefined ? false : $p[3]; $a(); },
       r: () => { $n0 = $n1 = $shadow = $host = null; $d.forEach((d) => d()); },
     };
   }
