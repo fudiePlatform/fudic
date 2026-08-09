@@ -7,7 +7,7 @@
 > **Depende de:** [SDD-30](../SDD-30-renders-de-bloque.md) **solo para el campo del AST**, y solo
 > las fases 1, 2 y 4. La fase 3 —la cabecera no es markup— no lo necesita y arregla un defecto
 > que ya está vivo hoy (§1.2.a del BUG)
-> **Progreso:** 1 / 10
+> **Progreso:** 5 / 11 — la 1b no estaba en el plan; la puso el hueco de §4.1.1
 
 Cada tarea es un paso cerrado. Las rutas son relativas a la raíz del repo.
 
@@ -35,30 +35,47 @@ que la 9**: el snippet escribe la sintaxis que el formateador tiene que saber re
       No es deuda heredada que se salde aparte: son exactamente las líneas de las fases 1, 2 y 4,
       y el rojo que esas fases piden ver ya está puesto por el informe de cobertura.
 
-## Fase 1 — Rojo primero: la key no llega a la proyección (2)
+## Fase 1 — Rojo primero: la key no llega a la proyección (3)
 
-- [ ] **1. Ver que la key no existe para el editor.**
+- [x] **1. Ver que la key no existe para el editor.**
       En `packages/language-core/test/`, proyectar
       `@foreach (const item of collection) key (item.id) { … }` y afirmar que hay un tramo copiado
       con el span de `item.id`. **Verlo fallar**: hoy `emitLoop` proyecta cabecera y cuerpo y nada
       más (§2.1, §6.1). Mismo test para las cuatro formas de cabecera de §1.1 (§6.2).
-- [ ] **2. `$key` en las globales.**
-      `packages/language-core/src/globals.ts`: `declare function $key(k: unknown): void;`.
+      Cinco rojos, todos por el envoltorio que falta.
+- [x] **1b. El parser conserva una cláusula vacía** — tarea que este Task no tenía y sin la cual
+      el criterio §6.5 es inalcanzable (§4.1.1 del BUG). `key ()` no producía nodo, así que
+      `key (|)` —lo que el editor enseña en cuanto el `)` se autocierra— no dejaba **ninguna**
+      posición desde la que preguntar. Una cláusula que abrió paréntesis deja siempre nodo, con
+      `expr` vacío; una sin cerrar degrada al hueco tras el `(` en vez de tragarse el fichero;
+      `key` sin paréntesis sigue sin nodo, que ahí no se abrió nada. `FUD0541` no se mueve.
+      Y como el campo pasa a servir a dos audiencias, la distinción tiene un dueño:
+      `keyExpression(node)` da el span solo cuando hay JS, y por él pasan las dos piezas del emit
+      que escriben la identidad de un bloque — un span vacío sliceado escribe `key: ,`.
+- [x] **2. `$key` en las globales.**
+      `packages/language-core/src/globals.ts`: `declare function $key(k?: unknown): void;`.
       `unknown` es la decisión, no un hueco: la reconciliación usa un `Map` y la identidad de
       objeto es clave válida — ofrecer no es validar (§3.1). Cero códigos `FUD` nuevos.
+      **Opcional**, además: con el parámetro obligatorio, un `key (|)` a medias cobra `TS2554`
+      sobre un tramo que el autor no escribió, y de que está sin terminar ya se encarga `FUD0541`.
 
 ## Fase 2 — La proyección: la key entra en el cuerpo (2)
 
-- [ ] **3. `emitControl` emite `$key(…)`.**
+- [x] **3. `emitControl` emite `$key(…)`.**
       `packages/language-core/src/template/control.ts`: primera sentencia del cuerpo del bucle,
       con la expresión **copiada** del fuente. Dentro y no fuera, que es donde lo que declara la
       cabecera ya existe — y por eso ninguna forma de cabecera necesita una rama propia (§4.1,
       §6.1–§6.3). Un bucle sin key sigue proyectando byte a byte lo de hoy (§6.4). Verde en 1.
-- [ ] **4. Medido contra el servicio de TypeScript de verdad**, no contra el texto emitido.
+      Envuelta en una llamada y no suelta: un argumento es una posición con tipo esperado, y una
+      sentencia vacía no es nada — que es la diferencia entera en `key (|)`.
+- [x] **4. Medido contra el servicio de TypeScript de verdad**, no contra el texto emitido.
       En `key (item.|)` la lista son las propiedades del elemento; en `key (|)` viene `item`; en
       `key (item.i|)` el rango de reemplazo cubre `i` y **nada más**; `item.nope` reporta `TS2339`
       en coordenadas del `.fud`; F12 y renombrado van a la cabecera; y un `@foreach` anidado ve
       las variables de los dos (§6.5–§6.9).
+      El corpus gana `fixtures/components/app-list.fud`: un `@foreach` con key dentro de otro, de
+      modo que el anidamiento es un hecho del corpus —typechequea con cero errores— y no la
+      cadena de un solo test.
 
 ## Fase 3 — La cabecera de control no es markup (2)
 

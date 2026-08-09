@@ -80,10 +80,18 @@ function emitLoop(
   // `key (…)` is evaluated in the scope of the BODY (decision 91), so it is projected as the
   // first statement inside the loop: that is what makes the key see `x` in
   // `@foreach (const x of xs) key (x.id)`, and what gives it completions and a diagnostic
-  // of its own when it names something that does not exist.
+  // of its own when it names something that does not exist. The header is already projected
+  // as a real `for`, so no header shape needs a branch here — destructuring, a C-style
+  // `@for` and a `@while` that declares nothing all arrive with their scope already right.
+  //
+  // Wrapped in `$key(…)` rather than left as a bare expression statement: an argument
+  // position is a place TypeScript has an expected type for, so the caret inside an empty
+  // `key (|)` gets the same answer as any other argument. `$key` takes `unknown` and judges
+  // nothing (BUG-17 §3.1) — the FUD codes about a key are the compiler's, not this file's.
   if (node.key !== undefined) {
+    ctx.w.scaffold('$key(');
     copyExpression(ctx, node.key.expr);
-    ctx.w.scaffold(';\n');
+    ctx.w.scaffold(');\n');
   }
   ctx.emit(node.body);
   ctx.w.scaffold('}\n');

@@ -8,6 +8,7 @@
  */
 
 import type { Node, Span } from '../types/index.js';
+import { isEmptySpan } from '../types/index.js';
 import type { BalancedGroup } from '../balancer/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { HtmlContent } from '../html/index.js';
@@ -28,10 +29,27 @@ export type ControlNode = IfNode | ForeachNode | ForNode | WhileNode | SwitchNod
  */
 export interface KeyedNode {
   /**
-   * The key expression. `span` covers the whole `key (…)` clause, `expr` only its JS.
-   * Absent when the clause was not written, or was written malformed (`FUD0541`).
+   * The key clause. `span` covers the whole `key (…)`, `expr` only its JS.
+   *
+   * Absent when the clause was not written at all (or written with no `(` — nothing opened).
+   * An opened clause is ALWAYS here, and carries an EMPTY `expr` when it holds nothing
+   * readable, so that `key (|)` is a position the editor can ask from (BUG-17 §3.5). Read it
+   * through `keyExpression()` rather than directly whenever the answer feeds code.
    */
   readonly key?: RazorExpression;
+}
+
+/**
+ * The JS of a key clause, or `undefined` when there is none to read.
+ *
+ * The field cannot answer this on its own, and deliberately so: the editor wants the empty
+ * clause — it is where the caret is — while everything that GENERATES code wants it gone,
+ * because an empty span slices to the empty string and `key: ,` is not JavaScript. One
+ * predicate owns the distinction so no emitter has to remember it.
+ */
+export function keyExpression(node: KeyedNode): Span | undefined {
+  const expr = node.key?.expr;
+  return expr === undefined || isEmptySpan(expr) ? undefined : expr;
 }
 
 /**

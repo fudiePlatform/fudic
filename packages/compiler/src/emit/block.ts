@@ -18,6 +18,7 @@
  */
 
 import type { ControlNode } from '../control/index.js';
+import { keyExpression } from '../control/index.js';
 import { errorDiag, type Span } from '../types/index.js';
 import type { OxcNode } from '../oxc/index.js';
 import { CodeWriter } from './writer.js';
@@ -172,7 +173,8 @@ export class BlockEmitter implements BlockSink {
     const spans: Span[] = [];
     // The block's own key belongs to the block: it is read in the scope of the body, and
     // the instance computes it from the very parameters this list decides.
-    if (isLoop(node) && node.key !== undefined) spans.push(node.key.expr);
+    const key = isLoop(node) ? keyExpression(node) : undefined;
+    if (key !== undefined) spans.push(key);
     collectTemplateJs(branch.body, (_kind, span) => spans.push(span));
 
     const asts: FragmentAst[] = spans.map((span) => this.#ctx.hookup.template.ast(span));
@@ -264,10 +266,16 @@ export class BlockEmitter implements BlockSink {
     w.line('};');
   }
 
-  /** The key expression of a loop, evaluated once per instance: it IS the identity (§3.5). */
+  /**
+   * The key expression of a loop, evaluated once per instance: it IS the identity (§3.5).
+   *
+   * A loop with no key —or with one the author has not finished writing, which carries
+   * `FUD0541`— identifies every instance as `undefined`. That is a broken reconciliation and
+   * it is meant to be: the diagnostic is the answer, and the chunk still has to be JS.
+   */
   #keyOf(node: ControlNode): string {
-    if (!isLoop(node) || node.key === undefined) return 'undefined';
-    return this.#slice(node.key.expr);
+    const expr = isLoop(node) ? keyExpression(node) : undefined;
+    return expr === undefined ? 'undefined' : this.#slice(expr);
   }
 
   // ------------------------------------------------------------------

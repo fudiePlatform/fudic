@@ -14,4 +14,5 @@ export type {
   SwitchNode,
   SwitchCase,
 } from './nodes.js';
+export { keyExpression } from './nodes.js';
 export { parseControl } from './control.js';

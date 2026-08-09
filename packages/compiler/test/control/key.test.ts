@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { parseControl } from '../../src/control/index.js';
+import { keyExpression, parseControl } from '../../src/control/index.js';
 import type {
   ControlNode,
   ForNode,
@@ -186,6 +186,45 @@ describe('FUD0541 — a key that holds no expression', () => {
     ]);
   });
 
+  /**
+   * BUG-17 §3.5: the diagnostic is for the author, the node is for the editor, and the two
+   * are not the same audience. `key (|)` is exactly what an editor shows the instant `key (`
+   * is typed and the `)` auto-closes — so it is the first moment the author wants to be told
+   * what may go inside, and a clause the parser threw away leaves nowhere to ask from.
+   */
+  it('keeps an empty clause in the tree, with a span the editor can ask from', () => {
+    const source = '@foreach (const r of rows) key () { <li>x</li> }';
+    const loop = parse(source).node as Loop;
+
+    expect(loop.key).toBeDefined();
+    expect(text(source, loop.key!.span)).toBe('key ()');
+    // Empty, and sitting between the parentheses: where the caret is.
+    expect(loop.key!.expr).toEqual({ start: source.indexOf('key (') + 5, end: source.indexOf('key (') + 5 });
+  });
+
+  it('keeps a whitespace-only clause the same way', () => {
+    const source = '@foreach (const r of rows) key (   ) { <li>x</li> }';
+    const loop = parse(source).node as Loop;
+
+    expect(loop.key).toBeDefined();
+    expect(text(source, loop.key!.expr)).toBe('');
+  });
+
+  it('degrades an unclosed clause to the caret, not to the rest of the file', () => {
+    // The balancer runs an unterminated group to EOF, and none of that is the author's key.
+    const source = '@foreach (const r of rows) key (r.id';
+    const loop = parse(source).node as Loop;
+
+    expect(loop.key).toBeDefined();
+    expect(text(source, loop.key!.expr)).toBe('');
+    expect(loop.key!.expr.start).toBe(source.indexOf('key (') + 5);
+  });
+
+  it('leaves the key absent when the clause never opened a parenthesis', () => {
+    // Nothing was opened, so there is no inside — an empty span here would point at prose.
+    expect((parse('@foreach (const r of rows) key { <li>x</li> }').node as Loop).key).toBeUndefined();
+  });
+
   it('does not mistake an identifier that merely starts with `key` for the clause', () => {
     // `keys` is not `key`: the clause matches on a word boundary. So nothing is consumed
     // and the `{` the body needs is the one that goes missing.
@@ -221,6 +260,33 @@ describe('FUD0542 — a key where nothing iterates (criterion 9, decision 94)', 
     // Two arms, two keys: each is its own mistake and each gets its own span.
     const codesOf = codes('@if (x) key (1) { <p>a</p> } else if (y) key (2) { <p>b</p> }');
     expect(codesOf).toEqual(['FUD0542', 'FUD0542']);
+  });
+});
+
+/**
+ * The predicate that separates the two audiences (BUG-17 §3.5).
+ *
+ * The field alone cannot answer «is there JS here»: an opened-but-empty clause is a real
+ * node with an empty span, wanted by the editor and poison to anything that generates code
+ * — `key: ` is not JavaScript. One predicate owns the distinction so that no emitter
+ * re-invents it, and these are the three answers it can give.
+ */
+describe('keyExpression', () => {
+  it('gives back the span of a key that was written', () => {
+    const source = '@foreach (const r of rows) key (r.id) { <li>x</li> }';
+
+    expect(text(source, keyExpression(parse(source).node as Loop)!)).toBe('r.id');
+  });
+
+  it('gives nothing for a clause that opened and holds nothing', () => {
+    const loop = parse('@foreach (const r of rows) key () { <li>x</li> }').node as Loop;
+
+    expect(loop.key).toBeDefined();
+    expect(keyExpression(loop)).toBeUndefined();
+  });
+
+  it('gives nothing when there is no clause at all', () => {
+    expect(keyExpression(parse('@foreach (const r of rows) { <li>x</li> }').node as Loop)).toBeUndefined();
   });
 });
 
