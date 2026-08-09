@@ -136,6 +136,7 @@ Cada SDD reserva su rango; aquí está el registro maestro. Formato `FUD` + 4 d�
 | `FUD0500`–`0519` | 27 | `0500` un chunk no termina en un hash de 8 caracteres, así que el nombrado por build id **no se aplica a ninguno** (media nomenclatura es peor que ninguna) · `0501` dos chunks quedarían con el mismo nombre al quitarles el hash; ese par lo conserva. Ninguno de los dos rompe el build. |
 | `FUD0520`–`0539` | 28 | **Reservado y vacío.** Un snippet que no aplica no se ofrece, y lo que un snippet inserte lo diagnostica el código que ya existe para esa construcción (`0156`, `0430`, `0432`…). |
 | `FUD0540`–`0569` | 30 | `0540` bucle con markup que no declara `key (…)` (decisión 91) · `0541` `key (…)` vacía o sin cerrar · `0542` `key (…)` en un constructo que no itera (`@if`, `@switch`, decisión 94) · `0543` cabecera de bucle que no declara ningún binding, así que su key no puede identificar la iteración. `0544`–`0569` reservados. |
+| `FUD0570`–`0589` | 31 | `0570` `effect(...)` declarado fuera de `@code { @client }`: un efecto es lo que ocurre después del primer render, y en el servidor no hay tal cosa. Se omite y el resto del fichero se emite. `computed` y `batch` **no** reciben diagnóstico — los dos tienen semántica de servidor bien definida. `0571`–`0589` reservados. |
 
 `FUD0197`–`0209` libres para SDD-12. Severidades: todos `error` salvo `0196` (`warning`).
 

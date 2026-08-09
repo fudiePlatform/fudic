@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/core` (las primitivas y el recorte de `Signal`) · `@fudic/compiler` (el
 > emit de §4.6–§4.8) · `@fudic/example-basic` (los `.fud` que usan `peek()`)
 > **Rama:** `sdd-31-computed-effect`
-> **Progreso:** 14 / 17
+> **Progreso:** 16 / 17
 > **No depende de:** SDD-30 ni de la tanda de eventos. Puede ir en paralelo, en su propio
 > worktree: no comparte un fichero con ninguna de las dos.
 
@@ -145,14 +145,14 @@ verdad.
 
 ## Fase 5 — Que el compilador se entere de `computed` (2)
 
-- [ ] **14. `computed` entra en el conjunto de nombres reactivos.**
+- [x] **14. `computed` entra en el conjunto de nombres reactivos.**
       Modificar `extractCode` (`packages/compiler/src/emit/oxc-code.ts`) para reconocer también
       `const x = computed(...)`, y `ClientScope.signals` para incluirlos. Es una entrada más en
       una extracción que ya existe, no un análisis nuevo. **Sin esto el SDD no entrega nada
       usable:** `.value="@total"` cruzaría el objeto derivado —`[object Object]` en el HTML, el
       síntoma de BUG-16 (b)— y el padre no emitiría suscripción, así que el hijo quedaría
       congelado. Criterio §6.15.
-- [ ] **16. `FUD0570`, el rango, y las dos formas nuevas en el servidor.**
+- [x] **16. `FUD0570`, el rango, y las dos formas nuevas en el servidor.**
       Las derivadas y la agrupación entran en el módulo de servidor por la misma puerta que el
       stub de la tarea 15: `computed` → stub inerte que **evalúa su `fn` al leerlo**; `effect` →
       **no se emite**; `batch(fn)` → `fn()`. Y el diagnóstico:

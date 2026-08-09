@@ -587,6 +587,25 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
     expect(src).not.toContain('.u([');
     expect(src).not.toContain('plain()');
   });
+
+  it('SDD-31 §6.15 — a derived value crosses exactly like a signal', () => {
+    // Without this, `.value="@total"` would cross the derived OBJECT — `[object Object]`
+    // in the HTML, the symptom of BUG-16 (b) — and the parent would emit no subscription
+    // at all, leaving the child frozen on its initial value.
+    const src = hostChunk('.value="@total"', CHILD, '    const total = computed(() => count() * 2);\n');
+    const hook = src.slice(src.indexOf('const $s = () => {'), src.indexOf('return {'));
+    expect(hook).toContain('$n0.u([, , total()]);');
+    expect(hook).toContain('$d.push($sub(total, ($v) => { $n0.u([, , $v]); }));');
+  });
+
+  it('SDD-31 §6.20 — the `$sub` import is emitted only where it is used', () => {
+    expect(hostChunk('.value="@count"')).toContain(
+      "import { FudicElement, subscribe as $sub } from '@fudic/core';",
+    );
+    // No reactive value crosses, so nothing subscribes and the import would be dead.
+    expect(hostChunk('.value="@41"')).toContain("import { FudicElement } from '@fudic/core';");
+    expect(hostChunk('.value="@41"')).not.toContain('$sub');
+  });
 });
 
 /**

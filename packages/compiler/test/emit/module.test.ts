@@ -89,6 +89,42 @@ describe('emitComponentModule — composition & control flow (app-card)', () => 
   });
 });
 
+describe('the inert stubs of the server branch (SDD-31 §6.16)', () => {
+  const stubbed = (code: string, markup: string): string => {
+    const io = memoryIo({
+      '/page.fud':
+        '<link rel="component" href="./x-stub.fud">\n' +
+        '<html><head></head><body><x-stub></x-stub></body></html>\n',
+      '/x-stub.fud':
+        `@code {\n  @client {\n${code}  }\n}\n` +
+        `<x-stub>\n  <template shadowrootmode="open">${markup}</template>\n</x-stub>\n`,
+    });
+    const g = resolveComponents('/page.fud', io);
+    return emitComponentModule(g, g.components.get('x-stub')!);
+  };
+
+  it('a signal read with the call form prerenders instead of throwing', () => {
+    const src = stubbed('    const expanded = signal(false);\n', '<p>@(expanded())</p>');
+    expect(src).toContain('const expanded = () => (false); // inert signal');
+    const { render } = evalLeafModule(src);
+    const { dom, calls } = recordingDom();
+    expect(() => render(dom, { $node: 'shadow' }, {})).not.toThrow();
+    expect(calls.some((c) => c.op === 'text' && c.args[0] === 'false')).toBe(true);
+  });
+
+  it('a derived value is its own function, evaluated when read', () => {
+    const src = stubbed(
+      '    const count = signal(3);\n    const total = computed(() => count() * 2);\n',
+      '<p>@(total())</p>',
+    );
+    expect(src).toContain('const total = (() => count() * 2); // inert computed');
+    const { render } = evalLeafModule(src);
+    const { dom, calls } = recordingDom();
+    render(dom, { $node: 'shadow' }, {});
+    expect(calls.some((c) => c.op === 'text' && c.args[0] === '6')).toBe(true);
+  });
+});
+
 describe('emitComponentModule — attrExpr shapes', () => {
   // A crafted component exercising a MIXED (static + interpolation) attribute, which the
   // fixtures do not have. Resolved via an in-memory page that links it.

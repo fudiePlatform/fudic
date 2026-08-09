@@ -316,7 +316,13 @@ const total = () => (precio() * 2);      // inert computed: se evalúa al leerlo
 
 El derivado inerte **evalúa su `fn` al leerlo**, no al declararlo: así una derivada que el
 servidor nunca pinta no cuesta nada, y una que sí pinta ve las signals inertes ya declaradas sin
-depender del orden. `effect` no se emite y `batch(fn)` se queda en `fn()`.
+depender del orden. Un `computed(fn)` inerte es, literalmente, `fn`.
+
+`effect` y `batch` no necesitan forma de servidor: el módulo de servidor **no copia el cuerpo de
+`@code`** —ni el neutro ni el `@client`—, solo los props y las declaraciones reactivas, así que un
+efecto o una agrupación escritos ahí no llegan al servidor por construcción. El diagnóstico de
+`effect` (§5) no está para evitar una emisión que no ocurre: está para que el autor no crea que
+puso un efecto donde no hay ninguno.
 
 ### 4.7. El enganche de emit: un `computed` también es reactivo
 

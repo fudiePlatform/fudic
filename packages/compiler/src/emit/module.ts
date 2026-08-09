@@ -164,12 +164,16 @@ function buildComponentModule(
     w.line(`const { ${pattern} } = props ?? {};`);
   }
   for (const s of signals) {
-    // Inert signal: SSR contributes the initial value and nothing else. A FUNCTION, because
-    // that is the shape the client has — since SDD-31 §4.0 the call form is the only way to
-    // read a signal, so a template that says `expanded()` has to mean the same thing on both
+    // Inert reactive: SSR contributes the state as it starts and nothing else. A FUNCTION,
+    // because that is the shape the client has — since SDD-31 §4.0 the call form is the only
+    // way to read, so a template that says `expanded()` has to mean the same thing on both
     // branches. The object with a `peek` this used to be was not callable, and the day the
     // author wrote the call form it compiled on the client and threw in the prerender.
-    w.line(`const ${s.name} = () => (${s.init}); // inert signal (SSR; hydration is client-side)`);
+    //
+    // A derived value is its own function: `computed(fn)` renders inert as `fn` itself, so
+    // it is evaluated when READ and a derived value the server never paints costs nothing.
+    const init = s.kind === 'computed' ? `(${s.init})` : `() => (${s.init})`;
+    w.line(`const ${s.name} = ${init}; // inert ${s.kind} (SSR; hydration is client-side)`);
   }
   w.appendWriter(bodyW); // carries the markup's source anchors, unlike a toString()/split copy
   w.dedent();

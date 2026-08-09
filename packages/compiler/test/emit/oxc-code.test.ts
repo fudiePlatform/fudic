@@ -31,9 +31,47 @@ describe('extractCode', () => {
     const { props, signals } = extractCode(source, componentDoc(source));
     expect(props).toEqual([{ name: 'a' }, { name: 'b', def: '2' }]); // 'a' has no default
     expect(signals).toEqual([
-      { name: 's', init: 'undefined' }, // signal() with no argument
-      { name: 't', init: '5' },
+      { name: 's', init: 'undefined', kind: 'signal' }, // signal() with no argument
+      { name: 't', init: '5', kind: 'signal' },
     ]);
+  });
+
+  it('SDD-31 §4.7 — a `computed` is a reactive name too, tagged by kind', () => {
+    const source = wrap(
+      '@code {\n  const a = signal(1);\n  const total = computed(() => a() * 2);\n  const t = computed();\n}\n',
+    );
+    expect(extractCode(source, componentDoc(source)).signals).toEqual([
+      { name: 'a', init: '1', kind: 'signal' },
+      { name: 'total', init: '() => a() * 2', kind: 'computed' },
+      { name: 't', init: 'undefined', kind: 'computed' },
+    ]);
+  });
+
+  it('SDD-31 §6.17 — `effect(...)` in the neutral zone is FUD0570, and nothing else stops', () => {
+    const source = wrap(
+      '@code {\n' +
+        '  const { a } = props<{ a: string }>();\n' +
+        '  effect(() => console.log(a));\n' +
+        '  const off = effect(() => {});\n' +
+        '  const t = signal(1);\n' +
+        '  const plain = 7;\n' + // not a call at all
+        '  console.log(plain);\n' + // a call, but not through a bare identifier
+
+        '  @client {\n    const fine = effect(() => t());\n  }\n' +
+        '}\n',
+    );
+    const { props, signals, diagnostics } = extractCode(source, componentDoc(source));
+    expect(diagnostics.map((d) => d.code)).toEqual(['FUD0570', 'FUD0570']);
+    const at = source.indexOf('effect(() => console.log(a))');
+    expect(diagnostics[0]!.span).toEqual({ start: at, end: at + 'effect(() => console.log(a))'.length });
+    // The emit does not throw and does not give up on the file: props and signals are read.
+    expect(props).toEqual([{ name: 'a' }]);
+    expect(signals).toEqual([{ name: 't', init: '1', kind: 'signal' }]);
+  });
+
+  it('SDD-31 §5 — `computed` and `batch` in the neutral zone say nothing', () => {
+    const source = wrap('@code {\n  const t = computed(() => 1);\n  batch(() => {});\n}\n');
+    expect(extractCode(source, componentDoc(source)).diagnostics).toEqual([]);
   });
 
   it('skips rest/spread in the props pattern', () => {

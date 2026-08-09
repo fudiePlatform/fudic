@@ -11,7 +11,7 @@
 
 import type { ComponentDocument } from '../document/index.js';
 import type { Diagnostic, Span } from '../types/index.js';
-import { isEmptySpan } from '../types/index.js';
+import { errorDiag, isEmptySpan } from '../types/index.js';
 import { JsBatch, type OxcNode } from '../oxc/index.js';
 import { collectTemplateJs } from './constructs.js';
 import { changeableBindings, type FragmentAst } from './scope.js';
@@ -22,10 +22,21 @@ export interface Prop {
   readonly def?: string;
 }
 
-/** One `const x = signal(init)` declaration; `init` is the initial-value source. */
-export interface Signal {
+/**
+ * One reactive declaration of `@code`: `const x = signal(init)` or
+ * `const x = computed(fn)`.
+ *
+ * Both kinds go in the SAME list on purpose (SDD-31 §4.7). What that list answers is «can
+ * this name move?», and the answer decides whether a `.prop` crosses a value or a reference
+ * (decision 84) and whether the parent emits a subscription — and it is the same answer for
+ * the two. Only the server's inert stub cares which one it is, so only `kind` distinguishes
+ * them.
+ */
+export interface Reactive {
   readonly name: string;
+  /** `signal` → the initial value's source. `computed` → the derive function's, verbatim. */
   readonly init: string;
+  readonly kind: 'signal' | 'computed';
 }
 
 /**
@@ -60,7 +71,8 @@ export interface TemplateJs {
 
 export interface ExtractedCode {
   readonly props: Prop[];
-  readonly signals: Signal[];
+  /** Every name the component declares with `signal(...)` or `computed(...)`, in order. */
+  readonly signals: Reactive[];
   readonly client: ClientCode;
   /** The parsed JS of the template. Empty for a document with no renderable tree. */
   readonly template: TemplateJs;
@@ -100,8 +112,9 @@ type MapOffset = (bufferOffset: number) => number;
  */
 export function extractCode(source: string, doc: ComponentDocument): ExtractedCode {
   const props: Prop[] = [];
-  const signals: Signal[] = [];
+  const signals: Reactive[] = [];
   const client: ClientCode = { imports: [], body: [] };
+  const own: Diagnostic[] = [];
 
   const batch = new JsBatch(source);
   const parts = doc.code?.parts ?? [];
@@ -126,6 +139,8 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
       if (isClient) {
         readClientStatement(stmt, source, map, client);
         clientStatements.push(stmt);
+      } else {
+        checkNeutralEffect(stmt, map, own);
       }
       if (!is(stmt, 'VariableDeclaration')) continue;
       for (const decl of fieldArray(stmt, 'declarations')) {
@@ -146,8 +161,36 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
     client,
     template,
     mutable: changeableBindings(clientStatements),
-    diagnostics: result.diagnostics,
+    diagnostics: [...result.diagnostics, ...own],
   };
+}
+
+/**
+ * `effect(...)` outside `@code { @client }` → `FUD0570` (SDD-31 §5).
+ *
+ * An effect is, by definition, what happens AFTER the first render, and the server has no
+ * such moment. The statement is dropped — the neutral zone only ever contributed props and
+ * reactive declarations to the emit anyway — and the rest of the file is emitted: the emit
+ * does not throw. `computed` and `batch` are not flagged; both have a server meaning.
+ */
+function checkNeutralEffect(stmt: OxcNode, map: MapOffset, out: Diagnostic[]): void {
+  // The two shapes an `effect(...)` takes: called for its side effect, or bound to keep its
+  // teardown. Anything else lands as `undefined` here and falls out on the first check.
+  const calls = is(stmt, 'VariableDeclaration')
+    ? fieldArray(stmt, 'declarations').map((decl) => field(decl, 'init'))
+    : [field(stmt, 'expression')];
+  for (const call of calls) {
+    if (!is(call, 'CallExpression')) continue;
+    const callee = field(call, 'callee');
+    if (!is(callee, 'Identifier') || name(callee!) !== 'effect') continue;
+    out.push(
+      errorDiag(
+        'FUD0570',
+        'effect(...) belongs in @code { @client }: an effect runs after the first render, and the server has none.',
+        { start: map(call.start), end: map(call.end) },
+      ),
+    );
+  }
 }
 
 const spanKey = (at: Span): string => `${at.start},${at.end}`;
@@ -163,13 +206,13 @@ function readClientStatement(
   (is(stmt, 'ImportDeclaration') ? client.imports : client.body).push(text);
 }
 
-/** Route a single `const … = call(...)` declarator to props (ObjectPattern) or signals. */
+/** Route a single `const … = call(...)` declarator to props (ObjectPattern) or reactives. */
 function readDeclarator(
   decl: OxcNode,
   source: string,
   map: MapOffset,
   props: Prop[],
-  signals: Signal[],
+  signals: Reactive[],
 ): void {
   const init = field(decl, 'init');
   const id = field(decl, 'id');
@@ -179,9 +222,15 @@ function readDeclarator(
 
   if (called === 'props' && is(id, 'ObjectPattern')) {
     for (const property of fieldArray(id, 'properties')) readProp(property, source, map, props);
-  } else if (called === 'signal' && is(id, 'Identifier')) {
+  } else if ((called === 'signal' || called === 'computed') && is(id, 'Identifier')) {
     const arg = fieldArray(init, 'arguments')[0];
-    signals.push({ name: name(id), init: arg ? source.slice(map(arg.start), map(arg.end)) : 'undefined' });
+    // A `computed` with no argument would be a program that cannot run; `undefined` keeps
+    // the emit total and lets the author's own tooling say so.
+    signals.push({
+      name: name(id),
+      init: arg ? source.slice(map(arg.start), map(arg.end)) : 'undefined',
+      kind: called,
+    });
   }
 }
 
