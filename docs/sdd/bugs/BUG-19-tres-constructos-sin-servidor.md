@@ -1,6 +1,7 @@
 # BUG-19 — Tres de los cinco constructos no existen en la rama de servidor
 
-> **Estado:** `Listo` — causa raíz confirmada sobre el código, con fichero y línea
+> **Estado:** `Hecho` — los 14 criterios de §6 en verde. El despacho del servidor es una tabla
+> total y las dos ramas parten la cabecera de un bucle con la misma función
 > **Corrige:** [SDD-15 §4.1](../SDD-15-emit.md) (el slice SSR del emit, marcado `Hecho`) ·
 > [SDD-30 §6.17](../SDD-30-renders-de-bloque.md) (la equivalencia `c` ↔ `h` con bloques, que
 > hoy solo se comprueba con dos de los cinco)
