@@ -26,7 +26,7 @@ import type {
   Range,
   SemanticToken,
 } from '@volar/language-service';
-import type { Diagnostic, Severity, Span } from '@fudic/compiler';
+import { regionAt, type Diagnostic, type Severity, type Span } from '@fudic/compiler';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import { COMPLETION_TRIGGER_CHARACTERS, SEMANTIC_TOKENS_LEGEND } from '../capabilities.js';
@@ -425,6 +425,10 @@ function completions(
   if (cached === undefined) return undefined;
 
   const offset = document.offsetAt(position);
+  // Asked once and handed to every context below: one traversal per completion request, and
+  // one answer, so two contexts can never disagree about where the cursor is (BUG-22).
+  const region = regionAt(cached.source, cached.html, offset);
+
   const href = hrefContextAt(cached.source, cached.document, offset);
   if (href !== undefined) {
     return list(
@@ -452,7 +456,7 @@ function completions(
   // Exact too: after those two colons a word can be neither an Emmet abbreviation nor a tag.
   // With the condition the `@` branch already uses — a file with no `<style>` has nothing to
   // say, and an empty list would silence Emmet without putting anything in its place (§4.3).
-  const classes = classContextAt(cached.source, offset);
+  const classes = classContextAt(cached.source, offset, region);
   if (classes !== undefined) {
     const items = styleClassNames(cached).map(
       (name): CompletionItem => ({
@@ -473,7 +477,8 @@ function completions(
   // no snippets. Returning `undefined` is exactly that — this plugin has nothing to say, so
   // the projection is the only voice left.
   const inside =
-    propertyContextAt(cached.source, offset) ?? eventContextAt(cached.source, offset);
+    propertyContextAt(cached.source, offset, region) ??
+    eventContextAt(cached.source, offset, region);
   if (inside !== undefined) return undefined;
 
   // The tag after a `<` is NOT here: it merges instead of claiming, and in Volar that is a
@@ -482,17 +487,19 @@ function completions(
   // A `@` is unambiguous too, but it can come up empty — in an empty file nothing starts with
   // one — and an empty list would suppress what Emmet has to say. So it only wins when it has
   // something.
-  const directive = directiveContextAt(cached.source, offset);
+  const directive = directiveContextAt(cached.source, offset, region);
   if (directive !== undefined) {
     const items = snippetItems(cached, document, directive, (label) => label.startsWith('@'));
     if (items.length > 0) return list(items);
   }
 
   const emmet = emmetCompletions(cached, document, position);
-  const word = wordContextAt(cached.source, offset);
+  const word = wordContextAt(cached.source, offset, region);
   if (word === undefined) return emmet;
 
   const ours = [
+    // The snippet scope, not the region: in a file that has nothing in it yet the region is
+    // markup like any other, and there the only sensible list is the four skeletons.
     ...(scopeAt(cached, offset) === 'markup'
       ? tagItems(cached, index, document, word, (name) => `<${name}>$0</${name}>`)
       : []),

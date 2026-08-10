@@ -1,15 +1,24 @@
 /**
  * What is under the cursor (SDD-24 §4.2, §6.3–§6.6).
  *
- * The three contexts the server answers itself, and nothing else. Two of them are read from
- * the AST — an `href` is an attribute of a `<link>`, and the tree knows it. The other two are
- * read from the text before the cursor, because `<` and `@section ` are typed BEFORE there is
- * anything to parse: at the moment completion is asked for, the construct does not exist yet.
- * Recognising exactly two prefixes is a smaller commitment than a second tokenizer.
+ * The contexts the server answers itself, and nothing else.
+ *
+ * Two halves, and the split is deliberate. WHERE the cursor is comes from the tree, through
+ * `regionAt` (BUG-22): markup, a tag, a value, an expression, TypeScript or CSS. WHAT is being
+ * typed there is read from the text before the cursor, because a prefix is typed BEFORE there
+ * is anything to parse — at the moment completion is asked for, `class:su` is not an attribute
+ * yet and `@fore` is not a construct.
+ *
+ * What went away with that split is the second half doing the first half's job: every one of
+ * these used to scan backwards for a `<` with no `>` after it, and `<div title="a > b"` fooled
+ * all of them at once.
  */
 
-import type { Attribute, ElementNode, Span, StructuredDocument } from '@fudic/compiler';
-import { span } from '@fudic/compiler';
+import type { Attribute, ElementNode, Region, Span, StructuredDocument } from '@fudic/compiler';
+import { attributeValueSpan, span } from '@fudic/compiler';
+
+// Reading the quotes of an attribute is parser knowledge, and the parser owns it now.
+export { attributeValueSpan };
 
 /** A `<link>` of this file and what it links. */
 export interface LinkRef {
@@ -45,27 +54,6 @@ export function linksOf(document: StructuredDocument): readonly LinkRef[] {
 /** The attribute of this name, if the element has one. */
 export function attributeOf(element: ElementNode, name: string): Attribute | undefined {
   return element.attributes.find((attribute) => attribute.name === name);
-}
-
-/**
- * The span of an attribute's value, inside the quotes.
- *
- * Derived from the attribute's own span rather than from its value parts, because the case
- * that matters most has none: `href=""` is where completion is asked for, and an empty parts
- * list cannot say where the quotes were.
- */
-export function attributeValueSpan(source: string, attribute: Attribute): Span | undefined {
-  const raw = source.slice(attribute.span.start, attribute.span.end);
-  const equals = raw.indexOf('=');
-  if (equals === -1) return undefined;
-
-  const afterEquals = attribute.span.start + equals + 1;
-  const quote = raw.slice(equals + 1).match(/^\s*(["'])/);
-  if (quote === null) return span(afterEquals, attribute.span.end);
-
-  const start = afterEquals + quote[0].length;
-  const closed = source[attribute.span.end - 1] === quote[1];
-  return span(start, closed ? attribute.span.end - 1 : attribute.span.end);
 }
 
 /** The `href` context at this offset, when the cursor is inside one. */
@@ -104,54 +92,31 @@ export function tagContextAt(source: string, offset: number): PartialName | unde
  * of components is unreachable unless the user remembers to open the tag first, which is the
  * one thing an editor is supposed to save them.
  *
- * Two guards, and both are why this is not simply "any word":
+ * One guard, and it is the region: a word a `<` opens is `tagContextAt`'s, and a word inside
+ * an open tag is an attribute name that the projection answers (SDD-23). The region calls both
+ * of those `tag`, so excluding that one kind is the whole rule.
  *
- *  - a word that a `<` opens is `tagContextAt`'s, not this one's;
- *  - a word INSIDE an open tag is an attribute name, and attributes are answered by the
- *    projection (SDD-23). Being inside is read by scanning back for a `<` before a `>` — the
- *    same class of textual rule as the two contexts above. A `>` inside an attribute value
- *    fools it, and the cost of being fooled is a component offered where an attribute was
- *    meant: a wrong suggestion in a list, never a wrong edit.
+ * It excludes rather than requires `markup` because this is also how a snippet is reached
+ * inside `@code`, where the region is `ts`. WHICH words are offered is the caller's question,
+ * and it asks the region again for it — the component tags only where markup is.
+ *
+ * That guard used to be a backwards scan for a `<` with no `>` after it, and a `>` inside an
+ * attribute value fooled it (BUG-22): `<div title="a > b" cla|` read as markup and offered
+ * component tags where an attribute goes. The parser had tokenized that `>` as part of a
+ * quoted value and never had the doubt.
  */
-export function wordContextAt(source: string, offset: number): PartialName | undefined {
+export function wordContextAt(
+  source: string,
+  offset: number,
+  region: Region,
+): PartialName | undefined {
+  if (region.kind === 'tag') return undefined;
+
   const match = /([A-Za-z][-\w]*)$/.exec(source.slice(0, offset));
   if (match === null) return undefined;
 
   const text = match[1] as string;
-  const start = offset - text.length;
-  if (source[start - 1] === '<') return undefined;
-  if (insideOpenTag(source, start)) return undefined;
-
-  return { span: span(start, offset), text };
-}
-
-/** Whether `offset` sits between a `<` and its `>`. */
-function insideOpenTag(source: string, offset: number): boolean {
-  return openTagStart(source, offset) !== undefined;
-}
-
-/** Offset of the `<` that opens the tag `offset` sits in, or `undefined` when it sits in none. */
-function openTagStart(source: string, offset: number): number | undefined {
-  for (let i = offset - 1; i >= 0; i--) {
-    const c = source[i];
-    if (c === '>') return undefined;
-    if (c === '<') return i;
-  }
-  return undefined;
-}
-
-/** Whether the scan from `from` to `to` ends inside an unclosed `"` or `'`. */
-function insideQuotes(source: string, from: number, to: number): boolean {
-  let quote: string | undefined;
-  for (let i = from; i < to; i++) {
-    const c = source[i];
-    if (quote === undefined) {
-      if (c === '"' || c === "'") quote = c;
-    } else if (c === quote) {
-      quote = undefined;
-    }
-  }
-  return quote !== undefined;
+  return { span: span(offset - text.length, offset), text };
 }
 
 /**
@@ -169,15 +134,18 @@ function insideQuotes(source: string, from: number, to: number): boolean {
  *    sentence, not an attribute;
  *  - a `class:` inside a quoted attribute value is somebody else's string: `title="class:x"`.
  *
- * `wordContextAt` is untouched. Its second guard sends every word inside an open tag to the
- * projection, and that is still right: what was missing was not a word, it was a prefix.
+ * The last two are now one question — the region has to be `tag`, which is neither markup nor
+ * a value — instead of a backwards scan plus a quote counter (BUG-22).
  */
-export function classContextAt(source: string, offset: number): PartialName | undefined {
+export function classContextAt(
+  source: string,
+  offset: number,
+  region: Region,
+): PartialName | undefined {
+  if (region.kind !== 'tag') return undefined;
+
   const match = /(?:^|[^-\w])class:([-\w]*)$/.exec(source.slice(0, offset));
   if (match === null) return undefined;
-
-  const tag = openTagStart(source, offset);
-  if (tag === undefined || insideQuotes(source, tag, offset)) return undefined;
 
   const text = match[1] as string;
   return { span: span(offset - text.length, offset), text };
@@ -199,22 +167,34 @@ export function classContextAt(source: string, offset: number): PartialName | un
  * sentence, one inside a quoted value is somebody else's string, and one that continues a word
  * is neither.
  */
-export function propertyContextAt(source: string, offset: number): PartialName | undefined {
-  return prefixedNameAt(source, offset, /(?:^|[^-\w.])\.([-\w]*)$/);
+export function propertyContextAt(
+  source: string,
+  offset: number,
+  region: Region,
+): PartialName | undefined {
+  return prefixedNameAt(source, offset, region, /(?:^|[^-\w.])\.([-\w]*)$/);
 }
 
-export function eventContextAt(source: string, offset: number): PartialName | undefined {
+export function eventContextAt(
+  source: string,
+  offset: number,
+  region: Region,
+): PartialName | undefined {
   // `@@` is the escape of decision 1, never an event.
-  return prefixedNameAt(source, offset, /(?:^|[^-\w@])@([-\w]*)$/);
+  return prefixedNameAt(source, offset, region, /(?:^|[^-\w@])@([-\w]*)$/);
 }
 
 /** The shared shape: a name typed after a one-character prefix, inside an open tag. */
-function prefixedNameAt(source: string, offset: number, pattern: RegExp): PartialName | undefined {
+function prefixedNameAt(
+  source: string,
+  offset: number,
+  region: Region,
+  pattern: RegExp,
+): PartialName | undefined {
+  if (region.kind !== 'tag') return undefined;
+
   const match = pattern.exec(source.slice(0, offset));
   if (match === null) return undefined;
-
-  const tag = openTagStart(source, offset);
-  if (tag === undefined || insideQuotes(source, tag, offset)) return undefined;
 
   const text = match[1] as string;
   return { span: span(offset - text.length, offset), text };
@@ -229,12 +209,22 @@ function prefixedNameAt(source: string, offset: number, pattern: RegExp): Partia
  * A `@` that follows another `@` is that escape, and a `@` that follows a word character is
  * text (`hola@ejemplo.com`). Neither is a directive, and neither is offered one.
  *
- * And a `@` INSIDE an open tag is an event, never a directive (BUG-16 §4.4). The same guard
- * `wordContextAt` already uses, for the same reason: inside a tag the answer belongs to
- * somebody else, and offering `@if` where an event name goes is not a shorter list — it is
- * the wrong one.
+ * And a `@` INSIDE an open tag is an event, never a directive (BUG-16 §4.4): inside a tag the
+ * answer belongs to somebody else, and offering `@if` where an event name goes is not a
+ * shorter list — it is the wrong one.
+ *
+ * A half-written `@fore` parses as an implicit expression, so the region there is
+ * `expression`, not `markup` — which is why this one excludes `tag` rather than requiring
+ * `markup`. The construct being typed does not exist yet; that is the whole reason this
+ * function exists.
  */
-export function directiveContextAt(source: string, offset: number): PartialName | undefined {
+export function directiveContextAt(
+  source: string,
+  offset: number,
+  region: Region,
+): PartialName | undefined {
+  if (region.kind === 'tag') return undefined;
+
   const match = /@([A-Za-z]\w*)?$/.exec(source.slice(0, offset));
   if (match === null) return undefined;
 
@@ -242,7 +232,6 @@ export function directiveContextAt(source: string, offset: number): PartialName 
   const at = offset - name.length - 1;
   const before = source[at - 1];
   if (before === '@' || (before !== undefined && /\w/.test(before))) return undefined;
-  if (insideOpenTag(source, at)) return undefined;
 
   return { span: span(at, offset), text: `@${name}` };
 }

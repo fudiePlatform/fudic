@@ -55,6 +55,31 @@ function contains(at: Span, offset: number): boolean {
 }
 
 /**
+ * Strictly between the delimiters of a tag — both boundaries excluded, unlike everything else.
+ *
+ * A caret sits BETWEEN two characters, and both of a tag's boundaries are a wall the caret can
+ * stand outside of: before the `<` the author is in content and about to open an element, and
+ * past the `>` the content has begun. Emmet has to work in both places, which is exactly what
+ * half-open containment would take away — it would call the position just before `<p>` a tag.
+ */
+function insideTag(at: Span, offset: number): boolean {
+  return offset > at.start && offset < at.end;
+}
+
+/**
+ * Inside a stretch of JavaScript, END INCLUDED.
+ *
+ * The end of a control header is where the caret spends most of its life: `@if (used|)` is
+ * the position the author types the condition from, and it is the last offset of the header
+ * rather than a position past it. Half-open containment would hand that one back as markup —
+ * and then three voices that have no business there (tags, snippets, Emmet) would answer over
+ * TypeScript's.
+ */
+function insideJs(at: Span, offset: number): boolean {
+  return offset >= at.start && offset <= at.end;
+}
+
+/**
  * The value of an attribute, inside the quotes.
  *
  * Derived from the attribute's own span rather than from its value parts, because the case
@@ -172,12 +197,12 @@ function tagRegion(
 
 function elementRegion(source: string, element: ElementNode, offset: number): Region {
   const open = openTag(source, element);
-  if (contains(open.span, offset)) return tagRegion(source, element, open.span, offset);
+  if (insideTag(open.span, offset)) return tagRegion(source, element, open.span, offset);
 
   const inner = childRegion(source, element.children, offset);
   if (inner !== undefined) return inner;
 
-  if (element.closeSpan !== undefined && contains(element.closeSpan, offset)) {
+  if (element.closeSpan !== undefined && insideTag(element.closeSpan, offset)) {
     return { kind: 'tag', span: element.closeSpan, element };
   }
   // The caret at the very end of a tag nobody closed: still inside it.
@@ -216,9 +241,9 @@ function controlRegion(source: string, node: ControlNode, offset: number): Regio
   if (key !== undefined) return key;
 
   if (node.type === 'switch') {
-    if (contains(node.header.inner, offset)) return { kind: 'expression', span: node.header.inner };
+    if (insideJs(node.header.inner, offset)) return { kind: 'expression', span: node.header.inner };
     for (const branch of node.cases) {
-      if (branch.test !== undefined && contains(branch.test, offset)) {
+      if (branch.test !== undefined && insideJs(branch.test, offset)) {
         return { kind: 'expression', span: branch.test };
       }
       const body = childRegion(source, branch.body, offset);
@@ -229,7 +254,7 @@ function controlRegion(source: string, node: ControlNode, offset: number): Regio
 
   if (node.type === 'if') {
     for (const branch of node.branches) {
-      if (contains(branch.header.inner, offset)) {
+      if (insideJs(branch.header.inner, offset)) {
         return { kind: 'expression', span: branch.header.inner };
       }
       const body = childRegion(source, branch.body, offset);
@@ -238,7 +263,7 @@ function controlRegion(source: string, node: ControlNode, offset: number): Regio
     return childRegion(source, node.elseBody ?? [], offset);
   }
 
-  if (contains(node.header.inner, offset)) return { kind: 'expression', span: node.header.inner };
+  if (insideJs(node.header.inner, offset)) return { kind: 'expression', span: node.header.inner };
   return childRegion(source, node.body, offset);
 }
 
@@ -261,10 +286,13 @@ function nodeRegion(source: string, node: HtmlContent, offset: number): Region |
       return elementRegion(source, node, offset);
     case 'style-content':
       return styleRegion(node, offset);
+    // The `@` itself stays markup, and that is not a detail: a half-written `@fore` parses as
+    // an implicit expression, so claiming the boundary would call the very position where a
+    // directive is being typed an expression. The `@` is where the construct BEGINS.
     case 'razor-expression':
-      return { kind: 'expression', span: node.span };
+      return offset === node.span.start ? undefined : { kind: 'expression', span: node.span };
     case 'raw-expression':
-      return { kind: 'expression', span: node.expr.span };
+      return offset === node.span.start ? undefined : { kind: 'expression', span: node.expr.span };
     case 'inline-code':
       return { kind: 'ts', span: node.group.inner };
     case 'code':

@@ -156,6 +156,14 @@ describe('regionAt — expressions', () => {
     expect(kindAt('<p>@raw(bo|dy)</p>')).toBe('expression');
   });
 
+  it('the `@` that opens one is still markup: that is where a directive is typed', () => {
+    expect(kindAt('<p>|@data.title</p>')).toBe('markup');
+  });
+
+  it('and the `@` of a @raw too', () => {
+    expect(kindAt('<p>|@raw(body)</p>')).toBe('markup');
+  });
+
   it('the `@@` escape is markup, not an expression', () => {
     expect(kindAt('<p>@|@</p>')).toBe('markup');
   });
