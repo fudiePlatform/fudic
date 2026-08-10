@@ -1,8 +1,9 @@
 # BUG-21 — El árbol lleva un nodo de texto por cada salto de línea del autor
 
-> **Estado:** `Bloqueado` — por [BUG-18](./BUG-18-update-denso.md) y
-> [BUG-19](./BUG-19-tres-constructos-sin-servidor.md). Pasa a `Listo` en cuanto las dos estén en
-> `Hecho` (§2.7)
+> **Estado:** `Bloqueado` — por el slice pendiente de [SDD-15](../SDD-15-emit.md): la hidratación
+> vista correr en un navegador (§2.8). Sus dos bloqueantes anteriores,
+> [BUG-18](./BUG-18-update-denso.md) y [BUG-19](./BUG-19-tres-constructos-sin-servidor.md), están
+> en `Hecho` (§2.7)
 > **Corrige:** [BUG-07 §4.5](./BUG-07-html-sin-minificar.md) (la regla *«se colapsa; no se
 > elimina»*, que contestó una pregunta distinta) · [SDD-15 §4.4](../SDD-15-emit.md) (los runs de
 > texto de las dos ramas) · [SDD-17 §6.22](../SDD-17-hidratacion.md) (el presupuesto del chunk)
@@ -218,6 +219,40 @@ conflicto entre dos regeneraciones se resuelve sin leer ninguna.
 **Con SDD-31 no hay roce**: `core`, `oxc-code.ts` y `module.ts:172` (BUG-19 §2.5), y sus goldens de
 servidor no se mueven. Pero SDD-31 termina antes que las dos anteriores por camino, así que la
 observación es informativa.
+
+### 2.8. Y ahora, por la hidratación vista correr
+
+Las dos aristas de §2.7 están en `Hecho`, y el BUG **no** pasa a `Listo`: lo bloquea el slice
+pendiente de [SDD-15](../SDD-15-emit.md), y esta vez la razón sí es de mecanismo.
+
+**La deducción de la caja solo es cerrada dentro del shadow root.** Ahí el único CSS que aplica es
+el `<style>` del componente, y §4.3 se sostiene. En la página —el light DOM, el layout, la ruta— una
+hoja global puede poner `display: flex` en cualquier clase y el compilador no la ve. Es el mismo
+hueco que [BUG-07 §4.4](./BUG-07-html-sin-minificar.md) ya reconoció para `white-space`, y por el que
+existe `data-fud-space`: cuando el CSSOM no está completo, se pregunta al autor en vez de adivinar.
+La fuente (c) de §4.3 no lo cubre —envenena por el `<style>` propio, no por una hoja de fuera—, así
+que **§4.3 y §4.2 se reabren**, no se dan por buenas.
+
+**Y hay una alternativa sobre la mesa que no deduce nada:** descartar el whitespace-only que
+contiene un salto de línea y conservar el que está escrito en la misma línea, que es lo que hace Vue
+con `condense`. No prueba ninguna caja, es reversible por el autor sin sintaxis nueva —escribir dos
+inline en la misma línea conserva su espacio— y da la respuesta intuitiva en los tres casos que hoy
+son guardas: el sangrado desaparece, `:empty` casa cuando el autor no escribió nada, y un host
+escrito en dos líneas queda de verdad vacío y enseña el fallback de su `<slot>`. Su precio es que
+**decide por la forma del fuente**, que es justo lo que §4.4 rechaza; medirlo contra la regla de las
+tres pruebas es la decisión que este BUG tiene pendiente.
+
+**Por qué no se elige aquí.** Las dos reglas cambian el árbol que `h()` adopta, y ese árbol todavía
+no se ha visto adoptar en un navegador con las fixtures reales: es el slice que le queda a SDD-15.
+Escribir la regla antes es escribirla contra un modelo que no ha corrido —y la experiencia de
+`language-core` / `language-server` dice que ahí es donde aparece lo que ningún test previó—. Es el
+mismo argumento de §2.7 con una vuelta más: allí era no mover los goldens dos veces, aquí es no
+fijar la regla dos veces.
+
+**Y lo que se lleva por delante:** los criterios §6.4, §6.5 y §6.6 —los tres que prueban el
+`display`— y las tres guardas de §4.4, que con la regla del salto dejan de ser guardas y pasan a ser
+el comportamiento. Las tres fixtures manuales de [`spaces/`](../../../spaces) son las que lo
+enseñaron y quedan como el caso de prueba de la decisión.
 
 ---
 

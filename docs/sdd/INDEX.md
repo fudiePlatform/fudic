@@ -80,7 +80,7 @@ alcance), y el **mismo par de ficheros** que un SDD: `BUG-NN-<slug>.md` +
 | [12](./SDD-12-semantica.md) | Análisis semántico | `Hecho` | 00, 05–11 | 19, 31, 33.a/b/c, 41, 45, 28.c |
 | [13](./SDD-13-source-maps.md) | Source maps y `LineMap` | `Hecho` | 00, 01, 11 | notas |
 | [14](./SDD-14-runtime.md) | Runtime (`@fudic/dom`·`ssr`·`core`) | `Hecho` (recortado) | 00, 01 | 71–73 |
-| [15](./SDD-15-emit.md) | Emit (AST → runtime) | `Listo` · slice SSR servidor: `Hecho` | 00, 05–14, 16 | 22, 26–29, 67–85 |
+| [15](./SDD-15-emit.md) | Emit (AST → runtime) | `Listo` · slice SSR servidor: `Hecho` · su slice de hidratación bloquea [BUG-21](./bugs/BUG-21-nodos-de-whitespace.md) | 00, 05–14, 16 | 22, 26–29, 67–85 |
 | [16](./SDD-16-stream.md) | Stream + transporte 3 hilos (`ssr`·`transport`) | `Hecho` · **transporte superado por [20](./SDD-20-render-sw.md)**; la parte 1 (`@fudic/ssr`) sigue vigente | 00, 01, 14 | — |
 | [17](./SDD-17-hidratacion.md) | Runtime de hidratación (`@fudic/core`) | `Listo` | 14, 15 | — |
 | [18](./SDD-18-estilos-compartidos.md) | Estilos compartidos en DSD (`shadowrootadoptedstylesheets`) | `Hecho` | 15 | 76 |

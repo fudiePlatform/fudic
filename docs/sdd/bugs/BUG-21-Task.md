@@ -5,10 +5,13 @@
 > `emit/markup-client.ts`, `emit/block.ts`, `emit/module.ts`, `emit/client.ts`, `emit/layout.ts`)
 > **Rama:** `fix/bug-21-nodos-de-whitespace`
 > **Progreso:** 0 / 13
-> **Bloqueada** por [BUG-18](./BUG-18-update-denso.md) y
-> [BUG-19](./BUG-19-tres-constructos-sin-servidor.md): las tres tocan los mismos dos ficheros del
-> emit y las tres regeneran los mismos goldens
-> ([§2.7](./BUG-21-nodos-de-whitespace.md)). **No arrancar hasta que las dos estén en `Hecho`.**
+> **Bloqueada** por el slice pendiente de [SDD-15](../SDD-15-emit.md): la hidratación vista correr
+> en un navegador ([§2.8](./BUG-21-nodos-de-whitespace.md)). BUG-18 y BUG-19, las dos aristas
+> anteriores, están en `Hecho`. **Las fases de abajo no se pueden arrancar tal cual: §4.2 y §4.3
+> están reabiertas** —la deducción de la caja solo es cerrada dentro del shadow root, y hay una
+> alternativa sintáctica que no deduce nada—, así que las tareas 1, 2, 6, 9 y sus criterios cambian
+> según cuál se elija. La forma de la tanda —la decisión en `emitItems`, una sola vez, para las dos
+> ramas— es lo único que las dos reglas comparten y lo único que ya está decidido.
 
 La mitad del árbol de un componente típico es el sangrado del autor: cuatro de seis nodos en
 `app-badge`, catorce en `app-card`. La corrección no es borrar nodos: es que descartar uno **exija
