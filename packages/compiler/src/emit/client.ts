@@ -22,29 +22,10 @@ import { CodeWriter } from './writer.js';
 import { ClientMarkupEmitter, coreUsage, nodeIds } from './markup-client.js';
 import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js';
 import { AssetLinker } from './assets.js';
-import { extractCode, type ExtractedCode, type Prop } from './oxc-code.js';
+import { codeOf, type Prop } from './oxc-code.js';
 import { hookupContext } from './events.js';
 import { componentStyleNode, type EmitOptions, type EmitOutput } from './module.js';
 import type { Diagnostic } from '../types/index.js';
-
-/**
- * `@code` of a component, memoized on the resolved component itself.
- *
- * A parent now needs its CHILD's prop order to compose the positional array `u` takes
- * (BUG-12 §3.4), so the same file would otherwise be handed to Oxc once per parent that
- * holds it, plus once for its own chunk. The graph resolves each component to a single
- * object, so a `WeakMap` keyed by it keeps the invariant the compiler is built on: Oxc is
- * invoked exactly once per file.
- */
-const codeCache = new WeakMap<ResolvedComponent, ExtractedCode>();
-
-function codeOf(comp: ResolvedComponent): ExtractedCode {
-  const cached = codeCache.get(comp);
-  if (cached !== undefined) return cached;
-  const code = extractCode(comp.source, comp.doc);
-  codeCache.set(comp, code);
-  return code;
-}
 
 /**
  * The positional destructuring of `$props` (§4.2) — the exact mirror of the `Object.values`

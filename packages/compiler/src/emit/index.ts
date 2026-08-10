@@ -35,4 +35,6 @@ export {
   emitRouteModuleMapped,
 } from './layout.js';
 
+export { hydratableTags, isIntrinsicallyHydratable } from './level.js';
+
 export { spaceModeOf, collapseSpace, nestedSpaceMode, SPACE_ATTR, type SpaceMode } from './space.js';

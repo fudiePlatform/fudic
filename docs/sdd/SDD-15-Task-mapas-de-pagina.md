@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` (emit) · `@fudic/ssr` (`SsrDom`) · `@fudic/vite` (el plugin
 > los escribe) · `@fudic/transport` (coordinación con el manifiesto)
 > **Rama:** `sdd-15-mapas-de-pagina`
-> **Progreso:** 0 / 25
+> **Progreso:** 3 / 26
 > **Va DESPUÉS de:** [eventos y bus](./SDD-15-Task-eventos-y-bus.md) (22/22) y
 > [SDD-31 — Signals derivadas](./SDD-31-signals-derivadas.md) (`Hecho`).
 
@@ -206,7 +206,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
 
 ## Fase 1 — Quién se hidrata (3)
 
-- [ ] **1. El predicado intrínseco.**
+- [x] **1. El predicado intrínseco.**
       Crear `packages/compiler/src/emit/level.ts` con `isIntrinsicallyHydratable(comp)`: cierto
       si `extractCode(...).signals` no está vacío (cubre `signal` **y** `computed`, SDD-31
       §4.7), o si el template lleva algún binding clasificado como `event` o `bus`
@@ -216,7 +216,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       **No abrir un `JsBatch` nuevo**: la regla de oro sigue siendo una invocación de Oxc por
       fichero, así que el predicado consume el `ExtractedCode` que `module.ts` ya tiene.
 
-- [ ] **2. El punto fijo del nivel inducido.**
+- [x] **2. El punto fijo del nivel inducido.**
       En el mismo fichero, `hydratableTags(graph): ReadonlySet<string>`. Semilla: los
       intrínsecos. Iterar hasta estabilizar: para cada componente hidratable, cada host de hijo
       de su template al que le cruce un valor reactivo hace hidratable a ese hijo. «Valor
@@ -230,7 +230,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       **Extraer la regla de «valor reactivo» a `attrs.ts` y llamarla desde los tres sitios**: si
       hay dos copias, un día el padre emite `$sub` y la página no marca al hijo, o al revés.
 
-- [ ] **3. Tests del nivel.**
+- [x] **3. Tests del nivel.**
       `packages/compiler/test/emit/level.test.ts`. Los casos que definen la regla, uno por
       aserción: un componente con solo `signal` → sí; con solo `computed` → sí (**es el caso que
       la regla vieja se dejaba**); con solo `@click` y ninguna signal → sí; `app-badge.fud` tal
@@ -439,7 +439,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       que es el invariante de SDD-17 §5 que esta tanda no debe romper por accidente. Ninguna
       interacción, ninguna hidratación: eso es SDD-17.
 
-## Fase 9 — Documentación y cierre (3)
+## Fase 9 — Documentación y cierre (4)
 
 - [ ] **23. El renombrado `data-id` → `data-fud-id`, en todas partes.**
       [SDD-15](./SDD-15-emit.md) §3.1 y §4.3; [SDD-17](./SDD-17-hidratacion.md) entero (§2, §3,
@@ -463,10 +463,23 @@ verificación y como nota para SDD-17; no se implementa aquí.
       cuatro métricas; `@fudic/ssr` está al 100 % y no baja, así que las dos ramas del punto 4
       (un `state` sin `claim` previo, un `claim` repetido) llevan su test. Nada de
       `/* v8 ignore */` para llegar al número.
-      Anotar el avance en [INDEX.md](./INDEX.md). **Con esta tanda SDD-15 pasa a `Hecho`** salvo
-      por `FUD0290` (validación del prefijo `$`, §4.7), que no es de mapas y que hay que
-      colocar explícitamente: o entra aquí como tarea 26, o sale a su propia tanda con fecha.
-      Decidirlo al abrir la rama, no al cerrarla.
+      Anotar el avance en [INDEX.md](./INDEX.md). **Con esta tanda SDD-15 pasa a `Hecho`**:
+      `FUD0290` (validación del prefijo `$`, §4.7) **entra aquí como tarea 26** — decidido al
+      abrir la rama (2026-08-10, Pedro). La tarea 24 también entra, misma decisión.
+
+- [ ] **26. `FUD0290` — el prefijo `$` reservado, con su diagnóstico.**
+      SDD-15 §4.7: ningún identificador **de usuario** de `@code { @client }` puede empezar por
+      `$`. Aplica a **declaraciones** (`const`/`let`/`var`, parámetros, targets de
+      destructuring, nombres de función y de clase) **y a referencias libres** —usar `$shadow`
+      sin declararlo es tocar una variable interna del framework—. El **acceso a propiedad**
+      ajeno (`obj.$bar`) queda fuera: no introduce ni resuelve un binding en el scope
+      compartido. Prohibido como **prefijo**, no en cualquier posición: `foo$` y `obs$` son
+      válidos.
+      **Sobre el AST de Oxc, nunca sobre texto**, y en el batch que `extractCode` ya abre — un
+      lexer sobre string daría falsos positivos en strings, comentarios y nombres de propiedad.
+      El diagnóstico viaja en `ExtractedCode.diagnostics`, así que sale igual en el compilador
+      batch y en el language server, con su span.
+      Es lo único que le quedaba a SDD-15 fuera de los mapas.
 
 ---
 

@@ -42,7 +42,13 @@ import type { Span } from '../types/index.js';
 import { classifyAttribute } from '../binding/index.js';
 import { CodeWriter, type LinePart } from './writer.js';
 import { type AssetLinker } from './assets.js';
-import { crossingExpr, writeElementAttrs, type HostContext, type ValueSink } from './attrs.js';
+import {
+  crossingExpr,
+  reactiveName,
+  writeElementAttrs,
+  type HostContext,
+  type ValueSink,
+} from './attrs.js';
 import { branchesOf } from './constructs.js';
 import { isControlNode, markerSite } from './marker.js';
 import { nestedSpaceMode, type SpaceMode } from './space.js';
@@ -712,9 +718,8 @@ export class ClientMarkupEmitter {
     for (const attr of el.attributes) {
       const b = classifyAttribute(attr, this.#source).value;
       if (b.type !== 'property') continue;
-      const only = b.value.length === 1 ? b.value[0] : undefined;
-      const naked = only?.type === 'razor-expression' ? this.#slice(only.expr) : undefined;
-      if (naked !== undefined && this.#scope.signals.has(naked)) {
+      const naked = reactiveName(this.#source, b.value, this.#scope.signals);
+      if (naked !== undefined) {
         out.set(b.name, { expr: naked, signal: naked });
       } else {
         const expr =

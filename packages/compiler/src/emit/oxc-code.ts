@@ -10,6 +10,7 @@
  */
 
 import type { ComponentDocument } from '../document/index.js';
+import type { ResolvedComponent } from './resolve.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import { errorDiag, isEmptySpan } from '../types/index.js';
 import { JsBatch, type OxcNode } from '../oxc/index.js';
@@ -203,6 +204,26 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
     emitCalls,
     diagnostics: [...result.diagnostics, ...own],
   };
+}
+
+/**
+ * `extractCode` of one resolved component, memoized ON the component itself.
+ *
+ * The golden rule is one Oxc invocation per FILE, and by now four readers want the same
+ * answers about the same `@code`: the server module, the client chunk, the parent that
+ * composes its child's positional array (`childProps`), and the effective level of the page
+ * (`level.ts`, which asks about every component of the graph). The graph resolves each file
+ * to a single `ResolvedComponent`, so a `WeakMap` keyed by it is what keeps that rule intact
+ * without any reader having to know about the others.
+ */
+const codeCache = new WeakMap<ResolvedComponent, ExtractedCode>();
+
+export function codeOf(comp: ResolvedComponent): ExtractedCode {
+  const cached = codeCache.get(comp);
+  if (cached !== undefined) return cached;
+  const code = extractCode(comp.source, comp.doc);
+  codeCache.set(comp, code);
+  return code;
 }
 
 /**
