@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` (emit) · `@fudic/ssr` (`SsrDom`) · `@fudic/vite` (el plugin
 > los escribe) · `@fudic/transport` (coordinación con el manifiesto)
 > **Rama:** `sdd-15-mapas-de-pagina`
-> **Progreso:** 12 / 26
+> **Progreso:** 15 / 26
 > **Va DESPUÉS de:** [eventos y bus](./SDD-15-Task-eventos-y-bus.md) (22/22) y
 > [SDD-31 — Signals derivadas](./SDD-31-signals-derivadas.md) (`Hecho`).
 
@@ -331,7 +331,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
 
 ## Fase 5 — `fud-bus` (3)
 
-- [ ] **13. Los dos lados de la relación.**
+- [x] **13. Los dos lados de la relación.**
       **Escucha** (`bus:nombre` → tag): del template, ya clasificado, sin Oxc.
       **Emisión** (tag → nombre): `ExtractedCode.emitCalls` registra hoy solo **offsets** —
       dónde inyectar `$host`— y no el nombre. Ampliarlo con el nombre resuelto del primer
@@ -347,7 +347,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       produce diagnóstico** y **sigue emitiendo el listener** (§6.22). No protegemos lo que no
       podemos ver.
 
-- [ ] **14. La composición, y la arista consigo mismo.**
+- [x] **14. La composición, y la arista consigo mismo.**
       En `module.ts`, `const FUD_BUS = {...}` en el módulo de página: para cada nombre, todo tag
       que lo emite depende de todo tag que lo escucha. Es tag→tags; el nombre del evento **no
       aparece** en la salida (§3.5).
@@ -357,7 +357,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       antes A. La arista se descarta al componer, aquí, y no en el runtime: es un hecho de
       compilación y el runtime no debe tener que defenderse de él.
 
-- [ ] **15. Test (§6.21).**
+- [x] **15. Test (§6.21).**
       `product-list` con `emit('carrito', p)` y `shopping-cart` con `bus:carrito` producen
       `{"product-list":["shopping-cart"]}`. Con `app-actions` en la página, ninguna arista
       reflexiva. Con el nombre por expresión, ninguna entrada y ningún diagnóstico.

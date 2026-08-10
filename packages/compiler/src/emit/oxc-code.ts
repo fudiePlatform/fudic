@@ -56,6 +56,17 @@ export interface EmitCall {
   readonly hostAt: number;
   /** Whether the call already carries arguments, and so needs a comma after `$host`. */
   readonly hasArgs: boolean;
+  /**
+   * The event name, when the first argument RESOLVES statically (§4.4, decision 28.c) —
+   * and in v1 that means a string literal and nothing else. It is what puts this tag in
+   * `fud-bus`; the splice above happens either way.
+   *
+   * Absent is not an error and produces no diagnostic: the binding still works as a plain
+   * DOM listener, it just does not take part in directed hydration. We do not protect what
+   * we cannot see. A `const` local and an imported `as const` are the widening decision 28.c
+   * also admits; the second needs the module graph, which one file's model does not have.
+   */
+  readonly name?: string;
 }
 
 /**
@@ -291,12 +302,17 @@ function collectEmitCalls(node: unknown, binding: string, map: MapOffset, out: E
   const callee = is(current, 'CallExpression') ? field(current, 'callee') : undefined;
   if (is(callee, 'Identifier') && name(callee!) === binding) {
     const first = fieldArray(current, 'arguments')[0];
+    // A string literal is the whole of v1's resolution. Anything else — an identifier, a
+    // template literal, a member expression — leaves the name absent, which is the
+    // permissive posture and not a hole to fill by default.
+    const literal = is(first, 'Literal') ? first['value'] : undefined;
     out.push({
       calleeEnd: map(callee!.end),
       // With no arguments there is nothing to insert BEFORE, so `$host` goes where the
       // call closes: a `CallExpression` always ends at its `)`.
       hostAt: first === undefined ? map(current.end - 1) : map(first.start),
       hasArgs: first !== undefined,
+      ...(typeof literal === 'string' ? { name: literal } : {}),
     });
   }
   for (const value of Object.values(current)) collectEmitCalls(value, binding, map, out);

@@ -18,6 +18,8 @@
 
 import type { ComponentGraph, ResolvedComponent } from './resolve.js';
 import type { CodeWriter } from './writer.js';
+import { classifyAttribute } from '../binding/index.js';
+import { codeOf } from './oxc-code.js';
 import { templateOf, walkElements } from './level.js';
 
 /** `Record<parent tag, direct hydratable child tags>` — an empty record for a flat page. */
@@ -65,6 +67,68 @@ function childTags(
 }
 
 /**
+ * The directed-hydration map: for each EMITTER tag, the tags that must be alive before it
+ * (SDD-15 §3.5).
+ *
+ * Two relations from two sources. **Listening** (`bus:name` → tag) comes off the template,
+ * already classified, with no Oxc involved. **Emission** (tag → name) comes off the
+ * `emit(...)` calls of `@code { @client }`, and only when the name resolves to a string
+ * literal — an unresolvable one is not an error, produces no diagnostic and still emits its
+ * listener (§6.22).
+ *
+ * **The event name does not appear in the output.** It was resolved at compile time into a
+ * tag→tags relation, so the runtime never reasons about names: it consumes «to bring A up,
+ * bring B up first».
+ *
+ * **A tag does not list itself.** `app-actions` is exactly that case — it emits `cleared`
+ * and carries `bus:cleared` in its own template — and an entry
+ * `{"app-actions":["app-actions"]}` would tell the runtime that raising A requires raising A
+ * first. The edge is dropped HERE, when composing, and not in the runtime: it is a fact of
+ * compilation, and the runtime should not have to defend itself from it.
+ *
+ * Every participant is hydratable by construction and there is no filter for it: a `bus:`
+ * binding is hookup, and an `emit(...)` lives in a `@client` body — either one makes the
+ * component intrinsically hydratable (`level.ts`).
+ */
+export function fudBus(graph: ComponentGraph): TagMap {
+  /** name → the tags that listen to it, in graph order. */
+  const listeners = new Map<string, string[]>();
+  /** tag → the names it emits, in source order. */
+  const emitted = new Map<string, string[]>();
+
+  for (const comp of graph.components.values()) {
+    walkElements(templateOf(comp), (el) => {
+      for (const attr of el.attributes) {
+        const b = classifyAttribute(attr, comp.source).value;
+        // `bus:(EXPR)` (decision 28.b) carries an expression, not a name: it subscribes at
+        // runtime and takes no part here.
+        if (b.type !== 'bus' || typeof b.eventName !== 'string') continue;
+        const tags = listeners.get(b.eventName) ?? [];
+        if (!tags.includes(comp.tag)) tags.push(comp.tag);
+        listeners.set(b.eventName, tags);
+      }
+    });
+    const names: string[] = [];
+    for (const call of codeOf(comp).emitCalls) {
+      if (call.name !== undefined && !names.includes(call.name)) names.push(call.name);
+    }
+    if (names.length > 0) emitted.set(comp.tag, names);
+  }
+
+  const out: Record<string, string[]> = {};
+  for (const [tag, names] of emitted) {
+    const deps: string[] = [];
+    for (const name of names) {
+      for (const listener of listeners.get(name) ?? []) {
+        if (listener !== tag && !deps.includes(listener)) deps.push(listener);
+      }
+    }
+    if (deps.length > 0) out[tag] = deps;
+  }
+  return out;
+}
+
+/**
  * The compile-time map constants of a page module — the ones a page and a route both need,
  * written by the one function so the two shapes cannot drift.
  *
@@ -79,4 +143,6 @@ export function writeMapConstants(
 ): void {
   const tree = fudTree(graph, hydratable);
   if (Object.keys(tree).length > 0) w.line(`const FUD_TREE = ${JSON.stringify(tree)};`);
+  const bus = fudBus(graph);
+  if (Object.keys(bus).length > 0) w.line(`const FUD_BUS = ${JSON.stringify(bus)};`);
 }
