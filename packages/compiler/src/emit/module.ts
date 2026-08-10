@@ -30,6 +30,7 @@ import { AssetLinker, type AssetExists } from './assets.js';
 import { compactStyleCss } from './css-compact.js';
 import { codeOf } from './oxc-code.js';
 import { hydratableTags } from './level.js';
+import { writeMapConstants } from './maps.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import {
   type ComponentSpecifier,
@@ -226,13 +227,14 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
   const comps = [...graph.components.values()];
 
   // Body codegen.
+  const hydratable = hydratableTags(graph);
   const bodyW = new CodeWriter();
   const em = new MarkupEmitter({
     source,
     w: bodyW,
     isComponent: (t) => graph.components.has(t),
     linker,
-    hydratable: hydratableTags(graph),
+    hydratable,
   });
   em.emitChildren(page.body.children, '$body');
 
@@ -257,6 +259,7 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
   w.line(`const COMPONENTS = [${comps.map((c) => `{ tag: ${renderName(c.tag)}Tag, css: ${renderName(c.tag)}Css }`).join(', ')}];`);
   // The MINIFIED form: it is inline in every page's head, once per page (BUG-07 §4.3).
   w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL_MIN)};`);
+  writeMapConstants(w, graph, hydratable);
   w.line('');
   // Streaming a trozos (SDD-19 §4.3): a generator that yields the <head> FIRST, then the
   // body by pieces via `serialize` (serializeChunks), then the close. `io.serialize` is a

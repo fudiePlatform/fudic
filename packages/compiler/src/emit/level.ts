@@ -65,8 +65,11 @@ export function walkElements(nodes: readonly HtmlContent[], visit: (el: ElementN
   }
 }
 
-/** The template of a component — the shadow tree it declares, never a light-DOM child. */
-const templateOf = (comp: ResolvedComponent): readonly HtmlContent[] =>
+/**
+ * The template of a component — the shadow tree it declares, never a light-DOM child. A
+ * degraded document has none (FUD0157), and an empty list is the honest reading of that.
+ */
+export const templateOf = (comp: ResolvedComponent): readonly HtmlContent[] =>
   comp.doc.template?.children ?? [];
 
 /** Whether any binding of this template is hookup: an `@evento` or a `bus:`. */

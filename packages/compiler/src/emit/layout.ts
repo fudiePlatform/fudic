@@ -28,6 +28,7 @@ import { MarkupEmitter, renderName, tpl } from './markup.js';
 import { AssetLinker } from './assets.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import { hydratableTags } from './level.js';
+import { writeMapConstants } from './maps.js';
 import type { DocumentGraph, ResolvedLayout } from './resolve.js';
 import type { EmitOptions, EmitOutput } from './module.js';
 import {
@@ -269,6 +270,11 @@ function buildRouteModule(
   w.line(`const COMPONENTS = [${componentPairs(graph).join(', ')}];`);
   // The MINIFIED form: it is inline in every page's head, once per page (BUG-07 §4.3).
   w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL_MIN)};`);
+  // The maps belong to the ROUTE and not to the layout, and that is not a placement choice:
+  // `resolveDocument(route)` reaches the components of the whole chain — the layout's own
+  // included — while a layout module is emitted from its own graph and cannot see the
+  // route's. One map computed here would be missing half the page.
+  writeMapConstants(w, graph, hydratable);
   w.line('');
   // Same public shape as a standalone page: the composition is invisible downstream.
   w.line('export function* page(data, io) {');

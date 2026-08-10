@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` (emit) · `@fudic/ssr` (`SsrDom`) · `@fudic/vite` (el plugin
 > los escribe) · `@fudic/transport` (coordinación con el manifiesto)
 > **Rama:** `sdd-15-mapas-de-pagina`
-> **Progreso:** 10 / 26
+> **Progreso:** 12 / 26
 > **Va DESPUÉS de:** [eventos y bus](./SDD-15-Task-eventos-y-bus.md) (22/22) y
 > [SDD-31 — Signals derivadas](./SDD-31-signals-derivadas.md) (`Hecho`).
 
@@ -307,7 +307,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
 
 ## Fase 4 — `fud-tree` (2)
 
-- [ ] **11. El mapa, y qué cuenta como hijo.**
+- [x] **11. El mapa, y qué cuenta como hijo.**
       En `module.ts`: `const FUD_TREE = {...}` como constante del módulo de página, calculada en
       **compilación** sobre el grafo alcanzable — es tag→[tags] y no depende de los datos, así
       que no tiene nada que hacer en el render. Clave: tag padre hidratable. Valor: los tags
@@ -321,7 +321,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       pasa ninguna.
       Un tag sin hijos hidratables **no tiene entrada** (§3.4).
 
-- [ ] **12. Tests (§6.25, §6.26).**
+- [x] **12. Tests (§6.25, §6.26).**
       Una cadena `app-parent → app-child → app-grandchild` emite
       `{"app-parent":["app-child"],"app-child":["app-grandchild"]}`, y duplicar a 200 instancias
       del hijo **no cambia el mapa** — es la propiedad que hace que su peso sea irrelevante.
