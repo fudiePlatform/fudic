@@ -7,6 +7,7 @@ import { readFileSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
+import { SsrDom, serializeChunks, escapeText } from '@fudic/ssr';
 import { emitComponentModule, emitPageModule, type ComponentGraph } from '../../src/emit/index.js';
 import {
   parseDocument,
@@ -169,27 +170,18 @@ export function minimalSsr(): {
         (n as TreeNode).shadow = sr;
         return sr;
       },
+      // No guards here, and that is the difference between a fake and the adapter: a page
+      // render claims each host exactly once and only ever calls `state` for a host that
+      // was claimed. The defensive branches — a second claim, a shadow with no id — are
+      // real cases of `SsrDom` and are tested there.
       claim: (n: unknown): void => {
         const host = n as TreeNode;
-        if (ids.has(host)) return;
         ids.set(host, slices.length);
         host.attrs!.set('data-fud-id', String(slices.length));
         slices.push([]);
       },
       state: (sr: unknown, values: unknown): void => {
-        const host = (sr as TreeNode).host;
-        const id = host === undefined ? undefined : ids.get(host);
-        if (id === undefined) return;
-        slices[id] = [...(values as readonly unknown[])];
-      },
-      hydrationState: (): { offsets: number[]; data: unknown[] } => {
-        const offsets = [0];
-        const data: unknown[] = [];
-        for (const slice of slices) {
-          data.push(...slice);
-          offsets.push(data.length);
-        }
-        return { offsets, data };
+        slices[ids.get((sr as TreeNode).host!)!] = [...(values as readonly unknown[])];
       },
     };
   };
@@ -210,18 +202,45 @@ export function minimalSsr(): {
  * the rendered HTML and not the emitted source: the codegen tests, and BUG-07, whose
  * whole subject is the bytes of the document.
  */
-export async function renderPageHtml(graph: ComponentGraph, data: unknown): Promise<string> {
+export type PageFn = (data: unknown, io: unknown) => Iterable<string>;
+
+/** Emit every module of a graph to a temp dir and import the page's `page(data, io)`. */
+export async function pageModuleOf(graph: ComponentGraph): Promise<PageFn> {
   const dir = mkdtempSync(join(tmpdir(), 'fudic-emit-'));
   mkdirSync(dir, { recursive: true });
   for (const comp of graph.components.values()) {
     writeFileSync(join(dir, `${comp.tag}.mjs`), emitComponentModule(graph, comp), 'utf8');
   }
   writeFileSync(join(dir, 'home.mjs'), emitPageModule(graph), 'utf8');
-  const mod = (await import(pathToFileURL(join(dir, 'home.mjs')).href)) as {
-    page: (data: unknown, io: unknown) => Iterable<string>;
-  };
+  const mod = (await import(pathToFileURL(join(dir, 'home.mjs')).href)) as { page: PageFn };
+  return mod.page;
+}
+
+export async function renderPageHtml(graph: ComponentGraph, data: unknown): Promise<string> {
+  const page = await pageModuleOf(graph);
   // `page` streams a trozos: join the pieces into the full document (SDD-19 §4.3).
-  return [...mod.page(data, minimalSsr())].join('');
+  return [...page(data, minimalSsr())].join('');
+}
+
+/**
+ * The REAL `@fudic/ssr` as `io`, with the adapter kept so a test can read the payload the
+ * render collected. `minimalSsr` cannot answer that question honestly: `script` is rawtext
+ * for the real serializer and escaped text for the fake one, and the JSON blocks live or
+ * die on exactly that difference.
+ */
+export function ssrIo(): { io: unknown; dom: () => SsrDom } {
+  let built: SsrDom | undefined;
+  return {
+    io: {
+      createDom: (): SsrDom => {
+        built = new SsrDom();
+        return built;
+      },
+      serialize: serializeChunks,
+      escapeText,
+    },
+    dom: () => built!,
+  };
 }
 
 /**

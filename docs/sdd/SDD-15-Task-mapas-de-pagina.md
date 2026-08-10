@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` (emit) · `@fudic/ssr` (`SsrDom`) · `@fudic/vite` (el plugin
 > los escribe) · `@fudic/transport` (coordinación con el manifiesto)
 > **Rama:** `sdd-15-mapas-de-pagina`
-> **Progreso:** 7 / 26
+> **Progreso:** 10 / 26
 > **Va DESPUÉS de:** [eventos y bus](./SDD-15-Task-eventos-y-bus.md) (22/22) y
 > [SDD-31 — Signals derivadas](./SDD-31-signals-derivadas.md) (`Hecho`).
 
@@ -285,21 +285,21 @@ verificación y como nota para SDD-17; no se implementa aquí.
 
 ## Fase 3 — `fud-state` (3)
 
-- [ ] **8. El bloque, con su forma exacta.**
+- [x] **8. El bloque, con su forma exacta.**
       `[[offsets],[data]]`, `offsets` de longitud `n+1` con `offsets[0] === 0` y
       `offsets[n] === data.length` (§3.3, criterios §6.1 y §6.2). El id **es** el índice: sin
       tabla intermedia, sin claves, sin índice por tag.
       Un valor anidado viaja con su forma tal cual (vía B, §4.1): `JSON.stringify` ya lo hace y
       no hace falta serializador recursivo.
 
-- [ ] **9. Estado completo, no proyección.**
+- [x] **9. Estado completo, no proyección.**
       Test dedicado, porque es el invariante que un `@if` rompe sin avisar: un componente cuyo
       template pinta `name` o `phone` según una condición emite **las dos** props en su tramo.
       Sale gratis con la tarea 6 —el tramo se lee de los locales destructurados, no de lo que se
       pintó— y por eso hay que escribir el test: es una propiedad que se conserva por
       construcción y que un refactor puede perder en silencio.
 
-- [ ] **10. Determinismo (§6.6).**
+- [x] **10. Determinismo (§6.6).**
       Renderizar la misma página dos veces con los mismos datos produce el mismo `data-fud-id`,
       los mismos offsets y el mismo `data`, byte a byte. Y alterar el árbol de composición y
       regenerar produce ids y mapas **mutuamente consistentes**, sin paso de reconciliación —
