@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` (emit) · `@fudic/ssr` (`SsrDom`) · `@fudic/vite` (el plugin
 > los escribe) · `@fudic/transport` (coordinación con el manifiesto)
 > **Rama:** `sdd-15-mapas-de-pagina`
-> **Progreso:** 3 / 26
+> **Progreso:** 7 / 26
 > **Va DESPUÉS de:** [eventos y bus](./SDD-15-Task-eventos-y-bus.md) (22/22) y
 > [SDD-31 — Signals derivadas](./SDD-31-signals-derivadas.md) (`Hecho`).
 
@@ -240,7 +240,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
 
 ## Fase 2 — `data-fud-id` y el recolector de instancias (4)
 
-- [ ] **4. El recolector en `SsrDom`.**
+- [x] **4. El recolector en `SsrDom`.**
       Modificar `packages/ssr/src/ssr-dom.ts`: `claim(host): void` y
       `state(shadow, values): void` con la semántica del punto 4 —`claim` asigna el siguiente
       entero base-0, escribe `data-fud-id` y **reserva** el tramo; `state` rellena el tramo del
@@ -255,7 +255,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       el `data-fud-id` del DOM y no lo escribe nunca. Un método en el contrato compartido sería
       una firma que `browserDom` tendría que implementar para no llamarla jamás.
 
-- [ ] **5. El padre reclama el host.**
+- [x] **5. El padre reclama el host.**
       Modificar `packages/compiler/src/emit/markup.ts`, rama de host de componente de
       `#element`: cuando `hydratable(el.name)`, emitir `$dom.claim(${v});` **entre** el
       `$dom.element(...)` y el `attachShadow`. El pre-orden que §3.1 pide sale solo: el emisor
@@ -263,7 +263,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       `MarkupEmitter` recibe el conjunto por constructor, junto al `isComponent` que ya toma —
       no lo calcula, que es de `module.ts`.
 
-- [ ] **6. El hijo aporta su tramo.**
+- [x] **6. El hijo aporta su tramo.**
       Modificar `packages/compiler/src/emit/module.ts`, `buildComponentModule`: cuando el
       componente es hidratable, emitir `$dom.state($shadow, [<props en orden de declaración>]);`
       **justo después** de la línea de destructuring de `props` y **antes** de las declaraciones
@@ -274,7 +274,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       Documentar ahí, en dos líneas, por qué no es `Object.values(props)`: el orden es del hijo
       y los defaults ya están aplicados (punto 3).
 
-- [ ] **7. Goldens de servidor y equivalencia.**
+- [x] **7. Goldens de servidor y equivalencia.**
       Regenerar `test/emit/__golden__/*.mjs`. Se mueven **exactamente** en dos formas: el
       `$dom.claim(...)` de cada host hidratable y el `$dom.state($shadow, [...])` de cada
       componente hidratable. Una tercera clase de cambio es la señal de que algo se coló.

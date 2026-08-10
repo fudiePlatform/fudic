@@ -28,7 +28,8 @@ import { CodeWriter, type EmitMapping } from './writer.js';
 import { MarkupEmitter, renderName, tpl } from './markup.js';
 import { AssetLinker, type AssetExists } from './assets.js';
 import { compactStyleCss } from './css-compact.js';
-import { extractCode } from './oxc-code.js';
+import { codeOf } from './oxc-code.js';
+import { hydratableTags } from './level.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import {
   type ComponentSpecifier,
@@ -133,18 +134,19 @@ function buildComponentModule(
 ): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const ext = options.importExt ?? '.mjs';
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
-  const { props, signals, diagnostics } = extractCode(comp.source, comp.doc);
+  const { props, signals, diagnostics } = codeOf(comp);
+  const hydratable = hydratableTags(graph);
   const bodyW = new CodeWriter();
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
-  const em = new MarkupEmitter(
-    comp.source,
-    bodyW,
-    (t) => graph.components.has(t),
+  const em = new MarkupEmitter({
+    source: comp.source,
+    w: bodyW,
+    isComponent: (t) => graph.components.has(t),
     linker,
-    undefined,
     space,
-    new Set(signals.map((s) => s.name)),
-  );
+    signals: new Set(signals.map((s) => s.name)),
+    hydratable,
+  });
   em.emitChildren(comp.doc.template!.children, '$shadow');
   // css uses the linker too (may register more imports), so build it before the imports.
   const css = linker.cssTemplate(componentCss(comp.source, comp.doc));
@@ -162,6 +164,18 @@ function buildComponentModule(
   if (props.length > 0) {
     const pattern = props.map((p) => (p.def !== undefined ? `${p.name} = ${p.def}` : p.name)).join(', ');
     w.line(`const { ${pattern} } = props ?? {};`);
+  }
+  if (hydratable.has(comp.tag)) {
+    // The slice of this instance, contributed by the CHILD and not by the parent's host —
+    // and it is NOT `Object.values(props)`. Two reasons, and both are visible right here.
+    // The ORDER is the child's: these locals are what the client factory destructures, in
+    // the order this component declared its props, which is the order `markup-client.ts`
+    // already composes the array of `u` in. And the DEFAULTS are already applied by the
+    // line above: JSON has no holes, so a prop the parent omitted would travel as `null`,
+    // and `null` does not trigger a destructuring default (`variant` would land as `null`
+    // instead of `'default'`). A component with no props emits `[]` — an empty slice is
+    // information, not absence.
+    w.line(`$dom.state($shadow, [${props.map((p) => p.name).join(', ')}]);`);
   }
   for (const s of signals) {
     // Inert reactive: SSR contributes the state as it starts and nothing else. A FUNCTION,
@@ -213,7 +227,13 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
 
   // Body codegen.
   const bodyW = new CodeWriter();
-  const em = new MarkupEmitter(source, bodyW, (t) => graph.components.has(t), linker);
+  const em = new MarkupEmitter({
+    source,
+    w: bodyW,
+    isComponent: (t) => graph.components.has(t),
+    linker,
+    hydratable: hydratableTags(graph),
+  });
   em.emitChildren(page.body.children, '$body');
 
   // Head codegen (page's own head elements + hoisted style modules at runtime). `<title>`

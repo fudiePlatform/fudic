@@ -12,7 +12,7 @@
 export const VERSION = '0.0.1';
 
 export { type SsrNode } from './tree.js';
-export { SsrDom } from './ssr-dom.js';
+export { SsrDom, ID_ATTR, type HydrationState } from './ssr-dom.js';
 export {
   renderToString,
   serializeChunks,

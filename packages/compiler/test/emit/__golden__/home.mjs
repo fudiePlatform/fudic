@@ -41,6 +41,7 @@ export function* page(data, io) {
     for (const item of data.items) {
       const $n11 = $dom.text(" "); $dom.append($n9, $n11);
       const $n12 = $dom.element("app-card");
+      $dom.claim($n12);
       $dom.setAttr($n12, 'data-adopt', "app-card");
       { const $v = (item.title); if ($v === true) $dom.setAttr($n12, "title", ''); else if ($v !== false && $v != null) $dom.setAttr($n12, "title", String($v)); }
       { const $v = (item.featured ? 'highlight' : 'default'); if ($v === true) $dom.setAttr($n12, "variant", ''); else if ($v !== false && $v != null) $dom.setAttr($n12, "variant", String($v)); }

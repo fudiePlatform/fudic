@@ -241,8 +241,10 @@ describe('emitPageModule — executed end to end', () => {
   it('renders component hosts as DSD with data-adopt, its props and projected light DOM', () => {
     // The props are ON the host since BUG-16: level 1 is HTML with no JS, so a `.prop`
     // that lived only in the props literal would not have reached the document at all.
+    // `data-fud-id` comes first and only on the hydratable host: `app-card` has a
+    // `@code { @client }`, `app-badge` has nothing of its own and receives no reactive prop.
     expect(html).toContain(
-      '<app-card data-adopt="app-card" title="Primero" variant="highlight">' +
+      '<app-card data-fud-id="0" data-adopt="app-card" title="Primero" variant="highlight">' +
         '<template shadowrootmode="open">',
     );
     expect(html).toContain('<app-badge data-adopt="app-badge" tone="success">');

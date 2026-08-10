@@ -97,45 +97,65 @@ const SERVER_ROLE: Record<HtmlContent['type'], ServerRole> = {
   'unhandled-construct': 'none',
 };
 
+/**
+ * What a markup walk needs to know beyond the tree it walks. An options object and not
+ * seven positional arguments, mirroring `ClientMarkupEmitter`: the last three are optional
+ * and independent, and a call site that only wants the last one should not have to spell
+ * the other two.
+ */
+export interface MarkupOptions {
+  readonly source: string;
+  readonly w: CodeWriter;
+  /** Whether a tag is a component of the graph — what decides host vs plain element. */
+  readonly isComponent: (tag: string) => boolean;
+  readonly linker: AssetLinker;
+  /**
+   * The name of the layout's slots object (SDD-21 §4.5). When given, the layout directives
+   * resolve to calls on it — `@RenderBody()` becomes `route.body($dom, parent)`. When
+   * absent (a page, a component), a directive emits nothing: it was already reported as out
+   * of place by SDD-10, and the emit must not invent markup for it.
+   */
+  readonly slots?: string;
+  /**
+   * The mode AROUND the nodes this emitter walks: a component's own `<style>` can put its
+   * whole template in a preserving context, and a page body starts in the default one.
+   * Everything below it is derived per element by `nestedSpaceMode`.
+   */
+  readonly space?: SpaceMode;
+  /** The names this component declares with `signal(...)`: decision 84, see `crossingExpr`. */
+  readonly signals?: ReadonlySet<string>;
+  /**
+   * The tags of the graph that hydrate (`level.ts`). A host of one of them is CLAIMED: it
+   * takes the next `data-fud-id` of the page. Required, and with no default on purpose:
+   * the emitter does not compute the set — that is a fact about the whole graph, and it
+   * belongs to whoever holds the graph — and a defaulted empty set would let a caller
+   * forget it and silently emit a page nothing can hydrate.
+   */
+  readonly hydratable: ReadonlySet<string>;
+}
+
 export class MarkupEmitter {
   readonly #source: string;
   readonly #w: CodeWriter;
   readonly #isComponent: (tag: string) => boolean;
   readonly #linker: AssetLinker;
   readonly #slots: string | undefined;
-  /** The names this component declares with `signal(...)`: decision 84, see `crossingExpr`. */
   readonly #signals: ReadonlySet<string>;
+  readonly #hydratable: ReadonlySet<string>;
   readonly #used = new Set<string>();
   #id = 0;
   /** The whitespace mode of the node being emitted; `white-space` inherits (BUG-07 §4.4). */
   #space: SpaceMode;
 
-  /**
-   * `slots` is the name of the layout's slots object (SDD-21 §4.5). When given, the layout
-   * directives resolve to calls on it — `@RenderBody()` becomes `route.body($dom, parent)`.
-   * When absent (a page, a component), a directive emits nothing: it was already reported
-   * as out of place by SDD-10, and the emit must not invent markup for it.
-   *
-   * `space` is the mode AROUND the nodes this emitter walks: a component's own `<style>`
-   * can put its whole template in a preserving context, and a page body starts in the
-   * default one. Everything below it is derived per element by `nestedSpaceMode`.
-   */
-  constructor(
-    source: string,
-    w: CodeWriter,
-    isComponent: (tag: string) => boolean,
-    linker: AssetLinker,
-    slots?: string,
-    space: SpaceMode = 'collapse',
-    signals: ReadonlySet<string> = new Set(),
-  ) {
-    this.#source = source;
-    this.#w = w;
-    this.#isComponent = isComponent;
-    this.#linker = linker;
-    this.#slots = slots;
-    this.#space = space;
-    this.#signals = signals;
+  constructor(options: MarkupOptions) {
+    this.#source = options.source;
+    this.#w = options.w;
+    this.#isComponent = options.isComponent;
+    this.#linker = options.linker;
+    this.#slots = options.slots;
+    this.#space = options.space ?? 'collapse';
+    this.#signals = options.signals ?? new Set();
+    this.#hydratable = options.hydratable;
   }
 
   /** The child component tags rendered so far, in first-use order (for ES imports). */
@@ -228,6 +248,10 @@ export class MarkupEmitter {
       this.#used.add(el.name);
       const s = this.#fresh();
       this.#w.line(`const ${v} = $dom.element(${JSON.stringify(el.name)});`);
+      // Identity first, and the pre-order of §3.2 falls out of the walk: the host is
+      // fabricated before this emitter descends into its shadow and before its light DOM,
+      // so the counter in the adapter hands out `0,1,2,…` in exactly that order.
+      if (this.#hydratable.has(el.name)) this.#w.line(`$dom.claim(${v});`);
       // The <template>'s shadowrootadoptedstylesheets is consumed by the parser and gone
       // from the DOM; project the specifier onto the host as data-adopt so the style
       // polyfill can read it (SDD-18 D-6). The native attribute still rides the template.

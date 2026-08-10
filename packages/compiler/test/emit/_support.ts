@@ -108,6 +108,8 @@ export function recordingDom(): { dom: Record<string, (...a: unknown[]) => unkno
     before: rec('before'),
     remove: rec('remove'),
     attachShadow: rec('attachShadow'),
+    claim: rec('claim'),
+    state: rec('state'),
   };
   return { dom, calls };
 }
@@ -123,6 +125,8 @@ interface TreeNode {
   attrs?: Map<string, string>;
   children: TreeNode[];
   shadow?: TreeNode;
+  /** The host of a shadow root — the link `claim`/`state` travel over (SDD-15 §3.3). */
+  host?: TreeNode;
   text?: string;
 }
 
@@ -146,21 +150,49 @@ export function minimalSsr(): {
   serialize: (root: unknown) => Iterable<string>;
   escapeText: (s: string) => string;
 } {
-  const createDom = () => ({
-    element: (tag: unknown): TreeNode => ({ tag: String(tag), attrs: new Map(), children: [] }),
-    text: (s: unknown): TreeNode => ({ text: String(s), children: [] }),
-    setAttr: (n: unknown, k: unknown, v: unknown): void => {
-      (n as TreeNode).attrs!.set(String(k), String(v));
-    },
-    append: (p: unknown, c: unknown): void => {
-      (p as TreeNode).children.push(c as TreeNode);
-    },
-    attachShadow: (n: unknown): TreeNode => {
-      const sr: TreeNode = { children: [] };
-      (n as TreeNode).shadow = sr;
-      return sr;
-    },
-  });
+  const createDom = () => {
+    // The instance collector, in the same shape `SsrDom` implements it: one counter for the
+    // id and the slice, so the two cannot come apart (SDD-15 §3.3).
+    const ids = new Map<TreeNode, number>();
+    const slices: (readonly unknown[])[] = [];
+    return {
+      element: (tag: unknown): TreeNode => ({ tag: String(tag), attrs: new Map(), children: [] }),
+      text: (s: unknown): TreeNode => ({ text: String(s), children: [] }),
+      setAttr: (n: unknown, k: unknown, v: unknown): void => {
+        (n as TreeNode).attrs!.set(String(k), String(v));
+      },
+      append: (p: unknown, c: unknown): void => {
+        (p as TreeNode).children.push(c as TreeNode);
+      },
+      attachShadow: (n: unknown): TreeNode => {
+        const sr: TreeNode = { children: [], host: n as TreeNode };
+        (n as TreeNode).shadow = sr;
+        return sr;
+      },
+      claim: (n: unknown): void => {
+        const host = n as TreeNode;
+        if (ids.has(host)) return;
+        ids.set(host, slices.length);
+        host.attrs!.set('data-fud-id', String(slices.length));
+        slices.push([]);
+      },
+      state: (sr: unknown, values: unknown): void => {
+        const host = (sr as TreeNode).host;
+        const id = host === undefined ? undefined : ids.get(host);
+        if (id === undefined) return;
+        slices[id] = [...(values as readonly unknown[])];
+      },
+      hydrationState: (): { offsets: number[]; data: unknown[] } => {
+        const offsets = [0];
+        const data: unknown[] = [];
+        for (const slice of slices) {
+          data.push(...slice);
+          offsets.push(data.length);
+        }
+        return { offsets, data };
+      },
+    };
+  };
   return {
     createDom: createDom as unknown as () => Record<string, (...a: unknown[]) => unknown>,
     // A generator-shaped serialize (one chunk) — `page` yields* it, streaming a trozos.

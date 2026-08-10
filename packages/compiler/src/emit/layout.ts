@@ -27,6 +27,7 @@ import { CodeWriter } from './writer.js';
 import { MarkupEmitter, renderName, tpl } from './markup.js';
 import { AssetLinker } from './assets.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
+import { hydratableTags } from './level.js';
 import type { DocumentGraph, ResolvedLayout } from './resolve.js';
 import type { EmitOptions, EmitOutput } from './module.js';
 import {
@@ -88,7 +89,14 @@ function buildLayoutModule(
   // Body codegen: the layout's own markup, with `route.body(…)` spliced in where the
   // author wrote `@RenderBody()` (the MarkupEmitter resolves the directive nodes).
   const bodyW = new CodeWriter();
-  const em = new MarkupEmitter(source, bodyW, (t) => graph.components.has(t), linker, SLOTS);
+  const em = new MarkupEmitter({
+    source,
+    w: bodyW,
+    isComponent: (t) => graph.components.has(t),
+    linker,
+    slots: SLOTS,
+    hydratable: hydratableTags(graph),
+  });
   const bodyParent = nested ? PARENT : '$body';
   em.emitChildren(doc.body.children, bodyParent);
 
@@ -212,15 +220,24 @@ function buildRouteModule(
   const source = graph.entrySource;
   const comps = [...graph.components.values()];
 
+  const hydratable = hydratableTags(graph);
+  const isComponent = (t: string): boolean => graph.components.has(t);
   const bodyW = new CodeWriter();
-  const em = new MarkupEmitter(source, bodyW, (t) => graph.components.has(t), linker, SLOTS);
+  const em = new MarkupEmitter({ source, w: bodyW, isComponent, linker, slots: SLOTS, hydratable });
   em.emitChildren(route.markup, PARENT);
 
   // One `if` arm per declared section; an unknown name renders nothing (decision 85). Its
   // own emitter, because a section builds into the layout's `@RenderSection` point — NOT
   // into the body: sharing the body's emitter would append the section inside the markup.
   const sectionW = new CodeWriter();
-  const sectionEm = new MarkupEmitter(source, sectionW, (t) => graph.components.has(t), linker, SLOTS);
+  const sectionEm = new MarkupEmitter({
+    source,
+    w: sectionW,
+    isComponent,
+    linker,
+    slots: SLOTS,
+    hydratable,
+  });
   for (const section of route.sections as readonly SectionNode[]) {
     if (section.name === '') continue;
     sectionW.line(`if (name === ${JSON.stringify(section.name)}) {`);
