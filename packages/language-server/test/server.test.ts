@@ -114,10 +114,9 @@ describe('initialize', () => {
       '+',
       ')',
     ]);
-    expect(result?.capabilities.diagnosticProvider).toEqual({
-      interFileDependencies: true,
-      workspaceDiagnostics: false,
-    });
+    // Not announced: Volar put this server in the push model, and saying "ask me too" is what
+    // made every diagnostic arrive twice (BUG-22 §2).
+    expect(result?.capabilities.diagnosticProvider).toBeUndefined();
     // Volar's own answer is kept where §3.2 says nothing.
     expect(result?.capabilities.workspace?.workspaceFolders?.supported).toBe(true);
   });

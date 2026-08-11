@@ -48,10 +48,8 @@ describe('§6.1 — start-up', () => {
     expect(capabilities.documentRangeFormattingProvider).toBe(true);
     expect(capabilities.documentLinkProvider).toEqual({ resolveProvider: false });
     expect(capabilities.codeActionProvider).toBe(true);
-    expect(capabilities.diagnosticProvider).toEqual({
-      interFileDependencies: true,
-      workspaceDiagnostics: false,
-    });
+    // One diagnostic channel, and it is the push one Volar chose (BUG-22 §2).
+    expect(capabilities.diagnosticProvider).toBeUndefined();
     expect(capabilities.semanticTokensProvider).toBeDefined();
   });
 
@@ -105,7 +103,7 @@ describe('§6.1 — degradation', () => {
 
     try {
       expect(harness.capabilities.capabilities.completionProvider).toBeDefined();
-      expect(harness.capabilities.capabilities.diagnosticProvider).toBeDefined();
+      expect(harness.capabilities.capabilities.semanticTokensProvider).toBeDefined();
     } finally {
       await harness.stop();
     }
