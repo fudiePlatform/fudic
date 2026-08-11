@@ -68,6 +68,35 @@ export interface CommandsPort {
   register(id: string, handler: () => Promise<void>): void;
 }
 
+/** One edit the user just made to a `.fud`. */
+export interface TypedText {
+  readonly uri: string;
+  /** Offset just PAST what was typed: where the caret is now. */
+  readonly offset: number;
+  /** What was inserted. A single `>` is the only thing the tag closer reacts to. */
+  readonly text: string;
+  /** The document version after the edit, so a stale answer can be dropped. */
+  readonly version: number;
+}
+
+/** Where a snippet goes, and which document it was computed for. */
+export interface SnippetTarget extends TypedText {}
+
+/**
+ * Typing, which is the one thing the client watches instead of being asked about (BUG-22).
+ *
+ * Closing a tag cannot be a language feature: nothing was requested, and the caret has to end
+ * up BETWEEN the two tags, which a `TextEdit` has no way of saying. So the client notices the
+ * keystroke, asks the server what belongs there, and inserts it as a snippet — the same shape
+ * every editor uses for HTML.
+ */
+export interface TypingPort {
+  /** Every change to an open document. `undefined` for the ones that are not a `.fud` edit. */
+  onTyped(listener: (typed: TypedText | undefined) => void): void;
+  /** Insert `text` at the target, leaving the caret in front of it. */
+  insert(target: SnippetTarget): Promise<void>;
+}
+
 /** What the client is asked to launch. Everything here is already resolved. */
 export interface ClientLaunch {
   readonly serverPath: string;

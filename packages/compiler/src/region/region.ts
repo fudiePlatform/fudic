@@ -318,3 +318,38 @@ function nodeRegion(source: string, node: HtmlContent, offset: number): Region |
 export function regionAt(source: string, document: HtmlDocument, offset: number): Region {
   return childRegion(source, document.children, offset) ?? { kind: 'markup', span: document.span };
 }
+
+/**
+ * The close tag the `>` just typed at `offset` is asking for, or nothing (BUG-22).
+ *
+ * Every editor closes `<div>` into `<div></div>`, and a `.fud` did not, because the rule needs
+ * three things no editor can know about this language: which `>` ends a start tag (the one in
+ * `title="a > b"` does not), which elements are allowed a close tag at all, and whether the
+ * author has already written it further down.
+ *
+ * All three are one question to the tree. The offset just before the `>` is inside the start
+ * tag by construction, so `regionAt` names both the element and the case that must be refused:
+ * a `>` inside a quoted value answers `attr-value`, and nothing is inserted.
+ *
+ * Void and self-closing elements have no close tag (decisions 39, 40). Raw elements do —
+ * `<style>` and `<script>` are the two an author most wants closed for them.
+ */
+export function closingTagAt(
+  source: string,
+  document: HtmlDocument,
+  offset: number,
+): string | undefined {
+  if (source[offset - 1] !== '>') return undefined;
+
+  const region = regionAt(source, document, offset - 1);
+  const element = region.element;
+  if (region.kind !== 'tag' || element === undefined) return undefined;
+
+  // The `>` of THIS element's start tag, not of an ancestor's and not of its close tag.
+  if (element.openSpan.end !== offset) return undefined;
+  if (element.kind !== 'normal' && element.kind !== 'raw') return undefined;
+  // Already closed: re-typing the `>` of a well-formed element must not double it.
+  if (element.closeSpan !== undefined) return undefined;
+
+  return `</${element.name}>`;
+}

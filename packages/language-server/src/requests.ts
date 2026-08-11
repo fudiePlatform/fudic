@@ -9,13 +9,23 @@
  * resolve to, and which of them resolve to nothing at all.
  */
 
-import { linkHref } from '@fudic/compiler';
+import { closingTagAt, linkHref } from '@fudic/compiler';
 import type { CachedDocument } from './document-cache.js';
 import type { WorkspaceIndex } from './workspace-index.js';
 import { layoutHrefOf } from './mode.js';
 
 export const VIRTUAL_FILES_REQUEST = 'fudic/virtualFiles';
 export const COMPONENT_REGISTRY_REQUEST = 'fudic/componentRegistry';
+
+/**
+ * `fudic/autoCloseTag` — what the `>` the user just typed is asking for (BUG-22).
+ *
+ * A request rather than a capability because no capability covers it: closing a tag is not
+ * formatting (the caret has to land BETWEEN the two tags, and a `TextEdit` cannot say that)
+ * and not a completion (nothing was asked for). Every editor that does this for HTML does it
+ * the same way — the editor notices the keystroke and asks.
+ */
+export const AUTO_CLOSE_TAG_REQUEST = 'fudic/autoCloseTag';
 
 /** One virtual file, as the request reports it. */
 export interface VirtualFilePayload {
@@ -38,6 +48,16 @@ export function virtualFilesPayload(document: CachedDocument): readonly VirtualF
     languageId: virtual.languageId,
     text: virtual.text,
   }));
+}
+
+/**
+ * The close tag to insert at `offset`, or the empty string when none belongs there.
+ *
+ * Empty rather than `null` for the same reason the other two return `[]`: one shape on the
+ * wire, and a client that does nothing with it either way.
+ */
+export function autoCloseTagPayload(document: CachedDocument, offset: number): string {
+  return closingTagAt(document.source, document.html, offset) ?? '';
 }
 
 /**

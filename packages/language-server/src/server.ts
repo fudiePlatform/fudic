@@ -33,6 +33,8 @@ import { nodeFileSystem } from './node-fs.js';
 import { resolveOptions } from './options.js';
 import { toPosix } from './paths.js';
 import {
+  AUTO_CLOSE_TAG_REQUEST,
+  autoCloseTagPayload,
   COMPONENT_REGISTRY_REQUEST,
   componentRegistryPayload,
   VIRTUAL_FILES_REQUEST,
@@ -229,6 +231,14 @@ export function createFudicServer(
     const document = documentOf(uri);
     return document === undefined ? [] : componentRegistryPayload(document, index);
   });
+
+  connection.onRequest(
+    AUTO_CLOSE_TAG_REQUEST,
+    ({ uri, offset }: { uri: string; offset: number }) => {
+      const document = documentOf(uri);
+      return document === undefined ? '' : autoCloseTagPayload(document, offset);
+    },
+  );
 
   return { index, cache, stats };
 }

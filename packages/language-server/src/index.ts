@@ -98,8 +98,10 @@ export { mountGlobals, GLOBALS_DTS, GLOBALS_FILE_NAME } from './globals.js';
 export {
   VIRTUAL_FILES_REQUEST,
   COMPONENT_REGISTRY_REQUEST,
+  AUTO_CLOSE_TAG_REQUEST,
   virtualFilesPayload,
   componentRegistryPayload,
+  autoCloseTagPayload,
   type VirtualFilePayload,
   type ComponentPayload,
 } from './requests.js';

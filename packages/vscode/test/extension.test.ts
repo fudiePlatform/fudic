@@ -12,7 +12,7 @@ import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { activate, createClient, deactivate } from '../src/extension.js';
 import { LanguageClient } from './_languageclient-stub.js';
-import { editorFor, focusEditor, reset, state } from './_vscode-stub.js';
+import { editorFor, focusEditor, reset, state, typeInto } from './_vscode-stub.js';
 import type { ExtensionContext, OutputChannel } from 'vscode';
 import type { ClientLaunch } from '../src/ports.js';
 
@@ -40,6 +40,21 @@ describe('activate', () => {
     // is that none of it is left for the garbage collector to guess about.
     expect(ctx.subscriptions.length).toBeGreaterThanOrEqual(9);
     expect([...state.commandHandlers.keys()]).toContain('fudic.restartServer');
+  });
+
+  it('closes a tag through the real adapter: keystroke, request, snippet', async () => {
+    LanguageClient.answers['fudic/autoCloseTag'] = '</div>';
+    await activate(context());
+    focusEditor(editorFor('fudic', 'file:///x.fud', 7));
+
+    typeInto({
+      document: { languageId: 'fudic', version: 7, uri: { toString: () => 'file:///x.fud' } },
+      contentChanges: [{ rangeOffset: 13, text: '>' }],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // `$0` first, at the offset just past the `>`: the caret ends up between the two tags.
+    expect(state.snippets).toEqual([['$0</div>', 14]]);
   });
 
   it('points the server at the bundled bundle and watches the three globs', async () => {

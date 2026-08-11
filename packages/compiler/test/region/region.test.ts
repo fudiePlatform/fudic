@@ -11,7 +11,7 @@ import { parseDocument, type AtConstructParser } from '../../src/html/index.js';
 import { parseControl } from '../../src/control/index.js';
 import { parseCodeBlock } from '../../src/code/index.js';
 import { parseDirective } from '../../src/layout/index.js';
-import { attributeValueSpan, regionAt, type Region } from '../../src/region/index.js';
+import { attributeValueSpan, closingTagAt, regionAt, type Region } from '../../src/region/index.js';
 
 const constructs: AtConstructParser = { parseControl, parseCodeBlock, parseDirective };
 
@@ -284,6 +284,65 @@ describe('regionAt — layout directives', () => {
 
   it('@RenderBody is markup', () => {
     expect(kindAt('<!DOCTYPE html>\n<html><body>@Render|Body()</body></html>')).toBe('markup');
+  });
+});
+
+describe('closingTagAt — what the `>` just typed is asking for', () => {
+  /** The tag `closingTagAt` would insert where the `|` is. */
+  function closing(marked: string): string | undefined {
+    const offset = marked.indexOf('|');
+    const source = marked.replace('|', '');
+    return closingTagAt(source, parseDocument(source, { atConstructs: constructs }).value, offset);
+  }
+
+  it('closes a native element', () => {
+    expect(closing('<div>|')).toBe('</div>');
+  });
+
+  it('closes a component', () => {
+    expect(closing('<app-card>|')).toBe('</app-card>');
+  });
+
+  it('closes the element being opened inside markup, not its parent', () => {
+    expect(closing('<app-x><template shadowrootmode="open"><div>|</template></app-x>')).toBe(
+      '</div>',
+    );
+  });
+
+  it('closes a <style>, which is what an author most wants closed for them', () => {
+    expect(closing('<head><style>|')).toBe('</style>');
+  });
+
+  it('refuses a void element', () => {
+    expect(closing('<br>|')).toBeUndefined();
+  });
+
+  it('refuses a self-closing element', () => {
+    expect(closing('<app-x />|')).toBeUndefined();
+  });
+
+  it('refuses an element that is already closed', () => {
+    expect(closing('<div>|</div>')).toBeUndefined();
+  });
+
+  it('refuses the `>` of a close tag', () => {
+    expect(closing('<div></div>|')).toBeUndefined();
+  });
+
+  it('refuses a `>` inside a quoted value — the whole reason this reads the tree', () => {
+    expect(closing('<div title="a >| b"></div>')).toBeUndefined();
+  });
+
+  it('refuses a `>` in plain text', () => {
+    expect(closing('<p>a >| b</p>')).toBeUndefined();
+  });
+
+  it('refuses a position that is not a `>` at all', () => {
+    expect(closing('<div>x|')).toBeUndefined();
+  });
+
+  it('refuses the `>` of an ancestor, which is already closed by then', () => {
+    expect(closing('<div><span>x</span>|')).toBeUndefined();
   });
 });
 

@@ -13,7 +13,11 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import { createFudicServer, type FudicServerDeps } from '../src/server.js';
 import { GLOBALS_FILE_NAME } from '../src/globals.js';
-import { COMPONENT_REGISTRY_REQUEST, VIRTUAL_FILES_REQUEST } from '../src/requests.js';
+import {
+  AUTO_CLOSE_TAG_REQUEST,
+  COMPONENT_REGISTRY_REQUEST,
+  VIRTUAL_FILES_REQUEST,
+} from '../src/requests.js';
 import { component, LAYOUT, memoryFs, route } from './_support.js';
 import { fakeConnection, fakeVolarServer } from './_lsp.js';
 
@@ -271,6 +275,20 @@ describe('the own requests (§3.4)', () => {
     expect(links.map((link) => link.tag)).toEqual(['app-badge', '']);
   });
 
+  it('answers fudic/autoCloseTag with the tag the `>` is asking for', async () => {
+    const { fake, documents } = setup();
+    fake.onInitialize?.(params());
+    const uri = URI.file(SLUG).toString();
+    const source = '<article><div>\n</article>\n';
+    documents.set(uri, TextDocument.create(uri, 'fud', 1, source));
+
+    const handler = fake.requests.get(AUTO_CLOSE_TAG_REQUEST);
+
+    expect(await handler?.({ uri, offset: source.indexOf('<div>') + 5 } as never)).toBe('</div>');
+    // The `>` of the article was closed by the source itself.
+    expect(await handler?.({ uri, offset: 9 } as never)).toBe('');
+  });
+
   it('answers empty for a file that is nowhere', async () => {
     const { fake } = setup();
     fake.onInitialize?.(params());
@@ -278,6 +296,7 @@ describe('the own requests (§3.4)', () => {
 
     expect(await fake.requests.get(VIRTUAL_FILES_REQUEST)?.({ uri } as never)).toEqual([]);
     expect(await fake.requests.get(COMPONENT_REGISTRY_REQUEST)?.({ uri } as never)).toEqual([]);
+    expect(await fake.requests.get(AUTO_CLOSE_TAG_REQUEST)?.({ uri, offset: 0 } as never)).toBe('');
   });
 });
 
