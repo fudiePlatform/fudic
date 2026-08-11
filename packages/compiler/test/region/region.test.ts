@@ -11,7 +11,13 @@ import { parseDocument, type AtConstructParser } from '../../src/html/index.js';
 import { parseControl } from '../../src/control/index.js';
 import { parseCodeBlock } from '../../src/code/index.js';
 import { parseDirective } from '../../src/layout/index.js';
-import { attributeValueSpan, closingTagAt, regionAt, type Region } from '../../src/region/index.js';
+import {
+  attributeValueSpan,
+  closingTagAt,
+  commentSyntaxAt,
+  regionAt,
+  type Region,
+} from '../../src/region/index.js';
 
 const constructs: AtConstructParser = { parseControl, parseCodeBlock, parseDirective };
 
@@ -284,6 +290,52 @@ describe('regionAt — layout directives', () => {
 
   it('@RenderBody is markup', () => {
     expect(kindAt('<!DOCTYPE html>\n<html><body>@Render|Body()</body></html>')).toBe('markup');
+  });
+});
+
+describe('commentSyntaxAt — how a comment is written where the cursor is', () => {
+  function syntax(marked: string) {
+    const offset = marked.indexOf('|');
+    const source = marked.replace('|', '');
+    return commentSyntaxAt(source, parseDocument(source, { atConstructs: constructs }).value, offset);
+  }
+
+  it('markup takes the Razor comment: commenting code out must not ship it', () => {
+    expect(syntax('<p>ho|la</p>').block).toEqual(['@*', '*@']);
+  });
+
+  it('and removes an HTML one too, because an author writes those on purpose', () => {
+    expect(syntax('<p>ho|la</p>').removes).toEqual([
+      ['@*', '*@'],
+      ['<!--', '-->'],
+    ]);
+  });
+
+  it('inside a tag the Razor comment is legal as well', () => {
+    expect(syntax('<div cla|ss="a"></div>').block).toEqual(['@*', '*@']);
+  });
+
+  it('@code is TypeScript, and TypeScript has a line comment', () => {
+    expect(syntax('@code {\n  const a| = 1;\n}')).toEqual({
+      line: '//',
+      block: ['/*', '*/'],
+      removes: [['/*', '*/']],
+    });
+  });
+
+  it('an expression is TypeScript too', () => {
+    expect(syntax('<p>@(a +| b)</p>').line).toBe('//');
+  });
+
+  it('a <style> body is CSS, which has no line comment and accepts both blocks', () => {
+    const css = syntax('<head><style>:host { disp|lay: block; }</style></head>');
+
+    expect(css.line).toBeUndefined();
+    expect(css.block).toEqual(['/*', '*/']);
+    expect(css.removes).toEqual([
+      ['/*', '*/'],
+      ['@*', '*@'],
+    ]);
   });
 });
 

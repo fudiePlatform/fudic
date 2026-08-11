@@ -19,10 +19,12 @@ import { registerCommands } from './commands/index.js';
 import { createVirtualDocStore, VIRTUAL_SCHEME } from './virtual-doc-provider.js';
 import {
   bundledServerPath,
+  commentSelectionOf,
   folderPaths,
   fudUriOf,
   insertClosingTag,
   languageOf,
+  replaceLines,
   typedTextOf,
   vscodeTsdkPath,
 } from './vscode-shape.js';
@@ -151,6 +153,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       },
       notifications: { warn: (message) => void vscode.window.showWarningMessage(message) },
       logger: { info: (message) => output.appendLine(message) },
+      selection: {
+        current: () => commentSelectionOf(vscode.window.activeTextEditor),
+        replaceLines: (replacement) =>
+          replaceLines(
+            vscode.window.activeTextEditor,
+            replacement,
+            (startLine, startChar, endLine, endChar) =>
+              new vscode.Range(startLine, startChar, endLine, endChar),
+          ),
+      },
     },
   );
 

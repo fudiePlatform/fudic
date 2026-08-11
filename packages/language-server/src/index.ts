@@ -99,9 +99,11 @@ export {
   VIRTUAL_FILES_REQUEST,
   COMPONENT_REGISTRY_REQUEST,
   AUTO_CLOSE_TAG_REQUEST,
+  COMMENT_SYNTAX_REQUEST,
   virtualFilesPayload,
   componentRegistryPayload,
   autoCloseTagPayload,
+  commentSyntaxPayload,
   type VirtualFilePayload,
   type ComponentPayload,
 } from './requests.js';

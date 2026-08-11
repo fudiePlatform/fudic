@@ -9,7 +9,7 @@
  * resolve to, and which of them resolve to nothing at all.
  */
 
-import { closingTagAt, linkHref } from '@fudic/compiler';
+import { closingTagAt, commentSyntaxAt, linkHref, type CommentSyntax } from '@fudic/compiler';
 import type { CachedDocument } from './document-cache.js';
 import type { WorkspaceIndex } from './workspace-index.js';
 import { layoutHrefOf } from './mode.js';
@@ -26,6 +26,16 @@ export const COMPONENT_REGISTRY_REQUEST = 'fudic/componentRegistry';
  * the same way — the editor notices the keystroke and asks.
  */
 export const AUTO_CLOSE_TAG_REQUEST = 'fudic/autoCloseTag';
+
+/**
+ * `fudic/commentSyntax` — how a comment is written where the cursor is (BUG-22 §5).
+ *
+ * An editor has one comment setting per file and a `.fud` is three languages, so
+ * <kbd>Ctrl</kbd>+<kbd>/</kbd> wrote `@* *@` inside `@code` and inside `<style>`, where it is
+ * a syntax error rather than a comment. VS Code cannot switch that per region — the setting is
+ * per language — so the client asks instead, and toggles the comment itself.
+ */
+export const COMMENT_SYNTAX_REQUEST = 'fudic/commentSyntax';
 
 /** One virtual file, as the request reports it. */
 export interface VirtualFilePayload {
@@ -58,6 +68,17 @@ export function virtualFilesPayload(document: CachedDocument): readonly VirtualF
  */
 export function autoCloseTagPayload(document: CachedDocument, offset: number): string {
   return closingTagAt(document.source, document.html, offset) ?? '';
+}
+
+/**
+ * How a comment is written at `offset`.
+ *
+ * The whole syntax travels, not just a name for the region: the client toggles the comment and
+ * needs the delimiters, and it needs the ones it may REMOVE as well — an author writes an HTML
+ * comment on purpose, and uncommenting has to recognise what is there.
+ */
+export function commentSyntaxPayload(document: CachedDocument, offset: number): CommentSyntax {
+  return commentSyntaxAt(document.source, document.html, offset);
 }
 
 /**

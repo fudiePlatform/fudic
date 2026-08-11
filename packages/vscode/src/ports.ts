@@ -68,6 +68,47 @@ export interface CommandsPort {
   register(id: string, handler: () => Promise<void>): void;
 }
 
+/**
+ * How a comment is written in one region, as the server answers it (BUG-22 §5).
+ *
+ * Spelled here rather than imported, like the request names: the shape on the wire is the
+ * contract, and a client that reads it does not need the compiler's types to do so.
+ */
+export interface CommentSyntax {
+  /** The line comment, for the regions that have one. Absent where none exists. */
+  readonly line?: string;
+  /** What a new block comment is written with. */
+  readonly block: readonly [string, string];
+  /** Every pair that counts as a comment when one is being removed. */
+  readonly removes: readonly (readonly [string, string])[];
+}
+
+/** The lines a toggle would act on, in the active `.fud`. */
+export interface CommentSelection {
+  readonly uri: string;
+  /** The whole document, split. The toggle needs the lines around the selection too. */
+  readonly lines: readonly string[];
+  /** Both ends included. An empty selection is the line the caret is on. */
+  readonly firstLine: number;
+  readonly lastLine: number;
+  /** Where the region is asked about: the first thing written on the first selected line. */
+  readonly offset: number;
+}
+
+/** The lines a toggle replaces, and what with. */
+export interface LineReplacement {
+  readonly firstLine: number;
+  readonly lastLine: number;
+  readonly newLines: readonly string[];
+}
+
+/** What commenting needs from the editor: the selection, and a way to replace whole lines. */
+export interface SelectionPort {
+  /** The selection in the active `.fud`, or nothing when the focus is elsewhere. */
+  current(): CommentSelection | undefined;
+  replaceLines(replacement: LineReplacement): Promise<void>;
+}
+
 /** One edit the user just made to a `.fud`. */
 export interface TypedText {
   readonly uri: string;

@@ -10,6 +10,7 @@ import type {
   FormatterPort,
   LoggerPort,
   NotificationPort,
+  SelectionPort,
 } from '../ports.js';
 
 export interface CommandDeps {
@@ -19,6 +20,8 @@ export interface CommandDeps {
   readonly formatter: FormatterPort;
   readonly notifications: NotificationPort;
   readonly logger: LoggerPort;
+  /** Only commenting needs the selection; every other command works on the whole document. */
+  readonly selection: SelectionPort;
 }
 
 /**

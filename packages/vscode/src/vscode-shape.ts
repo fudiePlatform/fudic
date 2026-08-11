@@ -8,7 +8,12 @@
  */
 
 import { join } from 'node:path';
-import type { SnippetTarget, TypedText } from './ports.js';
+import type {
+  CommentSelection,
+  LineReplacement,
+  SnippetTarget,
+  TypedText,
+} from './ports.js';
 
 /** The shape of `vscode.WorkspaceFolder`, reduced to what is read. */
 export interface FolderLike {
@@ -117,6 +122,83 @@ export const insertClosingTag = async (
     editor.document.positionAt(target.offset),
     { undoStopBefore: false, undoStopAfter: true },
   );
+};
+
+/** The shape of `vscode.TextEditor`, reduced to what commenting reads and writes. */
+export interface SelectionEditorLike {
+  readonly document: {
+    readonly languageId: string;
+    readonly eol: number;
+    readonly uri: { toString(): string };
+    getText(): string;
+    offsetAt(position: { line: number; character: number }): number;
+  };
+  readonly selection: {
+    readonly start: { readonly line: number };
+    readonly end: { readonly line: number };
+  };
+  edit(build: (builder: { replace(range: unknown, text: string): void }) => void): Thenable<boolean>;
+}
+
+/** Split on either ending, so the file's own is never assumed and never converted. */
+const linesOf = (text: string): string[] => text.split(/\r?\n/);
+
+/** The indent of a line: what precedes the first thing written on it. */
+const indentWidth = (line: string): number => line.length - line.trimStart().length;
+
+/**
+ * The lines a comment toggle would act on, in the active `.fud`.
+ *
+ * The offset is the first thing WRITTEN on the first selected line, not the start of the line:
+ * a line's indentation belongs to whatever came before it, so asking there would ask about the
+ * previous region — the last line of `@code` is a `}` whose indentation is still TypeScript,
+ * but the first line after it is markup indented by nobody.
+ */
+export const commentSelectionOf = (
+  editor: SelectionEditorLike | undefined,
+): CommentSelection | undefined => {
+  if (editor === undefined || editor.document.languageId !== 'fudic') return undefined;
+
+  const lines = linesOf(editor.document.getText());
+  const firstLine = editor.selection.start.line;
+
+  return {
+    uri: editor.document.uri.toString(),
+    lines,
+    firstLine,
+    lastLine: editor.selection.end.line,
+    offset: editor.document.offsetAt({
+      line: firstLine,
+      character: indentWidth(lines[firstLine] ?? ''),
+    }),
+  };
+};
+
+/**
+ * Replace whole lines with the text the toggle produced.
+ *
+ * The line ending is read from the document rather than assumed: joining with `\n` would turn
+ * a file written on Windows into a mixed one, and the diff of a comment toggle would be the
+ * whole selection.
+ */
+export const replaceLines = async (
+  editor: SelectionEditorLike | undefined,
+  replacement: LineReplacement,
+  rangeOf: (startLine: number, startChar: number, endLine: number, endChar: number) => unknown,
+): Promise<void> => {
+  if (editor === undefined) return;
+
+  const lines = linesOf(editor.document.getText());
+  // 2 is `vscode.EndOfLine.CRLF`.
+  const eol = editor.document.eol === 2 ? '\r\n' : '\n';
+  const end = (lines[replacement.lastLine] ?? '').length;
+
+  await editor.edit((builder) => {
+    builder.replace(
+      rangeOf(replacement.firstLine, 0, replacement.lastLine, end),
+      replacement.newLines.join(eol),
+    );
+  });
 };
 
 /** Where the bundled server sits inside the installed extension (§4.5). */

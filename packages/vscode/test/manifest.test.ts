@@ -144,12 +144,27 @@ describe('settings', () => {
 });
 
 describe('commands', () => {
-  it('contributes the four commands of §4.3 with their titles', () => {
+  it('contributes the five commands with their titles', () => {
     expect(at(manifest, 'contributes', 'commands')).toEqual([
       { command: 'fudic.restartServer', title: 'Fudic: Restart Language Server' },
       { command: 'fudic.showVirtualFiles', title: 'Fudic: Show Virtual Files' },
       { command: 'fudic.showRegistry', title: 'Fudic: Show Component Registry' },
       { command: 'fudic.formatDocument', title: 'Fudic: Format Document' },
+      { command: 'fudic.toggleComment', title: 'Fudic: Toggle Comment' },
+    ]);
+  });
+
+  it('takes Ctrl+/ over, and only inside a .fud (BUG-22 §5)', () => {
+    // Scoped by `editorLangId`, so every other file in the window keeps the editor's own
+    // toggle. Without the `when` this would be a global keybinding shipped by a language
+    // extension, which is the rudest thing an extension can do.
+    expect(at(manifest, 'contributes', 'keybindings')).toEqual([
+      {
+        command: 'fudic.toggleComment',
+        key: 'ctrl+/',
+        mac: 'cmd+/',
+        when: 'editorTextFocus && !editorReadonly && editorLangId == fudic',
+      },
     ]);
   });
 });

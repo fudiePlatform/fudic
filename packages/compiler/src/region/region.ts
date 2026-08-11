@@ -319,6 +319,63 @@ export function regionAt(source: string, document: HtmlDocument, offset: number)
   return childRegion(source, document.children, offset) ?? { kind: 'markup', span: document.span };
 }
 
+/** A pair of delimiters that wraps a comment. */
+export type CommentPair = readonly [string, string];
+
+/** How a comment is written in one region (BUG-22 §5). */
+export interface CommentSyntax {
+  /** The line comment, for the regions that have one. Absent where none exists. */
+  readonly line?: string;
+  /** What a new block comment is written with. */
+  readonly block: CommentPair;
+  /** Every pair that counts as a comment when one is being REMOVED. */
+  readonly removes: readonly CommentPair[];
+}
+
+const RAZOR: CommentPair = ['@*', '*@'];
+const HTML: CommentPair = ['<!--', '-->'];
+const C: CommentPair = ['/*', '*/'];
+
+/**
+ * How a comment is written where an offset is.
+ *
+ * A `.fud` is three languages, and an editor has one comment setting per file — so <kbd>Ctrl</kbd>+<kbd>/</kbd>
+ * wrote `@* *@` inside `@code`, where the language is TypeScript, and inside `<style>`, where it
+ * is CSS. Neither is a comment there; both are a syntax error the author then has to undo.
+ *
+ * Markup takes the RAZOR comment rather than the HTML one, and that is a decision, not a
+ * default. Both are legal there and they do different things: `<!-- -->` is a node and travels
+ * to the browser, `@* *@` is stripped at emit (decision 37) and never leaves the source. What
+ * someone means by commenting code out is almost always the second — the point is that it stops
+ * existing, not that it ships invisible.
+ *
+ * Which is why `removes` is a LIST. An author writes `<!-- -->` on purpose, to leave a note in
+ * the delivered page, and uncommenting has to recognise what is there rather than only what
+ * this would have written. CSS takes both for the same reason: a `<style>` body accepts a Razor
+ * comment (SDD-09) beside its own.
+ */
+export function commentSyntaxOf(kind: RegionKind): CommentSyntax {
+  switch (kind) {
+    case 'ts':
+    case 'expression':
+      return { line: '//', block: C, removes: [C] };
+    case 'css':
+      return { block: C, removes: [C, RAZOR] };
+    // Markup, a start tag and an attribute value: a Razor comment is legal in all three.
+    default:
+      return { block: RAZOR, removes: [RAZOR, HTML] };
+  }
+}
+
+/** How a comment is written at this offset. */
+export function commentSyntaxAt(
+  source: string,
+  document: HtmlDocument,
+  offset: number,
+): CommentSyntax {
+  return commentSyntaxOf(regionAt(source, document, offset).kind);
+}
+
 /**
  * The close tag the `>` just typed at `offset` is asking for, or nothing (BUG-22).
  *

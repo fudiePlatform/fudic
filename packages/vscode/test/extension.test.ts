@@ -57,6 +57,30 @@ describe('activate', () => {
     expect(state.snippets).toEqual([['$0</div>', 14]]);
   });
 
+  it('toggles a comment through the real adapter: selection, request, edit', async () => {
+    LanguageClient.answers['fudic/commentSyntax'] = {
+      block: ['@*', '*@'],
+      removes: [['@*', '*@']],
+    };
+    await activate(context());
+    focusEditor(
+      editorFor('fudic', 'file:///x.fud', 1, '<app-x>\n  <p>hola</p>\n</app-x>', {
+        start: { line: 1 },
+        end: { line: 1 },
+      }),
+    );
+
+    await state.commandHandlers.get('fudic.toggleComment')?.();
+
+    const [range, text] = state.edits[0] ?? [];
+    // Whole lines, and the offset the server was asked about is the `<` rather than the indent.
+    expect(text).toBe('  @* <p>hola</p> *@');
+    expect(range).toMatchObject({ startLine: 1, startCharacter: 0, endLine: 1, endCharacter: 13 });
+    expect(LanguageClient.created[0]?.requests).toEqual([
+      { method: 'fudic/commentSyntax', params: { uri: 'file:///x.fud', offset: 10 } },
+    ]);
+  });
+
   it('points the server at the bundled bundle and watches the three globs', async () => {
     await activate(context());
 

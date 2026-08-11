@@ -6,9 +6,11 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   bundledServerPath,
+  commentSelectionOf,
   folderPaths,
   fudUriOf,
   insertClosingTag,
+  replaceLines,
   typedTextOf,
   vscodeTsdkPath,
 } from '../src/vscode-shape.js';
@@ -133,6 +135,108 @@ describe('insertClosingTag', () => {
     await insertClosingTag(editor, target, snippetOf);
 
     expect(calls).toEqual([]);
+  });
+});
+
+describe('commentSelectionOf', () => {
+  const TEXT = '<app-x>\n  <p>hola</p>\n</app-x>';
+
+  const selectionEditor = (languageId = 'fudic', text = TEXT, first = 1, last = 1) => ({
+    document: {
+      languageId,
+      eol: 1,
+      uri: { toString: () => 'file:///x.fud' },
+      getText: () => text,
+      offsetAt: ({ line, character }: { line: number; character: number }) =>
+        text
+          .split('\n')
+          .slice(0, line)
+          .reduce((total, own) => total + own.length + 1, 0) + character,
+    },
+    selection: { start: { line: first }, end: { line: last } },
+    edit: () => Promise.resolve(true),
+  });
+
+  it('reads the lines and asks about the first thing written on the first one', () => {
+    // The indent belongs to whatever came before the line: the `}` that closes `@code` is
+    // still TypeScript, and the line after it is markup indented by nobody.
+    expect(commentSelectionOf(selectionEditor())).toEqual({
+      uri: 'file:///x.fud',
+      lines: ['<app-x>', '  <p>hola</p>', '</app-x>'],
+      firstLine: 1,
+      lastLine: 1,
+      offset: 10,
+    });
+  });
+
+  it('splits on either line ending, so a CRLF file is not converted', () => {
+    const selection = commentSelectionOf(selectionEditor('fudic', '<p>a</p>\r\n<p>b</p>'));
+
+    expect(selection?.lines).toEqual(['<p>a</p>', '<p>b</p>']);
+  });
+
+  it('gives nothing when the focus is not on a .fud', () => {
+    expect(commentSelectionOf(selectionEditor('json'))).toBeUndefined();
+    expect(commentSelectionOf(undefined)).toBeUndefined();
+  });
+
+  it('survives a selection past the end of the text it was handed', () => {
+    // The editor and the text are read one after the other, so a document that shrank between
+    // the two is a state this can be in — and the answer has to be a position, not a throw.
+    expect(commentSelectionOf(selectionEditor('fudic', '', 3, 3))?.firstLine).toBe(3);
+  });
+});
+
+describe('replaceLines', () => {
+  const editorWith = (text: string, eol: number) => {
+    const edits: [unknown, string][] = [];
+    return {
+      edits,
+      editor: {
+        document: {
+          languageId: 'fudic',
+          eol,
+          uri: { toString: () => 'file:///x.fud' },
+          getText: () => text,
+          offsetAt: () => 0,
+        },
+        selection: { start: { line: 0 }, end: { line: 0 } },
+        edit: (build: (builder: { replace(range: unknown, replacement: string): void }) => void) => {
+          build({ replace: (range, replacement) => edits.push([range, replacement]) });
+          return Promise.resolve(true);
+        },
+      },
+    };
+  };
+
+  const rangeOf = (a: number, b: number, c: number, d: number) => [a, b, c, d];
+  const replacement = { firstLine: 0, lastLine: 1, newLines: ['x', 'y'] };
+
+  it('replaces whole lines, to the end of the last one', () => {
+    const { editor, edits } = editorWith('<p>a</p>\n<p>bb</p>', 1);
+    void replaceLines(editor, replacement, rangeOf);
+
+    expect(edits).toEqual([[[0, 0, 1, 9], 'x\ny']]);
+  });
+
+  it('joins with the ending the document already has', () => {
+    // Joining with `\n` on a Windows file would make the diff of a comment toggle the whole
+    // selection, and the file mixed.
+    const { editor, edits } = editorWith('<p>a</p>\r\n<p>bb</p>', 2);
+    void replaceLines(editor, replacement, rangeOf);
+
+    expect(edits[0]?.[1]).toBe('x\r\ny');
+  });
+
+  it('does nothing when the focus left the editor', async () => {
+    await expect(replaceLines(undefined, replacement, rangeOf)).resolves.toBeUndefined();
+  });
+
+  it('ends at column zero when the last line is past the end of the text', async () => {
+    const { editor, edits } = editorWith('', 1);
+    await replaceLines(editor, replacement, rangeOf);
+
+    expect(edits[0]?.[0]).toEqual([0, 0, 1, 0]);
   });
 });
 
