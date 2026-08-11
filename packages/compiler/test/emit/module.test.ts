@@ -176,7 +176,7 @@ describe('emitPageModule — home.mjs', () => {
   it('builds a COMPONENTS array and a page(data, io) that destructures io', () => {
     expect(src).toContain('const COMPONENTS = [');
     expect(src).toContain('export function* page(data, io) {'); // streaming generator (SDD-19 §4.3)
-    expect(src).toContain('const { createDom, serialize, escapeText } = io;');
+    expect(src).toContain('const { createDom, serialize, escapeText, jsonBlock } = io;');
   });
 
   it('interpolates the title via escapeText and passes <meta> through', () => {

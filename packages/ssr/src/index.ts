@@ -20,4 +20,5 @@ export {
   escapeAttr,
   neutralizeComment,
 } from './serialize.js';
+export { jsonBlock, escapeJson } from './json-block.js';
 export { renderToStream, htmlToByteStream, type StreamOptions } from './stream.js';

@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` (emit) · `@fudic/ssr` (`SsrDom`) · `@fudic/vite` (el plugin
 > los escribe) · `@fudic/transport` (coordinación con el manifiesto)
 > **Rama:** `sdd-15-mapas-de-pagina`
-> **Progreso:** 17 / 26
+> **Progreso:** 20 / 26
 > **Va DESPUÉS de:** [eventos y bus](./SDD-15-Task-eventos-y-bus.md) (22/22) y
 > [SDD-31 — Signals derivadas](./SDD-31-signals-derivadas.md) (`Hecho`).
 
@@ -392,7 +392,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
 
 ## Fase 7 — Los tres bloques en el HTML (3)
 
-- [ ] **18. El emisor de los bloques.**
+- [x] **18. El emisor de los bloques.**
       En `module.ts`, al final de `page(data, io)` y **antes** de `serialize($body)`: colgar de
       `$body` un `<script type="application/json" id="fud-state">` con el payload que
       `$dom.hydrationState()` devuelve, y los de `fud-tree` / `fud-bus` con las constantes de
@@ -402,7 +402,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       runtime ya tiene que tratar la ausencia (una página cero-JS es el caso base del
       framework, no una excepción).
 
-- [ ] **19. El escape del JSON dentro de `<script>`.**
+- [x] **19. El escape del JSON dentro de `<script>`.**
       `script` está en `RAWTEXT_ELEMENTS` (`packages/ssr/src/serialize.ts:31`): su texto sale
       **sin escapar**, que es lo que un `application/json` necesita y lo que obliga a hacerlo
       aquí. Un helper compartido escapa cada `<` a su forma `\u003c` —lo cual neutraliza
@@ -413,7 +413,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       resultante parsea a **un** `<script>` y el payload deserializa al string original. Es el
       test que hay que escribir antes que el helper.
 
-- [ ] **20. El HTML, leído entero.**
+- [x] **20. El HTML, leído entero.**
       Test de integración sobre el HTML que `page()` produce para `home.fud` con datos: los
       hosts hidratables llevan `data-fud-id` correlativo en pre-orden, los no hidratables no lo
       llevan, y para cada id `data.slice(offsets[id], offsets[id+1])` es exactamente el array

@@ -34,7 +34,9 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
 
   const lines: string[] = [];
   lines.push(`import { page } from ${spec};`);
-  lines.push(`import { SsrDom, serializeChunks, htmlToByteStream, escapeText } from "@fudic/ssr";`);
+  lines.push(
+    `import { SsrDom, serializeChunks, htmlToByteStream, escapeText, jsonBlock } from "@fudic/ssr";`,
+  );
   if (edgeLoad) {
     lines.push(`import { load } from ${server};`);
   }
@@ -46,7 +48,9 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   // `io.nonce` is the CSP nonce of THIS response: the emit puts it on the inline
   // style-adoption polyfill, which a strict `script-src 'self'` would otherwise kill.
   lines.push('function io(ctx) {');
-  lines.push('  return { createDom: () => new SsrDom(), serialize: serializeChunks, escapeText, nonce: ctx.nonce };');
+  lines.push(
+    '  return { createDom: () => new SsrDom(), serialize: serializeChunks, escapeText, jsonBlock, nonce: ctx.nonce };',
+  );
   lines.push('}');
   lines.push('');
 

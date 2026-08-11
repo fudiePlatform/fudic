@@ -140,9 +140,59 @@ export function writeMapConstants(
   w: CodeWriter,
   graph: ComponentGraph,
   hydratable: ReadonlySet<string>,
-): void {
+): PageMaps {
   const tree = fudTree(graph, hydratable);
-  if (Object.keys(tree).length > 0) w.line(`const FUD_TREE = ${JSON.stringify(tree)};`);
+  const hasTree = Object.keys(tree).length > 0;
+  if (hasTree) w.line(`const FUD_TREE = ${JSON.stringify(tree)};`);
   const bus = fudBus(graph);
-  if (Object.keys(bus).length > 0) w.line(`const FUD_BUS = ${JSON.stringify(bus)};`);
+  const hasBus = Object.keys(bus).length > 0;
+  if (hasBus) w.line(`const FUD_BUS = ${JSON.stringify(bus)};`);
+  return { hasTree, hasBus };
+}
+
+/** Which map constants a module actually declared — what the block emitter may reference. */
+export interface PageMaps {
+  readonly hasTree: boolean;
+  readonly hasBus: boolean;
+}
+
+/**
+ * The three `<script type="application/json">` blocks, hung off the body right before it is
+ * serialized (SDD-15 §3.3–§3.5).
+ *
+ * They go at the END OF THE BODY and as real nodes, not as text yielded beside it. `page`
+ * cedes the `<head>` first and builds the body afterwards, so `fud-state` could not live in
+ * the head — it does not exist yet. And going through the tree means one serialization and
+ * one escaping discipline (`jsonBlock`, `@fudic/ssr`).
+ *
+ * `fud-tree` and `fud-bus` are static and could have gone in the head. They travel with the
+ * other one because the three are the SAME fact for the runtime, and splitting them by an
+ * accident of streaming invites reading them at two different moments.
+ *
+ * **What is empty is not emitted.** A page that claimed NO instance publishes none of the
+ * three — not even the two static maps, which would then describe a hydration that has
+ * nothing to hydrate. A `{}` is a fetch and a parse for nothing, and the runtime has to
+ * handle the absence anyway: a zero-JS page is the base case of the framework, not an
+ * exception.
+ *
+ * And that emptiness is a RUNTIME fact, which is why the guard is an `if` in the emitted code
+ * and not one here: a page whose only hydratable component sits behind a false `@if` renders
+ * no instance, and the compiler cannot know. The two maps DO get their compile-time check as
+ * well — no constant, no call — because a flat page has no `fud-tree` and a page with no bus
+ * has no `fud-bus`, whatever it renders.
+ */
+export function writeHydrationBlocks(
+  w: CodeWriter,
+  maps: PageMaps,
+  dom: string,
+  parent: string,
+): void {
+  w.line(`const $state = ${dom}.hydrationState();`);
+  w.line('if ($state.offsets.length > 1) {');
+  w.indent();
+  w.line(`jsonBlock(${dom}, ${parent}, 'fud-state', [$state.offsets, $state.data]);`);
+  if (maps.hasTree) w.line(`jsonBlock(${dom}, ${parent}, 'fud-tree', FUD_TREE);`);
+  if (maps.hasBus) w.line(`jsonBlock(${dom}, ${parent}, 'fud-bus', FUD_BUS);`);
+  w.dedent();
+  w.line('}');
 }

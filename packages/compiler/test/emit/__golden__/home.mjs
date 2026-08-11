@@ -9,7 +9,7 @@ const STYLE_POLYFILL = `(function(){if(!(\`shadowRootAdoptedStyleSheets\`in HTML
 const FUD_TREE = {"app-card":["app-button"]};
 
 export function* page(data, io) {
-  const { createDom, serialize, escapeText } = io;
+  const { createDom, serialize, escapeText, jsonBlock } = io;
   const $nonce = io.nonce ? ' nonce="' + io.nonce + '"' : '';
   let head = '';
   head += '<title>' + (escapeText(String((data.title) ?? ''))) + '</title>';
@@ -69,6 +69,11 @@ export function* page(data, io) {
     const $n23 = $dom.text(" "); $dom.append($body, $n23);
   }
   const $n24 = $dom.text(" "); $dom.append($body, $n24);
+  const $state = $dom.hydrationState();
+  if ($state.offsets.length > 1) {
+    jsonBlock($dom, $body, 'fud-state', [$state.offsets, $state.data]);
+    jsonBlock($dom, $body, 'fud-tree', FUD_TREE);
+  }
   yield* serialize($body);
   yield '</html>';
 }

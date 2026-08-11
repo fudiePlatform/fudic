@@ -24,7 +24,7 @@ describe('emitRenderChunk — the edge variant', () => {
   it('imports page, the ssr streaming io, and load/paths from ?server', () => {
     expect(code).toContain('import { page } from "./customer/[id].fud";');
     expect(code).toContain(
-      'import { SsrDom, serializeChunks, htmlToByteStream, escapeText } from "@fudic/ssr";',
+      'import { SsrDom, serializeChunks, htmlToByteStream, escapeText, jsonBlock } from "@fudic/ssr";',
     );
     expect(code).toContain('import { load } from "./customer/[id].fud?server";');
     expect(code).toContain('export { paths } from "./customer/[id].fud?server";');

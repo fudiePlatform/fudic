@@ -7,7 +7,7 @@ import { readFileSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
-import { SsrDom, serializeChunks, escapeText } from '@fudic/ssr';
+import { SsrDom, serializeChunks, escapeText, jsonBlock } from '@fudic/ssr';
 import { emitComponentModule, emitPageModule, type ComponentGraph } from '../../src/emit/index.js';
 import {
   parseDocument,
@@ -150,6 +150,7 @@ export function minimalSsr(): {
   createDom: () => Record<string, (...a: unknown[]) => unknown>;
   serialize: (root: unknown) => Iterable<string>;
   escapeText: (s: string) => string;
+  jsonBlock: typeof jsonBlock;
 } {
   const createDom = () => {
     // The instance collector, in the same shape `SsrDom` implements it: one counter for the
@@ -183,6 +184,15 @@ export function minimalSsr(): {
       state: (sr: unknown, values: unknown): void => {
         slices[ids.get((sr as TreeNode).host!)!] = [...(values as readonly unknown[])];
       },
+      hydrationState: (): { offsets: number[]; data: unknown[] } => {
+        const offsets = [0];
+        const data: unknown[] = [];
+        for (const slice of slices) {
+          data.push(...slice);
+          offsets.push(data.length);
+        }
+        return { offsets, data };
+      },
     };
   };
   return {
@@ -190,6 +200,7 @@ export function minimalSsr(): {
     // A generator-shaped serialize (one chunk) — `page` yields* it, streaming a trozos.
     serialize: (root: unknown) => [serializeNode(root as TreeNode)],
     escapeText: escapeHtml,
+    jsonBlock,
   };
 }
 
@@ -238,6 +249,7 @@ export function ssrIo(): { io: unknown; dom: () => SsrDom } {
       },
       serialize: serializeChunks,
       escapeText,
+      jsonBlock,
     },
     dom: () => built!,
   };
