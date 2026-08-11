@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` (emit) · `@fudic/ssr` (`SsrDom`) · `@fudic/vite` (el plugin
 > los escribe) · `@fudic/transport` (coordinación con el manifiesto)
 > **Rama:** `sdd-15-mapas-de-pagina`
-> **Progreso:** 20 / 26
+> **Progreso:** 22 / 26
 > **Va DESPUÉS de:** [eventos y bus](./SDD-15-Task-eventos-y-bus.md) (22/22) y
 > [SDD-31 — Signals derivadas](./SDD-31-signals-derivadas.md) (`Hecho`).
 
@@ -423,7 +423,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
 
 ## Fase 8 — Que salga del build (2)
 
-- [ ] **21. El plugin, el prerender y el pase de link.**
+- [x] **21. El plugin, el prerender y el pase de link.**
       Verificar y, donde haga falta, ajustar `packages/vite/src/`: los cinco HTML
       prerenderizados de `examples/basic` llevan sus bloques; el pase *link* (CJS, el que el SW
       ejecuta con `new Function`) produce los mismos ids y los mismos mapas para la misma ruta y
@@ -432,7 +432,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       el SW renderiza son idénticos en `data-fud-id` y en los tres bloques. Si divergen, hay dos
       pasadas donde §3.2 dice que hay una.
 
-- [ ] **22. El e2e de `examples/basic`.**
+- [x] **22. El e2e de `examples/basic`.**
       Los tests existentes (`sw-render`, `sw-network`) siguen verdes. Uno nuevo, y **solo
       lectura del DOM**: la página cargada tiene los tres bloques, los ids son correlativos, y
       `:not(:defined)` lista los tags hidratables — o sea, **cero JS de componente ejecutado**,

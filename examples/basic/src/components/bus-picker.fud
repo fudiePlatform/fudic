@@ -1,0 +1,46 @@
+<link rel="component" href="./bus-option.fud">
+
+@code {
+  type Option = { label: string; picked: boolean };
+
+  const { options = [] } = props<{ options?: Option[] }>();
+
+  @client {
+    import { emit } from '@fudic/dom';
+
+    // The emitting end of the bus. The name is a string literal, which is the only form
+    // v1 resolves — and it is what puts this tag on the emitting side of `fud-bus`.
+    function pick(label) {
+      emit('picked', label);
+    }
+  }
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    .panel {
+      display: grid;
+      gap: 0.5rem;
+      border: 1px solid #dcdcdc;
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
+      background: white;
+    }
+  </style>
+</head>
+
+<bus-picker>
+  <template shadowrootmode="open">
+    <section class="panel">
+      @foreach (const option of options) key (option.label) {
+        <bus-option
+          .label="@option.label"
+          .picked="@option.picked"
+          @click="@pick(option.label)"></bus-option>
+      }
+    </section>
+  </template>
+</bus-picker>

@@ -30,6 +30,7 @@
     <nav>
       <a href="/" aria-current="@(current === 'home' ? 'page' : 'false')">fudic</a>
       <a href="/blog" aria-current="@(current === 'blog' ? 'page' : 'false')">Blog</a>
+      <a href="/mapas" aria-current="@(current === 'mapas' ? 'page' : 'false')">Mapas</a>
       <a href="/about" aria-current="@(current === 'about' ? 'page' : 'false')">Acerca de</a>
     </nav>
   </template>
