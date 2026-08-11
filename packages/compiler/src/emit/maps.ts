@@ -16,7 +16,7 @@
  * would leave a page pointing at chunks of the previous build.
  */
 
-import type { ComponentGraph, ResolvedComponent } from './resolve.js';
+import { allComponents, componentOf, type ComponentGraph, type ResolvedComponent } from './resolve.js';
 import type { CodeWriter } from './writer.js';
 import { classifyAttribute } from '../binding/index.js';
 import { codeOf } from './oxc-code.js';
@@ -45,7 +45,7 @@ export type TagMap = Record<string, readonly string[]>;
  */
 export function fudTree(graph: ComponentGraph, hydratable: ReadonlySet<string>): TagMap {
   const out: Record<string, string[]> = {};
-  for (const comp of graph.components.values()) {
+  for (const comp of allComponents(graph)) {
     if (!hydratable.has(comp.tag)) continue;
     const children = childTags(graph, comp, hydratable);
     if (children.length > 0) out[comp.tag] = children;
@@ -61,7 +61,7 @@ function childTags(
 ): string[] {
   const seen = new Set<string>();
   walkElements(templateOf(comp), (el) => {
-    if (graph.components.has(el.name) && hydratable.has(el.name)) seen.add(el.name);
+    if (componentOf(graph, el.name) !== undefined && hydratable.has(el.name)) seen.add(el.name);
   });
   return [...seen];
 }
@@ -96,7 +96,7 @@ export function fudBus(graph: ComponentGraph): TagMap {
   /** tag → the names it emits, in source order. */
   const emitted = new Map<string, string[]>();
 
-  for (const comp of graph.components.values()) {
+  for (const comp of allComponents(graph)) {
     walkElements(templateOf(comp), (el) => {
       for (const attr of el.attributes) {
         const b = classifyAttribute(attr, comp.source).value;

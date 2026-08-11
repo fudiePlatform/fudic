@@ -49,8 +49,11 @@ path del INP sin tocar el modelo de hidratación.
 
 - **Emit (SDD-15)** — contrato duro, no preferencia. El runtime rompe si el emit no
   garantiza: `data-id` entero base-0 correlativo, único por documento, determinista y
-  co-emitido con el payload; solo en instancias N3 efectivas; DSD `open`; y los cuatro mapas
-  `fud-state` / `fud-tree` / `fud-bus` / `fud-chunks` salidos de la misma pasada.
+  co-emitido con el payload; solo en instancias N3 efectivas; DSD `open`; y los tres mapas
+  `fud-state` / `fud-tree` / `fud-bus` salidos de la misma pasada.
+- **Artefactos y manifiesto (SDD-27)** — `createUrlResolver(base, build).hydrateUrl(tag)`. No
+  hay cuarto mapa: la URL del chunk de un tag es derivable del manifiesto (SDD-15 §3.6,
+  retirado), y el runtime tiene el tag delante en `host.localName`. Ver §4.6.
 - **`@fudic/dom` (SDD-14)** — `browserDom`, y en particular `browserDom.event` y
   `browserDom.bus` (SDD-15 §3.8), que son lo que los controladores usan para engancharse.
 - **Service Worker** (SDD de red, aparte) — sirve los chunks network-first la primera vez y
@@ -289,13 +292,26 @@ alcance validado (§6).
 ### 4.6. Resolución del chunk
 
 ```ts
-function chunkURL(tag: string): string;   // fud-chunks[tag]
+const urls = createUrlResolver(base, build);   // SDD-27 §4.1
+function chunkURL(tag) { return urls.hydrateUrl(tag); }
 ```
 
-El mapa `tag → URL` lo emite el compilador (SDD-15 §3.6) con hashing de nombre para cacheado
-inmutable. **Sustituye la convención hardcodeada `./components/${tag}.js`** que los cuatro
-prototipos arrastraban y que ninguno de los documentos refundidos había cerrado. Un tag sin
-entrada no es hidratable: el runtime no lo pide y lo ignora.
+**No hay mapa `tag → URL`.** La URL se **deriva**: `hydrateUrl(tag)` da
+`<base>assets/h/<tag>-<build>.js`, y eso es todo lo que hace falta (SDD-27 §4.1 y su criterio
+9). **Sustituye la convención hardcodeada `./components/${tag}.js`** que los cuatro prototipos
+arrastraban. El runtime no necesita saber qué tags son hidratables: solo pide el chunk de los
+tags que llevan `data-fud-id`, que son exactamente esos.
+
+El motivo de que sea derivación y no mapa: el manifiesto se purga por build
+(`shell-${build}`, en el `activate` del Service Worker), mientras que un JSON incrustado en un
+HTML prerenderizado se sirve mientras ese HTML esté en cache. Con las dos copias, un deploy
+deja una página apuntando a los chunks del build anterior.
+
+> **Dependencia abierta de este SDD, no de SDD-15.** Para construir el resolver, el hilo
+> principal necesita `base` y `build`. Hoy solo el script del Service Worker recibe el build
+> id, por sustitución de `BUILD_TOKEN` en el bundle (misma longitud,
+> `@fudic/transport` `constants.ts`). La vía obvia es la misma sustitución en el chunk de
+> `fudic-main`; hay que cerrarla al implementar este SDD.
 
 ```js
 async function ensureDefined(tag) {

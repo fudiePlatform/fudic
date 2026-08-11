@@ -22,7 +22,7 @@
  * the place for flow analysis is the language server (SDD-24), not the emit.
  */
 
-import type { ComponentGraph, ResolvedComponent } from './resolve.js';
+import { allComponents, componentOf, type ComponentGraph, type ResolvedComponent } from './resolve.js';
 import type { ElementNode, HtmlContent } from '../html/index.js';
 import type { ControlNode } from '../control/index.js';
 import { classifyAttribute } from '../binding/index.js';
@@ -104,7 +104,7 @@ function componentHosts(
   visit: (el: ElementNode, child: ResolvedComponent) => void,
 ): void {
   walkElements(templateOf(comp), (el) => {
-    const child = graph.components.get(el.name);
+    const child = componentOf(graph, el.name);
     if (child !== undefined) visit(el, child);
   });
 }
@@ -119,11 +119,18 @@ function componentHosts(
  * saying so.
  *
  * It terminates: the set only grows, and it is bounded by the catalogue. It is
- * deterministic: the iteration order is `graph.components`, which already is.
+ * deterministic: the iteration order is `allComponents`, which already is.
+ *
+ * `allComponents` and not `graph.components`, and that is not a detail: the entry of a graph
+ * is not in that map, so a component compiled ON ITS OWN — which is exactly how the Vite
+ * plugin compiles every `.fud` — would be missing from its own answer, and would then fail
+ * to claim the children it renders. The same file has to emit the same text however it was
+ * reached.
  */
 export function hydratableTags(graph: ComponentGraph): ReadonlySet<string> {
+  const components = allComponents(graph);
   const hydratable = new Set<string>();
-  for (const comp of graph.components.values()) {
+  for (const comp of components) {
     if (isIntrinsicallyHydratable(comp)) hydratable.add(comp.tag);
   }
   // Per tag, the props it receives as reactive. They join its own declarations when asking
@@ -134,7 +141,7 @@ export function hydratableTags(graph: ComponentGraph): ReadonlySet<string> {
   let changed = true;
   while (changed) {
     changed = false;
-    for (const comp of graph.components.values()) {
+    for (const comp of components) {
       if (!hydratable.has(comp.tag)) continue;
       const reactives = new Set<string>([
         ...codeOf(comp).signals.map((s) => s.name),

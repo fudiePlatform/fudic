@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` (emit) · `@fudic/ssr` (`SsrDom`) · `@fudic/vite` (el plugin
 > los escribe) · `@fudic/transport` (coordinación con el manifiesto)
 > **Rama:** `sdd-15-mapas-de-pagina`
-> **Progreso:** 15 / 26
+> **Progreso:** 17 / 26
 > **Va DESPUÉS de:** [eventos y bus](./SDD-15-Task-eventos-y-bus.md) (22/22) y
 > [SDD-31 — Signals derivadas](./SDD-31-signals-derivadas.md) (`Hecho`).
 
@@ -364,7 +364,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
 
 ## Fase 6 — `fud-chunks` se retira, y la coordinación con el manifiesto (2)
 
-- [ ] **16. Retirar `fud-chunks` de la especificación, no implementarlo.**
+- [x] **16. Retirar `fud-chunks` de la especificación, no implementarlo.**
       Modificar [SDD-15](./SDD-15-emit.md): §3.2 pasa de cinco artefactos a cuatro, §3.6 se
       reescribe como *retirado* con el motivo —derivable de `fudic-routes.json` vía
       `createUrlResolver(base, build).hydrateUrl(tag)`, SDD-27 §4.1 y su criterio 9—, §6.27 se
@@ -380,7 +380,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       dentro de un HTML prerenderizado se sirve mientras ese HTML esté en cache. Con las dos
       copias, un deploy deja una página apuntando a chunks del build anterior.
 
-- [ ] **17. Verificar que la derivación cierra, y anotar lo que falta.**
+- [x] **17. Verificar que la derivación cierra, y anotar lo que falta.**
       Test en `@fudic/vite`: para todo tag con instancias `[data-fud-id]` en los HTML
       prerenderizados de `examples/basic`, `hydrateUrl(tag)` apunta a un fichero que existe en
       `dist/`. Es el criterio 27 de SDD-15 reescrito sin mapa: la garantía que importaba no era

@@ -55,10 +55,11 @@ hito de cierre del compilador: aquí `home.fud` + `app-card.fud` + `app-button.f
 El emit produce **dos familias de artefactos**, y la frontera entre ambas es la razón de
 que este SDD exista como una sola pieza:
 
-- **Emit de página** — el HTML del documento (DSD por instancia), y los cuatro mapas JSON
-  que el runtime consume: estado, composición, bus y chunks. Todos salen de **una única
+- **Emit de página** — el HTML del documento (DSD por instancia), y los tres mapas JSON
+  que el runtime consume: estado, composición y bus. Todos salen de **una única
   pasada determinista en pre-orden** sobre el árbol de composición ya resuelto. Salen
   juntos porque tienen que casar por construcción; calculados por separado divergirían.
+  (El cuarto, `tag → chunk`, se **retiró**: es derivable del manifiesto. Ver §3.6.)
 - **Emit de componente** — un módulo JS por tag, con el controlador del componente. Ese
   mismo controlador, ejecutado contra el adapter de SSR en vez del de navegador, es lo que
   produce el markup del punto anterior. **Un controlador, dos adapters.**
@@ -124,16 +125,23 @@ data, mismo destructuring. Sin esto, SSR y cualquier regeneración divergen.
 
 ### 3.2. La pasada única de página
 
-Los cinco artefactos de página salen del **mismo recorrido**, en pre-orden, sobre el árbol
+Los cuatro artefactos de página salen del **mismo recorrido**, en pre-orden, sobre el árbol
 de composición resuelto (todos los `<link rel="component">` seguidos):
 
-1. el atributo `data-id` en cada host N3 efectivo,
+1. el atributo `data-fud-id` en cada host N3 efectivo,
 2. su tramo de valores en `fud-state` (§3.3),
 3. la entrada de su tag en `fud-tree` (§3.4),
-4. la entrada de su tag en `fud-bus` (§3.5),
-5. la entrada de su tag en `fud-chunks` (§3.6).
+4. la entrada de su tag en `fud-bus` (§3.5).
 
-No son cinco pasadas coordinadas: es una, y ese es el invariante que hace que casen.
+No son cuatro pasadas coordinadas: es una, y ese es el invariante que hace que casen.
+
+**Y esa pasada ocurre DENTRO DEL RENDER, no en compilación.** Los puntos 1 y 2 no pueden ser
+de compilación: un `@foreach` sobre `data.items` produce N instancias que solo existen cuando
+llegan los datos. El contador de identidad vive por tanto en el adapter de SSR
+(`SsrDom.claim` / `SsrDom.state`, §3.3), y el pre-orden sale del propio recorrido del emisor
+—fabrica el host antes de bajar a su shadow y antes de su light DOM—. Los puntos 3 y 4 sí son
+de compilación: son tag→tags, no dependen de los datos y viajan como constantes del módulo de
+página.
 
 ### 3.3. `fud-state` — el estado, posicional
 
@@ -210,25 +218,26 @@ type FudBus = Record<string /* tag emisor */, string[] /* tags receptores */>;
   El runtime nunca razona sobre nombres de evento: consume "para levantar A, levanta antes
   B (y C…)".
 
-### 3.6. `fud-chunks` — el manifest `tag → URL`
+### 3.6. `fud-chunks` — **RETIRADO**
 
-```html
-<script type="application/json" id="fud-chunks">
-{ "app-counter": "/c/app-counter.a91f3c.js", "shopping-cart": "/c/shopping-cart.4d02e1.js" }
-</script>
-```
+No se emite. La URL del chunk de hidratación de un tag es **derivable** del manifiesto que
+ya se publica: `createUrlResolver(base, build).hydrateUrl(tag)`
+([SDD-27 §4.1](./SDD-27-artefactos-y-manifiesto.md), cuyo criterio 9 dice exactamente eso —
+la URL sale del build id y del tag, y de nada más). Y el runtime tiene el tag delante: lo lee
+de `host.localName` en cada `[data-fud-id]`.
 
-```ts
-type FudChunks = Record<string /* tag */, string /* URL del módulo */>;
-```
+**El motivo de retirarlo no es ahorrar bytes, es no duplicar un hecho en dos ficheros que
+caducan por reglas distintas.** El manifiesto se purga por build (`shell-${build}`, en el
+`activate` del Service Worker); un JSON incrustado en un HTML prerenderizado se sirve mientras
+ese HTML esté en cache. Con las dos copias, un deploy deja una página apuntando a los chunks
+del build anterior.
 
-Cierra el hueco que los cuatro prototipos dejaban abierto con la convención hardcodeada
-`./components/${tag}.js`. El emit conoce el mapa real y lo emite con hashing de nombre para
-cacheado inmutable. Un tag ausente del mapa es un componente no hidratable: el runtime no
-debe pedirlo nunca.
+Con él cae `FUD0293` (§5): el diagnóstico existía para un hueco en un mapa que ya no hay, y
+además el pase de cliente emite un chunk por **cada** componente del grafo, sin filtro de
+nivel, así que el hueco tampoco puede producirse.
 
-> No se reutiliza `loadManifest` de `@fudic/transport`: aquel es **ruta → chunk** para el
-> shell de renderizado (SDD-16), este es **tag → chunk** para la hidratación. Ejes distintos.
+Lo que la garantía tenía de valioso —que el fichero exista— se conserva y se comprueba: ver
+el criterio §6.27, reescrito sin mapa.
 
 ### 3.7. Firma del artefacto de componente
 
@@ -867,7 +876,7 @@ que falta usar un nodo.
 | `FUD0290` | Identificador de usuario con prefijo `$` en `@client` (§4.7). |
 | `FUD0291` | Valor de event binding cuyo nodo AST raíz no es `Identifier` / `Arrow` / `Function` / `Call` (§4.5). |
 | `FUD0292` | Tipo de prop de estado no serializable a JSON (§4.1). |
-| `FUD0293` | Componente N3 efectivo sin entrada en el manifest `tag → chunk` (§3.6). |
+| `FUD0293` | **RETIRADO.** Era el hueco en el manifest `tag → chunk`, y ese mapa ya no se emite (§3.6). No se reutiliza el código. |
 | `FUD0294`–`FUD0319` | Reservados. |
 
 ---
@@ -887,9 +896,8 @@ que falta usar un nodo.
    anidado sale tal cual (`bar === {id:1}`).
 5. **`data-id` base-0 correlativo.** El emit asigna `0,1,2,…` en pre-orden sobre las
    instancias N3 efectivas; el id indexa `offsets` sin tabla intermedia.
-6. **Una sola pasada.** Alterar el árbol de composición y regenerar produce `data-id`,
-   `fud-state`, `fud-tree`, `fud-bus` y `fud-chunks` mutuamente consistentes, sin paso de
-   reconciliación.
+6. **Una sola pasada.** Alterar el árbol de composición y regenerar produce `data-fud-id`,
+   `fud-state`, `fud-tree` y `fud-bus` mutuamente consistentes, sin paso de reconciliación.
 
 **Controlador:**
 
@@ -968,9 +976,11 @@ que falta usar un nodo.
     de `app-child` **no cambia el mapa**.
 26. **Solo N3 efectivo.** Un hijo N1/N2 puro no lleva `data-id`, no aparece en `fud-tree`, ni
     tiene tramo en `fud-state`.
-27. **`fud-chunks` completo.** Todo tag que aparezca como clave o valor en `fud-tree` /
-    `fud-bus`, o que tenga alguna instancia con `data-id`, tiene entrada en `fud-chunks`. Un
-    hueco produce `FUD0293`.
+27. **La URL del chunk cierra sin mapa.** Para todo tag con alguna instancia `[data-fud-id]`
+    en los HTML prerenderizados de un build, `createUrlResolver(base, build).hydrateUrl(tag)`
+    apunta a un fichero que ese build escribió. Es el criterio anterior reescrito sin mapa:
+    la garantía que importaba no era que el mapa estuviera completo, era que el fichero
+    existiera. Y ninguna página publica un bloque `fud-chunks`.
 
 **Hito de cierre:**
 
