@@ -1,12 +1,14 @@
 /**
  * Entry point of `@fudic/core`.
  *
- * Two pieces, and the split is the emit contract (SDD-15 §3.7): the emitted chunk
- * of a component carries only its `static c($props)` factory, which returns a
- * closure controller `{c, h, r}`; the instance scaffolding around it is
- * `FudicElement`, inherited from here. `signal` is the reactivity the factory
- * closes over. Hydration itself — who downloads what, and in which order — is
- * driven by the global capturer of SDD-17, not by this module.
+ * The package has two faces, and they are downloaded by different people. The
+ * emitted chunk of a component carries only its `static c($props)` factory, which
+ * returns a closure controller `{c, h, u, r}`; the instance scaffolding around it is
+ * `FudicElement`, inherited from here, and `signal` is the reactivity the factory
+ * closes over (SDD-15 §3.7). The other face is `installHydration` — the global
+ * capturer of SDD-17: the ONE module the PAGE downloads on the initial load, which
+ * decides who is downloaded, when, and in which order. A component's chunk imports
+ * the first; the page's bootstrap imports the second.
  *
  * `Render`/`RenderFactory`/`SsrBuild` and the `hydrateRoot`/`mountRoot` bootstrap
  * were removed rather than kept: they were the SDD-14 *component* lifecycle, and
@@ -34,3 +36,14 @@ export {
   type RouteMode,
   type CachePolicy,
 } from './strategy.js';
+
+export {
+  installHydration,
+  READY_EVENT,
+  HYDRATED_EVENT,
+  type HydrationOptions,
+  type HydratedDetail,
+} from './hydrate/install.js';
+export type { ResolveChunk, ImportModule } from './hydrate/chunks.js';
+export type { HydratedFrom } from './hydrate/registry.js';
+export { nullWarmChannel, type WarmChannel } from './hydrate/warm/channel.js';

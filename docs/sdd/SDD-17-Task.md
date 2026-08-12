@@ -1,7 +1,7 @@
 # SDD-17 — el runtime de hidratación: el cierre de fudic
 
-**Estado:** `Pendiente` · **Rama:** `worktree-sdd-17-hidratacion` · **SDD:**
-[SDD-17](./SDD-17-hidratacion.md)
+**Estado:** `En curso` · **Progreso: 7 / 21** · **Rama:** `worktree-sdd-17-hidratacion` ·
+**SDD:** [SDD-17](./SDD-17-hidratacion.md)
 
 Estas 21 tareas **terminan el framework**. Al marcarlas no queda nada de v1 salvo los cuatro
 puntos de [PENDIENTES-v1.md](./pendings/PENDIENTES-v1.md) —`ref`, `@raw`, spread, `bind:`—, que
@@ -91,13 +91,13 @@ navegador, sin SW) y **21** (verde y cerrado).
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 1 | — | Lectura de los tres bloques JSON de la página y tramo por instancia (`data.slice(offsets[id], offsets[id+1])`). Sin global: el tramo se **pasa**, no se publica | `src/hydrate/maps.ts` |
-| [ ] | 2 | — | Localizar instancias **por tag** descendiendo por `shadowRoot` (`querySelectorAll` no cruza la frontera), y los dos conjuntos que gobiernan todo: `hydrated` (los tres caminos) y `attached` (el reparto) | `src/hydrate/registry.ts` |
-| [ ] | 3 | — | `ensureDefined(tag)` memoizado por tag (`inflight`) sobre el puerto `resolveChunk`: descarga por tag, hidratación por instancia | `src/hydrate/chunks.ts` |
-| [ ] | 4 | 2, 3 | Cascada post-orden y su corrección por tag: `prepareTag` prepara el subárbol de **todas** las instancias antes del `define`, y `attachAll` reparte el tramo a todas. Es el criterio 9, el que falla con `hydrateSubtreePostorder` a secas | `src/hydrate/cascade.ts` |
-| [ ] | 5 | 1, 4 | `preHydrateBus(tag)`: receptores de `fud-bus` levantados **en secuencia** (no `Promise.all`) antes de la cascada, cada uno con su propio `prepareTag` + `attachAll` | `src/hydrate/bus.ts` |
-| [ ] | 6 | 2 | El capturador: un listener en captura, los tres caminos, y el replay reconstruyendo el evento con su constructor sobre `composedPath()[0]`. El replay reentra y cae en el camino 1 — ahí se cierra el doble disparo. Delega el camino 2 en un callback, y por eso no espera a 4 ni a 5 | `src/hydrate/capture.ts` · `src/hydrate/replay.ts` |
-| [ ] | 7 | 1–6 | `installHydration({ root, resolveChunk, warm })`: el orden 3→4→5→6 y los eventos `fud:ready` / `fud:hydrated` (`from`: `downloaded` \| `shared-chunk` \| `bus` \| `subtree`). Aquí se declara el puerto `WarmChannel` y su implementación nula, la que usan las fases 1 y 2 | `src/hydrate/install.ts` · `src/hydrate/warm/channel.ts` · [index.ts](../../packages/core/src/index.ts) *(se añade el export y se corrige la cabecera)* |
+| [x] | 1 | — | Lectura de los tres bloques JSON de la página y tramo por instancia (`data.slice(offsets[id], offsets[id+1])`). Sin global: el tramo se **pasa**, no se publica | `src/hydrate/maps.ts` |
+| [x] | 2 | — | Localizar instancias **por tag** descendiendo por `shadowRoot` (`querySelectorAll` no cruza la frontera), y los dos conjuntos que gobiernan todo: `hydrated` (los tres caminos) y `attached` (el reparto). Aquí vive también el puerto `ElementRegistry` (`get`/`whenDefined`/`upgrade`), inyectado: la regla «`define` upgradea todas las instancias en su sitio, conservando su shadow» es la que sostiene toda la cascada y happy-dom no la modela —sustituye el nodo y pierde el shadow—, así que el runtime se verifica contra el puerto y el navegador real lo confirma en la 13 | `src/hydrate/registry.ts` |
+| [x] | 3 | — | `ensureDefined(tag)` memoizado por tag (`inflight`) sobre el puerto `resolveChunk`: descarga por tag, hidratación por instancia | `src/hydrate/chunks.ts` |
+| [x] | 4 | 2, 3 | Cascada post-orden y su corrección por tag: `prepareTag` prepara el subárbol de **todas** las instancias antes del `define`, y `attachAll` reparte el tramo a todas. Es el criterio 9, el que falla con `hydrateSubtreePostorder` a secas | `src/hydrate/cascade.ts` |
+| [x] | 5 | 1, 4 | `preHydrateBus(tag)`: receptores de `fud-bus` levantados **en secuencia** (no `Promise.all`) antes de la cascada, cada uno con su propio `prepareTag` + `attachAll` | `src/hydrate/bus.ts` |
+| [x] | 6 | 2 | El capturador: un listener en captura, los tres caminos, y el replay reconstruyendo el evento con su constructor sobre `composedPath()[0]`. El replay reentra y cae en el camino 1 — ahí se cierra el doble disparo. Delega el camino 2 en un callback, y por eso no espera a 4 ni a 5 | `src/hydrate/capture.ts` · `src/hydrate/replay.ts` |
+| [x] | 7 | 1–6 | `installHydration({ root, resolveChunk, warm })`: el orden 3→4→5→6 y los eventos `fud:ready` / `fud:hydrated` (`from`: `downloaded` \| `shared-chunk` \| `bus` \| `subtree`). Aquí se declara el puerto `WarmChannel` y su implementación nula, la que usan las fases 1 y 2 | `src/hydrate/install.ts` · `src/hydrate/warm/channel.ts` · [index.ts](../../packages/core/src/index.ts) *(se añade el export y se corrige la cabecera)* |
 
 ## Fase 2 — que llegue a una página, y que se pueda probar en dev
 
