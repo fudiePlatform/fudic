@@ -785,6 +785,13 @@ prefijo `$` queda reservado al código emitido**:
 - **Validación sobre el AST de Oxc, no sobre texto.** Tras el parse del fragmento `@client`,
   se recorren los `Identifier` que sean bindings o referencias del usuario. No es lexing
   sobre string: evita falsos positivos en strings, comentarios o property names.
+  El recorrido es **el mismo** que calcula las referencias libres de un bloque (SDD-30 §3.3):
+  las dos preguntas son la misma pregunta —qué identificadores de esta región son del autor—
+  y dos recorridos con su propia idea de eso divergen en silencio por los dos lados. Ahí la
+  regla no puede ser generosa: además del acceso a propiedad quedan fuera el **miembro de
+  clase** (`class C { $m() {} }` no declara nada en el scope), la **etiqueta** de un
+  `break`/`continue`, el nombre **exportado** que un `import` renombra y las **anotaciones de
+  tipo**, que se borran antes de compartir scope con nadie.
 - **Batch y LSP.** El mismo análisis corre en el compilador batch y en el language server: el
   error aparece **mientras el usuario escribe**, con su span.
 - Hermana de la decisión 22 (`bus:` como prefijo reservado): mismo patrón de reservar un
@@ -806,8 +813,9 @@ inventado. El emit produce, en la pasada única de página (§3.2):
   día uno), de modo que el día que haya soporte nativo no se toca nada.
 
 El **polyfill** (SDD-18 §5) es una pura _fallback_ con feature-detección: mientras no haya
-soporte nativo, recorre los shadow hosts, toma el specifier del `tagName` y adopta la hoja; no
-resuelve nada más. No hay `data-fud-css` ni marcador inventado.
+soporte nativo, recorre los `[data-fud-adopt]` —el espejo que el emisor escribe en el host,
+porque el atributo nativo vive en un `<template>` que el parser ya consumió (SDD-18 D-6)— y
+adopta la hoja que ese specifier nombra; no resuelve nada más. No hay `data-fud-css`.
 
 - No se emite `<style host="tag">` ni marcador `host` de ningún tipo: retirado (§7).
 - `<style>` / `<link rel="stylesheet">` escritos **dentro** de la template quedan inline en

@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` (emit) · `@fudic/ssr` (`SsrDom`) · `@fudic/vite` (el plugin
 > los escribe) · `@fudic/transport` (coordinación con el manifiesto)
 > **Rama:** `sdd-15-mapas-de-pagina`
-> **Progreso:** 24 / 26
+> **Progreso:** 25 / 26
 > **Va DESPUÉS de:** [eventos y bus](./SDD-15-Task-eventos-y-bus.md) (22/22) y
 > [SDD-31 — Signals derivadas](./SDD-31-signals-derivadas.md) (`Hecho`).
 
@@ -467,7 +467,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       `FUD0290` (validación del prefijo `$`, §4.7) **entra aquí como tarea 26** — decidido al
       abrir la rama (2026-08-10, Pedro). La tarea 24 también entra, misma decisión.
 
-- [ ] **26. `FUD0290` — el prefijo `$` reservado, con su diagnóstico.**
+- [x] **26. `FUD0290` — el prefijo `$` reservado, con su diagnóstico.**
       SDD-15 §4.7: ningún identificador **de usuario** de `@code { @client }` puede empezar por
       `$`. Aplica a **declaraciones** (`const`/`let`/`var`, parámetros, targets de
       destructuring, nombres de función y de clase) **y a referencias libres** —usar `$shadow`
