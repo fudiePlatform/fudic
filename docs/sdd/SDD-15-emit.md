@@ -1,33 +1,32 @@
 # SDD-15 — Emit (AST → runtime)
 
-> **Estado:** `Listo` — con la **slice de emit SSR de servidor en `Hecho`** (ver *Slices* abajo).
+> **Estado:** `Hecho` (2026-08-12) — las cuatro tandas cerradas; ver *Slices* abajo.
 > **Paquete:** `@fudic/compiler` (emit), contra `@fudic/dom` · `@fudic/core` · `@fudic/ssr`.
 >
-> **Slices.** Este SDD se implementa por partes. La **rama de servidor SSR está `Hecho`**
-> (commits `7623a49` + refactor `44c31ad`): `emitComponentModule` produce el
-> `render($dom, $shadow, props)` ejecutable contra `SsrDom` (elementos, texto, interpolación
-> de contenido, `@if`/`@foreach`, atributos estáticos e interpolados, `class:`, composición de
-> hijos vía `data-fud-adopt` + `attachShadow` + llamada al `render` del hijo, defaults de
-> `props<T>()` y **signals inertes** —valor inicial, sin reactividad—), y `emitPageModule`
-> produce `page(data, io)` → documento HTML completo (DSD por instancia) con el hoisting de
-> estilos y el polyfill de §4.8 (SDD-18). Es exactamente lo que hace falta para el HTML DSD
-> cero-JS. **Pendiente** (rama de cliente/hidratación, la consume SDD-17): §3.1 `data-fud-id`,
-> §3.3–3.6 los cuatro mapas JSON (`fud-state`/`fud-tree`/`fud-bus`/`fud-chunks`), §3.7
-> controlador `{c,h,r}` / `FudicElement`, §3.8 `Dom.event`/`Dom.bus`, §4.2 deserialización,
-> §4.4 bus, §4.5 event bindings, §4.6 factory. **Motivo del cierre parcial (Pedro):** la rama
-> de servidor es **totalmente aislada del resto** —no comparte artefactos con los mapas JSON ni
-> con el controlador—, así que se da por hecha sin bloquear ni ser bloqueada por el emit de
-> cliente. Esto es lo que sostiene a **SDD-18 en `Hecho`**, que solo depende de esta slice.
+> **Slices.** Este SDD se implementó por partes, y las cuatro están en `Hecho`:
+> 1. **Emit SSR de servidor** (commits `7623a49` + refactor `44c31ad`): `emitComponentModule`
+>    produce el `render($dom, $shadow, props)` ejecutable contra `SsrDom` (elementos, texto,
+>    interpolación de contenido, `@if`/`@foreach`, atributos estáticos e interpolados, `class:`,
+>    composición de hijos vía `data-fud-adopt` + `attachShadow` + llamada al `render` del hijo,
+>    defaults de `props<T>()` y **signals inertes**), y `emitPageModule` produce `page(data, io)`
+>    → documento HTML completo con el hoisting de estilos y el polyfill de §4.8 (SDD-18). Se
+>    cerró aparte porque es **totalmente aislada del resto**, y es lo que sostiene a **SDD-18**.
+> 2. **[`FudicElement` y emit de cliente](./SDD-15-Task-fudic-element-y-emit-de-cliente.md)**
+>    (22/22): §3.7 el controlador `{c,h,r}` y un chunk por componente, sin filtro de nivel.
+> 3. **[Eventos y bus](./SDD-15-Task-eventos-y-bus.md)** (22/22): §3.8 `Dom.event`/`Dom.bus`,
+>    §4.4 el bus, §4.5 los event bindings. Fue **detrás de
+>    [SDD-30](./SDD-30-renders-de-bloque.md)** a propósito: con `@if`/`@foreach` aplanados la
+>    variable de nodo se reasigna cada iteración, así que el enganche de un `@foreach` no tenía
+>    dónde vivir y los eventos delante habrían escrito un parche que SDD-30 tira.
+> 4. **[`data-fud-id` y los mapas de página](./SDD-15-Task-mapas-de-pagina.md)** (27/27): §3.1 la
+>    identidad de instancia, §3.3–§3.5 los **tres** mapas JSON (§3.6 `fud-chunks` **retirado**,
+>    derivable del manifiesto), §4.1/§4.2 el payload posicional y su simétrico, §4.7 `FUD0290`.
+>
+> **Lo que este SDD NO incluye y sigue abierto:** todo **SDD-17** —el capturador que lee esos
+> datos y levanta una instancia— y `FUD0292`, que es chequeo de tipos y por tanto de SDD-24.
 > **Amplía el runtime:** añade `FudicElement` a `@fudic/core` (§3.7) y `event`/`bus` a
 > `Dom<N>` en `@fudic/dom` (§3.8). Son piezas del contrato de emit, por eso viven aquí y no
 > en SDD-14.
-> **Orden de las tandas de cliente pendientes** (2026-08-06): la primera está `Hecho`
-> ([`FudicElement` y emit de cliente](./SDD-15-Task-fudic-element-y-emit-de-cliente.md), 22/22);
-> la siguiente es **[SDD-30 — Renders de bloque](./SDD-30-renders-de-bloque.md)**, y solo
-> detrás van los [event bindings y el bus](./SDD-15-Task-eventos-y-bus.md). El motivo está en
-> el propio emit: con `@if`/`@foreach` aplanados en `c`/`h`, la variable de nodo se reasigna
-> cada iteración, así que el enganche de un `@foreach` no tiene dónde vivir y `r()` deja
-> colgadas las N−1 filas anteriores. Los eventos delante escribirían un parche que SDD-30 tira.
 > **Depende de:** 00, 05–14, 16.
 > **Rango de diagnósticos:** `FUD0290`–`FUD0319`.
 > **Decisiones de gramática:** 22, 27, 28 (+28.a–d), 29, 67–85, **96–99** (event bindings).

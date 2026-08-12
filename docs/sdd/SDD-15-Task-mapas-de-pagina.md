@@ -4,7 +4,8 @@
 > **Paquetes:** `@fudic/compiler` (emit) · `@fudic/ssr` (`SsrDom`) · `@fudic/vite` (el plugin
 > los escribe) · `@fudic/transport` (coordinación con el manifiesto)
 > **Rama:** `sdd-15-mapas-de-pagina`
-> **Progreso:** 26 / 27
+> **Progreso:** 27 / 27 — **tanda cerrada** (2026-08-12). Con ella
+> [SDD-15](./SDD-15-emit.md) pasa a `Hecho`.
 > **Va DESPUÉS de:** [eventos y bus](./SDD-15-Task-eventos-y-bus.md) (22/22) y
 > [SDD-31 — Signals derivadas](./SDD-31-signals-derivadas.md) (`Hecho`).
 
@@ -457,7 +458,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       dejar fuera sin bloquear nada** — pero entonces se anota en SDD-18 como deuda con su
       motivo, y no se deja simplemente ahí. Marcar una de las dos casillas, no ninguna.
 
-- [ ] **25. Verde, cobertura y registro.**
+- [x] **25. Verde, cobertura y registro.**
       `pnpm typecheck`, `pnpm test` y `pnpm build` en la raíz —los ejemplos se construyen
       después de los paquetes—. `level.ts` y el emisor de los bloques nacen al **100 %** en las
       cuatro métricas; `@fudic/ssr` está al 100 % y no baja, así que las dos ramas del punto 4
