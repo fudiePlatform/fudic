@@ -74,7 +74,7 @@ describe('fud-state — the payload of the canonical page', () => {
 
   it('a non-hydratable child has no id and no slice (§6.26)', async () => {
     const { html, payload } = await render(graph, HOME_DATA);
-    expect(html).toContain('<app-badge data-adopt="app-badge"');
+    expect(html).toContain('<app-badge data-fud-adopt="app-badge"');
     expect(html).not.toContain('<app-badge data-fud-id');
     // Four slices for four claimed hosts; the badge is not one of them.
     expect(payload.offsets.length - 1).toBe(4);

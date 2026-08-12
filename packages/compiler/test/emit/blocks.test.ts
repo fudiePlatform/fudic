@@ -198,7 +198,7 @@ describe('the two branches meet: the slice IS what the client destructures', () 
 
   it('a non-hydratable tag has no id, so it indexes nothing', async () => {
     const { html } = await render(graph, HOME_DATA);
-    expect(html).toContain('<app-badge data-adopt="app-badge"');
+    expect(html).toContain('<app-badge data-fud-adopt="app-badge"');
     expect(html).not.toContain('<app-badge data-fud-id');
   });
 });

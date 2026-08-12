@@ -253,9 +253,11 @@ export class MarkupEmitter {
       // so the counter in the adapter hands out `0,1,2,…` in exactly that order.
       if (this.#hydratable.has(el.name)) this.#w.line(`$dom.claim(${v});`);
       // The <template>'s shadowrootadoptedstylesheets is consumed by the parser and gone
-      // from the DOM; project the specifier onto the host as data-adopt so the style
+      // from the DOM; project the specifier onto the host as data-fud-adopt so the style
       // polyfill can read it (SDD-18 D-6). The native attribute still rides the template.
-      this.#w.line(`$dom.setAttr(${v}, 'data-adopt', ${JSON.stringify(el.name)});`);
+      // Prefixed for the same reason as `data-fud-id`: `data-*` is the author's vocabulary,
+      // and an unprefixed marker is a name we do not own.
+      this.#w.line(`$dom.setAttr(${v}, 'data-fud-adopt', ${JSON.stringify(el.name)});`);
       // The host's own attributes — its `.prop`s and its plain HTML ones (BUG-16 §4.1).
       // Level 1 is HTML with no JS, so this is the only place they can live.
       this.#elementAttrs(el, v, true);

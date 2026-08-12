@@ -7,7 +7,7 @@
 > (commits `7623a49` + refactor `44c31ad`): `emitComponentModule` produce el
 > `render($dom, $shadow, props)` ejecutable contra `SsrDom` (elementos, texto, interpolación
 > de contenido, `@if`/`@foreach`, atributos estáticos e interpolados, `class:`, composición de
-> hijos vía `data-adopt` + `attachShadow` + llamada al `render` del hijo, defaults de
+> hijos vía `data-fud-adopt` + `attachShadow` + llamada al `render` del hijo, defaults de
 > `props<T>()` y **signals inertes** —valor inicial, sin reactividad—), y `emitPageModule`
 > produce `page(data, io)` → documento HTML completo (DSD por instancia) con el hoisting de
 > estilos y el polyfill de §4.8 (SDD-18). Es exactamente lo que hace falta para el HTML DSD

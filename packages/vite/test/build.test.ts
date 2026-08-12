@@ -102,7 +102,7 @@ describe('vite build over the fixtures (hito §6.17)', () => {
   it('bundles the streaming page (compiler emit, not Vite parsing .fud)', () => {
     const all = allCode(output);
     // The emitted page generator and the DSD composition survive into the bundle.
-    expect(all).toContain('data-adopt');
+    expect(all).toContain('data-fud-adopt');
     expect(all).toContain('shadowrootmode');
   });
 });

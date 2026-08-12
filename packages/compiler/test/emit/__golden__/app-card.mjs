@@ -33,7 +33,7 @@ export function render($dom, $shadow, props) {
   const $n15 = $dom.text(" "); $dom.append($n1, $n15);
   const $n16 = $dom.element("app-button");
   $dom.claim($n16);
-  $dom.setAttr($n16, 'data-adopt', "app-button");
+  $dom.setAttr($n16, 'data-fud-adopt', "app-button");
   $dom.setAttr($n16, "variant", "ghost");
   const $n17 = $dom.attachShadow($n16);
   renderAppButton($dom, $n17, { "variant": "ghost" });

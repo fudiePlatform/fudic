@@ -565,8 +565,8 @@ export class ClientMarkupEmitter {
       // A child component host: fabricate it and hang its light DOM, but do NOT open its
       // shadow or drive its controller. Who downloads a child's chunk, and in which order
       // its instances come alive, is the runtime's decision (SDD-17), not the parent's.
-      // `data-adopt` carries the style specifier the shared sheet is keyed by (SDD-18 D-6).
-      this.#fab.line(`$dom.setAttr(${v}, 'data-adopt', ${JSON.stringify(el.name)});`);
+      // `data-fud-adopt` carries the style specifier the shared sheet is keyed by (SDD-18 D-6).
+      this.#fab.line(`$dom.setAttr(${v}, 'data-fud-adopt', ${JSON.stringify(el.name)});`);
       // The host's own attributes, same as the server writes them (BUG-16 §4.1): the two
       // branches have to agree byte for byte, or `h` adopts a tree it does not recognise.
       writeElementAttrs(

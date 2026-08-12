@@ -100,7 +100,7 @@ adorno: es condición de emisión.
   </style>
 </head>
 <body>
-  <app-card data-fud-id="0">
+  <app-card data-fud-id="0" data-fud-adopt="app-card">
     <template shadowrootmode="open" shadowrootadoptedstylesheets="app-card">
       <!-- markup SSR -->
     </template>
@@ -189,11 +189,16 @@ forma de emisión. Las decisiones D-1 a D-6 son **del proyecto**, derivadas de l
 - **D-5. `:host` en las hojas compartidas.** El `<style type="module">` no aplica al documento
   donde se declara (es un módulo, no una hoja activa), pero las reglas deben escribirse
   relativas al shadow porque ahí es donde se adoptan.
-- **D-6. El polyfill obtiene el specifier del tag del host, sin atributo espejo.** El
-  `<template>` no sobrevive al parser y la reflection de §3.3 aún no existe, pero el specifier
-  **es el tag** (D-1), y el `tagName` del host sí es legible del DOM. El polyfill recorre los
-  shadow hosts y adopta la hoja nombrada por su tag. No se emite ningún `data-fud-css` ni
-  marcador inventado: cero bytes extra y cero rediseño el día que haya soporte nativo.
+- **D-6. El polyfill obtiene el specifier de un espejo en el host: `data-fud-adopt`.** El
+  `<template>` no sobrevive al parser y la reflection de §3.3 aún no existe, así que el
+  atributo nativo no es legible del DOM. El specifier **es el tag** (D-1), pero el `tagName`
+  solo no basta como disparador: le diría al polyfill que **todo** custom element con shadow
+  root espera una hoja, incluido cualquiera que el autor haya definido él mismo. El espejo es
+  a la vez el selector (`[data-fud-adopt]`) y el valor, y sale gratis porque el emisor está
+  escribiendo el host de todos modos. Sigue sin emitirse ningún `data-fud-css`.
+  **Prefijado con `fud`**, como `data-fud-id` (SDD-15 §3.1) y `data-fud-space` (BUG-07 §4.4):
+  `data-*` es vocabulario del autor, y un marcador sin prefijar es un nombre que no es
+  nuestro. El día que haya soporte nativo el espejo desaparece con el polyfill.
 
 ### 4.1. Coste frente a la alternativa inline (vía (a), descartada)
 
@@ -220,10 +225,11 @@ antes observaba custom elements por selector CSS y adoptaba hojas por tag; ahora
 
 1. **Feature detection:** la de §3.3. Si hay soporte nativo, el polyfill no hace nada.
 2. **Sin soporte:** el atributo `shadowrootadoptedstylesheets` vive en un `<template>` que el
-   parser ya consumió, así que **no es legible del DOM**. Se resuelve por convención (D-1/D-6):
-   el specifier **es el tag**, y el `tagName` del host sí es legible.
-3. **Rutina:** recorrer los shadow hosts (descendiendo por `shadowRoot`, que `querySelectorAll`
-   no cruza), tomar el specifier del `tagName`, construir el `CSSStyleSheet` **una vez por tag**
+   parser ya consumió, así que **no es legible del DOM**. Se resuelve con el espejo del host
+   (D-6): `data-fud-adopt="<tag>"`, que el emisor escribe junto al host.
+3. **Rutina:** recorrer los `[data-fud-adopt]` (descendiendo por `shadowRoot`, que
+   `querySelectorAll` no cruza), tomar el specifier del atributo, construir el `CSSStyleSheet`
+   **una vez por tag**
    (cacheado en un `Map`) a partir del `<style type="module" specifier="<tag>">` del `<head>`, y
    asignar `shadowRoot.adoptedStyleSheets`. Debe correr también sobre instancias creadas
    después: el controlador padre crea instancias en runtime al mutar un array (el punto `c()`

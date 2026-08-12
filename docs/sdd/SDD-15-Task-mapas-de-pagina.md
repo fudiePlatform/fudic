@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` (emit) · `@fudic/ssr` (`SsrDom`) · `@fudic/vite` (el plugin
 > los escribe) · `@fudic/transport` (coordinación con el manifiesto)
 > **Rama:** `sdd-15-mapas-de-pagina`
-> **Progreso:** 23 / 26
+> **Progreso:** 24 / 26
 > **Va DESPUÉS de:** [eventos y bus](./SDD-15-Task-eventos-y-bus.md) (22/22) y
 > [SDD-31 — Signals derivadas](./SDD-31-signals-derivadas.md) (`Hecho`).
 
@@ -451,7 +451,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       `data-id` es de los más usados que hay; el namespace `fud` es lo que separa los dos
       mundos, igual que `bus:` (decisión 22) y que la reserva `$` (§4.7).
 
-- [ ] **24. `data-adopt` → `data-fud-adopt` *(separable)*.**
+- [x] **24. `data-adopt` → `data-fud-adopt` *(separable)*.**
       Mismo argumento que la tarea 23, aplicado al único marcador que quedaba sin prefijar
       (`markup.ts`, SDD-18 D-6). Toca el polyfill de estilos y sus goldens, así que **se puede
       dejar fuera sin bloquear nada** — pero entonces se anota en SDD-18 como deuda con su

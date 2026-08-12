@@ -127,7 +127,7 @@ describe('every hydratable instance has a chunk to load, with no map', () => {
     // the induced level; `x-plain` has neither and stays inert.
     expect(hydratedTags()).toEqual(['x-counter', 'x-out']);
     const html = String(output.find((o) => o.fileName === 'index.html')!.source);
-    expect(html).toContain('<x-plain data-adopt="x-plain"');
+    expect(html).toContain('<x-plain data-fud-adopt="x-plain"');
     expect(html).not.toContain('<x-plain data-fud-id');
   });
 

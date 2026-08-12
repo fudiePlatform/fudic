@@ -132,7 +132,7 @@ describe('fud-tree — only the effective N3 (§6.26)', () => {
     const page = await pageModuleOf(graph);
     const { io, dom } = ssrIo();
     const html = [...page({ title: 'x', items: [{ id: 'a', title: 'T', description: 'D', featured: true }] }, io)].join('');
-    expect(html).toContain('<app-badge data-adopt="app-badge"'); // it IS rendered…
+    expect(html).toContain('<app-badge data-fud-adopt="app-badge"'); // it IS rendered…
     expect(html).not.toContain('<app-badge data-fud-id'); // …without identity,
     expect(treeOf(graph)['app-card']).not.toContain('app-badge'); // …absent from the map,
     expect(dom().hydrationState().offsets).toEqual([0, 2, 4]); // …and with no slice of its own.
