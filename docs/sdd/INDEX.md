@@ -82,7 +82,7 @@ alcance), y el **mismo par de ficheros** que un SDD: `BUG-NN-<slug>.md` +
 | [14](./SDD-14-runtime.md) | Runtime (`@fudic/dom`·`ssr`·`core`) | `Hecho` (recortado) | 00, 01 | 71–73 |
 | [15](./SDD-15-emit.md) | Emit (AST → runtime) | `Hecho` (las cuatro tandas; §3.6 `fud-chunks` retirado, `FUD0292` va a [24](./SDD-24-lsp.md)) | 00, 05–14, 16 | 22, 26–29, 67–85 |
 | [16](./SDD-16-stream.md) | Stream + transporte 3 hilos (`ssr`·`transport`) | `Hecho` · **transporte superado por [20](./SDD-20-render-sw.md)**; la parte 1 (`@fudic/ssr`) sigue vigente | 00, 01, 14 | — |
-| [17](./SDD-17-hidratacion.md) | Runtime de hidratación (`@fudic/core`) | `Listo` | 14, 15 | — |
+| [17](./SDD-17-hidratacion.md) · [tareas](./SDD-17-Task.md) | Runtime de hidratación (`@fudic/core`) | `Listo` · 0 / 18 | 14, 15 | — |
 | [18](./SDD-18-estilos-compartidos.md) | Estilos compartidos en DSD (`shadowrootadoptedstylesheets`) | `Hecho` | 15 | 76 |
 | [19](./SDD-19-plugin-vite.md) | Build + plugin Vite (routing por FS · SSG incremental) | `Hecho` · §4.2/§4.7/§4.8 **superados por [20](./SDD-20-render-sw.md)** | 13, 15, 16 | — |
 | [20](./SDD-20-render-sw.md) | Renderizado en el Service Worker (enlazador · manifest v2 · CSP con nonce) | `Hecho` (verificado en Chrome real; WebKit pendiente de runner) | 14, 15, 16, 18, 19 | — |

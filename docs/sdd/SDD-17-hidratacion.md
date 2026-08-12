@@ -58,7 +58,10 @@ path del INP sin tocar el modelo de hidratación.
   `browserDom.bus` (SDD-15 §3.8), que son lo que los controladores usan para engancharse.
 - **Service Worker** (SDD de red, aparte) — sirve los chunks network-first la primera vez y
   cache-first después, y ejecuta las órdenes de warm. El runtime es agnóstico al origen: pide
-  el chunk con `import()` y el SW decide de dónde sale.
+  el chunk con `import()` y el SW decide de dónde sale. **Dependencia opcional:** el SW puede
+  no existir (sin `sw.json`, en dev, o en la primera carga, aún sin controlador). La
+  hidratación no depende de él; solo el warm, y por eso el warm es un puerto con dos
+  implementaciones (§4.7.1).
 
 Ninguna dependencia de parsing. Este runtime no conoce el compilador: conoce el **contrato de
 emit**.
@@ -388,6 +391,27 @@ re-registro pueden disparar la orden más de una vez:
 Sin las dos capas, un warm repetido re-descargaría o re-escribiría la cache en cada arranque.
 Con ellas, la cache converge a un chunk por tag visitado y se estabiliza.
 
+#### 4.7.1. Sin Service Worker
+
+`navigator.serviceWorker.controller` es `null` en más casos de los que parece: sin `sw.json`
+no hay SW nunca, en dev tampoco (`dev: 'off'` es el defecto), y **en la primera carga** no lo
+hay todavía aunque el SW esté registrado —hasta el `clients.claim()`—. Postear a `controller`
+sin comprobarlo no falla ruidosamente: no hace nada, y el warm se pierde en silencio.
+
+El runtime **no se bifurca**: los tres caminos, la cascada, el bus y el replay son idénticos
+con SW y sin él. Lo que se inyecta desde fuera son dos puertos, porque quien sabe en qué modo
+se emitió la página es el bootstrap, no el runtime:
+
+| puerto | con SW | sin SW |
+|---|---|---|
+| `resolveChunk(tag)` | `hydrateUrl(tag)` (§4.6) | la URL que publica el dev server |
+| `warm(urls, tags)` | `postMessage({type:'warm', …})` al controlador | `<link rel="modulepreload">` |
+
+`modulepreload` descarga y parsea **sin evaluar**, así que el invariante de cero JS de
+componente ejecutado se mantiene igual; lo que se pierde respecto al SW es la persistencia en
+Cache Storage entre navegaciones, no la corrección. Un tercer puerto que no haga nada también
+sería correcto: el warm es optimización.
+
 **Warm e hidratación son fases disjuntas sobre el mismo chunk.** El warm lo deposita en cache;
 la hidratación hace `import()` y, si el warm ya pasó, el SW lo sirve sin red. Si la interacción
 llega **antes** de que el warm termine, el `import()` paga red normalmente: **el warm es una
@@ -431,6 +455,9 @@ optimización, no un requisito de correctitud.** La hidratación funciona con o 
 - **Warm por tag, no por instancia.** N instancias del mismo tag = un warm. La red se gasta en
   proporción a lo visible; prioridad baja; idempotente en cliente y servidor.
 - **El warm es optimización, no requisito.** La hidratación es correcta con o sin él.
+- **La hidratación no requiere Service Worker.** El SW solo decide la implementación del warm
+  y el origen del chunk (§4.7.1), nunca la corrección. Y no se le habla si no está: sin
+  controlador no se postea nada.
 
 ---
 
@@ -510,6 +537,10 @@ los cuatro escenarios que antes vivían en cuatro prototipos separados:
 
 23. **Todo definido al final.** Tras interactuar con todo, `:not(:defined)` está vacío, también
     dentro de los shadow roots.
+24. **Sin Service Worker (§4.7.1).** Los criterios 1–14 y 23 pasan igual en `pnpm dev` y en un
+    build sin `sw.json`. Los de warm (15–21) se repiten contra el canal `modulepreload`: se
+    precarga solo lo visible, una vez por tag y con el cierre transitivo. En ninguno de los
+    dos modos se postea un mensaje sin controlador.
 
 ---
 
