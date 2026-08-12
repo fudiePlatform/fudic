@@ -107,6 +107,20 @@ Cada instancia **N3 efectiva** se emite como su custom element con DSD y un `dat
   integrada sería una instancia hidratable a ojos del runtime, con un tramo de payload que no
   existe y sin error visible. El namespace `fud` es lo que separa los dos mundos, igual que
   `bus:` (decisión 22) y que la reserva `$` (§4.7).
+- **Y el namespace se reserva de verdad: `data-fud-*` escrito por el autor es `FUD0294`.**
+  Prefijar sin prohibir no separa nada —deja el mismo fallo silencioso a un nombre de
+  distancia—, así que la mitad HTML de la reserva es un analyzer de SDD-12
+  (`reserved-attributes`), hermano del `FUD0290` que hace lo propio en JavaScript. Tres cosas
+  que la regla fija:
+  - **El namespace entero, no los dos nombres de hoy.** Reservar solo `data-fud-id` y
+    `data-fud-adopt` significaría que el día que se emita un tercer marcador se rompen las
+    páginas que usaran ese nombre, y se rompen en el cambio de versión, donde nadie mira.
+  - **`data-fud-space` es la excepción, porque es del autor a propósito** (BUG-07 §4.4):
+    `white-space` cruza la frontera del shadow y ningún fichero puede deducirlo solo. Está en
+    el namespace de `fud` precisamente porque le habla al compilador.
+  - **Un `.prop` cuenta.** Desde BUG-16 §4.1 un `.prop` se escribe en el host como atributo
+    —el nivel 1 es HTML sin JS y no hay otro sitio—, así que `.data-fud-id="9"` aterriza en el
+    documento como exactamente el atributo que la regla prohíbe.
 - `data-fud-id` es **identidad de instancia**, no un identificador del programador ni derivable
   del componente aislado: un mismo componente aparece N veces en una página y el componente
   no sabe cuántas. Por eso **no puede** calcularse en el emit del `.fud` del componente; se
@@ -117,10 +131,13 @@ Cada instancia **N3 efectiva** se emite como su custom element con DSD y un `dat
 - **Solo N3 efectivo lo lleva.** Los N1/N2 puros no se hidratan, no llevan `data-fud-id` ni
   entrada en ningún mapa, y son inertes para el runtime. El nivel efectivo lo da SDD-12
   (nivel intrínseco o inducido por props reactivas entrantes).
-- **`data-fud-id` es el único marcador emitido en el host.** No se emite `data-fud-c` (tag),
-  `data-fud-e` (delegación) ni ningún `data-fud-css`: retirados o innecesarios (§7). El
-  specifier de estilos **no** necesita marcador propio: es el tag del host, y el serializador
-  lo emite en el `<template>` como `shadowrootadoptedstylesheets="<tag>"` (§4.8, SDD-18 D-1/D-6).
+- **Los marcadores del host son dos, y solo dos:** `data-fud-id` y `data-fud-adopt`. No se
+  emite `data-fud-c` (tag), `data-fud-e` (delegación) ni ningún `data-fud-css`: retirados o
+  innecesarios (§7). La forma estándar del specifier de estilos es el
+  `shadowrootadoptedstylesheets="<tag>"` que el serializador pone en el `<template>` (§4.8,
+  SDD-18 D-1/D-4); `data-fud-adopt` es su **espejo en el host**, y existe solo porque el
+  `<template>` no sobrevive al parser y el atributo nativo no es legible del DOM. Muere con el
+  polyfill (SDD-18 D-6).
 - El shadow es **declarativo y `open`** (decisión 75.a): el parser del navegador lo
   materializa en la carga, el componente se ve sin JavaScript, y el descubrimiento de
   instancias dentro de un subárbol (§3.4) lo exige.
@@ -880,7 +897,9 @@ que falta usar un nodo.
 - **El emit no lanza.** Ante un tipo de prop que no sepa serializar (`FUD0292`) o un binding
   no suscribible (`FUD0291`), emite diagnóstico con span y continúa; no aborta la página.
 - **Diagnósticos en batch y LSP por igual.** La validación del prefijo `$` (§4.7) es análisis
-  semántico sobre el AST de Oxc, con span, idéntica en compilador batch y language server.
+  semántico sobre el AST de Oxc, con span, idéntica en compilador batch y language server. Su
+  hermana en HTML (`data-fud-*`, §3.1) es un analyzer de la pasada de SDD-12, que corre en los
+  dos por construcción.
 
 ### Catálogo de diagnósticos (`FUD0290`–`FUD0319`)
 
@@ -889,6 +908,7 @@ que falta usar un nodo.
 | `FUD0290` | Identificador de usuario con prefijo `$` en `@client` (§4.7). |
 | `FUD0291` | Valor de event binding cuyo nodo AST raíz no es `Identifier` / `Arrow` / `Function` / `Call` (§4.5). |
 | `FUD0292` | Tipo de prop de estado no serializable a JSON (§4.1). |
+| `FUD0294` | Atributo `data-fud-*` escrito por el autor, salvo `data-fud-space` (§3.1). Analyzer `reserved-attributes` de SDD-12. |
 | `FUD0293` | **RETIRADO.** Era el hueco en el manifest `tag → chunk`, y ese mapa ya no se emite (§3.6). No se reutiliza el código. |
 | `FUD0294`–`FUD0319` | Reservados. |
 

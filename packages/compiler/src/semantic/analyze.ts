@@ -9,6 +9,7 @@
 import { type Diagnostic, type ParseResult, withDiagnostics } from '../types/index.js';
 import type { Analyzer, SemanticInput, SemanticModel } from './model.js';
 import { duplicateAttributes } from './analyzers/duplicate-attributes.js';
+import { reservedAttributes } from './analyzers/reserved-attributes.js';
 import { refInLoop } from './analyzers/ref-in-loop.js';
 import { codeRegionUniqueness } from './analyzers/code-region-uniqueness.js';
 import { codeRegionNesting } from './analyzers/code-region-nesting.js';
@@ -20,6 +21,7 @@ import { layoutLoad } from './analyzers/layout-load.js';
 /** The ordered list of analyzers (§4). One rule per unit. */
 export const ANALYZERS: readonly Analyzer[] = [
   duplicateAttributes,
+  reservedAttributes,
   refInLoop,
   codeRegionUniqueness,
   codeRegionNesting,

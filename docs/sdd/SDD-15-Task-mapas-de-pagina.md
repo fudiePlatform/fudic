@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` (emit) · `@fudic/ssr` (`SsrDom`) · `@fudic/vite` (el plugin
 > los escribe) · `@fudic/transport` (coordinación con el manifiesto)
 > **Rama:** `sdd-15-mapas-de-pagina`
-> **Progreso:** 25 / 26
+> **Progreso:** 26 / 27
 > **Va DESPUÉS de:** [eventos y bus](./SDD-15-Task-eventos-y-bus.md) (22/22) y
 > [SDD-31 — Signals derivadas](./SDD-31-signals-derivadas.md) (`Hecho`).
 
@@ -439,7 +439,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       que es el invariante de SDD-17 §5 que esta tanda no debe romper por accidente. Ninguna
       interacción, ninguna hidratación: eso es SDD-17.
 
-## Fase 9 — Documentación y cierre (4)
+## Fase 9 — Documentación y cierre (5)
 
 - [x] **23. El renombrado `data-id` → `data-fud-id`, en todas partes.**
       [SDD-15](./SDD-15-emit.md) §3.1 y §4.3; [SDD-17](./SDD-17-hidratacion.md) entero (§2, §3,
@@ -480,6 +480,24 @@ verificación y como nota para SDD-17; no se implementa aquí.
       El diagnóstico viaja en `ExtractedCode.diagnostics`, así que sale igual en el compilador
       batch y en el language server, con su span.
       Es lo único que le quedaba a SDD-15 fuera de los mapas.
+
+- [x] **27. `FUD0294` — el namespace `data-fud-*`, reservado también en el HTML.**
+      *(Pedro, al cerrar la fase 9: hemos reservado `$` y no hemos hecho lo propio con
+      `data-fud-*`.)* Y tiene razón: prefijar sin prohibir no separa nada, deja el mismo fallo
+      silencioso a un nombre de distancia. Un `data-fud-id` escrito a mano es un `[data-fud-id]`
+      de más en el `querySelectorAll` del runtime, un `data.slice` contra un tramo que nadie
+      reservó, y ningún error.
+      **Analyzer de la pasada de SDD-12** (`semantic/analyzers/reserved-attributes.ts`, una
+      regla por unidad), no un chequeo del emit: ahí corre en batch y en el language server por
+      construcción, y ahí está ya `duplicate-attributes`, que mira exactamente lo mismo.
+      Tres cosas que la regla fija y que no son cosméticas: **el namespace entero** —reservar
+      solo los dos nombres de hoy rompe las páginas el día que se emita un tercero, y en un
+      cambio de versión—; **`data-fud-space` es la excepción**, porque es del autor a propósito
+      (BUG-07 §4.4); y **un `.prop` cuenta**, porque desde BUG-16 §4.1 se escribe en el host
+      como atributo. Compara en minúsculas: un nombre de atributo no es case-sensitive, a
+      diferencia de un `.prop`.
+      Registrar en SDD-15 §3.1 y §5, y en SDD-12 §4 (tabla de analyzers), §5 (catálogo maestro)
+      y §7 (criterio 9.b).
 
 ---
 

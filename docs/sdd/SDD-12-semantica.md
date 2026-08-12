@@ -97,6 +97,7 @@ export function analyze(input: SemanticInput): ParseResult<SemanticModel>;
 | Analyzer | Decisión | Qué comprueba | Diagnóstico / resultado |
 |---|---|---|---|
 | `duplicate-attributes` | 45 | Dos `Attribute` con el mismo nombre en un elemento. | `FUD0190` en el segundo. |
+| `reserved-attributes` | SDD-15 §3.1 | Atributo (o `.prop`, que aterriza como atributo desde BUG-16 §4.1) en el namespace `data-fud-*`, salvo el `data-fud-space` del autor. Compara en minúsculas: el nombre de un atributo no es case-sensitive. | `FUD0294`. |
 | `ref-in-loop` | 31 | Un `RefBinding` (vía `classifyAttribute`) dentro del subárbol de `@foreach`/`@for`/`@while`. | `FUD0192`. |
 | `code-region-uniqueness` | 33.b | Más de un `@server` o `@client` en `CodeBlockNode.parts`. | `FUD0194` en el repetido. |
 | `code-region-nesting` | 33.a | `@server`/`@client` anidado: escanea el **texto** de cada región buscando marcadores (SDD-08 no desciende). | `FUD0193`. |
@@ -131,6 +132,7 @@ Cada SDD reserva su rango; aquí está el registro maestro. Formato `FUD` + 4 d�
 | `FUD0170`–`0189` | 11 | `0170` error de sintaxis JS/TS de Oxc (span mapeado). |
 | `FUD0190`–`0209` | 12 | `0190` atributo duplicado · `0191` custom element sin `<link rel="component">` · `0192` `ref` en bucle · `0193` `@server`/`@client` anidado · `0194` más de un `@server`/`@client` · `0195` interpolación no-primitiva (literal array/objeto) · `0196` import por efecto en zona neutra (warning). |
 
+| `FUD0290`–`0319` | 15 | `0290` identificador de usuario con prefijo `$` en `@code { @client }` · `0291` valor de event binding cuyo AST raíz no es referencia / lambda / función / llamada · `0292` prop de estado no serializable a JSON (reservado; es chequeo de tipos, SDD-24) · `0294` atributo `data-fud-*` escrito por el autor, salvo `data-fud-space`. `0293` **quemado** (era el hueco del mapa `tag → chunk`, retirado con él). |
 | `FUD0460`–`0479` | 24 | `0460` `href` de un `<link>` que no resuelve a ningún `.fud` · `0461` identificador de usuario con prefijo `$` (namespace reservado al compilador). |
 | `FUD0480`–`0499` | 26 | `0480` `<style>` dejado sin formatear (placeholder Razor irreconstruible, o el CSS no parsea) · `0481` fragmento JS/TS dejado como estaba escrito porque no parsea · `0482` fallo interno del formateador (el único `error` del rango; el fichero se devuelve intacto). |
 | `FUD0500`–`0519` | 27 | `0500` un chunk no termina en un hash de 8 caracteres, así que el nombrado por build id **no se aplica a ninguno** (media nomenclatura es peor que ninguna) · `0501` dos chunks quedarían con el mismo nombre al quitarles el hash; ese par lo conserva. Ninguno de los dos rompe el build. |
@@ -194,6 +196,11 @@ El SDD está `Hecho` cuando:
    `FUD0111` en SDD-08, no una estrategia.
 
 9. **Import neutro por efecto (33.c).** `@code { import './reset.css'; }` ⇒ `FUD0196` (warning).
+
+9.b **Namespace `data-fud-*` (SDD-15 §3.1).** `<div data-fud-id="0">` ⇒ `FUD0294`, igual que
+    un `data-fud-loquesea` que hoy no emite nadie —el namespace se reserva entero— y que un
+    `.data-fud-id="9"`, que aterriza como ese mismo atributo. `data-fud-space="preserve"` y
+    cualquier `data-*` del autor ⇒ sin error.
 
 10. **Cobertura.** Cerca del 100 % de líneas/funciones/ramas; cada analyzer con su caso
     positivo y negativo. Cumple el suelo del SDD-00.
