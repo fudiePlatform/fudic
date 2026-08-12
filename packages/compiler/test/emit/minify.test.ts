@@ -151,7 +151,7 @@ describe('BUG-07 §6.3–§6.5 — the markup collapses, and nothing disappears'
   it('§6.5 keeps every text node: a whitespace run becomes one space, not nothing', () => {
     // The criterion that blinds §4.5. A whitespace-only node counts as assigned slot
     // content and defeats `:empty`; deleting it is observable and buys 0.4 % gzip.
-    expect(html).toContain('<app-badge data-adopt="app-badge" tone="success">');
+    expect(html).toContain('<app-badge data-fud-adopt="app-badge" tone="success">');
     // The light DOM of the badge and the space around it both survive.
     expect(html).toMatch(/<\/template>[^<]*Destacado/u);
   });
@@ -231,7 +231,7 @@ describe('BUG-07 §6.2 — the minified polyfill is the same polyfill', () => {
   /**
    * It is not enough that it is smaller. This RUNS the emitted text against a fake DOM
    * and checks the one thing the polyfill exists to do (SDD-18 §5): register each
-   * `<style type="module" specifier>` and adopt it into every `[data-adopt]` host's
+   * `<style type="module" specifier>` and adopt it into every `[data-fud-adopt]` host's
    * shadow root. Without this, "minify" quietly becomes "break the FOUC fix".
    */
   function runPolyfill(source: string): { adopted: string[]; observed: boolean } {
@@ -243,7 +243,7 @@ describe('BUG-07 §6.2 — the minified polyfill is the same polyfill', () => {
     };
     const host = {
       shadowRoot: shadow,
-      dataset: { adopt: 'app-badge' },
+      dataset: { fudAdopt: 'app-badge' },
       matches: () => false,
     };
     const styleEl = {

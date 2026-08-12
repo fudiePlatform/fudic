@@ -13,7 +13,7 @@ declaración con nombre y firma tipada cuyo cuerpo es markup, y una invocación 
 **expande ese markup en el punto de llamada durante la construcción del AST**.
 
 Un snippet no es un componente. No tiene host, no tiene shadow root, no tiene identidad
-de instancia, no aparece en el árbol de composición, no recibe `data-id` y no existe en
+de instancia, no aparece en el árbol de composición, no recibe `data-fud-id` y no existe en
 runtime. Su única razón de ser es **no repetir markup**: lo que hoy se resuelve con
 copy-paste entre ficheros.
 

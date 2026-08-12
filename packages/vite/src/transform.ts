@@ -19,6 +19,7 @@ import { existsSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import {
   resolveDocument,
+  entryComponent,
   emitComponentModuleMapped,
   emitComponentClientModuleMapped,
   emitPageModuleMapped,
@@ -140,13 +141,9 @@ export function transformFudClient(id: string, io: ResolveIo): TransformResult |
   if (entry.type !== 'component-document') {
     return null;
   }
-  const comp: ResolvedComponent = {
-    tag: entry.name,
-    path: id,
-    source: graph.entrySource,
-    doc: entry,
-    deps: graph.entryDeps,
-  };
+  // `entryComponent` and not a literal of the same fields: `ExtractedCode` is memoized on
+  // the object, so a second one would be a second Oxc invocation for one file.
+  const comp = entryComponent(graph)!;
   const out = emitComponentClientModuleMapped(graph, comp, emitOptionsFor(id));
   return {
     code: out.code,
@@ -183,17 +180,9 @@ function emitFor(
       };
       return emitLayoutModuleMapped(graph, self, emitOptions);
     }
-    default: {
-      // A component entry: the resolver does not add the entry itself to the graph, so
-      // build its ResolvedComponent from the parsed entry (its deps are already resolved).
-      const comp: ResolvedComponent = {
-        tag: entry.name,
-        path: id,
-        source: graph.entrySource,
-        doc: entry,
-        deps: graph.entryDeps,
-      };
-      return emitComponentModuleMapped(graph, comp, emitOptions);
-    }
+    default:
+      // A component entry: the resolver does not add the entry itself to the graph, so the
+      // compiler builds — and memoizes — its `ResolvedComponent` from the parsed entry.
+      return emitComponentModuleMapped(graph, entryComponent(graph)!, emitOptions);
   }
 }

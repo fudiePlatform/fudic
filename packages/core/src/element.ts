@@ -9,7 +9,7 @@
  * instead of a convention each emitted chunk has to reproduce correctly.
  *
  * There is no `connectedCallback`, and that is the whole difference with the retired
- * SDD-14 class that did all its work there. A component does NOT know its own `data-id`
+ * SDD-14 class that did all its work there. A component does NOT know its own `data-fud-id`
  * — that is page identity, not component identity — so it cannot read its own slice of the
  * payload. The runtime hands each instance its slice, per tag, at the moment it defines the
  * tag. `h` and `c` are entry points invoked from OUTSIDE, not lifecycle callbacks. The only

@@ -4,7 +4,8 @@
 > **Paquetes:** `@fudic/compiler` (emit) · `@fudic/ssr` (`SsrDom`) · `@fudic/vite` (el plugin
 > los escribe) · `@fudic/transport` (coordinación con el manifiesto)
 > **Rama:** `sdd-15-mapas-de-pagina`
-> **Progreso:** 0 / 25
+> **Progreso:** 27 / 27 — **tanda cerrada** (2026-08-12). Con ella
+> [SDD-15](./SDD-15-emit.md) pasa a `Hecho`.
 > **Va DESPUÉS de:** [eventos y bus](./SDD-15-Task-eventos-y-bus.md) (22/22) y
 > [SDD-31 — Signals derivadas](./SDD-31-signals-derivadas.md) (`Hecho`).
 
@@ -206,7 +207,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
 
 ## Fase 1 — Quién se hidrata (3)
 
-- [ ] **1. El predicado intrínseco.**
+- [x] **1. El predicado intrínseco.**
       Crear `packages/compiler/src/emit/level.ts` con `isIntrinsicallyHydratable(comp)`: cierto
       si `extractCode(...).signals` no está vacío (cubre `signal` **y** `computed`, SDD-31
       §4.7), o si el template lleva algún binding clasificado como `event` o `bus`
@@ -216,7 +217,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       **No abrir un `JsBatch` nuevo**: la regla de oro sigue siendo una invocación de Oxc por
       fichero, así que el predicado consume el `ExtractedCode` que `module.ts` ya tiene.
 
-- [ ] **2. El punto fijo del nivel inducido.**
+- [x] **2. El punto fijo del nivel inducido.**
       En el mismo fichero, `hydratableTags(graph): ReadonlySet<string>`. Semilla: los
       intrínsecos. Iterar hasta estabilizar: para cada componente hidratable, cada host de hijo
       de su template al que le cruce un valor reactivo hace hidratable a ese hijo. «Valor
@@ -230,7 +231,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       **Extraer la regla de «valor reactivo» a `attrs.ts` y llamarla desde los tres sitios**: si
       hay dos copias, un día el padre emite `$sub` y la página no marca al hijo, o al revés.
 
-- [ ] **3. Tests del nivel.**
+- [x] **3. Tests del nivel.**
       `packages/compiler/test/emit/level.test.ts`. Los casos que definen la regla, uno por
       aserción: un componente con solo `signal` → sí; con solo `computed` → sí (**es el caso que
       la regla vieja se dejaba**); con solo `@click` y ninguna signal → sí; `app-badge.fud` tal
@@ -240,7 +241,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
 
 ## Fase 2 — `data-fud-id` y el recolector de instancias (4)
 
-- [ ] **4. El recolector en `SsrDom`.**
+- [x] **4. El recolector en `SsrDom`.**
       Modificar `packages/ssr/src/ssr-dom.ts`: `claim(host): void` y
       `state(shadow, values): void` con la semántica del punto 4 —`claim` asigna el siguiente
       entero base-0, escribe `data-fud-id` y **reserva** el tramo; `state` rellena el tramo del
@@ -255,7 +256,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       el `data-fud-id` del DOM y no lo escribe nunca. Un método en el contrato compartido sería
       una firma que `browserDom` tendría que implementar para no llamarla jamás.
 
-- [ ] **5. El padre reclama el host.**
+- [x] **5. El padre reclama el host.**
       Modificar `packages/compiler/src/emit/markup.ts`, rama de host de componente de
       `#element`: cuando `hydratable(el.name)`, emitir `$dom.claim(${v});` **entre** el
       `$dom.element(...)` y el `attachShadow`. El pre-orden que §3.1 pide sale solo: el emisor
@@ -263,7 +264,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       `MarkupEmitter` recibe el conjunto por constructor, junto al `isComponent` que ya toma —
       no lo calcula, que es de `module.ts`.
 
-- [ ] **6. El hijo aporta su tramo.**
+- [x] **6. El hijo aporta su tramo.**
       Modificar `packages/compiler/src/emit/module.ts`, `buildComponentModule`: cuando el
       componente es hidratable, emitir `$dom.state($shadow, [<props en orden de declaración>]);`
       **justo después** de la línea de destructuring de `props` y **antes** de las declaraciones
@@ -274,7 +275,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       Documentar ahí, en dos líneas, por qué no es `Object.values(props)`: el orden es del hijo
       y los defaults ya están aplicados (punto 3).
 
-- [ ] **7. Goldens de servidor y equivalencia.**
+- [x] **7. Goldens de servidor y equivalencia.**
       Regenerar `test/emit/__golden__/*.mjs`. Se mueven **exactamente** en dos formas: el
       `$dom.claim(...)` de cada host hidratable y el `$dom.state($shadow, [...])` de cada
       componente hidratable. Una tercera clase de cambio es la señal de que algo se coló.
@@ -285,21 +286,21 @@ verificación y como nota para SDD-17; no se implementa aquí.
 
 ## Fase 3 — `fud-state` (3)
 
-- [ ] **8. El bloque, con su forma exacta.**
+- [x] **8. El bloque, con su forma exacta.**
       `[[offsets],[data]]`, `offsets` de longitud `n+1` con `offsets[0] === 0` y
       `offsets[n] === data.length` (§3.3, criterios §6.1 y §6.2). El id **es** el índice: sin
       tabla intermedia, sin claves, sin índice por tag.
       Un valor anidado viaja con su forma tal cual (vía B, §4.1): `JSON.stringify` ya lo hace y
       no hace falta serializador recursivo.
 
-- [ ] **9. Estado completo, no proyección.**
+- [x] **9. Estado completo, no proyección.**
       Test dedicado, porque es el invariante que un `@if` rompe sin avisar: un componente cuyo
       template pinta `name` o `phone` según una condición emite **las dos** props en su tramo.
       Sale gratis con la tarea 6 —el tramo se lee de los locales destructurados, no de lo que se
       pintó— y por eso hay que escribir el test: es una propiedad que se conserva por
       construcción y que un refactor puede perder en silencio.
 
-- [ ] **10. Determinismo (§6.6).**
+- [x] **10. Determinismo (§6.6).**
       Renderizar la misma página dos veces con los mismos datos produce el mismo `data-fud-id`,
       los mismos offsets y el mismo `data`, byte a byte. Y alterar el árbol de composición y
       regenerar produce ids y mapas **mutuamente consistentes**, sin paso de reconciliación —
@@ -307,7 +308,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
 
 ## Fase 4 — `fud-tree` (2)
 
-- [ ] **11. El mapa, y qué cuenta como hijo.**
+- [x] **11. El mapa, y qué cuenta como hijo.**
       En `module.ts`: `const FUD_TREE = {...}` como constante del módulo de página, calculada en
       **compilación** sobre el grafo alcanzable — es tag→[tags] y no depende de los datos, así
       que no tiene nada que hacer en el render. Clave: tag padre hidratable. Valor: los tags
@@ -321,7 +322,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       pasa ninguna.
       Un tag sin hijos hidratables **no tiene entrada** (§3.4).
 
-- [ ] **12. Tests (§6.25, §6.26).**
+- [x] **12. Tests (§6.25, §6.26).**
       Una cadena `app-parent → app-child → app-grandchild` emite
       `{"app-parent":["app-child"],"app-child":["app-grandchild"]}`, y duplicar a 200 instancias
       del hijo **no cambia el mapa** — es la propiedad que hace que su peso sea irrelevante.
@@ -331,7 +332,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
 
 ## Fase 5 — `fud-bus` (3)
 
-- [ ] **13. Los dos lados de la relación.**
+- [x] **13. Los dos lados de la relación.**
       **Escucha** (`bus:nombre` → tag): del template, ya clasificado, sin Oxc.
       **Emisión** (tag → nombre): `ExtractedCode.emitCalls` registra hoy solo **offsets** —
       dónde inyectar `$host`— y no el nombre. Ampliarlo con el nombre resuelto del primer
@@ -347,7 +348,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       produce diagnóstico** y **sigue emitiendo el listener** (§6.22). No protegemos lo que no
       podemos ver.
 
-- [ ] **14. La composición, y la arista consigo mismo.**
+- [x] **14. La composición, y la arista consigo mismo.**
       En `module.ts`, `const FUD_BUS = {...}` en el módulo de página: para cada nombre, todo tag
       que lo emite depende de todo tag que lo escucha. Es tag→tags; el nombre del evento **no
       aparece** en la salida (§3.5).
@@ -357,14 +358,14 @@ verificación y como nota para SDD-17; no se implementa aquí.
       antes A. La arista se descarta al componer, aquí, y no en el runtime: es un hecho de
       compilación y el runtime no debe tener que defenderse de él.
 
-- [ ] **15. Test (§6.21).**
+- [x] **15. Test (§6.21).**
       `product-list` con `emit('carrito', p)` y `shopping-cart` con `bus:carrito` producen
       `{"product-list":["shopping-cart"]}`. Con `app-actions` en la página, ninguna arista
       reflexiva. Con el nombre por expresión, ninguna entrada y ningún diagnóstico.
 
 ## Fase 6 — `fud-chunks` se retira, y la coordinación con el manifiesto (2)
 
-- [ ] **16. Retirar `fud-chunks` de la especificación, no implementarlo.**
+- [x] **16. Retirar `fud-chunks` de la especificación, no implementarlo.**
       Modificar [SDD-15](./SDD-15-emit.md): §3.2 pasa de cinco artefactos a cuatro, §3.6 se
       reescribe como *retirado* con el motivo —derivable de `fudic-routes.json` vía
       `createUrlResolver(base, build).hydrateUrl(tag)`, SDD-27 §4.1 y su criterio 9—, §6.27 se
@@ -380,7 +381,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       dentro de un HTML prerenderizado se sirve mientras ese HTML esté en cache. Con las dos
       copias, un deploy deja una página apuntando a chunks del build anterior.
 
-- [ ] **17. Verificar que la derivación cierra, y anotar lo que falta.**
+- [x] **17. Verificar que la derivación cierra, y anotar lo que falta.**
       Test en `@fudic/vite`: para todo tag con instancias `[data-fud-id]` en los HTML
       prerenderizados de `examples/basic`, `hydrateUrl(tag)` apunta a un fichero que existe en
       `dist/`. Es el criterio 27 de SDD-15 reescrito sin mapa: la garantía que importaba no era
@@ -392,7 +393,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
 
 ## Fase 7 — Los tres bloques en el HTML (3)
 
-- [ ] **18. El emisor de los bloques.**
+- [x] **18. El emisor de los bloques.**
       En `module.ts`, al final de `page(data, io)` y **antes** de `serialize($body)`: colgar de
       `$body` un `<script type="application/json" id="fud-state">` con el payload que
       `$dom.hydrationState()` devuelve, y los de `fud-tree` / `fud-bus` con las constantes de
@@ -402,7 +403,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       runtime ya tiene que tratar la ausencia (una página cero-JS es el caso base del
       framework, no una excepción).
 
-- [ ] **19. El escape del JSON dentro de `<script>`.**
+- [x] **19. El escape del JSON dentro de `<script>`.**
       `script` está en `RAWTEXT_ELEMENTS` (`packages/ssr/src/serialize.ts:31`): su texto sale
       **sin escapar**, que es lo que un `application/json` necesita y lo que obliga a hacerlo
       aquí. Un helper compartido escapa cada `<` a su forma `\u003c` —lo cual neutraliza
@@ -413,7 +414,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
       resultante parsea a **un** `<script>` y el payload deserializa al string original. Es el
       test que hay que escribir antes que el helper.
 
-- [ ] **20. El HTML, leído entero.**
+- [x] **20. El HTML, leído entero.**
       Test de integración sobre el HTML que `page()` produce para `home.fud` con datos: los
       hosts hidratables llevan `data-fud-id` correlativo en pre-orden, los no hidratables no lo
       llevan, y para cada id `data.slice(offsets[id], offsets[id+1])` es exactamente el array
@@ -423,7 +424,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
 
 ## Fase 8 — Que salga del build (2)
 
-- [ ] **21. El plugin, el prerender y el pase de link.**
+- [x] **21. El plugin, el prerender y el pase de link.**
       Verificar y, donde haga falta, ajustar `packages/vite/src/`: los cinco HTML
       prerenderizados de `examples/basic` llevan sus bloques; el pase *link* (CJS, el que el SW
       ejecuta con `new Function`) produce los mismos ids y los mismos mapas para la misma ruta y
@@ -432,16 +433,16 @@ verificación y como nota para SDD-17; no se implementa aquí.
       el SW renderiza son idénticos en `data-fud-id` y en los tres bloques. Si divergen, hay dos
       pasadas donde §3.2 dice que hay una.
 
-- [ ] **22. El e2e de `examples/basic`.**
+- [x] **22. El e2e de `examples/basic`.**
       Los tests existentes (`sw-render`, `sw-network`) siguen verdes. Uno nuevo, y **solo
       lectura del DOM**: la página cargada tiene los tres bloques, los ids son correlativos, y
       `:not(:defined)` lista los tags hidratables — o sea, **cero JS de componente ejecutado**,
       que es el invariante de SDD-17 §5 que esta tanda no debe romper por accidente. Ninguna
       interacción, ninguna hidratación: eso es SDD-17.
 
-## Fase 9 — Documentación y cierre (3)
+## Fase 9 — Documentación y cierre (5)
 
-- [ ] **23. El renombrado `data-id` → `data-fud-id`, en todas partes.**
+- [x] **23. El renombrado `data-id` → `data-fud-id`, en todas partes.**
       [SDD-15](./SDD-15-emit.md) §3.1 y §4.3; [SDD-17](./SDD-17-hidratacion.md) entero (§2, §3,
       §4.1–§4.7, §5, §6); los prototipos de `docs/runtime/hidratacion/` (`runtime.js`,
       `index.html`, `components/*.js`) — son la evidencia ejecutable de SDD-17 y un prototipo
@@ -451,22 +452,53 @@ verificación y como nota para SDD-17; no se implementa aquí.
       `data-id` es de los más usados que hay; el namespace `fud` es lo que separa los dos
       mundos, igual que `bus:` (decisión 22) y que la reserva `$` (§4.7).
 
-- [ ] **24. `data-adopt` → `data-fud-adopt` *(separable)*.**
+- [x] **24. `data-adopt` → `data-fud-adopt` *(separable)*.**
       Mismo argumento que la tarea 23, aplicado al único marcador que quedaba sin prefijar
       (`markup.ts`, SDD-18 D-6). Toca el polyfill de estilos y sus goldens, así que **se puede
       dejar fuera sin bloquear nada** — pero entonces se anota en SDD-18 como deuda con su
       motivo, y no se deja simplemente ahí. Marcar una de las dos casillas, no ninguna.
 
-- [ ] **25. Verde, cobertura y registro.**
+- [x] **25. Verde, cobertura y registro.**
       `pnpm typecheck`, `pnpm test` y `pnpm build` en la raíz —los ejemplos se construyen
       después de los paquetes—. `level.ts` y el emisor de los bloques nacen al **100 %** en las
       cuatro métricas; `@fudic/ssr` está al 100 % y no baja, así que las dos ramas del punto 4
       (un `state` sin `claim` previo, un `claim` repetido) llevan su test. Nada de
       `/* v8 ignore */` para llegar al número.
-      Anotar el avance en [INDEX.md](./INDEX.md). **Con esta tanda SDD-15 pasa a `Hecho`** salvo
-      por `FUD0290` (validación del prefijo `$`, §4.7), que no es de mapas y que hay que
-      colocar explícitamente: o entra aquí como tarea 26, o sale a su propia tanda con fecha.
-      Decidirlo al abrir la rama, no al cerrarla.
+      Anotar el avance en [INDEX.md](./INDEX.md). **Con esta tanda SDD-15 pasa a `Hecho`**:
+      `FUD0290` (validación del prefijo `$`, §4.7) **entra aquí como tarea 26** — decidido al
+      abrir la rama (2026-08-10, Pedro). La tarea 24 también entra, misma decisión.
+
+- [x] **26. `FUD0290` — el prefijo `$` reservado, con su diagnóstico.**
+      SDD-15 §4.7: ningún identificador **de usuario** de `@code { @client }` puede empezar por
+      `$`. Aplica a **declaraciones** (`const`/`let`/`var`, parámetros, targets de
+      destructuring, nombres de función y de clase) **y a referencias libres** —usar `$shadow`
+      sin declararlo es tocar una variable interna del framework—. El **acceso a propiedad**
+      ajeno (`obj.$bar`) queda fuera: no introduce ni resuelve un binding en el scope
+      compartido. Prohibido como **prefijo**, no en cualquier posición: `foo$` y `obs$` son
+      válidos.
+      **Sobre el AST de Oxc, nunca sobre texto**, y en el batch que `extractCode` ya abre — un
+      lexer sobre string daría falsos positivos en strings, comentarios y nombres de propiedad.
+      El diagnóstico viaja en `ExtractedCode.diagnostics`, así que sale igual en el compilador
+      batch y en el language server, con su span.
+      Es lo único que le quedaba a SDD-15 fuera de los mapas.
+
+- [x] **27. `FUD0294` — el namespace `data-fud-*`, reservado también en el HTML.**
+      *(Pedro, al cerrar la fase 9: hemos reservado `$` y no hemos hecho lo propio con
+      `data-fud-*`.)* Y tiene razón: prefijar sin prohibir no separa nada, deja el mismo fallo
+      silencioso a un nombre de distancia. Un `data-fud-id` escrito a mano es un `[data-fud-id]`
+      de más en el `querySelectorAll` del runtime, un `data.slice` contra un tramo que nadie
+      reservó, y ningún error.
+      **Analyzer de la pasada de SDD-12** (`semantic/analyzers/reserved-attributes.ts`, una
+      regla por unidad), no un chequeo del emit: ahí corre en batch y en el language server por
+      construcción, y ahí está ya `duplicate-attributes`, que mira exactamente lo mismo.
+      Tres cosas que la regla fija y que no son cosméticas: **el namespace entero** —reservar
+      solo los dos nombres de hoy rompe las páginas el día que se emita un tercero, y en un
+      cambio de versión—; **`data-fud-space` es la excepción**, porque es del autor a propósito
+      (BUG-07 §4.4); y **un `.prop` cuenta**, porque desde BUG-16 §4.1 se escribe en el host
+      como atributo. Compara en minúsculas: un nombre de atributo no es case-sensitive, a
+      diferencia de un `.prop`.
+      Registrar en SDD-15 §3.1 y §5, y en SDD-12 §4 (tabla de analyzers), §5 (catálogo maestro)
+      y §7 (criterio 9.b).
 
 ---
 

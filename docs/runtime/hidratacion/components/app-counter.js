@@ -27,7 +27,7 @@ const cl = class extends HTMLElement {
 
   // Punto de entrada 1 (SDD-15 §4.3): instancia venida de SSR. El shadow ya está
   // renderizado (DSD); el controlador ADOPTA los nodos. Los props son el tramo del
-  // payload, que le PASA el runtime — la instancia no conoce su `data-id`.
+  // payload, que le PASA el runtime — la instancia no conoce su `data-fud-id`.
   h(props) {
     this.#c = cl.c([browserDom, this.shadowRoot, ...props]);
     this.#c.h();

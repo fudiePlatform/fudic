@@ -6,7 +6,14 @@
 export { CodeWriter } from './writer.js';
 export type { EmitMapping, MappedPart, LinePart } from './writer.js';
 export { AssetLinker, type AssetExists } from './assets.js';
-export { resolveComponents, resolveDocument, linkHref } from './resolve.js';
+export {
+  resolveComponents,
+  resolveDocument,
+  linkHref,
+  entryComponent,
+  allComponents,
+  componentOf,
+} from './resolve.js';
 export type {
   ResolveIo,
   ResolvedComponent,
@@ -34,5 +41,7 @@ export {
   emitRouteModule,
   emitRouteModuleMapped,
 } from './layout.js';
+
+export { hydratableTags, isIntrinsicallyHydratable } from './level.js';
 
 export { spaceModeOf, collapseSpace, nestedSpaceMode, SPACE_ATTR, type SpaceMode } from './space.js';

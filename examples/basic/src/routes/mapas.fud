@@ -1,0 +1,76 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/bus-picker.fud">
+<link rel="component" href="../components/bus-log.fud">
+
+@code {
+  @server {
+    import { strategy } from "@fudic/core";
+
+    // Estática con datos: el build corre `load` y prerenderiza el HTML, así que los tres
+    // bloques se leen abriendo el fuente, sin servidor y sin JavaScript.
+    strategy({ mode: "ssg" });
+
+    export function load() {
+      return {
+        options: [
+          { label: "Declarative Shadow DOM", picked: true },
+          { label: "Routing por fichero", picked: false },
+          { label: "SSG estático e incremental", picked: false },
+        ],
+      };
+    }
+  }
+}
+
+<head>
+  <title>Los mapas de la página — fudic</title>
+</head>
+
+@section nav {
+  <site-nav .current="mapas"></site-nav>
+}
+
+<h1>3 · Lo que la página le cuenta al runtime</h1>
+<p class="lede">
+  Esta página no hace nada todavía. Está aquí por lo que hay al final de su
+  <code>&lt;body&gt;</code>: los tres bloques
+  <code>&lt;script type="application/json"&gt;</code> que el servidor escribe para que el
+  runtime de hidratación sepa <strong>quién</strong> se hidrata, <strong>con qué</strong>
+  y <strong>en qué orden</strong>. Ábrela y mira el fuente.
+</p>
+
+<bus-picker .options="@data.options"></bus-picker>
+<bus-log></bus-log>
+
+<h2>Los tres bloques</h2>
+<p>
+  <code>fud-state</code> es <code>[[offsets],[data]]</code>: el
+  <code>data-fud-id</code> de cada host <em>es</em> el índice, y su tramo son las props
+  con las que el servidor lo pintó, ya en el orden en que el hijo las declara. Cuenta los
+  <code>data-fud-id</code> del HTML y verás que <code>offsets</code> tiene uno más.
+</p>
+<p>
+  <code>fud-tree</code> es <code>tag → tags</code>, resuelto en compilación: aquí dice que
+  <code>bus-picker</code> monta <code>bus-option</code> en su shadow. No cambia si hay dos
+  opciones o doscientas — es composición, no instancias. Y son los hijos del
+  <strong>shadow</strong>, nunca los de luz: la cascada existe porque el padre escribe
+  props a los hijos que él monta.
+</p>
+<p>
+  <code>fud-bus</code> también es <code>tag → tags</code>, y el nombre del evento no
+  aparece: <code>bus-picker</code> emite <code>picked</code> y <code>bus-log</code> lo
+  escucha, así que para levantar el que escucha hay que haber levantado antes al que
+  emite. Un tag que se emitiera a sí mismo no se lista: sería decir que para levantar A
+  hay que levantar A.
+</p>
+
+<h2>Qué pasa hoy</h2>
+<p>
+  Nada, y es lo esperable: los bloques son los <em>datos</em>, y quien los lee es el
+  runtime de hidratación, que todavía no existe. Ningún custom element está definido en
+  esta página — todos responden a <code>:not(:defined)</code> — y sin embargo se ve
+  pintada y con estilos, porque el HTML es completo y los shadow roots son declarativos.
+  Ese es el invariante que el runtime no debe romper: cero JavaScript de componente hasta
+  que hay una interacción.
+</p>

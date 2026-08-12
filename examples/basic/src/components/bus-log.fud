@@ -1,0 +1,32 @@
+@code {
+  @client {
+    import { signal } from '@fudic/core';
+
+    const last = signal("");
+
+    function onPicked(ev) {
+      last.set(String(ev.detail));
+    }
+  }
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    .log {
+      margin: 0;
+      padding: 0.75rem 0.9rem;
+      border: 1px dashed #34a853;
+      border-radius: 8px;
+      background: #f2f9f4;
+    }
+  </style>
+</head>
+
+<bus-log>
+  <template shadowrootmode="open">
+    <p class="log" bus:picked="@onPicked($event)">Último elegido: <strong>@last()</strong></p>
+  </template>
+</bus-log>

@@ -10,11 +10,12 @@
  */
 
 import type { ComponentDocument } from '../document/index.js';
+import type { ResolvedComponent } from './resolve.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import { errorDiag, isEmptySpan } from '../types/index.js';
 import { JsBatch, type OxcNode } from '../oxc/index.js';
 import { collectTemplateJs } from './constructs.js';
-import { changeableBindings, type FragmentAst } from './scope.js';
+import { changeableBindings, reservedIdentifiers, type FragmentAst } from './scope.js';
 
 /** One destructured prop from `props<T>()`, with its default expression source if any. */
 export interface Prop {
@@ -55,6 +56,17 @@ export interface EmitCall {
   readonly hostAt: number;
   /** Whether the call already carries arguments, and so needs a comma after `$host`. */
   readonly hasArgs: boolean;
+  /**
+   * The event name, when the first argument RESOLVES statically (§4.4, decision 28.c) —
+   * and in v1 that means a string literal and nothing else. It is what puts this tag in
+   * `fud-bus`; the splice above happens either way.
+   *
+   * Absent is not an error and produces no diagnostic: the binding still works as a plain
+   * DOM listener, it just does not take part in directed hydration. We do not protect what
+   * we cannot see. A `const` local and an imported `as const` are the widening decision 28.c
+   * also admits; the second needs the module graph, which one file's model does not have.
+   */
+  readonly name?: string;
 }
 
 /**
@@ -187,6 +199,8 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
     },
     offset: map,
   };
+  checkReservedPrefix(clientStatements, map, own);
+
   const binding = emitBinding(clientStatements);
   const emitCalls: EmitCall[] = [];
   if (binding !== undefined) collectEmitCalls(clientStatements, binding, map, emitCalls);
@@ -203,6 +217,26 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
     emitCalls,
     diagnostics: [...result.diagnostics, ...own],
   };
+}
+
+/**
+ * `extractCode` of one resolved component, memoized ON the component itself.
+ *
+ * The golden rule is one Oxc invocation per FILE, and by now four readers want the same
+ * answers about the same `@code`: the server module, the client chunk, the parent that
+ * composes its child's positional array (`childProps`), and the effective level of the page
+ * (`level.ts`, which asks about every component of the graph). The graph resolves each file
+ * to a single `ResolvedComponent`, so a `WeakMap` keyed by it is what keeps that rule intact
+ * without any reader having to know about the others.
+ */
+const codeCache = new WeakMap<ResolvedComponent, ExtractedCode>();
+
+export function codeOf(comp: ResolvedComponent): ExtractedCode {
+  const cached = codeCache.get(comp);
+  if (cached !== undefined) return cached;
+  const code = extractCode(comp.source, comp.doc);
+  codeCache.set(comp, code);
+  return code;
 }
 
 /**
@@ -228,6 +262,40 @@ function checkNeutralEffect(stmt: OxcNode, map: MapOffset, out: Diagnostic[]): v
         'FUD0570',
         'effect(...) belongs in @code { @client }: an effect runs after the first render, and the server has none.',
         { start: map(call.start), end: map(call.end) },
+      ),
+    );
+  }
+}
+
+/**
+ * A user identifier prefixed with `$` inside `@code { @client }` → `FUD0290` (SDD-15 §4.7).
+ *
+ * The body of `@client` is copied VERBATIM into the factory closure, where it shares one
+ * lexical scope with everything the emit introduces — `$dom`, `$shadow`, `$props`, `$n1`,
+ * `$m`, `$s`, `$a`, `$host`. The reservation is what keeps those two vocabularies apart, and
+ * it binds the emit too: every name the emit puts in that closure starts with `$`, with no
+ * exceptions to remember (BUG-12 §2.5).
+ *
+ * Prohibited as a PREFIX, not anywhere: `foo$` and `obs$` are the author's, because the emit
+ * only ever writes the `$` first. And it is a fact about BINDINGS, which is why it is decided
+ * on the AST: `obj.$bar` reaches into somebody else's object and introduces nothing here,
+ * a `"$dom"` inside a string is text, and a lexer over the source could tell neither.
+ *
+ * The emit does not throw: the diagnostic is reported and the region is still copied. What
+ * the author gets is the error with its span, in the batch compiler and in the language
+ * server alike, instead of a `SyntaxError` from a bundler about a name they never saw.
+ */
+function checkReservedPrefix(
+  statements: readonly OxcNode[],
+  map: MapOffset,
+  out: Diagnostic[],
+): void {
+  for (const id of reservedIdentifiers(statements)) {
+    out.push(
+      errorDiag(
+        'FUD0290',
+        `"${name(id)}" is reserved: the $ prefix belongs to the identifiers the compiler emits into this scope. Rename it — a trailing $ ("${name(id).slice(1)}$") is yours.`,
+        { start: map(id.start), end: map(id.end) },
       ),
     );
   }
@@ -270,12 +338,17 @@ function collectEmitCalls(node: unknown, binding: string, map: MapOffset, out: E
   const callee = is(current, 'CallExpression') ? field(current, 'callee') : undefined;
   if (is(callee, 'Identifier') && name(callee!) === binding) {
     const first = fieldArray(current, 'arguments')[0];
+    // A string literal is the whole of v1's resolution. Anything else — an identifier, a
+    // template literal, a member expression — leaves the name absent, which is the
+    // permissive posture and not a hole to fill by default.
+    const literal = is(first, 'Literal') ? first['value'] : undefined;
     out.push({
       calleeEnd: map(callee!.end),
       // With no arguments there is nothing to insert BEFORE, so `$host` goes where the
       // call closes: a `CallExpression` always ends at its `)`.
       hostAt: first === undefined ? map(current.end - 1) : map(first.start),
       hasArgs: first !== undefined,
+      ...(typeof literal === 'string' ? { name: literal } : {}),
     });
   }
   for (const value of Object.values(current)) collectEmitCalls(value, binding, map, out);

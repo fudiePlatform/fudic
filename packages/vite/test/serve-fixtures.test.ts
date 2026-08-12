@@ -87,7 +87,7 @@ describe('four fixtures served with zero-JS render (§6.17)', () => {
     expect(fetched).toBe(html); // what we render is exactly what is served
     expect(fetched.startsWith('<!DOCTYPE html>')).toBe(true);
     expect(fetched).toContain('<template shadowrootmode="open"'); // DSD
-    expect(fetched).toContain('data-adopt="app-card"');
+    expect(fetched).toContain('data-fud-adopt="app-card"');
     expect(fetched).toContain('<app-badge'); // nested component rendered
     expect(fetched).toContain('Uno'); // the loaded item painted server-side
   });

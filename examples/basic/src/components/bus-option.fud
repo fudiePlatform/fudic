@@ -1,0 +1,43 @@
+@code {
+  // The leaf of the map demo. It has props of its own — so its slice in `fud-state` is
+  // not empty — and a signal, so it hydrates on its own account.
+  const { label = "", picked = false } = props<{ label?: string; picked?: boolean }>();
+
+  @client {
+    import { signal } from '@fudic/core';
+
+    const hot = signal(false);
+
+    function enter() {
+      hot.set(true);
+    }
+  }
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    button {
+      font: inherit;
+      width: 100%;
+      text-align: left;
+      padding: 0.5rem 0.8rem;
+      border: 1px solid #dcdcdc;
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+    }
+    button[data-picked="true"] {
+      border-color: #1a73e8;
+      color: #1a73e8;
+    }
+  </style>
+</head>
+
+<bus-option>
+  <template shadowrootmode="open">
+    <button data-picked="@picked" @mouseenter="@enter">@label</button>
+  </template>
+</bus-option>

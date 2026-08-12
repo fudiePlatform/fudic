@@ -73,8 +73,8 @@ describe('emitComponentModule — composition & control flow (app-card)', () => 
     expect(src).toContain('const expanded = () => (false);');
   });
 
-  it('renders a nested component host with data-adopt + attachShadow + its render call', () => {
-    expect(src).toContain('$dom.setAttr($n16, \'data-adopt\', "app-button");');
+  it('renders a nested component host with data-fud-adopt + attachShadow + its render call', () => {
+    expect(src).toContain('$dom.setAttr($n16, \'data-fud-adopt\', "app-button");');
     expect(src).toContain('$dom.attachShadow($n16)');
     expect(src).toContain('renderAppButton($dom, $n17, { "variant": "ghost" });');
   });
@@ -176,7 +176,7 @@ describe('emitPageModule — home.mjs', () => {
   it('builds a COMPONENTS array and a page(data, io) that destructures io', () => {
     expect(src).toContain('const COMPONENTS = [');
     expect(src).toContain('export function* page(data, io) {'); // streaming generator (SDD-19 §4.3)
-    expect(src).toContain('const { createDom, serialize, escapeText } = io;');
+    expect(src).toContain('const { createDom, serialize, escapeText, jsonBlock } = io;');
   });
 
   it('interpolates the title via escapeText and passes <meta> through', () => {
@@ -195,9 +195,9 @@ describe('emitPageModule — home.mjs', () => {
     expect(stylesAt).toBeGreaterThan(scriptAt); // head order: polyfill first, then sheets
   });
 
-  it('lowers @foreach to a real for-loop and marks component hosts with data-adopt', () => {
+  it('lowers @foreach to a real for-loop and marks component hosts with data-fud-adopt', () => {
     expect(src).toContain('for (const item of data.items) {');
-    expect(src).toContain('$dom.setAttr($n12, \'data-adopt\', "app-card");');
+    expect(src).toContain('$dom.setAttr($n12, \'data-fud-adopt\', "app-card");');
   });
 });
 
@@ -238,14 +238,16 @@ describe('emitPageModule — executed end to end', () => {
     expect(html).toContain('<style type="module" specifier="app-badge">');
   });
 
-  it('renders component hosts as DSD with data-adopt, its props and projected light DOM', () => {
+  it('renders component hosts as DSD with data-fud-adopt, its props and projected light DOM', () => {
     // The props are ON the host since BUG-16: level 1 is HTML with no JS, so a `.prop`
     // that lived only in the props literal would not have reached the document at all.
+    // `data-fud-id` comes first and only on the hydratable host: `app-card` has a
+    // `@code { @client }`, `app-badge` has nothing of its own and receives no reactive prop.
     expect(html).toContain(
-      '<app-card data-adopt="app-card" title="Primero" variant="highlight">' +
+      '<app-card data-fud-id="0" data-fud-adopt="app-card" title="Primero" variant="highlight">' +
         '<template shadowrootmode="open">',
     );
-    expect(html).toContain('<app-badge data-adopt="app-badge" tone="success">');
+    expect(html).toContain('<app-badge data-fud-adopt="app-badge" tone="success">');
     expect(html).toContain('Destacado'); // badge light DOM projected through <slot>
   });
 

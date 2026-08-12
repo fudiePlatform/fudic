@@ -14,6 +14,13 @@
  * scopes below only ever open where the language really opens one, and only the positions
  * where an identifier is definitively not a reference are skipped.
  *
+ * The same walk answers SDD-15 §4.7 — which identifiers of `@client` are the AUTHOR's, so
+ * that a `$` prefix on one of them is `FUD0290`. There it may not be generous: a name
+ * wrongly called the author's is an error reported on legal code. That is why the positions
+ * where an identifier is definitively not one — a member, a class member, a label, the
+ * exported name of an import — are skipped by NAME of the node that holds them, and not
+ * left to the generic descent.
+ *
  * Oxc hands back an untyped estree-shaped node; the stringly-typed access is quarantined
  * in `isNode` / `field` and never leaves this file.
  */
@@ -58,23 +65,35 @@ const SCOPES: ReadonlySet<string> = new Set([
 /** The names a scope holds, innermost last. */
 class ScopeStack {
   readonly #frames: Set<string>[] = [new Set()];
-  readonly #free: string[] = [];
+  readonly #free: OxcNode[] = [];
+  readonly #declared: OxcNode[] = [];
   readonly #seen = new Set<string>();
 
   /** Free references, deduplicated, in order of FIRST appearance (§3.3, determinism). */
   get free(): readonly string[] {
-    return this.#free;
+    return this.#free.map(nameOf);
   }
 
-  reference(name: string): void {
+  /**
+   * Every identifier the walk saw in a VALUE position: each declaration, and each free
+   * reference once. The nodes, not the names — this is the half that carries the offsets a
+   * diagnostic needs (SDD-15 §4.7).
+   */
+  get identifiers(): readonly OxcNode[] {
+    return [...this.#declared, ...this.#free];
+  }
+
+  reference(node: OxcNode): void {
+    const name = nameOf(node);
     if (this.#frames.some((frame) => frame.has(name))) return;
     if (this.#seen.has(name)) return;
     this.#seen.add(name);
-    this.#free.push(name);
+    this.#free.push(node);
   }
 
-  bind(name: string): void {
-    this.#frames[this.#frames.length - 1]!.add(name);
+  bind(node: OxcNode): void {
+    this.#declared.push(node);
+    this.#frames[this.#frames.length - 1]!.add(nameOf(node));
   }
 
   push(): void {
@@ -99,7 +118,7 @@ function bindPattern(pattern: unknown, scope: ScopeStack, out: string[]): void {
   switch (pattern.type) {
     case 'Identifier':
       out.push(nameOf(pattern));
-      scope.bind(nameOf(pattern));
+      scope.bind(pattern);
       return;
     case 'ObjectPattern':
       for (const property of asArray(field(pattern, 'properties'))) {
@@ -137,7 +156,7 @@ function walkFunction(node: OxcNode, scope: ScopeStack): void {
   // The id goes INSIDE: a named function expression sees itself, and a declaration whose
   // name leaks outward would only ever be over-bound here, never under-bound.
   const id = field(node, 'id');
-  if (isNode(id)) scope.bind(nameOf(id));
+  if (isNode(id)) scope.bind(id);
   for (const param of asArray(field(node, 'params'))) bindPattern(param, scope, []);
   walk(field(node, 'body'), scope);
   scope.pop();
@@ -172,15 +191,34 @@ function walk(node: unknown, scope: ScopeStack): void {
 
   switch (node.type) {
     case 'Identifier':
-      scope.reference(nameOf(node));
+      scope.reference(node);
       return;
     case 'MemberExpression':
       walk(field(node, 'object'), scope);
       if (field(node, 'computed') === true) walk(field(node, 'property'), scope);
       return;
+    // A member of an object or of a class is a NAME, not a binding: `{ a: 1 }` and
+    // `class C { a() {} }` both mention an `a` that no scope holds. They are grouped here
+    // because they are spelt the same way — a `key` guarded by `computed`, and a value that
+    // is ordinary code.
     case 'Property':
+    case 'PropertyDefinition':
+    case 'MethodDefinition':
       if (field(node, 'computed') === true) walk(field(node, 'key'), scope);
       walk(field(node, 'value'), scope);
+      return;
+    // A label lives in its own namespace: `outer:` declares nothing a scope can hold and
+    // `break outer` reads no variable. Descending generically would report both as free.
+    case 'LabeledStatement':
+      walk(field(node, 'body'), scope);
+      return;
+    case 'BreakStatement':
+    case 'ContinueStatement':
+      return;
+    // `import { a as b }` binds `b`; `a` is the OTHER module's export name, and this file
+    // neither declares nor resolves it.
+    case 'ImportSpecifier':
+      walk(field(node, 'local'), scope);
       return;
     case 'VariableDeclaration':
       walkDeclaration(node, scope);
@@ -218,6 +256,29 @@ export function freeReferences(fragments: readonly FragmentAst[]): readonly stri
   const scope = new ScopeStack();
   for (const fragment of fragments) walk(fragment, scope);
   return scope.free;
+}
+
+/**
+ * The identifiers of `statements` that trespass on the compiler's `$` namespace, in source
+ * order (SDD-15 §4.7).
+ *
+ * It rides the SAME walk as `freeReferences` on purpose. The two questions are one question
+ * asked twice: which identifiers of this region are the author's, as opposed to a property
+ * name, a class member or a key. A second traversal with its own idea of that would drift,
+ * and the drift is silent both ways — a `$` declaration nobody reports collides at run time,
+ * and an `obj.$bar` wrongly reported is an error on legal code.
+ *
+ * Which occurrence is reported follows from the rule: a DECLARATION is flagged where it is
+ * written, and a free reference at its first use. A reference to a `$` name the region
+ * itself declared is not reported again — the declaration already is, and the second
+ * diagnostic would only say the author meant it.
+ */
+export function reservedIdentifiers(statements: readonly OxcNode[]): readonly OxcNode[] {
+  const scope = new ScopeStack();
+  for (const statement of statements) walk(statement, scope);
+  return scope.identifiers
+    .filter((node) => nameOf(node).startsWith('$'))
+    .sort((a, b) => a.start - b.start);
 }
 
 /**

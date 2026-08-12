@@ -76,7 +76,7 @@
       <h2>Base · dos app-counter (#0, #1) y un app-toggle (#2)</h2>
       <div class="stage">
 
-        <app-counter data-id="0">
+        <app-counter data-fud-id="0">
           <template shadowrootmode="open">
             <style>
               :host{display:inline-block}
@@ -91,7 +91,7 @@
           </template>
         </app-counter>
 
-        <app-counter data-id="1">
+        <app-counter data-fud-id="1">
           <template shadowrootmode="open">
             <style>
               :host{display:inline-block}
@@ -106,7 +106,7 @@
           </template>
         </app-counter>
 
-        <app-toggle data-id="2">
+        <app-toggle data-fud-id="2">
           <template shadowrootmode="open">
             <style>
               :host{display:inline-block}
@@ -133,7 +133,7 @@
       <h2>Cascada · app-parent → app-child → app-grandchild → app-greatgrandchild, DOS instancias</h2>
       <div class="stage">
 
-        <app-parent data-id="3">
+        <app-parent data-fud-id="3">
           <template shadowrootmode="open">
             <style>
               :host{display:block}
@@ -151,7 +151,7 @@
               <div class="tagline">app-parent · padre A · #3</div>
               <span class="count">0</span>
               <button>incrementar</button>
-              <app-child data-id="4">
+              <app-child data-fud-id="4">
                 <template shadowrootmode="open">
                   <style>
                     :host{display:block;margin-top:.5rem}
@@ -163,7 +163,7 @@
                   </style>
                   <div class="node lvl1">
                     <div class="tagline">app-child · hijo · #4</div>
-                    <app-grandchild data-id="5">
+                    <app-grandchild data-fud-id="5">
                       <template shadowrootmode="open">
                         <style>
                           :host{display:block;margin-top:.5rem}
@@ -175,7 +175,7 @@
                         </style>
                         <div class="node lvl2">
                           <div class="tagline">app-grandchild · nieto · #5</div>
-                          <app-greatgrandchild data-id="6">
+                          <app-greatgrandchild data-fud-id="6">
                             <template shadowrootmode="open">
                               <style>
                                 :host{display:block;margin-top:.5rem}
@@ -200,7 +200,7 @@
           </template>
         </app-parent>
 
-        <app-parent data-id="7">
+        <app-parent data-fud-id="7">
           <template shadowrootmode="open">
             <style>
               :host{display:block}
@@ -218,7 +218,7 @@
               <div class="tagline">app-parent · padre B · #7</div>
               <span class="count">0</span>
               <button>incrementar</button>
-              <app-child data-id="8">
+              <app-child data-fud-id="8">
                 <template shadowrootmode="open">
                   <style>
                     :host{display:block;margin-top:.5rem}
@@ -230,7 +230,7 @@
                   </style>
                   <div class="node lvl1">
                     <div class="tagline">app-child · hijo · #8</div>
-                    <app-grandchild data-id="9">
+                    <app-grandchild data-fud-id="9">
                       <template shadowrootmode="open">
                         <style>
                           :host{display:block;margin-top:.5rem}
@@ -242,7 +242,7 @@
                         </style>
                         <div class="node lvl2">
                           <div class="tagline">app-grandchild · nieto · #9</div>
-                          <app-greatgrandchild data-id="10">
+                          <app-greatgrandchild data-fud-id="10">
                             <template shadowrootmode="open">
                               <style>
                                 :host{display:block;margin-top:.5rem}
@@ -278,7 +278,7 @@
     <div class="card">
       <h2>Bus · shopping-cart (#11) escucha, product-list (#12) emite</h2>
 
-      <shopping-cart data-id="11">
+      <shopping-cart data-fud-id="11">
         <template shadowrootmode="open">
           <style>
             :host{display:block;margin-bottom:.8rem}
@@ -295,7 +295,7 @@
         </template>
       </shopping-cart>
 
-      <product-list data-id="12">
+      <product-list data-fud-id="12">
         <template shadowrootmode="open">
           <style>
             :host{display:block}
@@ -326,7 +326,7 @@
     <div class="card miss">
       <h2>Cache-miss · app-cold (#13) <span class="badge-tag">excluido del warm</span></h2>
       <div class="stage">
-        <app-cold data-id="13">
+        <app-cold data-fud-id="13">
           <template shadowrootmode="open">
             <style>
               :host{display:inline-block}
@@ -351,7 +351,7 @@
     <div class="card">
       <h2>Warm por scroll · app-note (#14), fuera del viewport inicial</h2>
       <div class="stage">
-        <app-note data-id="14">
+        <app-note data-fud-id="14">
           <template shadowrootmode="open">
             <style>
               :host{display:inline-block}
@@ -382,7 +382,7 @@
      de página, en pre-orden sobre las instancias N3 efectivas.
      ===================================================================== -->
 
-<!-- fud-state POSICIONAL: [[offsets],[data]]. `data-id` base-0 correlativo ES el
+<!-- fud-state POSICIONAL: [[offsets],[data]]. `data-fud-id` base-0 correlativo ES el
      índice en offsets. El estado de la instancia id es data.slice(o[id], o[id+1]).
      No hay claves, no hay mapa id->estado. El payload es autoridad de estado;
      el DOM es autoridad de posición. -->

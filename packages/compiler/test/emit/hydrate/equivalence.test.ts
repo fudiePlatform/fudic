@@ -29,6 +29,17 @@ function painted(tag: string, props: unknown, g: ComponentGraph = graph): { shad
   return { shadow, html: shadow.innerHTML };
 }
 
+/**
+ * The one attribute the two branches are MEANT to disagree on.
+ *
+ * `data-fud-id` is identity of PAGE (SDD-15 §3.1): the server assigns it while rendering,
+ * because only the page knows how many instances there are and in what order. An instance
+ * created at runtime by its parent controller has no entry in the payload and no id — its
+ * props are injected, not sliced (§4.3). So a host the server painted carries it and the
+ * same host built by `c()` does not, and that is the contract rather than a drift.
+ */
+const withoutIds = (html: string): string => html.replace(/ data-fud-id="\d+"/gu, '');
+
 /** The tree `c()` builds, as HTML — a fresh host, nothing adopted. */
 function created(tag: string, values: readonly unknown[], g: ComponentGraph = graph): string {
   const host = document.createElement(tag);
@@ -70,12 +81,14 @@ describe('create ↔ hydrate — composition and control flow (app-card)', () =>
   const values = ['Hola', 'highlight'] as const; // title, variant — the positional payload
   const { html } = painted('app-card', props);
 
-  it('c() builds exactly what the server painted', () => {
+  it('c() builds exactly what the server painted, but for the page identity', () => {
     const built = created('app-card', values);
-    expect(built).toBe(html);
+    expect(built).toBe(withoutIds(html));
     // The child host is there, with its style specifier — and empty on both sides: opening
     // its shadow and driving it belongs to the runtime, not to the parent.
-    expect(built).toContain('<app-button data-adopt="app-button" variant="ghost">');
+    expect(built).toContain('<app-button data-fud-adopt="app-button" variant="ghost">');
+    // And the difference is exactly that one attribute, on the hydratable host only.
+    expect(html).toContain('<app-button data-fud-id="0" data-fud-adopt="app-button"');
   });
 
   it('h() leaves it untouched', () => {

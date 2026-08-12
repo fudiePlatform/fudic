@@ -53,11 +53,59 @@ export interface ResolvedComponent {
 
 export interface ComponentGraph {
   readonly entry: StructuredDocument;
+  /** Absolute path of the entry `.fud` — what makes the entry addressable as a component. */
+  readonly entryPath: string;
   readonly entrySource: string;
   /** The `href`s the entry links directly. */
   readonly entryDeps: readonly string[];
   /** Every component reachable from the entry, keyed by tag. */
   readonly components: ReadonlyMap<string, ResolvedComponent>;
+}
+
+/**
+ * The entry itself as a `ResolvedComponent`, when the entry IS a component — memoized ON
+ * the graph.
+ *
+ * The resolver does not put the entry in `components`: that map is what the entry REACHES.
+ * But every question the emit asks about the graph — who hydrates, what composes what — has
+ * to include the file being compiled, or the same `.fud` compiles differently depending on
+ * whether it was reached from a page or opened on its own. That is not a cosmetic
+ * difference: it decides whether a component claims its children.
+ *
+ * Memoized because `ExtractedCode` is memoized on this object (`codeOf`): a second literal
+ * with the same fields would be a second Oxc invocation for one file, and the golden rule
+ * says one.
+ */
+const entryComponents = new WeakMap<ComponentGraph, ResolvedComponent>();
+
+export function entryComponent(graph: ComponentGraph): ResolvedComponent | undefined {
+  const entry = graph.entry;
+  // A cycle (A links B, B links A) puts the entry in `components` too; then it is already
+  // there, with the object every other reader uses.
+  if (entry.type !== 'component-document' || graph.components.has(entry.name)) return undefined;
+  const cached = entryComponents.get(graph);
+  if (cached !== undefined) return cached;
+  const comp: ResolvedComponent = {
+    tag: entry.name,
+    path: graph.entryPath,
+    source: graph.entrySource,
+    doc: entry,
+    deps: graph.entryDeps,
+  };
+  entryComponents.set(graph, comp);
+  return comp;
+}
+
+/** Every component the graph knows about: the entry, when it is one, and what it reaches. */
+export function allComponents(graph: ComponentGraph): readonly ResolvedComponent[] {
+  const own = entryComponent(graph);
+  return own === undefined ? [...graph.components.values()] : [own, ...graph.components.values()];
+}
+
+/** The component of a tag, the entry included. */
+export function componentOf(graph: ComponentGraph, tag: string): ResolvedComponent | undefined {
+  const own = entryComponent(graph);
+  return own?.tag === tag ? own : graph.components.get(tag);
 }
 
 /** The static `href` of a `<link>` element, or undefined. */
@@ -94,7 +142,7 @@ export function resolveComponents(entryPath: string, io: ResolveIo): ComponentGr
   const components = new Map<string, ResolvedComponent>();
   visitComponents(entry.links, entryPath, io, components);
   const entryDeps = entry.links.map(linkHref).filter((h): h is string => h !== undefined);
-  return { entry, entrySource, entryDeps, components };
+  return { entry, entryPath, entrySource, entryDeps, components };
 }
 
 /** Walk the `<link rel="component">` graph from `links`, filling `components` by tag. */
@@ -221,7 +269,7 @@ export function resolveDocument(entryPath: string, io: ResolveIo): ParseResult<D
   reportOrphanSections(entry, layouts, diagnostics);
 
   const entryDeps = entry.links.map(linkHref).filter((h): h is string => h !== undefined);
-  const graph: DocumentGraph = { entry, entrySource, entryDeps, components, layouts };
+  const graph: DocumentGraph = { entry, entryPath, entrySource, entryDeps, components, layouts };
   return diagnostics.length === 0 ? ok(graph) : withDiagnostics(graph, diagnostics);
 }
 

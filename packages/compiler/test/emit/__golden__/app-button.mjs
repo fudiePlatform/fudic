@@ -3,6 +3,7 @@ export const css = `:host{display:inline-block;}.btn{font:inherit;padding:0.5rem
 
 export function render($dom, $shadow, props) {
   const { variant = 'primary', disabled = false } = props ?? {};
+  $dom.state($shadow, [variant, disabled]);
   const $n0 = $dom.text(" "); $dom.append($shadow, $n0);
   const $n1 = $dom.element("button");
   { const $v = (disabled); if ($v === true) $dom.setAttr($n1, "disabled", ''); else if ($v !== false && $v != null) $dom.setAttr($n1, "disabled", String($v)); }

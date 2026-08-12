@@ -5,6 +5,7 @@ export const css = `:host{display:block;}.card{border:1px solid #ddd;border-radi
 
 export function render($dom, $shadow, props) {
   const { title, variant = 'default' } = props ?? {};
+  $dom.state($shadow, [title, variant]);
   const expanded = () => (false); // inert signal (SSR; hydration is client-side)
   const $n0 = $dom.text(" "); $dom.append($shadow, $n0);
   const $n1 = $dom.element("article");
@@ -31,7 +32,8 @@ export function render($dom, $shadow, props) {
   }
   const $n15 = $dom.text(" "); $dom.append($n1, $n15);
   const $n16 = $dom.element("app-button");
-  $dom.setAttr($n16, 'data-adopt', "app-button");
+  $dom.claim($n16);
+  $dom.setAttr($n16, 'data-fud-adopt', "app-button");
   $dom.setAttr($n16, "variant", "ghost");
   const $n17 = $dom.attachShadow($n16);
   renderAppButton($dom, $n17, { "variant": "ghost" });

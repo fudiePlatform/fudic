@@ -27,6 +27,8 @@ import { CodeWriter } from './writer.js';
 import { MarkupEmitter, renderName, tpl } from './markup.js';
 import { AssetLinker } from './assets.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
+import { hydratableTags } from './level.js';
+import { writeMapConstants, writeHydrationBlocks } from './maps.js';
 import type { DocumentGraph, ResolvedLayout } from './resolve.js';
 import type { EmitOptions, EmitOutput } from './module.js';
 import {
@@ -88,7 +90,14 @@ function buildLayoutModule(
   // Body codegen: the layout's own markup, with `route.body(…)` spliced in where the
   // author wrote `@RenderBody()` (the MarkupEmitter resolves the directive nodes).
   const bodyW = new CodeWriter();
-  const em = new MarkupEmitter(source, bodyW, (t) => graph.components.has(t), linker, SLOTS);
+  const em = new MarkupEmitter({
+    source,
+    w: bodyW,
+    isComponent: (t) => graph.components.has(t),
+    linker,
+    slots: SLOTS,
+    hydratable: hydratableTags(graph),
+  });
   const bodyParent = nested ? PARENT : '$body';
   em.emitChildren(doc.body.children, bodyParent);
 
@@ -142,6 +151,9 @@ function buildLayoutModule(
     w.line('},');
     // Sections belong to the route; this layout only forwards the ones its parent renders.
     w.line(`section(name, ${DOM}, ${PARENT}) { ${SLOTS}.section(name, ${DOM}, ${PARENT}); },`);
+    // Same for the hydration blocks: they are the ROUTE's — it is the one whose graph reaches
+    // the whole chain — and only the outermost layout knows when the body is finished.
+    w.line(`blocks(${DOM}, ${PARENT}) { ${SLOTS}.blocks(${DOM}, ${PARENT}); },`);
     w.dedent();
     w.line('});');
   } else {
@@ -153,6 +165,9 @@ function buildLayoutModule(
     w.line(`const ${DOM} = createDom();`);
     w.line(`const $body = ${DOM}.element('body');`);
     w.appendWriter(bodyW);
+    // The last thing in the body, and the outermost layout is the only one that can say
+    // «the body is finished»: the route hangs its three JSON blocks here (SDD-15 §3.3–§3.5).
+    w.line(`${SLOTS}.blocks(${DOM}, $body);`);
     w.line('yield* serialize($body);');
     w.line("yield '</html>';");
   }
@@ -212,15 +227,24 @@ function buildRouteModule(
   const source = graph.entrySource;
   const comps = [...graph.components.values()];
 
+  const hydratable = hydratableTags(graph);
+  const isComponent = (t: string): boolean => graph.components.has(t);
   const bodyW = new CodeWriter();
-  const em = new MarkupEmitter(source, bodyW, (t) => graph.components.has(t), linker, SLOTS);
+  const em = new MarkupEmitter({ source, w: bodyW, isComponent, linker, slots: SLOTS, hydratable });
   em.emitChildren(route.markup, PARENT);
 
   // One `if` arm per declared section; an unknown name renders nothing (decision 85). Its
   // own emitter, because a section builds into the layout's `@RenderSection` point — NOT
   // into the body: sharing the body's emitter would append the section inside the markup.
   const sectionW = new CodeWriter();
-  const sectionEm = new MarkupEmitter(source, sectionW, (t) => graph.components.has(t), linker, SLOTS);
+  const sectionEm = new MarkupEmitter({
+    source,
+    w: sectionW,
+    isComponent,
+    linker,
+    slots: SLOTS,
+    hydratable,
+  });
   for (const section of route.sections as readonly SectionNode[]) {
     if (section.name === '') continue;
     sectionW.line(`if (name === ${JSON.stringify(section.name)}) {`);
@@ -252,11 +276,16 @@ function buildRouteModule(
   w.line(`const COMPONENTS = [${componentPairs(graph).join(', ')}];`);
   // The MINIFIED form: it is inline in every page's head, once per page (BUG-07 §4.3).
   w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL_MIN)};`);
+  // The maps belong to the ROUTE and not to the layout, and that is not a placement choice:
+  // `resolveDocument(route)` reaches the components of the whole chain — the layout's own
+  // included — while a layout module is emitted from its own graph and cannot see the
+  // route's. One map computed here would be missing half the page.
+  const maps = writeMapConstants(w, graph, hydratable);
   w.line('');
   // Same public shape as a standalone page: the composition is invisible downstream.
   w.line('export function* page(data, io) {');
   w.indent();
-  w.line('const { escapeText } = io;');
+  w.line('const { escapeText, jsonBlock } = io;');
   // The nonce belongs to the RESPONSE, so it is read here, where `io` is, and closed over
   // by the head slot the layout calls (SDD-20 §4.9).
   writeNonceBinding(w);
@@ -277,6 +306,14 @@ function buildRouteModule(
   w.line(`section(name, ${DOM}, ${PARENT}) {`);
   w.indent();
   w.appendWriter(sectionW);
+  w.dedent();
+  w.line('},');
+  // The blocks are the route's because its graph is the one that reaches the whole chain —
+  // the layout's own components included — and they are emitted from a slot because only the
+  // outermost layout knows where the body ends.
+  w.line(`blocks(${DOM}, ${PARENT}) {`);
+  w.indent();
+  writeHydrationBlocks(w, maps, DOM, PARENT);
   w.dedent();
   w.line('},');
   w.dedent();

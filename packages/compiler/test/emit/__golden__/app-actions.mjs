@@ -3,6 +3,7 @@ export const css = `:host{display:block;}.list{margin:0;padding:0;list-style:non
 
 export function render($dom, $shadow, props) {
   const { rows = [] } = props ?? {};
+  $dom.state($shadow, [rows]);
   const $n0 = $dom.text(" "); $dom.append($shadow, $n0);
   const $n1 = $dom.element("ul");
   $dom.setAttr($n1, 'class', ["list"].filter(Boolean).join(' '));

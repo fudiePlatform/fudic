@@ -166,7 +166,7 @@ describe('runLinkPass', () => {
     // The baseline: what unminified output renders. Minifying may not change one byte
     // of it — that is the whole risk of BUG-06 and the reason it is a criterion.
     const html = await renderThroughLinker(result, '/about');
-    expect(html).toContain('<app-badge data-adopt="app-badge">');
+    expect(html).toContain('<app-badge data-fud-adopt="app-badge">');
     expect(html).toContain('<template shadowrootmode="open"');
     expect(html).toContain('<h1>About</h1>');
   });

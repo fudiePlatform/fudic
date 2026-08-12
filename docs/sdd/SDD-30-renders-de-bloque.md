@@ -478,8 +478,8 @@ autor, porque el cuerpo del bloque es su código.
   y van **después** de este SDD: el `s()` de un bloque es donde se enganchan, y ese `s()` lo crea
   esta spec. Aquí `s()` se emite con lo que ya existe (el pase de props de BUG-12) y vacío para
   lo demás.
-- **`data-id` y los cuatro mapas de página** (SDD-15 §3.1, §3.3–§3.6). Un bloque no tiene
-  identidad de página: sus instancias no llevan `data-id` ni tramo en `fud-state`. Lo que sí se
+- **`data-fud-id` y los cuatro mapas de página** (SDD-15 §3.1, §3.3–§3.6). Un bloque no tiene
+  identidad de página: sus instancias no llevan `data-fud-id` ni tramo en `fud-state`. Lo que sí se
   cierra aquí es el **canal** por el que un hijo creado en runtime recibe sus props (§4.6).
 - **Diagnóstico de key duplicada en runtime.** Depende de los datos; el comportamiento queda
   fijado en §4.4 y el aviso en dev es del runtime (SDD-17), no del compilador.

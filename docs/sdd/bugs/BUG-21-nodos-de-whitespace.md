@@ -1,7 +1,9 @@
 # BUG-21 — El árbol lleva un nodo de texto por cada salto de línea del autor
 
-> **Estado:** `Bloqueado` — por el slice pendiente de [SDD-15](../SDD-15-emit.md): la hidratación
-> vista correr en un navegador (§2.8). Sus dos bloqueantes anteriores,
+> **Estado:** `Bloqueado` — por [SDD-17](../SDD-17-hidratacion.md): la hidratación vista correr
+> en un navegador (§2.8). El bloqueante era «el slice pendiente de SDD-15» hasta que
+> [SDD-15](../SDD-15-emit.md) pasó a `Hecho` (2026-08-12); lo que falta no era el emit sino el
+> runtime que lo consume, y ese es SDD-17. Sus dos bloqueantes anteriores,
 > [BUG-18](./BUG-18-update-denso.md) y [BUG-19](./BUG-19-tres-constructos-sin-servidor.md), están
 > en `Hecho` (§2.7)
 > **Corrige:** [BUG-07 §4.5](./BUG-07-html-sin-minificar.md) (la regla *«se colapsa; no se
@@ -222,8 +224,10 @@ observación es informativa.
 
 ### 2.8. Y ahora, por la hidratación vista correr
 
-Las dos aristas de §2.7 están en `Hecho`, y el BUG **no** pasa a `Listo`: lo bloquea el slice
-pendiente de [SDD-15](../SDD-15-emit.md), y esta vez la razón sí es de mecanismo.
+Las dos aristas de §2.7 están en `Hecho`, y el BUG **no** pasa a `Listo`: lo bloquea
+[SDD-17](../SDD-17-hidratacion.md), y esta vez la razón sí es de mecanismo. (Escrito cuando el
+bloqueante parecía ser SDD-15; ese cerró el 2026-08-12 y lo que falta es el runtime que lee lo
+que el emit produce, no el emit.)
 
 **La deducción de la caja solo es cerrada dentro del shadow root.** Ahí el único CSS que aplica es
 el `<style>` del componente, y §4.3 se sostiene. En la página —el light DOM, el layout, la ruta— una
@@ -243,7 +247,7 @@ escrito en dos líneas queda de verdad vacío y enseña el fallback de su `<slot
 tres pruebas es la decisión que este BUG tiene pendiente.
 
 **Por qué no se elige aquí.** Las dos reglas cambian el árbol que `h()` adopta, y ese árbol todavía
-no se ha visto adoptar en un navegador con las fixtures reales: es el slice que le queda a SDD-15.
+no se ha visto adoptar en un navegador con las fixtures reales: es SDD-17 entero.
 Escribir la regla antes es escribirla contra un modelo que no ha corrido —y la experiencia de
 `language-core` / `language-server` dice que ahí es donde aparece lo que ningún test previó—. Es el
 mismo argumento de §2.7 con una vuelta más: allí era no mover los goldens dos veces, aquí es no

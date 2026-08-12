@@ -48,9 +48,12 @@ path del INP sin tocar el modelo de hidratación.
 ## 2. Dependencias
 
 - **Emit (SDD-15)** — contrato duro, no preferencia. El runtime rompe si el emit no
-  garantiza: `data-id` entero base-0 correlativo, único por documento, determinista y
-  co-emitido con el payload; solo en instancias N3 efectivas; DSD `open`; y los cuatro mapas
-  `fud-state` / `fud-tree` / `fud-bus` / `fud-chunks` salidos de la misma pasada.
+  garantiza: `data-fud-id` entero base-0 correlativo, único por documento, determinista y
+  co-emitido con el payload; solo en instancias N3 efectivas; DSD `open`; y los tres mapas
+  `fud-state` / `fud-tree` / `fud-bus` salidos de la misma pasada.
+- **Artefactos y manifiesto (SDD-27)** — `createUrlResolver(base, build).hydrateUrl(tag)`. No
+  hay cuarto mapa: la URL del chunk de un tag es derivable del manifiesto (SDD-15 §3.6,
+  retirado), y el runtime tiene el tag delante en `host.localName`. Ver §4.6.
 - **`@fudic/dom` (SDD-14)** — `browserDom`, y en particular `browserDom.event` y
   `browserDom.bus` (SDD-15 §3.8), que son lo que los controladores usan para engancharse.
 - **Service Worker** (SDD de red, aparte) — sirve los chunks network-first la primera vez y
@@ -72,7 +75,7 @@ importa el chunk del componente, no la página.)
 // Eventos de ciclo de vida emitidos en `document` (instrumentación/telemetría):
 //   'fud:ready'                    — runtime instalado, cero JS de componente aún.
 //   'fud:hydrated'  detail: {
-//       id: number;                // data-id de la instancia hidratada
+//       id: number;                // data-fud-id de la instancia hidratada
 //       tag: string;               // localName del componente
 //       ms: string;                // tiempo de resolución del chunk
 //       from: 'downloaded' | 'shared-chunk' | 'bus' | 'subtree';
@@ -87,7 +90,7 @@ por qué se levantó cada instancia.
 **El estado no se expone en un global.** El `window.__fudState` de los prototipos desaparece:
 el runtime parsea `fud-state` una vez y **pasa** el tramo a la instancia
 (`host.h(data.slice(offsets[id], offsets[id+1]))`, SDD-15 §4.3). El chunk no lee de un global
-ni el componente conoce su `data-id`.
+ni el componente conoce su `data-fud-id`.
 
 ```ts
 // Mensajes con el Service Worker (warm, §4.7)
@@ -101,11 +104,11 @@ interface WarmedMessage { type: 'warmed'; urls: string[]; tags: string[] }
 
 ### 4.1. Ejes independientes: hidratación por instancia, descarga por tag
 
-La hidratación se controla **por instancia** (`data-id`). La descarga del chunk se controla
+La hidratación se controla **por instancia** (`data-fud-id`). La descarga del chunk se controla
 **por tag**. Son ortogonales y confundirlos es un error — fue el defecto detectado y
 corregido durante la validación del primer prototipo:
 
-- Un `Set` de `data-id` hidratados determina si el runtime debe intervenir en una instancia.
+- Un `Set` de `data-fud-id` hidratados determina si el runtime debe intervenir en una instancia.
 - `customElements.get(tag)` determina si hace falta descargar el chunk.
 
 Dos instancias del mismo tag comparten chunk (una sola descarga) pero **se hidratan cada una
@@ -129,11 +132,11 @@ que el gesto se pierda.
 
 ### 4.3. Los tres caminos del capturador
 
-En cada evento capturado se localiza el host `[data-id]` más cercano recorriendo
+En cada evento capturado se localiza el host `[data-fud-id]` más cercano recorriendo
 `e.composedPath()` (atraviesa la frontera de shadow; `closest()` no sirve). Sin host, se
 ignora. Con host, se decide por estado:
 
-**Camino 1 — instancia ya hidratada** (`data-id ∈ hydrated`): el runtime **se retira**
+**Camino 1 — instancia ya hidratada** (`data-fud-id ∈ hydrated`): el runtime **se retira**
 inmediatamente. El listener propio maneja el evento con su `ev` real. Es el cierre que impide
 el doble disparo: no se cuenta "una vez", se comprueba estado y se sale.
 
@@ -204,7 +207,7 @@ padre el último.
 hydrateSubtreePostorder(rootHost):
   visit(host, depth):
     para cada childTag en fud-tree[host.localName]:
-      para cada instancia `kid` de `childTag[data-id]` dentro de host.shadowRoot:
+      para cada instancia `kid` de `childTag[data-fud-id]` dentro de host.shadowRoot:
         visit(kid, depth + 1)                  // PROFUNDIDAD PRIMERO
     si depth > 0:                              // la raíz no aquí; la levanta el paso 5
       ensureDefined(host.localName)            // descarga por tag, memoizada
@@ -235,7 +238,7 @@ Por eso el paso 4 es **por tag**:
 
 ```
 prepareTag(tag):
-  para cada instancia h de tag[data-id] en el árbol (atravesando shadow roots):
+  para cada instancia h de tag[data-fud-id] en el árbol (atravesando shadow roots):
     hydrateSubtreePostorder(h)
 ```
 
@@ -247,7 +250,7 @@ El recorrido que localiza las instancias atraviesa shadow roots descendiendo por
 en cada elemento; se hace una vez por tag, justo antes de definirlo.
 
 **El mismo argumento, aplicado al reparto del estado: `attachAll`.** El componente no conoce
-su `data-id` (§3), luego no puede leer su propio tramo del payload: lo **reparte el runtime**.
+su `data-fud-id` (§3), luego no puede leer su propio tramo del payload: lo **reparte el runtime**.
 Y por la misma razón que `prepareTag`, el reparto es **por tag**, no por instancia: `define`
 upgradea todas las instancias de golpe, así que si solo se le pasara el tramo a la instancia
 clicada, las demás quedarían upgradeadas y **sin enganchar** — y su primera interacción cae en
@@ -255,7 +258,7 @@ el camino 3, que por definición no descarga ni repara nada. El fallo sería sil
 
 ```
 attachAll(tag):
-  para cada instancia h de tag[data-id] en el árbol (atravesando shadow roots):
+  para cada instancia h de tag[data-fud-id] en el árbol (atravesando shadow roots):
     si h ya recibió su tramo: continuar
     customElements.upgrade(h)                    // idempotente; blinda el orden
     h.h(data.slice(offsets[id], offsets[id + 1]))   // punto de entrada 1 (SDD-15 §4.3)
@@ -289,13 +292,26 @@ alcance validado (§6).
 ### 4.6. Resolución del chunk
 
 ```ts
-function chunkURL(tag: string): string;   // fud-chunks[tag]
+const urls = createUrlResolver(base, build);   // SDD-27 §4.1
+function chunkURL(tag) { return urls.hydrateUrl(tag); }
 ```
 
-El mapa `tag → URL` lo emite el compilador (SDD-15 §3.6) con hashing de nombre para cacheado
-inmutable. **Sustituye la convención hardcodeada `./components/${tag}.js`** que los cuatro
-prototipos arrastraban y que ninguno de los documentos refundidos había cerrado. Un tag sin
-entrada no es hidratable: el runtime no lo pide y lo ignora.
+**No hay mapa `tag → URL`.** La URL se **deriva**: `hydrateUrl(tag)` da
+`<base>assets/h/<tag>-<build>.js`, y eso es todo lo que hace falta (SDD-27 §4.1 y su criterio
+9). **Sustituye la convención hardcodeada `./components/${tag}.js`** que los cuatro prototipos
+arrastraban. El runtime no necesita saber qué tags son hidratables: solo pide el chunk de los
+tags que llevan `data-fud-id`, que son exactamente esos.
+
+El motivo de que sea derivación y no mapa: el manifiesto se purga por build
+(`shell-${build}`, en el `activate` del Service Worker), mientras que un JSON incrustado en un
+HTML prerenderizado se sirve mientras ese HTML esté en cache. Con las dos copias, un deploy
+deja una página apuntando a los chunks del build anterior.
+
+> **Dependencia abierta de este SDD, no de SDD-15.** Para construir el resolver, el hilo
+> principal necesita `base` y `build`. Hoy solo el script del Service Worker recibe el build
+> id, por sustitución de `BUILD_TOKEN` en el bundle (misma longitud,
+> `@fudic/transport` `constants.ts`). La vía obvia es la misma sustitución en el chunk de
+> `fudic-main`; hay que cerrarla al implementar este SDD.
 
 ```js
 async function ensureDefined(tag) {
@@ -327,7 +343,7 @@ const io = new IntersectionObserver((entries) => {
   }
 }, { rootMargin: '0px', threshold: 0 });
 
-for (const host of document.querySelectorAll('[data-id]')) io.observe(host);
+for (const host of document.querySelectorAll('[data-fud-id]')) io.observe(host);
 ```
 
 - **Un tag se precachea cuando la primera de sus instancias entra en viewport.** Las demás no
@@ -423,7 +439,7 @@ optimización, no un requisito de correctitud.** La hidratación funciona con o 
 Servido por HTTP (el SW y el `import()` no arrancan en `file://`). Página única que combina
 los cuatro escenarios que antes vivían en cuatro prototipos separados:
 
-- dos instancias de `app-counter` (`data-id` 0 y 1) y una de `app-toggle` (2), en viewport;
+- dos instancias de `app-counter` (`data-fud-id` 0 y 1) y una de `app-toggle` (2), en viewport;
 - una cadena de composición `app-parent`(3) → `app-child` → `app-grandchild` →
   `app-greatgrandchild`;
 - un emisor `product-list` y un suscriptor `shopping-cart` (`fud-bus`:

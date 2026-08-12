@@ -123,7 +123,7 @@ describe('emitComponentClientModule — the module shape (§6.8)', () => {
 
   it('fabricates a child host without opening its shadow or driving it', () => {
     expect(src).toContain('$n3 = $dom.element("app-button");');
-    expect(src).toContain(`$dom.setAttr($n3, 'data-adopt', "app-button");`);
+    expect(src).toContain(`$dom.setAttr($n3, 'data-fud-adopt', "app-button");`);
     expect(src).not.toContain('attachShadow'); // the runtime owns the child (SDD-17)
     expect(src).not.toContain('renderAppButton');
   });
@@ -579,7 +579,7 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
   it('keeps the host itself untouched: still fabricated, still not driven', () => {
     const src = hostChunk('.value="@count"');
     expect(src).toContain('$n0 = $dom.element("x-child");');
-    expect(src).toContain(`$dom.setAttr($n0, 'data-adopt', "x-child");`);
+    expect(src).toContain(`$dom.setAttr($n0, 'data-fud-adopt', "x-child");`);
     expect(src).not.toContain('attachShadow'); // the runtime owns the child (SDD-17)
   });
 

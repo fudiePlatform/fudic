@@ -73,7 +73,8 @@ function withCode(code: string, inner = ''): string {
 
 describe('analyze — runner', () => {
   it('exposes every analyzer and returns an empty model (§3, crit. #8)', () => {
-    expect(ANALYZERS).toHaveLength(8); // 7 of SDD-12 + layout-load (SDD-21)
+    // 7 of SDD-12 + layout-load (SDD-21) + reserved-attributes (SDD-15 §3.1)
+    expect(ANALYZERS).toHaveLength(9);
     const { value } = analyze(buildInput(component('<p>hi</p>')));
     expect(value).toEqual({});
     expect('strategies' in value).toBe(false); // decisions 63–65 retired: no hydration strategy

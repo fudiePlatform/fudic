@@ -17,7 +17,7 @@
 > | `styles` / `StyleRegistry` (`<style host="tag">`, decisiones 67–70) | hoja compartida `<style type="module">` + `shadowrootadoptedstylesheets` + polyfill | **SDD-18**, emitido por **SDD-15 §4.8** |
 >
 > Con ellos caen los marcadores `data-fud-c`, `data-fud-e` y el atributo `host="tag"` en la
-> serialización: **el único marcador en el host es `data-id`** (SDD-15 §3.1). Lo que **sobrevive
+> serialización: **el único marcador en el host es `data-fud-id`** (SDD-15 §3.1). Lo que **sobrevive
 > íntegro** —y es lo que este documento sigue especificando— es `Dom<N>` / `DomClient<N>`,
 > `browserDom`, `SsrDom` + `renderToString`, `Cursor` / `cursorOf`, `signal` y el contrato
 > `Render<N>` / `RenderFactory<N>` con su bootstrap `hydrateRoot` / `mountRoot`.

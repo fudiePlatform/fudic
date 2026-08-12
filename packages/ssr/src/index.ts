@@ -12,7 +12,7 @@
 export const VERSION = '0.0.1';
 
 export { type SsrNode } from './tree.js';
-export { SsrDom } from './ssr-dom.js';
+export { SsrDom, ID_ATTR, type HydrationState } from './ssr-dom.js';
 export {
   renderToString,
   serializeChunks,
@@ -20,4 +20,5 @@ export {
   escapeAttr,
   neutralizeComment,
 } from './serialize.js';
+export { jsonBlock, escapeJson } from './json-block.js';
 export { renderToStream, htmlToByteStream, type StreamOptions } from './stream.js';

@@ -79,6 +79,32 @@ export interface HostContext {
 export const NO_SIGNALS: HostContext = { isComponent: false, signals: new Set() };
 
 /**
+ * The name of the REACTIVE a value crosses with, or `undefined` when it crosses none.
+ *
+ * The rule is deliberately narrow: the whole value must be one `@expr` whose text is the
+ * bare name of something in `reactives` — a `signal(...)` or a `computed(...)` this scope
+ * declares, or a prop it received as reactive itself. `@count` is reactive; `@(count() + 1)`
+ * is a value that happens to read one, and the difference is what decides whether anything
+ * downstream can ever move.
+ *
+ * ONE definition, three readers: the expression a value crosses with (`crossingExpr`), the
+ * subscription the parent emits (`markup-client.ts#slots`) and the effective level of the
+ * child (`level.ts`). Two copies of this would drift, and the drift is silent in the worst
+ * direction — a parent that emits `$sub` for a child the page never marked hydratable, or a
+ * child marked hydratable that nobody ever updates.
+ */
+export function reactiveName(
+  source: string,
+  value: readonly AttributeValuePart[],
+  reactives: ReadonlySet<string>,
+): string | undefined {
+  const only = value.length === 1 ? value[0] : undefined;
+  if (only?.type !== 'razor-expression') return undefined;
+  const text = source.slice(only.expr.start, only.expr.end);
+  return reactives.has(text) ? text : undefined;
+}
+
+/**
  * The expression a value crosses the shadow boundary with.
  *
  * Decision 84: a VALUE crosses, never the signal object. So a value whose text is exactly
@@ -98,12 +124,8 @@ export function crossingExpr(
   value: readonly AttributeValuePart[],
   signals: ReadonlySet<string>,
 ): string {
-  const only = value.length === 1 ? value[0] : undefined;
-  if (only?.type === 'razor-expression') {
-    const text = source.slice(only.expr.start, only.expr.end);
-    if (signals.has(text)) return `${text}()`;
-  }
-  return attrExpr(source, attr);
+  const reactive = reactiveName(source, value, signals);
+  return reactive !== undefined ? `${reactive}()` : attrExpr(source, attr);
 }
 
 /**
