@@ -11,7 +11,7 @@
 > `props<T>()` y **signals inertes** —valor inicial, sin reactividad—), y `emitPageModule`
 > produce `page(data, io)` → documento HTML completo (DSD por instancia) con el hoisting de
 > estilos y el polyfill de §4.8 (SDD-18). Es exactamente lo que hace falta para el HTML DSD
-> cero-JS. **Pendiente** (rama de cliente/hidratación, la consume SDD-17): §3.1 `data-id`,
+> cero-JS. **Pendiente** (rama de cliente/hidratación, la consume SDD-17): §3.1 `data-fud-id`,
 > §3.3–3.6 los cuatro mapas JSON (`fud-state`/`fud-tree`/`fud-bus`/`fud-chunks`), §3.7
 > controlador `{c,h,r}` / `FudicElement`, §3.8 `Dom.event`/`Dom.bus`, §4.2 deserialización,
 > §4.4 bus, §4.5 event bindings, §4.6 factory. **Motivo del cierre parcial (Pedro):** la rama
@@ -90,29 +90,34 @@ transporta esquema, solo valores.
 
 ## 3. Interfaz pública (los contratos de emit)
 
-### 3.1. `data-id` — identidad de instancia
+### 3.1. `data-fud-id` — identidad de instancia
 
-Cada instancia **N3 efectiva** se emite como su custom element con DSD y un `data-id`:
+Cada instancia **N3 efectiva** se emite como su custom element con DSD y un `data-fud-id`:
 
 ```html
-<app-counter data-id="0">
+<app-counter data-fud-id="0">
   <template shadowrootmode="open">
     <!-- markup ya renderizado con el estado de la instancia 0 -->
   </template>
 </app-counter>
 ```
 
-- `data-id` es **identidad de instancia**, no un identificador del programador ni derivable
+- **Por qué `data-fud-id` y no `data-id`.** `data-*` es vocabulario del **autor**, y `data-id`
+  es de los más escritos que hay: un `data-id` en el markup propio o en el de una librería
+  integrada sería una instancia hidratable a ojos del runtime, con un tramo de payload que no
+  existe y sin error visible. El namespace `fud` es lo que separa los dos mundos, igual que
+  `bus:` (decisión 22) y que la reserva `$` (§4.7).
+- `data-fud-id` es **identidad de instancia**, no un identificador del programador ni derivable
   del componente aislado: un mismo componente aparece N veces en una página y el componente
   no sabe cuántas. Por eso **no puede** calcularse en el emit del `.fud` del componente; se
   asigna en el emit de **página**, tras resolver toda la composición.
 - **Entero base-0 y correlativo** (`0,1,2,…`) en pre-orden sobre las instancias N3
   efectivas. No es cosmético: el id **es** el índice en el array de offsets (§3.3), y eso
   elimina la tabla intermedia `id → estado`.
-- **Solo N3 efectivo lo lleva.** Los N1/N2 puros no se hidratan, no llevan `data-id` ni
+- **Solo N3 efectivo lo lleva.** Los N1/N2 puros no se hidratan, no llevan `data-fud-id` ni
   entrada en ningún mapa, y son inertes para el runtime. El nivel efectivo lo da SDD-12
   (nivel intrínseco o inducido por props reactivas entrantes).
-- **`data-id` es el único marcador emitido en el host.** No se emite `data-fud-c` (tag),
+- **`data-fud-id` es el único marcador emitido en el host.** No se emite `data-fud-c` (tag),
   `data-fud-e` (delegación) ni ningún `data-fud-css`: retirados o innecesarios (§7). El
   specifier de estilos **no** necesita marcador propio: es el tag del host, y el serializador
   lo emite en el `<template>` como `shadowrootadoptedstylesheets="<tag>"` (§4.8, SDD-18 D-1/D-6).
@@ -157,7 +162,7 @@ Un único documento JSON por página:
   `offsets[id]` es el inicio (inclusive) del tramo de la instancia `id` en `data`;
   `offsets[id+1]` el fin (exclusivo). La entrada final cierra el último tramo.
 - **Posición 1 — `data`**: array plano con los valores de todas las instancias, en orden de
-  `data-id`, concatenados.
+  `data-fud-id`, concatenados.
 
 Recuperación del estado de una instancia:
 
@@ -166,7 +171,7 @@ const [offsets, data] = payload;
 const values = data.slice(offsets[id], offsets[id + 1]);
 ```
 
-No hay claves, no hay mapa `data-id → estado`, no hay índice por tag. El `data-id` base-0
+No hay claves, no hay mapa `data-fud-id → estado`, no hay índice por tag. El `data-fud-id` base-0
 correlativo **es** el índice. Cada hecho vive una vez, referido por posición.
 
 **El payload es la autoridad de estado; el DOM es autoridad de posición.** El controlador
@@ -193,7 +198,7 @@ type FudTree = Record<string /* tag padre */, string[] /* tags hijos directos hi
   página con 200 tarjetas tiene la misma entrada `app-card` que una con una. Crece con el
   **catálogo** de componentes (acotado, decenas). Por eso su peso es insignificante.
 - Solo los tags con hijos hidratables aparecen como clave; una hoja no tiene entrada. Solo
-  se listan hijos N3 efectivos: los N1/N2 puros no llevan `data-id` y no entran.
+  se listan hijos N3 efectivos: los N1/N2 puros no llevan `data-fud-id` y no entran.
 - El runtime lo usa para saber **qué** tags buscar; desciende por `shadowRoot` para
   localizar las **instancias**, porque `querySelectorAll` no cruza fronteras de shadow.
 
@@ -296,7 +301,7 @@ petición extra dentro del gesto y el ahorro de bytes se convertiría en un cost
 
 **`FudicElement` no tiene lógica en `connectedCallback`.** Es la diferencia de fondo con la
 clase homónima de SDD-14, que hacía allí todo el trabajo. No puede: **el componente no conoce
-su `data-id`** (§3.1, es identidad de página) y por tanto no puede leer su propio tramo del
+su `data-fud-id`** (§3.1, es identidad de página) y por tanto no puede leer su propio tramo del
 payload. Es el runtime quien reparte los tramos, por tag, en el momento de definirlo
 (`attachAll`, SDD-17 §4.4). `h` y `c` son **puntos de entrada que invoca alguien de fuera**,
 no callbacks del ciclo de vida del navegador. El único callback real es
@@ -386,7 +391,7 @@ Object.values({ items: [{ id: 1 }, { id: 2 }] })          // → [ [ { id: 1 }, 
   mantiene los N3 al mínimo) el coste es irrelevante y se prefiere no hornear un
   reconstructor recursivo. La vía A (descenso posicional en profundidad) queda fuera (§7).
 
-**Construcción del `data` global.** La pasada de §3.2 concatena, en orden de `data-id`,
+**Construcción del `data` global.** La pasada de §3.2 concatena, en orden de `data-fud-id`,
 `Object.values(estado_i)` de cada instancia, y registra en `offsets` la posición inicial de
 cada tramo más un cierre final.
 
@@ -419,10 +424,10 @@ implementa `FudicElement` una vez** (§3.7); el emit no los genera.
 **Punto 1 — instancia venida de SSR (`h`).** El shadow ya está renderizado (DSD). El
 controlador adopta los nodos existentes por **traversal posicional**
 (`$shadow.children[i]`, `firstChild`, `nextSibling`) — nunca `querySelector`, nunca
-`cloneNode`. Los props proceden del **payload** (`data.slice` por `data-id`).
+`cloneNode`. Los props proceden del **payload** (`data.slice` por `data-fud-id`).
 
 **Quién invoca `h`, y por qué no es el `connectedCallback`.** Lo invoca **el runtime**
-(SDD-17 §4.4, `attachAll`), no el propio host. El componente **no conoce su `data-id`** —
+(SDD-17 §4.4, `attachAll`), no el propio host. El componente **no conoce su `data-fud-id`** —
 es identidad de página, no suya— así que no puede leer su propio tramo; y `customElements.define`
 upgradea **todas** las instancias del tag de golpe, de modo que si el runtime repartiera el
 tramo solo a la instancia sobre la que se hizo click, las demás quedarían upgradeadas pero
@@ -862,7 +867,7 @@ que falta usar un nodo.
 - **Spans en todo.** Cada fragmento generado (destructuring, offsets, nodos, handlers) se
   mapea a su origen en el `.fud` vía la tabla de regiones (SDD-11) y `SourceMapBuilder`
   (SDD-13). Un error en el estado emitido debe poder navegarse de vuelta a la prop.
-- **Determinismo.** Mismo AST ⇒ mismos `data-id`, offsets, data, destructuring y mapas.
+- **Determinismo.** Mismo AST ⇒ mismos `data-fud-id`, offsets, data, destructuring y mapas.
   Requisito para que SSR y cualquier regeneración coincidan.
 - **El emit no lanza.** Ante un tipo de prop que no sepa serializar (`FUD0292`) o un binding
   no suscribible (`FUD0291`), emite diagnóstico con span y continúa; no aborta la página.
@@ -894,7 +899,7 @@ que falta usar un nodo.
    anidado viaja con su forma: `Object.values({id:1,bar:{id:1}})` → `[1,{id:1}]`.
 4. **Deserialización simétrica.** El destructuring recupera las variables en orden; un valor
    anidado sale tal cual (`bar === {id:1}`).
-5. **`data-id` base-0 correlativo.** El emit asigna `0,1,2,…` en pre-orden sobre las
+5. **`data-fud-id` base-0 correlativo.** El emit asigna `0,1,2,…` en pre-orden sobre las
    instancias N3 efectivas; el id indexa `offsets` sin tabla intermedia.
 6. **Una sola pasada.** Alterar el árbol de composición y regenerar produce `data-fud-id`,
    `fud-state`, `fud-tree` y `fud-bus` mutuamente consistentes, sin paso de reconciliación.
@@ -974,7 +979,7 @@ que falta usar un nodo.
 25. **`fud-tree` por tag.** Una cadena `app-parent → app-child → app-grandchild` emite
     `{"app-parent":["app-child"],"app-child":["app-grandchild"]}`. Duplicar a 200 instancias
     de `app-child` **no cambia el mapa**.
-26. **Solo N3 efectivo.** Un hijo N1/N2 puro no lleva `data-id`, no aparece en `fud-tree`, ni
+26. **Solo N3 efectivo.** Un hijo N1/N2 puro no lleva `data-fud-id`, no aparece en `fud-tree`, ni
     tiene tramo en `fud-state`.
 27. **La URL del chunk cierra sin mapa.** Para todo tag con alguna instancia `[data-fud-id]`
     en los HTML prerenderizados de un build, `createUrlResolver(base, build).hydrateUrl(tag)`

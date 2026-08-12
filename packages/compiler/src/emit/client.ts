@@ -10,7 +10,7 @@
  * one that is N1 in isolation becomes N3 the moment an ancestor hands it a reactive prop,
  * and a component's `.fud` cannot see the page it is used in. Deciding here would mean
  * inferring the effective level before the page exists. Who hydrates is page knowledge
- * (`data-id`, `fud-chunks`), and a chunk nobody asks for costs nothing.
+ * (`data-fud-id`, `fud-tree`), and a chunk nobody asks for costs nothing.
  *
  * The `@code { @client }` body is copied VERBATIM (§4.7), TypeScript included: this module
  * is bundler input, and stripping types is the bundler's job.

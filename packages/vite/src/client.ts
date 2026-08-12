@@ -10,10 +10,11 @@
  * time. What a template paints is not known until the data reaches it, so the chunk has to
  * exist before anyone can ask who hydrates. A chunk nobody requests costs nothing.
  *
- * What this does NOT do yet: publish the map from tag to chunk URL (`fud-chunks`, §3.6) or
- * the page's `data-id` (§3.1). This emits the files, names them, and stops there — the
- * linking is the next stage, and until then these chunks are here to be read and to fail
- * loudly at build time if the emit produced something a bundler cannot parse.
+ * There is no map from tag to chunk URL, and there is not going to be one: the URL of a
+ * tag's hydration chunk is derivable from the manifest alone through
+ * `createUrlResolver(base, build).hydrateUrl(tag)` (SDD-27 §4.1). What the page does publish
+ * is the `data-fud-id` of each hydratable instance and the three JSON blocks (SDD-15 §3.1,
+ * §3.3–§3.5), which the render writes; this module only emits the files and names them.
  */
 
 import { resolveDocument, type ResolveIo } from '@fudic/compiler';

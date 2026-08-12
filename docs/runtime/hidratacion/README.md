@@ -44,7 +44,11 @@ python3 -m http.server 8000
 3. **`fud-chunks`** — el mapa `tag → URL` se lee del documento; sustituye a la convención
    hardcodeada `./components/${tag}.js` que arrastraban los cuatro. Un tag ausente no es
    hidratable y el runtime no lo pide.
-4. **`fud-state` posicional `[[offsets],[data]]`** (SDD-15 §3.3), con `data-id` entero base-0
+   **Retirado de la spec** (SDD-15 §3.6): en un build real la URL se deriva del manifiesto
+   con `createUrlResolver(base, build).hydrateUrl(tag)` (SDD-27 §4.1). Este prototipo se
+   sirve como ficheros estáticos, sin manifiesto ni build id, y conserva el bloque como
+   sustituto local del resolver — andamiaje, no contrato.
+4. **`fud-state` posicional `[[offsets],[data]]`** (SDD-15 §3.3), con `data-fud-id` entero base-0
    correlativo. **No hay `window.__fudState`**: el runtime parsea el payload y **pasa** el
    tramo a la instancia con `host.h(data.slice(offsets[id], offsets[id+1]))`.
 5. **`warmClosure(tag)`** — el warm precachea el **cierre transitivo** (`fud-bus[tag]` y,
@@ -56,12 +60,12 @@ python3 -m http.server 8000
 ### Una pieza que el SDD no nombra: el conjunto `attached`
 
 `customElements.define` upgradea todas las instancias del tag de golpe, pero **ninguna puede
-conocer su propio `data-id`** (SDD-17 §3), así que su `connectedCallback` no puede enrutar su
+conocer su propio `data-fud-id`** (SDD-17 §3), así que su `connectedCallback` no puede enrutar su
 `h()`. Es el runtime quien reparte los tramos, y debe hacerlo para **todas** las instancias del
 tag en el instante en que el tag se define — si no, el camino 3 encontraría una instancia
 upgradeada pero sin enganchar y el criterio 3 fallaría.
 
-`attached` (por `data-id`) registra ese reparto y es **independiente** de `hydrated`, que sigue
+`attached` (por `data-fud-id`) registra ese reparto y es **independiente** de `hydrated`, que sigue
 gobernando los tres caminos. Es lo que mantiene a la vez «descarga por tag» y «el camino 3
 emite `shared-chunk`».
 

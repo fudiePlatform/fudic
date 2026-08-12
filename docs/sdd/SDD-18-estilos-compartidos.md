@@ -11,7 +11,7 @@
 > el día que el atributo ship en los motores, el polyfill pasa de "siempre" a fallback.
 > **Paquete:** emit del compilador (`@fudic/compiler`) + polyfill de página.
 > **Depende de:** SDD-15 (emit de página: comparte la pasada que resuelve la composición
-> completa y asigna `data-id`).
+> completa y asigna `data-fud-id`).
 > **Rango de diagnósticos:** `FUD0340`–`FUD0359` (reservado, vacío).
 >
 > **Refunde, sin pérdida, `docs/reviews/NOTA-estilos-compartidos-dsd.md`** (ya eliminada).
@@ -100,7 +100,7 @@ adorno: es condición de emisión.
   </style>
 </head>
 <body>
-  <app-card data-id="0">
+  <app-card data-fud-id="0">
     <template shadowrootmode="open" shadowrootadoptedstylesheets="app-card">
       <!-- markup SSR -->
     </template>

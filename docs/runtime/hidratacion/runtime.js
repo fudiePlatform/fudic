@@ -4,7 +4,7 @@
 // bus + warm) más los dos huecos que la fusión destapaba.
 //
 // Ejes independientes (SDD-17 §4.1):
-//   - la HIDRATACIÓN se controla por INSTANCIA (`data-id`);
+//   - la HIDRATACIÓN se controla por INSTANCIA (`data-fud-id`);
 //   - la DESCARGA del chunk se controla por TAG.
 // Confundirlos es el defecto que se corrigió durante la validación del primer
 // prototipo. Dos instancias del mismo tag comparten chunk (una descarga) pero
@@ -18,14 +18,21 @@
 //      recibió el evento en burbujeo. Marcar y salir. Sin descarga, sin replay.
 
 // ---------------------------------------------------------------------------
-// Los cuatro mapas de emit (SDD-15 §3.3-§3.6). Salen de la misma pasada de página.
+// Los mapas de emit. Los TRES que la página publica de verdad —`fud-state`,
+// `fud-tree` y `fud-bus` (SDD-15 §3.3-§3.5)— salen de la misma pasada de página.
+//
+// `fud-chunks` está RETIRADO de la spec (§3.6): la URL del chunk de un tag se
+// deriva del manifiesto con `createUrlResolver(base, build).hydrateUrl(tag)`
+// (SDD-27 §4.1). Este prototipo se sirve como ficheros estáticos, sin manifiesto
+// y sin build id, así que conserva el bloque a mano como sustituto local del
+// resolver. Es andamiaje del prototipo, no contrato.
 // ---------------------------------------------------------------------------
 const readJSON = (id) => {
   const el = document.getElementById(id);
   return el ? JSON.parse(el.textContent) : null;
 };
 
-// fud-state POSICIONAL: [[offsets],[data]]. El `data-id` base-0 correlativo ES el
+// fud-state POSICIONAL: [[offsets],[data]]. El `data-fud-id` base-0 correlativo ES el
 // índice en `offsets`; no hay tabla `id -> estado`.
 const [offsets, data] = readJSON('fud-state') ?? [[0], []];
 const tree   = readJSON('fud-tree')   ?? {};   // tag padre  -> [tags hijos hidratables]
@@ -34,20 +41,20 @@ const chunks = readJSON('fud-chunks') ?? {};   // tag        -> URL del módulo
 
 // EL ESTADO NO SE EXPONE EN UN GLOBAL (SDD-17 §3). El `window.__fudState` de los
 // prototipos desaparece: el runtime parsea el payload una vez y PASA el tramo a la
-// instancia. El chunk no lee de un global ni el componente conoce su `data-id`.
+// instancia. El chunk no lee de un global ni el componente conoce su `data-fud-id`.
 const sliceFor = (id) => data.slice(offsets[Number(id)], offsets[Number(id) + 1]);
 
 // ---------------------------------------------------------------------------
 // Estado del runtime
 // ---------------------------------------------------------------------------
 
-// `data-id` sobre los que el runtime ya intervino. Gobierna los tres caminos.
+// `data-fud-id` sobre los que el runtime ya intervino. Gobierna los tres caminos.
 const hydrated = new Set();
 
-// `data-id` a los que ya se les pasó su tramo del payload (`h()` invocado una vez).
+// `data-fud-id` a los que ya se les pasó su tramo del payload (`h()` invocado una vez).
 //
 // NO está en el SDD y es necesario: `customElements.define` upgradea TODAS las
-// instancias del tag de golpe, pero ninguna puede conocer su propio `data-id`
+// instancias del tag de golpe, pero ninguna puede conocer su propio `data-fud-id`
 // (§3), así que el `connectedCallback` no puede enrutar su `h()`. Es el runtime
 // quien reparte los tramos, y debe hacerlo para TODAS las instancias del tag en el
 // momento en que el tag se define — si no, el camino 3 encontraría una instancia
@@ -94,7 +101,7 @@ function instancesOf(tag, root = document) {
   const out = [];
   (function descend(node) {
     for (const el of node.querySelectorAll('*')) {
-      if (el.localName === tag && el.hasAttribute('data-id')) out.push(el);
+      if (el.localName === tag && el.hasAttribute('data-fud-id')) out.push(el);
       if (el.shadowRoot) descend(el.shadowRoot);
     }
   })(root);
@@ -106,7 +113,7 @@ function allInstances(root = document) {
   const out = [];
   (function descend(node) {
     for (const el of node.querySelectorAll('*')) {
-      if (el.hasAttribute('data-id')) out.push(el);
+      if (el.hasAttribute('data-fud-id')) out.push(el);
       if (el.shadowRoot) descend(el.shadowRoot);
     }
   })(root);
@@ -121,7 +128,7 @@ function allInstances(root = document) {
 //   host.h(data.slice(offsets[id], offsets[id + 1]))     (SDD-15 §4.3, SDD-17 §3)
 function attachAll(tag) {
   for (const inst of instancesOf(tag)) {
-    const id = inst.getAttribute('data-id');
+    const id = inst.getAttribute('data-fud-id');
     if (attached.has(id)) continue;
     attached.add(id);
     customElements.upgrade(inst);              // idempotente; blinda el orden
@@ -151,7 +158,7 @@ async function preHydrateBus(emitterTag) {
     if (!(await ensureDefined(rTag))) continue;
     attachAll(rTag);
     for (const inst of instancesOf(rTag)) {
-      const rid = inst.getAttribute('data-id');
+      const rid = inst.getAttribute('data-fud-id');
       if (hydrated.has(rid)) continue;
       hydrated.add(rid);
       hydratedEvent(rid, rTag, (performance.now() - t0).toFixed(1), 'bus');
@@ -174,13 +181,13 @@ async function hydrateSubtreePostorder(rootHost) {
     for (const childTag of tree[tag] ?? []) {
       // Búsqueda dentro del shadow del host, un nivel; la recursión entra en el
       // siguiente. No se busca desde `document`: no cruzaría la frontera.
-      for (const kid of root ? root.querySelectorAll(`${childTag}[data-id]`) : []) {
+      for (const kid of root ? root.querySelectorAll(`${childTag}[data-fud-id]`) : []) {
         await visit(kid, depth + 1);                // PROFUNDIDAD PRIMERO
       }
     }
 
     if (depth === 0) return;                        // la raíz, en el paso 5
-    const id = host.getAttribute('data-id');
+    const id = host.getAttribute('data-fud-id');
     if (hydrated.has(id)) return;
 
     const t0 = performance.now();
@@ -218,17 +225,17 @@ async function prepareTag(tag) {
 // El capturador (SDD-17 §4.2, §4.3, §4.5)
 // ---------------------------------------------------------------------------
 
-// El host `[data-id]` más cercano se localiza recorriendo `composedPath()`, que
+// El host `[data-fud-id]` más cercano se localiza recorriendo `composedPath()`, que
 // atraviesa la frontera de shadow. `closest()` no sirve.
 function hostOf(path) {
-  for (const n of path) if (n.nodeType === 1 && n.hasAttribute?.('data-id')) return n;
+  for (const n of path) if (n.nodeType === 1 && n.hasAttribute?.('data-fud-id')) return n;
   return null;
 }
 
 async function onCapture(e) {
   const host = hostOf(e.composedPath());
   if (!host) return;                               // sin host: se ignora
-  const id = host.getAttribute('data-id');
+  const id = host.getAttribute('data-fud-id');
 
   // --- CAMINO 1 --------------------------------------------------------------
   // El runtime se retira. El listener propio maneja el evento con su `ev` real

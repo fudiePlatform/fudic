@@ -13,7 +13,7 @@ The client runtime of fudic (SDD-14, SDD-15 §3.7).
   - `c(props)` — the instance was created at runtime by the parent controller:
     a shadow is opened and the nodes are fabricated.
   - `disconnectedCallback()` → `r()`, the only real lifecycle callback.
-  - **No `connectedCallback`.** A component does not know its own `data-id`, so
+  - **No `connectedCallback`.** A component does not know its own `data-fud-id`, so
     it cannot read its own slice: the runtime hands out slices per tag, at the
     moment it defines the tag. `h`/`c` are invoked from outside.
 - **`Controller` / `FudicElementCtor`** — the types of that contract. The second

@@ -117,8 +117,11 @@ contributes none. The chunk is bundler input: its `@code { @client }` region is 
 verbatim, TypeScript included, and type-stripped here — which is also why a broken one
 fails at build time instead of at hydration.
 
-What is **not** wired yet: the map from tag to chunk URL (`fud-chunks`) and the page's
-`data-id`. The files are emitted, named and validated; linking them is the next stage.
+There is no map from tag to chunk URL: a tag's chunk is `hydrateUrl(tag)` off the manifest,
+so publishing it again inside the HTML would be the same fact caching by two different
+rules. What the prerendered page does carry is the `data-fud-id` of every hydratable
+instance and the three JSON blocks (`fud-state`, `fud-tree`, `fud-bus`) at the end of its
+body — written by the render, so the prerender and the Service Worker produce the same bytes.
 
 ## Status
 
@@ -170,5 +173,5 @@ A param route with `@server paths()` prerenders one file per enumerated id
 ids locally, `'notFound'` leaves them a 404. A literal `src`/`url()` to a missing file raises
 `FUD0363` and stays a literal — the build does not abort.
 
-Out of scope (SDD-19 §7): the hydration LINKING of SDD-15 — `data-id` and the four page
-maps, `fud-chunks` among them — and `srcset` multi-URL linking.
+Out of scope (SDD-19 §7): the hydration RUNTIME of SDD-17 — the capturer that reads
+`data-fud-id` and the three maps and lifts an instance — and `srcset` multi-URL linking.

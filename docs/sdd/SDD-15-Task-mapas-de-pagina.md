@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` (emit) · `@fudic/ssr` (`SsrDom`) · `@fudic/vite` (el plugin
 > los escribe) · `@fudic/transport` (coordinación con el manifiesto)
 > **Rama:** `sdd-15-mapas-de-pagina`
-> **Progreso:** 22 / 26
+> **Progreso:** 23 / 26
 > **Va DESPUÉS de:** [eventos y bus](./SDD-15-Task-eventos-y-bus.md) (22/22) y
 > [SDD-31 — Signals derivadas](./SDD-31-signals-derivadas.md) (`Hecho`).
 
@@ -441,7 +441,7 @@ verificación y como nota para SDD-17; no se implementa aquí.
 
 ## Fase 9 — Documentación y cierre (4)
 
-- [ ] **23. El renombrado `data-id` → `data-fud-id`, en todas partes.**
+- [x] **23. El renombrado `data-id` → `data-fud-id`, en todas partes.**
       [SDD-15](./SDD-15-emit.md) §3.1 y §4.3; [SDD-17](./SDD-17-hidratacion.md) entero (§2, §3,
       §4.1–§4.7, §5, §6); los prototipos de `docs/runtime/hidratacion/` (`runtime.js`,
       `index.html`, `components/*.js`) — son la evidencia ejecutable de SDD-17 y un prototipo
