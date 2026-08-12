@@ -80,6 +80,18 @@
       {
         "command": "fudic.formatDocument",
         "title": "Fudic: Format Document"
+      },
+      {
+        "command": "fudic.toggleComment",
+        "title": "Fudic: Toggle Comment"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "fudic.toggleComment",
+        "key": "ctrl+/",
+        "mac": "cmd+/",
+        "when": "editorTextFocus && !editorReadonly && editorLangId == fudic"
       }
     ],
     "configuration": {

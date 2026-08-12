@@ -11,7 +11,7 @@ import type { CachedDocument } from '../../src/document-cache.js';
 /** A `CachedDocument` with only what these functions read: the source and the tree. */
 function cached(source: string): CachedDocument {
   const parsed = parseFud(source);
-  return { source, document: parsed.document } as CachedDocument;
+  return { source, document: parsed.document, html: parsed.html } as CachedDocument;
 }
 
 /** The scope at the offset marked with `|` in the source. */

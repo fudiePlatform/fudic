@@ -9,6 +9,7 @@
 import type { CommandDeps } from '../../src/commands/index.js';
 import type { FudicSession } from '../../src/activate.js';
 import type { FudicSettings } from '../../src/settings.js';
+import type { CommentSelection, LineReplacement } from '../../src/ports.js';
 
 export interface CommandRecording {
   readonly warnings: string[];
@@ -17,6 +18,8 @@ export interface CommandRecording {
   readonly requests: { method: string; params: unknown }[];
   readonly formatted: number[];
   readonly restarts: number[];
+  /** Every line replacement the comment toggle asked for. */
+  readonly replacements: LineReplacement[];
 }
 
 export interface CommandFixture {
@@ -34,6 +37,8 @@ export const commandFixture = (options: {
   rejects?: readonly string[];
   /** Whether `restart()` reports the server as up afterwards. */
   restartSucceeds?: boolean;
+  /** What the editor says is selected. Absent means the focus is not on a `.fud`. */
+  selection?: CommentSelection;
 }): CommandFixture => {
   const running = options.running ?? true;
   const answers = options.answers ?? {};
@@ -45,6 +50,7 @@ export const commandFixture = (options: {
   const requests: { method: string; params: unknown }[] = [];
   const formatted: number[] = [];
   const restarts: number[] = [];
+  const replacements: LineReplacement[] = [];
 
   const settings: FudicSettings = {
     serverPath: null,
@@ -88,7 +94,13 @@ export const commandFixture = (options: {
       },
       notifications: { warn: (message) => warnings.push(message) },
       logger: { info: (message) => log.push(message) },
+      selection: {
+        current: () => options.selection,
+        replaceLines: async (replacement) => {
+          replacements.push(replacement);
+        },
+      },
     },
-    recording: { warnings, log, opened, requests, formatted, restarts },
+    recording: { warnings, log, opened, requests, formatted, restarts, replacements },
   };
 };

@@ -8,6 +8,12 @@
  */
 
 import { join } from 'node:path';
+import type {
+  CommentSelection,
+  LineReplacement,
+  SnippetTarget,
+  TypedText,
+} from './ports.js';
 
 /** The shape of `vscode.WorkspaceFolder`, reduced to what is read. */
 export interface FolderLike {
@@ -39,6 +45,161 @@ export const languageOf = (editor: EditorLike | undefined): string | undefined =
  */
 export const fudUriOf = (editor: EditorLike | undefined): string | undefined =>
   editor?.document.languageId === 'fudic' ? editor.document.uri.toString() : undefined;
+
+/** The shape of `vscode.TextDocumentChangeEvent`, reduced to what the tag closer reads. */
+export interface ChangeEventLike {
+  readonly document: {
+    readonly languageId: string;
+    readonly version: number;
+    readonly uri: { toString(): string };
+  };
+  readonly contentChanges: readonly {
+    readonly rangeOffset: number;
+    readonly text: string;
+  }[];
+}
+
+/**
+ * The edit the user just made, or nothing when it is not one this client reacts to.
+ *
+ * The LAST change of the event, not the first: an edit that replaces a selection arrives as
+ * several, and what the caret ends up after is the last one. An event with none at all is a
+ * metadata change — the language of the document, its dirty state — and there is nothing to
+ * react to.
+ */
+export const typedTextOf = (event: ChangeEventLike): TypedText | undefined => {
+  const change = event.contentChanges[event.contentChanges.length - 1];
+  if (change === undefined || event.document.languageId !== 'fudic') return undefined;
+
+  return {
+    uri: event.document.uri.toString(),
+    offset: change.rangeOffset + change.text.length,
+    text: change.text,
+    version: event.document.version,
+  };
+};
+
+/** The shape of `vscode.TextEditor`, reduced to what inserting a snippet needs. */
+export interface SnippetEditorLike {
+  readonly document: {
+    readonly version: number;
+    readonly uri: { toString(): string };
+    positionAt(offset: number): unknown;
+  };
+  insertSnippet(
+    snippet: unknown,
+    location: unknown,
+    options: { undoStopBefore: boolean; undoStopAfter: boolean },
+  ): Thenable<boolean>;
+};
+
+/**
+ * Insert the close tag, unless the editor has moved on.
+ *
+ * Three ways it can have moved on between the keystroke and the answer, and all three are the
+ * same mistake if unchecked — writing into a document the user is no longer in: the focus went
+ * elsewhere, it went to a different file, or they kept typing. The version is what catches the
+ * third, and it is the one that actually happens: a fast typist is faster than a round trip.
+ *
+ * `$0` leads the snippet because that tabstop is the whole point. Without it the caret lands
+ * past `</div>`, which is where the user did NOT want to be — and it is why this cannot be a
+ * `TextEdit` and therefore cannot be on-type formatting.
+ *
+ * `undoStopBefore: false` welds the insertion to the `>` that caused it, so one undo takes both
+ * back. Two would mean undoing a tag the user never typed.
+ */
+export const insertClosingTag = async (
+  editor: SnippetEditorLike | undefined,
+  target: SnippetTarget,
+  snippetOf: (text: string) => unknown,
+): Promise<void> => {
+  if (editor === undefined) return;
+  if (editor.document.uri.toString() !== target.uri) return;
+  if (editor.document.version !== target.version) return;
+
+  await editor.insertSnippet(
+    snippetOf(`$0${target.text}`),
+    editor.document.positionAt(target.offset),
+    { undoStopBefore: false, undoStopAfter: true },
+  );
+};
+
+/** The shape of `vscode.TextEditor`, reduced to what commenting reads and writes. */
+export interface SelectionEditorLike {
+  readonly document: {
+    readonly languageId: string;
+    readonly eol: number;
+    readonly uri: { toString(): string };
+    getText(): string;
+    offsetAt(position: { line: number; character: number }): number;
+  };
+  readonly selection: {
+    readonly start: { readonly line: number };
+    readonly end: { readonly line: number };
+  };
+  edit(build: (builder: { replace(range: unknown, text: string): void }) => void): Thenable<boolean>;
+}
+
+/** Split on either ending, so the file's own is never assumed and never converted. */
+const linesOf = (text: string): string[] => text.split(/\r?\n/);
+
+/** The indent of a line: what precedes the first thing written on it. */
+const indentWidth = (line: string): number => line.length - line.trimStart().length;
+
+/**
+ * The lines a comment toggle would act on, in the active `.fud`.
+ *
+ * The offset is the first thing WRITTEN on the first selected line, not the start of the line:
+ * a line's indentation belongs to whatever came before it, so asking there would ask about the
+ * previous region — the last line of `@code` is a `}` whose indentation is still TypeScript,
+ * but the first line after it is markup indented by nobody.
+ */
+export const commentSelectionOf = (
+  editor: SelectionEditorLike | undefined,
+): CommentSelection | undefined => {
+  if (editor === undefined || editor.document.languageId !== 'fudic') return undefined;
+
+  const lines = linesOf(editor.document.getText());
+  const firstLine = editor.selection.start.line;
+
+  return {
+    uri: editor.document.uri.toString(),
+    lines,
+    firstLine,
+    lastLine: editor.selection.end.line,
+    offset: editor.document.offsetAt({
+      line: firstLine,
+      character: indentWidth(lines[firstLine] ?? ''),
+    }),
+  };
+};
+
+/**
+ * Replace whole lines with the text the toggle produced.
+ *
+ * The line ending is read from the document rather than assumed: joining with `\n` would turn
+ * a file written on Windows into a mixed one, and the diff of a comment toggle would be the
+ * whole selection.
+ */
+export const replaceLines = async (
+  editor: SelectionEditorLike | undefined,
+  replacement: LineReplacement,
+  rangeOf: (startLine: number, startChar: number, endLine: number, endChar: number) => unknown,
+): Promise<void> => {
+  if (editor === undefined) return;
+
+  const lines = linesOf(editor.document.getText());
+  // 2 is `vscode.EndOfLine.CRLF`.
+  const eol = editor.document.eol === 2 ? '\r\n' : '\n';
+  const end = (lines[replacement.lastLine] ?? '').length;
+
+  await editor.edit((builder) => {
+    builder.replace(
+      rangeOf(replacement.firstLine, 0, replacement.lastLine, end),
+      replacement.newLines.join(eol),
+    );
+  });
+};
 
 /** Where the bundled server sits inside the installed extension (§4.5). */
 export const bundledServerPath = (extensionPath: string): string =>

@@ -600,6 +600,28 @@ describe('recovery (§6.15, decision 38)', () => {
     expect(codes('<div><span>')).toEqual(['FUD0052', 'FUD0052']);
   });
 
+  it('reports a start tag that ran off the end once, not once per ancestor (BUG-22 §6)', () => {
+    // The lexer leaves tag mode on a `>` or at EOF and nowhere else, so `<div` with no `>`
+    // eats the `</template>` and the `</app-x>` the author DID write. Reporting those two as
+    // unclosed is three diagnostics for one mistake, and two of them point at correct code.
+    const source = '<app-x>\n  <template shadowrootmode="open">\n    <div\n  </template>\n</app-x>\n';
+
+    expect(codes(source)).toEqual(['FUD0052']);
+  });
+
+  it('and the one it reports is the innermost: the tag the author is inside', () => {
+    const source = '<app-x>\n  <div\n</app-x>\n';
+    const [diagnostic] = parse(source).diagnostics;
+
+    expect(diagnostic?.message).toBe('unclosed <div> element');
+  });
+
+  it('still reports each of two elements whose tags were finished', () => {
+    // The suppression is about a tag with no `>`, not about nesting: here both start tags are
+    // complete and both elements are genuinely missing their close tag.
+    expect(codes('<div>\n  <span>\n')).toEqual(['FUD0052', 'FUD0052']);
+  });
+
   it('locates the unclosed diagnostic on the start tag', () => {
     const result = parse('<div>');
     expect(result.diagnostics[0]?.span).toEqual(span(0, 5));

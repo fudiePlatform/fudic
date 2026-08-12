@@ -18,7 +18,7 @@ import { commandFixture } from './_deps.js';
 const URI = 'file:///work/app/blog/[slug].fud';
 
 describe('registration', () => {
-  it('registers exactly the four ids package.json contributes', () => {
+  it('registers exactly the five ids package.json contributes', () => {
     // The other half of this assertion lives in the manifest test. A command contributed
     // and not registered fails when picked; one registered and not contributed can never be
     // picked at all — and neither shows up as a test failure anywhere else.
@@ -32,6 +32,7 @@ describe('registration', () => {
       'fudic.showVirtualFiles',
       'fudic.showRegistry',
       'fudic.formatDocument',
+      'fudic.toggleComment',
     ]);
     expect(Object.values(COMMAND_IDS)).toEqual(registered);
   });

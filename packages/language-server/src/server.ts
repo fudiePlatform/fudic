@@ -20,6 +20,7 @@ import {
   type LanguageServerProject,
 } from '@volar/language-server/node.js';
 import type { LanguageServicePlugin } from '@volar/language-service';
+import { commentSyntaxOf } from '@fudic/compiler';
 import { create as createTypeScriptServices } from 'volar-service-typescript';
 import { create as createHtmlService } from 'volar-service-html';
 import { create as createCssService } from 'volar-service-css';
@@ -33,6 +34,10 @@ import { nodeFileSystem } from './node-fs.js';
 import { resolveOptions } from './options.js';
 import { toPosix } from './paths.js';
 import {
+  AUTO_CLOSE_TAG_REQUEST,
+  autoCloseTagPayload,
+  COMMENT_SYNTAX_REQUEST,
+  commentSyntaxPayload,
   COMPONENT_REGISTRY_REQUEST,
   componentRegistryPayload,
   VIRTUAL_FILES_REQUEST,
@@ -229,6 +234,26 @@ export function createFudicServer(
     const document = documentOf(uri);
     return document === undefined ? [] : componentRegistryPayload(document, index);
   });
+
+  connection.onRequest(
+    AUTO_CLOSE_TAG_REQUEST,
+    ({ uri, offset }: { uri: string; offset: number }) => {
+      const document = documentOf(uri);
+      return document === undefined ? '' : autoCloseTagPayload(document, offset);
+    },
+  );
+
+  connection.onRequest(
+    COMMENT_SYNTAX_REQUEST,
+    ({ uri, offset }: { uri: string; offset: number }) => {
+      const document = documentOf(uri);
+      // A file the server cannot see is markup as far as this is concerned: it is what an
+      // empty `.fud` is, and answering nothing would leave the editor with no way to comment.
+      return document === undefined
+        ? commentSyntaxOf('markup')
+        : commentSyntaxPayload(document, offset);
+    },
+  );
 
   return { index, cache, stats };
 }

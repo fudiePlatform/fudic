@@ -47,11 +47,22 @@ export function tokenTypeIndex(type: string): number {
 }
 
 /**
- * The capabilities of §3.2.
+ * Diagnostics are NOT declared here, and that is the fix of BUG-22 §2.
  *
- * `interFileDependencies: true` is mandatory, not decorative: changing `app-badge.fud` has
- * to repaint the errors of every page that uses it (§6.9). `workspaceDiagnostics` stays
- * false — diagnostics are for open files; the whole-project check is `fudic check` in CI.
+ * There are two channels for them and a server may only use one. In PULL the editor asks
+ * (`textDocument/diagnostic`); in PUSH the server sends (`textDocument/publishDiagnostics`).
+ * Volar chooses: with `interFileDependencies` on a plugin it takes push, because the pull
+ * model's own flag for that is unreliable, and it then deliberately leaves
+ * `diagnosticProvider` OUT of the initialize result — that absence is how it tells the editor
+ * "do not ask, I will send".
+ *
+ * Declaring it here overrode that absence while changing nothing about the push. The editor
+ * believed both, so it kept two collections of the same errors: `unclosed <div> element`
+ * appeared twice in the hover and twice in the Problems panel, from one parse.
+ *
+ * `interFileDependencies` stays on the SERVICE, where it belongs and where Volar reads it:
+ * changing `app-badge.fud` still repaints the errors of every page that uses it (§6.9). What
+ * is gone is the second announcement of a channel this server does not use.
  */
 /**
  * What makes the editor ask for completions.
@@ -97,5 +108,4 @@ export const SERVER_CAPABILITIES: ServerCapabilities = {
   documentOnTypeFormattingProvider: { firstTriggerCharacter: '}', moreTriggerCharacter: ['>'] },
   documentLinkProvider: { resolveProvider: false },
   codeActionProvider: true,
-  diagnosticProvider: { interFileDependencies: true, workspaceDiagnostics: false },
 };

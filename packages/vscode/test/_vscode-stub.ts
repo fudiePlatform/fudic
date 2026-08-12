@@ -40,19 +40,95 @@ export interface StubState {
   openedDocuments: [URI, string][];
   /** Commands run through `executeCommand`. */
   executed: string[];
+  /** Handlers registered for `onDidChangeTextDocument`. */
+  changeListeners: ((event: ChangeEventStub) => void)[];
+  /** Every snippet inserted, as `[text, offset]`. */
+  snippets: [string, number][];
+  /** Every replacement applied through `editor.edit`, as `[range, text]`. */
+  edits: [RangeStub, string][];
 }
 
 export interface EditorStub {
   readonly document: {
     readonly languageId: string;
+    readonly version: number;
+    readonly eol: number;
     readonly uri: { toString(): string };
+    positionAt(offset: number): number;
+    getText(): string;
+    offsetAt(position: { line: number; character: number }): number;
   };
+  readonly selection: { readonly start: { line: number }; readonly end: { line: number } };
+  insertSnippet(
+    snippet: { value: string },
+    location: unknown,
+    options: unknown,
+  ): Thenable<boolean>;
+  edit(build: (builder: { replace(range: unknown, text: string): void }) => void): Thenable<boolean>;
 }
 
 /** Builds an editor stub the way `fudUriOf` expects to find one. */
-export const editorFor = (languageId: string, uri = 'file:///x.fud'): EditorStub => ({
-  document: { languageId, uri: { toString: () => uri } },
+export const editorFor = (
+  languageId: string,
+  uri = 'file:///x.fud',
+  version = 1,
+  text = '',
+  selection: { start: { line: number }; end: { line: number } } = {
+    start: { line: 0 },
+    end: { line: 0 },
+  },
+): EditorStub => ({
+  document: {
+    languageId,
+    version,
+    eol: 1,
+    uri: { toString: () => uri },
+    positionAt: (offset: number) => offset,
+    getText: () => text,
+    // Line/character to offset over the same text, so an assertion about the offset is an
+    // assertion about the document rather than about the double.
+    offsetAt: ({ line, character }) =>
+      text
+        .split('\n')
+        .slice(0, line)
+        .reduce((total, own) => total + own.length + 1, 0) + character,
+  },
+  selection,
+  insertSnippet: (snippet, location) => {
+    state.snippets.push([snippet.value, location as number]);
+    return Promise.resolve(true);
+  },
+  edit: (build) => {
+    build({
+      replace: (range, replacement) => {
+        state.edits.push([range as RangeStub, replacement]);
+      },
+    });
+    return Promise.resolve(true);
+  },
 });
+
+/** `vscode.Range`, reduced to the four numbers it is built from. */
+export class Range {
+  constructor(
+    readonly startLine: number,
+    readonly startCharacter: number,
+    readonly endLine: number,
+    readonly endCharacter: number,
+  ) {}
+}
+
+export type RangeStub = Range;
+
+/** A `vscode.TextDocumentChangeEvent`, as the tag closer reads it. */
+export interface ChangeEventStub {
+  readonly document: {
+    readonly languageId: string;
+    readonly version: number;
+    readonly uri: { toString(): string };
+  };
+  readonly contentChanges: readonly { readonly rangeOffset: number; readonly text: string }[];
+}
 
 const emptyBar = () => ({ text: '', tooltip: '', visible: false, command: '' });
 
@@ -72,6 +148,9 @@ export const state: StubState = {
   contentProviders: new Map(),
   openedDocuments: [],
   executed: [],
+  changeListeners: [],
+  snippets: [],
+  edits: [],
 };
 
 export const reset = (): void => {
@@ -90,6 +169,14 @@ export const reset = (): void => {
   state.contentProviders = new Map();
   state.openedDocuments = [];
   state.executed = [];
+  state.changeListeners = [];
+  state.snippets = [];
+  state.edits = [];
+};
+
+/** Fires `onDidChangeTextDocument`, as typing would. */
+export const typeInto = (event: ChangeEventStub): void => {
+  for (const listener of state.changeListeners) listener(event);
 };
 
 /** Fires `onDidChangeActiveTextEditor`, as focusing another tab would. */
@@ -209,7 +296,16 @@ export const workspace = {
   // The document keeps the `Uri`, not its text: the adapter opens by `Uri` and the provider
   // is later asked with the same object, which is how the editor behaves.
   openTextDocument: (uri: URI) => Promise.resolve({ uri }),
+  onDidChangeTextDocument: (listener: (event: ChangeEventStub) => void) => {
+    state.changeListeners.push(listener);
+    return { dispose: () => undefined };
+  },
 };
+
+/** `vscode.SnippetString`, which is a wrapper over its text and nothing more. */
+export class SnippetString {
+  constructor(public readonly value: string) {}
+}
 
 export const env = {
   get appRoot() {

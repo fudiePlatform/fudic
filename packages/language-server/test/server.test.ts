@@ -13,7 +13,12 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import { createFudicServer, type FudicServerDeps } from '../src/server.js';
 import { GLOBALS_FILE_NAME } from '../src/globals.js';
-import { COMPONENT_REGISTRY_REQUEST, VIRTUAL_FILES_REQUEST } from '../src/requests.js';
+import {
+  AUTO_CLOSE_TAG_REQUEST,
+  COMMENT_SYNTAX_REQUEST,
+  COMPONENT_REGISTRY_REQUEST,
+  VIRTUAL_FILES_REQUEST,
+} from '../src/requests.js';
 import { component, LAYOUT, memoryFs, route } from './_support.js';
 import { fakeConnection, fakeVolarServer } from './_lsp.js';
 
@@ -110,10 +115,9 @@ describe('initialize', () => {
       '+',
       ')',
     ]);
-    expect(result?.capabilities.diagnosticProvider).toEqual({
-      interFileDependencies: true,
-      workspaceDiagnostics: false,
-    });
+    // Not announced: Volar put this server in the push model, and saying "ask me too" is what
+    // made every diagnostic arrive twice (BUG-22 §2).
+    expect(result?.capabilities.diagnosticProvider).toBeUndefined();
     // Volar's own answer is kept where §3.2 says nothing.
     expect(result?.capabilities.workspace?.workspaceFolders?.supported).toBe(true);
   });
@@ -271,6 +275,41 @@ describe('the own requests (§3.4)', () => {
     expect(links.map((link) => link.tag)).toEqual(['app-badge', '']);
   });
 
+  it('answers fudic/autoCloseTag with the tag the `>` is asking for', async () => {
+    const { fake, documents } = setup();
+    fake.onInitialize?.(params());
+    const uri = URI.file(SLUG).toString();
+    const source = '<article><div>\n</article>\n';
+    documents.set(uri, TextDocument.create(uri, 'fud', 1, source));
+
+    const handler = fake.requests.get(AUTO_CLOSE_TAG_REQUEST);
+
+    expect(await handler?.({ uri, offset: source.indexOf('<div>') + 5 } as never)).toBe('</div>');
+    // The `>` of the article was closed by the source itself.
+    expect(await handler?.({ uri, offset: 9 } as never)).toBe('');
+  });
+
+  it('answers fudic/commentSyntax with the delimiters of the region', async () => {
+    const { fake, documents } = setup();
+    fake.onInitialize?.(params());
+    const uri = URI.file(SLUG).toString();
+    const source = `<link rel="layout" href="../layouts/_layout.fud">\n@code {\n  const a = 1;\n}\n<article>hi</article>\n`;
+    documents.set(uri, TextDocument.create(uri, 'fud', 1, source));
+
+    const handler = fake.requests.get(COMMENT_SYNTAX_REQUEST);
+    const inCode = (await handler?.({
+      uri,
+      offset: source.indexOf('const a'),
+    } as never)) as { line?: string };
+    const inMarkup = (await handler?.({
+      uri,
+      offset: source.indexOf('hi'),
+    } as never)) as { block: string[] };
+
+    expect(inCode.line).toBe('//');
+    expect(inMarkup.block).toEqual(['@*', '*@']);
+  });
+
   it('answers empty for a file that is nowhere', async () => {
     const { fake } = setup();
     fake.onInitialize?.(params());
@@ -278,6 +317,12 @@ describe('the own requests (§3.4)', () => {
 
     expect(await fake.requests.get(VIRTUAL_FILES_REQUEST)?.({ uri } as never)).toEqual([]);
     expect(await fake.requests.get(COMPONENT_REGISTRY_REQUEST)?.({ uri } as never)).toEqual([]);
+    expect(await fake.requests.get(AUTO_CLOSE_TAG_REQUEST)?.({ uri, offset: 0 } as never)).toBe('');
+    // Markup, because that is what an empty `.fud` is: answering nothing would leave the
+    // editor with no way to comment a file it has just created.
+    expect(
+      await fake.requests.get(COMMENT_SYNTAX_REQUEST)?.({ uri, offset: 0 } as never),
+    ).toMatchObject({ block: ['@*', '*@'] });
   });
 });
 

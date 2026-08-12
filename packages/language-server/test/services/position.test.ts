@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type { Attribute } from '@fudic/compiler';
+import { regionAt, type Attribute } from '@fudic/compiler';
 import { parseFud } from '../../src/parse.js';
 import {
   attributeOf,
@@ -26,6 +26,10 @@ import {
 import { component, LAYOUT, NESTED_LAYOUT, PAGE, route } from '../_support.js';
 
 const doc = (source: string) => parseFud(source).document;
+
+/** The region the five text contexts are guarded by (BUG-22). */
+const regionOf = (source: string, offset: number) =>
+  regionAt(source, parseFud(source).html, offset);
 
 describe('linksOf', () => {
   it('lists the component links of a component', () => {
@@ -208,7 +212,7 @@ describe('classContextAt (BUG-15 §6.2)', () => {
     ['<span\n  class="badge"\n  class:in', 'in'],
     ['<span class:a="@(x)" class:b-c', 'b-c'],
   ])('reads %s as the partial name %s', (prefix, expected) => {
-    const context = classContextAt(prefix, prefix.length);
+    const context = classContextAt(prefix, prefix.length, regionOf(prefix, prefix.length));
 
     // The span covers what was typed after the colon and nothing else: the prefix stays,
     // it is what opens the context.
@@ -234,13 +238,13 @@ describe('classContextAt (BUG-15 §6.2)', () => {
     ['<span subclass:'],
     ['<span data-class:'],
   ])('says nothing at %s', (source) => {
-    expect(classContextAt(source, source.length)).toBeUndefined();
+    expect(classContextAt(source, source.length, regionOf(source, source.length))).toBeUndefined();
   });
 
   it('is the context again in the tag that follows a quoted one', () => {
     const source = '<div title="class:x"></div>\n<span class:su';
 
-    expect(classContextAt(source, source.length)?.text).toBe('su');
+    expect(classContextAt(source, source.length, regionOf(source, source.length))?.text).toBe('su');
   });
 });
 
@@ -252,7 +256,7 @@ describe('propertyContextAt and eventContextAt (BUG-16 §3.4)', () => {
     ['<app-badge\n  .tone="@(t)"\n  .var', 'var'],
     ['<app-badge .data-id', 'data-id'],
   ])('reads the property being typed at %s as %s', (prefix, expected) => {
-    const context = propertyContextAt(prefix, prefix.length);
+    const context = propertyContextAt(prefix, prefix.length, regionOf(prefix, prefix.length));
 
     // The dot stays out of the span: it is what opens the context, not what gets replaced.
     expect(context?.text).toBe(expected);
@@ -265,7 +269,7 @@ describe('propertyContextAt and eventContextAt (BUG-16 §3.4)', () => {
     ['<app-badge .tone="@(t)" @', ''],
     ['<app-badge @my-press', 'my-press'],
   ])('reads the event being typed at %s as %s', (prefix, expected) => {
-    const context = eventContextAt(prefix, prefix.length);
+    const context = eventContextAt(prefix, prefix.length, regionOf(prefix, prefix.length));
 
     expect(context?.text).toBe(expected);
     expect(prefix.slice(context?.span.start, context?.span.end)).toBe(expected);
@@ -283,7 +287,7 @@ describe('propertyContextAt and eventContextAt (BUG-16 §3.4)', () => {
     ['<app-badge x.'],
     ['<app-badge ..'],
   ])('offers no property at %s', (source) => {
-    expect(propertyContextAt(source, source.length)).toBeUndefined();
+    expect(propertyContextAt(source, source.length, regionOf(source, source.length))).toBeUndefined();
   });
 
   it.each([
@@ -296,13 +300,13 @@ describe('propertyContextAt and eventContextAt (BUG-16 §3.4)', () => {
     ['<app-badge @@'],
     ['<app-badge a@'],
   ])('offers no event at %s', (source) => {
-    expect(eventContextAt(source, source.length)).toBeUndefined();
+    expect(eventContextAt(source, source.length, regionOf(source, source.length))).toBeUndefined();
   });
 
   it('is the context again in the tag that follows a quoted one', () => {
     const source = '<div title="a.b"></div>\n<app-badge .to';
 
-    expect(propertyContextAt(source, source.length)?.text).toBe('to');
+    expect(propertyContextAt(source, source.length, regionOf(source, source.length))?.text).toBe('to');
   });
 });
 
@@ -312,7 +316,7 @@ describe('wordContextAt (SDD-28 §5.3)', () => {
     ['<div>\n  app-b', 'app-b'],
     ['<div></div>\ntext app', 'app'],
   ])('reads %s as the word %s', (prefix, expected) => {
-    const context = wordContextAt(prefix, prefix.length);
+    const context = wordContextAt(prefix, prefix.length, regionOf(prefix, prefix.length));
 
     expect(context?.text).toBe(expected);
     expect(prefix.slice(context?.span.start, context?.span.end)).toBe(expected);
@@ -329,13 +333,13 @@ describe('wordContextAt (SDD-28 §5.3)', () => {
     ['<div>'],
     ['123'],
   ])('says nothing at %s', (source) => {
-    expect(wordContextAt(source, source.length)).toBeUndefined();
+    expect(wordContextAt(source, source.length, regionOf(source, source.length))).toBeUndefined();
   });
 
   it('is a word again once the tag is closed', () => {
     const source = '<div class="a">app';
 
-    expect(wordContextAt(source, source.length)?.text).toBe('app');
+    expect(wordContextAt(source, source.length, regionOf(source, source.length))?.text).toBe('app');
   });
 });
 
@@ -345,7 +349,7 @@ describe('directiveContextAt (SDD-28 §5.4)', () => {
     ['@i', '@i'],
     ['<div>\n  @fore', '@fore'],
   ])('reads %s as %s, the `@` included', (prefix, expected) => {
-    const context = directiveContextAt(prefix, prefix.length);
+    const context = directiveContextAt(prefix, prefix.length, regionOf(prefix, prefix.length));
 
     expect(context?.text).toBe(expected);
     expect(prefix.slice(context?.span.start, context?.span.end)).toBe(expected);
@@ -363,13 +367,13 @@ describe('directiveContextAt (SDD-28 §5.4)', () => {
     ['<app-badge @cli'],
     ['<app-badge .tone="@(t)" @i'],
   ])('says nothing at %s', (source) => {
-    expect(directiveContextAt(source, source.length)).toBeUndefined();
+    expect(directiveContextAt(source, source.length, regionOf(source, source.length))).toBeUndefined();
   });
 
   it('is a directive again once the tag is closed', () => {
     const source = '<app-badge @click="@h"></app-badge>\n@fore';
 
-    expect(directiveContextAt(source, source.length)?.text).toBe('@fore');
+    expect(directiveContextAt(source, source.length, regionOf(source, source.length))?.text).toBe('@fore');
   });
 });
 

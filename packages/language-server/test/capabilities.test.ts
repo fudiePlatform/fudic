@@ -65,11 +65,10 @@ describe('SERVER_CAPABILITIES', () => {
     expect(SERVER_CAPABILITIES.documentLinkProvider).toEqual({ resolveProvider: false });
   });
 
-  it('depends on other files and does not diagnose the workspace', () => {
-    expect(SERVER_CAPABILITIES.diagnosticProvider).toEqual({
-      interFileDependencies: true,
-      workspaceDiagnostics: false,
-    });
+  it('does not announce a diagnostic channel: Volar owns that choice (BUG-22 §2)', () => {
+    // Declaring it here re-advertised PULL over a server Volar had already put in PUSH, and
+    // the editor believed both: every diagnostic was kept twice, in two collections.
+    expect(SERVER_CAPABILITIES.diagnosticProvider).toBeUndefined();
   });
 
   it('publishes the legend it will emit tokens against', () => {

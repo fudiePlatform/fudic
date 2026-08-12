@@ -15,7 +15,7 @@
  */
 
 import { emitVirtualFiles, type FileRegistry, type VirtualFile } from '@fudic/language-core';
-import type { Diagnostic, StructuredDocument } from '@fudic/compiler';
+import type { Diagnostic, HtmlDocument, StructuredDocument } from '@fudic/compiler';
 import { batchDocumentJs, type DocumentJs } from './js-batch.js';
 import { createFileRegistry } from './file-registry.js';
 import { parseFud } from './parse.js';
@@ -29,6 +29,8 @@ export interface CachedDocument {
   readonly version: number;
   readonly source: string;
   readonly document: StructuredDocument;
+  /** The flat tree `regionAt` answers over (BUG-22). */
+  readonly html: HtmlDocument;
   /** Parse diagnostics plus the Oxc syntax errors, all in `.fud` coordinates. */
   readonly diagnostics: readonly Diagnostic[];
   readonly js: DocumentJs;
@@ -41,6 +43,7 @@ interface ParsedEntry {
   readonly version: number;
   readonly source: string;
   readonly document: StructuredDocument;
+  readonly html: HtmlDocument;
   readonly diagnostics: readonly Diagnostic[];
   readonly js: DocumentJs;
 }
@@ -97,13 +100,14 @@ export class DocumentCache {
     const existing = this.#entries.get(key);
     if (existing !== undefined && existing.parsed.version === version) return existing;
 
-    const { document, diagnostics } = parseFud(source);
+    const { document, html, diagnostics } = parseFud(source);
     const js = batchDocumentJs(source, document);
     const entry: Entry = {
       parsed: {
         version,
         source,
         document,
+        html,
         diagnostics: [...diagnostics, ...js.diagnostics],
         js,
       },
@@ -131,6 +135,7 @@ export class DocumentCache {
         version: parsed.version,
         source: parsed.source,
         document: parsed.document,
+        html: parsed.html,
         diagnostics: parsed.diagnostics,
         js: parsed.js,
         registry,

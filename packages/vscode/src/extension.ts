@@ -14,13 +14,18 @@ import { existsSync } from 'node:fs';
 import * as vscode from 'vscode';
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node';
 import { activateFudic, type FudicSession } from './activate.js';
+import { watchTypedTags } from './auto-close.js';
 import { registerCommands } from './commands/index.js';
 import { createVirtualDocStore, VIRTUAL_SCHEME } from './virtual-doc-provider.js';
 import {
   bundledServerPath,
+  commentSelectionOf,
   folderPaths,
   fudUriOf,
+  insertClosingTag,
   languageOf,
+  replaceLines,
+  typedTextOf,
   vscodeTsdkPath,
 } from './vscode-shape.js';
 import type { ClientLaunch, LanguageClientPort } from './ports.js';
@@ -148,7 +153,36 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       },
       notifications: { warn: (message) => void vscode.window.showWarningMessage(message) },
       logger: { info: (message) => output.appendLine(message) },
+      selection: {
+        current: () => commentSelectionOf(vscode.window.activeTextEditor),
+        replaceLines: (replacement) =>
+          replaceLines(
+            vscode.window.activeTextEditor,
+            replacement,
+            (startLine, startChar, endLine, endChar) =>
+              new vscode.Range(startLine, startChar, endLine, endChar),
+          ),
+      },
     },
+  );
+
+  // Bound to the session rather than to the client: a restart replaces the client, and this
+  // listener has to keep working across one.
+  watchTypedTags(
+    {
+      onTyped: (listener) => {
+        context.subscriptions.push(
+          vscode.workspace.onDidChangeTextDocument((event) => listener(typedTextOf(event))),
+        );
+      },
+      insert: (target) =>
+        insertClosingTag(
+          vscode.window.activeTextEditor,
+          target,
+          (text) => new vscode.SnippetString(text),
+        ),
+    },
+    session,
   );
 
   // The editor that is already open when the extension activates never fires the change

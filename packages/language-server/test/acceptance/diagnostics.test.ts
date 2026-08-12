@@ -173,6 +173,40 @@ describe('§6.2 — the nine mutants of SDD-23, as LSP diagnostics on the .fud',
   });
 });
 
+describe('BUG-22 §2 — one error, reported once', () => {
+  let slugUri: string;
+  let slug: string;
+
+  beforeAll(async () => {
+    const opened = await harness.open(SLUG);
+    slugUri = opened.uri;
+    slug = opened.text;
+  });
+
+  it('does not invite the editor to ask: the server pushes, and only pushes', () => {
+    // The absence IS the contract. Volar puts a server with `interFileDependencies` in the
+    // push model and then leaves `diagnosticProvider` out of the initialize result to say so.
+    // Declaring it anyway left the editor believing both channels and keeping two collections
+    // of the same errors — one `unclosed <div>` shown twice, from one parse.
+    expect(harness.capabilities.capabilities.diagnosticProvider).toBeUndefined();
+  });
+
+  it('publishes an unclosed <div> exactly once', async () => {
+    const published: Diagnostic[][] = [];
+    harness.client.onNotification('textDocument/publishDiagnostics', (params) => {
+      const report = params as { uri: string; diagnostics: Diagnostic[] };
+      if (report.uri === slugUri) published.push(report.diagnostics);
+    });
+
+    await harness.change(slugUri, mutate(slug, '<article>', '<article>\n  <div>'), ++version);
+    // The push model batches 250 ms after the edit; this waits for the batch, not for a clock.
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    const last = published[published.length - 1] ?? [];
+    expect(last.filter((item) => item.code === 'FUD0052')).toHaveLength(1);
+  });
+});
+
 describe('BUG-16 §6.14 — the two literals of a component tag, end to end', () => {
   let slugUri: string;
   let slug: string;

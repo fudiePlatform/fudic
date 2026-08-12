@@ -120,6 +120,19 @@ class HtmlParser {
   /** Open elements, innermost last. Only `normal` elements are pushed. */
   readonly #open: OpenElement[] = [];
 
+  /**
+   * Whether a start tag ran off the end of the file (BUG-22 §6).
+   *
+   * The lexer leaves tag mode on a `>` or at EOF and nowhere else, so a `<div` with no `>` eats
+   * everything after it — the `</template>` the author DID write included. Every ancestor is
+   * then reported unclosed, and each of those diagnostics is false: the close tag is right
+   * there in the file, it was swallowed by the first mistake.
+   *
+   * Once this is set nothing more is reported unclosed. What follows an unterminated tag is not
+   * a tree the parser has an opinion about.
+   */
+  #tagRanOff = false;
+
   constructor(source: string, atConstructs: AtConstructParser | undefined) {
     this.#source = source;
     this.#lexer = new Lexer(source);
@@ -385,10 +398,30 @@ class HtmlParser {
         closeSpan: ahead.span,
       };
     }
-    // Unclosed: located on the START tag, which is the actionable place in an editor.
-    this.#error('FUD0052', `unclosed <${name}> element`, openSpan);
+    // Unclosed: located on the START tag, which is the actionable place in an editor. One
+    // report per file once a tag ran off the end — everything outside it is a consequence.
+    if (!this.#tagRanOff) {
+      this.#error('FUD0052', `unclosed <${name}> element`, openSpan);
+      this.#tagRanOff = this.#ranOff(openSpan);
+    }
     // `closeSpan` is OMITTED, never set to undefined (exactOptionalPropertyTypes).
     return { ...element, span: span(openSpan.start, this.#lexer.offset) };
+  }
+
+  /**
+   * Whether this start tag ran past where it should have ended.
+   *
+   * Two shapes, and they are the same accident seen from either end. The tag reached EOF with
+   * no `>` at all; or it found one — and it belonged to somebody else, because a `</` inside a
+   * start tag is a close tag the lexer read as an attribute name while it waited for a `>`
+   * that was never coming. `<div` followed by `</template>` ends on the template's own `>`.
+   *
+   * A `</` inside a quoted value would say yes here and is not this. The cost is that a
+   * genuinely unclosed ancestor goes unreported in a file that already has an error two lines
+   * up, which is the direction to be wrong in.
+   */
+  #ranOff(openSpan: Span): boolean {
+    return this.#source[openSpan.end - 1] !== '>' || this.#slice(openSpan).includes('</', 1);
   }
 
   /** Tag names are case-insensitive in HTML, case-sensitive in svg/math (decision 41.b). */

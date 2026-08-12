@@ -7,6 +7,7 @@
  * side, so the two halves cannot drift apart in silence.
  */
 
+import { toggleCommentCommand } from './comment.js';
 import { formatDocument } from './format.js';
 import { restartServer } from './restart.js';
 import { showRegistry } from './registry.js';
@@ -19,6 +20,7 @@ export const COMMAND_IDS = {
   showVirtualFiles: 'fudic.showVirtualFiles',
   showRegistry: 'fudic.showRegistry',
   formatDocument: 'fudic.formatDocument',
+  toggleComment: 'fudic.toggleComment',
 } as const;
 
 /** Every command as a handler, so a test drives them without a command registry. */
@@ -29,11 +31,12 @@ export const createHandlers = (
   [COMMAND_IDS.showVirtualFiles]: () => showVirtualFiles(deps),
   [COMMAND_IDS.showRegistry]: () => showRegistry(deps),
   [COMMAND_IDS.formatDocument]: () => formatDocument(deps),
+  [COMMAND_IDS.toggleComment]: () => toggleCommentCommand(deps),
 });
 
 export const registerCommands = (commands: CommandsPort, deps: CommandDeps): void => {
   for (const [id, handler] of Object.entries(createHandlers(deps))) commands.register(id, handler);
 };
 
-export { formatDocument, restartServer, showRegistry, showVirtualFiles };
+export { formatDocument, restartServer, showRegistry, showVirtualFiles, toggleCommentCommand };
 export type { CommandDeps };
