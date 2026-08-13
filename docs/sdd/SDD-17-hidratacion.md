@@ -535,8 +535,19 @@ los cuatro escenarios que antes vivían en cuatro prototipos separados:
 
 **Cierre:**
 
-23. **Todo definido al final.** Tras interactuar con todo, `:not(:defined)` está vacío, también
-    dentro de los shadow roots.
+23. **Todo lo hidratable, definido al final.** Tras interactuar con **cada** instancia
+    hidratable de la página, ningún `[data-fud-id]` sigue en `:not(:defined)`, tampoco dentro
+    de los shadow roots.
+
+    > **Dos precisiones, y las dos vienen de que el criterio original decía `:not(:defined)` a
+    > secas.** La primera: un componente **N1** es HTML con DSD y cero JS, así que su tag no se
+    > registra **nunca** y siempre está sin definir — eso *es* el nivel 1, no una hidratación
+    > que falló. Con `site-nav` en el layout, el criterio a secas era imposible de cumplir en
+    > cualquier página real. La segunda: aunque un tag sea hidratable, definirlo lo provoca la
+    > **interacción** (§4.1), así que exigir que esté definido sin haber interactuado con él
+    > contradiría el invariante de «cero JS de componente hasta la interacción». El criterio
+    > mide lo único que tiene sentido medir: que lo que el emit marcó hidratable y el usuario
+    > tocó, está vivo.
 24. **Sin Service Worker (§4.7.1).** Los criterios 1–14 y 23 pasan igual en `pnpm dev` y en un
     build sin `sw.json`. Los de warm (15–21) se repiten contra el canal `modulepreload`: se
     precarga solo lo visible, una vez por tag y con el cierre transitivo. En ninguno de los

@@ -79,16 +79,21 @@ function buildComponentClientModule(
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
 
   const bodies = newBodies();
+  // What a block may be handed: the props (an update reassigns every one of them) and the
+  // `@client` bindings the author can move. Everything else reaches it through the closure.
+  const changeable = new Set([...props.map((p) => p.name), ...mutable]);
   const scope = {
     childProps: (tag: string): readonly Prop[] | undefined => {
       const child = graph.components.get(tag);
       return child === undefined ? undefined : codeOf(child).props;
     },
     signals: new Set(signals.map((s) => s.name)),
+    // `changeable` widened with the signals, and NOT the other way round: a block takes by
+    // parameter only what an update can bring it again, and a `const x = signal(0)` is never
+    // reassigned — it reaches a block through the closure. What a child host asks is the
+    // other question, "can the view see this value move?", and there a signal counts.
+    moving: new Set([...changeable, ...signals.map((s) => s.name)]),
   };
-  // What a block may be handed: the props (an update reassigns every one of them) and the
-  // `@client` bindings the author can move. Everything else reaches it through the closure.
-  const changeable = new Set([...props.map((p) => p.name), ...mutable]);
   // One channel for everything the emit has to SAY about this file, and one for what every
   // walk of it shares: a block three levels down reports through the same two.
   const emitDiagnostics: Diagnostic[] = [];
@@ -108,6 +113,30 @@ function buildComponentClientModule(
     space,
   });
   em.emitRoots(comp.doc.template!.children);
+
+  // The component's OWN reactivity, and the only consumer a signal has: the emitted code
+  // (SDD-31 §1). `$a()` re-applies the value writes and the constructs reconcile after it,
+  // but until now nothing ever called them again — `u` is the parent's channel, so a
+  // component whose template reads a signal it declares itself painted once and went deaf.
+  //
+  // Every declared `signal` is subscribed, not the subset the template appears to read: a
+  // read can travel through a helper of `@client`, and a name-by-name scan of the write
+  // sites would miss exactly that and miss it SILENTLY. Over-subscribing costs a pass of
+  // `$a` that writes nothing — `$w` filters per write (BUG-12 §3.3) — and missing one costs
+  // a view that does not move. A `computed` is NOT subscribed: it has no value of its own,
+  // and the leaves underneath it are already in this list.
+  const reactive = signals.flatMap((s) => (s.kind === 'signal' ? [s.name] : []));
+  // Nothing to renew: a component with signals but no value write and no construct has no
+  // rendering that a `set` could change.
+  const renews = reactive.length > 0 && (em.writes > 0 || !bodies.update.empty);
+  const reconcile = bodies.update.empty ? '' : ` ${lines(bodies.update)}`;
+  if (renews) {
+    usage.subscribes = true;
+    // Into `$s`, which is where create and hydrate converge — and `$sub` does NOT deliver on
+    // subscribe (SDD-31 §4.8), so `h` stays as paint-free as it is today: no text node is
+    // rewritten inside the gesture INP measures just for hooking up.
+    for (const name of reactive) bodies.hook.line(`$d.push($sub(${name}, $u));`);
+  }
 
   const w = new CodeWriter();
   // Written after the walk on purpose: `$sub` is imported only if the walk found a value
@@ -152,6 +181,10 @@ function buildComponentClientModule(
   // after reassigning, so create and update converge here and cannot drift apart; that the
   // invariant holds is checkable by looking at the chunk.
   writeClosure(w, '$a', bodies.apply, 'let $v;');
+  // `$u` — one rendering pass: the values, then the reconciliation of every construct. It
+  // is extracted only when something subscribes to it, because it is the SAME body `u` runs
+  // and a component with no signal of its own would pay a closure to say so.
+  if (renews) w.line(`const $u = () => { $a();${reconcile} };`);
   w.line('');
   w.line('return {');
   w.indent();
@@ -180,12 +213,12 @@ function buildComponentClientModule(
   //
   // `$a()` is called ONCE, after every guard and not one per prop: with two props moving in
   // the same call there is no intermediate state anyone can observe.
-  const reconcile = bodies.update.empty ? '' : ` ${lines(bodies.update)}`;
-  w.line(
-    props.length > 0
-      ? `u: ($p) => { ${updateGuards(props)} $a();${reconcile} },`
-      : `u: () => { $a();${reconcile} },`,
-  );
+  //
+  // The pass itself is `$u` when the component subscribes to its own signals: one body, so
+  // a value that moves by prop and a value that moves by signal cannot be applied
+  // differently.
+  const pass = renews ? '$u();' : `$a();${reconcile}`;
+  w.line(props.length > 0 ? `u: ($p) => { ${updateGuards(props)} ${pass} },` : `u: () => { ${pass} },`);
   w.line(
     `r: () => { ${releaseCalls(bodies.registries)}${[...em.nodes, '$shadow', ...(needsHost ? ['$host'] : [])].join(' = ')} = null; $d.forEach((d) => d()); },`,
   );

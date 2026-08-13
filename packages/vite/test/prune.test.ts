@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { keepSet, type PruneItem } from '../src/prune.js';
+import { keepSet, reachableChunks, type PruneItem } from '../src/prune.js';
 
 const chunk = (fileName: string, imports: readonly string[] = []): PruneItem => ({
   type: 'chunk',
@@ -92,5 +92,38 @@ describe('keepSet', () => {
       'index.html',
       'logo-DEADBEEF.png',
     ]);
+  });
+});
+
+describe('reachableChunks — the shell of SDD-17 §4.7.1', () => {
+  it('takes the root and everything it statically imports, hashed names included', () => {
+    // The bootstrap sharing a chunk with the hydration chunks is what makes this necessary:
+    // `assets/element-Cz.js` is a name no `sw.json` could have been written with.
+    const items = [
+      chunk('fudic-main.js', ['assets/element-Cz.js']),
+      chunk('assets/element-Cz.js', ['assets/signal-Q1.js']),
+      chunk('assets/signal-Q1.js'),
+      chunk('assets/h/app-card-ZM.js', ['assets/element-Cz.js']),
+      asset('index.html'),
+    ];
+    expect(reachableChunks(items, (i) => i.fileName === 'fudic-main.js')).toEqual([
+      'fudic-main.js',
+      'assets/element-Cz.js',
+      'assets/signal-Q1.js',
+    ]);
+  });
+
+  it('a self-contained bootstrap contributes exactly itself', () => {
+    const items = [chunk('fudic-main.js'), chunk('assets/h/app-card-ZM.js')];
+    expect(reachableChunks(items, (i) => i.fileName === 'fudic-main.js')).toEqual(['fudic-main.js']);
+  });
+
+  it('never lists an asset, nor an import that names nothing in this bundle', () => {
+    const items = [chunk('root.js', ['@fudic/ssr', 'root.js.map']), asset('root.js.map')];
+    expect(reachableChunks(items, () => true)).toEqual(['root.js']);
+  });
+
+  it('with no root there is nothing to precache', () => {
+    expect(reachableChunks(BUNDLE, () => false)).toEqual([]);
   });
 });

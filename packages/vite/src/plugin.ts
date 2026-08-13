@@ -47,7 +47,7 @@ import {
   FUD_CHUNK_NOT_EMITTED,
   FUD_SW_SHELL_MISSING,
 } from './diagnostics.js';
-import { devUrl, devManifest } from './dev.js';
+import { devUrl, devManifest, devClientTag, devClientPrefix } from './dev.js';
 import {
   matchRouteBuild,
   renderRouteHtml,
@@ -68,7 +68,19 @@ import {
 } from './constants.js';
 import { chunkNamesOf } from './names.js';
 import { planRename, rewriteReferences, mapNameOf } from './rename.js';
-import { keepSet } from './prune.js';
+import { keepSet, reachableChunks, type PruneItem } from './prune.js';
+
+/**
+ * The bundle as reachability items, keyed by its ORIGINAL keys — which is what `imports`
+ * speaks in, whatever `fileName` was later moved to (§5.2).
+ */
+function bundleItems(bundle: Record<string, { type: string; imports?: readonly string[] }>): PruneItem[] {
+  return Object.entries(bundle).map(([fileName, item]) => ({
+    type: item.type,
+    fileName,
+    ...(item.type === 'chunk' && item.imports !== undefined ? { imports: item.imports } : {}),
+  }));
+}
 
 /** Split a module id into its path and query (without the `?`). */
 function splitId(id: string): { path: string; query: string } {
@@ -116,6 +128,22 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let manifestUrl = '/fudic-routes.json';
   let manifestFileName = 'fudic-routes.json';
   const io = nodeIo();
+
+  /**
+   * The client module a dev client URL names, or `undefined` when it names none.
+   *
+   * The lookup is tag → component, over the graph the routes reach: the runtime only ever
+   * asks for tags that carry a `data-fud-id`, and those are components of that graph by
+   * construction. A tag nobody rendered simply has no module, and the request falls through.
+   */
+  const devClientModuleId = (path: string): string | undefined => {
+    const tag = devClientTag(path);
+    if (tag === null) {
+      return undefined;
+    }
+    const comp = discoverComponents(builds, io).find((c) => c.tag === tag);
+    return comp === undefined ? undefined : clientId(comp.path);
+  };
 
   return {
     name: 'fudic',
@@ -187,7 +215,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           res.end(JSON.stringify(devManifest(builds)));
           return;
         }
-        const id = scripts.get(url);
+        // The two bootstraps, and every component's client module (SDD-17 §4.7.1). The
+        // last one has no file behind it in dev: `<path>.fud?client` is an id the module
+        // graph knows and nothing publishes, so without this the URL `resolveChunk`
+        // hands the runtime would be a 404 and dev could not hydrate at all.
+        const id = scripts.get(url) ?? devClientModuleId(pathnameOf(url, base));
         if (id === undefined) {
           next();
           return;
@@ -419,20 +451,24 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       }
       // Only in dev: in build these names are real emitted files (see `DEV_SCRIPT_IDS`).
       if (isDev) {
-        return DEV_SCRIPT_IDS.get(pathnameOf(id, base)) ?? null;
+        const path = pathnameOf(id, base);
+        return DEV_SCRIPT_IDS.get(path) ?? devClientModuleId(path) ?? null;
       }
       return null;
     },
 
     load(id) {
       if (id === MAIN_ID) {
-        if (swConfig === null || (isDev && swConfig.dev !== 'preview')) {
-          // No Service Worker: nothing for the main thread to do (§4.7, §4.11).
-          return 'export {};\n';
-        }
-        // One expression for dev and build: `/fudic-sw.js` has a fixed, unhashed name
-        // because a Service Worker only controls its own directory and below (§4.2).
-        return emitMainBootstrap(JSON.stringify(devUrl(base, DEV_SW_URL)));
+        // The Service Worker is what is conditional here, NEVER the hydration (SDD-17
+        // §4.7.1). This used to return `export {};` whenever there was no worker, which
+        // made "no SW" silently mean "no hydration" — and that is dev, and any project
+        // without `sw.json`. One expression for dev and build: `/fudic-sw.js` has a fixed,
+        // unhashed name because a Service Worker only controls its own directory and below.
+        const hasWorker = swConfig !== null && (!isDev || swConfig.dev === 'preview');
+        return emitMainBootstrap({
+          chunks: isDev ? { mode: 'dev', urlPrefix: devClientPrefix(base) } : { mode: 'build', base },
+          swUrlExpr: hasWorker ? JSON.stringify(devUrl(base, DEV_SW_URL)) : null,
+        });
       }
       if (id === SW_ID) {
         return emitSwBootstrap({
@@ -549,6 +585,21 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
 
       // 2. The Service Worker's own bundle: one realm, one bundle (BUG-03 §4.1). Its
       //    code still carries BUILD_TOKEN — the id is computed from it, below.
+      //
+      //    Its shell is the DECLARED one plus the static graph of `fudic-main` (SDD-17
+      //    §4.7.1): from the moment the bootstrap installs the hydration runtime, the code
+      //    it shares with the hydration chunks lives in a chunk with a hashed name, and a
+      //    hashed name is not something `sw.json` can list. The graph is right here.
+      const shell =
+        swConfig === null
+          ? []
+          : [
+              ...swConfig.shell,
+              ...reachableChunks(bundleItems(bundle), (item) => {
+                const entry = bundle[item.fileName];
+                return entry?.type === 'chunk' && entry.facadeModuleId === MAIN_ID;
+              }).map((fileName) => `${base}${fileName}`),
+            ];
       const sw =
         swConfig === null
           ? null
@@ -557,7 +608,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               base,
               {
                 manifestUrlExpr: JSON.stringify(manifestUrl),
-                shell: swConfig.shell,
+                shell: [...new Set(shell)],
                 resources: swConfig.resources,
               },
               resolveAlias,
@@ -586,6 +637,18 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         // offset and the map generated for `sw.code` still describes what is emitted
         // (BUG-05 §4.4).
         emitWithMap({ ...sw, code: sw.code.split(BUILD_TOKEN).join(buildId) });
+      }
+
+      // 3a. And the SAME substitution in `fudic-main` (SDD-17 §4.6). The main thread has to
+      //     build the URL resolver, which takes `base` and the build id: `base` is baked in
+      //     at `load` time, the id only exists here. There is no circularity — the id was
+      //     computed from the bundle's NAMES, never from this chunk's code — and the token
+      //     measures exactly what the id measures, so no offset moves and the map stays
+      //     valid, exactly as in the worker above.
+      for (const item of Object.values(bundle)) {
+        if (item.type === 'chunk' && item.facadeModuleId === MAIN_ID) {
+          item.code = item.code.split(BUILD_TOKEN).join(buildId);
+        }
       }
 
       // 3b. Build-id naming (SDD-27 §5.2). The chunks whose URL the client DERIVES —
@@ -650,11 +713,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       //     Keyed by the ORIGINAL bundle keys: the rename above moved `fileName`, never the
       //     key, and `imports` still speaks in keys.
       const keep = keepSet(
-        Object.entries(bundle).map(([fileName, item]) => ({
-          type: item.type,
-          fileName,
-          ...(item.type === 'chunk' ? { imports: item.imports } : {}),
-        })),
+        bundleItems(bundle),
         (item) => {
           const entry = bundle[item.fileName];
           const facade = entry?.type === 'chunk' ? entry.facadeModuleId : null;

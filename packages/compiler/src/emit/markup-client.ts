@@ -35,7 +35,7 @@
  * follows it and its anchor, and writes nothing about it itself.
  */
 
-import type { HtmlContent, ElementNode } from '../html/index.js';
+import type { HtmlContent, ElementNode, AttributeValuePart } from '../html/index.js';
 import type { ControlNode } from '../control/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { Span } from '../types/index.js';
@@ -50,6 +50,7 @@ import {
   type ValueSink,
 } from './attrs.js';
 import { branchesOf } from './constructs.js';
+import { freeReferences, type FragmentAst } from './scope.js';
 import { isControlNode, markerSite } from './marker.js';
 import { nestedSpaceMode, type SpaceMode } from './space.js';
 import { emitItems, type EmitItem, type TextRun } from './runs.js';
@@ -212,17 +213,34 @@ export interface ClientBodies {
  *   takes: the payload carries no schema, only values in the order the child destructures.
  * - `signals` — the names its own `@code` declares with `signal(...)`. It is what tells a
  *   reactive `.prop` from a constant one, and it is a lookup, not a heuristic.
+ * - `moving` — every name whose value this component can see change: its props, the
+ *   `@client` bindings it reassigns, and its signals. It is `signals` widened, and the
+ *   widening is the whole of §4.6: a PROP is not a constant. A component two levels down a
+ *   drilling chain hands its own child a value it received, and that value moves every time
+ *   its parent updates it — a test that only asks "is it a signal?" reads it as a constant
+ *   and hands it over once, forever.
  */
 export interface ClientScope {
   childProps(tag: string): readonly Prop[] | undefined;
   readonly signals: ReadonlySet<string>;
+  readonly moving: ReadonlySet<string>;
 }
 
-/** One slot of a child's positional payload: the expression, and the signal behind it. */
+/** One slot of a child's positional payload: the expression, and where it can move from. */
 interface Slot {
   readonly expr: string;
   /** The parent signal this value reads, when there is one; absent for a constant. */
   readonly signal?: string;
+  /**
+   * Whether this value can move WITHOUT a signal to subscribe to — a prop the parent
+   * reassigns, a reassigned `@client` binding, or a compound expression that reads a signal
+   * (`@(count() + 1)` is not a bare name, so it has no `signal` to hook onto either).
+   *
+   * `signal` and `changes` are the two halves of the same question and are deliberately
+   * exclusive: what has a signal is renewed one slot at a time by `$sub` (BUG-18 §4.1), and
+   * what only has `changes` is renewed in the update pass, with the whole tuple.
+   */
+  readonly changes: boolean;
 }
 
 /**
@@ -664,13 +682,22 @@ export class ClientMarkupEmitter {
    * inside. A child therefore cannot subscribe to anything; the owner of the value is the
    * one who writes it again, once at hookup and once per notification.
    *
-   * A host with no signal among its values emits NOTHING (decision 75): a constant crossed
-   * once, it is already in the markup the server painted, and `const` is its exact
-   * semantics — a channel for it would be scaffolding around a value that cannot move.
+   * A host with nothing that can move among its values emits NOTHING (decision 75): a
+   * constant crossed once, it is already in the markup the server painted, and `const` is
+   * its exact semantics — a channel for it would be scaffolding around a value that cannot
+   * move.
+   *
+   * **And "cannot move" is not "is not a signal".** That reading is what broke prop
+   * drilling: in `padre → hijo → nieto`, the signal is the ROOT's, so only the first hop had
+   * a channel. For `hijo`, `count` is a prop — no signal, so no channel, so `nieto` was
+   * handed its value once at hookup and never heard from again, and the chain died at depth
+   * one. What a prop has instead of a channel is the update pass: it is reassigned by `u`,
+   * and right after that is exactly when the child has to be told (§4.2).
    */
   #childValues(el: ElementNode, v: string): void {
     const slots = this.#slots(el);
-    if (![...slots.values()].some((s) => s.signal !== undefined)) return;
+    const bound = [...slots.values()];
+    if (!bound.some((s) => s.signal !== undefined || s.changes)) return;
 
     // The slots in the CHILD's declared order: the payload carries no schema, so the index
     // is the whole contract. A slot the parent does not bind is a hole in both passes.
@@ -686,7 +713,17 @@ export class ClientMarkupEmitter {
       .join(', ');
     this.#hook.line(`${v}.u([, , ${initial}]);`);
 
-    for (const source of new Set([...slots.values()].flatMap((s) => (s.signal !== undefined ? [s.signal] : [])))) {
+    // What has no signal to subscribe to is renewed by the UPDATE PASS: the same handover,
+    // recomposed from bindings that were just reassigned. Dense like the handover it repeats
+    // — a prop that did not move recomputes to the same string and the child's own `$w`
+    // drops it, so the cost of the extra slots is a comparison, not a DOM write.
+    //
+    // This is what makes drilling work to any depth. The pass reaches one level, that level
+    // reassigns its props and runs its own update, which reaches the next: the chain advances
+    // by one hop per level, in order, and no level needs to know how far the signal is.
+    if (bound.some((s) => s.changes)) this.#bodies.update.line(`${v}.u([, , ${initial}]);`);
+
+    for (const source of new Set(bound.flatMap((s) => (s.signal !== undefined ? [s.signal] : [])))) {
       // The update is SPARSE: one subscription per signal, and each writes ONLY the slots
       // that signal feeds. No `peek()` of the others, and a constant prop — `const` in the
       // sense decision 75 means — never travels again after the handover.
@@ -709,9 +746,11 @@ export class ClientMarkupEmitter {
    * — the same set `componentPropsExpr` sends by SSR (BUG-16 §4.2). A plain attribute is
    * HTML's own vocabulary and belongs to the host, not to the child's contract.
    *
-   * Which of them can MOVE is not a guess: a value whose source is exactly the name of a
-   * `signal(...)` this component declares is reactive, and everything else is not. A
-   * constant `.prop="info"` is therefore never a signal — it has no expression at all.
+   * Which of them can MOVE is not a guess, and it is asked in two steps. A value whose
+   * source is exactly the name of a `signal(...)` this component declares is reactive and
+   * has a channel of its own. Everything else is asked the WEAKER question — does it read
+   * anything that moves? — and only what answers no to both is a constant: `.prop="info"`
+   * has no expression at all, and `.total="@(1 + 1)"` reads nothing that can change.
    */
   #slots(el: ElementNode): Map<string, Slot> {
     const out = new Map<string, Slot>();
@@ -720,16 +759,34 @@ export class ClientMarkupEmitter {
       if (b.type !== 'property') continue;
       const naked = reactiveName(this.#source, b.value, this.#scope.signals);
       if (naked !== undefined) {
-        out.set(b.name, { expr: naked, signal: naked });
+        out.set(b.name, { expr: naked, signal: naked, changes: false });
       } else {
         const expr =
           b.value.length === 0
             ? 'true'
             : crossingExpr(this.#source, attr, b.value, this.#scope.signals);
-        out.set(b.name, { expr });
+        out.set(b.name, { expr, changes: this.#reads(b.value) });
       }
     }
     return out;
+  }
+
+  /**
+   * Whether an attribute value reads anything this component can see move.
+   *
+   * By FREE references, not by text: `.count="@count"` and `.label="@(count + 1)"` have to
+   * answer the same, and a name a lambda inside the expression declares itself is not this
+   * component's. It is the same question `block.ts` asks to decide a block's parameters, and
+   * deliberately the same function — a second way of answering it would drift, and the drift
+   * is silent: a child that stops being updated looks exactly like a child with nothing new.
+   */
+  #reads(value: readonly AttributeValuePart[]): boolean {
+    const asts: FragmentAst[] = [];
+    for (const part of value) {
+      if (part.type === 'razor-expression') asts.push(this.#hookup.template.ast(part.expr));
+    }
+    if (asts.length === 0) return false;
+    return freeReferences(asts).some((name) => this.#scope.moving.has(name));
   }
 
   /** Descend into an element: a level of its own, with its own cursor. */

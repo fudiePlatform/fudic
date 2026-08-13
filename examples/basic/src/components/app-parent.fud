@@ -1,0 +1,48 @@
+<link rel="component" href="./app-child.fud">
+
+@code {
+  // La raíz de la cascada. Su handler escribe props a los hijos que él monta, así que todo
+  // su subárbol tiene que estar vivo ANTES de que este `inc` corra — y corre en el replay.
+  @client {
+    import { signal } from '@fudic/core';
+
+    const count = signal(0);
+
+    function inc() {
+      count.set(count() + 1);
+    }
+  }
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    .panel {
+      border: 1px solid #dcdcdc;
+      border-radius: 10px;
+      padding: 0.9rem 1.1rem;
+      background: white;
+    }
+    button {
+      font: inherit;
+      padding: 0.4rem 0.9rem;
+      border: 1px solid #1a73e8;
+      border-radius: 6px;
+      background: #1a73e8;
+      color: white;
+      cursor: pointer;
+      margin-bottom: 0.6rem;
+    }
+  </style>
+</head>
+
+<app-parent>
+  <template shadowrootmode="open">
+    <div class="panel">
+      <button class="inc" @click="@inc">+1 en la raíz</button>
+      <app-child .count="@count"></app-child>
+    </div>
+  </template>
+</app-parent>

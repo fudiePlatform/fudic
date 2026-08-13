@@ -134,12 +134,84 @@ self.addEventListener('fetch', (e) => {
 `;
 }
 
-/** Main thread: register the Service Worker, then tell it where the user is. */
-export function emitMainBootstrap(swUrlExpr: string): string {
-  return `import { registerRenderServiceWorker, notifyLocation } from '@fudic/transport';
+/**
+ * How the main thread turns a tag into the URL of its hydration chunk (SDD-17 §4.6).
+ *
+ * Two modes and no third, because there are exactly two ways a page can have been emitted.
+ * In a BUILD the URL is DERIVED from the manifest's arithmetic — `hydrateUrl(tag)` —
+ * which is why the build id has to travel inside this chunk. In DEV nothing is built:
+ * the component's client module is served by the dev server at a stable per-tag URL, and
+ * the build id does not exist.
+ *
+ * The choice is made here, at emit time, so the runtime never carries a branch for it.
+ */
+export type ChunkResolution =
+  | { readonly mode: 'build'; readonly base: string }
+  | { readonly mode: 'dev'; readonly urlPrefix: string };
 
-if ('serviceWorker' in navigator) {
-  registerRenderServiceWorker(${swUrlExpr}).then(() => notifyLocation());
+export interface MainBootstrapOptions {
+  readonly chunks: ChunkResolution;
+  /**
+   * The Service Worker's URL, as a JS expression — or `null` when the page has none: no
+   * `sw.json`, or `pnpm dev` with `dev: 'off'`. **Hydration does not depend on it.**
+   */
+  readonly swUrlExpr: string | null;
 }
-`;
+
+/**
+ * Main thread: install the hydration runtime — ALWAYS — and, when the page was emitted with
+ * one, register the render Service Worker and tell it where the user is.
+ *
+ * The order of those two facts is the correction of SDD-17 §4.7.1. This module used to be
+ * `export {};` whenever there was no Service Worker, which quietly made "no SW" mean "no
+ * hydration" — and that is three quarters of the real cases: a project without `sw.json`,
+ * `pnpm dev`, and every first load before `clients.claim()`. The runtime is ONE runtime; what
+ * branches is the two ports injected here, because this is the only place that knows how the
+ * page was emitted.
+ */
+export function emitMainBootstrap(options: MainBootstrapOptions): string {
+  const { chunks, swUrlExpr } = options;
+  // Only what this page actually uses: a dev page with no Service Worker imports nothing
+  // from `@fudic/transport` at all.
+  const transport: string[] = [];
+  if (chunks.mode === 'build') transport.push('createUrlResolver');
+  if (swUrlExpr !== null) transport.push('registerRenderServiceWorker', 'notifyLocation');
+  const head = [
+    `import { installHydration } from '@fudic/core';`,
+    ...(transport.length === 0
+      ? []
+      : [`import { ${transport.join(', ')} } from '@fudic/transport';`]),
+    '',
+  ];
+  const resolver =
+    chunks.mode === 'build'
+      ? [
+          `// The build id travels inside this chunk, substituted like the Service Worker's`,
+          `// (SDD-27 §5.2): the URL of a hydration chunk is DERIVED, never mapped.`,
+          `const URLS = createUrlResolver(${JSON.stringify(chunks.base)}, ${JSON.stringify(BUILD_TOKEN)});`,
+          `const resolveChunk = (tag) => URLS.hydrateUrl(tag);`,
+        ]
+      : [
+          `// In dev nothing is built: the dev server publishes each component's client`,
+          `// module at a stable URL per tag.`,
+          `const CHUNKS = ${JSON.stringify(chunks.urlPrefix)};`,
+          `const resolveChunk = (tag) => CHUNKS + tag + '.js';`,
+        ];
+  const worker =
+    swUrlExpr === null
+      ? []
+      : [
+          '',
+          `if ('serviceWorker' in navigator) {`,
+          `  registerRenderServiceWorker(${swUrlExpr}).then(() => notifyLocation());`,
+          `}`,
+        ];
+  return [
+    ...head,
+    ...resolver,
+    '',
+    `installHydration({ root: document, resolveChunk });`,
+    ...worker,
+    '',
+  ].join('\n');
 }

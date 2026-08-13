@@ -18,9 +18,25 @@ import { runtimeAlias } from './helpers/alias.js';
 
 const PAGE = `<!DOCTYPE html>
 <html>
-<head><title>About</title></head>
-<body><h1>About us</h1></body>
+<head><title>About</title><link rel="component" href="../components/dev-widget.fud"></head>
+<body><h1>About us</h1><dev-widget></dev-widget></body>
 </html>
+`;
+
+/** A hydratable component: it has a `@client` region, so it gets a client module. */
+const WIDGET = `@code {
+  @client {
+    import { signal } from '@fudic/core';
+    const hits = signal(0);
+    function bump() { hits.set(hits() + 1); }
+  }
+}
+
+<dev-widget>
+  <template shadowrootmode="open">
+    <button @click="@bump">@hits()</button>
+  </template>
+</dev-widget>
 `;
 
 let server: ViteDevServer;
@@ -29,7 +45,9 @@ let origin: string;
 beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-dev-'));
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
+  mkdirSync(join(root, 'src', 'components'), { recursive: true });
   writeFileSync(join(root, 'src', 'routes', 'about.fud'), PAGE);
+  writeFileSync(join(root, 'src', 'components', 'dev-widget.fud'), WIDGET);
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
   server = await createServer({
     root,
@@ -74,10 +92,31 @@ describe('vite dev server (SDD-19 §4.10)', () => {
     // What `transformIndexHtml` warms up for every module `<script src>` it sees. That
     // path skips the middlewares, so before this resolved the URL it threw and Vite
     // logged `Pre-transform error: Failed to load url /fudic-main.js`.
-    expect((await server.transformRequest('/fudic-main.js'))?.code).toBe('export {};\n');
+    expect((await server.transformRequest('/fudic-main.js'))?.code).toContain('installHydration');
     expect((await server.transformRequest('/fudic-sw.js'))?.code).toContain('createRouter');
     // A name that is not a bootstrap still falls through to Vite's own resolution.
     await expect(server.transformRequest('/nope.js')).rejects.toThrow(/Failed to load url/u);
+  });
+
+  it('SDD-17 §4.7.1 publishes each component’s client module at a stable URL per tag', async () => {
+    // In a build this module is an emitted chunk whose URL the manifest derives. In dev it
+    // exists only as `<path>.fud?client`, an id nothing serves — so without this the URL
+    // the runtime asks for is a 404 and dev cannot hydrate, whatever the runtime does.
+    const res = await fetch(`${origin}/@fudic/h/dev-widget.js`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/javascript');
+    const code = await res.text();
+    expect(code).toContain('customElements.define("dev-widget"');
+    // Served through the module pipeline, so its bare imports are already rewritten.
+    expect(code).not.toContain("from '@fudic/core'");
+  });
+
+  it('the same URL resolves in the module graph, and an unknown tag is nobody’s', async () => {
+    expect((await server.transformRequest('/@fudic/h/dev-widget.js'))?.code).toContain(
+      'customElements.define',
+    );
+    // A tag no route renders has no client module: the request is not the plugin's.
+    expect((await fetch(`${origin}/@fudic/h/no-such-tag.js`)).status).toBe(404);
   });
 
   it('renders a navigation on demand (§4.10)', async () => {

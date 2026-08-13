@@ -104,13 +104,53 @@ describe('emitSwBootstrap', () => {
 
 describe('emitMainBootstrap', () => {
   it('registers the Service Worker and tells it where the user is', () => {
-    const code = emitMainBootstrap('import.meta.ROLLUP_FILE_URL_sw');
+    const code = emitMainBootstrap({
+      chunks: { mode: 'build', base: '/' },
+      swUrlExpr: 'import.meta.ROLLUP_FILE_URL_sw',
+    });
     expect(code).toContain(
-      "import { registerRenderServiceWorker, notifyLocation } from '@fudic/transport';",
+      "import { createUrlResolver, registerRenderServiceWorker, notifyLocation } from '@fudic/transport';",
     );
     expect(code).toContain("'serviceWorker' in navigator");
     expect(code).toContain('registerRenderServiceWorker(import.meta.ROLLUP_FILE_URL_sw)');
     expect(code).toContain('notifyLocation()');
     expect(code).not.toContain('new Worker'); // the WW is gone for good
+  });
+
+  it('SDD-17 §4.7.1 installs the hydration ALWAYS — the Service Worker is what is optional', () => {
+    const withWorker = emitMainBootstrap({
+      chunks: { mode: 'build', base: '/' },
+      swUrlExpr: '"/fudic-sw.js"',
+    });
+    const without = emitMainBootstrap({ chunks: { mode: 'build', base: '/' }, swUrlExpr: null });
+
+    for (const code of [withWorker, without]) {
+      expect(code).toContain("import { installHydration } from '@fudic/core';");
+      expect(code).toContain('installHydration({ root: document, resolveChunk });');
+    }
+    // What used to be an `export {};` — and therefore no hydration at all — for three
+    // quarters of the real cases: no `sw.json`, `pnpm dev`, an uncontrolled first load.
+    expect(without).not.toContain('serviceWorker');
+    expect(without).not.toContain('registerRenderServiceWorker');
+  });
+
+  it('in a build the chunk URL is derived, with the build id substituted like the worker’s', () => {
+    const code = emitMainBootstrap({ chunks: { mode: 'build', base: '/app/' }, swUrlExpr: null });
+    expect(code).toContain(`createUrlResolver("/app/", "${BUILD_TOKEN}")`);
+    expect(code).toContain('const resolveChunk = (tag) => URLS.hydrateUrl(tag);');
+    // No map from tag to URL, here or anywhere (SDD-17 §4.6).
+    expect(code).not.toContain('fud-chunks');
+  });
+
+  it('in dev it is the dev server’s per-tag URL, and no build id exists at all', () => {
+    const code = emitMainBootstrap({
+      chunks: { mode: 'dev', urlPrefix: '/@fudic/h/' },
+      swUrlExpr: null,
+    });
+    expect(code).toContain('const CHUNKS = "/@fudic/h/";');
+    expect(code).toContain("const resolveChunk = (tag) => CHUNKS + tag + '.js';");
+    expect(code).not.toContain(BUILD_TOKEN);
+    // A dev page with no worker needs nothing from the transport package.
+    expect(code).not.toContain('@fudic/transport');
   });
 });

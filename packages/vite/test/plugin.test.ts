@@ -69,11 +69,14 @@ describe('resolveId', () => {
 });
 
 describe('load — with and without sw.json', () => {
-  it('no sw.json: the main bootstrap is empty and no SW is emitted (§4.7)', () => {
+  it('no sw.json: the main bootstrap still hydrates, and no SW is emitted (§4.7, SDD-17 §4.7.1)', () => {
     const p = setup('build');
     const ctx = emitCtx();
     p.buildStart.call(ctx);
-    expect(p.load(MAIN_ID)).toBe('export {};\n');
+    const main = p.load(MAIN_ID);
+    // It used to be `export {};` here, which made "no Service Worker" mean "no hydration".
+    expect(main).toContain('installHydration({ root: document, resolveChunk });');
+    expect(main).not.toContain('registerRenderServiceWorker');
     // The home wrapper, and no Service Worker chunk. (The client chunks of the three
     // components are also emitted here; `buildStart` below is where they are asserted.)
     expect(emittedNames(ctx).filter((n) => !n.startsWith('h/'))).toEqual(['c/home']);
@@ -91,8 +94,12 @@ describe('load — with and without sw.json', () => {
     expect(p.load(WRAPPER_PREFIX + '/home')).toContain('htmlToByteStream');
   });
 
-  it('dev does not register the SW unless sw.json asks for it (§4.11)', () => {
-    expect(setup('serve', {}, swRoot()).load(MAIN_ID)).toBe('export {};\n');
+  it('dev does not register the SW unless sw.json asks for it (§4.11), but does hydrate', () => {
+    const main = setup('serve', {}, swRoot()).load(MAIN_ID);
+    expect(main).not.toContain('registerRenderServiceWorker');
+    // Dev is a first-class mode (SDD-17 §4.7.1): the resolver is the dev server's URL.
+    expect(main).toContain("const resolveChunk = (tag) => CHUNKS + tag + '.js';");
+    expect(main).toContain('installHydration({ root: document, resolveChunk });');
   });
 
   it('returns null for an unknown wrapper pattern and any other id', () => {
