@@ -82,7 +82,7 @@ Las siete secciones del SDD, reinterpretadas para un defecto:
 | [BUG-20](./BUG-20-fuentes-en-src.md) | El scaffold siembra la raíz del proyecto: no hay `src/` | SDD-22 §3.1, §4.2, §4.5, §6.1 · SDD-19 §3.2 | `conventions` (nuevo) · `cli` · `vite` | `Hecho` |
 | [BUG-21](./BUG-21-nodos-de-whitespace.md) | El árbol lleva un nodo de texto por cada salto de línea del autor | BUG-07 §4.5 · SDD-15 §4.4 · SDD-17 §6.22 | `compiler` | `Bloqueado` (SDD-15, slice de hidratación) |
 | [BUG-22](./BUG-22.md) | El editor no sabe dónde está: sin región, «estoy en HTML» se deducía por eliminación | SDD-24 §4.2 · SDD-25 §4.1 · SDD-28 §5.3 | `compiler` · `language-server` · `vscode` | `Hecho` |
-| [BUG-23](./BUG-23-arroba-valvula-de-escape.md) | El `@` es una válvula de escape: `@( … )` para todo, y el editor calla donde más se escribe | gramática 2, 8, 23, 29, 99 · SDD-23 §4.4 · SDD-24 §4.2 · SDD-26 §4.5 · props-spec 70–73 | `compiler` · `language-core` · `language-server` · `formatter` · `vscode` · `vite` | `Listo` |
+| [BUG-23](./BUG-23-arroba-valvula-de-escape.md) | El `@` es una válvula de escape: `@( … )` para todo, y el editor calla —o comprueba otra expresión— donde más se escribe | gramática 2, 8, 23, 29, 84, 99 · SDD-23 §4.4 · SDD-24 §4.2 · SDD-26 §4.5 · props-spec 70–73 | `compiler` · `language-core` · `language-server` · `formatter` · `vscode` · `vite` | `Listo` |
 
 ## Grafo de dependencias
 

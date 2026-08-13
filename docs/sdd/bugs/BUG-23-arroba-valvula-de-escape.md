@@ -1,10 +1,15 @@
 # BUG-23 — el `@` es una válvula de escape, y el editor calla donde más se escribe
 
+> **Nota de la revisión del 2026-08-13.** El documento nació con siete síntomas; el octavo se
+> añadió al validar la hidratación de SDD-17. Todo lo que lleva la marca **§2.8** —el síntoma 8 de
+> §1, la causa §2.8, la regla 6 de §4.2, dos invariantes de §5, los criterios 5.b y 12.b–12.e, y
+> las tareas 26 y 27— es de esa segunda pasada.
+
 **Estado:** `Listo` · **Rama:** `worktree-bug-23` · **Tareas:**
 [BUG-23-Task.md](./BUG-23-Task.md)
 
 > **Paquetes:** `compiler` · `language-core` · `language-server` · `formatter` · `vscode` · `vite`
-> **Corrige:** gramática 2, 8, 23, 29, 99 · SDD-23 §4.4 · SDD-24 §4.2 · SDD-26 §4.5 · props-spec 70–73
+> **Corrige:** gramática 2, 8, 23, 29, 84, 99 · SDD-23 §4.4 · SDD-24 §4.2 · SDD-26 §4.5 · props-spec 70–73
 
 ---
 
@@ -34,6 +39,7 @@ El fichero que lo reproduce entero es este, y todos los síntomas se ven sobre �
     import { signal } from '@fudic/core';
     const items = [{ id: 1 }];
     const counter = signal({ id: 1 });
+    const titulo = signal('Hola');
     function onClick(ev: PointerEvent) {}
   }
 }
@@ -42,6 +48,7 @@ El fichero que lo reproduce entero es este, y todos los síntomas se ven sobre �
 <div>@(counter().id) @data.title</div>
 
 <app-circle .name="@data.title"></app-circle>
+<app-circle .name="@titulo"></app-circle>
 
 @foreach (const item of items) key (item.id) {
   <div id="@item.id"></div>
@@ -51,7 +58,8 @@ El fichero que lo reproduce entero es este, y todos los síntomas se ven sobre �
 <div slot="PEPITO"></div>
 ```
 
-Siete síntomas, en el orden en que los encontró Pedro:
+Ocho síntomas, en el orden en que los encontró Pedro — el octavo, el **2026-08-13**, al validar
+la hidratación de SDD-17:
 
 | # | Síntoma | Lo que se esperaba |
 |---|---|---|
@@ -62,19 +70,25 @@ Siete síntomas, en el orden en que los encontró Pedro:
 | 5 | En texto, `@` ofrece solo los snippets (`@if`, `@foreach`, `@code`…) y ni `data`, ni las props, ni las signals | Los snippets **y** lo que hay en ámbito |
 | 6 | `<div slot="PEPITO">` fuera de cualquier host no da error; `<div slot="p">` dentro de `<app-circle>` tampoco; y `slot="\|"` no completa | Error en los dos, y la lista de slots del padre al completar |
 | 7 | `<app-circle></app-circle>` sin pasar `name` —una prop **requerida**— no da error ni en *Problems* ni en `pnpm build` | Error en los dos sitios |
+| 8 | `.name="@titulo"` con `titulo` una signal: el compilador cruza `titulo()` —el string— y el editor comprueba `titulo` —el objeto `Signal<string>`— contra `name: string`. Cada uno mira una expresión distinta de la misma línea | Que el editor compruebe lo que el build cruza |
 
-Debajo de los siete hay una sola frase, y es la que da nombre al BUG: **`@( … )` se ha
+Debajo de los siete primeros hay una sola frase, y es la que da nombre al BUG: **`@( … )` se ha
 convertido en la válvula de escape del compilador y del language server**. Todo lo que la
 expresión implícita no admite —una llamada, un índice, un encadenamiento— obliga a escribir
 paréntesis, y esos paréntesis son también el sitio donde el editor deja de entender lo que hay
 dentro. Razor resuelve esto con un carácter y una regla de continuación; fudic tiene el
 carácter y le falta la regla.
 
+El octavo no es de la válvula de escape, y por eso llegó más tarde y por otro camino. Es de lo
+mismo que el cuarto: **el editor y el build deciden por separado qué significa un valor**, y donde
+la regla no está compartida, discrepan. El cuarto lo hace con un manejador; el octavo, con una
+signal.
+
 ---
 
 ## 2. Causa raíz
 
-Siete síntomas, **seis** causas: la 1 y la 7 comparten la misma línea.
+Ocho síntomas, **siete** causas: la 1 y la 7 comparten la misma línea.
 
 ### 2.1 El punto ofrece el vocabulario de HTML porque el literal es uno solo (síntomas 1 y 7)
 
@@ -204,6 +218,72 @@ preguntar «¿qué props declara `app-circle` y cuáles son obligatorias?», as�
 [`markup.ts:266`](../../../packages/compiler/src/emit/markup.ts#L266) llama al `render` del hijo
 con el literal que sea, y `pnpm build` sale verde.
 
+### 2.8 El valor que cruza no es el que el editor comprueba (síntoma 8)
+
+Cuando el valor de una `.prop` es **exactamente** el nombre de algo declarado con `signal(...)` o
+`computed(...)`, el compilador no cruza ese nombre: cruza **su lectura**.
+
+```fud
+<app-circle .name="@titulo"></app-circle>
+```
+
+```js
+// lo que emite el compilador (cliente y servidor, la misma regla)
+$n0.u([, , titulo()]);
+```
+
+Es la decisión 84, y su única implementación es
+[`crossingExpr`](../../../packages/compiler/src/emit/attrs.ts#L121), que consulta el conjunto de
+nombres reactivos que `ClientScope.signals` mantiene. La razón de que solo cruce el valor es
+dura: el servidor pintaría `[object Object]` y el cliente le pasaría al hijo un objeto con un
+`Set` vivo dentro, que es justo lo que `fud-state` no puede serializar (SDD-17 §3). El hijo, por
+tanto, recibe un `number` o un `string` normal, y quien lo vuelve a escribir cuando la signal se
+mueve es el **padre**, con su `$sub`.
+
+La proyección no conoce esa regla. `emitValue` →
+[`emitExpression`](../../../packages/language-core/src/template/attrs.ts#L397) copia la expresión
+**tal cual**, así que el literal que TypeScript comprueba es este:
+
+```ts
+$attrs<$C0>({
+  name: (titulo),      // Signal<string>, contra el `name: string` del hijo
+});
+```
+
+**El editor juzga el objeto; el build cruza el valor.** Es la misma discrepancia del síntoma 4,
+en otro sitio: allí la proyección no sabía que una llamada es una invocación diferida, aquí no
+sabe que un nombre reactivo es una lectura. Y tiene la misma causa de fondo: la regla vive
+**dentro del emit**, donde `language-core` no puede importarla. Buscar «signal» en todo
+`@fudic/language-core` no devuelve una sola línea.
+
+**Por qué ha tardado tanto en salir.** Porque el build no comprueba tipos de plantilla —es el §1
+de [IDEA-02](../ideas/IDEA-02-lo-que-le-falta-para-un-10.md)— así que el único que habla de esa
+línea es el editor, y no hay con qué contrastar lo que dice. Y cuando `fudic check` exista, esto
+empeora: el mismo juicio equivocado pasará también a CI.
+
+**Alcance: los dos sitios donde el emit aplica la regla, y solo esos.** `crossingExpr` tiene
+exactamente dos llamantes ([`attrs.ts:170`](../../../packages/compiler/src/emit/attrs.ts#L170) y
+[`attrs.ts:282`](../../../packages/compiler/src/emit/attrs.ts#L282)):
+
+- la `.prop` de un componente, que es el cruce propiamente dicho;
+- el **atributo plano interpolado** de cualquier elemento — `id="@titulo"` también emite
+  `titulo()`.
+
+`@(titulo())` no entra en ninguno de los dos: ahí el texto ya es la lectura y las dos partes miran
+lo mismo.
+
+**Y el texto queda fuera, hoy.** `<div>@titulo</div>` no pasa por `crossingExpr`: el emit copia la
+expresión verbatim y sale `String((titulo) ?? '')`, que imprime la función. Ahí editor y build **sí**
+coinciden —los dos miran el objeto—, así que no es este síntoma y no se toca aquí. Que la decisión
+(a) de §4.0 diga «`@precio` interpola la señal o el valor» deja esa esquina sin cerrar, y cerrarla
+es decidir si el texto adopta la regla del atributo o si `@titulo` en prosa es un error con
+diagnóstico. **Queda anotado como pregunta abierta, no como parte de este BUG.**
+
+> **Lo que este síntoma NO es.** No es que falte pasar signals **por referencia** para que el hijo
+> se suscriba él mismo. Eso está abierto y anotado en **SDD-31 §7 — «Props como signals»**, con la
+> condición bajo la que se reabre y la vía a evaluar primero. Aquí no se decide: aquí se hace que
+> el editor diga lo que el compilador hace **hoy**.
+
 ---
 
 ## 3. Interfaz pública
@@ -232,6 +312,20 @@ export function scanImplicitExpression(source: string, atOffset: number): ParseR
 // binding/handler.ts (NUEVO) — la regla de decisión 96-98, extraída del emit
 export type HandlerShape = 'reference' | 'call' | 'lambda' | 'unsuitable';
 export function handlerShape(root: OxcNode | undefined): HandlerShape;
+
+// binding/crossing.ts (NUEVO) — la regla de decisión 84, extraída del emit
+/** Los nombres que unas sentencias declaran con `signal(...)` o `computed(...)`. */
+export function reactiveNames(statements: readonly OxcNode[]): ReadonlySet<string>;
+/**
+ * El nombre del reactivo con el que un valor cruza, o `undefined` cuando no cruza ninguno.
+ * Se MUEVE aquí desde `emit/attrs.ts`, donde `crossingExpr` pasa a ser su único consumidor
+ * del lado del emit. La firma no cambia.
+ */
+export function reactiveName(
+  source: string,
+  value: readonly AttributeValuePart[],
+  reactives: ReadonlySet<string>,
+): string | undefined;
 
 // semantic/walk.ts — el visitor llega por fin a los valores de atributo
 export interface TreeVisitor {
@@ -272,6 +366,13 @@ export interface EmitJs {
   readonly neutral: readonly FragmentId[];
   /** El AST del fragmento registrado en ese span, para preguntar por la forma de un handler. */
   ast?(at: Span): FragmentAst;
+}
+
+// template/context.ts — el contexto lleva lo que el fichero declara como reactivo
+export interface TemplateContext {
+  // …
+  /** Los nombres de `signal(...)`/`computed(...)` de este `.fud`, de `reactiveNames`. */
+  readonly reactives: ReadonlySet<string>;
 }
 ```
 
@@ -374,6 +475,19 @@ paréntesis no son una alternativa estilística de la cadena: son otra cosa.
 5. **El `slot` se comprueba contra el `$Slots` del PADRE.** Sin padre componente, contra `never`.
    El nombre se proyecta 1:1 con `LITERAL_NAME_CAPS` —completado **y** diagnóstico— y `slot=""`
    recibe el ancla de dos caracteres que `@|` ya usa.
+6. **Un valor de atributo que es el nombre desnudo de un reactivo se proyecta como su LECTURA.**
+   `.name="@titulo"` con `titulo` declarado `signal(...)`/`computed(...)` se copia
+   `name: (titulo()),` — el paréntesis de llamada es andamiaje, como el que ya envuelve la
+   expresión. La regla la decide `reactiveName`, la misma función que usa `crossingExpr`, así que
+   el editor no puede opinar distinto del emit. Se aplica en los **dos** sitios donde el emit la
+   aplica —la `.prop` y el atributo plano interpolado— y en ninguno más: el texto no pasa por
+   `crossingExpr` (§2.8), así que ahí la copia sigue siendo verbatim y editor y build siguen
+   coincidiendo. Cualquier otro valor se copia como hoy: la regla es la del nombre desnudo, y
+   `@(titulo())` ya es la lectura escrita a mano.
+
+   El `()` es **solo andamiaje** y no lleva mapping: el usuario no lo ha escrito, así que ni se
+   navega, ni se renombra, ni recibe un diagnóstico. Lo que se mapea sigue siendo `titulo`, con
+   `USER_CAPS`, exactamente como ahora.
 
 ### 4.3 El servidor
 
@@ -408,7 +522,13 @@ no puede demostrar.
 - **Ningún texto emitido sin `Mapping`, y ningún tramo mudo con diagnóstico.** El ancla de
   `$required` es `DIAGNOSTIC_ONLY_CAPS`; el punto colgante, `COMPLETION_ONLY_CAPS`.
 - **Editor y build dicen lo mismo.** La forma del handler la decide **una** función
-  (`handlerShape`), que usan el emit y la proyección.
+  (`handlerShape`), y con qué expresión cruza un valor la decide **una** función
+  (`reactiveName`). Las dos las usan el emit y la proyección. Una regla de binding que solo
+  conozca uno de los dos vuelve a abrir el síntoma 4 o el 8.
+- **El editor comprueba la expresión que el build emite, nunca otra.** No es una regla sobre
+  signals: es la forma general de la anterior. Donde el emit transforma un valor antes de
+  cruzarlo, la proyección aplica la misma transformación, y el andamiaje que añade al hacerlo
+  no lleva mapping.
 - **La salida de nivel 1 no se mueve.** Migrar `.prop="@x"` a `.prop=@x` no cambia un byte de
   los goldens: el AST es el mismo.
 
@@ -429,6 +549,9 @@ Cada uno se escribe **en rojo primero**, contra el código de hoy.
    `id=foo` lo sigue dando; `.prop=@` degrada con diagnóstico y sin excepción.
 5. `handlerShape` clasifica las cuatro formas, y `emit/events.ts` sigue emitiendo byte a byte lo
    mismo que antes de la extracción.
+5.b `reactiveNames` encuentra los nombres de `signal(...)` y `computed(...)` de un `@client`, y
+   `emit/attrs.ts` sigue emitiendo byte a byte lo mismo tras mover `reactiveName`: los goldens de
+   cliente y de servidor no se mueven, y `$n0.u([, , titulo()])` sigue saliendo igual.
 
 **Proyección (language-core)**
 
@@ -443,6 +566,17 @@ Cada uno se escribe **en rojo primero**, contra el código de hoy.
     diagnóstico por el punto.
 12. `<div slot="p">` dentro de `<app-circle>` (que declara `PEPITO`) reporta sobre `p`;
     `<div slot="PEPITO">` sin padre componente reporta; `slot="|"` ofrece `PEPITO`.
+12.b **(rojo primero)** `.name="@titulo"` con `const titulo = signal('Hola')` y `name: string` en
+    el hijo no reporta **nada**. Hoy sí reporta, porque compara `Signal<string>` con `string`.
+12.c El error de verdad sigue saliendo: `const titulo = signal(1)` contra `name: string` reporta,
+    y el rango cae sobre `titulo` —lo que el usuario escribió—, no sobre el `()` que añade la
+    proyección. Lo mismo con un `computed`.
+12.d El mapping no se rompe: ir a definición y renombrar desde `@titulo` siguen llegando al
+    `const titulo` del `@client`. Y `.name="@(titulo())"`, escrito a mano, se comporta
+    exactamente igual que antes.
+12.e Los dos sitios y solo esos: `<div id="@titulo">` —atributo plano— también deja de reportar,
+    y `<div>@titulo</div>` —texto— se proyecta **sin** el `()`, igual que hoy, porque el emit
+    tampoco lo pone.
 
 **Servidor**
 
@@ -486,6 +620,19 @@ Cada uno se escribe **en rojo primero**, contra el código de hoy.
   van los globales; ofrecer props con inserción automática del punto es otra conversación.
 - **Cambiar la reserva `$`.** `$event` sigue siendo del compilador; lo nuevo es que la
   proyección lo declara donde el emit lo declara.
+- **Que una signal cruce por REFERENCIA.** El síntoma 8 hace que el editor cuente lo que el
+  compilador hace hoy —cruzar el valor, decisión 84—; no cambia lo que hace. Que el hijo reciba la
+  signal y se suscriba él es otra conversación, **abierta y ya anotada** en
+  [SDD-31 §7 «Props como signals»](../SDD-31-signals-derivadas.md), con su condición para
+  reabrirse (este SDD implementado y BUG-18 cerrado) y la vía a evaluar primero (el corte
+  estático en compilación, no el upgrade perezoso). El día que se decida, la regla nueva sigue
+  teniendo **una sola** implementación: `reactiveName` y sus dos lectores.
+- **Comprobar tipos de plantilla sin editor.** Que `pnpm build` viera el síntoma 8 exige pasar
+  TypeScript por los virtuales, que es `fudic check` — IDEA-02 §1, y no es de este BUG.
+- **`@titulo` en un nodo de TEXTO.** El emit no aplica ahí la regla del cruce y el editor tampoco,
+  así que los dos dicen lo mismo y no hay síntoma que arreglar. Lo que sí queda abierto es qué
+  **debería** hacer: leer la signal como en el atributo, o ser un error con diagnóstico. Es una
+  decisión de gramática y se toma con las 100–104 delante, no dentro de una tarea de proyección.
 
 ### Y lo que queda DESPUÉS de este BUG
 

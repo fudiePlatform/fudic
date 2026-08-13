@@ -4,18 +4,19 @@
 > **Paquetes:** `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` ·
 > `@fudic/formatter` · `fudic-vscode` · `@fudic/vite`
 > **Rama:** `worktree-bug-23`
-> **Progreso:** 0 / 25
+> **Progreso:** 0 / 27
 
-Veinticinco tareas. Las rutas son relativas a la raíz del repo, y cada tarea es un paso
+Veintisiete tareas. Las rutas son relativas a la raíz del repo, y cada tarea es un paso
 cerrado: se puede parar después de cualquiera con el workspace verde.
 
-**El orden manda en cuatro puntos.** La **1 antes que todo**: los siete síntomas se miden
+**El orden manda en cinco puntos.** La **1 antes que todo**: los ocho síntomas se miden
 contra el código de hoy antes de tocarlo, o los tests solo demuestran que el código nuevo hace
 lo que hace. La **2 antes que la 4**: la cadena implícita cambia lo que es un nodo, y el valor
 sin comillas se apoya en ella. La **7 antes que la 11**: la proyección no puede preguntar por la
-forma de un handler hasta que alguien registre el fragmento. Y la **20 antes que la 21**: migrar
-los `.fud` del repo a la forma sin comillas antes de que el formateador la imprima deja los
-goldens comparables en un solo sentido.
+forma de un handler hasta que alguien registre el fragmento. La **26 antes que la 27**: la
+proyección no puede saber qué nombre es reactivo hasta que la regla salga del emit. Y la
+**20 antes que la 21**: migrar los `.fud` del repo a la forma sin comillas antes de que el
+formateador la imprima deja los goldens comparables en un solo sentido.
 
 ---
 
@@ -29,12 +30,14 @@ A · gramática (@fudic/compiler)
    2 cadena implícita ──┬──→ 4 valor sin comillas ──→ 5 región y spans
    3 punto colgante ────┘
    6 handlerShape ──→ 7 fragmentos de atributo en el batch
+   26 reactiveName / reactiveNames (independiente, como la 6)
 
-B · proyección (@fudic/language-core)                    [8..12]
+B · proyección (@fudic/language-core)                    [8..12, 27]
    8 $props / $attrs ──→ 9 $required
    10 punto colgante copiado          [dep 3]
    11 handler como invocación         [dep 6, 7]
    12 slot contra el padre
+   27 el reactivo se proyecta leído   [dep 26, 8]
 
 C · servidor (@fudic/language-server)
    13 snippets al plugin aditivo (independiente, se puede hacer el primer día)
@@ -54,8 +57,8 @@ F · cierre
 
 | carril | tareas | arranca | en paralelo con |
 |---|---|---|---|
-| **A** gramática | 2–7 | tras la 1 | C(13), D |
-| **B** proyección | 8–12 | 8, 9, 12 ya; 10 tras 3; 11 tras 6+7 | C, D |
+| **A** gramática | 2–7, 26 | tras la 1 | C(13), D |
+| **B** proyección | 8–12, 27 | 8, 9, 12 ya; 10 tras 3; 11 tras 6+7; 27 tras 26+8 | C, D |
 | **C** servidor | 13–15 | 13 ya | A, B, D |
 | **D** build | 16–18 | ya | A, B, C |
 | **E** herramientas | 19–22, 25 | tras 4; la 25 tras 17 | — |
@@ -65,13 +68,13 @@ que dice el editor) y **24** (verde y cerrado).
 
 ---
 
-## Fase 1 — la medida: los siete síntomas en rojo (1)
+## Fase 1 — la medida: los ocho síntomas en rojo (1)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **Rojo primero.** Un fichero de aceptación por síntoma, con el `.fud` de §1 del BUG y peticiones LSP **con `context`** (`triggerKind: 2` y el carácter recién tecleado), como las de BUG-16 §6.13. Los siete tienen que fallar hoy: el punto trayendo globales (§2.1), `@data.` sin miembros (§2.2), `FUD0056` sobre `.prop=@name` (§2.3), los dos errores de `$event` (§2.4), el `@` en texto sin `data` (§2.5), los tres casos de `slot` (§2.6) y el host sin props sin error (§2.7). **Anotar en esta tabla qué falla y cómo**, que es lo que después se compara | `language-server` · `compiler` | `test/acceptance/bug23-*.test.ts` *(nuevos)* · [test/acceptance/completion.test.ts](../../../packages/language-server/test/acceptance/completion.test.ts) *(patrón)* |
+| [ ] | 1 | — | **Rojo primero.** Un fichero de aceptación por síntoma, con el `.fud` de §1 del BUG y peticiones LSP **con `context`** (`triggerKind: 2` y el carácter recién tecleado), como las de BUG-16 §6.13. Los ocho tienen que fallar hoy: el punto trayendo globales (§2.1), `@data.` sin miembros (§2.2), `FUD0056` sobre `.prop=@name` (§2.3), los dos errores de `$event` (§2.4), el `@` en texto sin `data` (§2.5), los tres casos de `slot` (§2.6), el host sin props sin error (§2.7) y el error de tipo sobre `.name="@titulo"` con `titulo` una signal (§2.8). **Anotar en esta tabla qué falla y cómo**, que es lo que después se compara. Del octavo hay que anotar el mensaje **exacto** y su rango: es el único de los ocho cuyo síntoma es un diagnóstico que sobra, no uno que falta | `language-server` · `compiler` | `test/acceptance/bug23-*.test.ts` *(nuevos)* · [test/acceptance/completion.test.ts](../../../packages/language-server/test/acceptance/completion.test.ts) *(patrón)* |
 
-## Fase 2 — la gramática: el `@` deja de necesitar paréntesis (6)
+## Fase 2 — la gramática: el `@` deja de necesitar paréntesis (7)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
@@ -81,8 +84,9 @@ que dice el editor) y **24** (verde y cerrado).
 | [ ] | 5 | 4 | **Los spans que leen comillas.** `attributeValueSpan` ya tiene la rama sin comillas —hay que comprobarla con un valor `@`— y `regionAt` tiene que devolver `expression` dentro de él, no `tag`: es lo que hace que el completado dentro de `.p=@da\|` sea el de TypeScript y no el de los nombres de atributo | `compiler` | [src/region/region.ts `attributeValueSpan`](../../../packages/compiler/src/region/region.ts#L89) · [`tagRegion`](../../../packages/compiler/src/region/region.ts#L174) |
 | [ ] | 6 | 1 | **`handlerShape`, una sola fuente de verdad.** La clasificación de decisión 96–98 —referencia / llamada / lambda / imposible— sale de `emit/events.ts` a un módulo que `language-core` pueda importar **sin depender del emit**. `eventHandler` y `busHandler` pasan a consumirla; su salida no cambia un byte | `compiler` | `src/binding/handler.ts` *(nuevo)* · [src/emit/events.ts](../../../packages/compiler/src/emit/events.ts#L86-L121) · [src/binding/index.ts](../../../packages/compiler/src/binding/index.ts) |
 | [ ] | 7 | — | **Los valores de atributo entran en el walk.** `TreeVisitor` gana `binding(expr, attr, el)`, que dispara por cada `RazorExpression` en valor de atributo —incluido el nombre expresión de `bus:(…)`—. Es lo que permite que un batch registre esos fragmentos sin duplicar la travesía, y de paso lo que cualquier analizador futuro necesita para mirar un valor | `compiler` | [src/semantic/walk.ts](../../../packages/compiler/src/semantic/walk.ts#L25-L45) |
+| [ ] | 26 | 1 | **La regla del cruce, una sola fuente de verdad (§2.8).** La decisión 84 —un valor cuyo texto es el nombre desnudo de un `signal(...)`/`computed(...)` cruza como `nombre()`— vive dentro del emit, donde `language-core` no puede importarla sin arrastrarlo entero. `reactiveName` **se muda** a `src/binding/crossing.ts`, junto a `handlerShape`, y se le suma `reactiveNames(statements)`: los nombres reactivos de unas sentencias, que es lo que `readDeclarator` ya sabe extraer al llenar `ExtractedCode.signals` y que hoy solo existe dentro de `extractCode`. `crossingExpr` y `level.ts` pasan a importarla de ahí; **su salida no cambia un byte** y los goldens de cliente y servidor lo fijan (criterio 5.b) | `compiler` | `src/binding/crossing.ts` *(nuevo)* · [src/emit/attrs.ts `reactiveName`, `crossingExpr`](../../../packages/compiler/src/emit/attrs.ts#L96-L129) · [src/emit/oxc-code.ts `readDeclarator`](../../../packages/compiler/src/emit/oxc-code.ts#L399) · [src/emit/level.ts](../../../packages/compiler/src/emit/level.ts#L154) · [src/binding/index.ts](../../../packages/compiler/src/binding/index.ts) |
 
-## Fase 3 — la proyección: props, eventos y slots (5)
+## Fase 3 — la proyección: props, eventos y slots (6)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
@@ -91,6 +95,8 @@ que dice el editor) y **24** (verde y cerrado).
 | [ ] | 10 | 3 | **El punto colgante se copia.** Donde un `RazorExpression` traiga `dangling`, la copia de la expresión se alarga con ese punto bajo `COMPLETION_ONLY_CAPS`. `$text(data.);` es sintaxis incompleta a propósito: TypeScript se recupera, contesta los miembros, y el «Identifier expected» cae en un tramo sin `verification`. Vale igual en contenido y en valor de atributo, porque las dos pasan por aquí | `language-core` | [src/template/expr.ts `copyExpression`](../../../packages/language-core/src/template/expr.ts#L21) |
 | [ ] | 11 | 6, 7 | **El handler que es una llamada.** `EmitJs` gana `ast(at)`; `ownBatch` registra los valores de binding con el walk de la 7, y el servidor le pasa el suyo (tarea 14). Con eso, `emitBehaviour` pregunta `handlerShape` y proyecta `$on('click', ($event) => onClick($event))` para la llamada, y copia tal cual las otras tres formas. `$event` **no se declara en ningún `.d.ts`**: es el parámetro del arrow y su tipo lo pone `$on` — con `as never` en el evento con guion y en `bus:`, ahí `$event` es `never` y sigue sin dar error | `language-core` | [src/emit.ts `EmitJs`, `ownBatch`](../../../packages/language-core/src/emit.ts#L35-L107) · [src/template/attrs.ts `emitBehaviour`](../../../packages/language-core/src/template/attrs.ts#L254-L319) · [src/template/context.ts](../../../packages/language-core/src/template/context.ts) *(el contexto lleva el `ast`)* |
 | [ ] | 12 | — | **El `slot` es del padre.** `emitIntoSlot` sale de `emitProps` y pasa a mirarse en **todo** elemento, con el tag del padre: `$intoSlot<$S_padre>('meta')`, y `never` cuando no hay padre componente. El nombre se proyecta 1:1 con `LITERAL_NAME_CAPS` —comillas como andamiaje— y `slot=""` recibe el ancla de dos caracteres de `emitEventName`. `emitContent`/`emitElement` pasan a llevar el tag del host | `language-core` | [src/template/attrs.ts `emitIntoSlot`, `isSlot`](../../../packages/language-core/src/template/attrs.ts#L198-L233) · [src/emit-client.ts `emitContent`, `emitElement`](../../../packages/language-core/src/emit-client.ts#L121-L163) |
+
+| [ ] | 27 | 26, 8 | **El editor comprueba lo que el build cruza (§4.2 regla 6).** `TemplateContext` gana `reactives` —`reactiveNames` sobre las sentencias de `@client`, que el emisor ya tiene parseadas en su batch—, y `emitValue` proyecta `(titulo())` donde el valor es el nombre desnudo de uno. El `()` es andamiaje **sin mapping**: lo proyectado con `USER_CAPS` sigue siendo `titulo`, así que ir a definición, renombrar y el hover no se mueven. Se aplica en los dos sitios donde el emit aplica la regla —la `.prop` y el atributo plano interpolado, que comparten `emitValue`— y **no** en el texto, que no pasa por `crossingExpr` | `language-core` | [src/template/attrs.ts `emitValue`, `emitExpression`](../../../packages/language-core/src/template/attrs.ts#L381-L401) · [src/template/context.ts](../../../packages/language-core/src/template/context.ts) · [src/emit-client.ts](../../../packages/language-core/src/emit-client.ts) *(arma el contexto)* |
 
 ## Fase 4 — el servidor: quién contesta y quién acompaña (3)
 
@@ -122,8 +128,8 @@ que dice el editor) y **24** (verde y cerrado).
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 23 | todas | **La documentación, que aquí es contrato.** Decisiones **100–104** en la gramática, con la 99 retirada, la 29 precisada y la 8 con su excepción; SDD-23 §4.4 con los dos literales, el `$required`, el punto colgante y el handler diferido; SDD-24 §4.2 con el reparto nuevo de completados y **§6.3 corregido** (el hueco ofrece globales, no props); SDD-12 con `FUD0197`–`FUD0199`; props-spec §2 con quién comprueba lo requerido y dónde | — | [docs/gramar/gramatica-v1-decisiones.md](../../gramar/gramatica-v1-decisiones.md) · [SDD-23](../SDD-23-emisor-ts-virtual.md) · [SDD-24](../SDD-24-language-server.md) · [SDD-12](../SDD-12-semantica.md) · [props-spec.md](../props-spec.md) |
-| [ ] | 24 | 23 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` verdes en el workspace entero, con el `.vsix` y los E2E de Playwright sobre el `dist` prerenderizado. `language-core` y `language-server` al **100 %** en las cuatro métricas; `compiler` no baja. Los 22 criterios de §6 verdes, y los siete tests de la tarea 1 —los que se vieron fallar— en verde. BUG-23 a `Hecho` en [INDEX.md](./INDEX.md), tabla y grafo | — | [INDEX.md](./INDEX.md) · [BUG-23](./BUG-23-arroba-valvula-de-escape.md) |
+| [ ] | 23 | todas | **La documentación, que aquí es contrato.** Decisiones **100–104** en la gramática, con la 99 retirada, la 29 precisada y la 8 con su excepción; SDD-23 §4.4 con los dos literales, el `$required`, el punto colgante y el handler diferido; SDD-24 §4.2 con el reparto nuevo de completados y **§6.3 corregido** (el hueco ofrece globales, no props); SDD-12 con `FUD0197`–`FUD0199`; props-spec §2 con quién comprueba lo requerido y dónde. Y la **decisión 84**, que no cambia pero gana un lector: la lectura del reactivo la proyecta también el editor, con la misma función — anotando ahí que el texto queda fuera y por qué (BUG §2.8) | — | [docs/gramar/gramatica-v1-decisiones.md](../../gramar/gramatica-v1-decisiones.md) · [SDD-23](../SDD-23-emisor-ts-virtual.md) · [SDD-24](../SDD-24-language-server.md) · [SDD-12](../SDD-12-semantica.md) · [props-spec.md](../props-spec.md) |
+| [ ] | 24 | 23 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` verdes en el workspace entero, con el `.vsix` y los E2E de Playwright sobre el `dist` prerenderizado. `language-core` y `language-server` al **100 %** en las cuatro métricas; `compiler` no baja. Los criterios de §6 verdes —los 22 numerados más 5.b, 12.b–12.e y 21.b—, y los ocho tests de la tarea 1 —los que se vieron fallar— en verde. BUG-23 a `Hecho` en [INDEX.md](./INDEX.md), tabla y grafo | — | [INDEX.md](./INDEX.md) · [BUG-23](./BUG-23-arroba-valvula-de-escape.md) |
 
 ---
 
@@ -135,6 +141,8 @@ que dice el editor) y **24** (verde y cerrado).
 | [compiler/src/lexer/lexer.ts](../../../packages/compiler/src/lexer/lexer.ts) | tras `=`, un `@` abre un átomo en vez de texto | `FUD0056` se comía `.prop=@name` antes de que nadie lo mirara |
 | [compiler/src/html/parser.ts](../../../packages/compiler/src/html/parser.ts) | `#parseUnquotedValue` acepta el átomo; `#attributeAtom` pierde `call` | la decisión 99 desaparece dentro de la 100 |
 | [compiler/src/emit/events.ts](../../../packages/compiler/src/emit/events.ts) | delega la clasificación en `handlerShape` | editor y build tienen que decidir la forma con la misma función, o vuelven a discrepar |
+| [compiler/src/emit/attrs.ts](../../../packages/compiler/src/emit/attrs.ts) | `reactiveName` se muda a `binding/crossing.ts`; `crossingExpr` la importa | mismo motivo que la fila de arriba, con la decisión 84: el editor comprobaba el objeto y el build cruzaba el valor (§2.8) |
+| [language-core/src/template/context.ts](../../../packages/language-core/src/template/context.ts) | el contexto lleva `reactives` | la proyección no puede aplicar la regla del cruce sin saber qué nombres son reactivos |
 | [compiler/src/semantic/walk.ts](../../../packages/compiler/src/semantic/walk.ts) | visitor `binding` | los valores de atributo no eran alcanzables sin recorrer el árbol otra vez |
 | [compiler/src/semantic/model.ts](../../../packages/compiler/src/semantic/model.ts) | `propsOf(tag)` | `has(tag)` no basta para saber si falta una prop requerida |
 | [compiler/src/emit/oxc-code.ts](../../../packages/compiler/src/emit/oxc-code.ts) | `Prop.optional` | el `?` está en `T` y hasta hoy no lo leía nadie |
