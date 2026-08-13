@@ -481,3 +481,17 @@ Cada uno se escribe **en rojo primero**, contra el código de hoy.
   van los globales; ofrecer props con inserción automática del punto es otra conversación.
 - **Cambiar la reserva `$`.** `$event` sigue siendo del compilador; lo nuevo es que la
   proyección lo declara donde el emit lo declara.
+
+### Y lo que queda DESPUÉS de este BUG
+
+Cinco cosas que este documento no arregla porque no son suyas, y que están escritas para que no
+se pierdan en [IDEA-02 — lo que le falta al editor (y al build) para ser un 10](../ideas/IDEA-02-lo-que-le-falta-para-un-10.md):
+
+1. **`fudic check`** — TypeScript sobre los ficheros virtuales en CI. Hoy toda la comprobación
+   de props, eventos y slots vive **solo** dentro de VS Code, y por eso este BUG tiene que
+   añadir `FUD0197`–`FUD0199` al compilador. Con el comando, esas tres reglas pasan a ser un
+   atajo y no la única red.
+2. **Una code action por diagnóstico** — `provideCodeActions` ya existe con el caso del `href`.
+3. **Renombrar cruzando ficheros** — medir primero cuánto hace ya la proyección de `$Props`.
+4. **Hover con el contrato del componente** — sale del `propsOf` de la tarea 17.
+5. **El banco de trabajo** — [IDEA-01](../ideas/IDEA-01-banco-de-trabajo-de-componentes.md).
