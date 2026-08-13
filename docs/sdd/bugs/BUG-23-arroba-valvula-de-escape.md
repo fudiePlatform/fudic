@@ -294,15 +294,18 @@ del valor sin comillas.
 
 ## 4. Comportamiento corregido
 
-### 4.0 Tres decisiones, y una hay que confirmarla
+### 4.0 Tres decisiones
 
-**(a) La cadena implícita, ¿en todas partes o solo dentro del tag?** Recomendada: **en todas
-partes** (paridad Razor). `@counter().id` significa lo mismo en texto y en un valor, y es lo que
-retira `@( … )` como válvula. El precio es el de Razor: un paréntesis literal detrás de una
-interpolación (`@precio(IVA incluido)`) pasa a leerse como llamada, y se escapa con `@@` o se
-escribe `@(precio)`. La alternativa conservadora —cadena solo en valor de atributo, contenido
-como hoy— deja `@(counter().id)` vivo en los nodos de texto, que es justo lo que el síntoma 5
-señala. **Se implementa (a) salvo indicación en contra.**
+**(a) El `@` desnudo es el binding, y vale en todas partes. Cerrada.** No hay dos reglas según
+dónde se escriba: `@` seguido de algo que la zona neutra o `@client` declara **es** el binding
+de fudic, en un nodo de texto y en el valor de un atributo, con paréntesis o sin ellos.
+`@precio` interpola la señal o el valor; `@precio()` interpola lo que devuelve la llamada;
+`@precio().id`, la propiedad de lo que devuelve. Un `(` **adyacente** a una cadena es siempre
+una llamada — la ambigüedad con un paréntesis literal en prosa no es tal: `@precio(IVA)` es una
+llamada, y quien quiera el texto escribe `@@precio(IVA)` o separa la interpolación.
+
+Que una prop se pase con `@` y otra con `@( … )` según lo que lleve dentro es exactamente lo
+confuso que este BUG retira.
 
 **(b) El hueco del tag abierto ofrece globales, no props.** `<app-badge |>` pasa a completar
 contra `{} & $GlobalAttrs`, y las props se alcanzan con el punto. Es lo coherente con la
@@ -343,9 +346,11 @@ para que el editor pueda preguntar por los miembros. Un `?.` colgante igual.
 vivo para todo lo demás: `id=foo` sigue siendo un error. Es una excepción **a la decisión 8**, no
 su derogación.
 
-**104. `@( … )` es para expresiones que no son cadenas.** Operadores, literales, `new`,
-ternarios, `await`: `@(1 + 1)`, `@(new Date().toISOString())`, `@(a ? b : c)`. Con las 100–103
-deja de ser la vía de escape y pasa a ser lo que su nombre dice.
+**104. `@( … )` es para expresiones que no son cadenas, y para nada más.** Operadores,
+literales, `new`, ternarios, `await`: `@(1 + 1)`, `@(new Date().toISOString())`, `@(a ? b : c)`.
+Todo lo que sea **acceder a algo que el fichero declara** —una señal, una prop, una función, un
+`data`, con sus puntos, sus llamadas y sus índices— se escribe con el `@` desnudo. Los
+paréntesis no son una alternativa estilística de la cadena: son otra cosa.
 
 ### 4.2 La proyección: cinco reglas
 
