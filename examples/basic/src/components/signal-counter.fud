@@ -4,8 +4,9 @@
   @client {
     import { signal } from '@fudic/core';
 
-    // `.value="@count"` hands over the signal ITSELF: the expression is the
-    // identifier, not a call.
+    // `.value="@count"` names the signal and the compiler reads it for you: what crosses is
+    // `count()`. Naming it is what earns a subscription of its own, one per signal, writing
+    // one slot of the child's payload.
     const count = signal(0);
 
     function inc() {

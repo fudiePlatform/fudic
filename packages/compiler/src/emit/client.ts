@@ -24,6 +24,7 @@ import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js'
 import { AssetLinker } from './assets.js';
 import { codeOf, type Prop } from './oxc-code.js';
 import { hookupContext } from './events.js';
+import { movingNames } from './level.js';
 import { componentStyleNode, type EmitOptions, type EmitOutput } from './module.js';
 import type { Diagnostic } from '../types/index.js';
 
@@ -88,11 +89,9 @@ function buildComponentClientModule(
       return child === undefined ? undefined : codeOf(child).props;
     },
     signals: new Set(signals.map((s) => s.name)),
-    // `changeable` widened with the signals, and NOT the other way round: a block takes by
-    // parameter only what an update can bring it again, and a `const x = signal(0)` is never
-    // reassigned — it reaches a block through the closure. What a child host asks is the
-    // other question, "can the view see this value move?", and there a signal counts.
-    moving: new Set([...changeable, ...signals.map((s) => s.name)]),
+    // The same set `level.ts` decides hydratability with, and from the same function: what
+    // the emit hands over again and what the page marks hydratable cannot disagree.
+    moving: movingNames(comp),
   };
   // One channel for everything the emit has to SAY about this file, and one for what every
   // walk of it shares: a block three levels down reports through the same two.

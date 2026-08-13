@@ -19,37 +19,33 @@
 
 <value-counter></value-counter>
 
-<h2>Qué debería pasar</h2>
+<h2>Qué pasa</h2>
 <p>
   El hijo no tiene nada reactivo: recibió un <code>0</code> y un <code>0</code> es lo que
   sabe. Para que muestre el <code>1</code>, alguien tiene que <strong>escribírselo</strong>.
-  Ese alguien es el padre, en su propia suscripción, y la escritura es una llamada:
-  <code>hijo.u([…, valor])</code>. Un método, posicional, el mismo orden que el payload.
+  Ese alguien es el padre, y la escritura es una llamada: <code>hijo.u([…, valor])</code>.
+  Un método, posicional, el mismo orden que el payload.
 </p>
 <p>
-  Y no es el caso raro, es el caso normal: por el shadow boundary
-  <strong>cruza un valor, nunca la signal</strong>, así que todo hijo que venga del
-  servidor está en esta situación —incluido el de <a href="/signal-prop">la otra
-  página</a> cuando se pinta desde SSR—.
+  Pulsa <code>+1</code> y el recuadro rojo sube. La diferencia con
+  <a href="/signal-prop">la otra página</a> no está en lo que cruza —cruza un número en las
+  dos— sino en <strong>cuándo se vuelve a escribir</strong>. Ahí el valor es el nombre de una
+  signal y tiene canal propio: al moverse escribe su casilla y nada más. Aquí es una
+  expresión, así que se recompone en la <em>pasada de render</em> del padre, junto al resto
+  de sus valores. Es un reenvío más ancho a cambio de poder escribir lo que quieras dentro
+  del paréntesis.
 </p>
 
-<h2>Qué pasa hoy</h2>
+<h2>Y por eso el hijo también se hidrata</h2>
 <p>
-  Nada, y por dos motivos distintos. El primero es el mismo de la otra página: los event
-  bindings todavía no se emiten. El segundo es el que importa:
-  <strong>el canal no existe</strong>. El <code>.value</code> del host se parsea, se
-  clasifica y se descarta —ningún emisor lo lee—, y aunque llegara, no hay ningún método
-  al que llamar: el controlador del hijo expone <code>c</code>, <code>h</code> y
-  <code>r</code>, y sus props son variables de una closure que nadie puede reasignar
-  desde fuera.
+  El compilador mira lo que la expresión <strong>lee</strong>. Como <code>@("@(count())")</code>
+  lee una signal, sabe que ese valor se va a mover, así que marca al hijo como hidratable y
+  le reserva su identidad en la página. Un valor que no lee nada —una constante— no marca
+  nada: el hijo se queda en nivel 1, HTML puro, y no descarga una línea de JavaScript.
 </p>
 <p>
-  Se ve en el módulo emitido: el padre renderiza al hijo con
-  <code>renderValueDisplay($dom, $shadow, { })</code> —props vacías—, así que el
-  <code>0</code> del recuadro rojo no lo pone el padre, lo pone el <em>default</em> del
-  propio hijo. Ni siquiera el primer valor cruza.
-</p>
-<p>
-  Eso es <strong>BUG-12</strong>, y esta página es su criterio de aceptación: cuando un
-  click en <code>+1</code> cambie el número del recuadro rojo, está arreglado.
+  Esa pregunta la contesta <strong>una sola</strong> función, y el motivo es este mismo
+  ejemplo: cuando eran dos, una decía que el hijo era nivel 1 y la otra le enviaba un valor
+  igualmente. El hijo nunca se definía, no tenía el método al que llamar, y esta página
+  quedaba muerta con un error en consola.
 </p>

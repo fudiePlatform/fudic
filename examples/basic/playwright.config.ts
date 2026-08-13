@@ -19,6 +19,9 @@ import { defineConfig } from '@playwright/test';
  * parallelism and a retry would hide exactly the state we are measuring.
  */
 const HYDRATION = /hydration\.spec\.ts/u;
+// The route smoke test runs in all three, and that is the point of it: the two bugs it was
+// written for were visible in exactly one shape each — one only in dev, one only in a build.
+const THREE_WAY = /(hydration|routes)\.spec\.ts/u;
 
 export default defineConfig({
   testDir: './tests',
@@ -33,8 +36,8 @@ export default defineConfig({
   },
   projects: [
     { name: 'preview', testIgnore: HYDRATION, use: { baseURL: 'http://localhost:4173' } },
-    { name: 'dev', testMatch: HYDRATION, use: { baseURL: 'http://localhost:5273' } },
-    { name: 'nosw', testMatch: HYDRATION, use: { baseURL: 'http://localhost:4273' } },
+    { name: 'dev', testMatch: THREE_WAY, use: { baseURL: 'http://localhost:5273' } },
+    { name: 'nosw', testMatch: THREE_WAY, use: { baseURL: 'http://localhost:4273' } },
   ],
   webServer: [
     {

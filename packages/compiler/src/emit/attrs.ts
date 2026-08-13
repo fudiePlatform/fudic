@@ -21,6 +21,7 @@ import type { Span } from '../types/index.js';
 import { classifyAttribute, type Binding } from '../binding/index.js';
 import type { CodeWriter } from './writer.js';
 import type { AssetLinker } from './assets.js';
+import { freeReferences, type FragmentAst } from './scope.js';
 
 /**
  * A single-URL asset attribute the linker rewrites: `src`/`poster` on any element, or
@@ -102,6 +103,37 @@ export function reactiveName(
   if (only?.type !== 'razor-expression') return undefined;
   const text = source.slice(only.expr.start, only.expr.end);
   return reactives.has(text) ? text : undefined;
+}
+
+/**
+ * The WEAKER question, and the one that decides whether anything downstream can move at
+ * all: does this value READ a name whose value can change?
+ *
+ * `reactiveName` asks whether the value IS a bare reactive, and that answer is what buys a
+ * subscription of its own (BUG-18 §4.1). It is too narrow to decide the other two things a
+ * value determines — whether the child is hydratable at all (`level.ts`) and whether the
+ * parent has to hand it over again (`markup-client.ts#childValues`) — because
+ * `.value="@(count() + 1)"` moves exactly as much as `.value="@count"` and is not a name.
+ *
+ * ONE definition for both readers, and that is not tidiness: they were two, they disagreed,
+ * and the disagreement was a `TypeError` in the browser. The emit pushed a new value into a
+ * host that the level rule had decided was level 1, so the tag was never defined and the
+ * element had no `u` to call. Whatever answers yes here has to be hydratable there.
+ *
+ * By FREE references and not by text: a name a lambda inside the expression declares itself
+ * is not the component's, and `@(xs.map((count) => count))` reads nothing that moves.
+ */
+export function readsMoving(
+  value: readonly AttributeValuePart[],
+  ast: (at: Span) => FragmentAst,
+  moving: ReadonlySet<string>,
+): boolean {
+  const fragments: FragmentAst[] = [];
+  for (const part of value) {
+    if (part.type === 'razor-expression') fragments.push(ast(part.expr));
+  }
+  if (fragments.length === 0) return false;
+  return freeReferences(fragments).some((name) => moving.has(name));
 }
 
 /**

@@ -45,12 +45,12 @@ import { type AssetLinker } from './assets.js';
 import {
   crossingExpr,
   reactiveName,
+  readsMoving,
   writeElementAttrs,
   type HostContext,
   type ValueSink,
 } from './attrs.js';
 import { branchesOf } from './constructs.js';
-import { freeReferences, type FragmentAst } from './scope.js';
 import { isControlNode, markerSite } from './marker.js';
 import { nestedSpaceMode, type SpaceMode } from './space.js';
 import { emitItems, type EmitItem, type TextRun } from './runs.js';
@@ -772,21 +772,11 @@ export class ClientMarkupEmitter {
   }
 
   /**
-   * Whether an attribute value reads anything this component can see move.
-   *
-   * By FREE references, not by text: `.count="@count"` and `.label="@(count + 1)"` have to
-   * answer the same, and a name a lambda inside the expression declares itself is not this
-   * component's. It is the same question `block.ts` asks to decide a block's parameters, and
-   * deliberately the same function — a second way of answering it would drift, and the drift
-   * is silent: a child that stops being updated looks exactly like a child with nothing new.
+   * Whether an attribute value reads anything this component can see move — asked with the
+   * SAME function the level rule uses, because the two answers have to agree (`attrs.ts`).
    */
   #reads(value: readonly AttributeValuePart[]): boolean {
-    const asts: FragmentAst[] = [];
-    for (const part of value) {
-      if (part.type === 'razor-expression') asts.push(this.#hookup.template.ast(part.expr));
-    }
-    if (asts.length === 0) return false;
-    return freeReferences(asts).some((name) => this.#scope.moving.has(name));
+    return readsMoving(value, this.#hookup.template.ast, this.#scope.moving);
   }
 
   /** Descend into an element: a level of its own, with its own cursor. */
