@@ -8,6 +8,10 @@
 > `@fudic/language-server` · `@fudic/vscode`
 > **No bloquea nada.** Ninguno de los cinco puntos es requisito de BUG-23; los cinco lo
 > presuponen.
+> **Qué pasa con esto.** Se aborda **después** de cerrar BUG-23, y entonces se escribe como
+> SDD de verdad —empezando por el §1, `fudic check`—, no como parche dentro de aquel. BUG-23
+> es un defecto y todo lo que describe lo es; esto es trabajo nuevo, y mezclarlos alarga el
+> único documento que ahora mismo hay que cerrar.
 
 ---
 
