@@ -46,4 +46,19 @@ export {
 } from './hydrate/install.js';
 export type { ResolveChunk, ImportModule } from './hydrate/chunks.js';
 export type { HydratedFrom } from './hydrate/registry.js';
-export { nullWarmChannel, type WarmChannel } from './hydrate/warm/channel.js';
+export {
+  nullWarmChannel,
+  WARMED_EVENT,
+  type WarmChannel,
+  type WarmedDetail,
+} from './hydrate/warm/channel.js';
+export { createPreloadWarmChannel, type PreloadChannelConfig } from './hydrate/warm/preload.js';
+export {
+  createServiceWorkerWarmChannel,
+  WARM_MESSAGE,
+  WARMED_MESSAGE,
+  type ServiceWorkerChannelConfig,
+  type ServiceWorkerHost,
+  type WarmMessage,
+  type WarmedMessage,
+} from './hydrate/warm/sw.js';

@@ -36,6 +36,7 @@ import {
   type ReportHydrated,
 } from './registry.js';
 import { type WarmChannel } from './warm/channel.js';
+import { startWarmObserver } from './warm/observer.js';
 
 /** Runtime installed, and not one line of component JavaScript evaluated yet. */
 export const READY_EVENT = 'fud:ready';
@@ -130,6 +131,17 @@ export function installHydration(options: HydrationOptions): void {
 
   for (const type of CAPTURED_TYPES) {
     options.root.addEventListener(type, capture, true);
+  }
+  if (options.warm !== undefined) {
+    // A separate axis from everything above: it observes viewports and orders network,
+    // and it neither defines nor upgrades anything. A page with no channel simply has
+    // no anticipated network — hydration does not change one line (§4.7).
+    startWarmObserver({
+      maps,
+      resolveChunk: options.resolveChunk,
+      channel: options.warm,
+      root: doc,
+    });
   }
   doc.dispatchEvent(new CustomEvent(READY_EVENT));
 }

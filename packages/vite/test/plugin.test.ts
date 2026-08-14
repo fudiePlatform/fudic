@@ -75,7 +75,9 @@ describe('load — with and without sw.json', () => {
     p.buildStart.call(ctx);
     const main = p.load(MAIN_ID);
     // It used to be `export {};` here, which made "no Service Worker" mean "no hydration".
-    expect(main).toContain('installHydration({ root: document, resolveChunk });');
+    expect(main).toContain(
+      'installHydration({ root: document, resolveChunk, warm: createPreloadWarmChannel() });',
+    );
     expect(main).not.toContain('registerRenderServiceWorker');
     // The home wrapper, and no Service Worker chunk. (The client chunks of the three
     // components are also emitted here; `buildStart` below is where they are asserted.)
@@ -97,9 +99,12 @@ describe('load — with and without sw.json', () => {
   it('dev does not register the SW unless sw.json asks for it (§4.11), but does hydrate', () => {
     const main = setup('serve', {}, swRoot()).load(MAIN_ID);
     expect(main).not.toContain('registerRenderServiceWorker');
-    // Dev is a first-class mode (SDD-17 §4.7.1): the resolver is the dev server's URL.
+    // Dev is a first-class mode (SDD-17 §4.7.1): the resolver is the dev server's URL and
+    // the warm goes through `modulepreload`, so dev is where warm is measurable at all.
     expect(main).toContain("const resolveChunk = (tag) => CHUNKS + tag + '.js';");
-    expect(main).toContain('installHydration({ root: document, resolveChunk });');
+    expect(main).toContain(
+      'installHydration({ root: document, resolveChunk, warm: createPreloadWarmChannel() });',
+    );
   });
 
   it('returns null for an unknown wrapper pattern and any other id', () => {

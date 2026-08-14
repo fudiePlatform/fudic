@@ -22,6 +22,22 @@ export interface WarmChannel {
   warm(urls: readonly string[], tags: readonly string[]): void;
 }
 
+/** A chunk is in place, and not one line of it was evaluated (SDD-17 §3). */
+export const WARMED_EVENT = 'fud:warmed';
+
+export interface WarmedDetail {
+  readonly tag: string;
+}
+
+/**
+ * Report a deposited chunk, in the one shape the event declares — so the two channels
+ * cannot disagree on what a page listening for `fud:warmed` receives.
+ */
+export function announceWarmed(doc: Document, tag: string): void {
+  const detail: WarmedDetail = { tag };
+  doc.dispatchEvent(new CustomEvent(WARMED_EVENT, { detail }));
+}
+
 /**
  * The channel of a page that warms nothing. Not a degraded mode: a page may legitimately
  * decide that anticipated network is not worth it, and hydration does not change one line.

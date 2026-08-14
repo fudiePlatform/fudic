@@ -1,6 +1,6 @@
 # SDD-17 — el runtime de hidratación: el cierre de fudic
 
-**Estado:** `En curso` · **Progreso: 13 / 21** · **Rama:** `worktree-sdd-17-hidratacion` ·
+**Estado:** `En curso` · **Progreso: 18 / 21** · **Rama:** `worktree-sdd-17-hidratacion` ·
 **SDD:** [SDD-17](./SDD-17-hidratacion.md)
 
 Estas 21 tareas **terminan el framework**. Al marcarlas no queda nada de v1 salvo los cuatro
@@ -114,11 +114,11 @@ navegador, sin SW) y **21** (verde y cerrado).
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 14 | 7 | El disparador, idéntico en los dos canales: `IntersectionObserver` (`threshold: 0`, `unobserve` tras la primera vez), cierre transitivo por `fud-bus` + `fud-tree`, `requestIdleCallback` con `timeout: 800` y `warmedTags` idempotente | `core` | `src/hydrate/warm/observer.ts` |
-| [ ] | 15 | 7 | Canal **sin** SW: `<link rel="modulepreload">` por chunk. Descarga y parsea sin **evaluar**, así que el invariante de cero JS de componente se mantiene; `fud:warmed` en su `load`. Va antes que el canal SW porque no depende de nada y es el que hace medible el warm en dev | `core` | `src/hydrate/warm/preload.ts` |
-| [ ] | 16 | — | El SW no entiende `warm`: solo conoce `LOCATION_MESSAGE` y warmea **por ruta**. Añadir el mensaje, su handler, la descarga con `priority:'low'`, la idempotencia por `cache.match` y la respuesta `warmed`. No toca el core: se puede hacer desde el primer día | `transport` · `vite` | [messages.ts](../../packages/transport/src/messages.ts) · [router.ts `warm`](../../packages/transport/src/router.ts#L277) · [bootstrap.ts `emitSwBootstrap`](../../packages/vite/src/bootstrap.ts#L27) |
-| [ ] | 17 | 16 | Canal **con** SW: `controller.postMessage({type:'warm', …})`. Si `controller === null` **no se envía nada** —no hay a quién— y se reintenta al `controllerchange`, porque la primera carga nunca está controlada aunque el SW esté registrado | `core` | `src/hydrate/warm/sw.ts` |
-| [ ] | 18 | 10, 14, 15, 17 | El bootstrap elige: canal SW cuando la página se emitió con `sw.json` (y en dev con `dev:'preview'`), canal `modulepreload` en el resto. Un único módulo emitido, la elección hecha en build | `vite` | [bootstrap.ts `emitMainBootstrap`](../../packages/vite/src/bootstrap.ts#L138) |
+| [x] | 14 | 7 | El disparador, idéntico en los dos canales: `IntersectionObserver` (`threshold: 0`, `unobserve` tras la primera vez), cierre transitivo por `fud-bus` + `fud-tree`, `requestIdleCallback` con `timeout: 800` y `warmedTags` idempotente | `core` | `src/hydrate/warm/observer.ts` |
+| [x] | 15 | 7 | Canal **sin** SW: `<link rel="modulepreload">` por chunk. Descarga y parsea sin **evaluar**, así que el invariante de cero JS de componente se mantiene; `fud:warmed` en su `load`. Va antes que el canal SW porque no depende de nada y es el que hace medible el warm en dev | `core` | `src/hydrate/warm/preload.ts` |
+| [x] | 16 | — | El SW no entiende `warm`: solo conoce `LOCATION_MESSAGE` y warmea **por ruta**. Añadir el mensaje, su handler, la descarga con `priority:'low'`, la idempotencia por `cache.match` y la respuesta `warmed`. No toca el core: se puede hacer desde el primer día | `transport` · `vite` | [messages.ts](../../packages/transport/src/messages.ts) · [router.ts `warm`](../../packages/transport/src/router.ts#L277) · [bootstrap.ts `emitSwBootstrap`](../../packages/vite/src/bootstrap.ts#L27) |
+| [x] | 17 | 16 | Canal **con** SW: `controller.postMessage({type:'warm', …})`. Si `controller === null` **no se envía nada** —no hay a quién— y se reintenta al `controllerchange`, porque la primera carga nunca está controlada aunque el SW esté registrado | `core` | `src/hydrate/warm/sw.ts` |
+| [x] | 18 | 10, 14, 15, 17 | El bootstrap elige: canal SW cuando la página se emitió con `sw.json` (y en dev con `dev:'preview'`), canal `modulepreload` en el resto. Un único módulo emitido, la elección hecha en build | `vite` | [bootstrap.ts `emitMainBootstrap`](../../packages/vite/src/bootstrap.ts#L138) |
 
 ## Fase 4 — cierre
 

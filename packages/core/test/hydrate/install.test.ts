@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   installHydration,
   HYDRATED_EVENT,
@@ -159,6 +159,66 @@ describe('the runtime installed', () => {
     // to the component's own listener. And exactly one `fud:hydrated`.
     expect(r.trace.filter((t) => t.startsWith('handler:'))).toHaveLength(3);
     expect(r.hydrated).toHaveLength(1);
+  });
+
+  it('a page with no warm channel orders no network, and hydrates the same', () => {
+    // The observer is a separate axis: with no channel there is nothing to observe FOR,
+    // and warm is an optimization, never a requirement (§4.7).
+    vi.stubGlobal('IntersectionObserver', class {
+      constructor() {
+        throw new Error('a page with no channel must not observe anything');
+      }
+    });
+    try {
+      host('ins-quiet', 0, app);
+      expect(() => run()).not.toThrow();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('with a channel it warms what is visible, closure included, out of the gesture', () => {
+    publish({ tree: { 'ins-warm': ['ins-warm-kid'] } });
+    app = document.createElement('div');
+    document.body.appendChild(app);
+    host('ins-warm', 0, app);
+
+    const orders: string[][] = [];
+    const scrollIntoView: (() => void)[] = [];
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        readonly #callback: (entries: unknown[]) => void;
+        constructor(callback: (entries: unknown[]) => void) {
+          this.#callback = callback;
+        }
+        observe(target: Element): void {
+          scrollIntoView.push(() => this.#callback([{ isIntersecting: true, target }]));
+        }
+        unobserve(): void {
+          // one entry, one order
+        }
+      },
+    );
+    const idle: (() => void)[] = [];
+    vi.stubGlobal('requestIdleCallback', (task: () => void) => idle.push(task));
+    try {
+      installHydration({
+        root: app,
+        document,
+        registry: new TestRegistry(),
+        resolveChunk: (tag) => `/h/${tag}.js`,
+        warm: { warm: (_urls, tags) => orders.push([...tags]) },
+      });
+
+      scrollIntoView.forEach((show) => show());
+      expect(orders).toEqual([]); // idle, not now
+      idle.forEach((task) => task());
+
+      expect(orders).toEqual([['ins-warm', 'ins-warm-kid']]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('with no ports named it uses the page: its document and its element registry', async () => {

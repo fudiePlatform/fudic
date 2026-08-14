@@ -100,6 +100,11 @@ export interface Router {
   handle(event: FetchEvent): void;
   /** Warm a template: chunk + deps into `routes-<build>`. Idempotent. */
   warm(pathname: string): Promise<void>;
+  /**
+   * Warm a list of hydration chunks (SDD-17 §4.7). Returns the ones that ended up in the
+   * cache — the page reports `fud:warmed` for those and only those.
+   */
+  warmUrls(urls: readonly string[]): Promise<readonly string[]>;
   /** Seed the in-memory page index from the cache. Awaited before wiring `fetch`. */
   ready(): Promise<void>;
   /** Drop a concrete route's cached page and data. */
@@ -244,6 +249,16 @@ export function createRouter(config: RouterConfig): Router {
    * also matched a shell entry would serve it from `data-<build>` and leave the
    * precached copy unread forever — which is exactly the bug (BUG-01 §4.1).
    */
+  /** The class a path belongs to, or `null` when no rule claims it. */
+  const ruleFor = (pathname: string): ResourceRule | null => {
+    for (const rule of config.resources ?? []) {
+      if (globMatches(rule.pattern, pathname)) {
+        return rule;
+      }
+    }
+    return null;
+  };
+
   const handleResource = (event: FetchEvent, url: URL): void => {
     if (shellUrls.has(url.href)) {
       // One policy, not configurable: the cache name carries the build id, so within a
@@ -252,19 +267,17 @@ export function createRouter(config: RouterConfig): Router {
       event.respondWith(stores.shell.get(event.request, 'cache-first', null));
       return;
     }
-    for (const rule of config.resources ?? []) {
-      if (globMatches(rule.pattern, url.pathname)) {
-        event.respondWith(
-          (async (): Promise<Response> => {
-            const response = await stores.data.get(event.request, rule.policy, rule.ttl);
-            if (rule.maxEntries !== undefined) {
-              void stores.data.prune(rule.maxEntries);
-            }
-            return response;
-          })(),
-        );
-        return;
-      }
+    const rule = ruleFor(url.pathname);
+    if (rule !== null) {
+      event.respondWith(
+        (async (): Promise<Response> => {
+          const response = await stores.data.get(event.request, rule.policy, rule.ttl);
+          if (rule.maxEntries !== undefined) {
+            void stores.data.prune(rule.maxEntries);
+          }
+          return response;
+        })(),
+      );
     }
   };
 
@@ -288,6 +301,43 @@ export function createRouter(config: RouterConfig): Router {
       await stores.routes.get(abs(chunkUrl), 'cache-first', null);
       warmed.add(record.pattern);
     }
+  };
+
+  /**
+   * Warm the hydration chunks the page asked for (SDD-17 §4.7).
+   *
+   * It deposits them in the SAME store the fetch handler will read them from, and that is
+   * the whole design of this function: a warm that wrote anywhere else would be a cache
+   * nobody reads, which is BUG-01 again. So a URL no resource class claims is NOT warmed —
+   * the router would not serve it either, and precaching it would be pure waste.
+   *
+   * `cache-first` with no TTL, and not the class's own policy: the point of the deposit is
+   * to AVOID network later, and a `network-first` class would re-download on every order.
+   * That read is also the second layer of the idempotence of §4.7 — the page holds the
+   * first — so a repeated order costs one `cache.match` and nothing else. `priority: 'low'`
+   * keeps the download off the critical path, which is what makes warm free.
+   */
+  const warmUrls = async (urls: readonly string[]): Promise<readonly string[]> => {
+    const deposited: string[] = [];
+    for (const url of urls) {
+      const absolute = abs(url);
+      if (ruleFor(new URL(absolute).pathname) === null) {
+        continue;
+      }
+      try {
+        // Only a 200 is stored (`Store` refuses the rest), so only a 200 may be reported:
+        // a page told a chunk is warm and then paying network for it would be worse than
+        // never having been told.
+        const response = await stores.data.get(new Request(absolute, { priority: 'low' }), 'cache-first', null);
+        if (response.status === 200) {
+          deposited.push(url);
+        }
+      } catch {
+        // Warm is an optimization: a chunk that did not land is downloaded on demand,
+        // inside the gesture, exactly as if warm had never existed.
+      }
+    }
+    return deposited;
   };
 
   return {
@@ -328,6 +378,8 @@ export function createRouter(config: RouterConfig): Router {
     },
 
     warm,
+
+    warmUrls,
 
     async ready(): Promise<void> {
       for (const url of await stores.pages.keys()) {

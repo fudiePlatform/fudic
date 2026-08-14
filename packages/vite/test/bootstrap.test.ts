@@ -81,12 +81,25 @@ describe('emitSwBootstrap', () => {
     expect(code).toContain('void boot();');
   });
 
-  it('has exactly one warm trigger: the location notice, never activate', () => {
+  it('has exactly one ROUTE warm trigger: the location notice, never activate', () => {
     expect(code).toContain('LOCATION_MESSAGE');
-    expect(code).toContain('r.warm(new URL(e.data.url).pathname)');
+    expect(code).toContain('r.warm(new URL(msg.url).pathname)');
     expect(code.slice(code.indexOf("addEventListener('activate'"), code.indexOf('let router'))).not.toContain(
       'warm',
     );
+  });
+
+  it('SDD-17 §4.7 deposits the chunks the page asks for, and confirms what landed', () => {
+    expect(code).toContain('WARM_MESSAGE');
+    expect(code).toContain('await r.warmUrls(msg.urls)');
+    // Only what is really in the cache is confirmed: `fud:warmed` for a chunk that then
+    // pays network would be worse than no warm at all.
+    expect(code).toContain('const landed = new Set(');
+    expect(code).toContain('type: WARMED_MESSAGE');
+    expect(code).toContain('urls: msg.urls.filter((url) => landed.has(url))');
+    expect(code).toContain('tags: msg.tags.filter((_, i) => landed.has(msg.urls[i]))');
+    // The reply goes to the client that ordered it, not broadcast to every page.
+    expect(code).toContain('e.source.postMessage(');
   });
 
   it('names every cache with the build id and purges the others on activate', () => {
@@ -125,8 +138,7 @@ describe('emitMainBootstrap', () => {
     const without = emitMainBootstrap({ chunks: { mode: 'build', base: '/' }, swUrlExpr: null });
 
     for (const code of [withWorker, without]) {
-      expect(code).toContain("import { installHydration } from '@fudic/core';");
-      expect(code).toContain('installHydration({ root: document, resolveChunk });');
+      expect(code).toContain('installHydration({ root: document, resolveChunk, warm:');
     }
     // What used to be an `export {};` — and therefore no hydration at all — for three
     // quarters of the real cases: no `sw.json`, `pnpm dev`, an uncontrolled first load.
@@ -140,6 +152,31 @@ describe('emitMainBootstrap', () => {
     expect(code).toContain('const resolveChunk = (tag) => URLS.hydrateUrl(tag);');
     // No map from tag to URL, here or anywhere (SDD-17 §4.6).
     expect(code).not.toContain('fud-chunks');
+  });
+
+  it('SDD-17 §4.7.1 picks the warm channel here, once, and ships only that one', () => {
+    const withWorker = emitMainBootstrap({
+      chunks: { mode: 'build', base: '/' },
+      swUrlExpr: '"/fudic-sw.js"',
+    });
+    const without = emitMainBootstrap({
+      chunks: { mode: 'dev', urlPrefix: '/@fudic/h/' },
+      swUrlExpr: null,
+    });
+
+    expect(withWorker).toContain(
+      "import { installHydration, createServiceWorkerWarmChannel } from '@fudic/core';",
+    );
+    expect(withWorker).toContain('warm: createServiceWorkerWarmChannel()');
+    expect(withWorker).not.toContain('createPreloadWarmChannel');
+
+    // No worker — no `sw.json`, `pnpm dev`, an insecure context — and the page still warms:
+    // `modulepreload` fetches and parses without evaluating, so the invariant holds.
+    expect(without).toContain(
+      "import { installHydration, createPreloadWarmChannel } from '@fudic/core';",
+    );
+    expect(without).toContain('warm: createPreloadWarmChannel()');
+    expect(without).not.toContain('createServiceWorkerWarmChannel');
   });
 
   it('in dev it is the dev server’s per-tag URL, and no build id exists at all', () => {

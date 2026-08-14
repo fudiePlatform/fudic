@@ -27,7 +27,7 @@ export interface SwBootstrapOptions {
 export function emitSwBootstrap(options: SwBootstrapOptions): string {
   return `import {
   loadManifest, createLinker, canLink, createRouter, createStore, cacheNames,
-  isStaleCache, controlBus, LOCATION_MESSAGE,
+  isStaleCache, controlBus, LOCATION_MESSAGE, WARM_MESSAGE, WARMED_MESSAGE,
 } from '@fudic/transport';
 import * as ssr from '@fudic/ssr';
 
@@ -121,11 +121,29 @@ async function build() {
 // the SW is ready before the first navigation it could serve.
 void boot();
 
-// THE single warm trigger (§4.6.2): the document says where the user is, and the SW
-// warms that template behind the navigation already in flight.
+// Two notices, and neither subsumes the other. The location is THE single route warm
+// trigger (§4.6.2): the document says where the user is and the SW warms that template
+// behind the navigation already in flight. The warm order is the page's (SDD-17 §4.7):
+// the components the user can SEE, deposited before the first gesture and never evaluated.
 self.addEventListener('message', (e) => {
-  if (!e.data || e.data.type !== LOCATION_MESSAGE) return;
-  e.waitUntil(boot().then((r) => r && r.warm(new URL(e.data.url).pathname)));
+  const msg = e.data;
+  if (!msg) return;
+  if (msg.type === LOCATION_MESSAGE) {
+    e.waitUntil(boot().then((r) => r && r.warm(new URL(msg.url).pathname)));
+  } else if (msg.type === WARM_MESSAGE) {
+    e.waitUntil(boot().then(async (r) => {
+      if (!r) return;
+      // Only what really landed is confirmed: a page told a chunk is warm and then
+      // paying network for it would be worse than never having been told.
+      const landed = new Set(await r.warmUrls(msg.urls));
+      if (!e.source) return;
+      e.source.postMessage({
+        type: WARMED_MESSAGE,
+        urls: msg.urls.filter((url) => landed.has(url)),
+        tags: msg.tags.filter((_, i) => landed.has(msg.urls[i])),
+      });
+    }));
+  }
 });
 
 self.addEventListener('fetch', (e) => {
@@ -171,13 +189,18 @@ export interface MainBootstrapOptions {
  */
 export function emitMainBootstrap(options: MainBootstrapOptions): string {
   const { chunks, swUrlExpr } = options;
+  const hasWorker = swUrlExpr !== null;
   // Only what this page actually uses: a dev page with no Service Worker imports nothing
   // from `@fudic/transport` at all.
   const transport: string[] = [];
   if (chunks.mode === 'build') transport.push('createUrlResolver');
-  if (swUrlExpr !== null) transport.push('registerRenderServiceWorker', 'notifyLocation');
+  if (hasWorker) transport.push('registerRenderServiceWorker', 'notifyLocation');
+  // The warm channel, chosen HERE and once (SDD-17 §4.7.1): the page that knows whether it
+  // was emitted with a worker is this one, so the runtime carries no branch for it and the
+  // unused channel is not even in the bundle.
+  const channel = hasWorker ? 'createServiceWorkerWarmChannel' : 'createPreloadWarmChannel';
   const head = [
-    `import { installHydration } from '@fudic/core';`,
+    `import { installHydration, ${channel} } from '@fudic/core';`,
     ...(transport.length === 0
       ? []
       : [`import { ${transport.join(', ')} } from '@fudic/transport';`]),
@@ -197,20 +220,21 @@ export function emitMainBootstrap(options: MainBootstrapOptions): string {
           `const CHUNKS = ${JSON.stringify(chunks.urlPrefix)};`,
           `const resolveChunk = (tag) => CHUNKS + tag + '.js';`,
         ];
-  const worker =
-    swUrlExpr === null
-      ? []
-      : [
-          '',
-          `if ('serviceWorker' in navigator) {`,
-          `  registerRenderServiceWorker(${swUrlExpr}).then(() => notifyLocation());`,
-          `}`,
-        ];
+  const worker = !hasWorker
+    ? []
+    : [
+        '',
+        `if ('serviceWorker' in navigator) {`,
+        `  registerRenderServiceWorker(${swUrlExpr}).then(() => notifyLocation());`,
+        `}`,
+      ];
   return [
     ...head,
     ...resolver,
     '',
-    `installHydration({ root: document, resolveChunk });`,
+    // The order does not matter: a warm ordered before the worker takes control is queued
+    // and flushed on `controllerchange`, which is the only case there is on a first load.
+    `installHydration({ root: document, resolveChunk, warm: ${channel}() });`,
     ...worker,
     '',
   ].join('\n');

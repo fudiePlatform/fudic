@@ -610,3 +610,73 @@ describe('createRouter — resources, ready and invalidate', () => {
     expect(h.network.filter((u) => u.endsWith('blog-slug-b1.js'))).toHaveLength(1);
   });
 });
+
+/** SDD-17 §4.7: the page orders the chunks of what the user can see. */
+describe('createRouter.warmUrls — the hydration chunks', () => {
+  const ASSETS = [{ pattern: '/assets/**', policy: 'cache-first' as const, ttl: null }];
+  const CHUNK = '/assets/h/app-counter-b1.js';
+
+  function withChunk(): ReturnType<typeof harness> {
+    const h = harness();
+    h.sources.set(`${ORIGIN}assets/h/app-counter-b1.js`, 'export {};');
+    return h;
+  }
+
+  it('deposits them where the fetch handler will read them, and reports what landed', async () => {
+    const h = withChunk();
+    const r = router(h, { resources: ASSETS });
+
+    expect(await r.warmUrls([CHUNK])).toEqual([CHUNK]);
+
+    // The point of the whole function: the later `import()` is served from the cache, so
+    // the first interaction pays no network. A deposit anywhere else would be BUG-01.
+    const event = fetchEvent(`${ORIGIN}assets/h/app-counter-b1.js`, { mode: 'cors' });
+    r.handle(event);
+    expect(await (await event.responded!).text()).toBe('export {};');
+    expect(h.network).toEqual([`${ORIGIN}assets/h/app-counter-b1.js`]);
+  });
+
+  it('is the second layer of idempotence: a repeated order costs no network', async () => {
+    const h = withChunk();
+    const r = router(h, { resources: ASSETS });
+
+    await r.warmUrls([CHUNK]);
+    expect(await r.warmUrls([CHUNK])).toEqual([CHUNK]);
+
+    expect(h.network).toHaveLength(1);
+  });
+
+  it('does not warm what it would not serve either', async () => {
+    const h = withChunk();
+    const r = router(h, { resources: [{ pattern: '/api/**', policy: 'cache-first', ttl: null }] });
+
+    expect(await r.warmUrls([CHUNK])).toEqual([]);
+    expect(h.network).toEqual([]);
+  });
+
+  it('reports nothing for a chunk that did not land', async () => {
+    const h = harness(); // the source is missing: the network answers 404
+    const offline: RouterStores = {
+      ...h.stores,
+      data: createStore({
+        cache: fakeCache().cache,
+        net: async (request: Request): Promise<Response> => {
+          if (request.url.endsWith('boom-b1.js')) throw new Error('offline');
+          return h.net(request);
+        },
+      }),
+    };
+    const r = createRouter({
+      table: compileManifest(FILE),
+      linker: linkerOver(h.stores.routes),
+      stores: offline,
+      origin: ORIGIN,
+      net: h.net,
+      resources: ASSETS,
+    });
+
+    // A 404 is stored by nobody, and an unreachable network is not a failure of the page:
+    // warm is an optimization, so both are silent and neither is reported.
+    expect(await r.warmUrls(['/assets/h/missing-b1.js', '/assets/h/boom-b1.js'])).toEqual([]);
+  });
+});
