@@ -52,8 +52,10 @@ path del INP sin tocar el modelo de hidratación.
   co-emitido con el payload; solo en instancias N3 efectivas; DSD `open`; y los tres mapas
   `fud-state` / `fud-tree` / `fud-bus` salidos de la misma pasada.
 - **Artefactos y manifiesto (SDD-27)** — `createUrlResolver(base, build).hydrateUrl(tag)`. No
-  hay cuarto mapa: la URL del chunk de un tag es derivable del manifiesto (SDD-15 §3.6,
-  retirado), y el runtime tiene el tag delante en `host.localName`. Ver §4.6.
+  hay cuarto mapa **en la página**: la URL del chunk de un tag es derivable del manifiesto
+  (SDD-15 §3.6, retirado), y el runtime tiene el tag delante en `host.localName`. Ver §4.6. Lo
+  único que el manifiesto añade —y que no es derivable, porque lleva hash de contenido— es qué
+  importa el chunk de cada tag, que el warm necesita y el runtime nunca ve (§4.7).
 - **`@fudic/dom` (SDD-14)** — `browserDom`, y en particular `browserDom.event` y
   `browserDom.bus` (SDD-15 §3.8), que son lo que los controladores usan para engancharse.
 - **Service Worker** (SDD de red, aparte) — sirve los chunks network-first la primera vez y
@@ -382,6 +384,30 @@ fallback cubre navegadores sin `requestIdleCallback`.
 **Prioridad baja.** El SW descarga con `fetch(url, { priority: 'low' })`: el warm no compite
 con el critical path de carga ni con interacciones en curso.
 
+**El chunk y lo que el chunk importa.** Warmear solo el chunk del tag deja fuera el código que
+ese chunk importa —la parte de `@fudic/core` que el pase de cliente extrae y comparte entre
+componentes—, y esa es exactamente la red que se acaba pagando **dentro del gesto**: medido en
+Chromium, dos chunks compartidos de ~1 kB descargándose en el primer clic. La URL del chunk de
+un tag es aritmética (§4.6), pero la del código compartido lleva **hash de contenido**: no es
+derivable, y es lo único de un chunk de hidratación que hay que declarar.
+
+Se declara en el **manifiesto**, no en la página, y por el mismo motivo de §4.6: manifiesto y
+chunks se purgan con el mismo build id, mientras que un HTML prerenderizado sobrevive a su
+build. La consecuencia es un reparto limpio de responsabilidades:
+
+```
+página  → warm(urls, tags)          — sabe tags, y nada más
+SW      → warmHydration(tags)       — hydrateUrl(tag) + manifest.hydrate[tag]
+```
+
+Un tag se confirma como warmeado **solo si entró su grafo entero**: medio grafo en cache sigue
+pagando red en la primera interacción, y anunciar `fud:warmed` para eso es peor que no
+anunciar nada. Un tag que el manifiesto no conoce —una página en cache de un build anterior—
+es su chunk y nada más: es un warm perdido, nunca un error.
+
+> El canal `modulepreload` no necesita nada de esto: `rel="modulepreload"` se trae el **grafo
+> del módulo**, dependencias incluidas. La asimetría es del transporte, no del modelo.
+
 **Idempotencia en dos capas**, porque las recargas, el `clients.claim()` del SW y el
 re-registro pueden disparar la orden más de una vez:
 
@@ -454,6 +480,10 @@ optimización, no un requisito de correctitud.** La hidratación funciona con o 
   son tag→tags, resueltos en compilación. El runtime consume dependencias de hidratación.
 - **Warm por tag, no por instancia.** N instancias del mismo tag = un warm. La red se gasta en
   proporción a lo visible; prioridad baja; idempotente en cliente y servidor.
+- **Se warmea el chunk y lo que el chunk importa.** El warm de un tag que deja fuera el código
+  compartido que su chunk importa no es un warm: esa red se paga dentro del gesto. Lo que no
+  es derivable —los nombres con hash— lo declara el manifiesto, y el tag se confirma solo si
+  entró su grafo entero (§4.7).
 - **El warm es optimización, no requisito.** La hidratación es correcta con o sin él.
 - **La hidratación no requiere Service Worker.** El SW solo decide la implementación del warm
   y el origen del chunk (§4.7.1), nunca la corrección. Y no se le habla si no está: sin
@@ -527,8 +557,11 @@ los cuatro escenarios que antes vivían en cuatro prototipos separados:
     precachea `shopping-cart`.
 19. **Prioridad baja.** En Network, las peticiones de warm figuran con prioridad `Low`.
 20. **Idempotencia.** Recargar con el SW activo no re-descarga los chunks ya cacheados.
-21. **Cache-hit tras warm.** La primera interacción con un tag precacheado hidrata sin tocar
-    red. INP < 20 ms.
+21. **Cache-hit tras warm, y el grafo entero (§4.7).** La primera interacción con un tag
+    precacheado hidrata **sin una sola petición de red**: en Cache Storage está su chunk y
+    también los ficheros que ese chunk importa. Medido en Chromium antes de arreglarlo, con el
+    chunk del tag ya cacheado, el primer clic todavía descargaba los dos chunks compartidos de
+    `@fudic/core`. INP < 20 ms.
 22. **Cache-miss sin warm.** La primera interacción con un tag excluido del warm paga red en el
     `import()`; con chunks < 1 kB tras minify+brotli el INP se mantiene < 20 ms. El cache-miss
     no es un techo problemático al tamaño de chunk esperado.

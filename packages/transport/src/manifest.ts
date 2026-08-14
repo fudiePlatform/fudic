@@ -110,6 +110,17 @@ export interface ManifestFile {
   readonly csp: CspTemplates;
   /** Ordered by DESCENDING specificity: `match` returns the FIRST hit. */
   readonly routes: readonly RouteRecord[];
+  /**
+   * Component tag → the chunks its hydration chunk statically imports, transitively
+   * (SDD-17 §4.7). Paths as the build named them, `base` excluded like everywhere here.
+   *
+   * It is the ONE thing about a hydration chunk that is not derivable: the shared code
+   * the client pass extracts keeps a content hash. Without it a warm deposits the tag's
+   * chunk and leaves its imports to the network — inside the gesture, which is the one
+   * place warm exists to keep clear. It lives in the MANIFEST and not in the page (§4.6):
+   * both are purged by the same build id, while a prerendered HTML outlives its build.
+   */
+  readonly hydrate?: Readonly<Record<string, readonly string[]>>;
 }
 
 export interface RouteMatch {
@@ -126,6 +137,12 @@ export interface RouteTable {
   match(pathname: string): RouteMatch | null;
   /** The `sw` template that owns `pathname` — the unit of warming is the TEMPLATE. */
   templateOf(pathname: string): RouteRecord | null;
+  /**
+   * The URLs a tag's hydration chunk imports, `base` applied. Empty for a tag with no
+   * shared code, and empty for a tag this build does not know — a warm asks for what a
+   * page says it has, and an unknown tag is a stale page, not an error.
+   */
+  hydrateDeps(tag: string): readonly string[];
 }
 
 interface CompiledRoute {
@@ -196,14 +213,18 @@ export function compileManifest(file: ManifestFile): RouteTable {
     }
     return null;
   };
+  const urls = createUrlResolver(file.base, file.build);
   return {
     build: file.build,
     csp: file.csp,
-    urls: createUrlResolver(file.base, file.build),
+    urls,
     match,
     templateOf(pathname: string): RouteRecord | null {
       const hit = match(pathname);
       return hit !== null && hit.record.mode === 'sw' ? hit.record : null;
+    },
+    hydrateDeps(tag: string): readonly string[] {
+      return (file.hydrate?.[tag] ?? []).map((path) => urls.assetUrl(path));
     },
   };
 }

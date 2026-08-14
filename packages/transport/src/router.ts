@@ -101,10 +101,11 @@ export interface Router {
   /** Warm a template: chunk + deps into `routes-<build>`. Idempotent. */
   warm(pathname: string): Promise<void>;
   /**
-   * Warm a list of hydration chunks (SDD-17 §4.7). Returns the ones that ended up in the
-   * cache — the page reports `fud:warmed` for those and only those.
+   * Warm the hydration chunks of these component tags (SDD-17 §4.7): each tag's chunk AND
+   * what that chunk imports. Returns the tags fully in cache — the page reports
+   * `fud:warmed` for those and only those.
    */
-  warmUrls(urls: readonly string[]): Promise<readonly string[]>;
+  warmHydration(tags: readonly string[]): Promise<readonly string[]>;
   /** Seed the in-memory page index from the cache. Awaited before wiring `fetch`. */
   ready(): Promise<void>;
   /** Drop a concrete route's cached page and data. */
@@ -304,12 +305,10 @@ export function createRouter(config: RouterConfig): Router {
   };
 
   /**
-   * Warm the hydration chunks the page asked for (SDD-17 §4.7).
-   *
-   * It deposits them in the SAME store the fetch handler will read them from, and that is
-   * the whole design of this function: a warm that wrote anywhere else would be a cache
-   * nobody reads, which is BUG-01 again. So a URL no resource class claims is NOT warmed —
-   * the router would not serve it either, and precaching it would be pure waste.
+   * Deposit ONE file, in the store the fetch handler will read it from — and that is the
+   * whole design: a warm that wrote anywhere else would be a cache nobody reads, which is
+   * BUG-01 again. So a URL no resource class claims is NOT warmed; the router would not
+   * serve it either, and precaching it would be pure waste.
    *
    * `cache-first` with no TTL, and not the class's own policy: the point of the deposit is
    * to AVOID network later, and a `network-first` class would re-download on every order.
@@ -317,27 +316,53 @@ export function createRouter(config: RouterConfig): Router {
    * first — so a repeated order costs one `cache.match` and nothing else. `priority: 'low'`
    * keeps the download off the critical path, which is what makes warm free.
    */
-  const warmUrls = async (urls: readonly string[]): Promise<readonly string[]> => {
-    const deposited: string[] = [];
-    for (const url of urls) {
-      const absolute = abs(url);
-      if (ruleFor(new URL(absolute).pathname) === null) {
-        continue;
+  const deposit = async (url: string): Promise<boolean> => {
+    const absolute = abs(url);
+    if (ruleFor(new URL(absolute).pathname) === null) {
+      return false;
+    }
+    try {
+      // Only a 200 is stored (`Store` refuses the rest), so only a 200 may be reported: a
+      // page told a chunk is warm and then paying network for it would be worse than never
+      // having been told.
+      const response = await stores.data.get(
+        new Request(absolute, { priority: 'low' }),
+        'cache-first',
+        null,
+      );
+      return response.status === 200;
+    } catch {
+      // Warm is an optimization: a chunk that did not land is downloaded on demand, inside
+      // the gesture, exactly as if warm had never existed.
+      return false;
+    }
+  };
+
+  /**
+   * Warm the hydration chunks of these tags (SDD-17 §4.7).
+   *
+   * **The chunk AND what it imports.** The page orders by TAG and knows nothing else: the
+   * URL of a tag's chunk is arithmetic, but the shared code the client pass extracts keeps
+   * a content hash and is therefore a fact of the build — which is why the manifest carries
+   * it and this is the side that reads it. Warming the tag's chunk alone left its imports
+   * to the network INSIDE the gesture, measured at ~12 ms on localhost, and that is the one
+   * place warm exists to keep clear.
+   *
+   * A tag counts as warmed only when every one of its files landed: half a graph in cache
+   * still pays network on the first interaction.
+   */
+  const warmHydration = async (tags: readonly string[]): Promise<readonly string[]> => {
+    const warmedTags: string[] = [];
+    for (const tag of tags) {
+      let complete = true;
+      for (const url of [table.urls.hydrateUrl(tag), ...table.hydrateDeps(tag)]) {
+        complete = (await deposit(url)) && complete;
       }
-      try {
-        // Only a 200 is stored (`Store` refuses the rest), so only a 200 may be reported:
-        // a page told a chunk is warm and then paying network for it would be worse than
-        // never having been told.
-        const response = await stores.data.get(new Request(absolute, { priority: 'low' }), 'cache-first', null);
-        if (response.status === 200) {
-          deposited.push(url);
-        }
-      } catch {
-        // Warm is an optimization: a chunk that did not land is downloaded on demand,
-        // inside the gesture, exactly as if warm had never existed.
+      if (complete) {
+        warmedTags.push(tag);
       }
     }
-    return deposited;
+    return warmedTags;
   };
 
   return {
@@ -379,7 +404,7 @@ export function createRouter(config: RouterConfig): Router {
 
     warm,
 
-    warmUrls,
+    warmHydration,
 
     async ready(): Promise<void> {
       for (const url of await stores.pages.keys()) {

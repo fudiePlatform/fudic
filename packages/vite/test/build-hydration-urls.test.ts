@@ -148,6 +148,42 @@ describe('every hydratable instance has a chunk to load, with no map', () => {
   });
 });
 
+/** The static imports of a chunk under `assets/h/`, as file names of this build. */
+function importsOf(fileName: string): string[] {
+  const chunk = output.find((o) => o.fileName === fileName);
+  return [...String(chunk?.code).matchAll(/from\s*["']\.\.\/([^"']+)["']/gu)].map(
+    (m) => `assets/${m[1]!}`,
+  );
+}
+
+describe('what a hydration chunk drags along (SDD-17 §4.7)', () => {
+  it('the manifest states it, because a shared chunk keeps a content hash', () => {
+    // The one thing about a hydration chunk that is NOT derivable. Without it a warm
+    // deposits the tag's chunk and leaves the framework code it imports to the network,
+    // inside the first gesture — which is the one place warm exists to keep clear.
+    const table = routeTable(output);
+    const tags = hydratedTags();
+    expect(manifestFile(output).hydrate).toBeDefined();
+    for (const tag of tags) {
+      const deps = table.hydrateDeps(tag);
+      expect(deps.length).toBeGreaterThan(0);
+      for (const url of deps) {
+        expect(emitted(output, url)).toBe(true);
+      }
+    }
+  });
+
+  it('states what the chunk really imports, and never the chunk itself', () => {
+    const table = routeTable(output);
+    const own = table.urls.hydrateUrl('x-counter');
+    const deps = table.hydrateDeps('x-counter');
+    for (const imported of importsOf(own.slice(1))) {
+      expect(deps).toContain(`/${imported}`);
+    }
+    expect(deps).not.toContain(own);
+  });
+});
+
 /** What `fudic-main.js` imports, as file names of this build. */
 function mainImports(): string[] {
   const main = output.find((o) => o.fileName === 'fudic-main.js');

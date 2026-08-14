@@ -133,14 +133,15 @@ self.addEventListener('message', (e) => {
   } else if (msg.type === WARM_MESSAGE) {
     e.waitUntil(boot().then(async (r) => {
       if (!r) return;
-      // Only what really landed is confirmed: a page told a chunk is warm and then
-      // paying network for it would be worse than never having been told.
-      const landed = new Set(await r.warmUrls(msg.urls));
+      // BY TAG: the page knows tags, and what a tag's chunk imports is in the manifest,
+      // which is this side's to read. Only what really landed is confirmed — a page told a
+      // chunk is warm and then paying network for it is worse than never having been told.
+      const landed = new Set(await r.warmHydration(msg.tags));
       if (!e.source) return;
       e.source.postMessage({
         type: WARMED_MESSAGE,
-        urls: msg.urls.filter((url) => landed.has(url)),
-        tags: msg.tags.filter((_, i) => landed.has(msg.urls[i])),
+        urls: msg.urls.filter((_, i) => landed.has(msg.tags[i])),
+        tags: msg.tags.filter((tag) => landed.has(tag)),
       });
     }));
   }

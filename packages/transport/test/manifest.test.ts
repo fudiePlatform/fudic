@@ -50,6 +50,21 @@ describe('compileManifest', () => {
     expect(table.csp.sw).toContain('unsafe-eval');
   });
 
+  it('SDD-17 §4.7 states what a tag’s hydration chunk imports, base applied', () => {
+    const table = compileManifest({
+      ...FILE,
+      hydrate: { 'app-counter': ['assets/element-DUSE73WP.js'] },
+    });
+    expect(table.hydrateDeps('app-counter')).toEqual(['/assets/element-DUSE73WP.js']);
+    // A tag with no shared code, and a tag this build never heard of — a stale page asking
+    // for a component that no longer exists — are the same answer: nothing to drag along.
+    expect(table.hydrateDeps('app-toggle')).toEqual([]);
+  });
+
+  it('a build where nothing shares code publishes no map at all', () => {
+    expect(compileManifest(FILE).hydrateDeps('app-counter')).toEqual([]);
+  });
+
   it('exposes a resolver already bound to this build (SDD-27 §5.4)', () => {
     const table = compileManifest(FILE);
     const hit = table.match('/blog/x')!;

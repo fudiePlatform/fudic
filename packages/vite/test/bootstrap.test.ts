@@ -89,15 +89,15 @@ describe('emitSwBootstrap', () => {
     );
   });
 
-  it('SDD-17 §4.7 deposits the chunks the page asks for, and confirms what landed', () => {
+  it('SDD-17 §4.7 warms the tags the page asks for, and confirms what landed', () => {
     expect(code).toContain('WARM_MESSAGE');
-    expect(code).toContain('await r.warmUrls(msg.urls)');
+    // BY TAG: what a tag's chunk imports is in the manifest, which is this side's to read.
+    expect(code).toContain('await r.warmHydration(msg.tags)');
     // Only what is really in the cache is confirmed: `fud:warmed` for a chunk that then
     // pays network would be worse than no warm at all.
     expect(code).toContain('const landed = new Set(');
     expect(code).toContain('type: WARMED_MESSAGE');
-    expect(code).toContain('urls: msg.urls.filter((url) => landed.has(url))');
-    expect(code).toContain('tags: msg.tags.filter((_, i) => landed.has(msg.urls[i]))');
+    expect(code).toContain('tags: msg.tags.filter((tag) => landed.has(tag))');
     // The reply goes to the client that ordered it, not broadcast to every page.
     expect(code).toContain('e.source.postMessage(');
   });

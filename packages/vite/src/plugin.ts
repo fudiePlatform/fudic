@@ -727,11 +727,43 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         }
       }
 
+      // 3d. What each hydration chunk IMPORTS (SDD-17 §4.7). The URL of a tag's chunk is
+      //     arithmetic, but the code the client pass shares between components keeps a
+      //     content hash: nothing about it is derivable, and the only place that knows it
+      //     is right here. Warming the tag's chunk alone left those imports to the network
+      //     INSIDE the first gesture — measured, and the one place warm exists to keep clear.
+      //
+      //     Computed AFTER the rename and the prune, so the names are the ones published.
+      //     The walk goes by bundle KEY, which is what `imports` speaks in; only the answer
+      //     is translated to file names, because the rename moved `fileName` alone.
+      //     The tag comes from the facade module, normalized: `emitFile` was given the path
+      //     as the filesystem spells it and Vite hands it back with forward slashes.
+      const slashes = (path: string): string => path.replace(/\\/gu, '/');
+      const tagOfFacade = new Map(
+        discoverComponents(builds, io).map((comp) => [slashes(clientId(comp.path)), comp.tag]),
+      );
+      const items = bundleItems(bundle);
+      const hydrateDeps: Record<string, readonly string[]> = {};
+      for (const [key, item] of Object.entries(bundle)) {
+        const tag =
+          item.type === 'chunk' ? tagOfFacade.get(slashes(item.facadeModuleId ?? '')) : undefined;
+        if (tag === undefined) {
+          continue;
+        }
+        const deps = reachableChunks(items, (i) => i.fileName === key)
+          .filter((fileName) => fileName !== key)
+          .map((fileName) => bundle[fileName]?.fileName ?? fileName);
+        if (deps.length > 0) {
+          hydrateDeps[tag] = deps;
+        }
+      }
+
       // 4. The manifest: the one contract, emitted at a fixed URL.
       const { file, diagnostics } = buildManifest(builds, {
         build: buildId,
         base,
         serviceWorker: swConfig !== null,
+        hydrateDeps,
         depsOf: (rb) => {
           if (!link.entries.has(rb.route.pattern)) {
             this.warn(`[${FUD_CHUNK_NOT_EMITTED}] no linkable chunk for ${rb.route.pattern}`);

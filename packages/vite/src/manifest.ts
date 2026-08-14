@@ -42,6 +42,15 @@ export interface ManifestInputs {
   readonly depsOf: (route: RouteBuild) => readonly string[] | null;
   /** Emit `sw` records at all (no `sw.json` → no Service Worker). */
   readonly serviceWorker: boolean;
+  /**
+   * Tag → what its hydration chunk statically imports, transitively (SDD-17 §4.7).
+   *
+   * The one exception to "the manifest states names, never URLs": these chunks are SHARED,
+   * so they keep a content hash and nothing about them is derivable. The Service Worker
+   * warms them with the tag's own chunk; without them the first interaction pays network
+   * for the framework code the component imports.
+   */
+  readonly hydrateDeps?: Readonly<Record<string, readonly string[]>>;
 }
 
 export interface ManifestResult {
@@ -133,8 +142,17 @@ export function buildManifest(
     });
   }
 
+  const hydrate = inputs.hydrateDeps ?? {};
   return {
-    file: { build: inputs.build, base: inputs.base, csp: DEFAULT_CSP, routes: records },
+    file: {
+      build: inputs.build,
+      base: inputs.base,
+      csp: DEFAULT_CSP,
+      routes: records,
+      // Absent when nothing hydrates, or when every chunk is self-contained: an empty
+      // object in the file would say "asked and answered nothing", which is not the case.
+      ...(Object.keys(hydrate).length === 0 ? {} : { hydrate }),
+    },
     diagnostics,
   };
 }

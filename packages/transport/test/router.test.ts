@@ -611,72 +611,99 @@ describe('createRouter — resources, ready and invalidate', () => {
   });
 });
 
-/** SDD-17 §4.7: the page orders the chunks of what the user can see. */
-describe('createRouter.warmUrls — the hydration chunks', () => {
+/** SDD-17 §4.7: the page orders BY TAG, and the manifest says what that tag drags along. */
+describe('createRouter.warmHydration — the hydration chunks', () => {
   const ASSETS = [{ pattern: '/assets/**', policy: 'cache-first' as const, ttl: null }];
-  const CHUNK = '/assets/h/app-counter-b1.js';
+  const CHUNK = `${ORIGIN}assets/h/app-counter-b1.js`;
+  const SHARED = `${ORIGIN}assets/element-DUSE73WP.js`;
+  /** The same build, with the client pass having shared code between components. */
+  const HYDRATING: ManifestFile = {
+    ...FILE,
+    hydrate: { 'app-counter': ['assets/element-DUSE73WP.js'] },
+  };
 
-  function withChunk(): ReturnType<typeof harness> {
+  function withChunks(): ReturnType<typeof harness> {
     const h = harness();
-    h.sources.set(`${ORIGIN}assets/h/app-counter-b1.js`, 'export {};');
+    h.sources.set(CHUNK, 'import "../element-DUSE73WP.js";');
+    h.sources.set(SHARED, 'export const t = 1;');
     return h;
   }
 
-  it('deposits them where the fetch handler will read them, and reports what landed', async () => {
-    const h = withChunk();
-    const r = router(h, { resources: ASSETS });
+  function hydratingRouter(h: ReturnType<typeof harness>, extra: Record<string, unknown> = {}): Router {
+    return createRouter({
+      table: compileManifest(HYDRATING),
+      linker: linkerOver(h.stores.routes),
+      stores: h.stores,
+      origin: ORIGIN,
+      net: h.net,
+      resources: ASSETS,
+      ...extra,
+    });
+  }
 
-    expect(await r.warmUrls([CHUNK])).toEqual([CHUNK]);
+  it('deposits the chunk AND what it imports, where the fetch handler will read them', async () => {
+    const h = withChunks();
+    const r = hydratingRouter(h);
 
-    // The point of the whole function: the later `import()` is served from the cache, so
-    // the first interaction pays no network. A deposit anywhere else would be BUG-01.
-    const event = fetchEvent(`${ORIGIN}assets/h/app-counter-b1.js`, { mode: 'cors' });
-    r.handle(event);
-    expect(await (await event.responded!).text()).toBe('export {};');
-    expect(h.network).toEqual([`${ORIGIN}assets/h/app-counter-b1.js`]);
+    expect(await r.warmHydration(['app-counter'])).toEqual(['app-counter']);
+    expect(h.network).toEqual([CHUNK, SHARED]);
+
+    // The point of the whole function: the first interaction pays no network, for the
+    // component's chunk NOR for the framework code it imports.
+    for (const url of [CHUNK, SHARED]) {
+      const event = fetchEvent(url, { mode: 'cors' });
+      r.handle(event);
+      await event.responded;
+    }
+    expect(h.network).toEqual([CHUNK, SHARED]);
   });
 
   it('is the second layer of idempotence: a repeated order costs no network', async () => {
-    const h = withChunk();
-    const r = router(h, { resources: ASSETS });
+    const h = withChunks();
+    const r = hydratingRouter(h);
 
-    await r.warmUrls([CHUNK]);
-    expect(await r.warmUrls([CHUNK])).toEqual([CHUNK]);
+    await r.warmHydration(['app-counter']);
+    expect(await r.warmHydration(['app-counter'])).toEqual(['app-counter']);
 
-    expect(h.network).toHaveLength(1);
+    expect(h.network).toHaveLength(2);
+  });
+
+  it('a tag the manifest knows nothing about is just its own chunk', async () => {
+    const h = harness();
+    h.sources.set(`${ORIGIN}assets/h/app-toggle-b1.js`, 'export {};');
+    const r = hydratingRouter(h);
+
+    expect(await r.warmHydration(['app-toggle'])).toEqual(['app-toggle']);
+    expect(h.network).toEqual([`${ORIGIN}assets/h/app-toggle-b1.js`]);
   });
 
   it('does not warm what it would not serve either', async () => {
-    const h = withChunk();
-    const r = router(h, { resources: [{ pattern: '/api/**', policy: 'cache-first', ttl: null }] });
+    const h = withChunks();
+    const r = hydratingRouter(h, {
+      resources: [{ pattern: '/api/**', policy: 'cache-first', ttl: null }],
+    });
 
-    expect(await r.warmUrls([CHUNK])).toEqual([]);
+    expect(await r.warmHydration(['app-counter'])).toEqual([]);
     expect(h.network).toEqual([]);
   });
 
-  it('reports nothing for a chunk that did not land', async () => {
-    const h = harness(); // the source is missing: the network answers 404
+  it('reports nothing for a tag whose graph did not land whole', async () => {
+    const h = harness(); // the chunk is there, its shared import is not
+    h.sources.set(CHUNK, 'import "../element-DUSE73WP.js";');
     const offline: RouterStores = {
       ...h.stores,
       data: createStore({
         cache: fakeCache().cache,
         net: async (request: Request): Promise<Response> => {
-          if (request.url.endsWith('boom-b1.js')) throw new Error('offline');
+          if (request.url === SHARED) throw new Error('offline');
           return h.net(request);
         },
       }),
     };
-    const r = createRouter({
-      table: compileManifest(FILE),
-      linker: linkerOver(h.stores.routes),
-      stores: offline,
-      origin: ORIGIN,
-      net: h.net,
-      resources: ASSETS,
-    });
+    const r = hydratingRouter(h, { stores: offline });
 
-    // A 404 is stored by nobody, and an unreachable network is not a failure of the page:
-    // warm is an optimization, so both are silent and neither is reported.
-    expect(await r.warmUrls(['/assets/h/missing-b1.js', '/assets/h/boom-b1.js'])).toEqual([]);
+    // Half a graph in cache still pays network on the first interaction, so it is not a
+    // warm and it is not reported as one. And nothing here throws: warm is optimization.
+    expect(await r.warmHydration(['app-counter'])).toEqual([]);
   });
 });
