@@ -1,6 +1,7 @@
 # SDD-17 — Runtime de hidratación (`@fudic/core`)
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho` (2026-08-15; verificado en Chrome real en las tres formas del framework:
+> `pnpm dev`, un build sin `sw.json` y un build con Service Worker)
 > **Paquete:** `@fudic/core` (runtime de cliente) + `@fudic/dom` (`browserDom.event`/`.bus`).
 > **Depende de:** 14 (contrato `Dom<N>`, `signal`, `emit`), 15 (los mapas que consume).
 > **Rango de diagnósticos:** `FUD0320`–`FUD0339` (reservado; el runtime no diagnostica).
