@@ -1,0 +1,38 @@
+@code {
+  // El caso frío. Vive dentro de un `<details>` cerrado, así que su instancia nunca entra
+  // en el viewport y el warm no lo toca: al abrirlo y pulsar de inmediato, el `import()`
+  // paga red dentro del gesto. Es la evidencia de que el warm es OPTIMIZACIÓN — esto
+  // hidrata igual, solo que pagando.
+  @client {
+    import { signal } from '@fudic/core';
+
+    const hits = signal(0);
+
+    function hit() {
+      hits.set(hits() + 1);
+    }
+  }
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    button {
+      font: inherit;
+      padding: 0.5rem 1rem;
+      border: 1px solid #d93025;
+      border-radius: 6px;
+      background: white;
+      color: #a50e0e;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<app-cold>
+  <template shadowrootmode="open">
+    <button class="hit" @click="@hit">Sin precachear: <span class="value">@(hits())</span></button>
+  </template>
+</app-cold>

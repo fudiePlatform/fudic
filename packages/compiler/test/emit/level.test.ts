@@ -195,8 +195,15 @@ describe('effective level — induced', () => {
     expect([...hydratableTags(graph)]).toEqual(['x-parent']);
   });
 
-  it('a value that merely READS a signal induces nothing either', () => {
-    // `@(tone() + "!")` is a value, not a reference: it crossed once and cannot move again.
+  it('a value that READS a signal induces hydration: it moves when the signal does', () => {
+    // This case used to assert the opposite, and the belief behind it was wrong: `tone() + "!"`
+    // is recomputed every time `tone` moves, so the child is handed a new value and has to be
+    // alive to receive it. Reading it as "crossed once" left the child at level 1, and then the
+    // parent's handover found an element with no `u` on it — a `TypeError` in the browser, which
+    // is how the example page of `.value="@(count())"` was found dead.
+    //
+    // Being a bare name is a different question, and it decides something else: only a name
+    // buys the sparse channel of BUG-18. A compound expression is renewed by the update pass.
     const graph = graphOf({
       '/app/home.fud': page(['x-parent'], '<x-parent></x-parent>'),
       '/app/x-parent.fud':
@@ -210,6 +217,35 @@ describe('effective level — induced', () => {
   }
 }`,
           `<x-badge .tone="@(tone() + '!')"></x-badge>`,
+        ),
+      '/app/x-badge.fud': component(
+        'x-badge',
+        `@code {
+  const { tone = 'neutral' } = props<{ tone?: string }>();
+}`,
+        '<span>@tone</span>',
+      ),
+    });
+    expect([...hydratableTags(graph)].sort()).toEqual(['x-badge', 'x-parent']);
+  });
+
+  it('a value that reads nothing at all still induces nothing', () => {
+    // The line between the two is what the expression READS, not how it is spelled: a literal
+    // has no free reference into the component, so it is a constant in the exact sense
+    // decision 75 means, and the child stays level 1.
+    const graph = graphOf({
+      '/app/home.fud': page(['x-parent'], '<x-parent></x-parent>'),
+      '/app/x-parent.fud':
+        '<link rel="component" href="./x-badge.fud">\n' +
+        component(
+          'x-parent',
+          `@code {
+  @client {
+    import { signal } from '@fudic/core';
+    const tone = signal('success');
+  }
+}`,
+          `<x-badge .tone="@('a' + 'b')"></x-badge>`,
         ),
       '/app/x-badge.fud': component(
         'x-badge',

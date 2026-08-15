@@ -14,7 +14,11 @@ export const VERSION = '0.0.1';
 export {
   type ControlMessage,
   type LocationMessage,
+  type WarmMessage,
+  type WarmedMessage,
   LOCATION_MESSAGE,
+  WARM_MESSAGE,
+  WARMED_MESSAGE,
 } from './messages.js';
 export {
   type RouteMode,

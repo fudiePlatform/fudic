@@ -80,7 +80,7 @@ Las siete secciones del SDD, reinterpretadas para un defecto:
 | [BUG-18](./BUG-18-update-denso.md) | El padre recompone la tupla entera del hijo en cada notificación | BUG-12 §3.4 · SDD-15 §4.6 · props-spec 75 | `compiler` · `core` | `Hecho` |
 | [BUG-19](./BUG-19-tres-constructos-sin-servidor.md) | Tres de los cinco constructos no existen en la rama de servidor | SDD-15 §4.1 (slice SSR) · SDD-30 §6.17 | `compiler` | `Hecho` |
 | [BUG-20](./BUG-20-fuentes-en-src.md) | El scaffold siembra la raíz del proyecto: no hay `src/` | SDD-22 §3.1, §4.2, §4.5, §6.1 · SDD-19 §3.2 | `conventions` (nuevo) · `cli` · `vite` | `Hecho` |
-| [BUG-21](./BUG-21-nodos-de-whitespace.md) | El árbol lleva un nodo de texto por cada salto de línea del autor | BUG-07 §4.5 · SDD-15 §4.4 · SDD-17 §6.22 | `compiler` | `Bloqueado` (SDD-15, slice de hidratación) |
+| [BUG-21](./BUG-21-nodos-de-whitespace.md) | El árbol lleva un nodo de texto por cada salto de línea del autor | BUG-07 §4.5 · SDD-15 §4.4 · SDD-17 §6.22 | `compiler` | `Listo` — desbloqueado el 2026-08-15 con SDD-17 en `Hecho` |
 | [BUG-22](./BUG-22.md) | El editor no sabe dónde está: sin región, «estoy en HTML» se deducía por eliminación | SDD-24 §4.2 · SDD-25 §4.1 · SDD-28 §5.3 | `compiler` · `language-server` · `vscode` | `Hecho` |
 
 ## Grafo de dependencias

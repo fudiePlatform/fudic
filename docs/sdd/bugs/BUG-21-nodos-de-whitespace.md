@@ -1,11 +1,11 @@
 # BUG-21 — El árbol lleva un nodo de texto por cada salto de línea del autor
 
-> **Estado:** `Bloqueado` — por [SDD-17](../SDD-17-hidratacion.md): la hidratación vista correr
-> en un navegador (§2.8). El bloqueante era «el slice pendiente de SDD-15» hasta que
-> [SDD-15](../SDD-15-emit.md) pasó a `Hecho` (2026-08-12); lo que falta no era el emit sino el
-> runtime que lo consume, y ese es SDD-17. Sus dos bloqueantes anteriores,
-> [BUG-18](./BUG-18-update-denso.md) y [BUG-19](./BUG-19-tres-constructos-sin-servidor.md), están
-> en `Hecho` (§2.7)
+> **Estado:** `Listo` — **sin bloqueantes desde el 2026-08-15**, cuando
+> [SDD-17](../SDD-17-hidratacion.md) pasó a `Hecho`: la hidratación se ve correr en Chrome real
+> en las tres formas del framework, que es lo que §2.8 pedía. Antes fue «el slice pendiente de
+> SDD-15» hasta que [SDD-15](../SDD-15-emit.md) cerró (2026-08-12) —lo que faltaba no era el
+> emit sino el runtime que lo consume—, y antes de eso
+> [BUG-18](./BUG-18-update-denso.md) y [BUG-19](./BUG-19-tres-constructos-sin-servidor.md) (§2.7)
 > **Corrige:** [BUG-07 §4.5](./BUG-07-html-sin-minificar.md) (la regla *«se colapsa; no se
 > elimina»*, que contestó una pregunta distinta) · [SDD-15 §4.4](../SDD-15-emit.md) (los runs de
 > texto de las dos ramas) · [SDD-17 §6.22](../SDD-17-hidratacion.md) (el presupuesto del chunk)

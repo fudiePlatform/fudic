@@ -19,7 +19,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fudic } from '../src/index.js';
 import { runtimeAlias } from './helpers/alias.js';
-import { routeTable, emitted } from './helpers/manifest.js';
+import { routeTable, emitted, manifestFile } from './helpers/manifest.js';
+import { BUILD_TOKEN } from '../src/constants.js';
 
 /** A component that hydrates: it declares a signal and hooks up a click. */
 const COUNTER = `<link rel="component" href="./x-out.fud">
@@ -143,6 +144,79 @@ describe('every hydratable instance has a chunk to load, with no map', () => {
   it('no page publishes a fud-chunks block: the URL is derived, not shipped', () => {
     for (const file of output) {
       if (file.fileName.endsWith('.html')) expect(String(file.source)).not.toContain('fud-chunks');
+    }
+  });
+});
+
+/** The static imports of a chunk under `assets/h/`, as file names of this build. */
+function importsOf(fileName: string): string[] {
+  const chunk = output.find((o) => o.fileName === fileName);
+  return [...String(chunk?.code).matchAll(/from\s*["']\.\.\/([^"']+)["']/gu)].map(
+    (m) => `assets/${m[1]!}`,
+  );
+}
+
+describe('what a hydration chunk drags along (SDD-17 §4.7)', () => {
+  it('the manifest states it, because a shared chunk keeps a content hash', () => {
+    // The one thing about a hydration chunk that is NOT derivable. Without it a warm
+    // deposits the tag's chunk and leaves the framework code it imports to the network,
+    // inside the first gesture — which is the one place warm exists to keep clear.
+    const table = routeTable(output);
+    const tags = hydratedTags();
+    expect(manifestFile(output).hydrate).toBeDefined();
+    for (const tag of tags) {
+      const deps = table.hydrateDeps(tag);
+      expect(deps.length).toBeGreaterThan(0);
+      for (const url of deps) {
+        expect(emitted(output, url)).toBe(true);
+      }
+    }
+  });
+
+  it('states what the chunk really imports, and never the chunk itself', () => {
+    const table = routeTable(output);
+    const own = table.urls.hydrateUrl('x-counter');
+    const deps = table.hydrateDeps('x-counter');
+    for (const imported of importsOf(own.slice(1))) {
+      expect(deps).toContain(`/${imported}`);
+    }
+    expect(deps).not.toContain(own);
+  });
+});
+
+/** What `fudic-main.js` imports, as file names of this build. */
+function mainImports(): string[] {
+  const main = output.find((o) => o.fileName === 'fudic-main.js');
+  return [...String(main?.code).matchAll(/from\s*["']\.\/([^"']+)["']/gu)].map((m) => m[1]!);
+}
+
+/** The Service Worker's code — emitted as an asset, so its text may be bytes. */
+function swText(): string {
+  const sw = output.find((o) => o.fileName === 'fudic-sw.js');
+  const source = sw?.source;
+  return typeof source === 'string' ? source : new TextDecoder().decode(source as Uint8Array);
+}
+
+describe('the main-thread bootstrap, now that it hydrates (SDD-17 §4.6, §4.7.1)', () => {
+  it('carries the REAL build id, and derives the same URL the manifest does', () => {
+    const main = String(output.find((o) => o.fileName === 'fudic-main.js')?.code);
+    // A surviving token would ask for `…-__FUDB__.js` — a file no build ever writes.
+    expect(main).not.toContain(BUILD_TOKEN);
+    expect(main).toContain(`createUrlResolver("/", "${manifestFile(output).build}")`);
+    // And what that resolver produces is a file this build wrote (asserted above per tag).
+    expect(emitted(output, routeTable(output).urls.hydrateUrl('x-counter'))).toBe(true);
+  });
+
+  it('the shell is the declared list PLUS the whole static graph of the bootstrap', () => {
+    // Whether Rollup splits that graph is the app's business — it does as soon as the
+    // bootstrap and a hydration chunk share a module — and a split chunk carries a HASH in
+    // its name, which `sw.json` cannot state by hand. So the graph is computed, not
+    // declared, and this asserts the union whatever the split turned out to be.
+    const sw = swText();
+    // As a quoted literal, whatever quote the emit ended up using: the list is data baked
+    // into the worker, and this is what `install` will precache.
+    for (const entry of ['/fudic-main.js', ...mainImports().map((i) => `/${i}`)]) {
+      expect(sw).toMatch(new RegExp(`["'\`]${entry.replace(/[/.]/gu, '\\$&')}["'\`]`, 'u'));
     }
   });
 });

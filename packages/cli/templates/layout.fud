@@ -4,8 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    @* The main-thread bootstrap: it registers the render Service Worker. It lives here,
-       once, so no route can forget it. *@
+    @* The main-thread bootstrap: it installs the hydration runtime -- always -- and
+       registers the render Service Worker when the app was built with one. It lives here,
+       once, so no route can forget it. Remove it and the page still paints, and nothing
+       ever reacts to a click. *@
     <script type="module" src="/fudic-main.js"></script>
 
     @* Everything each route contributes to the head — its <title>, its component

@@ -1,7 +1,9 @@
 @code {
-  // The child of the reference demo: what it receives IS the signal, so it reads the
-  // value itself. The default keeps SSR alive while the prop pass does not exist.
-  const { value = () => 0 } = props<{ value?: () => number }>();
+  // A number, like every child. `.value="@count"` names the signal, and naming it is what
+  // buys a channel of its own — but what CROSSES is the read, never the object: a signal is
+  // a function with a live set of subscribers inside, and the payload of an instance that
+  // came from the server is JSON.
+  const { value = 0 } = props<{ value?: number }>();
 }
 
 <head>
@@ -30,7 +32,7 @@
 
 <signal-display>
   <template shadowrootmode="open">
-    <p class="out">Valor leído por el hijo: <strong>@(value())</strong></p>
-    <p class="what">Este hijo tiene la signal. Se lee solo.</p>
+    <p class="out">Valor recibido por el hijo: <strong>@value</strong></p>
+    <p class="what">Al padre le basta nombrar la signal: el canal lo abre él.</p>
   </template>
 </signal-display>

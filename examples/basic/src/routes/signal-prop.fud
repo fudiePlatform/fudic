@@ -10,38 +10,40 @@
   <site-nav .current="signal-prop"></site-nav>
 }
 
-<h1>1 · El padre pasa la signal</h1>
+<h1>1 · El padre nombra la signal</h1>
 <p class="lede">
   El padre tiene la signal. Lo que escribe en el host del hijo es el
   <strong>identificador</strong>, no una llamada:
-  <code>@('<signal-display .value="@count">')</code>. Lo que cruza el shadow boundary es
-  el objeto signal.
+  <code>@('<signal-display .value="@count">')</code>. Y aun así lo que cruza el shadow
+  boundary es un <strong>número</strong>: el compilador lee la signal por ti.
 </p>
 
 <signal-counter></signal-counter>
 
-<h2>Qué debería pasar</h2>
+<h2>Qué pasa</h2>
 <p>
-  Nadie tiene que avisar al hijo. El hijo <em>tiene</em> la signal, así que la lee él
-  mismo con <code>@("@(value())")</code> y su suscripción fina reescribe su propio nodo de
-  texto cuando el valor cambia. El padre no participa: no hay pase de props, no hay
-  actualización, no hay canal. Este es el caso que
-  <a href="/value-prop">la otra página</a> <em>no</em> puede resolver así.
-</p>
-
-<h2>Qué pasa hoy</h2>
-<p>
-  Nada. El botón no incrementa nada visible: los event bindings del cliente
-  (<code>@("@click")</code>) todavía no se emiten, así que el chunk no engancha el listener.
-  El HTML que ves está pintado por el servidor, y el número del recuadro verde sale del
-  <em>default</em> del hijo: el <code>.value</code> del host no lo lee ningún emisor, así
-  que el padre renderiza al hijo con las props vacías.
+  Pulsa <code>+1</code>. Suben los dos números: el del padre, que lee su propia signal, y
+  el del recuadro verde, que es el hijo. El hijo no sabe que existe ninguna signal —
+  recibe un número y lo pinta.
 </p>
 <p>
-  Y hay una decisión de diseño que esta página deja a la vista, porque es la que hace
-  falta cerrar: <strong>una signal no sobrevive al payload</strong>. Este componente solo
-  puede recibirla si el padre lo fabrica en runtime, en el mismo realm de JavaScript. En
-  cuanto la instancia viene del servidor —que es el caso de esta misma página— su tramo
-  de estado viaja serializado, y una función con suscriptores dentro no se serializa. Por
-  eso el caso normal es el otro.
+  Nombrarla es lo que le sale a cuenta al padre. Como el compilador ve que el valor es
+  exactamente el nombre de una signal, le abre un <strong>canal propio</strong>: una
+  suscripción por signal que, al moverse, escribe <em>una sola</em> casilla del payload del
+  hijo. Ni recompone la tupla entera ni lee las demás props. Compáralo con
+  <a href="/value-prop">la otra página</a>, donde el valor va leído a mano y se renueva con
+  la pasada de render completa.
+</p>
+<h2>Por qué no cruza la signal misma</h2>
+<p>
+  Porque no sobreviviría al viaje. Una instancia que viene del servidor recibe su estado
+  <strong>serializado</strong>, y una signal es una función con un conjunto de suscriptores
+  vivo dentro: eso no es JSON. Si cruzara, el servidor pintaría
+  <code>@("[object Object]")</code> y el cliente le entregaría al hijo algo que no puede
+  reconstruir.
+</p>
+<p>
+  Así que en v1 por el shadow boundary <strong>cruza un valor, siempre</strong>. Que el hijo
+  reciba la signal y se suscriba él mismo es una decisión <em>abierta</em>, no descartada.
+  Mientras no se cierre, el dueño del valor es quien lo vuelve a escribir.
 </p>

@@ -36,6 +36,25 @@ const INPUTS: ManifestInputs = {
   depsOf: () => ['dep'],
 };
 
+describe('buildManifest — what a hydration chunk imports (SDD-17 §4.7)', () => {
+  it('states it per tag, because a shared chunk keeps a content hash', () => {
+    const { file } = buildManifest([routeBuild('/', { mode: 'ssg' })], {
+      ...INPUTS,
+      hydrateDeps: { 'app-counter': ['assets/element-DUSE73WP.js'] },
+    });
+    expect(file.hydrate).toEqual({ 'app-counter': ['assets/element-DUSE73WP.js'] });
+  });
+
+  it('says nothing when there is nothing to say', () => {
+    // An empty object in the file would read as "asked and answered nothing"; the key is
+    // absent instead, which is what the Service Worker's `?? []` already means.
+    expect(buildManifest([routeBuild('/', { mode: 'ssg' })], INPUTS).file.hydrate).toBeUndefined();
+    expect(
+      buildManifest([routeBuild('/', { mode: 'ssg' })], { ...INPUTS, hydrateDeps: {} }).file.hydrate,
+    ).toBeUndefined();
+  });
+});
+
 describe('buildManifest', () => {
   it('emits one record per non-excluded route, preserving specificity order', () => {
     const { file } = buildManifest(
