@@ -3,7 +3,7 @@
 > **SDD:** [SDD-33 — Formularios reactivos: el núcleo](./SDD-33-formularios-reactivos.md)
 > **Paquete:** `@fudic/forms` — **nuevo**, punto de entrada `.` solamente
 > **Rama:** `sdd-33-formularios-reactivos`
-> **Progreso:** 0 / 15
+> **Progreso:** 1 / 15
 > **No depende de:** nada que esté en curso. `@fudic/core` está en `Hecho` y este paquete no toca
 > ningún fichero existente: se puede llevar en su propio worktree sin cruzarse con nadie.
 
@@ -44,7 +44,7 @@ posicional, el códec binario y la normalización profunda. Los tres primeros so
 
 ## Fase 1 — El paquete (1)
 
-- [ ] **1. Andamiaje de `@fudic/forms`.**
+- [x] **1. Andamiaje de `@fudic/forms`.**
       `packages/forms/` extendiendo `tsconfig.base.json`, con `vitest.config.ts` en entorno
       **`node`** —sin `happy-dom`, y que se note—, `coverage.include: ['src/**/*.ts']` y
       `thresholds` al **100** en las cuatro métricas desde el primer commit. `package.json` con

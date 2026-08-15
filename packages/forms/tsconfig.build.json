@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "declaration": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    // The build resolves @fudic/core through its published types (node_modules →
+    // dist), built first by the topological `pnpm -r build`. Source `paths` is a
+    // dev-only convenience for typecheck and tests, never for emit.
+    "paths": {}
+  },
+  "include": ["src"]
+}

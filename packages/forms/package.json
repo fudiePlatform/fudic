@@ -1,0 +1,55 @@
+{
+  "name": "@fudic/forms",
+  "version": "0.0.1",
+  "description": "Reactive form model for fudic — controls, groups and validation, with no DOM in any branch.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Pedro Hurtado",
+  "homepage": "https://github.com/fudiePlatform/fudic/tree/main/packages/forms#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fudiePlatform/fudic.git",
+    "directory": "packages/forms"
+  },
+  "bugs": {
+    "url": "https://github.com/fudiePlatform/fudic/issues"
+  },
+  "keywords": [
+    "fudic",
+    "fudie",
+    "forms",
+    "validation",
+    "signals",
+    "web-components"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@fudic/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@fudic/tsconfig": "workspace:*",
+    "vite": "8.0.16"
+  }
+}
