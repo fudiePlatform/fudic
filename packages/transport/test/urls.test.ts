@@ -69,6 +69,15 @@ describe('createUrlResolver', () => {
     expect(scoped.dataUrl('/blog')).toBe(`/app/${DATA_PREFIX}/blog`);
   });
 
+  it('places a file the build named itself, base applied and slash collapsed', () => {
+    // The exception that proves the rule (SDD-17 §4.7): the code shared between hydration
+    // chunks keeps a CONTENT HASH, so its name is a fact of the build, not arithmetic.
+    expect(urls.assetUrl('assets/element-DUSE73WP.js')).toBe('/assets/element-DUSE73WP.js');
+    expect(createUrlResolver('/app/', BUILD).assetUrl('assets/element-DUSE73WP.js')).toBe(
+      '/app/assets/element-DUSE73WP.js',
+    );
+  });
+
   it('moves every URL when the build id moves', () => {
     const next = createUrlResolver('/', 'deadbeef');
     expect(next.depUrl('app-badge')).toBe(`/${LINK_DIR}/app-badge-deadbeef.js`);

@@ -1,4 +1,4 @@
-import { FudicElement } from '@fudic/core';
+import { FudicElement, subscribe as $sub } from '@fudic/core';
 import { signal } from '@fudic/core';
 
 customElements.define("app-card", class extends FudicElement {
@@ -159,6 +159,7 @@ customElements.define("app-card", class extends FudicElement {
     const $m = () => { for (const $n of $r) $dom.append($shadow, $n); };
     const $s = () => {
       $n3 && $d.push($dom.event($n3, "press", toggle));
+      $d.push($sub(expanded, $u));
     };
     const $a = () => {
       let $v;
@@ -167,6 +168,7 @@ customElements.define("app-card", class extends FudicElement {
       $v = String((title) ?? '');
       if ($v !== $w[1]) { $w[1] = $v; $dom.setText($n5, $v); }
     };
+    const $u = () => { $a(); $u0(); $u1(); };
 
     return {
       c: () => {
@@ -239,7 +241,7 @@ customElements.define("app-card", class extends FudicElement {
         }
         $s();
       },
-      u: ($p) => { if (2 in $p) title = $p[2]; if (3 in $p) variant = $p[3] === undefined ? 'default' : $p[3]; $a(); $u0(); $u1(); },
+      u: ($p) => { if (2 in $p) title = $p[2]; if (3 in $p) variant = $p[3] === undefined ? 'default' : $p[3]; $u(); },
       r: () => { $k0.forEach(($i) => $i.r()); $k1.forEach(($i) => $i.r()); $n0 = $n1 = $n2 = $n3 = $n4 = $n5 = $n10 = $shadow = null; $d.forEach((d) => d()); },
     };
   }

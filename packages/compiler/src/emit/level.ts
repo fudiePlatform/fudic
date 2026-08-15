@@ -28,7 +28,7 @@ import type { ControlNode } from '../control/index.js';
 import { classifyAttribute } from '../binding/index.js';
 import { branchesOf } from './constructs.js';
 import { codeOf } from './oxc-code.js';
-import { reactiveName } from './attrs.js';
+import { readsMoving } from './attrs.js';
 
 /**
  * Every `ElementNode` a COMPONENT TEMPLATE can render, however deep and through whatever
@@ -133,33 +133,52 @@ export function hydratableTags(graph: ComponentGraph): ReadonlySet<string> {
   for (const comp of components) {
     if (isIntrinsicallyHydratable(comp)) hydratable.add(comp.tag);
   }
-  // Per tag, the props it receives as reactive. They join its own declarations when asking
-  // what a naked `@name` in ITS template refers to: a forwarded prop is as reactive as a
-  // signal for the only purpose this file has.
-  const reactiveProps = new Map<string, Set<string>>();
 
   let changed = true;
   while (changed) {
     changed = false;
     for (const comp of components) {
       if (!hydratable.has(comp.tag)) continue;
-      const reactives = new Set<string>([
-        ...codeOf(comp).signals.map((s) => s.name),
-        ...(reactiveProps.get(comp.tag) ?? []),
-      ]);
+      const { template } = codeOf(comp);
+      const moving = movingNames(comp);
       componentHosts(graph, comp, (el, child) => {
+        if (hydratable.has(child.tag)) return;
         for (const attr of el.attributes) {
           const b = classifyAttribute(attr, comp.source).value;
           if (b.type !== 'property') continue;
-          if (reactiveName(comp.source, b.value, reactives) === undefined) continue;
-          const landed = reactiveProps.get(child.tag) ?? new Set<string>();
-          if (!hydratable.has(child.tag) || !landed.has(b.name)) changed = true;
+          if (!readsMoving(b.value, template.ast, moving)) continue;
           hydratable.add(child.tag);
-          landed.add(b.name);
-          reactiveProps.set(child.tag, landed);
+          changed = true;
+          return;
         }
       });
     }
   }
   return hydratable;
+}
+
+/**
+ * The names whose value a component can see MOVE — the one set that decides both who
+ * hydrates and who gets handed a value again.
+ *
+ * Three sources, and the second is the one that used to be missing. Its signals and derived
+ * values, obviously. Its **props**, because a prop is not a constant: it is reassigned by
+ * `u`, and a component two levels down a drilling chain holds the root's signal as a prop
+ * and nothing else. And the `@client` bindings it reassigns itself.
+ *
+ * **Per FILE, not per graph, and that is a requirement rather than a simplification.** The
+ * Vite plugin compiles every `.fud` on its own, so a rule that asked "did anyone in the
+ * graph pass this prop something reactive?" would answer differently depending on how the
+ * file was reached, and the same source would emit two different chunks. Every prop counts,
+ * which is an OVERAPPROXIMATION in the direction this file already argues for: handing a
+ * value over once too often costs a comparison the child's `$w` absorbs, and handing it over
+ * once too few is a view that stops moving with no diagnostic possible.
+ */
+export function movingNames(comp: ResolvedComponent): ReadonlySet<string> {
+  const code = codeOf(comp);
+  return new Set<string>([
+    ...code.signals.map((s) => s.name),
+    ...code.props.map((p) => p.name),
+    ...code.mutable,
+  ]);
 }

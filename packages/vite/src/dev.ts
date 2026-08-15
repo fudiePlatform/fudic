@@ -12,6 +12,7 @@
 
 import { type ManifestFile, type RouteRecord, DEFAULT_CSP } from '@fudic/transport';
 import { type RouteBuild } from './discover.js';
+import { DEV_CLIENT_PREFIX } from './constants.js';
 
 /** The Vite dev URL for a virtual-module id: `\0x` is served at `/@id/__x00__x`. */
 export function devModuleUrl(base: string, id: string): string {
@@ -21,6 +22,33 @@ export function devModuleUrl(base: string, id: string): string {
 /** A stable root dev URL (`base + name`), collapsing a double slash when `base` ends in `/`. */
 export function devUrl(base: string, name: string): string {
   return `${base}${name}`.replace(/\/{2,}/gu, '/');
+}
+
+/**
+ * Where the dev server publishes a component's CLIENT module — the answer `resolveChunk`
+ * gets in dev (SDD-17 §4.6). Keyed by TAG, which is what the runtime holds.
+ */
+export function devClientUrl(base: string, tag: string): string {
+  return `${devClientPrefix(base)}${tag}.js`;
+}
+
+/** What every dev client URL starts with, base included: the bootstrap bakes this in. */
+export function devClientPrefix(base: string): string {
+  return devUrl(base, DEV_CLIENT_PREFIX);
+}
+
+/** The prefix of every dev client URL, base already stripped. */
+export const DEV_CLIENT_PATH = `/${DEV_CLIENT_PREFIX}`;
+
+/**
+ * The tag a dev client path names, or `null` when the path is not one. The caller has
+ * already stripped the site base — the same shape the route matcher works in.
+ */
+export function devClientTag(path: string): string | null {
+  if (!path.startsWith(DEV_CLIENT_PATH) || !path.endsWith('.js')) {
+    return null;
+  }
+  return path.slice(DEV_CLIENT_PATH.length, -'.js'.length);
 }
 
 /** The dev manifest: every non-excluded route rendered by the dev server. */

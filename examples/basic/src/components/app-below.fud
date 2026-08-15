@@ -1,0 +1,36 @@
+@code {
+  // El tag que vive por debajo del pliegue. Su chunk NO se precachea al cargar: la red se
+  // gasta en proporción a lo que el usuario ve, así que este se precachea cuando el scroll
+  // lo mete en el viewport, y ni un byte antes.
+  @client {
+    import { signal } from '@fudic/core';
+
+    const seen = signal(0);
+
+    function look() {
+      seen.set(seen() + 1);
+    }
+  }
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    button {
+      font: inherit;
+      padding: 0.5rem 1rem;
+      border: 1px solid #dcdcdc;
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<app-below>
+  <template shadowrootmode="open">
+    <button class="look" @click="@look">Bajo el pliegue: <span class="value">@(seen())</span></button>
+  </template>
+</app-below>

@@ -27,7 +27,7 @@ export interface SwBootstrapOptions {
 export function emitSwBootstrap(options: SwBootstrapOptions): string {
   return `import {
   loadManifest, createLinker, canLink, createRouter, createStore, cacheNames,
-  isStaleCache, controlBus, LOCATION_MESSAGE,
+  isStaleCache, controlBus, LOCATION_MESSAGE, WARM_MESSAGE, WARMED_MESSAGE,
 } from '@fudic/transport';
 import * as ssr from '@fudic/ssr';
 
@@ -121,11 +121,30 @@ async function build() {
 // the SW is ready before the first navigation it could serve.
 void boot();
 
-// THE single warm trigger (§4.6.2): the document says where the user is, and the SW
-// warms that template behind the navigation already in flight.
+// Two notices, and neither subsumes the other. The location is THE single route warm
+// trigger (§4.6.2): the document says where the user is and the SW warms that template
+// behind the navigation already in flight. The warm order is the page's (SDD-17 §4.7):
+// the components the user can SEE, deposited before the first gesture and never evaluated.
 self.addEventListener('message', (e) => {
-  if (!e.data || e.data.type !== LOCATION_MESSAGE) return;
-  e.waitUntil(boot().then((r) => r && r.warm(new URL(e.data.url).pathname)));
+  const msg = e.data;
+  if (!msg) return;
+  if (msg.type === LOCATION_MESSAGE) {
+    e.waitUntil(boot().then((r) => r && r.warm(new URL(msg.url).pathname)));
+  } else if (msg.type === WARM_MESSAGE) {
+    e.waitUntil(boot().then(async (r) => {
+      if (!r) return;
+      // BY TAG: the page knows tags, and what a tag's chunk imports is in the manifest,
+      // which is this side's to read. Only what really landed is confirmed — a page told a
+      // chunk is warm and then paying network for it is worse than never having been told.
+      const landed = new Set(await r.warmHydration(msg.tags));
+      if (!e.source) return;
+      e.source.postMessage({
+        type: WARMED_MESSAGE,
+        urls: msg.urls.filter((_, i) => landed.has(msg.tags[i])),
+        tags: msg.tags.filter((tag) => landed.has(tag)),
+      });
+    }));
+  }
 });
 
 self.addEventListener('fetch', (e) => {
@@ -134,12 +153,98 @@ self.addEventListener('fetch', (e) => {
 `;
 }
 
-/** Main thread: register the Service Worker, then tell it where the user is. */
-export function emitMainBootstrap(swUrlExpr: string): string {
-  return `import { registerRenderServiceWorker, notifyLocation } from '@fudic/transport';
+/**
+ * How the main thread turns a tag into the URL of its hydration chunk (SDD-17 §4.6).
+ *
+ * Two modes and no third, because there are exactly two ways a page can have been emitted.
+ * In a BUILD the URL is DERIVED from the manifest's arithmetic — `hydrateUrl(tag)` —
+ * which is why the build id has to travel inside this chunk. In DEV nothing is built:
+ * the component's client module is served by the dev server at a stable per-tag URL, and
+ * the build id does not exist.
+ *
+ * The choice is made here, at emit time, so the runtime never carries a branch for it.
+ */
+export type ChunkResolution =
+  | { readonly mode: 'build'; readonly base: string }
+  | { readonly mode: 'dev'; readonly urlPrefix: string };
 
-if ('serviceWorker' in navigator) {
-  registerRenderServiceWorker(${swUrlExpr}).then(() => notifyLocation());
+export interface MainBootstrapOptions {
+  readonly chunks: ChunkResolution;
+  /**
+   * The Service Worker's URL, as a JS expression — or `null` when the page has none: no
+   * `sw.json`, or `pnpm dev` with `dev: 'off'`. **Hydration does not depend on it.**
+   */
+  readonly swUrlExpr: string | null;
 }
-`;
+
+/**
+ * Main thread: install the hydration runtime — ALWAYS — and, when the page was emitted with
+ * one, register the render Service Worker and tell it where the user is.
+ *
+ * The order of those two facts is the correction of SDD-17 §4.7.1. This module used to be
+ * `export {};` whenever there was no Service Worker, which quietly made "no SW" mean "no
+ * hydration" — and that is three quarters of the real cases: a project without `sw.json`,
+ * `pnpm dev`, and every first load before `clients.claim()`. The runtime is ONE runtime; what
+ * branches is the two ports injected here, because this is the only place that knows how the
+ * page was emitted.
+ */
+export function emitMainBootstrap(options: MainBootstrapOptions): string {
+  const { chunks, swUrlExpr } = options;
+  const hasWorker = swUrlExpr !== null;
+  // Only what this page actually uses: a dev page with no Service Worker imports nothing
+  // from `@fudic/transport` at all.
+  const transport: string[] = [];
+  if (chunks.mode === 'build') transport.push('createUrlResolver');
+  if (hasWorker) transport.push('registerRenderServiceWorker', 'notifyLocation');
+  // The warm channel, chosen HERE and once (SDD-17 §4.7.1): the page that knows whether it
+  // was emitted with a worker is this one, so the runtime carries no branch for it and the
+  // unused channel is not even in the bundle.
+  const channel = hasWorker ? 'createServiceWorkerWarmChannel' : 'createPreloadWarmChannel';
+  const head = [
+    `import { installHydration, ${channel} } from '@fudic/core';`,
+    ...(transport.length === 0
+      ? []
+      : [`import { ${transport.join(', ')} } from '@fudic/transport';`]),
+    '',
+  ];
+  const resolver =
+    chunks.mode === 'build'
+      ? [
+          `// The build id travels inside this chunk, substituted like the Service Worker's`,
+          `// (SDD-27 §5.2): the URL of a hydration chunk is DERIVED, never mapped.`,
+          `const URLS = createUrlResolver(${JSON.stringify(chunks.base)}, ${JSON.stringify(BUILD_TOKEN)});`,
+          `const resolveChunk = (tag) => URLS.hydrateUrl(tag);`,
+        ]
+      : [
+          `// In dev nothing is built: the dev server publishes each component's client`,
+          `// module at a stable URL per tag.`,
+          `//`,
+          `// ABSOLUTE, and that is the whole point of the \`new URL\`. Vite's dev import`,
+          `// analysis rewrites every \`import(url)\` whose specifier is a runtime value into`,
+          `// \`import(__vite__injectQuery(url, 'import'))\`, and that helper decorates a`,
+          `// relative or root-relative path — and ONLY those. With a root-relative prefix the`,
+          `// browser ends up asking for \`…js?import\` while the warm named \`…js\`: two URLs,`,
+          `// two downloads, and a preload that never lands. An absolute URL is returned`,
+          `// untouched, so the preload and the import are the same request again.`,
+          `const CHUNKS = new URL(${JSON.stringify(chunks.urlPrefix)}, document.baseURI).href;`,
+          `const resolveChunk = (tag) => CHUNKS + tag + '.js';`,
+        ];
+  const worker = !hasWorker
+    ? []
+    : [
+        '',
+        `if ('serviceWorker' in navigator) {`,
+        `  registerRenderServiceWorker(${swUrlExpr}).then(() => notifyLocation());`,
+        `}`,
+      ];
+  return [
+    ...head,
+    ...resolver,
+    '',
+    // The order does not matter: a warm ordered before the worker takes control is queued
+    // and flushed on `controllerchange`, which is the only case there is on a first load.
+    `installHydration({ root: document, resolveChunk, warm: ${channel}() });`,
+    ...worker,
+    '',
+  ].join('\n');
 }

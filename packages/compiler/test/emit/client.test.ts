@@ -41,7 +41,9 @@ describe('emitComponentClientModule — the module shape (§6.8)', () => {
   const src = chunk('app-card');
 
   it('carries the factory and the define, and NOT the instance scaffolding', () => {
-    expect(src).toContain("import { FudicElement } from '@fudic/core';");
+    // `$sub` travels with it because `app-card` declares a signal its own template reads
+    // (§4.5); a component with none imports the base class alone, which §6.20 asserts.
+    expect(src).toContain("import { FudicElement, subscribe as $sub } from '@fudic/core';");
     expect(src).toContain('customElements.define("app-card", class extends FudicElement {');
     expect(src).toContain('static c($props) {');
     // All of this lives in the base class, inherited — never emitted per component.
@@ -385,8 +387,13 @@ describe('emitComponentClientModule — u, the update channel (BUG-12)', () => {
 
   it('calls $a() from c and from u, and never from h (§6.3, §4.3)', () => {
     expect(between('c: () => {', 'h: () => {')).toContain('$a();');
-    expect(between('u: ($p) => {', 'r: () => {')).toContain('$a();');
+    // `u` reaches it through `$u`, the rendering pass a component with signals of its own
+    // shares between its parent's update and its own notifications (§4.5). Same body, one
+    // caller more — which is the point: the two ways a value moves cannot drift apart.
+    expect(src).toContain('const $u = () => { $a();');
+    expect(between('u: ($p) => {', 'r: () => {')).toContain('$u();');
     expect(between('h: () => {', 'u: ($p) => {')).not.toContain('$a();');
+    expect(between('h: () => {', 'u: ($p) => {')).not.toContain('$u();');
   });
 
   it('orders create as fabricate → $a() → $m() → $s()', () => {
@@ -400,9 +407,10 @@ describe('emitComponentClientModule — u, the update channel (BUG-12)', () => {
     // One guard per prop, asking for PRESENCE (BUG-18 §3.1): the payload may be sparse, and
     // a hole means "unchanged". The defaults are repeated because a PRESENT `undefined` may
     // bring the default back. And `$a()` comes FIRST, once: the values of this level, then
-    // what the constructs below make of them.
+    // what the constructs below make of them — which is the body `$u` holds (§4.5).
+    expect(src).toContain('const $u = () => { $a(); $u0(); $u1(); };');
     expect(own).toContain(
-      "u: ($p) => { if (2 in $p) title = $p[2]; if (3 in $p) variant = $p[3] === undefined ? 'default' : $p[3]; $a(); $u0(); $u1(); },",
+      "u: ($p) => { if (2 in $p) title = $p[2]; if (3 in $p) variant = $p[3] === undefined ? 'default' : $p[3]; $u(); },",
     );
   });
 
@@ -571,7 +579,9 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
     expect(hook).toContain('$d.push($sub(count, ($v) => { const $p = []; $p[2] = $v; $n0.u($p); }));');
     expect(hook).toContain('$d.push($sub(other, ($v) => { const $p = []; $p[3] = $v; $n0.u($p); }));');
     // Each subscription writes ONE hole: two statements, and no read of the other signal.
-    for (const line of hook.split('\n').filter((l) => l.includes('$d.push'))) {
+    // Filtered to the ones that feed the child: the component's own rendering pass is also
+    // subscribed to `count` and `other` (§4.5), and it writes no hole at all.
+    for (const line of hook.split('\n').filter((l) => l.includes('$n0.u($p)'))) {
       expect(line.match(/\$p\[\d+\] = \$v;/gu)).toHaveLength(1);
     }
   });
@@ -666,9 +676,12 @@ describe('emitComponentClientModule — dense handover, sparse update (BUG-18)',
   })();
 
   const update = child.slice(child.indexOf('u: ($p) =>'), child.indexOf('r: () =>'));
+  // The subscriptions that FEED THE CHILD, which is what this suite is about. A component
+  // also subscribes its own rendering pass to its own signals (§4.5), and those lines say
+  // nothing about the handover: they are asserted apart, below.
   const subs = src
     .split('\n')
-    .filter((l) => l.includes('$d.push($sub'))
+    .filter((l) => l.includes('$d.push($sub') && l.includes('$n0.u($p)'))
     .map((l) => l.trim());
 
   it('§6.1 — the child asks for presence, and no longer destructures', () => {
@@ -879,6 +892,133 @@ describe('emitComponentClientModule — $host, materialized only where it is rea
     // `app-card` has a listener of its own and still needs no host: a `@evento` takes the
     // node, and only a `bus:` or an `emit` reaches for the host.
     expect(chunk('app-card')).not.toContain('$host');
+  });
+});
+
+/**
+ * The component's OWN reactivity (§4.5). Until this landed, a signal a component declared
+ * and read in its own template had no consumer at all: `set()` moved the value, `$a()` was
+ * only ever reached from the parent's `u`, and the view stayed as the server painted it.
+ */
+describe('emitComponentClientModule — a component subscribes its own signals', () => {
+  /** One component, alone in its graph, with the given `@client` body and template. */
+  const own = (code: string, template: string): string => {
+    const io = memoryIo({
+      '/page.fud':
+        '<link rel="component" href="./x-own.fud">\n' +
+        '<html><head></head><body><x-own></x-own></body></html>\n',
+      '/x-own.fud':
+        `@code {\n  @client {\n    import { signal, computed } from '@fudic/core';\n${code}  }\n}\n` +
+        `<x-own>\n  <template shadowrootmode="open">${template}</template>\n</x-own>\n`,
+    });
+    const g = resolveComponents('/page.fud', io);
+    return emitComponentClientModule(g, g.components.get('x-own')!, {});
+  };
+
+  it('renews the rendering pass on every signal it declares', () => {
+    const src = own('    const n = signal(0);\n', '<span>@(n())</span>');
+    expect(src).toContain("import { FudicElement, subscribe as $sub } from '@fudic/core';");
+    expect(src).toContain('const $u = () => { $a(); };');
+    expect(src).toContain('$d.push($sub(n, $u));');
+    // `u` runs the same body, so a value that moves by prop and one that moves by signal
+    // cannot be applied differently.
+    expect(src).toContain('u: () => { $u(); },');
+  });
+
+  it('hooks up in $s(), so `h` still paints nothing', () => {
+    const src = own('    const n = signal(0);\n', '<span>@(n())</span>');
+    const hook = src.slice(src.indexOf('const $s = () => {'), src.indexOf('const $a'));
+    expect(hook).toContain('$d.push($sub(n, $u));');
+    // `$sub` never delivers on subscribe, which is what lets the hookup sit on the path
+    // `h` takes without rewriting a single text node inside the gesture INP measures.
+    const adopt = src.slice(src.indexOf('h: () => {'), src.indexOf('u: () =>'));
+    expect(adopt).toContain('$s();');
+    expect(adopt).not.toContain('$a();');
+  });
+
+  it('subscribes the signal under a computed, and never the computed itself', () => {
+    // A derived value has no subscribers of its own — that is the whole point of pull — so
+    // the leaf is the channel, and subscribing both would run the pass twice per `set`.
+    const src = own(
+      '    const n = signal(0);\n    const double = computed(() => n() * 2);\n',
+      '<span>@(double())</span>',
+    );
+    expect(src).toContain('$d.push($sub(n, $u));');
+    expect(src).not.toContain('$sub(double');
+  });
+
+  it('emits no channel for a signal the view never renders', () => {
+    // Nothing to renew: no value write and no construct means a `set` has nothing to change,
+    // and a subscription for it would be a line every instance of the tag downloads.
+    const src = own('    const n = signal(0);\n    function bump() { n.set(n() + 1); }\n', '<b>hi</b>');
+    expect(src).toContain("import { FudicElement } from '@fudic/core';");
+    expect(src).not.toContain('$sub');
+    expect(src).not.toContain('const $u =');
+  });
+
+  it('drives a construct, not just a value write', () => {
+    const src = own('    const on = signal(true);\n', '<b>@if (on()) { si }</b>');
+    expect(src).toContain('const $u = () => { $a(); $u0(); };');
+    expect(src).toContain('$d.push($sub(on, $u));');
+  });
+});
+
+/**
+ * Prop drilling (§4.6). A component two levels below the signal holds its value as a PROP,
+ * and a prop is not a constant: it is reassigned by `u`, and right after that is when the
+ * child has to be told. Reading "not a signal" as "cannot move" is what stopped the chain
+ * at depth one — the root updated its child, and the grandchild never heard again.
+ */
+describe('emitComponentClientModule — a value that moves without a signal', () => {
+  const GRAND =
+    '@code {\n  const { value = 0 } = props<{ value?: number }>();\n}\n' +
+    '<x-grand>\n  <template shadowrootmode="open"><span>@value</span></template>\n</x-grand>\n';
+
+  /** `x-mid` receives `value` as a prop and hands `attrs` down to `x-grand`. */
+  const middle = (attrs: string, code = ''): string => {
+    const io = memoryIo({
+      '/page.fud':
+        '<link rel="component" href="./x-mid.fud">\n' +
+        '<html><head></head><body><x-mid></x-mid></body></html>\n',
+      '/x-mid.fud':
+        '<link rel="component" href="./x-grand.fud">\n' +
+        '@code {\n  const { value = 0 } = props<{ value?: number }>();\n' +
+        `  @client {\n    import { signal } from '@fudic/core';\n${code}  }\n}\n` +
+        '<x-mid>\n  <template shadowrootmode="open">' +
+        `<span>@value</span><x-grand ${attrs}></x-grand>` +
+        '</template>\n</x-mid>\n',
+      '/x-grand.fud': GRAND,
+    });
+    const g = resolveComponents('/page.fud', io);
+    return emitComponentClientModule(g, g.components.get('x-mid')!, {});
+  };
+
+  it('hands the child its value again in the update pass', () => {
+    const src = middle('.value="@value"');
+    // Once at hookup, whichever way this instance came alive…
+    expect(src.slice(src.indexOf('const $s = () => {'), src.indexOf('return {'))).toContain(
+      '$n1.u([, , (value)]);',
+    );
+    // …and once per pass, recomposed from the binding `u` has just reassigned. That is what
+    // makes the chain advance one hop per level, however deep it goes.
+    expect(src).toContain(
+      'u: ($p) => { if (2 in $p) value = $p[2] === undefined ? 0 : $p[2]; $a(); $n1.u([, , (value)]); },',
+    );
+  });
+
+  it('does the same for a compound expression that reads a signal', () => {
+    // `@(n() + 1)` is not a bare name, so it has no signal to hook a sparse channel onto.
+    // The pass renews it — and the pass is subscribed to `n`, so it runs.
+    const src = middle('.value="@(n() + 1)"', '    const n = signal(0);\n');
+    expect(src).toContain('const $u = () => { $a(); $n1.u([, , (n() + 1)]); };');
+    expect(src).toContain('$d.push($sub(n, $u));');
+  });
+
+  it('stays quiet for a child whose values cannot move', () => {
+    // `const` in the sense decision 75 means: crossed once, already in the markup the
+    // server painted. A channel for it would be scaffolding around a value that is fixed.
+    const src = middle('.value="@(1 + 1)"');
+    expect(src).not.toContain('$n1.u(');
   });
 });
 

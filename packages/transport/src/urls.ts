@@ -45,6 +45,12 @@ export interface UrlResolver {
    * questions in one call would leave the caller with a branch it can never take.
    */
   dataUrl(pattern: string): string;
+  /**
+   * A file the build named itself, with `base` applied. The exception that proves the
+   * rule: a chunk a hydration chunk IMPORTS keeps its content hash, so its name is a fact
+   * of the build and not arithmetic — the manifest states it, and this only places it.
+   */
+  assetUrl(path: string): string;
 }
 
 /**
@@ -69,6 +75,9 @@ export function createUrlResolver(base: string, build: string): UrlResolver {
     },
     dataUrl(pattern: string): string {
       return join(base, `${DATA_PREFIX}${pattern}`);
+    },
+    assetUrl(path: string): string {
+      return join(base, path);
     },
   };
 }

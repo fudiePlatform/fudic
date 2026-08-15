@@ -26,7 +26,29 @@ import type { Controller, FudicElementCtor } from './controller.js';
 const factoryOf = (el: FudicElement): FudicElementCtor =>
   el.constructor as unknown as FudicElementCtor;
 
-export abstract class FudicElement extends HTMLElement {
+/**
+ * The base the browser provides, or an inert stand-in where there is no DOM.
+ *
+ * `extends HTMLElement` is evaluated when the MODULE is, not when a component is defined,
+ * so on a server this file threw `HTMLElement is not defined` before anything could use it
+ * — and it takes the whole entry point of `@fudic/core` down with it, including `strategy`,
+ * which is server-side by definition. A route with `import { strategy } from '@fudic/core'`
+ * inside `@server` therefore failed to render at all.
+ *
+ * The production build hid it: Rollup tree-shakes a class the server render never mentions,
+ * so the line was dropped before Node saw it. The dev server evaluates the module whole, and
+ * there it failed on every request. A bug that only exists where there is no bundler is
+ * still a bug in the runtime.
+ *
+ * The stand-in is deliberately empty rather than a shim. Nothing on a server may extend it
+ * usefully: `customElements` does not exist there, so the class is never registered, never
+ * instantiated, and every entry point below is unreachable. What it has to do is EXIST, so
+ * that importing this module is not an error where the DOM is not.
+ */
+const Base: typeof HTMLElement =
+  typeof HTMLElement === 'undefined' ? (class {} as unknown as typeof HTMLElement) : HTMLElement;
+
+export abstract class FudicElement extends Base {
   /** Private, so there is no external write surface on a live component. */
   #controller: Controller | null = null;
 

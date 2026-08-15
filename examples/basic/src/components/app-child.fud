@@ -1,0 +1,51 @@
+<link rel="component" href="./app-grandchild.fud">
+
+@code {
+  // Profundidad 1: recibe el valor de la raíz y lo baja un nivel más.
+  const { count = 0 } = props<{ count?: number }>();
+
+  @client {
+    import { signal } from '@fudic/core';
+
+    // Estado propio, y no es decoración: con él este componente es hidratable POR SÍ MISMO.
+    // Un hijo que solo recibiera props también lo sería, pero solo al compilarse JUNTO a su
+    // padre, y el plugin compila cada `.fud` por separado.
+    const eco = signal(0);
+
+    function ping() {
+      eco.set(eco() + 1);
+    }
+  }
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+      padding-left: 0.9rem;
+    }
+    p {
+      margin: 0 0 0.35rem;
+      display: flex;
+      gap: 0.5rem;
+      align-items: baseline;
+    }
+    button {
+      font: inherit;
+      font-size: 0.8rem;
+      padding: 0.1rem 0.5rem;
+      border: 1px solid #dcdcdc;
+      border-radius: 999px;
+      background: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<app-child>
+  <template shadowrootmode="open">
+    <p>hijo (prof 1): <strong class="value">@count</strong>
+      <button class="eco" @click="@ping">eco @(eco())</button></p>
+    <app-grandchild .count="@count"></app-grandchild>
+  </template>
+</app-child>

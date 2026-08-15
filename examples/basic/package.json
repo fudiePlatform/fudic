@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:e2e": "vite build && playwright test",
+    "build:nosw": "vite build --config nosw/vite.config.ts",
+    "test:e2e": "vite build && vite build --config nosw/vite.config.ts && playwright test",
     "test:e2e:trace": "playwright test -g trace"
   },
   "dependencies": {

@@ -1,0 +1,35 @@
+@code {
+  // Un segundo tag en el viewport inicial: su chunk se precachea igual que el del contador,
+  // y su primera interacción es un camino 2 independiente del de aquél.
+  @client {
+    import { signal } from '@fudic/core';
+
+    const on = signal(false);
+
+    function toggle() {
+      on.set(!on());
+    }
+  }
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    button {
+      font: inherit;
+      padding: 0.5rem 1rem;
+      border: 1px solid #dcdcdc;
+      border-radius: 999px;
+      background: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<app-toggle>
+  <template shadowrootmode="open">
+    <button class="flip" @click="@toggle">Interruptor: <span class="value">@(on() ? "on" : "off")</span></button>
+  </template>
+</app-toggle>

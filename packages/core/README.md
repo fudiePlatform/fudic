@@ -1,6 +1,83 @@
 # @fudic/core
 
-The client runtime of fudic (SDD-14, SDD-15 §3.7).
+The client runtime of fudic. Two faces, and a page uses both: the **hydration
+runtime**, the single module a page downloads on load, and **`FudicElement`**,
+the base class the chunk of a component resolves against once it is downloaded.
+
+## The hydration runtime
+
+`installHydration({ root, resolveChunk, warm })` installs one listener, in the
+capture phase, and downloads nothing. The page is already painted — HTML, CSS
+and declarative shadow roots — and no component has JavaScript until the user
+touches one.
+
+The bootstrap the build emits calls it for you. **The layout must load that
+bootstrap**, and the CLI templates already do:
+
+```html
+<script type="module" src="/fudic-main.js"></script>
+```
+
+Without that line a page paints and never reacts to a click.
+
+### The three paths of a click
+
+The capturer finds the nearest `[data-fud-id]` host along `composedPath()` and
+decides by state:
+
+1. **The instance is already live** — it withdraws. The component's own listener
+   handles the event with the real `ev`. This is what makes a replay impossible
+   to double-fire.
+2. **First interaction, tag not defined** — nobody would have handled the
+   gesture, so it is cancelled, the bus receivers of the tag are raised first,
+   then the composition subtree in post-order, then the host, and the original
+   event is dispatched again, once. The user's handler runs with everything it
+   presupposes alive.
+3. **First interaction, tag already defined by another instance** — the listener
+   already existed in this same propagation. The runtime marks the instance and
+   withdraws: no download, no replay.
+
+Downloads are per tag, hydration is per instance: two instances of a tag share
+one chunk and still hydrate each on its own first click.
+
+### The two ports
+
+The runtime never branches on how the page was built; the bootstrap injects the
+two answers that depend on it.
+
+| port | with a Service Worker | without one |
+|---|---|---|
+| `resolveChunk(tag)` | the URL derived from the build id | the URL the dev server publishes |
+| `warm(urls, tags)` | a `postMessage` to the worker | `<link rel="modulepreload">` |
+
+### Without a Service Worker
+
+Hydration does not need one, and three of the four real cases have none: an app
+with no `sw.json`, `pnpm dev`, and every first load before the worker takes
+control. What changes is only the anticipated network:
+
+- With a worker, chunks land in Cache Storage and survive navigations, and a
+  warmed tag brings the files its chunk imports with it.
+- Without one, `modulepreload` fetches and parses without evaluating, for this
+  page only, and the browser does not fetch the imports of a preloaded module:
+  the first gesture of the page pays for the shared code once, and every warmed
+  tag after it costs no network.
+
+Warm is an optimization in both: hydration is correct with it and without it.
+
+### Warm
+
+A tag is anticipated when the first of its instances enters the viewport — once
+per tag, closure included (its bus receivers and its subtree), ordered in idle,
+at a low priority. A component below the fold costs no network until the user
+scrolls near it.
+
+Three events are published on `document` for instrumentation: `fud:ready`,
+`fud:hydrated` (`{ id, tag, ms, from }`) and `fud:warmed` (`{ tag }`).
+
+## The signals and the element base
+
+(SDD-14, SDD-15 §3.7.)
 
 - **`signal`** — fine-grained reactivity: value + live subscriber set, explicit
   subscribe/unsubscribe (no automatic tracking in v1), DOM-first rehydration.

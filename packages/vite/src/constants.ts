@@ -42,6 +42,19 @@ export const MAIN_ID = '\0fudic-main';
 export const DEV_MAIN_URL = 'fudic-main.js';
 export const DEV_SW_URL = 'fudic-sw.js';
 
+/**
+ * Where the dev server publishes the CLIENT module of a component: `<base>@fudic/h/<tag>.js`.
+ *
+ * In a build a component's hydration chunk is a real emitted file whose URL the manifest's
+ * arithmetic derives. In dev there is no build and no hash, and the module exists only as
+ * `<path>.fud?client` — an id nothing serves. Without a URL, `resolveChunk` has no answer
+ * and dev cannot hydrate at all, whatever the runtime does (SDD-17 §4.7.1).
+ *
+ * By TAG and not by path, because the tag is what the runtime holds: it reads it off
+ * `host.localName`, exactly as it does in a build.
+ */
+export const DEV_CLIENT_PREFIX = '@fudic/h/';
+
 /** Where the generated `@server load` endpoints live (SDD-20 §4.5). */
 export const DATA_PREFIX = '/_fudic/data';
 

@@ -1,6 +1,13 @@
 # Pendientes de v1 — lo que está especificado y NO está implementado
 
-> Fecha: 2026-08-12. Excluye SDD-17 (hidratación) y SDD-29 (snippets), que van por su cuenta.
+> Fecha: 2026-08-15. **Estos cuatro puntos son lo único abierto de v1.** SDD-17 (hidratación)
+> quedó `Hecho` el 2026-08-15 y con él se cierra el framework: el capturador global, la
+> cascada, el bus, el replay y el warm corren en las tres formas que el framework tiene
+> —`pnpm dev`, un build sin Service Worker y un build con él—. SDD-29 (snippets) va por su
+> cuenta y no bloquea nada.
+>
+> Ninguno de los cuatro bloquea: son azúcar de gramática sobre un compilador que ya emite,
+> y una app se escribe entera sin ellos.
 >
 > **Para qué es este documento.** Los cuatro puntos de abajo viven repartidos entre la
 > gramática, `props-spec.md` y comentarios del emit. Aquí están juntos, con la evidencia de

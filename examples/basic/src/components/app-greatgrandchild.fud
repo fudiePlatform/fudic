@@ -1,0 +1,51 @@
+@code {
+  // El fondo de la cascada, profundidad 3: es el PRIMERO que el runtime levanta y el último
+  // que lo necesitaría. Eso es el post-orden, y se ve en la traza de `fud:hydrated`.
+  const { count = 0 } = props<{ count?: number }>();
+
+  @client {
+    import { signal } from '@fudic/core';
+
+    const eco = signal(0);
+
+    function ping() {
+      eco.set(eco() + 1);
+    }
+  }
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+      padding-left: 0.9rem;
+    }
+    p {
+      margin: 0;
+      display: flex;
+      gap: 0.5rem;
+      align-items: baseline;
+      border-left: 3px solid #34a853;
+      padding-left: 0.5rem;
+    }
+    strong {
+      font-variant-numeric: tabular-nums;
+    }
+    button {
+      font: inherit;
+      font-size: 0.8rem;
+      padding: 0.1rem 0.5rem;
+      border: 1px solid #dcdcdc;
+      border-radius: 999px;
+      background: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<app-greatgrandchild>
+  <template shadowrootmode="open">
+    <p>bisnieto (prof 3): <strong class="value">@count</strong>
+      <button class="eco" @click="@ping">eco @(eco())</button></p>
+  </template>
+</app-greatgrandchild>

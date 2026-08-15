@@ -1,0 +1,102 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/app-counter.fud">
+<link rel="component" href="../components/app-toggle.fud">
+<link rel="component" href="../components/app-parent.fud">
+<link rel="component" href="../components/product-list.fud">
+<link rel="component" href="../components/shopping-cart.fud">
+<link rel="component" href="../components/app-below.fud">
+<link rel="component" href="../components/app-cold.fud">
+
+<head>
+  <title>La hidratación, guiada por el gesto — fudic</title>
+  <style>
+    .fold {
+      height: 140vh;
+      display: grid;
+      place-items: center;
+      color: #999;
+      border: 1px dashed #dcdcdc;
+      border-radius: 10px;
+      margin: 1.5rem 0;
+    }
+    .pair {
+      display: grid;
+      gap: 0.75rem;
+    }
+  </style>
+</head>
+
+@section nav {
+  <site-nav .current="hidratacion"></site-nav>
+}
+
+<h1>4 · La hidratación, guiada por el gesto</h1>
+<p class="lede">
+  Esta página carga <strong>un solo módulo</strong>: el capturador. Mientras no toques
+  nada, ningún componente tiene JavaScript — mira <code>:not(:defined)</code> en la
+  consola. Cada primera interacción descarga el chunk de su tag, levanta lo que ese
+  handler presupone vivo, y <strong>repite el gesto</strong>, de modo que el primer clic
+  cuenta.
+</p>
+
+<h2>Dos instancias, un chunk</h2>
+<p>
+  El primer clic en cualquiera de los dos contadores descarga el chunk de
+  <code>app-counter</code>; el primero del otro ya no descarga nada. Y cada uno arranca en
+  su propio número, leído de su tramo del payload.
+</p>
+
+<div class="pair">
+  <app-counter .start="@(0)"></app-counter>
+  <app-counter .start="@(10)"></app-counter>
+  <app-toggle></app-toggle>
+</div>
+
+<h2>La cascada, en post-orden</h2>
+<p>
+  El botón está en la raíz, pero su handler escribe props a los hijos que monta. Así que el
+  runtime levanta primero el bisnieto, luego el nieto, luego el hijo, y la raíz la última.
+  Hay <strong>dos</strong> raíces a propósito: definir el tag upgradea las dos, así que el
+  subárbol de ambas tiene que estar listo antes — pulsa la segunda después de la primera y
+  su número también sube a la primera.
+</p>
+
+<div class="pair">
+  <app-parent></app-parent>
+  <app-parent></app-parent>
+</div>
+
+<h2>El bus: el receptor, antes que el emisor</h2>
+<p>
+  El carrito escucha en <code>document</code> y no está vivo cuando pulsas. El runtime lo
+  levanta <em>antes</em> que la lista, de modo que cuando el handler del producto corre en
+  el replay, el <code>emit</code> encuentra a alguien escuchando. El primer clic ya suma.
+</p>
+
+<div class="pair">
+  <product-list></product-list>
+  <shopping-cart></shopping-cart>
+</div>
+
+<div class="fold">↓ baja: lo de abajo no consume red hasta que se acerca</div>
+
+<h2>Por debajo del pliegue</h2>
+<p>
+  Este tag no se precachea al cargar. Su chunk se deposita en cache cuando el scroll mete
+  su instancia en el viewport, y no antes.
+</p>
+
+<app-below></app-below>
+
+<h2>Y uno que nadie precachea</h2>
+<p>
+  Dentro de un <code>&lt;details&gt;</code> cerrado no hay viewport que valga: su instancia
+  nunca entra, así que el warm no lo toca. Ábrelo y pulsa — hidrata igual, pagando la red
+  dentro del gesto. El warm es una optimización, no un requisito.
+</p>
+
+<details>
+  <summary>Abrir el caso frío</summary>
+  <app-cold></app-cold>
+</details>
