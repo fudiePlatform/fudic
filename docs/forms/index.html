@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fudic — envío posicional de forms</title>
+<style>
+:root{--ink:#13141a;--paper:#f5f2ec;--panel:#fffdf8;--line:#d8d2c4;--hot:#b5462f;--dead:#9a8f7d;--live:#2f6f4f;--mono:ui-monospace,'Cascadia Code',Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;padding:2rem 1.5rem;background:var(--paper);color:var(--ink);font:15px/1.55 system-ui,-apple-system,'Segoe UI',sans-serif}
+main{max-width:840px;margin:0 auto}
+h1{font-size:1.5rem;margin:0 0 .35rem}
+.tag{display:inline-block;font:600 11px/1 var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--hot);border:1px solid var(--line);border-radius:3px;padding:.35rem .5rem;background:var(--panel)}
+p{color:#3a3730;margin:.9rem 0}
+code{font:13px var(--mono);background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:.1rem .3rem}
+.aviso{border-left:3px solid var(--hot);background:var(--panel);padding:.85rem 1rem;margin:1.4rem 0;font-size:14px}
+h2{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--dead);margin:2rem 0 .75rem;font-weight:700}
+.controls{display:flex;flex-wrap:wrap;gap:.5rem}
+button{font:500 13px/1 system-ui,sans-serif;background:var(--ink);color:var(--paper);border:0;border-radius:4px;padding:.65rem .9rem;cursor:pointer;transition:background .12s}
+button:hover{background:var(--hot)}
+button.all{background:var(--live)}
+button.all:hover{background:var(--hot)}
+ul{padding-left:1.1rem;color:#3a3730}
+li{margin:.3rem 0}
+.mod{font:13px var(--mono);color:var(--dead)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Envío posicional de formularios</h1>
+  <span class="tag">@fudic/forms + @fudic/http</span>
+
+  <p>El body de un <code>POST/PUT/PATCH/DELETE</code> viaja como array sin etiquetas.
+  El orden lo da <code>Object.keys(schema)</code> del fichero que importan los dos extremos.
+  Sin compilador.</p>
+
+  <div class="aviso">
+    <strong>Abre la consola del navegador.</strong> Cada caso imprime un bloque único: qué afirma, la petición tal como saldría, y el veredicto.
+    No hay red: el transporte imprime la petición tal y como saldría y se la pasa al
+    otro extremo en memoria.
+  </div>
+
+  <h2>Casos</h2>
+  <div class="controls">
+    <button class="all" data-c="all">ejecutar todos</button>
+    <button data-c="positional">1 · posicional</button>
+    <button data-c="outsideAllowlist">2 · fuera de allowlist</button>
+    <button data-c="savings">3 · ahorro</button>
+    <button data-c="roundtrip">4 · roundtrip</button>
+    <button data-c="validation">5 · validación 422</button>
+    <button data-c="arity">6 · aridad</button>
+    <button data-c="noBody">7 · GET / DELETE</button>
+    <button data-c="notAForm">8 · body suelto</button>
+    <button data-c="undefinedValues">9 · undefined</button>
+    <button data-c="deepNormalization">10 · profundidad</button>
+  </div>
+
+  <h2>Formulario real</h2>
+  <p><a href="./form.html" style="color:var(--hot)">form.html</a> — el mismo circuito con inputs de verdad enlazados por <code>control:</code>.</p>
+
+  <h2>Ficheros</h2>
+  <ul class="mod">
+    <li><code>forms.js</code> — @fudic/forms + el middleware <code>validate</code></li>
+    <li><code>http.js</code> — las cinco factorías, la allowlist, el transporte a consola</li>
+    <li><code>blog.form.js</code> — el schema. Lo importan cliente y servidor</li>
+    <li><code>server.js</code> — el otro extremo, con el mismo import</li>
+    <li><code>bind.js</code> — capa DOM: <code>control:</code> ↔ input real</li>
+    <li><code>log.js</code> — formato de la consola: un bloque por caso</li>
+    <li><code>cases.js</code> — los ocho casos</li>
+  </ul>
+</main>
+
+<script type="module">
+import { cases, all } from './cases.js';
+
+const run = async (k) => {
+  console.clear();
+  try { k === 'all' ? await all() : await cases[k](); }
+  catch (e) { console.error(e); }
+};
+
+document.querySelectorAll('button[data-c]')
+  .forEach((b) => b.addEventListener('click', () => run(b.dataset.c)));
+</script>
+</body>
+</html>
