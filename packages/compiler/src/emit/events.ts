@@ -31,6 +31,7 @@
  */
 
 import type { OxcNode } from '../oxc/index.js';
+import { handlerShape, unwrapParens } from '../binding/index.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import type { FragmentAst } from './scope.js';
 import type { TemplateJs } from './oxc-code.js';
@@ -59,38 +60,30 @@ export function hookupContext(template: TemplateJs, diagnostics: Diagnostic[]): 
   return { template, diagnostics, hostUsed: false };
 }
 
-/** The three roots that ARE the listener: what they evaluate to is subscribed as it is. */
-const DIRECT: ReadonlySet<string> = new Set([
-  'Identifier',
-  'ArrowFunctionExpression',
-  'FunctionExpression',
-]);
-
 /**
- * The root node of a value, past any parentheses the author wrote.
- *
- * The batch parses with `preserveParens`, so `@((e) => f(e))` arrives as a
- * `ParenthesizedExpression` around the arrow. Those parens are the author's own — the ones
- * of the `@( … )` atom are not in the span — and refusing a handler over them would be
- * `FUD0291` on perfectly good JS.
+ * The root node of a value, past any parentheses the author wrote. The classification
+ * itself is `handlerShape`'s (`binding/handler.ts`), so the editor decides it with the
+ * very same function — a rule only one of the two knows reopens BUG-23 §2.4.
  */
 function rootOf(ast: FragmentAst): OxcNode | undefined {
-  let node = Array.isArray(ast) ? undefined : (ast as OxcNode);
-  while (node !== undefined && node.type === 'ParenthesizedExpression') {
-    node = node['expression'] as OxcNode | undefined;
-  }
-  return node;
+  return unwrapParens(Array.isArray(ast) ? undefined : (ast as OxcNode));
 }
 
 /** The listener a plain `@event` binding subscribes, or `undefined` for `FUD0291`. */
 export function eventHandler(source: string, at: Span, ctx: HookupContext): string | undefined {
   const root = rootOf(ctx.template.ast(at));
   const text = source.slice(at.start, at.end);
-  if (root === undefined) return undefined;
-  // Invoked at DISPATCH, inside an arrow whose parameter is spelled `$event`: the argument
-  // list is copied character for character, so what the author wrote is what runs.
-  if (root.type === 'CallExpression') return `($event) => ${text}`;
-  return DIRECT.has(root.type) ? text : undefined;
+  switch (handlerShape(root)) {
+    // Invoked at DISPATCH, inside an arrow whose parameter is spelled `$event`: the argument
+    // list is copied character for character, so what the author wrote is what runs.
+    case 'call':
+      return `($event) => ${text}`;
+    case 'reference':
+    case 'lambda':
+      return text;
+    case 'unsuitable':
+      return undefined;
+  }
 }
 
 /**
@@ -104,18 +97,24 @@ export function eventHandler(source: string, at: Span, ctx: HookupContext): stri
 export function busHandler(source: string, at: Span, ctx: HookupContext): string | undefined {
   const root = rootOf(ctx.template.ast(at));
   const text = source.slice(at.start, at.end);
-  if (root === undefined) return undefined;
-  if (root.type === 'CallExpression') {
-    const callee = root['callee'] as OxcNode;
-    const args = root['arguments'] as readonly OxcNode[];
-    const last = args[args.length - 1];
-    const written =
-      last === undefined
-        ? ''
-        : `, ${source.slice(ctx.template.offset(args[0]!.start), ctx.template.offset(last.end))}`;
-    return `($event) => ${source.slice(at.start, ctx.template.offset(callee.end))}.call($host${written})`;
+  switch (handlerShape(root)) {
+    case 'call': {
+      const call = root as OxcNode;
+      const callee = call['callee'] as OxcNode;
+      const args = call['arguments'] as readonly OxcNode[];
+      const last = args[args.length - 1];
+      const written =
+        last === undefined
+          ? ''
+          : `, ${source.slice(ctx.template.offset(args[0]!.start), ctx.template.offset(last.end))}`;
+      return `($event) => ${source.slice(at.start, ctx.template.offset(callee.end))}.call($host${written})`;
+    }
+    // A bare reference takes no parens; a lambda does, or `.call` would parse as part of it.
+    case 'reference':
+      return `($event) => ${text}.call($host, $event)`;
+    case 'lambda':
+      return `($event) => (${text}).call($host, $event)`;
+    case 'unsuitable':
+      return undefined;
   }
-  if (!DIRECT.has(root.type)) return undefined;
-  // A bare reference takes no parens; a lambda does, or `.call` would parse as part of it.
-  return `($event) => ${root.type === 'Identifier' ? text : `(${text})`}.call($host, $event)`;
 }

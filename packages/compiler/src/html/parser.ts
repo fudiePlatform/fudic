@@ -98,20 +98,6 @@ interface OpenElement {
 /** decision 51: the mode is fixed by whether the file opens with a doctype. */
 const DOCTYPE_START = /^\s*<!DOCTYPE/iu;
 
-/**
- * Whether this attribute's value is a HANDLER — an event binding (`@click`) or a bus
- * subscription (`bus:carrito`, `bus:(EVENTOS.carrito)`). It is the one position where an
- * implicit expression may end in a call (decision 99).
- *
- * The two prefixes are spelled out here rather than imported from SDD-07: that module
- * classifies bindings and already depends on this one, and the dependency only runs one
- * way. The tokenizer holds the same knowledge for the same reason (the `bus:(` rule).
- */
-function isHandlerName(name: string | RazorExpression): boolean {
-  // An expression name is only legal after `bus:`, and the lexer produces one nowhere else.
-  return typeof name !== 'string' || name.startsWith('@') || name.startsWith('bus:');
-}
-
 class HtmlParser {
   readonly #source: string;
   readonly #lexer: Lexer;
@@ -488,7 +474,7 @@ class HtmlParser {
       const quote = this.#lexer.peek();
       end =
         quote.type === 'attr-quote-open'
-          ? this.#parseQuotedValue(value, isHandlerName(name))
+          ? this.#parseQuotedValue(value)
           : this.#parseUnquotedValue(value);
     }
 
@@ -500,7 +486,7 @@ class HtmlParser {
     while (this.#lexer.peek().type === 'whitespace') this.#next();
   }
 
-  #parseQuotedValue(parts: AttributeValuePart[], call = false): number {
+  #parseQuotedValue(parts: AttributeValuePart[]): number {
     this.#next(); // the opening quote
     for (;;) {
       const token = this.#lexer.peek();
@@ -512,8 +498,7 @@ class HtmlParser {
       if (token.type === 'eof') return this.#lexer.offset;
 
       if (token.type === 'at-trigger') {
-        const part = this.#attributeAtom(call);
-        if (part !== null) parts.push(part);
+        parts.push(this.#attributeAtom());
         continue;
       }
 
@@ -544,13 +529,13 @@ class HtmlParser {
   /**
    * An `@` atom in value position. Only expressions are value parts.
    *
-   * `call` carries decision 99 down: in the value of an `@event` / `bus:` binding an
-   * implicit expression may end in a balanced call, so `@del($event, item.id)` is ONE
-   * atom instead of the path `del` plus literal text.
+   * It takes no options any more: since decision 100 an implicit expression is a chain
+   * wherever it is written, so a call is no longer a privilege of the value of an
+   * `@event` / `bus:` binding (decision 99, retired).
    */
-  #attributeAtom(call: boolean): AttributeValuePart | null {
+  #attributeAtom(): AttributeValuePart {
     const trigger = this.#next();
-    const resolved = resolveTrigger(this.#source, trigger.span.start, { call });
+    const resolved = resolveTrigger(this.#source, trigger.span.start);
     if (resolved.diagnostics.length > 0) this.#diagnostics.push(...resolved.diagnostics);
     const resolution = resolved.value;
 
@@ -574,11 +559,30 @@ class HtmlParser {
   }
 
   /**
-   * A value with no quotes (decision 8 / FUD0056). The lexer already cut the run at
-   * the first whitespace, `>` or `/>`, which is exactly the recovery §4.6 prescribes.
+   * A value with no quotes. Two cases since decision 103.
+   *
+   * ONE Razor atom needs no quotes: `.prop=@name`, `@click=@onClick($event)`,
+   * `class:on=@active`. It is an EXCEPTION to decision 8, not its repeal — the lexer
+   * only opens the atom on a significant `@`, and everything else still lands on the
+   * branch below, where `id=foo` is `FUD0056` exactly as before.
+   *
+   * For the rest the lexer already cut the run at the first whitespace, `>` or `/>`,
+   * which is exactly the recovery §4.6 prescribes.
    */
   #parseUnquotedValue(parts: AttributeValuePart[]): number {
     const token = this.#lexer.peek();
+    if (token.type === 'at-trigger') {
+      const part = this.#attributeAtom();
+      parts.push(part);
+      return part.span.end;
+    }
+    // `.prop=@(counter().id)`: the explicit form is one atom too, and refusing it here
+    // would make the quotes mandatory for precisely what decision 104 keeps them for.
+    if (token.type === 'explicit-expr') {
+      this.#next();
+      parts.push(expressionFromToken(token));
+      return token.span.end;
+    }
     if (token.type === 'text') {
       this.#next();
       this.#error('FUD0056', 'attribute value must be quoted', token.span);

@@ -80,11 +80,15 @@ function insideJs(at: Span, offset: number): boolean {
 }
 
 /**
- * The value of an attribute, inside the quotes.
+ * The value of an attribute, inside the quotes — or, since decision 103, with none at all.
  *
  * Derived from the attribute's own span rather than from its value parts, because the case
  * that matters most has none: `href=""` is where completion is asked for, and an empty parts
  * list cannot say where the quotes were.
+ *
+ * With no quotes the value runs from the first non-blank character after the `=` to the end
+ * of the attribute, which is where the Razor chain stopped: `.prop=@data.title` is a value
+ * exactly as `.prop="@data.title"` is, and an editor asking from inside it must be told so.
  */
 export function attributeValueSpan(source: string, attribute: Attribute): Span | undefined {
   const raw = source.slice(attribute.span.start, attribute.span.end);
@@ -92,8 +96,11 @@ export function attributeValueSpan(source: string, attribute: Attribute): Span |
   if (equals === -1) return undefined;
 
   const afterEquals = attribute.span.start + equals + 1;
-  const quote = /^\s*(["'])/.exec(raw.slice(equals + 1));
-  if (quote === null) return span(afterEquals, attribute.span.end);
+  const rest = raw.slice(equals + 1);
+  const quote = /^\s*(["'])/.exec(rest);
+  if (quote === null) {
+    return span(afterEquals + (rest.length - rest.trimStart().length), attribute.span.end);
+  }
 
   const start = afterEquals + quote[0].length;
   const closed = source[attribute.span.end - 1] === quote[1];
@@ -155,7 +162,14 @@ function expressionRegion(expr: RazorExpression | undefined, offset: number): Re
   return { kind: 'expression', span: expr.span };
 }
 
-/** Inside a quoted value: a Razor atom answers for itself, the literal runs do not. */
+/**
+ * Inside a value: a Razor atom answers for itself, the literal runs do not.
+ *
+ * END INCLUDED, for the reason `insideJs` gives: the last offset of an expression is where
+ * the caret spends its life. `.prop=@da|` is the position the author completes a name from,
+ * and half-open containment would hand it back as the value — and then the attribute names
+ * would answer where TypeScript has to.
+ */
 function attributeValueRegion(
   attribute: Attribute,
   value: Span,
@@ -163,7 +177,7 @@ function attributeValueRegion(
   offset: number,
 ): Region {
   for (const part of attribute.value) {
-    if (part.type === 'razor-expression' && contains(part.span, offset)) {
+    if (part.type === 'razor-expression' && insideJs(part.span, offset)) {
       return { kind: 'expression', span: part.span };
     }
   }

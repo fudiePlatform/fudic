@@ -30,12 +30,12 @@ function implicit(source: string): string {
   return source.slice(value.span.start, value.span.end);
 }
 
-describe('§2.3 — the implicit expression is a path, not a chain', () => {
-  it.fails('takes a call anywhere in the chain', () => {
+describe('§2.3 — the implicit expression is a chain (task 2)', () => {
+  it('takes a call anywhere in the chain', () => {
     expect(implicit('@counter().id')).toBe('@counter().id');
   });
 
-  it.fails('takes an index and an optional chain', () => {
+  it('takes an index and an optional chain', () => {
     expect(implicit('@a?.b[0].c(x)')).toBe('@a?.b[0].c(x)');
   });
 
@@ -44,12 +44,12 @@ describe('§2.3 — the implicit expression is a path, not a chain', () => {
   });
 });
 
-describe('§2.3 — an unquoted value is text', () => {
-  it.fails('takes `.prop=@name` with no FUD0056', () => {
+describe('§2.3 — an unquoted value can be one `@` expression (task 4)', () => {
+  it('takes `.prop=@name` with no FUD0056', () => {
     expect(codes('<app-circle .name=@titulo></app-circle>')).toEqual([]);
   });
 
-  it.fails('takes an event written the same way', () => {
+  it('takes an event written the same way', () => {
     expect(codes('<div @click=@onClick($event)></div>')).toEqual([]);
   });
 

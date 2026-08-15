@@ -8,7 +8,7 @@
  * matching concrete node, so the walk narrows by discriminant and casts to the SDD-06 shape.
  */
 
-import type { HtmlContent, ElementNode, RawExpressionNode } from '../html/index.js';
+import type { HtmlContent, ElementNode, Attribute, RawExpressionNode } from '../html/index.js';
 import type {
   ControlNode,
   IfNode,
@@ -32,6 +32,15 @@ export interface TreeVisitor {
   exitLoop?(): void;
   /** A content-level interpolation: a bare `@expr` or the inner expr of `@raw(…)`. */
   interpolation?(expr: RazorExpression): void;
+  /**
+   * Every Razor expression in an ATTRIBUTE — a value part, or the expression that names a
+   * `bus:( … )` event (decision 28.b) — with the attribute that carries it.
+   *
+   * The walk went through these and never handed one over, so nobody could register an
+   * attribute value's JS in the batch without traversing the tree a second time. That is
+   * what left the projection with no AST to ask the shape of a handler from (BUG-23 §2.4).
+   */
+  binding?(expr: RazorExpression, attr: Attribute, el: ElementNode): void;
   /**
    * Every control construct, before its bodies are descended.
    *
@@ -75,10 +84,26 @@ export function walk(content: readonly HtmlContent[], visitor: TreeVisitor): voi
   for (const node of content) walkNode(node, visitor);
 }
 
+/**
+ * The Razor expressions of one element's attributes, in source order. The name comes first
+ * because that is where it is written: `bus:(EVENTS.cart)="@h"` names the event before it
+ * gives the handler.
+ */
+function walkBindings(el: ElementNode, visitor: TreeVisitor): void {
+  if (visitor.binding === undefined) return;
+  for (const attr of el.attributes) {
+    if (typeof attr.name !== 'string') visitor.binding(attr.name, attr, el);
+    for (const part of attr.value) {
+      if (part.type === 'razor-expression') visitor.binding(part, attr, el);
+    }
+  }
+}
+
 function walkNode(node: HtmlContent, visitor: TreeVisitor): void {
   switch (node.type) {
     case 'element':
       visitor.element?.(node);
+      walkBindings(node, visitor);
       walk(node.children, visitor);
       return;
     case 'razor-expression':

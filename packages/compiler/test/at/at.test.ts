@@ -81,22 +81,56 @@ describe('implicit expressions (§6.2, §6.3)', () => {
   });
 });
 
-describe('boundary stops (§6.4, §6.6, §6.7, §6.8, §6.9)', () => {
+describe('the implicit expression is a CHAIN (decisions 100-102)', () => {
+  it('takes an optional access', () => {
+    expect(implicitExpr('@user?.name')).toBe('user?.name');
+  });
+
+  it('takes a call anywhere, not just at the end', () => {
+    expect(implicitExpr('@a.b(c)')).toBe('a.b(c)');
+    expect(implicitExpr('@counter().id')).toBe('counter().id');
+  });
+
+  it('takes an index, and the links in any order', () => {
+    expect(implicitExpr('@items[0]')).toBe('items[0]');
+    expect(implicitExpr('@a?.b[0].c(x)')).toBe('a?.b[0].c(x)');
+  });
+
+  it('lets the balancer own the boundary, so a `)` in a string does not close it', () => {
+    expect(implicitExpr(`@del('a)b')`)).toBe(`del('a)b')`);
+    expect(scanImplicitExpression(`@del('a)b')`, 0).value.regions).toHaveLength(1);
+  });
+
+  it('never crosses whitespace (decision 101)', () => {
+    expect(implicitExpr('@del (x)')).toBe('del');
+    expect(implicitExpr('@items [0]')).toBe('items');
+  });
+
+  it('degrades on an unterminated group and reports it', () => {
+    const result = scanImplicitExpression('@del($event', 0);
+    expect(result.diagnostics.map((d) => d.code)).toEqual(['FUD0002']);
+    expect(result.value.span).toEqual(span(0, 11));
+  });
+
+  it('records the dangling dot apart from the expression (decision 102)', () => {
+    const dot = scanImplicitExpression('@data.', 0).value;
+    expect(dot.expr).toEqual(span(1, 5));
+    expect(dot.dangling).toEqual(span(5, 6));
+
+    const optional = scanImplicitExpression('@data?.', 0).value;
+    expect(optional.expr).toEqual(span(1, 5));
+    expect(optional.dangling).toEqual(span(5, 7));
+  });
+
+  it('leaves `dangling` absent when the chain ends on a name', () => {
+    expect(scanImplicitExpression('@data.title', 0).value.dangling).toBeUndefined();
+  });
+});
+
+describe('boundary stops (§6.4, §6.7, §6.8, §6.9)', () => {
   it('stops before a trailing dot (decision 2)', () => {
     expect(implicitExpr('@foo.')).toBe('foo');
     expect(implicitExpr('@data.title.')).toBe('data.title');
-  });
-
-  it('stops before ?. so optional chaining needs the explicit form', () => {
-    expect(implicitExpr('@user?.name')).toBe('user');
-  });
-
-  it('stops before a call (§6.6)', () => {
-    expect(implicitExpr('@a.b(c)')).toBe('a.b');
-  });
-
-  it('stops before an index (§6.6)', () => {
-    expect(implicitExpr('@items[0]')).toBe('items');
   });
 
   it('stops before ! (decision 4)', () => {

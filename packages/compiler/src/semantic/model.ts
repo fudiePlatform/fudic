@@ -26,6 +26,12 @@ export interface SemanticInput {
   readonly components: ComponentRegistry;
 }
 
+/**
+ * What the child declares about one prop. Declared in `binding/crossing.ts` and re-exported
+ * from here: a rule the emit and this pass both read cannot live inside either of them.
+ */
+export type { ComponentDeclaredProps } from '../binding/index.js';
+
 /** Resolves whether a custom tag is a declared component (decision 41). Cross-file; injected (DIP). */
 export interface ComponentRegistry {
   has(tag: string): boolean;

@@ -159,14 +159,14 @@ describe('§2.2 / symptom 2 — a dangling dot is text, not part of the `@`', ()
   });
 });
 
-describe('§2.3 / symptom 3 — an unquoted value is text', () => {
-  it.fails('takes `.prop=@expr` without FUD0056', async () => {
+describe('§2.3 / symptom 3 — an unquoted value can be one `@` expression (tasks 2 and 4)', () => {
+  it('takes `.prop=@expr` without FUD0056', async () => {
     const problems = await problemsFor('<app-circle .name=@data.title></app-circle>');
 
     expect(problems).toEqual([]);
   });
 
-  it.fails('and a chain with a call needs no parentheses', async () => {
+  it('and a chain with a call needs no parentheses', async () => {
     const problems = await problemsFor('<div id=@counter().id></div>');
 
     expect(problems).toEqual([]);
