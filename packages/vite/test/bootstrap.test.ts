@@ -184,7 +184,10 @@ describe('emitMainBootstrap', () => {
       chunks: { mode: 'dev', urlPrefix: '/@fudic/h/' },
       swUrlExpr: null,
     });
-    expect(code).toContain('const CHUNKS = "/@fudic/h/";');
+    // Absolute: Vite's dev import analysis decorates a root-relative dynamic specifier with
+    // `?import` and leaves an absolute URL alone, so this is what keeps the URL the warm
+    // preloads and the URL the import asks for one and the same (SDD-17 §4.7.1).
+    expect(code).toContain('const CHUNKS = new URL("/@fudic/h/", document.baseURI).href;');
     expect(code).toContain("const resolveChunk = (tag) => CHUNKS + tag + '.js';");
     expect(code).not.toContain(BUILD_TOKEN);
     // A dev page with no worker needs nothing from the transport package.

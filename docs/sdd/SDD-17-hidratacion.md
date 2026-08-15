@@ -405,8 +405,17 @@ pagando red en la primera interacción, y anunciar `fud:warmed` para eso es peor
 anunciar nada. Un tag que el manifiesto no conoce —una página en cache de un build anterior—
 es su chunk y nada más: es un warm perdido, nunca un error.
 
-> El canal `modulepreload` no necesita nada de esto: `rel="modulepreload"` se trae el **grafo
-> del módulo**, dependencias incluidas. La asimetría es del transporte, no del modelo.
+> **El canal `modulepreload` no puede hacer lo mismo, y esto se midió.** La suposición era que
+> `rel="modulepreload"` se trae el **grafo del módulo**, dependencias incluidas; en Chromium,
+> un `<link rel="modulepreload">` insertado por script descarga **el módulo y nada más** —sus
+> imports estáticos no se piden hasta que algo lo evalúa— y un `<link>` sin ningún atributo se
+> comporta igual, así que no es cosa de `fetchpriority`. La página tampoco puede nombrar esas
+> dependencias: llevan hash de contenido y solo el manifiesto las conoce. Consecuencia, y es
+> la asimetría real entre los dos canales: **sin Service Worker, el primer gesto de la página
+> paga el código compartido**, una vez por página y no por tag —el segundo tag warmeado ya
+> hidrata sin red—. Con Service Worker no se paga nunca. Cerrar el hueco pediría que el
+> bootstrap sin SW leyera el manifiesto en el hilo principal; no se hace aquí, y el criterio 21
+> lo mide tal como es.
 
 **Idempotencia en dos capas**, porque las recargas, el `clients.claim()` del SW y el
 re-registro pueden disparar la orden más de una vez:
@@ -432,6 +441,13 @@ se emitió la página es el bootstrap, no el runtime:
 |---|---|---|
 | `resolveChunk(tag)` | `hydrateUrl(tag)` (§4.6) | la URL que publica el dev server |
 | `warm(urls, tags)` | `postMessage({type:'warm', …})` al controlador | `<link rel="modulepreload">` |
+
+> En dev la URL que devuelve `resolveChunk` es **absoluta**, y no por gusto: el análisis de
+> imports del dev server reescribe todo `import(url)` de especificador dinámico a
+> `import(injectQuery(url, 'import'))`, y ese helper decora las rutas relativas —y solo esas—.
+> Con una ruta desde la raíz, el navegador acaba pidiendo `…js?import` mientras el warm había
+> nombrado `…js`: dos URL, dos descargas y un preload que no sirve para nada. Con la URL
+> absoluta vuelven a ser la misma petición.
 
 `modulepreload` descarga y parsea **sin evaluar**, así que el invariante de cero JS de
 componente ejecutado se mantiene igual; lo que se pierde respecto al SW es la persistencia en
@@ -483,7 +499,10 @@ optimización, no un requisito de correctitud.** La hidratación funciona con o 
 - **Se warmea el chunk y lo que el chunk importa.** El warm de un tag que deja fuera el código
   compartido que su chunk importa no es un warm: esa red se paga dentro del gesto. Lo que no
   es derivable —los nombres con hash— lo declara el manifiesto, y el tag se confirma solo si
-  entró su grafo entero (§4.7).
+  entró su grafo entero (§4.7). **Alcanzable solo en el canal con Service Worker**: sin él, el
+  navegador no descarga las dependencias de un `modulepreload` y la página no sabe sus nombres,
+  así que el código compartido lo paga el primer gesto —una vez por página— y el invariante se
+  cumple a partir de ahí (§4.7).
 - **El warm es optimización, no requisito.** La hidratación es correcta con o sin él.
 - **La hidratación no requiere Service Worker.** El SW solo decide la implementación del warm
   y el origen del chunk (§4.7.1), nunca la corrección. Y no se le habla si no está: sin
@@ -555,13 +574,23 @@ los cuatro escenarios que antes vivían en cuatro prototipos separados:
 18. **Warm del cierre transitivo.** Con `app-parent` en viewport, se precachean también
     `app-child`, `app-grandchild` y `app-greatgrandchild`; con `product-list` en viewport, se
     precachea `shopping-cart`.
-19. **Prioridad baja.** En Network, las peticiones de warm figuran con prioridad `Low`.
+19. **Prioridad baja.** El SW descarga con `priority: 'low'` y el canal `modulepreload` declara
+    `fetchpriority="low"` en cada `<link>`. Lo que se verifica en cada canal es lo observable:
+    con SW, que la descarga es **egress del worker** y no de la página (la prioridad de una
+    petición del worker no la expone ni la Request ni la sesión CDP de la página); sin SW, que
+    cada `<link>` warmeado lleva la declaración —Chromium mantiene un `modulepreload` a
+    prioridad de script diga lo que diga el atributo, y eso es del navegador, no del runtime—.
 20. **Idempotencia.** Recargar con el SW activo no re-descarga los chunks ya cacheados.
-21. **Cache-hit tras warm, y el grafo entero (§4.7).** La primera interacción con un tag
-    precacheado hidrata **sin una sola petición de red**: en Cache Storage está su chunk y
-    también los ficheros que ese chunk importa. Medido en Chromium antes de arreglarlo, con el
-    chunk del tag ya cacheado, el primer clic todavía descargaba los dos chunks compartidos de
-    `@fudic/core`. INP < 20 ms.
+21. **Cache-hit tras warm, y el grafo entero (§4.7).** Con Service Worker, la primera
+    interacción con un tag precacheado hidrata **sin una sola petición de red**: en Cache
+    Storage está su chunk y también los ficheros que ese chunk importa. Medido en Chromium
+    antes de arreglarlo, con el chunk del tag ya cacheado, el primer clic todavía descargaba
+    los dos chunks compartidos de `@fudic/core`. INP < 20 ms.
+
+    Sin Service Worker el criterio es el que el canal permite (§4.7): ningún chunk de un tag
+    warmeado cruza el cable, y el código compartido lo paga **el primer gesto de la página**;
+    el segundo tag warmeado hidrata ya sin red, que es la forma de comprobar que el coste es
+    por página y no por tag.
 22. **Cache-miss sin warm.** La primera interacción con un tag excluido del warm paga red en el
     `import()`; con chunks < 1 kB tras minify+brotli el INP se mantiene < 20 ms. El cache-miss
     no es un techo problemático al tamaño de chunk esperado.

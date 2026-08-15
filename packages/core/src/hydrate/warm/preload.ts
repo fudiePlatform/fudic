@@ -10,6 +10,14 @@
  *
  * This is the channel of three of the four uncontrolled cases — no `sw.json`, `pnpm dev`,
  * and an insecure context — and it is the reason `pnpm dev` can measure warm at all.
+ *
+ * **It deposits the module, not its graph, and that is the browser's doing.** Measured in
+ * Chromium: a `<link rel="modulepreload">` inserted by script fetches the module and none of
+ * its static imports until something evaluates it — with or without `fetchpriority`. The page
+ * cannot name those imports either: shared chunks carry a content hash only the manifest
+ * knows, and the manifest is the worker's side of the wire. So on a page with no worker the
+ * FIRST gesture pays for the shared code — once per page, never per tag — and every warmed
+ * tag after it hydrates off the module map (SDD-17 §4.7).
  */
 
 import { announceWarmed, type WarmChannel } from './channel.js';
@@ -30,6 +38,11 @@ export function createPreloadWarmChannel(config: PreloadChannelConfig = {}): War
         const link = doc.createElement('link');
         link.rel = 'modulepreload';
         link.href = url;
+        // The same rule the worker channel follows with `fetch(url, { priority: 'low' })`
+        // (§4.7): warm is background network and must not compete with the critical path of
+        // the load, nor with an interaction in flight. Without it a `modulepreload` is
+        // fetched at a script's own priority, which is the opposite of what warm is for.
+        link.setAttribute('fetchpriority', 'low');
         link.addEventListener('load', () => {
           announceWarmed(doc, tag);
         });

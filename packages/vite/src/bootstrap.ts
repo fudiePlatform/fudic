@@ -218,7 +218,15 @@ export function emitMainBootstrap(options: MainBootstrapOptions): string {
       : [
           `// In dev nothing is built: the dev server publishes each component's client`,
           `// module at a stable URL per tag.`,
-          `const CHUNKS = ${JSON.stringify(chunks.urlPrefix)};`,
+          `//`,
+          `// ABSOLUTE, and that is the whole point of the \`new URL\`. Vite's dev import`,
+          `// analysis rewrites every \`import(url)\` whose specifier is a runtime value into`,
+          `// \`import(__vite__injectQuery(url, 'import'))\`, and that helper decorates a`,
+          `// relative or root-relative path — and ONLY those. With a root-relative prefix the`,
+          `// browser ends up asking for \`…js?import\` while the warm named \`…js\`: two URLs,`,
+          `// two downloads, and a preload that never lands. An absolute URL is returned`,
+          `// untouched, so the preload and the import are the same request again.`,
+          `const CHUNKS = new URL(${JSON.stringify(chunks.urlPrefix)}, document.baseURI).href;`,
           `const resolveChunk = (tag) => CHUNKS + tag + '.js';`,
         ];
   const worker = !hasWorker

@@ -26,6 +26,9 @@ describe('the modulepreload channel', () => {
       ['modulepreload', '/h/app-counter.js'],
       ['modulepreload', '/h/app-toggle.js'],
     ]);
+    // Low, like the worker's `fetch(url, { priority: 'low' })`: warm is background network
+    // in both channels, or it is not warm (§4.7).
+    expect(links().map((l) => l.getAttribute('fetchpriority'))).toEqual(['low', 'low']);
     // `preload` would fetch it as a plain resource and `prefetch` would not parse it;
     // neither of the three evaluates, which is the invariant this channel must keep.
     expect(document.head.querySelector('script')).toBeNull();
