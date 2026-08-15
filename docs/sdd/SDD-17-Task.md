@@ -1,6 +1,6 @@
 # SDD-17 — el runtime de hidratación: el cierre de fudic
 
-**Estado:** `En curso` · **Progreso: 19 / 21** · **Rama:** `worktree-sdd-17-hidratacion` ·
+**Estado:** `En curso` · **Progreso: 20 / 21** · **Rama:** `worktree-sdd-17-hidratacion` ·
 **SDD:** [SDD-17](./SDD-17-hidratacion.md)
 
 Estas 21 tareas **terminan el framework**. Al marcarlas no queda nada de v1 salvo los cuatro
@@ -125,7 +125,7 @@ navegador, sin SW) y **21** (verde y cerrado).
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 19 | 13, 18 | Criterios 15–21 **dos veces**, contra los dos canales, más el 24. Un criterio de warm que solo pase con SW no está verificado | `examples/basic` | `tests/hydration.spec.ts` |
-| [ ] | 20 | 19 | Documentación de cierre, corta y en inglés: sección de hidratación en el README de `@fudic/core` (los dos puertos, los tres caminos, qué cambia sin SW) y la nota de que `<script type="module" src="/fudic-main.js">` en el layout es obligatorio — las plantillas del CLI ya lo traen, el README no lo dice | `core` · `cli` | [core/README.md](../../packages/core/README.md) · [cli/templates/layout.fud](../../packages/cli/templates/layout.fud) *(verificar, no cambiar)* |
+| [x] | 20 | 19 | Documentación de cierre, corta y en inglés: sección de hidratación en el README de `@fudic/core` (los dos puertos, los tres caminos, qué cambia sin SW) y la nota de que `<script type="module" src="/fudic-main.js">` en el layout es obligatorio — las plantillas del CLI ya lo traen, el README no lo dice | `core` · `cli` | [core/README.md](../../packages/core/README.md) · [cli/templates/layout.fud](../../packages/cli/templates/layout.fud) *(verificar, no cambiar)* |
 | [ ] | 21 | todas | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build` verdes en el workspace entero; `@fudic/core` al 100 % en las cuatro métricas; SDD-17 a `Hecho` con el registro de progreso, e INDEX y `PENDIENTES-v1.md` reflejando que lo único abierto de v1 son sus cuatro puntos | — | [INDEX.md](./INDEX.md) · [SDD-17](./SDD-17-hidratacion.md) · [PENDIENTES-v1.md](./pendings/PENDIENTES-v1.md) |
 
 ---
