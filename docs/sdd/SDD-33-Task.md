@@ -3,7 +3,7 @@
 > **SDD:** [SDD-33 — Formularios reactivos: el núcleo](./SDD-33-formularios-reactivos.md)
 > **Paquete:** `@fudic/forms` — **nuevo**, punto de entrada `.` solamente
 > **Rama:** `sdd-33-formularios-reactivos`
-> **Progreso:** 1 / 15
+> **Progreso:** 4 / 15
 > **No depende de:** nada que esté en curso. `@fudic/core` está en `Hecho` y este paquete no toca
 > ningún fichero existente: se puede llevar en su propio worktree sin cruzarse con nadie.
 
@@ -54,18 +54,18 @@ posicional, el códec binario y la normalización profunda. Los tres primeros so
 
 ## Fase 2 — El modelo (3)
 
-- [ ] **2. `control()`.**
+- [x] **2. `control()`.**
       `src/control.ts`: cuatro signals —valor, errores, `touched`, `dirty`— y las tres operaciones
       (`set`, `touch`, `reset`). Se lee **llamando**, nunca `.value` (SDD-31 §4.0). `set` normaliza
       `undefined` a `null` y calcula `dirty` con `Object.is` contra el inicial; `dirty` no es un
       `computed` porque su otra fuente no es reactiva. Criterios §6.1–§6.3.
-- [ ] **3. `form()` y `group()`, que son la misma cosa.**
+- [x] **3. `form()` y `group()`, que son la misma cosa.**
       `src/form.ts`: la API `$` más los campos por nombre. `group(schema)` devuelve **lo mismo**
       que `form(schema)`, así que `f.seo.$value()` y `f.seo.$touch()` existen sin escribir el caso
       anidado. `Node` es una unión de **dos** casos y la recursión tiene un solo `if`. Criterio
       §6.4, escrito **parametrizado por la raíz** para que corra contra el formulario y contra un
       grupo.
-- [ ] **4. `$value()` rastreado.**
+- [x] **4. `$value()` rastreado.**
       Lectura del objeto entero, en orden de declaración, con los grupos anidados. Leerlo dentro
       de un `effect` tiene que reejecutar el efecto cuando cambia **cualquier** campo, incluido uno
       dentro de un grupo: es lo que lo distingue de recorrer el schema a mano. Criterio §6.7.
