@@ -280,8 +280,10 @@ es decidir si el texto adopta la regla del atributo o si `@titulo` en prosa es u
 diagnóstico. **Queda anotado como pregunta abierta, no como parte de este BUG.**
 
 > **Lo que este síntoma NO es.** No es que falte pasar signals **por referencia** para que el hijo
-> se suscriba él mismo. Eso está abierto y anotado en **SDD-31 §7 — «Props como signals»**, con la
-> condición bajo la que se reabre y la vía a evaluar primero. Aquí no se decide: aquí se hace que
+> se suscriba él mismo. Eso está **decidido** en **SDD-31 §7 — «Props como signals»**: la signal
+> cruza con identidad real, la casilla del hijo lleva un marcador `{"$":[ownerId, slot]}` y el
+> runtime materializa una celda única al repartir el estado. Está decidido y **no implementado**,
+> y su SDD es otro. Aquí no se decide: aquí se hace que
 > el editor diga lo que el compilador hace **hoy**.
 
 ---
@@ -316,16 +318,49 @@ export function handlerShape(root: OxcNode | undefined): HandlerShape;
 // binding/crossing.ts (NUEVO) — la regla de decisión 84, extraída del emit
 /** Los nombres que unas sentencias declaran con `signal(...)` o `computed(...)`. */
 export function reactiveNames(statements: readonly OxcNode[]): ReadonlySet<string>;
+
 /**
- * El nombre del reactivo con el que un valor cruza, o `undefined` cuando no cruza ninguno.
- * Se MUEVE aquí desde `emit/attrs.ts`, donde `crossingExpr` pasa a ser su único consumidor
- * del lado del emit. La firma no cambia.
+ * Lo que el HIJO declara de una prop.
+ *
+ * Vive aquí y no en `semantic/model.ts` —que la reexporta— porque una regla que leen el emit
+ * y el pase semántico no puede vivir dentro de uno de los dos.
  */
-export function reactiveName(
+export interface ComponentDeclaredProps {
+  readonly name: string;
+  readonly required: boolean;
+  /**
+   * Si el hijo la declara REACTIVA. Hoy no la pone a `true` nadie: el mecanismo de la celda
+   * compartida es de su propio SDD, y este BUG solo deja la firma con la forma correcta.
+   */
+  readonly reactive: boolean;
+}
+
+/**
+ * CÓMO cruza un valor la frontera del shadow. Dos formas, y hoy solo se emite una:
+ *
+ *  - `'value'` — la lectura, `titulo()`. Es la decisión 84 tal y como está implementada.
+ *  - `'ref'`   — la celda compartida, con la que padre e hijo tienen el MISMO objeto
+ *                (SDD-31 §7). Decidida, no implementada: ningún emisor la produce todavía.
+ */
+export type Crossing =
+  | { readonly kind: 'value'; readonly name: string }
+  | { readonly kind: 'ref'; readonly name: string };
+
+/**
+ * Con qué reactivo cruza un valor y de qué forma, o `undefined` cuando no cruza ninguno.
+ *
+ * Sustituye a `reactiveName`, que se MUEVE aquí desde `emit/attrs.ts`. La firma gana un
+ * parámetro porque la decisión ya no es solo del padre: la forma del cruce depende de lo que
+ * declare el HIJO, que es justo lo que `propsOf` sabrá contestar. Con `target` ausente —o
+ * declarando una prop que no es reactiva— el resultado es siempre `'value'`, así que la salida
+ * del emit no se mueve un byte (criterio 5.b).
+ */
+export function crossing(
   source: string,
   value: readonly AttributeValuePart[],
   reactives: ReadonlySet<string>,
-): string | undefined;
+  target?: ComponentDeclaredProps,
+): Crossing | undefined;
 
 // semantic/walk.ts — el visitor llega por fin a los valores de atributo
 export interface TreeVisitor {
@@ -334,10 +369,7 @@ export interface TreeVisitor {
 }
 
 // semantic/model.ts — la registry contesta una pregunta más
-export interface ComponentDeclaredProps {
-  readonly name: string;
-  readonly required: boolean;
-}
+// `ComponentDeclaredProps` se declara en `binding/crossing.ts` y se reexporta desde aquí.
 export interface ComponentRegistry {
   has(tag: string): boolean;
   /** Las props declaradas por el tag, o `undefined` cuando no se pueden conocer. */
@@ -475,11 +507,15 @@ paréntesis no son una alternativa estilística de la cadena: son otra cosa.
 5. **El `slot` se comprueba contra el `$Slots` del PADRE.** Sin padre componente, contra `never`.
    El nombre se proyecta 1:1 con `LITERAL_NAME_CAPS` —completado **y** diagnóstico— y `slot=""`
    recibe el ancla de dos caracteres que `@|` ya usa.
-6. **Un valor de atributo que es el nombre desnudo de un reactivo se proyecta como su LECTURA.**
+6. **Un valor de atributo que es el nombre desnudo de un reactivo se proyecta como su LECTURA
+   cuando el cruce es `'value'` — que hoy es siempre.**
    `.name="@titulo"` con `titulo` declarado `signal(...)`/`computed(...)` se copia
    `name: (titulo()),` — el paréntesis de llamada es andamiaje, como el que ya envuelve la
-   expresión. La regla la decide `reactiveName`, la misma función que usa `crossingExpr`, así que
-   el editor no puede opinar distinto del emit. Se aplica en los **dos** sitios donde el emit la
+   expresión. La regla la decide `crossing`, la misma función que usa `crossingExpr`, así que
+   el editor no puede opinar distinto del emit. El día que el hijo declare una prop reactiva y
+   `crossing` conteste `'ref'`, la proyección copiará el nombre sin llamar — porque entonces lo
+   que cruza es el objeto y comprobar la lectura sería el error de hoy al revés. Se aplica en
+   los **dos** sitios donde el emit la
    aplica —la `.prop` y el atributo plano interpolado— y en ninguno más: el texto no pasa por
    `crossingExpr` (§2.8), así que ahí la copia sigue siendo verbatim y editor y build siguen
    coincidiendo. Cualquier otro valor se copia como hoy: la regla es la del nombre desnudo, y
@@ -522,8 +558,8 @@ no puede demostrar.
 - **Ningún texto emitido sin `Mapping`, y ningún tramo mudo con diagnóstico.** El ancla de
   `$required` es `DIAGNOSTIC_ONLY_CAPS`; el punto colgante, `COMPLETION_ONLY_CAPS`.
 - **Editor y build dicen lo mismo.** La forma del handler la decide **una** función
-  (`handlerShape`), y con qué expresión cruza un valor la decide **una** función
-  (`reactiveName`). Las dos las usan el emit y la proyección. Una regla de binding que solo
+  (`handlerShape`), y con qué expresión y de qué forma cruza un valor la decide **una** función
+  (`crossing`). Las dos las usan el emit y la proyección. Una regla de binding que solo
   conozca uno de los dos vuelve a abrir el síntoma 4 o el 8.
 - **El editor comprueba la expresión que el build emite, nunca otra.** No es una regla sobre
   signals: es la forma general de la anterior. Donde el emit transforma un valor antes de
@@ -550,8 +586,9 @@ Cada uno se escribe **en rojo primero**, contra el código de hoy.
 5. `handlerShape` clasifica las cuatro formas, y `emit/events.ts` sigue emitiendo byte a byte lo
    mismo que antes de la extracción.
 5.b `reactiveNames` encuentra los nombres de `signal(...)` y `computed(...)` de un `@client`, y
-   `emit/attrs.ts` sigue emitiendo byte a byte lo mismo tras mover `reactiveName`: los goldens de
-   cliente y de servidor no se mueven, y `$n0.u([, , titulo()])` sigue saliendo igual.
+   `emit/attrs.ts` sigue emitiendo byte a byte lo mismo tras mover la regla a `crossing`: los
+   goldens de cliente y de servidor no se mueven, y `$n0.u([, , titulo()])` sigue saliendo igual.
+   Sin `target`, `crossing` contesta `'value'` siempre — y nadie le pasa `target` todavía.
 
 **Proyección (language-core)**
 
@@ -621,12 +658,14 @@ Cada uno se escribe **en rojo primero**, contra el código de hoy.
 - **Cambiar la reserva `$`.** `$event` sigue siendo del compilador; lo nuevo es que la
   proyección lo declara donde el emit lo declara.
 - **Que una signal cruce por REFERENCIA.** El síntoma 8 hace que el editor cuente lo que el
-  compilador hace hoy —cruzar el valor, decisión 84—; no cambia lo que hace. Que el hijo reciba la
-  signal y se suscriba él es otra conversación, **abierta y ya anotada** en
-  [SDD-31 §7 «Props como signals»](../SDD-31-signals-derivadas.md), con su condición para
-  reabrirse (este SDD implementado y BUG-18 cerrado) y la vía a evaluar primero (el corte
-  estático en compilación, no el upgrade perezoso). El día que se decida, la regla nueva sigue
-  teniendo **una sola** implementación: `reactiveName` y sus dos lectores.
+  compilador hace hoy —cruzar el valor, decisión 84—; no cambia lo que hace. Que el hijo reciba
+  la signal y se suscriba él **ya está decidido**, con mecanismo y todo, en
+  [SDD-31 §7 «Props como signals»](../SDD-31-signals-derivadas.md): la celda compartida, el
+  marcador `{"$":[ownerId, slot]}` en la casilla del hijo y el runtime que la materializa al
+  repartir el estado. Lo que este BUG aporta a eso es **la firma y nada más**: `crossing`
+  devuelve `Crossing`, con `'ref'` declarado y sin emisor, y toma como cuarto parámetro lo que
+  declara el hijo — porque la forma del cruce dejó de depender solo del padre. Escribir el
+  mecanismo es su propio SDD; aquí no se emite un solo byte distinto.
 - **Comprobar tipos de plantilla sin editor.** Que `pnpm build` viera el síntoma 8 exige pasar
   TypeScript por los virtuales, que es `fudic check` — IDEA-02 §1, y no es de este BUG.
 - **`@titulo` en un nodo de TEXTO.** El emit no aplica ahí la regla del cruce y el editor tampoco,

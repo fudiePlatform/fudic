@@ -98,6 +98,14 @@ el runtime parsea `fud-state` una vez y **pasa** el tramo a la instancia
 (`host.h(data.slice(offsets[id], offsets[id+1]))`, SDD-15 §4.3). El chunk no lee de un global
 ni el componente conoce su `data-fud-id`.
 
+> **Anotado, no escrito: repartir el estado pasará a resolver celdas.** Con «props como signals»
+> decidido ([SDD-31 §7](./SDD-31-signals-derivadas.md)), una casilla del tramo podrá ser el
+> marcador `{"$":[ownerId, slot]}`, y quien lo sustituye por el objeto es **el runtime**, aquí:
+> una celda única por `id:slot` en un `Map`, materializada al repartir, de forma que padre e hijo
+> reciban **la misma** `Signal` y el chunk deje de fabricarla. Es justo lo que mantiene en pie la
+> frase de arriba —el componente sigue sin conocer su `data-fud-id`—, y por eso la sustitución no
+> puede vivir en el chunk. Nada de esto está implementado.
+
 ```ts
 // Mensajes con el Service Worker (warm, §4.7)
 interface WarmMessage   { type: 'warm';   urls: string[]; tags: string[] }
@@ -269,6 +277,17 @@ attachAll(tag):
     customElements.upgrade(h)                    // idempotente; blinda el orden
     h.h(data.slice(offsets[id], offsets[id + 1]))   // punto de entrada 1 (SDD-15 §4.3)
 ```
+
+> **Anotado, no escrito: `attachAll` pasará a resolver celdas, y eso vuelve el orden
+> irrelevante.** Con «props como signals» decidido ([SDD-31 §7](./SDD-31-signals-derivadas.md)),
+> una casilla del tramo puede ser el marcador `{"$":[ownerId, slot]}`, y quien lo cambia por el
+> objeto es este reparto: un `Map` de celdas por `id:slot`, materializadas al vuelo, de modo que
+> padre e hijo reciban **la misma** `Signal`. Lo que hoy impide pasar una referencia es
+> exactamente el post-orden de este párrafo —el padre monta el último, así que su signal no
+> existe cuando el hijo la necesitaría—; con la celda viviendo en el runtime y no en un chunk,
+> el orden deja de importar, y por eso el mecanismo no obliga a tocar nada de lo de arriba. Un
+> marcador cuya celda del dueño no tiene valor es un **callback**: significa «el dueño tiene que
+> correr», y el runtime lo hidrata antes de entregarlo. Nada de esto está implementado.
 
 Hacen falta **dos conjuntos distintos**, y confundirlos rompe el camino 3: `hydrated`
 (instancias sobre las que el runtime ya intervino) gobierna los tres caminos; `attached`

@@ -402,6 +402,20 @@ callback: baja el valor por `u`, sube el cambio por la función. La fuente de la
 verdad permanece en el padre. Se preserva el aislamiento de islas (principio de la
 decisión 74–78).
 
+> **84 deja de ser «cruza un valor, siempre» — anotado, no reescrito.** El enunciado de arriba
+> describe lo que el compilador hace **hoy**, y sigue siendo la única forma que se emite. Pero
+> [SDD-31 §7](./SDD-31-signals-derivadas.md) ya decidió la otra: una signal **cruza por
+> referencia, con identidad real**, mediante un marcador `{"$":[ownerId, slot]}` en la casilla
+> del hijo y una celda única que el runtime materializa al repartir el estado. Padre e hijo
+> tienen el mismo objeto, así que el hijo puede derivar de ella, reenviarla a un nieto y
+> escribirla — y un callback es el mismo marcador con la celda vacía. El aislamiento de islas no
+> se rompe: la fuente de la verdad sigue siendo **una**, y precisamente por eso deja de haber
+> espejo que se retrase un salto por nivel. Cuando se escriba el SDD del mecanismo, esta decisión
+> se reescribe entera; hasta entonces vale la letra de arriba. La firma con la que la regla
+> distingue las dos formas la deja
+> [BUG-23 §3.1](./bugs/BUG-23-arroba-valvula-de-escape.md) — `crossing` devolviendo `Crossing`,
+> con `'ref'` declarado y sin emisor.
+
 ### Desazucarado
 
 `bind:value="@name"` en el padre se compila a dos property bindings: `.value` (baja)

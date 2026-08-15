@@ -50,9 +50,9 @@ suscripción que es del compilador, no suyo.
 
 ### Lo que este SDD NO es
 
-No es el paso de props a signals. Esa conversación queda anotada como decisión abierta en §7
-con la condición bajo la que se reabre, y este SDD es exactamente la mitad que había que tener
-antes para poder medirla.
+No es el paso de props a signals. Ese mecanismo —la signal cruza por **referencia**, con una
+celda compartida que el runtime materializa— está **decidido** y escrito en §7, y tendrá su
+propio SDD. Este es exactamente la mitad que había que tener antes: la primitiva.
 
 ---
 
@@ -500,17 +500,45 @@ Tests en `packages/core/test/` (1–13, 18–19, 21) y `packages/compiler/test/e
 
 ## 7. Fuera de alcance
 
-- **Props como signals.** Es la conversación que originó este SDD y queda **abierta**, no
-  descartada. Hoy una prop es un `let` de la closure que `u` reasigna (BUG-12); convertirla en
-  signal movería el coste de construcción del grafo a `h()`, es decir **dentro del gesto donde se
-  mide el INP**, que es justo lo que `h` no llama a `$a()` para evitar. **La condición para
-  reabrirlo:** con este SDD implementado y [BUG-18](./bugs/BUG-18-update-denso.md) cerrado, la
-  pregunta pasa a ser medible en el arnés de `test/emit/hydrate/` con N instancias en vez de
-  opinable. Y si se reabre, la vía que hay que evaluar primero **no es el upgrade perezoso en
-  `requestIdleCallback`** —que deja dos caminos vivos en cada chunk y una ventana en la que el
-  primer `u` llega en modo denso— sino el **corte estático**: el compilador ve si el `@client` de
-  un componente reacciona a una prop, así que los que sí pueden nacer reactivos y los que solo
-  pintan quedarse con `$a()`. Un solo modo por componente, decidido en compilación.
+- **Props como signals — DECIDIDO, y fuera de este SDD.** Es la conversación que originó este
+  documento, y ya no está abierta: lo que queda fuera es **escribirlo**, no elegirlo. Va aquí
+  porque este SDD entrega la primitiva que el mecanismo necesita; el mecanismo tendrá su propio
+  SDD.
+
+  **Lo que se descartó, y por qué.** Que el hijo se fabrique su propia signal con el valor
+  recibido: dos nodos son **dos fuentes de verdad**, el `===` deja de valer, y un nieto va dos
+  saltos por detrás del abuelo — el espejo se retrasa un hop por nivel. Y con ello se cae también
+  la vía que este párrafo recomendaba evaluar primero: **no es el corte estático** entre nacer
+  reactivo y quedarse con `$a()`. Con la celda compartida la pregunta del INP es irrelevante,
+  porque en `h()` no se construye grafo — se **recibe**.
+
+  **Lo decidido: la signal cruza por REFERENCIA, con identidad real.** Padre e hijo tienen el
+  mismo objeto. Seis puntos:
+
+  1. Una signal que cruza **deja de ser local**: se serializa en el tramo de su dueño.
+  2. La casilla del hijo lleva un **marcador, no un valor**: `{"$":[ownerId, slot]}`. Es JSON, y
+     como `claim()` numera en **pre-orden** ([`ssr-dom.ts:61`](../../packages/ssr/src/ssr-dom.ts#L61))
+     siempre apunta hacia atrás → se resuelve **en una pasada**.
+  3. El runtime materializa una **celda única** (un `Map` por `id:slot`) al repartir el estado, y
+     entrega el objeto. El chunk deja de hacer `signal(payload[k])`: recibe la `Signal` ya hecha.
+  4. El componente **sigue sin conocer su `data-fud-id`** (SDD-17 §3): la sustitución la hace el
+     runtime.
+  5. **SSR pinta el valor, siempre.** El marcador es de cliente; el servidor cruza `count()` como
+     hoy.
+  6. **Callbacks: el mismo marcador con la celda vacía.** Una función no tiene valor serializable;
+     una celda sin valor significa «el dueño tiene que correr», y el runtime lo hidrata antes de
+     entregar. Un mecanismo, dos casos.
+
+  **Y esto resuelve el orden que lo impedía.** Por el post-orden de SDD-17 §4.4 el padre hidrata
+  el último, así que nadie podía pasarle al hijo una referencia que aún no existía. Con la celda
+  en el runtime, el orden es **irrelevante**.
+
+  **Lo que tendrá que tocar el SDD del mecanismo, anotado aquí para que no se pierda:** SDD-15
+  §3.3 (`fud-state` admite el marcador), SDD-17 §3 y §4.4 (`attachAll` resuelve celdas) y la
+  decisión **84** de [props-spec](./props-spec.md) (deja de ser «cruza un valor, siempre»). La
+  firma con la que la regla del cruce nace ya con la forma correcta —`crossing` devolviendo
+  `Crossing`, con `'ref'` declarado y sin emisor— la deja
+  [BUG-23 §3.1](./bugs/BUG-23-arroba-valvula-de-escape.md).
 - **Que el emit envuelva `u` y los handlers en `batch`.** Es la envoltura correcta —un `u` que
   mueve tres props debería ser una pasada— pero es emit, y vive en SDD-15. Aquí se entrega la
   primitiva.

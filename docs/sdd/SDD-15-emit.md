@@ -197,6 +197,15 @@ proyección**: si el render SSR solo pinta un subconjunto de los campos (un `@if
 `name` o `phone` según una condición), el payload igualmente contiene todos. El DOM refleja
 la proyección; el payload es la preimagen.
 
+> **Anotado, no escrito: la casilla que lleva un marcador.** Con «props como signals» decidido
+> ([SDD-31 §7](./SDD-31-signals-derivadas.md)), una casilla de `data` podrá contener
+> `{"$":[ownerId, slot]}` en vez de un valor: la signal se serializa en el tramo de **su dueño** y
+> la del hijo apunta allí. Sigue siendo JSON, y como `claim()` numera en pre-orden el marcador
+> apunta siempre hacia atrás, así que se resuelve en una pasada. Un marcador **sin** valor en la
+> celda del dueño es un callback: no hay nada que serializar y el runtime lo hidrata antes de
+> entregarlo. Nada de esto está implementado; queda escrito aquí para que el SDD del mecanismo
+> sepa qué párrafo tiene que reescribir.
+
 ### 3.4. `fud-tree` — la composición, por tag
 
 ```html
