@@ -16,6 +16,10 @@
 
 export const VERSION = '0.0.1';
 
+export { control } from './control.js';
+export { form } from './form.js';
+export { group } from './group.js';
+
 export type {
   AnyForm,
   AnyNode,
