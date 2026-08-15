@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` ·
 > `@fudic/formatter` · `fudic-vscode` · `@fudic/vite`
 > **Rama:** `worktree-bug-23`
-> **Progreso:** 0 / 27
+> **Progreso:** 1 / 27
 
 Veintisiete tareas. Las rutas son relativas a la raíz del repo, y cada tarea es un paso
 cerrado: se puede parar después de cualquiera con el workspace verde.
@@ -72,7 +72,40 @@ que dice el editor) y **24** (verde y cerrado).
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **Rojo primero.** Un fichero de aceptación por síntoma, con el `.fud` de §1 del BUG y peticiones LSP **con `context`** (`triggerKind: 2` y el carácter recién tecleado), como las de BUG-16 §6.13. Los ocho tienen que fallar hoy: el punto trayendo globales (§2.1), `@data.` sin miembros (§2.2), `FUD0056` sobre `.prop=@name` (§2.3), los dos errores de `$event` (§2.4), el `@` en texto sin `data` (§2.5), los tres casos de `slot` (§2.6), el host sin props sin error (§2.7) y el error de tipo sobre `.name="@titulo"` con `titulo` una signal (§2.8). **Anotar en esta tabla qué falla y cómo**, que es lo que después se compara. Del octavo hay que anotar el mensaje **exacto** y su rango: es el único de los ocho cuyo síntoma es un diagnóstico que sobra, no uno que falta | `language-server` · `compiler` | `test/acceptance/bug23-*.test.ts` *(nuevos)* · [test/acceptance/completion.test.ts](../../../packages/language-server/test/acceptance/completion.test.ts) *(patrón)* |
+| [x] | 1 | — | **Rojo primero.** Un fichero de aceptación por síntoma, con el `.fud` de §1 del BUG y peticiones LSP **con `context`** (`triggerKind: 2` y el carácter recién tecleado), como las de BUG-16 §6.13. Los ocho tienen que fallar hoy: el punto trayendo globales (§2.1), `@data.` sin miembros (§2.2), `FUD0056` sobre `.prop=@name` (§2.3), los dos errores de `$event` (§2.4), el `@` en texto sin `data` (§2.5), los tres casos de `slot` (§2.6), el host sin props sin error (§2.7) y el error de tipo sobre `.name="@titulo"` con `titulo` una signal (§2.8). **Anotar en esta tabla qué falla y cómo**, que es lo que después se compara. Del octavo hay que anotar el mensaje **exacto** y su rango: es el único de los ocho cuyo síntoma es un diagnóstico que sobra, no uno que falta | `language-server` · `compiler` | `test/acceptance/bug23-*.test.ts` *(nuevos)* · [test/acceptance/completion.test.ts](../../../packages/language-server/test/acceptance/completion.test.ts) *(patrón)* |
+
+### La medida del 2026-08-15
+
+Los ocho síntomas quedan escritos como tests que **fallan hoy**, marcados `it.fails`: así el
+workspace está verde en cada commit y el paso a `it` es la prueba de que la fase aterrizó. Nadie
+tiene que recordar cuál se arregló — el fichero lo dice.
+
+Reproducción: una copia privada del workspace de fixtures con un `app-circle` que declara
+`name: string` (requerida), `tone?: Tone` y una ranura `PEPITO`, y una ruta con el `.fud` de §1
+adaptado. `signal` se **declara** dentro del `@client` en vez de importarse: lo que hace reactivo
+a un nombre es el *callee*, nunca de dónde viene, y el proyecto de fixtures no tiene node_modules.
+
+| # | fichero | qué falla hoy |
+|---|---|---|
+| 1 | `language-server/test/acceptance/bug23-symptoms.test.ts` | tras `.` la lista trae `id`, `class`, `role` junto a las props |
+| 2 | idem | `@data.` no ofrece un solo miembro de `PageData` |
+| 3 | idem + `compiler/test/bug23-symptoms.test.ts` | `FUD0056` sobre `.name=@data.title`; y `@counter().id` es la expresión `counter` más el texto `().id` |
+| 4 | `language-server/…/bug23-symptoms.test.ts` | `@mousedown="@onClick($event)"` da dos errores; `FUD0291` no llega nunca a *Problems* |
+| 5 | idem | en `@\|` solo salen los cuatro snippets: ni `data`, ni `items`, ni `counter` |
+| 6 | idem | ninguno de los tres casos de `slot` dice nada, y el valor no completa |
+| 7 | idem | el host sin `name` no reporta; con `name` pasada ya callaba, y eso se queda como guarda verde |
+| 8 | `language-core/test/bug23-crossing.test.ts` | `.tone="@titulo"` se comprueba como `Signal<Tone>` contra `Tone`; `id="@titulo"` da `TS2345` contra `$Scalar` |
+
+**Del octavo, el mensaje exacto y su rango.** `TS2322 Type 'Signal<Tone>' is not assignable to
+type 'Tone'`. Y el hallazgo que obliga a medirlo en `language-core` y no contra el servidor:
+cuando el valor es **invocable** y su llamada encajaría, TypeScript ancla el error en la
+**expresión** en vez de en la clave — y esa expresión va envuelta en el `(` `)` que añade la
+proyección, así que los dos extremos del rango caen en andamiaje y Volar lo tira. El juicio
+equivocado se hace igual; en el editor, además, es invisible. Con un valor **no** invocable
+(`.tone="@counter"`, `Signal<{ id: number }>`) el ancla vuelve a la clave y el error sí se ve —
+por eso ese caso se queda como guarda de lo que debe seguir reportando.
+
+---
 
 ## Fase 2 — la gramática: el `@` deja de necesitar paréntesis (7)
 
