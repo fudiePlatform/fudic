@@ -180,13 +180,13 @@ describe('§2.3 / symptom 3 — an unquoted value can be one `@` expression (tas
 });
 
 describe('§2.4 / symptom 4 — the projection does not know a call is a deferred invocation', () => {
-  it.fails('reports nothing on a handler written as a call', async () => {
+  it('reports nothing on a handler written as a call', async () => {
     const problems = await problemsFor('<div @mousedown="@onClick($event)">x</div>');
 
     expect(problems).toEqual([]);
   });
 
-  it.fails('and shows FUD0291 on a value that can never be a listener', async () => {
+  it('and shows FUD0291 on a value that can never be a listener', async () => {
     const problems = await problemsFor('<div @click="@(1)">x</div>');
 
     expect(problems.map((item) => item.code)).toContain('FUD0291');
@@ -257,7 +257,7 @@ describe('§2.1 / symptom 7 — a required prop nobody passes', () => {
  * `$attr(titulo)` and the error lands on the name the user wrote.
  */
 describe('§2.8 / symptom 8 — the editor judges the object, the build crosses the value', () => {
-  it.fails('says nothing about a signal on a plain interpolated attribute', async () => {
+  it('says nothing about a signal on a plain interpolated attribute', async () => {
     const problems = await problemsFor('<div id="@titulo"></div>');
 
     expect(problems).toEqual([]);

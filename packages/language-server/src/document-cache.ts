@@ -123,7 +123,16 @@ export class DocumentCache {
       fileName: key,
       document: parsed.document,
       registry,
-      js: { result: parsed.js.result, neutral: parsed.js.neutral },
+      // The whole batch, not just the neutral chunks: the projection needs the `@client`
+      // regions for the reactive names (decision 84) and the attribute values for the shape
+      // of a handler (decisions 96–98). Handing them over is what keeps Oxc at one
+      // invocation per file in the process that types the most.
+      js: {
+        result: parsed.js.result,
+        neutral: parsed.js.neutral,
+        client: parsed.js.client,
+        ast: (at) => parsed.js.ast(at),
+      },
     });
 
     return {

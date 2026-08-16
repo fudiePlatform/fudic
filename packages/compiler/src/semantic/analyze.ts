@@ -16,6 +16,7 @@ import { codeRegionNesting } from './analyzers/code-region-nesting.js';
 import { neutralImports } from './analyzers/neutral-imports.js';
 import { primitiveInterpolation } from './analyzers/primitive-interpolation.js';
 import { componentDeclared } from './analyzers/component-declared.js';
+import { eventHandlerShape } from './analyzers/event-handler-shape.js';
 import { layoutLoad } from './analyzers/layout-load.js';
 
 /** The ordered list of analyzers (§4). One rule per unit. */
@@ -28,6 +29,7 @@ export const ANALYZERS: readonly Analyzer[] = [
   neutralImports,
   primitiveInterpolation,
   componentDeclared,
+  eventHandlerShape,
   layoutLoad,
 ];
 

@@ -154,6 +154,13 @@ function overlaps(a: Range, b: Range): boolean {
  *
  * `href`, `@section ` and `class:` are untouched by this and stay exclusive: there a reply from
  * HTML is not one more voice, it is noise over a position whose answers are closed and local.
+ *
+ * The directive was to join it with BUG-23 §2.5 and does NOT: moving the branch here is not
+ * enough, and the reason is a rule of Volar the BUG did not have in front of it. An additional
+ * plugin only runs on the FIRST mapping of a request (`isFirstMapping`), and the embedded codes
+ * are walked before the root — so as soon as the position also maps into the projection, which
+ * is exactly what `@fore` does, this plugin is skipped and its snippets never reach the list.
+ * The branch stays in `createFudicService` until that is decided; see the BUG's task 13.
  */
 export function createFudicTagService(deps: FudicServiceContext): LanguageServicePlugin {
   const { index, stats } = deps;
