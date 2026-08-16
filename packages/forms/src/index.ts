@@ -29,6 +29,19 @@ export { min } from './validators/min.js';
 export { max } from './validators/max.js';
 export { pattern } from './validators/pattern.js';
 
+export { u8 } from './typed/u8.js';
+export { i8 } from './typed/i8.js';
+export { u16 } from './typed/u16.js';
+export { i16 } from './typed/i16.js';
+export { u32 } from './typed/u32.js';
+export { i32 } from './typed/i32.js';
+export { f32 } from './typed/f32.js';
+export { f64 } from './typed/f64.js';
+export { bool } from './typed/bool.js';
+export { str } from './typed/str.js';
+export { date } from './typed/date.js';
+export { arr } from './typed/arr.js';
+
 export type {
   AnyForm,
   AnyNode,
