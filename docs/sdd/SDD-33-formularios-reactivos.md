@@ -203,14 +203,16 @@ export interface TypedControl<T> extends Control<T> {
   readonly of?: TypeTag;
 }
 
-export function u8 (initial?: number, v?: readonly Validator<number>[]): TypedControl<number>;
-export function i8 (initial?: number, v?: readonly Validator<number>[]): TypedControl<number>;
-export function u16(initial?: number, v?: readonly Validator<number>[]): TypedControl<number>;
-export function i16(initial?: number, v?: readonly Validator<number>[]): TypedControl<number>;
-export function u32(initial?: number, v?: readonly Validator<number>[]): TypedControl<number>;
-export function i32(initial?: number, v?: readonly Validator<number>[]): TypedControl<number>;
-export function f32(initial?: number, v?: readonly Validator<number>[]): TypedControl<number>;
-export function f64(initial?: number, v?: readonly Validator<number>[]): TypedControl<number>;
+// El vacío de un numérico es `null` (§4.8), así que el tipo lo dice: `number | null`.
+type Num = number | null;
+export function u8 (initial?: Num, v?: readonly Validator<Num>[]): TypedControl<Num>;
+export function i8 (initial?: Num, v?: readonly Validator<Num>[]): TypedControl<Num>;
+export function u16(initial?: Num, v?: readonly Validator<Num>[]): TypedControl<Num>;
+export function i16(initial?: Num, v?: readonly Validator<Num>[]): TypedControl<Num>;
+export function u32(initial?: Num, v?: readonly Validator<Num>[]): TypedControl<Num>;
+export function i32(initial?: Num, v?: readonly Validator<Num>[]): TypedControl<Num>;
+export function f32(initial?: Num, v?: readonly Validator<Num>[]): TypedControl<Num>;
+export function f64(initial?: Num, v?: readonly Validator<Num>[]): TypedControl<Num>;
 export function bool(initial?: boolean, v?: readonly Validator<boolean>[]): TypedControl<boolean>;
 export function str (initial?: string, v?: readonly Validator<string>[]): TypedControl<string>;
 export function date(initial?: Date | null, v?: readonly Validator<Date | null>[]): TypedControl<Date | null>;
@@ -412,7 +414,7 @@ su ruta como cualquier otro.
 |---|---|---|
 | `u8` `u16` `u32` | entero, `0 … 2ⁿ−1` | `null` |
 | `i8` `i16` `i32` | entero, `−2ⁿ⁻¹ … 2ⁿ⁻¹−1` | `null` |
-| `f32` | finito y representable en 32 bits | `null` |
+| `f32` | finito y dentro de la magnitud de 32 bits — **no** «exactamente representable»: `0.1` no es un float de 32 bits y rechazarlo dejaría el tipo inservible para un precio, que es para lo que está | `null` |
 | `f64` | finito | `null` |
 | `bool` | `true`/`false` | `false` |
 | `str` | cadena | `''` |

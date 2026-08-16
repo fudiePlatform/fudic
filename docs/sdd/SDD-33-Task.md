@@ -3,7 +3,7 @@
 > **SDD:** [SDD-33 — Formularios reactivos: el núcleo](./SDD-33-formularios-reactivos.md)
 > **Paquete:** `@fudic/forms` — **nuevo**, punto de entrada `.` solamente
 > **Rama:** `sdd-33-formularios-reactivos`
-> **Progreso:** 4 / 15
+> **Progreso:** 13 / 15
 > **No depende de:** nada que esté en curso. `@fudic/core` está en `Hecho` y este paquete no toca
 > ningún fichero existente: se puede llevar en su propio worktree sin cruzarse con nadie.
 
@@ -72,28 +72,28 @@ posicional, el códec binario y la normalización profunda. Los tres primeros so
 
 ## Fase 3 — Escritura (2)
 
-- [ ] **5. `$set` total.**
+- [x] **5. `$set` total.**
       Un campo ausente es `TypeError` **nombrándolo**, un nombre fuera del schema también, y en los
       dos casos el formulario queda **intacto**: la comprobación va antes de la primera escritura,
       no a mitad. Criterio §6.5.
-- [ ] **6. `$patch` parcial.**
+- [x] **6. `$patch` parcial.**
       Solo toca lo que aparece, y baja recursivamente en los grupos sin tocar lo que no se
       menciona dentro. Criterio §6.6. Las dos operaciones se llaman distinto **a propósito**: el
       prototipo tenía una sola con semántica total y por eso vaciaba en silencio.
 
 ## Fase 4 — Validación (3)
 
-- [ ] **7. `$validate` en cascada.**
+- [x] **7. `$validate` en cascada.**
       Recorrido en orden de declaración; los validadores de un nodo corren en orden y **cortan en
       el primero que falla**; publica en `node.errors`, en `$errors()` por ruta y en `$summary()`.
       `$validate` de un grupo valida su subárbol con el mismo código. Criterios §6.8–§6.10.
-- [ ] **8. La época.**
+- [x] **8. La época.**
       Un entero por control que `set` incrementa; un resultado de validación **solo se publica si
       su época sigue vigente**. Y lo mismo a nivel de formulario para dos `$validate()` solapados.
       Criterio §6.11, que se escribe con la latencia controlada desde el test y **resolviendo
       primero la validación vieja**: sin la época ese test falla, y es exactamente el defecto que
       la red produce con un validador remoto.
-- [ ] **9. `$setErrors`, `$touch` y `$reset`.**
+- [x] **9. `$setErrors`, `$touch` y `$reset`.**
       Los errores que vienen de fuera —un 422— entran por ruta, marcan `touched` **solo** los
       suyos, y una ruta que el schema no tiene **se ignora sin lanzar**: un servidor no puede
       tumbar la página nombrando un campo que no existe. Es la única resolución de rutas del
@@ -101,24 +101,24 @@ posicional, el códec binario y la normalización profunda. Los tres primeros so
 
 ## Fase 5 — Validadores (2)
 
-- [ ] **10. Los seis de serie, un módulo cada uno.**
+- [x] **10. Los seis de serie, un módulo cada uno.**
       `required`, `minLength`, `maxLength`, `min`, `max`, `pattern`, más `validator()` como
       identidad tipada. Un fichero por export: es lo que hace que quien no usa `pattern` no se
       lleve su `RegExp`.
-- [ ] **11. `serverValidator`.**
+- [x] **11. `serverValidator`.**
       La marca y el salto: sin `{ server: true }` no se ejecuta. **No** es `validator.server` —un
       namespace colgado de una función no se poda—. Borrar su cuerpo del bundle de cliente es de
       SDD-34 §4.7 y aquí solo se deja el gancho. Criterio §6.12.
 
 ## Fase 6 — Controles tipados (2)
 
-- [ ] **12. Las doce factorías.**
+- [x] **12. Las doce factorías.**
       `src/typed/`, un fichero y un export por tipo: `u8` `i8` `u16` `i16` `u32` `i32` `f32` `f64`
       `bool` `str` `date` `arr`. Cada una construye un `control()` normal y le añade `type` y **un
       validador de rango el primero de la lista**, para que un valor que no cabe en el ancho no
       llegue a las reglas de negocio. `arr` recibe la **factoría** del elemento (`arr(str, [])`),
       no una cadena, para no obligar a una tabla de tipos viva en el bundle. Criterios §6.17–§6.18.
-- [ ] **13. El fixture numérico.**
+- [x] **13. El fixture numérico.**
       El schema de línea de pedido de `docs/forms/typed-binary.mjs` §2, escrito con las factorías,
       como fixture de test. No se mide nada binario aquí —eso es del transporte—: lo que demuestra
       es que un schema **entero** tipado se escribe sin ceremonia y que sus rangos validan.
