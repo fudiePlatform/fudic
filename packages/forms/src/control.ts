@@ -21,7 +21,7 @@
 import { signal, untrack } from '@fudic/core';
 import { attach, type NodeInternals } from './internals.js';
 import { isServerOnly } from './server-flag.js';
-import type { Control, Errors, Readable, Validator } from './types.js';
+import type { Control, Errors, Readable, Validator, Widen } from './types.js';
 
 /** The writable shape used while building; the public type is `Control<T>`. */
 interface Mutable<T> {
@@ -34,10 +34,20 @@ interface Mutable<T> {
   reset(v?: T): void;
 }
 
-export function control<T>(initial?: T, validators: readonly Validator<T>[] = []): Control<T> {
+/**
+ * `NoInfer` on the rules so the value decides the type and the rules do not: a
+ * `Validator<string>` in the list must not be what makes the control a string.
+ */
+export function control<T>(
+  initial?: T,
+  validators: readonly Validator<NoInfer<Widen<T>>>[] = [],
+): Control<Widen<T>> {
   // Omitted and explicitly `undefined` are the same case, and both mean `null`:
   // a control never holds `undefined`.
-  return build<T>((initial === undefined ? null : initial) as T, validators);
+  return build<Widen<T>>(
+    (initial === undefined ? null : initial) as Widen<T>,
+    validators as readonly Validator<Widen<T>>[],
+  );
 }
 
 function build<T>(initial: T, validators: readonly Validator<T>[]): Control<T> {

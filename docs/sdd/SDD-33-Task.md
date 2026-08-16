@@ -3,7 +3,7 @@
 > **SDD:** [SDD-33 — Formularios reactivos: el núcleo](./SDD-33-formularios-reactivos.md)
 > **Paquete:** `@fudic/forms` — **nuevo**, punto de entrada `.` solamente
 > **Rama:** `sdd-33-formularios-reactivos`
-> **Progreso:** 14 / 15 — falta solo el cierre (tarea 15), que exige ejecutar la suite
+> **Progreso:** 15 / 15
 > **No depende de:** nada que esté en curso. `@fudic/core` está en `Hecho` y este paquete no toca
 > ningún fichero existente: se puede llevar en su propio worktree sin cruzarse con nadie.
 
@@ -140,15 +140,22 @@ posicional, el códec binario y la normalización profunda. Los tres primeros so
       > el chunk de una ruta real tiene su sitio en SDD-34 §6.15, que es donde ya hay rutas que
       > medir. Se añade además una comprobación que el bundler no daría: ningún módulo del paquete
       > tiene import de efecto, que es lo único sobre lo que `sideEffects: false` podría mentir.
-- [ ] **15. Verde, cobertura e índice.**
+- [x] **15. Verde, cobertura e índice.**
       `pnpm typecheck`, `pnpm test` y `pnpm build` en la raíz. `@fudic/forms` al **100 %** en las
       cuatro métricas, sin un solo `/* v8 ignore */`. Anotar el avance en [INDEX.md](./INDEX.md) y
       pasar SDD-33 a `Hecho` si los 18 criterios de §6 están verdes.
-      > **Pendiente, y es la única tarea que lo está.** El código y los tests están escritos, pero
-      > **no se ha ejecutado nada**: la sesión que los escribió no podía lanzar comandos. Hace
-      > falta `pnpm install` —el paquete es nuevo, no tiene `node_modules`— y después
-      > `pnpm typecheck`, `pnpm test` y `pnpm coverage`. Hasta entonces SDD-33 queda en `En curso`
-      > en el índice: no se marca `Hecho` lo que no se ha visto verde.
+      > **Verde: 92 tests del paquete, 3 405 en el monorepo, y build completo con `examples/basic`.**
+      > Cobertura **100 / 100 / 100 / 100**. La ejecución encontró **tres defectos de tipos que
+      > ningún test dinámico habría visto**, los tres de la API pública y no de los tests:
+      > `control('')` infería `Control<''>` —un control que solo puede valer la cadena vacía, así
+      > que el primer `set('hola')` era error—, `$patch` pedía el grupo **completo** porque
+      > `Partial<Value<S>>` solo es parcial en el primer nivel, y `AnyForm` como `Form<Schema>`
+      > hacía que un `group` no fuera asignable a un nodo —TypeScript no da índice implícito a una
+      > intersección con interfaz—, con lo que **todo schema que tuviera un grupo perdía los tipos
+      > de sus campos**. Corregidos con `Widen<T>`, `Patch<S>` y `AnyForm = FormApi<Schema>`.
+      > Queda anotada una limitación de inferencia que no es un defecto: un schema escrito **en
+      > línea** junto a una regla declarada aparte y anotada a mano no infiere; con el schema en su
+      > `const` —que es como se escribe— funciona.
 
 ---
 

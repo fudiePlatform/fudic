@@ -16,6 +16,21 @@ export type Errors = Readonly<Record<string, unknown>>;
 export type Readable<T> = () => T;
 
 /**
+ * Literal widening at the factory boundary.
+ *
+ * Without it, `control('')` infers `Control<''>` — a control that can only ever
+ * hold the empty string — and the first `set('hello')` is a type error. The
+ * initial value of a field says what KIND of value it holds, never which one.
+ */
+export type Widen<T> = T extends string
+  ? string
+  : T extends number
+    ? number
+    : T extends boolean
+      ? boolean
+      : T;
+
+/**
  * A leaf. Holds a value and the interaction state around it, and nothing else:
  * `disabled` belongs to the element, not to the model.
  */
@@ -75,8 +90,16 @@ export interface Schema {
 /** A node is a control or a nested form. Two kinds, not three (a group IS a form). */
 export type AnyNode = Control<unknown> | AnyForm;
 
-/** A form whose schema is not statically known: what a validator receives as `root`. */
-export type AnyForm = Form<Schema>;
+/**
+ * A form whose schema is not statically known: what a validator receives as `root`.
+ *
+ * It is the `$` API alone and NOT `Form<Schema>`, because `Form<S>` is an
+ * intersection with an interface and TypeScript grants no implicit index signature
+ * to those: a group would not be assignable to it, and every schema containing one
+ * would fall back to `Schema` and lose its field types. A validator that needs a
+ * sibling field reaches it through the schema it knows, not through this.
+ */
+export type AnyForm = FormApi<Schema>;
 
 /** The value of one node. */
 export type ValueOf<N> = N extends Control<infer T>
@@ -87,6 +110,20 @@ export type ValueOf<N> = N extends Control<infer T>
 
 /** The value of a whole schema, in keyed form. */
 export type Value<S extends Schema> = { [K in keyof S]: ValueOf<S[K]> };
+
+/** One node of a patch: a control takes its value, a group takes a patch of its own. */
+export type PatchOf<N> = N extends Control<infer T>
+  ? T
+  : N extends { readonly $schema: infer S extends Schema }
+    ? Patch<S>
+    : never;
+
+/**
+ * What `$patch` takes: partial at EVERY level, which is what the write does. A
+ * `Partial<Value<S>>` would only be partial at the top and would demand a complete
+ * object for a group, which is the case a patch exists for.
+ */
+export type Patch<S extends Schema> = { [K in keyof S]?: PatchOf<S[K]> };
 
 /** Errors of a whole form, indexed by path: `{ title: {…}, 'seo.canonical': {…} }`. */
 export type ErrorMap = Readonly<Record<string, Errors>>;
@@ -103,8 +140,8 @@ export interface FormApi<S extends Schema> {
   readonly $value: Readable<Value<S>>;
   /** TOTAL assignment. A missing field is a `TypeError` naming it; nothing empties in silence. */
   $set(v: Value<S>): void;
-  /** PARTIAL assignment. What is not mentioned is not touched. */
-  $patch(v: Partial<Value<S>>): void;
+  /** PARTIAL assignment, at every level. What is not mentioned is not touched. */
+  $patch(v: Patch<S>): void;
 
   /** Runs the validators and publishes the result. Resolves to whether the form is valid. */
   $validate(opts?: { readonly server?: boolean }): Promise<boolean>;

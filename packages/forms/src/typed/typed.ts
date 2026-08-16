@@ -13,7 +13,7 @@
 
 import { control } from '../control.js';
 import { internalsOf } from '../internals.js';
-import type { AnyNode, Errors, TypeTag, TypedControl, Validator } from '../types.js';
+import type { AnyNode, Errors, TypeTag, TypedControl, Validator, Widen } from '../types.js';
 
 /** A synchronous check of one value against a declared width. */
 export type RangeCheck = (v: unknown) => Errors | null;
@@ -37,7 +37,10 @@ export function typed<T>(
   const rules: readonly Validator<T>[] =
     validators === undefined ? [check] : [check, ...validators];
 
-  const self = control<T>(initial, rules) as Writable<T>;
+  const self = control<T>(
+    initial,
+    rules as readonly Validator<Widen<T>>[],
+  ) as unknown as Writable<T>;
   self.type = tag;
   if (of !== undefined) {
     self.of = of;
@@ -54,4 +57,4 @@ export function typed<T>(
 }
 
 /** The range check of a typed control. Used by `arr`, and by nothing else. */
-export const rangeOf = (c: TypedControl<unknown>): RangeCheck => (c as WithRange)[RANGE];
+export const rangeOf = (c: TypedControl<unknown>): RangeCheck => (c as unknown as WithRange)[RANGE];

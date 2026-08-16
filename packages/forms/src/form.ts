@@ -32,6 +32,7 @@ import type {
   Errors,
   Form,
   FormOptions,
+  Patch,
   Schema,
   Validator,
   Value,
@@ -228,7 +229,7 @@ export function build<S extends Schema>(
       write(v as Record<string, unknown>, 'set');
     },
 
-    $patch: (v: Partial<Value<S>>): void => {
+    $patch: (v: Patch<S>): void => {
       check(v, 'patch', '');
       write(v as Record<string, unknown>, 'patch');
     },

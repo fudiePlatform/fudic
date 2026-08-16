@@ -102,7 +102,9 @@ describe('control', () => {
 
   it('an effect that reads a control does not re-run when nothing moved', () => {
     const title = control('a');
-    const run = vi.fn(() => title());
+    const run = vi.fn(() => {
+      title();
+    });
     const stop = effect(run);
     expect(run).toHaveBeenCalledTimes(1);
 

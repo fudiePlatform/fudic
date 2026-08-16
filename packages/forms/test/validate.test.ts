@@ -110,7 +110,11 @@ describe('the form-level rule (§6.10)', () => {
   it('a group carries its own rules, and they land in its summary', async () => {
     const ordered: Validator<{ from: number; to: number }> = (v) =>
       v.from > v.to ? { order: true } : null;
-    const range = group({ from: control(10), to: control(1) }, [ordered]);
+    // The schema goes in its own const, which is how a schema is written anyway:
+    // a rule annotated by hand plus a schema written inline is the one shape
+    // TypeScript cannot infer through (see the note in `group.ts`).
+    const fields = { from: control(10), to: control(1) };
+    const range = group(fields, [ordered]);
     const f = form({ range });
 
     expect(await f.$validate()).toBe(false);

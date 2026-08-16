@@ -9,9 +9,20 @@
 import { build } from './form.js';
 import type { GroupNode, Schema, Validator, Value } from './types.js';
 
+/**
+ * `NoInfer` on the rules, or a rule written against the group's value would take
+ * part in inferring the schema and drag it back to its constraint — which loses
+ * the field types of every schema that contains a group.
+ *
+ * One combination still defeats inference and it is worth knowing: a schema
+ * written INLINE together with a rule that was declared apart and annotated by
+ * hand. TypeScript then falls back to `Schema` and the fields lose their types.
+ * Either write the rule inline, or give the schema its own `const` — which is how
+ * a schema is written anyway, since it is a template both ends import.
+ */
 export function group<S extends Schema>(
   schema: S,
-  validators: readonly Validator<Value<S>>[] = [],
+  validators: readonly Validator<NoInfer<Value<S>>>[] = [],
 ): GroupNode<S> {
-  return build(schema, {}, validators);
+  return build(schema, {}, validators as readonly Validator<Value<S>>[]);
 }
