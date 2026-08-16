@@ -3,7 +3,7 @@
 > **SDD:** [SDD-33 — Formularios reactivos: el núcleo](./SDD-33-formularios-reactivos.md)
 > **Paquete:** `@fudic/forms` — **nuevo**, punto de entrada `.` solamente
 > **Rama:** `sdd-33-formularios-reactivos`
-> **Progreso:** 13 / 15
+> **Progreso:** 14 / 15 — falta solo el cierre (tarea 15), que exige ejecutar la suite
 > **No depende de:** nada que esté en curso. `@fudic/core` está en `Hecho` y este paquete no toca
 > ningún fichero existente: se puede llevar en su propio worktree sin cruzarse con nadie.
 
@@ -125,17 +125,30 @@ posicional, el códec binario y la normalización profunda. Los tres primeros so
 
 ## Fase 7 — Poda y cierre (2)
 
-- [ ] **14. Los dos tests de arquitectura.**
+- [x] **14. Los dos tests de arquitectura.**
       (a) **Cero DOM**: un test recorre `src/**/*.ts` y falla si aparece `document`, `window`,
       `HTMLElement`, `Element` o `navigator`. (b) **Poda medida**: tres entradas empaquetadas con
       Rollup, y la comprobación por identificadores en el chunk —una entrada con `form`, `control`
       y `required` no puede contener ninguna de las doce factorías tipadas ni los validadores que
       no importa; una entrada sin `@fudic/forms` pesa cero—. Criterios §6.15–§6.16. **Este es el
       test que hace que la regla de escritura sea una regla y no una intención.**
+      > **Cómo quedó (b), y por qué.** La medida se hace sobre el **grafo de módulos** leído de
+      > las fuentes, no empaquetando con Rollup: es la misma pregunta —qué módulos arrastra una
+      > entrada que importa `form`, `control` y `required`— y aquí la granularidad de la poda **es**
+      > el módulo, porque cada export vive en el suyo. A cambio no depende de la versión del
+      > bundler ni de una API que este paquete no usa para nada más. La medida en **bytes** sobre
+      > el chunk de una ruta real tiene su sitio en SDD-34 §6.15, que es donde ya hay rutas que
+      > medir. Se añade además una comprobación que el bundler no daría: ningún módulo del paquete
+      > tiene import de efecto, que es lo único sobre lo que `sideEffects: false` podría mentir.
 - [ ] **15. Verde, cobertura e índice.**
       `pnpm typecheck`, `pnpm test` y `pnpm build` en la raíz. `@fudic/forms` al **100 %** en las
       cuatro métricas, sin un solo `/* v8 ignore */`. Anotar el avance en [INDEX.md](./INDEX.md) y
       pasar SDD-33 a `Hecho` si los 18 criterios de §6 están verdes.
+      > **Pendiente, y es la única tarea que lo está.** El código y los tests están escritos, pero
+      > **no se ha ejecutado nada**: la sesión que los escribió no podía lanzar comandos. Hace
+      > falta `pnpm install` —el paquete es nuevo, no tiene `node_modules`— y después
+      > `pnpm typecheck`, `pnpm test` y `pnpm coverage`. Hasta entonces SDD-33 queda en `En curso`
+      > en el índice: no se marca `Hecho` lo que no se ha visto verde.
 
 ---
 

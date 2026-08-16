@@ -49,7 +49,6 @@
     "@fudic/core": "workspace:*"
   },
   "devDependencies": {
-    "@fudic/tsconfig": "workspace:*",
-    "vite": "8.0.16"
+    "@fudic/tsconfig": "workspace:*"
   }
 }
