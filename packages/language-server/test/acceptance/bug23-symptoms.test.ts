@@ -136,6 +136,10 @@ const names = (items: CompletionItem[]): string[] =>
 const lineOf = (markup: string, at: Diagnostic): string =>
   page(markup).split('\n')[at.range.start.line] ?? '';
 
+// The projection half landed with task 8 — the `.` anchor now stands inside `$props<$C0>`,
+// which is not intersected with `$GlobalAttrs`. What still answers here is the SERVER, whose
+// dot branch claims the position before TypeScript is asked, and that is the reparto of the
+// completions (phase 4).
 describe('§2.1 / symptom 1 — the dot offers the vocabulary of HTML', () => {
   it.fails('offers only the props of the component', async () => {
     const items = await completeAt('<app-circle .|></app-circle>', '.');
@@ -148,13 +152,15 @@ describe('§2.1 / symptom 1 — the dot offers the vocabulary of HTML', () => {
 });
 
 describe('§2.2 / symptom 2 — a dangling dot is text, not part of the `@`', () => {
+  // The dangling dot is copied since task 10, so the position exists in the projection; who
+  // ANSWERS at it is still the server's dot branch, which is phase 4.
   it.fails('offers the members of the route data after `@data.`', async () => {
     const items = await completeAt('<div>@data.|</div>', '.');
 
     expect(names(items)).toContain('title');
   });
 
-  it.fails('and the dangling dot adds no diagnostic of its own', async () => {
+  it('and the dangling dot adds no diagnostic of its own', async () => {
     expect(await problemsFor('<div>@data.</div>')).toEqual([]);
   });
 });
@@ -199,7 +205,7 @@ describe('§2.5 / symptom 5 — the `@` in text is answered by the server, and a
 });
 
 describe('§2.6 / symptom 6 — the slot is checked against the wrong tag', () => {
-  it.fails('reports a slot the parent does not declare', async () => {
+  it('reports a slot the parent does not declare', async () => {
     const markup = '<app-circle .name="x">\n  <div slot="p"></div>\n</app-circle>';
     const problems = await problemsFor(markup);
 
@@ -207,13 +213,13 @@ describe('§2.6 / symptom 6 — the slot is checked against the wrong tag', () =
     expect(lineOf(markup, problems[0]!)).toContain('slot="p"');
   });
 
-  it.fails('reports a slot written with no component parent at all', async () => {
+  it('reports a slot written with no component parent at all', async () => {
     const problems = await problemsFor('<div slot="PEPITO"></div>');
 
     expect(problems.length).toBeGreaterThan(0);
   });
 
-  it.fails('offers the slots of the parent inside the value', async () => {
+  it('offers the slots of the parent inside the value', async () => {
     const items = await completeAt(
       '<app-circle .name="x">\n  <div slot="|"></div>\n</app-circle>',
       '"',
@@ -224,7 +230,7 @@ describe('§2.6 / symptom 6 — the slot is checked against the wrong tag', () =
 });
 
 describe('§2.1 / symptom 7 — a required prop nobody passes', () => {
-  it.fails('reports over the tag name, with the name of the prop in the message', async () => {
+  it('reports over the tag name, with the name of the prop in the message', async () => {
     const markup = '<app-circle></app-circle>';
     const problems = await problemsFor(markup);
 

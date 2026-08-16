@@ -13,14 +13,22 @@ import { emitClient, registryOf } from './_support.js';
 const SLUG = 'blog/[slug].fud';
 const BADGE = 'components/app-badge.fud';
 
-/** The corpus page, with its `<app-badge>` line replaced. */
+/**
+ * The corpus page, with its `<app-badge>` line replaced.
+ *
+ * The badge sits inside ANOTHER badge and not inside the `<article>` it used to, because
+ * since BUG-23 §2.6 a `slot=` is checked against the union of the PARENT: with a native
+ * element above it the answer is `never`, which is correct and would drown every assertion
+ * here in an error about the wrong thing. The same component on both ends keeps
+ * `badgeTemplate` in charge of what the union holds.
+ */
 const badgeLine = (attributes: string): Record<string, string> => ({
   [SLUG]: `<link rel="layout" href="../layouts/_layout.fud">
 <link rel="component" href="../components/app-badge.fud">
 
-<article>
+<app-badge>
   <app-badge ${attributes}>x</app-badge>
-</article>
+</app-badge>
 `,
 });
 
@@ -129,7 +137,7 @@ describe('BUG-11 §6.2 and §6.3 — the $Slots contract', () => {
   });
 });
 
-describe('BUG-11 §6.4 and §6.5 — slot= against the component', () => {
+describe('BUG-11 §6.4 and §6.5 — slot= against the PARENT (rewritten by BUG-23 §2.6)', () => {
   it('projects slot= apart from the props, never inside the literal', () => {
     const diagnostics = typecheckCorpus({
       ...badgeTemplate(`<slot name="meta"></slot>`),
@@ -138,7 +146,7 @@ describe('BUG-11 §6.4 and §6.5 — slot= against the component', () => {
     expect(diagnostics).toEqual([]);
   });
 
-  it('reports a slot the component does not declare, on the name that was written', () => {
+  it('reports a slot the parent does not declare, on the name that was written', () => {
     const diagnostics = typecheckCorpus({
       ...badgeTemplate(`<slot name="meta"></slot><slot name="footer"></slot>`),
       ...badgeLine(`slot="nope"`),
@@ -152,7 +160,7 @@ describe('BUG-11 §6.4 and §6.5 — slot= against the component', () => {
     expect(diagnostics[0]!.sourceText).toBe('nope');
   });
 
-  it('reports any slot= at all against a component that declares none', () => {
+  it('reports any slot= at all against a parent that declares none', () => {
     const diagnostics = typecheckCorpus({
       ...badgeTemplate(`<slot></slot>`),
       ...badgeLine(`slot="meta"`),
@@ -184,7 +192,7 @@ describe('BUG-11 §4.2 and §4.3 — only a static name is a name', () => {
     expect(virtual.text).toContain("export type $Slots = 'real';");
   });
 
-  it('does not project a slot= whose value is interpolated', () => {
+  it('does not project a slot= whose value is interpolated, but does anchor an empty one', () => {
     const { text } = emitClient(
       `@code {
   const { where = 'meta' } = props<{ where?: string }>();
@@ -200,27 +208,46 @@ describe('BUG-11 §4.2 and §4.3 — only a static name is a name', () => {
       'app-page.fud',
       registryOf({ 'app-badge': './app-badge.fud' }),
     );
-    // Neither is a literal the projection can check, so neither produces a check. What must
-    // NOT happen is that they fall back into the props literal.
-    expect(text).not.toContain('$intoSlot');
+    // A name not known until it runs cannot be checked against a union of literals, so it
+    // produces one call and not two — and neither falls back into the props literal.
+    expect(text.match(/\$intoSlot/gu)).toHaveLength(1);
     expect(text).not.toContain('slot:');
+    // `slot=""` is the position completion is asked from, so it gets the two-character
+    // anchor `@|` uses (BUG-23 §4.2 rule 5).
+    expect(text).toContain("$intoSlot<never>('  ');");
   });
 });
 
-describe('BUG-11 §6.8 — a tag with no <link>', () => {
-  it('reports the tag once, and does not add a second error for its slot', () => {
+describe('BUG-11 §6.8 — a PARENT with no <link>', () => {
+  it('reports the tag once, and does not add a second error for the slot inside it', () => {
+    const diagnostics = typecheckCorpus({
+      [SLUG]: `<link rel="layout" href="../layouts/_layout.fud">
+
+<app-missing>
+  <div slot="meta">x</div>
+</app-missing>
+`,
+    });
+
+    // TS2304 on the tag (decision 41), and nothing else: the `$Slots` of a component that
+    // was never imported does not exist either, and a second error says nothing new. Since
+    // BUG-23 §2.6 the union asked for belongs to the PARENT, so it is the parent's missing
+    // link that buys the silence.
+    expect(diagnostics.map((d) => d.code)).toEqual([2304]);
+    expect(diagnostics[0]!.sourceText).toBe('app-missing');
+  });
+
+  it('but a slot with no component parent at all is an error (BUG-23 §2.6)', () => {
     const diagnostics = typecheckCorpus({
       [SLUG]: `<link rel="layout" href="../layouts/_layout.fud">
 
 <article>
-  <app-missing slot="meta">x</app-missing>
+  <div slot="meta">x</div>
 </article>
 `,
     });
 
-    // TS2304 on the tag (decision 41), and nothing else: `$Slots` of a component that was
-    // never imported does not exist either, and a second error says nothing new.
-    expect(diagnostics.map((d) => d.code)).toEqual([2304]);
-    expect(diagnostics[0]!.sourceText).toBe('app-missing');
+    expect(diagnostics.map((d) => d.code)).toEqual([2345]);
+    expect(diagnostics[0]!.sourceText).toBe('meta');
   });
 });

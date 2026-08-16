@@ -11,7 +11,7 @@
 
 import type { RazorExpression } from '@fudic/compiler';
 import type { TemplateContext } from './context.js';
-import { copyExpression } from './expr.js';
+import { copyRazor } from './expr.js';
 
 /**
  * Project one interpolation.
@@ -22,6 +22,6 @@ import { copyExpression } from './expr.js';
  */
 export function emitInterpolation(ctx: TemplateContext, expr: RazorExpression): void {
   ctx.w.scaffold('$text(', expr.span);
-  copyExpression(ctx, expr.expr);
+  copyRazor(ctx, expr);
   ctx.w.scaffold(');\n');
 }

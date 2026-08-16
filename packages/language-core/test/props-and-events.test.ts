@@ -27,27 +27,40 @@ describe('the two literals of a component tag (§6.5)', () => {
     expect(text).toContain('tone: (t),');
     expect(text).toContain('id: "x",');
     // Both literals, on the same tag, in this order: the contract first.
-    expect(text.indexOf('$attrs<$C0>(')).toBeLessThan(text.indexOf('$attrs<{}>('));
+    expect(text.indexOf('$props<$C0>(')).toBeLessThan(text.indexOf('$attrs<{}>('));
   });
 
-  it('emits no second literal when there is no plain attribute', () => {
-    expect(project('<app-badge .tone="@(t)"></app-badge>').text).not.toContain('$attrs<{}>');
+  it('emits the globals literal even with no plain attribute (BUG-23 decision (b))', () => {
+    // It is where the gap anchors live now, so `<app-badge |>` must have it even when the tag
+    // carries nothing HTML would recognise: what goes in that gap IS HTML's vocabulary.
+    expect(project('<app-badge .tone="@(t)"></app-badge>').text).toContain('$attrs<{}>({');
   });
 
   it('emits an empty contract literal when the tag has only plain attributes', () => {
-    // The anchors still need somewhere to point: a gap of the tag stands for the inside of
-    // the CONTRACT literal, which is what SDD-24 §6.3 asks for at `<app-badge |>`.
     const { text } = project('<app-badge id="x"></app-badge>');
 
-    expect(text).toContain('$attrs<$C0>({');
-    expect(text).toContain('$attrs<{}>({\n  id: "x",\n});');
+    expect(text).toContain('$props<$C0>({});');
+    expect(text).toContain('id: "x",');
   });
 
-  it('keeps `slot` out of both, checked by $intoSlot (§6.7)', () => {
-    const { text } = project('<app-badge slot="meta" .tone="@(t)"></app-badge>');
+  it('keeps `slot` out of both, checked by $intoSlot against the PARENT (§6.7)', () => {
+    // The parent is what declares the slot (BUG-23 §2.6), so the badge goes inside a
+    // component host: at the top of a shadow template it fills nothing at all.
+    const { text } = emitClient(
+      component('    <app-card><app-badge slot="meta" .tone="@(t)"></app-badge></app-card>'),
+      'x.fud',
+      registryOf({ 'app-badge': './app-badge.fud', 'app-card': './app-card.fud' }),
+    );
 
+    // `$S0` is the CARD: aliases are numbered by the order the tags appear in the markup.
     expect(text).toContain('$intoSlot<$S0>("meta");');
     expect(text).not.toContain('slot: ');
+  });
+
+  it('checks a slot written with no component parent against never', () => {
+    // `never` is exactly what a `slot=` outside a host fills, and saying so is what makes
+    // `<div slot="PEPITO">` in the middle of a page an error at last.
+    expect(project('<div slot="meta"></div>').text).toContain('$intoSlot<never>("meta");');
   });
 
   it('a native tag is unaffected: only its interpolations are checked', () => {

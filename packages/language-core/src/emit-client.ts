@@ -11,14 +11,14 @@
  * into the module, and `return` and `break` cannot escape into it either.
  */
 
-import type { HtmlContent, StructuredDocument } from '@fudic/compiler';
+import type { HtmlContent, Span, StructuredDocument } from '@fudic/compiler';
 import { partitionCode } from './code.js';
 import { emitDataDeclaration } from './data.js';
 import { emitImports, templateContent } from './imports.js';
 import { clientFileName } from './paths.js';
 import { emitPropsProjection, type PropsCall } from './props.js';
 import { emitElementBindings } from './template/attrs.js';
-import type { TemplateContext } from './template/context.js';
+import type { FragmentAst, TemplateContext } from './template/context.js';
 import { emitControl, emitInlineCode, type ControlLike } from './template/control.js';
 import { emitSection, emitSectionsContract, emitSlot, emitSlotsContract } from './template/sections.js';
 import { emitInterpolation } from './template/text.js';
@@ -41,6 +41,7 @@ export function emitClientVirtual(
   doc: StructuredDocument,
   registry: FileRegistry,
   props: PropsCall | undefined,
+  template: TemplateJs = {},
 ): VirtualFile {
   const w = new VirtualWriter(source);
   const content = templateContent(doc);
@@ -57,12 +58,13 @@ export function emitClientVirtual(
     w.scaffold('\n');
   }
 
-  const ctx: TemplateContext = {
-    source,
-    w,
-    aliases,
-    emit: (nodes) => emitContent(ctx, nodes),
-  };
+  // A page, a route and a layout have no shadow root of their own, so nothing at their top
+  // level is inside a component: the host starts as nothing, and a `slot=` written there is
+  // checked against `never`, which is what it fills.
+  const ctx = hostContext(
+    { source, w, aliases, reactives: template.reactives ?? new Set(), ast: template.ast },
+    undefined,
+  );
 
   w.scaffold('function $tpl(): void {\n');
   emitContent(ctx, content);
@@ -158,6 +160,41 @@ function emitElement(ctx: TemplateContext, el: Extract<HtmlContent, { type: 'ele
   // either into TypeScript would report CSS syntax as type errors.
   if (OPAQUE_ELEMENTS.has(el.name)) return;
 
+  // The element's own attributes are checked with the host ABOVE it — its `slot=` names a
+  // slot of its parent — and its children are projected with this element as their host,
+  // which is only a host at all when it is a component (decision 41).
   emitElementBindings(ctx, el);
-  emitContent(ctx, el.children);
+  emitContent(hostContext(ctx, el.name.includes('-') ? el.name : undefined), el.children);
+}
+
+/**
+ * What the template projectors need beyond the document, when someone else parsed the JS.
+ *
+ * Both halves are optional and both degrade to «say nothing new»: with no reactives a value
+ * crosses as written, and with no AST a handler is copied as written. That is what the
+ * projection did before BUG-23, so a caller that hands over neither gets exactly the old
+ * behaviour rather than a wrong one.
+ */
+export interface TemplateJs {
+  /** `signal(...)` / `computed(...)` names of this file, from `reactiveNames`. */
+  readonly reactives?: ReadonlySet<string>;
+  /** The AST registered at a source span — the attribute values included. */
+  readonly ast?: (at: Span) => FragmentAst | undefined;
+}
+
+/**
+ * The context for the children of one host.
+ *
+ * A new object per host rather than a mutable field: the recursion hook is a closure over the
+ * context it belongs to, so a `@foreach` inside `<app-card>` re-enters with the card still as
+ * its host — which is what makes a `slot=` written three constructs deep still check against
+ * the component it will actually be placed in.
+ */
+function hostContext(base: Omit<TemplateContext, 'host' | 'emit'>, host: string | undefined): TemplateContext {
+  const ctx: TemplateContext = {
+    ...base,
+    host,
+    emit: (nodes) => emitContent(ctx, nodes),
+  };
+  return ctx;
 }

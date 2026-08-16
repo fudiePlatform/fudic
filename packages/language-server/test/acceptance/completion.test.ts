@@ -94,14 +94,17 @@ afterAll(async () => {
 });
 
 describe('§6.3 — attributes and their values', () => {
-  it('offers the props of a component inside its tag', async () => {
+  it('offers the GLOBALS of HTML inside the tag, never the props (BUG-23 decision (b))', async () => {
     const items = await completeAt(
       SLUG,
       `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="component" href="../components/app-badge.fud">\n<article>\n  <app-badge |></app-badge>\n</article>\n`,
     );
 
-    // TypeScript labels an optional property with its `?`.
-    expect(labels(items)).toContain('tone?');
+    // On a component a `.prop` is the only way to write a prop (decision 41.c), so what can
+    // be typed in the gap is HTML's own vocabulary and nothing else. It corrects SDD-24 §6.3,
+    // which pinned the opposite; the props are reached with the `.`, one keystroke away.
+    expect(labels(items)).toContain('role?');
+    expect(labels(items)).not.toContain('tone?');
   });
 
   it('offers the members of the union inside the value', async () => {
@@ -281,15 +284,16 @@ describe('BUG-15 §6.13–§6.17 — inside an open tag, asked the way an editor
     expect(labels(items)).toContain('role');
   });
 
-  it('§6.14 — the gap of a component tag offers its props', async () => {
+  it('§6.14 — the gap of a component tag answers at all', async () => {
     const items = await completeAt(
       SLUG,
       `${ROUTE}<article>\n  <app-badge |></app-badge>\n</article>\n`,
     );
 
     // TypeScript's, over the projection, through the completion anchor BUG-11 left in the tag
-    // gap. It is criterion §6.3 of SDD-24 — the one the space was quietly turning off.
-    expect(labels(items)).toContain('tone?');
+    // gap — the one the space was quietly turning off. WHAT it offers there is HTML's
+    // vocabulary since BUG-23 decision (b): the anchor moved to the globals literal.
+    expect(labels(items)).toContain('role?');
   });
 
   it('§6.15 — the space is not a trigger character, and the others still are', async () => {

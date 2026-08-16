@@ -148,14 +148,18 @@ describe('criterion 11 — scaffolding is mute', () => {
       const generated = client.text.slice(m.generatedOffset, m.generatedOffset + m.length);
       const stands = source.slice(m.sourceOffset, m.sourceOffset + m.sourceLength);
 
-      // Two of them, and for the same reason. The tag alias — resolved (`$C0`) or not
-      // (`$C_app_missing`) — stands for the tag name the user wrote. The section literal
-      // (`'nav'`) stands for the bare name: TypeScript reports over the literal WITH its
-      // quotes, and a range whose ends fall in different stretches maps back to nothing.
-      const isTagAlias = generated.startsWith('$C') && /^[a-z]+-/.test(stands);
+      // Three of them, and for the same reason. The tag alias — resolved (`$C0`) or not
+      // (`$C_app_missing`) — stands for the tag name the user wrote, and so does the `{}` of
+      // `$required`, which is where a missing prop has to be read (BUG-23 §4.2 rule 2). The
+      // section literal (`'nav'`) stands for the bare name: TypeScript reports over the
+      // literal WITH its quotes, and a range whose ends fall in different stretches maps back
+      // to nothing.
+      const overTagName = /^[a-z]+-/.test(stands);
+      const isTagAlias = generated.startsWith('$C') && overTagName;
+      const isRequiredAnchor = generated === '{}' && overTagName;
       const isSectionName = generated === `'${stands}'`;
 
-      expect(isTagAlias || isSectionName).toBe(true);
+      expect(isTagAlias || isRequiredAnchor || isSectionName).toBe(true);
     }
   });
 });

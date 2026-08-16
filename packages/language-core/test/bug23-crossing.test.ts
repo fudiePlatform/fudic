@@ -59,7 +59,7 @@ const describeDiag = (d: CorpusDiagnostic): string =>
   `${d.code} ${d.message} @${d.sourceText ?? '<unmapped>'}`;
 
 describe('the `.prop` of a component', () => {
-  it.fails('says nothing about a reactive whose VALUE is what the prop declares', () => {
+  it('says nothing about a reactive whose VALUE is what the prop declares', () => {
     expect(typecheckCorpus(corpusWith(TONE_PROP, `.tone="@titulo"`)).map(describeDiag)).toEqual([]);
   });
 
@@ -76,7 +76,7 @@ describe('the `.prop` of a component', () => {
 });
 
 describe('the plain interpolated attribute — the emit crosses there too', () => {
-  it.fails('says nothing about a reactive whose value is a scalar', () => {
+  it('says nothing about a reactive whose value is a scalar', () => {
     const diags = typecheckCorpus(corpusWith('<h1>@data.title</h1>', '<h1 id="@titulo"></h1>'));
 
     expect(diags.map(describeDiag)).toEqual([]);

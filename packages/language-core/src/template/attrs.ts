@@ -15,17 +15,21 @@
 
 import {
   classifyAttribute,
+  crossing,
+  handlerShape,
+  unwrapParens,
   type Attribute,
   type AttributeValuePart,
   type Binding,
   type ElementNode,
+  type OxcNode,
   type RazorExpression,
   type Span,
   span,
 } from '@fudic/compiler';
 import { COMPLETION_ONLY_CAPS, DIAGNOSTIC_ONLY_CAPS, LITERAL_NAME_CAPS } from '../caps.js';
 import type { TemplateContext } from './context.js';
-import { copyExpression } from './expr.js';
+import { copyExpression, copyRazor } from './expr.js';
 
 /** A JS identifier, i.e. an object key that needs no quoting. */
 const PLAIN_KEY = /^[\p{ID_Start}$_][\p{ID_Continue}$]*$/u;
@@ -51,6 +55,12 @@ function eventNameOf(attr: Attribute, binding: Binding): string | undefined {
     : undefined;
 }
 
+/** One attribute with the binding it classifies to — what every emitter below takes. */
+interface Entry {
+  readonly attr: Attribute;
+  readonly binding: Binding;
+}
+
 /** Project every attribute of an element. */
 export function emitElementBindings(ctx: TemplateContext, el: ElementNode): void {
   const bindings = el.attributes.map((attr) => ({
@@ -60,6 +70,11 @@ export function emitElementBindings(ctx: TemplateContext, el: ElementNode): void
 
   if (isComponent(el.name)) emitProps(ctx, el, bindings);
   else emitNativeAttrs(ctx, bindings);
+
+  // On EVERY element, and against the parent: a `<div slot="x">` is exactly as wrong as a
+  // `<app-badge slot="x">` when the host declares no `x` (BUG-23 §2.6).
+  const slot = bindings.find(isSlot);
+  if (slot !== undefined) emitIntoSlot(ctx, slot.attr, slot.binding);
 
   for (const { attr, binding } of bindings) emitBehaviour(ctx, el, attr, binding);
 }
@@ -110,11 +125,12 @@ function isComponent(tag: string): boolean {
 
 /**
  * A component tag becomes TWO object literals, and which one a binding lands in is the whole
- * of BUG-16 §4.2.
+ * of BUG-16 §4.2 — plus a third call that checks nothing but COMPLETENESS.
  *
  *     <app-badge .tone="@(t)" id="x">
- *       →  $attrs<$C0>({ tone: (t) });   // the component's contract
+ *       →  $props<$C0>({ tone: (t) });   // the component's contract, the dot completes here
  *          $attrs<{}>({ id: "x" });      // `{} & $GlobalAttrs`: HTML's vocabulary, nothing else
+ *          $required<$C0, 'tone'>({});   // over the tag NAME: what was not passed
  *
  * In fudic a property is written with a dot, so a plain attribute on a component is not a
  * prop — it is what HTML says an element understands. Checking it against `{}` is what makes
@@ -122,52 +138,81 @@ function isComponent(tag: string): boolean {
  * when the name is a misspelt global. No list of attributes lives in this file, and no `FUD`
  * code was minted for it.
  *
- * `slot` is in neither: it is checked against the component's OWN slot union (BUG-11 §4.2).
+ * `slot` is in neither: it is checked against the union of the PARENT, from `emitIntoSlot`.
  *
- * The gap anchors stay on the PROPS literal. A gap is where a new attribute is about to be
- * typed, and what the developer wants offered there is the component's contract — which is
- * also what SDD-24 §6.3 pins.
+ * The gap anchors moved to the GLOBALS literal, and that is decision (b) of BUG-23 §4.0: a
+ * gap is where a new attribute goes, and on a component the only thing that can be written
+ * without a dot is HTML's own vocabulary. The props are reached with the `.`, which has an
+ * anchor of its own. It changes SDD-24 §6.3, which pinned the opposite.
  */
-function emitProps(
-  ctx: TemplateContext,
-  el: ElementNode,
-  bindings: readonly { attr: Attribute; binding: Binding }[],
-): void {
-  const props = bindings.filter((b) => b.binding.type === 'property');
-  const globals = bindings.filter(
-    (b) =>
-      b.binding.type === 'attr' &&
-      !isSlot(b) &&
-      // A half-written `@cli` degraded to a plain attribute is still an event, and an event
-      // is not HTML's vocabulary: it would report TS2353 on a name that is not wrong, only
-      // unfinished.
-      eventNameOf(b.attr, b.binding) === undefined,
-  );
+function emitProps(ctx: TemplateContext, el: ElementNode, bindings: readonly Entry[]): void {
+  const props: Entry[] = [];
+  const globals: Entry[] = [];
+  /** The prop names actually WRITTEN — the `K` of `$required`. A bare `.` names none. */
+  const written: string[] = [];
 
-  ctx.w.scaffold('$attrs<', el.openSpan);
+  for (const entry of bindings) {
+    if (entry.binding.type === 'property') {
+      props.push(entry);
+      if (entry.binding.name.length > 0) written.push(`'${entry.binding.name}'`);
+      continue;
+    }
+    // A half-written `@cli` degraded to a plain attribute is still an event, and an event
+    // is not HTML's vocabulary: it would report TS2353 on a name that is not wrong, only
+    // unfinished. `slot` is nobody's vocabulary here — it is the parent's union.
+    const opening = eventNameOf(entry.attr, entry.binding);
+    if (entry.binding.type === 'attr' && !isSlot(entry) && opening === undefined) {
+      globals.push(entry);
+    }
+  }
+  const alias = ctx.aliases.aliasOf(el.name);
+
+  ctx.w.scaffold('$props<', el.openSpan);
   // The tag's own span carries this one, under diagnostics-only capabilities: an
   // unregistered tag must report TS2304 here, but nothing else should route into a name
   // the user never wrote.
-  ctx.w.projected(ctx.aliases.aliasOf(el.name), tagSpan(el), DIAGNOSTIC_ONLY_CAPS);
+  ctx.w.projected(alias, tagSpan(el), DIAGNOSTIC_ONLY_CAPS);
   ctx.w.scaffold('>({');
-  // One anchor per gap of the start tag, all standing for the inside of the object literal:
-  // this is what makes completion work at `<app-badge |>`, where there is no text yet to map
-  // from and the contract that knows the answer lives in the projection.
-  for (const gap of attributeGaps(el)) ctx.w.projected('\n  ', gap, COMPLETION_ONLY_CAPS);
   emitEntries(ctx, props);
   ctx.w.scaffold(props.length === 0 ? '});\n' : '\n});\n');
 
-  if (globals.length > 0) {
-    // `{}` and not the component's type: an empty intersection with `$GlobalAttrs` is exactly
-    // "HTML's vocabulary and nothing else". Emitted only when there is something to check —
-    // an empty literal would be scaffolding that says nothing.
-    ctx.w.scaffold('$attrs<{}>({', el.openSpan);
-    emitEntries(ctx, globals);
-    ctx.w.scaffold('\n});\n');
-  }
+  // Always, because this is where the gap anchors live now — `<app-badge |>` must have
+  // somewhere to ask even when the tag carries no plain attribute at all.
+  ctx.w.scaffold('$attrs<{}>({', el.openSpan);
+  // One anchor per gap of the start tag, all standing for the inside of the object literal:
+  // this is what makes completion work at `<app-badge |>`, where there is no text yet to map
+  // from and the type that knows the answer lives in the projection.
+  for (const gap of attributeGaps(el)) ctx.w.projected('\n  ', gap, COMPLETION_ONLY_CAPS);
+  emitEntries(ctx, globals);
+  ctx.w.scaffold(globals.length === 0 ? '});\n' : '\n});\n');
 
-  const slot = bindings.find(isSlot);
-  if (slot !== undefined) emitIntoSlot(ctx, el, slot.binding);
+  emitRequired(ctx, el, alias, written);
+}
+
+/**
+ * `$required<$C0, 'name' | 'tone'>(⟨{} over the tag name⟩);`
+ *
+ * `K` is the union of the props the author DID write, so the type argument computes what is
+ * left. With none written it is `never`, and every required prop is missing.
+ *
+ * Nothing at all for a tag with no `<link>`: its contract was never imported, so asking what
+ * is missing from a type that does not exist adds a second error to the `TS2304` already on
+ * the name — the same silence `emitIntoSlot` keeps, and for the same reason (BUG-11 §4.4).
+ */
+function emitRequired(
+  ctx: TemplateContext,
+  el: ElementNode,
+  alias: string,
+  written: readonly string[],
+): void {
+  if (ctx.aliases.slotsAliasOf(el.name) === undefined) return;
+
+  ctx.w.scaffold(`$required<${alias}, ${written.length === 0 ? 'never' : written.join(' | ')}>(`);
+  // ONE stretch, both ends inside it: `TS2345` is reported over the whole argument, and a
+  // range only maps back when both of its ends land in a single stretch carrying
+  // `verification`. Over the tag NAME, which is where the author reads what is missing.
+  ctx.w.projected('{}', tagSpan(el), DIAGNOSTIC_ONLY_CAPS);
+  ctx.w.scaffold(');\n');
 }
 
 /**
@@ -178,10 +223,7 @@ function emitProps(
  * use, one character further in. Writing a key there would be inventing a name; writing
  * nothing would leave the one position where the prop list is wanted unable to ask.
  */
-function emitEntries(
-  ctx: TemplateContext,
-  entries: readonly { attr: Attribute; binding: Binding }[],
-): void {
+function emitEntries(ctx: TemplateContext, entries: readonly Entry[]): void {
   for (const { attr, binding } of entries) {
     if (binding.type === 'property' && binding.name.length === 0) {
       ctx.w.projected('\n  ', attr.span, COMPLETION_ONLY_CAPS);
@@ -201,53 +243,98 @@ interface SlotBinding {
   readonly binding: Extract<Binding, { type: 'attr' }>;
 }
 
-function isSlot(entry: { attr: Attribute; binding: Binding }): entry is SlotBinding {
+function isSlot(entry: Entry): entry is SlotBinding {
   return entry.binding.type === 'attr' && entry.attr.name === 'slot';
 }
 
 /**
- * `slot="meta"` → `$intoSlot<$S0>('meta');`
+ * `slot="meta"` → `$intoSlot<$S_parent>('meta');`
  *
- * The literal is ONE stretch, quotes included, under the same profile as a projected tag —
- * exactly as `emitSection` writes a section name, and for the same reason: TypeScript reports
- * the `TS2345` over `'meta'` WITH its quotes, and a reported range only maps back when both of
- * its ends land in a single stretch carrying `verification`. Written as scaffold + copy +
- * scaffold, the error would reach nobody.
+ * Against the `$Slots` of the PARENT, and on EVERY element (BUG-23 §2.6). A slot is declared
+ * by the component the child goes INTO, so asking the element that carries the `slot=` was
+ * only ever right by coincidence — when both happened to declare the same name. And it was
+ * asked from `emitProps`, which runs on hyphenated tags alone, so `<div slot="p">` was checked
+ * against nothing at all.
+ *
+ * With no component parent the union is `never`: a `slot=` outside a host fills nothing, and
+ * that is exactly what `never` says. A parent with no `<link>` is the one silence kept — it
+ * already fails with `TS2304` on its name, and a second error about its slots adds nothing
+ * (BUG-11 §4.4).
+ *
+ * The name is projected 1:1 under `LITERAL_NAME_CAPS`, quotes as scaffolding — the profile
+ * `@click` uses, and for its two reasons: the diagnostic must reach the source, and the
+ * COMPLETION list is the point, since asking this position is asking for the parent's slots.
+ * A 1:1 stretch is also what keeps the replacement range exactly the name.
  *
  * An interpolated name is not projected at all: `slot="@(x)"` is a slot whose identity is not
  * known until it runs, and checking it against a union of literals would be checking a value
  * the projection cannot see.
  */
-function emitIntoSlot(ctx: TemplateContext, el: ElementNode, binding: SlotBinding['binding']): void {
-  const alias = ctx.aliases.slotsAliasOf(el.name);
-  // No `<link>` for this tag: it already fails with TS2304 on its name, and its `$Slots` was
-  // never imported. A second error on the same tag adds nothing (BUG-11 §4.4).
+function emitIntoSlot(ctx: TemplateContext, attr: Attribute, binding: SlotBinding['binding']): void {
+  const alias = slotsAlias(ctx);
   if (alias === undefined) return;
 
-  const only = binding.value.length === 1 ? binding.value[0] : undefined;
-  if (only?.type !== 'attribute-text') return;
+  // A concatenation is not a name either: only an empty value or one literal run is.
+  if (binding.value.length > 1) return;
+  const only = binding.value[0];
+  if (only !== undefined && only.type !== 'attribute-text') return;
 
   ctx.w.scaffold(`$intoSlot<${alias}>(`, binding.span);
-  ctx.w.projected(quote(only.value), only.span, DIAGNOSTIC_ONLY_CAPS);
+  if (only === undefined) {
+    // `slot=""` — the quotes are typed and the name is not, so the INSIDE of the literal
+    // becomes the anchor: two characters for one, so BOTH ends of the source stretch land in
+    // it. The same recourse `@|` uses, and what makes `slot="|"` offer the parent's slots.
+    ctx.w.scaffold("'");
+    ctx.w.projected('  ', attr.span, COMPLETION_ONLY_CAPS);
+    ctx.w.scaffold("'");
+  } else {
+    // One stretch, QUOTES INCLUDED. TypeScript reports the `TS2345` over `'p'` with them, and
+    // a reported range only maps back when both of its ends land in a single stretch carrying
+    // `verification` — the `@section` lesson. `LITERAL_NAME_CAPS` rather than diagnostics-only
+    // because the list is the point here too: this position is asking for the parent's slots.
+    ctx.w.projected(quote(only.value), only.span, LITERAL_NAME_CAPS);
+  }
   ctx.w.scaffold(');\n');
 }
 
+/** The slot union to check against: the parent's, `never` with no component parent. */
+function slotsAlias(ctx: TemplateContext): string | undefined {
+  return ctx.host === undefined ? 'never' : ctx.aliases.slotsAliasOf(ctx.host);
+}
+
 /** Native tags: only the interpolations are checked, one `$attr` each. */
-function emitNativeAttrs(
-  ctx: TemplateContext,
-  bindings: readonly { attr: Attribute; binding: Binding }[],
-): void {
+function emitNativeAttrs(ctx: TemplateContext, bindings: readonly Entry[]): void {
   for (const { binding } of bindings) {
     // `.prop` and a plain attribute carry the same shape of value, so a native tag checks
     // them the same way: whatever interpolation is inside, and nothing else.
     if (binding.type !== 'attr' && binding.type !== 'property') continue;
+    // The emit crosses `id="@titulo"` as `titulo()` too — `crossingExpr` has exactly two
+    // callers and this is the second (BUG-23 §2.8).
+    const read = crossesAsRead(ctx, binding.value);
     for (const part of binding.value) {
       if (part.type !== 'razor-expression') continue;
       ctx.w.scaffold('$attr(', part.span);
-      copyExpression(ctx, part.expr);
+      copyRazor(ctx, part);
+      if (read) ctx.w.scaffold('()');
       ctx.w.scaffold(');\n');
     }
   }
+}
+
+/**
+ * Whether the emit will cross this value as the READ of a reactive rather than as written
+ * (decision 84), asked with the very function the emit asks it with.
+ *
+ * `crossing` is the one definition, in `@fudic/compiler`, and that is the invariant of BUG-23
+ * §5: where the emit transforms a value before crossing it, the projection applies the same
+ * transformation. A rule only one of the two knows is how the editor came to type-check
+ * `Signal<string>` against a `name: string` the build never handed it.
+ *
+ * No `target` is passed, so the answer is always the `'value'` form — the shared cell of
+ * SDD-31 §7 is decided and has no emitter, in the build or here.
+ */
+function crossesAsRead(ctx: TemplateContext, value: readonly AttributeValuePart[]): boolean {
+  return crossing(ctx.source, value, ctx.reactives) !== undefined;
 }
 
 /** Events, bus subscriptions, conditional class/style and `ref` — the non-prop bindings. */
@@ -278,7 +365,7 @@ function emitBehaviour(
       emitEventName(ctx, attr, binding.name);
       if (binding.name.includes('-')) ctx.w.scaffold(' as never');
       ctx.w.scaffold(', ');
-      copyExpression(ctx, binding.value.expr);
+      emitHandler(ctx, binding.value);
       ctx.w.scaffold(');\n');
       return;
 
@@ -287,9 +374,9 @@ function emitBehaviour(
       // type is unknowable, so the handler is checked and the event is not.
       ctx.w.scaffold('$on(', attr.span);
       if (typeof binding.eventName === 'string') ctx.w.scaffold(`'${binding.eventName}'`);
-      else copyExpression(ctx, binding.eventName.expr);
+      else copyRazor(ctx, binding.eventName);
       ctx.w.scaffold(' as never, ');
-      copyExpression(ctx, binding.value.expr);
+      emitHandler(ctx, binding.value);
       ctx.w.scaffold(');\n');
       return;
 
@@ -316,6 +403,31 @@ function emitBehaviour(
     default:
       return;
   }
+}
+
+/**
+ * The listener a handler value subscribes — the SAME shape the emit subscribes.
+ *
+ * A value whose root is a call is an invocation deferred to DISPATCH (decisions 96–98):
+ * `@click="@onClick($event)"` emits `($event) => onClick($event)`, so the projection writes
+ * the very same arrow. That is what makes the two errors of BUG-23 §2.4 disappear without a
+ * rule of ours: `$event` is the arrow's PARAMETER — declared in no `.d.ts` — and its type is
+ * whatever `$on` gives it contextually, `MouseEvent` in `@click` and `never` in a `bus:`.
+ *
+ * The other three shapes are copied as they are, exactly as before. And so is a call when
+ * nobody handed the emitter a batch that registers attribute values: the shape is a question
+ * about the AST, and without one the honest answer is to change nothing.
+ */
+function emitHandler(ctx: TemplateContext, value: RazorExpression): void {
+  const deferred = handlerShape(rootAt(ctx, value.expr)) === 'call';
+  if (deferred) ctx.w.scaffold('($event) => ');
+  copyRazor(ctx, value);
+}
+
+/** The root node registered at a span, past the parentheses the author wrote. */
+function rootAt(ctx: TemplateContext, at: Span): OxcNode | undefined {
+  const ast = ctx.ast?.(at);
+  return ast === undefined || Array.isArray(ast) ? undefined : unwrapParens(ast as OxcNode);
 }
 
 /**
@@ -388,15 +500,23 @@ function emitValue(ctx: TemplateContext, binding: Binding): void {
   // A bare attribute is `true` (decision 44); a lone expression keeps its exact type
   // (decision 24); anything else is a concatenation, checked as a string (decision 20).
   if (parts.length === 0) ctx.w.scaffold('true', binding.span);
-  else if (only?.type === 'razor-expression') emitExpression(ctx, only);
+  else if (only?.type === 'razor-expression') emitExpression(ctx, only, crossesAsRead(ctx, parts));
   else if (only?.type === 'attribute-text') ctx.w.scaffold(quote(only.value), only.span);
   else emitTemplateLiteral(ctx, parts);
 }
 
-/** `(expr)` — parenthesized so that a comma or an arrow inside cannot break the object. */
-function emitExpression(ctx: TemplateContext, expr: RazorExpression): void {
+/**
+ * `(expr)` — parenthesized so that a comma or an arrow inside cannot break the object.
+ *
+ * `read` adds the call the emit adds: `.name="@titulo"` crosses as `titulo()`, so the literal
+ * says `name: (titulo()),`. The `()` is SCAFFOLDING and carries no mapping — the author never
+ * typed it, so nothing navigates to it, nothing renames through it, and no diagnostic lands
+ * on it. What is mapped stays `titulo`, exactly as before.
+ */
+function emitExpression(ctx: TemplateContext, expr: RazorExpression, read = false): void {
   ctx.w.scaffold('(');
-  copyExpression(ctx, expr.expr);
+  copyRazor(ctx, expr);
+  if (read) ctx.w.scaffold('()');
   ctx.w.scaffold(')');
 }
 

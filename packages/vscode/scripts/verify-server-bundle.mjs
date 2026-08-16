@@ -131,11 +131,15 @@ const completion = await request('textDocument/completion', {
 });
 
 const labels = (completion?.items ?? completion ?? []).map((item) => item.label);
-// `tone?` and not `tone`: TypeScript labels an optional property with its own `?`, which is the
+// `role?` and not `role`: TypeScript labels an optional property with its own `?`, which is the
 // tell that this came from a type and not from a table of HTML attributes.
-if (!labels.includes('tone?')) {
+//
+// The GLOBALS and not the props, since BUG-23 decision (b): on a component `.prop` is the only
+// way to write a prop, so what fits in the gap of the tag is HTML's own vocabulary. The props
+// are one keystroke away, behind the dot.
+if (!labels.includes('role?')) {
   fail(
-    `TypeScript is not alive: <app-badge> offered ${String(labels.length)} completions and none was the declared prop`,
+    `TypeScript is not alive: <app-badge> offered ${String(labels.length)} completions and none was a global attribute`,
   );
 }
 

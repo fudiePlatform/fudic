@@ -50,6 +50,37 @@ type $GlobalAttrs = {
 declare function $text(v: $Scalar): void;
 declare function $attr(v: $Scalar): void;
 declare function $attrs<T>(a: T & $GlobalAttrs): void;
+
+/**
+ * The PROPS of a component host — what is written with a dot, and nothing else.
+ *
+ * Without \`$GlobalAttrs\`, and that is the whole of it (BUG-23 §2.1): the literal that
+ * carries the props is the one the dot completes against, so intersecting it with HTML's
+ * vocabulary made \`<app-badge .|>\` offer \`id\`, \`class\` and \`role\` beside the contract. A
+ * plain attribute on the same host still goes to \`$attrs<{}>\`, which is HTML's vocabulary
+ * and nothing else.
+ */
+declare function $props<T>(p: T): void;
+
+/**
+ * The REQUIRED keys of \`T\` that \`K\` does not name.
+ *
+ * \`-?\` strips optionality so \`Pick<T, K>\` can be compared against \`{}\`: a key that is
+ * optional makes \`{}\` assignable, so it drops out and only what the author cannot forget
+ * survives.
+ */
+type $RequiredKeys<T> = { [K in keyof T]-?: {} extends Pick<T, K> ? never : K }[keyof T];
+type $Missing<T, K> = Pick<T, Exclude<$RequiredKeys<T>, K>>;
+
+/**
+ * Completeness, checked APART from the values (BUG-23 §2.1).
+ *
+ * \`TS2739\` over an object literal is reported on the whole argument — from the \`{\` to the
+ * \`}\` — and both of those ends are scaffolding, so Volar mapped the error back nowhere and
+ * the missing prop was never reported. Here the argument is a single stretch standing for the
+ * tag NAME, which is where the author has to read it anyway.
+ */
+declare function $required<T, K extends PropertyKey>(rest: $Missing<T, K>): void;
 declare function $on<K extends keyof HTMLElementEventMap>(
   type: K, h: (ev: HTMLElementEventMap[K]) => unknown): void;
 declare function $section<T extends string>(name: T): void;
