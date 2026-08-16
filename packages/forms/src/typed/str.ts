@@ -2,11 +2,11 @@
 
 import { typeOf } from './range.js';
 import { typed } from './typed.js';
-import type { TypedControl, Validator } from '../types.js';
+import type { AnyValidator, TypedControl } from '../types.js';
 
 const check = typeOf('str', 'string');
 
 export const str = (
   initial?: string,
-  validators?: readonly Validator<string>[],
+  validators?: readonly AnyValidator<string>[],
 ): TypedControl<string> => typed('str', initial === undefined ? '' : initial, check, validators);

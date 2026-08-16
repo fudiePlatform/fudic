@@ -45,6 +45,7 @@ export { arr } from './typed/arr.js';
 export type {
   AnyForm,
   AnyNode,
+  AnyValidator,
   Control,
   ErrorMap,
   Errors,

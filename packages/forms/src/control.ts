@@ -20,8 +20,9 @@
 
 import { signal, untrack } from '@fudic/core';
 import { attach, type NodeInternals } from './internals.js';
+import { runRule } from './run-rule.js';
 import { isServerOnly } from './server-flag.js';
-import type { Control, Errors, Readable, Validator, Widen } from './types.js';
+import type { AnyValidator, Control, Errors, Readable, Widen } from './types.js';
 
 /** The writable shape used while building; the public type is `Control<T>`. */
 interface Mutable<T> {
@@ -37,20 +38,23 @@ interface Mutable<T> {
 /**
  * `NoInfer` on the rules so the value decides the type and the rules do not: a
  * `Validator<string>` in the list must not be what makes the control a string.
+ *
+ * The list is `AnyValidator`, which is what lets a rule declare the root it looks
+ * at — `(v: string, root: Post) => …` — and land here with no cast at all.
  */
 export function control<T>(
   initial?: T,
-  validators: readonly Validator<NoInfer<Widen<T>>>[] = [],
+  validators: readonly AnyValidator<NoInfer<Widen<T>>>[] = [],
 ): Control<Widen<T>> {
   // Omitted and explicitly `undefined` are the same case, and both mean `null`:
   // a control never holds `undefined`.
   return build<Widen<T>>(
     (initial === undefined ? null : initial) as Widen<T>,
-    validators as readonly Validator<Widen<T>>[],
+    validators as readonly AnyValidator<Widen<T>>[],
   );
 }
 
-function build<T>(initial: T, validators: readonly Validator<T>[]): Control<T> {
+function build<T>(initial: T, validators: readonly AnyValidator<T>[]): Control<T> {
   const value = signal<T>(initial);
   const errors = signal<Errors | null>(null);
   const touched = signal(false);
@@ -113,7 +117,7 @@ function build<T>(initial: T, validators: readonly Validator<T>[]): Control<T> {
         if (isServerOnly(rule) && !ctx.server) {
           continue;
         }
-        const result = await rule(untrack(value), ctx.root);
+        const result = await runRule(rule, untrack(value), ctx.root);
         // One error per field, not a list: the first failure stops the run.
         if (result) {
           found = result;

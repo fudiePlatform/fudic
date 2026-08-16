@@ -25,16 +25,17 @@ import {
   type ValidateCtx,
   type WriteMode,
 } from './internals.js';
+import { runRule } from './run-rule.js';
 import type {
   AnyForm,
   AnyNode,
+  AnyValidator,
   ErrorMap,
   Errors,
   Form,
   FormOptions,
   Patch,
   Schema,
-  Validator,
   Value,
 } from './types.js';
 
@@ -54,7 +55,7 @@ export function form<S extends Schema>(schema: S, options: FormOptions<S> = {}):
 export function build<S extends Schema>(
   schema: S,
   options: FormOptions<S>,
-  validators: readonly Validator<Value<S>>[],
+  validators: readonly AnyValidator<Value<S>>[],
 ): Form<S> {
   const entries = Object.entries(schema);
   for (const [name] of entries) {
@@ -77,7 +78,7 @@ export function build<S extends Schema>(
   // a group carries its own rules, a root form carries `summary` — so they are
   // folded into one list here instead of being two branches in the walk.
   const summaryRule = options.summary;
-  const rules: readonly Validator<Value<S>>[] = summaryRule
+  const rules: readonly AnyValidator<Value<S>>[] = summaryRule
     ? [...validators, () => summaryRule(self)]
     : validators;
 
@@ -143,7 +144,7 @@ export function build<S extends Schema>(
     }
     let found: Errors | null = null;
     for (const rule of rules) {
-      const result = await rule(untrack(read), ctx.root);
+      const result = await runRule(rule, untrack(read), ctx.root);
       if (result) {
         found = result;
         break;

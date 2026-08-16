@@ -12,7 +12,7 @@
  */
 
 import { markServer } from '../server-flag.js';
-import type { Validator } from '../types.js';
+import type { AnyForm, Validator } from '../types.js';
 
-export const serverValidator = <T>(fn: Validator<T>): Validator<T> =>
-  markServer<Validator<T>>((value, root) => fn(value, root));
+export const serverValidator = <T, R = AnyForm>(fn: Validator<T, R>): Validator<T, R> =>
+  markServer<Validator<T, R>>((value, root) => fn(value, root));

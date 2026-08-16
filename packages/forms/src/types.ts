@@ -79,8 +79,30 @@ export interface TypedControl<T> extends Control<T> {
 /**
  * A validator. Takes the value and the ROOT form, for the rules that look at
  * another field. Returns `null` when the value is good. May be asynchronous.
+ *
+ * `R` is the form the rule expects, AND THE AUTHOR WRITES IT: `(v: string, root:
+ * Post) => …`. It cannot be inferred from the schema, because the rule is written
+ * before the schema it belongs to and the schema is defined in terms of the rule.
+ * Left alone it is the untyped form, which is the default a rule that never looks
+ * at a sibling wants.
  */
-export type Validator<T> = (value: T, root: AnyForm) => Errors | null | Promise<Errors | null>;
+export type Validator<T, R = AnyForm> = (
+  value: T,
+  root: R,
+) => Errors | null | Promise<Errors | null>;
+
+/**
+ * The HOLE a rule is dropped into: the type of a validator list.
+ *
+ * Its root is `never`, and that is the whole trick. A function that asks for a
+ * NARROWER root is not assignable to one promising to take any form — parameters
+ * are contravariant and `strictFunctionTypes` is on — so a hole declared with the
+ * wide root would reject `(v: string, root: Post) => …` and force a cast on every
+ * rule that crosses fields. `never` is assignable to every type, so a hole that
+ * asks for `never` accepts EVERY root. The price is that nothing can be passed to
+ * it, and the library pays it once, in `runRule` (see `run-rule.ts`).
+ */
+export type AnyValidator<T> = Validator<T, never>;
 
 /** A schema is an object of nodes. Its key order is the contract both ends share. */
 export interface Schema {

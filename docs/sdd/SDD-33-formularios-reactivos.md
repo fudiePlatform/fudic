@@ -1,6 +1,6 @@
 # SDD-33 — Formularios reactivos: el núcleo (`@fudic/forms`)
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Paquete:** `@fudic/forms` — **paquete nuevo**, punto de entrada `.` (el núcleo). El punto de
 > entrada `./dom` y la clase base de un control-componente son de [SDD-34](./SDD-34-forms-compilador.md).
 > **Depende de:** 14 (`signal`), 31 (`computed`, `effect`, `untrack`, `subscribe` y la regla de
@@ -83,6 +83,15 @@ export type Readable<T> = () => T;
  */
 export type Validator<T, R = AnyForm> = (value: T, root: R) => Errors | null | Promise<Errors | null>;
 
+/**
+ * El **hueco**: el tipo de una lista de validadores. Su `root` es `never`, y ahí está todo el
+ * truco: una función que pide un `root` más estrecho no es asignable a una que promete aceptar
+ * cualquiera (contravarianza, con `strictFunctionTypes`), pero `never` es asignable a todo, así
+ * que un hueco que pide `never` acepta **cualquier** `root`. A cambio no se le puede pasar nada,
+ * y ese precio lo paga la librería una sola vez, al invocar la regla.
+ */
+export type AnyValidator<T> = Validator<T, never>;
+
 // packages/forms/src/control.ts
 export interface Control<T> {
   /** Lectura RASTREADA del valor. Es la única forma de leerlo (SDD-31 §4.0). */
@@ -101,11 +110,11 @@ export interface Control<T> {
   reset(v?: T): void;
 }
 
-export function control<T>(initial: T, validators?: readonly Validator<T>[]): Control<T>;
+export function control<T>(initial: T, validators?: readonly AnyValidator<T>[]): Control<T>;
 
 // packages/forms/src/group.ts
 /** Un nodo intermedio. Tiene hijos y validadores propios, y no tiene valor propio. */
-export function group<S extends Schema>(schema: S, validators?: readonly Validator<Value<S>>[]): GroupNode<S>;
+export function group<S extends Schema>(schema: S, validators?: readonly AnyValidator<Value<S>>[]): GroupNode<S>;
 
 // packages/forms/src/form.ts
 export type Schema = { readonly [k: string]: Node };
@@ -202,9 +211,13 @@ Seis cosas de la firma que son decisiones, no notación:
   ```
 
   El hueco del schema acepta esa regla **aunque su `root` sea más estrecho** que el formulario
-  sin tipar. Lo contrario —lo que hay implementado hoy— obliga a `root as unknown as {…}` en cada
-  regla que cruza campos: el editor no completa y renombrar un campo no rompe la compilación,
-  revienta en ejecución. §6.21 lo fija y la tarea 16 lo cierra.
+  sin tipar, y eso es lo que hace `AnyValidator`. Lo contrario obliga a `root as unknown as {…}`
+  en cada regla que cruza campos: el editor no completa y renombrar un campo no rompe la
+  compilación, revienta en ejecución. §6.21 lo fija.
+  Lo que **no** se puede pedir: que el `root` se infiera del schema. La regla se escribe antes que
+  el schema del que forma parte, y el schema se define en términos de ella; por eso el tipo lo
+  nombra el autor. Y solo se abre el `root`: una regla sobre el valor equivocado se sigue
+  rechazando.
 - **`serverValidator` es un export propio, no `validator.server`.** Un namespace colgado de una
   función es exactamente lo que la poda no puede tirar (§4.7). El modelo aporta la marca y el
   salto —sin `{ server: true }` no corre—; **borrar su cuerpo del bundle de cliente** es del

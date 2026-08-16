@@ -7,7 +7,7 @@
  */
 
 import { build } from './form.js';
-import type { GroupNode, Schema, Validator, Value } from './types.js';
+import type { AnyValidator, GroupNode, Schema, Value } from './types.js';
 
 /**
  * `NoInfer` on the rules, or a rule written against the group's value would take
@@ -22,7 +22,7 @@ import type { GroupNode, Schema, Validator, Value } from './types.js';
  */
 export function group<S extends Schema>(
   schema: S,
-  validators: readonly Validator<NoInfer<Value<S>>>[] = [],
+  validators: readonly AnyValidator<NoInfer<Value<S>>>[] = [],
 ): GroupNode<S> {
-  return build(schema, {}, validators as readonly Validator<Value<S>>[]);
+  return build(schema, {}, validators as readonly AnyValidator<Value<S>>[]);
 }

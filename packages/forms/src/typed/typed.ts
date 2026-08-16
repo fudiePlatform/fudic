@@ -13,7 +13,7 @@
 
 import { control } from '../control.js';
 import { internalsOf } from '../internals.js';
-import type { AnyNode, Errors, TypeTag, TypedControl, Validator, Widen } from '../types.js';
+import type { AnyNode, AnyValidator, Errors, TypeTag, TypedControl, Widen } from '../types.js';
 
 /** A synchronous check of one value against a declared width. */
 export type RangeCheck = (v: unknown) => Errors | null;
@@ -31,15 +31,15 @@ export function typed<T>(
   tag: TypeTag,
   initial: T | undefined,
   check: RangeCheck,
-  validators: readonly Validator<T>[] | undefined,
+  validators: readonly AnyValidator<T>[] | undefined,
   of?: TypeTag,
 ): TypedControl<T> {
-  const rules: readonly Validator<T>[] =
+  const rules: readonly AnyValidator<T>[] =
     validators === undefined ? [check] : [check, ...validators];
 
   const self = control<T>(
     initial,
-    rules as readonly Validator<Widen<T>>[],
+    rules as readonly AnyValidator<Widen<T>>[],
   ) as unknown as Writable<T>;
   self.type = tag;
   if (of !== undefined) {

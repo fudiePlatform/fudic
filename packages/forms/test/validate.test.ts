@@ -75,10 +75,9 @@ describe('one error per field (§6.9)', () => {
 
   it('hands the root form to every validator, at any depth', async () => {
     const seen: unknown[] = [];
-    const ifPublished: Validator<string> = (v, root) => {
+    const ifPublished: Validator<string, { published: () => boolean }> = (v, root) => {
       seen.push(root);
-      const published = (root as unknown as { published: () => boolean }).published();
-      return published && v === '' ? { requiredIfPublished: true } : null;
+      return root.published() && v === '' ? { requiredIfPublished: true } : null;
     };
     const f = form({
       published: control(true),

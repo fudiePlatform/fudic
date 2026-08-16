@@ -9,13 +9,13 @@
  */
 
 import { rangeOf, typed } from './typed.js';
-import type { Errors, TypedControl, Validator } from '../types.js';
+import type { AnyValidator, Errors, TypedControl } from '../types.js';
 import type { RangeCheck } from './typed.js';
 
 export function arr<T>(
   of: () => TypedControl<T>,
   initial?: readonly T[],
-  validators?: readonly Validator<readonly T[]>[],
+  validators?: readonly AnyValidator<readonly T[]>[],
 ): TypedControl<readonly T[]> {
   const probe = of();
   const element = rangeOf(probe as TypedControl<unknown>);

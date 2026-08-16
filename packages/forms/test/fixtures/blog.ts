@@ -23,15 +23,16 @@ export const slugAvailable = serverValidator<string>(async (v) => {
   return v.trim().toLowerCase() === 'ocupado' ? { taken: true } : null;
 });
 
+/** What this rule needs to see of the form it will live in. */
+type Publishable = { readonly published: Control<boolean> };
+
 /**
  * A cross-field rule that has to publish ON a field. It reaches the sibling
- * through the root, and the cast is the API's rough edge today: `root` is the
- * untyped `$` surface, so a rule cannot see the sibling's type from here.
+ * through the root, and it NAMES the root it expects: no cast, completion in the
+ * editor, and renaming `published` breaks the compilation instead of the run.
  */
-export const requiredIfPublished: Validator<string> = (v, root) => {
-  const published = (root as unknown as { published: Control<boolean> }).published;
-  return published() && v.trim() === '' ? { requiredIfPublished: true } : null;
-};
+export const requiredIfPublished: Validator<string, Publishable> = (v, root) =>
+  root.published() && v.trim() === '' ? { requiredIfPublished: true } : null;
 
 export const blogSchema = {
   title: control('', [required, minLength(3), maxLength(120), slugAvailable]),

@@ -3,7 +3,7 @@
 > **SDD:** [SDD-33 — Formularios reactivos: el núcleo](./SDD-33-formularios-reactivos.md)
 > **Paquete:** `@fudic/forms` — **nuevo**, punto de entrada `.` solamente
 > **Rama:** `sdd-33-formularios-reactivos`
-> **Progreso:** 15 / 16 — **abierta la fase 8**: el `root` tipado de un validador (tarea 16)
+> **Progreso:** 16 / 16 — **completo**, los 21 criterios de §6 verdes
 > **No depende de:** nada que esté en curso. `@fudic/core` está en `Hecho` y este paquete no toca
 > ningún fichero existente: se puede llevar en su propio worktree sin cruzarse con nadie.
 
@@ -159,10 +159,10 @@ posicional, el códec binario y la normalización profunda. Los tres primeros so
 
 ## Fase 8 — El `root` tipado de un validador (1)
 
-**Esta fase está abierta y SDD-33 no se cierra sin ella.** No se traslada a SDD-34: allí el
-problema sería el mismo, escrito un nivel más arriba.
+**Cerrada.** No se trasladó a SDD-34: allí el problema sería el mismo, escrito un nivel más
+arriba.
 
-- [ ] **16. Una regla que mira otro campo se escribe con su `root` tipado, y sin castear.**
+- [x] **16. Una regla que mira otro campo se escribe con su `root` tipado, y sin castear.**
 
       **Lo que tiene que compilar**, tal cual, sin un `as` en ninguna parte:
 
@@ -202,6 +202,21 @@ problema sería el mismo, escrito un nivel más arriba.
       `root`, y `serverValidator`—. Un test dinámico no puede ver esto. Al terminar: `typecheck`,
       `test` y `coverage` verdes, `@fudic/forms` sigue al **100 %**, y quitar el cast de
       `test/fixtures/blog.ts`, que es la prueba de que el problema se ha ido de donde molestaba.
+
+      > **Cómo quedó.** El hueco es `AnyValidator<T> = Validator<T, never>` (§3), y lo usan la
+      > lista de `control()`, la de `group()` y las doce factorías tipadas. La librería paga el
+      > único cast en **`src/run-rule.ts`**, que es ahora el único sitio del paquete donde se
+      > invoca una regla: `control.ts` y `form.ts` llaman por él. `validator()` y
+      > `serverValidator()` llevan la `R` para no aplanar el `root` que el autor pidió.
+      > El test es **`test/root-typing.test.ts`**, y lo que prueba es que compila —`typecheck`
+      > cubre `test/` además de `src/`—: las tres formas en un schema, los dos sabores de `root`
+      > (una forma estructural y un `Form<…>`, que además llega al `$` API) y **dos
+      > `@ts-expect-error`, que son la aserción corriendo hacia atrás**: renombrar el campo que la
+      > regla mira falla la compilación, y una regla sobre el **valor** equivocado se sigue
+      > rechazando — o sea que lo que se abrió es el `root` y nada más, que es lo que separa
+      > `never` de haber puesto `any`. Fuera los dos castes que quedaban en los tests
+      > (`fixtures/blog.ts` y `validate.test.ts`). Verde: **107 tests** del paquete, **3 420** en
+      > el monorepo, cobertura **100 / 100 / 100 / 100** y `pnpm build` completo.
 
 ---
 
