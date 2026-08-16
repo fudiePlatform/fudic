@@ -1,0 +1,14 @@
+{
+  "extends": "@fudic/tsconfig/tsconfig.base.json",
+  "compilerOptions": {
+    // `DOM` is here for `@fudic/core`, which this package typechecks against by
+    // SOURCE (see `paths`) and whose `FudicElement` extends `HTMLElement`. It is
+    // NOT a licence for this package: nothing under `src/` may name a DOM global,
+    // and `test/no-dom.test.ts` is what enforces it (SDD-33 §5, §6.15).
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "paths": {
+      "@fudic/core": ["../core/src/index.ts"]
+    }
+  },
+  "include": ["src", "test"]
+}

@@ -1,0 +1,192 @@
+/**
+ * The type surface of a form. Every type lives here and every implementation
+ * imports from here, so no two modules can disagree and nothing needs a cycle.
+ *
+ * The shape of a node follows the reactivity of `@fudic/core`: a control is READ
+ * BY CALLING IT, exactly like a signal, and so are its errors, its touched flag
+ * and its dirty flag. A form is the place where the most reactive state is read
+ * in a single file, and two ways of reading in that file — `count()` for a signal
+ * and `title.value` for a control — is one too many.
+ */
+
+/** The errors of one node. `{ required: true }`, `{ minLength: 3 }`, `{ range: 'u8' }`. */
+export type Errors = Readonly<Record<string, unknown>>;
+
+/** Anything readable in a tracked way. The `Readable<T>` of `@fudic/core`. */
+export type Readable<T> = () => T;
+
+/**
+ * Literal widening at the factory boundary.
+ *
+ * Without it, `control('')` infers `Control<''>` — a control that can only ever
+ * hold the empty string — and the first `set('hello')` is a type error. The
+ * initial value of a field says what KIND of value it holds, never which one.
+ */
+export type Widen<T> = T extends string
+  ? string
+  : T extends number
+    ? number
+    : T extends boolean
+      ? boolean
+      : T;
+
+/**
+ * A leaf. Holds a value and the interaction state around it, and nothing else:
+ * `disabled` belongs to the element, not to the model.
+ */
+export interface Control<T> {
+  /** TRACKED read of the value. The only way to read it. */
+  (): T;
+  /** Write. Normalises `undefined` to `null` and updates `dirty`. */
+  set(v: T): void;
+  /** Errors of the last validation, or `null`. Tracked read. */
+  readonly errors: Readable<Errors | null>;
+  /** The user has been through this field. Whoever binds it decides, not the model. */
+  readonly touched: Readable<boolean>;
+  /** The value differs from the initial one (`Object.is`). */
+  readonly dirty: Readable<boolean>;
+  /** Marks `touched`. Idempotent. */
+  touch(): void;
+  /** Back to the initial value, or to the given one. Clears errors, touched and dirty. */
+  reset(v?: T): void;
+}
+
+/** The width a typed control declares. Inert data for the model, contract for transport. */
+export type TypeTag =
+  | 'u8'
+  | 'i8'
+  | 'u16'
+  | 'i16'
+  | 'u32'
+  | 'i32'
+  | 'f32'
+  | 'f64'
+  | 'bool'
+  | 'str'
+  | 'date'
+  | 'arr';
+
+/**
+ * A control that also declares its type. The declared width IS a range, so it
+ * validates; the encoder that turns it into bytes belongs to transport.
+ */
+export interface TypedControl<T> extends Control<T> {
+  readonly type: TypeTag;
+  /** Only on `arr`: the tag of its elements. */
+  readonly of?: TypeTag;
+}
+
+/**
+ * A validator. Takes the value and the ROOT form, for the rules that look at
+ * another field. Returns `null` when the value is good. May be asynchronous.
+ *
+ * `R` is the form the rule expects, AND THE AUTHOR WRITES IT: `(v: string, root:
+ * Post) => …`. It cannot be inferred from the schema, because the rule is written
+ * before the schema it belongs to and the schema is defined in terms of the rule.
+ * Left alone it is the untyped form, which is the default a rule that never looks
+ * at a sibling wants.
+ */
+export type Validator<T, R = AnyForm> = (
+  value: T,
+  root: R,
+) => Errors | null | Promise<Errors | null>;
+
+/**
+ * The HOLE a rule is dropped into: the type of a validator list.
+ *
+ * Its root is `never`, and that is the whole trick. A function that asks for a
+ * NARROWER root is not assignable to one promising to take any form — parameters
+ * are contravariant and `strictFunctionTypes` is on — so a hole declared with the
+ * wide root would reject `(v: string, root: Post) => …` and force a cast on every
+ * rule that crosses fields. `never` is assignable to every type, so a hole that
+ * asks for `never` accepts EVERY root. The price is that nothing can be passed to
+ * it, and the library pays it once, in `runRule` (see `run-rule.ts`).
+ */
+export type AnyValidator<T> = Validator<T, never>;
+
+/** A schema is an object of nodes. Its key order is the contract both ends share. */
+export interface Schema {
+  readonly [field: string]: AnyNode;
+}
+
+/** A node is a control or a nested form. Two kinds, not three (a group IS a form). */
+export type AnyNode = Control<unknown> | AnyForm;
+
+/**
+ * A form whose schema is not statically known: what a validator receives as `root`.
+ *
+ * It is the `$` API alone and NOT `Form<Schema>`, because `Form<S>` is an
+ * intersection with an interface and TypeScript grants no implicit index signature
+ * to those: a group would not be assignable to it, and every schema containing one
+ * would fall back to `Schema` and lose its field types. A validator that needs a
+ * sibling field reaches it through the schema it knows, not through this.
+ */
+export type AnyForm = FormApi<Schema>;
+
+/** The value of one node. */
+export type ValueOf<N> = N extends Control<infer T>
+  ? T
+  : N extends { readonly $schema: infer S extends Schema }
+    ? Value<S>
+    : never;
+
+/** The value of a whole schema, in keyed form. */
+export type Value<S extends Schema> = { [K in keyof S]: ValueOf<S[K]> };
+
+/** One node of a patch: a control takes its value, a group takes a patch of its own. */
+export type PatchOf<N> = N extends Control<infer T>
+  ? T
+  : N extends { readonly $schema: infer S extends Schema }
+    ? Patch<S>
+    : never;
+
+/**
+ * What `$patch` takes: partial at EVERY level, which is what the write does. A
+ * `Partial<Value<S>>` would only be partial at the top and would demand a complete
+ * object for a group, which is the case a patch exists for.
+ */
+export type Patch<S extends Schema> = { [K in keyof S]?: PatchOf<S[K]> };
+
+/** Errors of a whole form, indexed by path: `{ title: {…}, 'seo.canonical': {…} }`. */
+export type ErrorMap = Readonly<Record<string, Errors>>;
+
+/** What `form()` takes besides its schema. */
+export interface FormOptions<S extends Schema> {
+  /** The form-level rule: the error that belongs to no single field. */
+  readonly summary?: (root: Form<S>) => Errors | null | Promise<Errors | null>;
+}
+
+/** The `$` namespace of a form. Its fields hang next to it, by name. */
+export interface FormApi<S extends Schema> {
+  /** The whole value, keyed. TRACKED: reading it inside an effect subscribes it. */
+  readonly $value: Readable<Value<S>>;
+  /** TOTAL assignment. A missing field is a `TypeError` naming it; nothing empties in silence. */
+  $set(v: Value<S>): void;
+  /** PARTIAL assignment, at every level. What is not mentioned is not touched. */
+  $patch(v: Patch<S>): void;
+
+  /** Runs the validators and publishes the result. Resolves to whether the form is valid. */
+  $validate(opts?: { readonly server?: boolean }): Promise<boolean>;
+  /** The error map by path of the last validation, or `null`. Tracked read. */
+  readonly $errors: Readable<ErrorMap | null>;
+  /** The form-level error, or `null`. Tracked read. */
+  readonly $summary: Readable<Errors | null>;
+  /** Publishes errors that came from outside (a 422), indexed by path. */
+  $setErrors(errors: ErrorMap | null, summary?: Errors | null): void;
+
+  /** `touch()` all the way down. What a submit needs for the errors to be visible. */
+  $touch(): void;
+  /** Back to the initial state: values, errors, touched and dirty. */
+  $reset(): void;
+
+  /** The field names, in declaration order. */
+  $fields(): readonly (keyof S & string)[];
+  /** The schema as declared. It is the template both ends import, and it is inert. */
+  readonly $schema: S;
+}
+
+/** A form is its `$` API plus its fields by name. */
+export type Form<S extends Schema> = FormApi<S> & { readonly [K in keyof S]: S[K] };
+
+/** A group IS a nested form. That is why there is no third kind of node. */
+export type GroupNode<S extends Schema> = Form<S>;

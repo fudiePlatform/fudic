@@ -155,6 +155,16 @@ importers:
         specifier: 22.20.0
         version: 22.20.0
 
+  packages/forms:
+    dependencies:
+      '@fudic/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+
   packages/language-core:
     dependencies:
       '@fudic/compiler':

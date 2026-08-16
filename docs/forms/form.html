@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fudic — form real → envío posicional</title>
+<style>
+:root{--ink:#13141a;--paper:#f5f2ec;--panel:#fffdf8;--line:#d8d2c4;--hot:#b5462f;--dead:#9a8f7d;--live:#2f6f4f;--mono:ui-monospace,'Cascadia Code',Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;padding:2rem 1.5rem;background:var(--paper);color:var(--ink);font:15px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif}
+main{max-width:1080px;margin:0 auto}
+h1{font-size:1.4rem;margin:0 0 .35rem}
+.tag{display:inline-block;font:600 11px/1 var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--hot);border:1px solid var(--line);border-radius:3px;padding:.35rem .5rem;background:var(--panel)}
+p.lead{color:#3a3730;margin:.9rem 0 1.6rem;max-width:64ch}
+h2{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--dead);margin:0 0 .85rem;font-weight:700}
+.top{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;align-items:start}
+.pane{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:1.1rem 1.15rem}
+label.field{display:block;margin-bottom:.95rem}
+label.field > span{display:block;font-size:12.5px;font-weight:600;color:#4a463d;margin-bottom:.3rem}
+label.field > span code{font:11px var(--mono);color:var(--dead);font-weight:400}
+input[type=text],input[type=url],textarea,select{width:100%;font:14px system-ui,sans-serif;padding:.5rem .6rem;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--ink)}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--ink);outline-offset:-1px}
+input.malo,textarea.malo,select.malo{border-color:var(--hot);background:#fdf6f4}
+textarea{min-height:74px;resize:vertical;font-family:inherit}
+select[multiple]{height:76px}
+.check{display:flex;align-items:center;gap:.5rem;margin-bottom:.95rem}
+.check input{width:16px;height:16px;accent-color:var(--ink)}
+.check span{font-size:13.5px;font-weight:600;color:#4a463d}
+small.err{display:block;color:var(--hot);font-size:12px;margin-top:.25rem;min-height:1em}
+[data-summary]{color:var(--hot);font-size:12.5px;min-height:1.2em;margin:.2rem 0 .9rem}
+pre{margin:0 0 .9rem;font:12px/1.5 var(--mono);background:#fff;border:1px solid var(--line);border-radius:4px;padding:.6rem .7rem;white-space:pre-wrap;word-break:break-all;color:#2a2820}
+pre b{color:var(--hot);font-weight:600}
+.rot{font:11px var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--dead);margin:0 0 .3rem}
+table.med{width:100%;border-collapse:collapse;font:12.5px var(--mono);margin-bottom:.9rem}
+table.med td{padding:.28rem 0;border-bottom:1px dashed var(--line)}
+table.med td:last-child{text-align:right}
+table.med .gana{color:var(--live);font-weight:600}
+.controls{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.4rem}
+button{font:500 13px/1 system-ui,sans-serif;background:var(--ink);color:var(--paper);border:0;border-radius:4px;padding:.6rem .85rem;cursor:pointer}
+button:hover{background:var(--hot)}
+button.sec{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button.sec:hover{background:var(--line)}
+.estado{font:12px var(--mono);color:var(--dead);margin-top:.7rem}
+.estado b{color:var(--live)}
+.estado b.no{color:var(--hot)}
+@media(max-width:860px){.top{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Un formulario de verdad</h1>
+  <span class="tag">form / group / control → inputs reales → cable posicional</span>
+  <p class="lead">Los inputs llevan la directiva <code>control:</code>, la misma que emite el
+  compilador desde un <code>.fud</code>. Escribe: el panel de la derecha se recalcula en cada
+  pulsación. Al enviar, el body sale sin una sola etiqueta. La consola recibe la petición
+  completa.</p>
+
+  <div class="top">
+    <div class="pane">
+      <h2>formulario</h2>
+      <form id="f" novalidate>
+        <label class="field">
+          <span>Título <code>control:="title"</code></span>
+          <input type="text" control:="title" placeholder="Arquitectura de Fudic">
+        </label>
+
+        <label class="field">
+          <span>Cuerpo <code>control:="body"</code></span>
+          <textarea control:="body" placeholder="Texto del post"></textarea>
+        </label>
+
+        <label class="check">
+          <input type="checkbox" control:="published">
+          <span>Publicado <code>control:="published"</code></span>
+        </label>
+
+        <label class="field">
+          <span>Descripción SEO <code>control:="seo.description"</code></span>
+          <input type="text" control:="seo.description" placeholder="Dentro del group seo">
+        </label>
+
+        <label class="field">
+          <span>Canonical <code>control:="seo.canonical"</code></span>
+          <input type="url" control:="seo.canonical" placeholder="https://…">
+        </label>
+
+        <label class="field">
+          <span>Tags <code>control:="tags"</code> — select múltiple → array</span>
+          <select multiple control:="tags">
+            <option value="web">web</option>
+            <option value="compilador">compilador</option>
+            <option value="ssr">ssr</option>
+            <option value="dsd">dsd</option>
+          </select>
+        </label>
+
+        <div data-summary></div>
+
+        <div class="controls">
+          <button type="submit">PUT /blog/:slug</button>
+          <button type="button" class="sec" id="fill">rellenar</button>
+          <button type="button" class="sec" id="break">provocar 422</button>
+          <button type="button" class="sec" id="clear">vaciar</button>
+        </div>
+        <div class="estado" id="estado"></div>
+      </form>
+    </div>
+
+    <div class="pane">
+      <h2>lo que se captura y lo que viaja</h2>
+
+      <p class="rot">$value — forma con claves</p>
+      <pre id="valor"></pre>
+
+      <p class="rot">$positional — lo que sale por el cable</p>
+      <pre id="pos"></pre>
+
+      <p class="rot">peso</p>
+      <table class="med">
+        <tr><td>con claves</td><td id="b-obj">—</td></tr>
+        <tr><td>posicional</td><td id="b-pos">—</td></tr>
+        <tr><td>ahorro</td><td id="b-ahorro" class="gana">—</td></tr>
+        <tr><td>posicional compressedSize</td><td id="b-z">—</td></tr>
+        <tr><td>umbral 1 KB</td><td id="b-umbral">—</td></tr>
+      </table>
+
+      <p class="rot">última petición</p>
+      <pre id="req">(sin enviar)</pre>
+
+      <p class="rot">respuesta</p>
+      <pre id="res">—</pre>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+import { configure, use, put, recordingTransport } from './http.js';
+import { postForm } from './blog.form.js';
+import { Put } from './server.js';
+import { bind } from './bind.js';
+import { bytes, hexDump } from './log.js';
+
+const MINIMO = 1000, FORMATO = 'deflate-raw';
+const compressedSize = async (t) => {
+  const cs = new CompressionStream(FORMATO);
+  const w = cs.writable.getWriter(); w.write(new TextEncoder().encode(t)); w.close();
+  return new Uint8Array(await new Response(cs.readable).arrayBuffer()).length;
+};
+
+const transport = recordingTransport({ PUT: Put });
+configure({
+  baseURL: '/',
+  form: ['/blog/**'],
+  // Medido: por debajo de 100 B deflate-raw no aporta y gzip engorda.
+  compress: { formato: 'deflate-raw', minimo: 1000 },
+  transport,
+});
+use({ method: ['PUT'] }, (req, next) => {
+  req.headers['x-request-id'] = 'req-' + Math.random().toString(36).slice(2, 8);
+  return next(req);
+});
+
+const updatePost = put('/blog/:slug');
+const f = postForm();
+const $ = (id) => document.getElementById(id);
+
+const binding = bind(f, document.getElementById('f'), { onChange: refresh });
+
+// La compresión es asíncrona; al teclear rápido pueden solaparse dos refrescos.
+// Un testigo descarta el resultado del que ya llegó tarde.
+let turn = 0;
+async function refresh() {
+  const mine = ++turn;
+  const obj = JSON.stringify(f.$value);
+  const pos = JSON.stringify(f.$positional);
+  $('valor').textContent = JSON.stringify(f.$value, null, 1);
+  $('pos').textContent = pos;
+  $('b-obj').textContent = bytes(obj) + ' B';
+  $('b-pos').textContent = bytes(pos) + ' B';
+  $('b-ahorro').textContent = bytes(obj) ? `−${(100 * (bytes(obj) - bytes(pos)) / bytes(obj)).toFixed(1)} %` : '—';
+
+  const n = bytes(pos);
+  if (n >= MINIMO) {
+    const z = await compressedSize(pos);
+    if (mine !== turn) return;
+    $('b-z').textContent = `${z} B   −${(100 * (n - z) / n).toFixed(1)} %`;
+    $('b-z').className = z < n ? 'gana' : '';
+    $('b-umbral').textContent = `${n} B ≥ 1000 · se comprime`;
+  } else {
+    $('b-z').textContent = '—';
+    $('b-z').className = '';
+    $('b-umbral').textContent = `${n} B < 1000 · se manda en claro`;
+  }
+
+  const valid = !f.$errors && !f.$summary;
+  $('estado').innerHTML =
+    `válido en cliente: <b class="${valid ? '' : 'no'}">${valid ? 'sí' : 'no'}</b>` +
+    `   ·   campos: ${f.$fields().length}   ·   posiciones en el cable: ${f.$positional.length}`;
+}
+
+document.getElementById('f').addEventListener('submit', async (ev) => {
+  ev.preventDefault();                       // aquí, en un .fud, no habría handler:
+                                             // lo emite el compilador desde form:="@Put"
+  await f.$validate();
+  if (f.$errors || f.$summary) {
+    binding.touchAll();
+    $('req').textContent = '(no se envía: el form no valida en cliente)';
+    $('res').textContent = '—';
+    console.log('\n  submit bloqueado en cliente:', JSON.stringify(f.$errors ?? f.$summary));
+    return;
+  }
+  binding.paint();
+
+  const res = await updatePost(f, { params: { slug: 'arquitectura-de-fudic' } });
+  const req = transport.last;
+
+  const plainBytes = bytes(req.body);
+  const wireBytes = req.wire ? req.wire.length : plainBytes;
+  $('req').innerHTML =
+    `<b>${req.method}</b> ${req.url}\n` +
+    Object.entries(req.headers).map(([k, v]) => `${k}: ${v}`).join('\n') +
+    `\n\n${req.body}\n\n` +
+    `JSON ${plainBytes} B` + (req.positional ? '  ← posicional' : '') +
+    (req.wire
+      ? `\nen el cable <b>${wireBytes} B</b>  ← ${req.encoding}, −${(100 * (plainBytes - wireBytes) / plainBytes).toFixed(1)} %`
+      : `\nen el cable ${wireBytes} B  ← sin comprimir (por debajo del umbral)`);
+  $('res').textContent = `${res.status}  ${JSON.stringify(res.body)}`;
+
+  if (res.status === 422) binding.showErrors(res.body.errors);
+
+  // Lo que de verdad sale por el socket, como Uint8Array.
+  const wire = req.wire ?? new TextEncoder().encode(req.body);
+
+  console.log(
+    `\n${'═'.repeat(58)}\n  submit\n${'═'.repeat(58)}\n` +
+    `  ${req.method} ${req.url}\n` +
+    Object.entries(req.headers).map(([k, v]) => `  ${k}: ${v}`).join('\n') +
+    `\n  ${req.body}\n  JSON ${plainBytes} B${req.positional ? '   ← sin etiquetas' : ''}` +
+    `\n  cable ${wireBytes} B${req.wire ? `   ← ${req.encoding}` : '   ← sin comprimir'}\n` +
+    `\n  ← ${res.status} ${JSON.stringify(res.body)}\n${'─'.repeat(58)}`,
+  );
+
+  console.log(
+    `\n  ${wire.constructor.name}(${wire.length})` +
+    `   byteOffset ${wire.byteOffset}   buffer ${wire.buffer.byteLength} B` +
+    `   BYTES_PER_ELEMENT ${wire.BYTES_PER_ELEMENT}\n\n` +
+    hexDump(wire),
+  );
+  console.log(wire);   // inspeccionable: despliégalo en la consola
+});
+
+const fill = (v) => { f.$value = v; binding.sync(); f.$validate().then(() => { binding.paint(); refresh(); }); };
+
+$('fill').onclick = () => fill({
+  title: 'Arquitectura de Fudic',
+  body: 'Cuerpo del post con algo de texto para que pese.',
+  published: true,
+  seo: { description: 'Descripción SEO del post', canonical: 'https://fudie.eu/blog/x' },
+  tags: ['web', 'compilador'],
+});
+
+// `ocupado` dispara el validator.server, que solo corre en el otro extremo: el form
+// es VÁLIDO en cliente, se envía, y el 422 llega desde el servidor.
+$('break').onclick = () => fill({
+  title: 'ocupado', body: 'texto', published: true,
+  seo: { description: 'Descripción SEO', canonical: 'https://fudie.eu/x' }, tags: ['ssr'],
+});
+
+$('clear').onclick = () => fill({
+  title: '', body: '', published: false,
+  seo: { description: '', canonical: '' }, tags: [],
+});
+
+refresh();
+</script>
+</body>
+</html>
