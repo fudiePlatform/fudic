@@ -77,8 +77,11 @@ export type Readable<T> = () => T;
 /**
  * Un validador. Recibe el valor y el formulario **raíz**, para las reglas que miran a otro
  * campo. Devuelve `null` si el valor es bueno. Puede ser asíncrono.
+ *
+ * `R` es el tipo del formulario que la regla espera, y **el autor lo escribe**. Por defecto
+ * es el formulario sin tipar; en cuanto se nombra, `root` viene tipado y el editor completa.
  */
-export type Validator<T> = (value: T, root: AnyForm) => Errors | null | Promise<Errors | null>;
+export type Validator<T, R = AnyForm> = (value: T, root: R) => Errors | null | Promise<Errors | null>;
 
 // packages/forms/src/control.ts
 export interface Control<T> {
@@ -183,6 +186,25 @@ Seis cosas de la firma que son decisiones, no notación:
 - **`$setErrors` existe porque el 422 vuelve por ruta.** Es la única operación del núcleo que
   resuelve una ruta en tiempo de ejecución, y es la única que lo necesita: el enlace con el DOM no
   navega por rutas nunca (§4.6).
+- **Una regla que mira otro campo escribe el tipo de `root`, y no castea.** Es la forma que hay
+  que soportar, tal cual:
+
+  ```ts
+  type Post = { published: Control<boolean> };   // o Form<typeof postSchema>
+
+  const requiredIfPublished = (v: string, root: Post) =>
+    root.published() && v.trim() === '' ? { requiredIfPublished: true } : null;
+
+  const postSchema = {
+    published: control(false),
+    body: control('', [requiredIfPublished]),
+  };
+  ```
+
+  El hueco del schema acepta esa regla **aunque su `root` sea más estrecho** que el formulario
+  sin tipar. Lo contrario —lo que hay implementado hoy— obliga a `root as unknown as {…}` en cada
+  regla que cruza campos: el editor no completa y renombrar un campo no rompe la compilación,
+  revienta en ejecución. §6.21 lo fija y la tarea 16 lo cierra.
 - **`serverValidator` es un export propio, no `validator.server`.** Un namespace colgado de una
   función es exactamente lo que la poda no puede tirar (§4.7). El modelo aporta la marca y el
   salto —sin `{ server: true }` no corre—; **borrar su cuerpo del bundle de cliente** es del
@@ -568,6 +590,16 @@ Tests en `packages/forms/test/`. Todos corren en Node, sin entorno de navegador.
     y que es el único que ejecuta el `serverValidator`. Comprueba además que un `group` conserva
     la **forma anidada de la API** en `$value()` y que un error dentro de él se nombra por su ruta
     (`tax.pct`). Es el test que caza dos piezas correctas que no encajan entre sí.
+
+**El `root` tipado**
+
+21. **(rojo primero)** Una regla escrita con su `root` tipado —`(v: string, root: Post) => …`,
+    donde `Post` es el tipo del formulario o una forma estructural con los campos que mira— se
+    acepta en la lista de validadores de un `control()` **sin un solo cast**, y dentro de ella
+    `root.published()` compila, autocompleta y **falla la compilación si el campo se renombra**.
+    Conviven en el mismo schema con reglas que no nombran `root` (el caso por defecto) y con
+    `serverValidator`. Un test de tipos —un fichero que *debe* compilar— es parte del criterio,
+    porque esto no lo puede comprobar un test dinámico.
 
 **Cobertura.** `@fudic/forms` nace con `thresholds` al **100 %** en las cuatro métricas y
 `coverage.include: ['src/**/*.ts']`. Nada de `/* v8 ignore */` para llegar al número.

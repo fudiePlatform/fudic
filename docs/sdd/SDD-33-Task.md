@@ -3,7 +3,7 @@
 > **SDD:** [SDD-33 — Formularios reactivos: el núcleo](./SDD-33-formularios-reactivos.md)
 > **Paquete:** `@fudic/forms` — **nuevo**, punto de entrada `.` solamente
 > **Rama:** `sdd-33-formularios-reactivos`
-> **Progreso:** 15 / 15
+> **Progreso:** 15 / 16 — **abierta la fase 8**: el `root` tipado de un validador (tarea 16)
 > **No depende de:** nada que esté en curso. `@fudic/core` está en `Hecho` y este paquete no toca
 > ningún fichero existente: se puede llevar en su propio worktree sin cruzarse con nadie.
 
@@ -143,7 +143,7 @@ posicional, el códec binario y la normalización profunda. Los tres primeros so
 - [x] **15. Verde, cobertura e índice.**
       `pnpm typecheck`, `pnpm test` y `pnpm build` en la raíz. `@fudic/forms` al **100 %** en las
       cuatro métricas, sin un solo `/* v8 ignore */`. Anotar el avance en [INDEX.md](./INDEX.md) y
-      pasar SDD-33 a `Hecho` si los 20 criterios de §6 están verdes.
+      pasar SDD-33 a `Hecho` si los 21 criterios de §6 están verdes.
       > **Verde: 92 tests del paquete, 3 405 en el monorepo, y build completo con `examples/basic`.**
       > Cobertura **100 / 100 / 100 / 100**. La ejecución encontró **tres defectos de tipos que
       > ningún test dinámico habría visto**, los tres de la API pública y no de los tests:
@@ -156,6 +156,52 @@ posicional, el códec binario y la normalización profunda. Los tres primeros so
       > Queda anotada una limitación de inferencia que no es un defecto: un schema escrito **en
       > línea** junto a una regla declarada aparte y anotada a mano no infiere; con el schema en su
       > `const` —que es como se escribe— funciona.
+
+## Fase 8 — El `root` tipado de un validador (1)
+
+**Esta fase está abierta y SDD-33 no se cierra sin ella.** No se traslada a SDD-34: allí el
+problema sería el mismo, escrito un nivel más arriba.
+
+- [ ] **16. Una regla que mira otro campo se escribe con su `root` tipado, y sin castear.**
+
+      **Lo que tiene que compilar**, tal cual, sin un `as` en ninguna parte:
+
+      ```ts
+      type Post = { published: Control<boolean> };   // o Form<typeof postSchema>
+
+      const requiredIfPublished = (v: string, root: Post) =>
+        root.published() && v.trim() === '' ? { requiredIfPublished: true } : null;
+
+      const postSchema = {
+        published: control(false),
+        body: control('', [requiredIfPublished]),
+      };
+      ```
+
+      **Lo que hay hoy**, y que es el punto de partida a borrar: `Validator<T>` recibe el
+      formulario **sin tipar**, así que toda regla que cruza campos escribe
+      `(root as unknown as { published: Control<boolean> }).published`. Se ve en
+      `test/fixtures/blog.ts`. El editor no completa, y renombrar `published` no rompe la
+      compilación: revienta en ejecución.
+
+      **Por qué no sale gratis.** El tipo público ya es `Validator<T, R = AnyForm>` (§3), pero eso
+      solo no basta: el hueco donde vive la regla —la lista de validadores de `control()`— está
+      declarado con el `root` ancho, y una función que pide un `root` **más estrecho** no es
+      asignable a una que promete aceptar cualquiera (contravarianza, y `strictFunctionTypes` está
+      activo). Hay que hacer que el hueco acepte cualquier `root`; la vía más corta es que el
+      parámetro del hueco sea el tipo de fondo (`never`), que por contravarianza acepta todos, y
+      que la **librería** pague un único cast en el punto donde invoca la regla. Un cast dentro,
+      cero castes fuera: es el reparto correcto.
+
+      **Cuidado con lo que no se puede pedir.** El `root` no se puede *inferir* del schema: la
+      regla se escribe **antes** que el schema del que forma parte, y el schema se define en
+      términos de ella. Por eso el tipo lo nombra el autor, que es justo lo que pide el ejemplo.
+
+      **Verificación.** Criterio §6.21, y **el test es de tipos**: un fichero que debe compilar,
+      con las tres formas conviviendo en un mismo schema —regla con `root` tipado, regla sin
+      `root`, y `serverValidator`—. Un test dinámico no puede ver esto. Al terminar: `typecheck`,
+      `test` y `coverage` verdes, `@fudic/forms` sigue al **100 %**, y quitar el cast de
+      `test/fixtures/blog.ts`, que es la prueba de que el problema se ha ido de donde molestaba.
 
 ---
 
@@ -172,7 +218,7 @@ binario se escriben **fuera**, como funciones libres, sin añadir un getter al f
 
 ## Enlaces
 
-- Criterios de aceptación: los 20 de
+- Criterios de aceptación: los 21 de
   [SDD-33 §6](./SDD-33-formularios-reactivos.md#6-criterios-de-aceptación).
 - El prototipo que origina todo esto: `docs/forms/` (commit `bc5a2a3`), con sus diez casos y su
   formulario real. Es **evidencia de comportamiento**, no diseño: lo que aquí se aparta de él está
