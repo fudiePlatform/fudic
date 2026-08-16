@@ -20,6 +20,15 @@ export { control } from './control.js';
 export { form } from './form.js';
 export { group } from './group.js';
 
+export { validator } from './validators/validator.js';
+export { serverValidator } from './validators/server.js';
+export { required } from './validators/required.js';
+export { minLength } from './validators/min-length.js';
+export { maxLength } from './validators/max-length.js';
+export { min } from './validators/min.js';
+export { max } from './validators/max.js';
+export { pattern } from './validators/pattern.js';
+
 export type {
   AnyForm,
   AnyNode,
