@@ -19,7 +19,7 @@ describe('the order line', () => {
       itemId: 0,
       qty: 1,
       priceCts: 0,
-      vatPct: 21,
+      tax: { pct: 21, included: true },
       discount: 0,
       takeaway: false,
       invited: false,
@@ -41,12 +41,15 @@ describe('the order line', () => {
 
   it('refuses a percentage that does not fit a byte, by range and not by truncation', async () => {
     const f = line();
-    f.$patch({ vatPct: 300 });
+    f.$patch({ tax: { pct: 300 } });
 
     expect(await f.$validate()).toBe(false);
-    expect(f.vatPct.errors()).toEqual({ range: 'u8' });
+    expect(f.tax.pct.errors()).toEqual({ range: 'u8' });
+    expect(f.$errors()).toEqual({ 'tax.pct': { range: 'u8' } });
     // The value is still what was written: nothing was silently narrowed.
-    expect(f.vatPct()).toBe(300);
+    expect(f.tax.pct()).toBe(300);
+    // And the sibling inside the group was not touched by the patch.
+    expect(f.tax.included()).toBe(true);
   });
 
   it('refuses a quantity below its business minimum', async () => {

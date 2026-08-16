@@ -90,11 +90,11 @@ export interface Control<T> {
   readonly errors: Readable<Errors | null>;
   /** El usuario ya pasó por el campo. Lo decide quien enlaza, no el modelo. */
   readonly touched: Readable<boolean>;
-  /** El valor cambió respecto al inicial. */
+  /** El valor cambió respecto a su **referencia**: la declarada, o la última cargada (§4.3). */
   readonly dirty: Readable<boolean>;
   /** Marca `touched`. Idempotente. */
   touch(): void;
-  /** Vuelve al valor inicial (o al que se le dé) y limpia errores, `touched` y `dirty`. */
+  /** Vuelve al valor **declarado** (o al que se le dé) y limpia errores, `touched` y `dirty`. */
   reset(v?: T): void;
 }
 
@@ -117,7 +117,10 @@ export type ErrorMap = Readonly<Record<string, Errors>>;
 export interface FormApi<S extends Schema> {
   /** El valor entero, en forma de objeto. Lectura RASTREADA: leerlo en un efecto lo suscribe. */
   $value: Readable<Value<S>>;
-  /** Asignación COMPLETA. Falta un campo ⇒ `TypeError` con el nombre. Nada se vacía en silencio. */
+  /**
+   * Asignación COMPLETA, y **carga**: el valor pasa a ser la referencia, así que
+   * nada queda sucio ni tocado (§4.3). Falta un campo ⇒ `TypeError` con el nombre.
+   */
   $set(v: Value<S>): void;
   /** Asignación PARCIAL. Lo que no se menciona no se toca (§4.3). */
   $patch(v: Partial<Value<S>>): void;
@@ -312,6 +315,20 @@ La razón de que esto sea una regla y no un detalle: el caso real que lo obliga 
 cuerpo trae tres campos de doce. Con una sola operación de escritura de semántica total, ese
 cuerpo vacía nueve campos y el formulario se manda de vuelta al servidor vaciado.
 
+**Cargar no es editar, y por eso `$set` mueve la referencia.** Una página de edición rellena sus
+campos con lo que manda el servidor, y en ese momento el usuario **no ha tocado nada**: si la
+carga contara como edición, todo formulario de edición nacería sucio, el aviso de «tienes cambios
+sin guardar» saltaría siempre y un «manda solo lo que cambió» mandaría los doce campos. Así que
+`$set` deja el valor cargado **como referencia** y limpia errores, `touched` y `dirty` — y a
+partir de ahí, escribir un campo o hacer `$patch` sí ensucia, que es justo lo que un UI necesita
+saber.
+
+**`$reset` no vuelve a lo cargado: vuelve a lo declarado.** Son dos referencias distintas y cada
+una tiene su trabajo. `dirty` se mide contra **lo último cargado** —«¿ha tocado el usuario esto
+desde que se abrió?»—, mientras que `$reset()` es «devuélveme el formulario como está definido»,
+que es lo que hace un botón de vaciar. Para volver a un punto de partida propio está `reset(v)`,
+que fija esa referencia a mano.
+
 ### 4.4. `null` es el vacío canónico, y la normalización es superficial
 
 Un control **nunca** guarda `undefined`: `control()` sin valor arranca en `null` y `set(undefined)`
@@ -440,6 +457,9 @@ Un tipo **no** cambia cómo se lee, cómo se escribe ni cómo se enlaza a un ele
 - **`undefined` no se guarda.** `null` es el vacío canónico, normalizado al escribir y solo ahí.
 - **Escribir de menos no vacía.** `$set` es total y falla si le falta un campo; `$patch` es
   parcial y no toca lo que no menciona. Un nombre fuera del schema es `TypeError` en las dos.
+- **Cargar no ensucia.** `$set` mueve la referencia: tras cargar, nada está sucio ni tocado y no
+  queda estado de validación del valor anterior. Editar después sí ensucia. `$reset()` vuelve a
+  **lo declarado**, no a lo cargado.
 - **Un resultado de validación caducado no se publica nunca.** La época del control manda; el
   orden de llegada de la red no puede pintar un error viejo sobre un valor nuevo.
 - **Un control tiene un error, no una lista.** Sus validadores corren en orden y cortan en el
@@ -507,7 +527,8 @@ Tests en `packages/forms/test/`. Todos corren en Node, sin entorno de navegador.
     `$errors()` y marca `touched` ese control y **solo** ese. Una ruta que no existe en el schema
     se ignora **sin lanzar**. `$setErrors(null)` limpia.
 14. `$touch()` marca en cascada, incluidos los controles dentro de grupos; `$reset()` deja todo —
-    valores, errores, `touched`, `dirty`, `$summary`— como recién construido.
+    valores, errores, `touched`, `dirty`, `$summary`— como recién construido, **también después de
+    una carga**: se vuelve a lo declarado, no a lo cargado.
 
 **Las dos invariantes que son de arquitectura**
 
@@ -534,6 +555,19 @@ Tests en `packages/forms/test/`. Todos corren en Node, sin entorno de navegador.
     `{ range: 'u8' }` y `min` **no llega a ejecutarse** (contador dentro del validador).
     `arr(str, [])` valida cada elemento contra el rango de `str` y expone `type === 'arr'` con
     `of === 'str'`.
+
+**Carga y circuito completo**
+
+19. **Cargar no es editar.** Tras `$set(v)` ningún control está `dirty` ni `touched` y no queda
+    error del valor anterior; escribir un campo después **sí** lo deja `dirty`. `$reset()` vuelve
+    a lo **declarado**, no a lo cargado. Un `undefined` explícito en el objeto cargado se guarda
+    como `null`, igual que por cualquier otra vía.
+20. **El circuito entero, con datos reales.** Dos formularios —uno de texto y uno estrictamente
+    tipado, con `group` incluido— recorren **carga → edición → rechazo → corrección → valor de
+    salida**, más el 422 que vuelve por ruta desde un servidor que instancia **el mismo schema**
+    y que es el único que ejecuta el `serverValidator`. Comprueba además que un `group` conserva
+    la **forma anidada de la API** en `$value()` y que un error dentro de él se nombra por su ruta
+    (`tax.pct`). Es el test que caza dos piezas correctas que no encajan entre sí.
 
 **Cobertura.** `@fudic/forms` nace con `thresholds` al **100 %** en las cuatro métricas y
 `coverage.include: ['src/**/*.ts']`. Nada de `/* v8 ignore */` para llegar al número.

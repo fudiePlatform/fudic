@@ -28,6 +28,37 @@ describe('$set is total (§6.5)', () => {
     expect(f.tags()).toEqual(['web', 'compilador']);
   });
 
+  it('is a LOAD: the value becomes the reference, so nothing is dirty or touched', async () => {
+    const f = form(postSchema);
+    f.title.set('escrito a mano');
+    f.title.touch();
+    await f.$validate();
+    expect(f.title.dirty()).toBe(true);
+
+    f.$set(filled);
+
+    // Filling a form from the server is not the user editing it.
+    expect(f.title.dirty()).toBe(false);
+    expect(f.title.touched()).toBe(false);
+    expect(f.title.errors()).toBeNull();
+    expect(f.$summary()).toBeNull();
+
+    // But editing after the load is.
+    f.title.set('otro');
+    expect(f.title.dirty()).toBe(true);
+
+    // And `$reset` goes back to the DEFINITION, not to what was loaded.
+    f.$reset();
+    expect(f.title()).toBe('');
+  });
+
+  it('never stores undefined, not even on the load path', () => {
+    const f = complete();
+    f.$set({ ...filled, body: undefined as unknown as string });
+
+    expect(f.body()).toBeNull();
+  });
+
   it('throws naming the missing field, and writes nothing', () => {
     const f = complete();
     const partial = { ...filled } as Record<string, unknown>;

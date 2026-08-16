@@ -8,6 +8,7 @@
  * rewriting every schema already written.
  */
 
+import { group } from '../../src/group.js';
 import { arr } from '../../src/typed/arr.js';
 import { bool } from '../../src/typed/bool.js';
 import { date } from '../../src/typed/date.js';
@@ -18,11 +19,20 @@ import { u8 } from '../../src/typed/u8.js';
 import { min } from '../../src/validators/min.js';
 import { required } from '../../src/validators/required.js';
 
+/**
+ * The tax block travels as its own object in the API, so it is a `group`: the
+ * shape of what is sent has to survive the model, not be flattened into it.
+ */
+const tax = group({
+  pct: u8(21),
+  included: bool(true),
+});
+
 export const orderLine = {
   itemId: u32(0, [required]),
   qty: u16(1, [min(1)]),
   priceCts: u32(0),
-  vatPct: u8(21),
+  tax,
   discount: u8(0),
   takeaway: bool(false),
   invited: bool(false),

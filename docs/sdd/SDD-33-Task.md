@@ -143,7 +143,7 @@ posicional, el códec binario y la normalización profunda. Los tres primeros so
 - [x] **15. Verde, cobertura e índice.**
       `pnpm typecheck`, `pnpm test` y `pnpm build` en la raíz. `@fudic/forms` al **100 %** en las
       cuatro métricas, sin un solo `/* v8 ignore */`. Anotar el avance en [INDEX.md](./INDEX.md) y
-      pasar SDD-33 a `Hecho` si los 18 criterios de §6 están verdes.
+      pasar SDD-33 a `Hecho` si los 20 criterios de §6 están verdes.
       > **Verde: 92 tests del paquete, 3 405 en el monorepo, y build completo con `examples/basic`.**
       > Cobertura **100 / 100 / 100 / 100**. La ejecución encontró **tres defectos de tipos que
       > ningún test dinámico habría visto**, los tres de la API pública y no de los tests:
@@ -172,7 +172,7 @@ binario se escriben **fuera**, como funciones libres, sin añadir un getter al f
 
 ## Enlaces
 
-- Criterios de aceptación: los 18 de
+- Criterios de aceptación: los 20 de
   [SDD-33 §6](./SDD-33-formularios-reactivos.md#6-criterios-de-aceptación).
 - El prototipo que origina todo esto: `docs/forms/` (commit `bc5a2a3`), con sus diez casos y su
   formulario real. Es **evidencia de comportamiento**, no diseño: lo que aquí se aparta de él está

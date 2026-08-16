@@ -128,6 +128,12 @@ export function build<S extends Schema>(
         node.patch(v[name]);
       }
     });
+    if (mode === 'set') {
+      // A load leaves no validation state behind: what was on screen belonged to
+      // the value that has just been replaced.
+      epoch += 1;
+      summary.set(null);
+    }
   };
 
   const validateSubtree = async (ctx: ValidateCtx): Promise<void> => {

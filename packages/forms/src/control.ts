@@ -56,7 +56,14 @@ function build<T>(initial: T, validators: readonly Validator<T>[]): Control<T> {
   const touched = signal(false);
   const dirty = signal(false);
 
-  /** The baseline `dirty` compares against. `reset(v)` moves it. */
+  /**
+   * What `dirty` compares against. It starts at the DECLARED value and moves when
+   * the form is loaded, because loading is not editing: an edit page fills its
+   * fields from the server and the user has not touched anything yet.
+   *
+   * `reset()` goes back to the DECLARED value, not to the loaded one — cancelling
+   * takes the form back to how it was defined.
+   */
   let baseline = initial;
   /** Bumped whenever the value moves. A validation older than the current one is dropped. */
   let epoch = 0;
@@ -71,23 +78,28 @@ function build<T>(initial: T, validators: readonly Validator<T>[]): Control<T> {
     dirty.set(!Object.is(next, baseline));
   };
 
-  const reset = (v?: T): void => {
-    if (v !== undefined) {
-      baseline = v;
-    }
+  /** Puts the control at a value and makes that value the new reference. */
+  const rebase = (to: T): void => {
+    baseline = to;
     epoch += 1;
-    value.set(baseline);
+    value.set(to);
     errors.set(null);
     touched.set(false);
     dirty.set(false);
+  };
+
+  const reset = (v?: T): void => {
+    rebase(v === undefined ? initial : v);
   };
 
   const internals: NodeInternals = {
     kind: 'control',
     clone: () => build(initial, validators),
     read: () => value(),
+    // `$set` is a LOAD: the value comes from the other end, so it becomes the new
+    // reference and the field is neither dirty nor touched.
     set: (v) => {
-      write(v as T);
+      rebase((v === undefined ? null : v) as T);
     },
     patch: (v) => {
       write(v as T);
