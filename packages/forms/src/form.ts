@@ -72,6 +72,14 @@ export function build<S extends Schema>(
   /** Bumped by every validation pass over this form; an overtaken pass publishes nothing. */
   let epoch = 0;
 
+  // The two sources of a form-level error are the same thing seen from two ends —
+  // a group carries its own rules, a root form carries `summary` — so they are
+  // folded into one list here instead of being two branches in the walk.
+  const summaryRule = options.summary;
+  const rules: readonly Validator<Value<S>>[] = summaryRule
+    ? [...validators, () => summaryRule(self)]
+    : validators;
+
   const nodeOf = (name: string): AnyNode | undefined => nodes.get(name);
   const each = (fn: (name: string, node: NodeInternals) => void): void => {
     for (const [name, node] of nodes) {
@@ -127,15 +135,12 @@ export function build<S extends Schema>(
       await internalsOf(node).validateSubtree(ctx);
     }
     let found: Errors | null = null;
-    for (const rule of validators) {
+    for (const rule of rules) {
       const result = await rule(untrack(read), ctx.root);
       if (result) {
         found = result;
         break;
       }
-    }
-    if (found === null && options.summary) {
-      found = await options.summary(self);
     }
     if (mine !== epoch) {
       return;
