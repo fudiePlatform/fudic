@@ -191,6 +191,26 @@ describe('the slot is the parent’s (task 12)', () => {
     );
   });
 
+  it('anchors a `slot` with no `=` on the attribute itself, since it has no value span', () => {
+    // `<div slot>` is `slot=""` (decision 44) with nothing between quotes that were never
+    // typed, so the inside of the value does not exist and the name falls back to the
+    // attribute. The call is the same one: the position still asks for the parent's slots.
+    const source = component('<app-badge><div slot></div></app-badge>');
+    const [client] = emitVirtualFiles({
+      source,
+      fileName: 'x.fud',
+      document: parseFud(source),
+      registry: BADGE,
+    });
+
+    expect(client!.text).toContain("$intoSlot<$S0>(' ');");
+    expect(
+      client!.mappings.some(
+        (m) => m.sourceOffset === source.indexOf('slot>') && m.sourceLength === 0 && m.length === 1,
+      ),
+    ).toBe(true);
+  });
+
   it('projects nothing for a name assembled out of several parts', () => {
     expect(project(component('<app-badge><div slot="a-@x"></div></app-badge>'))).not.toContain(
       '$intoSlot',
@@ -201,5 +221,93 @@ describe('the slot is the parent’s (task 12)', () => {
     expect(
       project(component('<app-badge>@if (true) { <div slot="meta"></div> }</app-badge>')),
     ).toContain('$intoSlot<$S0>("meta");');
+  });
+});
+
+/**
+ * The `@` the author has just pressed, in the three places it can be pressed.
+ *
+ * None of them is a `RazorExpression`: the tokenizer scans one only where an identifier
+ * begins, so `@click=@` degrades to a plain attribute, `.name=@` to a value whose text is
+ * `"@"`, and `<p>hola @</p>` stays a text node. Three shapes with nothing to copy — and the
+ * projection has to leave a hole in each anyway, because that is the exact position where the
+ * editor is being asked. A hole is a ZERO-LENGTH anchor at the caret, mapped for completion
+ * alone: Volar maps with `Math.min(relativePos, generatedLength)`, so anything wider pushes
+ * the caret past it.
+ */
+describe('a `@` that opens nothing yet still gets a hole (tasks 2, 3, 5)', () => {
+  /** The zero-length stretch anchored at `at`, as `{ sourceLength, length, caps }`. */
+  const holeAt = (source: string, at: number): unknown => {
+    const [client] = emitVirtualFiles({
+      source,
+      fileName: 'x.fud',
+      document: parseFud(source),
+      registry: BADGE,
+    });
+    const mapping = client!.mappings.find((m) => m.sourceOffset === at && m.sourceLength === 0);
+    return mapping === undefined
+      ? undefined
+      : { sourceLength: mapping.sourceLength, length: mapping.length, caps: mapping.caps };
+  };
+
+  it('projects the handler of an event whose value was opened and not written', () => {
+    expect(project(component('<div @click=@></div>'))).toMatch(/\$on\('click', {2}\);/u);
+  });
+
+  it('and of one written with quotes, which is the same commitment', () => {
+    expect(project(component('<div @click=""></div>'))).toMatch(/\$on\('click', {2}\);/u);
+    expect(project(component('<div @click="@"></div>'))).toMatch(/\$on\('click', {2}\);/u);
+  });
+
+  it('but not of a name with no `=` at all: nothing has been committed to yet', () => {
+    expect(project(component('<div @click></div>'))).toContain("$on('click');");
+  });
+
+  it('projects a bare `@` in a value as the empty expression it is, never as the string `"@"`', () => {
+    const text = project(component('<app-badge .name=@></app-badge>'));
+
+    expect(text).toContain('name: ( ),');
+    expect(text).not.toContain('name: "@"');
+  });
+
+  it('keeps projecting a real literal as a literal', () => {
+    expect(project(component('<app-badge .name="x"></app-badge>'))).toContain('name: "x",');
+  });
+
+  it('gives the `@` at the end of a text node a `$text` hole', () => {
+    expect(project(component('<p>hola @</p>'))).toContain('$text( );');
+  });
+
+  it('and gives it to the `@` a sentence was interrupted with, which is the same caret', () => {
+    // `<p>a @| b</p>`: the at-transition ends the text node at the `@`, so what precedes the
+    // caret is `a @` and the author is asking there just as much.
+    expect(project(component('<p>a @ b</p>'))).toContain('$text( );');
+  });
+
+  it('and says nothing for the `@` that is not one: escaped, or glued to a word', () => {
+    // `@@` is the literal of decision 1 and `hola@` is an address somebody wrote: in neither
+    // is the `@` a construct being opened.
+    expect(project(component('<p>@@</p>'))).not.toContain('$text(');
+    expect(project(component('<p>hola@</p>'))).not.toContain('$text(');
+  });
+
+  it('anchors every one of them at the caret, zero-length and for completion alone', () => {
+    const caps = {
+      completion: true,
+      verification: false,
+      semantic: false,
+      navigation: false,
+      structure: false,
+      format: false,
+    };
+    const handler = component('<div @click=@></div>');
+    const value = component('<app-badge .name=@></app-badge>');
+    const text = component('<p>hola @</p>');
+
+    const hole = { sourceLength: 0, length: 1, caps };
+
+    expect(holeAt(handler, handler.indexOf('@click=@') + '@click=@'.length)).toEqual(hole);
+    expect(holeAt(value, value.indexOf('.name=@') + '.name=@'.length)).toEqual(hole);
+    expect(holeAt(text, text.indexOf('hola @') + 'hola @'.length)).toEqual(hole);
   });
 });
