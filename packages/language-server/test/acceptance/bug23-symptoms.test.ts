@@ -114,7 +114,12 @@ async function problemsFor(markup: string): Promise<Diagnostic[]> {
  */
 async function completeAt(markup: string, triggerCharacter: string): Promise<CompletionItem[]> {
   const text = page(markup.replace('|', ''));
-  const at = page('').length + markup.indexOf('|');
+  // `HEAD.length`, not `page('').length`: `page` appends a trailing newline, so measuring the
+  // prefix through it puts every cursor of this file ONE character to the right. That is not a
+  // detail — at `<app-circle .|>` it lands the request on the `>`, where the position maps to
+  // no stretch of the projection at all, TypeScript is never asked, and the HTML service
+  // answers instead. Every reading of symptom 1 taken with this harness measured that.
+  const at = HEAD.length + markup.indexOf('|');
   const { uri } = await harness.open(PAGE);
   await harness.change(uri, text, ++version);
 
@@ -136,12 +141,12 @@ const names = (items: CompletionItem[]): string[] =>
 const lineOf = (markup: string, at: Diagnostic): string =>
   page(markup).split('\n')[at.range.start.line] ?? '';
 
-// The projection half landed with task 8 — the `.` anchor now stands inside `$props<$C0>`,
-// which is not intersected with `$GlobalAttrs`. What still answers here is the SERVER, whose
-// dot branch claims the position before TypeScript is asked, and that is the reparto of the
-// completions (phase 4).
+// Green since the root stopped filling the silence. Two things had to be true at once: the
+// `.` anchor stands inside `$props<$C0>` (task 8), and no service of the ROOT may answer at a
+// position the projection owns — Volar walks the root LAST and an empty list does not claim a
+// position, so the HTML service was answering here whenever TypeScript had nothing to say.
 describe('§2.1 / symptom 1 — the dot offers the vocabulary of HTML', () => {
-  it.fails('offers only the props of the component', async () => {
+  it('offers only the props of the component', async () => {
     const items = await completeAt('<app-circle .|></app-circle>', '.');
 
     expect(names(items)).toContain('name');
@@ -152,9 +157,11 @@ describe('§2.1 / symptom 1 — the dot offers the vocabulary of HTML', () => {
 });
 
 describe('§2.2 / symptom 2 — a dangling dot is text, not part of the `@`', () => {
-  // The dangling dot is copied since task 10, so the position exists in the projection; who
-  // ANSWERS at it is still the server's dot branch, which is phase 4.
-  it.fails('offers the members of the route data after `@data.`', async () => {
+  // The dangling dot is copied since task 10, so `$text(data.)` is a position TypeScript can
+  // answer. What was missing was `memberContextAt`: outside a tag the server did not recognise
+  // the dot, fell through to `return emmet`, and a non-empty reply from the root claims the
+  // position — so Emmet was answering where the members of `PageData` belong.
+  it('offers the members of the route data after `@data.`', async () => {
     const items = await completeAt('<div>@data.|</div>', '.');
 
     expect(names(items)).toContain('title');
@@ -194,13 +201,106 @@ describe('§2.4 / symptom 4 — the projection does not know a call is a deferre
 });
 
 describe('§2.5 / symptom 5 — the `@` in text is answered by the server, and answering silences the rest', () => {
-  it.fails('offers the directives AND what is in scope', async () => {
+  // BOTH, which is the whole of this criterion. Volar gives the position to the first document
+  // that answers and walks the root LAST, so the server's snippets and TypeScript's names could
+  // never appear together — whichever spoke silenced the other. The snippets now ride with
+  // TypeScript's reply, and `emitDanglingAt` gives the bare `@` a hole to be asked from.
+  it('offers the directives AND what is in scope', async () => {
     const items = await completeAt('<div>@|</div>', '@');
 
     expect(names(items)).toContain('@foreach');
     expect(names(items)).toContain('data');
     expect(names(items)).toContain('items');
     expect(names(items)).toContain('counter');
+  });
+
+  it('and keeps offering both once a letter is typed', async () => {
+    const items = await completeAt('<div>@c|</div>', '@');
+
+    expect(names(items)).toContain('@foreach');
+    expect(names(items)).toContain('counter');
+  });
+
+  it('and none of the TypeScript scope that the template cannot see', async () => {
+    const items = await completeAt('<div>@|</div>', '@');
+
+    expect(names(items)).not.toContain('atob');
+    expect(names(items)).not.toContain('AbortController');
+  });
+});
+
+/**
+ * The value of a binding is an expression over what the TEMPLATE sees, and nothing else.
+ *
+ * Measured at the exact shape of the user's screenshot: `<app-circle .name=@a|>`, where the
+ * list was `arguments`, `addEventListener`, `alert`, `as`, `async`, `atob`, `await`, plus
+ * auto-imports from `@fudic/vite` and `@fudic/transport`. Every one of those is a name the
+ * runtime does not have at that position.
+ */
+describe('§2.3 — what may go after a `=@`', () => {
+  // `@a`, and not a bare `@`, because that is the screenshot: the user had typed one letter.
+  // A bare `@` with nothing behind it is not a RazorExpression at all — the tokenizer degrades
+  // it to a plain attribute — so it has no hole in the projection to ask from. That half is
+  // measured below, and is the same defect `@click=@` had.
+  it('offers the route data, the props and the names of `@client`', async () => {
+    const items = await completeAt('<app-circle .name=@a|></app-circle>', '@');
+
+    expect(names(items)).toContain('data');
+    expect(names(items)).toContain('counter');
+    expect(names(items)).toContain('titulo');
+    expect(names(items)).toContain('onClick');
+  });
+
+  it('and none of the TypeScript scope that is not in it', async () => {
+    const items = await completeAt('<app-circle .name=@a|></app-circle>', '@');
+
+    expect(names(items)).not.toContain('atob');
+    expect(names(items)).not.toContain('arguments');
+    expect(names(items)).not.toContain('alert');
+    expect(names(items)).not.toContain('AbortController');
+  });
+
+  it('offers `@()` as the escape hatch to any expression', async () => {
+    const items = await completeAt('<app-circle .name=@a|></app-circle>', '@');
+
+    expect(names(items)).toContain('@()');
+  });
+
+  // The bare `@`, which is what the user actually presses first. A `=@` with nothing behind it
+  // is not a RazorExpression — the tokenizer scans one only where an identifier begins — so it
+  // degrades to a plain attribute whose text is `"@"`. `emitTextValue` projects it as the empty
+  // expression it really is, which is what puts a hole here to ask from.
+  it('offers the same list on a bare `@`, before any letter is typed', async () => {
+    const items = await completeAt('<app-circle .name=@|></app-circle>', '@');
+
+    expect(names(items)).toContain('data');
+    expect(names(items)).toContain('onClick');
+  });
+
+  // The same scope as a prop, minus what cannot be called: after `@click=` a listener is the
+  // only thing that fits, so `counter` — a `const` holding a signal — drops out while `onClick`
+  // stays. It is one rule with one narrowing, not a list of its own.
+  it('offers only what can be called after an event, out of the same scope', async () => {
+    const items = await completeAt('<app-circle .name="x" @click=@|></app-circle>', '@');
+
+    expect(names(items)).toContain('onClick');
+    expect(names(items)).toContain('@()');
+    expect(names(items)).not.toContain('counter');
+    expect(names(items)).not.toContain('data');
+    expect(names(items)).not.toContain('atob');
+  });
+
+  it('offers them once a letter is typed too', async () => {
+    const items = await completeAt('<app-circle .name="x" @click=@o|></app-circle>', '@');
+
+    expect(names(items)).toContain('onClick');
+    expect(names(items)).not.toContain('atob');
+  });
+
+  it('and inside quotes, which is how the docs write it', async () => {
+    const items = await completeAt('<app-circle .name="x" @click="@o|"></app-circle>', '@');
+
+    expect(names(items)).toContain('onClick');
   });
 });
 

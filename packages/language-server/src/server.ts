@@ -45,6 +45,8 @@ import {
   virtualFilesPayload,
 } from './requests.js';
 import { createFudicService, createFudicTagService } from './services/plugin.js';
+import { silenceOwnedPositions } from './services/owned.js';
+import { filterTypeScriptCompletions } from './services/ts-completion.js';
 import { RequestStats } from './stats.js';
 import { hasTypeScript, loadTypeScript } from './tsdk.js';
 import type { FileSystemScanner, Logger } from './types.js';
@@ -155,13 +157,22 @@ export function createFudicServer(
 
     const typescript = deps.loadTypeScript(options.tsdk, params.locale, logger);
     const languagePlugins = [createFudicLanguagePlugin(cache)];
+    // Whether the decorator below will be mounted. The service needs to know: at a binding
+    // value and at a `@` in markup both of them can produce the template's scope, and with
+    // both speaking the developer sees every name twice.
+    const withTypeScript = hasTypeScript(typescript);
     const plugins: LanguageServicePlugin[] = [
       // Ours goes first: where two services answer the same position — an `href`, a
       // `@section `, a `class:` — §4.1 gives this one the answer, and Volar asks them in order.
-      createFudicService({ index, stats }),
+      createFudicService({ index, stats, typescript: withTypeScript }),
       // The whole `.fud` is the HTML document: its markup is HTML with `@` in it, and the
       // native tags and attributes have to come from somewhere (§4.1, §6.4).
-      createHtmlService({ documentSelector: ['fud'] }),
+      //
+      // Wrapped, because the root is the LAST document Volar walks and an empty list from
+      // TypeScript does not claim a position: without this, HTML's vocabulary filled every
+      // silence the projection left — which is what a `.` on a component actually offered
+      // (BUG-23, TODO 1).
+      silenceOwnedPositions(createHtmlService({ documentSelector: ['fud'] })),
       createCssService(),
       // The one position where this server ADDS instead of deciding: after a `<`, the workspace
       // components are a voice next to the native tags rather than in place of them. It is
@@ -171,8 +182,13 @@ export function createFudicServer(
     ];
 
     let project: LanguageServerProject;
-    if (hasTypeScript(typescript)) {
-      plugins.unshift(...createTypeScriptServices(typescript.typescript));
+    if (withTypeScript) {
+      // Wrapped, never raw: inside a `.fud` two of TypeScript's own lists are correct
+      // TypeScript and wrong answers — the reserved `$` scaffolding, and the global scope
+      // it falls back to when a component's contract has no members (BUG-23, TODOs 1, 4).
+      plugins.unshift(
+        ...filterTypeScriptCompletions(createTypeScriptServices(typescript.typescript)),
+      );
       project = deps.createTypeScriptProject(
         typescript.typescript,
         typescript.diagnosticMessages,

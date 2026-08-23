@@ -17,6 +17,7 @@ export {
   COMPLETION_ONLY_CAPS,
 } from './caps.js';
 export { GLOBALS_DTS, GLOBALS_FILE_NAME } from './globals.js';
+export { mapToSource, mapToGenerated, type Capability } from './mapping.js';
 export { emitVirtualFiles, type EmitInput, type EmitJs } from './emit.js';
 export {
   clientFileName,

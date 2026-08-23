@@ -184,6 +184,73 @@ export function eventContextAt(
   return prefixedNameAt(source, offset, region, /(?:^|[^-\w@])@([-\w]*)$/);
 }
 
+/**
+ * A member being reached with a `.` inside an `@` expression: `@data.|`, `@post.author.|`.
+ *
+ * The third closed position, and the one that was missing. `propertyContextAt` covers the dot
+ * that opens a PROP, and its guard is the region `tag`; this one covers the dot that continues
+ * an EXPRESSION, where the region is markup or an attribute value. Both belong to TypeScript
+ * over the projection — the projection copies the dangling dot on purpose, so `$text(data.)`
+ * is a position TypeScript can answer — and both need the server to step aside for it.
+ *
+ * Without it the position fell through to the last branch of `completions()`, which returns
+ * Emmet's list. A non-empty reply from the root CLAIMS the position in Volar, so Emmet
+ * answering `@data.` is what kept the members of the route data from ever being offered.
+ *
+ * The chain is read backwards from the cursor: a name opened by `@`, any number of `.` or `?.`
+ * hops, and a trailing dot with nothing typed after it yet. The two guards of
+ * `directiveContextAt` apply for the same reasons — a `@` after another `@` is the escape of
+ * decision 1, and a `@` after a word character is an email address, not an expression.
+ */
+export function memberContextAt(
+  source: string,
+  offset: number,
+  region: Region,
+): PartialName | undefined {
+  // Inside an open tag the dot opens a prop, and `propertyContextAt` owns it.
+  if (region.kind === 'tag') return undefined;
+
+  const before = source.slice(0, offset);
+  const match = /@[A-Za-z_$][\w$]*(?:\??\.[\w$]*)*\??\.$/.exec(before);
+  if (match === null) return undefined;
+
+  const at = match.index;
+  const preceding = source[at - 1];
+  if (preceding === '@' || (preceding !== undefined && /\w/.test(preceding))) return undefined;
+
+  // Nothing is typed after the dot yet, so the item replaces an empty stretch at the caret.
+  return { span: span(offset, offset), text: '' };
+}
+
+/**
+ * Whether this position belongs to the projection rather than to any service of the root.
+ *
+ * The closed positions of the grammar: a prop after `.`, an event after `@`, a member after a
+ * `.` in an expression, the handler of an event, and the value of any other binding opened with
+ * `@`. In all of them the list is TypeScript's over the virtual file — narrowed by the rules of
+ * `ts-completion.ts` — and every other voice is a wrong answer: Emmet's abbreviations, HTML's
+ * attribute vocabulary, the component tags.
+ *
+ * It exists because "the server says nothing here" was not enough. Volar drops a plugin whose
+ * list comes back EMPTY and moves on to the next document, and the root is last in that walk —
+ * so whenever TypeScript had nothing to offer, HTML filled the silence with its own list. A
+ * position that belongs to the projection has to silence the root even when the projection
+ * answers with nothing.
+ */
+export function ownedByProjection(source: string, offset: number, region: Region): boolean {
+  return (
+    propertyContextAt(source, offset, region) !== undefined ||
+    eventContextAt(source, offset, region) !== undefined ||
+    memberContextAt(source, offset, region) !== undefined ||
+    handlerContextAt(source, offset, region) !== undefined ||
+    expressionValueContextAt(source, offset, region) !== undefined ||
+    // The one whose list is EMPTY rather than TypeScript's, and it belongs here for the same
+    // reason as the rest: what makes a position closed is that every other voice is wrong,
+    // not that somebody else has the answer.
+    bareBindingValueContextAt(source, offset, region) !== undefined
+  );
+}
+
 /** The shared shape: a name typed after a one-character prefix, inside an open tag. */
 function prefixedNameAt(
   source: string,
@@ -274,6 +341,107 @@ export function tagNameAt(source: string, offset: number): PartialName | undefin
   if (!opensTag) return undefined;
 
   return { span: span(start, end), text: source.slice(start, end) };
+}
+
+/**
+ * The HANDLER of an event: the cursor inside the value of an `@name=` binding (BUG-23).
+ *
+ * `@click=@|` is not an expression like any other. What may go there is a listener, and the
+ * only listeners a `.fud` has are the ones its own `@client` declares — so the nine hundred
+ * globals TypeScript offers at that offset are all wrong answers, `onabort` included.
+ *
+ * Text again, and for the reason the whole second half of this module is text: at the instant
+ * completion is asked, `@click=@` has no handler to find in the tree — classification degraded
+ * it to a plain attribute the moment the expression came out empty. What is left is the shape
+ * the author typed, and the shape is unambiguous.
+ *
+ * The region is the guard, exactly as everywhere else: only inside an attribute's VALUE, so
+ * the same characters written in markup text are a sentence rather than a binding.
+ */
+export function handlerContextAt(
+  source: string,
+  offset: number,
+  region: Region,
+): PartialName | undefined {
+  if (region.kind !== 'attr-value' && region.kind !== 'expression') return undefined;
+
+  // `@name=`, an optional quote, the `@` that opens the handler, and what has been written of
+  // it. A chain is allowed (`@click=@this.onPick`), so the dot is part of the name.
+  const match = /@[A-Za-z][-\w]*[ \t]*=[ \t]*["']?@([\w$.]*)$/.exec(source.slice(0, offset));
+  if (match === null) return undefined;
+
+  const text = match[1] as string;
+  return { span: span(offset - text.length, offset), text };
+}
+
+/**
+ * The VALUE of a binding, opened with `@`: `.name=@|`, `id="@ti|"`, `class:red=@|`.
+ *
+ * The fourth closed position. What may go there is an expression over what the TEMPLATE can
+ * see — the route's `data`, the props the file destructured, the names its `@client` declares —
+ * and nothing else. TypeScript answers with its whole scope at that offset, which is why
+ * `arguments`, `atob`, `await` and auto-imports from `@fudic/transport` were being offered
+ * where a value goes.
+ *
+ * NOT the handler of an event: `@click=@` is `handlerContextAt`, whose list is narrower still
+ * (only what can be a listener). Callers ask that one first, so this one is everything else.
+ *
+ * The span INCLUDES the `@`, the way `directiveContextAt` does, because the `@()` snippet
+ * offered here replaces it — completing `@(…)` over the name alone would leave `@@(…)`, the
+ * escape of decision 1.
+ */
+export function expressionValueContextAt(
+  source: string,
+  offset: number,
+  region: Region,
+): PartialName | undefined {
+  if (region.kind !== 'attr-value' && region.kind !== 'expression') return undefined;
+
+  // An attribute name — `.prop`, `id`, `class:red`, `bus:cart` — its `=`, an optional quote,
+  // the `@` that opens the expression, and what has been written of it. A trailing `.` is a
+  // member access and belongs to `memberContextAt`, which is why the tail is word characters
+  // only.
+  const match = /[.@\w:-]+[ \t]*=[ \t]*["']?@([\w$]*)$/.exec(source.slice(0, offset));
+  if (match === null) return undefined;
+
+  const name = match[1] as string;
+  return { span: span(offset - name.length - 1, offset), text: `@${name}` };
+}
+
+/**
+ * The value of a prop or an event with NO `@` typed yet: `.name=r|`, `@click=j|`.
+ *
+ * A closed position that answers NOTHING, and the rule behind it is one line: in fudic the
+ * value of a prop or an event is an expression, an expression is opened with `@`, and until
+ * the `@` is there the author has not said anything for an editor to complete. Decision 1
+ * leaves no second reading — a value that is meant literally is a quoted string, and a lone
+ * `@` is written `@@`.
+ *
+ * It exists because the two positions were answering, differently and both wrong. `.name=r`
+ * fell through every context here and reached the HTML service, which offered `role` — HTML's
+ * vocabulary, over a component's prop. `@click=j` mapped into the projection's handler hole,
+ * where TypeScript answered with its entire global scope and offered `JSON`. Same grammar,
+ * two unrelated wrong answers, because nothing owned the position.
+ *
+ * Only `.prop` and `@event`, and the restraint is deliberate: `class=`, `slot=` and `id=` are
+ * HTML's own attributes, where the HTML and CSS services have real answers and a `@` is not
+ * required to be about to be typed.
+ */
+export function bareBindingValueContextAt(
+  source: string,
+  offset: number,
+  region: Region,
+): PartialName | undefined {
+  if (region.kind !== 'attr-value' && region.kind !== 'expression') return undefined;
+
+  // A name opened by `.` or `@`, its `=`, an optional quote, and what has been written of the
+  // value. The tail excludes `@` on purpose: once one is there the position belongs to
+  // `handlerContextAt` or `expressionValueContextAt`, whose lists are real.
+  const match = /[.@][\w-]*[ \t]*=[ \t]*["']?([\w$.]*)$/.exec(source.slice(0, offset));
+  if (match === null) return undefined;
+
+  const text = match[1] as string;
+  return { span: span(offset - text.length, offset), text };
 }
 
 /** A section name being typed after `@section `. */

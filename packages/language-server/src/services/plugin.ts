@@ -26,7 +26,7 @@ import type {
   Range,
   SemanticToken,
 } from '@volar/language-service';
-import { regionAt, type Diagnostic, type Severity, type Span } from '@fudic/compiler';
+import { regionAt, span, type Diagnostic, type Severity, type Span } from '@fudic/compiler';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import { COMPLETION_TRIGGER_CHARACTERS, SEMANTIC_TOKENS_LEGEND } from '../capabilities.js';
@@ -43,14 +43,16 @@ import { hrefCompletions, unresolvedHrefs } from './href.js';
 import {
   classContextAt,
   directiveContextAt,
-  eventContextAt,
+  expressionValueContextAt,
+  handlerContextAt,
   hrefContextAt,
-  propertyContextAt,
+  ownedByProjection,
   sectionContextAt,
   tagContextAt,
   wordContextAt,
   type PartialName,
 } from './position.js';
+import { scopeNames, templateScope } from './template-scope.js';
 import { styleClassNames } from './classes.js';
 import { sectionCompletions } from './sections.js';
 import { scopeAt, snippetsAt } from './snippets.js';
@@ -61,6 +63,18 @@ import { semanticTokens } from './semantic-tokens.js';
 export interface FudicServiceContext {
   readonly index: WorkspaceIndex;
   readonly stats: RequestStats;
+  /**
+   * Whether a TypeScript service is mounted alongside this one.
+   *
+   * It decides ONE thing: who answers at a binding value and at a `@` in markup. Both lists
+   * are the template's scope, and both this service and the decorator over TypeScript can
+   * produce it — so with TypeScript mounted this one must stay quiet or the developer sees
+   * every name twice. Volar cannot arbitrate it: the mappings there are `isAdditional`, so
+   * nothing claims the position and every plugin is asked.
+   *
+   * Absent means mounted, which is the safe default — the duplicate is the visible failure.
+   */
+  readonly typescript?: boolean;
 }
 
 const SEVERITY: Readonly<Record<Severity, DiagnosticSeverity>> = {
@@ -205,6 +219,8 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
 /** The service. */
 export function createFudicService(deps: FudicServiceContext): LanguageServicePlugin {
   const { index, stats } = deps;
+  // Mounted unless the server says otherwise; see `FudicServiceContext.typescript`.
+  const alone = deps.typescript === false;
 
   return {
     name: 'fudic',
@@ -232,7 +248,7 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
           return stats.run(
             'completion',
             token,
-            () => completions(context, document, position, index),
+            () => completions(context, document, position, index, alone),
             undefined,
           );
         },
@@ -427,6 +443,7 @@ function completions(
   document: TextDocument,
   position: { line: number; character: number },
   index: WorkspaceIndex,
+  alone: boolean,
 ): CompletionList | undefined {
   const cached = fudicDocumentOf(context, document);
   if (cached === undefined) return undefined;
@@ -476,17 +493,34 @@ function completions(
     if (items.length > 0) return list(items);
   }
 
-  // The dot and the at-sign: the two contexts the server answers by saying NOTHING.
+  // The closed positions of the grammar: the ones this server answers by saying NOTHING.
   //
-  // In fudic a property is written with a `.` and an event with an `@`, and both lists belong
-  // to TypeScript over the projection — the component's contract for one, the DOM's event map
-  // for the other. What the server has to do there is get out of the way: no Emmet, no tags,
-  // no snippets. Returning `undefined` is exactly that — this plugin has nothing to say, so
-  // the projection is the only voice left.
-  const inside =
-    propertyContextAt(cached.source, offset, region) ??
-    eventContextAt(cached.source, offset, region);
-  if (inside !== undefined) return undefined;
+  // A property after `.`, an event after `@`, a member after a `.` in an expression, and the
+  // value of a binding opened with `@`. Every one of those lists belongs to TypeScript over the
+  // projection — the component's contract, the DOM's event map, the members of `data`, the
+  // names in the template's scope. What the server has to do there is get out of the way: no
+  // Emmet, no tags, no snippets. Returning `undefined` is exactly that.
+  //
+  // Not returning it is what made `@data.` offer nothing: the position fell all the way to
+  // `return emmet` at the bottom of this function, and a non-empty reply from the root CLAIMS
+  // the position in Volar, so the projection was never asked.
+  //
+  // The `@()` snippet that belongs at a binding value is contributed from
+  // `createFudicTagService`, which is additional — it adds a voice there instead of taking the
+  // position away from TypeScript.
+  //
+  // With ONE exception, and it is the lesson of the editor disagreeing with the suite. At a
+  // binding value the list is the template's SCOPE, and this server computes that scope from
+  // the parse — no TypeScript program is involved. So when the walk reaches the root here it
+  // means TypeScript did not answer, and "get out of the way" is the wrong move: there is
+  // nobody left to get out of the way FOR. The names are offered from here instead, and they
+  // are the same names, because both callers ask `templateScope`.
+  const value = alone ? expressionValueContextAt(cached.source, offset, region) : undefined;
+  if (value !== undefined) {
+    const callableOnly = handlerContextAt(cached.source, offset, region) !== undefined;
+    return list(scopeItems(cached, document, value, callableOnly));
+  }
+  if (ownedByProjection(cached.source, offset, region)) return undefined;
 
   // The tag after a `<` is NOT here: it merges instead of claiming, and in Volar that is a
   // property of a plugin rather than of a branch. It lives in `createFudicTagService`.
@@ -496,7 +530,20 @@ function completions(
   // something.
   const directive = directiveContextAt(cached.source, offset, region);
   if (directive !== undefined) {
-    const items = snippetItems(cached, document, directive, (label) => label.startsWith('@'));
+    // The constructs a `@` may open, the names the template can see, and the way out to any
+    // expression at all. All three, and for the reason above: when the root is the one
+    // answering here, TypeScript already declined, and the snippets alone are the list the
+    // developer complained about.
+    // The scope only in MARKUP, and the gate is not a detail: inside a `<style>` a `@` opens
+    // `@media`, and inside `@code` it opens `@client` — in neither is it an interpolation, so
+    // offering `data` or `@()` there would be shadowing the service that owns the position
+    // with a list that is wrong.
+    const items = [
+      ...snippetItems(cached, document, directive, (label) => label.startsWith('@')),
+      ...(alone && scopeAt(cached, directive.span.start) === 'markup'
+        ? scopeItems(cached, document, directive, false)
+        : []),
+    ];
     if (items.length > 0) return list(items);
   }
 
@@ -555,6 +602,59 @@ function tagItems(
           }),
     };
   });
+}
+
+/**
+ * The names the template can see, plus `@()`, in the coordinates of the `.fud` itself.
+ *
+ * The range covers the partial name and NOT the `@`, and that is a rule about the editor
+ * rather than about the grammar. VS Code filters the list it was sent against the text
+ * between the start of an item's replacement range and the caret: with the `@` inside the
+ * range that text is `@t`, and `title` does not start with `@t`, so the editor DROPS an item
+ * the server sent correctly. It is invisible from the protocol log — the item is there, on
+ * the wire, and never reaches the list. `@section` survived the same filter only because its
+ * own label begins with the `@`.
+ *
+ * Leaving the `@` out makes the filter text `t`, which is what the labels are written
+ * against, and the insertion still reads `@title`: the `@` the author typed is simply not
+ * replaced. It is also exactly what the projection's own items do, which is why those were
+ * the ones showing up.
+ */
+function scopeItems(
+  cached: CachedDocument,
+  document: TextDocument,
+  context: PartialName,
+  callableOnly: boolean,
+): readonly CompletionItem[] {
+  const scope = templateScope(cached);
+  // `context.text` is the `@` plus what has been typed of the name; only the name is replaced.
+  const typed = context.text.length - 1;
+  const range = rangeOf(document, span(context.span.end - typed, context.span.end));
+
+  const names = scopeNames(scope, callableOnly).map(
+    (name): CompletionItem => ({
+      label: name,
+      kind:
+        scope.get(name) === 'function' ? CompletionItemKind.Function : CompletionItemKind.Variable,
+      detail: 'in scope',
+      sortText: `1_${name}`,
+      textEdit: { range, newText: name },
+    }),
+  );
+
+  return [
+    ...names,
+    {
+      label: '@()',
+      kind: CompletionItemKind.Snippet,
+      detail: 'expression',
+      // Last: the names actually in scope are the likelier answer, and this is the way out.
+      sortText: 'zz_@(',
+      labelDetails: { description: 'fudic' },
+      insertTextFormat: InsertTextFormat.Snippet,
+      textEdit: { range, newText: '($0)' },
+    },
+  ];
 }
 
 /** The snippets that apply here, filtered by how they are typed. */
