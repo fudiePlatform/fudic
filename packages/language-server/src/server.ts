@@ -33,6 +33,7 @@ import { createFudicLanguagePlugin } from './language-plugin.js';
 import { nodeFileSystem } from './node-fs.js';
 import { resolveOptions } from './options.js';
 import { toPosix } from './paths.js';
+import { mountWorkspaceFuds } from './project-files.js';
 import {
   AUTO_CLOSE_TAG_REQUEST,
   autoCloseTagPayload,
@@ -184,8 +185,14 @@ export function createFudicServer(
             logger.info(
               mounted
                 ? 'Mounted the fudic ambient declarations in memory'
-                : 'The project ships fudic-globals.d.ts: using the file on disk',
+                : "The project has a fudic-globals.d.ts: overriding it with this server's, which is the one the projection is written against",
             );
+            // Without this a component nobody opened is not in the program, so the
+            // `import type … from './app-input.fud'` a page projects resolves to nothing and
+            // its contract degrades to `any` — no prop checking, no required checking, and a
+            // `.` that answers with the global scope (BUG-23).
+            const fuds = mountWorkspaceFuds(host, index);
+            logger.info(`Added ${fuds} .fud file(s) of the workspace to the TypeScript program`);
           },
         }),
       );

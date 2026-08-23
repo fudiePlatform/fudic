@@ -12,7 +12,7 @@ import type * as ts from 'typescript';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import { createFudicServer, type FudicServerDeps } from '../src/server.js';
-import { GLOBALS_FILE_NAME } from '../src/globals.js';
+import { GLOBALS_DTS, GLOBALS_FILE_NAME } from '../src/globals.js';
 import {
   AUTO_CLOSE_TAG_REQUEST,
   COMMENT_SYNTAX_REQUEST,
@@ -140,14 +140,20 @@ describe('initialize', () => {
 });
 
 describe('the ambient declarations', () => {
-  const host = (files: readonly string[]): ts.LanguageServiceHost => ({
+  const host = (
+    files: readonly string[],
+    onDisk: readonly string[] = [],
+  ): ts.LanguageServiceHost => ({
     getScriptFileNames: () => [...files],
     getScriptVersion: () => '1',
     getScriptSnapshot: () => undefined,
     getCompilationSettings: () => ({}),
     getCurrentDirectory: () => '/p',
     getDefaultLibFileName: () => 'lib.d.ts',
-    fileExists: () => false,
+    // Separate from `files` on purpose: an `include` entry with no wildcard reaches the
+    // program's file list whether or not anything is on disk, so LISTED and PRESENT are two
+    // different questions and this fake has to be able to tell them apart.
+    fileExists: (name) => onDisk.includes(name),
     readFile: () => undefined,
   });
 
@@ -162,15 +168,42 @@ describe('the ambient declarations', () => {
     expect(fake.log).toContain('Mounted the fudic ambient declarations in memory');
   });
 
-  it('are left alone when the project ships them on disk', () => {
+  // The one that mattered, and the one the old version of this test got wrong: it asserted
+  // over a host whose `fileExists` was always false, so it measured a file that was LISTED and
+  // called it shipped. A `tsconfig` scaffolded by the CLI lists `fudic-globals.d.ts` in its
+  // `include`, so every project without the file took this path and got no declarations at all.
+  it('are mounted when the project lists them but has no such file', () => {
     const { fake, setups } = setup();
     fake.onInitialize?.(params());
+    const languageServiceHost = host([`/p/${GLOBALS_FILE_NAME}`]);
 
-    setups[0]?.({
-      project: { typescript: { languageServiceHost: host([`/p/${GLOBALS_FILE_NAME}`]) } },
-    });
+    setups[0]?.({ project: { typescript: { languageServiceHost } } });
 
-    expect(fake.log).toContain('The project ships fudic-globals.d.ts: using the file on disk');
+    expect(languageServiceHost.getScriptFileNames()).toContain(`/p/${GLOBALS_FILE_NAME}`);
+    expect(fake.log).toContain('Mounted the fudic ambient declarations in memory');
+  });
+
+  it("replaces the content of the project's own copy, rather than trusting it", () => {
+    const { fake, setups } = setup();
+    fake.onInitialize?.(params());
+    const languageServiceHost = host([`/p/${GLOBALS_FILE_NAME}`], [`/p/${GLOBALS_FILE_NAME}`]);
+
+    setups[0]?.({ project: { typescript: { languageServiceHost } } });
+
+    // The text this server projects against, not whatever the project scaffolded months ago:
+    // a copy without `$props` and `$required` compiles clean and turns the editor off.
+    expect(languageServiceHost.readFile(`/p/${GLOBALS_FILE_NAME}`)).toBe(GLOBALS_DTS);
+    expect(
+      languageServiceHost.getScriptSnapshot(`/p/${GLOBALS_FILE_NAME}`)?.getText(0, 40),
+    ).toBe(GLOBALS_DTS.slice(0, 40));
+    // Listed once, and only once: a root file that appears twice makes every declaration in
+    // it a TS2300.
+    expect(
+      languageServiceHost.getScriptFileNames().filter((n) => n.endsWith(GLOBALS_FILE_NAME)),
+    ).toHaveLength(1);
+    expect(fake.log).toContain(
+      "The project has a fudic-globals.d.ts: overriding it with this server's, which is the one the projection is written against",
+    );
   });
 
   it('mount under the working directory when the client opened no folder at all', () => {
