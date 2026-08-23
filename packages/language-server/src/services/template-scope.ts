@@ -84,10 +84,12 @@ function declaredNames(
   const names = new Map<string, ScopeKind>();
 
   for (const id of fragments) {
-    const statements = cached.js.result.ast(id);
-    if (!Array.isArray(statements)) continue;
+    // A `module-statements` fragment always answers with the list of its top-level statements
+    // — an empty one when Oxc could not parse it — so there is no absent AST to guard against
+    // (SDD-11 §4.1).
+    const statements = cached.js.result.ast(id) as readonly OxcNode[];
 
-    for (const statement of statements as readonly OxcNode[]) {
+    for (const statement of statements) {
       collectDeclaredNames(statement, names);
     }
   }
@@ -97,21 +99,22 @@ function declaredNames(
 /** The names one top-level statement introduces. */
 function collectDeclaredNames(statement: OxcNode, into: Map<string, ScopeKind>): void {
   if (statement.type === 'FunctionDeclaration' || statement.type === 'ClassDeclaration') {
-    const id = statement['id'] as OxcNode | undefined;
-    // A class is callable with `new` and never as a listener, so only a function is one.
-    if (id?.type === 'Identifier') {
-      into.set(String(id['name']), statement.type === 'FunctionDeclaration' ? 'function' : 'value');
-    }
+    // A class is callable with `new` and never as a listener, so only a function is one. The
+    // name is always an `Identifier` here: the anonymous forms are `export default function
+    // () {}` and its class twin, and those arrive wrapped in an `ExportDefaultDeclaration`,
+    // which is not this statement type at all.
+    const id = statement['id'] as OxcNode;
+    into.set(String(id['name']), statement.type === 'FunctionDeclaration' ? 'function' : 'value');
     return;
   }
   if (statement.type !== 'VariableDeclaration') return;
 
   for (const declarator of statement['declarations'] as readonly OxcNode[]) {
-    const id = declarator['id'] as OxcNode | undefined;
+    const id = declarator['id'] as OxcNode;
     // `const onClick = () => {}` is a handler as much as a `function` is, and it is how a
     // component pulls one out of a module. Only a lone identifier can carry the kind: in
     // `const { a, b } = f()` there is no initializer per name to read it from.
-    const kind = id?.type === 'Identifier' && isFunctionExpression(declarator['init']) ? 'function' : 'value';
+    const kind = id.type === 'Identifier' && isFunctionExpression(declarator['init']) ? 'function' : 'value';
     collectPatternNames(id, kind, into);
   }
 }
@@ -129,24 +132,21 @@ function isFunctionExpression(init: unknown): boolean {
  * Walking the pattern is what keeps a destructured handler — which is how a component pulls
  * one out of a module — from being filtered out of its own list.
  */
-function collectPatternNames(
-  pattern: OxcNode | undefined,
-  kind: ScopeKind,
-  into: Map<string, ScopeKind>,
-): void {
-  if (pattern === undefined) return;
-
+function collectPatternNames(pattern: OxcNode, kind: ScopeKind, into: Map<string, ScopeKind>): void {
   switch (pattern.type) {
     case 'Identifier':
       into.set(String(pattern['name']), kind);
       return;
     case 'ObjectPattern':
-      for (const property of (pattern['properties'] ?? []) as readonly OxcNode[]) {
+      // `value` for a property and `argument` for the rest element: the two shapes a member
+      // of an object pattern comes in, and every one of them has one or the other.
+      for (const property of pattern['properties'] as readonly OxcNode[]) {
         collectPatternNames((property['value'] ?? property['argument']) as OxcNode, kind, into);
       }
       return;
     case 'ArrayPattern':
-      for (const element of (pattern['elements'] ?? []) as readonly (OxcNode | null)[]) {
+      // A hole — `const [, second] = xs` — is a null element and binds nothing.
+      for (const element of pattern['elements'] as readonly (OxcNode | null)[]) {
         if (element !== null) collectPatternNames(element, kind, into);
       }
       return;
@@ -155,8 +155,6 @@ function collectPatternNames(
       return;
     case 'RestElement':
       collectPatternNames(pattern['argument'] as OxcNode, kind, into);
-      return;
-    default:
       return;
   }
 }

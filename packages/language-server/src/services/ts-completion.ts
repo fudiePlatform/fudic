@@ -135,8 +135,8 @@ export function filterTypeScriptCompletions(
  * What identifies a request is its CANCELLATION TOKEN: Volar creates one per request and
  * hands that same object to every plugin and every mapping of it. Keying on the position
  * instead would be a bug with a long fuse — asking twice in the same place, which is what
- * pressing Ctrl+Space again is, would come back empty the second time. The source offset is
- * checked too, so a client that reuses a token cannot make two positions share a memory.
+ * pressing Ctrl+Space again is, would come back empty the second time. The token ALONE, and
+ * the comment inside `fresh` says why the offset cannot join it.
  *
  * Only at the positions this package owns — `at` is set nowhere else — where the list is a
  * small closed set of distinct names. Elsewhere two items may legitimately share a label, an
@@ -145,7 +145,6 @@ export function filterTypeScriptCompletions(
  */
 class Spoken {
   #request: unknown;
-  #at = -1;
   #labels = new Set<string>();
 
   /** The items of this reply that nobody has said yet, remembering them for the next one. */
@@ -156,7 +155,6 @@ class Spoken {
     // not the thing that identifies it.
     if (request !== this.#request) {
       this.#request = request;
-      this.#at = narrowed.at ?? -1;
       this.#labels = new Set();
     }
 

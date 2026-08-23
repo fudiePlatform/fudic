@@ -11,12 +11,17 @@ import { parseFud } from '../../src/parse.js';
 import {
   attributeOf,
   attributeValueSpan,
+  bareBindingValueContextAt,
   classContextAt,
   directiveContextAt,
   eventContextAt,
+  expressionValueContextAt,
+  handlerContextAt,
   hrefContextAt,
   isEmptyDocument,
   linksOf,
+  memberContextAt,
+  ownedByProjection,
   propertyContextAt,
   sectionContextAt,
   tagContextAt,
@@ -307,6 +312,155 @@ describe('propertyContextAt and eventContextAt (BUG-16 §3.4)', () => {
     const source = '<div title="a.b"></div>\n<app-badge .to';
 
     expect(propertyContextAt(source, source.length, regionOf(source, source.length))?.text).toBe('to');
+  });
+});
+
+/**
+ * The four positions BUG-23 added, and the question they all answer: who is being asked.
+ *
+ * Every one of them is text read backwards from the caret rather than a lookup in the tree,
+ * and that is not a shortcut. At the instant completion is asked, `@click=@` has no handler in
+ * the tree at all — classification degraded it the moment the expression came out empty — so
+ * the shape the author typed is the only thing left, and it is unambiguous.
+ */
+describe('memberContextAt (BUG-23 §2.2)', () => {
+  it.each([['<div>@data.'], ['<div>@post.author.'], ['<div>@data?.'], ['@data.'], ['<div id="@data.']])(
+    'is the context at %s',
+    (source) => {
+      const context = memberContextAt(source, source.length, regionOf(source, source.length));
+
+      // Nothing typed after the dot yet: the item replaces an empty stretch at the caret.
+      expect(context).toEqual({ span: { start: source.length, end: source.length }, text: '' });
+    },
+  );
+
+  it.each([
+    // Inside an open tag the dot opens a PROP, and `propertyContextAt` owns it.
+    ['<app-badge .'],
+    ['<app-badge .tone.'],
+    // No `@` behind the chain: a sentence, a version number, an address.
+    ['<div>3.'],
+    ['<div>hello.wor'],
+    // `@@` is the escape of decision 1, and a `@` glued to a word is an email address.
+    ['<div>@@data.'],
+    ['<div>hola@data.'],
+    // A name with no dot yet is not a member access.
+    ['<div>@data'],
+  ])('says nothing at %s', (source) => {
+    expect(memberContextAt(source, source.length, regionOf(source, source.length))).toBeUndefined();
+  });
+});
+
+describe('handlerContextAt (BUG-23 §2.3)', () => {
+  it.each([
+    ['<app-badge @click=@', ''],
+    ['<app-badge @click=@on', 'on'],
+    ['<app-badge @click="@on', 'on'],
+    ["<app-badge @click='@on", 'on'],
+    ['<app-badge @click= @on', 'on'],
+    // A chain is allowed, so the dot is part of the name rather than the end of it.
+    ['<app-badge @click=@this.onPick', 'this.onPick'],
+  ])('reads the handler being written at %s as %s', (source, expected) => {
+    const context = handlerContextAt(source, source.length, regionOf(source, source.length));
+
+    expect(context?.text).toBe(expected);
+    expect(source.slice(context?.span.start, context?.span.end)).toBe(expected);
+  });
+
+  it.each([
+    // A prop is not an event: what may go there is any expression, not a listener.
+    ['<app-badge .name=@on'],
+    // No `@` typed yet: nothing has been opened.
+    ['<app-badge @click=on'],
+    // The same characters inside a `<style>`, where the `@` opens an at-rule and the region
+    // is the guard: what belongs there is CSS, and the CSS service owns it.
+    ['<style>\n  .a { content: "@click=@on'],
+  ])('says nothing at %s', (source) => {
+    expect(handlerContextAt(source, source.length, regionOf(source, source.length))).toBeUndefined();
+  });
+});
+
+describe('expressionValueContextAt (BUG-23 §2.3)', () => {
+  it.each([
+    ['<app-badge .name=@', '@'],
+    ['<app-badge .name=@ti', '@ti'],
+    ['<app-badge id="@ti', '@ti'],
+    ['<app-badge class:red=@on', '@on'],
+    ['<app-badge bus:cart=@it', '@it'],
+  ])('reads the value being written at %s as %s', (source, expected) => {
+    const context = expressionValueContextAt(source, source.length, regionOf(source, source.length));
+
+    // The `@` is INSIDE the span: the `@()` snippet offered here replaces it, and completing
+    // over the name alone would leave `@@(…)`, the escape of decision 1.
+    expect(context?.text).toBe(expected);
+    expect(source.slice(context?.span.start, context?.span.end)).toBe(expected);
+  });
+
+  it.each([
+    // A trailing dot is a member access, and `memberContextAt` owns it.
+    ['<app-badge .name=@data.'],
+    // No `@`: nothing has been opened.
+    ['<app-badge .name=x'],
+    // Markup, not a value.
+    ['<div>@ti'],
+  ])('says nothing at %s', (source) => {
+    expect(
+      expressionValueContextAt(source, source.length, regionOf(source, source.length)),
+    ).toBeUndefined();
+  });
+});
+
+describe('bareBindingValueContextAt (BUG-23 §2.3)', () => {
+  it.each([
+    ['<app-badge .name=r', 'r'],
+    ['<app-badge @click=j', 'j'],
+    ['<app-badge .name="r', 'r'],
+    ['<app-badge .name=', ''],
+  ])('reads the value with no `@` at %s as %s', (source, expected) => {
+    const context = bareBindingValueContextAt(source, source.length, regionOf(source, source.length));
+
+    expect(context?.text).toBe(expected);
+  });
+
+  it.each([
+    // Once the `@` is there the position belongs to the two contexts above, whose lists are
+    // real: this one answers nothing at all.
+    ['<app-badge .name=@r'],
+    ['<app-badge @click=@j'],
+    // HTML's own attributes are not closed: the HTML and CSS services have answers there.
+    ['<app-badge class=b'],
+    ['<div slot=p'],
+    // Markup again.
+    ['<div>.name=r'],
+  ])('says nothing at %s', (source) => {
+    expect(
+      bareBindingValueContextAt(source, source.length, regionOf(source, source.length)),
+    ).toBeUndefined();
+  });
+});
+
+describe('ownedByProjection (BUG-23 §4.1)', () => {
+  it.each([
+    ['<app-badge .'],
+    ['<app-badge @'],
+    ['<div>@data.'],
+    ['<app-badge @click=@on'],
+    ['<app-badge .name=@ti'],
+    ['<app-badge .name=r'],
+  ])('claims %s for the projection', (source) => {
+    expect(ownedByProjection(source, source.length, regionOf(source, source.length))).toBe(true);
+  });
+
+  it.each([
+    // Where the HTML, CSS and fudic services have real answers: a tag, an attribute name, a
+    // class, a directive in markup, plain text.
+    ['<app-'],
+    ['<app-badge cla'],
+    ['<div class="b'],
+    ['<div>@fore'],
+    ['<div>hola'],
+  ])('leaves %s to the services of the root', (source) => {
+    expect(ownedByProjection(source, source.length, regionOf(source, source.length))).toBe(false);
   });
 });
 
