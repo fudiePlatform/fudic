@@ -18,8 +18,14 @@ interface Harness {
   readonly inserted: SnippetTarget[];
 }
 
-/** A client wired to a listener, with `answer` as whatever the server would say. */
-function harness(answer: string | Promise<string>): Harness {
+/**
+ * A client wired to a listener, with `answer` as whatever the server would say.
+ *
+ * A thunk rather than a promise for the failing case: the request leaves on the macrotask
+ * after the keystroke, so a promise rejected at construction time would sit unhandled for a
+ * turn of the loop and be reported as an unhandled rejection by the runner.
+ */
+function harness(answer: string | (() => Promise<string>)): Harness {
   const requests: { method: string; params: unknown }[] = [];
   const inserted: SnippetTarget[] = [];
   let listener: (typed: TypedText | undefined) => void = () => undefined;
@@ -36,7 +42,7 @@ function harness(answer: string | Promise<string>): Harness {
   const client = {
     sendRequest: async (method: string, params: unknown) => {
       requests.push({ method, params });
-      return await answer;
+      return typeof answer === 'string' ? answer : await answer();
     },
   } as unknown as LanguageClientPort;
 
@@ -90,10 +96,21 @@ describe('watchTypedTags', () => {
   it('stays quiet when the server is not there', async () => {
     // On every keystroke: a server that is restarting would otherwise raise one modal per
     // character, for a feature whose worst failure is that the user types six of them.
-    const h = harness(Promise.reject(new Error('server is restarting')));
+    const h = harness(() => Promise.reject(new Error('server is restarting')));
     h.type(TYPED);
     await settle();
 
     expect(h.inserted).toEqual([]);
+  });
+
+  it('does not ask in the same turn as the keystroke: the didChange goes first', () => {
+    // This listener and the language client's listen to the same editor event and this one
+    // runs first; the client sends its `didChange` from a promise chain. Asking straight away
+    // put the request on the wire ahead of the `>` that caused it, so the server answered
+    // about a document it had not been told about — and answered nothing, every time.
+    const h = harness('</div>');
+    h.type(TYPED);
+
+    expect(h.requests).toEqual([]);
   });
 });
