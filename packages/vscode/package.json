@@ -142,7 +142,9 @@
           "other": "on",
           "comments": "off",
           "strings": "on"
-        }
+        },
+        "editor.wordBasedSuggestions": "off",
+        "editor.suggest.showWords": false
       }
     }
   },
