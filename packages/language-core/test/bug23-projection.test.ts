@@ -181,9 +181,13 @@ describe('$required, and the silences it keeps (task 9)', () => {
 });
 
 describe('the slot is the parent’s (task 12)', () => {
+  // ONE character, and the anchor behind it is zero-length at the caret. A stretch covering the
+  // whole `slot=""` is seven source characters against two generated ones, and Volar maps with
+  // `Math.min(relativePos, generatedLength)` — so the caret landed past the hole, on the closing
+  // quote, where nothing is offered. That is why the slot list only appeared after a letter.
   it('anchors an empty value so the list can be asked for', () => {
     expect(project(component('<app-badge><div slot=""></div></app-badge>'))).toContain(
-      "$intoSlot<$S0>('  ');",
+      "$intoSlot<$S0>(' ');",
     );
   });
 

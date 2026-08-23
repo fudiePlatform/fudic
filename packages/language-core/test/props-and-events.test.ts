@@ -108,7 +108,7 @@ describe('the event name is projected, not invented (§4.4)', () => {
     // inside of the literal becomes a completion anchor rather than a name.
     const file = project('<app-badge @="@h"></app-badge>');
 
-    expect(file.text).toContain("$on('  ', h);");
+    expect(file.text).toContain("$on(' ', h);");
     // An anchor, not a name: it offers and it does not report.
     expect(nameStretch(file)).toEqual([]);
   });

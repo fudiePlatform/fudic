@@ -11,7 +11,7 @@
  * into the module, and `return` and `break` cannot escape into it either.
  */
 
-import type { HtmlContent, Span, StructuredDocument } from '@fudic/compiler';
+import type { HtmlContent, Span, StructuredDocument, TextNode } from '@fudic/compiler';
 import { partitionCode } from './code.js';
 import { emitDataDeclaration } from './data.js';
 import { emitImports, templateContent } from './imports.js';
@@ -21,7 +21,7 @@ import { emitElementBindings } from './template/attrs.js';
 import type { FragmentAst, TemplateContext } from './template/context.js';
 import { emitControl, emitInlineCode, type ControlLike } from './template/control.js';
 import { emitSection, emitSectionsContract, emitSlot, emitSlotsContract } from './template/sections.js';
-import { emitInterpolation } from './template/text.js';
+import { emitDanglingAt, emitInterpolation } from './template/text.js';
 import type { FileRegistry, VirtualFile } from './types.js';
 import { VirtualWriter } from './writer.js';
 
@@ -134,6 +134,11 @@ function emitContent(ctx: TemplateContext, content: readonly HtmlContent[]): voi
         break;
       case 'inline-code':
         emitInlineCode(ctx, node);
+        break;
+      // Text projects to nothing — except for the `@` the author has just pressed, which is
+      // still a text node and is the one position in markup where the list is wanted.
+      case 'text':
+        emitDanglingAt(ctx, node as TextNode);
         break;
       case 'section':
         emitSection(ctx, node as Parameters<typeof emitSection>[1]);

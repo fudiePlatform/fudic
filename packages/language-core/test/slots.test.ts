@@ -212,9 +212,9 @@ describe('BUG-11 §4.2 and §4.3 — only a static name is a name', () => {
     // produces one call and not two — and neither falls back into the props literal.
     expect(text.match(/\$intoSlot/gu)).toHaveLength(1);
     expect(text).not.toContain('slot:');
-    // `slot=""` is the position completion is asked from, so it gets the two-character
-    // anchor `@|` uses (BUG-23 §4.2 rule 5).
-    expect(text).toContain("$intoSlot<never>('  ');");
+    // `slot=""` is the position completion is asked from, so it gets the zero-length anchor
+    // `@|` uses, INSIDE the quotes (BUG-23 §4.2 rule 5).
+    expect(text).toContain("$intoSlot<never>(' ');");
   });
 });
 

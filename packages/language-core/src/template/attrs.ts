@@ -14,6 +14,7 @@
  */
 
 import {
+  attributeValueSpan,
   classifyAttribute,
   crossing,
   handlerShape,
@@ -282,10 +283,13 @@ function emitIntoSlot(ctx: TemplateContext, attr: Attribute, binding: SlotBindin
   ctx.w.scaffold(`$intoSlot<${alias}>(`, binding.span);
   if (only === undefined) {
     // `slot=""` — the quotes are typed and the name is not, so the INSIDE of the literal
-    // becomes the anchor: two characters for one, so BOTH ends of the source stretch land in
-    // it. The same recourse `@|` uses, and what makes `slot="|"` offer the parent's slots.
+    // becomes the anchor. Zero-length and at the caret, for the reason `emitEventName`
+    // explains: an anchor spanning the whole `slot=""` is seven source characters against two
+    // generated ones, and `Math.min` then drops the caret onto the closing quote, where
+    // nothing is offered. Which is why the slot list only appeared after a letter was typed.
+    const inside = attributeValueSpan(ctx.source, attr) ?? attr.span;
     ctx.w.scaffold("'");
-    ctx.w.projected('  ', attr.span, COMPLETION_ONLY_CAPS);
+    ctx.w.projected(' ', span(inside.start, inside.start), COMPLETION_ONLY_CAPS);
     ctx.w.scaffold("'");
   } else {
     // One stretch, QUOTES INCLUDED. TypeScript reports the `TS2345` over `'p'` with them, and
@@ -344,14 +348,14 @@ function emitBehaviour(
   attr: Attribute,
   binding: Binding,
 ): void {
-  // An event still being written: `@` alone, or `@cli` with no handler yet. Classification
-  // degraded it to a plain attribute, but the `@` is the author's and the editor is asking
-  // right now, so the call is projected without a handler — the name is the whole point,
-  // and the arity error lands on scaffolding that routes to nobody.
+  // An event still being written. Classification degraded it to a plain attribute, but the
+  // `@` is the author's and the editor is asking right now, so the call is projected anyway
+  // — the arity error lands on scaffolding that routes to nobody.
   const opening = eventNameOf(attr, binding);
   if (opening !== undefined && binding.type !== 'event') {
     ctx.w.scaffold('$on(', attr.span);
     emitEventName(ctx, attr, opening);
+    emitOpenHandler(ctx, attr);
     ctx.w.scaffold(');\n');
     return;
   }
@@ -406,6 +410,37 @@ function emitBehaviour(
 }
 
 /**
+ * The second argument of an event whose handler is OPENED but not finished (BUG-23, TODO 3).
+ *
+ * `@click=@` degrades to a plain attribute, because a `@` with no identifier behind it is not
+ * a `RazorExpression` at all — the tokenizer only scans one where an identifier starts — so
+ * `requireSingleExpression` finds none and reports `FUD0092`. The projection then wrote
+ * `$on('click');`, with nothing between the parentheses but the name: the one position where
+ * the author is asking «which of my functions goes here?» had no stretch to ask from, and the
+ * editor answered with silence. Which is TODO 3 exactly.
+ *
+ * So the argument is projected even though there is no expression to copy, exactly as
+ * `copyExpression` does for the expression that is not there yet. The anchor is ZERO-LENGTH at
+ * the END of the value, and both halves of that matter: Volar maps a source offset into a
+ * stretch with `Math.min(relativePos, generatedLength)`, so a stretch that COVERS the `@`
+ * would push the caret sitting after it past the anchor and onto the `)`. A single point at
+ * the caret maps to the start of the anchor, which is where the question is asked.
+ *
+ * The value span decides, not the parts: `attributeValueSpan` returns `undefined` exactly when
+ * no `=` was written, which is the difference between `@click` — a name with no handler yet,
+ * and nothing to complete — and `@click=`, where the author has committed to writing one. It
+ * also covers `@click=""` and `@click="@"` for free, since both have a value span and neither
+ * has an expression.
+ */
+function emitOpenHandler(ctx: TemplateContext, attr: Attribute): void {
+  const value = attributeValueSpan(ctx.source, attr);
+  if (value === undefined) return;
+
+  ctx.w.scaffold(', ');
+  ctx.w.projected(' ', span(value.end, value.end), COMPLETION_ONLY_CAPS);
+}
+
+/**
  * The listener a handler value subscribes — the SAME shape the emit subscribes.
  *
  * A value whose root is a call is an invocation deferred to DISPATCH (decisions 96–98):
@@ -447,14 +482,16 @@ function emitEventName(ctx: TemplateContext, attr: Attribute, name: string): voi
   if (name.length === 0) {
     // `@|` — the at-sign is typed and nothing else. There is no name to project, so the
     // INSIDE of the literal becomes an anchor: a position whose contextual type is
-    // `keyof HTMLElementEventMap`, which is the list the developer is asking for. Same
-    // recourse as the dot in `emitEntries`, and as the gaps of the start tag before it.
-    // Two characters for one, so that BOTH ends of the source stretch land inside the
-    // literal: the cursor at `@|` sits at the end of the `@`, and a one-character anchor
-    // would map it onto the closing quote, where nothing is offered. Same reason the gaps
-    // of a start tag are three characters wide for a gap of one.
+    // `keyof HTMLElementEventMap`, which is the list the developer is asking for.
+    //
+    // ZERO-LENGTH, at the caret, and that is the correction of BUG-23. Volar maps a source
+    // offset into a stretch with `Math.min(relativePos, generatedLength)`, so a stretch that
+    // COVERS the `@` puts the caret sitting after it one character deep — and TypeScript only
+    // answers a `"` trigger when the position is `literalStart + 1` exactly
+    // (`isValidTrigger`). A single point maps to the START of the anchor, which is that
+    // position. An anchor two characters wide was aiming at the same thing and overshot it.
     ctx.w.scaffold("'");
-    ctx.w.projected('  ', attr.span, COMPLETION_ONLY_CAPS);
+    ctx.w.projected(' ', span(attr.span.end, attr.span.end), COMPLETION_ONLY_CAPS);
     ctx.w.scaffold("'");
     return;
   }
@@ -501,8 +538,33 @@ function emitValue(ctx: TemplateContext, binding: Binding): void {
   // (decision 24); anything else is a concatenation, checked as a string (decision 20).
   if (parts.length === 0) ctx.w.scaffold('true', binding.span);
   else if (only?.type === 'razor-expression') emitExpression(ctx, only, crossesAsRead(ctx, parts));
-  else if (only?.type === 'attribute-text') ctx.w.scaffold(quote(only.value), only.span);
+  else if (only?.type === 'attribute-text') emitTextValue(ctx, only);
   else emitTemplateLiteral(ctx, parts);
+}
+
+/**
+ * A literal value — and the one that only LOOKS literal.
+ *
+ * `.name=@` is an expression the author has just opened, but the tokenizer scans a
+ * `RazorExpression` only where an identifier begins, so with nothing behind it the `@` degrades
+ * to a plain attribute whose text is `"@"`. Projecting that as the string `"@"` is projecting a
+ * value nobody meant, and it leaves the one position where the list is wanted with nowhere to
+ * ask — which is why the names in scope only appeared after the first letter was typed.
+ *
+ * A lone `@` is never a literal: decision 1 spells one `@@`. So it is projected as the empty
+ * expression it is, with the anchor `emitOpenHandler` uses and for its reason — ZERO LENGTH, at
+ * the end of the value. Volar maps with `Math.min(relativePos, generatedLength)`, so an anchor
+ * that covered the `@` would push the caret past the hole and onto the closing parenthesis.
+ */
+function emitTextValue(ctx: TemplateContext, only: Extract<AttributeValuePart, { type: 'attribute-text' }>): void {
+  if (only.value !== EVENT_PREFIX) {
+    ctx.w.scaffold(quote(only.value), only.span);
+    return;
+  }
+
+  ctx.w.scaffold('(');
+  ctx.w.projected(' ', span(only.span.end, only.span.end), COMPLETION_ONLY_CAPS);
+  ctx.w.scaffold(')');
 }
 
 /**
