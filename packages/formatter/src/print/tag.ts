@@ -27,10 +27,15 @@ function quoteFor(ctx: PrintContext, value: string): string {
  * `.prop=@name`, `@click=@onClick($event)` and `class:on=@(a && b)` are the whole of it. A
  * literal keeps its quotes — without them it would end at the first space — and so does a
  * concatenation, which is not an expression but a value with one inside.
+ *
+ * Asked only of an attribute that HAS parts — `printAttribute` returns before this for the
+ * valueless one — so «exactly one part, and it is not text» is the whole of the rule, with no
+ * absent part to guard against.
  */
 function isBareExpression(attribute: Attribute): boolean {
-  const [only] = attribute.value;
-  return attribute.value.length === 1 && only !== undefined && only.type !== 'attribute-text';
+  return (
+    attribute.value.length === 1 && attribute.value.every((part) => part.type !== 'attribute-text')
+  );
 }
 
 /** The value of an attribute: literal runs verbatim, Razor atoms through the leaf table. */

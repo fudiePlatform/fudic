@@ -33,8 +33,13 @@ describe('the leaf fallback', () => {
 describe('quote: single', () => {
   it('wraps attribute values in single quotes, and swaps when the value holds one', async () => {
     expect(await print('<a title="x">t</a>', { quote: 'single' })).toBe("<a title='x'>t</a>\n");
+    expect(await print(`<a title="x@(y + 'z')">t</a>`, { quote: 'single' })).toBe(
+      `<a title="x@(y + 'z')">t</a>\n`,
+    );
+    // The option decides nothing where there are no quotes to choose: one expression is
+    // printed bare whichever quote was preferred (decision 103).
     expect(await print(`<a title="@(x + 'y')">t</a>`, { quote: 'single' })).toBe(
-      `<a title="@(x + 'y')">t</a>\n`,
+      `<a title=@(x + 'y')>t</a>\n`,
     );
   });
 });
