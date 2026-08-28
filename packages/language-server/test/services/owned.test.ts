@@ -85,20 +85,81 @@ describe('silenceOwnedPositions', () => {
     ['<app-badge .name=@|></app-badge>'],
     ['<app-badge .name=r|></app-badge>'],
     ['<p>@data.|</p>'],
+    // A gap of a component tag: `$gap` answers it with HTML's whole vocabulary AND the props,
+    // so the HTML service repeating half of it is the same answer twice.
+    ['<app-badge cla|></app-badge>'],
   ])('declines %s, whatever the service underneath had to say', async (markup) => {
     expect(await completeAt(markup)).toBeUndefined();
   });
 
-  it.each([['<p>hola|</p>'], ['<app-badge cla|></app-badge>'], ['<div class="b|"></div>']])(
-    'lets the service answer at %s, which is HTML’s own ground',
-    async (markup) => {
-      expect((await completeAt(markup))?.items.map((i) => i.label)).toEqual([
-        'class',
-        'id',
-        'role',
-      ]);
-    },
-  );
+  it.each([
+    ['<p>hola|</p>'],
+    // The same gap in a NATIVE tag has no `$gap` behind it: HTML's list is the right one, and
+    // the `class:` bindings are added beside it rather than in place of it.
+    ['<div cla|></div>'],
+    ['<div class="b|"></div>'],
+  ])('lets the service answer at %s, which is HTML’s own ground', async (markup) => {
+    expect((await completeAt(markup))?.items.map((i) => i.label)).toEqual(['class', 'id', 'role']);
+  });
+
+  it.each([
+    ['null', null],
+    ['undefined', undefined],
+  ])('gives a declining service its %s back, rather than a list of nothing', async (_how, reply) => {
+    // The two ways a plugin declines, and both have to travel through untouched: a `null` that
+    // became an empty `CompletionList` would claim the position for a list with nothing in it.
+    const { service, document, position } = setup('<p>hola|</p>', () => reply);
+
+    expect(
+      await service.provideCompletionItems?.(document, position, { triggerKind: 1 }, TOKEN),
+    ).toBe(reply);
+  });
+
+  it('reopens `slot` too, which is the other value this server can name', async () => {
+    const { service, document, position } = setup('<p>hola|</p>', () => ({
+      isIncomplete: false,
+      items: [{ label: 'slot' }],
+    }));
+
+    const answer = (await service.provideCompletionItems?.(
+      document,
+      position,
+      { triggerKind: 1 },
+      TOKEN,
+    )) as CompletionList;
+
+    expect(answer.items[0]?.command?.command).toBe('editor.action.triggerSuggest');
+  });
+
+  it('and never overwrites a command the service put there itself', async () => {
+    const own = { title: 'Theirs', command: 'editor.action.somethingElse' };
+    const { service, document, position } = setup('<p>hola|</p>', () => ({
+      isIncomplete: false,
+      items: [{ label: 'class', command: own }],
+    }));
+
+    const answer = (await service.provideCompletionItems?.(
+      document,
+      position,
+      { triggerKind: 1 },
+      TOKEN,
+    )) as CompletionList;
+
+    expect(answer.items[0]?.command).toBe(own);
+  });
+
+  it('makes `class` reopen the list once it is accepted, and leaves the rest alone', async () => {
+    // The HTML service writes `class="…"` and stops, because in a `.html` there is nothing
+    // behind those quotes it could offer. Here there is — the names of this file's `<style>` —
+    // and a list nobody opens is a list nobody has.
+    const items = (await completeAt('<p>hola|</p>'))?.items ?? [];
+
+    expect(items.find((item) => item.label === 'class')?.command).toEqual({
+      title: 'Suggest',
+      command: 'editor.action.triggerSuggest',
+    });
+    expect(items.filter((item) => item.command !== undefined)).toHaveLength(1);
+  });
 
   it('lets a document that is not a `.fud` through untouched', async () => {
     const { service, position } = setup('<p>|</p>', () => HTML_LIST);

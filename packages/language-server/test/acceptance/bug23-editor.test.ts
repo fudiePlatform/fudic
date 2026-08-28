@@ -104,14 +104,15 @@ describe('the list the editor actually renders', () => {
     const items = await completeAt('@t|', '@');
     console.log('=== @t ===', JSON.stringify(names(items)));
 
-    expect(count(items, 'title')).toBe(1);
+    // Labelled with the `@` that reaches the name, which is how it is written in a `.fud`.
+    expect(count(items, '@title')).toBe(1);
   });
 
   it('offers each handler ONCE after a letter is typed in an event', async () => {
     const items = await completeAt('<app-circle .name=@data.title @click=@h|></app-circle>', '@');
     console.log('=== @click=@h ===', JSON.stringify(names(items)));
 
-    expect(count(items, 'handlerClick')).toBe(1);
+    expect(count(items, '@handlerClick')).toBe(1);
   });
 
   /**
@@ -135,19 +136,38 @@ describe('the list the editor actually renders', () => {
     expect(homeless).toEqual([]);
   });
 
-  it('offers nothing at all in a prop value before the `@` is pressed', async () => {
+  it('offers the template’s own names in a prop value before the `@` is pressed', async () => {
+    // It used to answer NOTHING, on the rule that until the `@` is there the author has said
+    // nothing to complete. The rule described the grammar and served the developer badly: the
+    // `@` is precisely what an editor is for, so the names arrive with it already written.
     const items = await completeAt('<app-circle .name=r|></app-circle>');
-    console.log('=== .name=r ===', JSON.stringify(names(items)));
 
+    expect(names(items)).toContain('@title');
+    // What the silence did fix stays fixed: never HTML's vocabulary, which is what reached
+    // this position when nobody owned it.
     expect(names(items)).not.toContain('role');
     expect(names(items)).not.toContain('hidden');
   });
 
-  it('offers nothing at all in an event value before the `@` is pressed', async () => {
+  it('offers only what can be called in an event value before the `@` is pressed', async () => {
     const items = await completeAt('<app-circle .name="x" @click=j|></app-circle>');
-    console.log('=== @click=j ===', JSON.stringify(names(items)));
 
+    expect(names(items)).toContain('@handlerClick');
+    // A listener is what goes there, so a value that cannot be one is not offered — and never
+    // TypeScript's whole global scope, which is what answered with `JSON`.
+    expect(names(items)).not.toContain('@title');
     expect(names(items)).not.toContain('JSON');
+  });
+
+  it('writes the `@` itself, since the author has not typed one', async () => {
+    // `.name=data` is a literal that happens to spell a variable's name; `.name=@data` is the
+    // read they meant. The `@` is in the inserted text and not in the range, which is what
+    // makes the difference invisible to the developer and exact in the file.
+    const items = await completeAt('<app-circle .name=|></app-circle>');
+    const title = items.find((item) => item.label === '@title');
+
+    expect((title?.textEdit as { newText: string } | undefined)?.newText).toBe('@title');
+    expect(title?.filterText).toBe('title');
   });
 });
 
@@ -156,13 +176,13 @@ describe('the `@` after a `=` on a NATIVE element', () => {
     const items = await completeAt('<div @click=@|></div>', '@');
 
     expect(names(items)).toContain('@()');
-    expect(names(items)).toContain('handlerClick');
+    expect(names(items)).toContain('@handlerClick');
   });
 
   it('and not a name that cannot be a listener', async () => {
     const items = await completeAt('<div @click=@|></div>', '@');
 
-    expect(names(items)).not.toContain('title');
+    expect(names(items)).not.toContain('@title');
   });
 });
 
@@ -172,9 +192,18 @@ describe('the `@` in a text region', () => {
 
     expect(names(items)).toContain('@foreach');
     expect(names(items)).toContain('@()');
-    expect(names(items)).toContain('data');
-    expect(names(items)).toContain('title');
-    expect(names(items)).toContain('handlerClick');
+    expect(names(items)).toContain('@data');
+    expect(names(items)).toContain('@title');
+    expect(names(items)).toContain('@handlerClick');
+  });
+
+  it('offers the same list on a plain Ctrl+Space, with no `@` typed', async () => {
+    // The developer who does not yet know that a `@` is how fudic reaches its data cannot ask
+    // for the list by typing the one character they are missing. Here the items bring it.
+    const items = await completeAt('|');
+
+    expect(names(items)).toContain('@foreach');
+    expect(names(items)).toContain('@data');
   });
 });
 
@@ -230,7 +259,7 @@ describe('with no TypeScript at all, which is what a broken project looks like',
   it('still offers the handlers after a `=@`', async () => {
     const items = await completeDegradedAt('<div @click=@|></div>');
 
-    expect(names(items)).toContain('handlerClick');
+    expect(names(items)).toContain('@handlerClick');
     expect(names(items)).toContain('@()');
   });
 
@@ -239,7 +268,7 @@ describe('with no TypeScript at all, which is what a broken project looks like',
 
     expect(names(items)).toContain('@foreach');
     expect(names(items)).toContain('@()');
-    expect(names(items)).toContain('data');
-    expect(names(items)).toContain('handlerClick');
+    expect(names(items)).toContain('@data');
+    expect(names(items)).toContain('@handlerClick');
   });
 });

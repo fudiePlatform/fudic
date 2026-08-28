@@ -30,7 +30,13 @@ import { component, LAYOUT, memoryFs } from '../_support.js';
 const PATH = '/p/pages/index.fud';
 const FUD_URI = URI.file(PATH);
 
-/** A page with two names in scope and a `<p>` to put the cursor in. */
+/**
+ * A page with two names in scope, one class of its own, and a `<p>` to put the cursor in.
+ *
+ * The `<style>` is not decoration: the classes of the file ride inside TypeScript's reply at a
+ * gap — an additional plugin runs on the first mapping alone, and a gap maps into the
+ * projection — so without one the gap answers with half of what it has to.
+ */
 const page = (markup: string): string =>
   `<link rel="layout" href="../layouts/_layout.fud">
 <link rel="component" href="../components/app-badge.fud">
@@ -41,14 +47,27 @@ const page = (markup: string): string =>
   }
 }
 
+<head>
+  <style>
+    .red { color: red }
+  </style>
+</head>
 <article>
   <p>${markup}</p>
 </article>
 `;
 
+/**
+ * A LAYOUT holding `markup` in its `<main>`.
+ *
+ * It interpolates nothing — no `@code` (`FUD0437`), no `load`, so no `data` — which is what
+ * makes it the one role where a name in scope is never an answer.
+ */
+const layout = (markup: string): string => LAYOUT.replace('@RenderBody()', `${markup}\n      @RenderBody()`);
+
 /** The cached `.fud`, its client projection, and a document over the projection's text. */
-function project(markup: string) {
-  const source = page(markup);
+function project(markup: string, build: (m: string) => string = page) {
+  const source = build(markup);
   const index = new WorkspaceIndex(
     memoryFs({
       '/p/layouts/_layout.fud': LAYOUT,
@@ -97,10 +116,18 @@ const list = (...items: CompletionItem[]): CompletionList => ({ isIncomplete: fa
 async function completeAt(
   markup: string,
   answer: CompletionList | undefined | null,
-  options: { codeId?: string; virtuals?: readonly never[] } = {},
+  options: {
+    codeId?: string;
+    virtuals?: readonly never[];
+    /** The file the markup goes into. A page by default; `layout` for the role that reads nothing. */
+    build?: (m: string) => string;
+  } = {},
 ): Promise<CompletionList | undefined | null> {
-  const { source, cached, client, document } = project(markup.replace('|', ''));
-  const at = source.indexOf('<p>') + '<p>'.length + markup.indexOf('|');
+  const build = options.build ?? page;
+  const { cached, client, document } = project(markup.replace('|', ''), build);
+  // The caret located in the BUILT file: the templates carry no `|` of their own, so the one
+  // in the markup is the one found — and it works whatever the markup was wrapped in.
+  const at = build(markup).indexOf('|');
   const generated = mapToGenerated(client, at, 'completion');
   const entry = options.virtuals === undefined ? cached : { ...cached, virtuals: options.virtuals };
   const service = wrap(answer, { [FUD_URI.toString()]: entry }, () => [
@@ -184,8 +211,11 @@ describe('a `@` in markup, when TypeScript says nothing at all', () => {
     // come from the parse, so they are the answer whether or not TypeScript ever arrives.
     const answer = await completeAt('@|', undefined);
 
+    // Labelled WITH the `@`, because that is how a name is read in fudic: `@data.title`,
+    // `@click=@fn`. A list that spells them bare teaches that `data` is written `data`, which
+    // it never is — see `reading`.
     expect(answer?.items.map((i) => i.label)).toEqual(
-      expect.arrayContaining(['counter', 'onClick', '@()', '@if']),
+      expect.arrayContaining(['@counter', '@onClick', '@()', '@if']),
     );
     // An incomplete list, so the editor asks again once the program is up.
     expect(answer?.isIncomplete).toBe(true);
@@ -194,7 +224,7 @@ describe('a `@` in markup, when TypeScript says nothing at all', () => {
   it('and over a `null` one, which is the other way a service declines', async () => {
     const answer = await completeAt('@|', null);
 
-    expect(answer?.items.map((i) => i.label)).toEqual(expect.arrayContaining(['counter', '@()']));
+    expect(answer?.items.map((i) => i.label)).toEqual(expect.arrayContaining(['@counter', '@()']));
   });
 
   it('gives the silence back untouched where it owns nothing', async () => {
@@ -213,10 +243,32 @@ describe('the two rules over a reply that does arrive', () => {
     );
 
     expect(answer?.items.map((i) => i.label)).toEqual(
-      expect.arrayContaining(['counter', 'onClick', '@()']),
+      expect.arrayContaining(['@counter', '@onClick', '@()']),
     );
-    expect(answer?.items.map((i) => i.label)).not.toContain('atob');
-    expect(answer?.items.map((i) => i.label)).not.toContain('$tpl');
+    expect(answer?.items.map((i) => i.label)).not.toContain('@atob');
+    expect(answer?.items.map((i) => i.label)).not.toContain('@$tpl');
+  });
+
+  it('keeps the bare name as what the editor FILTERS against', async () => {
+    // The editor matches an item against the text between the start of its replacement range
+    // and the caret, and that range begins AFTER the `@` the author already typed. With the
+    // `@` inside the matched text every one of these items would be dropped before reaching
+    // the list — the label is for reading, the filter is for matching.
+    const answer = await completeAt('@c|', list(item('counter')));
+    const counter = answer?.items.find((i) => i.label === '@counter');
+
+    expect(counter?.filterText).toBe('counter');
+  });
+
+  it('writes the bare name too, so accepting one after a `@` never doubles it', async () => {
+    // `anchored` falls back to the LABEL for an item that carries no edit of its own, and the
+    // label now opens with the `@` the author has already typed: without an insert text of its
+    // own, accepting `@fn` after `@click=@` wrote `@@fn` — the escape of decision 1, and a
+    // `FUD0056` on the value.
+    const answer = await completeAt('@c|', list(item('counter')));
+    const counter = answer?.items.find((i) => i.label === '@counter');
+
+    expect(counter?.insertText).toBe('counter');
   });
 
   it('drops an auto-import even when its label is a name in scope', async () => {
@@ -233,10 +285,10 @@ describe('the two rules over a reply that does arrive', () => {
 
     // Offered all the same, but as the names of the template rather than as imports: no
     // `labelDetails`, no `data`, and the kind the scope knows.
-    const counter = answer?.items.find((i) => i.label === 'counter');
+    const counter = answer?.items.find((i) => i.label === '@counter');
     expect(counter?.detail).toBe('in scope');
     expect(counter?.labelDetails).toBeUndefined();
-    expect(answer?.items.find((i) => i.label === 'onClick')?.kind).toBe(
+    expect(answer?.items.find((i) => i.label === '@onClick')?.kind).toBe(
       CompletionItemKind.Function,
     );
   });
@@ -246,7 +298,7 @@ describe('the two rules over a reply that does arrive', () => {
     // and the caret: with the `@` inside that range the text is `@c`, `counter` does not start
     // with it, and the item is dropped after arriving correctly.
     const answer = await completeAt('@c|', list(item('counter')));
-    const counter = answer?.items.find((i) => i.label === 'counter');
+    const counter = answer?.items.find((i) => i.label === '@counter');
 
     expect(counter?.textEdit).toBeDefined();
     const range = (counter?.textEdit as { range: { start: { character: number } } }).range;
@@ -283,7 +335,7 @@ describe('the same answer is not said twice', () => {
     const first = await ask();
     const second = await ask();
 
-    expect(first).toContain('counter');
+    expect(first).toContain('@counter');
     expect(second).toEqual([]);
   });
 
@@ -309,6 +361,182 @@ describe('the same answer is not said twice', () => {
     await ask(TOKEN);
     const again = await ask({ ...TOKEN });
 
-    expect(again).toContain('counter');
+    expect(again).toContain('@counter');
+  });
+});
+
+/**
+ * The positions inside a start tag, where TypeScript's names are right and its EDITS are not.
+ *
+ * Every object literal the projection puts there is ours — `$props`, `$attrs`, `$gap` — so a
+ * key TypeScript enumerates is a key we invented, in the shape the projection needed and not in
+ * the shape the author types. Each branch rewrites them into what goes in the file.
+ */
+describe('inside a start tag', () => {
+  const labels = (answer: CompletionList | undefined | null): string[] =>
+    (answer?.items ?? []).map((i) => i.label);
+  const edit = (answer: CompletionList | undefined | null, label: string): string | undefined => {
+    const found = answer?.items.find((i) => i.label === label);
+    return found?.textEdit && 'newText' in found.textEdit ? found.textEdit.newText : undefined;
+  };
+
+  it('rewrites a prop reached with the dot into `name=@`, and asks again', async () => {
+    // The same prop behaved differently depending on whether it was reached with Ctrl+Space or
+    // by typing the dot, which is the kind of difference nobody can learn.
+    const answer = await completeAt(
+      '<app-badge .|></app-badge>',
+      list(item('tone?', { kind: CompletionItemKind.Field })),
+    );
+
+    expect(labels(answer)).toEqual(['tone']);
+    expect(edit(answer, 'tone')).toBe('tone=@');
+    expect(answer?.items[0]?.command?.command).toBe('editor.action.triggerSuggest');
+    expect(answer?.items[0]?.detail).toBe('prop');
+  });
+
+  it('and keeps TypeScript’s own order where it gave one', async () => {
+    const answer = await completeAt(
+      '<app-badge .|></app-badge>',
+      list(
+        item('tone?', { kind: CompletionItemKind.Field, sortText: '11' }),
+        item('name?', { kind: CompletionItemKind.Field }),
+      ),
+    );
+
+    expect(answer?.items.map((i) => i.sortText)).toEqual(['11', 'name']);
+  });
+
+  it('answers a gap with the three vocabularies at once, sorted apart', async () => {
+    // The props arrive from `$gap` with their dot inside a QUOTED key, because `.tone` is not
+    // an identifier — that accident is the whole discriminator between the component's
+    // contract and HTML's own. The classes and `slot` ride along rather than coming from the
+    // root: an additional plugin runs on the FIRST mapping alone, and a gap maps into the
+    // projection, so whatever is to appear beside TypeScript's answer travels inside it.
+    const answer = await completeAt(
+      '<app-badge |></app-badge>',
+      list(
+        item('".tone"?', { kind: CompletionItemKind.Field }),
+        item('role?', { kind: CompletionItemKind.Field }),
+      ),
+    );
+
+    expect(labels(answer)).toEqual(['.tone', 'role', 'class:red', 'slot']);
+    // A prop is written `.tone=@expr`, so accepting one writes the `=@` and asks again; an
+    // HTML attribute takes a literal, so it gets the quotes and the caret between them.
+    expect(edit(answer, '.tone')).toBe('.tone=@');
+    expect(edit(answer, 'role')).toBe('role="$1"');
+    // The order is entirely ours: TypeScript hands every key back with the same `sortText`.
+    expect(answer?.items.map((i) => i.sortText)).toEqual(['0_.tone', '2_role', '1_red', '2_slot']);
+    // A binding with no expression is half of one, so the class writes its `=@` too.
+    expect(edit(answer, 'class:red')).toBe('class:red=@');
+    expect(edit(answer, 'slot')).toBe('slot="$1"');
+  });
+
+  it('stamps a slot name’s range from the SOURCE, where it has no quotes', async () => {
+    // `emitIntoSlot` projects the name with its quotes over a span that has none, so every
+    // offset TypeScript reports inside that stretch is two characters adrift — and the range
+    // came back landing beside the `P` instead of over it.
+    const answer = await completeAt(
+      '<app-badge><div slot="P|"></div></app-badge>',
+      list(item('PEPITO'), item('meta', { sortText: '11' })),
+    );
+
+    expect(labels(answer)).toEqual(['PEPITO', 'meta']);
+    expect(answer?.items[0]?.detail).toBe('slot of the parent');
+    expect(answer?.items.map((i) => i.sortText)).toEqual(['PEPITO', '11']);
+    expect(edit(answer, 'PEPITO')).toBe('PEPITO');
+  });
+
+  it('writes the `=@` behind an event name, which is the other half of the binding', async () => {
+    const answer = await completeAt(
+      '<app-badge @cli|></app-badge>',
+      list(item('click'), item('change', { kind: CompletionItemKind.Event, sortText: '11' })),
+    );
+
+    expect(labels(answer)).toEqual(['click', 'change']);
+    expect(edit(answer, 'click')).toBe('click=@');
+    expect(answer?.items[0]?.command?.command).toBe('editor.action.triggerSuggest');
+    expect(answer?.items.map((i) => i.kind)).toEqual([
+      CompletionItemKind.Variable,
+      CompletionItemKind.Event,
+    ]);
+  });
+
+  it('and gives an event with no kind of its own the one it is', async () => {
+    const answer = await completeAt('<app-badge @cli|></app-badge>', {
+      isIncomplete: false,
+      items: [{ label: 'click' }],
+    });
+
+    expect(answer?.items[0]?.kind).toBe(CompletionItemKind.Event);
+  });
+
+  it('offers no event at all in a LAYOUT, where no handler can ever be named', async () => {
+    // `keyof HTMLElementEventMap` is as true there as anywhere and still the wrong answer: an
+    // event is written `@click=@handler`, and a layout has no `@code` (`FUD0437`) and therefore
+    // no handler to name. Empty, and the position stays closed, so nothing fills the silence.
+    const answer = await completeAt('<div @cli|></div>', list(item('click')), { build: layout });
+
+    expect(answer?.items).toEqual([]);
+  });
+
+  it('does not empty the value of an attribute whose NAME is an expression', async () => {
+    // `bus:(EVENTS.cart)` is not HTML's attribute and not a plain one either — there is no name
+    // to compare, because the name IS an expression — so TypeScript's reply travels on rather
+    // than being emptied for HTML to answer in its place.
+    const answer = await completeAt(
+      '<app-badge bus:(EVENTS.cart)=|></app-badge>',
+      list(item('counter')),
+    );
+
+    expect(labels(answer)).toContain('counter');
+  });
+
+  it('says nothing at a value the author opened with a `.`, which is FUD0056', async () => {
+    // FIRST of all the branches, because every one below would otherwise recognise its own
+    // shape in it and answer with a list where the compiler is reporting an error.
+    const answer = await completeAt(
+      '<app-badge .name=.|></app-badge>',
+      list(item('tone?', { kind: CompletionItemKind.Field })),
+    );
+
+    expect(answer?.items).toEqual([]);
+  });
+
+  it('drops a raw member wherever no branch claimed the position', async () => {
+    // The caret glued to the tag's own name is one: it maps into the gap anchor, and
+    // `attributeGapContextAt` declines it because there the NAME is being typed and
+    // `tagContextAt` owns that. What is left is a key WE invented, in the shape the projection
+    // needed — `".tone"?` — and never in the shape the author types.
+    const answer = await completeAt(
+      '<app-badge| .tone="x"></app-badge>',
+      list(item('"aria-sort"?', { kind: CompletionItemKind.Field }), item('counter')),
+    );
+
+    expect(labels(answer)).not.toContain('"aria-sort"?');
+    expect(labels(answer)).toContain('counter');
+  });
+
+  it('and says nothing at all inside the value of a PLAIN attribute', async () => {
+    // `slot=".` is the case that proved it: with the dot making the name broken, this server's
+    // own branch stands aside and TypeScript's `'PEPITO'` came through with the PROJECTION's
+    // range, which inserts beside the dot instead of over it. Empty rather than filtered is
+    // what lets HTML answer — Volar hands the position on only when a list comes back bare.
+    const answer = await completeAt(
+      '<app-badge><div slot=".|"></div></app-badge>',
+      list(item('"PEPITO"')),
+    );
+
+    expect(answer?.items).toEqual([]);
+  });
+
+  it('but not inside a `.prop`, an `@event` or anything with a `:`', async () => {
+    // Their values are expressions and TypeScript owns them, narrowed by the branches above.
+    const answer = await completeAt(
+      '<app-badge class:red="@|"></app-badge>',
+      list(item('counter')),
+    );
+
+    expect(labels(answer)).toContain('@counter');
   });
 });

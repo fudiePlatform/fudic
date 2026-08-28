@@ -47,7 +47,10 @@ function attributeValue(ctx: PrintContext, attribute: Attribute): string {
       continue;
     }
     const inner = leafOf(ctx, part.expr);
-    out += part.kind === 'explicit' ? `@(${inner})` : `@${inner}`;
+    // A bare scalar carries no `@` (decision 105): `.id=0` is printed `0`, and putting the
+    // sign of an expression in front of it would make the formatter rewrite what it read.
+    if (part.kind === 'literal') out += inner;
+    else out += part.kind === 'explicit' ? `@(${inner})` : `@${inner}`;
   }
   return out;
 }

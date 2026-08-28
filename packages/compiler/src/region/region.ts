@@ -45,7 +45,11 @@ export interface Region {
   readonly span: Span;
   /** The element that owns the region, when one does. */
   readonly element?: ElementNode;
-  /** The attribute under the offset, for `tag` and `attr-value`. */
+  /**
+   * The attribute under the offset, for `tag` and `attr-value` — and for an `expression` that
+   * is one of that attribute's value parts, which is how a binding is told from an
+   * interpolation written in markup.
+   */
   readonly attribute?: Attribute;
 }
 
@@ -178,7 +182,12 @@ function attributeValueRegion(
 ): Region {
   for (const part of attribute.value) {
     if (part.type === 'razor-expression' && insideJs(part.span, offset)) {
-      return { kind: 'expression', span: part.span };
+      // The atom answers, and it says WHOSE value it is. An expression in markup content and
+      // an expression inside `href="/a/@slug"` are the same node and not the same position:
+      // only the second one is a binding, and only there is the list of names the template's
+      // rather than the program's. Without the attribute travelling out, the caller had no way
+      // to tell them apart and `/a/@d` was answered with 979 globals.
+      return { kind: 'expression', span: part.span, element, attribute };
     }
   }
   return { kind: 'attr-value', span: value, element, attribute };

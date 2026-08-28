@@ -79,6 +79,8 @@ const FUD_DUPLICATE_SECTION = 'FUD0428';
 const FUD_RENDER_HEAD_OUTSIDE_HEAD = 'FUD0431';
 /** `<link rel="layout">` with an absent or interpolated `href` (decision 81). */
 const FUD_BAD_LAYOUT_HREF = 'FUD0436';
+/** A `@code` block in a layout: a layout declares nothing and loads nothing (decision 82). */
+const FUD_LAYOUT_CODE = 'FUD0437';
 
 const WHITESPACE_ONLY = /^\s*$/u;
 
@@ -562,6 +564,15 @@ function buildLayout(
   found: DirectiveSet,
   diagnostics: Diagnostic[],
 ): LayoutDocument {
+  // A layout owns the shell and nothing else: it renders holes — `@RenderBody()`,
+  // `@RenderHead()`, `@RenderSection(name)` — and never data. It declares no props, since
+  // nobody instantiates it as a tag, and it does not `load` (`FUD0430`), so a `@code` there has
+  // nothing it could legally hold. Reported and kept: the block is still structured, so the
+  // editor keeps colouring and checking what the author wrote while the error stands.
+  if (parts.code !== undefined) {
+    diagnostics.push(errorDiag(FUD_LAYOUT_CODE, 'A layout has no @code block', parts.code.span));
+  }
+
   const renderBody = single(found.renderBody, '@RenderBody()', diagnostics);
   const renderHead = single(found.renderHead, '@RenderHead()', diagnostics);
   if (renderHead !== undefined && !containsNode(parts.head, renderHead)) {

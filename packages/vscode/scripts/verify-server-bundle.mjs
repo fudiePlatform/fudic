@@ -131,15 +131,22 @@ const completion = await request('textDocument/completion', {
 });
 
 const labels = (completion?.items ?? completion ?? []).map((item) => item.label);
-// `role?` and not `role`: TypeScript labels an optional property with its own `?`, which is the
-// tell that this came from a type and not from a table of HTML attributes.
+// `role` clean, where this used to assert `role?`. The `?` was TypeScript's mark for an optional
+// member and it used to reach the editor untouched — which is exactly the defect that was fixed:
+// a name is a name, and `role?` is not one. Its absence is now the tell that the reply went
+// through the gap rules rather than straight out of the type.
 //
-// The GLOBALS and not the props, since BUG-23 decision (b): on a component `.prop` is the only
-// way to write a prop, so what fits in the gap of the tag is HTML's own vocabulary. The props
-// are one keystroke away, behind the dot.
-if (!labels.includes('role?')) {
+// BOTH families, because decision (b) of BUG-23 §4.0 is repealed: a gap answers with the whole
+// vocabulary, HTML's and the component's alike. `.tone` proves the props reach the gap, which is
+// the whole point of `$gap`, and `role` proves HTML's did not get lost on the way.
+if (!labels.includes('role')) {
   fail(
     `TypeScript is not alive: <app-badge> offered ${String(labels.length)} completions and none was a global attribute`,
+  );
+}
+if (!labels.includes('.tone')) {
+  fail(
+    `the contract does not reach the gap: <app-badge> offered ${String(labels.length)} completions and none was a prop`,
   );
 }
 

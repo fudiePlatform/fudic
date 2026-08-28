@@ -29,7 +29,7 @@ const URI_OF_SLUG = URI.file(SLUG).toString();
 const LAYOUT_WITH_NAV = LAYOUT.replace('<main>', '<main>\n      @RenderSection(nav)');
 
 /** Set the service up over one `.fud`, whose cursor is where `|` was. */
-function setup(source: string, path = SLUG) {
+function setup(source: string, path = SLUG, typescript = true) {
   const offset = source.indexOf('|');
   const text = source.replace('|', '');
   const files: Record<string, string> = {
@@ -45,7 +45,10 @@ function setup(source: string, path = SLUG) {
   const document = TextDocument.create(URI.file(path).toString(), 'fud', 1, text);
   const stats = new RequestStats();
   const context = fakeServiceContext({ [URI.file(path).toString()]: cached });
-  const service = createFudicService({ index, stats }).create(context);
+  // `typescript` decides who answers at a `@` in markup and at a binding value: with it
+  // mounted — the default — the list is TypeScript's and this service stays quiet, or the
+  // developer sees every name twice. Pass `false` to measure what the root says on its own.
+  const service = createFudicService({ index, stats, typescript }).create(context);
   // The tag branch is a second plugin, and for the reason in BUG-15 §4.6: it merges instead of
   // claiming, and in Volar that is a property of a plugin rather than of a branch.
   const tagService = createFudicTagService({ index, stats }).create(context);
@@ -178,10 +181,26 @@ describe('completion — the dot and the at-sign (BUG-16 §6.10–§6.12)', () =
   });
 
   it('is the transition again outside the tag (§6.12)', async () => {
-    const { service, document, position } = setup(withBadge('<app-badge></app-badge>\n@fore|'));
+    // Measured with no TypeScript, which is where this service owns the answer. With it
+    // mounted the very same list arrives from `ts-completion.ts` — the constructs, the scope
+    // and the escape hatch in one reply — and this one stays quiet so nothing is said twice.
+    const { service, document, position } = setup(
+      withBadge('<app-badge></app-badge>\n@fore|'),
+      SLUG,
+      false,
+    );
     const list = await completionsOf(service, document, position);
 
     expect(list?.items.map((item) => item.label)).toContain('@foreach');
+  });
+
+  it('and says nothing there with TypeScript mounted, rather than offering the tags', async () => {
+    // `@fore` is a construct being written, not a tag. The directive branch declines because
+    // TypeScript carries the list, and the position must not fall through to the word branch,
+    // which answered it with every component of the workspace.
+    const { service, document, position } = setup(withBadge('<app-badge></app-badge>\n@fore|'));
+
+    expect(await completionsOf(service, document, position)).toBeUndefined();
   });
 });
 
@@ -219,7 +238,10 @@ describe('a control header is not markup (BUG-17 §6.10–§6.13)', () => {
   });
 
   it('is still the transition for a `@` in the body of a branch (§6.12)', async () => {
-    const { service, document, position } = setup(inMarkup('@if (a) { @fore| }'));
+    // With no TypeScript, where this service owns the list; mounted, the same one arrives from
+    // `ts-completion.ts`. What §6.12 pins either way is that the body of a branch is markup, so
+    // a `@` there is the transition and not an event.
+    const { service, document, position } = setup(inMarkup('@if (a) { @fore| }'), SLUG, false);
     const list = await completionsOf(service, document, position);
 
     expect(list?.items.map((item) => item.label)).toContain('@foreach');
@@ -268,6 +290,79 @@ describe('the tag plugin (BUG-15 §4.6)', () => {
     const alien = TextDocument.create(URI.file('/p/other.txt').toString(), 'plaintext', 1, '<');
 
     expect(await completionsOf(tagService, alien, position)).toBeUndefined();
+  });
+
+  it('adds the `class:` bindings beside HTML’s own list, in a NATIVE tag', async () => {
+    // `class:red` is the grammar's, not a component's (decision 28), and a `<div>` was the one
+    // place it could not be reached by asking: the list there is the HTML service's, which has
+    // never heard of it. Additional, so HTML's 151 attributes stay and these go in front.
+    const source = `<app-x>\n  <template shadowrootmode="open">\n    <style>\n      .red { color: red }\n    </style>\n    <div |></div>\n  </template>\n</app-x>\n`;
+    const { tagService, document, position } = setup(source, '/p/comp.fud');
+    const list = await completionsOf(tagService, document, position);
+
+    expect(list?.items.map((item) => item.label)).toEqual(['class:red']);
+    expect(list?.items[0]?.sortText).toBe('0_red');
+    // A binding with no expression is half of one, so accepting it writes the `=@` and asks
+    // again — the same gesture a prop and an event make.
+    expect(list?.items[0]?.textEdit?.newText).toBe('class:red=@');
+    expect(list?.items[0]?.command?.command).toBe('editor.action.triggerSuggest');
+  });
+
+  it('and says nothing there in a file that declares no class at all', async () => {
+    // `class:` with no name behind it completes nothing, and an item that inserts half a
+    // binding is worse than no item.
+    const { tagService, document, position } = setup(
+      `<app-x>\n  <template shadowrootmode="open">\n    <div |></div>\n  </template>\n</app-x>\n`,
+      '/p/comp.fud',
+    );
+
+    expect(await completionsOf(tagService, document, position)).toBeUndefined();
+  });
+
+  it('offers the names in scope inside a plain attribute’s value, each writing its `@`', async () => {
+    // Any attribute takes a binding — `role="@data.title"` — and nothing said so: the names
+    // appeared only once the `@` was typed, so the author had to know the answer to ask.
+    const source = `<link rel="layout" href="../layouts/_layout.fud">\n@code {\n  @client {\n    const titulo = 1;\n  }\n}\n<article>\n  <div role="|"></div>\n</article>\n`;
+    const { tagService, document, position } = setup(source);
+    const list = await completionsOf(tagService, document, position);
+
+    expect(list?.items.map((item) => item.label)).toEqual(
+      expect.arrayContaining(['@titulo', '@()']),
+    );
+    // The `@` is written by the item, not typed by the author: it is not in the range.
+    const titulo = list?.items.find((item) => item.label === '@titulo');
+    expect(titulo?.textEdit?.newText).toBe('@titulo');
+    expect(titulo?.filterText).toBe('titulo');
+  });
+
+  it('and offers none of them in a LAYOUT, which interpolates nothing at all', async () => {
+    // No `@code` (`FUD0437`) and no `load`, so there is no name a `@` could reach — `@()`
+    // included. An empty list rather than a wrong one, and the position travels on.
+    const { tagService, document, position } = setup(
+      LAYOUT_WITH_NAV.replace('<main>', '<main><div role="|"></div>'),
+      '/p/layouts/_other.fud',
+    );
+
+    expect(await completionsOf(tagService, document, position)).toBeUndefined();
+  });
+
+  it('but not inside the `href` of a `<link>`, whose list is a closed set of paths', async () => {
+    // An `href` is a PATH the build resolves: an interpolation there cannot be followed to a
+    // file, and offering the template's names is offering a way to write what never resolves.
+    const source = `<link rel="component" href="|">\n<article>hi</article>\n`;
+    const { tagService, document, position } = setup(source);
+
+    expect(await completionsOf(tagService, document, position)).toBeUndefined();
+  });
+
+  it('and declines a value the author opened with a `.`, which is FUD0056', async () => {
+    // This plugin is ADDITIONAL, so nothing silences it for us: it has to decline itself, or
+    // it fills a position the compiler is reporting an error on.
+    const { tagService, document, position } = setup(
+      `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="component" href="../components/app-badge.fud">\n<article><app-badge .name=.|></article>\n`,
+    );
+
+    expect(await completionsOf(tagService, document, position)).toBeUndefined();
   });
 
   it('does not work when the request was already cancelled', async () => {
@@ -334,8 +429,13 @@ describe('completion — snippets and Emmet (SDD-28 §5.3–§5.5)', () => {
   });
 
   it('a `@` offers the directives of the role, and replaces the `@` with them', async () => {
+    // Measured with no TypeScript, where the root owns the list. With it mounted the same
+    // snippets ride inside TypeScript's reply — one voice per position — and the acceptance
+    // suite measures that stack whole (BUG-23 §2.5).
     const { service, document, position } = setup(
       `<link rel="layout" href="../layouts/_layout.fud">\n<article>\n  @|\n</article>\n`,
+      SLUG,
+      false,
     );
     const list = await completionsOf(service, document, position);
 
@@ -345,10 +445,23 @@ describe('completion — snippets and Emmet (SDD-28 §5.3–§5.5)', () => {
     expect(item(list, '@if')?.insertTextFormat).toBe(2);
   });
 
+  it('says nothing inside a plain `class` when the file declares none', async () => {
+    // The same condition the `class:` branch has: a file with no `<style>` has nothing to say,
+    // and an empty list would silence Emmet without putting anything in its place (§4.3).
+    const { service, document, position } = setup(
+      `<app-x>\n  <template shadowrootmode="open">\n    <div class="re|"></div>\n  </template>\n</app-x>\n`,
+      '/p/comp.fud',
+    );
+    const list = await completionsOf(service, document, position);
+
+    expect(list?.items.some((item) => item.detail === 'class of this file')).not.toBe(true);
+  });
+
   it('and in a layout it offers @RenderBody instead of @section', async () => {
     const { service, document, position } = setup(
       LAYOUT_WITH_NAV.replace('<main>', '<main>@|'),
       '/p/layouts/_other.fud',
+      false,
     );
     const list = await completionsOf(service, document, position);
     const labels = list?.items.map((entry) => entry.label);

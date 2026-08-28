@@ -16,7 +16,15 @@ import { type LexRegion, scanParens, scanBrackets } from '../balancer/index.js';
 import type { JsRegionToken } from '../lexer/index.js';
 
 /** explicit = `@( ... )`; implicit = `@foo.bar`. Same node downstream (SDD-07). */
-export type RazorExpressionKind = 'explicit' | 'implicit';
+/**
+ * `explicit` is `@( … )`, `implicit` is `@name.path`, and `literal` is the third form: a scalar
+ * written bare in the value of a `.prop` — `.id=0`, `.on=true` (decision 105).
+ *
+ * It is an expression like the other two and carries no `@`, which is the whole of what the
+ * kind is for: `span` equals `expr`, so anything that reconstructs the source from the node —
+ * the formatter, above all — must print the literal alone and never put a `@` in front of it.
+ */
+export type RazorExpressionKind = 'explicit' | 'implicit' | 'literal';
 
 /**
  * A resolved Razor expression atom: a JS expression located in the source, opaque

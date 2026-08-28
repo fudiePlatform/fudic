@@ -26,7 +26,14 @@ import type {
   Range,
   SemanticToken,
 } from '@volar/language-service';
-import { regionAt, span, type Diagnostic, type Severity, type Span } from '@fudic/compiler';
+import {
+  CLASS_PREFIX,
+  regionAt,
+  span,
+  type Diagnostic,
+  type Severity,
+  type Span,
+} from '@fudic/compiler';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import { COMPLETION_TRIGGER_CHARACTERS, SEMANTIC_TOKENS_LEGEND } from '../capabilities.js';
@@ -41,23 +48,30 @@ import { emmetCompletions } from './emmet.js';
 import { formattedText } from './formatting.js';
 import { hrefCompletions, unresolvedHrefs } from './href.js';
 import {
+  attributeValueBindingAt,
+  brokenValueContextAt,
   classContextAt,
+  classValueContextAt,
   directiveContextAt,
   expressionValueContextAt,
   handlerContextAt,
   hrefContextAt,
+  nativeGapContextAt,
   ownedByProjection,
   sectionContextAt,
   tagContextAt,
   wordContextAt,
   type PartialName,
 } from './position.js';
-import { scopeNames, templateScope } from './template-scope.js';
+import { interpolates, scopeNames, templateScope } from './template-scope.js';
 import { styleClassNames } from './classes.js';
 import { sectionCompletions } from './sections.js';
 import { scopeAt, snippetsAt } from './snippets.js';
 import { componentTags, documentLinks, linkInsertionFor, tagDefinitionAt } from './tags.js';
 import { semanticTokens } from './semantic-tokens.js';
+
+/** What opens an expression, and therefore what every name in scope is written with. */
+const EXPRESSION_PREFIX = '@';
 
 /** What the service needs from the server around it. */
 export interface FudicServiceContext {
@@ -201,12 +215,63 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
 
               const offset = document.offsetAt(position);
               const tag = tagContextAt(cached.source, offset);
-              if (tag === undefined) return undefined;
+              if (tag !== undefined) {
+                // The `<` is already written, so the tag name completes into what follows it.
+                return list(
+                  tagItems(cached, index, document, tag, (name) => `${name}>$0</${name}>`),
+                );
+              }
 
-              // The `<` is already written, so the tag name completes into what follows it.
-              return list(
-                tagItems(cached, index, document, tag, (name) => `${name}>$0</${name}>`),
-              );
+              const region = regionAt(cached.source, cached.html, offset);
+
+              // `.name=.` is `FUD0056`, and this plugin is ADDITIONAL — nothing silences it for
+              // us, so it declines the position itself.
+              if (brokenValueContextAt(cached.source, offset, region)) return undefined;
+
+              // An empty position inside a NATIVE start tag: `<div |>`, `<div cla|>`.
+              //
+              // `class:red` is the grammar's, not a component's (decision 28), and a `<div>` was
+              // the one place it could not be reached by asking: the list there is the HTML
+              // service's, which has never heard of it. On a component the very same binding
+              // arrives with `$gap`, so the two tags answered differently for no reason the
+              // author could learn.
+              //
+              // Here, and not in `createFudicService`, for the reason the tag branch is here:
+              // it has to MERGE. HTML's 151 attributes are right and stay; these go in front of
+              // them, sorted `0_`.
+              const native = nativeGapContextAt(cached.source, offset, region);
+              if (native !== undefined) {
+                const items = classBindingItems(cached, document, native);
+                return items.length === 0 ? undefined : list(items);
+              }
+
+              // Inside an attribute's value, with no `@` opened: the names the template can see,
+              // each one writing the `@` that reaches them.
+              //
+              // Here rather than in `createFudicService` because this one has to MERGE. A value
+              // is HTML's too — `role` has an enumeration, `href` has paths — and replacing that
+              // list with ours would be trading one half of the answer for the other. The same
+              // reason the tag branch lives here.
+              //
+              // And it works precisely because nothing else claims the position: an additional
+              // plugin runs on the FIRST mapping alone, and a value with no `@` in it is
+              // projected as a literal, which carries no completion. The moment a `@` is typed
+              // there IS a projection to ask, this plugin is skipped, and the answer comes from
+              // `ts-completion.ts` — the same names, with the types behind them.
+              const binding = attributeValueBindingAt(cached.source, offset, region);
+              if (binding === undefined) return undefined;
+
+              // The `href` of a `<link>` is not a value, it is a PATH the build resolves: an
+              // interpolation there cannot be followed to a file, and decision 81 says as much
+              // for the layout. Its list is exact and closed — the `.fud` files of the project
+              // — and putting the template's names beside them offers a way to write something
+              // that will never resolve.
+              if (hrefContextAt(cached.source, cached.document, offset) !== undefined) {
+                return undefined;
+              }
+
+              const items = scopeItems(cached, document, binding, false, false);
+              return items.length === 0 ? undefined : list(items);
             },
             undefined,
           );
@@ -485,9 +550,34 @@ function completions(
     const items = styleClassNames(cached).map(
       (name): CompletionItem => ({
         label: name,
-        kind: CompletionItemKind.Value,
+        // The same kind the gap list gives them: one thing, one icon, wherever it is asked for.
+        kind: CompletionItemKind.EnumMember,
         detail: 'class of this file',
-        textEdit: { range: rangeOf(document, classes.span), newText: name },
+        // `=@` and ask again, the same as the gap list: one thing, one behaviour, wherever it is
+        // asked for. Only the name is replaced here — the `class:` is already in the source.
+        textEdit: { range: rangeOf(document, classes.span), newText: `${name}=@` },
+        command: { title: 'Suggest', command: 'editor.action.triggerSuggest' },
+      }),
+    );
+    if (items.length > 0) return list(items);
+  }
+
+  // Inside the value of a plain `class`: the same names, at the other place the grammar spells a
+  // class. Exact like the two above — inside those quotes a word is a class name and can be
+  // nothing else — and with their same condition: a file with no `<style>` has nothing to say,
+  // and an empty list would silence Emmet without putting anything in its place (§4.3).
+  //
+  // The value is a LIST, so only the word under the cursor is replaced and `class="red ye|"`
+  // keeps its `red`. And no `=@` and no second list here, unlike `class:red`: this attribute
+  // takes literal names, not an expression.
+  const classValue = classValueContextAt(cached.source, offset, region);
+  if (classValue !== undefined) {
+    const items = styleClassNames(cached).map(
+      (name): CompletionItem => ({
+        label: name,
+        kind: CompletionItemKind.EnumMember,
+        detail: 'class of this file',
+        textEdit: { range: rangeOf(document, classValue.span), newText: name },
       }),
     );
     if (items.length > 0) return list(items);
@@ -531,33 +621,86 @@ function completions(
   const directive = directiveContextAt(cached.source, offset, region);
   if (directive !== undefined) {
     // The constructs a `@` may open, the names the template can see, and the way out to any
-    // expression at all. All three, and for the reason above: when the root is the one
-    // answering here, TypeScript already declined, and the snippets alone are the list the
-    // developer complained about.
-    // The scope only in MARKUP, and the gate is not a detail: inside a `<style>` a `@` opens
-    // `@media`, and inside `@code` it opens `@client` — in neither is it an interpolation, so
-    // offering `data` or `@()` there would be shadowing the service that owns the position
-    // with a list that is wrong.
+    // expression at all.
+    //
+    // Both halves are gated, and by the same fact: in MARKUP with TypeScript mounted, the
+    // reply that carries them is TypeScript's — `ts-completion.ts` puts the scope, the `@()`
+    // and the snippets in the one list Volar allows there. The root is reached ANYWAY, which
+    // is what nobody had measured: at `@d|` the editor rendered `@if`, `@foreach` and the rest
+    // twice over, once with the `@` inside the replaced range and once without. A voice that
+    // repeats another is not a second answer.
+    //
+    // Outside markup it is the root's alone: inside a `<style>` a `@` opens `@media`, inside
+    // `@code` it opens `@client`, and `ts-completion.ts` declines both — so offering `data` or
+    // `@()` there would be wrong, and offering the block snippets is the only right answer.
+    const scope = scopeAt(cached, directive.span.start);
+    const inMarkup = scope === 'markup';
     const items = [
-      ...snippetItems(cached, document, directive, (label) => label.startsWith('@')),
-      ...(alone && scopeAt(cached, directive.span.start) === 'markup'
-        ? scopeItems(cached, document, directive, false)
+      ...(alone || !inMarkup
+        ? snippetItems(cached, document, directive, (label) => label.startsWith('@'))
         : []),
+      ...(alone && inMarkup ? scopeItems(cached, document, directive, false) : []),
     ];
     if (items.length > 0) return list(items);
   }
 
   const emmet = emmetCompletions(cached, document, position);
   const word = wordContextAt(cached.source, offset, region);
-  if (word === undefined) return emmet;
+
+  // A plain Ctrl+Space in markup TEXT, with no `@` typed: the same list a `@` opens.
+  //
+  // The constructs (`@if`, `@foreach`), the names the template can see, and the way out to any
+  // expression — all of them written WITH the `@`, since the author has not typed one. A
+  // developer who does not yet know that a `@` is how fudic reaches its data cannot ask for the
+  // list by typing the one character they are missing; this is the position where that gets
+  // taught, and it costs the list nothing to be there.
+  //
+  // Not from TypeScript, and not a duplicate of the directive branch of `ts-completion.ts`
+  // either: that one needs a `@` to fire, and plain text maps into no projection at all, so
+  // nobody else is asked here.
+  //
+  // Never after a `<`, and that is BUG-15 §4.6 again: the tag list is the ADDITIONAL plugin's
+  // so that the HTML service still gets to add the native elements, and an item from this one
+  // sets Volar's `mainCompletionUri` and takes them off the screen. A `<` with nothing behind
+  // it is markup like any other position, so only the context tells them apart.
+  // And never where a `@` is already typed. That position is the directive branch's, and with
+  // TypeScript mounted it defers — so answering from here is not a second answer, it is the
+  // first one said twice: `@t` rendered `@title`, `@handlerClick`, `@data` and `@()` once from
+  // TypeScript's reply and once again from this list.
+  const text =
+    region.kind === 'markup' &&
+    directive === undefined &&
+    scopeAt(cached, offset) === 'markup' &&
+    tagContextAt(cached.source, offset) === undefined
+      ? (word ?? { span: span(offset, offset), text: '' })
+      : undefined;
+  if (word === undefined && text === undefined) return emmet;
 
   const ours = [
     // The snippet scope, not the region: in a file that has nothing in it yet the region is
     // markup like any other, and there the only sensible list is the four skeletons.
-    ...(scopeAt(cached, offset) === 'markup'
+    //
+    // And never where a `@` is open. `@fore` is a construct being written, not a tag: with
+    // TypeScript mounted the branch above declines it — the list is TypeScript's, and saying
+    // it twice is what `alone` exists to prevent — and without this guard the position fell
+    // through to here and was answered with the components of the workspace.
+    ...(word !== undefined && directive === undefined && scopeAt(cached, offset) === 'markup'
       ? tagItems(cached, index, document, word, (name) => `<${name}>$0</${name}>`)
       : []),
-    ...snippetItems(cached, document, word, (label) => !label.startsWith('@')),
+    ...(word === undefined
+      ? []
+      : snippetItems(cached, document, word, (label) => !label.startsWith('@'))),
+    ...(text === undefined
+      ? []
+      : [
+          // The bodies are stored with their `@`, and here that is exactly right: there is none
+          // in the source to keep, so the snippet brings its own.
+          ...snippetItems(cached, document, text, (label) => label.startsWith('@')),
+          // Unconditionally, and not behind `alone` like the branches above: literal text is
+          // projected NOWHERE — only an interpolation and a dangling `@` are — so TypeScript is
+          // never asked at this offset and there is nobody to defer to.
+          ...scopeItems(cached, document, text, false, false),
+        ]),
   ];
   if (ours.length === 0) return emmet;
 
@@ -605,6 +748,36 @@ function tagItems(
 }
 
 /**
+ * `class:red`, `class:yellow` — the conditional classes of this file, at a gap in a native tag.
+ *
+ * The same items the projection puts in a component's `$gap`, written here because a native tag
+ * has no `$gap` to put anything in: HTML answers that position and this plugin adds to its
+ * answer. One thing, one icon, one insertion — `class:red=@` and ask again — wherever it is
+ * asked for.
+ *
+ * Empty when the file declares no class, and empty is the right answer then: `class:` with no
+ * name behind it completes nothing, and an item that inserts a half-written binding is worse
+ * than no item.
+ */
+function classBindingItems(
+  cached: CachedDocument,
+  document: TextDocument,
+  gap: PartialName,
+): readonly CompletionItem[] {
+  const range = rangeOf(document, gap.span);
+  return styleClassNames(cached).map((name) => ({
+    label: `${CLASS_PREFIX}${name}`,
+    kind: CompletionItemKind.EnumMember,
+    detail: 'class of this file',
+    // Ahead of HTML's own vocabulary, which the service beside this one contributes unsorted.
+    sortText: `0_${name}`,
+    labelDetails: { description: 'fudic' },
+    textEdit: { range, newText: `${CLASS_PREFIX}${name}=@` },
+    command: { title: 'Suggest', command: 'editor.action.triggerSuggest' },
+  }));
+}
+
+/**
  * The names the template can see, plus `@()`, in the coordinates of the `.fud` itself.
  *
  * The range covers the partial name and NOT the `@`, and that is a rule about the editor
@@ -625,20 +798,40 @@ function scopeItems(
   document: TextDocument,
   context: PartialName,
   callableOnly: boolean,
+  /**
+   * Whether the author has already typed the `@`.
+   *
+   * With one typed it is left alone and the item writes the bare name. With none — a plain
+   * Ctrl+Space in markup — the item writes the `@` itself: the names in scope are only reachable
+   * through one, and an editor that knows that and makes the developer type it anyway is
+   * withholding the only part it could have done for them.
+   */
+  atTyped = true,
 ): readonly CompletionItem[] {
+  // A layout interpolates nothing, `@()` included: see `interpolates`.
+  if (!interpolates(cached)) return [];
+
   const scope = templateScope(cached);
-  // `context.text` is the `@` plus what has been typed of the name; only the name is replaced.
-  const typed = context.text.length - 1;
+  // What is REPLACED is the name alone, never the `@`. See the note above: with the `@` inside
+  // the range VS Code filters the labels against `@t` and drops every one of them.
+  const typed = atTyped ? context.text.length - 1 : context.text.length;
   const range = rangeOf(document, span(context.span.end - typed, context.span.end));
+  const open = atTyped ? '' : '@';
 
   const names = scopeNames(scope, callableOnly).map(
     (name): CompletionItem => ({
-      label: name,
+      // WITH the `@`, because that is how the name is written: `@data.title`, `@click=@fn`. A
+      // list that spells them bare teaches that `data` is written `data`, which it never is.
+      label: `${EXPRESSION_PREFIX}${name}`,
+      // And the filter keeps the bare name: the editor matches an item against the text from
+      // the start of its range to the caret, and that range begins after the `@`. See the note
+      // above — it is the same trap, and this is the other half of it.
+      filterText: name,
       kind:
         scope.get(name) === 'function' ? CompletionItemKind.Function : CompletionItemKind.Variable,
       detail: 'in scope',
       sortText: `1_${name}`,
-      textEdit: { range, newText: name },
+      textEdit: { range, newText: `${open}${name}` },
     }),
   );
 
@@ -648,11 +841,16 @@ function scopeItems(
       label: '@()',
       kind: CompletionItemKind.Snippet,
       detail: 'expression',
-      // Last: the names actually in scope are the likelier answer, and this is the way out.
-      sortText: 'zz_@(',
+      // After the names, which are the likelier answer, and before anything anybody else
+      // contributes. Inside an attribute's value that second half is the point: the HTML
+      // service answers there too — `role` has an enumeration, `href` has paths — and a way out
+      // to an expression sorted below a hundred and thirteen ARIA roles is a way out nobody
+      // finds. `1_` keeps it under the scope names, and both stay above HTML's own, which sort
+      // by their labels.
+      sortText: '1_zz_@(',
       labelDetails: { description: 'fudic' },
       insertTextFormat: InsertTextFormat.Snippet,
-      textEdit: { range, newText: '($0)' },
+      textEdit: { range, newText: `${open}($0)` },
     },
   ];
 }

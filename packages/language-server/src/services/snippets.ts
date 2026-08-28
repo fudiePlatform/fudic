@@ -11,7 +11,7 @@
  * into a `CompletionItem` is the plugin's job.
  */
 
-import { documentRoots, walk, type ElementNode } from '@fudic/compiler';
+import { documentRoots, walk, type CodeBlockNode, type ElementNode } from '@fudic/compiler';
 import type { CachedDocument } from '../document-cache.js';
 import { roleOf, type FudRole } from '../mode.js';
 import { isEmptyDocument } from './position.js';
@@ -55,8 +55,12 @@ export function scopeAt(document: CachedDocument, offset: number): SnippetScope 
  * a layout `@code` lives inside `<head>` (decision 59/60). Offering them in the middle of the
  * body would scaffold a file that is red the moment it lands, which is worse than not
  * offering them at all.
+ *
+ * `outside-head` is the mirror of that, and it is the control constructs': a `<head>` is a list
+ * of declarations, not a template — nobody loops over `<meta>` or branches on a `<title>` — so
+ * a `@foreach` offered there is noise in front of the two names the author is actually after.
  */
-export type SnippetPlacement = 'top-level' | 'in-head';
+export type SnippetPlacement = 'top-level' | 'in-head' | 'outside-head';
 
 /**
  * The innermost element whose CONTENT contains this offset, if any.
@@ -79,12 +83,35 @@ function innermostElementAt(document: CachedDocument, offset: number): ElementNo
   return found;
 }
 
+/**
+ * Whether this offset is inside a `<head>`, however deep.
+ *
+ * The ANCESTOR, not the innermost element: `<title>@|</title>` is in the head as much as the
+ * gap between two `<meta>`s is, and it is the position where this matters.
+ */
+function insideHead(document: CachedDocument, offset: number): boolean {
+  let found = false;
+  walk(documentRoots(document.document), {
+    element: (element) => {
+      const close = element.closeSpan;
+      if (close === undefined || element.name !== 'head') return;
+      if (offset >= element.openSpan.end && offset <= close.start) found = true;
+    },
+  });
+  return found;
+}
+
 /** Whether this offset satisfies a placement. */
 function placedAt(document: CachedDocument, offset: number, placement: SnippetPlacement): boolean {
+  if (placement === 'outside-head') return !insideHead(document, offset);
+
   const element = innermostElementAt(document, offset);
   if (placement === 'top-level') return element === undefined;
   return element !== undefined && element.name === 'head';
 }
+
+/** The roles whose markup is a template: every one but the layout. */
+const MARKUP_ROLES: readonly FudRole[] = ['component', 'route', 'page'];
 
 /** One entry of the catalogue. */
 export interface FudSnippet {
@@ -98,6 +125,14 @@ export interface FudSnippet {
   readonly roles?: readonly FudRole[];
   /** Only while the document has no `@code` yet — SDD-10 allows exactly one. */
   readonly requiresNoCodeBlock?: true;
+  /**
+   * Only while the `@code` has no region of this audience yet.
+   *
+   * One `@server` and one `@client` per file, so a `@` inside `@code` offers what is still
+   * missing and nothing else. Offering a second `@server` to a file that already has one is
+   * offering `FUD0194` — and it is what made the list read as if the block took any number.
+   */
+  readonly requiresNoZone?: 'server' | 'client';
   /** Where it is legal. Absent means anywhere the scope allows. */
   readonly placement?: SnippetPlacement;
 }
@@ -204,10 +239,10 @@ const LAYOUT_SKELETON = `<!DOCTYPE html>
 
 // ── The `@code` block, by role ────────────────────────────────────────────────
 //
-// Three bodies for one label, over disjoint roles. A component wants its props and its
-// `@client`; a route and a page want the `load` that feeds them. A LAYOUT gets neither: it
-// does not declare `load` (SDD-21 §4.3, `FUD0430`), and offering it one would scaffold an
-// error.
+// Two bodies for one label, over disjoint roles. A component wants its props and its
+// `@client`; a route and a page want the `load` that feeds them. A LAYOUT gets none: it has no
+// `@code` at all (`FUD0437`) — it owns the shell, declares nothing and loads nothing — so the
+// snippet that used to offer it one is gone rather than narrowed.
 
 const COMPONENT_CODE = `@code {
   type \${1:Props} = {
@@ -229,10 +264,6 @@ const SERVER_CODE = `@code {
   }
 }`;
 
-const LAYOUT_CODE = `@code {
-  $0
-}`;
-
 const LOAD = `export async function load(): Promise<\${1:PageData}> {
   $0
 }`;
@@ -251,14 +282,25 @@ export const SNIPPETS: readonly FudSnippet[] = [
   { label: 'page', detail: 'fudic standalone page', body: PAGE_SKELETON, scope: 'empty-document' },
   { label: 'layout', detail: 'fudic layout', body: LAYOUT_SKELETON, scope: 'empty-document' },
 
-  // Control flow: markup, every role. `else` carries no `@` (SDD-06 §4.2), and `@switch`
-  // has no fall-through and no braces per case (decision 14).
-  { label: '@if', detail: 'conditional', scope: 'markup', body: '@if (${1:condition}) {\n  $0\n}' },
+  // Control flow: markup, never inside a `<head>` — see `outside-head` — and never in a
+  // LAYOUT, which renders holes rather than data: what a `@` opens there is one of the three
+  // `@Render*` and nothing else. `else` carries no `@` (SDD-06 §4.2), and `@switch` has no
+  // fall-through and no braces per case (decision 14).
+  {
+    label: '@if',
+    detail: 'conditional',
+    scope: 'markup',
+    body: '@if (${1:condition}) {\n  $0\n}',
+    roles: MARKUP_ROLES,
+    placement: 'outside-head',
+  },
   {
     label: '@if else',
     detail: 'conditional with an else branch',
     scope: 'markup',
     body: '@if (${1:condition}) {\n  $2\n} else {\n  $0\n}',
+    roles: MARKUP_ROLES,
+    placement: 'outside-head',
   },
   // The three loops carry their `key (…)`, and not as decoration: a loop that renders markup
   // must declare one (decision 91, `FUD0540`), so a snippet without it hands over a file that
@@ -269,24 +311,32 @@ export const SNIPPETS: readonly FudSnippet[] = [
     detail: 'declarative iteration (decisions 11, 91)',
     scope: 'markup',
     body: '@foreach (const ${1:item} of ${2:items}) key (${1:item}.${3:id}) {\n  $0\n}',
+    roles: MARKUP_ROLES,
+    placement: 'outside-head',
   },
   {
     label: '@for',
     detail: 'iteration with an index (decisions 11, 91)',
     scope: 'markup',
     body: '@for (let ${1:i} = 0; ${1:i} < ${2:items}.length; ${1:i}++) key (${1:i}) {\n  $0\n}',
+    roles: MARKUP_ROLES,
+    placement: 'outside-head',
   },
   {
     label: '@while',
     detail: 'loop (decision 91)',
     scope: 'markup',
     body: '@while (${1:condition}) key (${2:id}) {\n  $0\n}',
+    roles: MARKUP_ROLES,
+    placement: 'outside-head',
   },
   {
     label: '@switch',
     detail: 'multi-way branch, no fall-through (decision 14)',
     scope: 'markup',
     body: "@switch (${1:value}) {\n  case ${2:'a'}:\n    $0\n  default:\n}",
+    roles: MARKUP_ROLES,
+    placement: 'outside-head',
   },
 
   // The `@code` block itself, while there is not one already, and only where one is legal:
@@ -319,15 +369,6 @@ export const SNIPPETS: readonly FudSnippet[] = [
     requiresNoCodeBlock: true,
     placement: 'in-head',
   },
-  {
-    label: '@code',
-    detail: 'code block',
-    scope: 'markup',
-    body: LAYOUT_CODE,
-    roles: ['layout'],
-    requiresNoCodeBlock: true,
-    placement: 'in-head',
-  },
 
   // Directives, each one only where it is legal.
   { label: '@RenderBody', detail: 'where the route body goes', scope: 'markup', roles: ['layout'], body: '@RenderBody()' },
@@ -349,37 +390,68 @@ export const SNIPPETS: readonly FudSnippet[] = [
   },
 
   // The zones inside `@code`. Here the language is TypeScript, so nothing of markup applies.
+  //
+  // Both take the same roles and the same `requiresNoZone`: a `@` inside `@code` opens a
+  // region, there is exactly one of each per file (decision 33.b, `FUD0194`), and the one
+  // already written is not a candidate. `@client` used to be the component's alone, which was
+  // the same rule read backwards — a route that declares a handler needs it as much.
   { label: 'props', detail: 'the props contract of this component', scope: 'code-block', roles: ['component'], body: PROPS },
-  { label: '@client', detail: 'code that runs in the browser', scope: 'code-block', roles: ['component'], body: '@client {\n  $0\n}' },
+  {
+    label: '@client',
+    detail: 'code that runs in the browser',
+    scope: 'code-block',
+    roles: MARKUP_ROLES,
+    body: '@client {\n  $0\n}',
+    requiresNoZone: 'client',
+  },
   {
     label: '@server',
     detail: 'code that never reaches the browser',
     scope: 'code-block',
-    roles: ['component', 'route', 'page'],
+    roles: MARKUP_ROLES,
     body: '@server {\n  $0\n}',
+    requiresNoZone: 'server',
   },
   { label: 'load', detail: 'the data hook of this page (decision 60)', scope: 'code-block', roles: ['route', 'page'], body: LOAD },
 ];
 
 /**
+ * Whether a `@code` already holds a region of that audience.
+ *
+ * The BLOCK is the parameter and not the document, because it is always there: `requiresNoZone`
+ * lives on `code-block` snippets alone, and the scope is `code-block` exactly when the offset
+ * is inside one. Reaching for it through the document again would add a branch that no file
+ * can take.
+ */
+function hasZone(code: CodeBlockNode, zone: 'server' | 'client'): boolean {
+  const type = zone === 'server' ? 'server-region' : 'client-region';
+  return code.parts.some((part) => part.type === type);
+}
+
+/**
  * The snippets that apply at this offset.
  *
- * Four filters and nothing else: the scope, the role of the document, whether a `@code` block
- * is already there, and where the construct is allowed to sit. In an empty file the role is
- * `component` — that is what an empty `.fud` structures as — but the skeletons declare no
- * roles, so all four are offered.
+ * Five filters and nothing else: the scope, the role of the document, whether a `@code` block
+ * is already there, whether the region it would open is already written, and where the
+ * construct is allowed to sit. In an empty file the role is `component` — that is what an empty
+ * `.fud` structures as — but the skeletons declare no roles, so all four are offered.
  */
 export function snippetsAt(document: CachedDocument, offset: number): readonly FudSnippet[] {
   const scope = scopeAt(document, offset);
   if (scope === undefined) return [];
 
   const role = roleOf(document.document);
-  const hasCode = document.document.code !== undefined;
+  const code = document.document.code;
+  // Read once, not per snippet: the two zones are a property of the file, and asking the same
+  // question again for `@client` and for `@server` is walking the block twice.
+  const written = code === undefined ? [] : (['server', 'client'] as const).filter((z) => hasZone(code, z));
+
   return SNIPPETS.filter(
     (snippet) =>
       snippet.scope === scope &&
       (snippet.roles === undefined || snippet.roles.includes(role)) &&
-      (snippet.requiresNoCodeBlock === undefined || !hasCode) &&
+      (snippet.requiresNoCodeBlock === undefined || code === undefined) &&
+      (snippet.requiresNoZone === undefined || !written.includes(snippet.requiresNoZone)) &&
       (snippet.placement === undefined || placedAt(document, offset, snippet.placement)),
   );
 }

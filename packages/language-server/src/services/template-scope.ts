@@ -48,9 +48,23 @@ export type TemplateScope = ReadonlyMap<string, ScopeKind>;
  * has no route data to read (SDD-23 §4.2).
  */
 export function templateScope(cached: CachedDocument): TemplateScope {
+  if (!interpolates(cached)) return new Map();
+
   const names = declaredNames(cached, [...cached.js.neutral, ...cached.js.client]);
   if (cached.document.type !== 'component-document') names.set('data', 'value');
   return names;
+}
+
+/**
+ * Whether the template of this file may interpolate at all — and a LAYOUT may not.
+ *
+ * A layout owns the shell and nothing else: it has no `@code` (`FUD0437`), so it declares no
+ * name; it does not `load` (`FUD0430`), so there is no `data` to read. What a `@` opens there
+ * is one of the three `@Render*` directives and nothing else — not a name, not `@()`, not a
+ * construct. Offering any of those is offering a file that is red the moment it lands.
+ */
+export function interpolates(cached: CachedDocument): boolean {
+  return cached.document.type !== 'layout-document';
 }
 
 /**

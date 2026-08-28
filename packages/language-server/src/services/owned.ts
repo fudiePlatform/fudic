@@ -22,10 +22,44 @@
  * Hence a decorator rather than a branch. The service keeps every other position it owns.
  */
 
-import type { LanguageServicePlugin } from '@volar/language-service';
+import type { CompletionList, LanguageServicePlugin } from '@volar/language-service';
 import { regionAt } from '@fudic/compiler';
 import { fudicDocumentOf } from './plugin.js';
 import { ownedByProjection } from './position.js';
+
+/**
+ * The two attributes whose VALUES this server can name: the classes of the file's `<style>`
+ * and the slots the parent component declares.
+ */
+const REOPENS: ReadonlySet<string> = new Set(['class', 'slot']);
+
+/** Ask the editor for the list again, where the accepted attribute leaves the caret. */
+const TRIGGER_SUGGEST = { title: 'Suggest', command: 'editor.action.triggerSuggest' };
+
+/**
+ * Make `class` and `slot` reopen the list once they are accepted.
+ *
+ * The HTML service writes `class="…"` and stops, because in a `.html` there is nothing behind
+ * those quotes it could offer. In a `.fud` there is: the names of the file's own `<style>`, and
+ * the slots the parent declares. A list nobody opens is a list nobody has — the author had to
+ * know it existed and ask for it by hand, which is the opposite of what it is for.
+ *
+ * It is done HERE rather than in our own service because these items are the HTML service's:
+ * Volar concatenates what each plugin returns and never shows one another's, so contributing a
+ * second `class` beside theirs would put the attribute in the list twice.
+ */
+function reopening(list: CompletionList | null | undefined): CompletionList | null | undefined {
+  if (list === undefined || list === null) return list;
+
+  return {
+    ...list,
+    items: list.items.map((item) =>
+      REOPENS.has(item.label) && item.command === undefined
+        ? { ...item, command: TRIGGER_SUGGEST }
+        : item,
+    ),
+  };
+}
 
 /**
  * Wrap a service so it declines the positions that belong to the projection.
@@ -44,14 +78,18 @@ export function silenceOwnedPositions(plugin: LanguageServicePlugin): LanguageSe
 
       return {
         ...instance,
-        provideCompletionItems(document, position, completionContext, token) {
+        async provideCompletionItems(document, position, completionContext, token) {
           const cached = fudicDocumentOf(context, document);
-          if (cached !== undefined) {
-            const offset = document.offsetAt(position);
-            const region = regionAt(cached.source, cached.html, offset);
-            if (ownedByProjection(cached.source, offset, region)) return undefined;
-          }
-          return inner(document, position, completionContext, token);
+          if (cached === undefined) return inner(document, position, completionContext, token);
+
+          const offset = document.offsetAt(position);
+          const region = regionAt(cached.source, cached.html, offset);
+          if (ownedByProjection(cached.source, offset, region)) return undefined;
+
+          // The reopening is a `.fud` fact — behind those quotes live the classes of THIS
+          // file's `<style>` and the slots its parent declares — so a document that is not one
+          // travels through as itself, list and identity intact.
+          return reopening(await inner(document, position, completionContext, token));
         },
       };
     },

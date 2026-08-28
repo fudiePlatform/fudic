@@ -94,16 +94,21 @@ afterAll(async () => {
 });
 
 describe('§6.3 — attributes and their values', () => {
-  it('offers the GLOBALS of HTML inside the tag, never the props (BUG-23 decision (b))', async () => {
+  it('offers BOTH families inside the tag: HTML’s vocabulary and the contract', async () => {
     const items = await completeAt(
       SLUG,
       `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="component" href="../components/app-badge.fud">\n<article>\n  <app-badge |></app-badge>\n</article>\n`,
     );
 
-    // On a component a `.prop` is the only way to write a prop (decision 41.c), so what can
-    // be typed in the gap is HTML's own vocabulary and nothing else. It corrects SDD-24 §6.3,
-    // which pinned the opposite; the props are reached with the `.`, one keystroke away.
-    expect(labels(items)).toContain('role?');
+    // A gap is the developer asking what this component takes, and being answered `id`, `class`
+    // and `role` is being answered the half they already knew. `$gap` carries both — the props
+    // with their dot in the key — so the one reply Volar allows holds the whole answer. It
+    // repeals decision (b) of BUG-23 §4.0 and restores SDD-24 §6.3.
+    expect(labels(items)).toContain('.tone');
+    expect(labels(items)).toContain('role');
+    // A name has no question mark. TypeScript marks an optional member with one and it used to
+    // reach the editor untouched, which is what `memberName` peels off.
+    expect(labels(items)).not.toContain('role?');
     expect(labels(items)).not.toContain('tone?');
   });
 
@@ -193,6 +198,27 @@ describe('BUG-15 §6.1 — the classes this file declares', () => {
     const success = items.find((item) => item.label === 'success');
     const range = success?.textEdit && 'range' in success.textEdit ? success.textEdit.range : undefined;
     // The edit covers the three characters typed after the colon, and not the `class:` itself.
+    expect(range).toEqual({
+      start: harness.positionAt(source, at - 'suc'.length),
+      end: harness.positionAt(source, at),
+    });
+  });
+
+  it('offers the same names inside a plain `class`, which is where HTML spells one', async () => {
+    // Two syntaxes, one vocabulary. `class:red` is a BINDING whose value decides whether the
+    // class applies; `class="red"` is HTML's own attribute, a space-separated list of names.
+    // Answering one and not the other left `class=""` saying «no suggestions».
+    const source = fixtureText(BADGE).replace(
+      `class:success="@(tone === 'success')"`,
+      'class="badge suc"',
+    );
+    const at = source.indexOf('badge suc') + 'badge suc'.length;
+    const items = await completeIn(BADGE, source, at);
+
+    expect(labels(items)).toEqual(expect.arrayContaining(['badge', 'success', 'info']));
+    // Only the word under the caret is replaced: `class="red ye|"` has to keep its `red`.
+    const success = items.find((item) => item.label === 'success');
+    const range = success?.textEdit && 'range' in success.textEdit ? success.textEdit.range : undefined;
     expect(range).toEqual({
       start: harness.positionAt(source, at - 'suc'.length),
       end: harness.positionAt(source, at),
@@ -291,9 +317,10 @@ describe('BUG-15 §6.13–§6.17 — inside an open tag, asked the way an editor
     );
 
     // TypeScript's, over the projection, through the completion anchor BUG-11 left in the tag
-    // gap — the one the space was quietly turning off. WHAT it offers there is HTML's
-    // vocabulary since BUG-23 decision (b): the anchor moved to the globals literal.
-    expect(labels(items)).toContain('role?');
+    // gap — the one the space was quietly turning off. WHAT it offers there is both families
+    // at once, out of `$gap`: HTML's vocabulary and the component's own contract.
+    expect(labels(items)).toContain('role');
+    expect(labels(items)).toContain('.tone');
   });
 
   it('§6.15 — the space is not a trigger character, and the others still are', async () => {

@@ -208,24 +208,26 @@ describe('§2.5 / symptom 5 — the `@` in text is answered by the server, and a
   it('offers the directives AND what is in scope', async () => {
     const items = await completeAt('<div>@|</div>', '@');
 
+    // The names carry the `@` that reaches them, which is how they are written in a `.fud`:
+    // `@data.title`, never `data.title`. What the editor FILTERS against stays the bare name.
     expect(names(items)).toContain('@foreach');
-    expect(names(items)).toContain('data');
-    expect(names(items)).toContain('items');
-    expect(names(items)).toContain('counter');
+    expect(names(items)).toContain('@data');
+    expect(names(items)).toContain('@items');
+    expect(names(items)).toContain('@counter');
   });
 
   it('and keeps offering both once a letter is typed', async () => {
     const items = await completeAt('<div>@c|</div>', '@');
 
     expect(names(items)).toContain('@foreach');
-    expect(names(items)).toContain('counter');
+    expect(names(items)).toContain('@counter');
   });
 
   it('and none of the TypeScript scope that the template cannot see', async () => {
     const items = await completeAt('<div>@|</div>', '@');
 
-    expect(names(items)).not.toContain('atob');
-    expect(names(items)).not.toContain('AbortController');
+    expect(names(items)).not.toContain('@atob');
+    expect(names(items)).not.toContain('@AbortController');
   });
 });
 
@@ -245,19 +247,19 @@ describe('§2.3 — what may go after a `=@`', () => {
   it('offers the route data, the props and the names of `@client`', async () => {
     const items = await completeAt('<app-circle .name=@a|></app-circle>', '@');
 
-    expect(names(items)).toContain('data');
-    expect(names(items)).toContain('counter');
-    expect(names(items)).toContain('titulo');
-    expect(names(items)).toContain('onClick');
+    expect(names(items)).toContain('@data');
+    expect(names(items)).toContain('@counter');
+    expect(names(items)).toContain('@titulo');
+    expect(names(items)).toContain('@onClick');
   });
 
   it('and none of the TypeScript scope that is not in it', async () => {
     const items = await completeAt('<app-circle .name=@a|></app-circle>', '@');
 
-    expect(names(items)).not.toContain('atob');
-    expect(names(items)).not.toContain('arguments');
-    expect(names(items)).not.toContain('alert');
-    expect(names(items)).not.toContain('AbortController');
+    expect(names(items)).not.toContain('@atob');
+    expect(names(items)).not.toContain('@arguments');
+    expect(names(items)).not.toContain('@alert');
+    expect(names(items)).not.toContain('@AbortController');
   });
 
   it('offers `@()` as the escape hatch to any expression', async () => {
@@ -273,8 +275,8 @@ describe('§2.3 — what may go after a `=@`', () => {
   it('offers the same list on a bare `@`, before any letter is typed', async () => {
     const items = await completeAt('<app-circle .name=@|></app-circle>', '@');
 
-    expect(names(items)).toContain('data');
-    expect(names(items)).toContain('onClick');
+    expect(names(items)).toContain('@data');
+    expect(names(items)).toContain('@onClick');
   });
 
   // The same scope as a prop, minus what cannot be called: after `@click=` a listener is the
@@ -283,24 +285,24 @@ describe('§2.3 — what may go after a `=@`', () => {
   it('offers only what can be called after an event, out of the same scope', async () => {
     const items = await completeAt('<app-circle .name="x" @click=@|></app-circle>', '@');
 
-    expect(names(items)).toContain('onClick');
+    expect(names(items)).toContain('@onClick');
     expect(names(items)).toContain('@()');
-    expect(names(items)).not.toContain('counter');
-    expect(names(items)).not.toContain('data');
-    expect(names(items)).not.toContain('atob');
+    expect(names(items)).not.toContain('@counter');
+    expect(names(items)).not.toContain('@data');
+    expect(names(items)).not.toContain('@atob');
   });
 
   it('offers them once a letter is typed too', async () => {
     const items = await completeAt('<app-circle .name="x" @click=@o|></app-circle>', '@');
 
-    expect(names(items)).toContain('onClick');
-    expect(names(items)).not.toContain('atob');
+    expect(names(items)).toContain('@onClick');
+    expect(names(items)).not.toContain('@atob');
   });
 
   it('and inside quotes, which is how the docs write it', async () => {
     const items = await completeAt('<app-circle .name="x" @click="@o|"></app-circle>', '@');
 
-    expect(names(items)).toContain('onClick');
+    expect(names(items)).toContain('@onClick');
   });
 });
 

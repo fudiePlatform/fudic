@@ -9,10 +9,14 @@ import { describe, expect, it } from 'vitest';
 import { regionAt, type Attribute } from '@fudic/compiler';
 import { parseFud } from '../../src/parse.js';
 import {
+  attributeGapContextAt,
   attributeOf,
+  attributeValueBindingAt,
   attributeValueSpan,
   bareBindingValueContextAt,
+  brokenValueContextAt,
   classContextAt,
+  classValueContextAt,
   directiveContextAt,
   eventContextAt,
   expressionValueContextAt,
@@ -21,9 +25,11 @@ import {
   isEmptyDocument,
   linksOf,
   memberContextAt,
+  nativeGapContextAt,
   ownedByProjection,
   propertyContextAt,
   sectionContextAt,
+  slotValueContextAt,
   tagContextAt,
   tagNameAt,
   wordContextAt,
@@ -273,6 +279,10 @@ describe('propertyContextAt and eventContextAt (BUG-16 §3.4)', () => {
     ['<app-badge @cli', 'cli'],
     ['<app-badge .tone="@(t)" @', ''],
     ['<app-badge @my-press', 'my-press'],
+    // A value never crosses a blank (decision 101 applied to the value), so the `@` after the
+    // space does not belong to `@click=`: `@click` was left with no value at all — `FUD0056`
+    // — and what is being typed here is the NAME of the next event.
+    ['<app-badge @click= @on', 'on'],
   ])('reads the event being typed at %s as %s', (prefix, expected) => {
     const context = eventContextAt(prefix, prefix.length, regionOf(prefix, prefix.length));
 
@@ -324,7 +334,18 @@ describe('propertyContextAt and eventContextAt (BUG-16 §3.4)', () => {
  * the shape the author typed is the only thing left, and it is unambiguous.
  */
 describe('memberContextAt (BUG-23 §2.2)', () => {
-  it.each([['<div>@data.'], ['<div>@post.author.'], ['<div>@data?.'], ['@data.'], ['<div id="@data.']])(
+  it.each([
+    ['<div>@data.'],
+    ['<div>@post.author.'],
+    ['<div>@data?.'],
+    ['@data.'],
+    ['<div id="@data.'],
+    // An UNQUOTED value inside the tag: the region is `tag` rather than `attr-value`, because
+    // the caret sits one character past the atom — the dangling dot is not part of its span.
+    // The `=` behind the chain is what says the dot is a member and not a prop being opened.
+    ['<app-badge .name=@data.'],
+    ['<app-badge .name="@data.'],
+  ])(
     'is the context at %s',
     (source) => {
       const context = memberContextAt(source, source.length, regionOf(source, source.length));
@@ -346,6 +367,9 @@ describe('memberContextAt (BUG-23 §2.2)', () => {
     ['<div>hola@data.'],
     // A name with no dot yet is not a member access.
     ['<div>@data'],
+    // A `@` chain inside a tag with no `=` in front of it is an event NAME being written, and
+    // the members of nothing: only the equals sign makes the dot a member access there.
+    ['<app-badge @data.'],
   ])('says nothing at %s', (source) => {
     expect(memberContextAt(source, source.length, regionOf(source, source.length))).toBeUndefined();
   });
@@ -357,7 +381,6 @@ describe('handlerContextAt (BUG-23 §2.3)', () => {
     ['<app-badge @click=@on', 'on'],
     ['<app-badge @click="@on', 'on'],
     ["<app-badge @click='@on", 'on'],
-    ['<app-badge @click= @on', 'on'],
     // A chain is allowed, so the dot is part of the name rather than the end of it.
     ['<app-badge @click=@this.onPick', 'this.onPick'],
   ])('reads the handler being written at %s as %s', (source, expected) => {
@@ -372,6 +395,9 @@ describe('handlerContextAt (BUG-23 §2.3)', () => {
     ['<app-badge .name=@on'],
     // No `@` typed yet: nothing has been opened.
     ['<app-badge @click=on'],
+    // Away from its `=`, and a value never crosses a blank: `@click` has no value here at all
+    // — `FUD0056` — and the `@on` behind the space is the next event's NAME being typed.
+    ['<app-badge @click= @on'],
     // The same characters inside a `<style>`, where the `@` opens an at-rule and the region
     // is the guard: what belongs there is CSS, and the CSS service owns it.
     ['<style>\n  .a { content: "@click=@on'],
@@ -447,6 +473,11 @@ describe('ownedByProjection (BUG-23 §4.1)', () => {
     ['<app-badge @click=@on'],
     ['<app-badge .name=@ti'],
     ['<app-badge .name=r'],
+    // A gap of a COMPONENT tag, empty or half-written. `$gap` answers it whole — the props,
+    // the classes of this file and HTML's entire vocabulary — so a second voice there is not
+    // one more answer but the same one twice.
+    ['<app-badge '],
+    ['<app-badge cla'],
   ])('claims %s for the projection', (source) => {
     expect(ownedByProjection(source, source.length, regionOf(source, source.length))).toBe(true);
   });
@@ -455,7 +486,9 @@ describe('ownedByProjection (BUG-23 §4.1)', () => {
     // Where the HTML, CSS and fudic services have real answers: a tag, an attribute name, a
     // class, a directive in markup, plain text.
     ['<app-'],
-    ['<app-badge cla'],
+    // The same gap in a NATIVE tag, which has no `$gap`: HTML's list is the right one there,
+    // and the `class:` bindings are added BESIDE it by the additional plugin.
+    ['<div cla'],
     ['<div class="b'],
     ['<div>@fore'],
     ['<div>hola'],
@@ -551,4 +584,202 @@ describe('isEmptyDocument', () => {
       expect(isEmptyDocument(source)).toBe(false);
     },
   );
+});
+
+/**
+ * The gap of a start tag, and which of the two tags it belongs to.
+ *
+ * A component's gap is the PROJECTION's — `$gap` answers it with the props and HTML's
+ * vocabulary at once — and a native tag's is HTML's, with the `class:` bindings added beside
+ * it. One function each, so the caller never has to ask what kind of tag it is looking at.
+ */
+describe('attributeGapContextAt and nativeGapContextAt', () => {
+  const gapAt = (source: string) =>
+    attributeGapContextAt(source, source.length, regionOf(source, source.length));
+  const nativeAt = (source: string) =>
+    nativeGapContextAt(source, source.length, regionOf(source, source.length));
+
+  it.each([
+    ['<app-badge ', ''],
+    ['<app-badge na', 'na'],
+    ['<app-badge id="x" ', ''],
+    ['<app-badge\n  .tone="@(t)"\n  ', ''],
+  ])('reads the gap of a component at %j as %j', (source, expected) => {
+    expect(gapAt(source)?.text).toBe(expected);
+    expect(source.slice(gapAt(source)?.span.start, gapAt(source)?.span.end)).toBe(expected);
+    // A component's gap is never the native one: the two are exclusive by the hyphen.
+    expect(nativeAt(source)).toBeUndefined();
+  });
+
+  it.each([
+    ['<div ', ''],
+    ['<div cla', 'cla'],
+  ])('reads the gap of a native tag at %j as %j', (source, expected) => {
+    expect(nativeAt(source)?.text).toBe(expected);
+    expect(gapAt(source)).toBeUndefined();
+  });
+
+  it.each([
+    // The tag's own name is being typed, and `tagContextAt` owns that.
+    ['<app-badg'],
+    ['<app-badge'],
+    // Inside an attribute, which belongs to that attribute: the region carries it.
+    ['<app-badge .ton'],
+    ['<app-badge @cli'],
+    ['<app-badge class:re'],
+    // Not a tag at all.
+    ['<div>hola'],
+    ['<app-badge title="a'],
+  ])('says nothing at %j', (source) => {
+    expect(gapAt(source)).toBeUndefined();
+    expect(nativeAt(source)).toBeUndefined();
+  });
+
+  it('says nothing inside a CLOSE tag, which takes no attributes', () => {
+    // `</app-badge |>` is not a gap: the region of a close tag is a `tag` like the opening
+    // one's, so only the `/` behind the `<` separates them.
+    const source = '<app-badge></app-badge >';
+    const at = source.indexOf('</app-badge') + '</app-badge '.length;
+
+    expect(attributeGapContextAt(source, at, regionOf(source, at))).toBeUndefined();
+  });
+});
+
+/**
+ * The value of a `class` and the value of a `slot`: two closed lists this server can name.
+ *
+ * Both exist for the SPAN rather than for the names. A class value is a space-separated list,
+ * so only the word under the caret is replaced; a slot name is projected with quotes the source
+ * does not have, so TypeScript's own range comes back two characters adrift.
+ */
+describe('classValueContextAt and slotValueContextAt', () => {
+  const classAt = (source: string) =>
+    classValueContextAt(source, source.length, regionOf(source, source.length));
+  const slotAt = (source: string) =>
+    slotValueContextAt(source, source.length, regionOf(source, source.length));
+
+  it.each([
+    ['<div class="', ''],
+    ['<div class="re', 're'],
+    // A list: `red` has to survive whatever is accepted for the second name.
+    ['<div class="red ye', 'ye'],
+  ])('reads the class being typed at %j as %j', (source, expected) => {
+    expect(classAt(source)?.text).toBe(expected);
+    expect(source.slice(classAt(source)?.span.start, classAt(source)?.span.end)).toBe(expected);
+  });
+
+  it.each([
+    ['<div slot="', ''],
+    ['<div slot="PE', 'PE'],
+  ])('reads the slot being typed at %j as %j', (source, expected) => {
+    expect(slotAt(source)?.text).toBe(expected);
+  });
+
+  it.each([
+    // Somebody else's attribute.
+    ['<div title="re'],
+    ['<div class:red="re'],
+    // Not inside a value at all.
+    ['<div cla'],
+    ['<div>red'],
+    // A Razor atom inside the value is region `expression`, and TypeScript's.
+    ['<div class="@(x'],
+  ])('offers no class at %j', (source) => {
+    expect(classAt(source)).toBeUndefined();
+  });
+
+  it('offers nothing behind a dot, which is a value the author has already broken', () => {
+    // Out of habit from `.prop`, most likely. The dot is not part of the run an item replaces,
+    // so accepting `PEPITO` would write `.PEPITO`, a name no component declares.
+    const source = '<div slot=".';
+
+    expect(slotAt(source)).toBeUndefined();
+    expect(classValueContextAt('<div class=".', 13, regionOf('<div class=".', 13))).toBeUndefined();
+  });
+
+  it('is nobody’s `class` when the attribute is named with an expression', () => {
+    // `bus:(EVENTS.cart)` writes its name as an expression, so the region carries no name to
+    // compare — and a value with no name is not the one attribute this context is about.
+    const source = '<div bus:(EVENTS.cart)="re';
+
+    expect(classAt(source)).toBeUndefined();
+  });
+});
+
+/**
+ * Inside a value where an interpolation could be opened, with no `@` yet.
+ *
+ * Any attribute takes a binding — `role="@data.title"`, `href="/name/@data.slug"` — and nothing
+ * said so: the names appeared only once the `@` was typed, so the author had to know the answer
+ * to be able to ask the question.
+ */
+describe('attributeValueBindingAt', () => {
+  const bindingAt = (source: string) =>
+    attributeValueBindingAt(source, source.length, regionOf(source, source.length));
+
+  it.each([
+    ['<div role="', ''],
+    ['<div role="ti', 'ti'],
+    ['<div title="/a/', ''],
+  ])('reads the value being opened at %j as %j', (source, expected) => {
+    expect(bindingAt(source)?.text).toBe(expected);
+  });
+
+  it.each([
+    // `class` and `slot` have closed lists of their own here, and a second vocabulary beside
+    // them is noise over a position that already answers well.
+    ['<div class="re'],
+    ['<div slot="PE'],
+    // A `@` behind the caret means the expression is open and the projection owns the answer.
+    ['<div role="@'],
+    ['<div role="@ti'],
+    ['<div role="@data.'],
+    // Not inside a value.
+    ['<div rol'],
+    ['<div>hola'],
+  ])('says nothing at %j', (source) => {
+    expect(bindingAt(source)).toBeUndefined();
+  });
+
+  it('answers inside a value whose attribute is NAMED with an expression', () => {
+    // `bus:(EVENTS.cart)` writes its name as an expression, and the region still carries the
+    // attribute — so the value is a value like any other, and a `@` may be opened in it.
+    const source = '<div bus:(EVENTS.cart)="';
+
+    expect(bindingAt(source)?.text).toBe('');
+  });
+});
+
+/**
+ * A value the author opened with a `.`, which is an error and not a question.
+ *
+ * Right of a `=` goes an expression, and an expression is opened with a `@` (decision 1). A `.`
+ * there is `FUD0056` and the compiler says so already; a list where the file is red teaches the
+ * opposite of what the error says.
+ */
+describe('brokenValueContextAt', () => {
+  const brokenAt = (source: string) =>
+    brokenValueContextAt(source, source.length, regionOf(source, source.length));
+
+  it.each([
+    ['<app-badge .name=.'],
+    ['<app-badge .name=.to'],
+    ['<div @click=.'],
+    ['<app-badge .name= .'],
+  ])('claims %j, whose answer is nothing', (source) => {
+    expect(brokenAt(source)).toBe(true);
+  });
+
+  it.each([
+    // Quoted, and then it is a literal string and perfectly legal.
+    ['<div title=".foo'],
+    // The `@` that opens an expression properly.
+    ['<app-badge .name=@'],
+    // A prop being reached, which is `propertyContextAt`'s.
+    ['<app-badge .'],
+    // Markup, where a dot is a sentence.
+    ['<div>3.'],
+  ])('leaves %j alone', (source) => {
+    expect(brokenAt(source)).toBe(false);
+  });
 });

@@ -141,17 +141,24 @@ ${codeOf('page')}
     expect(codes(source)).toEqual([]);
   });
 
-  it('a layout takes it inside <head>', () => {
+  it('and a layout is offered none, because a @code there is FUD0437', () => {
+    // The catalogue is the assertion: there is no layout body to materialise, and a body that
+    // does not exist cannot be offered where it would be an error the moment it lands.
+    expect(SNIPPETS.some((s) => s.label === '@code' && s.roles?.includes('layout') === true)).toBe(
+      false,
+    );
+
     const source = `<!DOCTYPE html>
 <html lang="es">
   <head>
-${codeOf('layout')}
+    @code {
+    }
     @RenderHead()
   </head>
   <body><main>@RenderBody()</main></body>
 </html>
 `;
-    expect(codes(source)).toEqual([]);
+    expect(codes(source)).toContain('FUD0437');
   });
 });
 

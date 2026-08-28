@@ -83,9 +83,24 @@ describe('component tags', () => {
     // The props go to `$props`, which is NOT intersected with `$GlobalAttrs`: the dot
     // completes against this literal, and against nothing else (BUG-23 §2.1).
     expect(text).toContain('$props<$C0>({\n  tone: (x),\n});');
-    // And the globals literal is always there, because it is where the gap anchors live now
-    // — the blank line after `({` is one (decision (b) of BUG-23 §4.0).
-    expect(text).toContain('$attrs<{}>({\n  });');
+    // The globals literal holds only what was WRITTEN, so with no plain attribute it is
+    // empty: nothing is checked there and nothing asks from it.
+    expect(text).toContain('$attrs<{}>({});');
+    // The gaps have a call of their own, over the component's contract: `<app-badge |>` is
+    // answered with the props AND HTML's vocabulary, which is what repealed decision (b) of
+    // BUG-23 §4.0. The blank line after `({` is the one gap of this tag.
+    expect(text).toContain('$gap<$C0>({\n  });');
+  });
+
+  it('types the gaps of an UNREGISTERED tag as `{}`, and reports the tag once', () => {
+    // The alias travels as scaffolding into `$gap`, so naming an undeclared one would raise a
+    // second `TS2304` in a stretch no capability routes through: an error the editor drops and
+    // the corpus harness reports as unmapped. `$props` is the one place the tag is reported.
+    const { text } = emitClient(component('    <app-missing >hi</app-missing>'), 'x.fud', registry);
+
+    expect(text).toContain('$props<$C_app_missing>({});');
+    expect(text).toContain('$gap<{}>({');
+    expect(text).not.toContain('$gap<$C_app_missing>');
   });
 
   it('anchors completion inside a self-closing tag, and has nowhere to anchor without a gap', () => {
@@ -112,11 +127,13 @@ describe('component tags', () => {
     );
     const anchors = mappings.filter((m) => m.caps.completion && !m.caps.navigation);
     expect(anchors).toHaveLength(3);
-    // The two literals of BUG-16 §4.2, with the reparto of BUG-23 §4.2: the prop against the
-    // component's contract, the plain attribute — and the three gap anchors — against HTML's
-    // own vocabulary and nothing else.
+    // Two literals that CHECK and one call that only answers: the prop against the
+    // component's contract, the plain attribute against HTML's vocabulary and nothing else,
+    // and the three gap anchors in a `$gap` of their own — where both families meet and no
+    // diagnostic hangs off either.
     expect(text).toContain('$props<$C0>({\n  tone: (x),\n});');
-    expect(text).toContain('$attrs<{}>({\n  \n  \n  \n  id: "a",\n});');
+    expect(text).toContain('$attrs<{}>({\n  id: "a",\n});');
+    expect(text).toContain('$gap<$C0>({\n  \n  \n  });');
 
     // And none of them stands over an attribute. One stretch covering the whole area also
     // covered the VALUES, so a position inside `.tone="@(|)"` mapped to the anchor as well as

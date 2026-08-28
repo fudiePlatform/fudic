@@ -79,6 +79,22 @@ describe('attributes', () => {
     expect(await print('<a href="/p/x">t</a>')).toBe('<a href="/p/x">t</a>\n');
   });
 
+  it('prints a bare scalar as itself, with no `@` in front of it (decision 105)', async () => {
+    // The third form a value can take, and the one that carries no `@`: a number, a boolean,
+    // `null` or `undefined` written bare in the value of a `.prop`. Signing it as an
+    // expression would make the formatter rewrite what it read.
+    expect(await print('<a-x .id=0>t</a-x>')).toBe('<a-x .id=0>t</a-x>\n');
+    expect(await print('<a-x .ratio=-1.5>t</a-x>')).toBe('<a-x .ratio=-1.5>t</a-x>\n');
+    expect(await print('<a-x .visible=true>t</a-x>')).toBe('<a-x .visible=true>t</a-x>\n');
+    expect(await print('<a-x .nota=null>t</a-x>')).toBe('<a-x .nota=null>t</a-x>\n');
+  });
+
+  it('and leaves a quoted scalar quoted, because it is a string', async () => {
+    // `.id="0"` is the string `"0"`, which in a `number` prop is a type error and not a number
+    // written another way. The quotes do not change meaning here, so they do not move.
+    expect(await print('<a-x .id="0">t</a-x>')).toBe('<a-x .id="0">t</a-x>\n');
+  });
+
   it('prints a bus: binding whose name is an expression', async () => {
     expect(await print('<a bus:(k)="@h">t</a>')).toBe('<a bus:(k)=@h>t</a>\n');
     expect(await print('<a bus:(k)="x@(h)">t</a>')).toBe('<a bus:(k)="x@(h)">t</a>\n');

@@ -98,6 +98,36 @@ interface OpenElement {
 /** decision 51: the mode is fixed by whether the file opens with a doctype. */
 const DOCTYPE_START = /^\s*<!DOCTYPE/iu;
 
+/**
+ * The scalar literals a `.prop` may take unquoted (decision 105): a number, a boolean,
+ * `null` and `undefined`.
+ *
+ * An IDENTIFIER is deliberately not one of them. `.name=Hello` stays `FUD0056`, because a
+ * bare name is how one would read a variable and in fudic a variable is read with a `@` —
+ * admitting it here would make the same three characters mean a string in one place and a
+ * read in another. A literal has no such ambiguity: `0` is `0` in every language a `.fud`
+ * touches.
+ *
+ * And nothing with an operator in it. `1+1` and `` `a${b}` `` are expressions, and an
+ * expression written bare would end at the first space; they keep the `@( … )` that decision
+ * 104 exists for.
+ */
+const SCALAR_LITERAL = /^(?:[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|true|false|null|undefined)$/u;
+
+/**
+ * A `.prop` — the only attribute a bare literal is legal on (decisions 24, 105).
+ *
+ * `id=0` has no dot and stays `FUD0056`: it is HTML's own attribute, where every value is a
+ * string and quotes are the rule. And `@click=0` is not one either — what goes right of an
+ * event is a listener, never a scalar.
+ *
+ * The `.` is written here rather than imported from `binding/`: that module reads this one's
+ * nodes, and a value imported back the other way would close the cycle for one character.
+ */
+function isPropertyName(name: string | RazorExpression): boolean {
+  return typeof name === 'string' && name.startsWith('.');
+}
+
 class HtmlParser {
   readonly #source: string;
   readonly #lexer: Lexer;
@@ -469,13 +499,13 @@ class HtmlParser {
     const value: AttributeValuePart[] = [];
     this.#skipInTagWhitespace();
     if (this.#lexer.peek().type === 'attr-eq') {
-      this.#next();
+      const eq = this.#next();
       this.#skipInTagWhitespace();
       const quote = this.#lexer.peek();
       end =
         quote.type === 'attr-quote-open'
           ? this.#parseQuotedValue(value)
-          : this.#parseUnquotedValue(value);
+          : this.#parseUnquotedValue(value, name, eq.span.end);
     }
 
     return { type: 'attribute', span: span(nameToken.span.start, end), name, value };
@@ -559,18 +589,38 @@ class HtmlParser {
   }
 
   /**
-   * A value with no quotes. Two cases since decision 103.
+   * A value with no quotes. Three cases since decision 105.
    *
    * ONE Razor atom needs no quotes: `.prop=@name`, `@click=@onClick($event)`,
-   * `class:on=@active`. It is an EXCEPTION to decision 8, not its repeal — the lexer
-   * only opens the atom on a significant `@`, and everything else still lands on the
-   * branch below, where `id=foo` is `FUD0056` exactly as before.
+   * `class:on=@active` (decision 103). It is an EXCEPTION to decision 8, not its repeal —
+   * the lexer only opens the atom on a significant `@`.
    *
-   * For the rest the lexer already cut the run at the first whitespace, `>` or `/>`,
-   * which is exactly the recovery §4.6 prescribes.
+   * And ONE scalar literal, in the value of a `.prop` alone: `.id=0`, `.on=true`. The
+   * escape hatch was the only way to pass a number to a `number` prop, and `@(0)` is
+   * ceremony around a thing that has no parts to speak of.
+   *
+   * Everything else still lands on the last branch, where `id=foo` is `FUD0056` exactly
+   * as before — the lexer already cut the run at the first whitespace, `>` or `/>`,
+   * which is the recovery §4.6 prescribes.
    */
-  #parseUnquotedValue(parts: AttributeValuePart[]): number {
+  #parseUnquotedValue(
+    parts: AttributeValuePart[],
+    name: string | RazorExpression,
+    afterEq: number,
+  ): number {
     const token = this.#lexer.peek();
+
+    // ADJACENT to the `=`, and that is decision 101 applied to the value: the unquoted forms
+    // never cross a blank. Without it `.name= @click=@h` read the NEXT attribute as the value
+    // of this one — the author had written `.name=` and stopped, which is the one moment they
+    // are asking what goes there, and the parser answered by swallowing the rest of the tag.
+    // Quotes are the way to write a value away from its `=`, and they are unaffected.
+    if (token.span.start !== afterEq) {
+      const at = emptySpan(afterEq);
+      this.#error('FUD0056', 'attribute value must be quoted', at);
+      return at.end;
+    }
+
     if (token.type === 'at-trigger') {
       const part = this.#attributeAtom();
       parts.push(part);
@@ -585,6 +635,16 @@ class HtmlParser {
     }
     if (token.type === 'text') {
       this.#next();
+      if (isPropertyName(name) && SCALAR_LITERAL.test(this.#slice(token.span))) {
+        parts.push({
+          type: 'razor-expression',
+          kind: 'literal',
+          span: token.span,
+          expr: token.span,
+          regions: [],
+        });
+        return token.span.end;
+      }
       this.#error('FUD0056', 'attribute value must be quoted', token.span);
       this.#checkReferences(token.span);
       parts.push({ type: 'attribute-text', span: token.span, value: this.#slice(token.span) });

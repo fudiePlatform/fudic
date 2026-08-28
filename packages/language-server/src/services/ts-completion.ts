@@ -28,22 +28,28 @@ import type {
   LanguageServicePlugin,
 } from '@volar/language-service';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
-import { regionAt } from '@fudic/compiler';
+import { CLASS_PREFIX, PROPERTY_PREFIX, regionAt } from '@fudic/compiler';
 import { clientFileName, mapToSource, type VirtualFile } from '@fudic/language-core';
 import { URI } from 'vscode-uri';
 import type { CachedDocument } from '../document-cache.js';
 import { CLIENT_CODE_ID, type FudicVirtualCode } from '../virtual-code.js';
 import { isFudSourceUri } from '../uri.js';
 import {
+  attributeGapContextAt,
   bareBindingValueContextAt,
+  brokenValueContextAt,
   directiveContextAt,
+  memberContextAt,
+  eventContextAt,
   expressionValueContextAt,
   handlerContextAt,
   propertyContextAt,
+  slotValueContextAt,
   type PartialName,
 } from './position.js';
+import { styleClassNames } from './classes.js';
 import { scopeAt, snippetsAt } from './snippets.js';
-import { scopeNames, templateScope, type TemplateScope } from './template-scope.js';
+import { interpolates, scopeNames, templateScope, type TemplateScope } from './template-scope.js';
 
 /**
  * The kinds an object-literal member comes back as.
@@ -74,6 +80,22 @@ const CALLABLE_KINDS: ReadonlySet<CompletionItemKind> = new Set([
 
 /** The projection's own namespace, reserved by SDD-24 §4.4 precisely so this is safe. */
 const RESERVED_PREFIX = '$';
+
+/** What opens an expression: the value of a prop and of an event is one (decision 1). */
+const EXPRESSION_PREFIX = '@';
+
+/**
+ * Ask the editor for the list again, right where the accepted item left the caret.
+ *
+ * A prop and an event are only half-written when their name is: what the author is after is
+ * `.tone=@`, and the interesting question comes AFTER the `=@`, which is where the names in
+ * scope live. Inserting the name and stopping leaves them one manual Ctrl+Space away, every
+ * single time; inserting `=@` and asking again chains the two lists into one gesture.
+ *
+ * The command is VS Code's, and a client that does not know it simply ignores the field — the
+ * insertion is complete either way, and no other behaviour depends on it running.
+ */
+const TRIGGER_SUGGEST = { title: 'Suggest', command: 'editor.action.triggerSuggest' };
 
 /**
  * Wrap every TypeScript service so its completions obey the two rules above.
@@ -203,11 +225,42 @@ function allowedItems(
 
   const region = regionAt(source.cached.source, source.cached.html, offset);
 
-  // Nothing has been opened yet, so there is nothing to complete (BUG-23): the value of a
-  // prop or an event is an expression, and an expression starts with `@`. This is what was
-  // offering `role` on `.name=r` and `JSON` on `@click=j`.
-  if (bareBindingValueContextAt(source.cached.source, offset, region) !== undefined) {
-    return { items: [], at: offset };
+  // A member reached with a `.` inside an expression: `@data.|`, `title="@data.|"`.
+  //
+  // TypeScript's list is exactly right here — it is the members of what the author wrote — and
+  // this branch exists to SAY so, before the rule at the bottom that drops raw members inside a
+  // tag. Without it, `title="@data.|"` and `.tone=@data.|` came back empty: both are attribute
+  // values, so both were swept up by a rule written for the keys of `$gap`.
+  if (memberContextAt(source.cached.source, offset, region) !== undefined) {
+    return { items: visible };
+  }
+
+  // A value opened with a `.`: `.name=.|`, `@click=.|`. `FUD0056` — an unquoted value has to be
+  // an expression, and an expression opens with a `@`. FIRST, because every branch below would
+  // otherwise recognise its own shape in it and answer with a list where the compiler is
+  // reporting an error.
+  if (brokenValueContextAt(source.cached.source, offset, region)) return { items: [], at: offset };
+
+  // Right of the `=`, with nothing opened yet: `.name=|`, `@click=|`. The value of a prop or an
+  // event is an expression over what the TEMPLATE can see, so that scope IS the list — offered
+  // WITH the `@` in front, because the author has not typed one and `.name=data` would be a
+  // literal rather than the read they meant.
+  //
+  // This used to answer nothing at all, on the rule that until the `@` is there the author has
+  // said nothing to complete. The rule was right about the grammar and wrong about the editor:
+  // typing the `@` for them is the whole job. What the silence did fix stays fixed, because the
+  // list is this scope and nothing else — never HTML's `role`, never TypeScript's `JSON`.
+  //
+  // TypeScript's own items are dropped whatever they were, exactly as before: at `.name=` the
+  // projection has a hole whose contextual type is the prop's, and at `@click=` one inside
+  // `$on`, and in neither is the answer «every name in the program».
+  const bare = bareBindingValueContextAt(source.cached.source, offset, region);
+  if (bare !== undefined) {
+    const scope = templateScope(source.cached);
+    return {
+      items: openingItems(scope, bare.event, plainAnchor(document, position, bare)),
+      at: offset,
+    };
   }
 
   // After a `.` on a tag only a prop of that component can go there, so the members ARE the
@@ -219,10 +272,117 @@ function allowedItems(
   // AUTO-IMPORT of `viteConfig`, offered as a member. A prop is a key of a type that is already
   // in scope; it is never something the editor has to import a module to write. So an item that
   // carries a module to import from is not a prop, whatever kind TypeScript gave it.
-  if (propertyContextAt(source.cached.source, offset, region) !== undefined) {
+  const property = propertyContextAt(source.cached.source, offset, region);
+  if (property !== undefined) {
+    const range = plainAnchor(document, position, property);
     return {
-      items: visible.filter(
-        (item) => item.kind !== undefined && MEMBER_KINDS.has(item.kind) && !isAutoImport(item),
+      items: visible
+        .filter(
+          (item) => item.kind !== undefined && MEMBER_KINDS.has(item.kind) && !isAutoImport(item),
+        )
+        // `name=@` and ask again, the same as a prop accepted at a gap, an event and a
+        // `class:`. The three of those were doing it and this one was not, so the very same
+        // prop behaved differently depending on whether the developer had reached it with
+        // Ctrl+Space or by typing the dot — which is the kind of difference nobody can learn.
+        // The `.` is already in the source here, so only the name is written.
+        .map((item) => {
+          const name = memberName(item.label);
+          return {
+            label: name,
+            kind: CompletionItemKind.Property,
+            filterText: name,
+            sortText: item.sortText ?? name,
+            detail: 'prop',
+            textEdit: { range, newText: `${name}=${EXPRESSION_PREFIX}` },
+            command: TRIGGER_SUGGEST,
+          };
+        }),
+      at: offset,
+    };
+  }
+
+  // A slot name being typed: `<div slot="PE|">`. The names are TypeScript's — the union the
+  // parent declares — and the RANGE is not, because the projection carries the quotes and the
+  // source does not, so every offset TypeScript reports inside that stretch is two characters
+  // adrift. Stamped from the source, where the name is a plain word, `PEPITO` replaces the `p`
+  // instead of landing beside it.
+  const slotValue = slotValueContextAt(source.cached.source, offset, region);
+  if (slotValue !== undefined) {
+    const range = plainAnchor(document, position, slotValue);
+    return {
+      items: visible.map((item) => ({
+        label: item.label,
+        kind: CompletionItemKind.EnumMember,
+        filterText: item.label,
+        sortText: item.sortText ?? item.label,
+        detail: 'slot of the parent',
+        // `data` dropped for the reason it is dropped at a gap: resolving rebuilds the edit from
+        // TypeScript's own coordinates, which are the ones that were adrift to begin with.
+        textEdit: { range, newText: item.label },
+      })),
+      at: offset,
+    };
+  }
+
+  // After the `@` of an event: `<app-badge @cli|>`. The list is `keyof HTMLElementEventMap`,
+  // computed by TypeScript over the string literal `$on` takes, and it arrives here correct —
+  // what it does not carry is fudic's half of the answer. An event is written `@click=@handler`,
+  // so accepting the NAME writes the `=@` behind it and asks again, exactly as a prop does at a
+  // gap. The two halves of one binding, one gesture.
+  const event = eventContextAt(source.cached.source, offset, region);
+  if (event !== undefined) {
+    // Not in a LAYOUT. `keyof HTMLElementEventMap` is as true there as anywhere, and it is
+    // still the wrong answer: an event is written `@click=@handler`, a layout has no `@code`
+    // (`FUD0437`) and therefore no handler to name, so every one of those 107 names leads to a
+    // binding that cannot be completed. Empty, and the position stays closed — see
+    // `ownedByProjection` — so nothing else fills the silence either.
+    if (!interpolates(source.cached)) return { items: [], at: offset };
+
+    const range = plainAnchor(document, position, event);
+    return {
+      items: visible.map((item) => ({
+        label: item.label,
+        kind: item.kind ?? CompletionItemKind.Event,
+        filterText: item.label,
+        sortText: item.sortText ?? item.label,
+        detail: 'event',
+        // `data` dropped for the reason `gapItem` drops it: resolving rebuilds the edit from
+        // TypeScript's own idea of the name and overwrites the `=@` on the way to the document.
+        textEdit: { range, newText: `${item.label}=${EXPRESSION_PREFIX}` },
+        command: TRIGGER_SUGGEST,
+      })),
+      at: offset,
+    };
+  }
+
+  // An EMPTY position inside a start tag — `<app-badge |>` — and the one place where the three
+  // vocabularies of an attribute meet. AFTER the branch above, and the order is the rule: a
+  // caret one character past a dot is a prop being reached, never a gap, and answering it from
+  // here would insert `.tone` over the dot already written.
+  //
+  // The props arrive from `$gap` with their dot inside a QUOTED key, because `.tone` is not an
+  // identifier and TypeScript quotes what it cannot write bare. That accident is the whole
+  // discriminator: quoted means the component's contract, bare means HTML's vocabulary, and no
+  // list of attribute names is kept anywhere to tell them apart.
+  //
+  // The classes ride along rather than coming from the root service, and it is the constraint
+  // of `createFudicTagService` all over again: an additional plugin runs on the FIRST mapping
+  // alone, the embedded codes are walked before the root, and a gap maps into the projection.
+  // Whatever is to appear beside TypeScript's answer has to travel inside TypeScript's answer.
+  const gap = attributeGapContextAt(source.cached.source, offset, region);
+  if (gap !== undefined) {
+    const range = plainAnchor(document, position, gap);
+    const members = visible.filter(
+      (item) => item.kind !== undefined && MEMBER_KINDS.has(item.kind) && !isAutoImport(item),
+    );
+    return {
+      items: anchored(
+        [
+          ...members.map((item) => gapItem(item, range)),
+          ...classItems(source.cached),
+          SLOT_ITEM,
+        ],
+        range,
       ),
       at: offset,
     };
@@ -257,7 +417,10 @@ function allowedItems(
     );
     const range = anchor(document, position, value);
     return {
-      items: anchored([...kept, ...missingNames(scope, callableOnly, kept), escapeHatch()], range),
+      items: anchored(
+        [...reading([...kept, ...missingNames(scope, callableOnly, kept)]), escapeHatch()],
+        range,
+      ),
       at: offset,
     };
   }
@@ -272,25 +435,90 @@ function allowedItems(
   // `@client`, not an interpolation, and there the whole TypeScript scope is the right answer
   // rather than the template's slice of it.
   const directive = directiveContextAt(source.cached.source, offset, region);
-  if (directive !== undefined && scopeAt(source.cached, directive.span.start) === 'markup') {
+  const directiveScope =
+    directive === undefined ? undefined : scopeAt(source.cached, directive.span.start);
+
+  // A `@` inside `@code` opens a REGION — `@server`, `@client` — and nothing else. The offset is
+  // TypeScript's, so TypeScript answers it with the whole program: a thousand names, of which
+  // exactly zero can follow a `@`. Empty here, and the two snippets arrive from the root, which
+  // is the only voice left at a position no other service claims.
+  if (directive !== undefined && directiveScope === 'code-block') {
+    return { items: [], at: offset };
+  }
+
+  if (directive !== undefined && directiveScope === 'markup') {
     const scope = templateScope(source.cached);
     const kept = visible.filter((item) => scope.has(item.label) && !isAutoImport(item));
     const range = anchor(document, position, directive);
+    // A LAYOUT keeps only the snippets, and there they are the three `@Render*`: it has no
+    // `@code` and no `data`, so an expression cannot read anything — `@()` included. See
+    // `interpolates`.
+    const open = interpolates(source.cached);
     return {
       items: anchored([
-      ...kept,
-      ...missingNames(scope, false, kept),
+      ...(open ? reading([...kept, ...missingNames(scope, false, kept)]) : []),
       // `@()` belongs here too, and its absence was the one defect this position had that the
       // suite did catch: a `@` in text may open any expression at all, exactly as a `=@` may,
       // and the way out has to be offered in both or in neither.
-      escapeHatch(),
+      ...(open ? [escapeHatch()] : []),
       ...directiveSnippets(source.cached, document, position, directive),
       ], range),
       at: offset,
     };
   }
 
+  // Inside a start tag, a raw MEMBER is never an answer.
+  //
+  // Every object literal the projection puts there is ours — `$props`, `$attrs`, `$gap` — so
+  // every member TypeScript can enumerate at such an offset is a key WE invented, in the shape
+  // the projection needed and not in the shape the author types: `".tone"?`, `accesskey?`.
+  // Where a branch above recognises the position it rewrites them into `.tone=@` and
+  // `class:red=@`; where none does, the caret is somewhere the mapping cannot place exactly —
+  // a gap anchor spells three characters and stands for however many the author left blank, so
+  // an offset mapped back out of it lands NEAR the caret rather than on it.
+  //
+  // That is how `.tone=.|` came to answer with a hundred and fifty keys: a position the
+  // compiler is reporting `FUD0056` on, answered with the raw insides of the projection.
+  // Dropping them is safe precisely because they are ours — a member the USER can complete
+  // lives inside `@code`, where the region is `ts` and this rule does not reach.
+  if (region.kind === 'tag') {
+    return {
+      items: visible.filter((item) => item.kind === undefined || !MEMBER_KINDS.has(item.kind)),
+      at: offset,
+    };
+  }
+
+  // Inside the value of a PLAIN attribute, TypeScript has nothing to say at all.
+  //
+  // `class`, `slot`, `role`, `href` are HTML's, and the projection puts only literals there —
+  // so whatever TypeScript can enumerate is the inside of a literal WE wrote, in coordinates
+  // that are ours and not the author's. `slot=".` proved it: with the dot making the name
+  // broken, the server's own branch stood aside and TypeScript's `'PEPITO'` came through with
+  // the projection's range, which inserts beside the dot instead of over it.
+  //
+  // Empty rather than filtered, and it is what lets HTML answer: Volar only hands the position
+  // to the next document when a list comes back with nothing in it. That is how `role=""` on a
+  // component came to offer the ARIA roles, exactly as it does on a `<div>`.
+  //
+  // A `.prop`, a `@event` and anything with a `:` are NOT plain — their values are expressions
+  // and TypeScript owns them, narrowed by the branches above.
+  if (region.kind === 'attr-value' && isPlainAttribute(region.attribute?.name)) {
+    return { items: [], at: offset };
+  }
   return { items: visible };
+}
+
+/**
+ * An attribute HTML owns — `class`, `slot`, `role`, `data-x` — and nothing fudic added to it.
+ *
+ * Said as what a plain name IS rather than as the three prefixes it is not: a letter and then
+ * letters, digits, hyphens and underscores. That admits every attribute of the specification,
+ * `data-*` and `aria-*` included, and it excludes `.tone`, `@click`, `class:red` and `bus:cart`
+ * by the characters they are spelled with — as well as an attribute NAMED with an expression,
+ * which is not a string at all.
+ */
+function isPlainAttribute(name: string | { readonly type: string } | undefined): boolean {
+  return typeof name === 'string' && /^[A-Za-z][-\w]*$/u.test(name);
 }
 
 /**
@@ -339,6 +567,195 @@ function directiveSnippets(
 }
 
 /**
+ * The NAME inside the label TypeScript hands back for a member of an object literal.
+ *
+ * Two marks it adds and neither belongs to any name: a trailing `?` on every optional member,
+ * and quotes around every key that is not a bare identifier. Both families of a gap are quoted,
+ * for opposite reasons — a prop because `$gap` writes the dot into the key, `.tone`, and an
+ * ARIA attribute because it carries a hyphen, `"aria-checked"` — so stripping is the rule and
+ * not the exception.
+ *
+ * Two marks, TWO steps, and one pattern for both is what got it wrong twice. The first attempt
+ * matched the quotes and forgot the `?`, so `".id"?` was taken for an HTML attribute and written
+ * into the source with its quotes. The second matched both at once — `/^"?([^"]+)"?\??$/` — and
+ * the greedy class ate the `?` of every UNQUOTED label: `aria-sort` came out clean because the
+ * quote stopped it, `role?` and `accesskey?` kept their mark. A name has no quotes and no
+ * question mark; peeling one and then the other cannot half-succeed.
+ */
+function memberName(label: string): string {
+  const optional = label.endsWith('?') ? label.slice(0, -1) : label;
+  return optional.length > 1 && optional.startsWith('"') && optional.endsWith('"')
+    ? optional.slice(1, -1)
+    : optional;
+}
+
+/**
+ * One item of a gap: its family, its place in the order, its icon and what it writes.
+ *
+ * Two groups come through here — the props and HTML's vocabulary — and the dot tells them
+ * apart, because `$gap` put it in the key. The classes are added separately, between the two.
+ * TypeScript hands every one of them back with the same `sortText`, measured `12` for all, so
+ * the grouping is entirely ours to state.
+ *
+ * The item is rebuilt rather than spread over, and `data` is deliberately DROPPED. That field
+ * is what `completionItem/resolve` reads, and resolving one of these rebuilds the edit from
+ * `originalItem.name` — which is `"\"aria-sort\""`, the key as an object literal spells it. The
+ * reply carried the right edit all along and the resolve step overwrote it on the way to the
+ * document, which is how `<app-circle "aria-sort">` ended up in the file. No `data`, no
+ * resolve, no overwrite. The cost is the documentation pane, and predictable insertion is worth
+ * more than a tooltip.
+ *
+ * The kind is stated for the same reason the text is: an HTML attribute must look and behave in
+ * a `.fud` exactly as it does in a `.html`, so it gets `Value` — the kind the HTML service uses,
+ * the icon of the second screenshot — and it writes `aria-sort="$1"`, name, equals, quotes and
+ * the caret between them. A prop is fudic's own and says so with a different icon, and it
+ * writes the bare `.tone`: what follows a prop is `="@(…)"`, and guessing which of the two the
+ * author wants is not this function's business.
+ */
+function gapItem(item: CompletionItem, range: ReturnType<typeof anchor>): CompletionItem {
+  const name = memberName(item.label);
+  const prop = name.startsWith(PROPERTY_PREFIX);
+
+  return {
+    label: name,
+    kind: prop ? CompletionItemKind.Property : CompletionItemKind.Value,
+    filterText: name,
+    sortText: `${prop ? '0' : '2'}_${name}`,
+    detail: prop ? 'prop' : 'attribute of any element',
+    insertTextFormat: prop ? InsertTextFormat.PlainText : InsertTextFormat.Snippet,
+    // A prop is written `.tone=@expr`, so accepting one writes the `=@` too and asks again. An
+    // HTML attribute takes a literal, so it gets the quotes and the caret between them, which is
+    // what a `.html` does.
+    textEdit: { range, newText: prop ? `${name}=${EXPRESSION_PREFIX}` : `${name}="$1"` },
+    // BOTH families ask again, and that is the whole of «a native attribute behaves the same on
+    // a custom element». In a `<div>` the HTML service writes `role="…"` and reopens the list,
+    // so the values arrive without touching the keyboard; on a component the very same
+    // attribute came from here and stopped at the quotes, so the author had to know to press
+    // Ctrl+Space. Two behaviours for one attribute is the kind of difference nobody can learn.
+    //
+    // It is what makes `class=` and `slot=` work too: the list behind those quotes is this
+    // server's — the classes of the file's `<style>`, the slots the parent declares — and a
+    // list nobody opens is a list nobody has.
+    command: TRIGGER_SUGGEST,
+  };
+}
+
+/**
+ * `slot` at a gap, which no other voice offers on a COMPONENT.
+ *
+ * It is HTML's attribute and it is deliberately absent from `$GlobalAttrs` — its value is
+ * checked against the parent's `$Slots` rather than as a scalar, and declaring it there would
+ * give that up. The consequence nobody had noticed is that it then appears in no list at all
+ * on a custom element, while a `<div>` gets it from the HTML service: the one attribute whose
+ * values this server can name was the one the author had to know about in advance.
+ *
+ * Written like any other native attribute — `slot="…"`, quotes and a caret between them — and
+ * asking again, which is what puts the parent's slot names on screen without a keystroke.
+ */
+const SLOT_ITEM: CompletionItem = {
+  label: 'slot',
+  kind: CompletionItemKind.Value,
+  filterText: 'slot',
+  sortText: '2_slot',
+  detail: 'attribute of any element',
+  insertTextFormat: InsertTextFormat.Snippet,
+  insertText: 'slot="$1"',
+  command: TRIGGER_SUGGEST,
+};
+
+/**
+ * `class:red`, `class:yellow` — the conditional classes this file's `<style>` declares.
+ *
+ * The same list `classContextAt` already answers with once the colon is typed, offered one step
+ * earlier: at a gap the developer has not written `class:` yet, and a name they have to know in
+ * advance to ask for is a name the editor is not helping with. `styleClassNames` is the one
+ * definition, so the two positions can never disagree.
+ *
+ * Written whole, prefix included, because that is what goes in the source — the gap is empty,
+ * so there is no `class:` there to complete after.
+ *
+ * `EnumMember` and not `Value`, and the icon is the reason: `Value` is what the HTML service
+ * marks an attribute with, so wearing it here would make fudic's own binding indistinguishable
+ * from HTML's vocabulary in the very list where the two sit side by side. The same kind the
+ * sections of a layout already use — a name out of a closed set this file knows.
+ */
+function classItems(cached: CachedDocument): CompletionItem[] {
+  return styleClassNames(cached).map((name) => ({
+    label: `${CLASS_PREFIX}${name}`,
+    kind: CompletionItemKind.EnumMember,
+    detail: 'class of this file',
+    sortText: `1_${name}`,
+    // `class:red=@` and ask again, exactly as a prop and an event do: a conditional class is a
+    // BINDING, and a binding with no expression is half of one — what decides whether the class
+    // is on is the value, and that is the list the author is really after.
+    insertText: `${CLASS_PREFIX}${name}=${EXPRESSION_PREFIX}`,
+    command: TRIGGER_SUGGEST,
+  }));
+}
+
+/**
+ * The list for a value the author has committed to and not opened: every name the template can
+ * see, each one writing the `@` the author has yet to type, and the way out to any expression.
+ *
+ * The `@` in the `newText` and not in the label, and both halves are deliberate. In the label it
+ * would be noise the developer has to read past on every item; in the text it is the difference
+ * between `.name=@data`, the read they meant, and `.name=data`, a literal string that happens to
+ * spell a variable's name.
+ *
+ * `callableOnly` for an event, because what goes after `@click=` has to be a listener — the same
+ * narrowing `expressionValueContextAt` applies once the `@` is there, so the list does not change
+ * shape under the keystroke that opens it.
+ */
+function openingItems(
+  scope: TemplateScope,
+  event: boolean,
+  range: ReturnType<typeof anchor>,
+): CompletionItem[] {
+  const names = scopeNames(scope, event).map(
+    (name): CompletionItem => ({
+      label: `${EXPRESSION_PREFIX}${name}`,
+      filterText: name,
+      kind:
+        scope.get(name) === 'function' ? CompletionItemKind.Function : CompletionItemKind.Variable,
+      detail: 'in scope',
+      sortText: `1_${name}`,
+      textEdit: { range, newText: `@${name}` },
+    }),
+  );
+
+  return [
+    ...names,
+    {
+      label: '@()',
+      kind: CompletionItemKind.Snippet,
+      detail: 'expression',
+      sortText: 'zz_@(',
+      labelDetails: { description: 'fudic' },
+      insertTextFormat: InsertTextFormat.Snippet,
+      textEdit: { range, newText: '@($0)' },
+    },
+  ];
+}
+
+/**
+ * The stretch an accepted item replaces at a position with NO prefix.
+ *
+ * `anchor` subtracts one for the `@` that opened its contexts; a gap has nothing of the sort,
+ * so what is replaced is exactly the word typed so far — empty at `<app-badge |>`, `na` at
+ * `<app-badge na|>`.
+ */
+function plainAnchor(
+  document: TextDocument,
+  position: { line: number; character: number },
+  context: PartialName,
+): ReturnType<typeof anchor> {
+  return {
+    start: document.positionAt(document.offsetAt(position) - context.text.length),
+    end: position,
+  };
+}
+
+/**
  * The names in scope that TypeScript did NOT offer, as items of our own.
  *
  * The correction of BUG-23: this set was only ever a filter, so whatever TypeScript failed to
@@ -357,6 +774,37 @@ function directiveSnippets(
  * source the projection never copied, so the only thing there is to point at is the partial
  * name after it.
  */
+/**
+ * The names of the template, LABELLED with the `@` that reaches them.
+ *
+ * In fudic a name is read with a `@` — `@data.title`, `@click=@fn` — and a list that spells
+ * them bare beside `@if` and `@()` teaches that `data` is something you write as `data`. It is
+ * not: without the `@` it is a literal, or an unknown identifier, depending on where it lands.
+ * The label is the only part of an item the developer reads, so it is the part that has to be
+ * true.
+ *
+ * `filterText` keeps the bare name, and that is not a detail: VS Code matches an item against
+ * the text between the start of its replacement range and the caret, and that range begins
+ * AFTER the `@` — the one the author already typed is not replaced. With the `@` in the
+ * matched text every one of these items would be dropped by the editor before reaching the
+ * list, which is the trap `scopeItems` documents and the reason the labels were bare to begin
+ * with.
+ */
+function reading(items: readonly CompletionItem[]): CompletionItem[] {
+  return items.map((item) => ({
+    ...item,
+    label: `${EXPRESSION_PREFIX}${item.label}`,
+    filterText: item.filterText ?? item.label,
+    // And what is WRITTEN is the bare name, always. `anchored` falls back to the label for an
+    // item that carries no edit of its own, and the label now starts with the `@` the author
+    // has already typed: accepting `@fn` after `@click=@` wrote `@@fn`, which is the escape of
+    // decision 1 and a `FUD0056` on the value. The label is for reading; this is for writing.
+    ...(item.textEdit === undefined && item.insertText === undefined
+      ? { insertText: item.label }
+      : {}),
+  }));
+}
+
 function missingNames(
   scope: TemplateScope,
   callableOnly: boolean,
@@ -400,16 +848,26 @@ function anchor(
   return { start: document.positionAt(document.offsetAt(position) - typed), end: position };
 }
 
-/** Every item given the same replacement range, unless it already brought a usable one. */
+/**
+ * Every item given the same replacement range, unless it already brought a usable one.
+ *
+ * What is WRITTEN is the insert text, never the label. Every item that arrives here without an
+ * edit carries one — `escapeHatch`, `classItems`, `SLOT_ITEM`, and everything `reading` has
+ * been through — and the reason is the labels: they open with the `@` that reaches a name, and
+ * that `@` is already in the source. Writing the label after one wrote `@@fn`, which is the
+ * escape of decision 1 and a `FUD0056` on the value.
+ */
 function anchored(
   items: readonly CompletionItem[],
   range: ReturnType<typeof anchor>,
 ): CompletionItem[] {
-  return items.map((item) =>
-    item.textEdit === undefined
-      ? { ...item, textEdit: { range, newText: item.insertText ?? item.label } }
-      : item,
-  );
+  return items.map((item) => {
+    if (item.textEdit !== undefined) return item;
+
+    /* v8 ignore next -- every unanchored item carries one; the `??` is for the LSP type alone. */
+    const newText = item.insertText ?? item.label;
+    return { ...item, textEdit: { range, newText } };
+  });
 }
 
 function escapeHatch(): CompletionItem {

@@ -249,7 +249,12 @@ sustituye.
 no cuesta nada al que la escribe: es el caso «no necesito datos del punto de uso». Con paréntesis
 (`@toggle()`) es una invocación y entra en la 96, que es lo mismo que hace Angular.
 
-**99.** **La expresión implícita admite una llamada, y solo en el valor de un `@evento` o de
+**99.** ~~**La expresión implícita admite una llamada, y solo en el valor de un `@evento` o de
+un `bus:`.**~~ — **derogada por la 100**, que la absorbe: la cadena admite la llamada en
+cualquier posición, así que el caso especial del valor de un evento deja de existir. Se
+conserva el texto porque explica por qué la 100 existe.
+
+**99 (texto original).** **La expresión implícita admite una llamada, y solo en el valor de un `@evento` o de
 un `bus:`.** La 96 se escribe `@click="@del($event, item.id)"`, y una expresión implícita es
 —decisiones 2, 4 y 5— *solo* un camino de propiedades: se corta en el `(`. Sin esta decisión
 la 96 no se puede escribir, y la única forma que parseaba era `@click="@(del($event, item.id))"`,
@@ -265,6 +270,59 @@ cadena no cierra: el boundary lo pone el balanceador, no un `indexOf`.
 interpolación `total` seguida del texto literal `(x)`, que es lo que hoy significa y lo que la
 gente escribe en prosa. En valor de un binding de handler no hay ambigüedad posible: ahí una
 llamada es siempre una llamada.
+
+**100.** **La expresión implícita es una cadena, no un camino.** Detrás del identificador
+inicial se admiten, repetidos y en cualquier orden: `.nombre`, `?.nombre`, `( … )` balanceado y
+`[ … ]` balanceado. Se corta —en silencio, como siempre— ante cualquier otra cosa. Retira la
+decisión 99 (el sufijo único al final de un evento) y precisa la 29.
+
+```
+@post.author.name        @items[0].title        @del($event, item.id)        @a?.b?.()
+```
+
+**101.** **La adyacencia manda.** La cadena nunca cruza un blanco: `@del (x)` es el camino `del`
+seguido del texto ` (x)`. Es la regla que `@raw(` ya seguía, y es lo que mantiene viva la prosa:
+en contenido, `@total (x)` sigue leyéndose como uno escribe.
+
+**102.** **El `.` colgante se anota, no se consume.** `@data.` sigue siendo la expresión `data`
+más un punto literal en la salida (decisión 2 intacta), pero el nodo recuerda dónde estaba ese
+punto para que el editor pueda ofrecer los miembros. Un `?.` colgante, igual. Es la única
+decisión de esta tanda que existe **solo** para el editor: el instante en que se pide el
+completado es exactamente aquel en que el punto está escrito y el nombre no.
+
+**103.** **Un valor de atributo puede ir sin comillas si es una sola expresión `@`.**
+`.prop=@name`, `@click=@onClick($event)`, `class:on=@active`. Termina donde termina la cadena
+—el `>` cierra el tag donde debe—, y `FUD0056` sigue vivo para todo lo demás: `id=foo` sigue
+siendo un error. Es una excepción **a la decisión 8**, no su derogación.
+
+**104.** **`@( … )` es para expresiones que no son cadenas, y para nada más.** Operadores,
+`new`, ternarios, `await`, plantillas: `@(1 + 1)`, `@(new Date().toISOString())`,
+`@(a ? b : c)`, ``@(`Hola ${data.nombre}`)``. Todo lo que sea **acceder a algo que el fichero
+declara** —una señal, una prop, una función, un `data`, con sus puntos, sus llamadas y sus
+índices— se escribe con el `@` desnudo. Los paréntesis no son una alternativa estilística de la
+cadena: son otra cosa.
+
+**105.** **El valor de una `.prop` admite un literal escalar desnudo.** Tras el `=` de una
+`.prop`, sin comillas, valen un `@` (decisión 103) **o** un literal escalar: número —con signo,
+decimales y exponente—, `true`, `false`, `null` y `undefined`.
+
+```
+<app-input .id=0 .ratio=-1.5 .visible=true .nota=null>
+```
+
+Tres fronteras, y las tres importan:
+
+- **Un identificador no es un literal.** `.name=Hello` sigue siendo `FUD0056`. Un nombre desnudo
+  es como se leería una variable, y en fudic una variable se lee con `@`; admitirlo aquí haría
+  que los mismos caracteres fueran una cadena en un sitio y una lectura en otro.
+- **Una expresión tampoco.** `.id=1+1` sigue siendo `FUD0056`: una expresión desnuda terminaría
+  en el primer espacio, y para eso está la 104.
+- **Solo la `.prop`.** `id=0` sin punto es HTML, donde todo valor es una cadena y las comillas
+  son la regla; y `@click=0` tampoco, porque a la derecha de un evento va un listener.
+
+Las comillas no cambian de significado: `.name="Hello"` es la cadena `"Hello"`, como siempre —y
+por tanto `.id="0"` es la cadena `"0"`, que en una prop `number` es un error de tipo, no un
+número escrito de otra forma.
 
 **27.** Sin modificadores de evento. El handler es función JS normal; `preventDefault`/`stopPropagation` se llaman en código.
 
@@ -1084,4 +1142,10 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 96 | Interpolación | Un event binding es una **invocación**: `$event` + datos, handler plano (revisa la 26; retira la forma curried) |
 | 97 | Interpolación | `$event` lo inyecta el compilador y vive en la reserva `$`; solo en la lista de argumentos de un event binding |
 | 98 | Interpolación | La referencia desnuda (`@click="@toggle"`) sigue valiendo: el DOM la invoca con el evento |
-| 99 | Interpolación | La expresión implícita admite un sufijo de llamada balanceado, solo en valor de `@evento` / `bus:` |
+| 99 | Interpolación | ~~La expresión implícita admite un sufijo de llamada balanceado, solo en valor de `@evento` / `bus:`~~ — **derogada por la 100**, que la absorbe |
+| 100 | Interpolación | La expresión implícita es una **cadena**: `.n`, `?.n`, `( … )` y `[ … ]` repetidos y en cualquier orden |
+| 101 | Interpolación | La adyacencia manda: la cadena nunca cruza un blanco (`@del (x)` es el camino `del` más texto) |
+| 102 | Interpolación | El `.` colgante se anota y no se consume: la salida no cambia, el editor puede ofrecer los miembros |
+| 103 | Interpolación | Valor de atributo sin comillas si es **una sola** expresión `@` (excepción a la 8, no su derogación) |
+| 104 | Interpolación | `@( … )` es para lo que no es una cadena: operadores, `new`, ternarios, `await`, plantillas |
+| 105 | Interpolación | El valor de una `.prop` admite un **literal escalar** desnudo: número, `true`, `false`, `null`, `undefined` |

@@ -270,6 +270,19 @@ describe('a `@` that opens nothing yet still gets a hole (tasks 2, 3, 5)', () =>
     expect(text).not.toContain('name: "@"');
   });
 
+  it('and the same one written with quotes, which is the same commitment', () => {
+    // The two spellings are one grammar (decision 103), so they cannot project differently:
+    // `.name="@"` reaches a different branch and has to arrive at the same hole.
+    const text = project(component('<app-badge .name="@"></app-badge>'));
+
+    expect(text).toContain('name: ( ),');
+    expect(text).not.toContain('name: "@"');
+  });
+
+  it('and on a PLAIN attribute of a component, where the value is HTML’s', () => {
+    expect(project(component('<app-badge id="@"></app-badge>'))).toContain('id: ( ),');
+  });
+
   it('keeps projecting a real literal as a literal', () => {
     expect(project(component('<app-badge .name="x"></app-badge>'))).toContain('name: "x",');
   });
@@ -309,5 +322,128 @@ describe('a `@` that opens nothing yet still gets a hole (tasks 2, 3, 5)', () =>
     expect(holeAt(handler, handler.indexOf('@click=@') + '@click=@'.length)).toEqual(hole);
     expect(holeAt(value, value.indexOf('.name=@') + '.name=@'.length)).toEqual(hole);
     expect(holeAt(text, text.indexOf('hola @') + 'hola @'.length)).toEqual(hole);
+  });
+});
+
+/**
+ * The four shapes a value can take that are not a program, and the one that is a mistake.
+ *
+ * A value the author has committed to and not written, one they opened with a `@` inside a
+ * longer literal, one the parser already rejected, and one that is a finished literal where a
+ * listener goes. None of the first three may be CHECKED against anything — there is nothing
+ * there to check — and all three have to be a place the editor can ask from.
+ */
+describe('a value that is not there yet, and the one that is wrong', () => {
+  it('gives `.name=` a hole, because the `=` is the author asking what goes right of it', () => {
+    // A bare attribute is `true` (decision 44). `.name=` is not bare: the equals sign was
+    // written and nothing followed it, which is the one moment the question is being asked.
+    const text = project(component('<app-badge .name=></app-badge>'));
+
+    expect(text).toContain('name: ( ),');
+    expect(text).not.toContain('name: true');
+  });
+
+  it('and gives it to `.name=""`, which is the same commitment written with quotes', () => {
+    expect(project(component('<app-badge .name=""></app-badge>'))).toContain('name: ( ),');
+  });
+
+  it('but leaves a bare `.name` as `true`, which is what it means', () => {
+    expect(project(component('<app-badge .name></app-badge>'))).toContain('name: true');
+  });
+
+  it('checks nothing on a value the parser already rejected (FUD0056)', () => {
+    // `.name=.` is `FUD0056` and the compiler says so. Projecting `name: "."` added «string is
+    // not assignable» underneath it: two errors for one mistake, and the type one pointing at
+    // a contract the author had written correctly.
+    const text = project(component('<app-badge .name=.></app-badge>'));
+
+    expect(text).toContain('name: ( ),');
+    expect(text).not.toContain('name: "."');
+  });
+
+  it('puts the hole INSIDE the literal when the `@` opens one further in', () => {
+    // `.name="/a/@|"` is a URL with a slug in it: the value still has to typecheck as a
+    // string, so the question gets somewhere to ask from without the literal losing its type.
+    // Two parts — the run and the at-sign — so it is the concatenation path that has to know.
+    expect(project(component('<app-badge .name="/a/@"></app-badge>'))).toContain(
+      'name: `/a/${ }`,',
+    );
+    // And one part, when the `@` is glued to a word and the tokenizer never splits it.
+    expect(project(component('<app-badge .name="hola@"></app-badge>'))).toContain(
+      'name: `hola${ }`,',
+    );
+  });
+
+  it('and keeps the hole after a real interpolation, which is the same value going on', () => {
+    expect(project(component('<app-badge .name="@data.title/@"></app-badge>'))).toContain(
+      '${ }`,',
+    );
+  });
+
+  it('and does the same in a NATIVE tag, where nothing else was projecting it', () => {
+    // The loop over a native tag only writes an `$attr` per interpolation, and a `@` with
+    // nothing behind it is not one — so this position had nowhere to ask from at all.
+    expect(project(component('<div role="@"></div>'))).toContain('$attr( );');
+    expect(project(component('<div title="/a/@"></div>'))).toContain('$attr( );');
+  });
+
+  it('leaves a finished literal alone, and an ESCAPED at-sign is finished', () => {
+    // `@@` is the literal at-sign of decision 1. The parser resolves it to the one character
+    // it denotes, so by its text it is indistinguishable from an open `@` — and reading the
+    // text alone put a completion hole inside a value where nothing had been asked.
+    expect(project(component('<div role="hola"></div>'))).not.toContain('$attr( );');
+    expect(project(component('<div role="hola@@"></div>'))).not.toContain('$attr( );');
+    expect(project(component('<app-badge .name="@@"></app-badge>'))).toContain('name: "@",');
+    expect(project(component('<app-badge .name="hola@@"></app-badge>'))).not.toContain('${ }');
+  });
+
+  it('reports a finished literal where a listener goes, over the author’s own characters', () => {
+    // `@click="Hello"` is not a handler being written, it is a handler that is wrong — and
+    // until now the projection dropped it for the anchor, so nothing complained anywhere.
+    const text = project(component('<div @click="Hello"></div>'));
+
+    expect(text).toContain('$on(\'click\', "Hello");');
+  });
+
+  it('and keeps the quotes out of it when the author wrote none', () => {
+    // Unquoted is `FUD0056` already, and a type error underneath the compiler's own message is
+    // the same mistake reported twice.
+    expect(project(component('<div @click=Hello></div>'))).toMatch(/\$on\('click', {2}\);/u);
+  });
+});
+
+/**
+ * `.name="@data."` — one expression being written, and the parser says so twice.
+ *
+ * The atom carries `dangling` (decision 102) and the same dot arrives again as the literal run
+ * that follows, because for the OUTPUT that dot is text (decision 2). Counting both made the
+ * value a concatenation, projected as a template literal, and there the dangling is nobody's:
+ * the caret after the dot landed on a literal run with no completion.
+ */
+describe('the dangling dot does not make a value a concatenation (task 10)', () => {
+  it('projects the quoted form as the lone expression it is', () => {
+    const text = project(component('<app-badge .name="@data."></app-badge>'));
+
+    expect(text).toContain('name: (data.),');
+    expect(text).not.toContain('`${');
+  });
+
+  it('and the unquoted one identically, which is what makes the two spellings agree', () => {
+    expect(project(component('<app-badge .name=@data.></app-badge>'))).toContain('name: (data.),');
+  });
+
+  it('leaves a real concatenation as one: the trailing text is not the dangling dot', () => {
+    // No dangling at all here — the chain ends on a name — so the run after it is text like
+    // any other and the value is the concatenation it looks like.
+    expect(project(component('<app-badge .name="@data.title x"></app-badge>'))).toContain('${');
+  });
+
+  it('and one where the dot is only the START of the trailing run', () => {
+    // `@data. x` breaks the chain on the dot exactly as `@data.` does, but the run does not
+    // END there: what follows is a sentence, so dropping it would drop the sentence too.
+    const text = project(component('<app-badge .name="@data. x"></app-badge>'));
+
+    expect(text).toContain('${');
+    expect(text).toContain('. x');
   });
 });

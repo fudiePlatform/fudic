@@ -125,12 +125,12 @@ function isComponent(tag: string): boolean {
 }
 
 /**
- * A component tag becomes TWO object literals, and which one a binding lands in is the whole
- * of BUG-16 §4.2 — plus a third call that checks nothing but COMPLETENESS.
+ * A component tag becomes two object literals that CHECK, and two calls that only answer.
  *
  *     <app-badge .tone="@(t)" id="x">
  *       →  $props<$C0>({ tone: (t) });   // the component's contract, the dot completes here
  *          $attrs<{}>({ id: "x" });      // `{} & $GlobalAttrs`: HTML's vocabulary, nothing else
+ *          $gap<$C0>({ ⟨anchors⟩ });     // what may be written at an EMPTY position
  *          $required<$C0, 'tone'>({});   // over the tag NAME: what was not passed
  *
  * In fudic a property is written with a dot, so a plain attribute on a component is not a
@@ -141,10 +141,18 @@ function isComponent(tag: string): boolean {
  *
  * `slot` is in neither: it is checked against the union of the PARENT, from `emitIntoSlot`.
  *
- * The gap anchors moved to the GLOBALS literal, and that is decision (b) of BUG-23 §4.0: a
- * gap is where a new attribute goes, and on a component the only thing that can be written
- * without a dot is HTML's own vocabulary. The props are reached with the `.`, which has an
- * anchor of its own. It changes SDD-24 §6.3, which pinned the opposite.
+ * The gaps have a call of their OWN, and that repeals decision (b) of BUG-23 §4.0. They used
+ * to live in the globals literal, on the argument that a gap is where a new attribute goes and
+ * the only thing writable there without a dot is HTML's vocabulary. True, and beside the
+ * point: `<app-badge |>` is the developer asking what this component takes, and being answered
+ * `id`, `class` and `role` is being answered the half they already knew. `$gap` carries BOTH
+ * families — the props with their dot in the key — so the one reply Volar allows can hold the
+ * whole answer. SDD-24 §6.3 is restored.
+ *
+ * Two calls rather than one because they are two different things: `$attrs` is where a written
+ * attribute is CHECKED, `$gap` is where an empty position ASKS. Merging them would put the
+ * props into the type an `id="x"` is verified against, and `tone="info"` would stop being the
+ * error that BUG-16 §4.2 made it.
  */
 function emitProps(ctx: TemplateContext, el: ElementNode, bindings: readonly Entry[]): void {
   const props: Entry[] = [];
@@ -177,17 +185,43 @@ function emitProps(ctx: TemplateContext, el: ElementNode, bindings: readonly Ent
   emitEntries(ctx, props);
   ctx.w.scaffold(props.length === 0 ? '});\n' : '\n});\n');
 
-  // Always, because this is where the gap anchors live now — `<app-badge |>` must have
-  // somewhere to ask even when the tag carries no plain attribute at all.
+  // Only what was WRITTEN: an empty literal when the tag carries no plain attribute, because
+  // nothing has to be checked then and nothing asks from here any more.
   ctx.w.scaffold('$attrs<{}>({', el.openSpan);
+  emitEntries(ctx, globals);
+  ctx.w.scaffold(globals.length === 0 ? '});\n' : '\n});\n');
+
+  emitGaps(ctx, el, alias);
+  emitRequired(ctx, el, alias, written);
+}
+
+/**
+ * `$gap<$C0>({ ⟨one anchor per empty position of the start tag⟩ });`
+ *
+ * The call that checks nothing. Every key of `$gap`'s parameter is optional, so an empty
+ * argument is always valid, and the stretches inside it carry completion alone — which is what
+ * lets its type be the generous one without a single diagnostic hanging off it.
+ *
+ * Emitted for every component tag, with anchors or without: `<app-badge>` has no gap at all
+ * (`attributeGaps` drops the empty ones), and the call is still written so that the shape of
+ * the projection does not depend on the text.
+ *
+ * An UNREGISTERED tag is typed `{}` rather than named, and it is the same reasoning
+ * `slotsAliasOf` follows (BUG-11 §4.4): the alias is scaffolding here, so writing it would
+ * raise a second `TS2304` in a stretch no capability routes through — an error the editor
+ * drops on the floor and the corpus harness reports as unmapped, which is the invariant «no
+ * mute stretch with a diagnostic» broken for nothing. `{}` also happens to be the truth:
+ * without a `<link>` nothing is known of the tag's contract, so what may go in its gap is
+ * HTML's vocabulary and no prop at all.
+ */
+function emitGaps(ctx: TemplateContext, el: ElementNode, alias: string): void {
+  const known = ctx.aliases.slotsAliasOf(el.name) !== undefined;
+  ctx.w.scaffold(`$gap<${known ? alias : '{}'}>({`, el.openSpan);
   // One anchor per gap of the start tag, all standing for the inside of the object literal:
   // this is what makes completion work at `<app-badge |>`, where there is no text yet to map
   // from and the type that knows the answer lives in the projection.
   for (const gap of attributeGaps(el)) ctx.w.projected('\n  ', gap, COMPLETION_ONLY_CAPS);
-  emitEntries(ctx, globals);
-  ctx.w.scaffold(globals.length === 0 ? '});\n' : '\n});\n');
-
-  emitRequired(ctx, el, alias, written);
+  ctx.w.scaffold('});\n');
 }
 
 /**
@@ -233,7 +267,7 @@ function emitEntries(ctx: TemplateContext, entries: readonly Entry[]): void {
     ctx.w.scaffold('\n  ');
     emitKey(ctx, attr, binding);
     ctx.w.scaffold(': ');
-    emitValue(ctx, binding);
+    emitValue(ctx, attr, binding);
     ctx.w.scaffold(',');
   }
 }
@@ -322,7 +356,35 @@ function emitNativeAttrs(ctx: TemplateContext, bindings: readonly Entry[]): void
       if (read) ctx.w.scaffold('()');
       ctx.w.scaffold(');\n');
     }
+    emitOpenInterpolation(ctx, binding.value);
   }
+}
+
+/**
+ * A `@` the author has just typed inside a native attribute's value: `role="@|"`, `href="/a/@|"`.
+ *
+ * The tokenizer scans a `RazorExpression` only where an identifier begins, so a `@` with nothing
+ * behind it is not one — it stays inside the literal text. On a component that case has been
+ * handled since BUG-23 by `emitTextValue`; on a native tag nothing handled it, so the loop above
+ * found no expression to project and the one position where the names in scope are wanted had
+ * nowhere to ask from. Which is why `<div role="@|">` answered with silence while
+ * `<div role="@ti|">` answered with the whole template scope.
+ *
+ * The value ENDS with the `@`, not equals it, and that is the difference from the component
+ * path: `href="/name/@|"` is the same question asked one literal further in, and a rule that only
+ * knew a lone `@` would leave it out.
+ *
+ * `$attr()` with an empty argument is an arity error on scaffolding no span maps back to, the
+ * same trade `emitOpenHandler` makes: the projection is not a program that has to compile, it is
+ * a place to ask questions from.
+ */
+function emitOpenInterpolation(ctx: TemplateContext, value: readonly AttributeValuePart[]): void {
+  const last = value.at(-1);
+  if (last?.type !== 'attribute-text' || !openInterpolation(last)) return;
+
+  ctx.w.scaffold('$attr(');
+  ctx.w.projected(' ', span(last.span.end, last.span.end), COMPLETION_ONLY_CAPS);
+  ctx.w.scaffold(');\n');
 }
 
 /**
@@ -437,7 +499,41 @@ function emitOpenHandler(ctx: TemplateContext, attr: Attribute): void {
   if (value === undefined) return;
 
   ctx.w.scaffold(', ');
+
+  // A FINISHED literal is not a handler being written, it is a handler that is wrong:
+  // `@click="Hello"` passes a string where a listener goes, and until now the projection
+  // dropped it and wrote the anchor, so nothing complained anywhere. Projected as the string
+  // it is, `$on` rejects it with `TS2345` over the author's own characters — the quotes
+  // included, which is what makes the two ends of the reported range land in one stretch.
+  //
+  // The generated literal is the same length as the source it stands for, so the mapping is
+  // 1:1: `"Hello"` is seven characters either way.
+  const literal = finishedLiteral(ctx, attr, value);
+  if (literal !== undefined) {
+    ctx.w.projected(quote(literal), span(value.start - 1, value.end + 1), DIAGNOSTIC_ONLY_CAPS);
+    return;
+  }
+
   ctx.w.projected(' ', span(value.end, value.end), COMPLETION_ONLY_CAPS);
+}
+
+/**
+ * The value of an event that is one QUOTED literal, and nothing else: `@click="Hello"`.
+ *
+ * Quoted, because an unquoted one is `FUD0056` already and a type error underneath it would be
+ * the same mistake reported twice. Not an open `@`, because that is the author mid-keystroke —
+ * the case this whole function exists for. And a single part, because a concatenation is a
+ * different shape with a different answer.
+ */
+function finishedLiteral(
+  ctx: TemplateContext,
+  attr: Attribute,
+  value: Span,
+): string | undefined {
+  const only = attr.value.length === 1 ? attr.value[0] : undefined;
+  if (only?.type !== 'attribute-text' || only.value === '') return undefined;
+  if (!quoted(ctx, only) || openInterpolation(only)) return undefined;
+  return ctx.source.slice(value.start, value.end);
 }
 
 /**
@@ -526,20 +622,119 @@ function nameSpan(attr: Attribute, binding: Binding, name: string): Span {
   return span(start, start + name.length);
 }
 
-/** The property value: exact type for a lone expression, `string` for a concatenation. */
-function emitValue(ctx: TemplateContext, binding: Binding): void {
+/**
+ * The property value: exact type for a lone expression, `string` for a concatenation.
+ *
+ * And a value that is not there YET, which is the case the `=` decides. A bare attribute is
+ * `true` (decision 44), but `.name=` is not bare — the author wrote the equals sign and stopped,
+ * which is the one moment they are asking what may go on the right of it. `attributeValueSpan`
+ * tells the two apart, exactly as `emitOpenHandler` uses it to tell `@click` from `@click=`, and
+ * the second gets the anchor the first must not have.
+ */
+function emitValue(ctx: TemplateContext, attr: Attribute, binding: Binding): void {
   /* c8 ignore next -- emitProps only ever passes 'attr' and 'property' bindings here. */
   if (binding.type !== 'attr' && binding.type !== 'property') return;
 
-  const parts = binding.value;
+  const parts = withoutDangling(binding.value);
   const only = parts.length === 1 ? parts[0]! : undefined;
 
   // A bare attribute is `true` (decision 44); a lone expression keeps its exact type
   // (decision 24); anything else is a concatenation, checked as a string (decision 20).
-  if (parts.length === 0) ctx.w.scaffold('true', binding.span);
+  if (parts.length === 0) emitEmptyValue(ctx, attr, binding);
   else if (only?.type === 'razor-expression') emitExpression(ctx, only, crossesAsRead(ctx, parts));
-  else if (only?.type === 'attribute-text') emitTextValue(ctx, only);
+  // A prop whose value the parser already rejected: `FUD0056` is out, and a SECOND error about
+  // the same three characters is not a better report. `.id=.` used to project `id: "."`, so
+  // TypeScript added «string is not assignable to number» underneath the compiler's own
+  // message — two errors, one mistake, and the type one pointing at a `Props` the author had
+  // written correctly. A hole is checked against nothing and still answers completion.
+  else if (only?.type === 'attribute-text' && binding.type === 'property' && !quoted(ctx, only)) {
+    emitHole(ctx, only.span.end);
+  } else if (only?.type === 'attribute-text') emitTextValue(ctx, only);
   else emitTemplateLiteral(ctx, parts);
+}
+
+/**
+ * `.name` → `true`; `.name=` and `.name=""` → a hole to ask from.
+ *
+ * A PROPERTY only, and that restriction is the whole of it. What goes on the right of a prop's
+ * `=` is an expression, so a hole there is a question TypeScript can answer; what goes on the
+ * right of `class=` or `slot=` is a literal, and a hole there is TypeScript being asked a
+ * question about the wrong language. It answered too — with `arguments`, `AbortController` and
+ * every other name in the program, offered inside `<app-circle class="|">`, where a `<div>` was
+ * quietly offering the two classes of the file's own `<style>`.
+ *
+ * It is the same line `bareBindingValueContextAt` draws in the server, and for the same reason:
+ * `.prop` and `@event` are fudic's, `class=`, `slot=` and `id=` are HTML's, and the services
+ * that own HTML have real answers there.
+ *
+ * The anchor is ZERO-LENGTH at the END of the value, which is the shape `emitOpenHandler` and
+ * `emitEventName` settled on and for their reason: Volar maps a source offset into a stretch
+ * with `Math.min(relativePos, generatedLength)`, so a stretch WIDER than a point pushes the
+ * caret past the hole and onto the closing parenthesis, where nothing is offered.
+ */
+function emitEmptyValue(ctx: TemplateContext, attr: Attribute, binding: Binding): void {
+  const value = binding.type === 'property' ? attributeValueSpan(ctx.source, attr) : undefined;
+  if (value === undefined) {
+    // Decision 44: a bare attribute is `true`, and so is one whose value the author left empty.
+    ctx.w.scaffold('true', binding.span);
+    return;
+  }
+
+  emitHole(ctx, value.end);
+}
+
+/**
+ * `( ⟨anchor⟩ )` — an expression that is not there, at the offset where it would begin.
+ *
+ * The one shape three cases share: a value left empty, a value the author has just opened with
+ * a `@`, and a value the parser rejected. None of them holds a program, all three are a place
+ * the editor asks from, and none may be checked against anything — so the anchor carries
+ * completion alone.
+ */
+function emitHole(ctx: TemplateContext, at: number): void {
+  ctx.w.scaffold('(');
+  // ZERO-LENGTH, and that is arithmetic rather than taste: Volar maps a source offset into a
+  // stretch with `Math.min(relativePos, generatedLength)`, so a stretch wider than a point
+  // pushes the caret past the hole and onto the closing parenthesis, where nothing is offered.
+  ctx.w.projected(' ', span(at, at), COMPLETION_ONLY_CAPS);
+  ctx.w.scaffold(')');
+}
+
+/**
+ * The value's parts with the trailing text dropped when it is only the dangling dot.
+ *
+ * `.name="@data."` is ONE expression being written, and the parser says so twice: the atom
+ * carries `dangling` — the `.` with no name behind it (decision 102) — and the same characters
+ * also arrive as the literal run that follows, because for the OUTPUT that dot is text
+ * (decision 2). Counting both made the value a concatenation, so it was projected as a
+ * template literal, and there the dangling is nobody's: the caret after the dot landed on a
+ * literal run with no completion, and the members of `data` were never asked for.
+ *
+ * Dropping the duplicate makes it the lone expression it is, and `copyRazor` writes the dot —
+ * `name: (data.)` — which is the incomplete TypeScript that answers the question. The
+ * unquoted form was already doing this, because there the run stops at the `>`; this is what
+ * makes the two spellings behave the same.
+ */
+function withoutDangling(parts: readonly AttributeValuePart[]): readonly AttributeValuePart[] {
+  const last = parts.at(-1);
+  const previous = parts.at(-2);
+  if (last?.type !== 'attribute-text' || previous?.type !== 'razor-expression') return parts;
+
+  const dangling = previous.dangling;
+  if (dangling === undefined) return parts;
+  // Where it ENDS is the whole question. The run begins where the dot does and cannot begin
+  // anywhere else — it is the text that FOLLOWS the expression, and the dot the chain broke on
+  // is its first character (decision 101 keeps the two adjacent). So `@data.` is the dot alone
+  // and `@data. x` is the dot and a sentence after it, and only the first is the duplicate.
+  if (last.span.end !== dangling.end) return parts;
+
+  return parts.slice(0, -1);
+}
+
+/** Whether the author wrote quotes around this value part. */
+function quoted(ctx: TemplateContext, part: { readonly span: Span }): boolean {
+  const before = ctx.source[part.span.start - 1];
+  return before === '"' || before === "'";
 }
 
 /**
@@ -557,14 +752,61 @@ function emitValue(ctx: TemplateContext, binding: Binding): void {
  * that covered the `@` would push the caret past the hole and onto the closing parenthesis.
  */
 function emitTextValue(ctx: TemplateContext, only: Extract<AttributeValuePart, { type: 'attribute-text' }>): void {
-  if (only.value !== EVENT_PREFIX) {
+  if (!openInterpolation(only)) {
     ctx.w.scaffold(quote(only.value), only.span);
     return;
   }
 
-  ctx.w.scaffold('(');
-  ctx.w.projected(' ', span(only.span.end, only.span.end), COMPLETION_ONLY_CAPS);
-  ctx.w.scaffold(')');
+  if (only.value === EVENT_PREFIX) {
+    ctx.w.scaffold('(');
+    ctx.w.projected(' ', span(only.span.end, only.span.end), COMPLETION_ONLY_CAPS);
+    ctx.w.scaffold(')');
+    return;
+  }
+
+  // `.name="hola@|"` — the same `@` one literal further in, and on a component the value still
+  // has to typecheck as a string, so the hole goes inside a TEMPLATE literal instead of
+  // replacing the whole value. The literal keeps its type, and the position where the names in
+  // scope are wanted gets somewhere to ask from.
+  ctx.w.scaffold('`');
+  emitOpenTail(ctx, only);
+  ctx.w.scaffold('`');
+}
+
+/**
+ * The run of text a `@` was opened at the end of, as `pre${ ⟨anchor⟩ }`.
+ *
+ * The `@` itself is not copied: it is what the author typed to OPEN the expression, and inside
+ * a template literal it would be one more character of the string. What replaces it is the
+ * hole the names in scope are asked from — zero-length, at the caret, for completion alone,
+ * the shape every other hole in this file uses and for its reason.
+ */
+function emitOpenTail(
+  ctx: TemplateContext,
+  part: Extract<AttributeValuePart, { type: 'attribute-text' }>,
+): void {
+  const text = part.value.slice(0, -1);
+  const upto = span(part.span.start, part.span.end - 1);
+  if (text.length > 0) ctx.w.scaffold(escapeTemplate(text), upto);
+  ctx.w.scaffold('${');
+  ctx.w.projected(' ', span(part.span.end, part.span.end), COMPLETION_ONLY_CAPS);
+  ctx.w.scaffold('}');
+}
+
+/**
+ * Whether a value part ends with a `@` the author has just opened.
+ *
+ * The escape of decision 1 is not one, and the VALUE cannot tell: the parser resolves `@@` to
+ * the single character it denotes, so an escaped at-sign and an open one spell the same
+ * string. What separates them is the SPAN — the escape stands for two characters of source and
+ * the open `@` for one — which is why this takes the part rather than its text. Reading the
+ * text alone put a completion hole inside `role="hola@@"`, where the author had written a
+ * literal at-sign and asked nothing.
+ */
+function openInterpolation(part: Extract<AttributeValuePart, { type: 'attribute-text' }>): boolean {
+  return (
+    part.value.endsWith(EVENT_PREFIX) && part.span.end - part.span.start === part.value.length
+  );
 }
 
 /**
@@ -582,10 +824,24 @@ function emitExpression(ctx: TemplateContext, expr: RazorExpression, read = fals
   ctx.w.scaffold(')');
 }
 
-/** `` `pre-${expr}-post` `` — the literal runs escaped, the expressions copied verbatim. */
+/**
+ * `` `pre-${expr}-post` `` — the literal runs escaped, the expressions copied verbatim.
+ *
+ * And a `@` the author opened at the very end, which reaches here rather than `emitTextValue`
+ * whenever the value has more than one part: `.name="/a/@|"` is the run `/a/` followed by the
+ * at-sign, so the lone-part rule would leave out exactly the case the rule exists for — a slug
+ * being written inside a longer value.
+ */
 function emitTemplateLiteral(ctx: TemplateContext, parts: readonly AttributeValuePart[]): void {
+  const last = parts.at(-1);
+  const open = last?.type === 'attribute-text' && openInterpolation(last) ? last : undefined;
+
   ctx.w.scaffold('`');
   for (const part of parts) {
+    if (part === open) {
+      emitOpenTail(ctx, open);
+      continue;
+    }
     if (part.type === 'attribute-text') {
       ctx.w.scaffold(escapeTemplate(part.value), part.span);
       continue;
