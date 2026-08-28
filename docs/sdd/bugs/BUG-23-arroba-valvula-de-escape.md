@@ -4,6 +4,13 @@
 > añadió al validar la hidratación de SDD-17. Todo lo que lleva la marca **§2.8** —el síntoma 8 de
 > §1, la causa §2.8, la regla 6 de §4.2, dos invariantes de §5, los criterios 5.b y 12.b–12.e, y
 > las tareas 26 y 27— es de esa segunda pasada.
+>
+> **Nota del 2026-08-27, escrita al implementar.** Una decisión cayó al medirla contra el editor
+> de verdad: **(b) queda derogada por (b.3)** —el hueco del tag ofrece las props *y* el
+> vocabulario de HTML, en una sola respuesta y con el punto dentro de la clave— y con ella se
+> reescriben el criterio 7, la regla 1 de §4.2 y un punto de §7. **SDD-24 §6.3 se restaura en
+> vez de corregirse.** La tarea **13** se cierra por el mecanismo contrario al que proponía: los
+> snippets viajan dentro de la respuesta de TypeScript y es la raíz la que calla.
 
 **Estado:** `Listo` · **Rama:** `worktree-bug-23` · **Tareas:**
 [BUG-23-Task.md](./BUG-23-Task.md)
@@ -440,15 +447,39 @@ llamada, y quien quiera el texto escribe `@@precio(IVA)` o separa la interpolaci
 Que una prop se pase con `@` y otra con `@( … )` según lo que lleve dentro es exactamente lo
 confuso que este BUG retira.
 
-**(b) El hueco del tag abierto ofrece globales, no props.** `<app-badge |>` pasa a completar
-contra `{} & $GlobalAttrs`, y las props se alcanzan con el punto. Es lo coherente con la
-decisión 41.c —sobre un componente `.prop` es la única vía—, y **cambia el §6.3 de SDD-24**,
-que hoy fija lo contrario.
+**(b) El hueco del tag abierto ofrece globales, no props.** ~~`<app-badge |>` pasa a completar
+contra `{} & $GlobalAttrs`, y las props se alcanzan con el punto.~~ — **DEROGADA el 2026-08-27**,
+al implementarla. Ver **(b.3)**, que la sustituye; el texto original queda porque explica por
+qué existe `$gap`.
 
-> **Y el punto es lo único que hace falta enseñar.** No se inventan ítems sintéticos con el
+> ~~**Y el punto es lo único que hace falta enseñar.** No se inventan ítems sintéticos con el
 > punto ya puesto en el hueco: una regla que el usuario aprende una vez —«las props van con
 > `.`»— vale más que una lista que se lo recuerda a medias en dos sitios distintos. La única
-> excepción es la expansión del tag, abajo, donde no hay nada que pulsar todavía.
+> excepción es la expansión del tag, abajo, donde no hay nada que pulsar todavía.~~
+
+**(b.3) El hueco ofrece las DOS familias, y la prop lleva su punto en la clave.** `<app-badge |>`
+completa contra un tipo nuevo, `$gap<$C0>`, que reúne el vocabulario de HTML y el contrato del
+componente —`.tone`, con el punto dentro de la clave— más las clases del fichero y `slot`.
+Preguntar «¿qué admite esto?» y que contesten `id`, `class`, `role` es que contesten la mitad
+que ya sabías: las props son la mitad que no se adivina. Y la respuesta tiene que llegar **en
+una sola lista**, porque Volar solo entrega una en esa posición.
+
+Que la clave lleve el punto no es decoración: es lo que el usuario teclea, y es también lo que
+distingue las dos familias sin mantener ninguna tabla —TypeScript devuelve entrecomillada toda
+clave que no sea un identificador, así que las props llegan como `".tone"` y el vocabulario de
+HTML llega desnudo—. **`$gap` no comprueba nada**: sus claves son todas opcionales y sus tramos
+llevan solo `completion`, así que puede ser generoso sin que ningún diagnóstico dependa de él.
+Lo que se comprueba cuando el atributo **está escrito** sigue siendo `$attrs`, donde
+`tone="info"` sigue siendo el error que BUG-16 §4.2 hizo de él.
+
+**Con esto SDD-24 §6.3 se restaura**, no se corrige: decía justo esto.
+
+> **Y el vocabulario de HTML deja de ser una lista escrita a mano.** `$GlobalAttrs` tenía once
+> nombres, y once es lo que hacía a un componente más pobre que un `<div>`: a un tag nativo el
+> servicio de HTML le contesta con su vocabulario entero. Ahora se genera de los datos que VS
+> Code usa para un `.html` (`vscode-html-languageservice`), 150 nombres, `aria-*` y `on*`
+> incluidos. Una lista, dos trabajos —lo que se ofrece y lo que se acepta— así que el editor no
+> puede ofrecer un nombre que después subraye en rojo.
 
 **(b.2) Al expandir el tag se insertan las props REQUERIDAS, y ninguna más.** `app-button` +
 <kbd>Tab</kbd> escribe `<app-button .label="$1" .href="$2">$0</app-button>`: las requeridas son
@@ -487,10 +518,17 @@ paréntesis no son una alternativa estilística de la cadena: son otra cosa.
 
 ### 4.2 La proyección: cinco reglas
 
-1. **Dos literales por host, repartidos por la sintaxis.** `.prop` va a
+1. **Dos literales que COMPRUEBAN y dos llamadas que solo contestan.** `.prop` va a
    `$props<$C0>({ … })` —sin `$GlobalAttrs`, así que el punto ofrece **solo** el contrato—; el
-   atributo plano va a `$attrs<{}>({ … })`, que ahora se emite **siempre**, porque es donde
-   viven las anclas de hueco (decisión (b)).
+   atributo plano va a `$attrs<{}>({ … })`, con lo que se escribió y nada más. Las anclas de
+   hueco tienen llamada propia, `$gap<$C0>({ ⟨anclas⟩ })` (decisión **(b.3)**), y la
+   completitud la mide `$required`. Dos y dos porque son dos cosas: `$attrs` es donde un
+   atributo escrito se **comprueba**, `$gap` es donde una posición vacía **pregunta**. Fundirlas
+   metería las props en el tipo contra el que se verifica un `id="x"`. Con el tag **sin
+   registrar** el argumento de tipo de `$gap` es `{}` y no su alias: el alias ahí es andamiaje,
+   así que nombrarlo levantaría un segundo `TS2304` en un tramo que no enruta —un error que el
+   editor tira y el arnés del corpus reporta como sin mapear—, y además `{}` es la verdad: sin
+   `<link>` no se sabe nada del contrato.
 2. **La completitud se comprueba aparte, sobre un ancla de un solo tramo.**
    `$required<$C0, 'name' | 'tone'>(⟨{} sobre el nombre del tag⟩)`, donde `K` es la unión de las
    props escritas. Si no falta ninguna, el parámetro es `{}` y no hay error; si falta `name`, el
@@ -593,7 +631,10 @@ Cada uno se escribe **en rojo primero**, contra el código de hoy.
 **Proyección (language-core)**
 
 6. En `<app-circle .|>` la lista trae `name` y **no** trae `id`, `class`, `role`, `data-*`.
-7. En `<app-circle |>` la lista trae los globales y **no** trae `name`.
+7. ~~En `<app-circle |>` la lista trae los globales y **no** trae `name`.~~ — **reescrito el
+   2026-08-27 con la decisión (b.3)**: en `<app-circle |>` la lista trae `.name` **y** los
+   globales, la prop con su punto en la etiqueta y ningún nombre con el `?` que TypeScript le
+   pone a un miembro opcional.
 8. `<app-circle></app-circle>` con `name` requerida reporta un error **sobre el nombre del tag**,
    con `name` en el mensaje. Con `name` pasada, silencio. Con `name?` opcional, silencio.
 9. `@click="@onClick($event)"` y `@click=@onClick($event)` no reportan **nada**, y hover sobre
@@ -653,8 +694,11 @@ Cada uno se escribe **en rojo primero**, contra el código de hoy.
   proyecta lo mismo.
 - **La indentación de TypeScript dentro de `@code`** — sigue anotada en BUG-22 fila 5 y sigue
   siendo del formateador.
-- **Completar nombres de prop *sin* el punto en el hueco del tag.** La decisión (b) dice que ahí
-  van los globales; ofrecer props con inserción automática del punto es otra conversación.
+- ~~**Completar nombres de prop *sin* el punto en el hueco del tag.** La decisión (b) dice que ahí
+  van los globales; ofrecer props con inserción automática del punto es otra conversación.~~
+  — **entró en alcance el 2026-08-27** con la decisión **(b.3)**: el hueco ofrece las props, y no
+  «sin el punto» sino **con él dentro de la etiqueta** (`.tone`), que es lo que el usuario teclea
+  y lo que distingue las dos familias sin mantener ninguna tabla.
 - **Cambiar la reserva `$`.** `$event` sigue siendo del compilador; lo nuevo es que la
   proyección lo declara donde el emit lo declara.
 - **Que una signal cruce por REFERENCIA.** El síntoma 8 hace que el editor cuente lo que el
