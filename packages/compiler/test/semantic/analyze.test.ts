@@ -75,7 +75,7 @@ describe('analyze — runner', () => {
   it('exposes every analyzer and returns an empty model (§3, crit. #8)', () => {
     // 7 of SDD-12 + layout-load (SDD-21) + reserved-attributes (SDD-15 §3.1)
     // + event-handler-shape (BUG-23 §2.4: FUD0291 stops being the emit's alone)
-    expect(ANALYZERS).toHaveLength(10);
+    expect(ANALYZERS).toHaveLength(12);
     const { value } = analyze(buildInput(component('<p>hi</p>')));
     expect(value).toEqual({});
     expect('strategies' in value).toBe(false); // decisions 63–65 retired: no hydration strategy

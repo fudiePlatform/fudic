@@ -21,6 +21,12 @@ import { changeableBindings, reservedIdentifiers, type FragmentAst } from './sco
 export interface Prop {
   readonly name: string;
   readonly def?: string;
+  /**
+   * `false` only when the key of `T` is written WITHOUT `?`. When `T` is not a type literal
+   * (`props<Foo>()`) nothing can be proven about it, so every prop reads as optional and a
+   * build invents no error (BUG-23 §4.4).
+   */
+  readonly optional: boolean;
 }
 
 /**
@@ -410,7 +416,9 @@ function readDeclarator(
   const called = is(callee, 'Identifier') ? name(callee!) : '';
 
   if (called === 'props' && is(id, 'ObjectPattern')) {
-    for (const property of fieldArray(id, 'properties')) readProp(property, source, map, props);
+    const required = requiredKeys(init);
+    for (const property of fieldArray(id, 'properties'))
+      readProp(property, source, map, props, required);
   } else if ((called === 'signal' || called === 'computed') && is(id, 'Identifier')) {
     const arg = fieldArray(init, 'arguments')[0];
     // A `computed` with no argument would be a program that cannot run; `undefined` keeps
@@ -423,15 +431,44 @@ function readDeclarator(
   }
 }
 
+/**
+ * The keys that `props<T>()`'s type argument declares WITHOUT `?`.
+ *
+ * Empty whenever `T` cannot be read as a type literal — no type argument at all, a named
+ * type, an index signature, a key that is not a plain identifier. «Not provable» and «not
+ * required» are the same answer here on purpose: it is what keeps the build from reporting
+ * a missing prop it cannot demonstrate is missing.
+ */
+function requiredKeys(call: OxcNode): ReadonlySet<string> {
+  const args = field(call, 'typeArguments');
+  const literal = args ? fieldArray(args, 'params')[0] : undefined;
+  if (!is(literal, 'TSTypeLiteral')) return new Set();
+  const out = new Set<string>();
+  for (const member of fieldArray(literal, 'members')) {
+    const key = field(member, 'key');
+    if (!is(member, 'TSPropertySignature') || !is(key, 'Identifier')) continue;
+    if (member['optional'] !== true) out.add(name(key));
+  }
+  return out;
+}
+
 /** Flatten one `{ a, b = expr }` property, taking the default's source verbatim. */
-function readProp(property: OxcNode, source: string, map: MapOffset, out: Prop[]): void {
+function readProp(
+  property: OxcNode,
+  source: string,
+  map: MapOffset,
+  out: Prop[],
+  required: ReadonlySet<string>,
+): void {
   const key = field(property, 'key');
   if (!is(property, 'Property') || !is(key, 'Identifier')) return;
+  const propName = name(key);
+  const optional = !required.has(propName);
   const value = field(property, 'value');
   if (value && is(value, 'AssignmentPattern')) {
     const right = field(value, 'right')!;
-    out.push({ name: name(key!), def: source.slice(map(right.start), map(right.end)) });
+    out.push({ name: propName, def: source.slice(map(right.start), map(right.end)), optional });
   } else {
-    out.push({ name: name(key!) });
+    out.push({ name: propName, optional });
   }
 }

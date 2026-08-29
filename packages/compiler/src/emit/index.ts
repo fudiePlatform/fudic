@@ -44,4 +44,8 @@ export {
 
 export { hydratableTags, isIntrinsicallyHydratable } from './level.js';
 
+// The contract questions only a resolved graph can answer, and the three diagnostics that
+// need them (BUG-23 §4.4).
+export { graphRegistry, contractDiagnostics } from './registry.js';
+
 export { spaceModeOf, collapseSpace, nestedSpaceMode, SPACE_ATTR, type SpaceMode } from './space.js';

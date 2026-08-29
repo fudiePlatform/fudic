@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` ·
 > `@fudic/formatter` · `fudic-vscode` · `@fudic/vite`
 > **Rama:** `worktree-bug-23`
-> **Progreso:** 19 / 27
+> **Progreso:** 22 / 27
 
 Veintisiete tareas. Las rutas son relativas a la raíz del repo, y cada tarea es un paso
 cerrado: se puede parar después de cualquiera con el workspace verde.
@@ -143,9 +143,34 @@ por eso ese caso se queda como guarda de lo que debe seguir reportando.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 16 | — | **`Prop.optional`.** Leer el argumento de tipo de `props<T>()`: si es un literal de tipo, cada miembro dice si lleva `?`. Si no lo es (`props<Foo>()`), todas se marcan `optional: true` — no se puede demostrar lo contrario, y un build no inventa errores. La decisión 68 hace que el literal sea la forma canónica, así que el caso cubierto es el que se escribe | `compiler` | [src/emit/oxc-code.ts `Prop`, `codeOf`](../../../packages/compiler/src/emit/oxc-code.ts#L20-L24) |
-| [ ] | 17 | 16 | **La registry contesta por las props.** `ComponentRegistry` gana `propsOf(tag)` opcional. En el build lo sirve el `ComponentGraph` —que ya tiene el `ResolvedComponent` del hijo y su `codeOf`—; en el servidor, el índice de workspace, o nada: `undefined` es una respuesta legítima y significa «no lo puedo saber» | `compiler` · `vite` · `language-server` | [src/semantic/model.ts](../../../packages/compiler/src/semantic/model.ts#L30-L32) · [src/emit/resolve.ts](../../../packages/compiler/src/emit/resolve.ts) · [src/emit/parts.ts](../../../packages/compiler/src/emit/parts.ts#L41) · [services/compiler-diagnostics.ts `registryOf`](../../../packages/language-server/src/services/compiler-diagnostics.ts#L20) |
-| [ ] | 18 | 17 | **Tres diagnósticos nuevos.** `FUD0197` prop requerida no pasada (sobre el tag de apertura), `FUD0198` `.prop` que el hijo no declara (sobre el nombre), `FUD0199` `slot=` que el padre no declara (sobre el valor). Analizador propio, no una rama dentro del emit: el pase semántico es donde vive una regla, y así el editor los enseña con los otros. Reservados en el hueco `FUD0197`–`FUD0209` que SDD-12 dejó libre | `compiler` | `src/semantic/analyzers/component-props.ts` *(nuevo)* · `src/semantic/analyzers/slot-name.ts` *(nuevo)* · [src/semantic/analyze.ts](../../../packages/compiler/src/semantic/analyze.ts) |
+| [x] | 16 | — | **`Prop.optional`.** Leer el argumento de tipo de `props<T>()`: si es un literal de tipo, cada miembro dice si lleva `?`. Si no lo es (`props<Foo>()`), todas se marcan `optional: true` — no se puede demostrar lo contrario, y un build no inventa errores. La decisión 68 hace que el literal sea la forma canónica, así que el caso cubierto es el que se escribe | `compiler` | [src/emit/oxc-code.ts `Prop`, `codeOf`](../../../packages/compiler/src/emit/oxc-code.ts#L20-L24) |
+| [x] | 17 | 16 | **La registry contesta por las props.** `ComponentRegistry` gana `propsOf(tag)` opcional. En el build lo sirve el `ComponentGraph` —que ya tiene el `ResolvedComponent` del hijo y su `codeOf`—; en el servidor, el índice de workspace, o nada: `undefined` es una respuesta legítima y significa «no lo puedo saber». **Enmienda a §3.1, hecha al implementar:** gana también **`slotsOf(tag)`**, porque el `FUD0199` de la 18 pregunta por las ranuras del padre y §3.1 solo declaraba las props — el mismo canal, la misma semántica de `undefined`. Y el servidor **no sirve ninguna de las dos**: allí `$required` y `$intoSlot` ya comprueban lo mismo contra el tipo real, así que servirlas duplicaría cada error. `graphRegistry(graph)` y `contractDiagnostics(graph)` viven en `emit/registry.ts` (nuevo) | `compiler` · `vite` · `language-server` | [src/semantic/model.ts](../../../packages/compiler/src/semantic/model.ts#L30-L32) · [src/emit/resolve.ts](../../../packages/compiler/src/emit/resolve.ts) · [src/emit/parts.ts](../../../packages/compiler/src/emit/parts.ts#L41) · [services/compiler-diagnostics.ts `registryOf`](../../../packages/language-server/src/services/compiler-diagnostics.ts#L20) |
+| [x] | 18 | 17 | **Tres diagnósticos nuevos.** `FUD0197` prop requerida no pasada (sobre el tag de apertura), `FUD0198` `.prop` que el hijo no declara (sobre el nombre), `FUD0199` `slot=` que el padre no declara (sobre el valor). Analizador propio, no una rama dentro del emit: el pase semántico es donde vive una regla, y así el editor los enseña con los otros. Reservados en el hueco `FUD0197`–`FUD0209` que SDD-12 dejó libre | `compiler` | `src/semantic/analyzers/component-props.ts` *(nuevo)* · `src/semantic/analyzers/slot-name.ts` *(nuevo)* · [src/semantic/analyze.ts](../../../packages/compiler/src/semantic/analyze.ts) |
+
+### Cómo aterrizó la fase 5, y las dos cosas que la spec no había previsto
+
+**El pase semántico no lo corría el build.** `analyze()` solo lo llamaba el servidor, así que un
+analizador nuevo no llega a `pnpm build` por el hecho de existir. Las dos reglas son de **markup
+puro** —no miran una línea de JavaScript—, así que cada una se escribe como una función sobre
+`MarkupInput` (`{ document, components }`) con **dos llamantes**: el `Analyzer` que la registra en
+`ANALYZERS`, y `contractDiagnostics(graph)`, que el `transform` de Vite añade a sus diagnósticos.
+Una regla, una implementación — que es justo lo que pide el invariante de §5. Y sin abrir un
+segundo lote de Oxc: no hay ninguno que abrir.
+
+**El `walk` no sabía quién era el padre.** `TreeVisitor.element` gana un segundo parámetro, `host`,
+que es el elemento ancestro más cercano y **atraviesa los cuerpos de control y las `@section`**:
+`<app-circle>@if (x) { <div slot="p"> }</app-circle>` sigue teniendo a `app-circle` por host. Sin
+él, la regla del `slot` no se puede escribir contra el padre, que es la mitad de §2.6.
+
+**El wrapper de un componente no es un uso de sí mismo.** El `<app-card>` que envuelve al
+`<template shadowrootmode>` es la identidad del fichero (decisión 75), no un host al que nadie
+pasa props. `component-props` lo salta; sin eso, todo componente con una prop requerida se
+reportaba a sí mismo.
+
+Y el ejemplo tenía un fallo que este diagnóstico destapó: `examples/basic/src/routes/blog/index.fud`
+pasaba `title=`, `href=` y `variant=` como **atributos planos**, que no llegan a `props` —solo una
+`.prop` entra en el literal que recibe el hijo (BUG-16 §41.c)—. Migrado a la forma sin comillas de
+la decisión 103, que es lo que la tarea 20 hace con el resto del repo.
 
 ## Fase 6 — herramientas: que la forma nueva se escriba sola (5)
 

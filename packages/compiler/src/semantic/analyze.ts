@@ -18,6 +18,8 @@ import { primitiveInterpolation } from './analyzers/primitive-interpolation.js';
 import { componentDeclared } from './analyzers/component-declared.js';
 import { eventHandlerShape } from './analyzers/event-handler-shape.js';
 import { layoutLoad } from './analyzers/layout-load.js';
+import { componentProps } from './analyzers/component-props.js';
+import { slotName } from './analyzers/slot-name.js';
 
 /** The ordered list of analyzers (§4). One rule per unit. */
 export const ANALYZERS: readonly Analyzer[] = [
@@ -31,6 +33,8 @@ export const ANALYZERS: readonly Analyzer[] = [
   componentDeclared,
   eventHandlerShape,
   layoutLoad,
+  componentProps,
+  slotName,
 ];
 
 /** The empty semantic model of v1 (§3): no facts are produced yet. */

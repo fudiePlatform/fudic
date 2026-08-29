@@ -19,6 +19,7 @@ import { existsSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import {
   resolveDocument,
+  contractDiagnostics,
   entryComponent,
   emitComponentModuleMapped,
   emitComponentClientModuleMapped,
@@ -119,7 +120,11 @@ export function transformFud(id: string, io: ResolveIo): TransformResult | null 
     // The emit's own: a `@code` whose JS does not parse (BUG-13 §5.3). Without them the
     // module still gets written — degraded — and the build only trips later, in the
     // prerender, on an identifier the emit never declared.
-    diagnostics: [...resolved.diagnostics, ...out.diagnostics],
+    //
+    // Plus the component contract (BUG-23 §4.4): a required prop nobody passed, a `.prop` the
+    // child does not declare, a `slot=` the parent does not. Only a caller that RESOLVED the
+    // graph can ask those, which is why they are the build's to report and not the parser's.
+    diagnostics: [...resolved.diagnostics, ...out.diagnostics, ...contractDiagnostics(graph)],
   };
 }
 
