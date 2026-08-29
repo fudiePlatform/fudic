@@ -5,7 +5,7 @@
   const { count = 0 } = props<{ count?: number }>();
 
   @client {
-    import { signal } from '@fudic/core';
+    import { signal } from "@fudic/core";
 
     // Estado propio, y no es decoración: con él este componente es hidratable POR SÍ MISMO.
     // Un hijo que solo recibiera props también lo sería, pero solo al compilarse JUNTO a su
@@ -45,7 +45,7 @@
 <app-child>
   <template shadowrootmode="open">
     <p>hijo (prof 1): <strong class="value">@count</strong>
-      <button class="eco" @click="@ping">eco @(eco())</button></p>
-    <app-grandchild .count="@count"></app-grandchild>
+      <button class="eco" @click=@ping>eco @(eco())</button></p>
+    <app-grandchild .count=@count></app-grandchild>
   </template>
 </app-child>

@@ -45,9 +45,9 @@
 
 <app-card>
   <template shadowrootmode="open">
-    <article class="card" class:highlight="@(variant === 'highlight')">
+    <article class="card" class:highlight=@(variant === 'highlight')>
       <header>
-        <h2><a href="@href">@title</a></h2>
+        <h2><a href=@href>@title</a></h2>
         <slot name="meta"></slot>
       </header>
       <div class="body">

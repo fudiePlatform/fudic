@@ -8,7 +8,7 @@
  * Pure — the disk enters in the workspace index, which is the only module that reads it.
  */
 
-import type { StructuredDocument } from '@fudic/compiler';
+import { extractCode, type StructuredDocument } from '@fudic/compiler';
 
 /** The four roles the `href` completion filters by (§4.2). */
 export type FudRole = 'component' | 'page' | 'route' | 'layout';
@@ -48,6 +48,24 @@ export function tagOf(document: StructuredDocument): string {
 export function sectionsOf(document: StructuredDocument): readonly string[] {
   if (document.type !== 'layout-document') return [];
   return document.renderSections.map((section) => section.name).filter((name) => name !== '');
+}
+
+/**
+ * The props a component declares WITHOUT a `?`, in the order it declares them (BUG-23 §4.4).
+ *
+ * They are what makes `<app-button>` + <kbd>Tab</kbd> expand into a tabstop per required prop
+ * instead of an empty element the author then has to fill from memory. The optional ones are
+ * deliberately absent: twelve tabstops is worse than none, and the `.` reaches them.
+ *
+ * Only a component has any, and only a component whose `props<T>()` names a type LITERAL —
+ * with a named type nothing is provable and the honest answer is the empty list, which
+ * degrades the expansion back to what it was.
+ */
+export function requiredPropsOf(source: string, document: StructuredDocument): readonly string[] {
+  if (document.type !== 'component-document' || document.code === undefined) return [];
+  return extractCode(source, document)
+    .props.filter((prop) => !prop.optional)
+    .map((prop) => prop.name);
 }
 
 /**

@@ -36,8 +36,8 @@
   <template shadowrootmode="open">
     <span
       class="badge"
-      class:success="@(tone === 'success')"
-      class:info="@(tone === 'info')">
+      class:success=@(tone === 'success')
+      class:info=@(tone === 'info')>
       <slot></slot>
     </span>
   </template>

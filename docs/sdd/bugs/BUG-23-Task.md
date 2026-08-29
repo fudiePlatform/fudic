@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` ·
 > `@fudic/formatter` · `fudic-vscode` · `@fudic/vite`
 > **Rama:** `worktree-bug-23`
-> **Progreso:** 22 / 27
+> **Progreso:** 25 / 27
 
 Veintisiete tareas. Las rutas son relativas a la raíz del repo, y cada tarea es un paso
 cerrado: se puede parar después de cualquiera con el workspace verde.
@@ -177,10 +177,31 @@ la decisión 103, que es lo que la tarea 20 hace con el resto del repo.
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 19 | 4 | **El formateador imprime sin comillas** un valor que es **una sola** expresión Razor: `.prop=@name`, `@click=@onClick($event)`. Todo lo demás conserva sus comillas —una concatenación, un literal, un valor vacío—, y el atributo sin partes se sigue copiando verbatim. Idempotente, y con un test de ida y vuelta sobre las fixtures | `formatter` | [src/print/tag.ts `printAttribute`, `quoteFor`](../../../packages/formatter/src/print/tag.ts#L17-L56) |
-| [ ] | 20 | 4 | **Los `.fud` del repo, migrados.** `examples/basic`, las fixtures de `compiler`, las de `language-server` y las de `vscode`, y las plantillas del CLI, pasan a `.prop=@x` y a `@evento=@h($event)`. **Los goldens de nivel 1 no se mueven un byte**: el AST es el mismo. Va antes que la 19 en el tiempo aunque no dependa de ella — migrar después de que el formateador imprima deja los diffs mezclados | `examples` · `compiler` · `language-server` · `vscode` · `cli` | `examples/basic/src/**/*.fud` · `packages/compiler/fixtures/*.fud` · `packages/language-server/test/**` · `packages/vscode/fixtures/**` · `packages/cli/templates/*.fud` |
-| [ ] | 21 | 4 | **El resaltado.** La gramática TextMate colorea hoy el valor de atributo como cadena entre comillas; con la 4 hay valores que no las llevan. Regla nueva para `=@` seguido de cadena implícita, y la llamada dentro de ella como expresión | `vscode` | [syntaxes/fudic.tmLanguage.json](../../../packages/vscode/syntaxes/fudic.tmLanguage.json) · `test/` *(el runner de tmLanguage ya existe)* |
-| [ ] | 25 | 17, 20 | **El tag se expande con sus props requeridas.** `tagItems` deja de escribir `<app-button>$0</app-button>` y escribe un tabstop por prop **requerida**, en el orden en que el hijo las declara: `<app-button .label="$1">$0</app-button>`. Las opcionales no entran —doce tabstops es peor que ninguno— y se alcanzan con el punto. Sin `propsOf` (componente fuera del índice, o `props<Foo>()` con tipo con nombre), el cuerpo es el de hoy: degradar es no ofrecer de más | `language-server` | [src/services/tags.ts `componentTags`](../../../packages/language-server/src/services/tags.ts) · [src/services/plugin.ts `tagItems`](../../../packages/language-server/src/services/plugin.ts#L522) · [src/workspace-index.ts](../../../packages/language-server/src/workspace-index.ts) |
+| [x] | 20 | 4 | **Los `.fud` del repo, migrados.** `examples/basic`, las fixtures de `compiler`, las de `language-server` y las de `vscode`, y las plantillas del CLI, pasan a `.prop=@x` y a `@evento=@h($event)`. **Los goldens de nivel 1 no se mueven un byte**: el AST es el mismo. Va antes que la 19 en el tiempo aunque no dependa de ella — migrar después de que el formateador imprima deja los diffs mezclados | `examples` · `compiler` · `language-server` · `vscode` · `cli` | `examples/basic/src/**/*.fud` · `packages/compiler/fixtures/*.fud` · `packages/language-server/test/**` · `packages/vscode/fixtures/**` · `packages/cli/templates/*.fud` |
+| [x] | 21 | 4 | **El resaltado.** La gramática TextMate colorea hoy el valor de atributo como cadena entre comillas; con la 4 hay valores que no las llevan. Regla nueva para `=@` seguido de cadena implícita, y la llamada dentro de ella como expresión | `vscode` | [syntaxes/fudic.tmLanguage.json](../../../packages/vscode/syntaxes/fudic.tmLanguage.json) · `test/` *(el runner de tmLanguage ya existe)* |
+| [x] | 25 | 17, 20 | **El tag se expande con sus props requeridas.** `tagItems` deja de escribir `<app-button>$0</app-button>` y escribe un tabstop por prop **requerida**, en el orden en que el hijo las declara: `<app-button .label="$1">$0</app-button>`. Las opcionales no entran —doce tabstops es peor que ninguno— y se alcanzan con el punto. Sin `propsOf` (componente fuera del índice, o `props<Foo>()` con tipo con nombre), el cuerpo es el de hoy: degradar es no ofrecer de más | `language-server` | [src/services/tags.ts `componentTags`](../../../packages/language-server/src/services/tags.ts) · [src/services/plugin.ts `tagItems`](../../../packages/language-server/src/services/plugin.ts#L522) · [src/workspace-index.ts](../../../packages/language-server/src/workspace-index.ts) |
 | [x] | 22 | 20 | **Los snippets, a la forma nueva.** Cerrada, y el catálogo no se toca: **ningún cuerpo de `SNIPPETS` inserta un binding**. Los cuatro esqueletos, los `@code` por rol, las directivas y las zonas escriben markup y TypeScript, nunca un `.prop=` ni un `@evento=`, así que no había forma vieja que migrar (y no existe el «snippet de evento» que la tarea suponía). Lo que sí inserta bindings es el **ítem de completado**, y los cuatro sitios donde se construye escriben ya la forma nueva y vuelven a abrir la lista: la prop de un hueco y la alcanzada con el punto (`gapItem`, la rama de `propertyContextAt`), el evento y la clase condicional (`classItems`, `classBindingItems`), todos `nombre=@` | `language-server` | [src/services/snippets.ts](../../../packages/language-server/src/services/snippets.ts) *(sin cambios: nada que migrar)* · [src/services/ts-completion.ts](../../../packages/language-server/src/services/ts-completion.ts) |
+
+### Cómo aterrizó la fase 6
+
+**La migración se hizo con el formateador, no a mano.** `fudic fmt` sobre `examples/basic` es la
+tarea 19 aplicada a la 20, y de paso es la prueba de que la 19 hace lo que dice. Trae un cambio
+que no es de este BUG y se anota para que no sorprenda: el formateador normaliza las comillas de
+los strings de TypeScript dentro de `@code` (`'@fudic/core'` → `"@fudic/core"`). Las fixtures del
+compilador se migraron a mano, porque ahí lo que importa es que **los goldens no se muevan** —y no
+se han movido: el AST es el mismo.
+
+**Lo que NO se migró, y por qué.** Los `class:x="@(…)"` de las fixtures del `language-server`. La
+tarea nombra `.prop=@x` y `@evento=@h($event)`, y esas fixtures son el termómetro de los criterios
+15 y 21: las mide media docena de tests por su texto exacto y por offsets dentro de él. La forma
+con comillas sigue siendo legal, así que migrarlas no gana nada y arriesga la evidencia del BUG.
+Sí se migró el `.tone=` de `blog/[slug].fud`, que es la que la tarea pide.
+
+**El índice del workspace aprende a leer props.** La expansión del tag (25) necesita saber qué
+props requiere un componente que puede no estar abierto, así que `IndexEntry` gana
+`requiredProps` y `upsert` las lee con `extractCode` — sólo para los componentes, y una vez por
+fichero y por cambio, no por pulsación. Con un tipo con nombre la lista sale vacía y la expansión
+degrada a la de siempre, que es lo que pide el criterio 21.b.
 
 ## Fase 7 — cierre (2)
 

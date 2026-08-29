@@ -3,7 +3,7 @@
   // gasta en proporción a lo que el usuario ve, así que este se precachea cuando el scroll
   // lo mete en el viewport, y ni un byte antes.
   @client {
-    import { signal } from '@fudic/core';
+    import { signal } from "@fudic/core";
 
     const seen = signal(0);
 
@@ -31,6 +31,6 @@
 
 <app-below>
   <template shadowrootmode="open">
-    <button class="look" @click="@look">Bajo el pliegue: <span class="value">@(seen())</span></button>
+    <button class="look" @click=@look>Bajo el pliegue: <span class="value">@(seen())</span></button>
   </template>
 </app-below>

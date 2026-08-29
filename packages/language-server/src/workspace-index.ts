@@ -10,7 +10,7 @@
  */
 
 import { parseFud } from './parse.js';
-import { layoutHrefOf, roleOf, sectionsOf, tagOf, type FudRole } from './mode.js';
+import { layoutHrefOf, requiredPropsOf, roleOf, sectionsOf, tagOf, type FudRole } from './mode.js';
 import { resolveFrom, toPosix } from './paths.js';
 import type { FileSystemScanner } from './types.js';
 
@@ -31,6 +31,12 @@ export interface IndexEntry {
    * `@section `: the file was already parsed to learn its role, so the names are free.
    */
   readonly sections: readonly string[];
+  /**
+   * The props a component declares without a `?`, in declaration order. Empty for everything
+   * else — and empty also when they cannot be proven, which is what makes the tag expansion
+   * degrade to the plain element instead of inventing tabstops (BUG-23 task 25).
+   */
+  readonly requiredProps: readonly string[];
 }
 
 export class WorkspaceIndex {
@@ -81,6 +87,7 @@ export class WorkspaceIndex {
       tag: tagOf(document),
       layoutHref: layoutHrefOf(document),
       sections: sectionsOf(document),
+      requiredProps: requiredPropsOf(source, document),
     });
   }
 

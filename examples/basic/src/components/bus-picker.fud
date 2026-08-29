@@ -6,12 +6,12 @@
   const { options = [] } = props<{ options?: Option[] }>();
 
   @client {
-    import { emit } from '@fudic/dom';
+    import { emit } from "@fudic/dom";
 
     // The emitting end of the bus. The name is a string literal, which is the only form
     // v1 resolves — and it is what puts this tag on the emitting side of `fud-bus`.
     function pick(label) {
-      emit('picked', label);
+      emit("picked", label);
     }
   }
 }
@@ -37,9 +37,10 @@
     <section class="panel">
       @foreach (const option of options) key (option.label) {
         <bus-option
-          .label="@option.label"
-          .picked="@option.picked"
-          @click="@pick(option.label)"></bus-option>
+          .label=@option.label
+          .picked=@option.picked
+          @click=@pick(option.label)
+        ></bus-option>
       }
     </section>
   </template>

@@ -1,5 +1,5 @@
 @code {
-  // A number, like every child. `.value="@count"` names the signal, and naming it is what
+  // A number, like every child. `.value=@count` names the signal, and naming it is what
   // buys a channel of its own — but what CROSSES is the read, never the object: a signal is
   // a function with a live set of subscribers inside, and the payload of an instance that
   // came from the server is JSON.

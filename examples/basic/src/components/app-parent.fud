@@ -4,7 +4,7 @@
   // La raíz de la cascada. Su handler escribe props a los hijos que él monta, así que todo
   // su subárbol tiene que estar vivo ANTES de que este `inc` corra — y corre en el replay.
   @client {
-    import { signal } from '@fudic/core';
+    import { signal } from "@fudic/core";
 
     const count = signal(0);
 
@@ -41,8 +41,8 @@
 <app-parent>
   <template shadowrootmode="open">
     <div class="panel">
-      <button class="inc" @click="@inc">+1 en la raíz</button>
-      <app-child .count="@count"></app-child>
+      <button class="inc" @click=@inc>+1 en la raíz</button>
+      <app-child .count=@count></app-child>
     </div>
   </template>
 </app-parent>

@@ -67,7 +67,13 @@ import { interpolates, scopeNames, templateScope } from './template-scope.js';
 import { styleClassNames } from './classes.js';
 import { sectionCompletions } from './sections.js';
 import { scopeAt, snippetsAt } from './snippets.js';
-import { componentTags, documentLinks, linkInsertionFor, tagDefinitionAt } from './tags.js';
+import {
+  componentTags,
+  documentLinks,
+  linkInsertionFor,
+  tagDefinitionAt,
+  type TagCompletion,
+} from './tags.js';
 import { semanticTokens } from './semantic-tokens.js';
 
 /** What opens an expression, and therefore what every name in scope is written with. */
@@ -218,7 +224,7 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
               if (tag !== undefined) {
                 // The `<` is already written, so the tag name completes into what follows it.
                 return list(
-                  tagItems(cached, index, document, tag, (name) => `${name}>$0</${name}>`),
+                  tagItems(cached, index, document, tag, (name, body) => `${name}${body}`),
                 );
               }
 
@@ -685,7 +691,7 @@ function completions(
     // it twice is what `alone` exists to prevent — and without this guard the position fell
     // through to here and was answered with the components of the workspace.
     ...(word !== undefined && directive === undefined && scopeAt(cached, offset) === 'markup'
-      ? tagItems(cached, index, document, word, (name) => `<${name}>$0</${name}>`)
+      ? tagItems(cached, index, document, word, (name, body) => `<${name}${body}`)
       : []),
     ...(word === undefined
       ? []
@@ -710,6 +716,24 @@ function completions(
 }
 
 /**
+ * Everything after the tag NAME when a tag is expanded: a tabstop per required prop, then
+ * the one inside the element (BUG-23 §6, criterion 21.b).
+ *
+ *     <app-button .label="$1">$0</app-button>
+ *
+ * The optional props are deliberately not here. A component with a dozen of them would expand
+ * into a dozen tabstops the author has to <kbd>Tab</kbd> past, which is worse than none — and
+ * the `.` reaches every one of them, with its type, the moment they are wanted. Where the
+ * required ones cannot be known — the component is not in the index, or its `props<T>()` names
+ * a type instead of a literal — the list is empty and the expansion is the one from before:
+ * degrading is offering LESS, never offering something invented.
+ */
+function tagBody(item: TagCompletion): string {
+  const props = item.requiredProps.map((name, i) => ` .${name}="$${i + 1}"`).join('');
+  return `${props}>$0</${item.tag}>`;
+}
+
+/**
  * The component tags of this file as completion items.
  *
  * Two groups: the ones already linked, and the ones that exist in the workspace and are not.
@@ -721,7 +745,7 @@ function tagItems(
   index: WorkspaceIndex,
   document: TextDocument,
   context: PartialName,
-  write: (tag: string) => string,
+  write: (tag: string, body: string) => string,
 ): readonly CompletionItem[] {
   return componentTags(cached, index).map((item): CompletionItem => {
     const insertion = item.linked ? undefined : linkInsertionFor(cached, item.href);
@@ -735,7 +759,7 @@ function tagItems(
       sortText: `${item.linked ? '0' : '1'}_${item.tag}`,
       labelDetails: { description: item.linked ? 'fudic component' : 'fudic component · adds <link>' },
       insertTextFormat: InsertTextFormat.Snippet,
-      textEdit: { range: rangeOf(document, context.span), newText: write(item.tag) },
+      textEdit: { range: rangeOf(document, context.span), newText: write(item.tag, tagBody(item)) },
       ...(insertion === undefined
         ? {}
         : {

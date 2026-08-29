@@ -44,6 +44,7 @@ describe('scan', () => {
       tag: 'app-badge',
       layoutHref: '',
       sections: [],
+      requiredProps: [],
     });
     expect(index.get('/p/blog/[slug].fud')).toEqual({
       path: '/p/blog/[slug].fud',
@@ -51,6 +52,7 @@ describe('scan', () => {
       tag: '',
       layoutHref: '../layouts/_layout.fud',
       sections: [],
+      requiredProps: [],
     });
   });
 

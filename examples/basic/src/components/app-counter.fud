@@ -5,7 +5,7 @@
   const { start = 0 } = props<{ start?: number }>();
 
   @client {
-    import { signal } from '@fudic/core';
+    import { signal } from "@fudic/core";
 
     const n = signal(start);
 
@@ -48,7 +48,7 @@
 <app-counter>
   <template shadowrootmode="open">
     <div class="panel">
-      <button class="inc" @click="@inc">+1</button>
+      <button class="inc" @click=@inc>+1</button>
       <output class="value">@(n())</output>
     </div>
   </template>

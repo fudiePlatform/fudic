@@ -4,7 +4,7 @@
   // paga red dentro del gesto. Es la evidencia de que el warm es OPTIMIZACIÓN — esto
   // hidrata igual, solo que pagando.
   @client {
-    import { signal } from '@fudic/core';
+    import { signal } from "@fudic/core";
 
     const hits = signal(0);
 
@@ -33,6 +33,6 @@
 
 <app-cold>
   <template shadowrootmode="open">
-    <button class="hit" @click="@hit">Sin precachear: <span class="value">@(hits())</span></button>
+    <button class="hit" @click=@hit>Sin precachear: <span class="value">@(hits())</span></button>
   </template>
 </app-cold>

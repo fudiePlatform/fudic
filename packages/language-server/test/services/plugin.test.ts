@@ -20,7 +20,7 @@ import {
   fudicDocumentOf,
   rangeOf,
 } from '../../src/services/plugin.js';
-import { component, LAYOUT, memoryFs, route } from '../_support.js';
+import { component, LAYOUT, memoryFs, propsComponent, route } from '../_support.js';
 import { CANCELLED, fakeServiceContext, TOKEN } from '../_lsp.js';
 
 const SLUG = '/p/blog/[slug].fud';
@@ -29,13 +29,19 @@ const URI_OF_SLUG = URI.file(SLUG).toString();
 const LAYOUT_WITH_NAV = LAYOUT.replace('<main>', '<main>\n      @RenderSection(nav)');
 
 /** Set the service up over one `.fud`, whose cursor is where `|` was. */
-function setup(source: string, path = SLUG, typescript = true) {
+function setup(
+  source: string,
+  path = SLUG,
+  typescript = true,
+  extra: Readonly<Record<string, string>> = {},
+) {
   const offset = source.indexOf('|');
   const text = source.replace('|', '');
   const files: Record<string, string> = {
     '/p/components/app-badge.fud': component('app-badge'),
     '/p/components/site-nav.fud': component('site-nav'),
     '/p/layouts/_layout.fud': LAYOUT_WITH_NAV,
+    ...extra,
     [path]: text,
   };
 
@@ -402,6 +408,53 @@ describe('completion — snippets and Emmet (SDD-28 §5.3–§5.5)', () => {
     // would silently stop expanding.
     expect(item(list, 'applet')?.textEdit?.newText).toBe('<applet>${0}</applet>');
     expect(list?.isIncomplete).toBe(true);
+  });
+
+  // BUG-23 criterion 21.b. An empty element is not what the author wants written: they want
+  // the tag AND the props it cannot do without, in the order the child declares them.
+  describe('the tag expands with its required props (criterion 21.b)', () => {
+    const BUTTON = '/p/components/app-button.fud';
+    const withButton = (type: string, pattern = '{ label, tone }'): Record<string, string> => ({
+      [BUTTON]: propsComponent('app-button', pattern, type),
+    });
+
+    it('one tabstop per required prop, none for the optional ones', async () => {
+      const { service, document, position } = setup(
+        `<link rel="layout" href="../layouts/_layout.fud">\n<article>\n  app-but|\n</article>\n`,
+        SLUG,
+        true,
+        withButton('{ label: string; tone?: string }'),
+      );
+      const list = await completionsOf(service, document, position);
+
+      expect(item(list, 'app-button')?.textEdit?.newText).toBe(
+        '<app-button .label="$1">$0</app-button>',
+      );
+    });
+
+    it('a component with no required props expands exactly as it did before', async () => {
+      const { service, document, position } = setup(
+        `<link rel="layout" href="../layouts/_layout.fud">\n<article>\n  app-but|\n</article>\n`,
+        SLUG,
+        true,
+        withButton('{ label?: string; tone?: string }', '{ label, tone }'),
+      );
+      const list = await completionsOf(service, document, position);
+
+      expect(item(list, 'app-button')?.textEdit?.newText).toBe('<app-button>$0</app-button>');
+    });
+
+    it('a named type proves nothing, so it degrades to the plain element', async () => {
+      const { service, document, position } = setup(
+        `<link rel="layout" href="../layouts/_layout.fud">\n<article>\n  app-but|\n</article>\n`,
+        SLUG,
+        true,
+        withButton('Props', '{ label }'),
+      );
+      const list = await completionsOf(service, document, position);
+
+      expect(item(list, 'app-button')?.textEdit?.newText).toBe('<app-button>$0</app-button>');
+    });
   });
 
   it('an unlinked component carries its <link> along (criterion 12)', async () => {

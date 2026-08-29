@@ -3,10 +3,10 @@
   // `document`, donde vive el suscriptor. El nombre es un literal, que es la única forma
   // que v1 resuelve — y es lo que pone este tag en el lado emisor de `fud-bus`.
   @client {
-    import { emit } from '@fudic/dom';
+    import { emit } from "@fudic/dom";
 
     function add(precio) {
-      emit('carrito', precio);
+      emit("carrito", precio);
     }
   }
 }
@@ -39,9 +39,9 @@
 <product-list>
   <template shadowrootmode="open">
     <section class="panel">
-      <button class="add" @click="@add(3.5)">Taza — 3,50 €</button>
-      <button class="add" @click="@add(2)">Pegatina — 2,00 €</button>
-      <button class="add" @click="@add(2)">Chapa — 2,00 €</button>
+      <button class="add" @click=@add(3.5)>Taza — 3,50 €</button>
+      <button class="add" @click=@add(2)>Pegatina — 2,00 €</button>
+      <button class="add" @click=@add(2)>Chapa — 2,00 €</button>
     </section>
   </template>
 </product-list>

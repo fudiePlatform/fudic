@@ -187,6 +187,46 @@ describe('bindings', () => {
     expect(has(find(tokens, 'click'), 'entity.other.attribute-name.binding.event')).toBe(true);
     expect(has(find(tokens, 'ref'), 'entity.other.attribute-name.binding.ref')).toBe(true);
   });
+
+  // BUG-23 criterion 21: since decision 103 a value can drop its quotes, and without a rule
+  // for it the whole expression was plain text — the one form the grammar was blind to is
+  // the one the formatter now writes.
+  describe('the value with no quotes (decision 103)', () => {
+    it('colours a chain with a call as an expression, not as text', async () => {
+      const tokens = await tokenize('<p .title=@counter().id @click=@onClick($event)></p>\n');
+
+      expect(has(find(tokens, 'counter().id'), 'meta.interpolation.implicit')).toBe(true);
+      expect(has(find(tokens, 'counter().id'), 'source.ts')).toBe(true);
+      expect(has(find(tokens, 'onClick($event)'), 'source.ts')).toBe(true);
+    });
+
+    it('a lone name, an optional chain and an index all belong to the expression', async () => {
+      const tokens = await tokenize('<p .a=@name class:on=@a?.b[0].c></p>\n');
+
+      expect(has(find(tokens, 'name'), 'meta.interpolation.implicit')).toBe(true);
+      expect(has(find(tokens, 'a?.b[0].c'), 'source.ts')).toBe(true);
+    });
+
+    it('the escape valve keeps its own scope, and closes where its paren does', async () => {
+      const tokens = await tokenize('<p .a=@(x > 1) id="after"></p>\n');
+
+      expect(has(find(tokens, 'x > 1'), 'meta.interpolation')).toBe(true);
+      // The `id` after it is an attribute name again: the interpolation ended at the `)`.
+      expect(has(find(tokens, 'id'), 'entity.other.attribute-name')).toBe(true);
+    });
+
+    it('`=@@` is an escaped `@`, not a binding', async () => {
+      const tokens = await tokenize('<p title=@@fudic></p>\n');
+
+      expect(findAll(tokens, '@@fudic').some((t) => has(t, 'meta.interpolation'))).toBe(false);
+    });
+
+    it('the quoted form still colours the same', async () => {
+      const tokens = await tokenize('<p .title="@counter"></p>\n');
+
+      expect(has(find(tokens, 'counter'), 'meta.interpolation.implicit')).toBe(true);
+    });
+  });
 });
 
 describe('interpolation, escape and comment', () => {

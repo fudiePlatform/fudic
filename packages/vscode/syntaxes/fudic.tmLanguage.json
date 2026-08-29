@@ -236,6 +236,7 @@
         { "include": "#binding-property" },
         { "include": "#binding-event" },
         { "include": "#binding-ref" },
+        { "include": "#attribute-value-unquoted" },
         { "include": "#attribute-value" },
         { "include": "#attribute-name" }
       ]
@@ -274,6 +275,33 @@
     "attribute-name": {
       "name": "entity.other.attribute-name.html",
       "match": "[A-Za-z_:][\\w.:-]*"
+    },
+
+    "attribute-value-unquoted": {
+      "patterns": [
+        {
+          "name": "meta.interpolation.fudic",
+          "begin": "(=)(@)(\\()",
+          "beginCaptures": {
+            "1": { "name": "punctuation.separator.key-value.html" },
+            "2": { "name": "punctuation.definition.template-expression.begin.fudic" },
+            "3": { "name": "punctuation.section.parens.begin.fudic" }
+          },
+          "end": "\\)",
+          "endCaptures": { "0": { "name": "punctuation.section.parens.end.fudic" } },
+          "contentName": "source.ts",
+          "patterns": [{ "include": "#balanced-parens" }, { "include": "#balanced-ts" }]
+        },
+        {
+          "name": "meta.interpolation.implicit.fudic",
+          "match": "(=)(@)(?!@)([A-Za-z_$][\\w$]*(?:\\??\\.[A-Za-z_$][\\w$]*|\\([^()]*\\)|\\[[^\\]]*\\])*)",
+          "captures": {
+            "1": { "name": "punctuation.separator.key-value.html" },
+            "2": { "name": "punctuation.definition.template-expression.begin.fudic" },
+            "3": { "name": "variable.other.fudic source.ts" }
+          }
+        }
+      ]
     },
 
     "attribute-value": {

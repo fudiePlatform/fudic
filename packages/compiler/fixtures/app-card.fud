@@ -31,7 +31,7 @@
 
 <app-card>
   <template shadowrootmode="open">
-    <article class="card" class:highlight="@(variant === 'highlight')">
+    <article class="card" class:highlight=@(variant === 'highlight')>
       <header>
         <h2>@title</h2>
       </header>
@@ -40,7 +40,7 @@
           <slot></slot>
         </div>
       }
-      <app-button .variant="ghost" @press="@toggle">
+      <app-button .variant="ghost" @press=@toggle>
         @if (expanded()) { Cerrar } else { Abrir }
       </app-button>
     </article>

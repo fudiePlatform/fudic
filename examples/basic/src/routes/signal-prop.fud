@@ -14,7 +14,7 @@
 <p class="lede">
   El padre tiene la signal. Lo que escribe en el host del hijo es el
   <strong>identificador</strong>, no una llamada:
-  <code>@('<signal-display .value="@count">')</code>. Y aun así lo que cruza el shadow
+  <code>@('<signal-display .value=@count>')</code>. Y aun así lo que cruza el shadow
   boundary es un <strong>número</strong>: el compilador lee la signal por ti.
 </p>
 
