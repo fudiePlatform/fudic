@@ -12,7 +12,7 @@
 > vez de corregirse.** La tarea **13** se cierra por el mecanismo contrario al que proponía: los
 > snippets viajan dentro de la respuesta de TypeScript y es la raíz la que calla.
 
-**Estado:** `Listo` · **Rama:** `worktree-bug-23` · **Tareas:**
+**Estado:** `Hecho` · **Rama:** `worktree-bug-23` · **Tareas:**
 [BUG-23-Task.md](./BUG-23-Task.md)
 
 > **Paquetes:** `compiler` · `language-core` · `language-server` · `formatter` · `vscode` · `vite`

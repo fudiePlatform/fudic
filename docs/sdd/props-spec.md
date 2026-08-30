@@ -88,6 +88,24 @@ hay sintaxis adicional.
 **71.** Prop **requerida** = clave sin `?` en `T`. Si el consumidor no la pasa →
 error de compilación (semántico).
 
+**Quién lo comprueba, y dónde.** Los dos, con la misma definición de «requerida» —la clave de
+`T` **sin `?`**, no la ausencia de default— porque si difirieran el editor y el build dirían
+cosas distintas de la misma línea:
+
+- **En el editor**, TypeScript sobre la proyección: `$required<$Props, 'las que se pasaron'>`
+  con `$Missing` (SDD-23 §3.3). Comprueba el tipo de verdad, así que también dice *qué* tipo
+  esperaba, y el error se ancla sobre el **nombre del tag**.
+- **En el build**, el pase semántico: `FUD0197` (requerida no pasada), `FUD0198` (`.prop` que
+  el hijo no declara) y `FUD0199` (`slot=` que el padre no declara). Ahí no hay TypeScript, así
+  que solo se comprueban nombres, y solo cuando el grafo resolvió al hijo: el
+  `ComponentRegistry` contesta `propsOf`/`slotsOf`, y `undefined` significa «no lo puedo saber»
+  — un build no inventa un error que no puede demostrar (BUG-23 §4.4).
+
+Por eso el language server **no** sirve esas dos preguntas: allí la comprobación ya la hace
+TypeScript, con más información, y servirlas duplicaría cada error. Y por eso `props<Foo>()`
+—un tipo con nombre, no un literal— no produce ninguno de los tres en el build: el `?` vive en
+`T` y ahí no se puede leer.
+
 **72.** Prop **opcional** = clave con `?` en `T`. El consumidor puede omitirla.
 
 **73.** **Valor por defecto** = valor en el destructuring (`variant = 'default'`).
@@ -191,6 +209,27 @@ que se movió devolvería las demás a su default.
 Que esto no es una preferencia sino una restricción lo cierra SDD-17: el tramo de
 props de una instancia hidratada viaja **serializado** en `fud-state`, y una signal es
 una función con un `Set` vivo dentro. No sobrevive a la serialización, ni podría.
+
+**Esta regla la lee ahora un segundo lector: el editor.** Cuando el valor de una `.prop` es
+exactamente el nombre de algo declarado con `signal(...)` o `computed(...)`, lo que cruza es su
+**lectura** —`titulo()`—, y hasta BUG-23 la proyección copiaba la expresión tal cual: el build
+cruzaba el valor y el editor comprobaba el objeto `Signal<string>` contra el `name: string` del
+hijo. Cada uno miraba una expresión distinta de la misma línea. La regla vive ahora en **una**
+función del compilador (`crossing`, en `binding/crossing.ts`) que usan el emit y la proyección,
+y el `()` que el editor añade es andamiaje sin mapping: ir a definición, renombrar y el hover
+siguen llegando al `const titulo` del `@client`.
+
+Se aplica en los **dos** sitios donde el emit la aplica —la `.prop` de un componente y el
+atributo plano interpolado— y **no** en el texto: `<div>@titulo</div>` no pasa por el cruce, así
+que emit y editor coinciden ahí en mirar el objeto. Qué *debería* hacer el texto queda abierto
+(BUG-23 §7).
+
+> **Y esta decisión la reescribe entera SDD-31 §7 — «Props como signals».** Ahí la signal cruza
+> con identidad real: la casilla del hijo lleva un marcador `{"$":[ownerId, slot]}` y el runtime
+> materializa una celda única al repartir el estado. Está decidido y no implementado. Lo que
+> BUG-23 dejó preparado es solo la **firma**: `crossing` devuelve `Crossing`, con `'ref'`
+> declarado y sin emisor, y toma como cuarto parámetro lo que declara el hijo — porque la forma
+> del cruce dejó de depender solo del padre.
 
 ---
 

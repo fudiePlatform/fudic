@@ -197,6 +197,39 @@ fichero (decisión 28.c)—, así que cada uno es su propio trabajo. Completar e
 hueco del tag (`class:` / `style:` / `bus:` / `ref`) es la otra mitad, y toca el ancla de
 completado de BUG-11.
 
+#### 4.2.d. Una voz por posición, en los dos sentidos
+
+Añadido por [BUG-23](./bugs/BUG-23-arroba-valvula-de-escape.md). El reparto de 4.2.b decía
+quién contesta; lo que faltaba era la otra mitad: quién **calla**, y que callar no cueste la
+respuesta entera.
+
+**El `@` de un nodo de texto.** Ahí conviven dos cosas que el autor puede querer: los cuatro
+snippets de directiva (`@if`, `@foreach`, `@code`, `@section`) y todo lo que hay en ámbito —el
+`data` de la ruta, las props, los nombres de `@client`—. La rama de directiva de este servidor
+era **exclusiva**, así que contestaba los snippets y silenciaba a TypeScript. Mudarla a un
+plugin aditivo no funciona y la razón es de Volar: un plugin aditivo solo se ejecuta en el
+**primer mapping** de la petición, y los códigos embebidos se recorren antes que la raíz — en
+cuanto la posición mapea también en la proyección, que es justo lo que hace `@fore`, el plugin
+se salta y se pierden `@if`/`@foreach`. Lo que sí funciona es lo simétrico: **los snippets
+viajan dentro de la respuesta de TypeScript**, que es la que Volar sí entrega ahí, y la raíz
+calla en markup cuando TypeScript está montado. Sin TypeScript, la raíz vuelve a contestar sola.
+
+**El valor de un binding.** Lo que puede ir a la derecha de un `=` es una expresión sobre lo que
+el **template** ve, y nada más: el `data` de la ruta, las props que el fichero desestructuró, los
+nombres de su `@client`. Más `@()` como válvula de escape. Antes, `.name=@a` ofrecía `arguments`,
+`addEventListener`, `alert`, `await` y auto-imports de otros paquetes — el ámbito global entero.
+
+**Y el `@` a secas, antes de la primera letra.** `=@` sin identificador detrás no llega a ser una
+`RazorExpression` —el tokenizador la escanea solo donde empieza un identificador—, así que
+degradaba a atributo plano con el texto `"@"` y no dejaba hueco donde preguntar. Se proyecta como
+la expresión vacía que es, con un ancla de longitud **cero** al final del valor: Volar mapea con
+`Math.min(relativePos, generatedLength)`, así que un tramo que cubra el `@` empuja el cursor más
+allá del ancla.
+
+**Aceptar un ítem vuelve a abrir la lista.** Una prop, un evento y una clase condicional se
+insertan como `nombre=@` y piden la lista otra vez; `class` y `slot` reabren la suya. Encadenar
+es lo que convierte cuatro pulsaciones en una.
+
 ### 4.3. Semantic tokens
 
 El servidor emite tokens semánticos desde el AST real. Corrigen la gramática TextMate de
@@ -287,8 +320,16 @@ Workspace de prueba: el proyecto real con `blog/[slug].fud`, `_layout.fud`,
    §3.2. Sin `tsdk` válido, degrada a HTML+CSS y lo reporta en el log, sin morir.
 2. **Diagnósticos.** Los nueve casos de SDD-23 §6 aparecen como diagnósticos LSP **en el
    span del `.fud`**, no del virtual. Es el test que valida el mapeo inverso completo.
-3. **Completado de atributo.** Dentro de `<app-badge |>` se ofrece `tone`; dentro de
-   `tone="@(|)"` se ofrecen `'neutral' | 'success' | 'info'`.
+3. **Completado de atributo.** Dentro de `<app-badge |>` se ofrecen **las dos familias**: la
+   prop con su punto en la etiqueta (`.tone`) y el vocabulario de HTML (`class`, `id`, `role`…),
+   en una sola respuesta y sin que ningún nombre lleve el `?` que TypeScript pone a un miembro
+   opcional. Dentro de `tone="@(|)"` se ofrecen `'neutral' | 'success' | 'info'`.
+
+   > Restaurado por [BUG-23](./bugs/BUG-23-arroba-valvula-de-escape.md) el 2026-08-27. La
+   > decisión (b) de ese BUG —el hueco ofrece los globales y **no** las props— se derogó al
+   > medirla contra el editor real: separar las dos familias por posición obliga al autor a
+   > saber de antemano en cuál está, y el punto dentro de la etiqueta las distingue sin
+   > mantener ninguna tabla. Es la decisión **(b.3)**.
 4. **Completado de tag.** Tras `<` se ofrecen los tags con `<link>` declarado, separados de
    los nativos.
 5. **Completado de `href`.** Dentro de `href="|"` de un `rel="component"` se listan los

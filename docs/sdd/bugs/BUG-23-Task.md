@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` ·
 > `@fudic/formatter` · `fudic-vscode` · `@fudic/vite`
 > **Rama:** `worktree-bug-23`
-> **Progreso:** 25 / 27
+> **Progreso:** 27 / 27
 
 Veintisiete tareas. Las rutas son relativas a la raíz del repo, y cada tarea es un paso
 cerrado: se puede parar después de cualquiera con el workspace verde.
@@ -207,8 +207,8 @@ degrada a la de siempre, que es lo que pide el criterio 21.b.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 23 | todas | **La documentación, que aquí es contrato.** Decisiones **100–104** en la gramática, con la 99 retirada, la 29 precisada y la 8 con su excepción; SDD-23 §4.4 con los dos literales, el `$required`, el punto colgante y el handler diferido; SDD-24 §4.2 con el reparto nuevo de completados y **§6.3 restaurado** —el hueco ofrece las dos familias, decisión (b.3), que derogó la (b)—; SDD-12 con `FUD0197`–`FUD0199` **y `FUD0437`** (un `@code` en un layout); props-spec §2 con quién comprueba lo requerido y dónde. Y la **decisión 84** —la del cruce, que vive en `props-spec`, no en la gramática: no cambia de letra pero gana un lector (la lectura del reactivo la proyecta también el editor, con la misma función) y ya lleva anotado que SDD-31 §7 la reescribirá entera. Ahí se anota también que el texto queda fuera y por qué (BUG §2.8) | — | [docs/gramar/gramatica-v1-decisiones.md](../../gramar/gramatica-v1-decisiones.md) · [SDD-23](../SDD-23-emisor-ts-virtual.md) · [SDD-24](../SDD-24-language-server.md) · [SDD-12](../SDD-12-semantica.md) · [props-spec.md](../props-spec.md) |
-| [ ] | 24 | 23 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` verdes en el workspace entero, con el `.vsix` y los E2E de Playwright sobre el `dist` prerenderizado. `language-core` y `language-server` al **100 %** en las cuatro métricas; `compiler` no baja. Los criterios de §6 verdes —los 22 numerados más 5.b, 12.b–12.e y 21.b—, y los ocho tests de la tarea 1 —los que se vieron fallar— en verde. BUG-23 a `Hecho` en [INDEX.md](./INDEX.md), tabla y grafo | — | [INDEX.md](./INDEX.md) · [BUG-23](./BUG-23-arroba-valvula-de-escape.md) |
+| [x] | 23 | todas | **La documentación, que aquí es contrato.** Decisiones **100–104** en la gramática, con la 99 retirada, la 29 precisada y la 8 con su excepción; SDD-23 §4.4 con los dos literales, el `$required`, el punto colgante y el handler diferido; SDD-24 §4.2 con el reparto nuevo de completados y **§6.3 restaurado** —el hueco ofrece las dos familias, decisión (b.3), que derogó la (b)—; SDD-12 con `FUD0197`–`FUD0199` **y `FUD0437`** (un `@code` en un layout); props-spec §2 con quién comprueba lo requerido y dónde. Y la **decisión 84** —la del cruce, que vive en `props-spec`, no en la gramática: no cambia de letra pero gana un lector (la lectura del reactivo la proyecta también el editor, con la misma función) y ya lleva anotado que SDD-31 §7 la reescribirá entera. Ahí se anota también que el texto queda fuera y por qué (BUG §2.8) | — | [docs/gramar/gramatica-v1-decisiones.md](../../gramar/gramatica-v1-decisiones.md) · [SDD-23](../SDD-23-emisor-ts-virtual.md) · [SDD-24](../SDD-24-language-server.md) · [SDD-12](../SDD-12-semantica.md) · [props-spec.md](../props-spec.md) |
+| [x] | 24 | 23 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` verdes en el workspace entero, con el `.vsix` y los E2E de Playwright sobre el `dist` prerenderizado. `language-core` y `language-server` al **100 %** en las cuatro métricas; `compiler` no baja. Los criterios de §6 verdes —los 22 numerados más 5.b, 12.b–12.e y 21.b—, y los ocho tests de la tarea 1 —los que se vieron fallar— en verde. BUG-23 a `Hecho` en [INDEX.md](./INDEX.md), tabla y grafo | — | [INDEX.md](./INDEX.md) · [BUG-23](./BUG-23-arroba-valvula-de-escape.md) |
 
 ---
 

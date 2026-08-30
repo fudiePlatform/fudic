@@ -1040,7 +1040,7 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 5 | Transición `@` | Genéricos `<T>` obligan a explícita |
 | 6 | Transición `@` | Balanceador propio + Oxc para validar |
 | 7 | Transición `@` | Heurística de email mantenida (`@@` precede al lookbehind: `a@@b` → `a@b`) |
-| 8 | Transición `@` | Comillas obligatorias con `@` en atributos |
+| 8 | Transición `@` | Comillas obligatorias con `@` en atributos — **con la excepción de la 103**: un valor que es **una sola** expresión `@` puede ir sin ellas |
 | 9 | Control flujo | `@else` y `else` ambas válidas; `case`/`default` siempre sin `@` |
 | 10 | Control flujo | Whitespace y comentarios entre `}` y `else` |
 | 11 | Control flujo | `@foreach` separado de `@for` |
@@ -1065,7 +1065,7 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 28.b | Interpolación | `bus:literal` y `bus:(expr)` — dos formas del nombre |
 | 28.c | Interpolación | (Semántica, SDD-12) Resolución a literal + matching por valor (`bus:`+`emit`) |
 | 28.d | Interpolación | `@evento` (host) vs `bus:evento` (document), no inferido |
-| 29 | Interpolación | (Consecuencia) `@` distingue por posición; `bus:` activa bus |
+| 29 | Interpolación | (Consecuencia) `@` distingue por posición; `bus:` activa bus — **precisada por la 100**: la cadena es la misma en todas partes, y lo que la posición decide es dónde un `(` adyacente es una llamada y dónde es prosa |
 | 30 | Interpolación | `ref` solo identificador simple |
 | 31 | Interpolación | `ref` en bucle → error |
 | 32 | `@code` | `@server`/`@client` sintaxis Razor genuina |

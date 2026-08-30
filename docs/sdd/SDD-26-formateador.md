@@ -153,7 +153,13 @@ Es donde se hunden los formateadores de HTML, y donde este documento es explíci
   larga a un render distinto. Es exactamente el caso del `<app-badge>` real.
 - **Atributos.** Con más de uno y línea que no cabe, se rompe **uno por línea** con el `>`
   pegado al último atributo (o en su propia línea si el elemento no tiene hijos). Los
-  bindings largos (`class:success="@(tone === 'success')"`) no se parten nunca por dentro.
+  bindings largos (`class:success=@(tone === 'success')`) no se parten nunca por dentro.
+- **Comillas de un valor** (BUG-23, decisiones 103 y 105). Un valor que es **una sola**
+  expresión Razor se imprime **sin** comillas: `.prop=@name`, `@click=@onClick($event)`,
+  `class:on=@active`. El literal escalar desnudo de una `.prop` —`.id=0`, `.on=true`, `null`,
+  `undefined`— también, y sin el `@`. Todo lo demás las conserva: una concatenación
+  (`title="a @b c"`), un literal de string, un valor vacío. Un atributo sin partes se sigue
+  copiando verbatim. Idempotente, y medido de ida y vuelta sobre las fixtures.
 - **Bloques de directiva.** `@if (…) {` abre con el `{` en la misma línea; el `}` de
   cierre y el `else` siguen la forma del ejemplo canónico de la gramática (`} else {`).
   Entre `}` y `else` se preservan los comentarios `@* *@` (decisión 10).
