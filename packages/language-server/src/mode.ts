@@ -8,7 +8,13 @@
  * Pure — the disk enters in the workspace index, which is the only module that reads it.
  */
 
-import { extractCode, type StructuredDocument } from '@fudic/compiler';
+import {
+  documentRoots,
+  extractCode,
+  walk,
+  type Span,
+  type StructuredDocument,
+} from '@fudic/compiler';
 
 /** The four roles the `href` completion filters by (§4.2). */
 export type FudRole = 'component' | 'page' | 'route' | 'layout';
@@ -50,23 +56,111 @@ export function sectionsOf(document: StructuredDocument): readonly string[] {
   return document.renderSections.map((section) => section.name).filter((name) => name !== '');
 }
 
+/** One prop of a component, as a consumer of that component sees it. */
+export interface ContractProp {
+  readonly name: string;
+  /** Written WITHOUT a `?` in the type argument. Unprovable reads as optional (BUG-23 §4.4). */
+  readonly required: boolean;
+}
+
 /**
- * The props a component declares WITHOUT a `?`, in the order it declares them (BUG-23 §4.4).
+ * Everything a component declares to whoever writes its tag (SDD-36 §3.2).
  *
- * They are what makes `<app-button>` + <kbd>Tab</kbd> expand into a tabstop per required prop
- * instead of an empty element the author then has to fill from memory. The optional ones are
- * deliberately absent: twelve tabstops is worse than none, and the `.` reaches them.
+ * It is the card the hover shows and the answer the contract rules need, and it is ONE thing
+ * because those are one question asked twice. The editor used to know only the required prop
+ * names — enough to expand a tag, not enough to say what the tag is — and the slots and the
+ * events lived only in the build, where the graph is resolved.
  *
- * Only a component has any, and only one whose `props<T>()` argument this file can READ — a type
- * literal, or a name it declares itself as one. A type that comes from another file proves
- * nothing, and the honest answer there is the empty list, which degrades the expansion back to
- * what it was.
+ * Everything here is read from the parse. No TypeScript program is involved, which is what lets
+ * the card appear over a component that is not open, in a project whose types have not loaded,
+ * and in the second before a cold editor is ready. The one thing the parse cannot give is a
+ * prop's TYPE; that arrives separately and may not arrive at all.
  */
-export function requiredPropsOf(source: string, document: StructuredDocument): readonly string[] {
-  if (document.type !== 'component-document' || document.code === undefined) return [];
-  return extractCode(source, document)
-    .props.filter((prop) => !prop.optional)
-    .map((prop) => prop.name);
+export interface Contract {
+  readonly props: readonly ContractProp[];
+  /** The names of `<slot name="…">`, in source order. The default slot is not one. */
+  readonly slots: readonly string[];
+  /** The events the component emits, from every `emit('…')` whose name resolves statically. */
+  readonly events: readonly string[];
+  /** The first JSDoc of the `@code` block — decision 107. */
+  readonly doc?: string;
+}
+
+/** The empty contract, which is what everything that is not a component declares. */
+const NO_CONTRACT: Contract = { props: [], slots: [], events: [] };
+
+/**
+ * The contract of a component, or the empty one for anything else.
+ *
+ * Only a component has one: a page, a route and a layout are reached by URL or by `<link>`,
+ * never by being written as an element, so there is nobody to declare a contract TO.
+ */
+export function contractOf(source: string, document: StructuredDocument): Contract {
+  if (document.type !== 'component-document') return NO_CONTRACT;
+
+  const slots = slotNames(document);
+  if (document.code === undefined) return { props: [], slots, events: [] };
+
+  const code = extractCode(source, document);
+  const doc = firstDocComment(source, document.code.span);
+
+  return {
+    props: code.props.map((prop) => ({ name: prop.name, required: !prop.optional })),
+    slots,
+    // A name that did not resolve statically is absent on purpose: `emit(name)` with a variable
+    // is a real emission the card cannot name, and inventing `name` for it would be worse than
+    // the gap. Duplicates collapse — a component that emits `change` from three places emits
+    // one event.
+    events: [
+      ...new Set(code.emitCalls.flatMap((call) => (call.name === undefined ? [] : [call.name]))),
+    ],
+    ...(doc === undefined ? {} : { doc }),
+  };
+}
+
+/**
+ * The names of the `<slot name="…">` this component declares, in source order.
+ *
+ * A literal name and nothing else: `name=""` is the default slot (decision 44) and an
+ * interpolated one is not a name any consumer can write into a `slot=` attribute.
+ */
+function slotNames(document: StructuredDocument): readonly string[] {
+  const names: string[] = [];
+  walk(documentRoots(document), {
+    element(el) {
+      if (el.name !== 'slot') return;
+      for (const attribute of el.attributes) {
+        if (attribute.name !== 'name') continue;
+        const only = attribute.value.length === 1 ? attribute.value[0] : undefined;
+        if (only?.type === 'attribute-text' && only.value !== '') names.push(only.value);
+      }
+    },
+  });
+  return names;
+}
+
+/**
+ * The first `/** … *\/` of the `@code` block, as the text the author wrote (decision 107).
+ *
+ * Read from the SOURCE of the block rather than from the AST, and that is the whole reason the
+ * rule is «the first one»: Oxc drops comments from the tree it returns, so a comment cannot be
+ * attached to the declaration it precedes without a second pass nobody needs. One rule, one
+ * position, and a place the author would put it anyway.
+ *
+ * The stars and the indentation come off, because they are how a JSDoc is written and not part
+ * of what it says.
+ */
+function firstDocComment(source: string, at: Span): string | undefined {
+  const block = source.slice(at.start, at.end);
+  const match = /\/\*\*([\s\S]*?)\*\//u.exec(block);
+  if (match === null) return undefined;
+
+  const text = (match[1] as string)
+    .split('\n')
+    .map((line) => line.replace(/^\s*\*? ?/u, '').trimEnd())
+    .join('\n')
+    .trim();
+  return text === '' ? undefined : text;
 }
 
 /**

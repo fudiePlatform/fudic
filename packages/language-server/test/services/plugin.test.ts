@@ -717,6 +717,33 @@ describe('semantic tokens', () => {
   });
 });
 
+describe('hover', () => {
+  it('shows the contract of the component under the pointer (SDD-36 §3.2)', async () => {
+    const source = `<link rel="layout" href="../layouts/_layout.fud">\n<app-badge></app-badge>\n`;
+    const { service, document, cached } = setup(source);
+    const at = document.positionAt(cached.source.indexOf('<app-badge') + 1);
+
+    const hover = await service.provideHover?.(document, at, TOKEN);
+
+    expect(String((hover?.contents as { value: string }).value)).toContain(
+      '**`<app-badge>`** · fudic component',
+    );
+    // Underlines the NAME, not the whole tag: that is the stretch the answer is about.
+    const name = cached.source.indexOf('app-badge');
+    expect(hover?.range).toEqual(rangeOf(document, { start: name, end: name + 'app-badge'.length }));
+  });
+
+  it('says nothing over a native element or a document that is not ours', async () => {
+    const source = `<link rel="layout" href="../layouts/_layout.fud">\n<div></div>\n`;
+    const { service, document, cached } = setup(source);
+    const at = document.positionAt(cached.source.indexOf('<div') + 1);
+    const other = TextDocument.create('file:///p/data/posts.ts', 'typescript', 1, 'export {};');
+
+    expect(await service.provideHover?.(document, at, TOKEN)).toBeUndefined();
+    expect(await service.provideHover?.(other, at, TOKEN)).toBeUndefined();
+  });
+});
+
 describe('code actions', () => {
   it('offers to create the file an href points at', async () => {
     const source = route('../layouts/_layout.fud', ['../components/ghost.fud']);

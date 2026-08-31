@@ -29,6 +29,7 @@ export type RequestKind =
   | 'diagnostics'
   | 'documentLinks'
   | 'formatting'
+  | 'hover'
   | 'onTypeFormatting'
   | 'semanticTokens';
 

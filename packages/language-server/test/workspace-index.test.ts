@@ -45,6 +45,7 @@ describe('scan', () => {
       layoutHref: '',
       sections: [],
       requiredProps: [],
+      contract: { props: [], slots: [], events: [] },
     });
     expect(index.get('/p/blog/[slug].fud')).toEqual({
       path: '/p/blog/[slug].fud',
@@ -53,6 +54,7 @@ describe('scan', () => {
       layoutHref: '../layouts/_layout.fud',
       sections: [],
       requiredProps: [],
+      contract: { props: [], slots: [], events: [] },
     });
   });
 

@@ -77,6 +77,7 @@ import {
   type TagCompletion,
 } from './tags.js';
 import { semanticTokens } from './semantic-tokens.js';
+import { cardMarkdown, tagCardAt } from './tag-card.js';
 
 /** What opens an expression, and therefore what every name in scope is written with. */
 const EXPRESSION_PREFIX = '@';
@@ -311,6 +312,9 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
       documentLinkProvider: { resolveProvider: false },
       // Only the tag: everything inside it is answered by TypeScript over the projection.
       definitionProvider: true,
+      // Same boundary, for the same reason: a component's contract is knowledge this package
+      // has and TypeScript does not — the tag is projected as a type name nobody can hover.
+      hoverProvider: true,
       semanticTokensProvider: { legend: SEMANTIC_TOKENS_LEGEND },
       diagnosticProvider: { interFileDependencies: true, workspaceDiagnostics: false },
       codeActionProvider: {},
@@ -464,6 +468,28 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
                   0,
                 ];
               });
+            },
+            undefined,
+          );
+        },
+
+        provideHover(document, position, token) {
+          return stats.run(
+            'hover',
+            token,
+            () => {
+              const cached = fudicDocumentOf(context, document);
+              if (cached === undefined) return undefined;
+
+              const card = tagCardAt(cached, index, document.offsetAt(position));
+              if (card === undefined) return undefined;
+
+              // No types yet: they come from the projection and are the one half of the card
+              // that may not arrive. The card is complete without them (SDD-36 §4.5).
+              return {
+                contents: { kind: 'markdown', value: cardMarkdown(card, new Map()) },
+                range: rangeOf(document, card.span),
+              };
             },
             undefined,
           );

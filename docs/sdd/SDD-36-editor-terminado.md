@@ -45,13 +45,18 @@ El servidor ya declara `codeActionProvider`. Cambia **qué** devuelve: un `CodeA
 
 | Diagnóstico | Título | Escribe |
 |---|---|---|
-| `FUD0197` prop requerida sin pasar | `Pasar las props requeridas de <tag>` | `.name=$1` por cada una que falte, en el orden del hijo |
 | `FUD0191` componente sin declarar | `Añadir <link rel="component"> de <tag>` | El `<link>` en el `<head>` |
 | `FUD0056` valor sin comillas | `Entrecomillar el valor` | Comillas alrededor del valor |
 | `FUD0540` bucle sin `key` | `Añadir key (…)` | ` key (<binding>)` tras la cabecera |
-| `FUD0199` slot que el padre no declara | `Cambiar a "<slot>"`, una por candidato | El nombre, dentro de las comillas |
 
 Una fila que no se pueda construir con certeza **no se ofrece**.
+
+**`FUD0197` y `FUD0199` no están, y la medida es la razón.** Las dos reglas de contrato de BUG-23
+necesitan `propsOf` y `slotsOf`, que el registro del servidor no expone; dárselos las enciende en
+el editor y con ellas llega la duplicación: `.currnt=` sobre un componente pasa a dar `TS2561`
+**y** `FUD0198`, el mismo error dos veces, y solo uno de los dos sabe que el nombre era `current`.
+En el build no hay TypeScript y los tres `FUD019x` son la única red; en el editor TypeScript **es**
+la red. Una voz por hecho, que es la regla que costó un mes aprender.
 
 ### 3.2. La tarjeta del componente
 
@@ -172,18 +177,18 @@ Reservado y vacío. Este SDD repara y describe; no diagnostica.
 
 **La bombilla**
 
-1. Con `FUD0197`, una acción cuyo edit inserta `.name=$1` en el tag de apertura y no toca nada más.
-2. Con dos requeridas ausentes, escribe las dos en el orden del hijo, con `$1` y `$2`.
-3. Con una ya escrita, escribe solo la que falta.
-4. Sin `requiredProps` para ese tag, no hay acción (ni una vacía).
-5. Con `FUD0191`, inserta el `<link rel="component">` con el mismo `href` que `linkInsertionFor`.
-6. Con `FUD0056`, entrecomilla exactamente el valor: no toca el nombre del atributo ni el `=`.
-7. Con `FUD0540` en `@foreach (const item of items)`, escribe ` key (item)` tras el `)`.
-8. En `@foreach (const { id, tag } of xs)` usa `id`.
-9. En `@while (x)` no se ofrece.
-10. Con `FUD0199`, una acción por slot que el padre declara; ninguna si no declara ninguno.
-11. Una posición sin diagnósticos no ofrece ninguna de las cinco.
-12. El caso del `href` que ya existía sigue funcionando igual.
+1. Con `FUD0191`, inserta el `<link rel="component">` con el mismo `href` que `linkInsertionFor`.
+2. Un tag que el workspace no tiene no ofrece acción: el `href` no se inventa.
+3. `<app-badge-large>` no se confunde con `app-badge`: el límite del nombre es parte de la regla.
+4. Con `FUD0056`, entrecomilla exactamente el valor: no toca el nombre del atributo ni el `=`.
+5. Un valor que ya lleva una comilla dentro no se entrecomilla: no hay reparación cierta.
+6. Con `FUD0540` en `@foreach (const item of items)`, escribe ` key (item)` tras el `)`.
+7. En `@foreach (const { id, tag } of xs)` usa `id`.
+8. En `@foreach (x of xs)` y en una cabecera que Oxc no pudo leer, no se ofrece.
+9. Un diagnóstico reparable fuera del rango preguntado no ofrece nada.
+10. Una posición sin diagnósticos no ofrece ninguna.
+11. El caso del `href` que ya existía sigue funcionando igual.
+12. Un fichero sano no ofrece nada en absoluto.
 
 **La tarjeta**
 
