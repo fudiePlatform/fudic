@@ -9,6 +9,7 @@
 
 import { join } from 'node:path';
 import type {
+  CaretAt,
   CommentSelection,
   LineReplacement,
   SnippetTarget,
@@ -77,6 +78,39 @@ export const typedTextOf = (event: ChangeEventLike): TypedText | undefined => {
     text: change.text,
     version: event.document.version,
   };
+};
+
+/** The shape of `vscode.TextEditorSelectionChangeEvent`, reduced to what the caret watcher reads. */
+export interface SelectionEventLike {
+  readonly textEditor: {
+    readonly document: {
+      readonly languageId: string;
+      getText(): string;
+      offsetAt(position: unknown): number;
+    };
+  };
+  readonly selections: readonly {
+    readonly isEmpty: boolean;
+    readonly active: unknown;
+  }[];
+}
+
+/**
+ * The caret of the event, or nothing when there is not exactly one.
+ *
+ * A selection is not a caret, and neither are several of them: opening a suggest list on a
+ * multi-cursor edit would answer about the first one and write into all of them.
+ */
+export const caretAtOf = (event: SelectionEventLike): CaretAt | undefined => {
+  const selection = event.selections[0];
+  if (selection === undefined || event.selections.length !== 1 || !selection.isEmpty) {
+    return undefined;
+  }
+
+  const document = event.textEditor.document;
+  if (document.languageId !== 'fudic') return undefined;
+
+  return { text: document.getText(), offset: document.offsetAt(selection.active) };
 };
 
 /** The shape of `vscode.TextEditor`, reduced to what inserting a snippet needs. */

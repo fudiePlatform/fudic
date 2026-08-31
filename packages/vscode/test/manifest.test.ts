@@ -167,6 +167,16 @@ describe('commands', () => {
       },
     ]);
   });
+
+  it('rebinds Tab nowhere at all', () => {
+    // Tab belongs to the editor. Taking it over — even narrowed to a `.fud` in snippet mode —
+    // changes a key every developer has muscle memory for, in exchange for a behaviour the
+    // server can produce on its own: a list that closes when the value is written (the
+    // `isIncomplete` of BUG-23 task 25) leaves Tab meaning what it always meant.
+    const bindings = at(manifest, 'contributes', 'keybindings') as readonly { key: string }[];
+
+    expect(bindings.some((binding) => binding.key.endsWith('tab'))).toBe(false);
+  });
 });
 
 describe('language configuration', () => {

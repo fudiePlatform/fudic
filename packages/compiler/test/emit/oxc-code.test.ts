@@ -116,6 +116,26 @@ describe('extractCode', () => {
     it('a key that is not an identifier is not a key this can match', () => {
       expect(optionals(`const { a } = props<{ 'a': string }>();`)).toEqual({ a: true });
     });
+
+    it('resolves a name the file DECLARES, as a type alias or as an interface', () => {
+      // Both spell the same contract, so both have to read the same. An interface keeps its
+      // members one level deeper, in its `body`, and that is the only difference between them.
+      expect(optionals('type P = { a: string; b?: number };\n  const { a, b } = props<P>();')).toEqual(
+        { a: false, b: true },
+      );
+      expect(
+        optionals('interface P { a: string; b?: number }\n  const { a, b } = props<P>();'),
+      ).toEqual({ a: false, b: true });
+      expect(
+        optionals('export interface P { a: string }\n  const { a } = props<P>();'),
+      ).toEqual({ a: false });
+    });
+
+    it('proves nothing from a name built out of another type', () => {
+      // `Omit<…>`, a union, a generic: resolving those is typechecking, and this pass reads an
+      // AST. Unknown has to keep meaning «all optional», never an invented requirement.
+      expect(optionals('type P = Omit<Q, "x">;\n  const { a } = props<P>();')).toEqual({ a: true });
+    });
   });
 
   it('returns nothing for a component with no @code', () => {

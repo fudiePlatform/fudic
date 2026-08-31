@@ -47,12 +47,56 @@ export type TemplateScope = ReadonlyMap<string, ScopeKind>;
  * projection itself — for a route or a page, never for a component, which receives props and
  * has no route data to read (SDD-23 §4.2).
  */
-export function templateScope(cached: CachedDocument): TemplateScope {
+export function templateScope(cached: CachedDocument, offset?: number): TemplateScope {
   if (!interpolates(cached)) return new Map();
 
   const names = declaredNames(cached, [...cached.js.neutral, ...cached.js.client]);
   if (cached.document.type !== 'component-document') names.set('data', 'value');
+  if (offset !== undefined) addLoopBindings(cached, offset, names);
   return names;
+}
+
+/**
+ * The names the loops AROUND `offset` declare, added to the file's own.
+ *
+ * The correction of BUG-23 §2.9, and the reason it is here rather than a filter over
+ * TypeScript's reply: the same rule the rest of this module lives by. What the developer sees
+ * cannot depend on the TypeScript program being alive — a program still loading, a `tsconfig`
+ * that does not reach the file, a virtual the project never included — because the file being
+ * typed into is exactly the one where that goes wrong. The names come from the parse, so they
+ * exist whenever the file parses.
+ *
+ * NESTING needs no rule of its own. Every loop whose construct contains the offset contributes,
+ * so two `@foreach` one inside the other contribute both, in source order — the inner one last,
+ * which is what shadowing means when the same name is declared twice. Depth is not a number this
+ * function knows.
+ *
+ * `headerEnd` is what keeps a binding from being read before it exists: inside `(const x of xs)`
+ * the `x` is being declared, not used, so the scope there is still the one outside. Past it the
+ * `key (…)` and the whole body see it (decision 91).
+ */
+function addLoopBindings(
+  cached: CachedDocument,
+  offset: number,
+  into: Map<string, ScopeKind>,
+): void {
+  for (const loop of cached.js.loops) {
+    if (offset < loop.headerEnd || offset > loop.span.end) continue;
+    if (loop.statement === undefined) continue;
+
+    // `for (const x of xs)` keeps its declaration in `left`; `for (let i = 0; …)` in `init`.
+    // Either can also be a bare assignment target — `for (x of xs)` declares nothing new — and
+    // a `for (;;)` has no `init` at all.
+    const declaration = (loop.statement['left'] ?? loop.statement['init']) as OxcNode | null;
+    if (declaration === null || declaration === undefined) continue;
+    if (declaration.type !== 'VariableDeclaration') continue;
+
+    for (const declarator of declaration['declarations'] as readonly OxcNode[]) {
+      // A loop variable is a value: nothing about `const x of xs` says `x` can be called, and
+      // guessing from an initializer that is not there would be inventing an answer.
+      collectPatternNames(declarator['id'] as OxcNode, 'value', into);
+    }
+  }
 }
 
 /**

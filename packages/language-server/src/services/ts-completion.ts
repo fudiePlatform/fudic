@@ -43,6 +43,7 @@ import {
   eventContextAt,
   expressionValueContextAt,
   handlerContextAt,
+  valueBegun,
   propertyContextAt,
   slotValueContextAt,
   type PartialName,
@@ -80,6 +81,56 @@ const CALLABLE_KINDS: ReadonlySet<CompletionItemKind> = new Set([
 
 /** The projection's own namespace, reserved by SDD-24 §4.4 precisely so this is safe. */
 const RESERVED_PREFIX = '$';
+
+/**
+ * The `sortText` bands TypeScript gives to a name DECLARED where the caret is.
+ *
+ * `10` is a local declaration and `11` is everything else the lexical scope holds at that
+ * offset; `15` is the globals and the keywords, `16` an auto-import. The bands are tsserver's
+ * own (`Completions.SortText`) and they answer the one question this file could not answer for
+ * itself: which of the 984 names TypeScript offers are in scope AT the offset, rather than
+ * merely in the program.
+ */
+const LOCAL_BANDS: ReadonlySet<string> = new Set(['10', '11']);
+
+/**
+ * The two names TypeScript puts in every function scope and no template may read.
+ *
+ * They arrive in the local band like a real binding because that is what they are — bindings
+ * of the function the projection wraps the template in — and they belong to the projection,
+ * not to the `.fud`. `$`-prefixed scaffolding is already gone by the time this is asked; these
+ * two cannot carry the prefix, because they are the language's and not ours.
+ */
+const IMPLICIT_BINDINGS: ReadonlySet<string> = new Set(['arguments', 'this']);
+
+/**
+ * Whether a name TypeScript offered is one the template may write at THIS offset.
+ *
+ * The correction of BUG-23 §2.9. The rule used to be `scope.has(item.label)`, with `scope` the
+ * names declared at the top level of `@code` and `@client` — a set computed once per file, with
+ * no offset in it. That is a global answer to a positional question, and everything a BLOCK
+ * introduces fell through it: the `x` of `@foreach (const x of xs)`, the `i` of a `@for`, the
+ * bindings of a nested loop at any depth, and anything a `@{ … }` declares. The projection
+ * emits real control flow precisely so TypeScript knows those names (`control.ts`), and the
+ * filter was throwing away the answer it had asked for.
+ *
+ * So the question is put to TypeScript instead, through the band it sorts by: a name it reports
+ * as LOCAL at this offset is in scope, whatever declared it and however deeply nested. Nesting
+ * needs no rule of its own — lexical scope is what the band measures.
+ *
+ * `scope` survives as a second chance and nothing more: a program that has not finished loading
+ * reports no bands at all, and the file's own names still have to be offered then. It can only
+ * ADD, so a name it does not know about is no longer a name the developer cannot see.
+ */
+function inTemplateScope(item: CompletionItem, scope: TemplateScope): boolean {
+  if (IMPLICIT_BINDINGS.has(item.label) || isAutoImport(item)) return false;
+
+  const band = item.sortText;
+  if (band !== undefined && LOCAL_BANDS.has(band.startsWith('z') ? band.slice(1) : band)) {
+    return true;
+  }
+  return scope.has(item.label);
+}
 
 /** What opens an expression: the value of a prop and of an event is one (decision 1). */
 const EXPRESSION_PREFIX = '@';
@@ -135,10 +186,31 @@ export function filterTypeScriptCompletions(
             return kept.length === 0 ? list : { isIncomplete: true, items: kept };
           }
 
-          // The SAME object shape back, `isIncomplete` included: an incomplete list that
-          // comes back complete stops the editor from ever asking again, and a list that
-          // grows with the next keystroke is exactly what an import suggestion is.
-          return { ...list, items: kept };
+          // `isIncomplete` survives, and at a position of OURS it is forced on. An incomplete
+          // list that comes back complete stops the editor from ever asking again — a list
+          // that grows with the next keystroke is exactly what an import suggestion is — and
+          // at these positions the answer is a function of the text BEFORE the caret, so it
+          // changes with every keystroke by construction.
+          //
+          // It is what makes the silence of `valueBegun` reach the screen (BUG-23 task 25).
+          // With a COMPLETE list VS Code caches the reply and filters it in the client from
+          // then on, against `filterText` and never against the server: the four names offered
+          // at `.id=` survived `.id=t` because `t` is inside `items`, and `.id=h` because `h`
+          // is inside `handlerClick`, so a widget left standing over a written value swallowed
+          // the Tab meant for the next prop. Whether it survived depended on the letter and on
+          // the names of the file, which is why it looked like a different bug every time.
+          //
+          // And ONLY when there is something to offer. `isIncomplete` means «ask me again», so
+          // an EMPTY incomplete list is a session VS Code keeps alive: it renders «No
+          // suggestions» instead of closing, and the widget still eats the first Tab — the
+          // silence was right and the flag on it was holding the window open. Empty means
+          // complete, which is the one thing that dismisses the list.
+          //
+          // At a position that is NOT ours the flag is TypeScript's and is left alone: a list
+          // that grows with the next keystroke is exactly what an auto-import suggestion is,
+          // and inside `@code` that is the whole point.
+          if (narrowed.at === undefined) return { ...list, items: kept };
+          return { ...list, items: kept, isIncomplete: kept.length > 0 };
         },
       };
     },
@@ -256,7 +328,14 @@ function allowedItems(
   // `$on`, and in neither is the answer «every name in the program».
   const bare = bareBindingValueContextAt(source.cached.source, offset, region);
   if (bare !== undefined) {
-    const scope = templateScope(source.cached);
+    // A value that has BEGUN as a scalar literal is the author's to finish and nobody else's:
+    // a `.prop` takes a bare number (decision 105), and no name in scope can continue `0`. The
+    // list has to go, and not because it is noise — a suggestion widget left open over a value
+    // that is already written swallows the <kbd>Tab</kbd> meant for the next prop, so the
+    // expansion of a tag stops halfway through (BUG-23 task 25).
+    if (valueBegun(bare.text)) return { items: [], at: offset };
+
+    const scope = templateScope(source.cached, offset);
     return {
       items: openingItems(scope, bare.event, plainAnchor(document, position, bare)),
       at: offset,
@@ -403,7 +482,7 @@ function allowedItems(
   // what keeps `@()` and the callable-only narrowing on the positions they belong to.
   const value = expressionValueContextAt(source.cached.source, offset, region);
   if (value !== undefined) {
-    const scope = templateScope(source.cached);
+    const scope = templateScope(source.cached, offset);
     // An EVENT takes the same list, minus everything that cannot be called: what goes after
     // `@click=` has to be a listener, so a `const` holding a number is not a candidate however
     // legitimately it is in scope. Any other binding keeps the whole scope — a value is a value.
@@ -411,8 +490,7 @@ function allowedItems(
 
     const kept = visible.filter(
       (item) =>
-        scope.has(item.label) &&
-        !isAutoImport(item) &&
+        inTemplateScope(item, scope) &&
         (!callableOnly || (item.kind !== undefined && CALLABLE_KINDS.has(item.kind))),
     );
     const range = anchor(document, position, value);
@@ -447,8 +525,8 @@ function allowedItems(
   }
 
   if (directive !== undefined && directiveScope === 'markup') {
-    const scope = templateScope(source.cached);
-    const kept = visible.filter((item) => scope.has(item.label) && !isAutoImport(item));
+    const scope = templateScope(source.cached, offset);
+    const kept = visible.filter((item) => inTemplateScope(item, scope));
     const range = anchor(document, position, directive);
     // A LAYOUT keeps only the snippets, and there they are the three `@Render*`: it has no
     // `@code` and no `data`, so an expression cannot read anything — `@()` included. See
@@ -559,6 +637,11 @@ function directiveSnippets(
       label: snippet.label,
       kind: CompletionItemKind.Snippet,
       detail: snippet.detail,
+      // WITHOUT the `@`, and it is what makes the list survive the second keystroke. The range
+      // this item replaces is the partial name alone — the `@` is source the projection never
+      // copied — so the editor filters `@foreach` against `f` and drops it. At `@` the word is
+      // empty and everything shows; at `@f` only this makes `@if` and `@foreach` stay.
+      filterText: snippet.label.slice(1),
       sortText: `0_${snippet.label}`,
       labelDetails: { description: 'fudic' },
       insertTextFormat: InsertTextFormat.Snippet,

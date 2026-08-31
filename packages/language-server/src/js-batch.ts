@@ -31,6 +31,27 @@ export interface CodeRegion {
   readonly id: FragmentId;
 }
 
+/**
+ * A loop and the JS of its header, parsed.
+ *
+ * `@foreach (const x of xs)` and `@for (let i = 0; …)` DECLARE names, and those names are in
+ * scope for the whole body — the `key (…)` included (decision 91). Nobody was reading them:
+ * the header went to Oxc for its syntax and its AST was thrown away, so the only list the
+ * editor could build was the file's top-level one, and everything a block introduces was
+ * invisible however deeply or shallowly it was nested (BUG-23 §2.9).
+ *
+ * They ride in the SAME batch as everything else — the kinds `for-of-header` and `for-header`
+ * exist for exactly this — so the golden rule holds: Oxc is invoked once per file.
+ */
+export interface LoopHeader {
+  /** The whole construct, from its `@` to its closing `}`. */
+  readonly span: Span;
+  /** Where the header's JS ends: past it, the names it declares are in scope. */
+  readonly headerEnd: number;
+  /** The `ForOfStatement` / `ForStatement` Oxc built. Absent when it could not build one. */
+  readonly statement?: OxcNode;
+}
+
 /** The JS of one document, parsed exactly once. */
 export interface DocumentJs {
   readonly result: JsBatchResult;
@@ -44,6 +65,8 @@ export interface DocumentJs {
   readonly client: readonly FragmentId[];
   /** The `@server` / `@client` regions — where the `$` namespace is enforced (§4.4). */
   readonly regions: readonly CodeRegion[];
+  /** Every `@foreach` / `@for` of the template, with the header Oxc parsed for it. */
+  readonly loops: readonly LoopHeader[];
   /**
    * The AST registered at a source SPAN, rather than at a node.
    *
@@ -62,6 +85,7 @@ export function batchDocumentJs(source: string, document: StructuredDocument): D
   const neutral: FragmentId[] = [];
   const client: FragmentId[] = [];
   const regions: CodeRegion[] = [];
+  const loops: { span: Span; headerEnd: number; id: FragmentId }[] = [];
 
   const register = (node: Node, at: Span): void => {
     const id = batch.add('expression', at);
@@ -79,6 +103,23 @@ export function batchDocumentJs(source: string, document: StructuredDocument): D
     // server's own making, on a value the author has not finished typing.
     binding(expr) {
       if (expr.expr.end > expr.expr.start) register(expr, expr.expr);
+    },
+    // The two constructs that DECLARE a name. `@while` and `@if` hold a condition, which binds
+    // nothing, and `@switch` a discriminant — none of them opens a scope the template can read
+    // a new name from, so registering them would buy an AST nobody asks a question of.
+    control(node) {
+      if (node.type !== 'foreach' && node.type !== 'for') return;
+      const header = node.header.inner;
+      // An unclosed or missing `( … )` is FUD0070 and has an empty span: `for () {}` would make
+      // the whole batch unparseable, and the file being edited is the one that must keep
+      // answering. It declares nothing, so there is nothing to lose by leaving it out.
+      if (header.end <= header.start) return;
+
+      loops.push({
+        span: node.span,
+        headerEnd: header.end,
+        id: batch.add(node.type === 'foreach' ? 'for-of-header' : 'for-header', header),
+      });
     },
   });
 
@@ -101,6 +142,16 @@ export function batchDocumentJs(source: string, document: StructuredDocument): D
     neutral,
     client,
     regions,
+    loops: loops.map((loop) => {
+      // A header the parser read but Oxc could not — `@foreach (const of) {`, mid-keystroke —
+      // comes back as the empty list rather than a statement. It declares nothing.
+      const root = parsed.value.ast(loop.id);
+      return {
+        span: loop.span,
+        headerEnd: loop.headerEnd,
+        ...(Array.isArray(root) ? {} : { statement: root as OxcNode }),
+      };
+    }),
     ast: (at) => {
       const id = bySpan.get(spanKey(at));
       return id === undefined ? undefined : parsed.value.ast(id);

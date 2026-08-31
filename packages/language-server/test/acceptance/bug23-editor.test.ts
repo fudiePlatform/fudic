@@ -140,7 +140,7 @@ describe('the list the editor actually renders', () => {
     // It used to answer NOTHING, on the rule that until the `@` is there the author has said
     // nothing to complete. The rule described the grammar and served the developer badly: the
     // `@` is precisely what an editor is for, so the names arrive with it already written.
-    const items = await completeAt('<app-circle .name=r|></app-circle>');
+    const items = await completeAt('<app-circle .name=|></app-circle>');
 
     expect(names(items)).toContain('@title');
     // What the silence did fix stays fixed: never HTML's vocabulary, which is what reached
@@ -149,8 +149,18 @@ describe('the list the editor actually renders', () => {
     expect(names(items)).not.toContain('hidden');
   });
 
+  it('says nothing once the author has begun the value by hand', async () => {
+    // The EMPTY value is the one that gets a list, and task 25 is why the rule has to be
+    // total: a `.prop` takes a bare scalar (decision 105), so `0`, `"Hello"` and `true` are
+    // finished answers no name in scope can continue — and a widget left standing over one
+    // swallows the Tab meant for the next prop.
+    expect(names(await completeAt('<app-circle .name=r|></app-circle>'))).toEqual([]);
+    expect(names(await completeAt('<app-circle .name=0|></app-circle>'))).toEqual([]);
+    expect(names(await completeAt('<app-circle .name=tru|></app-circle>'))).toEqual([]);
+  });
+
   it('offers only what can be called in an event value before the `@` is pressed', async () => {
-    const items = await completeAt('<app-circle .name="x" @click=j|></app-circle>');
+    const items = await completeAt('<app-circle .name="x" @click=|></app-circle>');
 
     expect(names(items)).toContain('@handlerClick');
     // A listener is what goes there, so a value that cannot be one is not offered — and never

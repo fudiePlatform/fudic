@@ -89,12 +89,26 @@ describe('contractDiagnostics — the three the build owes the editor', () => {
     expect(contractDiagnostics(ok)).toEqual([]);
   });
 
-  it('a named type argument proves nothing, so nothing is required (criterion 19)', () => {
+  it('a name the file DECLARES is read like the literal it aliases (criterion 19)', () => {
+    // The alias is in the same `@code`, so the file proves what it declares and the contract
+    // is as knowable as if it had been written inline.
     const named = component(
       'app-circle',
       '@code {\n  type P = { name: string };\n  const { name } = props<P>();\n}\n',
       '<b>@name</b>',
     );
-    expect(contractDiagnostics(graphOf('<app-circle></app-circle>', named))).toEqual([]);
+    const found = contractDiagnostics(graphOf('<app-circle></app-circle>', named));
+    expect(found.map((d) => d.code)).toEqual(['FUD0197']);
+  });
+
+  it('a type from ANOTHER file proves nothing, so nothing is required (criterion 19)', () => {
+    // Nothing here can be resolved without leaving the file, and «I cannot know» has to keep
+    // meaning silence: a required prop invented from a name is a red file the author cannot fix.
+    const imported = component(
+      'app-circle',
+      "@code {\n  import type { P } from './p';\n\n  const { name } = props<P>();\n}\n",
+      '<b>@name</b>',
+    );
+    expect(contractDiagnostics(graphOf('<app-circle></app-circle>', imported))).toEqual([]);
   });
 });

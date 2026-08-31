@@ -134,7 +134,7 @@
       "match": "(?<![\\w.@])(@)([A-Za-z_$][\\w$]*(?:\\.[A-Za-z_$][\\w$]*)*)",
       "captures": {
         "1": { "name": "punctuation.definition.template-expression.begin.fudic" },
-        "2": { "name": "variable.other.fudic source.ts" }
+        "2": { "name": "variable.other.fudic" }
       }
     },
 
@@ -298,7 +298,7 @@
           "captures": {
             "1": { "name": "punctuation.separator.key-value.html" },
             "2": { "name": "punctuation.definition.template-expression.begin.fudic" },
-            "3": { "name": "variable.other.fudic source.ts" }
+            "3": { "name": "variable.other.fudic" }
           }
         }
       ]

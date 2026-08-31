@@ -192,19 +192,26 @@ describe('bindings', () => {
   // for it the whole expression was plain text — the one form the grammar was blind to is
   // the one the formatter now writes.
   describe('the value with no quotes (decision 103)', () => {
+    // `variable.other` and NOT `source.ts`, and the difference is not cosmetic: the manifest
+    // maps `source.ts` to the TypeScript language, and VS Code reads the scope under the caret
+    // to decide which language it is in. With it, an implicit expression turned the position
+    // into TypeScript and the editor offered ITS snippets — `for`, `function`, `forawaitof` —
+    // where the names in scope belong. The scope inside `@( … )` stays, because there the
+    // author really is writing TypeScript.
     it('colours a chain with a call as an expression, not as text', async () => {
       const tokens = await tokenize('<p .title=@counter().id @click=@onClick($event)></p>\n');
 
       expect(has(find(tokens, 'counter().id'), 'meta.interpolation.implicit')).toBe(true);
-      expect(has(find(tokens, 'counter().id'), 'source.ts')).toBe(true);
-      expect(has(find(tokens, 'onClick($event)'), 'source.ts')).toBe(true);
+      expect(has(find(tokens, 'counter().id'), 'variable.other')).toBe(true);
+      expect(has(find(tokens, 'counter().id'), 'source.ts')).toBe(false);
+      expect(has(find(tokens, 'onClick($event)'), 'variable.other')).toBe(true);
     });
 
     it('a lone name, an optional chain and an index all belong to the expression', async () => {
       const tokens = await tokenize('<p .a=@name class:on=@a?.b[0].c></p>\n');
 
       expect(has(find(tokens, 'name'), 'meta.interpolation.implicit')).toBe(true);
-      expect(has(find(tokens, 'a?.b[0].c'), 'source.ts')).toBe(true);
+      expect(has(find(tokens, 'a?.b[0].c'), 'variable.other')).toBe(true);
     });
 
     it('the escape valve keeps its own scope, and closes where its paren does', async () => {

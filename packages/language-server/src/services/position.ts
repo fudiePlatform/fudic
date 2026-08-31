@@ -731,6 +731,28 @@ export function bareBindingValueContextAt(
   return { span: span(offset - text.length, offset), text, event: match[1] === EVENT_PREFIX };
 }
 
+/**
+ * Whether the author has begun writing the value by hand.
+ *
+ * The list at a value belongs to an EMPTY one, and to nothing else. The moment a character is
+ * there the value is the author's: a `.prop` takes a bare scalar (decision 105), so `0`,
+ * `"Hello"` and `true` are all finished answers that no name in scope can continue — and the
+ * one thing that IS completable, an expression, announces itself with a `@`, which this
+ * position never sees because `expressionValueContextAt` owns it from the first character.
+ *
+ * So the rule is the whole of it: empty, list; anything written, silence. Narrowing it to a
+ * leading digit was the same bug twice — it read `"Hello` as a name half typed and kept the
+ * list up over it.
+ *
+ * It matters far beyond noise, and this is why the rule has to be total. A suggestion widget
+ * left open over a value swallows every <kbd>Tab</kbd> as an accept, so a tag expanded with
+ * its required props cannot be tabbed through and a plain literal cannot be typed into one
+ * without pressing <kbd>Esc</kbd> first (BUG-23 task 25).
+ */
+export function valueBegun(text: string): boolean {
+  return text.length > 0;
+}
+
 /** A section name being typed after `@section `. */
 export function sectionContextAt(source: string, offset: number): PartialName | undefined {
   const match = /@section[ \t]+([A-Za-z_$][\w$]*)?$/.exec(source.slice(0, offset));

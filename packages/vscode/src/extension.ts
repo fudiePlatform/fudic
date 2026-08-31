@@ -16,9 +16,11 @@ import { LanguageClient, TransportKind } from 'vscode-languageclient/node';
 import { activateFudic, type FudicSession } from './activate.js';
 import { watchTypedTags } from './auto-close.js';
 import { registerCommands } from './commands/index.js';
+import { watchEmptyValues } from './empty-value.js';
 import { createVirtualDocStore, VIRTUAL_SCHEME } from './virtual-doc-provider.js';
 import {
   bundledServerPath,
+  caretAtOf,
   commentSelectionOf,
   folderPaths,
   fudUriOf,
@@ -184,6 +186,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     },
     session,
   );
+
+  watchEmptyValues({
+    onMoved: (listener) => {
+      context.subscriptions.push(
+        vscode.window.onDidChangeTextEditorSelection((event) => listener(caretAtOf(event))),
+      );
+    },
+    triggerSuggest: () => {
+      void vscode.commands.executeCommand('editor.action.triggerSuggest');
+    },
+    hideSuggest: () => {
+      void vscode.commands.executeCommand('hideSuggestWidget');
+    },
+  });
 
   // The editor that is already open when the extension activates never fires the change
   // event, so the first state has to be pushed by hand — otherwise opening a `.fud` from a

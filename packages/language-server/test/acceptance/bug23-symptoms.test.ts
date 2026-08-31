@@ -375,3 +375,144 @@ describe('§2.8 — what must keep reporting', () => {
     expect(lineOf(markup, problems[0]!)).toContain('@counter');
   });
 });
+
+/**
+ * The whole reply and not just its items: `isIncomplete` is half of what a list MEANS.
+ *
+ * Invoked rather than triggered, because typing an ordinary character is what these positions
+ * are about — a `0`, a `t`, a quote. A trigger character would measure a different request.
+ */
+async function replyAt(markup: string): Promise<{ incomplete: boolean; labels: string[] }> {
+  const text = page(markup.replace('|', ''));
+  const at = HEAD.length + markup.indexOf('|');
+  const { uri } = await harness.open(PAGE);
+  await harness.change(uri, text, ++version);
+
+  const answer = (await harness.client.sendRequest(CompletionRequest.type, {
+    textDocument: { uri },
+    position: harness.positionAt(text, at),
+    context: { triggerKind: 1 },
+  })) as CompletionList | CompletionItem[] | null;
+
+  if (answer === null) return { incomplete: false, labels: [] };
+  const list = Array.isArray(answer) ? { isIncomplete: false, items: answer } : answer;
+  return { incomplete: list.isIncomplete, labels: list.items.map((item) => item.label) };
+}
+
+/**
+ * Task 25 — a literal typed into a prop value, and the list that has to get out of its way.
+ *
+ * The server was already silent at every one of these shapes and the editor never found out,
+ * because the list at the EMPTY value came back complete: VS Code caches a complete reply and
+ * filters it in the client from then on, against each item's `filterText`, without asking
+ * again. Whether the widget survived a keystroke therefore depended on whether the character
+ * happened to sit inside one of the names in scope — a `t` inside `items`, an `h` inside
+ * `handlerClick` — which is why it looked like a different bug on every prop.
+ *
+ * So the silence is asserted together with the `isIncomplete` that lets it be heard. A list
+ * left standing over a written value turns the Tab meant for the next prop into an accept,
+ * which is what stopped a tag from being tabbed through at all.
+ */
+describe('task 25 — a literal in a prop value closes the list', () => {
+  it('offers the names in scope on an EMPTY value, and says so is not the last word', async () => {
+    const reply = await replyAt('<app-circle .name=|></app-circle>');
+
+    expect(reply.labels).toContain('@titulo');
+    // The half that made the silence reachable: ask me again on the next keystroke.
+    expect(reply.incomplete).toBe(true);
+  });
+
+  it('says nothing once a literal has been typed, whatever the literal is', async () => {
+    // A number (decision 105), a string, a boolean — and the two letters that used to keep the
+    // list up by accident, because they occur inside `items` and `onClick`.
+    //
+    // `incomplete: false` is half the assertion and the half that was missing. Empty was
+    // already right; empty AND incomplete told VS Code to keep the session alive, so it
+    // rendered «No suggestions» instead of closing and the widget still ate the first Tab —
+    // two presses to reach the next prop, one to dismiss and one to move.
+    for (const markup of [
+      '<app-circle .name=0|></app-circle>',
+      '<app-circle .name=12|></app-circle>',
+      '<app-circle .name="Hello|"></app-circle>',
+      '<app-circle .name=tru|></app-circle>',
+      '<app-circle .name=t|></app-circle>',
+      '<app-circle .name=o|></app-circle>',
+    ]) {
+      expect(await replyAt(markup)).toEqual({ incomplete: false, labels: [] });
+    }
+  });
+
+  it('says nothing on an event value the author has begun by hand', async () => {
+    expect(await replyAt('<app-circle .name="x" @click=o|></app-circle>')).toEqual({
+      incomplete: false,
+      labels: [],
+    });
+  });
+});
+
+/**
+ * §2.9 — the names a BLOCK introduces.
+ *
+ * The list at a `@` was the names declared at the top level of `@code` and `@client`, computed
+ * once per file with no offset in it — a global answer to a positional question. Everything a
+ * block declares fell through it: the `x` of a `@foreach`, the `i` of a `@for`, and the
+ * bindings of every loop nested inside another. The projection emits real control flow so that
+ * TypeScript knows those names; the filter was discarding the answer it had asked for.
+ *
+ * Nesting needs no case of its own in the code and gets one here anyway, because it is the
+ * question that has to stay answered: lexical scope is what the rule now reads, so depth is
+ * not a dimension the implementation knows about.
+ */
+describe('§2.9 — a name a loop declares is a name the template can see', () => {
+  it('offers the binding of a `@foreach`, in text and in a value', async () => {
+    const inText = await replyAt('@foreach (const item of items) {\n  @|\n}');
+    expect(inText.labels).toContain('@item');
+
+    const inValue = await replyAt(
+      '@foreach (const item of items) {\n  <app-circle .name=@|></app-circle>\n}',
+    );
+    expect(inValue.labels).toContain('@item');
+  });
+
+  it('offers the binding of a `@for`, which declares its own counter', async () => {
+    const reply = await replyAt('@for (let i = 0; i < 3; i++) {\n  @|\n}');
+
+    expect(reply.labels).toContain('@i');
+  });
+
+  it('offers BOTH bindings of two nested loops, at the depth each is written', async () => {
+    const nested =
+      '@foreach (const row of items) {\n' +
+      '  @foreach (const cell of row.id) {\n' +
+      '    <app-circle .name=@|></app-circle>\n' +
+      '  }\n' +
+      '}';
+    const reply = await replyAt(nested);
+
+    expect(reply.labels).toContain('@row');
+    expect(reply.labels).toContain('@cell');
+    // And the names of the file are still there: a block ADDS to the scope, it does not
+    // replace it.
+    expect(reply.labels).toContain('@items');
+  });
+
+  it('does not leak a binding OUT of the block that declares it', async () => {
+    // The other half of reading the scope positionally: `item` exists inside the loop and
+    // nowhere else, so a list that offered it after the `}` would be offering an error.
+    const reply = await replyAt('@foreach (const item of items) {\n  <b>x</b>\n}\n@|');
+
+    expect(reply.labels).not.toContain('@item');
+    expect(reply.labels).toContain('@items');
+  });
+
+  it('still keeps TypeScript’s globals out of the list', async () => {
+    // What the old whitelist did right stays right: `atob`, `NaN` and the keywords are in the
+    // program at that offset and are never what a `@` may open.
+    const reply = await replyAt('@foreach (const item of items) {\n  @|\n}');
+
+    expect(reply.labels).not.toContain('@atob');
+    expect(reply.labels).not.toContain('@NaN');
+    expect(reply.labels).not.toContain('@arguments');
+    expect(reply.labels).not.toContain('@const');
+  });
+});

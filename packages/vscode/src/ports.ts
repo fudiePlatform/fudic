@@ -138,6 +138,35 @@ export interface TypingPort {
   insert(target: SnippetTarget): Promise<void>;
 }
 
+/** Where the caret is, and the text it is inside. */
+export interface CaretAt {
+  /** The whole document: what surrounds the caret is the entire question being asked. */
+  readonly text: string;
+  readonly offset: number;
+}
+
+/**
+ * Caret movement, and the one thing done in response.
+ *
+ * Not folded into `TypingPort`: moving is not typing, and the two arrive on different events —
+ * reaching a snippet tabstop changes the selection and nothing else.
+ */
+export interface CaretPort {
+  /** Every caret move. `undefined` for the ones that are not a caret in a `.fud`. */
+  onMoved(listener: (at: CaretAt | undefined) => void): void;
+  /** Open the suggest list where the caret is. */
+  triggerSuggest(): void;
+  /**
+   * Close the suggest list, if one is up.
+   *
+   * The counterpart of `triggerSuggest`, and it exists because opening one has a consequence
+   * the server cannot undo: a list asked for by COMMAND is an explicit invocation, and VS Code
+   * does not dismiss one of those when the answer comes back empty — it keeps the widget up
+   * showing «No suggestions». Whoever opened it has to close it.
+   */
+  hideSuggest(): void;
+}
+
 /** What the client is asked to launch. Everything here is already resolved. */
 export interface ClientLaunch {
   readonly serverPath: string;

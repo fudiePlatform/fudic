@@ -427,9 +427,15 @@ describe('completion — snippets and Emmet (SDD-28 §5.3–§5.5)', () => {
       );
       const list = await completionsOf(service, document, position);
 
+      // No quotes: what follows a `.prop=` is whatever is assignable to it — a bare scalar
+      // (decision 105), an `@` expression (103), a quoted string — and picking one of the three
+      // for the author is picking wrong two times out of three.
       expect(item(list, 'app-button')?.textEdit?.newText).toBe(
-        '<app-button .label="$1">$0</app-button>',
+        '<app-button .label=$1>$0</app-button>',
       );
+      // And the list opens on the first one: the caret lands there and there is nothing else
+      // the author can be about to do.
+      expect(item(list, 'app-button')?.command?.command).toBe('editor.action.triggerSuggest');
     });
 
     it('a component with no required props expands exactly as it did before', async () => {

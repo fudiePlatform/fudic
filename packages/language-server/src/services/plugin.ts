@@ -56,6 +56,7 @@ import {
   expressionValueContextAt,
   handlerContextAt,
   hrefContextAt,
+  valueBegun,
   nativeGapContextAt,
   ownedByProjection,
   sectionContextAt,
@@ -276,8 +277,14 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
                 return undefined;
               }
 
+              // Begun by hand, so the value is the author's and no name can finish it: the same
+              // rule the projection's side applies, and for the same reason — a list left open
+              // over a written value turns every Tab into an accept.
+              if (valueBegun(binding.text)) return undefined;
+
               const items = scopeItems(cached, document, binding, false, false);
-              return items.length === 0 ? undefined : list(items);
+              // Incomplete: the next character decides between these names and silence.
+              return items.length === 0 ? undefined : list(items, true);
             },
             undefined,
           );
@@ -614,7 +621,9 @@ function completions(
   const value = alone ? expressionValueContextAt(cached.source, offset, region) : undefined;
   if (value !== undefined) {
     const callableOnly = handlerContextAt(cached.source, offset, region) !== undefined;
-    return list(scopeItems(cached, document, value, callableOnly));
+    // Incomplete: the next character decides between these names and silence, and a complete
+    // list is one VS Code never asks about again. See `list`.
+    return list(scopeItems(cached, document, value, callableOnly), true);
   }
   if (ownedByProjection(cached.source, offset, region)) return undefined;
 
@@ -729,9 +738,26 @@ function completions(
  * degrading is offering LESS, never offering something invented.
  */
 function tagBody(item: TagCompletion): string {
-  const props = item.requiredProps.map((name, i) => ` .${name}="$${i + 1}"`).join('');
+  // No quotes on any of them, whatever the prop's type. What follows a `.prop=` is whatever is
+  // assignable to it — a bare scalar (decision 105), an `@` expression (103), a quoted string —
+  // and choosing one of the three for the author is choosing wrong two times out of three:
+  // `"$1"` around a `number` hands them a type error the moment they tab through it.
+  const props = item.requiredProps.map((name, i) => ` .${name}=$${i + 1}`).join('');
   return `${props}>$0</${item.tag}>`;
 }
+
+/**
+ * Open the list on the value the author has just been left standing on.
+ *
+ * Only on the FIRST prop of an expanded tag, and that limit is not an omission — it is what
+ * VS Code allows. An open list focuses an item, and a focused item makes <kbd>Tab</kbd> an
+ * accept rather than a jump to the next tabstop; the editor offers exactly one lever over
+ * that, `editor.suggest.selectionMode`, and it is per LANGUAGE, so turning it off to protect
+ * the Tab also unfocuses Emmet and every HTML list in the file. Neither half is worth the
+ * other, so the list opens where the author is going to type anyway and nowhere else. On the
+ * props after it, Ctrl+Space — or a `@`, which is a trigger character and opens it too.
+ */
+const SUGGEST = { title: 'Suggest', command: 'editor.action.triggerSuggest' };
 
 /**
  * The component tags of this file as completion items.
@@ -760,6 +786,9 @@ function tagItems(
       labelDetails: { description: item.linked ? 'fudic component' : 'fudic component · adds <link>' },
       insertTextFormat: InsertTextFormat.Snippet,
       textEdit: { range: rangeOf(document, context.span), newText: write(item.tag, tagBody(item)) },
+      // With props to fill, the cursor lands on the first `.prop=` and the list opens by
+      // itself — see `SUGGEST` for why only that one.
+      ...(item.requiredProps.length === 0 ? {} : { command: SUGGEST }),
       ...(insertion === undefined
         ? {}
         : {
@@ -835,7 +864,8 @@ function scopeItems(
   // A layout interpolates nothing, `@()` included: see `interpolates`.
   if (!interpolates(cached)) return [];
 
-  const scope = templateScope(cached);
+  // At the CONTEXT's offset, so the bindings of the loops around it are in the list too.
+  const scope = templateScope(cached, context.span.end);
   // What is REPLACED is the name alone, never the `@`. See the note above: with the `@` inside
   // the range VS Code filters the labels against `@t` and drops every one of them.
   const typed = atTyped ? context.text.length - 1 : context.text.length;
@@ -899,7 +929,25 @@ function snippetItems(
     }));
 }
 
-/** A completion list is never incomplete here: the candidates are a finite, known set. */
-function list(items: readonly CompletionItem[]): CompletionList {
-  return { isIncomplete: false, items: [...items] };
+/**
+ * A completion list, complete unless the caller says its answer depends on what is typed next.
+ *
+ * Complete is the default because the candidates here are finite, known sets — the `.fud` files
+ * of the project, the sections of the layout, the classes of a `<style>`.
+ *
+ * A binding's VALUE is not one of them, and the difference is not cosmetic. What the server
+ * answers there is decided by the text before the caret — empty means the names in scope,
+ * anything written means silence (`valueBegun`) — so the reply is stale the moment a character
+ * lands. A COMPLETE list tells VS Code the opposite: it caches the reply and filters it in the
+ * client from then on, against each item's `filterText`, and never asks again. That is what
+ * kept the list standing over `.id=t` (a `t` is inside `items`) and over `.name=H` (an `h` is
+ * inside `handlerClick`) while the server was returning nothing at both — and a list left open
+ * turns the Tab meant for the next prop into an accept (BUG-23 task 25).
+ */
+function list(items: readonly CompletionItem[], incomplete = false): CompletionList {
+  // Never over an EMPTY list, whatever the caller asked for. `isIncomplete` means «ask me
+  // again», so an empty incomplete list is a session VS Code keeps alive: it renders «No
+  // suggestions» rather than closing, and a widget that is up still swallows the first Tab.
+  // Nothing to offer has to mean the list goes away.
+  return { isIncomplete: incomplete && items.length > 0, items: [...items] };
 }

@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   bundledServerPath,
+  caretAtOf,
   commentSelectionOf,
   folderPaths,
   fudUriOf,
@@ -237,6 +238,52 @@ describe('replaceLines', () => {
     await replaceLines(editor, replacement, rangeOf);
 
     expect(edits[0]?.[0]).toEqual([0, 0, 1, 0]);
+  });
+});
+
+describe('caretAtOf', () => {
+  /** A selection-change event over `text`, with `selections` as given. */
+  const event = (
+    languageId: string,
+    text: string,
+    selections: readonly { isEmpty: boolean; active: number }[],
+  ) => ({
+    textEditor: {
+      document: {
+        languageId,
+        getText: () => text,
+        offsetAt: (position: unknown) => position as number,
+      },
+    },
+    selections,
+  });
+
+  it('gives the caret and the text around it', () => {
+    expect(caretAtOf(event('fudic', '<app-input .id=>', [{ isEmpty: true, active: 15 }]))).toEqual({
+      text: '<app-input .id=>',
+      offset: 15,
+    });
+  });
+
+  it('gives nothing for a selection, which is not a caret', () => {
+    expect(caretAtOf(event('fudic', 'x', [{ isEmpty: false, active: 0 }]))).toBeUndefined();
+  });
+
+  it('gives nothing for several carets', () => {
+    // Answering about the first one would open a list that writes into all of them.
+    const many = [
+      { isEmpty: true, active: 0 },
+      { isEmpty: true, active: 1 },
+    ];
+    expect(caretAtOf(event('fudic', 'xy', many))).toBeUndefined();
+  });
+
+  it('gives nothing when there is no selection at all', () => {
+    expect(caretAtOf(event('fudic', 'x', []))).toBeUndefined();
+  });
+
+  it('gives nothing for another language', () => {
+    expect(caretAtOf(event('json', 'x', [{ isEmpty: true, active: 0 }]))).toBeUndefined();
   });
 });
 

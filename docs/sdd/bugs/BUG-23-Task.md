@@ -200,8 +200,79 @@ Sí se migró el `.tone=` de `blog/[slug].fud`, que es la que la tarea pide.
 **El índice del workspace aprende a leer props.** La expansión del tag (25) necesita saber qué
 props requiere un componente que puede no estar abierto, así que `IndexEntry` gana
 `requiredProps` y `upsert` las lee con `extractCode` — sólo para los componentes, y una vez por
-fichero y por cambio, no por pulsación. Con un tipo con nombre la lista sale vacía y la expansión
-degrada a la de siempre, que es lo que pide el criterio 21.b.
+fichero y por cambio, no por pulsación. Un tipo con nombre que el fichero **declara** se lee como
+el literal que aliasa; uno que viene de otro fichero no prueba nada y la lista sale vacía, con lo
+que la expansión degrada a la de siempre (criterio 21.b).
+
+**Y lo que faltaba de la 25: la lista no se cerraba al teclear un literal.** El servidor ya
+callaba en las cinco formas (`0`, `"Hello"`, `true`, un identificador, un `@evento=` empezado) y
+el editor no se enteraba nunca, porque la lista del valor vacío se entregaba **completa**. VS Code
+cachea una respuesta completa y a partir de ahí filtra en cliente contra el `filterText` de cada
+ítem, sin volver a preguntar: que el desplegable sobreviviera a una pulsación dependía de si el
+carácter tecleado caía dentro de alguno de los nombres del ámbito —una `t` dentro de `items`, una
+`h` dentro de `handlerClick`—, y por eso parecía un bug distinto en cada prop. Dos piezas lo
+cierran, y hacen falta las dos:
+
+- **`isIncomplete` en la lista de un valor de binding.** `list()` acepta ahora el flag y el
+  decorador de TypeScript lo fuerza en toda posición propia (`Narrowed.at`). La respuesta ahí se
+  calcula del texto ANTERIOR al cursor, así que caduca en cada pulsación por construcción: la
+  lista tiene que decirlo o el silencio de `valueBegun` no llega a la pantalla.
+- **Sólo cuando hay algo que ofrecer.** `isIncomplete` significa «vuélveme a preguntar», así que
+  una lista **vacía** marcada así es una sesión que VS Code mantiene viva: pinta «No hay
+  sugerencias» en lugar de cerrarse, y una ventana abierta —aunque esté vacía— se sigue comiendo
+  el primer Tab. Vacía ⇒ completa, que es lo único que la hace desaparecer. En una posición que no
+  es nuestra el flag es de TypeScript y no se toca: una lista que crece con la siguiente pulsación
+  es exactamente lo que es un auto-import.
+- **Y la cierra quien la abrió.** Con las dos piezas anteriores el servidor callaba y la ventana
+  seguía ahí. La lista del valor vacío la abre `watchEmptyValues` con
+  `editor.action.triggerSuggest`, y para VS Code eso es una invocación **explícita**: una sesión
+  explícita no se cierra sola por mucho que todos los proveedores contesten vacío. El servidor no
+  tiene forma de cerrarla, así que el cliente ejecuta `hideSuggestWidget` en cuanto el caret está
+  sobre un valor escrito **sin `@`** —`0`, `12`, `true`, `"Hello`—. Un valor que contiene un `@`
+  se deja en paz: ahí la lista es correcta y es de TypeScript.
+
+**Tab no se toca.** Se probó a rebindarlo (`jumpToNextSnippetPlaceholder` bajo
+`inSnippetMode && suggestWidgetVisible`) y se retiró: cambia una tecla que todo el mundo tiene en
+la memoria muscular a cambio de un comportamiento que el par «lista completa + cerrarla» ya
+produce. Con la ventana cerrada, Tab vuelve a significar lo que significaba.
+
+## §2.9 — el ámbito era del fichero y la pregunta era de la posición
+
+Lo que un **bloque** declara no se ofrecía nunca: la `x` de un `@foreach`, la `i` de un `@for`, y
+las ligaduras de cualquier bucle anidado dentro de otro. `templateScope()` no recibe offset —es el
+mapa de los nombres de primer nivel de `@code` y `@client` más `data`, calculado una vez por
+fichero— y sus dos consumidores lo usaban como **lista blanca** sobre la respuesta de TypeScript
+(`scope.has(item.label)`). La proyección emite control de flujo real precisamente para que
+TypeScript conozca esos nombres (`control.ts`), y el filtro tiraba la respuesta que había pedido.
+
+**El primer intento se hizo mal y hay que contarlo, porque la lección es la regla de este
+módulo.** Se filtró la respuesta de TypeScript por la banda con la que ordena (`sortText` `10`/`11`
+= local en ese offset, `15` globales, `16` auto-import). Pasaba los tests del harness y fallaba en
+el editor de Pedro: allí TypeScript no contestaba en ese offset —un programa que no ha cargado, un
+`tsconfig` que no alcanza el fichero— y la lista caía al respaldo de nombres de fichero, que es
+exactamente la lista vieja. **Lo que ve el desarrollador no puede depender de que el programa de
+TypeScript esté vivo**, y el fichero que se está tecleando es justo aquel donde eso falla.
+
+Así que los nombres salen del **parse**. Las cabeceras de `@foreach` y `@for` se registran en el
+mismo `JsBatch` —los kinds `for-of-header` y `for-header` existían para esto, así que Oxc se sigue
+invocando una vez por fichero— y `templateScope(cached, offset)` añade las ligaduras de los bucles
+que envuelven el offset, leídas del `ForOfStatement`/`ForStatement` con el mismo
+`collectPatternNames` que ya leía un destructuring. `@while`, `@if` y `@switch` no declaran nada y
+no se registran. La banda de TypeScript se queda como filtro de la respuesta ajena
+(`inTemplateScope`), pero ya no es de dónde salen los nombres.
+
+`headerEnd` es lo que impide leer una ligadura antes de que exista: dentro de `(const x of xs)` la
+`x` se está declarando, no usando. Pasado eso, el `key (…)` y todo el cuerpo la ven (decisión 91).
+
+El anidamiento no necesita regla propia, y ese es el punto: contribuye todo bucle cuyo constructo
+contiene el offset, el interior el último, que es lo que significa el sombreado. La profundidad no
+es una dimensión que la implementación conozca. Los tests la miden igual —dos bucles, la ligadura
+de cada uno, y que ninguna se escape fuera de su bloque— y **sin montar ningún programa de
+TypeScript**, que es lo que hace que la prueba valga algo esta vez.
+
+**Fuera de alcance, anotado:** dentro de un `key (…)` la lista sigue siendo el ámbito crudo de
+TypeScript (986 nombres). Es otra posición —ni valor ni `@` en markup— y ninguna de las dos reglas
+de arriba la reclama; no la toca este BUG.
 
 ## Fase 7 — cierre (2)
 

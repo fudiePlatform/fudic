@@ -57,9 +57,10 @@ export function sectionsOf(document: StructuredDocument): readonly string[] {
  * instead of an empty element the author then has to fill from memory. The optional ones are
  * deliberately absent: twelve tabstops is worse than none, and the `.` reaches them.
  *
- * Only a component has any, and only a component whose `props<T>()` names a type LITERAL —
- * with a named type nothing is provable and the honest answer is the empty list, which
- * degrades the expansion back to what it was.
+ * Only a component has any, and only one whose `props<T>()` argument this file can READ — a type
+ * literal, or a name it declares itself as one. A type that comes from another file proves
+ * nothing, and the honest answer there is the empty list, which degrades the expansion back to
+ * what it was.
  */
 export function requiredPropsOf(source: string, document: StructuredDocument): readonly string[] {
   if (document.type !== 'component-document' || document.code === undefined) return [];

@@ -22,9 +22,9 @@ export interface Prop {
   readonly name: string;
   readonly def?: string;
   /**
-   * `false` only when the key of `T` is written WITHOUT `?`. When `T` is not a type literal
-   * (`props<Foo>()`) nothing can be proven about it, so every prop reads as optional and a
-   * build invents no error (BUG-23 §4.4).
+   * `false` only when the key of `T` is written WITHOUT `?`. When `T` cannot be read at all
+   * nothing can be proven about it, so every prop reads as optional and a build invents no
+   * error (BUG-23 §4.4).
    */
   readonly optional: boolean;
 }
@@ -183,6 +183,15 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
   const result = batch.parse();
   const map = result.value.mapOffset;
 
+  // The named types of `@code`, collected BEFORE anything is read: `props<Props>()` may be
+  // written above its own `type Props = { … }`, and a hoisted declaration is visible either way.
+  const named = new Map<string, OxcNode>();
+  ids.forEach((id) => {
+    const root = result.value.ast(id);
+    const stmts = Array.isArray(root) ? (root as OxcNode[]) : [root as OxcNode];
+    for (const stmt of stmts) collectNamedType(stmt, named);
+  });
+
   const clientStatements: OxcNode[] = [];
   ids.forEach((id, i) => {
     const root = result.value.ast(id);
@@ -193,7 +202,7 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
       else checkNeutralEffect(stmt, map, own);
       if (!is(stmt, 'VariableDeclaration')) continue;
       for (const decl of fieldArray(stmt, 'declarations')) {
-        readDeclarator(decl, source, map, props, signals);
+        readDeclarator(decl, source, map, props, signals, named);
       }
     }
   });
@@ -401,6 +410,34 @@ function withHost(text: string, offset: number, calls: readonly EmitCall[]): str
   return edits.reduce((out, edit) => out.slice(0, edit.at) + edit.text + out.slice(edit.at), text);
 }
 
+/**
+ * Index one statement's named type under its name, when it declares members this file can read.
+ *
+ * `type Props = { … }` and `interface Props { … }`, exported or not. A type that is imported, or
+ * built out of another one (`Omit<…>`, a union, a generic), is deliberately NOT here: resolving
+ * those is typechecking, and this pass reads an AST.
+ */
+function collectNamedType(statement: OxcNode, out: Map<string, OxcNode>): void {
+  const stmt = is(statement, 'ExportNamedDeclaration')
+    ? field(statement, 'declaration')
+    : statement;
+  if (stmt === undefined) return;
+  const id = field(stmt, 'id');
+  if (!is(id, 'Identifier')) return;
+
+  if (is(stmt, 'TSTypeAliasDeclaration')) {
+    const body = field(stmt, 'typeAnnotation');
+    if (is(body, 'TSTypeLiteral')) out.set(name(id), body);
+    return;
+  }
+  // An interface's members live one level deeper, in its `body`, but they are the same
+  // `TSPropertySignature` list a type literal holds — so the reader below is the same one.
+  if (is(stmt, 'TSInterfaceDeclaration')) {
+    const body = field(stmt, 'body');
+    if (is(body, 'TSInterfaceBody')) out.set(name(id), body);
+  }
+}
+
 /** Route a single `const … = call(...)` declarator to props (ObjectPattern) or reactives. */
 function readDeclarator(
   decl: OxcNode,
@@ -408,6 +445,7 @@ function readDeclarator(
   map: MapOffset,
   props: Prop[],
   signals: Reactive[],
+  named: ReadonlyMap<string, OxcNode>,
 ): void {
   const init = field(decl, 'init');
   const id = field(decl, 'id');
@@ -416,7 +454,7 @@ function readDeclarator(
   const called = is(callee, 'Identifier') ? name(callee!) : '';
 
   if (called === 'props' && is(id, 'ObjectPattern')) {
-    const required = requiredKeys(init);
+    const required = requiredKeys(init, named);
     for (const property of fieldArray(id, 'properties'))
       readProp(property, source, map, props, required);
   } else if ((called === 'signal' || called === 'computed') && is(id, 'Identifier')) {
@@ -434,17 +472,47 @@ function readDeclarator(
 /**
  * The keys that `props<T>()`'s type argument declares WITHOUT `?`.
  *
- * Empty whenever `T` cannot be read as a type literal — no type argument at all, a named
- * type, an index signature, a key that is not a plain identifier. «Not provable» and «not
- * required» are the same answer here on purpose: it is what keeps the build from reporting
- * a missing prop it cannot demonstrate is missing.
+ * `T` is read when it is a type literal, and when it is a NAME this file declares as one —
+ * `type Props = { … }` or `interface Props { … }` in the same `@code`. That second case is not
+ * a concession: it is what most components are actually written as, and the members are right
+ * there in the AST.
+ *
+ * Empty for everything else — no type argument, a type from another file, one built out of
+ * others, an index signature, a key that is not a plain identifier. «Not provable» and «not
+ * required» are the same answer here on purpose: it is what keeps the build from reporting a
+ * missing prop it cannot demonstrate is missing.
  */
-function requiredKeys(call: OxcNode): ReadonlySet<string> {
+/**
+ * The node whose members `T` names, or `undefined` when this file cannot say.
+ *
+ * One hop and no more: a name resolves to the declaration collected above, and a name that
+ * resolves to another name does not chase it. A chain of aliases is a typechecker's job.
+ */
+function resolveTypeMembers(
+  argument: OxcNode | undefined,
+  named: ReadonlyMap<string, OxcNode>,
+): OxcNode | undefined {
+  if (is(argument, 'TSTypeLiteral')) return argument;
+  if (!is(argument, 'TSTypeReference')) return undefined;
+  const typeName = field(argument, 'typeName');
+  // A qualified name (`Ns.Props`) is not something this file declared, and a generic
+  // instantiation (`Props<T>`) is not the type its members were written for.
+  if (!is(typeName, 'Identifier') || field(argument, 'typeArguments') != null) return undefined;
+  return named.get(name(typeName));
+}
+
+/** The member list of a type literal or of an interface body — the same signatures, one level apart. */
+function members(node: OxcNode): readonly OxcNode[] {
+  return fieldArray(node, is(node, 'TSTypeLiteral') ? 'members' : 'body');
+}
+
+function requiredKeys(call: OxcNode, named: ReadonlyMap<string, OxcNode>): ReadonlySet<string> {
   const args = field(call, 'typeArguments');
-  const literal = args ? fieldArray(args, 'params')[0] : undefined;
-  if (!is(literal, 'TSTypeLiteral')) return new Set();
+  const argument = args ? fieldArray(args, 'params')[0] : undefined;
+  const literal = resolveTypeMembers(argument, named);
+  if (literal === undefined) return new Set();
   const out = new Set<string>();
-  for (const member of fieldArray(literal, 'members')) {
+  for (const member of members(literal)) {
     const key = field(member, 'key');
     if (!is(member, 'TSPropertySignature') || !is(key, 'Identifier')) continue;
     if (member['optional'] !== true) out.add(name(key));
