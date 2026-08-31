@@ -1,58 +1,56 @@
 # SDD-36 — Tareas
 
-> **SDD:** [SDD-36 — El editor terminado](./SDD-36-editor-terminado.md)
+> **SDD:** [SDD-36 — La bombilla y la tarjeta del componente](./SDD-36-editor-terminado.md)
 > **Paquetes:** `@fudic/language-server` · `fudic-vscode`
 > **Rama:** `worktree-bug-23`
-> **Progreso:** 0 / 10
+> **Progreso:** 4 / 9
 
-Diez tareas, casi todas independientes: cada fila del catálogo de acciones se puede aterrizar
-sola.
-
-**El orden manda en dos puntos.** La **1 antes que nada**, porque es una medida y su resultado
-decide si hay trabajo o no lo hay. Y la **2 antes que la 3–6**: sin el andamiaje que enruta por
-código de diagnóstico, cada acción se escribiría su propia búsqueda.
+**El orden manda en un punto:** la **1 antes que la 2–5**, porque sin el enrutador cada acción se
+escribiría su propia búsqueda.
 
 ---
 
-## Fase 1 — medir antes de diseñar (1)
+## Fase 1 — la bombilla (5)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **Qué renombra TypeScript hoy.** Sobre la proyección: una prop en `props<{ name }>()`, un `<slot name>` y una `@section`. Qué se propaga a los consumidores y qué no. El resultado es una nota en [SDD-36](./SDD-36-editor-terminado.md) §1 y decide si el renombrado necesita SDD propio. **No se escribe una línea de implementación antes de esto** (criterio 19) | `language-server` | `test/acceptance/rename-survey.test.ts` |
+| [x] | 1 | — | **El enrutador.** `provideCodeActions` pasa de un caso a una tabla: por cada diagnóstico del contexto, la fila que lo repara. El caso del `href` entra en la tabla sin cambiar (criterios 11, 12) | `language-server` | `src/services/actions.ts` · `src/services/plugin.ts` |
+| [ ] | 2 | 1, 6 | **`FUD0197` → las props que faltan** (criterios 1–4). **Movida a la fase 2:** el registro del servidor solo expone `has`, así que el editor no emite hoy `FUD0197` y no hay diagnóstico donde anclar la acción. La tarea 6 es la que se lo da | `language-server` | `src/services/actions.ts` |
+| [x] | 3 | 1 | **`FUD0191` → el `<link>`**, con el `TextEdit` de `linkInsertionFor` (criterio 5) | `language-server` | `src/services/actions.ts` |
+| [x] | 4 | 1 | **`FUD0056` → entrecomillar** el valor y solo el valor (criterio 6) | `language-server` | `src/services/actions.ts` |
+| [x] | 5 | 1 | **`FUD0540` → `key (…)`** con el primer binding (criterios 7–9). **La mitad de `FUD0199` va con la 2**, y por lo mismo: sin `slotsOf` en el registro del servidor no hay diagnóstico que reparar | `language-server` | `src/services/actions.ts` |
+
+### Lo que la fase 1 encontró y el Task no preveía
+
+**El editor no emite `FUD0197` ni `FUD0199`.** El registro que el servidor le pasa al pase
+semántico es `{ has }` y nada más, así que las dos reglas de contrato —la prop requerida que falta
+y el slot que el padre no declara— solo corren en el build, que es quien resuelve el grafo. Las
+acciones que las reparan no tienen dónde anclarse hasta que el índice sepa lo suficiente, que es
+justo lo que hace la tarea 6. Ambas se mueven a la fase 2 en vez de fabricarse un diagnóstico
+propio: dos fuentes para un hecho es lo que separó al editor del build en BUG-23.
+
+**Una fuente para las ligaduras de una cabecera.** La acción del `key` necesita el primer nombre
+que declara el bucle, que es la misma pregunta que el ámbito ya resuelve. En lugar de un segundo
+lector, el ámbito exporta la lista y la acción toma el primero.
+
+**El `)` no se busca, se sabe.** El punto donde va el `key (…)` sale del balanceador, no de buscar
+un paréntesis en la fuente: una búsqueda trae consigo un caso «no encontrado» que ninguna entrada
+puede provocar y por tanto ningún test puede cubrir.
 
 ---
 
-## Fase 2 — la bombilla (5)
+## Fase 2 — la tarjeta (3)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 2 | — | **El enrutador.** `provideCodeActions` deja de ser un caso y pasa a ser una tabla: por cada diagnóstico del contexto, la fila que lo repara. El caso del `href` que ya existe entra en la tabla sin cambiar de comportamiento (§4.1, criterio 11) | `language-server` | `src/services/actions.ts` · `src/services/plugin.ts` |
-| [ ] | 3 | 2 | **`FUD0197` → las props que faltan.** La diferencia entre lo requerido y lo escrito, en el orden del hijo, `.name=$1` sin comillas. Sin `propsOf`, ninguna acción (§4.2, criterios 1–4) | `language-server` | `src/services/actions/required-props.ts` |
-| [ ] | 4 | 2 | **`FUD0191` → el `<link>`.** El mismo `TextEdit` que `linkInsertionFor` ya fabrica, sin re-derivar nada (§4.3, criterio 5) | `language-server` | `src/services/actions/component-link.ts` |
-| [ ] | 5 | 2 | **`FUD0056` → entrecomillar** el valor, y nada más que el valor (criterio 6) | `language-server` | `src/services/actions/quote-value.ts` |
-| [ ] | 6 | 2 | **`FUD0540` → `key (…)`** con el primer binding de la cabecera, leído del `JsBatch` como el ámbito; sin binding, sin acción. Y **`FUD0199` → los slots** que el padre sí declara, una acción por candidato (§4.4, criterios 7–10) | `language-server` | `src/services/actions/loop-key.ts` · `src/services/actions/slot-name.ts` |
+| [ ] | 6 | — | **Lo que el índice tiene que saber**: props con `required` y `doc`, slots, eventos (`new CustomEvent('x')` del `@client`) y el doc del componente. Decisión 107 | `language-server` | `src/mode.ts` · `src/workspace-index.ts` |
+| [ ] | 7 | 6 | **`tagCardAt` y el hover**, la mitad barata: tag, ruta, props, slots, eventos, doc. Sin TypeScript. Un tag desconocido y un `<div>` no dan tarjeta (criterios 13, 14, 16, 17, 18) | `language-server` | `src/services/tag-card.ts` · `src/services/plugin.ts` |
+| [ ] | 8 | 7 | **La segunda mitad**: el tipo de cada prop desde la proyección, cuando TypeScript conteste (criterio 15) | `language-server` | `src/services/ts-completion.ts` · `src/services/tag-card.ts` |
 
 ---
 
-## Fase 3 — la tarjeta (2)
+## Fase 3 — guardar y cerrar (1)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 7 | — | **`tagCardAt`, la mitad barata**: tag, fichero, props con su marca de requerida, slots. Del índice, síncrono, sin TypeScript. Un tag desconocido y un `<div>` no devuelven tarjeta (§4.5, criterios 12, 14, 15) | `language-server` | `src/services/tag-card.ts` |
-| [ ] | 8 | 7 | **La segunda mitad, si la hay**: el tipo de cada prop desde la proyección, y el JSDoc del `props<T>()` tal cual. Con TypeScript caído la tarjeta sale igual, sin tipos — se mide así (criterios 12, 13, 16) | `language-server` | `src/services/tag-card.ts` · `src/services/plugin.ts` |
-
----
-
-## Fase 4 — guardar (1)
-
-| ✓ | # | dep | tarea | package | fichero |
-|---|---|---|---|---|---|
-| [ ] | 9 | — | **`editor.formatOnSave` en `[fudic]`**, con `defaultFormatter` intacto, y un test que afirma que el manifiesto no rebinda `tab` (§4.6, criterios 17, 18). Anotar en el SDD que con esto la normalización de comillas de SDD-26 pasa a ocurrir siempre | `vscode` | `package.json` · `test/manifest.test.ts` |
-
----
-
-## Fase 5 — cierre (1)
-
-| ✓ | # | dep | tarea | package | fichero |
-|---|---|---|---|---|---|
-| [ ] | 10 | todas | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`. Los 20 criterios de §6 verdes. `language-server` y `vscode` al 100 % en las cuatro métricas (criterio 20). SDD-36 a `Hecho` en [INDEX.md](./INDEX.md) | — | [INDEX.md](./INDEX.md) |
+| [ ] | 9 | todas | **`editor.formatOnSave` en `[fudic]`** (criterio 19). Y cierre: `pnpm typecheck`, `pnpm test`, `pnpm build`, los 20 criterios verdes, los dos paquetes al 100 % (criterio 20), SDD-36 a `Hecho` en [INDEX.md](./INDEX.md) | `vscode` | `package.json` · [INDEX.md](./INDEX.md) |

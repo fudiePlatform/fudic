@@ -744,6 +744,140 @@ describe('code actions', () => {
       [],
     );
   });
+
+  /**
+   * SDD-36 §3.1 — the table.
+   *
+   * Every one of these asks over the WHOLE document, which is the shape that matters: a bulb
+   * is offered because a diagnostic is there, so a range that covers the file has to find it
+   * and a file with nothing wrong has to come back empty.
+   */
+  describe('the repairs of SDD-36', () => {
+    /** Every action offered anywhere in `source`, with `source` written into the slug. */
+    const fixesIn = async (source: string, extra: Readonly<Record<string, string>> = {}) => {
+      const { service, document } = setup(source, SLUG, true, extra);
+      const whole = {
+        start: { line: 0, character: 0 },
+        end: { line: source.split('\n').length, character: 0 },
+      };
+      return (await service.provideCodeActions?.(document, whole, { diagnostics: [] }, TOKEN)) ?? [];
+    };
+
+    /** The single text edit an action makes on the file being edited. */
+    const edit = (action: { edit?: { changes?: Record<string, unknown> } } | undefined) =>
+      (Object.values(action?.edit?.changes ?? {})[0] as { newText: string }[] | undefined)?.[0];
+
+    it('quotes an unquoted value (FUD0056)', async () => {
+      const actions = await fixesIn(
+        `<link rel="layout" href="../layouts/_layout.fud">\n<div title=hola></div>\n`,
+      );
+      const quote = actions.find((action) => action.title === 'Entrecomillar el valor');
+
+      expect(quote).toBeDefined();
+      expect(edit(quote)?.newText).toBe('"hola"');
+    });
+
+    it('adds the <link> of a component the file writes without declaring (FUD0191)', async () => {
+      const actions = await fixesIn(
+        `<link rel="layout" href="../layouts/_layout.fud">\n<app-badge></app-badge>\n`,
+      );
+      const link = actions.find((action) => action.title.startsWith('Añadir <link'));
+
+      expect(link?.title).toBe('Añadir <link rel="component"> de <app-badge>');
+      // The very edit `linkInsertionFor` writes, which is what the tag completion uses.
+      expect(edit(link)?.newText).toContain('<link rel="component" href="../components/app-badge.fud">');
+    });
+
+    it('adds the key of a loop that renders markup (FUD0540)', async () => {
+      const actions = await fixesIn(
+        `<link rel="layout" href="../layouts/_layout.fud">\n@foreach (const item of data.xs) {\n  <p>x</p>\n}\n`,
+      );
+      const key = actions.find((action) => action.title.startsWith('Añadir key'));
+
+      expect(key?.title).toBe('Añadir key (item)');
+      expect(edit(key)?.newText).toBe(' key (item)');
+    });
+
+    it('uses the FIRST binding of a destructuring header', async () => {
+      const actions = await fixesIn(
+        `<link rel="layout" href="../layouts/_layout.fud">\n@foreach (const { id, tag } of data.xs) {\n  <p>x</p>\n}\n`,
+      );
+
+      expect(actions.find((action) => action.title.startsWith('Añadir key'))?.title).toBe(
+        'Añadir key (id)',
+      );
+    });
+
+    it('offers no key where the header declares no binding', async () => {
+      // `FUD0543` owns that case and says something else; writing `key ()` would trade one
+      // diagnostic for another.
+      const actions = await fixesIn(
+        `<link rel="layout" href="../layouts/_layout.fud">\n@foreach (x of data.xs) {\n  <p>x</p>\n}\n`,
+      );
+
+      expect(actions.filter((action) => action.title.startsWith('Añadir key'))).toEqual([]);
+    });
+
+    it('does not quote a value that already carries a quote', async () => {
+      // `title=a"b` is unquoted AND has a quote in it, so wrapping it in a pair produces a
+      // value that ends where the author did not mean it to. The compiler is right to complain
+      // and there is no repair that is certainly what was wanted.
+      const actions = await fixesIn(
+        `<link rel="layout" href="../layouts/_layout.fud">\n<div title=a"b></div>\n`,
+      );
+
+      expect(actions.filter((action) => action.title === 'Entrecomillar el valor')).toEqual([]);
+    });
+
+    it('does not mistake a longer tag for the one it starts with', async () => {
+      // `<app-badge-large>` opens a component of its own, not `app-badge`. Without the boundary
+      // the repair would add the link of a component the author never wrote.
+      const actions = await fixesIn(
+        `<link rel="layout" href="../layouts/_layout.fud">\n<app-badge-large></app-badge-large>\n`,
+      );
+
+      expect(actions.filter((action) => action.title.startsWith('Añadir <link'))).toEqual([]);
+    });
+
+    it('offers no link for a tag the workspace does not have', async () => {
+      // The href is never guessed. A component the index has not seen has no path to point at,
+      // and inventing one writes a `<link>` that will not resolve — trading `FUD0191` for
+      // `FUD0460`.
+      const actions = await fixesIn(
+        `<link rel="layout" href="../layouts/_layout.fud">\n<app-ghost></app-ghost>\n`,
+      );
+
+      expect(actions.filter((action) => action.title.startsWith('Añadir <link'))).toEqual([]);
+    });
+
+    it('offers no key where Oxc could not read the header', async () => {
+      // Half a header is what every keystroke of writing one looks like. No statement comes
+      // back, so there is no binding to name, and asking is still safe.
+      const actions = await fixesIn(
+        `<link rel="layout" href="../layouts/_layout.fud">\n@foreach (const of) {\n  <p>x</p>\n}\n`,
+      );
+
+      expect(actions.filter((action) => action.title.startsWith('Añadir key'))).toEqual([]);
+    });
+
+    it('offers nothing for a repairable diagnostic outside the range asked about', async () => {
+      // The bulb belongs to the line the caret is on, not to the file. A quick fix list that
+      // answers about the whole document is a list nobody can read.
+      const source = `<link rel="layout" href="../layouts/_layout.fud">\n<div title=hola></div>\n<p>x</p>\n`;
+      const { service, document } = setup(source);
+      const elsewhere = { start: { line: 2, character: 0 }, end: { line: 2, character: 1 } };
+
+      expect(
+        await service.provideCodeActions?.(document, elsewhere, { diagnostics: [] }, TOKEN),
+      ).toEqual([]);
+    });
+
+    it('offers nothing at all on a healthy file', async () => {
+      expect(await fixesIn(`<link rel="layout" href="../layouts/_layout.fud">\n<p>x</p>\n`)).toEqual(
+        [],
+      );
+    });
+  });
 });
 
 describe('cancellation', () => {

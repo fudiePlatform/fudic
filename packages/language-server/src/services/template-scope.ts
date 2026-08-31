@@ -82,21 +82,37 @@ function addLoopBindings(
 ): void {
   for (const loop of cached.js.loops) {
     if (offset < loop.headerEnd || offset > loop.span.end) continue;
-    if (loop.statement === undefined) continue;
-
-    // `for (const x of xs)` keeps its declaration in `left`; `for (let i = 0; …)` in `init`.
-    // Either can also be a bare assignment target — `for (x of xs)` declares nothing new — and
-    // a `for (;;)` has no `init` at all.
-    const declaration = (loop.statement['left'] ?? loop.statement['init']) as OxcNode | null;
-    if (declaration === null || declaration === undefined) continue;
-    if (declaration.type !== 'VariableDeclaration') continue;
-
-    for (const declarator of declaration['declarations'] as readonly OxcNode[]) {
-      // A loop variable is a value: nothing about `const x of xs` says `x` can be called, and
-      // guessing from an initializer that is not there would be inventing an answer.
-      collectPatternNames(declarator['id'] as OxcNode, 'value', into);
-    }
+    // A loop variable is a value: nothing about `const x of xs` says `x` can be called, and
+    // guessing from an initializer that is not there would be inventing an answer.
+    for (const name of loopBindingNames(loop.statement)) into.set(name, 'value');
   }
+}
+
+/**
+ * The names a loop header declares, in source order.
+ *
+ * Shared with the quick fix that writes a missing `key (…)` (SDD-36 §4.4), because they are the
+ * same question: the scope wants all of them, the key wants the first. Two readings of one
+ * header is how the editor and the build came to disagree in BUG-23, and this is the same shape
+ * of mistake one size smaller.
+ *
+ * Empty for everything that declares nothing: a header Oxc could not read, a `for (;;)` with no
+ * initializer, and `for (x of xs)` — whose left-hand side is an assignment to a name that
+ * already exists, not a declaration of a new one.
+ */
+export function loopBindingNames(statement: OxcNode | undefined): readonly string[] {
+  if (statement === undefined) return [];
+
+  // `for (const x of xs)` keeps its declaration in `left`; `for (let i = 0; …)` in `init`.
+  const declaration = (statement['left'] ?? statement['init']) as OxcNode | null | undefined;
+  if (declaration === null || declaration === undefined) return [];
+  if (declaration.type !== 'VariableDeclaration') return [];
+
+  const names = new Map<string, ScopeKind>();
+  for (const declarator of declaration['declarations'] as readonly OxcNode[]) {
+    collectPatternNames(declarator['id'] as OxcNode, 'value', names);
+  }
+  return [...names.keys()];
 }
 
 /**

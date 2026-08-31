@@ -48,6 +48,14 @@ export interface LoopHeader {
   readonly span: Span;
   /** Where the header's JS ends: past it, the names it declares are in scope. */
   readonly headerEnd: number;
+  /**
+   * Where the whole `( … )` ends, closing delimiter included.
+   *
+   * It is where a `key (…)` goes (decision 91), and it comes from the balancer rather than from
+   * searching the source for a `)`: a search has a «not found» case that no input can reach and
+   * that no test can therefore cover.
+   */
+  readonly headerClose: number;
   /** The `ForOfStatement` / `ForStatement` Oxc built. Absent when it could not build one. */
   readonly statement?: OxcNode;
 }
@@ -85,7 +93,7 @@ export function batchDocumentJs(source: string, document: StructuredDocument): D
   const neutral: FragmentId[] = [];
   const client: FragmentId[] = [];
   const regions: CodeRegion[] = [];
-  const loops: { span: Span; headerEnd: number; id: FragmentId }[] = [];
+  const loops: { span: Span; headerEnd: number; headerClose: number; id: FragmentId }[] = [];
 
   const register = (node: Node, at: Span): void => {
     const id = batch.add('expression', at);
@@ -118,6 +126,7 @@ export function batchDocumentJs(source: string, document: StructuredDocument): D
       loops.push({
         span: node.span,
         headerEnd: header.end,
+        headerClose: node.header.span.end,
         id: batch.add(node.type === 'foreach' ? 'for-of-header' : 'for-header', header),
       });
     },
@@ -149,6 +158,7 @@ export function batchDocumentJs(source: string, document: StructuredDocument): D
       return {
         span: loop.span,
         headerEnd: loop.headerEnd,
+        headerClose: loop.headerClose,
         ...(Array.isArray(root) ? {} : { statement: root as OxcNode }),
       };
     }),

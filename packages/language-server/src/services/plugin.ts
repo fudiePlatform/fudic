@@ -46,7 +46,8 @@ import { reindentLine } from '@fudic/formatter';
 import { fudicDiagnostics } from './compiler-diagnostics.js';
 import { emmetCompletions } from './emmet.js';
 import { formattedText } from './formatting.js';
-import { hrefCompletions, unresolvedHrefs } from './href.js';
+import { hrefCompletions } from './href.js';
+import { codeActions } from './actions.js';
 import {
   attributeValueBindingAt,
   brokenValueContextAt,
@@ -476,23 +477,19 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
               const cached = fudicDocumentOf(context, document);
               if (cached === undefined) return undefined;
 
-              return unresolvedHrefs(cached, index)
-                .filter((unresolved) => overlaps(rangeOf(document, unresolved.value), range))
-                .map(
-                  (unresolved): CodeAction => ({
-                    title: `Create ${unresolved.href}`,
-                    kind: 'quickfix',
-                    edit: {
-                      documentChanges: [
-                        {
-                          kind: 'create',
-                          uri: URI.file(unresolved.target).toString(),
-                          options: { ignoreIfExists: true },
-                        },
-                      ],
-                    },
-                  }),
-                );
+              // The server's OWN diagnostics, not the ones the client sent in the context: a
+              // client sends what it last rendered, and a repair computed against a stale span
+              // edits the wrong stretch. Recomputing is free — the parse and the Oxc batch are
+              // the cache's.
+              return codeActions({
+                cached,
+                index,
+                document,
+                range,
+                diagnostics: fudicDiagnostics(cached, index),
+                rangeOf,
+                overlaps,
+              });
             },
             undefined,
           );
