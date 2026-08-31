@@ -12,6 +12,20 @@
 > SDD de verdad —empezando por el §1, `fudic check`—, no como parche dentro de aquel. BUG-23
 > es un defecto y todo lo que describe lo es; esto es trabajo nuevo, y mezclarlos alarga el
 > único documento que ahora mismo hay que cerrar.
+>
+> **Dónde aterrizó (2026-08-31, al cerrar BUG-23).** Los cinco puntos tienen ya su documento:
+>
+> | § | destino |
+> |---|---|
+> | 1 · `fudic check` | [SDD-35](../SDD-35-fudic-check.md) · [tareas](../SDD-35-Task.md) |
+> | 2 · las bombillas | [SDD-36](../SDD-36-editor-terminado.md) fase 2 |
+> | 3 · renombrar | [SDD-36](../SDD-36-editor-terminado.md) **tarea 1: medir primero**. El resultado decide si hay SDD propio |
+> | 4 · hover del contrato | [SDD-36](../SDD-36-editor-terminado.md) fase 3 |
+> | 5 · el banco de trabajo | [SDD-32](../SDD-32-banco-de-trabajo.md) (rama propia) |
+>
+> Se le añadió una sexta cosa que este documento no recogía y que Pedro pidió al cerrar BUG-23:
+> **llamar al formateador de fudic al guardar**. Va en [SDD-36](../SDD-36-editor-terminado.md)
+> §3.3, y es una línea de manifiesto, no código.
 
 ---
 

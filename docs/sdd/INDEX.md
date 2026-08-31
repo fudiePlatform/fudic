@@ -97,6 +97,8 @@ alcance), y el **mismo par de ficheros** que un SDD: `BUG-NN-<slug>.md` +
 | [29](./SDD-29-code-snippets.md) | Snippets de markup reutilizables (`@snippet` / `@render`) | `Listo` | 05, 06, 10, 11, 12 | 6, 41, 45, 53, 55, 62 |
 | [30](./SDD-30-renders-de-bloque.md) · [tareas](./SDD-30-Task.md) | Renders de bloque (`@if`/`@for`/`@foreach`/`@while`/`@switch` como funciones) | `Hecho` | 06, 11, 12, 13, 14, 15, BUG-12 | 8–15, 91–95 |
 | [31](./SDD-31-signals-derivadas.md) · [tareas](./SDD-31-Task.md) | Signals derivadas: `computed` · `effect` · `batch` (`@fudic/core`) | `Hecho` (los 21 criterios de §6 verdes; `@fudic/core` sigue al 100 %) | 14, 15 | 84 |
+| [35](./SDD-35-fudic-check.md) · [tareas](./SDD-35-Task.md) | `fudic check`: los tipos del template en CI, sin editor ([IDEA-02](./ideas/IDEA-02-lo-que-le-falta-para-un-10.md) §1) | `Listo` | 22, 23, 12, 24 | — |
+| [36](./SDD-36-editor-terminado.md) · [tareas](./SDD-36-Task.md) | El editor terminado: la bombilla, la tarjeta del tag y el formato al guardar ([IDEA-02](./ideas/IDEA-02-lo-que-le-falta-para-un-10.md) §2, §4) | `Listo` | 24, 23, 26, 25, BUG-23 | — |
 
 ---
 
