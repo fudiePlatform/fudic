@@ -3,7 +3,7 @@
 > **SDD:** [SDD-36 — La bombilla y la tarjeta del componente](./SDD-36-editor-terminado.md)
 > **Paquetes:** `@fudic/language-server` · `fudic-vscode`
 > **Rama:** `worktree-bug-23`
-> **Progreso:** 6 / 8 (la tarea 2 se retiró en la fase 2; la nota de esa fase dice por qué)
+> **Progreso:** 7 / 8 (la tarea 2 se retiró en la fase 2; la nota de esa fase dice por qué)
 
 **El orden manda en un punto:** la **1 antes que la 2–5**, porque sin el enrutador cada acción se
 escribiría su propia búsqueda.
@@ -45,7 +45,7 @@ puede provocar y por tanto ningún test puede cubrir.
 |---|---|---|---|---|---|
 | [x] | 6 | — | **Lo que el índice tiene que saber**: props con `required`, slots, eventos y el doc del componente. Decisión 107 | `language-server` | `src/mode.ts` · `src/workspace-index.ts` |
 | [x] | 7 | 6 | **`tagCardAt` y el hover**, la mitad barata: tag, ruta, props, slots, eventos, doc. Sin TypeScript. Un tag desconocido y un `<div>` no dan tarjeta (criterios 13, 14, 16, 17, 18) | `language-server` | `src/services/tag-card.ts` · `src/services/plugin.ts` |
-| [ ] | 8 | 7 | **La segunda mitad**: el tipo de cada prop desde la proyección, cuando TypeScript conteste (criterio 15). `cardMarkdown` ya toma el mapa de tipos y lo pinta; falta quien lo llene | `language-server` | `src/services/ts-completion.ts` · `src/services/plugin.ts` |
+| [x] | 8 | 7 | **La segunda mitad**: el tipo de cada prop desde la proyección, cuando TypeScript conteste (criterio 15). `cardMarkdown` ya toma el mapa de tipos y lo pinta; falta quien lo llene | `language-server` | `src/services/tag-card.ts` · `src/services/plugin.ts` |
 
 ### Lo que la fase 2 midió, y que cambia la tarea 2
 
@@ -61,6 +61,12 @@ Así que el registro del servidor se queda en `has`, la tarea 2 se retira del SD
 1–5 y 10 de §6 pasan a describir lo que hace el build. Lo que el consumidor ve en el editor —que
 falta una prop requerida, que ese slot no existe— ya se lo dice TypeScript sobre la proyección, con
 la posición exacta y con sugerencia.
+
+**La segunda mitad vive con la primera, no con el filtro de TypeScript.** La tarea 8 apuntaba a
+`ts-completion.ts` por ser el fichero que mira hacia TypeScript, pero ese módulo es un decorador
+sobre el servicio ajeno —existe para *quitar* respuestas—, y aquí no se filtra nada: se lee el
+programa. El lector se queda en `tag-card.ts`, junto a la mitad barata, y el servicio de
+TypeScript llega por el canal que Volar tiene para eso (`inject`), no montando un segundo.
 
 **Y el contrato no se lee dos veces.** `requiredPropsOf` desaparece: el índice saca las requeridas
 del mismo contrato que alimenta la tarjeta. Dos lecturas del mismo hecho es lo que separó al editor

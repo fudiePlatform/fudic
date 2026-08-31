@@ -35,6 +35,7 @@ import {
   type Span,
 } from '@fudic/compiler';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
+import type * as ts from 'typescript';
 import { URI } from 'vscode-uri';
 import { COMPLETION_TRIGGER_CHARACTERS, SEMANTIC_TOKENS_LEGEND } from '../capabilities.js';
 import type { CachedDocument } from '../document-cache.js';
@@ -77,7 +78,7 @@ import {
   type TagCompletion,
 } from './tags.js';
 import { semanticTokens } from './semantic-tokens.js';
-import { cardMarkdown, tagCardAt } from './tag-card.js';
+import { cardMarkdown, propTypes, tagCardAt } from './tag-card.js';
 
 /** What opens an expression, and therefore what every name in scope is written with. */
 const EXPRESSION_PREFIX = '@';
@@ -161,6 +162,23 @@ export function fudicDocumentOf(
     | FudicVirtualCode
     | undefined;
   return root?.document;
+}
+
+/** What `volar-service-typescript` publishes for whoever needs the program itself. */
+interface TypeScriptProvide {
+  readonly 'typescript/languageService': () => ts.LanguageService;
+}
+
+/**
+ * The TypeScript language service of the project, or nothing when there is none.
+ *
+ * Volar's own channel between plugins, and the only one: a service is handed its reply and never
+ * another's, so the program is reached through what the TypeScript service PROVIDES rather than
+ * by mounting a second one. Nothing when TypeScript failed to load (SDD-24 §6.1) — which is
+ * exactly the case §4.5 degrades for, and it is the same absence as a program that is not built.
+ */
+function typeScriptService(context: LanguageServiceContext): ts.LanguageService | undefined {
+  return context.inject<TypeScriptProvide>('typescript/languageService');
 }
 
 /** Whether two ranges of the same document overlap at all. */
@@ -484,10 +502,14 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
               const card = tagCardAt(cached, index, document.offsetAt(position));
               if (card === undefined) return undefined;
 
-              // No types yet: they come from the projection and are the one half of the card
-              // that may not arrive. The card is complete without them (SDD-36 §4.5).
+              // The second half, and the only one that may not arrive: the types come from
+              // the projection of the file the card is ABOUT, which is a different file from
+              // the one being hovered. The card is complete without them (SDD-36 §4.5).
               return {
-                contents: { kind: 'markdown', value: cardMarkdown(card, new Map()) },
+                contents: {
+                  kind: 'markdown',
+                  value: cardMarkdown(card, propTypes(typeScriptService(context), card.file)),
+                },
                 range: rangeOf(document, card.span),
               };
             },

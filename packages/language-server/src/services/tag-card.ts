@@ -6,17 +6,19 @@
  * slots, events and whatever the author wrote in the `@code` — and this is where it is put in
  * front of the person asking.
  *
- * TypeScript is NOT asked. Its answer would be better and it may not come: a program still
- * loading, a `tsconfig` that does not reach the file, a component nobody has opened. A card
- * that waits for it is a card that sometimes does not appear, and «sometimes not» is
- * indistinguishable from «there is no hover». So the card is built from the parse and the type
- * of each prop is the one thing that may be missing from it — the lesson of BUG-23 §2.9, paid
- * once and applied here before it costs anything.
+ * The card is NOT waited for. Its two halves are built separately and only the second one asks
+ * TypeScript: a program still loading, a `tsconfig` that does not reach the file, a component
+ * nobody has opened. A card that waits for an answer that may not come is a card that sometimes
+ * does not appear, and «sometimes not» is indistinguishable from «there is no hover». So
+ * everything a consumer needs is read from the parse, and the type of each prop is the one
+ * thing that may be missing from it — the lesson of BUG-23 §2.9, paid once and applied here
+ * before it costs anything.
  *
  * The tag and only the tag. A `<div>` has no fudic contract and HTML already describes it, and
  * a prop, an event or an expression are answered by TypeScript over the projection, correctly.
  */
 
+import type * as ts from 'typescript';
 import type { Span } from '@fudic/compiler';
 import type { CachedDocument } from '../document-cache.js';
 import type { Contract } from '../mode.js';
@@ -93,4 +95,55 @@ export function cardMarkdown(card: TagCard, types: ReadonlyMap<string, string>):
   }
 
   return parts.join('\n\n');
+}
+
+/**
+ * The name SDD-23 §3.2 exports a component's contract under.
+ *
+ * The projection writes `export type $Props = typeof $p0;` into every client virtual, and this
+ * is the other end of that sentence. Spelled once here rather than searched for: the emitter
+ * owns the name and this only has to agree with it.
+ */
+const PROPS_EXPORT = '$Props';
+
+/** No types, which is what every degraded path answers with. */
+const NO_TYPES: ReadonlyMap<string, string> = new Map();
+
+/**
+ * The type of each prop, read from the projection (SDD-36 §4.5, criterion 15).
+ *
+ * The card's second half, and the only half that is allowed not to arrive. Every step below
+ * can come back empty for a reason that is normal rather than exceptional — no TypeScript was
+ * loaded at all (SDD-24 §6.1), the program has not been built yet, the component is not in it,
+ * or it declares no `props<T>()` and its contract is `never`. All of them answer the same way:
+ * an empty map, and a card that renders without the column.
+ *
+ * The checker, never the text. `$Props` is `typeof $p0` and `$p0` is a `props<T>()` call, so
+ * the members are reachable only by resolving that chain — which is precisely what TypeScript
+ * is here for, and what a reader of the type argument's source could not do.
+ */
+export function propTypes(
+  languageService: ts.LanguageService | undefined,
+  file: string,
+): ReadonlyMap<string, string> {
+  const program = languageService?.getProgram();
+  if (program === undefined) return NO_TYPES;
+
+  // A `.fud` IS the program's file name: the language plugin gives TypeScript the client
+  // virtual as that file's script (SDD-24 §4.1), so no name has to be derived here.
+  const source = program.getSourceFile(file);
+  if (source === undefined) return NO_TYPES;
+
+  const checker = program.getTypeChecker();
+  const module = checker.getSymbolAtLocation(source);
+  if (module === undefined) return NO_TYPES;
+
+  const contract = checker.getExportsOfModule(module).find((it) => it.name === PROPS_EXPORT);
+  if (contract === undefined) return NO_TYPES;
+
+  const types = new Map<string, string>();
+  for (const prop of checker.getDeclaredTypeOfSymbol(contract).getProperties()) {
+    types.set(prop.name, checker.typeToString(checker.getTypeOfSymbolAtLocation(prop, source)));
+  }
+  return types;
 }

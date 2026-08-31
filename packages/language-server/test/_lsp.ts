@@ -117,9 +117,13 @@ export function fakeVolarServer(documents: Map<string, TextDocument> = new Map()
 export function fakeServiceContext(
   documents: Readonly<Record<string, CachedDocument>>,
   decode: (uri: URI) => [URI, string] | undefined = () => undefined,
+  provided: Readonly<Record<string, unknown>> = {},
 ): LanguageServiceContext {
   return {
     decodeEmbeddedDocumentUri: decode,
+    // What the other plugins publish. Empty by default, which is what a server with no
+    // TypeScript mounted injects — the degraded half of SDD-36 §4.5.
+    inject: (key: string) => provided[key],
     language: {
       scripts: {
         get: (uri: URI) => {

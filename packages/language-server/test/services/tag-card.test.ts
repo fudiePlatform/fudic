@@ -7,9 +7,10 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import type * as ts from 'typescript';
 import { DocumentCache } from '../../src/document-cache.js';
 import { WorkspaceIndex } from '../../src/workspace-index.js';
-import { cardMarkdown, tagCardAt } from '../../src/services/tag-card.js';
+import { cardMarkdown, propTypes, tagCardAt } from '../../src/services/tag-card.js';
 import { LAYOUT, memoryFs } from '../_support.js';
 
 /** A component that declares props, slots, an event and a doc comment. */
@@ -202,5 +203,58 @@ describe('cardMarkdown', () => {
     const text = cardMarkdown(cardAt('<app-bare></app-bare>', '<app-bare')!, new Map());
 
     expect(text).toBe('**`<app-bare>`** · fudic component');
+  });
+});
+
+/**
+ * The four ways the second half of the card can be absent (SDD-36 §4.5).
+ *
+ * All of them normal rather than exceptional, and all of them measured against a hand-made
+ * language service rather than a real one: what is being proved is that a missing answer is an
+ * empty map and never an exception, and a real program cannot be made to lack a program. The
+ * half that DOES arrive is proved where it can only be proved — over the real workspace, in
+ * `test/acceptance/hover.test.ts`.
+ */
+describe('propTypes', () => {
+  const FILE = '/p/components/app-button.fud';
+
+  /** A language service whose program is whatever the test hands it. */
+  const serviceOf = (program: unknown): ts.LanguageService =>
+    ({ getProgram: () => program }) as unknown as ts.LanguageService;
+
+  /** A program with one source file, and the checker the test wrote. */
+  const programOf = (source: unknown, checker: unknown): unknown => ({
+    getSourceFile: (name: string) => (name === FILE ? source : undefined),
+    getTypeChecker: () => checker,
+  });
+
+  it('answers nothing when no TypeScript is mounted at all', () => {
+    expect(propTypes(undefined, FILE).size).toBe(0);
+  });
+
+  it('answers nothing while the program is not built', () => {
+    expect(propTypes(serviceOf(undefined), FILE).size).toBe(0);
+  });
+
+  it('answers nothing for a file the program does not have', () => {
+    expect(propTypes(serviceOf(programOf({}, {})), '/p/components/ghost.fud').size).toBe(0);
+  });
+
+  it('answers nothing for a projection that is not a module', () => {
+    const checker = { getSymbolAtLocation: () => undefined };
+
+    expect(propTypes(serviceOf(programOf({}, checker)), FILE).size).toBe(0);
+  });
+
+  it('answers nothing for a projection that exports no contract', () => {
+    // Not the same as a component without props: that one exports `$Props = never`, which has
+    // no members and produces the same empty map by walking none. This is a projection that
+    // failed to emit the name at all, and the card degrades identically for both.
+    const checker = {
+      getSymbolAtLocation: () => ({}),
+      getExportsOfModule: () => [{ name: '$Slots' }],
+    };
+
+    expect(propTypes(serviceOf(programOf({}, checker)), FILE).size).toBe(0);
   });
 });
