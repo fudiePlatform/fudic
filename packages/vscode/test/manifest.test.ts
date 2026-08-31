@@ -47,6 +47,16 @@ describe('identity', () => {
     );
   });
 
+  it('formats a .fud on save, and only a .fud (SDD-36 §3.4)', () => {
+    // A default, not an imposition: it lives in the `[fudic]` block, so it reaches no other
+    // language, and a user who sets `editor.formatOnSave` themselves wins over it. Paired with
+    // the formatter above on purpose — formatting on save with somebody else's formatter is
+    // how a `.fud` comes out of the editor different from how `fudic format` writes it.
+    expect(
+      at(manifest, 'contributes', 'configurationDefaults', '[fudic]', 'editor.formatOnSave'),
+    ).toBe(true);
+  });
+
   it('asks the editor for suggestions inside quotes', () => {
     // An attribute value is a string to the grammar, and VS Code will not auto-trigger
     // suggestions inside a string: `strings` is off by default. Without this, typing

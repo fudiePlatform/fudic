@@ -53,7 +53,9 @@ describe('the card of a component', () => {
     expect(card).toContain('**`<app-badge>`** · fudic component');
     // `Tone` is the alias the component declared, not the union it expands to: the projection
     // copies the type argument verbatim, so what the consumer reads is what the author wrote.
-    expect(card).toContain('- `.tone?` — `Tone`');
+    // The JSDoc of the member comes with it, which is decision 107 asking nothing of the author
+    // but ordinary TypeScript.
+    expect(card).toContain('- `.tone?` — `Tone`\n  El color con el que se pinta la etiqueta.');
   });
 
   it('names a component the consumer did not open', async () => {
@@ -65,7 +67,7 @@ describe('the card of a component', () => {
 
   it('leaves a native element to HTML', async () => {
     // Not «nothing»: HTML answers, and its answer is the right one. What must not appear is a
-    // fudic card over an element that has no fudic contract (§4.6).
+    // fudic card over an element that has no fudic contract (§4.5).
     const card = await cardAt(SLUG, '<article>', 1);
 
     expect(card).not.toContain('fudic component');

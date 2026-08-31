@@ -78,7 +78,7 @@ import {
   type TagCompletion,
 } from './tags.js';
 import { semanticTokens } from './semantic-tokens.js';
-import { cardMarkdown, propTypes, tagCardAt } from './tag-card.js';
+import { cardMarkdown, propDetails, tagCardAt } from './tag-card.js';
 
 /** What opens an expression, and therefore what every name in scope is written with. */
 const EXPRESSION_PREFIX = '@';
@@ -502,13 +502,13 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
               const card = tagCardAt(cached, index, document.offsetAt(position));
               if (card === undefined) return undefined;
 
-              // The second half, and the only one that may not arrive: the types come from
-              // the projection of the file the card is ABOUT, which is a different file from
-              // the one being hovered. The card is complete without them (SDD-36 §4.5).
+              // The second half, and the only one that may not arrive: it comes from the
+              // projection of the file the card is ABOUT, which is a different file from the
+              // one being hovered. The card is complete without it (SDD-36 §4.4).
               return {
                 contents: {
                   kind: 'markdown',
-                  value: cardMarkdown(card, propTypes(typeScriptService(context), card.file)),
+                  value: cardMarkdown(card, propDetails(typeScriptService(context), card.file)),
                 },
                 range: rangeOf(document, card.span),
               };

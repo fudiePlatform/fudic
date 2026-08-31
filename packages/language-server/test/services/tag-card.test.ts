@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import type * as ts from 'typescript';
 import { DocumentCache } from '../../src/document-cache.js';
 import { WorkspaceIndex } from '../../src/workspace-index.js';
-import { cardMarkdown, propTypes, tagCardAt } from '../../src/services/tag-card.js';
+import { cardMarkdown, propDetails, tagCardAt } from '../../src/services/tag-card.js';
 import { LAYOUT, memoryFs } from '../_support.js';
 
 /** A component that declares props, slots, an event and a doc comment. */
@@ -190,11 +190,23 @@ describe('cardMarkdown', () => {
 
   it('adds the type of a prop when the projection supplied one', () => {
     const card = cardAt('<app-button></app-button>', '<app-button');
-    const text = cardMarkdown(card!, new Map([['label', 'string']]));
+    const text = cardMarkdown(card!, new Map([['label', { type: 'string' }]]));
 
     expect(text).toContain('- `.label` — `string`');
     // The one with no type keeps its line: the card is complete without the second half.
     expect(text).toContain('- `.tone?`');
+  });
+
+  it('puts the doc of a prop under its own line, indented into the item', () => {
+    // Two spaces, and every line of it: a second line at column zero would end the list and
+    // turn the rest of the card into one paragraph (decision 107).
+    const card = cardAt('<app-button></app-button>', '<app-button');
+    const text = cardMarkdown(
+      card!,
+      new Map([['label', { type: 'string', doc: 'Lo que se lee.\nEn dos líneas.' }]]),
+    );
+
+    expect(text).toContain('- `.label` — `string`\n  Lo que se lee.\n  En dos líneas.');
   });
 
   it('leaves out a section that would be empty', () => {
@@ -207,7 +219,7 @@ describe('cardMarkdown', () => {
 });
 
 /**
- * The four ways the second half of the card can be absent (SDD-36 §4.5).
+ * The four ways the second half of the card can be absent (SDD-36 §4.4).
  *
  * All of them normal rather than exceptional, and all of them measured against a hand-made
  * language service rather than a real one: what is being proved is that a missing answer is an
@@ -215,7 +227,7 @@ describe('cardMarkdown', () => {
  * half that DOES arrive is proved where it can only be proved — over the real workspace, in
  * `test/acceptance/hover.test.ts`.
  */
-describe('propTypes', () => {
+describe('propDetails', () => {
   const FILE = '/p/components/app-button.fud';
 
   /** A language service whose program is whatever the test hands it. */
@@ -229,21 +241,21 @@ describe('propTypes', () => {
   });
 
   it('answers nothing when no TypeScript is mounted at all', () => {
-    expect(propTypes(undefined, FILE).size).toBe(0);
+    expect(propDetails(undefined, FILE).size).toBe(0);
   });
 
   it('answers nothing while the program is not built', () => {
-    expect(propTypes(serviceOf(undefined), FILE).size).toBe(0);
+    expect(propDetails(serviceOf(undefined), FILE).size).toBe(0);
   });
 
   it('answers nothing for a file the program does not have', () => {
-    expect(propTypes(serviceOf(programOf({}, {})), '/p/components/ghost.fud').size).toBe(0);
+    expect(propDetails(serviceOf(programOf({}, {})), '/p/components/ghost.fud').size).toBe(0);
   });
 
   it('answers nothing for a projection that is not a module', () => {
     const checker = { getSymbolAtLocation: () => undefined };
 
-    expect(propTypes(serviceOf(programOf({}, checker)), FILE).size).toBe(0);
+    expect(propDetails(serviceOf(programOf({}, checker)), FILE).size).toBe(0);
   });
 
   it('answers nothing for a projection that exports no contract', () => {
@@ -255,6 +267,6 @@ describe('propTypes', () => {
       getExportsOfModule: () => [{ name: '$Slots' }],
     };
 
-    expect(propTypes(serviceOf(programOf({}, checker)), FILE).size).toBe(0);
+    expect(propDetails(serviceOf(programOf({}, checker)), FILE).size).toBe(0);
   });
 });

@@ -3,7 +3,7 @@
 > **SDD:** [SDD-36 — La bombilla y la tarjeta del componente](./SDD-36-editor-terminado.md)
 > **Paquetes:** `@fudic/language-server` · `fudic-vscode`
 > **Rama:** `worktree-bug-23`
-> **Progreso:** 7 / 8 (la tarea 2 se retiró en la fase 2; la nota de esa fase dice por qué)
+> **Progreso:** 8 / 8 (la tarea 2 se retiró en la fase 2; la nota de esa fase dice por qué)
 
 **El orden manda en un punto:** la **1 antes que la 2–5**, porque sin el enrutador cada acción se
 escribiría su propia búsqueda.
@@ -58,7 +58,8 @@ los dos sabe que el nombre era `current`. En el build no hay TypeScript y los tr
 voz por hecho.
 
 Así que el registro del servidor se queda en `has`, la tarea 2 se retira del SDD y los criterios
-1–5 y 10 de §6 pasan a describir lo que hace el build. Lo que el consumidor ve en el editor —que
+que describían esas dos bombillas salen de §6, que queda renumerado a 20. Lo que el consumidor ve
+en el editor —que
 falta una prop requerida, que ese slot no existe— ya se lo dice TypeScript sobre la proyección, con
 la posición exacta y con sugerencia.
 
@@ -78,4 +79,18 @@ del build en BUG-23, una talla más pequeña.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 9 | todas | **`editor.formatOnSave` en `[fudic]`** (criterio 19). Y cierre: `pnpm typecheck`, `pnpm test`, `pnpm build`, los 20 criterios verdes, los dos paquetes al 100 % (criterio 20), SDD-36 a `Hecho` en [INDEX.md](./INDEX.md) | `vscode` | `package.json` · [INDEX.md](./INDEX.md) |
+| [x] | 9 | todas | **`editor.formatOnSave` en `[fudic]`** (criterio 19). Y cierre: `pnpm typecheck`, `pnpm test`, `pnpm build`, los 20 criterios verdes, los dos paquetes al 100 % (criterio 20), SDD-36 a `Hecho` en [INDEX.md](./INDEX.md) | `vscode` | `package.json` · [INDEX.md](./INDEX.md) |
+
+### Lo que el cierre encontró
+
+**El criterio 16 estaba a medias, y repasarlo uno a uno es lo que lo destapó.** La tarjeta traía
+el JSDoc del componente pero no el de cada prop, que decisión 107 pide igual de explícito. Se
+resuelve donde ya se resolvía el tipo: `getDocumentationComment` sobre el mismo símbolo que el
+checker acaba de dar, en la misma pasada. La alternativa —leerlo del argumento de tipo en el
+fuente— habría sido un segundo lector de los miembros, sus comentarios y a cuál pertenece cada
+uno, para un dato que decisión 107 define como «TypeScript normal». Por eso `propTypes` pasó a
+ser `propDetails` y devuelve tipo **y** doc.
+
+**Y el §4 del SDD se quedó con un hueco.** `FUD0197` seguía teniendo su apartado de
+comportamiento después de que la fase 2 lo retirase de §3.1, así que §4 se renumera y las
+referencias del código a `§4.4`/`§4.5`/`§4.6` se mueven con él.

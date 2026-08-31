@@ -1,6 +1,6 @@
 # SDD-36 — La bombilla y la tarjeta del componente
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Paquetes:** `@fudic/language-server` · `fudic-vscode`
 > **Depende de:** 24 (el servidor), 23 (la proyección), 26 (el formateador), 25 (la extensión),
 > BUG-23 (`requiredProps` del índice, `propsOf`/`slotsOf` del registro)
@@ -60,26 +60,26 @@ la red. Una voz por hecho, que es la regla que costó un mes aprender.
 
 ### 3.2. La tarjeta del componente
 
-```ts
-export interface CardProp {
-  readonly name: string;
-  readonly required: boolean;
-  /** From the projection. Absent when TypeScript did not answer. */
-  readonly type?: string;
-  /** The JSDoc the author wrote on the member of `props<T>()`. */
-  readonly doc?: string;
-}
+Las dos mitades son **dos tipos**, no uno con campos que a veces faltan. La que sale del índice
+es el `Contract` que el propio índice ya guarda —props con su marca de requerida, slots, eventos
+y el doc del componente—; la que sale de la proyección es un mapa aparte, y por eso puede estar
+vacío sin que la tarjeta lo esté.
 
+```ts
 export interface TagCard {
   readonly tag: string;
   /** Absolute path of the `.fud` that declares it. */
   readonly file: string;
-  readonly props: readonly CardProp[];
-  /** `<slot name="…">` of the child; `''` is the default slot. */
-  readonly slots: readonly string[];
-  /** The events the child dispatches — decision 107. */
-  readonly events: readonly string[];
-  /** The JSDoc that documents the component itself — decision 107. */
+  /** What the index already knows: props, slots, events and the component's own JSDoc. */
+  readonly contract: Contract;
+  /** The tag NAME in the source, which is what the hover underlines. */
+  readonly span: Span;
+}
+
+/** What only TypeScript knows about a prop. Keyed by the prop's name. */
+export interface PropDetail {
+  readonly type: string;
+  /** The JSDoc the author wrote on the member of `props<T>()` — decision 107. */
   readonly doc?: string;
 }
 
@@ -88,6 +88,13 @@ export function tagCardAt(
   index: WorkspaceIndex,
   offset: number,
 ): TagCard | undefined;
+
+export function propDetails(
+  languageService: ts.LanguageService | undefined,
+  file: string,
+): ReadonlyMap<string, PropDetail>;
+
+export function cardMarkdown(card: TagCard, props: ReadonlyMap<string, PropDetail>): string;
 ```
 
 ### 3.3. Decisión 107 — dónde se documenta un componente
@@ -123,33 +130,29 @@ Un ajuste del usuario gana: esto es un defecto, no una imposición.
 `provideCodeActions` recibe el contexto con los diagnósticos que hay bajo el rango. Cada fila mira
 **el código**, no el texto bajo el cursor. Sin diagnóstico, sin bombilla.
 
-### 4.2. `FUD0197` escribe la diferencia
-
-El diagnóstico nombra el tag, el índice sabe qué requiere, el AST sabe qué está escrito. Se escribe
-lo que falta, un tabstop por prop, con la forma de la expansión de tag: `.name=$1`, sin comillas
-(lo que va ahí puede ser escalar, expresión o cadena). Sin `requiredProps`, sin acción.
-
-### 4.3. `FUD0191` reutiliza `linkInsertionFor`
+### 4.2. `FUD0191` reutiliza `linkInsertionFor`
 
 Es el mismo `TextEdit` que ya fabrica el completado de tag. Cero lógica nueva y cero posibilidad
 de que las dos discrepen.
 
-### 4.4. `FUD0540` lee el binding de la cabecera
+### 4.3. `FUD0540` lee el binding de la cabecera
 
 De `DocumentJs.loops`, el mismo sitio del que sale el ámbito. Varios bindings → el primero.
 Ninguno → sin acción, que ya es `FUD0543`.
 
-### 4.5. La tarjeta se construye en dos mitades y la segunda puede faltar
+### 4.4. La tarjeta se construye en dos mitades y la segunda puede faltar
 
 1. **El índice**, síncrono y siempre: tag, fichero, props con su marca de requerida, slots,
-   eventos, doc.
-2. **La proyección**, si TypeScript contesta: el tipo de cada prop.
+   eventos, doc del componente.
+2. **La proyección**, si TypeScript contesta: de cada prop, su tipo y su JSDoc. Los dos juntos,
+   porque los dos salen del mismo símbolo y decisión 107 documenta una prop «como TypeScript
+   normal» — leerlo del fuente sería un segundo lector del argumento de tipo.
 
 Se renderiza con lo que haya. Un hover que espera a TypeScript para no enseñar nada es un hover que
 no aparece, y eso el desarrollador no lo distingue de «no hay hover». Es la lección de BUG-23 §2.9,
 aplicada antes de que cueste.
 
-### 4.6. La tarjeta es del **tag**, y solo del tag
+### 4.5. La tarjeta es del **tag**, y solo del tag
 
 Sobre un `<div>` no hay tarjeta: un nativo no tiene contrato de fudic y HTML ya lo describe. Sobre
 un tag que el índice no conoce, tampoco. El hover de una prop, de un evento o de una expresión ya

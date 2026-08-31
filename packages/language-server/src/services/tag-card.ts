@@ -1,5 +1,5 @@
 /**
- * The card a component shows when the pointer rests on its tag (SDD-36 §3.2, §4.5).
+ * The card a component shows when the pointer rests on its tag (SDD-36 §3.2, §4.4).
  *
  * A component of fudic has no documentation anywhere: to learn what `<app-button>` takes, the
  * consumer opens the file. Everything needed to answer that is already in the index — props,
@@ -71,17 +71,21 @@ export function tagCardAt(
  * says the component declares none of that kind. A component that declares nothing at all still
  * gets its tag and its file, which is the answer to «what is this and where does it live».
  */
-export function cardMarkdown(card: TagCard, types: ReadonlyMap<string, string>): string {
+export function cardMarkdown(card: TagCard, props: ReadonlyMap<string, PropDetail>): string {
   const parts: string[] = [`**\`<${card.tag}>\`** · fudic component`];
 
   if (card.contract.doc !== undefined) parts.push(card.contract.doc);
 
   if (card.contract.props.length > 0) {
     const rows = card.contract.props.map((prop) => {
-      const type = types.get(prop.name);
+      const detail = props.get(prop.name);
       // The `?` is how TypeScript itself spells optional, so it needs no legend.
       const name = `\`.${prop.name}${prop.required ? '' : '?'}\``;
-      return type === undefined ? `- ${name}` : `- ${name} — \`${type}\``;
+      const head = detail === undefined ? `- ${name}` : `- ${name} — \`${detail.type}\``;
+      // The doc under its prop, indented into the same list item so a second line stays part
+      // of it. Written by the author on the member of `props<T>()`, and printed as they wrote
+      // it (decision 107).
+      return detail?.doc === undefined ? head : `${head}\n${indented(detail.doc)}`;
     });
     parts.push(`**Props**\n${rows.join('\n')}`);
   }
@@ -97,6 +101,14 @@ export function cardMarkdown(card: TagCard, types: ReadonlyMap<string, string>):
   return parts.join('\n\n');
 }
 
+/** Every line of `text` inside a list item, which in Markdown is two spaces of indent. */
+function indented(text: string): string {
+  return text
+    .split('\n')
+    .map((line) => `  ${line}`)
+    .join('\n');
+}
+
 /**
  * The name SDD-23 §3.2 exports a component's contract under.
  *
@@ -106,11 +118,19 @@ export function cardMarkdown(card: TagCard, types: ReadonlyMap<string, string>):
  */
 const PROPS_EXPORT = '$Props';
 
-/** No types, which is what every degraded path answers with. */
-const NO_TYPES: ReadonlyMap<string, string> = new Map();
+/** What only TypeScript knows about a prop. */
+export interface PropDetail {
+  /** As the checker spells it, which is as the author declared it. */
+  readonly type: string;
+  /** The JSDoc the author wrote on the member of `props<T>()` — decision 107. */
+  readonly doc?: string;
+}
+
+/** No details, which is what every degraded path answers with. */
+const NO_DETAILS: ReadonlyMap<string, PropDetail> = new Map();
 
 /**
- * The type of each prop, read from the projection (SDD-36 §4.5, criterion 15).
+ * The type and the doc of each prop, read from the projection (SDD-36 §4.4, criteria 15, 16).
  *
  * The card's second half, and the only half that is allowed not to arrive. Every step below
  * can come back empty for a reason that is normal rather than exceptional — no TypeScript was
@@ -118,32 +138,43 @@ const NO_TYPES: ReadonlyMap<string, string> = new Map();
  * or it declares no `props<T>()` and its contract is `never`. All of them answer the same way:
  * an empty map, and a card that renders without the column.
  *
+ * The doc travels with the type rather than with the parse, and decision 107 is why: a prop is
+ * documented as «the JSDoc of the member», which is TypeScript's own convention on TypeScript's
+ * own syntax. Reading it here costs one call on a symbol this walk already holds; reading it
+ * from the source would mean a second reader of the type argument, of comments, and of which
+ * member each one belongs to.
+ *
  * The checker, never the text. `$Props` is `typeof $p0` and `$p0` is a `props<T>()` call, so
  * the members are reachable only by resolving that chain — which is precisely what TypeScript
  * is here for, and what a reader of the type argument's source could not do.
  */
-export function propTypes(
+export function propDetails(
   languageService: ts.LanguageService | undefined,
   file: string,
-): ReadonlyMap<string, string> {
+): ReadonlyMap<string, PropDetail> {
   const program = languageService?.getProgram();
-  if (program === undefined) return NO_TYPES;
+  if (program === undefined) return NO_DETAILS;
 
   // A `.fud` IS the program's file name: the language plugin gives TypeScript the client
   // virtual as that file's script (SDD-24 §4.1), so no name has to be derived here.
   const source = program.getSourceFile(file);
-  if (source === undefined) return NO_TYPES;
+  if (source === undefined) return NO_DETAILS;
 
   const checker = program.getTypeChecker();
   const module = checker.getSymbolAtLocation(source);
-  if (module === undefined) return NO_TYPES;
+  if (module === undefined) return NO_DETAILS;
 
   const contract = checker.getExportsOfModule(module).find((it) => it.name === PROPS_EXPORT);
-  if (contract === undefined) return NO_TYPES;
+  if (contract === undefined) return NO_DETAILS;
 
-  const types = new Map<string, string>();
+  const details = new Map<string, PropDetail>();
   for (const prop of checker.getDeclaredTypeOfSymbol(contract).getProperties()) {
-    types.set(prop.name, checker.typeToString(checker.getTypeOfSymbolAtLocation(prop, source)));
+    const type = checker.typeToString(checker.getTypeOfSymbolAtLocation(prop, source));
+    const doc = prop
+      .getDocumentationComment(checker)
+      .map((part) => part.text)
+      .join('');
+    details.set(prop.name, { type, ...(doc === '' ? {} : { doc }) });
   }
-  return types;
+  return details;
 }

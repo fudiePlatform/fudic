@@ -122,7 +122,7 @@ export function fakeServiceContext(
   return {
     decodeEmbeddedDocumentUri: decode,
     // What the other plugins publish. Empty by default, which is what a server with no
-    // TypeScript mounted injects — the degraded half of SDD-36 §4.5.
+    // TypeScript mounted injects — the degraded half of SDD-36 §4.4.
     inject: (key: string) => provided[key],
     language: {
       scripts: {

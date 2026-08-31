@@ -91,7 +91,7 @@ function addLoopBindings(
 /**
  * The names a loop header declares, in source order.
  *
- * Shared with the quick fix that writes a missing `key (…)` (SDD-36 §4.4), because they are the
+ * Shared with the quick fix that writes a missing `key (…)` (SDD-36 §4.3), because they are the
  * same question: the scope wants all of them, the key wants the first. Two readings of one
  * header is how the editor and the build came to disagree in BUG-23, and this is the same shape
  * of mistake one size smaller.
