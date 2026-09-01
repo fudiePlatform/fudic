@@ -51,12 +51,25 @@ El servidor ya declara `codeActionProvider`. Cambia **qué** devuelve: un `CodeA
 
 Una fila que no se pueda construir con certeza **no se ofrece**.
 
-**`FUD0197` y `FUD0199` no están, y la medida es la razón.** Las dos reglas de contrato de BUG-23
-necesitan `propsOf` y `slotsOf`, que el registro del servidor no expone; dárselos las enciende en
-el editor y con ellas llega la duplicación: `.currnt=` sobre un componente pasa a dar `TS2561`
-**y** `FUD0198`, el mismo error dos veces, y solo uno de los dos sabe que el nombre era `current`.
-En el build no hay TypeScript y los tres `FUD019x` son la única red; en el editor TypeScript **es**
-la red. Una voz por hecho, que es la regla que costó un mes aprender.
+**Y tres más que no se anclan en un diagnóstico nuestro, sino en el contrato** (`services/contract.ts`):
+
+| Hecho | Título | Escribe |
+|---|---|---|
+| Prop requerida sin pasar, o pasada vacía | `Completar las props requeridas de <tag>` | El tag reescrito, con tabstops |
+| `.prop` que el componente no declara | `Cambiar a .<prop>` | El nombre |
+| `slot="x"` que el host no declara | `Cambiar a slot="<slot>"` (una por ranura) o `Quitar slot="x"` | El nombre, o el atributo entero |
+
+**Estas tres las dice TypeScript y las repara el servidor, y la medida es la razón.** La
+decisión de la fase 2 —no emitir `FUD0197`/`FUD0199` en el editor porque TypeScript ya los
+reporta con más precisión— sigue en pie y no se toca: una voz por hecho. Lo que la fase 2 dio por
+supuesto es que quien reporta también repara, y eso es falso aquí. Medido contra el servicio real:
+sobre la proyección TypeScript devuelve **cero** quick fixes —los errores caen sobre un literal
+sintético y sobre una llamada que nadie escribió, así que «cambiar la ortografía» no tiene dónde
+agarrarse— y la única acción que ofrecía era `refactor.move.newFile`, que aquí no significa nada y
+era lo que encendía una bombilla vacía sobre markup sano.
+
+Así que la voz sigue siendo suya y las manos son nuestras. El hecho se recalcula del parse y del
+índice en cada petición —los mismos dos lectores que alimentan la tarjeta—, y no lo reporta nadie.
 
 ### 3.2. La tarjeta del componente
 
@@ -162,12 +175,18 @@ lo da TypeScript sobre la proyección y es correcto.
 
 ## 5. Invariantes
 
-1. Una acción se ancla en un diagnóstico, nunca en la posición a secas.
+1. Una acción se ancla en un **hecho recalculado**, nunca en la posición a secas: un
+   diagnóstico del servidor, o el contrato leído del parse y del índice. Nunca en el contexto
+   que manda el cliente, que es lo último que renderizó.
 2. Degradar es no ofrecer: nada se construye con un dato incierto.
 3. Una sola fuente por hecho: el `<link>` de `linkInsertionFor`, las props del índice, el binding
    del `JsBatch`. Ninguna acción re-deriva con una expresión regular lo que ya está parseado.
 4. La tarjeta se degrada por mitades, y la que depende de TypeScript es siempre la segunda.
-5. El `WorkspaceEdit` viaja completo en la acción: sin `resolve`, sin `command`.
+5. El `WorkspaceEdit` viaja completo en la acción: sin `resolve`. La única excepción es el
+   edit **con tabstops**, que sale por `command` (`fudic.applySnippetEdit`) porque LSP no tiene
+   marca de snippet por edit y un `$1` en un `WorkspaceEdit` llega al fichero como un `$1`
+   literal. La extensión es nuestra; un cliente que no registre el comando simplemente no
+   ejecuta la acción, y no escribe nada a medias.
 6. El manifiesto no rebinda ninguna tecla.
 
 ### Catálogo de diagnósticos (`FUD0640`–`FUD0659`)

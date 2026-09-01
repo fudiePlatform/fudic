@@ -73,8 +73,10 @@ describe('control flow', () => {
   });
 
   it('leaves a loop with no key exactly as it is (BUG-17 §6.16)', async () => {
-    // A loop that paints nothing needs no key (FUD0540 is about a list whose order can
-    // change), so this is the one shape where the printer meets a loop without one.
+    // A loop with no key is `FUD0540` and always has been unfinished code; what it is not is
+    // a broken tree, so the formatter keeps working on it. That is the whole window in which
+    // a key gets written, and a formatter that switches off during it is a formatter that is
+    // off whenever it is wanted.
     const source = '@foreach (const i of xs) {\n  @* nothing to paint *@\n}';
     expect(await print(source)).toBe(source + '\n');
   });

@@ -12,8 +12,10 @@ import type {
   CaretAt,
   CommentSelection,
   LineReplacement,
+  SnippetEdit,
   SnippetTarget,
   TypedText,
+  WireRange,
 } from './ports.js';
 
 /** The shape of `vscode.WorkspaceFolder`, reduced to what is read. */
@@ -156,6 +158,33 @@ export const insertClosingTag = async (
     editor.document.positionAt(target.offset),
     { undoStopBefore: false, undoStopAfter: true },
   );
+};
+
+/** The shape of `vscode.TextEditor`, reduced to what replacing a range with a snippet needs. */
+export interface SnippetRangeEditorLike {
+  readonly document: { readonly uri: { toString(): string } };
+  insertSnippet(snippet: unknown, location: unknown): Thenable<boolean>;
+}
+
+/**
+ * Replace a range with a snippet, unless the active editor is not the document it was computed
+ * for.
+ *
+ * The URI is checked and the version is not, and the difference from `insertClosingTag` is the
+ * trigger: that one answers a keystroke and races the next one, this one answers a quick fix
+ * the user just picked out of a menu that was already showing the range. What can still have
+ * changed is which file has focus, and that is what is checked.
+ */
+export const applySnippetOverRange = async (
+  editor: SnippetRangeEditorLike | undefined,
+  edit: SnippetEdit,
+  snippetOf: (text: string) => unknown,
+  rangeOf: (range: WireRange) => unknown,
+): Promise<void> => {
+  if (editor === undefined) return;
+  if (editor.document.uri.toString() !== edit.uri) return;
+
+  await editor.insertSnippet(snippetOf(edit.snippet), rangeOf(edit.range));
 };
 
 /** The shape of `vscode.TextEditor`, reduced to what commenting reads and writes. */

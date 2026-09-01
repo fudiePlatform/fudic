@@ -23,9 +23,26 @@ import { URI } from 'vscode-uri';
 import type { CachedDocument } from '../document-cache.js';
 import { relativeHref } from '../paths.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
+import { contractIssues, type ContractIssue } from './contract.js';
 import { unresolvedHrefs } from './href.js';
 import { linkInsertionFor } from './tags.js';
 import { loopBindingNames } from './template-scope.js';
+
+/**
+ * The command the extension registers to apply an edit WITH its tabstops (SDD-25).
+ *
+ * Spelled here and re-exported, so the two ends of the contract are one string. A client that
+ * does not register it simply never runs the action; nothing is written half-way.
+ */
+export const SNIPPET_COMMAND = 'fudic.applySnippetEdit';
+
+/**
+ * The three characters a snippet reads as syntax, escaped so text the author wrote survives.
+ *
+ * The rewritten tag carries the author's own attributes across, and one of them holding a `$`
+ * — `.href="$route"` — would otherwise become a tabstop the moment the repair is accepted.
+ */
+const escapeSnippet = (text: string): string => text.replace(/[\\$}]/gu, '\\$&');
 
 /** What every repair is handed: the document, the index, and the diagnostic it repairs. */
 interface Repair {
@@ -161,6 +178,84 @@ const addLoopKey: Repairer = ({ cached, diagnostic }) => {
 };
 
 /**
+ * The three repairs of the component contract (BUG-23 §2.6, §4.4).
+ *
+ * They are anchored on a fact rather than on a diagnostic of ours, and the difference is only
+ * in who says it out loud: TypeScript reports all three over the projection, and a second
+ * reporter is the duplication BUG-23 removed. What TypeScript cannot do is repair them — its
+ * errors land on a synthetic object literal and on a call nobody wrote, so it offers no quick
+ * fix at all. The voice stays its; the hands are here.
+ *
+ * The fact is recomputed from the parse and the index on every request, exactly as the other
+ * repairs recompute the diagnostics they hang on, so nothing here can act on a stale span.
+ */
+function contractFixes(source: string, issue: ContractIssue): readonly Fix[] {
+  if (issue.kind === 'missing-props') {
+    // ONE edit over the whole open tag, not one per prop, and that is what makes the tabstops
+    // possible: a snippet is a single string applied to a single range, so N holes in N places
+    // have to be N holes in one rewritten tag. The caret lands in the first value, which is
+    // the author's next move after accepting this.
+    const holes: Edit[] = [];
+    let stop = 0;
+    for (const name of issue.names) {
+      stop++;
+      const written = issue.empty.get(name);
+      holes.push(
+        written === undefined
+          ? { span: span(issue.insertAt, issue.insertAt), newText: ` .${name}="$${stop}"` }
+          : { span: written, newText: `.${name}="$${stop}"` },
+      );
+    }
+    // In source order, so the tabstops run left to right however the walk found them.
+    holes.sort((a, b) => a.span.start - b.span.start);
+
+    let text = '';
+    let cursor = issue.at.start;
+    for (const hole of holes) {
+      text += escapeSnippet(source.slice(cursor, hole.span.start)) + hole.newText;
+      cursor = hole.span.end;
+    }
+    text += escapeSnippet(source.slice(cursor, issue.at.end));
+
+    return [
+      {
+        title: `Completar las props requeridas de <${issue.tag}>`,
+        edits: [{ span: issue.at, newText: text }],
+        snippet: true,
+      },
+    ];
+  }
+
+  if (issue.kind === 'unknown-prop') {
+    // No suggestion, no action. A list of every prop the component declares would be a menu,
+    // and a bulb that opens a menu is a bulb the author has to read before they can dismiss it.
+    if (issue.suggestion === undefined) return [];
+    return [
+      {
+        title: `Cambiar a .${issue.suggestion}`,
+        edits: [{ span: issue.at, newText: `.${issue.suggestion}` }],
+      },
+    ];
+  }
+
+  // A slot the host does not declare: one action per slot it DOES declare, and when it
+  // declares none the only truthful repair is to take the attribute off — there is nothing
+  // for it to be renamed to.
+  if (issue.declared.length === 0) {
+    return [
+      {
+        title: `Quitar slot="${issue.written}"`,
+        edits: [{ span: issue.attribute, newText: '' }],
+      },
+    ];
+  }
+  return issue.declared.map((name) => ({
+    title: `Cambiar a slot="${name}"`,
+    edits: [{ span: issue.at, newText: name }],
+  }));
+}
+
+/**
  * The table: a diagnostic code, and what repairs it.
  *
  * A code that is not here has no bulb, and that is the normal case — most diagnostics describe
@@ -229,26 +324,42 @@ export function codeActions(deps: ActionDeps): CodeAction[] {
 
   const actions = hrefActions(cached, index, document, range, rangeOf, overlaps);
 
+  const emit = (fix: Fix): void => {
+    const edits = fix.edits.map((edit) => ({
+      range: rangeOf(document, edit.span),
+      newText: edit.newText,
+    }));
+    actions.push({
+      title: fix.title,
+      kind: 'quickfix',
+      diagnostics: [],
+      // A snippet leaves by `command` and everything else by `edit`, because LSP has no
+      // per-edit snippet flag: a `WorkspaceEdit` carrying `$1` would put a literal `$1` in the
+      // document. The extension is ours, so the tabstops are applied there, by the one API
+      // that knows what they are.
+      ...(fix.snippet === true
+        ? {
+            command: {
+              title: fix.title,
+              command: SNIPPET_COMMAND,
+              arguments: [document.uri, edits[0]?.range, edits[0]?.newText],
+            },
+          }
+        : { edit: { changes: { [document.uri]: edits } } }),
+    });
+  };
+
   for (const diagnostic of diagnostics) {
     const repair = REPAIRS.get(diagnostic.code);
     if (repair === undefined) continue;
     if (!overlaps(rangeOf(document, diagnostic.span), range)) continue;
 
-    for (const fix of repair({ cached, index, document, diagnostic })) {
-      actions.push({
-        title: fix.title,
-        kind: 'quickfix',
-        diagnostics: [],
-        edit: {
-          changes: {
-            [document.uri]: fix.edits.map((edit) => ({
-              range: rangeOf(document, edit.span),
-              newText: edit.newText,
-            })),
-          },
-        },
-      });
-    }
+    for (const fix of repair({ cached, index, document, diagnostic })) emit(fix);
+  }
+
+  for (const issue of contractIssues(cached, index)) {
+    if (!overlaps(rangeOf(document, issue.at), range)) continue;
+    for (const fix of contractFixes(cached.source, issue)) emit(fix);
   }
 
   return actions;

@@ -114,7 +114,7 @@ regex, comentarios) **como de ternario** (`?` … `:`). Un `:` que cierra un ter
 termina la etiqueta. Ejemplo: en `case cond ? 'a' : 'b':` el primer `:` pertenece al ternario y el
 segundo es el que corta el test.
 
-**91.** **`key (…)` es obligatoria en todo bucle con markup.** `@foreach`, `@for` y `@while`
+**91.** **`key (…)` es obligatoria en todo bucle.** `@foreach`, `@for` y `@while`
 llevan, **tras el paréntesis de la cabecera y antes del cuerpo**, una cláusula `key (expr)` cuya
 expresión identifica la iteración. Sin ella el compilador para (`FUD0540`). No hay default
 —ni el índice, ni la identidad de objeto—: un default aquí es una reconciliación incorrecta que
@@ -1134,7 +1134,7 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 88 | Layouts | Cascada del `<head>` con orden determinista; gana la capa más interna |
 | 89 | Layouts | En v1 el layout no declara `load`: recibe el `data` de la ruta |
 | 90 | Layouts | `@section` exclusivo del par ruta↔layout; en componentes es `<slot>` |
-| 91 | Control flujo | `key (…)` obligatoria en `@foreach`/`@for`/`@while` con markup (`FUD0540`); sin default |
+| 91 | Control flujo | `key (…)` obligatoria en `@foreach`/`@for`/`@while`, **siempre** (`FUD0540`); sin default. La excepción «solo con markup» se retiró: hacía que la regla apareciese y desapareciese según lo que hubiera dentro del cuerpo en ese momento |
 | 92 | Control flujo | La key va en la cabecera, no en un elemento raíz: un bloque puede no tener raíz único |
 | 93 | Control flujo | La key va FUERA del paréntesis: la cabecera llega a Oxc intacta y el `;` del `for` ya está tomado |
 | 94 | Control flujo | `@if` / `@switch` no llevan key (`FUD0542`): su identidad es la rama tomada |

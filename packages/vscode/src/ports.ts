@@ -65,7 +65,33 @@ export interface FormatterPort {
 
 /** Command registration. The adapter binds it to `vscode.commands`. */
 export interface CommandsPort {
-  register(id: string, handler: () => Promise<void>): void;
+  register(id: string, handler: (...args: readonly unknown[]) => Promise<void>): void;
+}
+
+/** An LSP range, as it arrives in the arguments of a `Command`: plain JSON, no classes. */
+export interface WireRange {
+  readonly start: { readonly line: number; readonly character: number };
+  readonly end: { readonly line: number; readonly character: number };
+}
+
+/** A replacement whose text carries tabstops. */
+export interface SnippetEdit {
+  readonly uri: string;
+  readonly range: WireRange;
+  /** The replacement, in VS Code's snippet syntax: `$1`, `$2`, `$0`. */
+  readonly snippet: string;
+}
+
+/**
+ * Applying a quick fix whose text has holes in it (SDD-36).
+ *
+ * LSP has no way to say «this edit is a snippet» — a `WorkspaceEdit` carrying `$1` puts a
+ * literal `$1` in the document — so an action that wants tabstops sends a `command` instead,
+ * and this is the end that knows what a tabstop is. It exists because the extension is ours;
+ * over plain LSP the fix would still work, just without the caret landing in the first hole.
+ */
+export interface SnippetEditPort {
+  apply(edit: SnippetEdit): Promise<void>;
 }
 
 /**

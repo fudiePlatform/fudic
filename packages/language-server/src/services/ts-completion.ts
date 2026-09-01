@@ -26,6 +26,7 @@ import type {
   CompletionItem,
   LanguageServiceContext,
   LanguageServicePlugin,
+  LanguageServicePluginInstance,
 } from '@volar/language-service';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { CLASS_PREFIX, PROPERTY_PREFIX, regionAt } from '@fudic/compiler';
@@ -149,11 +150,56 @@ const EXPRESSION_PREFIX = '@';
 const TRIGGER_SUGGEST = { title: 'Suggest', command: 'editor.action.triggerSuggest' };
 
 /**
- * Wrap every TypeScript service so its completions obey the two rules above.
+ * A code action that repairs a diagnostic. Everything else TypeScript offers is a REFACTOR.
+ *
+ * The prefix rather than equality, because LSP kinds are hierarchical: `quickfix.foo` is a
+ * quick fix and has to survive the filter that `quickfix` survives.
+ */
+const QUICK_FIX = 'quickfix';
+
+/**
+ * Only a repair survives inside a `.fud`; TypeScript's refactors do not.
+ *
+ * A refactor is an offer about the code the cursor is in, and inside a `.fud` the code the
+ * cursor is in is the PROJECTION — «Move to a new file» over `<app-input>` would move a
+ * generated `$props<$C0>({…})` call into a file the author never wrote. Every one of them is
+ * either meaningless or destructive here, and there is no third kind.
+ *
+ * And they are what put a light bulb over healthy markup. VS Code lights the bulb when ANY
+ * action is available, so a refactor that applies to every component tag lit every component
+ * tag — a bulb that opens onto nothing worth doing, over a file with no errors in it. A
+ * `<div>` never showed one, because a native element projects no call for a refactor to grab.
+ * That is the whole difference the author was seeing, and it was TypeScript's offer, not this
+ * server's silence.
+ *
+ * A quick fix is left alone: it is anchored on an error the author can already see, and its
+ * edit lands on the text they wrote.
+ */
+function withoutRefactors(
+  context: LanguageServiceContext,
+  instance: LanguageServicePluginInstance,
+): LanguageServicePluginInstance {
+  const inner = instance.provideCodeActions?.bind(instance);
+  if (inner === undefined) return instance;
+
+  return {
+    ...instance,
+    async provideCodeActions(document, range, codeActionContext, token) {
+      const actions = await inner(document, range, codeActionContext, token);
+      // Not a `.fud` at all: an ordinary `.ts` of the project keeps every refactor it has.
+      if (actions == null || fudSourceAt(context, document) === undefined) return actions;
+
+      return actions.filter((action) => action.kind?.startsWith(QUICK_FIX) === true);
+    },
+  };
+}
+
+/**
+ * Wrap every TypeScript service so its answers obey the rules above.
  *
  * The array is rebuilt rather than mutated: `createTypeScriptServices` returns plugins that
- * are also used to answer hovers, definitions and diagnostics, and only the completion half
- * is being changed. A plugin with no `provideCompletionItems` travels through untouched.
+ * are also used to answer hovers, definitions and diagnostics, and only the two halves named
+ * here are being changed. A plugin that provides neither travels through untouched.
  */
 export function filterTypeScriptCompletions(
   plugins: readonly LanguageServicePlugin[],
@@ -165,7 +211,7 @@ export function filterTypeScriptCompletions(
   return plugins.map((plugin) => ({
     ...plugin,
     create(context) {
-      const instance = plugin.create(context);
+      const instance = withoutRefactors(context, plugin.create(context));
       const inner = instance.provideCompletionItems?.bind(instance);
       if (inner === undefined) return instance;
 
