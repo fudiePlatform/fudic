@@ -216,8 +216,13 @@ function endOfString(text: string, open: number, quote: string): number {
   return text.length;
 }
 
-/** A JSDoc body as the author meant it to read: without the leading stars and the indent. */
-function unstarred(body: string): string | undefined {
+/**
+ * A JSDoc body as the author meant it to read: without the leading stars and the indent.
+ *
+ * Exported because the card reads a prop's doc from the projection and this one from the parse,
+ * and «what a JSDoc says» has to be one answer however it was reached.
+ */
+export function unstarred(body: string): string | undefined {
   const text = body
     .split('\n')
     .map((line) => line.replace(/^\s*\*? ?/u, '').trimEnd())

@@ -21,7 +21,7 @@
 import type * as ts from 'typescript';
 import type { Span } from '@fudic/compiler';
 import type { CachedDocument } from '../document-cache.js';
-import type { Contract } from '../mode.js';
+import { unstarred, type Contract } from '../mode.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
 import { tagNameAt } from './position.js';
 
@@ -118,6 +118,10 @@ function indented(text: string): string {
  */
 const PROPS_EXPORT = '$Props';
 
+/** How a JSDoc opens and how any block comment closes. */
+const DOC_OPEN = '/**';
+const BLOCK_CLOSE = '*/';
+
 /** What only TypeScript knows about a prop. */
 export interface PropDetail {
   /** As the checker spells it, which is as the author declared it. */
@@ -143,6 +147,10 @@ const NO_DETAILS: ReadonlyMap<string, PropDetail> = new Map();
  * own syntax. Reading it here costs one call on a symbol this walk already holds; reading it
  * from the source would mean a second reader of the type argument, of comments, and of which
  * member each one belongs to.
+ *
+ * When the checker has none, the comment written AFTER the member is read instead — see
+ * `trailingDoc`. Still one reader and still the member's own declaration; it just looks at the
+ * other end of it.
  *
  * The checker, never the text. `$Props` is `typeof $p0` and `$p0` is a `props<T>()` call, so
  * the members are reachable only by resolving that chain — which is precisely what TypeScript
@@ -170,11 +178,40 @@ export function propDetails(
   const details = new Map<string, PropDetail>();
   for (const prop of checker.getDeclaredTypeOfSymbol(contract).getProperties()) {
     const type = checker.typeToString(checker.getTypeOfSymbolAtLocation(prop, source));
-    const doc = prop
-      .getDocumentationComment(checker)
-      .map((part) => part.text)
-      .join('');
-    details.set(prop.name, { type, ...(doc === '' ? {} : { doc }) });
+    const doc =
+      prop
+        .getDocumentationComment(checker)
+        .map((part) => part.text)
+        .join('') || trailingDoc(prop.declarations?.[0]);
+    details.set(prop.name, { type, ...(doc === undefined || doc === '' ? {} : { doc }) });
   }
   return details;
+}
+
+/**
+ * The JSDoc written AFTER the member rather than before it — `id: number /** … *\/;`.
+ *
+ * TypeScript does not see this one, and it is right not to: a JSDoc documents what FOLLOWS it,
+ * so to the checker that comment belongs to nothing. But it is where a `.fud` author puts it,
+ * it is where the formatter parks it — write it past the `;` and `oxfmt` moves it back between
+ * the type and the `;`, every save — and a card that cannot read the position its own formatter
+ * chooses is a card that tells the author they wrote it wrong. So fudic accepts both, and
+ * decision 107 now says so.
+ *
+ * The LAST thing in the declaration and nothing else. The member's text is taken from where it
+ * STARTS — its leading trivia excluded, so a JSDoc written the ordinary way is never read twice
+ * — and the comment must be the final token: that is what keeps a comment nested inside the
+ * type, `Map<string, { /** … *\/ x: number }>`, from being read as the member's own.
+ */
+function trailingDoc(declaration: ts.Declaration | undefined): string | undefined {
+  if (declaration === undefined) return undefined;
+
+  const text = declaration.getSourceFile().text.slice(declaration.getStart(), declaration.end);
+  // `;` and `,` are how a member ends, and either may follow the comment.
+  const written = text.replace(/[\s;,]+$/u, '');
+  if (!written.endsWith(BLOCK_CLOSE)) return undefined;
+
+  const open = written.lastIndexOf(DOC_OPEN);
+  if (open === -1) return undefined;
+  return unstarred(written.slice(open + DOC_OPEN.length, written.length - BLOCK_CLOSE.length));
 }

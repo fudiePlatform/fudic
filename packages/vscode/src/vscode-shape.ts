@@ -12,10 +12,8 @@ import type {
   CaretAt,
   CommentSelection,
   LineReplacement,
-  SnippetEdit,
   SnippetTarget,
   TypedText,
-  WireRange,
 } from './ports.js';
 
 /** The shape of `vscode.WorkspaceFolder`, reduced to what is read. */
@@ -158,57 +156,6 @@ export const insertClosingTag = async (
     editor.document.positionAt(target.offset),
     { undoStopBefore: false, undoStopAfter: true },
   );
-};
-
-/** The shape of `vscode.TextEditor`, reduced to what replacing a range with a snippet needs. */
-export interface SnippetRangeEditorLike {
-  readonly document: { readonly uri: { toString(): string } };
-  insertSnippet(snippet: unknown, location: unknown): Thenable<boolean>;
-}
-
-/**
- * The editor showing `uri`, or nothing.
- *
- * Every candidate rather than the active one alone, and both sides of the comparison passed
- * through the SAME parser. The URI here was written by the server and the one on the editor by
- * VS Code, and two spellings of one path — a drive letter, a space in a folder name — are equal
- * as paths and different as strings. Comparing them raw is how a quick fix comes to do nothing
- * at all, silently, which is the worst thing a quick fix can do.
- */
-export const snippetEditorFor = <T extends SnippetRangeEditorLike>(
-  editors: readonly (T | undefined)[],
-  uri: string,
-  normalize: (value: string) => string,
-): T | undefined => {
-  const wanted = normalize(uri);
-  return editors.find(
-    (editor): editor is T =>
-      editor !== undefined && normalize(editor.document.uri.toString()) === wanted,
-  );
-};
-
-/**
- * Replace a range with a snippet. `false` when none of `editors` is showing that document.
- *
- * The URI is checked and the version is not, and the difference from `insertClosingTag` is the
- * trigger: that one answers a keystroke and races the next one, this one answers a quick fix
- * the user just picked out of a menu that was already showing the range.
- *
- * `false` rather than a throw, because the caller has a second way to write the same text and
- * this is not a failure — it is one of two normal outcomes.
- */
-export const applySnippetOverRange = async (
-  editors: readonly (SnippetRangeEditorLike | undefined)[],
-  edit: SnippetEdit,
-  snippetOf: (text: string) => unknown,
-  rangeOf: (range: WireRange) => unknown,
-  normalize: (value: string) => string,
-): Promise<boolean> => {
-  const editor = snippetEditorFor(editors, edit.uri, normalize);
-  if (editor === undefined) return false;
-
-  await editor.insertSnippet(snippetOf(edit.snippet), rangeOf(edit.range));
-  return true;
 };
 
 /** The shape of `vscode.TextEditor`, reduced to what commenting reads and writes. */

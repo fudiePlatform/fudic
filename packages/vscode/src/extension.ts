@@ -15,14 +15,13 @@ import * as vscode from 'vscode';
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node';
 import { activateFudic, type FudicSession } from './activate.js';
 import { watchTypedTags } from './auto-close.js';
-import { registerCommands, registerInternalCommands } from './commands/index.js';
+import { registerCommands } from './commands/index.js';
 import { watchEmptyValues } from './empty-value.js';
 import { createVirtualDocStore, VIRTUAL_SCHEME } from './virtual-doc-provider.js';
 import {
   bundledServerPath,
   caretAtOf,
   commentSelectionOf,
-  applySnippetOverRange,
   folderPaths,
   fudUriOf,
   insertClosingTag,
@@ -31,7 +30,7 @@ import {
   typedTextOf,
   vscodeTsdkPath,
 } from './vscode-shape.js';
-import type { ClientLaunch, LanguageClientPort, WireRange } from './ports.js';
+import type { ClientLaunch, LanguageClientPort } from './ports.js';
 
 let session: FudicSession | undefined;
 
@@ -166,39 +165,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
               new vscode.Range(startLine, startChar, endLine, endChar),
           ),
       },
-    },
-  );
-
-  // The one conversion this file does, and it is a conversion and not a decision: an LSP range
-  // arrives as plain JSON in a command's arguments and the API takes a `vscode.Range`.
-  const rangeOf = (range: WireRange): vscode.Range =>
-    new vscode.Range(
-      range.start.line,
-      range.start.character,
-      range.end.line,
-      range.end.character,
-    );
-
-  registerInternalCommands(
-    {
-      register: (id, handler) =>
-        context.subscriptions.push(vscode.commands.registerCommand(id, handler)),
-    },
-    {
-      insert: (edit) =>
-        applySnippetOverRange(
-          [vscode.window.activeTextEditor, ...vscode.window.visibleTextEditors],
-          edit,
-          (text) => new vscode.SnippetString(text),
-          (range) => rangeOf(range),
-          (value) => vscode.Uri.parse(value).toString(),
-        ),
-      replace: async (edit) => {
-        const change = new vscode.WorkspaceEdit();
-        change.replace(vscode.Uri.parse(edit.uri), rangeOf(edit.range), edit.text);
-        await vscode.workspace.applyEdit(change);
-      },
-      log: (message) => output.appendLine(message),
     },
   );
 

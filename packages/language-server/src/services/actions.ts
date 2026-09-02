@@ -28,22 +28,6 @@ import { unresolvedHrefs } from './href.js';
 import { linkInsertionFor } from './tags.js';
 import { loopBindingNames } from './template-scope.js';
 
-/**
- * The command the extension registers to apply an edit WITH its tabstops (SDD-25).
- *
- * Spelled here and re-exported, so the two ends of the contract are one string. A client that
- * does not register it simply never runs the action; nothing is written half-way.
- */
-export const SNIPPET_COMMAND = 'fudic.applySnippetEdit';
-
-/**
- * The three characters a snippet reads as syntax, escaped so text the author wrote survives.
- *
- * The rewritten tag carries the author's own attributes across, and one of them holding a `$`
- * — `.href="$route"` — would otherwise become a tabstop the moment the repair is accepted.
- */
-const escapeSnippet = (text: string): string => text.replace(/[\\$}]/gu, '\\$&');
-
 /** What every repair is handed: the document, the index, and the diagnostic it repairs. */
 interface Repair {
   readonly cached: CachedDocument;
@@ -59,16 +43,26 @@ interface Edit {
 }
 
 /**
- * A quick fix over the file being edited.
+ * A quick fix over the file being edited. A title and a `WorkspaceEdit`, and nothing else.
  *
- * `snippet` says the text carries tabstops. LSP has no per-edit snippet flag, so the caller
- * turns it into the client's own shape; keeping the fact here rather than baking `$1` into a
- * plain edit is what stops a literal `$1` from ever reaching a document.
+ * There was a version of this that could carry TABSTOPS, by sending a `command` for the
+ * extension to apply as a snippet instead of an `edit`. It never once worked in the editor, and
+ * the trace says why in one line: the `document` a plugin is handed is Volar's, and its uri is
+ *
+ *     volar-embedded-content://root/file%253A%252F%252F%252Fc%25253A%252F…
+ *
+ * not the `.fud`. Volar rewrites the uri of an `edit` on its way out — which is exactly why
+ * every other repair here lands — and it cannot rewrite the ARGUMENTS of a command, because
+ * nothing in them announces itself as a uri. So the command arrived pointing at a virtual
+ * document, found no editor, and `applyEdit` on a document nobody can write returned `false` in
+ * silence. A bulb that opens onto nothing.
+ *
+ * The tabstops are not worth a second delivery path. `.id=""` with the caret elsewhere is a
+ * repair; a repair that never happens is not.
  */
 interface Fix {
   readonly title: string;
   readonly edits: readonly Edit[];
-  readonly snippet?: boolean;
 }
 
 /** The repairs of one diagnostic code. Empty means this code has no bulb. */
@@ -189,39 +183,33 @@ const addLoopKey: Repairer = ({ cached, diagnostic }) => {
  * The fact is recomputed from the parse and the index on every request, exactly as the other
  * repairs recompute the diagnostics they hang on, so nothing here can act on a stale span.
  */
-function contractFixes(source: string, issue: ContractIssue): readonly Fix[] {
+function contractFixes(issue: ContractIssue): readonly Fix[] {
   if (issue.kind === 'missing-props') {
-    // ONE edit over the whole open tag, not one per prop, and that is what makes the tabstops
-    // possible: a snippet is a single string applied to a single range, so N holes in N places
-    // have to be N holes in one rewritten tag. The caret lands in the first value, which is
-    // the author's next move after accepting this.
-    const holes: Edit[] = [];
-    let stop = 0;
+    // The tag's own text is not touched: a prop written with an empty value has that attribute
+    // replaced, and every prop that is missing altogether arrives in ONE insertion before the
+    // `>`. One and not several, because two zero-length inserts at the same offset are two
+    // edits a client is free to order either way — and «`.id`, then `.name`» is not something
+    // to leave to a client's sort.
+    const edits: Edit[] = [];
+    const absent: string[] = [];
     for (const name of issue.names) {
-      stop++;
       const written = issue.empty.get(name);
-      holes.push(
-        written === undefined
-          ? { span: span(issue.insertAt, issue.insertAt), newText: ` .${name}="$${stop}"` }
-          : { span: written, newText: `.${name}="$${stop}"` },
-      );
+      if (written === undefined) absent.push(name);
+      else edits.push({ span: written, newText: `.${name}=""` });
     }
-    // In source order, so the tabstops run left to right however the walk found them.
-    holes.sort((a, b) => a.span.start - b.span.start);
-
-    let text = '';
-    let cursor = issue.at.start;
-    for (const hole of holes) {
-      text += escapeSnippet(source.slice(cursor, hole.span.start)) + hole.newText;
-      cursor = hole.span.end;
+    if (absent.length > 0) {
+      edits.push({
+        span: span(issue.insertAt, issue.insertAt),
+        newText: absent.map((name) => ` .${name}=""`).join(''),
+      });
     }
-    text += escapeSnippet(source.slice(cursor, issue.at.end));
 
     return [
       {
         title: `Completar las props requeridas de <${issue.tag}>`,
-        edits: [{ span: issue.at, newText: text }],
-        snippet: true,
+        // In source order: the edits of one `WorkspaceEdit` may not overlap, and a client is
+        // entitled to refuse a set that arrives out of order.
+        edits: edits.sort((a, b) => a.span.start - b.span.start),
       },
     ];
   }
@@ -325,27 +313,18 @@ export function codeActions(deps: ActionDeps): CodeAction[] {
   const actions = hrefActions(cached, index, document, range, rangeOf, overlaps);
 
   const emit = (fix: Fix): void => {
-    const edits = fix.edits.map((edit) => ({
-      range: rangeOf(document, edit.span),
-      newText: edit.newText,
-    }));
     actions.push({
       title: fix.title,
       kind: 'quickfix',
       diagnostics: [],
-      // A snippet leaves by `command` and everything else by `edit`, because LSP has no
-      // per-edit snippet flag: a `WorkspaceEdit` carrying `$1` would put a literal `$1` in the
-      // document. The extension is ours, so the tabstops are applied there, by the one API
-      // that knows what they are.
-      ...(fix.snippet === true
-        ? {
-            command: {
-              title: fix.title,
-              command: SNIPPET_COMMAND,
-              arguments: [document.uri, edits[0]?.range, edits[0]?.newText],
-            },
-          }
-        : { edit: { changes: { [document.uri]: edits } } }),
+      edit: {
+        changes: {
+          [document.uri]: fix.edits.map((edit) => ({
+            range: rangeOf(document, edit.span),
+            newText: edit.newText,
+          })),
+        },
+      },
     });
   };
 
@@ -359,7 +338,7 @@ export function codeActions(deps: ActionDeps): CodeAction[] {
 
   for (const issue of contractIssues(cached, index)) {
     if (!overlaps(rangeOf(document, issue.at), range)) continue;
-    for (const fix of contractFixes(cached.source, issue)) emit(fix);
+    for (const fix of contractFixes(issue)) emit(fix);
   }
 
   return actions;

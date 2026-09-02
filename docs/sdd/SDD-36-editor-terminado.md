@@ -55,7 +55,7 @@ Una fila que no se pueda construir con certeza **no se ofrece**.
 
 | Hecho | Título | Escribe |
 |---|---|---|
-| Prop requerida sin pasar, o pasada vacía | `Completar las props requeridas de <tag>` | El tag reescrito, con tabstops |
+| Prop requerida sin pasar, o pasada vacía | `Completar las props requeridas de <tag>` | ` .id="" .name=""` antes del `>`, en una sola inserción |
 | `.prop` que el componente no declara | `Cambiar a .<prop>` | El nombre |
 | `slot="x"` que el host no declara | `Cambiar a slot="<slot>"` (una por ranura) o `Quitar slot="x"` | El nombre, o el atributo entero |
 
@@ -117,7 +117,7 @@ Sin sintaxis nueva. Tres sitios, todos JSDoc, todos donde el autor ya escribirí
 | Qué | Dónde |
 |---|---|
 | El componente | El primer JSDoc escrito al **nivel superior** de un tramo neutro del `@code`. |
-| Una prop | El JSDoc del miembro dentro de `props<{ … }>()`. Es TypeScript normal. |
+| Una prop | El JSDoc del miembro: **delante**, como en TypeScript, o **detrás** del tipo. |
 | Un evento | El JSDoc del `dispatchEvent(new CustomEvent('x'))` que lo lanza. |
 
 Los eventos se leen del `@client`: cada `new CustomEvent('nombre')` declara uno. Es lo que hay
@@ -129,10 +129,13 @@ dentro de las llaves del tipo, que es donde TypeScript dice que va; con la regla
 `<app-input>` como «Id del componente». La diferencia entre uno y otro está escrita en el texto y
 cuesta un contador de llaves leerla.
 
-Y un JSDoc **detrás** del miembro —`id: number /** … */;`— no documenta nada, aquí ni en un `.ts`:
-TypeScript adjunta un JSDoc a lo que le SIGUE. Decisión 107 dice «es TypeScript normal», así que
-la tarjeta enseña exactamente lo que enseñaría el hover de VS Code sobre ese mismo tipo. Dos
-respuestas para un hecho es lo que no se hace.
+**Y una prop se documenta por delante o por detrás.** `id: number /** … */;` no lo ve TypeScript
+—un JSDoc documenta lo que le SIGUE, así que para el checker ese comentario no es de nadie— pero
+es donde el autor lo escribe y, sobre todo, **es donde el formateador lo deja**: escríbelo pasado
+el `;` y `oxfmt` lo mueve entre el tipo y el `;` en cada guardado. Una tarjeta que no sabe leer la
+posición que elige su propio formateador es una tarjeta que le dice al autor que lo ha escrito
+mal. Así que valen las dos, y sigue habiendo un solo lector: la misma declaración del miembro,
+mirada por el otro extremo.
 
 ### 3.4. El formato al guardar
 
@@ -193,11 +196,13 @@ lo da TypeScript sobre la proyección y es correcto.
 3. Una sola fuente por hecho: el `<link>` de `linkInsertionFor`, las props del índice, el binding
    del `JsBatch`. Ninguna acción re-deriva con una expresión regular lo que ya está parseado.
 4. La tarjeta se degrada por mitades, y la que depende de TypeScript es siempre la segunda.
-5. El `WorkspaceEdit` viaja completo en la acción: sin `resolve`. La única excepción es el
-   edit **con tabstops**, que sale por `command` (`fudic.applySnippetEdit`) porque LSP no tiene
-   marca de snippet por edit y un `$1` en un `WorkspaceEdit` llega al fichero como un `$1`
-   literal. La extensión es nuestra; un cliente que no registre el comando simplemente no
-   ejecuta la acción, y no escribe nada a medias.
+5. El `WorkspaceEdit` viaja completo en la acción: sin `resolve` y **sin `command`**. Hubo una
+   versión que mandaba un `command` para que la extensión aplicase tabstops, y no funcionó ni
+   una vez: el `document` que recibe un plugin es el de Volar, y su uri es
+   `volar-embedded-content://root/…`, no el fichero. Volar reescribe la uri de un `edit` al
+   salir —que es justo por lo que aterrizan las demás reparaciones— y no puede reescribir los
+   `arguments` de un comando, porque nada en ellos se anuncia como uri. Los tabstops no valen
+   una segunda vía de entrega.
 6. El manifiesto no rebinda ninguna tecla.
 
 ### Catálogo de diagnósticos (`FUD0640`–`FUD0659`)
