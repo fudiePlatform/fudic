@@ -91,7 +91,12 @@ export interface SnippetEdit {
  * over plain LSP the fix would still work, just without the caret landing in the first hole.
  */
 export interface SnippetEditPort {
-  apply(edit: SnippetEdit): Promise<void>;
+  /** Insert it with its tabstops. `false` when no editor could take it — never a throw. */
+  insert(edit: SnippetEdit): Promise<boolean>;
+  /** Write the same replacement as an ordinary edit. The path that always lands. */
+  replace(edit: { readonly uri: string; readonly range: WireRange; readonly text: string }): Promise<void>;
+  /** The output channel, so a repair that degraded says so where it can be read. */
+  log(message: string): void;
 }
 
 /**

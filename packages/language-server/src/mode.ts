@@ -12,7 +12,7 @@ import {
   documentRoots,
   extractCode,
   walk,
-  type Span,
+  type CodeBlockNode,
   type StructuredDocument,
 } from '@fudic/compiler';
 
@@ -82,7 +82,7 @@ export interface Contract {
   readonly slots: readonly string[];
   /** The events the component emits, from every `emit('…')` whose name resolves statically. */
   readonly events: readonly string[];
-  /** The first JSDoc of the `@code` block — decision 107. */
+  /** The first TOP-LEVEL JSDoc of the `@code` block — decision 107. */
   readonly doc?: string;
 }
 
@@ -102,7 +102,7 @@ export function contractOf(source: string, document: StructuredDocument): Contra
   if (document.code === undefined) return { props: [], slots, events: [] };
 
   const code = extractCode(source, document);
-  const doc = firstDocComment(source, document.code.span);
+  const doc = componentDoc(source, document.code);
 
   return {
     props: code.props.map((prop) => ({ name: prop.name, required: !prop.optional })),
@@ -140,27 +140,106 @@ function slotNames(document: StructuredDocument): readonly string[] {
 }
 
 /**
- * The first `/** … *\/` of the `@code` block, as the text the author wrote (decision 107).
+ * The component's own JSDoc: the first `/** … *\/` written at the TOP LEVEL of the `@code`
+ * (decision 107).
  *
- * Read from the SOURCE of the block rather than from the AST, and that is the whole reason the
- * rule is «the first one»: Oxc drops comments from the tree it returns, so a comment cannot be
- * attached to the declaration it precedes without a second pass nobody needs. One rule, one
- * position, and a place the author would put it anyway.
+ * Read from the SOURCE rather than from the AST, because Oxc drops comments from the tree it
+ * returns — so a comment cannot be attached to the declaration it precedes without a second
+ * pass nobody needs.
+ *
+ * Top level is the whole of the rule, and «first» alone was not enough. The author documents a
+ * prop the way TypeScript says to, on the member:
+ *
+ *     type Props = {
+ *       /** El id *\/
+ *       id: number;
+ *     };
+ *
+ * and with «the first one» that member's doc became the COMPONENT's description — the card
+ * introduced `<app-input>` as «El id». A member's JSDoc lives inside the braces of a type; the
+ * component's is written beside the declarations, at depth zero. That is a difference the text
+ * states plainly and it costs one counter to read.
+ *
+ * Strings and the other comment shapes are skipped rather than counted, because a `{` inside
+ * either is not a brace: `const a = "{";` would otherwise hide everything after it one level
+ * too deep.
  *
  * The stars and the indentation come off, because they are how a JSDoc is written and not part
  * of what it says.
  */
-function firstDocComment(source: string, at: Span): string | undefined {
-  const block = source.slice(at.start, at.end);
-  const match = /\/\*\*([\s\S]*?)\*\//u.exec(block);
-  if (match === null) return undefined;
+function topLevelDocComment(text: string): string | undefined {
+  let depth = 0;
+  for (let i = 0; i < text.length; i++) {
+    const char = text.charAt(i);
 
-  const text = (match[1] as string)
+    if (char === '{' || char === '(' || char === '[') {
+      depth++;
+      continue;
+    }
+    if (char === '}' || char === ')' || char === ']') {
+      depth--;
+      continue;
+    }
+    if (char === "'" || char === '"' || char === '`') {
+      i = endOfString(text, i, char);
+      continue;
+    }
+    if (char !== '/') continue;
+
+    const next = text.charAt(i + 1);
+    if (next === '/') {
+      i = text.indexOf('\n', i);
+      if (i === -1) return undefined;
+      continue;
+    }
+    if (next !== '*') continue;
+
+    const close = text.indexOf('*/', i + 2);
+    const end = close === -1 ? text.length : close;
+    // `/**` and not `/*`, and at the level the declarations are written at.
+    if (text.charAt(i + 2) === '*' && depth === 0) return unstarred(text.slice(i + 3, end));
+    i = close === -1 ? text.length : close + 1;
+  }
+  return undefined;
+}
+
+/** Past the closing delimiter of the string starting at `open`, or the end of the text. */
+function endOfString(text: string, open: number, quote: string): number {
+  for (let i = open + 1; i < text.length; i++) {
+    const char = text.charAt(i);
+    if (char === '\\') {
+      i++;
+      continue;
+    }
+    if (char === quote) return i;
+  }
+  return text.length;
+}
+
+/** A JSDoc body as the author meant it to read: without the leading stars and the indent. */
+function unstarred(body: string): string | undefined {
+  const text = body
     .split('\n')
     .map((line) => line.replace(/^\s*\*? ?/u, '').trimEnd())
     .join('\n')
     .trim();
   return text === '' ? undefined : text;
+}
+
+/**
+ * The doc of a component: the first top-level JSDoc of any NEUTRAL chunk of its `@code`.
+ *
+ * The neutral chunks and not the whole block, because `@server` and `@client` are the other
+ * two and neither documents the component — what is written inside a `@client` documents the
+ * function it precedes.
+ */
+function componentDoc(source: string, code: CodeBlockNode): string | undefined {
+  for (const part of code.parts) {
+    if (part.type !== 'neutral-js') continue;
+    const doc = topLevelDocComment(source.slice(part.js.start, part.js.end));
+    if (doc !== undefined) return doc;
+  }
+  return undefined;
 }
 
 /**

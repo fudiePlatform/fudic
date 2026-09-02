@@ -37,7 +37,27 @@ const REOPENS: ReadonlySet<string> = new Set(['class', 'slot']);
 const TRIGGER_SUGGEST = { title: 'Suggest', command: 'editor.action.triggerSuggest' };
 
 /**
- * Make `class` and `slot` reopen the list once they are accepted.
+ * The HTML service's close-tag items — `/div`, offered after a `<` — which in a `.fud` are
+ * never right.
+ *
+ * They are its answer to «which element is still open here», and it answers it from ITS OWN
+ * parse of the file, which reads the whole `.fud` as HTML. So a route whose `@server` declares
+ * `Promise<PageData>` has, as far as that parse is concerned, an unclosed `<PageData>` element,
+ * and typing a `<` in the markup offers `/PageData` — a type argument dressed up as a tag. It
+ * is not a mis-scoped suggestion that a better position check would catch: the offset IS
+ * markup, and the element it names does not exist.
+ *
+ * Nothing is lost by dropping them. Closing a tag in a `.fud` is answered from the real tree,
+ * by the server, as the `>` is typed (BUG-22) — so this list was the second, worse copy of a
+ * question that already has an answer.
+ *
+ * A tag name cannot begin with `/`, so the label is an exact test and not a heuristic.
+ */
+const closesATag = (label: string): boolean => label.startsWith('/');
+
+/**
+ * The HTML service's list as a `.fud` needs it: without its close-tag items, and with `class`
+ * and `slot` reopening the list once they are accepted.
  *
  * The HTML service writes `class="…"` and stops, because in a `.html` there is nothing behind
  * those quotes it could offer. In a `.fud` there is: the names of the file's own `<style>`, and
@@ -48,16 +68,18 @@ const TRIGGER_SUGGEST = { title: 'Suggest', command: 'editor.action.triggerSugge
  * Volar concatenates what each plugin returns and never shows one another's, so contributing a
  * second `class` beside theirs would put the attribute in the list twice.
  */
-function reopening(list: CompletionList | null | undefined): CompletionList | null | undefined {
+function htmlItems(list: CompletionList | null | undefined): CompletionList | null | undefined {
   if (list === undefined || list === null) return list;
 
   return {
     ...list,
-    items: list.items.map((item) =>
-      REOPENS.has(item.label) && item.command === undefined
-        ? { ...item, command: TRIGGER_SUGGEST }
-        : item,
-    ),
+    items: list.items
+      .filter((item) => !closesATag(item.label))
+      .map((item) =>
+        REOPENS.has(item.label) && item.command === undefined
+          ? { ...item, command: TRIGGER_SUGGEST }
+          : item,
+      ),
   };
 }
 
@@ -89,7 +111,7 @@ export function silenceOwnedPositions(plugin: LanguageServicePlugin): LanguageSe
           // The reopening is a `.fud` fact — behind those quotes live the classes of THIS
           // file's `<style>` and the slots its parent declares — so a document that is not one
           // travels through as itself, list and identity intact.
-          return reopening(await inner(document, position, completionContext, token));
+          return htmlItems(await inner(document, position, completionContext, token));
         },
       };
     },

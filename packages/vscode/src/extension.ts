@@ -31,7 +31,7 @@ import {
   typedTextOf,
   vscodeTsdkPath,
 } from './vscode-shape.js';
-import type { ClientLaunch, LanguageClientPort } from './ports.js';
+import type { ClientLaunch, LanguageClientPort, WireRange } from './ports.js';
 
 let session: FudicSession | undefined;
 
@@ -169,25 +169,36 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     },
   );
 
+  // The one conversion this file does, and it is a conversion and not a decision: an LSP range
+  // arrives as plain JSON in a command's arguments and the API takes a `vscode.Range`.
+  const rangeOf = (range: WireRange): vscode.Range =>
+    new vscode.Range(
+      range.start.line,
+      range.start.character,
+      range.end.line,
+      range.end.character,
+    );
+
   registerInternalCommands(
     {
       register: (id, handler) =>
         context.subscriptions.push(vscode.commands.registerCommand(id, handler)),
     },
     {
-      apply: (edit) =>
+      insert: (edit) =>
         applySnippetOverRange(
-          vscode.window.activeTextEditor,
+          [vscode.window.activeTextEditor, ...vscode.window.visibleTextEditors],
           edit,
           (text) => new vscode.SnippetString(text),
-          (range) =>
-            new vscode.Range(
-              range.start.line,
-              range.start.character,
-              range.end.line,
-              range.end.character,
-            ),
+          (range) => rangeOf(range),
+          (value) => vscode.Uri.parse(value).toString(),
         ),
+      replace: async (edit) => {
+        const change = new vscode.WorkspaceEdit();
+        change.replace(vscode.Uri.parse(edit.uri), rangeOf(edit.range), edit.text);
+        await vscode.workspace.applyEdit(change);
+      },
+      log: (message) => output.appendLine(message),
     },
   );
 

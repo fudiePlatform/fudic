@@ -116,12 +116,23 @@ Sin sintaxis nueva. Tres sitios, todos JSDoc, todos donde el autor ya escribirí
 
 | Qué | Dónde |
 |---|---|
-| El componente | El JSDoc inmediatamente anterior a `props<T>()`. Sin `props<T>()`, el primer JSDoc del `@code`. |
+| El componente | El primer JSDoc escrito al **nivel superior** de un tramo neutro del `@code`. |
 | Una prop | El JSDoc del miembro dentro de `props<{ … }>()`. Es TypeScript normal. |
 | Un evento | El JSDoc del `dispatchEvent(new CustomEvent('x'))` que lo lanza. |
 
 Los eventos se leen del `@client`: cada `new CustomEvent('nombre')` declara uno. Es lo que hay
 —no existe declaración de eventos en la gramática— y es honesto: lo que el componente lanza.
+
+**«Nivel superior» y no «el primero», y lo destapó la medida.** El JSDoc de una prop se escribe
+dentro de las llaves del tipo, que es donde TypeScript dice que va; con la regla «el primero del
+`@code`» ese comentario pasaba a ser la descripción **del componente** — la tarjeta presentaba
+`<app-input>` como «Id del componente». La diferencia entre uno y otro está escrita en el texto y
+cuesta un contador de llaves leerla.
+
+Y un JSDoc **detrás** del miembro —`id: number /** … */;`— no documenta nada, aquí ni en un `.ts`:
+TypeScript adjunta un JSDoc a lo que le SIGUE. Decisión 107 dice «es TypeScript normal», así que
+la tarjeta enseña exactamente lo que enseñaría el hover de VS Code sobre ese mismo tipo. Dos
+respuestas para un hecho es lo que no se hace.
 
 ### 3.4. El formato al guardar
 
