@@ -110,24 +110,27 @@ const completing = (actions: readonly WireAction[]): WireAction | undefined =>
 
 describe('a repair as the client receives it', () => {
   it('completes the required props in the shape each TYPE holds', async () => {
-    // `.name` is a string and takes a literal; `.id` is a number, and in a `.fud` a non-string
-    // value only goes in through an interpolation (decision 19). `.id=""` passes the STRING
-    // `""`, so the repair used to leave a type error where the author had none.
+    // A quoted value is TEXT, so `.id=""` passes the string `""` into a `number` — the repair
+    // used to leave a type error where the author had none. A scalar goes in bare, which is
+    // what decision 105 is for, and not wrapped in an interpolation it does not need.
     const action = completing(await actionsOn('<app-input></app-input>'));
     const changes = Object.values(action?.edit?.changes ?? {})[0];
 
-    expect(changes?.map((edit) => edit.newText)).toEqual([' .id=@(0) .name=""']);
+    expect(changes?.map((edit) => edit.newText)).toEqual([' .id=0 .name=""']);
   });
 
-  it('writes a value for a boolean and for a union, and a hole for what has none', async () => {
+  it('writes a bare scalar, and an expression only where the value must be one', async () => {
     // `boolean` reaches the checker as `true | false` and a union of number literals as two
-    // numbers, so both are recognised by their members agreeing. An object has no `0` to reach
-    // for, and inventing one would be putting words in the author's mouth.
+    // numbers, so both are recognised by their members agreeing. An object is the one that gets
+    // `@()`: it has no obvious value to invent, and an object is only ever passed as an
+    // expression anyway (decisions 103, 104).
     const action = completing(await actionsOn('<app-chart></app-chart>'));
     const changes = Object.values(action?.edit?.changes ?? {})[0];
 
     expect(changes?.map((edit) => edit.newText)).toEqual([
-      ' .flag=@(false) .size=@(0) .data=@() .mix=@()',
+      // `.data` is an object and `.mix` a union whose halves disagree: neither has one obvious
+      // value, and a repair may only write a value that is obvious.
+      ' .flag=false .size=0 .data=@() .mix=@()',
     ]);
   });
 
@@ -135,7 +138,7 @@ describe('a repair as the client receives it', () => {
     // Exactly what the repair produces, fed back in. An empty `@()` would have passed this too
     // and passed it for the wrong reason — nothing is projected for it, so a required prop with
     // no value at all reports nothing. A hole that says nothing is worse than an error.
-    const { codes } = await report('<app-input .id=@(0) .name=""></app-input>');
+    const { codes } = await report('<app-input .id=0 .name=""></app-input>');
 
     expect(codes).toEqual([]);
   });

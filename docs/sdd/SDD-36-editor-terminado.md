@@ -71,14 +71,18 @@ era lo que encendía una bombilla vacía sobre markup sano.
 Así que la voz sigue siendo suya y las manos son nuestras. El hecho se recalcula del parse y del
 índice en cada petición —los mismos dos lectores que alimentan la tarjeta—, y no lo reporta nadie.
 
-**Y lo que se escribe es del tipo de la prop.** El valor de un atributo en un `.fud` es TEXTO, así
+**Y lo que se escribe es del tipo de la prop.** Un valor entrecomillado en un `.fud` es TEXTO, así
 que `.id=""` pasa la cadena `""` — y una `.id` declarada `number` se convierte en un error de tipos
 que creó la propia reparación. Una bombilla que deja el fichero peor de como lo encontró es peor
-que no tener bombilla. La tabla es corta y es la misma que escribe cualquier editor al rellenar una
-propiedad que falta: `""` para una cadena, `@(0)` para un número, `@(false)` para un booleano —la
-interpolación es como se pasa un valor que no es texto (decisión 19)— y `@()` vacío para todo lo
-demás, que no tiene valor obvio que inventar. El tipo sale de la proyección, que es el único sitio
-que lo sabe: el índice conoce los NOMBRES de las props y nada de sus tipos.
+que no tener bombilla.
+
+Un escalar va **desnudo**, que es para lo que está la decisión 105: `.id=0`, `.visible=false`. Sin
+comillas y sin `@`. Envolverlo en una interpolación sería inventar una segunda forma de escribir
+algo que la gramática ya escribe de una: `@( … )` es para EXPRESIONES (decisiones 103, 104), y un
+`0` no lo es. La tabla entera es `""`, `0`, `false`, y `@()` vacío para lo que no tiene valor obvio
+que inventar —un objeto, una unión cuyas mitades no coinciden—, donde además sí es una expresión,
+porque un objeto solo se pasa así. El tipo sale de la proyección, que es el único sitio que lo
+sabe: el índice conoce los NOMBRES de las props y nada de sus tipos.
 
 ### 3.2. La tarjeta del componente
 

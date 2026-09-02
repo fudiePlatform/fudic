@@ -178,26 +178,29 @@ export type PropLookup = (file: string) => ReadonlyMap<string, PropDetail>;
 /**
  * The value to write for a prop, in the shape its TYPE holds.
  *
- * An attribute value in a `.fud` is TEXT, so `.id=""` passes the string `""` — and a `.id` the
- * component declared as `number` is then a type error the repair itself created. A bulb that
+ * A quoted attribute value in a `.fud` is TEXT, so `.id=""` passes the string `""` — and a `.id`
+ * the component declared as `number` is then a type error the repair itself created. A bulb that
  * leaves the file worse than it found it is worse than no bulb at all.
  *
- * So the value is a real one, and the file compiles the moment the repair is accepted. `""` for
- * a string; for the other two an interpolation, which is how a non-string value is passed at all
- * (decision 19). `0` and `false` are placeholders in the sense that the author will replace
- * them, not in the sense that they are wrong — that is exactly what an editor writes when it
- * fills in a missing property, and it is the difference between a file with a hole and a file
- * with an error.
+ * A scalar is written BARE, which is what decision 105 is for: after the `=` of a `.prop` a
+ * number, `true`, `false`, `null` and `undefined` are legal with no quotes and no `@`. So
+ * `.id=0` and `.visible=false`, exactly as the author would write them. An interpolation here
+ * would be a second spelling for something the grammar already has one of — `@( … )` is for
+ * EXPRESSIONS (decisions 103, 104), and `0` is not an expression.
  *
- * Anything else gets an EMPTY `@()`: an object or a function has no obvious value to invent, and
- * inventing one would be putting words in the author's mouth. The same goes for a prop whose
- * type never arrived — TypeScript not loaded, the program not built — where `""` is the honest
- * guess, being what most props take.
+ * `0`, `""` and `false` are placeholders in the sense that the author will replace them, not in
+ * the sense that they are wrong: the file compiles the moment the repair is accepted, which is
+ * the difference between a file with a hole in it and a file with an error in it.
+ *
+ * Anything else gets an empty `@()` — and there it IS an expression, because an object or a
+ * function is only ever passed as one. There is no obvious value to invent for those, and
+ * inventing one would be putting words in the author's mouth. A prop whose type never arrived —
+ * TypeScript not loaded, the program not built — takes `""`, which is what most props take.
  */
 const HOLES: Readonly<Record<PropHolds, string>> = {
   string: '""',
-  number: '@(0)',
-  boolean: '@(false)',
+  number: '0',
+  boolean: 'false',
   other: '@()',
 };
 
