@@ -83,6 +83,7 @@ Las siete secciones del SDD, reinterpretadas para un defecto:
 | [BUG-21](./BUG-21-nodos-de-whitespace.md) | El árbol lleva un nodo de texto por cada salto de línea del autor | BUG-07 §4.5 · SDD-15 §4.4 · SDD-17 §6.22 | `compiler` | `Listo` — desbloqueado el 2026-08-15 con SDD-17 en `Hecho` |
 | [BUG-22](./BUG-22.md) | El editor no sabe dónde está: sin región, «estoy en HTML» se deducía por eliminación | SDD-24 §4.2 · SDD-25 §4.1 · SDD-28 §5.3 | `compiler` · `language-server` · `vscode` | `Hecho` |
 | [BUG-23](./BUG-23-arroba-valvula-de-escape.md) | El `@` es una válvula de escape: `@( … )` para todo, y el editor calla —o comprueba otra expresión— donde más se escribe | gramática 2, 8, 23, 29, 84, 99 · SDD-23 §4.4 · SDD-24 §4.2 · SDD-26 §4.5 · props-spec 70–73 | `compiler` · `language-core` · `language-server` · `formatter` · `vscode` · `vite` | `Hecho` |
+| [BUG-24](./BUG-24-signal-y-callback-no-cruzan.md) | Una signal no cruza el shadow boundary, y un callback no cruza en absoluto | gramática 84 · SDD-15 §3.3, §3.7, §4.3 · SDD-17 §3, §4.4 · SDD-31 §7 · BUG-12 §3.4 | `core` · `compiler` · `ssr` · `language-core` | `Listo` — bloqueado por BUG-23 |
 
 ## Grafo de dependencias
 
@@ -242,6 +243,17 @@ decidir que un nodo de whitespace se colapsa y **no** se elimina, midiendo bytes
 por **nodos**, que es un coste que gzip no toca, y descarta los que puede probar que no pintan
 nada. Ninguna de las tres guardas de BUG-07 §4.5 —slots, `:empty`, espaciado inline— se discute:
 pasan a ser guardas, comprobadas antes que cualquier prueba.
+
+```
+BUG-23 ──▶ BUG-24  y la flecha es de MECANISMO, no de líneas. BUG-24 necesita dos
+                   piezas que BUG-23 construye: `propsOf(tag)` —lo único que le dice
+                   al padre qué declara el hijo, y el modo de cruce lo decide el
+                   hijo— y `crossing` con su tipo `Crossing`, donde vive esa
+                   decisión. Delante, BUG-24 tendría que inventarse las dos y la
+                   regla del cruce volvería a tener dos implementaciones: justo el
+                   defecto que BUG-23 §5 acaba de cerrar. BUG-23 deja el caso
+                   `'ref'` declarado y muerto; BUG-24 lo enciende.
+```
 
 ## Registro de progreso
 
