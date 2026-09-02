@@ -11,12 +11,20 @@
 
 import { type Span, span, emptySpan } from '../types/index.js';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
-import type { Node } from '../types/index.js';
-import { type LexRegion, scanParens } from '../balancer/index.js';
+import type { Diagnostic, Node } from '../types/index.js';
+import { type LexRegion, scanParens, scanBrackets } from '../balancer/index.js';
 import type { JsRegionToken } from '../lexer/index.js';
 
 /** explicit = `@( ... )`; implicit = `@foo.bar`. Same node downstream (SDD-07). */
-export type RazorExpressionKind = 'explicit' | 'implicit';
+/**
+ * `explicit` is `@( … )`, `implicit` is `@name.path`, and `literal` is the third form: a scalar
+ * written bare in the value of a `.prop` — `.id=0`, `.on=true` (decision 105).
+ *
+ * It is an expression like the other two and carries no `@`, which is the whole of what the
+ * kind is for: `span` equals `expr`, so anything that reconstructs the source from the node —
+ * the formatter, above all — must print the literal alone and never put a `@` in front of it.
+ */
+export type RazorExpressionKind = 'explicit' | 'implicit' | 'literal';
 
 /**
  * A resolved Razor expression atom: a JS expression located in the source, opaque
@@ -33,9 +41,18 @@ export interface RazorExpression extends Node {
   /**
    * Lexical regions inside `expr` (from the balancer): strings, templates, comments,
    * regex. Empty for a plain property path, which has none; the explicit form `@( ... )`
-   * and the call suffix of decision 99 (`@del('a)b')`) contribute theirs.
+   * and every `( … )` / `[ … ]` link of an implicit chain (decision 100) contribute theirs.
    */
   readonly regions: readonly LexRegion[];
+  /**
+   * The `.` (or `?.`) written with no name behind it, where the chain stopped
+   * (decision 102). NOT part of `span` nor of `expr`: for the emit it is still literal
+   * text, so `@data.` keeps printing the dot (decision 2 intact).
+   *
+   * It is the EDITOR that needs it — the instant completion is asked for is exactly the
+   * one where the dot is typed and the name is not — and that is why it travels apart.
+   */
+  readonly dangling?: Span;
 }
 
 /**
@@ -140,40 +157,38 @@ export function classifyDirective(identifier: string): LayoutDirective | null {
   return LAYOUT_DIRECTIVES.has(identifier) ? (identifier as LayoutDirective) : null;
 }
 
-/** What an implicit expression may end with — a question of POSITION (decision 99). */
-export interface ImplicitOptions {
-  /**
-   * Accept ONE balanced call suffix after the path: `@del($event, item.id)`.
-   *
-   * True ONLY in the value of an `@event` / `bus:` binding, where a call is what the
-   * author means every time: a handler takes data from the point of use (decision 96),
-   * and `@(del($event, item.id))` is ceremony around the ordinary case. In content
-   * position it stays off — there `@total(x)` is an interpolation followed by literal
-   * text, and decision 29 already says the `@` means what its position says.
-   */
-  readonly call?: boolean;
+/**
+ * The `.` or `?.` a chain link starts with, or 0 when the character at `i` is neither.
+ * Its LENGTH, because that is what both callers need: how far to look for the name, and
+ * how wide the dangling span is when no name follows.
+ */
+function accessorAt(source: string, i: number): 0 | 1 | 2 {
+  if (source[i] === '.') return 1;
+  return source[i] === '?' && source[i + 1] === '.' ? 2 : 0;
 }
 
 /**
  * Scan an implicit expression starting at `atOffset` (`@` included). An implicit
- * expression is ONLY a property path: identifier ('.' identifier)*. It stops —
- * silently — at anything else: a trailing `.` with no identifier (decision 2), `?.`,
- * `(`, `[`, `!` (decision 4), `<` (decision 5), whitespace or any operator. Everything
- * beyond a plain path is written with the explicit form `@( ... )`.
+ * expression is a CHAIN, not a path (decision 100): after the leading identifier come
+ * `.name`, `?.name`, a balanced `( … )` and a balanced `[ … ]`, repeated in any order.
+ * It stops — silently — at anything else: `!` (decision 4), `<` (decision 5), an
+ * operator, whitespace. `@( ... )` is for what is NOT a chain (decision 104).
+ *
+ * Adjacency is the whole of the boundary rule (decision 101): the chain never crosses
+ * whitespace, so `@del (x)` is the chain `del` followed by the literal text ` (x)`. It
+ * is the rule `@raw(` already followed.
+ *
+ * A `.` or `?.` with no name behind it does not join the chain — decision 2 stands and
+ * the dot is still literal text in the output — but it IS recorded in `dangling`, which
+ * is what lets the editor ask for the members of what precedes it (decision 102).
  *
  * The stops carry NO diagnostic on purpose (§4.5.2): the dominant case is literal
  * punctuation after an interpolation (`@name.`, `@name!`), and warning there would
- * be all false positives.
- *
- * `options.call` adds the one exception (decision 99): an adjacent `(` opens the
- * balancer and the group joins the expression, so `@del($event, item.id)` is one atom.
- * Adjacency is the same rule `@raw(` already follows — `@del (x)` is the path `del`,
- * because an implicit expression never crosses whitespace.
+ * be all false positives. The balancer's own — an unterminated group — do travel out.
  */
 export function scanImplicitExpression(
   source: string,
   atOffset: number,
-  options: ImplicitOptions = {},
 ): ParseResult<RazorExpression> {
   const exprStart = atOffset + 1;
   let i = identifierEnd(source, exprStart);
@@ -190,36 +205,43 @@ export function scanImplicitExpression(
     });
   }
 
-  // A `.` only continues the path when a real identifier follows it, so `@foo.`
-  // yields `foo` and leaves the dot as literal text (decision 2).
+  const regions: LexRegion[] = [];
+  const diagnostics: Diagnostic[] = [];
+  let dangling: Span | undefined;
+
   for (;;) {
-    if (source[i] !== '.') break;
-    const next = identifierEnd(source, i + 1);
-    if (next === i + 1) break;
-    i = next;
+    const accessor = accessorAt(source, i);
+    if (accessor !== 0) {
+      const next = identifierEnd(source, i + accessor);
+      if (next === i + accessor) {
+        dangling = span(i, i + accessor);
+        break;
+      }
+      i = next;
+      continue;
+    }
+
+    const char = source[i];
+    if (char !== '(' && char !== '[') break;
+    // The balancer owns the boundary, so a `)` inside a string argument does not close
+    // the group, and the regions it walked travel with the node.
+    const group = char === '(' ? scanParens(source, i) : scanBrackets(source, i);
+    regions.push(...group.value.regions);
+    diagnostics.push(...group.diagnostics);
+    i = group.value.span.end;
+    // Unterminated: the group already ran to the end of source, so there is no chain left.
+    if (!group.value.closed) break;
   }
 
-  // The call suffix (decision 99). The balancer owns the boundary, so a `)` inside a
-  // string argument does not close it, and the regions it walked travel with the node.
-  if (options.call === true && source[i] === '(') {
-    const group = scanParens(source, i);
-    const called: RazorExpression = {
-      type: 'razor-expression',
-      kind: 'implicit',
-      span: span(atOffset, group.value.span.end),
-      expr: span(exprStart, group.value.span.end),
-      regions: group.value.regions,
-    };
-    return group.diagnostics.length === 0 ? ok(called) : withDiagnostics(called, group.diagnostics);
-  }
-
-  return ok({
+  const expression: RazorExpression = {
     type: 'razor-expression',
     kind: 'implicit',
     span: span(atOffset, i),
     expr: span(exprStart, i),
-    regions: [],
-  });
+    regions,
+    ...(dangling !== undefined ? { dangling } : {}),
+  };
+  return diagnostics.length === 0 ? ok(expression) : withDiagnostics(expression, diagnostics);
 }
 
 /** Wrap an `explicit-expr` token (`@( ... )`) into the unified RazorExpression. */
@@ -239,11 +261,7 @@ export function expressionFromToken(token: JsRegionToken): RazorExpression {
  * dispatches control/code keywords, or scans the implicit expression. Never throws.
  * The caller advances the lexer with `lexer.seekTo(resolutionEnd(resolution))`.
  */
-export function resolveTrigger(
-  source: string,
-  atOffset: number,
-  options: ImplicitOptions = {},
-): ParseResult<TriggerResolution> {
+export function resolveTrigger(source: string, atOffset: number): ParseResult<TriggerResolution> {
   const identStart = atOffset + 1;
   const identEnd = identifierEnd(source, identStart);
 
@@ -284,9 +302,9 @@ export function resolveTrigger(
       : withDiagnostics(resolution, group.diagnostics);
   }
 
-  const expression = scanImplicitExpression(source, atOffset, options);
+  const expression = scanImplicitExpression(source, atOffset);
   const resolution: TriggerResolution = { kind: 'implicit', expression: expression.value };
-  // An unterminated call suffix has something to say; a bare path never does.
+  // An unterminated group in the chain has something to say; a bare path never does.
   return expression.diagnostics.length === 0
     ? ok(resolution)
     : withDiagnostics(resolution, expression.diagnostics);

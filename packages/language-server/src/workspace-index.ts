@@ -10,7 +10,15 @@
  */
 
 import { parseFud } from './parse.js';
-import { layoutHrefOf, roleOf, sectionsOf, tagOf, type FudRole } from './mode.js';
+import {
+  contractOf,
+  layoutHrefOf,
+  roleOf,
+  sectionsOf,
+  tagOf,
+  type Contract,
+  type FudRole,
+} from './mode.js';
 import { resolveFrom, toPosix } from './paths.js';
 import type { FileSystemScanner } from './types.js';
 
@@ -31,6 +39,21 @@ export interface IndexEntry {
    * `@section `: the file was already parsed to learn its role, so the names are free.
    */
   readonly sections: readonly string[];
+  /**
+   * The props a component declares without a `?`, in declaration order. Empty for everything
+   * else — and empty also when they cannot be proven, which is what makes the tag expansion
+   * degrade to the plain element instead of inventing tabstops (BUG-23 task 25).
+   */
+  readonly requiredProps: readonly string[];
+  /**
+   * Everything the component declares to whoever writes its tag: props, slots, events and the
+   * doc its author wrote (SDD-36 §3.2). Empty for everything that is not a component.
+   *
+   * Kept here for the reason `sections` is: the file was parsed to learn its role, so reading
+   * the contract is free — once per file and per change, never per keystroke — and the card of
+   * a component nobody has opened has to come from somewhere.
+   */
+  readonly contract: Contract;
 }
 
 export class WorkspaceIndex {
@@ -75,12 +98,17 @@ export class WorkspaceIndex {
 
     this.#revision++;
     const { document } = parseFud(source);
+    // One read of the contract, and the required props come OUT of it: asking twice would run
+    // the `@code` extraction twice per change, and — worse — would let the two answers differ.
+    const contract = contractOf(source, document);
     this.#entries.set(key, {
       path: key,
       role: roleOf(document),
       tag: tagOf(document),
       layoutHref: layoutHrefOf(document),
       sections: sectionsOf(document),
+      requiredProps: contract.props.filter((prop) => prop.required).map((prop) => prop.name),
+      contract,
     });
   }
 

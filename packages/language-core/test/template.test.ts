@@ -80,12 +80,27 @@ describe('component tags', () => {
     expect(text).toContain(
       "import type { $Props as $C0, $Slots as $S0 } from './app-badge.fud';",
     );
-    // The blank line after `({` is the completion anchor: the attribute area of the start tag
-    // stands for the inside of the object literal, so `<app-badge |>` has somewhere to ask.
-    expect(text).toContain('$attrs<$C0>({\n  \n  tone: (x),\n});');
-    // Only one literal: with no plain attribute there is nothing to check against
-    // `$GlobalAttrs`, and an empty `$attrs<{}>({})` would be scaffolding that says nothing.
-    expect(text).not.toContain('$attrs<{}>');
+    // The props go to `$props`, which is NOT intersected with `$GlobalAttrs`: the dot
+    // completes against this literal, and against nothing else (BUG-23 §2.1).
+    expect(text).toContain('$props<$C0>({\n  tone: (x),\n});');
+    // The globals literal holds only what was WRITTEN, so with no plain attribute it is
+    // empty: nothing is checked there and nothing asks from it.
+    expect(text).toContain('$attrs<{}>({});');
+    // The gaps have a call of their own, over the component's contract: `<app-badge |>` is
+    // answered with the props AND HTML's vocabulary, which is what repealed decision (b) of
+    // BUG-23 §4.0. The blank line after `({` is the one gap of this tag.
+    expect(text).toContain('$gap<$C0>({\n  });');
+  });
+
+  it('types the gaps of an UNREGISTERED tag as `{}`, and reports the tag once', () => {
+    // The alias travels as scaffolding into `$gap`, so naming an undeclared one would raise a
+    // second `TS2304` in a stretch no capability routes through: an error the editor drops and
+    // the corpus harness reports as unmapped. `$props` is the one place the tag is reported.
+    const { text } = emitClient(component('    <app-missing >hi</app-missing>'), 'x.fud', registry);
+
+    expect(text).toContain('$props<$C_app_missing>({});');
+    expect(text).toContain('$gap<{}>({');
+    expect(text).not.toContain('$gap<$C_app_missing>');
   });
 
   it('anchors completion inside a self-closing tag, and has nowhere to anchor without a gap', () => {
@@ -112,10 +127,13 @@ describe('component tags', () => {
     );
     const anchors = mappings.filter((m) => m.caps.completion && !m.caps.navigation);
     expect(anchors).toHaveLength(3);
-    // The two literals of BUG-16 §4.2: the prop against the component's contract, the plain
-    // attribute against HTML's own vocabulary and nothing else.
-    expect(text).toContain('$attrs<$C0>({\n  \n  \n  \n  tone: (x),\n});');
+    // Two literals that CHECK and one call that only answers: the prop against the
+    // component's contract, the plain attribute against HTML's vocabulary and nothing else,
+    // and the three gap anchors in a `$gap` of their own — where both families meet and no
+    // diagnostic hangs off either.
+    expect(text).toContain('$props<$C0>({\n  tone: (x),\n});');
     expect(text).toContain('$attrs<{}>({\n  id: "a",\n});');
+    expect(text).toContain('$gap<$C0>({\n  \n  \n  });');
 
     // And none of them stands over an attribute. One stretch covering the whole area also
     // covered the VALUES, so a position inside `.tone="@(|)"` mapped to the anchor as well as
@@ -143,7 +161,7 @@ describe('component tags', () => {
   it('projects an unregistered tag as an undeclared name, so TS2304 lands on the tag', () => {
     const file = emitClient(component('    <app-missing a="1"></app-missing>'));
 
-    expect(file.text).toContain('$attrs<$C_app_missing>');
+    expect(file.text).toContain('$props<$C_app_missing>');
     expect(file.text).not.toContain('import type');
 
     const alias = file.mappings.find(
@@ -160,9 +178,13 @@ describe('component tags', () => {
   });
 
   it('emits an empty object for a component used with no attributes', () => {
-    expect(emitClient(component('    <app-badge></app-badge>'), 'x.fud', registry).text).toContain(
-      '$attrs<$C0>({});',
-    );
+    const { text } = emitClient(component('    <app-badge></app-badge>'), 'x.fud', registry);
+
+    expect(text).toContain('$props<$C0>({});');
+    expect(text).toContain('$attrs<{}>({});');
+    // And the completeness check, with an empty union of written props: everything the
+    // component declares required is missing (BUG-23 §4.2 rule 2).
+    expect(text).toContain('$required<$C0, never>({});');
   });
 
   it('collects tags used inside control bodies, not only at the top level', () => {

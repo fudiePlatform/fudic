@@ -18,7 +18,7 @@ import {
 } from '../html/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { Span } from '../types/index.js';
-import { classifyAttribute, type Binding } from '../binding/index.js';
+import { classifyAttribute, crossing, type Binding } from '../binding/index.js';
 import type { CodeWriter } from './writer.js';
 import type { AssetLinker } from './assets.js';
 import { freeReferences, type FragmentAst } from './scope.js';
@@ -80,36 +80,10 @@ export interface HostContext {
 export const NO_SIGNALS: HostContext = { isComponent: false, signals: new Set() };
 
 /**
- * The name of the REACTIVE a value crosses with, or `undefined` when it crosses none.
- *
- * The rule is deliberately narrow: the whole value must be one `@expr` whose text is the
- * bare name of something in `reactives` — a `signal(...)` or a `computed(...)` this scope
- * declares, or a prop it received as reactive itself. `@count` is reactive; `@(count() + 1)`
- * is a value that happens to read one, and the difference is what decides whether anything
- * downstream can ever move.
- *
- * ONE definition, three readers: the expression a value crosses with (`crossingExpr`), the
- * subscription the parent emits (`markup-client.ts#slots`) and the effective level of the
- * child (`level.ts`). Two copies of this would drift, and the drift is silent in the worst
- * direction — a parent that emits `$sub` for a child the page never marked hydratable, or a
- * child marked hydratable that nobody ever updates.
- */
-export function reactiveName(
-  source: string,
-  value: readonly AttributeValuePart[],
-  reactives: ReadonlySet<string>,
-): string | undefined {
-  const only = value.length === 1 ? value[0] : undefined;
-  if (only?.type !== 'razor-expression') return undefined;
-  const text = source.slice(only.expr.start, only.expr.end);
-  return reactives.has(text) ? text : undefined;
-}
-
-/**
  * The WEAKER question, and the one that decides whether anything downstream can move at
  * all: does this value READ a name whose value can change?
  *
- * `reactiveName` asks whether the value IS a bare reactive, and that answer is what buys a
+ * `crossing` asks whether the value IS a bare reactive, and that answer is what buys a
  * subscription of its own (BUG-18 §4.1). It is too narrow to decide the other two things a
  * value determines — whether the child is hydratable at all (`level.ts`) and whether the
  * parent has to hand it over again (`markup-client.ts#childValues`) — because
@@ -147,8 +121,10 @@ export function readsMoving(
  * The call form is the only read since SDD-31 §4.0, and it costs nothing here: this
  * expression is evaluated by `$s`/`$a`, outside any effect, so it tracks nobody.
  *
- * The rule lives here, next to the two branches that apply it, because the client's payload
- * builder needs the same answer and a second copy of it would drift.
+ * The rule itself is `crossing`'s (`binding/crossing.ts`) and not this module's, because the
+ * projection has to apply exactly the same one: the editor was type-checking the signal
+ * object while the build crossed its value (BUG-23 §2.8). Here it is only spelled out as an
+ * expression. Nobody passes a `target` yet, so the answer is always `'value'`.
  */
 export function crossingExpr(
   source: string,
@@ -156,8 +132,8 @@ export function crossingExpr(
   value: readonly AttributeValuePart[],
   signals: ReadonlySet<string>,
 ): string {
-  const reactive = reactiveName(source, value, signals);
-  return reactive !== undefined ? `${reactive}()` : attrExpr(source, attr);
+  const crossed = crossing(source, value, signals);
+  return crossed !== undefined ? `${crossed.name}()` : attrExpr(source, attr);
 }
 
 /**

@@ -27,6 +27,20 @@ export function component(tag: string, links: readonly string[] = []): string {
   return `${head}\n<${tag}>\n  <template shadowrootmode="open">\n    <span><slot></slot></span>\n  </template>\n</${tag}>\n`;
 }
 
+/**
+ * A component that DECLARES props: `pattern` is the destructuring, `type` its argument.
+ *
+ * Separate from `component` because reading a `props<T>()` is what the workspace index has to
+ * do to expand a tag with its required props (BUG-23 task 25), and every other fixture here
+ * declares none — which is exactly the degraded case.
+ */
+export function propsComponent(tag: string, pattern: string, type: string): string {
+  return (
+    `@code {\n  const ${pattern} = props<${type}>();\n}\n` +
+    `<${tag}>\n  <template shadowrootmode="open">\n    <span><slot></slot></span>\n  </template>\n</${tag}>\n`
+  );
+}
+
 /** A minimal route `.fud` pointing at `layoutHref`. */
 export function route(layoutHref: string, links: readonly string[] = []): string {
   const head = links.map((href) => `<link rel="component" href="${href}">`).join('\n');

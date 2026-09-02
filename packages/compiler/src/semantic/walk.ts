@@ -8,7 +8,7 @@
  * matching concrete node, so the walk narrows by discriminant and casts to the SDD-06 shape.
  */
 
-import type { HtmlContent, ElementNode, RawExpressionNode } from '../html/index.js';
+import type { HtmlContent, ElementNode, Attribute, RawExpressionNode } from '../html/index.js';
 import type {
   ControlNode,
   IfNode,
@@ -24,14 +24,30 @@ import type { CodeBlockNode } from '../code/index.js';
 
 /** Callbacks a walk fires. All optional: an analyzer supplies only what its rule needs. */
 export interface TreeVisitor {
-  /** Every `ElementNode`, in source order, parents before children. */
-  element?(el: ElementNode): void;
+  /**
+   * Every `ElementNode`, in source order, parents before children.
+   *
+   * `host` is the nearest ANCESTOR element, control bodies seen through: `<app-circle>@if(x)
+   * { <div slot="p"> } </app-circle>` still hosts the `div` in `app-circle`. A rule about a
+   * `slot=` is a rule about the parent (BUG-23 §2.6), and asking the element that carries the
+   * attribute was exactly what made the check land on the wrong tag.
+   */
+  element?(el: ElementNode, host?: ElementNode): void;
   /** Entering a loop body (`@foreach`/`@for`/`@while`) — decision 31's loop context. */
   enterLoop?(): void;
   /** Leaving a loop body. Balanced with `enterLoop`. */
   exitLoop?(): void;
   /** A content-level interpolation: a bare `@expr` or the inner expr of `@raw(…)`. */
   interpolation?(expr: RazorExpression): void;
+  /**
+   * Every Razor expression in an ATTRIBUTE — a value part, or the expression that names a
+   * `bus:( … )` event (decision 28.b) — with the attribute that carries it.
+   *
+   * The walk went through these and never handed one over, so nobody could register an
+   * attribute value's JS in the batch without traversing the tree a second time. That is
+   * what left the projection with no AST to ask the shape of a handler from (BUG-23 §2.4).
+   */
+  binding?(expr: RazorExpression, attr: Attribute, el: ElementNode): void;
   /**
    * Every control construct, before its bodies are descended.
    *
@@ -70,16 +86,41 @@ export function documentCode(document: StructuredDocument): CodeBlockNode | unde
   return document.code;
 }
 
-/** Walk the content list depth-first, firing the visitor's callbacks. */
-export function walk(content: readonly HtmlContent[], visitor: TreeVisitor): void {
-  for (const node of content) walkNode(node, visitor);
+/**
+ * Walk the content list depth-first, firing the visitor's callbacks.
+ *
+ * `host` is the element the list hangs under, and callers outside the walk never pass it: the
+ * roots of a document have no parent element by definition.
+ */
+export function walk(
+  content: readonly HtmlContent[],
+  visitor: TreeVisitor,
+  host?: ElementNode,
+): void {
+  for (const node of content) walkNode(node, visitor, host);
 }
 
-function walkNode(node: HtmlContent, visitor: TreeVisitor): void {
+/**
+ * The Razor expressions of one element's attributes, in source order. The name comes first
+ * because that is where it is written: `bus:(EVENTS.cart)="@h"` names the event before it
+ * gives the handler.
+ */
+function walkBindings(el: ElementNode, visitor: TreeVisitor): void {
+  if (visitor.binding === undefined) return;
+  for (const attr of el.attributes) {
+    if (typeof attr.name !== 'string') visitor.binding(attr.name, attr, el);
+    for (const part of attr.value) {
+      if (part.type === 'razor-expression') visitor.binding(part, attr, el);
+    }
+  }
+}
+
+function walkNode(node: HtmlContent, visitor: TreeVisitor, host: ElementNode | undefined): void {
   switch (node.type) {
     case 'element':
-      visitor.element?.(node);
-      walk(node.children, visitor);
+      visitor.element?.(node, host);
+      walkBindings(node, visitor);
+      walk(node.children, visitor, node);
       return;
     case 'razor-expression':
       visitor.interpolation?.(node);
@@ -90,8 +131,8 @@ function walkNode(node: HtmlContent, visitor: TreeVisitor): void {
     case 'if': {
       const ifNode = node as unknown as IfNode;
       visitor.control?.(ifNode);
-      for (const branch of ifNode.branches) walk(branch.body, visitor);
-      if (ifNode.elseBody) walk(ifNode.elseBody, visitor);
+      for (const branch of ifNode.branches) walk(branch.body, visitor, host);
+      if (ifNode.elseBody) walk(ifNode.elseBody, visitor, host);
       return;
     }
     case 'foreach':
@@ -100,20 +141,20 @@ function walkNode(node: HtmlContent, visitor: TreeVisitor): void {
       const loop = node as unknown as ForeachNode | ForNode | WhileNode;
       visitor.control?.(loop);
       visitor.enterLoop?.();
-      walk(loop.body, visitor);
+      walk(loop.body, visitor, host);
       visitor.exitLoop?.();
       return;
     }
     case 'switch': {
       const switchNode = node as unknown as SwitchNode;
       visitor.control?.(switchNode);
-      for (const branch of switchNode.cases) walk(branch.body, visitor);
+      for (const branch of switchNode.cases) walk(branch.body, visitor, host);
       return;
     }
     case 'section':
       // `@section name { … }` (SDD-21): its body is ordinary markup, so the analyzers
       // must see inside it — a duplicate attribute there is just as wrong.
-      walk((node as unknown as SectionNode).children, visitor);
+      walk((node as unknown as SectionNode).children, visitor, host);
       return;
     default:
       // Leaves and JS-only nodes (text, comment, style, inline-code, @code, …): nothing to descend.

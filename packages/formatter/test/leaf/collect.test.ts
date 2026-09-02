@@ -59,12 +59,13 @@ describe('the walk', () => {
 
   it('finds every region of a @code block and an inline @{ }', async () => {
     const source = '@code {\n  const a = 1;\n  @server { const b = 2; }\n}\n@{ const c = 3; }';
-    // The neutral chunk carries the whitespace around it: `dedent` is what takes it off,
-    // after the engine, not before.
+    // The neutral chunk carries the whitespace around it in the SOURCE; what reaches the
+    // engine is dedented, so a fragment reads the same however deep its block sits. That is
+    // what keeps a block comment from drifting one level right on every save.
     expect(await requestsFor(source)).toEqual([
-      '\n  const a = 1;\n  ',
-      ' const b = 2; ',
-      ' const c = 3; ',
+      'const a = 1;',
+      'const b = 2;',
+      'const c = 3;',
     ]);
   });
 

@@ -128,20 +128,6 @@ interface KeyClause {
   readonly end: number;
 }
 
-/**
- * What a body has to hold for its loop to need an identity. A loop that paints nothing has
- * no rows to reconcile, so demanding a key of it would be ceremony: `FUD0540` is about a
- * list whose order can change, and text nobody can see is not one.
- *
- * Razor comments and `@{ … }` are not markup — neither reaches the DOM.
- */
-function hasMarkup(source: string, body: readonly HtmlContent[]): boolean {
-  return body.some((node) => {
-    if (node.type === 'text') return source.slice(node.span.start, node.span.end).trim() !== '';
-    return node.type !== 'razor-comment' && node.type !== 'inline-code';
-  });
-}
-
 // ----------------------------------------------------------------------
 // The `case` test (§4.5)
 // ----------------------------------------------------------------------
@@ -521,12 +507,17 @@ class ControlParser {
   /**
    * The key rule of a loop (§3.5). Both diagnostics point at the HEADER: that is the piece
    * the author has to change, and it is there whether the clause was written or not.
+   *
+   * EVERY loop, not only one that renders markup. The body used to be inspected — text and
+   * `@{ … }` reach no DOM, so a loop over them had nothing to reconcile — and the exemption
+   * cost more than it saved: whether a loop needs a key stopped being a property of the loop
+   * and became a property of what happened to be inside it that minute, so the error appeared
+   * and vanished as the author typed the first tag. A rule with a hole is a rule nobody can
+   * learn. One sentence now: a loop declares its identity.
    */
-  #checkLoopKey(header: ControlHeader, clause: KeyClause | null, body: readonly HtmlContent[]): void {
+  #checkLoopKey(header: ControlHeader, clause: KeyClause | null): void {
     if (clause === null) {
-      if (hasMarkup(this.#source, body)) {
-        this.#error('FUD0540', "a loop that renders markup must declare 'key (…)'", header.span);
-      }
+      this.#error('FUD0540', "a loop must declare 'key (…)'", header.span);
       return;
     }
     // Written but holding nothing — `key`, `key ()`, `key (   )`, `key (r.id` — all reach
@@ -560,7 +551,7 @@ class ControlParser {
     const afterKey = clause === null ? header.span.end : clause.end;
     const block = this.#block(afterKey);
     const body = block === null ? [] : block.body;
-    this.#checkLoopKey(header, clause, body);
+    this.#checkLoopKey(header, clause);
     return { header, key: clause?.key ?? null, body, end: block === null ? afterKey : block.end };
   }
 

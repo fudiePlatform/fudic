@@ -24,8 +24,8 @@
   <template shadowrootmode="open">
     <span
       class="badge"
-      class:success="@(tone === 'success')"
-      class:warning="@(tone === 'warning')">
+      class:success=@(tone === 'success')
+      class:warning=@(tone === 'warning')>
       <slot></slot>
     </span>
   </template>

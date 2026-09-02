@@ -12,14 +12,19 @@
 
 import {
   JsBatch,
+  documentRoots,
+  reactiveNames,
+  walk,
   type FragmentId,
   type JsBatchResult,
   type OxcNode,
+  type Span,
   type StructuredDocument,
 } from '@fudic/compiler';
 import { partitionCode } from './code.js';
 import { emitCssVirtuals } from './css.js';
-import { emitClientVirtual } from './emit-client.js';
+import { emitClientVirtual, type TemplateJs } from './emit-client.js';
+import type { FragmentAst } from './template/context.js';
 import { emitServerVirtual } from './emit-server.js';
 import { findPropsCall, type PropsCall } from './props.js';
 import type { FileRegistry, VirtualFile } from './types.js';
@@ -36,6 +41,20 @@ export interface EmitJs {
   readonly result: JsBatchResult;
   /** Fragment ids of the neutral chunks of `@code`, in source order. */
   readonly neutral: readonly FragmentId[];
+  /**
+   * Fragment ids of the `@client` regions, in source order — where the reactive names are
+   * read from (`reactiveNames`). Absent means the caller did not register them, and then a
+   * value crosses as written, which is what the projection did before BUG-23.
+   */
+  readonly client?: readonly FragmentId[];
+  /**
+   * The AST registered at a source span, the ATTRIBUTE VALUES included.
+   *
+   * It is what lets the projection ask whether the root of a handler is a call, which no
+   * amount of text inspection answers. Absent means the caller registered only content, and
+   * then a handler is copied as written.
+   */
+  ast?(at: Span): FragmentAst | undefined;
 }
 
 /** Everything the emitter needs about one file. */
@@ -60,10 +79,10 @@ export interface EmitInput {
  */
 export function emitVirtualFiles(input: EmitInput): readonly VirtualFile[] {
   const { source, fileName, document, registry } = input;
-  const props = findProps(source, document, input.js);
+  const js = input.js ?? ownBatch(source, document);
 
   return [
-    emitClientVirtual(source, fileName, document, registry, props),
+    emitClientVirtual(source, fileName, document, registry, findProps(js), templateJs(js)),
     emitServerVirtual(source, fileName, document.code),
     ...emitCssVirtuals(source, fileName, document),
   ];
@@ -76,32 +95,68 @@ export function emitVirtualFiles(input: EmitInput): readonly VirtualFile[] {
  * error already has its own diagnostic (FUD0170), and the template around it must keep
  * working.
  */
-function findProps(
-  source: string,
-  doc: StructuredDocument,
-  provided: EmitJs | undefined,
-): PropsCall | undefined {
-  const js = provided ?? ownBatch(source, doc);
-  if (js === undefined) return undefined;
-  const { result, neutral: ids } = js;
-
-  for (const id of ids) {
-    // `module-statements` always yields a statement list (SDD-11 §3.2); the single-node
-    // half of the union belongs to the fragment kinds this emitter never registers, so
-    // branching on it would be dead code, not defensiveness.
-    const statements = result.ast(id) as readonly OxcNode[];
-    const found = findPropsCall(statements, (s, e) => result.mapSpan(s, e));
+function findProps(js: EmitJs): PropsCall | undefined {
+  const { result } = js;
+  for (const id of js.neutral) {
+    const found = findPropsCall(statementsOf(result, id), (s, e) => result.mapSpan(s, e));
     if (found !== undefined) return found;
   }
   return undefined;
 }
 
-/** The batch the emitter runs when nobody handed it one: the neutral chunks, nothing else. */
-function ownBatch(source: string, doc: StructuredDocument): EmitJs | undefined {
-  const { neutral } = partitionCode(doc.code);
-  if (neutral.length === 0) return undefined;
-
-  const batch = new JsBatch(source);
-  const ids = neutral.map((chunk) => batch.add('module-statements', chunk));
-  return { result: batch.parse().value, neutral: ids };
+/**
+ * `module-statements` always yields a statement list (SDD-11 §3.2); the single-node half of
+ * the union belongs to the fragment kinds this emitter never registers, so branching on it
+ * would be dead code, not defensiveness.
+ */
+function statementsOf(result: JsBatchResult, id: FragmentId): readonly OxcNode[] {
+  return result.ast(id) as readonly OxcNode[];
 }
+
+/** What the template projection needs out of the batch: the reactives and the ASTs. */
+function templateJs(js: EmitJs): TemplateJs {
+  const reactives = new Set<string>();
+  for (const id of js.client ?? []) {
+    for (const name of reactiveNames(statementsOf(js.result, id))) reactives.add(name);
+  }
+  return js.ast === undefined ? { reactives } : { reactives, ast: (at) => js.ast?.(at) };
+}
+
+/**
+ * The batch the emitter runs when nobody handed it one.
+ *
+ * Three kinds of fragment, and each answers a question the projection cannot answer without
+ * it: the neutral chunks hold `props<T>()`, the `@client` regions hold the reactive
+ * declarations (decision 84), and every Razor expression in an ATTRIBUTE holds the shape of a
+ * handler (decisions 96–98). One batch for the lot, which is the golden rule.
+ */
+function ownBatch(source: string, doc: StructuredDocument): EmitJs {
+  const { neutral, client } = partitionCode(doc.code);
+  const batch = new JsBatch(source);
+  const neutralIds = neutral.map((chunk) => batch.add('module-statements', chunk));
+  const clientIds = client.map((chunk) => batch.add('module-statements', chunk));
+
+  const fragments = new Map<string, FragmentId>();
+  walk(documentRoots(doc), {
+    binding(expr) {
+      // An empty value (`@click="@()"`) registers nothing: there is no expression to parse,
+      // and the wrapper alone would be a syntax error of the projection's own making.
+      if (expr.expr.end > expr.expr.start) {
+        fragments.set(spanKey(expr.expr), batch.add('expression', expr.expr));
+      }
+    },
+  });
+
+  const result = batch.parse().value;
+  return {
+    result,
+    neutral: neutralIds,
+    client: clientIds,
+    ast: (at) => {
+      const id = fragments.get(spanKey(at));
+      return id === undefined ? undefined : result.ast(id);
+    },
+  };
+}
+
+const spanKey = (at: Span): string => `${at.start},${at.end}`;

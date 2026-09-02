@@ -47,16 +47,16 @@
 
 <app-actions>
   <template shadowrootmode="open">
-    <ul class="list" bus:cleared="@onCleared($event)">
+    <ul class="list" bus:cleared=@onCleared($event)>
       @foreach (const row of rows) key (row.id) {
         <li class="row">
           <span>@row.label</span>
-          <button class="none" @click="@del()">-</button>
-          <button class="event" @click="@delEvent($event)">e</button>
-          <button class="data" @click="@delRow(row.id)">d</button>
-          <button class="both" @click="@delRowEvent($event, row.id)">ed</button>
-          <button class="reversed" @click="@delRowReversed(row.id, $event)">de</button>
-          <button class="bare" @click="@del">x</button>
+          <button class="none" @click=@del()>-</button>
+          <button class="event" @click=@delEvent($event)>e</button>
+          <button class="data" @click=@delRow(row.id)>d</button>
+          <button class="both" @click=@delRowEvent($event, row.id)>ed</button>
+          <button class="reversed" @click=@delRowReversed(row.id, $event)>de</button>
+          <button class="bare" @click=@del>x</button>
         </li>
       }
     </ul>

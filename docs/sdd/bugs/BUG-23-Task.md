@@ -1,0 +1,329 @@
+# BUG-23 — Tareas
+
+> **BUG:** [BUG-23 — el `@` es una válvula de escape](./BUG-23-arroba-valvula-de-escape.md)
+> **Paquetes:** `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` ·
+> `@fudic/formatter` · `fudic-vscode` · `@fudic/vite`
+> **Rama:** `worktree-bug-23`
+> **Progreso:** 27 / 27
+
+Veintisiete tareas. Las rutas son relativas a la raíz del repo, y cada tarea es un paso
+cerrado: se puede parar después de cualquiera con el workspace verde.
+
+**El orden manda en cinco puntos.** La **1 antes que todo**: los ocho síntomas se miden
+contra el código de hoy antes de tocarlo, o los tests solo demuestran que el código nuevo hace
+lo que hace. La **2 antes que la 4**: la cadena implícita cambia lo que es un nodo, y el valor
+sin comillas se apoya en ella. La **7 antes que la 11**: la proyección no puede preguntar por la
+forma de un handler hasta que alguien registre el fragmento. La **26 antes que la 27**: la
+proyección no puede saber qué nombre es reactivo hasta que la regla salga del emit. Y la
+**20 antes que la 21**: migrar los `.fud` del repo a la forma sin comillas antes de que el
+formateador la imprima deja los goldens comparables en un solo sentido.
+
+---
+
+## Mapa de dependencias
+
+**Cuatro carriles arrancan a la vez.** La gramática no espera al editor, el reparto de
+completados del servidor no espera a la gramática, y el build no espera a ninguno de los dos.
+
+```
+A · gramática (@fudic/compiler)
+   2 cadena implícita ──┬──→ 4 valor sin comillas ──→ 5 región y spans
+   3 punto colgante ────┘
+   6 handlerShape ──→ 7 fragmentos de atributo en el batch
+   26 reactiveName / reactiveNames (independiente, como la 6)
+
+B · proyección (@fudic/language-core)                    [8..12, 27]
+   8 $props / $attrs ──→ 9 $required
+   10 punto colgante copiado          [dep 3]
+   11 handler como invocación         [dep 6, 7]
+   12 slot contra el padre
+   27 el reactivo se proyecta leído   [dep 26, 8]
+
+C · servidor (@fudic/language-server)
+   13 snippets dentro de la respuesta de TypeScript, y la raíz calla (independiente)
+   14 el batch del servidor registra los valores   [dep 7]
+   15 FUD0291 en Problems                          [dep 6]
+
+D · build (@fudic/compiler + @fudic/vite)
+   16 Prop.optional ──→ 17 registry.propsOf ──→ 18 FUD0197/0198/0199
+
+E · herramientas                                   [dep 4]
+   19 formateador ── 20 migración de los .fud ── 21 TextMate ── 22 snippets
+   25 expansión del tag con las props requeridas   [dep 17, 20]
+
+F · cierre
+   23 documentación (gramática 100-104, SDD-23 §4.4, SDD-24 §4.2/§6.3, SDD-12) ──→ 24 verde
+```
+
+| carril | tareas | arranca | en paralelo con |
+|---|---|---|---|
+| **A** gramática | 2–7, 26 | tras la 1 | C(13), D |
+| **B** proyección | 8–12, 27 | 8, 9, 12 ya; 10 tras 3; 11 tras 6+7; 27 tras 26+8 | C, D |
+| **C** servidor | 13–15 | 13 ya | A, B, D |
+| **D** build | 16–18 | ya | A, B, C |
+| **E** herramientas | 19–22, 25 | tras 4; la 25 tras 17 | — |
+
+Puntos de junta, y hay tres: **7** (nadie proyecta un handler sin AST), **18** (el build dice lo
+que dice el editor) y **24** (verde y cerrado).
+
+---
+
+## Fase 1 — la medida: los ocho síntomas en rojo (1)
+
+| ✓ | # | dep | tarea | package | fichero |
+|---|---|---|---|---|---|
+| [x] | 1 | — | **Rojo primero.** Un fichero de aceptación por síntoma, con el `.fud` de §1 del BUG y peticiones LSP **con `context`** (`triggerKind: 2` y el carácter recién tecleado), como las de BUG-16 §6.13. Los ocho tienen que fallar hoy: el punto trayendo globales (§2.1), `@data.` sin miembros (§2.2), `FUD0056` sobre `.prop=@name` (§2.3), los dos errores de `$event` (§2.4), el `@` en texto sin `data` (§2.5), los tres casos de `slot` (§2.6), el host sin props sin error (§2.7) y el error de tipo sobre `.name="@titulo"` con `titulo` una signal (§2.8). **Anotar en esta tabla qué falla y cómo**, que es lo que después se compara. Del octavo hay que anotar el mensaje **exacto** y su rango: es el único de los ocho cuyo síntoma es un diagnóstico que sobra, no uno que falta | `language-server` · `compiler` | `test/acceptance/bug23-*.test.ts` *(nuevos)* · [test/acceptance/completion.test.ts](../../../packages/language-server/test/acceptance/completion.test.ts) *(patrón)* |
+
+### La medida del 2026-08-15
+
+Los ocho síntomas quedan escritos como tests que **fallan hoy**, marcados `it.fails`: así el
+workspace está verde en cada commit y el paso a `it` es la prueba de que la fase aterrizó. Nadie
+tiene que recordar cuál se arregló — el fichero lo dice.
+
+Reproducción: una copia privada del workspace de fixtures con un `app-circle` que declara
+`name: string` (requerida), `tone?: Tone` y una ranura `PEPITO`, y una ruta con el `.fud` de §1
+adaptado. `signal` se **declara** dentro del `@client` en vez de importarse: lo que hace reactivo
+a un nombre es el *callee*, nunca de dónde viene, y el proyecto de fixtures no tiene node_modules.
+
+| # | fichero | qué falla hoy |
+|---|---|---|
+| 1 | `language-server/test/acceptance/bug23-symptoms.test.ts` | tras `.` la lista trae `id`, `class`, `role` junto a las props |
+| 2 | idem | `@data.` no ofrece un solo miembro de `PageData` |
+| 3 | idem + `compiler/test/bug23-symptoms.test.ts` | `FUD0056` sobre `.name=@data.title`; y `@counter().id` es la expresión `counter` más el texto `().id` |
+| 4 | `language-server/…/bug23-symptoms.test.ts` | `@mousedown="@onClick($event)"` da dos errores; `FUD0291` no llega nunca a *Problems* |
+| 5 | idem | en `@\|` solo salen los cuatro snippets: ni `data`, ni `items`, ni `counter` |
+| 6 | idem | ninguno de los tres casos de `slot` dice nada, y el valor no completa |
+| 7 | idem | el host sin `name` no reporta; con `name` pasada ya callaba, y eso se queda como guarda verde |
+| 8 | `language-core/test/bug23-crossing.test.ts` | `.tone="@titulo"` se comprueba como `Signal<Tone>` contra `Tone`; `id="@titulo"` da `TS2345` contra `$Scalar` |
+
+**Del octavo, el mensaje exacto y su rango.** `TS2322 Type 'Signal<Tone>' is not assignable to
+type 'Tone'`. Y el hallazgo que obliga a medirlo en `language-core` y no contra el servidor:
+cuando el valor es **invocable** y su llamada encajaría, TypeScript ancla el error en la
+**expresión** en vez de en la clave — y esa expresión va envuelta en el `(` `)` que añade la
+proyección, así que los dos extremos del rango caen en andamiaje y Volar lo tira. El juicio
+equivocado se hace igual; en el editor, además, es invisible. Con un valor **no** invocable
+(`.tone="@counter"`, `Signal<{ id: number }>`) el ancla vuelve a la clave y el error sí se ve —
+por eso ese caso se queda como guarda de lo que debe seguir reportando.
+
+---
+
+## Fase 2 — la gramática: el `@` deja de necesitar paréntesis (7)
+
+| ✓ | # | dep | tarea | package | fichero |
+|---|---|---|---|---|---|
+| [x] | 2 | 1 | **La cadena implícita (decisiones 100–101).** `scanImplicitExpression` deja de ser un camino de identificadores y pasa a un bucle de sufijos: `.nombre`, `?.nombre`, `( … )` y `[ … ]` balanceados por el balanceador —que ya devuelve sus `regions`, así que un `)` dentro de una cadena no cierra nada— y corta ante cualquier otra cosa. `ImplicitOptions` y su `call` **se borran**, y con ellos la decisión 99: la llamada ya no es un caso especial del valor de un evento | `compiler` | [src/at/at.ts `scanImplicitExpression`](../../../packages/compiler/src/at/at.ts#L173) · [src/html/parser.ts `#attributeAtom`](../../../packages/compiler/src/html/parser.ts#L551) *(pierde el parámetro `call`)* · [src/html/parser.ts `isHandlerName`](../../../packages/compiler/src/html/parser.ts) *(se retira)* |
+| [x] | 3 | 1 | **El punto colgante (decisión 102).** Donde el bucle corta por un `.` o un `?.` sin nombre detrás, el nodo se lleva `dangling: Span` con ese punto. **Fuera de `span` y fuera de `expr`**: el emit no ve nada nuevo y la decisión 2 sigue intacta —`@name.` sigue imprimiendo el punto como texto—. Un test de golden lo fija | `compiler` | [src/at/at.ts](../../../packages/compiler/src/at/at.ts#L195-L200) *(el bucle del punto)* · `src/at/at.ts` `RazorExpression` *(campo nuevo)* |
+| [x] | 4 | 2 | **El valor sin comillas (decisión 103).** Tras un `=`, si el carácter es un `@` que no es `@@`, el lexer emite un `at-trigger` en vez de `text`; el parser resuelve el átomo, lo mete como única parte del valor y **no** emite `FUD0056`. Todo lo demás sigue dando `FUD0056` (`id=foo`), y `.prop=@` sin nada detrás degrada con diagnóstico. Ojo al `>`: la cadena corta ahí sola, así que `<x .p=@a.b>` cierra el tag donde debe | `compiler` | [src/lexer/lexer.ts `#scanUnquotedValue`](../../../packages/compiler/src/lexer/lexer.ts#L576) y [`lexer.ts:541`](../../../packages/compiler/src/lexer/lexer.ts#L541) · [src/html/parser.ts `#parseUnquotedValue`](../../../packages/compiler/src/html/parser.ts#L580) |
+| [x] | 5 | 4 | **Los spans que leen comillas.** `attributeValueSpan` ya tiene la rama sin comillas —hay que comprobarla con un valor `@`— y `regionAt` tiene que devolver `expression` dentro de él, no `tag`: es lo que hace que el completado dentro de `.p=@da\|` sea el de TypeScript y no el de los nombres de atributo | `compiler` | [src/region/region.ts `attributeValueSpan`](../../../packages/compiler/src/region/region.ts#L89) · [`tagRegion`](../../../packages/compiler/src/region/region.ts#L174) |
+| [x] | 6 | 1 | **`handlerShape`, una sola fuente de verdad.** La clasificación de decisión 96–98 —referencia / llamada / lambda / imposible— sale de `emit/events.ts` a un módulo que `language-core` pueda importar **sin depender del emit**. `eventHandler` y `busHandler` pasan a consumirla; su salida no cambia un byte | `compiler` | `src/binding/handler.ts` *(nuevo)* · [src/emit/events.ts](../../../packages/compiler/src/emit/events.ts#L86-L121) · [src/binding/index.ts](../../../packages/compiler/src/binding/index.ts) |
+| [x] | 7 | — | **Los valores de atributo entran en el walk.** `TreeVisitor` gana `binding(expr, attr, el)`, que dispara por cada `RazorExpression` en valor de atributo —incluido el nombre expresión de `bus:(…)`—. Es lo que permite que un batch registre esos fragmentos sin duplicar la travesía, y de paso lo que cualquier analizador futuro necesita para mirar un valor | `compiler` | [src/semantic/walk.ts](../../../packages/compiler/src/semantic/walk.ts#L25-L45) |
+| [x] | 26 | 1 | **La regla del cruce, una sola fuente de verdad (§2.8).** La decisión 84 —un valor cuyo texto es el nombre desnudo de un `signal(...)`/`computed(...)` cruza como `nombre()`— vive dentro del emit, donde `language-core` no puede importarla sin arrastrarlo entero. `reactiveName` **se muda** a `src/binding/crossing.ts`, junto a `handlerShape`, y ahí pasa a ser `crossing(source, value, reactives, target?)`, que devuelve `Crossing` — `'value'` (la lectura de hoy) o `'ref'` (la celda compartida de SDD-31 §7, decidida y sin emisor). Se le suma `reactiveNames(statements)`: los nombres reactivos de unas sentencias, que es lo que `readDeclarator` ya sabe extraer al llenar `ExtractedCode.signals` y que hoy solo existe dentro de `extractCode`. Y con ella se muda `ComponentDeclaredProps`, que `semantic/model.ts` reexporta: una regla que leen el emit y el pase semántico no puede vivir dentro de uno de los dos. `crossingExpr` y `level.ts` pasan a importarla de ahí; nadie le pasa `target`, así que contesta `'value'` siempre y **su salida no cambia un byte** — los goldens de cliente y servidor lo fijan (criterio 5.b) | `compiler` | `src/binding/crossing.ts` *(nuevo)* · [src/emit/attrs.ts `reactiveName`, `crossingExpr`](../../../packages/compiler/src/emit/attrs.ts#L96-L129) · [src/emit/oxc-code.ts `readDeclarator`](../../../packages/compiler/src/emit/oxc-code.ts#L399) · [src/emit/level.ts](../../../packages/compiler/src/emit/level.ts#L154) · [src/binding/index.ts](../../../packages/compiler/src/binding/index.ts) |
+
+## Fase 3 — la proyección: props, eventos y slots (6)
+
+| ✓ | # | dep | tarea | package | fichero |
+|---|---|---|---|---|---|
+| [x] | 8 | 1 | **El punto ofrece solo el contrato.** Global nuevo `declare function $props<T>(p: T): void;` —sin `$GlobalAttrs`—, y `emitProps` reparte: los `property` a `$props<$C0>({…})`, los planos a `$attrs<{}>({…})`. El segundo se emite **siempre**, porque las anclas de hueco se mudan a él (decisión (b) del BUG §4.0). El ancla del `.` vacío y la de `emitKey` no cambian de forma, solo de literal | `language-core` | [src/globals.ts](../../../packages/language-core/src/globals.ts#L50-L60) · [src/template/attrs.ts `emitProps`](../../../packages/language-core/src/template/attrs.ts#L131-L171) |
+| [x] | 9 | 8 | **La prop que falta, sobre el nombre del tag.** `type $Missing<T, K>` = las claves requeridas de `T` que `K` no nombra, y `declare function $required<T, K extends PropertyKey>(rest: $Missing<T, K>): void;`. Por host se emite `$required<$C0, 'a' \| 'b'>(⟨{}⟩)`, con el `{}` como **un solo tramo** `DIAGNOSTIC_ONLY_CAPS` sobre el span del nombre del tag — que es lo único que hace que el error mapee de vuelta (§2.1). Sin props escritas, `K` es `never` | `language-core` | [src/globals.ts](../../../packages/language-core/src/globals.ts) · [src/template/attrs.ts](../../../packages/language-core/src/template/attrs.ts#L131) *(`tagSpan` ya existe)* |
+| [x] | 10 | 3 | **El punto colgante se copia.** Donde un `RazorExpression` traiga `dangling`, la copia de la expresión se alarga con ese punto bajo `COMPLETION_ONLY_CAPS`. `$text(data.);` es sintaxis incompleta a propósito: TypeScript se recupera, contesta los miembros, y el «Identifier expected» cae en un tramo sin `verification`. Vale igual en contenido y en valor de atributo, porque las dos pasan por aquí | `language-core` | [src/template/expr.ts `copyExpression`](../../../packages/language-core/src/template/expr.ts#L21) |
+| [x] | 11 | 6, 7 | **El handler que es una llamada.** `EmitJs` gana `ast(at)`; `ownBatch` registra los valores de binding con el walk de la 7, y el servidor le pasa el suyo (tarea 14). Con eso, `emitBehaviour` pregunta `handlerShape` y proyecta `$on('click', ($event) => onClick($event))` para la llamada, y copia tal cual las otras tres formas. `$event` **no se declara en ningún `.d.ts`**: es el parámetro del arrow y su tipo lo pone `$on` — con `as never` en el evento con guion y en `bus:`, ahí `$event` es `never` y sigue sin dar error | `language-core` | [src/emit.ts `EmitJs`, `ownBatch`](../../../packages/language-core/src/emit.ts#L35-L107) · [src/template/attrs.ts `emitBehaviour`](../../../packages/language-core/src/template/attrs.ts#L254-L319) · [src/template/context.ts](../../../packages/language-core/src/template/context.ts) *(el contexto lleva el `ast`)* |
+| [x] | 12 | — | **El `slot` es del padre.** `emitIntoSlot` sale de `emitProps` y pasa a mirarse en **todo** elemento, con el tag del padre: `$intoSlot<$S_padre>('meta')`, y `never` cuando no hay padre componente. El nombre se proyecta 1:1 con `LITERAL_NAME_CAPS` —comillas como andamiaje— y `slot=""` recibe el ancla de dos caracteres de `emitEventName`. `emitContent`/`emitElement` pasan a llevar el tag del host | `language-core` | [src/template/attrs.ts `emitIntoSlot`, `isSlot`](../../../packages/language-core/src/template/attrs.ts#L198-L233) · [src/emit-client.ts `emitContent`, `emitElement`](../../../packages/language-core/src/emit-client.ts#L121-L163) |
+
+| [x] | 27 | 26, 8 | **El editor comprueba lo que el build cruza (§4.2 regla 6).** `TemplateContext` gana `reactives` —`reactiveNames` sobre las sentencias de `@client`, que el emisor ya tiene parseadas en su batch—, y `emitValue` proyecta `(titulo())` donde el valor es el nombre desnudo de uno. El `()` es andamiaje **sin mapping**: lo proyectado con `USER_CAPS` sigue siendo `titulo`, así que ir a definición, renombrar y el hover no se mueven. Se aplica en los dos sitios donde el emit aplica la regla —la `.prop` y el atributo plano interpolado, que comparten `emitValue`— y **no** en el texto, que no pasa por `crossingExpr` | `language-core` | [src/template/attrs.ts `emitValue`, `emitExpression`](../../../packages/language-core/src/template/attrs.ts#L381-L401) · [src/template/context.ts](../../../packages/language-core/src/template/context.ts) · [src/emit-client.ts](../../../packages/language-core/src/emit-client.ts) *(arma el contexto)* |
+
+## Fase 4 — el servidor: quién contesta y quién acompaña (3)
+
+| ✓ | # | dep | tarea | package | fichero |
+|---|---|---|---|---|---|
+| [x] | 13 | 1 | **El `@` en texto deja de tapar a TypeScript.** Resuelta, **por el mecanismo contrario al que la tarea proponía**. Mudar la rama de `directiveContextAt` al plugin adicional se probó y regresa: Volar solo ejecuta un plugin adicional en el **primer mapping** de la petición (`isFirstMapping`, [provideCompletionItems.js:125](../../../node_modules/.pnpm/@volar+language-service@2.4.28/node_modules/@volar/language-service/lib/features/provideCompletionItems.js#L125)) y recorre los códigos embebidos **antes** que la raíz; en cuanto la posición mapea también en la proyección —que es justo lo que hace `@fore`— el plugin se salta y se pierden `@if`/`@foreach` (SDD-28 §5.4) sin ganar el ámbito. Lo que sí funciona es lo simétrico: **los snippets viajan dentro de la respuesta de TypeScript**, que es la que Volar sí entrega ahí (`directiveSnippets` en la rama de directiva de `ts-completion.ts`), y la raíz **calla** en markup cuando TypeScript está montado (`alone`). Una voz por posición, en los dos sentidos: sin TypeScript la raíz vuelve a contestar sola, y eso es lo que mide el carril degradado de `bug23-editor`. Criterios 13, 14 y 15 en verde | `language-server` | [src/services/ts-completion.ts `directiveSnippets`](../../../packages/language-server/src/services/ts-completion.ts) · [src/services/plugin.ts `completions`](../../../packages/language-server/src/services/plugin.ts) |
+| [x] | 14 | 7, 11 | **El batch del servidor registra los valores.** `batchDocumentJs` usa el `binding` del walk además de `interpolation`, expone `ast(span)` y se lo pasa al emisor por `EmitJs`. Sin esto el servidor abriría un segundo batch —que es la regla de oro rota justo en el proceso que más teclea | `language-server` | [src/js-batch.ts](../../../packages/language-server/src/js-batch.ts#L46-L76) · [src/virtual-code.ts](../../../packages/language-server/src/virtual-code.ts) *(donde se arma `EmitJs`)* |
+| [x] | 15 | 6 | **`FUD0291` en Problems.** El valor de evento imposible solo lo ve el build, porque la regla vive en el emit. Con `handlerShape` extraída, un analizador la aplica en el pase semántico y el editor lo enseña donde el usuario está escribiendo | `compiler` · `language-server` | `src/semantic/analyzers/event-handler-shape.ts` *(nuevo)* · [src/semantic/analyze.ts](../../../packages/compiler/src/semantic/analyze.ts) · [services/compiler-diagnostics.ts](../../../packages/language-server/src/services/compiler-diagnostics.ts) |
+
+## Fase 5 — el build: los mismos errores sin editor (3)
+
+| ✓ | # | dep | tarea | package | fichero |
+|---|---|---|---|---|---|
+| [x] | 16 | — | **`Prop.optional`.** Leer el argumento de tipo de `props<T>()`: si es un literal de tipo, cada miembro dice si lleva `?`. Si no lo es (`props<Foo>()`), todas se marcan `optional: true` — no se puede demostrar lo contrario, y un build no inventa errores. La decisión 68 hace que el literal sea la forma canónica, así que el caso cubierto es el que se escribe | `compiler` | [src/emit/oxc-code.ts `Prop`, `codeOf`](../../../packages/compiler/src/emit/oxc-code.ts#L20-L24) |
+| [x] | 17 | 16 | **La registry contesta por las props.** `ComponentRegistry` gana `propsOf(tag)` opcional. En el build lo sirve el `ComponentGraph` —que ya tiene el `ResolvedComponent` del hijo y su `codeOf`—; en el servidor, el índice de workspace, o nada: `undefined` es una respuesta legítima y significa «no lo puedo saber». **Enmienda a §3.1, hecha al implementar:** gana también **`slotsOf(tag)`**, porque el `FUD0199` de la 18 pregunta por las ranuras del padre y §3.1 solo declaraba las props — el mismo canal, la misma semántica de `undefined`. Y el servidor **no sirve ninguna de las dos**: allí `$required` y `$intoSlot` ya comprueban lo mismo contra el tipo real, así que servirlas duplicaría cada error. `graphRegistry(graph)` y `contractDiagnostics(graph)` viven en `emit/registry.ts` (nuevo) | `compiler` · `vite` · `language-server` | [src/semantic/model.ts](../../../packages/compiler/src/semantic/model.ts#L30-L32) · [src/emit/resolve.ts](../../../packages/compiler/src/emit/resolve.ts) · [src/emit/parts.ts](../../../packages/compiler/src/emit/parts.ts#L41) · [services/compiler-diagnostics.ts `registryOf`](../../../packages/language-server/src/services/compiler-diagnostics.ts#L20) |
+| [x] | 18 | 17 | **Tres diagnósticos nuevos.** `FUD0197` prop requerida no pasada (sobre el tag de apertura), `FUD0198` `.prop` que el hijo no declara (sobre el nombre), `FUD0199` `slot=` que el padre no declara (sobre el valor). Analizador propio, no una rama dentro del emit: el pase semántico es donde vive una regla, y así el editor los enseña con los otros. Reservados en el hueco `FUD0197`–`FUD0209` que SDD-12 dejó libre | `compiler` | `src/semantic/analyzers/component-props.ts` *(nuevo)* · `src/semantic/analyzers/slot-name.ts` *(nuevo)* · [src/semantic/analyze.ts](../../../packages/compiler/src/semantic/analyze.ts) |
+
+### Cómo aterrizó la fase 5, y las dos cosas que la spec no había previsto
+
+**El pase semántico no lo corría el build.** `analyze()` solo lo llamaba el servidor, así que un
+analizador nuevo no llega a `pnpm build` por el hecho de existir. Las dos reglas son de **markup
+puro** —no miran una línea de JavaScript—, así que cada una se escribe como una función sobre
+`MarkupInput` (`{ document, components }`) con **dos llamantes**: el `Analyzer` que la registra en
+`ANALYZERS`, y `contractDiagnostics(graph)`, que el `transform` de Vite añade a sus diagnósticos.
+Una regla, una implementación — que es justo lo que pide el invariante de §5. Y sin abrir un
+segundo lote de Oxc: no hay ninguno que abrir.
+
+**El `walk` no sabía quién era el padre.** `TreeVisitor.element` gana un segundo parámetro, `host`,
+que es el elemento ancestro más cercano y **atraviesa los cuerpos de control y las `@section`**:
+`<app-circle>@if (x) { <div slot="p"> }</app-circle>` sigue teniendo a `app-circle` por host. Sin
+él, la regla del `slot` no se puede escribir contra el padre, que es la mitad de §2.6.
+
+**El wrapper de un componente no es un uso de sí mismo.** El `<app-card>` que envuelve al
+`<template shadowrootmode>` es la identidad del fichero (decisión 75), no un host al que nadie
+pasa props. `component-props` lo salta; sin eso, todo componente con una prop requerida se
+reportaba a sí mismo.
+
+Y el ejemplo tenía un fallo que este diagnóstico destapó: `examples/basic/src/routes/blog/index.fud`
+pasaba `title=`, `href=` y `variant=` como **atributos planos**, que no llegan a `props` —solo una
+`.prop` entra en el literal que recibe el hijo (BUG-16 §41.c)—. Migrado a la forma sin comillas de
+la decisión 103, que es lo que la tarea 20 hace con el resto del repo.
+
+## Fase 6 — herramientas: que la forma nueva se escriba sola (5)
+
+| ✓ | # | dep | tarea | package | fichero |
+|---|---|---|---|---|---|
+| [x] | 19 | 4 | **El formateador imprime sin comillas** un valor que es **una sola** expresión Razor: `.prop=@name`, `@click=@onClick($event)`. Todo lo demás conserva sus comillas —una concatenación, un literal, un valor vacío—, y el atributo sin partes se sigue copiando verbatim. Idempotente, y con un test de ida y vuelta sobre las fixtures | `formatter` | [src/print/tag.ts `printAttribute`, `quoteFor`](../../../packages/formatter/src/print/tag.ts#L17-L56) |
+| [x] | 20 | 4 | **Los `.fud` del repo, migrados.** `examples/basic`, las fixtures de `compiler`, las de `language-server` y las de `vscode`, y las plantillas del CLI, pasan a `.prop=@x` y a `@evento=@h($event)`. **Los goldens de nivel 1 no se mueven un byte**: el AST es el mismo. Va antes que la 19 en el tiempo aunque no dependa de ella — migrar después de que el formateador imprima deja los diffs mezclados | `examples` · `compiler` · `language-server` · `vscode` · `cli` | `examples/basic/src/**/*.fud` · `packages/compiler/fixtures/*.fud` · `packages/language-server/test/**` · `packages/vscode/fixtures/**` · `packages/cli/templates/*.fud` |
+| [x] | 21 | 4 | **El resaltado.** La gramática TextMate colorea hoy el valor de atributo como cadena entre comillas; con la 4 hay valores que no las llevan. Regla nueva para `=@` seguido de cadena implícita, y la llamada dentro de ella como expresión | `vscode` | [syntaxes/fudic.tmLanguage.json](../../../packages/vscode/syntaxes/fudic.tmLanguage.json) · `test/` *(el runner de tmLanguage ya existe)* |
+| [x] | 25 | 17, 20 | **El tag se expande con sus props requeridas.** `tagItems` deja de escribir `<app-button>$0</app-button>` y escribe un tabstop por prop **requerida**, en el orden en que el hijo las declara: `<app-button .label="$1">$0</app-button>`. Las opcionales no entran —doce tabstops es peor que ninguno— y se alcanzan con el punto. Sin `propsOf` (componente fuera del índice, o `props<Foo>()` con tipo con nombre), el cuerpo es el de hoy: degradar es no ofrecer de más | `language-server` | [src/services/tags.ts `componentTags`](../../../packages/language-server/src/services/tags.ts) · [src/services/plugin.ts `tagItems`](../../../packages/language-server/src/services/plugin.ts#L522) · [src/workspace-index.ts](../../../packages/language-server/src/workspace-index.ts) |
+| [x] | 22 | 20 | **Los snippets, a la forma nueva.** Cerrada, y el catálogo no se toca: **ningún cuerpo de `SNIPPETS` inserta un binding**. Los cuatro esqueletos, los `@code` por rol, las directivas y las zonas escriben markup y TypeScript, nunca un `.prop=` ni un `@evento=`, así que no había forma vieja que migrar (y no existe el «snippet de evento» que la tarea suponía). Lo que sí inserta bindings es el **ítem de completado**, y los cuatro sitios donde se construye escriben ya la forma nueva y vuelven a abrir la lista: la prop de un hueco y la alcanzada con el punto (`gapItem`, la rama de `propertyContextAt`), el evento y la clase condicional (`classItems`, `classBindingItems`), todos `nombre=@` | `language-server` | [src/services/snippets.ts](../../../packages/language-server/src/services/snippets.ts) *(sin cambios: nada que migrar)* · [src/services/ts-completion.ts](../../../packages/language-server/src/services/ts-completion.ts) |
+
+### Cómo aterrizó la fase 6
+
+**La migración se hizo con el formateador, no a mano.** `fudic fmt` sobre `examples/basic` es la
+tarea 19 aplicada a la 20, y de paso es la prueba de que la 19 hace lo que dice. Trae un cambio
+que no es de este BUG y se anota para que no sorprenda: el formateador normaliza las comillas de
+los strings de TypeScript dentro de `@code` (`'@fudic/core'` → `"@fudic/core"`). Las fixtures del
+compilador se migraron a mano, porque ahí lo que importa es que **los goldens no se muevan** —y no
+se han movido: el AST es el mismo.
+
+**Lo que NO se migró, y por qué.** Los `class:x="@(…)"` de las fixtures del `language-server`. La
+tarea nombra `.prop=@x` y `@evento=@h($event)`, y esas fixtures son el termómetro de los criterios
+15 y 21: las mide media docena de tests por su texto exacto y por offsets dentro de él. La forma
+con comillas sigue siendo legal, así que migrarlas no gana nada y arriesga la evidencia del BUG.
+Sí se migró el `.tone=` de `blog/[slug].fud`, que es la que la tarea pide.
+
+**El índice del workspace aprende a leer props.** La expansión del tag (25) necesita saber qué
+props requiere un componente que puede no estar abierto, así que `IndexEntry` gana
+`requiredProps` y `upsert` las lee con `extractCode` — sólo para los componentes, y una vez por
+fichero y por cambio, no por pulsación. Un tipo con nombre que el fichero **declara** se lee como
+el literal que aliasa; uno que viene de otro fichero no prueba nada y la lista sale vacía, con lo
+que la expansión degrada a la de siempre (criterio 21.b).
+
+**Y lo que faltaba de la 25: la lista no se cerraba al teclear un literal.** El servidor ya
+callaba en las cinco formas (`0`, `"Hello"`, `true`, un identificador, un `@evento=` empezado) y
+el editor no se enteraba nunca, porque la lista del valor vacío se entregaba **completa**. VS Code
+cachea una respuesta completa y a partir de ahí filtra en cliente contra el `filterText` de cada
+ítem, sin volver a preguntar: que el desplegable sobreviviera a una pulsación dependía de si el
+carácter tecleado caía dentro de alguno de los nombres del ámbito —una `t` dentro de `items`, una
+`h` dentro de `handlerClick`—, y por eso parecía un bug distinto en cada prop. Dos piezas lo
+cierran, y hacen falta las dos:
+
+- **`isIncomplete` en la lista de un valor de binding.** `list()` acepta ahora el flag y el
+  decorador de TypeScript lo fuerza en toda posición propia (`Narrowed.at`). La respuesta ahí se
+  calcula del texto ANTERIOR al cursor, así que caduca en cada pulsación por construcción: la
+  lista tiene que decirlo o el silencio de `valueBegun` no llega a la pantalla.
+- **Sólo cuando hay algo que ofrecer.** `isIncomplete` significa «vuélveme a preguntar», así que
+  una lista **vacía** marcada así es una sesión que VS Code mantiene viva: pinta «No hay
+  sugerencias» en lugar de cerrarse, y una ventana abierta —aunque esté vacía— se sigue comiendo
+  el primer Tab. Vacía ⇒ completa, que es lo único que la hace desaparecer. En una posición que no
+  es nuestra el flag es de TypeScript y no se toca: una lista que crece con la siguiente pulsación
+  es exactamente lo que es un auto-import.
+- **Y la cierra quien la abrió.** Con las dos piezas anteriores el servidor callaba y la ventana
+  seguía ahí. La lista del valor vacío la abre `watchEmptyValues` con
+  `editor.action.triggerSuggest`, y para VS Code eso es una invocación **explícita**: una sesión
+  explícita no se cierra sola por mucho que todos los proveedores contesten vacío. El servidor no
+  tiene forma de cerrarla, así que el cliente ejecuta `hideSuggestWidget` en cuanto el caret está
+  sobre un valor escrito **sin `@`** —`0`, `12`, `true`, `"Hello`—. Un valor que contiene un `@`
+  se deja en paz: ahí la lista es correcta y es de TypeScript.
+
+**Tab no se toca.** Se probó a rebindarlo (`jumpToNextSnippetPlaceholder` bajo
+`inSnippetMode && suggestWidgetVisible`) y se retiró: cambia una tecla que todo el mundo tiene en
+la memoria muscular a cambio de un comportamiento que el par «lista completa + cerrarla» ya
+produce. Con la ventana cerrada, Tab vuelve a significar lo que significaba.
+
+## §2.9 — el ámbito era del fichero y la pregunta era de la posición
+
+Lo que un **bloque** declara no se ofrecía nunca: la `x` de un `@foreach`, la `i` de un `@for`, y
+las ligaduras de cualquier bucle anidado dentro de otro. `templateScope()` no recibe offset —es el
+mapa de los nombres de primer nivel de `@code` y `@client` más `data`, calculado una vez por
+fichero— y sus dos consumidores lo usaban como **lista blanca** sobre la respuesta de TypeScript
+(`scope.has(item.label)`). La proyección emite control de flujo real precisamente para que
+TypeScript conozca esos nombres (`control.ts`), y el filtro tiraba la respuesta que había pedido.
+
+**El primer intento se hizo mal y hay que contarlo, porque la lección es la regla de este
+módulo.** Se filtró la respuesta de TypeScript por la banda con la que ordena (`sortText` `10`/`11`
+= local en ese offset, `15` globales, `16` auto-import). Pasaba los tests del harness y fallaba en
+el editor de Pedro: allí TypeScript no contestaba en ese offset —un programa que no ha cargado, un
+`tsconfig` que no alcanza el fichero— y la lista caía al respaldo de nombres de fichero, que es
+exactamente la lista vieja. **Lo que ve el desarrollador no puede depender de que el programa de
+TypeScript esté vivo**, y el fichero que se está tecleando es justo aquel donde eso falla.
+
+Así que los nombres salen del **parse**. Las cabeceras de `@foreach` y `@for` se registran en el
+mismo `JsBatch` —los kinds `for-of-header` y `for-header` existían para esto, así que Oxc se sigue
+invocando una vez por fichero— y `templateScope(cached, offset)` añade las ligaduras de los bucles
+que envuelven el offset, leídas del `ForOfStatement`/`ForStatement` con el mismo
+`collectPatternNames` que ya leía un destructuring. `@while`, `@if` y `@switch` no declaran nada y
+no se registran. La banda de TypeScript se queda como filtro de la respuesta ajena
+(`inTemplateScope`), pero ya no es de dónde salen los nombres.
+
+`headerEnd` es lo que impide leer una ligadura antes de que exista: dentro de `(const x of xs)` la
+`x` se está declarando, no usando. Pasado eso, el `key (…)` y todo el cuerpo la ven (decisión 91).
+
+El anidamiento no necesita regla propia, y ese es el punto: contribuye todo bucle cuyo constructo
+contiene el offset, el interior el último, que es lo que significa el sombreado. La profundidad no
+es una dimensión que la implementación conozca. Los tests la miden igual —dos bucles, la ligadura
+de cada uno, y que ninguna se escape fuera de su bloque— y **sin montar ningún programa de
+TypeScript**, que es lo que hace que la prueba valga algo esta vez.
+
+**Fuera de alcance, anotado:** dentro de un `key (…)` la lista sigue siendo el ámbito crudo de
+TypeScript (986 nombres). Es otra posición —ni valor ni `@` en markup— y ninguna de las dos reglas
+de arriba la reclama; no la toca este BUG.
+
+## Fase 7 — cierre (2)
+
+| ✓ | # | dep | tarea | package | fichero |
+|---|---|---|---|---|---|
+| [x] | 23 | todas | **La documentación, que aquí es contrato.** Decisiones **100–104** en la gramática, con la 99 retirada, la 29 precisada y la 8 con su excepción; SDD-23 §4.4 con los dos literales, el `$required`, el punto colgante y el handler diferido; SDD-24 §4.2 con el reparto nuevo de completados y **§6.3 restaurado** —el hueco ofrece las dos familias, decisión (b.3), que derogó la (b)—; SDD-12 con `FUD0197`–`FUD0199` **y `FUD0437`** (un `@code` en un layout); props-spec §2 con quién comprueba lo requerido y dónde. Y la **decisión 84** —la del cruce, que vive en `props-spec`, no en la gramática: no cambia de letra pero gana un lector (la lectura del reactivo la proyecta también el editor, con la misma función) y ya lleva anotado que SDD-31 §7 la reescribirá entera. Ahí se anota también que el texto queda fuera y por qué (BUG §2.8) | — | [docs/gramar/gramatica-v1-decisiones.md](../../gramar/gramatica-v1-decisiones.md) · [SDD-23](../SDD-23-emisor-ts-virtual.md) · [SDD-24](../SDD-24-language-server.md) · [SDD-12](../SDD-12-semantica.md) · [props-spec.md](../props-spec.md) |
+| [x] | 24 | 23 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` verdes en el workspace entero, con el `.vsix` y los E2E de Playwright sobre el `dist` prerenderizado. `language-core` y `language-server` al **100 %** en las cuatro métricas; `compiler` no baja. Los criterios de §6 verdes —los 22 numerados más 5.b, 12.b–12.e y 21.b—, y los ocho tests de la tarea 1 —los que se vieron fallar— en verde. BUG-23 a `Hecho` en [INDEX.md](./INDEX.md), tabla y grafo | — | [INDEX.md](./INDEX.md) · [BUG-23](./BUG-23-arroba-valvula-de-escape.md) |
+
+---
+
+## Ficheros existentes que se tocan, y por qué
+
+| fichero | qué cambia | por qué |
+|---|---|---|
+| [compiler/src/at/at.ts](../../../packages/compiler/src/at/at.ts) | la expresión implícita pasa a cadena; `dangling`; `ImplicitOptions` se borra | es **la** línea del BUG: sin cadena, `@( … )` sigue siendo la válvula de escape |
+| [compiler/src/lexer/lexer.ts](../../../packages/compiler/src/lexer/lexer.ts) | tras `=`, un `@` abre un átomo en vez de texto | `FUD0056` se comía `.prop=@name` antes de que nadie lo mirara |
+| [compiler/src/html/parser.ts](../../../packages/compiler/src/html/parser.ts) | `#parseUnquotedValue` acepta el átomo; `#attributeAtom` pierde `call` | la decisión 99 desaparece dentro de la 100 |
+| [compiler/src/emit/events.ts](../../../packages/compiler/src/emit/events.ts) | delega la clasificación en `handlerShape` | editor y build tienen que decidir la forma con la misma función, o vuelven a discrepar |
+| [compiler/src/emit/attrs.ts](../../../packages/compiler/src/emit/attrs.ts) | `reactiveName` se muda a `binding/crossing.ts` como `crossing`; `crossingExpr` la importa | mismo motivo que la fila de arriba, con la decisión 84: el editor comprobaba el objeto y el build cruzaba el valor (§2.8) |
+| [language-core/src/template/context.ts](../../../packages/language-core/src/template/context.ts) | el contexto lleva `reactives` | la proyección no puede aplicar la regla del cruce sin saber qué nombres son reactivos |
+| [compiler/src/semantic/walk.ts](../../../packages/compiler/src/semantic/walk.ts) | visitor `binding` | los valores de atributo no eran alcanzables sin recorrer el árbol otra vez |
+| [compiler/src/semantic/model.ts](../../../packages/compiler/src/semantic/model.ts) | `propsOf(tag)` | `has(tag)` no basta para saber si falta una prop requerida |
+| [compiler/src/emit/oxc-code.ts](../../../packages/compiler/src/emit/oxc-code.ts) | `Prop.optional` | el `?` está en `T` y hasta hoy no lo leía nadie |
+| [language-core/src/globals.ts](../../../packages/language-core/src/globals.ts) | `$props`, `$required`, `$Missing` | el punto ofrecía el vocabulario de HTML porque el literal era uno solo |
+| [language-core/src/template/attrs.ts](../../../packages/language-core/src/template/attrs.ts) | dos literales, el ancla de completitud, el handler diferido, el slot del padre | cuatro de los siete síntomas viven en este fichero |
+| [language-core/src/template/expr.ts](../../../packages/language-core/src/template/expr.ts) | copia el punto colgante | es el único sitio por donde pasan todas las expresiones |
+| [language-core/src/emit-client.ts](../../../packages/language-core/src/emit-client.ts) | el recorrido lleva el tag del host | una ranura la declara el padre, y el emisor no sabía quién era |
+| [language-core/src/emit.ts](../../../packages/language-core/src/emit.ts) | `EmitJs.ast` | preguntar la forma de un handler exige AST, y el batch ya existe |
+| [language-server/src/js-batch.ts](../../../packages/language-server/src/js-batch.ts) | registra los valores de binding | dos batches por pulsación es la regla de oro rota donde más duele |
+| [language-server/src/services/plugin.ts](../../../packages/language-server/src/services/plugin.ts) | ~~la directiva se muda al plugin aditivo~~ → la directiva se queda, y **calla** cuando TypeScript está montado | una lista no vacía en un plugin exclusivo silencia a TypeScript — y un plugin aditivo solo corre en el primer mapping, así que la mudanza perdía los snippets (tarea 13) |
+| [formatter/src/print/tag.ts](../../../packages/formatter/src/print/tag.ts) | valor de una sola expresión, sin comillas | el formateador reponía las comillas que el autor acaba de quitar |
+| [vscode/syntaxes/fudic.tmLanguage.json](../../../packages/vscode/syntaxes/fudic.tmLanguage.json) | valor sin comillas | sin regla, la forma nueva se ve como texto plano |
+
+---
+
+## Lo que aterrizó en esta rama y NO es de BUG-23
+
+Cinco cosas de la misma tanda —la del **2026-08-27**, la que hace que escribir un `.fud` se
+sienta terminado— que no están en las 27 tareas y que la **tarea 23** tiene que documentar. Se
+anotan aquí para que no se pierdan entre el diff y el cierre.
+
+| qué | dónde | qué documento lo espera |
+|---|---|---|
+| **Decisión 105** — el valor de una `.prop` admite un literal escalar desnudo: `.id=0`, `.on=true`, `null`, `undefined`. Un identificador **no** (`.name=Hello` sigue siendo `FUD0056`), y una expresión tampoco (`1+1`, que es para lo que está la 104) | `compiler`: `SCALAR_LITERAL` e `isPropertyName` en el parser, `kind: 'literal'` en `RazorExpression` · `formatter`: lo imprime sin `@` | gramática (ya escrita), **SDD-26** |
+| **La adyacencia, aplicada al valor** — un valor sin comillas no cruza un blanco: `.name= @click=@h` deja `.name` sin valor y `@click` como el atributo siguiente. Antes se tragaba el resto del tag | `compiler`: la guarda de `#parseUnquotedValue` | gramática: es la **101** leída en el valor |
+| **`FUD0437`** — un `@code` en un layout. Un layout no declara nada y no carga nada, así que el bloque entero es el error, no su contenido. Con él, el snippet `@code` de layout **desaparece** y un `@` en un layout deja de ofrecer ámbito, `@()` y eventos | `compiler`: `buildLayout` · `language-server`: `interpolates` | **SDD-12** (catálogo), SDD-21 §4.3 |
+| **El `<head>` se proyecta** — `<title>@data.title</title>` y `<link href="@data.hero">` leen del mismo ámbito que el cuerpo, y hasta ahora no mapeaban a ninguna parte | `language-core`: `headContent` en `imports.ts` | **SDD-23 §4.2** |
+| **La lista se encadena** — aceptar una prop, un evento o una clase escribe `nombre=@` y vuelve a pedir la lista; `class` y `slot` reabren la suya. Y el valor de una `class`, el de un `slot` y el de cualquier atributo sin `@` abierto tienen contexto propio | `language-server`: `position.ts` (seis contextos nuevos), `ts-completion.ts`, `owned.ts` | **SDD-24 §4.2** |
+
+Y una regresión que la cobertura sacó al medirla, arreglada aquí: **el `@@` escapado no es una
+interpolación abierta**. El parser resuelve `@@` al carácter que denota, así que por su texto es
+idéntico a un `@` recién tecleado; lo que los separa es el `span` —el escape vale dos caracteres
+de fuente y el abierto uno—. Leyendo solo el texto, `role="hola@@"` recibía un hueco de
+completado donde el autor no había preguntado nada.

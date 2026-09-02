@@ -5,7 +5,7 @@
   const { count = 0 } = props<{ count?: number }>();
 
   @client {
-    import { signal } from '@fudic/core';
+    import { signal } from "@fudic/core";
 
     const eco = signal(0);
 
@@ -42,7 +42,7 @@
 <app-grandchild>
   <template shadowrootmode="open">
     <p>nieto (prof 2): <strong class="value">@count</strong>
-      <button class="eco" @click="@ping">eco @(eco())</button></p>
-    <app-greatgrandchild .count="@count"></app-greatgrandchild>
+      <button class="eco" @click=@ping>eco @(eco())</button></p>
+    <app-greatgrandchild .count=@count></app-greatgrandchild>
   </template>
 </app-grandchild>

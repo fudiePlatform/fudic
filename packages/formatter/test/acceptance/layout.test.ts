@@ -95,7 +95,9 @@ describe('criterion 9 — inline adjacency', () => {
     for (const printWidth of [100, 60, 40, 20]) {
       const out = await format(badge.source, { printWidth });
       expect(out.ok && out.text).toContain(
-        `<app-badge tone="@(data.found ? 'info' : 'neutral')">@data.tag</app-badge>`,
+        // Bare, because the value is one expression (decision 103) — and still one token: a
+        // binding is never broken from within, however narrow the margin.
+        `<app-badge tone=@(data.found ? 'info' : 'neutral')>@data.tag</app-badge>`,
       );
     }
   });
@@ -116,8 +118,8 @@ describe('criterion 10 — long attribute lists', () => {
       [
         '    <span',
         '      class="badge"',
-        `      class:success="@(tone === 'success')"`,
-        `      class:warning="@(tone === 'warning')">`,
+        `      class:success=@(tone === 'success')`,
+        `      class:warning=@(tone === 'warning')>`,
       ].join('\n'),
     );
   });

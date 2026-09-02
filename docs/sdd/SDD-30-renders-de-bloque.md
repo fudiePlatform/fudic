@@ -405,7 +405,7 @@ autor, porque el cuerpo del bloque es su código.
 
 | Código | Regla |
 |---|---|
-| `FUD0540` | Bucle (`@for`/`@foreach`/`@while`) con markup y sin `key` (§3.5). |
+| `FUD0540` | Bucle (`@for`/`@foreach`/`@while`) sin `key` (§3.5). Siempre, pinte o no. |
 | `FUD0541` | `key (…)` vacía o cuya expresión no parsea. |
 | `FUD0542` | `key (…)` en un constructo que no itera (`@if`, `@switch`). |
 | `FUD0543` | Cabecera de bucle cuyo patrón no declara ningún binding y cuya key no puede referirse a nada del cuerpo. |

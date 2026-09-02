@@ -35,7 +35,7 @@ import {
   type ProtocolConnection,
 } from 'vscode-languageserver-protocol/node';
 import { URI } from 'vscode-uri';
-import { createFudicServer, type FudicServer } from '../../src/server.js';
+import { createFudicServer, type FudicServer, type FudicServerDeps } from '../../src/server.js';
 import { toPosix } from '../../src/paths.js';
 import { FIXTURES } from '../_support.js';
 
@@ -118,7 +118,7 @@ export interface Harness {
 
 /** Start a server and a client wired to each other. */
 export async function startHarness(
-  options: { tsdk?: string; root?: string } = {},
+  options: { tsdk?: string; root?: string; overrides?: Partial<FudicServerDeps> } = {},
 ): Promise<Harness> {
   // The shared fixtures by default; a private copy for the tests that write files into it.
   const root = options.root ?? FIXTURES;
@@ -163,7 +163,7 @@ export async function startHarness(
     new ServerReader(toServer),
     new ServerWriter(toClient),
   );
-  const server = createFudicServer(serverConnection);
+  const server = createFudicServer(serverConnection, options.overrides ?? {});
   serverConnection.listen();
 
   const client = createProtocolConnection(new ClientReader(toClient), new ClientWriter(fromClient));

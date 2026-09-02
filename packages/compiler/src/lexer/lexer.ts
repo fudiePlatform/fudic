@@ -575,6 +575,19 @@ export class Lexer {
 
   #scanUnquotedValue(): ParseResult<Token> {
     const start = this.#offset;
+
+    // Decision 103: a value that BEGINS with a significant `@` is one Razor atom, not
+    // text — `.prop=@name`, `@click=@onClick($event)`. The chain owns its own boundary,
+    // so `<x .p=@a.b>` still ends where the `>` is. `@@` is the literal `@` (decision 1)
+    // and stays text, which keeps FUD0056 for it and for everything else.
+    if (this.#at(start) === '@' && this.#at(start + 1) !== '@') {
+      const result = this.#scanAt();
+      this.#transition = (): void => {
+        this.#afterAttrEq = false;
+      };
+      return result;
+    }
+
     let i = start;
     while (i < this.#length) {
       const c = this.#at(i);

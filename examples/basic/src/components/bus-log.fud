@@ -1,6 +1,6 @@
 @code {
   @client {
-    import { signal } from '@fudic/core';
+    import { signal } from "@fudic/core";
 
     const last = signal("");
 
@@ -27,6 +27,6 @@
 
 <bus-log>
   <template shadowrootmode="open">
-    <p class="log" bus:picked="@onPicked($event)">Último elegido: <strong>@last()</strong></p>
+    <p class="log" bus:picked=@onPicked($event)>Último elegido: <strong>@last()</strong></p>
   </template>
 </bus-log>

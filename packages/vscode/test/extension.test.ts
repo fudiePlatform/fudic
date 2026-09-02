@@ -12,7 +12,15 @@ import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { activate, createClient, deactivate } from '../src/extension.js';
 import { LanguageClient } from './_languageclient-stub.js';
-import { editorFor, focusEditor, reset, state, typeInto } from './_vscode-stub.js';
+import {
+  caretEvent,
+  editorFor,
+  focusEditor,
+  moveCaret,
+  reset,
+  state,
+  typeInto,
+} from './_vscode-stub.js';
 import type { ExtensionContext, OutputChannel } from 'vscode';
 import type { ClientLaunch } from '../src/ports.js';
 
@@ -55,6 +63,39 @@ describe('activate', () => {
 
     // `$0` first, at the offset just past the `>`: the caret ends up between the two tags.
     expect(state.snippets).toEqual([['$0</div>', 14]]);
+  });
+
+  it('opens the value list through the real adapter: caret move, command', async () => {
+    // The tabstop a Tab lands on is not a keystroke, so nothing else in the editor opens a
+    // list there and the second prop of an expanded tag stayed as blank as before the
+    // snippet existed (BUG-23 task 25).
+    await activate(context());
+
+    moveCaret(caretEvent('fudic', '<app-input .id=0 .name=>', 23));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(state.executed).toEqual(['editor.action.triggerSuggest']);
+  });
+
+  it('closes it through the real adapter once a literal is typed', async () => {
+    // `.id=0`: the server answers nothing there, but the list was opened by command and VS
+    // Code keeps an explicitly invoked one up showing «No suggestions». Closing it is the
+    // client's job, or reaching `.name` costs an Esc or a second Tab.
+    await activate(context());
+
+    moveCaret(caretEvent('fudic', '<app-input .id=0 .name=>', 16));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(state.executed).toEqual(['hideSuggestWidget']);
+  });
+
+  it('does neither where the caret is on no value at all', async () => {
+    await activate(context());
+
+    moveCaret(caretEvent('fudic', '<app-input .id=0 .name=>', 10));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(state.executed).toEqual([]);
   });
 
   it('toggles a comment through the real adapter: selection, request, edit', async () => {

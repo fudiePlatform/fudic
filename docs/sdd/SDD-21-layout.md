@@ -506,7 +506,8 @@ hoy el nombre de la variable padre (`'$body'`, `'$shadow'`), así que ya está p
 | `FUD0434` | warning | Layout al que ninguna ruta apunta (huérfano). |
 | `FUD0435` | error | `<link rel="layout">` que apunta a un fichero que no es un layout (decisión 82). |
 | `FUD0436` | error | `href` de `<link rel="layout">` ausente o interpolado: debe ser estático (decisión 81). |
-| `FUD0437`–`FUD0449` | — | Reservados. |
+| `FUD0437` | error | `@code` en un layout. Un layout no declara nada y no carga nada (decisión 89), así que **el bloque entero es el error**, no su contenido: no hay ámbito que ofrecer dentro. Con él, el snippet `@code` de layout desaparece y un `@` en un layout deja de ofrecer ámbito, `@()` y eventos (BUG-23). |
+| `FUD0438`–`FUD0449` | — | Reservados. |
 
 **Quién emite qué.** Los códigos decidibles con un solo fichero (`FUD0420`, `0421`, `0424`–`0428`,
 `0431`, `0436`) los emite la pasada de estructura (SDD-10); los que exigen ver **dos** ficheros

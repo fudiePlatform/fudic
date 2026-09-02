@@ -1,7 +1,10 @@
 @code {
   type Tone = 'neutral' | 'success' | 'info';
 
-  const { tone = 'neutral' } = props<{ tone?: Tone }>();
+  const { tone = 'neutral' } = props<{
+    /** El color con el que se pinta la etiqueta. */
+    tone?: Tone;
+  }>();
 }
 
 <head>

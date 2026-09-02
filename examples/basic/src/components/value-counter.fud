@@ -2,9 +2,9 @@
 
 @code {
   @client {
-    import { signal } from '@fudic/core';
+    import { signal } from "@fudic/core";
 
-    // `.value="@(count())"` hands over the NUMBER: the expression is a call, so
+    // `.value=@(count())` hands over the NUMBER: the expression is a call, so
     // what crosses the shadow boundary is 0, 1, 2 — and the signal stays here.
     const count = signal(0);
 
@@ -53,10 +53,10 @@
   <template shadowrootmode="open">
     <section class="panel">
       <div class="row">
-        <button class="inc" @click="@inc">+1</button>
+        <button class="inc" @click=@inc>+1</button>
         <p class="own">El padre tiene @(count()).</p>
       </div>
-      <value-display .value="@(count())"></value-display>
+      <value-display .value=@(count())></value-display>
     </section>
   </template>
 </value-counter>

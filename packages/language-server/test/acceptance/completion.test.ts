@@ -94,14 +94,22 @@ afterAll(async () => {
 });
 
 describe('§6.3 — attributes and their values', () => {
-  it('offers the props of a component inside its tag', async () => {
+  it('offers BOTH families inside the tag: HTML’s vocabulary and the contract', async () => {
     const items = await completeAt(
       SLUG,
       `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="component" href="../components/app-badge.fud">\n<article>\n  <app-badge |></app-badge>\n</article>\n`,
     );
 
-    // TypeScript labels an optional property with its `?`.
-    expect(labels(items)).toContain('tone?');
+    // A gap is the developer asking what this component takes, and being answered `id`, `class`
+    // and `role` is being answered the half they already knew. `$gap` carries both — the props
+    // with their dot in the key — so the one reply Volar allows holds the whole answer. It
+    // repeals decision (b) of BUG-23 §4.0 and restores SDD-24 §6.3.
+    expect(labels(items)).toContain('.tone');
+    expect(labels(items)).toContain('role');
+    // A name has no question mark. TypeScript marks an optional member with one and it used to
+    // reach the editor untouched, which is what `memberName` peels off.
+    expect(labels(items)).not.toContain('role?');
+    expect(labels(items)).not.toContain('tone?');
   });
 
   it('offers the members of the union inside the value', async () => {
@@ -196,6 +204,27 @@ describe('BUG-15 §6.1 — the classes this file declares', () => {
     });
   });
 
+  it('offers the same names inside a plain `class`, which is where HTML spells one', async () => {
+    // Two syntaxes, one vocabulary. `class:red` is a BINDING whose value decides whether the
+    // class applies; `class="red"` is HTML's own attribute, a space-separated list of names.
+    // Answering one and not the other left `class=""` saying «no suggestions».
+    const source = fixtureText(BADGE).replace(
+      `class:success="@(tone === 'success')"`,
+      'class="badge suc"',
+    );
+    const at = source.indexOf('badge suc') + 'badge suc'.length;
+    const items = await completeIn(BADGE, source, at);
+
+    expect(labels(items)).toEqual(expect.arrayContaining(['badge', 'success', 'info']));
+    // Only the word under the caret is replaced: `class="red ye|"` has to keep its `red`.
+    const success = items.find((item) => item.label === 'success');
+    const range = success?.textEdit && 'range' in success.textEdit ? success.textEdit.range : undefined;
+    expect(range).toEqual({
+      start: harness.positionAt(source, at - 'suc'.length),
+      end: harness.positionAt(source, at),
+    });
+  });
+
   it('falls back to Emmet in a file with no <style> at all (§6.10)', async () => {
     const source = `<app-badge>\n  <template shadowrootmode="open">\n    <span class:></span>\n  </template>\n</app-badge>\n`;
     const items = await completeIn(BADGE, source, source.indexOf('class:') + 'class:'.length);
@@ -281,15 +310,17 @@ describe('BUG-15 §6.13–§6.17 — inside an open tag, asked the way an editor
     expect(labels(items)).toContain('role');
   });
 
-  it('§6.14 — the gap of a component tag offers its props', async () => {
+  it('§6.14 — the gap of a component tag answers at all', async () => {
     const items = await completeAt(
       SLUG,
       `${ROUTE}<article>\n  <app-badge |></app-badge>\n</article>\n`,
     );
 
     // TypeScript's, over the projection, through the completion anchor BUG-11 left in the tag
-    // gap. It is criterion §6.3 of SDD-24 — the one the space was quietly turning off.
-    expect(labels(items)).toContain('tone?');
+    // gap — the one the space was quietly turning off. WHAT it offers there is both families
+    // at once, out of `$gap`: HTML's vocabulary and the component's own contract.
+    expect(labels(items)).toContain('role');
+    expect(labels(items)).toContain('.tone');
   });
 
   it('§6.15 — the space is not a trigger character, and the others still are', async () => {

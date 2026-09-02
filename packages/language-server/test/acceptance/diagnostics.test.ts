@@ -70,7 +70,7 @@ describe('§6.2 — the nine mutants of SDD-23, as LSP diagnostics on the .fud',
   });
 
   it('A — a value outside the prop union', async () => {
-    const source = mutate(slug, `tone="@(data.found ? 'info' : 'neutral')"`, `tone="@('bogus')"`);
+    const source = mutate(slug, `tone=@(data.found ? 'info' : 'neutral')`, `tone=@('bogus')`);
     const [diagnostic, ...rest] = await diagnosticsOf(slugUri, source);
 
     expect(rest).toEqual([]);

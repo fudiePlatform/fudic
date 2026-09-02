@@ -9,6 +9,8 @@ export type {
   SemanticModel,
   Analyzer,
   SemanticResult,
+  MarkupInput,
+  Report,
 } from './model.js';
 export { ANALYZERS, analyze } from './analyze.js';
 export { walk, documentRoots, documentCode, type TreeVisitor } from './walk.js';

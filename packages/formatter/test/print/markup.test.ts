@@ -55,19 +55,49 @@ describe('attributes', () => {
   });
 
   it('quotes with the preferred quote, and with the other when the value holds it', async () => {
-    expect(await print(`<a title="@(x + 'y')">t</a>`)).toBe(`<a title="@(x + 'y')">t</a>\n`);
+    expect(await print(`<a title="x@(y)">t</a>`)).toBe(`<a title="x@(y)">t</a>\n`);
     // A value that already holds the preferred quote takes the other one: an attribute in
     // this subset cannot escape its own delimiter, so swapping is the only way to spell it.
-    expect(await print(`<a title='@(x + "y")'>t</a>`)).toBe(`<a title='@(x + "y")'>t</a>\n`);
+    expect(await print(`<a title='x@("y")'>t</a>`)).toBe(`<a title='x@("y")'>t</a>\n`);
+  });
+
+  it('drops the quotes of a value that is one expression (decision 103)', async () => {
+    // The quotes are spelling, not meaning: the AST does not record whether the author wrote
+    // them, so the form is normalised rather than guessed. What the quotes were holding — a
+    // quote of the other kind included — rides along untouched, because a value with no
+    // delimiter has none to collide with.
+    expect(await print(`<a title="@(x + 'y')">t</a>`)).toBe(`<a title=@(x + 'y')>t</a>\n`);
+    expect(await print(`<a title='@(x + "y")'>t</a>`)).toBe(`<a title=@(x + "y")>t</a>\n`);
+    expect(await print(`<a title=@(x + 'y')>t</a>`)).toBe(`<a title=@(x + 'y')>t</a>\n`);
   });
 
   it('prints an interpolated value, explicit or implicit', async () => {
-    expect(await print('<a href="@url">t</a>')).toBe('<a href="@url">t</a>\n');
+    // One expression goes bare; a concatenation keeps its quotes — it is not an expression
+    // but a value with one inside, and without them it would end at the first space.
+    expect(await print('<a href="@url">t</a>')).toBe('<a href=@url>t</a>\n');
     expect(await print('<a href="/p/@id/x">t</a>')).toBe('<a href="/p/@id/x">t</a>\n');
+    expect(await print('<a href="/p/x">t</a>')).toBe('<a href="/p/x">t</a>\n');
+  });
+
+  it('prints a bare scalar as itself, with no `@` in front of it (decision 105)', async () => {
+    // The third form a value can take, and the one that carries no `@`: a number, a boolean,
+    // `null` or `undefined` written bare in the value of a `.prop`. Signing it as an
+    // expression would make the formatter rewrite what it read.
+    expect(await print('<a-x .id=0>t</a-x>')).toBe('<a-x .id=0>t</a-x>\n');
+    expect(await print('<a-x .ratio=-1.5>t</a-x>')).toBe('<a-x .ratio=-1.5>t</a-x>\n');
+    expect(await print('<a-x .visible=true>t</a-x>')).toBe('<a-x .visible=true>t</a-x>\n');
+    expect(await print('<a-x .nota=null>t</a-x>')).toBe('<a-x .nota=null>t</a-x>\n');
+  });
+
+  it('and leaves a quoted scalar quoted, because it is a string', async () => {
+    // `.id="0"` is the string `"0"`, which in a `number` prop is a type error and not a number
+    // written another way. The quotes do not change meaning here, so they do not move.
+    expect(await print('<a-x .id="0">t</a-x>')).toBe('<a-x .id="0">t</a-x>\n');
   });
 
   it('prints a bus: binding whose name is an expression', async () => {
-    expect(await print('<a bus:(k)="@h">t</a>')).toBe('<a bus:(k)="@h">t</a>\n');
+    expect(await print('<a bus:(k)="@h">t</a>')).toBe('<a bus:(k)=@h>t</a>\n');
+    expect(await print('<a bus:(k)="x@(h)">t</a>')).toBe('<a bus:(k)="x@(h)">t</a>\n');
   });
 });
 

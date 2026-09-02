@@ -47,10 +47,21 @@ interface Parsed {
  *
  * What DOES stop it is a broken tree. An unclosed element has no correct layout, and
  * inventing one reorganizes code the user is halfway through writing (§4.6).
+ *
+ * The key rules travel with the parse and are not about the tree, so they are dropped here.
+ * A loop with no `key (…)` parses perfectly — header, clause and body all read — and the only
+ * thing wrong with it is a rule the author has not satisfied yet. Since that rule became
+ * unconditional, keeping it here would switch the formatter off for every loop from the moment
+ * it is typed until the key is written, which is exactly the window formatting is asked for.
  */
+const KEY_RULES: ReadonlySet<string> = new Set(['FUD0540', 'FUD0541', 'FUD0542']);
+
 function parseFud(source: string): Parsed {
   const html = parseDocument(source, { atConstructs: constructs });
-  return { document: html.value, diagnostics: html.diagnostics };
+  return {
+    document: html.value,
+    diagnostics: html.diagnostics.filter((d) => !KEY_RULES.has(d.code)),
+  };
 }
 
 /** Print a list of roots with the leaves already resolved. */

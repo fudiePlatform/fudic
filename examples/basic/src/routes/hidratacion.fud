@@ -48,8 +48,8 @@
 </p>
 
 <div class="pair">
-  <app-counter .start="@(0)"></app-counter>
-  <app-counter .start="@(10)"></app-counter>
+  <app-counter .start=@(0)></app-counter>
+  <app-counter .start=@(10)></app-counter>
   <app-toggle></app-toggle>
 </div>
 

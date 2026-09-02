@@ -21,6 +21,23 @@ function quoteFor(ctx: PrintContext, value: string): string {
   return preferred === '"' ? "'" : '"';
 }
 
+/**
+ * Whether the value may go without quotes: exactly one Razor expression (decision 103).
+ *
+ * `.prop=@name`, `@click=@onClick($event)` and `class:on=@(a && b)` are the whole of it. A
+ * literal keeps its quotes — without them it would end at the first space — and so does a
+ * concatenation, which is not an expression but a value with one inside.
+ *
+ * Asked only of an attribute that HAS parts — `printAttribute` returns before this for the
+ * valueless one — so «exactly one part, and it is not text» is the whole of the rule, with no
+ * absent part to guard against.
+ */
+function isBareExpression(attribute: Attribute): boolean {
+  return (
+    attribute.value.length === 1 && attribute.value.every((part) => part.type !== 'attribute-text')
+  );
+}
+
 /** The value of an attribute: literal runs verbatim, Razor atoms through the leaf table. */
 function attributeValue(ctx: PrintContext, attribute: Attribute): string {
   let out = '';
@@ -30,7 +47,10 @@ function attributeValue(ctx: PrintContext, attribute: Attribute): string {
       continue;
     }
     const inner = leafOf(ctx, part.expr);
-    out += part.kind === 'explicit' ? `@(${inner})` : `@${inner}`;
+    // A bare scalar carries no `@` (decision 105): `.id=0` is printed `0`, and putting the
+    // sign of an expression in front of it would make the formatter rewrite what it read.
+    if (part.kind === 'literal') out += inner;
+    else out += part.kind === 'explicit' ? `@(${inner})` : `@${inner}`;
   }
   return out;
 }
@@ -41,12 +61,17 @@ function attributeValue(ctx: PrintContext, attribute: Attribute): string {
  * An attribute with no value parts is printed VERBATIM: `hidden` and `hidden=""` mean the
  * same thing (decision 44) and the AST cannot tell them apart, so rebuilding one would
  * silently rewrite the other.
+ *
+ * A value that is one Razor expression is printed WITHOUT quotes, and one that was written
+ * with them loses them (decision 103). The AST does not record whether the author quoted it,
+ * so there is no third behaviour available here: either the form is normalised or the quotes
+ * are added back to everything, which is what `.prop=@name` used to be turned into.
  */
 export function printAttribute(ctx: PrintContext, attribute: Attribute): Doc {
   if (attribute.value.length === 0) return sliceOf(ctx, attribute.span);
 
   const value = attributeValue(ctx, attribute);
-  const quote = quoteFor(ctx, value);
+  const quote = isBareExpression(attribute) ? '' : quoteFor(ctx, value);
 
   if (typeof attribute.name === 'string') return `${attribute.name}=${quote}${value}${quote}`;
 

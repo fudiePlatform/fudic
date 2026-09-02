@@ -16,6 +16,7 @@
  */
 
 import type {
+  ElementNode,
   ForNode,
   ForeachNode,
   HtmlContent,
@@ -149,17 +150,38 @@ export function nestedContent(node: HtmlContent): readonly (readonly HtmlContent
   }
 }
 
+/**
+ * The `<head>`, projected like the markup it is.
+ *
+ * Nobody writes a web component in a head, so nothing here is about tags or props: it is about
+ * the `@`. A `<title>@data.title</title>` and a `<link rel="preload" href="@data.hero">` read
+ * from the same scope as anything in the body, and until now neither of them mapped anywhere —
+ * the head was left out of the projection entirely, so `<title>@|</title>` heard only the
+ * server's own snippets while the identical `@` one element lower answered with `data`, the
+ * props and every name of `@client`.
+ *
+ * Whole children rather than a chosen few, because choosing is what left the gap. The head's
+ * elements are native, so `emitNativeAttrs` projects exactly their interpolations and nothing
+ * else — a `<meta charset="utf-8">` produces no line at all — and `<style>` and `<script>` are
+ * opaque here as everywhere. There is no `$attrs` literal to make `charset` a `TS2353`.
+ */
+function headContent(head: ElementNode | undefined): readonly HtmlContent[] {
+  return head === undefined ? [] : head.children;
+}
+
 /** The markup a structured document exposes to the template projection. */
 export function templateContent(doc: StructuredDocument): readonly HtmlContent[] {
   switch (doc.type) {
     case 'component-document':
-      return doc.template?.children ?? [];
+      return [...headContent(doc.head), ...(doc.template?.children ?? [])];
     case 'route-document':
       // The structuring pass lifts `@section` blocks out of the markup into their own
       // field; the projection needs both, or a component used only inside a section would
       // never get its contract imported.
-      return [...doc.markup, ...doc.sections];
+      return [...headContent(doc.head), ...doc.markup, ...doc.sections];
     default:
-      return doc.body.children;
+      // Source order: a page writes its head before its body, and the projection reads the
+      // same way round.
+      return [...headContent(doc.head), ...doc.body.children];
   }
 }

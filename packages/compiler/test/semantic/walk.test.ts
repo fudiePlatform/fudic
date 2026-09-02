@@ -50,3 +50,48 @@ describe('walk — the control callback', () => {
     expect(tags).toEqual(['app-test', 'template', 'p', 'p', 'p', 'p', 'p']);
   });
 });
+
+describe('walk — the binding callback (BUG-23 task 7)', () => {
+  /** Every attribute expression the walk hands over, as `attribute=source`. */
+  function bindings(inner: string): readonly string[] {
+    const source = component(inner);
+    const seen: string[] = [];
+    walk(roots(inner), {
+      binding: (expr, attr, el) => {
+        const name = typeof attr.name === 'string' ? attr.name : '(expr)';
+        seen.push(`${el.name}/${name}=${source.slice(expr.span.start, expr.span.end)}`);
+      },
+    });
+    return seen;
+  }
+
+  it('hands over every expression in a value, nested elements included', () => {
+    expect(bindings('<div id="@item.id"><p .tone=@titulo class:on="@active"></p></div>')).toEqual([
+      'div/id=@item.id',
+      'p/.tone=@titulo',
+      'p/class:on=@active',
+    ]);
+  });
+
+  it('hands over both parts of a mixed value, and skips the literal runs', () => {
+    expect(bindings('<div title="a @x b @y"></div>')).toEqual(['div/title=@x', 'div/title=@y']);
+  });
+
+  it('hands over the expression that NAMES a `bus:( … )`, before its value', () => {
+    expect(bindings('<div bus:(EVENTOS.carrito)="@onCart"></div>')).toEqual([
+      'div/(expr)=(EVENTOS.carrito)',
+      'div/(expr)=@onCart',
+    ]);
+  });
+
+  it('says nothing about an attribute with no expression in it', () => {
+    expect(bindings('<div id="x" hidden></div>')).toEqual([]);
+  });
+
+  it('stays optional: a visitor that does not ask is not called', () => {
+    const tags: string[] = [];
+    walk(roots('<div id="@a"></div>'), { element: (el) => void tags.push(el.name) });
+
+    expect(tags).toEqual(['app-test', 'template', 'div']);
+  });
+});

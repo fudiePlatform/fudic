@@ -105,6 +105,22 @@ const LAYOUT_HEAD = `<!DOCTYPE html>
 </html>
 `;
 
+/** A standalone page — no `@RenderBody`, so it is not a layout — with the cursor in its head. */
+const PAGE_HEAD = `<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    |
+  </head>
+  <body>
+    <h1>hi</h1>
+  </body>
+</html>
+`;
+
+/** The same page with the cursor in its body. */
+const PAGE_BODY = PAGE_HEAD.replace('    |\n', '').replace('<h1>hi</h1>', '<h1>hi</h1>\n    |');
+
 describe('snippetsAt — the skeletons', () => {
   it('offers the four documents in an empty file, and only there', () => {
     expect(labelsAt('|')).toEqual(['component', 'route', 'page', 'layout']);
@@ -148,8 +164,11 @@ describe('snippetsAt — by role', () => {
     expect(bodyAt(ROUTE_TOP, '@code')).toContain('async function load');
   });
 
-  it('a layout gets a bare @code: it never declares load (FUD0430)', () => {
-    expect(bodyAt(LAYOUT_HEAD, '@code')).toBe('@code {\n  $0\n}');
+  it('a layout gets no @code at all: it declares nothing and loads nothing (FUD0437)', () => {
+    // It used to be offered a bare one, narrowed from the route's on the grounds that a layout
+    // has no `load`. The narrowing was the wrong half of the rule: a layout owns the shell, so
+    // there is nothing a `@code` there could legally hold, and the block itself is the error.
+    expect(bodyAt(LAYOUT_HEAD, '@code')).toBeUndefined();
   });
 });
 
@@ -161,12 +180,26 @@ describe('snippetsAt — where a @code may go', () => {
     expect(labelsAt(ROUTE)).not.toContain('@code');
   });
 
-  it('is offered inside <head> in a layout, not in the body (decision 59)', () => {
-    // The cursor sits right after a `<meta>`: a tag with no closing tag has no content, so it
-    // is never what the cursor is inside of — otherwise the offset would read as "inside a
-    // meta" and the placement would fail.
-    expect(labelsAt(LAYOUT_HEAD)).toContain('@code');
+  it('is offered inside the <head> of a page, and not in its body (decision 59)', () => {
+    // A page writes its `@code` in the head, where a `<script>` would go, so `in-head` is the
+    // placement that decides — and it is the only role left that has one.
+    expect(labelsAt(PAGE_HEAD)).toContain('@code');
+    expect(labelsAt(PAGE_BODY)).not.toContain('@code');
+  });
+
+  it('is never offered in a layout, head or body (FUD0437)', () => {
+    // The cursor of `LAYOUT_HEAD` sits right after a `<meta>`: a tag with no closing tag has no
+    // content, so it is never what the cursor is inside of. The placement is reachable and the
+    // ROLE is what declines — the layout has no `@code` to be offered anywhere.
+    expect(labelsAt(LAYOUT_HEAD)).not.toContain('@code');
     expect(labelsAt(LAYOUT)).not.toContain('@code');
+  });
+
+  it('and control flow is the mirror: the body of a page, never its head', () => {
+    // A `<head>` is a list of declarations, not a template — nobody loops over `<meta>` — so a
+    // `@foreach` offered there is noise in front of the two names the author is after.
+    expect(labelsAt(PAGE_BODY)).toContain('@foreach');
+    expect(labelsAt(PAGE_HEAD)).not.toContain('@foreach');
   });
 
   it('and a @section only at top level of the route (structure.ts)', () => {
@@ -189,8 +222,22 @@ describe('snippetsAt — inside @code', () => {
     expect(labelsAt(componentCode)).toEqual(['props', '@client', '@server']);
   });
 
-  it('a route gets @server and load, but never @client', () => {
-    expect(labelsAt(routeCode)).toEqual(['@server', 'load']);
+  it('a route gets the two zones and load, but never props', () => {
+    // `@client` used to be the component's alone, which was the rule read backwards: what makes
+    // a zone legal is the `@code` around it, and a route that declares a handler needs the
+    // browser half as much as a component does. `props` stays the component's — nobody
+    // instantiates a route as a tag.
+    expect(labelsAt(routeCode)).toEqual(['@client', '@server', 'load']);
+  });
+
+  it('a zone already written is not offered again (decision 33.b, FUD0194)', () => {
+    const withClient =
+      '<link rel="layout" href="./_layout.fud">\n@code {\n  |\n  @client {\n  }\n}\n<article>hi</article>\n';
+    const both =
+      '<link rel="layout" href="./_layout.fud">\n@code {\n  |\n  @client {\n  }\n  @server {\n  }\n}\n<article>hi</article>\n';
+
+    expect(labelsAt(withClient)).toEqual(['@server', 'load']);
+    expect(labelsAt(both)).toEqual(['load']);
   });
 });
 

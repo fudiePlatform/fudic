@@ -36,10 +36,10 @@
   <template shadowrootmode="open">
     <button
       class="btn"
-      class:primary="@(variant === 'primary')"
-      class:ghost="@(variant === 'ghost')"
-      disabled="@disabled"
-      @click="@onClick">
+      class:primary=@(variant === 'primary')
+      class:ghost=@(variant === 'ghost')
+      disabled=@disabled
+      @click=@onClick>
       <slot></slot>
     </button>
   </template>

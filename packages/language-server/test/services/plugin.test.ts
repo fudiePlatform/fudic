@@ -20,7 +20,7 @@ import {
   fudicDocumentOf,
   rangeOf,
 } from '../../src/services/plugin.js';
-import { component, LAYOUT, memoryFs, route } from '../_support.js';
+import { component, LAYOUT, memoryFs, propsComponent, route } from '../_support.js';
 import { CANCELLED, fakeServiceContext, TOKEN } from '../_lsp.js';
 
 const SLUG = '/p/blog/[slug].fud';
@@ -29,13 +29,19 @@ const URI_OF_SLUG = URI.file(SLUG).toString();
 const LAYOUT_WITH_NAV = LAYOUT.replace('<main>', '<main>\n      @RenderSection(nav)');
 
 /** Set the service up over one `.fud`, whose cursor is where `|` was. */
-function setup(source: string, path = SLUG) {
+function setup(
+  source: string,
+  path = SLUG,
+  typescript = true,
+  extra: Readonly<Record<string, string>> = {},
+) {
   const offset = source.indexOf('|');
   const text = source.replace('|', '');
   const files: Record<string, string> = {
     '/p/components/app-badge.fud': component('app-badge'),
     '/p/components/site-nav.fud': component('site-nav'),
     '/p/layouts/_layout.fud': LAYOUT_WITH_NAV,
+    ...extra,
     [path]: text,
   };
 
@@ -45,7 +51,10 @@ function setup(source: string, path = SLUG) {
   const document = TextDocument.create(URI.file(path).toString(), 'fud', 1, text);
   const stats = new RequestStats();
   const context = fakeServiceContext({ [URI.file(path).toString()]: cached });
-  const service = createFudicService({ index, stats }).create(context);
+  // `typescript` decides who answers at a `@` in markup and at a binding value: with it
+  // mounted — the default — the list is TypeScript's and this service stays quiet, or the
+  // developer sees every name twice. Pass `false` to measure what the root says on its own.
+  const service = createFudicService({ index, stats, typescript }).create(context);
   // The tag branch is a second plugin, and for the reason in BUG-15 §4.6: it merges instead of
   // claiming, and in Volar that is a property of a plugin rather than of a branch.
   const tagService = createFudicTagService({ index, stats }).create(context);
@@ -178,10 +187,26 @@ describe('completion — the dot and the at-sign (BUG-16 §6.10–§6.12)', () =
   });
 
   it('is the transition again outside the tag (§6.12)', async () => {
-    const { service, document, position } = setup(withBadge('<app-badge></app-badge>\n@fore|'));
+    // Measured with no TypeScript, which is where this service owns the answer. With it
+    // mounted the very same list arrives from `ts-completion.ts` — the constructs, the scope
+    // and the escape hatch in one reply — and this one stays quiet so nothing is said twice.
+    const { service, document, position } = setup(
+      withBadge('<app-badge></app-badge>\n@fore|'),
+      SLUG,
+      false,
+    );
     const list = await completionsOf(service, document, position);
 
     expect(list?.items.map((item) => item.label)).toContain('@foreach');
+  });
+
+  it('and says nothing there with TypeScript mounted, rather than offering the tags', async () => {
+    // `@fore` is a construct being written, not a tag. The directive branch declines because
+    // TypeScript carries the list, and the position must not fall through to the word branch,
+    // which answered it with every component of the workspace.
+    const { service, document, position } = setup(withBadge('<app-badge></app-badge>\n@fore|'));
+
+    expect(await completionsOf(service, document, position)).toBeUndefined();
   });
 });
 
@@ -219,7 +244,10 @@ describe('a control header is not markup (BUG-17 §6.10–§6.13)', () => {
   });
 
   it('is still the transition for a `@` in the body of a branch (§6.12)', async () => {
-    const { service, document, position } = setup(inMarkup('@if (a) { @fore| }'));
+    // With no TypeScript, where this service owns the list; mounted, the same one arrives from
+    // `ts-completion.ts`. What §6.12 pins either way is that the body of a branch is markup, so
+    // a `@` there is the transition and not an event.
+    const { service, document, position } = setup(inMarkup('@if (a) { @fore| }'), SLUG, false);
     const list = await completionsOf(service, document, position);
 
     expect(list?.items.map((item) => item.label)).toContain('@foreach');
@@ -270,6 +298,79 @@ describe('the tag plugin (BUG-15 §4.6)', () => {
     expect(await completionsOf(tagService, alien, position)).toBeUndefined();
   });
 
+  it('adds the `class:` bindings beside HTML’s own list, in a NATIVE tag', async () => {
+    // `class:red` is the grammar's, not a component's (decision 28), and a `<div>` was the one
+    // place it could not be reached by asking: the list there is the HTML service's, which has
+    // never heard of it. Additional, so HTML's 151 attributes stay and these go in front.
+    const source = `<app-x>\n  <template shadowrootmode="open">\n    <style>\n      .red { color: red }\n    </style>\n    <div |></div>\n  </template>\n</app-x>\n`;
+    const { tagService, document, position } = setup(source, '/p/comp.fud');
+    const list = await completionsOf(tagService, document, position);
+
+    expect(list?.items.map((item) => item.label)).toEqual(['class:red']);
+    expect(list?.items[0]?.sortText).toBe('0_red');
+    // A binding with no expression is half of one, so accepting it writes the `=@` and asks
+    // again — the same gesture a prop and an event make.
+    expect(list?.items[0]?.textEdit?.newText).toBe('class:red=@');
+    expect(list?.items[0]?.command?.command).toBe('editor.action.triggerSuggest');
+  });
+
+  it('and says nothing there in a file that declares no class at all', async () => {
+    // `class:` with no name behind it completes nothing, and an item that inserts half a
+    // binding is worse than no item.
+    const { tagService, document, position } = setup(
+      `<app-x>\n  <template shadowrootmode="open">\n    <div |></div>\n  </template>\n</app-x>\n`,
+      '/p/comp.fud',
+    );
+
+    expect(await completionsOf(tagService, document, position)).toBeUndefined();
+  });
+
+  it('offers the names in scope inside a plain attribute’s value, each writing its `@`', async () => {
+    // Any attribute takes a binding — `role="@data.title"` — and nothing said so: the names
+    // appeared only once the `@` was typed, so the author had to know the answer to ask.
+    const source = `<link rel="layout" href="../layouts/_layout.fud">\n@code {\n  @client {\n    const titulo = 1;\n  }\n}\n<article>\n  <div role="|"></div>\n</article>\n`;
+    const { tagService, document, position } = setup(source);
+    const list = await completionsOf(tagService, document, position);
+
+    expect(list?.items.map((item) => item.label)).toEqual(
+      expect.arrayContaining(['@titulo', '@()']),
+    );
+    // The `@` is written by the item, not typed by the author: it is not in the range.
+    const titulo = list?.items.find((item) => item.label === '@titulo');
+    expect(titulo?.textEdit?.newText).toBe('@titulo');
+    expect(titulo?.filterText).toBe('titulo');
+  });
+
+  it('and offers none of them in a LAYOUT, which interpolates nothing at all', async () => {
+    // No `@code` (`FUD0437`) and no `load`, so there is no name a `@` could reach — `@()`
+    // included. An empty list rather than a wrong one, and the position travels on.
+    const { tagService, document, position } = setup(
+      LAYOUT_WITH_NAV.replace('<main>', '<main><div role="|"></div>'),
+      '/p/layouts/_other.fud',
+    );
+
+    expect(await completionsOf(tagService, document, position)).toBeUndefined();
+  });
+
+  it('but not inside the `href` of a `<link>`, whose list is a closed set of paths', async () => {
+    // An `href` is a PATH the build resolves: an interpolation there cannot be followed to a
+    // file, and offering the template's names is offering a way to write what never resolves.
+    const source = `<link rel="component" href="|">\n<article>hi</article>\n`;
+    const { tagService, document, position } = setup(source);
+
+    expect(await completionsOf(tagService, document, position)).toBeUndefined();
+  });
+
+  it('and declines a value the author opened with a `.`, which is FUD0056', async () => {
+    // This plugin is ADDITIONAL, so nothing silences it for us: it has to decline itself, or
+    // it fills a position the compiler is reporting an error on.
+    const { tagService, document, position } = setup(
+      `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="component" href="../components/app-badge.fud">\n<article><app-badge .name=.|></article>\n`,
+    );
+
+    expect(await completionsOf(tagService, document, position)).toBeUndefined();
+  });
+
   it('does not work when the request was already cancelled', async () => {
     const { tagService, document, position, stats } = setup(
       `<link rel="layout" href="../layouts/_layout.fud">\n<article><|</article>\n`,
@@ -309,6 +410,59 @@ describe('completion — snippets and Emmet (SDD-28 §5.3–§5.5)', () => {
     expect(list?.isIncomplete).toBe(true);
   });
 
+  // BUG-23 criterion 21.b. An empty element is not what the author wants written: they want
+  // the tag AND the props it cannot do without, in the order the child declares them.
+  describe('the tag expands with its required props (criterion 21.b)', () => {
+    const BUTTON = '/p/components/app-button.fud';
+    const withButton = (type: string, pattern = '{ label, tone }'): Record<string, string> => ({
+      [BUTTON]: propsComponent('app-button', pattern, type),
+    });
+
+    it('one tabstop per required prop, none for the optional ones', async () => {
+      const { service, document, position } = setup(
+        `<link rel="layout" href="../layouts/_layout.fud">\n<article>\n  app-but|\n</article>\n`,
+        SLUG,
+        true,
+        withButton('{ label: string; tone?: string }'),
+      );
+      const list = await completionsOf(service, document, position);
+
+      // No quotes: what follows a `.prop=` is whatever is assignable to it — a bare scalar
+      // (decision 105), an `@` expression (103), a quoted string — and picking one of the three
+      // for the author is picking wrong two times out of three.
+      expect(item(list, 'app-button')?.textEdit?.newText).toBe(
+        '<app-button .label=$1>$0</app-button>',
+      );
+      // And the list opens on the first one: the caret lands there and there is nothing else
+      // the author can be about to do.
+      expect(item(list, 'app-button')?.command?.command).toBe('editor.action.triggerSuggest');
+    });
+
+    it('a component with no required props expands exactly as it did before', async () => {
+      const { service, document, position } = setup(
+        `<link rel="layout" href="../layouts/_layout.fud">\n<article>\n  app-but|\n</article>\n`,
+        SLUG,
+        true,
+        withButton('{ label?: string; tone?: string }', '{ label, tone }'),
+      );
+      const list = await completionsOf(service, document, position);
+
+      expect(item(list, 'app-button')?.textEdit?.newText).toBe('<app-button>$0</app-button>');
+    });
+
+    it('a named type proves nothing, so it degrades to the plain element', async () => {
+      const { service, document, position } = setup(
+        `<link rel="layout" href="../layouts/_layout.fud">\n<article>\n  app-but|\n</article>\n`,
+        SLUG,
+        true,
+        withButton('Props', '{ label }'),
+      );
+      const list = await completionsOf(service, document, position);
+
+      expect(item(list, 'app-button')?.textEdit?.newText).toBe('<app-button>$0</app-button>');
+    });
+  });
+
   it('an unlinked component carries its <link> along (criterion 12)', async () => {
     const { service, document, position, cached } = setup(
       `<link rel="layout" href="../layouts/_layout.fud">\n<article>\n  site|\n</article>\n`,
@@ -334,8 +488,13 @@ describe('completion — snippets and Emmet (SDD-28 §5.3–§5.5)', () => {
   });
 
   it('a `@` offers the directives of the role, and replaces the `@` with them', async () => {
+    // Measured with no TypeScript, where the root owns the list. With it mounted the same
+    // snippets ride inside TypeScript's reply — one voice per position — and the acceptance
+    // suite measures that stack whole (BUG-23 §2.5).
     const { service, document, position } = setup(
       `<link rel="layout" href="../layouts/_layout.fud">\n<article>\n  @|\n</article>\n`,
+      SLUG,
+      false,
     );
     const list = await completionsOf(service, document, position);
 
@@ -345,10 +504,23 @@ describe('completion — snippets and Emmet (SDD-28 §5.3–§5.5)', () => {
     expect(item(list, '@if')?.insertTextFormat).toBe(2);
   });
 
+  it('says nothing inside a plain `class` when the file declares none', async () => {
+    // The same condition the `class:` branch has: a file with no `<style>` has nothing to say,
+    // and an empty list would silence Emmet without putting anything in its place (§4.3).
+    const { service, document, position } = setup(
+      `<app-x>\n  <template shadowrootmode="open">\n    <div class="re|"></div>\n  </template>\n</app-x>\n`,
+      '/p/comp.fud',
+    );
+    const list = await completionsOf(service, document, position);
+
+    expect(list?.items.some((item) => item.detail === 'class of this file')).not.toBe(true);
+  });
+
   it('and in a layout it offers @RenderBody instead of @section', async () => {
     const { service, document, position } = setup(
       LAYOUT_WITH_NAV.replace('<main>', '<main>@|'),
       '/p/layouts/_other.fud',
+      false,
     );
     const list = await completionsOf(service, document, position);
     const labels = list?.items.map((entry) => entry.label);
@@ -545,6 +717,33 @@ describe('semantic tokens', () => {
   });
 });
 
+describe('hover', () => {
+  it('shows the contract of the component under the pointer (SDD-36 §3.2)', async () => {
+    const source = `<link rel="layout" href="../layouts/_layout.fud">\n<app-badge></app-badge>\n`;
+    const { service, document, cached } = setup(source);
+    const at = document.positionAt(cached.source.indexOf('<app-badge') + 1);
+
+    const hover = await service.provideHover?.(document, at, TOKEN);
+
+    expect(String((hover?.contents as { value: string }).value)).toContain(
+      '**`<app-badge>`** · fudic component',
+    );
+    // Underlines the NAME, not the whole tag: that is the stretch the answer is about.
+    const name = cached.source.indexOf('app-badge');
+    expect(hover?.range).toEqual(rangeOf(document, { start: name, end: name + 'app-badge'.length }));
+  });
+
+  it('says nothing over a native element or a document that is not ours', async () => {
+    const source = `<link rel="layout" href="../layouts/_layout.fud">\n<div></div>\n`;
+    const { service, document, cached } = setup(source);
+    const at = document.positionAt(cached.source.indexOf('<div') + 1);
+    const other = TextDocument.create('file:///p/data/posts.ts', 'typescript', 1, 'export {};');
+
+    expect(await service.provideHover?.(document, at, TOKEN)).toBeUndefined();
+    expect(await service.provideHover?.(other, at, TOKEN)).toBeUndefined();
+  });
+});
+
 describe('code actions', () => {
   it('offers to create the file an href points at', async () => {
     const source = route('../layouts/_layout.fud', ['../components/ghost.fud']);
@@ -571,6 +770,346 @@ describe('code actions', () => {
     expect(await service.provideCodeActions?.(document, far, { diagnostics: [] }, TOKEN)).toEqual(
       [],
     );
+  });
+
+  /**
+   * SDD-36 §3.1 — the table.
+   *
+   * Every one of these asks over the WHOLE document, which is the shape that matters: a bulb
+   * is offered because a diagnostic is there, so a range that covers the file has to find it
+   * and a file with nothing wrong has to come back empty.
+   */
+  /** Every action offered anywhere in `source`, with `source` written into the slug. */
+  const fixesIn = async (source: string, extra: Readonly<Record<string, string>> = {}) => {
+    const { service, document } = setup(source, SLUG, true, extra);
+    const whole = {
+      start: { line: 0, character: 0 },
+      end: { line: source.split('\n').length, character: 0 },
+    };
+    return (await service.provideCodeActions?.(document, whole, { diagnostics: [] }, TOKEN)) ?? [];
+  };
+
+  /** The single text edit an action makes on the file being edited. */
+  const edit = (action: { edit?: { changes?: Record<string, unknown> } } | undefined) =>
+    (Object.values(action?.edit?.changes ?? {})[0] as { newText: string }[] | undefined)?.[0];
+
+  describe('the repairs of SDD-36', () => {
+    it('quotes an unquoted value (FUD0056)', async () => {
+      const actions = await fixesIn(
+        `<link rel="layout" href="../layouts/_layout.fud">\n<div title=hola></div>\n`,
+      );
+      const quote = actions.find((action) => action.title === 'Entrecomillar el valor');
+
+      expect(quote).toBeDefined();
+      expect(edit(quote)?.newText).toBe('"hola"');
+    });
+
+    it('adds the <link> of a component the file writes without declaring (FUD0191)', async () => {
+      const actions = await fixesIn(
+        `<link rel="layout" href="../layouts/_layout.fud">\n<app-badge></app-badge>\n`,
+      );
+      const link = actions.find((action) => action.title.startsWith('Añadir <link'));
+
+      expect(link?.title).toBe('Añadir <link rel="component"> de <app-badge>');
+      // The very edit `linkInsertionFor` writes, which is what the tag completion uses.
+      expect(edit(link)?.newText).toContain('<link rel="component" href="../components/app-badge.fud">');
+    });
+
+    it('adds the key of a loop that renders markup (FUD0540)', async () => {
+      const actions = await fixesIn(
+        `<link rel="layout" href="../layouts/_layout.fud">\n@foreach (const item of data.xs) {\n  <p>x</p>\n}\n`,
+      );
+      const key = actions.find((action) => action.title.startsWith('Añadir key'));
+
+      expect(key?.title).toBe('Añadir key (item)');
+      expect(edit(key)?.newText).toBe(' key (item)');
+    });
+
+    it('uses the FIRST binding of a destructuring header', async () => {
+      const actions = await fixesIn(
+        `<link rel="layout" href="../layouts/_layout.fud">\n@foreach (const { id, tag } of data.xs) {\n  <p>x</p>\n}\n`,
+      );
+
+      expect(actions.find((action) => action.title.startsWith('Añadir key'))?.title).toBe(
+        'Añadir key (id)',
+      );
+    });
+
+    it('offers no key where the header declares no binding', async () => {
+      // `FUD0543` owns that case and says something else; writing `key ()` would trade one
+      // diagnostic for another.
+      const actions = await fixesIn(
+        `<link rel="layout" href="../layouts/_layout.fud">\n@foreach (x of data.xs) {\n  <p>x</p>\n}\n`,
+      );
+
+      expect(actions.filter((action) => action.title.startsWith('Añadir key'))).toEqual([]);
+    });
+
+    it('does not quote a value that already carries a quote', async () => {
+      // `title=a"b` is unquoted AND has a quote in it, so wrapping it in a pair produces a
+      // value that ends where the author did not mean it to. The compiler is right to complain
+      // and there is no repair that is certainly what was wanted.
+      const actions = await fixesIn(
+        `<link rel="layout" href="../layouts/_layout.fud">\n<div title=a"b></div>\n`,
+      );
+
+      expect(actions.filter((action) => action.title === 'Entrecomillar el valor')).toEqual([]);
+    });
+
+    it('does not mistake a longer tag for the one it starts with', async () => {
+      // `<app-badge-large>` opens a component of its own, not `app-badge`. Without the boundary
+      // the repair would add the link of a component the author never wrote.
+      const actions = await fixesIn(
+        `<link rel="layout" href="../layouts/_layout.fud">\n<app-badge-large></app-badge-large>\n`,
+      );
+
+      expect(actions.filter((action) => action.title.startsWith('Añadir <link'))).toEqual([]);
+    });
+
+    it('offers no link for a tag the workspace does not have', async () => {
+      // The href is never guessed. A component the index has not seen has no path to point at,
+      // and inventing one writes a `<link>` that will not resolve — trading `FUD0191` for
+      // `FUD0460`.
+      const actions = await fixesIn(
+        `<link rel="layout" href="../layouts/_layout.fud">\n<app-ghost></app-ghost>\n`,
+      );
+
+      expect(actions.filter((action) => action.title.startsWith('Añadir <link'))).toEqual([]);
+    });
+
+    it('offers no key where Oxc could not read the header', async () => {
+      // Half a header is what every keystroke of writing one looks like. No statement comes
+      // back, so there is no binding to name, and asking is still safe.
+      const actions = await fixesIn(
+        `<link rel="layout" href="../layouts/_layout.fud">\n@foreach (const of) {\n  <p>x</p>\n}\n`,
+      );
+
+      expect(actions.filter((action) => action.title.startsWith('Añadir key'))).toEqual([]);
+    });
+
+    it('offers nothing for a repairable diagnostic outside the range asked about', async () => {
+      // The bulb belongs to the line the caret is on, not to the file. A quick fix list that
+      // answers about the whole document is a list nobody can read.
+      const source = `<link rel="layout" href="../layouts/_layout.fud">\n<div title=hola></div>\n<p>x</p>\n`;
+      const { service, document } = setup(source);
+      const elsewhere = { start: { line: 2, character: 0 }, end: { line: 2, character: 1 } };
+
+      expect(
+        await service.provideCodeActions?.(document, elsewhere, { diagnostics: [] }, TOKEN),
+      ).toEqual([]);
+    });
+
+    it('offers nothing at all on a healthy file', async () => {
+      expect(await fixesIn(`<link rel="layout" href="../layouts/_layout.fud">\n<p>x</p>\n`)).toEqual(
+        [],
+      );
+    });
+  });
+
+  /**
+   * The three repairs of the component contract (SDD-36 §3.1).
+   *
+   * Anchored on a fact and not on a diagnostic of ours: TypeScript reports all three over the
+   * projection and offers no quick fix for any of them, so the voice is its and the hands are
+   * here. No program is mounted in this file, which is also the degraded case — with no types
+   * the shape of a hole falls back to `""`.
+   */
+  describe('the repairs of the contract', () => {
+    /** A component with two required props, one optional, and a named slot. */
+    const INPUT =
+      `@code {\n  const { id, name, hint = '' } = props<{ id: number; name: string; hint?: string }>();\n}\n` +
+      `<app-input>\n  <template shadowrootmode="open"><slot name="icon"></slot></template>\n</app-input>\n`;
+
+    /** A component that declares a prop and no slot at all. */
+    const BARE =
+      `@code {\n  const { tone = '' } = props<{ tone?: string }>();\n}\n` +
+      `<app-bare>\n  <template shadowrootmode="open"><slot></slot></template>\n</app-bare>\n`;
+
+    const WORKSPACE = { '/p/components/app-input.fud': INPUT, '/p/components/app-bare.fud': BARE };
+
+    /** A page that links both components, with `markup` in its body. */
+    const page = (markup: string): string =>
+      `<link rel="layout" href="../layouts/_layout.fud">\n` +
+      `<link rel="component" href="../components/app-input.fud">\n` +
+      `<link rel="component" href="../components/app-bare.fud">\n${markup}\n`;
+
+    const contractFixesIn = (markup: string) => fixesIn(page(markup), WORKSPACE);
+
+    const titled = <T extends { title: string }>(actions: readonly T[], prefix: string): T[] =>
+      actions.filter((action) => action.title.startsWith(prefix));
+
+    it('completes the required props a tag passes none of', async () => {
+      const actions = await contractFixesIn('<app-input></app-input>');
+      const fix = titled(actions, 'Completar')[0];
+
+      expect(fix?.title).toBe('Completar las props requeridas de <app-input>');
+      // One insertion and not two: two zero-length edits at one offset are two a client may
+      // order either way. The optional `hint` is not in it — only what is required.
+      expect(edit(fix)?.newText).toBe(' .id="" .name=""');
+    });
+
+    it('fills a required prop written with an empty value, in place', async () => {
+      // `.id=""` is the state a tag is in halfway through being typed, and the checker sees a
+      // string where a value should be. The repair replaces that attribute rather than adding
+      // a second one beside it.
+      const actions = await contractFixesIn('<app-input .id="" .name="n"></app-input>');
+
+      expect(edit(titled(actions, 'Completar')[0])?.newText).toBe('.id=""');
+    });
+
+    it('sorts a replacement and an insertion into source order', async () => {
+      // `.id` is written empty and `.name` is absent, so the fix carries two edits: one over
+      // the attribute and one at the `>`. They may not overlap and they may not arrive out of
+      // order — a client is entitled to refuse a set that does.
+      const actions = await contractFixesIn('<app-input .id=""></app-input>');
+      const edits = Object.values(titled(actions, 'Completar')[0]?.edit?.changes ?? {})[0] as
+        | { newText: string }[]
+        | undefined;
+
+      expect(edits?.map((one) => one.newText)).toEqual(['.id=""', ' .name=""']);
+    });
+
+    it('inserts before the slash of a self-closing tag', async () => {
+      const actions = await contractFixesIn('<app-input/>');
+
+      expect(edit(titled(actions, 'Completar')[0])?.newText).toBe(' .id="" .name=""');
+    });
+
+    it('says nothing about a tag that passes everything it must', async () => {
+      expect(await contractFixesIn('<app-input .id="1" .name="n"></app-input>')).toEqual([]);
+    });
+
+    it('does not offer a prop the tag already spells but the parse could not read', async () => {
+      // `<app-input .id= .name=>` reads as ONE unquoted value that swallows the second name, so
+      // `name` is absent from the attributes and present in the text. Inserting it would write
+      // the attribute twice.
+      const actions = await contractFixesIn('<app-input .id= .name=></app-input>');
+
+      expect(edit(titled(actions, 'Completar')[0])?.newText).not.toContain('.name');
+    });
+
+    it('renames a prop the component does not declare', async () => {
+      const actions = await contractFixesIn('<app-input .idd="1" .name="n"></app-input>');
+      const fix = titled(actions, 'Cambiar a .')[0];
+
+      expect(fix?.title).toBe('Cambiar a .id');
+      expect(edit(fix)?.newText).toBe('.id');
+    });
+
+    it('suggests nothing when no declared name is close enough', async () => {
+      // A repair the author has to think about is worse than none: this is a bulb, and what it
+      // offers has to be obviously right.
+      const actions = await contractFixesIn('<app-input .zzzzzz="1"></app-input>');
+
+      expect(titled(actions, 'Cambiar a .')).toEqual([]);
+    });
+
+    it('never suggests a name the tag already carries', async () => {
+      // Renaming `.nam` to a `.name` that is right there trades one error for a duplicate.
+      const actions = await contractFixesIn('<app-input .id="1" .name="n" .nam="x"></app-input>');
+
+      expect(titled(actions, 'Cambiar a .')).toEqual([]);
+    });
+
+    it('ignores a bare `.`, which names no prop at all', async () => {
+      const actions = await contractFixesIn('<app-input .="1" .id="1" .name="n"></app-input>');
+
+      expect(titled(actions, 'Cambiar a .')).toEqual([]);
+    });
+
+    it('ignores an attribute whose NAME is an expression', async () => {
+      // `bus:( … )` names its event with an expression (decision 28.b), so the name is a node
+      // and not a string. It is not a `.prop` and there is nothing about it to suggest.
+      const actions = await contractFixesIn(
+        '<app-input .id="1" .name="n" bus:(EVENTS.cart)="@h"></app-input>',
+      );
+
+      expect(titled(actions, 'Cambiar a .')).toEqual([]);
+    });
+
+    it('suggests nothing once every declared prop is already written', async () => {
+      // There is no name left to rename TO. Offering one that is already on the tag would
+      // trade an unknown prop for a duplicate attribute.
+      const actions = await contractFixesIn(
+        '<app-input .id="1" .name="n" .hint="h" .xxx="1"></app-input>',
+      );
+
+      expect(titled(actions, 'Cambiar a .')).toEqual([]);
+    });
+
+    it('renames a slot to each one the host declares', async () => {
+      const actions = await contractFixesIn(
+        '<app-input .id="1" .name="n"><div slot="PEPITO"></div></app-input>',
+      );
+      const fix = titled(actions, 'Cambiar a slot')[0];
+
+      expect(fix?.title).toBe('Cambiar a slot="icon"');
+      expect(edit(fix)?.newText).toBe('icon');
+    });
+
+    it('removes the slot when the host declares none to rename it to', async () => {
+      const actions = await contractFixesIn('<app-bare><div slot="PEPITO"></div></app-bare>');
+      const fix = titled(actions, 'Quitar slot')[0];
+
+      expect(fix?.title).toBe('Quitar slot="PEPITO"');
+      // The whitespace before it goes too, or the tag keeps a gap where the attribute was.
+      expect(edit(fix)?.newText).toBe('');
+    });
+
+    it('says nothing about a slot the host does declare', async () => {
+      const actions = await contractFixesIn(
+        '<app-input .id="1" .name="n"><div slot="icon"></div></app-input>',
+      );
+
+      expect(titled(actions, 'Cambiar a slot')).toEqual([]);
+      expect(titled(actions, 'Quitar slot')).toEqual([]);
+    });
+
+    it('says nothing about a slot whose name is not a literal', async () => {
+      // `slot="@(x)"` names a slot whose identity is not known until it runs, and a repair
+      // cannot rename what it cannot read. An empty `slot=""` names none either.
+      const actions = await contractFixesIn(
+        '<app-input .id="1" .name="n"><div slot="@(1)"></div><b slot=""></b></app-input>',
+      );
+
+      expect(titled(actions, 'Cambiar a slot')).toEqual([]);
+      expect(titled(actions, 'Quitar slot')).toEqual([]);
+    });
+
+    it('says nothing about a slot with no component parent', async () => {
+      // The host has to be a component for its slots to be a question at all.
+      expect(await contractFixesIn('<div slot="PEPITO"></div>')).toEqual([]);
+    });
+
+    it('says nothing about a tag the file does not link', async () => {
+      // With no `<link>` there is no contract to compare against, and `FUD0191` already owns
+      // that mistake with a bulb of its own.
+      const actions = await fixesIn(
+        `<link rel="layout" href="../layouts/_layout.fud">\n<app-input></app-input>\n`,
+        WORKSPACE,
+      );
+
+      expect(titled(actions, 'Completar')).toEqual([]);
+    });
+
+    it('offers nothing for a contract mistake outside the range asked about', async () => {
+      // The bulb belongs to the line the caret is on. Every other repair is filtered by range
+      // and so is this one — the tag is on line 3 and the question is about line 4.
+      const source = page('<app-input></app-input>\n<p>x</p>');
+      const { service, document } = setup(source, SLUG, true, WORKSPACE);
+      const elsewhere = { start: { line: 4, character: 0 }, end: { line: 4, character: 1 } };
+
+      expect(
+        await service.provideCodeActions?.(document, elsewhere, { diagnostics: [] }, TOKEN),
+      ).toEqual([]);
+    });
+
+    it('says nothing about a component’s own host wrapper', async () => {
+      // A component's markup IS its own tag (decision 75). Nobody passes props to it there.
+      const actions = await fixesIn(INPUT, WORKSPACE);
+
+      expect(titled(actions, 'Completar')).toEqual([]);
+    });
   });
 });
 

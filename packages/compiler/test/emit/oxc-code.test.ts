@@ -29,7 +29,11 @@ describe('extractCode', () => {
         '}\n',
     );
     const { props, signals } = extractCode(source, componentDoc(source));
-    expect(props).toEqual([{ name: 'a' }, { name: 'b', def: '2' }]); // 'a' has no default
+    // 'a' has no default; neither key of `T` carries a `?`, so neither is optional
+    expect(props).toEqual([
+      { name: 'a', optional: false },
+      { name: 'b', def: '2', optional: false },
+    ]);
     expect(signals).toEqual([
       { name: 's', init: 'undefined', kind: 'signal' }, // signal() with no argument
       { name: 't', init: '5', kind: 'signal' },
@@ -65,7 +69,7 @@ describe('extractCode', () => {
     const at = source.indexOf('effect(() => console.log(a))');
     expect(diagnostics[0]!.span).toEqual({ start: at, end: at + 'effect(() => console.log(a))'.length });
     // The emit does not throw and does not give up on the file: props and signals are read.
-    expect(props).toEqual([{ name: 'a' }]);
+    expect(props).toEqual([{ name: 'a', optional: false }]);
     expect(signals).toEqual([{ name: 't', init: '1', kind: 'signal' }]);
   });
 
@@ -76,7 +80,62 @@ describe('extractCode', () => {
 
   it('skips rest/spread in the props pattern', () => {
     const source = wrap('@code {\n  const { a, ...rest } = props<{ a: string }>();\n}\n');
-    expect(extractCode(source, componentDoc(source)).props).toEqual([{ name: 'a' }]);
+    expect(extractCode(source, componentDoc(source)).props).toEqual([{ name: 'a', optional: false }]);
+  });
+
+  // BUG-23 task 16: the `?` of `T` is the only thing that makes a prop optional, and «cannot
+  // be read» has to land on the same side as «optional» — a build invents no error it cannot
+  // demonstrate (§4.4).
+  describe('Prop.optional — read off the type argument of props<T>()', () => {
+    const optionals = (code: string): Record<string, boolean> => {
+      const source = wrap(`@code {\n  ${code}\n}\n`);
+      return Object.fromEntries(
+        extractCode(source, componentDoc(source)).props.map((p) => [p.name, p.optional]),
+      );
+    };
+
+    it('a `?` makes it optional and its absence makes it required', () => {
+      expect(optionals('const { a, b } = props<{ a: string; b?: number }>();')).toEqual({
+        a: false,
+        b: true,
+      });
+    });
+
+    it('a type argument that is not a type literal proves nothing: all optional', () => {
+      expect(optionals('const { a } = props<Foo>();')).toEqual({ a: true });
+    });
+
+    it('no type argument at all proves nothing either', () => {
+      expect(optionals('const { a } = props();')).toEqual({ a: true });
+    });
+
+    it('a member that is not a plain property signature declares no key', () => {
+      expect(optionals('const { a } = props<{ [k: string]: string }>();')).toEqual({ a: true });
+    });
+
+    it('a key that is not an identifier is not a key this can match', () => {
+      expect(optionals(`const { a } = props<{ 'a': string }>();`)).toEqual({ a: true });
+    });
+
+    it('resolves a name the file DECLARES, as a type alias or as an interface', () => {
+      // Both spell the same contract, so both have to read the same. An interface keeps its
+      // members one level deeper, in its `body`, and that is the only difference between them.
+      expect(optionals('type P = { a: string; b?: number };\n  const { a, b } = props<P>();')).toEqual(
+        { a: false, b: true },
+      );
+      expect(
+        optionals('interface P { a: string; b?: number }\n  const { a, b } = props<P>();'),
+      ).toEqual({ a: false, b: true });
+      expect(
+        optionals('export interface P { a: string }\n  const { a } = props<P>();'),
+      ).toEqual({ a: false });
+    });
+
+    it('proves nothing from a name built out of another type', () => {
+      // `Omit<…>`, a union, a generic: resolving those is typechecking, and this pass reads an
+      // AST. Unknown has to keep meaning «all optional», never an invented requirement.
+      expect(optionals('type P = Omit<Q, "x">;\n  const { a } = props<P>();')).toEqual({ a: true });
+    });
   });
 
   it('returns nothing for a component with no @code', () => {
@@ -140,7 +199,7 @@ describe('extractCode', () => {
     const source = '@code {\n  const { a } = props<{ a: string }>();\n}\n<m-el><span></span></m-el>\n';
     const doc = componentDoc(source);
     expect(doc.template).toBeUndefined();
-    expect(extractCode(source, doc).props).toEqual([{ name: 'a' }]);
+    expect(extractCode(source, doc).props).toEqual([{ name: 'a', optional: false }]);
   });
 
   it('finds every emit(...) of @client, whatever the binding is called (SDD-15 §4.4)', () => {

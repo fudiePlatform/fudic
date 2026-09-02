@@ -329,7 +329,7 @@ describe('bus: subscriber (§6.8.b, decision 28.a/b)', () => {
   });
 });
 
-describe('the call suffix of a handler value (decision 99)', () => {
+describe('the call inside an implicit chain (decision 100)', () => {
   /** The lone value part of the first attribute, as source text. */
   const value = (source: string): { parts: number; text: string } => {
     const parts = firstElement(source).attributes[0]!.value;
@@ -370,25 +370,52 @@ describe('the call suffix of a handler value (decision 99)', () => {
     expect(codes('<a @click="@del($event"></a>')).toContain('FUD0003');
   });
 
-  it('does NOT apply outside a handler value: elsewhere a `(` still stops the path', () => {
-    // In an ordinary attribute, and in content, `@total(x)` is the interpolation `total`
-    // followed by the literal `(x)` — which is what it means today (decision 29).
-    expect(value('<a title="@total(2)"></a>')).toEqual({ parts: 2, text: 'total' });
+  it('applies everywhere now (decision 100 retires 99)', () => {
+    // The call used to be a privilege of a handler value; since the implicit expression is
+    // a chain it is one atom in an ordinary attribute and in content alike.
+    expect(value('<a title="@total(2)"></a>')).toEqual({ parts: 1, text: 'total(2)' });
     const content = parse('<a>@total(2)</a>').value;
     const el = content.children.find((c) => c.type === 'element') as ElementNode;
     const first = el.children[0]!;
-    expect(text('<a>@total(2)</a>', (first as { expr: Span }).expr)).toBe('total');
+    expect(text('<a>@total(2)</a>', (first as { expr: Span }).expr)).toBe('total(2)');
   });
 });
 
-describe('unquoted values (§4.6, decision 8)', () => {
-  it('reports FUD0056 and recovers with the run as verbatim text', () => {
+describe('unquoted values (§4.6, decision 8 and its exception, 103)', () => {
+  it('takes one Razor atom with no quotes, and no FUD0056', () => {
     const source = '<a href=@url>x</a>';
     const result = parse(source);
-    expect(result.diagnostics.map((d) => d.code)).toEqual(['FUD0056']);
+    expect(result.diagnostics).toEqual([]);
     const attr = (result.value.children[0] as ElementNode).attributes[0]!;
     expect(attr.name).toBe('href');
-    expect(attr.value[0]).toMatchObject({ type: 'attribute-text', value: '@url' });
+    expect(attr.value).toHaveLength(1);
+    expect(attr.value[0]).toMatchObject({ type: 'razor-expression' });
+  });
+
+  it('lets the chain end the value, so the `>` still closes the tag', () => {
+    const source = '<x .p=@a.b></x>';
+    const result = parse(source);
+    expect(result.diagnostics).toEqual([]);
+    const el = result.value.children[0] as ElementNode;
+    expect(text(source, el.attributes[0]!.span)).toBe('.p=@a.b');
+    expect(el.closeSpan).toBeDefined();
+  });
+
+  it('takes the explicit form too (decision 104)', () => {
+    const source = '<x .p=@(counter().id)></x>';
+    const result = parse(source);
+    expect(result.diagnostics).toEqual([]);
+    const attr = (result.value.children[0] as ElementNode).attributes[0]!;
+    expect(attr.value).toHaveLength(1);
+    expect(text(source, (attr.value[0] as { expr: Span }).expr)).toBe('counter().id');
+  });
+
+  it('degrades with a diagnostic when nothing follows the `@`', () => {
+    expect(codes('<x .p=@></x>')).toEqual(['FUD0010', 'FUD0056']);
+  });
+
+  it('keeps FUD0056 for `@@`, which is the literal `@`', () => {
+    expect(codes('<a href=@@url></a>')).toEqual(['FUD0056']);
   });
 
   it('reports FUD0056 for a bare literal value too', () => {
@@ -397,6 +424,86 @@ describe('unquoted values (§4.6, decision 8)', () => {
 
   it('reports FUD0056 when no value follows the equals sign', () => {
     expect(codes('<a href=>x</a>')).toEqual(['FUD0056']);
+  });
+
+  it('never crosses a blank: an unquoted value is ADJACENT to its `=` (decision 101)', () => {
+    // `.name=` and a stop is the one moment the author is asking what goes there, and without
+    // this the parser answered by reading the NEXT attribute as the value and swallowing the
+    // rest of the tag. Quotes are how a value is written away from its `=`.
+    const source = '<x .name= @click=@h></x>';
+    const result = parse(source);
+
+    expect(result.diagnostics.map((d) => d.code)).toEqual(['FUD0056']);
+    // Two attributes, not one: the binding behind the space is its own, and it keeps the value
+    // the author gave it. `@click` is classified later, which is why the name reads bare here.
+    const el = result.value.children[0] as ElementNode;
+    expect(el.attributes).toHaveLength(2);
+    expect(el.attributes[0]!.name).toBe('.name');
+    expect(el.attributes[0]!.value).toEqual([]);
+    expect(el.attributes[1]!.value[0]).toMatchObject({ type: 'razor-expression' });
+  });
+
+  it('and the diagnostic stands where the value would go, with no width', () => {
+    const source = '<x .name= 1></x>';
+    const [diag] = parse(source).diagnostics;
+
+    expect(diag?.code).toBe('FUD0056');
+    expect(diag?.span.start).toBe(diag?.span.end);
+    expect(diag?.span.start).toBe(source.indexOf('=') + 1);
+  });
+});
+
+describe('a bare scalar in the value of a `.prop` (decision 105)', () => {
+  /** The lone value part of the first attribute of the first element. */
+  const onlyPart = (source: string) =>
+    ((parse(source).value.children[0] as ElementNode).attributes[0]!.value[0] ?? undefined);
+
+  it.each([
+    ['<x .id=0></x>', '0'],
+    ['<x .id=42></x>', '42'],
+    ['<x .ratio=-1.5></x>', '-1.5'],
+    ['<x .ratio=+.5></x>', '+.5'],
+    ['<x .big=1e9></x>', '1e9'],
+    ['<x .visible=true></x>', 'true'],
+    ['<x .visible=false></x>', 'false'],
+    ['<x .nota=null></x>', 'null'],
+    ['<x .nota=undefined></x>', 'undefined'],
+  ])('takes %s as the expression %s, with no FUD0056', (source, expected) => {
+    expect(parse(source).diagnostics).toEqual([]);
+
+    const part = onlyPart(source);
+    // An expression like the other two, and the kind is what says it carries no `@`: `span`
+    // equals `expr`, so whatever rebuilds the source from the node prints the literal alone.
+    expect(part).toMatchObject({ type: 'razor-expression', kind: 'literal' });
+    expect(text(source, (part as { span: Span }).span)).toBe(expected);
+    expect((part as { expr: Span }).expr).toEqual((part as { span: Span }).span);
+  });
+
+  it.each([
+    // A bare name is how one would read a VARIABLE, and in fudic that is written with a `@`.
+    ['<x .name=Hello></x>'],
+    // An expression would end at the first space, and for that there is `@( … )`.
+    ['<x .id=1+1></x>'],
+    ['<x .id=0x1F></x>'],
+    ['<x .id=1.2.3></x>'],
+  ])('and keeps FUD0056 for %s, which is not a literal', (source) => {
+    expect(codes(source)).toEqual(['FUD0056']);
+  });
+
+  it.each([
+    // `id=0` has no dot: it is HTML's own attribute, where every value is a string.
+    ['<x id=0></x>'],
+    // And right of an event goes a listener, never a scalar.
+    ['<x @click=0></x>'],
+    ['<x class:on=0></x>'],
+  ])('and only on a `.prop`: %s is still FUD0056', (source) => {
+    expect(codes(source)).toEqual(['FUD0056']);
+  });
+
+  it('keeps a quoted scalar a string, which is what quotes have always meant', () => {
+    const part = onlyPart('<x .id="0"></x>');
+
+    expect(part).toMatchObject({ type: 'attribute-text', value: '0' });
   });
 });
 

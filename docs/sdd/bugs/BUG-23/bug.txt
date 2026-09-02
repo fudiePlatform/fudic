@@ -1,0 +1,47 @@
+1. El "." ofrece la imagen 01.jpg
+2. El "@" antes del igual no ofrece nada hasta que no se pulsa
+   despues cuando se pulsa si se ven perfectamente los eventos
+   "@c" ofrece 02.jpb 
+3. esto <app-circle @click=@></app-circle> no ofrece nada
+4. Al pulsar una letra ofrece si las funciones de la sección @client
+pero también ofrece imagen 03.jpg
+5. <app-circle @click=@.></app-circle> ofrece 04.jpg cuando debería de dar
+error
+
+6. "@" en la sección de text node de html ofrece 05.jpb cuando debería 
+de ofrecer snippet de control y data si existe pageData y todas las variables,props y funciones definidas
+en la seccion @client y ofrece todo el subset de typescript 06.jpg
+7. "@()" cuando la pulsación se hace entre los parentesis ofrece 07.jpg que es lo correcto aunque en un futuro
+haré una restricción de que si y que no se puede ejecutar en una expresión @()
+8. Slot
+    este html
+
+    <app-circle .name="">
+	  <div slot="p"></div>
+    </app-circle>
+
+    al pulsar la p ofrece "PEPITO" pero antes no con lo cual el usuario no sabe los name slot que tiene. Al pulsar tab
+    sobre 08.jpg 
+    <app-circle .name="">
+      <div slot="@PEPITO"></div>
+    </app-circle>
+    y mira aunque se puede ver que en app-circle tiene un name slot "PEPITO"
+
+    <app-circle>
+  <template shadowrootmode="open">
+    <div>@name</div>    
+    <slot name="PEPITO"></slot>
+  </template>
+</app-circle>
+   09.jpg
+   si un componente no tiene name slot y se intenta poner uno debe de dar un error
+10. class
+    <div class:red=@(1===1) class:yellow=@(2===2) class="re" ></div>
+    entre las comillas dobles ofrece 10.jpg debería de ofrecer las clases que tiene la sección style y que 
+    el usaurio pueda poner la clase que quiera por si alguna está definida en el ambito global
+
+    
+    
+
+    
+

@@ -170,6 +170,9 @@ importers:
       '@fudic/compiler':
         specifier: workspace:*
         version: link:../compiler
+      vscode-html-languageservice:
+        specifier: 5.6.2
+        version: 5.6.2
     devDependencies:
       '@fudic/tsconfig':
         specifier: workspace:*

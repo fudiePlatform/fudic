@@ -29,6 +29,12 @@ export interface TagCompletion {
   readonly path: string;
   /** `false` when the component exists in the workspace but this file does not link it. */
   readonly linked: boolean;
+  /**
+   * The props it declares without a `?`, in declaration order — one tabstop each when the tag
+   * is expanded (BUG-23 §6, criterion 21.b). Empty when there are none, and empty when they
+   * cannot be proven: both mean «expand it the way it was expanded before».
+   */
+  readonly requiredProps: readonly string[];
 }
 
 /** A clickable `href`. */
@@ -58,7 +64,13 @@ export function declaredTags(
     const entry = index.resolve(document.path, href);
     if (entry === undefined || entry.tag === '') continue;
 
-    tags.push({ tag: entry.tag, href, path: entry.path, linked: true });
+    tags.push({
+      tag: entry.tag,
+      href,
+      path: entry.path,
+      linked: true,
+      requiredProps: entry.requiredProps,
+    });
   }
   return tags;
 }
@@ -90,6 +102,7 @@ export function componentTags(
       href: relativeHref(document.path, entry.path),
       path: entry.path,
       linked: false,
+      requiredProps: entry.requiredProps,
     }))
     .sort((a, b) => a.tag.localeCompare(b.tag));
 

@@ -59,6 +59,7 @@ describe('declaredTags', () => {
       href: '../components/app-badge.fud',
       path: '/p/components/app-badge.fud',
       linked: true,
+      requiredProps: [],
     });
   });
 
@@ -77,8 +78,8 @@ describe('componentTags (SDD-28 §5.3)', () => {
     const { index, document } = setup(SLUG, route('../layouts/_layout.fud', ['../components/site-nav.fud']));
 
     expect(componentTags(document, index)).toEqual([
-      { tag: 'site-nav', href: '../components/site-nav.fud', path: '/p/components/site-nav.fud', linked: true },
-      { tag: 'app-badge', href: '../components/app-badge.fud', path: '/p/components/app-badge.fud', linked: false },
+      { tag: 'site-nav', href: '../components/site-nav.fud', path: '/p/components/site-nav.fud', linked: true, requiredProps: [] },
+      { tag: 'app-badge', href: '../components/app-badge.fud', path: '/p/components/app-badge.fud', linked: false, requiredProps: [] },
     ]);
   });
 

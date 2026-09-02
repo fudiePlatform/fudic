@@ -44,4 +44,12 @@ export {
 
 export { hydratableTags, isIntrinsicallyHydratable } from './level.js';
 
+// The contract questions only a resolved graph can answer, and the three diagnostics that
+// need them (BUG-23 §4.4).
+export { graphRegistry, contractDiagnostics } from './registry.js';
+
+// The `@code` reading itself, for a caller that holds ONE document and no graph — the
+// workspace index, which needs a child's props to expand its tag (BUG-23 task 25).
+export { extractCode, type Prop } from './oxc-code.js';
+
 export { spaceModeOf, collapseSpace, nestedSpaceMode, SPACE_ATTR, type SpaceMode } from './space.js';

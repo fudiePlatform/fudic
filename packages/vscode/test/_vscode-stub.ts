@@ -42,6 +42,8 @@ export interface StubState {
   executed: string[];
   /** Handlers registered for `onDidChangeTextDocument`. */
   changeListeners: ((event: ChangeEventStub) => void)[];
+  /** Handlers registered for `onDidChangeTextEditorSelection`. */
+  selectionListeners: ((event: SelectionEventStub) => void)[];
   /** Every snippet inserted, as `[text, offset]`. */
   snippets: [string, number][];
   /** Every replacement applied through `editor.edit`, as `[range, text]`. */
@@ -130,6 +132,39 @@ export interface ChangeEventStub {
   readonly contentChanges: readonly { readonly rangeOffset: number; readonly text: string }[];
 }
 
+/** A `vscode.TextEditorSelectionChangeEvent`, as the caret watcher reads it. */
+export interface SelectionEventStub {
+  readonly textEditor: {
+    readonly document: {
+      readonly languageId: string;
+      readonly version: number;
+      getText(): string;
+      offsetAt(position: unknown): number;
+    };
+  };
+  readonly selections: readonly { readonly isEmpty: boolean; readonly active: unknown }[];
+}
+
+/** Builds the event a caret at `offset` of `text` would fire. */
+export const caretEvent = (
+  languageId: string,
+  text: string,
+  offset: number,
+  version = 1,
+  isEmpty = true,
+  count = 1,
+): SelectionEventStub => ({
+  textEditor: {
+    document: {
+      languageId,
+      version,
+      getText: () => text,
+      offsetAt: (position) => position as number,
+    },
+  },
+  selections: Array.from({ length: count }, () => ({ isEmpty, active: offset })),
+});
+
 const emptyBar = () => ({ text: '', tooltip: '', visible: false, command: '' });
 
 export const state: StubState = {
@@ -149,6 +184,7 @@ export const state: StubState = {
   openedDocuments: [],
   executed: [],
   changeListeners: [],
+  selectionListeners: [],
   snippets: [],
   edits: [],
 };
@@ -170,8 +206,14 @@ export const reset = (): void => {
   state.openedDocuments = [];
   state.executed = [];
   state.changeListeners = [];
+  state.selectionListeners = [];
   state.snippets = [];
   state.edits = [];
+};
+
+/** Fires `onDidChangeTextEditorSelection`, as moving the caret would. */
+export const moveCaret = (event: SelectionEventStub): void => {
+  for (const listener of state.selectionListeners) listener(event);
 };
 
 /** Fires `onDidChangeTextDocument`, as typing would. */
@@ -228,6 +270,10 @@ export const window = {
   }),
   onDidChangeActiveTextEditor: (listener: (editor: EditorStub | undefined) => void) => {
     state.editorListeners.push(listener);
+    return { dispose: () => undefined };
+  },
+  onDidChangeTextEditorSelection: (listener: (event: SelectionEventStub) => void) => {
+    state.selectionListeners.push(listener);
     return { dispose: () => undefined };
   },
   get activeTextEditor() {

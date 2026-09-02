@@ -4,7 +4,7 @@
   const { label = "", picked = false } = props<{ label?: string; picked?: boolean }>();
 
   @client {
-    import { signal } from '@fudic/core';
+    import { signal } from "@fudic/core";
 
     const hot = signal(false);
 
@@ -38,6 +38,6 @@
 
 <bus-option>
   <template shadowrootmode="open">
-    <button data-picked="@picked" @mouseenter="@enter">@label</button>
+    <button data-picked=@picked @mouseenter=@enter>@label</button>
   </template>
 </bus-option>

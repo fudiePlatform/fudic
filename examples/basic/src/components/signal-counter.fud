@@ -2,9 +2,9 @@
 
 @code {
   @client {
-    import { signal } from '@fudic/core';
+    import { signal } from "@fudic/core";
 
-    // `.value="@count"` names the signal and the compiler reads it for you: what crosses is
+    // `.value=@count` names the signal and the compiler reads it for you: what crosses is
     // `count()`. Naming it is what earns a subscription of its own, one per signal, writing
     // one slot of the child's payload.
     const count = signal(0);
@@ -54,10 +54,10 @@
   <template shadowrootmode="open">
     <section class="panel">
       <div class="row">
-        <button class="inc" @click="@inc">+1</button>
+        <button class="inc" @click=@inc>+1</button>
         <p class="own">El padre tiene @(count()).</p>
       </div>
-      <signal-display .value="@count"></signal-display>
+      <signal-display .value=@count></signal-display>
     </section>
   </template>
 </signal-counter>

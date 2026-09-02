@@ -39,12 +39,11 @@ import type { HtmlContent, ElementNode, AttributeValuePart } from '../html/index
 import type { ControlNode } from '../control/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { Span } from '../types/index.js';
-import { classifyAttribute } from '../binding/index.js';
+import { classifyAttribute, crossing } from '../binding/index.js';
 import { CodeWriter, type LinePart } from './writer.js';
 import { type AssetLinker } from './assets.js';
 import {
   crossingExpr,
-  reactiveName,
   readsMoving,
   writeElementAttrs,
   type HostContext,
@@ -757,7 +756,9 @@ export class ClientMarkupEmitter {
     for (const attr of el.attributes) {
       const b = classifyAttribute(attr, this.#source).value;
       if (b.type !== 'property') continue;
-      const naked = reactiveName(this.#source, b.value, this.#scope.signals);
+      // No emitter produces a `'ref'` crossing yet (SDD-31 §7), so whatever `crossing`
+      // answers here is the `'value'` form and its name is the reactive to subscribe to.
+      const naked = crossing(this.#source, b.value, this.#scope.signals)?.name;
       if (naked !== undefined) {
         out.set(b.name, { expr: naked, signal: naked, changes: false });
       } else {

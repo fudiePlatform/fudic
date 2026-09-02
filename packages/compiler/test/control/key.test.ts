@@ -125,7 +125,7 @@ describe('the three loops carry a key (criterion 8)', () => {
   });
 });
 
-describe('FUD0540 — a loop with markup and no key (criterion 7)', () => {
+describe('FUD0540 — a loop with no key (criterion 7)', () => {
   it('reports it on the header span and keeps emitting the rest', () => {
     const source = '@foreach (const r of rows) { <li>@r.n</li> }';
     const { node, diagnostics } = parse(source);
@@ -144,13 +144,14 @@ describe('FUD0540 — a loop with markup and no key (criterion 7)', () => {
     expect(codes('@while (go) { <li>x</li> }')).toEqual(['FUD0540']);
   });
 
-  it('says nothing when the body renders nothing', () => {
-    // No rows to reconcile ⇒ no identity to demand. Whitespace, a Razor comment and an
-    // `@{ … }` are not markup: none of the three reaches the DOM.
-    expect(codes('@foreach (const r of rows) { }')).toEqual([]);
-    expect(codes('@foreach (const r of rows) {\n  \n}')).toEqual([]);
-    expect(codes('@foreach (const r of rows) { @* nothing here *@ }')).toEqual([]);
-    expect(codes('@foreach (const r of rows) { @{ total += r.n; } }')).toEqual([]);
+  it('demands one even from a body that renders nothing', () => {
+    // The exemption for a body with no markup is gone. Whether a loop needs a key was a
+    // property of what happened to be inside it that minute, so the error appeared and
+    // vanished as the author typed the first tag — a rule with a hole nobody could learn.
+    expect(codes('@foreach (const r of rows) { }')).toEqual(['FUD0540']);
+    expect(codes('@foreach (const r of rows) {\n  \n}')).toEqual(['FUD0540']);
+    expect(codes('@foreach (const r of rows) { @* nothing here *@ }')).toEqual(['FUD0540']);
+    expect(codes('@foreach (const r of rows) { @{ total += r.n; } }')).toEqual(['FUD0540']);
   });
 
   it('demands one for a body that is only an interpolation', () => {
@@ -228,7 +229,10 @@ describe('FUD0541 — a key that holds no expression', () => {
   it('does not mistake an identifier that merely starts with `key` for the clause', () => {
     // `keys` is not `key`: the clause matches on a word boundary. So nothing is consumed
     // and the `{` the body needs is the one that goes missing.
-    expect(codes('@foreach (const r of rows) keys (r.id) { <li>x</li> }')).toEqual(['FUD0071']);
+    expect(codes('@foreach (const r of rows) keys (r.id) { <li>x</li> }')).toEqual([
+      'FUD0071',
+      'FUD0540',
+    ]);
   });
 });
 

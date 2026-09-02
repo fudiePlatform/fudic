@@ -184,19 +184,35 @@ type $Scalar = string | number | boolean | bigint | null | undefined;
 
 declare function $text(v: $Scalar): void;
 declare function $attr(v: $Scalar): void;
-declare function $attrs<T>(a: T): void;
+declare function $attrs<T>(a: T & $GlobalAttrs): void;
+declare function $props<T>(p: T): void;
+
+type $RequiredKeys<T> = { [K in keyof T]-?: {} extends Pick<T, K> ? never : K }[keyof T];
+type $Missing<T, K> = Pick<T, Exclude<$RequiredKeys<T>, K>>;
+declare function $required<T, K extends PropertyKey>(rest: $Missing<T, K>): void;
+
 declare function $on<K extends keyof HTMLElementEventMap>(
   type: K, h: (ev: HTMLElementEventMap[K]) => unknown): void;
 declare function $section<T extends string>(name: T): void;
 declare function $cls(v: boolean): void;
 declare function $sty(v: string): void;
 declare function $slot(): void;
+declare function $intoSlot<T extends string>(name: T): void;
 declare function $ref<E extends Element>(): E;
 
 type $El<T extends string> = T extends keyof HTMLElementTagNameMap
   ? HTMLElementTagNameMap[T]
   : HTMLElement;
 ```
+
+`$props` y `$attrs` son **dos** globales y no uno porque son dos vocabularios: el contrato del
+componente y el de HTML (BUG-23 §2.1). `$props<T>` no lleva `& $GlobalAttrs`, y por eso el punto
+de una `.prop` ofrece las props del hijo y nada más. `$required` es el que hace que una prop
+requerida que nadie pasa llegue a *Problems*: `$Missing<T, K>` son las claves obligatorias de `T`
+que `K` no nombra, y el ancla del argumento cae **sobre el nombre del tag**, que es la única
+forma de que Volar mapee el error de vuelta. `$intoSlot` es la otra mitad de `$slot`: uno marca
+la ranura dentro del componente, el otro comprueba —contra el `$Slots` del **padre**— el
+`slot="…"` que la llena.
 
 `$El<T>` es lo que da a `ref` el tipo del elemento concreto sin mantener una tabla propia:
 `ref="@box"` en un `<div>` proyecta `box = $ref<$El<'div'>>()`. La tabla la tiene ya
@@ -252,6 +268,12 @@ diferencia entre un LSP usable y uno que señala un fichero que el usuario no ha
 Cambiar el contrato de `load()` rompe la plantilla sin tocar la plantilla. Verificado
 (caso H, §6).
 
+**El `<head>` se proyecta con el mismo ámbito que el cuerpo** (añadido por BUG-23).
+`<title>@data.title</title>` y `<link href="@data.hero">` leen de `data` y de `@code` igual que
+cualquier nodo de la plantilla, y hasta ahora no mapeaban a ninguna parte: se emitían fuera del
+recorrido, así que ni completaban, ni reportaban, ni navegaban. Es la misma proyección, aplicada
+antes del cuerpo.
+
 ### 4.3. Copia literal frente a construcción
 
 - Todo fragmento JS/TS del usuario (`@code`, cuerpo de `@client`/`@server`, cabeceras de
@@ -267,7 +289,7 @@ Cambiar el contrato de `load()` rompe la plantilla sin tocar la plantilla. Verif
 | `<link rel="component" href="./x.fud">` | `import type { $Props as $C<n> } from './x.fud';` |
 | `<link rel="layout" href="./l.fud">` | `import type { $Sections as $L0 } from './l.fud';` |
 | `props<T>()` en `@code` | `const $p0 = props<T>();` + `export type $Props = typeof $p0;` + el destructuring del usuario copiado literalmente sobre `$p0` |
-| `<app-badge …>` (tag registrado) | `$attrs<$C<n>>({ …props… });` + `$attrs<{}>({ …atributos planos… });` |
+| `<app-badge …>` (tag registrado) | `$props<$C<n>>({ …props… });` + `$attrs<{}>({ …atributos planos… });` + `$required<$C<n>, 'a' \| 'b'>({});` |
 | `<app-foo …>` (tag **no** registrado) | `$attrs<$C_app_foo>({ … });` con `$C_app_foo` **no declarado** ⇒ `TS2304` sobre el tag (decisión 41) |
 | `attr="@expr"` (único `at_construct`) | propiedad del objeto con el valor **tal cual**: tipo exacto contra la prop |
 | `attr="pre-@expr-post"` (concatenación) | propiedad con *template literal*: se comprueba como `string` (decisión 20) |
@@ -275,12 +297,16 @@ Cambiar el contrato de `load()` rompe la plantilla sin tocar la plantilla. Verif
 | atributo estático `attr="v"` | propiedad con literal de string |
 | atributo booleano `disabled` | propiedad `true` (decisión 44) |
 | `@click="@h"` | `$on('click', h);` — `'click'` **copiado** del fuente, 1:1 y sin las comillas |
+| `@click="@h($event)"` / `@click=@h($event)` | `$on('click', ($event) => h($event));` — la llamada es una **invocación diferida** (decisión 96), y `$event` es el parámetro del arrow: su tipo lo pone `$on`, no un `.d.ts` |
 | `@click="@(e => …)"` | `$on('click', e => …);` — `e` tipado como `MouseEvent` |
 | `@my-event="@h"` | `$on('my-event' as never, h);` — evento custom, sin tipo de evento (decisión 28) |
 | `class:foo="@x"` | `$cls(x);` ⇒ exige `boolean` |
 | `style:foo="@x"` | `$sty(x);` ⇒ exige `string` |
 | `ref="@v"` | `v = $ref<HTMLDivElement>();` — **asignación, no declaración**, con el elemento concreto del tag |
 | `@name` / `@(expr)` en texto | `$text(expr);` ⇒ exige `$Scalar` (decisión 19) |
+| `@data.` — punto colgante (decisión 102) | el punto se **copia** con el perfil de solo-completado: `$text(data.);` es sintaxis incompleta a propósito, TypeScript se recupera y contesta los miembros, y el «Identifier expected» cae en un tramo sin `verification` |
+| `.p="@titulo"` con `titulo` reactivo | `titulo()` — la **lectura**, que es lo que el emit cruza (decisión 84). El `()` es andamiaje sin mapping: lo proyectado con el perfil de usuario sigue siendo `titulo`, así que definición, renombrado y hover no se mueven |
+| `slot="x"` en **cualquier** elemento | `$intoSlot<$S_padre>('x');` — contra el `$Slots` del padre, y `never` cuando no hay padre componente (BUG-23 §2.6) |
 | `@if (c) { A } else { B }` | `if (c) { …A… } else { …B… }` |
 | `@foreach (const x of xs) { … }` | `for (const x of xs) { … }` |
 | `@for (…) { … }` / `@while (…) { … }` | la sentencia homóloga |
@@ -291,15 +317,29 @@ Cambiar el contrato de `load()` rompe la plantilla sin tocar la plantilla. Verif
 | `<slot>` | `$slot();` |
 | `@* … *@` | nada (decisión 37); el span queda sin mapeo |
 
-**Un tag de componente proyecta DOS literales (BUG-16 §4.2).** Un `.prop` y un atributo plano
-no son dos maneras de decir lo mismo: el punto es la única vía de prop (decisión 41.c), así que
-solo los `property` entran en el literal de contrato `$attrs<$C<n>>`. Los planos van a un
+**Un tag de componente proyecta DOS literales (BUG-16 §4.2, corregido en BUG-23 §2.1).** Un
+`.prop` y un atributo plano no son dos maneras de decir lo mismo: el punto es la única vía de
+prop (decisión 41.c), así que solo los `property` entran en el literal de contrato, que es
+`$props<$C<n>>` — **sin** `$GlobalAttrs`. Ese detalle es el síntoma 1 entero: mientras el
+contrato era un `$attrs`, su tipo contextual era `$C<n> & $GlobalAttrs` y el punto ofrecía las
+once claves globales, `data-*` y `aria-*` junto a las props. Los planos van a un
 `$attrs<{}>({ … })` propio —que es `{} & $GlobalAttrs`, o sea el vocabulario de HTML y nada
 más—, y así `id`, `role`, `data-*` y `aria-*` pasan mientras `tone="info"` reporta `TS2353`
-sobre el nombre, con la sugerencia de TypeScript cuando se parece a un global. El segundo
-literal se emite **solo si hay algún atributo plano**, y las anclas del hueco del tag apuntan al
-de **contrato**, que es lo que se quiere completar ahí. `slot` sigue fuera de los dos, con
-`$intoSlot` (BUG-11).
+sobre el nombre. El segundo literal se emite **siempre**, porque las anclas del hueco del tag
+viven en él (decisión (b.3): el hueco ofrece las dos familias, con el punto dentro de la
+etiqueta de la prop). `slot` sigue fuera de los dos, con `$intoSlot` (BUG-11).
+
+**La prop que falta se reporta sobre el NOMBRE DEL TAG.** `$required<$C<n>, 'a' | 'b'>(⟨{}⟩)`,
+con el `{}` como un solo tramo de solo-diagnóstico anclado al nombre del tag. La razón no es
+estética: TypeScript reporta `TS2739` sobre el argumento entero, y Volar solo mapea un rango de
+vuelta cuando **sus dos extremos caen en un mismo tramo** con `verification`. Con el literal de
+props, los dos extremos caían en andamiaje y el error se producía y se tiraba (BUG-23 §2.1).
+
+**El editor comprueba la expresión que el build emite, nunca otra.** Es el invariante que
+cierran las dos filas nuevas de la tabla —el handler diferido y la lectura del reactivo—, y las
+dos reglas las decide **una** función del compilador (`handlerShape` y `crossing`), que usan el
+emit y esta proyección. Una regla de binding que solo conozca uno de los dos vuelve a abrir el
+síntoma: el editor juzgando un objeto donde el build cruza un valor.
 
 **El nombre de un evento se copia, no se inventa (BUG-16 §4.4).** Es lo que hace que el `@`
 ofrezca la lista: el primer parámetro de `$on` es `keyof HTMLElementEventMap`, el diccionario

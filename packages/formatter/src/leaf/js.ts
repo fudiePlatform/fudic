@@ -138,10 +138,25 @@ export async function formatJsFragment(
 ): Promise<{ readonly text: string; readonly ok: boolean }> {
   if (fragment.source.trim() === '') return { text: fragment.source, ok: true };
 
+  // Dedented BEFORE the engine sees it, not only after, and that is what makes formatting
+  // idempotent over a block comment.
+  //
+  // The engine reindents CODE but copies the inside of a block comment verbatim, which is
+  // correct — those lines are text, not syntax. Handing it a fragment that already carries the
+  // indentation of its `@code` therefore moves `/**` to column zero while its inner lines keep
+  // the columns they had, and the printer then indents the whole thing again: the comment's
+  // body drifts one level further right on EVERY save. A comment written with the usual `*` on
+  // each line was immune, because those lines are syntax the engine does reindent — which is
+  // exactly why the drift went unseen.
+  //
+  // With the fragment normalised to column zero the engine always sees the same text no matter
+  // how deep the block sits, so the output is a function of the code and not of its nesting.
+  const source = dedent(fragment.source);
+
   const out = await engine.format(
     {
       language: 'ts',
-      source: wrapFragment(fragment.kind, fragment.source),
+      source: wrapFragment(fragment.kind, source),
       indentColumns: fragment.indentColumns,
       singleQuote: fragment.singleQuote,
       singleLine: fragment.singleLine,

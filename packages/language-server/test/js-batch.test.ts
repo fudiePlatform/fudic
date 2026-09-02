@@ -70,6 +70,29 @@ describe('batchDocumentJs', () => {
     ]);
   });
 
+  it('registers the @client regions the reactive names are read from (BUG-23 task 14)', () => {
+    const { js } = parse(WITH_CODE);
+
+    expect(js.client).toHaveLength(1);
+    expect(js.result.ast(js.client[0]!)).toBeDefined();
+  });
+
+  it('registers the ATTRIBUTE values too, and answers their AST by span', () => {
+    const source = WITH_CODE.replace('<span>@tone</span>', '<span @click="@onClick($event)"></span>');
+    const { js } = parse(source);
+    const at = source.indexOf('onClick($event)');
+    const root = js.ast({ start: at, end: at + 'onClick($event)'.length });
+
+    // The one question no regular expression answers: is the root of this value a call?
+    expect(Array.isArray(root) ? undefined : (root as { type: string }).type).toBe(
+      'CallExpression',
+    );
+  });
+
+  it('answers nothing for a span nobody registered', () => {
+    expect(parse(WITH_CODE).js.ast({ start: 0, end: 1 })).toBeUndefined();
+  });
+
   it('answers a fragment id per JS-bearing node, and nothing for the rest', () => {
     const { document, js } = parse(WITH_CODE);
     const interpolation = firstInterpolation(document);

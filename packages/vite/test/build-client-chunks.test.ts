@@ -61,7 +61,7 @@ const PAGE = `<!DOCTYPE html>
     <title>Home</title>
   </head>
   <body>
-    <app-card title="Hola"></app-card>
+    <app-card .title="Hola"></app-card>
   </body>
 </html>
 `;

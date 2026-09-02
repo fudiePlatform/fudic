@@ -47,6 +47,16 @@ describe('identity', () => {
     );
   });
 
+  it('formats a .fud on save, and only a .fud (SDD-36 §3.4)', () => {
+    // A default, not an imposition: it lives in the `[fudic]` block, so it reaches no other
+    // language, and a user who sets `editor.formatOnSave` themselves wins over it. Paired with
+    // the formatter above on purpose — formatting on save with somebody else's formatter is
+    // how a `.fud` comes out of the editor different from how `fudic format` writes it.
+    expect(
+      at(manifest, 'contributes', 'configurationDefaults', '[fudic]', 'editor.formatOnSave'),
+    ).toBe(true);
+  });
+
   it('asks the editor for suggestions inside quotes', () => {
     // An attribute value is a string to the grammar, and VS Code will not auto-trigger
     // suggestions inside a string: `strings` is off by default. Without this, typing
@@ -166,6 +176,16 @@ describe('commands', () => {
         when: 'editorTextFocus && !editorReadonly && editorLangId == fudic',
       },
     ]);
+  });
+
+  it('rebinds Tab nowhere at all', () => {
+    // Tab belongs to the editor. Taking it over — even narrowed to a `.fud` in snippet mode —
+    // changes a key every developer has muscle memory for, in exchange for a behaviour the
+    // server can produce on its own: a list that closes when the value is written (the
+    // `isIncomplete` of BUG-23 task 25) leaves Tab meaning what it always meant.
+    const bindings = at(manifest, 'contributes', 'keybindings') as readonly { key: string }[];
+
+    expect(bindings.some((binding) => binding.key.endsWith('tab'))).toBe(false);
   });
 });
 

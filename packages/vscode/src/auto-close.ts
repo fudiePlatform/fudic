@@ -38,12 +38,20 @@ export function watchTypedTags(typing: TypingPort, holder: ClientHolder): void {
   typing.onTyped((typed) => {
     if (!closesATag(typed)) return;
 
-    void holder.client
-      .sendRequest<string>(AUTO_CLOSE_TAG_REQUEST, { uri: typed.uri, offset: typed.offset })
-      .then(async (tag) => {
-        if (tag === '') return;
-        await typing.insert({ ...typed, text: tag });
-      })
-      .catch(() => undefined);
+    // Asked on the NEXT macrotask, and that is the whole fix: this listener and the language
+    // client's own listen to the same editor event, this one runs first, and the client's
+    // `didChange` is sent from a promise chain. Asking straight away put the request on the
+    // wire ahead of the `>` that caused it — the server answered about a document it had not
+    // been told about yet, found no end of start tag, and answered nothing, every time. A
+    // timer of zero runs after the microtask queue drains, so the notification goes first.
+    setTimeout(() => {
+      void holder.client
+        .sendRequest<string>(AUTO_CLOSE_TAG_REQUEST, { uri: typed.uri, offset: typed.offset })
+        .then(async (tag) => {
+          if (tag === '') return;
+          await typing.insert({ ...typed, text: tag });
+        })
+        .catch(() => undefined);
+    }, 0);
   });
 }

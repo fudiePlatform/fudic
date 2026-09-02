@@ -99,17 +99,33 @@ interface OpenElement {
 const DOCTYPE_START = /^\s*<!DOCTYPE/iu;
 
 /**
- * Whether this attribute's value is a HANDLER — an event binding (`@click`) or a bus
- * subscription (`bus:carrito`, `bus:(EVENTOS.carrito)`). It is the one position where an
- * implicit expression may end in a call (decision 99).
+ * The scalar literals a `.prop` may take unquoted (decision 105): a number, a boolean,
+ * `null` and `undefined`.
  *
- * The two prefixes are spelled out here rather than imported from SDD-07: that module
- * classifies bindings and already depends on this one, and the dependency only runs one
- * way. The tokenizer holds the same knowledge for the same reason (the `bus:(` rule).
+ * An IDENTIFIER is deliberately not one of them. `.name=Hello` stays `FUD0056`, because a
+ * bare name is how one would read a variable and in fudic a variable is read with a `@` —
+ * admitting it here would make the same three characters mean a string in one place and a
+ * read in another. A literal has no such ambiguity: `0` is `0` in every language a `.fud`
+ * touches.
+ *
+ * And nothing with an operator in it. `1+1` and `` `a${b}` `` are expressions, and an
+ * expression written bare would end at the first space; they keep the `@( … )` that decision
+ * 104 exists for.
  */
-function isHandlerName(name: string | RazorExpression): boolean {
-  // An expression name is only legal after `bus:`, and the lexer produces one nowhere else.
-  return typeof name !== 'string' || name.startsWith('@') || name.startsWith('bus:');
+const SCALAR_LITERAL = /^(?:[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|true|false|null|undefined)$/u;
+
+/**
+ * A `.prop` — the only attribute a bare literal is legal on (decisions 24, 105).
+ *
+ * `id=0` has no dot and stays `FUD0056`: it is HTML's own attribute, where every value is a
+ * string and quotes are the rule. And `@click=0` is not one either — what goes right of an
+ * event is a listener, never a scalar.
+ *
+ * The `.` is written here rather than imported from `binding/`: that module reads this one's
+ * nodes, and a value imported back the other way would close the cycle for one character.
+ */
+function isPropertyName(name: string | RazorExpression): boolean {
+  return typeof name === 'string' && name.startsWith('.');
 }
 
 class HtmlParser {
@@ -483,13 +499,13 @@ class HtmlParser {
     const value: AttributeValuePart[] = [];
     this.#skipInTagWhitespace();
     if (this.#lexer.peek().type === 'attr-eq') {
-      this.#next();
+      const eq = this.#next();
       this.#skipInTagWhitespace();
       const quote = this.#lexer.peek();
       end =
         quote.type === 'attr-quote-open'
-          ? this.#parseQuotedValue(value, isHandlerName(name))
-          : this.#parseUnquotedValue(value);
+          ? this.#parseQuotedValue(value)
+          : this.#parseUnquotedValue(value, name, eq.span.end);
     }
 
     return { type: 'attribute', span: span(nameToken.span.start, end), name, value };
@@ -500,7 +516,7 @@ class HtmlParser {
     while (this.#lexer.peek().type === 'whitespace') this.#next();
   }
 
-  #parseQuotedValue(parts: AttributeValuePart[], call = false): number {
+  #parseQuotedValue(parts: AttributeValuePart[]): number {
     this.#next(); // the opening quote
     for (;;) {
       const token = this.#lexer.peek();
@@ -512,8 +528,7 @@ class HtmlParser {
       if (token.type === 'eof') return this.#lexer.offset;
 
       if (token.type === 'at-trigger') {
-        const part = this.#attributeAtom(call);
-        if (part !== null) parts.push(part);
+        parts.push(this.#attributeAtom());
         continue;
       }
 
@@ -544,13 +559,13 @@ class HtmlParser {
   /**
    * An `@` atom in value position. Only expressions are value parts.
    *
-   * `call` carries decision 99 down: in the value of an `@event` / `bus:` binding an
-   * implicit expression may end in a balanced call, so `@del($event, item.id)` is ONE
-   * atom instead of the path `del` plus literal text.
+   * It takes no options any more: since decision 100 an implicit expression is a chain
+   * wherever it is written, so a call is no longer a privilege of the value of an
+   * `@event` / `bus:` binding (decision 99, retired).
    */
-  #attributeAtom(call: boolean): AttributeValuePart | null {
+  #attributeAtom(): AttributeValuePart {
     const trigger = this.#next();
-    const resolved = resolveTrigger(this.#source, trigger.span.start, { call });
+    const resolved = resolveTrigger(this.#source, trigger.span.start);
     if (resolved.diagnostics.length > 0) this.#diagnostics.push(...resolved.diagnostics);
     const resolution = resolved.value;
 
@@ -574,13 +589,62 @@ class HtmlParser {
   }
 
   /**
-   * A value with no quotes (decision 8 / FUD0056). The lexer already cut the run at
-   * the first whitespace, `>` or `/>`, which is exactly the recovery §4.6 prescribes.
+   * A value with no quotes. Three cases since decision 105.
+   *
+   * ONE Razor atom needs no quotes: `.prop=@name`, `@click=@onClick($event)`,
+   * `class:on=@active` (decision 103). It is an EXCEPTION to decision 8, not its repeal —
+   * the lexer only opens the atom on a significant `@`.
+   *
+   * And ONE scalar literal, in the value of a `.prop` alone: `.id=0`, `.on=true`. The
+   * escape hatch was the only way to pass a number to a `number` prop, and `@(0)` is
+   * ceremony around a thing that has no parts to speak of.
+   *
+   * Everything else still lands on the last branch, where `id=foo` is `FUD0056` exactly
+   * as before — the lexer already cut the run at the first whitespace, `>` or `/>`,
+   * which is the recovery §4.6 prescribes.
    */
-  #parseUnquotedValue(parts: AttributeValuePart[]): number {
+  #parseUnquotedValue(
+    parts: AttributeValuePart[],
+    name: string | RazorExpression,
+    afterEq: number,
+  ): number {
     const token = this.#lexer.peek();
+
+    // ADJACENT to the `=`, and that is decision 101 applied to the value: the unquoted forms
+    // never cross a blank. Without it `.name= @click=@h` read the NEXT attribute as the value
+    // of this one — the author had written `.name=` and stopped, which is the one moment they
+    // are asking what goes there, and the parser answered by swallowing the rest of the tag.
+    // Quotes are the way to write a value away from its `=`, and they are unaffected.
+    if (token.span.start !== afterEq) {
+      const at = emptySpan(afterEq);
+      this.#error('FUD0056', 'attribute value must be quoted', at);
+      return at.end;
+    }
+
+    if (token.type === 'at-trigger') {
+      const part = this.#attributeAtom();
+      parts.push(part);
+      return part.span.end;
+    }
+    // `.prop=@(counter().id)`: the explicit form is one atom too, and refusing it here
+    // would make the quotes mandatory for precisely what decision 104 keeps them for.
+    if (token.type === 'explicit-expr') {
+      this.#next();
+      parts.push(expressionFromToken(token));
+      return token.span.end;
+    }
     if (token.type === 'text') {
       this.#next();
+      if (isPropertyName(name) && SCALAR_LITERAL.test(this.#slice(token.span))) {
+        parts.push({
+          type: 'razor-expression',
+          kind: 'literal',
+          span: token.span,
+          expr: token.span,
+          regions: [],
+        });
+        return token.span.end;
+      }
       this.#error('FUD0056', 'attribute value must be quoted', token.span);
       this.#checkReferences(token.span);
       parts.push({ type: 'attribute-text', span: token.span, value: this.#slice(token.span) });

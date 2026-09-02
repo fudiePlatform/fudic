@@ -40,7 +40,7 @@
   y <strong>en qué orden</strong>. Ábrela y mira el fuente.
 </p>
 
-<bus-picker .options="@data.options"></bus-picker>
+<bus-picker .options=@data.options></bus-picker>
 <bus-log></bus-log>
 
 <h2>Los tres bloques</h2>

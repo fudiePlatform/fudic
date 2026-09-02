@@ -450,7 +450,9 @@ describe('degradations (§6.11) — the parser never throws', () => {
   });
 
   it('FUD0071 on a loop and on a switch', () => {
-    expect(codes('@while (a) <p>x</p>')).toEqual(['FUD0071']);
+    // A loop with no `{` has no key either, and both are true at once: FUD0540 is now about
+    // the loop and not about what its body happens to hold.
+    expect(codes('@while (a) <p>x</p>')).toEqual(['FUD0071', 'FUD0540']);
     const source = '@switch (a) case 1: <b/>';
     expect(codes(source)).toEqual(['FUD0071']);
     const node = parse(source).value.children.find((c) => c.type === 'switch') as SwitchNode;
