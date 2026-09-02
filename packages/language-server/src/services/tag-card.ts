@@ -122,12 +122,33 @@ const PROPS_EXPORT = '$Props';
 const DOC_OPEN = '/**';
 const BLOCK_CLOSE = '*/';
 
+/**
+ * The three kinds of value a repair can write by itself, plus everything else.
+ *
+ * Three and not thirty: these are the types that have an obvious empty value, and a repair may
+ * only write a value that is obvious. For anything else — an object, a function, a union of
+ * shapes — there is no `0` to reach for, and inventing one would be putting words in the
+ * author's mouth.
+ */
+export type PropHolds = 'string' | 'number' | 'boolean' | 'other';
+
 /** What only TypeScript knows about a prop. */
 export interface PropDetail {
   /** As the checker spells it, which is as the author declared it. */
   readonly type: string;
   /** The JSDoc the author wrote on the member of `props<T>()` — decision 107. */
   readonly doc?: string;
+  /**
+   * What kind of value the prop holds, as coarsely as a repair needs to know.
+   *
+   * A fact about the TYPE and not about fudic syntax: this module has the checker and no
+   * business knowing that a number is written `@(…)` in a template. What that fact turns into
+   * is `actions.ts`'s to decide.
+   *
+   * The index cannot answer this. It knows the NAMES of a component's props and nothing about
+   * their types, which is exactly why a repair that wrote `.id=""` into a `number` went out.
+   */
+  readonly holds: PropHolds;
 }
 
 /** No details, which is what every degraded path answers with. */
@@ -177,15 +198,57 @@ export function propDetails(
 
   const details = new Map<string, PropDetail>();
   for (const prop of checker.getDeclaredTypeOfSymbol(contract).getProperties()) {
-    const type = checker.typeToString(checker.getTypeOfSymbolAtLocation(prop, source));
+    const declared = checker.getTypeOfSymbolAtLocation(prop, source);
+    const type = checker.typeToString(declared);
     const doc =
       prop
         .getDocumentationComment(checker)
         .map((part) => part.text)
         .join('') || trailingDoc(prop.declarations?.[0]);
-    details.set(prop.name, { type, ...(doc === undefined || doc === '' ? {} : { doc }) });
+    details.set(prop.name, {
+      type,
+      holds: holdsOf(checker, declared),
+      ...(doc === undefined || doc === '' ? {} : { doc }),
+    });
   }
   return details;
+}
+
+/**
+ * What kind of value a prop holds.
+ *
+ * Asked with the checker's own public methods and no `TypeFlags`, because the enum is a runtime
+ * value and this module holds TypeScript as a TYPE only — the program arrives through Volar's
+ * `inject`, never as a module this package imported. So the primitives are recognised by the
+ * one name each of them prints as.
+ *
+ * A union answers `string` when ANY member takes one, because a string is then a legal value:
+ * `string | number` holds `""`, and a prop declared as an alias of string literals — `Tone` —
+ * is a union whose members all do. Otherwise a union has to be unanimous, which is what makes
+ * `boolean` work: TypeScript expands it to `true | false` and both halves answer `boolean`.
+ */
+function holdsOf(checker: ts.TypeChecker, type: ts.Type): PropHolds {
+  if (type.isUnion()) {
+    const kinds = new Set(type.types.map((member) => holdsOf(checker, member)));
+    if (kinds.has('string')) return 'string';
+    return kinds.size === 1 ? ([...kinds][0] as PropHolds) : 'other';
+  }
+  if (type.isStringLiteral()) return 'string';
+  if (type.isNumberLiteral()) return 'number';
+
+  switch (checker.typeToString(type)) {
+    case 'string':
+      return 'string';
+    case 'number':
+      return 'number';
+    // `true` and `false`, and never `boolean`: the checker hands a `boolean` prop over as the
+    // union of its two halves, so this recursion only ever meets them one at a time.
+    case 'true':
+    case 'false':
+      return 'boolean';
+    default:
+      return 'other';
+  }
 }
 
 /**

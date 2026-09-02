@@ -55,7 +55,7 @@ Una fila que no se pueda construir con certeza **no se ofrece**.
 
 | Hecho | Título | Escribe |
 |---|---|---|
-| Prop requerida sin pasar, o pasada vacía | `Completar las props requeridas de <tag>` | ` .id="" .name=""` antes del `>`, en una sola inserción |
+| Prop requerida sin pasar, o pasada vacía | `Completar las props requeridas de <tag>` | Un valor **del tipo de cada prop** antes del `>`, en una sola inserción |
 | `.prop` que el componente no declara | `Cambiar a .<prop>` | El nombre |
 | `slot="x"` que el host no declara | `Cambiar a slot="<slot>"` (una por ranura) o `Quitar slot="x"` | El nombre, o el atributo entero |
 
@@ -70,6 +70,15 @@ era lo que encendía una bombilla vacía sobre markup sano.
 
 Así que la voz sigue siendo suya y las manos son nuestras. El hecho se recalcula del parse y del
 índice en cada petición —los mismos dos lectores que alimentan la tarjeta—, y no lo reporta nadie.
+
+**Y lo que se escribe es del tipo de la prop.** El valor de un atributo en un `.fud` es TEXTO, así
+que `.id=""` pasa la cadena `""` — y una `.id` declarada `number` se convierte en un error de tipos
+que creó la propia reparación. Una bombilla que deja el fichero peor de como lo encontró es peor
+que no tener bombilla. La tabla es corta y es la misma que escribe cualquier editor al rellenar una
+propiedad que falta: `""` para una cadena, `@(0)` para un número, `@(false)` para un booleano —la
+interpolación es como se pasa un valor que no es texto (decisión 19)— y `@()` vacío para todo lo
+demás, que no tiene valor obvio que inventar. El tipo sale de la proyección, que es el único sitio
+que lo sabe: el índice conoce los NOMBRES de las props y nada de sus tipos.
 
 ### 3.2. La tarjeta del componente
 

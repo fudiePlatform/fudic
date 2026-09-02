@@ -779,21 +779,21 @@ describe('code actions', () => {
    * is offered because a diagnostic is there, so a range that covers the file has to find it
    * and a file with nothing wrong has to come back empty.
    */
-  describe('the repairs of SDD-36', () => {
-    /** Every action offered anywhere in `source`, with `source` written into the slug. */
-    const fixesIn = async (source: string, extra: Readonly<Record<string, string>> = {}) => {
-      const { service, document } = setup(source, SLUG, true, extra);
-      const whole = {
-        start: { line: 0, character: 0 },
-        end: { line: source.split('\n').length, character: 0 },
-      };
-      return (await service.provideCodeActions?.(document, whole, { diagnostics: [] }, TOKEN)) ?? [];
+  /** Every action offered anywhere in `source`, with `source` written into the slug. */
+  const fixesIn = async (source: string, extra: Readonly<Record<string, string>> = {}) => {
+    const { service, document } = setup(source, SLUG, true, extra);
+    const whole = {
+      start: { line: 0, character: 0 },
+      end: { line: source.split('\n').length, character: 0 },
     };
+    return (await service.provideCodeActions?.(document, whole, { diagnostics: [] }, TOKEN)) ?? [];
+  };
 
-    /** The single text edit an action makes on the file being edited. */
-    const edit = (action: { edit?: { changes?: Record<string, unknown> } } | undefined) =>
-      (Object.values(action?.edit?.changes ?? {})[0] as { newText: string }[] | undefined)?.[0];
+  /** The single text edit an action makes on the file being edited. */
+  const edit = (action: { edit?: { changes?: Record<string, unknown> } } | undefined) =>
+    (Object.values(action?.edit?.changes ?? {})[0] as { newText: string }[] | undefined)?.[0];
 
+  describe('the repairs of SDD-36', () => {
     it('quotes an unquoted value (FUD0056)', async () => {
       const actions = await fixesIn(
         `<link rel="layout" href="../layouts/_layout.fud">\n<div title=hola></div>\n`,
@@ -903,6 +903,212 @@ describe('code actions', () => {
       expect(await fixesIn(`<link rel="layout" href="../layouts/_layout.fud">\n<p>x</p>\n`)).toEqual(
         [],
       );
+    });
+  });
+
+  /**
+   * The three repairs of the component contract (SDD-36 §3.1).
+   *
+   * Anchored on a fact and not on a diagnostic of ours: TypeScript reports all three over the
+   * projection and offers no quick fix for any of them, so the voice is its and the hands are
+   * here. No program is mounted in this file, which is also the degraded case — with no types
+   * the shape of a hole falls back to `""`.
+   */
+  describe('the repairs of the contract', () => {
+    /** A component with two required props, one optional, and a named slot. */
+    const INPUT =
+      `@code {\n  const { id, name, hint = '' } = props<{ id: number; name: string; hint?: string }>();\n}\n` +
+      `<app-input>\n  <template shadowrootmode="open"><slot name="icon"></slot></template>\n</app-input>\n`;
+
+    /** A component that declares a prop and no slot at all. */
+    const BARE =
+      `@code {\n  const { tone = '' } = props<{ tone?: string }>();\n}\n` +
+      `<app-bare>\n  <template shadowrootmode="open"><slot></slot></template>\n</app-bare>\n`;
+
+    const WORKSPACE = { '/p/components/app-input.fud': INPUT, '/p/components/app-bare.fud': BARE };
+
+    /** A page that links both components, with `markup` in its body. */
+    const page = (markup: string): string =>
+      `<link rel="layout" href="../layouts/_layout.fud">\n` +
+      `<link rel="component" href="../components/app-input.fud">\n` +
+      `<link rel="component" href="../components/app-bare.fud">\n${markup}\n`;
+
+    const contractFixesIn = (markup: string) => fixesIn(page(markup), WORKSPACE);
+
+    const titled = <T extends { title: string }>(actions: readonly T[], prefix: string): T[] =>
+      actions.filter((action) => action.title.startsWith(prefix));
+
+    it('completes the required props a tag passes none of', async () => {
+      const actions = await contractFixesIn('<app-input></app-input>');
+      const fix = titled(actions, 'Completar')[0];
+
+      expect(fix?.title).toBe('Completar las props requeridas de <app-input>');
+      // One insertion and not two: two zero-length edits at one offset are two a client may
+      // order either way. The optional `hint` is not in it — only what is required.
+      expect(edit(fix)?.newText).toBe(' .id="" .name=""');
+    });
+
+    it('fills a required prop written with an empty value, in place', async () => {
+      // `.id=""` is the state a tag is in halfway through being typed, and the checker sees a
+      // string where a value should be. The repair replaces that attribute rather than adding
+      // a second one beside it.
+      const actions = await contractFixesIn('<app-input .id="" .name="n"></app-input>');
+
+      expect(edit(titled(actions, 'Completar')[0])?.newText).toBe('.id=""');
+    });
+
+    it('sorts a replacement and an insertion into source order', async () => {
+      // `.id` is written empty and `.name` is absent, so the fix carries two edits: one over
+      // the attribute and one at the `>`. They may not overlap and they may not arrive out of
+      // order — a client is entitled to refuse a set that does.
+      const actions = await contractFixesIn('<app-input .id=""></app-input>');
+      const edits = Object.values(titled(actions, 'Completar')[0]?.edit?.changes ?? {})[0] as
+        | { newText: string }[]
+        | undefined;
+
+      expect(edits?.map((one) => one.newText)).toEqual(['.id=""', ' .name=""']);
+    });
+
+    it('inserts before the slash of a self-closing tag', async () => {
+      const actions = await contractFixesIn('<app-input/>');
+
+      expect(edit(titled(actions, 'Completar')[0])?.newText).toBe(' .id="" .name=""');
+    });
+
+    it('says nothing about a tag that passes everything it must', async () => {
+      expect(await contractFixesIn('<app-input .id="1" .name="n"></app-input>')).toEqual([]);
+    });
+
+    it('does not offer a prop the tag already spells but the parse could not read', async () => {
+      // `<app-input .id= .name=>` reads as ONE unquoted value that swallows the second name, so
+      // `name` is absent from the attributes and present in the text. Inserting it would write
+      // the attribute twice.
+      const actions = await contractFixesIn('<app-input .id= .name=></app-input>');
+
+      expect(edit(titled(actions, 'Completar')[0])?.newText).not.toContain('.name');
+    });
+
+    it('renames a prop the component does not declare', async () => {
+      const actions = await contractFixesIn('<app-input .idd="1" .name="n"></app-input>');
+      const fix = titled(actions, 'Cambiar a .')[0];
+
+      expect(fix?.title).toBe('Cambiar a .id');
+      expect(edit(fix)?.newText).toBe('.id');
+    });
+
+    it('suggests nothing when no declared name is close enough', async () => {
+      // A repair the author has to think about is worse than none: this is a bulb, and what it
+      // offers has to be obviously right.
+      const actions = await contractFixesIn('<app-input .zzzzzz="1"></app-input>');
+
+      expect(titled(actions, 'Cambiar a .')).toEqual([]);
+    });
+
+    it('never suggests a name the tag already carries', async () => {
+      // Renaming `.nam` to a `.name` that is right there trades one error for a duplicate.
+      const actions = await contractFixesIn('<app-input .id="1" .name="n" .nam="x"></app-input>');
+
+      expect(titled(actions, 'Cambiar a .')).toEqual([]);
+    });
+
+    it('ignores a bare `.`, which names no prop at all', async () => {
+      const actions = await contractFixesIn('<app-input .="1" .id="1" .name="n"></app-input>');
+
+      expect(titled(actions, 'Cambiar a .')).toEqual([]);
+    });
+
+    it('ignores an attribute whose NAME is an expression', async () => {
+      // `bus:( … )` names its event with an expression (decision 28.b), so the name is a node
+      // and not a string. It is not a `.prop` and there is nothing about it to suggest.
+      const actions = await contractFixesIn(
+        '<app-input .id="1" .name="n" bus:(EVENTS.cart)="@h"></app-input>',
+      );
+
+      expect(titled(actions, 'Cambiar a .')).toEqual([]);
+    });
+
+    it('suggests nothing once every declared prop is already written', async () => {
+      // There is no name left to rename TO. Offering one that is already on the tag would
+      // trade an unknown prop for a duplicate attribute.
+      const actions = await contractFixesIn(
+        '<app-input .id="1" .name="n" .hint="h" .xxx="1"></app-input>',
+      );
+
+      expect(titled(actions, 'Cambiar a .')).toEqual([]);
+    });
+
+    it('renames a slot to each one the host declares', async () => {
+      const actions = await contractFixesIn(
+        '<app-input .id="1" .name="n"><div slot="PEPITO"></div></app-input>',
+      );
+      const fix = titled(actions, 'Cambiar a slot')[0];
+
+      expect(fix?.title).toBe('Cambiar a slot="icon"');
+      expect(edit(fix)?.newText).toBe('icon');
+    });
+
+    it('removes the slot when the host declares none to rename it to', async () => {
+      const actions = await contractFixesIn('<app-bare><div slot="PEPITO"></div></app-bare>');
+      const fix = titled(actions, 'Quitar slot')[0];
+
+      expect(fix?.title).toBe('Quitar slot="PEPITO"');
+      // The whitespace before it goes too, or the tag keeps a gap where the attribute was.
+      expect(edit(fix)?.newText).toBe('');
+    });
+
+    it('says nothing about a slot the host does declare', async () => {
+      const actions = await contractFixesIn(
+        '<app-input .id="1" .name="n"><div slot="icon"></div></app-input>',
+      );
+
+      expect(titled(actions, 'Cambiar a slot')).toEqual([]);
+      expect(titled(actions, 'Quitar slot')).toEqual([]);
+    });
+
+    it('says nothing about a slot whose name is not a literal', async () => {
+      // `slot="@(x)"` names a slot whose identity is not known until it runs, and a repair
+      // cannot rename what it cannot read. An empty `slot=""` names none either.
+      const actions = await contractFixesIn(
+        '<app-input .id="1" .name="n"><div slot="@(1)"></div><b slot=""></b></app-input>',
+      );
+
+      expect(titled(actions, 'Cambiar a slot')).toEqual([]);
+      expect(titled(actions, 'Quitar slot')).toEqual([]);
+    });
+
+    it('says nothing about a slot with no component parent', async () => {
+      // The host has to be a component for its slots to be a question at all.
+      expect(await contractFixesIn('<div slot="PEPITO"></div>')).toEqual([]);
+    });
+
+    it('says nothing about a tag the file does not link', async () => {
+      // With no `<link>` there is no contract to compare against, and `FUD0191` already owns
+      // that mistake with a bulb of its own.
+      const actions = await fixesIn(
+        `<link rel="layout" href="../layouts/_layout.fud">\n<app-input></app-input>\n`,
+        WORKSPACE,
+      );
+
+      expect(titled(actions, 'Completar')).toEqual([]);
+    });
+
+    it('offers nothing for a contract mistake outside the range asked about', async () => {
+      // The bulb belongs to the line the caret is on. Every other repair is filtered by range
+      // and so is this one — the tag is on line 3 and the question is about line 4.
+      const source = page('<app-input></app-input>\n<p>x</p>');
+      const { service, document } = setup(source, SLUG, true, WORKSPACE);
+      const elsewhere = { start: { line: 4, character: 0 }, end: { line: 4, character: 1 } };
+
+      expect(
+        await service.provideCodeActions?.(document, elsewhere, { diagnostics: [] }, TOKEN),
+      ).toEqual([]);
+    });
+
+    it('says nothing about a component’s own host wrapper', async () => {
+      // A component's markup IS its own tag (decision 75). Nobody passes props to it there.
+      const actions = await fixesIn(INPUT, WORKSPACE);
+
+      expect(titled(actions, 'Completar')).toEqual([]);
     });
   });
 });

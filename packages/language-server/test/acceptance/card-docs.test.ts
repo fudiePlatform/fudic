@@ -27,12 +27,13 @@ const APP_INPUT = `@code {
     id: number /**Id del componente*/;
     /**Name del componente*/
     name: string;
+    hint: string /* no es un JSDoc */;
   };
-  const { id, name } = props<Props>();
+  const { id, name, hint } = props<Props>();
 }
 
 <app-input>
-  <template shadowrootmode="open"><input id="@(String(id))" name="@name"></template>
+  <template shadowrootmode="open"><input id="@(String(id))" name="@name" title="@hint"></template>
 </app-input>
 `;
 
@@ -51,7 +52,7 @@ async function card(): Promise<string> {
   const source =
     `<link rel="layout" href="../layouts/_layout.fud">\n` +
     `<link rel="component" href="../components/app-input.fud">\n` +
-    `<app-input .id="1" .name="x"></app-input>\n`;
+    `<app-input .id="1" .name="x" .hint="h"></app-input>\n`;
   const { uri } = await harness.open('blog/[slug].fud', source);
   const hover = await harness.client.sendRequest(HoverRequest.type, {
     textDocument: { uri },
@@ -81,5 +82,14 @@ describe('the documentation on a card', () => {
 
   it('reads a member doc written before it, which is TypeScript’s own way', async () => {
     expect(await card()).toContain('- `.name` — `string`\n  Name del componente');
+  });
+
+  it('is not fooled by a trailing comment that is not a JSDoc', async () => {
+    // `/* … */` is a comment and `/** … */` is documentation. The difference is the author's
+    // to make, and a card that ignored it would print every note they left themselves.
+    const shown = await card();
+
+    expect(shown).toContain('- `.hint` — `string`');
+    expect(shown).not.toContain('no es un JSDoc');
   });
 });

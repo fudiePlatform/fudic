@@ -32,9 +32,32 @@ const APP_INPUT = `@code {
 </app-input>
 `;
 
+/**
+ * A component whose required props are everything BUT a string.
+ *
+ * One of each kind a repair can write by itself, plus one it cannot: `flag` is a `boolean`,
+ * which TypeScript expands to `true | false`; `size` is a union of number literals; `data` is an
+ * object, which has no obvious empty value and so gets an empty interpolation to type into.
+ */
+const APP_CHART = `@code {
+  type Props = {
+    flag: boolean;
+    size: 1 | 2;
+    data: { a: number };
+    mix: number | boolean;
+  };
+  const { flag, size, data, mix } = props<Props>();
+}
+
+<app-chart>
+  <template shadowrootmode="open"><span>@(String(flag))@(size)@(data.a)@(String(mix))</span></template>
+</app-chart>
+`;
+
 beforeAll(async () => {
   const root = copyWorkspace();
   writeFileSync(`${root}/components/app-input.fud`, APP_INPUT, 'utf8');
+  writeFileSync(`${root}/components/app-chart.fud`, APP_CHART, 'utf8');
   harness = await startHarness({ root });
 }, 60_000);
 
@@ -45,12 +68,23 @@ afterAll(async () => {
 const page = (body: string): string =>
   `<link rel="layout" href="../layouts/_layout.fud">\n` +
   `<link rel="component" href="../components/app-input.fud">\n` +
+  `<link rel="component" href="../components/app-chart.fud">\n` +
   `${body}\n`;
 
 interface WireAction {
   readonly title: string;
   readonly command?: unknown;
   readonly edit?: { readonly changes?: Record<string, { readonly newText: string }[]> };
+}
+
+/** The document opened, and what the server reports about it. */
+async function report(body: string): Promise<{ uri: string; items: unknown[]; codes: string[] }> {
+  const { uri } = await harness.open('blog/[slug].fud', page(body));
+  const got = await harness.client.sendRequest(DocumentDiagnosticRequest.type, {
+    textDocument: { uri },
+  });
+  const items = (got as { items?: { code?: unknown }[] }).items ?? [];
+  return { uri, items, codes: items.map((item) => String(item.code)) };
 }
 
 /**
@@ -60,12 +94,8 @@ interface WireAction {
  * in the code-action context — asking with an empty context measures a client nobody runs.
  */
 async function actionsOn(body: string): Promise<readonly WireAction[]> {
-  const source = page(body);
-  const { uri } = await harness.open('blog/[slug].fud', source);
-  const report = await harness.client.sendRequest(DocumentDiagnosticRequest.type, {
-    textDocument: { uri },
-  });
-  const first = ((report as { items?: unknown[] }).items ?? [])[0] as { range: unknown };
+  const { uri, items } = await report(body);
+  const first = items[0] as { range: unknown };
 
   const got = await harness.client.sendRequest(CodeActionRequest.type, {
     textDocument: { uri },
@@ -79,11 +109,35 @@ const completing = (actions: readonly WireAction[]): WireAction | undefined =>
   actions.find((action) => action.title.startsWith('Completar las props'));
 
 describe('a repair as the client receives it', () => {
-  it('completes the required props of a tag that passes none', async () => {
+  it('completes the required props in the shape each TYPE holds', async () => {
+    // `.name` is a string and takes a literal; `.id` is a number, and in a `.fud` a non-string
+    // value only goes in through an interpolation (decision 19). `.id=""` passes the STRING
+    // `""`, so the repair used to leave a type error where the author had none.
     const action = completing(await actionsOn('<app-input></app-input>'));
     const changes = Object.values(action?.edit?.changes ?? {})[0];
 
-    expect(changes?.map((edit) => edit.newText)).toEqual([' .id="" .name=""']);
+    expect(changes?.map((edit) => edit.newText)).toEqual([' .id=@(0) .name=""']);
+  });
+
+  it('writes a value for a boolean and for a union, and a hole for what has none', async () => {
+    // `boolean` reaches the checker as `true | false` and a union of number literals as two
+    // numbers, so both are recognised by their members agreeing. An object has no `0` to reach
+    // for, and inventing one would be putting words in the author's mouth.
+    const action = completing(await actionsOn('<app-chart></app-chart>'));
+    const changes = Object.values(action?.edit?.changes ?? {})[0];
+
+    expect(changes?.map((edit) => edit.newText)).toEqual([
+      ' .flag=@(false) .size=@(0) .data=@() .mix=@()',
+    ]);
+  });
+
+  it('leaves a file that compiles, which is the whole point of writing a real value', async () => {
+    // Exactly what the repair produces, fed back in. An empty `@()` would have passed this too
+    // and passed it for the wrong reason — nothing is projected for it, so a required prop with
+    // no value at all reports nothing. A hole that says nothing is worse than an error.
+    const { codes } = await report('<app-input .id=@(0) .name=""></app-input>');
+
+    expect(codes).toEqual([]);
   });
 
   it('carries an edit and never a command', async () => {

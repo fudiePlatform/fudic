@@ -190,7 +190,7 @@ describe('cardMarkdown', () => {
 
   it('adds the type of a prop when the projection supplied one', () => {
     const card = cardAt('<app-button></app-button>', '<app-button');
-    const text = cardMarkdown(card!, new Map([['label', { type: 'string' }]]));
+    const text = cardMarkdown(card!, new Map([['label', { type: 'string', holds: 'string' as const }]]));
 
     expect(text).toContain('- `.label` — `string`');
     // The one with no type keeps its line: the card is complete without the second half.
@@ -203,7 +203,12 @@ describe('cardMarkdown', () => {
     const card = cardAt('<app-button></app-button>', '<app-button');
     const text = cardMarkdown(
       card!,
-      new Map([['label', { type: 'string', doc: 'Lo que se lee.\nEn dos líneas.' }]]),
+      new Map([
+        [
+          'label',
+          { type: 'string', holds: 'string' as const, doc: 'Lo que se lee.\nEn dos líneas.' },
+        ],
+      ]),
     );
 
     expect(text).toContain('- `.label` — `string`\n  Lo que se lee.\n  En dos líneas.');
@@ -256,6 +261,29 @@ describe('propDetails', () => {
     const checker = { getSymbolAtLocation: () => undefined };
 
     expect(propDetails(serviceOf(programOf({}, checker)), FILE).size).toBe(0);
+  });
+
+  it('reads a prop whose symbol has no declaration to look at', () => {
+    // A synthesized symbol — one TypeScript built rather than read — has no declaration, so
+    // there is no text for a trailing JSDoc to be in. The type still arrives, which is the
+    // half the card is really asking for.
+    const prop = {
+      name: 'label',
+      getDocumentationComment: () => [],
+      declarations: undefined,
+    };
+    const checker = {
+      getSymbolAtLocation: () => ({}),
+      getExportsOfModule: () => [{ name: '$Props' }],
+      getDeclaredTypeOfSymbol: () => ({ getProperties: () => [prop] }),
+      getTypeOfSymbolAtLocation: () => ({ isUnion: () => false, isStringLiteral: () => true }),
+      typeToString: () => 'string',
+    };
+
+    expect(propDetails(serviceOf(programOf({}, checker)), FILE).get('label')).toEqual({
+      type: 'string',
+      holds: 'string',
+    });
   });
 
   it('answers nothing for a projection that exports no contract', () => {

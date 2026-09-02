@@ -24,6 +24,7 @@ import type { CachedDocument } from '../document-cache.js';
 import { relativeHref } from '../paths.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
 import { contractIssues, type ContractIssue } from './contract.js';
+import type { PropDetail, PropHolds } from './tag-card.js';
 import { unresolvedHrefs } from './href.js';
 import { linkInsertionFor } from './tags.js';
 import { loopBindingNames } from './template-scope.js';
@@ -171,6 +172,40 @@ const addLoopKey: Repairer = ({ cached, diagnostic }) => {
   ];
 };
 
+/** What a prop's type is asked from: the projection of the file that declares the component. */
+export type PropLookup = (file: string) => ReadonlyMap<string, PropDetail>;
+
+/**
+ * The value to write for a prop, in the shape its TYPE holds.
+ *
+ * An attribute value in a `.fud` is TEXT, so `.id=""` passes the string `""` — and a `.id` the
+ * component declared as `number` is then a type error the repair itself created. A bulb that
+ * leaves the file worse than it found it is worse than no bulb at all.
+ *
+ * So the value is a real one, and the file compiles the moment the repair is accepted. `""` for
+ * a string; for the other two an interpolation, which is how a non-string value is passed at all
+ * (decision 19). `0` and `false` are placeholders in the sense that the author will replace
+ * them, not in the sense that they are wrong — that is exactly what an editor writes when it
+ * fills in a missing property, and it is the difference between a file with a hole and a file
+ * with an error.
+ *
+ * Anything else gets an EMPTY `@()`: an object or a function has no obvious value to invent, and
+ * inventing one would be putting words in the author's mouth. The same goes for a prop whose
+ * type never arrived — TypeScript not loaded, the program not built — where `""` is the honest
+ * guess, being what most props take.
+ */
+const HOLES: Readonly<Record<PropHolds, string>> = {
+  string: '""',
+  number: '@(0)',
+  boolean: '@(false)',
+  other: '@()',
+};
+
+function holeFor(details: ReadonlyMap<string, PropDetail>, name: string): string {
+  const holds = details.get(name)?.holds;
+  return holds === undefined ? HOLES.string : HOLES[holds];
+}
+
 /**
  * The three repairs of the component contract (BUG-23 §2.6, §4.4).
  *
@@ -183,24 +218,25 @@ const addLoopKey: Repairer = ({ cached, diagnostic }) => {
  * The fact is recomputed from the parse and the index on every request, exactly as the other
  * repairs recompute the diagnostics they hang on, so nothing here can act on a stale span.
  */
-function contractFixes(issue: ContractIssue): readonly Fix[] {
+function contractFixes(issue: ContractIssue, propsOf: PropLookup): readonly Fix[] {
   if (issue.kind === 'missing-props') {
     // The tag's own text is not touched: a prop written with an empty value has that attribute
     // replaced, and every prop that is missing altogether arrives in ONE insertion before the
     // `>`. One and not several, because two zero-length inserts at the same offset are two
     // edits a client is free to order either way — and «`.id`, then `.name`» is not something
     // to leave to a client's sort.
+    const details = propsOf(issue.file);
     const edits: Edit[] = [];
     const absent: string[] = [];
     for (const name of issue.names) {
       const written = issue.empty.get(name);
       if (written === undefined) absent.push(name);
-      else edits.push({ span: written, newText: `.${name}=""` });
+      else edits.push({ span: written, newText: `.${name}=${holeFor(details, name)}` });
     }
     if (absent.length > 0) {
       edits.push({
         span: span(issue.insertAt, issue.insertAt),
-        newText: absent.map((name) => ` .${name}=""`).join(''),
+        newText: absent.map((name) => ` .${name}=${holeFor(details, name)}`).join(''),
       });
     }
 
@@ -297,6 +333,14 @@ export interface ActionDeps {
   readonly diagnostics: readonly Diagnostic[];
   rangeOf(document: TextDocument, at: Span): Range;
   overlaps(a: Range, b: Range): boolean;
+  /**
+   * The props of another component, from the projection. Empty is a normal answer.
+   *
+   * Injected rather than reached for, because this module knows nothing about TypeScript and
+   * has no business learning: what it needs is «can this prop hold a string», and that is a
+   * question, not a program.
+   */
+  propsOf: PropLookup;
 }
 
 /**
@@ -308,7 +352,7 @@ export interface ActionDeps {
  * the parse and the Oxc batch are the cache's, already done.
  */
 export function codeActions(deps: ActionDeps): CodeAction[] {
-  const { cached, index, document, range, diagnostics, rangeOf, overlaps } = deps;
+  const { cached, index, document, range, diagnostics, rangeOf, overlaps, propsOf } = deps;
 
   const actions = hrefActions(cached, index, document, range, rangeOf, overlaps);
 
@@ -338,7 +382,7 @@ export function codeActions(deps: ActionDeps): CodeAction[] {
 
   for (const issue of contractIssues(cached, index)) {
     if (!overlaps(rangeOf(document, issue.at), range)) continue;
-    for (const fix of contractFixes(issue)) emit(fix);
+    for (const fix of contractFixes(issue, propsOf)) emit(fix);
   }
 
   return actions;

@@ -37,6 +37,13 @@ const PROPERTY_PREFIX = '.';
 export interface MissingProps {
   readonly kind: 'missing-props';
   readonly tag: string;
+  /**
+   * Absolute path of the `.fud` that declares the component.
+   *
+   * The repair needs it to ask TypeScript what each prop TAKES: a `.fud` is its own file name
+   * in the program (SDD-24 §4.1), so this is the whole of what the question needs.
+   */
+  readonly file: string;
   /** The open tag, which is what the bulb underlines. */
   readonly at: Span;
   /** The required props with no value, in declaration order. */
@@ -82,14 +89,14 @@ export type ContractIssue = MissingProps | UnknownProp | UnknownSlot;
  * whose contract the card also reads. A tag with no `<link>` is `FUD0191`'s business and has
  * its own bulb already.
  */
-function contractOfTag(
+function entryOfTag(
   cached: CachedDocument,
   index: WorkspaceIndex,
   tag: string,
-): Contract | undefined {
+): { readonly path: string; readonly contract: Contract } | undefined {
   const href = cached.registry.component(tag);
   if (href === undefined) return undefined;
-  return index.resolve(cached.path, href)?.contract;
+  return index.resolve(cached.path, href);
 }
 
 /** The `.prop` attributes of an element, in source order, without the leading `.`. */
@@ -225,7 +232,7 @@ export function contractIssues(
     element(el, host) {
       const slot = staticSlot(el);
       if (slot !== undefined && host !== undefined) {
-        const hostContract = contractOfTag(cached, index, host.name);
+        const hostContract = entryOfTag(cached, index, host.name)?.contract;
         if (hostContract !== undefined && !hostContract.slots.includes(slot.name)) {
           issues.push({
             kind: 'unknown-slot',
@@ -239,8 +246,9 @@ export function contractIssues(
       }
 
       if (el === ownHost) return;
-      const contract = contractOfTag(cached, index, el.name);
-      if (contract === undefined) return;
+      const entry = entryOfTag(cached, index, el.name);
+      if (entry === undefined) return;
+      const contract = entry.contract;
 
       const written = writtenProps(el);
       const declaredNames = contract.props.map((prop) => prop.name);
@@ -287,6 +295,7 @@ export function contractIssues(
         issues.push({
           kind: 'missing-props',
           tag: el.name,
+          file: entry.path,
           at: el.openSpan,
           names,
           insertAt: insertionPoint(source, el),

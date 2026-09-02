@@ -537,6 +537,10 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
                 diagnostics: fudicDiagnostics(cached, index),
                 rangeOf,
                 overlaps,
+                // The same reader the card uses, for the same reason: what a prop TAKES is not
+                // in the index, and a repair that writes `.id=""` into a `number` is a repair
+                // that leaves an error behind (decision 19).
+                propsOf: (file) => propDetails(typeScriptService(context), file),
               });
             },
             undefined,
