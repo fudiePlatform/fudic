@@ -4,14 +4,14 @@
 > **Paquetes:** `@fudic/compiler` (`emit/display.ts` **nuevo**, `emit/runs.ts`, `emit/markup.ts`,
 > `emit/markup-client.ts`, `emit/block.ts`, `emit/module.ts`, `emit/client.ts`, `emit/layout.ts`)
 > **Rama:** `fix/bug-21-nodos-de-whitespace`
-> **Progreso:** 0 / 13
-> **Bloqueada** por el slice pendiente de [SDD-15](../SDD-15-emit.md): la hidratación vista correr
-> en un navegador ([§2.8](./BUG-21-nodos-de-whitespace.md)). BUG-18 y BUG-19, las dos aristas
-> anteriores, están en `Hecho`. **Las fases de abajo no se pueden arrancar tal cual: §4.2 y §4.3
-> están reabiertas** —la deducción de la caja solo es cerrada dentro del shadow root, y hay una
-> alternativa sintáctica que no deduce nada—, así que las tareas 1, 2, 6, 9 y sus criterios cambian
-> según cuál se elija. La forma de la tanda —la decisión en `emitItems`, una sola vez, para las dos
-> ramas— es lo único que las dos reglas comparten y lo único que ya está decidido.
+> **Progreso:** 3 / 13
+> **Desbloqueada** el 2026-08-15 con [SDD-17](../SDD-17-hidratacion.md) en `Hecho`: la hidratación
+> se ve correr en Chrome real, que es lo que [§2.8](./BUG-21-nodos-de-whitespace.md) pedía antes de
+> fijar la regla. **Y la regla elegida es la de §4.2/§4.3** —las tres pruebas de la caja, con las
+> tres guardas de §4.4— y no la alternativa del salto de línea: esta descarta por la FORMA del
+> fuente y junta dos elementos inline escritos en líneas distintas, que en fudic, donde el `display`
+> por defecto de un custom element es `inline`, no es el caso raro sino el normal. Las tareas 1, 2,
+> 6 y 9 se implementan tal como están escritas.
 
 La mitad del árbol de un componente típico es el sangrado del autor: cuatro de seis nodos en
 `app-badge`, catorce en `app-card`. La corrección no es borrar nodos: es que descartar uno **exija
@@ -43,7 +43,7 @@ y el motivo de que vaya la última de las tres.
 
 ## Fase 1 — Qué caja contiene el texto (3)
 
-- [ ] **1. `emit/display.ts`, con su tabla y su lectura del `<style>`.**
+- [x] **1. `emit/display.ts`, con su tabla y su lectura del `<style>`.**
       Módulo nuevo: `Display = 'block' | 'inline' | 'contents' | 'unknown'`, `hostDisplay(style)`,
       `tagDisplay(tag)` y `hasForeignDisplay(style)`
       ([§3.2](./BUG-21-nodos-de-whitespace.md)). El CSS se lee por regex sobre las tiradas
@@ -53,7 +53,7 @@ y el motivo de que vaya la última de las tres.
       —incluida una declaración interpolada por Razor— vale `unknown`. Va en su propio módulo y no
       en `space.ts` por el motivo de [`marker.ts:18-22`](../../../packages/compiler/src/emit/marker.ts#L18-L22):
       las dos ramas tienen que decidir idénticamente. Criterios §6.1, §6.2, §6.3.
-- [ ] **2. `displayOf(tag)` baja desde el grafo a los dos emisores.**
+- [x] **2. `displayOf(tag)` baja desde el grafo a los dos emisores.**
       Resolverlo en `module.ts` y `client.ts`, junto a donde ya se resuelve
       `spaceModeOf(comp.tag, componentStyleNode(comp.doc))`
       ([`module.ts:138`](../../../packages/compiler/src/emit/module.ts#L138),
@@ -61,14 +61,17 @@ y el motivo de que vaya la última de las tres.
       el `hostDisplay` de **su** `<style>`; para cualquier otro, `unknown`. Entra en
       `MarkupEmitter` junto a `isComponent` y en `ClientScope` junto a `childProps`. Es la tarea
       que hace que `<app-badge>` deje de ser un tag desconocido (§2.3).
-- [ ] **3. El elemento padre llega al cuerpo de un bloque.**
+- [x] **3. El contenedor llega al cuerpo de un bloque.**
       `BlockSite.level` lleva nombres de variable, no el nodo
       ([`markup-client.ts:57-71`](../../../packages/compiler/src/emit/markup-client.ts#L57-L71)), así
-      que un `@if` dentro de un `<article>` no sabe hoy quién lo contiene. Añadir el `ElementNode`
-      del contenedor (o `null` en la raíz) a `Level` y hacer que `block.ts` lo propague
-      ([`block.ts:198-209`](../../../packages/compiler/src/emit/block.ts#L198-L209)). Es el único
-      cambio estructural de la tanda; sin él, el cuerpo de todo bloque decide con `unknown` y
-      conserva de más — que es correcto, pero deja fuera la mitad de las fixtures.
+      que un `@if` dentro de un `<article>` no sabía quién lo contiene. `BlockSite.space` pasa a ser
+      `BlockSite.at`, el `RunContext` entero
+      ([`block.ts:198-209`](../../../packages/compiler/src/emit/block.ts#L198-L209)). Viaja la caja
+      **ya resuelta** y no el `ElementNode`, que es lo que §3.1 pide —«el `display` del contenedor,
+      ya resuelto por quien sabe de quién es el `<style>`»—: `block.ts` no tiene por qué volver a
+      leer un `<style>`, y así la resuelve un solo sitio para las dos ramas. Con ella viajan los dos
+      bordes, porque el cuerpo de un bloque está en el borde del contenedor solo si nada del nivel
+      pinta por ese lado (§4.2.b). Es el único cambio estructural de la tanda.
 
 ## Fase 2 — La decisión, en el sitio compartido (3)
 

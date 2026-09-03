@@ -19,7 +19,16 @@ import type { Span } from '../types/index.js';
 import { CodeWriter } from './writer.js';
 import { type AssetLinker } from './assets.js';
 import { componentPropsExpr, writeElementAttrs, type HostContext } from './attrs.js';
-import { nestedSpaceMode, type SpaceMode } from './space.js';
+import { type SpaceMode } from './space.js';
+import {
+  bodyContext,
+  childrenContext,
+  rootContext,
+  NO_BOXES,
+  type Boxes,
+  type Display,
+  type RunContext,
+} from './display.js';
 import { emitItems, type TextRun } from './runs.js';
 import { markerSite } from './marker.js';
 import { loopHead, type LoopNode } from './constructs.js';
@@ -122,6 +131,18 @@ export interface MarkupOptions {
    * Everything below it is derived per element by `nestedSpaceMode`.
    */
   readonly space?: SpaceMode;
+  /**
+   * The box the nodes of this walk start in: the `:host` of the component whose shadow root
+   * this is, or the `<body>` of a page. `unknown` — the default — proves nothing about any
+   * edge, so every whitespace node survives (BUG-21 §4.3.a).
+   */
+  readonly container?: Display;
+  /**
+   * What this file knows about the display of a tag: the graph, and its own stylesheet
+   * (BUG-21 §4.3.b/c). Defaults to knowing nothing, which conserves every node — a caller
+   * that omits it loses the optimisation, never a node.
+   */
+  readonly boxes?: Boxes;
   /** The names this component declares with `signal(...)`: decision 84, see `crossingExpr`. */
   readonly signals?: ReadonlySet<string>;
   /**
@@ -144,8 +165,12 @@ export class MarkupEmitter {
   readonly #hydratable: ReadonlySet<string>;
   readonly #used = new Set<string>();
   #id = 0;
-  /** The whitespace mode of the node being emitted; `white-space` inherits (BUG-07 §4.4). */
-  #space: SpaceMode;
+  /**
+   * Where the walk is: the whitespace mode in force (`white-space` inherits, BUG-07 §4.4)
+   * and the box that holds what is being written (BUG-21 §4.2). It is a stack in the same
+   * sense the mode was — saved on the way into an element, restored on the way out.
+   */
+  #at: RunContext;
 
   constructor(options: MarkupOptions) {
     this.#source = options.source;
@@ -153,7 +178,11 @@ export class MarkupEmitter {
     this.#isComponent = options.isComponent;
     this.#linker = options.linker;
     this.#slots = options.slots;
-    this.#space = options.space ?? 'collapse';
+    this.#at = rootContext(
+      options.space ?? 'collapse',
+      options.container ?? 'unknown',
+      options.boxes ?? NO_BOXES,
+    );
     this.#signals = options.signals ?? new Set();
     this.#hydratable = options.hydratable;
   }
@@ -172,7 +201,7 @@ export class MarkupEmitter {
    * a server tree the client cannot adopt.
    */
   emitChildren(children: readonly HtmlContent[], parent: string): void {
-    const items = emitItems(this.#source, children, this.#space);
+    const items = emitItems(this.#source, children, this.#at.space);
     // The one comment the DOM ever gets (SDD-30 §3.4). It is painted HERE too, and by the
     // same rule: two interpolated runs a block separates come back from HTML as one text
     // node, so the client plants a boundary — and a boundary the server did not paint is a
@@ -184,7 +213,9 @@ export class MarkupEmitter {
         this.#w.line(`const ${v} = $dom.comment(''); $dom.append(${parent}, ${v});`);
       }
       if (item.kind === 'run') this.#run(item, parent);
-      else this.#emit(item.node, parent);
+      // Where the item sits in its level is what a construct's body needs: its own edges
+      // are the container's only when nothing renders on that side of it (BUG-21 §4.2.b).
+      else this.#emit(item.node, parent, bodyContext(this.#at, i === 0, i === items.length - 1));
     });
   }
 
@@ -197,20 +228,23 @@ export class MarkupEmitter {
     this.#w.mappedLine(`const ${v} = $dom.text(`, ...run.value, `); $dom.append(${parent}, ${v});`);
   }
 
-  /** Emit the build statements for a node and append it under `parent`. */
-  #emit(node: HtmlContent, parent: string): void {
+  /**
+   * Emit the build statements for a node and append it under `parent`. `body` is the context
+   * a CONSTRUCT's branches are written in — the level's own, narrowed to where this item sits.
+   */
+  #emit(node: HtmlContent, parent: string, body: RunContext): void {
     switch (SERVER_ROLE[node.type]) {
       case 'element':
         this.#element(node as ElementNode, parent);
         return;
       case 'if':
-        this.#if(asIf(node), parent);
+        this.#if(asIf(node), parent, body);
         return;
       case 'loop':
-        this.#loop(asLoop(node), parent);
+        this.#loop(asLoop(node), parent, body);
         return;
       case 'switch':
-        this.#switch(asSwitch(node), parent);
+        this.#switch(asSwitch(node), parent, body);
         return;
       case 'render-body':
         // `@RenderBody()`: the route appends its nodes under the SAME parent, with the
@@ -240,11 +274,14 @@ export class MarkupEmitter {
 
   #element(el: ElementNode, parent: string): void {
     const v = this.#fresh();
-    // `white-space` inherits, so the mode is a stack, not a per-node lookup: entering a
-    // `<pre>` puts everything below it in preserve until the walk leaves again.
-    const outer = this.#space;
-    this.#space = nestedSpaceMode(outer, el);
-    if (this.#isComponent(el.name)) {
+    // `white-space` inherits, so the context is a stack, not a per-node lookup: entering a
+    // `<pre>` puts everything below it in preserve until the walk leaves again — and the
+    // box the children fall in is derived by the SHARED `childrenContext`, so the client
+    // branch cannot derive a different one (BUG-21 §4.5).
+    const outer = this.#at;
+    const isComponent = this.#isComponent(el.name);
+    this.#at = childrenContext(outer, el, isComponent);
+    if (isComponent) {
       this.#used.add(el.name);
       const s = this.#fresh();
       this.#w.line(`const ${v} = $dom.element(${JSON.stringify(el.name)});`);
@@ -271,22 +308,30 @@ export class MarkupEmitter {
       this.#elementAttrs(el, v, false);
       this.emitChildren(el.children, v);
     }
-    this.#space = outer;
+    this.#at = outer;
     this.#w.line(`$dom.append(${parent}, ${v});`);
   }
 
-  #if(node: IfNode, parent: string): void {
+  /** Write the body of one branch of a construct, in the context that branch sits in. */
+  #branch(children: readonly HtmlContent[], parent: string, body: RunContext): void {
+    const outer = this.#at;
+    this.#at = body;
+    this.emitChildren(children, parent);
+    this.#at = outer;
+  }
+
+  #if(node: IfNode, parent: string, body: RunContext): void {
     node.branches.forEach((branch, i) => {
       const head = i === 0 ? 'if' : '} else if';
       this.#w.mappedLine(`${head} (`, { text: this.#slice(branch.header.inner), src: branch.header.inner.start }, ') {');
       this.#w.indent();
-      this.emitChildren(branch.body, parent);
+      this.#branch(branch.body, parent, body);
       this.#w.dedent();
     });
     if (node.elseBody) {
       this.#w.line('} else {');
       this.#w.indent();
-      this.emitChildren(node.elseBody, parent);
+      this.#branch(node.elseBody, parent, body);
       this.#w.dedent();
     }
     this.#w.line('}');
@@ -304,13 +349,13 @@ export class MarkupEmitter {
    * The `key` is NOT read here, and that is the whole difference between the two branches:
    * row identity belongs to the client's reconciliation (§4.4).
    */
-  #loop(loop: LoopNode, parent: string): void {
+  #loop(loop: LoopNode, parent: string, body: RunContext): void {
     const head = loopHead(loop, this.#source);
     // `while (` or `for (` — the keyword holds no parenthesis, so the first one is the head's.
     const open = head.slice(0, head.indexOf('(') + 1);
     this.#w.mappedLine(open, { text: this.#slice(loop.header.inner), src: loop.header.inner.start }, ') {');
     this.#w.indent();
-    this.emitChildren(loop.body, parent);
+    this.#branch(loop.body, parent, body);
     this.#w.dedent();
     this.#w.line('}');
   }
@@ -325,7 +370,7 @@ export class MarkupEmitter {
    * `switch` — the ids are unique per emission, so today nothing would collide, and the
    * braces are there so it does not depend on that (SDD-30 §4.1).
    */
-  #switch(node: SwitchNode, parent: string): void {
+  #switch(node: SwitchNode, parent: string, body: RunContext): void {
     this.#w.mappedLine(
       'switch (',
       { text: this.#slice(node.header.inner), src: node.header.inner.start },
@@ -336,7 +381,7 @@ export class MarkupEmitter {
       if (branch.test === undefined) this.#w.line('default: {');
       else this.#w.mappedLine('case ', { text: this.#slice(branch.test), src: branch.test.start }, ': {');
       this.#w.indent();
-      this.emitChildren(branch.body, parent);
+      this.#branch(branch.body, parent, body);
       this.#w.line('break;');
       this.#w.dedent();
       this.#w.line('}');

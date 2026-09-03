@@ -296,7 +296,7 @@ vecinos, no del run.
 
 ```ts
 /** Lo que el emit puede afirmar del `display` de una caja. `unknown` es la respuesta por defecto. */
-export type Display = 'block' | 'inline' | 'contents' | 'unknown';
+export type Display = 'block' | 'flex' | 'inline-block' | 'inline' | 'contents' | 'unknown';
 
 /** El `display` declarado para `:host` en el `<style>` propio de un componente, si lo declara. */
 export function hostDisplay(style: StyleNode | null): Display;
@@ -307,6 +307,14 @@ export function tagDisplay(tag: string): Display;
 /** Si el `<style>` declara algún `display` fuera de `:host`: sin árbol de reglas, envenena §4.3.c. */
 export function hasForeignDisplay(style: StyleNode | null): boolean;
 ```
+
+**Seis nombres y no cuatro**, y los dos que se añaden son los que hacen implementables dos de las
+tres pruebas de §4.2. `flex` —donde entra `grid`— no es `block`: sus hijos de solo-whitespace **no
+generan caja**, que es un hecho más fuerte que un borde recortado, y es la prueba (a). Y
+`inline-block` no es `inline`: por dentro es un contenedor de bloque cuyos bordes recortan —es lo
+que declaran `app-badge` y `app-button`— y por fuera es de línea, así que el espacio **de al lado**
+sí se renderiza. Fundir cualquiera de los dos pares obliga a mentir en una de las dos direcciones, y
+la mentira segura conserva justo los nodos de los que va este BUG.
 
 Vive fuera de `space.ts` porque `space.ts` contesta *cómo se emite el texto* y esto contesta *qué
 caja lo contiene*; y vive en un módulo y no en un método por la razón exacta de

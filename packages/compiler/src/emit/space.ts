@@ -51,8 +51,14 @@ const PREFORMATTED: ReadonlySet<string> = new Set(['pre', 'textarea']);
  */
 const PRESERVING_DECL = /white-space(?:-collapse)?\s*:\s*[^;}]*\b(?:pre|break-spaces)/iu;
 
-/** The literal CSS of a `<style>` body — the runs the AST knows are text, not Razor. */
-function literalCss(style: StyleNode): string {
+/**
+ * The literal CSS of a `<style>` body — the runs the AST knows are text, not Razor.
+ *
+ * Exported for `display.ts`, which asks the OTHER question of the same stylesheet (which
+ * box holds the text) and has to read it the same way: two readers of one `<style>` that
+ * disagreed about what is literal would disagree about the whitespace too.
+ */
+export function literalCss(style: StyleNode): string {
   return style.parts
     .map((part) => (part.type === 'css-text' ? part.value : ''))
     .join('\n');
