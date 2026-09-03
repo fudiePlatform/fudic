@@ -7,45 +7,37 @@ export function render($dom, $shadow, props) {
   const { title, variant = 'default' } = props ?? {};
   $dom.state($shadow, [title, variant]);
   const expanded = () => (false); // inert signal (SSR; hydration is client-side)
-  const $n0 = $dom.text(" "); $dom.append($shadow, $n0);
-  const $n1 = $dom.element("article");
-  $dom.setAttr($n1, 'class', ["card", (variant === 'highlight') && "highlight"].filter(Boolean).join(' '));
-  const $n2 = $dom.text(" "); $dom.append($n1, $n2);
-  const $n3 = $dom.element("header");
-  const $n4 = $dom.text(" "); $dom.append($n3, $n4);
-  const $n5 = $dom.element("h2");
-  const $n6 = $dom.text(String((title) ?? '')); $dom.append($n5, $n6);
-  $dom.append($n3, $n5);
-  const $n7 = $dom.text(" "); $dom.append($n3, $n7);
-  $dom.append($n1, $n3);
-  const $n8 = $dom.text(" "); $dom.append($n1, $n8);
+  const $n0 = $dom.element("article");
+  $dom.setAttr($n0, 'class', ["card", (variant === 'highlight') && "highlight"].filter(Boolean).join(' '));
+  const $n1 = $dom.element("header");
+  const $n2 = $dom.element("h2");
+  const $n3 = $dom.text(String((title) ?? '')); $dom.append($n2, $n3);
+  $dom.append($n1, $n2);
+  $dom.append($n0, $n1);
+  const $n4 = $dom.text(" "); $dom.append($n0, $n4);
   if (expanded()) {
-    const $n9 = $dom.text(" "); $dom.append($n1, $n9);
-    const $n10 = $dom.element("div");
-    $dom.setAttr($n10, 'class', ["body"].filter(Boolean).join(' '));
-    const $n11 = $dom.text(" "); $dom.append($n10, $n11);
-    const $n12 = $dom.element("slot");
-    $dom.append($n10, $n12);
-    const $n13 = $dom.text(" "); $dom.append($n10, $n13);
-    $dom.append($n1, $n10);
-    const $n14 = $dom.text(" "); $dom.append($n1, $n14);
+    const $n5 = $dom.text(" "); $dom.append($n0, $n5);
+    const $n6 = $dom.element("div");
+    $dom.setAttr($n6, 'class', ["body"].filter(Boolean).join(' '));
+    const $n7 = $dom.element("slot");
+    $dom.append($n6, $n7);
+    $dom.append($n0, $n6);
+    const $n8 = $dom.text(" "); $dom.append($n0, $n8);
   }
-  const $n15 = $dom.text(" "); $dom.append($n1, $n15);
-  const $n16 = $dom.element("app-button");
-  $dom.claim($n16);
-  $dom.setAttr($n16, 'data-fud-adopt', "app-button");
-  $dom.setAttr($n16, "variant", "ghost");
-  const $n17 = $dom.attachShadow($n16);
-  renderAppButton($dom, $n17, { "variant": "ghost" });
-  const $n18 = $dom.text(" "); $dom.append($n16, $n18);
+  const $n9 = $dom.text(" "); $dom.append($n0, $n9);
+  const $n10 = $dom.element("app-button");
+  $dom.claim($n10);
+  $dom.setAttr($n10, 'data-fud-adopt', "app-button");
+  $dom.setAttr($n10, "variant", "ghost");
+  const $n11 = $dom.attachShadow($n10);
+  renderAppButton($dom, $n11, { "variant": "ghost" });
+  const $n12 = $dom.text(" "); $dom.append($n10, $n12);
   if (expanded()) {
-    const $n19 = $dom.text(" Cerrar "); $dom.append($n16, $n19);
+    const $n13 = $dom.text(" Cerrar "); $dom.append($n10, $n13);
   } else {
-    const $n20 = $dom.text(" Abrir "); $dom.append($n16, $n20);
+    const $n14 = $dom.text(" Abrir "); $dom.append($n10, $n14);
   }
-  const $n21 = $dom.text(" "); $dom.append($n16, $n21);
-  $dom.append($n1, $n16);
-  const $n22 = $dom.text(" "); $dom.append($n1, $n22);
-  $dom.append($shadow, $n1);
-  const $n23 = $dom.text(" "); $dom.append($shadow, $n23);
+  const $n15 = $dom.text(" "); $dom.append($n10, $n15);
+  $dom.append($n0, $n10);
+  $dom.append($shadow, $n0);
 }

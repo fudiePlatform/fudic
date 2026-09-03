@@ -164,7 +164,7 @@ export function componentContainer(comp: ResolvedComponent): Display {
  * `white-space` (BUG-07 §4.4), and the reason nothing here is deduced from a class.
  */
 function pageBoxes(graph: ComponentGraph, page: PageDocument): Boxes {
-  const styles = (page.head?.children ?? [])
+  const styles = page.head.children
     .filter((c): c is ElementNode => c.type === 'element' && c.name === 'style')
     .map((el) => el.children[0])
     .filter((body): body is StyleNode => body !== undefined && body.type === 'style-content');

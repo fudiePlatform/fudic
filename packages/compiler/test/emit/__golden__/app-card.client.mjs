@@ -29,10 +29,8 @@ customElements.define("app-card", class extends FudicElement {
           $r.push($n6);
           $n7 = $dom.element("div");
           $dom.setAttr($n7, 'class', ["body"].filter(Boolean).join(' '));
-          $dom.append($n7, $dom.text(" "));
           $n9 = $dom.element("slot");
           $dom.append($n7, $n9);
-          $dom.append($n7, $dom.text(" "));
           $r.push($n7);
           $n8 = $dom.text(" ");
           $r.push($n8);
@@ -172,16 +170,12 @@ customElements.define("app-card", class extends FudicElement {
 
     return {
       c: () => {
-        $r.push($dom.text(" "));
         $n0 = $dom.element("article");
-        $dom.append($n0, $dom.text(" "));
         $n1 = $dom.element("header");
-        $dom.append($n1, $dom.text(" "));
         $n4 = $dom.element("h2");
         $n5 = $dom.text('');
         $dom.append($n4, $n5);
         $dom.append($n1, $n4);
-        $dom.append($n1, $dom.text(" "));
         $dom.append($n0, $n1);
         $dom.append($n0, $dom.text(" "));
         {
@@ -205,9 +199,7 @@ customElements.define("app-card", class extends FudicElement {
         $n10 = $dom.text(" ");
         $dom.append($n3, $n10);
         $dom.append($n0, $n3);
-        $dom.append($n0, $dom.text(" "));
         $r.push($n0);
-        $r.push($dom.text(" "));
         $a();
         $m();
         $s();

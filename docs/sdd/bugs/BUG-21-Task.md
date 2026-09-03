@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` (`emit/display.ts` **nuevo**, `emit/runs.ts`, `emit/markup.ts`,
 > `emit/markup-client.ts`, `emit/block.ts`, `emit/module.ts`, `emit/client.ts`, `emit/layout.ts`)
 > **Rama:** `fix/bug-21-nodos-de-whitespace`
-> **Progreso:** 3 / 13
+> **Progreso:** 6 / 13
 > **Desbloqueada** el 2026-08-15 con [SDD-17](../SDD-17-hidratacion.md) en `Hecho`: la hidratación
 > se ve correr en Chrome real, que es lo que [§2.8](./BUG-21-nodos-de-whitespace.md) pedía antes de
 > fijar la regla. **Y la regla elegida es la de §4.2/§4.3** —las tres pruebas de la caja, con las
@@ -75,20 +75,20 @@ y el motivo de que vaya la última de las tres.
 
 ## Fase 2 — La decisión, en el sitio compartido (3)
 
-- [ ] **4. `emitItems` toma un `RunContext`.**
+- [x] **4. `emitItems` toma un `RunContext`.**
       Sustituir el parámetro `space: SpaceMode` por el contexto de
       [§3.1](./BUG-21-nodos-de-whitespace.md) — modo, elemento padre, `display` del contenedor,
       `displayOf`, y si estos hijos son light DOM de un host. Solo la firma y sus dos llamadas
       ([`markup.ts:94`](../../../packages/compiler/src/emit/markup.ts#L94),
       [`markup-client.ts:359`](../../../packages/compiler/src/emit/markup-client.ts#L359)): esta
       tarea **no cambia ni un byte de salida** y los goldens son el testigo.
-- [ ] **5. Las tres guardas, antes que cualquier prueba.**
+- [x] **5. Las tres guardas, antes que cualquier prueba.**
       En `emitItems`: light DOM de un host (y el fallback de un `<slot>`), run que es el único
       contenido del elemento **comprobado sobre el resultado** —si todos los hermanos son
       descartables, el último no lo es—, y modo `preserve`. Son los tres riesgos que
       [BUG-07 §4.5](./BUG-07-html-sin-minificar.md) nombró, y siguen siendo ciertos: se escriben
       primero para que ninguna prueba posterior pueda saltárselos. Criterios §6.7, §6.8, §6.9.
-- [ ] **6. Las tres pruebas.**
+- [x] **6. Las tres pruebas.**
       Contenedor `flex`/`grid` (no genera caja), borde de un contenedor de bloque, y entre dos
       cajas de bloque ([§4.2](./BUG-21-nodos-de-whitespace.md)). El `display` sale de las tres
       fuentes de §4.3 **en ese orden**, y una declaración `display` fuera de `:host` envenena la

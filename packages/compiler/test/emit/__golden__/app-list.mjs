@@ -3,43 +3,37 @@ export const css = `:host{display:block;}.list{margin:0;padding:0;list-style:non
 
 export function render($dom, $shadow, props) {
   const { rows, empty = 'Sin elementos' } = props ?? {};
-  const $n0 = $dom.text(" "); $dom.append($shadow, $n0);
   if (rows === undefined || rows.length === 0) {
-    const $n1 = $dom.text(" "); $dom.append($shadow, $n1);
-    const $n2 = $dom.element("p");
-    $dom.setAttr($n2, 'class', ["empty"].filter(Boolean).join(' '));
-    const $n3 = $dom.text(String((empty) ?? '')); $dom.append($n2, $n3);
-    $dom.append($shadow, $n2);
-    const $n4 = $dom.text(" "); $dom.append($shadow, $n4);
+    const $n0 = $dom.element("p");
+    $dom.setAttr($n0, 'class', ["empty"].filter(Boolean).join(' '));
+    const $n1 = $dom.text(String((empty) ?? '')); $dom.append($n0, $n1);
+    $dom.append($shadow, $n0);
   } else {
-    const $n5 = $dom.text(" "); $dom.append($shadow, $n5);
-    const $n6 = $dom.element("ul");
-    $dom.setAttr($n6, 'class', ["list"].filter(Boolean).join(' '));
-    const $n7 = $dom.text(" "); $dom.append($n6, $n7);
+    const $n2 = $dom.element("ul");
+    $dom.setAttr($n2, 'class', ["list"].filter(Boolean).join(' '));
+    const $n3 = $dom.text(" "); $dom.append($n2, $n3);
     for (const row of rows) {
-      const $n8 = $dom.text(" "); $dom.append($n6, $n8);
-      const $n9 = $dom.element("li");
-      $dom.setAttr($n9, 'class', ["row"].filter(Boolean).join(' '));
-      const $n10 = $dom.text(" "); $dom.append($n9, $n10);
-      const $n11 = $dom.element("span");
-      const $n12 = $dom.text(String((row.label) ?? '')); $dom.append($n11, $n12);
-      $dom.append($n9, $n11);
-      const $n13 = $dom.text(" "); $dom.append($n9, $n13);
+      const $n4 = $dom.text(" "); $dom.append($n2, $n4);
+      const $n5 = $dom.element("li");
+      $dom.setAttr($n5, 'class', ["row"].filter(Boolean).join(' '));
+      const $n6 = $dom.text(" "); $dom.append($n5, $n6);
+      const $n7 = $dom.element("span");
+      const $n8 = $dom.text(String((row.label) ?? '')); $dom.append($n7, $n8);
+      $dom.append($n5, $n7);
+      const $n9 = $dom.text(" "); $dom.append($n5, $n9);
       for (const mark of row.tags) {
-        const $n14 = $dom.text(" "); $dom.append($n9, $n14);
-        const $n15 = $dom.element("span");
-        $dom.setAttr($n15, 'class', ["tag"].filter(Boolean).join(' '));
-        const $n16 = $dom.text(String((mark) ?? '')); $dom.append($n15, $n16);
-        $dom.append($n9, $n15);
-        const $n17 = $dom.text(" "); $dom.append($n9, $n17);
+        const $n10 = $dom.text(" "); $dom.append($n5, $n10);
+        const $n11 = $dom.element("span");
+        $dom.setAttr($n11, 'class', ["tag"].filter(Boolean).join(' '));
+        const $n12 = $dom.text(String((mark) ?? '')); $dom.append($n11, $n12);
+        $dom.append($n5, $n11);
+        const $n13 = $dom.text(" "); $dom.append($n5, $n13);
       }
-      const $n18 = $dom.text(" "); $dom.append($n9, $n18);
-      $dom.append($n6, $n9);
-      const $n19 = $dom.text(" "); $dom.append($n6, $n19);
+      const $n14 = $dom.text(" "); $dom.append($n5, $n14);
+      $dom.append($n2, $n5);
+      const $n15 = $dom.text(" "); $dom.append($n2, $n15);
     }
-    const $n20 = $dom.text(" "); $dom.append($n6, $n20);
-    $dom.append($shadow, $n6);
-    const $n21 = $dom.text(" "); $dom.append($shadow, $n21);
+    const $n16 = $dom.text(" "); $dom.append($n2, $n16);
+    $dom.append($shadow, $n2);
   }
-  const $n22 = $dom.text(" "); $dom.append($shadow, $n22);
 }

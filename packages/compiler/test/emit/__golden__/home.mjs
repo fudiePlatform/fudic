@@ -22,53 +22,45 @@ export function* page(data, io) {
   yield '<!DOCTYPE html><html lang="es"><head>' + head + '</head>';
   const $dom = createDom();
   const $body = $dom.element('body');
-  const $n0 = $dom.text(" "); $dom.append($body, $n0);
-  const $n1 = $dom.element("h1");
-  const $n2 = $dom.text(String((data.title) ?? '')); $dom.append($n1, $n2);
-  $dom.append($body, $n1);
-  const $n3 = $dom.text(" "); $dom.append($body, $n3);
+  const $n0 = $dom.element("h1");
+  const $n1 = $dom.text(String((data.title) ?? '')); $dom.append($n0, $n1);
+  $dom.append($body, $n0);
+  const $n2 = $dom.text(" "); $dom.append($body, $n2);
   if (data.items.length === 0) {
-    const $n4 = $dom.text(" "); $dom.append($body, $n4);
-    const $n5 = $dom.element("p");
-    $dom.setAttr($n5, 'class', ["empty"].filter(Boolean).join(' '));
-    const $n6 = $dom.text("No hay elementos todavía."); $dom.append($n5, $n6);
-    $dom.append($body, $n5);
-    const $n7 = $dom.text(" "); $dom.append($body, $n7);
+    const $n3 = $dom.text(" "); $dom.append($body, $n3);
+    const $n4 = $dom.element("p");
+    $dom.setAttr($n4, 'class', ["empty"].filter(Boolean).join(' '));
+    const $n5 = $dom.text("No hay elementos todavía."); $dom.append($n4, $n5);
+    $dom.append($body, $n4);
   } else {
-    const $n8 = $dom.text(" "); $dom.append($body, $n8);
-    const $n9 = $dom.element("section");
-    $dom.setAttr($n9, 'class', ["grid"].filter(Boolean).join(' '));
-    const $n10 = $dom.text(" "); $dom.append($n9, $n10);
+    const $n6 = $dom.text(" "); $dom.append($body, $n6);
+    const $n7 = $dom.element("section");
+    $dom.setAttr($n7, 'class', ["grid"].filter(Boolean).join(' '));
     for (const item of data.items) {
-      const $n11 = $dom.text(" "); $dom.append($n9, $n11);
-      const $n12 = $dom.element("app-card");
-      $dom.claim($n12);
-      $dom.setAttr($n12, 'data-fud-adopt', "app-card");
-      { const $v = (item.title); if ($v === true) $dom.setAttr($n12, "title", ''); else if ($v !== false && $v != null) $dom.setAttr($n12, "title", String($v)); }
-      { const $v = (item.featured ? 'highlight' : 'default'); if ($v === true) $dom.setAttr($n12, "variant", ''); else if ($v !== false && $v != null) $dom.setAttr($n12, "variant", String($v)); }
-      const $n13 = $dom.attachShadow($n12);
-      renderAppCard($dom, $n13, { "title": (item.title), "variant": (item.featured ? 'highlight' : 'default') });
-      const $n14 = $dom.text(" "); $dom.append($n12, $n14);
+      const $n8 = $dom.element("app-card");
+      $dom.claim($n8);
+      $dom.setAttr($n8, 'data-fud-adopt', "app-card");
+      { const $v = (item.title); if ($v === true) $dom.setAttr($n8, "title", ''); else if ($v !== false && $v != null) $dom.setAttr($n8, "title", String($v)); }
+      { const $v = (item.featured ? 'highlight' : 'default'); if ($v === true) $dom.setAttr($n8, "variant", ''); else if ($v !== false && $v != null) $dom.setAttr($n8, "variant", String($v)); }
+      const $n9 = $dom.attachShadow($n8);
+      renderAppCard($dom, $n9, { "title": (item.title), "variant": (item.featured ? 'highlight' : 'default') });
+      const $n10 = $dom.text(" "); $dom.append($n8, $n10);
       if (item.featured) {
-        const $n15 = $dom.text(" "); $dom.append($n12, $n15);
-        const $n16 = $dom.element("app-badge");
-        $dom.setAttr($n16, 'data-fud-adopt', "app-badge");
-        $dom.setAttr($n16, "tone", "success");
-        const $n17 = $dom.attachShadow($n16);
-        renderAppBadge($dom, $n17, { "tone": "success" });
-        const $n18 = $dom.text("Destacado"); $dom.append($n16, $n18);
-        $dom.append($n12, $n16);
-        const $n19 = $dom.text(" "); $dom.append($n12, $n19);
+        const $n11 = $dom.text(" "); $dom.append($n8, $n11);
+        const $n12 = $dom.element("app-badge");
+        $dom.setAttr($n12, 'data-fud-adopt', "app-badge");
+        $dom.setAttr($n12, "tone", "success");
+        const $n13 = $dom.attachShadow($n12);
+        renderAppBadge($dom, $n13, { "tone": "success" });
+        const $n14 = $dom.text("Destacado"); $dom.append($n12, $n14);
+        $dom.append($n8, $n12);
+        const $n15 = $dom.text(" "); $dom.append($n8, $n15);
       }
-      const $n20 = $dom.text(` ${(item.description) ?? ''} `); $dom.append($n12, $n20);
-      $dom.append($n9, $n12);
-      const $n21 = $dom.text(" "); $dom.append($n9, $n21);
+      const $n16 = $dom.text(` ${(item.description) ?? ''} `); $dom.append($n8, $n16);
+      $dom.append($n7, $n8);
     }
-    const $n22 = $dom.text(" "); $dom.append($n9, $n22);
-    $dom.append($body, $n9);
-    const $n23 = $dom.text(" "); $dom.append($body, $n23);
+    $dom.append($body, $n7);
   }
-  const $n24 = $dom.text(" "); $dom.append($body, $n24);
   const $state = $dom.hydrationState();
   if ($state.offsets.length > 1) {
     jsonBlock($dom, $body, 'fud-state', [$state.offsets, $state.data]);

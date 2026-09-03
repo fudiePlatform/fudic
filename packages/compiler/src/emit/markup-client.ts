@@ -410,7 +410,7 @@ export class ClientMarkupEmitter {
   }
 
   #itemsOf(children: readonly HtmlContent[]): readonly EmitItem[] {
-    return emitItems(this.#source, children, this.#at.space);
+    return emitItems(this.#source, children, this.#at);
   }
 
   /**

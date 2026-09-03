@@ -63,10 +63,13 @@ describe('hydrate adopts, it does not build', () => {
 
   it('never counts nodes: the text between the elements is not on the path', () => {
     const { shadow } = mountAsDsd('app-card', painted);
-    // The whitespace text nodes are there, and the walk is blind to them. That is the whole
-    // point: two of them adjacent come back from the parser as ONE node, so any traversal
-    // that counted nodes would land one off at that level and stay off.
-    expect([...shadow.childNodes].filter((n) => n.nodeType === 3).length).toBeGreaterThan(0);
+    // The whitespace text nodes that survive BUG-21 are there — inside <article>, where a
+    // construct sits between two elements and nothing proves the space renders nothing —
+    // and the walk is blind to them. That is the whole point: two of them adjacent come
+    // back from the parser as ONE node, so any traversal that counted nodes would land one
+    // off at that level and stay off.
+    const article = shadow.querySelector('article')!;
+    expect([...article.childNodes].filter((n) => n.nodeType === 3).length).toBeGreaterThan(0);
 
     const { dom, steps } = countingSteps(browserDom);
     controller(clientFactory(graph, 'app-card'), dom, shadow, values).h();

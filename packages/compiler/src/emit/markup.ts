@@ -201,7 +201,7 @@ export class MarkupEmitter {
    * a server tree the client cannot adopt.
    */
   emitChildren(children: readonly HtmlContent[], parent: string): void {
-    const items = emitItems(this.#source, children, this.#at.space);
+    const items = emitItems(this.#source, children, this.#at);
     // The one comment the DOM ever gets (SDD-30 §3.4). It is painted HERE too, and by the
     // same rule: two interpolated runs a block separates come back from HTML as one text
     // node, so the client plants a boundary — and a boundary the server did not paint is a
