@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` (`emit/display.ts` **nuevo**, `emit/runs.ts`, `emit/markup.ts`,
 > `emit/markup-client.ts`, `emit/block.ts`, `emit/module.ts`, `emit/client.ts`, `emit/layout.ts`)
 > **Rama:** `fix/bug-21-nodos-de-whitespace`
-> **Progreso:** 8 / 13
+> **Progreso:** 11 / 13
 > **Desbloqueada** el 2026-08-15 con [SDD-17](../SDD-17-hidratacion.md) en `Hecho`: la hidratación
 > se ve correr en Chrome real, que es lo que [§2.8](./BUG-21-nodos-de-whitespace.md) pedía antes de
 > fijar la regla. **Y la regla elegida es la de §4.2/§4.3** —las tres pruebas de la caja, con las
@@ -115,14 +115,14 @@ y el motivo de que vaya la última de las tres.
 
 ## Fase 4 — Verificación (3)
 
-- [ ] **9. Los criterios de forma y de unidad (§6.1–§6.10).**
+- [x] **9. Los criterios de forma y de unidad (§6.1–§6.10).**
       `display.test.ts` nuevo y ampliación de
       [`space.test.ts`](../../../packages/compiler/test/emit/space.test.ts), con nodos del **parser
       real** y nunca forjados, que es la regla de aquel fichero. El criterio que da sentido a la
       tanda es §6.6: dos componentes en memoria que solo se diferencian en `:host { display }`
       producen distinto número de nodos. Y §6.10: el AST **no se poda** —los `TextNode` siguen con
       su span, porque el formateador y el LSP los leen—.
-- [ ] **10. Los source maps (§6.11–§6.13).**
+- [x] **10. Los source maps (§6.11–§6.13).**
       [`sourcemap.test.ts`](../../../packages/compiler/test/emit/sourcemap.test.ts) verde **sin
       tocarlo**: localiza el offset generado con `code.indexOf` sobre el texto final, así que pasa
       si y solo si los pares se recalcularon sobre el layout nuevo — y es lo que detectaría que
@@ -130,7 +130,7 @@ y el motivo de que vaya la última de las tres.
       ([§2.6](./BUG-21-nodos-de-whitespace.md)). Añadir los dos criterios propios: el conjunto de
       `sourceOffset` de `app-card` no pierde ninguno, y un run interpolado pegado a uno descartado
       conserva su ancla.
-- [ ] **11. Equivalencia SSR ↔ cliente (§6.14).**
+- [x] **11. Equivalencia SSR ↔ cliente (§6.14).**
       En el arnés de [`hydrate/`](../../../packages/compiler/test/emit/hydrate/), con `adoptOnly`:
       para cada fixture, el árbol que `render` serializa y el que `c()` fabrica tienen el **mismo
       número de nodos**, y `h()` no fabrica ninguno. Es el test que hace imposible que la regla
