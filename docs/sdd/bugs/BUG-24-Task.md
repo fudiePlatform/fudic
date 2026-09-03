@@ -3,7 +3,7 @@
 > **BUG:** [BUG-24 — una signal no cruza el shadow boundary](./BUG-24-signal-y-callback-no-cruzan.md)
 > **Paquetes:** `@fudic/core` · `@fudic/compiler` · `@fudic/ssr` · `@fudic/language-core`
 > **Rama:** `worktree-bug-24` · **Bloqueado por:** BUG-23 en `Hecho`
-> **Progreso:** 0 / 19
+> **Progreso:** 1 / 19
 
 Diecinueve tareas. Rutas relativas a la raíz del repo; cada tarea es un paso cerrado y se
 puede parar después de cualquiera con el workspace verde.
@@ -69,7 +69,16 @@ cerrado).
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **Rojo primero.** Un arnés de hidratación con padre → hijo → nieto y un callback, y cuatro aserciones que **hoy fallan**: `padre.count === hijo.value`, lo mismo con el nieto, `hijo.value.set(7)` con el padre frío, y `.onSave=@save` llamando al dueño correcto. Marcadas `it.fails` para que el workspace quede verde en cada commit y el paso a `it` sea la prueba de que la fase aterrizó. **Anotar en esta tabla qué falla y cómo** — del primero, si hoy es `undefined`, un `number` o dos objetos distintos | `core` · `compiler` | `packages/core/test/hydrate/cells.test.ts` *(nuevo)* · [packages/compiler/test/emit/hydrate/](../../../packages/compiler/test/emit/hydrate) *(patrón del arnés)* |
+| [x] | 1 | — | **Rojo primero.** Un arnés de hidratación con padre → hijo → nieto y un callback, y cuatro aserciones que **hoy fallan**: `padre.count === hijo.value`, lo mismo con el nieto, `hijo.value.set(7)` con el padre frío, y `.onSave=@save` llamando al dueño correcto. Marcadas `it.fails` para que el workspace quede verde en cada commit y el paso a `it` sea la prueba de que la fase aterrizó. **Anotar en esta tabla qué falla y cómo** — del primero, si hoy es `undefined`, un `number` o dos objetos distintos | `core` · `compiler` | `packages/core/test/hydrate/cells.test.ts` *(nuevo)* · [packages/compiler/test/emit/hydrate/](../../../packages/compiler/test/emit/hydrate) *(patrón del arnés)* |
+
+**Lo que se vio fallar** (`packages/core/test/hydrate/cells.test.ts`, las cuatro en `it.fails`):
+
+| # | aserción | lo que dice hoy |
+|---|---|---|
+| 1 | `padre.count === hijo.value` | `expected +0 to be { $: [ 0, 1 ] }` — el hijo tiene el **marcador**, un objeto JSON; el padre tiene el `0` que había en su casilla, porque `$p1 ?? signal(start)` devuelve el número |
+| 2 | `padre.count === nieto.value` | la misma lectura, un nivel más abajo: el nieto tiene una segunda copia del marcador |
+| 3 | `hijo.value.set(7)` con el padre frío | `TypeError: child.value.set is not a function` |
+| 4 | `.onSave=@save` al dueño correcto | `TypeError: this.onSave is not a function` — un marcador tampoco es llamable |
 
 ## Fase 2 — compilación: quién cruza por referencia (5)
 
