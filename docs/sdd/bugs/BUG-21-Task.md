@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` (`emit/display.ts` **nuevo**, `emit/runs.ts`, `emit/markup.ts`,
 > `emit/markup-client.ts`, `emit/block.ts`, `emit/module.ts`, `emit/client.ts`, `emit/layout.ts`)
 > **Rama:** `fix/bug-21-nodos-de-whitespace`
-> **Progreso:** 11 / 13
+> **Progreso:** 13 / 13
 > **Desbloqueada** el 2026-08-15 con [SDD-17](../SDD-17-hidratacion.md) en `Hecho`: la hidratación
 > se ve correr en Chrome real, que es lo que [§2.8](./BUG-21-nodos-de-whitespace.md) pedía antes de
 > fijar la regla. **Y la regla elegida es la de §4.2/§4.3** —las tres pruebas de la caja, con las
@@ -138,13 +138,13 @@ y el motivo de que vaya la última de las tres.
 
 ## Fase 5 — Cierre (2)
 
-- [ ] **12. Los once goldens, regenerados y leídos a mano (§6.17, §6.18).**
+- [x] **12. Los once goldens, regenerados y leídos a mano (§6.17, §6.18).**
       Las únicas diferencias admisibles son nodos de whitespace que desaparecen y la renumeración
       de `$nN` que eso arrastra. Un `$dom.element`, un `setAttr` o una sentencia de valor que se
       mueva **no** es renumeración. Anotar en el cuerpo del commit cuántos nodos cayeron por
       fichero: es el número que mide la tanda. Y `pnpm build` de `examples/basic` con una
       comparación visual de la página: es el único sitio donde un espacio perdido se ve.
-- [ ] **13. Verde, cobertura e índices.**
+- [x] **13. Verde, cobertura e índices.**
       `pnpm typecheck`, `pnpm test` y `pnpm build` en la raíz. `display.ts` al **100 %** en las
       cuatro métricas; `runs.ts`, `marker.ts` y `space.ts` están al 100 % y no bajan. Nada de
       `/* v8 ignore */`. Actualizar el comentario de

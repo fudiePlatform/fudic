@@ -1,7 +1,9 @@
 # BUG-21 — El árbol lleva un nodo de texto por cada salto de línea del autor
 
-> **Estado:** `Listo` — **sin bloqueantes desde el 2026-08-15**, cuando
-> [SDD-17](../SDD-17-hidratacion.md) pasó a `Hecho`: la hidratación se ve correr en Chrome real
+> **Estado:** `Hecho` — implementado el 2026-09-03 con la regla de §4.2/§4.3 (las tres pruebas de
+> la caja), que es la que §2.8 dejaba por decidir; la alternativa del salto de línea se descarta
+> porque decide por la forma del fuente. Estuvo `Listo` **sin bloqueantes desde el 2026-08-15**,
+> cuando [SDD-17](../SDD-17-hidratacion.md) pasó a `Hecho`: la hidratación se ve correr en Chrome real
 > en las tres formas del framework, que es lo que §2.8 pedía. Antes fue «el slice pendiente de
 > SDD-15» hasta que [SDD-15](../SDD-15-emit.md) cerró (2026-08-12) —lo que faltaba no era el
 > emit sino el runtime que lo consume—, y antes de eso

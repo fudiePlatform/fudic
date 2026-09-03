@@ -27,12 +27,9 @@ const graph: ComponentGraph = resolveComponents(join(fixturesDir, 'home.fud'), f
  * the server because it renders the whole page and left to the runtime by the client (SDD-17),
  * so the count is taken over exactly the nodes both sides own.
  */
-function nodes(root: ParentNode): number {
+function nodes(root: Node): number {
   let n = 0;
-  for (const child of root.childNodes) {
-    n += 1;
-    n += nodes(child as ParentNode);
-  }
+  for (const child of root.childNodes) n += 1 + nodes(child);
   return n;
 }
 

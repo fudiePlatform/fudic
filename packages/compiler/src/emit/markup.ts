@@ -222,9 +222,10 @@ export class MarkupEmitter {
   /** One coalesced text run — one node, because that is what the parser will give back. */
   #run(run: TextRun, parent: string): void {
     const v = this.#fresh();
-    // Collapsed here, on the AST, not by a pass over the generated HTML (BUG-07 §4.1).
-    // A run becomes ONE space and the node always survives — never trimmed, never
-    // dropped: `collapseSpace` says what that protects.
+    // Collapsed here, on the AST, not by a pass over the generated HTML (BUG-07 §4.1) —
+    // and the run REACHING this method is already the decision of BUG-21: `emitItems` left
+    // out the whitespace runs it could prove render nothing, and left in every one it could
+    // not. Whatever arrives here becomes a node, and the same node the client fabricates.
     this.#w.mappedLine(`const ${v} = $dom.text(`, ...run.value, `); $dom.append(${parent}, ${v});`);
   }
 
