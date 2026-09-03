@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` (`emit/display.ts` **nuevo**, `emit/runs.ts`, `emit/markup.ts`,
 > `emit/markup-client.ts`, `emit/block.ts`, `emit/module.ts`, `emit/client.ts`, `emit/layout.ts`)
 > **Rama:** `fix/bug-21-nodos-de-whitespace`
-> **Progreso:** 6 / 13
+> **Progreso:** 8 / 13
 > **Desbloqueada** el 2026-08-15 con [SDD-17](../SDD-17-hidratacion.md) en `Hecho`: la hidratación
 > se ve correr en Chrome real, que es lo que [§2.8](./BUG-21-nodos-de-whitespace.md) pedía antes de
 > fijar la regla. **Y la regla elegida es la de §4.2/§4.3** —las tres pruebas de la caja, con las
@@ -44,7 +44,9 @@ y el motivo de que vaya la última de las tres.
 ## Fase 1 — Qué caja contiene el texto (3)
 
 - [x] **1. `emit/display.ts`, con su tabla y su lectura del `<style>`.**
-      Módulo nuevo: `Display = 'block' | 'inline' | 'contents' | 'unknown'`, `hostDisplay(style)`,
+      Módulo nuevo: `Display` —seis nombres y no cuatro, porque `flex` y `inline-block` son las
+      dos distinciones sin las cuales dos de las tres pruebas de §4.2 no se pueden escribir sin
+      mentir; está razonado en §3.2—, `hostDisplay(style)`,
       `tagDisplay(tag)` y `hasForeignDisplay(style)`
       ([§3.2](./BUG-21-nodos-de-whitespace.md)). El CSS se lee por regex sobre las tiradas
       literales, exactamente como `PRESERVING_DECL`
@@ -97,14 +99,14 @@ y el motivo de que vaya la última de las tres.
 
 ## Fase 3 — Los consumidores del item list (2)
 
-- [ ] **7. El marcador, con la lista nueva.**
+- [x] **7. El marcador, con la lista nueva.**
       `markerSite` busca dos runs interpolados separados **solo** por constructos
       ([`marker.ts:62-75`](../../../packages/compiler/src/emit/marker.ts#L62-L75)). Un run de
       whitespace en medio hoy evita el comentario; descartado, la forma aparece y el marcador se
       emite donde antes no. Es correcto y lo hacen las dos ramas —la regla vive en un módulo
       compartido—, pero hay que verlo pasar con un test antes de mirar ningún golden.
       Criterio §6.16.
-- [ ] **8. El anclaje de un constructo.**
+- [x] **8. El anclaje de un constructo.**
       Un run estático recibe variable cuando un constructo delante lo necesita como ancla
       ([`markup-client.ts:418-437`](../../../packages/compiler/src/emit/markup-client.ts#L418-L437)).
       Si ese run desaparece, el bloque pasa al ancla siguiente o a `null`. La guarda de §4.4 evita
