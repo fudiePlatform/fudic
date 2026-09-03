@@ -16,8 +16,14 @@
  * We know an unknown tag is a custom element and that its default `display` is `inline`
  * — so its surrounding whitespace is significant. On a page that is almost entirely
  * custom elements, that heuristic does not fail in the rare case, it fails in the normal
- * one. Which is also why a whitespace-only text node is COLLAPSED and never dropped: see
- * `collapseSpace`.
+ * one.
+ *
+ * That argument is intact, and BUG-21 turned it around: what no minifier can know, this
+ * compiler can ASK — `<app-badge>` is a component of the graph and its `<style>` declares
+ * its `:host` display. So whether a whitespace run becomes a node is no longer decided
+ * here at all. It is `display.ts` that answers which box holds it and `emitItems` that
+ * discards it only when one of three closed proofs holds. What THIS file decides is
+ * unchanged: whether the characters collapse.
  */
 
 import type { StyleNode } from '../css/index.js';
@@ -51,8 +57,14 @@ const PREFORMATTED: ReadonlySet<string> = new Set(['pre', 'textarea']);
  */
 const PRESERVING_DECL = /white-space(?:-collapse)?\s*:\s*[^;}]*\b(?:pre|break-spaces)/iu;
 
-/** The literal CSS of a `<style>` body — the runs the AST knows are text, not Razor. */
-function literalCss(style: StyleNode): string {
+/**
+ * The literal CSS of a `<style>` body — the runs the AST knows are text, not Razor.
+ *
+ * Exported for `display.ts`, which asks the OTHER question of the same stylesheet (which
+ * box holds the text) and has to read it the same way: two readers of one `<style>` that
+ * disagreed about what is literal would disagree about the whitespace too.
+ */
+export function literalCss(style: StyleNode): string {
   return style.parts
     .map((part) => (part.type === 'css-text' ? part.value : ''))
     .join('\n');
@@ -111,10 +123,13 @@ const SPACE_RUN = /[ \t\n\f\r]+/gu;
 /**
  * Collapse every run of whitespace to a single space. Never trims, never returns empty.
  *
- * The one rule here that classic minifiers do not follow, and the reason is worth keeping
- * next to the code. With `collapseWhitespace` they DELETE a whitespace-only text node
- * when it falls between two block elements — and they decide "block" from a tag list a
- * custom element is not in. Deleting it changes three observable things:
+ * Whether the space that comes out ever becomes a NODE is a different question and is
+ * not asked here (BUG-21 §2.5): collapsing is what the browser was going to do anyway,
+ * and it is what this function is for.
+ *
+ * The three risks classic minifiers run when they DELETE such a node are real, and they
+ * are why the answer to the other question is a proof and not a tag list. They survive as
+ * the three guards of BUG-21 §4.4, checked before any proof:
  *
  *  - **Slots.** A whitespace-only text node counts as assigned content: remove it and a
  *    `<slot>` that was filled starts showing its fallback.
@@ -122,9 +137,10 @@ const SPACE_RUN = /[ \t\n\f\r]+/gu;
  *    is, and rules that did not apply start applying.
  *  - **Inline spacing** between two adjacent custom elements, which simply disappears.
  *
- * And it does not pay: measured on this project's own output, deleting buys 0.4 % gzip
- * over collapsing (§4.5). One space is what the browser renders anyway — 100 % of the
- * benefit, 0 % of the risk.
+ * What did NOT survive is the measurement BUG-07 §4.5 closed with — deleting buys 0.4 %
+ * gzip over collapsing — because it answered a question about bytes, and the cost of a
+ * node is a node: one `$dom.text` per render on each branch, and one more node for `h()`
+ * to walk past.
  */
 export function collapseSpace(text: string): string {
   return text.replace(SPACE_RUN, ' ');

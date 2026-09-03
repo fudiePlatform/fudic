@@ -74,9 +74,11 @@ describe('emitComponentModule — composition & control flow (app-card)', () => 
   });
 
   it('renders a nested component host with data-fud-adopt + attachShadow + its render call', () => {
-    expect(src).toContain('$dom.setAttr($n16, \'data-fud-adopt\', "app-button");');
-    expect(src).toContain('$dom.attachShadow($n16)');
-    expect(src).toContain('renderAppButton($dom, $n17, { "variant": "ghost" });');
+    // The ids moved with BUG-21: the whitespace nodes the emit can prove render nothing are
+    // not emitted, and the counter is sequential.
+    expect(src).toContain('$dom.setAttr($n10, \'data-fud-adopt\', "app-button");');
+    expect(src).toContain('$dom.attachShadow($n10)');
+    expect(src).toContain('renderAppButton($dom, $n11, { "variant": "ghost" });');
   });
 
   it('lowers @if/@else to real JS control flow', () => {
@@ -141,7 +143,7 @@ describe('emitComponentModule — attrExpr shapes', () => {
   const src = emitComponentModule(g, g.components.get('m-el')!);
 
   it('emits a template literal for a mixed attribute and omits it when falsy', () => {
-    expect(src).toContain('`x-${y}`');
+    expect(src).toContain("`x-${(y) ?? ''}`");
     // `$v`, not `$a`: `$a` is the client's apply closure now (BUG-12 §3.3), and a bound
     // value that shadowed it inside its own body is a trap waiting for the next edit.
     expect(src).toContain('if ($v === true)');
@@ -197,7 +199,7 @@ describe('emitPageModule — home.mjs', () => {
 
   it('lowers @foreach to a real for-loop and marks component hosts with data-fud-adopt', () => {
     expect(src).toContain('for (const item of data.items) {');
-    expect(src).toContain('$dom.setAttr($n12, \'data-fud-adopt\', "app-card");');
+    expect(src).toContain('$dom.setAttr($n8, \'data-fud-adopt\', "app-card");');
   });
 });
 

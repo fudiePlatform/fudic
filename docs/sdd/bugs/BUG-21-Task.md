@@ -4,14 +4,14 @@
 > **Paquetes:** `@fudic/compiler` (`emit/display.ts` **nuevo**, `emit/runs.ts`, `emit/markup.ts`,
 > `emit/markup-client.ts`, `emit/block.ts`, `emit/module.ts`, `emit/client.ts`, `emit/layout.ts`)
 > **Rama:** `fix/bug-21-nodos-de-whitespace`
-> **Progreso:** 0 / 13
-> **Bloqueada** por el slice pendiente de [SDD-15](../SDD-15-emit.md): la hidratación vista correr
-> en un navegador ([§2.8](./BUG-21-nodos-de-whitespace.md)). BUG-18 y BUG-19, las dos aristas
-> anteriores, están en `Hecho`. **Las fases de abajo no se pueden arrancar tal cual: §4.2 y §4.3
-> están reabiertas** —la deducción de la caja solo es cerrada dentro del shadow root, y hay una
-> alternativa sintáctica que no deduce nada—, así que las tareas 1, 2, 6, 9 y sus criterios cambian
-> según cuál se elija. La forma de la tanda —la decisión en `emitItems`, una sola vez, para las dos
-> ramas— es lo único que las dos reglas comparten y lo único que ya está decidido.
+> **Progreso:** 14 / 14
+> **Desbloqueada** el 2026-08-15 con [SDD-17](../SDD-17-hidratacion.md) en `Hecho`: la hidratación
+> se ve correr en Chrome real, que es lo que [§2.8](./BUG-21-nodos-de-whitespace.md) pedía antes de
+> fijar la regla. **Y la regla elegida es la de §4.2/§4.3** —las tres pruebas de la caja, con las
+> tres guardas de §4.4— y no la alternativa del salto de línea: esta descarta por la FORMA del
+> fuente y junta dos elementos inline escritos en líneas distintas, que en fudic, donde el `display`
+> por defecto de un custom element es `inline`, no es el caso raro sino el normal. Las tareas 1, 2,
+> 6 y 9 se implementan tal como están escritas.
 
 La mitad del árbol de un componente típico es el sangrado del autor: cuatro de seis nodos en
 `app-badge`, catorce en `app-card`. La corrección no es borrar nodos: es que descartar uno **exija
@@ -43,8 +43,10 @@ y el motivo de que vaya la última de las tres.
 
 ## Fase 1 — Qué caja contiene el texto (3)
 
-- [ ] **1. `emit/display.ts`, con su tabla y su lectura del `<style>`.**
-      Módulo nuevo: `Display = 'block' | 'inline' | 'contents' | 'unknown'`, `hostDisplay(style)`,
+- [x] **1. `emit/display.ts`, con su tabla y su lectura del `<style>`.**
+      Módulo nuevo: `Display` —seis nombres y no cuatro, porque `flex` y `inline-block` son las
+      dos distinciones sin las cuales dos de las tres pruebas de §4.2 no se pueden escribir sin
+      mentir; está razonado en §3.2—, `hostDisplay(style)`,
       `tagDisplay(tag)` y `hasForeignDisplay(style)`
       ([§3.2](./BUG-21-nodos-de-whitespace.md)). El CSS se lee por regex sobre las tiradas
       literales, exactamente como `PRESERVING_DECL`
@@ -53,7 +55,7 @@ y el motivo de que vaya la última de las tres.
       —incluida una declaración interpolada por Razor— vale `unknown`. Va en su propio módulo y no
       en `space.ts` por el motivo de [`marker.ts:18-22`](../../../packages/compiler/src/emit/marker.ts#L18-L22):
       las dos ramas tienen que decidir idénticamente. Criterios §6.1, §6.2, §6.3.
-- [ ] **2. `displayOf(tag)` baja desde el grafo a los dos emisores.**
+- [x] **2. `displayOf(tag)` baja desde el grafo a los dos emisores.**
       Resolverlo en `module.ts` y `client.ts`, junto a donde ya se resuelve
       `spaceModeOf(comp.tag, componentStyleNode(comp.doc))`
       ([`module.ts:138`](../../../packages/compiler/src/emit/module.ts#L138),
@@ -61,31 +63,34 @@ y el motivo de que vaya la última de las tres.
       el `hostDisplay` de **su** `<style>`; para cualquier otro, `unknown`. Entra en
       `MarkupEmitter` junto a `isComponent` y en `ClientScope` junto a `childProps`. Es la tarea
       que hace que `<app-badge>` deje de ser un tag desconocido (§2.3).
-- [ ] **3. El elemento padre llega al cuerpo de un bloque.**
+- [x] **3. El contenedor llega al cuerpo de un bloque.**
       `BlockSite.level` lleva nombres de variable, no el nodo
       ([`markup-client.ts:57-71`](../../../packages/compiler/src/emit/markup-client.ts#L57-L71)), así
-      que un `@if` dentro de un `<article>` no sabe hoy quién lo contiene. Añadir el `ElementNode`
-      del contenedor (o `null` en la raíz) a `Level` y hacer que `block.ts` lo propague
-      ([`block.ts:198-209`](../../../packages/compiler/src/emit/block.ts#L198-L209)). Es el único
-      cambio estructural de la tanda; sin él, el cuerpo de todo bloque decide con `unknown` y
-      conserva de más — que es correcto, pero deja fuera la mitad de las fixtures.
+      que un `@if` dentro de un `<article>` no sabía quién lo contiene. `BlockSite.space` pasa a ser
+      `BlockSite.at`, el `RunContext` entero
+      ([`block.ts:198-209`](../../../packages/compiler/src/emit/block.ts#L198-L209)). Viaja la caja
+      **ya resuelta** y no el `ElementNode`, que es lo que §3.1 pide —«el `display` del contenedor,
+      ya resuelto por quien sabe de quién es el `<style>`»—: `block.ts` no tiene por qué volver a
+      leer un `<style>`, y así la resuelve un solo sitio para las dos ramas. Con ella viajan los dos
+      bordes, porque el cuerpo de un bloque está en el borde del contenedor solo si nada del nivel
+      pinta por ese lado (§4.2.b). Es el único cambio estructural de la tanda.
 
 ## Fase 2 — La decisión, en el sitio compartido (3)
 
-- [ ] **4. `emitItems` toma un `RunContext`.**
+- [x] **4. `emitItems` toma un `RunContext`.**
       Sustituir el parámetro `space: SpaceMode` por el contexto de
       [§3.1](./BUG-21-nodos-de-whitespace.md) — modo, elemento padre, `display` del contenedor,
       `displayOf`, y si estos hijos son light DOM de un host. Solo la firma y sus dos llamadas
       ([`markup.ts:94`](../../../packages/compiler/src/emit/markup.ts#L94),
       [`markup-client.ts:359`](../../../packages/compiler/src/emit/markup-client.ts#L359)): esta
       tarea **no cambia ni un byte de salida** y los goldens son el testigo.
-- [ ] **5. Las tres guardas, antes que cualquier prueba.**
+- [x] **5. Las tres guardas, antes que cualquier prueba.**
       En `emitItems`: light DOM de un host (y el fallback de un `<slot>`), run que es el único
       contenido del elemento **comprobado sobre el resultado** —si todos los hermanos son
       descartables, el último no lo es—, y modo `preserve`. Son los tres riesgos que
       [BUG-07 §4.5](./BUG-07-html-sin-minificar.md) nombró, y siguen siendo ciertos: se escriben
       primero para que ninguna prueba posterior pueda saltárselos. Criterios §6.7, §6.8, §6.9.
-- [ ] **6. Las tres pruebas.**
+- [x] **6. Las tres pruebas.**
       Contenedor `flex`/`grid` (no genera caja), borde de un contenedor de bloque, y entre dos
       cajas de bloque ([§4.2](./BUG-21-nodos-de-whitespace.md)). El `display` sale de las tres
       fuentes de §4.3 **en ese orden**, y una declaración `display` fuera de `:host` envenena la
@@ -94,14 +99,14 @@ y el motivo de que vaya la última de las tres.
 
 ## Fase 3 — Los consumidores del item list (2)
 
-- [ ] **7. El marcador, con la lista nueva.**
+- [x] **7. El marcador, con la lista nueva.**
       `markerSite` busca dos runs interpolados separados **solo** por constructos
       ([`marker.ts:62-75`](../../../packages/compiler/src/emit/marker.ts#L62-L75)). Un run de
       whitespace en medio hoy evita el comentario; descartado, la forma aparece y el marcador se
       emite donde antes no. Es correcto y lo hacen las dos ramas —la regla vive en un módulo
       compartido—, pero hay que verlo pasar con un test antes de mirar ningún golden.
       Criterio §6.16.
-- [ ] **8. El anclaje de un constructo.**
+- [x] **8. El anclaje de un constructo.**
       Un run estático recibe variable cuando un constructo delante lo necesita como ancla
       ([`markup-client.ts:418-437`](../../../packages/compiler/src/emit/markup-client.ts#L418-L437)).
       Si ese run desaparece, el bloque pasa al ancla siguiente o a `null`. La guarda de §4.4 evita
@@ -110,14 +115,14 @@ y el motivo de que vaya la última de las tres.
 
 ## Fase 4 — Verificación (3)
 
-- [ ] **9. Los criterios de forma y de unidad (§6.1–§6.10).**
+- [x] **9. Los criterios de forma y de unidad (§6.1–§6.10).**
       `display.test.ts` nuevo y ampliación de
       [`space.test.ts`](../../../packages/compiler/test/emit/space.test.ts), con nodos del **parser
       real** y nunca forjados, que es la regla de aquel fichero. El criterio que da sentido a la
       tanda es §6.6: dos componentes en memoria que solo se diferencian en `:host { display }`
       producen distinto número de nodos. Y §6.10: el AST **no se poda** —los `TextNode` siguen con
       su span, porque el formateador y el LSP los leen—.
-- [ ] **10. Los source maps (§6.11–§6.13).**
+- [x] **10. Los source maps (§6.11–§6.13).**
       [`sourcemap.test.ts`](../../../packages/compiler/test/emit/sourcemap.test.ts) verde **sin
       tocarlo**: localiza el offset generado con `code.indexOf` sobre el texto final, así que pasa
       si y solo si los pares se recalcularon sobre el layout nuevo — y es lo que detectaría que
@@ -125,7 +130,7 @@ y el motivo de que vaya la última de las tres.
       ([§2.6](./BUG-21-nodos-de-whitespace.md)). Añadir los dos criterios propios: el conjunto de
       `sourceOffset` de `app-card` no pierde ninguno, y un run interpolado pegado a uno descartado
       conserva su ancla.
-- [ ] **11. Equivalencia SSR ↔ cliente (§6.14).**
+- [x] **11. Equivalencia SSR ↔ cliente (§6.14).**
       En el arnés de [`hydrate/`](../../../packages/compiler/test/emit/hydrate/), con `adoptOnly`:
       para cada fixture, el árbol que `render` serializa y el que `c()` fabrica tienen el **mismo
       número de nodos**, y `h()` no fabrica ninguno. Es el test que hace imposible que la regla
@@ -133,13 +138,13 @@ y el motivo de que vaya la última de las tres.
 
 ## Fase 5 — Cierre (2)
 
-- [ ] **12. Los once goldens, regenerados y leídos a mano (§6.17, §6.18).**
+- [x] **12. Los once goldens, regenerados y leídos a mano (§6.17, §6.18).**
       Las únicas diferencias admisibles son nodos de whitespace que desaparecen y la renumeración
       de `$nN` que eso arrastra. Un `$dom.element`, un `setAttr` o una sentencia de valor que se
       mueva **no** es renumeración. Anotar en el cuerpo del commit cuántos nodos cayeron por
       fichero: es el número que mide la tanda. Y `pnpm build` de `examples/basic` con una
       comparación visual de la página: es el único sitio donde un espacio perdido se ve.
-- [ ] **13. Verde, cobertura e índices.**
+- [x] **13. Verde, cobertura e índices.**
       `pnpm typecheck`, `pnpm test` y `pnpm build` en la raíz. `display.ts` al **100 %** en las
       cuatro métricas; `runs.ts`, `marker.ts` y `space.ts` están al 100 % y no bajan. Nada de
       `/* v8 ignore */`. Actualizar el comentario de
@@ -147,7 +152,21 @@ y el motivo de que vaya la última de las tres.
       [`markup.ts:113-115`](../../../packages/compiler/src/emit/markup.ts#L113-L115), que hoy
       afirman que un nodo de whitespace nunca se descarta. Anotar el avance en
       [bugs/INDEX.md](./INDEX.md) y en [../INDEX.md](../INDEX.md), y pasar BUG-21 a `Hecho` si los
-      18 criterios de §6 están verdes.
+      20 criterios de §6 están verdes (los 18 originales y los dos de §4.7).
+
+## Fase 6 — Addendum: texto e interpolación juntos (1)
+
+- [x] **14. `Hello @name` es un nodo, `href="/customer/@id"` es una plantilla (§4.7).**
+      Pedido por Pedro con la tanda ya cerrada, y **medido antes de tocar nada**: las dos formas ya
+      salían así en las dos ramas —`emitItems` agrupa texto e interpolación adyacentes en un solo
+      run y `attrExpr` compone el valor con una plantilla—, porque un nodo de texto partido en dos
+      no sobrevive el round trip por HTML y `h()` no lo podría adoptar. Lo que faltaba: la plantilla
+      de un **atributo** no llevaba `?? ''` por hueco y la de un texto sí, así que un `id` ausente
+      escribía `/customer/undefined`. Corregido en `attrExpr`, con el caso de `@expr` **solo**
+      intacto —ahí el valor nulo es lo que la decisión 21 lee para omitir el atributo—. Y la
+      sanitización, comprobada de punta a punta con un valor hostil: escapa el **serializador**
+      (`escapeText` / `escapeAttr`), no el emit, porque en el cliente el valor se escribe por el DOM
+      y escaparlo antes lo codificaría dos veces. Criterios §6.19 y §6.20.
 
 ---
 
@@ -165,7 +184,7 @@ adyacencia condicional, no cajas, y es un BUG propio con sus criterios (§7).
 
 ## Enlaces
 
-- Criterios de aceptación: los 18 de
+- Criterios de aceptación: los 20 de
   [BUG-21 §6](./BUG-21-nodos-de-whitespace.md#6-criterios-de-aceptación).
 - Corrige la parte de [BUG-07 §4.5](./BUG-07-html-sin-minificar.md) que midió **bytes** cuando la
   pregunta era de **nodos**. El resto de aquel BUG —colapsar, los modos, `data-fud-space`— se queda

@@ -18,14 +18,12 @@ customElements.define("app-badge", class extends FudicElement {
 
     return {
       c: () => {
-        $r.push($dom.text(" "));
         $n0 = $dom.element("span");
         $dom.append($n0, $dom.text(" "));
         $n1 = $dom.element("slot");
         $dom.append($n0, $n1);
         $dom.append($n0, $dom.text(" "));
         $r.push($n0);
-        $r.push($dom.text(" "));
         $a();
         $m();
         $s();

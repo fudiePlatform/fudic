@@ -1,7 +1,9 @@
 # BUG-21 — El árbol lleva un nodo de texto por cada salto de línea del autor
 
-> **Estado:** `Listo` — **sin bloqueantes desde el 2026-08-15**, cuando
-> [SDD-17](../SDD-17-hidratacion.md) pasó a `Hecho`: la hidratación se ve correr en Chrome real
+> **Estado:** `Hecho` — implementado el 2026-09-03 con la regla de §4.2/§4.3 (las tres pruebas de
+> la caja), que es la que §2.8 dejaba por decidir; la alternativa del salto de línea se descarta
+> porque decide por la forma del fuente. Estuvo `Listo` **sin bloqueantes desde el 2026-08-15**,
+> cuando [SDD-17](../SDD-17-hidratacion.md) pasó a `Hecho`: la hidratación se ve correr en Chrome real
 > en las tres formas del framework, que es lo que §2.8 pedía. Antes fue «el slice pendiente de
 > SDD-15» hasta que [SDD-15](../SDD-15-emit.md) cerró (2026-08-12) —lo que faltaba no era el
 > emit sino el runtime que lo consume—, y antes de eso
@@ -296,7 +298,7 @@ vecinos, no del run.
 
 ```ts
 /** Lo que el emit puede afirmar del `display` de una caja. `unknown` es la respuesta por defecto. */
-export type Display = 'block' | 'inline' | 'contents' | 'unknown';
+export type Display = 'block' | 'flex' | 'inline-block' | 'inline' | 'contents' | 'unknown';
 
 /** El `display` declarado para `:host` en el `<style>` propio de un componente, si lo declara. */
 export function hostDisplay(style: StyleNode | null): Display;
@@ -307,6 +309,14 @@ export function tagDisplay(tag: string): Display;
 /** Si el `<style>` declara algún `display` fuera de `:host`: sin árbol de reglas, envenena §4.3.c. */
 export function hasForeignDisplay(style: StyleNode | null): boolean;
 ```
+
+**Seis nombres y no cuatro**, y los dos que se añaden son los que hacen implementables dos de las
+tres pruebas de §4.2. `flex` —donde entra `grid`— no es `block`: sus hijos de solo-whitespace **no
+generan caja**, que es un hecho más fuerte que un borde recortado, y es la prueba (a). Y
+`inline-block` no es `inline`: por dentro es un contenedor de bloque cuyos bordes recortan —es lo
+que declaran `app-badge` y `app-button`— y por fuera es de línea, así que el espacio **de al lado**
+sí se renderiza. Fundir cualquiera de los dos pares obliga a mentir en una de las dos direcciones, y
+la mentira segura conserva justo los nodos de los que va este BUG.
 
 Vive fuera de `space.ts` porque `space.ts` contesta *cómo se emite el texto* y esto contesta *qué
 caja lo contiene*; y vive en un módulo y no en un método por la razón exacta de
@@ -456,6 +466,37 @@ método.
   que se evalúa, y cambia **igual en las dos ramas** (§2.4).
 - **La rama de servidor y la de cliente siguen escribiendo lo que escribían** para todo lo demás.
 
+### 4.7. Texto e interpolación juntos son UNA cosa, en el nodo y en el atributo
+
+Añadido el 2026-09-03, a instancia de Pedro, con la corrección al final: es la otra mitad de
+«cuántos nodos existen», y va aquí porque la contesta el mismo módulo.
+
+> `Hello @name` es **un** nodo de texto construido con **una** plantilla ES6, y
+> `href="/customer/@id"` es **un** atributo construido con **una** plantilla ES6.
+
+**Y ya lo era**, en las dos ramas: `emitItems` agrupa toda tirada de texto e interpolación
+adyacentes en **un solo run** ([`runs.ts:97-118`](../../../packages/compiler/src/emit/runs.ts#L97-L118))
+y `textRun` lo emite como plantilla en cuanto hay un hueco; `attrExpr` hace lo propio con el
+valor de un atributo ([`attrs.ts:44-64`](../../../packages/compiler/src/emit/attrs.ts#L44-L64)).
+El motivo no era el ahorro sino el **round trip**: HTML no tiene frontera entre dos nodos de
+texto, así que `text("Hello ") + text(name)` se serializa a uno solo y el parser devuelve uno
+—dos nodos en el cliente y uno en el servidor es exactamente el árbol que `h()` no puede
+adoptar—. Lo que se ahorra viene de regalo, y es la mitad de los nodos de todo texto con hueco.
+
+**Lo que sí faltaba, y es la corrección:** la plantilla de un atributo mixto no llevaba `?? ''`
+por hueco, y la de un texto sí. Con `id` ausente, `href="/customer/@id"` escribía
+`/customer/undefined` —que es una URL, y equivocada— donde el texto ya escribía nada. Ahora las
+dos formas son la misma forma. El caso de `@expr` **solo** no lo lleva y no debe llevarlo: ahí el
+valor nulo es la señal que la decisión 21 lee para **omitir** el atributo entero.
+
+**La sanitización está donde el valor se convierte en markup, y solo ahí.** Ni el emit ni el
+runtime escapan nada: lo que reciben `$dom.text` y `$dom.setAttr` es el **valor**. El servidor lo
+re-codifica al serializar —`escapeText` (`& < >`) para texto y `escapeAttr` (`& "`) para un
+atributo— y el cliente lo escribe por el DOM, que no parsea nunca. Escapar en el emit sería
+codificar dos veces en el cliente. Lo que el emit sí escapa es la mitad **literal** de la
+plantilla —backtick, barra y `${`—, en los dos sitios, para que el único hueco de la plantilla
+sea el del autor.
+
 ---
 
 ## 5. Invariantes
@@ -551,6 +592,18 @@ aquél: nodos del parser real, nunca forjados) y en el arnés de `test/emit/hydr
 18. **El HTML de `examples/basic` sigue renderizando igual.** `pnpm build` y una comparación visual
     de la página construida: es el único sitio donde un espacio perdido se ve, y por eso está aquí y
     no en un test unitario.
+
+**Texto e interpolación juntos (§4.7)**
+
+19. **Un run mixto es un nodo y una plantilla, en las dos ramas.** `<p>Hello @name</p>` emite **un**
+    `$dom.text` con `` `Hello ${(name) ?? ''}` `` en el servidor, y en el cliente **un** nodo vacío que
+    `$a()` llena con esa misma plantilla. Un atributo mixto compone la misma cadena en las dos, con
+    `?? ''` por hueco — y un `@expr` solo sigue **sin** él, que es lo que la decisión 21 lee para
+    omitir el atributo.
+20. **La sanitización está donde el valor se vuelve markup.** Con un valor hostil
+    (`<img src=x onerror=…> & "`), el HTML servido lo trae escapado en texto y en atributo, y el
+    emitido no contiene ni `escapeText` ni `innerHTML` en ninguna rama. Y un backtick o un `${`
+    escritos por el autor **en su propio texto** no pueden salirse de la plantilla.
 
 **Cobertura.** `display.ts` nace al **100 %** en las cuatro métricas; `runs.ts`, `marker.ts` y
 `space.ts` están al 100 % y no bajan. La deuda heredada de `@fudic/compiler` no rebaja el listón de

@@ -51,7 +51,7 @@ import {
 } from './attrs.js';
 import { branchesOf } from './constructs.js';
 import { isControlNode, markerSite } from './marker.js';
-import { nestedSpaceMode, type SpaceMode } from './space.js';
+import { bodyContext, childrenContext, type RunContext } from './display.js';
 import { emitItems, type EmitItem, type TextRun } from './runs.js';
 import type { Prop } from './oxc-code.js';
 import { busHandler, eventHandler, FUD_UNSUITABLE_HANDLER, type HookupContext } from './events.js';
@@ -103,8 +103,12 @@ export interface BlockSite {
    * a row created by an update inserts before, and no marker is needed to find it.
    */
   readonly anchor: string | null;
-  /** The whitespace mode in force where the construct is written (BUG-07 §4.4). */
-  readonly space: SpaceMode;
+  /**
+   * Where the construct sits, for the walk of its BODY: the whitespace mode in force
+   * (BUG-07 §4.4) and the box that holds it, with its edges already narrowed to the
+   * construct's place in the level (BUG-21 §4.2.b).
+   */
+  readonly at: RunContext;
   /** The bodies of the PARENT: where the create / adopt / mount / update lines go. */
   readonly bodies: ClientBodies;
   /**
@@ -267,8 +271,13 @@ export interface MarkupOptions {
   readonly usage: CoreUsage;
   /** The template's JS and where an unsuitable handler is reported (§4.5). */
   readonly hookup: HookupContext;
-  /** The whitespace mode in force where this walk starts (BUG-07 §4.4). */
-  readonly space: SpaceMode;
+  /**
+   * Where this walk starts: the whitespace mode in force (BUG-07 §4.4) and the box that
+   * holds its nodes (BUG-21 §4.3). Built by whoever holds the graph and the component's
+   * `<style>` — the emitter derives every context below it, and derives it with the same
+   * shared function the server branch uses.
+   */
+  readonly at: RunContext;
   /**
    * Whether the roots of this walk need a reference each. A block's do: it moves and
    * removes them, and a static text run it cannot name is a node its `r()` would leave
@@ -296,8 +305,12 @@ export class ClientMarkupEmitter {
   #depth = 0;
   /** How many value writes `$a` owns so far — each one gets its own slot in `$w`. */
   #writes = 0;
-  /** The whitespace mode of the node being emitted; `white-space` inherits (BUG-07 §4.4). */
-  #space: SpaceMode;
+  /**
+   * Where the walk is: the whitespace mode in force and the box that holds what is being
+   * written. A stack in the same sense the mode alone was — pushed entering an element,
+   * popped leaving it.
+   */
+  #at: RunContext;
 
   constructor(options: MarkupOptions) {
     this.#source = options.source;
@@ -313,7 +326,7 @@ export class ClientMarkupEmitter {
     this.#usage = options.usage;
     this.#hookup = options.hookup;
     this.#trackRoots = options.trackRoots ?? false;
-    this.#space = options.space;
+    this.#at = options.at;
   }
 
   /** Whether this tag is a component of the graph. */
@@ -397,7 +410,7 @@ export class ClientMarkupEmitter {
   }
 
   #itemsOf(children: readonly HtmlContent[]): readonly EmitItem[] {
-    return emitItems(this.#source, children, this.#space);
+    return emitItems(this.#source, children, this.#at);
   }
 
   /**
@@ -439,7 +452,10 @@ export class ClientMarkupEmitter {
       if (item.kind === 'run') {
         this.#run(item, level, at, names[i], marker?.run === i ? marker : undefined);
       } else if (isControl(item.node)) {
-        const registry = this.#construct(asControl(item.node), level, at, anchors[i] ?? null);
+        // The body of a construct is at the container's edge only when nothing of the level
+        // renders on that side of it — which is a fact about this list (BUG-21 §4.2.b).
+        const body = bodyContext(this.#at, i === 0, i === items.length - 1);
+        const registry = this.#construct(asControl(item.node), level, at, anchors[i] ?? null, body);
         if (this.#tracked(level)) this.#rootItems.push({ kind: 'block', registry });
       } else {
         this.#node(item.node, level, names[i]);
@@ -575,10 +591,13 @@ export class ClientMarkupEmitter {
   }
 
   #element(el: ElementNode, level: Level, v: string): void {
-    const outer = this.#space;
-    this.#space = nestedSpaceMode(outer, el);
+    const outer = this.#at;
+    const isComponent = this.#isComponent(el.name);
+    // Derived by the SAME function the server branch uses: the two have to answer the box
+    // question identically, or they stop building the same tree (BUG-21 §4.5).
+    this.#at = childrenContext(outer, el, isComponent);
     this.#fab.line(`${v} = $dom.element(${JSON.stringify(el.name)});`);
-    if (this.#isComponent(el.name)) {
+    if (isComponent) {
       // A child component host: fabricate it and hang its light DOM, but do NOT open its
       // shadow or drive its controller. Who downloads a child's chunk, and in which order
       // its instances come alive, is the runtime's decision (SDD-17), not the parent's.
@@ -613,7 +632,7 @@ export class ClientMarkupEmitter {
     this.#adopt.line(`${v} = ${level.cursor!}; ${level.cursor} = $dom.nextElementSibling(${level.cursor});`);
     if (this.#tracked(level)) this.#adopt.line(`$r.push(${v});`);
     this.#children(el, v);
-    this.#space = outer;
+    this.#at = outer;
     this.#place(v, level.fab); // parent last: a node is filled before it joins the tree
   }
 
@@ -796,12 +815,18 @@ export class ClientMarkupEmitter {
   }
 
   /** One control construct: a block with a life of its own, handed over whole (SDD-30). */
-  #construct(node: ControlNode, level: Level, tail: Tail, anchor: string | null): string {
+  #construct(
+    node: ControlNode,
+    level: Level,
+    tail: Tail,
+    anchor: string | null,
+    at: RunContext,
+  ): string {
     return this.#sink.construct(node, {
       level,
       tail,
       anchor,
-      space: this.#space,
+      at,
       bodies: this.#bodies,
       deferredMount: level.fab === null,
     });

@@ -155,7 +155,6 @@ customElements.define("app-actions", class extends FudicElement {
 
     return {
       c: () => {
-        $r.push($dom.text(" "));
         $n0 = $dom.element("ul");
         $dom.setAttr($n0, 'class', ["list"].filter(Boolean).join(' '));
         $dom.append($n0, $dom.text(" "));
@@ -169,7 +168,6 @@ customElements.define("app-actions", class extends FudicElement {
         $n1 = $dom.text(" ");
         $dom.append($n0, $n1);
         $r.push($n0);
-        $r.push($dom.text(" "));
         $a();
         $m();
         $s();

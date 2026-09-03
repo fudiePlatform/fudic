@@ -218,7 +218,9 @@ export class BlockEmitter implements BlockSink {
       ids: this.#ctx.ids,
       usage: this.#ctx.usage,
       hookup: this.#ctx.hookup,
-      space: at.space,
+      // The body inherits the level's context — a block is not a level of the DOM — with
+      // its edges already narrowed to where the construct sits (BUG-21 §4.2.b).
+      at: at.at,
       trackRoots: true,
     });
     em.emitBlockBody(branch.body, '$c', at.tail);

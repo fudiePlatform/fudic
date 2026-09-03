@@ -24,6 +24,7 @@ import type { StyleNode } from '../css/index.js';
 import type { PageDocument, ComponentDocument } from '../document/index.js';
 import type { Diagnostic } from '../types/index.js';
 import { spaceModeOf } from './space.js';
+import { hasForeignDisplay, hostDisplay, tagDisplay, type Boxes, type Display } from './display.js';
 import { CodeWriter, type EmitMapping } from './writer.js';
 import { MarkupEmitter, renderName, tpl } from './markup.js';
 import { AssetLinker, type AssetExists } from './assets.js';
@@ -128,6 +129,54 @@ export function componentStyleNode(doc: ComponentDocument): StyleNode | null {
   return child !== undefined && child.type === 'style-content' ? child : null;
 }
 
+/**
+ * What a COMPONENT file knows about the boxes around its markup (BUG-21 §3.3).
+ *
+ * `of(tag)` is the source no external tool can have: the `:host` of the child component, read
+ * from the child's own `<style>` through the graph. It is resolved here, beside `spaceModeOf`,
+ * for the same reason — this is where the graph and the parsed stylesheets are — and the two
+ * emit branches receive the same object so they cannot answer it differently (§4.5).
+ */
+export function componentBoxes(graph: ComponentGraph, comp: ResolvedComponent): Boxes {
+  return {
+    of: (tag: string): Display => {
+      const child = graph.components.get(tag);
+      return child === undefined ? 'unknown' : hostDisplay(componentStyleNode(child.doc));
+    },
+    // A `display` outside `:host` may select anything in this file, and without a rule tree
+    // (SDD-09 §7) there is no telling what: the tag table drops out for the whole file.
+    poisoned: hasForeignDisplay(componentStyleNode(comp.doc)),
+  };
+}
+
+/** The box a component's own template starts in: its `:host`, or nothing provable (§4.3.a). */
+export function componentContainer(comp: ResolvedComponent): Display {
+  return hostDisplay(componentStyleNode(comp.doc));
+}
+
+/**
+ * The same two facts for a PAGE. The page has no `:host`; what governs its tags is whatever
+ * `<style>` it wrote in its own `<head>`, and a `display` in any of them poisons the table
+ * exactly as a component's does.
+ *
+ * What it still cannot see is a stylesheet the page LINKS — `<link rel="stylesheet">` is a
+ * file this compilation never reads. That is the same open edge `data-fud-space` answers for
+ * `white-space` (BUG-07 §4.4), and the reason nothing here is deduced from a class.
+ */
+function pageBoxes(graph: ComponentGraph, page: PageDocument): Boxes {
+  const styles = page.head.children
+    .filter((c): c is ElementNode => c.type === 'element' && c.name === 'style')
+    .map((el) => el.children[0])
+    .filter((body): body is StyleNode => body !== undefined && body.type === 'style-content');
+  return {
+    of: (tag: string): Display => {
+      const child = graph.components.get(tag);
+      return child === undefined ? 'unknown' : hostDisplay(componentStyleNode(child.doc));
+    },
+    poisoned: styles.some((style) => hasForeignDisplay(style)),
+  };
+}
+
 function buildComponentModule(
   graph: ComponentGraph,
   comp: ResolvedComponent,
@@ -145,6 +194,8 @@ function buildComponentModule(
     isComponent: (t) => graph.components.has(t),
     linker,
     space,
+    container: componentContainer(comp),
+    boxes: componentBoxes(graph, comp),
     signals: new Set(signals.map((s) => s.name)),
     hydratable,
   });
@@ -234,6 +285,10 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
     w: bodyW,
     isComponent: (t) => graph.components.has(t),
     linker,
+    // The page's markup hangs from the `<body>` the module fabricates, and a `<body>` is a
+    // block container: its leading and trailing whitespace is trimmed by every browser.
+    container: tagDisplay('body'),
+    boxes: pageBoxes(graph, page),
     hydratable,
   });
   em.emitChildren(page.body.children, '$body');

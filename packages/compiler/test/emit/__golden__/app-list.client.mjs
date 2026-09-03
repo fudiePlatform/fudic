@@ -2,7 +2,6 @@ import { FudicElement } from '@fudic/core';
 
 customElements.define("app-list", class extends FudicElement {
   static c($props) {
-    let $n0;
     const $r = [];
     const $d = []; // teardowns
     let [$dom, $shadow, rows, empty = 'Sin elementos'] = $props;
@@ -10,39 +9,31 @@ customElements.define("app-list", class extends FudicElement {
     let $k0 = [];
     let $x0 = -1;
     const $b0 = ($parent, $anchor, empty) => {
-      let $n1, $n2, $n3, $n4;
+      let $n0, $n1;
       const $r = [];
       const $d = []; // teardowns
       const $w = []; // last applied, per value write
       const $a = () => {
         let $v;
         $v = String((empty) ?? '');
-        if ($v !== $w[0]) { $w[0] = $v; $dom.setText($n4, $v); }
+        if ($v !== $w[0]) { $w[0] = $v; $dom.setText($n1, $v); }
       };
       const $s = () => {};
       const $mv = ($ref, $n) => { if ($ref === null) $dom.append($parent, $n); else $dom.before($ref, $n); return $n; };
       return {
         key: undefined,
         c: () => {
-          $n1 = $dom.text(" ");
-          $r.push($n1);
-          $n2 = $dom.element("p");
-          $dom.setAttr($n2, 'class', ["empty"].filter(Boolean).join(' '));
-          $n4 = $dom.text('');
-          $dom.append($n2, $n4);
-          $r.push($n2);
-          $n3 = $dom.text(" ");
-          $r.push($n3);
+          $n0 = $dom.element("p");
+          $dom.setAttr($n0, 'class', ["empty"].filter(Boolean).join(' '));
+          $n1 = $dom.text('');
+          $dom.append($n0, $n1);
+          $r.push($n0);
           $a();
         },
         h: ($c) => {
-          $n1 = $dom.previousSibling($c);
-          $r.push($n1);
-          $n2 = $c; $c = $dom.nextElementSibling($c);
-          $r.push($n2);
-          $n4 = $dom.lastChild($n2);
-          $n3 = $dom.lastChild($parent);
-          $r.push($n3);
+          $n0 = $c; $c = $dom.nextElementSibling($c);
+          $r.push($n0);
+          $n1 = $dom.lastChild($n0);
           return $c;
         },
         m: ($ref = $anchor) => {
@@ -52,59 +43,57 @@ customElements.define("app-list", class extends FudicElement {
         s: $s,
         u: (...$p) => { [empty] = $p; $a(); },
         move: ($ref) => {
-          $ref = $mv($ref, $n3);
-          $ref = $mv($ref, $n2);
-          $ref = $mv($ref, $n1);
+          $ref = $mv($ref, $n0);
           return $ref;
         },
         r: () => { $d.forEach(($f) => $f()); for (const $n of $r) $dom.remove($n); },
       };
     };
     const $b1 = ($parent, $anchor, rows) => {
-      let $n5, $n6, $n7, $n8;
+      let $n2, $n3;
       const $r = [];
       const $d = []; // teardowns
       let $k1 = [];
       const $b2 = ($parent, $anchor, row) => {
-        let $n9, $n10, $n11, $n12, $n13, $n14;
+        let $n4, $n5, $n6, $n7, $n8, $n9;
         const $r = [];
         const $d = []; // teardowns
         const $w = []; // last applied, per value write
         let $k2 = [];
         const $b3 = ($parent, $anchor, mark) => {
-          let $n15, $n16, $n17, $n18;
+          let $n10, $n11, $n12, $n13;
           const $r = [];
           const $d = []; // teardowns
           const $w = []; // last applied, per value write
           const $a = () => {
             let $v;
             $v = String((mark) ?? '');
-            if ($v !== $w[0]) { $w[0] = $v; $dom.setText($n18, $v); }
+            if ($v !== $w[0]) { $w[0] = $v; $dom.setText($n13, $v); }
           };
           const $s = () => {};
           const $mv = ($ref, $n) => { if ($ref === null) $dom.append($parent, $n); else $dom.before($ref, $n); return $n; };
           return {
             key: mark,
             c: () => {
-              $n15 = $dom.text(" ");
-              $r.push($n15);
-              $n16 = $dom.element("span");
-              $dom.setAttr($n16, 'class', ["tag"].filter(Boolean).join(' '));
-              $n18 = $dom.text('');
-              $dom.append($n16, $n18);
-              $r.push($n16);
-              $n17 = $dom.text(" ");
-              $r.push($n17);
+              $n10 = $dom.text(" ");
+              $r.push($n10);
+              $n11 = $dom.element("span");
+              $dom.setAttr($n11, 'class', ["tag"].filter(Boolean).join(' '));
+              $n13 = $dom.text('');
+              $dom.append($n11, $n13);
+              $r.push($n11);
+              $n12 = $dom.text(" ");
+              $r.push($n12);
               $a();
             },
             h: ($c) => {
-              $n15 = $dom.previousSibling($c);
-              $r.push($n15);
-              $n16 = $c; $c = $dom.nextElementSibling($c);
-              $r.push($n16);
-              $n18 = $dom.lastChild($n16);
-              $n17 = $dom.lastChild($parent);
-              $r.push($n17);
+              $n10 = $dom.previousSibling($c);
+              $r.push($n10);
+              $n11 = $c; $c = $dom.nextElementSibling($c);
+              $r.push($n11);
+              $n13 = $dom.lastChild($n11);
+              $n12 = $dom.lastChild($parent);
+              $r.push($n12);
               return $c;
             },
             m: ($ref = $anchor) => {
@@ -114,9 +103,9 @@ customElements.define("app-list", class extends FudicElement {
             s: $s,
             u: (...$p) => { [mark] = $p; $a(); },
             move: ($ref) => {
-              $ref = $mv($ref, $n17);
-              $ref = $mv($ref, $n16);
-              $ref = $mv($ref, $n15);
+              $ref = $mv($ref, $n12);
+              $ref = $mv($ref, $n11);
+              $ref = $mv($ref, $n10);
               return $ref;
             },
             r: () => { $d.forEach(($f) => $f()); for (const $n of $r) $dom.remove($n); },
@@ -131,66 +120,66 @@ customElements.define("app-list", class extends FudicElement {
             const $ky = mark;
             const $hit = $prev.get($ky);
             if ($hit !== undefined) { $prev.delete($ky); $hit.u(mark); $next.push($hit); }
-            else { const $i = $b3($n10, $n13, mark); $i.c(); $i.m(); $i.s(); $next.push($i); }
+            else { const $i = $b3($n5, $n8, mark); $i.c(); $i.m(); $i.s(); $next.push($i); }
           }
           for (const $i of $prev.values()) $gone.push($i);
           for (const $i of $gone) $i.r();
-          for (let $j = $next.length - 1, $ref = $n13; $j >= 0; $j -= 1) $ref = $next[$j].move($ref);
+          for (let $j = $next.length - 1, $ref = $n8; $j >= 0; $j -= 1) $ref = $next[$j].move($ref);
           $k2 = $next;
         };
         const $a = () => {
           let $v;
           $v = String((row.label) ?? '');
-          if ($v !== $w[0]) { $w[0] = $v; $dom.setText($n14, $v); }
+          if ($v !== $w[0]) { $w[0] = $v; $dom.setText($n9, $v); }
         };
         const $s = () => {};
         const $mv = ($ref, $n) => { if ($ref === null) $dom.append($parent, $n); else $dom.before($ref, $n); return $n; };
         return {
           key: row.id,
           c: () => {
-            $n9 = $dom.text(" ");
-            $r.push($n9);
-            $n10 = $dom.element("li");
-            $dom.setAttr($n10, 'class', ["row"].filter(Boolean).join(' '));
-            $dom.append($n10, $dom.text(" "));
-            $n12 = $dom.element("span");
-            $n14 = $dom.text('');
-            $dom.append($n12, $n14);
-            $dom.append($n10, $n12);
-            $dom.append($n10, $dom.text(" "));
+            $n4 = $dom.text(" ");
+            $r.push($n4);
+            $n5 = $dom.element("li");
+            $dom.setAttr($n5, 'class', ["row"].filter(Boolean).join(' '));
+            $dom.append($n5, $dom.text(" "));
+            $n7 = $dom.element("span");
+            $n9 = $dom.text('');
+            $dom.append($n7, $n9);
+            $dom.append($n5, $n7);
+            $dom.append($n5, $dom.text(" "));
             for (const mark of row.tags) {
-              const $i = $b3($n10, null, mark);
+              const $i = $b3($n5, null, mark);
               $i.c();
               $i.m();
               $i.s();
               $k2.push($i);
             }
-            $n13 = $dom.text(" ");
-            $dom.append($n10, $n13);
-            $r.push($n10);
-            $n11 = $dom.text(" ");
-            $r.push($n11);
+            $n8 = $dom.text(" ");
+            $dom.append($n5, $n8);
+            $r.push($n5);
+            $n6 = $dom.text(" ");
+            $r.push($n6);
             $a();
           },
           h: ($c) => {
-            $n9 = $dom.previousSibling($c);
-            $r.push($n9);
-            $n10 = $c; $c = $dom.nextElementSibling($c);
-            $r.push($n10);
+            $n4 = $dom.previousSibling($c);
+            $r.push($n4);
+            $n5 = $c; $c = $dom.nextElementSibling($c);
+            $r.push($n5);
             {
-              let $c1 = $dom.firstElementChild($n10);
-              $n12 = $c1; $c1 = $dom.nextElementSibling($c1);
-              $n14 = $dom.lastChild($n12);
+              let $c1 = $dom.firstElementChild($n5);
+              $n7 = $c1; $c1 = $dom.nextElementSibling($c1);
+              $n9 = $dom.lastChild($n7);
               for (const mark of row.tags) {
-                const $i = $b3($n10, null, mark);
+                const $i = $b3($n5, null, mark);
                 $c1 = $i.h($c1);
                 $i.s();
                 $k2.push($i);
               }
-              $n13 = $dom.lastChild($n10);
+              $n8 = $dom.lastChild($n5);
             }
-            $n11 = $dom.lastChild($parent);
-            $r.push($n11);
+            $n6 = $dom.lastChild($parent);
+            $r.push($n6);
             return $c;
           },
           m: ($ref = $anchor) => {
@@ -200,9 +189,9 @@ customElements.define("app-list", class extends FudicElement {
           s: $s,
           u: (...$p) => { [row] = $p; $a(); $u2(); },
           move: ($ref) => {
-            $ref = $mv($ref, $n11);
-            $ref = $mv($ref, $n10);
-            $ref = $mv($ref, $n9);
+            $ref = $mv($ref, $n6);
+            $ref = $mv($ref, $n5);
+            $ref = $mv($ref, $n4);
             return $ref;
           },
           r: () => { $d.forEach(($f) => $f()); $k2.forEach(($i) => $i.r()); for (const $n of $r) $dom.remove($n); },
@@ -217,11 +206,11 @@ customElements.define("app-list", class extends FudicElement {
           const $ky = row.id;
           const $hit = $prev.get($ky);
           if ($hit !== undefined) { $prev.delete($ky); $hit.u(row); $next.push($hit); }
-          else { const $i = $b2($n6, $n8, row); $i.c(); $i.m(); $i.s(); $next.push($i); }
+          else { const $i = $b2($n2, $n3, row); $i.c(); $i.m(); $i.s(); $next.push($i); }
         }
         for (const $i of $prev.values()) $gone.push($i);
         for (const $i of $gone) $i.r();
-        for (let $j = $next.length - 1, $ref = $n8; $j >= 0; $j -= 1) $ref = $next[$j].move($ref);
+        for (let $j = $next.length - 1, $ref = $n3; $j >= 0; $j -= 1) $ref = $next[$j].move($ref);
         $k1 = $next;
       };
       const $a = () => {};
@@ -230,42 +219,34 @@ customElements.define("app-list", class extends FudicElement {
       return {
         key: undefined,
         c: () => {
-          $n5 = $dom.text(" ");
-          $r.push($n5);
-          $n6 = $dom.element("ul");
-          $dom.setAttr($n6, 'class', ["list"].filter(Boolean).join(' '));
-          $dom.append($n6, $dom.text(" "));
+          $n2 = $dom.element("ul");
+          $dom.setAttr($n2, 'class', ["list"].filter(Boolean).join(' '));
+          $dom.append($n2, $dom.text(" "));
           for (const row of rows) {
-            const $i = $b2($n6, null, row);
+            const $i = $b2($n2, null, row);
             $i.c();
             $i.m();
             $i.s();
             $k1.push($i);
           }
-          $n8 = $dom.text(" ");
-          $dom.append($n6, $n8);
-          $r.push($n6);
-          $n7 = $dom.text(" ");
-          $r.push($n7);
+          $n3 = $dom.text(" ");
+          $dom.append($n2, $n3);
+          $r.push($n2);
           $a();
         },
         h: ($c) => {
-          $n5 = $dom.previousSibling($c);
-          $r.push($n5);
-          $n6 = $c; $c = $dom.nextElementSibling($c);
-          $r.push($n6);
+          $n2 = $c; $c = $dom.nextElementSibling($c);
+          $r.push($n2);
           {
-            let $c1 = $dom.firstElementChild($n6);
+            let $c1 = $dom.firstElementChild($n2);
             for (const row of rows) {
-              const $i = $b2($n6, null, row);
+              const $i = $b2($n2, null, row);
               $c1 = $i.h($c1);
               $i.s();
               $k1.push($i);
             }
-            $n8 = $dom.lastChild($n6);
+            $n3 = $dom.lastChild($n2);
           }
-          $n7 = $dom.lastChild($parent);
-          $r.push($n7);
           return $c;
         },
         m: ($ref = $anchor) => {
@@ -275,9 +256,7 @@ customElements.define("app-list", class extends FudicElement {
         s: $s,
         u: (...$p) => { [rows] = $p; $a(); $u1(); },
         move: ($ref) => {
-          $ref = $mv($ref, $n7);
-          $ref = $mv($ref, $n6);
-          $ref = $mv($ref, $n5);
+          $ref = $mv($ref, $n2);
           return $ref;
         },
         r: () => { $d.forEach(($f) => $f()); $k1.forEach(($i) => $i.r()); for (const $n of $r) $dom.remove($n); },
@@ -292,27 +271,24 @@ customElements.define("app-list", class extends FudicElement {
       for (const $i of $k0) $i.r();
       $k0 = [];
       $x0 = $q;
-      const $i = $f0($q, $n0);
+      const $i = $f0($q, null);
       if ($i !== null) { $i.c(); $i.m(); $i.s(); $k0.push($i); }
     };
     const $m = () => {
       for (const $n of $r) $dom.append($shadow, $n);
-      for (const $i of $k0) $i.m($n0);
+      for (const $i of $k0) $i.m(null);
     };
     const $s = () => {};
     const $a = () => {};
 
     return {
       c: () => {
-        $r.push($dom.text(" "));
         {
           const $q = $q0();
           const $i = $f0($q, null);
           if ($i !== null) { $i.c(); $i.s(); $k0.push($i); }
           $x0 = $q;
         }
-        $n0 = $dom.text(" ");
-        $r.push($n0);
         $a();
         $m();
         $s();
@@ -325,11 +301,10 @@ customElements.define("app-list", class extends FudicElement {
           if ($i !== null) { $c0 = $i.h($c0); $i.s(); $k0.push($i); }
           $x0 = $q;
         }
-        $n0 = $dom.lastChild($shadow);
         $s();
       },
       u: ($p) => { if (2 in $p) rows = $p[2]; if (3 in $p) empty = $p[3] === undefined ? 'Sin elementos' : $p[3]; $a(); $u0(); },
-      r: () => { $k0.forEach(($i) => $i.r()); $n0 = $shadow = null; $d.forEach((d) => d()); },
+      r: () => { $k0.forEach(($i) => $i.r()); $shadow = null; $d.forEach((d) => d()); },
     };
   }
 });

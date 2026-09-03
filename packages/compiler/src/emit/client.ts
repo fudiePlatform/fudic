@@ -25,7 +25,14 @@ import { AssetLinker } from './assets.js';
 import { codeOf, type Prop } from './oxc-code.js';
 import { hookupContext } from './events.js';
 import { movingNames } from './level.js';
-import { componentStyleNode, type EmitOptions, type EmitOutput } from './module.js';
+import { rootContext } from './display.js';
+import {
+  componentBoxes,
+  componentContainer,
+  componentStyleNode,
+  type EmitOptions,
+  type EmitOutput,
+} from './module.js';
 import type { Diagnostic } from '../types/index.js';
 
 /**
@@ -78,6 +85,9 @@ function buildComponentClientModule(
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
   const { props, signals, client, template, mutable, emitCalls, diagnostics } = codeOf(comp);
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
+  // The same three facts the server branch starts from, read from the same graph and the
+  // same `<style>`: what the two branches drop has to be the same set, node for node (§4.5).
+  const at = rootContext(space, componentContainer(comp), componentBoxes(graph, comp));
 
   const bodies = newBodies();
   // What a block may be handed: the props (an update reassigns every one of them) and the
@@ -109,7 +119,7 @@ function buildComponentClientModule(
     ids,
     usage,
     hookup,
-    space,
+    at,
   });
   em.emitRoots(comp.doc.template!.children);
 
