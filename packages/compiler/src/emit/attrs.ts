@@ -43,7 +43,18 @@ const attrText = (part: AttributeText): string => decodeEntities(part.value);
  * JS expression for an attribute's value. Three shapes, in order: all literal → a string;
  * one lone `@expr` → the expression itself, UNSTRINGIFIED, so a boolean or a number keeps
  * its type (that is what lets decision 21 omit a falsy boolean attribute); anything mixed →
- * a template literal.
+ * ONE template literal, `?? ''` per hole.
+ *
+ * The mixed shape is the same answer `runs.ts` gives to the same question in text, and it is
+ * the same answer for the same reason: `href="/customer/@id"` is one value the author wrote
+ * as one string, so it goes out as one string. The `?? ''` is what keeps a missing value from
+ * spelling itself into it — `/customer/undefined` is a URL, and a wrong one, where
+ * `/customer/` is at least visibly incomplete. The lone `@expr` shape does NOT get it: there
+ * the nullish value is the signal decision 21 reads to omit the attribute altogether.
+ *
+ * There is no escaping here and there must not be: what `setAttr` receives is the VALUE.
+ * The server re-encodes it when it serializes (`escapeAttr`), and on the client an attribute
+ * is set through the DOM and never through a parser.
  */
 export function attrExpr(source: string, attr: Attribute): string {
   const slice = (sp: Span): string => source.slice(sp.start, sp.end);
@@ -56,7 +67,7 @@ export function attrExpr(source: string, attr: Attribute): string {
     .map((p) =>
       p.type === 'attribute-text'
         ? attrText(p).replace(/[`\\$]/gu, '\\$&')
-        : '${' + slice(p.expr) + '}',
+        : '${(' + slice(p.expr) + ") ?? ''}",
     )
     .join('');
   return '`' + template + '`';

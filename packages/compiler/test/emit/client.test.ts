@@ -307,7 +307,9 @@ describe('emitComponentClientModule — shapes the fixtures do not cover', () =>
       '@code {\n  const { id } = props<{ id: string }>();\n}\n' +
         '<x-mix>\n  <template shadowrootmode="open"><a href="/p/@id/x"></a></template>\n</x-mix>\n',
     );
-    expect(src).toContain('$v = `/p/${id}/x`;');
+    // One value, one template, and `?? ''` per hole — the same shape a mixed text run gets,
+    // so a missing `id` leaves `/p//x` and never spells `undefined` into the URL.
+    expect(src).toContain("$v = `/p/${(id) ?? ''}/x`;");
   });
 });
 

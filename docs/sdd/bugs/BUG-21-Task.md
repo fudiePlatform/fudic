@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` (`emit/display.ts` **nuevo**, `emit/runs.ts`, `emit/markup.ts`,
 > `emit/markup-client.ts`, `emit/block.ts`, `emit/module.ts`, `emit/client.ts`, `emit/layout.ts`)
 > **Rama:** `fix/bug-21-nodos-de-whitespace`
-> **Progreso:** 13 / 13
+> **Progreso:** 14 / 14
 > **Desbloqueada** el 2026-08-15 con [SDD-17](../SDD-17-hidratacion.md) en `Hecho`: la hidratación
 > se ve correr en Chrome real, que es lo que [§2.8](./BUG-21-nodos-de-whitespace.md) pedía antes de
 > fijar la regla. **Y la regla elegida es la de §4.2/§4.3** —las tres pruebas de la caja, con las
@@ -152,7 +152,21 @@ y el motivo de que vaya la última de las tres.
       [`markup.ts:113-115`](../../../packages/compiler/src/emit/markup.ts#L113-L115), que hoy
       afirman que un nodo de whitespace nunca se descarta. Anotar el avance en
       [bugs/INDEX.md](./INDEX.md) y en [../INDEX.md](../INDEX.md), y pasar BUG-21 a `Hecho` si los
-      18 criterios de §6 están verdes.
+      20 criterios de §6 están verdes (los 18 originales y los dos de §4.7).
+
+## Fase 6 — Addendum: texto e interpolación juntos (1)
+
+- [x] **14. `Hello @name` es un nodo, `href="/customer/@id"` es una plantilla (§4.7).**
+      Pedido por Pedro con la tanda ya cerrada, y **medido antes de tocar nada**: las dos formas ya
+      salían así en las dos ramas —`emitItems` agrupa texto e interpolación adyacentes en un solo
+      run y `attrExpr` compone el valor con una plantilla—, porque un nodo de texto partido en dos
+      no sobrevive el round trip por HTML y `h()` no lo podría adoptar. Lo que faltaba: la plantilla
+      de un **atributo** no llevaba `?? ''` por hueco y la de un texto sí, así que un `id` ausente
+      escribía `/customer/undefined`. Corregido en `attrExpr`, con el caso de `@expr` **solo**
+      intacto —ahí el valor nulo es lo que la decisión 21 lee para omitir el atributo—. Y la
+      sanitización, comprobada de punta a punta con un valor hostil: escapa el **serializador**
+      (`escapeText` / `escapeAttr`), no el emit, porque en el cliente el valor se escribe por el DOM
+      y escaparlo antes lo codificaría dos veces. Criterios §6.19 y §6.20.
 
 ---
 
@@ -170,7 +184,7 @@ adyacencia condicional, no cajas, y es un BUG propio con sus criterios (§7).
 
 ## Enlaces
 
-- Criterios de aceptación: los 18 de
+- Criterios de aceptación: los 20 de
   [BUG-21 §6](./BUG-21-nodos-de-whitespace.md#6-criterios-de-aceptación).
 - Corrige la parte de [BUG-07 §4.5](./BUG-07-html-sin-minificar.md) que midió **bytes** cuando la
   pregunta era de **nodos**. El resto de aquel BUG —colapsar, los modos, `data-fud-space`— se queda

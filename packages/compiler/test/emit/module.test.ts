@@ -143,7 +143,7 @@ describe('emitComponentModule — attrExpr shapes', () => {
   const src = emitComponentModule(g, g.components.get('m-el')!);
 
   it('emits a template literal for a mixed attribute and omits it when falsy', () => {
-    expect(src).toContain('`x-${y}`');
+    expect(src).toContain("`x-${(y) ?? ''}`");
     // `$v`, not `$a`: `$a` is the client's apply closure now (BUG-12 §3.3), and a bound
     // value that shadowed it inside its own body is a trap waiting for the next edit.
     expect(src).toContain('if ($v === true)');
