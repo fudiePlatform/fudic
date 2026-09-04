@@ -35,9 +35,17 @@ describe('extractCode', () => {
       { name: 'b', def: '2', optional: false },
     ]);
     expect(signals).toEqual([
-      { name: 's', init: 'undefined', kind: 'signal' }, // signal() with no argument
-      { name: 't', init: '5', kind: 'signal' },
+      // `at` is where the CALL starts, and it is checked on its own below: what the cell
+      // splice needs is the offset, and what this case is about is the name and the initial.
+      { name: 's', init: 'undefined', kind: 'signal', at: expect.any(Number) }, // no argument
+      { name: 't', init: '5', kind: 'signal', at: expect.any(Number) },
     ]);
+  });
+
+  it('BUG-24 §4.4 — a reactive carries where its CALL starts, for the cell splice', () => {
+    const source = wrap('@code {\n  @client { const n = signal(7); }\n}\n');
+    const [reactive] = extractCode(source, componentDoc(source)).signals;
+    expect(source.slice(reactive!.at)).toMatch(/^signal\(7\)/u);
   });
 
   it('SDD-31 §4.7 — a `computed` is a reactive name too, tagged by kind', () => {
@@ -45,9 +53,9 @@ describe('extractCode', () => {
       '@code {\n  const a = signal(1);\n  const total = computed(() => a() * 2);\n  const t = computed();\n}\n',
     );
     expect(extractCode(source, componentDoc(source)).signals).toEqual([
-      { name: 'a', init: '1', kind: 'signal' },
-      { name: 'total', init: '() => a() * 2', kind: 'computed' },
-      { name: 't', init: 'undefined', kind: 'computed' },
+      { name: 'a', init: '1', kind: 'signal', at: expect.any(Number) },
+      { name: 'total', init: '() => a() * 2', kind: 'computed', at: expect.any(Number) },
+      { name: 't', init: 'undefined', kind: 'computed', at: expect.any(Number) },
     ]);
   });
 
@@ -70,7 +78,7 @@ describe('extractCode', () => {
     expect(diagnostics[0]!.span).toEqual({ start: at, end: at + 'effect(() => console.log(a))'.length });
     // The emit does not throw and does not give up on the file: props and signals are read.
     expect(props).toEqual([{ name: 'a', optional: false }]);
-    expect(signals).toEqual([{ name: 't', init: '1', kind: 'signal' }]);
+    expect(signals).toEqual([{ name: 't', init: '1', kind: 'signal', at: expect.any(Number) }]);
   });
 
   it('SDD-31 §5 — `computed` and `batch` in the neutral zone say nothing', () => {
@@ -165,10 +173,15 @@ describe('extractCode', () => {
     // An `import` is only legal at the top level of a module; everything else belongs in
     // the factory closure, where it is per instance.
     expect(client.imports).toEqual(["import { signal } from '@fudic/core';"]);
-    expect(client.body).toEqual([
+    expect(client.body.map((s) => s.text)).toEqual([
       'const open = signal(false);',
       'function toggle() { open.set(!open()); }',
     ]);
+    // Each statement knows where it came from: the cell splice of BUG-24 §4.4 writes into it
+    // by offset, and an offset only means anything against the file it was read from.
+    expect(client.body.map((s) => source.slice(s.at, s.at + s.text.length))).toEqual(
+      client.body.map((s) => s.text),
+    );
   });
 
   it('parses the template’s own JS into the same batch, reachable by span', () => {
@@ -249,6 +262,6 @@ describe('extractCode', () => {
         '}\n',
     );
     const { client } = extractCode(source, componentDoc(source));
-    expect(client.body).toEqual(['const visible = 2;']);
+    expect(client.body.map((s) => s.text)).toEqual(['const visible = 2;']);
   });
 });

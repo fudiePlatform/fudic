@@ -34,8 +34,8 @@ describe('graphRegistry', () => {
     const registry = graphRegistry(graphOf('<app-circle .name="a"></app-circle>'));
     expect(registry.has('app-circle')).toBe(true);
     expect(registry.propsOf!('app-circle')).toEqual([
-      { name: 'name', required: true, reactive: false },
-      { name: 'tone', required: false, reactive: false },
+      { name: 'name', required: true },
+      { name: 'tone', required: false },
     ]);
     expect(registry.slotsOf!('app-circle')).toEqual(['PEPITO']);
   });

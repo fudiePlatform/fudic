@@ -18,7 +18,12 @@ import type { RenderSectionNode } from '../layout/index.js';
 import type { Span } from '../types/index.js';
 import { CodeWriter } from './writer.js';
 import { type AssetLinker } from './assets.js';
-import { componentPropsExpr, writeElementAttrs, type HostContext } from './attrs.js';
+import {
+  componentPropsExpr,
+  writeElementAttrs,
+  type HostContext,
+  type PropTarget,
+} from './attrs.js';
 import { nestedSpaceMode, type SpaceMode } from './space.js';
 import { emitItems, type TextRun } from './runs.js';
 import { markerSite } from './marker.js';
@@ -125,6 +130,15 @@ export interface MarkupOptions {
   /** The names this component declares with `signal(...)`: decision 84, see `crossingExpr`. */
   readonly signals?: ReadonlySet<string>;
   /**
+   * What a CHILD tag declares about its props, or `undefined` when it cannot be read.
+   *
+   * It is what decides the form of the crossing (decision 105), so it is a fact about another
+   * file and comes in from whoever holds the graph. Absent — a page compiled with no
+   * catalogue, a test that only asks about markup — and every prop crosses by value, which is
+   * exactly what BUG-23 §4.4 asks of anything that cannot see the child.
+   */
+  readonly declared?: (tag: string) => PropTarget | undefined;
+  /**
    * The tags of the graph that hydrate (`level.ts`). A host of one of them is CLAIMED: it
    * takes the next `data-fud-id` of the page. Required, and with no default on purpose:
    * the emitter does not compute the set — that is a fact about the whole graph, and it
@@ -141,6 +155,7 @@ export class MarkupEmitter {
   readonly #linker: AssetLinker;
   readonly #slots: string | undefined;
   readonly #signals: ReadonlySet<string>;
+  readonly #declared: (tag: string) => PropTarget | undefined;
   readonly #hydratable: ReadonlySet<string>;
   readonly #used = new Set<string>();
   #id = 0;
@@ -155,6 +170,7 @@ export class MarkupEmitter {
     this.#slots = options.slots;
     this.#space = options.space ?? 'collapse';
     this.#signals = options.signals ?? new Set();
+    this.#declared = options.declared ?? (() => undefined);
     this.#hydratable = options.hydratable;
   }
 
@@ -263,7 +279,7 @@ export class MarkupEmitter {
       this.#elementAttrs(el, v, true);
       this.#w.line(`const ${s} = $dom.attachShadow(${v});`);
       this.#w.line(
-        `${renderName(el.name)}($dom, ${s}, ${componentPropsExpr(this.#source, el, this.#signals)});`,
+        `${renderName(el.name)}($dom, ${s}, ${componentPropsExpr(this.#source, el, this.#signals, this.#declared(el.name))});`,
       );
       this.emitChildren(el.children, v); // light DOM (projected by <slot>)
     } else {
@@ -346,7 +362,12 @@ export class MarkupEmitter {
   }
 
   #elementAttrs(el: ElementNode, v: string, isComponent: boolean): void {
-    const host: HostContext = { isComponent, signals: this.#signals };
+    const declared = isComponent ? this.#declared(el.name) : undefined;
+    const host: HostContext = {
+      isComponent,
+      signals: this.#signals,
+      ...(declared === undefined ? {} : { declared }),
+    };
     writeElementAttrs(this.#source, el, v, this.#w, this.#linker, host);
   }
 }

@@ -15,7 +15,12 @@ import type { Diagnostic, Span } from '../types/index.js';
 import { errorDiag, isEmptySpan } from '../types/index.js';
 import { JsBatch, type OxcNode } from '../oxc/index.js';
 import { collectTemplateJs } from './constructs.js';
-import { changeableBindings, reservedIdentifiers, type FragmentAst } from './scope.js';
+import {
+  changeableBindings,
+  reservedIdentifiers,
+  topLevelBindings,
+  type FragmentAst,
+} from './scope.js';
 
 /** One destructured prop from `props<T>()`, with its default expression source if any. */
 export interface Prop {
@@ -27,6 +32,16 @@ export interface Prop {
    * error (BUG-23 §4.4).
    */
   readonly optional: boolean;
+  /**
+   * What the child asks to be handed by REFERENCE (decision 105): `'signal'` when its type is
+   * `Signal<…>`, `'fn'` when it is a function signature, absent otherwise.
+   *
+   * It is read off `T` and nowhere else, for the same reason `optional` is: what decides the
+   * form of the crossing is what the CHILD declares, and a `T` this file cannot read declares
+   * nothing — so a build with no type argument marks no channel and everything keeps crossing
+   * by value, byte for byte (BUG-23 §4.4).
+   */
+  readonly channel?: 'signal' | 'fn';
 }
 
 /**
@@ -44,6 +59,15 @@ export interface Reactive {
   /** `signal` → the initial value's source. `computed` → the derive function's, verbatim. */
   readonly init: string;
   readonly kind: 'signal' | 'computed';
+  /**
+   * Where the `signal(…)` / `computed(…)` CALL starts in the `.fud`.
+   *
+   * The client emit splices `$pK ?? ` in front of it when the name occupies a cell (BUG-24
+   * §4.4), and an offset is the only way to do that: the `@client` body is copied verbatim,
+   * so a `signal` inside a string or a comment is not a declaration and a text search would
+   * not know the difference.
+   */
+  readonly at: number;
 }
 
 /**
@@ -88,7 +112,22 @@ export interface ClientCode {
   /** `import` declarations, hoisted to module scope. */
   readonly imports: string[];
   /** Everything else, in source order, for the body of the factory closure. */
-  readonly body: string[];
+  readonly body: ClientStatement[];
+}
+
+/**
+ * One top-level statement of `@client`, and where it came from.
+ *
+ * The offset travels with the text because a later pass — the one that knows the GRAPH, and
+ * therefore which names occupy a cell — has to splice into it (BUG-24 §4.4). `extractCode`
+ * cannot do that itself: whether a name crosses by reference is a fact about the CHILD, and
+ * this pass reads one file.
+ */
+export interface ClientStatement {
+  /** The statement's source, with the `emit(…)` host already spliced in (§4.4). */
+  readonly text: string;
+  /** Where `text` starts in the `.fud`. */
+  readonly at: number;
 }
 
 /**
@@ -126,6 +165,14 @@ export interface ExtractedCode {
    * through the closure and a parameter for it would be noise in the signature.
    */
   readonly mutable: ReadonlySet<string>;
+  /**
+   * The names `@code { @client }` declares at its top level, in the order it declares them.
+   *
+   * It is what orders the cells of a component inside its payload slice (BUG-24 §4.2), and it
+   * covers a `function` as much as a `const`: a callback crosses by reference exactly like a
+   * signal does, and the two have to be laid out by one rule.
+   */
+  readonly clientNames: readonly string[];
   /**
    * Every `emit(...)` of `@client` (§4.4), as the walk finds them — the patches are applied
    * by descending offset, so the order they arrive in is not one of. Empty when the
@@ -229,6 +276,7 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
     client,
     template,
     mutable: changeableBindings(clientStatements),
+    clientNames: topLevelBindings(clientStatements),
     emitCalls,
     diagnostics: [...result.diagnostics, ...own],
   };
@@ -381,7 +429,8 @@ function readClientStatement(
 ): void {
   const start = map(stmt.start);
   const text = withHost(source.slice(start, map(stmt.end)), start, calls);
-  (is(stmt, 'ImportDeclaration') ? client.imports : client.body).push(text);
+  if (is(stmt, 'ImportDeclaration')) client.imports.push(text);
+  else client.body.push({ text, at: start });
 }
 
 /**
@@ -454,9 +503,9 @@ function readDeclarator(
   const called = is(callee, 'Identifier') ? name(callee!) : '';
 
   if (called === 'props' && is(id, 'ObjectPattern')) {
-    const required = requiredKeys(init, named);
+    const declared = declaredMembers(init, named);
     for (const property of fieldArray(id, 'properties'))
-      readProp(property, source, map, props, required);
+      readProp(property, source, map, props, declared);
   } else if ((called === 'signal' || called === 'computed') && is(id, 'Identifier')) {
     const arg = fieldArray(init, 'arguments')[0];
     // A `computed` with no argument would be a program that cannot run; `undefined` keeps
@@ -465,12 +514,29 @@ function readDeclarator(
       name: name(id),
       init: arg ? source.slice(map(arg.start), map(arg.end)) : 'undefined',
       kind: called,
+      at: map(init.start),
     });
   }
 }
 
 /**
- * The keys that `props<T>()`'s type argument declares WITHOUT `?`.
+ * Where a SOURCE offset ends up once the `emit(…)` host splices of §4.4 have been applied.
+ *
+ * A statement's text is the author's with `.call` and `$host` inserted into it, so an offset
+ * read off the original file no longer points at the same character. Everything that was
+ * inserted BEFORE it moved it along by exactly its own length, and nothing else did.
+ */
+export function shiftedOffset(at: number, calls: readonly EmitCall[]): number {
+  let shift = 0;
+  for (const call of calls) {
+    if (call.calleeEnd <= at) shift += '.call'.length;
+    if (call.hostAt <= at) shift += call.hasArgs ? '$host, '.length : '$host'.length;
+  }
+  return at + shift;
+}
+
+/**
+ * What `props<T>()`'s type argument declares about each of its keys: the `?`, and the channel.
  *
  * `T` is read when it is a type literal, and when it is a NAME this file declares as one —
  * `type Props = { … }` or `interface Props { … }` in the same `@code`. That second case is not
@@ -478,9 +544,10 @@ function readDeclarator(
  * there in the AST.
  *
  * Empty for everything else — no type argument, a type from another file, one built out of
- * others, an index signature, a key that is not a plain identifier. «Not provable» and «not
- * required» are the same answer here on purpose: it is what keeps the build from reporting a
- * missing prop it cannot demonstrate is missing.
+ * others, an index signature, a key that is not a plain identifier. «Not provable», «not
+ * required» and «crosses by value» are the same answer here on purpose: it is what keeps the
+ * build from reporting a missing prop it cannot demonstrate is missing, and from moving a
+ * crossing it cannot demonstrate the child asked for.
  */
 /**
  * The node whose members `T` names, or `undefined` when this file cannot say.
@@ -506,16 +573,55 @@ function members(node: OxcNode): readonly OxcNode[] {
   return fieldArray(node, is(node, 'TSTypeLiteral') ? 'members' : 'body');
 }
 
-function requiredKeys(call: OxcNode, named: ReadonlyMap<string, OxcNode>): ReadonlySet<string> {
+/** What `T` says about ONE key: whether it is required, and whether it asks for a channel. */
+interface DeclaredMember {
+  readonly required: boolean;
+  readonly channel?: 'signal' | 'fn';
+}
+
+/** The type `Signal<T>` is written as. By NAME, because this pass reads an AST, not types. */
+const SIGNAL_TYPE = 'Signal';
+
+/**
+ * The channel a member's TYPE asks for (decision 105), or `undefined` for a plain value.
+ *
+ * Two shapes and no more. `Signal<T>` — by the name, which is the same commitment
+ * `reactiveNames` makes about `signal(…)`: what a component declares is read off what it
+ * wrote, not off a resolved type, because resolving one is a typechecker's job and this pass
+ * has an AST. And a function SIGNATURE, `(x: T) => void`, which is the only way to declare a
+ * callback in a type literal — a `Function` or a named alias resolves to nothing here, and
+ * nothing is what it marks.
+ */
+function channelOf(member: OxcNode): 'signal' | 'fn' | undefined {
+  // `{ value }` — a member with no type at all — parses, and its annotation comes back as
+  // `null`. The `is` check is what makes this total: a key that declares nothing declares no
+  // channel either, and the emit does not throw over a `T` the author is halfway through.
+  const annotation = field(member, 'typeAnnotation');
+  if (!is(annotation, 'TSTypeAnnotation')) return undefined;
+  const type = field(annotation, 'typeAnnotation');
+  if (is(type, 'TSFunctionType')) return 'fn';
+  if (!is(type, 'TSTypeReference')) return undefined;
+  const typeName = field(type, 'typeName');
+  return is(typeName, 'Identifier') && name(typeName) === SIGNAL_TYPE ? 'signal' : undefined;
+}
+
+function declaredMembers(
+  call: OxcNode,
+  named: ReadonlyMap<string, OxcNode>,
+): ReadonlyMap<string, DeclaredMember> {
   const args = field(call, 'typeArguments');
   const argument = args ? fieldArray(args, 'params')[0] : undefined;
   const literal = resolveTypeMembers(argument, named);
-  if (literal === undefined) return new Set();
-  const out = new Set<string>();
+  const out = new Map<string, DeclaredMember>();
+  if (literal === undefined) return out;
   for (const member of members(literal)) {
     const key = field(member, 'key');
     if (!is(member, 'TSPropertySignature') || !is(key, 'Identifier')) continue;
-    if (member['optional'] !== true) out.add(name(key));
+    const channel = channelOf(member);
+    out.set(name(key), {
+      required: member['optional'] !== true,
+      ...(channel === undefined ? {} : { channel }),
+    });
   }
   return out;
 }
@@ -526,17 +632,20 @@ function readProp(
   source: string,
   map: MapOffset,
   out: Prop[],
-  required: ReadonlySet<string>,
+  declared: ReadonlyMap<string, DeclaredMember>,
 ): void {
   const key = field(property, 'key');
   if (!is(property, 'Property') || !is(key, 'Identifier')) return;
   const propName = name(key);
-  const optional = !required.has(propName);
+  const member = declared.get(propName);
+  const optional = member === undefined || !member.required;
+  const channel = member?.channel === undefined ? {} : { channel: member.channel };
   const value = field(property, 'value');
   if (value && is(value, 'AssignmentPattern')) {
     const right = field(value, 'right')!;
-    out.push({ name: propName, def: source.slice(map(right.start), map(right.end)), optional });
+    const def = source.slice(map(right.start), map(right.end));
+    out.push({ name: propName, def, optional, ...channel });
   } else {
-    out.push({ name: propName, optional });
+    out.push({ name: propName, optional, ...channel });
   }
 }

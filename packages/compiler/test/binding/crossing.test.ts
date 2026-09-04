@@ -97,23 +97,36 @@ describe('crossing — the value form, which is the only one emitted', () => {
 describe('crossing — what the CHILD declares', () => {
   const reactives = new Set(['titulo']);
   const markup = '<app-x .name="@titulo"></app-x>';
-  const declared = (reactive: boolean): ComponentDeclaredProps => ({
+  const declared = (channel?: 'signal' | 'fn'): ComponentDeclaredProps => ({
     name: 'name',
     required: true,
-    reactive,
+    ...(channel === undefined ? {} : { channel }),
   });
 
-  it('stays the value form when the prop is not reactive', () => {
-    expect(crossing(markup, valueOf(markup), reactives, declared(false))).toEqual({
+  it('stays the value form when the prop asks for no channel', () => {
+    expect(crossing(markup, valueOf(markup), reactives, declared())).toEqual({
       kind: 'value',
       name: 'titulo',
     });
   });
 
-  it('is the shared cell when it is — declared, with no emitter yet (SDD-31 §7)', () => {
-    expect(crossing(markup, valueOf(markup), reactives, declared(true))).toEqual({
+  it('is the shared cell when the prop declares Signal<T> (decision 105)', () => {
+    expect(crossing(markup, valueOf(markup), reactives, declared('signal'))).toEqual({
       kind: 'ref',
       name: 'titulo',
     });
+  });
+
+  it('crosses a FUNCTION by reference too, and it is not in `reactives`', () => {
+    const fn = '<app-x .name="@guardar"></app-x>';
+    expect(crossing(fn, valueOf(fn), reactives, declared('fn'))).toEqual({
+      kind: 'ref',
+      name: 'guardar',
+    });
+  });
+
+  it('never by reference when the value is not a bare name: FUD0200 says so, not this', () => {
+    const compound = '<app-x .name="@(titulo() + 1)"></app-x>';
+    expect(crossing(compound, valueOf(compound), reactives, declared('signal'))).toBeUndefined();
   });
 });

@@ -29,6 +29,7 @@ import { MarkupEmitter, renderName, tpl } from './markup.js';
 import { AssetLinker, type AssetExists } from './assets.js';
 import { compactStyleCss } from './css-compact.js';
 import { codeOf } from './oxc-code.js';
+import { cellSlots, childTargets, reactiveScope } from './state.js';
 import { hydratableTags } from './level.js';
 import { writeMapConstants, writeHydrationBlocks } from './maps.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
@@ -136,6 +137,7 @@ function buildComponentModule(
   const ext = options.importExt ?? '.mjs';
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
   const { props, signals, diagnostics } = codeOf(comp);
+  const cells = cellSlots(comp, graph);
   const hydratable = hydratableTags(graph);
   const bodyW = new CodeWriter();
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
@@ -145,7 +147,8 @@ function buildComponentModule(
     isComponent: (t) => graph.components.has(t),
     linker,
     space,
-    signals: new Set(signals.map((s) => s.name)),
+    signals: reactiveScope(comp),
+    declared: childTargets(graph),
     hydratable,
   });
   em.emitChildren(comp.doc.template!.children, '$shadow');
@@ -189,6 +192,15 @@ function buildComponentModule(
     // it is evaluated when READ and a derived value the server never paints costs nothing.
     const init = s.kind === 'computed' ? `(${s.init})` : `() => (${s.init})`;
     w.line(`const ${s.name} = ${init}; // inert ${s.kind} (SSR; hydration is client-side)`);
+  }
+  // A callback that crosses by reference is declared in `@code { @client }`, which the server
+  // never evaluates — so the name the body is about to hand the child does not exist here. It
+  // is stubbed for the same reason a signal is rendered inert: what the SERVER needs from it
+  // is not its behaviour but its IDENTITY, which is what `state` registers the cell under and
+  // what turns the child's slot into a marker (BUG-24 §4.6). Nothing calls it: a handler is
+  // hookup, and there is no hookup in SSR.
+  for (const cell of cells) {
+    if (cell.kind === 'fn') w.line(`const ${cell.name} = () => {}; // inert callback (SSR)`);
   }
   w.appendWriter(bodyW); // carries the markup's source anchors, unlike a toString()/split copy
   w.dedent();

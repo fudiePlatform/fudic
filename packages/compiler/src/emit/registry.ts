@@ -44,14 +44,17 @@ function slotNames(comp: ResolvedComponent): readonly string[] {
  *
  * `required` is the `?` of `T` and NOT whether the destructuring gives a default: the editor
  * checks the very same thing through `$Missing<$Props, …>`, and the two have to say the same
- * (BUG-23 §5). `reactive` is `false` for everyone — the shared cell is SDD-31 §7's, and this
- * only leaves the field with the right shape.
+ * (BUG-23 §5). `channel` is read off the same `T`, and it is what decides the FORM of the
+ * crossing (decision 105) — so both facts a parent needs about a child come out of one read.
+ *
+ * Exported because the crossing rule has more readers than the semantic pass: the cell layout
+ * asks the very same question about the very same child (`state.ts`).
  */
-function declaredProps(comp: ResolvedComponent): readonly ComponentDeclaredProps[] {
+export function declaredProps(comp: ResolvedComponent): readonly ComponentDeclaredProps[] {
   return codeOf(comp).props.map((prop) => ({
     name: prop.name,
     required: !prop.optional,
-    reactive: false,
+    ...(prop.channel === undefined ? {} : { channel: prop.channel }),
   }));
 }
 

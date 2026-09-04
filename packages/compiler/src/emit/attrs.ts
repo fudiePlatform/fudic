@@ -18,7 +18,12 @@ import {
 } from '../html/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { Span } from '../types/index.js';
-import { classifyAttribute, crossing, type Binding } from '../binding/index.js';
+import {
+  classifyAttribute,
+  crossing,
+  type Binding,
+  type ComponentDeclaredProps,
+} from '../binding/index.js';
 import type { CodeWriter } from './writer.js';
 import type { AssetLinker } from './assets.js';
 import { freeReferences, type FragmentAst } from './scope.js';
@@ -74,10 +79,20 @@ export interface HostContext {
   readonly isComponent: boolean;
   /** The names this component declares with `signal(...)`. See `crossingExpr`. */
   readonly signals: ReadonlySet<string>;
+  /** What the child declares about one of its props, or `undefined` when it cannot be read. */
+  readonly declared?: PropTarget;
 }
+
+/** What the CHILD of this host declares about the prop a value is landing on. */
+export type PropTarget = (name: string) => ComponentDeclaredProps | undefined;
 
 /** A host with nothing declared around it — a page body, a template with no `@client`. */
 export const NO_SIGNALS: HostContext = { isComponent: false, signals: new Set() };
+
+/** The declared props of a tag, as the lookup `HostContext` and `componentPropsExpr` take. */
+export function propTarget(declared: readonly ComponentDeclaredProps[]): PropTarget {
+  return (name) => declared.find((d) => d.name === name);
+}
 
 /**
  * The WEAKER question, and the one that decides whether anything downstream can move at
@@ -124,16 +139,23 @@ export function readsMoving(
  * The rule itself is `crossing`'s (`binding/crossing.ts`) and not this module's, because the
  * projection has to apply exactly the same one: the editor was type-checking the signal
  * object while the build crossed its value (BUG-23 §2.8). Here it is only spelled out as an
- * expression. Nobody passes a `target` yet, so the answer is always `'value'`.
+ * expression.
+ *
+ * With a `target` the answer may be `'ref'` (decision 105), and then what crosses is the BARE
+ * name: the object itself, because that is what the child declared. Without one it is always
+ * `'value'` — which is what an ATTRIBUTE always passes, whatever the child declares, since
+ * level 1 is HTML and HTML carries strings (BUG-24 §4.7).
  */
 export function crossingExpr(
   source: string,
   attr: Attribute,
   value: readonly AttributeValuePart[],
   signals: ReadonlySet<string>,
+  target?: ComponentDeclaredProps,
 ): string {
-  const crossed = crossing(source, value, signals);
-  return crossed !== undefined ? `${crossed.name}()` : attrExpr(source, attr);
+  const crossed = crossing(source, value, signals, target);
+  if (crossed === undefined) return attrExpr(source, attr);
+  return crossed.kind === 'ref' ? crossed.name : `${crossed.name}()`;
 }
 
 /**
@@ -149,11 +171,14 @@ export function crossingExpr(
  */
 function attributeOf(
   b: Binding,
-  isComponent: boolean,
+  host: HostContext,
 ): { readonly name: string; readonly value: readonly AttributeValuePart[] } | null {
   if (b.type === 'attr') return b;
-  if (b.type === 'property' && isComponent) return b;
-  return null;
+  if (b.type !== 'property' || !host.isComponent) return null;
+  // A callback has no HTML representation: `String(save)` is the source of a function, which
+  // is not a value level 1 could ever read back. The prop still reaches the child — through
+  // `render` on the server and through the cell on the client — it just is not markup.
+  return host.declared?.(b.name)?.channel === 'fn' ? null : b;
 }
 
 /**
@@ -168,6 +193,7 @@ export function componentPropsExpr(
   source: string,
   el: ElementNode,
   signals: ReadonlySet<string>,
+  declared?: PropTarget,
 ): string {
   const entries: string[] = [];
   for (const attr of el.attributes) {
@@ -175,7 +201,14 @@ export function componentPropsExpr(
     if (b.type !== 'property') continue;
     // A bare `.disabled` is `true` (decision 44), which is what the projection checks it
     // as; `attrExpr` would give the `""` an attribute wants and a prop does not.
-    const expr = b.value.length === 0 ? 'true' : crossingExpr(source, attr, b.value, signals);
+    //
+    // Here — and only here — the child's own declaration decides the form: in the server
+    // there is no cable, the child's `render` is a call in this same process, so a prop that
+    // asked for a `Signal<T>` receives the object and reads it itself (BUG-24 §4.7).
+    const expr =
+      b.value.length === 0
+        ? 'true'
+        : crossingExpr(source, attr, b.value, signals, declared?.(b.name));
     entries.push(`${JSON.stringify(b.name)}: ${expr}`);
   }
   return `{ ${entries.join(', ')} }`;
@@ -194,7 +227,7 @@ export function hasValueAttrs(source: string, el: ElementNode, host: HostContext
   return el.attributes.some((attr) => {
     const b = classifyAttribute(attr, source).value;
     if (b.type === 'class') return true;
-    const written = attributeOf(b, host.isComponent);
+    const written = attributeOf(b, host);
     return written !== null && !written.value.every((p) => p.type === 'attribute-text');
   });
 }
@@ -263,7 +296,7 @@ export function writeElementAttrs(
       classExprs.push(`(${slice(b.value.expr)}) && ${JSON.stringify(b.className)}`);
       continue;
     }
-    const written = attributeOf(b, host.isComponent);
+    const written = attributeOf(b, host);
     if (written === null) continue; // event / bus / ref, and `.prop` on a native tag
     const isStatic = written.value.every((p) => p.type === 'attribute-text');
     if (isStatic) {

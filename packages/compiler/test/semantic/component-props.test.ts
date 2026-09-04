@@ -19,11 +19,7 @@ import type { Diagnostic } from '../../src/types/index.js';
 
 const constructs: AtConstructParser = { parseControl, parseCodeBlock };
 
-const prop = (name: string, required: boolean): ComponentDeclaredProps => ({
-  name,
-  required,
-  reactive: false,
-});
+const prop = (name: string, required: boolean): ComponentDeclaredProps => ({ name, required });
 
 /** `app-circle` requires `name` and takes an optional `tone`. */
 const CIRCLE: readonly ComponentDeclaredProps[] = [prop('name', true), prop('tone', false)];

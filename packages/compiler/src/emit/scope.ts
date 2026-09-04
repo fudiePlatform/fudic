@@ -295,6 +295,36 @@ export function patternBindings(pattern: unknown): readonly string[] {
 }
 
 /**
+ * The names a region declares at its TOP LEVEL, in the order it declares them (BUG-24 §4.2).
+ *
+ * It is the order the cells of a component are laid out in its payload slice, and that order
+ * has to be a fact about the source rather than about how any pass happens to visit it: a
+ * `const` and a `function` are both declarations, and a slice whose indices depended on which
+ * of the two an emitter looked at first would be a slice that stops lining up between two
+ * compilations of the same file.
+ *
+ * Top level only, because that is the whole of what can cross: a name declared inside a
+ * handler is not the component's to publish.
+ */
+export function topLevelBindings(statements: readonly OxcNode[]): readonly string[] {
+  const out: string[] = [];
+  for (const statement of statements) {
+    if (statement.type === 'VariableDeclaration') {
+      for (const declarator of asArray(field(statement, 'declarations'))) {
+        out.push(...patternBindings(field(declarator, 'id')));
+      }
+      continue;
+    }
+    // A `function` declares exactly one name, and it is its own. At the top level of a module
+    // it always has one: an anonymous function is an `export default`, which is a different
+    // node and declares nothing a sibling could name.
+    if (statement.type !== 'FunctionDeclaration') continue;
+    out.push(nameOf(field(statement, 'id') as OxcNode));
+  }
+  return out;
+}
+
+/**
  * The top-level names of a region whose VALUE can change (§3.3).
  *
  * These are the only ones a block needs as a parameter: `u` has nothing new to hand a
