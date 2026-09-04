@@ -166,6 +166,45 @@ describe('SsrDom — the instance collector (SDD-15 §3.1, §3.3)', () => {
     expect(new SsrDom().hydrationState()).toEqual({ offsets: [0], data: [] });
   });
 
+  it('BUG-24 §4.2 — the cells go behind the props, and the consumer gets the marker', () => {
+    const d = new SsrDom();
+    const owner = instance(d, 'app-owner');
+    const view = instance(d, 'app-view');
+    const count = (): number => 0; // an inert signal: on this side it is a function
+    d.state(owner.shadow, [0], [{ of: count, value: count() }]);
+    d.state(view.shadow, [count]);
+
+    expect(d.hydrationState()).toEqual({ offsets: [0, 2, 3], data: [0, 0, { $: [0, 1] }] });
+  });
+
+  it('a cell with no value is `$f`, and its own slot is reserved as null', () => {
+    // A callback: `@code { @client }` never runs here, so there is nothing to write down —
+    // and that absence is the instruction to raise the owner before handing the slice over.
+    const d = new SsrDom();
+    const owner = instance(d, 'app-owner');
+    const form = instance(d, 'app-form');
+    const save = (): void => {};
+    d.state(owner.shadow, [], [{ of: save }]);
+    d.state(form.shadow, [save]);
+
+    expect(d.hydrationState()).toEqual({ offsets: [0, 1, 2], data: [null, { $f: [0, 0] }] });
+  });
+
+  it('a FORWARDED cell keeps the original owner’s address, however deep it goes', () => {
+    // The registry is keyed by the object, so a component that hands on a prop it received
+    // serialises the address of whoever declared it — not a second one of its own.
+    const d = new SsrDom();
+    const owner = instance(d, 'app-owner');
+    const child = instance(d, 'app-child');
+    const grandchild = instance(d, 'app-grandchild');
+    const count = (): number => 7;
+    d.state(owner.shadow, [], [{ of: count, value: count() }]);
+    d.state(child.shadow, [count]);
+    d.state(grandchild.shadow, [count]);
+
+    expect(d.hydrationState().data).toEqual([7, { $: [0, 0] }, { $: [0, 0] }]);
+  });
+
   it('a nested value travels with its shape (vía B, §4.1)', () => {
     const d = new SsrDom();
     const a = instance(d, 'app-a');

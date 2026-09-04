@@ -15,7 +15,7 @@ import {
 } from '../../src/emit/index.js';
 import { cellSlots, childTargets } from '../../src/emit/state.js';
 import { codeOf, shiftedOffset } from '../../src/emit/oxc-code.js';
-import { memoryIo } from './_support.js';
+import { memoryIo, pageModuleOf, ssrIo } from './_support.js';
 
 const PARENT = `<link rel="component" href="./cell-child.fud">
 <link rel="component" href="./cell-form.fud">
@@ -213,6 +213,53 @@ describe('two cells in one component — the splices are applied back to front',
     // And the owner forwards neither: both children hold the very cells it does.
     expect(src).toContain('$n0.u([, , a, b]);');
     expect(src).not.toMatch(/\$sub\(a, \(\$v\)/u);
+  });
+});
+
+describe('the payload of the acceptance page (§6.5, §6.6)', () => {
+  const g = resolveComponents(
+    '/page.fud',
+    memoryIo({
+      '/page.fud':
+        '<!DOCTYPE html>\n<html>\n' +
+        '  <head><link rel="component" href="./cc-owner.fud"></head>\n' +
+        '  <body><cc-owner></cc-owner></body>\n</html>\n',
+      '/cc-owner.fud':
+        '<link rel="component" href="./cc-view.fud">\n\n' +
+        '@code {\n  const { start = 0 } = props<{ start?: number }>();\n  @client {\n' +
+        '    import { signal } from "@fudic/core";\n' +
+        '    const count = signal(start);\n' +
+        '    function inc() { count.set(count() + 1); }\n' +
+        '  }\n}\n\n' +
+        '<cc-owner><template shadowrootmode="open">' +
+        '<button @click=@inc>+1</button>' +
+        '<cc-view .value=@count></cc-view>' +
+        '</template></cc-owner>\n',
+      '/cc-view.fud':
+        '@code {\n  const { value } = props<{ value: Signal<number> }>();\n}\n' +
+        '<cc-view><template shadowrootmode="open"><p>@value()</p></template></cc-view>\n',
+    }),
+  );
+
+  it('the cell in the owner’s slice, the marker in the child’s', async () => {
+    const page = await pageModuleOf(g);
+    const { io, dom } = ssrIo();
+    const html = [...page({}, io)].join('');
+    const { offsets, data } = dom().hydrationState();
+
+    // Instance 0 is `[ start=0, count=0 ]`; instance 1 is «my slot is that cell».
+    expect([offsets, data]).toEqual([
+      [0, 2, 3],
+      [0, 0, { $: [0, 1] }],
+    ]);
+
+    // §6.6 — the marker points BACKWARDS, always: `claim()` numbers in pre-order, so the
+    // owner reserved its id before descending into the shadow the consumer lives in.
+    const marks = data.filter((v): v is { $: [number, number] } => typeof v === 'object' && v !== null);
+    for (const mark of marks) expect(mark.$[0]).toBeLessThan(data.indexOf(mark));
+
+    // §6.7 — the HTML the browser sees still carries the VALUE.
+    expect(html).toContain('value="0"');
   });
 });
 

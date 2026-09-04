@@ -169,7 +169,12 @@ function buildComponentModule(
     const pattern = props.map((p) => (p.def !== undefined ? `${p.name} = ${p.def}` : p.name)).join(', ');
     w.line(`const { ${pattern} } = props ?? {};`);
   }
-  if (hydratable.has(comp.tag)) {
+  // The slice of this instance. It is written HERE when the component publishes no cell, so
+  // a page without one keeps the exact bytes it had; a component WITH cells has to wait for
+  // its reactives to be declared, a few lines down, because what it registers is those very
+  // objects (BUG-24 §4.2).
+  const writeState = (): void => {
+    if (!hydratable.has(comp.tag)) return;
     // The slice of this instance, contributed by the CHILD and not by the parent's host —
     // and it is NOT `Object.values(props)`. Two reasons, and both are visible right here.
     // The ORDER is the child's: these locals are what the client factory destructures, in
@@ -179,8 +184,18 @@ function buildComponentModule(
     // and `null` does not trigger a destructuring default (`variant` would land as `null`
     // instead of `'default'`). A component with no props emits `[]` — an empty slice is
     // information, not absence.
-    w.line(`$dom.state($shadow, [${props.map((p) => p.name).join(', ')}]);`);
-  }
+    //
+    // The cells follow, in the order `cellSlots` laid them out — the very order the client
+    // chunk destructures them in. Each one hands over its live object and, beside it, the
+    // value it serialises as: a signal READ, because in SSR the signal exists and reading it
+    // is how the page was painted, and nothing at all for a callback, which has none.
+    const cellDecls = cells
+      .map((c) => (c.kind === 'signal' ? `{ of: ${c.name}, value: ${c.name}() }` : `{ of: ${c.name} }`))
+      .join(', ');
+    const trailing = cells.length === 0 ? '' : `, [${cellDecls}]`;
+    w.line(`$dom.state($shadow, [${props.map((p) => p.name).join(', ')}]${trailing});`);
+  };
+  if (cells.length === 0) writeState();
   for (const s of signals) {
     // Inert reactive: SSR contributes the state as it starts and nothing else. A FUNCTION,
     // because that is the shape the client has — since SDD-31 §4.0 the call form is the only
@@ -202,6 +217,7 @@ function buildComponentModule(
   for (const cell of cells) {
     if (cell.kind === 'fn') w.line(`const ${cell.name} = () => {}; // inert callback (SSR)`);
   }
+  if (cells.length > 0) writeState();
   w.appendWriter(bodyW); // carries the markup's source anchors, unlike a toString()/split copy
   w.dedent();
   w.line('}');

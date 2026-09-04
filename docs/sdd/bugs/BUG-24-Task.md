@@ -3,7 +3,7 @@
 > **BUG:** [BUG-24 — una signal no cruza el shadow boundary](./BUG-24-signal-y-callback-no-cruzan.md)
 > **Paquetes:** `@fudic/core` · `@fudic/compiler` · `@fudic/ssr` · `@fudic/language-core`
 > **Rama:** `worktree-bug-24` · **Bloqueado por:** BUG-23 en `Hecho`
-> **Progreso:** 6 / 19
+> **Progreso:** 8 / 19
 
 Diecinueve tareas. Rutas relativas a la raíz del repo; cada tarea es un paso cerrado y se
 puede parar después de cualquiera con el workspace verde.
@@ -94,8 +94,8 @@ cerrado).
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 7 | 4 | **El tramo del dueño gana casillas.** `state(shadow, values, cells?)` concatena las celdas detrás de las props, y el emit de servidor le pasa el valor **leído** de cada signal (`n()`) — en el servidor la signal existe, es donde el `@client` se evalúa para pintar. Una celda de función se serializa `null`. La reserva de `claim()` no cambia: los ids siguen siendo pre-orden y por eso el marcador apunta siempre hacia atrás | `ssr` · `compiler` | [packages/ssr/src/ssr-dom.ts `state`](../../../packages/ssr/src/ssr-dom.ts#L75) · [src/emit/markup.ts](../../../packages/compiler/src/emit/markup.ts#L266) |
-| [ ] | 8 | 7 | **El marcador en el tramo del hijo.** Donde `crossing` dice `'ref'`, lo que va al payload del hijo no es el valor sino `{"$":[owner,slot]}` —o `{"$f":[owner,slot]}` si la celda es de función—. El `owner` es el `data-fud-id` que `claim()` acaba de dar al host, que el emisor de servidor tiene delante. Un golden fija la página entera: `[[0,2,3],[0,0,{"$":[0,1]}]]` | `compiler` · `ssr` | [src/emit/markup.ts `componentPropsExpr`](../../../packages/compiler/src/emit/markup.ts#L266) · [src/emit/attrs.ts](../../../packages/compiler/src/emit/attrs.ts#L294-L320) |
+| [x] | 7 | 4 | **El tramo del dueño gana casillas.** `state(shadow, values, cells?)` concatena las celdas detrás de las props, y el emit de servidor le pasa el valor **leído** de cada signal (`n()`) — en el servidor la signal existe, es donde el `@client` se evalúa para pintar. Una celda de función se serializa `null`. La reserva de `claim()` no cambia: los ids siguen siendo pre-orden y por eso el marcador apunta siempre hacia atrás | `ssr` · `compiler` | [packages/ssr/src/ssr-dom.ts `state`](../../../packages/ssr/src/ssr-dom.ts#L75) · [src/emit/markup.ts](../../../packages/compiler/src/emit/markup.ts#L266) |
+| [x] | 8 | 7 | **El marcador en el tramo del hijo.** Donde `crossing` dice `'ref'`, lo que va al payload del hijo no es el valor sino `{"$":[owner,slot]}` —o `{"$f":[owner,slot]}` si la celda es de función—. El `owner` es el `data-fud-id` que `claim()` acaba de dar al host, que el emisor de servidor tiene delante. Un golden fija la página entera: `[[0,2,3],[0,0,{"$":[0,1]}]]` | `compiler` · `ssr` | [src/emit/markup.ts `componentPropsExpr`](../../../packages/compiler/src/emit/markup.ts#L266) · [src/emit/attrs.ts](../../../packages/compiler/src/emit/attrs.ts#L294-L320) |
 
 ## Fase 4 — runtime: las celdas (3)
 
