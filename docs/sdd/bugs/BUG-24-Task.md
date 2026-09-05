@@ -3,7 +3,7 @@
 > **BUG:** [BUG-24 — una signal no cruza el shadow boundary](./BUG-24-signal-y-callback-no-cruzan.md)
 > **Paquetes:** `@fudic/core` · `@fudic/compiler` · `@fudic/ssr` · `@fudic/language-core`
 > **Rama:** `worktree-bug-24` · **Bloqueado por:** BUG-23 en `Hecho`
-> **Progreso:** 8 / 19
+> **Progreso:** 11 / 19
 
 Diecinueve tareas. Rutas relativas a la raíz del repo; cada tarea es un paso cerrado y se
 puede parar después de cualquiera con el workspace verde.
@@ -101,9 +101,9 @@ cerrado).
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 9 | — | **`cells.ts`.** El registro: `Map<"owner:slot", Signal>`, `get(ref, init)` que materializa la primera vez y devuelve la misma después, `resolve(slice)` que sustituye marcadores, `eager(slice)` que lista las direcciones `$f`, y `clear()`. **No depende del compilador**: se puede escribir el primer día contra un payload a mano. Es donde vive la identidad, así que sus tests son los del criterio 8 | `core` | `src/hydrate/cells.ts` *(nuevo)* · [src/hydrate/maps.ts](../../../packages/core/src/hydrate/maps.ts) *(le presta `slice`)* · [src/index.ts](../../../packages/core/src/index.ts) *(`isCellMark`)* |
-| [ ] | 10 | 9 | **`attachAll` entrega resuelto.** `host.h(maps.slice(id))` pasa a `host.h(cells.resolve(maps.slice(id)))`. `Cells` entra en `CascadeConfig` como puerto inyectado, igual que `registry` y `loader`, para que el runtime siga siendo verificable sin DOM. **El componente sigue sin conocer su id** (SDD-17 §3): eso es exactamente lo que esta línea preserva | `core` | [src/hydrate/cascade.ts `attachAll`](../../../packages/core/src/hydrate/cascade.ts#L67-L79) · [src/hydrate/install.ts](../../../packages/core/src/hydrate/install.ts#L115) |
-| [ ] | 11 | 10 | **Una celda vacía hidrata al dueño.** Antes de entregar un tramo, `cells.eager(slice)` da las direcciones sin valor serializado; por cada una, el runtime levanta la instancia dueña —`allInstances` ya la alcanza a través de shadow roots— y **después** entrega. Va **antes** del `attachAll` del hijo, en el mismo sitio del camino 2 donde el bus va antes de la cascada (SDD-17 §4.4), y reporta `fud:hydrated` con `from: 'subtree'` | `core` | [src/hydrate/cascade.ts](../../../packages/core/src/hydrate/cascade.ts#L84-L112) · [src/hydrate/registry.ts `allInstances`](../../../packages/core/src/hydrate/registry.ts) |
+| [x] | 9 | — | **`cells.ts`.** El registro: `Map<"owner:slot", Signal>`, `get(ref, init)` que materializa la primera vez y devuelve la misma después, `resolve(slice)` que sustituye marcadores, `eager(slice)` que lista las direcciones `$f`, y `clear()`. **No depende del compilador**: se puede escribir el primer día contra un payload a mano. Es donde vive la identidad, así que sus tests son los del criterio 8 | `core` | `src/hydrate/cells.ts` *(nuevo)* · [src/hydrate/maps.ts](../../../packages/core/src/hydrate/maps.ts) *(le presta `slice`)* · [src/index.ts](../../../packages/core/src/index.ts) *(`isCellMark`)* |
+| [x] | 10 | 9 | **`attachAll` entrega resuelto.** `host.h(maps.slice(id))` pasa a `host.h(cells.resolve(maps.slice(id)))`. `Cells` entra en `CascadeConfig` como puerto inyectado, igual que `registry` y `loader`, para que el runtime siga siendo verificable sin DOM. **El componente sigue sin conocer su id** (SDD-17 §3): eso es exactamente lo que esta línea preserva | `core` | [src/hydrate/cascade.ts `attachAll`](../../../packages/core/src/hydrate/cascade.ts#L67-L79) · [src/hydrate/install.ts](../../../packages/core/src/hydrate/install.ts#L115) |
+| [x] | 11 | 10 | **Una celda vacía hidrata al dueño.** Antes de entregar un tramo, `cells.eager(slice)` da las direcciones sin valor serializado; por cada una, el runtime levanta la instancia dueña —`allInstances` ya la alcanza a través de shadow roots— y **después** entrega. Va **antes** del `attachAll` del hijo, en el mismo sitio del camino 2 donde el bus va antes de la cascada (SDD-17 §4.4), y reporta `fud:hydrated` con `from: 'subtree'` | `core` | [src/hydrate/cascade.ts](../../../packages/core/src/hydrate/cascade.ts#L84-L112) · [src/hydrate/registry.ts `allInstances`](../../../packages/core/src/hydrate/registry.ts) |
 
 ## Fase 5 — callbacks (2)
 

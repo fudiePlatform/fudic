@@ -118,18 +118,27 @@ export interface CellMark {
 
 /** El registro de celdas de la página. Una clave `owner:slot` → una `Signal`, para siempre. */
 export interface Cells {
-  /** La celda de esa dirección, materializada con `init` la primera vez que se pide. */
-  get(ref: CellRef, init: unknown): Signal<unknown>;
-  /** Las direcciones `$f` que un tramo referencia — las que exigen hidratar al dueño. */
-  eager(slice: readonly unknown[]): readonly CellRef[];
-  /** Sustituye los marcadores de un tramo por sus celdas. Devuelve un tramo nuevo. */
-  resolve(slice: readonly unknown[]): readonly unknown[];
+  /** La celda de esa dirección, materializada la primera vez que se pide. */
+  get(ref: CellRef): Signal<unknown>;
+  /** Las direcciones `$f` de las que depende esa instancia — las que exigen hidratar al dueño. */
+  eager(id: number): readonly CellRef[];
+  /** El tramo de esa instancia con sus celdas puestas. Devuelve un tramo nuevo. */
+  resolve(id: number): readonly unknown[];
   /** Vacía el registro. Lo llama el router al navegar (SDD-20). */
   clear(): void;
 }
 
 export function createCells(maps: PageMaps): Cells;
 ```
+
+> **Por id, no por tramo — y el `init` no viaja.** Un tramo suelto no basta para resolverlo.
+> La casilla del **dueño** lleva su valor y no un marcador (§4.2, criterio 5), así que su
+> dirección solo está escrita en los marcadores de sus consumidores: `resolve` necesita saber
+> de quién es el tramo para reconocerla, y el registro barre el payload una vez al crearse
+> para saber cuáles son. Sin eso, un dueño que hidratara **primero** encontraría un `0` en su
+> casilla y `$p3 ?? signal(start)` le devolvería el número. Por lo mismo el valor inicial no
+> es un argumento: sale siempre de `maps.slice(owner)[slot]`, que es una sola lectura y no
+> depende de quién pregunte antes. `PageMaps` gana un `count` para poder recorrerlo.
 
 ```ts
 // hydrate/cascade.ts — `attachAll` deja de entregar el tramo crudo
@@ -244,17 +253,16 @@ de descender a su shadow, así que `owner < id` siempre y una sola pasada basta.
 
 ```js
 // cascade.ts — attachAll
-const slice = cells.resolve(maps.slice(id));
-host.h(slice);
+host.h(cells.resolve(id));
 ```
 
 ```js
 // hydrate/cells.ts
 const key = ([o, s]) => `${o}:${s}`;
-get(ref, init) {
+get(ref) {
   const k = key(ref);
   let cell = map.get(k);
-  if (cell === undefined) { cell = signal(init); map.set(k, cell); }
+  if (cell === undefined) { cell = signal(maps.slice(ref[0])[ref[1]]); map.set(k, cell); }
   return cell;                       // misma dirección → mismo objeto, pida quien pida
 }
 ```

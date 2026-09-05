@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createBusPrehydrator, type PreHydrateBus } from '../../src/hydrate/bus.js';
 import { createCascade } from '../../src/hydrate/cascade.js';
+import { createCells } from '../../src/hydrate/cells.js';
 import { createChunkLoader } from '../../src/hydrate/chunks.js';
 import { readPageMaps } from '../../src/hydrate/maps.js';
 import { instanceState, type InstanceState } from '../../src/hydrate/registry.js';
@@ -30,7 +31,15 @@ function harness(): Harness {
   const report = (id: number, tag: string, _ms: string, from: string): void => {
     reported.push(`${from}:${tag}#${id}`);
   };
-  const cascade = createCascade({ maps, loader, registry, state, root: document, report });
+  const cascade = createCascade({
+    maps,
+    cells: createCells(maps),
+    loader,
+    registry,
+    state,
+    root: document,
+    report,
+  });
   const preHydrateBus = createBusPrehydrator({
     maps,
     loader,

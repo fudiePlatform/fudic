@@ -25,8 +25,10 @@
  */
 
 import { type PageMaps } from './maps.js';
+import { type Cells } from './cells.js';
 import { type ChunkLoader } from './chunks.js';
 import {
+  allInstances,
   ID_ATTR,
   idOf,
   instancesOf,
@@ -43,6 +45,12 @@ interface HydratableHost extends Element {
 
 export interface CascadeConfig {
   readonly maps: PageMaps;
+  /**
+   * The page's cell registry (BUG-24 §4.3). A port like `registry` and `loader`, so the
+   * runtime stays verifiable with no DOM: what it decides is which object an instance is
+   * handed, and that is exactly the thing under test.
+   */
+  readonly cells: Cells;
   readonly loader: ChunkLoader;
   readonly registry: ElementRegistry;
   readonly state: InstanceState;
@@ -57,12 +65,20 @@ export interface Cascade {
    * root itself untouched — whoever asked for the tag defines it afterwards.
    */
   prepareTag(tag: string): Promise<void>;
+  /**
+   * Raise the OWNER of every empty cell the instances of `tag` depend on (BUG-24 §4.6).
+   *
+   * It goes BEFORE the handout, in the same place of path 2 where the bus goes before the
+   * cascade (SDD-17 §4.4), and for the same kind of reason: an empty cell is a dependency,
+   * and the child cannot be given a slice that points at something nobody has filled yet.
+   */
+  prepareCells(tag: string): Promise<void>;
   /** Hand every instance of `tag` its slice of the payload, once. */
   attachAll(tag: string): void;
 }
 
 export function createCascade(config: CascadeConfig): Cascade {
-  const { maps, loader, registry, state, root, report } = config;
+  const { maps, cells, loader, registry, state, root, report } = config;
 
   const attachAll = (tag: string): void => {
     for (const host of instancesOf(tag, root)) {
@@ -75,8 +91,53 @@ export function createCascade(config: CascadeConfig): Cascade {
       // order: whatever the caller did, the instance is a live element before it is handed
       // its state.
       registry.upgrade(host);
-      (host as HydratableHost).h(maps.slice(id));
+      // RESOLVED, never raw: a marker becomes the cell it names, and a slot of this
+      // instance's own that some consumer named becomes that same cell. The component still
+      // does not know its `data-fud-id` (SDD-17 §3) — the substitution is the runtime's, and
+      // the chunk only ever sees a `Signal` where it used to see a number.
+      (host as HydratableHost).h(cells.resolve(id));
     }
+  };
+
+  /** The instance of an id, wherever it lives — `allInstances` crosses shadow roots. */
+  const byId = (id: number): Element | undefined =>
+    allInstances(root).find((el) => idOf(el) === id);
+
+  const prepareCells = async (tag: string): Promise<void> => {
+    for (const host of instancesOf(tag, root)) {
+      if (state.attached.has(idOf(host))) continue;
+      for (const [owner] of cells.eager(idOf(host))) {
+        await raiseOwner(owner);
+      }
+    }
+  };
+
+  /**
+   * One owner, up — and the owner ALONE, not its subtree.
+   *
+   * That is the one place the runtime climbs, and it is deliberately not a second cascade.
+   * An owner is an ANCESTOR of whoever asked, so preparing its subtree would walk back
+   * through the very instance waiting for it and hand that instance a slice pointing at a
+   * cell nobody had filled — which is exactly what §4.6 says must not happen. Raising the
+   * owner alone puts it in front, and its remaining descendants come up right after through
+   * the walk that was already running.
+   *
+   * Nothing is lost by that inversion: what a descendant would have received from its
+   * parent's hookup is the value the SERVER already painted into its own slice, and what
+   * moves afterwards travels by cell or by `u`, both of which come later than this.
+   */
+  const raiseOwner = async (id: number): Promise<void> => {
+    if (state.hydrated.has(id)) return;
+    const host = byId(id);
+    // A marker pointing at an instance no longer in the tree: the page is what it is, and the
+    // runtime does not throw over it — the cell simply keeps the value the payload gave it.
+    if (host === undefined) return;
+    const tag = host.localName;
+    const elapsed = stopwatch();
+    await loader.ensureDefined(tag);
+    attachAll(tag);
+    state.hydrated.add(id);
+    report(id, tag, elapsed(), 'subtree');
   };
 
   /**
@@ -105,17 +166,17 @@ export function createCascade(config: CascadeConfig): Cascade {
     const tag = host.localName;
     const elapsed = stopwatch();
     await loader.ensureDefined(tag); // download per tag, memoized
+    await prepareCells(tag); // the owner of every empty cell, before the handout
     attachAll(tag); // upgrade + slice, per instance
     state.hydrated.add(id);
     report(id, tag, elapsed(), 'subtree');
   };
 
-  return {
-    async prepareTag(tag: string): Promise<void> {
-      for (const host of instancesOf(tag, root)) {
-        await visit(host, 0);
-      }
-    },
-    attachAll,
+  const prepareTag = async (tag: string): Promise<void> => {
+    for (const host of instancesOf(tag, root)) {
+      await visit(host, 0);
+    }
   };
+
+  return { prepareTag, prepareCells, attachAll };
 }

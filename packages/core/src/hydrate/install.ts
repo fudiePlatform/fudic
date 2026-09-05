@@ -18,6 +18,7 @@
  */
 
 import { readPageMaps } from './maps.js';
+import { createCells } from './cells.js';
 import {
   createChunkLoader,
   importChunk,
@@ -94,7 +95,8 @@ export function installHydration(options: HydrationOptions): void {
     doc.dispatchEvent(new CustomEvent(HYDRATED_EVENT, { detail }));
   };
 
-  const cascade = createCascade({ maps, loader, registry, state, root: doc, report });
+  const cells = createCells(maps);
+  const cascade = createCascade({ maps, cells, loader, registry, state, root: doc, report });
   const preHydrateBus = createBusPrehydrator({
     maps,
     loader,
@@ -112,6 +114,10 @@ export function installHydration(options: HydrationOptions): void {
     await cascade.prepareTag(tag); // 4 — the subtree of every instance, post-order
     const elapsed = stopwatch();
     await loader.ensureDefined(tag); // 5 — the host, last
+    // The owner of every empty cell this host depends on, before it is handed anything
+    // (BUG-24 §4.6). An owner is an ANCESTOR, so the subtree walk above never reached it:
+    // this is the one step of path 2 that climbs.
+    await cascade.prepareCells(tag);
     cascade.attachAll(tag);
     report(id, tag, elapsed(), 'downloaded');
     replay(); // 6 — one replay, and only on this path
