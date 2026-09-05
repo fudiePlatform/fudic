@@ -14,7 +14,7 @@ import {
   type ComponentGraph,
 } from '../../src/emit/index.js';
 import { cellSlots, childTargets } from '../../src/emit/state.js';
-import { codeOf, shiftedOffset } from '../../src/emit/oxc-code.js';
+import { codeOf, splicedOffset } from '../../src/emit/oxc-code.js';
 import { memoryIo, pageModuleOf, ssrIo } from './_support.js';
 
 const PARENT = `<link rel="component" href="./cell-child.fud">
@@ -69,9 +69,12 @@ const KID = `@code {
 </cell-kid>
 `;
 
-const FORM = `@code {
+const FORM = `<link rel="component" href="./cell-relay.fud">
+
+@code {
   const { onSave } = props<{ onSave: (what: number) => void }>();
   @client {
+    const label = "go";
     function submit() { onSave(1); }
   }
 }
@@ -79,8 +82,22 @@ const FORM = `@code {
 <cell-form>
   <template shadowrootmode="open">
     <button @click=@submit>go</button>
+    <button @click=@onSave(2)>two</button>
+    <button @click=@onSave>bare</button>
+    <cell-relay .onSave=@onSave></cell-relay>
   </template>
 </cell-form>
+`;
+
+const RELAY = `@code {
+  const { onSave } = props<{ onSave: (what: number) => void }>();
+}
+
+<cell-relay>
+  <template shadowrootmode="open">
+    <button @click=@onSave(3)>three</button>
+  </template>
+</cell-relay>
 `;
 
 /** The same page every case below is compiled from: owner → child → grandchild, plus a form. */
@@ -94,6 +111,7 @@ const graph: ComponentGraph = resolveComponents(
     '/cell-child.fud': CHILD,
     '/cell-kid.fud': KID,
     '/cell-form.fud': FORM,
+    '/cell-relay.fud': RELAY,
   }),
 );
 
@@ -263,14 +281,20 @@ describe('the payload of the acceptance page (§6.5, §6.6)', () => {
   });
 });
 
-describe('shiftedOffset — an offset carried across the `emit(…)` splices (§4.4)', () => {
-  const call = { calleeEnd: 10, hostAt: 11, hasArgs: true };
+describe('splicedOffset — a source offset carried across what was already inserted', () => {
+  const statement = {
+    text: 'ignored',
+    at: 100,
+    splices: [
+      { at: 4, length: 5 },
+      { at: 20, length: 7 },
+    ],
+  };
 
-  it('moves an offset behind a splice, and leaves one in front of it alone', () => {
-    expect(shiftedOffset(5, [call])).toBe(5);
-    // `.call` before it and `$host, ` before it: five characters plus seven.
-    expect(shiftedOffset(40, [call])).toBe(52);
-    expect(shiftedOffset(40, [{ ...call, hasArgs: false }])).toBe(50);
+  it('counts only what was inserted BEFORE it', () => {
+    expect(splicedOffset(statement, 102)).toBe(2); // nothing in front of it
+    expect(splicedOffset(statement, 110)).toBe(15); // the first splice moved it five along
+    expect(splicedOffset(statement, 130)).toBe(42); // both did
   });
 });
 
@@ -305,6 +329,27 @@ describe('the child — a prop by reference is a reactive name more (§6.4)', ()
 
   it('crosses it on to the grandchild as the OBJECT, not as the read', () => {
     expect(src).toMatch(/\.u\(\[, , value\]\)/u);
+  });
+});
+
+describe('the child of a callback — a cell is READ at the moment it is called (§6.13)', () => {
+  const src = chunk('cell-form');
+
+  it('a call inside `@client` reads the cell first', () => {
+    expect(src).toContain('function submit() { onSave()(1); }');
+  });
+
+  it('a call written straight into an `@event` too', () => {
+    expect(src).toContain('"click", ($event) => onSave()(2)');
+  });
+
+  it('and a bare reference is deferred to dispatch, because the cell may still be empty', () => {
+    expect(src).toContain('"click", ($event) => onSave()($event)');
+  });
+
+  it('but handing the callback ON to a grandchild passes the CELL, not a call', () => {
+    expect(src).toMatch(/\.u\(\[, , onSave\]\)/u);
+    expect(chunk('cell-relay')).toContain('"click", ($event) => onSave()(3)');
   });
 });
 

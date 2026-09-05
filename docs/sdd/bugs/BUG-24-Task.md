@@ -3,7 +3,7 @@
 > **BUG:** [BUG-24 — una signal no cruza el shadow boundary](./BUG-24-signal-y-callback-no-cruzan.md)
 > **Paquetes:** `@fudic/core` · `@fudic/compiler` · `@fudic/ssr` · `@fudic/language-core`
 > **Rama:** `worktree-bug-24` · **Bloqueado por:** BUG-23 en `Hecho`
-> **Progreso:** 11 / 19
+> **Progreso:** 13 / 19
 
 Diecinueve tareas. Rutas relativas a la raíz del repo; cada tarea es un paso cerrado y se
 puede parar después de cualquiera con el workspace verde.
@@ -109,8 +109,8 @@ cerrado).
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 12 | 11 | **El dueño llena su celda.** Una función de `@client` que cruza como prop reserva casilla (tarea 4, `kind: 'fn'`) y el dueño la llena al enganchar: `$fill($pK, save)`, que es `cell.set(save)`. En una instancia creada por `c` no hay celda y la función cruza directa, como cualquier valor | `compiler` | `src/emit/state.ts` · [src/emit/client.ts](../../../packages/compiler/src/emit/client.ts#L128-L140) |
-| [ ] | 13 | 12 | **El hijo la llama.** Una prop con `channel: 'fn'` se lee al invocar: `onSave(x)` se emite `onSave()(x)`. La garantía de que la celda está llena es la tarea 11 —el dueño se hidrató antes de que este tramo se entregara—, así que aquí **no** hay guarda defensiva: si estuviera vacía sería un fallo del runtime y taparlo lo volvería silencioso | `compiler` | [src/emit/markup-client.ts](../../../packages/compiler/src/emit/markup-client.ts) · [src/emit/events.ts](../../../packages/compiler/src/emit/events.ts#L86-L121) |
+| [x] | 12 | 11 | **El dueño llena su celda.** Una función de `@client` que cruza como prop reserva casilla (tarea 4, `kind: 'fn'`) y el dueño la llena al enganchar: `$fill($pK, save)`, que es `cell.set(save)`. En una instancia creada por `c` no hay celda y la función cruza directa, como cualquier valor | `compiler` | `src/emit/state.ts` · [src/emit/client.ts](../../../packages/compiler/src/emit/client.ts#L128-L140) |
+| [x] | 13 | 12 | **El hijo la llama.** Una prop con `channel: 'fn'` se lee al invocar: `onSave(x)` se emite `onSave()(x)`. La garantía de que la celda está llena es la tarea 11 —el dueño se hidrató antes de que este tramo se entregara—, así que aquí **no** hay guarda defensiva: si estuviera vacía sería un fallo del runtime y taparlo lo volvería silencioso | `compiler` | [src/emit/markup-client.ts](../../../packages/compiler/src/emit/markup-client.ts) · [src/emit/events.ts](../../../packages/compiler/src/emit/events.ts#L86-L121) |
 
 ## Fase 6 — diagnósticos y editor (3)
 

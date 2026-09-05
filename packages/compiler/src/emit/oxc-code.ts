@@ -124,10 +124,30 @@ export interface ClientCode {
  * this pass reads one file.
  */
 export interface ClientStatement {
-  /** The statement's source, with the `emit(…)` host already spliced in (§4.4). */
+  /** The statement's source, with the `emit(…)` host and the cell reads already spliced in. */
   readonly text: string;
   /** Where `text` starts in the `.fud`. */
   readonly at: number;
+  /**
+   * What this pass already inserted, as an offset RELATIVE to `at` and the length it added.
+   *
+   * A later splice has to land on a character, and the characters moved: without this the
+   * cell rewrite of BUG-24 §4.4 would compute its position against the author's source and
+   * write into the middle of an `emit.call($host, …)` this pass had put there.
+   */
+  readonly splices: readonly Splice[];
+}
+
+/** One insertion already applied to a statement's text. */
+export interface Splice {
+  readonly at: number;
+  readonly length: number;
+}
+
+/** Where a source-relative offset ended up in a statement's text, after its own splices. */
+export function splicedOffset(statement: ClientStatement, sourceOffset: number): number {
+  const rel = sourceOffset - statement.at;
+  return statement.splices.reduce((out, s) => (s.at <= rel ? out + s.length : out), rel);
 }
 
 /**
@@ -268,7 +288,14 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
   if (binding !== undefined) collectEmitCalls(clientStatements, binding, map, emitCalls);
   // The body is read AFTER the calls are known: each statement is copied with the host
   // spliced into every `emit(...)` it holds (§4.4).
-  for (const stmt of clientStatements) readClientStatement(stmt, source, map, client, emitCalls);
+  // The callbacks this component received as cells: reading one is CALLING it (§4.6, step 4),
+  // and the names are its own props, so no graph is needed to know them.
+  const callbacks = new Set(props.flatMap((p) => (p.channel === 'fn' ? [p.name] : [])));
+  const cellReads: number[] = [];
+  if (callbacks.size > 0) collectCellReads(clientStatements, callbacks, map, cellReads);
+  for (const stmt of clientStatements) {
+    readClientStatement(stmt, source, map, client, emitCalls, cellReads);
+  }
 
   return {
     props,
@@ -426,11 +453,34 @@ function readClientStatement(
   map: MapOffset,
   client: ClientCode,
   calls: readonly EmitCall[],
+  cellReads: readonly number[],
 ): void {
   const start = map(stmt.start);
-  const text = withHost(source.slice(start, map(stmt.end)), start, calls);
+  const { text, splices } = withHost(source.slice(start, map(stmt.end)), start, calls, cellReads);
   if (is(stmt, 'ImportDeclaration')) client.imports.push(text);
-  else client.body.push({ text, at: start });
+  else client.body.push({ text, at: start, splices });
+}
+
+/**
+ * Every call to a prop that arrived as a CELL, by the offset where its read goes.
+ *
+ * The walk is generic for the same reason `collectEmitCalls`'s is: what it must never do is
+ * match text, and a node it does not know about cannot hide a call. Only a call — `onSave(x)`
+ * — is rewritten. A bare `onSave` handed on somewhere else is the cell itself, which is what
+ * a component forwarding the callback to its own child has to pass.
+ */
+function collectCellReads(node: unknown, names: ReadonlySet<string>, map: MapOffset, out: number[]): void {
+  if (Array.isArray(node)) {
+    for (const child of node) collectCellReads(child, names, map, out);
+    return;
+  }
+  if (node === null || typeof node !== 'object') return;
+  const current = node as OxcNode;
+  if (is(current, 'CallExpression')) {
+    const callee = field(current, 'callee');
+    if (is(callee, 'Identifier') && names.has(name(callee))) out.push(map(callee.end));
+  }
+  for (const value of Object.values(current)) collectCellReads(value, names, map, out);
 }
 
 /**
@@ -448,15 +498,27 @@ function readClientStatement(
  * `emit` inside a string or a comment is not a call, and a call nested in another one's
  * arguments must not move the offsets of the call around it.
  */
-function withHost(text: string, offset: number, calls: readonly EmitCall[]): string {
+function withHost(
+  text: string,
+  offset: number,
+  calls: readonly EmitCall[],
+  cellReads: readonly number[],
+): { text: string; splices: Splice[] } {
   const edits: { at: number; text: string }[] = [];
   for (const call of calls) {
     if (call.calleeEnd <= offset || call.calleeEnd > offset + text.length) continue;
     edits.push({ at: call.calleeEnd - offset, text: '.call' });
     edits.push({ at: call.hostAt - offset, text: call.hasArgs ? '$host, ' : '$host' });
   }
+  // The read of a callback that arrived as a cell (BUG-24 §4.6): `onSave(x)` is written
+  // `onSave()(x)`, because what the prop holds is the cell and the function is inside it.
+  for (const at of cellReads) {
+    if (at <= offset || at > offset + text.length) continue;
+    edits.push({ at: at - offset, text: '()' });
+  }
   edits.sort((a, b) => b.at - a.at);
-  return edits.reduce((out, edit) => out.slice(0, edit.at) + edit.text + out.slice(edit.at), text);
+  const out = edits.reduce((acc, e) => acc.slice(0, e.at) + e.text + acc.slice(e.at), text);
+  return { text: out, splices: edits.map((e) => ({ at: e.at, length: e.text.length })) };
 }
 
 /**
@@ -519,21 +581,6 @@ function readDeclarator(
   }
 }
 
-/**
- * Where a SOURCE offset ends up once the `emit(…)` host splices of §4.4 have been applied.
- *
- * A statement's text is the author's with `.call` and `$host` inserted into it, so an offset
- * read off the original file no longer points at the same character. Everything that was
- * inserted BEFORE it moved it along by exactly its own length, and nothing else did.
- */
-export function shiftedOffset(at: number, calls: readonly EmitCall[]): number {
-  let shift = 0;
-  for (const call of calls) {
-    if (call.calleeEnd <= at) shift += '.call'.length;
-    if (call.hostAt <= at) shift += call.hasArgs ? '$host, '.length : '$host'.length;
-  }
-  return at + shift;
-}
 
 /**
  * What `props<T>()`'s type argument declares about each of its keys: the `?`, and the channel.

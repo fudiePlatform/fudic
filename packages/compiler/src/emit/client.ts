@@ -22,13 +22,7 @@ import { CodeWriter } from './writer.js';
 import { ClientMarkupEmitter, coreUsage, nodeIds } from './markup-client.js';
 import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js';
 import { AssetLinker } from './assets.js';
-import {
-  codeOf,
-  shiftedOffset,
-  type ClientStatement,
-  type EmitCall,
-  type Prop,
-} from './oxc-code.js';
+import { codeOf, splicedOffset, type ClientStatement, type Prop } from './oxc-code.js';
 import { hookupContext } from './events.js';
 import { movingNames } from './level.js';
 import { cellSlots, childTargets, reactiveScope, type CellSlot } from './state.js';
@@ -104,21 +98,20 @@ function updateGuards(props: readonly Prop[]): string {
  * therefore no window in which the first update could arrive in the other one's shape.
  *
  * By OFFSET and never by text: the region is copied verbatim, so a `signal` inside a string
- * or a comment is not a declaration. The offsets are the author's, and `shiftedOffset` carries
- * them across the `emit(…)` host splices this same text already went through.
+ * or a comment is not a declaration. The offsets are the author's, and `splicedOffset` carries
+ * them across whatever `extractCode` already inserted into this same statement.
  */
 function withCells(
   statement: ClientStatement,
   signals: readonly { readonly name: string; readonly at: number }[],
   cells: readonly CellSlot[],
-  calls: readonly EmitCall[],
 ): string {
   const named = new Map(cells.map((c) => [c.name, c]));
   const edits: { at: number; text: string }[] = [];
   for (const reactive of signals) {
     const cell = named.get(reactive.name);
     if (cell === undefined) continue;
-    const at = shiftedOffset(reactive.at, calls) - statement.at;
+    const at = splicedOffset(statement, reactive.at);
     if (at < 0 || at > statement.text.length) continue; // declared in another statement
     edits.push({ at, text: `${cellName(cell)} ?? ` });
   }
@@ -160,7 +153,11 @@ function buildComponentClientModule(
   // One channel for everything the emit has to SAY about this file, and one for what every
   // walk of it shares: a block three levels down reports through the same two.
   const emitDiagnostics: Diagnostic[] = [];
-  const hookup = hookupContext(template, emitDiagnostics);
+  const hookup = hookupContext(
+    template,
+    emitDiagnostics,
+    new Set(props.flatMap((p) => (p.channel === 'fn' ? [p.name] : []))),
+  );
   const ids = nodeIds();
   const usage = coreUsage();
   const ctx = blockContext(comp.source, scope, linker, ids, usage, hookup);
@@ -239,7 +236,7 @@ function buildComponentClientModule(
   // `let`, not `const`: `r()` releases it along with the nodes and the shadow root.
   const needsHost = emitCalls.length > 0 || hookup.hostUsed;
   if (needsHost) w.line('let $host = $dom.host($shadow);');
-  for (const statement of client.body) w.line(withCells(statement, signals, cells, emitCalls));
+  for (const statement of client.body) w.line(withCells(statement, signals, cells));
   w.line('');
   // The blocks: one function per construct, plus the registry of what is alive (SDD-30
   // §3.1, §3.6). Declared HERE, so each one reads `$dom`, the props and the `@client` body
