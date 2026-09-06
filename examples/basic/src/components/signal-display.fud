@@ -3,9 +3,9 @@
 @code {
   import type { Signal } from "@fudic/core";
 
-  // Declaring the prop as `Signal<number>` is the whole of it (decisión 105): what crosses
-  // the shadow boundary is the OBJECT, not its value. The compiler reads this line in the
-  // parent and cruza `count` desnudo; el runtime pone la misma celda en las dos casillas.
+  // Declarar la prop como `Signal<number>` es todo (decisión 86 de props-spec): lo que cruza
+  // el shadow boundary es el OBJETO, no su valor. El compilador lee esta línea desde el padre
+  // y cruza `count` desnudo; el runtime pone la misma celda en las dos casillas.
   //
   // Y con el objeto llega todo lo demás: derivar de él, reenviarlo al nieto y escribirlo.
   const { value } = props<{ value: Signal<number> }>();

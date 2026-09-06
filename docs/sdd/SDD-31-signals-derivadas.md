@@ -500,10 +500,11 @@ Tests en `packages/core/test/` (1–13, 18–19, 21) y `packages/compiler/test/e
 
 ## 7. Fuera de alcance
 
-- **Props como signals — DECIDIDO, y fuera de este SDD.** Es la conversación que originó este
-  documento, y ya no está abierta: lo que queda fuera es **escribirlo**, no elegirlo. Va aquí
-  porque este SDD entrega la primitiva que el mecanismo necesita; el mecanismo tendrá su propio
-  SDD.
+- **Props como signals — HECHO, en [BUG-24](./bugs/BUG-24-signal-y-callback-no-cruzan.md).** Es
+  la conversación que originó este documento. Se decidió aquí y se escribió allí: la celda la
+  crea el runtime al repartir el estado, el chunk la recibe, y padre e hijo acaban con el mismo
+  objeto porque nadie lo construye dos veces. Queda anotado en pasado porque este SDD es donde
+  se eligió, y porque entrega la primitiva que el mecanismo necesita.
 
   **Lo que se descartó, y por qué.** Que el hijo se fabrique su propia signal con el valor
   recibido: dos nodos son **dos fuentes de verdad**, el `===` deja de valer, y un nieto va dos
@@ -533,12 +534,17 @@ Tests en `packages/core/test/` (1–13, 18–19, 21) y `packages/compiler/test/e
   el último, así que nadie podía pasarle al hijo una referencia que aún no existía. Con la celda
   en el runtime, el orden es **irrelevante**.
 
-  **Lo que tendrá que tocar el SDD del mecanismo, anotado aquí para que no se pierda:** SDD-15
-  §3.3 (`fud-state` admite el marcador), SDD-17 §3 y §4.4 (`attachAll` resuelve celdas) y la
-  decisión **84** de [props-spec](./props-spec.md) (deja de ser «cruza un valor, siempre»). La
-  firma con la que la regla del cruce nace ya con la forma correcta —`crossing` devolviendo
-  `Crossing`, con `'ref'` declarado y sin emisor— la deja
+  **Lo que tocó, ya reescrito:** SDD-15 §3.3 (`fud-state` admite el marcador) y §4.3 (el tramo
+  llega resuelto), SDD-17 §3 y §4.4 (`attachAll` resuelve celdas; una celda vacía levanta antes a
+  su dueño), la decisión **84** de [props-spec](./props-spec.md) —que dejó de ser «cruza un
+  valor, siempre» y hoy es «cruza lo que el hijo declara», su decisión **86**— y SDD-12 con
+  `FUD0200`–`FUD0203`. La firma con la que la regla del cruce nació ya con la forma correcta
+  —`crossing` devolviendo `Crossing`, con `'ref'` declarado y sin emisor— la dejó
   [BUG-23 §3.1](./bugs/BUG-23-arroba-valvula-de-escape.md).
+
+  **Un límite que la implementación dejó escrito:** un `computed` que cruza por referencia pierde
+  su derivación en el dueño hidratado — la celda es siempre una `signal`. `FUD0203` cubre el caso
+  peligroso (que el hijo la escriba); el resto es una arista que nadie ha pedido todavía.
 - **Que el emit envuelva `u` y los handlers en `batch`.** Es la envoltura correcta —un `u` que
   mueve tres props debería ser una pasada— pero es emit, y vive en SDD-15. Aquí se entrega la
   primitiva.

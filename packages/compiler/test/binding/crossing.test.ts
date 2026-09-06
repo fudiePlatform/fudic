@@ -110,7 +110,7 @@ describe('crossing — what the CHILD declares', () => {
     });
   });
 
-  it('is the shared cell when the prop declares Signal<T> (decision 105)', () => {
+  it('is the shared cell when the prop declares Signal<T> (props-spec decision 86)', () => {
     expect(crossing(markup, valueOf(markup), reactives, declared('signal'))).toEqual({
       kind: 'ref',
       name: 'titulo',

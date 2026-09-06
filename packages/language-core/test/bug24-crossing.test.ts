@@ -36,7 +36,7 @@ const CLIENT = `  }
   }
 }`;
 
-/** The badge, rewritten to ask for its prop BY REFERENCE (decision 105). */
+/** The badge, rewritten to ask for its prop BY REFERENCE (props-spec decision 86). */
 const SIGNAL_BADGE = `@code {
   type Tone = 'neutral' | 'success' | 'info';
   type Signal<T> = { (): T; set(next: T): void };

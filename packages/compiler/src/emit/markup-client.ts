@@ -224,9 +224,9 @@ export interface ClientScope {
   childProps(tag: string): readonly Prop[] | undefined;
   /**
    * What a child declares about one of its props — the other half of `childProps`, and the
-   * one that decides the FORM of the crossing (decision 105). Two questions about the same
-   * child because they are asked at different moments: the order when the tuple is composed,
-   * the channel when each value in it is written.
+   * one that decides the FORM of the crossing (props-spec decision 86). Two questions about
+   * the same child because they are asked at different moments: the order when the tuple is
+   * composed, the channel when each value in it is written.
    */
   declared(tag: string): PropTarget | undefined;
   readonly signals: ReadonlySet<string>;
@@ -249,8 +249,8 @@ interface Slot {
    */
   readonly changes: boolean;
   /**
-   * Whether the value crosses by REFERENCE (decision 105): the child asked for the object, so
-   * what is written into the slot is the object itself.
+   * Whether the value crosses by REFERENCE (props-spec decision 86): the child asked for the
+   * object, so what is written into the slot is the object itself.
    *
    * It is handed over ONCE and never again, and that is not an omission — it is the whole
    * point. There is nothing to renew: parent and child hold the same cell, so the child hears

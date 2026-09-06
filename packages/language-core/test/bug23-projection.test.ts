@@ -121,9 +121,9 @@ describe('a handler that is a call is a deferred invocation (task 11)', () => {
 describe('a reactive is projected as its READ (task 27)', () => {
   it('hands a `.prop` to the child’s own type, which is what decides the form (BUG-24)', () => {
     // It used to write `tone: (titulo()),` here, because decision 84 crossed the read and
-    // nothing else. Since decision 105 the form depends on what the CHILD declared, and the
-    // projection asks the one reader that knows: `$cross` takes the object or its read, and
-    // `$Prop` is the declared type of that very prop.
+    // nothing else. Since props-spec decision 86 the form depends on what the CHILD declared,
+    // and the projection asks the one reader that knows: `$cross` takes the object or its read,
+    // and `$Prop` is the declared type of that very prop.
     expect(project(component('<app-badge .tone="@titulo"></app-badge>', CLIENT))).toContain(
       'tone: $cross<$Prop<$C0, "tone">>(titulo),',
     );

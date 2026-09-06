@@ -188,9 +188,31 @@ El compilador examina **todos** los sitios de uso del proyecto y emite **una sol
 variante**, la del nivel máximo alcanzado en cualquier sitio (consistente con la
 decisión de cierre ya tomada para N1/N2/N3).
 
+### Lo que cruza lo decide el hijo (decisión 86)
+
+**La 84 ya no dice «cruza un valor, siempre»; dice «cruza lo que el hijo declara».** El padre
+escribe lo mismo en los tres casos —el identificador desnudo—, y la forma del cruce sale del
+`props<T>()` del hijo:
+
+| el hijo declara | `.value=@count` cruza | por qué |
+|---|---|---|
+| `value?: number` | `count()` — el valor | decisión 84, byte a byte lo que sigue abajo |
+| `value: Signal<number>` | `count` — la **celda** | decisión 86: el hijo puede derivar, reenviar y escribir |
+| `onSave: (n) => void` | `save` — la celda de una función | decisión 86: una arista instancia → instancia |
+
+Que la signal cruce no contradice lo que sigue, lo **precisa**: por el cable sigue sin viajar
+un objeto vivo. Lo que viaja es un **marcador** —`{"$":[owner, slot]}`, la dirección de una
+casilla del tramo del dueño— y la celda la crea el **runtime** al repartir el estado, una sola
+vez por dirección. Padre e hijo acaban con el mismo objeto porque nadie lo construye dos veces,
+y por eso el orden en que despierta cada uno deja de importar. El detalle está en
+[BUG-24](./bugs/BUG-24-signal-y-callback-no-cruzan.md); `fud-state` sigue siendo JSON.
+
+Con `propsOf` ausente —el editor, un build que no puede leer al hijo— **no se marca ningún
+canal** y todo cruza por valor, que es lo que describe el resto de esta sección.
+
 ### El valor cruza, la signal no
 
-**Principio transversal (ya fijado, reafirmado aquí):** a través del shadow boundary
+**Cuando el hijo declara un valor** —y es el caso por defecto— a través del shadow boundary
 cruza un **valor**, nunca el objeto signal. El padre conserva su signal; en su propia
 subscription vuelve a escribir el valor en el hijo, llamando a su `u`.
 
@@ -224,12 +246,11 @@ atributo plano interpolado— y **no** en el texto: `<div>@titulo</div>` no pasa
 que emit y editor coinciden ahí en mirar el objeto. Qué *debería* hacer el texto queda abierto
 (BUG-23 §7).
 
-> **Y esta decisión la reescribe entera SDD-31 §7 — «Props como signals».** Ahí la signal cruza
-> con identidad real: la casilla del hijo lleva un marcador `{"$":[ownerId, slot]}` y el runtime
-> materializa una celda única al repartir el estado. Está decidido y no implementado. Lo que
-> BUG-23 dejó preparado es solo la **firma**: `crossing` devuelve `Crossing`, con `'ref'`
-> declarado y sin emisor, y toma como cuarto parámetro lo que declara el hijo — porque la forma
-> del cruce dejó de depender solo del padre.
+> **Y esto vale para las props que el hijo declara como valor.** Las que declara `Signal<T>` —o
+> como una firma de función— cruzan por referencia desde [BUG-24](./bugs/BUG-24-signal-y-callback-no-cruzan.md)
+> (decisión 86, arriba): ahí no hay `u` que renovar nada, porque los dos extremos tienen el
+> mismo objeto. El editor aplica la misma regla y por el mismo camino — `crossing` sigue siendo
+> una sola función, y la proyección le pasa a TypeScript el tipo que el hijo declaró.
 
 ---
 
@@ -436,24 +457,22 @@ padre e hijo. El padre pasa una función por property binding; el hijo la invoca
 una llamada directa a una referencia de función: **no cruza el shadow boundary como
 evento, no hay listener entre componentes, no hay problema de propagación de shadow.**
 
-**84.** **Ninguna signal cruza el boundary.** `bind:` es azúcar sobre one-way +
-callback: baja el valor por `u`, sube el cambio por la función. La fuente de la
-verdad permanece en el padre. Se preserva el aislamiento de islas (principio de la
-decisión 74–78).
+**84.** **Una prop declarada como VALOR cruza su valor, nunca el objeto signal.** `bind:` es
+azúcar sobre one-way + callback: baja el valor por `u`, sube el cambio por la función. La
+fuente de la verdad permanece en el padre. Se preserva el aislamiento de islas (principio de
+la decisión 74–78).
 
-> **84 deja de ser «cruza un valor, siempre» — anotado, no reescrito.** El enunciado de arriba
-> describe lo que el compilador hace **hoy**, y sigue siendo la única forma que se emite. Pero
-> [SDD-31 §7](./SDD-31-signals-derivadas.md) ya decidió la otra: una signal **cruza por
-> referencia, con identidad real**, mediante un marcador `{"$":[ownerId, slot]}` en la casilla
-> del hijo y una celda única que el runtime materializa al repartir el estado. Padre e hijo
-> tienen el mismo objeto, así que el hijo puede derivar de ella, reenviarla a un nieto y
-> escribirla — y un callback es el mismo marcador con la celda vacía. El aislamiento de islas no
-> se rompe: la fuente de la verdad sigue siendo **una**, y precisamente por eso deja de haber
-> espejo que se retrase un salto por nivel. Cuando se escriba el SDD del mecanismo, esta decisión
-> se reescribe entera; hasta entonces vale la letra de arriba. La firma con la que la regla
-> distingue las dos formas la deja
-> [BUG-23 §3.1](./bugs/BUG-23-arroba-valvula-de-escape.md) — `crossing` devolviendo `Crossing`,
-> con `'ref'` declarado y sin emisor.
+> **84 dejó de ser «cruza un valor, siempre»: hoy lo decide el hijo (decisión 86).** El
+> enunciado de arriba describe el caso por defecto y sigue siendo lo que se emite para una prop
+> declarada `value?: number`. Una declarada `Signal<T>` —o como una firma de función— cruza por
+> **referencia, con identidad real**, mediante un marcador `{"$":[owner, slot]}` en la casilla
+> del hijo y una celda única que el runtime materializa al repartir el estado
+> ([BUG-24](./bugs/BUG-24-signal-y-callback-no-cruzan.md)). Padre e hijo tienen el mismo objeto,
+> así que el hijo puede derivar de ella, reenviarla a un nieto y escribirla — y un callback es
+> el mismo marcador con la celda vacía. El aislamiento de islas no se rompe: la fuente de la
+> verdad sigue siendo **una**, y precisamente por eso deja de haber espejo que se retrase un
+> salto por nivel. La firma con la que la regla distingue las dos formas la dejó
+> [BUG-23 §3.1](./bugs/BUG-23-arroba-valvula-de-escape.md) — `crossing` devolviendo `Crossing`.
 
 ### Desazucarado
 
@@ -568,7 +587,7 @@ canal de vuelta que enganchar → error de compilación.
 
 ---
 
-## Índice de decisiones (67–85)
+## Índice de decisiones (67–86)
 
 | # | Sección | Resumen |
 |---|---------|---------|
@@ -589,5 +608,6 @@ canal de vuelta que enganchar → error de compilación.
 | 81 | Spread | Reactividad de cada clave según lo que lleve `item` |
 | 82 | Spread | Clave ausente en `item`: error si requerida, default si opcional |
 | 83 | Two-way | Canal de vuelta por callback-prop, no por eventos |
-| 84 | Two-way | Ninguna signal cruza el boundary; `bind:` es azúcar |
+| 84 | Two-way | Una prop declarada **como valor** cruza su valor, nunca el objeto signal; `bind:` es azúcar. Reescrita por la 86: dejó de ser «siempre» |
 | 85 | Two-way | `bind:` exige prop de valor + prop callback declaradas |
+| 86 | Props | **Lo que cruza lo decide el hijo**: `Signal<T>` o una firma de función cruzan por **referencia** —una celda que crea el runtime—, lo demás cruza su valor ([BUG-24](./bugs/BUG-24-signal-y-callback-no-cruzan.md)). Sin poder leer al hijo no se marca canal alguno |

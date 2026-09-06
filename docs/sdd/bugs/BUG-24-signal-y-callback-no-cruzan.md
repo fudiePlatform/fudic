@@ -157,7 +157,7 @@ lado cliente necesita para el fallback de §4.4.
 // binding/crossing.ts — el tipo que BUG-23 deja preparado, ahora con su segundo caso vivo
 export type Crossing =
   | { readonly kind: 'value'; readonly name: string }   // `titulo()` — decisión 84
-  | { readonly kind: 'ref';   readonly name: string };  // la celda   — decisión 105
+  | { readonly kind: 'ref';   readonly name: string };  // la celda   — decisión 86 de props-spec
 
 // emit/oxc-code.ts — una prop dice si pide un canal
 export interface Prop {
@@ -203,7 +203,7 @@ Sin firmas nuevas. `emitValue` deja de proyectar la lectura cuando `crossing` de
 Es lo que cierra §2.3 y §2.4 a la vez: si el objeto no lo construye el código de nadie, el
 orden en que corre el código de cada uno deja de importar.
 
-### 4.1 Decisión 105 — una prop declarada `Signal<T>` cruza por referencia
+### 4.1 Decisión 86 de props-spec — una prop declarada `Signal<T>` cruza por referencia
 
 Lo que decide el modo es **lo que declara el hijo**, leído en compilación con `propsOf`
 (BUG-23 tarea 17). No hay sintaxis nueva en el padre:
@@ -211,7 +211,7 @@ Lo que decide el modo es **lo que declara el hijo**, leído en compilación con 
 | el hijo declara | `.value=@count` cruza | por qué |
 |---|---|---|
 | `value?: number` | `count()` — el valor | decisión 84, byte a byte lo de hoy |
-| `value: Signal<number>` | `count` — la celda | decisión 105 |
+| `value: Signal<number>` | `count` — la celda | decisión 86 de props-spec |
 | `onSave: () => void` | la celda de `save` | §4.6 |
 
 ```fud

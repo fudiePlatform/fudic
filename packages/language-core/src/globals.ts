@@ -154,7 +154,8 @@ declare function $intoSlot<T extends string>(name: T): void;
 declare function $ref<E extends Element>(): E;
 
 /**
- * A value that crosses a \`.prop\` naming a reactive — the OBJECT, or its read (decision 105).
+ * A value that crosses a \`.prop\` naming a reactive — the OBJECT, or its read (props-spec
+ * decision 86).
  *
  * The build decides between the two by what the CHILD declares: a prop typed \`Signal<T>\` gets
  * the signal, one typed \`T\` gets \`name()\`. The projection cannot read the child's \`.fud\`, and
@@ -163,7 +164,7 @@ declare function $ref<E extends Element>(): E;
  * EXPLICITLY, as the declared type of that very prop: inference from a union parameter would
  * pick the bare \`V\` branch and decide the object every time.
  *
- * That is the invariant of BUG-23 §5 kept under decision 105: where the emit transforms a
+ * That is the invariant of BUG-23 §5 kept under props-spec decision 86: where the emit transforms a
  * value before crossing it, the projection checks the same transformation — including the one
  * that transforms nothing.
  */

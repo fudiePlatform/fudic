@@ -35,8 +35,8 @@ export interface Prop {
    */
   readonly optional: boolean;
   /**
-   * What the child asks to be handed by REFERENCE (decision 105): `'signal'` when its type is
-   * `Signal<…>`, `'fn'` when it is a function signature, absent otherwise.
+   * What the child asks to be handed by REFERENCE (props-spec decision 86): `'signal'` when
+   * its type is `Signal<…>`, `'fn'` when it is a function signature, absent otherwise.
    *
    * It is read off `T` and nowhere else, for the same reason `optional` is: what decides the
    * form of the crossing is what the CHILD declares, and a `T` this file cannot read declares
@@ -643,7 +643,8 @@ interface DeclaredMember {
 const SIGNAL_TYPE = 'Signal';
 
 /**
- * The channel a member's TYPE asks for (decision 105), or `undefined` for a plain value.
+ * The channel a member's TYPE asks for (props-spec decision 86), or `undefined` for a plain
+ * value.
  *
  * Two shapes and no more. `Signal<T>` — by the name, which is the same commitment
  * `reactiveNames` makes about `signal(…)`: what a component declares is read off what it

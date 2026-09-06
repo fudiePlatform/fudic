@@ -141,10 +141,10 @@ export function readsMoving(
  * object while the build crossed its value (BUG-23 §2.8). Here it is only spelled out as an
  * expression.
  *
- * With a `target` the answer may be `'ref'` (decision 105), and then what crosses is the BARE
- * name: the object itself, because that is what the child declared. Without one it is always
- * `'value'` — which is what an ATTRIBUTE always passes, whatever the child declares, since
- * level 1 is HTML and HTML carries strings (BUG-24 §4.7).
+ * With a `target` the answer may be `'ref'` (props-spec decision 86), and then what crosses is
+ * the BARE name: the object itself, because that is what the child declared. Without one it is
+ * always `'value'` — which is what an ATTRIBUTE always passes, whatever the child declares,
+ * since level 1 is HTML and HTML carries strings (BUG-24 §4.7).
  */
 export function crossingExpr(
   source: string,

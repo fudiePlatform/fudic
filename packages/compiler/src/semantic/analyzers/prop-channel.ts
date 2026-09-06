@@ -1,6 +1,6 @@
 /**
  * `prop-channel` — a prop that asked for a CHANNEL has to be fed something that can be one
- * (BUG-24 §4.9, decision 105).
+ * (BUG-24 §4.9, props-spec decision 86).
  *
  *  - **`FUD0200`** a `Signal<T>` prop fed something that is not the bare name of a reactive.
  *  - **`FUD0201`** a callback prop fed something that is not the bare name of a function.

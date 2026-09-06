@@ -140,7 +140,7 @@ Cada SDD reserva su rango; aquí está el registro maestro. Formato `FUD` + 4 d�
 | `FUD0540`–`0569` | 30 | `0540` bucle con markup que no declara `key (…)` (decisión 91) · `0541` `key (…)` vacía o sin cerrar · `0542` `key (…)` en un constructo que no itera (`@if`, `@switch`, decisión 94) · `0543` cabecera de bucle que no declara ningún binding, así que su key no puede identificar la iteración. `0544`–`0569` reservados. |
 | `FUD0570`–`0589` | 31 | `0570` `effect(...)` declarado fuera de `@code { @client }`: un efecto es lo que ocurre después del primer render, y en el servidor no hay tal cosa. Se omite y el resto del fichero se emite. `computed` y `batch` **no** reciben diagnóstico — los dos tienen semántica de servidor bien definida. `0571`–`0589` reservados. |
 
-`FUD0200`–`0203` los ocupa **BUG-24** (decisión 105, la forma del cruce): `0200` una prop
+`FUD0200`–`0203` los ocupa **BUG-24** (decisión 86 de props-spec, la forma del cruce): `0200` una prop
 `Signal<T>` alimentada con algo que no es el nombre desnudo de un `signal`/`computed` (sobre el
 valor) · `0201` una prop de función alimentada con algo que no es el nombre desnudo de una
 función (sobre el valor) · `0202` una celda que cruza hacia un componente que **no hidrata**,

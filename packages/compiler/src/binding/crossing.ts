@@ -47,7 +47,7 @@ export interface ComponentDeclaredProps {
   readonly name: string;
   readonly required: boolean;
   /**
-   * What the child asks to be handed by REFERENCE (decision 105): `'signal'` for a
+   * What the child asks to be handed by REFERENCE (props-spec decision 86): `'signal'` for a
    * `Signal<T>`, `'fn'` for a function signature, absent for a plain value.
    *
    * Absent is also what a child nobody could READ declares, and the two are deliberately the
@@ -59,7 +59,7 @@ export interface ComponentDeclaredProps {
 
 /**
  * HOW a value crosses the shadow boundary. Two forms, and what decides between them is what
- * the CHILD declares (decision 105):
+ * the CHILD declares (props-spec decision 86):
  *
  *  - `'value'` — the READ, `titulo()`. Decision 84, and still the default: a child that
  *    declares `titulo?: string` gets the string, because that is what it asked for.

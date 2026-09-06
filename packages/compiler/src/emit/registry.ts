@@ -47,7 +47,8 @@ function slotNames(comp: ResolvedComponent): readonly string[] {
  * `required` is the `?` of `T` and NOT whether the destructuring gives a default: the editor
  * checks the very same thing through `$Missing<$Props, …>`, and the two have to say the same
  * (BUG-23 §5). `channel` is read off the same `T`, and it is what decides the FORM of the
- * crossing (decision 105) — so both facts a parent needs about a child come out of one read.
+ * crossing (props-spec decision 86) — so both facts a parent needs about a child come out of
+ * one read.
  *
  * Exported because the crossing rule has more readers than the semantic pass: the cell layout
  * asks the very same question about the very same child (`state.ts`).
@@ -90,7 +91,7 @@ export function graphRegistry(graph: ComponentGraph): ComponentRegistry {
  *
  * That last group is not a nicety: a component that FORWARDS a callback is feeding a channel
  * with something that is not a function of its own, and reading that as `FUD0201` would reject
- * the one thing decision 105 exists to allow.
+ * the one thing props-spec decision 86 exists to allow.
  */
 function crossingNames(comp: ResolvedComponent): ReadonlyMap<string, CrossingKind> {
   const code = codeOf(comp);
