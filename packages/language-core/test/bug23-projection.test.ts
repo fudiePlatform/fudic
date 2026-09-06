@@ -119,9 +119,21 @@ describe('a handler that is a call is a deferred invocation (task 11)', () => {
 });
 
 describe('a reactive is projected as its READ (task 27)', () => {
-  it('adds the call the emit adds, on a `.prop`', () => {
+  it('hands a `.prop` to the child’s own type, which is what decides the form (BUG-24)', () => {
+    // It used to write `tone: (titulo()),` here, because decision 84 crossed the read and
+    // nothing else. Since decision 105 the form depends on what the CHILD declared, and the
+    // projection asks the one reader that knows: `$cross` takes the object or its read, and
+    // `$Prop` is the declared type of that very prop.
     expect(project(component('<app-badge .tone="@titulo"></app-badge>', CLIENT))).toContain(
-      'tone: (titulo()),',
+      'tone: $cross<$Prop<$C0, "tone">>(titulo),',
+    );
+  });
+
+  it('and on a plain attribute of a COMPONENT host, which is HTML’s vocabulary', () => {
+    // Not a prop, so no contract decides anything: an attribute carries a string on every
+    // level, and the emit crosses the read there whatever the child declares (BUG-24 §4.7).
+    expect(project(component('<app-badge id="@titulo"></app-badge>', CLIENT))).toContain(
+      'id: (titulo()),',
     );
   });
 

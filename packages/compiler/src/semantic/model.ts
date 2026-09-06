@@ -48,7 +48,32 @@ export interface ComponentRegistry {
   propsOf?(tag: string): readonly ComponentDeclaredProps[] | undefined;
   /** The names the tag declares with `<slot name="…">`, or `undefined` when unknowable. */
   slotsOf?(tag: string): readonly string[] | undefined;
+  /**
+   * Whether the tag HYDRATES, or `undefined` when it cannot be known.
+   *
+   * A fact about the whole GRAPH and not about one file — a component that is level 1 alone
+   * becomes level 3 the moment an ancestor hands it a reactive prop — so only a caller holding
+   * the resolved graph can answer it. It is what makes `FUD0202` decidable at build time
+   * instead of a `TypeError` in the browser.
+   */
+  hydratable?(tag: string): boolean | undefined;
+  /** Whether the tag WRITES that prop (`prop.set(…)`), or `undefined` when unknowable. */
+  writes?(tag: string, prop: string): boolean | undefined;
 }
+
+/**
+ * What a name of the component being checked can cross AS (BUG-24 §4.9).
+ *
+ * Its own reactives, its `@client` functions, and the props it received as cells — a component
+ * that FORWARDS a callback is feeding a channel with something that is not a function of its
+ * own, and reading that as an error would break the one thing decision 105 exists to allow.
+ */
+export type CrossingKind = 'signal' | 'computed' | 'fn';
+
+/** What a rule about the FORM of a crossing needs: the tree, the child's contract, and this. */
+export type ChannelInput = Pick<SemanticInput, 'source' | 'document' | 'components'> & {
+  readonly names: ReadonlyMap<string, CrossingKind>;
+};
 
 /**
  * Resolved semantic facts the emit consumes. Empty in v1 by design: the facts §1 anticipates

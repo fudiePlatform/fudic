@@ -66,8 +66,11 @@ describe('the `.prop` of a component', () => {
   it('still reports a reactive whose value is the wrong type', () => {
     const diags = typecheckCorpus(corpusWith(TONE_PROP, `.tone="@numero"`));
 
+    // `TS2345` and no longer `TS2322`: since BUG-24 the value goes through `$cross`, which
+    // hands the checker both readings at once (the object and its read) against the type the
+    // child declared. What the author reads is the same sentence over the same characters.
     expect(diags).toHaveLength(1);
-    expect(diags[0]!.code).toBe(2322);
+    expect(diags[0]!.code).toBe(2345);
   });
 
   it('leaves the hand-written read exactly as it was', () => {

@@ -41,9 +41,11 @@ export {
   installHydration,
   READY_EVENT,
   HYDRATED_EVENT,
+  type Hydration,
   type HydrationOptions,
   type HydratedDetail,
 } from './hydrate/install.js';
+export { isCellMark, type CellMark, type CellRef, type Cells } from './hydrate/cells.js';
 export type { ResolveChunk, ImportModule } from './hydrate/chunks.js';
 export type { HydratedFrom } from './hydrate/registry.js';
 export {

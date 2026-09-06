@@ -355,8 +355,21 @@ navegación; sin eso, una SPA acumula una celda por instancia y por ruta visitad
 | `FUD0202` | una prop `Signal<T>` o de función cruza hacia un componente **no hidratable** (N1/N2), que nunca podrá recibir la celda | sobre el nombre de la prop |
 | `FUD0203` | un `computed` cruza a una prop cuyo hijo la escribe (`.set`) — un derivado no es escribible (SDD-31 §4.3) | sobre el valor |
 
-`FUD0202` es el que más vale: pasar una signal a un componente de nivel 1 es un error que hoy
-se descubriría en runtime, y con `propsOf` es decidible en compilación.
+Los cuatro se preguntan en ese orden, y el orden es parte de la regla: primero **qué se ha
+escrito** y solo después **a quién**. Una página no tiene reactivos —las primitivas son de
+cliente (SDD-31 §8)— así que lo suyo es `FUD0200`, no un reproche sobre el nivel del hijo.
+
+`FUD0202` acaba siendo el de los **callbacks**, y por una razón que conviene dejar escrita: una
+signal que cruza vuelve hidratable al hijo ella sola —es el *property drilling* que `level.ts`
+ya propaga—, así que para una `Signal<T>` el caso no existe. Una función no mueve nada ni lee
+nada, de modo que un hijo que solo la recibe se queda en nivel 1: ese cruce no llegaría a
+ninguna parte, y es justo el que hoy se descubriría en runtime.
+
+**Dónde viven.** No en `ANALYZERS`: los cuatro necesitan cuatro cosas que solo contesta quien
+tiene el grafo resuelto —qué declara el hijo, si hidrata, si escribe la prop, y qué puede
+cruzar cada nombre de este componente—, y el editor no tiene ninguna. Allí TypeScript ya
+rechaza los mismos valores sobre la proyección, con el tipo real y con más que decir. Es el
+mismo reparto que BUG-23 §4.4 dejó para `FUD0197`–`FUD0199`: una voz por hecho.
 
 ---
 

@@ -25,6 +25,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { createCascade, type Cascade } from '../../src/hydrate/cascade.js';
 import { createChunkLoader } from '../../src/hydrate/chunks.js';
 import { createCells, isCellMark } from '../../src/hydrate/cells.js';
+import { installHydration } from '../../src/hydrate/install.js';
 import { readPageMaps } from '../../src/hydrate/maps.js';
 import { idOf, instancesOf, instanceState } from '../../src/hydrate/registry.js';
 import { signal, type Signal } from '../../src/signal.js';
@@ -335,6 +336,26 @@ describe('the registry itself', () => {
     // with the state the first one left behind.
     expect(second).not.toBe(first);
     expect(second()).toBe(7);
+  });
+});
+
+describe('installHydration hands the registry back (§6.16)', () => {
+  it('so a router that navigates IN PLACE has something to clear', () => {
+    publish({ state: [[0, 2, 3], [0, 5, { $: [0, 1] }]] });
+    host('cell-parent', 0);
+    const { cells } = installHydration({
+      root: document,
+      document,
+      registry: new TestRegistry(),
+      resolveChunk: (tag) => tag,
+      importModule: async () => {},
+    });
+
+    const first = cells.get([0, 1]);
+    first.set(42);
+    cells.clear();
+    expect(cells.get([0, 1])).not.toBe(first);
+    expect(cells.get([0, 1])()).toBe(5);
   });
 });
 

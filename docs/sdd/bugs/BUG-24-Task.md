@@ -3,7 +3,7 @@
 > **BUG:** [BUG-24 — una signal no cruza el shadow boundary](./BUG-24-signal-y-callback-no-cruzan.md)
 > **Paquetes:** `@fudic/core` · `@fudic/compiler` · `@fudic/ssr` · `@fudic/language-core`
 > **Rama:** `worktree-bug-24` · **Bloqueado por:** BUG-23 en `Hecho`
-> **Progreso:** 13 / 19
+> **Progreso:** 16 / 19
 
 Diecinueve tareas. Rutas relativas a la raíz del repo; cada tarea es un paso cerrado y se
 puede parar después de cualquiera con el workspace verde.
@@ -116,9 +116,9 @@ cerrado).
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 14 | 3 | **Cuatro diagnósticos, en el pase semántico.** `FUD0200` prop `Signal<T>` mal alimentada, `FUD0201` prop de función mal alimentada, `FUD0202` celda hacia un componente **no hidratable** (N1/N2, que nunca podrá recibirla), `FUD0203` un `computed` a una prop que el hijo escribe. Analizador propio, no una rama del emit: así el editor los enseña con los demás. Con `propsOf` ausente, **ninguno** | `compiler` | `src/semantic/analyzers/prop-channel.ts` *(nuevo)* · [src/semantic/analyze.ts](../../../packages/compiler/src/semantic/analyze.ts) · [SDD-12](../SDD-12-semantica.md) *(reserva)* |
-| [ ] | 15 | 9 | **La celda muere con la página.** El router de SDD-20 llama a `cells.clear()` en cada navegación. Sin esto una SPA acumula una celda por instancia y por ruta visitada, y la segunda visita a la misma ruta arrancaría con el estado de la primera — que es una fuga *y* un bug de corrección | `core` · `transport` | [src/hydrate/install.ts](../../../packages/core/src/hydrate/install.ts) · `packages/transport/src/router/` |
-| [ ] | 16 | 3 | **El editor comprueba el objeto donde el build cruza el objeto.** `emitValue` deja de proyectar `(titulo())` cuando `crossing` devuelve `'ref'`: ahí se copia `titulo` tal cual, porque `Signal<T>` es lo que el hijo declara. La regla 6 de BUG-23 §4.2 **no se retira**, se condiciona — y sigue teniendo una sola implementación | `language-core` | [src/template/attrs.ts `emitValue`](../../../packages/language-core/src/template/attrs.ts#L381-L401) · [src/template/context.ts](../../../packages/language-core/src/template/context.ts) |
+| [x] | 14 | 3 | **Cuatro diagnósticos, en el pase semántico.** `FUD0200` prop `Signal<T>` mal alimentada, `FUD0201` prop de función mal alimentada, `FUD0202` celda hacia un componente **no hidratable** (N1/N2, que nunca podrá recibirla), `FUD0203` un `computed` a una prop que el hijo escribe. Analizador propio, no una rama del emit: así el editor los enseña con los demás. Con `propsOf` ausente, **ninguno** | `compiler` | `src/semantic/analyzers/prop-channel.ts` *(nuevo)* · [src/semantic/analyze.ts](../../../packages/compiler/src/semantic/analyze.ts) · [SDD-12](../SDD-12-semantica.md) *(reserva)* |
+| [x] | 15 | 9 | **La celda muere con la página.** El router de SDD-20 llama a `cells.clear()` en cada navegación. Sin esto una SPA acumula una celda por instancia y por ruta visitada, y la segunda visita a la misma ruta arrancaría con el estado de la primera — que es una fuga *y* un bug de corrección | `core` · `transport` | [src/hydrate/install.ts](../../../packages/core/src/hydrate/install.ts) · `packages/transport/src/router/` |
+| [x] | 16 | 3 | **El editor comprueba el objeto donde el build cruza el objeto.** `emitValue` deja de proyectar `(titulo())` cuando `crossing` devuelve `'ref'`: ahí se copia `titulo` tal cual, porque `Signal<T>` es lo que el hijo declara. La regla 6 de BUG-23 §4.2 **no se retira**, se condiciona — y sigue teniendo una sola implementación | `language-core` | [src/template/attrs.ts `emitValue`](../../../packages/language-core/src/template/attrs.ts#L381-L401) · [src/template/context.ts](../../../packages/language-core/src/template/context.ts) |
 
 ## Fase 7 — cierre (3)
 

@@ -18,7 +18,7 @@
  */
 
 import { readPageMaps } from './maps.js';
-import { createCells } from './cells.js';
+import { createCells, type Cells } from './cells.js';
 import {
   createChunkLoader,
   importChunk,
@@ -79,7 +79,21 @@ export interface HydrationOptions {
   readonly registry?: ElementRegistry;
 }
 
-export function installHydration(options: HydrationOptions): void {
+/**
+ * What installing hydration hands back — the pieces of the page a NAVIGATION has to touch.
+ *
+ * Today SDD-20 navigates by replacing the document: every route is a `FetchEvent` the render
+ * Service Worker answers with HTML, so the registry dies with the page and nobody has to say
+ * so. `clear()` is the hook for the day a route changes IN PLACE — without it a shell that
+ * never reloads would keep one cell per instance per route visited, and the second visit to a
+ * route would open with the state the first one left behind. That is a leak and a correctness
+ * bug at once, which is why the seam is here rather than promised (BUG-24 §4.8).
+ */
+export interface Hydration {
+  readonly cells: Cells;
+}
+
+export function installHydration(options: HydrationOptions): Hydration {
   const doc = options.document ?? document;
   const registry = options.registry ?? browserRegistry;
   const maps = readPageMaps(doc);
@@ -150,4 +164,5 @@ export function installHydration(options: HydrationOptions): void {
     });
   }
   doc.dispatchEvent(new CustomEvent(READY_EVENT));
+  return { cells };
 }

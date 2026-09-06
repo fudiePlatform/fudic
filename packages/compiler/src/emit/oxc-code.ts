@@ -18,7 +18,9 @@ import { collectTemplateJs } from './constructs.js';
 import {
   changeableBindings,
   reservedIdentifiers,
+  setCalls,
   topLevelBindings,
+  topLevelFunctions,
   type FragmentAst,
 } from './scope.js';
 
@@ -194,6 +196,15 @@ export interface ExtractedCode {
    */
   readonly clientNames: readonly string[];
   /**
+   * The `@client` names declared as FUNCTIONS, and the ones this component calls `.set(…)` on.
+   *
+   * Both are what the crossing rules of §4.9 compare a value against: a callback prop has to
+   * be fed a function, and a `computed` may not cross to a prop the child WRITES — a derived
+   * value is not writable (SDD-31 §4.3), and the child is the one who would try.
+   */
+  readonly clientFunctions: ReadonlySet<string>;
+  readonly setCalls: ReadonlySet<string>;
+  /**
    * Every `emit(...)` of `@client` (§4.4), as the walk finds them — the patches are applied
    * by descending offset, so the order they arrive in is not one of. Empty when the
    * component does
@@ -304,6 +315,8 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
     template,
     mutable: changeableBindings(clientStatements),
     clientNames: topLevelBindings(clientStatements),
+    clientFunctions: topLevelFunctions(clientStatements),
+    setCalls: setCalls(clientStatements),
     emitCalls,
     diagnostics: [...result.diagnostics, ...own],
   };

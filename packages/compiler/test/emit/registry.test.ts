@@ -40,11 +40,21 @@ describe('graphRegistry', () => {
     expect(registry.slotsOf!('app-circle')).toEqual(['PEPITO']);
   });
 
+  it('and the two the GRAPH alone can answer: who hydrates, and who writes what', () => {
+    // `app-circle` as written declares no signal, no handler and no `@client`, so nothing of
+    // it ever comes alive — which is exactly what `FUD0202` is decided on (BUG-24 §4.9).
+    const registry = graphRegistry(graphOf('<app-circle .name="a"></app-circle>'));
+    expect(registry.hydratable!('app-circle')).toBe(false);
+    expect(registry.writes!('app-circle', 'name')).toBe(false);
+  });
+
   it('answers `undefined` — never a guess — for a tag it never reached', () => {
     const registry = graphRegistry(graphOf('<div></div>'));
     expect(registry.has('app-other')).toBe(false);
     expect(registry.propsOf!('app-other')).toBeUndefined();
     expect(registry.slotsOf!('app-other')).toBeUndefined();
+    expect(registry.hydratable!('app-other')).toBeUndefined();
+    expect(registry.writes!('app-other', 'name')).toBeUndefined();
   });
 
   it('a slot with no name, an empty one and an interpolated one declare nothing', () => {
