@@ -1,9 +1,21 @@
+<link rel="component" href="./signal-grandchild.fud">
+
 @code {
-  // A number, like every child. `.value=@count` names the signal, and naming it is what
-  // buys a channel of its own — but what CROSSES is the read, never the object: a signal is
-  // a function with a live set of subscribers inside, and the payload of an instance that
-  // came from the server is JSON.
-  const { value = 0 } = props<{ value?: number }>();
+  import type { Signal } from "@fudic/core";
+
+  // Declaring the prop as `Signal<number>` is the whole of it (decisión 105): what crosses
+  // the shadow boundary is the OBJECT, not its value. The compiler reads this line in the
+  // parent and cruza `count` desnudo; el runtime pone la misma celda en las dos casillas.
+  //
+  // Y con el objeto llega todo lo demás: derivar de él, reenviarlo al nieto y escribirlo.
+  const { value } = props<{ value: Signal<number> }>();
+
+  @client {
+    import { computed } from "@fudic/core";
+
+    // Imposible con un número: un derivado necesita una fuente que le avise.
+    const doble = computed(() => value() * 2);
+  }
 }
 
 <head>
@@ -32,7 +44,11 @@
 
 <signal-display>
   <template shadowrootmode="open">
-    <p class="out">Valor recibido por el hijo: <strong>@value</strong></p>
-    <p class="what">Al padre le basta nombrar la signal: el canal lo abre él.</p>
+    <p class="out">
+      El hijo tiene la celda: <strong>@value()</strong> — y deriva de ella:
+      <strong>@doble()</strong>
+    </p>
+    <p class="what">Una prop <code>Signal&lt;T&gt;</code> es un reactivo más del hijo.</p>
+    <signal-grandchild .value=@value></signal-grandchild>
   </template>
 </signal-display>

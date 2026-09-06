@@ -173,8 +173,15 @@ function buildComponentModule(
   // a page without one keeps the exact bytes it had; a component WITH cells has to wait for
   // its reactives to be declared, a few lines down, because what it registers is those very
   // objects (BUG-24 §4.2).
+  //
+  // **Every component contributes one, with no level filter** — the same rule the client
+  // chunk follows, and for the same reason. A component has no level of its own: one that is
+  // level 1 alone becomes level 3 the moment an ancestor hands it a reactive prop, and the
+  // Vite plugin compiles each `.fud` on its own, so asking the local graph would answer NO
+  // for exactly the components that are hydratable only by induction — a grandchild down a
+  // drilling chain — and leave them with a reserved slice nobody ever filled. Who reads it is
+  // the PAGE's business: an unclaimed host has no slice, and `state` on one does nothing.
   const writeState = (): void => {
-    if (!hydratable.has(comp.tag)) return;
     // The slice of this instance, contributed by the CHILD and not by the parent's host —
     // and it is NOT `Object.values(props)`. Two reasons, and both are visible right here.
     // The ORDER is the child's: these locals are what the client factory destructures, in

@@ -3,6 +3,7 @@ export const css = `:host{display:block;}.list{margin:0;padding:0;list-style:non
 
 export function render($dom, $shadow, props) {
   const { rows, empty = 'Sin elementos' } = props ?? {};
+  $dom.state($shadow, [rows, empty]);
   const $n0 = $dom.text(" "); $dom.append($shadow, $n0);
   if (rows === undefined || rows.length === 0) {
     const $n1 = $dom.text(" "); $dom.append($shadow, $n1);

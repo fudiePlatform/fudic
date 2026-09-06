@@ -16,7 +16,14 @@
  */
 
 import { SsrDom, renderToString } from '@fudic/ssr';
-import { FudicElement, signal, subscribe, type Controller, type FudicElementCtor } from '@fudic/core';
+import {
+  FudicElement,
+  computed,
+  signal,
+  subscribe,
+  type Controller,
+  type FudicElementCtor,
+} from '@fudic/core';
 import { emit, type Dom, type DomClient } from '@fudic/dom';
 import {
   emitComponentModule,
@@ -40,7 +47,7 @@ const serverRenders = new Map<ComponentGraph, Map<string, ServerRender>>();
  * first. Going through the filesystem instead would put a temp path into the module graph
  * of the test runner, which is not where a temp path belongs.
  */
-function serverRendersOf(graph: ComponentGraph): Map<string, ServerRender> {
+export function serverRendersOf(graph: ComponentGraph): Map<string, ServerRender> {
   const cached = serverRenders.get(graph);
   if (cached !== undefined) return cached;
 
@@ -88,9 +95,10 @@ export function clientFactory(graph: ComponentGraph, tag: string): FudicElementC
       },
     };
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    new Function('FudicElement', 'signal', '$sub', 'emit', 'customElements', body)(
+    new Function('FudicElement', 'signal', 'computed', '$sub', 'emit', 'customElements', body)(
       FudicElement,
       signal,
+      computed,
       subscribe,
       emit,
       registry,

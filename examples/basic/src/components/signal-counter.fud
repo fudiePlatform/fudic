@@ -1,16 +1,24 @@
 <link rel="component" href="./signal-display.fud">
+<link rel="component" href="./signal-form.fud">
 
 @code {
   @client {
     import { signal } from "@fudic/core";
 
-    // `.value=@count` names the signal and the compiler reads it for you: what crosses is
-    // `count()`. Naming it is what earns a subscription of its own, one per signal, writing
-    // one slot of the child's payload.
+    // El dueño de la celda. Lo que escribe en el host del hijo es el identificador desnudo,
+    // y como el hijo declara `Signal<number>` lo que cruza es ESTE objeto: no hay copia, no
+    // hay reenvío, no hay `u`. Al hidratar, esta línea recibe la celda que el runtime creó
+    // (`$pK ?? signal(0)`), así que padre e hijo apuntan a lo mismo.
     const count = signal(0);
 
     function inc() {
       count.set(count() + 1);
+    }
+
+    // Y esto cruza igual, por referencia: una arista instancia → instancia que un bus, que
+    // es difusión sobre `document`, no sabría dirigir.
+    function sumar(n: number) {
+      count.set(count() + n);
     }
   }
 }
@@ -58,6 +66,7 @@
         <p class="own">El padre tiene @(count()).</p>
       </div>
       <signal-display .value=@count></signal-display>
+      <signal-form .onSave=@sumar></signal-form>
     </section>
   </template>
 </signal-counter>
