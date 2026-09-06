@@ -1,0 +1,32 @@
+@code {
+  import type { Signal } from "@fudic/core";
+
+  // El nieto declara lo mismo que su padre, y recibe la MISMA celda: el marcador que viaja
+  // en su casilla apunta al dueño original, no a quien se la pasó. Por eso la cadena no se
+  // alarga con los niveles — un objeto, tres consumidores.
+  const { value } = props<{ value: Signal<number> }>();
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+      margin-top: 0.6rem;
+    }
+    .deep {
+      margin: 0;
+      padding: 0.6rem 0.8rem;
+      border: 1px dotted #8e6fb8;
+      border-radius: 8px;
+      background: #f7f3fb;
+      font-size: 0.9rem;
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+
+<signal-grandchild>
+  <template shadowrootmode="open">
+    <p class="deep">Y el nieto, tres niveles abajo, tiene ese mismo objeto: <strong>@value()</strong></p>
+  </template>
+</signal-grandchild>

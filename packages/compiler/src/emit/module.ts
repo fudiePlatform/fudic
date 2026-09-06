@@ -30,6 +30,7 @@ import { MarkupEmitter, renderName, tpl } from './markup.js';
 import { AssetLinker, type AssetExists } from './assets.js';
 import { compactStyleCss } from './css-compact.js';
 import { codeOf } from './oxc-code.js';
+import { cellSlots, childTargets, reactiveScope } from './state.js';
 import { hydratableTags } from './level.js';
 import { writeMapConstants, writeHydrationBlocks } from './maps.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
@@ -185,6 +186,7 @@ function buildComponentModule(
   const ext = options.importExt ?? '.mjs';
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
   const { props, signals, diagnostics } = codeOf(comp);
+  const cells = cellSlots(comp, graph);
   const hydratable = hydratableTags(graph);
   const bodyW = new CodeWriter();
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
@@ -196,7 +198,8 @@ function buildComponentModule(
     space,
     container: componentContainer(comp),
     boxes: componentBoxes(graph, comp),
-    signals: new Set(signals.map((s) => s.name)),
+    signals: reactiveScope(comp),
+    declared: childTargets(graph),
     hydratable,
   });
   em.emitChildren(comp.doc.template!.children, '$shadow');
@@ -217,7 +220,19 @@ function buildComponentModule(
     const pattern = props.map((p) => (p.def !== undefined ? `${p.name} = ${p.def}` : p.name)).join(', ');
     w.line(`const { ${pattern} } = props ?? {};`);
   }
-  if (hydratable.has(comp.tag)) {
+  // The slice of this instance. It is written HERE when the component publishes no cell, so
+  // a page without one keeps the exact bytes it had; a component WITH cells has to wait for
+  // its reactives to be declared, a few lines down, because what it registers is those very
+  // objects (BUG-24 §4.2).
+  //
+  // **Every component contributes one, with no level filter** — the same rule the client
+  // chunk follows, and for the same reason. A component has no level of its own: one that is
+  // level 1 alone becomes level 3 the moment an ancestor hands it a reactive prop, and the
+  // Vite plugin compiles each `.fud` on its own, so asking the local graph would answer NO
+  // for exactly the components that are hydratable only by induction — a grandchild down a
+  // drilling chain — and leave them with a reserved slice nobody ever filled. Who reads it is
+  // the PAGE's business: an unclaimed host has no slice, and `state` on one does nothing.
+  const writeState = (): void => {
     // The slice of this instance, contributed by the CHILD and not by the parent's host —
     // and it is NOT `Object.values(props)`. Two reasons, and both are visible right here.
     // The ORDER is the child's: these locals are what the client factory destructures, in
@@ -227,8 +242,18 @@ function buildComponentModule(
     // and `null` does not trigger a destructuring default (`variant` would land as `null`
     // instead of `'default'`). A component with no props emits `[]` — an empty slice is
     // information, not absence.
-    w.line(`$dom.state($shadow, [${props.map((p) => p.name).join(', ')}]);`);
-  }
+    //
+    // The cells follow, in the order `cellSlots` laid them out — the very order the client
+    // chunk destructures them in. Each one hands over its live object and, beside it, the
+    // value it serialises as: a signal READ, because in SSR the signal exists and reading it
+    // is how the page was painted, and nothing at all for a callback, which has none.
+    const cellDecls = cells
+      .map((c) => (c.kind === 'signal' ? `{ of: ${c.name}, value: ${c.name}() }` : `{ of: ${c.name} }`))
+      .join(', ');
+    const trailing = cells.length === 0 ? '' : `, [${cellDecls}]`;
+    w.line(`$dom.state($shadow, [${props.map((p) => p.name).join(', ')}]${trailing});`);
+  };
+  if (cells.length === 0) writeState();
   for (const s of signals) {
     // Inert reactive: SSR contributes the state as it starts and nothing else. A FUNCTION,
     // because that is the shape the client has — since SDD-31 §4.0 the call form is the only
@@ -241,6 +266,16 @@ function buildComponentModule(
     const init = s.kind === 'computed' ? `(${s.init})` : `() => (${s.init})`;
     w.line(`const ${s.name} = ${init}; // inert ${s.kind} (SSR; hydration is client-side)`);
   }
+  // A callback that crosses by reference is declared in `@code { @client }`, which the server
+  // never evaluates — so the name the body is about to hand the child does not exist here. It
+  // is stubbed for the same reason a signal is rendered inert: what the SERVER needs from it
+  // is not its behaviour but its IDENTITY, which is what `state` registers the cell under and
+  // what turns the child's slot into a marker (BUG-24 §4.6). Nothing calls it: a handler is
+  // hookup, and there is no hookup in SSR.
+  for (const cell of cells) {
+    if (cell.kind === 'fn') w.line(`const ${cell.name} = () => {}; // inert callback (SSR)`);
+  }
+  if (cells.length > 0) writeState();
   w.appendWriter(bodyW); // carries the markup's source anchors, unlike a toString()/split copy
   w.dedent();
   w.line('}');

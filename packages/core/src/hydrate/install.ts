@@ -18,6 +18,7 @@
  */
 
 import { readPageMaps } from './maps.js';
+import { createCells, type Cells } from './cells.js';
 import {
   createChunkLoader,
   importChunk,
@@ -78,7 +79,21 @@ export interface HydrationOptions {
   readonly registry?: ElementRegistry;
 }
 
-export function installHydration(options: HydrationOptions): void {
+/**
+ * What installing hydration hands back — the pieces of the page a NAVIGATION has to touch.
+ *
+ * Today SDD-20 navigates by replacing the document: every route is a `FetchEvent` the render
+ * Service Worker answers with HTML, so the registry dies with the page and nobody has to say
+ * so. `clear()` is the hook for the day a route changes IN PLACE — without it a shell that
+ * never reloads would keep one cell per instance per route visited, and the second visit to a
+ * route would open with the state the first one left behind. That is a leak and a correctness
+ * bug at once, which is why the seam is here rather than promised (BUG-24 §4.8).
+ */
+export interface Hydration {
+  readonly cells: Cells;
+}
+
+export function installHydration(options: HydrationOptions): Hydration {
   const doc = options.document ?? document;
   const registry = options.registry ?? browserRegistry;
   const maps = readPageMaps(doc);
@@ -94,7 +109,8 @@ export function installHydration(options: HydrationOptions): void {
     doc.dispatchEvent(new CustomEvent(HYDRATED_EVENT, { detail }));
   };
 
-  const cascade = createCascade({ maps, loader, registry, state, root: doc, report });
+  const cells = createCells(maps);
+  const cascade = createCascade({ maps, cells, loader, registry, state, root: doc, report });
   const preHydrateBus = createBusPrehydrator({
     maps,
     loader,
@@ -112,6 +128,10 @@ export function installHydration(options: HydrationOptions): void {
     await cascade.prepareTag(tag); // 4 — the subtree of every instance, post-order
     const elapsed = stopwatch();
     await loader.ensureDefined(tag); // 5 — the host, last
+    // The owner of every empty cell this host depends on, before it is handed anything
+    // (BUG-24 §4.6). An owner is an ANCESTOR, so the subtree walk above never reached it:
+    // this is the one step of path 2 that climbs.
+    await cascade.prepareCells(tag);
     cascade.attachAll(tag);
     report(id, tag, elapsed(), 'downloaded');
     replay(); // 6 — one replay, and only on this path
@@ -144,4 +164,5 @@ export function installHydration(options: HydrationOptions): void {
     });
   }
   doc.dispatchEvent(new CustomEvent(READY_EVENT));
+  return { cells };
 }

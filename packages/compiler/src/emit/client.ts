@@ -22,10 +22,11 @@ import { CodeWriter } from './writer.js';
 import { ClientMarkupEmitter, coreUsage, nodeIds } from './markup-client.js';
 import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js';
 import { AssetLinker } from './assets.js';
-import { codeOf, type Prop } from './oxc-code.js';
+import { codeOf, splicedOffset, type ClientStatement, type Prop } from './oxc-code.js';
 import { hookupContext } from './events.js';
 import { movingNames } from './level.js';
 import { rootContext } from './display.js';
+import { cellSlots, childTargets, reactiveScope, type CellSlot } from './state.js';
 import {
   componentBoxes,
   componentContainer,
@@ -44,10 +45,23 @@ import type { Diagnostic } from '../types/index.js';
  * teardown and `u` reassigns the props. Handing over is delivering the whole state, so a
  * pattern — which assigns everything it names — is exactly the right shape here.
  */
-function declaration(props: readonly Prop[]): string {
+function declaration(props: readonly Prop[], cells: readonly CellSlot[]): string {
   const names = props.map((p) => (p.def !== undefined ? `${p.name} = ${p.def}` : p.name));
-  return `let [$dom, $shadow${names.map((n) => `, ${n}`).join('')}] = $props;`;
+  // The cells come out under their POSITIONAL names and not under the author's, because the
+  // author's is about to be declared by their own `const count = …` a few lines down. What
+  // arrives here is the slot; `$pK ?? signal(init)` is where the two meet (BUG-24 §4.4).
+  const slots = cells.map((c) => cellName(c));
+  return `let [$dom, $shadow${[...names, ...slots].map((n) => `, ${n}`).join('')}] = $props;`;
 }
+
+/**
+ * The name a cell arrives under: its index in `$props`, which is its slot plus the two
+ * leading slots `$dom` and `$shadow` occupy.
+ *
+ * Inside the `$` reserve of SDD-15 §4.7, so it cannot collide with anything the author wrote
+ * — the `@client` body is copied verbatim into this same scope.
+ */
+const cellName = (cell: CellSlot): string => `$p${cell.slot + 2}`;
 
 /**
  * The UPDATE, over the same list and in the same order — but not with the same shape
@@ -77,6 +91,41 @@ function updateGuards(props: readonly Prop[]): string {
     .join(' ');
 }
 
+/**
+ * One statement of `@client`, with the cell spliced in front of every reactive it declares
+ * that a child asked for by reference (BUG-24 §4.4):
+ *
+ *     const n = signal(start);        →     const n = $p3 ?? signal(start);
+ *
+ * **One expression, not two branches**, and that is the answer to the objection SDD-31 §7
+ * raised against a lazy upgrade. `$p3` comes filled by `h` — an instance the server rendered,
+ * whose slice carries the cell the runtime materialised — and empty by `c`, an instance the
+ * parent fabricated at runtime, which has no payload at all; there the author's own
+ * initialiser runs, exactly as it always did. There is no second mode a chunk can be in, and
+ * therefore no window in which the first update could arrive in the other one's shape.
+ *
+ * By OFFSET and never by text: the region is copied verbatim, so a `signal` inside a string
+ * or a comment is not a declaration. The offsets are the author's, and `splicedOffset` carries
+ * them across whatever `extractCode` already inserted into this same statement.
+ */
+function withCells(
+  statement: ClientStatement,
+  signals: readonly { readonly name: string; readonly at: number }[],
+  cells: readonly CellSlot[],
+): string {
+  const named = new Map(cells.map((c) => [c.name, c]));
+  const edits: { at: number; text: string }[] = [];
+  for (const reactive of signals) {
+    const cell = named.get(reactive.name);
+    if (cell === undefined) continue;
+    const at = splicedOffset(statement, reactive.at);
+    if (at < 0 || at > statement.text.length) continue; // declared in another statement
+    edits.push({ at, text: `${cellName(cell)} ?? ` });
+  }
+  edits.sort((a, b) => b.at - a.at);
+  return edits.reduce((out, e) => out.slice(0, e.at) + e.text + out.slice(e.at), statement.text);
+}
+
 function buildComponentClientModule(
   graph: ComponentGraph,
   comp: ResolvedComponent,
@@ -88,6 +137,10 @@ function buildComponentClientModule(
   // The same three facts the server branch starts from, read from the same graph and the
   // same `<style>`: what the two branches drop has to be the same set, node for node (§4.5).
   const at = rootContext(space, componentContainer(comp), componentBoxes(graph, comp));
+  // The cells this component publishes: what a child asked to be handed by reference, in the
+  // slots `state.ts` lays out. It is the same list the server serialises with — one source
+  // for both, or the payload stops lining up (BUG-24 §4.2).
+  const cells = cellSlots(comp, graph);
 
   const bodies = newBodies();
   // What a block may be handed: the props (an update reassigns every one of them) and the
@@ -98,7 +151,11 @@ function buildComponentClientModule(
       const child = graph.components.get(tag);
       return child === undefined ? undefined : codeOf(child).props;
     },
-    signals: new Set(signals.map((s) => s.name)),
+    declared: childTargets(graph),
+    // A prop that arrived by reference is a reactive name like any other (BUG-24 §4.5): it
+    // reads `value()`, it crosses on to a grandchild as the object, and it repaints this
+    // component. No new rule anywhere — one more name in the set every existing rule reads.
+    signals: reactiveScope(comp),
     // The same set `level.ts` decides hydratability with, and from the same function: what
     // the emit hands over again and what the page marks hydratable cannot disagree.
     moving: movingNames(comp),
@@ -106,7 +163,11 @@ function buildComponentClientModule(
   // One channel for everything the emit has to SAY about this file, and one for what every
   // walk of it shares: a block three levels down reports through the same two.
   const emitDiagnostics: Diagnostic[] = [];
-  const hookup = hookupContext(template, emitDiagnostics);
+  const hookup = hookupContext(
+    template,
+    emitDiagnostics,
+    new Set(props.flatMap((p) => (p.channel === 'fn' ? [p.name] : []))),
+  );
   const ids = nodeIds();
   const usage = coreUsage();
   const ctx = blockContext(comp.source, scope, linker, ids, usage, hookup);
@@ -121,6 +182,14 @@ function buildComponentClientModule(
     hookup,
     at,
   });
+  // A callback has no initialiser to fall back on, so its cell cannot be `??`-ed into the
+  // author's declaration: the owner FILLS it as it hooks up (§4.6, step 3), and first, before
+  // any child of this instance is handed anything. `?.` and not a guard: an instance the
+  // parent created at runtime has no cell, and there the function crosses directly — which is
+  // the same single path seen from the other side.
+  for (const cell of cells) {
+    if (cell.kind === 'fn') bodies.hook.line(`${cellName(cell)}?.set(${cell.name});`);
+  }
   em.emitRoots(comp.doc.template!.children);
 
   // The component's OWN reactivity, and the only consumer a signal has: the emitted code
@@ -134,7 +203,14 @@ function buildComponentClientModule(
   // `$a` that writes nothing — `$w` filters per write (BUG-12 §3.3) — and missing one costs
   // a view that does not move. A `computed` is NOT subscribed: it has no value of its own,
   // and the leaves underneath it are already in this list.
-  const reactive = signals.flatMap((s) => (s.kind === 'signal' ? [s.name] : []));
+  //
+  // A prop that arrived by reference is in this list too, and that is §4.5 in one line: the
+  // child subscribes to it exactly as to a signal of its own, so it repaints on ITS OWN
+  // writes and on the owner's alike — and the parent no longer forwards anything to it.
+  const reactive = [
+    ...signals.flatMap((s) => (s.kind === 'signal' ? [s.name] : [])),
+    ...props.flatMap((p) => (p.channel === 'signal' ? [p.name] : [])),
+  ];
   // Nothing to renew: a component with signals but no value write and no construct has no
   // rendering that a `set` could change.
   const renews = reactive.length > 0 && (em.writes > 0 || !bodies.update.empty);
@@ -163,14 +239,14 @@ function buildComponentClientModule(
   w.line('const $r = [];'); // the roots, mounted by $m()
   w.line('const $d = []; // teardowns');
   if (em.writes > 0) w.line('const $w = []; // last applied, per value write');
-  w.line(declaration(props));
+  w.line(declaration(props, cells));
   // The host, materialized ONLY where something reads it (§4.4). A component with no bus
   // subscription and no `emit` does not pay a line of chunk for a reference nobody looks
   // at, and the chunk budget that keeps INP flat on a cache miss is what pays for that.
   // `let`, not `const`: `r()` releases it along with the nodes and the shadow root.
   const needsHost = emitCalls.length > 0 || hookup.hostUsed;
   if (needsHost) w.line('let $host = $dom.host($shadow);');
-  for (const line of client.body) w.line(line);
+  for (const statement of client.body) w.line(withCells(statement, signals, cells));
   w.line('');
   // The blocks: one function per construct, plus the registry of what is alive (SDD-30
   // §3.1, §3.6). Declared HERE, so each one reads `$dom`, the props and the `@client` body

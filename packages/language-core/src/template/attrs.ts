@@ -182,7 +182,10 @@ function emitProps(ctx: TemplateContext, el: ElementNode, bindings: readonly Ent
   // the user never wrote.
   ctx.w.projected(alias, tagSpan(el), DIAGNOSTIC_ONLY_CAPS);
   ctx.w.scaffold('>({');
-  emitEntries(ctx, props);
+  // The contract is handed down only when the tag really has one: an unregistered tag already
+  // fails with `TS2304` on its name, and indexing a type that does not exist would add a
+  // second error in a stretch no capability routes through (BUG-11 §4.4).
+  emitEntries(ctx, props, ctx.aliases.slotsAliasOf(el.name) === undefined ? undefined : alias);
   ctx.w.scaffold(props.length === 0 ? '});\n' : '\n});\n');
 
   // Only what was WRITTEN: an empty literal when the tag carries no plain attribute, because
@@ -258,7 +261,7 @@ function emitRequired(
  * use, one character further in. Writing a key there would be inventing a name; writing
  * nothing would leave the one position where the prop list is wanted unable to ask.
  */
-function emitEntries(ctx: TemplateContext, entries: readonly Entry[]): void {
+function emitEntries(ctx: TemplateContext, entries: readonly Entry[], contract?: string): void {
   for (const { attr, binding } of entries) {
     if (binding.type === 'property' && binding.name.length === 0) {
       ctx.w.projected('\n  ', attr.span, COMPLETION_ONLY_CAPS);
@@ -267,7 +270,7 @@ function emitEntries(ctx: TemplateContext, entries: readonly Entry[]): void {
     ctx.w.scaffold('\n  ');
     emitKey(ctx, attr, binding);
     ctx.w.scaffold(': ');
-    emitValue(ctx, attr, binding);
+    emitValue(ctx, attr, binding, contract);
     ctx.w.scaffold(',');
   }
 }
@@ -631,7 +634,12 @@ function nameSpan(attr: Attribute, binding: Binding, name: string): Span {
  * tells the two apart, exactly as `emitOpenHandler` uses it to tell `@click` from `@click=`, and
  * the second gets the anchor the first must not have.
  */
-function emitValue(ctx: TemplateContext, attr: Attribute, binding: Binding): void {
+function emitValue(
+  ctx: TemplateContext,
+  attr: Attribute,
+  binding: Binding,
+  contract?: string,
+): void {
   /* c8 ignore next -- emitProps only ever passes 'attr' and 'property' bindings here. */
   if (binding.type !== 'attr' && binding.type !== 'property') return;
 
@@ -641,7 +649,18 @@ function emitValue(ctx: TemplateContext, attr: Attribute, binding: Binding): voi
   // A bare attribute is `true` (decision 44); a lone expression keeps its exact type
   // (decision 24); anything else is a concatenation, checked as a string (decision 20).
   if (parts.length === 0) emitEmptyValue(ctx, attr, binding);
-  else if (only?.type === 'razor-expression') emitExpression(ctx, only, crossesAsRead(ctx, parts));
+  else if (only?.type === 'razor-expression') {
+    // A `.prop` of a KNOWN component naming a reactive is the one place the read is not
+    // decided here: what crosses depends on what the child declared, so the question goes to
+    // the checker with the child's own type (BUG-24 §4.1). Everywhere else — a native
+    // attribute, an unregistered tag — the emit crosses the read and so does this.
+    const cell =
+      contract !== undefined && binding.type === 'property' && crossesAsRead(ctx, parts)
+        ? `$Prop<${contract}, ${JSON.stringify(binding.name)}>`
+        : undefined;
+    if (cell !== undefined) emitCrossing(ctx, only, cell);
+    else emitExpression(ctx, only, crossesAsRead(ctx, parts));
+  }
   // A prop whose value the parser already rejected: `FUD0056` is out, and a SECOND error about
   // the same three characters is not a better report. `.id=.` used to project `id: "."`, so
   // TypeScript added «string is not assignable to number» underneath the compiler's own
@@ -817,6 +836,24 @@ function openInterpolation(part: Extract<AttributeValuePart, { type: 'attribute-
  * typed it, so nothing navigates to it, nothing renames through it, and no diagnostic lands
  * on it. What is mapped stays `titulo`, exactly as before.
  */
+/**
+ * `$cross<$C0['value']>(count)` — a reactive crossing a `.prop` whose form the CHILD decides.
+ *
+ * The alternative was to read the child's `.fud` from here, and that is exactly what the
+ * projection must not do: the contract is already an imported type, and one call hands the
+ * checker both readings at once. Against `value: Signal<number>` the object is what fits;
+ * against `value?: number` its read is; and against either, a value that is neither — `.value=@42`
+ * — is rejected on the author's own characters, which is the editor's half of `FUD0200`.
+ *
+ * Hover is unchanged and that is criterion 20: `count` is copied 1:1, so hovering it says
+ * `Signal<number>` exactly as before.
+ */
+function emitCrossing(ctx: TemplateContext, expr: RazorExpression, contract: string): void {
+  ctx.w.scaffold(`$cross<${contract}>(`);
+  copyRazor(ctx, expr);
+  ctx.w.scaffold(')');
+}
+
 function emitExpression(ctx: TemplateContext, expr: RazorExpression, read = false): void {
   ctx.w.scaffold('(');
   copyRazor(ctx, expr);

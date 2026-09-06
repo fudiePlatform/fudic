@@ -197,14 +197,29 @@ proyección**: si el render SSR solo pinta un subconjunto de los campos (un `@if
 `name` o `phone` según una condición), el payload igualmente contiene todos. El DOM refleja
 la proyección; el payload es la preimagen.
 
-> **Anotado, no escrito: la casilla que lleva un marcador.** Con «props como signals» decidido
-> ([SDD-31 §7](./SDD-31-signals-derivadas.md)), una casilla de `data` podrá contener
-> `{"$":[ownerId, slot]}` en vez de un valor: la signal se serializa en el tramo de **su dueño** y
-> la del hijo apunta allí. Sigue siendo JSON, y como `claim()` numera en pre-orden el marcador
-> apunta siempre hacia atrás, así que se resuelve en una pasada. Un marcador **sin** valor en la
-> celda del dueño es un callback: no hay nada que serializar y el runtime lo hidrata antes de
-> entregarlo. Nada de esto está implementado; queda escrito aquí para que el SDD del mecanismo
-> sepa qué párrafo tiene que reescribir.
+**Una casilla puede llevar un MARCADOR en vez de un valor** ([BUG-24](./bugs/BUG-24-signal-y-callback-no-cruzan.md)).
+Cuando el hijo declara la prop `Signal<T>` —o una firma de función— lo que va en su casilla es
+`{"$":[owner, slot]}`, la dirección de una casilla del tramo de **otra** instancia:
+
+```html
+<script type="application/json" id="fud-state">[[0,2,3],[0,0,{"$":[0,1]}]]</script>
+<!-- instancia 0: [ start=0, count=0 ]   ← la celda, con su valor, en el tramo del dueño
+     instancia 1: [ {"$":[0,1]} ]        ← «mi casilla es esa celda»                     -->
+```
+
+Tres cosas que eso no cambia y una que sí:
+
+- **Sigue siendo JSON.** Lo que nunca se serializa es la signal; el marcador es un objeto.
+- **El tramo del dueño = `[ ...props, ...celdas ]`.** Las celdas van detrás, así que ningún
+  índice existente se mueve y una página sin celdas publica exactamente los bytes de antes.
+- **Apunta siempre hacia atrás.** `claim()` numera en pre-orden, así que `owner < id` y una sola
+  pasada resuelve el payload entero.
+- **Un marcador `{"$f":[…]}` es una celda SIN valor**: un callback, cuya casilla en el dueño se
+  reserva como `null`. Esa ausencia es la instrucción — el runtime levanta al dueño antes de
+  entregar el tramo que la referencia (§4.4 de SDD-17).
+
+Quien sustituye el marcador por la celda es el **runtime**, antes de entregar el tramo (§3.7):
+el componente sigue sin conocer su `data-fud-id`.
 
 ### 3.4. `fud-tree` — la composición, por tag
 
@@ -358,6 +373,15 @@ prop y llama a `$a()`, que es la única función que escribe un valor en un nodo
 no monta y no vuelve a suscribir. `u` **con recomposición estructural** —`@if`, `@foreach`,
 reconciliación, decisión existencial— sigue siendo de los renders de bloque (§4.6).
 
+**Y una prop que cruza por REFERENCIA no pasa por `u`**
+([BUG-24](./bugs/BUG-24-signal-y-callback-no-cruzan.md)). El párrafo de arriba describe la prop
+que el hijo declara como valor, que es el caso por defecto y no ha cambiado. Cuando la declara
+`Signal<T>` la casilla se escribe **una vez**, con el objeto, y el padre **no** emite el
+`$sub(count, (v) => $n0.u([, , v]))` de esa casilla: no hay nada que renovar porque los dos
+extremos tienen la misma celda, y el hijo se suscribe él mismo como a cualquier reactivo suyo.
+Eso no reabre lo que este párrafo cierra —por el cable sigue sin viajar una signal—: lo que
+viaja es un marcador y la celda la crea el runtime al repartir el estado (§3.3, §4.3).
+
 ### 3.8. `Dom<N>` — dos métodos nuevos
 
 El contrato de SDD-14 gana dos métodos, y con ellos se cierra el hueco de la primitiva
@@ -450,6 +474,13 @@ implementa `FudicElement` una vez** (§3.7); el emit no los genera.
 controlador adopta los nodos existentes por **traversal posicional**
 (`$shadow.children[i]`, `firstChild`, `nextSibling`) — nunca `querySelector`, nunca
 `cloneNode`. Los props proceden del **payload** (`data.slice` por `data-fud-id`).
+
+**El tramo llega RESUELTO.** Lo que `attachAll` entrega no es la porción cruda del payload sino
+la que devuelve el registro de celdas: donde había un marcador hay una `Signal`, y donde había
+una casilla propia que algún consumidor nombró, esa misma
+([BUG-24 §4.3](./bugs/BUG-24-signal-y-callback-no-cruzan.md)). El chunk no lo nota: donde antes
+veía un número ve el objeto, y el dueño lo recoge con una sola expresión —
+`const n = $pK ?? signal(init)`, llena por `h` y vacía por `c`, sin dos caminos vivos.
 
 **Quién invoca `h`, y por qué no es el `connectedCallback`.** Lo invoca **el runtime**
 (SDD-17 §4.4, `attachAll`), no el propio host. El componente **no conoce su `data-fud-id`** —

@@ -1,11 +1,11 @@
 # BUG-24 — una signal no cruza el shadow boundary, y un callback no cruza en absoluto
 
-**Estado:** `Listo` · **Bloqueado por:** [BUG-23](./BUG-23-arroba-valvula-de-escape.md) ·
-**Rama:** `worktree-bug-24` · **Tareas:** [BUG-24-Task.md](./BUG-24-Task.md)
+**Estado:** `Hecho` · **Desbloqueado** por [BUG-23](./BUG-23-arroba-valvula-de-escape.md) en
+`Hecho` · **Rama:** `worktree-bug-24` · **Tareas:** [BUG-24-Task.md](./BUG-24-Task.md)
 
 > **Paquetes:** `core` · `compiler` · `ssr` · `language-core`
-> **Corrige:** decisión 84 · SDD-15 §3.3, §3.7, §4.3 · SDD-17 §3, §4.4 · SDD-31 §7 ·
-> BUG-12 §3.4
+> **Corrige:** props-spec 84, y añade la **86** · SDD-15 §3.3, §3.7, §4.3 · SDD-17 §3, §4.4 ·
+> SDD-31 §7 · BUG-12 §3.4
 > **Rango de diagnósticos:** `FUD0200`–`FUD0203` (del hueco `FUD0197`–`FUD0209` de SDD-12;
 > BUG-23 ocupa `FUD0197`–`FUD0199`)
 
@@ -118,18 +118,27 @@ export interface CellMark {
 
 /** El registro de celdas de la página. Una clave `owner:slot` → una `Signal`, para siempre. */
 export interface Cells {
-  /** La celda de esa dirección, materializada con `init` la primera vez que se pide. */
-  get(ref: CellRef, init: unknown): Signal<unknown>;
-  /** Las direcciones `$f` que un tramo referencia — las que exigen hidratar al dueño. */
-  eager(slice: readonly unknown[]): readonly CellRef[];
-  /** Sustituye los marcadores de un tramo por sus celdas. Devuelve un tramo nuevo. */
-  resolve(slice: readonly unknown[]): readonly unknown[];
+  /** La celda de esa dirección, materializada la primera vez que se pide. */
+  get(ref: CellRef): Signal<unknown>;
+  /** Las direcciones `$f` de las que depende esa instancia — las que exigen hidratar al dueño. */
+  eager(id: number): readonly CellRef[];
+  /** El tramo de esa instancia con sus celdas puestas. Devuelve un tramo nuevo. */
+  resolve(id: number): readonly unknown[];
   /** Vacía el registro. Lo llama el router al navegar (SDD-20). */
   clear(): void;
 }
 
 export function createCells(maps: PageMaps): Cells;
 ```
+
+> **Por id, no por tramo — y el `init` no viaja.** Un tramo suelto no basta para resolverlo.
+> La casilla del **dueño** lleva su valor y no un marcador (§4.2, criterio 5), así que su
+> dirección solo está escrita en los marcadores de sus consumidores: `resolve` necesita saber
+> de quién es el tramo para reconocerla, y el registro barre el payload una vez al crearse
+> para saber cuáles son. Sin eso, un dueño que hidratara **primero** encontraría un `0` en su
+> casilla y `$p3 ?? signal(start)` le devolvería el número. Por lo mismo el valor inicial no
+> es un argumento: sale siempre de `maps.slice(owner)[slot]`, que es una sola lectura y no
+> depende de quién pregunte antes. `PageMaps` gana un `count` para poder recorrerlo.
 
 ```ts
 // hydrate/cascade.ts — `attachAll` deja de entregar el tramo crudo
@@ -148,7 +157,7 @@ lado cliente necesita para el fallback de §4.4.
 // binding/crossing.ts — el tipo que BUG-23 deja preparado, ahora con su segundo caso vivo
 export type Crossing =
   | { readonly kind: 'value'; readonly name: string }   // `titulo()` — decisión 84
-  | { readonly kind: 'ref';   readonly name: string };  // la celda   — decisión 105
+  | { readonly kind: 'ref';   readonly name: string };  // la celda   — decisión 86 de props-spec
 
 // emit/oxc-code.ts — una prop dice si pide un canal
 export interface Prop {
@@ -194,7 +203,7 @@ Sin firmas nuevas. `emitValue` deja de proyectar la lectura cuando `crossing` de
 Es lo que cierra §2.3 y §2.4 a la vez: si el objeto no lo construye el código de nadie, el
 orden en que corre el código de cada uno deja de importar.
 
-### 4.1 Decisión 105 — una prop declarada `Signal<T>` cruza por referencia
+### 4.1 Decisión 86 de props-spec — una prop declarada `Signal<T>` cruza por referencia
 
 Lo que decide el modo es **lo que declara el hijo**, leído en compilación con `propsOf`
 (BUG-23 tarea 17). No hay sintaxis nueva en el padre:
@@ -202,7 +211,7 @@ Lo que decide el modo es **lo que declara el hijo**, leído en compilación con 
 | el hijo declara | `.value=@count` cruza | por qué |
 |---|---|---|
 | `value?: number` | `count()` — el valor | decisión 84, byte a byte lo de hoy |
-| `value: Signal<number>` | `count` — la celda | decisión 105 |
+| `value: Signal<number>` | `count` — la celda | decisión 86 de props-spec |
 | `onSave: () => void` | la celda de `save` | §4.6 |
 
 ```fud
@@ -244,17 +253,16 @@ de descender a su shadow, así que `owner < id` siempre y una sola pasada basta.
 
 ```js
 // cascade.ts — attachAll
-const slice = cells.resolve(maps.slice(id));
-host.h(slice);
+host.h(cells.resolve(id));
 ```
 
 ```js
 // hydrate/cells.ts
 const key = ([o, s]) => `${o}:${s}`;
-get(ref, init) {
+get(ref) {
   const k = key(ref);
   let cell = map.get(k);
-  if (cell === undefined) { cell = signal(init); map.set(k, cell); }
+  if (cell === undefined) { cell = signal(maps.slice(ref[0])[ref[1]]); map.set(k, cell); }
   return cell;                       // misma dirección → mismo objeto, pida quien pida
 }
 ```
@@ -347,8 +355,21 @@ navegación; sin eso, una SPA acumula una celda por instancia y por ruta visitad
 | `FUD0202` | una prop `Signal<T>` o de función cruza hacia un componente **no hidratable** (N1/N2), que nunca podrá recibir la celda | sobre el nombre de la prop |
 | `FUD0203` | un `computed` cruza a una prop cuyo hijo la escribe (`.set`) — un derivado no es escribible (SDD-31 §4.3) | sobre el valor |
 
-`FUD0202` es el que más vale: pasar una signal a un componente de nivel 1 es un error que hoy
-se descubriría en runtime, y con `propsOf` es decidible en compilación.
+Los cuatro se preguntan en ese orden, y el orden es parte de la regla: primero **qué se ha
+escrito** y solo después **a quién**. Una página no tiene reactivos —las primitivas son de
+cliente (SDD-31 §8)— así que lo suyo es `FUD0200`, no un reproche sobre el nivel del hijo.
+
+`FUD0202` acaba siendo el de los **callbacks**, y por una razón que conviene dejar escrita: una
+signal que cruza vuelve hidratable al hijo ella sola —es el *property drilling* que `level.ts`
+ya propaga—, así que para una `Signal<T>` el caso no existe. Una función no mueve nada ni lee
+nada, de modo que un hijo que solo la recibe se queda en nivel 1: ese cruce no llegaría a
+ninguna parte, y es justo el que hoy se descubriría en runtime.
+
+**Dónde viven.** No en `ANALYZERS`: los cuatro necesitan cuatro cosas que solo contesta quien
+tiene el grafo resuelto —qué declara el hijo, si hidrata, si escribe la prop, y qué puede
+cruzar cada nombre de este componente—, y el editor no tiene ninguna. Allí TypeScript ya
+rechaza los mismos valores sobre la proyección, con el tipo real y con más que decir. Es el
+mismo reparto que BUG-23 §4.4 dejó para `FUD0197`–`FUD0199`: una voz por hecho.
 
 ---
 

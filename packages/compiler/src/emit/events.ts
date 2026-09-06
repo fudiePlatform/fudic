@@ -54,10 +54,31 @@ export interface HookupContext {
   readonly diagnostics: Diagnostic[];
   /** Marked when a binding reads `$host`, so the factory declares it (§4.4). */
   hostUsed: boolean;
+  /**
+   * The props this component received as CELLS of a function (BUG-24 §4.6).
+   *
+   * A handler named by one of them is the cell, not the function: what has to be subscribed
+   * is what the cell holds, so `@click=@onSave` becomes `onSave()` and `@click=@onSave(x)`
+   * becomes `onSave()(x)`. Reading it at DISPATCH and not here is the point — the owner may
+   * still have been cold when this listener was registered.
+   */
+  readonly callbacks: ReadonlySet<string>;
 }
 
-export function hookupContext(template: TemplateJs, diagnostics: Diagnostic[]): HookupContext {
-  return { template, diagnostics, hostUsed: false };
+export function hookupContext(
+  template: TemplateJs,
+  diagnostics: Diagnostic[],
+  callbacks: ReadonlySet<string> = new Set(),
+): HookupContext {
+  return { template, diagnostics, hostUsed: false, callbacks };
+}
+
+/** A CALL whose callee arrived as a cell, with the read spliced in: `onSave(x)` → `onSave()(x)`. */
+function withCellRead(text: string, at: Span, call: OxcNode, ctx: HookupContext): string {
+  const callee = call['callee'] as OxcNode;
+  if (callee.type !== 'Identifier' || !ctx.callbacks.has(String(callee['name']))) return text;
+  const end = ctx.template.offset(callee.end) - at.start;
+  return text.slice(0, end) + '()' + text.slice(end);
 }
 
 /**
@@ -77,8 +98,11 @@ export function eventHandler(source: string, at: Span, ctx: HookupContext): stri
     // Invoked at DISPATCH, inside an arrow whose parameter is spelled `$event`: the argument
     // list is copied character for character, so what the author wrote is what runs.
     case 'call':
-      return `($event) => ${text}`;
+      return `($event) => ${withCellRead(text, at, root!, ctx)}`;
+    // A bare reference to a callback prop has to be read at dispatch too, and the arrow is
+    // what defers it: the cell may still be empty when this listener is registered.
     case 'reference':
+      return ctx.callbacks.has(text) ? `($event) => ${text}()($event)` : text;
     case 'lambda':
       return text;
     case 'unsuitable':

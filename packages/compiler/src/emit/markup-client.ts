@@ -47,6 +47,7 @@ import {
   readsMoving,
   writeElementAttrs,
   type HostContext,
+  type PropTarget,
   type ValueSink,
 } from './attrs.js';
 import { branchesOf } from './constructs.js';
@@ -225,6 +226,13 @@ export interface ClientBodies {
  */
 export interface ClientScope {
   childProps(tag: string): readonly Prop[] | undefined;
+  /**
+   * What a child declares about one of its props — the other half of `childProps`, and the
+   * one that decides the FORM of the crossing (props-spec decision 86). Two questions about
+   * the same child because they are asked at different moments: the order when the tuple is
+   * composed, the channel when each value in it is written.
+   */
+  declared(tag: string): PropTarget | undefined;
   readonly signals: ReadonlySet<string>;
   readonly moving: ReadonlySet<string>;
 }
@@ -244,6 +252,16 @@ interface Slot {
    * what only has `changes` is renewed in the update pass, with the whole tuple.
    */
   readonly changes: boolean;
+  /**
+   * Whether the value crosses by REFERENCE (props-spec decision 86): the child asked for the
+   * object, so what is written into the slot is the object itself.
+   *
+   * It is handed over ONCE and never again, and that is not an omission — it is the whole
+   * point. There is nothing to renew: parent and child hold the same cell, so the child hears
+   * every change through its own subscription. The handover still happens because an instance
+   * the parent CREATED at runtime has no payload to have received it in (§6, criterion 17).
+   */
+  readonly ref?: true;
 }
 
 /**
@@ -380,8 +398,13 @@ export class ClientMarkupEmitter {
   }
 
   /** What `attrs.ts` needs to know about the element it is writing: see `HostContext`. */
-  #host(isComponent: boolean): HostContext {
-    return { isComponent, signals: this.#scope.signals };
+  #host(isComponent: boolean, tag?: string): HostContext {
+    const declared = tag === undefined ? undefined : this.#scope.declared(tag);
+    return {
+      isComponent,
+      signals: this.#scope.signals,
+      ...(declared === undefined ? {} : { declared }),
+    };
   }
 
   /** The component template: the direct children of the shadow root. */
@@ -611,7 +634,7 @@ export class ClientMarkupEmitter {
         v,
         this.#fab,
         this.#linker,
-        this.#host(true),
+        this.#host(true, el.name),
         this.#sinkFor(),
       );
       this.#childValues(el, v);
@@ -711,11 +734,17 @@ export class ClientMarkupEmitter {
    * handed its value once at hookup and never heard from again, and the chain died at depth
    * one. What a prop has instead of a channel is the update pass: it is reassigned by `u`,
    * and right after that is exactly when the child has to be told (§4.2).
+   *
+   * **And a value that crosses by REFERENCE has neither** (BUG-24 §4.5). The child holds the
+   * very cell the parent does, so there is nothing to reforward: the `$sub(count, …u(…))`
+   * this used to emit for it is gone, and so is its slot in the update pass. It is still
+   * handed over ONCE, because an instance the parent fabricates at runtime never received a
+   * payload to have found it in.
    */
   #childValues(el: ElementNode, v: string): void {
     const slots = this.#slots(el);
     const bound = [...slots.values()];
-    if (!bound.some((s) => s.signal !== undefined || s.changes)) return;
+    if (!bound.some((s) => s.signal !== undefined || s.changes || s.ref === true)) return;
 
     // The slots in the CHILD's declared order: the payload carries no schema, so the index
     // is the whole contract. A slot the parent does not bind is a hole in both passes.
@@ -772,12 +801,18 @@ export class ClientMarkupEmitter {
    */
   #slots(el: ElementNode): Map<string, Slot> {
     const out = new Map<string, Slot>();
+    const declared = this.#scope.declared(el.name);
     for (const attr of el.attributes) {
       const b = classifyAttribute(attr, this.#source).value;
       if (b.type !== 'property') continue;
-      // No emitter produces a `'ref'` crossing yet (SDD-31 §7), so whatever `crossing`
-      // answers here is the `'value'` form and its name is the reactive to subscribe to.
-      const naked = crossing(this.#source, b.value, this.#scope.signals)?.name;
+      const how = crossing(this.#source, b.value, this.#scope.signals, declared?.(b.name));
+      // By reference: the object goes in, once. No signal to hook onto and nothing that
+      // `changes` — the child is not downstream of this parent any more, it is beside it.
+      if (how?.kind === 'ref') {
+        out.set(b.name, { expr: how.name, changes: false, ref: true });
+        continue;
+      }
+      const naked = how?.name;
       if (naked !== undefined) {
         out.set(b.name, { expr: naked, signal: naked, changes: false });
       } else {

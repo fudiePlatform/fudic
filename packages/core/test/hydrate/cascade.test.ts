@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createCascade, type Cascade } from '../../src/hydrate/cascade.js';
+import { createCells } from '../../src/hydrate/cells.js';
 import { createChunkLoader } from '../../src/hydrate/chunks.js';
 import { readPageMaps } from '../../src/hydrate/maps.js';
 import { instanceState, type InstanceState } from '../../src/hydrate/registry.js';
@@ -29,6 +30,7 @@ function harness(): Harness {
   });
   const cascade = createCascade({
     maps,
+    cells: createCells(maps),
     loader,
     registry,
     state,

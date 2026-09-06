@@ -10,40 +10,47 @@
   <site-nav .current="signal-prop"></site-nav>
 }
 
-<h1>1 · El padre nombra la signal</h1>
+<h1>1 · Lo que cruza lo decide el hijo</h1>
 <p class="lede">
-  El padre tiene la signal. Lo que escribe en el host del hijo es el
-  <strong>identificador</strong>, no una llamada:
-  <code>@('<signal-display .value=@count>')</code>. Y aun así lo que cruza el shadow
-  boundary es un <strong>número</strong>: el compilador lee la signal por ti.
+  El padre escribe siempre lo mismo: el <strong>identificador</strong>, no una llamada
+  — <code>@('<signal-display .value=@count>')</code>. Lo que cambia es lo que declara el
+  hijo. Si pide <code>value?: number</code> cruza el número; si pide
+  <code>value: Signal&lt;number&gt;</code> cruza <strong>la signal misma</strong>.
 </p>
 
 <signal-counter></signal-counter>
 
 <h2>Qué pasa</h2>
 <p>
-  Pulsa <code>+1</code>. Suben los dos números: el del padre, que lee su propia signal, y
-  el del recuadro verde, que es el hijo. El hijo no sabe que existe ninguna signal —
-  recibe un número y lo pinta.
+  Pulsa <code>+1</code>. Suben los tres números, y no porque el padre los reescriba: los
+  tres <strong>leen el mismo objeto</strong>. El hijo deriva de él con un
+  <code>computed</code>, se lo reenvía al nieto tal cual, y el nieto tampoco recibe una
+  copia. Un objeto, tres consumidores, una suscripción cada uno.
 </p>
 <p>
-  Nombrarla es lo que le sale a cuenta al padre. Como el compilador ve que el valor es
-  exactamente el nombre de una signal, le abre un <strong>canal propio</strong>: una
-  suscripción por signal que, al moverse, escribe <em>una sola</em> casilla del payload del
-  hijo. Ni recompone la tupla entera ni lee las demás props. Compáralo con
-  <a href="/value-prop">la otra página</a>, donde el valor va leído a mano y se renueva con
-  la pasada de render completa.
+  Ahora pulsa <code>Sumar 5 desde el hijo</code>. Eso es una prop de <strong>función</strong>:
+  el recuadro amarillo llama a una función del padre, sin bus y sin evento. Es una arista
+  instancia → instancia, que es justo lo que un bus —difusión sobre <code>document</code>—
+  no sabe dirigir: dos formularios en la misma página llaman cada uno al suyo.
 </p>
-<h2>Por qué no cruza la signal misma</h2>
+
+<h2>Cómo cruza algo que no es JSON</h2>
 <p>
-  Porque no sobreviviría al viaje. Una instancia que viene del servidor recibe su estado
-  <strong>serializado</strong>, y una signal es una función con un conjunto de suscriptores
-  vivo dentro: eso no es JSON. Si cruzara, el servidor pintaría
-  <code>@("[object Object]")</code> y el cliente le entregaría al hijo algo que no puede
-  reconstruir.
+  Sigue sin cruzar. Por el cable viaja un <strong>marcador</strong>, <code>@('{"$":[0,1]}')</code>:
+  la dirección de una casilla del tramo del dueño. <code>fud-state</code> sigue siendo JSON
+  puro. La signal la crea el <strong>runtime</strong> al hidratar, una sola vez por dirección,
+  y se la entrega ya puesta a quien la pida — de modo que nadie la construye dos veces y el
+  orden en que despierta cada componente deja de importar.
 </p>
 <p>
-  Así que en v1 por el shadow boundary <strong>cruza un valor, siempre</strong>. Que el hijo
-  reciba la signal y se suscriba él mismo es una decisión <em>abierta</em>, no descartada.
-  Mientras no se cierre, el dueño del valor es quien lo vuelve a escribir.
+  De ahí sale lo que antes era imposible: el hijo puede <code>value.set(7)</code> con el padre
+  todavía frío, y el padre, al despertar, se suscribe y pinta el 7. Y una celda de función,
+  que no tiene valor que serializar, obliga al runtime a levantar antes al dueño — por eso el
+  callback corre en el primer clic y no en el segundo.
+</p>
+<p>
+  El servidor, mientras tanto, pinta valores como siempre: ahí el hijo es una llamada a
+  función en el mismo proceso, así que recibe el objeto y lo lee él. El HTML no cambia un
+  byte, y el nivel 1 tampoco. Compáralo con <a href="/value-prop">la otra página</a>, donde
+  el hijo pide un número y el dueño se lo vuelve a escribir en cada notificación.
 </p>

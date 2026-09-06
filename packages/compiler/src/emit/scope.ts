@@ -295,6 +295,103 @@ export function patternBindings(pattern: unknown): readonly string[] {
 }
 
 /**
+ * The names a region declares at its TOP LEVEL, in the order it declares them (BUG-24 §4.2).
+ *
+ * It is the order the cells of a component are laid out in its payload slice, and that order
+ * has to be a fact about the source rather than about how any pass happens to visit it: a
+ * `const` and a `function` are both declarations, and a slice whose indices depended on which
+ * of the two an emitter looked at first would be a slice that stops lining up between two
+ * compilations of the same file.
+ *
+ * Top level only, because that is the whole of what can cross: a name declared inside a
+ * handler is not the component's to publish.
+ */
+export function topLevelBindings(statements: readonly OxcNode[]): readonly string[] {
+  const out: string[] = [];
+  for (const statement of statements) {
+    if (statement.type === 'VariableDeclaration') {
+      for (const declarator of asArray(field(statement, 'declarations'))) {
+        out.push(...patternBindings(field(declarator, 'id')));
+      }
+      continue;
+    }
+    // A `function` declares exactly one name, and it is its own. At the top level of a module
+    // it always has one: an anonymous function is an `export default`, which is a different
+    // node and declares nothing a sibling could name.
+    if (statement.type !== 'FunctionDeclaration') continue;
+    out.push(nameOf(field(statement, 'id') as OxcNode));
+  }
+  return out;
+}
+
+/**
+ * The top-level names a region declares as FUNCTIONS — what a callback prop can be fed
+ * (BUG-24 §4.9, `FUD0201`).
+ *
+ * Three spellings and no more: a `function` declaration, and a binding initialised with an
+ * arrow or a function expression. Anything else is a value as far as this pass can prove, and
+ * «cannot prove it is a function» is the answer that keeps a build from reporting an error it
+ * cannot demonstrate.
+ */
+export function topLevelFunctions(statements: readonly OxcNode[]): ReadonlySet<string> {
+  const out = new Set<string>();
+  for (const statement of statements) {
+    if (statement.type === 'FunctionDeclaration') {
+      out.add(nameOf(field(statement, 'id') as OxcNode));
+      continue;
+    }
+    if (statement.type !== 'VariableDeclaration') continue;
+    for (const declarator of asArray(field(statement, 'declarations'))) {
+      const init = field(declarator, 'init');
+      const id = field(declarator, 'id');
+      if (!isNode(init) || !isNode(id) || id.type !== 'Identifier') continue;
+      if (init.type === 'ArrowFunctionExpression' || init.type === 'FunctionExpression') {
+        out.add(nameOf(id));
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * The names a region calls `.set(…)` on, however deep — what tells a WRITTEN prop from a read
+ * one (BUG-24 §4.9, `FUD0203`).
+ *
+ * By the member expression and never by text: `obj.set(x)` writes `obj`, a `set` inside a
+ * string is not a call, and a handler five closures down writes just as much as the top level.
+ */
+export function setCalls(statements: readonly OxcNode[]): ReadonlySet<string> {
+  const out = new Set<string>();
+  collectSetCalls(statements, out);
+  return out;
+}
+
+function collectSetCalls(node: unknown, out: Set<string>): void {
+  if (Array.isArray(node)) {
+    for (const child of node) collectSetCalls(child, out);
+    return;
+  }
+  if (!isNode(node)) return;
+  if (node.type === 'CallExpression') {
+    const callee = field(node, 'callee');
+    if (isNode(callee) && callee.type === 'MemberExpression') {
+      const object = field(callee, 'object');
+      const property = field(callee, 'property');
+      if (
+        isNode(object) &&
+        object.type === 'Identifier' &&
+        isNode(property) &&
+        property.type === 'Identifier' &&
+        nameOf(property) === 'set'
+      ) {
+        out.add(nameOf(object));
+      }
+    }
+  }
+  for (const value of Object.values(node)) collectSetCalls(value, out);
+}
+
+/**
  * The top-level names of a region whose VALUE can change (§3.3).
  *
  * These are the only ones a block needs as a parameter: `u` has nothing new to hand a

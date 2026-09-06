@@ -32,6 +32,15 @@ export interface PageMaps {
    * two indistinguishable on purpose.
    */
   slice(id: number): readonly unknown[];
+  /**
+   * How many instances the payload reserves a slice for — `offsets.length - 1`.
+   *
+   * The cell registry reads it to sweep the payload once and learn which slots are cells
+   * (BUG-24 §4.3). An owner's own slot carries its VALUE and not a marker, so the only place
+   * that address is written down is inside the consumers' markers, and finding them all is
+   * what lets the owner's slice be resolved too — whichever of the two hydrates first.
+   */
+  readonly count: number;
 }
 
 /** The ids of the three blocks. Written by `writeHydrationBlocks` (SDD-15 §3.3–§3.5). */
@@ -61,6 +70,7 @@ export function readPageMaps(doc: Document): PageMaps {
   return {
     tree: readTagMap(doc, TREE_BLOCK),
     bus: readTagMap(doc, BUS_BLOCK),
+    count: offsets.length - 1,
     slice(id: number): readonly unknown[] {
       const start = offsets[id];
       const end = offsets[id + 1];

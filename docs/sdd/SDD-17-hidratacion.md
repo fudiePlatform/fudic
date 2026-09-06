@@ -98,13 +98,24 @@ el runtime parsea `fud-state` una vez y **pasa** el tramo a la instancia
 (`host.h(data.slice(offsets[id], offsets[id+1]))`, SDD-15 §4.3). El chunk no lee de un global
 ni el componente conoce su `data-fud-id`.
 
-> **Anotado, no escrito: repartir el estado pasará a resolver celdas.** Con «props como signals»
-> decidido ([SDD-31 §7](./SDD-31-signals-derivadas.md)), una casilla del tramo podrá ser el
-> marcador `{"$":[ownerId, slot]}`, y quien lo sustituye por el objeto es **el runtime**, aquí:
-> una celda única por `id:slot` en un `Map`, materializada al repartir, de forma que padre e hijo
-> reciban **la misma** `Signal` y el chunk deje de fabricarla. Es justo lo que mantiene en pie la
-> frase de arriba —el componente sigue sin conocer su `data-fud-id`—, y por eso la sustitución no
-> puede vivir en el chunk. Nada de esto está implementado.
+**Y repartir el estado es también RESOLVER CELDAS** ([BUG-24](./bugs/BUG-24-signal-y-callback-no-cruzan.md)).
+Una casilla del tramo puede ser el marcador `{"$":[owner, slot]}`, y quien lo sustituye por el
+objeto es el **runtime**, aquí:
+
+```js
+host.h(cells.resolve(id));   // en vez de host.h(maps.slice(id))
+```
+
+Una celda única por `owner:slot`, materializada la primera vez que alguien la pide, de forma que
+padre e hijo reciban **la misma** `Signal` y el chunk deje de fabricarla — la crea el runtime, el
+chunk la recibe. Es justo lo que mantiene en pie la frase de arriba (el componente sigue sin
+conocer su `data-fud-id`), y por eso la sustitución no puede vivir en el chunk.
+
+Se resuelve **por instancia y no por tramo suelto**: la casilla del dueño lleva su valor y no un
+marcador, así que su dirección solo está escrita en los marcadores de sus consumidores. El
+registro barre el payload una vez al crearse para saber cuáles son sus casillas, y con eso el
+dueño recibe su celda hidrate primero o último. El registro es **de página** y muere con ella;
+`cells.clear()` es lo que un router que navegase en sitio tendría que llamar (SDD-20).
 
 ```ts
 // Mensajes con el Service Worker (warm, §4.7)
@@ -177,8 +188,9 @@ camino 2 (tag del host no definido):
   3. preHydrateBus(tag)                          — receptores de bus, EN SECUENCIA
   4. prepareTag(tag)                             — subárbol de composición de TODAS las
                                                    instancias del tag, en POST-ORDEN
-  5. ensureDefined(tag) + attachAll(tag)         — el host, el ÚLTIMO
-  6. replay: re-emitir UNA vez el evento original sobre el target real
+  5. ensureDefined(tag)                          — el host, el ÚLTIMO
+  6. prepareCells(tag) + attachAll(tag)          — el dueño de cada celda VACÍA, y el reparto
+  7. replay: re-emitir UNA vez el evento original sobre el target real
 ```
 
 **El orden 3 → 4 → 5 lo fija este SDD; ningún documento previo lo hacía**, porque bus y
@@ -208,6 +220,19 @@ nace natural del handler del item cuando corre en el replay, y el receptor —ya
 en su propia propagación.
 
 El runtime **no conoce nombres de evento**: consume "para levantar A, levanta antes B (y C…)".
+
+**Una celda VACÍA es una dependencia de hidratación** ([BUG-24 §4.6](./bugs/BUG-24-signal-y-callback-no-cruzan.md)).
+Un marcador `{"$f":[owner, slot]}` es un callback: no tiene valor que serializar, y la celda solo
+se llena cuando el **dueño** engancha. Así que antes de entregar un tramo que referencia una,
+`prepareCells(tag)` levanta esa instancia dueña —`allInstances` la alcanza a través de shadow
+roots— y reporta `fud:hydrated` con `from: 'subtree'`.
+
+Va en el paso 6 por la misma clase de razón que el bus va en el 3: es una dependencia **externa**
+al host. Y levanta al dueño **solo a él**, no a su subárbol: un dueño es un ANCESTRO de quien
+pregunta, así que preparar su subárbol volvería a pasar por la instancia que está esperando y le
+entregaría un tramo que apunta a una celda que nadie ha llenado. Sus demás descendientes suben
+justo después, con la pasada que ya estaba en marcha; lo que uno de ellos habría recibido del
+enganche de su padre es el valor que el servidor ya pintó en su propio tramo.
 
 **4. Cascada de composición, en post-orden.**
 
@@ -275,19 +300,20 @@ attachAll(tag):
   para cada instancia h de tag[data-fud-id] en el árbol (atravesando shadow roots):
     si h ya recibió su tramo: continuar
     customElements.upgrade(h)                    // idempotente; blinda el orden
-    h.h(data.slice(offsets[id], offsets[id + 1]))   // punto de entrada 1 (SDD-15 §4.3)
+    h.h(cells.resolve(id))                          // punto de entrada 1 (SDD-15 §4.3)
 ```
 
-> **Anotado, no escrito: `attachAll` pasará a resolver celdas, y eso vuelve el orden
-> irrelevante.** Con «props como signals» decidido ([SDD-31 §7](./SDD-31-signals-derivadas.md)),
-> una casilla del tramo puede ser el marcador `{"$":[ownerId, slot]}`, y quien lo cambia por el
-> objeto es este reparto: un `Map` de celdas por `id:slot`, materializadas al vuelo, de modo que
-> padre e hijo reciban **la misma** `Signal`. Lo que hoy impide pasar una referencia es
-> exactamente el post-orden de este párrafo —el padre monta el último, así que su signal no
-> existe cuando el hijo la necesitaría—; con la celda viviendo en el runtime y no en un chunk,
-> el orden deja de importar, y por eso el mecanismo no obliga a tocar nada de lo de arriba. Un
-> marcador cuya celda del dueño no tiene valor es un **callback**: significa «el dueño tiene que
-> correr», y el runtime lo hidrata antes de entregarlo. Nada de esto está implementado.
+**`attachAll` entrega RESUELTO, y eso vuelve el orden irrelevante para el estado compartido**
+([BUG-24](./bugs/BUG-24-signal-y-callback-no-cruzan.md)). Una casilla del tramo puede ser el
+marcador `{"$":[owner, slot]}`, y quien lo cambia por el objeto es este reparto: un registro de
+celdas por `owner:slot`, materializadas la primera vez que se piden, de modo que padre e hijo
+reciban **la misma** `Signal`.
+
+Lo que impedía pasar una referencia era exactamente el post-orden de este párrafo —el padre
+monta el último, así que su signal no existía cuando el hijo la necesitaba—. Con la celda
+viviendo en el runtime y no en un chunk, el orden deja de importar, y por eso el mecanismo no
+obligó a tocar nada de lo de arriba: el post-orden sigue vigente para el **montaje**, y la celda
+es independiente de él.
 
 Hacen falta **dos conjuntos distintos**, y confundirlos rompe el camino 3: `hydrated`
 (instancias sobre las que el runtime ya intervino) gobierna los tres caminos; `attached`

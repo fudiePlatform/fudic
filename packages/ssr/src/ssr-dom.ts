@@ -33,6 +33,32 @@ export interface HydrationState {
   readonly data: readonly unknown[];
 }
 
+/**
+ * One CELL an instance publishes: something parent and child have to end up holding the very
+ * same object of (BUG-24 §4.2).
+ *
+ * Two fields and the difference between them is the whole of `$` versus `$f`. `of` is the
+ * live thing — the signal, or the function — and it is only ever an IDENTITY here: the server
+ * never calls it, it registers it, so that anyone who later serialises that same object writes
+ * its address instead. `value` is what the slot carries, and a cell that has none is a
+ * callback: `@code { @client }` does not run on this side, so there is nothing to write down.
+ */
+export interface CellDecl {
+  readonly of: unknown;
+  readonly value?: unknown;
+}
+
+/**
+ * The marker a consumer's slot carries in place of the value: the address of the cell.
+ *
+ * It is a WIRE format, not a shared type — `@fudic/core` declares the same two shapes at the
+ * reading end and the two packages depend on neither each other nor a third. That is the same
+ * arrangement `fud-state` itself already has, and it is what keeps the runtime out of the
+ * server's dependency graph.
+ */
+type CellRef = readonly [owner: number, slot: number];
+type CellMark = { readonly $: CellRef } | { readonly $f: CellRef };
+
 export class SsrDom implements Dom<SsrNode> {
   /**
    * The id given to each claimed host, and the slice reserved for it. Two structures, one
@@ -40,6 +66,17 @@ export class SsrDom implements Dom<SsrNode> {
    */
   readonly #ids = new WeakMap<SsrNodeImpl, number>();
   readonly #slices: (readonly unknown[])[] = [];
+
+  /**
+   * Every cell published so far, by the live object it is a cell OF.
+   *
+   * Keyed by identity and not by name, and that is what makes forwarding work for free: a
+   * component that hands a prop it received on to a grandchild is holding the very object its
+   * own parent held, so the address it serialises is the ORIGINAL owner's. A name would have
+   * had to be requalified at every hop, and one hop that forgot would mint a second cell for
+   * one signal — the exact bug BUG-24 exists to prevent.
+   */
+  readonly #cells = new Map<unknown, CellMark>();
 
   /**
    * Take the next `data-fud-id` for a hydratable host, and RESERVE its slice.
@@ -72,12 +109,37 @@ export class SsrDom implements Dom<SsrNode> {
    * from the one thing the child holds to the one thing the parent named. A shadow whose
    * host was never claimed — the emit's own hydration harness calls `render` with a shadow
    * made by hand — has no slice, and filling nothing is the honest answer.
+   *
+   * ## The cells go BEHIND the props (BUG-24 §4.2)
+   *
+   *     slice = [ ...values, ...cells ]
+   *
+   * so no index that exists today moves, and a component with no cell serialises exactly the
+   * bytes it serialised before. Two things happen here and the order between them matters:
+   * every cell is REGISTERED first, under the address it is about to occupy, and only then are
+   * the values written down — because a value may itself BE a cell somebody published earlier,
+   * and what goes in the slot then is its marker, not the live object it could never be.
+   *
+   * That substitution is the whole of the client's half. The child's slot says «my value is
+   * that cell», the runtime resolves it before handing the slice over, and parent and child
+   * end up holding one object because nobody ever built a second one.
    */
-  state(shadow: SsrNode, values: readonly unknown[]): void {
+  state(shadow: SsrNode, values: readonly unknown[], cells: readonly CellDecl[] = []): void {
     const host = asImpl(shadow).parent;
     const id = host === null ? undefined : this.#ids.get(host);
     if (id === undefined) return;
-    this.#slices[id] = [...values];
+    cells.forEach((cell, i) => {
+      const ref: CellRef = [id, values.length + i];
+      // No value to serialise is not a degenerate cell, it is a CALLBACK — and `$f` is what
+      // tells the runtime it has to raise the owner before it can hand this slice over.
+      this.#cells.set(cell.of, 'value' in cell ? { $: ref } : { $f: ref });
+    });
+    this.#slices[id] = [
+      ...values.map((value) => this.#cells.get(value) ?? value),
+      // JSON has no `undefined`: a callback's reserved slot is written as `null`, which is
+      // exactly what «reserved, with nothing in it» has to look like on the wire.
+      ...cells.map((cell) => cell.value ?? null),
+    ];
   }
 
   /**

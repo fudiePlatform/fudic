@@ -154,6 +154,35 @@ declare function $intoSlot<T extends string>(name: T): void;
 declare function $ref<E extends Element>(): E;
 
 /**
+ * A value that crosses a \`.prop\` naming a reactive — the OBJECT, or its read (props-spec
+ * decision 86).
+ *
+ * The build decides between the two by what the CHILD declares: a prop typed \`Signal<T>\` gets
+ * the signal, one typed \`T\` gets \`name()\`. The projection cannot read the child's \`.fud\`, and
+ * it does not have to — the child's contract is already imported as a type, so the question is
+ * handed to the checker in the one shape that answers both at once. \`V\` is passed
+ * EXPLICITLY, as the declared type of that very prop: inference from a union parameter would
+ * pick the bare \`V\` branch and decide the object every time.
+ *
+ * That is the invariant of BUG-23 §5 kept under props-spec decision 86: where the emit transforms a
+ * value before crossing it, the projection checks the same transformation — including the one
+ * that transforms nothing.
+ */
+declare function $cross<V>(source: V | (() => V)): V;
+
+/**
+ * The declared type of ONE prop, as the value crossing into it has to satisfy it.
+ *
+ * Two corrections over a bare \`T[K]\`. The \`undefined\` an optional key carries is taken back
+ * out: under \`exactOptionalPropertyTypes\` a \`tone?: Tone\` means «absent or Tone», so putting
+ * \`Tone | undefined\` back into the literal is a \`TS2379\` about a value the author wrote
+ * correctly. And a key the child does NOT declare falls back to \`unknown\` rather than to
+ * \`never\`: that mistake is already reported once, on the key, and a second error about its
+ * value would be the same mistake said twice.
+ */
+type $Prop<T, K extends PropertyKey> = K extends keyof T ? Exclude<T[K], undefined> : unknown;
+
+/**
  * The identity of one iteration of a loop (BUG-17 §3.1).
  *
  * \`unknown\` on purpose. Offering is not validating: reconciliation keys a \`Map\`, and in a

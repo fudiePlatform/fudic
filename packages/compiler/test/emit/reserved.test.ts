@@ -155,8 +155,8 @@ describe('SDD-15 §4.7 — the emit does not throw', () => {
     const { props, signals, client, diagnostics } = extractCode(source, componentDoc(source));
     expect(diagnostics.map((d) => d.code)).toEqual(['FUD0290']);
     expect(props).toEqual([{ name: 'title', optional: false }]);
-    expect(signals).toEqual([{ name: 'n', init: '1', kind: 'signal' }]);
-    expect(client.body).toEqual(['const $bad = title;', 'const good = 2;']);
+    expect(signals).toEqual([{ name: 'n', init: '1', kind: 'signal', at: expect.any(Number) }]);
+    expect(client.body.map((s) => s.text)).toEqual(['const $bad = title;', 'const good = 2;']);
   });
 
   it('points at the identifier, not at the statement around it', () => {

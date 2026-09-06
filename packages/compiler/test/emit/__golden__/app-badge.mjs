@@ -3,6 +3,7 @@ export const css = `:host{display:inline-block;}.badge{font-size:0.75rem;padding
 
 export function render($dom, $shadow, props) {
   const { tone = 'neutral' } = props ?? {};
+  $dom.state($shadow, [tone]);
   const $n0 = $dom.element("span");
   $dom.setAttr($n0, 'class', ["badge", (tone === 'success') && "success", (tone === 'warning') && "warning"].filter(Boolean).join(' '));
   const $n1 = $dom.text(" "); $dom.append($n0, $n1);

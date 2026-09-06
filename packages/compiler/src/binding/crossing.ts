@@ -47,21 +47,25 @@ export interface ComponentDeclaredProps {
   readonly name: string;
   readonly required: boolean;
   /**
-   * Whether the child declares it REACTIVE. Nobody sets it to `true` today: the shared-cell
-   * mechanism (SDD-31 §7) is its own SDD, and this BUG only leaves the signature with the
-   * right shape.
+   * What the child asks to be handed by REFERENCE (props-spec decision 86): `'signal'` for a
+   * `Signal<T>`, `'fn'` for a function signature, absent for a plain value.
+   *
+   * Absent is also what a child nobody could READ declares, and the two are deliberately the
+   * same answer: with no `T` to read there is nothing to prove, and everything keeps crossing
+   * by value exactly as decision 84 left it.
    */
-  readonly reactive: boolean;
+  readonly channel?: 'signal' | 'fn';
 }
 
 /**
- * HOW a value crosses the shadow boundary. Two forms, and only one is emitted today:
+ * HOW a value crosses the shadow boundary. Two forms, and what decides between them is what
+ * the CHILD declares (props-spec decision 86):
  *
- *  - `'value'` — the READ, `titulo()`. Decision 84 as it is implemented. The reason it is
- *    the value and not the object is hard: the server would paint `[object Object]`, and the
- *    client would hand the child a live `Set` that `fud-state` cannot serialize (SDD-17 §3).
- *  - `'ref'`   — the shared cell, with which parent and child hold the SAME object
- *    (SDD-31 §7). Decided, not implemented: no emitter produces it yet.
+ *  - `'value'` — the READ, `titulo()`. Decision 84, and still the default: a child that
+ *    declares `titulo?: string` gets the string, because that is what it asked for.
+ *  - `'ref'`   — the shared cell, with which parent and child hold the SAME object. A child
+ *    that declares `Signal<T>` can derive from it, forward it to a grandchild and write it;
+ *    one that declares a function signature gets the owner's function itself (BUG-24 §4.6).
  */
 export type Crossing =
   | { readonly kind: 'value'; readonly name: string }
@@ -76,8 +80,15 @@ export type Crossing =
  * ever move.
  *
  * `target` is what the CHILD declares, because the form of the crossing stopped depending on
- * the parent alone. Absent — or declaring a prop that is not reactive — the answer is always
+ * the parent alone. Absent — or declaring a prop with no channel — the answer is always
  * `'value'`, so the emitted output does not move a byte.
+ *
+ * The two questions are asked in that order, and the order is the rule. A child that declares
+ * a channel gets the OBJECT whatever the parent named, because `reactives` is a fact about
+ * the parent and the child's contract does not depend on it — a callback is not a `signal(…)`
+ * and would fall out of that set, and so would a name the parent got as a prop and is only
+ * forwarding. What is not a bare name never crosses by reference: `.value=@42` against a
+ * `Signal<number>` is a mistake, and FUD0200 is where it is reported, not here.
  */
 export function crossing(
   source: string,
@@ -88,6 +99,19 @@ export function crossing(
   const only = value.length === 1 ? value[0] : undefined;
   if (only?.type !== 'razor-expression') return undefined;
   const name = source.slice(only.expr.start, only.expr.end);
+  if (target?.channel !== undefined) return isBareName(name) ? { kind: 'ref', name } : undefined;
   if (!reactives.has(name)) return undefined;
-  return { kind: target?.reactive === true ? 'ref' : 'value', name };
+  return { kind: 'value', name };
 }
+
+/**
+ * Whether the whole expression is ONE identifier — the only shape a reference can cross as.
+ *
+ * By the characters and not by the AST, because `crossing` is the rule the emit, the build's
+ * semantic pass and the editor's projection all apply, and only the first of the three holds
+ * a parsed fragment for an attribute value. What it has to separate is `@count` from
+ * `@(count() + 1)`, and an identifier is exactly what neither a call nor an operator is.
+ */
+const BARE_NAME = /^[$_\p{ID_Start}][$\p{ID_Continue}]*$/u;
+
+const isBareName = (text: string): boolean => BARE_NAME.test(text);
