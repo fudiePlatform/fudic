@@ -1,11 +1,11 @@
 # BUG-24 — una signal no cruza el shadow boundary, y un callback no cruza en absoluto
 
-**Estado:** `Listo` · **Bloqueado por:** [BUG-23](./BUG-23-arroba-valvula-de-escape.md) ·
-**Rama:** `worktree-bug-24` · **Tareas:** [BUG-24-Task.md](./BUG-24-Task.md)
+**Estado:** `Hecho` · **Desbloqueado** por [BUG-23](./BUG-23-arroba-valvula-de-escape.md) en
+`Hecho` · **Rama:** `worktree-bug-24` · **Tareas:** [BUG-24-Task.md](./BUG-24-Task.md)
 
 > **Paquetes:** `core` · `compiler` · `ssr` · `language-core`
-> **Corrige:** decisión 84 · SDD-15 §3.3, §3.7, §4.3 · SDD-17 §3, §4.4 · SDD-31 §7 ·
-> BUG-12 §3.4
+> **Corrige:** props-spec 84, y añade la **86** · SDD-15 §3.3, §3.7, §4.3 · SDD-17 §3, §4.4 ·
+> SDD-31 §7 · BUG-12 §3.4
 > **Rango de diagnósticos:** `FUD0200`–`FUD0203` (del hueco `FUD0197`–`FUD0209` de SDD-12;
 > BUG-23 ocupa `FUD0197`–`FUD0199`)
 

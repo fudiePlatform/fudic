@@ -3,7 +3,7 @@
 > **BUG:** [BUG-24 — una signal no cruza el shadow boundary](./BUG-24-signal-y-callback-no-cruzan.md)
 > **Paquetes:** `@fudic/core` · `@fudic/compiler` · `@fudic/ssr` · `@fudic/language-core`
 > **Rama:** `worktree-bug-24` · **Bloqueado por:** BUG-23 en `Hecho`
-> **Progreso:** 18 / 19
+> **Progreso:** 19 / 19 — `Hecho`
 
 Diecinueve tareas. Rutas relativas a la raíz del repo; cada tarea es un paso cerrado y se
 puede parar después de cualquiera con el workspace verde.
@@ -126,7 +126,7 @@ cerrado).
 |---|---|---|---|---|---|
 | [x] | 17 | 13, 16 | **La página que lo demuestra.** `signal-prop.fud` se reescribe: el hijo **deriva** (`computed`), lo **reenvía** a un nieto, y un formulario avisa al padre con un callback. Y se corrige su prosa, que hoy explica por qué la signal *no* cruza. Verificada en Chrome real en los tres modos —`pnpm dev`, build sin `sw.json`, build con SW—, como exige SDD-17 | `examples` | [examples/basic/src/routes/signal-prop.fud](../../../examples/basic/src/routes/signal-prop.fud) · `examples/basic/src/components/signal-*.fud` |
 | [x] | 18 | todas | **La documentación, que aquí es contrato.** **Decisión 86 en props-spec** —no en la gramática: la 84 que este BUG corrige es del índice de props-spec (67–85), y la 105 de la gramática ya la ocupó SDD-36 con el literal escalar desnudo—, con la 84 reescrita (deja de ser «cruza un valor, siempre» y pasa a «cruza lo que el hijo declara»); **SDD-15 §3.3** (`fud-state` admite marcadores) y **§3.7/§4.3** (el tramo llega resuelto); **SDD-17 §3** (el runtime resuelve antes de entregar) y **§4.4** (la celda vacía como dependencia de hidratación); **SDD-31 §7** de `abierta` a `Hecho`, con el mecanismo; **SDD-12** con `FUD0200`–`FUD0203`; **props-spec** con la tabla de los tres modos de cruce | — | [docs/gramar/gramatica-v1-decisiones.md](../../gramar/gramatica-v1-decisiones.md) · [SDD-15](../SDD-15-emit.md) · [SDD-17](../SDD-17-hidratacion.md) · [SDD-31](../SDD-31-signals-derivadas.md) · [SDD-12](../SDD-12-semantica.md) · [props-spec.md](../props-spec.md) |
-| [ ] | 19 | 18 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` verdes en el workspace entero. `@fudic/core` al **100 %** en las cuatro métricas; `compiler` y `ssr` no bajan. Los 22 criterios de §6 verdes, y las cuatro aserciones de la tarea 1 —las que se vieron fallar— en verde. BUG-24 a `Hecho` en [INDEX.md](./INDEX.md), tabla y grafo | — | [INDEX.md](./INDEX.md) · [BUG-24](./BUG-24-signal-y-callback-no-cruzan.md) |
+| [x] | 19 | 18 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` verdes en el workspace entero. `@fudic/core` al **100 %** en las cuatro métricas; `compiler` y `ssr` no bajan. Los 22 criterios de §6 verdes, y las cuatro aserciones de la tarea 1 —las que se vieron fallar— en verde. BUG-24 a `Hecho` en [INDEX.md](./INDEX.md), tabla y grafo | — | [INDEX.md](./INDEX.md) · [BUG-24](./BUG-24-signal-y-callback-no-cruzan.md) |
 
 ---
 

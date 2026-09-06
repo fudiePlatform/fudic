@@ -269,6 +269,33 @@ describe('the cell over the real emit', () => {
     expect(shown(kid!)).toBe('5');
   });
 
+  it('§6.12 — the write repaints the readers and calls NO `u` on the way', async () => {
+    const page = render();
+    await page.raise('cx-owner');
+
+    // Every consumer of the cell, watched at the one seam a value could still travel
+    // through: `u` is the update channel of a prop that crosses by VALUE, and a cell has
+    // nothing to renew — parent and child hold the same object, so a write must reach the
+    // grandchild without a single hop.
+    let updates = 0;
+    for (const tag of ['cx-view', 'cx-kid', 'cx-form'] as const) {
+      for (const host of page.hosts(tag)) {
+        const el = host as Element & { u: (props: readonly unknown[]) => void };
+        const original = el.u.bind(el);
+        el.u = (props: readonly unknown[]): void => {
+          updates += 1;
+          original(props);
+        };
+      }
+    }
+
+    (page.hosts('cx-form')[0]!.shadowRoot!.querySelector('button') as HTMLElement).click();
+
+    expect(shown(page.hosts('cx-view')[0]!)).toBe('5 10');
+    expect(shown(page.hosts('cx-kid')[0]!)).toBe('5');
+    expect(updates).toBe(0);
+  });
+
   it('§6.9 — the grandchild first, the owner last: the same object either way', async () => {
     const page = render();
     await page.raise('cx-kid');
