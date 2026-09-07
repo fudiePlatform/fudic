@@ -5,7 +5,7 @@
 > `./element`) · `@fudic/core` (la lista `eager` del mapa de página) · `@fudic/vite` (el borrado
 > del validador de servidor)
 > **Rama:** `sdd-34-forms-compilador`
-> **Progreso:** 7 / 16
+> **Progreso:** 10 / 16
 > **Depende de:** [SDD-33](./SDD-33-formularios-reactivos.md) en `Hecho`. No es un
 > encadenamiento burocrático: la fase 2 llama a `errors()`, `touch()` y `$setErrors` desde la
 > primera línea.
@@ -97,16 +97,24 @@ ficheros, `bind:` y el códec binario.
 
 ## Fase 3 — El emit (3)
 
-- [ ] **8. Elegir la función en compilación.**
-      El `switch` se muda aquí: por cada enlace, el emit escribe la llamada concreta. El golden de
-      un componente con un solo `<input type="text">` **no puede contener** el nombre de las otras
-      cinco. Criterio §6.7.
-- [ ] **9. El hueco del error, en el markup.**
+- [x] **8. La zona neutra llega a los dos módulos, y la función se elige en compilación.**
+      **Primero lo que faltaba debajo:** el formulario se define en un `.ts` y la vista lo
+      **importa** desde la zona neutra (§4.4), pero esa zona no llegaba a ningún módulo emitido
+      —el emit leía de ella el `props<T>()` y los reactivos y descartaba el resto—, así que el
+      import nombraba un binding inexistente. Se elevan sus `import` a los dos módulos y su
+      cuerpo se escribe dentro de `render()` y de la fábrica; lo que el emit ya escribe con forma
+      propia no se duplica —se decide por lo que se **reconoce**, no por lo que produce—; lo que
+      declara solo un tipo no viaja; y el módulo de servidor pasa por Oxc como ya hacían
+      `?server` y `?client`.
+      **Y después el `switch`, que se muda aquí:** por cada enlace, el emit escribe la llamada
+      concreta. El golden de un componente con un solo `<input type="text">` **no puede contener**
+      el nombre de las otras cinco. Criterio §6.7.
+- [x] **9. El hueco del error, en el markup.**
       Id estable derivado de la identidad del nodo —la misma que ya usa la hidratación—,
       `aria-describedby` **siempre presente** aunque el hueco esté vacío, y `aria-invalid` y texto
       **ya puestos** cuando el formulario se renderiza con errores. El atributo `control` **no**
       sobrevive al HTML. Criterio §6.8.
-- [ ] **10. La invariante de accesibilidad, medida.**
+- [x] **10. La invariante de accesibilidad, medida.**
       Criterio §6.10: el mismo formulario con los mismos errores por los dos caminos —SSR con
       `$setErrors` aplicado antes de renderizar, y cliente hidratado— produce **el mismo HTML** en
       id, `aria-describedby`, `aria-invalid` y texto. Es el test que el prototipo no podía pasar

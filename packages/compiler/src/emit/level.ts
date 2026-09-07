@@ -72,13 +72,20 @@ export function walkElements(nodes: readonly HtmlContent[], visit: (el: ElementN
 export const templateOf = (comp: ResolvedComponent): readonly HtmlContent[] =>
   comp.doc.template?.children ?? [];
 
-/** Whether any binding of this template is hookup: an `@evento` or a `bus:`. */
+/**
+ * Whether any binding of this template is hookup: an `@evento`, a `bus:` — or a `control`.
+ *
+ * A `control` counts for exactly the same reason the other two do (SDD-34 §4.8): the binding,
+ * the painting of the error and the focus are BEHAVIOUR, and a component that carries one is
+ * level 3 along with everything that composes its form. There is no level-1 form; pretending
+ * otherwise works right up to the first error.
+ */
 function hasHookup(comp: ResolvedComponent): boolean {
   let found = false;
   walkElements(templateOf(comp), (el) => {
     for (const attr of el.attributes) {
       const b = classifyAttribute(attr, comp.source).value;
-      if (b.type === 'event' || b.type === 'bus') found = true;
+      if (b.type === 'event' || b.type === 'bus' || b.type === 'control') found = true;
     }
   });
   return found;

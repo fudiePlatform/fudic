@@ -10,7 +10,7 @@
 
 import { effect } from '@fudic/core';
 import type { Control } from '../types.js';
-import { errorText } from './messages.js';
+import { errorText } from '../messages.js';
 import type { Cleanup, ErrorSlot } from './types.js';
 
 /** Subscribe a listener and get its removal back. */

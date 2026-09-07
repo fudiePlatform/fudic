@@ -10,9 +10,15 @@
  * form with no messages configured shows `required` next to the field, which is wrong for a
  * user and unmistakable for a developer — where an empty string would look like a form that
  * works.
+ *
+ * **It lives in the MODEL and not behind `./dom`, and that is the invariant of §4.3 showing
+ * up in the module graph.** The server writes the text of an error into the HTML it renders —
+ * a form arriving with a 422 already painted is accessible with zero JS — so the function that
+ * turns `{ required: true }` into a sentence has to run on both ends. It touches no DOM: it
+ * reads a record and returns a string.
  */
 
-import type { Errors } from '../types.js';
+import type { Errors } from './types.js';
 
 /** rule name → the sentence for it, given whatever the validator measured against. */
 export type Messages = Readonly<Record<string, (v: unknown) => string>>;

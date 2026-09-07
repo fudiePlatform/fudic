@@ -540,7 +540,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         if (d.severity === 'error') this.error(message);
         else this.warn(message);
       }
-      return { code: result.code, map: JSON.stringify(result.map) };
+      // Same reason as `?server` and `?client`: since SDD-34 the neutral zone of `@code`
+      // reaches this module too, verbatim, so a `const f: Form<Post> = form(schema)` makes it
+      // TypeScript. The three emitted modules are now stripped by the one rule.
+      //
+      // The `.fud` source map is handed over as it stands rather than chained through the
+      // strip: it is the same open seam the other two already have, and it belongs with the
+      // linking stage. Losing the mapping would be worse than a mapping the strip shifted.
+      const stripped = await transformWithOxc(result.code, `${path}.ts`, { lang: 'ts' });
+      return { code: stripped.code, map: JSON.stringify(result.map) };
     },
 
     async generateBundle(_outputOptions, bundle) {

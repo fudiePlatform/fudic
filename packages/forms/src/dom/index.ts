@@ -14,8 +14,11 @@
  */
 
 export type { Cleanup, ErrorSlot } from './types.js';
-export type { Messages } from './messages.js';
-export { setMessages } from './messages.js';
+// Re-exported and not owned: the text of an error is written by the SERVER too (§4.3), so it
+// lives in the model. It is here because §3.2 declares it as part of this entry point, and a
+// re-export costs nothing a bundler cannot see through.
+export type { Messages } from '../messages.js';
+export { setMessages } from '../messages.js';
 
 export { bindText } from './bind-text.js';
 export { bindNumber } from './bind-number.js';

@@ -16,7 +16,7 @@
 
 import { effect } from '@fudic/core';
 import type { AnyForm } from '../types.js';
-import { errorText } from './messages.js';
+import { errorText } from '../messages.js';
 import type { Cleanup } from './types.js';
 import { on, undo } from './wiring.js';
 

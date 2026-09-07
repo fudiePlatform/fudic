@@ -35,6 +35,7 @@ import { handlerShape, unwrapParens } from '../binding/index.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import type { FragmentAst } from './scope.js';
 import type { TemplateJs } from './oxc-code.js';
+import type { ControlPlan } from './controls.js';
 
 /** The value of an event binding whose root node is none of the four shapes (§4.5). */
 export const FUD_UNSUITABLE_HANDLER = 'FUD0291';
@@ -63,14 +64,26 @@ export interface HookupContext {
    * still have been cold when this listener was registered.
    */
   readonly callbacks: ReadonlySet<string>;
+  /**
+   * The `control` bindings of this file (SDD-34), resolved once for both branches.
+   *
+   * It rides here for the reason this object exists at all: it is a fact about the whole file
+   * that every walk of it needs, and a block is a separate walk. A `control` inside an `@if`
+   * has to emit its binding into that block's own `s()`, with that block's nodes, and this is
+   * what carries the plan down to it without a rule of its own.
+   */
+  readonly controls: ControlPlan;
+  /** The `@fudic/forms/dom` functions the walk actually called, for the import line. */
+  readonly binds: Set<string>;
 }
 
 export function hookupContext(
   template: TemplateJs,
   diagnostics: Diagnostic[],
   callbacks: ReadonlySet<string> = new Set(),
+  controls: ControlPlan = new Map(),
 ): HookupContext {
-  return { template, diagnostics, hostUsed: false, callbacks };
+  return { template, diagnostics, hostUsed: false, callbacks, controls, binds: new Set() };
 }
 
 /** A CALL whose callee arrived as a cell, with the read spliced in: `onSave(x)` → `onSave()(x)`. */

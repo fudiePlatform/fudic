@@ -24,6 +24,7 @@ import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js'
 import { AssetLinker } from './assets.js';
 import { codeOf, splicedOffset, type ClientStatement, type Prop } from './oxc-code.js';
 import { hookupContext } from './events.js';
+import { planControls } from './controls.js';
 import { movingNames } from './level.js';
 import { rootContext } from './display.js';
 import { cellSlots, childTargets, reactiveScope, type CellSlot } from './state.js';
@@ -132,7 +133,7 @@ function buildComponentClientModule(
   options: EmitOptions,
 ): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
-  const { props, signals, client, template, mutable, emitCalls, diagnostics } = codeOf(comp);
+  const { props, signals, client, neutral, template, mutable, emitCalls, diagnostics } = codeOf(comp);
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
   // The same three facts the server branch starts from, read from the same graph and the
   // same `<style>`: what the two branches drop has to be the same set, node for node (§4.5).
@@ -167,6 +168,9 @@ function buildComponentClientModule(
     template,
     emitDiagnostics,
     new Set(props.flatMap((p) => (p.channel === 'fn' ? [p.name] : []))),
+    // The same plan the server branch built, from the same function: the two branches write
+    // the same nodes with the same ids, or `h` adopts a tree it does not recognise (SDD-34).
+    planControls(comp.source, comp.doc.template!.children, (t) => graph.components.has(t)),
   );
   const ids = nodeIds();
   const usage = coreUsage();
@@ -228,6 +232,18 @@ function buildComponentClientModule(
   // to keep in sync, so a component with no reactive prop carries no dead import (§6.20).
   const core = usage.subscribes ? 'FudicElement, subscribe as $sub' : 'FudicElement';
   w.line(`import { ${core} } from '@fudic/core';`);
+  // The bind functions this walk actually called, and no others. It is §6.7 made structural:
+  // the chunk of a component with one text field names `bindText` and does not mention the
+  // other five — not their names, not their modules. Sorted so the line is stable.
+  if (hookup.binds.size > 0) {
+    w.line(`import { ${[...hookup.binds].sort().join(', ')} } from '@fudic/forms/dom';`);
+  }
+  // The neutral zone's imports first, then `@client`'s — both hoisted, because an `import`
+  // is only legal at module scope (decision 33.c). Verbatim, TypeScript included: this
+  // module is bundler input and stripping types is the bundler's job.
+  for (const statement of neutral) {
+    if (statement.hoisted) w.line(statement.text);
+  }
   for (const line of client.imports) w.line(line); // hoisted: only legal at module scope
   for (const line of linker.imports()) w.line(line);
   w.line('');
@@ -246,6 +262,13 @@ function buildComponentClientModule(
   // `let`, not `const`: `r()` releases it along with the nodes and the shadow root.
   const needsHost = emitCalls.length > 0 || hookup.hostUsed;
   if (needsHost) w.line('let $host = $dom.host($shadow);');
+  // The neutral zone runs on BOTH sides, so it runs here too — before `@client`, which is
+  // the order it was written in and the order the server evaluates it in. No cell splicing:
+  // a cell is a `@client` top-level binding by construction (`cellSlots` reads
+  // `clientNames`), so nothing declared here can be one.
+  for (const statement of neutral) {
+    if (!statement.hoisted) w.line(statement.text);
+  }
   for (const statement of client.body) w.line(withCells(statement, signals, cells));
   w.line('');
   // The blocks: one function per construct, plus the registry of what is alive (SDD-30

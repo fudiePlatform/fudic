@@ -276,11 +276,45 @@ no, y es exactamente lo que el prototipo no podía cumplir fabricando el `<span>
 - **Errores del servidor:** si el autor recibe un 422, se lo pasa al formulario con `$setErrors`
   (SDD-33 §4.6) y el pintado ocurre por los mismos efectos de §4.2. El transporte no participa.
 
-**Dónde vive el formulario, y por qué importa.** `const f = form(schema)` va en la **zona neutra**
-de `@code`, no en `@client`: la zona neutra corre en los dos lados, así que el servidor pinta los
-valores en el HTML y un formulario de edición se ve **sin JavaScript**. Declararlo en `@client`
-compila y funciona, pero el primer render sale vacío — que para un formulario de alta es
-exactamente lo correcto. Por eso es una regla documentada y no un diagnóstico.
+**Dónde vive el formulario, y por qué importa.** El formulario **no se define en la vista**: se
+define en un `.ts` propio —una *slice*— y la vista lo **importa** desde la **zona neutra** de
+`@code`. La zona neutra corre en los dos lados, así que el mismo objeto lo tiene el servidor,
+que pinta sus valores en el HTML, y el cliente, que hidrata sobre ese HTML; y cuando el
+formulario se envía, el servidor puede enlazar el HTTP contra **ese mismo** schema y pasarlo a
+donde quiera. Un formulario de edición se ve, por tanto, **sin JavaScript**.
+
+```razor
+@code {
+  import { userForm } from '../forms/user.form.js';
+}
+
+<form control="@userForm">
+  <input control="@userForm.name">
+</form>
+```
+
+Declararlo en `@client` compila y funciona, pero el primer render sale vacío — que para un
+formulario de alta es exactamente lo correcto. Por eso es una regla documentada y no un
+diagnóstico.
+
+**Y esto obliga a una corrección en SDD-15, porque la zona neutra no llegaba a ningún módulo.**
+La decisión 33.c —*imports dentro de las regiones, elevados en emit*— solo era cierta para
+`@client`: de la zona neutra el emit leía el `props<T>()` y las declaraciones reactivas y
+**descartaba todo lo demás**, así que un `import { userForm } from './user.form.js'` nombraba un
+binding que no existía en ningún sitio y `bindText($n3, userForm.name, $n4)` habría referenciado
+la nada. A partir de aquí:
+
+- los `import` de la zona neutra se **elevan** a los dos módulos emitidos, y su cuerpo se escribe
+  **dentro** de `render()` y de la fábrica del cliente, en orden de fuente;
+- lo que el emit ya escribe con forma propia —el destructurado de `props<T>()` y cada
+  `signal`/`computed`— **no** se copia al lado: se decide por lo que el lector **reconoce**, no
+  por lo que produce, porque `const {} = props<Props>()` no declara ninguna prop y sigue siendo
+  suyo. Una línea que mezcle un reactivo con un binding corriente conserva su mitad;
+- lo que declara **solo un tipo** no viaja a ninguno de los dos, y un `import` que mezcla
+  especificadores de tipo y de valor se **reconstruye** sin los primeros;
+- el módulo de servidor de un componente pasa a llevar TypeScript del autor —un
+  `const f: Form<Post> = form(schema)` lo es—, así que el plugin lo pasa por Oxc igual que ya
+  hacía con `?server` y con `?client`. Los tres módulos emitidos siguen ahora la misma regla.
 
 ### 4.5. `formassociated`: el marcador, la clase, y el JavaScript que sí se paga
 

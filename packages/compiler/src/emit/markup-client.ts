@@ -40,6 +40,7 @@ import type { ControlNode } from '../control/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { Span } from '../types/index.js';
 import { classifyAttribute, crossing } from '../binding/index.js';
+import { ERROR_SLOT_ATTR, SUMMARY_SLOT_ATTR } from './controls.js';
 import { CodeWriter, type LinePart } from './writer.js';
 import { type AssetLinker } from './assets.js';
 import {
@@ -320,6 +321,15 @@ export class ClientMarkupEmitter {
   readonly #trackRoots: boolean;
   readonly #nodes: string[] = [];
   readonly #rootItems: RootItem[] = [];
+  /**
+   * Where a bound element and its error slot ended up, by node variable.
+   *
+   * They are per WALK and not per file: a block writes its own nodes into its own closure, so
+   * a `control` inside an `@if` names the variables of that block. The plan they are looked up
+   * from is the file's; what they resolve to is this walk's.
+   */
+  readonly #elementVars = new Map<ElementNode, string>();
+  readonly #errorSlots = new Map<ElementNode, string>();
   #depth = 0;
   /** How many value writes `$a` owns so far — each one gets its own slot in `$w`. */
   #writes = 0;
@@ -619,6 +629,7 @@ export class ClientMarkupEmitter {
     // Derived by the SAME function the server branch uses: the two have to answer the box
     // question identically, or they stop building the same tree (BUG-21 §4.5).
     this.#at = childrenContext(outer, el, isComponent);
+    this.#elementVars.set(el, v);
     this.#fab.line(`${v} = $dom.element(${JSON.stringify(el.name)});`);
     if (isComponent) {
       // A child component host: fabricate it and hang its light DOM, but do NOT open its
@@ -648,15 +659,113 @@ export class ClientMarkupEmitter {
         this.#host(false),
         this.#sinkFor(),
       );
+      // The `aria-describedby` of a bound control — written by the emit and never by the
+      // runtime, and written on BOTH branches with the same value (SDD-34 §4.3). The
+      // `aria-invalid` is not here: on the client it follows the errors, so it belongs to the
+      // effect `bindErrors` installs, which is also what takes it back.
+      this.#controlAttrs(el, v);
     }
     this.#listeners(el, v);
     // Take the element the cursor is on, then advance it — before descending, so the
     // levels below are walked with this element already accounted for.
     this.#adopt.line(`${v} = ${level.cursor!}; ${level.cursor} = $dom.nextElementSibling(${level.cursor});`);
     if (this.#tracked(level)) this.#adopt.line(`$r.push(${v});`);
+    // The slot's cursor step goes HERE, beside the element's own: it is the next element of
+    // this level, and the walk below descends with a cursor of its own.
+    const slot = this.#controlSlotVar(el);
+    if (slot !== null) {
+      this.#adopt.line(`${slot} = ${level.cursor!}; ${level.cursor} = $dom.nextElementSibling(${level.cursor});`);
+      if (this.#tracked(level)) this.#adopt.line(`$r.push(${slot});`);
+    }
     this.#children(el, v);
     this.#at = outer;
     this.#place(v, level.fab); // parent last: a node is filled before it joins the tree
+    if (slot !== null) this.#controlSlot(el, slot, level);
+    this.#controlBinding(el, v);
+  }
+
+  /**
+   * The `aria-describedby` of a bound control, on the client side of §4.3.
+   *
+   * A static attribute, fabricated with the element and identical to what the server wrote:
+   * the reference EXISTS before the error does, whether the instance came alive by `c` or by
+   * `h`. What follows the errors — `aria-invalid` and the message — is the effect's, because
+   * it also has to take them back.
+   */
+  #controlAttrs(el: ElementNode, v: string): void {
+    const site = this.#hookup.controls.get(el);
+    if (site === undefined || site.target.kind !== 'value') return;
+    this.#fab.line(`$dom.setAttr(${v}, 'aria-describedby', ${JSON.stringify(site.slotId)});`);
+  }
+
+  /** The variable of the slot this element carries, allocated up front, or `null`. */
+  #controlSlotVar(el: ElementNode): string | null {
+    const site = this.#hookup.controls.get(el);
+    if (site === undefined || !site.writesSlot) return null;
+    const v = this.#fresh();
+    this.#errorSlots.set(el, v);
+    return v;
+  }
+
+  /**
+   * The error slot — or the form's live region — fabricated as the sibling the server also
+   * painted (decision 111).
+   *
+   * It carries no text here. The server writes the message it had at render time and the
+   * effect writes it afterwards, so an instance created at runtime starts empty and one
+   * adopted from the server keeps exactly what arrived — which is what makes the two paths
+   * produce the same HTML (§6.10).
+   */
+  #controlSlot(el: ElementNode, v: string, level: Level): void {
+    const site = this.#hookup.controls.get(el)!;
+    const isForm = site.target.kind === 'form';
+    this.#fab.line(`${v} = $dom.element('span');`);
+    this.#fab.line(`$dom.setAttr(${v}, 'id', ${JSON.stringify(site.slotId)});`);
+    this.#fab.line(`$dom.setAttr(${v}, '${isForm ? SUMMARY_SLOT_ATTR : ERROR_SLOT_ATTR}', '');`);
+    if (isForm) this.#fab.line(`$dom.setAttr(${v}, 'aria-live', 'polite');`);
+    this.#place(v, level.fab);
+  }
+
+  /**
+   * The bind call of one site, written into `$s()` — the point create and hydrate converge on,
+   * so the form is wired whichever way the instance came alive.
+   *
+   * **The `switch` the prototype ran in the browser is already spent** (§4.2): the function
+   * named here is the one function for THIS shape of element, and the other five are not
+   * mentioned, so a page with one text field downloads one of them.
+   *
+   * `$nX && …` for the same reason the listeners carry it: the DOM is the authority on
+   * position, and a projection can leave a variable unassigned.
+   */
+  #controlBinding(el: ElementNode, v: string): void {
+    const site = this.#hookup.controls.get(el);
+    if (site === undefined || site.bind === null) return;
+    const bind = site.bind;
+    this.#hookup.binds.add(bind);
+    const slot = this.#errorSlots.get(el);
+    if (site.target.kind === 'group') {
+      this.#hook.line(`${v} && $d.push(${bind}(${v}, ${site.node}));`);
+      return;
+    }
+    if (site.target.kind === 'form') {
+      // The live region is optional in the signature, and here it always exists — the emit
+      // wrote it. `null` stays reachable for a caller that binds a form by hand.
+      this.#hook.line(`${v} && $d.push(${bind}(${v}, ${site.node}, ${slot!}));`);
+      return;
+    }
+    if (site.group.length > 0) {
+      const guards = site.group.map((radio) => this.#varOf(radio));
+      this.#hook.line(
+        `${guards.map((g) => `${g} && `).join('')}$d.push(${bind}([${guards.join(', ')}], ${site.node}, ${slot!}));`,
+      );
+      return;
+    }
+    this.#hook.line(`${v} && ${slot!} && $d.push(${bind}(${v}, ${site.node}, ${slot!}));`);
+  }
+
+  /** The node variable an element was fabricated under — for the radios of a group. */
+  #varOf(el: ElementNode): string {
+    return this.#elementVars.get(el)!;
   }
 
   /**

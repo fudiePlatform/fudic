@@ -16,6 +16,11 @@
 
 export const VERSION = '0.0.1';
 
+// The text of an error, and the map that supplies it. In the model and not behind `./dom`
+// because the SERVER writes that text into the HTML it renders (SDD-34 §4.3): a form that
+// arrives with its errors already painted is accessible with zero JavaScript.
+export { setMessages, errorText, type Messages } from './messages.js';
+
 export { control } from './control.js';
 export { form } from './form.js';
 export { group } from './group.js';

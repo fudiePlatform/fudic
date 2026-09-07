@@ -92,6 +92,9 @@ importers:
       '@fudic/core':
         specifier: workspace:*
         version: link:../core
+      '@fudic/forms':
+        specifier: workspace:*
+        version: link:../forms
       '@fudic/ssr':
         specifier: workspace:*
         version: link:../ssr
