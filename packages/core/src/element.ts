@@ -69,13 +69,22 @@ export abstract class FudicElement extends Base {
    * is no shadow to adopt, so one is opened and the controller FABRICATES the nodes.
    */
   c(props: readonly unknown[]): void {
-    const controller = factoryOf(this).c([
-      browserDom,
-      this.attachShadow({ mode: 'open' }),
-      ...props,
-    ]);
+    const controller = factoryOf(this).c([browserDom, this.attachShadow(this.shadowInit()), ...props]);
     this.#controller = controller;
     controller.c();
+  }
+
+  /**
+   * How this component's shadow root is opened — the ONE thing a subclass changes about it.
+   *
+   * It exists for `FudicControlElement` (SDD-34 §4.5), which needs `delegatesFocus: true` or
+   * the component is not labelable: a `<label for>` outside it would move the focus to the
+   * host and not to the `<input>` inside. A hook rather than a flag, because what a subclass
+   * varies is the whole init and not one boolean, and because a component created at runtime
+   * has to open the same shadow root the server's `shadowrootdelegatesfocus` produced.
+   */
+  protected shadowInit(): ShadowRootInit {
+    return { mode: 'open' };
   }
 
   /**

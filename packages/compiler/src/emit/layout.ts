@@ -27,7 +27,7 @@ import { CodeWriter } from './writer.js';
 import { MarkupEmitter, renderName, tpl } from './markup.js';
 import { AssetLinker } from './assets.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
-import { hydratableTags } from './level.js';
+import { formAssociatedTags, hydratableTags } from './level.js';
 import { writeMapConstants, writeHydrationBlocks } from './maps.js';
 import type { DocumentGraph, ResolvedLayout } from './resolve.js';
 import type { EmitOptions, EmitOutput } from './module.js';
@@ -97,6 +97,7 @@ function buildLayoutModule(
     linker,
     slots: SLOTS,
     hydratable: hydratableTags(graph),
+    formAssociated: formAssociatedTags(graph),
   });
   const bodyParent = nested ? PARENT : '$body';
   em.emitChildren(doc.body.children, bodyParent);
@@ -228,9 +229,18 @@ function buildRouteModule(
   const comps = [...graph.components.values()];
 
   const hydratable = hydratableTags(graph);
+  const formAssociated = formAssociatedTags(graph);
   const isComponent = (t: string): boolean => graph.components.has(t);
   const bodyW = new CodeWriter();
-  const em = new MarkupEmitter({ source, w: bodyW, isComponent, linker, slots: SLOTS, hydratable });
+  const em = new MarkupEmitter({
+    source,
+    w: bodyW,
+    isComponent,
+    linker,
+    slots: SLOTS,
+    hydratable,
+    formAssociated,
+  });
   em.emitChildren(route.markup, PARENT);
 
   // One `if` arm per declared section; an unknown name renders nothing (decision 85). Its
@@ -244,6 +254,7 @@ function buildRouteModule(
     linker,
     slots: SLOTS,
     hydratable,
+    formAssociated,
   });
   for (const section of route.sections as readonly SectionNode[]) {
     if (section.name === '') continue;

@@ -25,7 +25,7 @@
 import { allComponents, componentOf, type ComponentGraph, type ResolvedComponent } from './resolve.js';
 import type { ElementNode, HtmlContent } from '../html/index.js';
 import type { ControlNode } from '../control/index.js';
-import { classifyAttribute } from '../binding/index.js';
+import { classifyAttribute, isFormAssociated } from '../binding/index.js';
 import { branchesOf } from './constructs.js';
 import { codeOf } from './oxc-code.js';
 import { readsMoving } from './attrs.js';
@@ -102,6 +102,25 @@ function hasHookup(comp: ResolvedComponent): boolean {
 export function isIntrinsicallyHydratable(comp: ResolvedComponent): boolean {
   const code = codeOf(comp);
   return code.signals.length > 0 || code.client.body.length > 0 || hasHookup(comp);
+}
+
+/**
+ * The tags of the graph marked `formassociated` (decision 109) — the control-components.
+ *
+ * They are the ONE exception to gesture-driven hydration (SDD-17): their JavaScript is
+ * downloaded and run when the runtime installs, before anything is touched. A form-associated
+ * component half-raised — defined but stateless, or not defined at all — is not labelable,
+ * contributes nothing to a `FormData` and has no validity, and that is worse than a few
+ * kilobytes. The list is bounded by the marker and by nothing else, which is what keeps the
+ * exception an exception (SDD-34 §4.5, §6.16).
+ */
+export function formAssociatedTags(graph: ComponentGraph): ReadonlySet<string> {
+  const marked = new Set<string>();
+  for (const comp of allComponents(graph)) {
+    const template = comp.doc.template;
+    if (template !== undefined && isFormAssociated(template)) marked.add(comp.tag);
+  }
+  return marked;
 }
 
 /** The component hosts of a component's own template, as `(host element, child tag)`. */

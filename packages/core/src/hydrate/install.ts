@@ -30,6 +30,7 @@ import { createBusPrehydrator } from './bus.js';
 import { createCapturer } from './capture.js';
 import {
   browserRegistry,
+  idOf,
   instanceState,
   stopwatch,
   type ElementRegistry,
@@ -151,6 +152,27 @@ export function installHydration(options: HydrationOptions): Hydration {
 
   for (const type of CAPTURED_TYPES) {
     options.root.addEventListener(type, capture, true);
+  }
+  // **The one hydration nobody asked for** (SDD-34 §4.5). Every other instance in this
+  // framework comes up because the user touched it; a control-component comes up now,
+  // because a form-associated element that is not defined is not labelable, adds nothing to
+  // a `FormData` and has no validity — and a `<label for>` aimed at it is then aimed at an
+  // element that participates in nothing.
+  //
+  // It goes through the SAME path a gesture takes, and that is what keeps it an exception of
+  // one line rather than a second hydration engine: the subtree first, then the host, then
+  // the cells. What it does not do is replay anything — there was no gesture to replay.
+  for (const tag of maps.eager) {
+    void (async (): Promise<void> => {
+      await cascade.prepareTag(tag);
+      const elapsed = stopwatch();
+      await loader.ensureDefined(tag);
+      await cascade.prepareCells(tag);
+      cascade.attachAll(tag);
+      for (const host of doc.querySelectorAll(tag)) {
+        report(idOf(host), tag, elapsed(), 'downloaded');
+      }
+    })();
   }
   if (options.warm !== undefined) {
     // A separate axis from everything above: it observes viewports and orders network,

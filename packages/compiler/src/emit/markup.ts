@@ -173,6 +173,16 @@ export interface MarkupOptions {
    * and every test that asks only about markup have none, and an empty plan writes nothing.
    */
   readonly controls?: ControlPlan;
+  /**
+   * The tags marked `formassociated` (decision 109). A host of one of them opens its shadow
+   * root with `delegatesFocus`, which serializes as `shadowrootdelegatesfocus` on the
+   * template — without it a `<label for>` outside focuses the host and not the input inside.
+   *
+   * Required, with no default, for the same reason `hydratable` is: it is a fact about the
+   * whole graph, and a defaulted empty set would let a caller forget it and emit a
+   * control-component that is silently not labelable.
+   */
+  readonly formAssociated: ReadonlySet<string>;
 }
 
 export class MarkupEmitter {
@@ -185,6 +195,7 @@ export class MarkupEmitter {
   readonly #declared: (tag: string) => PropTarget | undefined;
   readonly #hydratable: ReadonlySet<string>;
   readonly #controls: ControlPlan;
+  readonly #formAssociated: ReadonlySet<string>;
   readonly #used = new Set<string>();
   #id = 0;
   /**
@@ -209,6 +220,7 @@ export class MarkupEmitter {
     this.#declared = options.declared ?? (() => undefined);
     this.#hydratable = options.hydratable;
     this.#controls = options.controls ?? new Map();
+    this.#formAssociated = options.formAssociated;
   }
 
   /** The child component tags rendered so far, in first-use order (for ES imports). */
@@ -323,7 +335,11 @@ export class MarkupEmitter {
       // The host's own attributes — its `.prop`s and its plain HTML ones (BUG-16 §4.1).
       // Level 1 is HTML with no JS, so this is the only place they can live.
       this.#elementAttrs(el, v, true);
-      this.#w.line(`const ${s} = $dom.attachShadow(${v});`);
+      // A control-component's shadow root delegates focus, and the serializer turns that into
+      // `shadowrootdelegatesfocus` on the template (SDD-34 §4.5). The argument is only written
+      // when it is true: a page with no control-component keeps the bytes it had.
+      const focus = this.#formAssociated.has(el.name) ? ', true' : '';
+      this.#w.line(`const ${s} = $dom.attachShadow(${v}${focus});`);
       this.#w.line(
         `${renderName(el.name)}($dom, ${s}, ${componentPropsExpr(this.#source, el, this.#signals, this.#declared(el.name))});`,
       );

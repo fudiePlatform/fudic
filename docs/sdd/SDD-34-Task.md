@@ -5,7 +5,7 @@
 > `./element`) · `@fudic/core` (la lista `eager` del mapa de página) · `@fudic/vite` (el borrado
 > del validador de servidor)
 > **Rama:** `sdd-34-forms-compilador`
-> **Progreso:** 10 / 16
+> **Progreso:** 13 / 16
 > **Depende de:** [SDD-33](./SDD-33-formularios-reactivos.md) en `Hecho`. No es un
 > encadenamiento burocrático: la fase 2 llama a `errors()`, `touch()` y `$setErrors` desde la
 > primera línea.
@@ -122,19 +122,19 @@ ficheros, `bind:` y el códec binario.
 
 ## Fase 4 — El control-componente (3)
 
-- [ ] **11. `FudicControlElement`.**
+- [x] **11. `FudicControlElement`.**
       `packages/forms/src/element.ts`, extendiendo `FudicElement` de `@fudic/core`:
       `static formAssociated = true`, `attachInternals()` en el constructor —el único momento en
       que se puede—, `setFormValue` siguiendo al valor y `setValidity` siguiendo a `errors`. Vive
       en `forms` y no en `core` porque necesita el tipo `Control<T>`: `forms` depende de `core` y
       **nunca al revés**.
-- [ ] **12. El marcador y el emit que lo sigue.**
+- [x] **12. El marcador y el emit que lo sigue.**
       `<template shadowrootmode="open" formassociated>` (decisión 109) → clase base
       `FudicControlElement`, `attachShadow({ delegatesFocus: true })` en cliente y
       `shadowrootdelegatesfocus` en el `<template>` serializado. Sin `delegatesFocus`, un `<label>`
       de fuera enfoca el host y no el `<input>` de dentro. El marcador es de compilación y **no
       llega al DOM**. Criterio §6.9.
-- [ ] **13. `eager` en el mapa de página.**
+- [x] **13. `eager` en el mapa de página.**
       El mapa gana la lista de tags que se definen y se hidratan al instalar el runtime, y el
       runtime de SDD-17 la consume antes del primer gesto. **Acotada a los tags `formassociated`**
       y a ningún otro: es la única forma de hidratación de fudic que no la conduce el usuario, y

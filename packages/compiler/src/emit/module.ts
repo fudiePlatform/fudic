@@ -31,7 +31,7 @@ import { AssetLinker, type AssetExists } from './assets.js';
 import { compactStyleCss } from './css-compact.js';
 import { codeOf } from './oxc-code.js';
 import { cellSlots, childTargets, reactiveScope } from './state.js';
-import { hydratableTags } from './level.js';
+import { formAssociatedTags, hydratableTags } from './level.js';
 import { writeMapConstants, writeHydrationBlocks } from './maps.js';
 import { planControls } from './controls.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
@@ -208,6 +208,7 @@ function buildComponentModule(
     declared: childTargets(graph),
     hydratable,
     controls,
+    formAssociated: formAssociatedTags(graph),
   });
   em.emitChildren(comp.doc.template!.children, '$shadow');
   // css uses the linker too (may register more imports), so build it before the imports.
@@ -352,6 +353,7 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
     container: tagDisplay('body'),
     boxes: pageBoxes(graph, page),
     hydratable,
+    formAssociated: formAssociatedTags(graph),
   });
   em.emitChildren(page.body.children, '$body');
 

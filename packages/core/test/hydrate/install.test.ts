@@ -127,6 +127,63 @@ describe('the runtime installed', () => {
     ]);
   });
 
+  it('the eager list comes up with no gesture, and nothing else does (SDD-34 §6.16)', async () => {
+    // The one hydration in the framework the user does not conduct. A form-associated element
+    // that is not defined is not labelable, adds nothing to a `FormData` and has no validity,
+    // so a `<label for>` aimed at it is aimed at an element that participates in nothing.
+    publish({ eager: ['ins-input'], state: [[0, 1, 2], ['A', 'B']] });
+    app = document.createElement('div');
+    document.body.appendChild(app);
+    host('ins-input', 0, app);
+    const plain = host('ins-plain', 1, app);
+
+    const r = run();
+    await settle();
+
+    // Defined and hydrated before anything was touched — and only it.
+    expect(r.trace).toEqual(['define:ins-input', 'h:ins-input#0:["A"]']);
+
+    // The plain component of the same page still has no JavaScript until it is touched.
+    click(plain);
+    await settle();
+    expect(r.trace).toContain('define:ins-plain');
+  });
+
+  it('an eager tag drags its subtree up with it, in the same order a gesture would', async () => {
+    publish({
+      eager: ['ins-form'],
+      tree: { 'ins-form': ['ins-field'] },
+      state: [[0, 1, 2], ['F', 'I']],
+    });
+    app = document.createElement('div');
+    document.body.appendChild(app);
+    const form = host('ins-form', 0, app);
+    host('ins-field', 1, form.shadowRoot!);
+
+    const r = run();
+    await settle();
+
+    // Post-order, exactly as path 2 does it: the subtree before the host.
+    expect(r.trace).toEqual([
+      'define:ins-field',
+      'h:ins-field#1:["I"]',
+      'define:ins-form',
+      'h:ins-form#0:["F"]',
+    ]);
+    // No replay: there was no gesture to replay.
+    expect(r.trace.some((t) => t.startsWith('handler:'))).toBe(false);
+  });
+
+  it('a page with no eager list brings nothing up on its own', async () => {
+    const only = host('ins-quiet', 0, app);
+    const r = run();
+    await settle();
+    expect(r.trace).toEqual([]);
+    click(only);
+    await settle();
+    expect(r.trace).toContain('define:ins-quiet');
+  });
+
   it('a second instance of the same tag shares the chunk and reports it, without a replay', async () => {
     const first = host('ins-twin', 0, app);
     const second = host('ins-twin', 1, app);

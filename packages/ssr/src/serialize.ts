@@ -71,7 +71,8 @@ function* serializeElement(n: SsrNodeImpl): Generator<string> {
   if (n.shadow !== null) {
     // DSD template adopts the component's shared stylesheet, named by the host tag
     // (SDD-18). Standard form emitted day one so native support needs zero change.
-    yield `<template shadowrootmode="open" shadowrootadoptedstylesheets="${escapeAttr(tag)}">`;
+    const focus = n.delegatesFocus ? ' shadowrootdelegatesfocus' : '';
+    yield `<template shadowrootmode="open"${focus} shadowrootadoptedstylesheets="${escapeAttr(tag)}">`;
     yield* serializeChildren(n.shadow);
     yield '</template>';
   }

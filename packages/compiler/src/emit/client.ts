@@ -25,6 +25,7 @@ import { AssetLinker } from './assets.js';
 import { codeOf, splicedOffset, type ClientStatement, type Prop } from './oxc-code.js';
 import { hookupContext } from './events.js';
 import { planControls } from './controls.js';
+import { isFormAssociated } from '../binding/index.js';
 import { movingNames } from './level.js';
 import { rootContext } from './display.js';
 import { cellSlots, childTargets, reactiveScope, type CellSlot } from './state.js';
@@ -230,8 +231,17 @@ function buildComponentClientModule(
   const w = new CodeWriter();
   // Written after the walk on purpose: `$sub` is imported only if the walk found a value
   // to keep in sync, so a component with no reactive prop carries no dead import (§6.20).
-  const core = usage.subscribes ? 'FudicElement, subscribe as $sub' : 'FudicElement';
-  w.line(`import { ${core} } from '@fudic/core';`);
+  // A control-component extends `FudicControlElement` instead (decision 109), which brings
+  // `static formAssociated = true`, the `ElementInternals` its constructor creates, and a
+  // shadow root that delegates focus. `FudicElement` is still imported for nothing it uses,
+  // so it is not: the base is one name or the other, never both.
+  const formAssociated = isFormAssociated(comp.doc.template!);
+  const base = formAssociated ? 'FudicControlElement' : 'FudicElement';
+  const core = usage.subscribes
+    ? `${formAssociated ? '' : 'FudicElement, '}subscribe as $sub`
+    : 'FudicElement';
+  if (!formAssociated || usage.subscribes) w.line(`import { ${core} } from '@fudic/core';`);
+  if (formAssociated) w.line("import { FudicControlElement } from '@fudic/forms/element';");
   // The bind functions this walk actually called, and no others. It is §6.7 made structural:
   // the chunk of a component with one text field names `bindText` and does not mention the
   // other five — not their names, not their modules. Sorted so the line is stable.
@@ -247,7 +257,7 @@ function buildComponentClientModule(
   for (const line of client.imports) w.line(line); // hoisted: only legal at module scope
   for (const line of linker.imports()) w.line(line);
   w.line('');
-  w.line(`customElements.define(${JSON.stringify(comp.tag)}, class extends FudicElement {`);
+  w.line(`customElements.define(${JSON.stringify(comp.tag)}, class extends ${base} {`);
   w.indent();
   w.line('static c($props) {');
   w.indent();
