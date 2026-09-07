@@ -164,6 +164,9 @@ importers:
       '@fudic/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      happy-dom:
+        specifier: 20.10.6
+        version: 20.10.6
 
   packages/language-core:
     dependencies:

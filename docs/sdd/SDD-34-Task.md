@@ -5,7 +5,7 @@
 > `./element`) · `@fudic/core` (la lista `eager` del mapa de página) · `@fudic/vite` (el borrado
 > del validador de servidor)
 > **Rama:** `sdd-34-forms-compilador`
-> **Progreso:** 4 / 16
+> **Progreso:** 7 / 16
 > **Depende de:** [SDD-33](./SDD-33-formularios-reactivos.md) en `Hecho`. No es un
 > encadenamiento burocrático: la fase 2 llama a `errors()`, `touch()` y `$setErrors` desde la
 > primera línea.
@@ -76,18 +76,18 @@ ficheros, `bind:` y el códec binario.
 
 ## Fase 2 — El runtime de enlace (3)
 
-- [ ] **5. Las seis funciones de enlace, un módulo cada una.**
+- [x] **5. Las seis funciones de enlace, un módulo cada una.**
       `packages/forms/src/dom/`: `bindText`, `bindNumber`, `bindCheckbox`, `bindRadio`,
       `bindSelect`, `bindSelectMultiple`. Cada una: elemento → control en `input` y `change`,
       `touch()` en `blur`, un `effect` de vuelta que **no escribe si el valor ya coincide** —por
       lo mismo que `$w` en BUG-12: escribir en un input enfocado mueve el cursor— y su `Cleanup`.
       Ninguna importa a las otras. Criterio §6.11.
-- [ ] **6. El efecto de errores y el hueco.**
+- [x] **6. El efecto de errores y el hueco.**
       Segundo `effect` por enlace: `aria-invalid` en el elemento y **texto** en el hueco que el
       emit ya dejó escrito — el runtime **no crea nodos**. Y solo si el control está `touched`: un
       campo obligatorio no está mal por estar todavía vacío. `setMessages` para el texto; sin él,
       el código de la regla. Criterio §6.12.
-- [ ] **7. `bindForm` y `bindGroup`.**
+- [x] **7. `bindForm` y `bindGroup`.**
       El formulario: `preventDefault` + `$touch()` + **foco al primer control inválido en orden de
       documento** —que es la salida portable al hecho de que `aria-describedby` no cruza la
       frontera de un shadow root— y el `$summary()` en una live region. La decisión de submit es

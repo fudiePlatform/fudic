@@ -1,7 +1,7 @@
 {
   "name": "@fudic/forms",
   "version": "0.0.1",
-  "description": "Reactive form model for fudic — controls, groups and validation, with no DOM in any branch.",
+  "description": "Reactive form model for fudic — controls, groups and validation, with no DOM in the model; the DOM bindings live behind ./dom.",
   "type": "module",
   "license": "MIT",
   "author": "Pedro Hurtado",
@@ -28,6 +28,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./dom": {
+      "types": "./dist/dom/index.d.ts",
+      "import": "./dist/dom/index.js"
+    },
+    "./element": {
+      "types": "./dist/element.d.ts",
+      "import": "./dist/element.js"
     }
   },
   "sideEffects": false,
@@ -49,6 +57,7 @@
     "@fudic/core": "workspace:*"
   },
   "devDependencies": {
-    "@fudic/tsconfig": "workspace:*"
+    "@fudic/tsconfig": "workspace:*",
+    "happy-dom": "20.10.6"
   }
 }
