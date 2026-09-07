@@ -5,7 +5,7 @@
 > `./element`) · `@fudic/core` (la lista `eager` del mapa de página) · `@fudic/vite` (el borrado
 > del validador de servidor)
 > **Rama:** `sdd-34-forms-compilador`
-> **Progreso:** 0 / 16
+> **Progreso:** 4 / 16
 > **Depende de:** [SDD-33](./SDD-33-formularios-reactivos.md) en `Hecho`. No es un
 > encadenamiento burocrático: la fase 2 llama a `errors()`, `touch()` y `$setErrors` desde la
 > primera línea.
@@ -22,7 +22,7 @@ fabricar el hueco del error— y la regla que gobierna la tanda entera:
 ## Los seis hitos
 
 **Hito A — la gramática.** `control` como atributo reservado de la familia de `ref`, con sus cinco
-diagnósticos y las decisiones 100–106 escritas en el documento de gramática.
+diagnósticos y las decisiones 106–112 escritas en el documento de gramática.
 
 **Hito B — el runtime de enlace.** `@fudic/forms/dom`: seis funciones, una por forma de elemento,
 cada una en su módulo. Ninguna sabe de las otras y ninguna busca nada en el DOM.
@@ -49,22 +49,24 @@ ficheros, `bind:` y el códec binario.
 
 ## Fase 1 — Gramática y semántica (4)
 
-- [ ] **1. Las decisiones, escritas donde viven.**
-      Añadir 100–106 a [`gramatica-v1-decisiones.md`](../gramar/gramatica-v1-decisiones.md) —
+- [x] **1. Las decisiones, escritas donde viven.**
+      Añadir 106–112 a [`gramatica-v1-decisiones.md`](../gramar/gramatica-v1-decisiones.md) —
+      los números 100–105 ya estaban tomados por la cadena de la expresión implícita, así que
+      las siete de `control` se numeran a continuación —
       sección 7, junto a `ref` (30) y a los prefijos reservados (22, 28.a)— y sus filas al índice
       de decisiones del final. Va **la primera** porque las cinco tareas siguientes las citan.
-- [ ] **2. `control` en el parser.**
-      Atributo reservado con valor de expresión, de la familia de `ref` (decisión 100) y **no** de
+- [x] **2. `control` en el parser.**
+      Atributo reservado con valor de expresión, de la familia de `ref` (decisión 106) y **no** de
       `class:`/`bus:`: esos llevan un nombre detrás del `:` y aquí no hay nada que nombrar. Nodo
       con su span y su expresión. `control="title"`, sin `@`, es `FUD0590` — que es además la
       forma del prototipo, así que el diagnóstico enseña la migración. Criterio §6.1.
-- [ ] **3. La clasificación por elemento.**
-      Decisión 101, los cuatro casos: `<form>`, elemento que porta valor, tag de componente,
+- [x] **3. La clasificación por elemento.**
+      Decisión 107, los cuatro casos: `<form>`, elemento que porta valor, tag de componente,
       cualquier otro elemento (grupo). Y la forma concreta del elemento que porta valor, que es la
       tabla de §4.2. Un `type` **dinámico** no se puede decidir en compilación y es `FUD0592`: no
       se emite un despacho de runtime para rescatarlo, porque eso devolvería al bundle la tabla
       que esta tanda quita. Criterios §6.2, §6.5.
-- [ ] **4. Las reglas semánticas y el rango.**
+- [x] **4. Las reglas semánticas y el rango.**
       `FUD0591` (dos elementos al mismo nodo, **salvo** que todos sean radios: ahí el emit agrupa
       y emite una sola llamada), `FUD0593` (`formassociated` fuera del template raíz del
       componente) y `FUD0594` (`control` dentro de un bucle, la decisión 31 aplicada por el mismo
@@ -119,7 +121,7 @@ ficheros, `bind:` y el códec binario.
       en `forms` y no en `core` porque necesita el tipo `Control<T>`: `forms` depende de `core` y
       **nunca al revés**.
 - [ ] **12. El marcador y el emit que lo sigue.**
-      `<template shadowrootmode="open" formassociated>` (decisión 103) → clase base
+      `<template shadowrootmode="open" formassociated>` (decisión 109) → clase base
       `FudicControlElement`, `attachShadow({ delegatesFocus: true })` en cliente y
       `shadowrootdelegatesfocus` en el `<template>` serializado. Sin `delegatesFocus`, un `<label>`
       de fuera enfoca el host y no el `<input>` de dentro. El marcador es de compilación y **no
@@ -133,7 +135,7 @@ ficheros, `bind:` y el códec binario.
 ## Fase 5 — El cruce y el bundle (2)
 
 - [ ] **14. `control` sobre un tag de componente.**
-      Decisión 104: cruza la **referencia** del nodo como prop. Convive con la 84 —ninguna signal
+      Decisión 110: cruza la **referencia** del nodo como prop. Convive con la 84 —ninguna signal
       cruza el shadow boundary— y no la deroga: lo que cruza no es estado de render del padre sino
       el **modelo**, nombrado por el autor, y el hijo se suscribe por su cuenta; **no se emite `u`
       para ese prop**. La alternativa (`bind:`, prop de valor + callback) exigiría cruzar además
@@ -173,7 +175,7 @@ puede comprobar —no sabe dónde pondrá la etiqueta quien lo use— y que el L
 
 - Criterios de aceptación: los 18 de
   [SDD-34 §6](./SDD-34-forms-compilador.md#6-criterios-de-aceptación).
-- Decisiones de gramática nuevas: 100–106, en
+- Decisiones de gramática nuevas: 106–112, en
   [`gramatica-v1-decisiones.md`](../gramar/gramatica-v1-decisiones.md) (tarea 1).
 - Extiende [SDD-17](./SDD-17-hidratacion.md) con **una** excepción acotada: la lista `eager`.
 - No toca [`bind:`](./pendings/PENDIENTES-v1.md) (decisiones 83–85), que sigue pendiente con su

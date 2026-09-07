@@ -26,6 +26,7 @@ import {
   EVENT_PREFIX,
   PROPERTY_PREFIX,
   REF_NAME,
+  CONTROL_NAME,
 } from './nodes.js';
 
 // ---------------------------------------------------------------------------
@@ -44,6 +45,13 @@ const FUD_BUS_NO_HANDLER = 'FUD0096';
 const FUD_BUS_NO_NAME = 'FUD0097';
 const FUD_EXPRESSION_NAME_NOT_BUS = 'FUD0098';
 const FUD_PREFIX_NO_NAME = 'FUD0099';
+
+/**
+ * SDD-34 §5 owns `FUD0590`–`FUD0619`, and the first of them is decided HERE because it is a
+ * rule about the FORM of the value — the same layer that already answers it for `ref` and for
+ * `class:`. The other four are semantic and live in SDD-12's analyzers.
+ */
+const FUD_CONTROL_NOT_EXPRESSION = 'FUD0590';
 
 /** A JS identifier, the only shape `ref="@id"` accepts (decision 30). */
 const SIMPLE_IDENTIFIER = /^[\p{ID_Start}$_][\p{ID_Continue}$]*$/u;
@@ -82,6 +90,7 @@ export function classifyAttribute(attr: Attribute, source: string): ParseResult<
     return classifyStyle(attr, name.slice(STYLE_PREFIX.length));
   }
   if (name === REF_NAME) return classifyRef(attr, source);
+  if (name === CONTROL_NAME) return classifyControl(attr);
 
   return ok(plainAttribute(attr, name));
 }
@@ -274,6 +283,30 @@ function classifyRef(attr: Attribute, source: string): ParseResult<Binding> {
     : degrade(binding, refDiag(handler.expr.span));
 }
 
+/**
+ * `control="@f.title"` (decision 106). The one structural rule is the one `ref` already has:
+ * the value is EXACTLY one `@` expression.
+ *
+ * And the one `ref` has that this does NOT: the simple-identifier check. A form node is
+ * addressed by a path — `@f.seo.canonical` is the ordinary case, not the exotic one — so
+ * narrowing the value to an identifier would leave every nested field unwritable. Which path
+ * is legal is a question about a schema, and the schema has types: TypeScript answers it over
+ * the SDD-23 projection (§4.9).
+ *
+ * `control="title"` — the prototype's spelling, with no `@` — is exactly the shape this
+ * rejects, and the message says what to write instead: the diagnostic IS the migration.
+ */
+function classifyControl(attr: Attribute): ParseResult<Binding> {
+  const handler = requireSingleExpression(attr);
+  if (handler.expr === null) {
+    return degrade(plainAttribute(attr, CONTROL_NAME), controlDiag(valueSpan(attr)));
+  }
+  const binding: Binding = { type: 'control', span: attr.span, value: handler.expr };
+  // A concatenation keeps the binding — a form node hidden from the editor over a mistake in
+  // its value helps nobody, which is the reading BUG-16 already settled for `.prop`.
+  return handler.reason === null ? ok(binding) : degrade(binding, controlDiag(valueSpan(attr)));
+}
+
 // ---------------------------------------------------------------------------
 // Shared rules
 // ---------------------------------------------------------------------------
@@ -330,6 +363,14 @@ function conditionalValueDiag(attr: Attribute, kind: 'class' | 'style'): Diagnos
 
 function busHandlerDiag(at: Span): Diagnostic {
   return errorDiag(FUD_BUS_NO_HANDLER, 'bus binding value must be exactly one `@` handler', at);
+}
+
+function controlDiag(at: Span): Diagnostic {
+  return errorDiag(
+    FUD_CONTROL_NOT_EXPRESSION,
+    'control value must be a single `@` expression naming a form node, e.g. `control="@f.title"`',
+    at,
+  );
 }
 
 function refDiag(at: Span): Diagnostic {
