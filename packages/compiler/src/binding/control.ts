@@ -33,6 +33,21 @@ import { decodeEntities, type Attribute, type AttributeText, type ElementNode } 
  */
 export const FORM_ASSOCIATED_ATTR = 'formassociated';
 
+/**
+ * The prop a `control` on a component tag crosses under (decision 110).
+ *
+ * `ctrl`, and it is a CONVENTION rather than something derived: §3.1's canonical
+ * control-component reads `<input control="@ctrl">` inside its own template, so `ctrl` is the
+ * name a control-component already declares. Deriving it instead — «whatever the child's own
+ * root binding happens to name» — would make the parent's output depend on a detail of the
+ * child's template that neither of them writes down.
+ *
+ * A child that declares no `ctrl` prop receives nothing: the crossing lands by prop NAME, and
+ * a name the child did not declare is not a slot in its payload. That is the rule every other
+ * prop follows, and it is what keeps the contract the child's.
+ */
+export const CONTROL_PROP = 'ctrl';
+
 /** Whether a `<template>` element carries the `formassociated` marker. */
 export function isFormAssociated(el: ElementNode): boolean {
   return el.attributes.some(

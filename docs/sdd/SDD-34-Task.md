@@ -5,7 +5,7 @@
 > `./element`) · `@fudic/core` (la lista `eager` del mapa de página) · `@fudic/vite` (el borrado
 > del validador de servidor)
 > **Rama:** `sdd-34-forms-compilador`
-> **Progreso:** 13 / 16
+> **Progreso:** 15 / 16
 > **Depende de:** [SDD-33](./SDD-33-formularios-reactivos.md) en `Hecho`. No es un
 > encadenamiento burocrático: la fase 2 llama a `errors()`, `touch()` y `$setErrors` desde la
 > primera línea.
@@ -142,13 +142,13 @@ ficheros, `bind:` y el códec binario.
 
 ## Fase 5 — El cruce y el bundle (2)
 
-- [ ] **14. `control` sobre un tag de componente.**
+- [x] **14. `control` sobre un tag de componente.**
       Decisión 110: cruza la **referencia** del nodo como prop. Convive con la 84 —ninguna signal
       cruza el shadow boundary— y no la deroga: lo que cruza no es estado de render del padre sino
       el **modelo**, nombrado por el autor, y el hijo se suscribe por su cuenta; **no se emite `u`
       para ese prop**. La alternativa (`bind:`, prop de valor + callback) exigiría cruzar además
       errores, `touched`, `dirty` y la orden de validar. Criterio §6.2 (la parte del componente).
-- [ ] **15. El borrado del validador de servidor.**
+- [x] **15. El borrado del validador de servidor.**
       Transformación del plugin (SDD-19) sobre el `.ts` del schema en el build de **cliente**:
       reconocer `serverValidator(...)` por su binding importado de `@fudic/forms` y sustituir **su
       argumento** por `() => null`. El argumento y no la llamada, para que el array de validadores

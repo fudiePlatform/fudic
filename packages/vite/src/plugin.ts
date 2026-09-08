@@ -27,6 +27,7 @@ import { emitRenderChunk } from './wrapper.js';
 import { emitServerModule } from './server.js';
 import { emitMainBootstrap, emitSwBootstrap } from './bootstrap.js';
 import { transformFud, transformFudClient } from './transform.js';
+import { eraseServerValidators } from './server-validators.js';
 import { CLIENT_QUERY, clientChunkName, clientId, discoverComponents } from './client.js';
 import { nodeIo } from './io.js';
 import { readSwConfig, type ResolvedSwConfig } from './swconfig.js';
@@ -497,10 +498,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       return null;
     },
 
-    async transform(_code, id) {
+    async transform(code, id) {
       const { path, query } = splitId(id);
       if (!path.endsWith('.fud')) {
-        return null;
+        // The schema of a form is an ordinary `.ts` that BOTH ends import, so the body of a
+        // `serverValidator` would ship with the client unless it is taken out here (SDD-34
+        // §4.7). This is the client build: the render graph lives in the edge pass, outside
+        // `outDir`, and there the validators stay whole.
+        const erased = /\.[cm]?[jt]sx?$/u.test(path) ? eraseServerValidators(code) : null;
+        return erased === null ? null : { code: erased, map: null };
       }
       if (query === 'server') {
         // The `@server` region is TS (typed `load`/`paths`); strip types to plain JS so

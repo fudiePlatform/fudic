@@ -39,7 +39,7 @@ import type { HtmlContent, ElementNode, AttributeValuePart } from '../html/index
 import type { ControlNode } from '../control/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { Span } from '../types/index.js';
-import { classifyAttribute, crossing } from '../binding/index.js';
+import { classifyAttribute, crossing, CONTROL_PROP } from '../binding/index.js';
 import { ERROR_SLOT_ATTR, SUMMARY_SLOT_ATTR } from './controls.js';
 import { CodeWriter, type LinePart } from './writer.js';
 import { type AssetLinker } from './assets.js';
@@ -913,6 +913,15 @@ export class ClientMarkupEmitter {
     const declared = this.#scope.declared(el.name);
     for (const attr of el.attributes) {
       const b = classifyAttribute(attr, this.#source).value;
+      // `control="@f.body"` on a component tag: the REFERENCE crosses, under the `ctrl` prop
+      // (decision 110). It is the `ref` shape and not a new one, and that is the whole
+      // argument of §4.6 in one line — what crosses is the model, named by the author at the
+      // point of use, so the child subscribes to it on its own and no `u` is emitted for it.
+      // Decision 84 is untouched: the emit builds no implicit reactive graph here.
+      if (b.type === 'control') {
+        out.set(CONTROL_PROP, { expr: this.#slice(b.value.expr), changes: false, ref: true });
+        continue;
+      }
       if (b.type !== 'property') continue;
       const how = crossing(this.#source, b.value, this.#scope.signals, declared?.(b.name));
       // By reference: the object goes in, once. No signal to hook onto and nothing that

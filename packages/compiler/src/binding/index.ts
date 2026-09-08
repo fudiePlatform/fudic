@@ -37,4 +37,10 @@ export { crossing, reactiveNames } from './crossing.js';
 // What a `control` binding means on ITS element (decision 107) — the third rule of this kind:
 // the semantic pass reports `FUD0592` off it and the emit picks its bind module off it.
 export type { ControlTarget, BindFunction, UnsupportedControl } from './control.js';
-export { controlTarget, isRadio, isFormAssociated, FORM_ASSOCIATED_ATTR } from './control.js';
+export {
+  controlTarget,
+  isRadio,
+  isFormAssociated,
+  FORM_ASSOCIATED_ATTR,
+  CONTROL_PROP,
+} from './control.js';

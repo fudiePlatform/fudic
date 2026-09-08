@@ -29,7 +29,7 @@ function emit(
       `@code {\n${code}\n}\n<m-el>\n  <template shadowrootmode="open">${template}</template>\n</m-el>\n`,
     '/app-input.fud':
       '@code {\n  const { ctrl } = props<{ ctrl?: unknown }>();\n}\n' +
-      '<app-input>\n  <template shadowrootmode="open"><input></template>\n</app-input>\n',
+      '<app-input>\n  <template shadowrootmode="open" formassociated><input control="@ctrl"></template>\n</app-input>\n',
   });
   const graph = resolveComponents('/home.fud', io);
   const comp = graph.components.get('m-el')!;
@@ -105,6 +105,24 @@ describe('§6.7 — the switch is spent at compile time', () => {
     const { client } = emit('<app-input control="@f.body"></app-input>');
     expect(client).not.toContain('@fudic/forms/dom');
     expect(client).not.toContain('data-fud-err');
+  });
+
+  it('the reference crosses as the `ctrl` prop, by REFERENCE and with no `u` (§6.2)', () => {
+    const { client, server } = emit('<app-input control="@f.body"></app-input>');
+    // Handed over ONCE, at hookup, as the object itself — not a read of it. It is the `ref`
+    // shape of BUG-24: parent and child hold the same node, so there is nothing to reforward.
+    expect(client).toMatch(/\$n\d+\.u\(\[, , f\.body\]\);/u);
+    expect(client).not.toContain('$sub(f.body');
+    // On the server there is no cable at all: the child's `render` is a call in this process.
+    expect(server).toContain('{ "ctrl": f.body }');
+  });
+
+  it('no `u` pass is emitted for it: the child is beside the parent, not downstream', () => {
+    const { client } = emit('<app-input control="@f.body"></app-input>');
+    // The handover is in `$s`, which both `c` and `h` run. The update pass has no slot for
+    // it — writing into the node does not repaint the parent (decision 84 intact).
+    const update = client.slice(client.indexOf('u: ('), client.indexOf('r: ('));
+    expect(update).not.toContain('f.body');
   });
 
   it('an unsupported element emits no binding at all, and the file still emits', () => {

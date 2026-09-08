@@ -350,6 +350,13 @@ los tags marcados, se mide (§6.16) y ningún otro componente entra en ella.
 nodo** como prop. El hijo recibe el `Control<T>` y lo enlaza a su `<input>` interno con las mismas
 reglas de §4.2.
 
+**La prop se llama `ctrl`**, y es una convención, no algo derivado: el control-componente
+canónico de §3.1 lee `<input control="@ctrl">` en su propio template, así que `ctrl` es el nombre
+que ya declara. Derivarlo —«el que nombre el binding raíz del hijo»— haría que la salida del
+padre dependiera de un detalle del template del hijo que ninguno de los dos escribe. Un hijo que
+no declara `ctrl` no recibe nada: el cruce aterriza **por nombre de prop**, como todos los demás,
+y eso es lo que mantiene el contrato del lado del hijo.
+
 Esto convive con la **decisión 84** —*ninguna signal cruza el shadow boundary*— y no la deroga,
 porque lo que 84 prohíbe es que el **emit** construya un grafo reactivo implícito entre padre e
 hijo: un prop es un valor, y si se mueve, el padre reenvía con `u`. Aquí lo que cruza no es estado
