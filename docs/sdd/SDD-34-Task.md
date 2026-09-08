@@ -22,7 +22,7 @@ fabricar el hueco del error— y la regla que gobierna la tanda entera:
 ## Los seis hitos
 
 **Hito A — la gramática.** `control` como atributo reservado de la familia de `ref`, con sus cinco
-diagnósticos y las decisiones 106–112 escritas en el documento de gramática.
+diagnósticos y las decisiones 108–114 escritas en el documento de gramática.
 
 **Hito B — el runtime de enlace.** `@fudic/forms/dom`: seis funciones, una por forma de elemento,
 cada una en su módulo. Ninguna sabe de las otras y ninguna busca nada en el DOM.
@@ -50,18 +50,18 @@ ficheros, `bind:` y el códec binario.
 ## Fase 1 — Gramática y semántica (4)
 
 - [x] **1. Las decisiones, escritas donde viven.**
-      Añadir 106–112 a [`gramatica-v1-decisiones.md`](../gramar/gramatica-v1-decisiones.md) —
-      los números 100–105 ya estaban tomados por la cadena de la expresión implícita, así que
-      las siete de `control` se numeran a continuación —
+      Añadir 108–114 a [`gramatica-v1-decisiones.md`](../gramar/gramatica-v1-decisiones.md) —
+      100–105 ya estaban tomados por la cadena de la expresión implícita y 107 por SDD-36, así
+      que las siete de `control` se numeran a continuación de lo tomado —
       sección 7, junto a `ref` (30) y a los prefijos reservados (22, 28.a)— y sus filas al índice
       de decisiones del final. Va **la primera** porque las cinco tareas siguientes las citan.
 - [x] **2. `control` en el parser.**
-      Atributo reservado con valor de expresión, de la familia de `ref` (decisión 106) y **no** de
+      Atributo reservado con valor de expresión, de la familia de `ref` (decisión 108) y **no** de
       `class:`/`bus:`: esos llevan un nombre detrás del `:` y aquí no hay nada que nombrar. Nodo
       con su span y su expresión. `control="title"`, sin `@`, es `FUD0590` — que es además la
       forma del prototipo, así que el diagnóstico enseña la migración. Criterio §6.1.
 - [x] **3. La clasificación por elemento.**
-      Decisión 107, los cuatro casos: `<form>`, elemento que porta valor, tag de componente,
+      Decisión 109, los cuatro casos: `<form>`, elemento que porta valor, tag de componente,
       cualquier otro elemento (grupo). Y la forma concreta del elemento que porta valor, que es la
       tabla de §4.2. Un `type` **dinámico** no se puede decidir en compilación y es `FUD0592`: no
       se emite un despacho de runtime para rescatarlo, porque eso devolvería al bundle la tabla
@@ -129,7 +129,7 @@ ficheros, `bind:` y el códec binario.
       en `forms` y no en `core` porque necesita el tipo `Control<T>`: `forms` depende de `core` y
       **nunca al revés**.
 - [x] **12. El marcador y el emit que lo sigue.**
-      `<template shadowrootmode="open" formassociated>` (decisión 109) → clase base
+      `<template shadowrootmode="open" formassociated>` (decisión 111) → clase base
       `FudicControlElement`, `attachShadow({ delegatesFocus: true })` en cliente y
       `shadowrootdelegatesfocus` en el `<template>` serializado. Sin `delegatesFocus`, un `<label>`
       de fuera enfoca el host y no el `<input>` de dentro. El marcador es de compilación y **no
@@ -143,7 +143,7 @@ ficheros, `bind:` y el códec binario.
 ## Fase 5 — El cruce y el bundle (2)
 
 - [x] **14. `control` sobre un tag de componente.**
-      Decisión 110: cruza la **referencia** del nodo como prop. Convive con la 84 —ninguna signal
+      Decisión 112: cruza la **referencia** del nodo como prop. Convive con la 84 —ninguna signal
       cruza el shadow boundary— y no la deroga: lo que cruza no es estado de render del padre sino
       el **modelo**, nombrado por el autor, y el hijo se suscribe por su cuenta; **no se emite `u`
       para ese prop**. La alternativa (`bind:`, prop de valor + callback) exigiría cruzar además
@@ -190,7 +190,7 @@ puede comprobar —no sabe dónde pondrá la etiqueta quien lo use— y que el L
 
 - Criterios de aceptación: los 18 de
   [SDD-34 §6](./SDD-34-forms-compilador.md#6-criterios-de-aceptación).
-- Decisiones de gramática nuevas: 106–112, en
+- Decisiones de gramática nuevas: 108–114, en
   [`gramatica-v1-decisiones.md`](../gramar/gramatica-v1-decisiones.md) (tarea 1).
 - Extiende [SDD-17](./SDD-17-hidratacion.md) con **una** excepción acotada: la lista `eager`.
 - No toca [`bind:`](./pendings/PENDIENTES-v1.md) (decisiones 83–85), que sigue pendiente con su

@@ -1,6 +1,6 @@
 /**
  * `bindGroup` — a group of fields, on whatever element the author chose (SDD-34 §4.1,
- * decision 107).
+ * decision 109).
  *
  * There is no privileged element: a `<fieldset>`, a `<div>` and a `<section>` are all the same
  * to this. What the binding adds is the SEMANTICS of grouping — this region of the form is the

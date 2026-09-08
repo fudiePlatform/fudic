@@ -1,5 +1,5 @@
 /**
- * `form-associated-placement` (decision 109, SDD-34 §4.5): `formassociated` belongs to the
+ * `form-associated-placement` (decision 111, SDD-34 §4.5): `formassociated` belongs to the
  * ROOT `<template shadowrootmode>` of a component, and nowhere else.
  *
  * What the marker decides is what the emitted CLASS is — which base it extends, whether its

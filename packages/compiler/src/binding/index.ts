@@ -34,7 +34,7 @@ export { handlerShape, unwrapParens } from './handler.js';
 export type { Crossing, ComponentDeclaredProps } from './crossing.js';
 export { crossing, reactiveNames } from './crossing.js';
 
-// What a `control` binding means on ITS element (decision 107) — the third rule of this kind:
+// What a `control` binding means on ITS element (decision 109) — the third rule of this kind:
 // the semantic pass reports `FUD0592` off it and the emit picks its bind module off it.
 export type { ControlTarget, BindFunction, UnsupportedControl } from './control.js';
 export {

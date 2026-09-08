@@ -211,7 +211,7 @@ export function componentPropsExpr(
   const entries: string[] = [];
   for (const attr of el.attributes) {
     const b = classifyAttribute(attr, source).value;
-    // `control="@f.body"` on a component tag hands the child the NODE (decision 110). On the
+    // `control="@f.body"` on a component tag hands the child the NODE (decision 112). On the
     // server there is no cable — the child's `render` is a call in this same process — so the
     // object goes straight in, which is what lets SSR paint the child's values.
     if (b.type === 'control') {

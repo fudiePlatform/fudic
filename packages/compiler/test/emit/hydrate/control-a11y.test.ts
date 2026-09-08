@@ -11,7 +11,7 @@
  * `<span>` with `insertAdjacentElement` on the first error, so a form served with its errors
  * and the same form once hydrated had DIFFERENT MARKUP — and with it, different
  * accessibility, depending on whether JavaScript had run. Here the slot is written by the
- * emit and the runtime only ever writes its text (decision 111), so the two paths cannot
+ * emit and the runtime only ever writes its text (decision 113), so the two paths cannot
  * drift.
  *
  * Both branches are evaluated rather than imported, like the rest of this folder: they are

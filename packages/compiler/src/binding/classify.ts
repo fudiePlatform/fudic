@@ -284,7 +284,7 @@ function classifyRef(attr: Attribute, source: string): ParseResult<Binding> {
 }
 
 /**
- * `control="@f.title"` (decision 106). The one structural rule is the one `ref` already has:
+ * `control="@f.title"` (decision 108). The one structural rule is the one `ref` already has:
  * the value is EXACTLY one `@` expression.
  *
  * And the one `ref` has that this does NOT: the simple-identifier check. A form node is

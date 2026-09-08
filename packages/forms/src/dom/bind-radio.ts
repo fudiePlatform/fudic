@@ -1,5 +1,5 @@
 /**
- * `bindRadio` — a radio GROUP: N elements expressing one value (SDD-34 §4.2, decision 108).
+ * `bindRadio` — a radio GROUP: N elements expressing one value (SDD-34 §4.2, decision 110).
  *
  * It is the one binding that takes a list, and the reason is the element and not the compiler:
  * a radio group is how HTML writes a single choice, so several `control` on the same form node

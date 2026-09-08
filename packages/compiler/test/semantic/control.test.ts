@@ -86,10 +86,10 @@ function element(markup: string, tag: string): ElementNode {
 }
 
 // ---------------------------------------------------------------------------
-// §6.2 — the four cases of decision 107
+// §6.2 — the four cases of decision 109
 // ---------------------------------------------------------------------------
 
-describe('controlTarget — the element decides (decision 107, §6.2)', () => {
+describe('controlTarget — the element decides (decision 109, §6.2)', () => {
   it('classifies the four cases', () => {
     const markup =
       '<form control="@f"><input control="@f.title"><fieldset control="@f.seo"></fieldset>' +
@@ -210,7 +210,7 @@ describe('FUD0592 — an element that carries no user value (§6.5)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// §6.3 — FUD0591, one node one element (decision 108)
+// §6.3 — FUD0591, one node one element (decision 110)
 // ---------------------------------------------------------------------------
 
 describe('FUD0591 — a form node binds one element (§6.3)', () => {
@@ -254,7 +254,7 @@ describe('FUD0591 — a form node binds one element (§6.3)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// §6.4 — FUD0594, `control` in a loop (decision 112)
+// §6.4 — FUD0594, `control` in a loop (decision 114)
 // ---------------------------------------------------------------------------
 
 describe('FUD0594 — `control` inside a loop (§6.4)', () => {
@@ -274,7 +274,7 @@ describe('FUD0594 — `control` inside a loop (§6.4)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// §6.6 — FUD0593, where `formassociated` may be written (decision 109)
+// §6.6 — FUD0593, where `formassociated` may be written (decision 111)
 // ---------------------------------------------------------------------------
 
 describe('FUD0593 — `formassociated` placement (§6.6)', () => {

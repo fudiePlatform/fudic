@@ -78,7 +78,7 @@ export interface HookupContext {
   readonly binds: Set<string>;
   /**
    * The names of this component's own props — what tells a `control` whose node ARRIVES from
-   * the parent (decision 110) from one the component already holds.
+   * the parent (decision 112) from one the component already holds.
    *
    * The two cannot be bound the same way. A node named by a neutral import is there when the
    * factory hooks up; a node that crossed as a prop is not, and never is: the payload the

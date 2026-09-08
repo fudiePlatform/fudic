@@ -45,7 +45,7 @@ export function undo(all: readonly Cleanup[]): Cleanup {
  * them carry the state of that value. Everything else passes one.
  *
  * The slot is only ever WRITTEN, never created: it exists in the HTML the server sent, with
- * its stable id and the `aria-describedby` that points at it (decision 111). That is the
+ * its stable id and the `aria-describedby` that points at it (decision 113). That is the
  * invariant §6.10 measures.
  */
 export function bindErrors(

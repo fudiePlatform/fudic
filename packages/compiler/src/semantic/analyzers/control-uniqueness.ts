@@ -1,5 +1,5 @@
 /**
- * `control-uniqueness` (decision 108, SDD-34 §4.1): one form node binds one element, within
+ * `control-uniqueness` (decision 110, SDD-34 §4.1): one form node binds one element, within
  * one component.
  *
  * Two `control="@f.title"` in the same file is `FUD0591`. Two views of the same value is not a

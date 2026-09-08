@@ -105,7 +105,7 @@ export function isIntrinsicallyHydratable(comp: ResolvedComponent): boolean {
 }
 
 /**
- * The tags of the graph marked `formassociated` (decision 109) — the control-components.
+ * The tags of the graph marked `formassociated` (decision 111) — the control-components.
  *
  * They are the ONE exception to gesture-driven hydration (SDD-17): their JavaScript is
  * downloaded and run when the runtime installs, before anything is touched. A form-associated

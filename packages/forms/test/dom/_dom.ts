@@ -2,7 +2,7 @@
  * The fixtures the `./dom` tests share: markup built the way the EMIT builds it.
  *
  * The error slot is written here rather than fabricated by a binding, and that is the point of
- * decision 111 restated as a test helper: the slot exists in the markup before any JavaScript
+ * decision 113 restated as a test helper: the slot exists in the markup before any JavaScript
  * runs, with its stable id and the `aria-describedby` that points at it. A helper that created
  * it on demand would be testing the prototype's design instead of this one.
  */

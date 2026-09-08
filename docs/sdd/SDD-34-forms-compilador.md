@@ -8,8 +8,12 @@
 > mapas de página), 17 (hidratación por gesto, que aquí gana **una** excepción), 19 (el plugin),
 > 23 (la proyección TS, que es quien comprueba las rutas)
 > **Rango de diagnósticos:** `FUD0590`–`FUD0619`
-> **Decisiones de gramática:** 106–112 (nuevas; 100–105 ya estaban tomadas por la cadena de la
-> expresión implícita, así que estas siete se numeran a continuación)
+> **Decisiones de gramática:** 108–114 (nuevas). Esta spec se redactó reservando 100–106, pero
+> mientras estaba en `Listo` se tomaron la 100–105 —la cadena de la expresión implícita, BUG-23—
+> y la 107 —dónde se documenta un componente, SDD-36, ya `Hecho` y citada por el
+> language-server—. Las siete se corren a continuación de lo que hay tomado. La regla que evita
+> repetirlo está en la cabecera de la tabla índice de la gramática: una decisión toma el
+> siguiente número libre **del índice**, y entra en él **al redactarse** la spec.
 > **Naturaleza:** gramática + emit + una capa de runtime que **solo** contiene lo que el emit
 > invoca. Ningún escaneo del DOM, ninguna tabla de despacho.
 
@@ -74,18 +78,18 @@ nativo, y el día que exista `@fudic/http` será suyo.
 ### 3.1. La gramática
 
 ```razor
-<form control="@f">                                    <!-- el formulario  (decisión 107) -->
+<form control="@f">                                    <!-- el formulario  (decisión 109) -->
   <label>
     <span>Título</span>
-    <input control="@f.title">                         <!-- un control     (decisión 107) -->
+    <input control="@f.title">                         <!-- un control     (decisión 109) -->
   </label>
 
-  <fieldset control="@f.seo">                          <!-- un grupo       (decisión 107) -->
+  <fieldset control="@f.seo">                          <!-- un grupo       (decisión 109) -->
     <input control="@f.seo.description">
     <input type="url" control="@f.seo.canonical">
   </fieldset>
 
-  <app-input control="@f.body"></app-input>            <!-- cruza el nodo  (decisión 110) -->
+  <app-input control="@f.body"></app-input>            <!-- cruza el nodo  (decisión 112) -->
 </form>
 ```
 
@@ -119,7 +123,7 @@ export function bindSelectMultiple(el: HTMLSelectElement, c: Control<readonly st
 /** El formulario: tocado en cascada, foco al primer inválido, resumen en la live region. */
 export function bindForm(el: HTMLFormElement, f: AnyForm, sum: HTMLElement | null): Cleanup;
 
-/** Un grupo: agrupa errores. `el` es el que el autor haya elegido (decisión 107). */
+/** Un grupo: agrupa errores. `el` es el que el autor haya elegido (decisión 109). */
 export function bindGroup(el: HTMLElement, g: AnyForm): Cleanup;
 
 /** El hueco del error: el elemento que el emit ya dejó escrito. El runtime solo pone texto. */
@@ -155,13 +159,13 @@ necesita el tipo `Control<T>`, así que `forms` depende de `core` y **nunca al r
 
 ### 4.1. `control` es un atributo reservado, y el elemento decide qué significa
 
-**Decisión 106.** `control` es un **atributo reservado** cuyo valor es una expresión con `@`. Es
+**Decisión 108.** `control` es un **atributo reservado** cuyo valor es una expresión con `@`. Es
 de la familia de `ref` (decisión 30), no de `class:`/`bus:` (22, 28.a): esos son prefijos porque
 llevan un nombre detrás del `:`, y aquí no hay nada que nombrar — el nodo lo dice la expresión.
 `control="title"`, sin `@`, es `FUD0590`; es además la forma que el prototipo usaba
 (`control:="title"`), así que el diagnóstico enseña la migración.
 
-**Decisión 107.** **El elemento decide qué se enlaza**, y son cuatro casos y no más:
+**Decisión 109.** **El elemento decide qué se enlaza**, y son cuatro casos y no más:
 
 | Elemento | Qué se espera | Qué se emite |
 |---|---|---|
@@ -178,7 +182,7 @@ Un grupo se enlaza a **lo que el autor quiera** —un `<fieldset>`, un `<div>`, 
 No hay elemento privilegiado: lo que el enlace aporta es semántica de agrupación de errores, y
 dónde caiga es maquetación.
 
-**Decisión 108.** **Un nodo se enlaza a un elemento y solo a uno dentro del mismo componente.**
+**Decisión 110.** **Un nodo se enlaza a un elemento y solo a uno dentro del mismo componente.**
 Dos `control` con la misma expresión en el mismo fichero es `FUD0591`. Dos vistas del mismo valor
 no es un caso de formulario: es un caso de interpolación, y para eso está `@f.title()`.
 
@@ -188,7 +192,7 @@ misma expresión son legítimos si **todos** son radios; mezclar un radio con cu
 elemento vuelve a ser `FUD0591`. El emit los agrupa y emite una sola llamada a `bindRadio` con la
 lista.
 
-**Decisión 112.** `control` dentro de un bucle (`@foreach`, `@for`, `@while`) es error
+**Decisión 114.** `control` dentro de un bucle (`@foreach`, `@for`, `@while`) es error
 (`FUD0594`). Es la decisión 31 aplicada por la misma razón que a `ref`: la expresión enlazaría N
 elementos al mismo nodo. Las colecciones de controles (`FormArray`) están fuera de alcance en
 SDD-33 §7, y cuando entren traerán su propia forma de nombrar la fila.
@@ -252,7 +256,7 @@ SSR— dos cosas:
 - Con errores presentes en el momento de renderizar —un 422 que el servidor pintó, §4.4— el texto
   y el `aria-invalid` **ya salen puestos**. Un formulario con errores es accesible **con cero JS**.
 
-**Decisión 111.** El marcado del error lo emite el compilador y el runtime **solo escribe su
+**Decisión 113.** El marcado del error lo emite el compilador y el runtime **solo escribe su
 texto**. Es la invariante que hace que un formulario tenga la misma accesibilidad haya hidratado o
 no, y es exactamente lo que el prototipo no podía cumplir fabricando el `<span>` al vuelo.
 
@@ -318,7 +322,7 @@ la nada. A partir de aquí:
 
 ### 4.5. `formassociated`: el marcador, la clase, y el JavaScript que sí se paga
 
-**Decisión 109.** `<template shadowrootmode="open" formassociated>` marca el componente como
+**Decisión 111.** `<template shadowrootmode="open" formassociated>` marca el componente como
 **control-componente**. El marcador es de compilación: el navegador nunca lo ve —un atributo
 desconocido en un `<template>` es inerte— y el compilador lo consume. **No inventa nada del
 estándar**: `static formAssociated` lo lee el navegador al *definir* la clase, así que ninguna
@@ -360,7 +364,7 @@ más. El contraste de §6.16 se mide contra un componente normal que no es dueñ
 
 ### 4.6. Pasar un nodo a un componente: la referencia cruza, y por qué
 
-**Decisión 110.** Sobre un tag de componente, `control="@f.title"` **cruza la referencia del
+**Decisión 112.** Sobre un tag de componente, `control="@f.title"` **cruza la referencia del
 nodo** como prop. El hijo recibe el `Control<T>` y lo enlaza a su `<input>` interno con las mismas
 reglas de §4.2.
 
@@ -483,11 +487,11 @@ schema en el emit sería duplicar el chequeo y quedarse corto.
 
 | Código | Regla |
 |---|---|
-| `FUD0590` | El valor de `control` no es una expresión `@` (decisión 106). Cubre el `control="title"` del prototipo. |
-| `FUD0591` | Dos elementos del mismo componente enlazan el mismo nodo (decisión 108), salvo que **todos** sean `<input type="radio">`. |
+| `FUD0590` | El valor de `control` no es una expresión `@` (decisión 108). Cubre el `control="title"` del prototipo. |
+| `FUD0591` | Dos elementos del mismo componente enlazan el mismo nodo (decisión 110), salvo que **todos** sean `<input type="radio">`. |
 | `FUD0592` | `control` sobre un `<input>` cuyo `type` no porta valor de usuario (`submit`, `reset`, `button`, `image`), no está soportado (`file`, SDD-33 §7) o es **dinámico** y no se puede decidir en compilación. |
-| `FUD0593` | `formassociated` fuera del `<template shadowrootmode>` raíz de un componente — en un template anidado o en modo página (decisión 109). |
-| `FUD0594` | `control` dentro de un bucle (decisión 112, hermana de la 31). |
+| `FUD0593` | `formassociated` fuera del `<template shadowrootmode>` raíz de un componente — en un template anidado o en modo página (decisión 111). |
+| `FUD0594` | `control` dentro de un bucle (decisión 114, hermana de la 31). |
 | `FUD0595`–`FUD0619` | Reservados. |
 
 Ninguno de los cinco lanza: el emit anota el diagnóstico con su span, omite **ese** enlace y sigue
@@ -506,7 +510,7 @@ Tests en `packages/compiler/test/` (1–9, 13–15), `packages/forms/test/dom/` 
    expresión parseada y el elemento resuelto; `control="title"` produce `FUD0590` y el resto del
    fichero se emite.
 2. `control` sobre `<form>`, sobre `<input>`, sobre `<fieldset>` y sobre `<app-input>` clasifican
-   en los cuatro casos de la decisión 107, y el clasificado se ve en el AST.
+   en los cuatro casos de la decisión 109, y el clasificado se ve en el AST.
 3. Dos `control="@f.title"` en el mismo fichero → `FUD0591` en el **segundo**, con su span. Tres
    `<input type="radio" control="@f.tone">` → **sin diagnóstico** y una sola llamada a `bindRadio`
    con los tres; los mismos tres más un `<input type="text">` sobre el mismo nodo → `FUD0591`.

@@ -1,5 +1,5 @@
 /**
- * `control-in-loop` (decision 112, SDD-34 §4.1): a `control` binding inside a
+ * `control-in-loop` (decision 114, SDD-34 §4.1): a `control` binding inside a
  * `@foreach`/`@for`/`@while` subtree.
  *
  * It is `ref-in-loop` next door, applied for the same reason and with the same shape: one

@@ -355,7 +355,7 @@ describe('classifyAttribute — ref (decision 30)', () => {
   });
 });
 
-describe('classifyAttribute — control (SDD-34 §6.1, decision 106)', () => {
+describe('classifyAttribute — control (SDD-34 §6.1, decision 108)', () => {
   it('accepts a path and keeps the expression with its span', () => {
     const { binding, diagnostics, source } = classifyOne('<input control="@f.title">');
     expect(diagnostics).toEqual([]);

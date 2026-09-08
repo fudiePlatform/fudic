@@ -10,7 +10,7 @@ export type Cleanup = () => void;
 
 /**
  * The error slot: the element the EMIT already wrote into the markup, `aria-describedby`
- * included (decision 111).
+ * included (decision 113).
  *
  * The runtime only ever writes its TEXT. It does not create it, does not move it and does
  * not remove it — which is exactly what makes a form's accessibility the same whether it

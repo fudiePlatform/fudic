@@ -1,6 +1,6 @@
 /**
  * What a `control` binding MEANS on the element it was written on (SDD-34 §4.1–§4.2,
- * decision 107) — and, when that element carries a value, WHICH bind function the emit
+ * decision 109) — and, when that element carries a value, WHICH bind function the emit
  * writes for it.
  *
  * **This is the `switch (el.type)` the prototype ran in the browser, moved to compile time.**
@@ -23,7 +23,7 @@
 import { decodeEntities, type Attribute, type AttributeText, type ElementNode } from '../html/index.js';
 
 /**
- * The compile-time marker that makes a component a control-component (decision 109).
+ * The compile-time marker that makes a component a control-component (decision 111).
  *
  * It never reaches the DOM: an unknown attribute on a `<template>` is inert, so the browser
  * ignores it and the compiler consumes it. What it decides is which class the emitted code
@@ -34,7 +34,7 @@ import { decodeEntities, type Attribute, type AttributeText, type ElementNode } 
 export const FORM_ASSOCIATED_ATTR = 'formassociated';
 
 /**
- * The prop a `control` on a component tag crosses under (decision 110).
+ * The prop a `control` on a component tag crosses under (decision 112).
  *
  * `ctrl`, and it is a CONVENTION rather than something derived: §3.1's canonical
  * control-component reads `<input control="@ctrl">` inside its own template, so `ctrl` is the
@@ -74,7 +74,7 @@ export type UnsupportedControl =
   | 'dynamic-type';
 
 /**
- * What the element makes of the binding. The four cases of decision 107, plus the rejection
+ * What the element makes of the binding. The four cases of decision 109, plus the rejection
  * that is `FUD0592` — carried as a VALUE rather than thrown, because the emit never throws:
  * it reports, drops that one binding and goes on emitting the file.
  */
@@ -83,7 +83,7 @@ export type ControlTarget =
   | { readonly kind: 'form' }
   /** `input` / `textarea` / `select` — the one bind function of THIS shape of element. */
   | { readonly kind: 'value'; readonly bind: BindFunction }
-  /** A component tag: the reference crosses as a prop (decision 110). */
+  /** A component tag: the reference crosses as a prop (decision 112). */
   | { readonly kind: 'component'; readonly tag: string }
   /** Anything else: a group, wherever the author put it. */
   | { readonly kind: 'group' }
@@ -148,7 +148,7 @@ function inputBind(type: string | null | undefined): ControlTarget {
 }
 
 /**
- * Classify one `control` binding by the element it sits on (decision 107).
+ * Classify one `control` binding by the element it sits on (decision 109).
  *
  * `isComponent` is injected rather than looked up: who is a declared component tag is graph
  * knowledge (decision 41), and this module holds no graph. The semantic pass answers it off
@@ -175,7 +175,7 @@ export function controlTarget(el: ElementNode, isComponent: boolean): ControlTar
   }
 }
 
-/** Whether this element is a radio input — the one shape decision 108 lets share a node. */
+/** Whether this element is a radio input — the one shape decision 110 lets share a node. */
 export function isRadio(el: ElementNode): boolean {
   return el.name.toLowerCase() === 'input' && staticType(el) === 'radio';
 }

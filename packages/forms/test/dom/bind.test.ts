@@ -263,7 +263,7 @@ describe('every shape marks `touched` on blur (§6.11)', () => {
   });
 });
 
-describe('bindRadio (§6.11, decision 108)', () => {
+describe('bindRadio (§6.11, decision 110)', () => {
   it('N elements express ONE value, in both directions', () => {
     const host = mount(
       ['a', 'b', 'c']

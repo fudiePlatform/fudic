@@ -22,7 +22,7 @@
  * **The control is picked up from the props, structurally.** §3.3 says the emit writes it, and
  * the emit cannot: what it emits is a STATIC factory, with no instance code to assign a field
  * in. What it does emit is the crossing — the reference the parent named with
- * `control="@f.body"` (decision 110) — into the same positional payload every prop travels in.
+ * `control="@f.body"` (decision 112) — into the same positional payload every prop travels in.
  * So the base finds it there, by the shape of a `Control<T>`, and wires the internals to it.
  * That keeps the compiler out of a coupling it does not need: the emit crosses a value, and
  * what the child makes of it is the child's.

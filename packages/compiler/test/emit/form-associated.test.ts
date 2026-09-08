@@ -1,7 +1,7 @@
 /**
  * SDD-34 §6.9 — the control-component: what the marker `formassociated` changes in the emit.
  *
- * A compile-time marker (decision 109) that never reaches the DOM and decides three things:
+ * A compile-time marker (decision 111) that never reaches the DOM and decides three things:
  * which class the chunk extends, whether the shadow root delegates focus, and whether the tag
  * joins the page map's `eager` list. Without it, none of the three.
  */

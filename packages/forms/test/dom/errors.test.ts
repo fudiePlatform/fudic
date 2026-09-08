@@ -4,7 +4,7 @@
  * SDD-34 §6.12 — the error effect: nothing is painted while the control is untouched, both the
  * text and `aria-invalid` appear the moment it is, and both are withdrawn when the error goes.
  *
- * And decision 111 as an assertion: the slot is the element the emit already wrote. The runtime
+ * And decision 113 as an assertion: the slot is the element the emit already wrote. The runtime
  * writes its TEXT and never creates, moves or removes a node — which is what makes a form's
  * accessibility identical whether it hydrated or not.
  */

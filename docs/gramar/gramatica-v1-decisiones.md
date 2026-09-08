@@ -1098,6 +1098,12 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 
 ## Índice de decisiones
 
+> **Cómo se numera una decisión.** Toma el **siguiente número libre de esta tabla**, y entra en
+> ella **al redactarse** la spec, no al implementarla. La regla existe porque lo contrario ya
+> falló: SDD-34 reservó 100–106 en su cabecera el 15-08 y no las escribió aquí, así que BUG-23
+> el 30-08 y SDD-36 el 31-08 miraron la tabla, la vieron libre desde 100 y numeraron encima.
+> Un bloque reservado y no escrito es **invisible** para el siguiente que numere.
+
 | # | Sección | Resumen |
 |---|---------|---------|
 | 1 | Transición `@` | `@@` → `@` literal |
@@ -1216,10 +1222,12 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 103 | Interpolación | Valor de atributo sin comillas si es **una sola** expresión `@` (excepción a la 8, no su derogación) |
 | 104 | Interpolación | `@( … )` es para lo que no es una cadena: operadores, `new`, ternarios, `await`, plantillas |
 | 105 | Interpolación | El valor de una `.prop` admite un **literal escalar** desnudo: número, `true`, `false`, `null`, `undefined` |
-| 106 | Interpolación | `control` es atributo **reservado** con valor de expresión `@`, de la familia de `ref` (30) y no un prefijo (`FUD0590`) |
-| 107 | Interpolación | **El elemento decide** qué se enlaza: `<form>`, elemento que porta valor, tag de componente, cualquier otro (grupo). `type` sin valor de usuario o dinámico → `FUD0592` |
-| 108 | Interpolación | Un nodo, un elemento por componente (`FUD0591`); la única excepción es un grupo de `<input type="radio">` |
-| 109 | Interpolación | `formassociated` en el `<template shadowrootmode>` raíz marca un control-componente; fuera de ahí, `FUD0593` |
-| 110 | Interpolación | Sobre un tag de componente, `control` **cruza la referencia** del nodo como prop; la 84 queda intacta y no se emite `u` |
-| 111 | Interpolación | El hueco del error lo escribe el **emit** (id estable + `aria-describedby` siempre); el runtime solo pone texto |
-| 112 | Interpolación | `control` dentro de un bucle → error (`FUD0594`), hermana de la 31 |
+| 106 | — | **Libre.** La reservó SDD-34 antes de la colisión de numeración y la devolvió al correr su bloque a 108–114. No está tomada: el siguiente que numere puede usarla |
+| 107 | Documentación | **Dónde se documenta un componente**: el JSDoc del nivel superior de un tramo neutro documenta el componente, el del miembro de `props<T>()` documenta esa prop, y el del `new CustomEvent` documenta ese evento. Sin sintaxis nueva (SDD-36 §3.3) |
+| 108 | Interpolación | `control` es atributo **reservado** con valor de expresión `@`, de la familia de `ref` (30) y no un prefijo (`FUD0590`) |
+| 109 | Interpolación | **El elemento decide** qué se enlaza: `<form>`, elemento que porta valor, tag de componente, cualquier otro (grupo). `type` sin valor de usuario o dinámico → `FUD0592` |
+| 110 | Interpolación | Un nodo, un elemento por componente (`FUD0591`); la única excepción es un grupo de `<input type="radio">` |
+| 111 | Interpolación | `formassociated` en el `<template shadowrootmode>` raíz marca un control-componente; fuera de ahí, `FUD0593` |
+| 112 | Interpolación | Sobre un tag de componente, `control` **cruza la referencia** del nodo como prop; la 84 queda intacta y no se emite `u` |
+| 113 | Interpolación | El hueco del error lo escribe el **emit** (id estable + `aria-describedby` siempre); el runtime solo pone texto |
+| 114 | Interpolación | `control` dentro de un bucle → error (`FUD0594`), hermana de la 31 |

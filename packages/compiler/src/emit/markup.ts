@@ -174,7 +174,7 @@ export interface MarkupOptions {
    */
   readonly controls?: ControlPlan;
   /**
-   * The tags marked `formassociated` (decision 109). A host of one of them opens its shadow
+   * The tags marked `formassociated` (decision 111). A host of one of them opens its shadow
    * root with `delegatesFocus`, which serializes as `shadowrootdelegatesfocus` on the
    * template — without it a `<label for>` outside focuses the host and not the input inside.
    *
@@ -356,7 +356,7 @@ export class MarkupEmitter {
   }
 
   /**
-   * The accessibility wiring of a bound control, written into the MARKUP (§4.3, decision 111).
+   * The accessibility wiring of a bound control, written into the MARKUP (§4.3, decision 113).
    *
    * `aria-describedby` is written ALWAYS, whether the slot is empty or not. Adding the
    * reference only when an error appears is what makes some screen readers fail to announce
@@ -383,7 +383,7 @@ export class MarkupEmitter {
    * region of a `<form>`.
    *
    * It is a node of the server's tree like any other, and that is the point: the runtime only
-   * ever writes its text (decision 111). A slot fabricated on first error — which is what the
+   * ever writes its text (decision 113). A slot fabricated on first error — which is what the
    * prototype did — gives a hydrated form and a server-rendered one different markup, and with
    * it different accessibility.
    */

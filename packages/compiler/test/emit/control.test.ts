@@ -124,7 +124,7 @@ describe('§6.7 — the switch is spent at compile time', () => {
     expect(client.match(/\$r\.push\(/gu)!.length).toBeGreaterThan(1);
   });
 
-  it('a component tag calls nothing: the reference crosses instead (decision 110)', () => {
+  it('a component tag calls nothing: the reference crosses instead (decision 112)', () => {
     const { client } = emit('<app-input control="@f.body"></app-input>');
     expect(client).not.toContain('@fudic/forms/dom');
     expect(client).not.toContain('data-fud-err');
@@ -149,7 +149,7 @@ describe('§6.7 — the switch is spent at compile time', () => {
   });
 
   it('the child binds the crossed node from `$cb`, and not from the hookup', () => {
-    // The other end of decision 110, and the reason it needs one at all: the cascade hooks a
+    // The other end of decision 112, and the reason it needs one at all: the cascade hooks a
     // child up in POST-ORDER, before the parent composes what it hands over, so `ctrl` is
     // still empty when `$s` runs. Binding there would bind nothing — and, with no guard,
     // would call `bindText` with `null` and throw inside the hydration.

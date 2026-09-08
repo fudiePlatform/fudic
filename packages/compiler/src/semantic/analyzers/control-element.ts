@@ -1,5 +1,5 @@
 /**
- * `control-element` (decision 107, SDD-34 §4.2): a `control` on an element that cannot carry
+ * `control-element` (decision 109, SDD-34 §4.2): a `control` on an element that cannot carry
  * a user value.
  *
  * Three faces, one code, three messages — because the fix is different in each case and a

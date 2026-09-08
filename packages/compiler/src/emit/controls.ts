@@ -12,7 +12,7 @@
  * Three facts cannot be decided element by element, which is why this is a PLAN over the whole
  * template rather than a function called at each node:
  *
- * - **A radio group is N elements and one node** (decision 108). One `bindRadio` call carries
+ * - **A radio group is N elements and one node** (decision 110). One `bindRadio` call carries
  *   the list, and there is ONE error slot for the group, not one per radio — N slots would be
  *   N elements carrying the same id.
  * - **The slot's id has to be the same on both branches.** It is derived from the form node's
@@ -29,7 +29,7 @@ import { walkElements } from './level.js';
 
 /** What one element with a `control` binding turns into, on both branches. */
 export interface ControlSite {
-  /** What the element makes of the binding (decision 107). */
+  /** What the element makes of the binding (decision 109). */
   readonly target: ControlTarget;
   /** The form node, sliced from the source: `f.seo.canonical`. */
   readonly node: string;
@@ -45,7 +45,7 @@ export interface ControlSite {
    *
    * The name and the «does it call?» are one field and not two, and that is what keeps the
    * emitter from carrying a branch it can never take: a component tag crosses a reference
-   * instead of calling (decision 110), and every radio but the last defers to the one that
+   * instead of calling (decision 112), and every radio but the last defers to the one that
    * carries the group.
    */
   readonly bind: string | null;
@@ -159,7 +159,7 @@ function hasSlot(target: ControlTarget): boolean {
  * The `@fudic/forms/dom` function a target calls, or `null` for one that calls none.
  *
  * A component tag is the `null`: what crosses there is the REFERENCE, as a prop
- * (decision 110), and the child binds it to its own `<input>` with these same rules. An
+ * (decision 112), and the child binds it to its own `<input>` with these same rules. An
  * unsupported element never reaches here — it is not in the plan at all.
  */
 function bindOf(target: ControlTarget): string | null {
