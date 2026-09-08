@@ -40,6 +40,29 @@ function emit(
   };
 }
 
+/**
+ * The CHILD of the same graph: `app-input`, whose `<input control="@ctrl">` names a node it
+ * does not own. It is emitted from the same fixture the parent is, so what one crosses and
+ * what the other binds are two halves of one file.
+ */
+function emitChild(): string {
+  const io = memoryIo({
+    '/home.fud':
+      '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
+    '/m.fud':
+      '<link rel="component" href="./app-input.fud">\n' +
+      '<m-el>\n  <template shadowrootmode="open"><app-input control="@f.body"></app-input></template>\n</m-el>\n',
+    // Two props on purpose: `name` is the one that goes on the HOST so a foreign `<form>`
+    // picks the entry up, and it is also what makes the rebind guard say something — a
+    // component with one prop cannot show that the OTHER props do not re-make the binding.
+    '/app-input.fud':
+      '@code {\n  const { ctrl, name } = props<{ ctrl?: unknown; name?: string }>();\n}\n' +
+      '<app-input>\n  <template shadowrootmode="open" formassociated><input control="@ctrl"></template>\n</app-input>\n',
+  });
+  const graph = resolveComponents('/home.fud', io);
+  return emitComponentClientModule(graph, graph.components.get('app-input')!);
+}
+
 const OTHER_BINDS = ['bindCheckbox', 'bindNumber', 'bindRadio', 'bindSelectMultiple'] as const;
 
 // ---------------------------------------------------------------------------
@@ -123,6 +146,57 @@ describe('§6.7 — the switch is spent at compile time', () => {
     // it — writing into the node does not repaint the parent (decision 84 intact).
     const update = client.slice(client.indexOf('u: ('), client.indexOf('r: ('));
     expect(update).not.toContain('f.body');
+  });
+
+  it('the child binds the crossed node from `$cb`, and not from the hookup', () => {
+    // The other end of decision 110, and the reason it needs one at all: the cascade hooks a
+    // child up in POST-ORDER, before the parent composes what it hands over, so `ctrl` is
+    // still empty when `$s` runs. Binding there would bind nothing — and, with no guard,
+    // would call `bindText` with `null` and throw inside the hydration.
+    const child = emitChild();
+    expect(child).toContain('const $cd = []');
+    expect(child).toContain('const $cb = () => {');
+    // Read ONCE into a name of its own: the guard and the argument have to be the same
+    // evaluation of the author's expression.
+    expect(child).toContain('const $fc0 = ctrl;');
+    expect(child).toMatch(/\$fc0 && \$cd\.push\(bindText\(/u);
+    // And nothing of it in `$s` beyond the call that runs it.
+    expect(child).toContain('$cb();');
+    expect(child).not.toContain('$d.push(bindText(');
+  });
+
+  it('`$cb` undoes its own previous work, so the second call replaces the first', () => {
+    const child = emitChild();
+    const body = child.slice(child.indexOf('const $cb'), child.indexOf('const $s'));
+    expect(body).toContain('for (const $x of $cd) $x();');
+    expect(body).toContain('$cd.length = 0;');
+  });
+
+  it('`u` re-makes it, and only when THAT prop is the one that moved', () => {
+    const child = emitChild();
+    const update = child.slice(child.indexOf('u: ('), child.indexOf('r: ('));
+    // `ctrl` is the first prop, so slot 2 — presence, like every other guard: a sparse
+    // payload says what moved, and a prop nobody named must not cost a rebind.
+    expect(update).toContain('if (2 in $p) $cb();');
+    // And the sibling prop is not in it: a rebind tears listeners down and puts them back,
+    // so a `name` that moved must not cost the `<input>` its binding.
+    expect(update).not.toContain('3 in $p) $cb()');
+  });
+
+  it('`r` disposes them: they are the one list emptied while the instance lives', () => {
+    const child = emitChild();
+    const release = child.slice(child.indexOf('r: ('));
+    expect(release).toContain('$cd.forEach((d) => d());');
+    expect(release).toContain('$d.forEach((d) => d());');
+  });
+
+  it('a node that is NOT a prop is bound at hookup, with no `$cb` anywhere', () => {
+    // The form of `m-el` comes from a neutral import: it is there when the factory runs, it
+    // cannot be replaced by an update, and it pays for none of the machinery above.
+    const { client } = emit('<input control="@f.title">');
+    expect(client).toContain('$d.push(bindText(');
+    expect(client).not.toContain('$cb');
+    expect(client).not.toContain('$cd');
   });
 
   it('an unsupported element emits no binding at all, and the file still emits', () => {

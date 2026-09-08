@@ -1,0 +1,32 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/app-form.fud">
+<link rel="component" href="../components/app-counter.fud">
+
+<head>
+  <title>Formularios — fudic</title>
+</head>
+
+@section nav {
+  <site-nav .current="formularios"></site-nav>
+}
+
+<h1>5 · Formularios</h1>
+<p class="lede">
+  El formulario no está escrito en esta vista: vive en su propio <code>.ts</code> y lo
+  importan los dos extremos. El servidor pinta sus valores y sus errores en el HTML —con el
+  hueco del error y su <code>aria-describedby</code> ya puestos— y el cliente hidrata sobre
+  ese mismo marcado. Un formulario con errores es accesible <strong>con cero JavaScript</strong>.
+</p>
+
+<app-form></app-form>
+
+<h2>Y al lado, lo de siempre</h2>
+<p>
+  <code>app-input</code> está marcado <code>formassociated</code>, así que se define y se
+  hidrata <strong>al cargar</strong>: sin eso no sería etiquetable, no aportaría valor a un
+  <code>FormData</code> y no tendría validez. El contador de aquí abajo no: sigue sin
+  JavaScript hasta que lo tocas. Las dos cosas, en la misma página.
+</p>
+
+<app-counter .start=@(10)></app-counter>

@@ -303,6 +303,12 @@ export interface MarkupOptions {
    * behind. A component's do not — the browser takes its shadow root away whole.
    */
   readonly trackRoots?: boolean;
+  /**
+   * Whether this walk may defer a `control` whose node arrives as a prop into the factory's
+   * `$cb` (SDD-34 §4.6). Only the component's own walk can: `$cb` and `u` live in the
+   * factory, and a block's node variables do not.
+   */
+  readonly rebindable?: boolean;
 }
 
 export class ClientMarkupEmitter {
@@ -319,6 +325,7 @@ export class ClientMarkupEmitter {
   readonly #usage: CoreUsage;
   readonly #hookup: HookupContext;
   readonly #trackRoots: boolean;
+  readonly #rebindable: boolean;
   readonly #nodes: string[] = [];
   readonly #rootItems: RootItem[] = [];
   /**
@@ -333,6 +340,8 @@ export class ClientMarkupEmitter {
   #depth = 0;
   /** How many value writes `$a` owns so far — each one gets its own slot in `$w`. */
   #writes = 0;
+  /** How many crossed nodes `$cb` has named so far: `$fc0`, `$fc1`… */
+  #controlTemps = 0;
   /**
    * Where the walk is: the whitespace mode in force and the box that holds what is being
    * written. A stack in the same sense the mode alone was — pushed entering an element,
@@ -354,6 +363,7 @@ export class ClientMarkupEmitter {
     this.#usage = options.usage;
     this.#hookup = options.hookup;
     this.#trackRoots = options.trackRoots ?? false;
+    this.#rebindable = options.rebindable ?? false;
     this.#at = options.at;
   }
 
@@ -743,24 +753,54 @@ export class ClientMarkupEmitter {
     const bind = site.bind;
     this.#hookup.binds.add(bind);
     const slot = this.#errorSlots.get(el);
+    // A node that arrives as a prop is bound from `$cb` instead, under a name of its own and
+    // behind a guard: at the moment this walk hooks up, that prop is still empty (§4.6).
+    const prop = this.#crossedProp(site.node);
+    const out = prop === null ? this.#hook : this.#hookup.rebind;
+    const list = prop === null ? '$d' : '$cd';
+    let node = site.node;
+    if (prop !== null) {
+      this.#hookup.rebound.add(prop);
+      node = `$fc${this.#controlTemps++}`;
+      // Once, into a const: the guard and the argument have to be the SAME evaluation, and
+      // what the author wrote is an expression the emit does not get to run twice.
+      out.line(`const ${node} = ${site.node};`);
+    }
+    const carries = prop === null ? '' : `${node} && `;
     if (site.target.kind === 'group') {
-      this.#hook.line(`${v} && $d.push(${bind}(${v}, ${site.node}));`);
+      out.line(`${v} && ${carries}${list}.push(${bind}(${v}, ${node}));`);
       return;
     }
     if (site.target.kind === 'form') {
       // The live region is optional in the signature, and here it always exists — the emit
       // wrote it. `null` stays reachable for a caller that binds a form by hand.
-      this.#hook.line(`${v} && $d.push(${bind}(${v}, ${site.node}, ${slot!}));`);
+      out.line(`${v} && ${carries}${list}.push(${bind}(${v}, ${node}, ${slot!}));`);
       return;
     }
     if (site.group.length > 0) {
       const guards = site.group.map((radio) => this.#varOf(radio));
-      this.#hook.line(
-        `${guards.map((g) => `${g} && `).join('')}$d.push(${bind}([${guards.join(', ')}], ${site.node}, ${slot!}));`,
+      out.line(
+        `${guards.map((g) => `${g} && `).join('')}${carries}${list}.push(${bind}([${guards.join(', ')}], ${node}, ${slot!}));`,
       );
       return;
     }
-    this.#hook.line(`${v} && ${slot!} && $d.push(${bind}(${v}, ${site.node}, ${slot!}));`);
+    out.line(`${v} && ${slot!} && ${carries}${list}.push(${bind}(${v}, ${node}, ${slot!}));`);
+  }
+
+  /**
+   * The prop a `control` expression is rooted at, or `null` when it is rooted at anything
+   * else — a neutral import, a `@client` binding, a name of the module.
+   *
+   * That difference is the whole of §4.6 seen from the emit. A control-component's
+   * `<input control="@ctrl">` names a node the PARENT owns, and the parent hands it over
+   * through the update channel: the child is hooked up first, in post-order, so at that
+   * moment `ctrl` is empty and binding it there would bind nothing — and, before the guard
+   * existed, would call `bindText` with `null` and throw inside the hydration.
+   */
+  #crossedProp(expr: string): string | null {
+    if (!this.#rebindable) return null;
+    const root = /^[A-Za-z_$][\w$]*/u.exec(expr)?.[0];
+    return root !== undefined && this.#hookup.props.has(root) ? root : null;
   }
 
   /** The node variable an element was fabricated under — for the radios of a group. */

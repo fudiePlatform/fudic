@@ -1,0 +1,49 @@
+@code {
+  // Un control-componente: recibe el NODO del formulario por la prop `ctrl` y lo enlaza a su
+  // propio `<input>`. El marcador `formassociated` del template es lo que decide de qué clase
+  // hereda lo que se emite, que su shadow root delegue el foco, y que su tag se defina al
+  // cargar la página en vez de al primer gesto.
+  // `name` es del HOST, no del `<input>` de dentro: es lo que hace que la entrada de
+  // `setFormValue` llegue al `FormData` de un `<form>` ajeno. Se declara como prop para que
+  // sea contrato del componente y no un atributo suelto que nadie ha prometido.
+  const { ctrl, name } = props<{ ctrl?: unknown; name?: string }>();
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    .field {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      border: 1px solid #dcdcdc;
+      border-radius: 8px;
+      padding: 0.4rem 0.6rem;
+      background: white;
+    }
+    input {
+      font: inherit;
+      border: 0;
+      outline: none;
+      flex: 1;
+    }
+    [data-fud-err] {
+      color: #b3261e;
+      font-size: 0.85rem;
+    }
+    [data-fud-err]:empty {
+      display: none;
+    }
+  </style>
+</head>
+
+<app-input>
+  <template shadowrootmode="open" formassociated>
+    <div class="field">
+      <slot name="icon"></slot>
+      <input control="@ctrl">
+    </div>
+  </template>
+</app-input>

@@ -38,7 +38,7 @@ interface Run {
  * one does through `$s()`. That listener is the only thing that can prove the replay: the
  * runtime cancelled the original gesture, so a handler that runs at all runs on the replay.
  */
-function run(): Run {
+function run(hold?: { readonly tag: string; readonly until: Promise<void> }): Run {
   const trace: string[] = [];
   const hydrated: HydratedDetail[] = [];
   let ready = 0;
@@ -56,6 +56,9 @@ function run(): Run {
     registry,
     resolveChunk: (tag) => tag,
     importModule: async (tag) => {
+      // A chunk that is still in flight, so a gesture can land while the runtime waits for
+      // it. It is the only way to observe what two paths racing for one host do.
+      if (hold !== undefined && hold.tag === tag) await hold.until;
       trace.push(`define:${tag}`);
       registry.define(
         tag,
@@ -172,6 +175,88 @@ describe('the runtime installed', () => {
     ]);
     // No replay: there was no gesture to replay.
     expect(r.trace.some((t) => t.startsWith('handler:'))).toBe(false);
+  });
+
+  it('the OWNER of an eager tag comes up too, because the node is the owner’s to give', async () => {
+    // The half of §4.5 the browser found. A control-component's node is not in its own
+    // payload: the parent names it with `control="@f.body"` and hands it over as a prop
+    // (§4.6), and the cascade hooks children up in post-order — so a marked tag raised alone
+    // is defined, upgraded and holding NOTHING, which is the half-raised element the eager
+    // list exists to prevent. Raising the outermost hydratable ancestor puts the chain up.
+    publish({
+      eager: ['ins-input'],
+      tree: { 'ins-owner': ['ins-input'] },
+      state: [[0, 1, 2, 3], ['O', 'I', 'P']],
+    });
+    app = document.createElement('div');
+    document.body.appendChild(app);
+    const owner = host('ins-owner', 0, app);
+    host('ins-input', 1, owner.shadowRoot!);
+    const plain = host('ins-plain', 2, app);
+
+    const r = run();
+    await settle();
+
+    // Post-order, exactly as a gesture on the owner would do it — and no replay.
+    expect(r.trace).toEqual([
+      'define:ins-input',
+      'h:ins-input#1:["I"]',
+      'define:ins-owner',
+      'h:ins-owner#0:["O"]',
+    ]);
+    // And the contrast is intact: what owns nothing marked still has no JavaScript.
+    expect(r.trace).not.toContain('define:ins-plain');
+    click(plain);
+    await settle();
+    expect(r.trace).toContain('define:ins-plain');
+  });
+
+  it('an eager instance is already taken: a click on it is not a second hydration', async () => {
+    publish({ eager: ['ins-input'], state: [[0, 1], ['A']] });
+    app = document.createElement('div');
+    document.body.appendChild(app);
+    const only = host('ins-input', 0, app);
+
+    const r = run();
+    await settle();
+    const before = r.hydrated.length;
+
+    click(only);
+    await settle();
+
+    // Path 1: the runtime withdraws. Without marking the instance as hydrated it would fall
+    // into path 3 and report a `shared-chunk` for something nobody shared.
+    expect(r.hydrated).toHaveLength(before);
+    expect(r.trace.filter((t) => t.startsWith('define:'))).toEqual(['define:ins-input']);
+  });
+
+  it('a gesture that got there first is not undone: the eager list skips what is already up', async () => {
+    // The two paths race for real. The eager list walks its hosts one at a time, so while it
+    // waits for the first chunk the user can touch the second — and that instance is then
+    // raised by the gesture, replay and all. Coming back to it afterwards would define
+    // nothing new but would hand out a second slice and report a second hydration.
+    publish({ eager: ['ins-slow', 'ins-quick'], state: [[0, 1, 2], ['S', 'Q']] });
+    app = document.createElement('div');
+    document.body.appendChild(app);
+    host('ins-slow', 0, app);
+    const quick = host('ins-quick', 1, app);
+
+    let release = (): void => {};
+    const until = new Promise<void>((resolve) => {
+      release = (): void => {
+        resolve();
+      };
+    });
+    const r = run({ tag: 'ins-slow', until });
+    await settle();
+
+    click(quick);
+    await settle();
+    expect(r.hydrated.map((h) => h.tag)).toEqual(['ins-quick']);
+
+    release();
+    await settle();
+    expect(r.hydrated.map((h) => h.tag)).toEqual(['ins-quick', 'ins-slow']);
   });
 
   it('a page with no eager list brings nothing up on its own', async () => {

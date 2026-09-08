@@ -15,6 +15,7 @@
   "dependencies": {
     "@fudic/core": "workspace:*",
     "@fudic/dom": "workspace:*",
+    "@fudic/forms": "workspace:*",
     "@fudic/ssr": "workspace:*",
     "@fudic/transport": "workspace:*"
   },

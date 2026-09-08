@@ -38,6 +38,9 @@ importers:
       '@fudic/dom':
         specifier: workspace:*
         version: link:../../packages/dom
+      '@fudic/forms':
+        specifier: workspace:*
+        version: link:../../packages/forms
       '@fudic/ssr':
         specifier: workspace:*
         version: link:../../packages/ssr
