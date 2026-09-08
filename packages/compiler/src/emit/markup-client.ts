@@ -234,6 +234,18 @@ export interface ClientScope {
    * composed, the channel when each value in it is written.
    */
   declared(tag: string): PropTarget | undefined;
+  /**
+   * The CELL a callback of this component publishes, by the author's name for it — `$pK`, or
+   * `undefined` when the name has none (BUG-24 §4.6).
+   *
+   * A signal and a function are not symmetric here, and that asymmetry is the whole of it. A
+   * `signal(…)` this component declares IS its own cell: `withCells` splices `$pK ?? ` in
+   * front of the author's initialiser, so the local name and the cell are one object. A
+   * function has no initialiser to splice into, so its cell is a SEPARATE object that the
+   * hookup fills — and the local name is then a plain function, which is not what the child
+   * reads. Only the second case needs to be looked up, so only the second case is here.
+   */
+  cellOf(name: string): string | undefined;
   readonly signals: ReadonlySet<string>;
   readonly moving: ReadonlySet<string>;
 }
@@ -719,7 +731,7 @@ export class ClientMarkupEmitter {
 
   /**
    * The error slot — or the form's live region — fabricated as the sibling the server also
-   * painted (decision 111).
+   * painted (decision 113).
    *
    * It carries no text here. The server writes the message it had at render time and the
    * effect writes it afterwards, so an instance created at runtime starts empty and one
@@ -954,7 +966,7 @@ export class ClientMarkupEmitter {
     for (const attr of el.attributes) {
       const b = classifyAttribute(attr, this.#source).value;
       // `control="@f.body"` on a component tag: the REFERENCE crosses, under the `ctrl` prop
-      // (decision 110). It is the `ref` shape and not a new one, and that is the whole
+      // (decision 112). It is the `ref` shape and not a new one, and that is the whole
       // argument of §4.6 in one line — what crosses is the model, named by the author at the
       // point of use, so the child subscribes to it on its own and no `u` is emitted for it.
       // Decision 84 is untouched: the emit builds no implicit reactive graph here.
@@ -967,7 +979,11 @@ export class ClientMarkupEmitter {
       // By reference: the object goes in, once. No signal to hook onto and nothing that
       // `changes` — the child is not downstream of this parent any more, it is beside it.
       if (how?.kind === 'ref') {
-        out.set(b.name, { expr: how.name, changes: false, ref: true });
+        out.set(b.name, {
+          expr: this.#reference(how.name, declared?.(b.name)?.channel),
+          changes: false,
+          ref: true,
+        });
         continue;
       }
       const naked = how?.name;
@@ -982,6 +998,40 @@ export class ClientMarkupEmitter {
       }
     }
     return out;
+  }
+
+  /**
+   * What actually goes into the slot of a value crossing by REFERENCE — which is not always
+   * the name the author wrote (BUG-24 §4.6).
+   *
+   * The child reads a callback prop as `onSave()`, because its cell may still be empty when
+   * its listener is registered and the read has to happen at DISPATCH. That convention only
+   * holds if what lands in the slot is a CELL, and the parent's local name is not one: for a
+   * `signal(…)` it is — `withCells` made the declaration and the cell the same object — but a
+   * function has no initialiser to splice into, so its cell is the separate `$pK` the hookup
+   * fills. Handing the bare function over made the child call it to read it: `sumar()` ran
+   * with no argument, wrote `NaN`, and returned `undefined` for the call that followed.
+   *
+   * Two shapes, and the `??` is what makes them one expression. `$pK` is the cell on the `h`
+   * path, so the parent hands back exactly what the runtime already put in the child's slice
+   * and the two ends stay on the same object. On the `c` path there is no payload and no
+   * cell, so the fallback is a reader over the closure — the same one every time, since the
+   * function it names is a binding of this instance. A name with no cell at all (a callback
+   * declared in the neutral zone) takes the fallback alone.
+   *
+   * A RELAY takes the name untouched, and it is the same rule seen from one level down: a
+   * callback this component received as a prop is already the cell — the runtime resolved the
+   * marker before handing the slice over — so wrapping it would mint a reader over a reader
+   * and the grandchild's single `()` would unwrap one layer too few.
+   *
+   * Everything else crosses under its own name: a `Signal<T>` prop, and the `control` node of
+   * SDD-34 decision 112, which the child reads directly and never calls to unwrap.
+   */
+  #reference(name: string, channel: 'signal' | 'fn' | undefined): string {
+    if (channel !== 'fn' || this.#hookup.callbacks.has(name)) return name;
+    const cell = this.#scope.cellOf(name);
+    const reader = `() => ${name}`;
+    return cell === undefined ? `(${reader})` : `(${cell} ?? (${reader}))`;
   }
 
   /**

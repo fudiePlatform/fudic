@@ -167,6 +167,13 @@ function buildComponentClientModule(
       return child === undefined ? undefined : codeOf(child).props;
     },
     declared: childTargets(graph),
+    // The cell of a callback, looked up by the author's name. Only a `fn` cell answers: a
+    // signal's cell and its declaration are the same object after `withCells`, so asking for
+    // it would hand back a name the walk already had.
+    cellOf: (name: string): string | undefined => {
+      const cell = cells.find((c) => c.name === name && c.kind === 'fn');
+      return cell === undefined ? undefined : cellName(cell);
+    },
     // A prop that arrived by reference is a reactive name like any other (BUG-24 §4.5): it
     // reads `value()`, it crosses on to a grandchild as the object, and it repaints this
     // component. No new rule anywhere — one more name in the set every existing rule reads.
@@ -185,7 +192,7 @@ function buildComponentClientModule(
     // The same plan the server branch built, from the same function: the two branches write
     // the same nodes with the same ids, or `h` adopts a tree it does not recognise (SDD-34).
     planControls(comp.source, comp.doc.template!.children, (t) => graph.components.has(t)),
-    // What tells a `control` whose node CROSSED from the parent (decision 110) from one this
+    // What tells a `control` whose node CROSSED from the parent (decision 112) from one this
     // component already holds. The two are hooked up at different moments, and only the first
     // has to be able to happen again.
     new Set(props.map((p) => p.name)),
@@ -259,7 +266,7 @@ function buildComponentClientModule(
   const w = new CodeWriter();
   // Written after the walk on purpose: `$sub` is imported only if the walk found a value
   // to keep in sync, so a component with no reactive prop carries no dead import (§6.20).
-  // A control-component extends `FudicControlElement` instead (decision 109), which brings
+  // A control-component extends `FudicControlElement` instead (decision 111), which brings
   // `static formAssociated = true`, the `ElementInternals` its constructor creates, and a
   // shadow root that delegates focus. `FudicElement` is still imported for nothing it uses,
   // so it is not: the base is one name or the other, never both.

@@ -55,9 +55,15 @@ test.describe('§6.16 — the one hydration nobody asked for, beside one that wa
     await open(page);
     // The eager path is asynchronous — it defines and hydrates like a gesture would, only
     // without a gesture — so it is awaited, not assumed.
+    //
+    // Awaited on the OWNER, which is the last thing the walk reports. The marked tag comes up
+    // inside the subtree pass, so waiting for it left the owner's chunk still in flight and
+    // `formDefined` was read on a page that had not finished coming up — a race the suite lost
+    // about one run in three.
     await expect
       .poll(() => page.evaluate(() => window.__hydrated.map((h) => h.tag)), { timeout: 10_000 })
-      .toContain('app-input');
+      .toContain('app-form');
+    expect(await page.evaluate(() => window.__hydrated.map((h) => h.tag))).toContain('app-input');
 
     const state = await page.evaluate(() => ({
       inputDefined: customElements.get('app-input') !== undefined,

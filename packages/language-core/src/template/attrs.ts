@@ -16,6 +16,7 @@
 import {
   attributeValueSpan,
   classifyAttribute,
+  CONTROL_PROP,
   crossing,
   handlerShape,
   unwrapParens,
@@ -166,6 +167,13 @@ function emitProps(ctx: TemplateContext, el: ElementNode, bindings: readonly Ent
       if (entry.binding.name.length > 0) written.push(`'${entry.binding.name}'`);
       continue;
     }
+    // A `control` on a component tag WAS written, and it fills `ctrl`: leaving it out of `K`
+    // made `$required` report the one prop the author had just passed.
+    if (entry.binding.type === 'control') {
+      props.push(entry);
+      written.push(`'${CONTROL_PROP}'`);
+      continue;
+    }
     // A half-written `@cli` degraded to a plain attribute is still an event, and an event
     // is not HTML's vocabulary: it would report TS2353 on a name that is not wrong, only
     // unfinished. `slot` is nobody's vocabulary here — it is the parent's union.
@@ -265,6 +273,25 @@ function emitEntries(ctx: TemplateContext, entries: readonly Entry[], contract?:
   for (const { attr, binding } of entries) {
     if (binding.type === 'property' && binding.name.length === 0) {
       ctx.w.projected('\n  ', attr.span, COMPLETION_ONLY_CAPS);
+      continue;
+    }
+    // `control="@f.body"` on a component tag is the `ctrl` prop and nothing else (SDD-34
+    // decision 112): the key is the compiler's, so it is scaffolding, and the value is the
+    // author's expression, copied verbatim. That is what puts the crossing in front of the
+    // child's contract — the node is checked against what the child declared, and the path is
+    // checked because it is now code the checker reads.
+    if (binding.type === 'control') {
+      ctx.w.scaffold('\n  ');
+      ctx.w.scaffold(`${CONTROL_PROP}: `, attr.span);
+      // Through a call, and not as a bare value in the literal, for the reason `$required`
+      // exists: a property mismatch is reported over `ctrl: (…)`, whose two ends fall in two
+      // different stretches, and a range only maps back when both land in one. The author
+      // would get a correct error that the editor drops on the floor. With the call the whole
+      // range is the ARGUMENT, which is the author's own characters — and the type it is
+      // checked against is the one the CHILD declared, exactly as §4.9 promises.
+      if (contract === undefined) emitExpression(ctx, binding.value);
+      else emitCrossing(ctx, binding.value, `$Prop<${contract}, ${JSON.stringify(CONTROL_PROP)}>`, '$node');
+      ctx.w.scaffold(',');
       continue;
     }
     ctx.w.scaffold('\n  ');
@@ -467,6 +494,22 @@ function emitBehaviour(
       // definition go-to-definition should land on.
       copyExpression(ctx, binding.value.expr);
       ctx.w.scaffold(` = $ref<$El<'${el.name}'>>();\n`, attr.span);
+      return;
+
+    case 'control':
+      // On a NATIVE element only: over a component tag the same binding is the `ctrl` prop,
+      // and `emitProps` has already put it in front of the child's contract — projecting it
+      // twice would report one mistake twice.
+      //
+      // What this call buys is the sentence SDD-34 §4.9 rests on: the path is checked by
+      // TypeScript and not by the emit, so `@f.seo.descripcion` is a member access that does
+      // not resolve. It is deliberately NOT typed to the shape of the element — a `<select
+      // multiple>` wanting `Control<readonly string[]>` is a second question, and answering it
+      // here would mean importing `@fudic/forms/dom` into the projection.
+      if (isComponent(el.name)) return;
+      ctx.w.scaffold('$control(', attr.span);
+      copyExpression(ctx, binding.value.expr);
+      ctx.w.scaffold(');\n');
       return;
 
     default:
@@ -848,8 +891,13 @@ function openInterpolation(part: Extract<AttributeValuePart, { type: 'attribute-
  * Hover is unchanged and that is criterion 20: `count` is copied 1:1, so hovering it says
  * `Signal<number>` exactly as before.
  */
-function emitCrossing(ctx: TemplateContext, expr: RazorExpression, contract: string): void {
-  ctx.w.scaffold(`$cross<${contract}>(`);
+function emitCrossing(
+  ctx: TemplateContext,
+  expr: RazorExpression,
+  contract: string,
+  fn = '$cross',
+): void {
+  ctx.w.scaffold(`${fn}<${contract}>(`);
   copyRazor(ctx, expr);
   ctx.w.scaffold(')');
 }
