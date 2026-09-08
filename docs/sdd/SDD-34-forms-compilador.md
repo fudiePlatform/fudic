@@ -344,6 +344,20 @@ levantar —definido pero sin estado, o sin definir— no es etiquetable, no apo
 `FormData` y no tiene validez; y eso es peor que descargar unos kilobytes. La lista está acotada a
 los tags marcados, se mide (§6.16) y ningún otro componente entra en ella.
 
+**Y lo que sube es el DUEÑO, no el tag marcado a solas.** Esa frase es la de arriba tomada en
+serio, y la impuso el navegador: el nodo que edita un control-componente **no está en su
+payload** —lo nombra el padre con `control="@f.body"` y se lo entrega como prop (§4.6)— y la
+cascada engancha a los hijos en **post-orden**, así que el hijo se engancha siempre *antes* de
+que el padre componga lo que le da. Un tag marcado levantado a solas es, por tanto, exactamente
+el elemento a medio levantar que esta sección se niega a aceptar: definido, actualizado y sin
+nodo —sin `setFormValue`, sin `setValidity` y sin nada en el `FormData` de nadie—. Levantar el
+**ancestro hidratable más externo** pone la cadena entera en pie en un solo recorrido en
+post-orden, y el hijo recibe su nodo por el mismo `u` por el que viaja cualquier otra prop.
+
+La lista sigue acotada: lo que sube es lo que **contiene** un tag marcado, y ni un componente
+más. El contraste de §6.16 se mide contra un componente normal que no es dueño de ninguno —el
+`app-counter` de la misma página, que sigue sin JavaScript hasta que se le toca.
+
 ### 4.6. Pasar un nodo a un componente: la referencia cruza, y por qué
 
 **Decisión 110.** Sobre un tag de componente, `control="@f.title"` **cruza la referencia del
@@ -369,6 +383,25 @@ se descarta con su motivo: haría falta cruzar además los errores, el `touched`
 orden de validar, o sea cuatro props más por campo, y el hijo seguiría sin poder llamar a
 `touch()`. Un `Control<T>` es una referencia con identidad, igual que el `FormControl` que un
 desarrollador de Angular ya conoce.
+
+**Y el hijo lo enlaza cuando llega, no cuando se engancha.** Un prop que cruza llega por el
+canal de actualización —`u`—, y `u` es *de valor*: reasigna y vuelve a pintar, no vuelve a
+enganchar (BUG-12 §4.2). Como la cascada engancha en post-orden, en el momento en que el hijo
+corre su `$s()` el prop está **vacío**, y ahí no hay nada que enlazar. Así que el emit escribe
+los enlaces de un `control` cuya expresión está enraizada en un **prop** en una función aparte
+—`$cb`— en vez de en el enganche:
+
+- `$s()` la llama una vez, y con el nodo todavía vacío la guarda la deja pasar sin enlazar nada;
+- `u` la vuelve a llamar **solo cuando ese prop es el que se ha movido**: un enlace se rehace
+  quitando escuchas y volviéndolas a poner, y cobrárselo a cualquier otra prop del componente
+  sería cobrar por algo que no ha cambiado;
+- `$cb` **deshace lo suyo antes de rehacerlo**, así que llamarla dos veces enlaza una: lo que
+  cambia entre las dos llamadas es a qué nodo está enlazado el elemento, que es justo el caso
+  de un padre que cambia el campo que edita el hijo.
+
+Un `control` que nombra algo que el componente ya tiene —un import de la zona neutra, una
+declaración de `@client`— no pasa por nada de esto: está ahí cuando la fábrica corre, no lo
+puede sustituir una actualización, y se enlaza en el enganche como siempre.
 
 **La regla de accesibilidad que lo acompaña:** un componente que recibe un `Control<T>` y cuya
 etiqueta puede estar **fuera** de su shadow root debe declararse `formassociated`. Es lo que lo
@@ -430,8 +463,12 @@ schema en el emit sería duplicar el chequeo y quedarse corto.
   de la anterior y el criterio §6.10 la mide comparando el HTML de los dos caminos.
 - **`formassociated` es un marcador de compilación, no una capacidad pedida al navegador.** No
   llega al DOM; decide clase base, `delegatesFocus` y pertenencia a `eager`.
-- **La hidratación eager está acotada a los tags `formassociated`.** Es la única excepción a
-  SDD-17, se lista en el mapa de página y se mide.
+- **La hidratación eager está acotada a los tags `formassociated`** y a la cadena que los
+  contiene, porque el nodo lo da el dueño. Es la única excepción a SDD-17, se lista en el mapa de
+  página y se mide.
+- **Un nodo que cruza se enlaza cuando llega.** El hijo se engancha antes que el padre, así que
+  el enlace de un `control` enraizado en un prop se rehace desde `u` —y se deshace primero, de
+  modo que dos llamadas enlazan una vez—.
 - **Un nodo, un elemento, por componente.** Enlace duplicado es `FUD0591`; dentro de un bucle,
   `FUD0594`.
 - **`control` sobre un `<form>` enlaza estado, no acción.** Nada de este SDD envía nada.

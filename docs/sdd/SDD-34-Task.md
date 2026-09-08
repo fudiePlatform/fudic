@@ -5,7 +5,7 @@
 > `./element`) · `@fudic/core` (la lista `eager` del mapa de página) · `@fudic/vite` (el borrado
 > del validador de servidor)
 > **Rama:** `sdd-34-forms-compilador`
-> **Progreso:** 15 / 16
+> **Progreso:** 16 / 16
 > **Depende de:** [SDD-33](./SDD-33-formularios-reactivos.md) en `Hecho`. No es un
 > encadenamiento burocrático: la fase 2 llama a `errors()`, `touch()` y `$setErrors` desde la
 > primera línea.
@@ -157,7 +157,7 @@ ficheros, `bind:` y el códec binario.
 
 ## Fase 6 — Cierre (1)
 
-- [ ] **16. Chrome real, presupuesto, cobertura e índice.**
+- [x] **16. Chrome real, presupuesto, cobertura e índice.**
       Los tres criterios de navegador (§6.16–§6.18): eager contra no-eager en la misma página,
       `<label for>` externo que enfoca el input de dentro —con el contraste **sin**
       `formassociated` escrito, que es lo que justifica el JS de arranque—, y un `<form>` ajeno
@@ -165,6 +165,13 @@ ficheros, `bind:` y el códec binario.
       por ruta medido sobre el chunk (§6.15). `pnpm typecheck`, `pnpm test`, `pnpm build`.
       `./dom` y `./element` al **100 %**; el código nuevo del compilador y del plugin, también.
       Anotar en [INDEX.md](./INDEX.md) y pasar SDD-34 a `Hecho` con sus 18 criterios verdes.
+      **Y lo que el navegador encontró, que no se veía desde ningún test de unidad:** el nodo
+      que edita un control-componente **no está en su payload** —lo entrega el padre— y la
+      cascada engancha en post-orden, así que el hijo se engancha con el prop vacío. De ahí
+      salieron las dos correcciones que cierran esta tanda: el emit escribe esos enlaces en un
+      `$cb` que `u` rehace cuando el nodo llega (§4.6), y la lista `eager` levanta el **dueño**
+      del tag marcado y no el tag a solas (§4.5) — porque un control-componente definido y sin
+      nodo es exactamente el elemento a medio levantar que la excepción existe para evitar.
 
 ---
 
