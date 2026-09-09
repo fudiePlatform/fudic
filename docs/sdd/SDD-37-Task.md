@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` ·
 > `fudic-vscode` · `@fudic/forms`
 > **Rama:** `sdd-37-delegacion-de-eventos`
-> **Progreso:** 3 / 24
+> **Progreso:** 8 / 24
 > **No toca:** `@fudic/dom`, `@fudic/core`, `@fudic/ssr`. Cero runtime de delegación: la
 > tabla y el dispatch los escribe el emit.
 
@@ -57,27 +57,27 @@ mismo ahorro que los bucles, sobre el paquete donde más elementos vivos hay.
 
 ## Fase 2 — La semántica (5)
 
-- [ ] **4. El recolector del subárbol.**
+- [x] **4. El recolector del subárbol.**
       Un paso sobre el AST que, para un elemento con event bindings, recoge los `delegate:` de su
       subárbol con el bucle que los contiene. Es la pieza que invierte el scope (el hijo declara,
       el ancestro consume) y de la que salen cinco de los ocho códigos.
 
-- [ ] **5. `FUD0663` y `FUD0662`.**
+- [x] **5. `FUD0663` y `FUD0662`.**
       Marcador fuera de bucle, y nombre que no es binding de la cabecera. El contexto de bucle es
       el del walker que ya usa [ref-in-loop.ts](../../packages/compiler/src/semantic/analyzers/ref-in-loop.ts);
       los bindings de la cabecera salen de `patternBindings`.
       El mensaje de `FUD0662` **nombra los bindings disponibles** (criterio 3).
 
-- [ ] **6. `FUD0660`, `FUD0661` y `FUD0664`.**
+- [x] **6. `FUD0660`, `FUD0661` y `FUD0664`.**
       Los tres del emparejamiento: `$nombre` sin marcador, marcador sin lector, y dos bucles con
       el mismo nombre bajo el mismo ancestro. La regla de atadura es §3.2 — ancestro más cercano
       que mencione `$nombre`.
 
-- [ ] **7. `FUD0665` y `FUD0666`.**
+- [x] **7. `FUD0665` y `FUD0666`.**
       Lista cerrada de eventos que no burbujean, con el sustituto en el mensaje; y `$nombre`
       fuera de la lista de argumentos de un event binding.
 
-- [ ] **8. Los ocho, sin checker.**
+- [x] **8. Los ocho, sin checker.**
       Un test que obtiene los ocho del resultado semántico del compilador, con la aserción
       explícita de que no se invoca TypeScript (criterio 10). Si esta tarea obliga a mirar tipos,
       el diseño está mal y hay que volver a §5, no relajarla.

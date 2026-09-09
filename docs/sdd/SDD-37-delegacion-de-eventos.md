@@ -78,7 +78,11 @@ listener por elemento, exactamente como hoy.
 Dos piezas:
 
 - **`delegate:nombre`** — atributo **sin valor**, solo dentro del cuerpo de un
-  `@foreach`/`@for`/`@while`. `nombre` es un binding declarado por la cabecera del bucle.
+  `@foreach`/`@for`/`@while`. `nombre` es un binding declarado por la cabecera de **alguno de
+  los bucles envolventes**, no forzosamente del más interno: con bucles anidados, un
+  `<b delegate:row delegate:tag>` entrega dos identidades y `row` la declara la cabecera de
+  fuera (decisión 118). Cuando dos lo declaran, manda el más cercano — el mismo cuyo scope
+  cierra el emit.
 - **`$nombre`** — en la **lista de argumentos** de un event binding de un ancestro. Se resuelve
   en el dispatch al valor que tenía la fila del marcador que se pulsó.
 
@@ -203,7 +207,7 @@ del language server.
 |---|---|---|
 | `FUD0660` | `$nombre` | Ningún descendiente declara `delegate:nombre`. |
 | `FUD0661` | nombre del atributo | Ningún ancestro lee `$nombre`: marcador muerto. |
-| `FUD0662` | nombre tras `:` | `nombre` no es un binding de la cabecera del bucle. |
+| `FUD0662` | nombre tras `:` | `nombre` no lo declara ninguna cabecera envolvente; el mensaje las nombra todas. |
 | `FUD0663` | nombre del atributo | `delegate:` fuera de un bucle (hermana de la 31 y la 114). |
 | `FUD0664` | 2.º marcador | Dos bucles declaran `delegate:nombre` bajo el mismo ancestro. |
 | `FUD0665` | nombre del evento | El evento no burbujea (§4.4). |

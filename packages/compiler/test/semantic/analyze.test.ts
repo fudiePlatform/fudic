@@ -76,7 +76,8 @@ describe('analyze — runner', () => {
     // 7 of SDD-12 + layout-load (SDD-21) + reserved-attributes (SDD-15 §3.1)
     // + event-handler-shape (BUG-23 §2.4: FUD0291 stops being the emit's alone)
     // + the five `control` rules of SDD-34 (FUD0591–FUD0595)
-    expect(ANALYZERS).toHaveLength(17);
+    // + delegation (SDD-37: the eight of FUD0660–FUD0667, over the AST alone)
+    expect(ANALYZERS).toHaveLength(18);
     const { value } = analyze(buildInput(component('<p>hi</p>')));
     expect(value).toEqual({});
     expect('strategies' in value).toBe(false); // decisions 63–65 retired: no hydration strategy

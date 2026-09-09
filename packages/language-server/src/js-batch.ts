@@ -123,11 +123,16 @@ export function batchDocumentJs(source: string, document: StructuredDocument): D
       // answering. It declares nothing, so there is nothing to lose by leaving it out.
       if (header.end <= header.start) return;
 
+      const id = batch.add(node.type === 'foreach' ? 'for-of-header' : 'for-header', header);
+      // Keyed by the NODE too, and not only by the loop list: the semantic pass asks a loop
+      // what its header declares — the names a `delegate:` may write (SDD-37 `FUD0662`) — and
+      // `fragmentId` is the only door it has.
+      ids.set(node, id);
       loops.push({
         span: node.span,
         headerEnd: header.end,
         headerClose: node.header.span.end,
-        id: batch.add(node.type === 'foreach' ? 'for-of-header' : 'for-header', header),
+        id,
       });
     },
   });

@@ -11,6 +11,7 @@ import type { Analyzer, SemanticInput, SemanticModel } from './model.js';
 import { duplicateAttributes } from './analyzers/duplicate-attributes.js';
 import { reservedAttributes } from './analyzers/reserved-attributes.js';
 import { refInLoop } from './analyzers/ref-in-loop.js';
+import { delegation } from './analyzers/delegation.js';
 import { controlInLoop } from './analyzers/control-in-loop.js';
 import { controlElement } from './analyzers/control-element.js';
 import { controlUniqueness } from './analyzers/control-uniqueness.js';
@@ -31,6 +32,7 @@ export const ANALYZERS: readonly Analyzer[] = [
   duplicateAttributes,
   reservedAttributes,
   refInLoop,
+  delegation,
   controlInLoop,
   controlElement,
   controlUniqueness,
