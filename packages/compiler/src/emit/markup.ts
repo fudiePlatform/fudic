@@ -12,7 +12,7 @@
  * site.
  */
 
-import type { HtmlContent, ElementNode } from '../html/index.js';
+import type { HtmlContent, ElementNode, InlineCodeNode } from '../html/index.js';
 import type { IfNode, SwitchNode } from '../control/index.js';
 import type { RenderSectionNode } from '../layout/index.js';
 import type { Span } from '../types/index.js';
@@ -55,7 +55,15 @@ const asSwitch = (node: HtmlContent): SwitchNode => node as unknown as SwitchNod
 const asRenderSection = (node: HtmlContent): RenderSectionNode => node as unknown as RenderSectionNode;
 
 /** Which painter takes a kind of content — `'none'` when the server writes nothing for it. */
-type ServerRole = 'element' | 'if' | 'loop' | 'switch' | 'render-body' | 'render-section' | 'none';
+type ServerRole =
+  | 'element'
+  | 'if'
+  | 'loop'
+  | 'switch'
+  | 'render-body'
+  | 'render-section'
+  | 'inline-code'
+  | 'none';
 
 /**
  * What the server paints for every kind of content — and the reason this is a TABLE.
@@ -90,8 +98,13 @@ const SERVER_ROLE: Record<HtmlContent['type'], ServerRole> = {
   // `@raw(…)` is an interpolation that is not escaped (decision 18); the emit has no consumer
   // for it until SDD-07 fixes the escape semantics. Same state `runs.ts` leaves it in.
   'raw-expression': 'none',
-  // Author JS, not markup: `@{ … }` and `@code { … }` are hoisted by `module.ts`.
-  'inline-code': 'none',
+  // `@{ … }` is author JS that runs IN PLACE (decisions 13, 16, 17): it paints no node, but
+  // it is a statement of the render body, at the point the template writes it. It used to sit
+  // here as `'none'` beside `@code`, on the grounds that both are "hoisted by module.ts" —
+  // true of `@code`, whose region IS the module, and false of this one, which is hoisted
+  // nowhere and so ran nowhere. A block that never runs is the reason a `@while` cannot
+  // advance its cursor from its body.
+  'inline-code': 'inline-code',
   code: 'none',
   // A `@section` is collected by SDD-21 through another door — the layout reads it by name
   // and calls it back where `@RenderSection` sits; painting it in place would render it twice.
@@ -295,6 +308,12 @@ export class MarkupEmitter {
         }
         return;
       }
+      case 'inline-code':
+        // Verbatim, in place: the author's statements are the author's, and this walk is
+        // already inside the render function, so the scope they see is the one decision 17
+        // promises — the block that contains them.
+        this.#w.line(this.#slice((node as InlineCodeNode).group.inner));
+        return;
       case 'none':
         // Every silent kind is named in `SERVER_ROLE`, each with the reason it paints nothing.
         return;

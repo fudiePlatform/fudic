@@ -35,7 +35,12 @@
  * follows it and its anchor, and writes nothing about it itself.
  */
 
-import type { HtmlContent, ElementNode, AttributeValuePart } from '../html/index.js';
+import type {
+  HtmlContent,
+  ElementNode,
+  AttributeValuePart,
+  InlineCodeNode,
+} from '../html/index.js';
 import type { ControlNode } from '../control/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { Span } from '../types/index.js';
@@ -284,11 +289,19 @@ interface Slot {
  */
 export interface CoreUsage {
   subscribes: boolean;
+  /**
+   * Whether the chunk subscribes something it could not prove is reactive — an IMPORT.
+   *
+   * Its own channel, and not a flag on `subscribes`, because the two import different
+   * names: `subscribe` for a declaration this file can read, `subscribeIf` for one that
+   * lives in another module and has to be asked at run time.
+   */
+  guarded: boolean;
 }
 
 /** A file starts owing `@fudic/core` nothing but `FudicElement`. */
 export function coreUsage(): CoreUsage {
-  return { subscribes: false };
+  return { subscribes: false, guarded: false };
 }
 
 export interface MarkupOptions {
@@ -505,7 +518,7 @@ export class ClientMarkupEmitter {
       const at = tails[i]!;
       if (marker !== undefined && marker.at === i) this.#marker(marker, level);
       if (item.kind === 'run') {
-        this.#run(item, level, at, names[i], marker?.run === i ? marker : undefined);
+        this.#run(item, level, at, names[i], marker?.run === i ? marker : undefined, i === 0);
       } else if (isControl(item.node)) {
         // The body of a construct is at the container's edge only when nothing of the level
         // renders on that side of it — which is a fact about this list (BUG-21 §4.2.b).
@@ -575,8 +588,51 @@ export class ClientMarkupEmitter {
   }
 
   #node(node: HtmlContent, level: Level, name: string | undefined): void {
-    if (node.type === 'element') this.#element(node, level, name!);
+    if (node.type === 'element') {
+      this.#element(node, level, name!);
+      return;
+    }
+    if (node.type === 'inline-code') {
+      this.#inlineCode(node as unknown as InlineCodeNode);
+      return;
+    }
     // Comments, `@code` and layout directives: no client markup.
+  }
+
+  /**
+   * `@{ … }` — the author's statements, run in place (decisions 13, 16, 17).
+   *
+   * Into BOTH bodies, and that is the whole point of writing it here rather than in one of
+   * them: it paints no node, so `h` has nothing to adopt for it, but it is the statement
+   * that leaves the surrounding scope in the state the rest of the walk reads. A block run
+   * only while fabricating would leave a hydrated instance with different variables from a
+   * created one — the two paths would stop agreeing about what the template says, which is
+   * the one invariant this module exists to keep.
+   *
+   * Verbatim: the region is opaque JS that Oxc has already validated, and the closure it
+   * lands in is the one decision 17 promises — the block that contains it.
+   */
+  #inlineCode(node: InlineCodeNode): void {
+    const js = this.#slice(node.group.inner);
+    this.#fab.line(js);
+    this.#adopt.line(js);
+    // And into the UPDATE pass, because that pass is a render too. It is what makes a
+    // `@while` reconcilable: its header declares no iteration, so it terminates by consuming
+    // state that lives outside the block, and by the second pass that state is spent —
+    // `while (cur !== null)` with `cur` already `null` gives zero rows and retires every one
+    // that was alive. Written as decision 91 has it, with the cursor SEEDED in the template,
+    // the seed runs again ahead of the reconciliation and the walk starts over:
+    //
+    //     @{ cur = lista; }
+    //     <ul>@while (cur !== null) key (cur.id) { <li>@cur.n</li> @{ cur = cur.next; } }</ul>
+    //
+    // Inside a block too, and there it is not an extra — it is the iteration itself. The
+    // reconciliation walks the header once per row and reaches each row through ONE of two
+    // doors: a key it already has (`u()`) or one it does not (`c()`). The advance has to
+    // happen behind both, or the header reads the same cursor twice: a hit that did not move
+    // it makes the next turn miss the key it just deleted, build a duplicate row, and only
+    // then move on — three nodes come back as five.
+    this.#bodies.update.line(js);
   }
 
   /**
@@ -590,6 +646,7 @@ export class ClientMarkupEmitter {
     tail: Tail,
     name: string | undefined,
     marker: Marker | undefined,
+    first: boolean,
   ): void {
     if (name === undefined) {
       const open = level.fab === null ? '$r.push($dom.text(' : `$dom.append(${level.fab}, $dom.text(`;
@@ -606,8 +663,49 @@ export class ClientMarkupEmitter {
       this.#fab.mappedLine(`${name} = $dom.text(`, ...run.value, ');');
     }
     this.#place(name, level.fab);
-    this.#adopt.line(`${name} = ${marker === undefined ? this.#anchor(level, tail) : this.#front(marker, level)};`);
-    if (this.#tracked(level)) this.#adopt.line(`$r.push(${name});`);
+    const via = marker === undefined ? this.#anchor(level, tail) : this.#front(marker, level);
+    this.#adopt.line(`${name} = ${via};`);
+    if (this.#tracked(level) && !this.#shared(run, via, level, first)) {
+      this.#adopt.line(`$r.push(${name});`);
+    }
+  }
+
+  /**
+   * Whether a run of a BLOCK body is a node the block must not claim as its own.
+   *
+   * A tree that goes through HTML and back does not preserve text-node boundaries: the
+   * blank run that closes a block body and the blank run that follows the construct in its
+   * level serialize to one stretch of characters, and the parser hands back ONE node. On
+   * the create path they are two nodes and each side owns its own; on the adopt path both
+   * sides resolve to the same one — the block through `lastChild($parent)`, the level as
+   * the ANCHOR it hands the block emitter (SDD-30 §3.4).
+   *
+   * Claiming it is what breaks `@if`: `r()` removes the node the next insertion anchors on,
+   * and `ChildNode.before()` on a node with no parent does nothing and throws nothing — the
+   * old branch leaves, the new one never arrives, and the console stays clean. `@foreach`
+   * and `@for` survive it only while a row is left to hold the anchor, and die the moment
+   * the list reaches zero.
+   *
+   * So the block adopts it as a REFERENCE and does not put it in `$r`. What it costs is one
+   * blank text node left behind when a block is torn down after hydrating; a static run
+   * carries no state, and formatting whitespace is not something anybody can see. What it
+   * buys is that the level's anchor cannot be pulled out from under the next insertion.
+   *
+   * Only a STATIC run: an interpolated one is state the block rewrites, so it is the
+   * block's whatever the serializer did, and it always has a marker or an element beside it
+   * to be located by.
+   */
+  #shared(run: TextRun, via: string, level: Level, first: boolean): boolean {
+    if (run.interpolated) return false;
+    // The run that CLOSES the body: nothing of the block follows it, so what it merged with
+    // is the level's next run — the very node handed back as the insertion anchor.
+    if (via === `$dom.lastChild(${level.dom})`) return true;
+    // And the run that OPENS it, which merged with the level's run in front. That one is not
+    // an anchor, so nothing breaks when it goes — it is simply the level's TEXT, and a block
+    // that took it with it deleted a sentence the author wrote outside the construct. An
+    // interior run of the body has the block's own elements on both sides and is safe: it
+    // reaches this only when it is the first item of the level.
+    return first && via === `$dom.previousSibling(${level.cursor ?? ''})`;
   }
 
   /**
