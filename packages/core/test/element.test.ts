@@ -151,7 +151,7 @@ describe('FudicElement — u, the update entry point (BUG-12 §6.1, §6.2)', () 
     host.remove();
   });
 
-  it('is a no-op after disconnectedCallback, and does not resurrect the controller', () => {
+  it('is a no-op after disconnectedCallback, and does not resurrect the controller', async () => {
     const s = spy();
     const host = document.createElement(define(s)) as FudicElement;
     host.attachShadow({ mode: 'open' });
@@ -159,6 +159,9 @@ describe('FudicElement — u, the update entry point (BUG-12 §6.1, §6.2)', () 
     host.h([1]);
 
     host.remove();
+    // The release is a microtask away: what tells a removal from a move is whether the node
+    // is back in a tree by then, and nothing can observe the difference before that.
+    await Promise.resolve();
     expect(() => host.u([2])).not.toThrow();
 
     expect(s.calls).toEqual(['h', 'r']); // the `u` never reached the controller
@@ -200,7 +203,7 @@ describe('FudicElement — §6.10 no connectedCallback', () => {
 });
 
 describe('FudicElement — teardown', () => {
-  it('fires r() when the browser disconnects the host', () => {
+  it('fires r() when the browser disconnects the host', async () => {
     const s = spy();
     const host = document.createElement(define(s));
     host.attachShadow({ mode: 'open' });
@@ -208,8 +211,33 @@ describe('FudicElement — teardown', () => {
     (host as FudicElement).h([]);
 
     host.remove();
+    await Promise.resolve();
 
     expect(s.calls).toEqual(['h', 'r']);
+  });
+
+  it('survives a MOVE: re-inserting the host is not a teardown', async () => {
+    const s = spy();
+    const host = document.createElement(define(s));
+    const from = document.createElement('div');
+    const to = document.createElement('div');
+    document.body.append(from, to);
+    from.append(host);
+    host.attachShadow({ mode: 'open' });
+    (host as FudicElement).h([]);
+
+    // What a keyed `@foreach` does to reorder its rows: the same node, inserted elsewhere.
+    // The DOM has no move — it is a removal and an insertion — and releasing on the removal
+    // left the row painted in the page with no listeners and no subscriptions.
+    to.append(host);
+    await Promise.resolve();
+
+    expect(s.calls).toEqual(['h']);
+    (host as FudicElement).u([, , 'still alive']);
+    expect(s.updates).toEqual([[, , 'still alive']]);
+    host.remove();
+    await Promise.resolve();
+    expect(s.calls).toEqual(['h', 'u', 'r']);
   });
 
   it('is a no-op on an instance that was never handed its props', () => {
@@ -222,7 +250,7 @@ describe('FudicElement — teardown', () => {
     expect(s.calls).toEqual([]);
   });
 
-  it('tears down once, however many times it is disconnected', () => {
+  it('tears down once, however many times it is disconnected', async () => {
     const s = spy();
     const host = document.createElement(define(s)) as FudicElement;
     host.attachShadow({ mode: 'open' });
@@ -232,13 +260,14 @@ describe('FudicElement — teardown', () => {
     host.remove();
     document.body.append(host);
     host.remove();
+    await Promise.resolve();
 
     expect(s.calls).toEqual(['h', 'r']);
   });
 });
 
 describe('FudicElement — §6.11 the controller interface is exactly {c, h, u, r}', () => {
-  it('the base calls nothing else on it, and exposes no controller surface', () => {
+  it('the base calls nothing else on it, and exposes no controller surface', async () => {
     const seen: string[] = [];
     const tag = freshTag();
     customElements.define(
@@ -260,6 +289,7 @@ describe('FudicElement — §6.11 the controller interface is exactly {c, h, u, 
 
     host.h([]);
     host.remove();
+    await Promise.resolve();
 
     // Never `m`, never `s` — those are private closures of the factory. `u` is part of
     // the contract, but the base never invokes it on its own: its caller is the parent.

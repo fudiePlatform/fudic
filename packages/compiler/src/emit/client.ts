@@ -245,7 +245,13 @@ function buildComponentClientModule(
   const w = new CodeWriter();
   // Written after the walk on purpose: `$sub` is imported only if the walk found a value
   // to keep in sync, so a component with no reactive prop carries no dead import (§6.20).
-  const core = usage.subscribes ? 'FudicElement, subscribe as $sub' : 'FudicElement';
+  const core = [
+    'FudicElement',
+    ...(usage.subscribes ? ['subscribe as $sub'] : []),
+    // Only a file that fabricates a component host pays for it: a template with no child
+    // component of its own never names `live`, and never downloads that branch.
+    ...(usage.fabricates ? ['live as $live'] : []),
+  ].join(', ');
   w.line(`import { ${core} } from '@fudic/core';`);
   if (injects) {
     // The two halves of resolving on this side: the helper the rewrite named, and the page's

@@ -36,6 +36,7 @@ import {
   type HydratedFrom,
   type ReportHydrated,
 } from './registry.js';
+import { installFabricator } from './live.js';
 import { type WarmChannel } from './warm/channel.js';
 import { startWarmObserver } from './warm/observer.js';
 
@@ -103,6 +104,12 @@ export function installHydration(options: HydrationOptions): Hydration {
     registry,
     importModule: options.importModule ?? importChunk,
   });
+
+  // What a parent needs to raise a child nothing painted: this page's way of defining a tag.
+  // Installed here because the loader is this function's, and a chunk cannot be handed one.
+  // The loader's own function and not a wrapper around it: `ensureDefined` closes over its
+  // memoization and never reads `this`, so the reference IS the capability.
+  installFabricator(loader.ensureDefined, registry);
 
   const report: ReportHydrated = (id, tag, ms, from) => {
     const detail: HydratedDetail = { id, tag, ms, from };

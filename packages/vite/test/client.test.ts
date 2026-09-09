@@ -127,7 +127,10 @@ describe('transformFudClient', () => {
 
   it('emits the factory and the define, and nothing of the server module', () => {
     const out = transformFudClient(cardPath, io)!;
-    expect(out.code).toContain("import { FudicElement } from '@fudic/core';");
+    // `$live` travels with it because this template holds a child component host: an
+    // instance of that host created at runtime is one nobody painted, and its parent is
+    // who raises it.
+    expect(out.code).toContain("import { FudicElement, live as $live } from '@fudic/core';");
     expect(out.code).toContain('customElements.define("app-card", class extends FudicElement {');
     expect(out.code).toContain('static c($props)');
     expect(out.code).not.toContain('export function render');

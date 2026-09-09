@@ -61,7 +61,10 @@ test.describe('/di — a service shared by components that cannot see each other
     // carried, up to the container `di-owner` owns — and that cart was built from the seed,
     // so it already holds the two lines the server painted.
     await page.locator('di-panel button.add').click();
-    await expect(page.locator('di-panel [data-id="count"]')).toHaveText('3');
+    // The gesture pays for a download here, and in dev that download is a compile: the first
+    // request for this chunk builds it, with two other servers of this suite on the same
+    // machine. The default five seconds are a measurement of that box, not of the framework.
+    await expect(page.locator('di-panel [data-id="count"]')).toHaveText('3', { timeout: 20_000 });
     await expect(page.locator('di-panel [data-id="last"]')).toHaveText('línea 3');
 
     // A second click keeps counting on the SAME cart: nobody built a second one.

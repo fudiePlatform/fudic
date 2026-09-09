@@ -1,0 +1,61 @@
+<link rel="component" href="./vivo-item.fud">
+
+@code {
+  @client {
+    import { signal } from "@fudic/core";
+
+    // One item is painted by the server; the rest are born in the browser, inside a
+    // `@foreach` that re-runs when the list moves. Those are the instances nothing painted.
+    const items = signal(["pintado por el servidor"]);
+
+    function add() {
+      items.set([...items(), `creado al vuelo ${items().length}`]);
+    }
+  }
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    .panel {
+      display: grid;
+      gap: 0.5rem;
+      border: 1px solid #dcdcdc;
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
+      background: white;
+    }
+    ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 0.4rem;
+    }
+    .add {
+      font: inherit;
+      justify-self: start;
+      padding: 0.4rem 0.9rem;
+      border: 1px solid #1a73e8;
+      border-radius: 6px;
+      background: #1a73e8;
+      color: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<vivo-lista>
+  <template shadowrootmode="open">
+    <section class="panel">
+      <button class="add" @click=@add data-id="add">Añadir</button>
+      <ul>
+        @foreach (const item of items()) key (item) {
+          <li><vivo-item .label=@item></vivo-item></li>
+        }
+      </ul>
+    </section>
+  </template>
+</vivo-lista>

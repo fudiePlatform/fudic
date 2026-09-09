@@ -1,0 +1,28 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/vivo-lista.fud">
+
+<head>
+  <title>Componentes creados al vuelo — fudic</title>
+</head>
+
+@section nav {
+  <site-nav .current="vivo"></site-nav>
+}
+
+<h1>7 · Un componente que nadie pintó</h1>
+<p class="lede">
+  El servidor pinta un elemento de la lista. Los demás nacen en el navegador, dentro de un
+  <code>@@foreach</code> que se vuelve a recorrer cuando la lista cambia: nadie los escribió
+  en el HTML, así que no tienen identidad de página ni porción de estado que adoptar.
+</p>
+
+<vivo-lista></vivo-lista>
+
+<h2>Qué mirar</h2>
+<p>
+  Pulsa <strong>Añadir</strong>. El elemento nuevo tiene que enseñar su etiqueta y responder
+  a su propio botón igual que el que pintó el servidor: un componente creado al vuelo es un
+  componente vivo, no una etiqueta vacía. Los dos caminos —adoptar lo que vino pintado y
+  fabricar lo que no vino— tienen que acabar en el mismo sitio.
+</p>

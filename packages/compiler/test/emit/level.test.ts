@@ -182,7 +182,10 @@ describe('effective level — induced', () => {
     const tone = signal('success');
   }
 }`,
-          '<x-badge .tone="success"></x-badge>',
+          // `class` is HTML's own vocabulary and belongs to the host: the rule reads
+          // `.prop` bindings and skips everything else, so a plain attribute induces
+          // nothing either.
+          '<x-badge .tone="success" class="pill"></x-badge>',
         ),
       '/app/x-badge.fud': component(
         'x-badge',
@@ -193,6 +196,37 @@ describe('effective level — induced', () => {
       ),
     });
     expect([...hydratableTags(graph)]).toEqual(['x-parent']);
+  });
+
+  it('a host INSIDE a construct hydrates, constant prop and all: the browser may create it', () => {
+    // The same child, the same constant prop as the case above — and the opposite answer,
+    // because here it lives in a `@foreach` of a component that hydrates. That loop re-runs
+    // when its list moves, and every row it makes then is an instance NOBODY PAINTED: its
+    // parent has to raise it, and it can only be raised from a chunk of its own. Without
+    // this the element appears in the page empty, with no shadow and no diagnostic possible.
+    const graph = graphOf({
+      '/app/home.fud': page(['x-parent'], '<x-parent></x-parent>'),
+      '/app/x-parent.fud':
+        '<link rel="component" href="./x-badge.fud">\n' +
+        component(
+          'x-parent',
+          `@code {
+  @client {
+    import { signal } from '@fudic/core';
+    const rows = signal(['a']);
+  }
+}`,
+          '<ul>@foreach (const row of rows()) key (row) {<li><x-badge .tone="success"></x-badge></li>}</ul>',
+        ),
+      '/app/x-badge.fud': component(
+        'x-badge',
+        `@code {
+  const { tone = 'neutral' } = props<{ tone?: string }>();
+}`,
+        '<span>@tone</span>',
+      ),
+    });
+    expect([...hydratableTags(graph)].sort()).toEqual(['x-badge', 'x-parent']);
   });
 
   it('a value that READS a signal induces hydration: it moves when the signal does', () => {

@@ -101,13 +101,27 @@ export abstract class FudicElement extends Base {
   /**
    * Symmetric teardown. A no-op on an instance that was never handed its props: `define`
    * upgrades every instance of a tag at once, including ones the runtime never hydrates,
-   * and disconnecting those must not fail. Releasing the controller first also makes a
-   * second disconnection a no-op rather than a second teardown.
+   * and disconnecting those must not fail.
+   *
+   * **A MOVE is a remove and an insert, and the browser tells them apart from a removal in
+   * exactly one way: whether the node is back in a tree by the next microtask.** A keyed
+   * `@foreach` reorders its rows by re-inserting their nodes (SDD-30), so an instance that
+   * was released the instant it was unparented lost its controller — and with it every
+   * listener and every subscription — while still sitting in the page, painted and dead.
+   * Releasing on the microtask instead costs nothing on a real removal, which is still
+   * released before anything can observe it, and it is what makes a row survive being
+   * sorted.
    */
   disconnectedCallback(): void {
     const controller = this.#controller;
     if (controller === null) return;
-    this.#controller = null;
-    controller.r();
+    queueMicrotask(() => {
+      // Back in a tree: that was a move, and this instance never stopped being itself.
+      if (this.isConnected) return;
+      // Handed a new controller in between — a second release would tear down the live one.
+      if (this.#controller !== controller) return;
+      this.#controller = null;
+      controller.r();
+    });
   }
 }

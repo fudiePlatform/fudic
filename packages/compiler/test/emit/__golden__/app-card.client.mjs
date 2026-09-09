@@ -1,4 +1,4 @@
-import { FudicElement, subscribe as $sub } from '@fudic/core';
+import { FudicElement, subscribe as $sub, live as $live } from '@fudic/core';
 import { signal } from '@fudic/core';
 
 customElements.define("app-card", class extends FudicElement {
@@ -189,6 +189,7 @@ customElements.define("app-card", class extends FudicElement {
         $n3 = $dom.element("app-button");
         $dom.setAttr($n3, 'data-fud-adopt', "app-button");
         $dom.setAttr($n3, "variant", "ghost");
+        $live($n3, ["ghost"]);
         $dom.append($n3, $dom.text(" "));
         {
           const $q = $q1();

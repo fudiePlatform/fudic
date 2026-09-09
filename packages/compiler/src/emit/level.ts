@@ -109,15 +109,50 @@ export function isIntrinsicallyHydratable(comp: ResolvedComponent): boolean {
   );
 }
 
+/**
+ * Every `ElementNode` of a template, saying of each whether it sits INSIDE a construct.
+ *
+ * That second fact is what tells a host the server will paint exactly once from one the
+ * browser may have to create: a branch of an `@if` and a body of a `@foreach` are re-run
+ * when what they read moves, and every host in them is fabricated afresh.
+ */
+function walkElementsInBlocks(
+  nodes: readonly HtmlContent[],
+  inBlock: boolean,
+  visit: (el: ElementNode, inBlock: boolean) => void,
+): void {
+  for (const node of nodes) {
+    switch (node.type) {
+      case 'element': {
+        const el = node as ElementNode;
+        visit(el, inBlock);
+        walkElementsInBlocks(el.children, inBlock, visit);
+        break;
+      }
+      case 'if':
+      case 'switch':
+      case 'foreach':
+      case 'for':
+      case 'while':
+        for (const branch of branchesOf(node as unknown as ControlNode)) {
+          walkElementsInBlocks(branch.body, true, visit);
+        }
+        break;
+      default:
+        break;
+    }
+  }
+}
+
 /** The component hosts of a component's own template, as `(host element, child tag)`. */
 function componentHosts(
   graph: ComponentGraph,
   comp: ResolvedComponent,
-  visit: (el: ElementNode, child: ResolvedComponent) => void,
+  visit: (el: ElementNode, child: ResolvedComponent, inBlock: boolean) => void,
 ): void {
-  walkElements(templateOf(comp), (el) => {
+  walkElementsInBlocks(templateOf(comp), false, (el, inBlock) => {
     const child = componentOf(graph, el.name);
-    if (child !== undefined) visit(el, child);
+    if (child !== undefined) visit(el, child, inBlock);
   });
 }
 
@@ -153,8 +188,20 @@ export function hydratableTags(graph: ComponentGraph): ReadonlySet<string> {
       if (!hydratable.has(comp.tag)) continue;
       const { template } = codeOf(comp);
       const moving = movingNames(comp);
-      componentHosts(graph, comp, (el, child) => {
+      componentHosts(graph, comp, (el, child, inBlock) => {
         if (hydratable.has(child.tag)) return;
+        // A host inside a construct of a component that hydrates is a host the BROWSER may
+        // create: the construct re-runs, and every instance it makes then is one no server
+        // painted. Its parent raises it, and it can only be raised if it has a chunk to be
+        // defined from — so it hydrates, whatever it says about itself. The overapproximation
+        // goes in the direction this file already argues for: a chunk downloaded for an
+        // instance that never appeared costs a request during an interaction; the instance
+        // appearing with no chunk is an empty element and no diagnostic can catch it.
+        if (inBlock) {
+          hydratable.add(child.tag);
+          changed = true;
+          return;
+        }
         for (const attr of el.attributes) {
           const b = classifyAttribute(attr, comp.source).value;
           if (b.type !== 'property') continue;

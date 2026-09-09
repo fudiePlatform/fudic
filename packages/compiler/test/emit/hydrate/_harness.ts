@@ -19,6 +19,7 @@ import { SsrDom, renderToString } from '@fudic/ssr';
 import {
   FudicElement,
   computed,
+  live,
   signal,
   subscribe,
   type Controller,
@@ -94,15 +95,20 @@ export function clientFactory(graph: ComponentGraph, tag: string): FudicElementC
         captured = ctor;
       },
     };
+    // `$live` is the real one: a chunk that fabricates a child host asks the runtime to
+    // define it, and in these tests nothing ever does — the child stays uninstantiated,
+    // which is precisely the state the parent's own assertions are about.
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    new Function('FudicElement', 'signal', 'computed', '$sub', 'emit', 'customElements', body)(
-      FudicElement,
-      signal,
-      computed,
-      subscribe,
-      emit,
-      registry,
-    );
+    new Function(
+      'FudicElement',
+      'signal',
+      'computed',
+      '$sub',
+      '$live',
+      'emit',
+      'customElements',
+      body,
+    )(FudicElement, signal, computed, subscribe, live, emit, registry);
     factory = captured!;
     factories.set(tag, factory);
   }
