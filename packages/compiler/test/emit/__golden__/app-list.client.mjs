@@ -88,12 +88,10 @@ customElements.define("app-list", class extends FudicElement {
             },
             h: ($c) => {
               $n10 = $dom.previousSibling($c);
-              $r.push($n10);
               $n11 = $c; $c = $dom.nextElementSibling($c);
               $r.push($n11);
               $n13 = $dom.lastChild($n11);
               $n12 = $dom.lastChild($parent);
-              $r.push($n12);
               return $c;
             },
             m: ($ref = $anchor) => {
@@ -163,7 +161,6 @@ customElements.define("app-list", class extends FudicElement {
           },
           h: ($c) => {
             $n4 = $dom.previousSibling($c);
-            $r.push($n4);
             $n5 = $c; $c = $dom.nextElementSibling($c);
             $r.push($n5);
             {
@@ -179,7 +176,6 @@ customElements.define("app-list", class extends FudicElement {
               $n8 = $dom.lastChild($n5);
             }
             $n6 = $dom.lastChild($parent);
-            $r.push($n6);
             return $c;
           },
           m: ($ref = $anchor) => {

@@ -147,7 +147,8 @@ function buildComponentClientModule(
   options: EmitOptions,
 ): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
-  const { props, signals, client, neutral, template, mutable, emitCalls, diagnostics } = codeOf(comp);
+  const { props, signals, client, neutral, template, mutable, emitCalls, clientImports, diagnostics } =
+    codeOf(comp);
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
   // The same three facts the server branch starts from, read from the same graph and the
   // same `<style>`: what the two branches drop has to be the same set, node for node (§4.5).
@@ -243,6 +244,16 @@ function buildComponentClientModule(
     ...signals.flatMap((s) => (s.kind === 'signal' ? [s.name] : [])),
     ...props.flatMap((p) => (p.channel === 'signal' ? [p.name] : [])),
   ];
+  // And the names that come from ANOTHER module — a store. The same argument as above ends
+  // in a different instruction: a declaration this file can read is subscribed outright, and
+  // one it cannot is handed to `$subIf`, which asks the VALUE at run time and does nothing
+  // when the answer is no. The alternative was to prove it here, and a per-file emit cannot:
+  // `count` may be a signal, a derived value or a helper, and `subscribe` on the last one
+  // would CALL it.
+  //
+  // Framework imports are already out (`clientImports`), so what is left is the author's own
+  // modules — where a store is the whole reason to have one.
+  const imported = clientImports;
   // Nothing to renew: a component with signals but no value write and no construct has no
   // rendering that a `set` could change.
   // A `control` whose node crossed as a prop is bound from `$cb` and not from `$s`, because
@@ -253,14 +264,17 @@ function buildComponentClientModule(
   // props it reads moves — and it undoes what it made before, so calling it twice binds once.
   const rebinds = !hookup.rebind.empty;
   if (rebinds) bodies.hook.line('$cb();');
-  const renews = reactive.length > 0 && (em.writes > 0 || !bodies.update.empty);
+  const renews =
+    (reactive.length > 0 || imported.length > 0) && (em.writes > 0 || !bodies.update.empty);
   const reconcile = bodies.update.empty ? '' : ` ${lines(bodies.update)}`;
   if (renews) {
-    usage.subscribes = true;
+    usage.subscribes = reactive.length > 0;
+    usage.guarded = imported.length > 0;
     // Into `$s`, which is where create and hydrate converge — and `$sub` does NOT deliver on
     // subscribe (SDD-31 §4.8), so `h` stays as paint-free as it is today: no text node is
     // rewritten inside the gesture INP measures just for hooking up.
     for (const name of reactive) bodies.hook.line(`$d.push($sub(${name}, $u));`);
+    for (const name of imported) bodies.hook.line(`$d.push($subIf(${name}, $u));`);
   }
 
   const w = new CodeWriter();
@@ -272,10 +286,15 @@ function buildComponentClientModule(
   // so it is not: the base is one name or the other, never both.
   const formAssociated = isFormAssociated(comp.doc.template!);
   const base = formAssociated ? 'FudicControlElement' : 'FudicElement';
-  const core = usage.subscribes
-    ? `${formAssociated ? '' : 'FudicElement, '}subscribe as $sub`
-    : 'FudicElement';
-  if (!formAssociated || usage.subscribes) w.line(`import { ${core} } from '@fudic/core';`);
+  // Each channel brings only its own name: a component with a signal of its own carries
+  // `subscribe`, one that only reads a store carries `subscribeIf`, and one that does both
+  // carries the two. Nothing pays for the channel it does not use (§6.20).
+  const channels = [
+    ...(usage.subscribes ? ['subscribe as $sub'] : []),
+    ...(usage.guarded ? ['subscribeIf as $subIf'] : []),
+  ];
+  const core = [...(formAssociated ? [] : ['FudicElement']), ...channels].join(', ');
+  if (!formAssociated || channels.length > 0) w.line(`import { ${core} } from '@fudic/core';`);
   if (formAssociated) w.line("import { FudicControlElement } from '@fudic/forms/element';");
   // The bind functions this walk actually called, and no others. It is §6.7 made structural:
   // the chunk of a component with one text field names `bindText` and does not mention the
