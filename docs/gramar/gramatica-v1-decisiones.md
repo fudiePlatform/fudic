@@ -97,6 +97,25 @@ dentro de `@{ ... }` con iteración manual.
 
 **17.** Variables declaradas en `@{ ... }` tienen scope léxico del bloque contenedor.
 
+**116.** **`@{ ... }` corre en su sitio, en toda pasada de render, y lo que asigna es del scope
+de fuera.** Dos mitades de la misma regla, cerradas en [BUG-28](../sdd/bugs/BUG-28-bloque-en-linea-nunca-emitido.md):
+
+*(a)* Las sentencias se ejecutan **en el punto del template donde están escritas**, en orden de
+documento, en las **dos** ramas y en las **tres** pasadas del cliente —crear, hidratar y
+actualizar—. Hidratar las ejecuta aunque no pinten ningún nodo: dejan el scope de alrededor en
+el estado que lee el resto del recorrido, y una instancia hidratada tiene que acabar con las
+mismas variables que una creada. Actualizar las ejecuta porque una actualización también es un
+render.
+
+*(b)* Un nombre que el cuerpo de un bloque **asigna** es estado compartido con el scope
+contenedor —la 17 leída del derecho—, así que se lee y se escribe por la closure y **no** se
+pasa por parámetro al bloque. Un parámetro es para lo que la actualización puede volver a
+traer; una escritura sobre un parámetro se pierde al terminar la llamada.
+
+Es la regla de la que depende el `@while` canónico de la 91: su cursor vive fuera del bucle, el
+cuerpo lo avanza con un `@{ cur = cur.next; }` y el template lo resiembra con otro por delante,
+porque un `@while` termina consumiendo estado y la pasada siguiente lo encuentra gastado.
+
 > Las decisiones **79** y **80** cierran también reglas de control de flujo (cerradas en SDD-06),
 > pero llevan numeración al final de la serie para no romper la existente. Se enuncian aquí:
 
@@ -126,6 +145,10 @@ equivocada. La expresión se evalúa en el scope del cuerpo, así que ve lo que 
 @for (let i = 0; i < n; i++)          key (i)  { … }
 @while (cur !== null)                 key (cur.id) { … }
 ```
+
+> El `@while` es el único de los tres cuya cabecera no declara nada, así que su cursor vive
+> fuera del bucle: el cuerpo lo avanza y el template lo resiembra por delante, los dos con un
+> `@{ ... }`. Lo cierra la **decisión 116**.
 
 **92.** **La key va en la cabecera, no en un elemento.** La vía de React —`key` como atributo del
 elemento raíz del bloque— exige que el bloque **tenga** un raíz único, y un cuerpo con dos
@@ -1252,3 +1275,4 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 113 | Interpolación | El hueco del error lo escribe el **emit** (id estable + `aria-describedby` siempre); el runtime solo pone texto |
 | 114 | Interpolación | `control` dentro de un bucle → error (`FUD0594`), hermana de la 31 |
 | 115 | Interpolación | Un `control` necesita un `<form control>` por encima (`FUD0595`); exento el control-componente, cuyo nodo se comprueba en el fichero del padre (BUG-25) |
+| 116 | Control flujo | `@{ ... }` corre **en su sitio**, en las dos ramas y en las tres pasadas del cliente; y un nombre que el cuerpo de un bloque **asigna** va por closure, no por parámetro. Es lo que hace escribible el `@while` de la 91 (BUG-28) |
