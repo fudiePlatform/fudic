@@ -180,6 +180,20 @@ describe('bindings', () => {
     expect(has(find(tokens, 'style'), 'entity.other.attribute-name.binding')).toBe(true);
   });
 
+  it('scopes delegate: like every other prefix, name included (SDD-37)', async () => {
+    const tokens = await tokenize('<b class="cell" delegate:day></b>\n');
+
+    expect(has(find(tokens, 'delegate'), 'entity.other.attribute-name.binding')).toBe(true);
+    expect(has(find(tokens, 'day'), 'entity.other.attribute-name.binding')).toBe(true);
+    expect(has(find(tokens, ':'), 'punctuation.separator.binding')).toBe(true);
+  });
+
+  it('leaves a name that merely ends in `delegate` alone', async () => {
+    const tokens = await tokenize('<b data-delegate:day></b>\n');
+
+    expect(has(find(tokens, 'data-delegate'), 'entity.other.attribute-name.binding')).toBe(false);
+  });
+
   it('scopes .prop, @event and ref', async () => {
     const tokens = await tokenize('<p .value="@(v)" @click="@(f)" ref="el"></p>\n');
 

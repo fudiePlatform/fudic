@@ -594,6 +594,31 @@ describe('completion — snippets and Emmet (SDD-28 §5.3–§5.5)', () => {
     expect(list?.items.map((entry) => entry.label)).toEqual(['day']);
   });
 
+  it('offers the marker at a GAP too, whole and with no `=@` to finish', async () => {
+    const { tagService, document, position } = setup(
+      '<app-x>\n  <template shadowrootmode="open">\n' +
+        '    <div @click="@pick($day)">\n' +
+        '      @foreach (const day of days) key (day.id) { <b |></b> }\n' +
+        '    </div>\n  </template>\n</app-x>\n',
+      '/p/comp.fud',
+    );
+    const list = await completionsOf(tagService, document, position);
+
+    expect(list?.items.map((entry) => entry.label)).toEqual(['delegate:day']);
+    // A marker is not half a binding: there is no `=@` to write and nothing left to ask.
+    expect(list?.items[0]?.textEdit?.newText).toBe('delegate:day');
+    expect(list?.items[0]?.command).toBeUndefined();
+  });
+
+  it('and offers no marker at a gap outside every loop', async () => {
+    const { tagService, document, position } = setup(
+      '<app-x>\n  <template shadowrootmode="open">\n    <b |></b>\n  </template>\n</app-x>\n',
+      '/p/comp.fud',
+    );
+
+    expect(await completionsOf(tagService, document, position)).toBeUndefined();
+  });
+
   it('a `delegate:` outside every loop says nothing, and does not silence Emmet', async () => {
     const { service, document, position } = setup(
       '<app-x>\n  <template shadowrootmode="open">\n    <b delegate:|></b>\n  </template>\n</app-x>\n',

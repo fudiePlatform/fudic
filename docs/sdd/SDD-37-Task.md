@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` ·
 > `fudic-vscode` · `@fudic/forms`
 > **Rama:** `sdd-37-delegacion-de-eventos`
-> **Progreso:** 18 / 24
+> **Progreso:** 21 / 24
 > **No toca:** `@fudic/dom`, `@fudic/core`, `@fudic/ssr`. Cero runtime de delegación: la
 > tabla y el dispatch los escribe el emit.
 
@@ -131,16 +131,18 @@ mismo ahorro que los bucles, sobre el paquete donde más elementos vivos hay.
 
 ## Fase 6 — La extensión (3)
 
-- [ ] **19. El resaltado.**
+- [x] **19. El resaltado.**
       `delegate:day` en `packages/vscode/syntaxes/fudic.tmLanguage.json`, con la misma forma
       que `binding-class-style`: el prefijo y el nombre como binding, los dos puntos como
       puntuación. Con test en `packages/vscode/test/`, como el resto de reglas.
 
-- [ ] **20. El cierre automático y el hueco.**
-      Lo que `class:` tiene en `auto-close.ts` y en `empty-value.ts` y este atributo necesita
-      **al revés**: `delegate:` no lleva `=@`, así que la extensión no debe ofrecérselo.
+- [x] **20. El hueco del atributo.**
+      `delegate:nombre` se ofrece entero en un hueco (`<b |>`) dentro de un bucle, junto a las
+      clases del fichero, y **al revés que `class:`**: sin `=@` y sin segunda lista, porque un
+      marcador no lleva valor. `auto-close.ts` y `empty-value.ts` no se tocan — el primero es
+      de etiquetas y el segundo de valores, y este atributo no tiene ninguno.
 
-- [ ] **21. Tokens semánticos.**
+- [x] **21. Tokens semánticos.**
       El prefijo entra en `semantic-tokens.ts` junto a `CLASS_PREFIX`, para que el nombre se
       pinte con el color del binding y no con el del atributo HTML.
 

@@ -28,6 +28,7 @@ import type {
 } from '@volar/language-service';
 import {
   CLASS_PREFIX,
+  DELEGATE_PREFIX,
   CONTROL_NAME,
   CONTROL_PROP,
   regionAt,
@@ -276,6 +277,7 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
                     native.name,
                   ),
                   ...classBindingItems(cached, document, native.name),
+                  ...delegateBindingItems(cached, document, native.name, offset),
                 ];
                 return items.length === 0 ? undefined : list(items);
               }
@@ -1067,6 +1069,34 @@ function classBindingItems(
     labelDetails: { description: 'fudic' },
     textEdit: { range, newText: `${CLASS_PREFIX}${name}=@` },
     command: { title: 'Suggest', command: 'editor.action.triggerSuggest' },
+  }));
+}
+
+/**
+ * The markers offerable at a gap: one per binding of the loops around it (SDD-37 §6.19).
+ *
+ * The twin of `classBindingItems`, one step earlier than the completion after the colon — and
+ * with two differences that are both decision 116 read out loud. No `=@`: a marker takes no
+ * value, so what is inserted is the whole attribute. And no second list to ask for, because
+ * there is nothing left to write.
+ *
+ * Empty outside every loop, which is the same silence the classes keep in a file with no
+ * `<style>`: an offer that cannot be right is worse than none.
+ */
+function delegateBindingItems(
+  cached: CachedDocument,
+  document: TextDocument,
+  gap: PartialName,
+  offset: number,
+): readonly CompletionItem[] {
+  const range = rangeOf(document, gap.span);
+  return delegateNames(cached, offset).map((name) => ({
+    label: `${DELEGATE_PREFIX}${name}`,
+    kind: CompletionItemKind.Variable,
+    detail: 'binding of the loop',
+    sortText: `0_${name}`,
+    labelDetails: { description: 'fudic' },
+    textEdit: { range, newText: `${DELEGATE_PREFIX}${name}` },
   }));
 }
 
