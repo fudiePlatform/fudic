@@ -40,6 +40,12 @@
       <a
         href="/reactividad"
         aria-current=@(current === 'reactividad' ? 'page' : 'false')>Reactividad</a>
+      <a
+        href="/ruta-evento"
+        aria-current=@(current === 'ruta-evento' ? 'page' : 'false')>Ruta · evento</a>
+      <a
+        href="/ruta-reactiva"
+        aria-current=@(current === 'ruta-reactiva' ? 'page' : 'false')>Ruta · reactiva</a>
       <a href="/about" aria-current=@(current === 'about' ? 'page' : 'false')>Acerca de</a>
     </nav>
   </template>
