@@ -444,6 +444,40 @@ haría ilegal el patrón sobre el que está construido SDD-34. El sitio del cruc
 comprueba, en el fichero donde está el `<form>`: una pregunta léxica, hecha dos veces, cubre la
 cadena entera.
 
+**116.** **Prefijo `delegate:nombre` — el marcador de delegación.** Atributo **sin valor**,
+hermano de `bus:`/`class:`/`style:` (decisiones 22, 28.a), admitido **solo** dentro del cuerpo de
+un `@foreach`/`@for`/`@while`, y donde `nombre` es un binding declarado por la cabecera de ese
+bucle. Marca que ese elemento entrega la identidad de su fila a un handler de un ancestro.
+
+```
+<div @click=@fn($event, $day)>
+  @foreach (const day of days) key (day.id) {
+    <div class="cell" delegate:day>@day.n</div>
+    <button delegate:day>✎</button>
+  }
+</div>
+```
+
+**117.** **`$nombre` es del compilador, igual que `$event`.** Vive en la reserva del prefijo `$`
+(decisión 97) y solo aparece en la **lista de argumentos** de un event binding. En el dispatch se
+resuelve al valor que tenía la fila del marcador que se pulsó — no a un string, no a un índice:
+el objeto, con su tipo.
+
+**118.** **La unión es por nombre, no por posición.** `$day` se ata a `delegate:day`, y un
+marcador al **ancestro más cercano cuyo handler mencione `$day`**. Ni el orden de los atributos
+ni la profundidad del anidamiento deciden nada. Un elemento puede llevar varios marcadores
+(`delegate:row delegate:tag`) cuando hay bucles anidados.
+
+**119.** **Un handler que menciona `$nombre` no se invoca fuera de una fila.** Si el evento nace
+donde no hay marcador —el padding del contenedor, un título suelto— el handler no se llama. Es lo
+que hace que `$day` sea `Day` y nunca `Day | undefined`. Un handler que **no** menciona ningún
+`$nombre` es un listener normal y no cambia en nada.
+
+**120.** **`delegate:` no deja rastro en el DOM.** No emite atributo, ni en servidor ni en
+cliente. Coherente con las decisiones 91–93: la identidad de una fila es la `key` del autor, no
+algo escrito en el HTML. Es la diferencia con el patrón manual `data-*` + `closest()`, donde el
+tipo se pierde al serializar y hay que reconstruirlo con un `Number(...)`.
+
 ---
 
 ## Sección 8. Bloques de código `@code`
@@ -1252,3 +1286,8 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 113 | Interpolación | El hueco del error lo escribe el **emit** (id estable + `aria-describedby` siempre); el runtime solo pone texto |
 | 114 | Interpolación | `control` dentro de un bucle → error (`FUD0594`), hermana de la 31 |
 | 115 | Interpolación | Un `control` necesita un `<form control>` por encima (`FUD0595`); exento el control-componente, cuyo nodo se comprueba en el fichero del padre (BUG-25) |
+| 116 | Interpolación | Prefijo `delegate:nombre` — marcador sin valor, solo en cuerpo de bucle, `nombre` de la cabecera |
+| 117 | Interpolación | `$nombre` lo inyecta el compilador (reserva `$`, hermana de la 97); solo en la lista de argumentos de un event binding |
+| 118 | Interpolación | La unión es por **nombre**: `$day` ↔ `delegate:day`, ancestro más cercano que lo mencione |
+| 119 | Interpolación | Un handler con `$nombre` no se invoca si el evento no nace bajo un marcador; sin `$nombre`, listener normal |
+| 120 | Interpolación | `delegate:` no deja rastro en el DOM (ni atributo, ni índice) |
