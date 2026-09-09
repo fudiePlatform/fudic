@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { injectFrom, provideIn, token } from '@fudic/di';
 
 import { iocIsEmpty, iocRoot } from '../src/ioc.js';
+import { publish, publishedSeed, seedBlock } from '../src/seed.js';
 import { SsrDom } from '../src/ssr-dom.js';
 
 /**
@@ -67,5 +68,28 @@ describe('the payload slice', () => {
     dom.state(dom.attachShadow(host), ['title']);
 
     expect(dom.hydrationState()).toEqual({ offsets: [0, 1], data: ['title'] });
+  });
+});
+
+describe('the seed', () => {
+  it('publishes by token NAME, and the read empties the table', () => {
+    publish(token<readonly string[]>('lines'), ['a', 'b']);
+    publish(token<string>('locale'), 'es-ES');
+
+    expect(publishedSeed()).toEqual({ lines: ['a', 'b'], locale: 'es-ES' });
+    // A response reads it once: what is left behind would cross on the NEXT one.
+    expect(publishedSeed()).toBeNull();
+  });
+
+  it('writes a block only when something was published, and escapes it', () => {
+    expect(seedBlock()).toBe('');
+
+    publish(token<string>('note'), '</script><b>');
+    const block = seedBlock();
+    expect(block).toContain('id="fud-di"');
+    expect(block).not.toContain('</script><b>');
+    expect(JSON.parse(block.slice(block.indexOf('>') + 1, block.lastIndexOf('<')))).toEqual({
+      note: '</script><b>',
+    });
   });
 });

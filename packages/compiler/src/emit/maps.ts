@@ -186,6 +186,7 @@ export function writeHydrationBlocks(
   maps: PageMaps,
   dom: string,
   parent: string,
+  ioc?: string,
 ): void {
   w.line(`const $state = ${dom}.hydrationState();`);
   w.line('if ($state.offsets.length > 1) {');
@@ -193,6 +194,26 @@ export function writeHydrationBlocks(
   w.line(`jsonBlock(${dom}, ${parent}, 'fud-state', [$state.offsets, $state.data]);`);
   if (maps.hasTree) w.line(`jsonBlock(${dom}, ${parent}, 'fud-tree', FUD_TREE);`);
   if (maps.hasBus) w.line(`jsonBlock(${dom}, ${parent}, 'fud-bus', FUD_BUS);`);
+  if (ioc !== undefined) writeIocBlocks(w, dom, parent, ioc);
   w.dedent();
   w.line('}');
+}
+
+/**
+ * The two blocks of SDD-38, and neither is a compile-time constant.
+ *
+ * `fud-ioc` is the container tree AS RENDERED: two instances of one owning tag are two
+ * owners, so it is the only page map whose size follows the instances rather than the
+ * catalogue — which is why the pruning of §4.5 matters, and why only a container that OWNS
+ * providers gets a node at all. A map with nothing but the root says nothing the browser
+ * cannot assume, so it is not written.
+ *
+ * `fud-di` is what this request PUBLISHED. Only that crosses: a value seeded on the server
+ * and not published stays there, which is what makes a `@server` region safe to inject from.
+ */
+function writeIocBlocks(w: CodeWriter, dom: string, parent: string, ioc: string): void {
+  w.line(`const $iocMap = ${ioc}.map();`);
+  w.line(`if ($iocMap[0].length > 1) jsonBlock(${dom}, ${parent}, 'fud-ioc', $iocMap);`);
+  w.line('const $seed = publishedSeed();');
+  w.line(`if ($seed !== null) jsonBlock(${dom}, ${parent}, 'fud-di', $seed);`);
 }

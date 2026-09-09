@@ -2,6 +2,9 @@
  * Dependency injection in the emit (SDD-38): what a `@code` says about it, what promotes a
  * component to N3 and what does not, and the rewrite that hands every call its container.
  */
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   emitComponentClientModule,
@@ -376,6 +379,77 @@ describe('the server module', () => {
     const page2 = emitPageModule(without);
     expect(page2).not.toContain('iocRoot');
     expect(page2).not.toContain('$root');
+  });
+});
+
+describe('the emit never asks the DOM who a container hangs from', () => {
+  /**
+   * The owning ancestor can be N1 — it declares providers, injects nothing and runs not a
+   * line in the browser — so climbing the element tree would find its host and find no
+   * container. And the hydration cascade climbs by TAG, in post-order, so when a component
+   * wakes up neither its parent nor its owning ancestor need be alive. The list of
+   * exceptions is empty, and that is the point of writing it down.
+   */
+  const dir = fileURLToPath(new URL('../../src/emit', import.meta.url));
+  const files = readdirSync(dir).filter((f) => f.endsWith('.ts'));
+
+  it('has sources to look at', () => {
+    expect(files.length).toBeGreaterThan(0);
+  });
+
+  it('emits no container resolution that walks the tree', () => {
+    const offenders: string[] = [];
+    for (const file of files) {
+      const source = readFileSync(join(dir, file), 'utf8');
+      // `$ioc`/`$own` are the only two names a container ever travels under, so a walker in
+      // the same line as either of them is the whole of what this forbids.
+      for (const line of source.split('\n')) {
+        if (!/\$ioc|\$own|provideIn|injectFrom/u.test(line)) continue;
+        if (/getRootNode|closest\(|parentElement/u.test(line)) offenders.push(line.trim());
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+});
+
+describe('the published blocks', () => {
+  it('writes fud-ioc only when somebody owns a container, and fud-di only when something was published', () => {
+    const withDi = graphOf({
+      '/app/home.fud': page(['x-user'], '<x-user></x-user>'),
+      '/app/x-user.fud': component('x-user', CONSUMER, '<p>@(cart.total)</p>'),
+    });
+    const code = emitPageModule(withDi);
+
+    // Guarded in the EMITTED code and not here: whether anything owns a container is a fact
+    // about the render, not about the compilation — a `@foreach` decides how many owners
+    // there are, and the compiler cannot know.
+    expect(code).toContain('const $iocMap = $root.map();');
+    expect(code).toContain(
+      "if ($iocMap[0].length > 1) jsonBlock($dom, $body, 'fud-ioc', $iocMap);",
+    );
+    expect(code).toContain('const $seed = publishedSeed();');
+    expect(code).toContain("if ($seed !== null) jsonBlock($dom, $body, 'fud-di', $seed);");
+  });
+
+  it('writes neither on a page without a single DI call', () => {
+    const without = graphOf({
+      '/app/home.fud': page(['x-plain'], '<x-plain></x-plain>'),
+      '/app/x-plain.fud': component(
+        'x-plain',
+        `@code {
+  @client {
+    import { signal } from '@fudic/core';
+    const n = signal(0);
+  }
+}`,
+        '<p>@(n())</p>',
+      ),
+    });
+    const code = emitPageModule(without);
+
+    expect(code).not.toContain('fud-ioc');
+    expect(code).not.toContain('fud-di');
+    expect(code).not.toContain('publishedSeed');
   });
 });
 

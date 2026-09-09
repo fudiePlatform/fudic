@@ -405,7 +405,9 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
   // its own, so a component that owns a container always has one to hang it from.
   w.line('export function* page(data, io, $ioc) {');
   w.indent();
-  w.line(`const { createDom, serialize, escapeText, jsonBlock${hasDi ? ', iocRoot' : ''} } = io;`);
+  w.line(
+    `const { createDom, serialize, escapeText, jsonBlock${hasDi ? ', iocRoot, publishedSeed' : ''} } = io;`,
+  );
   if (hasDi) w.line('const $root = $ioc ?? iocRoot();');
   writeNonceBinding(w);
   w.line("let head = '';");
@@ -418,7 +420,7 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
   w.line('const $dom = createDom();');
   w.line('const $body = $dom.element(\'body\');');
   w.appendWriter(bodyW);
-  writeHydrationBlocks(w, maps, '$dom', '$body');
+  writeHydrationBlocks(w, maps, '$dom', '$body', hasDi ? '$root' : undefined);
   w.line('yield* serialize($body);');
   w.line("yield '</html>';");
   w.dedent();

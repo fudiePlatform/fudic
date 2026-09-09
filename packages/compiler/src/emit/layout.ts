@@ -302,7 +302,7 @@ function buildRouteModule(
   // Same public shape as a standalone page: the composition is invisible downstream.
   w.line('export function* page(data, io, $ioc) {');
   w.indent();
-  w.line(`const { escapeText, jsonBlock${hasDi ? ', iocRoot' : ''} } = io;`);
+  w.line(`const { escapeText, jsonBlock${hasDi ? ', iocRoot, publishedSeed' : ''} } = io;`);
   if (hasDi) w.line('const $root = $ioc ?? iocRoot();');
   // The nonce belongs to the RESPONSE, so it is read here, where `io` is, and closed over
   // by the head slot the layout calls (SDD-20 §4.9).
@@ -331,7 +331,7 @@ function buildRouteModule(
   // outermost layout knows where the body ends.
   w.line(`blocks(${DOM}, ${PARENT}) {`);
   w.indent();
-  writeHydrationBlocks(w, maps, DOM, PARENT);
+  writeHydrationBlocks(w, maps, DOM, PARENT, hasDi ? '$root' : undefined);
   w.dedent();
   w.line('},');
   w.dedent();

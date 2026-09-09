@@ -5,7 +5,7 @@
 > **Toca además:** `@fudic/compiler`, `@fudic/ssr`, `@fudic/vite`
 > **Rama:** `sdd-38-inyeccion-de-dependencias`
 > **Rango:** `FUD0680`–`FUD0699` · **Decisiones:** 120–126
-> **Progreso:** 12 / 19
+> **Progreso:** 13 / 19
 
 Da a fudic el inyector que [`docs/di/index.html`](../di/index.html) prototipó, y lo cablea en los
 dos extremos. Las fases 1–3 son un paquete nuevo, sin DOM y sin dependencias, que se puede llevar
@@ -144,7 +144,7 @@ usuario, `multi:`, `useValue`, el reemplazo en tests y `fudic g service`.
 
 ## Fase 5 — Los dos extremos (3)
 
-- [ ] **13. `fud-ioc` en los mapas de página.**
+- [x] **13. `fud-ioc` en los mapas de página.**
       En `emit/maps.ts`, junto a `fud-tree` y `fud-bus`. **Solo entran los contenedores que POSEEN
       providers**: quien únicamente inyecta no tiene nodo y apunta al ancestro dueño más cercano.
       Si nadie declara providers y todo es `@Service`, el mapa sale **vacío** y cada instancia
