@@ -169,7 +169,38 @@ declare function $ref<E extends Element>(): E;
  * (decision 112), so it is checked inside the props literal, against the type the child
  * really declared.
  */
-declare function $control(node: unknown): void;
+declare function $control(node: $ControlNode): void;
+
+/**
+ * \`control\` on a \`<form>\`, or on any element that is neither a form nor a field: what binds
+ * there is a FORM or a GROUP, and \`bindForm\`/\`bindGroup\` take one.
+ */
+declare function $controlGroup(node: $FormNode): void;
+
+/**
+ * What a control looks like, structurally — the members of \`Control<T>\` that no other node has.
+ *
+ * Structural and not the real \`Control<T>\`, because the projection may not import
+ * \`@fudic/forms\`: it would put a package dependency into the virtual file of every \`.fud\` that
+ * opens an \`<input>\`, and a corpus with no forms installed would stop projecting at all. The
+ * three members below are what \`bindText\` and the other five actually use, so the shape checked
+ * here is the shape the emitted call needs.
+ *
+ * It is deliberately NOT parameterised by the value. Which \`Control<T>\` an element takes is the
+ * fact its \`type\` states, and a dynamic \`type\` states it at runtime (decision 109) — so a rule
+ * written here would be right for a static \`type\` and wrong for the component the dynamic one
+ * exists to allow. What this catches is the mistake that is always a mistake: a form or a group
+ * written where a field goes.
+ */
+type $ControlNode = { (): unknown; set(v: never): void; touch(): void };
+
+/**
+ * What a form or a group looks like: the \`$\` API of \`FormApi\`, which a \`Control<T>\` has none of.
+ *
+ * The two shapes are disjoint on purpose — a control is CALLABLE and a form is not — so the
+ * error a mix-up produces names the member that is missing rather than a type nobody wrote.
+ */
+type $FormNode = { $touch(): void; $validate(...args: never[]): unknown };
 
 /**
  * The node crossing \`control\` into a COMPONENT — checked against the \`ctrl\` the child declared.

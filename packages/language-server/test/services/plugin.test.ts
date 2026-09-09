@@ -20,7 +20,15 @@ import {
   fudicDocumentOf,
   rangeOf,
 } from '../../src/services/plugin.js';
-import { component, LAYOUT, memoryFs, propsComponent, route } from '../_support.js';
+import { clientFileName } from '@fudic/language-core';
+import {
+  component,
+  LAYOUT,
+  memoryFs,
+  projectionService,
+  propsComponent,
+  route,
+} from '../_support.js';
 import { CANCELLED, fakeServiceContext, TOKEN } from '../_lsp.js';
 
 const SLUG = '/p/blog/[slug].fud';
@@ -28,12 +36,38 @@ const URI_OF_SLUG = URI.file(SLUG).toString();
 
 const LAYOUT_WITH_NAV = LAYOUT.replace('<main>', '<main>\n      @RenderSection(nav)');
 
+/**
+ * A route whose `@code` declares a form, with `markup` inside the `<form>` that opens its scope.
+ *
+ * The shapes are written out rather than imported: the corpus cannot reach `@fudic/forms`, and
+ * what these tests measure is the SHAPE test — a control is callable and carries `set`/`touch`,
+ * a form carries `$touch`/`$validate` — not the package that happens to satisfy it.
+ */
+const FORM_ROUTE = (markup: string): string =>
+  `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/app-badge.fud">
+@code {
+  type Control<T> = { (): T; set(v: T): void; touch(): void };
+  type Group<S> = S & { $touch(): void; $validate(): Promise<boolean> };
+  const userForm = {} as Group<{ alias: Control<string> }>;
+  const alias = userForm.alias;
+}
+
+<article>
+  <form control="@userForm">
+    ${markup}
+  </form>
+</article>
+`;
+
 /** Set the service up over one `.fud`, whose cursor is where `|` was. */
 function setup(
   source: string,
   path = SLUG,
   typescript = true,
   extra: Readonly<Record<string, string>> = {},
+  /** Mount a real TypeScript over the projection, for the answers that depend on a type. */
+  mountTypeScript = false,
 ) {
   const offset = source.indexOf('|');
   const text = source.replace('|', '');
@@ -50,7 +84,14 @@ function setup(
   const cached = new DocumentCache(index).get(path, 1, text);
   const document = TextDocument.create(URI.file(path).toString(), 'fud', 1, text);
   const stats = new RequestStats();
-  const context = fakeServiceContext({ [URI.file(path).toString()]: cached });
+  const client = cached.virtuals.find((v) => v.fileName === clientFileName(cached.path));
+  const context = fakeServiceContext(
+    { [URI.file(path).toString()]: cached },
+    () => undefined,
+    mountTypeScript && client !== undefined
+      ? { 'typescript/languageService': projectionService(cached.path, client.text) }
+      : {},
+  );
   // `typescript` decides who answers at a `@` in markup and at a binding value: with it
   // mounted — the default — the list is TypeScript's and this service stays quiet, or the
   // developer sees every name twice. Pass `false` to measure what the root says on its own.
@@ -709,8 +750,13 @@ describe('semantic tokens', () => {
       TOKEN,
     );
 
-    expect(tokens?.length).toBe(1);
-    const [line, character, length, type, modifiers] = tokens?.[0] ?? [];
+    // `@section` is two tokens: the marker, then the keyword right after it.
+    expect(tokens?.length).toBe(2);
+    const [atLine, atCharacter, atLength, atType] = tokens?.[0] ?? [];
+    expect([atLine, atCharacter, atLength]).toEqual([1, 0, 1]);
+    expect(atType).toBe(SEMANTIC_TOKENS_LEGEND.tokenTypes.indexOf('fudAt'));
+
+    const [line, character, length, type, modifiers] = tokens?.[1] ?? [];
     expect([line, character, length]).toEqual([1, 1, 'section'.length]);
     expect(type).toBe(SEMANTIC_TOKENS_LEGEND.tokenTypes.indexOf('fudDirective'));
     expect(modifiers).toBe(0);
@@ -741,6 +787,135 @@ describe('hover', () => {
 
     expect(await service.provideHover?.(document, at, TOKEN)).toBeUndefined();
     expect(await service.provideHover?.(other, at, TOKEN)).toBeUndefined();
+  });
+});
+
+/**
+ * `control`, the one attribute name no other voice can explain (SDD-34, decision 109).
+ *
+ * It is not HTML's, so the HTML service has never heard of it, and it is not a prop, so the
+ * projection has no member to hover. And the six characters mean three different things
+ * depending on the tag under them — which is exactly the fact an author cannot read off the
+ * source, and therefore the one worth saying.
+ */
+describe('hover over a `control`', () => {
+  /** The card two characters into the `control` written on `tag`. */
+  const cardAt = async (markup: string, tag: string) => {
+    const source = FORM_ROUTE(markup);
+    const { service, document, cached } = setup(source);
+    const at = cached.source.indexOf('control', cached.source.indexOf(`<${tag}`)) + 2;
+
+    const hover = await service.provideHover?.(document, document.positionAt(at), TOKEN);
+    return String((hover?.contents as { value: string } | undefined)?.value ?? '');
+  };
+
+  it('says «form» over a `<form>` and «control» over a field', async () => {
+    expect(await cardAt('<input control="@userForm.alias">', 'form')).toContain(
+      'Enlaza este `<form>` con el formulario',
+    );
+    expect(await cardAt('<input control="@userForm.alias">', 'input')).toContain(
+      'Enlaza este campo con un control del formulario',
+    );
+  });
+
+  it('says «group» over anything that groups part of the form', async () => {
+    expect(await cardAt('<div control="@userForm"><input></div>', 'div')).toContain(
+      'Agrupa parte del formulario',
+    );
+  });
+
+  it('and points at the child’s own contract over a component tag (decision 112)', async () => {
+    // The honest answer: what fits is whatever the `ctrl` the component declared takes, and
+    // this server has not read it.
+    expect(await cardAt('<app-badge control="@userForm.alias"></app-badge>', 'app-badge')).toContain(
+      'Cruza el nodo al componente por su prop `ctrl`',
+    );
+  });
+
+  it('underlines the name and nothing else', async () => {
+    const source = FORM_ROUTE('<input control="@userForm.alias">');
+    const { service, document, cached } = setup(source);
+    const name = cached.source.indexOf('control', cached.source.indexOf('<input'));
+
+    const hover = await service.provideHover?.(document, document.positionAt(name + 2), TOKEN);
+
+    expect(hover?.range).toEqual(rangeOf(document, { start: name, end: name + 'control'.length }));
+  });
+
+  it('says nothing over an element that can make nothing of one', async () => {
+    // `<input type="submit">` is `FUD0592`: there is no kind to name, so there is no card.
+    const card = await cardAt('<input type="submit" control="@userForm.alias">', 'input');
+
+    expect(card).toBe('');
+  });
+});
+
+/**
+ * `control` on a NATIVE tag, which is the half of SDD-34 no other voice can answer.
+ *
+ * The attribute is not HTML's, so the HTML service has never heard of it; it is not a prop, so
+ * no `$gap` carries it; and unlike `class:` it does not even announce itself with a prefix a
+ * developer could guess at. Inside a form it is the reason the element is being written.
+ */
+describe('the `control` of a native tag', () => {
+  const inForm = (markup: string, mountTypeScript = false) =>
+    setup(FORM_ROUTE(markup), SLUG, true, {}, mountTypeScript);
+
+  it('offers the attribute at a gap, saying what this element takes', async () => {
+    const { tagService, document, position } = inForm('<input |>');
+    const list = await completionsOf(tagService, document, position);
+    const control = list?.items.find((item) => item.label === 'control');
+
+    expect(control?.detail).toBe('control of the form');
+    // `control=@` and ask again: the value is a node, and the list of nodes is the other half.
+    expect(control?.textEdit?.newText).toBe('control=@');
+    expect(control?.sortText).toBe('0_control');
+    // Ahead of the classes, which is the other voice that merges into HTML's list here.
+    expect(list?.items[0]?.label).toBe('control');
+  });
+
+  it('and never outside a form, where it would be `FUD0595`', async () => {
+    const source = `<link rel="layout" href="../layouts/_layout.fud">\n<article><input |></article>\n`;
+    const { tagService, document, position } = setup(source);
+    const list = await completionsOf(tagService, document, position);
+
+    expect((list?.items ?? []).map((item) => item.label)).not.toContain('control');
+  });
+
+  it('offers the nodes right of the `=`, each item writing its own `@`', async () => {
+    const { tagService, document, position } = inForm('<input control=|>', true);
+    const list = await completionsOf(tagService, document, position);
+
+    expect(list?.items.map((item) => item.label)).toEqual(['@userForm', '@alias']);
+    expect(list?.items.map((item) => item.detail)).toEqual(['form node', 'control']);
+    // The bare name is what the editor filters on, so typing `ali` still finds `@alias`.
+    expect(list?.items[1]?.filterText).toBe('alias');
+    // Incomplete: a group is almost always reached THROUGH, so the next list is asked for
+    // without a keystroke.
+    expect(list?.isIncomplete).toBe(true);
+  });
+
+  it('offers on a `<form>` only what a form takes', async () => {
+    const { tagService, document, position } = inForm('<form control=|></form>', true);
+    const list = await completionsOf(tagService, document, position);
+
+    expect(list?.items.map((item) => item.label)).toEqual(['@userForm']);
+  });
+
+  it('says nothing there when the checker cannot answer', async () => {
+    // Nothing rather than an empty list: a widget that is up swallows the next Tab. With no
+    // TypeScript mounted the position falls back to the names the template can see.
+    const { tagService, document, position } = inForm('<input control=|>');
+    const list = await completionsOf(tagService, document, position);
+
+    expect((list?.items ?? []).map((item) => item.label)).not.toContain('@userForm');
+  });
+
+  it('says nothing there on an element that can make nothing of a control', async () => {
+    const { tagService, document, position } = inForm('<input type="submit" control=|>', true);
+    const list = await completionsOf(tagService, document, position);
+
+    expect((list?.items ?? []).map((item) => item.label)).not.toContain('@userForm');
   });
 });
 
@@ -780,8 +955,12 @@ describe('code actions', () => {
    * and a file with nothing wrong has to come back empty.
    */
   /** Every action offered anywhere in `source`, with `source` written into the slug. */
-  const fixesIn = async (source: string, extra: Readonly<Record<string, string>> = {}) => {
-    const { service, document } = setup(source, SLUG, true, extra);
+  const fixesIn = async (
+    source: string,
+    extra: Readonly<Record<string, string>> = {},
+    mountTypeScript = false,
+  ) => {
+    const { service, document } = setup(source, SLUG, true, extra, mountTypeScript);
     const whole = {
       start: { line: 0, character: 0 },
       end: { line: source.split('\n').length, character: 0 },
@@ -792,6 +971,107 @@ describe('code actions', () => {
   /** The single text edit an action makes on the file being edited. */
   const edit = (action: { edit?: { changes?: Record<string, unknown> } } | undefined) =>
     (Object.values(action?.edit?.changes ?? {})[0] as { newText: string }[] | undefined)?.[0];
+
+  /**
+   * The `control` bulb (SDD-34, decision 115).
+   *
+   * Not a repair of a diagnostic: nothing is wrong with a field that names no node, it is
+   * unfinished. What it answers is «what is missing», which needs the whole tree — the `<form>`
+   * above says which form the field belongs to, and its fields are the offers.
+   */
+  describe('the bulb that binds a field', () => {
+    const bulbsIn = async (markup: string) =>
+      (await fixesIn(FORM_ROUTE(markup), {}, true))
+        .map((action) => action.title)
+        .filter((title) => title.startsWith('Enlazar'));
+
+    it('offers the fields of the form above, through the very path the author wrote', async () => {
+      // `@userForm.alias` and not `alias`: the path a repair writes is the path they would
+      // have written, which is why the owner travels as TEXT and not as a type.
+      expect(await bulbsIn('<input>')).toEqual(['Enlazar control=@userForm.alias']);
+    });
+
+    it('writes the binding just past the tag name', async () => {
+      const actions = await fixesIn(FORM_ROUTE('<input id="a">'), {}, true);
+      const bind = actions.find((action) => action.title === 'Enlazar control=@userForm.alias');
+
+      expect(edit(bind)?.newText).toBe(' control=@userForm.alias');
+    });
+
+    it('offers the form itself on a `<form>` that opens none yet', async () => {
+      // With no form above, the element IS the one that opens the scope, and the candidates
+      // are the nodes the file's `@code` declares.
+      const source = `<link rel="layout" href="../layouts/_layout.fud">
+@code {
+  type Control<T> = { (): T; set(v: T): void; touch(): void };
+  type Group<S> = S & { $touch(): void; $validate(): Promise<boolean> };
+  const userForm = {} as Group<{ alias: Control<string> }>;
+}
+
+<article><form><input></form></article>
+`;
+      const titles = (await fixesIn(source, {}, true))
+        .map((action) => action.title)
+        .filter((title) => title.startsWith('Enlazar'));
+
+      // The `<form>` takes the form; the `<input>` under it has no owner yet, and a leaf is
+      // not what a form's own scope offers it.
+      expect(titles).toEqual(['Enlazar control=@userForm']);
+    });
+
+    it('never offers a path the file already binds', async () => {
+      // A field bound three lines up is not a repair, it is a duplicate — and both spellings
+      // of one path count as the one binding they are.
+      expect(await bulbsIn('<input control="@userForm.alias"><input>')).toEqual([]);
+    });
+
+    it('offers nothing where the element takes nothing', async () => {
+      expect(await bulbsIn('<input type="submit">')).toEqual([]);
+    });
+
+    it('offers nothing when no TypeScript is mounted to say what a node is', async () => {
+      const titles = (await fixesIn(FORM_ROUTE('<input>')))
+        .map((action) => action.title)
+        .filter((title) => title.startsWith('Enlazar'));
+
+      expect(titles).toEqual([]);
+    });
+
+    it('offers nothing for a range that does not reach the element', async () => {
+      // A bulb belongs to the tag it would edit: asked over the `<link>` line, the fields three
+      // lines down are not what the developer is looking at.
+      const source = FORM_ROUTE('<input>');
+      const { service, document } = setup(source, SLUG, true, {}, true);
+      const firstLine = { start: { line: 0, character: 0 }, end: { line: 0, character: 5 } };
+
+      const actions =
+        (await service.provideCodeActions?.(document, firstLine, { diagnostics: [] }, TOKEN)) ?? [];
+
+      expect(actions.map((action) => action.title)).toEqual([]);
+    });
+
+    it('offers nothing in a LAYOUT, whose template the projection does not carry', async () => {
+      // A layout has no `@code` (`FUD0437`), so there is no node to name — and the value of its
+      // `control` is not in the projection either, so the fields of the form above cannot be
+      // read. Both roads end in the same silence.
+      const layout = LAYOUT_WITH_NAV.replace(
+        '<main>',
+        '<main>\n      <form control="@userForm"><input></form>',
+      );
+      const { service, document } = setup(layout, '/p/layouts/_other.fud', true, {}, true);
+      const whole = {
+        start: { line: 0, character: 0 },
+        end: { line: layout.split('\n').length, character: 0 },
+      };
+
+      const actions =
+        (await service.provideCodeActions?.(document, whole, { diagnostics: [] }, TOKEN)) ?? [];
+
+      expect(actions.map((action) => action.title).filter((t) => t.startsWith('Enlazar'))).toEqual(
+        [],
+      );
+    });
+  });
 
   describe('the repairs of SDD-36', () => {
     it('quotes an unquoted value (FUD0056)', async () => {

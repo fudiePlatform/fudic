@@ -18,7 +18,7 @@
 
 import type { CodeAction, Range } from '@volar/language-service';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
-import { span, type Diagnostic, type Span } from '@fudic/compiler';
+import { CONTROL_NAME, span, type Diagnostic, type Span } from '@fudic/compiler';
 import { URI } from 'vscode-uri';
 import type { CachedDocument } from '../document-cache.js';
 import { relativeHref } from '../paths.js';
@@ -28,6 +28,7 @@ import type { PropDetail, PropHolds } from './tag-card.js';
 import { unresolvedHrefs } from './href.js';
 import { linkInsertionFor } from './tags.js';
 import { loopBindingNames } from './template-scope.js';
+import { accepts, boundPaths, controlBindingSites, type NodeKind } from './forms.js';
 
 /** What every repair is handed: the document, the index, and the diagnostic it repairs. */
 interface Repair {
@@ -326,6 +327,83 @@ function hrefActions(
     }));
 }
 
+/**
+ * `control="@userForm.alias"` on an element of a form that has none yet (SDD-34 §4.1).
+ *
+ * The one action here that is anchored on the CURSOR rather than on a diagnostic, and it earns
+ * the exception the same way the rule does: a bulb that opens onto nothing is what trains a
+ * developer to ignore the bulb. This one never can. It appears only where the attribute is
+ * LEGAL — `controlBindingSites` is `control-inside-form` read forwards, so the three cases are
+ * the compiler's own — only where the element does not already name a node, and only when there
+ * is a node in the model that FITS: a `<form>` takes the form, an `<input>` a leaf, a `<div>` a
+ * group (decision 109). Where any of those is missing there is no action at all, which is why
+ * healthy markup outside a form shows nothing.
+ *
+ * It is not a diagnostic because it must not be one. An unbound `<input>` inside a form is
+ * legal — a label, a button and a hint all live there — so a warning would be wrong about the
+ * language. What is true is narrower and is exactly what a bulb says: here is a field of this
+ * form that nothing has bound yet.
+ *
+ * The paths already written are dropped, in BOTH spellings (`boundPaths`): a field bound three
+ * lines up is not a repair, it is a duplicate.
+ */
+function controlFixes(
+  cached: CachedDocument,
+  forms: FormNodes,
+  within: (at: Span) => boolean,
+): Fix[] {
+  const taken = boundPaths(cached.document, cached.source);
+  const fixes: Fix[] = [];
+
+  for (const site of controlBindingSites(cached.document, cached.source)) {
+    if (!within(site.element.openSpan)) continue;
+
+    // With a form above, the candidates are ITS fields, reached through the very expression the
+    // author wrote on it — so the path the action writes is the path they would have written.
+    // With none, the element IS the `<form>` (or a control-component's own template), and the
+    // candidates are the nodes the file's `@code` declares.
+    const owner = site.owner;
+    const candidates =
+      owner === undefined
+        ? [...forms.inScope()].map(([name, kind]) => ({ path: `${EXPRESSION_PREFIX}${name}`, kind }))
+        : [...forms.fieldsAt(owner.at)].map(([name, kind]) => ({
+            path: `${owner.path}.${name}`,
+            kind,
+          }));
+
+    for (const candidate of candidates) {
+      if (!accepts(site.wants, candidate.kind) || taken.has(candidate.path)) continue;
+      fixes.push({
+        title: `Enlazar ${CONTROL_NAME}=${candidate.path}`,
+        edits: [
+          {
+            span: span(site.insertAt, site.insertAt),
+            newText: ` ${CONTROL_NAME}=${candidate.path}`,
+          },
+        ],
+      });
+    }
+  }
+  return fixes;
+}
+
+/** What opens an expression, and therefore how a node is named. */
+const EXPRESSION_PREFIX = '@';
+
+/**
+ * Reading the model behind a `control`, injected rather than reached for.
+ *
+ * The same arrangement `propsOf` has and for its reason: what this module needs is «which names
+ * are nodes and of what kind», which is a question, not a program. TypeScript stays on the
+ * other side of it.
+ */
+export interface FormNodes {
+  /** The nodes the file's `@code` declares, by name. */
+  inScope(): ReadonlyMap<string, NodeKind>;
+  /** The fields of the node named at this `.fud` offset. Empty when it names none. */
+  fieldsAt(at: number): ReadonlyMap<string, NodeKind>;
+}
+
 /** Everything the router needs from the plugin, so this module imports no LSP plumbing. */
 export interface ActionDeps {
   readonly cached: CachedDocument;
@@ -344,6 +422,13 @@ export interface ActionDeps {
    * question, not a program.
    */
   propsOf: PropLookup;
+  /**
+   * The model behind a `control`, for the one action that is anchored on the cursor.
+   *
+   * Injected like `propsOf` and for its reason: which names hold a form node is a question only
+   * the checker can answer, and this module holds no TypeScript.
+   */
+  readonly formNodes: FormNodes;
 }
 
 /**
@@ -386,6 +471,12 @@ export function codeActions(deps: ActionDeps): CodeAction[] {
   for (const issue of contractIssues(cached, index)) {
     if (!overlaps(rangeOf(document, issue.at), range)) continue;
     for (const fix of contractFixes(issue, propsOf)) emit(fix);
+  }
+
+  for (const fix of controlFixes(cached, deps.formNodes, (at) =>
+    overlaps(rangeOf(document, at), range),
+  )) {
+    emit(fix);
   }
 
   return actions;

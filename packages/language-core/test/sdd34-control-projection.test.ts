@@ -18,7 +18,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { typecheckCorpus, type CorpusDiagnostic } from './typecheck.js';
+import { mapToGenerated } from '../src/mapping.js';
+import { languageServiceFor, projectCorpus, typecheckCorpus, type CorpusDiagnostic } from './typecheck.js';
 
 const FIXTURES = resolve(fileURLToPath(new URL('../fixtures', import.meta.url)));
 const SLUG = 'blog/[slug].fud';
@@ -35,8 +36,9 @@ const read = (path: string): string => readFileSync(resolve(FIXTURES, path), 'ut
  */
 const MODEL = `  }
   type Control<T> = { (): T; set(v: T): void; touch(): void };
-  type SeoGroup = { canonical: Control<string> };
-  type UserForm = { title: Control<string>; seo: SeoGroup };
+  type Group<T> = T & { $touch(): void; $validate(): Promise<boolean> };
+  type SeoGroup = Group<{ canonical: Control<string> }>;
+  type UserForm = Group<{ title: Control<string>; seo: SeoGroup }>;
   declare const f: UserForm;
 }`;
 
@@ -57,15 +59,38 @@ const CONTROL_BADGE = `@code {
 /** The line of the route the mutations replace. */
 const BADGE_TAG = `<app-badge .tone="@(data.found ? 'info' : 'neutral')">@data.tag</app-badge>`;
 
-/** The corpus with the model in the neutral zone and the badge line replaced by `to`. */
-function corpus(to: string, badge?: string): Record<string, string> {
+/** The route with the model in the neutral zone and the badge line replaced by `to`. */
+function route(to: string): string {
   const source = read(SLUG).replace('  }\n}', MODEL).replace(BADGE_TAG, to);
   if (!source.includes(to)) throw new Error(`mutation anchor not found: ${to}`);
+  return source;
+}
+
+/** The corpus with the model in the neutral zone and the badge line replaced by `to`. */
+function corpus(to: string, badge?: string): Record<string, string> {
+  const source = route(to);
   return badge === undefined ? { [SLUG]: source } : { [SLUG]: source, [BADGE]: badge };
 }
 
 const describeDiag = (d: CorpusDiagnostic): string =>
   `${d.code} ${d.message} @${d.sourceText ?? '<unmapped>'}`;
+
+/**
+ * What the editor is offered at `offset` of the route, through the projection.
+ *
+ * Asked of the REAL language service and not of the emitted text, for the reason `anchors.test`
+ * gives: a hole that maps somewhere nobody answers reads perfectly in the virtual and offers
+ * nothing in the editor.
+ */
+function completionsAt(files: Record<string, string>, offset: number): readonly string[] {
+  const { service, pathOf } = languageServiceFor(files);
+  const virtual = projectCorpus(files).find((p) => p.file.path === SLUG)!.virtuals[0]!;
+  const at = mapToGenerated(virtual, offset, 'completion');
+  expect(at, 'the position maps into the projection').toBeDefined();
+
+  const info = service.getCompletionsAtPosition(pathOf(virtual.fileName), at!, undefined);
+  return (info?.entries ?? []).map((e) => e.name);
+}
 
 describe('`control` on a native element', () => {
   it('the expression is CODE: a name that does not exist is reported', () => {
@@ -106,6 +131,35 @@ describe('`control` on a native element', () => {
   });
 });
 
+describe('the element decides what may be bound (decision 109)', () => {
+  it('a field takes a control and refuses a group', () => {
+    expect(typecheckCorpus(corpus(`<input control="@f.seo">`))).toHaveLength(1);
+    expect(typecheckCorpus(corpus(`<textarea control="@f.seo"></textarea>`))).toHaveLength(1);
+    expect(typecheckCorpus(corpus(`<select control="@f.seo"></select>`))).toHaveLength(1);
+  });
+
+  it('a `<form>` takes the form and refuses a control', () => {
+    expect(typecheckCorpus(corpus(`<form control="@f"></form>`)).map(describeDiag)).toEqual([]);
+    expect(typecheckCorpus(corpus(`<form control="@f.title"></form>`))).toHaveLength(1);
+  });
+
+  it('anything else is a group, and takes what a group is', () => {
+    // Where the binding lands is layout — a `<fieldset>`, a `<div>`, a `<section>` — so what
+    // is checked is the NODE and never the tag (§4.1).
+    for (const tag of ['fieldset', 'div', 'section']) {
+      expect(
+        typecheckCorpus(corpus(`<${tag} control="@f.seo"></${tag}>`)).map(describeDiag),
+      ).toEqual([]);
+      expect(typecheckCorpus(corpus(`<${tag} control="@f.title"></${tag}>`))).toHaveLength(1);
+    }
+  });
+
+  it('the error lands on what the author wrote', () => {
+    const [only] = typecheckCorpus(corpus(`<input control="@f.seo">`));
+    expect(only!.sourceText).toBe('f.seo');
+  });
+});
+
 describe('`control` on a component tag', () => {
   it('crosses as the `ctrl` prop and is accepted (decision 112)', () => {
     // The attribute is not HTML's here either: it is the one prop `CONTROL_PROP` names, and a
@@ -133,5 +187,65 @@ describe('`control` on a component tag', () => {
     const diags = typecheckCorpus(corpus(`<app-badge control="@f.seo"></app-badge>`, CONTROL_BADGE));
     expect(diags).toHaveLength(1);
     expect(diags[0]!.sourceText).toContain('seo');
+  });
+});
+
+/**
+ * `control=` with nothing behind it — the instant the list is worth having.
+ *
+ * A value the author has opened and not written does not classify: `classifyControl` degrades it
+ * to a plain attribute with `FUD0590`, so none of the branches above fire and the projection
+ * used to write NOTHING at that offset. The root stayed silent too, and rightly — the answer
+ * there is the form's nodes, not HTML's vocabulary — which left the one position where the
+ * developer is certainly asking with nobody to answer it.
+ */
+describe('`control=` with the value still open', () => {
+  /** The offset right behind the `=`, which is where the caret is when the list is asked for. */
+  const behindTheEquals = (source: string): number =>
+    source.indexOf('control=') + 'control='.length;
+
+  it('offers the form on a native element, through the hole of `$control()`', () => {
+    const source = route(`<input control=>`);
+
+    expect(completionsAt({ [SLUG]: source }, behindTheEquals(source))).toContain('f');
+  });
+
+  it('offers it with the quotes already typed, which is the same empty value', () => {
+    const source = route(`<input control="">`);
+    // One character further in: between the quotes, where `attributeValueSpan` ends.
+    const at = source.indexOf('control="') + 'control="'.length;
+
+    expect(completionsAt({ [SLUG]: source }, at)).toContain('f');
+  });
+
+  it('offers it on a `<form>` too, where the call is the group one', () => {
+    const source = route(`<form control=></form>`);
+
+    expect(completionsAt({ [SLUG]: source }, behindTheEquals(source))).toContain('f');
+  });
+
+  it('offers it on a component tag, against the contract the child declared', () => {
+    // Over there the binding is the `ctrl` prop, so the hole goes INSIDE the props literal —
+    // where the globals literal used to report `TS2353` over the one name the author had
+    // written correctly.
+    const source = route(`<app-badge control=></app-badge>`);
+    const files = { [SLUG]: source, [BADGE]: CONTROL_BADGE };
+
+    expect(completionsAt(files, behindTheEquals(source))).toContain('f');
+  });
+
+  it('and the half-written name is no longer HTML’s vocabulary', () => {
+    const diags = typecheckCorpus(corpus(`<app-badge control=></app-badge>`, CONTROL_BADGE));
+
+    expect(diags.filter((d) => d.code === 2353).map(describeDiag)).toEqual([]);
+  });
+
+  it('says nothing about the prop being missing: it was written, only not finished', () => {
+    // `$required` reads the names the author WROTE. A `control=` that has not reached its value
+    // is still the one prop the child declared, so reporting it absent would be an error about
+    // the character the developer is in the middle of typing.
+    const diags = typecheckCorpus(corpus(`<app-badge control=></app-badge>`, CONTROL_BADGE));
+
+    expect(diags.filter((d) => d.message.includes('ctrl'))).toEqual([]);
   });
 });

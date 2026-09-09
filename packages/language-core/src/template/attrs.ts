@@ -16,7 +16,9 @@
 import {
   attributeValueSpan,
   classifyAttribute,
+  CONTROL_NAME,
   CONTROL_PROP,
+  controlTarget,
   crossing,
   handlerShape,
   unwrapParens,
@@ -55,6 +57,33 @@ function eventNameOf(attr: Attribute, binding: Binding): string | undefined {
   return attr.name.startsWith(EVENT_PREFIX)
     ? attr.name.slice(EVENT_PREFIX.length)
     : undefined;
+}
+
+/**
+ * A `control` whose value is OPEN: `control=`, `control=""`, `control="@"`.
+ *
+ * The twin of `eventNameOf`, and it exists for that function's reason. A value the grammar
+ * cannot read as one `@` expression degrades the whole binding to a plain attribute
+ * (`classifyControl`), so by the time the projection sees `<input control=|>` the binding no
+ * longer says «control» — and that is exactly the moment the author is asking which node goes
+ * there. The VERBATIM name is what survives the degrading, so the verbatim name is what this
+ * reads.
+ *
+ * The value SPAN decides the rest, the rule `emitOpenHandler` states: `attributeValueSpan`
+ * returns nothing precisely when no `=` was written, which separates a `control` that is only
+ * a name from a `control` whose value the author has committed to.
+ *
+ * `undefined` for a binding that classified, because the `control` branch below owns that one
+ * and projecting it twice would check one crossing two ways.
+ */
+function openControlValue(
+  ctx: TemplateContext,
+  attr: Attribute,
+  binding: Binding,
+): Span | undefined {
+  if (binding.type === 'control') return undefined;
+  if (typeof attr.name !== 'string' || attr.name.toLowerCase() !== CONTROL_NAME) return undefined;
+  return attributeValueSpan(ctx.source, attr);
 }
 
 /** One attribute with the binding it classifies to — what every emitter below takes. */
@@ -170,6 +199,16 @@ function emitProps(ctx: TemplateContext, el: ElementNode, bindings: readonly Ent
     // A `control` on a component tag WAS written, and it fills `ctrl`: leaving it out of `K`
     // made `$required` report the one prop the author had just passed.
     if (entry.binding.type === 'control') {
+      props.push(entry);
+      written.push(`'${CONTROL_PROP}'`);
+      continue;
+    }
+    // The same binding half written: `<app-input control=|>`. Degraded to a plain attribute it
+    // fell into the globals literal, where `$attrs<{}>` reported `TS2353` over the one name the
+    // author had just chosen correctly — and the position where the form's nodes are the whole
+    // answer had nothing to ask from. It is the `ctrl` prop here as much as when it is
+    // finished, so it goes with the props and `emitEntries` writes it a hole.
+    if (openControlValue(ctx, entry.attr, entry.binding) !== undefined) {
       props.push(entry);
       written.push(`'${CONTROL_PROP}'`);
       continue;
@@ -291,6 +330,18 @@ function emitEntries(ctx: TemplateContext, entries: readonly Entry[], contract?:
       // checked against is the one the CHILD declared, exactly as §4.9 promises.
       if (contract === undefined) emitExpression(ctx, binding.value);
       else emitCrossing(ctx, binding.value, `$Prop<${contract}, ${JSON.stringify(CONTROL_PROP)}>`, '$node');
+      ctx.w.scaffold(',');
+      continue;
+    }
+    // The same key with no value yet. The key is the compiler's either way, so it is
+    // scaffolding either way; what changes is that there is no expression to copy, and the
+    // hole takes its place — checked against nothing, since an anchor that carries completion
+    // alone cannot fail `$Prop<…, 'ctrl'>`.
+    const openControl = openControlValue(ctx, attr, binding);
+    if (openControl !== undefined) {
+      ctx.w.scaffold('\n  ');
+      ctx.w.scaffold(`${CONTROL_PROP}: `, attr.span);
+      emitHole(ctx, openControl.end);
       ctx.w.scaffold(',');
       continue;
     }
@@ -433,6 +484,22 @@ function crossesAsRead(ctx: TemplateContext, value: readonly AttributeValuePart[
   return crossing(ctx.source, value, ctx.reactives) !== undefined;
 }
 
+/**
+ * The projection call a `control` on a NATIVE element gets, by what that element is.
+ *
+ * `controlTarget` is the one classification, shared with the emit and with the semantic pass
+ * (`@fudic/compiler`), so the three cannot drift: `false` for `isComponent` because a component
+ * tag never reaches here — over there the binding is the `ctrl` prop and the child's own
+ * contract does the checking.
+ *
+ * An element the compiler rejects — `FUD0592`'s two faces — is still projected as a control:
+ * the `FUD` is already on the author's screen, and a second complaint about the same three
+ * characters, in TypeScript's words, would be the same mistake said twice.
+ */
+function controlCall(el: ElementNode): string {
+  return controlTarget(el, false).kind === 'value' ? '$control(' : '$controlGroup(';
+}
+
 /** Events, bus subscriptions, conditional class/style and `ref` — the non-prop bindings. */
 function emitBehaviour(
   ctx: TemplateContext,
@@ -448,6 +515,28 @@ function emitBehaviour(
     ctx.w.scaffold('$on(', attr.span);
     emitEventName(ctx, attr, opening);
     emitOpenHandler(ctx, attr);
+    ctx.w.scaffold(');\n');
+    return;
+  }
+
+  // A `control` still being written, on a NATIVE element. The same trade the open handler
+  // above makes, for the same position one binding over: nothing was projected here, so
+  // `ownedByProjection` silenced the root — which is right, the list there is the form's
+  // nodes and not HTML's vocabulary — and then there was nobody left to answer. The call is
+  // projected with a HOLE where the node goes, and the hole is what the checker is asked
+  // from. `$control()` one argument short reports to nobody: the anchor carries completion
+  // alone and the parenthesis is scaffolding.
+  //
+  // A component tag is not here for the reason its finished twin is not: over there the
+  // binding is the `ctrl` prop, and `emitProps` writes the hole inside the props literal so
+  // the question is asked against the contract the CHILD declared.
+  const openControl = openControlValue(ctx, attr, binding);
+  if (openControl !== undefined && !isComponent(el.name)) {
+    ctx.w.scaffold(controlCall(el), attr.span);
+    // ZERO-LENGTH at the END of the value, the arithmetic `emitOpenHandler` explains: Volar
+    // maps a source offset into a stretch with `Math.min(relativePos, generatedLength)`, so
+    // anything wider pushes the caret past the anchor and onto the `)`.
+    ctx.w.projected(' ', span(openControl.end, openControl.end), COMPLETION_ONLY_CAPS);
     ctx.w.scaffold(');\n');
     return;
   }
@@ -503,12 +592,19 @@ function emitBehaviour(
       //
       // What this call buys is the sentence SDD-34 §4.9 rests on: the path is checked by
       // TypeScript and not by the emit, so `@f.seo.descripcion` is a member access that does
-      // not resolve. It is deliberately NOT typed to the shape of the element — a `<select
-      // multiple>` wanting `Control<readonly string[]>` is a second question, and answering it
-      // here would mean importing `@fudic/forms/dom` into the projection.
+      // not resolve. And WHICH call is decided by the element, with the very function the emit
+      // picks its bind module with (decision 109): a `<form>` and a `<div>` take a form or a
+      // group, an `<input>`/`<textarea>`/`<select>` takes a control. Asking it twice with two
+      // functions is how the editor and the build come to disagree about what an element is.
       if (isComponent(el.name)) return;
-      ctx.w.scaffold('$control(', attr.span);
-      copyExpression(ctx, binding.value.expr);
+      ctx.w.scaffold(controlCall(el), attr.span);
+      // `copyRazor` and not `copyExpression`, and what separates them is the DANGLING dot. At
+      // `control="@f.|"` the `.` is not part of the node's span, so copying the node alone left
+      // the caret OUTSIDE the projection: TypeScript was never asked, and the one position where
+      // the fields of the form are the whole answer came back empty (decision 102). Every other
+      // binding here copies the razor — the crossing into a component included — and this was
+      // the one exception.
+      copyRazor(ctx, binding.value);
       ctx.w.scaffold(');\n');
       return;
 
