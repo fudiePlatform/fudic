@@ -31,7 +31,15 @@ beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-vite-'));
   const routes = join(root, 'src', 'routes');
   mkdirSync(routes, { recursive: true });
-  for (const f of ['home.fud', 'app-card.fud', 'app-button.fud', 'app-badge.fud', 'app-list.fud', 'app-actions.fud']) {
+  for (const f of [
+    'home.fud',
+    'app-card.fud',
+    'app-button.fud',
+    'app-badge.fud',
+    'app-list.fud',
+    'app-actions.fud',
+    'app-calendar.fud',
+  ]) {
     writeFileSync(join(routes, f), readFileSync(join(fixtures, f), 'utf8'));
   }
   // home's `@server load` imports its data source `./db`; stub it so the ?server module

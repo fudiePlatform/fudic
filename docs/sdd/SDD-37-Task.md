@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` ·
 > `fudic-vscode` · `@fudic/forms`
 > **Rama:** `sdd-37-delegacion-de-eventos`
-> **Progreso:** 8 / 24
+> **Progreso:** 12 / 24
 > **No toca:** `@fudic/dom`, `@fudic/core`, `@fudic/ssr`. Cero runtime de delegación: la
 > tabla y el dispatch los escribe el emit.
 
@@ -84,19 +84,19 @@ mismo ahorro que los bucles, sobre el paquete donde más elementos vivos hay.
 
 ## Fase 3 — El emit (4)
 
-- [ ] **9. La tabla.**
+- [x] **9. La tabla.**
       `const $tN = new WeakMap();` en el `decls` del closure que posee el ancestro, una por
       nombre delegado. Reservar `$t`, `$y` y `$z` junto a los nombres de SDD-30.
 
-- [ ] **10. El registro de la fila.**
+- [x] **10. El registro de la fila.**
       `$tN.set($nX, () => nombre)` en `c()` y en `h()` de `markup-client.ts`, tras la asignación
       del nodo marcado. **Getter, no valor** — §4.1. Nada en el camino de update.
 
-- [ ] **11. El listener envuelto.**
+- [x] **11. El listener envuelto.**
       En `#listeners`: cuando el handler menciona `$nombre`, envolver como §4.1 —una pasada por
       `composedPath()`, guarda, invocación—. Un handler sin `$nombre` no cambia una coma.
 
-- [ ] **12. Goldens.**
+- [x] **12. Goldens.**
       Fixture nueva `fixtures/app-calendar.fud` con un `@foreach` delegado, y su golden de
       cliente. Verificar que los goldens **existentes** no se mueven (invariante 2) y que el HTML
       de servidor es idéntico al del mismo componente sin el marcador (criterio 11).

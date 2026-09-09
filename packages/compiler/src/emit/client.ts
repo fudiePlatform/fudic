@@ -23,7 +23,8 @@ import { ClientMarkupEmitter, coreUsage, nodeIds } from './markup-client.js';
 import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js';
 import { AssetLinker } from './assets.js';
 import { codeOf, splicedOffset, type ClientStatement, type Prop } from './oxc-code.js';
-import { hookupContext } from './events.js';
+import { hookupContext, templateDelegationJs } from './events.js';
+import { planDelegation } from '../semantic/delegation.js';
 import { planControls } from './controls.js';
 import { isFormAssociated } from '../binding/index.js';
 import { movingNames } from './level.js';
@@ -185,6 +186,16 @@ function buildComponentClientModule(
   // One channel for everything the emit has to SAY about this file, and one for what every
   // walk of it shares: a block three levels down reports through the same two.
   const emitDiagnostics: Diagnostic[] = [];
+  // Who hands what to whom (SDD-37 §3.2), paired ONCE for the whole file — the two halves of a
+  // delegation are written by two different walks, so no walk could pair them on its own. Its
+  // diagnostics join the emit's: the semantic pass is the editor's channel, and the build has
+  // no other.
+  const delegation = planDelegation(
+    comp.source,
+    comp.doc.template!.children,
+    templateDelegationJs(template),
+  );
+  emitDiagnostics.push(...delegation.diagnostics);
   const hookup = hookupContext(
     template,
     emitDiagnostics,
@@ -196,7 +207,12 @@ function buildComponentClientModule(
     // component already holds. The two are hooked up at different moments, and only the first
     // has to be able to happen again.
     new Set(props.map((p) => p.name)),
+    delegation,
   );
+  // The tables, in the closure the listeners live in (§4.1). A `WeakMap` needs no teardown —
+  // an entry leaves with the node that keyed it — which is why a row's registration costs one
+  // `set` and its removal costs nothing at all (§4.3).
+  for (const table of delegation.tables) bodies.decls.line(`const ${table} = new WeakMap();`);
   const ids = nodeIds();
   const usage = coreUsage();
   const ctx = blockContext(comp.source, scope, linker, ids, usage, hookup);
