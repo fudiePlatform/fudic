@@ -5,7 +5,7 @@
 > **Toca además:** `@fudic/compiler`, `@fudic/ssr`, `@fudic/vite`
 > **Rama:** `sdd-38-inyeccion-de-dependencias`
 > **Rango:** `FUD0680`–`FUD0699` · **Decisiones:** 120–126
-> **Progreso:** 6 / 19
+> **Progreso:** 7 / 19
 
 Da a fudic el inyector que [`docs/di/index.html`](../di/index.html) prototipó, y lo cablea en los
 dos extremos. Las fases 1–3 son un paquete nuevo, sin DOM y sin dependencias, que se puede llevar
@@ -105,7 +105,7 @@ usuario, `multi:`, `useValue`, el reemplazo en tests y `fudic g service`.
 
 ## Fase 3 — El árbol reconstruido (1)
 
-- [ ] **7. `@fudic/di/page` — `buildTree`.**
+- [x] **7. `@fudic/di/page` — `buildTree`.**
       `src/page.ts`: a partir de `nodes[i] = padre de i` (con `-1` para la raíz) construye los
       contenedores en memoria y llama a `register(node, container)` una vez por nodo. **No lee el
       DOM**: el bloque JSON lo pasa quien la llama. Criterios §6.11 y §6.12, los dos escritos sin
