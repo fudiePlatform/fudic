@@ -212,10 +212,15 @@ del elemento y escribe la llamada concreta:
 | `<select>` | string | `bindSelect` |
 | `<select multiple>` | array de strings | `bindSelectMultiple` |
 | `<input type="file">`, `image`, `submit`, `reset`, `button` | — | `FUD0592` |
+| `<input type="@t">` | lo que diga el `type` al enlazar | `bindByType` (BUG-25 §4.6) |
 
-Un `type` **dinámico** (`type="@t"`) no se puede decidir en compilación: es `FUD0592` también, con
-su mensaje propio. No se emite un despacho de runtime para rescatarlo; eso sería devolver al
-bundle la tabla que este SDD quita.
+> **Derogado por [BUG-25](./bugs/BUG-25-control-sin-editor.md) §4.6.** Aquí se leía que un
+> `type` **dinámico** (`type="@t"`) es `FUD0592`, porque un despacho de runtime devolvería al
+> bundle la tabla que este SDD quita. No la devuelve: la importa **el chunk del componente que
+> lo escribe**, y una ruta que nunca escribe un `type` interpolado sigue sin verla. Hoy enlaza
+> con `bindByType`, la séptima función de `./dom`, y su enlace se rehace cuando el `type` se
+> mueve igual que cuando se mueve el nodo. Es lo que permite **un** control-componente para
+> todas las formas de `<input>` en vez de uno por forma.
 
 **La lista cerrada es la de abajo, no la de arriba.** Un `type` que no está en ninguna fila
 —`month`, `week`, `datetime-local`, `hidden`, o uno inventado— es `bindText`, y eso no es un
@@ -489,10 +494,11 @@ schema en el emit sería duplicar el chequeo y quedarse corto.
 |---|---|
 | `FUD0590` | El valor de `control` no es una expresión `@` (decisión 108). Cubre el `control="title"` del prototipo. |
 | `FUD0591` | Dos elementos del mismo componente enlazan el mismo nodo (decisión 110), salvo que **todos** sean `<input type="radio">`. |
-| `FUD0592` | `control` sobre un `<input>` cuyo `type` no porta valor de usuario (`submit`, `reset`, `button`, `image`), no está soportado (`file`, SDD-33 §7) o es **dinámico** y no se puede decidir en compilación. |
+| `FUD0592` | `control` sobre un `<input>` cuyo `type` no porta valor de usuario (`submit`, `reset`, `button`, `image`) o no está soportado (`file`, SDD-33 §7). Un `type` **dinámico** estaba aquí y ya no (BUG-25 §4.6): enlaza con `bindByType`. |r en compilación. |
 | `FUD0593` | `formassociated` fuera del `<template shadowrootmode>` raíz de un componente — en un template anidado o en modo página (decisión 111). |
 | `FUD0594` | `control` dentro de un bucle (decisión 114, hermana de la 31). |
-| `FUD0595`–`FUD0619` | Reservados. |
+| `FUD0595` | `control` sin un `<form control="…">` por encima en la misma plantilla (decisión 115, [BUG-25](./bugs/BUG-25-control-sin-editor.md)). Exento el control-componente: enlaza el nodo que le pasa su padre, y el sitio del cruce se comprueba en el fichero del padre. |
+| `FUD0596`–`FUD0619` | Reservados. |
 
 Ninguno de los cinco lanza: el emit anota el diagnóstico con su span, omite **ese** enlace y sigue
 emitiendo el fichero (regla de oro del proyecto).
@@ -515,8 +521,8 @@ Tests en `packages/compiler/test/` (1–9, 13–15), `packages/forms/test/dom/` 
    `<input type="radio" control="@f.tone">` → **sin diagnóstico** y una sola llamada a `bindRadio`
    con los tres; los mismos tres más un `<input type="text">` sobre el mismo nodo → `FUD0591`.
 4. `control` dentro de un `@foreach` → `FUD0594`.
-5. `<input type="file" control="@f.doc">`, `type="submit"` y `type="@t"` → `FUD0592`, cada uno con
-   su mensaje.
+5. `<input type="file" control="@f.doc">` y `type="submit"` → `FUD0592`, cada uno con su mensaje.
+   (`type="@t"` estaba aquí y ya no: enlaza con `bindByType` — BUG-25 §4.6.)
 6. `formassociated` en un `<template>` anidado y en una página → `FUD0593`.
 
 **Emit**

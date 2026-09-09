@@ -357,7 +357,7 @@ bus_name
 
 **31.** `ref` dentro de bucle (`@foreach`, `@for`, `@while`) → error de compilación. Ampliación futura posible con sintaxis dedicada si se necesita.
 
-**106.** **`control` es un atributo reservado, con valor de expresión `@`.** Es de la familia
+**108.** **`control` es un atributo reservado, con valor de expresión `@`.** Es de la familia
 de `ref` (decisión 30), no de `class:`/`bus:` (22, 28.a): esos son **prefijos** porque llevan
 un nombre detrás del `:`, y aquí no hay nada que nombrar — el nodo del formulario lo dice la
 expresión. `control="title"`, sin `@`, es `FUD0590`; es además la forma que usaba el prototipo
@@ -372,24 +372,29 @@ A diferencia de `ref`, el valor **no** se limita a un identificador simple: `@f.
 es una ruta y ese es su caso normal. Quien comprueba que la ruta existe y es del tipo que el
 elemento espera es TypeScript sobre la proyección (SDD-23), no el emit.
 
-**107.** **El elemento decide qué se enlaza**, y son cuatro casos y no más:
+**109.** **El elemento decide qué se enlaza**, y son cuatro casos y no más:
 
 | Elemento | Qué se espera | Qué significa |
 |---|---|---|
 | `<form>` | un `Form<S>` | estado del formulario: tocado, foco, resumen |
 | `input` / `textarea` / `select` | un `Control<T>` | el enlace de **esa** forma de elemento |
-| un tag de componente | un `Control<T>` o un `Form<S>` | cruza la referencia como prop (110) |
+| un tag de componente | un `Control<T>` o un `Form<S>` | cruza la referencia como prop (112) |
 | cualquier otro elemento | un `Form<S>` | un grupo: agrupación de errores |
 
 Un grupo se enlaza a **lo que el autor quiera** —un `<fieldset>`, un `<div>`, una `<section>`—.
 No hay elemento privilegiado: lo que el enlace aporta es semántica de agrupación de errores, y
 dónde caiga es maquetación. Sobre un `<input>` cuyo `type` no porta valor de usuario
-(`submit`, `reset`, `button`, `image`), no está soportado (`file`) o es **dinámico**
-(`type="@t"`) es `FUD0592`: un `type` que solo se conoce en ejecución no se puede decidir en
-compilación, y emitir un despacho de runtime para rescatarlo devolvería al bundle la tabla de
-coerciones que la forma estática quita.
+(`submit`, `reset`, `button`, `image`) o no está soportado (`file`) es `FUD0592`.
 
-**108.** **Un nodo se enlaza a un elemento y solo a uno dentro del mismo componente.** Dos
+Un `type` **dinámico** (`type="@t"`) sí se enlaza, y esta decisión lo dice desde
+[BUG-25](../sdd/bugs/BUG-25-control-sin-editor.md): la forma se decide en el momento del
+enlace con `bindByType`, la séptima función de `@fudic/forms/dom`. No devuelve al bundle la
+tabla que la forma estática quita —la importa **el chunk del componente que la escribe**, y una
+ruta que nunca escribe un `type` interpolado sigue sin verla—, y es lo que permite que **un**
+control-componente envuelva todas las formas de `<input>` en vez de una por forma. Su enlace se
+rehace cuando el `type` cambia, igual que cuando cambia el nodo.
+
+**110.** **Un nodo se enlaza a un elemento y solo a uno dentro del mismo componente.** Dos
 `control` con la misma expresión en el mismo fichero es `FUD0591`. Dos vistas del mismo valor
 no es un caso de formulario: es un caso de interpolación, y para eso está `@f.title()`.
 
@@ -398,7 +403,7 @@ elemento: un grupo de radios son N elementos que expresan **un** valor. Varios `
 misma expresión son legítimos si **todos** son radios; mezclar un radio con cualquier otro
 elemento vuelve a ser `FUD0591`.
 
-**109.** **`<template shadowrootmode="open" formassociated>` marca un control-componente.** El
+**111.** **`<template shadowrootmode="open" formassociated>` marca un control-componente.** El
 marcador es de compilación: el navegador nunca lo ve —un atributo desconocido en un
 `<template>` es inerte— y el compilador lo consume. **No inventa nada del estándar**: `static
 formAssociated` lo lee el navegador al *definir* la clase, así que ninguna forma declarativa
@@ -406,23 +411,38 @@ puede producirlo hoy; el atributo solo dice de qué clase hereda lo que se emite
 `<template shadowrootmode>` raíz de un componente —en un template anidado o en modo página— es
 `FUD0593`.
 
-**110.** **Sobre un tag de componente, `control` cruza la referencia del nodo como prop.** El
-hijo recibe el `Control<T>` y lo enlaza a su `<input>` interno con las mismas reglas de la 107.
+**112.** **Sobre un tag de componente, `control` cruza la referencia del nodo como prop.** El
+hijo recibe el `Control<T>` y lo enlaza a su `<input>` interno con las mismas reglas de la 109.
 Convive con la **decisión 84** —ninguna signal cruza el shadow boundary— y no la deroga: lo que
 84 prohíbe es que el emit construya un grafo reactivo **implícito** entre padre e hijo, y aquí
 lo que cruza no es estado de render del padre sino el **modelo**, nombrado explícitamente por el
 autor en el punto de uso; el hijo se suscribe por su cuenta y no se emite `u` para ese prop.
 
-**111.** **El marcado del error lo emite el compilador; el runtime solo escribe su texto.** Por
+**113.** **El marcado del error lo emite el compilador; el runtime solo escribe su texto.** Por
 cada control enlazado el emit deja en el markup —y por tanto en el HTML que sale de SSR— el
 hueco del error con un id estable derivado de la identidad del nodo, y el `aria-describedby`
 que lo apunta **siempre**, esté vacío o no. Es la invariante que hace que un formulario tenga la
 misma accesibilidad haya hidratado o no.
 
-**112.** **`control` dentro de un bucle (`@foreach`, `@for`, `@while`) es error** (`FUD0594`).
+**114.** **`control` dentro de un bucle (`@foreach`, `@for`, `@while`) es error** (`FUD0594`).
 Es la decisión 31 aplicada por la misma razón que a `ref`: la expresión enlazaría N elementos al
 mismo nodo. Las colecciones de controles están fuera de v1, y cuando entren traerán su propia
 forma de nombrar la fila.
+
+**115.** **Un nodo se enlaza dentro de SU formulario, y en ningún otro sitio** (`FUD0595`).
+Un `control` necesita un `<form control="…">` por encima en la misma plantilla. La regla nació
+en [BUG-25](../sdd/bugs/BUG-25-control-sin-editor.md), del caso que la 108 no prohibía: un
+`<input control="@f.alias">` dentro de un `<form>` que fudic no conoce. Eso no es interop, es
+incoherencia —el valor que el usuario teclea vive en `f`, el formulario que el navegador envía
+lee el DOM, y los dos solo coinciden porque `setFormValue` copia uno en el otro bajo un `name`
+que no usa nadie más del lenguaje—. Con la regla, `name` deja de ser vocabulario.
+
+**La excepción es el control-componente**, y es toda la mitad entre ficheros: un
+`<template shadowrootmode formassociated>` enlaza un nodo que no ha nombrado —se lo pasa el
+padre con `control="@f.alias"` (112)— y su plantilla no tiene `<form>` cerca. Exigirlo ahí
+haría ilegal el patrón sobre el que está construido SDD-34. El sitio del cruce **sí** se
+comprueba, en el fichero donde está el `<form>`: una pregunta léxica, hecha dos veces, cubre la
+cadena entera.
 
 ---
 
@@ -1225,9 +1245,10 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 106 | — | **Libre.** La reservó SDD-34 antes de la colisión de numeración y la devolvió al correr su bloque a 108–114. No está tomada: el siguiente que numere puede usarla |
 | 107 | Documentación | **Dónde se documenta un componente**: el JSDoc del nivel superior de un tramo neutro documenta el componente, el del miembro de `props<T>()` documenta esa prop, y el del `new CustomEvent` documenta ese evento. Sin sintaxis nueva (SDD-36 §3.3) |
 | 108 | Interpolación | `control` es atributo **reservado** con valor de expresión `@`, de la familia de `ref` (30) y no un prefijo (`FUD0590`) |
-| 109 | Interpolación | **El elemento decide** qué se enlaza: `<form>`, elemento que porta valor, tag de componente, cualquier otro (grupo). `type` sin valor de usuario o dinámico → `FUD0592` |
+| 109 | Interpolación | **El elemento decide** qué se enlaza: `<form>`, elemento que porta valor, tag de componente, cualquier otro (grupo). `type` sin valor de usuario o `file` → `FUD0592`; `type` **dinámico** enlaza con `bindByType` (BUG-25) |
 | 110 | Interpolación | Un nodo, un elemento por componente (`FUD0591`); la única excepción es un grupo de `<input type="radio">` |
 | 111 | Interpolación | `formassociated` en el `<template shadowrootmode>` raíz marca un control-componente; fuera de ahí, `FUD0593` |
 | 112 | Interpolación | Sobre un tag de componente, `control` **cruza la referencia** del nodo como prop; la 84 queda intacta y no se emite `u` |
 | 113 | Interpolación | El hueco del error lo escribe el **emit** (id estable + `aria-describedby` siempre); el runtime solo pone texto |
 | 114 | Interpolación | `control` dentro de un bucle → error (`FUD0594`), hermana de la 31 |
+| 115 | Interpolación | Un `control` necesita un `<form control>` por encima (`FUD0595`); exento el control-componente, cuyo nodo se comprueba en el fichero del padre (BUG-25) |
