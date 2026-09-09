@@ -1,0 +1,78 @@
+@code {
+  // El valor que el bloque de código en linea del template debería cambiar antes de que
+  // se pinte el párrafo. En la zona NEUTRA porque el template lo lee en los dos lados.
+  let marca = 1;
+
+  @client {
+    import { signal } from "@fudic/core";
+
+    const toques = signal(0);
+
+    function tocar() {
+      toques.set(toques() + 1);
+    }
+  }
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    .panel {
+      display: grid;
+      gap: 0.75rem;
+      border: 1px solid #dcdcdc;
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
+      background: white;
+    }
+    .row {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+    }
+    button {
+      font: inherit;
+      padding: 0.35rem 0.8rem;
+      border: 1px solid #9aa0a6;
+      border-radius: 6px;
+      background: white;
+      color: #3c4043;
+      cursor: pointer;
+    }
+    .marca {
+      margin: 0;
+      padding: 0.55rem 0.7rem;
+      border: 1px dashed #d93025;
+      border-radius: 8px;
+      background: #fdf3f2;
+      font-variant-numeric: tabular-nums;
+    }
+    .pie {
+      margin: 0;
+      font-size: 0.78rem;
+      color: #666;
+    }
+  </style>
+</head>
+
+<signal-code>
+  <template shadowrootmode="open">
+    <section class="panel">
+      <div class="row">
+        <button class="tocar" @click=@tocar>Tocar</button>
+        <p class="pie">toques: @toques()</p>
+      </div>
+
+      @{ marca = 3; }
+
+      <p class="marca">marca = @marca</p>
+
+      <p class="pie">
+        La línea de arriba del párrafo es <code>@@{ marca = 3; }</code>, así que
+        <code>marca</code> tendría que valer 3 antes de pintarse.
+      </p>
+    </section>
+  </template>
+</signal-code>

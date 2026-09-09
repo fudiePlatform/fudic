@@ -1,0 +1,100 @@
+@code {
+  // La signal NO se declara aquí: se importa de un módulo. Es el patrón de "store" de
+  // cualquier framework de señales, y es lo que esta página comprueba.
+  //
+  // Va en la zona NEUTRA porque el template lo lee, y el template se pinta en los dos
+  // lados. Metido en la region de cliente, el servidor no tiene `count` y la ruta no
+  // llega a prerenderizar.
+  import { count, inc } from "../store/contador.js";
+
+  @client {
+    import { signal } from "@fudic/core";
+
+    // Una signal LOCAL, que no tiene nada que ver con el store. Sirve para una sola cosa:
+    // forzar un repintado del componente sin tocar el store. Lo que aparezca entonces en
+    // el hueco de arriba es el valor que el store tenía todo el rato.
+    const repintados = signal(0);
+
+    function repintar() {
+      repintados.set(repintados() + 1);
+    }
+  }
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    .panel {
+      display: grid;
+      gap: 0.75rem;
+      border: 1px solid #dcdcdc;
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
+      background: white;
+    }
+    .row {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    button {
+      font: inherit;
+      padding: 0.35rem 0.8rem;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .mas {
+      border: 1px solid #1a73e8;
+      background: #1a73e8;
+      color: white;
+    }
+    .repintar {
+      border: 1px solid #9aa0a6;
+      background: white;
+      color: #3c4043;
+    }
+    .valor {
+      font-size: 1.4rem;
+      font-variant-numeric: tabular-nums;
+      min-width: 2ch;
+      text-align: center;
+    }
+    .caso {
+      margin: 0;
+      padding: 0.55rem 0.7rem;
+      border: 1px dashed #d93025;
+      border-radius: 8px;
+      background: #fdf3f2;
+    }
+    .pie {
+      margin: 0;
+      font-size: 0.78rem;
+      color: #666;
+    }
+  </style>
+</head>
+
+<signal-store>
+  <template shadowrootmode="open">
+    <section class="panel">
+      <div class="row">
+        <button class="mas" @click=@inc>+1 al store</button>
+        <output class="valor">@count()</output>
+        <button class="repintar" @click=@repintar>Forzar repintado</button>
+      </div>
+
+      <p class="caso">
+        @if (count() > 1) {
+          Hay más de uno.
+        } else {
+          Hay uno o ninguno.
+        }
+      </p>
+
+      <p class="pie">repintados de este componente: @repintados()</p>
+    </section>
+  </template>
+</signal-store>
