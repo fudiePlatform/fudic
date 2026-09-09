@@ -167,11 +167,15 @@ mismo ahorro que los bucles, sobre el paquete donde más elementos vivos hay.
 
 ## Cierre
 
-- Cobertura 100 % en las cuatro métricas para el código nuevo (criterio 20). No se cierra por
-  debajo.
-- Decisiones 116–120 en [`gramatica-v1-decisiones.md`](../gramar/gramatica-v1-decisiones.md),
-  sección 7.
-- Fila en [`INDEX.md`](./INDEX.md) y entrada en el registro de progreso.
+- [x] Cobertura 100 % en las cuatro métricas para el código nuevo (criterio 20). `language-core`,
+      `language-server`, `forms` y `fudic-vscode` cierran al 100 enteros; en `@fudic/compiler`,
+      que arrastra deuda, cada fichero nuevo está al 100 y el suelo del paquete **sube**
+      (ramas 97,80 → 97,87).
+- [x] `pnpm typecheck`, `pnpm test` y `pnpm build` en verde, `examples/basic` incluido.
+- [x] Decisiones 116–120 en [`gramatica-v1-decisiones.md`](../gramar/gramatica-v1-decisiones.md),
+      sección 7.
+- [x] Rango `FUD0660`–`FUD0679` anotado en el catálogo de [SDD-12](./SDD-12-semantica.md).
+- [x] Fila en [`INDEX.md`](./INDEX.md) y entrada en el registro de progreso.
 
 ## Enlaces
 

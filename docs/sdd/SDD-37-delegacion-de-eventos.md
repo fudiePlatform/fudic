@@ -1,6 +1,6 @@
 # SDD-37 — Delegación de eventos en bucles (`delegate:`)
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Paquetes:** `@fudic/compiler` (bindings, semántica, emit) · `@fudic/language-core` (el tipo
 > de `$nombre`) · `@fudic/language-server` (completado del nombre)
 > **Depende de:** 06 (bucles), 07 (bindings), 12 (semántica), 15 (emit de eventos), 23 (TS
