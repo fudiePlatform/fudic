@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { injectFrom, provideIn, token } from '@fudic/di';
+import { injectFrom, provideIn, publishIn, token } from '@fudic/di';
 
 import { iocIsEmpty, iocRoot, withDi } from '../src/ioc.js';
-import { openSeed, publish, publishedSeed, seedBlock } from '../src/seed.js';
+import { publishedSeed, seedBlock } from '../src/seed.js';
 import { SsrDom } from '../src/ssr-dom.js';
 
 /**
@@ -72,15 +72,14 @@ describe('the payload slice', () => {
 });
 
 describe('the seed', () => {
-  it('publishes by token NAME into the table the response opened', () => {
-    openSeed();
-    publish(token<readonly string[]>('lines'), ['a', 'b']);
-    publish(token<string>('locale'), 'es-ES');
+  it('publishes by token NAME into the container of its own response', () => {
+    const root = iocRoot();
+    publishIn(root, token<readonly string[]>('lines'), ['a', 'b']);
+    publishIn(root, token<string>('locale'), 'es-ES');
 
-    expect(publishedSeed()).toEqual({ lines: ['a', 'b'], locale: 'es-ES' });
-    // The next response opens its own: what is left behind would cross on that one.
-    expect(openSeed()).toEqual({});
-    expect(publishedSeed()).toBeNull();
+    expect(publishedSeed(root)).toEqual({ lines: ['a', 'b'], locale: 'es-ES' });
+    // The next response opens its own, and starts empty: nothing is left behind to cross.
+    expect(publishedSeed(iocRoot())).toBeNull();
   });
 
   it('reaches the root container that opened it, however late it is written', () => {
@@ -88,16 +87,53 @@ describe('the seed', () => {
     const root = iocRoot();
     // `publish` happens inside `load`, which runs BEFORE the render — and after the root
     // was opened. The service the server builds still starts from the published value.
-    publish(LINES, ['x']);
+    publishIn(root, LINES, ['x']);
     expect(injectFrom(root, LINES)).toEqual(['x']);
   });
 
-  it('writes a block only when something was published, and escapes it', () => {
-    openSeed();
-    expect(seedBlock()).toBe('');
+  it('is published from ANY container of the page, and read from the root', () => {
+    const NOTE = token<string>('note');
+    const root = iocRoot();
+    const owner = root.child('app-a').child('app-b');
+    // A component holds its own container, never the root: publishing has to climb.
+    publishIn(owner, NOTE, 'from a descendant');
 
-    publish(token<string>('note'), '</script><b>');
-    const block = seedBlock();
+    expect(publishedSeed(root)).toEqual({ note: 'from a descendant' });
+    expect(injectFrom(owner, NOTE)).toBe('from a descendant');
+  });
+
+  it('does not write into the object it was seeded FROM', () => {
+    const given = { lines: ['a'] };
+    const root = iocRoot(given);
+    publishIn(root, token<string>('locale'), 'es-ES');
+
+    // The browser hands over the parsed `fud-di` block; it is not the container's to write.
+    expect(given).toEqual({ lines: ['a'] });
+    expect(publishedSeed(root)).toEqual({ lines: ['a'], locale: 'es-ES' });
+  });
+
+  it('keeps two responses rendered at the same time apart', () => {
+    const USER = token<string>('user');
+    // Two requests in flight: the slow one opened first and will publish last, which is
+    // exactly the interleaving an `await` inside `load` produces. Neither may see the other.
+    const slow = iocRoot();
+    const fast = iocRoot();
+
+    publishIn(fast, USER, 'luis');
+    publishIn(slow, USER, 'ana');
+
+    expect(injectFrom(slow, USER)).toBe('ana');
+    expect(injectFrom(fast, USER)).toBe('luis');
+    expect(publishedSeed(slow)).toEqual({ user: 'ana' });
+    expect(publishedSeed(fast)).toEqual({ user: 'luis' });
+  });
+
+  it('writes a block only when something was published, and escapes it', () => {
+    const root = iocRoot();
+    expect(seedBlock(root)).toBe('');
+
+    publishIn(root, token<string>('note'), '</script><b>');
+    const block = seedBlock(root);
     expect(block).toContain('id="fud-di"');
     expect(block).not.toContain('</script><b>');
     expect(JSON.parse(block.slice(block.indexOf('>') + 1, block.lastIndexOf('<')))).toEqual({
@@ -117,5 +153,18 @@ describe('withDi', () => {
     expect(withIt.params).toBe(ctx.params);
     expect(withIt.inject(NOW)).toBe('today');
     expect(withIt.inject(MISSING, { optional: true })).toBeUndefined();
+  });
+
+  it('publishes into the container it was built with, and into no other', () => {
+    const USER = token<string>('user');
+    const mine = iocRoot();
+    const other = iocRoot();
+
+    // What `load` calls. Two of them, one per request, each holding its own container.
+    withDi({}, mine).publish(USER, 'ana');
+    withDi({}, other).publish(USER, 'luis');
+
+    expect(publishedSeed(mine)).toEqual({ user: 'ana' });
+    expect(publishedSeed(other)).toEqual({ user: 'luis' });
   });
 });

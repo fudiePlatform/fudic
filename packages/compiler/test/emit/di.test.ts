@@ -434,7 +434,9 @@ describe('the published blocks', () => {
     expect(code).toContain(
       "if ($iocMap[0].length > 1) jsonBlock($dom, $body, 'fud-ioc', $iocMap);",
     );
-    expect(code).toContain('const $seed = publishedSeed();');
+    // Asked of THIS response's container, never of the module: two responses rendered at
+    // the same time publish into two containers, and a page must write its own.
+    expect(code).toContain('const $seed = publishedSeed($root);');
     expect(code).toContain("if ($seed !== null) jsonBlock($dom, $body, 'fud-di', $seed);");
   });
 

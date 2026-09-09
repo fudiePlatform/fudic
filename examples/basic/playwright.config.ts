@@ -31,6 +31,12 @@ import { defineConfig } from '@playwright/test';
 // asserted three times over — hydration must not be able to tell the shapes apart.
 const THREE_WAY = /(hydration|routes|di)\.spec\.ts/u;
 
+// The concurrency suite runs in ONE shape, and it is the only one that can run it: two
+// responses of one page overlap only where a server answers two requests at the same time.
+// A preview build has no server for a per-request route, and the Service Worker renders in
+// the browser that asked, one page at a time.
+const DEV_ONLY = /sesion\.spec\.ts/u;
+
 export default defineConfig({
   testDir: './tests',
   fullyParallel: false,
@@ -43,8 +49,12 @@ export default defineConfig({
     serviceWorkers: 'allow',
   },
   projects: [
-    { name: 'preview', use: { baseURL: 'http://localhost:4173' } },
-    { name: 'dev', testMatch: THREE_WAY, use: { baseURL: 'http://localhost:5273' } },
+    { name: 'preview', testIgnore: DEV_ONLY, use: { baseURL: 'http://localhost:4173' } },
+    {
+      name: 'dev',
+      testMatch: [THREE_WAY, DEV_ONLY],
+      use: { baseURL: 'http://localhost:5273' },
+    },
     { name: 'nosw', testMatch: THREE_WAY, use: { baseURL: 'http://localhost:4273' } },
   ],
   webServer: [

@@ -20,11 +20,12 @@ import {
   createChild,
   createRoot,
   injectFrom,
+  publishIn,
   type Container,
   type InjectOptions,
   type Provider,
+  type Token,
 } from '@fudic/di';
-import { openSeed } from './seed.js';
 
 /** The published map: parent index per node, and the tag that owns each node. */
 export type IocMap = readonly [parents: readonly number[], tags: readonly string[]];
@@ -48,10 +49,10 @@ interface Collector {
  * the collector the whole tree records itself into.
  */
 export function iocRoot(seed?: Readonly<Record<string, unknown>>): IocNode {
-  // With no seed given it opens the response's published table — the LIVE object, not a copy.
-  // `publish` writes into it during `load`, and the render injects out of it afterwards, so
-  // the service the server builds starts from the same value the browser's will.
-  return node(createRoot(seed ?? openSeed()), 0, { parents: [-1], tags: [''] });
+  // Its own table, born with it and dying with it. `ctx.publish` writes into THIS container
+  // during `load`, and the render injects out of it afterwards, so the service the server
+  // builds starts from the same value the browser's will — and no other response can reach it.
+  return node(createRoot(seed), 0, { parents: [-1], tags: [''] });
 }
 
 /** Whether anything below the root ever declared a provider. */
@@ -85,6 +86,15 @@ function node(container: Container, index: number, collector: Collector): IocNod
 export interface DiContext {
   inject<T>(provider: Provider<T>): T;
   inject<T>(provider: Provider<T>, options: InjectOptions): T | undefined;
+  /**
+   * Publish a value for the browser to rebuild the same service from — into THIS response.
+   *
+   * Through `ctx` for the same reason `inject` is, and here the reason is not a nicety: a
+   * free `publish(token, value)` has no way of naming the response it belongs to, so it kept
+   * a table of its own and two concurrent requests wrote into one table. What the container
+   * adds is the only thing that was missing, which is WHOSE page this value is for.
+   */
+  publish<T>(token: Token<T>, value: T): void;
 }
 
 export function withDi<C extends object>(ctx: C, container: Container): C & DiContext {
@@ -92,5 +102,8 @@ export function withDi<C extends object>(ctx: C, container: Container): C & DiCo
     options === undefined
       ? injectFrom(container, provider)
       : injectFrom(container, provider, options)) as DiContext['inject'];
-  return { ...ctx, inject };
+  const publish = <T>(token: Token<T>, value: T): void => {
+    publishIn(container, token, value);
+  };
+  return { ...ctx, inject, publish };
 }

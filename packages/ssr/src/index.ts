@@ -29,5 +29,5 @@ export {
   type IocMap,
   type IocNode,
 } from './ioc.js';
-export { publish, publishedSeed, seedBlock, SEED_BLOCK } from './seed.js';
+export { publishedSeed, seedBlock, SEED_BLOCK } from './seed.js';
 export { renderToStream, htmlToByteStream, type StreamOptions } from './stream.js';

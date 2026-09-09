@@ -1,4 +1,4 @@
-import { state, type ContainerState, type Entry } from './container.js';
+import { rootOf, state, type ContainerState, type Entry } from './container.js';
 import { registered } from './registry.js';
 import type { Container, InjectOptions, Provider } from './types.js';
 
@@ -111,12 +111,6 @@ function construct(where: ContainerState, provider: unknown, entry: Entry): unkn
     ambient = previous;
     building.pop();
   }
-}
-
-function rootOf(container: ContainerState): ContainerState {
-  let node = container;
-  while (node.parent !== null) node = node.parent;
-  return node;
 }
 
 /**

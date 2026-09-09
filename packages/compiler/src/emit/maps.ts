@@ -214,6 +214,6 @@ export function writeHydrationBlocks(
 function writeIocBlocks(w: CodeWriter, dom: string, parent: string, ioc: string): void {
   w.line(`const $iocMap = ${ioc}.map();`);
   w.line(`if ($iocMap[0].length > 1) jsonBlock(${dom}, ${parent}, 'fud-ioc', $iocMap);`);
-  w.line('const $seed = publishedSeed();');
+  w.line(`const $seed = publishedSeed(${ioc});`);
   w.line(`if ($seed !== null) jsonBlock(${dom}, ${parent}, 'fud-di', $seed);`);
 }

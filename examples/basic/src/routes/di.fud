@@ -5,17 +5,19 @@
 @code {
   @server {
     import { strategy } from "@fudic/core";
-    import { publish } from "@fudic/ssr";
     import { LINES } from "../services/cart";
 
     strategy({ mode: "ssg" });
 
-    export function load() {
+    export function load(ctx) {
       const lines = ["manzanas", "peras"];
       // The ONLY thing that crosses: a value, under a token. The `Cart` the server builds
       // and the one the browser builds start from this same array, and neither of them
       // travels — `fud-di` carries the lines, not the service.
-      publish(LINES, lines);
+      //
+      // Through `ctx` because a value belongs to ONE response: `ctx` is what names the
+      // request whose page this is.
+      ctx.publish(LINES, lines);
       return { lines };
     }
   }
