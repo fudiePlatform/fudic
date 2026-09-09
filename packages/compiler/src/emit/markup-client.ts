@@ -40,7 +40,7 @@ import type { ControlNode } from '../control/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { Span } from '../types/index.js';
 import { classifyAttribute, crossing, CONTROL_PROP } from '../binding/index.js';
-import { ERROR_SLOT_ATTR, SUMMARY_SLOT_ATTR } from './controls.js';
+import { ERROR_SLOT_ATTR, SUMMARY_SLOT_ATTR, type ControlSite } from './controls.js';
 import { CodeWriter, type LinePart } from './writer.js';
 import { type AssetLinker } from './assets.js';
 import {
@@ -768,8 +768,15 @@ export class ClientMarkupEmitter {
     // A node that arrives as a prop is bound from `$cb` instead, under a name of its own and
     // behind a guard: at the moment this walk hooks up, that prop is still empty (§4.6).
     const prop = this.#crossedProp(site.node);
-    const out = prop === null ? this.#hook : this.#hookup.rebind;
-    const list = prop === null ? '$d' : '$cd';
+    // And so is a binding whose SHAPE comes from a prop — an `<input type="@t">` (decision
+    // 109). The reason is the same one seen from the other side: what the call depends on can
+    // move, so the call has to be remade. `$cb` undoes its own work first, so a rebind is a
+    // teardown and a hookup, never two live bindings on one element.
+    const shape = this.#dynamicTypeProp(el, site.target);
+    const deferred = prop !== null || shape !== null;
+    const out = deferred ? this.#hookup.rebind : this.#hook;
+    const list = deferred ? '$cd' : '$d';
+    if (shape !== null) this.#hookup.rebound.add(shape);
     let node = site.node;
     if (prop !== null) {
       this.#hookup.rebound.add(prop);
@@ -779,6 +786,13 @@ export class ClientMarkupEmitter {
       out.line(`const ${node} = ${site.node};`);
     }
     const carries = prop === null ? '' : `${node} && `;
+    // The fourth argument of `bindByType`, and it is read off the ELEMENT rather than
+    // recomputed from the author's expression. The attribute is already written by then — `$a`
+    // runs before `$s` on the create path, the server painted it on the adopt path, and `u`
+    // applies the values before calling `$cb` — so the DOM is the one place where the answer
+    // is guaranteed current, whatever shape the author's `type` value had.
+    const shapeArg =
+      site.target.kind === 'value' && site.target.dynamicType === true ? `, ${v}.type` : '';
     if (site.target.kind === 'group') {
       out.line(`${v} && ${carries}${list}.push(${bind}(${v}, ${node}));`);
       return;
@@ -796,7 +810,30 @@ export class ClientMarkupEmitter {
       );
       return;
     }
-    out.line(`${v} && ${slot!} && ${carries}${list}.push(${bind}(${v}, ${node}, ${slot!}));`);
+    out.line(
+      `${v} && ${slot!} && ${carries}${list}.push(${bind}(${v}, ${node}, ${slot!}${shapeArg}));`,
+    );
+  }
+
+  /**
+   * The prop an `<input type="@t">` reads its SHAPE from, or `null`.
+   *
+   * Only a prop, and only when the target really is the runtime dispatch. A dynamic `type`
+   * built out of this component's own state moves through that state's own channel and `$a`
+   * rewrites the attribute; what `$cb` exists for is a value the PARENT sends, which arrives
+   * through `u` and has no channel of its own.
+   */
+  #dynamicTypeProp(el: ElementNode, target: ControlSite['target']): string | null {
+    if (target.kind !== 'value' || target.dynamicType !== true) return null;
+    for (const attr of el.attributes) {
+      if (typeof attr.name !== 'string' || attr.name.toLowerCase() !== 'type') continue;
+      for (const part of attr.value) {
+        if (part.type !== 'razor-expression') continue;
+        const found = this.#crossedProp(this.#slice(part.expr));
+        if (found !== null) return found;
+      }
+    }
+    return null;
   }
 
   /**

@@ -14,6 +14,7 @@ import { refInLoop } from './analyzers/ref-in-loop.js';
 import { controlInLoop } from './analyzers/control-in-loop.js';
 import { controlElement } from './analyzers/control-element.js';
 import { controlUniqueness } from './analyzers/control-uniqueness.js';
+import { controlInsideForm } from './analyzers/control-inside-form.js';
 import { formAssociatedPlacement } from './analyzers/form-associated-placement.js';
 import { codeRegionUniqueness } from './analyzers/code-region-uniqueness.js';
 import { codeRegionNesting } from './analyzers/code-region-nesting.js';
@@ -33,6 +34,7 @@ export const ANALYZERS: readonly Analyzer[] = [
   controlInLoop,
   controlElement,
   controlUniqueness,
+  controlInsideForm,
   formAssociatedPlacement,
   codeRegionUniqueness,
   codeRegionNesting,

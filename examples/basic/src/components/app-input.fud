@@ -1,12 +1,17 @@
 @code {
+  import type { Control } from "@fudic/forms";
+
   // Un control-componente: recibe el NODO del formulario por la prop `ctrl` y lo enlaza a su
   // propio `<input>`. El marcador `formassociated` del template es lo que decide de qué clase
   // hereda lo que se emite, que su shadow root delegue el foco, y que su tag se defina al
   // cargar la página en vez de al primer gesto.
-  // `name` es del HOST, no del `<input>` de dentro: es lo que hace que la entrada de
-  // `setFormValue` llegue al `FormData` de un `<form>` ajeno. Se declara como prop para que
-  // sea contrato del componente y no un atributo suelto que nadie ha prometido.
-  const { ctrl, name } = props<{ ctrl?: unknown; name?: string }>();
+  //
+  // `Control<unknown>` y `type` como PROP, y las dos cosas van juntas. Un `Control<T>` es
+  // asignable a `Control<unknown>`, así que el cruce se sigue comprobando —tiene que ser un
+  // control, no un grupo ni un formulario— sin atar el componente a un solo tipo de valor. Y
+  // como el `type` no se conoce en compilación, el enlace lo elige `bindByType` al enlazar
+  // (decisión 109): un `app-input` para cualquier forma de `<input>`, en vez de uno por forma.
+  const { ctrl, type, id } = props<{ ctrl: Control<unknown>; type?: string; id?: string }>();
 }
 
 <head>
@@ -43,7 +48,7 @@
   <template shadowrootmode="open" formassociated>
     <div class="field">
       <slot name="icon"></slot>
-      <input control="@ctrl">
+      <input id=@id type=@type control=@ctrl>
     </div>
   </template>
 </app-input>

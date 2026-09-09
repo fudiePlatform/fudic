@@ -144,24 +144,25 @@ test.describe('§6.17 — an outside label reaches the input inside the shadow r
   });
 });
 
-test.describe('§6.18 — the internals: a foreign form picks the value up, and `:invalid` is real', () => {
-  test('`setFormValue` puts the entry in the FormData of a form that is not fudic', async ({
+test.describe('§6.18 — the internals: `:invalid` is real, and the type is a prop', () => {
+  test('one component serves any shape of input: the binding is chosen at bind time', async ({
     page,
   }) => {
     await open(page);
     await expect.poll(() => alias(page).count()).toBe(1);
 
+    // `app-input` declares `type` as a PROP and `ctrl` as a `Control<unknown>`, so the page
+    // decides the shape and the component decides nothing. Without that, a text field and a
+    // number field would be two components — the six bind functions partition by type, and a
+    // component that fixes its element fixes its type with it (decision 109).
     await alias(page).fill('ada');
+    expect(await alias(page).getAttribute('type')).toBe('text');
 
-    // `#ajeno` is a plain `<form>`: nothing binds it, and what puts the entry in its
-    // `FormData` is the component's own `ElementInternals`.
-    const entry = await page.evaluate(() => {
-      const form = document
-        .querySelector('app-form')!
-        .shadowRoot!.querySelector<HTMLFormElement>('#ajeno')!;
-      return new FormData(form).get('alias');
-    });
-    expect(entry).toBe('ada');
+    // And the value really reached the model: what proves the dispatch picked `bindText` is
+    // the form agreeing, not the attribute.
+    await nameField(page).fill('Ada');
+    await page.locator('app-form button[type="submit"]').click();
+    await expect(page.locator('app-form [data-fud-err]').first()).toHaveText('');
   });
 
   test('`setValidity` gives the host a `:invalid` a stylesheet can rely on', async ({ page }) => {
@@ -266,24 +267,45 @@ test.describe('§6.15 — the budget, per route, over the chunk', () => {
     }
   });
 
-  test('the route with a form drags bindText and none of the other five', async () => {
+  test('the route pays for the bindings it writes, and the dispatch only where it is written', async () => {
     const closure = closureOf('formularios');
     const modules = modulesOf(closure);
     const code = codeOf(closure);
 
+    // `<input control="@userForm.name">` has a static type, so the compiler chose its binding
+    // and the route carries that one module.
     expect(modules).toContain('bind-text');
-    for (const other of ['bind-number', 'bind-checkbox', 'bind-radio', 'bind-select', 'bind-select-multiple']) {
-      expect(modules, `${other} was emitted into a page that has no such element`).not.toContain(
-        other,
+
+    // `app-input` writes `<input type="@type">`, so its binding cannot be chosen at compile
+    // time and the dispatch comes with it (decision 109). Measured in the BYTES and not in the
+    // module list: only one chunk imports it, so Rollup inlines it into that chunk — which is
+    // itself the point being measured, since that chunk is the component that asked for it.
+    expect(code, 'the dispatch did not reach the component that wrote a dynamic type').toContain(
+      '.checked',
+    );
+
+    // And what NO element of this route can be stays out — which is what says the bill is
+    // itemised rather than a `@fudic/forms/dom` barrel. There is no `<select>` on this page,
+    // and the dispatch cannot produce one: an `<input>` never becomes a select.
+    for (const absent of ['bind-select', 'bind-select-multiple']) {
+      expect(modules, `${absent} was emitted into a page that has no such element`).not.toContain(
+        absent,
       );
     }
-    // The `switch (el.type)` of the prototype, measured by its absence: the coercions of the
-    // shapes this page does not use are not inlined anywhere either.
-    for (const token of ['.checked', '.options', 'selectedOptions']) {
-      expect(code, `the coercion \`${token}\` shipped to a page with one text field`).not.toContain(
+    for (const token of ['.options', 'selectedOptions']) {
+      expect(code, `the coercion \`${token}\` shipped to a page with no <select>`).not.toContain(
         token,
       );
     }
+  });
+
+  test('and a route whose inputs all have a static type carries no dispatch at all', async () => {
+    // The other half of the bill, and the one that makes the first half acceptable: the cost
+    // of a dynamic `type` lands in the chunk of the component that wrote one, and nowhere
+    // else. Measured on a route that has none.
+    const closure = closureOf('hidratacion');
+    expect(modulesOf(closure)).not.toContain('bind-by-type');
+    expect(codeOf(closure)).not.toContain('.checked');
   });
 
   test('the body of a serverValidator, and its data layer, never reach the browser', async () => {

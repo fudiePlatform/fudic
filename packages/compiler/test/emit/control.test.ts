@@ -63,6 +63,29 @@ function emitChild(): string {
   return emitComponentClientModule(graph, graph.components.get('app-input')!);
 }
 
+/**
+ * The same child, with the SHAPE of its binding coming from a prop too: `<input type="@type">`.
+ *
+ * The canonical control-component of §3.1, which is one component for every shape of `<input>`
+ * rather than one per shape. Both halves of the call can move now — the node and the `type` —
+ * and the second is the one that is only visible from here: the `type` arrives through `u` like
+ * any other prop, and a binding chosen from a stale one is a `bindText` on a checkbox.
+ */
+function emitDynamicChild(typeValue = '@type'): string {
+  const io = memoryIo({
+    '/home.fud':
+      '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
+    '/m.fud':
+      '<link rel="component" href="./app-input.fud">\n' +
+      '<m-el>\n  <template shadowrootmode="open"><app-input control="@f.body" .type="@k"></app-input></template>\n</m-el>\n',
+    '/app-input.fud':
+      '@code {\n  const { ctrl, type } = props<{ ctrl?: unknown; type?: string }>();\n}\n' +
+      `<app-input>\n  <template shadowrootmode="open" formassociated><input type="${typeValue}" control="@ctrl"></template>\n</app-input>\n`,
+  });
+  const graph = resolveComponents('/home.fud', io);
+  return emitComponentClientModule(graph, graph.components.get('app-input')!);
+}
+
 const OTHER_BINDS = ['bindCheckbox', 'bindNumber', 'bindRadio', 'bindSelectMultiple'] as const;
 
 // ---------------------------------------------------------------------------
@@ -82,6 +105,25 @@ describe('§6.7 — the switch is spent at compile time', () => {
     const { client } = emit(markup);
     expect(client).toContain(`import { ${bind} } from '@fudic/forms/dom';`);
     expect(client).toContain(`${bind}(`);
+  });
+
+  it('a DYNAMIC type calls `bindByType`, with the shape read off the element', () => {
+    // The one binding chosen at runtime, and the argument comes from the DOM rather than from
+    // the author's expression: the attribute is already written by the time `$s` runs on the
+    // create path, the server painted it on the adopt path, and `u` applies the values before
+    // calling `$cb`. So the element is the one place the answer is guaranteed current.
+    const { client } = emit(
+      '<input type="@t" control="@f.title">',
+      "  import { f } from './user.form.js';\n  const t = 'number';",
+    );
+    expect(client).toContain(`import { bindByType } from '@fudic/forms/dom';`);
+    expect(client).toMatch(/bindByType\(\$n\d+, f\.title, \$n\d+, \$n\d+\.type\)/u);
+  });
+
+  it('and the page that never writes one still names none of it', () => {
+    // Where the bill lands is the whole argument for allowing the dispatch at all.
+    const { client } = emit('<input type="text" control="@f.title">');
+    expect(client).not.toContain('bindByType');
   });
 
   it('a chunk with one text field does not name the other five, nor their modules', () => {
@@ -181,6 +223,33 @@ describe('§6.7 — the switch is spent at compile time', () => {
     // And the sibling prop is not in it: a rebind tears listeners down and puts them back,
     // so a `name` that moved must not cost the `<input>` its binding.
     expect(update).not.toContain('3 in $p) $cb()');
+  });
+
+  it('a `type` that is a prop re-makes the binding too, not only the node', () => {
+    // The other half of decision 109: with `bindByType` the SHAPE of the call is read off the
+    // element, and the element's `type` is a prop the parent sends. A rebind that watched only
+    // the node would leave a `<input type="number">` bound as text until the node moved.
+    const child = emitDynamicChild();
+    const update = child.slice(child.indexOf('u: ('), child.indexOf('r: ('));
+
+    expect(child).toContain('const $cb = () => {');
+    expect(child).toContain('bindByType(');
+    // `ctrl` is slot 2 and `type` slot 3: either one moving is a reason to rebind, and ONE
+    // guard for the two, so a payload carrying both does not rebind twice.
+    expect(update).toContain('if (2 in $p || 3 in $p) $cb();');
+    // And after the attributes are applied: the call reads the `type` off the element.
+    expect(update.indexOf('$a();')).toBeLessThan(update.indexOf('$cb();'));
+  });
+
+  it('finds the prop past the literal half of a value that mixes the two', () => {
+    // A stray space is enough to make the value two parts — a literal run and an expression —
+    // and it is still a type the compiler cannot read, so it is still dynamic. The prop is in
+    // the second half: a reader that stopped at the first part would bind once and never rebind.
+    const child = emitDynamicChild(' @type');
+    const update = child.slice(child.indexOf('u: ('), child.indexOf('r: ('));
+
+    expect(child).toContain('bindByType(');
+    expect(update).toContain('if (2 in $p || 3 in $p) $cb();');
   });
 
   it('`r` disposes them: they are the one list emptied while the instance lives', () => {

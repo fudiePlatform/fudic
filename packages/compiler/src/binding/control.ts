@@ -55,23 +55,31 @@ export function isFormAssociated(el: ElementNode): boolean {
   );
 }
 
-/** The six bind functions of `@fudic/forms/dom`, one per FORM of element (§3.2). */
+/**
+ * The bind functions of `@fudic/forms/dom`: six chosen at compile time, one per FORM of
+ * element (§3.2), plus `bindByType` for the `<input type="@t">` that has no compile-time
+ * shape (decision 109).
+ *
+ * The seventh is not a hole in the design, it is where the design charges for reuse. A dynamic
+ * `type` is what lets ONE component wrap every shape of `<input>` instead of one component per
+ * shape, and the module that dispatches is imported by that component's chunk alone: a route
+ * that never writes one still carries exactly the bindings it uses.
+ */
 export type BindFunction =
   | 'bindText'
   | 'bindNumber'
   | 'bindCheckbox'
   | 'bindRadio'
   | 'bindSelect'
-  | 'bindSelectMultiple';
+  | 'bindSelectMultiple'
+  | 'bindByType';
 
-/** Why an element carrying `control` cannot be bound — the three faces of `FUD0592`. */
+/** Why an element carrying `control` cannot be bound — the two faces of `FUD0592`. */
 export type UnsupportedControl =
   /** `submit`, `reset`, `button`, `image`: no user value to carry. */
   | 'no-value'
   /** `file`: out of scope in SDD-34 §7 — multipart, and a value that is not JSON. */
-  | 'file'
-  /** `type="@t"`: not decidable at compile time, and no runtime dispatch will rescue it. */
-  | 'dynamic-type';
+  | 'file';
 
 /**
  * What the element makes of the binding. The four cases of decision 109, plus the rejection
@@ -81,8 +89,15 @@ export type UnsupportedControl =
 export type ControlTarget =
   /** `<form control="@f">` — state, never action (§4.4). */
   | { readonly kind: 'form' }
-  /** `input` / `textarea` / `select` — the one bind function of THIS shape of element. */
-  | { readonly kind: 'value'; readonly bind: BindFunction }
+  /**
+   * `input` / `textarea` / `select` — the one bind function of THIS shape of element.
+   *
+   * `dynamicType` marks the one case where the shape is not the element's but the value of
+   * its `type` at bind time: the call then takes a fourth argument, and it has to be REMADE
+   * when that value moves. Carried on the target rather than inferred from the name of the
+   * function, so the emit asks the classification and never the string.
+   */
+  | { readonly kind: 'value'; readonly bind: BindFunction; readonly dynamicType?: true }
   /** A component tag: the reference crosses as a prop (decision 112). */
   | { readonly kind: 'component'; readonly tag: string }
   /** Anything else: a group, wherever the author put it. */
@@ -136,9 +151,10 @@ function hasMultiple(el: ElementNode): boolean {
  * REJECTED one, and it is closed on purpose.
  */
 function inputBind(type: string | null | undefined): ControlTarget {
-  // A `type` the compiler cannot read is not rescued with a runtime dispatch: that dispatch is
-  // exactly the table this whole design exists to keep out of the bundle (§4.2).
-  if (type === null) return { kind: 'unsupported', reason: 'dynamic-type' };
+  // A `type` the compiler cannot read picks its binding at bind time, and the component that
+  // wrote it pays for the dispatch in its own chunk (§4.2). What the closed design keeps out
+  // of the bundle is a table nobody asked for; this one is asked for, by name, in one file.
+  if (type === null) return { kind: 'value', bind: 'bindByType', dynamicType: true };
   if (type === 'file') return { kind: 'unsupported', reason: 'file' };
   if (type !== undefined && NO_VALUE_TYPES.has(type)) return { kind: 'unsupported', reason: 'no-value' };
   if (type !== undefined && NUMERIC_TYPES.has(type)) return { kind: 'value', bind: 'bindNumber' };

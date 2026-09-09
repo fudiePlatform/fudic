@@ -26,6 +26,10 @@ export { bindCheckbox } from './bind-checkbox.js';
 export { bindRadio } from './bind-radio.js';
 export { bindSelect } from './bind-select.js';
 export { bindSelectMultiple } from './bind-select-multiple.js';
+// The one that chooses at runtime, for an `<input type="@t">`. It imports four of the five
+// above, so it is the one module that is NOT free — and it is only ever imported by the chunk
+// of a component that wrote a dynamic `type` (§4.2).
+export { bindByType } from './bind-by-type.js';
 
 export { bindForm } from './bind-form.js';
 export { bindGroup } from './bind-group.js';

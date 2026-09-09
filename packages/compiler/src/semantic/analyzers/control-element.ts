@@ -9,9 +9,11 @@
  *   read out of them and nothing to write into them.
  * - **`file`** is out of scope in v1 (SDD-34 §7): it needs `multipart/form-data` and a value
  *   that is not JSON-serializable.
- * - **a dynamic `type`** (`type="@t"`) cannot be decided at compile time. The rescue would be
- *   a runtime dispatch, and that dispatch is exactly the table this whole design removes from
- *   the bundle: a page with one text field would carry all five coercions again.
+ *
+ * A dynamic `type` used to be the third, and is not any more (decision 109): it binds through
+ * `bindByType`, and the chunk of the component that wrote it carries the dispatch. What the
+ * closed design keeps out of the bundle is a table nobody asked for — a page with one text
+ * field still downloads one function.
  *
  * The classification itself is `controlTarget`'s — the same function the emit picks its bind
  * module with (`binding/control.ts`). Answering it twice is how the editor and the build end
@@ -29,8 +31,6 @@ const MESSAGES: Readonly<Record<UnsupportedControl, string>> = {
   'no-value':
     '`control` needs an element that carries a user value: `submit`, `reset`, `button` and `image` inputs have none',
   file: '`control` on `<input type="file">` is not supported: file upload needs multipart and a value that is not JSON',
-  'dynamic-type':
-    '`control` needs a `type` known at compile time: an interpolated `type` cannot choose a binding, and no runtime dispatch is emitted for it',
 };
 
 export const controlElement: Analyzer = {

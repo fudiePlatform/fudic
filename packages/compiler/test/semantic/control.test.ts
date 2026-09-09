@@ -59,9 +59,18 @@ function codes(source: string, components?: ComponentRegistry): readonly string[
   return diags(source, components).map((d) => d.code);
 }
 
-/** Wrap shadow content in a minimal valid component (DSD host wrapper, decision 75). */
+/**
+ * Wrap shadow content in a minimal valid component (DSD host wrapper, decision 75), inside a
+ * bound `<form>` unless the fixture brought its own.
+ *
+ * The form is not decoration: by decision 115 a `control` with none above it is `FUD0595`, so
+ * every fixture about a DIFFERENT rule needs one or it reports two things and the assertion
+ * stops being about the rule under test. `@root` and never `@f`, so the wrapper can never be
+ * the duplicate `FUD0591` is looking for.
+ */
 function component(inner: string, markers = ''): string {
-  return `<app-test><template shadowrootmode="open"${markers}>${inner}</template></app-test>`;
+  const body = inner.includes('<form control') ? inner : `<form control="@root">${inner}</form>`;
+  return `<app-test><template shadowrootmode="open"${markers}>${body}</template></app-test>`;
 }
 
 /** Every element of a parsed snippet, in source order. */
@@ -176,18 +185,31 @@ describe('controlTarget — one function per shape of element (§4.2)', () => {
 // ---------------------------------------------------------------------------
 
 describe('FUD0592 — an element that carries no user value (§6.5)', () => {
-  it('rejects file, the valueless types and a dynamic type, each with its own message', () => {
+  it('rejects file and the valueless types, each with its own message', () => {
     const seen = new Set<string>();
     for (const markup of [
       '<input type="file" control="@f.doc">',
       '<input type="submit" control="@f.go">',
-      '<input type="@t" control="@f.title">',
     ]) {
       const found = diags(component(markup));
       expect(found.map((d) => d.code)).toEqual(['FUD0592']);
       seen.add(found[0]!.message);
     }
-    expect(seen.size).toBe(3);
+    expect(seen.size).toBe(2);
+  });
+
+  it('a DYNAMIC type is not one of them any more (decision 109)', () => {
+    // It used to be the third face of `FUD0592`, on the argument that the rescue would be a
+    // runtime dispatch and that dispatch is the table this design removes. Both halves were
+    // true and the conclusion was not: the table is only in the chunk of the component that
+    // WROTE a dynamic type, and what it buys is one `app-input` instead of one per shape of
+    // `<input>`. A route that never writes one carries exactly the bindings it uses.
+    expect(codes(component('<input type="@t" control="@f.title">'))).toEqual([]);
+    expect(controlTarget(element('<input type="@t" control="@f.title">', 'input'), false)).toEqual({
+      kind: 'value',
+      bind: 'bindByType',
+      dynamicType: true,
+    });
   });
 
   it('rejects every valueless type', () => {
@@ -256,6 +278,47 @@ describe('FUD0591 — a form node binds one element (§6.3)', () => {
 // ---------------------------------------------------------------------------
 // §6.4 — FUD0594, `control` in a loop (decision 114)
 // ---------------------------------------------------------------------------
+
+describe('FUD0595 — a node binds inside its own form (decision 115)', () => {
+  /** The component wrapper WITHOUT the automatic `<form control>` the helper adds. */
+  const bare = (inner: string, markers = ''): string =>
+    `<app-test><template shadowrootmode="open"${markers}>${inner}</template></app-test>`;
+
+  it('rejects a control with no `<form control>` above it', () => {
+    expect(codes(bare('<input control="@f.title">'))).toEqual(['FUD0595']);
+    expect(codes(bare('<fieldset control="@f.seo"></fieldset>'))).toEqual(['FUD0595']);
+    expect(codes(bare('<app-input control="@f.body"></app-input>'), APP_INPUT)).toEqual(['FUD0595']);
+  });
+
+  it('a plain `<form>` is not a form: what opens the scope is the BINDING', () => {
+    // The whole point of the rule. A `<form>` nobody bound is a foreign form — it submits
+    // natively and reads the DOM, while the value the user typed lives in the model. The two
+    // only ever agreed through a `name` attribute copied across by `setFormValue`, which is
+    // not interop, it is two sources of truth.
+    expect(codes(bare('<form><input control="@f.title"></form>'))).toEqual(['FUD0595']);
+  });
+
+  it('says nothing under a bound form, at any depth, and nothing about the form itself', () => {
+    expect(
+      codes(bare('<form control="@f"><div><fieldset control="@f.seo"><input control="@f.seo.c"></fieldset></div></form>')),
+    ).toEqual([]);
+  });
+
+  it('a control-component is exempt: its form is in the file that handed it the node', () => {
+    // `formassociated` IS the declaration that this component binds a node it did not name
+    // (decision 111). Its own template has no form in it by construction, and the crossing
+    // site — where the `<form>` really is — is checked by this same rule over there.
+    expect(codes(bare('<input control="@ctrl">', ' formassociated'))).toEqual([]);
+  });
+
+  it('reports the binding, not the element', () => {
+    const [first] = diags(bare('<input id="x" control="@f.title">'));
+    expect(first!.code).toBe('FUD0595');
+    expect(bare('<input id="x" control="@f.title">').slice(first!.span.start, first!.span.end)).toBe(
+      'control="@f.title"',
+    );
+  });
+});
 
 describe('FUD0594 — `control` inside a loop (§6.4)', () => {
   it('reports it inside a @foreach', () => {

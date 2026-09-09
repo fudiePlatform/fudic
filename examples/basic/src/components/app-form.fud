@@ -66,21 +66,24 @@
 
 <app-form>
   <template shadowrootmode="open">
-    <form control="@userForm" class="fudic" @submit=@stop>
+    <form control=@userForm class="fudic" @submit=@stop>
       <label for="nom">Nombre</label>
-      <input id="nom" control="@userForm.name">
-      <button type="submit">Guardar</button>
-    </form>
+      <input control=@userForm.name type="text">
+      @*
+        Un control-componente, y va DENTRO del formulario: por la decisión 115 un `control`
+        exige un `<form control>` por encima. Antes esto colgaba de un `<form>` ajeno —uno que
+        fudic no enlaza y que envía nativo—, y aquello no era interoperar: el valor que el
+        usuario escribe vive en `userForm` y el formulario del navegador lee el DOM, así que
+        los dos solo coincidían porque `setFormValue` copiaba uno en el otro bajo un atributo
+        `name` que no usa nadie más del lenguaje. Dos fuentes de verdad para un campo.
 
-    <!--
-      Un `<form>` AJENO: no lo enlaza nada, no es de fudic. Lo que recoge el valor del
-      `<app-input>` de dentro es `setFormValue` sobre sus `ElementInternals`, y para que la
-      entrada llegue al `FormData` hace falta el `name` — es el requisito de HTML para
-      cualquier campo, y un custom element form-associated no es una excepción.
-    -->
-    <form id="ajeno">
+        El `type` es una PROP del componente, no una constante suya: `app-input` sirve para
+        cualquier forma de `<input>` y elige su enlace al enlazar (decisión 109). Sin eso haría
+        falta un componente por tipo.
+       *@
       <label for="ali" id="ali-label">Alias</label>
-      <app-input id="ali" name="alias" control="@userForm.alias"></app-input>
+      <app-input .id="ali" .type="text" .ctrl=@userForm.alias></app-input>
+      <button type="submit">Guardar</button>
     </form>
   </template>
 </app-form>
