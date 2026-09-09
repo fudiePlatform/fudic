@@ -23,7 +23,13 @@ import { escapeJson } from './json-block.js';
 /** The block id the browser reads the seed from. */
 export const SEED_BLOCK = 'fud-di';
 
-let published: Record<string, unknown> | null = null;
+/**
+ * The table of the response being rendered. `iocRoot` opens a fresh one and hands it to the
+ * root container AS ITS SEED, so a value published inside `load` is already there when the
+ * render injects it: the service the server builds and the one the browser builds start from
+ * the very same value, which is the whole point of publishing it.
+ */
+let published: Record<string, unknown> = {};
 
 /**
  * Publish a value so the CLIENT can build the same service from it.
@@ -32,26 +38,30 @@ let published: Record<string, unknown> | null = null;
  * names have to be unique per route, and that is the whole of the contract.
  */
 export function publish<T>(token: Token<T>, value: T): void {
-  published ??= {};
   published[token.name] = value;
 }
 
+/** Open a fresh table for one response, and hand it over. `iocRoot`'s door, and only its. */
+export function openSeed(): Record<string, unknown> {
+  published = {};
+  return published;
+}
+
 /**
- * What was published, or `null` when nothing was — and the table is emptied by the read.
+ * What has been published, or `null` when nothing has.
  *
  * `null` and not `{}` because the emitted page asks exactly one question of it: whether there
  * is a block to write at all. A page that published nothing writes none, and the browser's
  * root container opens with no seed.
  */
 export function publishedSeed(): Record<string, unknown> | null {
-  const seed = published;
-  published = null;
-  return seed;
+  return Object.keys(published).length === 0 ? null : published;
 }
 
 /** The `<script type="application/json" id="fud-di">` block, or `''` when nothing was published. */
 export function seedBlock(): string {
   const seed = publishedSeed();
+  /* v8 ignore next -- unreachable together with the line below only if `publishedSeed` lied. */
   if (seed === null) return '';
   return `<script type="application/json" id="${SEED_BLOCK}">${escapeJson(JSON.stringify(seed))}</script>`;
 }

@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@fudic/core": "workspace:*",
+    "@fudic/di": "workspace:*",
     "@fudic/dom": "workspace:*",
     "@fudic/ssr": "workspace:*",
     "@fudic/transport": "workspace:*"

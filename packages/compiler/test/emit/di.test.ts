@@ -17,6 +17,13 @@ import {
   resolveComponents,
   resolveDocument,
 } from '../../src/emit/index.js';
+import {
+  emitComponentIocModule,
+  hasDependencyInjection,
+  iocName,
+  ownsContainer,
+  usesDependencyInjection,
+} from '../../src/emit/di.js';
 import { extractCode } from '../../src/emit/oxc-code.js';
 import { memoryIo, parse } from './_support.js';
 
@@ -515,5 +522,73 @@ describe('the client chunk', () => {
     expect(emitComponentClientModule(plain, plain.components.get('x-plain')!)).not.toContain(
       '@fudic/di',
     );
+  });
+});
+
+describe('the IoC module of a component', () => {
+  const files = {
+    '/app/home.fud': page(['x-owner', 'x-user'], '<x-owner></x-owner>'),
+    '/app/x-owner.fud': component('x-owner', PROVIDER, '<x-user></x-user>'),
+    '/app/x-user.fud': component('x-user', CONSUMER, '<p>@(cart.total)</p>'),
+  };
+
+  it('carries the registrations of the tag, into the container the map gives it', () => {
+    const graph = graphOf(files);
+    const code = emitComponentIocModule(graph.components.get('x-owner')!);
+
+    expect(code?.split('\n')).toEqual([
+      `import { provideIn } from '@fudic/di';`,
+      `import { Cart } from './services/cart.js';`,
+      '',
+      'export function register($own) {',
+      '  provideIn($own, Cart, () => new Cart());',
+      '}',
+    ]);
+  });
+
+  it('does not exist for a component that only injects', () => {
+    const graph = graphOf(files);
+    expect(emitComponentIocModule(graph.components.get('x-user')!)).toBeNull();
+  });
+
+  it('takes a provider written in @client too: it is a registration like any other', () => {
+    const graph = graphOf({
+      '/app/home.fud': page(['x-late'], '<x-late></x-late>'),
+      '/app/x-late.fud': component(
+        'x-late',
+        `@code {
+  import { provide } from '@fudic/di';
+  import { Cart } from './services/cart.js';
+
+  @client {
+    provide(Cart, () => new Cart());
+  }
+}`,
+        '<p>late</p>',
+      ),
+    });
+    const comp = graph.components.get('x-late')!;
+
+    expect(emitComponentIocModule(comp)).toContain('provideIn($own, Cart, () => new Cart());');
+    // And it is NOT in the chunk: `$own` does not exist on that side at all.
+    expect(emitComponentClientModule(graph, comp)).not.toContain('provideIn');
+  });
+
+  it('answers the three questions the plugin asks of a component', () => {
+    const graph = graphOf(files);
+    expect(ownsContainer(graph.components.get('x-owner')!)).toBe(true);
+    expect(ownsContainer(graph.components.get('x-user')!)).toBe(false);
+    expect(usesDependencyInjection(graph.components.get('x-user')!)).toBe(true);
+    expect(hasDependencyInjection(graph)).toBe(true);
+    expect(iocName('x-owner')).toBe('x-owner.ioc');
+  });
+
+  it('says no for a graph without a single DI call', () => {
+    const graph = graphOf({
+      '/app/home.fud': page(['x-plain'], '<x-plain></x-plain>'),
+      '/app/x-plain.fud': component('x-plain', '', '<p>plain</p>'),
+    });
+    expect(hasDependencyInjection(graph)).toBe(false);
+    expect(usesDependencyInjection(graph.components.get('x-plain')!)).toBe(false);
   });
 });

@@ -26,8 +26,18 @@ import { buildManifest } from './manifest.js';
 import { emitRenderChunk } from './wrapper.js';
 import { emitServerModule } from './server.js';
 import { emitMainBootstrap, emitSwBootstrap } from './bootstrap.js';
-import { transformFud, transformFudClient } from './transform.js';
-import { CLIENT_QUERY, clientChunkName, clientId, discoverComponents } from './client.js';
+import { transformFud, transformFudClient, transformFudIoc } from './transform.js';
+import {
+  CLIENT_QUERY,
+  IOC_QUERY,
+  clientChunkName,
+  clientId,
+  discoverComponents,
+  iocChunkName,
+  iocId,
+  routeUsesDi,
+} from './client.js';
+import { IOC_SUFFIX } from '@fudic/compiler';
 import { nodeIo } from './io.js';
 import { readSwConfig, type ResolvedSwConfig } from './swconfig.js';
 import { runLinkPass, safeName, type LinkResult } from './link.js';
@@ -141,8 +151,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     if (tag === null) {
       return undefined;
     }
-    const comp = discoverComponents(builds, io).find((c) => c.tag === tag);
-    return comp === undefined ? undefined : clientId(comp.path);
+    // `<tag>.ioc` names the component's IoC module, not its chunk (SDD-38 §4.5). One
+    // resolver for both, because the browser derives both URLs the same way.
+    const isIoc = tag.endsWith(IOC_SUFFIX);
+    const bare = isIoc ? tag.slice(0, -IOC_SUFFIX.length) : tag;
+    const comp = discoverComponents(builds, io).find((c) => c.tag === bare);
+    if (comp === undefined) {
+      return undefined;
+    }
+    return isIoc ? iocId(comp.path) : clientId(comp.path);
   };
 
   return {
@@ -442,6 +459,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           // a module Rollup can see: nothing may be dropped for looking unused.
           preserveSignature: 'strict',
         });
+        // And its IoC module, when it declares a provider (SDD-38 §4.5). A separate file
+        // because its owner may be N1: a component that only provides never hydrates and
+        // never downloads its chunk, and its factory still has to reach the browser.
+        if (comp.owns) {
+          this.emitFile({
+            type: 'chunk',
+            id: iocId(comp.path),
+            name: iocChunkName(comp.tag),
+            preserveSignature: 'strict',
+          });
+        }
       }
     },
 
@@ -468,6 +496,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         return emitMainBootstrap({
           chunks: isDev ? { mode: 'dev', urlPrefix: devClientPrefix(base) } : { mode: 'build', base },
           swUrlExpr: hasWorker ? JSON.stringify(devUrl(base, DEV_SW_URL)) : null,
+          // One bootstrap for the whole app, so the question is the app's: if no component
+          // anywhere writes a DI call, the module does not even name `@fudic/di/page`, and
+          // the bundle has no chunk for it.
+          hasDi: discoverComponents(builds, io).some((c) => c.usesDi),
         });
       }
       if (id === SW_ID) {
@@ -487,6 +519,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           pageModule: rb.absPath.replace(/\\/gu, '/'),
           hasLoad: rb.analysis.hasLoad,
           hasPaths: rb.analysis.hasPaths,
+          hasDi: routeUsesDi(rb.absPath, io),
           // In DEV this module IS the edge: the dev server renders through the module
           // graph and resolves data in process. In BUILD it is a chunk of the client
           // output, and the client never gets `load` (BUG-09 §4.1) — the edge pass builds
@@ -508,6 +541,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         const code = emitServerModule(readFileSync(path, 'utf8'));
         const stripped = await transformWithOxc(code, `${path}.ts`, { lang: 'ts' });
         return stripped.map ? { code: stripped.code, map: stripped.map } : { code: stripped.code };
+      }
+      if (query === IOC_QUERY) {
+        const ioc = transformFudIoc(path, io);
+        // The `@code` is copied verbatim, so this module is TypeScript whenever the author
+        // wrote TypeScript — the same strip `?client` and `?server` need.
+        return ioc === null ? null : (await transformWithOxc(ioc.code, `${path}.ts`, { lang: 'ts' })).code;
       }
       if (query === CLIENT_QUERY) {
         const chunk = transformFudClient(path, io);
@@ -663,7 +702,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         (item): item is typeof item & { code: string; fileName: string } =>
           item.type === 'chunk' &&
           typeof item.facadeModuleId === 'string' &&
-          item.facadeModuleId.endsWith(`?${CLIENT_QUERY}`),
+          (item.facadeModuleId.endsWith(`?${CLIENT_QUERY}`) ||
+            item.facadeModuleId.endsWith(`?${IOC_QUERY}`)),
       );
       const rename = planRename(
         [...link.chunks.map((c) => c.fileName), ...clientChunks.map((c) => c.fileName)],
@@ -717,7 +757,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         (item) => {
           const entry = bundle[item.fileName];
           const facade = entry?.type === 'chunk' ? entry.facadeModuleId : null;
-          return facade === MAIN_ID || (facade?.endsWith(`?${CLIENT_QUERY}`) ?? false);
+          return (
+            facade === MAIN_ID ||
+            (facade?.endsWith(`?${CLIENT_QUERY}`) ?? false) ||
+            (facade?.endsWith(`?${IOC_QUERY}`) ?? false)
+          );
         },
       );
       for (const fileName of Object.keys(bundle)) {

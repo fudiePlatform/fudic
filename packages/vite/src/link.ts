@@ -17,6 +17,7 @@ import { type ResolveIo } from '@fudic/compiler';
 import { type RouteBuild } from './discover.js';
 import { isLinkable } from './mode.js';
 import { emitRenderChunk } from './wrapper.js';
+import { routeUsesDi } from './client.js';
 import { transformFud } from './transform.js';
 import { LINK_DIR, LINK_PREFIX } from './constants.js';
 import { serializeMap, type NestedOutputOptions } from './nested.js';
@@ -87,6 +88,7 @@ function linkPlugin(builds: readonly RouteBuild[], io: ResolveIo): Plugin {
         pageModule: rb.absPath.replace(/\\/gu, '/'),
         hasLoad: rb.analysis.hasLoad,
         hasPaths: rb.analysis.hasPaths,
+        hasDi: routeUsesDi(rb.absPath, io),
         withLoad: false, // server code never ships to the client (§4.5)
       });
     },

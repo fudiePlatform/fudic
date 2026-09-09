@@ -290,6 +290,16 @@ export interface ExtractedCode {
    */
   readonly neutral: NeutralCode;
   /**
+   * The statements that REGISTER and run in a browser — the neutral zone's and `@client`'s
+   * — with the imports they reference (SDD-38 §4.5).
+   *
+   * They are what the component's IoC module is built out of, and the reason there is one:
+   * the owning ancestor may be N1, with no chunk at all, so its factory cannot live inside
+   * it. It lives beside it, in a module that is fetched only when the page publishes a map
+   * that names this tag.
+   */
+  readonly providers: ZoneCode;
+  /**
    * What Oxc had to say about this `@code`, already in source coordinates (BUG-13 §5.3).
    *
    * Without them the three lists above are ambiguous: empty reads as "there was no code"
@@ -393,6 +403,7 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
   // `@server` region three lines down is calling.
   const di: DiCall[] = [];
   const bindings = diBindings([...neutralStatements, ...serverStatements, ...clientStatements]);
+  const rewritten = new Set(bindings.keys());
   if (bindings.size > 0) {
     collectDiCalls(neutralStatements, bindings, 'neutral', source, map, di);
     collectDiCalls(serverStatements, bindings, 'server', source, map, di);
@@ -401,6 +412,10 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
   const diEdits = di.map(rewriteOf);
 
   for (const stmt of clientStatements) {
+    // A `provide` written in `@client` is not part of the chunk: it belongs to the IoC
+    // module like every other registration, and `$own` — the container it registers into —
+    // does not exist on this side at all.
+    if (holdsDi(stmt, map, di, 'client', 'provide')) continue;
     readClientStatement(stmt, source, map, client, emitCalls, cellReads, diEdits);
   }
 
@@ -415,17 +430,45 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
     setCalls: setCalls(clientStatements),
     emitCalls,
     di,
-    server: zoneCode(serverStatements, source, map, diEdits, () => true),
+    server: zoneCode(serverStatements, source, map, diEdits, () => true, rewritten),
     // Only the statements that hold a DI call, so a component that writes none emits the
     // same bytes it emitted before this SDD existed.
     neutral: {
-      server: zoneCode(neutralStatements, source, map, diEdits, (stmt) =>
-        holdsDi(stmt, map, di, 'neutral'),
+      server: zoneCode(
+        neutralStatements,
+        source,
+        map,
+        diEdits,
+        (stmt) => holdsDi(stmt, map, di, 'neutral'),
+        rewritten,
       ),
-      client: zoneCode(neutralStatements, source, map, diEdits, (stmt) =>
-        holdsDi(stmt, map, di, 'neutral', 'inject'),
+      client: zoneCode(
+        neutralStatements,
+        source,
+        map,
+        diEdits,
+        (stmt) => holdsDi(stmt, map, di, 'neutral', 'inject'),
+        rewritten,
       ),
     },
+    providers: mergeZones(
+      zoneCode(
+        neutralStatements,
+        source,
+        map,
+        diEdits,
+        (stmt) => holdsDi(stmt, map, di, 'neutral', 'provide'),
+        rewritten,
+      ),
+      zoneCode(
+        clientStatements,
+        source,
+        map,
+        diEdits,
+        (stmt) => holdsDi(stmt, map, di, 'client', 'provide'),
+        rewritten,
+      ),
+    ),
     diagnostics: [...result.diagnostics, ...own],
   };
 }
@@ -684,6 +727,14 @@ function holdsDi(
   );
 }
 
+/** Two zones' worth of the same thing, in source order, with the imports deduplicated. */
+function mergeZones(first: ZoneCode, second: ZoneCode): ZoneCode {
+  return {
+    imports: [...new Set([...first.imports, ...second.imports])],
+    body: [...first.body, ...second.body].sort((a, b) => a.at - b.at),
+  };
+}
+
 /**
  * The helpers a branch has to import from `@fudic/di` for the calls it emits.
  *
@@ -726,6 +777,7 @@ function zoneCode(
   map: MapOffset,
   di: readonly Edit[],
   keep: (stmt: OxcNode) => boolean,
+  rewritten: ReadonlySet<string> = new Set(),
 ): ZoneCode {
   const imports: OxcNode[] = [];
   const kept: OxcNode[] = [];
@@ -734,7 +786,10 @@ function zoneCode(
     else if (keep(stmt)) kept.push(stmt);
   }
   if (kept.length === 0) return { imports: [], body: [] };
-  const referenced = new Set(freeReferences(kept));
+  // The names the rewrite consumed do not count as references: `inject(Cart)` became
+  // `injectFrom($ioc, Cart)`, so the author's `import { inject }` covers nothing the emitted
+  // text says, and the emit writes the import it does need itself.
+  const referenced = new Set(freeReferences(kept).filter((name) => !rewritten.has(name)));
   const text = (stmt: OxcNode): ClientStatement => {
     const start = map(stmt.start);
     const applied = applyEdits(source.slice(start, map(stmt.end)), start, di);

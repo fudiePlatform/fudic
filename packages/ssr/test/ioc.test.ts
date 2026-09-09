@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { injectFrom, provideIn, token } from '@fudic/di';
 
-import { iocIsEmpty, iocRoot } from '../src/ioc.js';
-import { publish, publishedSeed, seedBlock } from '../src/seed.js';
+import { iocIsEmpty, iocRoot, withDi } from '../src/ioc.js';
+import { openSeed, publish, publishedSeed, seedBlock } from '../src/seed.js';
 import { SsrDom } from '../src/ssr-dom.js';
 
 /**
@@ -72,16 +72,28 @@ describe('the payload slice', () => {
 });
 
 describe('the seed', () => {
-  it('publishes by token NAME, and the read empties the table', () => {
+  it('publishes by token NAME into the table the response opened', () => {
+    openSeed();
     publish(token<readonly string[]>('lines'), ['a', 'b']);
     publish(token<string>('locale'), 'es-ES');
 
     expect(publishedSeed()).toEqual({ lines: ['a', 'b'], locale: 'es-ES' });
-    // A response reads it once: what is left behind would cross on the NEXT one.
+    // The next response opens its own: what is left behind would cross on that one.
+    expect(openSeed()).toEqual({});
     expect(publishedSeed()).toBeNull();
   });
 
+  it('reaches the root container that opened it, however late it is written', () => {
+    const LINES = token<readonly string[]>('late');
+    const root = iocRoot();
+    // `publish` happens inside `load`, which runs BEFORE the render — and after the root
+    // was opened. The service the server builds still starts from the published value.
+    publish(LINES, ['x']);
+    expect(injectFrom(root, LINES)).toEqual(['x']);
+  });
+
   it('writes a block only when something was published, and escapes it', () => {
+    openSeed();
     expect(seedBlock()).toBe('');
 
     publish(token<string>('note'), '</script><b>');
@@ -91,5 +103,19 @@ describe('the seed', () => {
     expect(JSON.parse(block.slice(block.indexOf('>') + 1, block.lastIndexOf('<')))).toEqual({
       note: '</script><b>',
     });
+  });
+});
+
+describe('withDi', () => {
+  it('hangs the request container off ctx, and leaves ctx itself alone', () => {
+    const NOW = token<string>('now');
+    const MISSING = token<string>('missing');
+    const root = iocRoot({ now: 'today' });
+    const ctx = { params: { id: '7' } };
+
+    const withIt = withDi(ctx, root);
+    expect(withIt.params).toBe(ctx.params);
+    expect(withIt.inject(NOW)).toBe('today');
+    expect(withIt.inject(MISSING, { optional: true })).toBeUndefined();
   });
 });

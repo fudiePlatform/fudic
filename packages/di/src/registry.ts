@@ -15,10 +15,17 @@ const root = new Map<unknown, Entry>();
 /**
  * Standard (stage-3) class decorator. Registers the class in the ROOT registry with
  * `() => new C()` as its factory. Returns the class untouched.
+ *
+ * **`context` is optional, and that is a fact about the toolchain rather than a taste.** A
+ * stage-3 class decorator IS `(target, context) => target`, so `@Service` and `Service(C)`
+ * are the same call — but neither the transform that runs the test suite nor the one the
+ * bundler uses lowers standard decorators today: they pass `@Service class C {}` through and
+ * the runtime chokes on it. Until they do, `Service(C)` written under the class is the form
+ * that works, and it must not be made to invent a context object to be allowed to.
  */
 export function Service<T extends abstract new (...args: never[]) => unknown>(
   target: T,
-  context: ClassDecoratorContext,
+  context?: ClassDecoratorContext,
 ): T {
   void context;
   const ctor = target as unknown as new () => unknown;

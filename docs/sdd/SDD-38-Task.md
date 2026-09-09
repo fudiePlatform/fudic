@@ -5,7 +5,7 @@
 > **Toca además:** `@fudic/compiler`, `@fudic/ssr`, `@fudic/vite`
 > **Rama:** `sdd-38-inyeccion-de-dependencias`
 > **Rango:** `FUD0680`–`FUD0699` · **Decisiones:** 120–126
-> **Progreso:** 13 / 19
+> **Progreso:** 15 / 19
 
 Da a fudic el inyector que [`docs/di/index.html`](../di/index.html) prototipó, y lo cablea en los
 dos extremos. Las fases 1–3 son un paquete nuevo, sin DOM y sin dependencias, que se puede llevar
@@ -149,14 +149,14 @@ usuario, `multi:`, `useValue`, el reemplazo en tests y `fudic g service`.
       providers**: quien únicamente inyecta no tiene nodo y apunta al ancestro dueño más cercano.
       Si nadie declara providers y todo es `@Service`, el mapa sale **vacío** y cada instancia
       apunta al 0. Criterio §6.19.
-- [ ] **14. La semilla, y la comprobación de que nada mira el DOM.**
+- [x] **14. La semilla, y la comprobación de que nada mira el DOM.**
       `publish(token, value)` y `seedBlock()` en `@fudic/ssr` —reutilizando `jsonBlock`—, y
       `createRoot(<ese objeto>)` en el bootstrap. **Solo `publish` cruza**: un valor sembrado en el
       servidor y no publicado se queda ahí, que es lo que hace seguro inyectar desde `@server`.
       En la misma tarea, el criterio **§6.14**: búsqueda de texto sobre `packages/di/src` y sobre
       el emit para que no aparezca `getRootNode`, `closest`, `parentElement` ni `.host` resolviendo
       un contenedor, con la lista de excepciones **vacía**.
-- [ ] **15. El módulo IoC de la ruta y el wrapper.**
+- [x] **15. El módulo IoC de la ruta y el wrapper.**
       El plugin emite `<ruta>.ioc.js` con `NODES` y `register(node, c)`, importando **solo** los
       tokens que alguien inyecta en el lado cliente de esa ruta —ahí es donde el provider se
       extrae fuera del componente, porque el ancestro dueño puede ser N1 y no tener chunk—. Una

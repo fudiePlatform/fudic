@@ -34,6 +34,7 @@
       <a
         href="/hidratacion"
         aria-current=@(current === 'hidratacion' ? 'page' : 'false')>Hidratación</a>
+      <a href="/di" aria-current=@(current === 'di' ? 'page' : 'false')>DI</a>
       <a href="/about" aria-current=@(current === 'about' ? 'page' : 'false')>Acerca de</a>
     </nav>
   </template>

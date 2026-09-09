@@ -30,6 +30,7 @@ import { MarkupEmitter, renderName, tpl } from './markup.js';
 import { AssetLinker, type AssetExists } from './assets.js';
 import { compactStyleCss } from './css-compact.js';
 import { codeOf, diHelpers } from './oxc-code.js';
+import { hasDependencyInjection } from './di.js';
 import { cellSlots, childTargets, reactiveScope } from './state.js';
 import { hydratableTags } from './level.js';
 import { writeMapConstants, writeHydrationBlocks } from './maps.js';
@@ -358,7 +359,7 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
   // Whether ANY component of this page injects or provides. It is what decides that the page
   // opens a container tree at all: a page without a single DI call carries no root, no map
   // and no import of `@fudic/di` (SDD-38 §5).
-  const hasDi = comps.some((c) => codeOf(c).di.length > 0);
+  const hasDi = hasDependencyInjection(graph);
   const bodyW = new CodeWriter();
   const em = new MarkupEmitter({
     source,

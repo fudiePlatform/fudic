@@ -43,6 +43,14 @@ export {
 } from './layout.js';
 
 export { hydratableTags, isIntrinsicallyHydratable } from './level.js';
+export {
+  emitComponentIocModule,
+  hasDependencyInjection,
+  iocName,
+  ownsContainer,
+  usesDependencyInjection,
+  IOC_SUFFIX,
+} from './di.js';
 
 // The contract questions only a resolved graph can answer, and the three diagnostics that
 // need them (BUG-23 §4.4).

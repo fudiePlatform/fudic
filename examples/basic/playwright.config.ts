@@ -18,6 +18,10 @@ import { defineConfig } from '@playwright/test';
  * One worker, no retries: every spec drives a lifecycle across several loads, and both
  * parallelism and a retry would hide exactly the state we are measuring.
  */
+// The DI suite runs in all three for the same reason as the route smoke test: the URL of an
+// IoC module is derived in a build and served per tag in dev, and a container tree that only
+// came up in one of the two shapes would not be verified at all.
+//
 // The route smoke test runs in all three, and that is the point of it: the two bugs it was
 // written for were visible in exactly one shape each — one only in dev, one only in a build.
 //
@@ -25,7 +29,7 @@ import { defineConfig } from '@playwright/test';
 // (§6.15–21) and criterion 24 asks for them against BOTH channels. `preview` measures the
 // Service Worker one, `dev` and `nosw` the `modulepreload` one, and every other criterion is
 // asserted three times over — hydration must not be able to tell the shapes apart.
-const THREE_WAY = /(hydration|routes)\.spec\.ts/u;
+const THREE_WAY = /(hydration|routes|di)\.spec\.ts/u;
 
 export default defineConfig({
   testDir: './tests',

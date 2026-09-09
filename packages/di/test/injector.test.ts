@@ -17,25 +17,22 @@ import {
  * container tree of a route is emitted code and a published map, never something read
  * back from the element tree.
  *
- * `Service` is applied as a call and not as `@Service`, because the transform that runs
- * the suite passes standard decorators through untouched. It is the same function either
- * way — a stage-3 class decorator IS `(target, context) => target` — and the decorator
- * syntax is exercised where it has to work, in the build of `examples/`.
+ * `Service` is applied as a call and not as `@Service`, because no transform in the
+ * toolchain lowers standard decorators yet — not vitest's, and not the bundler's. It is the
+ * same function either way: a stage-3 class decorator IS `(target, context) => target`.
  */
-const CLASS = { kind: 'class' } as ClassDecoratorContext;
-
 class Logger {
   static count = 0;
   readonly id = `Logger#${++Logger.count}`;
 }
-Service(Logger, CLASS);
+Service(Logger);
 
 class Cart {
   static count = 0;
   readonly id = `Cart#${++Cart.count}`;
   readonly log = inject(Logger);
 }
-Service(Cart, CLASS);
+Service(Cart);
 
 /** Never registered anywhere: only a component ever declares it. */
 class Panel {}
@@ -44,7 +41,7 @@ class Panel {}
 class Broken {
   readonly panel = inject(Panel);
 }
-Service(Broken, CLASS);
+Service(Broken);
 
 describe('the root registry', () => {
   it('gives the same instance from the root, from a child and from a grandchild', () => {
@@ -68,7 +65,10 @@ describe('the root registry', () => {
 
   it('keeps the class untouched: the decorator returns what it was given', () => {
     class Plain {}
-    expect(Service(Plain, CLASS)).toBe(Plain);
+    // Both forms, because both are the same call: the decorator hands a context and a
+    // plain call does not, and neither of them changes the class.
+    expect(Service(Plain)).toBe(Plain);
+    expect(Service(Plain, { kind: 'class', name: 'Plain' } as ClassDecoratorContext)).toBe(Plain);
   });
 });
 

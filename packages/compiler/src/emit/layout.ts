@@ -28,7 +28,7 @@ import { MarkupEmitter, renderName, tpl } from './markup.js';
 import { AssetLinker } from './assets.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import { hydratableTags } from './level.js';
-import { codeOf } from './oxc-code.js';
+import { hasDependencyInjection } from './di.js';
 import { writeMapConstants, writeHydrationBlocks } from './maps.js';
 import type { DocumentGraph, ResolvedLayout } from './resolve.js';
 import type { EmitOptions, EmitOutput } from './module.js';
@@ -235,7 +235,7 @@ function buildRouteModule(
   const isComponent = (t: string): boolean => graph.components.has(t);
   // Whether ANY component the route reaches injects or provides. A route without a single
   // DI call opens no container tree, imports nothing and publishes no map (SDD-38 §5).
-  const hasDi = comps.some((c) => codeOf(c).di.length > 0);
+  const hasDi = hasDependencyInjection(graph);
   const ioc = hasDi ? '$root' : '$ioc';
   const bodyW = new CodeWriter();
   const em = new MarkupEmitter({

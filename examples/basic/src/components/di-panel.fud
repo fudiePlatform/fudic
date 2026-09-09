@@ -1,0 +1,89 @@
+<link rel="component" href="./di-badge.fud">
+
+@code {
+  import { inject } from '@fudic/di';
+  import { Cart, Logger } from '../services/cart';
+
+  // Neutral zone: these two lines run on the server AND in the browser. `Cart` resolves to
+  // the instance the ANCESTOR owns — not to a global one, because nobody registered it
+  // globally — and `Logger` climbs past every container up to the root, where `@Service`
+  // put it. This is the `inject` that promotes this component to level 3.
+  const cart = inject(Cart);
+  const logger = inject(Logger);
+
+  @client {
+    import { signal } from "@fudic/core";
+
+    const count = signal(cart.lines.length);
+    const last = signal(cart.lines.at(-1) ?? '—');
+
+    function add() {
+      cart.add(`línea ${cart.lines.length + 1}`);
+      count.set(cart.lines.length);
+      last.set(cart.lines.at(-1) ?? '—');
+    }
+  }
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    .panel {
+      display: grid;
+      gap: 0.5rem;
+      border: 1px solid #dcdcdc;
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
+      background: white;
+    }
+    .row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    .add {
+      font: inherit;
+      padding: 0.4rem 0.9rem;
+      border: 1px solid #1a73e8;
+      border-radius: 6px;
+      background: #1a73e8;
+      color: white;
+      cursor: pointer;
+    }
+    dl {
+      margin: 0;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.25rem 0.75rem;
+      font-variant-numeric: tabular-nums;
+    }
+    dt {
+      color: #555;
+    }
+    dd {
+      margin: 0;
+      font-family: ui-monospace, monospace;
+    }
+  </style>
+</head>
+
+<di-panel>
+  <template shadowrootmode="open">
+    <section class="panel">
+      <div class="row">
+        <button class="add" @click=@add>Añadir línea</button>
+        <span data-id="cart">@(cart.id)</span>
+        <span data-id="logger">@(logger.id)</span>
+      </div>
+      <dl>
+        <dt>líneas</dt>
+        <dd data-id="count">@(count())</dd>
+        <dt>última</dt>
+        <dd data-id="last">@(last())</dd>
+      </dl>
+      <di-badge></di-badge>
+    </section>
+  </template>
+</di-panel>

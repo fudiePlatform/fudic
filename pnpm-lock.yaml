@@ -35,6 +35,9 @@ importers:
       '@fudic/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@fudic/di':
+        specifier: workspace:*
+        version: link:../../packages/di
       '@fudic/dom':
         specifier: workspace:*
         version: link:../../packages/dom

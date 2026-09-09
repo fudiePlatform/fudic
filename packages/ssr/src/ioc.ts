@@ -16,7 +16,15 @@
  * this side never reaches a browser, so a method here costs no bundle.
  */
 
-import { createChild, createRoot, type Container } from '@fudic/di';
+import {
+  createChild,
+  createRoot,
+  injectFrom,
+  type Container,
+  type InjectOptions,
+  type Provider,
+} from '@fudic/di';
+import { openSeed } from './seed.js';
 
 /** The published map: parent index per node, and the tag that owns each node. */
 export type IocMap = readonly [parents: readonly number[], tags: readonly string[]];
@@ -40,7 +48,10 @@ interface Collector {
  * the collector the whole tree records itself into.
  */
 export function iocRoot(seed?: Readonly<Record<string, unknown>>): IocNode {
-  return node(createRoot(seed), 0, { parents: [-1], tags: [''] });
+  // With no seed given it opens the response's published table — the LIVE object, not a copy.
+  // `publish` writes into it during `load`, and the render injects out of it afterwards, so
+  // the service the server builds starts from the same value the browser's will.
+  return node(createRoot(seed ?? openSeed()), 0, { parents: [-1], tags: [''] });
 }
 
 /** Whether anything below the root ever declared a provider. */
@@ -60,4 +71,26 @@ function node(container: Container, index: number, collector: Collector): IocNod
   };
   self.map = (): IocMap => [collector.parents, collector.tags];
   return self;
+}
+
+/**
+ * `ctx`, with the request's container hung off it as `ctx.inject` (SDD-38 §4.7).
+ *
+ * `load(ctx)` is the only `async` function of the system — the whole render is a synchronous
+ * walk inside a generator — and that is why it resolves through `ctx` rather than through an
+ * ambient container. An ambient one here would not be a visible error: it would be silent
+ * contamination between concurrent requests in dev and in prerender, and there is no
+ * `AsyncLocalStorage` in a Service Worker to paper over one end of it.
+ */
+export interface DiContext {
+  inject<T>(provider: Provider<T>): T;
+  inject<T>(provider: Provider<T>, options: InjectOptions): T | undefined;
+}
+
+export function withDi<C extends object>(ctx: C, container: Container): C & DiContext {
+  const inject = (<T>(provider: Provider<T>, options?: InjectOptions): T | undefined =>
+    options === undefined
+      ? injectFrom(container, provider)
+      : injectFrom(container, provider, options)) as DiContext['inject'];
+  return { ...ctx, inject };
 }

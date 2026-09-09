@@ -23,6 +23,7 @@ import {
   entryComponent,
   emitComponentModuleMapped,
   emitComponentClientModuleMapped,
+  emitComponentIocModule,
   emitPageModuleMapped,
   emitLayoutModuleMapped,
   emitRouteModuleMapped,
@@ -159,6 +160,39 @@ export function transformFudClient(id: string, io: ResolveIo): TransformResult |
     // prerender, on an identifier the emit never declared.
     diagnostics: [...resolved.diagnostics, ...out.diagnostics],
   };
+}
+
+/**
+ * The IoC module of one component (SDD-38 §4.5) — the `?ioc` id — or `null` when the
+ * component registers nothing the browser runs.
+ *
+ * It exists because a provider cannot live inside the component that declares it: writing a
+ * provider promotes nothing, so its owner may be N1, with no chunk at all. The factory lives
+ * here instead, in a module fetched only when a page publishes a map naming this tag.
+ */
+export function transformFudIoc(id: string, io: ResolveIo): IocResult | null {
+  if (!id.endsWith('.fud')) {
+    return null;
+  }
+  const resolved = resolveDocument(id, io);
+  const graph = resolved.value;
+  if (graph.entry.type !== 'component-document') {
+    return null;
+  }
+  const code = emitComponentIocModule(entryComponent(graph)!);
+  if (code === null) {
+    return null;
+  }
+  // No map: every line of this module is a statement copied verbatim from the `@code` it
+  // came from, and the offsets that would anchor it are the ones `?client` already publishes
+  // for the same file.
+  return { code, diagnostics: resolved.diagnostics };
+}
+
+/** What the IoC transform hands back: text and what the graph had to say. No map. */
+export interface IocResult {
+  readonly code: string;
+  readonly diagnostics: readonly Diagnostic[];
 }
 
 /** Pick the emitter for the entry's role (SDD-21 §4.7). */
