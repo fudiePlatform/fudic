@@ -5,7 +5,7 @@
 > **Toca además:** `@fudic/compiler`, `@fudic/ssr`, `@fudic/vite`
 > **Rama:** `sdd-38-inyeccion-de-dependencias`
 > **Rango:** `FUD0680`–`FUD0699` · **Decisiones:** 120–126
-> **Progreso:** 0 / 19
+> **Progreso:** 1 / 19
 
 Da a fudic el inyector que [`docs/di/index.html`](../di/index.html) prototipó, y lo cablea en los
 dos extremos. Las fases 1–3 son un paquete nuevo, sin DOM y sin dependencias, que se puede llevar
@@ -59,7 +59,7 @@ usuario, `multi:`, `useValue`, el reemplazo en tests y `fudic g service`.
 
 ## Fase 1 — El paquete (1)
 
-- [ ] **1. Andamiaje de `@fudic/di`.**
+- [x] **1. Andamiaje de `@fudic/di`.**
       `packages/di/` extendiendo `tsconfig.base.json`, con `vitest.config.ts` en entorno **`node`**
       —sin `happy-dom`, y que se note—, `coverage.include: ['src/**/*.ts']` y `thresholds` al
       **100** en las cuatro métricas desde el primer commit. `package.json` con `sideEffects:
