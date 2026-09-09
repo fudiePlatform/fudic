@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` ·
 > `fudic-vscode` · `@fudic/forms`
 > **Rama:** `sdd-37-delegacion-de-eventos`
-> **Progreso:** 12 / 24
+> **Progreso:** 16 / 24
 > **No toca:** `@fudic/dom`, `@fudic/core`, `@fudic/ssr`. Cero runtime de delegación: la
 > tabla y el dispatch los escribe el emit.
 
@@ -103,19 +103,19 @@ mismo ahorro que los bucles, sobre el paquete donde más elementos vivos hay.
 
 ## Fase 4 — Se comporta (3)
 
-- [ ] **13. Identidad por referencia.**
+- [x] **13. Identidad por referencia.**
       En `test/emit/hydrate/`: click en la fila `b` entrega el objeto `day` de `b` con `toBe`.
       Y click en el ancestro fuera de fila no invoca nada (criterios 13, 14).
 
-- [ ] **14. Reordenación e hidratación.**
+- [x] **14. Reordenación e hidratación.**
       Tras un `u(...)` que reordena, la celda de la posición 0 entrega el `day` nuevo. Y el mismo
       caso sobre una instancia **adoptada**, no fabricada (criterios 15, 12 en su rama `h`).
 
-- [ ] **15. Cero churn de listeners.**
+- [x] **15. Cero churn de listeners.**
       Espiar el `Dom`: retirar N filas no ejecuta ningún `removeEventListener`, y montar N filas
       ejecuta un solo `event()` (criterios 17, 12). Es el criterio que justifica el SDD.
 
-- [ ] **16. A través del shadow del hijo.**
+- [x] **16. A través del shadow del hijo.**
       `<app-card delegate:day>` con click nacido dentro del shadow del hijo (criterio 16).
 
 ## Fase 5 — El editor (2)
