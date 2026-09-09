@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` ·
 > `fudic-vscode` · `@fudic/forms`
 > **Rama:** `sdd-37-delegacion-de-eventos`
-> **Progreso:** 21 / 24
+> **Progreso:** 24 / 24
 > **No toca:** `@fudic/dom`, `@fudic/core`, `@fudic/ssr`. Cero runtime de delegación: la
 > tabla y el dispatch los escribe el emit.
 
@@ -148,18 +148,17 @@ mismo ahorro que los bucles, sobre el paquete donde más elementos vivos hay.
 
 ## Fase 7 — Los formularios (3)
 
-- [ ] **22. La raíz delegada.**
-      En `@fudic/forms`, un registro por formulario —`WeakMap` de elemento a manejador— y un
-      listener por tipo de evento en la raíz, en lugar de `on(el, …)` por control.
-      `blur` no burbujea: se delega como `focusout`, que es la sustitución que ya nombra
-      `FUD0665`.
+- [x] **22. La raíz delegada.**
+      En `@fudic/forms`, un registro por raíz —`WeakMap` de elemento a manejador, por tipo— y
+      un listener en la raíz en lugar de uno por control. `blur` no burbujea: se delega como
+      `focusout`, que es la sustitución que ya nombra `FUD0665`.
 
-- [ ] **23. Las seis `bind*` sobre el registro.**
-      `bind-text`, `bind-number`, `bind-checkbox`, `bind-radio`, `bind-select` y
-      `bind-select-multiple` registran su manejador en vez de suscribirlo. La baja sigue
-      siendo el mismo `Cleanup`.
+- [x] **23. Las seis `bind*` sobre el registro.**
+      Sin tocarlas: la que cambia es `on()` en `wiring.ts`, que es donde vive la suscripción.
+      Las seis hablan de un control, no de cómo se cablea un listener, y el día que la técnica
+      vuelva a cambiar no tienen que enterarse.
 
-- [ ] **24. Se mide.**
+- [x] **24. Se mide.**
       Un test que espía `addEventListener` sobre un formulario de N controles: el número de
       listeners no depende de N. Y los tests de comportamiento existentes de `@fudic/forms`
       siguen verdes sin tocarlos — es la prueba de que la delegación no se nota.

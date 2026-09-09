@@ -19,7 +19,7 @@ import {
   bindSelectMultiple,
   bindText,
 } from '../../src/dom/index.js';
-import { countWrites, field, fire, mount } from './_dom.js';
+import { blur, countWrites, field, fire, mount } from './_dom.js';
 
 beforeEach(() => {
   document.body.innerHTML = '';
@@ -48,7 +48,7 @@ describe('bindText (§6.11)', () => {
     const c = control('');
     const off = bindText(el as HTMLInputElement, c, slot);
     expect(c.touched()).toBe(false);
-    fire(el, 'blur');
+    blur(el);
     expect(c.touched()).toBe(true);
     off();
   });
@@ -257,7 +257,7 @@ describe('every shape marks `touched` on blur (§6.11)', () => {
       document.body.innerHTML = '';
       const { c, el } = build();
       expect(c.touched()).toBe(false);
-      fire(el, 'blur');
+      blur(el);
       expect(c.touched()).toBe(true);
     }
   });
@@ -287,7 +287,7 @@ describe('bindRadio (§6.11, decision 110)', () => {
     fire(radios[2]!, 'change');
     expect(c()).toBe('');
 
-    fire(radios[0]!, 'blur');
+    blur(radios[0]!);
     expect(c.touched()).toBe(true);
     off();
   });
