@@ -3,6 +3,7 @@
   "compilerOptions": {
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "paths": {
+      "@fudic/di": ["../di/src/index.ts"],
       "@fudic/dom": ["../dom/src/index.ts"]
     }
   },

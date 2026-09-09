@@ -21,4 +21,5 @@ export {
   neutralizeComment,
 } from './serialize.js';
 export { jsonBlock, escapeJson } from './json-block.js';
+export { iocRoot, iocIsEmpty, type IocMap, type IocNode } from './ioc.js';
 export { renderToStream, htmlToByteStream, type StreamOptions } from './stream.js';

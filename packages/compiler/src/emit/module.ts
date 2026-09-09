@@ -29,7 +29,7 @@ import { CodeWriter, type EmitMapping } from './writer.js';
 import { MarkupEmitter, renderName, tpl } from './markup.js';
 import { AssetLinker, type AssetExists } from './assets.js';
 import { compactStyleCss } from './css-compact.js';
-import { codeOf } from './oxc-code.js';
+import { codeOf, diHelpers } from './oxc-code.js';
 import { cellSlots, childTargets, reactiveScope } from './state.js';
 import { hydratableTags } from './level.js';
 import { writeMapConstants, writeHydrationBlocks } from './maps.js';
@@ -185,11 +185,18 @@ function buildComponentModule(
 ): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const ext = options.importExt ?? '.mjs';
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
-  const { props, signals, diagnostics } = codeOf(comp);
+  const { props, signals, diagnostics, di, server, neutral } = codeOf(comp);
   const cells = cellSlots(comp, graph);
   const hydratable = hydratableTags(graph);
   const bodyW = new CodeWriter();
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
+  // A component OWNS a container as soon as it declares one provider, whatever zone it wrote
+  // it in — the map has to have a node for it either way, because the node is what the
+  // browser rebuilds the chain from and the browser cannot see a `@server` region.
+  const owns = di.some((d) => d.kind === 'provide');
+  // The same predicate the client chunk uses, so what the server writes down and what the
+  // chunk destructures cannot disagree.
+  const injects = di.some((d) => d.kind === 'inject' && d.zone !== 'server');
   const em = new MarkupEmitter({
     source: comp.source,
     w: bodyW,
@@ -201,6 +208,7 @@ function buildComponentModule(
     signals: reactiveScope(comp),
     declared: childTargets(graph),
     hydratable,
+    ...(owns ? { ioc: '$own' } : {}),
   });
   em.emitChildren(comp.doc.template!.children, '$shadow');
   // css uses the linker too (may register more imports), so build it before the imports.
@@ -208,18 +216,46 @@ function buildComponentModule(
 
   const w = new CodeWriter();
   const specifier = specifierResolver(graph, options.componentSpecifier, ext);
+  // The helpers the rewrite named, and only those: `inject(…)` became `injectFrom($ioc, …)`
+  // and `provide(…)` became `provideIn($own, …)`, so the author's own `@fudic/di` import —
+  // which travels below with the rest of the zone — no longer covers what this module calls.
+  const helpers = diHelpers(di, (call) => call.zone !== 'client');
+  if (helpers.length > 0) w.line(`import { ${helpers.join(', ')} } from '@fudic/di';`);
+  for (const line of [...neutral.server.imports, ...server.imports]) w.line(line);
   for (const tag of em.used) w.line(`import { render as ${renderName(tag)} } from ${specifier(tag)};`);
   for (const line of linker.imports()) w.line(line);
-  if (em.used.size > 0 || linker.imports().length > 0) w.line('');
+  const preamble =
+    helpers.length > 0 ||
+    neutral.server.imports.length > 0 ||
+    server.imports.length > 0 ||
+    em.used.size > 0 ||
+    linker.imports().length > 0;
+  if (preamble) w.line('');
   w.line(`export const tag = ${JSON.stringify(comp.tag)};`);
   w.line(`export const css = ${css};`);
   w.line('');
-  w.line('export function render($dom, $shadow, props) {');
+  // The fourth parameter is the container this component resolves from, and every component
+  // declares it whether or not it uses one: a component has no way of knowing whether the
+  // page it lands in has DI, and forwarding a container it never names costs nothing.
+  w.line('export function render($dom, $shadow, props, $ioc) {');
   w.indent();
   if (props.length > 0) {
     const pattern = props.map((p) => (p.def !== undefined ? `${p.name} = ${p.def}` : p.name)).join(', ');
     w.line(`const { ${pattern} } = props ?? {};`);
   }
+  if (owns) {
+    // Numbered and recorded in the same step, because the map the browser rebuilds the chain
+    // from is written while this walk happens (SDD-38 §4.2).
+    w.line(`const $own = $ioc.child(${JSON.stringify(comp.tag)});`);
+    // From here down this component resolves from the container it owns, so a `provide` and
+    // an `inject` of the same token in one `@code` meet — which is §1's property 2 read from
+    // the inside.
+    w.line('$ioc = $own;');
+  }
+  // The neutral DI lines run on BOTH sides; the `@server` region runs only here, and this is
+  // the first time it reaches anywhere at all.
+  for (const statement of neutral.server.body) w.line(statement.text);
+  for (const statement of server.body) w.line(statement.text);
   // The slice of this instance. It is written HERE when the component publishes no cell, so
   // a page without one keeps the exact bytes it had; a component WITH cells has to wait for
   // its reactives to be declared, a few lines down, because what it registers is those very
@@ -250,7 +286,12 @@ function buildComponentModule(
     const cellDecls = cells
       .map((c) => (c.kind === 'signal' ? `{ of: ${c.name}, value: ${c.name}() }` : `{ of: ${c.name} }`))
       .join(', ');
-    const trailing = cells.length === 0 ? '' : `, [${cellDecls}]`;
+    // And LAST, behind both, the node of the container this instance resolves from — but
+    // only when it injects, because that is the only reader (SDD-38 §4.5). At the end and
+    // not at the front: a partial `u` indexes by position, and a hole in front would shift
+    // every prop by one.
+    const trailing =
+      cells.length === 0 && !injects ? '' : `, [${cellDecls}]${injects ? ', $ioc.index' : ''}`;
     w.line(`$dom.state($shadow, [${props.map((p) => p.name).join(', ')}]${trailing});`);
   };
   if (cells.length === 0) writeState();
@@ -314,6 +355,10 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
 
   // Body codegen.
   const hydratable = hydratableTags(graph);
+  // Whether ANY component of this page injects or provides. It is what decides that the page
+  // opens a container tree at all: a page without a single DI call carries no root, no map
+  // and no import of `@fudic/di` (SDD-38 §5).
+  const hasDi = comps.some((c) => codeOf(c).di.length > 0);
   const bodyW = new CodeWriter();
   const em = new MarkupEmitter({
     source,
@@ -325,6 +370,7 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
     container: tagDisplay('body'),
     boxes: pageBoxes(graph, page),
     hydratable,
+    ioc: hasDi ? '$root' : '$ioc',
   });
   em.emitChildren(page.body.children, '$body');
 
@@ -354,9 +400,13 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
   // Streaming a trozos (SDD-19 §4.3): a generator that yields the <head> FIRST, then the
   // body by pieces via `serialize` (serializeChunks), then the close. `io.serialize` is a
   // generator; joining the pieces is byte-identical to the previous whole-string return.
-  w.line('export function* page(data, io) {');
+  // The third parameter is the route's container, created once per request by the wrapper.
+  // A page rendered on its own — the standalone emit, a golden — is handed none and opens
+  // its own, so a component that owns a container always has one to hang it from.
+  w.line('export function* page(data, io, $ioc) {');
   w.indent();
-  w.line('const { createDom, serialize, escapeText, jsonBlock } = io;');
+  w.line(`const { createDom, serialize, escapeText, jsonBlock${hasDi ? ', iocRoot' : ''} } = io;`);
+  if (hasDi) w.line('const $root = $ioc ?? iocRoot();');
   writeNonceBinding(w);
   w.line("let head = '';");
   w.appendWriter(headW);

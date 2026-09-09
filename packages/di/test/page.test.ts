@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { injectFrom, provideIn, token } from '../src/index.js';
-import { buildTree } from '../src/page.js';
+import { buildTree, containerOf } from '../src/page.js';
 import type { Container } from '../src/types.js';
 
 /**
@@ -37,6 +37,18 @@ describe('buildTree', () => {
 
     expect(injectFrom(tree[0] as Container, LOCALE)).toBe('es-ES');
     expect(injectFrom(tree[1] as Container, LOCALE)).toBe('es-ES');
+  });
+
+  it('hands a chunk the container the node it carried stands for', () => {
+    const tree = buildTree([-1, 0, 0, 1], () => {});
+
+    expect(containerOf(3)).toBe(tree[3]);
+    // No node — an instance the parent fabricated at runtime, which never had a payload —
+    // means the root, where the `@Service` classes live.
+    expect(containerOf()).toBe(tree[0]);
+    // And so does a node the map does not have: what such an instance can see is exactly
+    // what the route registered globally.
+    expect(containerOf(99)).toBe(tree[0]);
   });
 
   it('produces just the root for an empty map, and everything resolves globally', () => {

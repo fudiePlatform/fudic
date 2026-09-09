@@ -167,6 +167,14 @@ export interface MarkupOptions {
    * forget it and silently emit a page nothing can hydrate.
    */
   readonly hydratable: ReadonlySet<string>;
+  /**
+   * The container a child host is handed as its fourth argument (SDD-38 §4.3).
+   *
+   * `$ioc` — the default — is what this component received and forwards intact. A component
+   * that declares a provider passes `$own` instead, the container it owns, so its whole
+   * subtree resolves that token to ITS instance and not to the global one.
+   */
+  readonly ioc?: string;
 }
 
 export class MarkupEmitter {
@@ -178,6 +186,7 @@ export class MarkupEmitter {
   readonly #signals: ReadonlySet<string>;
   readonly #declared: (tag: string) => PropTarget | undefined;
   readonly #hydratable: ReadonlySet<string>;
+  readonly #ioc: string;
   readonly #used = new Set<string>();
   #id = 0;
   /**
@@ -201,6 +210,7 @@ export class MarkupEmitter {
     this.#signals = options.signals ?? new Set();
     this.#declared = options.declared ?? (() => undefined);
     this.#hydratable = options.hydratable;
+    this.#ioc = options.ioc ?? '$ioc';
   }
 
   /** The child component tags rendered so far, in first-use order (for ES imports). */
@@ -317,7 +327,7 @@ export class MarkupEmitter {
       this.#elementAttrs(el, v, true);
       this.#w.line(`const ${s} = $dom.attachShadow(${v});`);
       this.#w.line(
-        `${renderName(el.name)}($dom, ${s}, ${componentPropsExpr(this.#source, el, this.#signals, this.#declared(el.name))});`,
+        `${renderName(el.name)}($dom, ${s}, ${componentPropsExpr(this.#source, el, this.#signals, this.#declared(el.name))}, ${this.#ioc});`,
       );
       this.emitChildren(el.children, v); // light DOM (projected by <slot>)
     } else {

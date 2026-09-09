@@ -17,6 +17,7 @@ import { JsBatch, type OxcNode } from '../oxc/index.js';
 import { collectTemplateJs } from './constructs.js';
 import {
   changeableBindings,
+  freeReferences,
   reservedIdentifiers,
   setCalls,
   topLevelBindings,
@@ -140,10 +141,58 @@ export interface ClientStatement {
   readonly splices: readonly Splice[];
 }
 
-/** One insertion already applied to a statement's text. */
+/** One edit already applied to a statement's text, by how much it moved what follows. */
 export interface Splice {
   readonly at: number;
+  /** The characters gained — NEGATIVE when the edit replaced more than it wrote. */
   readonly length: number;
+}
+
+/**
+ * One `inject(...)` or `provide(...)` written in a `@code`, in SOURCE coordinates
+ * (SDD-38 §3.4).
+ *
+ * By offset and never by text, for the same reason `emit(…)` is: the body of a region is
+ * copied verbatim, so an `"inject("` inside a string and a `// inject(` in a comment are
+ * not calls — and `import { inject as ask }` is legal, after which the name to rewrite is
+ * `ask`. Both facts are the AST's to state.
+ */
+export interface DiCall {
+  readonly kind: 'inject' | 'provide';
+  /** The zone it was written in — the zone decides where it runs (SDD-38 §4.1). */
+  readonly zone: CodeZone;
+  /** The provider expression's source, verbatim: `Cart`, `LOCALE`. */
+  readonly provider: string;
+  /** Start of the callee identifier, and of the `(` after it: the rewrite is a prefix splice. */
+  readonly at: number;
+  readonly open: number;
+}
+
+/** Which of the three zones of `@code` a statement was written in (SDD-08 §4.2). */
+export type CodeZone = 'neutral' | 'server' | 'client';
+
+/**
+ * The top-level statements of one zone, split where the JS module grammar forces it: an
+ * `import` is only legal at module scope, and everything else belongs inside the function
+ * the zone is emitted into.
+ *
+ * The same shape as `ClientCode`, and deliberately so — three zones, one way of carrying
+ * their text, so no emitter has to learn a second one.
+ */
+export interface ZoneCode {
+  readonly imports: string[];
+  readonly body: ClientStatement[];
+}
+
+/** The `@server` region of a COMPONENT, which until SDD-38 reached nowhere at all. */
+export type ServerCode = ZoneCode;
+
+/** The neutral zone's DI lines, once per branch: the two differ only by the `provide`s. */
+export interface NeutralCode {
+  /** Everything that injects or provides. */
+  readonly server: ZoneCode;
+  /** Only what injects. */
+  readonly client: ZoneCode;
 }
 
 /** Where a source-relative offset ended up in a statement's text, after its own splices. */
@@ -214,6 +263,33 @@ export interface ExtractedCode {
    */
   readonly emitCalls: readonly EmitCall[];
   /**
+   * Every `inject`/`provide` of this `@code`, in source order (SDD-38 §3.4).
+   *
+   * Empty when the component does not import them from `@fudic/di`, and that is the whole
+   * test — a local function of the same name is the author's, and a DI call is a fact about
+   * bindings rather than about a word.
+   */
+  readonly di: readonly DiCall[];
+  /**
+   * The `@server` region's top-level statements, with the DI calls already rewritten
+   * (SDD-38 §4.1). Empty for the components — every one of them until now — that write none.
+   */
+  readonly server: ServerCode;
+  /**
+   * The NEUTRAL statements that hold a DI call, once per branch that runs them.
+   *
+   * The neutral zone has never been emitted: it is mined for `props<T>()` and for the
+   * reactive declarations, and the rest of it reaches neither branch. What SDD-38 adds is
+   * exactly the statements that inject or provide, because those run on both sides — and
+   * nothing else, so a component that writes no DI emits the same bytes it emitted before.
+   *
+   * The two lists differ by one rule: **a `provide` never reaches the browser.** The owning
+   * ancestor may be N1 and have no chunk at all, so its factory cannot live inside it — it
+   * lives in the route's IoC module, which is downloaded only if somebody on that route
+   * injects (SDD-38 §4.5).
+   */
+  readonly neutral: NeutralCode;
+  /**
    * What Oxc had to say about this `@code`, already in source coordinates (BUG-13 §5.3).
    *
    * Without them the three lists above are ambiguous: empty reads as "there was no code"
@@ -271,13 +347,19 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
   });
 
   const clientStatements: OxcNode[] = [];
+  const serverStatements: OxcNode[] = [];
+  const neutralStatements: OxcNode[] = [];
   ids.forEach((id, i) => {
     const root = result.value.ast(id);
     const stmts = Array.isArray(root) ? (root as OxcNode[]) : [root as OxcNode];
-    const isClient = parts[i]!.type === 'client-region';
+    const zone = zoneOf(parts[i]!.type);
     for (const stmt of stmts) {
-      if (isClient) clientStatements.push(stmt);
-      else checkNeutralEffect(stmt, map, own);
+      if (zone === 'client') clientStatements.push(stmt);
+      else {
+        if (zone === 'server') serverStatements.push(stmt);
+        else neutralStatements.push(stmt);
+        checkNeutralEffect(stmt, map, own);
+      }
       if (!is(stmt, 'VariableDeclaration')) continue;
       for (const decl of fieldArray(stmt, 'declarations')) {
         readDeclarator(decl, source, map, props, signals, named);
@@ -304,8 +386,22 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
   const callbacks = new Set(props.flatMap((p) => (p.channel === 'fn' ? [p.name] : [])));
   const cellReads: number[] = [];
   if (callbacks.size > 0) collectCellReads(clientStatements, callbacks, map, cellReads);
+
+  // The DI calls of the THREE zones, in one pass over the bindings `@fudic/di` was imported
+  // under. The names are gathered across the whole `@code` because the zones are fragments
+  // of one module: an `import { inject }` written in the neutral chunk is the binding a
+  // `@server` region three lines down is calling.
+  const di: DiCall[] = [];
+  const bindings = diBindings([...neutralStatements, ...serverStatements, ...clientStatements]);
+  if (bindings.size > 0) {
+    collectDiCalls(neutralStatements, bindings, 'neutral', source, map, di);
+    collectDiCalls(serverStatements, bindings, 'server', source, map, di);
+    collectDiCalls(clientStatements, bindings, 'client', source, map, di);
+  }
+  const diEdits = di.map(rewriteOf);
+
   for (const stmt of clientStatements) {
-    readClientStatement(stmt, source, map, client, emitCalls, cellReads);
+    readClientStatement(stmt, source, map, client, emitCalls, cellReads, diEdits);
   }
 
   return {
@@ -318,6 +414,18 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
     clientFunctions: topLevelFunctions(clientStatements),
     setCalls: setCalls(clientStatements),
     emitCalls,
+    di,
+    server: zoneCode(serverStatements, source, map, diEdits, () => true),
+    // Only the statements that hold a DI call, so a component that writes none emits the
+    // same bytes it emitted before this SDD existed.
+    neutral: {
+      server: zoneCode(neutralStatements, source, map, diEdits, (stmt) =>
+        holdsDi(stmt, map, di, 'neutral'),
+      ),
+      client: zoneCode(neutralStatements, source, map, diEdits, (stmt) =>
+        holdsDi(stmt, map, di, 'neutral', 'inject'),
+      ),
+    },
     diagnostics: [...result.diagnostics, ...own],
   };
 }
@@ -467,11 +575,180 @@ function readClientStatement(
   client: ClientCode,
   calls: readonly EmitCall[],
   cellReads: readonly number[],
+  di: readonly Edit[],
 ): void {
   const start = map(stmt.start);
-  const { text, splices } = withHost(source.slice(start, map(stmt.end)), start, calls, cellReads);
+  const edits = [...hostEdits(calls), ...cellEdits(cellReads), ...di];
+  const { text, splices } = applyEdits(source.slice(start, map(stmt.end)), start, edits);
   if (is(stmt, 'ImportDeclaration')) client.imports.push(text);
   else client.body.push({ text, at: start, splices });
+}
+
+/** The zone a `@code` part belongs to — the only place the node type becomes a zone. */
+function zoneOf(type: string): CodeZone {
+  if (type === 'client-region') return 'client';
+  return type === 'server-region' ? 'server' : 'neutral';
+}
+
+/** The package `inject` and `provide` come from. Anything else of that name is the author's. */
+const DI_PACKAGE = '@fudic/di';
+
+/**
+ * The local names `inject` and `provide` were imported under, mapped back to which one they
+ * are. `import { inject as ask }` is legal JS and then the name to rewrite is `ask`.
+ */
+function diBindings(statements: readonly OxcNode[]): ReadonlyMap<string, DiCall['kind']> {
+  const out = new Map<string, DiCall['kind']>();
+  for (const stmt of statements) {
+    if (!is(stmt, 'ImportDeclaration') || field(stmt, 'source')!['value'] !== DI_PACKAGE) continue;
+    for (const spec of fieldArray(stmt, 'specifiers')) {
+      const imported = field(spec, 'imported');
+      if (imported === undefined) continue; // a default or namespace specifier imports no NAME
+      const what = name(imported);
+      if (what === 'inject' || what === 'provide') out.set(name(field(spec, 'local')!), what);
+    }
+  }
+  return out;
+}
+
+/**
+ * Every call of one of those bindings, however deep — a `provide` inside an `@if` header is
+ * as much a registration as one at the top of the region. The walk is generic for the same
+ * reason `collectEmitCalls`'s is: what it must never do is match text, and a node it does not
+ * know about cannot hide a call.
+ */
+function collectDiCalls(
+  node: unknown,
+  bindings: ReadonlyMap<string, DiCall['kind']>,
+  zone: CodeZone,
+  source: string,
+  map: MapOffset,
+  out: DiCall[],
+): void {
+  if (Array.isArray(node)) {
+    for (const child of node) collectDiCalls(child, bindings, zone, source, map, out);
+    return;
+  }
+  if (node === null || typeof node !== 'object') return;
+  const current = node as OxcNode;
+  const callee = is(current, 'CallExpression') ? field(current, 'callee') : undefined;
+  const kind = is(callee, 'Identifier') ? bindings.get(name(callee)) : undefined;
+  if (kind !== undefined) {
+    const first = fieldArray(current, 'arguments')[0];
+    const at = map(callee!.start);
+    out.push({
+      kind,
+      zone,
+      // Verbatim, because the provider is an EXPRESSION the route's IoC module has to write
+      // back out: `Cart`, `LOCALE`, `services.Cart`. Reading it as a name would lose the
+      // second and the third.
+      provider: first === undefined ? '' : source.slice(map(first.start), map(first.end)),
+      at,
+      open: source.indexOf('(', map(callee!.end)),
+    });
+  }
+  for (const value of Object.values(current)) collectDiCalls(value, bindings, zone, source, map, out);
+}
+
+/**
+ * The container each form resolves against, and the name it is written under (SDD-38 §4.6).
+ *
+ * `$ioc` is the container this component resolves FROM — the one its ancestor handed it, or,
+ * when it declares providers of its own, the one it owns. `$own` is that owned container,
+ * and only a component that declares a provider has one. Both are inside the `$` reserve of
+ * SDD-15 §4.7, so the author cannot collide with either.
+ */
+const DI_TARGET: Readonly<Record<DiCall['kind'], string>> = {
+  inject: 'injectFrom($ioc, ',
+  provide: 'provideIn($own, ',
+};
+
+/** The prefix splice one DI call turns into: `inject(` → `injectFrom($ioc, `. */
+function rewriteOf(call: DiCall): Edit {
+  return { at: call.at, remove: call.open + 1 - call.at, text: DI_TARGET[call.kind] };
+}
+
+/** Whether a statement of `zone` contains a DI call — by offset, never by text. */
+function holdsDi(
+  stmt: OxcNode,
+  map: MapOffset,
+  di: readonly DiCall[],
+  zone: CodeZone,
+  kind?: DiCall['kind'],
+): boolean {
+  const start = map(stmt.start);
+  const end = map(stmt.end);
+  return di.some(
+    (c) =>
+      c.zone === zone && (kind === undefined || c.kind === kind) && c.at >= start && c.at < end,
+  );
+}
+
+/**
+ * The helpers a branch has to import from `@fudic/di` for the calls it emits.
+ *
+ * The author imported `inject` and `provide`; what the rewrite wrote is `injectFrom` and
+ * `provideIn`, so the import that covers the emitted text is this one and not theirs — which
+ * still travels with its zone, unused and shaken out.
+ */
+export function diHelpers(
+  di: readonly DiCall[],
+  keep: (call: DiCall) => boolean,
+): readonly string[] {
+  const out: string[] = [];
+  for (const call of di) {
+    if (!keep(call)) continue;
+    const helper = call.kind === 'inject' ? 'injectFrom' : 'provideIn';
+    if (!out.includes(helper)) out.push(helper);
+  }
+  return out.sort();
+}
+
+/** The local names an `import` declaration binds. Empty for a bare `import 'side-effect.js'`. */
+function importBindings(declaration: OxcNode): readonly string[] {
+  return fieldArray(declaration, 'specifiers').map((spec) => name(field(spec, 'local')!));
+}
+
+/**
+ * One zone's top-level statements as text, with the DI calls already rewritten.
+ *
+ * `keep` decides which non-import statements survive: everything, for `@server`, whose whole
+ * region is emitted; only the ones that hold a DI call, for the neutral zone, which has never
+ * been emitted and must not start emitting anything else now.
+ *
+ * An import survives when one of the kept statements references it — or when it binds nothing
+ * at all, because a bare `import '../services/cart.js'` is imported precisely for the one
+ * effect a service module has: enrolling itself in the root registry.
+ */
+function zoneCode(
+  statements: readonly OxcNode[],
+  source: string,
+  map: MapOffset,
+  di: readonly Edit[],
+  keep: (stmt: OxcNode) => boolean,
+): ZoneCode {
+  const imports: OxcNode[] = [];
+  const kept: OxcNode[] = [];
+  for (const stmt of statements) {
+    if (is(stmt, 'ImportDeclaration')) imports.push(stmt);
+    else if (keep(stmt)) kept.push(stmt);
+  }
+  if (kept.length === 0) return { imports: [], body: [] };
+  const referenced = new Set(freeReferences(kept));
+  const text = (stmt: OxcNode): ClientStatement => {
+    const start = map(stmt.start);
+    const applied = applyEdits(source.slice(start, map(stmt.end)), start, di);
+    return { text: applied.text, at: start, splices: applied.splices };
+  };
+  return {
+    imports: imports
+      .filter((imp) => {
+        const bound = importBindings(imp);
+        return bound.length === 0 || bound.some((n) => referenced.has(n));
+      })
+      .map((imp) => text(imp).text),
+    body: kept.map(text),
+  };
 }
 
 /**
@@ -511,27 +788,57 @@ function collectCellReads(node: unknown, names: ReadonlySet<string>, map: MapOff
  * `emit` inside a string or a comment is not a call, and a call nested in another one's
  * arguments must not move the offsets of the call around it.
  */
-function withHost(
+interface Edit {
+  /** Where it lands, in SOURCE coordinates. */
+  readonly at: number;
+  /** How many characters it replaces. `0` for an insertion, which most of them are. */
+  readonly remove: number;
+  readonly text: string;
+}
+
+/** `emit('x', d)` → `emit.call($host, 'x', d)`, as two insertions per call. */
+function hostEdits(calls: readonly EmitCall[]): Edit[] {
+  return calls.flatMap((call) => [
+    { at: call.calleeEnd, remove: 0, text: '.call' },
+    { at: call.hostAt, remove: 0, text: call.hasArgs ? '$host, ' : '$host' },
+  ]);
+}
+
+/**
+ * The read of a callback that arrived as a cell (BUG-24 §4.6): `onSave(x)` is written
+ * `onSave()(x)`, because what the prop holds is the cell and the function is inside it.
+ */
+function cellEdits(cellReads: readonly number[]): Edit[] {
+  return cellReads.map((at) => ({ at, remove: 0, text: '()' }));
+}
+
+/**
+ * Apply every edit that falls inside one statement's text, back to front.
+ *
+ * Back to front and never as a `replace` over the source: an `emit` inside a string or a
+ * comment is not a call, and an edit nested in another one's arguments must not move the
+ * offsets of the edit around it.
+ *
+ * The `splices` come back so a LATER pass — the one that knows the graph, and therefore
+ * which names occupy a cell (BUG-24 §4.4) — can land on a character rather than on where
+ * the author's source used to have one. A splice's length is what the edit GAINED, so a
+ * rewrite that replaces more than it writes carries a negative one and moves what follows
+ * backwards, which is exactly what it did.
+ */
+function applyEdits(
   text: string,
   offset: number,
-  calls: readonly EmitCall[],
-  cellReads: readonly number[],
+  edits: readonly Edit[],
 ): { text: string; splices: Splice[] } {
-  const edits: { at: number; text: string }[] = [];
-  for (const call of calls) {
-    if (call.calleeEnd <= offset || call.calleeEnd > offset + text.length) continue;
-    edits.push({ at: call.calleeEnd - offset, text: '.call' });
-    edits.push({ at: call.hostAt - offset, text: call.hasArgs ? '$host, ' : '$host' });
-  }
-  // The read of a callback that arrived as a cell (BUG-24 §4.6): `onSave(x)` is written
-  // `onSave()(x)`, because what the prop holds is the cell and the function is inside it.
-  for (const at of cellReads) {
-    if (at <= offset || at > offset + text.length) continue;
-    edits.push({ at: at - offset, text: '()' });
-  }
-  edits.sort((a, b) => b.at - a.at);
-  const out = edits.reduce((acc, e) => acc.slice(0, e.at) + e.text + acc.slice(e.at), text);
-  return { text: out, splices: edits.map((e) => ({ at: e.at, length: e.text.length })) };
+  const inside = edits
+    .filter((e) => e.at >= offset && e.at + e.remove <= offset + text.length)
+    .map((e) => ({ at: e.at - offset, remove: e.remove, text: e.text }))
+    .sort((a, b) => b.at - a.at);
+  const out = inside.reduce(
+    (acc, e) => acc.slice(0, e.at) + e.text + acc.slice(e.at + e.remove),
+    text,
+  );
+  return { text: out, splices: inside.map((e) => ({ at: e.at, length: e.text.length - e.remove })) };
 }
 
 /**

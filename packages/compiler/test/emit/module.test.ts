@@ -31,7 +31,10 @@ describe('emitComponentModule — a leaf component (app-badge)', () => {
   it('exports tag, css and render', () => {
     expect(src).toContain('export const tag = "app-badge";');
     expect(src).toContain('export const css = `');
-    expect(src).toContain('export function render($dom, $shadow, props) {');
+    // The fourth parameter is the container this component resolves from, and every
+    // component declares it: a component cannot know whether the page it lands in has DI,
+    // and forwarding a container it never names costs nothing (SDD-38 §4.3).
+    expect(src).toContain('export function render($dom, $shadow, props, $ioc) {');
   });
 
   it('has no ES imports (a leaf depends on nothing)', () => {
@@ -78,7 +81,7 @@ describe('emitComponentModule — composition & control flow (app-card)', () => 
     // not emitted, and the counter is sequential.
     expect(src).toContain('$dom.setAttr($n10, \'data-fud-adopt\', "app-button");');
     expect(src).toContain('$dom.attachShadow($n10)');
-    expect(src).toContain('renderAppButton($dom, $n11, { "variant": "ghost" });');
+    expect(src).toContain('renderAppButton($dom, $n11, { "variant": "ghost" }, $ioc);');
   });
 
   it('lowers @if/@else to real JS control flow', () => {
@@ -177,7 +180,7 @@ describe('emitPageModule — home.mjs', () => {
 
   it('builds a COMPONENTS array and a page(data, io) that destructures io', () => {
     expect(src).toContain('const COMPONENTS = [');
-    expect(src).toContain('export function* page(data, io) {'); // streaming generator (SDD-19 §4.3)
+    expect(src).toContain('export function* page(data, io, $ioc) {'); // streaming generator (SDD-19 §4.3)
     expect(src).toContain('const { createDom, serialize, escapeText, jsonBlock } = io;');
   });
 

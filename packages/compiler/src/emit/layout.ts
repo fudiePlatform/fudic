@@ -28,6 +28,7 @@ import { MarkupEmitter, renderName, tpl } from './markup.js';
 import { AssetLinker } from './assets.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import { hydratableTags } from './level.js';
+import { codeOf } from './oxc-code.js';
 import { writeMapConstants, writeHydrationBlocks } from './maps.js';
 import type { DocumentGraph, ResolvedLayout } from './resolve.js';
 import type { EmitOptions, EmitOutput } from './module.js';
@@ -131,7 +132,10 @@ function buildLayoutModule(
   writeImports(w, em.used, specifierResolver(graph, options.componentSpecifier, ext), linker);
   w.line('');
 
-  w.line('export function* layout(data, io, route) {');
+  // The fourth parameter is the route's container, forwarded down the chain untouched: a
+  // layout owns no container of its own, it only hands the one the route opened to the
+  // component hosts its own markup renders (SDD-38 §4.7).
+  w.line('export function* layout(data, io, route, $ioc) {');
   w.indent();
   if (nested) {
     w.line('const { escapeText } = io;');
@@ -155,7 +159,7 @@ function buildLayoutModule(
     // the whole chain — and only the outermost layout knows when the body is finished.
     w.line(`blocks(${DOM}, ${PARENT}) { ${SLOTS}.blocks(${DOM}, ${PARENT}); },`);
     w.dedent();
-    w.line('});');
+    w.line('}, $ioc);');
   } else {
     w.line('const { createDom, serialize, escapeText } = io;');
     w.line("let head = '';");
@@ -229,8 +233,20 @@ function buildRouteModule(
 
   const hydratable = hydratableTags(graph);
   const isComponent = (t: string): boolean => graph.components.has(t);
+  // Whether ANY component the route reaches injects or provides. A route without a single
+  // DI call opens no container tree, imports nothing and publishes no map (SDD-38 §5).
+  const hasDi = comps.some((c) => codeOf(c).di.length > 0);
+  const ioc = hasDi ? '$root' : '$ioc';
   const bodyW = new CodeWriter();
-  const em = new MarkupEmitter({ source, w: bodyW, isComponent, linker, slots: SLOTS, hydratable });
+  const em = new MarkupEmitter({
+    source,
+    w: bodyW,
+    isComponent,
+    linker,
+    slots: SLOTS,
+    hydratable,
+    ioc,
+  });
   em.emitChildren(route.markup, PARENT);
 
   // One `if` arm per declared section; an unknown name renders nothing (decision 85). Its
@@ -244,6 +260,7 @@ function buildRouteModule(
     linker,
     slots: SLOTS,
     hydratable,
+    ioc,
   });
   for (const section of route.sections as readonly SectionNode[]) {
     if (section.name === '') continue;
@@ -283,9 +300,10 @@ function buildRouteModule(
   const maps = writeMapConstants(w, graph, hydratable);
   w.line('');
   // Same public shape as a standalone page: the composition is invisible downstream.
-  w.line('export function* page(data, io) {');
+  w.line('export function* page(data, io, $ioc) {');
   w.indent();
-  w.line('const { escapeText, jsonBlock } = io;');
+  w.line(`const { escapeText, jsonBlock${hasDi ? ', iocRoot' : ''} } = io;`);
+  if (hasDi) w.line('const $root = $ioc ?? iocRoot();');
   // The nonce belongs to the RESPONSE, so it is read here, where `io` is, and closed over
   // by the head slot the layout calls (SDD-20 §4.9).
   writeNonceBinding(w);
@@ -317,7 +335,7 @@ function buildRouteModule(
   w.dedent();
   w.line('},');
   w.dedent();
-  w.line('});');
+  w.line(`}, ${ioc});`);
   w.dedent();
   w.line('}');
   return { writer: w, linker };

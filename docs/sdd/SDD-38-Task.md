@@ -5,7 +5,7 @@
 > **Toca además:** `@fudic/compiler`, `@fudic/ssr`, `@fudic/vite`
 > **Rama:** `sdd-38-inyeccion-de-dependencias`
 > **Rango:** `FUD0680`–`FUD0699` · **Decisiones:** 120–126
-> **Progreso:** 7 / 19
+> **Progreso:** 12 / 19
 
 Da a fudic el inyector que [`docs/di/index.html`](../di/index.html) prototipó, y lo cablea en los
 dos extremos. Las fases 1–3 son un paquete nuevo, sin DOM y sin dependencias, que se puede llevar
@@ -113,30 +113,30 @@ usuario, `multi:`, `useValue`, el reemplazo en tests y `fudic g service`.
 
 ## Fase 4 — El compilador (5)
 
-- [ ] **8. Extracción: `DiCall` y `ServerCode`.**
+- [x] **8. Extracción: `DiCall` y `ServerCode`.**
       En `emit/oxc-code.ts`, dentro del recorrido que ya lee `props<T>()`, `signal(…)` y `emit(…)`
       —Oxc se invoca **una sola vez por fichero**—: cada `inject(…)` y `provide(…)` con su zona, su
       expresión de proveedor verbatim y los dos offsets que la reescritura necesita. Y el campo
       `server` de `ExtractedCode`, que hoy no existe: las sentencias de nivel superior del
       `@server` de un componente, que hasta ahora no llegaban a ninguna parte.
-- [ ] **9. El nivel: `inject` promueve, `provide` no.**
+- [x] **9. El nivel: `inject` promueve, `provide` no.**
       **(rojo primero)** Un término más en el `||` de `isIntrinsicallyHydratable`, y ni una regla
       nueva de hidratación. El test que va primero es el de §6.13: un componente con `provide` en
       la neutra y **sin** `inject` no está en `hydratableTags`, no aparece en `fud-tree`, no lleva
       `data-fud-id` y su chunk **no cambia un byte** respecto al golden de hoy.
-- [ ] **10. La reescritura por offset.**
+- [x] **10. La reescritura por offset.**
       `inject(` → `injectFrom($ioc, ` y `provide(` → `provideIn($own, `, con los argumentos
       intactos y por el mismo mecanismo que ya convierte `emit(name, d)` en
       `emit.call($host, name, d)`. **Por offset y nunca por texto**: el cuerpo se copia verbatim, y
       un `"inject("` dentro de una cadena o un `// inject(` en un comentario no son llamadas.
       Criterio §6.16. `$ioc` y `$own` van a la lista de identificadores reservados de SDD-15 §4.7.
-- [ ] **11. El emit de servidor.**
+- [x] **11. El emit de servidor.**
       Cuarto parámetro: `render($dom, $shadow, props, $ioc)`. Quien declara un provider crea
       `const $own = $ioc.child("<tag>")` y pasa `$own` a sus hijos; quien no, **reenvía `$ioc` sin
       crear nada**. Y el `@server` del componente entra en el `render(…)`, sin llegar al chunk de
       cliente ni al `sourcesContent` del mapa —el camino de `redactServerRegions` ya está—.
       Criterios §6.17 y §6.18. Regenerar los goldens: el cuarto parámetro los toca todos.
-- [ ] **12. El emit de cliente.**
+- [x] **12. El emit de cliente.**
       El nodo del contenedor viaja en el **último** hueco de la porción del payload, detrás de las
       props y de las celdas. Al final y no al principio, porque un `u` parcial indexa por posición
       y un hueco delante desplazaría cada prop (BUG-18 §3.1): el criterio §6.15 comprueba que los

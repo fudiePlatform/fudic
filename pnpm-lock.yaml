@@ -253,6 +253,9 @@ importers:
 
   packages/ssr:
     dependencies:
+      '@fudic/di':
+        specifier: workspace:*
+        version: link:../di
       '@fudic/dom':
         specifier: workspace:*
         version: link:../dom

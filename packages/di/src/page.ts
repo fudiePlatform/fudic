@@ -31,5 +31,35 @@ export function buildTree(
     );
     register(i, containers[i] as Container);
   }
+  tree = containers;
   return containers;
 }
+
+/**
+ * The page's tree, so a component chunk can turn the node its payload carried into the
+ * container it resolves from.
+ *
+ * One per document, and it dies with it: the root container IS the route (SDD-38 §4.7).
+ * The bootstrap builds it before a single chunk is fetched, which is why a chunk never has
+ * to wait for it.
+ */
+let tree: readonly Container[] | null = null;
+
+/**
+ * The container a hydrated instance resolves from: the node its slice carried, resolved
+ * against the page's tree.
+ *
+ * No node — an instance the parent fabricated at runtime, which never had a payload — means
+ * the root, where the `@Service` classes live. It is the honest answer rather than a
+ * fallback: what such an instance can see is exactly what the route registered globally.
+ *
+ * A page whose route declares no provider publishes no map, so the tree is built here, once,
+ * with the root alone.
+ */
+export function containerOf(node?: number): Container {
+  if (tree === null) buildTree([-1], NOTHING);
+  const built = tree as readonly Container[];
+  return built[node ?? 0] ?? (built[0] as Container);
+}
+
+const NOTHING = (): void => {};

@@ -21,7 +21,7 @@ describe('transformFud', () => {
     const result = transformFud(fixture('home.fud'), nodeIo());
     expect(result).not.toBeNull();
     const code = result!.code;
-    expect(code).toContain('export function* page(data, io) {');
+    expect(code).toContain('export function* page(data, io, $ioc) {');
     expect(code).toContain("from './app-card.fud';");
     expect(code).toContain("from './app-badge.fud';");
     expect(code).not.toContain('.mjs'); // Vite owns the graph, not the standalone .mjs
@@ -32,7 +32,7 @@ describe('transformFud', () => {
     expect(result).not.toBeNull();
     const code = result!.code;
     expect(code).toContain('export const tag = "app-card";');
-    expect(code).toContain('export function render($dom, $shadow, props) {');
+    expect(code).toContain('export function render($dom, $shadow, props, $ioc) {');
     expect(code).toContain("import { render as renderAppButton } from './app-button.fud';");
   });
 
