@@ -1,10 +1,12 @@
 # SDD-37 — Tareas · Delegación de eventos en bucles
 
 > **SDD:** [SDD-37 — Delegación de eventos en bucles](./SDD-37-delegacion-de-eventos.md)
-> **Paquetes:** `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server`
+> **Paquetes:** `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` ·
+> `fudic-vscode` · `@fudic/forms`
 > **Rama:** `sdd-37-delegacion-de-eventos`
-> **Progreso:** 0 / 18
-> **No toca:** `@fudic/dom`, `@fudic/core`, `@fudic/ssr`. Cero runtime.
+> **Progreso:** 3 / 24
+> **No toca:** `@fudic/dom`, `@fudic/core`, `@fudic/ssr`. Cero runtime de delegación: la
+> tabla y el dispatch los escribe el emit.
 
 Cada tarea es un paso cerrado: se implementa, se verifica y se marca. Ninguna depende de tareas
 posteriores.
@@ -28,20 +30,28 @@ referencia, reordenación, shadow del hijo, y cero `removeEventListener` al reti
 
 **Hito E — el editor.** `$day` tipado desde la cabecera del bucle y completado tras `delegate:`.
 
+**Hito F — la extensión.** `delegate:` con el mismo trato que `class:` en el `.vsix`: resaltado,
+cierre automático, tokens semánticos y completado del nombre. Un atributo del lenguaje que el
+editor no colorea es un atributo que el autor no cree que exista.
+
+**Hito G — los formularios.** La misma técnica aplicada a `@fudic/forms`: un formulario con N
+controles deja de tener N×3 listeners y pasa a tener uno por tipo de evento en la raíz. Es el
+mismo ahorro que los bucles, sobre el paquete donde más elementos vivos hay.
+
 ---
 
 ## Fase 1 — La sintaxis (3)
 
-- [ ] **1. El prefijo.**
+- [x] **1. El prefijo.**
       `DELEGATE_PREFIX = 'delegate:'` en `packages/compiler/src/binding/nodes.ts`, junto a
       `BUS_PREFIX`/`CLASS_PREFIX`/`STYLE_PREFIX`, y un `Binding` con `type: 'delegate'` que
       lleva el span del nombre **aparte** del span del atributo (criterio 1).
 
-- [ ] **2. La clasificación.**
+- [x] **2. La clasificación.**
       `classifyAttribute` reconoce el prefijo y emite `FUD0667` si trae valor. El prefijo sin
       nombre sigue cayendo en el `FUD0099` que ya existe — verificarlo, no duplicarlo.
 
-- [ ] **3. Tests de clasificación.**
+- [x] **3. Tests de clasificación.**
       En `packages/compiler/test/binding/`: forma válida, con valor, sin nombre, y que el span
       del nombre apunta a los caracteres correctos.
 
@@ -118,6 +128,39 @@ referencia, reordenación, shadow del hijo, y cero `removeEventListener` al reti
 - [ ] **18. Completado tras `delegate:`.**
       En `@fudic/language-server`, ofrecer los bindings de la cabecera del bucle que contiene el
       atributo (criterio 19). Es lo que convierte `FUD0662` de error en typo evitado.
+
+## Fase 6 — La extensión (3)
+
+- [ ] **19. El resaltado.**
+      `delegate:day` en `packages/vscode/syntaxes/fudic.tmLanguage.json`, con la misma forma
+      que `binding-class-style`: el prefijo y el nombre como binding, los dos puntos como
+      puntuación. Con test en `packages/vscode/test/`, como el resto de reglas.
+
+- [ ] **20. El cierre automático y el hueco.**
+      Lo que `class:` tiene en `auto-close.ts` y en `empty-value.ts` y este atributo necesita
+      **al revés**: `delegate:` no lleva `=@`, así que la extensión no debe ofrecérselo.
+
+- [ ] **21. Tokens semánticos.**
+      El prefijo entra en `semantic-tokens.ts` junto a `CLASS_PREFIX`, para que el nombre se
+      pinte con el color del binding y no con el del atributo HTML.
+
+## Fase 7 — Los formularios (3)
+
+- [ ] **22. La raíz delegada.**
+      En `@fudic/forms`, un registro por formulario —`WeakMap` de elemento a manejador— y un
+      listener por tipo de evento en la raíz, en lugar de `on(el, …)` por control.
+      `blur` no burbujea: se delega como `focusout`, que es la sustitución que ya nombra
+      `FUD0665`.
+
+- [ ] **23. Las seis `bind*` sobre el registro.**
+      `bind-text`, `bind-number`, `bind-checkbox`, `bind-radio`, `bind-select` y
+      `bind-select-multiple` registran su manejador en vez de suscribirlo. La baja sigue
+      siendo el mismo `Cleanup`.
+
+- [ ] **24. Se mide.**
+      Un test que espía `addEventListener` sobre un formulario de N controles: el número de
+      listeners no depende de N. Y los tests de comportamiento existentes de `@fudic/forms`
+      siguen verdes sin tocarlos — es la prueba de que la delegación no se nota.
 
 ---
 

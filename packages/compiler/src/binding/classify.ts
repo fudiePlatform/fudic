@@ -23,6 +23,7 @@ import {
   BUS_PREFIX,
   CLASS_PREFIX,
   STYLE_PREFIX,
+  DELEGATE_PREFIX,
   EVENT_PREFIX,
   PROPERTY_PREFIX,
   REF_NAME,
@@ -52,6 +53,14 @@ const FUD_PREFIX_NO_NAME = 'FUD0099';
  * `class:`. The other four are semantic and live in SDD-12's analyzers.
  */
 const FUD_CONTROL_NOT_EXPRESSION = 'FUD0590';
+
+/**
+ * SDD-37 §5 owns `FUD0660`–`FUD0679`, and this is the only one of the eight decided HERE: a
+ * marker that takes a value is wrong by its FORM, the same layer that answers "a `class:` needs
+ * an expression". The other seven need the loop header and the ancestor's handler, and those
+ * are SDD-12's analyzers.
+ */
+const FUD_DELEGATE_HAS_VALUE = 'FUD0667';
 
 /** A JS identifier, the only shape `ref="@id"` accepts (decision 30). */
 const SIMPLE_IDENTIFIER = /^[\p{ID_Start}$_][\p{ID_Continue}$]*$/u;
@@ -88,6 +97,9 @@ export function classifyAttribute(attr: Attribute, source: string): ParseResult<
   }
   if (name.startsWith(STYLE_PREFIX)) {
     return classifyStyle(attr, name.slice(STYLE_PREFIX.length));
+  }
+  if (name.startsWith(DELEGATE_PREFIX)) {
+    return classifyDelegate(attr, name.slice(DELEGATE_PREFIX.length));
   }
   if (name === REF_NAME) return classifyRef(attr, source);
   if (name === CONTROL_NAME) return classifyControl(attr);
@@ -263,6 +275,50 @@ function classifyStyle(attr: Attribute, property: string): ParseResult<Binding> 
   }
   return withDiagnostics(
     { type: 'style', span: attr.span, property, value: handler.expr },
+    diagnostics,
+  );
+}
+
+/**
+ * `delegate:day` (decision 116). Two structural rules, and both are about what the marker is
+ * NOT: it names something — `delegate:` alone falls into the `FUD0099` every prefix shares —
+ * and it carries nothing, because the element is not being given a value, it is handing its
+ * row identity to an ancestor (§3.1).
+ *
+ * A marker written with a value keeps its binding and drops the value: hiding the marker from
+ * the editor over a mistake in a value it never wanted is the reading BUG-16 settled for
+ * `.prop`, and here the value is not even part of the node.
+ */
+function classifyDelegate(attr: Attribute, name: string): ParseResult<Binding> {
+  const diagnostics: Diagnostic[] = [];
+
+  if (name.length === 0) {
+    diagnostics.push(
+      errorDiag(
+        FUD_PREFIX_NO_NAME,
+        'delegation marker has no name after `delegate:`',
+        nameSpan(attr, DELEGATE_PREFIX + name),
+      ),
+    );
+  }
+
+  if (attr.value.length > 0) {
+    diagnostics.push(
+      errorDiag(
+        FUD_DELEGATE_HAS_VALUE,
+        '`delegate:` marker takes no value: the ancestor handler reads it as `$' +
+          (name.length > 0 ? name : 'name') +
+          '`',
+        valueSpan(attr),
+      ),
+    );
+  }
+
+  // The name is the tail of the attribute NAME, and the attribute always spans at least its
+  // own name, so neither end needs clamping the way `nameSpan` does for a prefix it is handed.
+  const start = attr.span.start + DELEGATE_PREFIX.length;
+  return withDiagnostics(
+    { type: 'delegate', span: attr.span, name, nameSpan: span(start, start + name.length) },
     diagnostics,
   );
 }
