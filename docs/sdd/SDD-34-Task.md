@@ -5,7 +5,7 @@
 > `./element`) · `@fudic/core` (la lista `eager` del mapa de página) · `@fudic/vite` (el borrado
 > del validador de servidor)
 > **Rama:** `sdd-34-forms-compilador`
-> **Progreso:** 0 / 16
+> **Progreso:** 16 / 16
 > **Depende de:** [SDD-33](./SDD-33-formularios-reactivos.md) en `Hecho`. No es un
 > encadenamiento burocrático: la fase 2 llama a `errors()`, `touch()` y `$setErrors` desde la
 > primera línea.
@@ -22,7 +22,7 @@ fabricar el hueco del error— y la regla que gobierna la tanda entera:
 ## Los seis hitos
 
 **Hito A — la gramática.** `control` como atributo reservado de la familia de `ref`, con sus cinco
-diagnósticos y las decisiones 100–106 escritas en el documento de gramática.
+diagnósticos y las decisiones 108–114 escritas en el documento de gramática.
 
 **Hito B — el runtime de enlace.** `@fudic/forms/dom`: seis funciones, una por forma de elemento,
 cada una en su módulo. Ninguna sabe de las otras y ninguna busca nada en el DOM.
@@ -49,22 +49,24 @@ ficheros, `bind:` y el códec binario.
 
 ## Fase 1 — Gramática y semántica (4)
 
-- [ ] **1. Las decisiones, escritas donde viven.**
-      Añadir 100–106 a [`gramatica-v1-decisiones.md`](../gramar/gramatica-v1-decisiones.md) —
+- [x] **1. Las decisiones, escritas donde viven.**
+      Añadir 108–114 a [`gramatica-v1-decisiones.md`](../gramar/gramatica-v1-decisiones.md) —
+      100–105 ya estaban tomados por la cadena de la expresión implícita y 107 por SDD-36, así
+      que las siete de `control` se numeran a continuación de lo tomado —
       sección 7, junto a `ref` (30) y a los prefijos reservados (22, 28.a)— y sus filas al índice
       de decisiones del final. Va **la primera** porque las cinco tareas siguientes las citan.
-- [ ] **2. `control` en el parser.**
-      Atributo reservado con valor de expresión, de la familia de `ref` (decisión 100) y **no** de
+- [x] **2. `control` en el parser.**
+      Atributo reservado con valor de expresión, de la familia de `ref` (decisión 108) y **no** de
       `class:`/`bus:`: esos llevan un nombre detrás del `:` y aquí no hay nada que nombrar. Nodo
       con su span y su expresión. `control="title"`, sin `@`, es `FUD0590` — que es además la
       forma del prototipo, así que el diagnóstico enseña la migración. Criterio §6.1.
-- [ ] **3. La clasificación por elemento.**
-      Decisión 101, los cuatro casos: `<form>`, elemento que porta valor, tag de componente,
+- [x] **3. La clasificación por elemento.**
+      Decisión 109, los cuatro casos: `<form>`, elemento que porta valor, tag de componente,
       cualquier otro elemento (grupo). Y la forma concreta del elemento que porta valor, que es la
       tabla de §4.2. Un `type` **dinámico** no se puede decidir en compilación y es `FUD0592`: no
       se emite un despacho de runtime para rescatarlo, porque eso devolvería al bundle la tabla
       que esta tanda quita. Criterios §6.2, §6.5.
-- [ ] **4. Las reglas semánticas y el rango.**
+- [x] **4. Las reglas semánticas y el rango.**
       `FUD0591` (dos elementos al mismo nodo, **salvo** que todos sean radios: ahí el emit agrupa
       y emite una sola llamada), `FUD0593` (`formassociated` fuera del template raíz del
       componente) y `FUD0594` (`control` dentro de un bucle, la decisión 31 aplicada por el mismo
@@ -74,18 +76,18 @@ ficheros, `bind:` y el códec binario.
 
 ## Fase 2 — El runtime de enlace (3)
 
-- [ ] **5. Las seis funciones de enlace, un módulo cada una.**
+- [x] **5. Las seis funciones de enlace, un módulo cada una.**
       `packages/forms/src/dom/`: `bindText`, `bindNumber`, `bindCheckbox`, `bindRadio`,
       `bindSelect`, `bindSelectMultiple`. Cada una: elemento → control en `input` y `change`,
       `touch()` en `blur`, un `effect` de vuelta que **no escribe si el valor ya coincide** —por
       lo mismo que `$w` en BUG-12: escribir en un input enfocado mueve el cursor— y su `Cleanup`.
       Ninguna importa a las otras. Criterio §6.11.
-- [ ] **6. El efecto de errores y el hueco.**
+- [x] **6. El efecto de errores y el hueco.**
       Segundo `effect` por enlace: `aria-invalid` en el elemento y **texto** en el hueco que el
       emit ya dejó escrito — el runtime **no crea nodos**. Y solo si el control está `touched`: un
       campo obligatorio no está mal por estar todavía vacío. `setMessages` para el texto; sin él,
       el código de la regla. Criterio §6.12.
-- [ ] **7. `bindForm` y `bindGroup`.**
+- [x] **7. `bindForm` y `bindGroup`.**
       El formulario: `preventDefault` + `$touch()` + **foco al primer control inválido en orden de
       documento** —que es la salida portable al hecho de que `aria-describedby` no cruza la
       frontera de un shadow root— y el `$summary()` en una live region. La decisión de submit es
@@ -95,16 +97,24 @@ ficheros, `bind:` y el códec binario.
 
 ## Fase 3 — El emit (3)
 
-- [ ] **8. Elegir la función en compilación.**
-      El `switch` se muda aquí: por cada enlace, el emit escribe la llamada concreta. El golden de
-      un componente con un solo `<input type="text">` **no puede contener** el nombre de las otras
-      cinco. Criterio §6.7.
-- [ ] **9. El hueco del error, en el markup.**
+- [x] **8. La zona neutra llega a los dos módulos, y la función se elige en compilación.**
+      **Primero lo que faltaba debajo:** el formulario se define en un `.ts` y la vista lo
+      **importa** desde la zona neutra (§4.4), pero esa zona no llegaba a ningún módulo emitido
+      —el emit leía de ella el `props<T>()` y los reactivos y descartaba el resto—, así que el
+      import nombraba un binding inexistente. Se elevan sus `import` a los dos módulos y su
+      cuerpo se escribe dentro de `render()` y de la fábrica; lo que el emit ya escribe con forma
+      propia no se duplica —se decide por lo que se **reconoce**, no por lo que produce—; lo que
+      declara solo un tipo no viaja; y el módulo de servidor pasa por Oxc como ya hacían
+      `?server` y `?client`.
+      **Y después el `switch`, que se muda aquí:** por cada enlace, el emit escribe la llamada
+      concreta. El golden de un componente con un solo `<input type="text">` **no puede contener**
+      el nombre de las otras cinco. Criterio §6.7.
+- [x] **9. El hueco del error, en el markup.**
       Id estable derivado de la identidad del nodo —la misma que ya usa la hidratación—,
       `aria-describedby` **siempre presente** aunque el hueco esté vacío, y `aria-invalid` y texto
       **ya puestos** cuando el formulario se renderiza con errores. El atributo `control` **no**
       sobrevive al HTML. Criterio §6.8.
-- [ ] **10. La invariante de accesibilidad, medida.**
+- [x] **10. La invariante de accesibilidad, medida.**
       Criterio §6.10: el mismo formulario con los mismos errores por los dos caminos —SSR con
       `$setErrors` aplicado antes de renderizar, y cliente hidratado— produce **el mismo HTML** en
       id, `aria-describedby`, `aria-invalid` y texto. Es el test que el prototipo no podía pasar
@@ -112,19 +122,19 @@ ficheros, `bind:` y el códec binario.
 
 ## Fase 4 — El control-componente (3)
 
-- [ ] **11. `FudicControlElement`.**
+- [x] **11. `FudicControlElement`.**
       `packages/forms/src/element.ts`, extendiendo `FudicElement` de `@fudic/core`:
       `static formAssociated = true`, `attachInternals()` en el constructor —el único momento en
       que se puede—, `setFormValue` siguiendo al valor y `setValidity` siguiendo a `errors`. Vive
       en `forms` y no en `core` porque necesita el tipo `Control<T>`: `forms` depende de `core` y
       **nunca al revés**.
-- [ ] **12. El marcador y el emit que lo sigue.**
-      `<template shadowrootmode="open" formassociated>` (decisión 103) → clase base
+- [x] **12. El marcador y el emit que lo sigue.**
+      `<template shadowrootmode="open" formassociated>` (decisión 111) → clase base
       `FudicControlElement`, `attachShadow({ delegatesFocus: true })` en cliente y
       `shadowrootdelegatesfocus` en el `<template>` serializado. Sin `delegatesFocus`, un `<label>`
       de fuera enfoca el host y no el `<input>` de dentro. El marcador es de compilación y **no
       llega al DOM**. Criterio §6.9.
-- [ ] **13. `eager` en el mapa de página.**
+- [x] **13. `eager` en el mapa de página.**
       El mapa gana la lista de tags que se definen y se hidratan al instalar el runtime, y el
       runtime de SDD-17 la consume antes del primer gesto. **Acotada a los tags `formassociated`**
       y a ningún otro: es la única forma de hidratación de fudic que no la conduce el usuario, y
@@ -132,13 +142,13 @@ ficheros, `bind:` y el códec binario.
 
 ## Fase 5 — El cruce y el bundle (2)
 
-- [ ] **14. `control` sobre un tag de componente.**
-      Decisión 104: cruza la **referencia** del nodo como prop. Convive con la 84 —ninguna signal
+- [x] **14. `control` sobre un tag de componente.**
+      Decisión 112: cruza la **referencia** del nodo como prop. Convive con la 84 —ninguna signal
       cruza el shadow boundary— y no la deroga: lo que cruza no es estado de render del padre sino
       el **modelo**, nombrado por el autor, y el hijo se suscribe por su cuenta; **no se emite `u`
       para ese prop**. La alternativa (`bind:`, prop de valor + callback) exigiría cruzar además
       errores, `touched`, `dirty` y la orden de validar. Criterio §6.2 (la parte del componente).
-- [ ] **15. El borrado del validador de servidor.**
+- [x] **15. El borrado del validador de servidor.**
       Transformación del plugin (SDD-19) sobre el `.ts` del schema en el build de **cliente**:
       reconocer `serverValidator(...)` por su binding importado de `@fudic/forms` y sustituir **su
       argumento** por `() => null`. El argumento y no la llamada, para que el array de validadores
@@ -147,7 +157,7 @@ ficheros, `bind:` y el códec binario.
 
 ## Fase 6 — Cierre (1)
 
-- [ ] **16. Chrome real, presupuesto, cobertura e índice.**
+- [x] **16. Chrome real, presupuesto, cobertura e índice.**
       Los tres criterios de navegador (§6.16–§6.18): eager contra no-eager en la misma página,
       `<label for>` externo que enfoca el input de dentro —con el contraste **sin**
       `formassociated` escrito, que es lo que justifica el JS de arranque—, y un `<form>` ajeno
@@ -155,6 +165,13 @@ ficheros, `bind:` y el códec binario.
       por ruta medido sobre el chunk (§6.15). `pnpm typecheck`, `pnpm test`, `pnpm build`.
       `./dom` y `./element` al **100 %**; el código nuevo del compilador y del plugin, también.
       Anotar en [INDEX.md](./INDEX.md) y pasar SDD-34 a `Hecho` con sus 18 criterios verdes.
+      **Y lo que el navegador encontró, que no se veía desde ningún test de unidad:** el nodo
+      que edita un control-componente **no está en su payload** —lo entrega el padre— y la
+      cascada engancha en post-orden, así que el hijo se engancha con el prop vacío. De ahí
+      salieron las dos correcciones que cierran esta tanda: el emit escribe esos enlaces en un
+      `$cb` que `u` rehace cuando el nodo llega (§4.6), y la lista `eager` levanta el **dueño**
+      del tag marcado y no el tag a solas (§4.5) — porque un control-componente definido y sin
+      nodo es exactamente el elemento a medio levantar que la excepción existe para evitar.
 
 ---
 
@@ -173,7 +190,7 @@ puede comprobar —no sabe dónde pondrá la etiqueta quien lo use— y que el L
 
 - Criterios de aceptación: los 18 de
   [SDD-34 §6](./SDD-34-forms-compilador.md#6-criterios-de-aceptación).
-- Decisiones de gramática nuevas: 100–106, en
+- Decisiones de gramática nuevas: 108–114, en
   [`gramatica-v1-decisiones.md`](../gramar/gramatica-v1-decisiones.md) (tarea 1).
 - Extiende [SDD-17](./SDD-17-hidratacion.md) con **una** excepción acotada: la lista `eager`.
 - No toca [`bind:`](./pendings/PENDIENTES-v1.md) (decisiones 83–85), que sigue pendiente con su

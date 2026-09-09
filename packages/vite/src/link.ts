@@ -12,7 +12,7 @@
  * are known in time for the manifest.
  */
 
-import { build, type Plugin } from 'vite';
+import { build, transformWithOxc, type Plugin } from 'vite';
 import { type ResolveIo } from '@fudic/compiler';
 import { type RouteBuild } from './discover.js';
 import { isLinkable } from './mode.js';
@@ -90,16 +90,20 @@ function linkPlugin(builds: readonly RouteBuild[], io: ResolveIo): Plugin {
         withLoad: false, // server code never ships to the client (§4.5)
       });
     },
-    transform(_code, id) {
+    async transform(_code, id) {
       const path = id.split('?')[0] ?? id;
       if (!path.endsWith('.fud')) {
         return null;
       }
       const result = transformFud(path, io);
+      if (result === null) return null;
+      // Since SDD-34 the neutral zone of `@code` reaches this module verbatim, so it is
+      // TypeScript whenever the author wrote it — same strip as the host plugin does.
+      const emitted = await transformWithOxc(result.code, `${path}.ts`, { lang: 'ts' });
       // The map goes back too (BUG-05 §4.2). Dropping it was not a missing feature but a
       // silent one: the nested build would chain its own map onto the GENERATED module and
       // produce a map that is valid, resolves, and never mentions the `.fud`.
-      return result === null ? null : { code: result.code, map: JSON.stringify(result.map) };
+      return { code: emitted.code, map: JSON.stringify(result.map) };
     },
   };
 }

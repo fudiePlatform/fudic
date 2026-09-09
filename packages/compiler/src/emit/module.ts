@@ -31,8 +31,9 @@ import { AssetLinker, type AssetExists } from './assets.js';
 import { compactStyleCss } from './css-compact.js';
 import { codeOf } from './oxc-code.js';
 import { cellSlots, childTargets, reactiveScope } from './state.js';
-import { hydratableTags } from './level.js';
+import { formAssociatedTags, hydratableTags } from './level.js';
 import { writeMapConstants, writeHydrationBlocks } from './maps.js';
+import { planControls } from './controls.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import {
   type ComponentSpecifier,
@@ -185,11 +186,16 @@ function buildComponentModule(
 ): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const ext = options.importExt ?? '.mjs';
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
-  const { props, signals, diagnostics } = codeOf(comp);
+  const { props, signals, neutral, diagnostics } = codeOf(comp);
   const cells = cellSlots(comp, graph);
   const hydratable = hydratableTags(graph);
   const bodyW = new CodeWriter();
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
+  // Resolved once, for both branches: the client chunk builds the very same nodes from the
+  // very same plan, or `h` adopts a tree it does not recognise (SDD-34 §4.3).
+  const controls = planControls(comp.source, comp.doc.template!.children, (t) =>
+    graph.components.has(t),
+  );
   const em = new MarkupEmitter({
     source: comp.source,
     w: bodyW,
@@ -201,6 +207,8 @@ function buildComponentModule(
     signals: reactiveScope(comp),
     declared: childTargets(graph),
     hydratable,
+    controls,
+    formAssociated: formAssociatedTags(graph),
   });
   em.emitChildren(comp.doc.template!.children, '$shadow');
   // css uses the linker too (may register more imports), so build it before the imports.
@@ -209,8 +217,22 @@ function buildComponentModule(
   const w = new CodeWriter();
   const specifier = specifierResolver(graph, options.componentSpecifier, ext);
   for (const tag of em.used) w.line(`import { render as ${renderName(tag)} } from ${specifier(tag)};`);
+  // The neutral zone's imports, hoisted — decision 33.c, which until SDD-34 was true of
+  // `@client` alone. It is what lets a form live in its own `.ts` and be reached by BOTH
+  // ends: the server renders its values into the HTML and the client hydrates the same
+  // object, which is the whole reason a form is not declared in the view.
+  const neutralImports = neutral.flatMap((s) => (s.hoisted ? [s.text] : []));
+  for (const line of neutralImports) w.line(line);
+  // The text of an error, for the slots this template writes. From the MODEL entry point and
+  // not from `./dom`: the server paints the message into the HTML (§4.3), and turning
+  // `{ required: true }` into a sentence touches no DOM. Imported only when there is a slot,
+  // so a component with no form carries no import it never calls.
+  const writesErrors = [...controls.values()].some((site) => site.writesSlot);
+  if (writesErrors) w.line("import { errorText as $fudErrorText } from '@fudic/forms';");
   for (const line of linker.imports()) w.line(line);
-  if (em.used.size > 0 || linker.imports().length > 0) w.line('');
+  if (em.used.size > 0 || neutralImports.length > 0 || writesErrors || linker.imports().length > 0) {
+    w.line('');
+  }
   w.line(`export const tag = ${JSON.stringify(comp.tag)};`);
   w.line(`export const css = ${css};`);
   w.line('');
@@ -276,6 +298,12 @@ function buildComponentModule(
     if (cell.kind === 'fn') w.line(`const ${cell.name} = () => {}; // inert callback (SSR)`);
   }
   if (cells.length > 0) writeState();
+  // The neutral zone's body, AFTER the props and the inert reactives it may read, and BEFORE
+  // the markup that reads it. This is the half of `@code` that runs on BOTH sides, so this is
+  // where the server gets the form it renders the values of.
+  for (const statement of neutral) {
+    if (!statement.hoisted) w.line(statement.text);
+  }
   w.appendWriter(bodyW); // carries the markup's source anchors, unlike a toString()/split copy
   w.dedent();
   w.line('}');
@@ -325,6 +353,7 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
     container: tagDisplay('body'),
     boxes: pageBoxes(graph, page),
     hydratable,
+    formAssociated: formAssociatedTags(graph),
   });
   em.emitChildren(page.body.children, '$body');
 

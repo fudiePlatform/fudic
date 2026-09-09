@@ -37,6 +37,7 @@ import {
 import { emitItems, type TextRun } from './runs.js';
 import { markerSite } from './marker.js';
 import { loopHead, type LoopNode } from './constructs.js';
+import { ERROR_SLOT_ATTR, SUMMARY_SLOT_ATTR, type ControlPlan } from './controls.js';
 
 /** `render` + PascalCase of a `prefix-name` tag: `app-button` → `renderAppButton`. */
 export const renderName = (tag: string): string =>
@@ -167,6 +168,21 @@ export interface MarkupOptions {
    * forget it and silently emit a page nothing can hydrate.
    */
   readonly hydratable: ReadonlySet<string>;
+  /**
+   * The `control` bindings of this template (SDD-34). Empty by default: a page body, a layout
+   * and every test that asks only about markup have none, and an empty plan writes nothing.
+   */
+  readonly controls?: ControlPlan;
+  /**
+   * The tags marked `formassociated` (decision 111). A host of one of them opens its shadow
+   * root with `delegatesFocus`, which serializes as `shadowrootdelegatesfocus` on the
+   * template — without it a `<label for>` outside focuses the host and not the input inside.
+   *
+   * Required, with no default, for the same reason `hydratable` is: it is a fact about the
+   * whole graph, and a defaulted empty set would let a caller forget it and emit a
+   * control-component that is silently not labelable.
+   */
+  readonly formAssociated: ReadonlySet<string>;
 }
 
 export class MarkupEmitter {
@@ -178,6 +194,8 @@ export class MarkupEmitter {
   readonly #signals: ReadonlySet<string>;
   readonly #declared: (tag: string) => PropTarget | undefined;
   readonly #hydratable: ReadonlySet<string>;
+  readonly #controls: ControlPlan;
+  readonly #formAssociated: ReadonlySet<string>;
   readonly #used = new Set<string>();
   #id = 0;
   /**
@@ -201,6 +219,8 @@ export class MarkupEmitter {
     this.#signals = options.signals ?? new Set();
     this.#declared = options.declared ?? (() => undefined);
     this.#hydratable = options.hydratable;
+    this.#controls = options.controls ?? new Map();
+    this.#formAssociated = options.formAssociated;
   }
 
   /** The child component tags rendered so far, in first-use order (for ES imports). */
@@ -315,7 +335,11 @@ export class MarkupEmitter {
       // The host's own attributes — its `.prop`s and its plain HTML ones (BUG-16 §4.1).
       // Level 1 is HTML with no JS, so this is the only place they can live.
       this.#elementAttrs(el, v, true);
-      this.#w.line(`const ${s} = $dom.attachShadow(${v});`);
+      // A control-component's shadow root delegates focus, and the serializer turns that into
+      // `shadowrootdelegatesfocus` on the template (SDD-34 §4.5). The argument is only written
+      // when it is true: a page with no control-component keeps the bytes it had.
+      const focus = this.#formAssociated.has(el.name) ? ', true' : '';
+      this.#w.line(`const ${s} = $dom.attachShadow(${v}${focus});`);
       this.#w.line(
         `${renderName(el.name)}($dom, ${s}, ${componentPropsExpr(this.#source, el, this.#signals, this.#declared(el.name))});`,
       );
@@ -323,9 +347,66 @@ export class MarkupEmitter {
     } else {
       this.#w.line(`const ${v} = $dom.element(${JSON.stringify(el.name)});`);
       this.#elementAttrs(el, v, false);
+      this.#controlAttrs(el, v);
       this.emitChildren(el.children, v);
     }
     this.#at = outer;
+    this.#w.line(`$dom.append(${parent}, ${v});`);
+    this.#controlSlot(el, parent);
+  }
+
+  /**
+   * The accessibility wiring of a bound control, written into the MARKUP (§4.3, decision 113).
+   *
+   * `aria-describedby` is written ALWAYS, whether the slot is empty or not. Adding the
+   * reference only when an error appears is what makes some screen readers fail to announce
+   * it: the relationship has to exist before the text does.
+   *
+   * `aria-invalid` and the slot's text are written HERE when the form is rendered with errors
+   * already on it — a 422 the server published with `$setErrors`. That is the whole of §4.3:
+   * a form with errors is accessible with **zero JavaScript**, and the client, hydrating over
+   * this same HTML, produces byte for byte the same thing (§6.10).
+   */
+  #controlAttrs(el: ElementNode, v: string): void {
+    const site = this.#controls.get(el);
+    if (site === undefined || site.target.kind !== 'value') return;
+    this.#w.line(`$dom.setAttr(${v}, 'aria-describedby', ${JSON.stringify(site.slotId)});`);
+    // Touched, exactly as the client's effect asks: an untouched field is unfilled, not wrong,
+    // and the two branches cannot disagree about that or the hydration would repaint.
+    this.#w.line(
+      `if (${site.node}.touched() && ${site.node}.errors()) $dom.setAttr(${v}, 'aria-invalid', 'true');`,
+    );
+  }
+
+  /**
+   * The element the emit writes BESIDE a bound one: the error slot of a control, or the live
+   * region of a `<form>`.
+   *
+   * It is a node of the server's tree like any other, and that is the point: the runtime only
+   * ever writes its text (decision 113). A slot fabricated on first error — which is what the
+   * prototype did — gives a hydrated form and a server-rendered one different markup, and with
+   * it different accessibility.
+   */
+  #controlSlot(el: ElementNode, parent: string): void {
+    const site = this.#controls.get(el);
+    if (site === undefined || !site.writesSlot) return;
+    const isForm = site.target.kind === 'form';
+    const v = this.#fresh();
+    this.#w.line(`const ${v} = $dom.element('span');`);
+    this.#w.line(`$dom.setAttr(${v}, 'id', ${JSON.stringify(site.slotId)});`);
+    this.#w.line(`$dom.setAttr(${v}, '${isForm ? SUMMARY_SLOT_ATTR : ERROR_SLOT_ATTR}', '');`);
+    // A live region announces what CHANGES inside it, so it has to be there before the text is
+    // (§4.4). `polite`, because a form error is not an interruption.
+    if (isForm) this.#w.line(`$dom.setAttr(${v}, 'aria-live', 'polite');`);
+    const errors = isForm
+      ? `${site.node}.$summary()`
+      : `(${site.node}.touched() ? ${site.node}.errors() : null)`;
+    this.#w.line(`{`);
+    this.#w.indent();
+    this.#w.line(`const $e = ${errors};`);
+    this.#w.line(`if ($e) $dom.append(${v}, $dom.text($fudErrorText($e)));`);
+    this.#w.dedent();
+    this.#w.line(`}`);
     this.#w.line(`$dom.append(${parent}, ${v});`);
   }
 

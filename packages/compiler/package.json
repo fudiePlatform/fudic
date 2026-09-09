@@ -48,6 +48,7 @@
   },
   "devDependencies": {
     "@fudic/core": "workspace:*",
+    "@fudic/forms": "workspace:*",
     "@fudic/ssr": "workspace:*",
     "@fudic/tsconfig": "workspace:*",
     "@types/node": "22.20.0",

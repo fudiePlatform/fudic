@@ -21,6 +21,7 @@ import type { Span } from '../types/index.js';
 import {
   classifyAttribute,
   crossing,
+  CONTROL_PROP,
   type Binding,
   type ComponentDeclaredProps,
 } from '../binding/index.js';
@@ -206,9 +207,17 @@ export function componentPropsExpr(
   signals: ReadonlySet<string>,
   declared?: PropTarget,
 ): string {
+  const slice = (sp: Span): string => source.slice(sp.start, sp.end);
   const entries: string[] = [];
   for (const attr of el.attributes) {
     const b = classifyAttribute(attr, source).value;
+    // `control="@f.body"` on a component tag hands the child the NODE (decision 112). On the
+    // server there is no cable — the child's `render` is a call in this same process — so the
+    // object goes straight in, which is what lets SSR paint the child's values.
+    if (b.type === 'control') {
+      entries.push(`${JSON.stringify(CONTROL_PROP)}: ${slice(b.value.expr)}`);
+      continue;
+    }
     if (b.type !== 'property') continue;
     // A bare `.disabled` is `true` (decision 44), which is what the projection checks it
     // as; `attrExpr` would give the `""` an attribute wants and a prop does not.

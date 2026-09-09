@@ -14,6 +14,8 @@ export interface PagePayload {
   readonly state?: readonly [readonly number[], readonly unknown[]];
   readonly tree?: TagMap;
   readonly bus?: TagMap;
+  /** The control-components, which come up without a gesture (SDD-34 §4.5). */
+  readonly eager?: readonly string[];
 }
 
 function block(id: string, value: unknown): void {
@@ -30,6 +32,7 @@ export function publish(payload: PagePayload = {}): void {
   if (payload.state !== undefined) block('fud-state', payload.state);
   if (payload.tree !== undefined) block('fud-tree', payload.tree);
   if (payload.bus !== undefined) block('fud-bus', payload.bus);
+  if (payload.eager !== undefined) block('fud-eager', payload.eager);
 }
 
 /** A hydratable host with an open shadow root, appended to `parent`. */

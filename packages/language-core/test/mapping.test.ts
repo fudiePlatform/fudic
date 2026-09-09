@@ -201,16 +201,16 @@ describe('criterion 12 — one diagnostic, one place', () => {
     const diagnostics = typecheckCorpus({ [BADGE]: broken });
 
     // The neutral zone lives in both virtuals, so the checker finds it twice…
-    expect(diagnostics.filter((d) => d.code === 2322)).toHaveLength(2);
+    const found = diagnostics.filter((d) => d.code === 2322);
+    expect(found).toHaveLength(2);
 
-    // …and deduplication against the canonical virtual leaves exactly one.
-    const deduped = dedupeDiagnostics(
-      diagnostics.map((d) => ({ ...d, sourceOffset: d.sourceOffset ?? -1 })),
-      'components/app-badge.fud.ts',
-    );
-    expect(deduped).toHaveLength(1);
-    expect(deduped[0]!.virtual).toBe('components/app-badge.fud.ts');
-    expect(deduped[0]!.sourceText).toBe('oops');
+    // …and only one of them can reach the source. The server virtual's copy of the neutral zone
+    // does not carry `verification` (`USER_ECHO_CAPS`), so its twin maps nowhere and the user
+    // is never told twice.
+    const reported = found.filter((d) => d.sourceOffset !== undefined);
+    expect(reported).toHaveLength(1);
+    expect(reported[0]!.virtual).toBe('components/app-badge.fud.ts');
+    expect(reported[0]!.sourceText).toBe('oops');
   });
 });
 

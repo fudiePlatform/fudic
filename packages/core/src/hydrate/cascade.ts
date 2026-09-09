@@ -113,31 +113,54 @@ export function createCascade(config: CascadeConfig): Cascade {
   };
 
   /**
-   * One owner, up — and the owner ALONE, not its subtree.
+   * The owners a climb is already on the way to, so a descendant reached by that climb cannot
+   * ask for the same owner again and start it a second time.
    *
-   * That is the one place the runtime climbs, and it is deliberately not a second cascade.
-   * An owner is an ANCESTOR of whoever asked, so preparing its subtree would walk back
-   * through the very instance waiting for it and hand that instance a slice pointing at a
-   * cell nobody had filled — which is exactly what §4.6 says must not happen. Raising the
-   * owner alone puts it in front, and its remaining descendants come up right after through
-   * the walk that was already running.
+   * It is not an optimisation. Raising an owner walks its subtree, and that subtree contains
+   * the very instance whose empty cell asked for the climb: without this, `prepareCells` on
+   * the way down would call `raiseOwner` on the way up, forever.
+   */
+  const raising = new Set<number>();
+
+  /**
+   * One owner, up — with its SUBTREE, in the same post-order everything else uses.
    *
-   * Nothing is lost by that inversion: what a descendant would have received from its
-   * parent's hookup is the value the SERVER already painted into its own slice, and what
-   * moves afterwards travels by cell or by `u`, both of which come later than this.
+   * This is the one place the runtime climbs, and it climbs the whole way: an owner is an
+   * ancestor of whoever asked, so raising it means raising a host, and a host may not come up
+   * over dead children. That is not a preference — `FudicElement.u` is a tolerant no-op only
+   * for an instance that has been UPGRADED, and an element whose tag was never defined is a
+   * plain `HTMLElement` with no `u` on it at all. The owner's hookup hands every child host
+   * its slice, so raising the owner alone threw `u is not a function` on the first sibling
+   * that was not the one that asked, and the gesture died with it.
+   *
+   * An earlier reading had it the other way round — the owner ALONE, on the argument that
+   * walking its subtree would hand the waiting instance a slice pointing at a cell nobody had
+   * filled. The premise is right and the conclusion does not follow: a cell is READ AT THE
+   * MOMENT IT IS CALLED (BUG-24 §4.6), so a slice handed over early is a slice pointing at a
+   * cell that is still empty AND WILL BE FILLED before anything reads it — which is the whole
+   * reason the read was deferred to dispatch. Nothing needs the owner to jump the queue.
+   *
+   * `prepareTag` and not this instance's subtree alone, for the reason stated at the top of
+   * this file: `attachAll` is per TAG, so what it attaches has to be prepared per tag too.
    */
   const raiseOwner = async (id: number): Promise<void> => {
-    if (state.hydrated.has(id)) return;
+    if (state.hydrated.has(id) || raising.has(id)) return;
     const host = byId(id);
     // A marker pointing at an instance no longer in the tree: the page is what it is, and the
     // runtime does not throw over it — the cell simply keeps the value the payload gave it.
     if (host === undefined) return;
-    const tag = host.localName;
-    const elapsed = stopwatch();
-    await loader.ensureDefined(tag);
-    attachAll(tag);
-    state.hydrated.add(id);
-    report(id, tag, elapsed(), 'subtree');
+    raising.add(id);
+    try {
+      const tag = host.localName;
+      const elapsed = stopwatch();
+      await prepareTag(tag);
+      await loader.ensureDefined(tag);
+      attachAll(tag);
+      state.hydrated.add(id);
+      report(id, tag, elapsed(), 'subtree');
+    } finally {
+      raising.delete(id);
+    }
   };
 
   /**

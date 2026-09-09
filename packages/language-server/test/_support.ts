@@ -6,6 +6,8 @@
  */
 
 import { fileURLToPath } from 'node:url';
+import ts from 'typescript';
+import { GLOBALS_DTS } from '@fudic/language-core';
 import { toPosix } from '../src/paths.js';
 import type { FileSystemScanner } from '../src/types.js';
 
@@ -89,3 +91,38 @@ export const PAGE = `<!DOCTYPE html>
   </body>
 </html>
 `;
+
+/**
+ * A real TypeScript language service over a projection, under the `.fud`'s own name.
+ *
+ * For the answers that depend on a TYPE — which name holds a form node, what a prop takes — and
+ * a real checker rather than a written one, because a hand-made answer to «what shape is this»
+ * is a second implementation of the rule under test.
+ *
+ * The name is not a detail: Volar registers the virtual code under the source file it belongs
+ * to, so the server asks the program for `cached.path`. TypeScript drops a root file whose
+ * extension it does not know, and `allowNonTsExtensions` is what stops it — the real server
+ * never needs it, because there the projection arrives through Volar rather than through a host.
+ */
+export function projectionService(path: string, text: string): ts.LanguageService {
+  const files: Record<string, string> = { [path]: text, '/p/fudic-globals.d.ts': GLOBALS_DTS };
+  const host: ts.LanguageServiceHost = {
+    getScriptFileNames: () => Object.keys(files),
+    getScriptVersion: () => '1',
+    getScriptSnapshot: (name) => {
+      const found = files[name];
+      return found === undefined ? undefined : ts.ScriptSnapshot.fromString(found);
+    },
+    getScriptKind: () => ts.ScriptKind.TS,
+    getCurrentDirectory: () => '/p',
+    getCompilationSettings: () => ({
+      strict: true,
+      target: ts.ScriptTarget.ES2022,
+      allowNonTsExtensions: true,
+    }),
+    getDefaultLibFileName: (options) => ts.getDefaultLibFilePath(options),
+    fileExists: (name) => name in files,
+    readFile: (name) => files[name],
+  };
+  return ts.createLanguageService(host);
+}

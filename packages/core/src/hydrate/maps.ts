@@ -25,6 +25,19 @@ export interface PageMaps {
   /** Emitter tag → the tags that must be alive before it (SDD-15 §3.5). */
   readonly bus: TagMap;
   /**
+   * The tags that come up WITHOUT a gesture — the control-components (SDD-34 §4.5).
+   *
+   * It is the one exception to gesture-driven hydration in the whole framework, and it is
+   * taken on purpose: a form-associated custom element that is not defined is not labelable,
+   * contributes nothing to a `FormData` and has no validity, so a `<label for>` pointing at it
+   * points at an element that participates in nothing. That is an accessibility failure, not a
+   * deferred optimisation.
+   *
+   * A flat list and not a map, because it answers no question about composition. Empty for
+   * every page that has no control-component, which is the base case.
+   */
+  readonly eager: readonly string[];
+  /**
    * The payload slice of one instance: `data.slice(offsets[id], offsets[id + 1])`.
    *
    * An id outside the payload yields an empty slice, which is also what a claimed host
@@ -47,6 +60,7 @@ export interface PageMaps {
 export const STATE_BLOCK = 'fud-state';
 export const TREE_BLOCK = 'fud-tree';
 export const BUS_BLOCK = 'fud-bus';
+export const EAGER_BLOCK = 'fud-eager';
 
 const EMPTY: readonly unknown[] = [];
 
@@ -70,6 +84,7 @@ export function readPageMaps(doc: Document): PageMaps {
   return {
     tree: readTagMap(doc, TREE_BLOCK),
     bus: readTagMap(doc, BUS_BLOCK),
+    eager: (readBlock(doc, EAGER_BLOCK) as string[] | null) ?? [],
     count: offsets.length - 1,
     slice(id: number): readonly unknown[] {
       const start = offsets[id];

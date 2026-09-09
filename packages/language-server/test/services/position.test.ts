@@ -17,6 +17,9 @@ import {
   brokenValueContextAt,
   classContextAt,
   classValueContextAt,
+  controlNameAt,
+  controlValueAt,
+  controlValueOpeningAt,
   directiveContextAt,
   eventContextAt,
   expressionValueContextAt,
@@ -605,8 +608,10 @@ describe('attributeGapContextAt and nativeGapContextAt', () => {
     ['<app-badge id="x" ', ''],
     ['<app-badge\n  .tone="@(t)"\n  ', ''],
   ])('reads the gap of a component at %j as %j', (source, expected) => {
-    expect(gapAt(source)?.text).toBe(expected);
-    expect(source.slice(gapAt(source)?.span.start, gapAt(source)?.span.end)).toBe(expected);
+    expect(gapAt(source)?.name.text).toBe(expected);
+    expect(source.slice(gapAt(source)?.name.span.start, gapAt(source)?.name.span.end)).toBe(expected);
+    // The element travels with the gap, because what may be written there depends on the tag.
+    expect(gapAt(source)?.element.name).toBe('app-badge');
     // A component's gap is never the native one: the two are exclusive by the hyphen.
     expect(nativeAt(source)).toBeUndefined();
   });
@@ -615,7 +620,8 @@ describe('attributeGapContextAt and nativeGapContextAt', () => {
     ['<div ', ''],
     ['<div cla', 'cla'],
   ])('reads the gap of a native tag at %j as %j', (source, expected) => {
-    expect(nativeAt(source)?.text).toBe(expected);
+    expect(nativeAt(source)?.name.text).toBe(expected);
+    expect(nativeAt(source)?.element.name).toBe('div');
     expect(gapAt(source)).toBeUndefined();
   });
 
@@ -781,5 +787,98 @@ describe('brokenValueContextAt', () => {
     ['<div>3.'],
   ])('leaves %j alone', (source) => {
     expect(brokenAt(source)).toBe(false);
+  });
+});
+
+/**
+ * The three positions of a `control` (SDD-34 §4.9, decision 112).
+ *
+ * `control` is the one binding of the language written as a plain HTML name, so every context
+ * above it — which reads a leading `.` or `@` out of the attribute — passes it by. These are
+ * asked at the END of the source, the way the editor asks: the caret is the last character.
+ */
+describe('controlValueAt', () => {
+  /** The caret just past `mark`, which is where each of these positions is asked from. */
+  const after = (source: string, mark: string) => {
+    const offset = source.indexOf(mark) + mark.length;
+    return controlValueAt(source, offset, regionOf(source, offset));
+  };
+
+  it('reads an unquoted value whose region the dangling dot reports as `tag`', () => {
+    // `control=@f.` — the caret is one past the atom and the dot is not part of its span, so
+    // the region is the TAG and the attribute is gone. The text is all that is left, and it is
+    // enough: `control=` followed by an open expression cannot be anything else.
+    expect(after('<input control=@f. type="text">', '@f.')?.name).toBe('input');
+  });
+
+  it('reads the `.ctrl` spelling on a component tag, and only there', () => {
+    expect(after('<app-input .ctrl=@f. id="a"></app-input>', '@f.')?.name).toBe('app-input');
+    // On a native tag `.ctrl` is an ordinary property whose value is any expression at all.
+    expect(after('<input .ctrl=@f. type="text">', '@f.')).toBeUndefined();
+  });
+
+  it('says nothing where no control was opened at all', () => {
+    expect(after('<input value=@f. type="text">', '@f.')).toBeUndefined();
+    // A prop whose name merely ends in `ctrl` is somebody else's attribute.
+    expect(after('<app-input .subctrl=@f. id="a"></app-input>', '@f.')).toBeUndefined();
+  });
+
+  it('says nothing inside a binding whose NAME is an expression', () => {
+    // `bus:(tone)="@h"` (decision 28.b): the name is a node and not a string, so there is no
+    // name to compare — and a subscription is not a control however its value reads.
+    expect(after('<div bus:(tone)="@h.x"></div>', '@h.')).toBeUndefined();
+  });
+});
+
+describe('controlValueOpeningAt', () => {
+  const after = (source: string, mark: string) => {
+    const offset = source.indexOf(mark) + mark.length;
+    return controlValueOpeningAt(source, offset, regionOf(source, offset));
+  };
+
+  it('claims the empty value, where not even the `@` is there', () => {
+    // What goes here is a node AND the `@` that opens it, neither of them typed: the item has
+    // to write both, so the span is a point and the text is empty.
+    const source = '<input control=>';
+    const at = source.indexOf('control=') + 'control='.length;
+
+    expect(after(source, 'control=')).toEqual({ span: { start: at, end: at }, text: '' });
+    expect(after('<app-input .ctrl=""></app-input>', '.ctrl="')?.text).toBe('');
+  });
+
+  it('lets go the moment a character is there', () => {
+    // From the first `@` the value is the author's and `expressionValueContextAt` owns it.
+    expect(after('<input control=@f. type="text">', '@f.')).toBeUndefined();
+  });
+
+  it('is not a control at all outside one', () => {
+    expect(after('<input value=>', 'value=')).toBeUndefined();
+  });
+});
+
+describe('controlNameAt', () => {
+  const at = (source: string, offset: number) => controlNameAt(source, offset, regionOf(source, offset));
+
+  it('claims the NAME, so the card can say what this element takes', () => {
+    const source = '<input control="@f.title">';
+    const hit = at(source, source.indexOf('control') + 3);
+
+    expect(hit?.element.name).toBe('input');
+    expect(source.slice(hit!.span.start, hit!.span.end)).toBe('control');
+  });
+
+  it('claims neither the value nor another attribute', () => {
+    const source = '<input control="@f.title" type="text">';
+
+    expect(at(source, source.indexOf('@f.title') + 2)).toBeUndefined();
+    expect(at(source, source.indexOf('type') + 2)).toBeUndefined();
+  });
+
+  it('lets go one character past the name, which is already the binding and not its name', () => {
+    // Written with spaces so the `=` is a position of its own: past the end of the name the
+    // hover belongs to whatever comes next, and the card would be pointing at the wrong range.
+    const source = '<input control = "@f.title">';
+
+    expect(at(source, source.indexOf('=') + 1)).toBeUndefined();
   });
 });

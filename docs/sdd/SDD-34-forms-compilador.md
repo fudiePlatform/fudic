@@ -8,7 +8,12 @@
 > mapas de página), 17 (hidratación por gesto, que aquí gana **una** excepción), 19 (el plugin),
 > 23 (la proyección TS, que es quien comprueba las rutas)
 > **Rango de diagnósticos:** `FUD0590`–`FUD0619`
-> **Decisiones de gramática:** 100–106 (nuevas)
+> **Decisiones de gramática:** 108–114 (nuevas). Esta spec se redactó reservando 100–106, pero
+> mientras estaba en `Listo` se tomaron la 100–105 —la cadena de la expresión implícita, BUG-23—
+> y la 107 —dónde se documenta un componente, SDD-36, ya `Hecho` y citada por el
+> language-server—. Las siete se corren a continuación de lo que hay tomado. La regla que evita
+> repetirlo está en la cabecera de la tabla índice de la gramática: una decisión toma el
+> siguiente número libre **del índice**, y entra en él **al redactarse** la spec.
 > **Naturaleza:** gramática + emit + una capa de runtime que **solo** contiene lo que el emit
 > invoca. Ningún escaneo del DOM, ninguna tabla de despacho.
 
@@ -73,18 +78,18 @@ nativo, y el día que exista `@fudic/http` será suyo.
 ### 3.1. La gramática
 
 ```razor
-<form control="@f">                                    <!-- el formulario  (decisión 101) -->
+<form control="@f">                                    <!-- el formulario  (decisión 109) -->
   <label>
     <span>Título</span>
-    <input control="@f.title">                         <!-- un control     (decisión 101) -->
+    <input control="@f.title">                         <!-- un control     (decisión 109) -->
   </label>
 
-  <fieldset control="@f.seo">                          <!-- un grupo       (decisión 101) -->
+  <fieldset control="@f.seo">                          <!-- un grupo       (decisión 109) -->
     <input control="@f.seo.description">
     <input type="url" control="@f.seo.canonical">
   </fieldset>
 
-  <app-input control="@f.body"></app-input>            <!-- cruza el nodo  (decisión 104) -->
+  <app-input control="@f.body"></app-input>            <!-- cruza el nodo  (decisión 112) -->
 </form>
 ```
 
@@ -118,7 +123,7 @@ export function bindSelectMultiple(el: HTMLSelectElement, c: Control<readonly st
 /** El formulario: tocado en cascada, foco al primer inválido, resumen en la live region. */
 export function bindForm(el: HTMLFormElement, f: AnyForm, sum: HTMLElement | null): Cleanup;
 
-/** Un grupo: agrupa errores. `el` es el que el autor haya elegido (decisión 101). */
+/** Un grupo: agrupa errores. `el` es el que el autor haya elegido (decisión 109). */
 export function bindGroup(el: HTMLElement, g: AnyForm): Cleanup;
 
 /** El hueco del error: el elemento que el emit ya dejó escrito. El runtime solo pone texto. */
@@ -154,13 +159,13 @@ necesita el tipo `Control<T>`, así que `forms` depende de `core` y **nunca al r
 
 ### 4.1. `control` es un atributo reservado, y el elemento decide qué significa
 
-**Decisión 100.** `control` es un **atributo reservado** cuyo valor es una expresión con `@`. Es
+**Decisión 108.** `control` es un **atributo reservado** cuyo valor es una expresión con `@`. Es
 de la familia de `ref` (decisión 30), no de `class:`/`bus:` (22, 28.a): esos son prefijos porque
 llevan un nombre detrás del `:`, y aquí no hay nada que nombrar — el nodo lo dice la expresión.
 `control="title"`, sin `@`, es `FUD0590`; es además la forma que el prototipo usaba
 (`control:="title"`), así que el diagnóstico enseña la migración.
 
-**Decisión 101.** **El elemento decide qué se enlaza**, y son tres casos y no más:
+**Decisión 109.** **El elemento decide qué se enlaza**, y son cuatro casos y no más:
 
 | Elemento | Qué se espera | Qué se emite |
 |---|---|---|
@@ -177,7 +182,7 @@ Un grupo se enlaza a **lo que el autor quiera** —un `<fieldset>`, un `<div>`, 
 No hay elemento privilegiado: lo que el enlace aporta es semántica de agrupación de errores, y
 dónde caiga es maquetación.
 
-**Decisión 102.** **Un nodo se enlaza a un elemento y solo a uno dentro del mismo componente.**
+**Decisión 110.** **Un nodo se enlaza a un elemento y solo a uno dentro del mismo componente.**
 Dos `control` con la misma expresión en el mismo fichero es `FUD0591`. Dos vistas del mismo valor
 no es un caso de formulario: es un caso de interpolación, y para eso está `@f.title()`.
 
@@ -187,7 +192,7 @@ misma expresión son legítimos si **todos** son radios; mezclar un radio con cu
 elemento vuelve a ser `FUD0591`. El emit los agrupa y emite una sola llamada a `bindRadio` con la
 lista.
 
-**Decisión 106.** `control` dentro de un bucle (`@foreach`, `@for`, `@while`) es error
+**Decisión 114.** `control` dentro de un bucle (`@foreach`, `@for`, `@while`) es error
 (`FUD0594`). Es la decisión 31 aplicada por la misma razón que a `ref`: la expresión enlazaría N
 elementos al mismo nodo. Las colecciones de controles (`FormArray`) están fuera de alcance en
 SDD-33 §7, y cuando entren traerán su propia forma de nombrar la fila.
@@ -207,10 +212,21 @@ del elemento y escribe la llamada concreta:
 | `<select>` | string | `bindSelect` |
 | `<select multiple>` | array de strings | `bindSelectMultiple` |
 | `<input type="file">`, `image`, `submit`, `reset`, `button` | — | `FUD0592` |
+| `<input type="@t">` | lo que diga el `type` al enlazar | `bindByType` (BUG-25 §4.6) |
 
-Un `type` **dinámico** (`type="@t"`) no se puede decidir en compilación: es `FUD0592` también, con
-su mensaje propio. No se emite un despacho de runtime para rescatarlo; eso sería devolver al
-bundle la tabla que este SDD quita.
+> **Derogado por [BUG-25](./bugs/BUG-25-control-sin-editor.md) §4.6.** Aquí se leía que un
+> `type` **dinámico** (`type="@t"`) es `FUD0592`, porque un despacho de runtime devolvería al
+> bundle la tabla que este SDD quita. No la devuelve: la importa **el chunk del componente que
+> lo escribe**, y una ruta que nunca escribe un `type` interpolado sigue sin verla. Hoy enlaza
+> con `bindByType`, la séptima función de `./dom`, y su enlace se rehace cuando el `type` se
+> mueve igual que cuando se mueve el nodo. Es lo que permite **un** control-componente para
+> todas las formas de `<input>` en vez de uno por forma.
+
+**La lista cerrada es la de abajo, no la de arriba.** Un `type` que no está en ninguna fila
+—`month`, `week`, `datetime-local`, `hidden`, o uno inventado— es `bindText`, y eso no es un
+atajo: es lo que hace el navegador, que trata un `type` desconocido como `text` y da a los
+cuatro nombrados un `value` de tipo string. Enumerar la lista de texto como cerrada obligaría a
+tocar el compilador cada vez que HTML añade un `type`, y a rechazar hoy cuatro que funcionan.
 
 Cada `bind*` hace lo mismo con distinta coerción, y nada más que esto:
 
@@ -245,7 +261,7 @@ SSR— dos cosas:
 - Con errores presentes en el momento de renderizar —un 422 que el servidor pintó, §4.4— el texto
   y el `aria-invalid` **ya salen puestos**. Un formulario con errores es accesible **con cero JS**.
 
-**Decisión 105.** El marcado del error lo emite el compilador y el runtime **solo escribe su
+**Decisión 113.** El marcado del error lo emite el compilador y el runtime **solo escribe su
 texto**. Es la invariante que hace que un formulario tenga la misma accesibilidad haya hidratado o
 no, y es exactamente lo que el prototipo no podía cumplir fabricando el `<span>` al vuelo.
 
@@ -269,15 +285,49 @@ no, y es exactamente lo que el prototipo no podía cumplir fabricando el `<span>
 - **Errores del servidor:** si el autor recibe un 422, se lo pasa al formulario con `$setErrors`
   (SDD-33 §4.6) y el pintado ocurre por los mismos efectos de §4.2. El transporte no participa.
 
-**Dónde vive el formulario, y por qué importa.** `const f = form(schema)` va en la **zona neutra**
-de `@code`, no en `@client`: la zona neutra corre en los dos lados, así que el servidor pinta los
-valores en el HTML y un formulario de edición se ve **sin JavaScript**. Declararlo en `@client`
-compila y funciona, pero el primer render sale vacío — que para un formulario de alta es
-exactamente lo correcto. Por eso es una regla documentada y no un diagnóstico.
+**Dónde vive el formulario, y por qué importa.** El formulario **no se define en la vista**: se
+define en un `.ts` propio —una *slice*— y la vista lo **importa** desde la **zona neutra** de
+`@code`. La zona neutra corre en los dos lados, así que el mismo objeto lo tiene el servidor,
+que pinta sus valores en el HTML, y el cliente, que hidrata sobre ese HTML; y cuando el
+formulario se envía, el servidor puede enlazar el HTTP contra **ese mismo** schema y pasarlo a
+donde quiera. Un formulario de edición se ve, por tanto, **sin JavaScript**.
+
+```razor
+@code {
+  import { userForm } from '../forms/user.form.js';
+}
+
+<form control="@userForm">
+  <input control="@userForm.name">
+</form>
+```
+
+Declararlo en `@client` compila y funciona, pero el primer render sale vacío — que para un
+formulario de alta es exactamente lo correcto. Por eso es una regla documentada y no un
+diagnóstico.
+
+**Y esto obliga a una corrección en SDD-15, porque la zona neutra no llegaba a ningún módulo.**
+La decisión 33.c —*imports dentro de las regiones, elevados en emit*— solo era cierta para
+`@client`: de la zona neutra el emit leía el `props<T>()` y las declaraciones reactivas y
+**descartaba todo lo demás**, así que un `import { userForm } from './user.form.js'` nombraba un
+binding que no existía en ningún sitio y `bindText($n3, userForm.name, $n4)` habría referenciado
+la nada. A partir de aquí:
+
+- los `import` de la zona neutra se **elevan** a los dos módulos emitidos, y su cuerpo se escribe
+  **dentro** de `render()` y de la fábrica del cliente, en orden de fuente;
+- lo que el emit ya escribe con forma propia —el destructurado de `props<T>()` y cada
+  `signal`/`computed`— **no** se copia al lado: se decide por lo que el lector **reconoce**, no
+  por lo que produce, porque `const {} = props<Props>()` no declara ninguna prop y sigue siendo
+  suyo. Una línea que mezcle un reactivo con un binding corriente conserva su mitad;
+- lo que declara **solo un tipo** no viaja a ninguno de los dos, y un `import` que mezcla
+  especificadores de tipo y de valor se **reconstruye** sin los primeros;
+- el módulo de servidor de un componente pasa a llevar TypeScript del autor —un
+  `const f: Form<Post> = form(schema)` lo es—, así que el plugin lo pasa por Oxc igual que ya
+  hacía con `?server` y con `?client`. Los tres módulos emitidos siguen ahora la misma regla.
 
 ### 4.5. `formassociated`: el marcador, la clase, y el JavaScript que sí se paga
 
-**Decisión 103.** `<template shadowrootmode="open" formassociated>` marca el componente como
+**Decisión 111.** `<template shadowrootmode="open" formassociated>` marca el componente como
 **control-componente**. El marcador es de compilación: el navegador nunca lo ve —un atributo
 desconocido en un `<template>` es inerte— y el compilador lo consume. **No inventa nada del
 estándar**: `static formAssociated` lo lee el navegador al *definir* la clase, así que ninguna
@@ -303,11 +353,32 @@ levantar —definido pero sin estado, o sin definir— no es etiquetable, no apo
 `FormData` y no tiene validez; y eso es peor que descargar unos kilobytes. La lista está acotada a
 los tags marcados, se mide (§6.16) y ningún otro componente entra en ella.
 
+**Y lo que sube es el DUEÑO, no el tag marcado a solas.** Esa frase es la de arriba tomada en
+serio, y la impuso el navegador: el nodo que edita un control-componente **no está en su
+payload** —lo nombra el padre con `control="@f.body"` y se lo entrega como prop (§4.6)— y la
+cascada engancha a los hijos en **post-orden**, así que el hijo se engancha siempre *antes* de
+que el padre componga lo que le da. Un tag marcado levantado a solas es, por tanto, exactamente
+el elemento a medio levantar que esta sección se niega a aceptar: definido, actualizado y sin
+nodo —sin `setFormValue`, sin `setValidity` y sin nada en el `FormData` de nadie—. Levantar el
+**ancestro hidratable más externo** pone la cadena entera en pie en un solo recorrido en
+post-orden, y el hijo recibe su nodo por el mismo `u` por el que viaja cualquier otra prop.
+
+La lista sigue acotada: lo que sube es lo que **contiene** un tag marcado, y ni un componente
+más. El contraste de §6.16 se mide contra un componente normal que no es dueño de ninguno —el
+`app-counter` de la misma página, que sigue sin JavaScript hasta que se le toca.
+
 ### 4.6. Pasar un nodo a un componente: la referencia cruza, y por qué
 
-**Decisión 104.** Sobre un tag de componente, `control="@f.title"` **cruza la referencia del
+**Decisión 112.** Sobre un tag de componente, `control="@f.title"` **cruza la referencia del
 nodo** como prop. El hijo recibe el `Control<T>` y lo enlaza a su `<input>` interno con las mismas
 reglas de §4.2.
+
+**La prop se llama `ctrl`**, y es una convención, no algo derivado: el control-componente
+canónico de §3.1 lee `<input control="@ctrl">` en su propio template, así que `ctrl` es el nombre
+que ya declara. Derivarlo —«el que nombre el binding raíz del hijo»— haría que la salida del
+padre dependiera de un detalle del template del hijo que ninguno de los dos escribe. Un hijo que
+no declara `ctrl` no recibe nada: el cruce aterriza **por nombre de prop**, como todos los demás,
+y eso es lo que mantiene el contrato del lado del hijo.
 
 Esto convive con la **decisión 84** —*ninguna signal cruza el shadow boundary*— y no la deroga,
 porque lo que 84 prohíbe es que el **emit** construya un grafo reactivo implícito entre padre e
@@ -321,6 +392,25 @@ se descarta con su motivo: haría falta cruzar además los errores, el `touched`
 orden de validar, o sea cuatro props más por campo, y el hijo seguiría sin poder llamar a
 `touch()`. Un `Control<T>` es una referencia con identidad, igual que el `FormControl` que un
 desarrollador de Angular ya conoce.
+
+**Y el hijo lo enlaza cuando llega, no cuando se engancha.** Un prop que cruza llega por el
+canal de actualización —`u`—, y `u` es *de valor*: reasigna y vuelve a pintar, no vuelve a
+enganchar (BUG-12 §4.2). Como la cascada engancha en post-orden, en el momento en que el hijo
+corre su `$s()` el prop está **vacío**, y ahí no hay nada que enlazar. Así que el emit escribe
+los enlaces de un `control` cuya expresión está enraizada en un **prop** en una función aparte
+—`$cb`— en vez de en el enganche:
+
+- `$s()` la llama una vez, y con el nodo todavía vacío la guarda la deja pasar sin enlazar nada;
+- `u` la vuelve a llamar **solo cuando ese prop es el que se ha movido**: un enlace se rehace
+  quitando escuchas y volviéndolas a poner, y cobrárselo a cualquier otra prop del componente
+  sería cobrar por algo que no ha cambiado;
+- `$cb` **deshace lo suyo antes de rehacerlo**, así que llamarla dos veces enlaza una: lo que
+  cambia entre las dos llamadas es a qué nodo está enlazado el elemento, que es justo el caso
+  de un padre que cambia el campo que edita el hijo.
+
+Un `control` que nombra algo que el componente ya tiene —un import de la zona neutra, una
+declaración de `@client`— no pasa por nada de esto: está ahí cuando la fábrica corre, no lo
+puede sustituir una actualización, y se enlaza en el enganche como siempre.
 
 **La regla de accesibilidad que lo acompaña:** un componente que recibe un `Control<T>` y cuya
 etiqueta puede estar **fuera** de su shadow root debe declararse `formassociated`. Es lo que lo
@@ -382,8 +472,12 @@ schema en el emit sería duplicar el chequeo y quedarse corto.
   de la anterior y el criterio §6.10 la mide comparando el HTML de los dos caminos.
 - **`formassociated` es un marcador de compilación, no una capacidad pedida al navegador.** No
   llega al DOM; decide clase base, `delegatesFocus` y pertenencia a `eager`.
-- **La hidratación eager está acotada a los tags `formassociated`.** Es la única excepción a
-  SDD-17, se lista en el mapa de página y se mide.
+- **La hidratación eager está acotada a los tags `formassociated`** y a la cadena que los
+  contiene, porque el nodo lo da el dueño. Es la única excepción a SDD-17, se lista en el mapa de
+  página y se mide.
+- **Un nodo que cruza se enlaza cuando llega.** El hijo se engancha antes que el padre, así que
+  el enlace de un `control` enraizado en un prop se rehace desde `u` —y se deshace primero, de
+  modo que dos llamadas enlazan una vez—.
 - **Un nodo, un elemento, por componente.** Enlace duplicado es `FUD0591`; dentro de un bucle,
   `FUD0594`.
 - **`control` sobre un `<form>` enlaza estado, no acción.** Nada de este SDD envía nada.
@@ -398,12 +492,13 @@ schema en el emit sería duplicar el chequeo y quedarse corto.
 
 | Código | Regla |
 |---|---|
-| `FUD0590` | El valor de `control` no es una expresión `@` (decisión 100). Cubre el `control="title"` del prototipo. |
-| `FUD0591` | Dos elementos del mismo componente enlazan el mismo nodo (decisión 102), salvo que **todos** sean `<input type="radio">`. |
-| `FUD0592` | `control` sobre un `<input>` cuyo `type` no porta valor de usuario (`submit`, `reset`, `button`, `image`), no está soportado (`file`, SDD-33 §7) o es **dinámico** y no se puede decidir en compilación. |
-| `FUD0593` | `formassociated` fuera del `<template shadowrootmode>` raíz de un componente — en un template anidado o en modo página (decisión 103). |
-| `FUD0594` | `control` dentro de un bucle (decisión 106, hermana de la 31). |
-| `FUD0595`–`FUD0619` | Reservados. |
+| `FUD0590` | El valor de `control` no es una expresión `@` (decisión 108). Cubre el `control="title"` del prototipo. |
+| `FUD0591` | Dos elementos del mismo componente enlazan el mismo nodo (decisión 110), salvo que **todos** sean `<input type="radio">`. |
+| `FUD0592` | `control` sobre un `<input>` cuyo `type` no porta valor de usuario (`submit`, `reset`, `button`, `image`) o no está soportado (`file`, SDD-33 §7). Un `type` **dinámico** estaba aquí y ya no (BUG-25 §4.6): enlaza con `bindByType`. |r en compilación. |
+| `FUD0593` | `formassociated` fuera del `<template shadowrootmode>` raíz de un componente — en un template anidado o en modo página (decisión 111). |
+| `FUD0594` | `control` dentro de un bucle (decisión 114, hermana de la 31). |
+| `FUD0595` | `control` sin un `<form control="…">` por encima en la misma plantilla (decisión 115, [BUG-25](./bugs/BUG-25-control-sin-editor.md)). Exento el control-componente: enlaza el nodo que le pasa su padre, y el sitio del cruce se comprueba en el fichero del padre. |
+| `FUD0596`–`FUD0619` | Reservados. |
 
 Ninguno de los cinco lanza: el emit anota el diagnóstico con su span, omite **ese** enlace y sigue
 emitiendo el fichero (regla de oro del proyecto).
@@ -421,13 +516,13 @@ Tests en `packages/compiler/test/` (1–9, 13–15), `packages/forms/test/dom/` 
    expresión parseada y el elemento resuelto; `control="title"` produce `FUD0590` y el resto del
    fichero se emite.
 2. `control` sobre `<form>`, sobre `<input>`, sobre `<fieldset>` y sobre `<app-input>` clasifican
-   en los cuatro casos de la decisión 101, y el clasificado se ve en el AST.
+   en los cuatro casos de la decisión 109, y el clasificado se ve en el AST.
 3. Dos `control="@f.title"` en el mismo fichero → `FUD0591` en el **segundo**, con su span. Tres
    `<input type="radio" control="@f.tone">` → **sin diagnóstico** y una sola llamada a `bindRadio`
    con los tres; los mismos tres más un `<input type="text">` sobre el mismo nodo → `FUD0591`.
 4. `control` dentro de un `@foreach` → `FUD0594`.
-5. `<input type="file" control="@f.doc">`, `type="submit"` y `type="@t"` → `FUD0592`, cada uno con
-   su mensaje.
+5. `<input type="file" control="@f.doc">` y `type="submit"` → `FUD0592`, cada uno con su mensaje.
+   (`type="@t"` estaba aquí y ya no: enlaza con `bindByType` — BUG-25 §4.6.)
 6. `formassociated` en un `<template>` anidado y en una página → `FUD0593`.
 
 **Emit**

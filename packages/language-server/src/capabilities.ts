@@ -25,8 +25,16 @@ import { EMMET_TRIGGER_CHARACTERS } from './services/emmet.js';
  * They exist to correct the TextMate grammar of SDD-25, which is necessarily approximate at
  * the `@` transitions: these come from the real AST, so `@if` is a directive and `app-badge`
  * is visibly not a native tag.
+ *
+ * `fudAt` is the character itself and nothing more, and it is a type of its own rather than
+ * part of the four below because the `@` is the one thing they all share: it is the transition,
+ * and the reader has to see it before knowing which of them follows. A grammar cannot give it
+ * one colour — the same character arrives as `punctuation.definition.keyword` in `@if` and as
+ * `punctuation.definition.template-expression.begin` in `@tone` — so the tree does, the way
+ * Razor paints it in Visual Studio.
  */
 export const FUDIC_TOKEN_TYPES = [
+  'fudAt',
   'fudDirective',
   'fudInterpolation',
   'fudBinding',

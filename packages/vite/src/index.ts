@@ -58,6 +58,8 @@ export {
   readSwConfig,
 } from './swconfig.js';
 export { type PageAnalysis, analyzePage } from './analyze.js';
+// The body of a `serverValidator` does not reach the browser (SDD-34 §4.7).
+export { eraseServerValidators } from './server-validators.js';
 export {
   type RouteDefault,
   type FudicOptions,

@@ -118,6 +118,39 @@ export interface ClientCode {
 }
 
 /**
+ * One top-level statement of the NEUTRAL zone — the half of `@code` that runs on BOTH sides,
+ * and until SDD-34 the half that reached NEITHER emitted module.
+ *
+ * The zone used to contribute only two things: the `props<T>()` destructuring and the
+ * reactive declarations, both of which the emit writes in its own shape. Everything else was
+ * read for those two facts and then dropped, so decision 33.c — *imports inside the regions,
+ * hoisted at emit* — was true of `@client` alone, and an `import { userForm } from
+ * './user.form.js'` named a binding that existed in no module. That is the shape SDD-34 needs:
+ * a form is written in a `.ts` and IMPORTED by the view, so that the server renders its values
+ * and the client hydrates the very same object — and `control="@userForm.title"` compiles to a
+ * call that has to find `userForm` on both sides.
+ *
+ * **What declares a TYPE and nothing else does not travel.** A `type Post = …`, an
+ * `interface`, an `import type` — the emit reads them (that is how `props<T>()` resolves) and
+ * neither module runs them. The same goes for a type specifier inside a value import, which is
+ * why a mixed `import { type Post, userForm }` is NARROWED rather than copied: the specifier
+ * sits in the middle of a list and cutting it textually would take a comma with it.
+ *
+ * Everything else is the author's source, verbatim — annotations included. A neutral
+ * `const f: Form<Post> = form(schema)` is TypeScript, so both emitted modules are TypeScript
+ * whenever the author wrote it, and both are stripped by the plugin on their way through the
+ * bundler. That was already the rule for the client chunk (`?client`) and for `@server`; the
+ * component's server module joins them, because until now nothing of the author's ever
+ * reached it.
+ */
+export interface NeutralStatement {
+  /** The author's source, with any type-only import specifier removed. */
+  readonly text: string;
+  /** An `import` is only legal at module scope; everything else goes inside the function. */
+  readonly hoisted: boolean;
+}
+
+/**
  * One top-level statement of `@client`, and where it came from.
  *
  * The offset travels with the text because a later pass — the one that knows the GRAPH, and
@@ -177,6 +210,15 @@ export interface ExtractedCode {
   /** Every name the component declares with `signal(...)` or `computed(...)`, in order. */
   readonly signals: Reactive[];
   readonly client: ClientCode;
+  /**
+   * The neutral zone, in source order, minus what the emit writes in its own shape.
+   *
+   * A `props<T>()` destructuring and a `signal(...)`/`computed(...)` declaration are NOT here:
+   * the two modules each write their own form of those — the props pattern with its defaults,
+   * the reactive inert on the server and cell-spliced on the client — and copying the source
+   * beside them would declare the same name twice.
+   */
+  readonly neutral: readonly NeutralStatement[];
   /** The parsed JS of the template. Empty for a document with no renderable tree. */
   readonly template: TemplateJs;
   /**
@@ -271,6 +313,7 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
   });
 
   const clientStatements: OxcNode[] = [];
+  const neutral: NeutralStatement[] = [];
   ids.forEach((id, i) => {
     const root = result.value.ast(id);
     const stmts = Array.isArray(root) ? (root as OxcNode[]) : [root as OxcNode];
@@ -278,10 +321,13 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
     for (const stmt of stmts) {
       if (isClient) clientStatements.push(stmt);
       else checkNeutralEffect(stmt, map, own);
-      if (!is(stmt, 'VariableDeclaration')) continue;
-      for (const decl of fieldArray(stmt, 'declarations')) {
-        readDeclarator(decl, source, map, props, signals, named);
-      }
+      // The declarators are read on BOTH sides — a `signal(...)` is as reactive in the
+      // neutral zone as in `@client` — and what comes back is what the emit does NOT write
+      // in a shape of its own, which is exactly what the neutral zone still has to carry.
+      const remaining = readDeclarators(stmt, source, map, props, signals, named);
+      if (isClient) continue;
+      const kept = neutralStatement(stmt, remaining, source, map);
+      if (kept !== undefined) neutral.push(kept);
     }
   });
 
@@ -312,6 +358,7 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
     props,
     signals,
     client,
+    neutral,
     template,
     mutable: changeableBindings(clientStatements),
     clientNames: topLevelBindings(clientStatements),
@@ -535,6 +582,111 @@ function withHost(
 }
 
 /**
+ * Read every declarator of a statement, and answer which of them the emit does NOT write in a
+ * shape of its own.
+ *
+ * `readDeclarator` recognises exactly two forms — the `props<T>()` destructuring and a
+ * `signal(...)`/`computed(...)` — and both of those come out of the emit written differently
+ * from how they went in: the props pattern carries its defaults, the reactive is inert on the
+ * server and cell-spliced on the client. Copying the source beside them would declare the same
+ * name twice, so what this returns is the REST — and it is a per-declarator answer rather than
+ * a per-statement one, so that a `const a = 1, n = signal(0)` keeps `a` instead of losing it to
+ * a rule that could only say yes or no about the whole line.
+ *
+ * `undefined` for a statement that declares no variables at all: there is nothing to narrow.
+ */
+function readDeclarators(
+  stmt: OxcNode,
+  source: string,
+  map: MapOffset,
+  props: Prop[],
+  signals: Reactive[],
+  named: ReadonlyMap<string, OxcNode>,
+): readonly OxcNode[] | undefined {
+  if (!is(stmt, 'VariableDeclaration')) return undefined;
+  const remaining: OxcNode[] = [];
+  for (const decl of fieldArray(stmt, 'declarations')) {
+    if (!readDeclarator(decl, source, map, props, signals, named)) remaining.push(decl);
+  }
+  return remaining;
+}
+
+/** Statement types that declare a TYPE and nothing else: read by the emit, run by nobody. */
+const TYPE_ONLY_STATEMENTS: ReadonlySet<string> = new Set([
+  'TSTypeAliasDeclaration',
+  'TSInterfaceDeclaration',
+  'TSModuleDeclaration',
+  'TSDeclareFunction',
+  'TSImportEqualsDeclaration',
+]);
+
+/**
+ * One neutral statement as the modules need it, or `undefined` when nothing of it travels —
+ * because the emit already writes everything it declared, or because it declares only a type.
+ */
+function neutralStatement(
+  stmt: OxcNode,
+  remaining: readonly OxcNode[] | undefined,
+  source: string,
+  map: MapOffset,
+): NeutralStatement | undefined {
+  const slice = (node: OxcNode): string => source.slice(map(node.start), map(node.end));
+  if (remaining !== undefined) {
+    if (remaining.length === 0) return undefined; // props / reactives: the emit writes them
+    // `remaining` is only defined for a `VariableDeclaration`, and one always has a `kind`.
+    const kind = String(stmt['kind']);
+    // Rebuilt from the declarators that survived, so a mixed line keeps exactly its own half
+    // instead of being lost to a rule that could only say yes or no about the whole thing.
+    return { text: `${kind} ${remaining.map(slice).join(', ')};`, hoisted: false };
+  }
+  if (TYPE_ONLY_STATEMENTS.has(stmt.type)) return undefined;
+  if (!is(stmt, 'ImportDeclaration')) return { text: slice(stmt), hoisted: false };
+  const value = valueImport(stmt, source, map);
+  return value === null ? undefined : { text: value, hoisted: true };
+}
+
+/**
+ * An import with its type specifiers removed: `null` when everything it names is a type, the
+ * verbatim text when nothing is, and a rebuilt one when it mixes the two.
+ *
+ * The mixed form (`import { type Post, userForm } from './user.form.js'`) is what forces a
+ * rebuild rather than a slice: the type specifier sits in the middle of the list, and cutting
+ * it out textually means also cutting the comma that belongs to its neighbour.
+ */
+function valueImport(stmt: OxcNode, source: string, map: MapOffset): string | null {
+  if (stmt['importKind'] === 'type') return null;
+  const specifiers = fieldArray(stmt, 'specifiers');
+  const kept = specifiers.filter((s) => s['importKind'] !== 'type');
+  // A side-effect import (`import './reset.css'`) names nothing and still has to travel: it is
+  // the one shape `specifiers` is empty for, and dropping it would drop the effect.
+  if (kept.length === specifiers.length) return source.slice(map(stmt.start), map(stmt.end));
+  if (kept.length === 0) return null;
+
+  // Every specifier has a `local` and every import has a `source`: the grammar says so, and a
+  // guard for either would be a branch no input can reach.
+  const heads: string[] = [];
+  const members: string[] = [];
+  // A NAMESPACE specifier is not among these: `import * as ns, { a } from '…'` is not
+  // grammatical, so an import that has named specifiers to narrow has no `* as` in it. What is
+  // left is the default specifier and the named ones.
+  for (const specifier of kept) {
+    const local = name(field(specifier, 'local')!);
+    if (is(specifier, 'ImportDefaultSpecifier')) {
+      heads.push(local);
+      continue;
+    }
+    // The imported name is an identifier, or a STRING — `import { "a-b" as ab }`, the
+    // arbitrary module namespace name of ES2022. Both have to survive the rebuild.
+    const imported = field(specifier, 'imported')!;
+    const from = is(imported, 'Identifier') ? name(imported) : JSON.stringify(imported['value']);
+    members.push(from === local ? local : `${from} as ${local}`);
+  }
+  if (members.length > 0) heads.push(`{ ${members.join(', ')} }`);
+  const from = field(stmt, 'source')!;
+  return `import ${heads.join(', ')} from ${source.slice(map(from.start), map(from.end))};`;
+}
+
+/**
  * Index one statement's named type under its name, when it declares members this file can read.
  *
  * `type Props = { … }` and `interface Props { … }`, exported or not. A type that is imported, or
@@ -562,7 +714,11 @@ function collectNamedType(statement: OxcNode, out: Map<string, OxcNode>): void {
   }
 }
 
-/** Route a single `const … = call(...)` declarator to props (ObjectPattern) or reactives. */
+/**
+ * Route a single `const … = call(...)` declarator to props (ObjectPattern) or reactives, and
+ * answer whether it was one of the two — that is, whether the EMIT writes it in a shape of its
+ * own and the author's line must not be copied beside it.
+ */
 function readDeclarator(
   decl: OxcNode,
   source: string,
@@ -570,10 +726,10 @@ function readDeclarator(
   props: Prop[],
   signals: Reactive[],
   named: ReadonlyMap<string, OxcNode>,
-): void {
+): boolean {
   const init = field(decl, 'init');
   const id = field(decl, 'id');
-  if (!init || !id || !is(init, 'CallExpression')) return;
+  if (!init || !id || !is(init, 'CallExpression')) return false;
   const callee = field(init, 'callee');
   const called = is(callee, 'Identifier') ? name(callee!) : '';
 
@@ -581,7 +737,12 @@ function readDeclarator(
     const declared = declaredMembers(init, named);
     for (const property of fieldArray(id, 'properties'))
       readProp(property, source, map, props, declared);
-  } else if ((called === 'signal' || called === 'computed') && is(id, 'Identifier')) {
+    // RECOGNISED, and that is what the answer means — not «it produced something». A
+    // `const {} = props<Props>()` declares no prop and is still the emit's to write: copying
+    // it into a module would call a `props` that exists nowhere.
+    return true;
+  }
+  if ((called === 'signal' || called === 'computed') && is(id, 'Identifier')) {
     const arg = fieldArray(init, 'arguments')[0];
     // A `computed` with no argument would be a program that cannot run; `undefined` keeps
     // the emit total and lets the author's own tooling say so.
@@ -591,7 +752,9 @@ function readDeclarator(
       kind: called,
       at: map(init.start),
     });
+    return true;
   }
+  return false;
 }
 
 

@@ -39,7 +39,8 @@ import type { HtmlContent, ElementNode, AttributeValuePart } from '../html/index
 import type { ControlNode } from '../control/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { Span } from '../types/index.js';
-import { classifyAttribute, crossing } from '../binding/index.js';
+import { classifyAttribute, crossing, CONTROL_PROP } from '../binding/index.js';
+import { ERROR_SLOT_ATTR, SUMMARY_SLOT_ATTR, type ControlSite } from './controls.js';
 import { CodeWriter, type LinePart } from './writer.js';
 import { type AssetLinker } from './assets.js';
 import {
@@ -233,6 +234,18 @@ export interface ClientScope {
    * composed, the channel when each value in it is written.
    */
   declared(tag: string): PropTarget | undefined;
+  /**
+   * The CELL a callback of this component publishes, by the author's name for it — `$pK`, or
+   * `undefined` when the name has none (BUG-24 §4.6).
+   *
+   * A signal and a function are not symmetric here, and that asymmetry is the whole of it. A
+   * `signal(…)` this component declares IS its own cell: `withCells` splices `$pK ?? ` in
+   * front of the author's initialiser, so the local name and the cell are one object. A
+   * function has no initialiser to splice into, so its cell is a SEPARATE object that the
+   * hookup fills — and the local name is then a plain function, which is not what the child
+   * reads. Only the second case needs to be looked up, so only the second case is here.
+   */
+  cellOf(name: string): string | undefined;
   readonly signals: ReadonlySet<string>;
   readonly moving: ReadonlySet<string>;
 }
@@ -302,6 +315,12 @@ export interface MarkupOptions {
    * behind. A component's do not — the browser takes its shadow root away whole.
    */
   readonly trackRoots?: boolean;
+  /**
+   * Whether this walk may defer a `control` whose node arrives as a prop into the factory's
+   * `$cb` (SDD-34 §4.6). Only the component's own walk can: `$cb` and `u` live in the
+   * factory, and a block's node variables do not.
+   */
+  readonly rebindable?: boolean;
 }
 
 export class ClientMarkupEmitter {
@@ -318,11 +337,23 @@ export class ClientMarkupEmitter {
   readonly #usage: CoreUsage;
   readonly #hookup: HookupContext;
   readonly #trackRoots: boolean;
+  readonly #rebindable: boolean;
   readonly #nodes: string[] = [];
   readonly #rootItems: RootItem[] = [];
+  /**
+   * Where a bound element and its error slot ended up, by node variable.
+   *
+   * They are per WALK and not per file: a block writes its own nodes into its own closure, so
+   * a `control` inside an `@if` names the variables of that block. The plan they are looked up
+   * from is the file's; what they resolve to is this walk's.
+   */
+  readonly #elementVars = new Map<ElementNode, string>();
+  readonly #errorSlots = new Map<ElementNode, string>();
   #depth = 0;
   /** How many value writes `$a` owns so far — each one gets its own slot in `$w`. */
   #writes = 0;
+  /** How many crossed nodes `$cb` has named so far: `$fc0`, `$fc1`… */
+  #controlTemps = 0;
   /**
    * Where the walk is: the whitespace mode in force and the box that holds what is being
    * written. A stack in the same sense the mode alone was — pushed entering an element,
@@ -344,6 +375,7 @@ export class ClientMarkupEmitter {
     this.#usage = options.usage;
     this.#hookup = options.hookup;
     this.#trackRoots = options.trackRoots ?? false;
+    this.#rebindable = options.rebindable ?? false;
     this.#at = options.at;
   }
 
@@ -619,6 +651,7 @@ export class ClientMarkupEmitter {
     // Derived by the SAME function the server branch uses: the two have to answer the box
     // question identically, or they stop building the same tree (BUG-21 §4.5).
     this.#at = childrenContext(outer, el, isComponent);
+    this.#elementVars.set(el, v);
     this.#fab.line(`${v} = $dom.element(${JSON.stringify(el.name)});`);
     if (isComponent) {
       // A child component host: fabricate it and hang its light DOM, but do NOT open its
@@ -648,15 +681,180 @@ export class ClientMarkupEmitter {
         this.#host(false),
         this.#sinkFor(),
       );
+      // The `aria-describedby` of a bound control — written by the emit and never by the
+      // runtime, and written on BOTH branches with the same value (SDD-34 §4.3). The
+      // `aria-invalid` is not here: on the client it follows the errors, so it belongs to the
+      // effect `bindErrors` installs, which is also what takes it back.
+      this.#controlAttrs(el, v);
     }
     this.#listeners(el, v);
     // Take the element the cursor is on, then advance it — before descending, so the
     // levels below are walked with this element already accounted for.
     this.#adopt.line(`${v} = ${level.cursor!}; ${level.cursor} = $dom.nextElementSibling(${level.cursor});`);
     if (this.#tracked(level)) this.#adopt.line(`$r.push(${v});`);
+    // The slot's cursor step goes HERE, beside the element's own: it is the next element of
+    // this level, and the walk below descends with a cursor of its own.
+    const slot = this.#controlSlotVar(el);
+    if (slot !== null) {
+      this.#adopt.line(`${slot} = ${level.cursor!}; ${level.cursor} = $dom.nextElementSibling(${level.cursor});`);
+      if (this.#tracked(level)) this.#adopt.line(`$r.push(${slot});`);
+    }
     this.#children(el, v);
     this.#at = outer;
     this.#place(v, level.fab); // parent last: a node is filled before it joins the tree
+    if (slot !== null) this.#controlSlot(el, slot, level);
+    this.#controlBinding(el, v);
+  }
+
+  /**
+   * The `aria-describedby` of a bound control, on the client side of §4.3.
+   *
+   * A static attribute, fabricated with the element and identical to what the server wrote:
+   * the reference EXISTS before the error does, whether the instance came alive by `c` or by
+   * `h`. What follows the errors — `aria-invalid` and the message — is the effect's, because
+   * it also has to take them back.
+   */
+  #controlAttrs(el: ElementNode, v: string): void {
+    const site = this.#hookup.controls.get(el);
+    if (site === undefined || site.target.kind !== 'value') return;
+    this.#fab.line(`$dom.setAttr(${v}, 'aria-describedby', ${JSON.stringify(site.slotId)});`);
+  }
+
+  /** The variable of the slot this element carries, allocated up front, or `null`. */
+  #controlSlotVar(el: ElementNode): string | null {
+    const site = this.#hookup.controls.get(el);
+    if (site === undefined || !site.writesSlot) return null;
+    const v = this.#fresh();
+    this.#errorSlots.set(el, v);
+    return v;
+  }
+
+  /**
+   * The error slot — or the form's live region — fabricated as the sibling the server also
+   * painted (decision 113).
+   *
+   * It carries no text here. The server writes the message it had at render time and the
+   * effect writes it afterwards, so an instance created at runtime starts empty and one
+   * adopted from the server keeps exactly what arrived — which is what makes the two paths
+   * produce the same HTML (§6.10).
+   */
+  #controlSlot(el: ElementNode, v: string, level: Level): void {
+    const site = this.#hookup.controls.get(el)!;
+    const isForm = site.target.kind === 'form';
+    this.#fab.line(`${v} = $dom.element('span');`);
+    this.#fab.line(`$dom.setAttr(${v}, 'id', ${JSON.stringify(site.slotId)});`);
+    this.#fab.line(`$dom.setAttr(${v}, '${isForm ? SUMMARY_SLOT_ATTR : ERROR_SLOT_ATTR}', '');`);
+    if (isForm) this.#fab.line(`$dom.setAttr(${v}, 'aria-live', 'polite');`);
+    this.#place(v, level.fab);
+  }
+
+  /**
+   * The bind call of one site, written into `$s()` — the point create and hydrate converge on,
+   * so the form is wired whichever way the instance came alive.
+   *
+   * **The `switch` the prototype ran in the browser is already spent** (§4.2): the function
+   * named here is the one function for THIS shape of element, and the other five are not
+   * mentioned, so a page with one text field downloads one of them.
+   *
+   * `$nX && …` for the same reason the listeners carry it: the DOM is the authority on
+   * position, and a projection can leave a variable unassigned.
+   */
+  #controlBinding(el: ElementNode, v: string): void {
+    const site = this.#hookup.controls.get(el);
+    if (site === undefined || site.bind === null) return;
+    const bind = site.bind;
+    this.#hookup.binds.add(bind);
+    const slot = this.#errorSlots.get(el);
+    // A node that arrives as a prop is bound from `$cb` instead, under a name of its own and
+    // behind a guard: at the moment this walk hooks up, that prop is still empty (§4.6).
+    const prop = this.#crossedProp(site.node);
+    // And so is a binding whose SHAPE comes from a prop — an `<input type="@t">` (decision
+    // 109). The reason is the same one seen from the other side: what the call depends on can
+    // move, so the call has to be remade. `$cb` undoes its own work first, so a rebind is a
+    // teardown and a hookup, never two live bindings on one element.
+    const shape = this.#dynamicTypeProp(el, site.target);
+    const deferred = prop !== null || shape !== null;
+    const out = deferred ? this.#hookup.rebind : this.#hook;
+    const list = deferred ? '$cd' : '$d';
+    if (shape !== null) this.#hookup.rebound.add(shape);
+    let node = site.node;
+    if (prop !== null) {
+      this.#hookup.rebound.add(prop);
+      node = `$fc${this.#controlTemps++}`;
+      // Once, into a const: the guard and the argument have to be the SAME evaluation, and
+      // what the author wrote is an expression the emit does not get to run twice.
+      out.line(`const ${node} = ${site.node};`);
+    }
+    const carries = prop === null ? '' : `${node} && `;
+    // The fourth argument of `bindByType`, and it is read off the ELEMENT rather than
+    // recomputed from the author's expression. The attribute is already written by then — `$a`
+    // runs before `$s` on the create path, the server painted it on the adopt path, and `u`
+    // applies the values before calling `$cb` — so the DOM is the one place where the answer
+    // is guaranteed current, whatever shape the author's `type` value had.
+    const shapeArg =
+      site.target.kind === 'value' && site.target.dynamicType === true ? `, ${v}.type` : '';
+    if (site.target.kind === 'group') {
+      out.line(`${v} && ${carries}${list}.push(${bind}(${v}, ${node}));`);
+      return;
+    }
+    if (site.target.kind === 'form') {
+      // The live region is optional in the signature, and here it always exists — the emit
+      // wrote it. `null` stays reachable for a caller that binds a form by hand.
+      out.line(`${v} && ${carries}${list}.push(${bind}(${v}, ${node}, ${slot!}));`);
+      return;
+    }
+    if (site.group.length > 0) {
+      const guards = site.group.map((radio) => this.#varOf(radio));
+      out.line(
+        `${guards.map((g) => `${g} && `).join('')}${carries}${list}.push(${bind}([${guards.join(', ')}], ${node}, ${slot!}));`,
+      );
+      return;
+    }
+    out.line(
+      `${v} && ${slot!} && ${carries}${list}.push(${bind}(${v}, ${node}, ${slot!}${shapeArg}));`,
+    );
+  }
+
+  /**
+   * The prop an `<input type="@t">` reads its SHAPE from, or `null`.
+   *
+   * Only a prop, and only when the target really is the runtime dispatch. A dynamic `type`
+   * built out of this component's own state moves through that state's own channel and `$a`
+   * rewrites the attribute; what `$cb` exists for is a value the PARENT sends, which arrives
+   * through `u` and has no channel of its own.
+   */
+  #dynamicTypeProp(el: ElementNode, target: ControlSite['target']): string | null {
+    if (target.kind !== 'value' || target.dynamicType !== true) return null;
+    for (const attr of el.attributes) {
+      if (typeof attr.name !== 'string' || attr.name.toLowerCase() !== 'type') continue;
+      for (const part of attr.value) {
+        if (part.type !== 'razor-expression') continue;
+        const found = this.#crossedProp(this.#slice(part.expr));
+        if (found !== null) return found;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * The prop a `control` expression is rooted at, or `null` when it is rooted at anything
+   * else — a neutral import, a `@client` binding, a name of the module.
+   *
+   * That difference is the whole of §4.6 seen from the emit. A control-component's
+   * `<input control="@ctrl">` names a node the PARENT owns, and the parent hands it over
+   * through the update channel: the child is hooked up first, in post-order, so at that
+   * moment `ctrl` is empty and binding it there would bind nothing — and, before the guard
+   * existed, would call `bindText` with `null` and throw inside the hydration.
+   */
+  #crossedProp(expr: string): string | null {
+    if (!this.#rebindable) return null;
+    const root = /^[A-Za-z_$][\w$]*/u.exec(expr)?.[0];
+    return root !== undefined && this.#hookup.props.has(root) ? root : null;
+  }
+
+  /** The node variable an element was fabricated under — for the radios of a group. */
+  #varOf(el: ElementNode): string {
+    return this.#elementVars.get(el)!;
   }
 
   /**
@@ -804,12 +1002,25 @@ export class ClientMarkupEmitter {
     const declared = this.#scope.declared(el.name);
     for (const attr of el.attributes) {
       const b = classifyAttribute(attr, this.#source).value;
+      // `control="@f.body"` on a component tag: the REFERENCE crosses, under the `ctrl` prop
+      // (decision 112). It is the `ref` shape and not a new one, and that is the whole
+      // argument of §4.6 in one line — what crosses is the model, named by the author at the
+      // point of use, so the child subscribes to it on its own and no `u` is emitted for it.
+      // Decision 84 is untouched: the emit builds no implicit reactive graph here.
+      if (b.type === 'control') {
+        out.set(CONTROL_PROP, { expr: this.#slice(b.value.expr), changes: false, ref: true });
+        continue;
+      }
       if (b.type !== 'property') continue;
       const how = crossing(this.#source, b.value, this.#scope.signals, declared?.(b.name));
       // By reference: the object goes in, once. No signal to hook onto and nothing that
       // `changes` — the child is not downstream of this parent any more, it is beside it.
       if (how?.kind === 'ref') {
-        out.set(b.name, { expr: how.name, changes: false, ref: true });
+        out.set(b.name, {
+          expr: this.#reference(how.name, declared?.(b.name)?.channel),
+          changes: false,
+          ref: true,
+        });
         continue;
       }
       const naked = how?.name;
@@ -824,6 +1035,40 @@ export class ClientMarkupEmitter {
       }
     }
     return out;
+  }
+
+  /**
+   * What actually goes into the slot of a value crossing by REFERENCE — which is not always
+   * the name the author wrote (BUG-24 §4.6).
+   *
+   * The child reads a callback prop as `onSave()`, because its cell may still be empty when
+   * its listener is registered and the read has to happen at DISPATCH. That convention only
+   * holds if what lands in the slot is a CELL, and the parent's local name is not one: for a
+   * `signal(…)` it is — `withCells` made the declaration and the cell the same object — but a
+   * function has no initialiser to splice into, so its cell is the separate `$pK` the hookup
+   * fills. Handing the bare function over made the child call it to read it: `sumar()` ran
+   * with no argument, wrote `NaN`, and returned `undefined` for the call that followed.
+   *
+   * Two shapes, and the `??` is what makes them one expression. `$pK` is the cell on the `h`
+   * path, so the parent hands back exactly what the runtime already put in the child's slice
+   * and the two ends stay on the same object. On the `c` path there is no payload and no
+   * cell, so the fallback is a reader over the closure — the same one every time, since the
+   * function it names is a binding of this instance. A name with no cell at all (a callback
+   * declared in the neutral zone) takes the fallback alone.
+   *
+   * A RELAY takes the name untouched, and it is the same rule seen from one level down: a
+   * callback this component received as a prop is already the cell — the runtime resolved the
+   * marker before handing the slice over — so wrapping it would mint a reader over a reader
+   * and the grandchild's single `()` would unwrap one layer too few.
+   *
+   * Everything else crosses under its own name: a `Signal<T>` prop, and the `control` node of
+   * SDD-34 decision 112, which the child reads directly and never calls to unwrap.
+   */
+  #reference(name: string, channel: 'signal' | 'fn' | undefined): string {
+    if (channel !== 'fn' || this.#hookup.callbacks.has(name)) return name;
+    const cell = this.#scope.cellOf(name);
+    const reader = `() => ${name}`;
+    return cell === undefined ? `(${reader})` : `(${cell} ?? (${reader}))`;
   }
 
   /**

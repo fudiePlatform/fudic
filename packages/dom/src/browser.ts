@@ -38,10 +38,10 @@ export const browserDom: DomClient<Node> = {
   remove(node: Node): void {
     (node as ChildNode).remove();
   },
-  attachShadow(host: Node): Node {
+  attachShadow(host: Node, delegatesFocus = false): Node {
     const el = host as Element;
     // Idempotent: reuse an existing shadow root (e.g. one built by DSD).
-    return el.shadowRoot ?? el.attachShadow({ mode: 'open' });
+    return el.shadowRoot ?? el.attachShadow({ mode: 'open', delegatesFocus });
   },
   host(shadow: Node): Node {
     return (shadow as ShadowRoot).host;

@@ -85,27 +85,27 @@ describe('semanticTokens', () => {
   const of = (type: string) => tokens.filter(([kind]) => kind === type).map(([, text]) => text);
 
   it('marks @code and its two regions as directives', () => {
-    expect(of('fudDirective')).toContain('@code');
-    expect(of('fudDirective')).toContain('@server');
-    expect(of('fudDirective')).toContain('@client');
+    expect(of('fudDirective')).toContain('code');
+    expect(of('fudDirective')).toContain('server');
+    expect(of('fudDirective')).toContain('client');
   });
 
   it('marks every control keyword, and only the keyword', () => {
-    for (const keyword of ['@if', '@foreach', '@for', '@while', '@switch']) {
+    for (const keyword of ['if', 'foreach', 'for', 'while', 'switch']) {
       expect(of('fudDirective')).toContain(keyword);
     }
-    expect(of('fudDirective')).toContain('@{');
+    expect(of('fudDirective')).toContain('{');
   });
 
   it('marks interpolations, escaped and raw alike', () => {
-    expect(of('fudInterpolation')).toContain('@tone');
-    expect(of('fudInterpolation').some((text) => text.startsWith('@raw('))).toBe(true);
+    expect(of('fudInterpolation')).toContain('tone');
+    expect(of('fudInterpolation').some((text) => text.startsWith('raw('))).toBe(true);
   });
 
   it('reaches inside every control body, else branch and switch case included', () => {
     // `@t` and `@i` only exist inside a loop body; `no` sits in the else branch.
-    expect(of('fudInterpolation')).toContain('@t');
-    expect(of('fudInterpolation')).toContain('@i');
+    expect(of('fudInterpolation')).toContain('t');
+    expect(of('fudInterpolation')).toContain('i');
   });
 
   it('marks the bindings by their name, never the value', () => {
@@ -114,7 +114,7 @@ describe('semanticTokens', () => {
     expect(bindings).toContain('class:on');
     expect(bindings).toContain('style:color');
     expect(bindings).toContain('.value');
-    expect(bindings).toContain('@click');
+    expect(bindings).toContain('click'); // the `@` of `@click` is its own token now
     expect(bindings).toContain('ref');
     expect(bindings.some((text) => text.includes('tone'))).toBe(true); // bus:(tone)
     expect(bindings).not.toContain('class'); // the static attribute is not a binding

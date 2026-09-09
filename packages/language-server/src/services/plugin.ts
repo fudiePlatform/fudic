@@ -28,14 +28,16 @@ import type {
 } from '@volar/language-service';
 import {
   CLASS_PREFIX,
+  CONTROL_NAME,
+  CONTROL_PROP,
   regionAt,
   span,
   type Diagnostic,
+  type ElementNode,
   type Severity,
   type Span,
 } from '@fudic/compiler';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
-import type * as ts from 'typescript';
 import { URI } from 'vscode-uri';
 import { COMPLETION_TRIGGER_CHARACTERS, SEMANTIC_TOKENS_LEGEND } from '../capabilities.js';
 import type { CachedDocument } from '../document-cache.js';
@@ -54,6 +56,8 @@ import {
   brokenValueContextAt,
   classContextAt,
   classValueContextAt,
+  controlNameAt,
+  controlValueAt,
   directiveContextAt,
   expressionValueContextAt,
   handlerContextAt,
@@ -66,6 +70,16 @@ import {
   wordContextAt,
   type PartialName,
 } from './position.js';
+import {
+  controlOfferAt,
+  controlWants,
+  nodeMembersAt,
+  nodesInScope,
+  projectedOffset,
+  reaches,
+  type ControlOffer,
+} from './forms.js';
+import { typeScriptService } from './ts-service.js';
 import { interpolates, scopeNames, templateScope } from './template-scope.js';
 import { styleClassNames } from './classes.js';
 import { sectionCompletions } from './sections.js';
@@ -164,23 +178,6 @@ export function fudicDocumentOf(
   return root?.document;
 }
 
-/** What `volar-service-typescript` publishes for whoever needs the program itself. */
-interface TypeScriptProvide {
-  readonly 'typescript/languageService': () => ts.LanguageService;
-}
-
-/**
- * The TypeScript language service of the project, or nothing when there is none.
- *
- * Volar's own channel between plugins, and the only one: a service is handed its reply and never
- * another's, so the program is reached through what the TypeScript service PROVIDES rather than
- * by mounting a second one. Nothing when TypeScript failed to load (SDD-24 §6.1) — which is
- * exactly the case §4.5 degrades for, and it is the same absence as a program that is not built.
- */
-function typeScriptService(context: LanguageServiceContext): ts.LanguageService | undefined {
-  return context.inject<TypeScriptProvide>('typescript/languageService');
-}
-
 /** Whether two ranges of the same document overlap at all. */
 function overlaps(a: Range, b: Range): boolean {
   const before = a.end.line < b.start.line ||
@@ -268,7 +265,16 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
               // them, sorted `0_`.
               const native = nativeGapContextAt(cached.source, offset, region);
               if (native !== undefined) {
-                const items = classBindingItems(cached, document, native);
+                const items = [
+                  // `control` before the classes: inside a form it is the reason the tag is
+                  // being written at all, and the classes of the file are always there.
+                  ...controlItems(
+                    controlOfferAt(cached, native.element, false),
+                    document,
+                    native.name,
+                  ),
+                  ...classBindingItems(cached, document, native.name),
+                ];
                 return items.length === 0 ? undefined : list(items);
               }
 
@@ -301,6 +307,27 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
               // rule the projection's side applies, and for the same reason — a list left open
               // over a written value turns every Tab into an accept.
               if (valueBegun(binding.text)) return undefined;
+
+              // `control=|`, before the `@` is there. The value is a form NODE and not any
+              // expression, so the whole scope is the wrong list here exactly as it is one
+              // character later — where `ts-completion.ts` narrows it against the checker.
+              //
+              // The names come from the MODULE scope of the projection rather than from the
+              // caret, and that is the one thing this position cannot have: nothing is projected
+              // at a value the grammar could not read, so there is no offset to ask at. What it
+              // costs is a form pulled out of a `@foreach`, which is in scope at the caret and
+              // in no module; what it buys is that the position answers at all. The moment the
+              // `@` lands the exact list takes over.
+              const controlOn = controlValueAt(cached.source, offset, region);
+              if (controlOn !== undefined) {
+                return controlNodeList(
+                  typeScriptService(context),
+                  cached,
+                  controlOn,
+                  document,
+                  binding,
+                );
+              }
 
               const items = scopeItems(cached, document, binding, false, false);
               // Incomplete: the next character decides between these names and silence.
@@ -499,7 +526,24 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
               const cached = fudicDocumentOf(context, document);
               if (cached === undefined) return undefined;
 
-              const card = tagCardAt(cached, index, document.offsetAt(position));
+              const offset = document.offsetAt(position);
+
+              // The `control` attribute NAME, which no other voice can explain: it is not
+              // HTML's, so the HTML service has never heard of it, and it is not a prop, so the
+              // projection has no member to hover. What it says is the one thing the author
+              // cannot read off the tag — WHICH of the three kinds this element takes.
+              const control = controlNameAt(cached.source, offset, regionAt(cached.source, cached.html, offset));
+              if (control !== undefined) {
+                const wants = controlWants(control.element, control.element.name.includes('-'));
+                if (wants !== undefined) {
+                  return {
+                    contents: { kind: 'markdown' as const, value: controlHover(wants) },
+                    range: rangeOf(document, control.span),
+                  };
+                }
+              }
+
+              const card = tagCardAt(cached, index, offset);
               if (card === undefined) return undefined;
 
               // The second half, and the only one that may not arrive: it comes from the
@@ -541,6 +585,20 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
                 // in the index, and a repair that writes `.id=""` into a `number` is a repair
                 // that leaves an error behind (decision 19).
                 propsOf: (file) => propDetails(typeScriptService(context), file),
+                // The two readings the `control` bulb needs, both over the client projection —
+                // the module scope for the nodes a file declares, and the type of one written
+                // expression for its fields. `projectedOffset` is what carries a `.fud` offset
+                // across; an offset the projection never copied simply has no fields, which is
+                // the same silence every other degradation here produces.
+                formNodes: {
+                  inScope: () => nodesInScope(typeScriptService(context), cached.path, 0),
+                  fieldsAt: (at) =>
+                    nodeMembersAt(
+                      typeScriptService(context),
+                      cached.path,
+                      projectedOffset(cached, at),
+                    ),
+                },
               });
             },
             undefined,
@@ -861,6 +919,118 @@ function tagItems(
  * name behind it completes nothing, and an item that inserts a half-written binding is worse
  * than no item.
  */
+/**
+ * What hovering a `control` says, which is what the element takes and why.
+ *
+ * One card per kind, and the whole point is that they DIFFER: the same six characters mean
+ * three things depending on the tag under them (decision 109), and that is precisely the fact
+ * an author cannot read off the source. A component gets the fourth, which is honest about
+ * where the answer lives — in the child's own contract (decision 112).
+ */
+function controlHover(wants: ReturnType<typeof controlWants> & {}): string {
+  const head = '**`control`** · fudic';
+
+  switch (wants) {
+    case 'form':
+      return `${head}\n\nEnlaza este \`<form>\` con el formulario: \`control=@userForm\`.\n\nValida al enviar y lleva el foco al primer campo con error.`;
+    case 'control':
+      return `${head}\n\nEnlaza este campo con un control del formulario: \`control=@userForm.alias\`.\n\nEl enlace lo elige el elemento: \`type\`, \`multiple\` y el tag deciden cuál de los seis.`;
+    case 'group':
+      return `${head}\n\nAgrupa parte del formulario en este elemento: \`control=@userForm.direccion\`.\n\nToma un grupo o el formulario entero, nunca un control suelto.`;
+    default:
+      return `${head}\n\nCruza el nodo al componente por su prop \`${CONTROL_PROP}\`: \`control=@userForm.alias\`.\n\nQué encaja lo dice el \`${CONTROL_PROP}\` que el componente declara.`;
+  }
+}
+
+/**
+ * `control` at a gap in a NATIVE tag: `<input |>`, `<form |>`, `<div co|>`.
+ *
+ * The attribute the author was expected to invent. It is not HTML's, so the HTML service has
+ * never heard of it; it is not a prop, so no `$gap` carries it; and unlike `class:` it does not
+ * even announce itself with a prefix a developer could guess at. Inside a form it is the reason
+ * the element is being written, and it was the one binding of the grammar the editor could not
+ * be asked for.
+ *
+ * `control=@` and ask again, which is what every binding here does — the value is a node, and
+ * the list of nodes is the interesting half. What the DETAIL says is which of the three the
+ * element takes (decision 109), so the author reads «form» over a `<form>` and «control» over
+ * an `<input>` without having to know the table.
+ *
+ * Empty is the ordinary answer: outside a form there is nothing to bind, and a `control` there
+ * is `FUD0595`.
+ */
+function controlItems(
+  offer: ControlOffer | undefined,
+  document: TextDocument,
+  gap: PartialName,
+): readonly CompletionItem[] {
+  if (offer === undefined) return [];
+
+  return [
+    {
+      label: CONTROL_NAME,
+      kind: CompletionItemKind.Property,
+      detail: `${offer.label} of the form`,
+      // Ahead of the classes and of HTML's own vocabulary, which sorts by its labels.
+      sortText: `0_${CONTROL_NAME}`,
+      labelDetails: { description: 'fudic' },
+      textEdit: {
+        range: rangeOf(document, gap.span),
+        newText: `${CONTROL_NAME}=${EXPRESSION_PREFIX}`,
+      },
+      command: { title: 'Suggest', command: 'editor.action.triggerSuggest' },
+    },
+  ];
+}
+
+/**
+ * The nodes that fit in a `control` whose `@` is not typed yet, each item writing the `@`.
+ *
+ * The same narrowing `ts-completion.ts` applies one character later, and the same two questions
+ * behind it: which names are NODES, which the checker answers, and which KIND this element
+ * takes, which the tag answers (decision 109). What differs is only where the names come from
+ * — see the caller.
+ *
+ * Nothing, never an empty list, when the checker cannot answer: `list` would keep an empty
+ * widget open over the value, and a widget that is up swallows the next <kbd>Tab</kbd>.
+ */
+function controlNodeList(
+  service: ReturnType<typeof typeScriptService>,
+  cached: CachedDocument,
+  element: ElementNode,
+  document: TextDocument,
+  binding: PartialName,
+): CompletionList | undefined {
+  const wants = controlWants(element, element.name.includes('-'));
+  if (wants === undefined) return undefined;
+
+  const range = rangeOf(document, binding.span);
+  const items: CompletionItem[] = [];
+
+  for (const [name, kind] of nodesInScope(service, cached.path, 0)) {
+    // `reaches` and not `accepts`, which is the same rule the other list keeps and had to be
+    // the same rule: `@userForm` is not what an `<input>` binds, and `@userForm.alias` cannot be
+    // written without it. Filtered the narrow way, the position went empty in the ordinary case
+    // — a form whose fields are all one level down.
+    if (!reaches(wants, kind)) continue;
+    items.push({
+      // WITH the `@`, because that is how a node is reached — the same rule `scopeItems` keeps,
+      // and `filterText` keeps the bare name for the same reason it does there.
+      label: `${EXPRESSION_PREFIX}${name}`,
+      filterText: name,
+      kind: CompletionItemKind.Variable,
+      detail: kind === 'control' ? 'control' : 'form node',
+      sortText: `0_${name}`,
+      labelDetails: { description: 'fudic' },
+      textEdit: { range, newText: `${EXPRESSION_PREFIX}${name}` },
+      // A group or a form is almost always reached THROUGH — `@userForm.name` — so the list of
+      // its fields is the next question, and it is asked without a keystroke.
+      command: { title: 'Suggest', command: 'editor.action.triggerSuggest' },
+    });
+  }
+  return items.length === 0 ? undefined : list(items, true);
+}
+
 function classBindingItems(
   cached: CachedDocument,
   document: TextDocument,

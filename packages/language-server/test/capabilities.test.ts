@@ -90,8 +90,9 @@ describe('SEMANTIC_TOKENS_LEGEND', () => {
     );
   });
 
-  it('adds the four fudic types of §4.3', () => {
+  it('adds the five fudic types of §4.3', () => {
     expect(FUDIC_TOKEN_TYPES).toEqual([
+      'fudAt',
       'fudDirective',
       'fudInterpolation',
       'fudBinding',

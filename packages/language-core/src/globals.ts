@@ -154,6 +154,69 @@ declare function $intoSlot<T extends string>(name: T): void;
 declare function $ref<E extends Element>(): E;
 
 /**
+ * \`control="@f.title"\` on a native element — the node the binding names, as CODE.
+ *
+ * It carries no type of its own, and that is the boundary SDD-34 §4.9 draws rather than an
+ * omission. What the projection owes the author here is that the EXPRESSION is checked: a
+ * misspelt member of the schema is a member access that does not resolve, and a name that was
+ * never declared is \`TS2304\` — which is precisely why the emit was allowed to check shapes
+ * and no types at all. What it does not yet owe is the shape of the element: that a
+ * \`<select multiple>\` wants \`Control<readonly string[]>\` while an \`<input type="checkbox">\`
+ * wants \`Control<boolean>\` is a fact about six bind functions, and stating it here would pull
+ * \`@fudic/forms/dom\` into the projection of every file that opens an \`<input>\`.
+ *
+ * On a COMPONENT tag there is no call at all: the same binding is the \`ctrl\` prop
+ * (decision 112), so it is checked inside the props literal, against the type the child
+ * really declared.
+ */
+declare function $control(node: $ControlNode): void;
+
+/**
+ * \`control\` on a \`<form>\`, or on any element that is neither a form nor a field: what binds
+ * there is a FORM or a GROUP, and \`bindForm\`/\`bindGroup\` take one.
+ */
+declare function $controlGroup(node: $FormNode): void;
+
+/**
+ * What a control looks like, structurally — the members of \`Control<T>\` that no other node has.
+ *
+ * Structural and not the real \`Control<T>\`, because the projection may not import
+ * \`@fudic/forms\`: it would put a package dependency into the virtual file of every \`.fud\` that
+ * opens an \`<input>\`, and a corpus with no forms installed would stop projecting at all. The
+ * three members below are what \`bindText\` and the other five actually use, so the shape checked
+ * here is the shape the emitted call needs.
+ *
+ * It is deliberately NOT parameterised by the value. Which \`Control<T>\` an element takes is the
+ * fact its \`type\` states, and a dynamic \`type\` states it at runtime (decision 109) — so a rule
+ * written here would be right for a static \`type\` and wrong for the component the dynamic one
+ * exists to allow. What this catches is the mistake that is always a mistake: a form or a group
+ * written where a field goes.
+ */
+type $ControlNode = { (): unknown; set(v: never): void; touch(): void };
+
+/**
+ * What a form or a group looks like: the \`$\` API of \`FormApi\`, which a \`Control<T>\` has none of.
+ *
+ * The two shapes are disjoint on purpose — a control is CALLABLE and a form is not — so the
+ * error a mix-up produces names the member that is missing rather than a type nobody wrote.
+ */
+type $FormNode = { $touch(): void; $validate(...args: never[]): unknown };
+
+/**
+ * The node crossing \`control\` into a COMPONENT — checked against the \`ctrl\` the child declared.
+ *
+ * An identity with \`V\` passed EXPLICITLY, and it exists for where the error lands rather than
+ * for what it says. A mismatch written straight into the props literal is reported over
+ * \`ctrl: (…)\`, and those two ends live in two different stretches — the key is scaffolding the
+ * author never typed — so Volar maps the range back nowhere and a correct error becomes no
+ * error at all. As an argument the whole range is the author's own expression.
+ *
+ * Unlike \`$cross\`, there is no second branch to choose from: a node crosses as itself, always
+ * (SDD-34 §4.6). What varies with the child is the TYPE it has to satisfy, not the form.
+ */
+declare function $node<V>(node: V): V;
+
+/**
  * A value that crosses a \`.prop\` naming a reactive — the OBJECT, or its read (props-spec
  * decision 86).
  *

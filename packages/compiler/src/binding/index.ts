@@ -10,6 +10,7 @@ export type {
   EventBinding,
   BusBinding,
   RefBinding,
+  ControlBinding,
   ClassBinding,
   StyleBinding,
   Interpolation,
@@ -21,6 +22,7 @@ export {
   EVENT_PREFIX,
   PROPERTY_PREFIX,
   REF_NAME,
+  CONTROL_NAME,
 } from './nodes.js';
 
 export { classifyAttribute, interpolate } from './classify.js';
@@ -31,3 +33,14 @@ export type { HandlerShape } from './handler.js';
 export { handlerShape, unwrapParens } from './handler.js';
 export type { Crossing, ComponentDeclaredProps } from './crossing.js';
 export { crossing, reactiveNames } from './crossing.js';
+
+// What a `control` binding means on ITS element (decision 109) — the third rule of this kind:
+// the semantic pass reports `FUD0592` off it and the emit picks its bind module off it.
+export type { ControlTarget, BindFunction, UnsupportedControl } from './control.js';
+export {
+  controlTarget,
+  isRadio,
+  isFormAssociated,
+  FORM_ASSOCIATED_ATTR,
+  CONTROL_PROP,
+} from './control.js';

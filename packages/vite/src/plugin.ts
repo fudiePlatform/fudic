@@ -27,6 +27,7 @@ import { emitRenderChunk } from './wrapper.js';
 import { emitServerModule } from './server.js';
 import { emitMainBootstrap, emitSwBootstrap } from './bootstrap.js';
 import { transformFud, transformFudClient } from './transform.js';
+import { eraseServerValidators } from './server-validators.js';
 import { CLIENT_QUERY, clientChunkName, clientId, discoverComponents } from './client.js';
 import { nodeIo } from './io.js';
 import { readSwConfig, type ResolvedSwConfig } from './swconfig.js';
@@ -497,10 +498,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       return null;
     },
 
-    async transform(_code, id) {
+    async transform(code, id) {
       const { path, query } = splitId(id);
       if (!path.endsWith('.fud')) {
-        return null;
+        // The schema of a form is an ordinary `.ts` that BOTH ends import, so the body of a
+        // `serverValidator` would ship with the client unless it is taken out here (SDD-34
+        // §4.7). This is the client build: the render graph lives in the edge pass, outside
+        // `outDir`, and there the validators stay whole.
+        const erased = /\.[cm]?[jt]sx?$/u.test(path) ? eraseServerValidators(code) : null;
+        return erased === null ? null : { code: erased, map: null };
       }
       if (query === 'server') {
         // The `@server` region is TS (typed `load`/`paths`); strip types to plain JS so
@@ -540,7 +546,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         if (d.severity === 'error') this.error(message);
         else this.warn(message);
       }
-      return { code: result.code, map: JSON.stringify(result.map) };
+      // Same reason as `?server` and `?client`: since SDD-34 the neutral zone of `@code`
+      // reaches this module too, verbatim, so a `const f: Form<Post> = form(schema)` makes it
+      // TypeScript. The three emitted modules are now stripped by the one rule.
+      //
+      // The `.fud` source map is handed over as it stands rather than chained through the
+      // strip: it is the same open seam the other two already have, and it belongs with the
+      // linking stage. Losing the mapping would be worse than a mapping the strip shifted.
+      const stripped = await transformWithOxc(result.code, `${path}.ts`, { lang: 'ts' });
+      return { code: stripped.code, map: JSON.stringify(result.map) };
     },
 
     async generateBundle(_outputOptions, bundle) {

@@ -20,7 +20,7 @@ import { allComponents, componentOf, type ComponentGraph, type ResolvedComponent
 import type { CodeWriter } from './writer.js';
 import { classifyAttribute } from '../binding/index.js';
 import { codeOf } from './oxc-code.js';
-import { templateOf, walkElements } from './level.js';
+import { formAssociatedTags, templateOf, walkElements } from './level.js';
 
 /** `Record<parent tag, direct hydratable child tags>` — an empty record for a flat page. */
 export type TagMap = Record<string, readonly string[]>;
@@ -147,13 +147,25 @@ export function writeMapConstants(
   const bus = fudBus(graph);
   const hasBus = Object.keys(bus).length > 0;
   if (hasBus) w.line(`const FUD_BUS = ${JSON.stringify(bus)};`);
-  return { hasTree, hasBus };
+  // `fud-eager` — the ONE list of tags that come up without a gesture (SDD-34 §4.5). It is a
+  // flat list and not a map because it answers no question about composition: these tags are
+  // defined and hydrated when the runtime installs, and nothing else is.
+  //
+  // Acted on only where it means something: a tag that never hydrates has no chunk to bring
+  // up early, so a `formassociated` component with no hookup at all is not listed. In
+  // practice that set is empty — a control-component carries a `control` — and the filter is
+  // what keeps the runtime from asking for a chunk that was never emitted.
+  const eager = [...formAssociatedTags(graph)].filter((tag) => hydratable.has(tag));
+  const hasEager = eager.length > 0;
+  if (hasEager) w.line(`const FUD_EAGER = ${JSON.stringify(eager)};`);
+  return { hasTree, hasBus, hasEager };
 }
 
 /** Which map constants a module actually declared — what the block emitter may reference. */
 export interface PageMaps {
   readonly hasTree: boolean;
   readonly hasBus: boolean;
+  readonly hasEager: boolean;
 }
 
 /**
@@ -193,6 +205,7 @@ export function writeHydrationBlocks(
   w.line(`jsonBlock(${dom}, ${parent}, 'fud-state', [$state.offsets, $state.data]);`);
   if (maps.hasTree) w.line(`jsonBlock(${dom}, ${parent}, 'fud-tree', FUD_TREE);`);
   if (maps.hasBus) w.line(`jsonBlock(${dom}, ${parent}, 'fud-bus', FUD_BUS);`);
+  if (maps.hasEager) w.line(`jsonBlock(${dom}, ${parent}, 'fud-eager', FUD_EAGER);`);
   w.dedent();
   w.line('}');
 }

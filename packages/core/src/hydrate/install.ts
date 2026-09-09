@@ -30,7 +30,10 @@ import { createBusPrehydrator } from './bus.js';
 import { createCapturer } from './capture.js';
 import {
   browserRegistry,
+  ID_ATTR,
+  idOf,
   instanceState,
+  instancesOf,
   stopwatch,
   type ElementRegistry,
   type HydratedFrom,
@@ -59,6 +62,34 @@ export interface HydratedDetail {
  * omission: they never reach the root.
  */
 const CAPTURED_TYPES: readonly string[] = ['click'];
+
+/** The eager path has no gesture behind it, so there is nothing to replay (SDD-34 §4.5). */
+const NOTHING = (): void => {};
+
+/** One step up, through a shadow boundary as readily as through an element. */
+function up(node: Node): Node | null {
+  // A shadow root's `parentNode` is null by design — the tree is the point — so the climb
+  // continues at its host. Duck-typed rather than `instanceof ShadowRoot`: this module is
+  // exercised against document doubles, and the question is what the object OFFERS.
+  return node.parentNode ?? (node as Partial<ShadowRoot>).host ?? null;
+}
+
+/**
+ * The outermost hydratable ancestor of an instance, or the instance itself when it has none.
+ *
+ * The OUTERMOST and not the nearest, because what has to be up is the whole chain: the node a
+ * control-component edits may have been composed by a parent that received it from ITS parent,
+ * and only the root of that chain can be asked to raise everything under it in one post-order
+ * walk. Raising the nearest owner alone would leave the same hole one level higher.
+ */
+function outermostOwner(instance: Element): Element {
+  let out = instance;
+  for (let node = up(instance); node !== null; node = up(node)) {
+    const el = node as Element;
+    if (typeof el.hasAttribute === 'function' && el.hasAttribute(ID_ATTR)) out = el;
+  }
+  return out;
+}
 
 export interface HydrationOptions {
   /** Where the single capture listener goes — the root of the application area (§4.2). */
@@ -151,6 +182,45 @@ export function installHydration(options: HydrationOptions): Hydration {
 
   for (const type of CAPTURED_TYPES) {
     options.root.addEventListener(type, capture, true);
+  }
+  // **The one hydration nobody asked for** (SDD-34 §4.5). Every other instance in this
+  // framework comes up because the user touched it; a control-component comes up now,
+  // because a form-associated element that is not defined is not labelable, adds nothing to
+  // a `FormData` and has no validity — and a `<label for>` aimed at it is then aimed at an
+  // element that participates in nothing.
+  //
+  // It goes through the SAME path a gesture takes, and that is what keeps it an exception of
+  // one line rather than a second hydration engine. What it does not do is replay anything —
+  // there was no gesture to replay.
+  //
+  // **What comes up is the OWNER, not the marked tag alone**, and that is the sentence above
+  // taken seriously. The node a control-component edits is not in its payload: the parent
+  // names it with `control="@f.body"` and hands it over as a prop (SDD-34 §4.6), and the
+  // cascade hooks children up in post-order, so the child is always hooked up BEFORE the
+  // parent composes what it gives it. A marked tag raised on its own is therefore exactly the
+  // half-raised element §4.5 refuses to accept: defined, upgraded, and holding no node — no
+  // `setFormValue`, no `setValidity`, nothing in anybody's `FormData`. Raising the outermost
+  // hydratable ancestor puts the whole chain up in one post-order walk, and the child gets
+  // its node through the same `u` any other prop travels in.
+  const eagerHosts = new Map<number, Element>();
+  for (const tag of maps.eager) {
+    // `instancesOf` and not `querySelectorAll`: a control-component lives INSIDE the shadow
+    // root of the component that owns the form, and a query on the document stops there.
+    for (const instance of instancesOf(tag, doc)) {
+      const host = outermostOwner(instance);
+      eagerHosts.set(idOf(host), host);
+    }
+  }
+  if (eagerHosts.size > 0) {
+    void (async (): Promise<void> => {
+      for (const [id, host] of eagerHosts) {
+        if (state.hydrated.has(id)) continue;
+        // Before the await, exactly as the capturer does it: a gesture that lands on this
+        // very instance while its chunk is in flight must find it taken (§4.3, path 1).
+        state.hydrated.add(id);
+        await raise(host, id, NOTHING);
+      }
+    })();
   }
   if (options.warm !== undefined) {
     // A separate axis from everything above: it observes viewports and orders network,

@@ -24,6 +24,8 @@ import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js'
 import { AssetLinker } from './assets.js';
 import { codeOf, splicedOffset, type ClientStatement, type Prop } from './oxc-code.js';
 import { hookupContext } from './events.js';
+import { planControls } from './controls.js';
+import { isFormAssociated } from '../binding/index.js';
 import { movingNames } from './level.js';
 import { rootContext } from './display.js';
 import { cellSlots, childTargets, reactiveScope, type CellSlot } from './state.js';
@@ -81,6 +83,19 @@ const cellName = (cell: CellSlot): string => `$p${cell.slot + 2}`;
  * carried over intact. The offset is `+2` because the two leading slots are `$dom` and
  * `$shadow`: an update carries state, not plumbing.
  */
+/**
+ * `if (2 in $p) $cb();` — the update that re-makes the control bindings, and only it.
+ *
+ * PRESENCE and not equality, exactly like `updateGuards`: the payload is sparse, so what the
+ * parent named is what moved. A parent that sends the same node again rebinds to the same
+ * node, which is a teardown and a hookup that change nothing — and a parent that sends a
+ * different one is precisely the case this exists for.
+ */
+function rebindGuard(props: readonly Prop[], rebound: ReadonlySet<string>): string {
+  const slots = props.flatMap((p, i) => (rebound.has(p.name) ? [i + 2] : []));
+  return `if (${slots.map((s) => `${s} in $p`).join(' || ')}) $cb();`;
+}
+
 function updateGuards(props: readonly Prop[]): string {
   return props
     .map((p, i) => {
@@ -132,7 +147,7 @@ function buildComponentClientModule(
   options: EmitOptions,
 ): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
-  const { props, signals, client, template, mutable, emitCalls, diagnostics } = codeOf(comp);
+  const { props, signals, client, neutral, template, mutable, emitCalls, diagnostics } = codeOf(comp);
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
   // The same three facts the server branch starts from, read from the same graph and the
   // same `<style>`: what the two branches drop has to be the same set, node for node (§4.5).
@@ -152,6 +167,13 @@ function buildComponentClientModule(
       return child === undefined ? undefined : codeOf(child).props;
     },
     declared: childTargets(graph),
+    // The cell of a callback, looked up by the author's name. Only a `fn` cell answers: a
+    // signal's cell and its declaration are the same object after `withCells`, so asking for
+    // it would hand back a name the walk already had.
+    cellOf: (name: string): string | undefined => {
+      const cell = cells.find((c) => c.name === name && c.kind === 'fn');
+      return cell === undefined ? undefined : cellName(cell);
+    },
     // A prop that arrived by reference is a reactive name like any other (BUG-24 §4.5): it
     // reads `value()`, it crosses on to a grandchild as the object, and it repaints this
     // component. No new rule anywhere — one more name in the set every existing rule reads.
@@ -167,6 +189,13 @@ function buildComponentClientModule(
     template,
     emitDiagnostics,
     new Set(props.flatMap((p) => (p.channel === 'fn' ? [p.name] : []))),
+    // The same plan the server branch built, from the same function: the two branches write
+    // the same nodes with the same ids, or `h` adopts a tree it does not recognise (SDD-34).
+    planControls(comp.source, comp.doc.template!.children, (t) => graph.components.has(t)),
+    // What tells a `control` whose node CROSSED from the parent (decision 112) from one this
+    // component already holds. The two are hooked up at different moments, and only the first
+    // has to be able to happen again.
+    new Set(props.map((p) => p.name)),
   );
   const ids = nodeIds();
   const usage = coreUsage();
@@ -181,6 +210,9 @@ function buildComponentClientModule(
     usage,
     hookup,
     at,
+    // The factory's own walk, and the only one that can defer a crossed `control` to `$cb`:
+    // `$cb`, `u` and the top-level node variables all live in this closure.
+    rebindable: true,
   });
   // A callback has no initialiser to fall back on, so its cell cannot be `??`-ed into the
   // author's declaration: the owner FILLS it as it hooks up (§4.6, step 3), and first, before
@@ -213,6 +245,14 @@ function buildComponentClientModule(
   ];
   // Nothing to renew: a component with signals but no value write and no construct has no
   // rendering that a `set` could change.
+  // A `control` whose node crossed as a prop is bound from `$cb` and not from `$s`, because
+  // the node is not there yet when `$s` runs: the cascade hooks a child up in post-order,
+  // BEFORE the parent's own hookup composes its payload, so the value the child was given at
+  // that moment is empty and stays empty until `u` brings it (SDD-34 §4.6, BUG-12 §4.2).
+  // `$cb` is therefore called from both ends — once on hookup, and again whenever one of the
+  // props it reads moves — and it undoes what it made before, so calling it twice binds once.
+  const rebinds = !hookup.rebind.empty;
+  if (rebinds) bodies.hook.line('$cb();');
   const renews = reactive.length > 0 && (em.writes > 0 || !bodies.update.empty);
   const reconcile = bodies.update.empty ? '' : ` ${lines(bodies.update)}`;
   if (renews) {
@@ -226,18 +266,41 @@ function buildComponentClientModule(
   const w = new CodeWriter();
   // Written after the walk on purpose: `$sub` is imported only if the walk found a value
   // to keep in sync, so a component with no reactive prop carries no dead import (§6.20).
-  const core = usage.subscribes ? 'FudicElement, subscribe as $sub' : 'FudicElement';
-  w.line(`import { ${core} } from '@fudic/core';`);
+  // A control-component extends `FudicControlElement` instead (decision 111), which brings
+  // `static formAssociated = true`, the `ElementInternals` its constructor creates, and a
+  // shadow root that delegates focus. `FudicElement` is still imported for nothing it uses,
+  // so it is not: the base is one name or the other, never both.
+  const formAssociated = isFormAssociated(comp.doc.template!);
+  const base = formAssociated ? 'FudicControlElement' : 'FudicElement';
+  const core = usage.subscribes
+    ? `${formAssociated ? '' : 'FudicElement, '}subscribe as $sub`
+    : 'FudicElement';
+  if (!formAssociated || usage.subscribes) w.line(`import { ${core} } from '@fudic/core';`);
+  if (formAssociated) w.line("import { FudicControlElement } from '@fudic/forms/element';");
+  // The bind functions this walk actually called, and no others. It is §6.7 made structural:
+  // the chunk of a component with one text field names `bindText` and does not mention the
+  // other five — not their names, not their modules. Sorted so the line is stable.
+  if (hookup.binds.size > 0) {
+    w.line(`import { ${[...hookup.binds].sort().join(', ')} } from '@fudic/forms/dom';`);
+  }
+  // The neutral zone's imports first, then `@client`'s — both hoisted, because an `import`
+  // is only legal at module scope (decision 33.c). Verbatim, TypeScript included: this
+  // module is bundler input and stripping types is the bundler's job.
+  for (const statement of neutral) {
+    if (statement.hoisted) w.line(statement.text);
+  }
   for (const line of client.imports) w.line(line); // hoisted: only legal at module scope
   for (const line of linker.imports()) w.line(line);
   w.line('');
-  w.line(`customElements.define(${JSON.stringify(comp.tag)}, class extends FudicElement {`);
+  w.line(`customElements.define(${JSON.stringify(comp.tag)}, class extends ${base} {`);
   w.indent();
   w.line('static c($props) {');
   w.indent();
   if (em.nodes.length > 0) w.line(`let ${em.nodes.join(', ')};`);
   w.line('const $r = [];'); // the roots, mounted by $m()
   w.line('const $d = []; // teardowns');
+  // Its own list, because it is the only one that is emptied while the instance lives.
+  if (rebinds) w.line('const $cd = []; // the control bindings, remade when the node moves');
   if (em.writes > 0) w.line('const $w = []; // last applied, per value write');
   w.line(declaration(props, cells));
   // The host, materialized ONLY where something reads it (§4.4). A component with no bus
@@ -246,6 +309,13 @@ function buildComponentClientModule(
   // `let`, not `const`: `r()` releases it along with the nodes and the shadow root.
   const needsHost = emitCalls.length > 0 || hookup.hostUsed;
   if (needsHost) w.line('let $host = $dom.host($shadow);');
+  // The neutral zone runs on BOTH sides, so it runs here too — before `@client`, which is
+  // the order it was written in and the order the server evaluates it in. No cell splicing:
+  // a cell is a `@client` top-level binding by construction (`cellSlots` reads
+  // `clientNames`), so nothing declared here can be one.
+  for (const statement of neutral) {
+    if (!statement.hoisted) w.line(statement.text);
+  }
   for (const statement of client.body) w.line(withCells(statement, signals, cells));
   w.line('');
   // The blocks: one function per construct, plus the registry of what is alive (SDD-30
@@ -257,6 +327,18 @@ function buildComponentClientModule(
   // is a private closure the author cannot shadow — it is a `SyntaxError` in their face,
   // with no diagnostic (BUG-12 §2.5). The `$` reserve of SDD-15 §4.7 binds the emit too.
   writeMount(w, bodies.mount);
+  // `$cb` — the bindings of every `control` whose node crossed as a prop, made again from
+  // scratch. It undoes its own previous work first, so the second call replaces the first
+  // instead of doubling it: what changes between them is which node the element is bound to.
+  if (rebinds) {
+    w.line('const $cb = () => {');
+    w.indent();
+    w.line('for (const $x of $cd) $x();');
+    w.line('$cd.length = 0;');
+    w.appendWriter(hookup.rebind);
+    w.dedent();
+    w.line('};');
+  }
   // `$s` is where hookup is registered: the single point create and hydrate converge on.
   // It carries the values a child receives and their subscriptions (BUG-12 §3.4); host
   // listeners and the component's own fine-grained subscriptions are still to come
@@ -303,9 +385,17 @@ function buildComponentClientModule(
   // a value that moves by prop and a value that moves by signal cannot be applied
   // differently.
   const pass = renews ? '$u();' : `$a();${reconcile}`;
-  w.line(props.length > 0 ? `u: ($p) => { ${updateGuards(props)} ${pass} },` : `u: () => { ${pass} },`);
+  // And, after the pass, the bindings of a crossed node — but only when THAT prop is the one
+  // that moved. A rebind tears listeners down and puts them back, so doing it on every
+  // update would charge every prop of the component for a node that did not change.
+  const rebound = rebinds ? ` ${rebindGuard(props, hookup.rebound)}` : '';
   w.line(
-    `r: () => { ${releaseCalls(bodies.registries)}${[...em.nodes, '$shadow', ...(needsHost ? ['$host'] : [])].join(' = ')} = null; $d.forEach((d) => d()); },`,
+    props.length > 0
+      ? `u: ($p) => { ${updateGuards(props)} ${pass}${rebound} },`
+      : `u: () => { ${pass} },`,
+  );
+  w.line(
+    `r: () => { ${releaseCalls(bodies.registries)}${[...em.nodes, '$shadow', ...(needsHost ? ['$host'] : [])].join(' = ')} = null;${rebinds ? ' $cd.forEach((d) => d());' : ''} $d.forEach((d) => d()); },`,
   );
   w.dedent();
   w.line('};');
