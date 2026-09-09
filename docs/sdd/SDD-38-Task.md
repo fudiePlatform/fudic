@@ -5,7 +5,7 @@
 > **Toca además:** `@fudic/compiler`, `@fudic/ssr`, `@fudic/vite`
 > **Rama:** `sdd-38-inyeccion-de-dependencias`
 > **Rango:** `FUD0680`–`FUD0699` · **Decisiones:** 120–126
-> **Progreso:** 1 / 19
+> **Progreso:** 6 / 19
 
 Da a fudic el inyector que [`docs/di/index.html`](../di/index.html) prototipó, y lo cablea en los
 dos extremos. Las fases 1–3 son un paquete nuevo, sin DOM y sin dependencias, que se puede llevar
@@ -69,14 +69,14 @@ usuario, `multi:`, `useValue`, el reemplazo en tests y `fudic g service`.
 
 ## Fase 2 — El inyector (5)
 
-- [ ] **2. `token()` y el contenedor como dato.**
+- [x] **2. `token()` y el contenedor como dato.**
       `src/types.ts` y `src/container.ts`. `Token<T>` es un **objeto** con `name` y un campo
       fantasma de tipo, no un `Symbol`: un símbolo no puede llevar `T`, y sin `T` cada
       `inject(TOK)` volvería `unknown`. `Container` es `{ label, parent, registry, instances,
       alive }` —datos, sin métodos— y `createRoot`, `createChild` y `destroy` son funciones que lo
       toman por argumento, para que quien no destruya no descargue `destroy`. Criterios §6.9
       (identidad del token) y §6.8 (`destroy` idempotente).
-- [ ] **3. El registro raíz: `Service` y `provide`.**
+- [x] **3. El registro raíz: `Service` y `provide`.**
       `src/registry.ts`. `Service` es un decorador **estándar** (stage-3) con la firma
       `(target, context)` que registra `() => new C()` y devuelve la clase intacta —el `tsconfig`
       del repo va a `ES2024` sin `experimentalDecorators`, así que es el único que hay—. `provide`
@@ -84,19 +84,19 @@ usuario, `multi:`, `useValue`, el reemplazo en tests y `fudic g service`.
       Map de módulo, que es el **único** estado de módulo del paquete. Criterio §6.1.
       **Verificar aparte** que Rolldown/oxc transforma el decorador en el build de `examples/`; si
       no lo hiciera, `Service(C)` como llamada sigue siendo la misma función y la spec no cambia.
-- [ ] **4. `provideIn` y la cadena.**
+- [x] **4. `provideIn` y la cadena.**
       Registro **por contenedor**: un componente que declara `provide` se convierte en el dueño de
       ese token para todo su subárbol. La raíz es el último eslabón de la cadena y es donde viven
       los `@Service`. Criterios §6.2 y §6.3 — y §6.2 es la propiedad que define este SDD: con
       `Cart` registrado a la vez con `@Service` y con `provideIn(cA, …)`, un descendiente de `cA`
       recibe **el de `cA`**.
-- [ ] **5. `injectFrom`: la resolución.**
+- [x] **5. `injectFrom`: la resolución.**
       Subir la cadena hasta el primer contenedor **con registro**; construir en el contenedor
       **dueño**, no en el que pidió —de ahí sale gratis que nada pueda depender de algo que vive
       menos—; `transient` que no cachea; `{ optional: true }`; la pila de ciclos que nombra la
       cadena entera; y la semilla, que es el único caso en que un proveedor **sin** registro
       resuelve. Criterios §6.4–§6.7 y §6.9.
-- [ ] **6. `inject()` ambiente, y solo dentro de una factoría.**
+- [x] **6. `inject()` ambiente, y solo dentro de una factoría.**
       `injectFrom` entra en el contenedor dueño con `try/finally` alrededor de la llamada a la
       factoría; ahí, y solo ahí, `inject()` a secas funciona. Es lo que hace legal
       `log = inject(Logger)` como campo de clase de un servicio. Fuera de una factoría **lanza**.
