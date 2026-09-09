@@ -20,9 +20,8 @@ import { VirtualWriter } from './writer.js';
 /**
  * Emit `<name>.fud.server.ts` from the file's `@code`.
  *
- * The neutral zone is duplicated here and in the client virtual on purpose (§4.1); the
- * duplicate diagnostics that follow are deduplicated by the server against the client
- * virtual, which is the canonical one.
+ * The neutral zone is duplicated here and in the client virtual on purpose (§4.1); the client
+ * one is canonical, and `USER_ECHO_CAPS` is how this copy says so.
  */
 export function emitServerVirtual(
   source: string,
@@ -32,9 +31,10 @@ export function emitServerVirtual(
   const { neutral, server } = partitionCode(code);
   const w = new VirtualWriter(source);
 
-  // The neutral zone is the client virtual's for completion (`USER_ECHO_CAPS`): it lives in
-  // both files, and with two projections answering the same offset the editor would show
-  // every identifier twice. Everything else about it still routes from here.
+  // The neutral zone belongs to the client virtual (`USER_ECHO_CAPS`): it lives in both files,
+  // and with two projections answering the same offset the editor shows the answer twice —
+  // hover concatenates it, completion lists it. Only navigation still routes from here, which
+  // is what lets the `@server` region below jump to a name declared up there.
   for (const chunk of neutral) {
     w.copy(chunk, USER_ECHO_CAPS);
     w.scaffold('\n');
