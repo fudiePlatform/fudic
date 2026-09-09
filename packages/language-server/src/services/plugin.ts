@@ -55,6 +55,7 @@ import {
   attributeValueBindingAt,
   brokenValueContextAt,
   classContextAt,
+  delegateContextAt,
   classValueContextAt,
   controlNameAt,
   controlValueAt,
@@ -82,6 +83,7 @@ import {
 import { typeScriptService } from './ts-service.js';
 import { interpolates, scopeNames, templateScope } from './template-scope.js';
 import { styleClassNames } from './classes.js';
+import { delegateNames } from './delegate.js';
 import { sectionCompletions } from './sections.js';
 import { scopeAt, snippetsAt } from './snippets.js';
 import {
@@ -677,6 +679,25 @@ function completions(
         // asked for. Only the name is replaced here — the `class:` is already in the source.
         textEdit: { range: rangeOf(document, classes.span), newText: `${name}=@` },
         command: { title: 'Suggest', command: 'editor.action.triggerSuggest' },
+      }),
+    );
+    if (items.length > 0) return list(items);
+  }
+
+  // Exact for the same reason `class:` is: after that colon a word is the name of a loop
+  // binding and can be nothing else. What it offers is the header of the loop the attribute
+  // sits in — which is what turns `FUD0662` from an error into a typo that never happened.
+  //
+  // No `=@` and no second list, unlike `class:red`: a marker takes no value (decision 116),
+  // so the name is the whole of what the author has left to write.
+  const delegate = delegateContextAt(cached.source, offset, region);
+  if (delegate !== undefined) {
+    const items = delegateNames(cached, offset).map(
+      (name): CompletionItem => ({
+        label: name,
+        kind: CompletionItemKind.Variable,
+        detail: 'binding of the loop',
+        textEdit: { range: rangeOf(document, delegate.span), newText: name },
       }),
     );
     if (items.length > 0) return list(items);

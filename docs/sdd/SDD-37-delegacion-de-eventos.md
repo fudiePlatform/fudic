@@ -184,6 +184,14 @@ sintético que declara los bindings de la cabecera del bucle bajo su nombre con 
 `@foreach (const { id } of rows)` con `delegate:id`, `$id` recibe el tipo del miembro
 destructurado, no el de `rows`. Hover, completado y `fudic check` salen de ahí sin nada más.
 
+El scope se abre con **la cabecera misma**, no con un tipo inventado: es la única forma de que
+la desestructuración, los valores por defecto y el `@for` estilo C lleguen con el tipo que
+tienen dentro del cuerpo. Y se abren **todas las cabeceras envolventes** hasta la que declara el
+nombre —`const item of group.rows` no es un scope que nadie pueda abrir sin abrir antes
+`const group of groups`—. El texto de la cabecera va como andamiaje, sin mapeo: ya está
+proyectado una vez, donde el autor lo escribió, y un segundo mapeo sobre los mismos caracteres
+haría que un hover sobre `days` tuviera dos respuestas.
+
 **Los ocho diagnósticos de §5 no necesitan el checker.** Todos se resuelven sobre el AST:
 nombres de la cabecera, contexto de bucle y un barrido del subárbol. TypeScript entra solo para
 tipar, nunca para decidir si hay error. Es lo que mantiene la feature fuera del camino caliente

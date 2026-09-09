@@ -7,7 +7,7 @@
  * testable; the alternative is a cycle between the dispatcher and every construct.
  */
 
-import type { HtmlContent, OxcNode, Span } from '@fudic/compiler';
+import type { DelegationPlan, HtmlContent, OxcNode, Span } from '@fudic/compiler';
 import type { Aliases } from '../imports.js';
 import type { VirtualWriter } from '../writer.js';
 
@@ -42,6 +42,12 @@ export interface TemplateContext {
    * handler is copied as written — which is what the projection did before BUG-23.
    */
   readonly ast: ((at: Span) => FragmentAst | undefined) | undefined;
+  /**
+   * Who hands what to whom (SDD-37), for the one question the element tree cannot answer
+   * locally: `$day` is written in an ancestor's handler and declared by a loop BELOW it, so
+   * the projection has to be told which loop before it can give the name a type (§4.5).
+   */
+  readonly delegation: DelegationPlan;
   /** Project a list of children. The dispatcher supplies it. */
   emit(content: readonly HtmlContent[]): void;
 }

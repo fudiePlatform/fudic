@@ -550,7 +550,7 @@ function emitBehaviour(
       emitEventName(ctx, attr, binding.name);
       if (binding.name.includes('-')) ctx.w.scaffold(' as never');
       ctx.w.scaffold(', ');
-      emitHandler(ctx, binding.value);
+      emitHandler(ctx, attr, binding.value);
       ctx.w.scaffold(');\n');
       return;
 
@@ -561,7 +561,7 @@ function emitBehaviour(
       if (typeof binding.eventName === 'string') ctx.w.scaffold(`'${binding.eventName}'`);
       else copyRazor(ctx, binding.eventName);
       ctx.w.scaffold(' as never, ');
-      emitHandler(ctx, binding.value);
+      emitHandler(ctx, attr, binding.value);
       ctx.w.scaffold(');\n');
       return;
 
@@ -691,10 +691,45 @@ function finishedLiteral(
  * nobody handed the emitter a batch that registers attribute values: the shape is a question
  * about the AST, and without one the honest answer is to change nothing.
  */
-function emitHandler(ctx: TemplateContext, value: RazorExpression): void {
+function emitHandler(ctx: TemplateContext, attr: Attribute, value: RazorExpression): void {
   const deferred = handlerShape(rootAt(ctx, value.expr)) === 'call';
-  if (deferred) ctx.w.scaffold('($event) => ');
+  const reads = ctx.delegation.reads.get(attr) ?? [];
+  if (reads.length === 0) {
+    if (deferred) ctx.w.scaffold('($event) => ');
+    copyRazor(ctx, value);
+    return;
+  }
+
+  // `$day` is written HERE and declared by a loop BELOW, so there is no scope in the
+  // projection that holds it — and inventing one out of `unknown` would give the author a
+  // name that type-checks against everything. The loop's own header re-opens the exact scope
+  // instead: destructuring, defaults and a C-style `@for` all arrive with the type they have
+  // inside the body, because it is the same header that gives them that type in the body.
+  //
+  // Every header the reads need, in source order and each one once. Source order IS nesting
+  // order — an enclosing header is written before the one inside it — so opening them like
+  // this is what lets `const item of group.rows` name the `group` an outer loop declared.
+  //
+  // The header text is SCAFFOLDING and not a copy: it is already projected, once, where the
+  // author wrote it, and a second mapping over the same characters would make a hover on
+  // `days` answerable from two places.
+  const byStart = new Map<number, Span>();
+  for (const read of reads) for (const at of read.loopHeaders) byStart.set(at.start, at);
+  const headers = [...byStart.values()].sort((a, b) => a.start - b.start);
+
+  ctx.w.scaffold('($event) => { ');
+  for (const at of headers) {
+    ctx.w.scaffold(`for (${ctx.source.slice(at.start, at.end)}) { `);
+  }
+  // One declaration per NAME and not per read: `@fn($item, $item)` is a handler that reads
+  // the same row twice, which is legal, and two `const $item` would be a TS2451 of the
+  // projection's own making.
+  for (const name of new Set(reads.map((read) => read.name))) {
+    ctx.w.scaffold(`const $${name} = ${name}; `);
+  }
+  ctx.w.scaffold('return ');
   copyRazor(ctx, value);
+  ctx.w.scaffold(`; ${'} '.repeat(headers.length)}}`);
 }
 
 /** The root node registered at a span, past the parentheses the author wrote. */

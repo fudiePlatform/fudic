@@ -124,10 +124,11 @@ export function batchDocumentJs(source: string, document: StructuredDocument): D
       if (header.end <= header.start) return;
 
       const id = batch.add(node.type === 'foreach' ? 'for-of-header' : 'for-header', header);
-      // Keyed by the NODE too, and not only by the loop list: the semantic pass asks a loop
-      // what its header declares — the names a `delegate:` may write (SDD-37 `FUD0662`) — and
-      // `fragmentId` is the only door it has.
+      // Keyed by the NODE and by the SPAN, and not only by the loop list: a loop is asked what
+      // its header declares — the names a `delegate:` may write (SDD-37 `FUD0662`) — through
+      // `fragmentId` by the semantic pass and through `ast` by the projection.
       ids.set(node, id);
+      bySpan.set(spanKey(header), id);
       loops.push({
         span: node.span,
         headerEnd: header.end,

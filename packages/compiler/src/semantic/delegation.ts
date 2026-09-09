@@ -99,6 +99,17 @@ export interface DelegationRead {
   readonly table: string;
   /** The `$name` identifier in the `.fud`, so the emit can splice `$zN()` over it. */
   readonly at: Span;
+  /**
+   * The headers to re-open to reach the name, outermost first — every enclosing loop down to
+   * the one that declares it.
+   *
+   * The projection of SDD-23 needs it and nothing else does: `$day` is written in the
+   * ancestor's handler, OUTSIDE the loop, so the only way to give it the row's type is to
+   * re-open the loop's scope around the handler. The whole CHAIN and not one header, because
+   * an inner header reads what an outer one declared — `const item of group.rows` is not a
+   * scope anybody can open without opening `const group of groups` first (§4.5).
+   */
+  readonly loopHeaders: readonly Span[];
 }
 
 /** Everything the two callers need, computed once. */
@@ -360,7 +371,10 @@ function pair(collected: Collected): DelegationPlan {
   };
 
   /** One table per pair of reader and name — and the same table for both ends of it. */
-  const bound = new Map<string, { readonly table: string; readonly loops: ControlNode[] }>();
+  const bound = new Map<
+    string,
+    { readonly table: string; readonly headers: readonly Span[]; readonly loops: ControlNode[] }
+  >();
   const keyOf = (el: ElementNode, name: string): string => `${el.span.start} ${name}`;
 
   for (const marker of markers) {
@@ -376,7 +390,8 @@ function pair(collected: Collected): DelegationPlan {
     }
     // Innermost first: with two loops declaring `row`, the row a marker hands over is the one
     // whose scope it is written in, which is the same one the emit closes over.
-    const declaring = [...marker.enclosing].reverse().find((at) => at.names.includes(marker.name));
+    const depth = marker.enclosing.findLastIndex((at) => at.names.includes(marker.name));
+    const declaring = marker.enclosing[depth];
     if (declaring === undefined) {
       diagnostics.push(notAHeaderBinding(marker));
       continue;
@@ -395,7 +410,13 @@ function pair(collected: Collected): DelegationPlan {
     const key = keyOf(reader, marker.name);
     let entry = bound.get(key);
     if (entry === undefined) {
-      entry = { table: `${TABLE_PREFIX}${tables.length}`, loops: [] };
+      entry = {
+        table: `${TABLE_PREFIX}${tables.length}`,
+        // Down to the declaring loop, and every enclosing one on the way: the projection has
+        // to open them in this order or the inner header names something nobody declared.
+        headers: marker.enclosing.slice(0, depth + 1).map((at) => at.loop.header.inner),
+        loops: [],
+      };
       tables.push(entry.table);
       bound.set(key, entry);
     }
@@ -434,7 +455,12 @@ function pair(collected: Collected): DelegationPlan {
         );
         continue;
       }
-      resolved.push({ name: read.name, table: entry.table, at: read.at });
+      resolved.push({
+        name: read.name,
+        table: entry.table,
+        at: read.at,
+        loopHeaders: entry.headers,
+      });
     }
     // A handler whose reads did not all resolve delegates nothing: it is dropped by the emit
     // rather than written with a name that is not there (§5, invariant 5).

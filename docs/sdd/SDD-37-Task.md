@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` ·
 > `fudic-vscode` · `@fudic/forms`
 > **Rama:** `sdd-37-delegacion-de-eventos`
-> **Progreso:** 16 / 24
+> **Progreso:** 18 / 24
 > **No toca:** `@fudic/dom`, `@fudic/core`, `@fudic/ssr`. Cero runtime de delegación: la
 > tabla y el dispatch los escribe el emit.
 
@@ -120,12 +120,12 @@ mismo ahorro que los bucles, sobre el paquete donde más elementos vivos hay.
 
 ## Fase 5 — El editor (2)
 
-- [ ] **17. El tipo de `$nombre`.**
+- [x] **17. El tipo de `$nombre`.**
       En `@fudic/language-core`, el fragmento del handler del ancestro se emite en un scope
       sintético con los bindings de la cabecera bajo su nombre con `$`. Caso destructurado
       incluido (criterio 18).
 
-- [ ] **18. Completado tras `delegate:`.**
+- [x] **18. Completado tras `delegate:`.**
       En `@fudic/language-server`, ofrecer los bindings de la cabecera del bucle que contiene el
       atributo (criterio 19). Es lo que convierte `FUD0662` de error en typo evitado.
 

@@ -16,6 +16,7 @@ import {
   bareBindingValueContextAt,
   brokenValueContextAt,
   classContextAt,
+  delegateContextAt,
   classValueContextAt,
   controlNameAt,
   controlValueAt,
@@ -259,6 +260,33 @@ describe('classContextAt (BUG-15 §6.2)', () => {
     const source = '<div title="class:x"></div>\n<span class:su';
 
     expect(classContextAt(source, source.length, regionOf(source, source.length))?.text).toBe('su');
+  });
+});
+
+describe('delegateContextAt (SDD-37 §6.19)', () => {
+  it.each([
+    ['<div delegate:', ''],
+    ['<div delegate:da', 'da'],
+    ['<div class="cell" delegate:', ''],
+    ['<b delegate:row delegate:ta', 'ta'],
+  ])('reads %s as the partial name %s', (prefix, expected) => {
+    const context = delegateContextAt(prefix, prefix.length, regionOf(prefix, prefix.length));
+
+    expect(context?.text).toBe(expected);
+    expect(prefix.slice(context?.span.start, context?.span.end)).toBe(expected);
+  });
+
+  it.each([
+    // The same three guards `class:` needs, for the same three reasons.
+    ['<div title="delegate:'],
+    ['<p>delegate:'],
+    ['delegate:'],
+    // A name that merely ends in `delegate`.
+    ['<div data-delegate:'],
+  ])('says nothing at %s', (source) => {
+    expect(
+      delegateContextAt(source, source.length, regionOf(source, source.length)),
+    ).toBeUndefined();
   });
 });
 

@@ -118,7 +118,7 @@ describe('delegatedHandler — the wrapper itself (§4.1)', () => {
     if (binding.type !== 'event') throw new Error('expected an event binding');
     expect(
       delegatedHandler(source, binding.value.expr, hookupContext(template, []), [
-        { name: 'day', table: '$t0', at: binding.value.expr },
+        { name: 'day', table: '$t0', at: binding.value.expr, loopHeaders: [] },
       ]),
     ).toBeUndefined();
   });
