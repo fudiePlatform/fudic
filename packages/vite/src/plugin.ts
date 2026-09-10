@@ -78,7 +78,7 @@ import {
   PAGE_NAME_PREFIX,
 } from './constants.js';
 import { chunkNamesOf } from './names.js';
-import { planRename, rewriteReferences, mapNameOf } from './rename.js';
+import { planRename, rewriteReferences, mapNameOf, isHashedChunk } from './rename.js';
 import { keepSet, reachableChunks, type PruneItem } from './prune.js';
 
 /**
@@ -625,16 +625,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       //     emitted into the bundle — `emitFile` means "this gets published", and this is
       //     precisely what must not (BUG-09 §4.1). They are written beside `outDir` for the
       //     preview, and materialized into the prerender's temp dir below.
+      // Written to disk in 3b, not here: an edge chunk imports the shared chunks by name and
+      // those are renamed there (BUG-31 §T5), so what lands beside `outDir` — and what the
+      // prerender runs — has to be the rewritten code.
       const edge = await runEdgePass(root, base, builds, io, resolveAlias, nested);
-      if (writeToDisk) {
-        const edgeDir = resolvePath(root, EDGE_DIR);
-        rmSync(edgeDir, { recursive: true, force: true });
-        for (const chunk of edge.chunks) {
-          const abs = join(edgeDir, chunk.fileName);
-          mkdirSync(dirname(abs), { recursive: true });
-          writeFileSync(abs, chunk.code);
-        }
-      }
 
       // 2. The Service Worker's own bundle: one realm, one bundle (BUG-03 §4.1). Its
       //    code still carries BUILD_TOKEN — the id is computed from it, below.
@@ -681,16 +675,18 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         .update(sw === null ? '' : `|${sw.fileName}|${sw.code}`)
         .digest('hex')
         .slice(0, BUILD_ID_LENGTH);
-      if (sw !== null) {
-        // Substituted in the SW's code BEFORE emitting it. A surviving token produces
-        // caches called `shell-<token>` that `isStaleCache` never purges — silently,
-        // forever. That is what §6.4 exists to catch.
-        //
-        // The id measures exactly what the token measures, so this rewrite preserves every
-        // offset and the map generated for `sw.code` still describes what is emitted
-        // (BUG-05 §4.4).
-        emitWithMap({ ...sw, code: sw.code.split(BUILD_TOKEN).join(buildId) });
-      }
+      // Substituted in the SW's code before it is emitted. A surviving token produces caches
+      // called `shell-<token>` that `isStaleCache` never purges — silently, forever. That is
+      // what §6.4 exists to catch.
+      //
+      // The id measures exactly what the token measures, so this rewrite preserves every
+      // offset and the map generated for `sw.code` still describes what is emitted
+      // (BUG-05 §4.4).
+      //
+      // The EMIT itself waits for 3b: the SW's `SHELL` names the shared chunks literally, and
+      // those are about to be renamed (BUG-31 §T5). Emitting here would precache the names
+      // the build no longer writes — an install that 404s on every entry, silently.
+      const swCode = sw === null ? null : sw.code.split(BUILD_TOKEN).join(buildId);
 
       // 3a. And the SAME substitution in `fudic-main` (SDD-17 §4.6). The main thread has to
       //     build the URL resolver, which takes `base` and the build id: `base` is baked in
@@ -719,16 +715,47 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           (item.facadeModuleId.endsWith(`?${CLIENT_QUERY}`) ||
             item.facadeModuleId.endsWith(`?${IOC_QUERY}`)),
       );
+      //     The SHARED chunks travel with them (BUG-31 §T5). They used to keep their content
+      //     hash on the argument that the browser's HTTP cache could then skip them across
+      //     deploys — but nothing in this architecture collects on that: `activate` deletes
+      //     every cache that is not this build's, and the hydration chunks that import them
+      //     change name on every build anyway. What the hash did cost was a manifest that had
+      //     to write out 8 characters of noise per dependency, because a hashed name is a
+      //     fact of the build and cannot be derived. Same length, so the offsets hold.
+      const hashedShared = reachableChunks(bundleItems(bundle), (item) => {
+        const entry = bundle[item.fileName];
+        return (
+          entry?.type === 'chunk' &&
+          (entry.facadeModuleId === MAIN_ID || clientChunks.some((c) => c.fileName === item.fileName))
+        );
+      }).filter(
+        (fileName) =>
+          isHashedChunk(fileName) && !clientChunks.some((c) => c.fileName === fileName),
+      );
       const rename = planRename(
-        [...link.chunks.map((c) => c.fileName), ...clientChunks.map((c) => c.fileName)],
+        [
+          ...link.chunks.map((c) => c.fileName),
+          ...clientChunks.map((c) => c.fileName),
+          ...new Set(hashedShared),
+        ],
         buildId,
       );
       for (const d of rename.diagnostics) {
         this.warn(`[${d.code}] ${d.message}`);
       }
-      for (const chunk of clientChunks) {
+      // Every chunk of the bundle, not only the renamed ones: a shared chunk that moved is
+      // imported by `fudic-main` and by half the hydration chunks, and a reference left
+      // pointing at the old name is a 404 with no error anywhere.
+      for (const item of Object.values(bundle)) {
+        if (item.type === 'chunk') item.code = rewriteReferences(item.code, rename.files);
+      }
+      // One loop over the bundle covers both kinds: a hydration chunk and a shared chunk are
+      // renamed the same way, and the plan is what says which of them moved.
+      for (const chunk of Object.values(bundle)) {
+        if (chunk.type !== 'chunk') {
+          continue;
+        }
         const to = rename.files.get(chunk.fileName);
-        chunk.code = rewriteReferences(chunk.code, rename.files);
         if (to === undefined) {
           continue;
         }
@@ -754,6 +781,26 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           fileName: rename.files.get(chunk.fileName) ?? chunk.fileName,
           code: rewriteReferences(chunk.code, rename.files),
         });
+      }
+      // The Service Worker, now that the names it precaches are the ones on disk. Its own
+      // file name is fixed and unhashed, so only the code moves.
+      if (sw !== null && swCode !== null) {
+        emitWithMap({ ...sw, code: rewriteReferences(swCode, rename.files) });
+      }
+      // And the edge chunks, which the preview serves and the prerender runs from a temp dir
+      // below: they import the same shared chunks by name.
+      const edgeChunks = edge.chunks.map((c) => ({
+        ...c,
+        code: rewriteReferences(c.code, rename.files),
+      }));
+      if (writeToDisk) {
+        const edgeDir = resolvePath(root, EDGE_DIR);
+        rmSync(edgeDir, { recursive: true, force: true });
+        for (const chunk of edgeChunks) {
+          const abs = join(edgeDir, chunk.fileName);
+          mkdirSync(dirname(abs), { recursive: true });
+          writeFileSync(abs, chunk.code);
+        }
       }
 
       // 3c. Prune the `page` pass (SDD-27 §5.1). Its chunks have no consumer, but the pass
@@ -845,7 +892,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           // The wrapper it runs is the EDGE one, which is no longer in the bundle: it is
           // materialized here from the edge pass, and dies with the temp dir.
           materializeBundle(Object.fromEntries(
-            edge.chunks.map((c) => [
+            edgeChunks.map((c) => [
               c.fileName,
               // Its map goes with it: the code carries a `sourceMappingURL`, and a chunk
               // whose map is missing makes Node warn on every prerendered route.

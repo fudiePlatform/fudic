@@ -114,13 +114,24 @@ export interface ManifestFile {
    * Component tag → the chunks its hydration chunk statically imports, transitively
    * (SDD-17 §4.7). Paths as the build named them, `base` excluded like everywhere here.
    *
-   * It is the ONE thing about a hydration chunk that is not derivable: the shared code
-   * the client pass extracts keeps a content hash. Without it a warm deposits the tag's
-   * chunk and leaves its imports to the network — inside the gesture, which is the one
-   * place warm exists to keep clear. It lives in the MANIFEST and not in the page (§4.6):
-   * both are purged by the same build id, while a prerendered HTML outlives its build.
+   * WHICH chunks a tag needs is the one thing about it that is not derivable — where each
+   * one lives has been arithmetic since BUG-31 §T5, so the names here are bare. Without this
+   * list a warm deposits the tag's chunk and leaves its imports to the network — inside the
+   * gesture, which is the one place warm exists to keep clear. It lives in the MANIFEST and
+   * not in the page (§4.6): both are purged by the same build id, while a prerendered HTML
+   * outlives its build.
    */
   readonly hydrate?: Readonly<Record<string, readonly string[]>>;
+  /**
+   * The directory every `hydrate` name is relative to, trailing slash included — stated ONCE
+   * instead of on each of the hundreds of entries below it (BUG-31 §T5).
+   *
+   * The build writes those chunks into one directory (`assetsDir`, the host's to configure),
+   * so repeating it per dependency was the same string over and over. Absent when the deps
+   * share no directory, and then the names are whole paths again: the reader joins with `''`
+   * and nothing special happens.
+   */
+  readonly assets?: string;
 }
 
 export interface RouteMatch {
@@ -224,7 +235,13 @@ export function compileManifest(file: ManifestFile): RouteTable {
       return hit !== null && hit.record.mode === 'sw' ? hit.record : null;
     },
     hydrateDeps(tag: string): readonly string[] {
-      return (file.hydrate?.[tag] ?? []).map((path) => urls.assetUrl(path));
+      // The names are relative to `file.assets` and carry the build id implicitly, both
+      // stated once for all of them (BUG-31 §T5). A name that already ends in `.js` kept a
+      // content hash — a collision `planRename` declined to resolve — and is used as it is.
+      const dir = file.assets ?? '';
+      return (file.hydrate?.[tag] ?? []).map((name) =>
+        urls.assetUrl(dir + (name.endsWith('.js') ? name : `${name}-${file.build}.js`)),
+      );
     },
   };
 }

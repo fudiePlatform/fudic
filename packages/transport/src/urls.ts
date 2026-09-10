@@ -46,9 +46,12 @@ export interface UrlResolver {
    */
   dataUrl(pattern: string): string;
   /**
-   * A file the build named itself, with `base` applied. The exception that proves the
-   * rule: a chunk a hydration chunk IMPORTS keeps its content hash, so its name is a fact
-   * of the build and not arithmetic — the manifest states it, and this only places it.
+   * A path the caller already assembled, with `base` applied — the placement half alone.
+   *
+   * It used to be the exception that proved the rule: a chunk a hydration chunk imported
+   * kept a content hash, so the manifest had to write its name out. Since BUG-31 §T5 those
+   * chunks carry the build id like everything else, so the manifest states WHICH chunk and
+   * `hydrateDeps` does the arithmetic; this only places the result.
    */
   assetUrl(path: string): string;
 }

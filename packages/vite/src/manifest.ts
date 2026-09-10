@@ -98,6 +98,24 @@ function pagePolicyOf(rb: RouteBuild, data: DataPolicy, out: FudicDiagnostic[]):
   return { cache: 'persist', ttl: data.ttl };
 }
 
+/**
+ * The directory every one of `paths` lives in, trailing slash included, or `''` when they do
+ * not share one (BUG-31 §T5).
+ *
+ * Cut at the last `/` of the FIRST path and verified against the rest, rather than folding a
+ * character-wise common prefix: a character-wise fold on `assets/element-…` and
+ * `assets/effect-…` returns `assets/e`, which is not a directory, and slicing names by it
+ * would leave the reader joining paths that never existed.
+ */
+function commonDir(paths: readonly string[]): string {
+  const first = paths[0];
+  if (first === undefined) return '';
+  const dir = first.slice(0, first.lastIndexOf('/') + 1);
+  return dir !== '' && paths.every((p) => p.startsWith(dir) && !p.slice(dir.length).includes('/'))
+    ? dir
+    : '';
+}
+
 /** Build the manifest file from the discovered routes. */
 export function buildManifest(
   routes: readonly RouteBuild[],
@@ -142,7 +160,25 @@ export function buildManifest(
     });
   }
 
+  // The dependency names, factored (BUG-31 §T5): the directory they share is stated once at
+  // the top of the file instead of on every one of them.
   const hydrate = inputs.hydrateDeps ?? {};
+  const assets = commonDir(Object.values(hydrate).flat());
+  const suffix = `-${inputs.build}.js`;
+  const folded = Object.fromEntries(
+    Object.entries(hydrate).map(([tag, deps]) => [
+      tag,
+      // `element-<build>.js` → `element`. Now that a shared chunk carries the build id like
+      // every other derived name, the tail is arithmetic and the manifest stops writing it
+      // out per dependency (BUG-31 §T5). A chunk that kept its hash — a name collision, which
+      // `planRename` degrades rather than breaks — keeps its whole name, and the `.js` it
+      // ends in is what tells the reader which of the two it is holding.
+      deps.map((d) => {
+        const name = d.slice(assets.length);
+        return name.endsWith(suffix) ? name.slice(0, -suffix.length) : name;
+      }),
+    ]),
+  );
   return {
     file: {
       build: inputs.build,
@@ -151,7 +187,8 @@ export function buildManifest(
       routes: records,
       // Absent when nothing hydrates, or when every chunk is self-contained: an empty
       // object in the file would say "asked and answered nothing", which is not the case.
-      ...(Object.keys(hydrate).length === 0 ? {} : { hydrate }),
+      ...(Object.keys(hydrate).length === 0 ? {} : { hydrate: folded }),
+      ...(assets === '' ? {} : { assets }),
     },
     diagnostics,
   };

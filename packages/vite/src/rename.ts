@@ -10,10 +10,12 @@
  * And there is no circularity: the build id is computed from the ORIGINAL hashed names, and
  * this runs afterwards. What changes is only how the client finds the file.
  *
- * SCOPE is deliberately narrow — the chunks the manifest derives URLs for, and nothing
- * else. A shared chunk nobody derives (`assets/element-*`) keeps its content hash, because
- * there the hash still does its job: the browser's HTTP cache can skip re-downloading it
- * across deploys. Renaming it would cost that for no gain.
+ * SCOPE is every chunk the client loads by a name the build chose: the link pass, the
+ * hydration chunks, and — since BUG-31 §T5 — the SHARED chunks they and `fudic-main` import.
+ * The shared ones used to keep their content hash so the browser's HTTP cache could skip
+ * them across deploys, but nothing here collects on that: `activate` deletes every cache
+ * that is not this build's, and the chunks importing them are renamed on every build anyway.
+ * What the hash did cost was a manifest writing 8 characters of noise per dependency.
  */
 
 import { BUILD_ID_LENGTH } from './constants.js';
@@ -31,6 +33,16 @@ const HASHED = new RegExp(`^(?:.*/)?.+-.{${String(BUILD_ID_LENGTH)}}\\.js$`, 'u'
 
 /** `<hash>.js` — what the build id replaces, and the reason the length has to match. */
 const SUFFIX = BUILD_ID_LENGTH + '.js'.length;
+
+/**
+ * Whether a file is a hashed chunk of the expected width — the question a caller has to be
+ * able to ask BEFORE planning, because `planRename` refuses a whole plan that contains one
+ * that is not (and rightly: half a naming scheme is worse than none). The shared chunks are
+ * discovered by reachability, and that walk also reaches the fixed-name entries.
+ */
+export function isHashedChunk(fileName: string): boolean {
+  return HASHED.test(fileName);
+}
 
 export interface RenamePlan {
   /** Old file name → new file name, for the `.js` files only. */
