@@ -25,7 +25,7 @@
  * in `isNode` / `field` and never leaves this file.
  */
 
-import type { OxcNode } from '../oxc/index.js';
+import { type OxcNode, patternNames, walkPattern } from '../oxc/index.js';
 
 /** A parsed fragment: one expression node, or the statement list of a region. */
 export type FragmentAst = OxcNode | readonly OxcNode[];
@@ -112,38 +112,21 @@ class ScopeStack {
  * Those expressions are the reason this cannot be a name collector: a default
  * (`const { n = fallback } of rows`) and a computed key (`{ [k]: v }`) are ordinary
  * references to the scope OUTSIDE, and losing them would be a dependency falling short.
+ *
+ * The SHAPE of a pattern is `walkPattern`'s, beside the batch: the semantic pass asks the same
+ * question of a loop header (SDD-37 `FUD0662`) and cannot import the emit. What stays here is
+ * the only half that is the emit's — what to DO with each half, which is bind and descend.
  */
 function bindPattern(pattern: unknown, scope: ScopeStack, out: string[]): void {
-  if (!isNode(pattern)) return;
-  switch (pattern.type) {
-    case 'Identifier':
-      out.push(nameOf(pattern));
-      scope.bind(pattern);
-      return;
-    case 'ObjectPattern':
-      for (const property of asArray(field(pattern, 'properties'))) {
-        if (isNode(property) && property.type === 'Property') {
-          if (field(property, 'computed') === true) walk(field(property, 'key'), scope);
-          bindPattern(field(property, 'value'), scope, out);
-          continue;
-        }
-        bindPattern(property, scope, out);
-      }
-      return;
-    case 'ArrayPattern':
-      for (const element of asArray(field(pattern, 'elements'))) bindPattern(element, scope, out);
-      return;
-    case 'AssignmentPattern':
-      bindPattern(field(pattern, 'left'), scope, out);
-      walk(field(pattern, 'right'), scope);
-      return;
-    case 'RestElement':
-      bindPattern(field(pattern, 'argument'), scope, out);
-      return;
-    default:
-      // A TS-annotated parameter wraps the binding; everything else declares nothing.
-      bindPattern(field(pattern, 'expression'), scope, out);
-  }
+  walkPattern(pattern, {
+    name(node) {
+      out.push(nameOf(node));
+      scope.bind(node);
+    },
+    expression(node) {
+      walk(node, scope);
+    },
+  });
 }
 
 function asArray(value: unknown): readonly unknown[] {
@@ -281,18 +264,6 @@ export function reservedIdentifiers(statements: readonly OxcNode[]): readonly Ox
     .sort((a, b) => a.start - b.start);
 }
 
-/**
- * The names a binding pattern declares, in the order the pattern writes them.
- *
- * That order is the parameter order of a block (§3.3): `{ id, name }` yields `id` then
- * `name` and never the other way round, because a signature that reshuffles between two
- * compilations of the same file is not a signature.
- */
-export function patternBindings(pattern: unknown): readonly string[] {
-  const out: string[] = [];
-  bindPattern(pattern, new ScopeStack(), out);
-  return out;
-}
 
 /**
  * The names a region declares at its TOP LEVEL, in the order it declares them (BUG-24 §4.2).
@@ -311,7 +282,7 @@ export function topLevelBindings(statements: readonly OxcNode[]): readonly strin
   for (const statement of statements) {
     if (statement.type === 'VariableDeclaration') {
       for (const declarator of asArray(field(statement, 'declarations'))) {
-        out.push(...patternBindings(field(declarator, 'id')));
+        out.push(...patternNames(field(declarator, 'id')));
       }
       continue;
     }
@@ -408,7 +379,7 @@ export function changeableBindings(statements: readonly OxcNode[]): ReadonlySet<
     if (statement.type !== 'VariableDeclaration') continue;
     const rebindable = field(statement, 'kind') !== 'const';
     for (const declarator of asArray(field(statement, 'declarations'))) {
-      for (const name of patternBindings(field(declarator, 'id'))) {
+      for (const name of patternNames(field(declarator, 'id'))) {
         if (rebindable || assigned.has(name)) out.add(name);
       }
     }

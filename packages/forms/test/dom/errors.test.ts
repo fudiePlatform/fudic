@@ -12,7 +12,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { control, form, required } from '../../src/index.js';
 import { bindGroup, bindText, setMessages } from '../../src/dom/index.js';
-import { field, fire, mount } from './_dom.js';
+import { blur, field, fire, mount } from './_dom.js';
 
 beforeEach(() => {
   document.body.innerHTML = '';
@@ -39,7 +39,7 @@ describe('the error effect (§6.12)', () => {
     expect(slot.textContent).toBe('');
     expect(el.hasAttribute('aria-invalid')).toBe(false);
 
-    fire(el, 'blur');
+    blur(el);
     expect(slot.textContent).toBe('required');
     expect(el.getAttribute('aria-invalid')).toBe('true');
     off();

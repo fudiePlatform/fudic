@@ -21,7 +21,7 @@ describe('transformFud', () => {
     const result = transformFud(fixture('home.fud'), nodeIo());
     expect(result).not.toBeNull();
     const code = result!.code;
-    expect(code).toContain('export function* page(data, io) {');
+    expect(code).toContain('export function* page(data, io, $ioc) {');
     expect(code).toContain("from './app-card.fud';");
     expect(code).toContain("from './app-badge.fud';");
     expect(code).not.toContain('.mjs'); // Vite owns the graph, not the standalone .mjs
@@ -32,7 +32,7 @@ describe('transformFud', () => {
     expect(result).not.toBeNull();
     const code = result!.code;
     expect(code).toContain('export const tag = "app-card";');
-    expect(code).toContain('export function render($dom, $shadow, props) {');
+    expect(code).toContain('export function render($dom, $shadow, props, $ioc) {');
     expect(code).toContain("import { render as renderAppButton } from './app-button.fud';");
   });
 
@@ -84,6 +84,39 @@ describe('transformFud', () => {
     it('says nothing when the host honours the contract', () => {
       const ok = '<app-circle .name="a"><i slot="PEPITO"></i></app-circle>';
       expect(contractOf(ok, CIRCLE)).toEqual([]);
+    });
+  });
+
+  // SDD-38 §6.21. Here and not in the compiler's own suite because the rule READS the module
+  // next door: it is the one contract that needs a filesystem to be asked at all.
+  describe('the injection contract (FUD0680)', () => {
+    /** A page with one component injecting `Cart` out of the service module written here. */
+    function injectionOf(service: string): readonly string[] {
+      const root = mkdtempSync(join(tmpdir(), 'fudic-di-'));
+      writeFileSync(join(root, 'cart.ts'), service);
+      writeFileSync(
+        join(root, 'app-panel.fud'),
+        "@code {\n  import { inject } from '@fudic/di';\n  import { Cart } from './cart';\n\n" +
+          '  const cart = inject(Cart);\n}\n' +
+          '<app-panel>\n  <template shadowrootmode="open"><b>@(cart.id)</b></template>\n</app-panel>\n',
+      );
+      const page =
+        '<!DOCTYPE html>\n<html>\n<head><link rel="component" href="./app-panel.fud"></head>\n' +
+        '<body><app-panel></app-panel></body>\n</html>\n';
+      writeFileSync(join(root, 'page.fud'), page);
+      return transformFud(join(root, 'page.fud'), nodeIo())!.diagnostics.map((d) => d.code);
+    }
+
+    it('reports a service module that enrols nothing', () => {
+      expect(injectionOf('export class Cart {\n  readonly id = 1;\n}\n')).toEqual(['FUD0680']);
+    });
+
+    it('says nothing once the module enrols it', () => {
+      expect(
+        injectionOf(
+          "import { Service } from '@fudic/di';\nexport class Cart {\n  readonly id = 1;\n}\nService(Cart);\n",
+        ),
+      ).toEqual([]);
     });
   });
 });

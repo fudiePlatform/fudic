@@ -171,6 +171,14 @@ export type ChunkResolution =
 export interface MainBootstrapOptions {
   readonly chunks: ChunkResolution;
   /**
+   * Whether ANY component of the app injects or provides (SDD-38 §5).
+   *
+   * Off — the default — and the bootstrap does not so much as name `@fudic/di/page`, so the
+   * bundle has no chunk for it and `dist` has no file for it either. «A route without
+   * `inject` does not download a line of DI» is enforced by not writing the import.
+   */
+  readonly hasDi?: boolean;
+  /**
    * The Service Worker's URL, as a JS expression — or `null` when the page has none: no
    * `sw.json`, or `pnpm dev` with `dev: 'off'`. **Hydration does not depend on it.**
    */
@@ -202,6 +210,11 @@ export function emitMainBootstrap(options: MainBootstrapOptions): string {
   const channel = hasWorker ? 'createServiceWorkerWarmChannel' : 'createPreloadWarmChannel';
   const head = [
     `import { installHydration, ${channel} } from '@fudic/core';`,
+    // Static, and written only when the app has DI at all (SDD-38 §5). A dynamic import
+    // would be tidier on paper and is not worth it: an app with no DI does not emit this
+    // line, so nothing of the injector reaches the bundle either way, and a static edge is
+    // one the bundler cannot get wrong.
+    ...(options.hasDi === true ? [`import { buildTree } from '@fudic/di/page';`] : []),
     ...(transport.length === 0
       ? []
       : [`import { ${transport.join(', ')} } from '@fudic/transport';`]),
@@ -237,13 +250,48 @@ export function emitMainBootstrap(options: MainBootstrapOptions): string {
         `  registerRenderServiceWorker(${swUrlExpr}).then(() => notifyLocation());`,
         `}`,
       ];
+  // The container tree, rebuilt from the published map (SDD-38 §4.2). Both imports are
+  // dynamic and both hang off the block existing, so a page with no DI fetches neither.
+  //
+  // It is STARTED here and handed to `installHydration` as `ready`, rather than awaited
+  // before it. The runtime's capturer has to be listening from the first millisecond: a
+  // click before it is installed is not deferred, it is lost, and this round trip is a
+  // compile away in dev. So the capturer goes up first and path 2 waits for the tree — no
+  // chunk resolves against a tree that is not built, and no gesture is dropped waiting.
+  const ready = options.hasDi !== true ? '' : ', ready: $ioc';
+  const di = options.hasDi !== true
+    ? []
+    : [
+        '',
+        'const $ioc = (async () => {',
+        `  const $iocBlock = document.getElementById('fud-ioc');`,
+        '  if ($iocBlock === null) return;',
+        '  const [$nodes, $tags] = JSON.parse($iocBlock.textContent);',
+        `  const $seedBlock = document.getElementById('fud-di');`,
+        '  // One IoC module per OWNING tag, by URL — the same arithmetic a hydration chunk',
+        '  // uses.',
+        '  const $owners = [...new Set($tags.filter(Boolean))];',
+        '  // `@vite-ignore` for the same reason the hydration loader carries one: the URL is',
+        '  // a runtime value derived from the manifest, not a build-time edge.',
+        `  const $mods = await Promise.all(`,
+        `    $owners.map((tag) => import(/* @vite-ignore */ resolveChunk(tag + '.ioc'))),`,
+        '  );',
+        '  const $byTag = new Map($owners.map((tag, i) => [tag, $mods[i]]));',
+        '  buildTree(',
+        '    $nodes,',
+        '    (node, container) => { const $m = $byTag.get($tags[node]); if ($m) $m.register(container); },',
+        '    $seedBlock === null ? undefined : JSON.parse($seedBlock.textContent),',
+        '  );',
+        '})();',
+      ];
   return [
     ...head,
     ...resolver,
+    ...di,
     '',
     // The order does not matter: a warm ordered before the worker takes control is queued
     // and flushed on `controllerchange`, which is the only case there is on a first load.
-    `installHydration({ root: document, resolveChunk, warm: ${channel}() });`,
+    `installHydration({ root: document, resolveChunk, warm: ${channel}()${ready} });`,
     ...worker,
     '',
   ].join('\n');

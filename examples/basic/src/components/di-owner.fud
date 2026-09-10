@@ -1,0 +1,43 @@
+<link rel="component" href="./di-panel.fud">
+
+@code {
+  import { provide } from '@fudic/di';
+  import { Cart } from '../services/cart';
+
+  // This component is the OWNER of `Cart` for its whole subtree — and it is still level 1.
+  // It declares a provider and injects nothing, so it never hydrates, never downloads a
+  // chunk and never runs a line in the browser. Its container is emitted code and its
+  // factory lives in its own IoC module, fetched only because the page names this tag.
+  provide(Cart, () => new Cart());
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    .owner {
+      border: 1px dashed #b5462f;
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
+      background: #fffdf8;
+      display: grid;
+      gap: 0.75rem;
+    }
+    .owner > h3 {
+      margin: 0;
+      font-size: 0.95rem;
+      color: #b5462f;
+    }
+  </style>
+</head>
+
+<di-owner>
+  <template shadowrootmode="open">
+    <section class="owner">
+      <h3>di-owner — nivel 1, dueño de Cart</h3>
+      <di-panel></di-panel>
+      <slot></slot>
+    </section>
+  </template>
+</di-owner>

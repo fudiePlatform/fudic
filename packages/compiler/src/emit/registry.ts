@@ -17,6 +17,7 @@ import type { ComponentRegistry, CrossingKind } from '../semantic/model.js';
 import { checkComponentProps } from '../semantic/analyzers/component-props.js';
 import { checkPropChannel } from '../semantic/analyzers/prop-channel.js';
 import { checkSlotName } from '../semantic/analyzers/slot-name.js';
+import { checkScriptBody } from '../semantic/analyzers/script-body.js';
 import { documentRoots, walk } from '../semantic/walk.js';
 import type { ComponentGraph, ResolvedComponent } from './resolve.js';
 import { componentOf } from './resolve.js';
@@ -122,6 +123,10 @@ export function contractDiagnostics(graph: ComponentGraph): readonly Diagnostic[
   };
   checkComponentProps(input, report);
   checkSlotName(input, report);
+  // A `<script>` body (decision 129). Unlike the other three this needs no registry at all,
+  // and it is here for the opposite reason: it is the build's only door to a rule the editor
+  // already serves. Reported by one side alone it would be a rule half the users never see.
+  checkScriptBody(input, report);
   // The FORM of every crossing this file writes (BUG-24 §4.9). It joins the two above because
   // it is the same kind of fact: what one file may write depends on what ANOTHER declares, and
   // only a caller that resolved the graph can put the two side by side.

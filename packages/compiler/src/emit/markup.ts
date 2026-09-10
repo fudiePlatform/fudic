@@ -12,6 +12,7 @@
  * site.
  */
 
+import { dataScriptType } from '../html/index.js';
 import type { HtmlContent, ElementNode, InlineCodeNode } from '../html/index.js';
 import type { IfNode, SwitchNode } from '../control/index.js';
 import type { RenderSectionNode } from '../layout/index.js';
@@ -182,6 +183,14 @@ export interface MarkupOptions {
    */
   readonly hydratable: ReadonlySet<string>;
   /**
+   * The container a child host is handed as its fourth argument (SDD-38 §4.3).
+   *
+   * `$ioc` — the default — is what this component received and forwards intact. A component
+   * that declares a provider passes `$own` instead, the container it owns, so its whole
+   * subtree resolves that token to ITS instance and not to the global one.
+   */
+  readonly ioc?: string;
+  /**
    * The `control` bindings of this template (SDD-34). Empty by default: a page body, a layout
    * and every test that asks only about markup have none, and an empty plan writes nothing.
    */
@@ -207,6 +216,7 @@ export class MarkupEmitter {
   readonly #signals: ReadonlySet<string>;
   readonly #declared: (tag: string) => PropTarget | undefined;
   readonly #hydratable: ReadonlySet<string>;
+  readonly #ioc: string;
   readonly #controls: ControlPlan;
   readonly #formAssociated: ReadonlySet<string>;
   readonly #used = new Set<string>();
@@ -232,6 +242,7 @@ export class MarkupEmitter {
     this.#signals = options.signals ?? new Set();
     this.#declared = options.declared ?? (() => undefined);
     this.#hydratable = options.hydratable;
+    this.#ioc = options.ioc ?? '$ioc';
     this.#controls = options.controls ?? new Map();
     this.#formAssociated = options.formAssociated;
   }
@@ -320,6 +331,21 @@ export class MarkupEmitter {
     }
   }
 
+  /**
+   * The body of a data `<script>`, verbatim (decision 129).
+   *
+   * No Razor and no escaping: decision 43 made a `<script>` raw for the lexer, so `@context`
+   * and `@type` — the two keys JSON-LD is built out of — arrive here as the four characters
+   * the author typed. Escaping the text would be worse than dropping it: `&quot;` inside a
+   * `<script>` is not a quote to a JSON parser, it is six characters of garbage.
+   */
+  #rawBody(el: ElementNode, v: string): void {
+    for (const child of el.children) {
+      if (child.type !== 'raw-text') continue;
+      this.#w.line(`$dom.append(${v}, $dom.text(${JSON.stringify(child.value)}));`);
+    }
+  }
+
   #fresh(): string {
     return `$n${this.#id++}`;
   }
@@ -360,14 +386,20 @@ export class MarkupEmitter {
       const focus = this.#formAssociated.has(el.name) ? ', true' : '';
       this.#w.line(`const ${s} = $dom.attachShadow(${v}${focus});`);
       this.#w.line(
-        `${renderName(el.name)}($dom, ${s}, ${componentPropsExpr(this.#source, el, this.#signals, this.#declared(el.name))});`,
+        `${renderName(el.name)}($dom, ${s}, ${componentPropsExpr(this.#source, el, this.#signals, this.#declared(el.name))}, ${this.#ioc});`,
       );
       this.emitChildren(el.children, v); // light DOM (projected by <slot>)
     } else {
       this.#w.line(`const ${v} = $dom.element(${JSON.stringify(el.name)});`);
       this.#elementAttrs(el, v, false);
       this.#controlAttrs(el, v);
-      this.emitChildren(el.children, v);
+      // A data `<script>` — JSON-LD or an import map (decision 129) — carries its body
+      // VERBATIM, and it is the one place a `raw-text` becomes a node. The generic walk cannot
+      // do this: `raw-text` knows the element it belongs to and not its `type`, and the `type`
+      // is the whole question. So the element decides, which is also what keeps `<style>` out
+      // of it — a `<style>` body is the component's stylesheet and travels by another door.
+      if (dataScriptType(el) !== undefined) this.#rawBody(el, v);
+      else this.emitChildren(el.children, v);
     }
     this.#at = outer;
     this.#w.line(`$dom.append(${parent}, ${v});`);

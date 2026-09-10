@@ -11,7 +11,8 @@
  * into the module, and `return` and `break` cannot escape into it either.
  */
 
-import type { HtmlContent, Span, StructuredDocument, TextNode } from '@fudic/compiler';
+import type { HtmlContent, OxcNode, Span, StructuredDocument, TextNode } from '@fudic/compiler';
+import { planDelegation, span, unwrapParens } from '@fudic/compiler';
 import { partitionCode } from './code.js';
 import { emitDataDeclaration } from './data.js';
 import { emitImports, templateContent } from './imports.js';
@@ -24,6 +25,10 @@ import { emitSection, emitSectionsContract, emitSlot, emitSlotsContract } from '
 import { emitDanglingAt, emitInterpolation } from './template/text.js';
 import type { FileRegistry, VirtualFile } from './types.js';
 import { VirtualWriter } from './writer.js';
+
+/** The single node of a fragment, past the parentheses the author wrote. */
+const rootOf = (ast: FragmentAst | undefined): OxcNode | undefined =>
+  ast === undefined || Array.isArray(ast) ? undefined : unwrapParens(ast as OxcNode);
 
 /** Elements whose body belongs to another language, never to the TypeScript projection. */
 const OPAQUE_ELEMENTS: ReadonlySet<string> = new Set(['style', 'script']);
@@ -61,8 +66,26 @@ export function emitClientVirtual(
   // A page, a route and a layout have no shadow root of their own, so nothing at their top
   // level is inside a component: the host starts as nothing, and a `slot=` written there is
   // checked against `never`, which is what it fills.
+  // Paired once for the whole file, by the very function the compiler's own emit pairs with:
+  // an editor that types `$day` from a different reading than the build compiles is BUG-23
+  // §2.8 again. Its diagnostics are not read here — the semantic pass is their channel.
+  const delegation = planDelegation(source, content, {
+    headerAst: (loop) => rootOf(template.ast?.(loop.header.inner)),
+    valueAst: (expr) => rootOf(template.ast?.(expr.expr)),
+    // The `$name` spans are the compiler emit's business, not the projection's: this side
+    // reads the NAMES and the loop header, never an offset inside the batch's buffer.
+    spanOf: (node) => span(node.start, node.end),
+  });
+
   const ctx = hostContext(
-    { source, w, aliases, reactives: template.reactives ?? new Set(), ast: template.ast },
+    {
+      source,
+      w,
+      aliases,
+      reactives: template.reactives ?? new Set(),
+      ast: template.ast,
+      delegation,
+    },
     undefined,
   );
 

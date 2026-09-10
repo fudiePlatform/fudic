@@ -6,7 +6,7 @@
 > datos, el prerender) · `@fudic/language-server` (el diagnóstico y la bombilla) ·
 > `@fudic/example-basic` (la evidencia)
 > **Depende de:** 12, 15, 19, 20, 21, 23, 24, 27, 36
-> **Rango de diagnósticos:** `FUD0660`–`FUD0679`
+> **Rango de diagnósticos:** `FUD0700`–`FUD0719`
 > **Naturaleza:** emit + transporte + editor. No toca el runtime de hidratación.
 >
 > **Ordenar con [SDD-39](./SDD-39-rutas-reactivas.md).** Los dos tocan
@@ -101,7 +101,7 @@ papeles, ruta, componente y layout.
   <body data-theme="@theme">
 ```
 
-Ni `@server`, ni `@client`, ni lógica suelta en la zona neutra: `FUD0660`.
+Ni `@server`, ni `@client`, ni lógica suelta en la zona neutra: `FUD0700`.
 
 ### 3.2. La ruta resuelve
 
@@ -185,7 +185,7 @@ sin ruta que lo llame; un `@client`, código que nadie va a descargar porque no 
 layout; lógica suelta en la zona neutra, código que corre en los dos renderizadores sin que nadie
 pueda decir cuándo.
 
-`FUD0660` sobre lo que sobre, y el resto del fichero se sigue emitiendo.
+`FUD0700` sobre lo que sobre, y el resto del fichero se sigue emitiendo.
 
 ### 4.2. El orden de una petición, y qué corre cuándo
 
@@ -205,7 +205,7 @@ pueda salir tanto del contexto como de la consulta.
 
 ### 4.3. Una prop de layout **no** puede ser reactiva
 
-Pasarle una `signal` o un `computed` es `FUD0661`, error, y el valor se ignora.
+Pasarle una `signal` o un `computed` es `FUD0701`, error, y el valor se ignora.
 
 El motivo es de mecanismo y no de gusto. El chunk de una ruta atraviesa el markup del layout con
 llamadas al cursor y **sin aportar un solo anclaje**, y eso es lo que mantiene una sola entrada en
@@ -261,7 +261,7 @@ respuesta porque no tiene caso: solo el servidor lo escribe y solo el servidor l
 Que una ruta no resuelva una prop requerida de su layout **es un error y no otra cosa**. Se
 reparte igual que el contrato de un componente (SDD-36 §3.1):
 
-- **En el build** (`vite`, `fudic check`): `FUD0662`, sobre el `<link rel="layout">` de la ruta,
+- **En el build** (`vite`, `fudic check`): `FUD0702`, sobre el `<link rel="layout">` de la ruta,
   que es donde se declara la relación.
 - **En el editor**: el hecho lo dice TypeScript sobre la proyección —el `return` de `layout` se
   comprueba contra el tipo de `props<{…}>()`— y **no se reporta dos veces**. Lo que el servidor
@@ -277,7 +277,7 @@ con su `return` completo.
 Cada layout declara las suyas y recibe las suyas. El módulo de un layout anidado reenvía a su
 padre **las del padre**, no las propias, exactamente como ya reenvía las secciones y los bloques.
 Lo que `layout(ctx, data)` de la ruta devuelve es la unión de lo que declara la cadena; dos
-layouts de la cadena que declaren el mismo nombre con tipos distintos es `FUD0663`.
+layouts de la cadena que declaren el mismo nombre con tipos distintos es `FUD0703`.
 
 ---
 
@@ -292,17 +292,17 @@ layouts de la cadena que declaren el mismo nombre con tipos distintos es `FUD066
   resolver se anotan y el fichero se sigue emitiendo, degradado.
 - **Una voz por hecho.** En el editor, lo que TypeScript reporta no lo reporta también el
   servidor; el servidor pone la reparación.
-- **Spans universales.** Todo diagnóstico de este rango lleva su span: `FUD0660` sobre lo que
-  sobra en el `@code`, `FUD0661` sobre el valor, `FUD0662` sobre el `<link rel="layout">`.
+- **Spans universales.** Todo diagnóstico de este rango lleva su span: `FUD0700` sobre lo que
+  sobra en el `@code`, `FUD0701` sobre el valor, `FUD0702` sobre el `<link rel="layout">`.
 
-### Catálogo de diagnósticos (`FUD0660`–`FUD0679`)
+### Catálogo de diagnósticos (`FUD0700`–`FUD0719`)
 
 | Código | Severidad | Qué dice |
 |---|---|---|
-| `FUD0660` | `error` | El `@code` de un layout contiene algo que no es su declaración de props. |
-| `FUD0661` | `error` | Una prop de layout recibe un valor reactivo (`signal` / `computed`). Un layout no tiene mitad de cliente que pueda repintarlo. |
-| `FUD0662` | `error` | La ruta no resuelve una prop **requerida** del layout — porque falta en el `return` de `layout(ctx, data)`, o porque la ruta no exporta esa función. Sobre el `<link rel="layout">`. Es el que ancla la bombilla. |
-| `FUD0663` | `error` | Dos layouts de la misma cadena declaran la misma prop con tipos incompatibles. |
+| `FUD0700` | `error` | El `@code` de un layout contiene algo que no es su declaración de props. |
+| `FUD0701` | `error` | Una prop de layout recibe un valor reactivo (`signal` / `computed`). Un layout no tiene mitad de cliente que pueda repintarlo. |
+| `FUD0702` | `error` | La ruta no resuelve una prop **requerida** del layout — porque falta en el `return` de `layout(ctx, data)`, o porque la ruta no exporta esa función. Sobre el `<link rel="layout">`. Es el que ancla la bombilla. |
+| `FUD0703` | `error` | Dos layouts de la misma cadena declaran la misma prop con tipos incompatibles. |
 | `0664`–`0679` | | Reservados. |
 
 ---
@@ -317,19 +317,19 @@ Tests en `packages/compiler/test/emit/` (1–7), `packages/vite/test/` (8–11),
 1. **(rojo primero)** Un layout con `const { culture } = props<{ culture: string }>()` y
    `<html lang="@culture">` emite el `lang` **interpolado**, no el texto `@culture`. Es el corte
    de fuente de §4.4, invertido.
-2. El `@code` de un layout con un `@server`, un `@client` o una sentencia suelta emite `FUD0660`
+2. El `@code` de un layout con un `@server`, un `@client` o una sentencia suelta emite `FUD0700`
    con su span, y el resto del layout se emite igual.
 3. Una prop con default (`theme = "light"`) que la ruta no resuelve usa el default y **no**
-   diagnostica; una sin default que la ruta no resuelve emite `FUD0662` sobre el
+   diagnostica; una sin default que la ruta no resuelve emite `FUD0702` sobre el
    `<link rel="layout">`.
-4. Una prop de layout alimentada con una `signal` emite `FUD0661` y el valor se ignora.
+4. Una prop de layout alimentada con una `signal` emite `FUD0701` y el valor se ignora.
 
 **La composición**
 
 5. `page(data, io, layoutProps)` pasa las props al módulo del layout, y el layout las
    desestructura arriba del todo, antes de su primer `yield`.
 6. **Anidados.** Con dos layouts en cadena, cada uno recibe **las suyas** y reenvía las del padre.
-   Dos que declaran el mismo nombre con tipos incompatibles emiten `FUD0663`.
+   Dos que declaran el mismo nombre con tipos incompatibles emiten `FUD0703`.
 7. El chunk de cliente de una ruta con layout **sigue sin anclar nada** del layout: una entrada en
    `sources`, y ningún mapeo al `.fud` del layout. Es el criterio de SDD-39 §6.6, que este SDD no
    puede romper.
@@ -371,7 +371,7 @@ Tests en `packages/compiler/test/emit/` (1–7), `packages/vite/test/` (8–11),
 - **Reactividad en el layout.** Con su condición de reapertura: hará falta el día que alguien
   quiera un layout con estado propio que sobreviva a la navegación, y entonces habrá que decidir
   antes si un layout es un ámbito reactivo o un componente disfrazado. Hoy la respuesta es que no
-  lo es, y `FUD0661` lo dice.
+  lo es, y `FUD0701` lo dice.
 - **Reactividad en el `<head>`.** El `<title>` que se mueve se escribe con `document.title` dentro
   de un `effect` del `@client` de la ruta (SDD-39), que además hace ansiosa a la ruta, así que se
   aplica solo.

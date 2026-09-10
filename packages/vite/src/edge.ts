@@ -24,6 +24,7 @@ import { transformWithOxc } from 'vite';
 import { type ResolveIo } from '@fudic/compiler';
 import { type RouteBuild } from './discover.js';
 import { emitRenderChunk } from './wrapper.js';
+import { routeUsesDi } from './client.js';
 import { emitServerModule } from './server.js';
 import { transformFud } from './transform.js';
 import { safeName } from './link.js';
@@ -76,6 +77,7 @@ export function edgePlugin(builds: readonly RouteBuild[], io: ResolveIo): Plugin
         pageModule: rb.absPath.replace(/\\/gu, '/'),
         hasLoad: rb.analysis.hasLoad,
         hasPaths: rb.analysis.hasPaths,
+        hasDi: routeUsesDi(rb.absPath, io),
         withLoad: true, // the edge resolves data in process
       });
     },

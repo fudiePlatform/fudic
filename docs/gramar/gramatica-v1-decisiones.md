@@ -467,6 +467,40 @@ haría ilegal el patrón sobre el que está construido SDD-34. El sitio del cruc
 comprueba, en el fichero donde está el `<form>`: una pregunta léxica, hecha dos veces, cubre la
 cadena entera.
 
+**117.** **Prefijo `delegate:nombre` — el marcador de delegación.** Atributo **sin valor**,
+hermano de `bus:`/`class:`/`style:` (decisiones 22, 28.a), admitido **solo** dentro del cuerpo de
+un `@foreach`/`@for`/`@while`, y donde `nombre` es un binding declarado por la cabecera de ese
+bucle. Marca que ese elemento entrega la identidad de su fila a un handler de un ancestro.
+
+```
+<div @click=@fn($event, $day)>
+  @foreach (const day of days) key (day.id) {
+    <div class="cell" delegate:day>@day.n</div>
+    <button delegate:day>✎</button>
+  }
+</div>
+```
+
+**118.** **`$nombre` es del compilador, igual que `$event`.** Vive en la reserva del prefijo `$`
+(decisión 97) y solo aparece en la **lista de argumentos** de un event binding. En el dispatch se
+resuelve al valor que tenía la fila del marcador que se pulsó — no a un string, no a un índice:
+el objeto, con su tipo.
+
+**119.** **La unión es por nombre, no por posición.** `$day` se ata a `delegate:day`, y un
+marcador al **ancestro más cercano cuyo handler mencione `$day`**. Ni el orden de los atributos
+ni la profundidad del anidamiento deciden nada. Un elemento puede llevar varios marcadores
+(`delegate:row delegate:tag`) cuando hay bucles anidados.
+
+**120.** **Un handler que menciona `$nombre` no se invoca fuera de una fila.** Si el evento nace
+donde no hay marcador —el padding del contenedor, un título suelto— el handler no se llama. Es lo
+que hace que `$day` sea `Day` y nunca `Day | undefined`. Un handler que **no** menciona ningún
+`$nombre` es un listener normal y no cambia en nada.
+
+**121.** **`delegate:` no deja rastro en el DOM.** No emite atributo, ni en servidor ni en
+cliente. Coherente con las decisiones 91–93: la identidad de una fila es la `key` del autor, no
+algo escrito en el HTML. Es la diferencia con el patrón manual `data-*` + `closest()`, donde el
+tipo se pierde al serializar y hay que reconstruirlo con un `Number(...)`.
+
 ---
 
 ## Sección 8. Bloques de código `@code`
@@ -482,6 +516,12 @@ Un solo contenedor `@code` a nivel documento, con tres regiones posibles: zona n
 **33.b.** Máximo un `@server` y un `@client` por `@code`. Cero de cualquiera también válido. Repetir la región es error.
 
 **33.c.** Imports permitidos dentro de regiones. El compilador los eleva al top del bundle correspondiente (SSR o cliente) durante emit. En zona neutra solo imports compartidos (módulos puros sin side effects).
+
+> **Precisión (SDD-38).** Un módulo de servicio tiene exactamente un efecto al cargarse:
+> inscribirse en el registro raíz. Eso **no** es lo que 33.c prohíbe —IO, estado global ajeno,
+> orden de carga observable—: es determinista, idempotente y acotado a su propia clase, y dos
+> cargas del mismo módulo dejan el registro como lo dejó la primera. Un módulo de servicio
+> cumple 33.c y es un import legal en zona neutra.
 
 **33.d.** Cero o un `@code` por componente.
 
@@ -503,6 +543,60 @@ Un solo contenedor `@code` a nivel documento, con tres regiones posibles: zona n
 **66.** `@server` **no** admite parámetro. El servidor no se hidrata. `@server(...)` es error de
 sintaxis. Con 63-65 retiradas, `@client` tampoco admite parámetro: ambas regiones son ahora
 simétricas (`@server { … }` / `@client { … }`) y cualquier paréntesis tras la keyword es error.
+
+**122.** **`inject` y `provide` son legales en las tres zonas de `@code`, y la zona decide dónde
+corre la línea.** Neutra en los dos lados, `@server` solo en el servidor, `@client` solo en el
+navegador. No hay sintaxis nueva y no hay restricción: es responsabilidad de quien escribe, y la
+zona ya dice todo lo que hay que saber. Un `inject` en `@server` alcanza lo que no puede viajar
+—la base de datos, un token—; uno en `@client`, lo que solo existe en el navegador. Lo que el
+compilador sí comprueba es la contradicción: proveer en un lado e inyectar en el otro
+(`FUD0682`), y leer desde la plantilla un nombre que solo el servidor inyectó (`FUD0681`).
+
+**123.** **Escribir un provider no cambia el nivel de un componente.** Solo `inject`, y solo en
+la zona neutra o en `@client`, promueve a N3, por las reglas de hidratación que ya existen —un
+término más en la disyunción, ni un orden nuevo ni una excepción a la cascada—. Un componente
+que declara providers y no inyecta **sigue siendo nivel 1**: no lleva `data-fud-id`, no aparece
+en `fud-tree` y no descarga chunk. Su factoría llega al navegador por otro camino (125).
+
+**124.** **La jerarquía de contenedores es código emitido, nunca derivada del árbol de
+elementos.** Ninguna resolución consulta el DOM: ni `getRootNode`, ni `.host`, ni `closest`, ni
+`parentElement`. Hay dos razones y cada una basta. El ancestro dueño puede ser nivel 1 por la
+123, así que trepar el DOM encontraría su elemento y **no** encontraría contenedor —o subiría un
+nivel de más y devolvería la instancia global donde debía devolver la suya—. Y la cascada de
+hidratación sube por **tag** y en post-orden, no por posición, así que cuando una instancia
+despierta ni su padre ni su ancestro dueño tienen por qué estar vivos: se leería un árbol a
+medio levantar. El servidor construye la jerarquía léxicamente mientras renderiza, le da
+identidad numérica y la publica en `fud-ioc`; el navegador la reconstruye **en memoria** a
+partir de ese mapa.
+
+**125.** **El dueño de un token es el primer contenedor de la cadena con registro**; la raíz,
+donde viven los `@Service`, es el último eslabón. **La factoría corre en el contenedor dueño**,
+no en el que pidió, y de ahí sale gratis el invariante de vida: nadie puede depender de algo que
+vive menos que él, porque un servicio de raíz que inyecta lo que declaró un componente no
+encuentra registro y falla, en vez de capturar una instancia que morirá antes. Como el dueño
+puede ser nivel 1 y no tener chunk, su factoría **no vive dentro de él**: vive en el módulo IoC
+de la ruta, que se descarga solo si alguien de esa ruta inyecta.
+
+**126.** **El contenedor raíz es la ruta** —una petición en el servidor, una página en el
+navegador— y muere con ella. No hay un nivel «aplicación» por encima: fudic es SSR/SSG y la SPA
+está enmascarada bajo el Service Worker, así que cada navegación vuelve a crear el documento y
+con él el contenedor.
+
+**127.** **Lo que cruza el cable son valores publicados bajo `token()`, nunca instancias de
+servicio.** Es la decisión 84 aplicada al contenedor. Un `inject` en zona neutra corre en los dos
+lados y construye **dos** instancias; lo que las hace coincidir es la semilla —`fud-di`— de la
+que las dos nacen. Solo cruza lo que se publica explícitamente: un valor sembrado en el servidor
+y no publicado se queda ahí, y eso es lo que hace seguro inyectar desde `@server`.
+
+**128.** **`load(ctx)` resuelve por `ctx.inject(…)`.** Es la única función `async` del sistema
+—todo el render es un recorrido síncrono dentro de un generador— y por eso no participa del
+contenedor ambiente: un ambiente que cruza un `await` no da un error visible, da contaminación
+silenciosa entre peticiones concurrentes en dev y en prerender, y no hay `AsyncLocalStorage` en
+un Service Worker con el que taparlo solo en un extremo. Escribir `inject(…)` en el `@server` de
+una ruta es `FUD0683`. El ambiente existe en **un solo sitio**: dentro de la factoría que el
+inyector está ejecutando, entre `try` y `finally`, que es lo que hace legal `log = inject(Logger)`
+como campo de una clase de servicio. En el `@code` de un componente el autor nunca lo toca,
+porque el compilador reescribe la llamada por offset.
 
 ### Gramática de referencia
 
@@ -633,13 +727,53 @@ El prefijo dice quién contesta: `.` el contrato del componente, `@` el dicciona
 
 **42.e.** Soporte de nesting CSS nativo. El parser cuenta llaves correctamente en bloques anidados.
 
-**43.** `<script>` raw puro. Sin procesamiento de Razor. Válvula de escape explícita para integraciones de terceros, JSON-LD, feature detection temprano, etc.
+**43.** `<script>` raw puro. Sin procesamiento de Razor. Válvula de escape explícita para integraciones de terceros, JSON-LD, feature detection temprano, etc. **Precisada por la [129](#129):** el `<script>` sigue siendo raw y sigue siendo la válvula, y la 129 separa las dos cosas que aquí estaban juntas — el **código** entra por `src`, los **datos** (JSON-LD, import map) siguen entrando en línea, que es como se escribe la mitad de la promesa que de verdad no tiene otra forma.
 
-**43.a.** Atributos de `<script>` (src, type, async, defer, nomodule, crossorigin, integrity, nonce) pasan tal cual.
+**43.a.** Atributos de `<script>` (src, type, async, defer, nomodule, crossorigin, integrity, nonce) pasan tal cual. **Intacta**, y `type` pasa a decidir: es lo que la 129 lee para separar datos de código.
 
-**43.b.** Múltiples `<script>` permitidos; se emiten en orden de aparición.
+**43.b.** Múltiples `<script>` permitidos; se emiten en orden de aparición. **Intacta.**
 
 **43.c.** `<script>` permitido en modo componente y en modo página sin restricción. Responsabilidad del developer asumir consecuencias de duplicación si se usa en componentes reutilizables.
+
+<a id="129"></a>
+**129.** **Un `<script>` de CÓDIGO no lleva cuerpo; uno de DATOS sí** (`FUD0161`).
+
+*(a)* fudic **no soporta script en línea**. Un `<script>` que el navegador **ejecuta** se
+emite con sus atributos y sin su cuerpo, y escribir un cuerpo es error: el código va a un
+fichero y el tag lo trae con `src`.
+
+*(b)* Un `<script>` que el navegador **lee** se emite **verbatim**, cuerpo incluido. La lista
+es **cerrada** —`application/ld+json` e `importmap`—, del mismo modo que la lista blanca de
+at-rules de la 42.b: un tipo nuevo es una línea en el compilador, no una heurística sobre lo
+que parece inofensivo. El `type` se compara sin espacios y sin distinguir mayúsculas, como se
+compara un MIME; un `type` interpolado no se puede leer al compilar y por tanto es código.
+
+**La línea es código contra datos, y no cuerpo contra ausencia de cuerpo**, porque solo el
+código tiene una forma alternativa que sobrevive. Los dos tipos de datos no la tienen, y no
+son un adorno:
+
+- **JSON-LD** es cómo una página se explica a un buscador y a una **IA conversacional**. Eso
+  hoy no es un extra: es parte de por qué la página se encuentra. Un `.json` servido aparte y
+  apuntado con un `<link>` no es el mismo documento para un rastreador.
+- Un **import map** es la resolución de módulos de la propia página, y la especificación exige
+  que vaya **en línea y antes del primer módulo**. No existe versión de él en otro fichero.
+
+Del import map se sigue una consecuencia de colocación que conviene saber: como el
+`@RenderHead()` de una ruta se compone **después** del head del layout, un import map escrito
+en el head de una **ruta** llega tarde y el navegador lo ignora. Su sitio es el **layout**,
+delante del `<script type="module">` del arranque. Está en la mano del autor, que es quien
+escribe las dos líneas.
+
+Lo que la regla corrige es que el cuerpo de un `<script>` **se tiraba entero y en silencio**:
+es un `raw-text`, y `raw-text` estaba en la tabla `SERVER_ROLE` del emit como `'none'`, así
+que `<script>alert(1)</script>` salía como `<script></script>` sin un solo diagnóstico. Con la
+129, el código lo dice y los datos se emiten. Un `<script>` de código vacío o de solo espacios
+no pierde nada y no se diagnostica: sangría no es código de autor.
+
+Y el diagnóstico va por **las dos puertas** —la fase semántica para el editor y `registry.ts`
+para el build—, porque una regla que solo sirve una de las dos es una regla que la mitad de la
+gente no ve nunca: es la grieta que BUG-23 tardó un mes en cerrar para `FUD0291` y SDD-37
+volvió a cerrar para `FUD0667`.
 
 **44.** `disabled` y `disabled=""` equivalentes (AST idéntico).
 
@@ -1187,7 +1321,7 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 32 | `@code` | `@server`/`@client` sintaxis Razor genuina |
 | 33.a | `@code` | No anidación entre regiones |
 | 33.b | `@code` | Máximo uno de cada región |
-| 33.c | `@code` | Imports dentro de regiones, elevados en emit |
+| 33.c | `@code` | Imports dentro de regiones, elevados en emit. *(Precisión SDD-38: inscribirse en el registro raíz no es un side effect de los que prohíbe; un módulo de servicio es legal en zona neutra)* |
 | 33.d | `@code` | Cero o un `@code` por componente |
 | 34 | `@code` | Orden libre entre regiones |
 | 63 | `@code` | ~~Estrategia de hidratación en `@client`~~ — **retirada de v1** (SDD-17) |
@@ -1276,3 +1410,16 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 114 | Interpolación | `control` dentro de un bucle → error (`FUD0594`), hermana de la 31 |
 | 115 | Interpolación | Un `control` necesita un `<form control>` por encima (`FUD0595`); exento el control-componente, cuyo nodo se comprueba en el fichero del padre (BUG-25) |
 | 116 | Control flujo | `@{ ... }` corre **en su sitio**, en las dos ramas y en las tres pasadas del cliente; y un nombre que el cuerpo de un bloque **asigna** va por closure, no por parámetro. Es lo que hace escribible el `@while` de la 91 (BUG-28) |
+| 117 | Interpolación | Prefijo `delegate:nombre` — marcador sin valor, solo en cuerpo de bucle, `nombre` de la cabecera |
+| 118 | Interpolación | `$nombre` lo inyecta el compilador (reserva `$`, hermana de la 97); solo en la lista de argumentos de un event binding |
+| 119 | Interpolación | La unión es por **nombre**: `$day` ↔ `delegate:day`, ancestro más cercano que lo mencione |
+| 120 | Interpolación | Un handler con `$nombre` no se invoca si el evento no nace bajo un marcador; sin `$nombre`, listener normal |
+| 121 | Interpolación | `delegate:` no deja rastro en el DOM (ni atributo, ni índice) |
+| 122 | `@code` | `inject` y `provide` son legales en las **tres zonas**; la zona decide dónde corre la línea (neutra en los dos lados, `@server` solo servidor, `@client` solo navegador) |
+| 123 | `@code` | **Escribir un provider no cambia el nivel.** Solo `inject`, y solo en zona neutra o `@client`, promueve a N3; las reglas de hidratación no se tocan |
+| 124 | `@code` | La jerarquía de contenedores es **código emitido** y un mapa publicado (`fud-ioc`), nunca derivada del DOM: el ancestro dueño puede ser N1 y la cascada sube por tag |
+| 125 | `@code` | El dueño es el **primer contenedor de la cadena con registro** y la raíz el último eslabón; la factoría corre en el dueño, y vive en el módulo IoC de la ruta, no en su chunk |
+| 126 | `@code` | **El contenedor raíz es la ruta** —una petición, una página— y muere con ella. No hay nivel «aplicación» |
+| 127 | `@code` | Lo que cruza el cable son **valores publicados** bajo `token()` (`fud-di`), nunca instancias. Es la 84 aplicada al contenedor |
+| 128 | `@code` | `load(ctx)` resuelve por `ctx.inject(…)` (`FUD0683`); el contenedor ambiente vive solo dentro de una factoría, y el `@code` de un componente lo reescribe el compilador |
+| 129 | HTML | Un `<script>` de **código** no lleva cuerpo (`FUD0161`) y uno de **datos** sí, verbatim: lista cerrada `application/ld+json` + `importmap`. Precisa la 43, cuyo cuerpo el emit tiraba en silencio |

@@ -1,0 +1,8 @@
+{
+  "extends": "@fudic/tsconfig/tsconfig.base.json",
+  // No `DOM` lib, and that is the contract rather than an oversight: the container
+  // tree of a route is emitted code and a published map, never something read back
+  // from the element tree (SDD-38 §4.2). A package that cannot name `document` is a
+  // package that cannot break that invariant by accident.
+  "include": ["src", "test"]
+}

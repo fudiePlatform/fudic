@@ -42,7 +42,7 @@ const RICH = `@code {
       @{ const inline = 1; }
       @if (tone) { <app-badge tone="a">@tone</app-badge> } else { <i>no</i> }
       @if (!tone) { <em>@tone</em> }
-      @foreach (const t of [1]) { <b>@t</b> }
+      @foreach (const t of [1]) { <b delegate:t>@t</b> }
       @for (let i = 0; i < 2; i++) { <b>@i</b> }
       @while (false) { <b>x</b> }
       @switch (tone) { case 'a': <b>a</b> default: <b>d</b> }
@@ -116,6 +116,9 @@ describe('semanticTokens', () => {
     expect(bindings).toContain('.value');
     expect(bindings).toContain('click'); // the `@` of `@click` is its own token now
     expect(bindings).toContain('ref');
+    // A marker is a binding like any other: the tree says so, and the colour follows it
+    // rather than the grammar's approximation (SDD-37, decision 117).
+    expect(bindings).toContain('delegate:t');
     expect(bindings.some((text) => text.includes('tone'))).toBe(true); // bus:(tone)
     expect(bindings).not.toContain('class'); // the static attribute is not a binding
   });

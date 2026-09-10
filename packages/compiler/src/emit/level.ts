@@ -97,11 +97,58 @@ function hasHookup(comp: ResolvedComponent): boolean {
  *
  * A reactive declaration (`signal` **or** `computed` — the same list on purpose, because
  * the question that list answers, «can this move?», has one answer for both), a hookup
- * binding in its template, or a `@code { @client }` with a body.
+ * binding in its template, an `inject` that runs in the browser, or a `@code { @client }`
+ * with a body.
+ *
+ * **A `provide` is not in that list, and its absence is the whole of SDD-38 §4.9.** A
+ * component may declare providers and stay N1: it hydrates never, downloads no chunk and
+ * runs not a line in the browser, and its provider still reaches the page — through the
+ * route's IoC module, which is not its chunk. Only `inject` promotes, and only in the zones
+ * that run in a browser: an `inject` written in `@server` is a line the client never sees.
  */
 export function isIntrinsicallyHydratable(comp: ResolvedComponent): boolean {
   const code = codeOf(comp);
-  return code.signals.length > 0 || code.client.body.length > 0 || hasHookup(comp);
+  return (
+    code.signals.length > 0 ||
+    code.client.body.length > 0 ||
+    code.di.some((d) => d.kind === 'inject' && d.zone !== 'server') ||
+    hasHookup(comp)
+  );
+}
+
+/**
+ * Every `ElementNode` of a template, saying of each whether it sits INSIDE a construct.
+ *
+ * That second fact is what tells a host the server will paint exactly once from one the
+ * browser may have to create: a branch of an `@if` and a body of a `@foreach` are re-run
+ * when what they read moves, and every host in them is fabricated afresh.
+ */
+function walkElementsInBlocks(
+  nodes: readonly HtmlContent[],
+  inBlock: boolean,
+  visit: (el: ElementNode, inBlock: boolean) => void,
+): void {
+  for (const node of nodes) {
+    switch (node.type) {
+      case 'element': {
+        const el = node as ElementNode;
+        visit(el, inBlock);
+        walkElementsInBlocks(el.children, inBlock, visit);
+        break;
+      }
+      case 'if':
+      case 'switch':
+      case 'foreach':
+      case 'for':
+      case 'while':
+        for (const branch of branchesOf(node as unknown as ControlNode)) {
+          walkElementsInBlocks(branch.body, true, visit);
+        }
+        break;
+      default:
+        break;
+    }
+  }
 }
 
 /**
@@ -127,11 +174,11 @@ export function formAssociatedTags(graph: ComponentGraph): ReadonlySet<string> {
 function componentHosts(
   graph: ComponentGraph,
   comp: ResolvedComponent,
-  visit: (el: ElementNode, child: ResolvedComponent) => void,
+  visit: (el: ElementNode, child: ResolvedComponent, inBlock: boolean) => void,
 ): void {
-  walkElements(templateOf(comp), (el) => {
+  walkElementsInBlocks(templateOf(comp), false, (el, inBlock) => {
     const child = componentOf(graph, el.name);
-    if (child !== undefined) visit(el, child);
+    if (child !== undefined) visit(el, child, inBlock);
   });
 }
 
@@ -167,8 +214,20 @@ export function hydratableTags(graph: ComponentGraph): ReadonlySet<string> {
       if (!hydratable.has(comp.tag)) continue;
       const { template } = codeOf(comp);
       const moving = movingNames(comp);
-      componentHosts(graph, comp, (el, child) => {
+      componentHosts(graph, comp, (el, child, inBlock) => {
         if (hydratable.has(child.tag)) return;
+        // A host inside a construct of a component that hydrates is a host the BROWSER may
+        // create: the construct re-runs, and every instance it makes then is one no server
+        // painted. Its parent raises it, and it can only be raised if it has a chunk to be
+        // defined from — so it hydrates, whatever it says about itself. The overapproximation
+        // goes in the direction this file already argues for: a chunk downloaded for an
+        // instance that never appeared costs a request during an interaction; the instance
+        // appearing with no chunk is an empty element and no diagnostic can catch it.
+        if (inBlock) {
+          hydratable.add(child.tag);
+          changed = true;
+          return;
+        }
         for (const attr of el.attributes) {
           const b = classifyAttribute(attr, comp.source).value;
           if (b.type !== 'property') continue;

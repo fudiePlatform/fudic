@@ -30,7 +30,7 @@ composición hasta el módulo del layout.
 cosas y el envoltorio en sus dos variantes. La propiedad a demostrar es que `edge`, `sw` y `ssg`
 producen el mismo HTML.
 
-**Hito D — el contrato y la bombilla.** `FUD0662` en el build, la acción de código en el editor, y
+**Hito D — el contrato y la bombilla.** `FUD0702` en el build, la acción de código en el editor, y
 la regla de una voz por hecho que SDD-36 ya fijó.
 
 **Fuera de esta tanda:** reactividad en el layout o en el `<head>`, cabeceras en `RenderContext`,
@@ -44,7 +44,7 @@ un `load` propio del layout (§7).
       El `@code` de un layout se extrae como el de un componente, pero **solo** para sus props: la
       misma llamada, el mismo desestructurado, los mismos defaults. Es el vocabulario que ya
       existe; no se añade ninguno.
-- [ ] **2. `FUD0660` — lo que sobra en el `@code` de un layout.**
+- [ ] **2. `FUD0700` — lo que sobra en el `@code` de un layout.**
       Un `@server`, un `@client` o una sentencia suelta. Con su span, sin lanzar, y el layout se
       sigue emitiendo. Criterio §6.2.
 - [ ] **3. El `<html>` se emite por la maquinaria de atributos.**
@@ -52,7 +52,7 @@ un `load` propio del layout (§7).
       ([layout.ts:165](../../packages/compiler/src/emit/layout.ts)) y emitir el tag de apertura
       como cualquier otro elemento. No toca el orden de emisión: `data` y las props ya están
       resueltas ahí y no se ha emitido un byte. Criterio §6.1.
-- [ ] **4. `FUD0661` — una prop de layout no puede ser reactiva.**
+- [ ] **4. `FUD0701` — una prop de layout no puede ser reactiva.**
       El emit ya sabe qué nombres se mueven (`movingNames`). Sobre el valor, error, y el valor se
       ignora. En el mensaje va el motivo, que es lo que evita que alguien lo lea como una
       limitación arbitraria: un layout no tiene mitad de cliente que pueda repintarlo.
@@ -70,7 +70,7 @@ un `load` propio del layout (§7).
 - [ ] **7. La composición hasta el layout.**
       `page(data, io, layoutProps)` y `layout(data, io, route, props)`, con el desestructurado
       arriba del todo del módulo del layout. Un layout anidado reenvía a su padre **las del
-      padre**, como ya reenvía secciones y bloques. `FUD0663` cuando dos de la cadena declaran el
+      padre**, como ya reenvía secciones y bloques. `FUD0703` cuando dos de la cadena declaran el
       mismo nombre con tipos incompatibles. Criterios §6.5 y §6.6.
 
 ## Fase 3 — El cable, y que los tres coincidan (3)
@@ -88,7 +88,7 @@ un `load` propio del layout (§7).
 
 ## Fase 4 — El contrato y la bombilla (4)
 
-- [ ] **11. `FUD0662` en el build.**
+- [ ] **11. `FUD0702` en el build.**
       Prop requerida del layout que la ruta no resuelve —falta en el `return`, o no hay
       `layout`—, sobre el `<link rel="layout">` de la ruta, que es donde se declara la relación.
       En `vite` y en `fudic check`. Criterio §6.3.

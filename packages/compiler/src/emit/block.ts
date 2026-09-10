@@ -20,7 +20,7 @@
 import type { ControlNode } from '../control/index.js';
 import { keyExpression } from '../control/index.js';
 import { errorDiag, type Span } from '../types/index.js';
-import type { OxcNode } from '../oxc/index.js';
+import { type OxcNode, loopHeaderNames } from '../oxc/index.js';
 import { CodeWriter } from './writer.js';
 import type { AssetLinker } from './assets.js';
 import {
@@ -31,7 +31,7 @@ import {
   type Branch,
   type LoopNode,
 } from './constructs.js';
-import { assignedNames, freeReferences, patternBindings, type FragmentAst } from './scope.js';
+import { assignedNames, freeReferences, type FragmentAst } from './scope.js';
 import type { HookupContext } from './events.js';
 import {
   ClientMarkupEmitter,
@@ -157,9 +157,7 @@ export class BlockEmitter implements BlockSink {
     if (!isLoop(node)) return [];
     if (node.type === 'while') return [];
     const header = this.#ctx.hookup.template.ast(node.header.inner);
-    const root = Array.isArray(header) ? undefined : (header as OxcNode);
-    const declaration = root === undefined ? undefined : root[node.type === 'foreach' ? 'left' : 'init'];
-    const names = patternBindings(declarationTarget(declaration));
+    const names = loopHeaderNames(Array.isArray(header) ? undefined : header, node.type);
     if (names.length === 0) {
       this.#ctx.hookup.diagnostics.push(
         errorDiag(
@@ -542,16 +540,3 @@ function writeClosure(w: CodeWriter, name: string, body: CodeWriter, head?: stri
   w.line('};');
 }
 
-/**
- * `const x of xs` vs `x of xs`: only the first DECLARES. The second assigns to a binding
- * that already exists somewhere else, so the loop names nothing of its own — and a loop
- * that names nothing has no key that can tell its rows apart (`FUD0543`).
- *
- * A header Oxc could not parse arrives here as `undefined`, which is the same answer.
- */
-function declarationTarget(node: unknown): unknown {
-  if (node === null || typeof node !== 'object') return undefined;
-  const candidate = node as OxcNode;
-  if (candidate.type !== 'VariableDeclaration') return undefined;
-  return (candidate['declarations'] as readonly OxcNode[])[0]?.['id'];
-}

@@ -43,7 +43,11 @@ describe('emitComponentClientModule — the module shape (§6.8)', () => {
   it('carries the factory and the define, and NOT the instance scaffolding', () => {
     // `$sub` travels with it because `app-card` declares a signal its own template reads
     // (§4.5); a component with none imports the base class alone, which §6.20 asserts.
-    expect(src).toContain("import { FudicElement, subscribe as $sub } from '@fudic/core';");
+    // `$live` travels because its template holds a child component host, and an instance of
+    // that host fabricated at runtime is one nobody painted: its parent has to raise it.
+    expect(src).toContain(
+      "import { FudicElement, subscribe as $sub, live as $live } from '@fudic/core';",
+    );
     expect(src).toContain('customElements.define("app-card", class extends FudicElement {');
     expect(src).toContain('static c($props) {');
     // All of this lives in the base class, inherited — never emitted per component.
@@ -621,11 +625,15 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
   });
 
   it('SDD-31 §6.20 — the `$sub` import is emitted only where it is used', () => {
+    // `$live` is in both: this template holds a child host either way, and raising one the
+    // browser creates is not a question of whether anything reactive crosses to it.
     expect(hostChunk('.value="@count"')).toContain(
-      "import { FudicElement, subscribe as $sub } from '@fudic/core';",
+      "import { FudicElement, subscribe as $sub, live as $live } from '@fudic/core';",
     );
     // No reactive value crosses, so nothing subscribes and the import would be dead.
-    expect(hostChunk('.value="@41"')).toContain("import { FudicElement } from '@fudic/core';");
+    expect(hostChunk('.value="@41"')).toContain(
+      "import { FudicElement, live as $live } from '@fudic/core';",
+    );
     expect(hostChunk('.value="@41"')).not.toContain('$sub');
   });
 });

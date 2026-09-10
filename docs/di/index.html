@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fudic REPL — @fudic/di</title>
+<style>
+:root{--ink:#13141a;--paper:#f5f2ec;--panel:#fffdf8;--line:#d8d2c4;--hot:#b5462f;--dead:#9a8f7d;--live:#2f6f4f;--kw:#9a3b8f;--str:#2f6f4f;--com:#a89c84;--at:#b5462f;--fn:#3a5fa8;--num:#b5462f;--tag:#3a5fa8;--mono:ui-monospace,'Cascadia Code',Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;padding:24px;background:var(--paper);color:var(--ink);font:14px/1.5 var(--mono)}
+header{margin-bottom:18px}
+h1{font-size:20px;margin:0 0 4px}
+h2{font-size:13px;margin:0 0 8px;font-weight:600;letter-spacing:.03em}
+span.tag{color:var(--dead)}
+span.ext{color:var(--hot)}
+.top{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.pane{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px;overflow:auto;max-height:520px}
+pre{margin:0;font:12px/1.55 var(--mono);white-space:pre}
+.ln{display:inline-block;width:2.6em;color:var(--com);user-select:none}
+.t-kw{color:var(--kw)}.t-str{color:var(--str)}.t-com{color:var(--com);font-style:italic}
+.t-at{color:var(--at);font-weight:600}.t-fn{color:var(--fn)}.t-num{color:var(--num)}.t-tag{color:var(--tag)}
+.stage-wrap{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px}
+.live-area{display:grid;grid-template-columns:260px 1fr 1fr;gap:16px;align-items:start}
+.controls{display:flex;flex-direction:column;gap:8px}
+button{background:var(--ink);color:var(--paper);border:0;border-radius:4px;padding:5px 10px;font:12px var(--mono);cursor:pointer}
+button:hover{background:var(--hot)}
+table{border-collapse:collapse;width:100%}
+th,td{border:1px solid var(--line);padding:4px 6px;font-weight:400;text-align:left;font-size:12px}
+th .scope{display:block;color:var(--dead);font-size:10px}
+.cont{border:1px solid var(--line);border-radius:5px;padding:7px;margin:6px 0 0}
+.cont .cab{display:flex;justify-content:space-between;font-size:12px}
+.cont .scope{color:var(--dead);font-size:10px}
+.s-app{border-color:var(--ink)}
+.s-route{border-color:var(--fn)}
+.s-component{border-color:var(--live)}
+.inst{display:flex;flex-wrap:wrap;gap:4px;margin:5px 0 0;font-size:11px}
+.inst span{background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:1px 5px}
+.inst i{color:var(--dead)}
+#log{max-height:340px;overflow:auto;font-size:12px}
+.linea{padding:2px 0;border-bottom:1px dashed var(--line)}
+.linea.ok{color:var(--live)}
+.linea.err{color:var(--hot)}
+.nota{color:var(--dead);font-size:11px;margin-top:10px}
+@media(max-width:760px){.top{grid-template-columns:1fr}.live-area{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Fudic REPL</h1>
+  <span class="tag">@fudic/di — un servicio, tres contenedores: la instancia depende de desde donde se pida</span>
+</header>
+
+<div class="top">
+  <div class="pane"><h2>inyector <span class="ext">di.js</span></h2><pre id="pane-di"></pre></div>
+  <div class="pane"><h2>servicios y registro <span class="ext">servicios.js</span></h2><pre id="pane-sv"></pre></div>
+</div>
+
+<div class="stage-wrap">
+  <h2>inyector funcionando</h2>
+  <div class="live-area">
+    <div class="controls">
+      <button id="nav">navegar (nueva ruta)</button>
+      <button id="reset">reset</button>
+      <div id="arbol"></div>
+    </div>
+    <table id="matriz"></table>
+    <div id="log"></div>
+  </div>
+  <div class="nota">Los decoradores stage-3 aun no son nativos en navegador: <b>Service</b> es exactamente esta funcion, invocada como <b>Service(Logger)</b>. En .fud la sintaxis <b>@Service</b> la resuelve el compilador.</div>
+</div>
+
+<script type="module" id="di-src">
+/* @fudic/di — inyector completo.
+   El registro vive en scope de modulo (inmutable en la practica).
+   Las instancias viven en contenedores. La cadena de resolucion sube:
+   component -> route -> app. */
+
+const registro = new Map();   // Proveedor -> { factory, scope }
+
+function token(nombre) {
+  return Symbol(nombre);
+}
+
+/* Registro. No instancia nada: solo asocia proveedor -> factory + scope. */
+function provide(proveedor, factory, scope = 'app') {
+  registro.set(proveedor, { factory, scope });
+}
+
+/* Decorador stage-3 sin argumentos. Registra la clase en la raiz. */
+function Service(clase, _ctx) {
+  registro.set(clase, { factory: () => new clase(), scope: 'app' });
+  return clase;
+}
+
+/* Contenedores. `instances` es el almacen; se tira entero al destruir. */
+function createRoot(semilla = []) {
+  return { scope: 'app', label: 'app', parent: null, instances: new Map(semilla), vivo: true };
+}
+
+function createChild(padre, scope, label) {
+  return { scope, label, parent: padre, instances: new Map(), vivo: true };
+}
+
+function destroy(c) {
+  c.instances.clear();
+  c.vivo = false;
+}
+
+/* Contenedor activo. Lo fija el host: fetch() en server, controlador en cliente. */
+let actual = null;
+const pila = [];
+
+function runInScope(c, fn) {
+  const previo = actual;
+  actual = c;
+  try { return fn(); } finally { actual = previo; }
+}
+
+function inject(proveedor, opts) {
+  if (actual === null) throw new Error('inject() fuera de contexto: no hay contenedor activo');
+  return resolver(actual, proveedor, opts);
+}
+
+function resolver(desde, proveedor, opts) {
+  const entrada = registro.get(proveedor);
+
+  /* Sin registro: solo puede ser un valor sembrado en la raiz (env, request...). */
+  if (entrada === undefined) {
+    for (let c = desde; c !== null; c = c.parent)
+      if (c.instances.has(proveedor)) return c.instances.get(proveedor);
+    if (opts && opts.optional === true) return undefined;
+    throw new Error(`sin registro para ${nombreDe(proveedor)}`);
+  }
+
+  if (entrada.scope === 'transient') return construir(desde, proveedor, entrada);
+
+  /* El scope decide QUIEN cachea, no quien pide. */
+  const dueno = duenoDe(desde, entrada.scope);
+  if (dueno === null)
+    throw new Error(`no hay contenedor '${entrada.scope}' en la cadena desde '${desde.label}' (pedido: ${nombreDe(proveedor)})`);
+
+  if (dueno.instances.has(proveedor)) return dueno.instances.get(proveedor);
+  const valor = construir(dueno, proveedor, entrada);
+  dueno.instances.set(proveedor, valor);
+  return valor;
+}
+
+/* Contenedor mas cercano cuyo scope coincide, subiendo por la cadena. */
+function duenoDe(c, scope) {
+  for (let x = c; x !== null; x = x.parent) if (x.scope === scope) return x;
+  return null;
+}
+
+/* La factory corre en el contenedor DUENO, no en el que pidio.
+   De ahi sale gratis el invariante: nadie puede depender de algo que vive menos. */
+function construir(dueno, proveedor, entrada) {
+  if (pila.includes(proveedor))
+    throw new Error(`ciclo: ${[...pila, proveedor].map(nombreDe).join(' -> ')}`);
+  pila.push(proveedor);
+  try { return runInScope(dueno, entrada.factory); }
+  finally { pila.pop(); }
+}
+
+function nombreDe(p) {
+  return typeof p === 'function' ? p.name : String(p.description);
+}
+
+globalThis.DI = { token, provide, Service, createRoot, createChild, destroy, runInScope, inject };
+
+</script>
+<script type="module" id="sv-src">
+const { Service, provide, inject } = globalThis.DI;
+
+globalThis.TRAZA = [];
+
+/* app — uno por raiz. En Node vive hasta Ctrl+C; en Workers, hasta la respuesta. */
+class Logger {
+  static n = 0;
+  id = `Logger#${++Logger.n}`;
+  log(m) { globalThis.TRAZA.push(`${this.id} · ${m}`); }
+}
+Service(Logger);
+
+/* route — uno por navegacion. Muere al salir de la ruta. */
+class Cart {
+  static n = 0;
+  id = `Cart#${++Cart.n}`;
+  log = inject(Logger);
+  lineas = [];
+  add(x) { this.lineas.push(x); this.log.log(`${this.id} add ${x}`); }
+}
+provide(Cart, () => new Cart(), 'route');
+
+/* component — uno por instancia N3. Muere en disconnectedCallback. */
+class Panel {
+  static n = 0;
+  id = `Panel#${++Panel.n}`;
+  cart = inject(Cart);
+}
+provide(Panel, () => new Panel(), 'component');
+
+/* transient — nunca se cachea. */
+class Ticket {
+  static n = 0;
+  id = `Ticket#${++Ticket.n}`;
+}
+provide(Ticket, () => new Ticket(), 'transient');
+
+/* Error legitimo: algo que vive mas pide algo que vive menos. */
+class Roto {
+  static n = 0;
+  id = `Roto#${++Roto.n}`;
+  panel = inject(Panel);
+}
+provide(Roto, () => new Roto(), 'app');
+
+globalThis.APP = { Logger, Cart, Panel, Ticket, Roto };
+
+</script>
+<script type="module">
+const { createRoot, createChild, destroy, runInScope, inject } = globalThis.DI;
+const { Logger, Cart, Panel, Ticket, Roto } = globalThis.APP;
+
+/* ---------- pintado de los dos paneles de codigo ---------- */
+const RE = /(\/\*[\s\S]*?\*\/|\/\/[^\n]*)|(`(?:[^`\\]|\\.)*`|'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")|\b(const|let|var|function|class|return|new|throw|for|if|else|try|finally|typeof|of|in|static|null|undefined|true|false|import|export|extends|this|default)\b|\b(\d+)\b/g;
+
+function pinta(src, destino) {
+  const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+  const marcado = esc(src).replace(RE, (m, com, str, kw, num) => {
+    if (com) return '<span class="t-com">' + com + '</span>';
+    if (str) return '<span class="t-str">' + str + '</span>';
+    if (kw) return '<span class="t-kw">' + kw + '</span>';
+    if (num) return '<span class="t-num">' + num + '</span>';
+    return m;
+  });
+  const porLineas = marcado.replace(/<span class="t-com">[\s\S]*?<\/span>/g,
+    b => b.split('\n').join('</span>\n<span class="t-com">'));
+  destino.innerHTML = porLineas.split('\n')
+    .map((l, i) => '<span class="ln">' + String(i + 1).padStart(3, ' ') + '</span>' + l)
+    .join('\n');
+}
+pinta(document.getElementById('di-src').textContent.trim(), document.getElementById('pane-di'));
+pinta(document.getElementById('sv-src').textContent.trim(), document.getElementById('pane-sv'));
+
+/* ---------- contenedores vivos ---------- */
+let app, ruta, cajas, nRuta;
+
+function arranca() {
+  Logger.n = 0; Cart.n = 0; Panel.n = 0; Ticket.n = 0; Roto.n = 0;
+  nRuta = 1;
+  app = createRoot();
+  monta('route /pos');
+  traza('contenedores creados. cero instancias.');
+  render();
+}
+
+function monta(etiqueta) {
+  ruta = createChild(app, 'route', etiqueta);
+  const a = createChild(ruta, 'component', 'panel A');
+  const b = createChild(ruta, 'component', 'panel B');
+  cajas = [a, b, createChild(a, 'component', 'A > hijo')];
+}
+
+function navega() {
+  [...cajas].reverse().forEach(destroy);
+  destroy(ruta);
+  nRuta++;
+  monta('route /r' + nRuta);
+  traza('navegacion: ruta destruida, contenedores nuevos. app intacta.');
+  render();
+}
+
+/* ---------- traza ---------- */
+function traza(m, clase) {
+  const l = document.createElement('div');
+  l.className = 'linea ' + (clase || '');
+  l.textContent = m;
+  document.getElementById('log').prepend(l);
+}
+
+/* ---------- matriz ---------- */
+const SERVICIOS = [
+  ['Logger', Logger, 'app'],
+  ['Cart', Cart, 'route'],
+  ['Panel', Panel, 'component'],
+  ['Ticket', Ticket, 'transient'],
+  ['Roto', Roto, 'app, pide component'],
+];
+
+function pide(caja, P, nombre) {
+  try {
+    const v = runInScope(caja, () => inject(P));
+    traza(nombre + ' desde ' + caja.label + '   ->   ' + v.id, 'ok');
+  } catch (e) {
+    traza(nombre + ' desde ' + caja.label + '   ->   ' + e.message, 'err');
+  }
+  render();
+}
+
+function render() {
+  const m = document.getElementById('matriz');
+  m.innerHTML = '';
+  const head = document.createElement('tr');
+  head.innerHTML = '<th></th>' + cajas.map(c => '<th>' + c.label + '</th>').join('');
+  m.appendChild(head);
+  for (const [nombre, P, scope] of SERVICIOS) {
+    const tr = document.createElement('tr');
+    const th = document.createElement('th');
+    th.innerHTML = nombre + '<span class="scope">' + scope + '</span>';
+    tr.appendChild(th);
+    for (const c of cajas) {
+      const td = document.createElement('td');
+      const b = document.createElement('button');
+      b.textContent = 'inject';
+      b.onclick = () => pide(c, P, nombre);
+      td.appendChild(b);
+      tr.appendChild(td);
+    }
+    m.appendChild(tr);
+  }
+
+  const t = document.getElementById('arbol');
+  t.innerHTML = '';
+  t.appendChild(caja(app, [caja(ruta, [caja(cajas[0], [caja(cajas[2], [])]), caja(cajas[1], [])])]));
+}
+
+function caja(c, hijos) {
+  const d = document.createElement('div');
+  d.className = 'cont s-' + c.scope;
+  const h = document.createElement('div');
+  h.className = 'cab';
+  h.innerHTML = '<b>' + c.label + '</b><span class="scope">' + c.scope + '</span>';
+  d.appendChild(h);
+  const ul = document.createElement('div');
+  ul.className = 'inst';
+  if (c.instances.size === 0) ul.innerHTML = '<i>vacio</i>';
+  else for (const v of c.instances.values()) {
+    const s = document.createElement('span');
+    s.textContent = v.id;
+    ul.appendChild(s);
+  }
+  d.appendChild(ul);
+  for (const x of hijos) d.appendChild(x);
+  return d;
+}
+
+document.getElementById('nav').onclick = navega;
+document.getElementById('reset').onclick = () => {
+  document.getElementById('log').innerHTML = '';
+  arranca();
+};
+arranca();
+
+</script>
+</body>
+</html>

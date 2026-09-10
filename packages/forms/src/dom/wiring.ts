@@ -11,18 +11,24 @@
 import { effect } from '@fudic/core';
 import type { Control } from '../types.js';
 import { errorText } from '../messages.js';
+import { delegate } from './delegation.js';
 import type { Cleanup, ErrorSlot } from './types.js';
 
-/** Subscribe a listener and get its removal back. */
-export function on(
-  target: EventTarget,
-  type: string,
-  handler: (event: Event) => void,
-): Cleanup {
-  target.addEventListener(type, handler);
-  return () => {
-    target.removeEventListener(type, handler);
-  };
+/**
+ * Subscribe a listener and get its removal back.
+ *
+ * DELEGATED since SDD-37, and the six bindings did not have to know: a form of twelve fields
+ * held thirty-six listeners because each of them asked its own element for `input`, `change`
+ * and `blur`. Now the root holds one per event type and the element holds a row in a table,
+ * which is the same technique the compiler writes for a delegated `@click` — and the same
+ * saving, on the package where the most elements are alive at once.
+ *
+ * What a binding takes back is still its own registration and nothing else, so `undo` and every
+ * caller of it are unchanged. `Element` and no longer `EventTarget`, because delegation needs a
+ * root to listen at and only a node has one.
+ */
+export function on(el: Element, type: string, handler: (event: Event) => void): Cleanup {
+  return delegate(el, type, handler);
 }
 
 /** Fold a list of teardowns into the one `Cleanup` a binding returns. */

@@ -125,9 +125,15 @@ describe('a write inside a loop, re-applied by the row (§4.5 — BUG-12 §3.3.c
  * and only the element says which shadow root a payload belongs to.
  */
 const served: { el: Element; n: unknown; m: unknown; hasM: boolean }[] = [];
+/** What the parent handed each fabricated instance through `c`: entry point 2, dense. */
+const created: { el: Element; props: unknown[] }[] = [];
 customElements.define(
   'x-kid',
   class extends HTMLElement {
+    c(props: unknown[]): void {
+      created.push({ el: this, props });
+    }
+
     u(payload: unknown[]): void {
       // `hasM` and not `m !== undefined`: an update payload is sparse, and telling an absent
       // hole from a present `undefined` is the whole point of BUG-18 — `in` is what tells
@@ -145,6 +151,20 @@ const rowsServedIn = (shadow: ShadowRoot): unknown[] =>
 
 describe('a child fabricated by a loop (§4.6 — BUG-12 §7)', () => {
   const graph = graphOf({ '/x-parent.fud': HOSTS, '/x-kid.fud': KID }, 'x-parent');
+
+  it('raises every row it fabricated, with that row´s own props', () => {
+    created.length = 0;
+    const { shadow } = drive(graph, 'x-parent', browserDom, [['a', 'b']]);
+
+    // Nothing painted these two: the parent created them, so the parent is who brings them
+    // to life. Without this they are empty elements in the tree, with no shadow at all.
+    const mine = created.filter((c) => shadow.contains(c.el));
+    expect(mine).toHaveLength(2);
+    expect(mine.map((c) => c.props)).toEqual([
+      [0, 'a'],
+      [0, 'b'],
+    ]);
+  });
 
   it('serves every row its own initial pass, and renews them all on a notification', () => {
     served.length = 0;

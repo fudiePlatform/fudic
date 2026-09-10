@@ -8,7 +8,7 @@
  * `TrustedHTML` detection belong to emit / SDD-12. SDD-07 MARKS; they APPLY.
  */
 
-import type { Node } from '../types/index.js';
+import type { Node, Span } from '../types/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { AttributeValuePart } from '../html/index.js';
 
@@ -21,7 +21,8 @@ export type Binding =
   | RefBinding
   | ControlBinding
   | ClassBinding
-  | StyleBinding;
+  | StyleBinding
+  | DelegateBinding;
 
 /** The `Binding.type` discriminants, as a closed union. */
 export type BindingType = Binding['type'];
@@ -129,6 +130,26 @@ export interface StyleBinding extends Node {
 }
 
 /**
+ * `delegate:day` — the delegation marker (decision 117, SDD-37 §3.1). A prefix like
+ * `class:`/`style:`/`bus:` (decision 22) and, unlike all three, one that carries NO value:
+ * the element is not being given anything, it is handing its row identity upwards.
+ *
+ * `name` is a binding declared by the header of the loop this element sits in, and the
+ * ancestor that reads it writes `$name` in a handler argument list. Which loop, whether the
+ * name exists there and whether anybody reads it are five of SDD-37's eight diagnostics, and
+ * all five are semantic: this node only records the marker and where its name is written.
+ *
+ * `nameSpan` is the name AFTER the colon, kept apart from `span` because they are blamed by
+ * different diagnostics — `FUD0662` points at the name, `FUD0661` and `FUD0663` at the whole
+ * attribute.
+ */
+export interface DelegateBinding extends Node {
+  readonly type: 'delegate';
+  readonly name: string;
+  readonly nameSpan: Span;
+}
+
+/**
  * Content interpolation. `escaped` is true by default (decision 18) and false for `@raw`
  * (option A): SDD-05 delivers a `raw-expression` node => `escaped: false`, while a bare
  * `razor-expression` => `escaped: true`. The escaping itself is emit's.
@@ -147,6 +168,9 @@ export const CLASS_PREFIX = 'class:';
 
 /** The conditional-style prefix (decision 22). */
 export const STYLE_PREFIX = 'style:';
+
+/** The delegation-marker prefix (decision 117). */
+export const DELEGATE_PREFIX = 'delegate:';
 
 /** The event prefix (decisions 26–28): a host listener. */
 export const EVENT_PREFIX = '@';

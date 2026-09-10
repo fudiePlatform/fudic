@@ -39,6 +39,7 @@ import {
   type HydratedFrom,
   type ReportHydrated,
 } from './registry.js';
+import { installFabricator } from './live.js';
 import { type WarmChannel } from './warm/channel.js';
 import { startWarmObserver } from './warm/observer.js';
 
@@ -108,6 +109,17 @@ export interface HydrationOptions {
   readonly importModule?: ImportModule;
   /** The custom-element registry. Injected for the same reason (§4.4). */
   readonly registry?: ElementRegistry;
+  /**
+   * Whatever has to be in place before the FIRST chunk is raised (SDD-38 §4.2).
+   *
+   * Today that is the container tree: a chunk that injects resolves against it, so it must
+   * not be raised while the tree is still one round trip away. It is awaited inside path 2
+   * and not before installing, and that difference is the whole reason the option exists —
+   * installing late means the capturer is not there yet, and a click during that window is
+   * not deferred, it is LOST. The capturer goes up first; the gesture waits with everything
+   * else.
+   */
+  readonly ready?: PromiseLike<unknown>;
 }
 
 /**
@@ -135,6 +147,12 @@ export function installHydration(options: HydrationOptions): Hydration {
     importModule: options.importModule ?? importChunk,
   });
 
+  // What a parent needs to raise a child nothing painted: this page's way of defining a tag.
+  // Installed here because the loader is this function's, and a chunk cannot be handed one.
+  // The loader's own function and not a wrapper around it: `ensureDefined` closes over its
+  // memoization and never reads `this`, so the reference IS the capability.
+  installFabricator(loader.ensureDefined, registry);
+
   const report: ReportHydrated = (id, tag, ms, from) => {
     const detail: HydratedDetail = { id, tag, ms, from };
     doc.dispatchEvent(new CustomEvent(HYDRATED_EVENT, { detail }));
@@ -152,9 +170,12 @@ export function installHydration(options: HydrationOptions): Hydration {
     report,
   });
 
+  const ready = options.ready ?? Promise.resolve();
+
   /** Path 2, in the one order §4.4 fixes. */
   const raise = async (host: Element, id: number, replay: () => void): Promise<void> => {
     const tag = host.localName;
+    await ready; // 2b — what the page must have in place before any chunk runs
     await preHydrateBus(tag); // 3 — the receivers, before anything internal
     await cascade.prepareTag(tag); // 4 — the subtree of every instance, post-order
     const elapsed = stopwatch();

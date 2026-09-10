@@ -68,7 +68,7 @@
   <template shadowrootmode="open">
     <form control=@userForm class="fudic" @submit=@stop>
       <label for="nom">Nombre</label>
-      <input control=@userForm.name type="text">
+      <input id="nom" control=@userForm.name type="text">
       @*
         Un control-componente, y va DENTRO del formulario: por la decisión 115 un `control`
         exige un `<form control>` por encima. Antes esto colgaba de un `<form>` ajeno —uno que

@@ -13,12 +13,14 @@ export type {
   ControlBinding,
   ClassBinding,
   StyleBinding,
+  DelegateBinding,
   Interpolation,
 } from './nodes.js';
 export {
   BUS_PREFIX,
   CLASS_PREFIX,
   STYLE_PREFIX,
+  DELEGATE_PREFIX,
   EVENT_PREFIX,
   PROPERTY_PREFIX,
   REF_NAME,

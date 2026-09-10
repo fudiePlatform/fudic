@@ -1,0 +1,61 @@
+<link rel="layout" href="../../layouts/_layout.fud">
+<link rel="component" href="../../components/site-nav.fud">
+<link rel="component" href="../../components/sesion-panel.fud">
+
+@code {
+  type PageData = { name: string };
+
+  @server {
+    import { strategy } from "@fudic/core";
+    import { USER } from "../../services/session";
+    import { findUser } from "../../data/users";
+
+    // Rendered per request, always: it is the only mode in which two responses of this page
+    // are ever in flight at the same time, which is the whole point of the page.
+    strategy({ mode: "ssr" });
+
+    export async function load(ctx): Promise<PageData> {
+      const name = await findUser(ctx.params.user);
+      // Published for the browser to rebuild the same session from. Through `ctx`, which is
+      // what names the request: it belongs to THIS response and to no other.
+      ctx.publish(USER, name);
+      return { name };
+    }
+  }
+}
+
+<head>
+  <title>Sesión de @data.name — fudic</title>
+</head>
+
+@section nav {
+  <site-nav .current="sesion"></site-nav>
+}
+
+<h1>6 · Una petición no ve lo que publicó otra</h1>
+<p class="lede">
+  Esta página se pinta entera en el servidor, una vez por petición. Su <code>load</code>
+  espera a la base de datos —lo que tarda depende del usuario— y publica el nombre bajo un
+  token. Dos visitantes distintos pidiendo a la vez tienen que llevarse cada uno el suyo:
+  lo que se publica pertenece a la respuesta que lo publicó, no al proceso que la renderiza.
+</p>
+
+<dl class="facts">
+  <dt>usuario de la URL</dt>
+  <dd data-id="param">@data.name</dd>
+</dl>
+
+<sesion-panel></sesion-panel>
+
+<h2>Qué mirar</h2>
+<p>
+  Los dos valores de arriba salen por caminos distintos y tienen que coincidir. El primero
+  viene del <code>load</code>, por los datos de la página. El segundo lo inyecta un
+  componente, que lo resuelve desde el contenedor de la petición y, en el navegador, desde
+  el bloque <code>fud-di</code> de este mismo HTML.
+</p>
+<p>
+  Si al pedir <code>/sesion/ana</code> y <code>/sesion/luis</code> a la vez una de las dos
+  páginas enseña el nombre de la otra —o <code>anónimo</code>—, lo publicado se está
+  guardando en un sitio que las dos peticiones comparten.
+</p>

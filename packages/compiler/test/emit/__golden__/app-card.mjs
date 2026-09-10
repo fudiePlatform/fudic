@@ -3,7 +3,7 @@ import { render as renderAppButton } from './app-button.mjs';
 export const tag = "app-card";
 export const css = `:host{display:block;}.card{border:1px solid #ddd;border-radius:8px;padding:1rem;.body{margin-top:0.5rem;}}.card.highlight{border-color:gold;}`;
 
-export function render($dom, $shadow, props) {
+export function render($dom, $shadow, props, $ioc) {
   const { title, variant = 'default' } = props ?? {};
   $dom.state($shadow, [title, variant]);
   const expanded = () => (false); // inert signal (SSR; hydration is client-side)
@@ -30,7 +30,7 @@ export function render($dom, $shadow, props) {
   $dom.setAttr($n10, 'data-fud-adopt', "app-button");
   $dom.setAttr($n10, "variant", "ghost");
   const $n11 = $dom.attachShadow($n10);
-  renderAppButton($dom, $n11, { "variant": "ghost" });
+  renderAppButton($dom, $n11, { "variant": "ghost" }, $ioc);
   const $n12 = $dom.text(" "); $dom.append($n10, $n12);
   if (expanded()) {
     const $n13 = $dom.text(" Cerrar "); $dom.append($n10, $n13);

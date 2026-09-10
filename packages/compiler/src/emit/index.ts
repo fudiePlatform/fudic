@@ -43,6 +43,14 @@ export {
 } from './layout.js';
 
 export { hydratableTags, isIntrinsicallyHydratable, formAssociatedTags } from './level.js';
+export {
+  emitComponentIocModule,
+  hasDependencyInjection,
+  iocName,
+  ownsContainer,
+  usesDependencyInjection,
+  IOC_SUFFIX,
+} from './di.js';
 
 // The `control` bindings of a template, resolved once for both branches (SDD-34 §4.3).
 export { planControls, slotIdOf, ERROR_SLOT_ATTR, SUMMARY_SLOT_ATTR } from './controls.js';
@@ -51,6 +59,7 @@ export type { ControlPlan, ControlSite } from './controls.js';
 // The contract questions only a resolved graph can answer, and the three diagnostics that
 // need them (BUG-23 §4.4).
 export { graphRegistry, contractDiagnostics } from './registry.js';
+export { injectionDiagnostics } from './di-diagnostics.js';
 
 // The `@code` reading itself, for a caller that holds ONE document and no graph — the
 // workspace index, which needs a child's props to expand its tag (BUG-23 task 25).

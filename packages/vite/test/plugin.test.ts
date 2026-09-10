@@ -132,6 +132,7 @@ describe('buildStart', () => {
       'h/app-actions',
       'h/app-badge',
       'h/app-button',
+      'h/app-calendar',
       'h/app-card',
       'h/app-list',
     ]);

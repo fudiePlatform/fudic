@@ -1,84 +1,60 @@
 # BUG-29 — Tareas
 
-> **BUG:** [BUG-29 — Un `@client` escrito en un comentario es un error](./BUG-29-marcador-dentro-de-un-comentario.md)
+> **BUG:** [BUG-29 — el cuerpo de un `<script>` se tiraba en silencio](./BUG-29-script-en-linea-sin-diagnostico.md)
 > **Paquetes:** `@fudic/compiler`
-> **Rama:** por asignar · **Depende de:** SDD-08 y SDD-12 en `Hecho`
-> **Progreso:** 0 / 5 — `Listo`
+> **Rama:** `sdd-37-delegacion-de-eventos` · **Depende de:** SDD-12 y SDD-15 en `Hecho`
+> **Progreso:** 5 / 5 — `Hecho`
 
-Cinco tareas. Rutas relativas a la raíz del repo. Cada una deja el workspace verde, así que
-se puede parar después de cualquiera.
+Cinco tareas. Rutas relativas a la raíz del repo.
 
-**El orden manda en una cosa:** los tests **antes** que el arreglo (1 antes que 2–4). Los dos
-falsos positivos se reproducen en tres líneas y hay que verlos en rojo; escritos después,
-nadie sabe si pasan porque la corrección funciona o porque el test mira otra cosa.
-
----
-
-## Mapa de dependencias
-
-```
-1 los cinco tests en rojo
-      │
-      ▼
-2 el AST publica lo que el balanceador ya sabe  (code/nodes.ts + code/code.ts)
-      │
-      ├──▶ 3 el ayudante, en un módulo propio   (semantic/)
-      │          │
-      │          ├──▶ 4a code-region-nesting  (FUD0193)
-      │          └──▶ 4b layout-load          (FUD0430)
-      ▼
-5 el ejemplo recupera su comentario
-```
+**El orden manda:** primero la pregunta que las tres partes comparten —qué `<script>` es de
+datos—, porque calculada por separado en el emit de servidor, el de cliente y el analizador es
+una pregunta que diverge; y la divergencia sería un JSON-LD que el servidor pinta, el cliente
+no fabrica y la hidratación no reconoce. Este BUG se arregló primero y se redactó después.
 
 ---
 
-## Fase 1 — El rojo (1)
+## Fase 1 — La pregunta, una sola vez (1)
 
-- [ ] **1. Los falsos positivos, reproducidos.**
-      En `packages/compiler/test/semantic/`: `@client` y `@server` nombrados en un comentario
-      de línea, uno de bloque, una cadena y una plantilla —en la zona neutra **y** dentro de
-      una región—, y `load` nombrado en un comentario y en una cadena del `@server` de un
-      layout. Vistos fallar contra el código de hoy.
-      Y en el mismo paso, los **verdaderos** positivos que no se pueden perder: región dentro
-      de región, región en la neutra a profundidad > 0, y un `export function load` real.
+- [x] **1. `dataScriptType` en [`html/nodes.ts`](../../../packages/compiler/src/html/nodes.ts).**
+      `DATA_SCRIPT_TYPES` cerrado —`application/ld+json`, `importmap`— y la función que lee el
+      `type` de un elemento: recortado, sin distinguir mayúsculas como un MIME, y `undefined`
+      para un `type` interpolado, que no se puede leer al compilar. Vive en `html/` porque es
+      un hecho sobre HTML y porque lo consultan los tres.
 
-## Fase 2 — Que el AST publique lo que ya sabe (1)
+## Fase 2 — Que los datos salgan (2)
 
-- [ ] **2. `CodeBlockNode.regions`.**
-      [`code/nodes.ts`](../../../packages/compiler/src/code/nodes.ts) gana el campo;
-      [`code/code.ts`](../../../packages/compiler/src/code/code.ts) lo rellena con el
-      `group.regions` que **ya tiene en la mano** en la línea 289 y hoy solo usa para el
-      `BodySplitter` y para `razorCommentErrors`. Ni un lexado nuevo: es publicar un dato
-      calculado.
+- [x] **2. El emit de servidor.**
+      `#rawBody` en [`emit/markup.ts`](../../../packages/compiler/src/emit/markup.ts): el
+      cuerpo verbatim, sin escapar. Decide el ELEMENTO y no la tabla `SERVER_ROLE`, porque un
+      `raw-text` conoce el elemento al que pertenece y no su `type`, y el `type` es toda la
+      pregunta. Eso mismo es lo que deja fuera al `<style>`, cuyo cuerpo viaja por otra puerta.
+- [x] **3. El emit de cliente.**
+      `#children` en [`emit/markup-client.ts`](../../../packages/compiler/src/emit/markup-client.ts):
+      `c` fabrica el mismo texto, `h` no fabrica nada —el nodo vuelve dentro de su elemento y
+      el cursor del nivel recorre elementos—. Las dos ramas acaban con el mismo árbol.
 
-## Fase 3 — Una regla, una función (2)
+## Fase 3 — Que el código lo diga (1)
 
-- [ ] **3. El ayudante.**
-      Un módulo propio en `semantic/`, con **una** de las dos formas de §3 —`outsideOpaque`
-      (el `RegionCursor` de `code.ts:94` extraído) o `maskOpaque` (enmascarado carácter por
-      carácter, como `redactServerRegions`)—. Si sale `maskOpaque`, los dos analizadores se
-      quedan casi como están y los spans no se mueven solos.
-- [ ] **4. Los dos llamantes.**
-      [`code-region-nesting.ts`](../../../packages/compiler/src/semantic/analyzers/code-region-nesting.ts)
-      (`FUD0193`) y
-      [`layout-load.ts`](../../../packages/compiler/src/semantic/analyzers/layout-load.ts)
-      (`FUD0430`), los dos por la misma función. Y las dos cabeceras reescritas: la de hoy
-      declara el falso positivo como precio aceptado, y deja de serlo.
+- [x] **4. El analizador, por las dos puertas.**
+      [`semantic/analyzers/script-body.ts`](../../../packages/compiler/src/semantic/analyzers/script-body.ts):
+      `checkScriptBody` sobre markup solo y `scriptBody` que la envuelve —el patrón de
+      `checkSlotName`—, registrado en `ANALYZERS` **y** llamado desde `contractDiagnostics` en
+      [`emit/registry.ts`](../../../packages/compiler/src/emit/registry.ts), que es la única
+      puerta del build a los analizadores. Sobre el cuerpo y con el span del cuerpo; los tipos
+      de datos salen antes de mirarlo.
 
-## Fase 4 — La prosa que lo destapó (1)
+## Fase 4 — Que se vea (1)
 
-- [ ] **5. El comentario del ejemplo, tal como se quería escribir.**
-      [`examples/basic/src/routes/ruta-reactiva.fud`](../../../examples/basic/src/routes/ruta-reactiva.fud)
-      dice hoy «la region de cliente» con el nombre roto a propósito para esquivar el
-      diagnóstico. Vuelve a decir `@client`, que es lo que había que escribir.
-
----
-
-## Cierre
-
-- [ ] `pnpm typecheck` · `pnpm test` en verde en el workspace entero.
-- [ ] Cobertura al **100 %** en las cuatro métricas del código nuevo; `@fudic/compiler` no
-      baja.
-- [ ] Validado por mutación: se deshace el salto de regiones y vuelven a caer los cinco
-      tests de la fase 1.
-- [ ] Fila en [el índice de BUG](./INDEX.md) y registro en [INDEX.md](../INDEX.md).
+- [x] **5. Tests y comprobación en el ejemplo.**
+      Diez casos en [`test/semantic/analyze.test.ts`](../../../packages/compiler/test/semantic/analyze.test.ts),
+      dos en [`test/emit/registry.test.ts`](../../../packages/compiler/test/emit/registry.test.ts)
+      para la puerta del build, y seis en
+      [`test/emit/data-script.test.ts`](../../../packages/compiler/test/emit/data-script.test.ts),
+      que **renderiza el módulo y lee el HTML** — porque el defecto era invisible en cualquier
+      otra forma: el módulo estaba bien, el tag salía, y el cuerpo no—. `script-body.ts` al
+      **100 %** en las cuatro métricas. Comprobado además en `examples/basic` con una ruta y un
+      layout de prueba: el `<script>` de código hace fallar `vite build` con `[FUD0161]`, el
+      JSON-LD y el import map salen verbatim, y el import map desde el **layout** precede al
+      módulo del arranque (offset 73 contra 175) mientras que desde la ruta no. Retirados los
+      dos ficheros, el build vuelve a estar limpio.

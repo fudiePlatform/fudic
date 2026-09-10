@@ -21,4 +21,13 @@ export {
   neutralizeComment,
 } from './serialize.js';
 export { jsonBlock, escapeJson } from './json-block.js';
+export {
+  iocRoot,
+  iocIsEmpty,
+  withDi,
+  type DiContext,
+  type IocMap,
+  type IocNode,
+} from './ioc.js';
+export { publishedSeed, seedBlock, SEED_BLOCK } from './seed.js';
 export { renderToStream, htmlToByteStream, type StreamOptions } from './stream.js';

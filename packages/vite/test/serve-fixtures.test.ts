@@ -39,7 +39,15 @@ beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-serve-'));
   const routes = join(root, 'src', 'routes');
   mkdirSync(routes, { recursive: true });
-  for (const f of ['home.fud', 'app-card.fud', 'app-button.fud', 'app-badge.fud', 'app-list.fud', 'app-actions.fud']) {
+  for (const f of [
+    'home.fud',
+    'app-card.fud',
+    'app-button.fud',
+    'app-badge.fud',
+    'app-list.fud',
+    'app-actions.fud',
+    'app-calendar.fud',
+  ]) {
     writeFileSync(join(routes, f), readFileSync(join(fixtures, f), 'utf8'));
   }
   // home's @server load reads ./db — a stub with one item so the components render.
