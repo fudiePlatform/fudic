@@ -545,6 +545,90 @@ describe('completion — snippets and Emmet (SDD-28 §5.3–§5.5)', () => {
     expect(item(list, '@if')?.insertTextFormat).toBe(2);
   });
 
+  it('a `delegate:` offers the bindings of the loop it is written in (SDD-37 §6.19)', async () => {
+    const { service, document, position } = setup(
+      '<app-x>\n  <template shadowrootmode="open">\n' +
+        '    <div @click="@pick($event, $day)">\n' +
+        '      @foreach (const day of days) key (day.id) {\n' +
+        '        <b delegate:|></b>\n' +
+        '      }\n' +
+        '    </div>\n  </template>\n</app-x>\n',
+      '/p/comp.fud',
+    );
+    const list = await completionsOf(service, document, position);
+
+    expect(list?.items.map((entry) => entry.label)).toEqual(['day']);
+    // No `=@`, and no second list: a marker takes no value (decision 117).
+    expect(list?.items[0]?.textEdit?.newText).toBe('day');
+    expect(list?.items[0]?.command).toBeUndefined();
+  });
+
+  it('a `delegate:` offers every enclosing header, outermost first', async () => {
+    const { service, document, position } = setup(
+      '<app-x>\n  <template shadowrootmode="open">\n' +
+        '    <div @click="@pick($row, $tag)">\n' +
+        '      @foreach (const row of rows) key (row.id) {\n' +
+        '        @foreach (const tag of row.tags) key (tag.id) {\n' +
+        '          <b delegate:|></b>\n' +
+        '        }\n' +
+        '      }\n' +
+        '    </div>\n  </template>\n</app-x>\n',
+      '/p/comp.fud',
+    );
+    const list = await completionsOf(service, document, position);
+
+    expect(list?.items.map((entry) => entry.label)).toEqual(['row', 'tag']);
+  });
+
+  it('a `delegate:` offers ITS loop and not the one next to it', async () => {
+    const { service, document, position } = setup(
+      '<app-x>\n  <template shadowrootmode="open">\n' +
+        '    <div @click="@pick($day)">\n' +
+        '      @foreach (const other of xs) key (other.id) { <i>@other.n</i> }\n' +
+        '      @foreach (const day of days) key (day.id) { <b delegate:|></b> }\n' +
+        '    </div>\n  </template>\n</app-x>\n',
+      '/p/comp.fud',
+    );
+    const list = await completionsOf(service, document, position);
+
+    expect(list?.items.map((entry) => entry.label)).toEqual(['day']);
+  });
+
+  it('offers the marker at a GAP too, whole and with no `=@` to finish', async () => {
+    const { tagService, document, position } = setup(
+      '<app-x>\n  <template shadowrootmode="open">\n' +
+        '    <div @click="@pick($day)">\n' +
+        '      @foreach (const day of days) key (day.id) { <b |></b> }\n' +
+        '    </div>\n  </template>\n</app-x>\n',
+      '/p/comp.fud',
+    );
+    const list = await completionsOf(tagService, document, position);
+
+    expect(list?.items.map((entry) => entry.label)).toEqual(['delegate:day']);
+    // A marker is not half a binding: there is no `=@` to write and nothing left to ask.
+    expect(list?.items[0]?.textEdit?.newText).toBe('delegate:day');
+    expect(list?.items[0]?.command).toBeUndefined();
+  });
+
+  it('and offers no marker at a gap outside every loop', async () => {
+    const { tagService, document, position } = setup(
+      '<app-x>\n  <template shadowrootmode="open">\n    <b |></b>\n  </template>\n</app-x>\n',
+      '/p/comp.fud',
+    );
+
+    expect(await completionsOf(tagService, document, position)).toBeUndefined();
+  });
+
+  it('a `delegate:` outside every loop says nothing, and does not silence Emmet', async () => {
+    const { service, document, position } = setup(
+      '<app-x>\n  <template shadowrootmode="open">\n    <b delegate:|></b>\n  </template>\n</app-x>\n',
+      '/p/comp.fud',
+    );
+    const list = await completionsOf(service, document, position);
+
+    expect(list?.items.some((entry) => entry.detail === 'binding of the loop')).not.toBe(true);
+  });
+
   it('says nothing inside a plain `class` when the file declares none', async () => {
     // The same condition the `class:` branch has: a file with no `<style>` has nothing to say,
     // and an empty list would silence Emmet without putting anything in its place (§4.3).

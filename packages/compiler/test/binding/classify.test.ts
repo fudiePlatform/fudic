@@ -399,6 +399,62 @@ describe('classifyAttribute — control (SDD-34 §6.1, decision 108)', () => {
   });
 });
 
+describe('classifyAttribute — delegate: (SDD-37 §6.1, §6.4; decision 117)', () => {
+  it('classifies the marker and keeps the name span apart from the attribute span', () => {
+    const { binding, diagnostics, source } = classifyOne('<div delegate:day class="cell"></div>');
+    expect(diagnostics).toEqual([]);
+    expect(binding.type).toBe('delegate');
+    if (binding.type !== 'delegate') return;
+    expect(binding.name).toBe('day');
+    expect(text(source, binding)).toBe('delegate:day');
+    expect(source.slice(binding.nameSpan.start, binding.nameSpan.end)).toBe('day');
+  });
+
+  it('accepts a dashed name, like every other prefix', () => {
+    const { binding, diagnostics } = classifyOne('<li delegate:list-item></li>');
+    expect(diagnostics).toEqual([]);
+    expect(binding.type).toBe('delegate');
+    if (binding.type !== 'delegate') return;
+    expect(binding.name).toBe('list-item');
+  });
+
+  it('FUD0667: a marker with a value keeps the binding and the value is not part of it', () => {
+    const { binding, diagnostics } = classifyOne('<div delegate:day="x"></div>');
+    expect(codes(diagnostics)).toEqual(['FUD0667']);
+    expect(binding.type).toBe('delegate');
+    if (binding.type !== 'delegate') return;
+    expect(binding.name).toBe('day');
+    expect(diagnostics[0]?.message).toContain('$day');
+  });
+
+  it('FUD0667: an expression value is rejected too — `delegate:day=@edit` is §7, not v1', () => {
+    const { diagnostics } = classifyOne('<div delegate:day="@edit"></div>');
+    expect(codes(diagnostics)).toEqual(['FUD0667']);
+  });
+
+  it('FUD0099: the prefix with no name reuses the code every prefix shares', () => {
+    const { binding, diagnostics, source } = classifyOne('<div delegate:></div>');
+    expect(codes(diagnostics)).toEqual(['FUD0099']);
+    expect(binding.type).toBe('delegate');
+    if (binding.type !== 'delegate') return;
+    expect(binding.name).toBe('');
+    expect(source.slice(binding.nameSpan.start, binding.nameSpan.end)).toBe('');
+  });
+
+  it('reports both codes when the nameless prefix also carries a value', () => {
+    const { diagnostics } = classifyOne('<div delegate:="x"></div>');
+    expect(codes(diagnostics)).toEqual(['FUD0099', 'FUD0667']);
+  });
+
+  it('does not treat `delegates` or a bare `delegate` as the prefix', () => {
+    for (const markup of ['<div delegates="1"></div>', '<div delegate="1"></div>']) {
+      const { binding, diagnostics } = classifyOne(markup);
+      expect(diagnostics).toEqual([]);
+      expect(binding.type).toBe('attr');
+    }
+  });
+});
+
 // ---------------------------------------------------------------------------
 // LSP invariants (§7)
 // ---------------------------------------------------------------------------

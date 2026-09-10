@@ -12,14 +12,14 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { JsBatch, type JsFragmentKind, type OxcNode } from '../../src/oxc/index.js';
-import { span } from '../../src/types/index.js';
 import {
-  changeableBindings,
-  freeReferences,
-  patternBindings,
-  type FragmentAst,
-} from '../../src/emit/scope.js';
+  JsBatch,
+  patternNames,
+  type JsFragmentKind,
+  type OxcNode,
+} from '../../src/oxc/index.js';
+import { span } from '../../src/types/index.js';
+import { changeableBindings, freeReferences, type FragmentAst } from '../../src/emit/scope.js';
 
 /** Parse one fragment the way the emit does, and hand back its AST. */
 function parse(kind: JsFragmentKind, source: string): FragmentAst {
@@ -140,7 +140,7 @@ describe('freeReferences — a type is not a value', () => {
   });
 });
 
-describe('patternBindings — in the order the pattern writes them', () => {
+describe('patternNames — in the order the pattern writes them', () => {
   /** The `id` of the first declarator of a statement: what a loop header hands over. */
   function target(source: string): unknown {
     const [statement] = statements(source);
@@ -149,24 +149,24 @@ describe('patternBindings — in the order the pattern writes them', () => {
   }
 
   it('reads a plain identifier', () => {
-    expect(patternBindings(target('const row = 1;'))).toEqual(['row']);
+    expect(patternNames(target('const row = 1;'))).toEqual(['row']);
   });
 
   it('reads an object pattern in source order, not alphabetically', () => {
-    expect(patternBindings(target('const { name, id } = row;'))).toEqual(['name', 'id']);
+    expect(patternNames(target('const { name, id } = row;'))).toEqual(['name', 'id']);
   });
 
   it('reads a nested pattern, its rest and its defaults', () => {
-    expect(patternBindings(target('const { a: { b }, ...rest } = row;'))).toEqual(['b', 'rest']);
-    expect(patternBindings(target('const { n = 1 } = row;'))).toEqual(['n']);
+    expect(patternNames(target('const { a: { b }, ...rest } = row;'))).toEqual(['b', 'rest']);
+    expect(patternNames(target('const { n = 1 } = row;'))).toEqual(['n']);
   });
 
   it('reads an array pattern, skipping its holes', () => {
-    expect(patternBindings(target('const [, second, ...tail] = row;'))).toEqual(['second', 'tail']);
+    expect(patternNames(target('const [, second, ...tail] = row;'))).toEqual(['second', 'tail']);
   });
 
   it('reads the value of a computed key, and the key itself is a reference', () => {
-    expect(patternBindings(target('const { [k]: v } = row;'))).toEqual(['v']);
+    expect(patternNames(target('const { [k]: v } = row;'))).toEqual(['v']);
     expect(freeReferences([parse('block-statements', 'const { [k]: v } = row; v;')])).toEqual([
       'row',
       'k',
@@ -174,15 +174,23 @@ describe('patternBindings — in the order the pattern writes them', () => {
   });
 
   it('declares nothing for something that is not a pattern', () => {
-    expect(patternBindings(undefined)).toEqual([]);
-    expect(patternBindings({ type: 'Literal', start: 0, end: 1 })).toEqual([]);
+    expect(patternNames(undefined)).toEqual([]);
+    expect(patternNames({ type: 'Literal', start: 0, end: 1 })).toEqual([]);
+  });
+
+  it('walks a function whose parts are simply not there', () => {
+    // The AST is Oxc's and untyped on this side of the bridge: a shape with `params` missing
+    // has to come back empty rather than throw, the same tolerance the patterns have.
+    expect(freeReferences([{ type: 'FunctionDeclaration', start: 0, end: 0 } as OxcNode])).toEqual(
+      [],
+    );
   });
 
   it('declares nothing for a pattern whose parts are simply not there', () => {
     // The AST is Oxc's and untyped on this side of the bridge. A shape with a field
     // missing has to come back empty, not throw: the emit does not stop (§5).
-    expect(patternBindings({ type: 'ObjectPattern', start: 0, end: 0 })).toEqual([]);
-    expect(patternBindings({ type: 'ArrayPattern', start: 0, end: 0 })).toEqual([]);
+    expect(patternNames({ type: 'ObjectPattern', start: 0, end: 0 })).toEqual([]);
+    expect(patternNames({ type: 'ArrayPattern', start: 0, end: 0 })).toEqual([]);
   });
 });
 

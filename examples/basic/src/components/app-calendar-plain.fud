@@ -1,0 +1,125 @@
+@code {
+  // La MISMA rejilla, escrita como se escribe hoy en cualquier framework: un `@click` por
+  // celda. Existe para una sola cosa — que el contador de listeners de la página se mueva
+  // aquí y no se mueva en la de al lado, con los mismos botones y las mismas filas.
+  import { makeDays, type Day } from "../data/days.js";
+
+  // Su propia lista, no la del calendario de al lado: las marcas viven dentro de los objetos.
+  const seed = makeDays("b");
+
+  @client {
+    import { signal } from "@fudic/core";
+
+    const rows = signal(seed);
+    const last = signal("—");
+    let extra = 0;
+
+    function pick(ev: Event, day: Day) {
+      void ev;
+      day.picks += 1;
+      last.set(`día ${day.n} · pulsado ${day.picks} ${day.picks === 1 ? "vez" : "veces"}`);
+    }
+
+    function add() {
+      extra += 1;
+      const more = [];
+      for (let i = 1; i <= 7; i++) {
+        more.push({ id: `y${extra}-${i}`, n: 100 * extra + i, picks: 0 });
+      }
+      rows.set([...rows(), ...more]);
+    }
+
+    function drop() {
+      rows.set(rows().slice(0, Math.max(0, rows().length - 7)));
+    }
+
+    function shuffle() {
+      rows.set([...rows()].reverse());
+    }
+  }
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    .panel {
+      border: 1px solid #dcdcdc;
+      border-radius: 10px;
+      padding: 0.9rem 1.1rem;
+      background: white;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin: 0.75rem 0;
+    }
+    .cell {
+      display: grid;
+      gap: 2px;
+      justify-items: center;
+      padding: 0.35rem 0.2rem;
+      border: 1px solid #e6e6e6;
+      border-radius: 6px;
+      cursor: pointer;
+      font-variant-numeric: tabular-nums;
+    }
+    .cell:hover {
+      background: #fff6ef;
+      border-color: #e8710a;
+    }
+    .cell button {
+      font: inherit;
+      font-size: 0.7rem;
+      padding: 0 0.3rem;
+      border: 1px solid #dcdcdc;
+      border-radius: 4px;
+      background: #fafafa;
+      cursor: pointer;
+    }
+    .bar {
+      display: flex;
+      gap: 0.5rem;
+      align-items: baseline;
+      flex-wrap: wrap;
+    }
+    .bar button {
+      font: inherit;
+      padding: 0.35rem 0.8rem;
+      border: 1px solid #e8710a;
+      border-radius: 6px;
+      background: #e8710a;
+      color: white;
+      cursor: pointer;
+    }
+    output {
+      font-weight: 500;
+    }
+  </style>
+</head>
+
+<app-calendar-plain>
+  <template shadowrootmode="open">
+    <section class="panel">
+      @* Un `@click` por celda y otro por botón: dos listeners por fila, y crecen con ella. *@
+      <div class="grid">
+        @foreach (const day of rows()) key (day.id) {
+          <div class="cell" @click=@pick($event, day)>
+            <span>@day.n</span>
+            <button @click=@pick($event, day)>✎</button>
+          </div>
+        }
+      </div>
+
+      <div class="bar">
+        <button class="add" @click=@add>+7 filas</button>
+        <button class="drop" @click=@drop>−7 filas</button>
+        <button class="shuffle" @click=@shuffle>Invertir</button>
+        <span>Último: <output class="last">@(last())</output></span>
+        <span>Filas: <output class="rows">@(rows().length)</output></span>
+      </div>
+    </section>
+  </template>
+</app-calendar-plain>

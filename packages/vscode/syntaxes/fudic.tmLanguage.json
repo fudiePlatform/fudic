@@ -233,6 +233,7 @@
       "patterns": [
         { "include": "#razor-comment" },
         { "include": "#binding-class-style" },
+        { "include": "#binding-delegate" },
         { "include": "#binding-property" },
         { "include": "#binding-event" },
         { "include": "#binding-ref" },
@@ -244,6 +245,15 @@
 
     "binding-class-style": {
       "match": "\\b(class|style)(:)([A-Za-z_][\\w-]*)",
+      "captures": {
+        "1": { "name": "entity.other.attribute-name.binding.fudic" },
+        "2": { "name": "punctuation.separator.binding.fudic" },
+        "3": { "name": "entity.other.attribute-name.binding.fudic" }
+      }
+    },
+
+    "binding-delegate": {
+      "match": "\\b(delegate)(:)([A-Za-z_][\\w-]*)",
       "captures": {
         "1": { "name": "entity.other.attribute-name.binding.fudic" },
         "2": { "name": "punctuation.separator.binding.fudic" },

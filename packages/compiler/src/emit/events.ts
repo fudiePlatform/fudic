@@ -32,10 +32,11 @@
 
 import type { OxcNode } from '../oxc/index.js';
 import { handlerShape, unwrapParens } from '../binding/index.js';
-import type { Diagnostic, Span } from '../types/index.js';
+import { span, type Diagnostic, type Span } from '../types/index.js';
 import type { FragmentAst } from './scope.js';
 import type { TemplateJs } from './oxc-code.js';
 import type { ControlPlan } from './controls.js';
+import type { DelegationJs, DelegationPlan, DelegationRead } from '../semantic/delegation.js';
 import { CodeWriter } from './writer.js';
 
 /** The value of an event binding whose root node is none of the four shapes (§4.5). */
@@ -97,6 +98,15 @@ export interface HookupContext {
    */
   readonly rebind: CodeWriter;
   readonly rebound: Set<string>;
+  /**
+   * The delegation of this file (SDD-37), paired once for both consumers.
+   *
+   * It rides here for the same reason `controls` does, and more sharply: delegation is the one
+   * feature whose two halves are written by two DIFFERENT walks — the `WeakMap.set` inside the
+   * block of a row, the listener in the closure of an ancestor above it — so a plan computed
+   * per walk could not pair them at all.
+   */
+  readonly delegation: DelegationPlan;
 }
 
 export function hookupContext(
@@ -105,6 +115,7 @@ export function hookupContext(
   callbacks: ReadonlySet<string> = new Set(),
   controls: ControlPlan = new Map(),
   props: ReadonlySet<string> = new Set(),
+  delegation: DelegationPlan = EMPTY_DELEGATION,
 ): HookupContext {
   return {
     template,
@@ -116,6 +127,29 @@ export function hookupContext(
     props,
     rebind: new CodeWriter(),
     rebound: new Set(),
+    delegation,
+  };
+}
+
+/** What a file with no marker and no `$name` delegates: nothing. */
+const EMPTY_DELEGATION: DelegationPlan = {
+  diagnostics: [],
+  marks: new Map(),
+  reads: new Map(),
+  tables: [],
+};
+
+/**
+ * The batch, reached the way the EMIT reaches it: by span.
+ *
+ * The pairing of SDD-37 is one function with two callers, and this is the half that differs —
+ * the semantic pass looks a fragment up by node, the emit by the span it registered it under.
+ */
+export function templateDelegationJs(template: TemplateJs): DelegationJs {
+  return {
+    headerAst: (loop) => rootOf(template.ast(loop.header.inner)),
+    valueAst: (expr) => rootOf(template.ast(expr.expr)),
+    spanOf: (node) => span(template.offset(node.start), template.offset(node.end)),
   };
 }
 
@@ -154,6 +188,56 @@ export function eventHandler(source: string, at: Span, ctx: HookupContext): stri
     case 'unsuitable':
       return undefined;
   }
+}
+
+/**
+ * The listener of a DELEGATED `@event` binding (SDD-37 §4.1): the author's call, wrapped in
+ * one pass over `composedPath()`.
+ *
+ * ```js
+ * ($event) => { let $z0; for (const $y of $event.composedPath()) { $z0 ??= $t0.get($y); }
+ *               if ($z0 === undefined) return; return fn($event, $z0()); }
+ * ```
+ *
+ * One pass and not one per name: the path is the same list for all of them, and walking it
+ * twice would double the only cost delegation has. The guard is what makes `$day` a `Day` and
+ * never a `Day | undefined` (§3.3) — a click born outside every row calls nothing.
+ *
+ * `composedPath()` and not `closest()`, because a selector needs an attribute in the DOM and
+ * §3.4 does not write one. It crosses shadow roots too, which is what makes a
+ * `<app-card delegate:day>` work from inside the child's own shadow.
+ *
+ * The call text is the author's, spliced: each `$name` is replaced by its getter call, in
+ * reverse source order so an earlier splice cannot move a later offset.
+ */
+export function delegatedHandler(
+  source: string,
+  at: Span,
+  ctx: HookupContext,
+  reads: readonly DelegationRead[],
+): string | undefined {
+  const root = rootOf(ctx.template.ast(at));
+  // A read is only ever collected from the argument list of a call, so a value of any other
+  // shape reaches here with no reads at all and never reaches here.
+  if (handlerShape(root) !== 'call') return undefined;
+
+  const getters = reads.map((_, i) => `$z${i}`);
+  let call = withCellRead(source.slice(at.start, at.end), at, root!, ctx);
+  const spliced = reads
+    .map((read, i) => ({ read, getter: getters[i]! }))
+    .sort((a, b) => b.read.at.start - a.read.at.start);
+  for (const { read, getter } of spliced) {
+    const start = read.at.start - at.start;
+    call = call.slice(0, start) + `${getter}()` + call.slice(read.at.end - at.start);
+  }
+
+  const lookups = reads.map((read, i) => `${getters[i]!} ??= ${read.table}.get($y);`).join(' ');
+  const guard = getters.map((g) => `${g} === undefined`).join(' || ');
+  return (
+    `($event) => { let ${getters.join(', ')}; ` +
+    `for (const $y of $event.composedPath()) { ${lookups} } ` +
+    `if (${guard}) return; return ${call}; }`
+  );
 }
 
 /**

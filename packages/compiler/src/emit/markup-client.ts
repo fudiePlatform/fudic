@@ -35,6 +35,7 @@
  * follows it and its anchor, and writes nothing about it itself.
  */
 
+import { dataScriptType } from '../html/index.js';
 import type {
   HtmlContent,
   ElementNode,
@@ -61,7 +62,13 @@ import { isControlNode, markerSite } from './marker.js';
 import { bodyContext, childrenContext, type RunContext } from './display.js';
 import { emitItems, type EmitItem, type TextRun } from './runs.js';
 import type { Prop } from './oxc-code.js';
-import { busHandler, eventHandler, FUD_UNSUITABLE_HANDLER, type HookupContext } from './events.js';
+import {
+  busHandler,
+  delegatedHandler,
+  eventHandler,
+  FUD_UNSUITABLE_HANDLER,
+  type HookupContext,
+} from './events.js';
 import { errorDiag } from '../types/index.js';
 
 const isControl = isControlNode;
@@ -790,6 +797,8 @@ export class ClientMarkupEmitter {
     // levels below are walked with this element already accounted for.
     this.#adopt.line(`${v} = ${level.cursor!}; ${level.cursor} = $dom.nextElementSibling(${level.cursor});`);
     if (this.#tracked(level)) this.#adopt.line(`$r.push(${v});`);
+    // After BOTH assignments: the fabricated node above, the adopted one on the line before.
+    this.#delegationMarks(el, v);
     // The slot's cursor step goes HERE, beside the element's own: it is the next element of
     // this level, and the walk below descends with a cursor of its own.
     const slot = this.#controlSlotVar(el);
@@ -964,15 +973,45 @@ export class ClientMarkupEmitter {
    * its own nodes and its own `$d` — there is no special case to write here, and §6.17 falls
    * out of the scope rather than out of a rule of this emitter.
    */
+  /**
+   * What a marked row registers (SDD-37 §4.1): its node in the table of the name it delegates.
+   *
+   * ```js
+   * $t0.set($n4, () => day);
+   * ```
+   *
+   * **A getter, and not the value.** `day` is a parameter of the block that `u(...)` reassigns
+   * on every reconciliation; a closure over it reads the current one, so the registration is
+   * written ONCE and never has to be wired into the update path. A `$t0.set($n4, day)` would
+   * serve the first turn's row for as long as the node lives.
+   *
+   * Into `c` and into `h` alike: a row the server painted is a row the client has to be able
+   * to identify, or delegation would work on a page created and not on the same page adopted.
+   * There is nothing to undo — the table is a `WeakMap`, so an entry leaves with its node.
+   */
+  #delegationMarks(el: ElementNode, v: string): void {
+    for (const mark of this.#hookup.delegation.marks.get(el) ?? []) {
+      const line = `${mark.table}.set(${v}, () => ${mark.name});`;
+      this.#fab.line(line);
+      this.#adopt.line(line);
+    }
+  }
+
   #listeners(el: ElementNode, v: string): void {
     for (const attr of el.attributes) {
       const b = classifyAttribute(attr, this.#source).value;
       if (b.type !== 'event' && b.type !== 'bus') continue;
       const at = b.value.expr;
+      // A delegated handler is the same handler with a lookup around it (SDD-37 §4.1). It is
+      // asked for FIRST because it is the narrower case: a binding with no delegated read is
+      // not in the plan at all and takes the path it has always taken.
+      const delegated = this.#hookup.delegation.reads.get(attr);
       const handler =
-        b.type === 'event'
-          ? eventHandler(this.#source, at, this.#hookup)
-          : busHandler(this.#source, at, this.#hookup);
+        delegated !== undefined
+          ? delegatedHandler(this.#source, at, this.#hookup, delegated)
+          : b.type === 'event'
+            ? eventHandler(this.#source, at, this.#hookup)
+            : busHandler(this.#source, at, this.#hookup);
       if (handler === undefined) {
         // The emit does not throw (§5): the binding is dropped and the page still emits.
         this.#hookup.diagnostics.push(
@@ -1180,6 +1219,17 @@ export class ClientMarkupEmitter {
   /** Descend into an element: a level of its own, with its own cursor. */
   #children(el: ElementNode, v: string): void {
     if (el.children.length === 0) return;
+    // A data `<script>` (decision 129) is filled by `c` with the same verbatim text the
+    // server writes, and by `h` with nothing at all: the node came back from the HTML inside
+    // its element, and the level's cursor walks ELEMENTS, so there is none to advance. Both
+    // branches end with the same tree, which is the only thing hydration asks of them.
+    if (dataScriptType(el) !== undefined) {
+      for (const child of el.children) {
+        if (child.type !== 'raw-text') continue;
+        this.#fab.line(`$dom.append(${v}, $dom.text(${JSON.stringify(child.value)}));`);
+      }
+      return;
+    }
     this.#depth += 1;
     const cursor = this.#cursorFor(el.children);
     if (cursor !== null) {
