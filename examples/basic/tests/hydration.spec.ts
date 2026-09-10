@@ -292,9 +292,14 @@ test.describe('the bus: the receiver, before the emitter', () => {
     await page.locator('product-list').locator('.add').first().click();
     await expect(cart(page).locator('.badge')).toHaveText('1');
 
-    const badgeAfter = await page.evaluate(() => {
+    const badgeAfter = await page.evaluate(async () => {
       const host = document.querySelector('shopping-cart')!;
       host.remove(); // `disconnectedCallback` → `r()` → the disposer of the `bus:` binding
+      // A removal is told from a MOVE by whether the node is back in a tree on the next
+      // microtask — a keyed block reorders its rows by re-inserting them, and releasing on
+      // the spot left those rows painted and deaf. So the release lands here, one turn
+      // later, and nothing can observe the difference before it.
+      await Promise.resolve();
       document.dispatchEvent(new CustomEvent('carrito', { detail: 99, bubbles: true }));
       return host.shadowRoot!.querySelector('.badge')!.textContent;
     });

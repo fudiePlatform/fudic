@@ -1,0 +1,34 @@
+@code {
+  import { inject } from '@fudic/di';
+  import { Cart, Logger } from '../services/cart';
+
+  // A SECOND consumer, two levels below the owner. It resolves the same two things through
+  // its own chain: `Cart` stops at the ancestor that provides it, `Logger` climbs past every
+  // container to the root. Both ids are printed so the page can show they are one object.
+  const cart = inject(Cart);
+  const logger = inject(Logger);
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    p {
+      margin: 0;
+      font-size: 0.85rem;
+      color: #555;
+      font-family: ui-monospace, monospace;
+    }
+  </style>
+</head>
+
+<di-badge>
+  <template shadowrootmode="open">
+    <p>
+      también veo <span data-id="badge-cart">@(cart.id)</span> y
+      <span data-id="badge-logger">@(logger.id)</span> · <span data-id="badge-lines">@(cart.lines.length)</span>
+      líneas
+    </p>
+  </template>
+</di-badge>

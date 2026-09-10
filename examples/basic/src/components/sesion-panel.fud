@@ -1,0 +1,49 @@
+@code {
+  import { inject } from '@fudic/di';
+  import { Session } from '../services/session';
+
+  // Neutral zone: this line runs on the server AND in the browser, and both times it builds
+  // the session from the value THIS request published. The server reads it from the request's
+  // container; the browser, from the `fud-di` block of the page it was served.
+  const session = inject(Session);
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    .panel {
+      display: grid;
+      gap: 0.5rem;
+      border: 1px solid #dcdcdc;
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
+      background: white;
+    }
+    dl {
+      margin: 0;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.25rem 0.75rem;
+    }
+    dt {
+      color: #555;
+    }
+    dd {
+      margin: 0;
+      font-family: ui-monospace, monospace;
+    }
+  </style>
+</head>
+
+<sesion-panel>
+  <template shadowrootmode="open">
+    <section class="panel">
+      <dl>
+        <dt>sesión inyectada</dt>
+        <dd data-id="session">@(session.name)</dd>
+      </dl>
+    </section>
+  </template>
+</sesion-panel>

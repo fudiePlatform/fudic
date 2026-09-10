@@ -296,6 +296,8 @@ interface Slot {
  */
 export interface CoreUsage {
   subscribes: boolean;
+  /** Whether any walk of this file fabricates a component host, and so has to raise it. */
+  fabricates: boolean;
   /**
    * Whether the chunk subscribes something it could not prove is reactive — an IMPORT.
    *
@@ -308,7 +310,7 @@ export interface CoreUsage {
 
 /** A file starts owing `@fudic/core` nothing but `FudicElement`. */
 export function coreUsage(): CoreUsage {
-  return { subscribes: false, guarded: false };
+  return { subscribes: false, fabricates: false, guarded: false };
 }
 
 export interface MarkupOptions {
@@ -1079,7 +1081,6 @@ export class ClientMarkupEmitter {
   #childValues(el: ElementNode, v: string): void {
     const slots = this.#slots(el);
     const bound = [...slots.values()];
-    if (!bound.some((s) => s.signal !== undefined || s.changes || s.ref === true)) return;
 
     // The slots in the CHILD's declared order: the payload carries no schema, so the index
     // is the whole contract. A slot the parent does not bind is a hole in both passes.
@@ -1093,6 +1094,18 @@ export class ClientMarkupEmitter {
       .slice(0, last)
       .map((cell) => (cell === undefined ? '' : cell.signal === undefined ? cell.expr : `${cell.signal}()`))
       .join(', ');
+
+    // ON THE FABRICATE PATH ONLY, and for every child host whether it binds anything or not:
+    // an instance created here is one NOTHING PAINTED, so no page map names it, no payload
+    // holds it and the cascade will never reach it. The parent is the only one who knows it
+    // exists, so the parent is who raises it — with the very props it just composed, and
+    // through the runtime, because what is missing is the child's definition and that is a
+    // download. The adopt path stays untouched: those instances came from the server and
+    // belong to the cascade.
+    this.#usage.fabricates = true;
+    this.#fab.line(`$live(${v}, [${initial}]);`);
+
+    if (!bound.some((s) => s.signal !== undefined || s.changes || s.ref === true)) return;
     this.#hook.line(`${v}.u([, , ${initial}]);`);
 
     // What has no signal to subscribe to is renewed by the UPDATE PASS: the same handover,

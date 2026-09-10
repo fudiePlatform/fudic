@@ -44,6 +44,7 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@fudic/di": "workspace:*",
     "@fudic/dom": "workspace:*"
   },
   "devDependencies": {

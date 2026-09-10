@@ -142,16 +142,34 @@ describe('BUG-12 §6.7 — the parent moves, the child follows', () => {
     host.remove();
   });
 
-  it('stops when the parent is torn down: r() disposes the subscription (§6.9)', () => {
+  it('stops when the parent is torn down: r() disposes the subscription (§6.9)', async () => {
     const { host, button, text } = mounted();
     hydrate(host);
     button.click();
     expect(text()).toBe('6');
 
     host.remove(); // disconnectedCallback → r() → $d.forEach
+    // A removal is only a removal once the node is still out of the tree on the next
+    // microtask: re-inserting within it is how a keyed block MOVES a row, and a move is not
+    // a teardown. The await is what makes this a removal rather than that.
+    await Promise.resolve();
     document.body.append(host); // connected again, and still torn down: there is no c-back
 
     button.click(); // the signal still moves — the channel to the child does not
+    expect(text()).toBe('6');
+    host.remove();
+  });
+
+  it('a MOVE keeps the channel: the row survives being re-inserted', async () => {
+    const { host, button, text } = mounted();
+    hydrate(host);
+
+    // Out and back in without yielding — what a `@foreach` does when it reorders.
+    host.remove();
+    document.body.append(host);
+    await Promise.resolve();
+
+    button.click();
     expect(text()).toBe('6');
     host.remove();
   });

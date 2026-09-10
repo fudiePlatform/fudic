@@ -5,7 +5,7 @@
  * the pattern, and no `@code` at all), so the extraction's branches stay honest.
  */
 import { describe, expect, it } from 'vitest';
-import { extractCode } from '../../src/emit/oxc-code.js';
+import { extractCode, extractDiCalls } from '../../src/emit/oxc-code.js';
 import type { ComponentDocument } from '../../src/document/index.js';
 import { parse } from './_support.js';
 
@@ -263,5 +263,103 @@ describe('extractCode', () => {
     );
     const { client } = extractCode(source, componentDoc(source));
     expect(client.body.map((s) => s.text)).toEqual(['const visible = 2;']);
+  });
+});
+
+/**
+ * The two injection diagnostics ONE `@code` settles by itself (SDD-38 §6.23, §6.25).
+ *
+ * Neither needs a graph, a filesystem or an ancestor: they are about a region contradicting
+ * itself, and the answer is in the same twenty lines the author is looking at. The other
+ * three of the five need more than this file and live in `di-diagnostics.ts`.
+ */
+describe('the injection diagnostics of one @code', () => {
+  const DI = "  import { inject, provide } from '@fudic/di';\n  import { Cart, Clock } from './services';\n";
+
+  /** The diagnostic codes a `@code` body produces, in order. */
+  const codesOf = (body: string): readonly string[] => {
+    const source = wrap(`@code {\n${DI}${body}}\n`);
+    return extractCode(source, componentDoc(source)).diagnostics.map((d) => d.code);
+  };
+
+  it('FUD0684 — the same provider registered twice, pointing at the second one', () => {
+    const body = '  provide(Cart, () => new Cart());\n  provide(Cart, () => new Cart());\n';
+    const source = wrap(`@code {\n${DI}${body}}\n`);
+    const { diagnostics } = extractCode(source, componentDoc(source));
+
+    expect(diagnostics.map((d) => d.code)).toEqual(['FUD0684']);
+    // The SECOND registration is the one reported: the first is the one that stood until it
+    // was written, and pointing at it would name the line that was not the mistake.
+    const second = source.lastIndexOf('Cart, () => new Cart()');
+    expect(diagnostics[0]!.span).toEqual({ start: second, end: second + 'Cart'.length });
+  });
+
+  it('FUD0684 — a second registration counts wherever it is written', () => {
+    // Neutral and `@client` are two zones of ONE module in the browser, so the second call
+    // overwrites the first there exactly as two neighbouring lines would.
+    expect(
+      codesOf('  provide(Cart, () => new Cart());\n  @client {\n    provide(Cart, () => new Cart());\n  }\n'),
+    ).toEqual(['FUD0684']);
+  });
+
+  it('says nothing about two DIFFERENT providers, or about a call with no argument', () => {
+    // `provide()` is a mistake TypeScript reports, and inventing a second diagnostic over an
+    // argument that is not there would only name the same line twice.
+    expect(
+      codesOf('  provide(Cart, () => new Cart());\n  provide(Clock, () => new Clock());\n  provide();\n  provide();\n'),
+    ).toEqual([]);
+  });
+
+  it('FUD0682 — provided in @server, injected in @client', () => {
+    const body =
+      '  @server {\n    provide(Cart, () => new Cart());\n  }\n' +
+      '  @client {\n    const cart = inject(Cart);\n  }\n';
+    const source = wrap(`@code {\n${DI}${body}}\n`);
+    const { diagnostics } = extractCode(source, componentDoc(source));
+
+    expect(diagnostics.map((d) => d.code)).toEqual(['FUD0682']);
+    expect(diagnostics[0]!.message).toContain('@server');
+    const at = source.indexOf('inject(Cart)') + 'inject('.length;
+    expect(diagnostics[0]!.span).toEqual({ start: at, end: at + 'Cart'.length });
+  });
+
+  it('FUD0682 — and the symmetric one, provided in @client and injected in @server', () => {
+    const codes = codesOf(
+      '  @client {\n    provide(Cart, () => new Cart());\n  }\n' +
+        '  @server {\n    const cart = inject(Cart);\n  }\n',
+    );
+    expect(codes).toEqual(['FUD0682']);
+  });
+
+  it('says nothing when the provider is neutral: that zone runs on both sides', () => {
+    // Which is the whole answer the diagnostic proposes, so it had better not report it.
+    expect(
+      codesOf(
+        '  provide(Cart, () => new Cart());\n' +
+          '  @client {\n    const a = inject(Cart);\n  }\n' +
+          '  @server {\n    const b = inject(Cart);\n  }\n',
+      ),
+    ).toEqual([]);
+  });
+
+  it('says nothing when the two are in the same zone, or when the injection is neutral', () => {
+    expect(
+      codesOf(
+        '  @client {\n    provide(Cart, () => new Cart());\n    const a = inject(Cart);\n  }\n' +
+          '  const b = inject(Cart);\n',
+      ),
+    ).toEqual([]);
+  });
+
+  it('says nothing about injecting what this @code does not provide at all', () => {
+    // An ancestor's or a `@Service`'s, and whether anybody registers it is FUD0680's
+    // question — asked of the graph, with the module next door open.
+    expect(codesOf('  @client {\n    const cart = inject(Cart);\n  }\n')).toEqual([]);
+  });
+
+  it('a file with no @code at all has no DI calls, and costs no parse to say so', () => {
+    // The reading a page, a route and a layout get: they never reach `extractCode`, and the
+    // one question asked of them is answered before Oxc is handed anything.
+    expect(extractDiCalls('', undefined)).toEqual([]);
   });
 });

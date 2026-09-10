@@ -9,7 +9,7 @@ const COMPONENTS = [{ tag: renderAppCardTag, css: renderAppCardCss }, { tag: ren
 const STYLE_POLYFILL = `(function(){if(!(\`shadowRootAdoptedStyleSheets\`in HTMLTemplateElement.prototype)&&!(typeof CSSStyleSheet!=\`function\`||!CSSStyleSheet.prototype.replaceSync)){var e=new Map,t=new Set,n=new WeakSet,r=function(t){var n=new CSSStyleSheet;n.replaceSync(t.textContent),e.set(t.getAttribute(\`specifier\`),n)},i=function(r,i){if(!n.has(r)){var o=r.shadowRoot;if(!o){t.add(r);return}for(var c=(r.dataset.fudAdopt||\`\`).trim().split(\` \`).filter(Boolean),l=[],u=0;u<c.length;u++){var d=e.get(c[u]);if(!d&&!i){t.add(r);return}d&&l.push(d)}o.adoptedStyleSheets=o.adoptedStyleSheets.concat(l),n.add(r),t.delete(r),s.observe(o,{childList:!0,subtree:!0}),a(o,i)}},a=function(e,t){e.querySelectorAll(\`style[type="module"][specifier]\`).forEach(r),e.querySelectorAll(\`[data-fud-adopt]\`).forEach(function(e){i(e,t)})},o=function(e){Array.from(t).forEach(function(t){i(t,e)})},s=new MutationObserver(function(e){for(var t=0;t<e.length;t++)for(var n=e[t].addedNodes,s=0;s<n.length;s++){var c=n[s];c.nodeType===1&&(c.matches(\`style[type="module"][specifier]\`)?r(c):c.matches(\`[data-fud-adopt]\`)&&i(c,!1),a(c,!1))}o(!1)});s.observe(document.documentElement,{childList:!0,subtree:!0}),document.addEventListener(\`DOMContentLoaded\`,function(){s.takeRecords(),a(document,!0),o(!0),s.disconnect(),t.clear()},{once:!0})}})();`;
 const FUD_TREE = {"app-card":["app-button"]};
 
-export function* page(data, io) {
+export function* page(data, io, $ioc) {
   const { createDom, serialize, escapeText, jsonBlock } = io;
   const $nonce = io.nonce ? ' nonce="' + io.nonce + '"' : '';
   let head = '';
@@ -44,7 +44,7 @@ export function* page(data, io) {
       { const $v = (item.title); if ($v === true) $dom.setAttr($n8, "title", ''); else if ($v !== false && $v != null) $dom.setAttr($n8, "title", String($v)); }
       { const $v = (item.featured ? 'highlight' : 'default'); if ($v === true) $dom.setAttr($n8, "variant", ''); else if ($v !== false && $v != null) $dom.setAttr($n8, "variant", String($v)); }
       const $n9 = $dom.attachShadow($n8);
-      renderAppCard($dom, $n9, { "title": (item.title), "variant": (item.featured ? 'highlight' : 'default') });
+      renderAppCard($dom, $n9, { "title": (item.title), "variant": (item.featured ? 'highlight' : 'default') }, $ioc);
       const $n10 = $dom.text(" "); $dom.append($n8, $n10);
       if (item.featured) {
         const $n11 = $dom.text(" "); $dom.append($n8, $n11);
@@ -52,7 +52,7 @@ export function* page(data, io) {
         $dom.setAttr($n12, 'data-fud-adopt', "app-badge");
         $dom.setAttr($n12, "tone", "success");
         const $n13 = $dom.attachShadow($n12);
-        renderAppBadge($dom, $n13, { "tone": "success" });
+        renderAppBadge($dom, $n13, { "tone": "success" }, $ioc);
         const $n14 = $dom.text("Destacado"); $dom.append($n12, $n14);
         $dom.append($n8, $n12);
         const $n15 = $dom.text(" "); $dom.append($n8, $n15);

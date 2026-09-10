@@ -1,0 +1,63 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/di-owner.fud">
+
+@code {
+  @server {
+    import { strategy } from "@fudic/core";
+    import { LINES } from "../services/cart";
+
+    strategy({ mode: "ssg" });
+
+    export function load(ctx) {
+      const lines = ["manzanas", "peras"];
+      // The ONLY thing that crosses: a value, under a token. The `Cart` the server builds
+      // and the one the browser builds start from this same array, and neither of them
+      // travels — `fud-di` carries the lines, not the service.
+      //
+      // Through `ctx` because a value belongs to ONE response: `ctx` is what names the
+      // request whose page this is.
+      ctx.publish(LINES, lines);
+      return { lines };
+    }
+  }
+}
+
+<head>
+  <title>Inyección de dependencias — fudic</title>
+</head>
+
+@section nav {
+  <site-nav .current="di"></site-nav>
+}
+
+<h1>5 · Un servicio compartido por quien no se ve</h1>
+<p class="lede">
+  <code>di-owner</code> declara <code>provide(Cart)</code> y <strong>no inyecta nada</strong>:
+  sigue siendo nivel 1, no lleva <code>data-fud-id</code> y no descarga su chunk. Su hijo
+  <code>di-panel</code> sí inyecta, así que es nivel 3 — y lo que recibe es
+  <strong>la instancia del ancestro</strong>, no una global, porque nadie registró
+  <code>Cart</code> en la raíz.
+</p>
+
+<di-owner></di-owner>
+
+<h2>Qué mirar</h2>
+<p>
+  El <code>Logger</code> lleva <code>@@Service</code>, así que vive en la raíz: sube toda la
+  cadena de contenedores y es <strong>uno solo</strong> en la página. El <code>Cart</code>, en
+  cambio, muere con el subárbol de su dueño.
+</p>
+<p>
+  Al final del <code>&lt;body&gt;</code> hay dos bloques nuevos.
+  <code>fud-ioc</code> es el árbol de contenedores tal como se renderizó —los padres y el tag
+  dueño de cada nodo—, y es lo único que el navegador necesita para reconstruirlo
+  <strong>en memoria</strong>: la jerarquía no se deduce nunca del DOM, porque el ancestro
+  dueño puede no ejecutar una sola línea. <code>fud-di</code> es la semilla,
+  <code>@('{"lines":["manzanas","peras"]}')</code>, que es de donde nace el carrito del
+  cliente con las mismas dos líneas que pintó el servidor.
+</p>
+<p>
+  Pulsa <strong>Añadir línea</strong>: el carrito que responde es el mismo objeto que el panel
+  inyectó al hidratar, y el <code>Logger</code> que lo anota es el de la raíz.
+</p>

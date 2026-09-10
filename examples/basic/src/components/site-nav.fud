@@ -34,6 +34,9 @@
       <a
         href="/hidratacion"
         aria-current=@(current === 'hidratacion' ? 'page' : 'false')>Hidratación</a>
+      <a href="/di" aria-current=@(current === 'di' ? 'page' : 'false')>DI</a>
+      <a href="/sesion/ana" aria-current=@(current === 'sesion' ? 'page' : 'false')>Sesión</a>
+      <a href="/vivo" aria-current=@(current === 'vivo' ? 'page' : 'false')>Al vuelo</a>
       <a
         href="/formularios"
         aria-current=@(current === 'formularios' ? 'page' : 'false')>Formularios</a>

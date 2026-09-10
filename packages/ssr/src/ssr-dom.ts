@@ -124,7 +124,12 @@ export class SsrDom implements Dom<SsrNode> {
    * that cell», the runtime resolves it before handing the slice over, and parent and child
    * end up holding one object because nobody ever built a second one.
    */
-  state(shadow: SsrNode, values: readonly unknown[], cells: readonly CellDecl[] = []): void {
+  state(
+    shadow: SsrNode,
+    values: readonly unknown[],
+    cells: readonly CellDecl[] = [],
+    ioc?: number,
+  ): void {
     const host = asImpl(shadow).parent;
     const id = host === null ? undefined : this.#ids.get(host);
     if (id === undefined) return;
@@ -139,6 +144,10 @@ export class SsrDom implements Dom<SsrNode> {
       // JSON has no `undefined`: a callback's reserved slot is written as `null`, which is
       // exactly what «reserved, with nothing in it» has to look like on the wire.
       ...cells.map((cell) => cell.value ?? null),
+      // The container's node, LAST — behind the props and behind the cells, so no index
+      // that exists today moves (SDD-38 §4.5). A number and not a container: what crosses
+      // the wire are values, and the browser rebuilds the tree from the published map.
+      ...(ioc === undefined ? [] : [ioc]),
     ];
   }
 

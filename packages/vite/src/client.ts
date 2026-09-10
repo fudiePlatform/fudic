@@ -17,7 +17,14 @@
  * §3.3–§3.5), which the render writes; this module only emits the files and names them.
  */
 
-import { resolveDocument, type ResolveIo } from '@fudic/compiler';
+import {
+  hasDependencyInjection,
+  iocName,
+  ownsContainer,
+  resolveDocument,
+  usesDependencyInjection,
+  type ResolveIo,
+} from '@fudic/compiler';
 import { type RouteBuild } from './discover.js';
 import { CLIENT_NAME_PREFIX } from './constants.js';
 
@@ -26,6 +33,28 @@ export const CLIENT_QUERY = 'client';
 
 /** The module id of a component's client chunk. */
 export const clientId = (path: string): string => `${path}?${CLIENT_QUERY}`;
+
+/**
+ * The query that turns a component id into its IoC module: `<path>.fud?ioc` (SDD-38 §4.5).
+ *
+ * A separate artifact from `?client`, and it has to be: the component that declares a
+ * provider may be N1 and have no client chunk anyone ever fetches, while its factory still
+ * has to reach the browser. Two consumers, two files.
+ */
+export const IOC_QUERY = 'ioc';
+
+/** The module id of a component's IoC module. */
+export const iocId = (path: string): string => `${path}?${IOC_QUERY}`;
+
+/**
+ * The chunk NAME of an IoC module: the tag plus `.ioc`, in the same directory the hydration
+ * chunks live in.
+ *
+ * Same directory on purpose — the browser derives its URL with the very `resolveChunk` it
+ * already holds, handing it `"<tag>.ioc"` where it would hand a tag. No second resolver, no
+ * second map, and nothing new in the manifest.
+ */
+export const iocChunkName = (tag: string): string => `${CLIENT_NAME_PREFIX}/${iocName(tag)}`;
 
 /**
  * The chunk NAME, which decides the output path: `assets/h/<tag>-<hash>.js`. Its own
@@ -39,6 +68,10 @@ export interface ClientChunk {
   readonly tag: string;
   /** Absolute path to the component's `.fud`. */
   readonly path: string;
+  /** Whether it declares a provider, and so also gets an IoC module (SDD-38 §4.5). */
+  readonly owns: boolean;
+  /** Whether it injects or provides at all — what decides that the app carries DI. */
+  readonly usesDi: boolean;
 }
 
 /**
@@ -61,11 +94,26 @@ export function discoverComponents(
     }
     for (const comp of resolveDocument(rb.absPath, io).value.components.values()) {
       if (!byTag.has(comp.tag)) {
-        byTag.set(comp.tag, { tag: comp.tag, path: comp.path });
+        byTag.set(comp.tag, {
+          tag: comp.tag,
+          path: comp.path,
+          owns: ownsContainer(comp),
+          usesDi: usesDependencyInjection(comp),
+        });
       }
     }
   }
   // Sorted, so the same project emits the same chunk list twice running: the order the
   // graph happens to be walked in is not a fact anyone should be able to observe.
   return [...byTag.values()].sort((a, b) => a.tag.localeCompare(b.tag));
+}
+
+/**
+ * Whether the route at `absPath` reaches a single DI call.
+ *
+ * Asked per route because the wrapper is per route: a route without one opens no container,
+ * imports nothing of the injector and publishes no map.
+ */
+export function routeUsesDi(absPath: string, io: ResolveIo): boolean {
+  return hasDependencyInjection(resolveDocument(absPath, io).value);
 }

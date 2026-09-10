@@ -818,8 +818,8 @@ servidor pintó, y `const` es su semántica exacta (decisión 75).
 
 El cuerpo de `@code { @client }` se **copia textualmente** a la closure del factory,
 conviviendo en el mismo scope léxico con las variables que el compilador genera (`$dom`,
-`$shadow`, `$n1`, `$d`, `$w`, `$props`, `$m`, `$s`, `$a`, …). Para que no colisionen, **el
-prefijo `$` queda reservado al código emitido**:
+`$shadow`, `$n1`, `$d`, `$w`, `$props`, `$m`, `$s`, `$a`, `$ioc`, `$own`, …). Para que no
+colisionen, **el prefijo `$` queda reservado al código emitido**:
 
 - **La reserva obliga TAMBIÉN al emit, y esa mitad es la que faltaba.** Las closures privadas
   del factory se llamaron `m` y `s` hasta

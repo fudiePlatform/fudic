@@ -35,6 +35,9 @@ importers:
       '@fudic/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@fudic/di':
+        specifier: workspace:*
+        version: link:../../packages/di
       '@fudic/dom':
         specifier: workspace:*
         version: link:../../packages/dom
@@ -132,6 +135,12 @@ importers:
       happy-dom:
         specifier: 20.10.6
         version: 20.10.6
+
+  packages/di:
+    devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
 
   packages/dom:
     devDependencies:
@@ -256,6 +265,9 @@ importers:
 
   packages/ssr:
     dependencies:
+      '@fudic/di':
+        specifier: workspace:*
+        version: link:../di
       '@fudic/dom':
         specifier: workspace:*
         version: link:../dom

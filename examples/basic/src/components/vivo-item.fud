@@ -1,0 +1,49 @@
+@code {
+  const { label = "" } = props<{ label?: string }>();
+
+  @client {
+    import { signal } from "@fudic/core";
+
+    // Something of its own, so "it is alive" is not the same question as "it was painted":
+    // an instance that only echoed its prop could be a stretch of static HTML.
+    const clicks = signal(0);
+
+    function count() {
+      clicks.set(clicks() + 1);
+    }
+  }
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    .item {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      border: 1px solid #dcdcdc;
+      border-radius: 8px;
+      padding: 0.4rem 0.75rem;
+      background: white;
+    }
+    button {
+      font: inherit;
+      padding: 0.2rem 0.6rem;
+      border: 1px solid #dcdcdc;
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<vivo-item>
+  <template shadowrootmode="open">
+    <span class="item">
+      <span data-id="label">@label</span>
+      <button @click=@count data-id="count">tocado @(clicks()) veces</button>
+    </span>
+  </template>
+</vivo-item>

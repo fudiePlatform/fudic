@@ -24,6 +24,14 @@ export interface RenderChunkOptions {
   readonly hasPaths?: boolean;
   /** Edge variant: resolve data in process. Off for the linked (SW) variant. */
   readonly withLoad: boolean;
+  /**
+   * Whether any component this route reaches injects or provides (SDD-38 §4.7).
+   *
+   * It decides whether the request opens a container tree at all. A route without a single
+   * DI call imports nothing of the injector and publishes no map — «a route without `inject`
+   * does not download a line of DI» is enforced here, where the import is written.
+   */
+  readonly hasDi?: boolean;
 }
 
 /** Generate the route chunk module text. */
@@ -33,10 +41,17 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   const edgeLoad = options.withLoad && options.hasLoad;
 
   const lines: string[] = [];
+  const hasDi = options.hasDi === true;
+  const ssr = [
+    'SsrDom',
+    'serializeChunks',
+    'htmlToByteStream',
+    'escapeText',
+    'jsonBlock',
+    ...(hasDi ? ['iocRoot', 'publishedSeed', 'withDi'] : []),
+  ];
   lines.push(`import { page } from ${spec};`);
-  lines.push(
-    `import { SsrDom, serializeChunks, htmlToByteStream, escapeText, jsonBlock } from "@fudic/ssr";`,
-  );
+  lines.push(`import { ${ssr.join(', ')} } from "@fudic/ssr";`);
   if (edgeLoad) {
     lines.push(`import { load } from ${server};`);
   }
@@ -49,7 +64,7 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   // style-adoption polyfill, which a strict `script-src 'self'` would otherwise kill.
   lines.push('function io(ctx) {');
   lines.push(
-    '  return { createDom: () => new SsrDom(), serialize: serializeChunks, escapeText, jsonBlock, nonce: ctx.nonce };',
+    `  return { createDom: () => new SsrDom(), serialize: serializeChunks, escapeText, jsonBlock${hasDi ? ', iocRoot, publishedSeed' : ''}, nonce: ctx.nonce };`,
   );
   lines.push('}');
   lines.push('');
@@ -63,12 +78,20 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
 
   lines.push('export function render(ctx) {');
   lines.push('  return htmlToByteStream((async function* () {');
+  // ONE container per request, opened before `load` and handed to the page: what `load`
+  // injects and what the components inject have to be the same instances, or a `@Service`
+  // would be built twice for one response.
+  if (hasDi) {
+    lines.push('    const $root = iocRoot();');
+  }
   if (edgeLoad) {
-    lines.push('    const data = ctx.data !== undefined ? ctx.data : await load(ctx);');
+    lines.push(
+      `    const data = ctx.data !== undefined ? ctx.data : await load(${hasDi ? 'withDi(ctx, $root)' : 'ctx'});`,
+    );
   } else {
     lines.push('    const data = ctx.data !== undefined ? ctx.data : {};');
   }
-  lines.push('    yield* page(data, io(ctx));');
+  lines.push(`    yield* page(data, io(ctx)${hasDi ? ', $root' : ''});`);
   lines.push('  })());');
   lines.push('}');
   lines.push('');

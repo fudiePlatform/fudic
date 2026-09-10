@@ -183,6 +183,14 @@ export interface MarkupOptions {
    */
   readonly hydratable: ReadonlySet<string>;
   /**
+   * The container a child host is handed as its fourth argument (SDD-38 §4.3).
+   *
+   * `$ioc` — the default — is what this component received and forwards intact. A component
+   * that declares a provider passes `$own` instead, the container it owns, so its whole
+   * subtree resolves that token to ITS instance and not to the global one.
+   */
+  readonly ioc?: string;
+  /**
    * The `control` bindings of this template (SDD-34). Empty by default: a page body, a layout
    * and every test that asks only about markup have none, and an empty plan writes nothing.
    */
@@ -208,6 +216,7 @@ export class MarkupEmitter {
   readonly #signals: ReadonlySet<string>;
   readonly #declared: (tag: string) => PropTarget | undefined;
   readonly #hydratable: ReadonlySet<string>;
+  readonly #ioc: string;
   readonly #controls: ControlPlan;
   readonly #formAssociated: ReadonlySet<string>;
   readonly #used = new Set<string>();
@@ -233,6 +242,7 @@ export class MarkupEmitter {
     this.#signals = options.signals ?? new Set();
     this.#declared = options.declared ?? (() => undefined);
     this.#hydratable = options.hydratable;
+    this.#ioc = options.ioc ?? '$ioc';
     this.#controls = options.controls ?? new Map();
     this.#formAssociated = options.formAssociated;
   }
@@ -376,7 +386,7 @@ export class MarkupEmitter {
       const focus = this.#formAssociated.has(el.name) ? ', true' : '';
       this.#w.line(`const ${s} = $dom.attachShadow(${v}${focus});`);
       this.#w.line(
-        `${renderName(el.name)}($dom, ${s}, ${componentPropsExpr(this.#source, el, this.#signals, this.#declared(el.name))});`,
+        `${renderName(el.name)}($dom, ${s}, ${componentPropsExpr(this.#source, el, this.#signals, this.#declared(el.name))}, ${this.#ioc});`,
       );
       this.emitChildren(el.children, v); // light DOM (projected by <slot>)
     } else {

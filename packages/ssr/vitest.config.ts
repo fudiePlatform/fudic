@@ -19,6 +19,7 @@ export default defineConfig({
   resolve: {
     // Dev-time source resolution of the sibling package: no build coupling.
     alias: {
+      '@fudic/di': fileURLToPath(new URL('../di/src/index.ts', import.meta.url)),
       '@fudic/dom': fileURLToPath(new URL('../dom/src/index.ts', import.meta.url)),
     },
   },

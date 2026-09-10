@@ -48,14 +48,27 @@ import type { Diagnostic } from '../types/index.js';
  * teardown and `u` reassigns the props. Handing over is delivering the whole state, so a
  * pattern — which assigns everything it names — is exactly the right shape here.
  */
-function declaration(props: readonly Prop[], cells: readonly CellSlot[]): string {
+function declaration(
+  props: readonly Prop[],
+  cells: readonly CellSlot[],
+  injects: boolean,
+): string {
   const names = props.map((p) => (p.def !== undefined ? `${p.name} = ${p.def}` : p.name));
   // The cells come out under their POSITIONAL names and not under the author's, because the
   // author's is about to be declared by their own `const count = …` a few lines down. What
   // arrives here is the slot; `$pK ?? signal(init)` is where the two meet (BUG-24 §4.4).
   const slots = cells.map((c) => cellName(c));
-  return `let [$dom, $shadow${[...names, ...slots].map((n) => `, ${n}`).join('')}] = $props;`;
+  // The container's node goes in the LAST hole of the slice, behind the props and the cells
+  // (SDD-38 §4.5). At the end and not at the front, because a partial `u` indexes by
+  // position and one hole in front would shift every prop by one (BUG-18 §3.1) — which is
+  // exactly what `updateGuards` below must not have to know about.
+  const ioc = injects ? [iocName(props, cells)] : [];
+  return `let [$dom, $shadow${[...names, ...slots, ...ioc].map((n) => `, ${n}`).join('')}] = $props;`;
 }
+
+/** The positional name of the container node: behind every prop and every cell. */
+const iocName = (props: readonly Prop[], cells: readonly CellSlot[]): string =>
+  `$p${props.length + cells.length + 2}`;
 
 /**
  * The name a cell arrives under: its index in `$props`, which is its slot plus the two
@@ -148,8 +161,13 @@ function buildComponentClientModule(
   options: EmitOptions,
 ): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
-  const { props, signals, client, neutral, template, mutable, emitCalls, clientImports, diagnostics } =
+  const { props, signals, client, neutral, template, mutable, emitCalls, clientImports, diagnostics, di } =
     codeOf(comp);
+  // What runs in a browser: the neutral zone runs on both sides, `@client` only here, and an
+  // `inject` written in `@server` is a line this chunk never sees. A `provide` is not in the
+  // list at all — the owning ancestor may be N1 and have no chunk, so its factory lives in
+  // the route's IoC module rather than inside it (SDD-38 §4.5).
+  const injects = di.some((d) => d.kind === 'inject' && d.zone !== 'server');
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
   // The same three facts the server branch starts from, read from the same graph and the
   // same `<style>`: what the two branches drop has to be the same set, node for node (§4.5).
@@ -308,10 +326,19 @@ function buildComponentClientModule(
   const channels = [
     ...(usage.subscribes ? ['subscribe as $sub'] : []),
     ...(usage.guarded ? ['subscribeIf as $subIf'] : []),
+    // Only a file that fabricates a component host pays for it: a template with no child
+    // component of its own never names `live`, and never downloads that branch.
+    ...(usage.fabricates ? ['live as $live'] : []),
   ];
   const core = [...(formAssociated ? [] : ['FudicElement']), ...channels].join(', ');
   if (!formAssociated || channels.length > 0) w.line(`import { ${core} } from '@fudic/core';`);
   if (formAssociated) w.line("import { FudicControlElement } from '@fudic/forms/element';");
+  if (injects) {
+    // The two halves of resolving on this side: the helper the rewrite named, and the page's
+    // tree, which turns the node the payload carried into the container it stands for.
+    w.line(`import { injectFrom } from '@fudic/di';`);
+    w.line(`import { containerOf as $container } from '@fudic/di/page';`);
+  }
   // The bind functions this walk actually called, and no others. It is §6.7 made structural:
   // the chunk of a component with one text field names `bindText` and does not mention the
   // other five — not their names, not their modules. Sorted so the line is stable.
@@ -337,7 +364,10 @@ function buildComponentClientModule(
   // Its own list, because it is the only one that is emptied while the instance lives.
   if (rebinds) w.line('const $cd = []; // the control bindings, remade when the node moves');
   if (em.writes > 0) w.line('const $w = []; // last applied, per value write');
-  w.line(declaration(props, cells));
+  w.line(declaration(props, cells, injects));
+  // Before the neutral zone, because that is where the injections are written and `$ioc` is
+  // what they resolve from.
+  if (injects) w.line(`const $ioc = $container(${iocName(props, cells)});`);
   // The host, materialized ONLY where something reads it (§4.4). A component with no bus
   // subscription and no `emit` does not pay a line of chunk for a reference nobody looks
   // at, and the chunk budget that keeps INP flat on a cache miss is what pays for that.
@@ -348,8 +378,13 @@ function buildComponentClientModule(
   // the order it was written in and the order the server evaluates it in. No cell splicing:
   // a cell is a `@client` top-level binding by construction (`cellSlots` reads
   // `clientNames`), so nothing declared here can be one.
+  //
+  // Except what REGISTERS. A `provide` is the one neutral line that does not run here: its
+  // owner may be level 1 and have no chunk at all, so the factory travels in the route's IoC
+  // module instead, and `$own` — the container it registers into — does not exist on this
+  // side (SDD-38 §4.5).
   for (const statement of neutral) {
-    if (!statement.hoisted) w.line(statement.text);
+    if (!statement.hoisted && !statement.provides) w.line(statement.text);
   }
   for (const statement of client.body) w.line(withCells(statement, signals, cells));
   w.line('');
