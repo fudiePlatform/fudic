@@ -267,6 +267,12 @@ receptores de bus y su subárbol vivos antes que ella— y cuenta en ese mismo c
 quedan los cuatro puntos de [PENDIENTES-v1.md](./pendings/PENDIENTES-v1.md) —`ref`, `@raw`,
 spread y `bind:`—, que son azúcar de gramática y no bloquean nada.
 
+Al lado vive [PENDIENTES-observados.md](./pendings/PENDIENTES-observados.md), que es la otra
+mitad: no lo que está especificado y sin implementar, sino **lo que se ve de pasada** cerrando
+otra cosa —un test ajeno que falla, una regla que funciona a medias, una suite intermitente—.
+Se anota ahí con su evidencia para no tener que releer *n* SDD y *n* BUG para volver a
+encontrarlo.
+
 ## Registro de progreso
 
 | Fecha | SDD | Cambio |
