@@ -110,7 +110,12 @@ export function writeNonceBinding(w: CodeWriter): void {
  * The polyfill goes out BEFORE the body streams, so its observer adopts each host sheet as
  * it arrives; the style modules follow it.
  */
-export function writeSharedHead(w: CodeWriter): void {
+export function writeSharedHead(w: CodeWriter, hasStyles: boolean): void {
+  // Nothing to adopt, nothing to adopt it WITH (BUG-31 §T3). `COMPONENTS` holds the styled
+  // components of the graph and only those, so an empty one is the whole answer: no sheet
+  // to register, no host wearing `data-fud-adopt`, and a polyfill that would observe the
+  // document for the lifetime of the page to do nothing.
+  if (!hasStyles) return;
   w.line('// The style-adoption polyfill (SDD-18 §5) goes in <head>, live BEFORE the body streams,');
   w.line('// so its observer adopts each host sheet as it arrives; the style modules follow it.');
   w.line("head += '<script' + $nonce + '>' + STYLE_POLYFILL + '</script>';");

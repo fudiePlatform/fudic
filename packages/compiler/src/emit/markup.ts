@@ -205,6 +205,15 @@ export interface MarkupOptions {
    * control-component that is silently not labelable.
    */
   readonly formAssociated: ReadonlySet<string>;
+  /**
+   * The tags that carry a shared stylesheet (BUG-31 §T4). A host outside this set gets no
+   * `data-fud-adopt`, and the serializer reads that absence to leave
+   * `shadowrootadoptedstylesheets` off its template too: one decision, both outputs.
+   *
+   * Required for the same reason the two sets above are — it is a fact about the whole
+   * graph, and defaulting it empty would silently strip the styles off every component.
+   */
+  readonly styled: ReadonlySet<string>;
 }
 
 export class MarkupEmitter {
@@ -219,6 +228,7 @@ export class MarkupEmitter {
   readonly #ioc: string;
   readonly #controls: ControlPlan;
   readonly #formAssociated: ReadonlySet<string>;
+  readonly #styled: ReadonlySet<string>;
   readonly #used = new Set<string>();
   #id = 0;
   /**
@@ -245,6 +255,7 @@ export class MarkupEmitter {
     this.#ioc = options.ioc ?? '$ioc';
     this.#controls = options.controls ?? new Map();
     this.#formAssociated = options.formAssociated;
+    this.#styled = options.styled;
   }
 
   /** The child component tags rendered so far, in first-use order (for ES imports). */
@@ -376,7 +387,13 @@ export class MarkupEmitter {
       // polyfill can read it (SDD-18 D-6). The native attribute still rides the template.
       // Prefixed for the same reason as `data-fud-id`: `data-*` is the author's vocabulary,
       // and an unprefixed marker is a name we do not own.
-      this.#w.line(`$dom.setAttr(${v}, 'data-fud-adopt', ${JSON.stringify(el.name)});`);
+      //
+      // Only when there IS a sheet (BUG-31 §T4). The marker is what the serializer reads to
+      // decide the template's own attribute, so a component with no CSS announces no sheet
+      // anywhere and the polyfill never builds an empty one for it.
+      if (this.#styled.has(el.name)) {
+        this.#w.line(`$dom.setAttr(${v}, 'data-fud-adopt', ${JSON.stringify(el.name)});`);
+      }
       // The host's own attributes — its `.prop`s and its plain HTML ones (BUG-16 §4.1).
       // Level 1 is HTML with no JS, so this is the only place they can live.
       this.#elementAttrs(el, v, true);

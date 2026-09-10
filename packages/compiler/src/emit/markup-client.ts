@@ -260,6 +260,12 @@ export interface ClientScope {
   cellOf(name: string): string | undefined;
   readonly signals: ReadonlySet<string>;
   readonly moving: ReadonlySet<string>;
+  /**
+   * The tags that carry a shared stylesheet (BUG-31 §T4). The client branch fabricates the
+   * same host the server serialized, so it writes `data-fud-adopt` under exactly the same
+   * condition — a marker on one side and not the other is a tree `h` would not recognise.
+   */
+  readonly styled: ReadonlySet<string>;
 }
 
 /** One slot of a child's positional payload: the expression, and where it can move from. */
@@ -764,8 +770,12 @@ export class ClientMarkupEmitter {
       // A child component host: fabricate it and hang its light DOM, but do NOT open its
       // shadow or drive its controller. Who downloads a child's chunk, and in which order
       // its instances come alive, is the runtime's decision (SDD-17), not the parent's.
-      // `data-fud-adopt` carries the style specifier the shared sheet is keyed by (SDD-18 D-6).
-      this.#fab.line(`$dom.setAttr(${v}, 'data-fud-adopt', ${JSON.stringify(el.name)});`);
+      // `data-fud-adopt` carries the style specifier the shared sheet is keyed by (SDD-18 D-6),
+      // and only for a child that HAS a sheet (BUG-31 §T4) — the same condition the server
+      // branch applies, because both write the same host.
+      if (this.#scope.styled.has(el.name)) {
+        this.#fab.line(`$dom.setAttr(${v}, 'data-fud-adopt', ${JSON.stringify(el.name)});`);
+      }
       // The host's own attributes, same as the server writes them (BUG-16 §4.1): the two
       // branches have to agree byte for byte, or `h` adopts a tree it does not recognise.
       writeElementAttrs(

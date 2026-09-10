@@ -18,7 +18,7 @@
  * `page(data, io)` returns the whole HTML string; `io` injects the SSR adapter.
  */
 
-import type { ComponentGraph, ResolvedComponent } from './resolve.js';
+import { allComponents, type ComponentGraph, type ResolvedComponent } from './resolve.js';
 import type { ElementNode, HtmlContent } from '../html/index.js';
 import type { StyleNode } from '../css/index.js';
 import type { PageDocument, ComponentDocument } from '../document/index.js';
@@ -122,6 +122,27 @@ function componentCss(source: string, doc: ComponentDocument): string {
 }
 
 /**
+ * The tags of the graph that actually carry a shared stylesheet (BUG-31 §T4).
+ *
+ * A component with no `<style>` — or one whose body compacts to nothing — used to travel
+ * the whole style path anyway: an entry in `COMPONENTS`, an empty
+ * `<style type="module" specifier>` in the head, `shadowrootadoptedstylesheets` on its
+ * template and `data-fud-adopt` on its host. The consequence was on the CLIENT, where the
+ * polyfill built a constructable stylesheet out of that empty text and adopted it into
+ * every instance. The emit has the CSS right here, so it is the one that decides.
+ *
+ * The predicate is the COMPACTED text and not the presence of the element: `<style></style>`
+ * and a body of pure whitespace are the same fact as no `<style>` at all.
+ */
+export function styledTags(graph: ComponentGraph): ReadonlySet<string> {
+  const styled = new Set<string>();
+  for (const comp of allComponents(graph)) {
+    if (componentCss(comp.source, comp.doc) !== '') styled.add(comp.tag);
+  }
+  return styled;
+}
+
+/**
  * The PARSED body of that `<style>` — a `<style>` carries a `StyleNode` child, because
  * the parser runs `parseStyle` over its body for the Razor (SDD-09). It is what tells the
  * whitespace model whether this component declared a preserving `white-space` (BUG-07
@@ -218,6 +239,7 @@ function buildComponentModule(
     ...(owns ? { ioc: '$own' } : {}),
     controls,
     formAssociated: formAssociatedTags(graph),
+    styled: styledTags(graph),
   });
   em.emitChildren(comp.doc.template!.children, '$shadow');
   // css uses the linker too (may register more imports), so build it before the imports.
@@ -382,6 +404,12 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
   const page = graph.entry as PageDocument;
   const source = graph.entrySource;
   const comps = [...graph.components.values()];
+  // Only the components that HAVE a sheet reach the head: the rest carry no `COMPONENTS`
+  // entry, no `<style type="module">` and no adopt marker anywhere (BUG-31 §T4). It is a
+  // SECOND list and not a filter of the first, because `comps` also drives the `render`
+  // imports, and every component of the graph is rendered whether or not it is styled.
+  const styled = styledTags(graph);
+  const styledComps = comps.filter((c) => styled.has(c.tag));
 
   // Body codegen.
   const hydratable = hydratableTags(graph);
@@ -402,6 +430,7 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
     hydratable,
     ioc: hasDi ? '$root' : '$ioc',
     formAssociated: formAssociatedTags(graph),
+    styled,
   });
   em.emitChildren(page.body.children, '$body');
 
@@ -416,16 +445,20 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
 
   const w = new CodeWriter();
   const specifier = specifierResolver(graph, options.componentSpecifier, ext);
+  // `tag` and `css` are imported only by the styled ones: a component with no sheet has
+  // nothing to name in the head, so importing its two constants would be dead weight the
+  // bundler carries into every page that composes it (BUG-31 §T4).
   for (const c of comps) {
-    w.line(
-      `import { render as ${renderName(c.tag)}, tag as ${renderName(c.tag)}Tag, css as ${renderName(c.tag)}Css } from ${specifier(c.tag)};`,
-    );
+    const style = styled.has(c.tag)
+      ? `, tag as ${renderName(c.tag)}Tag, css as ${renderName(c.tag)}Css`
+      : '';
+    w.line(`import { render as ${renderName(c.tag)}${style} } from ${specifier(c.tag)};`);
   }
   for (const line of linker.imports()) w.line(line); // asset imports Vite resolves (SDD-19 §4.5)
   w.line('');
-  w.line(`const COMPONENTS = [${comps.map((c) => `{ tag: ${renderName(c.tag)}Tag, css: ${renderName(c.tag)}Css }`).join(', ')}];`);
+  w.line(`const COMPONENTS = [${styledComps.map((c) => `{ tag: ${renderName(c.tag)}Tag, css: ${renderName(c.tag)}Css }`).join(', ')}];`);
   // The MINIFIED form: it is inline in every page's head, once per page (BUG-07 §4.3).
-  w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL_MIN)};`);
+  if (styledComps.length > 0) w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL_MIN)};`);
   const maps = writeMapConstants(w, graph, hydratable);
   w.line('');
   // Streaming a trozos (SDD-19 §4.3): a generator that yields the <head> FIRST, then the
@@ -443,7 +476,7 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
   writeNonceBinding(w);
   w.line("let head = '';");
   w.appendWriter(headW);
-  writeSharedHead(w);
+  writeSharedHead(w, styledComps.length > 0);
   // No whitespace in the skeleton (BUG-07 §4.2). Between the doctype, `<html>`, `<head>`
   // and its elements there is no context where a newline or an indent renders: the HTML
   // parser drops it before the tree is built. It is the free half of this BUG.

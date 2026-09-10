@@ -71,8 +71,15 @@ function* serializeElement(n: SsrNodeImpl): Generator<string> {
   if (n.shadow !== null) {
     // DSD template adopts the component's shared stylesheet, named by the host tag
     // (SDD-18). Standard form emitted day one so native support needs zero change.
+    //
+    // Named by the host's OWN marker and not by its tag (BUG-31 §T4): the emit writes
+    // `data-fud-adopt` only for a component that has a sheet, so its absence is how a
+    // component with no CSS says it adopts nothing. Deriving it from `tag` here announced
+    // a sheet that did not exist, and the client built an empty one to honour it.
     const focus = n.delegatesFocus ? ' shadowrootdelegatesfocus' : '';
-    yield `<template shadowrootmode="open"${focus} shadowrootadoptedstylesheets="${escapeAttr(tag)}">`;
+    const specifier = n.attrs.get('data-fud-adopt');
+    const adopts = specifier === undefined ? '' : ` shadowrootadoptedstylesheets="${escapeAttr(specifier)}"`;
+    yield `<template shadowrootmode="open"${focus}${adopts}>`;
     yield* serializeChildren(n.shadow);
     yield '</template>';
   }

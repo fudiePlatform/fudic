@@ -31,7 +31,7 @@ import { formAssociatedTags, hydratableTags } from './level.js';
 import { hasDependencyInjection } from './di.js';
 import { writeMapConstants, writeHydrationBlocks } from './maps.js';
 import type { DocumentGraph, ResolvedLayout } from './resolve.js';
-import type { EmitOptions, EmitOutput } from './module.js';
+import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
 import {
   quoteSpecifier,
   slice,
@@ -56,10 +56,10 @@ function layoutSpecifierOf(layout: ResolvedLayout, options: EmitOptions): string
 }
 
 /** The `{ tag, css }` pairs of every component in the graph, deduplicated and ordered. */
-function componentPairs(graph: DocumentGraph): readonly string[] {
-  return [...graph.components.values()].map(
-    (c) => `{ tag: ${renderName(c.tag)}Tag, css: ${renderName(c.tag)}Css }`,
-  );
+function componentPairs(graph: DocumentGraph, styled: ReadonlySet<string>): readonly string[] {
+  return [...graph.components.values()]
+    .filter((c) => styled.has(c.tag))
+    .map((c) => `{ tag: ${renderName(c.tag)}Tag, css: ${renderName(c.tag)}Css }`);
 }
 
 /** `import` lines for the component renders a markup emitter used, plus the asset imports. */
@@ -99,6 +99,7 @@ function buildLayoutModule(
     slots: SLOTS,
     hydratable: hydratableTags(graph),
     formAssociated: formAssociatedTags(graph),
+    styled: styledTags(graph),
   });
   const bodyParent = nested ? PARENT : '$body';
   em.emitChildren(doc.body.children, bodyParent);
@@ -234,6 +235,9 @@ function buildRouteModule(
 
   const hydratable = hydratableTags(graph);
   const formAssociated = formAssociatedTags(graph);
+  // The styled half of the graph (BUG-31 §T4): what wears an adopt marker, what reaches
+  // `COMPONENTS`, and — when it is empty — whether the polyfill is emitted at all.
+  const styled = styledTags(graph);
   const isComponent = (t: string): boolean => graph.components.has(t);
   // Whether ANY component the route reaches injects or provides. A route without a single
   // DI call opens no container tree, imports nothing and publishes no map (SDD-38 §5).
@@ -249,6 +253,7 @@ function buildRouteModule(
     hydratable,
     ioc,
     formAssociated,
+    styled,
   });
   em.emitChildren(route.markup, PARENT);
 
@@ -265,6 +270,7 @@ function buildRouteModule(
     hydratable,
     ioc,
     formAssociated,
+    styled,
   });
   for (const section of route.sections as readonly SectionNode[]) {
     if (section.name === '') continue;
@@ -279,7 +285,7 @@ function buildRouteModule(
   if (route.head !== undefined) {
     writeHeadElements(source, route.head, { skip: new Set<HtmlContent>(), linker }, headW);
   }
-  writeSharedHead(headW);
+  writeSharedHead(headW, styled.size > 0);
 
   const w = new CodeWriter();
   const innermost = graph.layouts[0];
@@ -287,16 +293,19 @@ function buildRouteModule(
     w.line(`import { layout } from ${layoutSpecifierOf(innermost, options)};`);
   }
   const specifier = specifierResolver(graph, options.componentSpecifier, ext);
+  // `tag`/`css` only for the styled ones (BUG-31 §T4); `render` for every component, since
+  // the graph renders them all whether or not they have a sheet.
   for (const c of comps) {
-    w.line(
-      `import { render as ${renderName(c.tag)}, tag as ${renderName(c.tag)}Tag, css as ${renderName(c.tag)}Css } from ${specifier(c.tag)};`,
-    );
+    const style = styled.has(c.tag)
+      ? `, tag as ${renderName(c.tag)}Tag, css as ${renderName(c.tag)}Css`
+      : '';
+    w.line(`import { render as ${renderName(c.tag)}${style} } from ${specifier(c.tag)};`);
   }
   for (const line of linker.imports()) w.line(line);
   w.line('');
-  w.line(`const COMPONENTS = [${componentPairs(graph).join(', ')}];`);
+  w.line(`const COMPONENTS = [${componentPairs(graph, styled).join(', ')}];`);
   // The MINIFIED form: it is inline in every page's head, once per page (BUG-07 §4.3).
-  w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL_MIN)};`);
+  if (styled.size > 0) w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL_MIN)};`);
   // The maps belong to the ROUTE and not to the layout, and that is not a placement choice:
   // `resolveDocument(route)` reaches the components of the whole chain — the layout's own
   // included — while a layout module is emitted from its own graph and cannot see the

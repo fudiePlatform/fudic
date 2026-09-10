@@ -34,6 +34,7 @@ import {
   componentBoxes,
   componentContainer,
   componentStyleNode,
+  styledTags,
   type EmitOptions,
   type EmitOutput,
 } from './module.js';
@@ -201,6 +202,9 @@ function buildComponentClientModule(
     // The same set `level.ts` decides hydratability with, and from the same function: what
     // the emit hands over again and what the page marks hydratable cannot disagree.
     moving: movingNames(comp),
+    // And the same set the server branch writes `data-fud-adopt` from (BUG-31 §T4): the two
+    // fabricate the same host, so they have to answer this identically.
+    styled: styledTags(graph),
   };
   // One channel for everything the emit has to SAY about this file, and one for what every
   // walk of it shares: a block three levels down reports through the same two.
