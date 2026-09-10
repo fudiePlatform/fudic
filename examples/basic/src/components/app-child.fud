@@ -45,7 +45,7 @@
 <app-child>
   <template shadowrootmode="open">
     <p>hijo (prof 1): <strong class="value">@count</strong>
-      <button class="eco" @click=@ping>eco @(eco())</button></p>
+      <button class="eco" @click=@ping>eco @eco()</button></p>
     <app-grandchild .count=@count></app-grandchild>
   </template>
 </app-child>

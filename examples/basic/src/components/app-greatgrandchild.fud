@@ -46,6 +46,6 @@
 <app-greatgrandchild>
   <template shadowrootmode="open">
     <p>bisnieto (prof 3): <strong class="value">@count</strong>
-      <button class="eco" @click=@ping>eco @(eco())</button></p>
+      <button class="eco" @click=@ping>eco @eco()</button></p>
   </template>
 </app-greatgrandchild>

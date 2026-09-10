@@ -33,6 +33,6 @@
 
 <app-cold>
   <template shadowrootmode="open">
-    <button class="hit" @click=@hit>Sin precachear: <span class="value">@(hits())</span></button>
+    <button class="hit" @click=@hit>Sin precachear: <span class="value">@hits()</span></button>
   </template>
 </app-cold>

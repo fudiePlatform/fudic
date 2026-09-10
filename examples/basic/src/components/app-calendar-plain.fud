@@ -117,8 +117,8 @@
         <button class="add" @click=@add>+7 filas</button>
         <button class="drop" @click=@drop>−7 filas</button>
         <button class="shuffle" @click=@shuffle>Invertir</button>
-        <span>Último: <output class="last">@(last())</output></span>
-        <span>Filas: <output class="rows">@(rows().length)</output></span>
+        <span>Último: <output class="last">@last()</output></span>
+        <span>Filas: <output class="rows">@rows().length</output></span>
       </div>
     </section>
   </template>

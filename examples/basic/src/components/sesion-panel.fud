@@ -42,7 +42,7 @@
     <section class="panel">
       <dl>
         <dt>sesión inyectada</dt>
-        <dd data-id="session">@(session.name)</dd>
+        <dd data-id="session">@session.name</dd>
       </dl>
     </section>
   </template>

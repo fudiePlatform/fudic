@@ -46,8 +46,8 @@
 <shopping-cart>
   <template shadowrootmode="open">
     <p class="cart" bus:carrito=@onCarrito($event)>
-      <span class="badge">@(items())</span>
-      <span class="total">@(total().toFixed(2)) €</span>
+      <span class="badge">@items()</span>
+      <span class="total">@total().toFixed(2) €</span>
     </p>
   </template>
 </shopping-cart>

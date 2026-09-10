@@ -74,14 +74,14 @@
     <section class="panel">
       <div class="row">
         <button class="add" @click=@add>Añadir línea</button>
-        <span data-id="cart">@(cart.id)</span>
-        <span data-id="logger">@(logger.id)</span>
+        <span data-id="cart">@cart.id</span>
+        <span data-id="logger">@logger.id</span>
       </div>
       <dl>
         <dt>líneas</dt>
-        <dd data-id="count">@(count())</dd>
+        <dd data-id="count">@count()</dd>
         <dt>última</dt>
-        <dd data-id="last">@(last())</dd>
+        <dd data-id="last">@last()</dd>
       </dl>
       <di-badge></di-badge>
     </section>

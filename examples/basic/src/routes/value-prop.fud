@@ -13,7 +13,7 @@
 <h1>2 · El padre pasa el valor</h1>
 <p class="lede">
   La misma signal, en el mismo padre. Lo único que cambia es un par de paréntesis:
-  <code>@('<value-display .value=@(count())>')</code>. Lo que cruza el shadow boundary
+  <code>@('<value-display .value=@count()>')</code>. Lo que cruza el shadow boundary
   ya no es la signal, es un número.
 </p>
 
@@ -32,13 +32,13 @@
   dos— sino en <strong>cuándo se vuelve a escribir</strong>. Ahí el valor es el nombre de una
   signal y tiene canal propio: al moverse escribe su casilla y nada más. Aquí es una
   expresión, así que se recompone en la <em>pasada de render</em> del padre, junto al resto
-  de sus valores. Es un reenvío más ancho a cambio de poder escribir lo que quieras dentro
-  del paréntesis.
+  de sus valores. Es un reenvío más ancho a cambio de poder escribir lo que quieras en la
+  expresión.
 </p>
 
 <h2>Y por eso el hijo también se hidrata</h2>
 <p>
-  El compilador mira lo que la expresión <strong>lee</strong>. Como <code>@("@(count())")</code>
+  El compilador mira lo que la expresión <strong>lee</strong>. Como <code>@("@count()")</code>
   lee una signal, sabe que ese valor se va a mover, así que marca al hijo como hidratable y
   le reserva su identidad en la página. Un valor que no lee nada —una constante— no marca
   nada: el hijo se queda en nivel 1, HTML puro, y no descarga una línea de JavaScript.

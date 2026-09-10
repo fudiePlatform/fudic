@@ -43,7 +43,7 @@
   <template shadowrootmode="open">
     <span class="item">
       <span data-id="label">@label</span>
-      <button @click=@count data-id="count">tocado @(clicks()) veces</button>
+      <button @click=@count data-id="count">tocado @clicks() veces</button>
     </span>
   </template>
 </vivo-item>
