@@ -9,7 +9,7 @@
 > 15 (emit y mapas de página), 17 (cascada de hidratación), 19 (plugin), 20 (wrapper de ruta),
 > 23 (TS virtual)
 > **Rango de diagnósticos:** `FUD0680`–`FUD0699`
-> **Decisiones de gramática:** 120–126 (nuevas) + precisión a 33.c
+> **Decisiones de gramática:** 122–128 (nuevas) + precisión a 33.c
 > **Naturaleza:** un paquete nuevo sin DOM y sin dependencias, más el cableado que lo hace vivir
 > en los dos extremos. Una página sin una sola inyección **no descarga un byte de este SDD**.
 >

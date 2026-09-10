@@ -4,7 +4,7 @@
 > **Paquete:** `@fudic/di` — **nuevo**, puntos de entrada `.` y `./page`
 > **Toca además:** `@fudic/compiler`, `@fudic/ssr`, `@fudic/vite`
 > **Rama:** `sdd-38-inyeccion-de-dependencias`
-> **Rango:** `FUD0680`–`FUD0699` · **Decisiones:** 120–126
+> **Rango:** `FUD0680`–`FUD0699` · **Decisiones:** 122–128
 > **Progreso:** 18 / 19
 
 Da a fudic el inyector que [`docs/di/index.html`](../di/index.html) prototipó, y lo cablea en los
@@ -186,16 +186,21 @@ usuario, `multi:`, `useValue`, el reemplazo en tests y `fudic g service`.
       ficheros (§6.27, §6.28).
 - [ ] **19. Decisiones y registro.**
       Escribir en [`gramatica-v1-decisiones.md`](../gramar/gramatica-v1-decisiones.md) las
-      decisiones **120–126** y la **precisión a 33.c**, y actualizar la tabla maestra y el registro
+      decisiones **122–128** y la **precisión a 33.c**, y actualizar la tabla maestra y el registro
       de progreso de [`INDEX.md`](./INDEX.md).
+
+      **Numeración acordada con la sesión de SDD-37 (2026-09-10).** La 116 se la quedó `main`
+      —`@{ … }`, BUG-28— por llegar primero, SDD-37 corrió sus cinco a **117–121**, y este SDD
+      sale detrás con **122–128**. Es el mismo precedente del 2026-09-08, cuando SDD-34 cedió
+      ante SDD-36. La precisión a 33.c no toma número.
 
       | Nº | Texto |
       |---|---|
-      | 120 | `inject` y `provide` son legales en las **tres zonas** de `@code`. La zona decide dónde corre la línea: neutra en los dos lados, `@server` solo en el servidor, `@client` solo en el navegador. |
-      | 121 | **Escribir un provider no cambia el nivel de un componente.** Solo `inject`, y solo en la zona neutra o en `@client`, promueve a N3, por las reglas de hidratación ya existentes. |
-      | 122 | La jerarquía de contenedores es **código emitido**, nunca derivada del árbol de elementos. Ninguna resolución consulta el DOM. |
-      | 123 | El dueño de un token es el **primer contenedor de la cadena con registro**; la raíz, donde viven los `@Service`, es el último eslabón. La factoría corre en el contenedor dueño. |
-      | 124 | **El contenedor raíz es la ruta** —una petición en el servidor, una página en el navegador— y muere con ella. No hay un nivel «aplicación» por encima. |
-      | 125 | Lo que cruza el cable son **valores publicados** bajo `token()`, nunca instancias de servicio. Es la decisión 84 aplicada al contenedor. |
-      | 126 | `load(ctx)` resuelve por `ctx.inject(…)`. Es la única función `async` del sistema y no participa del contenedor ambiente. |
+      | 122 | `inject` y `provide` son legales en las **tres zonas** de `@code`. La zona decide dónde corre la línea: neutra en los dos lados, `@server` solo en el servidor, `@client` solo en el navegador. |
+      | 123 | **Escribir un provider no cambia el nivel de un componente.** Solo `inject`, y solo en la zona neutra o en `@client`, promueve a N3, por las reglas de hidratación ya existentes. |
+      | 124 | La jerarquía de contenedores es **código emitido**, nunca derivada del árbol de elementos. Ninguna resolución consulta el DOM. |
+      | 125 | El dueño de un token es el **primer contenedor de la cadena con registro**; la raíz, donde viven los `@Service`, es el último eslabón. La factoría corre en el contenedor dueño. |
+      | 126 | **El contenedor raíz es la ruta** —una petición en el servidor, una página en el navegador— y muere con ella. No hay un nivel «aplicación» por encima. |
+      | 127 | Lo que cruza el cable son **valores publicados** bajo `token()`, nunca instancias de servicio. Es la decisión 84 aplicada al contenedor. |
+      | 128 | `load(ctx)` resuelve por `ctx.inject(…)`. Es la única función `async` del sistema y no participa del contenedor ambiente. |
       | 33.c | *(precisión)* La inscripción de un módulo de servicio en el registro raíz no es un «side effect» de los que 33.c prohíbe: es determinista, idempotente y acotada a su propia clase. Un módulo de servicio es un import legal en zona neutra. |
