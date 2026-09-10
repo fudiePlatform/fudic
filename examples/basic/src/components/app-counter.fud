@@ -49,7 +49,7 @@
   <template shadowrootmode="open">
     <div class="panel">
       <button class="inc" @click=@inc>+1</button>
-      <output class="value">@(n())</output>
+      <output class="value">@n()</output>
     </div>
   </template>
 </app-counter>

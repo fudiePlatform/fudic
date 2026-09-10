@@ -63,7 +63,7 @@
     <section class="panel">
       <div class="row">
         <button class="inc" @click=@inc>+1</button>
-        <p class="own">El padre tiene @(count()).</p>
+        <p class="own">El padre tiene @count().</p>
       </div>
       <signal-display .value=@count></signal-display>
       <signal-form .onSave=@sumar></signal-form>

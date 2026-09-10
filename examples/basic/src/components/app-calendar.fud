@@ -17,8 +17,7 @@
 
     // El handler recibe el OBJETO de la fila. Le suma una marca encima: si en el siguiente
     // clic el número ha subido, es que llegó el mismo objeto y no una copia.
-    function pick(ev: Event, day: Day) {
-      void ev;
+    function pick(day: Day) {
       day.picks += 1;
       last.set(`día ${day.n} · pulsado ${day.picks} ${day.picks === 1 ? "vez" : "veces"}`);
     }
@@ -112,7 +111,7 @@
   <template shadowrootmode="open">
     <section class="panel">
       @* Un solo `@click`, en el contenedor. Las celdas no llevan listener: llevan marcador. *@
-      <div class="grid" @click=@pick($event, $day)>
+      <div class="grid" @click=@pick($day)>
         <div class="hueco">pad</div>
         @foreach (const day of rows()) key (day.id) {
           <div class="cell" delegate:day>
@@ -126,8 +125,8 @@
         <button class="add" @click=@add>+7 filas</button>
         <button class="drop" @click=@drop>−7 filas</button>
         <button class="shuffle" @click=@shuffle>Invertir</button>
-        <span>Último: <output class="last">@(last())</output></span>
-        <span>Filas: <output class="rows">@(rows().length)</output></span>
+        <span>Último: <output class="last">@last()</output></span>
+        <span>Filas: <output class="rows">@rows().length</output></span>
       </div>
     </section>
   </template>

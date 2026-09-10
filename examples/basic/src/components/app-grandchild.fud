@@ -42,7 +42,7 @@
 <app-grandchild>
   <template shadowrootmode="open">
     <p>nieto (prof 2): <strong class="value">@count</strong>
-      <button class="eco" @click=@ping>eco @(eco())</button></p>
+      <button class="eco" @click=@ping>eco @eco()</button></p>
     <app-greatgrandchild .count=@count></app-greatgrandchild>
   </template>
 </app-grandchild>

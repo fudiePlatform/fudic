@@ -29,4 +29,4 @@
   JavaScript hasta que lo tocas. Las dos cosas, en la misma página.
 </p>
 
-<app-counter .start=@(10)></app-counter>
+<app-counter .start=10></app-counter>

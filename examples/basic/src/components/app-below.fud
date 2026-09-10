@@ -31,6 +31,6 @@
 
 <app-below>
   <template shadowrootmode="open">
-    <button class="look" @click=@look>Bajo el pliegue: <span class="value">@(seen())</span></button>
+    <button class="look" @click=@look>Bajo el pliegue: <span class="value">@seen()</span></button>
   </template>
 </app-below>

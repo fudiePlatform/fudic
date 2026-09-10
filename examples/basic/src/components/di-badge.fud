@@ -26,8 +26,8 @@
 <di-badge>
   <template shadowrootmode="open">
     <p>
-      también veo <span data-id="badge-cart">@(cart.id)</span> y
-      <span data-id="badge-logger">@(logger.id)</span> · <span data-id="badge-lines">@(cart.lines.length)</span>
+      también veo <span data-id="badge-cart">@cart.id</span> y
+      <span data-id="badge-logger">@logger.id</span> · <span data-id="badge-lines">@cart.lines.length</span>
       líneas
     </p>
   </template>
