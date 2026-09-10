@@ -1,0 +1,152 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/signal-control.fud">
+
+@code {
+  // Casi el mismo código que `signal-control.fud`. La diferencia es DÓNDE está escrito:
+  // allí, dentro de un componente; aquí, en el `@code` de la RUTA, sin ningún componente
+  // de por medio.
+  //
+  // Y una segunda diferencia, que ya es un hallazgo: esto tiene que ir en la zona NEUTRA.
+  // Escrito dentro de la region de cliente, como lo escribe el componente, el prerender de
+  // la ruta se cae con "count is not defined" — el servidor de un componente si tiene el
+  // stub inerte de los nombres de esa region (SDD-31 4.6) y el de una ruta, no.
+  import { signal, computed } from "@fudic/core";
+
+  const count = signal(1);
+
+  const filas = computed(() => Array.from({ length: count() }, (_, i) => ({ id: i })));
+
+  function mas() {
+    count.set(count() + 1);
+  }
+
+  function menos() {
+    count.set(Math.max(0, count() - 1));
+  }
+}
+
+<head>
+  <title>Una ruta reactiva, sin componentes — fudic</title>
+  <style>
+    .panel {
+      display: grid;
+      gap: 0.9rem;
+      border: 1px solid #dcdcdc;
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
+      background: white;
+    }
+    .row {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+    }
+    .panel button {
+      font: inherit;
+      padding: 0.35rem 0.8rem;
+      border: 1px solid #1a73e8;
+      border-radius: 6px;
+      background: #1a73e8;
+      color: white;
+      cursor: pointer;
+    }
+    .valor {
+      font-size: 1.4rem;
+      font-variant-numeric: tabular-nums;
+      min-width: 2ch;
+      text-align: center;
+    }
+    .caso {
+      display: grid;
+      grid-template-columns: 6.5rem 1fr;
+      gap: 0.75rem;
+      align-items: start;
+      padding: 0.55rem 0.7rem;
+      border: 1px dashed #34a853;
+      border-radius: 8px;
+      background: #f2f9f4;
+    }
+    .que {
+      margin: 0;
+      font-family: ui-monospace, monospace;
+      font-size: 0.82rem;
+      color: #1e7e34;
+    }
+    .salida {
+      margin: 0;
+    }
+    .lista {
+      margin: 0;
+      padding-left: 1.1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0 1rem;
+      list-style: none;
+    }
+    .lista li {
+      font-variant-numeric: tabular-nums;
+    }
+    .control {
+      border-color: #9aa0a6;
+      background: #fafafa;
+    }
+  </style>
+</head>
+
+@section nav {
+  <site-nav .current="ruta-reactiva"></site-nav>
+}
+
+<h1>Una signal en la ruta, sin componente que la envuelva</h1>
+<p class="lede">
+  La página <a href="/reactividad">/reactividad</a> demuestra que la <strong>cabecera</strong>
+  de un constructo es reactiva. Pero toda su reactividad vive dentro de componentes N3.
+  Aquí está el mismo código sacado del componente y escrito <strong>en la propia ruta</strong>:
+  una <code>signal</code>, dos manejadores, un <code>@@if</code> y un <code>@@foreach</code>.
+</p>
+
+<h2>1 · El contador, en la ruta</h2>
+
+<div class="panel">
+  <div class="row">
+    <button class="menos" @click=@menos>−1</button>
+    <output class="valor">@count()</output>
+    <button class="mas" @click=@mas>+1</button>
+  </div>
+
+  <div class="caso" data-caso="if">
+    <p class="que">@@if</p>
+    @if (count() > 1) {
+      <p class="salida">Hay más de uno.</p>
+    } else {
+      <p class="salida">Hay uno o ninguno.</p>
+    }
+  </div>
+
+  <div class="caso" data-caso="foreach">
+    <p class="que">@@foreach</p>
+    <ul class="lista">
+      @foreach (const fila of filas()) key (fila.id) {
+        <li>fila @fila.id</li>
+      }
+    </ul>
+  </div>
+</div>
+
+<p>
+  <strong>Qué comprobar.</strong> Pulsa <code>+1</code>. Tendría que subir el número, cambiar
+  el <code>@@if</code> a «Hay más de uno» y ganar una fila la lista. Y si no se mueve nada,
+  mira además si los botones responden siquiera: lo que se está midiendo no es solo si la
+  vista se repinta, es si la ruta llega a tener <strong>algo de JavaScript propio</strong>.
+</p>
+
+<h2>2 · El grupo de control: el mismo código, dentro de un componente</h2>
+<p>
+  Este panel es <code>&lt;signal-control&gt;</code>, y su <code>@@code</code> es el de arriba
+  copiado. Está aquí para que la comparación sea de una sola variable: si este se mueve y el
+  de arriba no, lo que falla no es la signal, ni el constructo, ni el navegador —
+  es que una <strong>ruta</strong> no recibe el mismo tratamiento que un componente.
+</p>
+
+<signal-control></signal-control>

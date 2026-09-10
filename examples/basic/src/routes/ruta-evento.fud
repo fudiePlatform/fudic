@@ -1,0 +1,77 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+
+@code {
+  // Ni una signal, ni un constructo que lea nada: solo un manejador. La pregunta que
+  // contesta esta ruta es la de antes de la reactividad — ¿llega una ruta a tener
+  // JavaScript PROPIO?
+  //
+  // Se pinta sin leer ningun nombre, asi que el servidor no puede tropezar y la pagina
+  // existe. Lo unico que puede fallar aqui es el clic.
+  let veces = 0;
+
+  function sube(): void {
+    veces += 1;
+    const salida = document.querySelector("#salida");
+    if (salida !== null) salida.textContent = String(veces);
+  }
+}
+
+<head>
+  <title>Un manejador en la ruta — fudic</title>
+  <style>
+    .panel {
+      display: grid;
+      gap: 0.9rem;
+      border: 1px solid #dcdcdc;
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
+      background: white;
+    }
+    .row {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+    }
+    .panel button {
+      font: inherit;
+      padding: 0.35rem 0.8rem;
+      border: 1px solid #1a73e8;
+      border-radius: 6px;
+      background: #1a73e8;
+      color: white;
+      cursor: pointer;
+    }
+    .valor {
+      font-size: 1.4rem;
+      font-variant-numeric: tabular-nums;
+      min-width: 2ch;
+      text-align: center;
+    }
+  </style>
+</head>
+
+@section nav {
+  <site-nav .current="ruta-evento"></site-nav>
+}
+
+<h1>Un manejador escrito en la ruta</h1>
+<p class="lede">
+  Antes de preguntar si una ruta es <em>reactiva</em> hay que preguntar si una ruta tiene
+  <em>JavaScript</em>. Esta página no declara ninguna signal y no lee ningún nombre al
+  pintarse: solo cuelga un <code>@@click</code> de un botón y escribe en el DOM a mano.
+</p>
+
+<div class="panel">
+  <div class="row">
+    <button class="sube" @click=@sube>Súmame</button>
+    <output class="valor" id="salida">0</output>
+  </div>
+</div>
+
+<p>
+  <strong>Qué comprobar.</strong> Pulsa el botón. Si el número sube, una ruta sí recibe su
+  mitad de cliente y lo que falta es solo la suscripción. Si no sube —y la consola no dice
+  nada—, entonces una ruta no tiene chunk de cliente en absoluto, y la reactividad de
+  <a href="/ruta-reactiva">/ruta-reactiva</a> es un problema de después.
+</p>
