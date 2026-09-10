@@ -53,7 +53,6 @@ customElements.define("app-calendar", class extends FudicElement {
         },
         h: ($c) => {
           $n2 = $dom.previousSibling($c);
-          $r.push($n2);
           $n3 = $c; $c = $dom.nextElementSibling($c);
           $r.push($n3);
           $t0.set($n3, () => day);
@@ -65,7 +64,6 @@ customElements.define("app-calendar", class extends FudicElement {
             $t0.set($n6, () => day);
           }
           $n4 = $dom.lastChild($parent);
-          $r.push($n4);
           return $c;
         },
         m: ($ref = $anchor) => {
