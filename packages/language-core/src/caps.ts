@@ -29,22 +29,37 @@ export const USER_CAPS: MappingCaps = {
 };
 
 /**
- * User code that ANOTHER projection already owns for completion.
+ * User code that ANOTHER projection already owns.
  *
  * The neutral zone of `@code` is emitted into both virtuals (§4.1), so at those offsets two
- * TypeScript files answer the same question. Volar used to hide that: the first projection to
- * answer claimed the position and the second was skipped. With completion additional
- * (`USER_CAPS`) nothing claims anything any more, and the same identifier list would arrive
- * twice. So the echo says so: the client virtual is canonical for the neutral zone — the same
- * rule the server already applies to its duplicate diagnostics — and the server virtual keeps
- * every other capability while offering no completions of its own.
+ * TypeScript files answer the same question. Volar used to hide that for completion: the
+ * first projection to answer claimed the position and the second was skipped. With completion
+ * additional (`USER_CAPS`) nothing claims anything any more — and for hover nothing ever did,
+ * because `provideHover` does not pick a winner, it CONCATENATES what each projection says
+ * with a `---` between them. So the declaration of a prop answered its own hover twice, and
+ * every other two-file feature repeated itself the same way.
+ *
+ * The echo names the canonical one: the client virtual, which is what the user is looking at
+ * when they edit markup — the rule the duplicate diagnostics already followed. Everything that
+ * would otherwise be shown TWICE is off here.
+ *
+ * `verification` is off for a second reason, and it is the sharper one: neither virtual sees
+ * every use of a neutral declaration. The template lives only in the client and the `@server`
+ * region only here, so a prop used in the markup is unread in THIS file and TypeScript says so
+ * with `6133` — real user code greyed out as dead. Nothing true is lost by staying quiet: the
+ * client virtual reports over the very same text.
+ *
+ * `navigation` is the one that stays, and it has to. The `@server` region beside it resolves
+ * its identifiers HERE, so with navigation off, go-to-definition on a name declared in the
+ * neutral zone would land nowhere. Duplicates cost nothing there — locations are deduplicated
+ * by range, and both virtuals map back to the same one.
  */
 export const USER_ECHO_CAPS: MappingCaps = {
   completion: false,
-  verification: true,
-  semantic: true,
+  verification: false,
+  semantic: false,
   navigation: true,
-  structure: true,
+  structure: false,
   format: false,
 };
 

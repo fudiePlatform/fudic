@@ -41,6 +41,9 @@ importers:
       '@fudic/dom':
         specifier: workspace:*
         version: link:../../packages/dom
+      '@fudic/forms':
+        specifier: workspace:*
+        version: link:../../packages/forms
       '@fudic/ssr':
         specifier: workspace:*
         version: link:../../packages/ssr
@@ -95,6 +98,9 @@ importers:
       '@fudic/core':
         specifier: workspace:*
         version: link:../core
+      '@fudic/forms':
+        specifier: workspace:*
+        version: link:../forms
       '@fudic/ssr':
         specifier: workspace:*
         version: link:../ssr
@@ -173,6 +179,9 @@ importers:
       '@fudic/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      happy-dom:
+        specifier: 20.10.6
+        version: 20.10.6
 
   packages/language-core:
     dependencies:

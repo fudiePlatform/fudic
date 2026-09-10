@@ -355,6 +355,50 @@ describe('classifyAttribute — ref (decision 30)', () => {
   });
 });
 
+describe('classifyAttribute — control (SDD-34 §6.1, decision 108)', () => {
+  it('accepts a path and keeps the expression with its span', () => {
+    const { binding, diagnostics, source } = classifyOne('<input control="@f.title">');
+    expect(diagnostics).toEqual([]);
+    expect(binding.type).toBe('control');
+    if (binding.type !== 'control') return;
+    expect(source.slice(binding.value.expr.start, binding.value.expr.end)).toBe('f.title');
+    expect(text(source, binding)).toBe('control="@f.title"');
+  });
+
+  it('accepts a bare identifier and a deep path alike: `control` is not `ref`', () => {
+    for (const [markup, expected] of [
+      ['<input control="@ctrl">', 'ctrl'],
+      ['<input control="@f.seo.canonical">', 'f.seo.canonical'],
+    ] as const) {
+      const { binding, diagnostics, source } = classifyOne(markup);
+      expect(diagnostics).toEqual([]);
+      expect(binding.type).toBe('control');
+      if (binding.type !== 'control') return;
+      expect(source.slice(binding.value.expr.start, binding.value.expr.end)).toBe(expected);
+    }
+  });
+
+  it('FUD0590: a literal value — the prototype spelling — degrades to a plain attribute', () => {
+    const { binding, diagnostics } = classifyOne('<input control="title">');
+    expect(codes(diagnostics)).toEqual(['FUD0590']);
+    expect(binding.type).toBe('attr');
+    if (binding.type !== 'attr') return;
+    expect(binding.name).toBe('control');
+  });
+
+  it('FUD0590: a concatenated value keeps the binding for the editor', () => {
+    const { binding, diagnostics } = classifyOne('<input control="/x/@f.title">');
+    expect(codes(diagnostics)).toEqual(['FUD0590']);
+    expect(binding.type).toBe('control');
+  });
+
+  it('does not treat `controls` as reserved', () => {
+    const { binding, diagnostics } = classifyOne('<video controls="true"></video>');
+    expect(diagnostics).toEqual([]);
+    expect(binding.type).toBe('attr');
+  });
+});
+
 // ---------------------------------------------------------------------------
 // LSP invariants (§7)
 // ---------------------------------------------------------------------------
@@ -377,6 +421,7 @@ describe('classifyAttribute — LSP invariants', () => {
       '<x class:="@a"></x>',
       '<x bus:="nope"></x>',
       '<x ref="@a.b"></x>',
+      '<x control="title"></x>',
       '<x class:(x)="@a"></x>',
     ]) {
       const { diagnostics, source } = classifyOne(markup);

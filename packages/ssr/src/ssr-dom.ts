@@ -208,13 +208,17 @@ export class SsrDom implements Dom<SsrNode> {
     detach(asImpl(node));
   }
 
-  attachShadow(host: SsrNode): SsrNode {
+  attachShadow(host: SsrNode, delegatesFocus = false): SsrNode {
     const h = asImpl(host);
     if (h.shadow === null) {
       const shadow = SsrNodeImpl.fragment();
       shadow.parent = h;
       h.shadow = shadow;
     }
+    // Recorded on the HOST and not on the fragment, because that is where it is serialized:
+    // `shadowrootdelegatesfocus` rides the `<template>` the host opens (SDD-34 §4.5). Once
+    // set it stays set — a second `attachShadow` on the same host is the idempotent path.
+    if (delegatesFocus) h.delegatesFocus = true;
     return h.shadow;
   }
 

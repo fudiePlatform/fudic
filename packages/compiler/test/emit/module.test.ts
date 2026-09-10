@@ -158,9 +158,12 @@ describe('emitComponentModule — attrExpr shapes', () => {
     expect(src).toContain('$dom.setAttr($n0, "id", "z");');
   });
 
-  it('ignores comments and a non-props const in @code (no crash, not emitted)', () => {
+  it('drops an author comment and CARRIES a non-props const into render (SDD-34)', () => {
     expect(src).not.toContain('a comment is dropped');
-    expect(src).not.toContain('helper'); // the non-props const is not carried into render
+    // The neutral zone runs on both sides, and until SDD-34 it reached neither module: a
+    // `const` there named a binding that existed nowhere. It is emitted now, which is what
+    // lets a form live in its own `.ts` and be reached by the server and the client alike.
+    expect(src).toContain('const helper = 1;');
   });
 
   it('emits a static attribute value as a JSON string (via the page fixtures)', () => {

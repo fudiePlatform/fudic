@@ -132,7 +132,38 @@
         }
       }
     },
+    "semanticTokenTypes": [
+      {
+        "id": "fudAt",
+        "superType": "keyword",
+        "description": "The @ that opens a transition to fudic: a directive, an interpolation or a binding."
+      }
+    ],
+    "semanticTokenScopes": [
+      {
+        "language": "fudic",
+        "scopes": {
+          "fudAt": [
+            "punctuation.definition.keyword.fudic",
+            "keyword.control.fudic",
+            "keyword"
+          ]
+        }
+      }
+    ],
     "configurationDefaults": {
+      "editor.semanticTokenColorCustomizations": {
+        "[*Dark*]": {
+          "rules": {
+            "fudAt": "#D7BA7D"
+          }
+        },
+        "[*Light*]": {
+          "rules": {
+            "fudAt": "#8A5A00"
+          }
+        }
+      },
       "[fudic]": {
         "editor.insertSpaces": true,
         "editor.tabSize": 2,

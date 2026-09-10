@@ -1,0 +1,89 @@
+<link rel="component" href="./app-input.fud">
+
+@code {
+  // El formulario NO se define aquí: se importa. La zona neutra corre en los dos lados, así
+  // que este mismo objeto lo tiene el servidor, que pinta sus valores en el HTML, y el
+  // cliente, que hidrata sobre ese HTML. La vista solo lo enlaza.
+  import { userForm } from "../forms/user.form.js";
+
+  @client {
+    // El envío es del autor, no del framework (SDD-34 §7): aquí no hay a dónde mandar nada,
+    // así que se corta. `bindForm` ya ha hecho lo suyo en este mismo gesto —validar la
+    // primera vez, y parar con el foco en el primer campo malo cuando ya hay errores.
+    function stop(e: Event) {
+      e.preventDefault();
+    }
+  }
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    form {
+      display: grid;
+      gap: 0.75rem;
+      border: 1px solid #dcdcdc;
+      border-radius: 10px;
+      padding: 1.1rem;
+      background: white;
+      margin-bottom: 1rem;
+    }
+    label {
+      font-weight: 500;
+    }
+    input {
+      font: inherit;
+      padding: 0.4rem 0.6rem;
+      border: 1px solid #dcdcdc;
+      border-radius: 6px;
+    }
+    button {
+      font: inherit;
+      justify-self: start;
+      padding: 0.4rem 0.9rem;
+      border: 1px solid #1a73e8;
+      border-radius: 6px;
+      background: #1a73e8;
+      color: white;
+      cursor: pointer;
+    }
+    [data-fud-err],
+    [data-fud-sum] {
+      color: #b3261e;
+      font-size: 0.85rem;
+    }
+    [data-fud-err]:empty,
+    [data-fud-sum]:empty {
+      display: none;
+    }
+    [aria-invalid="true"] {
+      border-color: #b3261e;
+    }
+  </style>
+</head>
+
+<app-form>
+  <template shadowrootmode="open">
+    <form control=@userForm class="fudic" @submit=@stop>
+      <label for="nom">Nombre</label>
+      <input control=@userForm.name type="text">
+      @*
+        Un control-componente, y va DENTRO del formulario: por la decisión 115 un `control`
+        exige un `<form control>` por encima. Antes esto colgaba de un `<form>` ajeno —uno que
+        fudic no enlaza y que envía nativo—, y aquello no era interoperar: el valor que el
+        usuario escribe vive en `userForm` y el formulario del navegador lee el DOM, así que
+        los dos solo coincidían porque `setFormValue` copiaba uno en el otro bajo un atributo
+        `name` que no usa nadie más del lenguaje. Dos fuentes de verdad para un campo.
+
+        El `type` es una PROP del componente, no una constante suya: `app-input` sirve para
+        cualquier forma de `<input>` y elige su enlace al enlazar (decisión 109). Sin eso haría
+        falta un componente por tipo.
+       *@
+      <label for="ali" id="ali-label">Alias</label>
+      <app-input .id="ali" .type="text" .ctrl=@userForm.alias></app-input>
+      <button type="submit">Guardar</button>
+    </form>
+  </template>
+</app-form>

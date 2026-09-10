@@ -18,6 +18,7 @@ import type {
 import { CompletionItemKind } from 'vscode-languageserver-protocol';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
+import type ts from 'typescript';
 import { clientFileName, mapToGenerated } from '@fudic/language-core';
 import { DocumentCache } from '../../src/document-cache.js';
 import { filterTypeScriptCompletions } from '../../src/services/ts-completion.js';
@@ -25,7 +26,7 @@ import { CLIENT_CODE_ID, SERVER_CODE_ID } from '../../src/virtual-code.js';
 import { WorkspaceIndex } from '../../src/workspace-index.js';
 import type { CachedDocument } from '../../src/document-cache.js';
 import { fakeServiceContext, TOKEN } from '../_lsp.js';
-import { component, LAYOUT, memoryFs } from '../_support.js';
+import { component, LAYOUT, memoryFs, projectionService } from '../_support.js';
 
 const PATH = '/p/pages/index.fud';
 const FUD_URI = URI.file(PATH);
@@ -87,11 +88,18 @@ function project(markup: string, build: (m: string) => string = page) {
   };
 }
 
-/** A TypeScript plugin whose reply is `answer`, wrapped by the decorator under test. */
+/**
+ * A TypeScript plugin whose reply is `answer`, wrapped by the decorator under test.
+ *
+ * `service` is what the TypeScript service publishes for whoever needs the program itself
+ * (`ts-service.ts`). Absent by default — a server with no TypeScript mounted is the degraded
+ * half every branch here has to survive — and a REAL one where the answer depends on a type.
+ */
 function wrap(
   answer: CompletionList | undefined | null,
   documents: Readonly<Record<string, CachedDocument>>,
   decode: (uri: URI) => [URI, string] | undefined,
+  service?: ts.LanguageService,
 ): LanguageServicePluginInstance {
   const plugin: LanguageServicePlugin = {
     name: 'typescript-double',
@@ -101,8 +109,10 @@ function wrap(
     }),
   };
   const [wrapped] = filterTypeScriptCompletions([plugin]);
-  return wrapped!.create(fakeServiceContext(documents, decode));
+  const provided = service === undefined ? {} : { 'typescript/languageService': service };
+  return wrapped!.create(fakeServiceContext(documents, decode, provided));
 }
+
 
 const item = (label: string, extra: Partial<CompletionItem> = {}): CompletionItem => ({
   label,
@@ -121,6 +131,8 @@ async function completeAt(
     virtuals?: readonly never[];
     /** The file the markup goes into. A page by default; `layout` for the role that reads nothing. */
     build?: (m: string) => string;
+    /** Mount a real TypeScript over the projection, for the answers that depend on a type. */
+    typescript?: boolean;
   } = {},
 ): Promise<CompletionList | undefined | null> {
   const build = options.build ?? page;
@@ -130,10 +142,12 @@ async function completeAt(
   const at = build(markup).indexOf('|');
   const generated = mapToGenerated(client, at, 'completion');
   const entry = options.virtuals === undefined ? cached : { ...cached, virtuals: options.virtuals };
-  const service = wrap(answer, { [FUD_URI.toString()]: entry }, () => [
-    FUD_URI,
-    options.codeId ?? CLIENT_CODE_ID,
-  ]);
+  const service = wrap(
+    answer,
+    { [FUD_URI.toString()]: entry },
+    () => [FUD_URI, options.codeId ?? CLIENT_CODE_ID],
+    options.typescript === true ? projectionService(cached.path, client.text) : undefined,
+  );
 
   return (await service.provideCompletionItems?.(
     document,
@@ -538,5 +552,164 @@ describe('inside a start tag', () => {
     );
 
     expect(labels(answer)).toContain('@counter');
+  });
+});
+
+/**
+ * The value of a `control`, which is the one binding whose list is not «what the template can
+ * see» (SDD-34 §4.1, decision 109).
+ *
+ * TypeScript's answer at those offsets is a correct SCOPE and the wrong list: `data`, the
+ * handlers and every string prop sit beside the two names that fit. Nothing in TypeScript can
+ * narrow it — an argument position takes what it takes, and a wrong value is an error rather
+ * than an absence — so the shape is asked of the checker apart and the reply filtered by it.
+ * Which is why these run over a REAL program: a hand-made checker would be a second
+ * implementation of the very rule under test.
+ */
+describe('the value of a `control`', () => {
+  const labels = (answer: CompletionList | undefined | null): string[] =>
+    (answer?.items ?? []).map((i) => i.label);
+
+  /** A page whose `@code` declares a form, wrapped in the `<form>` that opens its scope. */
+  const formPage = (markup: string): string =>
+    `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/app-badge.fud">
+@code {
+  type Control<T> = { (): T; set(v: T): void; touch(): void };
+  type Group<S> = S & { $touch(): void; $validate(): Promise<boolean> };
+  const userForm = {} as Group<{ alias: Control<string>; address: Group<{ street: Control<string> }> }>;
+  const alias = userForm.alias;
+  const plain = 'x';
+}
+
+<article>
+  <form control="@userForm">
+    ${markup}
+  </form>
+</article>
+`;
+
+  /** What TypeScript answers at any of these offsets: the scope, which is names and no shapes. */
+  const scope = () =>
+    list(item('userForm'), item('alias'), item('plain'), item('address'), item('street'));
+
+  const inForm = (markup: string, answer = scope()) =>
+    completeAt(markup, answer, { build: formPage, typescript: true });
+
+  it('keeps the names that are nodes and drops the ones that are not', async () => {
+    const answer = await inForm('<input control="@|">');
+
+    expect(labels(answer)).toEqual(['userForm', 'alias']);
+  });
+
+  it('offers a group on an `<input>`, and never a control on a `<form>`', async () => {
+    // `reaches` and not `accepts`: `@userForm` is not what an `<input>` binds, and it is the
+    // only way to write what it does. A control the other way round is where a path ends, so
+    // it neither fits on a `<form>` nor leads anywhere from it.
+    const answer = await inForm('<form control="@|"></form>');
+
+    expect(labels(answer)).toEqual(['userForm']);
+  });
+
+  it('after the dot, offers the fields and never the form’s own API', async () => {
+    // `$validate`, `$touch` and the rest fall out for free: none of them has the shape of a
+    // node, so no list of names is kept here to exclude them.
+    const answer = await inForm(
+      '<input control="@userForm.|">',
+      list(item('alias'), item('address'), item('$validate'), item('$touch')),
+    );
+
+    expect(labels(answer)).toEqual(['alias', 'address']);
+  });
+
+  it('says which kind each name is, so the list explains itself', async () => {
+    const answer = await inForm('<input control="@userForm.|">', list(item('alias'), item('address')));
+
+    expect(answer?.items.map((i) => i.detail)).toEqual(['control', 'form node']);
+  });
+
+  it('writes the `@` itself where the value is still empty', async () => {
+    // `control=|` is where Ctrl+Space lands before a single character of the value exists. The
+    // items are built from the names rather than filtered out of TypeScript's reply: the
+    // projection holds one mapped space there, so what the checker offers is a scope.
+    const answer = await inForm('<input control=|>', list(item('unrelated')));
+
+    expect(labels(answer)).toEqual(['@userForm', '@alias']);
+    expect(answer?.items[0]?.filterText).toBe('userForm');
+    expect(answer?.items.map((i) => i.detail)).toEqual(['form node', 'control']);
+  });
+
+  it('and offers there only what the element can be reached through', async () => {
+    // The same position on a `<form>`: a control is where a path ends, so it is not a step.
+    const answer = await inForm('<form control=|></form>', list(item('unrelated')));
+
+    expect(labels(answer)).toEqual(['@userForm']);
+  });
+
+  it('stands aside at that position when the file declares no node at all', async () => {
+    // Nothing rather than an empty list: an empty widget stays open over the value and swallows
+    // the next Tab.
+    const answer = await completeAt('<input control=|>', list(item('counter')), {
+      typescript: true,
+    });
+
+    expect(labels(answer)).not.toContain('@counter');
+    expect(answer?.items ?? []).toEqual([]);
+  });
+
+  it('stands aside after a dot on something that is not a node', async () => {
+    const answer = await inForm('<input control="@plain.|">', list(item('length')));
+
+    expect(labels(answer)).toContain('length');
+  });
+
+  it('stands aside inside a value that is neither an expression nor empty', async () => {
+    // `control="x|"` — the prototype's spelling with no `@`, which the grammar rejects. There
+    // is no node being written and no `@` about to be, so this branch has nothing to narrow and
+    // the position falls to the rule below it: inside a plain attribute value, TypeScript says
+    // nothing at all, and the empty list is what lets HTML answer.
+    const answer = await inForm('<input control="x|">', list(item('userForm')));
+
+    expect(answer?.items).toEqual([]);
+  });
+
+  it('stands aside on an element that can make nothing of a control', async () => {
+    // `<input type="submit">` is `FUD0592`. The branch returns nothing and the list that was
+    // there before this narrowing existed comes back — a wide list is poor, a wrong one is not.
+    const answer = await inForm('<input type="submit" control="@|">');
+
+    expect(labels(answer)).toContain('@plain');
+  });
+
+  it('stands aside when no TypeScript is mounted at all', async () => {
+    // SDD-24 §6.1: the checker is what says which name is a node, and with no answer from it
+    // the position falls through to the branches that were there before.
+    const answer = await completeAt('<input control="@|">', scope(), { build: formPage });
+
+    expect(labels(answer)).toContain('@plain');
+  });
+
+  it('offers `control` itself at a gap on a component tag (decision 112)', async () => {
+    // On a component it IS the `ctrl` prop under the name the parent writes, and the author has
+    // no way to guess that from the contract. It rides inside TypeScript's own reply, because an
+    // additional plugin runs on the first mapping alone.
+    const answer = await inForm(
+      '<app-badge |></app-badge>',
+      list(item('"tone"', { kind: CompletionItemKind.Field })),
+    );
+    const control = answer?.items.find((i) => i.label === 'control');
+
+    expect(control?.detail).toBe('control node of the form');
+    expect(control?.insertText).toBe('control=@');
+  });
+
+  it('and never outside a form, where the attribute would be `FUD0595`', async () => {
+    const answer = await completeAt(
+      '<app-badge |></app-badge>',
+      list(item('"tone"', { kind: CompletionItemKind.Field })),
+      { typescript: true },
+    );
+
+    expect(labels(answer)).not.toContain('control');
   });
 });

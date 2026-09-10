@@ -37,6 +37,12 @@
       <a href="/di" aria-current=@(current === 'di' ? 'page' : 'false')>DI</a>
       <a href="/sesion/ana" aria-current=@(current === 'sesion' ? 'page' : 'false')>Sesión</a>
       <a href="/vivo" aria-current=@(current === 'vivo' ? 'page' : 'false')>Al vuelo</a>
+      <a
+        href="/formularios"
+        aria-current=@(current === 'formularios' ? 'page' : 'false')>Formularios</a>
+      <a
+        href="/reactividad"
+        aria-current=@(current === 'reactividad' ? 'page' : 'false')>Reactividad</a>
       <a href="/about" aria-current=@(current === 'about' ? 'page' : 'false')>Acerca de</a>
     </nav>
   </template>

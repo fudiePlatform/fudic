@@ -97,7 +97,11 @@ export function edgePlugin(builds: readonly RouteBuild[], io: ResolveIo): Plugin
       }
       const result = transformFud(path, io);
       /* v8 ignore next -- `transformFud` returns null only for a non-`.fud` id, and that was checked above. */
-      return result === null ? null : { code: result.code, map: JSON.stringify(result.map) };
+      if (result === null) return null;
+      // Since SDD-34 the neutral zone of `@code` reaches this module verbatim, so it is
+      // TypeScript whenever the author wrote it — same strip as the host plugin does.
+      const emitted = await transformWithOxc(result.code, `${path}.ts`, { lang: 'ts' });
+      return { code: emitted.code, map: JSON.stringify(result.map) };
     },
   };
 }

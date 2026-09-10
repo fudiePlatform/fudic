@@ -129,7 +129,7 @@ describe('extraction', () => {
     );
     const code = codeOfSource(source);
     expect(code.di.map((d) => d.kind)).toEqual(['inject']);
-    expect(code.neutral.server.body[0]?.text).toBe('const cart = injectFrom($ioc, Cart);');
+    expect(code.neutral.map((s) => s.text)).toContain('const cart = injectFrom($ioc, Cart);');
   });
 
   it('emits the @server region of a component, which used to reach nowhere', () => {
@@ -175,7 +175,10 @@ describe('extraction', () => {
     expect(codeOfSource(source).di.map((d) => d.provider)).toEqual(['']);
   });
 
-  it('keeps out of the neutral zone everything that is not a DI call', () => {
+  it('leaves the rest of the neutral zone exactly as it was written', () => {
+    // BUG-27 made the whole neutral zone travel, so a file with no DI is not a file with an
+    // empty neutral list any more — it is a file whose neutral lines come out untouched, and
+    // none of them REGISTERS, so the browser gets every one of them.
     const source = component(
       'x-quiet',
       `@code {
@@ -185,8 +188,11 @@ describe('extraction', () => {
       '<p>ok</p>',
     );
     const code = codeOfSource(source);
-    expect(code.neutral.server).toEqual({ imports: [], body: [] });
-    expect(code.neutral.client).toEqual({ imports: [], body: [] });
+    expect(code.di).toEqual([]);
+    expect(code.neutral).toEqual([
+      { text: "import { Cart } from './services/cart.js';", hoisted: true, provides: false },
+      { text: 'const total = Cart.zero;', hoisted: false, provides: false },
+    ]);
   });
 });
 
@@ -225,7 +231,11 @@ describe('the rewrite is by offset, never by text', () => {
 }`,
       '<p>ok</p>',
     );
-    expect(codeOfSource(source).neutral.server.body.map((s) => s.text)).toEqual([
+    expect(
+      codeOfSource(source)
+        .neutral.filter((s) => !s.hoisted)
+        .map((s) => s.text),
+    ).toEqual([
       'provideIn($own, Cart, () => new Cart(), { transient: true });',
       'const cart = injectFrom($ioc, Cart, { optional: true });',
     ]);

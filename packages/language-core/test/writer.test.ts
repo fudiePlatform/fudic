@@ -138,10 +138,17 @@ describe('package surface', () => {
     });
   });
 
-  it('the echo of the neutral zone offers no completion, and everything else', () => {
-    // The neutral zone lives in both virtuals; the client one is canonical, exactly as it
-    // already is for the duplicate diagnostics.
-    expect(USER_ECHO_CAPS).toEqual({ ...USER_CAPS, completion: false });
+  it('the echo of the neutral zone answers only what cannot be shown twice', () => {
+    // The neutral zone lives in both virtuals; the client one is canonical. Navigation is the
+    // exception because the `@server` region resolves its identifiers in this file.
+    expect(USER_ECHO_CAPS).toEqual({
+      completion: false,
+      verification: false,
+      semantic: false,
+      navigation: true,
+      structure: false,
+      format: false,
+    });
   });
 
   it('exposes the ambient globals as one source for server and CLI', () => {

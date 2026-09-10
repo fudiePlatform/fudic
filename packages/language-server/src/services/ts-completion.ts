@@ -29,7 +29,14 @@ import type {
   LanguageServicePluginInstance,
 } from '@volar/language-service';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
-import { CLASS_PREFIX, PROPERTY_PREFIX, regionAt } from '@fudic/compiler';
+import {
+  CLASS_PREFIX,
+  CONTROL_NAME,
+  PROPERTY_PREFIX,
+  regionAt,
+  type ElementNode,
+  type Region,
+} from '@fudic/compiler';
 import { clientFileName, mapToSource, type VirtualFile } from '@fudic/language-core';
 import { URI } from 'vscode-uri';
 import type { CachedDocument } from '../document-cache.js';
@@ -39,6 +46,8 @@ import {
   attributeGapContextAt,
   bareBindingValueContextAt,
   brokenValueContextAt,
+  controlValueAt,
+  controlValueOpeningAt,
   directiveContextAt,
   memberContextAt,
   eventContextAt,
@@ -49,6 +58,17 @@ import {
   slotValueContextAt,
   type PartialName,
 } from './position.js';
+import {
+  controlOfferAt,
+  controlWants,
+  nodeMembersBefore,
+  nodesInScope,
+  reaches,
+  type ControlOffer,
+  type ControlWants,
+  type NodeKind,
+} from './forms.js';
+import { typeScriptService } from './ts-service.js';
 import { styleClassNames } from './classes.js';
 import { scopeAt, snippetsAt } from './snippets.js';
 import { interpolates, scopeNames, templateScope, type TemplateScope } from './template-scope.js';
@@ -336,12 +356,60 @@ function allowedItems(
   // Not a `.fud` at all: a real `.ts` in the workspace is none of this package's business.
   if (source === undefined) return { items: [...items] };
 
-  const visible = items.filter((item) => !isScaffolding(item));
-
   const offset = sourceOffsetOf(source.cached, source.isClient, document, position);
-  if (offset === undefined) return { items: visible };
+  if (offset === undefined) return { items: items.filter((item) => !isScaffolding(item)) };
 
   const region = regionAt(source.cached.source, source.cached.html, offset);
+
+  // The `$` rule is about SCOPE, and it was being applied to everything.
+  //
+  // `userForm.` offered `alias` and `name` and nothing else: the eleven members of `FormApi`
+  // — `$value`, `$set`, `$patch`, `$errors`, `$validate`, `$summary`, `$setErrors`, `$touch`,
+  // `$reset`, `$fields`, `$schema` — were dropped by the filter before a single branch below
+  // had looked at the position. The whole API of a form was unreachable from `@code`, which is
+  // where a submit handler is written.
+  //
+  // And it is not a form's fault. `Form<S>` is `FormApi<S>` PLUS the fields by name (SDD-33),
+  // so the `$` is what keeps `$value` from colliding with a field called `value` — a namespace
+  // the user's own names can never enter, which is exactly what makes it safe to offer. A
+  // `Control<T>` carries no `$` at all and survived the filter untouched, so the bug looked
+  // like it was about forms; it was about the dot.
+  //
+  // After a `.` the prefix means nothing. Everything the projection invents — `$tpl`, `$props`,
+  // `$on`, `$gap`, `$control`, `$C0`, `$Props` — is a `declare function` or a top-level type
+  // (`globals.ts`), never a PROPERTY of a value the user holds, so at a member position the
+  // filter has nothing legitimate left to remove.
+  //
+  // `memberContextAt` cannot answer this one: its chain opens with a `@`, and inside `@code`
+  // there is none — `userForm.` there is plain TypeScript. The dot is what the two positions
+  // share, so the dot is what is asked.
+  const visible = afterMemberDot(source.cached.source, offset)
+    ? [...items]
+    : items.filter((item) => !isScaffolding(item));
+
+  // The value of a `control`, which is the one binding whose list is not «what the template can
+  // see» (SDD-34 §4.1). What goes there is a form NODE, and TypeScript's answer at that offset —
+  // correct as a scope — offers `data`, the handlers and every string prop beside the two names
+  // that fit. FIRST, because both of the branches below recognise their own shape in it.
+  //
+  // The generated offset is `position` untouched: this decorator is handed the coordinates of
+  // the PROJECTION, and that is the file the checker reads. Its `.fud` twin is `offset`, which
+  // is what the ranges are stamped from.
+  const controlOn = controlValueAt(source.cached.source, offset, region);
+  if (controlOn !== undefined) {
+    const narrowed = controlValueItems({
+      context,
+      cached: source.cached,
+      element: controlOn,
+      visible,
+      projected: document.offsetAt(position),
+      offset,
+      region,
+      document,
+      position,
+    });
+    if (narrowed !== undefined) return narrowed;
+  }
 
   // A member reached with a `.` inside an expression: `@data.|`, `title="@data.|"`.
   //
@@ -496,7 +564,7 @@ function allowedItems(
   // Whatever is to appear beside TypeScript's answer has to travel inside TypeScript's answer.
   const gap = attributeGapContextAt(source.cached.source, offset, region);
   if (gap !== undefined) {
-    const range = plainAnchor(document, position, gap);
+    const range = plainAnchor(document, position, gap.name);
     const members = visible.filter(
       (item) => item.kind !== undefined && MEMBER_KINDS.has(item.kind) && !isAutoImport(item),
     );
@@ -504,6 +572,13 @@ function allowedItems(
       items: anchored(
         [
           ...members.map((item) => gapItem(item, range)),
+          // `control` rides along for the reason the classes do: an additional plugin runs on
+          // the FIRST mapping alone and a gap maps into the projection, so whatever is to
+          // appear beside TypeScript's answer has to travel inside it. On a component the
+          // attribute is the `ctrl` prop under another name (decision 112), and the author has
+          // no way to guess that from the contract — `ctrl` is what the child declared, and
+          // `control` is what the parent writes.
+          ...controlGapItems(controlOfferAt(source.cached, gap.element, true)),
           ...classItems(source.cached),
           SLOT_ITEM,
         ],
@@ -770,6 +845,177 @@ function gapItem(item: CompletionItem, range: ReturnType<typeof anchor>): Comple
 }
 
 /**
+ * `control` at a gap on a COMPONENT tag — the twin of `controlItems` in `plugin.ts`.
+ *
+ * Two builders for one item because the two lists are anchored differently: this one travels
+ * unanchored and `anchored` stamps it, the native one carries its own `textEdit` because there
+ * is nothing else in that reply to inherit a range from. What they must not differ in is what
+ * they OFFER, and they do not: both ask `controlOfferAt`, which is the one place the three
+ * refusals live.
+ */
+function controlGapItems(offer: ControlOffer | undefined): CompletionItem[] {
+  if (offer === undefined) return [];
+
+  return [
+    {
+      label: CONTROL_NAME,
+      kind: CompletionItemKind.Property,
+      filterText: CONTROL_NAME,
+      // With the props rather than after them: on a control-component it IS the prop the tag
+      // exists for, only spelled the way the parent writes it.
+      sortText: `0_${CONTROL_NAME}`,
+      detail: `${offer.label} of the form`,
+      insertText: `${CONTROL_NAME}=${EXPRESSION_PREFIX}`,
+      command: TRIGGER_SUGGEST,
+    },
+  ];
+}
+
+/** Everything the `control` value branch needs, from the two coordinate systems it lives in. */
+interface ControlValue {
+  readonly context: LanguageServiceContext;
+  readonly cached: CachedDocument;
+  /** The element the `control` sits on: what decides which of the three kinds fits. */
+  readonly element: ElementNode;
+  readonly visible: readonly CompletionItem[];
+  /** The caret in the PROJECTION, which is the file the checker reads. */
+  readonly projected: number;
+  /** The same caret in the `.fud`, which is what every range is stamped from. */
+  readonly offset: number;
+  readonly region: Region;
+  readonly document: TextDocument;
+  readonly position: { line: number; character: number };
+}
+
+/**
+ * The list inside a `control`, narrowed to what may actually go there (SDD-34 §4.9).
+ *
+ * Two positions, one rule. After the `@` the candidates are the names in scope; after a `.`
+ * they are the members of the node named so far. In both, TypeScript computes the right SET
+ * and cannot narrow it, because nothing in TypeScript says that an argument position may only
+ * hold one shape — a call takes what it takes, and the wrong value is an error rather than an
+ * absence. So the shape is asked of the checker separately, and the reply is filtered by it.
+ *
+ * WHICH shape is the element's answer (decision 109): a `<form>` takes the form, an `<input>`
+ * takes a leaf, a `<div>` takes a group. Narrowed by `reaches` rather than by `accepts`, and
+ * the difference is what a list is FOR: `@userForm.name` never appears on the `<form>`, because
+ * a leaf is where a path ends and that one ends wrong — but `@userForm` does appear inside the
+ * `<input>` of the very form it opens, because `@userForm.alias` cannot be written without it.
+ * A step is offered when it fits or when it leads somewhere that does.
+ *
+ * `undefined` — not an empty list — when the checker has nothing to say: no TypeScript loaded,
+ * a program still building, a node whose type does not resolve. The caller then falls through
+ * to the branches that were there before, which is the whole scope: a wide list is a poor
+ * answer and no list is a wrong one.
+ */
+function controlValueItems(input: ControlValue): Narrowed | undefined {
+  const { context, cached, element, visible, projected, offset, region, document, position } = input;
+
+  const wants = controlWants(element, element.name.includes('-'));
+  if (wants === undefined) return undefined;
+
+  const service = typeScriptService(context);
+
+  // After a `.`: the members of what has been written, and only the ones that are nodes. A
+  // form's own `$` API — `$validate`, `$errors`, `$fields` — falls out for free, because none
+  // of it has the shape of a node.
+  const member = memberContextAt(cached.source, offset, region);
+  if (member !== undefined) {
+    const kinds = nodeMembersBefore(service, cached.path, projected);
+    if (kinds.size === 0) return undefined;
+
+    const range = plainAnchor(document, position, member);
+    return { items: anchored(kept(visible, kinds, wants), range), at: offset };
+  }
+
+  // After the `@`: the names in scope that hold a node. The projected offset is the caret's
+  // own, so a form pulled out of a `@foreach` is in the list exactly where it is in scope.
+  const value = expressionValueContextAt(cached.source, offset, region);
+  if (value !== undefined) {
+    const kinds = nodesInScope(service, cached.path, projected);
+    if (kinds.size === 0) return undefined;
+
+    const range = anchor(document, position, value);
+    return { items: anchored(kept(visible, kinds, wants), range), at: offset };
+  }
+
+  // Right of the `=` with nothing opened yet: `control=|`, `.ctrl=|`, which is where Ctrl+Space
+  // lands before a single character of the value exists. The `@` is written for the author, the
+  // way every other binding writes it at this position — what differs is the list, which is the
+  // form's nodes rather than the template's scope, and the ITEMS, which are built from the
+  // names rather than filtered out of TypeScript's reply: the projection holds a single mapped
+  // space there (`copyExpression`), so what the checker offers at that offset is a scope and
+  // not a set of candidates.
+  const opening = controlValueOpeningAt(cached.source, offset, region);
+  if (opening === undefined) return undefined;
+
+  const inScope = nodesInScope(service, cached.path, projected);
+  if (inScope.size === 0) return undefined;
+
+  return {
+    items: openingNodes(inScope, wants, plainAnchor(document, position, opening)),
+    at: offset,
+  };
+}
+
+/**
+ * The nodes in scope, offered where no `@` has been typed yet — each one writing its own.
+ *
+ * The twin of `openingItems`, and it differs from it in the only place it may: the names. A
+ * `control` takes a form node and never a value, so the scope of the template is the wrong
+ * list here even when it is a correct one — and `@()` has no place in it either, because an
+ * expression that is not a node is not an answer this attribute has.
+ */
+function openingNodes(
+  kinds: ReadonlyMap<string, NodeKind>,
+  wants: ControlWants,
+  range: ReturnType<typeof anchor>,
+): CompletionItem[] {
+  const items: CompletionItem[] = [];
+
+  for (const [name, kind] of kinds) {
+    if (!reaches(wants, kind)) continue;
+    items.push({
+      label: `${EXPRESSION_PREFIX}${name}`,
+      filterText: name,
+      kind: CompletionItemKind.Variable,
+      detail: kind === 'control' ? 'control' : 'form node',
+      sortText: `0_${name}`,
+      textEdit: { range, newText: `${EXPRESSION_PREFIX}${name}` },
+    });
+  }
+  return items;
+}
+
+/** TypeScript's own items, minus everything that is not a node this element can take. */
+function kept(
+  items: readonly CompletionItem[],
+  kinds: ReadonlyMap<string, NodeKind>,
+  wants: ControlWants,
+): CompletionItem[] {
+  const survivors: CompletionItem[] = [];
+
+  for (const item of items) {
+    // The item is TypeScript's, so its label is the bare name — no `@`, no quotes. An
+    // auto-import cannot be a node in scope, and `isAutoImport` is not needed to say so: a name
+    // the file has not imported has no type here, so the map does not hold it.
+    // `reaches` and not `accepts`, because a list is a step and a binding is the end of one:
+    // `@userForm` is not what an `<input>` binds, and it is the only way to write what it does.
+    const kind = kinds.get(memberName(item.label));
+    if (kind === undefined || !reaches(wants, kind)) continue;
+
+    survivors.push({
+      ...item,
+      detail: kind === 'control' ? 'control' : 'form node',
+      // Ahead of nothing in particular — the list is only these — but stable, so the order does
+      // not shift under a keystroke that changes nothing about which names fit.
+      sortText: `0_${item.label}`,
+    });
+  }
+  return survivors;
+}
+
+/**
  * `slot` at a gap, which no other voice offers on a COMPONENT.
  *
  * It is HTML's attribute and it is deliberately absent from `$GlobalAttrs` — its value is
@@ -1016,13 +1262,38 @@ function escapeHatch(): CompletionItem {
 
 
 /**
- * An identifier the projection invented.
+ * An identifier the projection invented — in SCOPE, which is the only place it can be asked.
  *
  * By name, and only by prefix, which is the same test `reservedDollarDiagnostics` applies to
- * the other direction of the same rule: the user may not DECLARE a `$` name, so an offered
- * one can only have come from the scaffolding. `$tpl`, `$props`, `$on`, `$C0` and `$Props`
- * all go; `foo$` stays, because the rule is about what a name starts with.
+ * the other direction of the same rule: the user may not DECLARE a `$` name, so a `$` name
+ * offered among the names IN SCOPE can only have come from the scaffolding. `$tpl`, `$props`,
+ * `$on`, `$C0` and `$Props` all go; `foo$` stays, because the rule is about what a name starts
+ * with.
+ *
+ * The qualification is the correction of a real defect and not a hedge. `FUD0461`
+ * (`reserved-dollar.ts`) checks Oxc `Identifier` nodes — DECLARATIONS — and this filter applied
+ * the same prefix test to MEMBER names, where the rule never reached: `@fudic/forms` publishes
+ * `FormApi` in the `$` namespace precisely because a form is its API plus its fields by name
+ * (SDD-33), so a `$` there is a name the user may not shadow rather than one the projection
+ * invented. Applied after a dot, this dropped the eleven members of every form. `afterMemberDot`
+ * is what keeps the test on the side of the rule it comes from.
  */
+/**
+ * The caret just past a `.`, in whichever language surrounds it.
+ *
+ * Deliberately coarser than `memberContextAt`, and it has to be: that one reads a razor chain,
+ * which opens with a `@` and lives in markup, while the position this exists for is ordinary
+ * TypeScript inside `@code`. What the two share is the only thing being asked — a member is
+ * being reached, so the name that comes back belongs to a value and not to the scaffolding.
+ *
+ * A digit before the dot is `3.14` and not a member. A blank before it is `<x .|`, the dot that
+ * opens a PROP, where the list is the child's contract and every `$` in it would be `FUD0461`
+ * on the child. Both stay filtered, which costs nothing and keeps the rule honest.
+ */
+function afterMemberDot(source: string, offset: number): boolean {
+  return /(?:\?\.|[^.\d\s])\.[\w$]*$/u.test(source.slice(0, offset));
+}
+
 function isScaffolding(item: CompletionItem): boolean {
   return item.label.startsWith(RESERVED_PREFIX);
 }

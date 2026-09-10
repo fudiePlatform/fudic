@@ -36,8 +36,16 @@ export interface Dom<N> {
   /** `anchor.before(node)`: in the browser fires `connectedCallback`; in SSR it fixes tree order. */
   before(anchor: N, node: N): void;
   remove(node: N): void;
-  /** Browser: `host.attachShadow({mode:'open'})`. SSR: opens `<template shadowrootmode="open">`. */
-  attachShadow(host: N): N;
+  /**
+   * Browser: `host.attachShadow({mode:'open'})`. SSR: opens `<template shadowrootmode="open">`.
+   *
+   * `delegatesFocus` is the one option that has to cross, and it crosses because a
+   * form-associated component is not labelable without it (SDD-34 §4.5): a `<label for>`
+   * outside the component would move the focus to the HOST and not to the `<input>` inside
+   * its shadow root. On the server it becomes `shadowrootdelegatesfocus` on the template, so
+   * the parser materialises the same shadow root the client would have opened.
+   */
+  attachShadow(host: N, delegatesFocus?: boolean): N;
   /**
    * The host a shadow root hangs from — the inverse of `attachShadow`.
    *

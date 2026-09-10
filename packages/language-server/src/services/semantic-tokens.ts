@@ -5,8 +5,14 @@
  * `@` transitions — a regular expression cannot tell `@if` from `@ifSomething`, nor an email
  * from an interpolation. The tree can, so the colours the user finally sees come from here.
  *
- * Four types beyond the standard TypeScript ones: the directives, the interpolations, the
- * bindings, and a tag that resolves to a `.fud` — which must be visibly not a native element.
+ * Five types beyond the standard TypeScript ones: the `@` itself, the directives, the
+ * interpolations, the bindings, and a tag that resolves to a `.fud` — which must be visibly
+ * not a native element.
+ *
+ * The `@` travels apart from the construct it opens, and every construct here hands it over the
+ * same way (`marked`). Two tokens cannot overlap, so this is not a token ADDED to the four: it
+ * is one character taken off the front of each of them, which is why `@if` now colours as `@`
+ * plus `if` and an interpolation no longer swallows its own marker.
  */
 
 import {
@@ -87,13 +93,39 @@ class TokenCollector {
     return [...this.#tokens].sort((a, b) => a.span.start - b.span.start);
   }
 
-  push(type: FudicTokenType, at: Span | undefined): void {
-    if (at !== undefined) this.#tokens.push({ span: at, type });
+  /** A token, over a span that is already known to exist — `marked` is what takes a maybe. */
+  push(type: FudicTokenType, at: Span): void {
+    this.#tokens.push({ span: at, type });
+  }
+
+  /**
+   * The `@` at `at`, when there is one.
+   *
+   * Asked of the source rather than assumed, because two of the callers cannot promise it: a
+   * layout directive's node span only reaches the `@` if the parser found one to reach back to
+   * (`#constructStart`), and a binding name carries it for `@click` and never for `class:on`.
+   */
+  atMarker(at: number): void {
+    if (this.#source[at] !== '@') return;
+    this.push('fudAt', span(at, at + 1));
+  }
+
+  /**
+   * A stretch that OPENS with the marker: the `@` as its own token, the rest as `type`.
+   *
+   * With no `@` there — a plain binding name — the stretch is pushed whole, so the one call
+   * covers `@click` and `class:on` without the caller having to know which it has.
+   */
+  marked(type: FudicTokenType, at: Span | undefined): void {
+    if (at === undefined) return;
+    this.atMarker(at.start);
+    const from = this.#source[at.start] === '@' ? at.start + 1 : at.start;
+    if (from < at.end) this.push(type, span(from, at.end));
   }
 
   /** The `@keyword` of a construct that carries no keyword span of its own. */
   directiveAt(at: number): void {
-    this.push('fudDirective', keywordSpanAt(this.#source, at));
+    this.marked('fudDirective', keywordSpanAt(this.#source, at));
   }
 
   element(element: ElementNode): void {
@@ -108,7 +140,12 @@ class TokenCollector {
       }
     }
     for (const attribute of element.attributes) {
-      this.push('fudBinding', bindingNameSpan(attribute));
+      this.marked('fudBinding', bindingNameSpan(attribute));
+      // `id=@id`, `control="@userForm.name"`: the value is where most of the `@` of a real file
+      // live, and until now nothing here looked at it — the attribute name was the whole story.
+      for (const part of attribute.value) {
+        if (part.type === 'razor-expression') this.atMarker(part.span.start);
+      }
     }
   }
 
@@ -124,11 +161,11 @@ class TokenCollector {
         return;
       case 'razor-expression':
       case 'raw-expression':
-        this.push('fudInterpolation', node.span);
+        this.marked('fudInterpolation', node.span);
         return;
       case 'inline-code':
         // `@{ … }` has no keyword: the marker is the two characters that open it.
-        this.push('fudDirective', span(node.span.start, node.span.start + 2));
+        this.marked('fudDirective', span(node.span.start, node.span.start + 2));
         return;
       case 'if': {
         const branches = node as unknown as IfNode;
@@ -149,17 +186,23 @@ class TokenCollector {
         for (const branch of (node as unknown as SwitchNode).cases) this.walk(branch.body);
         return;
       }
+      // The layout directives are the one family whose `keywordSpan` already excludes the `@`
+      // (SDD-04), so their marker is not split off the keyword — it is picked up from the node
+      // span, which is where the parser reached back to find it.
       case 'section': {
         const section = node as unknown as SectionNode;
+        this.atMarker(node.span.start);
         this.push('fudDirective', section.keywordSpan);
         this.walk(section.children);
         return;
       }
       case 'render-body':
       case 'render-head':
+        this.atMarker(node.span.start);
         this.push('fudDirective', (node as unknown as RenderDirectiveNode).keywordSpan);
         return;
       case 'render-section':
+        this.atMarker(node.span.start);
         this.push('fudDirective', (node as unknown as RenderSectionNode).keywordSpan);
         return;
       default:

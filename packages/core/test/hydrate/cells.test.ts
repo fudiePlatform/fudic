@@ -235,16 +235,26 @@ describe('a signal and a callback across the shadow boundary', () => {
     expect((parent as CellParent).count()).toBe(0);
   });
 
-  it('an empty cell raises its owner FIRST, and says so (§6.13, §6.15)', async () => {
+  it('an empty cell raises its owner, and the owner brings its subtree (§6.13, §6.15)', async () => {
     const { parent, form } = publishTree();
     const h = harness();
     // The form is clicked while its owner — an ancestor, outside its own subtree — is cold.
     await h.raise('cell-form');
 
-    expect(h.reported[0]).toBe('subtree:cell-parent#0');
-    expect(h.reported).toContain('downloaded:cell-form#3');
-    // And the callback runs on that same first gesture: the cell was filled before the
-    // slice was handed over.
+    // The climb is a CASCADE, not a jump. An owner is a host, and a host is hooked up last:
+    // its `$s()` hands every child host its slice, so a sibling that was never upgraded is a
+    // plain `HTMLElement` with no `u` on it — which is how raising the owner alone threw
+    // `u is not a function` on the first sibling that was not the one that asked.
+    expect(h.reported).toEqual([
+      'subtree:cell-kid#2',
+      'subtree:cell-child#1',
+      'subtree:cell-form#3',
+      'subtree:cell-parent#0',
+      'downloaded:cell-form#3',
+    ]);
+    // The form is therefore handed its slice BEFORE its owner runs, and that costs nothing:
+    // a cell is read at the moment it is called, so what its slot points at is filled by the
+    // time anything reads it. The callback still runs on this same first gesture.
     (form as CellForm).submit('now');
     expect((parent as CellParent).saved).toEqual(['now']);
   });

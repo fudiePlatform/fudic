@@ -281,6 +281,39 @@ describe('the payload of the acceptance page (§6.5, §6.6)', () => {
   });
 });
 
+describe('a callback with no cell — the emit still writes something coherent', () => {
+  const g = resolveComponents(
+    '/page.fud',
+    memoryIo({
+      '/page.fud':
+        '<link rel="component" href="./neutral-owner.fud">\n' +
+        '<html><head></head><body><neutral-owner></neutral-owner></body></html>\n',
+      '/neutral-owner.fud':
+        '<link rel="component" href="./neutral-sink.fud">\n\n' +
+        '@code {\n  function save(n: number) { void n; }\n}\n\n' +
+        '<neutral-owner><template shadowrootmode="open">\n' +
+        '  <neutral-sink .onSave=@save></neutral-sink>\n' +
+        '</template></neutral-owner>\n',
+      '/neutral-sink.fud':
+        '@code {\n  const { onSave } = props<{ onSave: (n: number) => void }>();\n}\n' +
+        '<neutral-sink><template shadowrootmode="open">' +
+        '<button @click=@onSave(1)>go</button></template></neutral-sink>\n',
+    }),
+  );
+
+  it('a function of the NEUTRAL zone gets no cell, and crosses as a reader', () => {
+    // `cellSlots` mints cells for `@client` names alone, so a callback declared in the neutral
+    // zone has none — which is also why `FUD0201` tells the author to move it. The emit does
+    // not stop for a diagnostic (the golden rule), so it still has to hand the child something
+    // its `onSave()` can read: the reader alone, with no `??` in front of a cell that does not
+    // exist.
+    const src = emitComponentClientModule(g, g.components.get('neutral-owner')!);
+    expect(src).toContain('.u([, , (() => save)]);');
+    expect(src).not.toContain('?.set(save);');
+    expect(src).toContain('let [$dom, $shadow] = $props;');
+  });
+});
+
 describe('splicedOffset — a source offset carried across what was already inserted', () => {
   const statement = {
     text: 'ignored',
@@ -317,6 +350,18 @@ describe('the owner’s chunk — one expression, not two branches (§6.4)', () 
     expect(src).not.toMatch(/\$sub\(count, \(\$v\)/u);
     // What it still does is hand the object over once, for an instance `c` fabricated.
     expect(src).toMatch(/\.u\(\[, , count\]\)/u);
+  });
+
+  it('hands a callback over as its CELL, never as the bare function', () => {
+    // A signal and a function are not symmetric, and this is where it shows. `count` IS its
+    // own cell — the splice above made the declaration and the cell one object — so it crosses
+    // under its own name. `save` is a plain function and its cell is the separate `$p4`, so
+    // handing the name over made the child, which reads `onSave()` at dispatch, CALL the
+    // author's function to unwrap it: `save()` ran with no argument and its return was then
+    // invoked. `$p4` on the `h` path is the same cell the runtime already put in the child's
+    // slice; the reader is the `c` path, where there is no payload and no cell to find.
+    expect(src).toContain('.u([, , ($p4 ?? (() => save))]);');
+    expect(src).not.toMatch(/\.u\(\[, , save\]\)/u);
   });
 });
 

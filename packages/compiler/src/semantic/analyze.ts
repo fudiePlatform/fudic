@@ -11,6 +11,11 @@ import type { Analyzer, SemanticInput, SemanticModel } from './model.js';
 import { duplicateAttributes } from './analyzers/duplicate-attributes.js';
 import { reservedAttributes } from './analyzers/reserved-attributes.js';
 import { refInLoop } from './analyzers/ref-in-loop.js';
+import { controlInLoop } from './analyzers/control-in-loop.js';
+import { controlElement } from './analyzers/control-element.js';
+import { controlUniqueness } from './analyzers/control-uniqueness.js';
+import { controlInsideForm } from './analyzers/control-inside-form.js';
+import { formAssociatedPlacement } from './analyzers/form-associated-placement.js';
 import { codeRegionUniqueness } from './analyzers/code-region-uniqueness.js';
 import { codeRegionNesting } from './analyzers/code-region-nesting.js';
 import { neutralImports } from './analyzers/neutral-imports.js';
@@ -26,6 +31,11 @@ export const ANALYZERS: readonly Analyzer[] = [
   duplicateAttributes,
   reservedAttributes,
   refInLoop,
+  controlInLoop,
+  controlElement,
+  controlUniqueness,
+  controlInsideForm,
+  formAssociatedPlacement,
   codeRegionUniqueness,
   codeRegionNesting,
   neutralImports,

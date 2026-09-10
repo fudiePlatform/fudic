@@ -77,6 +77,26 @@ describe('renderToString — comments and shadow', () => {
     );
   });
 
+  it('carries `shadowrootdelegatesfocus` when the host asked for it (SDD-34 §4.5)', () => {
+    // Without it a `<label for>` outside a control-component focuses the HOST and not the
+    // `<input>` inside its shadow root, which is what makes the component unlabelable.
+    const d = new SsrDom();
+    const host = d.element('app-input');
+    d.append(d.attachShadow(host, true), d.text('hi'));
+    expect(renderToString(host)).toBe(
+      '<app-input><template shadowrootmode="open" shadowrootdelegatesfocus ' +
+        'shadowrootadoptedstylesheets="app-input">hi</template></app-input>',
+    );
+  });
+
+  it('the second `attachShadow` on the same host does not take the flag back', () => {
+    const d = new SsrDom();
+    const host = d.element('app-input');
+    d.attachShadow(host, true);
+    d.append(d.attachShadow(host), d.text('hi'));
+    expect(renderToString(host)).toContain('shadowrootdelegatesfocus');
+  });
+
   it('serializes a fragment (shadow root) as its children', () => {
     const d = new SsrDom();
     const root = d.attachShadow(d.element('x'));

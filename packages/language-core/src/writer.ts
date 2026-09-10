@@ -48,8 +48,8 @@ export class VirtualWriter {
    * stretch no position can ever fall inside, so it is noise in the table.
    *
    * `caps` is still user text, never scaffolding: the only caller that passes one is the
-   * server virtual copying the neutral zone, which the client virtual already owns for
-   * completion (`USER_ECHO_CAPS`). It is a profile, not a third door.
+   * server virtual copying the neutral zone, which the client virtual already owns
+   * (`USER_ECHO_CAPS`). It is a profile, not a third door.
    */
   copy(span: Span, caps: MappingCaps = USER_CAPS): void {
     const text = this.#source.slice(span.start, span.end);

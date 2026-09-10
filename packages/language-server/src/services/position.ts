@@ -15,7 +15,14 @@
  */
 
 import type { Attribute, ElementNode, Region, Span, StructuredDocument } from '@fudic/compiler';
-import { EVENT_PREFIX, attributeValueSpan, span } from '@fudic/compiler';
+import {
+  CONTROL_NAME,
+  CONTROL_PROP,
+  EVENT_PREFIX,
+  PROPERTY_PREFIX,
+  attributeValueSpan,
+  span,
+} from '@fudic/compiler';
 
 // Reading the quotes of an attribute is parser knowledge, and the parser owns it now.
 export { attributeValueSpan };
@@ -181,9 +188,9 @@ export function attributeGapContextAt(
   source: string,
   offset: number,
   region: Region,
-): PartialName | undefined {
+): AttributeGap | undefined {
   const gap = gapAt(source, offset, region);
-  return gap !== undefined && gap.element.name.includes('-') ? gap.name : undefined;
+  return gap !== undefined && gap.element.name.includes('-') ? gap : undefined;
 }
 
 /**
@@ -198,9 +205,151 @@ export function nativeGapContextAt(
   source: string,
   offset: number,
   region: Region,
-): PartialName | undefined {
+): AttributeGap | undefined {
   const gap = gapAt(source, offset, region);
-  return gap !== undefined && !gap.element.name.includes('-') ? gap.name : undefined;
+  return gap !== undefined && !gap.element.name.includes('-') ? gap : undefined;
+}
+
+/**
+ * A gap, and the element whose start tag holds it.
+ *
+ * The two travel together rather than being asked for one at a time, and that is not a
+ * convenience: what may be written at a gap is not always the same list — `control` goes on the
+ * elements of a form and nowhere else (decision 115), and which node it takes is decided by the
+ * tag (decision 109) — so every caller needs both. Asked apart, the element came back optional
+ * at a position that had just proved it has one, and the branch for its absence was a branch
+ * nothing could reach.
+ */
+export interface AttributeGap {
+  /** The half-written word under the cursor, which is what an accepted item replaces. */
+  readonly name: PartialName;
+  readonly element: ElementNode;
+}
+
+/**
+ * The element whose `control` value the caret is inside: `<input control="@f.|">`.
+ *
+ * Three shapes of the same position, and the region tells two of them apart on its own. A
+ * quoted value is `attr-value`; a value that is one razor expression is `expression`, and it
+ * carries the attribute it belongs to, which is how a binding is told from an interpolation
+ * written in markup.
+ *
+ * The third is the one `memberContextAt` documents: `control=@f.|` unquoted reports the region
+ * as `tag`, because the caret sits one character past the atom and the dangling dot is not part
+ * of its span. There the attribute is gone and only the text is left — which is enough, since
+ * `control=` followed by an open expression cannot be anything else.
+ *
+ * TWO spellings, in all three shapes. On a component `control` IS the `ctrl` prop under the
+ * name the parent writes (decision 112), so `.ctrl=@f.|` is the same position written the other
+ * way — and it has to be recognised here or it falls to the general rule, whose list is the
+ * scope the PARSE can see. That scope holds what the file declares and not what it imports, and
+ * a form is imported: `<app-input .ctrl=@|>` was the one binding of the language that could not
+ * complete the only value it accepts.
+ */
+export function controlValueAt(
+  source: string,
+  offset: number,
+  region: Region,
+): ElementNode | undefined {
+  const element = region.element;
+  if (element === undefined) return undefined;
+
+  // Inside a delimited value the ATTRIBUTE decides, and it has to: the text `control=@x` can
+  // sit in a `title` as legitimately as anywhere else, and reading it there would narrow a
+  // position that is a string.
+  if (region.kind === 'attr-value' || region.kind === 'expression') {
+    return namesControl(region.attribute?.name, element) ? element : undefined;
+  }
+
+  if (region.kind !== 'tag') return undefined;
+  const opened = CONTROL_OPENED.exec(source.slice(0, offset));
+  if (opened === null) return undefined;
+  // `.ctrl` is a `control` on a component tag and an ordinary property anywhere else, where the
+  // value is any expression at all and narrowing it would be inventing a rule.
+  return opened[0].startsWith(PROPERTY_PREFIX) && !isComponentTag(element) ? undefined : element;
+}
+
+/**
+ * A `control` whose value is still EMPTY: `<input control=| type="text">`, `<x .ctrl="|">`.
+ *
+ * Its own context because no existing one covers it. `bareBindingValueContextAt` is the same
+ * position for every other binding and it is spelled into its regex that the attribute opens
+ * with a `.` or a `@` — `control` is the one binding of the language written as a plain HTML
+ * name, so it fell through every branch and the position answered «no suggestions».
+ *
+ * What goes here is a node and the `@` that opens it, neither of which the author has typed, so
+ * the item writes both — the same bargain a prop makes at a gap. Empty ONLY: the moment a
+ * character is there the value is the author's and `expressionValueContextAt` owns it, which is
+ * the rule `valueBegun` states for every other value.
+ */
+export function controlValueOpeningAt(
+  source: string,
+  offset: number,
+  region: Region,
+): PartialName | undefined {
+  // Through `controlValueAt`, so «is this a control's value at all» is asked in ONE place: the
+  // two spellings, the three regions and the `title` that merely contains the word are all
+  // already decided there.
+  if (controlValueAt(source, offset, region) === undefined) return undefined;
+  return CONTROL_EMPTY.test(source.slice(0, offset))
+    ? { span: span(offset, offset), text: '' }
+    : undefined;
+}
+
+/** A `control`, or the `.ctrl` a component spells it with — never a `.ctrl` on a native tag. */
+function namesControl(name: Attribute['name'] | undefined, element: ElementNode): boolean {
+  if (typeof name !== 'string') return false;
+  const written = name.toLowerCase();
+  if (written === CONTROL_NAME) return true;
+  return isComponentTag(element) && written === `${PROPERTY_PREFIX}${CONTROL_PROP}`;
+}
+
+/** A dash in the tag name, which is what makes an element a component. */
+function isComponentTag(element: ElementNode): boolean {
+  return element.name.includes('-');
+}
+
+/**
+ * Either spelling of a `control`, its `=`, and an expression opened after it.
+ *
+ * The lookbehind is what keeps `control` from matching inside a name that merely ends in it —
+ * a `.control` prop of somebody's component is not this attribute.
+ */
+const CONTROL_OPENED =
+  /(?:(?<![-.@\w])control|\.ctrl)[ \t]*=[ \t]*["']?(?:@[\w$]*(?:\??\.[\w$]*)*)?$/iu;
+
+/** The same, narrowed to the value that is still EMPTY — not even the `@` is there. */
+const CONTROL_EMPTY = /(?:(?<![-.@\w])control|\.ctrl)[ \t]*=[ \t]*["']?$/iu;
+
+/** The `control` attribute whose NAME the cursor is on, and the element carrying it. */
+export interface ControlNameHit {
+  readonly element: ElementNode;
+  /** The name alone — what the hover underlines. */
+  readonly span: Span;
+}
+
+/**
+ * The cursor on the NAME of a `control`: `<input cont|rol="@f.alias">`.
+ *
+ * Its own context because the answer is the element's rather than the attribute's: what a
+ * `control` takes is decided by the tag it sits on (decision 109), so hovering the same six
+ * characters says «form» on a `<form>` and «control» on an `<input>`. The name and not the
+ * value — inside the value the answer is TypeScript's, over the expression the author wrote.
+ */
+export function controlNameAt(
+  source: string,
+  offset: number,
+  region: Region,
+): ControlNameHit | undefined {
+  const element = region.element;
+  const attribute = region.attribute;
+  if (region.kind !== 'tag' || element === undefined || attribute === undefined) return undefined;
+  if (typeof attribute.name !== 'string' || attribute.name.toLowerCase() !== CONTROL_NAME) {
+    return undefined;
+  }
+
+  const at = span(attribute.span.start, attribute.span.start + attribute.name.length);
+  return offset >= at.start && offset <= at.end ? { element, span: at } : undefined;
 }
 
 /** An empty position inside a start tag, whatever the tag is. */
@@ -494,6 +643,10 @@ export function ownedByProjection(source: string, offset: number, region: Region
     // reason as the rest: what makes a position closed is that every other voice is wrong,
     // not that somebody else has the answer.
     bareBindingValueContextAt(source, offset, region) !== undefined ||
+    // The one that is spelled as a plain HTML name and is not one: what may follow `control=`
+    // is a node of the form and nothing else, so HTML's vocabulary is as wrong there as it is
+    // after a `.prop=` — it just could not be recognised by the prefix the others share.
+    controlValueOpeningAt(source, offset, region) !== undefined ||
     // The other one with no list: a value opened with a `.`, which is an error and not a
     // question.
     brokenValueContextAt(source, offset, region)

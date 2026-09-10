@@ -19,6 +19,7 @@ export type Binding =
   | EventBinding
   | BusBinding
   | RefBinding
+  | ControlBinding
   | ClassBinding
   | StyleBinding;
 
@@ -93,6 +94,26 @@ export interface RefBinding extends Node {
   readonly value: RazorExpression;
 }
 
+/**
+ * `control="@f.title"` — the form node this element is bound to (decision 108, SDD-34 §4.1).
+ *
+ * A RESERVED ATTRIBUTE and not a prefix, which is the whole of why it sits beside `RefBinding`
+ * and not beside `ClassBinding`: `class:`/`bus:` carry a name after the `:` and here there is
+ * nothing to name — the node is what the expression says.
+ *
+ * Unlike `ref` the value is NOT limited to a simple identifier: `@f.seo.canonical` is a path
+ * and that is its ordinary case. Whether the path exists, and whether its type is the one the
+ * element expects, is checked by TypeScript over the SDD-23 projection and never here (§4.9).
+ *
+ * What the ELEMENT makes of it (decision 109) — a form, a value-bearing control, a group, or a
+ * reference crossing to a component — is not decided here either: this node only records that
+ * the author wrote the binding and which expression they wrote.
+ */
+export interface ControlBinding extends Node {
+  readonly type: 'control';
+  readonly value: RazorExpression;
+}
+
 /** `class:foo="@x"` — conditional class (decision 22). */
 export interface ClassBinding extends Node {
   readonly type: 'class';
@@ -135,3 +156,6 @@ export const PROPERTY_PREFIX = '.';
 
 /** The reserved attribute name for an element reference (decision 30). */
 export const REF_NAME = 'ref';
+
+/** The reserved attribute name for a form binding (decision 108). */
+export const CONTROL_NAME = 'control';

@@ -8,7 +8,9 @@
     "paths": {
       "@fudic/dom": ["../dom/src/index.ts"],
       "@fudic/core": ["../core/src/index.ts"],
-      "@fudic/ssr": ["../ssr/src/index.ts"]
+      "@fudic/ssr": ["../ssr/src/index.ts"],
+      "@fudic/forms/dom": ["../forms/src/dom/index.ts"],
+      "@fudic/forms": ["../forms/src/index.ts"]
     }
   },
   "include": ["src", "test", "scripts", "vitest.config.ts"]

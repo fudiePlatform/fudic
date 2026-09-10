@@ -38,7 +38,6 @@ customElements.define("app-card", class extends FudicElement {
         },
         h: ($c) => {
           $n6 = $dom.previousSibling($c);
-          $r.push($n6);
           $n7 = $c; $c = $dom.nextElementSibling($c);
           $r.push($n7);
           {
@@ -94,7 +93,6 @@ customElements.define("app-card", class extends FudicElement {
         },
         h: ($c) => {
           $n11 = $dom.lastChild($parent);
-          $r.push($n11);
           return $c;
         },
         m: ($ref = $anchor) => {
@@ -126,7 +124,6 @@ customElements.define("app-card", class extends FudicElement {
         },
         h: ($c) => {
           $n12 = $dom.lastChild($parent);
-          $r.push($n12);
           return $c;
         },
         m: ($ref = $anchor) => {

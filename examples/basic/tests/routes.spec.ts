@@ -26,6 +26,7 @@ const ROUTES = [
   '/value-prop',
   '/signal-prop',
   '/hidratacion',
+  '/formularios',
 ] as const;
 
 /**

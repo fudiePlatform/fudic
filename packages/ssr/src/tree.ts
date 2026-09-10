@@ -25,6 +25,13 @@ export class SsrNodeImpl implements SsrNode {
   readonly attrs = new Map<string, string>();
   /** The shadow root (a fragment), if `attachShadow` was called on this element. */
   shadow: SsrNodeImpl | null = null;
+  /**
+   * Whether that shadow root delegates focus — `shadowrootdelegatesfocus` on the template.
+   *
+   * A control-component needs it or it is not labelable: a `<label for>` outside would focus
+   * the host and not the `<input>` inside (SDD-34 §4.5).
+   */
+  delegatesFocus = false;
 
   constructor(
     readonly kind: SsrKind,

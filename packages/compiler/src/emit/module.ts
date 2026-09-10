@@ -32,8 +32,9 @@ import { compactStyleCss } from './css-compact.js';
 import { codeOf, diHelpers } from './oxc-code.js';
 import { hasDependencyInjection } from './di.js';
 import { cellSlots, childTargets, reactiveScope } from './state.js';
-import { hydratableTags } from './level.js';
+import { formAssociatedTags, hydratableTags } from './level.js';
 import { writeMapConstants, writeHydrationBlocks } from './maps.js';
+import { planControls } from './controls.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import {
   type ComponentSpecifier,
@@ -186,7 +187,7 @@ function buildComponentModule(
 ): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const ext = options.importExt ?? '.mjs';
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
-  const { props, signals, diagnostics, di, server, neutral } = codeOf(comp);
+  const { props, signals, neutral, diagnostics, di, server } = codeOf(comp);
   const cells = cellSlots(comp, graph);
   const hydratable = hydratableTags(graph);
   const bodyW = new CodeWriter();
@@ -198,6 +199,11 @@ function buildComponentModule(
   // The same predicate the client chunk uses, so what the server writes down and what the
   // chunk destructures cannot disagree.
   const injects = di.some((d) => d.kind === 'inject' && d.zone !== 'server');
+  // Resolved once, for both branches: the client chunk builds the very same nodes from the
+  // very same plan, or `h` adopts a tree it does not recognise (SDD-34 §4.3).
+  const controls = planControls(comp.source, comp.doc.template!.children, (t) =>
+    graph.components.has(t),
+  );
   const em = new MarkupEmitter({
     source: comp.source,
     w: bodyW,
@@ -210,6 +216,8 @@ function buildComponentModule(
     declared: childTargets(graph),
     hydratable,
     ...(owns ? { ioc: '$own' } : {}),
+    controls,
+    formAssociated: formAssociatedTags(graph),
   });
   em.emitChildren(comp.doc.template!.children, '$shadow');
   // css uses the linker too (may register more imports), so build it before the imports.
@@ -222,14 +230,27 @@ function buildComponentModule(
   // which travels below with the rest of the zone — no longer covers what this module calls.
   const helpers = diHelpers(di, (call) => call.zone !== 'client');
   if (helpers.length > 0) w.line(`import { ${helpers.join(', ')} } from '@fudic/di';`);
-  for (const line of [...neutral.server.imports, ...server.imports]) w.line(line);
+  for (const line of server.imports) w.line(line);
   for (const tag of em.used) w.line(`import { render as ${renderName(tag)} } from ${specifier(tag)};`);
+  // The neutral zone's imports, hoisted — decision 33.c, which until SDD-34 was true of
+  // `@client` alone. It is what lets a form live in its own `.ts` and be reached by BOTH
+  // ends: the server renders its values into the HTML and the client hydrates the same
+  // object, which is the whole reason a form is not declared in the view.
+  const neutralImports = neutral.flatMap((s) => (s.hoisted ? [s.text] : []));
+  for (const line of neutralImports) w.line(line);
+  // The text of an error, for the slots this template writes. From the MODEL entry point and
+  // not from `./dom`: the server paints the message into the HTML (§4.3), and turning
+  // `{ required: true }` into a sentence touches no DOM. Imported only when there is a slot,
+  // so a component with no form carries no import it never calls.
+  const writesErrors = [...controls.values()].some((site) => site.writesSlot);
+  if (writesErrors) w.line("import { errorText as $fudErrorText } from '@fudic/forms';");
   for (const line of linker.imports()) w.line(line);
   const preamble =
     helpers.length > 0 ||
-    neutral.server.imports.length > 0 ||
     server.imports.length > 0 ||
     em.used.size > 0 ||
+    neutralImports.length > 0 ||
+    writesErrors ||
     linker.imports().length > 0;
   if (preamble) w.line('');
   w.line(`export const tag = ${JSON.stringify(comp.tag)};`);
@@ -253,10 +274,6 @@ function buildComponentModule(
     // the inside.
     w.line('$ioc = $own;');
   }
-  // The neutral DI lines run on BOTH sides; the `@server` region runs only here, and this is
-  // the first time it reaches anywhere at all.
-  for (const statement of neutral.server.body) w.line(statement.text);
-  for (const statement of server.body) w.line(statement.text);
   // The slice of this instance. It is written HERE when the component publishes no cell, so
   // a page without one keeps the exact bytes it had; a component WITH cells has to wait for
   // its reactives to be declared, a few lines down, because what it registers is those very
@@ -318,6 +335,18 @@ function buildComponentModule(
     if (cell.kind === 'fn') w.line(`const ${cell.name} = () => {}; // inert callback (SSR)`);
   }
   if (cells.length > 0) writeState();
+  // The neutral zone's body, AFTER the props and the inert reactives it may read, and BEFORE
+  // the markup that reads it. This is the half of `@code` that runs on BOTH sides, so this is
+  // where the server gets the form it renders the values of. A `provide` is here in full —
+  // this is the side that owns the container — while the browser gets it from the route's
+  // IoC module instead (SDD-38 §4.5).
+  for (const statement of neutral) {
+    if (!statement.hoisted) w.line(statement.text);
+  }
+  // And then the `@server` region, which runs on this side ONLY, and which until SDD-38
+  // reached nowhere at all. Last of the three, because it is the one that may read what the
+  // other two declared and nothing may read it back.
+  for (const statement of server.body) w.line(statement.text);
   w.appendWriter(bodyW); // carries the markup's source anchors, unlike a toString()/split copy
   w.dedent();
   w.line('}');
@@ -372,6 +401,7 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
     boxes: pageBoxes(graph, page),
     hydratable,
     ioc: hasDi ? '$root' : '$ioc',
+    formAssociated: formAssociatedTags(graph),
   });
   em.emitChildren(page.body.children, '$body');
 

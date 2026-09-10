@@ -110,6 +110,9 @@ export function untrack<T>(fn: () => T): T;
 // packages/core/src/subscribe.ts — el canal del EMIT, no de la vista
 /** Llama a `fn` con el valor nuevo cada vez que `source` se mueve. Devuelve la baja. */
 export function subscribe<T>(source: Readable<T>, fn: (v: T) => void): () => void;
+
+/** `subscribe` para un nombre que el emit NO pudo probar reactivo — un import (BUG-27). */
+export function subscribeIf(source: unknown, fn: (v: unknown) => void): () => void;
 ```
 
 Cuatro cosas de la firma que son decisiones, no notación:
@@ -140,6 +143,16 @@ Cuatro cosas de la firma que son decisiones, no notación:
 inicial ya lo hace `$s`/`$a` fuera de todo contexto de rastreo (BUG-12 §3.4). Pero sacarla del
 tipo `Signal` cambia lo que importa: **deja de aparecer en el IntelliSense de una vista**. Quien
 escribe una vista tiene `effect`; quien escribe el compilador tiene `subscribe`.
+
+**Y `subscribeIf` es un canal aparte, no una bandera de `subscribe`** (añadido por
+[BUG-27](./bugs/BUG-27-signal-de-modulo-sin-suscribir.md)). El emit es por fichero, así que de
+un nombre **importado** no puede probar nada: `count` puede ser una signal, un derivado o un
+ayudante, y `subscribe` sobre lo último cae en su rama de efecto y lo **llama**. La pregunta se
+traslada al runtime, donde el valor está en la mano, y se contesta con una **marca** —la que
+`tagSource` pone y `isSource` lee, y que un derivado también lleva desde este BUG— y no con una
+comprobación por forma, porque un derivado y un ayudante son los dos una función de cero
+argumentos. Los dos canales se importan por separado para que nadie pague por el que no usa
+(§6.20).
 
 ---
 

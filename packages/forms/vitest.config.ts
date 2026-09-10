@@ -5,7 +5,13 @@ export default defineConfig({
   test: {
     // `node`, and it is a contract rather than a default: a form model that
     // needs a DOM to be tested is a form model that cannot run on the server
-    // (SDD-33 §5). No happy-dom in this package, on purpose.
+    // (SDD-33 §5).
+    //
+    // SDD-34 adds `./dom`, which is browser code by definition, and its tests
+    // ask for happy-dom with a per-FILE `@vitest-environment` docblock. Keeping
+    // the default at `node` is what makes that an exception a reader can see:
+    // flipping the whole package would let a DOM dependency creep into a model
+    // test and no one would notice until the server ran it.
     environment: 'node',
     include: ['test/**/*.test.ts'],
     coverage: {

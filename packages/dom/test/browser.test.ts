@@ -71,6 +71,19 @@ describe('browserDom shadow', () => {
     expect(dom.attachShadow(host)).toBe(root);
   });
 
+  it('attachShadow passes `delegatesFocus` through (SDD-34 §4.5)', () => {
+    // The one option that has to cross: a control-component is not labelable without it.
+    // What the emulator reflects is not the point — the INIT is, and a browser reads it.
+    const host = dom.element('app-input') as Element;
+    const seen: ShadowRootInit[] = [];
+    host.attachShadow = ((init: ShadowRootInit) => {
+      seen.push(init);
+      return { mode: init.mode } as ShadowRoot;
+    }) as Element['attachShadow'];
+    dom.attachShadow(host, true);
+    expect(seen).toEqual([{ mode: 'open', delegatesFocus: true }]);
+  });
+
   it('host gives the shadow root back its host (SDD-15 §4.4)', () => {
     const host = dom.element('app-x');
     expect(dom.host(dom.attachShadow(host))).toBe(host);

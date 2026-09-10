@@ -14,6 +14,12 @@ export default defineConfig({
       '@fudic/dom': fileURLToPath(new URL('../dom/src/index.ts', import.meta.url)),
       '@fudic/core': fileURLToPath(new URL('../core/src/index.ts', import.meta.url)),
       '@fudic/ssr': fileURLToPath(new URL('../ssr/src/index.ts', import.meta.url)),
+      // The two entry points a form reaches for (SDD-34 §6.10): the model, which the SERVER
+      // renders the values of, and the bindings the client hydrates with. The a11y invariant
+      // is the other thing the emit cannot assert about itself — that a form has the same
+      // markup whether it hydrated or not — and checking it takes both of them, running.
+      '@fudic/forms/dom': fileURLToPath(new URL('../forms/src/dom/index.ts', import.meta.url)),
+      '@fudic/forms': fileURLToPath(new URL('../forms/src/index.ts', import.meta.url)),
     },
   },
   test: {

@@ -145,7 +145,8 @@ binding, cabeceras de bloques anidados— con **análisis de scope real** sobre 
 que distinguir una referencia de una declaración y de una clave de propiedad (`obj.a` no
 referencia ninguna `a`). No es recolectar `Identifier`.
 
-Se restan dos conjuntos:
+Se restan **tres** conjuntos —el tercero lo añade
+[BUG-28](./bugs/BUG-28-bloque-en-linea-nunca-emitido.md), decisión 116—:
 
 1. **Lo que el propio bloque declara** — el patrón de la cabecera (`{ id, name }` de
    `@foreach (const { id, name } of rows)` declara `id` y `name`, y sale del `ObjectPattern`, no
@@ -154,6 +155,12 @@ Se restan dos conjuntos:
    `@code { @client }` que nadie reasigna. Entra por closure: `u` nunca tendría nada nuevo que
    entregarle, así que un parámetro solo sería ruido en la firma. Lo decide el AST (¿hay alguna
    asignación a ese binding?), no una heurística.
+3. **Lo que el propio cuerpo ASIGNA** — un nombre que un `@{ … }` del cuerpo escribe. No es una
+   excepción a la regla, es su otra mitad: un parámetro sirve para lo que `u` puede volver a
+   traer, y una escritura es lo contrario —estado compartido con el scope de fuera, que la
+   decisión 17 dice que el bloque ve—. Por parámetro, la escritura del autor caería sobre el
+   parámetro y se perdería al terminar la llamada. Es lo que hace terminable el `@while`
+   canónico de la 91: `@{ cur = cur.next; }` tiene que mover el `cur` que lee la **cabecera**.
 
 Lo que queda —props, `let` del `@client`, y las variables de iteración de cualquier bloque
 ancestro— **son los parámetros, y son los mismos que recibe `u`**.
@@ -208,6 +215,14 @@ resolver, y no lo cierra el anchor: si el bloque no pinta, los dos runs son **un
 texto** al volver del HTML y ninguna travesía los distingue. Ahí —y solo ahí, porque es
 detectable estáticamente— el bloque emite un **comentario vacío** como ancla real. Cero
 marcadores en el caso general; uno donde la forma lo exige.
+
+**Y el ancla no es del bloque, ni siquiera cuando el bloque la alcanza**
+([BUG-26](./bugs/BUG-26-ancla-compartida-al-hidratar.md)). Al **hidratar**, el run estático que
+cierra el cuerpo y el run que sigue al constructo son **el mismo nodo** —texto adyacente se
+funde en el viaje por HTML—, así que el bloque lo adopta como **referencia** y no lo mete en su
+`$r`: retirarlo dejaría al nivel anclando sobre un huérfano, y `before()` sobre un huérfano no
+inserta y no lanza. Al **crear** son dos nodos y cada lado es dueño del suyo. La propiedad es
+asimétrica entre `c` y `h` justamente para que el árbol resultante no lo sea.
 
 Y lo emiten **las dos ramas**: el HTML que pinta el servidor lleva ese comentario igual que el
 árbol que fabrica el cliente. Un marcador en un solo lado es peor que ninguno — los dos árboles

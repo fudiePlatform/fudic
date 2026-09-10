@@ -35,6 +35,8 @@ import { handlerShape, unwrapParens } from '../binding/index.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import type { FragmentAst } from './scope.js';
 import type { TemplateJs } from './oxc-code.js';
+import type { ControlPlan } from './controls.js';
+import { CodeWriter } from './writer.js';
 
 /** The value of an event binding whose root node is none of the four shapes (§4.5). */
 export const FUD_UNSUITABLE_HANDLER = 'FUD0291';
@@ -63,14 +65,58 @@ export interface HookupContext {
    * still have been cold when this listener was registered.
    */
   readonly callbacks: ReadonlySet<string>;
+  /**
+   * The `control` bindings of this file (SDD-34), resolved once for both branches.
+   *
+   * It rides here for the reason this object exists at all: it is a fact about the whole file
+   * that every walk of it needs, and a block is a separate walk. A `control` inside an `@if`
+   * has to emit its binding into that block's own `s()`, with that block's nodes, and this is
+   * what carries the plan down to it without a rule of its own.
+   */
+  readonly controls: ControlPlan;
+  /** The `@fudic/forms/dom` functions the walk actually called, for the import line. */
+  readonly binds: Set<string>;
+  /**
+   * The names of this component's own props — what tells a `control` whose node ARRIVES from
+   * the parent (decision 112) from one the component already holds.
+   *
+   * The two cannot be bound the same way. A node named by a neutral import is there when the
+   * factory hooks up; a node that crossed as a prop is not, and never is: the payload the
+   * parent composes reaches the child through `u`, and `u` is of value — it reassigns and
+   * re-applies, it does not hook up again (BUG-12 §4.2).
+   */
+  readonly props: ReadonlySet<string>;
+  /**
+   * The bind calls of the top-level walk whose node can still arrive, and the prop names they
+   * depend on. `$cb` is written from the first and `u`'s guard from the second.
+   *
+   * They ride on the file's context and not on the walk's bodies because the FACTORY is what
+   * has to hold them: `u` lives there, and so do the node variables of the top level. A
+   * `control` inside an `@if` writes into its block's `s()` as before — that block is made
+   * again when the condition turns, and with it its binding.
+   */
+  readonly rebind: CodeWriter;
+  readonly rebound: Set<string>;
 }
 
 export function hookupContext(
   template: TemplateJs,
   diagnostics: Diagnostic[],
   callbacks: ReadonlySet<string> = new Set(),
+  controls: ControlPlan = new Map(),
+  props: ReadonlySet<string> = new Set(),
 ): HookupContext {
-  return { template, diagnostics, hostUsed: false, callbacks };
+  return {
+    template,
+    diagnostics,
+    hostUsed: false,
+    callbacks,
+    controls,
+    binds: new Set(),
+    props,
+    rebind: new CodeWriter(),
+    rebound: new Set(),
+  };
 }
 
 /** A CALL whose callee arrived as a cell, with the read spliced in: `onSave(x)` → `onSave()(x)`. */
