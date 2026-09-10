@@ -5,7 +5,7 @@
 > **Toca además:** `@fudic/compiler`, `@fudic/ssr`, `@fudic/vite`
 > **Rama:** `sdd-38-inyeccion-de-dependencias`
 > **Rango:** `FUD0680`–`FUD0699` · **Decisiones:** 120–126
-> **Progreso:** 15 / 19
+> **Progreso:** 16 / 19
 
 Da a fudic el inyector que [`docs/di/index.html`](../di/index.html) prototipó, y lo cablea en los
 dos extremos. Las fases 1–3 son un paquete nuevo, sin DOM y sin dependencias, que se puede llevar
@@ -166,7 +166,7 @@ usuario, `multi:`, `useValue`, el reemplazo en tests y `fudic g service`.
 
 ## Fase 6 — Que falle donde debe (4)
 
-- [ ] **16. `FUD0680` — inyectar algo que nadie registra.**
+- [x] **16. `FUD0680` — inyectar algo que nadie registra.**
       **(rojo primero)** Un salto de import, el que el `.fud` ya escribe: el plugin resuelve el
       especificador con el `ResolveIo` que ya usa, parsea el módulo con Oxc y busca `@Service` o un
       `provide` de nivel superior. Si el módulo no se resuelve o no se puede leer, **no hay

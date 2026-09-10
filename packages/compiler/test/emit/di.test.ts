@@ -576,6 +576,39 @@ describe('the IoC module of a component', () => {
     expect(emitComponentClientModule(graph, comp)).not.toContain('provideIn');
   });
 
+  it('merges the two browser zones into one module, in source order', () => {
+    const graph = graphOf({
+      '/app/home.fud': page(['x-both'], '<x-both></x-both>'),
+      '/app/x-both.fud': component(
+        'x-both',
+        `@code {
+  import { provide } from '@fudic/di';
+  import { Cart, Clock } from './services/cart.js';
+
+  provide(Cart, () => new Cart());
+
+  @client {
+    provide(Clock, () => new Clock());
+  }
+}`,
+        '<p>both</p>',
+      ),
+    });
+
+    // One `register`, both registrations, and the order they were WRITTEN in: the two zones
+    // are fragments of one module, and a registration that overrides another has to lose or
+    // win the same way it does in the source.
+    expect(emitComponentIocModule(graph.components.get('x-both')!)?.split('\n')).toEqual([
+      `import { provideIn } from '@fudic/di';`,
+      `import { Cart, Clock } from './services/cart.js';`,
+      '',
+      'export function register($own) {',
+      '  provideIn($own, Cart, () => new Cart());',
+      '  provideIn($own, Clock, () => new Clock());',
+      '}',
+    ]);
+  });
+
   it('answers the three questions the plugin asks of a component', () => {
     const graph = graphOf(files);
     expect(ownsContainer(graph.components.get('x-owner')!)).toBe(true);

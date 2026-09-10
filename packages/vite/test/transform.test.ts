@@ -86,4 +86,37 @@ describe('transformFud', () => {
       expect(contractOf(ok, CIRCLE)).toEqual([]);
     });
   });
+
+  // SDD-38 §6.21. Here and not in the compiler's own suite because the rule READS the module
+  // next door: it is the one contract that needs a filesystem to be asked at all.
+  describe('the injection contract (FUD0680)', () => {
+    /** A page with one component injecting `Cart` out of the service module written here. */
+    function injectionOf(service: string): readonly string[] {
+      const root = mkdtempSync(join(tmpdir(), 'fudic-di-'));
+      writeFileSync(join(root, 'cart.ts'), service);
+      writeFileSync(
+        join(root, 'app-panel.fud'),
+        "@code {\n  import { inject } from '@fudic/di';\n  import { Cart } from './cart';\n\n" +
+          '  const cart = inject(Cart);\n}\n' +
+          '<app-panel>\n  <template shadowrootmode="open"><b>@(cart.id)</b></template>\n</app-panel>\n',
+      );
+      const page =
+        '<!DOCTYPE html>\n<html>\n<head><link rel="component" href="./app-panel.fud"></head>\n' +
+        '<body><app-panel></app-panel></body>\n</html>\n';
+      writeFileSync(join(root, 'page.fud'), page);
+      return transformFud(join(root, 'page.fud'), nodeIo())!.diagnostics.map((d) => d.code);
+    }
+
+    it('reports a service module that enrols nothing', () => {
+      expect(injectionOf('export class Cart {\n  readonly id = 1;\n}\n')).toEqual(['FUD0680']);
+    });
+
+    it('says nothing once the module enrols it', () => {
+      expect(
+        injectionOf(
+          "import { Service } from '@fudic/di';\nexport class Cart {\n  readonly id = 1;\n}\nService(Cart);\n",
+        ),
+      ).toEqual([]);
+    });
+  });
 });

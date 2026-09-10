@@ -12,7 +12,7 @@
 import type { ComponentDocument } from '../document/index.js';
 import type { ResolvedComponent } from './resolve.js';
 import type { Diagnostic, Span } from '../types/index.js';
-import { errorDiag, isEmptySpan } from '../types/index.js';
+import { errorDiag, isEmptySpan, span } from '../types/index.js';
 import { JsBatch, type OxcNode } from '../oxc/index.js';
 import { collectTemplateJs } from './constructs.js';
 import {
@@ -163,6 +163,15 @@ export interface DiCall {
   readonly zone: CodeZone;
   /** The provider expression's source, verbatim: `Cart`, `LOCALE`. */
   readonly provider: string;
+  /** Where that expression is, in SOURCE coordinates: the span a diagnostic points at. */
+  readonly providerSpan: Span;
+  /**
+   * The module specifier the provider's leading identifier was imported from, when it was
+   * imported at all. It is the one import hop a build follows to ask whether anybody
+   * registers this class — and its absence is why a locally declared provider is never
+   * reported (SDD-38 §6.21).
+   */
+  readonly from?: string;
   /** Start of the callee identifier, and of the `(` after it: the rewrite is a prefix splice. */
   readonly at: number;
   readonly open: number;
@@ -402,12 +411,14 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
   // of one module: an `import { inject }` written in the neutral chunk is the binding a
   // `@server` region three lines down is calling.
   const di: DiCall[] = [];
-  const bindings = diBindings([...neutralStatements, ...serverStatements, ...clientStatements]);
+  const allStatements = [...neutralStatements, ...serverStatements, ...clientStatements];
+  const bindings = diBindings(allStatements);
   const rewritten = new Set(bindings.keys());
   if (bindings.size > 0) {
-    collectDiCalls(neutralStatements, bindings, 'neutral', source, map, di);
-    collectDiCalls(serverStatements, bindings, 'server', source, map, di);
-    collectDiCalls(clientStatements, bindings, 'client', source, map, di);
+    const imports = importSources(allStatements);
+    collectDiCalls(neutralStatements, bindings, imports, 'neutral', source, map, di);
+    collectDiCalls(serverStatements, bindings, imports, 'server', source, map, di);
+    collectDiCalls(clientStatements, bindings, imports, 'client', source, map, di);
   }
   const diEdits = di.map(rewriteOf);
 
@@ -663,13 +674,14 @@ function diBindings(statements: readonly OxcNode[]): ReadonlyMap<string, DiCall[
 function collectDiCalls(
   node: unknown,
   bindings: ReadonlyMap<string, DiCall['kind']>,
+  imports: ReadonlyMap<string, string>,
   zone: CodeZone,
   source: string,
   map: MapOffset,
   out: DiCall[],
 ): void {
   if (Array.isArray(node)) {
-    for (const child of node) collectDiCalls(child, bindings, zone, source, map, out);
+    for (const child of node) collectDiCalls(child, bindings, imports, zone, source, map, out);
     return;
   }
   if (node === null || typeof node !== 'object') return;
@@ -679,18 +691,61 @@ function collectDiCalls(
   if (kind !== undefined) {
     const first = fieldArray(current, 'arguments')[0];
     const at = map(callee!.start);
+    const providerSpan =
+      first === undefined ? span(at, at) : span(map(first.start), map(first.end));
+    // The LEADING identifier, because that is the binding an import declares: `services.Cart`
+    // is imported as `services`, and what a build can ask about is the module it came from.
+    const root = first === undefined ? undefined : rootIdentifier(first);
+    const from = root === undefined ? undefined : imports.get(root);
     out.push({
       kind,
       zone,
       // Verbatim, because the provider is an EXPRESSION the route's IoC module has to write
       // back out: `Cart`, `LOCALE`, `services.Cart`. Reading it as a name would lose the
       // second and the third.
-      provider: first === undefined ? '' : source.slice(map(first.start), map(first.end)),
+      provider: first === undefined ? '' : source.slice(providerSpan.start, providerSpan.end),
+      providerSpan,
+      ...(from === undefined ? {} : { from }),
       at,
       open: source.indexOf('(', map(callee!.end)),
     });
   }
-  for (const value of Object.values(current)) collectDiCalls(value, bindings, zone, source, map, out);
+  for (const value of Object.values(current)) {
+    collectDiCalls(value, bindings, imports, zone, source, map, out);
+  }
+}
+
+/**
+ * The name at the head of a provider expression: `Cart` in `Cart`, and in `services.Cart`.
+ * Anything else — a call, a literal, a template — has no binding to follow, and `undefined`
+ * is what says so.
+ */
+function rootIdentifier(node: OxcNode): string | undefined {
+  if (is(node, 'Identifier')) return name(node);
+  // A member expression always has an object — that is what makes it one — so the recursion
+  // has no missing case to guard against.
+  if (is(node, 'MemberExpression')) return rootIdentifier(field(node, 'object')!);
+  return undefined;
+}
+
+/**
+ * Every name an `import` of this `@code` binds, mapped to the module it came from.
+ *
+ * Named, default and namespace specifiers alike: what the caller asks is «where does this
+ * name come from», and all three answer it.
+ */
+function importSources(statements: readonly OxcNode[]): ReadonlyMap<string, string> {
+  const out = new Map<string, string>();
+  for (const stmt of statements) {
+    if (!is(stmt, 'ImportDeclaration')) continue;
+    // The source of an import is a string literal by grammar: there is no other shape to
+    // tell apart, the way `diBindings` reads the very same field.
+    const specifier = String(field(stmt, 'source')!['value']);
+    for (const spec of fieldArray(stmt, 'specifiers')) {
+      out.set(name(field(spec, 'local')!), specifier);
+    }
+  }
+  return out;
 }
 
 /**

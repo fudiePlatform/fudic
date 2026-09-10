@@ -20,6 +20,7 @@ import { dirname, relative, resolve } from 'node:path';
 import {
   resolveDocument,
   contractDiagnostics,
+  injectionDiagnostics,
   entryComponent,
   emitComponentModuleMapped,
   emitComponentClientModuleMapped,
@@ -125,7 +126,15 @@ export function transformFud(id: string, io: ResolveIo): TransformResult | null 
     // Plus the component contract (BUG-23 §4.4): a required prop nobody passed, a `.prop` the
     // child does not declare, a `slot=` the parent does not. Only a caller that RESOLVED the
     // graph can ask those, which is why they are the build's to report and not the parser's.
-    diagnostics: [...resolved.diagnostics, ...out.diagnostics, ...contractDiagnostics(graph)],
+    // And the injection contract (SDD-38 §6.21): an `inject` of a class no module enrols and
+    // no component owns. It is the build's for the same reason, plus one of its own — it
+    // READS the neighbouring module, which only whoever holds the I/O can do.
+    diagnostics: [
+      ...resolved.diagnostics,
+      ...out.diagnostics,
+      ...contractDiagnostics(graph),
+      ...injectionDiagnostics(graph, io),
+    ],
   };
 }
 
