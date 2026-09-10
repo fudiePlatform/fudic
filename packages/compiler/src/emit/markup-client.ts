@@ -35,6 +35,7 @@
  * follows it and its anchor, and writes nothing about it itself.
  */
 
+import { dataScriptType } from '../html/index.js';
 import type {
   HtmlContent,
   ElementNode,
@@ -1218,6 +1219,17 @@ export class ClientMarkupEmitter {
   /** Descend into an element: a level of its own, with its own cursor. */
   #children(el: ElementNode, v: string): void {
     if (el.children.length === 0) return;
+    // A data `<script>` (decision 129) is filled by `c` with the same verbatim text the
+    // server writes, and by `h` with nothing at all: the node came back from the HTML inside
+    // its element, and the level's cursor walks ELEMENTS, so there is none to advance. Both
+    // branches end with the same tree, which is the only thing hydration asks of them.
+    if (dataScriptType(el) !== undefined) {
+      for (const child of el.children) {
+        if (child.type !== 'raw-text') continue;
+        this.#fab.line(`$dom.append(${v}, $dom.text(${JSON.stringify(child.value)}));`);
+      }
+      return;
+    }
     this.#depth += 1;
     const cursor = this.#cursorFor(el.children);
     if (cursor !== null) {

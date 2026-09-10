@@ -12,6 +12,7 @@
  * site.
  */
 
+import { dataScriptType } from '../html/index.js';
 import type { HtmlContent, ElementNode, InlineCodeNode } from '../html/index.js';
 import type { IfNode, SwitchNode } from '../control/index.js';
 import type { RenderSectionNode } from '../layout/index.js';
@@ -320,6 +321,21 @@ export class MarkupEmitter {
     }
   }
 
+  /**
+   * The body of a data `<script>`, verbatim (decision 129).
+   *
+   * No Razor and no escaping: decision 43 made a `<script>` raw for the lexer, so `@context`
+   * and `@type` — the two keys JSON-LD is built out of — arrive here as the four characters
+   * the author typed. Escaping the text would be worse than dropping it: `&quot;` inside a
+   * `<script>` is not a quote to a JSON parser, it is six characters of garbage.
+   */
+  #rawBody(el: ElementNode, v: string): void {
+    for (const child of el.children) {
+      if (child.type !== 'raw-text') continue;
+      this.#w.line(`$dom.append(${v}, $dom.text(${JSON.stringify(child.value)}));`);
+    }
+  }
+
   #fresh(): string {
     return `$n${this.#id++}`;
   }
@@ -367,7 +383,13 @@ export class MarkupEmitter {
       this.#w.line(`const ${v} = $dom.element(${JSON.stringify(el.name)});`);
       this.#elementAttrs(el, v, false);
       this.#controlAttrs(el, v);
-      this.emitChildren(el.children, v);
+      // A data `<script>` — JSON-LD or an import map (decision 129) — carries its body
+      // VERBATIM, and it is the one place a `raw-text` becomes a node. The generic walk cannot
+      // do this: `raw-text` knows the element it belongs to and not its `type`, and the `type`
+      // is the whole question. So the element decides, which is also what keeps `<style>` out
+      // of it — a `<style>` body is the component's stylesheet and travels by another door.
+      if (dataScriptType(el) !== undefined) this.#rawBody(el, v);
+      else this.emitChildren(el.children, v);
     }
     this.#at = outer;
     this.#w.line(`$dom.append(${parent}, ${v});`);

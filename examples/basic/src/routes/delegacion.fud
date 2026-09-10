@@ -59,52 +59,12 @@
   en los dos y mira el contador.
 </p>
 
-@* La sonda: parchea `EventTarget` ANTES de que se cargue nada. Es un script clásico y en
-   línea, así que corre en el momento de parsearlo — antes que el módulo del layout, que
-   está diferido. No es parte del framework: es el instrumento con el que se le mide. *@
-<script>
-  (function () {
-    var add = EventTarget.prototype.addEventListener;
-    var remove = EventTarget.prototype.removeEventListener;
-    var n = { add: 0, remove: 0 };
-    var slots = null;
-
-    function paint() {
-      if (slots === null) {
-        slots = {
-          add: document.getElementById("probe-add"),
-          remove: document.getElementById("probe-remove"),
-        };
-      }
-      if (slots.add) slots.add.textContent = String(n.add);
-      if (slots.remove) slots.remove.textContent = String(n.remove);
-    }
-
-    EventTarget.prototype.addEventListener = function () {
-      n.add += 1;
-      paint();
-      return add.apply(this, arguments);
-    };
-    EventTarget.prototype.removeEventListener = function () {
-      n.remove += 1;
-      paint();
-      return remove.apply(this, arguments);
-    };
-
-    // Con el original, para que el instrumento no se cuente a sí mismo.
-    add.call(document, "DOMContentLoaded", function () {
-      paint();
-      var reset = document.getElementById("probe-reset");
-      if (reset) {
-        add.call(reset, "click", function () {
-          n.add = 0;
-          n.remove = 0;
-          paint();
-        });
-      }
-    });
-  })();
-</script>
+@* La sonda: parchea `EventTarget` ANTES de que se cargue nada. Vive en `public/` y no en
+   línea porque el emit vacía el cuerpo de un `<script>` escrito en la plantilla, y porque
+   siendo un script CLÁSICO corre al parsearlo — antes que el módulo del layout, que está
+   diferido—, así que ve el primer listener del día. No es parte del framework: es el
+   instrumento con el que se le mide. *@
+<script src="/probe-listeners.js"></script>
 
 <div class="probe">
   <span>addEventListener: <b id="probe-add">0</b></span>

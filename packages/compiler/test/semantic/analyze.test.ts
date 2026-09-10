@@ -77,7 +77,8 @@ describe('analyze — runner', () => {
     // + event-handler-shape (BUG-23 §2.4: FUD0291 stops being the emit's alone)
     // + the five `control` rules of SDD-34 (FUD0591–FUD0595)
     // + delegation (SDD-37: the eight of FUD0660–FUD0667, over the AST alone)
-    expect(ANALYZERS).toHaveLength(18);
+    // + script-body (decision 129: FUD0161, the body the emit was dropping in silence)
+    expect(ANALYZERS).toHaveLength(19);
     const { value } = analyze(buildInput(component('<p>hi</p>')));
     expect(value).toEqual({});
     expect('strategies' in value).toBe(false); // decisions 63–65 retired: no hydration strategy
@@ -215,5 +216,86 @@ describe('LSP invariants (§6)', () => {
 
     // No hyphenated root ⇒ host is absent (FUD0156 in SDD-10); analyze still runs, walks nothing.
     expect(() => analyze(buildInput('<div></div>'))).not.toThrow();
+  });
+});
+
+describe('script-body (decision 129)', () => {
+  it('flags a `<script>` of code that carries a body', () => {
+    expect(codes(component('<script>alert(1)</script>'))).toContain('FUD0161');
+  });
+
+  it('leaves the supported shapes alone: `src`, and an empty tag', () => {
+    // The whole point of the rule: `src` is how code reaches a page, and it survives emit.
+    expect(codes(component('<script src="/probe.js"></script>'))).not.toContain('FUD0161');
+    expect(codes(component('<script></script>'))).not.toContain('FUD0161');
+    // A `src` WITH a body is still a body, and still dropped.
+    expect(codes(component('<script src="/probe.js">alert(1)</script>'))).toContain('FUD0161');
+  });
+
+  it('says nothing about the two data blocks, which are emitted verbatim', () => {
+    // Not an exception to the rule: they are not what the rule is about. The browser does not
+    // RUN these, it reads them, and neither has a `src` form that means the same thing.
+    const ld = '<script type="application/ld+json">{"@type":"Product"}</script>';
+    const map = '<script type="importmap">{"imports":{"x":"/x.js"}}</script>';
+    expect(codes(component(ld))).not.toContain('FUD0161');
+    expect(codes(component(map))).not.toContain('FUD0161');
+  });
+
+  it('matches the type the way a MIME type is matched: trimmed and case-insensitively', () => {
+    const shouted = '<script type=" APPLICATION/LD+JSON ">{"@type":"Product"}</script>';
+    expect(codes(component(shouted))).not.toContain('FUD0161');
+  });
+
+  it('and a type it cannot read at compile time is code, so a body under it is flagged', () => {
+    // `type="@(t)"` is a value nothing knows until it runs. A rule that cannot read a name has
+    // nothing to say about it, and the safe reading of «unknown» here is «not a data block».
+    expect(codes(component('<script type=@(t)>alert(1)</script>'))).toContain('FUD0161');
+    // A neighbouring MIME that is NOT on the list is code too: the list is closed on purpose.
+    expect(codes(component('<script type="application/json">{"a":1}</script>'))).toContain(
+      'FUD0161',
+    );
+    // A bare `type` is `type=""` (decision 44) — a type nobody wrote, so not a data type.
+    expect(codes(component('<script type>alert(1)</script>'))).toContain('FUD0161');
+    // And one built out of several parts is not a name the compiler can read either.
+    expect(codes(component('<script type="application/@(x)">alert(1)</script>'))).toContain(
+      'FUD0161',
+    );
+  });
+
+  it('treats a whitespace-only body as empty', () => {
+    // Newlines and indentation are formatting. Such a tag behaves exactly like the empty one
+    // it is written as, so diagnosing it would report a loss that did not happen.
+    expect(codes(component('<script>\n  \n</script>'))).not.toContain('FUD0161');
+  });
+
+  it('points at the body and not at the element', () => {
+    // The span is the text the author has to move; the tag itself stays where it is.
+    const source = component('<script>alert(1)</script>');
+    const [found] = diags(source).filter((d) => d.code === 'FUD0161');
+    expect(source.slice(found!.span.start, found!.span.end)).toBe('alert(1)');
+  });
+
+  it('finds it wherever a script can be written, and not only in the shadow', () => {
+    // A component's `<head>` is a walk root of its own (decision 62).
+    const inHead =
+      '<head><script>alert(1)</script></head>' +
+      '<app-test><template shadowrootmode="open"><p>hi</p></template></app-test>';
+    expect(codes(inHead)).toContain('FUD0161');
+
+    // And inside a control body, which the walk descends into.
+    expect(codes(component('@if (a) { <script>alert(1)</script> }'))).toContain('FUD0161');
+  });
+
+  it('says how to fix it, because the alternative is one character away', () => {
+    const [found] = diags(component('<script>alert(1)</script>')).filter(
+      (d) => d.code === 'FUD0161',
+    );
+    expect(found!.severity).toBe('error');
+    expect(found!.message).toContain('src');
+  });
+
+  it('a `<style>` body is not a script body', () => {
+    // `<style>` is the raw element fudic DOES compile: its body is the component stylesheet.
+    expect(codes(component('<p>hi</p>'))).not.toContain('FUD0161');
   });
 });

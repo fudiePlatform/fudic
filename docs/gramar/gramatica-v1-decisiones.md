@@ -667,13 +667,53 @@ El prefijo dice quién contesta: `.` el contrato del componente, `@` el dicciona
 
 **42.e.** Soporte de nesting CSS nativo. El parser cuenta llaves correctamente en bloques anidados.
 
-**43.** `<script>` raw puro. Sin procesamiento de Razor. Válvula de escape explícita para integraciones de terceros, JSON-LD, feature detection temprano, etc.
+**43.** `<script>` raw puro. Sin procesamiento de Razor. Válvula de escape explícita para integraciones de terceros, JSON-LD, feature detection temprano, etc. **Precisada por la [129](#129):** el `<script>` sigue siendo raw y sigue siendo la válvula, y la 129 separa las dos cosas que aquí estaban juntas — el **código** entra por `src`, los **datos** (JSON-LD, import map) siguen entrando en línea, que es como se escribe la mitad de la promesa que de verdad no tiene otra forma.
 
-**43.a.** Atributos de `<script>` (src, type, async, defer, nomodule, crossorigin, integrity, nonce) pasan tal cual.
+**43.a.** Atributos de `<script>` (src, type, async, defer, nomodule, crossorigin, integrity, nonce) pasan tal cual. **Intacta**, y `type` pasa a decidir: es lo que la 129 lee para separar datos de código.
 
-**43.b.** Múltiples `<script>` permitidos; se emiten en orden de aparición.
+**43.b.** Múltiples `<script>` permitidos; se emiten en orden de aparición. **Intacta.**
 
 **43.c.** `<script>` permitido en modo componente y en modo página sin restricción. Responsabilidad del developer asumir consecuencias de duplicación si se usa en componentes reutilizables.
+
+<a id="129"></a>
+**129.** **Un `<script>` de CÓDIGO no lleva cuerpo; uno de DATOS sí** (`FUD0161`).
+
+*(a)* fudic **no soporta script en línea**. Un `<script>` que el navegador **ejecuta** se
+emite con sus atributos y sin su cuerpo, y escribir un cuerpo es error: el código va a un
+fichero y el tag lo trae con `src`.
+
+*(b)* Un `<script>` que el navegador **lee** se emite **verbatim**, cuerpo incluido. La lista
+es **cerrada** —`application/ld+json` e `importmap`—, del mismo modo que la lista blanca de
+at-rules de la 42.b: un tipo nuevo es una línea en el compilador, no una heurística sobre lo
+que parece inofensivo. El `type` se compara sin espacios y sin distinguir mayúsculas, como se
+compara un MIME; un `type` interpolado no se puede leer al compilar y por tanto es código.
+
+**La línea es código contra datos, y no cuerpo contra ausencia de cuerpo**, porque solo el
+código tiene una forma alternativa que sobrevive. Los dos tipos de datos no la tienen, y no
+son un adorno:
+
+- **JSON-LD** es cómo una página se explica a un buscador y a una **IA conversacional**. Eso
+  hoy no es un extra: es parte de por qué la página se encuentra. Un `.json` servido aparte y
+  apuntado con un `<link>` no es el mismo documento para un rastreador.
+- Un **import map** es la resolución de módulos de la propia página, y la especificación exige
+  que vaya **en línea y antes del primer módulo**. No existe versión de él en otro fichero.
+
+Del import map se sigue una consecuencia de colocación que conviene saber: como el
+`@RenderHead()` de una ruta se compone **después** del head del layout, un import map escrito
+en el head de una **ruta** llega tarde y el navegador lo ignora. Su sitio es el **layout**,
+delante del `<script type="module">` del arranque. Está en la mano del autor, que es quien
+escribe las dos líneas.
+
+Lo que la regla corrige es que el cuerpo de un `<script>` **se tiraba entero y en silencio**:
+es un `raw-text`, y `raw-text` estaba en la tabla `SERVER_ROLE` del emit como `'none'`, así
+que `<script>alert(1)</script>` salía como `<script></script>` sin un solo diagnóstico. Con la
+129, el código lo dice y los datos se emiten. Un `<script>` de código vacío o de solo espacios
+no pierde nada y no se diagnostica: sangría no es código de autor.
+
+Y el diagnóstico va por **las dos puertas** —la fase semántica para el editor y `registry.ts`
+para el build—, porque una regla que solo sirve una de las dos es una regla que la mitad de la
+gente no ve nunca: es la grieta que BUG-23 tardó un mes en cerrar para `FUD0291` y SDD-37
+volvió a cerrar para `FUD0667`.
 
 **44.** `disabled` y `disabled=""` equivalentes (AST idéntico).
 
@@ -1315,3 +1355,4 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 119 | Interpolación | La unión es por **nombre**: `$day` ↔ `delegate:day`, ancestro más cercano que lo mencione |
 | 120 | Interpolación | Un handler con `$nombre` no se invoca si el evento no nace bajo un marcador; sin `$nombre`, listener normal |
 | 121 | Interpolación | `delegate:` no deja rastro en el DOM (ni atributo, ni índice) |
+| 129 | HTML | Un `<script>` de **código** no lleva cuerpo (`FUD0161`) y uno de **datos** sí, verbatim: lista cerrada `application/ld+json` + `importmap`. Precisa la 43, cuyo cuerpo el emit tiraba en silencio |

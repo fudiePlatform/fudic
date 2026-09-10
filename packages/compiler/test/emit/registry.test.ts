@@ -121,4 +121,22 @@ describe('contractDiagnostics — the three the build owes the editor', () => {
     );
     expect(contractDiagnostics(graphOf('<app-circle></app-circle>', imported))).toEqual([]);
   });
+
+  it('FUD0161 over the body of a `<script>`, which is the build half of decision 129', () => {
+    // The rule needs no registry — it is here because this is the build's only door to it.
+    // Served by the semantic pass alone it would be a rule `pnpm build` never enforced, which
+    // is the same crack BUG-23 closed for `FUD0291` and SDD-37 for `FUD0667`, in reverse.
+    const found = contractDiagnostics(
+      graphOf('<app-circle .name="a"></app-circle><script>alert(1)</script>'),
+    );
+    expect(found.map((d) => d.code)).toEqual(['FUD0161']);
+  });
+
+  it('and not over the `src` form, which is how script is meant to reach a page', () => {
+    expect(
+      contractDiagnostics(
+        graphOf('<app-circle .name="a"></app-circle><script src="/probe.js"></script>'),
+      ),
+    ).toEqual([]);
+  });
 });
