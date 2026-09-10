@@ -21,6 +21,7 @@
 | 1 | El host de un control-componente no se pone `:invalid` al validar | e2e de `examples/basic`, SDD-37 | Abierto |
 | 2 | Un import map en el head de una **ruta** llega tarde y el navegador lo ignora | BUG-29 | Abierto |
 | 3 | Dos specs de dev server de `@fudic/vite` fallan de forma intermitente en `pnpm test` | SDD-37 | Abierto |
+| 4 | El e2e usa **puertos fijos** y `reuseExistingServer`, así que dos worktrees se miden entre sí sin avisar | SDD-37 y SDD-38, a la vez | Abierto |
 
 ---
 
@@ -112,4 +113,41 @@ termina en verde.
 **Por dónde seguir.** Los dos specs arrancan un dev server real y esperan a que responda; el
 sospechoso natural es un timeout de arranque que se queda corto cuando la máquina está
 sirviendo otros doce paquetes, o un puerto que no se ha liberado del spec anterior. Vale la
-pena mirar si comparten puerto fijo.
+pena mirar si comparten puerto fijo — y ver el punto 4, que es la misma forma de defecto un
+piso más arriba.
+
+---
+
+## 4. El e2e mide contra puertos fijos, así que dos worktrees se pisan en silencio
+
+**Visto:** 2026-09-10, por dos sesiones a la vez, trabajando en SDD-37 y en SDD-38.
+
+**Síntoma.** [`examples/basic/playwright.config.ts`](../../../examples/basic/playwright.config.ts)
+declara sus tres servidores en puertos **fijos** —4173 `preview`, 5273 `dev`, 4273 `nosw`— con
+`reuseExistingServer: true`. Dos worktrees del mismo repo no pueden medirse a la vez: el
+segundo que arranca encuentra los puertos ocupados, **los reutiliza**, y mide su suite contra
+**el build del otro**. Sin aviso y sin error.
+
+Coste real, ya pagado: una sesión gastó 31 minutos corriendo la suite entera contra los
+servidores de otra rama y recogió 16 fallos que no eran suyos —sus rutas nuevas no existen en
+el `dist` ajeno, así que fallaban en las tres formas—. El verde tampoco habría sido suyo.
+
+**Lo peligroso no es el rojo, es el verde.** Un rojo ajeno se investiga y se acaba
+descubriendo. Un verde ajeno se cree, y firma como medido algo que nunca se midió.
+
+**Cómo se comprueba de quién son los servidores.** Pedir al puerto una ruta que solo exista en
+la rama propia:
+
+```sh
+curl -s -o /dev/null -w "%{http_code}\n" -H "Accept: text/html" http://localhost:4173/<ruta-propia>
+```
+
+en los tres puertos. Un 404 en cualquiera de ellos quiere decir que se está midiendo otra
+cosa. (El `Accept` importa: el dev server solo renderiza una ruta para una petición que acepte
+`text/html`.)
+
+**Por dónde seguir.** Que el puerto salga de algo propio de cada árbol de trabajo en vez de
+estar escrito en la config —una variable de entorno con `process.env.PORT ?? …`, o un puerto
+derivado del nombre del worktree— y que `reuseExistingServer` deje de dar por bueno cualquier
+proceso que ya escuche ahí. Mientras tanto, y como apaño: puertos desplazados a mano en la
+rama que llegue segunda, revertidos al terminar.
