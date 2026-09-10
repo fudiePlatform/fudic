@@ -5,7 +5,7 @@
 > **Toca además:** `@fudic/compiler`, `@fudic/ssr`, `@fudic/vite`
 > **Rama:** `sdd-38-inyeccion-de-dependencias`
 > **Rango:** `FUD0680`–`FUD0699` · **Decisiones:** 122–128
-> **Progreso:** 18 / 19
+> **Progreso:** 19 / 19
 
 Da a fudic el inyector que [`docs/di/index.html`](../di/index.html) prototipó, y lo cablea en los
 dos extremos. Las fases 1–3 son un paquete nuevo, sin DOM y sin dependencias, que se puede llevar
@@ -184,7 +184,7 @@ usuario, `multi:`, `useValue`, el reemplazo en tests y `fudic g service`.
       página. Verificado en Chrome real. Y el contraste que cierra el SDD: la misma página **sin**
       DI no contiene `@fudic/di`, ni `fud-ioc`, ni `fud-di`, y su `dist` no cambia de número de
       ficheros (§6.27, §6.28).
-- [ ] **19. Decisiones y registro.**
+- [x] **19. Decisiones y registro.**
       Escribir en [`gramatica-v1-decisiones.md`](../gramar/gramatica-v1-decisiones.md) las
       decisiones **122–128** y la **precisión a 33.c**, y actualizar la tabla maestra y el registro
       de progreso de [`INDEX.md`](./INDEX.md).

@@ -483,6 +483,12 @@ Un solo contenedor `@code` a nivel documento, con tres regiones posibles: zona n
 
 **33.c.** Imports permitidos dentro de regiones. El compilador los eleva al top del bundle correspondiente (SSR o cliente) durante emit. En zona neutra solo imports compartidos (módulos puros sin side effects).
 
+> **Precisión (SDD-38).** Un módulo de servicio tiene exactamente un efecto al cargarse:
+> inscribirse en el registro raíz. Eso **no** es lo que 33.c prohíbe —IO, estado global ajeno,
+> orden de carga observable—: es determinista, idempotente y acotado a su propia clase, y dos
+> cargas del mismo módulo dejan el registro como lo dejó la primera. Un módulo de servicio
+> cumple 33.c y es un import legal en zona neutra.
+
 **33.d.** Cero o un `@code` por componente.
 
 **34.** Orden libre entre regiones; convención recomendada `@server` antes que `@client` se aplica en guía de estilo / lint, no en la gramática.
@@ -503,6 +509,60 @@ Un solo contenedor `@code` a nivel documento, con tres regiones posibles: zona n
 **66.** `@server` **no** admite parámetro. El servidor no se hidrata. `@server(...)` es error de
 sintaxis. Con 63-65 retiradas, `@client` tampoco admite parámetro: ambas regiones son ahora
 simétricas (`@server { … }` / `@client { … }`) y cualquier paréntesis tras la keyword es error.
+
+**122.** **`inject` y `provide` son legales en las tres zonas de `@code`, y la zona decide dónde
+corre la línea.** Neutra en los dos lados, `@server` solo en el servidor, `@client` solo en el
+navegador. No hay sintaxis nueva y no hay restricción: es responsabilidad de quien escribe, y la
+zona ya dice todo lo que hay que saber. Un `inject` en `@server` alcanza lo que no puede viajar
+—la base de datos, un token—; uno en `@client`, lo que solo existe en el navegador. Lo que el
+compilador sí comprueba es la contradicción: proveer en un lado e inyectar en el otro
+(`FUD0682`), y leer desde la plantilla un nombre que solo el servidor inyectó (`FUD0681`).
+
+**123.** **Escribir un provider no cambia el nivel de un componente.** Solo `inject`, y solo en
+la zona neutra o en `@client`, promueve a N3, por las reglas de hidratación que ya existen —un
+término más en la disyunción, ni un orden nuevo ni una excepción a la cascada—. Un componente
+que declara providers y no inyecta **sigue siendo nivel 1**: no lleva `data-fud-id`, no aparece
+en `fud-tree` y no descarga chunk. Su factoría llega al navegador por otro camino (125).
+
+**124.** **La jerarquía de contenedores es código emitido, nunca derivada del árbol de
+elementos.** Ninguna resolución consulta el DOM: ni `getRootNode`, ni `.host`, ni `closest`, ni
+`parentElement`. Hay dos razones y cada una basta. El ancestro dueño puede ser nivel 1 por la
+123, así que trepar el DOM encontraría su elemento y **no** encontraría contenedor —o subiría un
+nivel de más y devolvería la instancia global donde debía devolver la suya—. Y la cascada de
+hidratación sube por **tag** y en post-orden, no por posición, así que cuando una instancia
+despierta ni su padre ni su ancestro dueño tienen por qué estar vivos: se leería un árbol a
+medio levantar. El servidor construye la jerarquía léxicamente mientras renderiza, le da
+identidad numérica y la publica en `fud-ioc`; el navegador la reconstruye **en memoria** a
+partir de ese mapa.
+
+**125.** **El dueño de un token es el primer contenedor de la cadena con registro**; la raíz,
+donde viven los `@Service`, es el último eslabón. **La factoría corre en el contenedor dueño**,
+no en el que pidió, y de ahí sale gratis el invariante de vida: nadie puede depender de algo que
+vive menos que él, porque un servicio de raíz que inyecta lo que declaró un componente no
+encuentra registro y falla, en vez de capturar una instancia que morirá antes. Como el dueño
+puede ser nivel 1 y no tener chunk, su factoría **no vive dentro de él**: vive en el módulo IoC
+de la ruta, que se descarga solo si alguien de esa ruta inyecta.
+
+**126.** **El contenedor raíz es la ruta** —una petición en el servidor, una página en el
+navegador— y muere con ella. No hay un nivel «aplicación» por encima: fudic es SSR/SSG y la SPA
+está enmascarada bajo el Service Worker, así que cada navegación vuelve a crear el documento y
+con él el contenedor.
+
+**127.** **Lo que cruza el cable son valores publicados bajo `token()`, nunca instancias de
+servicio.** Es la decisión 84 aplicada al contenedor. Un `inject` en zona neutra corre en los dos
+lados y construye **dos** instancias; lo que las hace coincidir es la semilla —`fud-di`— de la
+que las dos nacen. Solo cruza lo que se publica explícitamente: un valor sembrado en el servidor
+y no publicado se queda ahí, y eso es lo que hace seguro inyectar desde `@server`.
+
+**128.** **`load(ctx)` resuelve por `ctx.inject(…)`.** Es la única función `async` del sistema
+—todo el render es un recorrido síncrono dentro de un generador— y por eso no participa del
+contenedor ambiente: un ambiente que cruza un `await` no da un error visible, da contaminación
+silenciosa entre peticiones concurrentes en dev y en prerender, y no hay `AsyncLocalStorage` en
+un Service Worker con el que taparlo solo en un extremo. Escribir `inject(…)` en el `@server` de
+una ruta es `FUD0683`. El ambiente existe en **un solo sitio**: dentro de la factoría que el
+inyector está ejecutando, entre `try` y `finally`, que es lo que hace legal `log = inject(Logger)`
+como campo de una clase de servicio. En el `@code` de un componente el autor nunca lo toca,
+porque el compilador reescribe la llamada por offset.
 
 ### Gramática de referencia
 
@@ -1187,7 +1247,7 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 32 | `@code` | `@server`/`@client` sintaxis Razor genuina |
 | 33.a | `@code` | No anidación entre regiones |
 | 33.b | `@code` | Máximo uno de cada región |
-| 33.c | `@code` | Imports dentro de regiones, elevados en emit |
+| 33.c | `@code` | Imports dentro de regiones, elevados en emit. *(Precisión SDD-38: inscribirse en el registro raíz no es un side effect de los que prohíbe; un módulo de servicio es legal en zona neutra)* |
 | 33.d | `@code` | Cero o un `@code` por componente |
 | 34 | `@code` | Orden libre entre regiones |
 | 63 | `@code` | ~~Estrategia de hidratación en `@client`~~ — **retirada de v1** (SDD-17) |
@@ -1276,3 +1336,10 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 114 | Interpolación | `control` dentro de un bucle → error (`FUD0594`), hermana de la 31 |
 | 115 | Interpolación | Un `control` necesita un `<form control>` por encima (`FUD0595`); exento el control-componente, cuyo nodo se comprueba en el fichero del padre (BUG-25) |
 | 116 | Control flujo | `@{ ... }` corre **en su sitio**, en las dos ramas y en las tres pasadas del cliente; y un nombre que el cuerpo de un bloque **asigna** va por closure, no por parámetro. Es lo que hace escribible el `@while` de la 91 (BUG-28) |
+| 122 | `@code` | `inject` y `provide` son legales en las **tres zonas**; la zona decide dónde corre la línea (neutra en los dos lados, `@server` solo servidor, `@client` solo navegador) |
+| 123 | `@code` | **Escribir un provider no cambia el nivel.** Solo `inject`, y solo en zona neutra o `@client`, promueve a N3; las reglas de hidratación no se tocan |
+| 124 | `@code` | La jerarquía de contenedores es **código emitido** y un mapa publicado (`fud-ioc`), nunca derivada del DOM: el ancestro dueño puede ser N1 y la cascada sube por tag |
+| 125 | `@code` | El dueño es el **primer contenedor de la cadena con registro** y la raíz el último eslabón; la factoría corre en el dueño, y vive en el módulo IoC de la ruta, no en su chunk |
+| 126 | `@code` | **El contenedor raíz es la ruta** —una petición, una página— y muere con ella. No hay nivel «aplicación» |
+| 127 | `@code` | Lo que cruza el cable son **valores publicados** bajo `token()` (`fud-di`), nunca instancias. Es la 84 aplicada al contenedor |
+| 128 | `@code` | `load(ctx)` resuelve por `ctx.inject(…)` (`FUD0683`); el contenedor ambiente vive solo dentro de una factoría, y el `@code` de un componente lo reescribe el compilador |
