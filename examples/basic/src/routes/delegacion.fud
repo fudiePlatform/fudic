@@ -1,0 +1,154 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/app-calendar.fud">
+<link rel="component" href="../components/app-calendar-plain.fud">
+<link rel="component" href="../components/app-wide-form.fud">
+
+<head>
+  <title>La delegación, medida — fudic</title>
+  <style>
+    .probe {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      display: flex;
+      gap: 1rem;
+      align-items: baseline;
+      flex-wrap: wrap;
+      background: #202124;
+      color: #e8eaed;
+      border-radius: 10px;
+      padding: 0.7rem 1rem;
+      margin: 1rem 0 1.5rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .probe b {
+      font-size: 1.4rem;
+    }
+    .probe button {
+      font: inherit;
+      margin-left: auto;
+      padding: 0.3rem 0.8rem;
+      border: 1px solid #5f6368;
+      border-radius: 6px;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+    }
+    .paso {
+      border-left: 3px solid #1a73e8;
+      padding-left: 0.9rem;
+      margin: 1rem 0;
+    }
+    .paso.plain {
+      border-left-color: #e8710a;
+    }
+  </style>
+</head>
+
+@section nav {
+  <site-nav .current="delegacion"></site-nav>
+}
+
+<h1>6 · La delegación, medida</h1>
+<p class="lede">
+  Esta página cuenta, en vivo, cada <code>addEventListener</code> y cada
+  <code>removeEventListener</code> que ocurre en ella. Abajo hay dos calendarios idénticos
+  con los mismos botones: uno <strong>delegado</strong> con <code>delegate:day</code> y otro
+  escrito como se escribe hoy, con un <code>@@click</code> por celda. Pulsa los mismos botones
+  en los dos y mira el contador.
+</p>
+
+@* La sonda: parchea `EventTarget` ANTES de que se cargue nada. Es un script clásico y en
+   línea, así que corre en el momento de parsearlo — antes que el módulo del layout, que
+   está diferido. No es parte del framework: es el instrumento con el que se le mide. *@
+<script>
+  (function () {
+    var add = EventTarget.prototype.addEventListener;
+    var remove = EventTarget.prototype.removeEventListener;
+    var n = { add: 0, remove: 0 };
+    var slots = null;
+
+    function paint() {
+      if (slots === null) {
+        slots = {
+          add: document.getElementById("probe-add"),
+          remove: document.getElementById("probe-remove"),
+        };
+      }
+      if (slots.add) slots.add.textContent = String(n.add);
+      if (slots.remove) slots.remove.textContent = String(n.remove);
+    }
+
+    EventTarget.prototype.addEventListener = function () {
+      n.add += 1;
+      paint();
+      return add.apply(this, arguments);
+    };
+    EventTarget.prototype.removeEventListener = function () {
+      n.remove += 1;
+      paint();
+      return remove.apply(this, arguments);
+    };
+
+    // Con el original, para que el instrumento no se cuente a sí mismo.
+    add.call(document, "DOMContentLoaded", function () {
+      paint();
+      var reset = document.getElementById("probe-reset");
+      if (reset) {
+        add.call(reset, "click", function () {
+          n.add = 0;
+          n.remove = 0;
+          paint();
+        });
+      }
+    });
+  })();
+</script>
+
+<div class="probe">
+  <span>addEventListener: <b id="probe-add">0</b></span>
+  <span>removeEventListener: <b id="probe-remove">0</b></span>
+  <button id="probe-reset" type="button">Poner a cero</button>
+</div>
+
+<h2>Cómo medir</h2>
+<ol>
+  <li>Pulsa una celda del calendario <strong>azul</strong>. Ese primer clic descarga su chunk
+    e hidrata: el contador sube una vez y se queda quieto.</li>
+  <li>Pulsa <em>Poner a cero</em>.</li>
+  <li>Pulsa <strong>+7 filas</strong> tres veces y luego <strong>−7 filas</strong> tres veces:
+    veintiuna filas montadas y retiradas. El contador <strong>no se mueve</strong>.</li>
+  <li>Repite lo mismo en el calendario <strong>naranja</strong>. Cada fila que entra pide dos
+    listeners y cada fila que sale devuelve dos.</li>
+</ol>
+
+<h2 class="paso">Delegado — <code>delegate:day</code></h2>
+<p>
+  Un <code>@@click</code> en la rejilla y un marcador por celda. La celda no entrega un índice
+  ni un <code>data-*</code>: entrega <strong>su objeto</strong>. Se ve en el contador de
+  pulsaciones —está guardado dentro del propio objeto de la fila, así que si sube es que
+  llegó el mismo y no una copia—, y sigue siendo el correcto después de
+  <strong>Invertir</strong>, que es lo que separa un <em>getter</em> de un valor congelado.
+</p>
+
+<app-calendar></app-calendar>
+
+<h2 class="paso plain">Sin delegar — un <code>@@click</code> por celda</h2>
+<p>
+  El mismo calendario y el mismo comportamiento, escrito de la otra manera. Funciona igual de
+  bien; lo que cambia es lo que cuesta, y el contador de arriba es quien lo dice.
+</p>
+
+<app-calendar-plain></app-calendar-plain>
+
+<h2>Y lo mismo en un formulario</h2>
+<p>
+  Doce campos. Cada uno necesita <code>input</code>, <code>change</code> y el momento en que
+  pierde el foco, que antes eran tres listeners <strong>por campo</strong>: treinta y seis.
+  Ahora la raíz tiene uno por tipo —el de <code>blur</code> es un <code>focusout</code>,
+  porque <code>blur</code> no burbujea— y el campo tiene una fila en una tabla. Pon a cero,
+  escribe en el primer campo para que el formulario hidrate, y cuenta.
+</p>
+
+<app-wide-form></app-wide-form>

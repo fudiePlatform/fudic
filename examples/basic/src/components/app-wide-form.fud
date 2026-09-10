@@ -1,0 +1,86 @@
+@code {
+  // Doce campos enlazados, y nada más. Lo que se mide aquí no es el formulario: es cuántos
+  // listeners pide al hidratar. Con la delegación de SDD-37 son tres —uno por tipo de
+  // evento en la raíz— y no treinta y seis.
+  import { wideForm } from "../forms/wide.form.js";
+
+  @client {
+    function stop(e: Event) {
+      e.preventDefault();
+    }
+  }
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    form {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.6rem;
+      border: 1px solid #dcdcdc;
+      border-radius: 10px;
+      padding: 1.1rem;
+      background: white;
+    }
+    label {
+      display: grid;
+      gap: 0.2rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    input {
+      font: inherit;
+      padding: 0.35rem 0.5rem;
+      border: 1px solid #dcdcdc;
+      border-radius: 6px;
+      min-width: 0;
+    }
+    [data-fud-err],
+    [data-fud-sum] {
+      color: #b3261e;
+      font-size: 0.8rem;
+      font-weight: 400;
+    }
+    [data-fud-err]:empty,
+    [data-fud-sum]:empty {
+      display: none;
+    }
+    [aria-invalid="true"] {
+      border-color: #b3261e;
+    }
+    button {
+      font: inherit;
+      grid-column: 1 / -1;
+      justify-self: start;
+      padding: 0.4rem 0.9rem;
+      border: 1px solid #1a73e8;
+      border-radius: 6px;
+      background: #1a73e8;
+      color: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<app-wide-form>
+  <template shadowrootmode="open">
+    <form control=@wideForm class="fudic" @submit=@stop>
+      <label>1 (obligatorio) <input control=@wideForm.a1 type="text"></label>
+      <label>2 (mín. 2) <input control=@wideForm.a2 type="text"></label>
+      <label>3 <input control=@wideForm.a3 type="text"></label>
+      <label>4 <input control=@wideForm.a4 type="text"></label>
+      <label>5 <input control=@wideForm.a5 type="text"></label>
+      <label>6 <input control=@wideForm.a6 type="text"></label>
+      <label>7 <input control=@wideForm.a7 type="text"></label>
+      <label>8 <input control=@wideForm.a8 type="text"></label>
+      <label>9 <input control=@wideForm.a9 type="text"></label>
+      <label>10 <input control=@wideForm.a10 type="text"></label>
+      <label>11 <input control=@wideForm.a11 type="text"></label>
+      <label>12 <input control=@wideForm.a12 type="text"></label>
+      <button type="submit">Validar</button>
+    </form>
+  </template>
+</app-wide-form>
