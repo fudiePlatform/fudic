@@ -38,7 +38,7 @@ interface Run {
  * one does through `$s()`. That listener is the only thing that can prove the replay: the
  * runtime cancelled the original gesture, so a handler that runs at all runs on the replay.
  */
-function run(): Run {
+function run(gate?: PromiseLike<unknown>): Run {
   const trace: string[] = [];
   const hydrated: HydratedDetail[] = [];
   let ready = 0;
@@ -54,6 +54,7 @@ function run(): Run {
     root: app,
     document,
     registry,
+    ...(gate === undefined ? {} : { ready: gate }),
     resolveChunk: (tag) => tag,
     importModule: async (tag) => {
       trace.push(`define:${tag}`);
@@ -239,5 +240,40 @@ describe('the runtime installed', () => {
     await settle();
 
     expect(seen.at(-1)).toEqual({ id: 0, tag: 'ins-default', ms: '0.0', from: 'shared-chunk' });
+  });
+
+  /**
+   * SDD-38 §4.2 — what a page has to have in place before the first chunk runs.
+   *
+   * The container tree is one round trip away, and in dev that round trip is a compile. The
+   * temptation is to await it in front of `installHydration`; the cost of doing that is that
+   * the capturer is not listening yet, and a click in the meantime is not deferred — it is
+   * gone, with the page painted and looking alive. So the runtime goes up first and the wait
+   * moves inside path 2, where it belongs.
+   */
+  it('is listening before `ready` settles, and raises nothing until it does', async () => {
+    publish({ state: [[0, 1], ['G']] });
+    app = document.createElement('div');
+    document.body.appendChild(app);
+    const el = host('ins-gated', 0, app);
+    const button = document.createElement('button');
+    el.shadowRoot!.appendChild(button);
+
+    let open!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      open = resolve;
+    });
+    const r = run(gate);
+
+    // Announced and listening with the gate still shut: no chunk has been asked for.
+    expect(r.ready).toBe(1);
+    click(button);
+    await settle();
+    expect(r.trace).toEqual([]);
+
+    // And the gesture was not lost while it waited — it is replayed, once, like any other.
+    open();
+    await settle();
+    expect(r.trace).toEqual(['define:ins-gated', 'h:ins-gated#0:["G"]', 'handler:ins-gated#0']);
   });
 });

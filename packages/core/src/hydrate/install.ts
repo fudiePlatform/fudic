@@ -78,6 +78,17 @@ export interface HydrationOptions {
   readonly importModule?: ImportModule;
   /** The custom-element registry. Injected for the same reason (§4.4). */
   readonly registry?: ElementRegistry;
+  /**
+   * Whatever has to be in place before the FIRST chunk is raised (SDD-38 §4.2).
+   *
+   * Today that is the container tree: a chunk that injects resolves against it, so it must
+   * not be raised while the tree is still one round trip away. It is awaited inside path 2
+   * and not before installing, and that difference is the whole reason the option exists —
+   * installing late means the capturer is not there yet, and a click during that window is
+   * not deferred, it is LOST. The capturer goes up first; the gesture waits with everything
+   * else.
+   */
+  readonly ready?: PromiseLike<unknown>;
 }
 
 /**
@@ -128,9 +139,12 @@ export function installHydration(options: HydrationOptions): Hydration {
     report,
   });
 
+  const ready = options.ready ?? Promise.resolve();
+
   /** Path 2, in the one order §4.4 fixes. */
   const raise = async (host: Element, id: number, replay: () => void): Promise<void> => {
     const tag = host.localName;
+    await ready; // 2b — what the page must have in place before any chunk runs
     await preHydrateBus(tag); // 3 — the receivers, before anything internal
     await cascade.prepareTag(tag); // 4 — the subtree of every instance, post-order
     const elapsed = stopwatch();

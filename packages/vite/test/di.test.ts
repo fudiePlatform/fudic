@@ -124,9 +124,15 @@ describe('the main bootstrap', () => {
     expect(code).toContain(`document.getElementById('fud-di')`);
     // One module per OWNING tag, by URL: the same arithmetic a hydration chunk uses.
     expect(code).toContain(`resolveChunk(tag + '.ioc')`);
-    // Awaited before the runtime installs, so no chunk resolves against a tree that is not
-    // there yet.
-    expect(code.indexOf('await Promise.all')).toBeLessThan(code.indexOf('installHydration({'));
+    // STARTED before the runtime installs and handed to it as `ready`, not awaited in front
+    // of it. The capturer has to be listening from the first millisecond — a click before it
+    // is installed is lost, not deferred — and path 2 is where the tree is waited for, which
+    // is the last moment at which a chunk could resolve against one that is not built.
+    expect(code.indexOf('const $ioc = (async () => {')).toBeLessThan(
+      code.indexOf('installHydration({'),
+    );
+    expect(code).toContain('ready: $ioc');
+    expect(code).not.toMatch(/^await /mu);
   });
 
   it('does not so much as name the injector when the app has no DI', () => {

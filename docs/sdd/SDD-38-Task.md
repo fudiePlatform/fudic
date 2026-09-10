@@ -5,7 +5,7 @@
 > **Toca además:** `@fudic/compiler`, `@fudic/ssr`, `@fudic/vite`
 > **Rama:** `sdd-38-inyeccion-de-dependencias`
 > **Rango:** `FUD0680`–`FUD0699` · **Decisiones:** 120–126
-> **Progreso:** 17 / 19
+> **Progreso:** 18 / 19
 
 Da a fudic el inyector que [`docs/di/index.html`](../di/index.html) prototipó, y lo cablea en los
 dos extremos. Las fases 1–3 son un paquete nuevo, sin DOM y sin dependencias, que se puede llevar
@@ -177,7 +177,7 @@ usuario, `multi:`, `useValue`, el reemplazo en tests y `fudic g service`.
       dentro del `@server` de una **ruta**, donde va `ctx.inject(…)` (§6.24); y dos `provide` del
       mismo token en un `@code` (§6.25). Los cinco con span exacto, y el emit **no se detiene** por
       ninguno: el módulo se escribe degradado (§6.26).
-- [ ] **18. La página que lo demuestra.**
+- [x] **18. La página que lo demuestra.**
       En `examples/`: un ancestro **N1** que declara `provide(Cart)`, un descendiente N3 que lo
       inyecta y un `@Service Logger` global. El SSR pinta con la instancia del ancestro, el cliente
       hidrata y recibe **la misma**, reconstruida desde la semilla, y el `Logger` es único en la
