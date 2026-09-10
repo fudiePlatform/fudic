@@ -28,6 +28,7 @@ import type {
 } from '@volar/language-service';
 import {
   CLASS_PREFIX,
+  DELEGATE_PREFIX,
   CONTROL_NAME,
   CONTROL_PROP,
   regionAt,
@@ -55,6 +56,7 @@ import {
   attributeValueBindingAt,
   brokenValueContextAt,
   classContextAt,
+  delegateContextAt,
   classValueContextAt,
   controlNameAt,
   controlValueAt,
@@ -82,6 +84,7 @@ import {
 import { typeScriptService } from './ts-service.js';
 import { interpolates, scopeNames, templateScope } from './template-scope.js';
 import { styleClassNames } from './classes.js';
+import { delegateNames } from './delegate.js';
 import { sectionCompletions } from './sections.js';
 import { scopeAt, snippetsAt } from './snippets.js';
 import {
@@ -274,6 +277,7 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
                     native.name,
                   ),
                   ...classBindingItems(cached, document, native.name),
+                  ...delegateBindingItems(cached, document, native.name, offset),
                 ];
                 return items.length === 0 ? undefined : list(items);
               }
@@ -682,6 +686,25 @@ function completions(
     if (items.length > 0) return list(items);
   }
 
+  // Exact for the same reason `class:` is: after that colon a word is the name of a loop
+  // binding and can be nothing else. What it offers is the header of the loop the attribute
+  // sits in — which is what turns `FUD0662` from an error into a typo that never happened.
+  //
+  // No `=@` and no second list, unlike `class:red`: a marker takes no value (decision 117),
+  // so the name is the whole of what the author has left to write.
+  const delegate = delegateContextAt(cached.source, offset, region);
+  if (delegate !== undefined) {
+    const items = delegateNames(cached, offset).map(
+      (name): CompletionItem => ({
+        label: name,
+        kind: CompletionItemKind.Variable,
+        detail: 'binding of the loop',
+        textEdit: { range: rangeOf(document, delegate.span), newText: name },
+      }),
+    );
+    if (items.length > 0) return list(items);
+  }
+
   // Inside the value of a plain `class`: the same names, at the other place the grammar spells a
   // class. Exact like the two above — inside those quotes a word is a class name and can be
   // nothing else — and with their same condition: a file with no `<style>` has nothing to say,
@@ -1046,6 +1069,34 @@ function classBindingItems(
     labelDetails: { description: 'fudic' },
     textEdit: { range, newText: `${CLASS_PREFIX}${name}=@` },
     command: { title: 'Suggest', command: 'editor.action.triggerSuggest' },
+  }));
+}
+
+/**
+ * The markers offerable at a gap: one per binding of the loops around it (SDD-37 §6.19).
+ *
+ * The twin of `classBindingItems`, one step earlier than the completion after the colon — and
+ * with two differences that are both decision 117 read out loud. No `=@`: a marker takes no
+ * value, so what is inserted is the whole attribute. And no second list to ask for, because
+ * there is nothing left to write.
+ *
+ * Empty outside every loop, which is the same silence the classes keep in a file with no
+ * `<style>`: an offer that cannot be right is worse than none.
+ */
+function delegateBindingItems(
+  cached: CachedDocument,
+  document: TextDocument,
+  gap: PartialName,
+  offset: number,
+): readonly CompletionItem[] {
+  const range = rangeOf(document, gap.span);
+  return delegateNames(cached, offset).map((name) => ({
+    label: `${DELEGATE_PREFIX}${name}`,
+    kind: CompletionItemKind.Variable,
+    detail: 'binding of the loop',
+    sortText: `0_${name}`,
+    labelDetails: { description: 'fudic' },
+    textEdit: { range, newText: `${DELEGATE_PREFIX}${name}` },
   }));
 }
 

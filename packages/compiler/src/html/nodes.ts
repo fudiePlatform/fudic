@@ -211,3 +211,51 @@ export const VOID_ELEMENTS: ReadonlySet<string> = new Set([
  * its Razor (SDD-09), so a `<style>` carries a `StyleNode` child instead.
  */
 export const RAW_ELEMENTS: ReadonlySet<string> = new Set(['script', 'style']);
+
+/**
+ * The `type` values that make a `<script>` a block of DATA rather than a block of code
+ * (decision 129).
+ *
+ * The distinction the rule turns on. fudic does not support inline script — a `<script>` with
+ * executable contents is `FUD0161` — but these two are not script: the browser never runs
+ * them, it READS them, and neither has a `src` form that means the same thing.
+ *
+ *  - `application/ld+json` — structured data. It is how a page explains itself to a search
+ *    engine and to a conversational AI, and that is not an extra: it is the reason the page
+ *    is found at all. A `.json` served apart and pointed at with a `<link>` is not the same
+ *    document to a crawler.
+ *  - `importmap` — the module resolution of the page itself, which by specification must be
+ *    inline and must come before the first module. There is no version of it that lives in
+ *    another file.
+ *
+ * A CLOSED list and no heuristic, the same shape as the at-rule whitelist of decision 42.b:
+ * a new data type is a line here, not a guess about what looks harmless. Matched
+ * case-insensitively and trimmed, because a MIME type is not case-sensitive.
+ */
+export const DATA_SCRIPT_TYPES: ReadonlySet<string> = new Set([
+  'application/ld+json',
+  'importmap',
+]);
+
+/**
+ * The `type` of a `<script>` when it makes it a data block, or `undefined` for every other
+ * element — a `<script>` of code, a `<script>` with no `type`, and anything that is not a
+ * `<script>` at all.
+ *
+ * An interpolated `type` answers `undefined`: `type="@(t)"` is a value nothing knows until it
+ * runs, and a rule that cannot read it has nothing to say. It stays code, and so a body under
+ * it is still `FUD0161`.
+ */
+export function dataScriptType(el: ElementNode): string | undefined {
+  if (el.name.toLowerCase() !== 'script') return undefined;
+  for (const attr of el.attributes) {
+    // An attribute name is a `RazorExpression` for the `bus:(expr)` form (decision 28.b), and
+    // a name that is not written down is not the literal `type` this reads.
+    if (typeof attr.name !== 'string' || attr.name.toLowerCase() !== 'type') continue;
+    const only = attr.value.length === 1 ? attr.value[0] : undefined;
+    if (only?.type !== 'attribute-text') return undefined;
+    const type = only.value.trim().toLowerCase();
+    return DATA_SCRIPT_TYPES.has(type) ? type : undefined;
+  }
+  return undefined;
+}

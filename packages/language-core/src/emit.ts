@@ -145,6 +145,18 @@ function ownBatch(source: string, doc: StructuredDocument): EmitJs {
         fragments.set(spanKey(expr.expr), batch.add('expression', expr.expr));
       }
     },
+    // The header of a `@foreach`/`@for` — the fourth question the projection cannot answer
+    // without an AST: what a loop DECLARES, which is what a `delegate:` may name (SDD-37).
+    // A degraded header (`FUD0070`) has an empty span and would make the batch unparseable.
+    control(node) {
+      if (node.type !== 'foreach' && node.type !== 'for') return;
+      const header = node.header.inner;
+      if (header.end <= header.start) return;
+      fragments.set(
+        spanKey(header),
+        batch.add(node.type === 'foreach' ? 'for-of-header' : 'for-header', header),
+      );
+    },
   });
 
   const result = batch.parse().value;

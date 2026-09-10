@@ -137,7 +137,14 @@ describe('effective level — intrinsic', () => {
     const graph = resolveComponents(join(fixturesDir, 'home.fud'), fixtureIo);
     expect(isIntrinsicallyHydratable(graph.components.get('app-badge')!)).toBe(false);
     expect(isIntrinsicallyHydratable(graph.components.get('app-list')!)).toBe(false);
-    expect([...hydratableTags(graph)].sort()).toEqual(['app-actions', 'app-button', 'app-card']);
+    // `app-calendar` hydrates for the same reason `app-actions` does: it has a listener, and a
+    // delegated one is still a listener — one for the whole loop instead of one per row.
+    expect([...hydratableTags(graph)].sort()).toEqual([
+      'app-actions',
+      'app-button',
+      'app-calendar',
+      'app-card',
+    ]);
   });
 });
 

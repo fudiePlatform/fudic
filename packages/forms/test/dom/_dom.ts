@@ -31,6 +31,20 @@ export function fire(el: EventTarget, type: string): void {
 }
 
 /**
+ * Losing the focus, as the PLATFORM spells it: a `blur` that does not bubble, and the
+ * `focusout` that does.
+ *
+ * Both, because both are what a browser fires, and the pair is what the delegation of SDD-37
+ * rests on: a listener above the field can only ever see the second one. Firing a made-up
+ * bubbling `blur` — which is what these tests used to do — measured a wiring instead of a
+ * behaviour, and would go on passing over an implementation no browser could run.
+ */
+export function blur(el: EventTarget): void {
+  el.dispatchEvent(new Event('blur', { bubbles: false }));
+  el.dispatchEvent(new Event('focusout', { bubbles: true }));
+}
+
+/**
  * Count the writes to a property of ONE element, without changing what it does.
  *
  * It is how "does not move the cursor" is measured: assigning `value` on a focused input moves

@@ -1,0 +1,38 @@
+@code {
+  type Day = { id: string; n: number };
+
+  const { days = [] } = props<{ days?: Day[] }>();
+
+  @client {
+    import { emit } from '@fudic/dom';
+
+    // One handler for every row of the month, and the row hands over its OWN object: no
+    // `data-*`, no `closest()`, no `Number(...)` to put the type back together (SDD-37 §1).
+    function pick(ev, day) {
+      ev.preventDefault();
+      emit('picked', day.id);
+    }
+  }
+}
+
+<head>
+  <style>
+    :host { display: block; }
+    .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+    .cell { padding: 0.25rem; text-align: center; }
+    .cell button { font: inherit; cursor: pointer; }
+  </style>
+</head>
+
+<app-calendar>
+  <template shadowrootmode="open">
+    <div class="grid" @click=@pick($event, $day)>
+      @foreach (const day of days) key (day.id) {
+        <div class="cell" delegate:day>
+          <span>@day.n</span>
+          <button delegate:day>e</button>
+        </div>
+      }
+    </div>
+  </template>
+</app-calendar>

@@ -11,6 +11,7 @@ import type { Analyzer, SemanticInput, SemanticModel } from './model.js';
 import { duplicateAttributes } from './analyzers/duplicate-attributes.js';
 import { reservedAttributes } from './analyzers/reserved-attributes.js';
 import { refInLoop } from './analyzers/ref-in-loop.js';
+import { delegation } from './analyzers/delegation.js';
 import { controlInLoop } from './analyzers/control-in-loop.js';
 import { controlElement } from './analyzers/control-element.js';
 import { controlUniqueness } from './analyzers/control-uniqueness.js';
@@ -25,12 +26,14 @@ import { eventHandlerShape } from './analyzers/event-handler-shape.js';
 import { layoutLoad } from './analyzers/layout-load.js';
 import { componentProps } from './analyzers/component-props.js';
 import { slotName } from './analyzers/slot-name.js';
+import { scriptBody } from './analyzers/script-body.js';
 
 /** The ordered list of analyzers (§4). One rule per unit. */
 export const ANALYZERS: readonly Analyzer[] = [
   duplicateAttributes,
   reservedAttributes,
   refInLoop,
+  delegation,
   controlInLoop,
   controlElement,
   controlUniqueness,
@@ -45,6 +48,7 @@ export const ANALYZERS: readonly Analyzer[] = [
   layoutLoad,
   componentProps,
   slotName,
+  scriptBody,
 ];
 
 /** The empty semantic model of v1 (§3): no facts are produced yet. */

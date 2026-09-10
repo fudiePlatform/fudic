@@ -159,6 +159,29 @@ export function classContextAt(
 }
 
 /**
+ * A binding name being typed after `delegate:` — the same shape as `class:`, and the same
+ * three guards for the same reasons (SDD-37 §6.19).
+ *
+ * What it is NOT is the other half of the parallel: the answer does not come from the
+ * `<style>` but from the header of the loop this attribute is written in, so the context has
+ * to be resolved before the names can be looked up at all — which is why the offset travels
+ * with it and a `class:` needs no such thing.
+ */
+export function delegateContextAt(
+  source: string,
+  offset: number,
+  region: Region,
+): PartialName | undefined {
+  if (region.kind !== 'tag') return undefined;
+
+  const match = /(?:^|[^-\w])delegate:([-\w]*)$/.exec(source.slice(0, offset));
+  if (match === null) return undefined;
+
+  const text = match[1] as string;
+  return { span: span(offset - text.length, offset), text };
+}
+
+/**
  * An EMPTY position inside a start tag, where another attribute could be typed:
  * `<app-badge |>`, `<app-badge | tone="x">`, `<app-badge na|>`.
  *

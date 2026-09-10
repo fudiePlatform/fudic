@@ -5,3 +5,5 @@
 
 export type { JsFragmentKind, FragmentId, OxcNode, JsBatchResult } from './batch.js';
 export { JsBatch } from './batch.js';
+export type { PatternVisitor } from './pattern.js';
+export { walkPattern, patternNames, loopHeaderNames } from './pattern.js';

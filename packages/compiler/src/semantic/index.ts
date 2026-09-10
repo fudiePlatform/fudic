@@ -14,3 +14,10 @@ export type {
 } from './model.js';
 export { ANALYZERS, analyze } from './analyze.js';
 export { walk, documentRoots, documentCode, type TreeVisitor } from './walk.js';
+export {
+  planDelegation,
+  type DelegationJs,
+  type DelegationMark,
+  type DelegationPlan,
+  type DelegationRead,
+} from './delegation.js';
