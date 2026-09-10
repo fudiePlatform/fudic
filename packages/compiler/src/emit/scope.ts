@@ -387,6 +387,25 @@ export function changeableBindings(statements: readonly OxcNode[]): ReadonlySet<
   return out;
 }
 
+/**
+ * The names a set of template fragments ASSIGNS — what a `@{ … }` inside a block writes.
+ *
+ * A block takes by parameter what an update can bring it again (§3.3), and a name the body
+ * WRITES is the opposite of that: it is state the block shares with the scope around it, and
+ * as a parameter the author's write would land on the parameter and be lost at the end of
+ * the call. Decision 17 says a `@{ … }` sees the lexical scope of the block that contains
+ * it; a name it assigns has to reach that scope, so it is read and written through the
+ * closure rather than handed over.
+ *
+ * It is what makes the canonical `@while` of decision 91 terminate: `@{ cur = cur.next; }`
+ * has to move the `cur` the HEADER reads, and a parameter is a different variable.
+ */
+export function assignedNames(fragments: readonly FragmentAst[]): ReadonlySet<string> {
+  const out = new Set<string>();
+  for (const fragment of fragments) collectAssigned(fragment, out);
+  return out;
+}
+
 /** Every name that is the target of an assignment or of `++`/`--`, however deep. */
 function collectAssigned(node: unknown, out: Set<string>): void {
   if (Array.isArray(node)) {

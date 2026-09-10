@@ -280,7 +280,7 @@ function classifyStyle(attr: Attribute, property: string): ParseResult<Binding> 
 }
 
 /**
- * `delegate:day` (decision 116). Two structural rules, and both are about what the marker is
+ * `delegate:day` (decision 117). Two structural rules, and both are about what the marker is
  * NOT: it names something — `delegate:` alone falls into the `FUD0099` every prefix shares —
  * and it carries nothing, because the element is not being given a value, it is handing its
  * row identity to an ancestor (§3.1).

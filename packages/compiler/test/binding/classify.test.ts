@@ -399,7 +399,7 @@ describe('classifyAttribute — control (SDD-34 §6.1, decision 108)', () => {
   });
 });
 
-describe('classifyAttribute — delegate: (SDD-37 §6.1, §6.4; decision 116)', () => {
+describe('classifyAttribute — delegate: (SDD-37 §6.1, §6.4; decision 117)', () => {
   it('classifies the marker and keeps the name span apart from the attribute span', () => {
     const { binding, diagnostics, source } = classifyOne('<div delegate:day class="cell"></div>');
     expect(diagnostics).toEqual([]);

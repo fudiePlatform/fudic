@@ -47,7 +47,7 @@ export interface FudicToken {
   readonly type: FudicTokenType;
 }
 
-/** Attribute name prefixes that make an attribute a binding (decisions 22–30, 116). */
+/** Attribute name prefixes that make an attribute a binding (decisions 22–30, 117). */
 const BINDING_PREFIXES = [
   CLASS_PREFIX,
   STYLE_PREFIX,

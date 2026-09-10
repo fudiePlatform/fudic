@@ -31,7 +31,7 @@ import {
   type Branch,
   type LoopNode,
 } from './constructs.js';
-import { freeReferences, type FragmentAst } from './scope.js';
+import { assignedNames, freeReferences, type FragmentAst } from './scope.js';
 import type { HookupContext } from './events.js';
 import {
   ClientMarkupEmitter,
@@ -189,7 +189,13 @@ export class BlockEmitter implements BlockSink {
 
     const asts: FragmentAst[] = spans.map((span) => this.#ctx.hookup.template.ast(span));
     const owned = new Set(own);
-    return freeReferences(asts).filter((name) => !owned.has(name) && this.#changeable.has(name));
+    // A name the body WRITES is not a dependency: it is shared state, and a parameter would
+    // swallow the write. See `assignedNames` — it is what lets a `@{ … }` in the body of a
+    // `@while` advance the cursor its own header reads.
+    const written = assignedNames(asts);
+    return freeReferences(asts).filter(
+      (name) => !owned.has(name) && !written.has(name) && this.#changeable.has(name),
+    );
   }
 
   // ------------------------------------------------------------------

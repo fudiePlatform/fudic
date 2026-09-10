@@ -94,7 +94,7 @@ export function patternNames(pattern: unknown): readonly string[] {
 
 /**
  * The names the header of a `@foreach`/`@for` declares — the whole of what a `delegate:` may
- * name (decision 116) and the parameter order of the loop's block (SDD-30 §3.3).
+ * name (decision 117) and the parameter order of the loop's block (SDD-30 §3.3).
  *
  * `const x of xs` vs `x of xs`: only the first DECLARES. The second assigns to a binding that
  * already exists somewhere else, so the loop names nothing of its own — and a loop that names

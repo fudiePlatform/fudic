@@ -18,7 +18,7 @@ import { loopBindingNames } from './template-scope.js';
  * The bindings of every loop whose body contains `offset`, innermost last.
  *
  * Every enclosing loop and not only the innermost, because a marker may name any of them
- * (decision 118): `<b delegate:row delegate:tag>` inside two `@foreach` is one element handing
+ * (decision 119): `<b delegate:row delegate:tag>` inside two `@foreach` is one element handing
  * over two identities. Source order puts the outer names first, which is the order they are
  * declared in.
  *

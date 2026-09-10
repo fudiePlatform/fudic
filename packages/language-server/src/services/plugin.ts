@@ -690,7 +690,7 @@ function completions(
   // binding and can be nothing else. What it offers is the header of the loop the attribute
   // sits in — which is what turns `FUD0662` from an error into a typo that never happened.
   //
-  // No `=@` and no second list, unlike `class:red`: a marker takes no value (decision 116),
+  // No `=@` and no second list, unlike `class:red`: a marker takes no value (decision 117),
   // so the name is the whole of what the author has left to write.
   const delegate = delegateContextAt(cached.source, offset, region);
   if (delegate !== undefined) {
@@ -1076,7 +1076,7 @@ function classBindingItems(
  * The markers offerable at a gap: one per binding of the loops around it (SDD-37 §6.19).
  *
  * The twin of `classBindingItems`, one step earlier than the completion after the colon — and
- * with two differences that are both decision 116 read out loud. No `=@`: a marker takes no
+ * with two differences that are both decision 117 read out loud. No `=@`: a marker takes no
  * value, so what is inserted is the whole attribute. And no second list to ask for, because
  * there is nothing left to write.
  *

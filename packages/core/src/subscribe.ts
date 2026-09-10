@@ -18,7 +18,7 @@
 
 import type { Readable } from './computed.js';
 import { effect } from './effect.js';
-import { leafOf, untrack } from './tracking.js';
+import { isSource, leafOf, untrack } from './tracking.js';
 
 export function subscribe<T>(source: Readable<T>, fn: (v: T) => void): () => void {
   const leaf = leafOf(source);
@@ -40,4 +40,25 @@ export function subscribe<T>(source: Readable<T>, fn: (v: T) => void): () => voi
       fn(value);
     });
   });
+}
+
+/** One disposer for every name that turned out not to be reactive. */
+const NOTHING = (): void => {};
+
+/**
+ * `subscribe`, for a name the compiler could not prove is reactive — an IMPORT.
+ *
+ * A component that declares `const count = signal(0)` is read by the emit, and `$sub` is
+ * written for it. A component that writes `import { count } from './store.js'` gives the
+ * emit a name and nothing else: the module is another file, the emit is per file, and
+ * whether `count` is a signal, a derived value or a plain helper is not knowable there.
+ *
+ * So the decision moves to RUN time, where the value itself is in hand. It cannot be
+ * `subscribe` with a guard at the call site: `subscribe` on a non-source falls into its
+ * effect branch and CALLS what it is given, so a helper would be run instead of a signal
+ * watched. The test has to come first, and it is a brand rather than a shape check —
+ * `typeof x === 'function'` is true of every helper in the file.
+ */
+export function subscribeIf(source: unknown, fn: (v: unknown) => void): () => void {
+  return isSource(source) ? subscribe(source as Readable<unknown>, fn) : NOTHING;
 }

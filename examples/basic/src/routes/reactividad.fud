@@ -1,0 +1,94 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/signal-control.fud">
+<link rel="component" href="../components/signal-store.fud">
+<link rel="component" href="../components/signal-while.fud">
+<link rel="component" href="../components/signal-code.fud">
+
+<head>
+  <title>Reactividad del control de flujo — fudic</title>
+</head>
+
+@section nav {
+  <site-nav .current="reactividad"></site-nav>
+}
+
+<h1>¿Son reactivos los constructos de control?</h1>
+<p class="lede">
+  Una signal que cambia, y los cinco constructos leyéndola en su <strong>cabecera</strong>.
+  No por prop: la cabecera. Cuatro paneles, cada uno con lo que tiene que pasar escrito al
+  lado, para poder mirarlos en vez de razonarlos.
+</p>
+
+<h2>1 · Los cuatro de un mismo contador</h2>
+<p>
+  Un solo <code>count = signal(1)</code> mueve un <code>@@if</code>, un
+  <code>@@switch</code>, un <code>@@foreach</code> y un <code>@@for</code>. Ninguno recibe
+  nada por prop; los cuatro llaman a <code>count()</code> en su cabecera.
+</p>
+
+<signal-control></signal-control>
+
+<p>
+  <strong>Qué comprobar.</strong> Pulsa <code>+1</code>: el número sube, el
+  <code>@@if</code> pasa a «Hay más de uno», el <code>@@switch</code> a «muchos», y las dos
+  listas ganan una fila cada una. Baja a <code>0</code>: las listas se vacían y el
+  <code>@@switch</code> dice «cero». Y vuelve a subir — <strong>ese es el paso que
+  importa</strong>: una lista que se quedó sin filas es el caso que distingue
+  «reconcilia» de «reconcilió una vez».
+</p>
+
+<h2>2 · Una signal que vive en un módulo</h2>
+<p>
+  Aquí la signal no se declara en el componente: se importa de
+  <code>src/store/contador.ts</code>, que es el patrón de «store» de cualquier framework de
+  señales. Hay <strong>dos</strong> instancias del mismo componente en la página, y las dos
+  leen la misma celda.
+</p>
+
+<signal-store></signal-store>
+<signal-store></signal-store>
+
+<p>
+  <strong>Qué comprobar.</strong> <code>+1 al store</code> sube el número en los
+  <strong>dos</strong> recuadros a la vez, aunque solo hayas pulsado uno. Eso es el store
+  compartido, y es una arista que un bus no sabe dirigir y una prop no sabe alcanzar: son
+  hermanos, no padre e hijo.
+</p>
+<p>
+  El botón <code>Forzar repintado</code> mueve una signal local que no tiene nada que ver
+  con el store. Está ahí porque antes era la única forma de ver el valor: el componente
+  importaba la celda, la leía bien y nunca se enteraba de que alguien la había escrito.
+  Ahora los dos caminos dan lo mismo.
+</p>
+
+<h2>3 · El <code>@@while</code></h2>
+<p>
+  El único bucle que no declara su variable de iteración: su cursor vive fuera del bloque, y
+  el cuerpo lo avanza. Es el ejemplo canónico de la decisión 91, un recorrido de lista
+  enlazada, y hasta ahora no se podía escribir.
+</p>
+
+<signal-while></signal-while>
+
+<p>
+  <strong>Qué comprobar.</strong> Tres nodos al cargar. Pulsa <code>Tocar</code>: la signal
+  se mueve, la lista no la lee, y los tres nodos siguen ahí. La pasada de actualización
+  vuelve a ejecutar la cabecera entera, así que el cursor tiene que estar resembrado antes —
+  y eso es lo que hace el <code>@@{ cur = lista; }</code> que va delante del bucle.
+</p>
+
+<h2>4 · El bloque de código en línea</h2>
+<p>
+  <code>@@{ … }</code> es JS suelto dentro del template (decisiones 13, 16 y 17), y es la
+  pieza de la que depende el panel de arriba: sin él, el cuerpo de un <code>@@while</code>
+  no puede avanzar nada.
+</p>
+
+<signal-code></signal-code>
+
+<p>
+  <strong>Qué comprobar.</strong> <code>marca = 3</code>, no <code>1</code>. El bloque corre
+  en su sitio, en orden de documento, antes de que se pinte el párrafo — y en las dos ramas,
+  así que el HTML que sirve el servidor ya trae el <code>3</code>.
+</p>

@@ -68,7 +68,7 @@ const NON_BUBBLING: ReadonlyMap<string, string | null> = new Map([
 /** Fields that NAME something instead of referring to it: `obj.$x` and `{ $x: 1 }`. */
 const NAMING_FIELDS = new Set(['property', 'key']);
 
-/** The three constructs that iterate — the only ones a marker may sit in (decision 116). */
+/** The three constructs that iterate — the only ones a marker may sit in (decision 117). */
 type LoopNode = ForeachNode | ForNode | WhileNode;
 
 /**
@@ -146,7 +146,7 @@ interface Marker {
   /**
    * The enclosing loops, outermost first. Empty when the marker is in none of them.
    *
-   * The whole stack and not the innermost, because nested loops are the case decision 118
+   * The whole stack and not the innermost, because nested loops are the case decision 119
    * spells out: `<b delegate:row delegate:tag>` inside two `@foreach` is one element handing
    * over two identities, and `row` is declared by the outer header. Reading only the innermost
    * would make the outer name unwritable at the very depth it is worth writing.

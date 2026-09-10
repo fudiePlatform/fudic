@@ -558,7 +558,7 @@ describe('completion — snippets and Emmet (SDD-28 §5.3–§5.5)', () => {
     const list = await completionsOf(service, document, position);
 
     expect(list?.items.map((entry) => entry.label)).toEqual(['day']);
-    // No `=@`, and no second list: a marker takes no value (decision 116).
+    // No `=@`, and no second list: a marker takes no value (decision 117).
     expect(list?.items[0]?.textEdit?.newText).toBe('day');
     expect(list?.items[0]?.command).toBeUndefined();
   });

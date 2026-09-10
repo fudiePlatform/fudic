@@ -117,7 +117,7 @@ describe('semanticTokens', () => {
     expect(bindings).toContain('click'); // the `@` of `@click` is its own token now
     expect(bindings).toContain('ref');
     // A marker is a binding like any other: the tree says so, and the colour follows it
-    // rather than the grammar's approximation (SDD-37, decision 116).
+    // rather than the grammar's approximation (SDD-37, decision 117).
     expect(bindings).toContain('delegate:t');
     expect(bindings.some((text) => text.includes('tone'))).toBe(true); // bus:(tone)
     expect(bindings).not.toContain('class'); // the static attribute is not a binding

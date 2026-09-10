@@ -98,7 +98,6 @@ customElements.define("app-actions", class extends FudicElement {
         },
         h: ($c) => {
           $n2 = $dom.previousSibling($c);
-          $r.push($n2);
           $n3 = $c; $c = $dom.nextElementSibling($c);
           $r.push($n3);
           {
@@ -113,7 +112,6 @@ customElements.define("app-actions", class extends FudicElement {
             $n11 = $c1; $c1 = $dom.nextElementSibling($c1);
           }
           $n4 = $dom.lastChild($parent);
-          $r.push($n4);
           return $c;
         },
         m: ($ref = $anchor) => {

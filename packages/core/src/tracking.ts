@@ -41,15 +41,41 @@ export interface Consumer {
  */
 const LEAF = Symbol('fudic.leaf');
 
+/**
+ * The brand EVERY reactive source carries — a signal and a derived value alike.
+ *
+ * `LEAF` answers "which leaf is behind this", which only a signal has. This one answers
+ * the weaker question "can this be subscribed to at all", and it exists because that is
+ * the question an IMPORTED name raises: a component that writes `import { total } from
+ * './store.js'` gives the emit a name and nothing else, and at runtime a derived value is
+ * a bare arrow that looks exactly like a plain helper. Subscribing blind is not an option
+ * — `subscribe` falls back to an effect that CALLS what it is given, so a helper would be
+ * invoked instead of watched.
+ */
+const SOURCE = Symbol('fudic.source');
+
+/** Brand `value` as something a consumer can subscribe to, and hand it back. */
+export function tagSource<T extends object>(value: T): T {
+  Object.defineProperty(value, SOURCE, { value: true });
+  return value;
+}
+
 /** Brand `value` as a signal backed by `leaf`, and hand it back. */
 export function tagLeaf<T extends object>(value: T, leaf: LeafSource): T {
   Object.defineProperty(value, LEAF, { value: leaf });
-  return value;
+  return tagSource(value);
 }
 
 /** The leaf behind a signal, or `null` for anything else — a derived value included. */
 export function leafOf(value: unknown): LeafSource | null {
   return (value as Record<symbol, LeafSource | undefined>)[LEAF] ?? null;
+}
+
+/** Whether `value` is a signal or a derived value — the only two things worth watching. */
+export function isSource(value: unknown): boolean {
+  return (
+    typeof value === 'function' && (value as unknown as Record<symbol, unknown>)[SOURCE] === true
+  );
 }
 
 let active: Consumer | null = null;

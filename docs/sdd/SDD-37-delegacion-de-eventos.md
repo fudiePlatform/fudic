@@ -6,7 +6,7 @@
 > **Depende de:** 06 (bucles), 07 (bindings), 12 (semántica), 15 (emit de eventos), 23 (TS
 > virtual), 30 (renders de bloque)
 > **Rango de diagnósticos:** `FUD0660`–`FUD0679`
-> **Decisiones de gramática:** 116–120 (nuevas)
+> **Decisiones de gramática:** 117–121 (nuevas)
 > **Naturaleza:** sintaxis nueva + emit. **Cero runtime**: no añade una línea a `@fudic/dom`
 > ni a `@fudic/core`.
 
@@ -81,7 +81,7 @@ Dos piezas:
   `@foreach`/`@for`/`@while`. `nombre` es un binding declarado por la cabecera de **alguno de
   los bucles envolventes**, no forzosamente del más interno: con bucles anidados, un
   `<b delegate:row delegate:tag>` entrega dos identidades y `row` la declara la cabecera de
-  fuera (decisión 118). Cuando dos lo declaran, manda el más cercano — el mismo cuyo scope
+  fuera (decisión 119). Cuando dos lo declaran, manda el más cercano — el mismo cuyo scope
   cierra el emit.
 - **`$nombre`** — en la **lista de argumentos** de un event binding de un ancestro. Se resuelve
   en el dispatch al valor que tenía la fila del marcador que se pulsó.

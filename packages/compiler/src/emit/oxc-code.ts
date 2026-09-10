@@ -247,6 +247,21 @@ export interface ExtractedCode {
   readonly clientFunctions: ReadonlySet<string>;
   readonly setCalls: ReadonlySet<string>;
   /**
+   * The names `@code { @client }` IMPORTS from another module — a store, in practice.
+   *
+   * They are the reactive sources this file cannot prove anything about: the module is
+   * somewhere else, the emit is per file, and `const count = signal(0)` in `store.ts` is a
+   * declaration this component never sees. Without them a module-level signal crosses by
+   * reference, reads correctly, and never repaints — the value is right and nobody is
+   * listening, which is a defect that appears and vanishes with whatever repaints beside it.
+   *
+   * Type-only imports are NOT here: they are erased, and a `$sub` on an erased binding is a
+   * `ReferenceError`. Neither are the framework's own packages — `signal`, `computed`,
+   * `emit` and their siblings are never a component's state, and a line per import is a line
+   * every instance of the tag downloads.
+   */
+  readonly clientImports: readonly string[];
+  /**
    * Every `emit(...)` of `@client` (§4.4), as the walk finds them — the patches are applied
    * by descending offset, so the order they arrive in is not one of. Empty when the
    * component does
@@ -313,12 +328,19 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
   });
 
   const clientStatements: OxcNode[] = [];
+  // Every top-level statement of `@code`, whichever region it came from. Imports are read
+  // off THIS and not off `clientStatements`, because a module the TEMPLATE reads usually
+  // sits in the neutral zone: the template is painted on both sides, so a store imported
+  // inside `@client` leaves the server with no such name and the route fails to prerender.
+  // The neutral zone is where it has to go, and it is just as reactive there.
+  const allStatements: OxcNode[] = [];
   const neutral: NeutralStatement[] = [];
   ids.forEach((id, i) => {
     const root = result.value.ast(id);
     const stmts = Array.isArray(root) ? (root as OxcNode[]) : [root as OxcNode];
     const isClient = parts[i]!.type === 'client-region';
     for (const stmt of stmts) {
+      allStatements.push(stmt);
       if (isClient) clientStatements.push(stmt);
       else checkNeutralEffect(stmt, map, own);
       // The declarators are read on BOTH sides — a `signal(...)` is as reactive in the
@@ -364,6 +386,7 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
     clientNames: topLevelBindings(clientStatements),
     clientFunctions: topLevelFunctions(clientStatements),
     setCalls: setCalls(clientStatements),
+    clientImports: importedBindings(allStatements),
     emitCalls,
     diagnostics: [...result.diagnostics, ...own],
   };
@@ -453,6 +476,33 @@ function checkReservedPrefix(
 
 /** The package `emit` comes from. Anything else of that name is the author's own. */
 const DOM_PACKAGE = '@fudic/dom';
+
+/** The framework's own scope: nothing imported from it is a component's reactive state. */
+const FRAMEWORK_SCOPE = '@fudic/';
+
+/**
+ * The local names `@client` imports from modules that are not the framework's own.
+ *
+ * A default import and a namespace import count: `import store from './s.js'` and
+ * `import * as store from './s.js'` both bind a name the template can read, and neither can
+ * be proved non-reactive here. What does not count is a type — `import type { … }` and the
+ * per-specifier `import { type X }` — because those are erased before the chunk runs, and
+ * subscribing an erased binding is a `ReferenceError` on the first hookup.
+ */
+function importedBindings(statements: readonly OxcNode[]): readonly string[] {
+  const out: string[] = [];
+  for (const stmt of statements) {
+    if (!is(stmt, 'ImportDeclaration')) continue;
+    if (stmt['importKind'] === 'type') continue;
+    const from = field(stmt, 'source')!['value'];
+    if (typeof from === 'string' && from.startsWith(FRAMEWORK_SCOPE)) continue;
+    for (const spec of fieldArray(stmt, 'specifiers')) {
+      if (spec['importKind'] === 'type') continue;
+      out.push(name(field(spec, 'local')!));
+    }
+  }
+  return out;
+}
 
 /**
  * The local name `emit` was imported under, or `undefined` when it was not imported.

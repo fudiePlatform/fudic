@@ -97,6 +97,25 @@ dentro de `@{ ... }` con iteración manual.
 
 **17.** Variables declaradas en `@{ ... }` tienen scope léxico del bloque contenedor.
 
+**116.** **`@{ ... }` corre en su sitio, en toda pasada de render, y lo que asigna es del scope
+de fuera.** Dos mitades de la misma regla, cerradas en [BUG-28](../sdd/bugs/BUG-28-bloque-en-linea-nunca-emitido.md):
+
+*(a)* Las sentencias se ejecutan **en el punto del template donde están escritas**, en orden de
+documento, en las **dos** ramas y en las **tres** pasadas del cliente —crear, hidratar y
+actualizar—. Hidratar las ejecuta aunque no pinten ningún nodo: dejan el scope de alrededor en
+el estado que lee el resto del recorrido, y una instancia hidratada tiene que acabar con las
+mismas variables que una creada. Actualizar las ejecuta porque una actualización también es un
+render.
+
+*(b)* Un nombre que el cuerpo de un bloque **asigna** es estado compartido con el scope
+contenedor —la 17 leída del derecho—, así que se lee y se escribe por la closure y **no** se
+pasa por parámetro al bloque. Un parámetro es para lo que la actualización puede volver a
+traer; una escritura sobre un parámetro se pierde al terminar la llamada.
+
+Es la regla de la que depende el `@while` canónico de la 91: su cursor vive fuera del bucle, el
+cuerpo lo avanza con un `@{ cur = cur.next; }` y el template lo resiembra con otro por delante,
+porque un `@while` termina consumiendo estado y la pasada siguiente lo encuentra gastado.
+
 > Las decisiones **79** y **80** cierran también reglas de control de flujo (cerradas en SDD-06),
 > pero llevan numeración al final de la serie para no romper la existente. Se enuncian aquí:
 
@@ -126,6 +145,10 @@ equivocada. La expresión se evalúa en el scope del cuerpo, así que ve lo que 
 @for (let i = 0; i < n; i++)          key (i)  { … }
 @while (cur !== null)                 key (cur.id) { … }
 ```
+
+> El `@while` es el único de los tres cuya cabecera no declara nada, así que su cursor vive
+> fuera del bucle: el cuerpo lo avanza y el template lo resiembra por delante, los dos con un
+> `@{ ... }`. Lo cierra la **decisión 116**.
 
 **92.** **La key va en la cabecera, no en un elemento.** La vía de React —`key` como atributo del
 elemento raíz del bloque— exige que el bloque **tenga** un raíz único, y un cuerpo con dos
@@ -444,7 +467,7 @@ haría ilegal el patrón sobre el que está construido SDD-34. El sitio del cruc
 comprueba, en el fichero donde está el `<form>`: una pregunta léxica, hecha dos veces, cubre la
 cadena entera.
 
-**116.** **Prefijo `delegate:nombre` — el marcador de delegación.** Atributo **sin valor**,
+**117.** **Prefijo `delegate:nombre` — el marcador de delegación.** Atributo **sin valor**,
 hermano de `bus:`/`class:`/`style:` (decisiones 22, 28.a), admitido **solo** dentro del cuerpo de
 un `@foreach`/`@for`/`@while`, y donde `nombre` es un binding declarado por la cabecera de ese
 bucle. Marca que ese elemento entrega la identidad de su fila a un handler de un ancestro.
@@ -458,22 +481,22 @@ bucle. Marca que ese elemento entrega la identidad de su fila a un handler de un
 </div>
 ```
 
-**117.** **`$nombre` es del compilador, igual que `$event`.** Vive en la reserva del prefijo `$`
+**118.** **`$nombre` es del compilador, igual que `$event`.** Vive en la reserva del prefijo `$`
 (decisión 97) y solo aparece en la **lista de argumentos** de un event binding. En el dispatch se
 resuelve al valor que tenía la fila del marcador que se pulsó — no a un string, no a un índice:
 el objeto, con su tipo.
 
-**118.** **La unión es por nombre, no por posición.** `$day` se ata a `delegate:day`, y un
+**119.** **La unión es por nombre, no por posición.** `$day` se ata a `delegate:day`, y un
 marcador al **ancestro más cercano cuyo handler mencione `$day`**. Ni el orden de los atributos
 ni la profundidad del anidamiento deciden nada. Un elemento puede llevar varios marcadores
 (`delegate:row delegate:tag`) cuando hay bucles anidados.
 
-**119.** **Un handler que menciona `$nombre` no se invoca fuera de una fila.** Si el evento nace
+**120.** **Un handler que menciona `$nombre` no se invoca fuera de una fila.** Si el evento nace
 donde no hay marcador —el padding del contenedor, un título suelto— el handler no se llama. Es lo
 que hace que `$day` sea `Day` y nunca `Day | undefined`. Un handler que **no** menciona ningún
 `$nombre` es un listener normal y no cambia en nada.
 
-**120.** **`delegate:` no deja rastro en el DOM.** No emite atributo, ni en servidor ni en
+**121.** **`delegate:` no deja rastro en el DOM.** No emite atributo, ni en servidor ni en
 cliente. Coherente con las decisiones 91–93: la identidad de una fila es la `key` del autor, no
 algo escrito en el HTML. Es la diferencia con el patrón manual `data-*` + `closest()`, donde el
 tipo se pierde al serializar y hay que reconstruirlo con un `Number(...)`.
@@ -1286,8 +1309,9 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 113 | Interpolación | El hueco del error lo escribe el **emit** (id estable + `aria-describedby` siempre); el runtime solo pone texto |
 | 114 | Interpolación | `control` dentro de un bucle → error (`FUD0594`), hermana de la 31 |
 | 115 | Interpolación | Un `control` necesita un `<form control>` por encima (`FUD0595`); exento el control-componente, cuyo nodo se comprueba en el fichero del padre (BUG-25) |
-| 116 | Interpolación | Prefijo `delegate:nombre` — marcador sin valor, solo en cuerpo de bucle, `nombre` de la cabecera |
-| 117 | Interpolación | `$nombre` lo inyecta el compilador (reserva `$`, hermana de la 97); solo en la lista de argumentos de un event binding |
-| 118 | Interpolación | La unión es por **nombre**: `$day` ↔ `delegate:day`, ancestro más cercano que lo mencione |
-| 119 | Interpolación | Un handler con `$nombre` no se invoca si el evento no nace bajo un marcador; sin `$nombre`, listener normal |
-| 120 | Interpolación | `delegate:` no deja rastro en el DOM (ni atributo, ni índice) |
+| 116 | Control flujo | `@{ ... }` corre **en su sitio**, en las dos ramas y en las tres pasadas del cliente; y un nombre que el cuerpo de un bloque **asigna** va por closure, no por parámetro. Es lo que hace escribible el `@while` de la 91 (BUG-28) |
+| 117 | Interpolación | Prefijo `delegate:nombre` — marcador sin valor, solo en cuerpo de bucle, `nombre` de la cabecera |
+| 118 | Interpolación | `$nombre` lo inyecta el compilador (reserva `$`, hermana de la 97); solo en la lista de argumentos de un event binding |
+| 119 | Interpolación | La unión es por **nombre**: `$day` ↔ `delegate:day`, ancestro más cercano que lo mencione |
+| 120 | Interpolación | Un handler con `$nombre` no se invoca si el evento no nace bajo un marcador; sin `$nombre`, listener normal |
+| 121 | Interpolación | `delegate:` no deja rastro en el DOM (ni atributo, ni índice) |

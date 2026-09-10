@@ -130,7 +130,7 @@ export interface StyleBinding extends Node {
 }
 
 /**
- * `delegate:day` — the delegation marker (decision 116, SDD-37 §3.1). A prefix like
+ * `delegate:day` — the delegation marker (decision 117, SDD-37 §3.1). A prefix like
  * `class:`/`style:`/`bus:` (decision 22) and, unlike all three, one that carries NO value:
  * the element is not being given anything, it is handing its row identity upwards.
  *
@@ -169,7 +169,7 @@ export const CLASS_PREFIX = 'class:';
 /** The conditional-style prefix (decision 22). */
 export const STYLE_PREFIX = 'style:';
 
-/** The delegation-marker prefix (decision 116). */
+/** The delegation-marker prefix (decision 117). */
 export const DELEGATE_PREFIX = 'delegate:';
 
 /** The event prefix (decisions 26–28): a host listener. */

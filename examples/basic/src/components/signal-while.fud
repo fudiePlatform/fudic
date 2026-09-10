@@ -1,0 +1,94 @@
+@code {
+  // La lista enlazada del ejemplo canónico de la decisión 91. En la zona NEUTRA porque la
+  // cabecera del bucle se ejecuta en los dos lados.
+  type Nodo = { id: string; n: number; next: Nodo | null };
+
+  const lista: Nodo = { id: "a", n: 1, next: { id: "b", n: 2, next: { id: "c", n: 3, next: null } } };
+
+  // El cursor. Un `@while` no declara variable de iteración, así que la suya vive fuera del
+  // bloque — y por eso hay que resembrarla en el template antes de cada pasada.
+  let cur: Nodo | null = lista;
+
+  @client {
+    import { signal } from "@fudic/core";
+
+    const toques = signal(0);
+
+    function tocar() {
+      toques.set(toques() + 1);
+    }
+  }
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    .panel {
+      display: grid;
+      gap: 0.75rem;
+      border: 1px solid #dcdcdc;
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
+      background: white;
+    }
+    .row {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+    }
+    button {
+      font: inherit;
+      padding: 0.35rem 0.8rem;
+      border: 1px solid #9aa0a6;
+      border-radius: 6px;
+      background: white;
+      color: #3c4043;
+      cursor: pointer;
+    }
+    .lista {
+      margin: 0;
+      padding: 0.55rem 0.7rem;
+      border: 1px dashed #34a853;
+      border-radius: 8px;
+      background: #f2f9f4;
+      min-height: 2.6rem;
+      list-style: none;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .lista li {
+      font-variant-numeric: tabular-nums;
+    }
+    .pie {
+      margin: 0;
+      font-size: 0.78rem;
+      color: #666;
+    }
+  </style>
+</head>
+
+<signal-while>
+  <template shadowrootmode="open">
+    <section class="panel">
+      <div class="row">
+        <button class="tocar" @click=@tocar>Tocar</button>
+        <p class="pie">toques: @toques()</p>
+      </div>
+
+      @{ cur = lista; }
+      <ul class="lista">
+        @while (cur !== null) key (cur.id) {
+          <li>nodo @cur.n</li>
+          @{ cur = cur.next; }
+        }
+      </ul>
+
+      <p class="pie">
+        El botón mueve una signal que la lista no lee: las tres filas tienen que seguir ahí.
+      </p>
+    </section>
+  </template>
+</signal-while>
