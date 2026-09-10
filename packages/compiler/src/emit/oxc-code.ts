@@ -10,6 +10,7 @@
  */
 
 import type { ComponentDocument } from '../document/index.js';
+import type { CodeBlockNode } from '../code/index.js';
 import type { ResolvedComponent } from './resolve.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import { errorDiag, isEmptySpan, span } from '../types/index.js';
@@ -172,6 +173,12 @@ export interface DiCall {
    * reported (SDD-38 §6.21).
    */
   readonly from?: string;
+  /**
+   * The name this call was declared INTO, when it was the whole initialiser of one:
+   * `db` in `const db = inject(Db)`. Absent for a call written anywhere else, because
+   * only a name a region binds can be read from somewhere the region does not reach.
+   */
+  readonly binds?: string;
   /** Start of the callee identifier, and of the `(` after it: the rewrite is a prefix splice. */
   readonly at: number;
   readonly open: number;
@@ -416,9 +423,11 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
   const rewritten = new Set(bindings.keys());
   if (bindings.size > 0) {
     const imports = importSources(allStatements);
-    collectDiCalls(neutralStatements, bindings, imports, 'neutral', source, map, di);
-    collectDiCalls(serverStatements, bindings, imports, 'server', source, map, di);
-    collectDiCalls(clientStatements, bindings, imports, 'client', source, map, di);
+    const scan = { bindings, imports, source, map, out: di };
+    collectDiCalls(neutralStatements, { ...scan, zone: 'neutral' });
+    collectDiCalls(serverStatements, { ...scan, zone: 'server' });
+    collectDiCalls(clientStatements, { ...scan, zone: 'client' });
+    checkDiZones(di, own);
   }
   const diEdits = di.map(rewriteOf);
 
@@ -502,6 +511,41 @@ export function codeOf(comp: ResolvedComponent): ExtractedCode {
   const code = extractCode(comp.source, comp.doc);
   codeCache.set(comp, code);
   return code;
+}
+
+/**
+ * The DI calls of a `@code` that is NOT a component's — a page's, a route's, a layout's.
+ *
+ * Those three roles never reach `extractCode`: they declare no props, no reactive names and
+ * no client region, and their `@code` is the `?server` module the plugin copies out verbatim.
+ * So this is the one and only Oxc invocation such a file gets, and it exists for one question
+ * — is somebody calling `inject(…)` where `ctx.inject(…)` is the only thing that works
+ * (SDD-38 §6.24) — asked by reading the AST, because a `// inject(` in a comment is not a call.
+ */
+export function extractDiCalls(source: string, code: CodeBlockNode | undefined): readonly DiCall[] {
+  const parts = code?.parts ?? [];
+  if (parts.length === 0) return [];
+  const batch = new JsBatch(source);
+  const ids = parts.map((p) => batch.add('module-statements', p.js));
+  const result = batch.parse();
+  const map = result.value.mapOffset;
+
+  const byZone: Record<CodeZone, OxcNode[]> = { neutral: [], server: [], client: [] };
+  ids.forEach((id, i) => {
+    // A `module-statements` fragment is a LIST of top-level statements, always — that is
+    // what the kind means, and the batch has no other shape to hand back for it.
+    byZone[zoneOf(parts[i]!.type)].push(...(result.value.ast(id) as readonly OxcNode[]));
+  });
+
+  const all = [...byZone.neutral, ...byZone.server, ...byZone.client];
+  const bindings = diBindings(all);
+  if (bindings.size === 0) return [];
+  const out: DiCall[] = [];
+  const scan = { bindings, imports: importSources(all), source, map, out };
+  for (const zone of ['neutral', 'server', 'client'] as const) {
+    collectDiCalls(byZone[zone], { ...scan, zone });
+  }
+  return out;
 }
 
 /**
@@ -671,23 +715,16 @@ function diBindings(statements: readonly OxcNode[]): ReadonlyMap<string, DiCall[
  * reason `collectEmitCalls`'s is: what it must never do is match text, and a node it does not
  * know about cannot hide a call.
  */
-function collectDiCalls(
-  node: unknown,
-  bindings: ReadonlyMap<string, DiCall['kind']>,
-  imports: ReadonlyMap<string, string>,
-  zone: CodeZone,
-  source: string,
-  map: MapOffset,
-  out: DiCall[],
-): void {
+function collectDiCalls(node: unknown, scan: DiScan, binds?: string): void {
   if (Array.isArray(node)) {
-    for (const child of node) collectDiCalls(child, bindings, imports, zone, source, map, out);
+    for (const child of node) collectDiCalls(child, scan, binds);
     return;
   }
   if (node === null || typeof node !== 'object') return;
   const current = node as OxcNode;
+  const { source, map } = scan;
   const callee = is(current, 'CallExpression') ? field(current, 'callee') : undefined;
-  const kind = is(callee, 'Identifier') ? bindings.get(name(callee)) : undefined;
+  const kind = is(callee, 'Identifier') ? scan.bindings.get(name(callee)) : undefined;
   if (kind !== undefined) {
     const first = fieldArray(current, 'arguments')[0];
     const at = map(callee!.start);
@@ -696,23 +733,44 @@ function collectDiCalls(
     // The LEADING identifier, because that is the binding an import declares: `services.Cart`
     // is imported as `services`, and what a build can ask about is the module it came from.
     const root = first === undefined ? undefined : rootIdentifier(first);
-    const from = root === undefined ? undefined : imports.get(root);
-    out.push({
+    const from = root === undefined ? undefined : scan.imports.get(root);
+    scan.out.push({
       kind,
-      zone,
+      zone: scan.zone,
       // Verbatim, because the provider is an EXPRESSION the route's IoC module has to write
       // back out: `Cart`, `LOCALE`, `services.Cart`. Reading it as a name would lose the
       // second and the third.
       provider: first === undefined ? '' : source.slice(providerSpan.start, providerSpan.end),
       providerSpan,
       ...(from === undefined ? {} : { from }),
+      ...(binds === undefined ? {} : { binds }),
       at,
       open: source.indexOf('(', map(callee!.end)),
     });
   }
-  for (const value of Object.values(current)) {
-    collectDiCalls(value, bindings, imports, zone, source, map, out);
+  // A declarator hands its name DOWN, and only into its initialiser: `const db = inject(Db)`
+  // binds `db`, and the arguments of that same call bind nothing. One level and no further,
+  // because a call buried inside a lambda runs when the lambda does, not when the region loads.
+  const declared = is(current, 'VariableDeclarator') ? declaredName(current) : undefined;
+  for (const [key, value] of Object.entries(current)) {
+    collectDiCalls(value, scan, key === 'init' ? declared : undefined);
   }
+}
+
+/** Everything one zone's walk needs, so the recursion carries a context and not a parameter list. */
+interface DiScan {
+  readonly bindings: ReadonlyMap<string, DiCall['kind']>;
+  readonly imports: ReadonlyMap<string, string>;
+  readonly zone: CodeZone;
+  readonly source: string;
+  readonly map: MapOffset;
+  readonly out: DiCall[];
+}
+
+/** The name a declarator declares, when it declares a plain one: a pattern destructures. */
+function declaredName(declarator: OxcNode): string | undefined {
+  const id = field(declarator, 'id');
+  return is(id, 'Identifier') ? name(id) : undefined;
 }
 
 /**
@@ -726,6 +784,58 @@ function rootIdentifier(node: OxcNode): string | undefined {
   // has no missing case to guard against.
   if (is(node, 'MemberExpression')) return rootIdentifier(field(node, 'object')!);
   return undefined;
+}
+
+/**
+ * The two contradictions a single `@code` can hold on its own (SDD-38 §6.23, §6.25).
+ *
+ * Both are asked HERE and not of the graph, because both are answered by one file: they are
+ * about what this `@code` says against itself, and no ancestor can make either of them true
+ * or false. Neither stops the emit — the module is written degraded and the browser gets the
+ * runtime error it would have got anyway, which is the whole point of reporting it first.
+ *
+ * `FUD0684` — the same provider registered twice. The second registration silently replaces
+ * the first, so one of the two factories is dead code and the author cannot tell which.
+ *
+ * `FUD0682` — a provider registered on ONE side and injected on the other. The two lines
+ * never run in the same process, so the registration this injection was written for is not
+ * there when it asks. The neutral zone is never a mismatch, on either end: it runs on both
+ * sides, which is exactly what makes it the answer to this diagnostic.
+ */
+function checkDiZones(di: readonly DiCall[], out: Diagnostic[]): void {
+  const provideZones = new Map<string, Set<CodeZone>>();
+  for (const call of di) {
+    if (call.kind !== 'provide' || call.provider === '') continue;
+    const seen = provideZones.get(call.provider);
+    if (seen === undefined) {
+      provideZones.set(call.provider, new Set([call.zone]));
+      continue;
+    }
+    seen.add(call.zone);
+    out.push(
+      errorDiag(
+        'FUD0684',
+        `\`${call.provider}\` is provided twice in this @code: the second registration replaces the first, and one of the two factories never runs.`,
+        call.providerSpan,
+      ),
+    );
+  }
+  for (const call of di) {
+    if (call.kind !== 'inject' || call.zone === 'neutral') continue;
+    const zones = provideZones.get(call.provider);
+    // Only when the file provides it and provides it NOWHERE this injection runs. A provider
+    // this file does not write at all is an ancestor's or a `@Service`'s, and that is FUD0680's
+    // question — asked of the graph, with the module next door open.
+    if (zones === undefined || zones.has('neutral') || zones.has(call.zone)) continue;
+    const there = call.zone === 'client' ? '@server' : '@client';
+    out.push(
+      errorDiag(
+        'FUD0682',
+        `\`${call.provider}\` is injected in @${call.zone} but this @code only provides it in ${there}: the two never run on the same side. Move the provider to the neutral zone to have it on both.`,
+        call.providerSpan,
+      ),
+    );
+  }
 }
 
 /**

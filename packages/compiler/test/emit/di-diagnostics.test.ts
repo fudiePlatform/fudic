@@ -298,3 +298,198 @@ describe('FUD0680 — inject of something nobody registers', () => {
     expect(first?.message).toContain('Db');
   });
 });
+
+/**
+ * `FUD0681` — a name injected in `@server`, read by a template that hydrates (SDD-38 §6.22).
+ *
+ * `@server` is emitted into the `.mjs` and into nothing else. The browser chunk of the same
+ * component carries its template bindings, so one that reads such a name paints right on the
+ * server and then, on the first `set`, re-evaluates against an identifier the chunk never
+ * declared. Without this the build is silent and the browser throws a `ReferenceError` with
+ * no line in the source that explains it.
+ */
+describe('FUD0681 — a @server name read by a template that hydrates', () => {
+  /** A `@code` that injects `Db` in `@server` under `name`, plus whatever else is asked. */
+  function serverInjecting(name: string, rest = ''): string {
+    return `@code {
+  import { inject } from '@fudic/di';
+
+  @server {
+    import { Db } from './services/db';
+
+    const ${name} = inject(Db);
+  }
+${rest}}`;
+  }
+
+  /** The service module, registered — so `FUD0680` has nothing to add to any of these. */
+  const DB = "import { Service } from '@fudic/di';\nexport class Db {}\nService(Db);\n";
+  const HYDRATES = '\n  @client {\n    const n = signal(1);\n  }\n';
+
+  function check(panel: string): ReturnType<typeof injectionDiagnostics> {
+    const io = memoryIo({
+      '/app/home.fud': page(['x-panel'], '<x-panel></x-panel>'),
+      '/app/x-panel.fud': panel,
+      '/app/services/db.ts': DB,
+    });
+    return injectionDiagnostics(resolveComponents('/app/home.fud', io), io);
+  }
+
+  it('reports the binding that reads it, and names the binding', () => {
+    const panel = component('x-panel', serverInjecting('db', HYDRATES), '<span>@(db.name)</span>');
+    const diagnostics = check(panel);
+
+    expect(diagnostics.map((d) => d.code)).toEqual(['FUD0681']);
+    expect(diagnostics[0]?.message).toContain('db');
+    // The span is the BINDING's, because that is the thing the author has to rewrite: the
+    // injection itself is legitimate, and only reading it from here is not.
+    expect(panel.slice(diagnostics[0]!.span.start, diagnostics[0]!.span.end)).toBe('db.name');
+  });
+
+  it('reads bindings wherever the template writes them: an attribute inside a construct', () => {
+    const panel = component(
+      'x-panel',
+      serverInjecting('db', HYDRATES),
+      '@if (true) {\n      <span title="@(db.name)">x</span>\n    }',
+    );
+    expect(check(panel).map((d) => d.code)).toEqual(['FUD0681']);
+  });
+
+  it('says nothing when the component does not hydrate: the server painted it once', () => {
+    // No `@client`, no signal, no hookup — level 1. There is no chunk to re-evaluate the
+    // binding, so the name the server had is the only one it ever needed.
+    expect(check(component('x-panel', serverInjecting('db'), '<span>@(db.name)</span>'))).toEqual([]);
+  });
+
+  it('says nothing when the template reads something else', () => {
+    const panel = component(
+      'x-panel',
+      serverInjecting('db', '\n  @client {\n    const n = signal(1);\n  }\n'),
+      '<span>@(n())</span>',
+    );
+    expect(check(panel).map((d) => d.code)).toEqual([]);
+  });
+
+  it('says nothing about an injection that binds no name, or about a provide', () => {
+    const panel = component(
+      'x-panel',
+      `@code {
+  import { inject, provide } from '@fudic/di';
+
+  @server {
+    import { Db } from './services/db';
+
+    inject(Db);
+    provide(Db, () => new Db());
+    const { host } = inject(Db);
+  }
+
+  @client {
+    const n = signal(1);
+  }
+}`,
+      '<span>@(host)</span>',
+    );
+    // A bare call declares nothing, and neither does a destructuring one — a pattern is not
+    // a name, and guessing which of its keys the template meant would be inventing.
+    expect(check(panel).map((d) => d.code)).toEqual([]);
+  });
+
+  it('asks the hydration question once for a graph, however many components inject', () => {
+    const io = memoryIo({
+      '/app/home.fud': page(['x-one', 'x-two'], '<x-one></x-one><x-two></x-two>'),
+      '/app/x-one.fud': component('x-one', serverInjecting('db', HYDRATES), '<span>@(db.name)</span>'),
+      '/app/x-two.fud': component('x-two', serverInjecting('log', HYDRATES), '<span>@(log.name)</span>'),
+      '/app/services/db.ts': DB,
+    });
+    expect(injectionDiagnostics(resolveComponents('/app/home.fud', io), io).map((d) => d.code)).toEqual([
+      'FUD0681',
+      'FUD0681',
+    ]);
+  });
+});
+
+/**
+ * `FUD0683` — `inject(…)` inside the `@server` of a route (SDD-38 §6.24).
+ *
+ * A route has no ambient container and cannot have one. `load(ctx)` is the only `async`
+ * function of the system, and an ambient container across an `await` is not a visible error:
+ * it is silent contamination between concurrent requests, in dev and in the prerender alike.
+ * So a route resolves explicitly, through `ctx.inject(…)`.
+ */
+describe('FUD0683 — a route reaching for the ambient container', () => {
+  function routePage(server: string): string {
+    return `<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="component" href="./x-panel.fud">
+    @code {
+      @server {
+${server}
+      }
+    }
+  </head>
+  <body><x-panel></x-panel></body>
+</html>
+`;
+  }
+
+  const PLAIN = component('x-panel', '', '<span>ok</span>');
+
+  function check(home: string): ReturnType<typeof injectionDiagnostics> {
+    const io = memoryIo({ '/app/home.fud': home, '/app/x-panel.fud': PLAIN });
+    return injectionDiagnostics(resolveComponents('/app/home.fud', io), io);
+  }
+
+  it('reports the injection and points at what it asked for', () => {
+    const home = routePage(
+      "        import { inject } from '@fudic/di';\n" +
+        "        import { Db } from './services/db';\n\n" +
+        '        export async function load(ctx) {\n' +
+        '          const db = inject(Db);\n' +
+        '          return { items: await db.all() };\n' +
+        '        }',
+    );
+    const diagnostics = check(home);
+
+    expect(diagnostics.map((d) => d.code)).toEqual(['FUD0683']);
+    expect(diagnostics[0]?.message).toContain('ctx.inject');
+    const at = home.indexOf('inject(Db)') + 'inject('.length;
+    expect(diagnostics[0]!.span).toEqual({ start: at, end: at + 'Db'.length });
+  });
+
+  it('says nothing about `ctx.inject(…)`, which is what a route is meant to write', () => {
+    const home = routePage(
+      "        import { inject } from '@fudic/di';\n" +
+        '        export async function load(ctx) {\n' +
+        '          return { db: ctx.inject(Db) };\n' +
+        '        }',
+    );
+    expect(check(home)).toEqual([]);
+  });
+
+  it('says nothing about a `provide` there: registering is not resolving', () => {
+    const home = routePage(
+      "        import { provide } from '@fudic/di';\n" +
+        '        provide(Db, () => new Db());',
+    );
+    expect(check(home)).toEqual([]);
+  });
+
+  it('says nothing about a @server that never imports the injector', () => {
+    expect(check(routePage('        export const paths = () => [];'))).toEqual([]);
+  });
+
+  it('says nothing about a route with no @server region at all', () => {
+    const io = memoryIo({
+      '/app/home.fud': page(['x-panel'], '<x-panel></x-panel>'),
+      '/app/x-panel.fud': PLAIN,
+    });
+    expect(injectionDiagnostics(resolveComponents('/app/home.fud', io), io)).toEqual([]);
+  });
+
+  it('says nothing when the entry is a component: a component is not a route', () => {
+    const io = memoryIo({ '/app/x-panel.fud': PLAIN });
+    expect(injectionDiagnostics(resolveComponents('/app/x-panel.fud', io), io)).toEqual([]);
+  });
+});

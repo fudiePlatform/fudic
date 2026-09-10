@@ -5,7 +5,7 @@
 > **Toca además:** `@fudic/compiler`, `@fudic/ssr`, `@fudic/vite`
 > **Rama:** `sdd-38-inyeccion-de-dependencias`
 > **Rango:** `FUD0680`–`FUD0699` · **Decisiones:** 120–126
-> **Progreso:** 16 / 19
+> **Progreso:** 17 / 19
 
 Da a fudic el inyector que [`docs/di/index.html`](../di/index.html) prototipó, y lo cablea en los
 dos extremos. Las fases 1–3 son un paquete nuevo, sin DOM y sin dependencias, que se puede llevar
@@ -171,7 +171,7 @@ usuario, `multi:`, `useValue`, el reemplazo en tests y `fudic g service`.
       especificador con el `ResolveIo` que ya usa, parsea el módulo con Oxc y busca `@Service` o un
       `provide` de nivel superior. Si el módulo no se resuelve o no se puede leer, **no hay
       diagnóstico**: nunca se inventa un error donde falta información. Criterio §6.21.
-- [ ] **17. `FUD0681`–`FUD0684`.**
+- [x] **17. `FUD0681`–`FUD0684`.**
       Un nombre de `@server` leído por el template de un componente que hidrata (§6.22); `inject`
       en `@client` cuando el único `provide` está en `@server` y el simétrico (§6.23); `inject(…)`
       dentro del `@server` de una **ruta**, donde va `ctx.inject(…)` (§6.24); y dos `provide` del
