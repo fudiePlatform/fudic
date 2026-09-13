@@ -2,8 +2,8 @@
 
 > **BUG:** [BUG-30 — Un `@client` escrito en un comentario es un error](./BUG-30-marcador-dentro-de-un-comentario.md)
 > **Paquetes:** `@fudic/compiler`
-> **Rama:** por asignar · **Depende de:** SDD-08 y SDD-12 en `Hecho`
-> **Progreso:** 0 / 5 — `Listo`
+> **Rama:** `worktree-bug-30-marcador-en-comentario` · **Depende de:** SDD-08 y SDD-12 en `Hecho`
+> **Progreso:** 1 / 5 — `Listo`
 
 Cinco tareas. Rutas relativas a la raíz del repo. Cada una deja el workspace verde, así que
 se puede parar después de cualquiera.
@@ -34,7 +34,7 @@ nadie sabe si pasan porque la corrección funciona o porque el test mira otra co
 
 ## Fase 1 — El rojo (1)
 
-- [ ] **1. Los falsos positivos, reproducidos.**
+- [x] **1. Los falsos positivos, reproducidos.**
       En `packages/compiler/test/semantic/`: `@client` y `@server` nombrados en un comentario
       de línea, uno de bloque, una cadena y una plantilla —en la zona neutra **y** dentro de
       una región—, y `load` nombrado en un comentario y en una cadena del `@server` de un
