@@ -1,5 +1,8 @@
 # BUG-31 · El emit no pregunta lo que ya sabe
 
+**Estado:** `Hecho` — T1–T5 y T7 implementadas y con tests; **T6 queda abierta** y se explica
+en su propia línea · **Rama:** `worktree-bug-31-emit-incondicional`
+
 El compilador tiene el dato delante y emite igual. Una página sin nada hidratable se
 descarga el runtime entero; un componente sin CSS produce una hoja construible vacía.
 

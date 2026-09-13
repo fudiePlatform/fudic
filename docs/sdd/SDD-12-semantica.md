@@ -154,6 +154,14 @@ a una prop que el hijo **escribe** — un derivado no es escribible (SDD-31 §4.
 sirve **quien resuelve el grafo**, como los `FUD019x`: sin `propsOf` la regla calla entera.
 `FUD0204`–`0209` siguen libres para SDD-12. Severidades: todos `error` salvo `0196` (`warning`).
 
+`FUD0720`–`0721` los ocupa **BUG-32**, y viven en dos pases distintos a propósito: `0720` un
+`class:` en el tag de identidad — las clases que ese fichero conoce están dentro de su shadow y
+una clase en el host se resuelve contra la página (`error`, analizador `host-bindings`, gemelo
+de `FUD0663`) · `0721` un `<link rel="component">` cuyo tag no aparece en el fichero (`warning`,
+en `contractDiagnostics` y no en el pase semántico, porque la pregunta «qué tag declara este
+`<link>`» solo la puede contestar quien resolvió el grafo, como los `FUD019x`). `FUD0722`–`0739`
+quedan libres.
+
 Los rangos de los SDD 13–23 se anotan aquí a medida que cada spec define códigos propios; los
 que faltan viven documentados en su propio SDD (`FUD0420`–`0439` en SDD-21, `FUD0440`–`0459` en
 SDD-22, que además no son `Diagnostic` sino `CliError`: una colisión de ficheros no tiene span).
