@@ -3,7 +3,7 @@
 > **BUG:** [BUG-30 — Un `@client` escrito en un comentario es un error](./BUG-30-marcador-dentro-de-un-comentario.md)
 > **Paquetes:** `@fudic/compiler`
 > **Rama:** `worktree-bug-30-marcador-en-comentario` · **Depende de:** SDD-08 y SDD-12 en `Hecho`
-> **Progreso:** 2 / 5 — `Listo`
+> **Progreso:** 4 / 5 — `Listo`
 
 Cinco tareas. Rutas relativas a la raíz del repo. Cada una deja el workspace verde, así que
 se puede parar después de cualquiera.
@@ -53,12 +53,12 @@ nadie sabe si pasan porque la corrección funciona o porque el test mira otra co
 
 ## Fase 3 — Una regla, una función (2)
 
-- [ ] **3. El ayudante.**
+- [x] **3. El ayudante.**
       Un módulo propio en `semantic/`, con **una** de las dos formas de §3 —`outsideOpaque`
       (el `RegionCursor` de `code.ts:94` extraído) o `maskOpaque` (enmascarado carácter por
       carácter, como `redactServerRegions`)—. Si sale `maskOpaque`, los dos analizadores se
       quedan casi como están y los spans no se mueven solos.
-- [ ] **4. Los dos llamantes.**
+- [x] **4. Los dos llamantes.**
       [`code-region-nesting.ts`](../../../packages/compiler/src/semantic/analyzers/code-region-nesting.ts)
       (`FUD0193`) y
       [`layout-load.ts`](../../../packages/compiler/src/semantic/analyzers/layout-load.ts)
