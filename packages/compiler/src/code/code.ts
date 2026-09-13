@@ -278,6 +278,7 @@ export function parseCodeBlock(
       type: 'code',
       span: span(start, keywordSpan.end),
       parts: [],
+      regions: [],
     };
     return withDiagnostics(degraded, [
       errorDiag(FUD_EXPECTED_BRACE, "Expected '{' after @code", emptySpan(brace)),
@@ -293,7 +294,14 @@ export function parseCodeBlock(
   // and leaves the mode stack alone, which is exactly what SDD-05 expects back.
   ctx.lexer.seekTo(group.span.end);
 
-  const node: CodeBlockNode = { type: 'code', span: span(start, group.span.end), parts };
+  // The regions travel with the node (BUG-30 §4.4): the balancer walked the whole body, and
+  // a fact computed about the source is published, not recomputed by whoever needs it next.
+  const node: CodeBlockNode = {
+    type: 'code',
+    span: span(start, group.span.end),
+    parts,
+    regions: group.regions,
+  };
   const diagnostics = [
     ...block.diagnostics,
     ...razorCommentErrors(group.regions),

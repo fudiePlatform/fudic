@@ -249,6 +249,52 @@ describe('parseCodeBlock — degradations (§6.9)', () => {
 });
 
 /**
+ * BUG-30 §6.8 — the block publishes the opaque regions the balancer already walked.
+ *
+ * Without the field, every later consumer that must look inside the JS is handed a string
+ * and has no option but to re-lex it — which is exactly how a comment became a diagnostic.
+ */
+describe('parseCodeBlock — the block carries its lexical regions (BUG-30)', () => {
+  it('comes back empty for a body with no strings, comments or regex', () => {
+    expect(run('@code { const a = 1; }').node.regions).toEqual([]);
+  });
+
+  it('lists every opaque region of the WHOLE body, in source order', () => {
+    const source =
+      '@code { // one\n const s = "two"; /* three */ @server { const t = `four`; } }';
+    const { node } = run(source);
+    expect(node.regions.map((r) => r.kind)).toEqual([
+      'line-comment',
+      'string',
+      'block-comment',
+      'template',
+    ]);
+    // Sorted by start, and each span covers its delimiters.
+    const starts = node.regions.map((r) => r.span.start);
+    expect(starts).toEqual([...starts].sort((a, b) => a - b));
+    expect(text(source, node.regions[1]!.span)).toBe('"two"');
+    // The inside of `@server` is walked too: the balancer counts braces, it does not recurse.
+    expect(text(source, node.regions[3]!.span)).toBe('`four`');
+  });
+
+  it('lists a region nested in a template interpolation on its own, inside the template', () => {
+    const source = '@code { const t = `x ${"y"} z`; }';
+    const { node } = run(source);
+    expect(node.regions.map((r) => r.kind)).toEqual(['template', 'string']);
+    const [template, nested] = node.regions as [
+      (typeof node.regions)[number],
+      (typeof node.regions)[number],
+    ];
+    expect(nested.span.start).toBeGreaterThan(template.span.start);
+    expect(nested.span.end).toBeLessThan(template.span.end);
+  });
+
+  it('is empty on the degraded block that never found its `{`', () => {
+    expect(run('@code').node.regions).toEqual([]);
+  });
+});
+
+/**
  * BUG-13 — inside `@code` you comment in JavaScript.
  *
  * A Razor comment buys one thing: commenting without publishing. In markup and in CSS that

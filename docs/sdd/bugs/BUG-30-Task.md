@@ -3,7 +3,7 @@
 > **BUG:** [BUG-30 — Un `@client` escrito en un comentario es un error](./BUG-30-marcador-dentro-de-un-comentario.md)
 > **Paquetes:** `@fudic/compiler`
 > **Rama:** `worktree-bug-30-marcador-en-comentario` · **Depende de:** SDD-08 y SDD-12 en `Hecho`
-> **Progreso:** 1 / 5 — `Listo`
+> **Progreso:** 2 / 5 — `Listo`
 
 Cinco tareas. Rutas relativas a la raíz del repo. Cada una deja el workspace verde, así que
 se puede parar después de cualquiera.
@@ -44,7 +44,7 @@ nadie sabe si pasan porque la corrección funciona o porque el test mira otra co
 
 ## Fase 2 — Que el AST publique lo que ya sabe (1)
 
-- [ ] **2. `CodeBlockNode.regions`.**
+- [x] **2. `CodeBlockNode.regions`.**
       [`code/nodes.ts`](../../../packages/compiler/src/code/nodes.ts) gana el campo;
       [`code/code.ts`](../../../packages/compiler/src/code/code.ts) lo rellena con el
       `group.regions` que **ya tiene en la mano** en la línea 289 y hoy solo usa para el
