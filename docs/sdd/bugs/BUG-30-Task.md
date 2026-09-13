@@ -3,7 +3,7 @@
 > **BUG:** [BUG-30 — Un `@client` escrito en un comentario es un error](./BUG-30-marcador-dentro-de-un-comentario.md)
 > **Paquetes:** `@fudic/compiler`
 > **Rama:** `worktree-bug-30-marcador-en-comentario` · **Depende de:** SDD-08 y SDD-12 en `Hecho`
-> **Progreso:** 4 / 5 — `Listo`
+> **Progreso:** 5 / 5 — `Listo`
 
 Cinco tareas. Rutas relativas a la raíz del repo. Cada una deja el workspace verde, así que
 se puede parar después de cualquiera.
@@ -67,7 +67,7 @@ nadie sabe si pasan porque la corrección funciona o porque el test mira otra co
 
 ## Fase 4 — La prosa que lo destapó (1)
 
-- [ ] **5. El comentario del ejemplo, tal como se quería escribir.**
+- [x] **5. El comentario del ejemplo, tal como se quería escribir.**
       [`examples/basic/src/routes/ruta-reactiva.fud`](../../../examples/basic/src/routes/ruta-reactiva.fud)
       dice hoy «la region de cliente» con el nombre roto a propósito para esquivar el
       diagnóstico. Vuelve a decir `@client`, que es lo que había que escribir.

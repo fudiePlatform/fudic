@@ -8,9 +8,9 @@
   // de por medio.
   //
   // Y una segunda diferencia, que ya es un hallazgo: esto tiene que ir en la zona NEUTRA.
-  // Escrito dentro de la region de cliente, como lo escribe el componente, el prerender de
-  // la ruta se cae con "count is not defined" — el servidor de un componente si tiene el
-  // stub inerte de los nombres de esa region (SDD-31 4.6) y el de una ruta, no.
+  // Escrito dentro de @client, como lo escribe el componente, el prerender de la ruta se
+  // cae con "count is not defined" — el servidor de un componente sí tiene el stub inerte
+  // de los nombres de ese @client (SDD-31 §4.6) y el de una ruta, no.
   import { signal, computed } from "@fudic/core";
 
   const count = signal(1);
