@@ -37,7 +37,7 @@ aplicación, y una librería no se sirve, se consume.
 | `vite.config.ts` | sí | **no** — no se construye sola |
 | `sw.json` | opcional | **no** — la unidad de `sw.json` es el despliegue |
 | `id` de aplicación | sí, si hay SW | **no** — no tiene cachés |
-| `prefix` | recomendable | **el que más lo necesita** |
+| `prefix` (una guía, no una regla) | opcional | opcional, y **el que más lo agradece** |
 | `exports` en `package.json` | irrelevante | **es su interfaz entera** |
 
 Y una diferencia que decide el resto: por [SDD-43](./SDD-43-librerias.md) §4.1 una
@@ -118,7 +118,7 @@ Hereda de `fudic new` los suyos: `--pm`, `--no-install`, `--no-git`, `--no-sw`, 
 |---|---|---|
 | `--dir <ruta>` | `apps` | Dónde cuelga |
 | `--id <id>` | `<nombre>` | El `id` de SDD-41. Escrito, no derivado (§4.4) |
-| `--prefix <p>` | **obligatorio** | El primer segmento de los tags que define. Sin él, `FUD0786` |
+| `--prefix <p>` | — | El prefijo que se **propone** al crear componentes en este proyecto. Opcional: es una guía (SDD-41 §4.4) |
 | `--no-sw` | — | Sin `sw.json` — y entonces sin `id` obligatorio |
 | `--uses <lib>` | — | Añade la dependencia `workspace:*` a esa librería. **Repetible** |
 
@@ -127,7 +127,7 @@ Hereda de `fudic new` los suyos: `--pm`, `--no-install`, `--no-git`, `--no-sw`, 
 | Flag | Defecto | Efecto |
 |---|---|---|
 | `--dir <ruta>` | `libs` | Dónde cuelga |
-| `--prefix <p>` | **obligatorio** | El primer segmento de los tags que define. Sin él, `FUD0786` |
+| `--prefix <p>` | — | El prefijo que se **propone** al crear componentes en este proyecto. Opcional: es una guía (SDD-41 §4.4) |
 | `--uses <lib>` | — | Una librería puede consumir otra. **Repetible** |
 
 ### 3.2. API programática
@@ -265,12 +265,14 @@ dos sitios que lo emiten.
 Y **no** escribe: `vite.config.ts`, `sw.json`, `src/routes/`, ni un layout. Los cuatro son
 de una app (§1.2).
 
-**El prefijo es obligatorio, aquí y en una app.** Sin `--prefix`, `FUD0786` en los dos
-comandos, porque `fudic.json` no valida sin él (SDD-41 §3.1): un nombre de custom element
-lleva guión por especificación, así que todo componente **ya** tiene un primer segmento, y
-lo único que un proyecto puede hacer es declarar cuál — no si lo hay. En una librería el
-argumento pesa el doble, porque sus tags van a vivir en el registro global de
-`customElements` de aplicaciones que ella no controla.
+**El prefijo es opcional, aquí y en una app**, y lo que hace es proponer (SDD-41 §4.4).
+Ninguno de los dos comandos lo exige y ningún componente queda obligado a llevarlo: quien
+escribe el proyecto decide cómo se llaman sus componentes.
+
+Donde sí conviene ponerlo es en una librería, y por una razón práctica y no normativa: sus
+tags van a convivir en el registro global de `customElements` de aplicaciones que ella no
+controla, y un prefijo propio reduce la probabilidad de acabar en el `FUD0761` de SDD-43 —
+que es el diagnóstico del tag **repetido**, el que de verdad rompe.
 
 ### 4.6. Un `fudic-globals.d.ts`, y una config de TypeScript
 
@@ -332,7 +334,7 @@ una pieza compartible con sentido —la cáscara común de varias apps—, así 
 | `FUD0783` | `error` | `fudic g page` con destino un proyecto `kind: "lib"`. Una librería no tiene rutas. |
 | `FUD0784` | `error` | Ya existe un proyecto en ese directorio, o con ese nombre. Sin `--force`. |
 | `FUD0785` | `error` | `--uses <x>` nombra algo que no es una librería del workspace: no existe, o es una app. |
-| `FUD0786` | `error` | `fudic g app` o `fudic g lib` sin `--prefix`. El campo es obligatorio en `fudic.json` y el comando no puede escribir un fichero que no valida (§4.5). |
+| `FUD0786` | — | **Reservado y sin usar.** Fue «`fudic g lib` sin `--prefix`» en un borrador. El prefijo es opcional y es una guía (SDD-41 §4.4); ningún comando lo exige. |
 | `0787`–`0799` | | Reservados. |
 
 ---
@@ -362,8 +364,8 @@ evidencia construida end-to-end (13–14).
    `files` apuntan a `.fud`, `fudic.json` (`kind: "lib"`, **sin `id`**) y
    `src/components/`. Y **no** escribe `vite.config.ts`, ni `sw.json`, ni `src/routes/`,
    ni layout.
-6. `fudic g lib ui` **sin** `--prefix` emite `FUD0786` y no escribe nada. `fudic g app x`
-   sin `--prefix`, lo mismo: la exigencia es de `fudic.json`, no de la clase de proyecto.
+6. `fudic g lib ui` **sin** `--prefix` escribe la librería igual, con un `fudic.json` sin
+   ese campo. Ningún comando lo exige (§4.5).
 
 **El destino**
 

@@ -244,14 +244,12 @@ definir el mismo tag, y el segundo `define()` lanza en tiempo de ejecución.
   generar, que es varios días antes de que falle al renderizar.
 - **`FUD0622`** (SDD-39: el `safeName` de una ruta contra el tag de un componente) se
   evalúa contra el grafo completo por la misma razón.
-- **`FUD0722`** (SDD-41: el primer segmento del tag no es el `prefix` del proyecto) ya es
-  **error** allí, y aquí no cambia de severidad: cambia de **sujeto**. Se comprueba **por
-  proyecto**, cada componente contra el `prefix` del paquete que lo define — nunca contra
-  el del que lo consume. Una app con `prefix: "shop"` que usa `ui-card` de una librería no
-  recibe ningún diagnóstico: `ui-card` cumple el prefijo de `libs/ui`, que es el suyo. Es
-  lo que hace que el grafo compartido sea habitable, y la razón por la que **el prefijo es
-  obligatorio en el fichero**: sin él, los tags de N paquetes caen en un registro global
-  sin que nadie haya declarado quién es quién.
+- **El prefijo sigue sin comprobarse**, tampoco aquí. Es una guía (SDD-41 §4.4), y con
+  librerías lo es más todavía: los tags de un paquete los nombra su autor, y una app no
+  tiene ninguna autoridad sobre cómo se llaman los componentes que consume. Lo que protege
+  el registro global es `FUD0761` —el tag **repetido**, que hace lanzar al segundo
+  `define()`—, no que todo el mundo se llame igual. El prefijo reduce la probabilidad de
+  llegar ahí; el diagnóstico atrapa el caso que importa.
 
 ### 4.6. Las guías de estilo se componen por la cadena del que define
 
