@@ -176,3 +176,36 @@ describe('a `.prop` on a NATIVE tag is unchanged (§6.3)', () => {
     }
   });
 });
+
+describe('reflecting is still available — spelled as what it is (BUG-32 T1)', () => {
+  it('a plain attribute with an expression is written on the child host', () => {
+    // This is the replacement for the automatic reflect: the author says so, in HTML's own
+    // vocabulary, and the same pass that wrote the implicit copy writes this one.
+    for (const src of all('<app-badge data-tone="@(t)"></app-badge>')) {
+      expect(src).toMatch(/\$dom\.setAttr\(\$n\d+, "data-tone", String\(\$v\)\);/u);
+    }
+  });
+
+  it('and it is NOT a prop of the child: the two channels stay separate', () => {
+    const { page: p, server } = outputs('<app-badge data-tone="@(t)"></app-badge>');
+    expect(p).not.toContain('"data-tone":');
+    expect(server).not.toContain('"data-tone":');
+  });
+
+  it('stays in sync on the client, in `$a()` like every other value', () => {
+    const { client } = outputs('<app-badge data-tone="@(t)"></app-badge>');
+    const apply = client.slice(client.indexOf('const $a = () => {'), client.indexOf('return {'));
+    expect(apply).toContain('"data-tone"');
+  });
+
+  it('reflect and prop together: the same value down both, written once each', () => {
+    const { server } = outputs('<app-badge .tone="@(t)" data-tone="@(t)"></app-badge>');
+    expect(server).toContain('{ "tone": (t) }');
+    expect(server).toMatch(/setAttr\(\$n\d+, "data-tone"/u);
+    // ONE attribute name written, not two: the prop is not reflected on top of the explicit
+    // one. (The name appears twice — the omit-if-falsy branch writes `''` and `String($v)` —
+    // so what is counted is the set of names, not the number of calls.)
+    const names = new Set([...server.matchAll(/setAttr\(\$n\d+, "([^"]+)"/gu)].map((m) => m[1]));
+    expect([...names]).toEqual(['data-tone']);
+  });
+});
