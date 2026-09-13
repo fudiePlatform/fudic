@@ -9,11 +9,17 @@
  * exported `load` binding. Reading it off the Oxc AST would be exact, but the region's
  * fragment is only registered when the pipeline batched it, and this rule must hold even
  * when the JS did not parse.
+ *
+ * Shallow is not blind, though. The comment that documents this very rule names `load`, and so
+ * does `const doc = "export function load"` (BUG-30 §4.2). Comments and strings are blanked
+ * before the match, with the regions the SDD-02 balancer already walked and SDD-08 published:
+ * the scan stays textual and independent of Oxc, and stops reading prose as an export.
  */
 
 import type { Diagnostic } from '../../types/index.js';
 import { errorDiag } from '../../types/index.js';
 import type { Analyzer, SemanticInput } from '../model.js';
+import { maskOpaque } from '../opaque.js';
 
 const FUD_LAYOUT_LOAD = 'FUD0430';
 
@@ -26,9 +32,10 @@ export const layoutLoad: Analyzer = {
   run(input: SemanticInput, report: (d: Diagnostic) => void): void {
     const document = input.document;
     if (document.type !== 'layout-document' || document.code === undefined) return;
-    for (const part of document.code.parts) {
+    const code = document.code;
+    for (const part of code.parts) {
       if (part.type !== 'server-region') continue;
-      const js = input.source.slice(part.js.start, part.js.end);
+      const js = maskOpaque(input.source, code.regions, part.js.start, part.js.end);
       if (EXPORTED_LOAD.test(js)) {
         report(
           errorDiag(

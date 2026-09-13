@@ -2,8 +2,8 @@
 
 > **BUG:** [BUG-30 — Un `@client` escrito en un comentario es un error](./BUG-30-marcador-dentro-de-un-comentario.md)
 > **Paquetes:** `@fudic/compiler`
-> **Rama:** por asignar · **Depende de:** SDD-08 y SDD-12 en `Hecho`
-> **Progreso:** 0 / 5 — `Listo`
+> **Rama:** `worktree-bug-30-marcador-en-comentario` · **Depende de:** SDD-08 y SDD-12 en `Hecho`
+> **Progreso:** 5 / 5 — `Hecho`
 
 Cinco tareas. Rutas relativas a la raíz del repo. Cada una deja el workspace verde, así que
 se puede parar después de cualquiera.
@@ -34,7 +34,7 @@ nadie sabe si pasan porque la corrección funciona o porque el test mira otra co
 
 ## Fase 1 — El rojo (1)
 
-- [ ] **1. Los falsos positivos, reproducidos.**
+- [x] **1. Los falsos positivos, reproducidos.**
       En `packages/compiler/test/semantic/`: `@client` y `@server` nombrados en un comentario
       de línea, uno de bloque, una cadena y una plantilla —en la zona neutra **y** dentro de
       una región—, y `load` nombrado en un comentario y en una cadena del `@server` de un
@@ -44,7 +44,7 @@ nadie sabe si pasan porque la corrección funciona o porque el test mira otra co
 
 ## Fase 2 — Que el AST publique lo que ya sabe (1)
 
-- [ ] **2. `CodeBlockNode.regions`.**
+- [x] **2. `CodeBlockNode.regions`.**
       [`code/nodes.ts`](../../../packages/compiler/src/code/nodes.ts) gana el campo;
       [`code/code.ts`](../../../packages/compiler/src/code/code.ts) lo rellena con el
       `group.regions` que **ya tiene en la mano** en la línea 289 y hoy solo usa para el
@@ -53,12 +53,12 @@ nadie sabe si pasan porque la corrección funciona o porque el test mira otra co
 
 ## Fase 3 — Una regla, una función (2)
 
-- [ ] **3. El ayudante.**
+- [x] **3. El ayudante.**
       Un módulo propio en `semantic/`, con **una** de las dos formas de §3 —`outsideOpaque`
       (el `RegionCursor` de `code.ts:94` extraído) o `maskOpaque` (enmascarado carácter por
       carácter, como `redactServerRegions`)—. Si sale `maskOpaque`, los dos analizadores se
       quedan casi como están y los spans no se mueven solos.
-- [ ] **4. Los dos llamantes.**
+- [x] **4. Los dos llamantes.**
       [`code-region-nesting.ts`](../../../packages/compiler/src/semantic/analyzers/code-region-nesting.ts)
       (`FUD0193`) y
       [`layout-load.ts`](../../../packages/compiler/src/semantic/analyzers/layout-load.ts)
@@ -67,7 +67,7 @@ nadie sabe si pasan porque la corrección funciona o porque el test mira otra co
 
 ## Fase 4 — La prosa que lo destapó (1)
 
-- [ ] **5. El comentario del ejemplo, tal como se quería escribir.**
+- [x] **5. El comentario del ejemplo, tal como se quería escribir.**
       [`examples/basic/src/routes/ruta-reactiva.fud`](../../../examples/basic/src/routes/ruta-reactiva.fud)
       dice hoy «la region de cliente» con el nombre roto a propósito para esquivar el
       diagnóstico. Vuelve a decir `@client`, que es lo que había que escribir.
@@ -76,9 +76,23 @@ nadie sabe si pasan porque la corrección funciona o porque el test mira otra co
 
 ## Cierre
 
-- [ ] `pnpm typecheck` · `pnpm test` en verde en el workspace entero.
-- [ ] Cobertura al **100 %** en las cuatro métricas del código nuevo; `@fudic/compiler` no
-      baja.
-- [ ] Validado por mutación: se deshace el salto de regiones y vuelven a caer los cinco
-      tests de la fase 1.
-- [ ] Fila en [el índice de BUG](./INDEX.md) y registro en [INDEX.md](../INDEX.md).
+- [x] `pnpm typecheck` · `pnpm test` en verde en el workspace entero. También `pnpm build`,
+      que construye `examples/basic` con el comentario de la tarea 5 ya escrito.
+- [x] Cobertura al **100 %** en las cuatro métricas del código nuevo (`semantic/opaque.ts`);
+      `@fudic/compiler` no baja de su suelo, 99,19 / 98 / 99,34 / 99,64.
+- [x] Validado por mutación: se deshace el salto de regiones y vuelven a caer los cinco
+      tests de la fase 1 — los tres de verdaderos positivos siguen verdes.
+- [x] Fila en [el índice de BUG](./INDEX.md) y registro en [INDEX.md](../INDEX.md). Y las
+      anotaciones cruzadas de la cabecera: SDD-08 §3, SDD-12 §3 y §6.5, SDD-21 §5, y las
+      decisiones 33.a y 89 de la gramática.
+
+---
+
+## Una nota sobre el criterio §6.8
+
+El criterio pide las regiones «en orden y **sin solapes**». En orden, sí. Sin solapes, no del
+todo, y no por un fallo: una plantilla cubre su interpolación **y** la cadena de dentro se lista
+además por su cuenta, que es lo que el balanceador de SDD-02 documenta y lo que el `RegionCursor`
+de SDD-08 ya sabía manejar. Los spans **anidan**; nunca se solapan a medias. El test comprueba eso
+—orden de fuente y anidamiento— y el enmascarado no necesita caso aparte, porque blanquear dos
+veces un tramo es blanquearlo una.

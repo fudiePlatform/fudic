@@ -63,6 +63,13 @@ export interface CodeBlockNode extends Node {
   readonly type: 'code';
   /** Neutral JS chunks and `@server`/`@client` regions, in source order (free order, 34). */
   readonly parts: readonly CodePart[];
+  /**
+   * Opaque lexical regions (strings, templates, comments, regex) the SDD-02 balancer walked
+   * over the WHOLE body, in source order (BUG-30 §3). Published, not recomputed: a consumer
+   * that must ask «is this offset code or is it text?» would otherwise re-lex JavaScript that
+   * was already lexed one phase earlier.
+   */
+  readonly regions: readonly LexRegion[];
 }
 
 export type CodePart = NeutralJs | ServerRegion | ClientRegion;

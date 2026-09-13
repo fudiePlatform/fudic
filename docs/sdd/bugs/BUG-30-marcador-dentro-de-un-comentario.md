@@ -1,8 +1,8 @@
 # BUG-30 — Un `@client` escrito en un comentario es un error, y un `load` nombrado en uno también
 
-**Estado:** `Listo` — causa raíz confirmada sobre el código, con fichero y línea ·
+**Estado:** `Hecho` — corregido, verde y validado por mutación ·
 **Depende de** [SDD-08](../SDD-08-code-block.md) y [SDD-12](../SDD-12-semantica.md) en `Hecho` ·
-**Rama:** por asignar · **Tareas:** [BUG-30-Task.md](./BUG-30-Task.md)
+**Rama:** `worktree-bug-30-marcador-en-comentario` · **Tareas:** [BUG-30-Task.md](./BUG-30-Task.md)
 
 > **Paquetes:** `compiler`
 > **Corrige:** SDD-12 §4 (el escaneo textual como técnica) · SDD-08 §3 · SDD-21 §4 ·

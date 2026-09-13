@@ -513,7 +513,11 @@ hoy el nombre de la variable padre (`'$body'`, `'$shadow'`), así que ya está p
 `0431`, `0436`) los emite la pasada de estructura (SDD-10); los que exigen ver **dos** ficheros
 (`FUD0422` ciclo, `FUD0423` el destino no tiene `@RenderBody()`, `FUD0429` sección huérfana,
 `FUD0435` el destino no es un layout) los emite `resolveDocument`, que es quien conoce la cadena.
-`FUD0430` es del analizador semántico (SDD-12), porque mira el `@server`. Un diagnóstico de
+`FUD0430` es del analizador semántico (SDD-12), porque mira el `@server`. Lo mira **por el texto**
+—la regla tiene que valer aunque Oxc no haya podido parsear el fragmento— pero con los comentarios
+y las cadenas de esa región enmascarados antes de buscar, que es lo que el balanceador de SDD-02 ya
+sabía: un `load` nombrado en la frase que documenta esta misma regla no es un `load` exportado
+(BUG-30 §4.2). Un diagnóstico de
 `resolveDocument` se ancla en el `<link>` que lo provoca —que puede vivir en un layout y no en la
 entrada—, así que el mensaje **nombra el fichero**; el host (SDD-19) lo mapea al abrirlo.
 

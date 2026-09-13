@@ -100,7 +100,7 @@ export function analyze(input: SemanticInput): ParseResult<SemanticModel>;
 | `reserved-attributes` | SDD-15 §3.1 | Atributo (o `.prop`, que aterriza como atributo desde BUG-16 §4.1) en el namespace `data-fud-*`, salvo el `data-fud-space` del autor. Compara en minúsculas: el nombre de un atributo no es case-sensitive. | `FUD0294`. |
 | `ref-in-loop` | 31 | Un `RefBinding` (vía `classifyAttribute`) dentro del subárbol de `@foreach`/`@for`/`@while`. | `FUD0192`. |
 | `code-region-uniqueness` | 33.b | Más de un `@server` o `@client` en `CodeBlockNode.parts`. | `FUD0194` en el repetido. |
-| `code-region-nesting` | 33.a | `@server`/`@client` anidado: escanea el **texto** de cada región buscando marcadores (SDD-08 no desciende). | `FUD0193`. |
+| `code-region-nesting` | 33.a | `@server`/`@client` anidado: escanea el **texto** de cada región buscando marcadores (SDD-08 no desciende), con los comentarios y las cadenas **enmascarados** antes de buscar (BUG-30 §4.1). | `FUD0193`. |
 | `neutral-imports` | 33.c | Import **solo por efecto** (sin bindings, `import './x'`) en zona neutra. | `FUD0196` (warning). |
 | `primitive-interpolation` | 19 | Interpolación cuyo `ast` es literal `Array`/`Object` (no-primitiva **evidente**). | `FUD0195`. |
 | `component-declared` | 41 | Elemento custom (nombre con `-`) usado sin estar en `ComponentRegistry`. | `FUD0191`. |
@@ -203,7 +203,11 @@ El SDD está `Hecho` cuando:
    un `@client` ⇒ sin error.
 
 5. **Anidación de regiones (33.a).** `@code { @client { @server {} } }` ⇒ `FUD0193` (escaneo de
-   texto de la región).
+   texto de la región). El texto que se escanea es el de la parte con sus **regiones opacas
+   enmascaradas** —`CodeBlockNode.regions`, lo que el balanceador de SDD-02 ya recorrió—, así que
+   un `@client` nombrado en un comentario o en una cadena no es un marcador (BUG-30 §4.1). El
+   enmascarado es carácter por carácter: los offsets no se mueven, y el span sigue cayendo sobre
+   el marcador de verdad.
 
 6. **Interpolación no-primitiva (19).** `@([1, 2, 3])` en contenido ⇒ `FUD0195`. `@title` (no
    literal) ⇒ sin error aquí (se difiere al type-check; §8).
