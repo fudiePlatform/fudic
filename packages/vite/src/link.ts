@@ -17,9 +17,11 @@ import { type ResolveIo } from '@fudic/compiler';
 import { type RouteBuild } from './discover.js';
 import { isLinkable } from './mode.js';
 import { emitRenderChunk } from './wrapper.js';
+import { runtimeUrls } from './constants.js';
 import { routeUsesDi } from './client.js';
 import { transformFud } from './transform.js';
 import { LINK_DIR, LINK_PREFIX } from './constants.js';
+import { loadWithSourceMap } from './inputmaps.js';
 import { serializeMap, type NestedOutputOptions } from './nested.js';
 
 export interface LinkChunk {
@@ -69,7 +71,7 @@ export function safeName(pattern: string): string {
  * whole plugin would mean guarding every hook against recursion. This one only knows
  * how to serve the linked wrappers and compile `.fud`.
  */
-function linkPlugin(builds: readonly RouteBuild[], io: ResolveIo): Plugin {
+function linkPlugin(builds: readonly RouteBuild[], io: ResolveIo, base: string): Plugin {
   return {
     name: 'fudic:link',
     resolveId(id) {
@@ -77,7 +79,9 @@ function linkPlugin(builds: readonly RouteBuild[], io: ResolveIo): Plugin {
     },
     load(id) {
       if (!id.startsWith(LINK_PREFIX)) {
-        return null;
+        // A workspace package arrives as its built `dist/*.js`; its own map is the link back
+        // to the `.ts`, and nothing else in this nested build goes looking for it.
+        return loadWithSourceMap(id);
       }
       const pattern = id.slice(LINK_PREFIX.length);
       const rb = builds.find((b) => b.route.pattern === pattern);
@@ -90,6 +94,7 @@ function linkPlugin(builds: readonly RouteBuild[], io: ResolveIo): Plugin {
         hasPaths: rb.analysis.hasPaths,
         hasDi: routeUsesDi(rb.absPath, io),
         withLoad: false, // server code never ships to the client (§4.5)
+        runtime: runtimeUrls(base),
       });
     },
     async transform(_code, id) {
@@ -101,11 +106,22 @@ function linkPlugin(builds: readonly RouteBuild[], io: ResolveIo): Plugin {
       if (result === null) return null;
       // Since SDD-34 the neutral zone of `@code` reaches this module verbatim, so it is
       // TypeScript whenever the author wrote it — same strip as the host plugin does.
-      const emitted = await transformWithOxc(result.code, `${path}.ts`, { lang: 'ts' });
       // The map goes back too (BUG-05 §4.2). Dropping it was not a missing feature but a
       // silent one: the nested build would chain its own map onto the GENERATED module and
       // produce a map that is valid, resolves, and never mentions the `.fud`.
-      return { code: emitted.code, map: JSON.stringify(result.map) };
+      //
+      // It goes in as `inMap` rather than alongside the result: Oxc composes `.fud` → TS with
+      // its own TS → JS and returns one map for the code it actually emitted. Returning the
+      // emit's map next to the STRIPPED code described a text that no longer existed — these
+      // are the chunks the Service Worker links, and they came out with a handful of
+      // mappings each, or none at all.
+      const emitted = await transformWithOxc(
+        result.code,
+        `${path}.ts`,
+        { lang: 'ts', sourcemap: true },
+        result.map,
+      );
+      return emitted.map ? { code: emitted.code, map: emitted.map } : { code: emitted.code };
     },
   };
 }
@@ -162,7 +178,7 @@ export async function runLinkPass(
     root,
     base,
     logLevel: 'error',
-    plugins: [linkPlugin(linkable, io)],
+    plugins: [linkPlugin(linkable, io, base)],
     build: {
       write: false,
       emptyOutDir: false,

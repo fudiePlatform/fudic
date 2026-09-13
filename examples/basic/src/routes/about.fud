@@ -1,5 +1,6 @@
 <link rel="layout" href="../layouts/_layout.fud">
 <link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/sin-css.fud">
 
 <head>
   <title>Acerca de — fudic</title>
@@ -10,6 +11,7 @@
 }
 
 <h1>Acerca de este ejemplo</h1>
+<sin-css></sin-css>
 <p>
   Cuatro rutas que ejercitan lo que el framework tiene montado hoy: routing por
   sistema de ficheros, los tres modos de render, el manifest como contrato único, el

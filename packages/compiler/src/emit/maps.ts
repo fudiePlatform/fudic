@@ -129,6 +129,27 @@ export function fudBus(graph: ComponentGraph): TagMap {
 }
 
 /**
+ * Whether a rendered page needs the hydration runtime at all (BUG-31 §T1).
+ *
+ * The question is «will this document carry a `data-fud-id`, or a container to build»,
+ * because those are the two things `fudic-main` looks for. So the answer is the HYDRATABLE
+ * SET, not the maps below it: a page can claim three hosts and still publish no `fud-tree` —
+ * the tree describes COMPOSITION between hydratable components, and three siblings under
+ * plain markup compose with nobody. Reading `hasTree` here left exactly those pages
+ * interactive in the HTML and dead in the browser.
+ *
+ * It is a function of the graph and NOT a by-product of `writeMapConstants`, because the two
+ * callers ask at different moments: the head of a standalone page is walked before the maps
+ * are written, and the answer has to be the same one either way.
+ *
+ * It errs toward emitting: a component that is hydratable but never rendered costs a runtime
+ * nothing will use, while the opposite costs a page its behaviour.
+ */
+export function needsRuntime(hydratable: ReadonlySet<string>, hasDi: boolean): boolean {
+  return hydratable.size > 0 || hasDi;
+}
+
+/**
  * The compile-time map constants of a page module — the ones a page and a route both need,
  * written by the one function so the two shapes cannot drift.
  *

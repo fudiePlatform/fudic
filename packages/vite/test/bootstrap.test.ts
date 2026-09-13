@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { emitSwBootstrap, emitMainBootstrap } from '../src/bootstrap.js';
+import { emitSwBootstrap, emitMainBootstrap, emitBootBootstrap } from '../src/bootstrap.js';
 import { BUILD_TOKEN } from '../src/constants.js';
 
 describe('emitSwBootstrap', () => {
@@ -64,8 +64,16 @@ describe('emitSwBootstrap', () => {
     expect(install).toContain('catch');
   });
 
-  it('does not intercept until the router is ready (the decision is synchronous)', () => {
-    expect(code).toContain('if (router !== null) router.handle(e);');
+  it('serves from the router the moment it is ready (the decision is synchronous)', () => {
+    expect(code).toContain('if (router !== null) { router.handle(e); return; }');
+  });
+
+  it('a woken worker TAKES the navigation and waits for its own boot (BUG-31 T7)', () => {
+    // The listener is synchronous, so a worker the browser just woke — `router` null again,
+    // `boot()` only just started — used to let the navigation fall through to the network.
+    // Online that is invisible; offline it is the whole app failing to open.
+    expect(code).toContain("if (e.request.mode === 'navigate' && e.request.method === 'GET') {");
+    expect(code).toContain('e.respondWith(boot().then((r) => (r === null ? fetch(e.request) : r.respond(e))));');
   });
 
   it('checks the safety valve before anything else', () => {
@@ -115,19 +123,40 @@ describe('emitSwBootstrap', () => {
   });
 });
 
-describe('emitMainBootstrap', () => {
+describe('emitBootBootstrap — the always-on half (BUG-31 T2)', () => {
   it('registers the Service Worker and tells it where the user is', () => {
-    const code = emitMainBootstrap({
-      chunks: { mode: 'build', base: '/' },
-      swUrlExpr: 'import.meta.ROLLUP_FILE_URL_sw',
-    });
+    const code = emitBootBootstrap('import.meta.ROLLUP_FILE_URL_sw');
     expect(code).toContain(
-      "import { createUrlResolver, registerRenderServiceWorker, notifyLocation } from '@fudic/transport';",
+      "import { registerRenderServiceWorker, notifyLocation } from '@fudic/transport';",
     );
     expect(code).toContain("'serviceWorker' in navigator");
     expect(code).toContain('registerRenderServiceWorker(import.meta.ROLLUP_FILE_URL_sw)');
     expect(code).toContain('notifyLocation()');
     expect(code).not.toContain('new Worker'); // the WW is gone for good
+    // The registration and the hydration runtime are different tags now: this half carries
+    // nothing of the second, so a page that hydrates nothing still gets its worker.
+    expect(code).not.toContain('installHydration');
+  });
+
+  it('is an empty module when the page has no worker, so the tag can stay in the head', () => {
+    // `export {};` and not an absent file: the layout's markup must not depend on a decision
+    // taken in `sw.json`.
+    expect(emitBootBootstrap(null)).toBe('export {};\n');
+  });
+});
+
+describe('emitMainBootstrap', () => {
+  it('no longer registers the worker: that half moved out (BUG-31 T2)', () => {
+    const code = emitMainBootstrap({
+      chunks: { mode: 'build', base: '/' },
+      swUrlExpr: 'import.meta.ROLLUP_FILE_URL_sw',
+    });
+    expect(code).not.toContain('registerRenderServiceWorker');
+    expect(code).not.toContain('notifyLocation');
+    expect(code).not.toContain('new Worker'); // the WW is gone for good
+    // What it still reads from the worker is the warm channel, and only that: the page that
+    // knows how it was emitted is this one.
+    expect(code).toContain("import { installHydration, createServiceWorkerWarmChannel } from '@fudic/core';");
   });
 
   it('SDD-17 §4.7.1 installs the hydration ALWAYS — the Service Worker is what is optional', () => {

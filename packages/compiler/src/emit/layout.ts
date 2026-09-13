@@ -29,7 +29,7 @@ import { AssetLinker } from './assets.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import { formAssociatedTags, hydratableTags } from './level.js';
 import { hasDependencyInjection } from './di.js';
-import { writeMapConstants, writeHydrationBlocks } from './maps.js';
+import { needsRuntime, writeMapConstants, writeHydrationBlocks } from './maps.js';
 import type { DocumentGraph, ResolvedLayout } from './resolve.js';
 import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
 import {
@@ -38,6 +38,7 @@ import {
   specifierResolver,
   writeHeadElements,
   writeNonceBinding,
+  writeRuntimeTags,
   writeSharedHead,
 } from './parts.js';
 
@@ -117,6 +118,10 @@ function buildLayoutModule(
       linker,
       ...(doc.renderHead !== undefined ? { injectAt: doc.renderHead as HtmlContent } : {}),
       onInject: () => headW.line(`head += ${SLOTS}.head();`),
+      // The marker resolves to a fact of the ROUTE — whether THIS page hydrates — and a
+      // layout is shared by many routes, so it asks, exactly as it does for the head
+      // contributions (BUG-31 §T1).
+      onRuntime: () => headW.line(`head += ${SLOTS}.runtime();`),
     },
     headW,
   );
@@ -287,6 +292,7 @@ function buildRouteModule(
   }
   writeSharedHead(headW, styled.size > 0);
 
+
   const w = new CodeWriter();
   const innermost = graph.layouts[0];
   if (innermost !== undefined) {
@@ -311,6 +317,9 @@ function buildRouteModule(
   // included — while a layout module is emitted from its own graph and cannot see the
   // route's. One map computed here would be missing half the page.
   const maps = writeMapConstants(w, graph, hydratable);
+  // The route's answer to the layout's `fudic:runtime` marker (BUG-31 §T1).
+  const runtimeW = new CodeWriter();
+  writeRuntimeTags(runtimeW, needsRuntime(hydratable, hasDi));
   w.line('');
   // Same public shape as a standalone page: the composition is invisible downstream.
   w.line('export function* page(data, io, $ioc) {');
@@ -326,6 +335,16 @@ function buildRouteModule(
   w.indent();
   w.line("let head = '';");
   w.appendWriter(headW);
+  w.line('return head;');
+  w.dedent();
+  w.line('},');
+  // What the layout's `fudic:runtime` marker becomes for THIS route (BUG-31 §T1). The
+  // layout says where the runtime goes; only the route knows whether there is anything to
+  // hydrate, because its graph is the one that reaches the whole chain.
+  w.line('runtime() {');
+  w.indent();
+  w.line("let head = '';");
+  w.appendWriter(runtimeW);
   w.line('return head;');
   w.dedent();
   w.line('},');

@@ -189,9 +189,17 @@ describe('extraction', () => {
     );
     const code = codeOfSource(source);
     expect(code.di).toEqual([]);
+    // `at` and `anchors` are the source-map half (BUG-31): the statement keeps the offset it
+    // was written at, and a hoisted import anchors nothing — its text is rebuilt, not sliced.
     expect(code.neutral).toEqual([
-      { text: "import { Cart } from './services/cart.js';", hoisted: true, provides: false },
-      { text: 'const total = Cart.zero;', hoisted: false, provides: false },
+      {
+        text: "import { Cart } from './services/cart.js';",
+        at: 10,
+        anchors: [],
+        hoisted: true,
+        provides: false,
+      },
+      { text: 'const total = Cart.zero;', at: 55, anchors: [], hoisted: false, provides: false },
     ]);
   });
 });

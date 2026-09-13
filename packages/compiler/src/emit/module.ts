@@ -33,7 +33,7 @@ import { codeOf, diHelpers } from './oxc-code.js';
 import { hasDependencyInjection } from './di.js';
 import { cellSlots, childTargets, reactiveScope } from './state.js';
 import { formAssociatedTags, hydratableTags } from './level.js';
-import { writeMapConstants, writeHydrationBlocks } from './maps.js';
+import { needsRuntime, writeMapConstants, writeHydrationBlocks } from './maps.js';
 import { planControls } from './controls.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import {
@@ -42,6 +42,7 @@ import {
   specifierResolver,
   writeHeadElements,
   writeNonceBinding,
+  writeRuntimeTags,
   writeSharedHead,
 } from './parts.js';
 
@@ -241,6 +242,10 @@ function buildComponentModule(
     formAssociated: formAssociatedTags(graph),
     styled: styledTags(graph),
   });
+  // The host's own attributes FIRST, so `$host` is declared before anything below could read
+  // it — and inside the markup body, which `appendWriter` puts after the props, the inert
+  // reactives and the neutral zone (BUG-32 T2).
+  if (comp.doc.host !== undefined) em.emitHost(comp.doc.host);
   em.emitChildren(comp.doc.template!.children, '$shadow');
   // css uses the linker too (may register more imports), so build it before the imports.
   const css = linker.cssTemplate(componentCss(comp.source, comp.doc));
@@ -363,12 +368,17 @@ function buildComponentModule(
   // this is the side that owns the container — while the browser gets it from the route's
   // IoC module instead (SDD-38 §4.5).
   for (const statement of neutral) {
-    if (!statement.hoisted) w.line(statement.text);
+    // `mappedLine`, not `line`: this is the author's own code, verbatim, and the anchor is
+    // what lets a breakpoint in the `.fud` find it. Renders byte-identically.
+    if (!statement.hoisted)
+      w.mappedLine({ text: statement.text, src: statement.at, anchors: statement.anchors });
   }
   // And then the `@server` region, which runs on this side ONLY, and which until SDD-38
   // reached nowhere at all. Last of the three, because it is the one that may read what the
   // other two declared and nothing may read it back.
-  for (const statement of server.body) w.line(statement.text);
+  for (const statement of server.body) {
+    w.mappedLine({ text: statement.text, src: statement.at, anchors: statement.anchors });
+  }
   w.appendWriter(bodyW); // carries the markup's source anchors, unlike a toString()/split copy
   w.dedent();
   w.line('}');
@@ -441,7 +451,20 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
   // elements are the component graph, not output, and are skipped.
   const componentLinks = new Set<HtmlContent>(page.links);
   const headW = new CodeWriter();
-  writeHeadElements(source, page.head, { skip: componentLinks, linker }, headW);
+  // A standalone page owns its whole `<head>`, so it answers the `fudic:runtime` marker
+  // itself (BUG-31 §T1) — there is no layout to ask and no route slot to go through. The
+  // maps are written further down, so the question is deferred to a callback that runs at
+  // that point: `writeHeadElements` only decides WHERE, exactly as it does for a layout.
+  writeHeadElements(
+    source,
+    page.head,
+    {
+      skip: componentLinks,
+      linker,
+      onRuntime: () => writeRuntimeTags(headW, needsRuntime(hydratable, hasDi)),
+    },
+    headW,
+  );
 
   const w = new CodeWriter();
   const specifier = specifierResolver(graph, options.componentSpecifier, ext);

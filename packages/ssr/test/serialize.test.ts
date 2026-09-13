@@ -72,8 +72,10 @@ describe('renderToString — comments and shadow', () => {
     const root = d.attachShadow(host);
     d.append(root, d.text('hi'));
     d.append(host, d.text('light')); // light-DOM child comes after the template
+    // No `data-fud-adopt`, so the template announces no sheet (BUG-31 §T4): the marker is
+    // what says this component HAS one, and the emit writes it only when it does.
     expect(renderToString(host)).toBe(
-      '<app-x><template shadowrootmode="open" shadowrootadoptedstylesheets="app-x">hi</template>light</app-x>',
+      '<app-x><template shadowrootmode="open">hi</template>light</app-x>',
     );
   });
 
@@ -82,9 +84,10 @@ describe('renderToString — comments and shadow', () => {
     // `<input>` inside its shadow root, which is what makes the component unlabelable.
     const d = new SsrDom();
     const host = d.element('app-input');
+    d.setAttr(host, 'data-fud-adopt', 'app-input');
     d.append(d.attachShadow(host, true), d.text('hi'));
     expect(renderToString(host)).toBe(
-      '<app-input><template shadowrootmode="open" shadowrootdelegatesfocus ' +
+      '<app-input data-fud-adopt="app-input"><template shadowrootmode="open" shadowrootdelegatesfocus ' +
         'shadowrootadoptedstylesheets="app-input">hi</template></app-input>',
     );
   });

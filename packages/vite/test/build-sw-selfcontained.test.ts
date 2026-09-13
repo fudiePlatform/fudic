@@ -16,7 +16,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fudic } from '../src/index.js';
 import { runtimeAlias } from './helpers/alias.js';
-import { BUILD_TOKEN } from '../src/constants.js';
+import { BUILD_TOKEN, mainFileName, bootFileName } from '../src/constants.js';
 import { specifiersOf } from './helpers/specifiers.js';
 import { renderUrlOf, emitted } from './helpers/manifest.js';
 
@@ -78,17 +78,25 @@ describe('vite build — the Service Worker is a self-contained bundle', () => {
   let root: string;
   let sw: OutFile;
   let main: OutFile;
+  let boot: OutFile;
 
   beforeAll(async () => {
     root = projectRoot({ serviceWorker: true });
     output = await buildRoot(root);
     sw = output.find((o) => o.fileName === 'fudic-sw.js')!;
-    main = output.find((o) => o.fileName === 'fudic-main.js')!;
+    // The two main-thread entries carry the build id since BUG-31 T1; the worker does not,
+    // and cannot: a Service Worker's scope is its own directory, so its URL is written by
+    // hand and has to stay nameable.
+    main = output.find((o) => o.fileName === mainFileName(idOf(output)))!;
+    boot = output.find((o) => o.fileName === bootFileName(idOf(output)))!;
   }, 180000);
 
   it('§6.3 exists at the root of outDir, under that exact name, without a hash', () => {
     expect(sw).toBeDefined();
     expect(main).toBeDefined();
+    expect(boot).toBeDefined();
+    // And no leftover of the old fixed names, which a stale layout tag would still fetch.
+    expect(output.some((o) => o.fileName === 'fudic-main.js')).toBe(false);
   });
 
   it('§6.1 has no imports at all — not one static, not one dynamic', () => {
@@ -119,10 +127,12 @@ describe('vite build — the Service Worker is a self-contained bundle', () => {
   });
 
   it('§6.6 the main thread registers it by literal URL, with `base` applied', async () => {
-    expect(textOf(main)).toContain('"/fudic-sw.js"');
+    // In the BOOT entry, which is the always-on half since BUG-31 T2 — a page with nothing
+    // to hydrate never loads `main`, and it still has to get its worker.
+    expect(textOf(boot)).toContain('"/fudic-sw.js"');
     const based = await buildRoot(projectRoot({ serviceWorker: true }), { base: '/app/' });
-    const basedMain = based.find((o) => o.fileName === 'fudic-main.js')!;
-    expect(textOf(basedMain)).toContain('"/app/fudic-sw.js"');
+    const basedBoot = based.find((o) => o.fileName === bootFileName(idOf(based)))!;
+    expect(textOf(basedBoot)).toContain('"/app/fudic-sw.js"');
   }, 180000);
 
   it('§6.7 the link pass still emits its chunks and the manifest still points at them', () => {

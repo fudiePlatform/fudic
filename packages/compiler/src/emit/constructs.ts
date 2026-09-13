@@ -122,17 +122,30 @@ export function collectTemplateJs(nodes: readonly HtmlContent[], visit: JsFragme
   for (const node of nodes) collectNode(node, visit);
 }
 
+/**
+ * The JS of ONE element's attributes, without descending into it.
+ *
+ * For the component's own host wrapper (BUG-32 T2): its children are the `<template>`, which
+ * the template walk already covers, so a full `collectNode` over it would register every
+ * fragment of the file twice. What it owns is its attributes, and those had no AST at all —
+ * which is why an `@click` there emitted no listener while its plain attributes emitted fine:
+ * `eventHandler` asks the batch for the handler's AST and got nothing back.
+ */
+export function collectAttributeJs(el: ElementNode, visit: JsFragmentVisitor): void {
+  for (const attribute of el.attributes) {
+    // `bus:(expr)="…"` (decision 28.b) is the only attribute whose NAME is an expression.
+    if (typeof attribute.name !== 'string') visit('expression', attribute.name.expr);
+    for (const part of attribute.value) {
+      if (part.type === 'razor-expression') visit('expression', part.expr);
+    }
+  }
+}
+
 function collectNode(node: HtmlContent, visit: JsFragmentVisitor): void {
   switch (node.type) {
     case 'element': {
       const el = node as ElementNode;
-      for (const attribute of el.attributes) {
-        // `bus:(expr)="…"` (decision 28.b) is the only attribute whose NAME is an expression.
-        if (typeof attribute.name !== 'string') visit('expression', attribute.name.expr);
-        for (const part of attribute.value) {
-          if (part.type === 'razor-expression') visit('expression', part.expr);
-        }
-      }
+      collectAttributeJs(el, visit);
       collectTemplateJs(el.children, visit);
       return;
     }

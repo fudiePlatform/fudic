@@ -220,7 +220,9 @@ describe('the build writes the three blocks into the prerendered HTML', () => {
     // `x-list` first, then the two `x-row` its shadow holds, then `x-toast`. `x-plain` has
     // nothing of its own and nothing crossing into it.
     expect(idsOf(prerendered)).toEqual([0, 1, 2, 3]);
-    expect(prerendered).toContain('<x-plain data-fud-adopt="x-plain"');
+    // No `data-fud-adopt` on it either: `x-plain` declares no CSS, and since BUG-31 T4 a
+    // component with no stylesheet announces none.
+    expect(prerendered).toContain('<x-plain>');
     expect(prerendered).not.toContain('<x-plain data-fud-id');
   });
 

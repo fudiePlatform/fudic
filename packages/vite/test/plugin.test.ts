@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fudic } from '../src/index.js';
-import { WRAPPER_PREFIX, SW_ID, MAIN_ID } from '../src/constants.js';
+import { WRAPPER_PREFIX, SW_ID, MAIN_ID, BOOT_ID } from '../src/constants.js';
 
 // The compiler fixtures act as a routes dir: `home.fud` is the single page route.
 const root = fileURLToPath(new URL('../../compiler', import.meta.url));
@@ -89,8 +89,11 @@ describe('load — with and without sw.json', () => {
     p.buildStart.call(emitCtx());
     // BUG-03 §4.2: a literal URL, the same expression dev uses. `/fudic-sw.js` has a
     // fixed name because a Service Worker only controls its own directory and below.
-    expect(p.load(MAIN_ID)).toContain('"/fudic-sw.js"');
-    expect(p.load(MAIN_ID)).toContain('registerRenderServiceWorker');
+    // It is the BOOT module that registers it since BUG-31 T2 — the always-on half, loaded
+    // by its own tag, so a page with nothing to hydrate still gets its worker.
+    expect(p.load(BOOT_ID)).toContain('"/fudic-sw.js"');
+    expect(p.load(BOOT_ID)).toContain('registerRenderServiceWorker');
+    expect(p.load(MAIN_ID)).not.toContain('registerRenderServiceWorker');
     expect(p.load(SW_ID)).toContain('createRouter');
     expect(p.load(SW_ID)).toContain('"/style.css"');
     expect(p.load(WRAPPER_PREFIX + '/home')).toContain('htmlToByteStream');

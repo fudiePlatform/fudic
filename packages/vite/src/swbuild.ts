@@ -19,6 +19,7 @@
 import { build, type Plugin } from 'vite';
 import { emitSwBootstrap, type SwBootstrapOptions } from './bootstrap.js';
 import { SW_ID, DEV_SW_URL } from './constants.js';
+import { loadWithSourceMap } from './inputmaps.js';
 import { serializeMap, type NestedOutputOptions } from './nested.js';
 
 export interface SwBuildResult {
@@ -56,7 +57,9 @@ export function swPlugin(options: SwBootstrapOptions): Plugin {
       return id === SW_ID ? id : null;
     },
     load(id) {
-      return id === SW_ID ? emitSwBootstrap(options) : null;
+      // `@fudic/transport` and `@fudic/ssr` end up INSIDE this bundle, and they arrive as
+      // their built `dist/*.js`. Their own maps are what carry the chain back to the `.ts`.
+      return id === SW_ID ? emitSwBootstrap(options) : loadWithSourceMap(id);
     },
   };
 }

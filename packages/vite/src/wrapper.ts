@@ -32,6 +32,18 @@ export interface RenderChunkOptions {
    * does not download a line of DI» is enforced here, where the import is written.
    */
   readonly hasDi?: boolean;
+  /**
+   * The URLs of the two main-thread entries, which the page writes into its `<head>`
+   * (BUG-31 §T1): `boot` registers the Service Worker and rides every page, `main` is the
+   * hydration runtime and rides only a page that hydrates.
+   *
+   * They are assembled by the CALLER and not by the compiler, and that is the package
+   * boundary doing its job: the compiler decides WHETHER a page loads the runtime and where
+   * the tag goes — facts about the page — while where the file lives is a fact about the
+   * build. The caller is also what makes dev work: in a build these carry `BUILD_TOKEN` and
+   * the plugin substitutes it, in dev they are the dev server's two stable URLs.
+   */
+  readonly runtime?: { readonly boot: string; readonly main: string };
 }
 
 /** Generate the route chunk module text. */
@@ -62,9 +74,13 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   lines.push('');
   // `io.nonce` is the CSP nonce of THIS response: the emit puts it on the inline
   // style-adoption polyfill, which a strict `script-src 'self'` would otherwise kill.
+  // The two main-thread entries, by URL (BUG-31 §T1).
+  const runtime = options.runtime ?? { boot: '', main: '' };
+  lines.push(`const RUNTIME = ${JSON.stringify(runtime)};`);
+  lines.push('');
   lines.push('function io(ctx) {');
   lines.push(
-    `  return { createDom: () => new SsrDom(), serialize: serializeChunks, escapeText, jsonBlock${hasDi ? ', iocRoot, publishedSeed' : ''}, nonce: ctx.nonce };`,
+    `  return { createDom: () => new SsrDom(), serialize: serializeChunks, escapeText, jsonBlock${hasDi ? ', iocRoot, publishedSeed' : ''}, nonce: ctx.nonce, runtime: RUNTIME };`,
   );
   lines.push('}');
   lines.push('');

@@ -86,7 +86,10 @@ describe('create ↔ hydrate — composition and control flow (app-card)', () =>
     expect(built).toBe(withoutIds(html));
     // The child host is there, with its style specifier — and empty on both sides: opening
     // its shadow and driving it belongs to the runtime, not to the parent.
-    expect(built).toContain('<app-button data-fud-adopt="app-button" variant="ghost">');
+    // Its `variant` prop is NOT on it since BUG-32 T1: the value goes to the child by the
+    // cell on this side and by `render` on the server, never twice.
+    expect(built).toContain('<app-button data-fud-adopt="app-button">');
+    expect(built).not.toContain('variant="ghost"');
     // And the difference is exactly that one attribute, on the hydratable host only.
     expect(html).toContain('<app-button data-fud-id="0" data-fud-adopt="app-button"');
   });

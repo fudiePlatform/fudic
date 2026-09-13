@@ -25,9 +25,10 @@ import { discoverRoutes, type RouteBuild } from './discover.js';
 import { buildManifest } from './manifest.js';
 import { emitRenderChunk } from './wrapper.js';
 import { emitServerModule } from './server.js';
-import { emitMainBootstrap, emitSwBootstrap } from './bootstrap.js';
+import { emitBootBootstrap, emitMainBootstrap, emitSwBootstrap } from './bootstrap.js';
 import { transformFud, transformFudClient, transformFudIoc } from './transform.js';
 import { eraseServerValidators } from './server-validators.js';
+import { loadWithSourceMap } from './inputmaps.js';
 import {
   CLIENT_QUERY,
   IOC_QUERY,
@@ -69,15 +70,20 @@ import {
   WRAPPER_PREFIX,
   SW_ID,
   MAIN_ID,
+  BOOT_ID,
   DATA_PREFIX,
   EDGE_DIR,
   BUILD_TOKEN,
   BUILD_ID_LENGTH,
   DEV_MAIN_URL,
+  DEV_BOOT_URL,
   DEV_SW_URL,
+  mainFileName,
+  bootFileName,
   PAGE_NAME_PREFIX,
 } from './constants.js';
 import { chunkNamesOf } from './names.js';
+import { runtimeUrls } from './constants.js';
 import { planRename, rewriteReferences, mapNameOf, isHashedChunk } from './rename.js';
 import { keepSet, reachableChunks, type PruneItem } from './prune.js';
 
@@ -119,6 +125,7 @@ function pathnameOf(url: string, base: string): string {
  */
 const DEV_SCRIPT_IDS: ReadonlyMap<string, string> = new Map([
   [`/${DEV_MAIN_URL}`, MAIN_ID],
+  [`/${DEV_BOOT_URL}`, BOOT_ID],
   [`/${DEV_SW_URL}`, SW_ID],
 ]);
 
@@ -165,24 +172,42 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
 
   return {
     name: 'fudic',
+    // Runs before `vite:resolve`, which is what claims this plugin's generated ids before
+    // anything tries to find them on disk. That protection used to come from the `\0`
+    // prefix on those ids; the prefix is gone because Vite/Rolldown drops a `\0` module
+    // from the source map, and the code this plugin GENERATES is precisely the code worth
+    // debugging. See the header of `constants.ts` for the measurement.
+    enforce: 'pre',
 
     config(userConfig) {
-      // The app is the client shell: the main-thread bootstrap is the entry. Two files
-      // need STABLE, ROOT-LEVEL names — the same URLs the dev server publishes:
-      //  - `fudic-sw.js`: a Service Worker only controls its own directory and below;
-      //  - `fudic-main.js`: a page references it literally in a `<script src>`.
+      // The app is the client shell, and it has TWO main-thread entries since BUG-31 §T2:
+      // `fudic-boot` (register the Service Worker — every page) and `fudic-main` (the
+      // hydration runtime — only a page that hydrates).
+      //
+      // They are named HERE with `BUILD_TOKEN` standing in for the build id, which does not
+      // exist yet at config time. `generateBundle` substitutes the id for the token — same
+      // length, so every offset holds and the map generated for this code still describes
+      // it. Naming them `fudic-main.js` here and renaming them to `fudic-main-<id>.js` later
+      // is what BROKE the maps: that rewrite is 9 characters longer, it runs over every
+      // chunk that mentions the name (the Service Worker's own `SHELL` among them), and it
+      // runs AFTER the map was generated. It is the same trick the Service Worker has used
+      // since BUG-05 §4.4, applied to the two entries that had been the exception.
+      //
       // `fudic-sw.js` is NOT a chunk of this output any more: it has its own build, so
       // nothing here has to pin its name (BUG-03 §4.1). `chunkFileNames` goes back to
       // Vite's default.
       const hasOutputConfig = userConfig?.build?.rollupOptions?.output !== undefined;
-      const pinned = (fixed: string) => (chunk: { name: string }) =>
-        chunk.name === fixed ? `${fixed}.js` : 'assets/[name]-[hash].js';
+      const pinned = (chunk: { name: string }): string => {
+        if (chunk.name === 'fudic-main') return mainFileName(BUILD_TOKEN);
+        if (chunk.name === 'fudic-boot') return bootFileName(BUILD_TOKEN);
+        return 'assets/[name]-[hash].js';
+      };
       return {
         appType: 'custom',
         build: {
           rollupOptions: {
-            input: { 'fudic-main': MAIN_ID },
-            ...(hasOutputConfig ? {} : { output: { entryFileNames: pinned('fudic-main') } }),
+            input: { 'fudic-main': MAIN_ID, 'fudic-boot': BOOT_ID },
+            ...(hasOutputConfig ? {} : { output: { entryFileNames: pinned } }),
           },
         },
       };
@@ -224,6 +249,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // scope), but registers nothing unless `sw.json` says `"dev": "preview"` (§4.11).
       const scripts = new Map<string, string>([
         [devUrl(base, DEV_MAIN_URL), MAIN_ID],
+        [devUrl(base, DEV_BOOT_URL), BOOT_ID],
         [devUrl(base, DEV_SW_URL), SW_ID],
       ]);
       server.middlewares.use((req, res, next) => {
@@ -475,7 +501,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     },
 
     resolveId(id) {
-      if (id === MAIN_ID || id === SW_ID || id.startsWith(WRAPPER_PREFIX)) {
+      if (id === MAIN_ID || id === BOOT_ID || id === SW_ID || id.startsWith(WRAPPER_PREFIX)) {
         return id;
       }
       // Only in dev: in build these names are real emitted files (see `DEV_SCRIPT_IDS`).
@@ -503,6 +529,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           hasDi: discoverComponents(builds, io).some((c) => c.usesDi),
         });
       }
+      if (id === BOOT_ID) {
+        // The half that is loaded unconditionally (BUG-31 §T2), so it carries the one thing
+        // that must happen on every page: registering the worker. Empty when there is none.
+        const hasWorker = swConfig !== null && (!isDev || swConfig.dev === 'preview');
+        return emitBootBootstrap(hasWorker ? JSON.stringify(devUrl(base, DEV_SW_URL)) : null);
+      }
       if (id === SW_ID) {
         return emitSwBootstrap({
           manifestUrlExpr: JSON.stringify(manifestUrl),
@@ -526,9 +558,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           // output, and the client never gets `load` (BUG-09 §4.1) — the edge pass builds
           // the variant that does, outside `outDir`.
           withLoad: isDev,
+          // Dev has no build and no id: the two entries are served at their stable URLs.
+          runtime: isDev
+            ? { boot: devUrl(base, DEV_BOOT_URL), main: devUrl(base, DEV_MAIN_URL) }
+            : runtimeUrls(base),
         });
       }
-      return null;
+      // Nothing of ours: if the module is a built `dist/*.js` that ships its own map, hand
+      // the map over with it so the chain reaches the `.ts`. `@fudic/core`'s `signal.js` is
+      // the case that made this visible — the debugger showed the compiled JavaScript for a
+      // file whose TypeScript was on disk, with its map, all along.
+      return loadWithSourceMap(id);
     },
 
     async transform(code, id) {
@@ -563,10 +603,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           this.warn(`[${FUD_ASSET_NOT_FOUND}] asset "${spec}" not found (referenced by ${path})`);
         }
         // Same reason as `?server`: the `@code { @client }` region is copied VERBATIM, so
-        // the chunk is TypeScript whenever the author wrote TypeScript. The map is the one
-        // Oxc produces for that strip — chaining it back to the `.fud` is the same open
-        // seam the `?server` module has, and it belongs with the linking stage.
-        const stripped = await transformWithOxc(chunk.code, `${path}.ts`, { lang: 'ts' });
+        // the chunk is TypeScript whenever the author wrote TypeScript. The emit's map goes
+        // IN as `inMap`, so what comes out is `.fud` → JS in one map instead of Oxc's
+        // TS → JS. Without it the chunk mapped to a source it called `app-badge.fud?client`
+        // whose `sourcesContent` was the GENERATED module: aligned, and about a file the
+        // author never wrote.
+        const stripped = await transformWithOxc(
+          chunk.code,
+          `${path}.ts`,
+          { lang: 'ts', sourcemap: true },
+          chunk.map,
+        );
         return stripped.map ? { code: stripped.code, map: stripped.map } : { code: stripped.code };
       }
       const result = transformFud(path, io);
@@ -589,11 +636,18 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // reaches this module too, verbatim, so a `const f: Form<Post> = form(schema)` makes it
       // TypeScript. The three emitted modules are now stripped by the one rule.
       //
-      // The `.fud` source map is handed over as it stands rather than chained through the
-      // strip: it is the same open seam the other two already have, and it belongs with the
-      // linking stage. Losing the mapping would be worse than a mapping the strip shifted.
-      const stripped = await transformWithOxc(result.code, `${path}.ts`, { lang: 'ts' });
-      return { code: stripped.code, map: JSON.stringify(result.map) };
+      // The `.fud` map goes IN as `inMap` and Oxc composes: `.fud` → TS → JS collapses to one
+      // `.fud` → JS map that describes the code actually returned. It used to be handed over
+      // as it stood, next to the STRIPPED code — a map of a text that no longer existed. It
+      // resolved, it named the right `.fud`, and its offsets were fiction; the chunks it
+      // produced came out with 3 mappings for 5 000 columns.
+      const stripped = await transformWithOxc(
+        result.code,
+        `${path}.ts`,
+        { lang: 'ts', sourcemap: true },
+        result.map,
+      );
+      return stripped.map ? { code: stripped.code, map: stripped.map } : { code: stripped.code };
     },
 
     async generateBundle(_outputOptions, bundle) {
@@ -633,10 +687,14 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // 2. The Service Worker's own bundle: one realm, one bundle (BUG-03 §4.1). Its
       //    code still carries BUILD_TOKEN — the id is computed from it, below.
       //
-      //    Its shell is the DECLARED one plus the static graph of `fudic-main` (SDD-17
-      //    §4.7.1): from the moment the bootstrap installs the hydration runtime, the code
-      //    it shares with the hydration chunks lives in a chunk with a hashed name, and a
-      //    hashed name is not something `sw.json` can list. The graph is right here.
+      //    Its shell is the DECLARED one plus the static graph of the TWO main-thread
+      //    entries (SDD-17 §4.7.1, BUG-31 §T2): the code they share with the hydration
+      //    chunks lives in chunks whose names the build chooses, and a name the build chose
+      //    is not something `sw.json` can list. The graph is right here.
+      //
+      //    `sw.json` therefore names neither entry any more: it used to list
+      //    `/fudic-main.js` because that was a fixed name a human could write, and a fixed
+      //    name is exactly what BUG-31 §T1 took away.
       const shell =
         swConfig === null
           ? []
@@ -644,7 +702,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               ...swConfig.shell,
               ...reachableChunks(bundleItems(bundle), (item) => {
                 const entry = bundle[item.fileName];
-                return entry?.type === 'chunk' && entry.facadeModuleId === MAIN_ID;
+                return (
+                  entry?.type === 'chunk' &&
+                  (entry.facadeModuleId === MAIN_ID || entry.facadeModuleId === BOOT_ID)
+                );
               }).map((fileName) => `${base}${fileName}`),
             ];
       const sw =
@@ -722,32 +783,58 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       //     change name on every build anyway. What the hash did cost was a manifest that had
       //     to write out 8 characters of noise per dependency, because a hashed name is a
       //     fact of the build and cannot be derived. Same length, so the offsets hold.
+      const isEntry = (facade: string | null | undefined): boolean =>
+        facade === MAIN_ID || facade === BOOT_ID;
       const hashedShared = reachableChunks(bundleItems(bundle), (item) => {
         const entry = bundle[item.fileName];
         return (
           entry?.type === 'chunk' &&
-          (entry.facadeModuleId === MAIN_ID || clientChunks.some((c) => c.fileName === item.fileName))
+          (isEntry(entry.facadeModuleId) || clientChunks.some((c) => c.fileName === item.fileName))
         );
       }).filter(
         (fileName) =>
           isHashedChunk(fileName) && !clientChunks.some((c) => c.fileName === fileName),
       );
+      // The two main-thread entries go through the SAME plan as everything else (BUG-31 §T1).
+      // They can, now that `config()` names them `fudic-main-__FUDB__.js`: that is already a
+      // name of the expected shape, so `planRename` derives theirs like any other and the
+      // substitution is token→id, 8 characters for 8.
+      //
+      // They used to be a hand-written exception to the plan, named `fudic-main.js` and
+      // renamed to `fudic-main-<id>.js` — nine characters longer. `planRename` promises
+      // length invariance and `rewriteReferences` relies on it blindly; that exception broke
+      // the promise for every chunk that mentions the name, the Service Worker's `SHELL`
+      // included, and it did so AFTER the maps were generated. The fix is not to special-case
+      // the rewrite: it is to stop having an exception.
+      const entryChunks = Object.values(bundle).filter(
+        (item): item is typeof item & { code: string; fileName: string } =>
+          item.type === 'chunk' && isEntry(item.facadeModuleId),
+      );
+      // ONE set for the whole plan. The four sources overlap by construction now: an entry
+      // is named `fudic-main-__FUDB__.js`, which `isHashedChunk` reads as hashed — correctly,
+      // that is the point of the token — so `hashedShared` reaches the entries too. A name
+      // listed twice is a name colliding with itself, and `planRename` refuses the WHOLE plan
+      // on a collision (FUD0501), which would leave `__FUDB__` in the file names on disk.
       const rename = planRename(
         [
-          ...link.chunks.map((c) => c.fileName),
-          ...clientChunks.map((c) => c.fileName),
-          ...new Set(hashedShared),
+          ...new Set([
+            ...link.chunks.map((c) => c.fileName),
+            ...clientChunks.map((c) => c.fileName),
+            ...entryChunks.map((c) => c.fileName),
+            ...hashedShared,
+          ]),
         ],
         buildId,
       );
       for (const d of rename.diagnostics) {
         this.warn(`[${d.code}] ${d.message}`);
       }
+      const renames = rename.files;
       // Every chunk of the bundle, not only the renamed ones: a shared chunk that moved is
       // imported by `fudic-main` and by half the hydration chunks, and a reference left
       // pointing at the old name is a 404 with no error anywhere.
       for (const item of Object.values(bundle)) {
-        if (item.type === 'chunk') item.code = rewriteReferences(item.code, rename.files);
+        if (item.type === 'chunk') item.code = rewriteReferences(item.code, renames);
       }
       // One loop over the bundle covers both kinds: a hydration chunk and a shared chunk are
       // renamed the same way, and the plan is what says which of them moved.
@@ -755,7 +842,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         if (chunk.type !== 'chunk') {
           continue;
         }
-        const to = rename.files.get(chunk.fileName);
+        const to = renames.get(chunk.fileName);
         if (to === undefined) {
           continue;
         }
@@ -778,20 +865,22 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       for (const chunk of link.chunks) {
         emitWithMap({
           ...chunk,
-          fileName: rename.files.get(chunk.fileName) ?? chunk.fileName,
-          code: rewriteReferences(chunk.code, rename.files),
+          fileName: renames.get(chunk.fileName) ?? chunk.fileName,
+          // The token too: a link chunk writes the runtime entry URLs into the head it
+          // renders (BUG-31 §T1), and those carry the id.
+          code: rewriteReferences(chunk.code.split(BUILD_TOKEN).join(buildId), renames),
         });
       }
       // The Service Worker, now that the names it precaches are the ones on disk. Its own
       // file name is fixed and unhashed, so only the code moves.
       if (sw !== null && swCode !== null) {
-        emitWithMap({ ...sw, code: rewriteReferences(swCode, rename.files) });
+        emitWithMap({ ...sw, code: rewriteReferences(swCode, renames) });
       }
       // And the edge chunks, which the preview serves and the prerender runs from a temp dir
       // below: they import the same shared chunks by name.
       const edgeChunks = edge.chunks.map((c) => ({
         ...c,
-        code: rewriteReferences(c.code, rename.files),
+        code: rewriteReferences(c.code.split(BUILD_TOKEN).join(buildId), renames),
       }));
       if (writeToDisk) {
         const edgeDir = resolvePath(root, EDGE_DIR);
@@ -820,6 +909,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           const facade = entry?.type === 'chunk' ? entry.facadeModuleId : null;
           return (
             facade === MAIN_ID ||
+            facade === BOOT_ID ||
             (facade?.endsWith(`?${CLIENT_QUERY}`) ?? false) ||
             (facade?.endsWith(`?${IOC_QUERY}`) ?? false)
           );

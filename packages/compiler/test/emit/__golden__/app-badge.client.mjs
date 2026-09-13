@@ -12,7 +12,7 @@ customElements.define("app-badge", class extends FudicElement {
     const $s = () => {};
     const $a = () => {
       let $v;
-      $v = ["badge", (tone === 'success') && "success", (tone === 'warning') && "warning"].filter(Boolean).join(' ');
+      $v = ["badge", ((tone === 'success')) && "success", ((tone === 'warning')) && "warning"].filter(Boolean).join(' ');
       if ($v !== $w[0]) { $w[0] = $v; $dom.setAttr($n0, 'class', $v); }
     };
 

@@ -323,9 +323,12 @@ describe('composed output equals the monolithic page (§6.10, §6.11)', () => {
   it('emits the style polyfill once and the union of both graphs (§6.11)', () => {
     const html = renderComposed();
     expect(html.match(/<script nonce=/gu)).toHaveLength(1);
-    // app-badge comes from the layout, app-card + app-button from the route.
+    // app-badge comes from the layout, app-card + app-button from the route. The sheet
+    // carries the same nonce as the polyfill (SDD-20 §4.9).
     for (const tag of TAGS) {
-      expect(html.match(new RegExp(`<style type="module" specifier="${tag}">`, 'gu'))).toHaveLength(1);
+      expect(
+        html.match(new RegExp(`<style type="module" nonce="${NONCE}" specifier="${tag}">`, 'gu')),
+      ).toHaveLength(1);
     }
   });
 

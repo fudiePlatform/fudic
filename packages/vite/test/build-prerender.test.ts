@@ -92,7 +92,11 @@ describe('vite build — static prerender (mode 1)', () => {
     expect(body.startsWith('<!DOCTYPE html>')).toBe(true);
     expect(body).toContain('<h1>About us</h1>');
     expect(body).toContain('A static page.');
-    // The nonce placeholder, swapped for a fresh one by whoever serves the file (§4.9.3).
-    expect(body).toContain('__FUDIC_NONCE__');
+    // And nothing else at all. This route has no component with CSS, so there is no
+    // adoption polyfill (BUG-31 T3), and nothing to hydrate, so there is no runtime tag
+    // (T1) — which leaves no `<script>` for a nonce to go on. Level 1 is HTML, zero JS,
+    // and this is the file that proves the emit stopped asking.
+    expect(body).not.toContain('<script');
+    expect(body).not.toContain('__FUDIC_NONCE__');
   });
 });

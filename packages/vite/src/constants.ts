@@ -1,8 +1,26 @@
 /**
- * Shared virtual-module ids and runtime constants (SDD-19, SDD-20). The `\0` prefix
- * marks a module Rollup/Vite will not try to resolve on disk; the plugin owns them via
- * `resolveId`/`load`. Kept in one place so the plugin, the link pass and the dev server
- * agree on the exact ids and on the stable URLs the two bootstraps are served at.
+ * Shared virtual-module ids and runtime constants (SDD-19, SDD-20). Kept in one place so
+ * the plugin, the link pass and the dev server agree on the exact ids and on the stable
+ * URLs the two bootstraps are served at.
+ *
+ * ## Why none of these carries the `\0` prefix
+ *
+ * The Rollup convention is to prefix a generated module's id with `\0` so nothing else
+ * tries to resolve it on disk. It cost us every source map: Vite 8 / Rolldown DROPS a
+ * `\0`-prefixed module from the map — it never enters `sources` and its segments are gone —
+ * silently, with the build green and the `.map` served with a 200. The effect was that the
+ * only code invisible to the debugger was the code this plugin writes: the Service Worker
+ * bootstrap, the two main-thread entries, and every linked route chunk (whose map came out
+ * with `mappings: ""`, empty).
+ *
+ * Measured, with a minimal build and no fudic in it: same module, same output, only the id
+ * changes — `\0fudic-sw` is dropped; `fudic-sw`, `virtual:fudic-sw`, an absolute path and a
+ * path with a query are all kept and fully mapped.
+ *
+ * What the `\0` bought is bought instead by `enforce: 'pre'` on the plugin: its `resolveId`
+ * now runs BEFORE `vite:resolve`, so these ids are claimed before anything can look for
+ * them on disk. That is the whole trade — one line in the plugin, in exchange for a
+ * debuggable build.
  *
  * ## The four passes (SDD-27 §3)
  *
@@ -30,17 +48,47 @@
  */
 
 /** Per-route ESM wrapper (edge/prerender): the pattern is appended. */
-export const WRAPPER_PREFIX = '\0fudic-wrapper:';
+export const WRAPPER_PREFIX = 'fudic-wrapper:';
 /** Per-route LINKABLE wrapper (the SW link pass): same page, no `load` (§4.5). */
-export const LINK_PREFIX = '\0fudic-link:';
+export const LINK_PREFIX = 'fudic-link:';
 /** Per-route EDGE wrapper in its own nested build (BUG-09 §3.1): same page, WITH `load`. */
-export const EDGE_PREFIX = '\0fudic-edge:';
-export const SW_ID = '\0fudic-sw';
-export const MAIN_ID = '\0fudic-main';
+export const EDGE_PREFIX = 'fudic-edge:';
+export const SW_ID = 'fudic-sw';
+export const MAIN_ID = 'fudic-main';
+/** The always-on half of the main thread: register the Service Worker (BUG-31 §T2). */
+export const BOOT_ID = 'fudic-boot';
 
-/** Stable dev/build URLs for the two bootstraps (everything else keeps its hash). */
+/** Stable dev/build URLs for the bootstraps (everything else keeps its hash). */
 export const DEV_MAIN_URL = 'fudic-main.js';
+export const DEV_BOOT_URL = 'fudic-boot.js';
 export const DEV_SW_URL = 'fudic-sw.js';
+
+/**
+ * The built names of the two main-thread entries, which carry the build id (BUG-31 §T1).
+ *
+ * They used to be fixed and unhashed because a layout referenced `fudic-main.js` LITERALLY
+ * in a `<script src>`, and a fixed name is what a hand-written tag can point at. The layout
+ * writes a marker now and the emit resolves it, so the name is the emit's to choose — and
+ * what it chooses is the build id, like every other derived name. A fixed name was also the
+ * reason `install` had to fetch the shell with `cache: 'reload'`.
+ *
+ * One function, two callers — the plugin names the files and the wrapper writes the URLs —
+ * for the same reason `urls.ts` exists: two spellings of a name drift in silence.
+ */
+export function mainFileName(build: string): string {
+  return `fudic-main-${build}.js`;
+}
+export function bootFileName(build: string): string {
+  return `fudic-boot-${build}.js`;
+}
+
+/**
+ * The two entry URLs a BUILT page writes into its head, with `BUILD_TOKEN` where the id will
+ * be. Substituted in `generateBundle` like every other token — same length, maps intact.
+ */
+export function runtimeUrls(base: string): { boot: string; main: string } {
+  return { boot: `${base}${bootFileName(BUILD_TOKEN)}`, main: `${base}${mainFileName(BUILD_TOKEN)}` };
+}
 
 /**
  * Where the dev server publishes the CLIENT module of a component: `<base>@fudic/h/<tag>.js`.

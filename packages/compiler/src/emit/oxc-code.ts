@@ -14,8 +14,9 @@ import type { CodeBlockNode } from '../code/index.js';
 import type { ResolvedComponent } from './resolve.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import { errorDiag, isEmptySpan, span } from '../types/index.js';
-import { JsBatch, type OxcNode } from '../oxc/index.js';
-import { collectTemplateJs } from './constructs.js';
+import { JsBatch, type JsFragmentKind, type OxcNode } from '../oxc/index.js';
+import { collectAttributeJs, collectTemplateJs } from './constructs.js';
+import type { Anchor } from './writer.js';
 import {
   changeableBindings,
   freeReferences,
@@ -148,6 +149,18 @@ export interface ClientCode {
 export interface NeutralStatement {
   /** The author's source, with any type-only import specifier removed. */
   readonly text: string;
+  /**
+   * Where `text` starts in the `.fud`, so the emit can anchor it (SDD-13 / SDD-19 §4.6).
+   *
+   * The neutral zone is the author's own code, copied verbatim into both emitted modules —
+   * it is the half of a component a breakpoint is actually set in. Written through plain
+   * `line()` it reached the output carrying no offset at all, so no `.fud` had a single
+   * mapping to its `@code`. `ClientStatement` has carried its `at` since SDD-34 for the same
+   * reason; this is the neutral half catching up.
+   */
+  readonly at: number;
+  /** Line starts and identifiers inside `text`, so it can hold breakpoints and resolve names. */
+  readonly anchors: readonly Anchor[];
   /** An `import` is only legal at module scope; everything else goes inside the function. */
   readonly hoisted: boolean;
   /**
@@ -173,6 +186,8 @@ export interface ClientStatement {
   readonly text: string;
   /** Where `text` starts in the `.fud`. */
   readonly at: number;
+  /** Line starts and identifiers inside `text`, so it can hold breakpoints and resolve names. */
+  readonly anchors: readonly Anchor[];
   /**
    * What this pass already inserted, as an offset RELATIVE to `at` and the length it added.
    *
@@ -398,10 +413,15 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
   // The template's fragments go into the SAME batch, after `@code`: registration order is
   // only the order of the synthetic buffer, and the spans are what anyone looks them up by.
   const fragments = new Map<string, number>();
-  collectTemplateJs(doc.template?.children ?? [], (kind, at) => {
+  const register = (kind: JsFragmentKind, at: Span): void => {
     if (isEmptySpan(at)) return; // a degraded header has its own diagnostic already
     fragments.set(spanKey(at), batch.add(kind, at));
-  });
+  };
+  // The host wrapper's own attributes FIRST, which is source order — it opens the file's
+  // markup. Its attributes only: descending would walk the `<template>` a second time, and
+  // registering a span twice is two Oxc fragments for one piece of source.
+  if (doc.host !== undefined) collectAttributeJs(doc.host, register);
+  collectTemplateJs(doc.template?.children ?? [], register);
 
   const result = batch.parse();
   const map = result.value.mapOffset;
@@ -741,6 +761,74 @@ function collectEmitCalls(node: unknown, binding: string, map: MapOffset, out: E
   for (const value of Object.values(current)) collectEmitCalls(value, binding, map, out);
 }
 
+/**
+ * Reserved words: they are spelled like identifiers and name nothing, so a `names` entry for
+ * one would tell a debugger that `return` is a binding.
+ */
+const RESERVED = new Set([
+  'await', 'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger', 'default',
+  'delete', 'do', 'else', 'enum', 'export', 'extends', 'false', 'finally', 'for', 'function',
+  'if', 'import', 'in', 'instanceof', 'let', 'new', 'null', 'of', 'return', 'super', 'switch',
+  'this', 'throw', 'true', 'try', 'typeof', 'var', 'void', 'while', 'with', 'yield',
+]);
+
+const IDENTIFIER = /[A-Za-z_$][A-Za-z0-9_$]*/gu;
+
+/**
+ * Every anchor inside one statement: the start of each LINE, and each IDENTIFIER with the
+ * name the author gave it.
+ *
+ * Two different debugger questions need these. A breakpoint is a LINE, so a statement with a
+ * single mapping has exactly one line you can stop on — a `function inc() {` whose body never
+ * gets its own anchor cannot be stepped into. And `n()` typed in the console is a NAME: the
+ * minifier renamed `n` to `p`, and a map of positions alone has no way to say they are the
+ * same binding, so the console resolves `n` against the generated scope and calls whatever
+ * the minifier happened to put there.
+ *
+ * Everything is measured on the ORIGINAL source, which is the only text whose offsets are the
+ * author's. The emitted copy has been spliced (`inject(Cart)` → `injectFrom($ioc, Cart)`, a
+ * tracked read → a call), so each anchor's position in the copy is its source position plus
+ * every splice that landed before it — `splices` carries exactly that, in source coordinates
+ * and relative to the statement.
+ */
+function anchorsOf(
+  source: string,
+  start: number,
+  end: number,
+  splices: readonly Splice[],
+): readonly Anchor[] {
+  const ordered = [...splices].sort((a, b) => a.at - b.at);
+  const slice = source.slice(start, end);
+  // `at` in the emitted text for a position `rel` in the source slice. Monotonic, and read in
+  // increasing order, so the splice cursor only ever moves forward.
+  let cursor = 0;
+  let delta = 0;
+  const emittedAt = (rel: number): number => {
+    while (cursor < ordered.length && ordered[cursor]!.at <= rel) {
+      delta += ordered[cursor]!.length;
+      cursor += 1;
+    }
+    return rel + delta;
+  };
+
+  // Collected in source order — line starts and identifiers interleaved — so that `emittedAt`
+  // sees strictly increasing positions.
+  const marks: Array<{ rel: number; name?: string }> = [];
+  for (let i = 0; i < slice.length; i += 1) {
+    if (slice[i] === '\n') marks.push({ rel: i + 1 });
+  }
+  IDENTIFIER.lastIndex = 0;
+  for (let m = IDENTIFIER.exec(slice); m !== null; m = IDENTIFIER.exec(slice)) {
+    if (!RESERVED.has(m[0])) marks.push({ rel: m.index, name: m[0] });
+  }
+  marks.sort((a, b) => a.rel - b.rel);
+
+  return marks.map(({ rel, name }) => {
+    const at = emittedAt(rel);
+    return name === undefined ? { at, src: start + rel } : { at, src: start + rel, name };
+  });
+}
+
 const spanKey = (at: Span): string => `${at.start},${at.end}`;
 
 /** Route one top-level statement of `@client` to the module scope or to the closure. */
@@ -754,10 +842,11 @@ function readClientStatement(
   di: readonly Edit[],
 ): void {
   const start = map(stmt.start);
+  const end = map(stmt.end);
   const edits = [...hostEdits(calls), ...cellEdits(cellReads), ...di];
-  const { text, splices } = applyEdits(source.slice(start, map(stmt.end)), start, edits);
+  const { text, splices } = applyEdits(source.slice(start, end), start, edits);
   if (is(stmt, 'ImportDeclaration')) client.imports.push(text);
-  else client.body.push({ text, at: start, splices });
+  else client.body.push({ text, at: start, anchors: anchorsOf(source, start, end, splices), splices });
 }
 
 /** The zone a `@code` part belongs to — the only place the node type becomes a zone. */
@@ -1035,8 +1124,14 @@ function zoneCode(
   const referenced = new Set(freeReferences(kept).filter((name) => !rewritten.has(name)));
   const text = (stmt: OxcNode): ClientStatement => {
     const start = map(stmt.start);
-    const applied = applyEdits(source.slice(start, map(stmt.end)), start, di);
-    return { text: applied.text, at: start, splices: applied.splices };
+    const end = map(stmt.end);
+    const applied = applyEdits(source.slice(start, end), start, di);
+    return {
+      text: applied.text,
+      at: start,
+      anchors: anchorsOf(source, start, end, applied.splices),
+      splices: applied.splices,
+    };
   };
   return {
     imports: imports
@@ -1197,18 +1292,30 @@ function neutralStatement(
     const start = map(node.start);
     return applyEdits(source.slice(start, map(node.end)), start, di).text;
   };
+  // The statement's own offset in the `.fud`, for the emit's source map. It is the START of
+  // the statement even when the text was REBUILT from surviving declarators below: the whole
+  // line is what the author sees, and a rebuilt half has no offset of its own to point at.
+  const at = map(stmt.start);
+  // The neutral zone's only edits are the DI rewrites, and `slice` applies them without
+  // handing back the splices — so they are recomputed here against the same list.
+  const spliced = applyEdits(source.slice(at, map(stmt.end)), at, di).splices;
+  const anchors = anchorsOf(source, at, map(stmt.end), spliced);
   if (remaining !== undefined) {
     if (remaining.length === 0) return undefined; // props / reactives: the emit writes them
     // `remaining` is only defined for a `VariableDeclaration`, and one always has a `kind`.
     const kind = String(stmt['kind']);
     // Rebuilt from the declarators that survived, so a mixed line keeps exactly its own half
     // instead of being lost to a rule that could only say yes or no about the whole thing.
-    return { text: `${kind} ${remaining.map(slice).join(', ')};`, hoisted: false };
+    // REBUILT text is one line by construction, so it anchors at the statement and no further:
+    // the line structure of the original is exactly what a rebuild does not preserve.
+    return { text: `${kind} ${remaining.map(slice).join(', ')};`, at, anchors: [], hoisted: false };
   }
   if (TYPE_ONLY_STATEMENTS.has(stmt.type)) return undefined;
-  if (!is(stmt, 'ImportDeclaration')) return { text: slice(stmt), hoisted: false };
+  if (!is(stmt, 'ImportDeclaration')) return { text: slice(stmt), at, anchors, hoisted: false };
   const value = valueImport(stmt, source, map, consumed);
-  return value === null ? undefined : { text: value, hoisted: true };
+  // Same as above: `valueImport` returns the verbatim text only when nothing was a type, and
+  // a rebuilt import is a single line. Anchoring the statement is right in both cases.
+  return value === null ? undefined : { text: value, at, anchors: [], hoisted: true };
 }
 
 /**

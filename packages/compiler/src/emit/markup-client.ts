@@ -51,6 +51,7 @@ import { CodeWriter, type LinePart } from './writer.js';
 import { type AssetLinker } from './assets.js';
 import {
   crossingExpr,
+  hasHostBindings,
   readsMoving,
   writeElementAttrs,
   type HostContext,
@@ -465,6 +466,34 @@ export class ClientMarkupEmitter {
       signals: this.#scope.signals,
       ...(declared === undefined ? {} : { declared }),
     };
+  }
+
+  /**
+   * The component's OWN host wrapper, on the client side of BUG-32 T2. What it takes is an
+   * attribute and an event: a `class:` there would be resolved against the page's stylesheet
+   * and not against this file's `<style>`, which is inside the shadow, so it is an error the
+   * semantic pass reports rather than something to emit.
+   *
+   * The node is never FABRICATED here — the parent made it, or the server painted it — so the
+   * two halves fall out the same way they do for any other element: the literal writes go in
+   * the `c` body, where an instance created at runtime needs them, and the interpolated ones
+   * in `$a()`, which `c` and `u` both call. On `h` the literals are already in the markup the
+   * server wrote, which is exactly why they must not be repeated there.
+   */
+  emitHost(el: ElementNode): void {
+    if (!hasHostBindings(this.#source, el)) return;
+    // Saying so is what makes the factory declare `$host` (§4.4).
+    this.#hookup.hostUsed = true;
+    writeElementAttrs(
+      this.#source,
+      el,
+      '$host',
+      this.#fab,
+      this.#linker,
+      this.#host(false),
+      this.#sinkFor(),
+    );
+    this.#listeners(el, '$host');
   }
 
   /** The component template: the direct children of the shadow root. */

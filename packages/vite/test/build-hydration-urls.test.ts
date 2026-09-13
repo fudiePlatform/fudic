@@ -20,7 +20,7 @@ import { join } from 'node:path';
 import { fudic } from '../src/index.js';
 import { runtimeAlias } from './helpers/alias.js';
 import { routeTable, emitted, manifestFile } from './helpers/manifest.js';
-import { BUILD_TOKEN } from '../src/constants.js';
+import { BUILD_TOKEN, mainFileName } from '../src/constants.js';
 
 /** A component that hydrates: it declares a signal and hooks up a click. */
 const COUNTER = `<link rel="component" href="./x-out.fud">
@@ -128,8 +128,12 @@ describe('every hydratable instance has a chunk to load, with no map', () => {
     // the induced level; `x-plain` has neither and stays inert.
     expect(hydratedTags()).toEqual(['x-counter', 'x-out']);
     const html = String(output.find((o) => o.fileName === 'index.html')!.source);
-    expect(html).toContain('<x-plain data-fud-adopt="x-plain"');
+    // `x-plain` is in the HTML and carries nothing: no `data-fud-id`, because it does not
+    // hydrate, and no `data-fud-adopt` either, because it declares no CSS and BUG-31 T4
+    // stopped announcing a stylesheet that is not there.
+    expect(html).toContain('<x-plain>');
     expect(html).not.toContain('<x-plain data-fud-id');
+    expect(html).not.toContain('data-fud-adopt');
   });
 
   it('hydrateUrl of each of them lands on a file the build wrote', () => {
@@ -199,7 +203,10 @@ function swText(): string {
 
 describe('the main-thread bootstrap, now that it hydrates (SDD-17 §4.6, §4.7.1)', () => {
   it('carries the REAL build id, and derives the same URL the manifest does', () => {
-    const main = String(output.find((o) => o.fileName === 'fudic-main.js')?.code);
+    // Named with the build id since BUG-31 T1: the layout writes a marker the emit resolves,
+    // so the file no longer has to keep a fixed name for a hand-written `<script src>`.
+    const build = manifestFile(output).build;
+    const main = String(output.find((o) => o.fileName === mainFileName(build))?.code);
     // A surviving token would ask for `…-__FUDB__.js` — a file no build ever writes.
     expect(main).not.toContain(BUILD_TOKEN);
     expect(main).toContain(`createUrlResolver("/", "${manifestFile(output).build}")`);

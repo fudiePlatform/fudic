@@ -154,6 +154,14 @@ export interface RouteTable {
    * page says it has, and an unknown tag is a stale page, not an error.
    */
   hydrateDeps(tag: string): readonly string[];
+  /**
+   * Every record of the manifest, in file order (BUG-31 §T7).
+   *
+   * `match` and `templateOf` answer about ONE pathname, which is the hot path; this answers
+   * about the table, which is what a restart needs: the router rebuilds its index of what is
+   * already in the cache by asking each record where its chunk would live.
+   */
+  records(): readonly RouteRecord[];
 }
 
 interface CompiledRoute {
@@ -233,6 +241,9 @@ export function compileManifest(file: ManifestFile): RouteTable {
     templateOf(pathname: string): RouteRecord | null {
       const hit = match(pathname);
       return hit !== null && hit.record.mode === 'sw' ? hit.record : null;
+    },
+    records(): readonly RouteRecord[] {
+      return compiled.map((route) => route.record);
     },
     hydrateDeps(tag: string): readonly string[] {
       // The names are relative to `file.assets` and carry the build id implicitly, both

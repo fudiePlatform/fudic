@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="./logo.svg">
 
-    <!-- The main-thread bootstrap: registers the render Service Worker, which from
-         then on renders every `sw` route locally, and tells it where the user is.
-         It lives HERE, once: before layouts every route had to remember it, and a
-         route that forgot it silently lost the Service Worker. -->
-    <script type="module" src="/fudic-main.js"></script>
+    <!-- Where the fudic runtime goes. The layout says WHERE, once — before layouts
+         every route had to remember it, and one that forgot silently lost the Service
+         Worker. What lands here the compiler decides: the Service Worker registration
+         on every page, and the hydration runtime only on a page that has something to
+         hydrate. -->
+    <script type="module" src="fudic:runtime"></script>
 
     @* Everything each route contributes to the head — its <title>, its component
        stylesheets, the style-adoption polyfill — goes exactly here. *@

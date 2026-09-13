@@ -78,7 +78,8 @@ describe('analyze — runner', () => {
     // + the five `control` rules of SDD-34 (FUD0591–FUD0595)
     // + delegation (SDD-37: the eight of FUD0660–FUD0667, over the AST alone)
     // + script-body (decision 129: FUD0161, the body the emit was dropping in silence)
-    expect(ANALYZERS).toHaveLength(19);
+    // + host-bindings (BUG-32: FUD0720, a `class:` on the identity tag)
+    expect(ANALYZERS).toHaveLength(20);
     const { value } = analyze(buildInput(component('<p>hi</p>')));
     expect(value).toEqual({});
     expect('strategies' in value).toBe(false); // decisions 63–65 retired: no hydration strategy

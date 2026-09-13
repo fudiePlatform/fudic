@@ -98,6 +98,14 @@ export interface RouterConfig {
 export interface Router {
   /** SYNCHRONOUS decision; calls `respondWith` only when it will serve (§4.4.2). */
   handle(event: FetchEvent): void;
+  /**
+   * The same decision, as a Response — for a caller that has ALREADY taken the request
+   * (BUG-31 §T7). A worker the browser just woke has no router yet, so its fetch listener
+   * cannot decide synchronously; what it can do is take the navigation, await the boot and
+   * ask here. What this router would have declined becomes the network, which is what
+   * declining meant in the first place.
+   */
+  respond(event: FetchEvent): Promise<Response>;
   /** Warm a template: chunk + deps into `routes-<build>`. Idempotent. */
   warm(pathname: string): Promise<void>;
   /**
@@ -365,41 +373,59 @@ export function createRouter(config: RouterConfig): Router {
     return warmedTags;
   };
 
+  /**
+   * The decision itself: the Response this router would serve, or `null` for «not ours, let
+   * the network have it». Every `return null` below is a request this worker declines.
+   *
+   * Split out of `handle` so a COLD worker can reach it too (BUG-31 §T7): `handle` keeps the
+   * synchronous contract of §4.4.2 — it calls `respondWith` only when it will serve — while
+   * `respond` gives the same answer to a caller that has already taken the request and can
+   * fall back to the network itself.
+   */
+  const decide = (event: FetchEvent, url: URL): Promise<Response> | null => {
+    const request = event.request;
+    if (request.method !== 'GET' || request.mode !== 'navigate') {
+      return null;
+    }
+    const hit = table.match(url.pathname);
+    if (hit === null) {
+      return null; // not ours
+    }
+    const { record, params } = hit;
+    if (record.mode === 'ssr' || dead.has(record.pattern)) {
+      return null; // always the server; its chunk is never even downloaded
+    }
+
+    const nonce = nonceOf();
+    const pageUrl = pageUrlOf(url.pathname);
+    if (pages.has(pageUrl)) {
+      return servePage(pageUrl, nonce, request);
+    }
+    // Capability, not label: a record with no chunk cannot be rendered here, whatever
+    // its mode says. That is also what removes the `record.chunk!` assertion (§4.6.3).
+    const chunkUrl = table.urls.renderUrl(record);
+    if (chunkUrl === null || !warmed.has(record.pattern)) {
+      // Cold: the network serves this one and the template warms behind it.
+      event.waitUntil(warm(url.pathname));
+      return null;
+    }
+    return render(record, chunkUrl, params, url, nonce, request);
+  };
+
   return {
     handle(event: FetchEvent): void {
-      const request = event.request;
-      const url = new URL(request.url);
-      if (request.method !== 'GET') {
-        return;
-      }
-      if (request.mode !== 'navigate') {
+      const url = new URL(event.request.url);
+      if (event.request.method === 'GET' && event.request.mode !== 'navigate') {
         handleResource(event, url);
         return;
       }
-      const hit = table.match(url.pathname);
-      if (hit === null) {
-        return; // not ours
-      }
-      const { record, params } = hit;
-      if (record.mode === 'ssr' || dead.has(record.pattern)) {
-        return; // always the server; its chunk is never even downloaded
-      }
+      const response = decide(event, url);
+      if (response !== null) event.respondWith(response);
+    },
 
-      const nonce = nonceOf();
-      const pageUrl = pageUrlOf(url.pathname);
-      if (pages.has(pageUrl)) {
-        event.respondWith(servePage(pageUrl, nonce, request));
-        return;
-      }
-      // Capability, not label: a record with no chunk cannot be rendered here, whatever
-      // its mode says. That is also what removes the `record.chunk!` assertion (§4.6.3).
-      const chunkUrl = table.urls.renderUrl(record);
-      if (chunkUrl === null || !warmed.has(record.pattern)) {
-        // Cold: the network serves this one and the template warms behind it.
-        event.waitUntil(warm(url.pathname));
-        return;
-      }
-      event.respondWith(render(record, chunkUrl, params, url, nonce, request));
+    respond(event: FetchEvent): Promise<Response> {
+      const url = new URL(event.request.url);
+      return decide(event, url) ?? net(event.request);
     },
 
     warm,
@@ -409,6 +435,24 @@ export function createRouter(config: RouterConfig): Router {
     async ready(): Promise<void> {
       for (const url of await stores.pages.keys()) {
         pages.add(url);
+      }
+      // And the same for the TEMPLATES (BUG-31 §T7). `warmed` is an index of what is in
+      // `routes-<build>`, not a record of what this worker session did — and it used to be
+      // rebuilt only by warming, so every restart began believing nothing was cached. The
+      // first navigation to each route then took the «cold» branch, went to the network and
+      // warmed behind itself: online that is invisible, offline it is a failed page for a
+      // template that was sitting in the cache all along.
+      //
+      // The cache is the truth; this Set is only the synchronous lookup the fetch handler
+      // needs (§4.4.2). Read once, here, where `pages` is already read.
+      const cached = new Set(await stores.routes.keys());
+      for (const record of table.records()) {
+        const chunkUrl = table.urls.renderUrl(record);
+        if (chunkUrl === null || !cached.has(abs(chunkUrl))) continue;
+        // Its deps too: half a graph in cache is a link that pays network anyway.
+        if ((record.deps ?? []).every((dep) => cached.has(abs(table.urls.depUrl(dep))))) {
+          warmed.add(record.pattern);
+        }
       }
     },
 

@@ -35,6 +35,8 @@ export interface SourceMapOptions {
 interface Mapping {
   readonly generatedOffset: number;
   readonly sourceOffset: number;
+  /** The author's identifier at this position, when the anchor sits on one. */
+  readonly name?: string;
 }
 
 const BASE64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -66,17 +68,39 @@ export class SourceMapBuilder {
     this.#options = options;
   }
 
-  /** Record that generated `generatedOffset` originates from `.fud` `sourceOffset`. */
-  addMapping(generatedOffset: number, sourceOffset: number): void {
-    this.#mappings.push({ generatedOffset, sourceOffset });
+  /**
+   * Record that generated `generatedOffset` originates from `.fud` `sourceOffset`.
+   *
+   * `name` is the identifier the author wrote there, when the anchor sits on one. It is what
+   * a debugger needs to answer `n()` in the console after a minifier has renamed `n` to `p`:
+   * positions alone cannot say that two spellings are the same binding.
+   */
+  addMapping(generatedOffset: number, sourceOffset: number, name?: string): void {
+    this.#mappings.push(
+      name === undefined ? { generatedOffset, sourceOffset } : { generatedOffset, sourceOffset, name },
+    );
   }
 
   /** Serialize. Idempotent; mappings are sorted by generated position. */
   build(): SourceMapV3 {
+    // The `names` array, built as the mappings are read and shared by every segment that
+    // spells the same identifier — the fifth field is an INDEX into it, not a string.
+    const names: string[] = [];
+    const nameIndex = new Map<string, number>();
+    const indexOfName = (name: string): number => {
+      const known = nameIndex.get(name);
+      if (known !== undefined) return known;
+      const i = names.length;
+      names.push(name);
+      nameIndex.set(name, i);
+      return i;
+    };
+
     const segments = this.#mappings
       .map((m) => ({
         gen: this.#options.generatedLineMap.positionAt(m.generatedOffset),
         src: this.#options.sourceLineMap.positionAt(m.sourceOffset),
+        name: m.name,
       }))
       .sort((a, b) => a.gen.line - b.gen.line || a.gen.character - b.gen.character);
 
@@ -85,6 +109,7 @@ export class SourceMapBuilder {
     let prevGenColumn = 0;
     let prevSourceLine = 0;
     let prevSourceColumn = 0;
+    let prevNameIndex = 0;
     let lineHasSegment = false;
 
     for (const seg of segments) {
@@ -104,6 +129,14 @@ export class SourceMapBuilder {
       mappings += encodeVlq(0);
       mappings += encodeVlq(seg.src.line - prevSourceLine);
       mappings += encodeVlq(seg.src.character - prevSourceColumn);
+      // The fifth field, and only when there is a name: a segment of four fields and one of
+      // five are both legal, and a name index is not something to invent for a segment that
+      // does not sit on an identifier.
+      if (seg.name !== undefined) {
+        const i = indexOfName(seg.name);
+        mappings += encodeVlq(i - prevNameIndex);
+        prevNameIndex = i;
+      }
       prevGenColumn = seg.gen.character;
       prevSourceLine = seg.src.line;
       prevSourceColumn = seg.src.character;
@@ -115,7 +148,7 @@ export class SourceMapBuilder {
       file: this.#options.file,
       sources: [this.#options.source],
       sourcesContent: [this.#options.sourceContent],
-      names: [],
+      names,
       mappings,
     };
   }

@@ -51,8 +51,11 @@ describe('vite build — the declared shell is validated (FUD0391)', () => {
 
   beforeAll(async () => {
     bad = await buildWithShell(['/no-existe.js']);
-    // `fudic-main.js` is emitted by the build; `logo.svg` is copied from `public/`.
-    good = await buildWithShell(['/fudic-main.js', '/logo.svg']);
+    // `logo.svg` is copied from `public/`. The bootstrap is NOT in this list any more: since
+    // BUG-31 T1 its file name carries the build id, which no hand-written `sw.json` can
+    // spell — and it does not need to, because the shell is the declared list plus the whole
+    // static graph of the bootstrap, computed by the build.
+    good = await buildWithShell(['/logo.svg']);
   }, 180000);
 
   it('warns FUD0391 naming the entry that is not in the output', () => {

@@ -1,15 +1,16 @@
 /**
- * BUG-16 — a property written with a dot reaches the OUTPUT.
+ * BUG-16, as BUG-32 left it — a property written with a dot reaches the CHILD, and only
+ * the child.
  *
  * In fudic a property of a component is written with a `.`, and that is the only way to
- * write one. Which makes the dot the thing that has to survive compilation: a prop that
- * exists only in the editor's projection is not a prop, and level 1 is HTML with no JS,
- * so the only place a value can live there is an attribute of the host.
+ * write one. BUG-16 made it reach the output by reflecting it on the host besides, and
+ * BUG-32 took that back: the prop travels by `render` on the server and by the cell on
+ * the client, so the attribute was a second copy of the same value that nobody read and
+ * that `$a()` rewrote on every update.
  *
- * Written before the fix and seen to fail: today a `.prop` on a component host emits
- * NOTHING at all — not the attribute, not the props entry — which is the defect. A plain
- * attribute on a component host emits nothing either, so `slot="meta"` never reached the
- * host and the child fell into the default slot.
+ * What is asserted here is therefore the pair: the value still crosses, and the host is
+ * NOT where it crosses. Reflecting a prop is still available, spelled as what it is — a
+ * plain attribute with an expression — and that case lives in `host-bindings.test.ts`.
  */
 import { describe, expect, it } from 'vitest';
 import {
@@ -72,10 +73,10 @@ const all = (host: string): readonly [string, string, string] => {
   return [o.page, o.server, o.client];
 };
 
-describe('a `.prop` on a component host reaches the output (§6.1)', () => {
-  it('writes a static value as an attribute of the host, dot dropped', () => {
+describe('a `.prop` on a component host reaches the CHILD, not the host (BUG-32 T1)', () => {
+  it('writes no attribute for a static value, in any of the three outputs', () => {
     for (const src of all('<app-badge .tone="info"></app-badge>')) {
-      expect(src).toMatch(/\$dom\.setAttr\(\$n\d+, "tone", "info"\);/u);
+      expect(src).not.toMatch(/setAttr\([^)]*"tone"/u);
     }
   });
 
@@ -85,19 +86,25 @@ describe('a `.prop` on a component host reaches the output (§6.1)', () => {
     expect(server).toContain('{ "tone": "info" }');
   });
 
-  it('writes an interpolated value through the omit-if-falsy branch (§6.2)', () => {
+  it('still hands it to the child cell on the client', () => {
+    const { client } = outputs('<app-badge .tone="info"></app-badge>');
+    expect(client).toMatch(/\$live\(\$n\d+, \["info"\]\);/u);
+  });
+
+  it('writes no attribute for an interpolated value either, and drops the omit-if-falsy branch', () => {
     for (const src of all('<app-badge .tone="@(t)"></app-badge>')) {
-      expect(src).toMatch(/if \(\$v === true\) \$dom\.setAttr\(\$n\d+, "tone", ''\);/u);
-      expect(src).toMatch(/else if \(\$v !== false && \$v != null\) \$dom\.setAttr\(\$n\d+, "tone", String\(\$v\)\);/u);
+      expect(src).not.toMatch(/setAttr\([^)]*"tone"/u);
+      // The whole reflect machinery goes with it: no `$v` triple for this binding.
+      expect(src).not.toMatch(/if \(\$v === true\) \$dom\.setAttr\(\$n\d+, "tone", ''\);/u);
     }
   });
 });
 
 describe('a bare `.prop` is `true` (decision 44)', () => {
-  it('crosses as true, and writes the empty attribute HTML asks for', () => {
+  it('crosses as true, and writes no attribute at all', () => {
     const { page: p, server, client } = outputs('<app-badge .featured></app-badge>');
     for (const src of [p, server, client]) {
-      expect(src).toMatch(/\$dom\.setAttr\(\$n\d+, "featured", ""\);/u);
+      expect(src).not.toMatch(/setAttr\([^)]*"featured"/u);
     }
     // `true` and not `""`: the prop is a value the child destructures, not markup.
     expect(p).toContain('{ "featured": true }');
@@ -138,14 +145,15 @@ describe('a signal crosses its VALUE, never the object (decision 84)', () => {
   it('the server paints `count()`, not the inert signal object', () => {
     const { server } = withSignal('<app-badge .tone="@count"></app-badge>');
     expect(server).toContain('{ "tone": count() }');
-    expect(server).toContain('const $v = count();');
   });
 
-  it('a bare `.prop` beside a signal still crosses as true', () => {
-    const { client } = withSignal('<app-badge .tone="@count" .featured></app-badge>');
-    // The payload carries both: the signal read at hookup, the constant as written.
+  it('a bare `.prop` beside a signal still crosses as true, and neither reaches the host', () => {
+    const { server, client } = withSignal('<app-badge .tone="@count" .featured></app-badge>');
+    expect(server).toContain('{ "tone": count(), "featured": true }');
+    // The client payload carries the signal read at hookup...
     expect(client).toMatch(/\.u\(\[, , [^\]]*count\(\)[^\]]*\]\)/u);
-    expect(client).toContain('true');
+    // ...and nothing at all is written on the host itself.
+    expect(client).not.toMatch(/setAttr\([^)]*"(tone|featured)"/u);
   });
 });
 

@@ -198,7 +198,8 @@ describe('emitPageModule — home.mjs', () => {
     // The `<script>` carries the per-response CSP nonce (SDD-20 §4.9); empty without one.
     // No indent before it since BUG-07 §4.2: head whitespace never reaches the tree.
     const scriptAt = src.indexOf("'<script' + $nonce + '>' + STYLE_POLYFILL");
-    const stylesAt = src.indexOf('<style type="module" specifier=');
+    // The sheets carry the nonce too, so the tag is built rather than written whole.
+    const stylesAt = src.indexOf(`<style type="module"' + $nonce + ' specifier=`);
     expect(scriptAt).toBeGreaterThan(-1);
     expect(stylesAt).toBeGreaterThan(scriptAt); // head order: polyfill first, then sheets
   });
@@ -252,10 +253,15 @@ describe('emitPageModule — executed end to end', () => {
     // `data-fud-id` comes first and only on the hydratable host: `app-card` has a
     // `@code { @client }`, `app-badge` has nothing of its own and receives no reactive prop.
     expect(html).toContain(
-      '<app-card data-fud-id="0" data-fud-adopt="app-card" title="Primero" variant="highlight">' +
+      // Since BUG-32 T1 the props are NOT reflected here: `title` and `variant` reach the
+      // child through `render`, and the host carries only what the runtime needs.
+      '<app-card data-fud-id="0" data-fud-adopt="app-card">' +
         '<template shadowrootmode="open">',
     );
-    expect(html).toContain('<app-badge data-fud-adopt="app-badge" tone="success">');
+    expect(html).toContain('<app-badge data-fud-adopt="app-badge">');
+    // The `tone` prop is gone from the host and alive in the child's markup, which is the
+    // whole of BUG-32 T1: the value crosses once, where it is read.
+    expect(html).toContain('<span class="badge success">');
     expect(html).toContain('Destacado'); // badge light DOM projected through <slot>
   });
 

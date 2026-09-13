@@ -4,7 +4,7 @@
 
     const last = signal("");
 
-    function onPicked(ev) {
+    function onPicked(ev: CustomEvent) {
       last.set(String(ev.detail));
     }
   }

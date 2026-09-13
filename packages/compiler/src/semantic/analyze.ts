@@ -27,6 +27,7 @@ import { layoutLoad } from './analyzers/layout-load.js';
 import { componentProps } from './analyzers/component-props.js';
 import { slotName } from './analyzers/slot-name.js';
 import { scriptBody } from './analyzers/script-body.js';
+import { hostBindings } from './analyzers/host-bindings.js';
 
 /** The ordered list of analyzers (§4). One rule per unit. */
 export const ANALYZERS: readonly Analyzer[] = [
@@ -49,6 +50,7 @@ export const ANALYZERS: readonly Analyzer[] = [
   componentProps,
   slotName,
   scriptBody,
+  hostBindings,
 ];
 
 /** The empty semantic model of v1 (§3): no facts are produced yet. */

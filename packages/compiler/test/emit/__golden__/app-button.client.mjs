@@ -21,7 +21,7 @@ customElements.define("app-button", class extends FudicElement {
       let $v;
       $v = (disabled);
       if ($v !== $w[0]) { $w[0] = $v; if ($v === true) $dom.setAttr($n0, "disabled", ''); else if ($v !== false && $v != null) $dom.setAttr($n0, "disabled", String($v)); else $dom.removeAttr($n0, "disabled"); }
-      $v = ["btn", (variant === 'primary') && "primary", (variant === 'ghost') && "ghost"].filter(Boolean).join(' ');
+      $v = ["btn", ((variant === 'primary')) && "primary", ((variant === 'ghost')) && "ghost"].filter(Boolean).join(' ');
       if ($v !== $w[1]) { $w[1] = $v; $dom.setAttr($n0, 'class', $v); }
     };
 

@@ -24,6 +24,8 @@ import { transformWithOxc } from 'vite';
 import { type ResolveIo } from '@fudic/compiler';
 import { type RouteBuild } from './discover.js';
 import { emitRenderChunk } from './wrapper.js';
+import { runtimeUrls } from './constants.js';
+import { loadWithSourceMap } from './inputmaps.js';
 import { routeUsesDi } from './client.js';
 import { emitServerModule } from './server.js';
 import { transformFud } from './transform.js';
@@ -58,7 +60,7 @@ interface BundleOutputLike {
  * the link pass's — has to handle the `?server` module too: the edge wrapper is the only
  * consumer that imports it, and it is TypeScript.
  */
-export function edgePlugin(builds: readonly RouteBuild[], io: ResolveIo): Plugin {
+export function edgePlugin(builds: readonly RouteBuild[], io: ResolveIo, base: string): Plugin {
   return {
     name: 'fudic:edge',
     resolveId(id) {
@@ -66,7 +68,7 @@ export function edgePlugin(builds: readonly RouteBuild[], io: ResolveIo): Plugin
     },
     load(id) {
       if (!id.startsWith(EDGE_PREFIX)) {
-        return null;
+        return loadWithSourceMap(id);
       }
       const pattern = id.slice(EDGE_PREFIX.length);
       const rb = builds.find((b) => b.route.pattern === pattern);
@@ -79,6 +81,7 @@ export function edgePlugin(builds: readonly RouteBuild[], io: ResolveIo): Plugin
         hasPaths: rb.analysis.hasPaths,
         hasDi: routeUsesDi(rb.absPath, io),
         withLoad: true, // the edge resolves data in process
+        runtime: runtimeUrls(base),
       });
     },
     async transform(_code, id) {
@@ -100,8 +103,17 @@ export function edgePlugin(builds: readonly RouteBuild[], io: ResolveIo): Plugin
       if (result === null) return null;
       // Since SDD-34 the neutral zone of `@code` reaches this module verbatim, so it is
       // TypeScript whenever the author wrote it — same strip as the host plugin does.
-      const emitted = await transformWithOxc(result.code, `${path}.ts`, { lang: 'ts' });
-      return { code: emitted.code, map: JSON.stringify(result.map) };
+      // `inMap`, for the same reason as the host plugin and the link pass: Oxc composes
+      // `.fud` → TS with its own TS → JS, so the map describes the code it emitted. The edge
+      // chunks are the ones a `@server load` stack trace comes from.
+      const emitted = await transformWithOxc(
+        result.code,
+        `${path}.ts`,
+        { lang: 'ts', sourcemap: true },
+        result.map,
+      );
+      /* v8 ignore next -- Oxc always returns a map for a `.ts` input; the guard is for the type, not for a case. */
+      return emitted.map ? { code: emitted.code, map: emitted.map } : { code: emitted.code };
     },
   };
 }
@@ -137,7 +149,7 @@ export async function runEdgePass(
     root,
     base,
     logLevel: 'error',
-    plugins: [edgePlugin(routes, io)],
+    plugins: [edgePlugin(routes, io, base)],
     // Forwarded verbatim, for the same reason as the Service Worker's build: this one runs
     // with `configFile: false`, so a project that resolves `@fudic/*` through aliases —
     // every project the CLI scaffolds — would not resolve them here.

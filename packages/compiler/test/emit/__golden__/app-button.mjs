@@ -6,7 +6,7 @@ export function render($dom, $shadow, props, $ioc) {
   $dom.state($shadow, [variant, disabled]);
   const $n0 = $dom.element("button");
   { const $v = (disabled); if ($v === true) $dom.setAttr($n0, "disabled", ''); else if ($v !== false && $v != null) $dom.setAttr($n0, "disabled", String($v)); }
-  $dom.setAttr($n0, 'class', ["btn", (variant === 'primary') && "primary", (variant === 'ghost') && "ghost"].filter(Boolean).join(' '));
+  $dom.setAttr($n0, 'class', ["btn", ((variant === 'primary')) && "primary", ((variant === 'ghost')) && "ghost"].filter(Boolean).join(' '));
   const $n1 = $dom.element("slot");
   $dom.append($n0, $n1);
   $dom.append($shadow, $n0);

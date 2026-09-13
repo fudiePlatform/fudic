@@ -138,7 +138,7 @@ describe('runEdgePass', () => {
     // reachable only from here: the pass itself never asks for a route it did not list.
     const { edgePlugin } = await import('../src/edge.js');
     /* eslint-disable @typescript-eslint/no-explicit-any */
-    const plugin = edgePlugin([routeBuild('/about', 'about.fud', mode('ssg'))], nodeIo()) as any;
+    const plugin = edgePlugin([routeBuild('/about', 'about.fud', mode('ssg'))], nodeIo(), '/') as any;
     expect(plugin.resolveId('@fudic/ssr')).toBeNull();
     expect(plugin.load('@fudic/ssr')).toBeNull();
     expect(plugin.load('\0fudic-edge:/nope')).toBeNull();

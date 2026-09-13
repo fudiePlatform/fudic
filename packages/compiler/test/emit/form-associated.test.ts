@@ -94,9 +94,12 @@ describe('§6.9 — the marker decides the class', () => {
 describe('§6.9 — the marker delegates focus', () => {
   it('the host opens its shadow with `delegatesFocus` and serializes the attribute', () => {
     expect(formAssociatedTags(marked).has('app-input')).toBe(true);
+    // No `shadowrootadoptedstylesheets` beside it: this fixture declares no `<style>`, and
+    // since BUG-31 T4 a component with no CSS announces no sheet to adopt.
     expect(pageHtml(marked)).toContain(
-      '<template shadowrootmode="open" shadowrootdelegatesfocus shadowrootadoptedstylesheets="app-input">',
+      '<template shadowrootmode="open" shadowrootdelegatesfocus>',
     );
+    expect(pageHtml(marked)).not.toContain('shadowrootadoptedstylesheets');
   });
 
   it('without the marker the template carries no such attribute', () => {

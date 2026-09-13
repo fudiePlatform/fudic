@@ -146,7 +146,7 @@ describe('the IoC modules in the build output', () => {
   });
 
   it('leaves the tree builder in the bootstrap, reachable and not pruned', () => {
-    const main = output.find((o) => o.fileName === 'fudic-main.js')!;
+    const main = output.find((o) => o.fileName.startsWith('fudic-main-'))!;
     expect(main.code).toContain('fud-ioc');
     // Whatever chunk it ended up in, the bootstrap's import has to resolve to a file that
     // is still in the output — the prune runs after, and a 404 here is a dead page.

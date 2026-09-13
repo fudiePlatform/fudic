@@ -11,7 +11,7 @@
  * time costs nothing and, above all, opens no second Oxc invocation for that file.
  */
 
-import type { Diagnostic } from '../types/index.js';
+import { warningDiag, type Diagnostic } from '../types/index.js';
 import type { ComponentDeclaredProps } from '../binding/index.js';
 import type { ComponentRegistry, CrossingKind } from '../semantic/model.js';
 import { checkComponentProps } from '../semantic/analyzers/component-props.js';
@@ -23,6 +23,9 @@ import type { ComponentGraph, ResolvedComponent } from './resolve.js';
 import { componentOf } from './resolve.js';
 import { codeOf } from './oxc-code.js';
 import { hydratableTags } from './level.js';
+
+/** A declaration nobody uses (BUG-32 T6). The only `warning` of this module. */
+const FUD_UNUSED_COMPONENT_LINK = 'FUD0721';
 
 /** The `<slot name="…">` names a component declares, in source order. */
 function slotNames(comp: ResolvedComponent): readonly string[] {
@@ -145,5 +148,54 @@ export function contractDiagnostics(graph: ComponentGraph): readonly Diagnostic[
     },
     report,
   );
+  // The declaration nobody uses (BUG-32 T6). Here and not in an analyzer of its own for the
+  // same reason as the two above: a `<link>` carries a PATH and a component carries its tag,
+  // so only a caller that resolved the graph can put the two side by side.
+  checkUnusedComponentLinks(graph, report);
   return out;
+}
+
+/**
+ * `FUD0721` — a `<link rel="component">` whose tag appears nowhere in this document.
+ *
+ * A WARNING and not an error, and that is decided rather than inherited: an unused import is
+ * a warning in every language that has one, and here it is also the state a file passes
+ * through while its template is being rewritten. Breaking the build over it would punish the
+ * middle of an edit.
+ *
+ * The usages come from `documentRoots`, which already gives each document shape the right
+ * roots: a component's are its host and everything under its `<template>`, a route's are its
+ * markup AND its `@section` blocks, a page's and a layout's are the whole `<html>`. Counting
+ * the markup alone would report a false positive the moment a route used the tag in a section
+ * (T7).
+ *
+ * A link that does not resolve to a component is not in `entryLinkTags` and is not judged
+ * here: `FUD0191` and the resolver already speak for those, and a second complaint about a
+ * file this pass could not read would be inventing an error over an absence.
+ */
+function checkUnusedComponentLinks(
+  graph: ComponentGraph,
+  report: (diagnostic: Diagnostic) => void,
+): void {
+  if (graph.entryLinkTags.size === 0) return;
+  const host = graph.entry.type === 'component-document' ? graph.entry.host : undefined;
+  const used = new Set<string>();
+  walk(documentRoots(graph.entry), {
+    element(el) {
+      // The component's own host DECLARES its identity, it does not use one (decision 75) —
+      // the same exclusion `component-declared` makes, and for the same reason.
+      if (el === host || el.namespace !== 'html' || !el.name.includes('-')) return;
+      used.add(el.name);
+    },
+  });
+  for (const [link, tag] of graph.entryLinkTags) {
+    if (used.has(tag)) continue;
+    report(
+      warningDiag(
+        FUD_UNUSED_COMPONENT_LINK,
+        `\`<${tag}>\` is declared here and used nowhere in this file: the \`<link rel="component">\` can go`,
+        link.openSpan,
+      ),
+    );
+  }
 }

@@ -19,7 +19,7 @@ export function* page(data, io, $ioc) {
   // The style-adoption polyfill (SDD-18 §5) goes in <head>, live BEFORE the body streams,
   // so its observer adopts each host sheet as it arrives; the style modules follow it.
   head += '<script' + $nonce + '>' + STYLE_POLYFILL + '</script>';
-  head += COMPONENTS.map(function (c) { return '<style type="module" specifier="' + c.tag + '">' + c.css + '</style>'; }).join('');
+  head += COMPONENTS.map(function (c) { return '<style type="module"' + $nonce + ' specifier="' + c.tag + '">' + c.css + '</style>'; }).join('');
   yield '<!DOCTYPE html><html lang="es"><head>' + head + '</head>';
   const $dom = createDom();
   const $body = $dom.element('body');
@@ -41,8 +41,6 @@ export function* page(data, io, $ioc) {
       const $n8 = $dom.element("app-card");
       $dom.claim($n8);
       $dom.setAttr($n8, 'data-fud-adopt', "app-card");
-      { const $v = (item.title); if ($v === true) $dom.setAttr($n8, "title", ''); else if ($v !== false && $v != null) $dom.setAttr($n8, "title", String($v)); }
-      { const $v = (item.featured ? 'highlight' : 'default'); if ($v === true) $dom.setAttr($n8, "variant", ''); else if ($v !== false && $v != null) $dom.setAttr($n8, "variant", String($v)); }
       const $n9 = $dom.attachShadow($n8);
       renderAppCard($dom, $n9, { "title": (item.title), "variant": (item.featured ? 'highlight' : 'default') }, $ioc);
       const $n10 = $dom.text(" "); $dom.append($n8, $n10);
@@ -50,7 +48,6 @@ export function* page(data, io, $ioc) {
         const $n11 = $dom.text(" "); $dom.append($n8, $n11);
         const $n12 = $dom.element("app-badge");
         $dom.setAttr($n12, 'data-fud-adopt', "app-badge");
-        $dom.setAttr($n12, "tone", "success");
         const $n13 = $dom.attachShadow($n12);
         renderAppBadge($dom, $n13, { "tone": "success" }, $ioc);
         const $n14 = $dom.text("Destacado"); $dom.append($n12, $n14);

@@ -105,6 +105,65 @@ export function writeNonceBinding(w: CodeWriter): void {
 }
 
 /**
+ * The `src` a layout writes to say «the fudic runtime goes here» (BUG-31 §T1).
+ *
+ * A layout used to write the tag itself — `<script type="module" src="/fudic-main.js">` —
+ * and that one literal is what made the runtime unconditional: it is opaque text to the
+ * emit, so nothing could ask whether this page had anything to hydrate, and nothing could
+ * give the file a name carrying the build id. A marker moves both decisions to the side that
+ * holds the facts, and leaves the layout saying only WHERE.
+ *
+ * A `<script src>` and not a new `@` directive, because it is the same statement the author
+ * was already making, in the same place — and because a `fudic:` specifier is unmistakably
+ * not a path, the way `<link rel="component">` is unmistakably not a stylesheet.
+ */
+export const RUNTIME_MARKER = 'fudic:runtime';
+
+/**
+ * Whether this head element is that marker: a `<script>` whose `src` is literally
+ * `fudic:runtime`. An interpolated `src` is not one — a marker is a constant by definition.
+ */
+function isRuntimeMarker(el: ElementNode): boolean {
+  if (el.name !== 'script') return false;
+  return el.attributes.some(
+    (a) =>
+      a.name === 'src' &&
+      a.value.every((p) => p.type === 'attribute-text') &&
+      a.value.map((p) => (p as { value: string }).value).join('') === RUNTIME_MARKER,
+  );
+}
+
+/**
+ * What the marker becomes.
+ *
+ * `boot` rides every page: fudic is offline-first, so the Service Worker is registered
+ * whether or not this page has a line of JavaScript of its own. `main` — the hydration
+ * runtime — rides only a page that has something to hydrate.
+ *
+ * NEITHER is preloaded, and that is the point: a `<link rel="modulepreload">` for a file
+ * whose `<script>` is on the next line buys nothing — the tag already starts the fetch — and
+ * under the Service Worker the two requests land in different worlds and do not match, which
+ * the browser reports as an unused preload. What WOULD earn a preload is the chunks `main`
+ * imports, since the browser cannot discover those until it has parsed `main`; their names
+ * are a fact of the bundle and do not reach this side.
+ *
+ * `io.runtime` is absent in a standalone render (a golden, `renderToString`), and then the
+ * marker produces nothing at all: there is no build, so there are no URLs to write.
+ */
+export function writeRuntimeTags(w: CodeWriter, hydrates: boolean): void {
+  w.line('if (io.runtime !== undefined) {');
+  w.indent();
+  w.line(
+    "head += '<script type=\"module\" src=\"' + io.runtime.boot + '\"></script>';",
+  );
+  if (hydrates) {
+    w.line("head += '<script type=\"module\" src=\"' + io.runtime.main + '\"></script>';");
+  }
+  w.dedent();
+  w.line('}');
+}
+
+/**
  * The head contribution every rendered document shares: the style-adoption polyfill (SDD-18
  * §5) with its nonce, then one `<style type="module" specifier>` per component of the graph.
  * The polyfill goes out BEFORE the body streams, so its observer adopts each host sheet as
@@ -119,8 +178,15 @@ export function writeSharedHead(w: CodeWriter, hasStyles: boolean): void {
   w.line('// The style-adoption polyfill (SDD-18 §5) goes in <head>, live BEFORE the body streams,');
   w.line('// so its observer adopts each host sheet as it arrives; the style modules follow it.');
   w.line("head += '<script' + $nonce + '>' + STYLE_POLYFILL + '</script>';");
+  // The style modules carry the nonce too, and the reason is `type="module"`. Under Chrome's
+  // experimental web features a `<style type="module">` is no longer only a style: it is
+  // checked against `script-src`, and without a nonce a strict policy refuses it — one
+  // console error per styled component of the page, and the sheets never register.
+  //
+  // It costs ~30 bytes per component and is inert everywhere else: a browser that treats the
+  // element as a plain `<style>` ignores the attribute, and `style-src` never asked for it.
   w.line(
-    "head += COMPONENTS.map(function (c) { return '<style type=\"module\" specifier=\"' + c.tag + '\">' + c.css + '</style>'; }).join('');",
+    "head += COMPONENTS.map(function (c) { return '<style type=\"module\"' + $nonce + ' specifier=\"' + c.tag + '\">' + c.css + '</style>'; }).join('');",
   );
 }
 
@@ -141,6 +207,15 @@ export function writeHeadElements(
     readonly linker: AssetLinker;
     readonly injectAt?: HtmlContent;
     readonly onInject?: () => void;
+    /**
+     * What the `fudic:runtime` marker becomes here (BUG-31 §T1). A whole page writes the tags
+     * (`writeRuntimeTags`); a layout writes a call to the route's `runtime()` slot, because
+     * whether THIS page hydrates is the route's fact and a layout is shared by many.
+     *
+     * Absent means no marker is honoured: a head that is only a contribution has nowhere to
+     * put a runtime.
+     */
+    readonly onRuntime?: () => void;
   },
   w: CodeWriter,
 ): void {
@@ -152,7 +227,9 @@ export function writeHeadElements(
       continue;
     }
     if (child.type !== 'element' || options.skip.has(child)) continue;
-    if (child.name === 'title') {
+    if (options.onRuntime !== undefined && isRuntimeMarker(child)) {
+      options.onRuntime();
+    } else if (child.name === 'title') {
       w.line(`head += '<title>' + (${titleExpr(source, child)}) + '</title>';`);
     } else {
       w.line(`head += ${headElementExpr(source, child, options.linker)};`);

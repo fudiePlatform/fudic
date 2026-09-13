@@ -26,8 +26,10 @@ describe('the two literals of a component tag (§6.5)', () => {
 
     expect(text).toContain('tone: (t),');
     expect(text).toContain('id: "x",');
-    // Both literals, on the same tag, in this order: the contract first.
-    expect(text.indexOf('$props<$C0>(')).toBeLessThan(text.indexOf('$attrs<{}>('));
+    // Both literals, on the same tag, in this order: the contract first. `lastIndexOf` and
+    // not `indexOf`, because since BUG-32 the identity tag opens `$tpl` with an `$attrs<{}>`
+    // of its own — the badge's is the one that comes after the contract.
+    expect(text.indexOf('$props<$C0>(')).toBeLessThan(text.lastIndexOf('$attrs<{}>('));
   });
 
   it('emits the globals literal even with no plain attribute (BUG-23 decision (b))', () => {
@@ -67,7 +69,10 @@ describe('the two literals of a component tag (§6.5)', () => {
     const { text } = project('<input .value="@(v)" id="a">');
 
     expect(text).toContain('$attr(v);');
-    expect(text).not.toContain('$attrs<');
+    // Exactly one `$attrs<` in the file, and it is the identity tag's (BUG-32): the `<input>`
+    // contributes none, which is what "unaffected" means here.
+    expect(text.match(/\$attrs</gu)).toHaveLength(1);
+    expect(text.indexOf('$attrs<')).toBeLessThan(text.indexOf('$attr(v);'));
   });
 });
 

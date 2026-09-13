@@ -158,7 +158,7 @@ customElements.define("app-card", class extends FudicElement {
     };
     const $a = () => {
       let $v;
-      $v = ["card", (variant === 'highlight') && "highlight"].filter(Boolean).join(' ');
+      $v = ["card", ((variant === 'highlight')) && "highlight"].filter(Boolean).join(' ');
       if ($v !== $w[0]) { $w[0] = $v; $dom.setAttr($n0, 'class', $v); }
       $v = String((title) ?? '');
       if ($v !== $w[1]) { $w[1] = $v; $dom.setText($n5, $v); }
@@ -185,7 +185,6 @@ customElements.define("app-card", class extends FudicElement {
         $dom.append($n0, $n2);
         $n3 = $dom.element("app-button");
         $dom.setAttr($n3, 'data-fud-adopt', "app-button");
-        $dom.setAttr($n3, "variant", "ghost");
         $live($n3, ["ghost"]);
         $dom.append($n3, $dom.text(" "));
         {

@@ -60,6 +60,13 @@ export interface ComponentGraph {
   readonly entryDeps: readonly string[];
   /** Every component reachable from the entry, keyed by tag. */
   readonly components: ReadonlyMap<string, ResolvedComponent>;
+  /**
+   * The tag each of the entry's OWN `<link rel="component">` declares, keyed by the link
+   * element so a diagnostic has a span to point at. A link whose file is missing, or is not a
+   * component, has no entry here — a rule about an unused declaration says nothing about one
+   * that does not resolve.
+   */
+  readonly entryLinkTags: ReadonlyMap<ElementNode, string>;
 }
 
 /**
@@ -140,9 +147,40 @@ export function resolveComponents(entryPath: string, io: ResolveIo): ComponentGr
   const entrySource = io.read(entryPath);
   const entry = parse(entrySource).value;
   const components = new Map<string, ResolvedComponent>();
-  visitComponents(entry.links, entryPath, io, components);
+  // Path → tag, filled by the same walk that reads the files, so nothing is read twice.
+  const byPath = new Map<string, string>();
+  visitComponents(entry.links, entryPath, io, components, byPath);
   const entryDeps = entry.links.map(linkHref).filter((h): h is string => h !== undefined);
-  return { entry, entryPath, entrySource, entryDeps, components };
+  const entryLinkTags = linkTags(entry.links, entryPath, io, byPath);
+  return { entry, entryPath, entrySource, entryDeps, components, entryLinkTags };
+}
+
+/**
+ * Which tag each `<link rel="component">` of a document declares.
+ *
+ * A `<link>` carries a PATH and a component carries its identity in its root tag (decision
+ * 75), so the two coincide only by convention and the question can be answered nowhere but
+ * here — this is where the files were read. It is what lets `contractDiagnostics` report a
+ * declaration nobody uses (BUG-32 T6) without resolving a path of its own.
+ *
+ * Keyed by the link ELEMENT, because a diagnostic needs a span to point at. A link whose file
+ * is missing, or is not a component, is simply absent: a rule about an unused declaration has
+ * nothing to say about one that does not resolve.
+ */
+function linkTags(
+  links: readonly ElementNode[],
+  fromPath: string,
+  io: ResolveIo,
+  byPath: ReadonlyMap<string, string>,
+): ReadonlyMap<ElementNode, string> {
+  const out = new Map<ElementNode, string>();
+  for (const link of links) {
+    const href = linkHref(link);
+    if (href === undefined) continue;
+    const tag = byPath.get(io.resolve(fromPath, href));
+    if (tag !== undefined) out.set(link, tag);
+  }
+  return out;
 }
 
 /** Walk the `<link rel="component">` graph from `links`, filling `components` by tag. */
@@ -151,11 +189,15 @@ function visitComponents(
   fromPath: string,
   io: ResolveIo,
   components: Map<string, ResolvedComponent>,
+  byPath: Map<string, string>,
 ): void {
   const visit = (path: string): void => {
     const source = io.read(path);
     const doc = parse(source).value;
     if (doc.type !== 'component-document') return; // a linked file must be a component
+    // BEFORE the shared-dependency guard: a file reached twice still declares the same tag,
+    // and the second link needs the answer as much as the first.
+    byPath.set(path, doc.name);
     if (components.has(doc.name)) return; // already resolved (shared dependency)
     const deps = doc.links.map(linkHref).filter((h): h is string => h !== undefined);
     components.set(doc.name, { tag: doc.name, path, source, doc, deps });
@@ -261,15 +303,25 @@ export function resolveDocument(entryPath: string, io: ResolveIo): ParseResult<D
   // Components are collected OUTERMOST LAYOUT FIRST and the entry last, so the order of
   // the emitted `<style type="module">` block matches the head cascade of decision 88 —
   // and therefore matches the equivalent monolithic page.
+  const byPath = new Map<string, string>();
   for (const layout of [...layouts].reverse()) {
-    visitComponents(layout.doc.links, layout.path, io, components);
+    visitComponents(layout.doc.links, layout.path, io, components, byPath);
   }
-  visitComponents(entry.links, entryPath, io, components);
+  visitComponents(entry.links, entryPath, io, components, byPath);
 
   reportOrphanSections(entry, layouts, diagnostics);
 
   const entryDeps = entry.links.map(linkHref).filter((h): h is string => h !== undefined);
-  const graph: DocumentGraph = { entry, entryPath, entrySource, entryDeps, components, layouts };
+  const entryLinkTags = linkTags(entry.links, entryPath, io, byPath);
+  const graph: DocumentGraph = {
+    entry,
+    entryPath,
+    entrySource,
+    entryDeps,
+    components,
+    entryLinkTags,
+    layouts,
+  };
   return diagnostics.length === 0 ? ok(graph) : withDiagnostics(graph, diagnostics);
 }
 

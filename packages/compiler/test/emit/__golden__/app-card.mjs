@@ -8,7 +8,7 @@ export function render($dom, $shadow, props, $ioc) {
   $dom.state($shadow, [title, variant]);
   const expanded = () => (false); // inert signal (SSR; hydration is client-side)
   const $n0 = $dom.element("article");
-  $dom.setAttr($n0, 'class', ["card", (variant === 'highlight') && "highlight"].filter(Boolean).join(' '));
+  $dom.setAttr($n0, 'class', ["card", ((variant === 'highlight')) && "highlight"].filter(Boolean).join(' '));
   const $n1 = $dom.element("header");
   const $n2 = $dom.element("h2");
   const $n3 = $dom.text(String((title) ?? '')); $dom.append($n2, $n3);
@@ -28,7 +28,6 @@ export function render($dom, $shadow, props, $ioc) {
   const $n10 = $dom.element("app-button");
   $dom.claim($n10);
   $dom.setAttr($n10, 'data-fud-adopt', "app-button");
-  $dom.setAttr($n10, "variant", "ghost");
   const $n11 = $dom.attachShadow($n10);
   renderAppButton($dom, $n11, { "variant": "ghost" }, $ioc);
   const $n12 = $dom.text(" "); $dom.append($n10, $n12);

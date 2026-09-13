@@ -80,7 +80,7 @@ function buildMap(id: string, source: string, out: EmitOutput): SourceMapV3 {
     sourceLineMap: new LineMap(source),
     generatedLineMap: new LineMap(out.code),
   });
-  for (const m of out.mappings) builder.addMapping(m.generatedOffset, m.sourceOffset);
+  for (const m of out.mappings) builder.addMapping(m.generatedOffset, m.sourceOffset, m.name);
   return builder.build();
 }
 

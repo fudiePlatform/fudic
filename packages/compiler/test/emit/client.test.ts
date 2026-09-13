@@ -245,7 +245,9 @@ describe('emitComponentClientModule — shapes the fixtures do not cover', () =>
         '<x-cls>\n  <template shadowrootmode="open"><b class:hot="@on"></b></template>\n</x-cls>\n',
     );
     // The composition is a value now — a `class:` binding can move — so it rides `$a()`.
-    expect(src).toContain(`$v = [(on) && "hot"].filter(Boolean).join(' ');`);
+    // The condition goes through `crossingExpr` (BUG-32 T4), which is what puts the inner
+    // pair of parentheses there and what reads a signal as `on()` when `on` is one.
+    expect(src).toContain(`$v = [((on)) && "hot"].filter(Boolean).join(' ');`);
     expect(src).toContain(`$dom.setAttr($n0, 'class', $v);`);
   });
 
@@ -595,8 +597,11 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
   it('keeps the host itself untouched: still fabricated, still not driven', () => {
     const src = hostChunk('.value="@count"');
     expect(src).toContain('$n0 = $dom.element("x-child");');
-    expect(src).toContain(`$dom.setAttr($n0, 'data-fud-adopt', "x-child");`);
     expect(src).not.toContain('attachShadow'); // the runtime owns the child (SDD-17)
+    // `data-fud-adopt` is NOT here, and that is BUG-31 T4 rather than an omission: this
+    // `x-child` carries no `<style>`, so there is no sheet for the runtime to adopt and
+    // nothing to mark. The marker on a child that DOES have CSS is asserted in module.test.ts.
+    expect(src).not.toContain('data-fud-adopt');
   });
 
   it('emits no channel at all when the value is not a signal (§6.6)', () => {

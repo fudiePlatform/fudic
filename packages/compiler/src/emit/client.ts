@@ -261,6 +261,9 @@ function buildComponentClientModule(
   for (const cell of cells) {
     if (cell.kind === 'fn') bodies.hook.line(`${cellName(cell)}?.set(${cell.name});`);
   }
+  // The host's own bindings before the template's, so `hostUsed` is already set when the
+  // preamble below decides whether to materialize `$host` (BUG-32 T2).
+  if (comp.doc.host !== undefined) em.emitHost(comp.doc.host);
   em.emitRoots(comp.doc.template!.children);
 
   // The component's OWN reactivity, and the only consumer a signal has: the emitted code
@@ -353,7 +356,8 @@ function buildComponentClientModule(
   // is only legal at module scope (decision 33.c). Verbatim, TypeScript included: this
   // module is bundler input and stripping types is the bundler's job.
   for (const statement of neutral) {
-    if (statement.hoisted) w.line(statement.text);
+    if (statement.hoisted)
+      w.mappedLine({ text: statement.text, src: statement.at, anchors: statement.anchors });
   }
   for (const line of client.imports) w.line(line); // hoisted: only legal at module scope
   for (const line of linker.imports()) w.line(line);
@@ -387,10 +391,22 @@ function buildComponentClientModule(
   // owner may be level 1 and have no chunk at all, so the factory travels in the route's IoC
   // module instead, and `$own` — the container it registers into — does not exist on this
   // side (SDD-38 §4.5).
+  // `mappedLine` for both zones: this is the author's own code, verbatim, and the hydration
+  // chunk is where a breakpoint in a `.fud` has to land. Renders byte-identically to `line`.
   for (const statement of neutral) {
-    if (!statement.hoisted && !statement.provides) w.line(statement.text);
+    if (!statement.hoisted && !statement.provides)
+      w.mappedLine({ text: statement.text, src: statement.at, anchors: statement.anchors });
   }
-  for (const statement of client.body) w.line(withCells(statement, signals, cells));
+  for (const statement of client.body) {
+    // Anchored to the statement's own offsets even though `withCells` may have rewritten it:
+    // what the author reads is the lines they wrote, not the cell plumbing spliced into them.
+    // `withCells` splices within a line and never adds one, so line k still means line k.
+    w.mappedLine({
+      text: withCells(statement, signals, cells),
+      src: statement.at,
+      anchors: statement.anchors,
+    });
+  }
   w.line('');
   // The blocks: one function per construct, plus the registry of what is alive (SDD-30
   // §3.1, §3.6). Declared HERE, so each one reads `$dom`, the props and the `@client` body

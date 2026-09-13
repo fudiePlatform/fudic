@@ -92,6 +92,52 @@ interface Entry {
   readonly binding: Binding;
 }
 
+/**
+ * The component's OWN host wrapper — the identity tag of decision 75 — which until BUG-32 T3
+ * was projected by nobody.
+ *
+ * `templateContent` starts the walk INSIDE the `<template shadowrootmode>`, so this tag was
+ * never an element as far as the projection was concerned: no `$attrs`, no `$gap`, no `$on`.
+ * The consequence was the one an author sees — Ctrl+Space before the `>` answered «no
+ * suggestions», not even the HTML vocabulary a `<div>` offers — and the one they do not: a
+ * name that does not exist in a value there was no error.
+ *
+ * What it emits is deliberately NOT what a child host gets:
+ *
+ * - `$attrs<{}>` and `$gap<{}>`, both against `$GlobalAttrs` alone. **No props**: nobody
+ *   passes props to this tag, it IS the component, so offering its own contract here would
+ *   answer a question nobody asked.
+ * - The events, through the same `$on` as anywhere else, so the `@` list is TypeScript's
+ *   `HTMLElementEventMap` and the handler is checked.
+ * - **No classes.** A `class:` here is `FUD0720`: the classes this file knows live inside its
+ *   shadow, and a class on the host is resolved against the page. Projecting it would offer
+ *   names that never apply.
+ */
+export function emitHostBindings(ctx: TemplateContext, el: ElementNode): void {
+  const globals: Entry[] = [];
+  for (const attr of el.attributes) {
+    const binding = classifyAttribute(attr, ctx.source).value;
+    // An event half written degrades to a plain attribute, and it is an event all the same:
+    // reporting `TS2353` on a name the author is still typing helps nobody.
+    if (binding.type !== 'attr' || eventNameOf(attr, binding) !== undefined) continue;
+    globals.push({ attr, binding });
+  }
+
+  ctx.w.scaffold('$attrs<{}>({', el.openSpan);
+  emitEntries(ctx, globals);
+  ctx.w.scaffold(globals.length === 0 ? '});\n' : '\n});\n');
+
+  // `{}` and not the component's own contract: the gap of this tag takes HTML's vocabulary
+  // and nothing else, which is exactly what `$gap<{}>` intersects down to.
+  ctx.w.scaffold('$gap<{}>({', el.openSpan);
+  for (const gap of attributeGaps(el)) ctx.w.projected('\n  ', gap, COMPLETION_ONLY_CAPS);
+  ctx.w.scaffold('});\n');
+
+  for (const attr of el.attributes) {
+    emitBehaviour(ctx, el, attr, classifyAttribute(attr, ctx.source).value);
+  }
+}
+
 /** Project every attribute of an element. */
 export function emitElementBindings(ctx: TemplateContext, el: ElementNode): void {
   const bindings = el.attributes.map((attr) => ({

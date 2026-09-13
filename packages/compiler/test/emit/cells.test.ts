@@ -276,8 +276,11 @@ describe('the payload of the acceptance page (§6.5, §6.6)', () => {
     const marks = data.filter((v): v is { $: [number, number] } => typeof v === 'object' && v !== null);
     for (const mark of marks) expect(mark.$[0]).toBeLessThan(data.indexOf(mark));
 
-    // §6.7 — the HTML the browser sees still carries the VALUE.
-    expect(html).toContain('value="0"');
+    // §6.7 — the HTML the browser sees still carries the VALUE, painted by the child's own
+    // markup. Since BUG-32 T1 that is the ONLY place it is: the prop no longer reaches the
+    // host as an attribute, so level 1 reads the number where the child wrote it.
+    expect(html).toContain('<p>0</p>');
+    expect(html).not.toContain('value="0"');
   });
 });
 
@@ -318,6 +321,7 @@ describe('splicedOffset — a source offset carried across what was already inse
   const statement = {
     text: 'ignored',
     at: 100,
+    anchors: [],
     splices: [
       { at: 4, length: 5 },
       { at: 20, length: 7 },
@@ -398,16 +402,16 @@ describe('the child of a callback — a cell is READ at the moment it is called 
   });
 });
 
-describe('the server — the object in the render, the value in the markup (§4.7)', () => {
+describe('the server — the object in the render, and nothing on the host (§4.7, BUG-32 T1)', () => {
   const src = server('cell-parent');
 
   it('passes the child the live object: in this process there is no cable', () => {
     expect(src).toContain('{ "value": count }');
   });
 
-  it('still paints the VALUE in the level-1 attribute', () => {
-    expect(src).toContain('const $v = count();');
-    expect(src).toContain('$dom.setAttr($n7, "value", String($v))');
+  it('paints no attribute for it: the prop travels by `render`, not by the host', () => {
+    expect(src).not.toContain('const $v = count();');
+    expect(src).not.toMatch(/setAttr\([^)]*"value"/u);
   });
 
   it('paints no attribute for a callback: a function has no HTML form', () => {

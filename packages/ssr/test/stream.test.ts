@@ -63,12 +63,13 @@ describe('serializeChunks (SDD-16 §6.3)', () => {
   it('joined, equals renderToString for a DSD host', () => {
     const d = new SsrDom();
     const host = d.element('app-x');
+    d.setAttr(host, 'data-fud-adopt', 'app-x');
     const root = d.attachShadow(host);
     d.append(root, d.text('hi'));
     d.append(host, d.text('light'));
     expect([...serializeChunks(host)].join('')).toBe(renderToString(host));
     expect(renderToString(host)).toBe(
-      '<app-x><template shadowrootmode="open" shadowrootadoptedstylesheets="app-x">hi</template>light</app-x>',
+      '<app-x data-fud-adopt="app-x"><template shadowrootmode="open" shadowrootadoptedstylesheets="app-x">hi</template>light</app-x>',
     );
   });
 

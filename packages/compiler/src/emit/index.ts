@@ -4,7 +4,7 @@
  */
 
 export { CodeWriter } from './writer.js';
-export type { EmitMapping, MappedPart, LinePart } from './writer.js';
+export type { Anchor, EmitMapping, MappedPart, LinePart } from './writer.js';
 export { AssetLinker, type AssetExists } from './assets.js';
 export {
   resolveComponents,

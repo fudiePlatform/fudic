@@ -18,7 +18,7 @@ import { emitDataDeclaration } from './data.js';
 import { emitImports, templateContent } from './imports.js';
 import { clientFileName } from './paths.js';
 import { emitPropsProjection, type PropsCall } from './props.js';
-import { emitElementBindings } from './template/attrs.js';
+import { emitElementBindings, emitHostBindings } from './template/attrs.js';
 import type { FragmentAst, TemplateContext } from './template/context.js';
 import { emitControl, emitInlineCode, type ControlLike } from './template/control.js';
 import { emitSection, emitSectionsContract, emitSlot, emitSlotsContract } from './template/sections.js';
@@ -90,6 +90,12 @@ export function emitClientVirtual(
   );
 
   w.scaffold('function $tpl(): void {\n');
+  // The component's own host wrapper, which `templateContent` leaves out because the walk
+  // starts inside the `<template>` (BUG-32 T3). Its attributes and events are the file's as
+  // much as the template's, and until now the editor had nothing to answer from over them.
+  if (doc.type === 'component-document' && doc.host !== undefined) {
+    emitHostBindings(ctx, doc.host);
+  }
   emitContent(ctx, content);
   // Referencing `$tpl` keeps "declared but never read" quiet without exporting it: the
   // template is not part of anyone's contract.

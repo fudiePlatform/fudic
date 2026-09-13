@@ -10,7 +10,7 @@
 
     // The emitting end of the bus. The name is a string literal, which is the only form
     // v1 resolves — and it is what puts this tag on the emitting side of `fud-bus`.
-    function pick(label) {
+    function pick(label: string) {
       emit("picked", label);
     }
   }

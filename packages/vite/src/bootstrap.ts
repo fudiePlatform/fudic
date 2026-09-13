@@ -148,7 +148,19 @@ self.addEventListener('message', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  if (router !== null) router.handle(e);
+  if (router !== null) { router.handle(e); return; }
+  // A worker the browser just WOKE (BUG-31 §T7). The module has re-evaluated, so \`router\`
+  // is null again and \`boot()\` has only just started — and the listener runs synchronously,
+  // so the old guard let the navigation fall through to the network. Online that is
+  // invisible; offline it is the whole app failing to open, and it is why Firefox — which
+  // terminates workers far sooner than Chrome — only served from cache on the third try.
+  //
+  // Navigations only, and that is the boundary: a document is worth waiting a boot for, and
+  // it is the request whose failure the user sees. A subresource of a page the network
+  // served has to go to the same network, not to a cache this worker has not read yet.
+  if (e.request.mode === 'navigate' && e.request.method === 'GET') {
+    e.respondWith(boot().then((r) => (r === null ? fetch(e.request) : r.respond(e))));
+  }
 });
 `;
 }
@@ -186,15 +198,41 @@ export interface MainBootstrapOptions {
 }
 
 /**
- * Main thread: install the hydration runtime — ALWAYS — and, when the page was emitted with
- * one, register the render Service Worker and tell it where the user is.
+ * The always-on half of the main thread (BUG-31 §T2): register the render Service Worker and
+ * tell it where the user is. Nothing else — and nothing of the hydration runtime.
  *
- * The order of those two facts is the correction of SDD-17 §4.7.1. This module used to be
- * `export {};` whenever there was no Service Worker, which quietly made "no SW" mean "no
- * hydration" — and that is three quarters of the real cases: a project without `sw.json`,
- * `pnpm dev`, and every first load before `clients.claim()`. The runtime is ONE runtime; what
- * branches is the two ports injected here, because this is the only place that knows how the
- * page was emitted.
+ * It is its own entry point because the two halves answer to different facts. fudic is
+ * offline-first: the worker has to be registered on every page, including the one that is
+ * pure HTML, or the first visit to a static route leaves the app with no worker at all. The
+ * hydration runtime answers to whether THIS page has anything to hydrate, and on a page that
+ * has nothing it used to be 10 kB across six requests that walked the DOM, found no
+ * `data-fud-id` and stopped.
+ *
+ * Emitted as `export {};` when the page has no Service Worker (no `sw.json`, or `dev: 'off'`):
+ * the tag is still in the head, and what it loads is empty. That is the one shape that keeps
+ * the layout's markup independent of a decision taken in `sw.json`.
+ */
+export function emitBootBootstrap(swUrlExpr: string | null): string {
+  if (swUrlExpr === null) return 'export {};\n';
+  return [
+    `import { registerRenderServiceWorker, notifyLocation } from '@fudic/transport';`,
+    '',
+    `if ('serviceWorker' in navigator) {`,
+    `  registerRenderServiceWorker(${swUrlExpr}).then(() => notifyLocation());`,
+    `}`,
+    '',
+  ].join('\n');
+}
+
+/**
+ * Main thread: install the hydration runtime, on the pages that have something to hydrate.
+ *
+ * It used to also register the Service Worker, and that is now `emitBootBootstrap` above
+ * (BUG-31 §T2) — the two are loaded by different tags because they are needed under
+ * different conditions. What is preserved from SDD-17 §4.7.1 is the fact that made them one
+ * module in the first place: hydration must NOT depend on there being a worker. It does not.
+ * What still branches on the worker here is the warm channel, because the page that knows how
+ * it was emitted is this one.
  */
 export function emitMainBootstrap(options: MainBootstrapOptions): string {
   const { chunks, swUrlExpr } = options;
@@ -203,7 +241,6 @@ export function emitMainBootstrap(options: MainBootstrapOptions): string {
   // from `@fudic/transport` at all.
   const transport: string[] = [];
   if (chunks.mode === 'build') transport.push('createUrlResolver');
-  if (hasWorker) transport.push('registerRenderServiceWorker', 'notifyLocation');
   // The warm channel, chosen HERE and once (SDD-17 §4.7.1): the page that knows whether it
   // was emitted with a worker is this one, so the runtime carries no branch for it and the
   // unused channel is not even in the bundle.
@@ -242,14 +279,9 @@ export function emitMainBootstrap(options: MainBootstrapOptions): string {
           `const CHUNKS = new URL(${JSON.stringify(chunks.urlPrefix)}, document.baseURI).href;`,
           `const resolveChunk = (tag) => CHUNKS + tag + '.js';`,
         ];
-  const worker = !hasWorker
-    ? []
-    : [
-        '',
-        `if ('serviceWorker' in navigator) {`,
-        `  registerRenderServiceWorker(${swUrlExpr}).then(() => notifyLocation());`,
-        `}`,
-      ];
+  // The registration lives in the boot entry now (BUG-31 §T2); what is left of `swUrlExpr`
+  // here is the fact it stands for — whether this page was emitted with a worker — which is
+  // what picks the warm channel above.
   // The container tree, rebuilt from the published map (SDD-38 §4.2). Both imports are
   // dynamic and both hang off the block existing, so a page with no DI fetches neither.
   //
@@ -292,7 +324,6 @@ export function emitMainBootstrap(options: MainBootstrapOptions): string {
     // The order does not matter: a warm ordered before the worker takes control is queued
     // and flushed on `controllerchange`, which is the only case there is on a first load.
     `installHydration({ root: document, resolveChunk, warm: ${channel}()${ready} });`,
-    ...worker,
     '',
   ].join('\n');
 }

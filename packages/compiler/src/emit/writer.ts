@@ -14,6 +14,15 @@
 export interface EmitMapping {
   readonly generatedOffset: number;
   readonly sourceOffset: number;
+  /**
+   * The identifier the author wrote here, when this anchor is on one.
+   *
+   * It becomes the fifth field of the map segment, and it is what lets a debugger answer
+   * `n()` in the console: the minifier renamed `n` to `p`, and a map that carries positions
+   * and nothing else has no way to say they are the same name. Without it the console
+   * resolves `n` against the GENERATED scope, where it means whatever the minifier put there.
+   */
+  readonly name?: string;
 }
 
 /** A fragment of a line anchored to a `.fud` source offset (a verbatim slice of user code). */
@@ -21,6 +30,26 @@ export interface MappedPart {
   readonly text: string;
   /** UTF-16 offset in the `.fud` source this fragment was sliced from. */
   readonly src: number;
+  /**
+   * Anchors INSIDE `text`: `at` is an offset within the fragment, `src` the `.fud` offset it
+   * came from, and `name` the identifier when the anchor sits on one.
+   *
+   * One anchor per fragment is enough to find the fragment and nothing else. A debugger breaks
+   * on a LINE and resolves a variable by NAME, so a fragment with a single anchor has one
+   * breakpointable line and no names at all. The caller supplies these because it is the only
+   * one that still holds the original source and the splices it made into the copy.
+   */
+  readonly anchors?: readonly Anchor[];
+}
+
+/** One anchor inside a `MappedPart`. */
+export interface Anchor {
+  /** Offset within the fragment's own text. */
+  readonly at: number;
+  /** The `.fud` offset it maps to. */
+  readonly src: number;
+  /** The identifier at this position, when it is one. */
+  readonly name?: string;
 }
 
 /** A piece of a line: a literal string, or a source-anchored fragment. */
@@ -29,6 +58,7 @@ export type LinePart = string | MappedPart;
 interface Segment {
   readonly text: string;
   readonly src?: number;
+  readonly anchors?: readonly Anchor[];
 }
 
 interface Line {
@@ -36,8 +66,13 @@ interface Line {
   readonly segments: readonly Segment[];
 }
 
-const toSegment = (part: LinePart): Segment =>
-  typeof part === 'string' ? { text: part } : { text: part.text, src: part.src };
+const toSegment = (part: LinePart): Segment => {
+  if (typeof part === 'string') return { text: part };
+  // The field is omitted rather than set to `undefined`: `exactOptionalPropertyTypes`.
+  return part.anchors === undefined
+    ? { text: part.text, src: part.src }
+    : { text: part.text, src: part.src, anchors: part.anchors };
+};
 
 export class CodeWriter {
   readonly #lines: Line[] = [];
@@ -109,7 +144,19 @@ export class CodeWriter {
       const prefixLen = l.segments.length === 0 ? 0 : l.indent * 2;
       let col = prefixLen;
       for (const seg of l.segments) {
-        if (seg.src !== undefined) out.push({ generatedOffset: offset + col, sourceOffset: seg.src });
+        if (seg.src !== undefined) {
+          out.push({ generatedOffset: offset + col, sourceOffset: seg.src });
+          // And every anchor the caller put inside the fragment — line starts and identifiers.
+          // The generated offset is this fragment's position plus the offset within it; the
+          // source offset and the name came from whoever still had the original.
+          for (const a of seg.anchors ?? []) {
+            out.push(
+              a.name === undefined
+                ? { generatedOffset: offset + col + a.at, sourceOffset: a.src }
+                : { generatedOffset: offset + col + a.at, sourceOffset: a.src, name: a.name },
+            );
+          }
+        }
         col += seg.text.length;
       }
       offset += col; // prefix + all segment text = the rendered line length

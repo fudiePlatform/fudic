@@ -175,22 +175,46 @@ export function crossingExpr(
  * `null` when it writes none. The one place the rule lives, because the two branches must
  * agree about it byte for byte.
  *
- * In fudic a property is written with a dot and an attribute is written plain, and BUG-16
- * makes that the whole of it: on a COMPONENT both reach the output, because level 1 is HTML
- * with no JS and the host's attributes are the only place a value can live there. On a
- * NATIVE tag a `.prop` is what it always was — a DOM property, client hookup, absent from
- * SSR — so it writes nothing here.
+ * In fudic a property is written with a dot and an attribute is written plain, and BUG-32
+ * makes that the whole of it: ONLY a plain attribute becomes one. A `.prop` never does, on a
+ * component as much as on a native tag — it reaches the child by `render` on the server and
+ * by the cell on the client, and reflecting it on the host besides was a second copy of the
+ * same value that nobody read and that `$a()` rewrote on every update.
+ *
+ * Reflecting a prop is still available and is now the author's own decision, spelled as what
+ * it is: a plain attribute with an expression, `data-x="@value"`, which lands here by the
+ * line above and is kept in sync by the same pass.
  */
 function attributeOf(
   b: Binding,
-  host: HostContext,
 ): { readonly name: string; readonly value: readonly AttributeValuePart[] } | null {
-  if (b.type === 'attr') return b;
-  if (b.type !== 'property' || !host.isComponent) return null;
-  // A callback has no HTML representation: `String(save)` is the source of a function, which
-  // is not a value level 1 could ever read back. The prop still reaches the child — through
-  // `render` on the server and through the cell on the client — it just is not markup.
-  return host.declared?.(b.name)?.channel === 'fn' ? null : b;
+  return b.type === 'attr' ? b : null;
+}
+
+/**
+ * Whether the component's own host wrapper carries anything the two branches have to write
+ * (BUG-32 T2). Asked before a single line is emitted for it, because `$host` is materialized
+ * only where something reads it (§4.4) and an identity tag with no binding — which is nearly
+ * all of them — must keep the exact bytes it had.
+ *
+ * `class` is in the list and `class:` is not: a static `class="panel"` on the host is an
+ * attribute like any other, while a `class:` binding there resolves against the page rather
+ * than against this file's `<style>` and is an error the semantic pass reports.
+ */
+export function hasHostBindings(source: string, el: ElementNode): boolean {
+  return el.attributes.some((attr) => {
+    const b = classifyAttribute(attr, source).value;
+    return b.type === 'attr' || b.type === 'event' || b.type === 'bus';
+  });
+}
+
+/**
+ * The same question for the SERVER, which has no hookup: an `@event` on the host is the
+ * client branch's alone, so a host carrying nothing but listeners must not make this side
+ * declare a `$host` that no line below would read.
+ */
+export function hasHostAttrs(source: string, el: ElementNode): boolean {
+  return el.attributes.some((attr) => classifyAttribute(attr, source).value.type === 'attr');
 }
 
 /**
@@ -247,7 +271,7 @@ export function hasValueAttrs(source: string, el: ElementNode, host: HostContext
   return el.attributes.some((attr) => {
     const b = classifyAttribute(attr, source).value;
     if (b.type === 'class') return true;
-    const written = attributeOf(b, host);
+    const written = attributeOf(b);
     return written !== null && !written.value.every((p) => p.type === 'attribute-text');
   });
 }
@@ -313,10 +337,16 @@ export function writeElementAttrs(
   for (const attr of el.attributes) {
     const b = classifyAttribute(attr, source).value;
     if (b.type === 'class') {
-      classExprs.push(`(${slice(b.value.expr)}) && ${JSON.stringify(b.className)}`);
+      // Through `crossingExpr` like every other value, and that is BUG-32 T4: composing this
+      // from the raw source text made a `class:red="@rojo"` test the signal OBJECT, which is
+      // always truthy — the class went on at the first render and `rojo.set(false)` never took
+      // it off. Decision 84 applies here as much as to an attribute; the fallback for anything
+      // that is not a bare reactive is the very text this used to slice.
+      const condition = crossingExpr(source, attr, [b.value], host.signals);
+      classExprs.push(`(${condition}) && ${JSON.stringify(b.className)}`);
       continue;
     }
-    const written = attributeOf(b, host);
+    const written = attributeOf(b);
     if (written === null) continue; // event / bus / ref, and `.prop` on a native tag
     const isStatic = written.value.every((p) => p.type === 'attribute-text');
     if (isStatic) {

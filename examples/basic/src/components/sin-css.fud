@@ -1,0 +1,5 @@
+<sin-css>
+  <template shadowrootmode="open">
+    <p>Este componente no declara ni una regla de CSS.</p>
+  </template>
+</sin-css>

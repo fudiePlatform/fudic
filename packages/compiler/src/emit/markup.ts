@@ -21,6 +21,7 @@ import { CodeWriter } from './writer.js';
 import { type AssetLinker } from './assets.js';
 import {
   componentPropsExpr,
+  hasHostAttrs,
   writeElementAttrs,
   type HostContext,
   type PropTarget,
@@ -554,6 +555,26 @@ export class MarkupEmitter {
     }
     this.#w.dedent();
     this.#w.line('}');
+  }
+
+  /**
+   * The component's OWN host wrapper — the identity tag of decision 75 — on the server side of
+   * BUG-32 T2. Its bindings reached neither branch before: the structuring pass reads a couple
+   * of attributes off it by name and the walk starts INSIDE the `<template>`, so an attribute
+   * written there was dropped without a line of output and without a diagnostic.
+   *
+   * Attributes only, because the server has no hookup: an `@event` on the host is the client
+   * branch's, exactly as it is on any other element.
+   *
+   * `$host` is reached through the shadow and not passed in, because `render` is called with
+   * the shadow root: `attachShadow` is what leaves the link, and both adapters implement the
+   * inverse. Written into the markup body, so it lands after the props, the inert reactives
+   * and the neutral zone the value may read.
+   */
+  emitHost(el: ElementNode): void {
+    if (!hasHostAttrs(this.#source, el)) return;
+    this.#w.line('const $host = $dom.host($shadow);');
+    this.#elementAttrs(el, '$host', false);
   }
 
   #elementAttrs(el: ElementNode, v: string, isComponent: boolean): void {

@@ -37,12 +37,25 @@ const INPUTS: ManifestInputs = {
 };
 
 describe('buildManifest — what a hydration chunk imports (SDD-17 §4.7)', () => {
-  it('states it per tag, because a shared chunk keeps a content hash', () => {
+  it('states it per tag, and factors out the directory they share (BUG-31 T5)', () => {
     const { file } = buildManifest([routeBuild('/', { mode: 'ssg' })], {
       ...INPUTS,
       hydrateDeps: { 'app-counter': ['assets/element-DUSE73WP.js'] },
     });
-    expect(file.hydrate).toEqual({ 'app-counter': ['assets/element-DUSE73WP.js'] });
+    // The directory is written ONCE at the top of the file instead of on every dependency.
+    expect(file.assets).toBe('assets/');
+    // This chunk kept a content hash — a name collision `planRename` degraded rather than
+    // broke — so its whole name stays, and the `.js` it ends in is what says so.
+    expect(file.hydrate).toEqual({ 'app-counter': ['element-DUSE73WP.js'] });
+  });
+
+  it('drops the build-id tail of a name that carries it: that part is arithmetic', () => {
+    const { file } = buildManifest([routeBuild('/', { mode: 'ssg' })], {
+      ...INPUTS,
+      hydrateDeps: { 'app-counter': ['assets/element-b1.js'] },
+    });
+    expect(file.assets).toBe('assets/');
+    expect(file.hydrate).toEqual({ 'app-counter': ['element'] });
   });
 
   it('says nothing when there is nothing to say', () => {
