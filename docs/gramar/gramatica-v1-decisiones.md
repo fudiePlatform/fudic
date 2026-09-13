@@ -512,6 +512,10 @@ Un solo contenedor `@code` a nivel documento, con tres regiones posibles: zona n
 **32.** `@server` y `@client` como sintaxis Razor genuina dentro de `@code`, no como marcadores léxicos. El parser del framework reconoce la estructura externa; el contenido de cada sub-bloque se delega a Oxc como fragmento JS independiente.
 
 **33.a.** Regiones `@server` y `@client` **no anidables**. Error de compilación si se anidan.
+Anidada es la región, no su nombre: un `@server`/`@client` escrito en un comentario, en una cadena,
+en una plantilla o en un literal de expresión regular **no es un marcador** y no es error (BUG-30).
+Un comentario no puede cambiar el significado de nada — la misma regla que la 35.a sostiene para el
+comentario Razor dentro de `@code`.
 
 **33.b.** Máximo un `@server` y un `@client` por `@code`. Cero de cualquiera también válido. Repetir la región es error.
 
@@ -1130,7 +1134,9 @@ hacer sin adivinar.
 **89.** **En v1 el layout no carga datos.** No exporta `load()`: recibe el `data` de la ruta en
 solo lectura. Así la inferencia de modo SSG (SDD-19 §4.2) y la clave de caché no cambian, y no hay
 orden de resolución que especificar. El layout **sí** puede tener `@code` con zona neutra y
-`@client`, y sus propios `<link rel="component">`.
+`@client`, y sus propios `<link rel="component">`. Lo que se prohíbe es **exportar** `load`: un
+`load` nombrado en un comentario o en una cadena del `@server` —la frase que documenta esta misma
+regla, sin ir más lejos— no es un error (BUG-30).
 
 **90.** **`@section` es exclusivo del par ruta↔layout.** No existe en componentes: ahí la
 proyección de contenido es `<slot>`, el mecanismo estándar de DSD, y dos mecanismos compitiendo

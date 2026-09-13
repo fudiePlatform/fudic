@@ -3,7 +3,7 @@
 > **BUG:** [BUG-30 — Un `@client` escrito en un comentario es un error](./BUG-30-marcador-dentro-de-un-comentario.md)
 > **Paquetes:** `@fudic/compiler`
 > **Rama:** `worktree-bug-30-marcador-en-comentario` · **Depende de:** SDD-08 y SDD-12 en `Hecho`
-> **Progreso:** 5 / 5 — `Listo`
+> **Progreso:** 5 / 5 — `Hecho`
 
 Cinco tareas. Rutas relativas a la raíz del repo. Cada una deja el workspace verde, así que
 se puede parar después de cualquiera.
@@ -76,9 +76,23 @@ nadie sabe si pasan porque la corrección funciona o porque el test mira otra co
 
 ## Cierre
 
-- [ ] `pnpm typecheck` · `pnpm test` en verde en el workspace entero.
-- [ ] Cobertura al **100 %** en las cuatro métricas del código nuevo; `@fudic/compiler` no
-      baja.
-- [ ] Validado por mutación: se deshace el salto de regiones y vuelven a caer los cinco
-      tests de la fase 1.
-- [ ] Fila en [el índice de BUG](./INDEX.md) y registro en [INDEX.md](../INDEX.md).
+- [x] `pnpm typecheck` · `pnpm test` en verde en el workspace entero. También `pnpm build`,
+      que construye `examples/basic` con el comentario de la tarea 5 ya escrito.
+- [x] Cobertura al **100 %** en las cuatro métricas del código nuevo (`semantic/opaque.ts`);
+      `@fudic/compiler` no baja de su suelo, 99,19 / 98 / 99,34 / 99,64.
+- [x] Validado por mutación: se deshace el salto de regiones y vuelven a caer los cinco
+      tests de la fase 1 — los tres de verdaderos positivos siguen verdes.
+- [x] Fila en [el índice de BUG](./INDEX.md) y registro en [INDEX.md](../INDEX.md). Y las
+      anotaciones cruzadas de la cabecera: SDD-08 §3, SDD-12 §3 y §6.5, SDD-21 §5, y las
+      decisiones 33.a y 89 de la gramática.
+
+---
+
+## Una nota sobre el criterio §6.8
+
+El criterio pide las regiones «en orden y **sin solapes**». En orden, sí. Sin solapes, no del
+todo, y no por un fallo: una plantilla cubre su interpolación **y** la cadena de dentro se lista
+además por su cuenta, que es lo que el balanceador de SDD-02 documenta y lo que el `RegionCursor`
+de SDD-08 ya sabía manejar. Los spans **anidan**; nunca se solapan a medias. El test comprueba eso
+—orden de fuente y anidamiento— y el enmascarado no necesita caso aparte, porque blanquear dos
+veces un tramo es blanquearlo una.
