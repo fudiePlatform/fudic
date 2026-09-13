@@ -90,6 +90,11 @@ Las siete secciones del SDD, reinterpretadas para un defecto:
 | [BUG-28](./BUG-28-bloque-en-linea-nunca-emitido.md) | `@{ … }` se parseaba y no se emitía, y con él el `@while` no se podía escribir | SDD-15 §4.1 · SDD-30 §3.3 · gramática 13, 16, 17, 91, y añade la **116** | `compiler` | `Hecho` |
 | [BUG-29](./BUG-29-script-en-linea-sin-diagnostico.md) | el cuerpo de un `<script>` se tiraba en silencio, y con él el JSON-LD y el import map | SDD-10 §3 · SDD-12 §4 · SDD-15 §4.1 · gramática **43** precisada, y añade la **129** (`FUD0161`) | `compiler` | `Hecho` |
 | [BUG-30](./BUG-30-marcador-dentro-de-un-comentario.md) | Un `@client` escrito en un comentario es un error, y un `load` nombrado en uno también | SDD-12 §4 · SDD-08 §3 · SDD-21 §4 · gramática 33.a, 89 | `compiler` | `Listo` |
+| [BUG-33](./BUG-33-caches-por-app.md) | Dos apps en el mismo origen se borran las cachés: `caches.keys()` es por origen y el nombre solo lleva el build | SDD-20 §4.10 · [SDD-41](../SDD-41-configuracion-de-aplicacion.md) §4.3 | `transport` · `vite` | `Listo` |
+
+> **BUG-31 y BUG-32** se implementaron juntos en `worktree-bug-31-emit-incondicional` y entran en
+> esta tabla al mergear. BUG-33 se numeró detrás de ellos a propósito, aunque llegue antes al
+> índice: los números no se reciclan.
 
 ## Grafo de dependencias
 
