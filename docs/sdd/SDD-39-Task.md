@@ -5,7 +5,7 @@
 > `@fudic/ssr` (`stateOf`) · `@fudic/core` (los dos bloques y el camino de subida) ·
 > `@fudic/vite` (el chunk, su nombre, `FUD0620`) · `@fudic/example-basic` (las evidencias)
 > **Rama:** `worktree-sdd-39-rutas-reactivas`
-> **Progreso:** 0 / 19
+> **Progreso:** 3 / 19
 
 Una ruta pasa a comportarse como un componente. No hay mecanismo nuevo en el runtime: hay una
 raíz distinta —el `<body>` en vez de un `shadowRoot`— y un nombre que sale de un bloque JSON en
@@ -43,16 +43,16 @@ navegación en sitio y una `data` que se mueva (§7).
 
 ## Fase 1 — El `@code` de una ruta llega a los dos lados (3)
 
-- [ ] **1. Una ruta pasa por `extractCode`.**
+- [x] **1. Una ruta pasa por `extractCode`.**
       `emitRouteModuleMapped` y `emitPageModuleMapped` dicen hoy por escrito que una ruta *no*
       pasa por `extractCode` porque su `@code` es el módulo `?server`. Deja de ser cierto: la
       entrada se extrae como la de un componente y sus diagnósticos viajan con los del emit.
       Retirar los dos comentarios que afirman lo contrario, que si no quedan mintiendo.
-- [ ] **2. La zona neutra y el stub inerte, en el módulo de render.**
+- [x] **2. La zona neutra y el stub inerte, en el módulo de render.**
       `buildRouteModule` y `buildPageModule` escriben la zona neutra íntegra y los *stubs*
       inertes de los nombres de `@client`, en el mismo orden y con la misma forma que
       `buildComponentModule` (SDD-31 §4.6). Criterios §6.1 y §6.2.
-- [ ] **3. `emitServerModule` deja de mentir por omisión.**
+- [x] **3. `emitServerModule` deja de mentir por omisión.**
       El `?server` sigue llevando **solo** `@server` —eso no cambia y es lo correcto—, pero el
       comentario de cabecera dice que ahí va «el `@code` de la página». Corregirlo: lo que va es
       su región de servidor, y el resto tiene ahora su propio destino.

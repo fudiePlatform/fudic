@@ -5,7 +5,7 @@
  * the pattern, and no `@code` at all), so the extraction's branches stay honest.
  */
 import { describe, expect, it } from 'vitest';
-import { extractCode, extractDiCalls } from '../../src/emit/oxc-code.js';
+import { extractCode } from '../../src/emit/oxc-code.js';
 import type { ComponentDocument } from '../../src/document/index.js';
 import { parse } from './_support.js';
 
@@ -357,9 +357,4 @@ describe('the injection diagnostics of one @code', () => {
     expect(codesOf('  @client {\n    const cart = inject(Cart);\n  }\n')).toEqual([]);
   });
 
-  it('a file with no @code at all has no DI calls, and costs no parse to say so', () => {
-    // The reading a page, a route and a layout get: they never reach `extractCode`, and the
-    // one question asked of them is answered before Oxc is handed anything.
-    expect(extractDiCalls('', undefined)).toEqual([]);
-  });
 });

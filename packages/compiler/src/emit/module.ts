@@ -29,7 +29,7 @@ import { CodeWriter, type EmitMapping } from './writer.js';
 import { MarkupEmitter, renderName, tpl } from './markup.js';
 import { AssetLinker, type AssetExists } from './assets.js';
 import { compactStyleCss } from './css-compact.js';
-import { codeOf, diHelpers } from './oxc-code.js';
+import { codeOf, codeOfDocument, diHelpers } from './oxc-code.js';
 import { hasDependencyInjection } from './di.js';
 import { cellSlots, childTargets, reactiveScope } from './state.js';
 import { formAssociatedTags, hydratableTags } from './level.js';
@@ -40,6 +40,8 @@ import {
   type ComponentSpecifier,
   type LayoutSpecifier,
   specifierResolver,
+  writeEntryCode,
+  writeEntryImports,
   writeHeadElements,
   writeNonceBinding,
   writeRuntimeTags,
@@ -408,12 +410,18 @@ export function emitComponentModuleMapped(
   };
 }
 
-function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer: CodeWriter; linker: AssetLinker } {
+function buildPageModule(
+  graph: ComponentGraph,
+  options: EmitOptions,
+): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const ext = options.importExt ?? '.mjs';
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
   const page = graph.entry as PageDocument;
   const source = graph.entrySource;
   const comps = [...graph.components.values()];
+  // A standalone page is a route that owns its own shell, so its `@code` is split exactly
+  // the same way (SDD-39 §4.1).
+  const code = codeOfDocument(source, page);
   // Only the components that HAVE a sheet reach the head: the rest carry no `COMPONENTS`
   // entry, no `<style type="module">` and no adopt marker anywhere (BUG-31 §T4). It is a
   // SECOND list and not a filter of the first, because `comps` also drives the `render`
@@ -478,6 +486,7 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
     w.line(`import { render as ${renderName(c.tag)}${style} } from ${specifier(c.tag)};`);
   }
   for (const line of linker.imports()) w.line(line); // asset imports Vite resolves (SDD-19 §4.5)
+  writeEntryImports(w, code); // the neutral zone's, hoisted (decision 33.c)
   w.line('');
   w.line(`const COMPONENTS = [${styledComps.map((c) => `{ tag: ${renderName(c.tag)}Tag, css: ${renderName(c.tag)}Css }`).join(', ')}];`);
   // The MINIFIED form: it is inline in every page's head, once per page (BUG-07 §4.3).
@@ -497,6 +506,9 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
   );
   if (hasDi) w.line('const $root = $ioc ?? iocRoot();');
   writeNonceBinding(w);
+  // The author's own `@code`, before anything that could read it: the head interpolates it
+  // (`<title>@titulo()</title>`) as readily as the body does.
+  writeEntryCode(w, code);
   w.line("let head = '';");
   w.appendWriter(headW);
   writeSharedHead(w, styledComps.length > 0);
@@ -512,7 +524,7 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
   w.line("yield '</html>';");
   w.dedent();
   w.line('}');
-  return { writer: w, linker };
+  return { writer: w, linker, diagnostics: code.diagnostics };
 }
 
 export function emitPageModule(graph: ComponentGraph, options: EmitOptions = {}): string {
@@ -521,13 +533,11 @@ export function emitPageModule(graph: ComponentGraph, options: EmitOptions = {})
 
 /** As `emitPageModule`, plus the output↔source mappings and missing assets (§4.6/§6.13). */
 export function emitPageModuleMapped(graph: ComponentGraph, options: EmitOptions = {}): EmitOutput {
-  const { writer, linker } = buildPageModule(graph, options);
-  // No `diagnostics`: a page / layout / route does not go through `extractCode` — its
-  // `@code` is the `?server` module, which the plugin parses on its own.
+  const { writer, linker, diagnostics } = buildPageModule(graph, options);
   return {
     code: writer.toString(),
     mappings: writer.mappings(),
     missingAssets: linker.missing(),
-    diagnostics: [],
+    diagnostics,
   };
 }

@@ -9,13 +9,13 @@
  * synthetic batch buffer and are mapped to the original source via `mapOffset`.
  */
 
-import type { ComponentDocument } from '../document/index.js';
+import type { ComponentDocument, PageDocument, RouteDocument } from '../document/index.js';
 import type { CodeBlockNode } from '../code/index.js';
 import type { ResolvedComponent } from './resolve.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import { errorDiag, isEmptySpan, span } from '../types/index.js';
 import { JsBatch, type JsFragmentKind, type OxcNode } from '../oxc/index.js';
-import { collectAttributeJs, collectTemplateJs } from './constructs.js';
+import { collectAttributeJs, collectTemplateJs, type JsFragmentVisitor } from './constructs.js';
 import type { Anchor } from './writer.js';
 import {
   changeableBindings,
@@ -394,6 +394,41 @@ const name = (node: OxcNode): string => String(node['name']);
 type MapOffset = (bufferOffset: number) => number;
 
 /**
+ * A file whose `@code` is the author's own half of a rendered tree — the three roles that
+ * have one (SDD-39 §4.1).
+ *
+ * A layout is NOT here, and that is §7: its markup is static in this version, so it has no
+ * client half to split a `@code` for. What it declares still reaches its own `?server`
+ * module, exactly as before.
+ */
+export type CodeDocument = ComponentDocument | RouteDocument | PageDocument;
+
+/**
+ * The JS fragments of a document's TEMPLATE, whichever role it takes.
+ *
+ * The three differ only in where their markup hangs: a component's inside the `<template>`
+ * its host wrapper opens, a route's at the top level plus one list per `@section`, a page's
+ * inside its `<body>`. A section is registered like any other run of markup — it is another
+ * position of the same walk, not a second kind of tree (SDD-39 §4.4).
+ */
+function collectDocumentJs(doc: CodeDocument, register: JsFragmentVisitor): void {
+  if (doc.type === 'route-document') {
+    collectTemplateJs(doc.markup, register);
+    for (const section of doc.sections) collectTemplateJs(section.children, register);
+    return;
+  }
+  if (doc.type === 'page-document') {
+    collectTemplateJs(doc.body.children, register);
+    return;
+  }
+  // The host wrapper's own attributes FIRST, which is source order — it opens the file's
+  // markup. Its attributes only: descending would walk the `<template>` a second time, and
+  // registering a span twice is two Oxc fragments for one piece of source.
+  if (doc.host !== undefined) collectAttributeJs(doc.host, register);
+  collectTemplateJs(doc.template?.children ?? [], register);
+}
+
+/**
  * Extract, in ONE Oxc invocation for the whole file, everything the two emit branches need
  * out of `@code`: the `props<T>()` pattern (with its defaults), the `signal()` initials the
  * server branch renders inert, and the `@client` region split into imports and body.
@@ -401,7 +436,7 @@ type MapOffset = (bufferOffset: number) => number;
  * The batch's diagnostics come out with them. A parse that failed is not a component
  * without code, and the caller is the only one that can still tell the difference.
  */
-export function extractCode(source: string, doc: ComponentDocument): ExtractedCode {
+export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
   const props: Prop[] = [];
   const signals: Reactive[] = [];
   const client: ClientCode = { imports: [], body: [] };
@@ -417,11 +452,7 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
     if (isEmptySpan(at)) return; // a degraded header has its own diagnostic already
     fragments.set(spanKey(at), batch.add(kind, at));
   };
-  // The host wrapper's own attributes FIRST, which is source order — it opens the file's
-  // markup. Its attributes only: descending would walk the `<template>` a second time, and
-  // registering a span twice is two Oxc fragments for one piece of source.
-  if (doc.host !== undefined) collectAttributeJs(doc.host, register);
-  collectTemplateJs(doc.template?.children ?? [], register);
+  collectDocumentJs(doc, register);
 
   const result = batch.parse();
   const map = result.value.mapOffset;
@@ -585,38 +616,23 @@ export function codeOf(comp: ResolvedComponent): ExtractedCode {
 }
 
 /**
- * The DI calls of a `@code` that is NOT a component's — a page's, a route's, a layout's.
+ * The same, for a document held DIRECTLY rather than through a `ResolvedComponent` — which
+ * is how a route and a page reach the emit (SDD-39 §4.1).
  *
- * Those three roles never reach `extractCode`: they declare no props, no reactive names and
- * no client region, and their `@code` is the `?server` module the plugin copies out verbatim.
- * So this is the one and only Oxc invocation such a file gets, and it exists for one question
- * — is somebody calling `inject(…)` where `ctx.inject(…)` is the only thing that works
- * (SDD-38 §6.24) — asked by reading the AST, because a `// inject(` in a comment is not a call.
+ * Memoized on the document for the reason `codeOf` is memoized on the component: the golden
+ * rule is one Oxc invocation per FILE, and by now four readers want the same answers about
+ * the same route — the render module, the client chunk, and the two predicates the build
+ * asks (`isReactiveRoute`, `routeHydration`). The resolver parses each file once, so the
+ * document object is as good a key as the component was.
  */
-export function extractDiCalls(source: string, code: CodeBlockNode | undefined): readonly DiCall[] {
-  const parts = code?.parts ?? [];
-  if (parts.length === 0) return [];
-  const batch = new JsBatch(source);
-  const ids = parts.map((p) => batch.add('module-statements', p.js));
-  const result = batch.parse();
-  const map = result.value.mapOffset;
+const documentCodeCache = new WeakMap<CodeDocument, ExtractedCode>();
 
-  const byZone: Record<CodeZone, OxcNode[]> = { neutral: [], server: [], client: [] };
-  ids.forEach((id, i) => {
-    // A `module-statements` fragment is a LIST of top-level statements, always — that is
-    // what the kind means, and the batch has no other shape to hand back for it.
-    byZone[zoneOf(parts[i]!.type)].push(...(result.value.ast(id) as readonly OxcNode[]));
-  });
-
-  const all = [...byZone.neutral, ...byZone.server, ...byZone.client];
-  const bindings = diBindings(all);
-  if (bindings.size === 0) return [];
-  const out: DiCall[] = [];
-  const scan = { bindings, imports: importSources(all), source, map, out };
-  for (const zone of ['neutral', 'server', 'client'] as const) {
-    collectDiCalls(byZone[zone], { ...scan, zone });
-  }
-  return out;
+export function codeOfDocument(source: string, doc: CodeDocument): ExtractedCode {
+  const cached = documentCodeCache.get(doc);
+  if (cached !== undefined) return cached;
+  const code = extractCode(source, doc);
+  documentCodeCache.set(doc, code);
+  return code;
 }
 
 /**

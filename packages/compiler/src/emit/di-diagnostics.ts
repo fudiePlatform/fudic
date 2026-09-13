@@ -38,7 +38,7 @@
 
 import { parseSync } from 'oxc-parser';
 import { errorDiag, type Diagnostic } from '../types/index.js';
-import { codeOf, extractDiCalls } from './oxc-code.js';
+import { codeOf, codeOfDocument } from './oxc-code.js';
 import { allComponents, type ComponentGraph, type ResolveIo } from './resolve.js';
 import { collectTemplateJs } from './constructs.js';
 import { hydratableTags, templateOf } from './level.js';
@@ -214,16 +214,18 @@ function serverNamesInTemplates(graph: ComponentGraph, out: Diagnostic[]): void 
  * So a route resolves explicitly, through `ctx.inject(…)`, and this is where writing the
  * other thing gets said out loud.
  *
- * The one Oxc invocation such a file ever gets, and it is spent here: a page, a route and a
- * layout do not go through `extractCode`, and their `@code` reaches the plugin as text.
+ * It reads the SAME extraction the route's two emitters read (SDD-39 §4.1). Until then a
+ * route never went through `extractCode`, so this question had an Oxc invocation of its own;
+ * now that its `@code` is split like a component's, asking twice would be a second parse of
+ * one file — which is the golden rule, not an optimisation.
  */
 function routeAmbientInjections(graph: ComponentGraph, out: Diagnostic[]): void {
   const entry = graph.entry;
   if (entry.type !== 'page-document' && entry.type !== 'route-document') return;
-  // Nothing to parse when the file has no server region: `inject` written anywhere else in a
+  // Nothing to read when the file has no server region: `inject` written anywhere else in a
   // route is a different question, and not one this SDD owns.
   if (!(entry.code?.parts ?? []).some((part) => part.type === 'server-region')) return;
-  for (const call of extractDiCalls(graph.entrySource, entry.code)) {
+  for (const call of codeOfDocument(graph.entrySource, entry).di) {
     if (call.kind !== 'inject' || call.zone !== 'server') continue;
     out.push(
       errorDiag(

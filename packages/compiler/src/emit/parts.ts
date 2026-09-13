@@ -14,6 +14,7 @@ import type { CodeWriter } from './writer.js';
 import { AssetLinker } from './assets.js';
 import { isAssetAttr } from './markup.js';
 import { isLiteralText, literalText } from './runs.js';
+import type { ExtractedCode } from './oxc-code.js';
 
 export const slice = (source: string, sp: Span): string => source.slice(sp.start, sp.end);
 
@@ -238,4 +239,48 @@ export function writeHeadElements(
   // A layout whose `@RenderHead()` sits deeper than a direct child of `<head>` (or none at
   // all, FUD0425): the route's contributions still go out, at the end of the head.
   if (!injected && options.onInject !== undefined) options.onInject();
+}
+
+/**
+ * The author's own `@code`, as the RENDER module of a route or a page carries it
+ * (SDD-39 §4.1).
+ *
+ * Two zones and two shapes, and both are the component's, applied to an entry that until
+ * now wrote neither:
+ *
+ * - the **inert reactive**, a function whose call returns the initial value. The server does
+ *   not evaluate the body of `@client`, so `@count()` in the markup of a route used to be a
+ *   `ReferenceError` that killed the whole prerender (§1.1). It is the same mechanism SDD-31
+ *   §4.6 already gives a component, written here for the entry.
+ * - the **neutral zone**, verbatim and in source order, because it is the half that runs on
+ *   both sides — it is where a form is imported and where a helper the markup calls lives.
+ *
+ * `mappedLine` and not `line`: this is the author's own code, and the anchor is what lets a
+ * breakpoint in the `.fud` find it. An `import` is not here at all — it is only legal at
+ * module scope, so the caller hoists it.
+ *
+ * A statement that REGISTERS is skipped, and here the reason is not the component's. A
+ * component writes its `provide` in full on this side because it OWNS a container to register
+ * into (`$own`, SDD-38 §4.5); a route owns none — it opens the root and hands it down, and
+ * resolves through `ctx.inject(…)` (SDD-38 §6.24). Writing the line here would name a
+ * container that does not exist. Providers in a route are not this SDD's, and dropping them
+ * is exactly what happened before, when no part of a route's `@code` was emitted at all.
+ */
+export function writeEntryCode(w: CodeWriter, code: ExtractedCode): void {
+  for (const s of code.signals) {
+    const init = s.kind === 'computed' ? `(${s.init})` : `() => (${s.init})`;
+    w.line(`const ${s.name} = ${init}; // inert ${s.kind} (SSR; hydration is client-side)`);
+  }
+  for (const statement of code.neutral) {
+    if (statement.hoisted || statement.provides) continue;
+    w.mappedLine({ text: statement.text, src: statement.at, anchors: statement.anchors });
+  }
+}
+
+/** The `import` lines of a `@code`'s neutral zone, hoisted to module scope (decision 33.c). */
+export function writeEntryImports(w: CodeWriter, code: ExtractedCode): void {
+  for (const statement of code.neutral) {
+    if (!statement.hoisted) continue;
+    w.mappedLine({ text: statement.text, src: statement.at, anchors: statement.anchors });
+  }
 }
