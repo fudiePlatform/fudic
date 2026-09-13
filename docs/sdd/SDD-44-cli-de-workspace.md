@@ -118,7 +118,7 @@ Hereda de `fudic new` los suyos: `--pm`, `--no-install`, `--no-git`, `--no-sw`, 
 |---|---|---|
 | `--dir <ruta>` | `apps` | Dónde cuelga |
 | `--id <id>` | `<nombre>` | El `id` de SDD-41. Escrito, no derivado (§4.4) |
-| `--prefix <p>` | — | El prefijo de sus tags |
+| `--prefix <p>` | **obligatorio** | El primer segmento de los tags que define. Sin él, `FUD0786` |
 | `--no-sw` | — | Sin `sw.json` — y entonces sin `id` obligatorio |
 | `--uses <lib>` | — | Añade la dependencia `workspace:*` a esa librería. **Repetible** |
 
@@ -127,7 +127,7 @@ Hereda de `fudic new` los suyos: `--pm`, `--no-install`, `--no-git`, `--no-sw`, 
 | Flag | Defecto | Efecto |
 |---|---|---|
 | `--dir <ruta>` | `libs` | Dónde cuelga |
-| `--prefix <p>` | — | El prefijo de sus tags. Sin él, `FUD0786` (§4.5) |
+| `--prefix <p>` | **obligatorio** | El primer segmento de los tags que define. Sin él, `FUD0786` |
 | `--uses <lib>` | — | Una librería puede consumir otra. **Repetible** |
 
 ### 3.2. API programática
@@ -265,10 +265,12 @@ dos sitios que lo emiten.
 Y **no** escribe: `vite.config.ts`, `sw.json`, `src/routes/`, ni un layout. Los cuatro son
 de una app (§1.2).
 
-**El prefijo es obligatorio en una librería.** Sin `--prefix`, `FUD0786`. Es la única
-diferencia de exigencia con una app, y sale de lo que una librería es: sus tags van a vivir
-en el registro global de `customElements` de aplicaciones que ella no controla. Una app sin
-prefijo solo se arriesga a sí misma; una librería sin prefijo arriesga a sus consumidores.
+**El prefijo es obligatorio, aquí y en una app.** Sin `--prefix`, `FUD0786` en los dos
+comandos, porque `fudic.json` no valida sin él (SDD-41 §3.1): un nombre de custom element
+lleva guión por especificación, así que todo componente **ya** tiene un primer segmento, y
+lo único que un proyecto puede hacer es declarar cuál — no si lo hay. En una librería el
+argumento pesa el doble, porque sus tags van a vivir en el registro global de
+`customElements` de aplicaciones que ella no controla.
 
 ### 4.6. Un `fudic-globals.d.ts`, y una config de TypeScript
 
@@ -330,7 +332,7 @@ una pieza compartible con sentido —la cáscara común de varias apps—, así 
 | `FUD0783` | `error` | `fudic g page` con destino un proyecto `kind: "lib"`. Una librería no tiene rutas. |
 | `FUD0784` | `error` | Ya existe un proyecto en ese directorio, o con ese nombre. Sin `--force`. |
 | `FUD0785` | `error` | `--uses <x>` nombra algo que no es una librería del workspace: no existe, o es una app. |
-| `FUD0786` | `error` | `fudic g lib` sin `--prefix`. En una librería el prefijo no es opcional (§4.5). |
+| `FUD0786` | `error` | `fudic g app` o `fudic g lib` sin `--prefix`. El campo es obligatorio en `fudic.json` y el comando no puede escribir un fichero que no valida (§4.5). |
 | `0787`–`0799` | | Reservados. |
 
 ---
@@ -360,7 +362,8 @@ evidencia construida end-to-end (13–14).
    `files` apuntan a `.fud`, `fudic.json` (`kind: "lib"`, **sin `id`**) y
    `src/components/`. Y **no** escribe `vite.config.ts`, ni `sw.json`, ni `src/routes/`,
    ni layout.
-6. `fudic g lib ui` **sin** `--prefix` emite `FUD0786` y no escribe nada.
+6. `fudic g lib ui` **sin** `--prefix` emite `FUD0786` y no escribe nada. `fudic g app x`
+   sin `--prefix`, lo mismo: la exigencia es de `fudic.json`, no de la clase de proyecto.
 
 **El destino**
 

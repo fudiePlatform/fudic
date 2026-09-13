@@ -119,7 +119,7 @@ SDD-43 y SDD-44 consumen.
 |---|---|---|---|
 | `id` | `string` | sí, cuando hay `sw.json` (§4.3) | La identidad de la aplicación, **estable entre builds y entre despliegues**. Namespacea las cachés (BUG-33). `^[a-z][a-z0-9-]*$` |
 | `kind` | `"app" \| "lib"` | no — defecto `"app"` | Qué es este proyecto. Una `lib` no tiene rutas, ni `sw.json`, ni build propio (§4.5) |
-| `prefix` | `string` | no | El prefijo de los tags que este proyecto define. `^[a-z][a-z0-9]*$` — sin guión: el guión lo pone la unión (§4.4) |
+| `prefix` | `string` | **sí** | El primer segmento del tag de todo componente de este proyecto. `^[a-z][a-z0-9]*$` — sin guión: el guión lo pone la unión (§4.4) |
 
 Nada más. Cada campo que no esté aquí tiene ya un dueño en otro sitio, y §7 dice cuál.
 
@@ -135,7 +135,11 @@ export interface ProjectConfig {
   /** `''` when the file declares none — legal unless the project has a Service Worker. */
   readonly id: string;
   readonly kind: 'app' | 'lib';
-  /** `''` when the file declares none: the project enforces no prefix. */
+  /**
+   * The first segment of every tag this project defines. Never empty: a custom element
+   * name always HAS a first segment (the spec requires the hyphen), so the only question
+   * a project can answer is WHICH one — not whether (§4.4).
+   */
   readonly prefix: string;
 }
 
@@ -165,13 +169,17 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult;
 export const CONFIG_FILE = 'fudic.json';
 
 /**
- * The tag a short name produces under `prefix`: `('shop', 'card')` → `'shop-card'`.
- * With no prefix the name is returned untouched — that is the pre-SDD-41 behaviour.
+ * The tag a NAME produces under `prefix`: `('shop', 'card')` → `'shop-card'`,
+ * `('shop', 'icon-button')` → `'shop-icon-button'`.
+ *
+ * The argument is a name and never a tag, so a hyphen in it is part of the name and not
+ * an override of the prefix. There is no escape hatch, and that is the point: a project
+ * whose components can opt out of its prefix has no prefix (§4.4).
  */
 export function tagOf(prefix: string, name: string): string;
 
-/** Whether `tag` carries `prefix`. `''` prefix accepts everything (§4.4). */
-export function hasPrefix(prefix: string, tag: string): boolean;
+/** The first segment of a tag: `'shop-icon-button'` → `'shop'`. */
+export function prefixOf(tag: string): string;
 ```
 
 Cobertura: el paquete nace con `thresholds` al **100 en las cuatro métricas** y
@@ -239,23 +247,46 @@ un comentario del README de la plantilla, y es la razón por la que el `id` **no
 del `base` ni del `name` del `package.json`: los dos cambian por motivos que no tienen nada
 que ver con la identidad de la app.
 
-### 4.4. El prefijo: se expande al generar, se avisa al desviarse
+### 4.4. Todo componente tiene prefijo; el proyecto declara cuál
 
-**Al generar.** `fudic g component card` con `prefix: "shop"` escribe `shop-card.fud` con
-`<shop-card>` de wrapper. Sin prefijo declarado, `card` es lo que siempre fue: un tag sin
-guión, `FUD0440` de `validateTag`, y el mensaje que ya sugiere `app-card`.
+**El punto de partida es la especificación, no una convención de este framework.** Un
+nombre de custom element **tiene que llevar un guión** — y el compilador ya lo exige:
+`FUD0156`, *«The host wrapper tag must be a custom element (contain a hyphen)»*
+([`document/structure.ts`](../../packages/compiler/src/document/structure.ts), decisión
+75). No existe, ni puede existir, un componente cuyo tag sea `card`.
 
-**Un nombre que ya lleva guión no se toca.** `fudic g component ds-icon` con
-`prefix: "shop"` produce `ds-icon`, no `shop-ds-icon`. El autor que escribe un guión está
-escribiendo un tag, no un nombre, y la CLI no le reinterpreta lo que ha dicho. Que ese tag
-no lleve el prefijo del proyecto lo dice `FUD0722`, que es una voz y no una corrección.
+De ahí se sigue todo lo demás: **`app-card` ya lleva prefijo**, y `bus-log` también, y
+`site-nav` también. Un tag es `<primer segmento>-<resto>` **siempre**. Así que la pregunta
+que un proyecto puede contestar no es *si* sus componentes llevan prefijo —lo llevan por
+construcción— sino **cuál**, y un proyecto que no lo contesta acaba con tantos prefijos
+accidentales como componentes. Eso es exactamente lo que este campo existe para impedir, y
+por eso es **obligatorio** (§3.1).
 
-**Al desviarse.** Un componente **de este proyecto** cuyo tag no empieza por
-`<prefix>-` emite **`FUD0722`, warning**, sobre el span del wrapper host. Warning y no
-error por una razón concreta: arreglarlo es renombrar un custom element, lo que toca a
-todos sus consumidores, y un proyecto puede legítimamente poseer un tag anterior a que se
-declarara el prefijo. La reparación es una bombilla del editor —hermana de las de SDD-36—
-y no un build roto.
+**Al generar, el argumento es un NOMBRE y nunca un tag.** `fudic g component card` con
+`prefix: "shop"` escribe `shop-card.fud`. `fudic g component icon-button` escribe
+`shop-icon-button.fud`: el guión del argumento es parte del nombre, **no** una forma de
+saltarse el prefijo. No hay escotilla, y es deliberado — un proyecto cuyos componentes
+pueden optar por no llevar su prefijo no tiene prefijo.
+
+Lo que desaparece con esto es el `FUD0440` por «tag sin guión» en el uso normal del
+comando: el guión lo pone `tagOf`, así que el tag generado es válido por construcción.
+`validateTag` sigue entero, porque sigue teniendo dos trabajos reales —los nombres que la
+especificación reserva (`FUD0442`) y la colisión con un tag ya tomado (`FUD0441`)— y
+porque el `prefix` del fichero también pasa por validación.
+
+**Al desviarse: error.** Un componente de este proyecto cuyo primer segmento **no es** el
+`prefix` declarado emite **`FUD0722`, error**, sobre el span del wrapper host.
+
+Error y no warning, y aquí me corrijo: lo había dejado en aviso razonando sobre la
+migración —renombrar un custom element toca a todos sus consumidores—, y eso es un
+argumento sobre el coste de arreglarlo, no sobre si es correcto. El hecho es **totalmente
+decidible**: el tag está en el fichero, su primer segmento se lee sin ambigüedad, y el
+proyecto ha declarado cuál tiene que ser. Un aviso que se puede ignorar sobre un hecho que
+no admite excepción es un aviso que nadie lee.
+
+La migración se resuelve por otro sitio, y ya está resuelta: **sin `fudic.json` no hay
+regla** (§4.1). Un proyecto adopta el fichero el día que quiere la regla, y ese día
+renombra. La bombilla del editor hace el renombrado; lo que no hace es dispensar de él.
 
 **El prefijo no lleva guión.** `"prefix": "shop"`, no `"shop-"`. `tagOf` pone el guión, y
 que lo ponga una sola función es lo que impide que `shop--card` exista.
@@ -316,9 +347,12 @@ culpable; la CLI y el plugin los reportan como ya reportan sus errores sin span.
 ## 5. Invariantes
 
 - **Nada lanza.** Un `fudic.json` ilegible, malformado o contradictorio se anota y el
-  proyecto sigue funcionando degradado. La única excepción son `FUD0721`, `FUD0723` y
-  `FUD0724`, que son errores de build porque lo que describen no tiene comportamiento
-  correcto posible.
+  proyecto sigue funcionando degradado. Las excepciones son `FUD0721`, `FUD0722`,
+  `FUD0723` y `FUD0724`, que son errores de build porque lo que describen no tiene
+  comportamiento correcto posible.
+- **Todo componente lleva prefijo.** Lo impone la especificación de custom elements y lo
+  comprueba `FUD0156` desde antes de este SDD. Aquí no se inventa la regla: se declara
+  **cuál** es el prefijo y se comprueba que se cumpla (§4.4).
 - **Una sola implementación del lector.** Los tres consumidores llaman a
   `readProjectConfig`. Tres lectores del mismo fichero es la forma exacta de que el editor
   y el build acaben con dos ideas del prefijo.
@@ -336,9 +370,9 @@ culpable; la CLI y el plugin los reportan como ya reportan sus errores sin span.
 
 | Código | Severidad | Qué dice |
 |---|---|---|
-| `FUD0720` | `error` | `fudic.json` es ilegible o tiene forma inválida: JSON roto, campo con el tipo equivocado, `id` que no casa `^[a-z][a-z0-9-]*$`, `prefix` que no casa `^[a-z][a-z0-9]*$`, `kind` distinto de `app`/`lib`. Uno por campo culpable. El proyecto queda **sin** configuración. |
+| `FUD0720` | `error` | `fudic.json` es ilegible o tiene forma inválida: JSON roto, campo con el tipo equivocado, **`prefix` ausente**, `id` que no casa `^[a-z][a-z0-9-]*$`, `prefix` que no casa `^[a-z][a-z0-9]*$` (un guión en él es este error, no un prefijo compuesto), `kind` distinto de `app`/`lib`. Uno por campo culpable. El proyecto queda **sin** configuración. |
 | `FUD0721` | `error` | El proyecto tiene `sw.json` y su `fudic.json` no declara `id`. Sin identidad no hay namespacing de cachés (BUG-33). |
-| `FUD0722` | `warning` | Un componente de este proyecto define un tag que no lleva el `prefix` declarado. Sobre el wrapper host. Ancla la bombilla. |
+| `FUD0722` | `error` | El primer segmento del tag de un componente de este proyecto no es el `prefix` declarado. Sobre el wrapper host. Ancla la bombilla del renombrado. |
 | `FUD0723` | `error` | `kind: "lib"` en un proyecto que tiene `sw.json` o un directorio de rutas no vacío. |
 | `FUD0724` | `error` | Dos proyectos del workspace declaran el mismo `id`. Lo emiten la CLI y `fudic check`; **nunca** el plugin (§4.7). |
 | `0725`–`0739` | | Reservados. |
@@ -357,13 +391,15 @@ Tests en `packages/config/test/` (1–6), `packages/cli/test/` (7–10),
    cero diagnósticos.
 2. Un fichero ausente produce `{ config: null, diagnostics: [] }` — **cero diagnósticos**,
    no uno informativo: no tenerlo es legal.
-3. **(rojo primero)** JSON roto, `id: 42`, `id: "Shop"`, `kind: "plugin"` y
-   `prefix: "shop-"` producen cada uno su `FUD0720` con el campo señalado, y en los cinco
-   casos `config` es `null`. Un fichero con `id` válido y `kind` inválido **no** devuelve
-   un config con el `id` puesto (§4.2).
-4. `kind` ausente es `"app"`; `prefix` ausente es `''`; `id` ausente es `''`.
-5. `tagOf('shop', 'card')` es `shop-card`; `tagOf('', 'card')` es `card`;
-   `hasPrefix('', <cualquiera>)` es `true`.
+3. **(rojo primero)** JSON roto, `id: 42`, `id: "Shop"`, `kind: "plugin"`,
+   `prefix: "shop-"` y **`prefix` ausente** producen cada uno su `FUD0720` con el campo
+   señalado, y en los seis casos `config` es `null`. Un fichero con `id` válido y `kind`
+   inválido **no** devuelve un config con el `id` puesto (§4.2).
+4. `kind` ausente es `"app"`; `id` ausente es `''` (legal sin `sw.json`, §4.3).
+   **`prefix` ausente no tiene defecto**: es `FUD0720`.
+5. `tagOf('shop', 'card')` es `shop-card`; `tagOf('shop', 'icon-button')` es
+   `shop-icon-button` — el guión del nombre **no** sustituye al prefijo (§4.4).
+   `prefixOf('shop-icon-button')` es `shop`.
 6. Un `io.read` que lanza produce `config: null` y un `FUD0720`, **no** una excepción.
 
 **La CLI**
@@ -371,10 +407,11 @@ Tests en `packages/config/test/` (1–6), `packages/cli/test/` (7–10),
 7. **(rojo primero)** `fudic g component card` en un proyecto con `prefix: "shop"` escribe
    `src/components/shop-card.fud` con `<shop-card>` de wrapper. Hoy ese comando falla con
    `FUD0440`.
-8. `fudic g component ds-icon` con `prefix: "shop"` escribe `ds-icon`, **no**
-   `shop-ds-icon` (§4.4).
+8. `fudic g component icon-button` con `prefix: "shop"` escribe `shop-icon-button`, **no**
+   `icon-button`: el guión del argumento es parte del nombre y no una escotilla (§4.4).
 9. `fudic new shop --id shop --prefix shop` escribe un `fudic.json` con los dos campos, y
-   el árbol resultante construye.
+   el árbol resultante construye. **Sin `--prefix`, el comando falla**: el campo es
+   obligatorio y `fudic new` no puede escribir un fichero que no valida.
 10. Dos proyectos con el mismo `id` bajo un mismo workspace producen `FUD0724`.
 
 **El plugin**
@@ -386,20 +423,23 @@ Tests en `packages/config/test/` (1–6), `packages/cli/test/` (7–10),
 **El editor**
 
 13. Un componente `<app-card>` en un proyecto con `prefix: "shop"` publica `FUD0722`
-    sobre el span del wrapper, con severidad `warning`, y **no** lo publica también
-    TypeScript.
+    sobre el span del wrapper, con severidad **`error`**, y **no** lo publica también
+    TypeScript. El mismo fichero en un proyecto **sin** `fudic.json` no publica nada.
 14. El snippet `component` en un proyecto con prefijo propone el tag ya prefijado, y el
     fichero que entrega es **byte a byte** el de `fudic g component` (el test de
     `snippets-templates.test.ts`, extendido con el prefijo).
 15. Editar `fudic.json` y guardarlo revalida los diagnósticos sin reiniciar el servidor:
-    quitar el `prefix` hace desaparecer todos los `FUD0722` del workspace.
+    cambiar el `prefix` de `app` a `shop` mueve los `FUD0722` de los componentes que no lo
+    llevaban a los que sí, sin reabrir un fichero.
 
 **La evidencia**
 
-16. `examples/basic` gana un `fudic.json` con `id: "basic"` y `prefix: "app"`, y **ningún**
-    componente del ejemplo emite `FUD0722` — los diecinueve ya se llaman `app-*`, `bus-*`,
-    `signal-*`, `product-*`, `shopping-*` y `site-*`. Los que no empiezan por `app` son la
-    evidencia de que el warning se dispara, y se renombran en esta misma tarea.
+16. `examples/basic` gana un `fudic.json` con `id: "basic"` y `prefix: "app"`. Los
+    componentes que hoy se llaman `bus-*`, `signal-*`, `product-list`, `shopping-cart` y
+    `site-nav` **rompen el build** con `FUD0722` — esa es la evidencia de que la regla
+    muerde— y se renombran a `app-*` en la misma tarea, con sus
+    `<link rel="component">`. Al terminar, los diecinueve llevan el prefijo y el build está
+    verde.
 17. **Cobertura.** `@fudic/config` nace al **100 %** en las cuatro métricas.
     `@fudic/cli`, `@fudic/vite` y `@fudic/language-server` no bajan del número que tienen
     al empezar.
@@ -426,8 +466,10 @@ Tests en `packages/config/test/` (1–6), `packages/cli/test/` (7–10),
   Que un SDD posterior amplíe la forma del fichero es lo normal; lo que no puede es
   ampliar su papel: `styles` declara **qué aspecto tienen los componentes de este
   proyecto**, que es identidad, y no dónde viven sus ficheros, que sería disposición.
-- **Endurecer `FUD0722` a error.** Se reabre cuando SDD-43 traiga el grafo completo de
-  librerías: con él se puede distinguir un tag propio de uno importado, y entonces un tag
-  propio sin prefijo deja de tener excusa.
+- **Comprobar el prefijo de un componente que viene de otro paquete.** `FUD0722` es sobre
+  los componentes que **este** proyecto define, leídos de su propio disco. Un componente
+  importado de una librería lo comprueba su propio proyecto, con su propio `prefix`, y el
+  grafo que hace falta para verlo entero es de [SDD-43](./SDD-43-librerias.md) §4.5.
 - **Migrar proyectos existentes.** No hay comando de migración, y no hace falta: §4.1
-  garantiza que un proyecto sin fichero se comporta como siempre.
+  garantiza que un proyecto sin fichero se comporta como siempre. El día que adopta el
+  fichero adopta la regla, y renombra — con la bombilla, pero renombra.
