@@ -12,6 +12,7 @@ import { describe, it, expect } from 'vitest';
 import { planRename, rewriteReferences, mapNameOf } from '../src/rename.js';
 import { chunkNameOf, chunkNamesOf } from '../src/names.js';
 import { FUD_HASH_LENGTH, FUD_NAME_COLLISION } from '../src/diagnostics.js';
+import { BUILD_TOKEN } from '../src/constants.js';
 import { manifestFile, renderUrlOf } from './helpers/manifest.js';
 
 const BUILD = 'c72057ac';
@@ -71,6 +72,32 @@ describe('planRename', () => {
 
   it('an empty input is an empty plan, not an error', () => {
     expect(planRename([], BUILD)).toEqual({ files: new Map(), diagnostics: [] });
+  });
+
+  it('BUG-31 T1: a name listed TWICE is a name colliding with itself, and refuses the plan', () => {
+    // Not a hypothetical. Since the entries are named `fudic-main-__FUDB__.js` at config
+    // time, `isHashedChunk` reads them as hashed — correctly, that is what the token is for
+    // — so the reachability walk finds them as shared chunks AND they are listed as entries.
+    // Handing both lists over without deduplicating makes every entry collide with itself,
+    // FUD0501 refuses the WHOLE plan, and `__FUDB__` stays in the file names on disk.
+    const duplicated = ['fudic-main-__FUDB__.js', 'fudic-main-__FUDB__.js', 'sw/c/about-CCCCCCCC.js'];
+    expect(planRename(duplicated, BUILD).diagnostics.map((d) => d.code)).toEqual([
+      FUD_NAME_COLLISION,
+    ]);
+    // Deduplicated — which is what the plugin does — and the plan goes through.
+    const { files, diagnostics } = planRename([...new Set(duplicated)], BUILD);
+    expect(diagnostics).toEqual([]);
+    expect(files.get('fudic-main-__FUDB__.js')).toBe(`fudic-main-${BUILD}.js`);
+  });
+
+  it('and the token really is the same width as the id, so the substitution moves nothing', () => {
+    // `rewriteReferences` trusts the length invariance blindly, and the maps are generated
+    // BEFORE the substitution. The old exception — `fudic-main.js` renamed to
+    // `fudic-main-<id>.js`, nine characters longer — is exactly what broke it.
+    expect(BUILD_TOKEN).toHaveLength(BUILD.length);
+    const { files } = planRename([`fudic-main-${BUILD_TOKEN}.js`], BUILD);
+    const [from, to] = [...files][0]!;
+    expect(to).toHaveLength(from.length);
   });
 });
 
