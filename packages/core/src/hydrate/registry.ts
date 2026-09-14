@@ -21,6 +21,16 @@
 export const ID_ATTR = 'data-fud-id';
 
 /**
+ * The element a ROUTE adopts from (SDD-39 §4.2).
+ *
+ * The `<body>` and nothing else: a route has no element of its own and cannot be given one —
+ * that would be a custom element spending most of its life in `:not(:defined)` — and the only
+ * node a layout is obliged to write is the body. It is safe to recognise by name because a
+ * custom element needs a dash, so `body` is a tag no component can ever have.
+ */
+export const ROUTE_HOST = 'body';
+
+/**
  * The slice of `CustomElementRegistry` the runtime uses — and the single platform fact the
  * whole cascade is built on: `define` upgrades EVERY instance of a tag already in the tree,
  * shadow roots included, in place and keeping each instance's declarative shadow root.

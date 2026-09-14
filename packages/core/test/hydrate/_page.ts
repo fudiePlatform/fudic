@@ -16,6 +16,12 @@ export interface PagePayload {
   readonly bus?: TagMap;
   /** The control-components, which come up without a gesture (SDD-34 §4.5). */
   readonly eager?: readonly string[];
+  /** The route's chunk name (SDD-39 §4.7). Absent ⇒ this page has no client half of its own. */
+  readonly route?: string;
+  /** What `load()` returned, trimmed to what the client half reads (SDD-39 §4.8). */
+  readonly data?: unknown;
+  /** The `data-fud-id` the `<body>` carries when the route is reactive (SDD-39 §4.2). */
+  readonly bodyId?: number;
 }
 
 function block(id: string, value: unknown): void {
@@ -29,10 +35,17 @@ function block(id: string, value: unknown): void {
 /** Reset the document and publish the blocks the page would carry. */
 export function publish(payload: PagePayload = {}): void {
   document.body.innerHTML = '';
+  document.body.removeAttribute('data-fud-id');
   if (payload.state !== undefined) block('fud-state', payload.state);
   if (payload.tree !== undefined) block('fud-tree', payload.tree);
   if (payload.bus !== undefined) block('fud-bus', payload.bus);
   if (payload.eager !== undefined) block('fud-eager', payload.eager);
+  if (payload.route !== undefined) block('fud-route', payload.route);
+  if (payload.data !== undefined) block('fud-data', payload.data);
+  // The route's id goes on the `<body>` itself: it has no element of its own (SDD-39 §4.2).
+  if (payload.bodyId !== undefined) {
+    document.body.setAttribute('data-fud-id', String(payload.bodyId));
+  }
 }
 
 /** A hydratable host with an open shadow root, appended to `parent`. */

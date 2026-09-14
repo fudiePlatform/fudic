@@ -28,12 +28,14 @@ import {
 import { createCascade } from './cascade.js';
 import { createBusPrehydrator } from './bus.js';
 import { createCapturer } from './capture.js';
+import { browserDom } from '@fudic/dom';
 import {
   browserRegistry,
   ID_ATTR,
   idOf,
   instanceState,
   instancesOf,
+  ROUTE_HOST,
   stopwatch,
   type ElementRegistry,
   type HydratedFrom,
@@ -172,8 +174,43 @@ export function installHydration(options: HydrationOptions): Hydration {
 
   const ready = options.ready ?? Promise.resolve();
 
+  /**
+   * Path 2 for the ROUTE (SDD-39 §4.6), which is the same path with two substitutions.
+   *
+   * What is downloaded is a module with a default export instead of a tag's definition, and
+   * what comes up under it is the hosts the route hands values to — `fud-tree` filed under the
+   * route's name — instead of the subtree of a tag. Everything around it is untouched: the
+   * instance was marked before the `await`, the gesture was cancelled, and the replay happens
+   * once at the end.
+   *
+   * The route's own slice is resolved like anybody else's: `cells.resolve(id)` turns the
+   * markers into the very cells its children are holding, which is what lets a signal declared
+   * in the route be the same object a component two levels down reads.
+   */
+  const raiseRoute = async (host: Element, id: number, replay: () => void): Promise<void> => {
+    const name = maps.route!;
+    await ready;
+    await cascade.prepareRoute(name, host);
+    const elapsed = stopwatch();
+    const factory = await loader.loadRoute(name);
+    // A chunk that carries no factory is a URL that answered with something else. The page
+    // stays as the server painted it — which is a page that works — and the gesture is
+    // replayed anyway, because cancelling it was this runtime's doing.
+    if (factory !== null) {
+      factory([browserDom, host, maps.data, ...cells.resolve(id)]).h();
+      report(id, name, elapsed(), 'downloaded');
+    }
+    replay();
+  };
+
   /** Path 2, in the one order §4.4 fixes. */
   const raise = async (host: Element, id: number, replay: () => void): Promise<void> => {
+    // The `<body>` is the route's root and nobody else's (SDD-39 §4.2): a custom element
+    // needs a dash in its name, so `body` can never be a tag the cascade would know.
+    if (maps.route !== null && host.localName === ROUTE_HOST) {
+      await raiseRoute(host, id, replay);
+      return;
+    }
     const tag = host.localName;
     await ready; // 2b — what the page must have in place before any chunk runs
     await preHydrateBus(tag); // 3 — the receivers, before anything internal
@@ -225,6 +262,17 @@ export function installHydration(options: HydrationOptions): Hydration {
   // its node through the same `u` any other prop travels in.
   const eagerHosts = new Map<number, Element>();
   for (const tag of maps.eager) {
+    // The ROUTE is in this list under its own name, not a tag (SDD-39 §4.6): a `control`
+    // written straight in the route, or an `effect` in its `@client`, comes up at install for
+    // the same reasons a component's does. `outermostOwner` would land on the `<body>` anyway
+    // — it climbs to the outermost `[data-fud-id]` — but the route has no instances to look
+    // up, so it is named rather than queried.
+    if (tag === maps.route) {
+      // `instancesOf` over the one tag a route can be: it already asks for both halves of
+      // the question — the element is the `<body>`, and it carries an id.
+      for (const body of instancesOf(ROUTE_HOST, doc)) eagerHosts.set(idOf(body), body);
+      continue;
+    }
     // `instancesOf` and not `querySelectorAll`: a control-component lives INSIDE the shadow
     // root of the component that owns the form, and a query on the document stops there.
     for (const instance of instancesOf(tag, doc)) {

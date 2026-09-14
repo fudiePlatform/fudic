@@ -138,6 +138,97 @@ describe('the `<body>` claims its id, and it is the last (§6.7, §4.2)', () => 
   });
 });
 
+describe('what the route contributes to the page maps (§6.8, §4.6)', () => {
+  const ISLAND = [
+    '@code { @client { const n = signal(0); function nada() {} } }',
+    '<app-island><template shadowrootmode="open">',
+    '<button @click=@nada>@n()</button>',
+    '</template></app-island>',
+  ].join('\n');
+
+  const treeOf = (code: string): Record<string, readonly string[]> => {
+    const match = /const FUD_TREE = (\{.*\});/u.exec(code);
+    return match === null ? {} : (JSON.parse(match[1]!) as Record<string, readonly string[]>);
+  };
+  const eagerOf = (code: string): readonly string[] => {
+    const match = /const FUD_EAGER = (\[.*\]);/u.exec(code);
+    return match === null ? [] : (JSON.parse(match[1]!) as readonly string[]);
+  };
+
+  it('lists ONLY the components it hands a prop to, and not the islands beside them', () => {
+    const route = [
+      '<link rel="layout" href="./l.fud">',
+      '<link rel="component" href="./d.fud">',
+      '<link rel="component" href="./i.fud">',
+      '@code { @client { const count = signal(1); } }',
+      '<signal-display .count=@count></signal-display>',
+      '<app-island></app-island>',
+      '<app-island></app-island>',
+    ].join('\n');
+    const io = memoryIo({ '/r.fud': route, '/l.fud': LAYOUT, '/d.fud': CHILD, '/i.fud': ISLAND });
+    const code = emitRouteModule(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
+    expect(treeOf(code)['ruta']).toEqual(['signal-display']);
+  });
+
+  it('has no entry at all when it hands nobody anything', () => {
+    const route = [
+      '<link rel="layout" href="./l.fud">',
+      '<link rel="component" href="./i.fud">',
+      '@code { @client { const n = signal(1); function mas() { n.set(n() + 1); } } }',
+      '<button @click=@mas>+1</button>',
+      '<app-island></app-island>',
+    ].join('\n');
+    const io = memoryIo({ '/r.fud': route, '/l.fud': LAYOUT, '/i.fud': ISLAND });
+    const code = emitRouteModule(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
+    expect(treeOf(code)['ruta']).toBeUndefined();
+  });
+
+  it('names itself in `fud-eager` when its `@client` calls `effect(...)`', () => {
+    const route = [
+      '<link rel="layout" href="./l.fud">',
+      '@code { @client {',
+      '  const ahora = signal(0);',
+      '  effect(() => { const id = setInterval(() => ahora.set(1), 1000); return () => clearInterval(id); });',
+      '} }',
+      '<time>@ahora()</time>',
+    ].join('\n');
+    const io = memoryIo({ '/r.fud': route, '/l.fud': LAYOUT });
+    const code = emitRouteModule(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
+    expect(eagerOf(code)).toEqual(['ruta']);
+  });
+
+  it('and a COMPONENT whose `@client` calls `effect(...)` joins the same list', () => {
+    const clock = [
+      '@code { @client {',
+      '  const ahora = signal(0);',
+      '  effect(() => { const id = setInterval(() => ahora.set(1), 1000); return () => clearInterval(id); });',
+      '} }',
+      '<app-clock><template shadowrootmode="open">',
+      '<time>@ahora()</time>',
+      '</template></app-clock>',
+    ].join('\n');
+    const route = [
+      '<link rel="layout" href="./l.fud">',
+      '<link rel="component" href="./c.fud">',
+      '<app-clock></app-clock>',
+    ].join('\n');
+    const io = memoryIo({ '/r.fud': route, '/l.fud': LAYOUT, '/c.fud': clock });
+    const code = emitRouteModule(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
+    expect(eagerOf(code)).toEqual(['app-clock']);
+  });
+
+  it('stays out of the list when nothing has to come up without a gesture', () => {
+    const route = [
+      '<link rel="layout" href="./l.fud">',
+      '@code { @client { const n = signal(1); } }',
+      '<output>@n()</output>',
+    ].join('\n');
+    const io = memoryIo({ '/r.fud': route, '/l.fud': LAYOUT });
+    const code = emitRouteModule(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
+    expect(eagerOf(code)).toEqual([]);
+  });
+});
+
 describe('`fud-data`: only what the client half reads (§6.15, §6.16)', () => {
   const withLoad = (client: string): string =>
     [

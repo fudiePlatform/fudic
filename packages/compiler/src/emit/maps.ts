@@ -21,7 +21,14 @@ import type { CodeWriter } from './writer.js';
 import { classifyAttribute } from '../binding/index.js';
 import { warningDiag, type Diagnostic } from '../types/index.js';
 import { codeOf, type ExtractedCode } from './oxc-code.js';
-import { entryHalf, formAssociatedTags, isReactiveRoute, templateOf, walkElements } from './level.js';
+import {
+  entryHalf,
+  formAssociatedTags,
+  isReactiveRoute,
+  routeHydration,
+  templateOf,
+  walkElements,
+} from './level.js';
 import { entryCellSlots } from './state.js';
 
 /** `Record<parent tag, direct hydratable child tags>` — an empty record for a flat page. */
@@ -45,14 +52,50 @@ export type TagMap = Record<string, readonly string[]>;
  *
  * A tag with no hydratable children has no entry (§3.4).
  */
-export function fudTree(graph: ComponentGraph, hydratable: ReadonlySet<string>): TagMap {
+export function fudTree(
+  graph: ComponentGraph,
+  hydratable: ReadonlySet<string>,
+  routeName?: string,
+): TagMap {
   const out: Record<string, string[]> = {};
   for (const comp of allComponents(graph)) {
     if (!hydratable.has(comp.tag)) continue;
     const children = childTags(graph, comp, hydratable);
     if (children.length > 0) out[comp.tag] = children;
   }
+  if (routeName !== undefined) {
+    const children = routeChildTags(graph, hydratable);
+    if (children.length > 0) out[routeName] = children;
+  }
   return out;
+}
+
+/**
+ * The children of a ROUTE — and the rule here is STRICTER than a component's, on purpose
+ * (SDD-39 §4.10).
+ *
+ * A component lists every hydratable tag its template renders; a route lists only the ones it
+ * HANDS A PROP TO. `$s()` gives values to the hosts it gives them to and to nobody else, so a
+ * component that receives nothing from the route cannot get a `u is not a function` out of it
+ * — and with the laxer rule a click on one loose button of the route would raise every island
+ * on the page, which is the exact opposite of what this framework does.
+ *
+ * A `control` counts as a prop: what crosses under it is the model, named at the point of use
+ * (decision 112), and the child is downstream of the route for it exactly as for any other.
+ */
+function routeChildTags(graph: ComponentGraph, hydratable: ReadonlySet<string>): string[] {
+  const entry = entryHalf(graph);
+  if (entry === undefined) return [];
+  const seen = new Set<string>();
+  walkElements(entry.roots, (el) => {
+    if (seen.has(el.name) || componentOf(graph, el.name) === undefined) return;
+    if (!hydratable.has(el.name)) return;
+    for (const attr of el.attributes) {
+      const b = classifyAttribute(attr, graph.entrySource).value;
+      if (b.type === 'property' || b.type === 'control') seen.add(el.name);
+    }
+  });
+  return [...seen];
 }
 
 /** The hydratable component tags this component's template renders, in first-use order. */
@@ -163,8 +206,9 @@ export function writeMapConstants(
   w: CodeWriter,
   graph: ComponentGraph,
   hydratable: ReadonlySet<string>,
+  routeName?: string,
 ): PageMaps {
-  const tree = fudTree(graph, hydratable);
+  const tree = fudTree(graph, hydratable, routeName);
   const hasTree = Object.keys(tree).length > 0;
   if (hasTree) w.line(`const FUD_TREE = ${JSON.stringify(tree)};`);
   const bus = fudBus(graph);
@@ -178,7 +222,22 @@ export function writeMapConstants(
   // up early, so a `formassociated` component with no hookup at all is not listed. In
   // practice that set is empty — a control-component carries a `control` — and the filter is
   // what keeps the runtime from asking for a chunk that was never emitted.
-  const eager = [...formAssociatedTags(graph)].filter((tag) => hydratable.has(tag));
+  // Two reasons to be in it now, and the second is new (SDD-39 §4.6). A `formassociated`
+  // component, as before. And anything whose `@code { @client }` calls `effect(...)`: an
+  // effect is by definition what happens without anybody touching anything, so one that waits
+  // for a gesture is not an effect. It vale for a component and for a route alike — the clock
+  // of §6.21 unhydrated paints the server's time and freezes, which is not «works worse».
+  const eager = [
+    ...new Set([
+      ...[...formAssociatedTags(graph)].filter((tag) => hydratable.has(tag)),
+      ...allComponents(graph).flatMap((comp) =>
+        hydratable.has(comp.tag) && codeOf(comp).clientEffects ? [comp.tag] : [],
+      ),
+      // The route is in the list under its own NAME, which is how the runtime names it
+      // everywhere else: it has no tag to be listed by.
+      ...(routeName !== undefined && routeHydration(graph) === 'eager' ? [routeName] : []),
+    ]),
+  ];
   const hasEager = eager.length > 0;
   if (hasEager) w.line(`const FUD_EAGER = ${JSON.stringify(eager)};`);
   return { hasTree, hasBus, hasEager };

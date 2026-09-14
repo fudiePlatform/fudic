@@ -5,7 +5,7 @@
 > `@fudic/ssr` (`stateOf`) · `@fudic/core` (los dos bloques y el camino de subida) ·
 > `@fudic/vite` (el chunk, su nombre, `FUD0620`) · `@fudic/example-basic` (las evidencias)
 > **Rama:** `worktree-sdd-39-rutas-reactivas`
-> **Progreso:** 12 / 19
+> **Progreso:** 16 / 19
 
 Una ruta pasa a comportarse como un componente. No hay mecanismo nuevo en el runtime: hay una
 raíz distinta —el `<body>` en vez de un `shadowRoot`— y un nombre que sale de un bloque JSON en
@@ -102,19 +102,19 @@ navegación en sitio y una `data` que se mueva (§7).
 
 ## Fase 4 — El runtime la levanta (4)
 
-- [ ] **13. `readPageMaps` lee dos bloques más.**
+- [x] **13. `readPageMaps` lee dos bloques más.**
       `route: string | null` y `data`. Ausencia = caso base, como los otros cuatro. Nace al 100 %.
-- [ ] **14. El respaldo del capturador.**
+- [x] **14. El respaldo del capturador.**
       Si el recorrido de `composedPath()` no encuentra ningún `[data-fud-id]` por debajo y la
       página declara ruta, la ruta toma el camino 2 completo: marcar antes del `await`,
       `preventDefault`, `stopImmediatePropagation`, descarga y replay. Un clic dentro de un
       componente sigue ganándolo el componente, que es lo que el orden del array ya garantiza.
       Criterios §6.10, §6.11 y §6.12.
-- [ ] **15. La cascada baja por la luz.**
+- [x] **15. La cascada baja por la luz.**
       `visit` desciende por `host.shadowRoot ?? host`. Y la entrada de la ruta en `fud-tree` lista
       **solo** los componentes a los que les pasa una prop — más estricto que la regla de un
       componente, y a propósito (§4.10). Criterios §6.8 y §6.9.
-- [ ] **16. `effect` entra en `fud-eager`, y el `<body>` sale del warm.**
+- [x] **16. `effect` entra en `fud-eager`, y el `<body>` sale del warm.**
       Las dos son de la misma tarea porque las dos son sobre quién sube sin gesto. `effect` vale
       igual para un componente que para una ruta, y se detecta con la búsqueda que
       `checkNeutralEffect` ya hace. El observador de warm deja de mirar el `<body>`. Criterio

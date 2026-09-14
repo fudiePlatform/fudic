@@ -330,11 +330,13 @@ function buildRouteModule(
   // `resolveDocument(route)` reaches the components of the whole chain — the layout's own
   // included — while a layout module is emitted from its own graph and cannot see the
   // route's. One map computed here would be missing half the page.
-  const maps = writeMapConstants(w, graph, hydratable);
   // What the page says about its own client half (SDD-39 §4.2, §4.7). `FUD0621` comes out of
   // the same read: a `data` the client reads and no `load` ever filled is knowable here.
   const routeDiagnostics: Diagnostic[] = [];
   const blocks = routeBlocksOf(graph, options.routeName, routeDiagnostics);
+  // The maps carry the route too — its entry in `fud-tree`, and its name in `fud-eager` when
+  // it comes up without a gesture — under the name it publishes, never under a tag.
+  const maps = writeMapConstants(w, graph, hydratable, blocks?.name);
   // The route's answer to the layout's `fudic:runtime` marker (BUG-31 §T1).
   const runtimeW = new CodeWriter();
   writeRuntimeTags(runtimeW, needsRuntime(hydratable, hasDi));

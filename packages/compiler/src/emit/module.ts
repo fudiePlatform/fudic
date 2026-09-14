@@ -501,11 +501,11 @@ function buildPageModule(
   w.line(`const COMPONENTS = [${styledComps.map((c) => `{ tag: ${renderName(c.tag)}Tag, css: ${renderName(c.tag)}Css }`).join(', ')}];`);
   // The MINIFIED form: it is inline in every page's head, once per page (BUG-07 §4.3).
   if (styledComps.length > 0) w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL_MIN)};`);
-  const maps = writeMapConstants(w, graph, hydratable);
   // A standalone page is a route that owns its shell, and it publishes the same three things
   // about its own client half (SDD-39 §4.2, §4.7).
   const routeDiagnostics: Diagnostic[] = [];
   const blocks = routeBlocksOf(graph, options.routeName, routeDiagnostics);
+  const maps = writeMapConstants(w, graph, hydratable, blocks?.name);
   w.line('');
   // Streaming a trozos (SDD-19 §4.3): a generator that yields the <head> FIRST, then the
   // body by pieces via `serialize` (serializeChunks), then the close. `io.serialize` is a

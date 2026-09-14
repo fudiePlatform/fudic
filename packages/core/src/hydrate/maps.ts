@@ -38,6 +38,27 @@ export interface PageMaps {
    */
   readonly eager: readonly string[];
   /**
+   * The route's chunk name — `safeName(pattern)` — or `null` when this page has no client
+   * half of its own (SDD-39 §3.3, §4.7).
+   *
+   * Absence is the base case, exactly as it is for the four above: a zero-JS route publishes
+   * no block, the capturer never asks about a route, and the page pays neither a byte nor a
+   * branch. By PATTERN and not by URL, so `/blog/uno` and `/blog/dos` publish the same name
+   * and share one chunk.
+   *
+   * There is no name→URL table here either, and for the reason `chunks.ts` gives: the URL is
+   * DERIVED from the name through the same `resolveChunk` a tag goes through, because
+   * `hydrateUrl` is arithmetic over a name and does not care where the name came from.
+   */
+  readonly route: string | null;
+  /**
+   * What `load()` returned, trimmed to what the client half reads (SDD-39 §4.8).
+   *
+   * `{}` when the page publishes no block, which is what a route that never names `data`
+   * looks like — and what a route with no `load` at all looks like too.
+   */
+  readonly data: unknown;
+  /**
    * The payload slice of one instance: `data.slice(offsets[id], offsets[id + 1])`.
    *
    * An id outside the payload yields an empty slice, which is also what a claimed host
@@ -61,6 +82,9 @@ export const STATE_BLOCK = 'fud-state';
 export const TREE_BLOCK = 'fud-tree';
 export const BUS_BLOCK = 'fud-bus';
 export const EAGER_BLOCK = 'fud-eager';
+/** The route's own two (SDD-39 §3.3). Both may be absent, and absence is the base case. */
+export const ROUTE_BLOCK = 'fud-route';
+export const DATA_BLOCK = 'fud-data';
 
 const EMPTY: readonly unknown[] = [];
 
@@ -85,6 +109,8 @@ export function readPageMaps(doc: Document): PageMaps {
     tree: readTagMap(doc, TREE_BLOCK),
     bus: readTagMap(doc, BUS_BLOCK),
     eager: (readBlock(doc, EAGER_BLOCK) as string[] | null) ?? [],
+    route: readBlock(doc, ROUTE_BLOCK) as string | null,
+    data: readBlock(doc, DATA_BLOCK) ?? {},
     count: offsets.length - 1,
     slice(id: number): readonly unknown[] {
       const start = offsets[id];

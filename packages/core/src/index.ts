@@ -47,7 +47,24 @@ export {
 } from './hydrate/install.js';
 export { live } from './hydrate/live.js';
 export { isCellMark, type CellMark, type CellRef, type Cells } from './hydrate/cells.js';
-export type { ResolveChunk, ImportModule } from './hydrate/chunks.js';
+export type {
+  ResolveChunk,
+  ImportModule,
+  RouteFactory,
+  RouteController,
+} from './hydrate/chunks.js';
+// The block ids a page publishes. The four of SDD-15/SDD-34 plus the route's own two, which
+// may be absent — and absence is the base case (SDD-39 §3.3).
+export {
+  STATE_BLOCK,
+  TREE_BLOCK,
+  BUS_BLOCK,
+  EAGER_BLOCK,
+  ROUTE_BLOCK,
+  DATA_BLOCK,
+  type PageMaps,
+  type TagMap,
+} from './hydrate/maps.js';
 export type { HydratedFrom } from './hydrate/registry.js';
 export {
   nullWarmChannel,
