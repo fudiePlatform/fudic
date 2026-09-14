@@ -5,7 +5,7 @@
 > `@fudic/ssr` (`stateOf`) · `@fudic/core` (los dos bloques y el camino de subida) ·
 > `@fudic/vite` (el chunk, su nombre, `FUD0620`) · `@fudic/example-basic` (las evidencias)
 > **Rama:** `worktree-sdd-39-rutas-reactivas`
-> **Progreso:** 16 / 19
+> **Progreso:** 19 / 19
 
 Una ruta pasa a comportarse como un componente. No hay mecanismo nuevo en el runtime: hay una
 raíz distinta —el `<body>` en vez de un `shadowRoot`— y un nombre que sale de un bloque JSON en
@@ -122,14 +122,14 @@ navegación en sitio y una `data` que se mueva (§7).
 
 ## Fase 5 — El build (3)
 
-- [ ] **17. `transformFudClient` acepta rutas.**
+- [x] **17. `transformFudClient` acepta rutas.**
       Deja de devolver `null` para `route-document` y `page-document`. Retirar el comentario que
       dice que una ruta se renderiza y no se hidrata: era verdad y deja de serlo.
-- [ ] **18. El chunk, nombrado y descubierto.**
+- [x] **18. El chunk, nombrado y descubierto.**
       `assets/h/<safeName>`, junto a los de componente y con la misma aritmética. Descubrimiento
       de rutas reactivas para la pasada `client`, y `FUD0622` si un nombre de ruta colisiona con
       un tag. En `dev`, la misma URL con el prefijo estable (§4.12). Criterio §6.14.
-- [ ] **19. `FUD0620`: un prerender roto rompe el build.**
+- [x] **19. `FUD0620`: un prerender roto rompe el build.**
       Hoy avisa y termina en verde, y se publica un sitio con una página menos. Sin span: es un
       error del build, como los `CliError` de SDD-22. Criterio §6.17.
 

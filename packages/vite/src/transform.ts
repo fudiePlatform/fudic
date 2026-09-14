@@ -28,6 +28,7 @@ import {
   emitPageModuleMapped,
   emitLayoutModuleMapped,
   emitRouteModuleMapped,
+  emitRouteClientModuleMapped,
   SourceMapBuilder,
   LineMap,
   redactServerRegions,
@@ -84,8 +85,8 @@ function buildMap(id: string, source: string, out: EmitOutput): SourceMapV3 {
   return builder.build();
 }
 
-/** The emit options for one `.fud`: asset linking and the two injected specifiers. */
-function emitOptionsFor(id: string): Parameters<typeof emitPageModuleMapped>[1] {
+/** The emit options for one `.fud`: asset linking and the injected specifiers. */
+function emitOptionsFor(id: string, routeName?: string): Parameters<typeof emitPageModuleMapped>[1] {
   // A linkable asset exists when it resolves to a real file next to the `.fud` (§6.13).
   const baseDir = dirname(id);
   return {
@@ -100,11 +101,19 @@ function emitOptionsFor(id: string): Parameters<typeof emitPageModuleMapped>[1] 
     // Same seam for the layout chain (SDD-21 §3.4), so `layouts/` may live anywhere.
     layoutSpecifier: (layout: ResolvedLayout): string =>
       relativeSpecifier(baseDir, layout.path),
+    // And the same seam for the route's own name (SDD-39 §4.7): the compiler holds one file
+    // and has never heard of a URL pattern. Absent for anything that is not a built route,
+    // and then the page publishes no `fud-route` block and claims no id.
+    ...(routeName === undefined ? {} : { routeName }),
   };
 }
 
 /** Transform one `.fud` file into its ES module, or `null` when `id` is not a `.fud`. */
-export function transformFud(id: string, io: ResolveIo): TransformResult | null {
+export function transformFud(
+  id: string,
+  io: ResolveIo,
+  routeName?: string,
+): TransformResult | null {
   if (!id.endsWith('.fud')) {
     return null;
   }
@@ -114,7 +123,7 @@ export function transformFud(id: string, io: ResolveIo): TransformResult | null 
   const graph = resolved.value;
   const entry = graph.entry;
   const source = graph.entrySource;
-  const out = emitFor(id, graph, emitOptionsFor(id));
+  const out = emitFor(id, graph, emitOptionsFor(id, routeName));
   return {
     code: out.code,
     map: buildMap(id, redactServerRegions(source, entry.code), out),
@@ -139,12 +148,15 @@ export function transformFud(id: string, io: ResolveIo): TransformResult | null 
 }
 
 /**
- * Transform one component `.fud` into its CLIENT chunk (SDD-15 §6.8) — the `?client` id.
+ * Transform one `.fud` into its CLIENT chunk (SDD-15 §6.8, SDD-39 §3.5) — the `?client` id.
  *
- * Returns `null` for anything that is not a component: a page, a route and a layout are
- * rendered, not hydrated, and the thing that comes alive in the browser is always a custom
- * element. The result is bundler INPUT and carries the `@code { @client }` region verbatim,
- * TypeScript included; stripping types is the caller's job, as it is for `?server`.
+ * A component's chunk is its `static c($props)` and its `define`; a ROUTE's is a default
+ * export that adopts the composed page from the `<body>`. Both are bundler INPUT and carry
+ * the `@code { @client }` region verbatim, TypeScript included; stripping types is the
+ * caller's job, as it is for `?server`.
+ *
+ * `null` for a LAYOUT, whose markup is static in this version (SDD-39 §7), and for a route
+ * with no client half — which is the base case and the reason a level-1 page costs nothing.
  */
 export function transformFudClient(id: string, io: ResolveIo): TransformResult | null {
   if (!id.endsWith('.fud')) {
@@ -153,6 +165,9 @@ export function transformFudClient(id: string, io: ResolveIo): TransformResult |
   const resolved = resolveDocument(id, io);
   const graph = resolved.value;
   const entry = graph.entry;
+  if (entry.type === 'route-document' || entry.type === 'page-document') {
+    return routeClientResult(id, graph, resolved.diagnostics);
+  }
   if (entry.type !== 'component-document') {
     return null;
   }
@@ -168,6 +183,24 @@ export function transformFudClient(id: string, io: ResolveIo): TransformResult |
     // module still gets written — degraded — and the build only trips later, in the
     // prerender, on an identifier the emit never declared.
     diagnostics: [...resolved.diagnostics, ...out.diagnostics],
+  };
+}
+
+/** The client chunk of a route, or `null` when it has no client half at all (SDD-39 §3.1). */
+function routeClientResult(
+  id: string,
+  graph: DocumentGraph,
+  graphDiagnostics: readonly Diagnostic[],
+): TransformResult | null {
+  const out = emitRouteClientModuleMapped(graph, emitOptionsFor(id));
+  if (out === null) {
+    return null;
+  }
+  return {
+    code: out.code,
+    map: buildMap(id, redactServerRegions(graph.entrySource, graph.entry.code), out),
+    missingAssets: out.missingAssets,
+    diagnostics: [...graphDiagnostics, ...out.diagnostics],
   };
 }
 

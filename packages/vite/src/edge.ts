@@ -26,7 +26,7 @@ import { type RouteBuild } from './discover.js';
 import { emitRenderChunk } from './wrapper.js';
 import { runtimeUrls } from './constants.js';
 import { loadWithSourceMap } from './inputmaps.js';
-import { routeUsesDi } from './client.js';
+import { routeNameLookup, routeUsesDi } from './client.js';
 import { emitServerModule } from './server.js';
 import { transformFud } from './transform.js';
 import { safeName } from './link.js';
@@ -61,6 +61,9 @@ interface BundleOutputLike {
  * consumer that imports it, and it is TypeScript.
  */
 export function edgePlugin(builds: readonly RouteBuild[], io: ResolveIo, base: string): Plugin {
+  // Resolved once for the pass: the render module of a route publishes its name (SDD-39
+  // §4.7), and this pass renders the very pages the prerender writes.
+  const routeNameOf = routeNameLookup(builds, io);
   return {
     name: 'fudic:edge',
     resolveId(id) {
@@ -98,7 +101,7 @@ export function edgePlugin(builds: readonly RouteBuild[], io: ResolveIo, base: s
         /* v8 ignore next -- Oxc always returns a map for a `.ts` input; the guard is for the type, not for a case. */
         return stripped.map ? { code: stripped.code, map: stripped.map } : { code: stripped.code };
       }
-      const result = transformFud(path, io);
+      const result = transformFud(path, io, routeNameOf(path));
       /* v8 ignore next -- `transformFud` returns null only for a non-`.fud` id, and that was checked above. */
       if (result === null) return null;
       // Since SDD-34 the neutral zone of `@code` reaches this module verbatim, so it is
