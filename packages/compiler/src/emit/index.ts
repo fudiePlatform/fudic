@@ -42,7 +42,18 @@ export {
   emitRouteModuleMapped,
 } from './layout.js';
 
-export { hydratableTags, isIntrinsicallyHydratable, formAssociatedTags } from './level.js';
+export {
+  emitRouteClientModule,
+  emitRouteClientModuleMapped,
+} from './route-client.js';
+
+export {
+  hydratableTags,
+  isIntrinsicallyHydratable,
+  formAssociatedTags,
+  isReactiveRoute,
+  routeHydration,
+} from './level.js';
 export {
   emitComponentIocModule,
   hasDependencyInjection,

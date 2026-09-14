@@ -504,6 +504,28 @@ export class ClientMarkupEmitter {
   }
 
   /**
+   * ONE hole of a composed page: the run of markup a ROUTE owns, at a point the layout
+   * decided (SDD-39 §4.3).
+   *
+   * It takes the level's `parent` and `cursor` instead of opening its own, and that is the
+   * whole difference with `emitRoots`: the route's elements are SIBLINGS of the layout's, so
+   * the cursor has to arrive standing on the first of them and leave standing on whatever
+   * the layout wrote next. A hole that opened a cursor of its own would restart the level.
+   *
+   * `tail` says what the LAYOUT still has ahead at this level, which is what locates a
+   * trailing text run of the route: with something after it the run is the cursor's previous
+   * sibling, and only with nothing after it is it the last child of the parent.
+   */
+  emitHole(
+    children: readonly HtmlContent[],
+    parent: string,
+    cursor: string | null,
+    tail: Tail,
+  ): void {
+    this.#items(this.#itemsOf(children), { fab: null, dom: parent, cursor, end: null }, tail);
+  }
+
+  /**
    * A block body. It is NOT a level of its own: its nodes are children of `$parent`, and
    * its element cursor comes in from the level it shares with its siblings (§4.3).
    */

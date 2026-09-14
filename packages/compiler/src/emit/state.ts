@@ -15,12 +15,13 @@
  * cell serialises exactly the bytes it serialised before.
  */
 
+import type { HtmlContent } from '../html/index.js';
 import { classifyAttribute, crossing } from '../binding/index.js';
 import { propTarget, type PropTarget } from './attrs.js';
-import { codeOf } from './oxc-code.js';
+import { codeOf, type ExtractedCode } from './oxc-code.js';
 import { declaredProps } from './registry.js';
 import { componentOf, type ComponentGraph, type ResolvedComponent } from './resolve.js';
-import { templateOf, walkElements } from './level.js';
+import { templateOf, walkElements, type EntryHalf } from './level.js';
 
 /**
  * What each child tag of a graph declares, as the two emit branches ask it.
@@ -46,7 +47,15 @@ export function childTargets(graph: ComponentGraph): (tag: string) => PropTarget
  * with no new rule anywhere.
  */
 export function reactiveScope(comp: ResolvedComponent): ReadonlySet<string> {
-  const code = codeOf(comp);
+  return scopeOf(codeOf(comp));
+}
+
+/** The same, for a route: its own reactives, and no props — nobody hands a route any. */
+export function entryReactiveScope(entry: EntryHalf): ReadonlySet<string> {
+  return scopeOf(entry.code);
+}
+
+function scopeOf(code: ExtractedCode): ReadonlySet<string> {
   return new Set([
     ...code.signals.map((s) => s.name),
     ...code.props.flatMap((p) => (p.channel === 'signal' ? [p.name] : [])),
@@ -74,21 +83,40 @@ export interface CellSlot {
  * object, which is the exact bug the cell exists to prevent.
  */
 export function cellSlots(comp: ResolvedComponent, graph: ComponentGraph): readonly CellSlot[] {
-  const code = codeOf(comp);
+  return cellSlotsOf(comp.source, templateOf(comp), codeOf(comp), graph);
+}
+
+/**
+ * The cells a ROUTE publishes (SDD-39 §3.4).
+ *
+ * The same layout, over the markup a route owns instead of a template: what a child asked to
+ * be handed by reference, in the order `@client` declares it. A route has no props, so the
+ * slots start at zero — the slice of the `<body>` is cells and nothing else.
+ */
+export function entryCellSlots(graph: ComponentGraph, entry: EntryHalf): readonly CellSlot[] {
+  return cellSlotsOf(graph.entrySource, entry.roots, entry.code, graph);
+}
+
+function cellSlotsOf(
+  source: string,
+  roots: readonly HtmlContent[],
+  code: ExtractedCode,
+  graph: ComponentGraph,
+): readonly CellSlot[] {
   const declared = new Set(code.clientNames);
   if (declared.size === 0) return [];
 
   const signals = new Set(code.signals.map((s) => s.name));
   const crossed = new Set<string>();
-  walkElements(templateOf(comp), (el) => {
+  walkElements(roots, (el) => {
     const child = componentOf(graph, el.name);
     if (child === undefined) return;
     const props = declaredProps(child);
     for (const attr of el.attributes) {
-      const b = classifyAttribute(attr, comp.source).value;
+      const b = classifyAttribute(attr, source).value;
       if (b.type !== 'property') continue;
       const target = props.find((p) => p.name === b.name);
-      const how = crossing(comp.source, b.value, signals, target);
+      const how = crossing(source, b.value, signals, target);
       if (how?.kind === 'ref' && declared.has(how.name)) crossed.add(how.name);
     }
   });

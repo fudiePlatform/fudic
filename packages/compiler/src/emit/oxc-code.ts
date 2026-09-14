@@ -342,6 +342,18 @@ export interface ExtractedCode {
    */
   readonly clientImports: readonly string[];
   /**
+   * Whether `@code { @client }` calls `effect(...)` at its top level (SDD-39 §4.6).
+   *
+   * It is what puts a tag — or a route — in `fud-eager`: an effect is by definition what
+   * happens with nobody touching anything, so one that waits for a gesture is not an effect.
+   * The clock of §6.21 is the case that makes it: unhydrated it paints the server's time and
+   * freezes, which is not "works worse", it is does not work.
+   *
+   * Top level, like the `FUD0570` search it shares: an `effect` inside a helper is flow
+   * analysis, and flow analysis belongs to the language server (§7).
+   */
+  readonly clientEffects: boolean;
+  /**
    * Every `emit(...)` of `@client` (§4.4), as the walk finds them — the patches are applied
    * by descending offset, so the order they arrive in is not one of. Empty when the
    * component does
@@ -570,6 +582,7 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     clientFunctions: topLevelFunctions(clientStatements),
     setCalls: setCalls(clientStatements),
     clientImports: importedBindings(allStatements),
+    clientEffects: clientStatements.some((stmt) => effectCalls(stmt).length > 0),
     emitCalls,
     di,
     server: zoneCode(serverStatements, source, map, diEdits, () => true, rewritten),
@@ -636,6 +649,14 @@ export function codeOfDocument(source: string, doc: CodeDocument): ExtractedCode
 }
 
 /**
+ * `effect(...)` at the top level of a zone, as the two rules that care about it read it.
+ *
+ * One search, two readings. Outside `@code { @client }` it is `FUD0570` — an effect runs
+ * after the first render and the server has none. INSIDE it, the very same finding says
+ * something else: this file cannot wait for a gesture (SDD-39 §4.6). Where one says «this is
+ * in the wrong place», the other says «this cannot be deferred».
+ */
+/**
  * `effect(...)` outside `@code { @client }` → `FUD0570` (SDD-31 §5).
  *
  * An effect is, by definition, what happens AFTER the first render, and the server has no
@@ -643,16 +664,21 @@ export function codeOfDocument(source: string, doc: CodeDocument): ExtractedCode
  * reactive declarations to the emit anyway — and the rest of the file is emitted: the emit
  * does not throw. `computed` and `batch` are not flagged; both have a server meaning.
  */
-function checkNeutralEffect(stmt: OxcNode, map: MapOffset, out: Diagnostic[]): void {
+function effectCalls(stmt: OxcNode): readonly OxcNode[] {
   // The two shapes an `effect(...)` takes: called for its side effect, or bound to keep its
   // teardown. Anything else lands as `undefined` here and falls out on the first check.
   const calls = is(stmt, 'VariableDeclaration')
     ? fieldArray(stmt, 'declarations').map((decl) => field(decl, 'init'))
     : [field(stmt, 'expression')];
-  for (const call of calls) {
-    if (!is(call, 'CallExpression')) continue;
+  return calls.filter((call): call is OxcNode => {
+    if (!is(call, 'CallExpression')) return false;
     const callee = field(call, 'callee');
-    if (!is(callee, 'Identifier') || name(callee) !== 'effect') continue;
+    return is(callee, 'Identifier') && name(callee) === 'effect';
+  });
+}
+
+function checkNeutralEffect(stmt: OxcNode, map: MapOffset, out: Diagnostic[]): void {
+  for (const call of effectCalls(stmt)) {
     out.push(
       errorDiag(
         'FUD0570',

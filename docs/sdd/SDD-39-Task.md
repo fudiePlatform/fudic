@@ -5,7 +5,7 @@
 > `@fudic/ssr` (`stateOf`) · `@fudic/core` (los dos bloques y el camino de subida) ·
 > `@fudic/vite` (el chunk, su nombre, `FUD0620`) · `@fudic/example-basic` (las evidencias)
 > **Rama:** `worktree-sdd-39-rutas-reactivas`
-> **Progreso:** 3 / 19
+> **Progreso:** 8 / 19
 
 Una ruta pasa a comportarse como un componente. No hay mecanismo nuevo en el runtime: hay una
 raíz distinta —el `<body>` en vez de un `shadowRoot`— y un nombre que sale de un bloque JSON en
@@ -59,24 +59,24 @@ navegación en sitio y una `data` que se mueva (§7).
 
 ## Fase 2 — El chunk de una ruta (5)
 
-- [ ] **4. La composición en tiempo de compilación.**
+- [x] **4. La composición en tiempo de compilación.**
       Un helper que devuelve el markup del layout —la cadena entera— con el cuerpo de la ruta
       empalmado en `@RenderBody()` y cada sección en su `@RenderSection(nombre)`. Solo lectura
       sobre `graph.layouts`, sin tocar la emisión del servidor: la composición por módulo ES sigue
       siendo la del render (SDD-21). Criterio §6.5.
-- [ ] **5. `emitRouteClientModule`.**
+- [x] **5. `emitRouteClientModule`.**
       El emisor. Reutiliza `MarkupEmitter` en su rama de cliente sobre el árbol de la tarea 4, con
       `$root` donde un componente pone `$shadow`. Devuelve `null` cuando la ruta no tiene mitad de
       cliente. Criterios §6.3 y §6.4.
-- [ ] **6. La forma del módulo.**
+- [x] **6. La forma del módulo.**
       Exportación por defecto `([$dom, $root, $data, ...$props]) => ({h, u, r})`. **Sin `c`**: una
       ruta no se fabrica nunca en caliente. Las tres diferencias con el chunk de un componente y
       ninguna más (§3.4).
-- [ ] **7. Los anclajes son todos de la ruta.**
+- [x] **7. Los anclajes son todos de la ruta.**
       Atravesar el markup del layout produce llamadas al cursor y **ni un anclaje**. Test que
       exige una sola entrada en `sources` y que ningún mapeo apunte al `.fud` del layout: es lo
       que mantiene en pie el invariante de SDD-13 §4.3. Criterio §6.6.
-- [ ] **8. `isReactiveRoute` y `routeHydration`.**
+- [x] **8. `isReactiveRoute` y `routeHydration`.**
       Los dos predicados de §3.1, sobre el markup de la ruta y sus secciones. `routeHydration`
       devuelve `'eager'` con un `control` o un `effect(...)`, y `'gesture'` en todo lo demás.
       Nace al 100 %: son dos funciones puras sobre el grafo.

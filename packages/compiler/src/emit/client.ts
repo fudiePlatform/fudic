@@ -78,7 +78,12 @@ const iocName = (props: readonly Prop[], cells: readonly CellSlot[]): string =>
  * Inside the `$` reserve of SDD-15 §4.7, so it cannot collide with anything the author wrote
  * — the `@client` body is copied verbatim into this same scope.
  */
-const cellName = (cell: CellSlot): string => `$p${cell.slot + 2}`;
+export const cellNameAt = (cell: CellSlot, base: number): string => `$p${cell.slot + base}`;
+
+/** The two leading slots of a COMPONENT's array: `$dom` and `$shadow`. */
+export const COMPONENT_BASE = 2;
+
+const cellName = (cell: CellSlot): string => cellNameAt(cell, COMPONENT_BASE);
 
 /**
  * The UPDATE, over the same list and in the same order — but not with the same shape
@@ -138,10 +143,11 @@ function updateGuards(props: readonly Prop[]): string {
  * or a comment is not a declaration. The offsets are the author's, and `splicedOffset` carries
  * them across whatever `extractCode` already inserted into this same statement.
  */
-function withCells(
+export function withCells(
   statement: ClientStatement,
   signals: readonly { readonly name: string; readonly at: number }[],
   cells: readonly CellSlot[],
+  base: number = COMPONENT_BASE,
 ): string {
   const named = new Map(cells.map((c) => [c.name, c]));
   const edits: { at: number; text: string }[] = [];
@@ -150,7 +156,7 @@ function withCells(
     if (cell === undefined) continue;
     const at = splicedOffset(statement, reactive.at);
     if (at < 0 || at > statement.text.length) continue; // declared in another statement
-    edits.push({ at, text: `${cellName(cell)} ?? ` });
+    edits.push({ at, text: `${cellNameAt(cell, base)} ?? ` });
   }
   edits.sort((a, b) => b.at - a.at);
   return edits.reduce((out, e) => out.slice(0, e.at) + e.text + out.slice(e.at), statement.text);
@@ -520,7 +526,7 @@ function writeMount(w: CodeWriter, mount: CodeWriter): void {
 }
 
 /** A writer's body as one line: `u` and `r` are single-line closures. */
-function lines(body: CodeWriter): string {
+export function lines(body: CodeWriter): string {
   return body
     .toString()
     .split('\n')
@@ -534,7 +540,7 @@ function lines(body: CodeWriter): string {
  * block: a component that hooks up nothing, or has no value to apply, should not pay three
  * lines of chunk to say so.
  */
-function writeClosure(w: CodeWriter, name: string, body: CodeWriter, head?: string): void {
+export function writeClosure(w: CodeWriter, name: string, body: CodeWriter, head?: string): void {
   if (body.empty) {
     w.line(`const ${name} = () => {};`);
     return;
