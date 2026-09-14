@@ -93,6 +93,7 @@ Las siete secciones del SDD, reinterpretadas para un defecto:
 | [BUG-31](./BUG-31-el-emit-no-pregunta.md) | El emit no pregunta lo que ya sabe: runtime en una página que no hidrata, hoja vacía de un componente sin CSS — y el código generado, invisible al depurador | SDD-13 §3.3 · SDD-15 §4.1 · SDD-17 §4.6, §4.7 · SDD-18 §5 · SDD-19 §4.6 · SDD-20 §4.6 · SDD-27 §5.2 | `compiler` · `transport` · `vite` | `Hecho` |
 | [BUG-32](./BUG-32-bindings-en-el-host.md) | El host no acepta bindings, y lo que sobra no se dice | SDD-12 §4 (`FUD0720`, `FUD0721`) · SDD-15 §4.1 · SDD-23 §4.4 · props-spec 84, 86 · decisión 75 | `compiler` · `language-core` | `Hecho` |
 | [BUG-33](./BUG-33-caches-por-app.md) | Dos apps en el mismo origen se borran las cachés: `caches.keys()` es por origen y el nombre solo lleva el build | SDD-20 §4.10 · [SDD-41](../SDD-41-configuracion-de-aplicacion.md) §4.3 | `transport` · `vite` | `Listo` |
+| [BUG-34](./BUG-34-tabla-de-rutas-por-modulo.md) | El plugin reconstruye la tabla de rutas reactivas en cada `transform`: 16 rutas parseadas otra vez por cada `.fud` del build | [SDD-39](../SDD-39-rutas-reactivas.md) §4.7 | `vite` | `Hecho` |
 
 > **BUG-31 y BUG-32** se implementaron juntos en `worktree-bug-31-emit-incondicional` y ya están
 > en esta tabla. BUG-33 se numeró detrás de ellos a propósito aunque llegara antes al índice:

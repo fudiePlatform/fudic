@@ -183,8 +183,29 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    *
    * A route with no client half has no name to publish either: what it would name is a chunk
    * nobody emitted, and the block is then a byte for nothing (SDD-39 §4.7).
+   *
+   * The lookup is built ONCE per set of routes and kept, which is what `routeNameLookup`
+   * documents itself as — "one lookup, resolved once per pass", the way the link pass and the
+   * edge pass already hold theirs. Calling the factory per `transform` re-resolved every
+   * route's document graph for every `.fud` the build touched: sixteen routes parsed again
+   * for each of fifty-seven files, and the hook that does the compiling spent more than
+   * twenty times its own work rediscovering what had not changed (BUG-34 §2).
+   *
+   * Invalidated by the IDENTITY of `builds`: `discoverRoutes` hands back a NEW array every
+   * time it runs, and it runs whenever the route tree changes — which is what dev needs, and
+   * the reason this is not a plain `const` computed at plugin construction, when `builds` is
+   * still empty.
    */
-  const routeNameOf = (path: string): string | undefined => routeNameLookup(builds, io)(path);
+  let routeNames: {
+    readonly from: readonly RouteBuild[];
+    readonly of: (path: string) => string | undefined;
+  } | null = null;
+  const routeNameOf = (path: string): string | undefined => {
+    if (routeNames === null || routeNames.from !== builds) {
+      routeNames = { from: builds, of: routeNameLookup(builds, io) };
+    }
+    return routeNames.of(path);
+  };
 
   return {
     name: 'fudic',
