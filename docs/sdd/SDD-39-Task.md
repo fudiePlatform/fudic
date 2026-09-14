@@ -137,23 +137,32 @@ navegación en sitio y una `data` que se mueva (§7).
 
 Las dos rutas ya están escritas (`ac9ef66`); lo que falta es que funcionen y el reloj.
 
-- **`/ruta-evento`** — el número sube al pulsar (§6.18).
-- **`/ruta-reactiva`** — la página se genera, y el `+1` mueve el contador, la rama del `@if` y la
-  fila del `@foreach`. El `@code` se reescribe dentro de `@client`, que es su sitio, y el
-  comentario que dice que la zona neutra sí llega al servidor se corrige: no llegaba (§6.19).
-- **`app-clock`** — nuevo, como componente y usado directo en una ruta. El servidor pinta su hora,
-  el cliente sigue desde la del navegador y avanza solo. Es la evidencia de por qué `effect` no
-  puede esperar un gesto (§6.20, §6.21).
+- [x] **`/ruta-evento`** — el `@code` se reescribe dentro de `@client`, que es su sitio. La
+  página se genera con `fud-route` y el `<body>` marcado; queda pulsar el botón en Chrome
+  (§6.18).
+- [x] **`/ruta-reactiva`** — el `@code` se reescribe dentro de `@client`: ya no hace falta la
+  zona neutra, porque el servidor declara los nombres reactivos inertes. La página **se
+  genera** y pinta `1` en el contador de la ruta y en el del componente de control; queda
+  comprobar el `+1` en Chrome (§6.19).
+- [x] **`app-clock`** — nuevo, como componente **y** escrito directo en `/ruta-reloj`. Las dos
+  formas entran en `fud-eager` (`["app-clock","ruta-reloj"]`) y el servidor pinta la hora en
+  las dos; queda ver que avanzan solas y que el `clearInterval` corre al navegar fuera
+  (§6.20, §6.21).
 
 ---
 
 ## Verificación final
 
-- `pnpm typecheck` y `pnpm test` en verde en todo el workspace.
-- `pnpm build` de `examples/basic` **sin** avisos de prerender, y con `dist/ruta-reactiva/`
-  y `dist/ruta-evento/` presentes.
-- Los 22 criterios de §6.
-- `@fudic/core` y `@fudic/ssr` al 100 % en las cuatro métricas; `@fudic/compiler` y `@fudic/vite`
-  no por debajo de donde empezaron.
-- Las tres rutas comprobadas en Chrome real, el reloj incluido y navegando fuera para ver el
-  `clearInterval`.
+- [x] `pnpm typecheck` y `pnpm test` en verde en todo el workspace.
+- [x] `pnpm build` de `examples/basic` **sin** avisos de prerender, y con `dist/ruta-reactiva/`,
+      `dist/ruta-evento/` y `dist/ruta-reloj/` presentes.
+- [x] Los criterios de §6, salvo los tres que piden un navegador (§6.18–§6.20).
+- [x] `@fudic/core` y `@fudic/ssr` al 100 % en las cuatro métricas. `@fudic/compiler` sale en
+      99,22 / 98,03 / 99,38 / 99,66 contra 99,19 / 98,01 / 99,35 / 99,64 al empezar, y
+      `@fudic/vite` en 96,18 / 90,12 / 96,37 / 96,07 contra 95,99 / 89,91 / 96,23 / 95,89:
+      las ocho por encima.
+- [ ] Las tres rutas comprobadas en **Chrome real**, el reloj incluido y navegando fuera para
+      ver el `clearInterval`. Lo que se puede comprobar sin navegador está comprobado —la
+      adopción y la reacción de una ruta compuesta con su layout se ejecutan de verdad en
+      `packages/compiler/test/emit/hydrate/route.test.ts`, con la construcción prohibida
+      durante `h`— y el resto es la pasada de Pedro.

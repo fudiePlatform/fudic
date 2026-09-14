@@ -1,0 +1,46 @@
+@code {
+  @client {
+    import { signal, computed, effect } from "@fudic/core";
+
+    const ahora = signal(new Date());
+
+    const hora = computed(() =>
+      ahora().toLocaleTimeString("es-ES", { hour12: false }),
+    );
+
+    const fecha = computed(() =>
+      ahora().toLocaleDateString("es-ES", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+    );
+
+    effect(() => {
+      const id = setInterval(() => ahora.set(new Date()), 1000);
+      return () => clearInterval(id);
+    });
+  }
+}
+
+<head>
+  <style>
+    :host { display: block; padding: 1rem 1.25rem; background: #e6e6e6; }
+    .hora {
+      font-size: 2.6rem;
+      font-weight: 300;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+      color: #202124;
+    }
+    .fecha { margin-top: 0.35rem; font-size: 0.9rem; color: #1a5fb4; }
+  </style>
+</head>
+
+<app-clock>
+  <template shadowrootmode="open">
+    <time class="hora">@hora()</time>
+    <p class="fecha">@fecha()</p>
+  </template>
+</app-clock>

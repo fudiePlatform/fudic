@@ -1,0 +1,109 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/app-clock.fud">
+
+@code {
+  @client {
+    // El mismo reloj de `app-clock.fud`, letra por letra, escrito en la RUTA.
+    //
+    // Es la evidencia de por qué un `effect` no puede esperar a un gesto: sin hidratar,
+    // esto pinta la hora del servidor y se queda congelado para siempre. No es que
+    // funcione peor — no funciona. Por eso el `effect` mete a quien lo escribe en
+    // `fud-eager`, y quien lo escribe aquí es la ruta.
+    import { signal, computed, effect } from "@fudic/core";
+
+    const ahora = signal(new Date());
+
+    const hora = computed(() =>
+      ahora().toLocaleTimeString("es-ES", { hour12: false }),
+    );
+
+    const fecha = computed(() =>
+      ahora().toLocaleDateString("es-ES", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+    );
+
+    effect(() => {
+      const id = setInterval(() => ahora.set(new Date()), 1000);
+      return () => clearInterval(id);
+    });
+  }
+}
+
+<head>
+  <title>Un reloj que nadie toca — fudic</title>
+  <style>
+    .caja {
+      display: grid;
+      gap: 0.9rem;
+      border: 1px solid #dcdcdc;
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
+      background: white;
+    }
+    .propio {
+      padding: 1rem 1.25rem;
+      background: #e6e6e6;
+    }
+    .propio .hora {
+      font-size: 2.6rem;
+      font-weight: 300;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+      color: #202124;
+    }
+    .propio .fecha {
+      margin-top: 0.35rem;
+      font-size: 0.9rem;
+      color: #1a5fb4;
+    }
+    .etiqueta {
+      margin: 0;
+      font-family: ui-monospace, monospace;
+      font-size: 0.82rem;
+      color: #5f6368;
+    }
+  </style>
+</head>
+
+@section nav {
+  <site-nav .current="ruta-reloj"></site-nav>
+}
+
+<h1>Un reloj no espera a que lo toques</h1>
+<p class="lede">
+  Todo lo demás de este framework sube con un gesto: se pulsa algo y entonces baja el
+  JavaScript. Un <code>effect</code> es, por definición, lo que pasa <strong>sin que nadie
+  toque nada</strong>, así que un <code>effect</code> que espera un gesto no es un
+  <code>effect</code>. Los dos relojes de abajo son el mismo código; lo único distinto es
+  dónde está escrito.
+</p>
+
+<h2>1 · El reloj, dentro de un componente</h2>
+
+<div class="caja">
+  <p class="etiqueta">&lt;app-clock&gt;</p>
+  <app-clock></app-clock>
+</div>
+
+<h2>2 · El mismo reloj, escrito en la ruta</h2>
+
+<div class="caja">
+  <p class="etiqueta">@@code { @@client { … } } de esta misma página</p>
+  <div class="propio">
+    <time class="hora">@hora()</time>
+    <p class="fecha">@fecha()</p>
+  </div>
+</div>
+
+<p>
+  <strong>Qué comprobar.</strong> Sin tocar nada, los dos relojes tienen que avanzar un
+  segundo por segundo. El servidor pinta su hora y el navegador sigue desde la suya, así
+  que la primera pintura puede venir de otro huso: lo que se mira es que se muevan. Y al
+  navegar fuera de esta página, el <code>clearInterval</code> de la vuelta del
+  <code>effect</code> tiene que correr — el reloj no deja nada detrás.
+</p>

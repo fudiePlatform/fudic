@@ -278,6 +278,15 @@ export function installHydration(options: HydrationOptions): Hydration {
     for (const instance of instancesOf(tag, doc)) {
       const host = outermostOwner(instance);
       eagerHosts.set(idOf(host), host);
+      // The owner FIRST and then the instance, and the second half is what a route made
+      // necessary (SDD-39 §4.10). Raising an owner brings its subtree up with it — through
+      // `fud-tree`, which for a component lists every hydratable tag it renders. A ROUTE's
+      // entry lists only what it hands a prop to, so a component that receives nothing from
+      // it is not on that walk; and since the `<body>` is now the outermost owner of
+      // everything, `app-clock` inside a route would be raised by nobody. Asking for it
+      // afterwards costs nothing when the cascade already got there — the loop below skips
+      // an id that is already hydrated — and is the whole difference when it did not.
+      eagerHosts.set(idOf(instance), instance);
     }
   }
   if (eagerHosts.size > 0) {

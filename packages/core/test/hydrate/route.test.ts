@@ -269,6 +269,26 @@ describe('a route that comes up without a gesture (§4.6)', () => {
     expect(r.trace).toEqual(['fetch:ruta', 'h:route']);
   });
 
+  it('raises an eager COMPONENT inside it too, even with no prop between them', async () => {
+    // The clock of SDD-39 §6.20: it receives nothing from the route, so it is not on the
+    // route's `fud-tree` walk — and the `<body>` is its outermost owner, so without asking
+    // for it by name nobody would raise it. Unhydrated it paints the server's time and
+    // freezes, which is not «works worse».
+    publish({
+      route: 'ruta',
+      bodyId: 1,
+      eager: ['ins-clock', 'ruta'],
+      state: [[0, 0, 0], []],
+    });
+    host('ins-clock', 0);
+    const r = run('ruta');
+
+    await settle();
+
+    expect(r.trace).toContain('h:route');
+    expect(r.trace).toContain('h:ins-clock#0:[]');
+  });
+
   it('and is not raised twice when a gesture follows', async () => {
     publish({ route: 'ruta', bodyId: 0, eager: ['ruta'], state: [[0, 0], []] });
     const button = document.createElement('button');
