@@ -63,7 +63,7 @@ import {
   FUD_ROUTE_NAME_COLLISION,
   FUD_SW_SHELL_MISSING,
 } from './diagnostics.js';
-import { devUrl, devManifest, devClientTag, devClientPrefix } from './dev.js';
+import { devUrl, devManifest, devClientTag, devClientPrefix, withInlineSourceMap } from './dev.js';
 import {
   matchRouteBuild,
   renderRouteHtml,
@@ -314,7 +314,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               res.setHeader('Content-Security-Policy', devManifest(builds).csp.sw);
             }
             res.setHeader('Cache-Control', 'no-cache'); // these two govern updates
-            res.end(result?.code ?? '');
+            // WITH its map. `transformRequest` hands back both halves and this middleware
+            // used to write only the first, so nothing fudic emits was debuggable in dev.
+            res.end(result === null ? '' : withInlineSourceMap(result.code, result.map));
           })
           .catch((err) => {
             res.statusCode = 500;
