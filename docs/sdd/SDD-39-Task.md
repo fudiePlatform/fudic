@@ -5,7 +5,7 @@
 > `@fudic/ssr` (`stateOf`) · `@fudic/core` (los dos bloques y el camino de subida) ·
 > `@fudic/vite` (el chunk, su nombre, `FUD0620`) · `@fudic/example-basic` (las evidencias)
 > **Rama:** `worktree-sdd-39-rutas-reactivas`
-> **Progreso:** 8 / 19
+> **Progreso:** 12 / 19
 
 Una ruta pasa a comportarse como un componente. No hay mecanismo nuevo en el runtime: hay una
 raíz distinta —el `<body>` en vez de un `shadowRoot`— y un nombre que sale de un bloque JSON en
@@ -83,18 +83,18 @@ navegación en sitio y una `data` que se mueva (§7).
 
 ## Fase 3 — Lo que la página publica (4)
 
-- [ ] **9. `stateOf` en `@fudic/ssr`.**
+- [x] **9. `stateOf` en `@fudic/ssr`.**
       Rellenar la rebanada de un host que se tiene **directamente**, no a través del shadow que
       posee. `state(shadow, …)` pasa a delegar en ella, para que haya una implementación y no dos.
       Nace al 100 %.
-- [ ] **10. El `<body>` reclama su id.**
+- [x] **10. El `<body>` reclama su id.**
       Desde el hueco `blocks($dom, $parent)`, que es donde `$parent` es ese nodo, y **solo** si la
       ruta es reactiva. Rellena su rebanada con `stateOf`. Criterio §6.7.
-- [ ] **11. El bloque `fud-route`.**
+- [x] **11. El bloque `fud-route`.**
       Con `safeName(patrón)`. El compilador no conoce el patrón —lo conoce el plugin—, así que
       entra por `EmitOptions` como entran ya el especificador de componente y el de layout. Sin
       mitad de cliente, no hay bloque.
-- [ ] **12. El bloque `fud-data`, recortado.**
+- [x] **12. El bloque `fud-data`, recortado.**
       Recoger del AST de `@client` las **raíces** que se leen de `data` y serializar solo esas.
       Un acceso dinámico manda `data` entero **y no emite diagnóstico** (§4.8). Si la mitad de
       cliente no lee `data`, no hay bloque. `FUD0621` cuando lee `data` y no hay `load`.

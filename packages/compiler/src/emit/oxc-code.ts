@@ -240,6 +240,17 @@ export interface DiCall {
   readonly open: number;
 }
 
+/**
+ * How a region reads `data`: not at all, by a knowable set of roots, or in a way no read of
+ * the AST can bound (SDD-39 §4.8).
+ */
+export type DataAccess =
+  | { readonly kind: 'none' }
+  // `at` is the FIRST read, in source coordinates: a diagnostic about reading `data` has to
+  // point at a place the author can see, and the first one is where they would look.
+  | { readonly kind: 'roots'; readonly roots: readonly string[]; readonly at: Span }
+  | { readonly kind: 'all'; readonly at: Span };
+
 /** Which of the three zones of `@code` a statement was written in (SDD-08 §4.2). */
 export type CodeZone = 'neutral' | 'server' | 'client';
 
@@ -354,6 +365,20 @@ export interface ExtractedCode {
    */
   readonly clientEffects: boolean;
   /**
+   * What the client half reads out of `data` — what `load()` returned (SDD-39 §4.8).
+   *
+   * `load` runs on the server and its result lives there; the moment a `@client` handler can
+   * read it, it has to travel. It travels TRIMMED, and this is what says to what: the ROOTS
+   * the region reads, so `data.user` and `data.items[0].id` publish `user` and `items` and
+   * the rest of the payload never leaves the server.
+   *
+   * `all` is the overapproximation, and it is deliberate: `data[campo]` names no root that
+   * can be known, and a function the region hands `data` to reads whatever it likes. It is
+   * NOT a diagnostic — that would be a warning for writing correct JavaScript — so it
+   * silently sends everything (§4.8).
+   */
+  readonly dataAccess: DataAccess;
+  /**
    * Every `emit(...)` of `@client` (§4.4), as the walk finds them — the patches are applied
    * by descending offset, so the order they arrive in is not one of. Empty when the
    * component does
@@ -375,6 +400,15 @@ export interface ExtractedCode {
    * (SDD-38 §4.1). Empty for the components — every one of them until now — that write none.
    */
   readonly server: ServerCode;
+  /**
+   * The names the `@server` region EXPORTS — `load`, `paths` (SDD-19 §4.3).
+   *
+   * Read off the AST rather than off the text, for the usual reason: an `export function load`
+   * inside a string or a comment exports nothing. One reader so far, and it is the one
+   * question §4.8 asks — a client half that reads `data` where no `load` ever ran is reading
+   * `undefined`, always, and that is knowable at compile time (`FUD0621`).
+   */
+  readonly serverExports: readonly string[];
   /**
    * The statements that REGISTER and run in a browser — the neutral zone's and `@client`'s
    * — with the imports they reference (SDD-38 §4.5).
@@ -399,7 +433,13 @@ export interface ExtractedCode {
 // A type predicate, not just a boolean: a node reached by `field` may be absent, and the
 // check that says which kind it is is also the check that says it is there.
 const is = (node: OxcNode | undefined, type: string): node is OxcNode => node?.type === type;
-const field = (node: OxcNode, key: string): OxcNode | undefined => node[key] as OxcNode | undefined;
+// `?? undefined`, and it is not decoration: Oxc writes an ABSENT field as `null`, not as a
+// missing key — `export { load }` is an `ExportNamedDeclaration` whose `declaration` is
+// `null` — and a reader that only guarded for `undefined` passed that `null` straight into
+// the next `field(...)` and threw. `is()` already treated the two alike; this makes the
+// accessor do the same, once, for every reader.
+const field = (node: OxcNode, key: string): OxcNode | undefined =>
+  (node[key] as OxcNode | null | undefined) ?? undefined;
 const fieldArray = (node: OxcNode, key: string): OxcNode[] => (node[key] as OxcNode[] | undefined) ?? [];
 const name = (node: OxcNode): string => String(node['name']);
 
@@ -583,9 +623,11 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     setCalls: setCalls(clientStatements),
     clientImports: importedBindings(allStatements),
     clientEffects: clientStatements.some((stmt) => effectCalls(stmt).length > 0),
+    dataAccess: readDataAccess(clientStatements, map),
     emitCalls,
     di,
     server: zoneCode(serverStatements, source, map, diEdits, () => true, rewritten),
+    serverExports: exportedNames(serverStatements),
     providers: mergeZones(
       zoneCode(
         neutralStatements,
@@ -646,6 +688,99 @@ export function codeOfDocument(source: string, doc: CodeDocument): ExtractedCode
   const code = extractCode(source, doc);
   documentCodeCache.set(doc, code);
   return code;
+}
+
+/** The name a route's `load()` result travels under, on both sides (SDD-39 §4.8). */
+const DATA_BINDING = 'data';
+
+/**
+ * The names an `export` binds: `export function load` → `load`.
+ *
+ * Three shapes and the third is the one a reader forgets. A declaration names itself; a
+ * `const` names one binding per declarator, and a DESTRUCTURING declarator names none this
+ * can read; and an export with no declaration at all is the clause form, `export { load }`,
+ * which names its bindings on the other side of the statement.
+ */
+function exportedNames(statements: readonly OxcNode[]): readonly string[] {
+  return statements.flatMap((stmt) =>
+    is(stmt, 'ExportNamedDeclaration') ? boundNames(stmt) : [],
+  );
+}
+
+function boundNames(stmt: OxcNode): readonly string[] {
+  const declaration = field(stmt, 'declaration');
+  if (declaration === undefined) {
+    // `export { load }` / `export { load as carga }`: what the module publishes is the
+    // EXPORTED side, which is the name an importer writes.
+    return fieldArray(stmt, 'specifiers').flatMap((spec) => {
+      const exported = field(spec, 'exported');
+      // `export { load as "mi-carga" }` publishes a string, not an identifier, and nothing
+      // can import it under a name — so it names nothing here.
+      return is(exported, 'Identifier') ? [name(exported)] : [];
+    });
+  }
+  if (is(declaration, 'VariableDeclaration')) {
+    return fieldArray(declaration, 'declarations').flatMap((declarator) => {
+      const bound = declaredName(declarator);
+      return bound === undefined ? [] : [bound];
+    });
+  }
+  // Everything else — `export function load()`, `export class`, `export type` — carries its
+  // name in `id`, always: a named export whose declaration has no name of its own is not a
+  // shape the grammar has (`export default` is a node type of its own).
+  return [name(field(declaration, 'id')!)];
+}
+
+/**
+ * What a region reads out of `data`, by walking its AST (SDD-39 §4.8).
+ *
+ * By offset and never by text, like every other question this file answers: a `data.` inside
+ * a string or a comment is prose, and `datalist` is a different word altogether.
+ *
+ * Three shapes and one of them ends the walk. `data.user` is a root. `data[campo]` is not
+ * knowable, and neither is a `data` that reaches anything BUT a static member access —
+ * handed to a function, spread, destructured. Both answer `all`.
+ */
+function readDataAccess(statements: readonly OxcNode[], map: MapOffset): DataAccess {
+  const roots = new Set<string>();
+  let all = false;
+  let at: Span | undefined;
+
+  const seen = (node: OxcNode): void => {
+    at ??= { start: map(node.start), end: map(node.end) };
+  };
+
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      for (const child of node) walk(child);
+      return;
+    }
+    if (node === null || typeof node !== 'object') return;
+    const current = node as OxcNode;
+    const object = field(current, 'object');
+    if (is(object, 'Identifier') && name(object) === DATA_BINDING) {
+      const property = field(current, 'property');
+      seen(object);
+      // A static member access names its root; anything else — `data[k]`, `data?.[k]` — does
+      // not, and there is no smaller answer than the whole object.
+      if (current['computed'] === true || !is(property, 'Identifier')) all = true;
+      else roots.add(name(property));
+      // Into the property and not into the object: descending back into `data` would read it
+      // as a bare reference and widen every access there is to `all`.
+      walk(property);
+      return;
+    }
+    if (is(current, 'Identifier') && name(current) === DATA_BINDING) {
+      seen(current);
+      all = true;
+      return;
+    }
+    for (const value of Object.values(current)) walk(value);
+  };
+
+  walk(statements);
+  if (at === undefined) return { kind: 'none' };
+  return all ? { kind: 'all', at } : { kind: 'roots', roots: [...roots], at };
 }
 
 /**

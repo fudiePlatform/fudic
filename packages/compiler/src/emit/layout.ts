@@ -29,7 +29,7 @@ import { AssetLinker } from './assets.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import { formAssociatedTags, hydratableTags } from './level.js';
 import { hasDependencyInjection } from './di.js';
-import { needsRuntime, writeMapConstants, writeHydrationBlocks } from './maps.js';
+import { needsRuntime, routeBlocksOf, writeMapConstants, writeHydrationBlocks } from './maps.js';
 import type { DocumentGraph, ResolvedLayout } from './resolve.js';
 import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
 import { codeOfDocument } from './oxc-code.js';
@@ -331,6 +331,10 @@ function buildRouteModule(
   // included — while a layout module is emitted from its own graph and cannot see the
   // route's. One map computed here would be missing half the page.
   const maps = writeMapConstants(w, graph, hydratable);
+  // What the page says about its own client half (SDD-39 §4.2, §4.7). `FUD0621` comes out of
+  // the same read: a `data` the client reads and no `load` ever filled is knowable here.
+  const routeDiagnostics: Diagnostic[] = [];
+  const blocks = routeBlocksOf(graph, options.routeName, routeDiagnostics);
   // The route's answer to the layout's `fudic:runtime` marker (BUG-31 §T1).
   const runtimeW = new CodeWriter();
   writeRuntimeTags(runtimeW, needsRuntime(hydratable, hasDi));
@@ -381,14 +385,14 @@ function buildRouteModule(
   // outermost layout knows where the body ends.
   w.line(`blocks(${DOM}, ${PARENT}) {`);
   w.indent();
-  writeHydrationBlocks(w, maps, DOM, PARENT, hasDi ? '$root' : undefined);
+  writeHydrationBlocks(w, maps, DOM, PARENT, hasDi ? '$root' : undefined, blocks);
   w.dedent();
   w.line('},');
   w.dedent();
   w.line(`}, ${ioc});`);
   w.dedent();
   w.line('}');
-  return { writer: w, linker, diagnostics: code.diagnostics };
+  return { writer: w, linker, diagnostics: [...code.diagnostics, ...routeDiagnostics] };
 }
 
 /** Emit the module of a route: `page(data, io)` composed with its layout chain. */

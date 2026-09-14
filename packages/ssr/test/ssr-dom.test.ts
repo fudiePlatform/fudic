@@ -212,3 +212,40 @@ describe('SsrDom — the instance collector (SDD-15 §3.1, §3.3)', () => {
     expect(JSON.stringify(d.hydrationState().data)).toBe('[1,{"id":1},[{"id":2}]]');
   });
 });
+
+describe('stateOf — the slice of a host held directly (SDD-39 §3.2)', () => {
+  it('fills the slice of a node nobody reaches through a shadow', () => {
+    // What a ROUTE holds is the `<body>` itself: there is no shadow to go through, and the
+    // layout hands it over at the one moment the body is finished (SDD-21 §4.5).
+    const d = new SsrDom();
+    const body = d.element('body');
+    d.claim(body);
+    const count = (): number => 3;
+    d.stateOf(body, [], [{ of: count, value: count() }]);
+    expect(d.hydrationState()).toEqual({ offsets: [0, 1], data: [3] });
+  });
+
+  it('fills nothing for a node that was never claimed', () => {
+    const d = new SsrDom();
+    d.stateOf(d.element('body'), [1]);
+    expect(d.hydrationState()).toEqual({ offsets: [0], data: [] });
+  });
+
+  it('resolves a cell a consumer serialised BEFORE its owner existed', () => {
+    // The order a route forces: the component is rendered inside the body, and the body can
+    // only be claimed once it is finished — so the consumer's slot is written first and the
+    // cell is registered afterwards. The substitution happens when the payload is built.
+    const d = new SsrDom();
+    const child = d.element('signal-display');
+    const shadow = d.attachShadow(child);
+    d.claim(child);
+    const count = (): number => 9;
+    d.state(shadow, [count]);
+
+    const body = d.element('body');
+    d.claim(body);
+    d.stateOf(body, [], [{ of: count, value: count() }]);
+
+    expect(d.hydrationState()).toEqual({ offsets: [0, 1, 2], data: [{ $: [1, 0] }, 9] });
+  });
+});

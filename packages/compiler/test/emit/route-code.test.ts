@@ -26,11 +26,15 @@ const SHELL =
   '<!DOCTYPE html><html><head>@RenderHead()</head><body>@RenderBody()</body></html>';
 
 /** Emit route + layout from an in-memory graph, link them and run the document. */
-function renderRoute(routeSource: string, bindings: Record<string, unknown> = {}): string {
+function renderRoute(
+  routeSource: string,
+  bindings: Record<string, unknown> = {},
+  options: { routeName?: string } = {},
+): string {
   const io = memoryIo({ '/r.fud': routeSource, '/l.fud': SHELL });
   const graph = resolveDocument('/r.fud', io).value;
   const layout = evalModule(emitLayoutModule(graph, graph.layouts[0]!), bindings, 'layout');
-  const page = evalModule(emitRouteModule(graph), { ...bindings, layout }, 'page') as PageFn;
+  const page = evalModule(emitRouteModule(graph, options), { ...bindings, layout }, 'page') as PageFn;
   return [...page({}, minimalSsr())].join('');
 }
 
@@ -63,6 +67,20 @@ describe('the `@code` of a route (§6.1)', () => {
       ].join('\n'),
     );
     expect(html).toContain('<p>4</p>');
+  });
+
+  it('marks the `<body>` when the build knows what the route is called', () => {
+    const html = renderRoute(
+      [
+        '<link rel="layout" href="./l.fud">',
+        '@code { @client { const count = signal(4); } }',
+        '<output>@count()</output>',
+      ].join('\n'),
+      {},
+      { routeName: 'ruta' },
+    );
+    expect(html).toContain('<body data-fud-id="0">');
+    expect(html).toContain('<output>4</output>');
   });
 
   it('reads the neutral zone on the server, in the order it was written', () => {

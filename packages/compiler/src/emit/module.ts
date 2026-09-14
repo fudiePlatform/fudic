@@ -33,7 +33,7 @@ import { codeOf, codeOfDocument, diHelpers } from './oxc-code.js';
 import { hasDependencyInjection } from './di.js';
 import { cellSlots, childTargets, reactiveScope } from './state.js';
 import { formAssociatedTags, hydratableTags } from './level.js';
-import { needsRuntime, writeMapConstants, writeHydrationBlocks } from './maps.js';
+import { needsRuntime, routeBlocksOf, writeMapConstants, writeHydrationBlocks } from './maps.js';
 import { planControls } from './controls.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import {
@@ -81,6 +81,16 @@ export interface EmitOptions {
    * `./<file base name><importExt>`, the sibling-file convention.
    */
   readonly layoutSpecifier?: LayoutSpecifier;
+  /**
+   * The route's chunk name — `safeName(pattern)` (SDD-39 §4.7). INJECTED for the same reason
+   * the two specifiers are: the compiler holds one file and has never heard of a URL pattern,
+   * while the plugin has the route table in hand.
+   *
+   * Its absence is what a build with no routing looks like — the standalone `.mjs` emit, a
+   * golden — and then a route publishes no `fud-route` block and claims no id: there is no
+   * chunk for it to name, so an id on the `<body>` would be an attribute nobody reads.
+   */
+  readonly routeName?: string;
 }
 
 export type { ComponentSpecifier, LayoutSpecifier };
@@ -492,6 +502,10 @@ function buildPageModule(
   // The MINIFIED form: it is inline in every page's head, once per page (BUG-07 §4.3).
   if (styledComps.length > 0) w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL_MIN)};`);
   const maps = writeMapConstants(w, graph, hydratable);
+  // A standalone page is a route that owns its shell, and it publishes the same three things
+  // about its own client half (SDD-39 §4.2, §4.7).
+  const routeDiagnostics: Diagnostic[] = [];
+  const blocks = routeBlocksOf(graph, options.routeName, routeDiagnostics);
   w.line('');
   // Streaming a trozos (SDD-19 §4.3): a generator that yields the <head> FIRST, then the
   // body by pieces via `serialize` (serializeChunks), then the close. `io.serialize` is a
@@ -519,12 +533,12 @@ function buildPageModule(
   w.line('const $dom = createDom();');
   w.line('const $body = $dom.element(\'body\');');
   w.appendWriter(bodyW);
-  writeHydrationBlocks(w, maps, '$dom', '$body', hasDi ? '$root' : undefined);
+  writeHydrationBlocks(w, maps, '$dom', '$body', hasDi ? '$root' : undefined, blocks);
   w.line('yield* serialize($body);');
   w.line("yield '</html>';");
   w.dedent();
   w.line('}');
-  return { writer: w, linker, diagnostics: code.diagnostics };
+  return { writer: w, linker, diagnostics: [...code.diagnostics, ...routeDiagnostics] };
 }
 
 export function emitPageModule(graph: ComponentGraph, options: EmitOptions = {}): string {
