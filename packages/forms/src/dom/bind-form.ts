@@ -18,14 +18,18 @@ import { effect } from '@fudic/core';
 import type { AnyForm } from '../types.js';
 import { errorText } from '../messages.js';
 import type { Cleanup } from './types.js';
-import { on, undo } from './wiring.js';
+import { onSelf, undo } from './wiring.js';
 
 /** What the error effects marked. The first in DOCUMENT order is what `querySelector` gives. */
 const INVALID = '[aria-invalid="true"]';
 
 export function bindForm(el: HTMLFormElement, form: AnyForm, summary: HTMLElement | null): Cleanup {
   const offs: Cleanup[] = [
-    on(el, 'submit', (event) => {
+    // `onSelf` and not `on`: the form's `submit` is the one subscription in this package that
+    // delegation cannot pay for. There is one form per root, so the root would hold the same
+    // single listener it holds now — and an author's `@submit` that calls `stopPropagation()`
+    // would stop the event before the root ever saw it, which is this validation, gone quietly.
+    onSelf(el, 'submit', (event) => {
       // **Synchronous, with the last known state.** `$validate` is asynchronous and
       // `preventDefault` is not: by the time a validation resolved, the submit would already
       // have gone or already have been stopped. So if there are errors ON RECORD, stop; if

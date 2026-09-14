@@ -31,6 +31,26 @@ export function on(el: Element, type: string, handler: (event: Event) => void): 
   return delegate(el, type, handler);
 }
 
+/**
+ * Subscribe a listener ON THE ELEMENT ITSELF, outside the delegation of its root.
+ *
+ * Delegation is paid for, and what it costs is this: a handler only runs if the event still
+ * REACHES the root, so an author's `@input` that calls `stopPropagation()` silences the binding
+ * underneath it. On a field that price is worth paying — there are twelve of them and the count
+ * grows with the markup, which is the whole of SDD-37.
+ *
+ * On the `<form>` there is nothing to buy. A root holds ONE form in every page anybody writes,
+ * so delegating its `submit` saves no listener at all — and it charges the same price: a
+ * `@submit` that stops propagation, which is the ordinary way to write one, would take the
+ * form's validation down with it and say nothing. One listener for one node, at the node.
+ */
+export function onSelf(el: Element, type: string, handler: (event: Event) => void): Cleanup {
+  el.addEventListener(type, handler);
+  return () => {
+    el.removeEventListener(type, handler);
+  };
+}
+
 /** Fold a list of teardowns into the one `Cleanup` a binding returns. */
 export function undo(all: readonly Cleanup[]): Cleanup {
   return () => {
