@@ -173,19 +173,24 @@ coincidir.
 
 ## 6. Criterios de aceptación
 
-> Los tests los escribe otra sesión. Aquí queda lo que tienen que afirmar.
+Los cuatro, en `packages/vite/test/route-name-cache.test.ts` salvo donde se diga.
 
-1. **La tabla se construye una vez por build.** Con un `ResolveIo` instrumentado que
-   cuenta lecturas, el número de resoluciones de documento sobre las rutas **no crece**
-   con el número de `.fud` transformados. Falla contra el código roto: hoy crece
-   linealmente.
-2. **Reasignar `builds` invalida.** Transformar un `.fud`, sustituir `builds` por un array
-   nuevo en el que la ruta pasa a ser reactiva, y comprobar que la segunda llamada
-   publica el nombre nuevo. Es lo que sostiene el dev server.
+1. **La tabla se construye una vez por build.** Transformar cuatro `.fud` del mismo build
+   construye la tabla **una vez**, y transformar el mismo módulo dos veces tampoco la
+   reconstruye. Visto fallar contra el código roto: los contadores dan 4 y 2.
+2. **Reasignar `builds` invalida.** Una ruta que aparece entre dos descubrimientos publica
+   su nombre en el transform siguiente, y el descubrimiento cuesta **una** reconstrucción,
+   no una por módulo. Es lo que sostiene el dev server, donde `builds` se reasigna en cada
+   petición. Con la ruta sin mitad de cliente al lado, que sigue sin nombre.
 3. **La salida no cambia.** El listado de ficheros emitidos por `examples/basic` es
    idéntico antes y después, hashes y build id incluidos. *(Comprobado a mano al cerrar:
    109 ficheros, diff vacío.)*
 4. **El aviso no vuelve.** `vite build` de `examples/basic` no emite `PLUGIN_TIMINGS`.
+
+**Cobertura.** El código nuevo nace al 100 %: los seis statements, la función y las **dos
+caras de las dos ramas** de la condición quedan cubiertos (45/53 y 98/54 sobre el informe
+de v8), sin un solo `ignore`. El suelo del paquete —96,19 / 90,17 / 96,37 / 96,09— no se
+mueve, que es lo que se le pide a un fichero con deuda conocida.
 
 ### Medido al cerrar
 
