@@ -339,7 +339,7 @@ function buildRouteModule(
   const maps = writeMapConstants(w, graph, hydratable, blocks?.name);
   // The route's answer to the layout's `fudic:runtime` marker (BUG-31 §T1).
   const runtimeW = new CodeWriter();
-  writeRuntimeTags(runtimeW, needsRuntime(hydratable, hasDi));
+  writeRuntimeTags(runtimeW, needsRuntime(hydratable, hasDi, blocks !== undefined));
   w.line('');
   // Same public shape as a standalone page: the composition is invisible downstream.
   w.line('export function* page(data, io, $ioc) {');

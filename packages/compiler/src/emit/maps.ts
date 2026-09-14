@@ -189,9 +189,21 @@ export function fudBus(graph: ComponentGraph): TagMap {
  *
  * It errs toward emitting: a component that is hydratable but never rendered costs a runtime
  * nothing will use, while the opposite costs a page its behaviour.
+ *
+ * **The route counts as one of them** (SDD-39 §4.2). The hydratable SET is tags, and a route
+ * has none: since SDD-39 the `<body>` carries a `data-fud-id` of its own, so a page whose only
+ * reactive thing is the route itself answered `false` here and shipped a claimed id, a
+ * `fud-route` block and a chunk nobody could ever ask for — no runtime, no capturer, no
+ * download, in dev and in a build alike. `reactiveRoute` is the very condition that claims the
+ * id (`routeBlocksOf` returning something), and not a second opinion about it: the two cannot
+ * disagree, because a body that claims an id and a page that carries no runtime is the defect.
  */
-export function needsRuntime(hydratable: ReadonlySet<string>, hasDi: boolean): boolean {
-  return hydratable.size > 0 || hasDi;
+export function needsRuntime(
+  hydratable: ReadonlySet<string>,
+  hasDi: boolean,
+  reactiveRoute: boolean,
+): boolean {
+  return hydratable.size > 0 || hasDi || reactiveRoute;
 }
 
 /**
