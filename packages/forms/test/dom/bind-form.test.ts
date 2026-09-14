@@ -161,3 +161,73 @@ describe('bindForm — the summary is optional', () => {
     for (const o of offs) o();
   });
 });
+
+describe('bindForm — the submit is not delegated (BUG-37)', () => {
+  it('subscribes on the `<form>` and not on its root', () => {
+    const { el, summary, f, offs } = twoFields();
+    // The measurement Pedro made by hand on `/delegacion`, turned into an assertion: patch
+    // `addEventListener` and keep the RECEIVER of every call. Counting them would not say
+    // this — the count is one either way, and where that one sits is the whole finding.
+    const seen = witness(el, () => bindForm(el, f, summary));
+    expect(seen).toEqual([el]);
+    expect(seen).not.toContain(el.getRootNode());
+    for (const o of offs) o();
+  });
+
+  it('validates even when the author’s handler stops the propagation', async () => {
+    const { el, summary, f, offs } = twoFields();
+    // Registered BEFORE the binding, which is the order the emit writes: the author's
+    // `@submit` is wired with the markup and the control bindings come after it.
+    el.addEventListener('submit', (event) => {
+      // The ordinary way to write a `@submit`, and the one the shipped example writes.
+      event.stopPropagation();
+    });
+    const off = bindForm(el, f, summary);
+    await f.$validate();
+
+    const submit = new Event('submit', { bubbles: true, cancelable: true });
+    el.dispatchEvent(submit);
+
+    // `stopPropagation` stops the jump to the NEXT object in the path; it does not cut
+    // between listeners of the same one. With the binding on the `<form>` the validation is
+    // out of its reach — with the binding on the root it was not, and this form submitted
+    // itself invalid without a word.
+    expect(submit.defaultPrevented).toBe(true);
+    expect(f.a.touched()).toBe(true);
+    off();
+    for (const o of offs) o();
+  });
+});
+
+/**
+ * Run `act` with `addEventListener` patched, and answer with the `this` of every call.
+ *
+ * The prototype is found by WALKING UP from a real node instead of naming `EventTarget`: the
+ * `EventTarget` of this module's scope is the one Node itself defines, and the elements come
+ * from the DOM emulator, so the two are unrelated objects and patching the global would watch
+ * a prototype nothing in the test inherits from.
+ */
+function witness(node: Node, act: () => void): EventTarget[] {
+  let proto: object | null = Object.getPrototypeOf(node) as object | null;
+  while (proto !== null && !Object.prototype.hasOwnProperty.call(proto, 'addEventListener')) {
+    proto = Object.getPrototypeOf(proto) as object | null;
+  }
+  if (proto === null) throw new Error('nothing in the chain owns `addEventListener`');
+
+  const owner = proto as { addEventListener: EventTarget['addEventListener'] };
+  const real = owner.addEventListener;
+  const seen: EventTarget[] = [];
+  owner.addEventListener = function (
+    this: EventTarget,
+    ...args: Parameters<EventTarget['addEventListener']>
+  ): void {
+    seen.push(this);
+    real.apply(this, args);
+  };
+  try {
+    act();
+  } finally {
+    owner.addEventListener = real;
+  }
+  return seen;
+}
