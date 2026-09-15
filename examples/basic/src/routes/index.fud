@@ -3,14 +3,6 @@
 <link rel="component" href="../components/app-card.fud">
 <link rel="component" href="../components/app-badge.fud">
 
-@code {
-  @server {
-    export function layout() {
-      return { culture: "es" };
-    }
-  }
-}
-
 <head>
   <title>fudic — ejemplo básico</title>
 </head>

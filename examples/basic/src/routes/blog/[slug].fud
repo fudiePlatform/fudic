@@ -1,4 +1,4 @@
-<link rel="layout" href="../../layouts/_layout.fud">
+<link rel="layout" href="../../layouts/_layout-articulo.fud">
 <link rel="component" href="../../components/site-nav.fud">
 <link rel="component" href="../../components/app-badge.fud">
 
@@ -26,12 +26,19 @@
       return [...(await listSlugs())];
     }
 
-    // The layout's props, resolved AFTER `load` and out of what it brought. The culture of
-    // this page is nowhere in its URL: it is a column of the row. Two slugs prerendered by
-    // the same build come out with two different `<html lang>` because their posts are in
-    // two different languages — which is the whole evidence of SDD-40.
+    // Las props del layout, resueltas DESPUÉS de `load` y con lo que `load` trajo. Un solo
+    // objeto para la cadena entera: `seccion` la declara `_layout-articulo.fud` y `culture`
+    // el layout de arriba, y cada eslabón saca de aquí los nombres que él declaró.
+    //
+    // La culture de esta página no está en su URL: es una columna de la fila. Dos slugs
+    // prerenderizados por el mismo build salen con dos `<html lang>` distintos porque sus
+    // artículos están en idiomas distintos.
+    //
+    // `seccion` es la requerida: bórrala de este `return` y el build para con `FUD0702`,
+    // mientras el editor ofrece «Completar las props requeridas del layout» sobre el
+    // `<link rel="layout">` de arriba.
     export function layout(ctx: unknown, data: PageData) {
-      return { culture: data.lang };
+      return { culture: data.lang, seccion: "Blog" };
     }
   }
 }

@@ -217,6 +217,12 @@ function buildLayoutModule(
     w.line('return head;');
     w.dedent();
     w.line('},');
+    // The `fudic:runtime` marker is the ROUTE's to answer (BUG-31 §T1), and only the OUTERMOST
+    // layout holds the `<head>` the marker was written in — so a nested link has to pass the
+    // question up, exactly as it passes the sections and the blocks. Without this line a route
+    // under a nested layout died at prerender on `route.runtime is not a function`: the marker
+    // is written by the outer layout and answered by the route, and nobody joined the two.
+    w.line('runtime() { return route.runtime(); },');
     w.line(`body(${DOM}, ${PARENT}) {`);
     w.indent();
     w.appendWriter(bodyW);

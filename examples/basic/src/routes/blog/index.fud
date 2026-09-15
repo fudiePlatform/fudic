@@ -17,10 +17,6 @@
       const posts = await listPosts();
       return { title: "Blog", posts: [...posts] };
     }
-
-    export function layout() {
-      return { culture: "es" };
-    }
   }
 }
 

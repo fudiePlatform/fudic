@@ -20,10 +20,6 @@
         ],
       };
     }
-
-    export function layout() {
-      return { culture: "es" };
-    }
   }
 }
 

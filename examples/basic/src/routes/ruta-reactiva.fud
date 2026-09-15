@@ -3,12 +3,6 @@
 <link rel="component" href="../components/signal-control.fud">
 
 @code {
-  @server {
-    export function layout() {
-      return { culture: "es" };
-    }
-  }
-
   @client {
     // El mismo código que `signal-control.fud`, letra por letra. La única diferencia es
     // DÓNDE está escrito: allí, dentro de un componente; aquí, en el `@code` de la RUTA,

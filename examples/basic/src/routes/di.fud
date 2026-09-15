@@ -20,10 +20,6 @@
       ctx.publish(LINES, lines);
       return { lines };
     }
-
-    export function layout() {
-      return { culture: "es" };
-    }
   }
 }
 

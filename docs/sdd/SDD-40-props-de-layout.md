@@ -388,8 +388,10 @@ Tests en `packages/compiler/test/emit/` (1–7), `packages/vite/test/` (8–11),
 
 **La evidencia, en `examples/basic`**
 
-15. `_layout.fud` declara `culture` como requerida, y su `<html lang="@culture">` sale con el valor
-    que cada ruta resuelve.
+15. `_layout.fud` declara `culture` y su `<html lang="@culture">` sale con el valor que la ruta
+    resuelve. **Con default** (`= "es"`), y la nota de abajo explica por qué acabó así: la prop
+    **requerida** vive en `_layout-articulo.fud`, un layout anidado de una sola página, que es
+    donde `FUD0702` y la bombilla tienen algo que decir.
 16. Una ruta con `:param` —`/blog/:slug`— resuelve la culture a partir de lo que `load` trajo, y el
     HTML prerenderizado de dos slugs distintos sale con `lang` distinto si sus posts lo son.
 17. Verificado en las tres formas en Chrome real: `pnpm dev`, build sin SW y build con SW. El
@@ -397,12 +399,25 @@ Tests en `packages/compiler/test/emit/` (1–7), `packages/vite/test/` (8–11),
 18. **Cobertura.** `@fudic/transport` y `@fudic/language-server` no bajan del número que tienen al
     empezar; el código nuevo de `@fudic/language-server` nace al 100 %.
 
-**Lo que costó la prop requerida, anotado porque se ve en el ejemplo.** `culture` sin default
-obliga a las **diecisiete** rutas de `examples/basic` a escribir su `export function layout()`,
-aunque dieciséis contesten lo mismo. Es lo que §6.15 pide y es lo que le da dientes al
-contrato —sin ello ni `FUD0702` ni la bombilla tendrían evidencia—, pero la ceremonia es real y
-la alternativa está escrita en la propia spec: un default (`culture = "es"`) la habría dejado en
-una sola ruta. Queda como observación, no como cambio.
+**Cómo quedó repartido en el ejemplo, y por qué no como decía §6.15.** La primera versión hizo
+`culture` requerida en el layout compartido, y eso obligó a las **diecisiete** rutas de
+`examples/basic` a escribir su `export function layout()` aunque dieciséis contestaran lo mismo.
+Pedro lo cortó: la ceremonia tapaba justo lo que el ejemplo tiene que enseñar. El reparto final
+es el que el propio §3.1 ya insinuaba con su `theme = "light"`:
+
+- **`_layout.fud` declara `culture = "es"`, con default.** Dieciséis páginas no escriben nada, y
+  el `<html lang>` de todas sale igualmente por la maquinaria de atributos. La única que contesta
+  es `/blog/:slug`, porque su culture **sale de la fila** y no de una constante — y ahí está la
+  evidencia de §6.16: dos slugs prerenderizados por el mismo build, uno `es` y otro `en`.
+- **`_layout-articulo.fud` declara `seccion`, requerida**, y es un layout **anidado** usado por
+  una sola página. Es donde una prop requerida tiene sentido: el valor no es obvio, olvidarlo es
+  un error que merece contarse, y ahí viven `FUD0702` y la bombilla. De paso demuestra §4.8 con
+  datos de verdad — el `return` de esa ruta es `{ culture, seccion }`, la unión de lo que declara
+  la cadena, y cada eslabón saca de él lo suyo.
+
+La regla que queda escrita: **un default es lo correcto cuando la respuesta es obvia para casi
+todas las rutas; una prop requerida, cuando no lo es.** El contrato no pierde dientes por eso —
+los enseña donde muerden.
 
 ---
 

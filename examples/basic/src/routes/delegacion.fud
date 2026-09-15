@@ -4,14 +4,6 @@
 <link rel="component" href="../components/app-calendar-plain.fud">
 <link rel="component" href="../components/app-wide-form.fud">
 
-@code {
-  @server {
-    export function layout() {
-      return { culture: "es" };
-    }
-  }
-}
-
 <head>
   <title>La delegación, medida — fudic</title>
   <style>
