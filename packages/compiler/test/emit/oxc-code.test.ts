@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { extractCode } from '../../src/emit/oxc-code.js';
 import type { ComponentDocument } from '../../src/document/index.js';
-import { parse } from './_support.js';
+import { bareProps, bareSignals, parse } from './_support.js';
 
 const componentDoc = (source: string): ComponentDocument => {
   const doc = parse(source);
@@ -30,16 +30,20 @@ describe('extractCode', () => {
     );
     const { props, signals } = extractCode(source, componentDoc(source));
     // 'a' has no default; neither key of `T` carries a `?`, so neither is optional
-    expect(props).toEqual([
+    expect(bareProps(props)).toEqual([
       { name: 'a', optional: false },
       { name: 'b', def: '2', optional: false },
     ]);
-    expect(signals).toEqual([
-      // `at` is where the CALL starts, and it is checked on its own below: what the cell
-      // splice needs is the offset, and what this case is about is the name and the initial.
-      { name: 's', init: 'undefined', kind: 'signal', at: expect.any(Number) }, // no argument
-      { name: 't', init: '5', kind: 'signal', at: expect.any(Number) },
+    // The span is the property inside the `{ … }`, default included (SDD-40).
+    expect(source.slice(props[0]!.at.start, props[0]!.at.end)).toBe('a');
+    expect(source.slice(props[1]!.at.start, props[1]!.at.end)).toBe('b = 2');
+    // `at` is where the CALL starts and `span` is the whole declarator; each is checked on
+    // its own below. What this case is about is the name and the initial.
+    expect(bareSignals(signals)).toEqual([
+      { name: 's', init: 'undefined', kind: 'signal' }, // no argument
+      { name: 't', init: '5', kind: 'signal' },
     ]);
+    expect(source.slice(signals[1]!.span.start, signals[1]!.span.end)).toBe('t = signal(5)');
   });
 
   it('BUG-24 §4.4 — a reactive carries where its CALL starts, for the cell splice', () => {
@@ -52,10 +56,10 @@ describe('extractCode', () => {
     const source = wrap(
       '@code {\n  const a = signal(1);\n  const total = computed(() => a() * 2);\n  const t = computed();\n}\n',
     );
-    expect(extractCode(source, componentDoc(source)).signals).toEqual([
-      { name: 'a', init: '1', kind: 'signal', at: expect.any(Number) },
-      { name: 'total', init: '() => a() * 2', kind: 'computed', at: expect.any(Number) },
-      { name: 't', init: 'undefined', kind: 'computed', at: expect.any(Number) },
+    expect(bareSignals(extractCode(source, componentDoc(source)).signals)).toEqual([
+      { name: 'a', init: '1', kind: 'signal' },
+      { name: 'total', init: '() => a() * 2', kind: 'computed' },
+      { name: 't', init: 'undefined', kind: 'computed' },
     ]);
   });
 
@@ -77,8 +81,8 @@ describe('extractCode', () => {
     const at = source.indexOf('effect(() => console.log(a))');
     expect(diagnostics[0]!.span).toEqual({ start: at, end: at + 'effect(() => console.log(a))'.length });
     // The emit does not throw and does not give up on the file: props and signals are read.
-    expect(props).toEqual([{ name: 'a', optional: false }]);
-    expect(signals).toEqual([{ name: 't', init: '1', kind: 'signal', at: expect.any(Number) }]);
+    expect(bareProps(props)).toEqual([{ name: 'a', optional: false }]);
+    expect(bareSignals(signals)).toEqual([{ name: 't', init: '1', kind: 'signal' }]);
   });
 
   it('SDD-31 §5 — `computed` and `batch` in the neutral zone say nothing', () => {
@@ -88,7 +92,9 @@ describe('extractCode', () => {
 
   it('skips rest/spread in the props pattern', () => {
     const source = wrap('@code {\n  const { a, ...rest } = props<{ a: string }>();\n}\n');
-    expect(extractCode(source, componentDoc(source)).props).toEqual([{ name: 'a', optional: false }]);
+    expect(bareProps(extractCode(source, componentDoc(source)).props)).toEqual([
+      { name: 'a', optional: false },
+    ]);
   });
 
   // BUG-23 task 16: the `?` of `T` is the only thing that makes a prop optional, and «cannot
@@ -212,7 +218,7 @@ describe('extractCode', () => {
     const source = '@code {\n  const { a } = props<{ a: string }>();\n}\n<m-el><span></span></m-el>\n';
     const doc = componentDoc(source);
     expect(doc.template).toBeUndefined();
-    expect(extractCode(source, doc).props).toEqual([{ name: 'a', optional: false }]);
+    expect(bareProps(extractCode(source, doc).props)).toEqual([{ name: 'a', optional: false }]);
   });
 
   it('finds every emit(...) of @client, whatever the binding is called (SDD-15 §4.4)', () => {

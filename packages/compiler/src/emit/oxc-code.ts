@@ -9,7 +9,12 @@
  * synthetic batch buffer and are mapped to the original source via `mapOffset`.
  */
 
-import type { ComponentDocument, PageDocument, RouteDocument } from '../document/index.js';
+import type {
+  ComponentDocument,
+  LayoutDocument,
+  PageDocument,
+  RouteDocument,
+} from '../document/index.js';
 import type { CodeBlockNode } from '../code/index.js';
 import type { ResolvedComponent } from './resolve.js';
 import type { Diagnostic, Span } from '../types/index.js';
@@ -31,6 +36,16 @@ import {
 export interface Prop {
   readonly name: string;
   readonly def?: string;
+  /**
+   * The property inside the `{ … }` of `props<T>()`, in SOURCE coordinates — `theme` for a
+   * bare key, `theme = "light"` for one with a default.
+   *
+   * A prop was a nameless fact until SDD-40: every reader wanted the name and the shape of
+   * the crossing, and none of them had anything to say ABOUT the declaration. `FUD0701` does
+   * — a layout prop that asks for a reactive is wrong where it is written — and a diagnostic
+   * without a span is a diagnostic a language server cannot place (repo invariant).
+   */
+  readonly at: Span;
   /**
    * `false` only when the key of `T` is written WITHOUT `?`. When `T` cannot be read at all
    * nothing can be proven about it, so every prop reads as optional and a build invents no
@@ -64,6 +79,14 @@ export interface Reactive {
   /** `signal` → the initial value's source. `computed` → the derive function's, verbatim. */
   readonly init: string;
   readonly kind: 'signal' | 'computed';
+  /**
+   * The whole declarator — `n = signal(0)` — in SOURCE coordinates.
+   *
+   * `at` says where to SPLICE; this says where the declaration IS, which is a different
+   * question and the one a diagnostic asks. `FUD0700` is its first reader: a layout declares
+   * no reactive state, and what is wrong there is the declaration and not its call.
+   */
+  readonly span: Span;
   /**
    * Where the `signal(…)` / `computed(…)` CALL starts in the `.fud`.
    *
@@ -446,14 +469,18 @@ const name = (node: OxcNode): string => String(node['name']);
 type MapOffset = (bufferOffset: number) => number;
 
 /**
- * A file whose `@code` is the author's own half of a rendered tree — the three roles that
- * have one (SDD-39 §4.1).
+ * A file whose `@code` this extraction reads — the four roles that have one.
  *
- * A layout is NOT here, and that is §7: its markup is static in this version, so it has no
- * client half to split a `@code` for. What it declares still reaches its own `?server`
- * module, exactly as before.
+ * A layout joined the list in SDD-40, and it joined it for ONE answer: its props. Its markup
+ * is still static (SDD-39 §7), so it has no client half to split a `@code` for, and what
+ * `layout.ts` takes out of here is `props` and `diagnostics` and nothing else — everything
+ * the extraction would also report about a `@server` or a `@client` region of a layout is a
+ * region that has no business existing, and `FUD0700` is the one voice that says so.
+ *
+ * One vocabulary, four roles: a layout declares props with the same `props<T>()` a component
+ * and a route use, so it reads them with the same code (SDD-40 §5).
  */
-export type CodeDocument = ComponentDocument | RouteDocument | PageDocument;
+export type CodeDocument = ComponentDocument | RouteDocument | PageDocument | LayoutDocument;
 
 /**
  * The JS fragments of a document's TEMPLATE, whichever role it takes.
@@ -467,6 +494,15 @@ function collectDocumentJs(doc: CodeDocument, register: JsFragmentVisitor): void
   if (doc.type === 'route-document') {
     collectTemplateJs(doc.markup, register);
     for (const section of doc.sections) collectTemplateJs(section.children, register);
+    return;
+  }
+  if (doc.type === 'layout-document') {
+    // The `<html>` tag's OWN attributes FIRST, which is source order and is the whole point
+    // for a layout: since SDD-40 they are emitted through the attribute machinery like any
+    // other element's, so `<html lang="@culture">` needs a fragment to parse (§4.4). Its
+    // attributes only — descending would walk the document twice.
+    collectAttributeJs(doc.html, register);
+    collectTemplateJs(doc.body.children, register);
     return;
   }
   if (doc.type === 'page-document') {
@@ -1611,6 +1647,7 @@ function readDeclarator(
       name: name(id),
       init: arg ? source.slice(map(arg.start), map(arg.end)) : 'undefined',
       kind: called,
+      span: span(map(decl.start), map(decl.end)),
       at: map(init.start),
     });
     return true;
@@ -1726,11 +1763,12 @@ function readProp(
   const optional = member === undefined || !member.required;
   const channel = member?.channel === undefined ? {} : { channel: member.channel };
   const value = field(property, 'value');
+  const at = span(map(property.start), map(property.end));
   if (value && is(value, 'AssignmentPattern')) {
     const right = field(value, 'right')!;
     const def = source.slice(map(right.start), map(right.end));
-    out.push({ name: propName, def, optional, ...channel });
+    out.push({ name: propName, def, optional, at, ...channel });
   } else {
-    out.push({ name: propName, optional, ...channel });
+    out.push({ name: propName, optional, at, ...channel });
   }
 }

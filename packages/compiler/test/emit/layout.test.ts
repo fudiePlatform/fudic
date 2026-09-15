@@ -186,7 +186,7 @@ describe('emitted module shape (§6.12, SDD-21 §3.5)', () => {
 
   it('gives the layout a `layout(data, io, route)` generator that owns the shell', () => {
     const code = emitLayoutModule(graph, graph.layouts[0]!);
-    expect(code).toContain('export function* layout(data, io, route, $ioc) {');
+    expect(code).toContain('export function* layout(data, io, route, $ioc, $props) {');
     expect(code).toContain('<!DOCTYPE html>');
     expect(code).toContain('route.head();');
     expect(code).toContain('route.body($dom, ');
@@ -196,7 +196,7 @@ describe('emitted module shape (§6.12, SDD-21 §3.5)', () => {
 
   it('keeps the route module on the SAME public shape as a page (§6.12)', () => {
     const code = emitRouteModule(graph);
-    expect(code).toContain('export function* page(data, io, $ioc) {');
+    expect(code).toContain('export function* page(data, io, $ioc, $props) {');
     expect(code).toContain("import { layout } from './_layout.mjs';");
     expect(code).toContain('yield* layout(data, io, {');
     // Its slots: head as a string, body/section as tree builders.

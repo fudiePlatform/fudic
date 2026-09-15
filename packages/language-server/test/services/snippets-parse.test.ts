@@ -141,13 +141,10 @@ ${codeOf('page')}
     expect(codes(source)).toEqual([]);
   });
 
-  it('and a layout is offered none, because a @code there is FUD0437', () => {
-    // The catalogue is the assertion: there is no layout body to materialise, and a body that
-    // does not exist cannot be offered where it would be an error the moment it lands.
-    expect(SNIPPETS.some((s) => s.label === '@code' && s.roles?.includes('layout') === true)).toBe(
-      false,
-    );
-
+  it('and a layout `@code` no longer lands on an error (SDD-40 §3.1)', () => {
+    // `FUD0437` said a layout declares nothing. It declares its props now, so an empty block
+    // is simply a block that declares none — and what its `@code` may hold BESIDES that
+    // declaration is `FUD0700`, which the emit reports, not the parse.
     const source = `<!DOCTYPE html>
 <html lang="es">
   <head>
@@ -158,7 +155,7 @@ ${codeOf('page')}
   <body><main>@RenderBody()</main></body>
 </html>
 `;
-    expect(codes(source)).toContain('FUD0437');
+    expect(codes(source)).toEqual([]);
   });
 });
 

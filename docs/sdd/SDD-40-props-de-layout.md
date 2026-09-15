@@ -103,6 +103,13 @@ papeles, ruta, componente y layout.
 
 Ni `@server`, ni `@client`, ni lógica suelta en la zona neutra: `FUD0700`.
 
+**Esto retira `FUD0437`** —«un layout no tiene `@code`», decisión 82— que decía justo lo
+contrario. Lo que queda de aquella regla es más estrecho y cambia de dueño: distinguir una
+declaración de props de una sentencia suelta es una pregunta sobre JS, no sobre estructura,
+así que la contesta el emit con `FUD0700` y `buildLayout` deja de rechazar el bloque. El
+`@code` de un layout vive dentro de su `<head>`, como el de una página (decisión 60): un
+layout tiene forma de página.
+
 ### 3.2. La ruta resuelve
 
 Un tercer export reservado en `@code { @server }`, al lado de los dos que ya hay:
@@ -228,6 +235,10 @@ yield "<!DOCTYPE html><html lang=\"es\"><head>" + head + '</head>';
 literales, interpolación incluida. Pasa a emitirse por la maquinaria de atributos que ya usa
 cualquier otro elemento.
 
+**Y el `<body>` tenía la misma omisión, peor**: se construía con `$dom.element('body')` y sus
+atributos se perdían enteros, interpolados o no. Es el mismo arreglo, y el ejemplo de §3.1 lo
+necesita — `<body data-theme="@theme">`.
+
 **No hace falta tocar el orden de emisión.** La línea está dentro de
 `export function* layout(data, io, route, props)`, así que `data` y las props ya están resueltas
 ahí y todavía no se ha emitido un byte. No es una restricción de streaming: era un atajo.
@@ -303,7 +314,7 @@ layouts de la cadena que declaren el mismo nombre con tipos distintos es `FUD070
 | `FUD0701` | `error` | Una prop de layout recibe un valor reactivo (`signal` / `computed`). Un layout no tiene mitad de cliente que pueda repintarlo. |
 | `FUD0702` | `error` | La ruta no resuelve una prop **requerida** del layout — porque falta en el `return` de `layout(ctx, data)`, o porque la ruta no exporta esa función. Sobre el `<link rel="layout">`. Es el que ancla la bombilla. |
 | `FUD0703` | `error` | Dos layouts de la misma cadena declaran la misma prop con tipos incompatibles. |
-| `0664`–`0679` | | Reservados. |
+| `0704`–`0719` | | Reservados. |
 
 ---
 

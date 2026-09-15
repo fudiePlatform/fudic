@@ -4,8 +4,8 @@
 > **Paquetes:** `@fudic/compiler` (props del layout, el `<html>` interpolado, el contrato) ·
 > `@fudic/transport` (`RenderContext.layout`) · `@fudic/vite` (envoltorio, endpoint, prerender) ·
 > `@fudic/language-server` (la bombilla) · `@fudic/example-basic` (la evidencia)
-> **Rama:** por abrir
-> **Progreso:** 0 / 14
+> **Rama:** `worktree-sdd-40-props-de-layout`
+> **Progreso:** 4 / 14
 > **Después de SDD-39**, no en paralelo: los dos tocan
 > `packages/compiler/src/emit/layout.ts`. No comparten ninguna decisión, solo el fichero.
 
@@ -40,19 +40,19 @@ un `load` propio del layout (§7).
 
 ## Fase 1 — El layout declara (4)
 
-- [ ] **1. `props<{…}>()` en un layout.**
+- [x] **1. `props<{…}>()` en un layout.**
       El `@code` de un layout se extrae como el de un componente, pero **solo** para sus props: la
       misma llamada, el mismo desestructurado, los mismos defaults. Es el vocabulario que ya
       existe; no se añade ninguno.
-- [ ] **2. `FUD0700` — lo que sobra en el `@code` de un layout.**
+- [x] **2. `FUD0700` — lo que sobra en el `@code` de un layout.**
       Un `@server`, un `@client` o una sentencia suelta. Con su span, sin lanzar, y el layout se
       sigue emitiendo. Criterio §6.2.
-- [ ] **3. El `<html>` se emite por la maquinaria de atributos.**
+- [x] **3. El `<html>` se emite por la maquinaria de atributos.**
       Retirar el `slice(source, doc.html.openSpan)` metido en un `JSON.stringify`
       ([layout.ts:165](../../packages/compiler/src/emit/layout.ts)) y emitir el tag de apertura
       como cualquier otro elemento. No toca el orden de emisión: `data` y las props ya están
       resueltas ahí y no se ha emitido un byte. Criterio §6.1.
-- [ ] **4. `FUD0701` — una prop de layout no puede ser reactiva.**
+- [x] **4. `FUD0701` — una prop de layout no puede ser reactiva.**
       El emit ya sabe qué nombres se mueven (`movingNames`). Sobre el valor, error, y el valor se
       ignora. En el mensaje va el motivo, que es lo que evita que alguien lo lea como una
       limitación arbitraria: un layout no tiene mitad de cliente que pueda repintarlo.
