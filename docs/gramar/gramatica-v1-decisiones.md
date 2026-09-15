@@ -1133,10 +1133,20 @@ hacer sin adivinar.
 
 **89.** **En v1 el layout no carga datos.** No exporta `load()`: recibe el `data` de la ruta en
 solo lectura. Así la inferencia de modo SSG (SDD-19 §4.2) y la clave de caché no cambian, y no hay
-orden de resolución que especificar. El layout **sí** puede tener `@code` con zona neutra y
-`@client`, y sus propios `<link rel="component">`. Lo que se prohíbe es **exportar** `load`: un
-`load` nombrado en un comentario o en una cadena del `@server` —la frase que documenta esta misma
-regla, sin ir más lejos— no es un error (BUG-30).
+orden de resolución que especificar. Tiene sus propios `<link rel="component">`.
+
+**Su `@code` admite exactamente una cosa: la declaración de sus props** (SDD-40 §3.1, §4.1). El
+texto original de esta decisión admitía también zona neutra y `@client`; BUG-23 lo llevó al otro
+extremo y prohibió el bloque entero (`FUD0437`), y SDD-40 **retira aquel código** y deja la regla
+donde tiene sentido. Un `@server` sería un segundo `load` sin ruta que lo llame; un `@client`,
+código que nadie descarga, porque no hay chunk de layout y el de la ruta atraviesa su markup sin
+aportar un solo anclaje; lógica suelta en la zona neutra, código que corre en los dos
+renderizadores sin que nadie pueda decir cuándo. `FUD0700` sobre lo que sobre, y el layout se
+sigue emitiendo. Su `@code` vive dentro del `<head>`, como el de una página (decisión 60): un
+layout tiene forma de página.
+
+Lo que se prohíbe es **exportar** `load`: un `load` nombrado en un comentario o en una cadena del
+`@server` —la frase que documenta esta misma regla, sin ir más lejos— no es un error (BUG-30).
 
 **90.** **`@section` es exclusivo del par ruta↔layout.** No existe en componentes: ahí la
 proyección de contenido es `<slot>`, el mecanismo estándar de DSD, y dos mecanismos compitiendo
@@ -1388,7 +1398,7 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 86 | Layouts | Cardinalidad: 1 `@RenderBody`, ≤1 `@RenderHead`, nombres de sección únicos |
 | 87 | Layouts | Layouts anidados: cadena de dentro afuera; ciclo → error |
 | 88 | Layouts | Cascada del `<head>` con orden determinista; gana la capa más interna |
-| 89 | Layouts | En v1 el layout no declara `load`: recibe el `data` de la ruta |
+| 89 | Layouts | En v1 el layout no declara `load`: recibe el `data` de la ruta. Su `@code` declara sus **props** y nada más (`FUD0700`, SDD-40); `FUD0437` retirado |
 | 90 | Layouts | `@section` exclusivo del par ruta↔layout; en componentes es `<slot>` |
 | 91 | Control flujo | `key (…)` obligatoria en `@foreach`/`@for`/`@while`, **siempre** (`FUD0540`); sin default. La excepción «solo con markup» se retiró: hacía que la regla apareciese y desapareciese según lo que hubiera dentro del cuerpo en ese momento |
 | 92 | Control flujo | La key va en la cabecera, no en un elemento raíz: un bloque puede no tener raíz único |

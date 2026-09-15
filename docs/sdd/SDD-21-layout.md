@@ -506,7 +506,7 @@ hoy el nombre de la variable padre (`'$body'`, `'$shadow'`), así que ya está p
 | `FUD0434` | warning | Layout al que ninguna ruta apunta (huérfano). |
 | `FUD0435` | error | `<link rel="layout">` que apunta a un fichero que no es un layout (decisión 82). |
 | `FUD0436` | error | `href` de `<link rel="layout">` ausente o interpolado: debe ser estático (decisión 81). |
-| `FUD0437` | error | `@code` en un layout. Un layout no declara nada y no carga nada (decisión 89), así que **el bloque entero es el error**, no su contenido: no hay ámbito que ofrecer dentro. Con él, el snippet `@code` de layout desaparece y un `@` en un layout deja de ofrecer ámbito, `@()` y eventos (BUG-23). |
+| `FUD0437` | — | **RETIRADO por [SDD-40](./SDD-40-props-de-layout.md) §3.1.** Decía que un layout no declara nada, y dejó de ser cierto el día en que un layout declara sus props con el mismo `props<{…}>()` que una ruta y un componente. Lo que queda de aquella regla es más estrecho y es del emit, que es el único lector capaz de distinguir una declaración de props de todo lo demás: **`FUD0700`**, sobre lo que el `@code` de un layout contenga **además** de esa declaración. El código no se reutiliza. |
 | `FUD0438`–`FUD0449` | — | Reservados. |
 
 **Quién emite qué.** Los códigos decidibles con un solo fichero (`FUD0420`, `0421`, `0424`–`0428`,
