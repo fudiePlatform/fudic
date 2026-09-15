@@ -216,6 +216,9 @@ importers:
       '@fudic/compiler':
         specifier: workspace:*
         version: link:../compiler
+      '@fudic/config':
+        specifier: workspace:*
+        version: link:../config
       '@fudic/formatter':
         specifier: workspace:*
         version: link:../formatter

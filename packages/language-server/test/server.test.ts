@@ -267,6 +267,21 @@ describe('watched files', () => {
     expect(server.index.get('/p/components/app-badge.fud')).toBeUndefined();
   });
 
+  it('takes a changed fudic.json without a restart (SDD-41 criterion 15)', () => {
+    const { fake, server, files } = setup();
+    files['/p/fudic.json'] = '{"prefix":"app"}';
+    fake.onInitialize?.(params());
+    expect(server.configs.componentTagFor('/p/x.fud')).toBe('app-button');
+
+    files['/p/fudic.json'] = '{"prefix":"shop"}';
+    fake.onDidChangeWatchedFiles?.({
+      changes: [{ uri: URI.file('/p/fudic.json').toString(), type: 2 }],
+    });
+
+    // The next file created in this project is offered `shop-button`, with nothing reopened.
+    expect(server.configs.componentTagFor('/p/x.fud')).toBe('shop-button');
+  });
+
   it('ignores a change to anything that is not a .fud', () => {
     const { fake, server } = setup();
     fake.onInitialize?.(params());

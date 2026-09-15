@@ -50,6 +50,7 @@
   },
   "dependencies": {
     "@fudic/compiler": "workspace:*",
+    "@fudic/config": "workspace:*",
     "@fudic/formatter": "workspace:*",
     "@fudic/language-core": "workspace:*",
     "@volar/language-core": "2.4.28",

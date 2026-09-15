@@ -21,6 +21,7 @@ import {
 } from '@volar/language-server/node.js';
 import type { LanguageServicePlugin } from '@volar/language-service';
 import { commentSyntaxOf } from '@fudic/compiler';
+import { CONFIG_FILE } from '@fudic/config';
 import { create as createTypeScriptServices } from 'volar-service-typescript';
 import { create as createHtmlService } from 'volar-service-html';
 import { create as createCssService } from 'volar-service-css';
@@ -33,6 +34,7 @@ import { createFudicLanguagePlugin } from './language-plugin.js';
 import { nodeFileSystem } from './node-fs.js';
 import { resolveOptions } from './options.js';
 import { toPosix } from './paths.js';
+import { ProjectConfigs } from './project-config.js';
 import { mountWorkspaceFuds } from './project-files.js';
 import {
   AUTO_CLOSE_TAG_REQUEST,
@@ -80,6 +82,7 @@ export interface FudicServer {
   readonly index: WorkspaceIndex;
   readonly cache: DocumentCache;
   readonly stats: RequestStats;
+  readonly configs: ProjectConfigs;
 }
 
 const DEFAULTS: FudicServerDeps = {
@@ -133,6 +136,7 @@ export function createFudicServer(
 ): FudicServer {
   const deps: FudicServerDeps = { ...DEFAULTS, ...overrides };
   const index = new WorkspaceIndex(deps.fileSystem);
+  const configs = new ProjectConfigs(deps.fileSystem);
   const cache = new DocumentCache(index);
   const stats = new RequestStats();
   const logger = loggerFor(connection);
@@ -153,7 +157,12 @@ export function createFudicServer(
   connection.onInitialize((params) => {
     const options = resolveOptions(params.initializationOptions);
     const roots = rootsOf(params);
-    for (const root of roots) index.scan(root);
+    for (const root of roots) {
+      index.scan(root);
+      // Who each folder is (SDD-41). One per workspace folder, and the editor uses it for
+      // exactly one thing: the tag the `component` skeleton proposes.
+      configs.scan(root);
+    }
 
     const typescript = deps.loadTypeScript(options.tsdk, params.locale, logger);
     const languagePlugins = [createFudicLanguagePlugin(cache)];
@@ -164,7 +173,7 @@ export function createFudicServer(
     const plugins: LanguageServicePlugin[] = [
       // Ours goes first: where two services answer the same position — an `href`, a
       // `@section `, a `class:` — §4.1 gives this one the answer, and Volar asks them in order.
-      createFudicService({ index, stats, typescript: withTypeScript }),
+      createFudicService({ index, stats, typescript: withTypeScript, configs }),
       // The whole `.fud` is the HTML document: its markup is HTML with `@` in it, and the
       // native tags and attributes have to come from somewhere (§4.1, §6.4).
       //
@@ -238,6 +247,13 @@ export function createFudicServer(
   connection.onDidChangeWatchedFiles(({ changes }) => {
     for (const change of changes) {
       const path = uriToPath(URI.parse(change.uri));
+      // The same channel that keeps the index current keeps the project current: editing
+      // `fudic.json` and saving changes what the next file's snippet proposes, with no
+      // restart. A new channel for one file would be a second thing that can fall behind.
+      if (path.endsWith(`/${CONFIG_FILE}`)) {
+        configs.invalidate(path);
+        continue;
+      }
       if (!path.endsWith('.fud')) continue;
 
       // 3 is `FileChangeType.Deleted`. A deletion drops the entry; anything else re-reads it,
@@ -278,5 +294,5 @@ export function createFudicServer(
     },
   );
 
-  return { index, cache, stats };
+  return { index, cache, stats, configs };
 }

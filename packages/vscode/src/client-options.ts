@@ -9,16 +9,19 @@ import type { ClientLaunch } from './ports.js';
 import type { FudicSettings } from './settings.js';
 
 /**
- * The three patterns of §4.1.
+ * The four patterns of §4.1.
  *
  * `**\/*.fud` keeps the workspace index current, so a new component resolves without a
- * restart. The other two are what invalidates the TypeScript program: a `tsconfig` decides
- * which files exist and under what options, and `package.json` decides which TypeScript.
+ * restart. Two of the others are what invalidates the TypeScript program: a `tsconfig`
+ * decides which files exist and under what options, and `package.json` decides which
+ * TypeScript. `fudic.json` is who the project is (SDD-41): editing the prefix and saving
+ * changes what the `component` snippet proposes next, without reopening anything.
  */
 export const FILE_EVENTS: readonly string[] = [
   '**/*.fud',
   '**/tsconfig*.json',
   '**/package.json',
+  '**/fudic.json',
 ];
 
 export const buildClientLaunch = (

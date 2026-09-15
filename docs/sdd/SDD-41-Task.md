@@ -3,7 +3,7 @@
 > **SDD:** [SDD-41 — `fudic.json`: la aplicación se declara](./SDD-41-configuracion-de-aplicacion.md)
 > **Paquetes:** `@fudic/config` (nuevo) · `@fudic/cli` · `@fudic/vite` · `@fudic/language-server`
 > **Rama:** `sdd-41-config-de-aplicacion`
-> **Progreso:** 8 / 13
+> **Progreso:** 11 / 13
 
 Trece tareas. Cada una es un paso cerrado: se puede parar después de cualquiera con el
 workspace verde, porque §4.1 del SDD garantiza que un proyecto sin `fudic.json` se comporta
@@ -66,9 +66,9 @@ fases 2, 3 y 4 **no dependen entre sí** y pueden ir en el orden que convenga.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 9 | 3 | **Un config por workspace folder**, leído en `initialize` y revalidado por `didChangeWatchedFiles` — el canal que ya mantiene al `WorkspaceIndex`, no uno nuevo. `fudic.json` entra en el patrón vigilado. Criterio 15 | `language-server` | `src/workspace-index.ts` · `src/server.ts` · `src/project-config.ts` |
-| [ ] | 10 | 9 | **El tabstop sale del proyecto.** `COMPONENT_SKELETON` tiene hoy `<${1:app-button}>` con el `app-` escrito a pelo ([`snippets.ts:165`](../../packages/language-server/src/services/snippets.ts#L165)); pasa a salir del `prefix`, y **sin** `fudic.json` sigue siendo `app-button`, el literal de hoy. Sigue siendo un tabstop: lo que el usuario escriba encima manda. Criterio 14 | `language-server` | `src/services/snippets.ts` |
-| [ ] | 11 | 10 | **Ningún `.fud` gana un diagnóstico, y un test lo fija.** Un `<signal-counter>` en un proyecto con `prefix: "app"` no publica **nada**. Es el criterio que impide que `FUD0722` vuelva en un tercer borrador. Y `snippets-templates.test.ts` se extiende para comparar **byte a byte** el snippet contra lo que escribe `fudic g component` con el mismo config. Criterios 13, 14 | `language-server` | `test/no-prefix-diagnostic.test.ts` · `test/snippets-templates.test.ts` |
+| [x] | 9 | 3 | **Un config por workspace folder**, leído en `initialize` y revalidado por `didChangeWatchedFiles` — el canal que ya mantiene al `WorkspaceIndex`, no uno nuevo. `fudic.json` entra en el patrón vigilado. Criterio 15 | `language-server` | `src/workspace-index.ts` · `src/server.ts` · `src/project-config.ts` |
+| [x] | 10 | 9 | **El tabstop sale del proyecto.** `COMPONENT_SKELETON` tiene hoy `<${1:app-button}>` con el `app-` escrito a pelo ([`snippets.ts:165`](../../packages/language-server/src/services/snippets.ts#L165)); pasa a salir del `prefix`, y **sin** `fudic.json` sigue siendo `app-button`, el literal de hoy. Sigue siendo un tabstop: lo que el usuario escriba encima manda. Criterio 14 | `language-server` | `src/services/snippets.ts` |
+| [x] | 11 | 10 | **Ningún `.fud` gana un diagnóstico, y un test lo fija.** Un `<signal-counter>` en un proyecto con `prefix: "app"` no publica **nada**. Es el criterio que impide que `FUD0722` vuelva en un tercer borrador. Y `snippets-templates.test.ts` se extiende para comparar **byte a byte** el snippet contra lo que escribe `fudic g component` con el mismo config. Criterios 13, 14 | `language-server` | `test/no-prefix-diagnostic.test.ts` · `test/snippets-templates.test.ts` |
 
 ---
 

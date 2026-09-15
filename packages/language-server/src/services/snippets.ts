@@ -149,6 +149,18 @@ export interface FudSnippet {
 // A placeholder that appears twice in a template gets ONE tabstop, so the editor mirrors it:
 // typing the title once writes it in both places. That is the point, not a side effect.
 
+/**
+ * The component skeleton, with the tag the project PROPOSES in its tabstop (SDD-41 §4.4).
+ *
+ * It used to carry `app-button` written into this file. Now the proposal comes from the
+ * project, and `app-button` is only what a project that declares no prefix still gets. It
+ * remains a tabstop: what the user types over it wins, and nothing ever checks that a
+ * component's tag carries the prefix.
+ */
+export function componentSkeleton(tag: string): string {
+  return COMPONENT_SKELETON.replaceAll('app-button', tag);
+}
+
 const COMPONENT_SKELETON = `@code {
   type Props = {
   };
@@ -436,7 +448,11 @@ function hasZone(code: CodeBlockNode, zone: 'server' | 'client'): boolean {
  * construct is allowed to sit. In an empty file the role is `component` — that is what an empty
  * `.fud` structures as — but the skeletons declare no roles, so all four are offered.
  */
-export function snippetsAt(document: CachedDocument, offset: number): readonly FudSnippet[] {
+export function snippetsAt(
+  document: CachedDocument,
+  offset: number,
+  componentTag = 'app-button',
+): readonly FudSnippet[] {
   const scope = scopeAt(document, offset);
   if (scope === undefined) return [];
 
@@ -453,5 +469,7 @@ export function snippetsAt(document: CachedDocument, offset: number): readonly F
       (snippet.requiresNoCodeBlock === undefined || code === undefined) &&
       (snippet.requiresNoZone === undefined || !written.includes(snippet.requiresNoZone)) &&
       (snippet.placement === undefined || placedAt(document, offset, snippet.placement)),
+  ).map((snippet) =>
+    snippet.label === 'component' ? { ...snippet, body: componentSkeleton(componentTag) } : snippet,
   );
 }

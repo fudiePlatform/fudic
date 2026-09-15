@@ -15,12 +15,18 @@ const settings: FudicSettings = {
 };
 
 describe('buildClientLaunch', () => {
-  it('watches the three things that invalidate the server', () => {
+  it('watches the four things that invalidate the server', () => {
     // Missing any one of them is a silent failure with a slow diagnosis: `.fud` and a new
     // component never resolves, `tsconfig` and the program keeps stale options,
-    // `package.json` and the server keeps typechecking with the previous TypeScript.
+    // `package.json` and the server keeps typechecking with the previous TypeScript,
+    // `fudic.json` and the snippet keeps proposing the prefix the project had before.
     expect(buildClientLaunch(settings, '/srv.js', '/lib').fileEvents).toEqual(FILE_EVENTS);
-    expect(FILE_EVENTS).toEqual(['**/*.fud', '**/tsconfig*.json', '**/package.json']);
+    expect(FILE_EVENTS).toEqual([
+      '**/*.fud',
+      '**/tsconfig*.json',
+      '**/package.json',
+      '**/fudic.json',
+    ]);
   });
 
   it('selects file-scheme fudic documents only', () => {

@@ -21,7 +21,7 @@ import {
   serverCodeBlock,
   styleBlock,
 } from '@fudic/cli';
-import { SNIPPETS } from '../../src/services/snippets.js';
+import { componentSkeleton, SNIPPETS } from '../../src/services/snippets.js';
 
 /** The body the catalogue offers for a label, in the `empty-document` scope. */
 function bodyOf(label: string): string {
@@ -71,6 +71,24 @@ describe('the skeletons are the CLI templates', () => {
         lang: '${1:en}',
         renderHead: '    @RenderHead()',
         sections: renderSectionBlocks(['${2:nav}']),
+      }),
+    );
+  });
+
+  /**
+   * SDD-41 criterion 14: with a prefix, the two still hand over the same file.
+   *
+   * The snippet proposes `shop-button` where `fudic g component button` in that same
+   * project writes `shop-button`. Byte for byte, with the tabstop where the CLI has the
+   * finished tag — which is all a snippet body is.
+   */
+  it('component, under a project that declares a prefix', () => {
+    expect(componentSkeleton('shop-button')).toBe(
+      renderTemplate('component.fud', {
+        code: codeBlock(),
+        head: styleBlock(),
+        tag: '${1:shop-button}',
+        body: '    $0\n',
       }),
     );
   });
