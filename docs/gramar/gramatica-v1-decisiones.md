@@ -1119,9 +1119,19 @@ es error**: no emite nada (el `required: false` de Razor por defecto).
 la ruta se inyectan al final del `<head>` con un aviso. Una `@section` que nadie consume sí avisa:
 su contenido no aparecería en la salida, y eso siempre es un bug del autor.
 
-**87.** **Layouts anidados.** Un layout puede declarar su propio `<link rel="layout">`: la cadena
+**87.** ~~**Layouts anidados.** Un layout puede declarar su propio `<link rel="layout">`: la cadena
 se compone **de dentro afuera** y es el equivalente jerárquico del `_ViewStart` de Razor. Un ciclo
-en la cadena es error de compilación, detectado como ya se detecta en el grafo de componentes.
+en la cadena es error de compilación, detectado como ya se detecta en el grafo de componentes.~~
+
+**REVOCADA por [BUG-38](../sdd/bugs/BUG-38-un-layout-dentro-de-otro.md).** **Un layout no puede
+declarar `<link rel="layout">`: solo una ruta nombra un layout, y nombra exactamente uno**
+(`FUD0439`). La analogía con `_ViewStart` no se sostiene, porque un layout de fudic **es una página
+entera** —doctype, `<html>`, `<head>`, `<body>` obligatorios por la decisión 82— y encadenar dos
+plantea preguntas que esta decisión nunca contestó: qué doctype sale, qué atributos de `<html>` y
+de `<body>` ganan, qué pasa con dos `<title>`. El emit tampoco las contestaba: descartaba el shell
+del layout de dentro **en silencio** y se quedaba con dos fragmentos. La decisión 88 sigue vigente
+tal cual — regula la cascada del `<head>` entre **la ruta y su layout**, que es la única
+composición que queda. Con la cadena se retiran `FUD0422` (ciclo) y `FUD0703` (SDD-40 §4.8).
 
 **88.** **Cascada del `<head>`, con orden determinista.** En el punto del `@RenderHead()` entran,
 en este orden: los elementos del `<head>`-fragment de la ruta (verbatim, `<title>` interpolado), el
@@ -1396,7 +1406,7 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 84 | Layouts | `@RenderBody` / `@RenderHead` / `@RenderSection` / `@section`, ortografía de Razor |
 | 85 | Layouts | Paréntesis obligatorios; `@RenderSection` toma identificador desnudo; sección ausente = silencio |
 | 86 | Layouts | Cardinalidad: 1 `@RenderBody`, ≤1 `@RenderHead`, nombres de sección únicos |
-| 87 | Layouts | Layouts anidados: cadena de dentro afuera; ciclo → error |
+| 87 | Layouts | ~~Layouts anidados~~ · **REVOCADA (BUG-38)**: un layout no nombra un layout → `FUD0439` |
 | 88 | Layouts | Cascada del `<head>` con orden determinista; gana la capa más interna |
 | 89 | Layouts | En v1 el layout no declara `load`: recibe el `data` de la ruta. Su `@code` declara sus **props** y nada más (`FUD0700`, SDD-40); `FUD0437` retirado |
 | 90 | Layouts | `@section` exclusivo del par ruta↔layout; en componentes es `<slot>` |

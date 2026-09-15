@@ -250,14 +250,13 @@ function emitFor(
     case 'route-document':
       return emitRouteModuleMapped(graph, emitOptions);
     case 'layout-document': {
-      // The entry layout is not part of `graph.layouts` — that list is its ANCESTRY, the
-      // chain above it — so its `ResolvedLayout` is built here, mirroring the component case.
+      // A layout entry is never in `graph.layouts` — only a ROUTE puts one there — so its
+      // `ResolvedLayout` is built here, mirroring the component case.
       const self: ResolvedLayout = {
         path: id,
         source: graph.entrySource,
         doc: entry,
         deps: graph.entryDeps,
-        ...(entry.layoutHref !== undefined ? { parentHref: entry.layoutHref } : {}),
       };
       return emitLayoutModuleMapped(graph, self, emitOptions);
     }

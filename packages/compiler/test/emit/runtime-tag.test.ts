@@ -129,65 +129,14 @@ describe('what already worked keeps working', () => {
 });
 
 /**
- * The marker is written by the OUTERMOST layout and answered by the ROUTE, and until now
- * nothing joined the two across a nested link: the slot object a nested layout builds for its
- * parent carried `head`, `body`, `section` and `blocks`, and the parent's `route.runtime()`
- * therefore called a function nobody had put there. Every route under a nested layout died at
- * prerender with `route.runtime is not a function` — latent only because no route in the
- * example was written under one.
+ * The marker is written by the layout and answered by the ROUTE, and this used to be the one
+ * place where the two could fail to meet: across a NESTED link the slot object the inner
+ * layout built for its parent carried `head`, `body`, `section` and `blocks` but no
+ * `runtime`, so `route.runtime()` called a function nobody had put there. BUG-31 §T1 added
+ * the missing line; `FUD0439` removed the link that made the gap possible, and with it the
+ * only shape of this defect. What is left to check is that the two still meet in the one
+ * arrangement there is — which is what the tests above this comment already do.
  */
-describe('a nested layout passes the runtime question up (BUG-31 §T1)', () => {
-  const OUTER = LAYOUT.replace(
-    '<head>',
-    '<head><script type="module" src="fudic:runtime"></script>',
-  );
-  const INNER = [
-    '<!DOCTYPE html><html><head><link rel="layout" href="./outer.fud">@RenderHead()</head>',
-    '<body><section>@RenderBody()</section></body></html>',
-  ].join('\n');
-  const files = { '/outer.fud': OUTER, '/inner.fud': INNER, '/c.fud': COUNTER };
-
-  /** Emit the whole chain and RUN it: the defect was a call, not a piece of text. */
-  function render(route: string): string {
-    const graph = resolveDocument('/r.fud', memoryIo({ '/r.fud': route, ...files })).value;
-    const evaluate = (code: string, bindings: Record<string, unknown>, returns: string): unknown => {
-      const body =
-        code.replace(/^import[^\n]*\n/gmu, '').replace(/^export\s+/gmu, '') + `\nreturn ${returns};`;
-      // eslint-disable-next-line @typescript-eslint/no-implied-eval
-      return new Function(...Object.keys(bindings), body)(...Object.values(bindings)) as unknown;
-    };
-    const renderAppCounter = ($dom: Record<string, (...a: unknown[]) => unknown>, $shadow: unknown): void => {
-      $dom['append']!($shadow, $dom['text']!('+1'));
-    };
-    const parentLayout = evaluate(emitLayoutModule(graph, graph.layouts[1]!), {}, 'layout');
-    const layout = evaluate(emitLayoutModule(graph, graph.layouts[0]!), { parentLayout }, 'layout');
-    const page = evaluate(
-      emitRouteModule(graph, { routeName: 'ruta' }),
-      { layout, renderAppCounter, renderAppCounterTag: 'app-counter', renderAppCounterCss: '' },
-      'page',
-    ) as (data: unknown, io: unknown, ioc: unknown, props: unknown) => Iterable<string>;
-    return [
-      ...page({}, { ...minimalSsr(), nonce: '', runtime: { boot: '/boot.js', main: '/main.js' } }, undefined, undefined),
-    ].join('');
-  };
-
-  it('forwards it, so the chain renders instead of throwing', () => {
-    const route = [
-      '<link rel="layout" href="./inner.fud">',
-      '<link rel="component" href="./c.fud">',
-      '<app-counter></app-counter>',
-    ].join('\n');
-    const html = render(route);
-    expect(html).toContain('/main.js');
-    expect(html).toContain('/boot.js');
-  });
-
-  it('and the ROUTE is still the one who answers: nothing to hydrate, no runtime', () => {
-    const html = render('<link rel="layout" href="./inner.fud">\n<p>hola</p>');
-    expect(html).not.toContain('/main.js');
-    expect(html).toContain('/boot.js');
-  });
-});
 
 describe('needsRuntime, at its three doors', () => {
   it('opens on any one of them and on nothing else', () => {

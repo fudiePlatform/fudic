@@ -299,18 +299,21 @@ que el autor dice de su función.
 Un valor sin forma obvia se escribe `null as unknown as <el tipo>` y no `@()`: el `return` de un
 resolver es **código**, no un valor de atributo, y `@()` ahí no es gramática de nada.
 
-### 4.8. Layouts anidados
+### 4.8. ~~Layouts anidados~~ — REVOCADA
 
-Cada layout declara las suyas y recibe las suyas. El módulo de un layout anidado reenvía a su
+> **REVOCADA por [BUG-38](./bugs/BUG-38-un-layout-dentro-de-otro.md).** Un layout no puede
+> declarar `<link rel="layout">` (`FUD0439`), así que no hay cadena, no hay props heredadas y
+> no hay `FUD0703`. Lo que queda es lo de §4.7, que es la regla entera: **un** layout declara
+> sus props y la ruta las resuelve. Se conserva el texto original por trazabilidad.
+
+~~Cada layout declara las suyas y recibe las suyas. El módulo de un layout anidado reenvía a su
 padre **las del padre**, no las propias, exactamente como ya reenvía las secciones y los bloques.
 Lo que `layout(ctx, data)` de la ruta devuelve es la unión de lo que declara la cadena; dos
-layouts de la cadena que declaren el mismo nombre con tipos distintos es `FUD0703`.
+layouts de la cadena que declaren el mismo nombre con tipos distintos es `FUD0703`.~~
 
-**Dónde se ancla `FUD0703`:** sobre el `<link rel="layout">` del layout anidado — el único
+~~**Dónde se ancla `FUD0703`:** sobre el `<link rel="layout">` del layout anidado — el único
 span de la cadena que pertenece al fichero que se está emitiendo, y el mismo sitio donde
-`FUD0702` cae en la ruta. Se comparan los **textos** de los tipos, no tipos resueltos: este
-pase tiene un AST. Un tipo que ninguno de los dos escribe no se compara, igual que
-`optional` no inventa un error sobre lo que no puede demostrar (BUG-23 §4.4).
+`FUD0702` cae en la ruta.~~
 
 ---
 
@@ -335,7 +338,7 @@ pase tiene un AST. Un tipo que ninguno de los dos escribe no se compara, igual q
 | `FUD0700` | `error` | El `@code` de un layout contiene algo que no es su declaración de props. |
 | `FUD0701` | `error` | Una prop de layout recibe un valor reactivo (`signal` / `computed`). Un layout no tiene mitad de cliente que pueda repintarlo. |
 | `FUD0702` | `error` | La ruta no resuelve una prop **requerida** del layout — porque falta en el `return` de `layout(ctx, data)`, o porque la ruta no exporta esa función. Sobre el `<link rel="layout">`. Es el que ancla la bombilla. |
-| `FUD0703` | `error` | Dos layouts de la misma cadena declaran la misma prop con tipos incompatibles. |
+| `FUD0703` | — | **RETIRADO por [BUG-38](./bugs/BUG-38-un-layout-dentro-de-otro.md).** Existía porque las props de layout de un render eran **un** espacio de nombres compartido por los eslabones de una cadena, así que dos podían pedirle a la ruta un nombre que tenía que ser de dos tipos. Un layout no tiene con quién discrepar. El código no se reutiliza. |
 | `0704`–`0719` | | Reservados. |
 
 ---
@@ -361,8 +364,11 @@ Tests en `packages/compiler/test/emit/` (1–7), `packages/vite/test/` (8–11),
 
 5. `page(data, io, layoutProps)` pasa las props al módulo del layout, y el layout las
    desestructura arriba del todo, antes de su primer `yield`.
-6. **Anidados.** Con dos layouts en cadena, cada uno recibe **las suyas** y reenvía las del padre.
-   Dos que declaran el mismo nombre con tipos incompatibles emiten `FUD0703`.
+6. ~~**Anidados.** Con dos layouts en cadena, cada uno recibe **las suyas** y reenvía las del
+   padre. Dos que declaran el mismo nombre con tipos incompatibles emiten `FUD0703`.~~
+   **Retirado con §4.8 por [BUG-38](./bugs/BUG-38-un-layout-dentro-de-otro.md).** En su lugar:
+   un layout toma solo sus nombres, y dos layouts distintos que escriban el mismo nombre con
+   tipos distintos **no** producen diagnóstico, porque no comparten render.
 7. El chunk de cliente de una ruta con layout **sigue sin anclar nada** del layout: una entrada en
    `sources`, y ningún mapeo al `.fud` del layout. Es el criterio de SDD-39 §6.6, que este SDD no
    puede romper.
