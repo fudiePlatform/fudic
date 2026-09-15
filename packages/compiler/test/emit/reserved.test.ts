@@ -154,7 +154,7 @@ describe('SDD-15 §4.7 — the emit does not throw', () => {
       '<m-el>\n  <template shadowrootmode="open"><span></span></template>\n</m-el>\n';
     const { props, signals, client, diagnostics } = extractCode(source, componentDoc(source));
     expect(diagnostics.map((d) => d.code)).toEqual(['FUD0290']);
-    expect(bareProps(props)).toEqual([{ name: 'title', optional: false }]);
+    expect(bareProps(props)).toEqual([{ name: 'title', optional: false, type: 'string' }]);
     expect(bareSignals(signals)).toEqual([{ name: 'n', init: '1', kind: 'signal' }]);
     expect(client.body.map((s) => s.text)).toEqual(['const $bad = title;', 'const good = 2;']);
   });

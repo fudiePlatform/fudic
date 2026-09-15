@@ -23,6 +23,7 @@ function routeBuild(
       isPage: true,
       hasLoad: over.hasLoad ?? false,
       hasPaths: false,
+      hasLayout: false,
       strategy: over.strategy ?? NO_STRATEGY,
     },
     decision: { prerender: false, enumerate: false, prerenderedHtml: false, ...decision },

@@ -35,6 +35,14 @@ export interface PageAnalysis {
   readonly hasLoad: boolean;
   /** The `@server` region exports `paths()`. */
   readonly hasPaths: boolean;
+  /**
+   * The `@server` region exports `layout(ctx, data)` — the layout props of this render
+   * (SDD-40 §3.2).
+   *
+   * The third reserved name, read off the AST like the other two and for the same reason: an
+   * `export function layout` inside a string or a comment exports nothing.
+   */
+  readonly hasLayout: boolean;
   /** The `strategy()` call, read statically (SDD-20 §4.8). */
   readonly strategy: StrategyAnalysis;
   /** The `href` of `<link rel="layout">`, when the file declares one (SDD-21). */
@@ -62,6 +70,7 @@ export function analyzePage(source: string, file = ''): PageAnalysis {
       isPage: false,
       hasLoad: false,
       hasPaths: false,
+      hasLayout: false,
       strategy: NO_STRATEGY,
       ...(layoutHref ? { layoutHref } : {}),
     };
@@ -76,6 +85,7 @@ export function analyzePage(source: string, file = ''): PageAnalysis {
     isPage: true,
     hasLoad: names.has('load'),
     hasPaths: names.has('paths'),
+    hasLayout: names.has('layout'),
     strategy: strategyFrom(statements, file),
     ...(layoutHref ? { layoutHref } : {}),
   };

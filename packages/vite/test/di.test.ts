@@ -100,7 +100,7 @@ describe('the render wrapper', () => {
     // `load` and the components have to inject the same instances, or a root service would
     // be built twice for one response.
     expect(code).toContain('await load(withDi(ctx, $root))');
-    expect(code).toContain('yield* page(data, io(ctx), $root);');
+    expect(code).toContain('yield* page(data, io(ctx), $root, layout);');
   });
 
   it('names nothing of the injector on a route without a single DI call', () => {
@@ -109,7 +109,8 @@ describe('the render wrapper', () => {
     expect(code).not.toContain('iocRoot');
     expect(code).not.toContain('withDi');
     expect(code).not.toContain('publishedSeed');
-    expect(code).toContain('yield* page(data, io(ctx));');
+    // The container's place is held by `undefined`, so the layout props keep theirs.
+    expect(code).toContain('yield* page(data, io(ctx), undefined, layout);');
   });
 });
 

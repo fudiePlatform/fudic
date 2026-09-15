@@ -22,6 +22,13 @@ export interface RenderChunkOptions {
   readonly hasLoad: boolean;
   /** Whether it exports `paths()`; the wrapper re-exports it so the build can enumerate. */
   readonly hasPaths?: boolean;
+  /**
+   * Whether it exports `layout(ctx, data)` — the layout props of this render (SDD-40 §3.2).
+   *
+   * Edge variant only, like `load`: `@server` never ships to a client bundle, so the Service
+   * Worker receives the resolved props by the same cable it receives `data` (§4.5).
+   */
+  readonly hasLayout?: boolean;
   /** Edge variant: resolve data in process. Off for the linked (SW) variant. */
   readonly withLoad: boolean;
   /**
@@ -51,6 +58,10 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   const spec = JSON.stringify(options.pageModule);
   const server = JSON.stringify(`${options.pageModule}?server`);
   const edgeLoad = options.withLoad && options.hasLoad;
+  // The layout resolver, on the same terms as `load`: in process on the edge, never in the
+  // Service Worker. It is imported under another name because `layout` is what the PAGE
+  // module calls its own composition function, and one file should not hold two.
+  const edgeLayout = options.withLoad && options.hasLayout === true;
 
   const lines: string[] = [];
   const hasDi = options.hasDi === true;
@@ -70,6 +81,9 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   lines.push(`import { ${ssr.join(', ')} } from "@fudic/ssr";`);
   if (edgeLoad) {
     lines.push(`import { load } from ${server};`);
+  }
+  if (edgeLayout) {
+    lines.push(`import { layout as layoutProps } from ${server};`);
   }
   if (options.withLoad && options.hasPaths) {
     // Re-exported so the build can enumerate the param space at prerender time.
@@ -111,7 +125,17 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   } else {
     lines.push('    const data = ctx.data !== undefined ? ctx.data : {};');
   }
-  lines.push(`    yield* page(data, io(ctx)${hasDi ? ', $root' : ''});`);
+  // AFTER `load`, and with what it resolved in hand (§4.2). `ctx.layout` first for the same
+  // reason `ctx.data` comes first: the Service Worker was handed both already resolved, and
+  // running `@server` there is not a fallback, it is impossible.
+  if (edgeLayout) {
+    lines.push(
+      `    const layout = ctx.layout !== undefined ? ctx.layout : await layoutProps(${hasDi ? 'withDi(ctx, $root)' : 'ctx'}, data);`,
+    );
+  } else {
+    lines.push('    const layout = ctx.layout;');
+  }
+  lines.push(`    yield* page(data, io(ctx), ${hasDi ? '$root' : 'undefined'}, layout);`);
   lines.push('  })());');
   lines.push('}');
   lines.push('');

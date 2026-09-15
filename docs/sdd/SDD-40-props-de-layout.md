@@ -290,6 +290,12 @@ padre **las del padre**, no las propias, exactamente como ya reenvía las seccio
 Lo que `layout(ctx, data)` de la ruta devuelve es la unión de lo que declara la cadena; dos
 layouts de la cadena que declaren el mismo nombre con tipos distintos es `FUD0703`.
 
+**Dónde se ancla `FUD0703`:** sobre el `<link rel="layout">` del layout anidado — el único
+span de la cadena que pertenece al fichero que se está emitiendo, y el mismo sitio donde
+`FUD0702` cae en la ruta. Se comparan los **textos** de los tipos, no tipos resueltos: este
+pase tiene un AST. Un tipo que ninguno de los dos escribe no se compara, igual que
+`optional` no inventa un error sobre lo que no puede demostrar (BUG-23 §4.4).
+
 ---
 
 ## 5. Invariantes

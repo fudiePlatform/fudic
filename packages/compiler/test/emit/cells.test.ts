@@ -122,13 +122,13 @@ const server = (tag: string): string => emitComponentModule(graph, comp(tag));
 describe('Prop.channel — what the child asks to be handed (§6.2)', () => {
   it('is `signal` for Signal<T>, `fn` for a function signature, absent for a plain value', () => {
     expect(bareProps(codeOf(comp('cell-child')).props)).toEqual([
-      { name: 'value', optional: false, channel: 'signal' },
+      { name: 'value', optional: false, type: 'Signal<number>', channel: 'signal' },
     ]);
     expect(bareProps(codeOf(comp('cell-form')).props)).toEqual([
-      { name: 'onSave', optional: false, channel: 'fn' },
+      { name: 'onSave', optional: false, type: '(what: number) => void', channel: 'fn' },
     ]);
     expect(bareProps(codeOf(comp('cell-parent')).props)).toEqual([
-      { name: 'start', def: '0', optional: true },
+      { name: 'start', def: '0', optional: true, type: 'number' },
     ]);
   });
 
@@ -151,9 +151,11 @@ describe('Prop.channel — what the child asks to be handed (§6.2)', () => {
       }),
     );
     expect(bareProps(codeOf(g.components.get('cell-types')!).props)).toEqual([
-      { name: 'qualified', optional: false },
-      { name: 'other', optional: false },
-      { name: 'plain', optional: false },
+      // The type is READ either way — it is text, not a resolution — and none of the four
+      // asks for a channel, which is what this case is about.
+      { name: 'qualified', optional: false, type: 'core.Signal<number>' },
+      { name: 'other', optional: false, type: 'Other<number>' },
+      { name: 'plain', optional: false, type: 'number' },
       { name: 'bare', optional: false },
     ]);
   });

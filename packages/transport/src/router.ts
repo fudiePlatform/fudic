@@ -48,6 +48,22 @@ export interface RenderContext {
   readonly data?: unknown;
 }
 
+/**
+ * The layout props of one render (SDD-40 §3.2): the third reserved export of a route's
+ * `@server`, beside `load` and `paths`.
+ *
+ * It runs AFTER `load` and receives what it resolved, and that order is the whole of why it
+ * takes two parameters: a resolver that could only read the context would be stuck halfway,
+ * because a culture comes as readily out of the row `load` just fetched as out of the URL.
+ *
+ * What it returns travels beside `data` and never inside it — what a route paints and what
+ * its layout needs are two shapes, and mixing them makes the second an accident of the first.
+ */
+export type LayoutResolver<D = unknown, P = unknown> = (
+  ctx: RenderContext,
+  data: D,
+) => P | Promise<P>;
+
 /** What a linked route chunk exports. The plugin generates it (SDD-20 §3.4). */
 export interface RouteChunk {
   render(ctx: RenderContext): ReadableStream<Uint8Array>;

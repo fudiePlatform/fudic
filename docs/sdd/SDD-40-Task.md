@@ -5,7 +5,7 @@
 > `@fudic/transport` (`RenderContext.layout`) · `@fudic/vite` (envoltorio, endpoint, prerender) ·
 > `@fudic/language-server` (la bombilla) · `@fudic/example-basic` (la evidencia)
 > **Rama:** `worktree-sdd-40-props-de-layout`
-> **Progreso:** 4 / 14
+> **Progreso:** 7 / 14
 > **Después de SDD-39**, no en paralelo: los dos tocan
 > `packages/compiler/src/emit/layout.ts`. No comparten ninguna decisión, solo el fichero.
 
@@ -60,14 +60,14 @@ un `load` propio del layout (§7).
 
 ## Fase 2 — La ruta resuelve (3)
 
-- [ ] **5. El export `layout(ctx, data)`.**
+- [x] **5. El export `layout(ctx, data)`.**
       Tercer nombre reservado del `?server`, junto a `load` y `paths`. El módulo `?server` ya
       lleva la región verbatim, así que la tarea es reconocerlo, tipar `LayoutResolver` y que el
       envoltorio lo vea.
-- [ ] **6. El orden por render.**
+- [x] **6. El orden por render.**
       `load` y después `layout`, con `data` ya resuelto en la mano. `paths()` sigue siendo de
       build y no lo llama ninguna de las dos variantes del envoltorio. Criterios §6.8 y §6.9.
-- [ ] **7. La composición hasta el layout.**
+- [x] **7. La composición hasta el layout.**
       `page(data, io, layoutProps)` y `layout(data, io, route, props)`, con el desestructurado
       arriba del todo del módulo del layout. Un layout anidado reenvía a su padre **las del
       padre**, como ya reenvía secciones y bloques. `FUD0703` cuando dos de la cadena declaran el

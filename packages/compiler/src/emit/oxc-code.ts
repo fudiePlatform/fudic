@@ -62,6 +62,15 @@ export interface Prop {
    * by value, byte for byte (BUG-23 §4.4).
    */
   readonly channel?: 'signal' | 'fn';
+  /**
+   * The source of the key's type in `T`, verbatim — `string`, `Signal<number>`, `Post[]`.
+   *
+   * Absent when the key declares none or when `T` is not a literal this file can read, which
+   * is the same «not provable» the other two fields already mean. Two readers, both of which
+   * want the text and not a resolved type: `FUD0703` compares what two layouts of one chain
+   * wrote under the same name, and the editor's repair writes a value OF the type.
+   */
+  readonly type?: string;
 }
 
 /**
@@ -1631,7 +1640,7 @@ function readDeclarator(
   const called = is(callee, 'Identifier') ? name(callee!) : '';
 
   if (called === 'props' && is(id, 'ObjectPattern')) {
-    const declared = declaredMembers(init, named);
+    const declared = declaredMembers(init, named, source, map);
     for (const property of fieldArray(id, 'properties'))
       readProp(property, source, map, props, declared);
     // RECOGNISED, and that is what the answer means — not «it produced something». A
@@ -1698,6 +1707,8 @@ function members(node: OxcNode): readonly OxcNode[] {
 interface DeclaredMember {
   readonly required: boolean;
   readonly channel?: 'signal' | 'fn';
+  /** The annotation's own source, when the key carries one. See `Prop.type`. */
+  readonly type?: string;
 }
 
 /** The type `Signal<T>` is written as. By NAME, because this pass reads an AST, not types. */
@@ -1714,6 +1725,21 @@ const SIGNAL_TYPE = 'Signal';
  * callback in a type literal — a `Function` or a named alias resolves to nothing here, and
  * nothing is what it marks.
  */
+/**
+ * The source of a member's type annotation — `string`, `Signal<number>`, `(n: number) => void`
+ * — or `undefined` for a key that declares none.
+ *
+ * Verbatim, and never a resolved type: this pass reads an AST. Two readers want it and both
+ * want the TEXT. `FUD0703` compares what two layouts of one chain wrote under the same name,
+ * and the editor's repair writes a value OF the type, which it can only do by reading it.
+ */
+function typeSourceOf(member: OxcNode, source: string, map: MapOffset): string | undefined {
+  const annotation = field(member, 'typeAnnotation');
+  if (!is(annotation, 'TSTypeAnnotation')) return undefined;
+  const type = field(annotation, 'typeAnnotation');
+  return type === undefined ? undefined : source.slice(map(type.start), map(type.end));
+}
+
 function channelOf(member: OxcNode): 'signal' | 'fn' | undefined {
   // `{ value }` — a member with no type at all — parses, and its annotation comes back as
   // `null`. The `is` check is what makes this total: a key that declares nothing declares no
@@ -1730,6 +1756,8 @@ function channelOf(member: OxcNode): 'signal' | 'fn' | undefined {
 function declaredMembers(
   call: OxcNode,
   named: ReadonlyMap<string, OxcNode>,
+  source: string,
+  map: MapOffset,
 ): ReadonlyMap<string, DeclaredMember> {
   const args = field(call, 'typeArguments');
   const argument = args ? fieldArray(args, 'params')[0] : undefined;
@@ -1740,8 +1768,10 @@ function declaredMembers(
     const key = field(member, 'key');
     if (!is(member, 'TSPropertySignature') || !is(key, 'Identifier')) continue;
     const channel = channelOf(member);
+    const type = typeSourceOf(member, source, map);
     out.set(name(key), {
       required: member['optional'] !== true,
+      ...(type === undefined ? {} : { type }),
       ...(channel === undefined ? {} : { channel }),
     });
   }
@@ -1762,13 +1792,14 @@ function readProp(
   const member = declared.get(propName);
   const optional = member === undefined || !member.required;
   const channel = member?.channel === undefined ? {} : { channel: member.channel };
+  const type = member?.type === undefined ? {} : { type: member.type };
   const value = field(property, 'value');
   const at = span(map(property.start), map(property.end));
   if (value && is(value, 'AssignmentPattern')) {
     const right = field(value, 'right')!;
     const def = source.slice(map(right.start), map(right.end));
-    out.push({ name: propName, def, optional, at, ...channel });
+    out.push({ name: propName, def, optional, at, ...type, ...channel });
   } else {
-    out.push({ name: propName, optional, at, ...channel });
+    out.push({ name: propName, optional, at, ...type, ...channel });
   }
 }

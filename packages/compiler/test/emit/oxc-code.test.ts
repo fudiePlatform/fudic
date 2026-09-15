@@ -31,8 +31,8 @@ describe('extractCode', () => {
     const { props, signals } = extractCode(source, componentDoc(source));
     // 'a' has no default; neither key of `T` carries a `?`, so neither is optional
     expect(bareProps(props)).toEqual([
-      { name: 'a', optional: false },
-      { name: 'b', def: '2', optional: false },
+      { name: 'a', optional: false, type: 'string' },
+      { name: 'b', def: '2', optional: false, type: 'number' },
     ]);
     // The span is the property inside the `{ … }`, default included (SDD-40).
     expect(source.slice(props[0]!.at.start, props[0]!.at.end)).toBe('a');
@@ -81,7 +81,7 @@ describe('extractCode', () => {
     const at = source.indexOf('effect(() => console.log(a))');
     expect(diagnostics[0]!.span).toEqual({ start: at, end: at + 'effect(() => console.log(a))'.length });
     // The emit does not throw and does not give up on the file: props and signals are read.
-    expect(bareProps(props)).toEqual([{ name: 'a', optional: false }]);
+    expect(bareProps(props)).toEqual([{ name: 'a', optional: false, type: 'string' }]);
     expect(bareSignals(signals)).toEqual([{ name: 't', init: '1', kind: 'signal' }]);
   });
 
@@ -93,7 +93,7 @@ describe('extractCode', () => {
   it('skips rest/spread in the props pattern', () => {
     const source = wrap('@code {\n  const { a, ...rest } = props<{ a: string }>();\n}\n');
     expect(bareProps(extractCode(source, componentDoc(source)).props)).toEqual([
-      { name: 'a', optional: false },
+      { name: 'a', optional: false, type: 'string' },
     ]);
   });
 
@@ -218,7 +218,9 @@ describe('extractCode', () => {
     const source = '@code {\n  const { a } = props<{ a: string }>();\n}\n<m-el><span></span></m-el>\n';
     const doc = componentDoc(source);
     expect(doc.template).toBeUndefined();
-    expect(bareProps(extractCode(source, doc).props)).toEqual([{ name: 'a', optional: false }]);
+    expect(bareProps(extractCode(source, doc).props)).toEqual([
+      { name: 'a', optional: false, type: 'string' },
+    ]);
   });
 
   it('finds every emit(...) of @client, whatever the binding is called (SDD-15 §4.4)', () => {

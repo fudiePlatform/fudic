@@ -138,8 +138,10 @@ function buildLayoutModule(
   const doc = layout.doc;
   const source = layout.source;
   const nested = doc.layoutHref !== undefined;
-  // What its `@code` declares, and what is wrong with the rest of it (SDD-40 §3.1, §4.1).
-  const code = layoutCodeOf(source, doc);
+  // What its `@code` declares, and what is wrong with the rest of it (SDD-40 §3.1, §4.1) —
+  // including what the links ABOVE it already declared, which is the one fact of the chain a
+  // layout can check about itself (`FUD0703`, §4.8).
+  const code = layoutCodeOf(source, doc, inheritedProps(graph, layout));
 
   // Body codegen: the layout's own markup, with `route.body(…)` spliced in where the
   // author wrote `@RenderBody()` (the MarkupEmitter resolves the directive nodes).
@@ -263,6 +265,20 @@ function buildLayoutModule(
 function layoutParent(graph: DocumentGraph, layout: ResolvedLayout): ResolvedLayout | undefined {
   const i = graph.layouts.findIndex((l) => l.path === layout.path);
   return i === -1 ? graph.layouts[0] : graph.layouts[i + 1];
+}
+
+/**
+ * The props every layout ABOVE this one declares — its ancestry, outwards.
+ *
+ * The chain is one namespace (§4.8), so this is what a nested layout compares its own
+ * declarations against. Read straight off `codeOfDocument`, not through `layoutCodeOf`: what
+ * is wanted is what the ancestor declared, and its own diagnostics are its own module's to
+ * report — emitting them twice would say the same thing from two files.
+ */
+function inheritedProps(graph: DocumentGraph, layout: ResolvedLayout): readonly Prop[] {
+  const i = graph.layouts.findIndex((l) => l.path === layout.path);
+  const above = i === -1 ? graph.layouts : graph.layouts.slice(i + 1);
+  return above.flatMap((l) => codeOfDocument(l.source, l.doc).props);
 }
 
 /** Emit the module of one layout of the graph's chain. */
