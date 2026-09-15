@@ -18,6 +18,7 @@ import {
   emitLayoutModule,
   emitLayoutModuleMapped,
   emitRouteModule,
+  emitRouteModuleMapped,
   type ResolvedLayout,
 } from '../../src/emit/index.js';
 import { memoryIo, minimalSsr } from './_support.js';
@@ -305,6 +306,141 @@ describe('§6.6 — a nested chain: each link takes its own and forwards the res
       const graph = resolveDocument('/app/index.fud', io).value;
       expect(emitLayoutModuleMapped(graph, graph.layouts[0]!).diagnostics).toEqual([]);
     }
+  });
+});
+
+describe('§6.3 — `FUD0702`: a required prop the route does not resolve', () => {
+  const LAYOUT = layoutSource({
+    code: 'const { culture, theme = "light" } = props<{ culture: string; theme?: string }>();',
+    html: 'lang="@culture"',
+  });
+
+  /** The diagnostics the ROUTE's emit reports — the build's side of the contract. */
+  function routeDiagnostics(route: string): readonly Reported[] {
+    const graph = resolveDocument(
+      '/app/index.fud',
+      memoryIo({ '/app/index.fud': route, '/app/_layout.fud': LAYOUT }),
+    ).value;
+    return emitRouteModuleMapped(graph).diagnostics.map((d) => ({
+      code: d.code,
+      span: { start: d.span.start, end: d.span.end },
+    }));
+  }
+
+  const LINK = '<link rel="layout" href="./_layout.fud">';
+
+  it('reports it over the `<link rel="layout">` when the route exports no resolver', () => {
+    const route = `${LINK}<p>hola</p>`;
+    expect(routeDiagnostics(route)).toEqual([{ code: 'FUD0702', span: at(route, LINK) }]);
+  });
+
+  it('reports it over a resolver that returns an empty object', () => {
+    const route =
+      `${LINK}\n@code {\n@server {\n` +
+      'export function layout(ctx, data) { return {}; }\n}\n}\n<p>hola</p>';
+    expect(routeDiagnostics(route).map((d) => d.code)).toEqual(['FUD0702']);
+  });
+
+  it('reads a resolver exported through a clause, and one exported through none', () => {
+    // `export { layout }` names its bindings on the other side of the statement, where this
+    // pass has no declaration to walk into — so it reads as a route that resolves nothing.
+    const clause =
+      `${LINK}\n@code {\n@server {\n` +
+      'function layout(ctx, data) { return { culture: "es" }; }\nexport { layout };\n}\n}\n<p>hola</p>';
+    expect(routeDiagnostics(clause).map((d) => d.code)).toEqual(['FUD0702']);
+  });
+
+  it('reports it when the resolver returns everything but that prop', () => {
+    const route =
+      `${LINK}\n@code {\n@server {\n` +
+      'export function layout(ctx, data) { return { theme: "dark" }; }\n}\n}\n<p>hola</p>';
+    expect(routeDiagnostics(route).map((d) => d.code)).toEqual(['FUD0702']);
+  });
+
+  it('says nothing once the route resolves it', () => {
+    const route =
+      `${LINK}\n@code {\n@server {\n` +
+      'export function layout(ctx, data) { return { culture: "es" }; }\n}\n}\n<p>hola</p>';
+    expect(routeDiagnostics(route)).toEqual([]);
+  });
+
+  it('reads an arrow resolver whose body IS its return', () => {
+    const resolves =
+      `${LINK}\n@code {\n@server {\n` +
+      'export const layout = (ctx, data) => ({ culture: "es" });\n}\n}\n<p>hola</p>';
+    expect(routeDiagnostics(resolves)).toEqual([]);
+    // And the other half, which is what makes the first one mean something: silence there has
+    // to be «it resolves it», not «this shape was never read». The parentheses around the
+    // object are the grammar's — without them the `{` would open a block — so a reader that
+    // did not unwrap them called every arrow unreadable and never said a word about any.
+    const drops =
+      `${LINK}\n@code {\n@server {\n` +
+      'export const layout = (ctx, data) => ({ theme: "dark" });\n}\n}\n<p>hola</p>';
+    expect(routeDiagnostics(drops).map((d) => d.code)).toEqual(['FUD0702']);
+  });
+
+  it('walks past an export that declares neither a function nor a binding', () => {
+    const route =
+      `${LINK}\n@code {\n@server {\n` +
+      'export type Shape = { a: 1 };\nexport class Helper {}\n' +
+      'export function layout(ctx, data) { return { culture: "es" }; }\n}\n}\n<p>hola</p>';
+    expect(routeDiagnostics(route)).toEqual([]);
+  });
+
+  it('never complains about a prop with a default: the default IS the answer', () => {
+    const route =
+      `${LINK}\n@code {\n@server {\n` +
+      'export function layout(ctx, data) { return { culture: "es" }; }\n}\n}\n<p>hola</p>';
+    expect(routeDiagnostics(route).map((d) => d.code)).not.toContain('FUD0702');
+  });
+
+  it('invents nothing over a `return` it cannot read', () => {
+    // A build that reported a missing prop over a `return build(ctx)` it never looked inside
+    // would be inventing an error. Three shapes, one answer: silence.
+    for (const body of [
+      'export function layout(ctx, data) { return build(ctx); }',
+      'export function layout(ctx, data) { return { ...defaults, theme: "dark" }; }',
+      'export function layout(ctx, data) { return { [key]: 1 }; }',
+      'export function layout(ctx, data) { return { "culture": "es" }; }',
+      'export function layout(ctx, data) { console.log(data); }',
+      'export const layout = 1;',
+      'export const layout = (ctx, data) => build(ctx);',
+    ]) {
+      const route = `${LINK}\n@code {\n@server {\n${body}\n}\n}\n<p>hola</p>`;
+      expect(routeDiagnostics(route)).toEqual([]);
+    }
+  });
+
+  it('names the prop and its type, and names only the prop when there is no type', () => {
+    const typed = resolveDocument(
+      '/app/index.fud',
+      memoryIo({ '/app/index.fud': ROUTE, '/app/_layout.fud': LAYOUT }),
+    ).value;
+    expect(emitRouteModuleMapped(typed).diagnostics[0]?.message).toContain('`culture`: string');
+
+    const untyped = resolveDocument(
+      '/app/index.fud',
+      memoryIo({
+        '/app/index.fud': ROUTE,
+        '/app/_layout.fud': layoutSource({ code: 'const { culture } = props<{ culture }>();' }),
+      }),
+    ).value;
+    const message = emitRouteModuleMapped(untyped).diagnostics[0]?.message ?? '';
+    expect(message).toContain('`culture`');
+    expect(message).not.toContain('`culture`:');
+  });
+
+  it('says nothing when the layout requires nothing', () => {
+    const graph = resolveDocument(
+      '/app/index.fud',
+      memoryIo({
+        '/app/index.fud': ROUTE,
+        '/app/_layout.fud': layoutSource({
+          code: 'const { theme = "light" } = props<{ theme?: string }>();',
+        }),
+      }),
+    ).value;
+    expect(emitRouteModuleMapped(graph).diagnostics).toEqual([]);
   });
 });
 

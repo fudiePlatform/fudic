@@ -5,7 +5,7 @@
 > `@fudic/transport` (`RenderContext.layout`) · `@fudic/vite` (envoltorio, endpoint, prerender) ·
 > `@fudic/language-server` (la bombilla) · `@fudic/example-basic` (la evidencia)
 > **Rama:** `worktree-sdd-40-props-de-layout`
-> **Progreso:** 10 / 14
+> **Progreso:** 13 / 14
 > **Después de SDD-39**, no en paralelo: los dos tocan
 > `packages/compiler/src/emit/layout.ts`. No comparten ninguna decisión, solo el fichero.
 
@@ -88,15 +88,15 @@ un `load` propio del layout (§7).
 
 ## Fase 4 — El contrato y la bombilla (4)
 
-- [ ] **11. `FUD0702` en el build.**
+- [x] **11. `FUD0702` en el build.**
       Prop requerida del layout que la ruta no resuelve —falta en el `return`, o no hay
       `layout`—, sobre el `<link rel="layout">` de la ruta, que es donde se declara la relación.
       En `vite` y en `fudic check`. Criterio §6.3.
-- [ ] **12. La proyección ve las props del layout.**
+- [x] **12. La proyección ve las props del layout.**
       El `return` de `layout(ctx, data)` se comprueba contra el tipo de `props<{…}>()` del layout.
       Es lo que hace que en el editor **la voz sea de TypeScript** y no se reporte dos veces
       (SDD-36 §3.1). Criterio §6.12.
-- [ ] **13. La acción de código.**
+- [x] **13. La acción de código.**
       *«Completar las props requeridas del layout»*: los campos que falten en el `return`, o la
       función entera si no existe —creando el `@server` si tampoco lo hay—. Con un valor **del
       tipo de cada prop**, por la razón de SDD-36: una reparación que deja errores de tipos que

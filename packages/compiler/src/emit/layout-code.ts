@@ -26,6 +26,8 @@ import { codeOfDocument, type Prop } from './oxc-code.js';
 const FUD_LAYOUT_CODE = 'FUD0700';
 /** A layout prop asks for a reactive value. */
 const FUD_LAYOUT_REACTIVE_PROP = 'FUD0701';
+/** The route does not resolve a REQUIRED prop of its layout. */
+const FUD_LAYOUT_PROP_UNRESOLVED = 'FUD0702';
 /** Two layouts of one chain declare the same prop with incompatible types. */
 const FUD_LAYOUT_PROP_CLASH = 'FUD0703';
 
@@ -118,6 +120,55 @@ export function layoutCodeOf(
   const props = code.props.map((p) => plain(p, diagnostics));
   reportClashes(props, inherited, doc.layoutLink?.openSpan, diagnostics);
   return { props, diagnostics };
+}
+
+/**
+ * The props the whole layout chain of a graph REQUIRES — no default and not optional.
+ *
+ * Read off `codeOfDocument` rather than `layoutCodeOf`: what is wanted is what the chain
+ * declares, and each layout's own diagnostics belong to its own module. A prop with a default
+ * is not required, which is the whole of §6.3's first half — the default is the answer to
+ * «the route resolved nothing», not a problem to report.
+ */
+export function requiredLayoutProps(
+  layouts: readonly { readonly source: string; readonly doc: LayoutDocument }[],
+): readonly Prop[] {
+  return layouts
+    .flatMap((l) => codeOfDocument(l.source, l.doc).props)
+    .filter((p) => !p.optional && p.def === undefined);
+}
+
+/**
+ * `FUD0702` — a required prop of the layout that the route does not resolve (§4.7).
+ *
+ * That a route fails to resolve one is an ERROR and nothing softer; it is the same contract a
+ * component's required prop has, reported the same way (SDD-36 §3.1). It lands on the route's
+ * `<link rel="layout">`, which is where the route declares the relation and therefore the one
+ * place in the file that is about the layout at all.
+ *
+ * `resolved` is what `layout(ctx, data)` returns, and `undefined` there means «no resolver, or
+ * one this pass cannot read». The first case is exactly what the diagnostic is for; the second
+ * would be inventing an error, and the caller separates them before calling.
+ *
+ * In the EDITOR this is not served: the fact is TypeScript's, which checks the `return` of
+ * `layout` against the type of `props<{…}>()` over the projection. One voice per fact — what
+ * the server adds there is the hands, not a second opinion (§4.7).
+ */
+export function unresolvedLayoutProps(
+  required: readonly Prop[],
+  resolved: readonly string[],
+  anchor: Span,
+): readonly Diagnostic[] {
+  const has = new Set(resolved);
+  return required
+    .filter((prop) => !has.has(prop.name))
+    .map((prop) =>
+      errorDiag(
+        FUD_LAYOUT_PROP_UNRESOLVED,
+        `the layout requires the prop \`${prop.name}\`${prop.type === undefined ? '' : `: ${prop.type}`} and this route does not resolve it — return it from \`export function layout(ctx, data)\``,
+        anchor,
+      ),
+    );
 }
 
 /**

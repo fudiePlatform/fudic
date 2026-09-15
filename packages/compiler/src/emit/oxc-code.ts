@@ -20,6 +20,7 @@ import type { ResolvedComponent } from './resolve.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import { errorDiag, isEmptySpan, span } from '../types/index.js';
 import { JsBatch, type JsFragmentKind, type OxcNode } from '../oxc/index.js';
+import { unwrapParens } from '../binding/index.js';
 import { collectAttributeJs, collectTemplateJs, type JsFragmentVisitor } from './constructs.js';
 import type { Anchor } from './writer.js';
 import {
@@ -328,6 +329,23 @@ export interface TemplateJs {
   offset(bufferOffset: number): number;
 }
 
+/**
+ * What a route's `layout(ctx, data)` resolves, and where a repair would write into it
+ * (SDD-40 §4.7, §3.5).
+ *
+ * `keys` absent means the return is not a plain object literal this pass can read — a
+ * `return build(ctx)`, a spread, a computed key. «Not provable» reports nothing and repairs
+ * nothing, which is the same bargain an unreadable `T` already makes (BUG-23 §4.4).
+ */
+export interface LayoutResolverCode {
+  /** The property names it returns, in source order. Absent when the return is unreadable. */
+  readonly keys?: readonly string[];
+  /** Just past the `{` of the returned object literal, where a new field goes. */
+  readonly fieldsAt?: number;
+  /** Whether that literal already holds a property — what decides if a comma is needed. */
+  readonly hasFields: boolean;
+}
+
 export interface ExtractedCode {
   readonly props: Prop[];
   /** Every name the component declares with `signal(...)` or `computed(...)`, in order. */
@@ -441,6 +459,15 @@ export interface ExtractedCode {
    * `undefined`, always, and that is knowable at compile time (`FUD0621`).
    */
   readonly serverExports: readonly string[];
+  /**
+   * The route's `export … layout(ctx, data)` — the third reserved name (SDD-40 §3.2).
+   *
+   * Absent when the file exports none, which is a different answer from «it exports one this
+   * pass cannot read»: the first is a route that resolves nothing, the second is a return
+   * nobody may draw conclusions from. Both the build's `FUD0702` and the editor's repair need
+   * to tell them apart, and both need the offsets, so they come out of the one Oxc pass here.
+   */
+  readonly layoutResolver?: LayoutResolverCode;
   /**
    * The statements that REGISTER and run in a browser — the neutral zone's and `@client`'s
    * — with the imports they reference (SDD-38 §4.5).
@@ -673,6 +700,7 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     di,
     server: zoneCode(serverStatements, source, map, diEdits, () => true, rewritten),
     serverExports: exportedNames(serverStatements),
+    ...spread('layoutResolver', layoutResolverOf(serverStatements, map)),
     providers: mergeZones(
       zoneCode(
         neutralStatements,
@@ -737,6 +765,97 @@ export function codeOfDocument(source: string, doc: CodeDocument): ExtractedCode
 
 /** The name a route's `load()` result travels under, on both sides (SDD-39 §4.8). */
 const DATA_BINDING = 'data';
+
+/** `{ k: v }` for a present value, `{}` for an absent one — `exactOptionalPropertyTypes`. */
+const spread = <T,>(key: string, value: T | undefined): Record<string, T> =>
+  value === undefined ? {} : { [key]: value };
+
+/** The third reserved export of a route's `@server` (SDD-40 §3.2). */
+const LAYOUT_EXPORT = 'layout';
+
+/**
+ * The route's exported `layout`, with what it returns and where a field would go.
+ *
+ * Read off the AST and off one shape only: a `return { … }` whose argument is a plain object
+ * literal, written directly in the exported function. That is deliberately narrow, because
+ * what the answer is used for is `FUD0702` and the repair beside it, and a build that reported
+ * a missing prop over a `return buildProps(ctx)` it never looked inside would be inventing an
+ * error. What it cannot read comes back with no `keys`, and no `keys` reports nothing.
+ *
+ * Both declaration shapes count, since both are how people write it: the function statement
+ * and the `const layout = (ctx, data) => ({ … })` arrow, whose body IS its return.
+ */
+function layoutResolverOf(
+  statements: readonly OxcNode[],
+  map: MapOffset,
+): LayoutResolverCode | undefined {
+  for (const stmt of statements) {
+    if (!is(stmt, 'ExportNamedDeclaration')) continue;
+    const declaration = field(stmt, 'declaration');
+    if (declaration === undefined) continue;
+    if (is(declaration, 'FunctionDeclaration')) {
+      const id = field(declaration, 'id');
+      if (!is(id, 'Identifier') || name(id) !== LAYOUT_EXPORT) continue;
+      return returnedObject(field(declaration, 'body'), map);
+    }
+    if (!is(declaration, 'VariableDeclaration')) continue;
+    for (const declarator of fieldArray(declaration, 'declarations')) {
+      const id = field(declarator, 'id');
+      if (!is(id, 'Identifier') || name(id) !== LAYOUT_EXPORT) continue;
+      const init = field(declarator, 'init');
+      if (!is(init, 'ArrowFunctionExpression') && !is(init, 'FunctionExpression')) {
+        return { hasFields: false };
+      }
+      // `(ctx, data) => ({ … })`: the expression body IS the return, and the parentheses
+      // around it are the grammar's — without them the `{` would open a block — so they are
+      // unwrapped rather than read as «not an object literal».
+      const body = unwrapParens(field(init!, 'body'));
+      return is(body, 'ObjectExpression') ? readObject(body!, map) : returnedObject(body, map);
+    }
+  }
+  return undefined;
+}
+
+/** The first `return { … }` of a function body, read; anything else is present but unreadable. */
+function returnedObject(body: OxcNode | undefined, map: MapOffset): LayoutResolverCode {
+  if (!is(body, 'BlockStatement')) return { hasFields: false };
+  for (const stmt of fieldArray(body!, 'body')) {
+    if (!is(stmt, 'ReturnStatement')) continue;
+    const argument = unwrapParens(field(stmt, 'argument'));
+    return is(argument, 'ObjectExpression') ? readObject(argument!, map) : { hasFields: false };
+  }
+  return { hasFields: false };
+}
+
+/** One object literal: its keys, and where a new field goes — just past its `{`. */
+function readObject(object: OxcNode, map: MapOffset): LayoutResolverCode {
+  const keys = objectKeys(object);
+  const properties = fieldArray(object, 'properties');
+  return {
+    ...spread('keys', keys),
+    fieldsAt: map(object.start) + 1,
+    hasFields: properties.length > 0,
+  };
+}
+
+/**
+ * The property names of an object literal, when every one of them is a plain identifier.
+ *
+ * Anything else — a spread, a computed key, a quoted one — makes the WHOLE literal unreadable
+ * rather than shortening it, and shortening is the dangerous answer: a `...defaults` can carry
+ * the very prop the build was about to call missing. Unreadable reports nothing and repairs
+ * nothing, which costs a `{ 'culture': 'es' }` its diagnostic and costs nobody a wrong one.
+ */
+function objectKeys(object: OxcNode): readonly string[] | undefined {
+  const out: string[] = [];
+  for (const property of fieldArray(object, 'properties')) {
+    if (!is(property, 'Property') || property['computed'] === true) return undefined;
+    const key = field(property, 'key');
+    if (!is(key, 'Identifier')) return undefined;
+    out.push(name(key));
+  }
+  return out;
+}
 
 /**
  * The names an `export` binds: `export function load` → `load`.
@@ -1736,8 +1855,10 @@ const SIGNAL_TYPE = 'Signal';
 function typeSourceOf(member: OxcNode, source: string, map: MapOffset): string | undefined {
   const annotation = field(member, 'typeAnnotation');
   if (!is(annotation, 'TSTypeAnnotation')) return undefined;
-  const type = field(annotation, 'typeAnnotation');
-  return type === undefined ? undefined : source.slice(map(type.start), map(type.end));
+  // A `TSTypeAnnotation` with no type inside it is not a node Oxc builds: the `:` is what
+  // makes the annotation, and what follows it is what makes the `:` parse.
+  const type = field(annotation, 'typeAnnotation')!;
+  return source.slice(map(type.start), map(type.end));
 }
 
 function channelOf(member: OxcNode): 'signal' | 'fn' | undefined {

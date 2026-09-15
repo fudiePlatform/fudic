@@ -13,9 +13,21 @@
 import type { CodeBlockNode } from '@fudic/compiler';
 import { USER_ECHO_CAPS } from './caps.js';
 import { partitionCode } from './code.js';
-import { serverFileName } from './paths.js';
+import type { LayoutResolver } from './layout-resolver.js';
+import { componentModuleSpecifier, serverFileName } from './paths.js';
 import type { VirtualFile } from './types.js';
 import { VirtualWriter } from './writer.js';
+
+/** What the route's `layout(ctx, data)` is checked against (SDD-40 §4.7). */
+const LAYOUT_PROPS = '$LayoutProps';
+
+/** The layout this file declares, and where its resolver takes a return type. */
+export interface LayoutContract {
+  /** The `href` of the `<link rel="layout">` — the module `$Props` is imported from. */
+  readonly href: string;
+  /** The route's `export … layout`, when it has one the projection can annotate. */
+  readonly resolver: LayoutResolver | undefined;
+}
 
 /**
  * Emit `<name>.fud.server.ts` from the file's `@code`.
@@ -27,9 +39,18 @@ export function emitServerVirtual(
   source: string,
   fudPath: string,
   code: CodeBlockNode | undefined,
+  layout?: LayoutContract,
 ): VirtualFile {
   const { neutral, server } = partitionCode(code);
   const w = new VirtualWriter(source);
+  // The layout's contract, imported the way every other one is: `import type`, `$` namespace,
+  // and only when this file has something to check against it (SDD-23 §4.4).
+  const annotateAt = layout?.resolver?.annotateAt;
+  if (layout !== undefined && annotateAt !== undefined) {
+    w.scaffold(
+      `import type { $Props as ${LAYOUT_PROPS} } from '${componentModuleSpecifier(layout.href)}';\n`,
+    );
+  }
 
   // The neutral zone belongs to the client virtual (`USER_ECHO_CAPS`): it lives in both files,
   // and with two projections answering the same offset the editor shows the answer twice —
@@ -40,7 +61,17 @@ export function emitServerVirtual(
     w.scaffold('\n');
   }
   for (const region of server) {
-    w.copy(region);
+    // The route's `layout(ctx, data)` gets the return type it never wrote, spliced into the
+    // author's own text so `TS2739` lands on the author's own `return { … }` (SDD-40 §4.7).
+    // A synthetic assignment beside it would report on the synthetic assignment, which maps
+    // to nothing anyone can see — the exact failure `contract.ts` describes for props.
+    if (annotateAt !== undefined && annotateAt > region.start && annotateAt <= region.end) {
+      w.copy({ start: region.start, end: annotateAt });
+      w.scaffold(`: ${LAYOUT_PROPS} | Promise<${LAYOUT_PROPS}>`);
+      w.copy({ start: annotateAt, end: region.end });
+    } else {
+      w.copy(region);
+    }
     w.scaffold('\n');
   }
 

@@ -33,7 +33,7 @@ import { needsRuntime, routeBlocksOf, writeMapConstants, writeHydrationBlocks } 
 import type { DocumentGraph, ResolvedLayout } from './resolve.js';
 import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
 import { codeOfDocument, type Prop } from './oxc-code.js';
-import { layoutCodeOf } from './layout-code.js';
+import { layoutCodeOf, requiredLayoutProps, unresolvedLayoutProps } from './layout-code.js';
 import { NO_SIGNALS, writeElementAttrs } from './attrs.js';
 import type { Diagnostic } from '../types/index.js';
 import {
@@ -412,6 +412,22 @@ function buildRouteModule(
   // What the page says about its own client half (SDD-39 §4.2, §4.7). `FUD0621` comes out of
   // the same read: a `data` the client reads and no `load` ever filled is knowable here.
   const routeDiagnostics: Diagnostic[] = [];
+  // The layout contract (SDD-40 §4.7): a prop the chain REQUIRES and this route does not
+  // resolve, over the `<link rel="layout">` that declares the relation. The emit is where it
+  // belongs and not the semantic pass, for the same reason the emit owns the chain at all —
+  // only a caller that resolved the graph sees both files at once. The BUILD reports it; the
+  // editor hears the same fact from TypeScript over the projection, and one fact has one voice.
+  //
+  // No resolver at all is «the route resolves nothing», which is the very case the diagnostic
+  // is for; a resolver whose return this pass cannot read is «not provable», and that reports
+  // nothing. The extraction already tells the two apart.
+  const resolver = code.layoutResolver;
+  const readable = resolver === undefined ? [] : resolver.keys;
+  if (readable !== undefined) {
+    routeDiagnostics.push(
+      ...unresolvedLayoutProps(requiredLayoutProps(graph.layouts), readable, route.layoutLink.openSpan),
+    );
+  }
   const blocks = routeBlocksOf(graph, options.routeName, routeDiagnostics);
   // The maps carry the route too — its entry in `fud-tree`, and its name in `fud-eager` when
   // it comes up without a gesture — under the name it publishes, never under a tag.

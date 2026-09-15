@@ -13,6 +13,8 @@ import {
   extractCode,
   walk,
   type CodeBlockNode,
+  type ComponentDocument,
+  type LayoutDocument,
   type StructuredDocument,
 } from '@fudic/compiler';
 
@@ -61,6 +63,15 @@ export interface ContractProp {
   readonly name: string;
   /** Written WITHOUT a `?` in the type argument. Unprovable reads as optional (BUG-23 §4.4). */
   readonly required: boolean;
+  /**
+   * The source of its declared type — `string`, `Post[]`, `'a' | 'b'` — when the file states one.
+   *
+   * Read off the parse like everything else here, so it is TEXT and never a resolved type. Its
+   * one reader is the repair of SDD-40 §3.5, which writes a value OF the type and cannot do
+   * that without having read it. Absent means «not stated, or not provable», and the repair
+   * then writes what most props take.
+   */
+  readonly type?: string;
 }
 
 /**
@@ -90,12 +101,19 @@ export interface Contract {
 const NO_CONTRACT: Contract = { props: [], slots: [], events: [] };
 
 /**
- * The contract of a component, or the empty one for anything else.
+ * The contract of a component or of a LAYOUT, and the empty one for anything else.
  *
- * Only a component has one: a page, a route and a layout are reached by URL or by `<link>`,
- * never by being written as an element, so there is nobody to declare a contract TO.
+ * A page and a route have none: they are reached by URL, so there is nobody to declare a
+ * contract TO. A layout was in that list until SDD-40 and is not any more — it declares props
+ * with the same `props<T>()` a component uses, and the route that links to it is exactly the
+ * somebody. What it never has is slots or events: nobody writes it as an element.
  */
 export function contractOf(source: string, document: StructuredDocument): Contract {
+  if (document.type === 'layout-document') {
+    return document.code === undefined
+      ? NO_CONTRACT
+      : { props: propContract(source, document), slots: [], events: [] };
+  }
   if (document.type !== 'component-document') return NO_CONTRACT;
 
   const slots = slotNames(document);
@@ -105,7 +123,7 @@ export function contractOf(source: string, document: StructuredDocument): Contra
   const doc = componentDoc(source, document.code);
 
   return {
-    props: code.props.map((prop) => ({ name: prop.name, required: !prop.optional })),
+    props: propContract(source, document),
     slots,
     // A name that did not resolve statically is absent on purpose: `emit(name)` with a variable
     // is a real emission the card cannot name, and inventing `name` for it would be worse than
@@ -116,6 +134,24 @@ export function contractOf(source: string, document: StructuredDocument): Contra
     ],
     ...(doc === undefined ? {} : { doc }),
   };
+}
+
+/**
+ * The props a file declares, as a consumer reads them: the name, the `?`, and the type source.
+ *
+ * One function for the two roles that have props — a component and, since SDD-40, a layout —
+ * because it is one declaration read one way. `extractCode` is memoized per document, so
+ * asking here costs no second Oxc invocation.
+ */
+function propContract(
+  source: string,
+  document: ComponentDocument | LayoutDocument,
+): readonly ContractProp[] {
+  return extractCode(source, document).props.map((prop) => ({
+    name: prop.name,
+    required: !prop.optional,
+    ...(prop.type === undefined ? {} : { type: prop.type }),
+  }));
 }
 
 /**

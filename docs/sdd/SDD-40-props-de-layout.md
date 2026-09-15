@@ -288,6 +288,17 @@ una reparación que deja el fichero con un error de tipos que ella misma creó e
 tener bombilla. Si la ruta no exporta `layout` en absoluto, la acción escribe la función entera
 con su `return` completo.
 
+**Cómo hace TypeScript de voz**, que es la parte que no era obvia: la proyección le pone a la
+función del autor el **tipo de retorno** que él no escribió —`: $LayoutProps | Promise<…>`,
+empalmado justo tras el `)` de sus parámetros— y con eso el `TS2739` cae sobre su propio
+`return`. Escrito como una asignación sintética al lado, el error habría caído sobre la
+asignación sintética, que es exactamente el fallo que SDD-36 describe para las props de un
+componente. Un resolver que ya declara su tipo de retorno se deja tal cual: la anotación es lo
+que el autor dice de su función.
+
+Un valor sin forma obvia se escribe `null as unknown as <el tipo>` y no `@()`: el `return` de un
+resolver es **código**, no un valor de atributo, y `@()` ahí no es gramática de nada.
+
 ### 4.8. Layouts anidados
 
 Cada layout declara las suyas y recibe las suyas. El módulo de un layout anidado reenvía a su

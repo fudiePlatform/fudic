@@ -51,15 +51,16 @@ El servidor ya declara `codeActionProvider`. Cambia **qué** devuelve: un `CodeA
 
 Una fila que no se pueda construir con certeza **no se ofrece**.
 
-**Y tres más que no se anclan en un diagnóstico nuestro, sino en el contrato** (`services/contract.ts`):
+**Y cuatro más que no se anclan en un diagnóstico nuestro, sino en el contrato** (`services/contract.ts`):
 
 | Hecho | Título | Escribe |
 |---|---|---|
 | Prop requerida sin pasar, o pasada vacía | `Completar las props requeridas de <tag>` | Un valor **del tipo de cada prop** antes del `>`, en una sola inserción |
 | `.prop` que el componente no declara | `Cambiar a .<prop>` | El nombre |
 | `slot="x"` que el host no declara | `Cambiar a slot="<slot>"` (una por ranura) o `Quitar slot="x"` | El nombre, o el atributo entero |
+| El layout declara props requeridas que la ruta no resuelve ([SDD-40](./SDD-40-props-de-layout.md) §3.5) | `Completar las props requeridas del layout` | Los campos que falten en el `return` de `layout(ctx, data)`, o la función entera si no existe —creando el `@server` si tampoco lo hay—, con un valor **del tipo de cada prop** |
 
-**Estas tres las dice TypeScript y las repara el servidor, y la medida es la razón.** La
+**Estas las dice TypeScript y las repara el servidor, y la medida es la razón.** La
 decisión de la fase 2 —no emitir `FUD0197`/`FUD0199` en el editor porque TypeScript ya los
 reporta con más precisión— sigue en pie y no se toca: una voz por hecho. Lo que la fase 2 dio por
 supuesto es que quien reporta también repara, y eso es falso aquí. Medido contra el servicio real:
