@@ -18,7 +18,8 @@ const ORIGIN = 'https://app.test/';
 const CHUNK_SOURCE = `
 const { html } = require('@fudic/ssr');
 exports.render = function (ctx) {
-  return html('<!DOCTYPE html><p nonce="' + ctx.nonce + '">' + ctx.params.slug + ':' + ctx.data.n + '</p>');
+  const lang = ctx.layout ? ctx.layout.culture : '';
+  return html('<!DOCTYPE html><html lang="' + lang + '"><p nonce="' + ctx.nonce + '">' + ctx.params.slug + ':' + ctx.data.n + '</p></html>');
 };
 `;
 
@@ -65,7 +66,11 @@ function harness(): {
     [`${ORIGIN}sw/c/dep-b1.js`, 'exports.v = 1;'],
     [`${ORIGIN}sw/c/about-b1.js`, ABOUT_SOURCE],
   ]);
-  const data = new Map<string, string>([[`${ORIGIN}_fudic/data/blog/x`, '{"n":42}']]);
+  // ONE response with the two halves (SDD-40 §3.3): what `load` returned, and the layout
+  // props beside it — never inside it.
+  const data = new Map<string, string>([
+    [`${ORIGIN}_fudic/data/blog/x`, '{"data":{"n":42},"layout":{"culture":"gl"}}'],
+  ]);
 
   const net = async (request: Request): Promise<Response> => {
     network.push(request.url);
@@ -186,14 +191,48 @@ describe('createRouter.handle — the synchronous decision', () => {
     const response = await first.responded!;
     expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
     expect(response.headers.get('content-security-policy')).toContain("'nonce-nonce1'");
-    // §6.15: the ctx the chunk received carries params, data and THAT nonce.
-    expect(await readAll(response.body!)).toBe('<!DOCTYPE html><p nonce="nonce1">x:42</p>');
+    // §6.15: the ctx the chunk received carries params, data and THAT nonce — and, since
+    // SDD-40, the layout props out of the SAME response the data came in.
+    expect(await readAll(response.body!)).toBe(
+      '<!DOCTYPE html><html lang="gl"><p nonce="nonce1">x:42</p></html>',
+    );
 
     const second = fetchEvent(`${ORIGIN}blog/x`);
     r.handle(second);
     expect((await second.responded!).headers.get('content-security-policy')).toContain(
       "'nonce-nonce2'",
     );
+  });
+
+  it('SDD-40 §6.10 — ONE request brings data and the layout props together', async () => {
+    const h = harness();
+    const r = router(h);
+    await r.warm('/blog/x');
+
+    const event = fetchEvent(`${ORIGIN}blog/x`);
+    r.handle(event);
+    await readAll((await event.responded!).body!);
+
+    // One fetch of the endpoint, not two: they are one request, and the two come out of the
+    // same instant of it (§3.3).
+    const hits = h.network.filter((url) => url.endsWith('_fudic/data/blog/x'));
+    expect(hits).toHaveLength(1);
+  });
+
+  it('SDD-40 — a route that resolves no layout props leaves `ctx.layout` absent', async () => {
+    const h = harness();
+    // The endpoint answers with `data` alone: the layout declares only props with defaults,
+    // so the route resolves none. `layout` is ABSENT, never `undefined` — with
+    // `exactOptionalPropertyTypes` those are two different things.
+    h.data.set(`${ORIGIN}_fudic/data/blog/x`, '{"data":{"n":7}}');
+    const r = router(h);
+    await r.warm('/blog/x');
+
+    const event = fetchEvent(`${ORIGIN}blog/x`);
+    r.handle(event);
+    const html = await readAll((await event.responded!).body!);
+    expect(html).toContain('<html lang="">');
+    expect(html).toContain('x:7');
   });
 
   it('§6.16 a link failure rescues once and then stops retrying that route', async () => {
@@ -466,7 +505,9 @@ describe('createRouter — the shell has a policy (BUG-01)', () => {
       network.push(request.url);
       if (request.url.endsWith('sw/c/blog-slug-b1.js')) return new Response(CHUNK_SOURCE);
       if (request.url.endsWith('sw/c/dep-b1.js')) return new Response('exports.v = 1;');
-      if (request.url.endsWith('_fudic/data/blog/x')) return new Response('{"n":42}');
+      if (request.url.endsWith('_fudic/data/blog/x')) {
+        return new Response('{"data":{"n":42},"layout":{"culture":"gl"}}');
+      }
       return new Response('[]');
     };
     const doubles = {

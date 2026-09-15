@@ -100,7 +100,7 @@ if (doc.type === 'component-document') {
     `@RenderBody: ${doc.renderBody ? 'yes' : 'MISSING'} · @RenderHead: ${doc.renderHead ? 'yes' : 'none'}` +
       ` · @RenderSection: ${doc.renderSections.map((s) => s.name).join(', ') || 'none'}`,
   );
-  if (doc.layoutHref) line(1, `parent layout: ${JSON.stringify(doc.layoutHref)}`);
+  if (doc.layoutLink) line(1, `<link rel="layout">: FUD0439, a layout may not name one`);
 } else {
   line(1, `links: ${doc.links.length}`, doc.code ? '· code: yes' : '');
 }

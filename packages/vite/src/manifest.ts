@@ -152,10 +152,12 @@ export function buildManifest(
       pattern: rb.route.pattern,
       mode,
       deps,
-      // The data endpoint is GENERATED from `@server load`, never hand-written: one
+      // The data endpoint is GENERATED from the route's `@server`, never hand-written: one
       // source, two callers — the edge in process, the SW over HTTP (§4.5). The URL is
-      // derived from the pattern, so its POLICY is what states the route has one.
-      ...(rb.analysis.hasLoad ? { dataPolicy } : {}),
+      // derived from the pattern, so its POLICY is what states the route has one. Since
+      // SDD-40 one response carries two things, so `layout(ctx, data)` alone is reason
+      // enough for the route to have an endpoint.
+      ...(rb.analysis.hasLoad || rb.analysis.hasLayout ? { dataPolicy } : {}),
       ...(page === undefined ? {} : { page }),
     });
   }

@@ -131,6 +131,10 @@ export class DocumentCache {
         result: parsed.js.result,
         neutral: parsed.js.neutral,
         client: parsed.js.client,
+        // The `@server` regions too, since SDD-40: the route's `layout(ctx, data)` is looked
+        // for in them, and what the projection does with it is give it the return type that
+        // makes TypeScript the voice of the layout contract.
+        server: parsed.js.regions.flatMap((r) => (r.part.type === 'server-region' ? [r.id] : [])),
         ast: (at) => parsed.js.ast(at),
       },
     });

@@ -113,8 +113,10 @@ describe('tagCardAt', () => {
     expect(card?.tag).toBe('app-button');
     expect(card?.file).toBe('/p/components/app-button.fud');
     expect(card?.contract.props).toEqual([
-      { name: 'label', required: true },
-      { name: 'tone', required: false },
+      // The type source rides along since SDD-40: the repair that writes a value has to
+      // know what the value is a value OF.
+      { name: 'label', required: true, type: 'string' },
+      { name: 'tone', required: false, type: 'string' },
     ]);
     // The default slot is not a name a consumer can write into a `slot=` (decision 44).
     expect(card?.contract.slots).toEqual(['icon']);

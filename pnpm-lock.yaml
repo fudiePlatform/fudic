@@ -61,6 +61,56 @@ importers:
         specifier: 8.0.16
         version: 8.0.16(@types/node@22.20.0)
 
+  examples/workspace:
+    devDependencies:
+      '@playwright/test':
+        specifier: 1.62.0
+        version: 1.62.0
+
+  examples/workspace/apps/admin:
+    dependencies:
+      '@fudic/core':
+        specifier: workspace:*
+        version: link:../../../../packages/core
+      '@fudic/dom':
+        specifier: workspace:*
+        version: link:../../../../packages/dom
+      '@fudic/ssr':
+        specifier: workspace:*
+        version: link:../../../../packages/ssr
+      '@fudic/transport':
+        specifier: workspace:*
+        version: link:../../../../packages/transport
+    devDependencies:
+      '@fudic/vite':
+        specifier: workspace:*
+        version: link:../../../../packages/vite
+      vite:
+        specifier: 8.0.16
+        version: 8.0.16(@types/node@22.20.0)
+
+  examples/workspace/apps/tienda:
+    dependencies:
+      '@fudic/core':
+        specifier: workspace:*
+        version: link:../../../../packages/core
+      '@fudic/dom':
+        specifier: workspace:*
+        version: link:../../../../packages/dom
+      '@fudic/ssr':
+        specifier: workspace:*
+        version: link:../../../../packages/ssr
+      '@fudic/transport':
+        specifier: workspace:*
+        version: link:../../../../packages/transport
+    devDependencies:
+      '@fudic/vite':
+        specifier: workspace:*
+        version: link:../../../../packages/vite
+      vite:
+        specifier: 8.0.16
+        version: 8.0.16(@types/node@22.20.0)
+
   packages/cli:
     dependencies:
       '@fudic/compiler':

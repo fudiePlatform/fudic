@@ -96,14 +96,14 @@ describe('transform (§6.15, SDD-21 §3.4)', () => {
     expect(out).not.toBeNull();
     // The layout lives outside routesDir: only an injected specifier can reach it.
     expect(out!.code).toContain("import { layout } from '../layouts/_layout.fud';");
-    expect(out!.code).toContain('export function* page(data, io, $ioc) {');
+    expect(out!.code).toContain('export function* page(data, io, $ioc, $props) {');
     expect(out!.diagnostics).toEqual([]);
   });
 
   it('emits the layout module itself, owning the shell', () => {
     const root = project();
     const out = transformFud(join(root, 'src', 'layouts', '_layout.fud'), nodeIo());
-    expect(out!.code).toContain('export function* layout(data, io, route, $ioc) {');
+    expect(out!.code).toContain('export function* layout(data, io, route, $ioc, $props) {');
     expect(out!.code).toContain('<!DOCTYPE html>');
     expect(out!.code).toContain('route.body($dom, ');
   });

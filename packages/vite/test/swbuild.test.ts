@@ -15,6 +15,7 @@ const OPTIONS = {
   manifestUrlExpr: '"/fudic-routes.json"',
   shell: ['/style.css'],
   resources: [],
+  app: 'shop',
 };
 
 describe('swChunkOf', () => {

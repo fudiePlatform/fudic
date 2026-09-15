@@ -103,9 +103,15 @@ export interface LayoutDocument extends Node {
   readonly links: readonly ElementNode[];
   /** `@code` found inside `<head>` (decision 60). */
   readonly code?: CodeBlockNode;
-  /** A nested layout's `<link rel="layout">`, when this layout has a parent (decision 87). */
+  /**
+   * A `<link rel="layout">` this layout should not have declared: only a route names a
+   * layout (`FUD0439`). It is reported and then kept HERE and nowhere else — the emit reads
+   * it only to skip it when writing the `<head>`, so the link the author wrote does not
+   * reach the output. There is no `layoutHref` beside it, and that absence is the whole
+   * degradation: with no href there is no parent, and the file compiles as the plain layout
+   * it looks like.
+   */
   readonly layoutLink?: ElementNode;
-  readonly layoutHref?: string;
   /** The single `@RenderBody()`. Absent only on FUD0423 degradation. */
   readonly renderBody?: RenderDirectiveNode;
   /** The `@RenderHead()`, at most one (decision 86). Absent ⇒ FUD0425, injected at head end. */

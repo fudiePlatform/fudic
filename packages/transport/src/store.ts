@@ -32,7 +32,7 @@
 
 import { type CachePolicy } from './manifest.js';
 
-/** The four caches of the framework, namespaced by build id (§4.10). */
+/** The four caches of the framework, namespaced by APP and then by build (BUG-33 §4.1). */
 export interface CacheNames {
   readonly shell: string;
   readonly routes: string;
@@ -40,18 +40,59 @@ export interface CacheNames {
   readonly data: string;
 }
 
-export function cacheNames(build: string): CacheNames {
+/** The four kinds, and the whole of the scheme's vocabulary. */
+const KINDS = ['shell', 'routes', 'pages', 'data'] as const;
+
+/**
+ * How long a build id measures. It belongs to THIS scheme — it is what has to be left
+ * after `<kind>-<app>-` for a name to be this app's — so it lives next to the scheme and
+ * the emitter's substitution token is checked against it.
+ */
+export const BUILD_ID_LENGTH = 8;
+
+/**
+ * `<kind>-<app>-<build>`, and the app goes in the MIDDLE.
+ *
+ * What is read by prefix is *whose cache is this*, and what is compared by equality is the
+ * build. Putting the app last would invert both.
+ */
+export function cacheNames(app: string, build: string): CacheNames {
   return {
-    shell: `shell-${build}`,
-    routes: `routes-${build}`,
-    pages: `pages-${build}`,
-    data: `data-${build}`,
+    shell: `shell-${app}-${build}`,
+    routes: `routes-${app}-${build}`,
+    pages: `pages-${app}-${build}`,
+    data: `data-${app}-${build}`,
   };
 }
 
-/** True for a cache name of a build that is NOT the current one (purged on activate). */
-export function isStaleCache(name: string, build: string): boolean {
-  return /^(shell|routes|pages|data)-/u.test(name) && !name.endsWith(`-${build}`);
+/**
+ * True for a cache of THIS app and a build that is not the current one.
+ *
+ * A cache of another app is never stale here: purging it is the defect this fixes. The cut
+ * is by WIDTH and never by the last hyphen, because an app id may contain hyphens — with a
+ * bare prefix, `shop` would claim `shell-shop-admin-…` and purge the caches of
+ * `shop-admin`, which is the same defect one size smaller. It is the argument of the
+ * chunk renamer, applied to the other end of the same naming scheme.
+ *
+ * Also true for a name written BEFORE this fix, `<kind>-<build>` with no app segment: with
+ * the new rule it matches nobody's prefix and would sit in the origin forever. It is
+ * unambiguous — only a worker older than this fix could have written it — and transitory.
+ */
+export function isStaleCache(name: string, app: string, build: string): boolean {
+  for (const kind of KINDS) {
+    const mine = `${kind}-${app}-`;
+    if (name.startsWith(mine)) {
+      const rest = name.slice(mine.length);
+      // Another app whose id merely starts like ours: not ours, and not ours to delete.
+      if (rest.length !== BUILD_ID_LENGTH) continue;
+      return rest !== build;
+    }
+    // The pre-BUG-33 shape. Not even our own build saves it: it cannot be attributed.
+    if (name.startsWith(`${kind}-`) && name.length === kind.length + 1 + BUILD_ID_LENGTH) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export const STAMP_HEADER = 'x-fudic-stored';

@@ -145,6 +145,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let swConfig: ResolvedSwConfig | null = null;
   /** Who this project is (SDD-41). Empty until `configResolved` has run. */
   let project: ProjectResult = { config: null, warnings: [], errors: [] };
+  /**
+   * The app id that namespaces this application's caches (BUG-33). Resolved once, here,
+   * so the two places that bake it into the worker read a string and not an optional:
+   * where a worker is actually emitted it cannot be empty, because a `sw.json` without an
+   * `id` is FUD0721 and the build already stopped (SDD-41 §4.3).
+   */
+  let appId = '';
   let writeToDisk = true;
   let resolveAlias: unknown;
   // What the nested builds inherit from the host (BUG-05 §3.1, BUG-06 §3.1). Replaced
@@ -282,6 +289,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // Who this project is (SDD-41). Read here, next to `sw.json`, and reported in
       // `buildStart`, which is the first hook with a context to report through.
       project = readProject(root, swConfig !== null, configIo);
+      appId = project.config?.id ?? '';
     },
 
     configureServer(server) {
@@ -618,6 +626,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           manifestUrlExpr: JSON.stringify(manifestUrl),
           shell: swConfig?.shell ?? [],
           resources: swConfig?.resources ?? [],
+          // From the project's `fudic.json`, never from a plugin option: the identity of an
+          // application belongs to the project (SDD-41 §3.3).
+          app: appId,
         });
       }
       if (id.startsWith(WRAPPER_PREFIX)) {
@@ -630,6 +641,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           pageModule: rb.absPath.replace(/\\/gu, '/'),
           hasLoad: rb.analysis.hasLoad,
           hasPaths: rb.analysis.hasPaths,
+          hasLayout: rb.analysis.hasLayout,
           hasDi: routeUsesDi(rb.absPath, io),
           // In DEV this module IS the edge: the dev server renders through the module
           // graph and resolves data in process. In BUILD it is a chunk of the client
@@ -800,6 +812,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
                 manifestUrlExpr: JSON.stringify(manifestUrl),
                 shell: [...new Set(shell)],
                 resources: swConfig.resources,
+                // Non-empty by construction: a `sw.json` without an `id` is FUD0721 and
+                // this build already failed in `buildStart` (SDD-41 §4.3).
+                app: appId,
               },
               resolveAlias,
               nested,

@@ -17,6 +17,18 @@ export interface SwBootstrapOptions {
   readonly shell: readonly string[];
   /** `sw.json` resource classes, in evaluation order. */
   readonly resources: unknown;
+  /**
+   * The app id (SDD-41 §3.1), which namespaces this application's caches (BUG-33).
+   *
+   * A literal and not a token: it is known in `configResolved`, long before
+   * `generateBundle`, unlike the build id. So `BUILD_TOKEN` stays the only substitution
+   * made on the emitted code, and the map generated for it still describes it.
+   *
+   * It is never empty when a worker is emitted: a project with a `sw.json` and no `id` is
+   * FUD0721 and the build fails (SDD-41 §4.3), so there is no degraded case to invent a
+   * default for — one that would be the name three different apps collide under.
+   */
+  readonly app: string;
 }
 
 /**
@@ -31,11 +43,12 @@ export function emitSwBootstrap(options: SwBootstrapOptions): string {
 } from '@fudic/transport';
 import * as ssr from '@fudic/ssr';
 
+const APP = ${JSON.stringify(options.app)};
 const BUILD = ${JSON.stringify(BUILD_TOKEN)};
 const MANIFEST_URL = ${options.manifestUrlExpr};
 const SHELL = ${JSON.stringify(options.shell)};
 const RESOURCES = ${JSON.stringify(options.resources)};
-const NAMES = cacheNames(BUILD);
+const NAMES = cacheNames(APP, BUILD);
 // ONE list, absolute, for the two things that must never drift: what install writes and
 // what the router will serve by identity. A Store key is an absolute URL (BUG-04 §3.1).
 const PRECACHE = [...SHELL, MANIFEST_URL].map((url) => new URL(url, self.location.href).href);
@@ -62,7 +75,7 @@ self.addEventListener('install', (e) => e.waitUntil((async () => {
 
 self.addEventListener('activate', (e) => e.waitUntil((async () => {
   for (const name of await caches.keys()) {
-    if (isStaleCache(name, BUILD)) await caches.delete(name);
+    if (isStaleCache(name, APP, BUILD)) await caches.delete(name);
   }
   await self.clients.claim();
   await boot(); // the shell is in place now: this is the attempt that succeeds on a first install

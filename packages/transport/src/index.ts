@@ -56,6 +56,7 @@ export {
   type Store,
   type StoreConfig,
   STAMP_HEADER,
+  BUILD_ID_LENGTH,
   cacheNames,
   createStore,
   isStaleCache,
@@ -70,6 +71,7 @@ export {
 } from './csp.js';
 export {
   type FetchEvent,
+  type LayoutResolver,
   type RenderContext,
   type RouteChunk,
   type ResourceRule,

@@ -9,7 +9,13 @@
  * they can already see.
  */
 
-/** Out-of-band control signals; they interest every thread at once. */
+/**
+ * Out-of-band control signals; they interest every thread at once.
+ *
+ * A `route` here is a pathname OF THE ORIGIN, `base` included — the same vocabulary as
+ * `url.pathname` and as `LocationMessage.url` (BUG-39). There is one notion of route
+ * inside the worker, not one per channel.
+ */
 export type ControlMessage =
   | { readonly type: 'invalidate'; readonly route: string }
   | { readonly type: 'version'; readonly build: string }

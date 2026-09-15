@@ -50,7 +50,14 @@ function routeBuild(pattern: string, file: string, decision: ModeDecision): Rout
   return {
     route: { file, pattern, params: [] },
     absPath: join(root, 'routes', file),
-    analysis: { role: 'page' as const, isPage: true, hasLoad: true, hasPaths: false, strategy: NO_STRATEGY },
+    analysis: {
+      role: 'page' as const,
+      isPage: true,
+      hasLoad: true,
+      hasPaths: false,
+      hasLayout: false,
+      strategy: NO_STRATEGY,
+    },
     decision,
   };
 }

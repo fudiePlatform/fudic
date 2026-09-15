@@ -22,7 +22,36 @@ const FILE: ManifestFile = {
   ],
 };
 
+/** The same application, published under a non-root `base` — BUG-39. */
+const UNDER_BASE: ManifestFile = {
+  ...FILE,
+  base: '/admin/',
+  routes: [...FILE.routes, { pattern: '/', mode: 'ssg', deps: [] }],
+};
+
 describe('compileManifest', () => {
+  it('BUG-39 matches a pathname under `base`: the URL carries it, the patterns do not', () => {
+    const table = compileManifest(UNDER_BASE);
+    // What the fetch handler holds is `url.pathname`, base and all. What the manifest
+    // stores is the pattern the build named, base excluded. Matching one against the other
+    // is what made an app under a `base` decline every one of its own navigations.
+    expect(table.match('/admin/blog/new')?.record.mode).toBe('ssg');
+    expect(table.match('/admin/blog/x')?.params).toEqual({ slug: 'x' });
+    // The index of the app is `base` itself, with and without the trailing slash.
+    expect(table.match('/admin/')?.record.pattern).toBe('/');
+    expect(table.match('/admin')?.record.pattern).toBe('/');
+    // And what lies outside the base belongs to somebody else on this origin.
+    expect(table.match('/blog/new')).toBeNull();
+    expect(table.match('/')).toBeNull();
+  });
+
+  it('BUG-39 a record keeps the pattern the build named, so its chunk URL still resolves', () => {
+    const table = compileManifest(UNDER_BASE);
+    const hit = table.match('/admin/blog/x')!;
+    expect(hit.record.pattern).toBe('/blog/:slug');
+    expect(table.urls.renderUrl(hit.record)).toBe('/admin/sw/c/blog-slug-a3f9c1.js');
+  });
+
   it('§6.1 matches by descending specificity and extracts params', () => {
     const table = compileManifest(FILE);
     expect(table.match('/blog/new')?.record.mode).toBe('ssg');
@@ -56,6 +85,14 @@ describe('compileManifest', () => {
       hydrate: { 'app-counter': ['assets/element-DUSE73WP.js'] },
     });
     expect(table.hydrateDeps('app-counter')).toEqual(['/assets/element-DUSE73WP.js']);
+    // A BARE name is the common case: where it lives is arithmetic, so the build id and
+    // the extension are added here. A name that already ends in `.js` kept a content hash
+    // and is used verbatim — those are the two shapes, and both are published.
+    expect(
+      compileManifest({ ...FILE, hydrate: { 'app-counter': ['element'] } }).hydrateDeps(
+        'app-counter',
+      ),
+    ).toEqual(['/element-a3f9c1.js']);
     // A tag with no shared code, and a tag this build never heard of — a stale page asking
     // for a component that no longer exists — are the same answer: nothing to drag along.
     expect(table.hydrateDeps('app-toggle')).toEqual([]);

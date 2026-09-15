@@ -7,7 +7,7 @@ import { readFileSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
-import { SsrDom, serializeChunks, escapeText, jsonBlock } from '@fudic/ssr';
+import { SsrDom, serializeChunks, escapeText, escapeAttr, jsonBlock } from '@fudic/ssr';
 import { emitComponentModule, emitPageModule, type ComponentGraph } from '../../src/emit/index.js';
 import {
   parseDocument,
@@ -20,6 +20,7 @@ import {
   type StructuredDocument,
 } from '../../src/document/index.js';
 import type { ResolveIo } from '../../src/emit/index.js';
+import type { Prop, Reactive } from '../../src/emit/oxc-code.js';
 
 const constructs: AtConstructParser = { parseControl, parseCodeBlock };
 
@@ -150,6 +151,7 @@ export function minimalSsr(): {
   createDom: () => Record<string, (...a: unknown[]) => unknown>;
   serialize: (root: unknown) => Iterable<string>;
   escapeText: (s: string) => string;
+  escapeAttr: (s: string) => string;
   jsonBlock: typeof jsonBlock;
 } {
   const createDom = () => {
@@ -205,6 +207,9 @@ export function minimalSsr(): {
     // A generator-shaped serialize (one chunk) — `page` yields* it, streaming a trozos.
     serialize: (root: unknown) => [serializeNode(root as TreeNode)],
     escapeText: escapeHtml,
+    // The REAL one: the shell's opening tag is a string the layout composes itself, and the
+    // rule it has to agree with is the serializer's (SDD-40 §4.4), not this fake's.
+    escapeAttr,
     jsonBlock,
   };
 }
@@ -254,6 +259,7 @@ export function ssrIo(): { io: unknown; dom: () => SsrDom } {
       },
       serialize: serializeChunks,
       escapeText,
+      escapeAttr,
       jsonBlock,
     },
     dom: () => built!,
@@ -276,4 +282,26 @@ export function evalLeafModule(moduleSource: string): {
   const body = moduleSource.replace(/^export\s+/gmu, '') + '\nreturn { tag, css, render };';
   // eslint-disable-next-line @typescript-eslint/no-implied-eval
   return new Function(body)() as ReturnType<typeof evalLeafModule>;
+}
+
+/**
+ * The props without their span, for a `toEqual` whose subject is the CHANNEL and the `?`.
+ *
+ * `Prop.at` arrived with SDD-40, where a diagnostic needs somewhere to land. A suite that
+ * asks what `props<T>()` declared should not have to spell out four offsets to say that a
+ * prop crosses by value — and it should not fall back to `toMatchObject` either, because an
+ * absent `channel` is exactly what half of those assertions are about.
+ */
+export function bareProps(props: readonly Prop[]): readonly Omit<Prop, 'at'>[] {
+  return props.map(({ at: _at, ...rest }) => rest);
+}
+
+/**
+ * The reactives without their offsets, for a `toEqual` whose subject is the name, the
+ * initial and the kind. The same bargain `bareProps` makes, and for the same reason.
+ */
+export function bareSignals(
+  signals: readonly Reactive[],
+): readonly Omit<Reactive, 'at' | 'span'>[] {
+  return signals.map(({ at: _at, span: _span, ...rest }) => rest);
 }

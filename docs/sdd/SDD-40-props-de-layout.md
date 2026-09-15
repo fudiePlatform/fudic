@@ -103,6 +103,13 @@ papeles, ruta, componente y layout.
 
 Ni `@server`, ni `@client`, ni lógica suelta en la zona neutra: `FUD0700`.
 
+**Esto retira `FUD0437`** —«un layout no tiene `@code`», decisión 82— que decía justo lo
+contrario. Lo que queda de aquella regla es más estrecho y cambia de dueño: distinguir una
+declaración de props de una sentencia suelta es una pregunta sobre JS, no sobre estructura,
+así que la contesta el emit con `FUD0700` y `buildLayout` deja de rechazar el bloque. El
+`@code` de un layout vive dentro de su `<head>`, como el de una página (decisión 60): un
+layout tiene forma de página.
+
 ### 3.2. La ruta resuelve
 
 Un tercer export reservado en `@code { @server }`, al lado de los dos que ya hay:
@@ -145,6 +152,11 @@ export interface RenderContext {
 
 El endpoint de datos generado devuelve las dos cosas —`{ data, layout }`— en una sola respuesta:
 es una petición, no dos, y las dos salen del mismo instante de la misma petición.
+
+Y por eso **una ruta que solo resuelve props de layout también tiene endpoint**: hasta ahora lo
+tenía exactamente la que declaraba `@server load`, porque era lo único que había que servir. Con
+dos mitades en una respuesta, `layout(ctx, data)` a solas basta — el SW no ejecuta ninguna de las
+dos y sin endpoint no tendría por dónde recibirlas.
 
 ### 3.4. La composición
 
@@ -228,6 +240,10 @@ yield "<!DOCTYPE html><html lang=\"es\"><head>" + head + '</head>';
 literales, interpolación incluida. Pasa a emitirse por la maquinaria de atributos que ya usa
 cualquier otro elemento.
 
+**Y el `<body>` tenía la misma omisión, peor**: se construía con `$dom.element('body')` y sus
+atributos se perdían enteros, interpolados o no. Es el mismo arreglo, y el ejemplo de §3.1 lo
+necesita — `<body data-theme="@theme">`.
+
 **No hace falta tocar el orden de emisión.** La línea está dentro de
 `export function* layout(data, io, route, props)`, así que `data` y las props ya están resueltas
 ahí y todavía no se ha emitido un byte. No es una restricción de streaming: era un atajo.
@@ -272,12 +288,32 @@ una reparación que deja el fichero con un error de tipos que ella misma creó e
 tener bombilla. Si la ruta no exporta `layout` en absoluto, la acción escribe la función entera
 con su `return` completo.
 
-### 4.8. Layouts anidados
+**Cómo hace TypeScript de voz**, que es la parte que no era obvia: la proyección le pone a la
+función del autor el **tipo de retorno** que él no escribió —`: $LayoutProps | Promise<…>`,
+empalmado justo tras el `)` de sus parámetros— y con eso el `TS2739` cae sobre su propio
+`return`. Escrito como una asignación sintética al lado, el error habría caído sobre la
+asignación sintética, que es exactamente el fallo que SDD-36 describe para las props de un
+componente. Un resolver que ya declara su tipo de retorno se deja tal cual: la anotación es lo
+que el autor dice de su función.
 
-Cada layout declara las suyas y recibe las suyas. El módulo de un layout anidado reenvía a su
+Un valor sin forma obvia se escribe `null as unknown as <el tipo>` y no `@()`: el `return` de un
+resolver es **código**, no un valor de atributo, y `@()` ahí no es gramática de nada.
+
+### 4.8. ~~Layouts anidados~~ — REVOCADA
+
+> **REVOCADA por [BUG-38](./bugs/BUG-38-un-layout-dentro-de-otro.md).** Un layout no puede
+> declarar `<link rel="layout">` (`FUD0439`), así que no hay cadena, no hay props heredadas y
+> no hay `FUD0703`. Lo que queda es lo de §4.7, que es la regla entera: **un** layout declara
+> sus props y la ruta las resuelve. Se conserva el texto original por trazabilidad.
+
+~~Cada layout declara las suyas y recibe las suyas. El módulo de un layout anidado reenvía a su
 padre **las del padre**, no las propias, exactamente como ya reenvía las secciones y los bloques.
 Lo que `layout(ctx, data)` de la ruta devuelve es la unión de lo que declara la cadena; dos
-layouts de la cadena que declaren el mismo nombre con tipos distintos es `FUD0703`.
+layouts de la cadena que declaren el mismo nombre con tipos distintos es `FUD0703`.~~
+
+~~**Dónde se ancla `FUD0703`:** sobre el `<link rel="layout">` del layout anidado — el único
+span de la cadena que pertenece al fichero que se está emitiendo, y el mismo sitio donde
+`FUD0702` cae en la ruta.~~
 
 ---
 
@@ -302,8 +338,8 @@ layouts de la cadena que declaren el mismo nombre con tipos distintos es `FUD070
 | `FUD0700` | `error` | El `@code` de un layout contiene algo que no es su declaración de props. |
 | `FUD0701` | `error` | Una prop de layout recibe un valor reactivo (`signal` / `computed`). Un layout no tiene mitad de cliente que pueda repintarlo. |
 | `FUD0702` | `error` | La ruta no resuelve una prop **requerida** del layout — porque falta en el `return` de `layout(ctx, data)`, o porque la ruta no exporta esa función. Sobre el `<link rel="layout">`. Es el que ancla la bombilla. |
-| `FUD0703` | `error` | Dos layouts de la misma cadena declaran la misma prop con tipos incompatibles. |
-| `0664`–`0679` | | Reservados. |
+| `FUD0703` | — | **RETIRADO por [BUG-38](./bugs/BUG-38-un-layout-dentro-de-otro.md).** Existía porque las props de layout de un render eran **un** espacio de nombres compartido por los eslabones de una cadena, así que dos podían pedirle a la ruta un nombre que tenía que ser de dos tipos. Un layout no tiene con quién discrepar. El código no se reutiliza. |
+| `0704`–`0719` | | Reservados. |
 
 ---
 
@@ -328,8 +364,11 @@ Tests en `packages/compiler/test/emit/` (1–7), `packages/vite/test/` (8–11),
 
 5. `page(data, io, layoutProps)` pasa las props al módulo del layout, y el layout las
    desestructura arriba del todo, antes de su primer `yield`.
-6. **Anidados.** Con dos layouts en cadena, cada uno recibe **las suyas** y reenvía las del padre.
-   Dos que declaran el mismo nombre con tipos incompatibles emiten `FUD0703`.
+6. ~~**Anidados.** Con dos layouts en cadena, cada uno recibe **las suyas** y reenvía las del
+   padre. Dos que declaran el mismo nombre con tipos incompatibles emiten `FUD0703`.~~
+   **Retirado con §4.8 por [BUG-38](./bugs/BUG-38-un-layout-dentro-de-otro.md).** En su lugar:
+   un layout toma solo sus nombres, y dos layouts distintos que escriban el mismo nombre con
+   tipos distintos **no** producen diagnóstico, porque no comparten render.
 7. El chunk de cliente de una ruta con layout **sigue sin anclar nada** del layout: una entrada en
    `sources`, y ningún mapeo al `.fud` del layout. Es el criterio de SDD-39 §6.6, que este SDD no
    puede romper.
@@ -355,14 +394,36 @@ Tests en `packages/compiler/test/emit/` (1–7), `packages/vite/test/` (8–11),
 
 **La evidencia, en `examples/basic`**
 
-15. `_layout.fud` declara `culture` como requerida, y su `<html lang="@culture">` sale con el valor
-    que cada ruta resuelve.
+15. `_layout.fud` declara `culture` y su `<html lang="@culture">` sale con el valor que la ruta
+    resuelve. **Con default** (`= "es"`), y la nota de abajo explica por qué acabó así: la prop
+    **requerida** vive en `_layout-articulo.fud`, un layout anidado de una sola página, que es
+    donde `FUD0702` y la bombilla tienen algo que decir.
 16. Una ruta con `:param` —`/blog/:slug`— resuelve la culture a partir de lo que `load` trajo, y el
     HTML prerenderizado de dos slugs distintos sale con `lang` distinto si sus posts lo son.
 17. Verificado en las tres formas en Chrome real: `pnpm dev`, build sin SW y build con SW. El
     `lang` del documento es el mismo en las tres.
 18. **Cobertura.** `@fudic/transport` y `@fudic/language-server` no bajan del número que tienen al
     empezar; el código nuevo de `@fudic/language-server` nace al 100 %.
+
+**Cómo quedó repartido en el ejemplo, y por qué no como decía §6.15.** La primera versión hizo
+`culture` requerida en el layout compartido, y eso obligó a las **diecisiete** rutas de
+`examples/basic` a escribir su `export function layout()` aunque dieciséis contestaran lo mismo.
+Pedro lo cortó: la ceremonia tapaba justo lo que el ejemplo tiene que enseñar. El reparto final
+es el que el propio §3.1 ya insinuaba con su `theme = "light"`:
+
+- **`_layout.fud` declara `culture = "es"`, con default.** Dieciséis páginas no escriben nada, y
+  el `<html lang>` de todas sale igualmente por la maquinaria de atributos. La única que contesta
+  es `/blog/:slug`, porque su culture **sale de la fila** y no de una constante — y ahí está la
+  evidencia de §6.16: dos slugs prerenderizados por el mismo build, uno `es` y otro `en`.
+- **`_layout-articulo.fud` declara `seccion`, requerida**, y es un layout **anidado** usado por
+  una sola página. Es donde una prop requerida tiene sentido: el valor no es obvio, olvidarlo es
+  un error que merece contarse, y ahí viven `FUD0702` y la bombilla. De paso demuestra §4.8 con
+  datos de verdad — el `return` de esa ruta es `{ culture, seccion }`, la unión de lo que declara
+  la cadena, y cada eslabón saca de él lo suyo.
+
+La regla que queda escrita: **un default es lo correcto cuando la respuesta es obvia para casi
+todas las rutas; una prop requerida, cuando no lo es.** El contrato no pierde dientes por eso —
+los enseña donde muerden.
 
 ---
 
