@@ -3,7 +3,7 @@
 > **BUG:** [BUG-33 — Dos apps en el mismo origen se borran las cachés](./BUG-33-caches-por-app.md)
 > **Paquetes:** `@fudic/transport` · `@fudic/vite`
 > **Rama:** `bug-33-caches-por-app`
-> **Progreso:** 1 / 6
+> **Progreso:** 3 / 6
 > **Bloqueado por:** [SDD-41](../SDD-41-configuracion-de-aplicacion.md) — sin `id` no hay con qué
 > namespacear. Concretamente por su **tarea 7**: el plugin tiene que estar leyendo el config antes
 > de que este BUG pueda pasarle el `id` al worker.
@@ -38,8 +38,8 @@ nada.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 2 | 1 | **`cacheNames(app, build)`.** Las cuatro pasan a `<kind>-<app>-<build>`. Cambio de firma incompatible **a propósito**: una que siga aceptando solo el build deja el defecto disponible (§3.1). Se actualizan las llamadas de `@fudic/transport` y el emisor del worker compila con el `app` todavía a mano. Criterio 2 | `transport` | `src/store.ts` · `test/store.test.ts` |
-| [ ] | 3 | 2 | **`isStaleCache(name, app, build)`**, con las tres reglas de §4.2 y §4.3: (a) es de esta app cuando empieza por `<kind>-<app>-` **y lo que queda mide exactamente `BUILD_ID_LENGTH`** — el corte por anchura, nunca por el último guión; (b) de esta app y otro build, stale; (c) la **forma vieja** —`<kind>-` y ocho caracteres, sin segmento de app— stale siempre, para que un despliegue anterior a este BUG no deje basura inmortal. Cualquier otro nombre, intacto. Criterios 3, 4, 5, 6 | `transport` | `src/store.ts` · `test/store.test.ts` |
+| [x] | 2 | 1 | **`cacheNames(app, build)`.** Las cuatro pasan a `<kind>-<app>-<build>`. Cambio de firma incompatible **a propósito**: una que siga aceptando solo el build deja el defecto disponible (§3.1). Se actualizan las llamadas de `@fudic/transport` y el emisor del worker compila con el `app` todavía a mano. Criterio 2 | `transport` | `src/store.ts` · `test/store.test.ts` |
+| [x] | 3 | 2 | **`isStaleCache(name, app, build)`**, con las tres reglas de §4.2 y §4.3: (a) es de esta app cuando empieza por `<kind>-<app>-` **y lo que queda mide exactamente `BUILD_ID_LENGTH`** — el corte por anchura, nunca por el último guión; (b) de esta app y otro build, stale; (c) la **forma vieja** —`<kind>-` y ocho caracteres, sin segmento de app— stale siempre, para que un despliegue anterior a este BUG no deje basura inmortal. Cualquier otro nombre, intacto. Criterios 3, 4, 5, 6 | `transport` | `src/store.ts` · `test/store.test.ts` |
 
 ---
 

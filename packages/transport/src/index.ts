@@ -56,6 +56,7 @@ export {
   type Store,
   type StoreConfig,
   STAMP_HEADER,
+  BUILD_ID_LENGTH,
   cacheNames,
   createStore,
   isStaleCache,

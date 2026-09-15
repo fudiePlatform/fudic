@@ -110,10 +110,11 @@ describe('emitSwBootstrap', () => {
     expect(code).toContain('e.source.postMessage(');
   });
 
-  it('names every cache with the build id and purges the others on activate', () => {
+  it('names every cache with the app and the build, and purges only its own', () => {
     expect(code).toContain(`const BUILD = "${BUILD_TOKEN}";`);
-    expect(code).toContain('cacheNames(BUILD)');
-    expect(code).toContain('isStaleCache(name, BUILD)');
+    expect(code).toContain('cacheNames(APP, BUILD)');
+    // Both constants, or a worker could purge a cache it never wrote (BUG-33).
+    expect(code).toContain('isStaleCache(name, APP, BUILD)');
   });
 
   it('wires the control channel to invalidation and version purges', () => {
