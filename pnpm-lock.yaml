@@ -66,6 +66,9 @@ importers:
       '@fudic/compiler':
         specifier: workspace:*
         version: link:../compiler
+      '@fudic/config':
+        specifier: workspace:*
+        version: link:../config
       '@fudic/conventions':
         specifier: workspace:*
         version: link:../conventions

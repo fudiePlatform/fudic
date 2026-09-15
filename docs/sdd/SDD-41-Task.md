@@ -3,7 +3,7 @@
 > **SDD:** [SDD-41 — `fudic.json`: la aplicación se declara](./SDD-41-configuracion-de-aplicacion.md)
 > **Paquetes:** `@fudic/config` (nuevo) · `@fudic/cli` · `@fudic/vite` · `@fudic/language-server`
 > **Rama:** `sdd-41-config-de-aplicacion`
-> **Progreso:** 3 / 13
+> **Progreso:** 6 / 13
 
 Trece tareas. Cada una es un paso cerrado: se puede parar después de cualquiera con el
 workspace verde, porque §4.1 del SDD garantiza que un proyecto sin `fudic.json` se comporta
@@ -47,9 +47,9 @@ fases 2, 3 y 4 **no dependen entre sí** y pueden ir en el orden que convenga.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 4 | 3 | **(rojo primero)** **`g component` acepta un nombre corto.** El plan lee el config del `cwd` y pasa por `tagOf` antes de `validateTag`; el tag resultante es el que se valida y el que va al wrapper. Un argumento con guión pasa entero, y sin `fudic.json` el comando es el de hoy, `FUD0440` incluido. Se ve fallar primero: hoy `fudic g component card` no escribe nada. Criterios 7, 8 | `cli` | `src/plans/component.ts` · `src/project.ts` · `test/component-prefix.test.ts` |
-| [ ] | 5 | 4 | **`fudic new` escribe el fichero.** Plantilla `fudic.json.tmpl` y los flags `--id` (defecto: el nombre del proyecto) y `--prefix` (opcional: sin él, el fichero no lo lleva y las herramientas se comportan como hoy). El README de la plantilla dice **por qué el `id` no se cambia nunca** (§4.3). Criterio 9 | `cli` | `templates/fudic.json.tmpl` · `src/plans/new.ts` · `src/args.ts` |
-| [ ] | 6 | 5 | **`FUD0724`: dos proyectos, un `id`.** Al barrer un workspace buscando `fudic.json`, dos que declaren el mismo `id` es error. Vive en la CLI y **no** en el plugin, por el motivo de §4.7: un build ve un `root` y no puede saberlo. Criterio 10 | `cli` | `src/project.ts` · `test/duplicate-id.test.ts` |
+| [x] | 4 | 3 | **(rojo primero)** **`g component` acepta un nombre corto.** El plan lee el config del `cwd` y pasa por `tagOf` antes de `validateTag`; el tag resultante es el que se valida y el que va al wrapper. Un argumento con guión pasa entero, y sin `fudic.json` el comando es el de hoy, `FUD0440` incluido. Se ve fallar primero: hoy `fudic g component card` no escribe nada. Criterios 7, 8 | `cli` | `src/plans/component.ts` · `src/project.ts` · `test/component-prefix.test.ts` |
+| [x] | 5 | 4 | **`fudic new` escribe el fichero.** Plantilla `fudic.json.tmpl` y los flags `--id` (defecto: el nombre del proyecto) y `--prefix` (opcional: sin él, el fichero no lo lleva y las herramientas se comportan como hoy). El README de la plantilla dice **por qué el `id` no se cambia nunca** (§4.3). Criterio 9 | `cli` | `templates/fudic.json.tmpl` · `src/plans/new.ts` · `src/args.ts` |
+| [x] | 6 | 5 | **`FUD0724`: dos proyectos, un `id`.** Al barrer un workspace buscando `fudic.json`, dos que declaren el mismo `id` es error. Vive en la CLI y **no** en el plugin, por el motivo de §4.7: un build ve un `root` y no puede saberlo. Criterio 10 | `cli` | `src/project.ts` · `test/duplicate-id.test.ts` |
 
 ---
 

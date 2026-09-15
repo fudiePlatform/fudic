@@ -139,6 +139,17 @@ export function serverCodeBlock(): string {
 `;
 }
 
+/**
+ * The optional `prefix` field of `fudic.json`, with the comma that joins it to `kind`.
+ *
+ * A block builder and not a conditional in the template, because templates substitute and
+ * nothing else (§4.2). `''` leaves the file without the field, which is what makes a
+ * project generated without `--prefix` behave exactly as one from before SDD-41.
+ */
+export function prefixField(prefix: string): string {
+  return prefix === '' ? '' : `,\n  "prefix": ${JSON.stringify(prefix)}`;
+}
+
 /** One `@section name { … }` per name, in the order given (decision 84). */
 export function sectionBlocks(names: readonly string[]): string {
   if (names.length === 0) return '';

@@ -13,6 +13,7 @@ import {
   FUD_COMMAND_FAILED,
   FUD_TARGET_EXISTS,
 } from '../src/diagnostics.js';
+import { FUD_CONFIG_MALFORMED } from '@fudic/config';
 import { TYPESCRIPT_VERSION } from '../src/project.js';
 import { GLOBALS_DTS } from '@fudic/language-core';
 import { MemoryFs, RecordingRunner } from './helpers.js';
@@ -24,6 +25,8 @@ function options(overrides: Partial<NewOptions> = {}): NewOptions {
   return {
     cwd: CWD,
     force: false,
+    id: 'demo',
+    prefix: '',
     pm: 'pnpm',
     install: true,
     git: true,
@@ -45,6 +48,7 @@ describe('fudic new', () => {
       'demo/vite.config.ts',
       'demo/README.md',
       'demo/.gitignore',
+      'demo/fudic.json',
       'demo/tsconfig.json',
       'demo/fudic-globals.d.ts',
       'demo/sw.json',
@@ -61,6 +65,7 @@ describe('fudic new', () => {
       'vite.config.ts',
       'README.md',
       '.gitignore',
+      'fudic.json',
       'tsconfig.json',
       'fudic-globals.d.ts',
       'sw.json',
@@ -215,5 +220,43 @@ describe('fudic new', () => {
     const plan = await planNew('demo', options(), fs);
     expect(plan.changes).toEqual([]);
     expect(plan.errors.map((e) => e.code)).toEqual([FUD_TARGET_EXISTS]);
+  });
+});
+
+/** SDD-41 criterion 9: the project declares itself, and the prefix is optional. */
+describe('fudic new writes fudic.json', () => {
+  function written(overrides: Partial<NewOptions> = {}): Promise<string> {
+    return planNew('tienda', options({ id: 'tienda', ...overrides }), new MemoryFs({}, CWD)).then(
+      (plan) => plan.changes.find((change) => change.path === 'tienda/fudic.json')?.contents ?? '',
+    );
+  }
+
+  it('carries the id and the prefix when both were given', async () => {
+    expect(JSON.parse(await written({ prefix: 'app' }))).toEqual({
+      id: 'tienda',
+      kind: 'app',
+      prefix: 'app',
+    });
+  });
+
+  it('omits the prefix entirely when none was given — the field is optional', async () => {
+    const contents = await written();
+
+    expect(JSON.parse(contents)).toEqual({ id: 'tienda', kind: 'app' });
+    expect(contents).not.toContain('prefix');
+  });
+
+  it('refuses to write an id its own reader would reject', async () => {
+    const plan = await planNew('Tienda', options({ id: 'Tienda' }), new MemoryFs({}, CWD));
+
+    expect(plan.changes).toEqual([]);
+    expect(plan.errors.map((error) => error.code)).toEqual([FUD_CONFIG_MALFORMED]);
+  });
+
+  it('refuses a prefix carrying the hyphen — tagOf is what adds it', async () => {
+    const plan = await planNew('tienda', options({ id: 'tienda', prefix: 'app-' }), new MemoryFs({}, CWD));
+
+    expect(plan.changes).toEqual([]);
+    expect(plan.errors.map((error) => error.code)).toEqual([FUD_CONFIG_MALFORMED]);
   });
 });

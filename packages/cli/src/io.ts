@@ -88,7 +88,7 @@ export function nodeCommandRunner(): CommandRunner {
 }
 
 /** Directories a project scan never descends into. */
-const SKIPPED = new Set(['node_modules', 'dist', '.git', 'coverage', '.vite']);
+export const SKIPPED: ReadonlySet<string> = new Set(['node_modules', 'dist', '.git', 'coverage', '.vite']);
 
 /**
  * Every `.fud` under `root`, as paths relative to it with POSIX separators. Used to find

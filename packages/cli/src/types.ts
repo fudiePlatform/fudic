@@ -97,6 +97,17 @@ export interface FmtOptions extends BaseOptions {
 }
 
 export interface NewOptions extends BaseOptions {
+  /**
+   * The application's identity, written into `fudic.json`. It defaults to the name the
+   * command was given — written, never derived from the directory or from the npm name,
+   * because both of those change for reasons that have nothing to do with who the app is.
+   *
+   * **It is never changed afterwards.** It namespaces the Service Worker caches, and the
+   * caches of a previous value are purged by nobody, ever (BUG-33 §2.4).
+   */
+  readonly id: string;
+  /** What `g component` proposes here. `''` ⇒ `fudic.json` does not carry the field. */
+  readonly prefix: string;
   readonly pm: PackageManager;
   readonly install: boolean;
   readonly git: boolean;
