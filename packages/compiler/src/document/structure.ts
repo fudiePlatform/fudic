@@ -79,8 +79,28 @@ const FUD_DUPLICATE_SECTION = 'FUD0428';
 const FUD_RENDER_HEAD_OUTSIDE_HEAD = 'FUD0431';
 /** `<link rel="layout">` with an absent or interpolated `href` (decision 81). */
 const FUD_BAD_LAYOUT_HREF = 'FUD0436';
-/** A `@code` block in a layout: a layout declares nothing and loads nothing (decision 82). */
-const FUD_LAYOUT_CODE = 'FUD0437';
+/**
+ * A layout that declares its own `<link rel="layout">`: only a route may name a layout.
+ *
+ * Decision 87 let a layout have a parent, and the shape of a layout is what makes that
+ * unpayable: a layout IS a page — doctype, `<html>`, `<head>`, `<body>` — so a chain of two
+ * asks which doctype survives, which `<html>` and `<body>` attributes win, and what happens
+ * to two `<title>`s. There is no answer, and the emit never had one: it simply dropped the
+ * inner shell — doctype, both open tags and their attributes — and kept two fragments, the
+ * children of its `<body>` and the contents of its `<head>`, concatenated into the parent's
+ * with no merge of any kind. Silently discarding what the author wrote is not a composition
+ * rule, so the nesting goes rather than the shell.
+ */
+const FUD_NESTED_LAYOUT = 'FUD0439';
+/**
+ * `FUD0437` — «a layout has no `@code` block» — is RETIRED (SDD-40 §3.1).
+ *
+ * It said a layout declares nothing, and that stopped being true the day a layout could
+ * declare its props with the same `props<T>()` a component and a route use. What is left of
+ * the old rule is narrower and belongs to the emit, which is the only reader that can tell a
+ * props declaration from everything else: `FUD0700`, over whatever a layout's `@code` holds
+ * BESIDES that declaration (SDD-40 §4.1). The code is not reused.
+ */
 
 const WHITESPACE_ONLY = /^\s*$/u;
 
@@ -564,15 +584,11 @@ function buildLayout(
   found: DirectiveSet,
   diagnostics: Diagnostic[],
 ): LayoutDocument {
-  // A layout owns the shell and nothing else: it renders holes — `@RenderBody()`,
-  // `@RenderHead()`, `@RenderSection(name)` — and never data. It declares no props, since
-  // nobody instantiates it as a tag, and it does not `load` (`FUD0430`), so a `@code` there has
-  // nothing it could legally hold. Reported and kept: the block is still structured, so the
-  // editor keeps colouring and checking what the author wrote while the error stands.
-  if (parts.code !== undefined) {
-    diagnostics.push(errorDiag(FUD_LAYOUT_CODE, 'A layout has no @code block', parts.code.span));
-  }
-
+  // A layout owns the shell, renders holes — `@RenderBody()`, `@RenderHead()`,
+  // `@RenderSection(name)` — and, since SDD-40, DECLARES its props. That is the only thing its
+  // `@code` may hold, and saying so needs to tell a `props<T>()` declaration from a loose
+  // statement, which is a question about JS and not about structure: the emit answers it, with
+  // `FUD0700`. Nothing here rejects the block any more.
   const renderBody = single(found.renderBody, '@RenderBody()', diagnostics);
   const renderHead = single(found.renderHead, '@RenderHead()', diagnostics);
   if (renderHead !== undefined && !containsNode(parts.head, renderHead)) {
@@ -592,8 +608,20 @@ function buildLayout(
   rejectDuplicateNames(found.renderSections, 'rendered section', diagnostics);
   rejectDirectives(found, { render: true, section: false }, diagnostics);
 
-  const layoutHref =
-    parts.layoutLink === undefined ? undefined : layoutHrefOf(parts.layoutLink, diagnostics);
+  // Only a route names a layout (FUD0439). The link is KEPT on the node so the emit still
+  // skips it when it writes the `<head>`, and no `layoutHref` is set: with no href there is no
+  // chain, so the file degrades into the plain layout it already looks like — its own shell,
+  // its own doctype — instead of half of a composed one. The href is not validated either:
+  // `FUD0436` over a link that may not exist at all would be a second voice on one mistake.
+  if (parts.layoutLink !== undefined) {
+    diagnostics.push(
+      errorDiag(
+        FUD_NESTED_LAYOUT,
+        'a layout cannot declare <link rel="layout">: only a route may name a layout',
+        parts.layoutLink.span,
+      ),
+    );
+  }
   return {
     type: 'layout-document',
     span: doc.span,
@@ -605,7 +633,6 @@ function buildLayout(
     renderSections: found.renderSections,
     ...(parts.code !== undefined ? { code: parts.code } : {}),
     ...(parts.layoutLink !== undefined ? { layoutLink: parts.layoutLink } : {}),
-    ...(layoutHref !== undefined ? { layoutHref } : {}),
     ...(renderBody !== undefined ? { renderBody } : {}),
     ...(renderHead !== undefined ? { renderHead } : {}),
   };

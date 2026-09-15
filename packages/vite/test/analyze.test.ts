@@ -45,6 +45,7 @@ describe('analyzePage — page vs component', () => {
       isPage: false,
       hasLoad: false,
       hasPaths: false,
+      hasLayout: false,
       strategy: NO_STRATEGY,
     });
   });
@@ -55,6 +56,7 @@ describe('analyzePage — page vs component', () => {
       isPage: true,
       hasLoad: false,
       hasPaths: false,
+      hasLayout: false,
       strategy: NO_STRATEGY,
     });
   });
@@ -91,5 +93,20 @@ describe('analyzePage — @server hooks', () => {
   it('load only counts inside @server, not a neutral chunk', () => {
     const src = page('@code {\nexport function load(ctx) { return {}; }\n}');
     expect(analyzePage(src).hasLoad).toBe(false);
+  });
+
+  it('detects the third reserved name, `layout(ctx, data)` (SDD-40 §3.2)', () => {
+    const src = page(
+      serverBlock(
+        'export function load(ctx) { return { post: ctx.params.slug }; }\n' +
+          'export async function layout(ctx, data) { return { culture: data.post }; }',
+      ),
+    );
+    expect(analyzePage(src)).toMatchObject({ hasLoad: true, hasLayout: true });
+  });
+
+  it('a route with no layout resolver says so', () => {
+    const src = page(serverBlock('export function load(ctx) { return {}; }'));
+    expect(analyzePage(src).hasLayout).toBe(false);
   });
 });

@@ -25,7 +25,8 @@ import { partitionCode } from './code.js';
 import { emitCssVirtuals } from './css.js';
 import { emitClientVirtual, type TemplateJs } from './emit-client.js';
 import type { FragmentAst } from './template/context.js';
-import { emitServerVirtual } from './emit-server.js';
+import { emitServerVirtual, type LayoutContract } from './emit-server.js';
+import { findLayoutResolver } from './layout-resolver.js';
 import { findPropsCall, type PropsCall } from './props.js';
 import type { FileRegistry, VirtualFile } from './types.js';
 
@@ -47,6 +48,15 @@ export interface EmitJs {
    * value crosses as written, which is what the projection did before BUG-23.
    */
   readonly client?: readonly FragmentId[];
+  /**
+   * Fragment ids of the `@server` regions, in source order — where `layout(ctx, data)` is
+   * looked for (SDD-40 §4.7).
+   *
+   * Absent means the caller did not register them, and then the route's resolver gets no
+   * return type and TypeScript checks nothing about it. Degrading rather than erroring is the
+   * rule here as everywhere: the build still reports `FUD0702`.
+   */
+  readonly server?: readonly FragmentId[];
   /**
    * The AST registered at a source span, the ATTRIBUTE VALUES included.
    *
@@ -83,9 +93,30 @@ export function emitVirtualFiles(input: EmitInput): readonly VirtualFile[] {
 
   return [
     emitClientVirtual(source, fileName, document, registry, findProps(js), templateJs(js)),
-    emitServerVirtual(source, fileName, document.code),
+    emitServerVirtual(source, fileName, document.code, layoutContract(source, document, js)),
     ...emitCssVirtuals(source, fileName, document),
   ];
+}
+
+/**
+ * What this file's `<link rel="layout">` and its `layout(ctx, data)` amount to (SDD-40 §4.7).
+ *
+ * Only a ROUTE has one: a page owns its own shell, and a layout's own parent is a chain the
+ * emit composes rather than a contract this file resolves.
+ */
+function layoutContract(
+  source: string,
+  document: StructuredDocument,
+  js: EmitJs,
+): LayoutContract | undefined {
+  if (document.type !== 'route-document' || document.layoutHref === '') return undefined;
+  for (const id of js.server ?? []) {
+    const resolver = findLayoutResolver(source, statementsOf(js.result, id), (s, e) =>
+      js.result.mapSpan(s, e),
+    );
+    if (resolver !== undefined) return { href: document.layoutHref, resolver };
+  }
+  return undefined;
 }
 
 /**
@@ -131,10 +162,11 @@ function templateJs(js: EmitJs): TemplateJs {
  * handler (decisions 96–98). One batch for the lot, which is the golden rule.
  */
 function ownBatch(source: string, doc: StructuredDocument): EmitJs {
-  const { neutral, client } = partitionCode(doc.code);
+  const { neutral, client, server } = partitionCode(doc.code);
   const batch = new JsBatch(source);
   const neutralIds = neutral.map((chunk) => batch.add('module-statements', chunk));
   const clientIds = client.map((chunk) => batch.add('module-statements', chunk));
+  const serverIds = server.map((chunk) => batch.add('module-statements', chunk));
 
   const fragments = new Map<string, FragmentId>();
   walk(documentRoots(doc), {
@@ -164,6 +196,7 @@ function ownBatch(source: string, doc: StructuredDocument): EmitJs {
     result,
     neutral: neutralIds,
     client: clientIds,
+    server: serverIds,
     ast: (at) => {
       const id = fragments.get(spanKey(at));
       return id === undefined ? undefined : result.ast(id);

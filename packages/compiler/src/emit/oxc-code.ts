@@ -9,12 +9,18 @@
  * synthetic batch buffer and are mapped to the original source via `mapOffset`.
  */
 
-import type { ComponentDocument, PageDocument, RouteDocument } from '../document/index.js';
+import type {
+  ComponentDocument,
+  LayoutDocument,
+  PageDocument,
+  RouteDocument,
+} from '../document/index.js';
 import type { CodeBlockNode } from '../code/index.js';
 import type { ResolvedComponent } from './resolve.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import { errorDiag, isEmptySpan, span } from '../types/index.js';
 import { JsBatch, type JsFragmentKind, type OxcNode } from '../oxc/index.js';
+import { unwrapParens } from '../binding/index.js';
 import { collectAttributeJs, collectTemplateJs, type JsFragmentVisitor } from './constructs.js';
 import type { Anchor } from './writer.js';
 import {
@@ -32,6 +38,16 @@ export interface Prop {
   readonly name: string;
   readonly def?: string;
   /**
+   * The property inside the `{ … }` of `props<T>()`, in SOURCE coordinates — `theme` for a
+   * bare key, `theme = "light"` for one with a default.
+   *
+   * A prop was a nameless fact until SDD-40: every reader wanted the name and the shape of
+   * the crossing, and none of them had anything to say ABOUT the declaration. `FUD0701` does
+   * — a layout prop that asks for a reactive is wrong where it is written — and a diagnostic
+   * without a span is a diagnostic a language server cannot place (repo invariant).
+   */
+  readonly at: Span;
+  /**
    * `false` only when the key of `T` is written WITHOUT `?`. When `T` cannot be read at all
    * nothing can be proven about it, so every prop reads as optional and a build invents no
    * error (BUG-23 §4.4).
@@ -47,6 +63,15 @@ export interface Prop {
    * by value, byte for byte (BUG-23 §4.4).
    */
   readonly channel?: 'signal' | 'fn';
+  /**
+   * The source of the key's type in `T`, verbatim — `string`, `Signal<number>`, `Post[]`.
+   *
+   * Absent when the key declares none or when `T` is not a literal this file can read, which
+   * is the same «not provable» the other two fields already mean. Two readers, both of which
+   * want the text and not a resolved type: `FUD0703` compares what two layouts of one chain
+   * wrote under the same name, and the editor's repair writes a value OF the type.
+   */
+  readonly type?: string;
 }
 
 /**
@@ -64,6 +89,14 @@ export interface Reactive {
   /** `signal` → the initial value's source. `computed` → the derive function's, verbatim. */
   readonly init: string;
   readonly kind: 'signal' | 'computed';
+  /**
+   * The whole declarator — `n = signal(0)` — in SOURCE coordinates.
+   *
+   * `at` says where to SPLICE; this says where the declaration IS, which is a different
+   * question and the one a diagnostic asks. `FUD0700` is its first reader: a layout declares
+   * no reactive state, and what is wrong there is the declaration and not its call.
+   */
+  readonly span: Span;
   /**
    * Where the `signal(…)` / `computed(…)` CALL starts in the `.fud`.
    *
@@ -296,6 +329,23 @@ export interface TemplateJs {
   offset(bufferOffset: number): number;
 }
 
+/**
+ * What a route's `layout(ctx, data)` resolves, and where a repair would write into it
+ * (SDD-40 §4.7, §3.5).
+ *
+ * `keys` absent means the return is not a plain object literal this pass can read — a
+ * `return build(ctx)`, a spread, a computed key. «Not provable» reports nothing and repairs
+ * nothing, which is the same bargain an unreadable `T` already makes (BUG-23 §4.4).
+ */
+export interface LayoutResolverCode {
+  /** The property names it returns, in source order. Absent when the return is unreadable. */
+  readonly keys?: readonly string[];
+  /** Just past the `{` of the returned object literal, where a new field goes. */
+  readonly fieldsAt?: number;
+  /** Whether that literal already holds a property — what decides if a comma is needed. */
+  readonly hasFields: boolean;
+}
+
 export interface ExtractedCode {
   readonly props: Prop[];
   /** Every name the component declares with `signal(...)` or `computed(...)`, in order. */
@@ -410,6 +460,15 @@ export interface ExtractedCode {
    */
   readonly serverExports: readonly string[];
   /**
+   * The route's `export … layout(ctx, data)` — the third reserved name (SDD-40 §3.2).
+   *
+   * Absent when the file exports none, which is a different answer from «it exports one this
+   * pass cannot read»: the first is a route that resolves nothing, the second is a return
+   * nobody may draw conclusions from. Both the build's `FUD0702` and the editor's repair need
+   * to tell them apart, and both need the offsets, so they come out of the one Oxc pass here.
+   */
+  readonly layoutResolver?: LayoutResolverCode;
+  /**
    * The statements that REGISTER and run in a browser — the neutral zone's and `@client`'s
    * — with the imports they reference (SDD-38 §4.5).
    *
@@ -446,14 +505,18 @@ const name = (node: OxcNode): string => String(node['name']);
 type MapOffset = (bufferOffset: number) => number;
 
 /**
- * A file whose `@code` is the author's own half of a rendered tree — the three roles that
- * have one (SDD-39 §4.1).
+ * A file whose `@code` this extraction reads — the four roles that have one.
  *
- * A layout is NOT here, and that is §7: its markup is static in this version, so it has no
- * client half to split a `@code` for. What it declares still reaches its own `?server`
- * module, exactly as before.
+ * A layout joined the list in SDD-40, and it joined it for ONE answer: its props. Its markup
+ * is still static (SDD-39 §7), so it has no client half to split a `@code` for, and what
+ * `layout.ts` takes out of here is `props` and `diagnostics` and nothing else — everything
+ * the extraction would also report about a `@server` or a `@client` region of a layout is a
+ * region that has no business existing, and `FUD0700` is the one voice that says so.
+ *
+ * One vocabulary, four roles: a layout declares props with the same `props<T>()` a component
+ * and a route use, so it reads them with the same code (SDD-40 §5).
  */
-export type CodeDocument = ComponentDocument | RouteDocument | PageDocument;
+export type CodeDocument = ComponentDocument | RouteDocument | PageDocument | LayoutDocument;
 
 /**
  * The JS fragments of a document's TEMPLATE, whichever role it takes.
@@ -467,6 +530,15 @@ function collectDocumentJs(doc: CodeDocument, register: JsFragmentVisitor): void
   if (doc.type === 'route-document') {
     collectTemplateJs(doc.markup, register);
     for (const section of doc.sections) collectTemplateJs(section.children, register);
+    return;
+  }
+  if (doc.type === 'layout-document') {
+    // The `<html>` tag's OWN attributes FIRST, which is source order and is the whole point
+    // for a layout: since SDD-40 they are emitted through the attribute machinery like any
+    // other element's, so `<html lang="@culture">` needs a fragment to parse (§4.4). Its
+    // attributes only — descending would walk the document twice.
+    collectAttributeJs(doc.html, register);
+    collectTemplateJs(doc.body.children, register);
     return;
   }
   if (doc.type === 'page-document') {
@@ -628,6 +700,7 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     di,
     server: zoneCode(serverStatements, source, map, diEdits, () => true, rewritten),
     serverExports: exportedNames(serverStatements),
+    ...spread('layoutResolver', layoutResolverOf(serverStatements, map)),
     providers: mergeZones(
       zoneCode(
         neutralStatements,
@@ -692,6 +765,97 @@ export function codeOfDocument(source: string, doc: CodeDocument): ExtractedCode
 
 /** The name a route's `load()` result travels under, on both sides (SDD-39 §4.8). */
 const DATA_BINDING = 'data';
+
+/** `{ k: v }` for a present value, `{}` for an absent one — `exactOptionalPropertyTypes`. */
+const spread = <T,>(key: string, value: T | undefined): Record<string, T> =>
+  value === undefined ? {} : { [key]: value };
+
+/** The third reserved export of a route's `@server` (SDD-40 §3.2). */
+const LAYOUT_EXPORT = 'layout';
+
+/**
+ * The route's exported `layout`, with what it returns and where a field would go.
+ *
+ * Read off the AST and off one shape only: a `return { … }` whose argument is a plain object
+ * literal, written directly in the exported function. That is deliberately narrow, because
+ * what the answer is used for is `FUD0702` and the repair beside it, and a build that reported
+ * a missing prop over a `return buildProps(ctx)` it never looked inside would be inventing an
+ * error. What it cannot read comes back with no `keys`, and no `keys` reports nothing.
+ *
+ * Both declaration shapes count, since both are how people write it: the function statement
+ * and the `const layout = (ctx, data) => ({ … })` arrow, whose body IS its return.
+ */
+function layoutResolverOf(
+  statements: readonly OxcNode[],
+  map: MapOffset,
+): LayoutResolverCode | undefined {
+  for (const stmt of statements) {
+    if (!is(stmt, 'ExportNamedDeclaration')) continue;
+    const declaration = field(stmt, 'declaration');
+    if (declaration === undefined) continue;
+    if (is(declaration, 'FunctionDeclaration')) {
+      const id = field(declaration, 'id');
+      if (!is(id, 'Identifier') || name(id) !== LAYOUT_EXPORT) continue;
+      return returnedObject(field(declaration, 'body'), map);
+    }
+    if (!is(declaration, 'VariableDeclaration')) continue;
+    for (const declarator of fieldArray(declaration, 'declarations')) {
+      const id = field(declarator, 'id');
+      if (!is(id, 'Identifier') || name(id) !== LAYOUT_EXPORT) continue;
+      const init = field(declarator, 'init');
+      if (!is(init, 'ArrowFunctionExpression') && !is(init, 'FunctionExpression')) {
+        return { hasFields: false };
+      }
+      // `(ctx, data) => ({ … })`: the expression body IS the return, and the parentheses
+      // around it are the grammar's — without them the `{` would open a block — so they are
+      // unwrapped rather than read as «not an object literal».
+      const body = unwrapParens(field(init!, 'body'));
+      return is(body, 'ObjectExpression') ? readObject(body!, map) : returnedObject(body, map);
+    }
+  }
+  return undefined;
+}
+
+/** The first `return { … }` of a function body, read; anything else is present but unreadable. */
+function returnedObject(body: OxcNode | undefined, map: MapOffset): LayoutResolverCode {
+  if (!is(body, 'BlockStatement')) return { hasFields: false };
+  for (const stmt of fieldArray(body!, 'body')) {
+    if (!is(stmt, 'ReturnStatement')) continue;
+    const argument = unwrapParens(field(stmt, 'argument'));
+    return is(argument, 'ObjectExpression') ? readObject(argument!, map) : { hasFields: false };
+  }
+  return { hasFields: false };
+}
+
+/** One object literal: its keys, and where a new field goes — just past its `{`. */
+function readObject(object: OxcNode, map: MapOffset): LayoutResolverCode {
+  const keys = objectKeys(object);
+  const properties = fieldArray(object, 'properties');
+  return {
+    ...spread('keys', keys),
+    fieldsAt: map(object.start) + 1,
+    hasFields: properties.length > 0,
+  };
+}
+
+/**
+ * The property names of an object literal, when every one of them is a plain identifier.
+ *
+ * Anything else — a spread, a computed key, a quoted one — makes the WHOLE literal unreadable
+ * rather than shortening it, and shortening is the dangerous answer: a `...defaults` can carry
+ * the very prop the build was about to call missing. Unreadable reports nothing and repairs
+ * nothing, which costs a `{ 'culture': 'es' }` its diagnostic and costs nobody a wrong one.
+ */
+function objectKeys(object: OxcNode): readonly string[] | undefined {
+  const out: string[] = [];
+  for (const property of fieldArray(object, 'properties')) {
+    if (!is(property, 'Property') || property['computed'] === true) return undefined;
+    const key = field(property, 'key');
+    if (!is(key, 'Identifier')) return undefined;
+    out.push(name(key));
+  }
+  return out;
+}
 
 /**
  * The names an `export` binds: `export function load` → `load`.
@@ -1595,7 +1759,7 @@ function readDeclarator(
   const called = is(callee, 'Identifier') ? name(callee!) : '';
 
   if (called === 'props' && is(id, 'ObjectPattern')) {
-    const declared = declaredMembers(init, named);
+    const declared = declaredMembers(init, named, source, map);
     for (const property of fieldArray(id, 'properties'))
       readProp(property, source, map, props, declared);
     // RECOGNISED, and that is what the answer means — not «it produced something». A
@@ -1611,6 +1775,7 @@ function readDeclarator(
       name: name(id),
       init: arg ? source.slice(map(arg.start), map(arg.end)) : 'undefined',
       kind: called,
+      span: span(map(decl.start), map(decl.end)),
       at: map(init.start),
     });
     return true;
@@ -1661,6 +1826,8 @@ function members(node: OxcNode): readonly OxcNode[] {
 interface DeclaredMember {
   readonly required: boolean;
   readonly channel?: 'signal' | 'fn';
+  /** The annotation's own source, when the key carries one. See `Prop.type`. */
+  readonly type?: string;
 }
 
 /** The type `Signal<T>` is written as. By NAME, because this pass reads an AST, not types. */
@@ -1677,6 +1844,23 @@ const SIGNAL_TYPE = 'Signal';
  * callback in a type literal — a `Function` or a named alias resolves to nothing here, and
  * nothing is what it marks.
  */
+/**
+ * The source of a member's type annotation — `string`, `Signal<number>`, `(n: number) => void`
+ * — or `undefined` for a key that declares none.
+ *
+ * Verbatim, and never a resolved type: this pass reads an AST. Two readers want it and both
+ * want the TEXT. `FUD0703` compares what two layouts of one chain wrote under the same name,
+ * and the editor's repair writes a value OF the type, which it can only do by reading it.
+ */
+function typeSourceOf(member: OxcNode, source: string, map: MapOffset): string | undefined {
+  const annotation = field(member, 'typeAnnotation');
+  if (!is(annotation, 'TSTypeAnnotation')) return undefined;
+  // A `TSTypeAnnotation` with no type inside it is not a node Oxc builds: the `:` is what
+  // makes the annotation, and what follows it is what makes the `:` parse.
+  const type = field(annotation, 'typeAnnotation')!;
+  return source.slice(map(type.start), map(type.end));
+}
+
 function channelOf(member: OxcNode): 'signal' | 'fn' | undefined {
   // `{ value }` — a member with no type at all — parses, and its annotation comes back as
   // `null`. The `is` check is what makes this total: a key that declares nothing declares no
@@ -1693,6 +1877,8 @@ function channelOf(member: OxcNode): 'signal' | 'fn' | undefined {
 function declaredMembers(
   call: OxcNode,
   named: ReadonlyMap<string, OxcNode>,
+  source: string,
+  map: MapOffset,
 ): ReadonlyMap<string, DeclaredMember> {
   const args = field(call, 'typeArguments');
   const argument = args ? fieldArray(args, 'params')[0] : undefined;
@@ -1703,8 +1889,10 @@ function declaredMembers(
     const key = field(member, 'key');
     if (!is(member, 'TSPropertySignature') || !is(key, 'Identifier')) continue;
     const channel = channelOf(member);
+    const type = typeSourceOf(member, source, map);
     out.set(name(key), {
       required: member['optional'] !== true,
+      ...(type === undefined ? {} : { type }),
       ...(channel === undefined ? {} : { channel }),
     });
   }
@@ -1725,12 +1913,14 @@ function readProp(
   const member = declared.get(propName);
   const optional = member === undefined || !member.required;
   const channel = member?.channel === undefined ? {} : { channel: member.channel };
+  const type = member?.type === undefined ? {} : { type: member.type };
   const value = field(property, 'value');
+  const at = span(map(property.start), map(property.end));
   if (value && is(value, 'AssignmentPattern')) {
     const right = field(value, 'right')!;
     const def = source.slice(map(right.start), map(right.end));
-    out.push({ name: propName, def, optional, ...channel });
+    out.push({ name: propName, def, optional, at, ...type, ...channel });
   } else {
-    out.push({ name: propName, optional, ...channel });
+    out.push({ name: propName, optional, at, ...type, ...channel });
   }
 }

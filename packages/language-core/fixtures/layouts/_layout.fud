@@ -1,10 +1,13 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="@culture">
   <head>
+    @code {
+      const { culture, theme = "light" } = props<{ culture: string; theme?: string }>();
+    }
     <meta charset="utf-8">
     @RenderHead()
   </head>
-  <body>
+  <body data-theme="@theme">
     <header>
       @RenderSection(nav)
     </header>

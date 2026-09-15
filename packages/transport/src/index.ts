@@ -70,6 +70,7 @@ export {
 } from './csp.js';
 export {
   type FetchEvent,
+  type LayoutResolver,
   type RenderContext,
   type RouteChunk,
   type ResourceRule,

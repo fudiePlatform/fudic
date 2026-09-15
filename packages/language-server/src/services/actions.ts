@@ -23,7 +23,8 @@ import { URI } from 'vscode-uri';
 import type { CachedDocument } from '../document-cache.js';
 import { relativeHref } from '../paths.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
-import { contractIssues, type ContractIssue } from './contract.js';
+import { contractIssues, type ContractIssue, type MissingLayoutProps } from './contract.js';
+import type { ContractProp } from '../mode.js';
 import type { PropDetail, PropHolds } from './tag-card.js';
 import { unresolvedHrefs } from './href.js';
 import { linkInsertionFor } from './tags.js';
@@ -254,6 +255,8 @@ function contractFixes(issue: ContractIssue, propsOf: PropLookup): readonly Fix[
     ];
   }
 
+  if (issue.kind === 'missing-layout-props') return [layoutFix(issue)];
+
   if (issue.kind === 'unknown-prop') {
     // No suggestion, no action. A list of every prop the component declares would be a menu,
     // and a bulb that opens a menu is a bulb the author has to read before they can dismiss it.
@@ -281,6 +284,69 @@ function contractFixes(issue: ContractIssue, propsOf: PropLookup): readonly Fix[
     title: `Cambiar a slot="${name}"`,
     edits: [{ span: issue.at, newText: name }],
   }));
+}
+
+/**
+ * The value to write for a layout prop, in the shape its declared TYPE holds.
+ *
+ * The same rule as `HOLES` and for the same reason — a repair that leaves the file with a type
+ * error it created itself is worse than no repair (SDD-40 §4.7) — but written in TypeScript
+ * instead of in markup, because a resolver's `return` is code and not an attribute value. A
+ * scalar gets its own literal; anything else gets a double assertion, which compiles against
+ * every type there is and reads unmistakably as a hole the author has to fill.
+ *
+ * A prop whose type the file never stated takes `''`, which is what most props take.
+ */
+function layoutHole(prop: ContractProp): string {
+  const type = prop.type?.trim();
+  if (type === undefined) return "''";
+  if (type === 'string') return "''";
+  if (type === 'number') return '0';
+  if (type === 'boolean') return 'false';
+  return `null as unknown as ${type}`;
+}
+
+/** The resolver the repair writes when the route has none — its whole text, indented once. */
+function layoutResolverText(props: readonly ContractProp[], indent: string): string {
+  const fields = props.map((prop) => `${indent}    ${prop.name}: ${layoutHole(prop)},`).join('\n');
+  return (
+    `${indent}export function layout(ctx: unknown, data: unknown) {\n` +
+    `${indent}  return {\n${fields}\n${indent}  };\n` +
+    `${indent}}\n`
+  );
+}
+
+/**
+ * *«Completar las props requeridas del layout»* (SDD-40 §3.5).
+ *
+ * The sister of the action above, and the same division of labour: TypeScript reports — the
+ * projection gives the route's `layout(ctx, data)` the layout's `$Props` as its return type,
+ * so the error is on the author's own `return` — and this repairs. Four nestings, because the
+ * thing to write depends on how much of the scaffolding already exists: the fields alone, the
+ * function, the function inside a `@server`, or the whole `@code` block.
+ */
+function layoutFix(issue: MissingLayoutProps): Fix {
+  const title = 'Completar las props requeridas del layout';
+  if (issue.write === 'object') {
+    // Straight after the `{`, with a trailing comma when the literal already holds something —
+    // the object keeps parsing whatever was in it.
+    const fields = issue.props.map((prop) => ` ${prop.name}: ${layoutHole(prop)},`).join('');
+    const text = issue.hasFields ? fields : `${fields.slice(0, -1)} `;
+    return { title, edits: [{ span: span(issue.insertAt, issue.insertAt), newText: text }] };
+  }
+  if (issue.write === 'server') {
+    return {
+      title,
+      edits: [
+        { span: span(issue.insertAt, issue.insertAt), newText: `\n${layoutResolverText(issue.props, '    ')}` },
+      ],
+    };
+  }
+  const body =
+    issue.write === 'region'
+      ? `  @server {\n${layoutResolverText(issue.props, '    ')}  }\n`
+      : `\n\n@code {\n  @server {\n${layoutResolverText(issue.props, '    ')}  }\n}\n`;
+  return { title, edits: [{ span: span(issue.insertAt, issue.insertAt), newText: body }] };
 }
 
 /**

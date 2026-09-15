@@ -616,6 +616,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           pageModule: rb.absPath.replace(/\\/gu, '/'),
           hasLoad: rb.analysis.hasLoad,
           hasPaths: rb.analysis.hasPaths,
+          hasLayout: rb.analysis.hasLayout,
           hasDi: routeUsesDi(rb.absPath, io),
           // In DEV this module IS the edge: the dev server renders through the module
           // graph and resolves data in process. In BUILD it is a chunk of the client
