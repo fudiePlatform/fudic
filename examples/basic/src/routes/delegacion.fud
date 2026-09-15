@@ -73,9 +73,21 @@
 </div>
 
 <h2>Cómo medir</h2>
+<p>
+  El contador no arranca en cero: nada más cargar marca <strong>3</strong>, y conviene saber
+  cuáles son antes de leer nada más. Uno es el <code>click</code> en captura sobre el documento
+  con el que el runtime despierta un componente frío —ese es el único de los tres que es un
+  listener del DOM de la página—; los otros dos están en
+  <code>navigator.serviceWorker</code>, que también es un <code>EventTarget</code>: el
+  <code>message</code> y el <code>controllerchange</code> del canal que precalienta chunks. Con
+  <code>pnpm dev</code> la cifra es mayor porque el cliente HMR de Vite abre un
+  <code>WebSocket</code> y le pone los suyos. La base cambia; lo que se mide aquí —cuánto sube
+  al tocar— no.
+</p>
 <ol>
   <li>Pulsa una celda del calendario <strong>azul</strong>. Ese primer clic descarga su chunk
-    e hidrata: el contador sube una vez y se queda quieto.</li>
+    e hidrata: el contador sube <strong>4</strong> —el <code>@@click</code> de la rejilla y los
+    tres botones de la barra— y ahí se queda para siempre.</li>
   <li>Pulsa <em>Poner a cero</em>.</li>
   <li>Pulsa <strong>+7 filas</strong> tres veces y luego <strong>−7 filas</strong> tres veces:
     veintiuna filas montadas y retiradas. El contador <strong>no se mueve</strong>.</li>
@@ -108,7 +120,20 @@
   pierde el foco, que antes eran tres listeners <strong>por campo</strong>: treinta y seis.
   Ahora la raíz tiene uno por tipo —el de <code>blur</code> es un <code>focusout</code>,
   porque <code>blur</code> no burbujea— y el campo tiene una fila en una tabla. Pon a cero,
-  escribe en el primer campo para que el formulario hidrate, y cuenta.
+  escribe en el primer campo para que el formulario hidrate, y cuenta: son
+  <strong>5</strong>, y de dónde sale cada uno importa. <strong>Tres en la raíz</strong> —
+  <code>input</code>, <code>change</code> y <code>focusout</code>—, y esos tres son los doce
+  campos enteros: ahí está el treinta y seis convertido en tres. Los otros
+  <strong>dos van en el <code>&lt;form&gt;</code></strong>: el <code>@@submit</code> de esta
+  plantilla y la validación del propio formulario.
+</p>
+<p>
+  El <code>submit</code> es el único evento de aquí que <em>no</em> se delega, y a propósito.
+  Hay un formulario por raíz, así que delegarlo no ahorraría ningún listener —uno arriba en vez
+  de uno abajo— y a cambio dejaría la validación colgando de que el evento llegue hasta la
+  raíz: un <code>@@submit</code> que llame a <code>stopPropagation()</code>, que es como se
+  escribe normalmente, se la llevaría por delante sin decir nada. Delegar se paga; en un campo
+  que se repite doce veces sale a cuenta, y en el formulario que hay uno, no.
 </p>
 
 <app-wide-form></app-wide-form>
