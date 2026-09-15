@@ -85,6 +85,14 @@ describe('compileManifest', () => {
       hydrate: { 'app-counter': ['assets/element-DUSE73WP.js'] },
     });
     expect(table.hydrateDeps('app-counter')).toEqual(['/assets/element-DUSE73WP.js']);
+    // A BARE name is the common case: where it lives is arithmetic, so the build id and
+    // the extension are added here. A name that already ends in `.js` kept a content hash
+    // and is used verbatim — those are the two shapes, and both are published.
+    expect(
+      compileManifest({ ...FILE, hydrate: { 'app-counter': ['element'] } }).hydrateDeps(
+        'app-counter',
+      ),
+    ).toEqual(['/element-a3f9c1.js']);
     // A tag with no shared code, and a tag this build never heard of — a stale page asking
     // for a component that no longer exists — are the same answer: nothing to drag along.
     expect(table.hydrateDeps('app-toggle')).toEqual([]);
