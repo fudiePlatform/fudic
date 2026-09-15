@@ -46,6 +46,16 @@ export interface RenderContext {
   readonly nonce: string;
   /** Already-resolved data: the SW asks the endpoint, the edge calls `load` in process. */
   readonly data?: unknown;
+  /**
+   * The layout props of this render, already resolved (SDD-40 §3.3).
+   *
+   * Beside `data` and never inside it: what a route paints and what its layout needs are two
+   * shapes, and mixing them makes the second one an accident of the first. It arrives the same
+   * two ways `data` does — `layout(ctx, data)` in process on the edge, the data endpoint in
+   * the Service Worker — and the endpoint answers with the two in ONE response, because they
+   * are one request and come out of one instant of it.
+   */
+  readonly layout?: unknown;
 }
 
 /**
@@ -201,19 +211,29 @@ export function createRouter(config: RouterConfig): Router {
     return new Response(applyNonce(await cached.text(), nonce), { headers });
   };
 
-  const fetchData = async (record: RouteRecord, params: Readonly<Record<string, string>>): Promise<unknown> => {
-    // `dataPolicy` IS the "this route has data" signal now: it is emitted exactly when the
-    // page declares `@server load`. One question, one branch.
+  /**
+   * What the route resolved for this render: `data`, and the layout props beside it.
+   *
+   * ONE request, because they come out of one instant of one request (SDD-40 §3.3). The SW
+   * executes neither `load` nor `layout` and that is not a gap: `@server` cannot reach a
+   * client bundle, where there are keys and data access (BUG-09).
+   */
+  const fetchData = async (
+    record: RouteRecord,
+    params: Readonly<Record<string, string>>,
+  ): Promise<{ data: unknown; layout?: unknown }> => {
+    // `dataPolicy` IS the "this route resolves something" signal: it is emitted exactly when
+    // the page declares `@server load` or `@server layout`. One question, one branch.
     const { dataPolicy } = record;
     if (dataPolicy === undefined) {
-      return {};
+      return { data: {} };
     }
     const response = await stores.data.get(
       abs(fillParams(table.urls.dataUrl(record.pattern), params)),
       dataPolicy.policy,
       dataPolicy.ttl,
     );
-    return response.json();
+    return (await response.json()) as { data: unknown; layout?: unknown };
   };
 
   /** The render itself: link → data → `chunk.render(ctx)` → `Response`. */
@@ -231,10 +251,21 @@ export function createRouter(config: RouterConfig): Router {
         (record.deps ?? []).map((name) => abs(table.urls.depUrl(name))),
       );
       const chunk = exports as unknown as RouteChunk;
-      const data = await fetchData(record, params);
+      const { data, layout } = await fetchData(record, params);
       // The chunk renders with the TOKEN, not with this response's nonce: the same bytes
       // may be persisted and served again, and a nonce is per response (§4.5).
-      const ctx: RenderContext = { origin: 'sw', url, params, mode: record.mode, nonce: NONCE_TOKEN, data };
+      const ctx: RenderContext = {
+        origin: 'sw',
+        url,
+        params,
+        mode: record.mode,
+        nonce: NONCE_TOKEN,
+        data,
+        // Omitted rather than set to `undefined`: a route whose layout declares only props
+        // with defaults resolves none, and `exactOptionalPropertyTypes` makes the two
+        // different things.
+        ...(layout === undefined ? {} : { layout }),
+      };
       const headers = new Headers(HTML_HEADERS);
       headers.set('content-security-policy', cspFor(table.csp.document, nonce));
       let stream = chunk.render(ctx);

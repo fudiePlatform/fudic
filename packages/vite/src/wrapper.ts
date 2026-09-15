@@ -103,9 +103,13 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   lines.push('}');
   lines.push('');
 
-  if (edgeLoad) {
+  // The data endpoint: ONE response carrying both halves (§3.3). It exists whenever the route
+  // resolves anything for a render — `load`, `layout`, or both — because the Service Worker
+  // executes neither and has no other way to be handed them.
+  if (edgeLoad || edgeLayout) {
     lines.push('export async function data(ctx) {');
-    lines.push('  return load(ctx);');
+    lines.push(`  const data = ${edgeLoad ? 'await load(ctx)' : '{}'};`);
+    lines.push(`  return { data${edgeLayout ? ', layout: await layoutProps(ctx, data)' : ''} };`);
     lines.push('}');
     lines.push('');
   }

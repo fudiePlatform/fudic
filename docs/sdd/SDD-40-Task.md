@@ -5,7 +5,7 @@
 > `@fudic/transport` (`RenderContext.layout`) · `@fudic/vite` (envoltorio, endpoint, prerender) ·
 > `@fudic/language-server` (la bombilla) · `@fudic/example-basic` (la evidencia)
 > **Rama:** `worktree-sdd-40-props-de-layout`
-> **Progreso:** 7 / 14
+> **Progreso:** 10 / 14
 > **Después de SDD-39**, no en paralelo: los dos tocan
 > `packages/compiler/src/emit/layout.ts`. No comparten ninguna decisión, solo el fichero.
 
@@ -75,14 +75,14 @@ un `load` propio del layout (§7).
 
 ## Fase 3 — El cable, y que los tres coincidan (3)
 
-- [ ] **8. `RenderContext.layout`.**
+- [x] **8. `RenderContext.layout`.**
       Un campo más, al lado de `data` y nunca dentro. `@fudic/transport` nace al 100 % en lo
       nuevo.
-- [ ] **9. El endpoint devuelve las dos cosas.**
+- [x] **9. El endpoint devuelve las dos cosas.**
       `{ data, layout }` en **una** respuesta: es una petición, no dos, y las dos salen del mismo
       instante de la misma. El envoltorio del borde llama a las dos funciones en proceso; el del
       SW no importa ninguna. Criterio §6.10.
-- [ ] **10. El test que define el SDD.**
+- [x] **10. El test que define el SDD.**
       La misma ruta renderizada en `edge`, en `sw` y en `ssg` produce el **mismo** `<html lang>`,
       comparado byte a byte. Si esto no está verde, lo demás da igual. Criterio §6.11.
 

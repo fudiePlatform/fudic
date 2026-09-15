@@ -36,7 +36,9 @@ describe('emitRenderChunk — the edge variant', () => {
 
   it('exports data(ctx) so the generated endpoint reuses the same load', () => {
     expect(code).toContain('export async function data(ctx) {');
-    expect(code).toContain('return load(ctx);');
+    expect(code).toContain('const data = await load(ctx);');
+    // One response, two halves (SDD-40 §3.3) — `layout` absent when the route resolves none.
+    expect(code).toContain('return { data };');
   });
 
   it('prefers data already resolved by the caller', () => {
@@ -103,6 +105,25 @@ describe('emitRenderChunk — the layout resolver (SDD-40)', () => {
 
   it('hands what it resolved to the page, behind the container', () => {
     expect(edge).toContain('yield* page(data, io(ctx), undefined, layout);');
+  });
+
+  it('the endpoint answers with the two halves in ONE response (§6.10)', () => {
+    expect(edge).toContain('const data = await load(ctx);');
+    expect(edge).toContain('return { data, layout: await layoutProps(ctx, data) };');
+  });
+
+  it('a route with a resolver and no `load` still gets an endpoint', () => {
+    // The Service Worker executes neither, so without one it would have no way to be handed
+    // the props at all.
+    const noLoad = emitRenderChunk({
+      pageModule: './about.fud',
+      hasLoad: false,
+      hasLayout: true,
+      withLoad: true,
+    });
+    expect(noLoad).toContain('export async function data(ctx) {');
+    expect(noLoad).toContain('const data = {};');
+    expect(noLoad).toContain('return { data, layout: await layoutProps(ctx, data) };');
   });
 
   it('never CALLS paths(): it is re-exported for the build and nothing else (§6.9)', () => {

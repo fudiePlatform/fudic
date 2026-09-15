@@ -153,6 +153,11 @@ export interface RenderContext {
 El endpoint de datos generado devuelve las dos cosas —`{ data, layout }`— en una sola respuesta:
 es una petición, no dos, y las dos salen del mismo instante de la misma petición.
 
+Y por eso **una ruta que solo resuelve props de layout también tiene endpoint**: hasta ahora lo
+tenía exactamente la que declaraba `@server load`, porque era lo único que había que servir. Con
+dos mitades en una respuesta, `layout(ctx, data)` a solas basta — el SW no ejecuta ninguna de las
+dos y sin endpoint no tendría por dónde recibirlas.
+
 ### 3.4. La composición
 
 ```ts
