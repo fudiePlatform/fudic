@@ -3,7 +3,7 @@
 > **BUG:** [BUG-33 — Dos apps en el mismo origen se borran las cachés](./BUG-33-caches-por-app.md)
 > **Paquetes:** `@fudic/transport` · `@fudic/vite`
 > **Rama:** `bug-33-caches-por-app`
-> **Progreso:** 4 / 6
+> **Progreso:** 6 / 6
 > **Bloqueado por:** [SDD-41](../SDD-41-configuracion-de-aplicacion.md) — sin `id` no hay con qué
 > namespacear. Concretamente por su **tarea 7**: el plugin tiene que estar leyendo el config antes
 > de que este BUG pueda pasarle el `id` al worker.
@@ -55,5 +55,5 @@ nada.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 5 | 4 | **Dos apps, un origen.** Un segundo build de `examples/basic` bajo `/admin/` con `id: "basic-admin"` —que además ejercita el corte por anchura de §4.2, porque `basic` es prefijo suyo— y un guion de Playwright que visita `/`, visita `/admin/`, corta la red y vuelve a `/`. **La página abre.** Antes de la fase 2, con el mismo guion, no abre. Criterio 9 | `example-basic` | `admin/vite.config.ts` · `tests/sw-two-apps.spec.ts` |
-| [ ] | 6 | todas | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`, y los 9 criterios de §6 verdes — con el 1 visto pasar antes y fallar después. `@fudic/transport` no baja del número que tiene al empezar y el código nuevo nace al 100 %. BUG-33 a `Hecho` en [INDEX.md](./INDEX.md) | — | [INDEX.md](./INDEX.md) |
+| [x] | 5 | 4 | **Dos apps, un origen.** ~~Un segundo build de `examples/basic` bajo `/admin/`~~ → **dos proyectos de verdad**, `examples/workspace/apps/{tienda,admin}`, cada uno con su `package.json`, sus dependencias y su build; un `serve.mjs` los monta en un origen. El primer intento montó la segunda app **dentro** de la primera, compartiendo su `package.json` y sus rutas, y Pedro lo rechazó: eso no son dos aplicaciones, es un proyecto con dos configuraciones de vite. El `id` es `tienda-admin` y el de la tienda es prefijo suyo, así que el corte por anchura de §4.2 queda ejercitado igual. Tres specs: cada app abre sin red después de visitar la otra, y ningún worker borra una caché que no escribió. Vistas fallar antes. Criterio 9 | `example-workspace` | `examples/workspace/*` |
+| [x] | 6 | todas | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` verdes, y los 9 criterios de §6. `@fudic/transport` sube: ramas 88,50 → 89,42, y `src/manifest.ts` vuelve a su umbral de 100 % en las cuatro. Por el camino, [BUG-39](./BUG-39-el-router-no-conoce-su-base.md): la evidencia destapó que una app bajo un `base` declina todas sus rutas, y sin eso la tarea 5 no podía estar verde. BUG-33 a `Hecho` en [INDEX.md](./INDEX.md) | — | [INDEX.md](./INDEX.md) |

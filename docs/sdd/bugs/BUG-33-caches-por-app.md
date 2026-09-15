@@ -1,6 +1,6 @@
 # BUG-33 · Dos apps en el mismo origen se borran las cachés
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Corrige:** [SDD-20 — Render en el Service Worker](../SDD-20-render-sw.md) §4.10
 > **Paquetes:** `@fudic/transport` · `@fudic/vite`
 > **Depende de:** [SDD-41](../SDD-41-configuracion-de-aplicacion.md) — el `id` de aplicación
@@ -98,6 +98,13 @@ La regla está escrita para un mundo de una app por origen, y en ese mundo es co
   `join(base, '_fudic/data')` ([`transport/src/urls.ts:80`](../../../packages/transport/src/urls.ts#L80));
   las URL de chunk salen de `createUrlResolver(base, build)`. **Los nombres de caché son el
   único sitio del esquema de nombres donde `base` no está enhebrado.**
+
+  > **Corregido al implementar.** Esa última frase era cierta del esquema de **nombres** y
+  > falsa del de **patrones**: el casado de rutas del router comparaba `url.pathname` —que
+  > lleva el `base`— contra los patrones del manifiesto, que no lo llevan. Es
+  > [BUG-39](./BUG-39-el-router-no-conoce-su-base.md), lo destapó la evidencia de este BUG
+  > al existir la primera app bajo `/admin/`, y sin arreglarlo la tarea 5 no podía pasar:
+  > el worker de la segunda app no renderizaba nada, con cachés o sin ellas.
 
 ### 2.4. Por qué el `base` no sirve como identificador
 
