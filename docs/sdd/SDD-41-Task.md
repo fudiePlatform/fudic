@@ -3,7 +3,7 @@
 > **SDD:** [SDD-41 — `fudic.json`: la aplicación se declara](./SDD-41-configuracion-de-aplicacion.md)
 > **Paquetes:** `@fudic/config` (nuevo) · `@fudic/cli` · `@fudic/vite` · `@fudic/language-server`
 > **Rama:** `sdd-41-config-de-aplicacion`
-> **Progreso:** 0 / 13
+> **Progreso:** 3 / 13
 
 Trece tareas. Cada una es un paso cerrado: se puede parar después de cualquiera con el
 workspace verde, porque §4.1 del SDD garantiza que un proyecto sin `fudic.json` se comporta
@@ -37,9 +37,9 @@ fases 2, 3 y 4 **no dependen entre sí** y pueden ir en el orden que convenga.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **El paquete.** `@fudic/config` bajo `packages/`, hoja, **sin dependencias de runtime**. `tsconfig.base.json` extendido, `vitest.config.ts` con `thresholds` al **100 en las cuatro** y `coverage.include: ['src/**/*.ts']` desde este commit. Entrada `src/index.ts`, y `CONFIG_FILE = 'fudic.json'` como único sitio donde se deletrea el nombre | `config` | `package.json` · `vitest.config.ts` · `src/index.ts` |
-| [ ] | 2 | 1 | **El lector.** `readProjectConfig(root, io)` con la `ConfigIo` de dos métodos, calcada de `readSwConfig` (SDD-20). **Nunca lanza**: un `read` que tira produce `FUD0720` y `config: null`. Valida los tres campos por separado y emite **un diagnóstico por campo culpable**; un fichero con un campo malo devuelve `config: null` entero, sin rescatar los buenos (§4.2). Defectos: `kind` → `'app'`, `prefix` → `''`, `id` → `''`. Criterios 1, 2, 3, 4, 6 | `config` | `src/read.ts` · `src/diagnostics.ts` · `test/read.test.ts` |
-| [ ] | 3 | 2 | **La aritmética del prefijo.** `tagOf(prefix, name)`: pone el guión —y es el único sitio que lo pone, que es lo que impide un `app--card`—, devuelve **intacto** un argumento que ya lleva guión, y devuelve intacto todo si el prefijo es `''`. `tagOf('app','signal-counter')` es `signal-counter`. Propone, no manda (§4.4). Criterio 5 | `config` | `src/tag.ts` · `test/tag.test.ts` |
+| [x] | 1 | — | **El paquete.** `@fudic/config` bajo `packages/`, hoja, **sin dependencias de runtime**. `tsconfig.base.json` extendido, `vitest.config.ts` con `thresholds` al **100 en las cuatro** y `coverage.include: ['src/**/*.ts']` desde este commit. Entrada `src/index.ts`, y `CONFIG_FILE = 'fudic.json'` como único sitio donde se deletrea el nombre | `config` | `package.json` · `vitest.config.ts` · `src/index.ts` |
+| [x] | 2 | 1 | **El lector.** `readProjectConfig(root, io)` con la `ConfigIo` de dos métodos, calcada de `readSwConfig` (SDD-20). **Nunca lanza**: un `read` que tira produce `FUD0720` y `config: null`. Valida los tres campos por separado y emite **un diagnóstico por campo culpable**; un fichero con un campo malo devuelve `config: null` entero, sin rescatar los buenos (§4.2). Defectos: `kind` → `'app'`, `prefix` → `''`, `id` → `''`. Criterios 1, 2, 3, 4, 6 | `config` | `src/read.ts` · `src/diagnostics.ts` · `test/read.test.ts` |
+| [x] | 3 | 2 | **La aritmética del prefijo.** `tagOf(prefix, name)`: pone el guión —y es el único sitio que lo pone, que es lo que impide un `app--card`—, devuelve **intacto** un argumento que ya lleva guión, y devuelve intacto todo si el prefijo es `''`. `tagOf('app','signal-counter')` es `signal-counter`. Propone, no manda (§4.4). Criterio 5 | `config` | `src/tag.ts` · `test/tag.test.ts` |
 
 ---
 

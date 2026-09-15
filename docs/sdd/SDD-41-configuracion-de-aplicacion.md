@@ -145,11 +145,27 @@ export interface ProjectConfig {
   readonly prefix: string;
 }
 
+/** Offsets into the file's text, `[start, end)`. */
+export interface Span {
+  readonly start: number;
+  readonly end: number;
+}
+
 export interface ConfigDiagnostic {
   readonly code: string;      // FUD0720–FUD0739
   readonly message: string;
   /** The file the diagnostic is about, relative to the project root. */
   readonly file: string;
+  /**
+   * Where the guilty field is, so the editor underlines it instead of the whole file
+   * (§5: *spans donde hay fuente*). It spans the KEY and not its value: the key is what
+   * names the field and what the message talks about, and finding it needs no second
+   * JSON parser.
+   *
+   * Absent when there is nothing to point at — the file could not be read, the JSON does
+   * not parse, or the key is spelled with escapes and so is not in the text as written.
+   */
+  readonly span?: Span;
 }
 
 export interface ConfigResult {
@@ -355,7 +371,10 @@ culpable; la CLI y el plugin los reportan como ya reportan sus errores sin span.
   y el build acaben con dos ideas del prefijo.
 - **Spans donde hay fuente.** Los diagnósticos del fichero de configuración llevan el span
   del campo dentro de `fudic.json`; uno sin campo señalado no es accionable
-  (SDD-01 §3.2).
+  (SDD-01 §3.2). El span cubre **la clave**, que es lo que nombra al campo y de lo que
+  habla el mensaje. Es opcional porque hay tres casos sin nada que señalar —el fichero no
+  se pudo leer, el JSON no parsea, o la clave está escrita con escapes y no está en el
+  texto tal cual—, y en esos tres el diagnóstico es del fichero entero.
 - **El config declara identidad, nunca disposición.** Ni directorios, ni targets, ni
   versiones. Cada uno de esos tiene dueño (§7), y el argumento es el de
   `@fudic/conventions`: un sitio donde cabe todo acaba conteniéndolo.
