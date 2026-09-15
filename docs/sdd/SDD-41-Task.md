@@ -3,7 +3,7 @@
 > **SDD:** [SDD-41 — `fudic.json`: la aplicación se declara](./SDD-41-configuracion-de-aplicacion.md)
 > **Paquetes:** `@fudic/config` (nuevo) · `@fudic/cli` · `@fudic/vite` · `@fudic/language-server`
 > **Rama:** `sdd-41-config-de-aplicacion`
-> **Progreso:** 11 / 13
+> **Progreso:** 13 / 13
 
 Trece tareas. Cada una es un paso cerrado: se puede parar después de cualquiera con el
 workspace verde, porque §4.1 del SDD garantiza que un proyecto sin `fudic.json` se comporta
@@ -76,5 +76,5 @@ fases 2, 3 y 4 **no dependen entre sí** y pueden ir en el orden que convenga.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 12 | 6, 8, 11 | **`examples/basic` se declara.** `fudic.json` con `id: "basic"` y `prefix: "app"`, y **ni un componente renombrado**: `bus-log`, `signal-counter`, `product-list`, `shopping-cart` y `site-nav` se quedan exactamente como están y el build sigue verde. Eso **es** el criterio — el prefijo cambia lo que se propone al crear el siguiente y no toca a los diecinueve que ya hay. Criterio 16 | `example-basic` | `fudic.json` |
-| [ ] | 13 | todas | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`, y los 17 criterios de §6 verdes — con los tres de «rojo primero» (3, 7, 12) vistos fallar antes. `@fudic/config` al **100 %** en las cuatro métricas; `cli`, `vite` y `language-server` no por debajo de donde empezaron. SDD-41 a `Hecho` en [INDEX.md](./INDEX.md), con su fila en la tabla maestra y su línea en el registro de progreso | — | [INDEX.md](./INDEX.md) |
+| [x] | 12 | 6, 8, 11 | **`examples/basic` se declara.** *(aterrizó en la fase 3: en cuanto `FUD0721` existe, un ejemplo con `sw.json` y sin `id` no construye)*  `fudic.json` con `id: "basic"` y `prefix: "app"`, y **ni un componente renombrado**: `bus-log`, `signal-counter`, `product-list`, `shopping-cart` y `site-nav` se quedan exactamente como están y el build sigue verde. Eso **es** el criterio — el prefijo cambia lo que se propone al crear el siguiente y no toca a los diecinueve que ya hay. Criterio 16 | `example-basic` | `fudic.json` |
+| [x] | 13 | todas | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`, y los 17 criterios de §6 verdes — con los tres de «rojo primero» (3, 7, 12) vistos fallar antes. `@fudic/config` al **100 %** en las cuatro métricas; `cli`, `vite` y `language-server` no por debajo de donde empezaron. SDD-41 a `Hecho` en [INDEX.md](./INDEX.md), con su fila en la tabla maestra y su línea en el registro de progreso | — | [INDEX.md](./INDEX.md) |

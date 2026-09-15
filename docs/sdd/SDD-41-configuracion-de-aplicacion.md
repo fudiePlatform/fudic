@@ -1,6 +1,6 @@
 # SDD-41 — `fudic.json`: la aplicación se declara
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Paquetes:** `@fudic/config` (nuevo) · `@fudic/cli` · `@fudic/vite` ·
 > `@fudic/language-server` · `@fudic/example-basic` (la evidencia)
 > **Depende de:** 19, 20, 22, 24, 28
