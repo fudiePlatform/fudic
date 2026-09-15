@@ -100,6 +100,8 @@ function linkPlugin(builds: readonly RouteBuild[], io: ResolveIo, base: string):
         pageModule: rb.absPath.replace(/\\/gu, '/'),
         hasLoad: rb.analysis.hasLoad,
         hasPaths: rb.analysis.hasPaths,
+        // Not passed on purpose: with `withLoad: false` it would change nothing, and the
+        // omission is the statement — the SW imports neither `load` nor `layout` (§4.5).
         hasDi: routeUsesDi(rb.absPath, io),
         withLoad: false, // server code never ships to the client (§4.5)
         runtime: runtimeUrls(base),

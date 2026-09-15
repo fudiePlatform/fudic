@@ -8,8 +8,8 @@
  *   2. otherwise the nearest `_layout.fud` walking up from the new page's directory;
  *   3. otherwise none — a standalone page, no error.
  *
- * Once chosen, its `@RenderSection(name)`s are collected along the `rel="layout"` chain
- * (decision 87), so the generated page arrives with its sections already declared.
+ * Once chosen, its `@RenderSection(name)`s are read off that one file, so the generated page
+ * arrives with its sections already declared.
  */
 
 import { LAYOUTS_DIR } from '@fudic/conventions';
@@ -24,7 +24,7 @@ const LAYOUT_FILE = '_layout.fud';
 export interface LayoutResolution {
   /** `cwd`-relative path of the layout, or `null` for a standalone page. */
   readonly path: string | null;
-  /** Every `@RenderSection` of the chain, innermost first, deduplicated. */
+  /** Every `@RenderSection` of that layout, in source order, deduplicated. */
   readonly sections: readonly string[];
   readonly diagnostics: readonly PlanDiagnostic[];
   readonly errors: readonly CliError[];
@@ -51,34 +51,27 @@ function candidates(pageFile: string, routesDir: string): readonly string[] {
 }
 
 /**
- * Follow the `rel="layout"` chain from `start`, collecting `@RenderSection` names. A cycle
- * (which the compiler reports as FUD0422) stops the walk instead of hanging.
+ * The `@RenderSection` names of ONE layout — the file itself and nothing beyond it.
+ *
+ * This used to walk the `rel="layout"` chain and guard against a cycle. A layout may not name
+ * a layout any more (`FUD0439`), so the walk has exactly one step and the only file whose
+ * holes the generated page can fill is the one it links to.
  */
 function collectSections(
   cwd: string,
-  start: string,
+  file: string,
   io: ReadIo,
 ): { sections: readonly string[]; diagnostics: readonly PlanDiagnostic[] } {
   const sections: string[] = [];
-  const diagnostics: PlanDiagnostic[] = [];
-  const seen = new Set<string>();
-  let current: string | undefined = start;
+  const path = absolute(cwd, file);
+  if (!io.exists(path)) return { sections, diagnostics: [] };
 
-  while (current !== undefined && !seen.has(current)) {
-    seen.add(current);
-    const path = absolute(cwd, current);
-    if (!io.exists(path)) break;
-    const parsed = parseFud(io.read(path));
-    const file = current;
-    diagnostics.push(...parsed.diagnostics.map((diagnostic) => ({ file, diagnostic })));
-    if (parsed.doc.type !== 'layout-document') break;
-    for (const directive of parsed.doc.renderSections) {
-      if (directive.name !== '' && !sections.includes(directive.name)) sections.push(directive.name);
-    }
-    const parent = parsed.doc.layoutHref;
-    current = parent === undefined || parent === '' ? undefined : resolveHref(current, parent);
+  const parsed = parseFud(io.read(path));
+  const diagnostics = parsed.diagnostics.map((diagnostic) => ({ file, diagnostic }));
+  if (parsed.doc.type !== 'layout-document') return { sections, diagnostics };
+  for (const directive of parsed.doc.renderSections) {
+    if (directive.name !== '' && !sections.includes(directive.name)) sections.push(directive.name);
   }
-
   return { sections, diagnostics };
 }
 

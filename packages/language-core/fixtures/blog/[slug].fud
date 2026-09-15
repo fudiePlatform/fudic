@@ -19,6 +19,10 @@
     export async function paths(): Promise<string[]> {
       return [...(await listSlugs())];
     }
+
+    export function layout(ctx: unknown, data: PageData) {
+      return { culture: data.found ? 'es' : 'en' };
+    }
   }
 }
 

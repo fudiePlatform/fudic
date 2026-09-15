@@ -14,9 +14,9 @@
 
 import { describe, expect, it } from 'vitest';
 import { resolveDocument } from '../../src/emit/resolve.js';
-import { emitPageModule, emitRouteModule } from '../../src/emit/index.js';
+import { emitLayoutModule, emitPageModule, emitRouteModule } from '../../src/emit/index.js';
 import { needsRuntime } from '../../src/emit/maps.js';
-import { memoryIo } from './_support.js';
+import { memoryIo, minimalSsr } from './_support.js';
 
 const LAYOUT = [
   '<!DOCTYPE html><html><head>@RenderHead()</head>',
@@ -127,6 +127,16 @@ describe('what already worked keeps working', () => {
     expect(loadsRuntime(routeModule(route, 'ruta', { '/c.fud': COUNTER }))).toBe(true);
   });
 });
+
+/**
+ * The marker is written by the layout and answered by the ROUTE, and this used to be the one
+ * place where the two could fail to meet: across a NESTED link the slot object the inner
+ * layout built for its parent carried `head`, `body`, `section` and `blocks` but no
+ * `runtime`, so `route.runtime()` called a function nobody had put there. BUG-31 §T1 added
+ * the missing line; `FUD0439` removed the link that made the gap possible, and with it the
+ * only shape of this defect. What is left to check is that the two still meet in the one
+ * arrangement there is — which is what the tests above this comment already do.
+ */
 
 describe('needsRuntime, at its three doors', () => {
   it('opens on any one of them and on nothing else', () => {

@@ -42,14 +42,13 @@ describe('layoutHrefOf', () => {
     expect(layoutHrefOf(doc(route('../layouts/_layout.fud')))).toBe('../layouts/_layout.fud');
   });
 
-  it('is the parent href of a nested layout (decision 87)', () => {
-    expect(layoutHrefOf(doc(NESTED_LAYOUT))).toBe('./_root.fud');
-  });
-
   it.each([
     ['a component', component('app-badge')],
     ['a page', PAGE],
     ['a plain layout', LAYOUT],
+    // A layout that WROTE one is `FUD0439`, and this answers for the projection: there is no
+    // layout above it to import `$Sections` from, so the link is not an href anyone follows.
+    ['a layout that wrongly names a layout', NESTED_LAYOUT],
   ])('is empty for %s', (_label, source) => {
     expect(layoutHrefOf(doc(source))).toBe('');
   });

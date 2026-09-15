@@ -4,8 +4,8 @@
 > **Paquetes:** `@fudic/compiler` (props del layout, el `<html>` interpolado, el contrato) ·
 > `@fudic/transport` (`RenderContext.layout`) · `@fudic/vite` (envoltorio, endpoint, prerender) ·
 > `@fudic/language-server` (la bombilla) · `@fudic/example-basic` (la evidencia)
-> **Rama:** por abrir
-> **Progreso:** 0 / 14
+> **Rama:** `worktree-sdd-40-props-de-layout`
+> **Progreso:** 14 / 14
 > **Después de SDD-39**, no en paralelo: los dos tocan
 > `packages/compiler/src/emit/layout.ts`. No comparten ninguna decisión, solo el fichero.
 
@@ -40,19 +40,19 @@ un `load` propio del layout (§7).
 
 ## Fase 1 — El layout declara (4)
 
-- [ ] **1. `props<{…}>()` en un layout.**
+- [x] **1. `props<{…}>()` en un layout.**
       El `@code` de un layout se extrae como el de un componente, pero **solo** para sus props: la
       misma llamada, el mismo desestructurado, los mismos defaults. Es el vocabulario que ya
       existe; no se añade ninguno.
-- [ ] **2. `FUD0700` — lo que sobra en el `@code` de un layout.**
+- [x] **2. `FUD0700` — lo que sobra en el `@code` de un layout.**
       Un `@server`, un `@client` o una sentencia suelta. Con su span, sin lanzar, y el layout se
       sigue emitiendo. Criterio §6.2.
-- [ ] **3. El `<html>` se emite por la maquinaria de atributos.**
+- [x] **3. El `<html>` se emite por la maquinaria de atributos.**
       Retirar el `slice(source, doc.html.openSpan)` metido en un `JSON.stringify`
       ([layout.ts:165](../../packages/compiler/src/emit/layout.ts)) y emitir el tag de apertura
       como cualquier otro elemento. No toca el orden de emisión: `data` y las props ya están
       resueltas ahí y no se ha emitido un byte. Criterio §6.1.
-- [ ] **4. `FUD0701` — una prop de layout no puede ser reactiva.**
+- [x] **4. `FUD0701` — una prop de layout no puede ser reactiva.**
       El emit ya sabe qué nombres se mueven (`movingNames`). Sobre el valor, error, y el valor se
       ignora. En el mensaje va el motivo, que es lo que evita que alguien lo lea como una
       limitación arbitraria: un layout no tiene mitad de cliente que pueda repintarlo.
@@ -60,14 +60,14 @@ un `load` propio del layout (§7).
 
 ## Fase 2 — La ruta resuelve (3)
 
-- [ ] **5. El export `layout(ctx, data)`.**
+- [x] **5. El export `layout(ctx, data)`.**
       Tercer nombre reservado del `?server`, junto a `load` y `paths`. El módulo `?server` ya
       lleva la región verbatim, así que la tarea es reconocerlo, tipar `LayoutResolver` y que el
       envoltorio lo vea.
-- [ ] **6. El orden por render.**
+- [x] **6. El orden por render.**
       `load` y después `layout`, con `data` ya resuelto en la mano. `paths()` sigue siendo de
       build y no lo llama ninguna de las dos variantes del envoltorio. Criterios §6.8 y §6.9.
-- [ ] **7. La composición hasta el layout.**
+- [x] **7. La composición hasta el layout.**
       `page(data, io, layoutProps)` y `layout(data, io, route, props)`, con el desestructurado
       arriba del todo del módulo del layout. Un layout anidado reenvía a su padre **las del
       padre**, como ya reenvía secciones y bloques. `FUD0703` cuando dos de la cadena declaran el
@@ -75,33 +75,33 @@ un `load` propio del layout (§7).
 
 ## Fase 3 — El cable, y que los tres coincidan (3)
 
-- [ ] **8. `RenderContext.layout`.**
+- [x] **8. `RenderContext.layout`.**
       Un campo más, al lado de `data` y nunca dentro. `@fudic/transport` nace al 100 % en lo
       nuevo.
-- [ ] **9. El endpoint devuelve las dos cosas.**
+- [x] **9. El endpoint devuelve las dos cosas.**
       `{ data, layout }` en **una** respuesta: es una petición, no dos, y las dos salen del mismo
       instante de la misma. El envoltorio del borde llama a las dos funciones en proceso; el del
       SW no importa ninguna. Criterio §6.10.
-- [ ] **10. El test que define el SDD.**
+- [x] **10. El test que define el SDD.**
       La misma ruta renderizada en `edge`, en `sw` y en `ssg` produce el **mismo** `<html lang>`,
       comparado byte a byte. Si esto no está verde, lo demás da igual. Criterio §6.11.
 
 ## Fase 4 — El contrato y la bombilla (4)
 
-- [ ] **11. `FUD0702` en el build.**
+- [x] **11. `FUD0702` en el build.**
       Prop requerida del layout que la ruta no resuelve —falta en el `return`, o no hay
       `layout`—, sobre el `<link rel="layout">` de la ruta, que es donde se declara la relación.
       En `vite` y en `fudic check`. Criterio §6.3.
-- [ ] **12. La proyección ve las props del layout.**
+- [x] **12. La proyección ve las props del layout.**
       El `return` de `layout(ctx, data)` se comprueba contra el tipo de `props<{…}>()` del layout.
       Es lo que hace que en el editor **la voz sea de TypeScript** y no se reporte dos veces
       (SDD-36 §3.1). Criterio §6.12.
-- [ ] **13. La acción de código.**
+- [x] **13. La acción de código.**
       *«Completar las props requeridas del layout»*: los campos que falten en el `return`, o la
       función entera si no existe —creando el `@server` si tampoco lo hay—. Con un valor **del
       tipo de cada prop**, por la razón de SDD-36: una reparación que deja errores de tipos que
       ella misma creó es peor que no tener bombilla. Criterios §6.13 y §6.14.
-- [ ] **14. La evidencia, en `examples/basic`.**
+- [x] **14. La evidencia, en `examples/basic`.**
       `_layout.fud` declara `culture` requerida y su `<html lang="@culture">` sale con lo que cada
       ruta resuelve. Una ruta con `:param` la deriva de lo que `load` trajo. Verificado en Chrome
       real en las tres formas: `pnpm dev`, build sin SW y build con SW. Criterios §6.15–§6.17.

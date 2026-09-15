@@ -112,7 +112,7 @@ describe('resolveDocument — the layout chain (§6.9, decision 87)', () => {
     expect([...graph.components.keys()]).toEqual(['app-badge', 'app-card', 'app-button']);
   });
 
-  it('walks a two-level chain innermost first', () => {
+  it('stops at ONE layout: what the layout itself points at is not followed (FUD0439)', () => {
     const files = {
       '/r.fud': '<link rel="layout" href="./inner.fud"><p>route</p>',
       '/inner.fud':
@@ -121,11 +121,15 @@ describe('resolveDocument — the layout chain (§6.9, decision 87)', () => {
         '<!DOCTYPE html><html><head>@RenderHead()</head><body>@RenderBody()</body></html>',
     };
     const { value: graph, diagnostics } = resolveDocument('/r.fud', memoryIo(files));
+    expect(graph.layouts.map((l) => l.path)).toEqual(['/inner.fud']);
+    // `/outer.fud` is not read at all, and `FUD0439` is NOT reported here: it belongs to
+    // `/inner.fud`, whose spans are offsets into another file — that module reports its own.
     expect(diagnostics).toEqual([]);
-    expect(graph.layouts.map((l) => l.path)).toEqual(['/inner.fud', '/outer.fud']);
   });
 
-  it('cuts a cycle with FUD0422 instead of recursing forever', () => {
+  it('cannot loop, because the only file that points at a layout is a route', () => {
+    // What used to be `FUD0422`. Two shells pointing at each other is now two `FUD0439`s,
+    // each in its own module, and the walk that could have recursed is one step long.
     const shell = (href: string): string =>
       `<!DOCTYPE html><html><head><link rel="layout" href="${href}">@RenderHead()</head><body>@RenderBody()</body></html>`;
     const files = {
@@ -134,8 +138,16 @@ describe('resolveDocument — the layout chain (§6.9, decision 87)', () => {
       '/b.fud': shell('./a.fud'),
     };
     const { value: graph, diagnostics } = resolveDocument('/r.fud', memoryIo(files));
-    expect(diagnostics.map((d) => d.code)).toContain('FUD0422');
-    expect(graph.layouts).toHaveLength(2);
+    expect(graph.layouts.map((l) => l.path)).toEqual(['/a.fud']);
+    expect(diagnostics).toEqual([]);
+  });
+
+  it('a route pointing at ITSELF is a link to something that is not a layout', () => {
+    const { diagnostics } = resolveDocument(
+      '/r.fud',
+      memoryIo({ '/r.fud': '<link rel="layout" href="./r.fud"><p>x</p>' }),
+    );
+    expect(diagnostics.map((d) => d.code)).toEqual(['FUD0435']);
   });
 
   it('reports a link to a component with FUD0435 and to a page with FUD0423', () => {
@@ -186,7 +198,7 @@ describe('emitted module shape (§6.12, SDD-21 §3.5)', () => {
 
   it('gives the layout a `layout(data, io, route)` generator that owns the shell', () => {
     const code = emitLayoutModule(graph, graph.layouts[0]!);
-    expect(code).toContain('export function* layout(data, io, route, $ioc) {');
+    expect(code).toContain('export function* layout(data, io, route, $ioc, $props) {');
     expect(code).toContain('<!DOCTYPE html>');
     expect(code).toContain('route.head();');
     expect(code).toContain('route.body($dom, ');
@@ -196,7 +208,7 @@ describe('emitted module shape (§6.12, SDD-21 §3.5)', () => {
 
   it('keeps the route module on the SAME public shape as a page (§6.12)', () => {
     const code = emitRouteModule(graph);
-    expect(code).toContain('export function* page(data, io, $ioc) {');
+    expect(code).toContain('export function* page(data, io, $ioc, $props) {');
     expect(code).toContain("import { layout } from './_layout.mjs';");
     expect(code).toContain('yield* layout(data, io, {');
     // Its slots: head as a string, body/section as tree builders.
@@ -216,7 +228,10 @@ describe('emitted module shape (§6.12, SDD-21 §3.5)', () => {
     expect(code).toContain("import { layout } from '../layouts/_layout.fud';");
   });
 
-  it('emits a nested layout as a delegation to its parent (decision 87)', () => {
+  it('emits a layout that wrongly names a layout as the plain shell it looks like', () => {
+    // The degradation, seen from the output: the module owns its doctype and its `<body>`
+    // like any other layout, delegates to nobody, and the offending `<link>` does not reach
+    // the HTML — the same skip the `rel="component"` links get.
     const files = {
       '/r.fud': '<link rel="layout" href="./inner.fud"><p>route</p>',
       '/inner.fud':
@@ -224,29 +239,11 @@ describe('emitted module shape (§6.12, SDD-21 §3.5)', () => {
       '/outer.fud':
         '<!DOCTYPE html><html><head>@RenderHead()</head><body>@RenderBody()</body></html>',
     };
-    const nested = resolveDocument('/r.fud', memoryIo(files)).value;
-    const code = emitLayoutModule(nested, nested.layouts[0]!);
-    expect(code).toContain("import { layout as parentLayout } from './outer.mjs';");
-    expect(code).toContain('yield* parentLayout(data, io, {');
-    expect(code).not.toContain('<!DOCTYPE html>');
-    // The outer one still owns the shell.
-    expect(emitLayoutModule(nested, nested.layouts[1]!)).toContain('<!DOCTYPE html>');
-  });
-
-  it('falls back to the author specifier when the parent layout did not resolve', () => {
-    // The broken href is already FUD0435/FUD0423; the module must still say what it meant
-    // to import instead of emitting a dangling `undefined`.
-    const files = {
-      '/r.fud': '<link rel="layout" href="./inner.fud"><p>x</p>',
-      '/inner.fud':
-        '<!DOCTYPE html><html><head><link rel="layout" href="./missing.fud">@RenderHead()</head><body>@RenderBody()</body></html>',
-      '/missing.fud': '<app-x><template shadowrootmode="open"><p>x</p></template></app-x>',
-    };
-    const broken = resolveDocument('/r.fud', memoryIo(files));
-    expect(broken.diagnostics.map((d) => d.code)).toContain('FUD0435');
-    expect(emitLayoutModule(broken.value, broken.value.layouts[0]!)).toContain(
-      "import { layout as parentLayout } from './missing.fud';",
-    );
+    const graph = resolveDocument('/r.fud', memoryIo(files)).value;
+    const code = emitLayoutModule(graph, graph.layouts[0]!);
+    expect(code).toContain('<!DOCTYPE html>');
+    expect(code).not.toContain('parentLayout');
+    expect(code).not.toContain('rel="layout"');
   });
 
   it('skips a nameless @section instead of emitting a broken arm', () => {

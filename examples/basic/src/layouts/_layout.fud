@@ -1,6 +1,19 @@
 <!DOCTYPE html>
-<html lang="es">
+@* The `lang` of the document is the route's to decide, not this file's. A layout declares
+   what it needs with the same `props<T>()` a component and a route use, and the route
+   resolves it in `@server layout(ctx, data)` — after `load`, and with what `load` brought.
+
+   With a DEFAULT, which is the whole difference a default makes: the fifteen pages of this
+   example that are in Spanish say nothing at all, and only the one page whose language comes
+   out of its data bothers to answer. A prop with no default would make every route restate
+   the obvious. What a REQUIRED one looks like is in `_layout-articulo.fud`, where it belongs:
+   there the value is not obvious, and forgetting it is an error worth being told about. *@
+<html lang="@culture">
   <head>
+    @code {
+      const { culture = "es" } = props<{ culture?: string }>();
+    }
+
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="./logo.svg">

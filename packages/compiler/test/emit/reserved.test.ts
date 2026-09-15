@@ -11,7 +11,7 @@
 import { describe, expect, it } from 'vitest';
 import { extractCode } from '../../src/emit/oxc-code.js';
 import type { ComponentDocument } from '../../src/document/index.js';
-import { parse } from './_support.js';
+import { bareProps, bareSignals, parse } from './_support.js';
 
 const componentDoc = (source: string): ComponentDocument => {
   const doc = parse(source);
@@ -154,8 +154,8 @@ describe('SDD-15 §4.7 — the emit does not throw', () => {
       '<m-el>\n  <template shadowrootmode="open"><span></span></template>\n</m-el>\n';
     const { props, signals, client, diagnostics } = extractCode(source, componentDoc(source));
     expect(diagnostics.map((d) => d.code)).toEqual(['FUD0290']);
-    expect(props).toEqual([{ name: 'title', optional: false }]);
-    expect(signals).toEqual([{ name: 'n', init: '1', kind: 'signal', at: expect.any(Number) }]);
+    expect(bareProps(props)).toEqual([{ name: 'title', optional: false, type: 'string' }]);
+    expect(bareSignals(signals)).toEqual([{ name: 'n', init: '1', kind: 'signal' }]);
     expect(client.body.map((s) => s.text)).toEqual(['const $bad = title;', 'const good = 2;']);
   });
 

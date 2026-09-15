@@ -22,6 +22,7 @@
  */
 
 import type { OxcNode, Span } from '@fudic/compiler';
+import { child, nodeList } from './oxc-node.js';
 import type { VirtualWriter } from './writer.js';
 
 /** The three source spans of a `props<T>()` declaration, in original coordinates. */
@@ -94,18 +95,3 @@ function isPropsCall(init: OxcNode): boolean {
   return callee?.type === 'Identifier' && callee['name'] === 'props';
 }
 
-/** A child node under `key`, when it is a node at all. */
-function child(parent: OxcNode, key: string): OxcNode | undefined {
-  const value = parent[key];
-  return isNode(value) ? value : undefined;
-}
-
-/** The node array under `key`, skipping holes (`[, x]` yields a null element). */
-function nodeList(parent: OxcNode, key: string): readonly OxcNode[] {
-  const value = parent[key];
-  return Array.isArray(value) ? value.filter(isNode) : [];
-}
-
-function isNode(value: unknown): value is OxcNode {
-  return typeof value === 'object' && value !== null && typeof (value as OxcNode).type === 'string';
-}

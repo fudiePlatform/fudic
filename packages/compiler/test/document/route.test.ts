@@ -31,6 +31,7 @@ function structure(source: string) {
     value: result.value,
     codes: [...parsed.diagnostics, ...result.diagnostics].map((d: Diagnostic) => d.code),
     structureCodes: result.diagnostics.map((d: Diagnostic) => d.code),
+    diagnostics: result.diagnostics,
   };
 }
 
@@ -71,10 +72,33 @@ describe('role detection (§6.2, §6.3, §6.4 — decisions 81, 82)', () => {
     expect(structureCodes).toEqual([]);
   });
 
-  it('reads a nested layout chain link (decision 87)', () => {
-    const { value } = structure(fixture('_layout-admin.fud'));
+  it('rejects a layout that names a layout, and degrades it to a plain one (FUD0439)', () => {
+    const { value, structureCodes } = structure(fixture('_layout-admin.fud'));
+    expect(structureCodes).toContain('FUD0439');
+    // Degradation, and the whole of it: still a layout, and one with NO parent, so nothing
+    // downstream composes two shells. The link stays on the node — the emit reads it only to
+    // skip it — and that is the only trace left of what the author wrote.
     expect(value.type).toBe('layout-document');
-    expect((value as LayoutDocument).layoutHref).toBe('./_layout.fud');
+    expect((value as LayoutDocument).layoutLink).toBeDefined();
+    expect(Object.hasOwn(value, 'layoutHref')).toBe(false);
+  });
+
+  it('anchors FUD0439 on the link itself, not on the document', () => {
+    const source = fixture('_layout-admin.fud');
+    const diag = structure(source).diagnostics.find((d) => d.code === 'FUD0439');
+    expect(source.slice(diag?.span.start ?? 0, diag?.span.end ?? 0)).toBe(
+      '<link rel="layout" href="./_layout.fud">',
+    );
+  });
+
+  it('says nothing about the href of a link that may not exist at all', () => {
+    // One mistake, one voice: FUD0436 polices the href of a route's link, and repeating it
+    // here would report the shape of something the author must delete either way.
+    const codes = structure(
+      '<!DOCTYPE html><html><head><link rel="layout" href="@x"></head><body>@RenderBody()</body></html>',
+    ).structureCodes;
+    expect(codes).toContain('FUD0439');
+    expect(codes).not.toContain('FUD0436');
   });
 
   it('leaves the existing roles untouched (§6.3)', () => {

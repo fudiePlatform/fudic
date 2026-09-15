@@ -82,6 +82,7 @@ export function edgePlugin(builds: readonly RouteBuild[], io: ResolveIo, base: s
         pageModule: rb.absPath.replace(/\\/gu, '/'),
         hasLoad: rb.analysis.hasLoad,
         hasPaths: rb.analysis.hasPaths,
+        hasLayout: rb.analysis.hasLayout,
         hasDi: routeUsesDi(rb.absPath, io),
         withLoad: true, // the edge resolves data in process
         runtime: runtimeUrls(base),

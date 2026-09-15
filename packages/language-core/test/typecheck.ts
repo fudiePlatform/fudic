@@ -52,10 +52,7 @@ function registryFor(file: CorpusFile, corpus: readonly CorpusFile[]): FileRegis
     if (target !== undefined) byTag.set(target.tag, href);
   }
 
-  const layout =
-    file.document.type === 'route-document' || file.document.type === 'layout-document'
-      ? file.document.layoutHref
-      : undefined;
+  const layout = file.document.type === 'route-document' ? file.document.layoutHref : undefined;
 
   return {
     component: (tag) => byTag.get(tag),

@@ -20,14 +20,16 @@
 import {
   attributeValueSpan,
   documentRoots,
+  extractCode,
   span,
   walk,
   type Attribute,
   type ElementNode,
+  type ServerRegion,
   type Span,
 } from '@fudic/compiler';
 import type { CachedDocument } from '../document-cache.js';
-import type { Contract } from '../mode.js';
+import type { Contract, ContractProp } from '../mode.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
 
 /** The `.` that makes an attribute a property binding (decision 23). */
@@ -79,7 +81,37 @@ export interface UnknownSlot {
   readonly declared: readonly string[];
 }
 
-export type ContractIssue = MissingProps | UnknownProp | UnknownSlot;
+/**
+ * A required prop of the LAYOUT that this route does not resolve (SDD-40 §3.5).
+ *
+ * The same shape of fact as `MissingProps` and the same division of labour: TypeScript says it
+ * — the projection gives the route's `layout(ctx, data)` the layout's `$Props` as its return
+ * type, so the error lands on the author's own `return` — and this only carries what a repair
+ * needs. The build has its own voice for it, `FUD0702`, and the two never speak at once: the
+ * emit is not run in the editor.
+ */
+export interface MissingLayoutProps {
+  readonly kind: 'missing-layout-props';
+  /** The `<link rel="layout">` — what the bulb underlines, as `FUD0702` anchors on it. */
+  readonly at: Span;
+  /** The unresolved props, in declaration order, with the type each one was declared as. */
+  readonly props: readonly ContractProp[];
+  /**
+   * Where the repair writes.
+   *
+   * `'object'` — inside the `return { … }` of a resolver that already exists; the offset is
+   * just past the `{`. `'server'` — a whole `export function layout` at the start of a
+   * `@server` region that exists. `'region'` — the `@code` exists but has no `@server`, so
+   * the region is written too, before the block's closing `}`. `'code'` — neither exists and
+   * the repair writes the whole `@code { @server { … } }`.
+   */
+  readonly write: 'object' | 'server' | 'region' | 'code';
+  readonly insertAt: number;
+  /** Whether the object literal the repair writes into already holds something. */
+  readonly hasFields: boolean;
+}
+
+export type ContractIssue = MissingProps | UnknownProp | UnknownSlot | MissingLayoutProps;
 
 /**
  * The contract of the component `tag` opens, or nothing when this file cannot see it.
@@ -228,6 +260,9 @@ export function contractIssues(
   const ownHost =
     cached.document.type === 'component-document' ? cached.document.host : undefined;
 
+  const layoutIssue = missingLayoutProps(cached, index);
+  if (layoutIssue !== undefined) issues.push(layoutIssue);
+
   walk(documentRoots(cached.document), {
     element(el, host) {
       const slot = staticSlot(el);
@@ -306,4 +341,55 @@ export function contractIssues(
   });
 
   return issues;
+}
+
+/**
+ * The required props of this route's layout that its `layout(ctx, data)` does not resolve.
+ *
+ * Only a ROUTE has the question: a page owns its own shell, a layout's own parent is a chain
+ * the emit composes, and a component has no layout at all. Two lookups and no filesystem, like
+ * `entryOfTag`: the `<link rel="layout">` gives the href and the index gives the contract.
+ *
+ * A return this pass cannot read resolves nothing and reports nothing: a repair that inserted a
+ * field beside a `...defaults` could be inserting the very prop the spread already carries.
+ */
+function missingLayoutProps(
+  cached: CachedDocument,
+  index: WorkspaceIndex,
+): MissingLayoutProps | undefined {
+  const document = cached.document;
+  if (document.type !== 'route-document' || document.layoutHref === '') return undefined;
+  const entry = index.resolve(cached.path, document.layoutHref);
+  if (entry === undefined) return undefined;
+
+  const required = entry.contract.props.filter((prop) => prop.required);
+  if (required.length === 0) return undefined;
+
+  const resolver = extractCode(cached.source, document).layoutResolver;
+  // Present but unreadable: nothing to say and nothing safe to write.
+  if (resolver !== undefined && resolver.keys === undefined) return undefined;
+  const resolved = new Set(resolver?.keys ?? []);
+  const props = required.filter((prop) => !resolved.has(prop.name));
+  if (props.length === 0) return undefined;
+
+  const at = document.layoutLink.openSpan;
+  const issue = { kind: 'missing-layout-props', at, props } as const;
+  if (resolver?.fieldsAt !== undefined) {
+    return { ...issue, write: 'object', insertAt: resolver.fieldsAt, hasFields: resolver.hasFields };
+  }
+  // No resolver: the repair writes the whole function, and whatever has to exist around it
+  // (§6.14). Three nestings, each one level further out than the last.
+  const code = document.code;
+  const server = code?.parts.find((p): p is ServerRegion => p.type === 'server-region');
+  if (server !== undefined) {
+    return { ...issue, write: 'server', insertAt: server.js.start, hasFields: false };
+  }
+  if (code !== undefined) {
+    // Before the block's own closing `}`: a `@server` may sit anywhere among the parts
+    // (decision 34), and last is where it reads as an addition rather than an interruption.
+    return { ...issue, write: 'region', insertAt: code.span.end - 1, hasFields: false };
+  }
+  // After the `<link rel="layout">`: a route's `@code` comes between its links and its head
+  // (decision 83), and the layout link is the first thing a route holds.
+  return { ...issue, write: 'code', insertAt: at.end, hasFields: false };
 }

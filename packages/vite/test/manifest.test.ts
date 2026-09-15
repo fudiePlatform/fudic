@@ -13,7 +13,7 @@ import { FUD_TTL_INVALID, FUD_TWO_TTLS } from '../src/diagnostics.js';
 function routeBuild(
   pattern: string,
   decision: Partial<ModeDecision> & Pick<ModeDecision, 'mode'>,
-  over: { hasLoad?: boolean; strategy?: StrategyAnalysis } = {},
+  over: { hasLoad?: boolean; hasLayout?: boolean; strategy?: StrategyAnalysis } = {},
 ): RouteBuild {
   return {
     route: { file: `${pattern}.fud`, pattern, params: pattern.includes(':') ? ['id'] : [] },
@@ -23,6 +23,7 @@ function routeBuild(
       isPage: true,
       hasLoad: over.hasLoad ?? false,
       hasPaths: false,
+      hasLayout: over.hasLayout ?? false,
       strategy: over.strategy ?? NO_STRATEGY,
     },
     decision: { prerender: false, enumerate: false, prerenderedHtml: false, ...decision },
@@ -98,6 +99,16 @@ describe('buildManifest', () => {
     const { file } = buildManifest([routeBuild('/now', { mode: 'sw' })], INPUTS);
     expect(file.routes[0]?.dataPolicy).toBeUndefined();
     expect(file.routes[0]?.deps).toEqual(['dep']); // still renderable
+  });
+
+  it('SDD-40 — a route that only resolves layout props still gets an endpoint', () => {
+    // One response carries two things now, so `layout(ctx, data)` on its own is reason
+    // enough: the Service Worker runs neither hook and has no other way to be handed them.
+    const { file } = buildManifest(
+      [routeBuild('/now', { mode: 'sw' }, { hasLayout: true })],
+      INPUTS,
+    );
+    expect(file.routes[0]?.dataPolicy).toEqual({ policy: 'cache-first', ttl: null });
   });
 
   it('BUG-02 §6.3 no record names an HTML file: the manifest is the client contract', () => {

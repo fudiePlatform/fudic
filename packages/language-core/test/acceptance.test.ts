@@ -115,6 +115,49 @@ describe('mutants', () => {
     expect(diags.some((d) => d.code === 2339 && d.sourceText === 'body')).toBe(true);
   });
 
+  /**
+   * SDD-40 §6.12 — the layout contract, and whose voice says so.
+   *
+   * The fact is TypeScript's, over the projection: the route's `layout(ctx, data)` is given
+   * the layout's `$Props` as its return type, so the error lands on the author's own object
+   * literal. Nothing of ours reports it a second time — in the editor what the server adds
+   * is the repair, not a second opinion (SDD-36 §3.1).
+   */
+  it('J — a required layout prop the route drops is TS on the author’s own return', () => {
+    const diags = typecheckCorpus(
+      mutate(SLUG, "return { culture: data.found ? 'es' : 'en' };", 'return { theme: "dark" };'),
+    );
+
+    expect(diags).toHaveLength(1);
+    expect(diags[0]!.fud).toBe(SLUG);
+    // On the author's own `return`, which is where TypeScript anchors a return-type
+    // mismatch — the point being that it is HIS text and not a synthetic assignment.
+    expect(diags[0]!.sourceText).toBe('return');
+    expect(diags[0]!.message).toContain('culture');
+  });
+
+  it('J2 — a layout prop of the wrong type is reported on the value', () => {
+    const diags = typecheckCorpus(
+      mutate(SLUG, "return { culture: data.found ? 'es' : 'en' };", 'return { culture: 7 };'),
+    );
+
+    expect(diags).toHaveLength(1);
+    expect(diags[0]!.code).toBe(2322);
+    expect(diags[0]!.sourceText).toBe('culture');
+  });
+
+  it('J3 — a resolver that returns what the layout declares says nothing', () => {
+    const diags = typecheckCorpus(
+      mutate(
+        SLUG,
+        "return { culture: data.found ? 'es' : 'en' };",
+        'return { culture: "gl", theme: "dark" };',
+      ),
+    );
+
+    expect(diags.map(describeDiag)).toEqual([]);
+  });
+
   it('I — the item of a @foreach carries its type', () => {
     const diags = typecheckCorpus({
       [SLUG]: read(SLUG)

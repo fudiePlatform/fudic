@@ -436,10 +436,13 @@ Cuatro consecuencias que hay que subrayar:
   vez, así que `serializeChunks` y el backpressure de SDD-19 §4.3 se conservan intactos.
 - **El streaming mejora.** El `<head>` que se cede en el primer trozo es el del layout, que es
   precisamente la parte estable de la página.
-- **Anidamiento sin caso especial** (decisión 87): un layout con `<link rel="layout">` se compila
+- ~~**Anidamiento sin caso especial** (decisión 87): un layout con `<link rel="layout">` se compila
   con la misma pieza — el layout externo recibe como `route` los slots del interno. La cadena se
-  compone de dentro afuera. Un ciclo → `FUD0422`, detectado como ya lo hace `resolveComponents`
-  con su `Map` de visitados.
+  compone de dentro afuera. Un ciclo → `FUD0422`.~~
+  **REVOCADO por [BUG-38](./bugs/BUG-38-un-layout-dentro-de-otro.md):** un layout no declara
+  `<link rel="layout">` (`FUD0439`). «Sin caso especial» resultó ser «sin regla»: el emit
+  descartaba en silencio el doctype, el `<html>` y el `<body>` del layout de dentro, que por la
+  decisión 82 son obligatorios. La cadena es siempre de un eslabón.
 
 ### 4.6. Qué cambia en el emit de página existente
 
@@ -491,7 +494,7 @@ hoy el nombre de la variable padre (`'$body'`, `'$shadow'`), así que ya está p
 |---|---|---|
 | `FUD0420` | error | Más de un `<link rel="layout">` en el documento (decisión 81). |
 | `FUD0421` | error | Orden top-level inválido en una ruta: layout/links/code/head/markup desordenados (decisión 83). |
-| `FUD0422` | error | Cadena de layouts cíclica (decisión 87). |
+| `FUD0422` | — | **RETIRADO por [BUG-38](./bugs/BUG-38-un-layout-dentro-de-otro.md).** Cortaba un ciclo que solo podía formar un layout apuntando a otro layout. Una ruta apunta una vez y un layout no apunta, así que el bucle más corto que podría existir necesita un fichero que ya no puede existir. El código no se reutiliza. |
 | `FUD0423` | error | Layout sin `@RenderBody()` — un layout que no renderiza su ruta no es un layout (decisión 86). |
 | `FUD0424` | error | Directiva repetida: más de un `@RenderBody()` o más de un `@RenderHead()` (decisión 86). |
 | `FUD0425` | warning | Layout sin `@RenderHead()`: las contribuciones de la ruta se inyectan al final del `<head>` (decisión 86). |
@@ -506,13 +509,14 @@ hoy el nombre de la variable padre (`'$body'`, `'$shadow'`), así que ya está p
 | `FUD0434` | warning | Layout al que ninguna ruta apunta (huérfano). |
 | `FUD0435` | error | `<link rel="layout">` que apunta a un fichero que no es un layout (decisión 82). |
 | `FUD0436` | error | `href` de `<link rel="layout">` ausente o interpolado: debe ser estático (decisión 81). |
-| `FUD0437` | error | `@code` en un layout. Un layout no declara nada y no carga nada (decisión 89), así que **el bloque entero es el error**, no su contenido: no hay ámbito que ofrecer dentro. Con él, el snippet `@code` de layout desaparece y un `@` en un layout deja de ofrecer ámbito, `@()` y eventos (BUG-23). |
-| `FUD0438`–`FUD0449` | — | Reservados. |
+| `FUD0437` | — | **RETIRADO por [SDD-40](./SDD-40-props-de-layout.md) §3.1.** Decía que un layout no declara nada, y dejó de ser cierto el día en que un layout declara sus props con el mismo `props<{…}>()` que una ruta y un componente. Lo que queda de aquella regla es más estrecho y es del emit, que es el único lector capaz de distinguir una declaración de props de todo lo demás: **`FUD0700`**, sobre lo que el `@code` de un layout contenga **además** de esa declaración. El código no se reutiliza. |
+| `FUD0439` | error | **Añadido por [BUG-38](./bugs/BUG-38-un-layout-dentro-de-otro.md).** Un layout declara `<link rel="layout">`: solo una ruta nombra un layout. Se ancla sobre el `<link>` y el documento degrada a layout raíz — conserva el nodo del link (para que el emit lo salte) y **no** recibe `layoutHref`. |
+| `FUD0438`, `FUD0440`–`FUD0449` | — | Reservados. |
 
 **Quién emite qué.** Los códigos decidibles con un solo fichero (`FUD0420`, `0421`, `0424`–`0428`,
-`0431`, `0436`) los emite la pasada de estructura (SDD-10); los que exigen ver **dos** ficheros
-(`FUD0422` ciclo, `FUD0423` el destino no tiene `@RenderBody()`, `FUD0429` sección huérfana,
-`FUD0435` el destino no es un layout) los emite `resolveDocument`, que es quien conoce la cadena.
+`0431`, `0436`, `0439`) los emite la pasada de estructura (SDD-10); los que exigen ver **dos**
+ficheros (`FUD0423` el destino no tiene `@RenderBody()`, `FUD0429` sección huérfana,
+`FUD0435` el destino no es un layout) los emite `resolveDocument`, que es quien lee el layout.
 `FUD0430` es del analizador semántico (SDD-12), porque mira el `@server`. Lo mira **por el texto**
 —la regla tiene que valer aunque Oxc no haya podido parsear el fragmento— pero con los comentarios
 y las cadenas de esa región enmascarados antes de buscar, que es lo que el balanceador de SDD-02 ya

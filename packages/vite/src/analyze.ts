@@ -35,6 +35,14 @@ export interface PageAnalysis {
   readonly hasLoad: boolean;
   /** The `@server` region exports `paths()`. */
   readonly hasPaths: boolean;
+  /**
+   * The `@server` region exports `layout(ctx, data)` — the layout props of this render
+   * (SDD-40 §3.2).
+   *
+   * The third reserved name, read off the AST like the other two and for the same reason: an
+   * `export function layout` inside a string or a comment exports nothing.
+   */
+  readonly hasLayout: boolean;
   /** The `strategy()` call, read statically (SDD-20 §4.8). */
   readonly strategy: StrategyAnalysis;
   /** The `href` of `<link rel="layout">`, when the file declares one (SDD-21). */
@@ -55,13 +63,17 @@ const nameOf = (node: OxcNode): string => String(node['name']);
 export function analyzePage(source: string, file = ''): PageAnalysis {
   const doc = parseFud(source);
   const role = roleOf(doc);
-  const layoutHref = doc.type === 'route-document' || doc.type === 'layout-document' ? doc.layoutHref : undefined;
+  // A ROUTE's link and nothing else. A layout that declares one is `FUD0439`: a mistake to
+  // delete, not a relation — counting it as «this layout is used» would keep a layout alive
+  // on the strength of a link the author has to remove anyway.
+  const layoutHref = doc.type === 'route-document' ? doc.layoutHref : undefined;
   if (role !== 'page' && role !== 'route') {
     return {
       role,
       isPage: false,
       hasLoad: false,
       hasPaths: false,
+      hasLayout: false,
       strategy: NO_STRATEGY,
       ...(layoutHref ? { layoutHref } : {}),
     };
@@ -76,6 +88,7 @@ export function analyzePage(source: string, file = ''): PageAnalysis {
     isPage: true,
     hasLoad: names.has('load'),
     hasPaths: names.has('paths'),
+    hasLayout: names.has('layout'),
     strategy: strategyFrom(statements, file),
     ...(layoutHref ? { layoutHref } : {}),
   };

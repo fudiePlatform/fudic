@@ -15,7 +15,7 @@ import {
 } from '../../src/emit/index.js';
 import { cellSlots, childTargets } from '../../src/emit/state.js';
 import { codeOf, splicedOffset } from '../../src/emit/oxc-code.js';
-import { memoryIo, pageModuleOf, ssrIo } from './_support.js';
+import { bareProps, memoryIo, pageModuleOf, ssrIo } from './_support.js';
 
 const PARENT = `<link rel="component" href="./cell-child.fud">
 <link rel="component" href="./cell-form.fud">
@@ -121,14 +121,14 @@ const server = (tag: string): string => emitComponentModule(graph, comp(tag));
 
 describe('Prop.channel — what the child asks to be handed (§6.2)', () => {
   it('is `signal` for Signal<T>, `fn` for a function signature, absent for a plain value', () => {
-    expect(codeOf(comp('cell-child')).props).toEqual([
-      { name: 'value', optional: false, channel: 'signal' },
+    expect(bareProps(codeOf(comp('cell-child')).props)).toEqual([
+      { name: 'value', optional: false, type: 'Signal<number>', channel: 'signal' },
     ]);
-    expect(codeOf(comp('cell-form')).props).toEqual([
-      { name: 'onSave', optional: false, channel: 'fn' },
+    expect(bareProps(codeOf(comp('cell-form')).props)).toEqual([
+      { name: 'onSave', optional: false, type: '(what: number) => void', channel: 'fn' },
     ]);
-    expect(codeOf(comp('cell-parent')).props).toEqual([
-      { name: 'start', def: '0', optional: true },
+    expect(bareProps(codeOf(comp('cell-parent')).props)).toEqual([
+      { name: 'start', def: '0', optional: true, type: 'number' },
     ]);
   });
 
@@ -150,10 +150,12 @@ describe('Prop.channel — what the child asks to be handed (§6.2)', () => {
           '<cell-types><template shadowrootmode="open"><p>@plain</p></template></cell-types>\n',
       }),
     );
-    expect(codeOf(g.components.get('cell-types')!).props).toEqual([
-      { name: 'qualified', optional: false },
-      { name: 'other', optional: false },
-      { name: 'plain', optional: false },
+    expect(bareProps(codeOf(g.components.get('cell-types')!).props)).toEqual([
+      // The type is READ either way — it is text, not a resolution — and none of the four
+      // asks for a channel, which is what this case is about.
+      { name: 'qualified', optional: false, type: 'core.Signal<number>' },
+      { name: 'other', optional: false, type: 'Other<number>' },
+      { name: 'plain', optional: false, type: 'number' },
       { name: 'bare', optional: false },
     ]);
   });
@@ -170,7 +172,7 @@ describe('Prop.channel — what the child asks to be handed (§6.2)', () => {
           '<cell-opaque><template shadowrootmode="open"><p>@value</p></template></cell-opaque>\n',
       }),
     );
-    expect(codeOf(g.components.get('cell-opaque')!).props).toEqual([
+    expect(bareProps(codeOf(g.components.get('cell-opaque')!).props)).toEqual([
       { name: 'value', optional: true },
     ]);
   });

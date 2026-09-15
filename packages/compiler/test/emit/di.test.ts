@@ -493,10 +493,11 @@ describe('a route with a layout', () => {
     const route = emitRouteModule(graph);
     expect(route).toContain('const $root = $ioc ?? iocRoot();');
     expect(route).toMatch(/renderXUser\(\$dom, \$n\d+, \{ {2}\}, \$root\);/u);
-    // A layout owns no container: it hands on the one the route opened.
-    expect(route).toContain('}, $root);');
+    // A layout owns no container: it hands on the one the route opened. The layout props
+    // ride behind it (SDD-40 §3.4) and are as much not the layout's own.
+    expect(route).toContain('}, $root, $props);');
     expect(emitLayoutModule(graph, graph.layouts[0]!)).toContain(
-      'export function* layout(data, io, route, $ioc) {',
+      'export function* layout(data, io, route, $ioc, $props) {',
     );
   });
 });

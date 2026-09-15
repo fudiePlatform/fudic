@@ -20,7 +20,7 @@
  * that layouts exist.
  */
 
-import type { HtmlContent } from '../html/index.js';
+import type { ElementNode, HtmlContent } from '../html/index.js';
 import type { LayoutDocument, RouteDocument } from '../document/index.js';
 import type { SectionNode } from '../layout/index.js';
 import { CodeWriter } from './writer.js';
@@ -32,11 +32,12 @@ import { hasDependencyInjection } from './di.js';
 import { needsRuntime, routeBlocksOf, writeMapConstants, writeHydrationBlocks } from './maps.js';
 import type { DocumentGraph, ResolvedLayout } from './resolve.js';
 import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
-import { codeOfDocument } from './oxc-code.js';
+import { codeOfDocument, type Prop } from './oxc-code.js';
+import { layoutCodeOf, requiredLayoutProps, unresolvedLayoutProps } from './layout-code.js';
+import { NO_SIGNALS, writeElementAttrs } from './attrs.js';
 import type { Diagnostic } from '../types/index.js';
 import {
   quoteSpecifier,
-  slice,
   specifierResolver,
   writeEntryCode,
   writeEntryImports,
@@ -50,6 +51,9 @@ import {
 const SLOTS = 'route';
 const DOM = '$dom';
 const PARENT = '$parent';
+/** The layout props of this render, as the module's parameter and as the open tag's sink. */
+const PROPS = '$props';
+const OPEN = '$open';
 
 /** Default layout specifier: the sibling file, mirroring the component default. */
 function layoutSpecifierOf(layout: ResolvedLayout, options: EmitOptions): string {
@@ -65,6 +69,48 @@ function componentPairs(graph: DocumentGraph, styled: ReadonlySet<string>): read
   return [...graph.components.values()]
     .filter((c) => styled.has(c.tag))
     .map((c) => `{ tag: ${renderName(c.tag)}Tag, css: ${renderName(c.tag)}Css }`);
+}
+
+/**
+ * The `<html>` opening tag, through the SAME attribute machinery every other element uses
+ * (SDD-40 §4.4).
+ *
+ * It used to be `slice(source, doc.html.openSpan)` inside a `JSON.stringify`, so whatever the
+ * author wrote in its attributes came out literally — `lang="@culture"` reached the browser
+ * as the four characters `@cul…`. That was never a streaming restriction: this line lives
+ * inside `layout(data, io, route, $ioc, props)`, where `data` and the props are already
+ * resolved and not a byte has been emitted. It was a shortcut.
+ *
+ * `writeElementAttrs` writes `$dom.setAttr(…)`, so the sink is a `$dom` of three lines in a
+ * block of its own: the same composition rules (decision 21's omitted falsy attribute, the
+ * `class:` composition, the asset linker) and the same escaping the serializer applies, which
+ * is what keeps the shell byte-identical to what an element inside the body would produce.
+ */
+function writeHtmlOpenTag(w: CodeWriter, source: string, html: ElementNode, linker: AssetLinker): void {
+  w.line(`let ${OPEN} = '<${html.name}';`);
+  w.line('{');
+  w.indent();
+  w.line(
+    `const ${DOM} = { setAttr: ($t, $k, $v) => { ${OPEN} += ' ' + $k + '="' + escapeAttr(String($v)) + '"'; } };`,
+  );
+  w.line('const $html = null;');
+  writeElementAttrs(source, html, '$html', w, linker, NO_SIGNALS);
+  w.dedent();
+  w.line('}');
+  w.line(`${OPEN} += '>';`);
+}
+
+/**
+ * The layout's own props, destructured at the very top of the module — above its first
+ * `yield`, and above every slot that closes over them (§6.5).
+ *
+ * The same pattern a component writes (`module.ts`), because it is the same declaration: one
+ * vocabulary, three roles. A layout with no props writes no line at all.
+ */
+function writeLayoutProps(w: CodeWriter, props: readonly Prop[]): void {
+  if (props.length === 0) return;
+  const pattern = props.map((p) => (p.def !== undefined ? `${p.name} = ${p.def}` : p.name)).join(', ');
+  w.line(`const { ${pattern} } = ${PROPS} ?? {};`);
 }
 
 /** `import` lines for the component renders a markup emitter used, plus the asset imports. */
@@ -86,12 +132,13 @@ function buildLayoutModule(
   graph: DocumentGraph,
   layout: ResolvedLayout,
   options: EmitOptions,
-): { writer: CodeWriter; linker: AssetLinker } {
+): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const ext = options.importExt ?? '.mjs';
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
   const doc = layout.doc;
   const source = layout.source;
-  const nested = doc.layoutHref !== undefined;
+  // What its `@code` declares, and what is wrong with the rest of it (SDD-40 §3.1, §4.1).
+  const code = layoutCodeOf(source, doc);
 
   // Body codegen: the layout's own markup, with `route.body(…)` spliced in where the
   // author wrote `@RenderBody()` (the MarkupEmitter resolves the directive nodes).
@@ -106,8 +153,7 @@ function buildLayoutModule(
     formAssociated: formAssociatedTags(graph),
     styled: styledTags(graph),
   });
-  const bodyParent = nested ? PARENT : '$body';
-  em.emitChildren(doc.body.children, bodyParent);
+  em.emitChildren(doc.body.children, '$body');
 
   // Head codegen: the layout's own elements, with the route's contributions injected at
   // `@RenderHead()` — or appended at the end when there is none (FUD0425).
@@ -131,78 +177,43 @@ function buildLayoutModule(
   );
 
   const w = new CodeWriter();
-  if (nested) {
-    // The parent is the next link of the chain (innermost first). When it did not resolve
-    // (a broken href already reported by `resolveDocument`), fall back to the author's own
-    // specifier: the module still says what it meant to import.
-    const parent = layoutParent(graph, layout);
-    const spec =
-      parent !== undefined ? layoutSpecifierOf(parent, options) : quoteSpecifier(doc.layoutHref ?? '');
-    w.line(`import { layout as parentLayout } from ${spec};`);
-  }
   writeImports(w, em.used, specifierResolver(graph, options.componentSpecifier, ext), linker);
   w.line('');
 
-  // The fourth parameter is the route's container, forwarded down the chain untouched: a
-  // layout owns no container of its own, it only hands the one the route opened to the
-  // component hosts its own markup renders (SDD-38 §4.7).
-  w.line('export function* layout(data, io, route, $ioc) {');
+  // The fourth parameter is the route's container, handed over untouched: a layout owns no
+  // container of its own, it only passes the one the route opened to the component hosts its
+  // own markup renders (SDD-38 §4.7).
+  // The fifth parameter is the layout's own props (SDD-40 §3.4), and it comes AFTER `$ioc`
+  // for the only reason that matters downstream: the container already held the fourth
+  // place, and a parameter that changes position changes every caller.
+  w.line(`export function* layout(data, io, route, $ioc, ${PROPS}) {`);
   w.indent();
-  if (nested) {
-    w.line('const { escapeText } = io;');
-    w.line('yield* parentLayout(data, io, {');
-    w.indent();
-    w.line('head() {');
-    w.indent();
-    w.line("let head = '';");
-    w.appendWriter(headW);
-    w.line('return head;');
-    w.dedent();
-    w.line('},');
-    w.line(`body(${DOM}, ${PARENT}) {`);
-    w.indent();
-    w.appendWriter(bodyW);
-    w.dedent();
-    w.line('},');
-    // Sections belong to the route; this layout only forwards the ones its parent renders.
-    w.line(`section(name, ${DOM}, ${PARENT}) { ${SLOTS}.section(name, ${DOM}, ${PARENT}); },`);
-    // Same for the hydration blocks: they are the ROUTE's — it is the one whose graph reaches
-    // the whole chain — and only the outermost layout knows when the body is finished.
-    w.line(`blocks(${DOM}, ${PARENT}) { ${SLOTS}.blocks(${DOM}, ${PARENT}); },`);
-    w.dedent();
-    w.line('}, $ioc);');
-  } else {
-    w.line('const { createDom, serialize, escapeText } = io;');
-    w.line("let head = '';");
-    w.appendWriter(headW);
-    // No whitespace in the skeleton, as in `module.ts` (BUG-07 §4.2).
-    w.line(`yield ${JSON.stringify(`<!DOCTYPE html>${slice(source, doc.html.openSpan)}<head>`)} + head + '</head>';`);
-    w.line(`const ${DOM} = createDom();`);
-    w.line(`const $body = ${DOM}.element('body');`);
-    w.appendWriter(bodyW);
-    // The last thing in the body, and the outermost layout is the only one that can say
-    // «the body is finished»: the route hangs its three JSON blocks here (SDD-15 §3.3–§3.5).
-    w.line(`${SLOTS}.blocks(${DOM}, $body);`);
-    w.line('yield* serialize($body);');
-    w.line("yield '</html>';");
-  }
+  w.line('const { createDom, serialize, escapeText, escapeAttr } = io;');
+  writeLayoutProps(w, code.props);
+  w.line("let head = '';");
+  w.appendWriter(headW);
+  // The shell's opening tag, interpolated like any other element (§4.4). No whitespace in
+  // the skeleton, as in `module.ts` (BUG-07 §4.2).
+  writeHtmlOpenTag(w, source, doc.html, linker);
+  w.line(`yield '<!DOCTYPE html>' + ${OPEN} + '<head>' + head + '</head>';`);
+  w.line(`const ${DOM} = createDom();`);
+  w.line(`const $body = ${DOM}.element('body');`);
+  // The `<body>`'s own attributes, which until now were dropped whole — the element was
+  // built from its tag name and nothing else. The same omission as the `<html>` above and
+  // the same fix, and §3.1's own example needs it: `<body data-theme="@theme">`.
+  writeElementAttrs(source, doc.body, '$body', w, linker, NO_SIGNALS);
+  w.appendWriter(bodyW);
+  // The last thing in the body: the route hangs its three JSON blocks here (SDD-15
+  // §3.3–§3.5), and the layout is the one file that can say «the body is finished».
+  w.line(`${SLOTS}.blocks(${DOM}, $body);`);
+  w.line('yield* serialize($body);');
+  w.line("yield '</html>';");
   w.dedent();
   w.line('}');
-  return { writer: w, linker };
+  return { writer: w, linker, diagnostics: code.diagnostics };
 }
 
-/**
- * The parent layout of `layout`: its next link in the chain (innermost first). When the
- * layout is not IN the chain it is the graph's own entry — the plugin emits one module per
- * file, so `resolveDocument('_layout.fud')` returns a graph whose `layouts` are that
- * layout's ancestry — and then its parent is the first link.
- */
-function layoutParent(graph: DocumentGraph, layout: ResolvedLayout): ResolvedLayout | undefined {
-  const i = graph.layouts.findIndex((l) => l.path === layout.path);
-  return i === -1 ? graph.layouts[0] : graph.layouts[i + 1];
-}
-
-/** Emit the module of one layout of the graph's chain. */
+/** Emit the module of the graph's layout. */
 export function emitLayoutModule(
   graph: DocumentGraph,
   layout: ResolvedLayout,
@@ -217,15 +228,15 @@ export function emitLayoutModuleMapped(
   layout: ResolvedLayout,
   options: EmitOptions = {},
 ): EmitOutput {
-  const { writer, linker } = buildLayoutModule(graph, layout, options);
-  // No `diagnostics`: a LAYOUT does not go through `extractCode` — its markup is static in
-  // this version (SDD-39 §7), so its `@code` is the `?server` module and nothing else, and
-  // the plugin parses that one on its own.
+  const { writer, linker, diagnostics } = buildLayoutModule(graph, layout, options);
+  // Its `@code` DOES reach a reader now (SDD-40): it declares the layout's props, and what
+  // else it holds is `FUD0700`. Its markup is still static (SDD-39 §7), so there is no
+  // client half to split and nothing else comes out of the extraction.
   return {
     code: writer.toString(),
     mappings: writer.mappings(),
     missingAssets: linker.missing(),
-    diagnostics: [],
+    diagnostics,
   };
 }
 
@@ -333,6 +344,22 @@ function buildRouteModule(
   // What the page says about its own client half (SDD-39 §4.2, §4.7). `FUD0621` comes out of
   // the same read: a `data` the client reads and no `load` ever filled is knowable here.
   const routeDiagnostics: Diagnostic[] = [];
+  // The layout contract (SDD-40 §4.7): a prop the chain REQUIRES and this route does not
+  // resolve, over the `<link rel="layout">` that declares the relation. The emit is where it
+  // belongs and not the semantic pass, for the same reason the emit owns the chain at all —
+  // only a caller that resolved the graph sees both files at once. The BUILD reports it; the
+  // editor hears the same fact from TypeScript over the projection, and one fact has one voice.
+  //
+  // No resolver at all is «the route resolves nothing», which is the very case the diagnostic
+  // is for; a resolver whose return this pass cannot read is «not provable», and that reports
+  // nothing. The extraction already tells the two apart.
+  const resolver = code.layoutResolver;
+  const readable = resolver === undefined ? [] : resolver.keys;
+  if (readable !== undefined) {
+    routeDiagnostics.push(
+      ...unresolvedLayoutProps(requiredLayoutProps(graph.layouts), readable, route.layoutLink.openSpan),
+    );
+  }
   const blocks = routeBlocksOf(graph, options.routeName, routeDiagnostics);
   // The maps carry the route too — its entry in `fud-tree`, and its name in `fud-eager` when
   // it comes up without a gesture — under the name it publishes, never under a tag.
@@ -342,7 +369,11 @@ function buildRouteModule(
   writeRuntimeTags(runtimeW, needsRuntime(hydratable, hasDi, blocks !== undefined));
   w.line('');
   // Same public shape as a standalone page: the composition is invisible downstream.
-  w.line('export function* page(data, io, $ioc) {');
+  // The fourth parameter is what `export function layout(ctx, data)` resolved: the union of
+  // what the whole chain declares (§4.8). The route only carries it — it never reads it, and
+  // it never goes inside `data`, because what a route paints and what its layout needs are
+  // two shapes and mixing them makes the second an accident of the first (§3.3).
+  w.line(`export function* page(data, io, $ioc, ${PROPS}) {`);
   w.indent();
   w.line(`const { escapeText, jsonBlock${hasDi ? ', iocRoot, publishedSeed' : ''} } = io;`);
   if (hasDi) w.line('const $root = $ioc ?? iocRoot();');
@@ -391,7 +422,7 @@ function buildRouteModule(
   w.dedent();
   w.line('},');
   w.dedent();
-  w.line(`}, ${ioc});`);
+  w.line(`}, ${ioc}, ${PROPS});`);
   w.dedent();
   w.line('}');
   return { writer: w, linker, diagnostics: [...code.diagnostics, ...routeDiagnostics] };
