@@ -294,6 +294,12 @@ Warning y no error, porque el rango lo escribe el autor de la librería con la i
 que tenía el día que publicó, y un rango conservador de más no debe impedir un build que
 funciona. Lo que no puede es fallar en silencio.
 
+**Condición de reapertura, ya cumplida:** eso vale mientras todas las apps de un repo
+comparten versión por fuerza, que es hoy. [SDD-45](./SDD-45-runtime-publicado.md) §4.6 hace
+de las versiones mezcladas una promesa del producto, y entonces el rango deja de describir
+una precaución y pasa a describir un componente de librería que se resolverá contra una
+versión que no tiene lo que usa. Allí sube a **error**, `FUD0800`.
+
 ---
 
 ## 5. Invariantes
@@ -321,7 +327,7 @@ funciona. Lo que no puede es fallar en silencio.
 |---|---|---|
 | `FUD0760` | `error` | Un `<link rel="component" href>` con specifier de paquete que no resuelve. El mensaje distingue **paquete no instalado** de **el paquete no exporta ese fichero**. |
 | `FUD0761` | `error` | Dos componentes del grafo definen el mismo tag. Con los dos ficheros. |
-| `FUD0762` | `warning` | El `@fudic/compiler` resuelto queda fuera del `peerDependencies` que la librería declara. Uno por librería, no uno por fichero. |
+| `FUD0762` | `warning` | El `@fudic/compiler` resuelto queda fuera del `peerDependencies` que la librería declara. Uno por librería, no uno por fichero. **Superado por `FUD0800`** de [SDD-45](./SDD-45-runtime-publicado.md) §4.6, que lo sube a error: mientras todas las apps de un repo compartían versión por fuerza, un rango conservador de más no debía romper un build; desde que las versiones mezcladas son una promesa del producto, esto describe algo que rompe, y rompe tarde. |
 | `FUD0763` | `error` | El `href` apunta a un `.fud` de un paquete que no declara `kind: "lib"`. |
 | `0764`–`0779` | | Reservados. |
 
