@@ -284,13 +284,11 @@ function componentDoc(source: string, code: CodeBlockNode): string | undefined {
 }
 
 /**
- * The `href` of this file's `<link rel="layout">`, or `''` when it declares none.
+ * The `href` of this ROUTE's `<link rel="layout">`, or `''` when there is none to have.
  *
- * Both a route and a nested layout may declare one (decisions 81, 87); the empty string is
- * also what the parser leaves behind when the `href` is absent or interpolated (FUD0436).
+ * Only a route declares one (decision 81, `FUD0439`); the empty string is also what the
+ * parser leaves behind when the `href` is absent or interpolated (FUD0436).
  */
 export function layoutHrefOf(document: StructuredDocument): string {
-  if (document.type === 'route-document') return document.layoutHref;
-  if (document.type === 'layout-document') return document.layoutHref ?? '';
-  return '';
+  return document.type === 'route-document' ? document.layoutHref : '';
 }

@@ -1,30 +1,41 @@
 <!DOCTYPE html>
-@* El shell de un artículo: envuelve al de toda la web en vez de repetirlo.
+@* El shell de un artículo. Un layout es una página ENTERA —doctype, `<html>`, `<head>`,
+   `<body>`— y por eso no puede apoyarse en otro: dos páginas no se componen, porque nadie
+   sabe qué doctype gana ni qué pasa con dos `<title>`. Un layout por forma de página, y el
+   parecido con `_layout.fud` se paga escribiéndolo (`FUD0439`).
 
-   Y es donde vive la prop REQUERIDA del ejemplo. Una cadena de layouts es un solo espacio de
-   nombres: lo que `layout(ctx, data)` de la ruta devuelve es la unión de lo que declara la
-   cadena entera, y cada eslabón saca de ese único objeto los nombres que él declaró. Aquí
-   `seccion` no tiene valor obvio —cada página pertenece a una parte distinta del sitio—, así
-   que no lleva default: una ruta que se olvide es un error en el build y una bombilla en el
-   editor.
+   Y es donde vive la prop REQUERIDA del ejemplo. Un layout declara lo que necesita con el
+   mismo `props<T>()` que usan un componente y una ruta, y la ruta lo resuelve en su
+   `@server layout(ctx, data)`. Aquí conviven las dos formas: `culture` trae default —las
+   páginas en español no dicen nada—, y `seccion` no lo trae, porque cada página pertenece a
+   una parte distinta del sitio y no hay valor obvio que inventar. Una ruta que se olvide de
+   una prop requerida es un error en el build y una bombilla en el editor.
 
    Para ver la bombilla: borra `seccion` del `return` de `blog/[slug].fud` y pon el cursor
    sobre su `<link rel="layout">`. *@
-<html>
+<html lang="@culture">
   <head>
-    <link rel="layout" href="./_layout.fud">
-
     @code {
-      const { seccion } = props<{ seccion: string }>();
+      const { culture = "es", seccion } = props<{ culture?: string; seccion: string }>();
     }
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="./logo.svg">
+
+    <script type="module" src="fudic:runtime"></script>
 
     @RenderHead()
   </head>
   <body>
-    @* Un layout anidado no es dueño del `<html>` ni del `<body>`: lo que escribe aquí se
-       inserta donde el layout de arriba puso su `@RenderBody()`. *@
+    @RenderSection(nav)
+
     <p class="miga"><a href="/">fudic</a> › @seccion</p>
 
-    @RenderBody()
+    <main>@RenderBody()</main>
+
+    <footer class="site">
+      <p>fudic — ejemplo básico. El shell de esta página lo escribe un solo fichero.</p>
+    </footer>
   </body>
 </html>

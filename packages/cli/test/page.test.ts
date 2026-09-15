@@ -86,8 +86,30 @@ describe('g page', () => {
     expect(unknown.errors.map((e) => e.code)).toEqual([FUD_SECTION_UNKNOWN]);
   });
 
-  it('collects sections along the rel="layout" chain (decision 87)', async () => {
-    const nested = `<!DOCTYPE html>
+  it('collects the sections of the chosen layout, and only that one (FUD0439)', async () => {
+    // It used to walk the `rel="layout"` chain and declare `aside` too, inherited from the
+    // layout this one pointed at. A layout may no longer point at one, so the generated page
+    // gets the holes of the file it links to — `admin` — and nothing from anywhere else.
+    const admin = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    @RenderHead()
+  </head>
+  <body>
+    @RenderSection(admin)
+    <main>@RenderBody()</main>
+  </body>
+</html>
+`;
+    const fs = new MemoryFs({ 'src/layouts/_layout.fud': LAYOUT, 'src/layouts/_layout-admin.fud': admin });
+    const plan = await planPage('admin', options({ layout: 'src/layouts/_layout-admin.fud' }), fs);
+    expect(plan.errors).toEqual([]);
+    expect(plan.changes[0]!.contents).toContain('@section admin {');
+    expect(plan.changes[0]!.contents).not.toContain('@section aside {');
+  });
+
+  it('surfaces FUD0439 as a plan diagnostic when the chosen layout names a layout', async () => {
+    const offender = `<!DOCTYPE html>
 <html lang="en">
   <head>
     <link rel="layout" href="./_layout.fud">
@@ -99,11 +121,12 @@ describe('g page', () => {
   </body>
 </html>
 `;
-    const fs = new MemoryFs({ 'src/layouts/_layout.fud': LAYOUT, 'src/layouts/_layout-admin.fud': nested });
+    const fs = new MemoryFs({
+      'src/layouts/_layout.fud': LAYOUT,
+      'src/layouts/_layout-admin.fud': offender,
+    });
     const plan = await planPage('admin', options({ layout: 'src/layouts/_layout-admin.fud' }), fs);
-    expect(plan.errors).toEqual([]);
-    expect(plan.changes[0]!.contents).toContain('@section admin {');
-    expect(plan.changes[0]!.contents).toContain('@section aside {');
+    expect(plan.diagnostics.map((d) => d.diagnostic.code)).toContain('FUD0439');
   });
 
   it('picks the nearest _layout.fud walking up from the page (§6.7)', async () => {

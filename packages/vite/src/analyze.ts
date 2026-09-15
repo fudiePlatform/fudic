@@ -63,7 +63,10 @@ const nameOf = (node: OxcNode): string => String(node['name']);
 export function analyzePage(source: string, file = ''): PageAnalysis {
   const doc = parseFud(source);
   const role = roleOf(doc);
-  const layoutHref = doc.type === 'route-document' || doc.type === 'layout-document' ? doc.layoutHref : undefined;
+  // A ROUTE's link and nothing else. A layout that declares one is `FUD0439`: a mistake to
+  // delete, not a relation — counting it as «this layout is used» would keep a layout alive
+  // on the strength of a link the author has to remove anyway.
+  const layoutHref = doc.type === 'route-document' ? doc.layoutHref : undefined;
   if (role !== 'page' && role !== 'route') {
     return {
       role,

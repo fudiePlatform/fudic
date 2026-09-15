@@ -137,11 +137,8 @@ function buildLayoutModule(
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
   const doc = layout.doc;
   const source = layout.source;
-  const nested = doc.layoutHref !== undefined;
-  // What its `@code` declares, and what is wrong with the rest of it (SDD-40 §3.1, §4.1) —
-  // including what the links ABOVE it already declared, which is the one fact of the chain a
-  // layout can check about itself (`FUD0703`, §4.8).
-  const code = layoutCodeOf(source, doc, inheritedProps(graph, layout));
+  // What its `@code` declares, and what is wrong with the rest of it (SDD-40 §3.1, §4.1).
+  const code = layoutCodeOf(source, doc);
 
   // Body codegen: the layout's own markup, with `route.body(…)` spliced in where the
   // author wrote `@RenderBody()` (the MarkupEmitter resolves the directive nodes).
@@ -156,8 +153,7 @@ function buildLayoutModule(
     formAssociated: formAssociatedTags(graph),
     styled: styledTags(graph),
   });
-  const bodyParent = nested ? PARENT : '$body';
-  em.emitChildren(doc.body.children, bodyParent);
+  em.emitChildren(doc.body.children, '$body');
 
   // Head codegen: the layout's own elements, with the route's contributions injected at
   // `@RenderHead()` — or appended at the end when there is none (FUD0425).
@@ -181,113 +177,43 @@ function buildLayoutModule(
   );
 
   const w = new CodeWriter();
-  if (nested) {
-    // The parent is the next link of the chain (innermost first). When it did not resolve
-    // (a broken href already reported by `resolveDocument`), fall back to the author's own
-    // specifier: the module still says what it meant to import.
-    const parent = layoutParent(graph, layout);
-    const spec =
-      parent !== undefined ? layoutSpecifierOf(parent, options) : quoteSpecifier(doc.layoutHref ?? '');
-    w.line(`import { layout as parentLayout } from ${spec};`);
-  }
   writeImports(w, em.used, specifierResolver(graph, options.componentSpecifier, ext), linker);
   w.line('');
 
-  // The fourth parameter is the route's container, forwarded down the chain untouched: a
-  // layout owns no container of its own, it only hands the one the route opened to the
-  // component hosts its own markup renders (SDD-38 §4.7).
+  // The fourth parameter is the route's container, handed over untouched: a layout owns no
+  // container of its own, it only passes the one the route opened to the component hosts its
+  // own markup renders (SDD-38 §4.7).
   // The fifth parameter is the layout's own props (SDD-40 §3.4), and it comes AFTER `$ioc`
   // for the only reason that matters downstream: the container already held the fourth
-  // place, and a parameter that changes position changes every caller of every chain.
+  // place, and a parameter that changes position changes every caller.
   w.line(`export function* layout(data, io, route, $ioc, ${PROPS}) {`);
   w.indent();
-  if (nested) {
-    w.line('const { escapeText } = io;');
-    writeLayoutProps(w, code.props);
-    // The props go UP untouched: what the route resolved is the union of what the chain
-    // declares (§4.8), and each link takes its own names out of the one object. That is also
-    // why two links declaring the same name with different types is `FUD0703` — there is one
-    // namespace, not one per layout.
-    w.line('yield* parentLayout(data, io, {');
-    w.indent();
-    w.line('head() {');
-    w.indent();
-    w.line("let head = '';");
-    w.appendWriter(headW);
-    w.line('return head;');
-    w.dedent();
-    w.line('},');
-    // The `fudic:runtime` marker is the ROUTE's to answer (BUG-31 §T1), and only the OUTERMOST
-    // layout holds the `<head>` the marker was written in — so a nested link has to pass the
-    // question up, exactly as it passes the sections and the blocks. Without this line a route
-    // under a nested layout died at prerender on `route.runtime is not a function`: the marker
-    // is written by the outer layout and answered by the route, and nobody joined the two.
-    w.line('runtime() { return route.runtime(); },');
-    w.line(`body(${DOM}, ${PARENT}) {`);
-    w.indent();
-    w.appendWriter(bodyW);
-    w.dedent();
-    w.line('},');
-    // Sections belong to the route; this layout only forwards the ones its parent renders.
-    w.line(`section(name, ${DOM}, ${PARENT}) { ${SLOTS}.section(name, ${DOM}, ${PARENT}); },`);
-    // Same for the hydration blocks: they are the ROUTE's — it is the one whose graph reaches
-    // the whole chain — and only the outermost layout knows when the body is finished.
-    w.line(`blocks(${DOM}, ${PARENT}) { ${SLOTS}.blocks(${DOM}, ${PARENT}); },`);
-    w.dedent();
-    w.line(`}, $ioc, ${PROPS});`);
-  } else {
-    w.line('const { createDom, serialize, escapeText, escapeAttr } = io;');
-    writeLayoutProps(w, code.props);
-    w.line("let head = '';");
-    w.appendWriter(headW);
-    // The shell's opening tag, interpolated like any other element (§4.4). No whitespace in
-    // the skeleton, as in `module.ts` (BUG-07 §4.2).
-    writeHtmlOpenTag(w, source, doc.html, linker);
-    w.line(`yield '<!DOCTYPE html>' + ${OPEN} + '<head>' + head + '</head>';`);
-    w.line(`const ${DOM} = createDom();`);
-    w.line(`const $body = ${DOM}.element('body');`);
-    // The `<body>`'s own attributes, which until now were dropped whole — the element was
-    // built from its tag name and nothing else. The same omission as the `<html>` above and
-    // the same fix, and §3.1's own example needs it: `<body data-theme="@theme">`.
-    writeElementAttrs(source, doc.body, '$body', w, linker, NO_SIGNALS);
-    w.appendWriter(bodyW);
-    // The last thing in the body, and the outermost layout is the only one that can say
-    // «the body is finished»: the route hangs its three JSON blocks here (SDD-15 §3.3–§3.5).
-    w.line(`${SLOTS}.blocks(${DOM}, $body);`);
-    w.line('yield* serialize($body);');
-    w.line("yield '</html>';");
-  }
+  w.line('const { createDom, serialize, escapeText, escapeAttr } = io;');
+  writeLayoutProps(w, code.props);
+  w.line("let head = '';");
+  w.appendWriter(headW);
+  // The shell's opening tag, interpolated like any other element (§4.4). No whitespace in
+  // the skeleton, as in `module.ts` (BUG-07 §4.2).
+  writeHtmlOpenTag(w, source, doc.html, linker);
+  w.line(`yield '<!DOCTYPE html>' + ${OPEN} + '<head>' + head + '</head>';`);
+  w.line(`const ${DOM} = createDom();`);
+  w.line(`const $body = ${DOM}.element('body');`);
+  // The `<body>`'s own attributes, which until now were dropped whole — the element was
+  // built from its tag name and nothing else. The same omission as the `<html>` above and
+  // the same fix, and §3.1's own example needs it: `<body data-theme="@theme">`.
+  writeElementAttrs(source, doc.body, '$body', w, linker, NO_SIGNALS);
+  w.appendWriter(bodyW);
+  // The last thing in the body: the route hangs its three JSON blocks here (SDD-15
+  // §3.3–§3.5), and the layout is the one file that can say «the body is finished».
+  w.line(`${SLOTS}.blocks(${DOM}, $body);`);
+  w.line('yield* serialize($body);');
+  w.line("yield '</html>';");
   w.dedent();
   w.line('}');
   return { writer: w, linker, diagnostics: code.diagnostics };
 }
 
-/**
- * The parent layout of `layout`: its next link in the chain (innermost first). When the
- * layout is not IN the chain it is the graph's own entry — the plugin emits one module per
- * file, so `resolveDocument('_layout.fud')` returns a graph whose `layouts` are that
- * layout's ancestry — and then its parent is the first link.
- */
-function layoutParent(graph: DocumentGraph, layout: ResolvedLayout): ResolvedLayout | undefined {
-  const i = graph.layouts.findIndex((l) => l.path === layout.path);
-  return i === -1 ? graph.layouts[0] : graph.layouts[i + 1];
-}
-
-/**
- * The props every layout ABOVE this one declares — its ancestry, outwards.
- *
- * The chain is one namespace (§4.8), so this is what a nested layout compares its own
- * declarations against. Read straight off `codeOfDocument`, not through `layoutCodeOf`: what
- * is wanted is what the ancestor declared, and its own diagnostics are its own module's to
- * report — emitting them twice would say the same thing from two files.
- */
-function inheritedProps(graph: DocumentGraph, layout: ResolvedLayout): readonly Prop[] {
-  const i = graph.layouts.findIndex((l) => l.path === layout.path);
-  const above = i === -1 ? graph.layouts : graph.layouts.slice(i + 1);
-  return above.flatMap((l) => codeOfDocument(l.source, l.doc).props);
-}
-
-/** Emit the module of one layout of the graph's chain. */
+/** Emit the module of the graph's layout. */
 export function emitLayoutModule(
   graph: DocumentGraph,
   layout: ResolvedLayout,

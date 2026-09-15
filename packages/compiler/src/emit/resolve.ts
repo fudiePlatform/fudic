@@ -24,8 +24,13 @@ import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 
 const constructs: AtConstructParser = { parseControl, parseCodeBlock, parseDirective };
 
-/** A cycle in the layout chain (decision 87). */
-const FUD_LAYOUT_CYCLE = 'FUD0422';
+/**
+ * `FUD0422` — «a cycle in the layout chain» — is RETIRED with the chain itself (`FUD0439`).
+ *
+ * It cut a loop that only a layout pointing at another layout could form. A route points
+ * once and a layout points nowhere, so the shortest loop that could exist needs a file that
+ * may no longer exist. The code is not reused.
+ */
 /** A file used as a layout that holds no `@RenderBody()` (decision 82). */
 const FUD_NO_RENDER_BODY = 'FUD0423';
 /** A `@section` no `@RenderSection` in the chain consumes: its content would vanish. */
@@ -217,24 +222,20 @@ export interface ResolvedLayout {
   readonly doc: LayoutDocument;
   /** This layout's own `<link rel="component">` hrefs. */
   readonly deps: readonly string[];
-  /** The specifier of its own parent layout, when it has one (decision 87). */
-  readonly parentHref?: string;
 }
 
 /**
- * The entry plus its layout chain and every component either of them reaches. Extends
+ * The entry plus its layout and every component either of them reaches. Extends
  * `ComponentGraph`, so every consumer of the component-only graph keeps working.
  */
 export interface DocumentGraph extends ComponentGraph {
-  /** The layout chain of the entry, INNERMOST FIRST. Empty for a page/component entry. */
+  /**
+   * The entry's layout: AT MOST ONE, and empty for anything that is not a route with a
+   * resolvable link. It stays a list because every reader of it — the component order, the
+   * orphan sections, the emit — reads it as one, and a list of at most one costs them
+   * nothing while a second field would cost them a rewrite.
+   */
   readonly layouts: readonly ResolvedLayout[];
-}
-
-/** The layout href a document declares, or undefined when it declares none. */
-function layoutHrefOf(doc: StructuredDocument): string | undefined {
-  if (doc.type === 'route-document') return doc.layoutHref === '' ? undefined : doc.layoutHref;
-  if (doc.type === 'layout-document') return doc.layoutHref;
-  return undefined;
 }
 
 /**
@@ -257,24 +258,18 @@ export function resolveDocument(entryPath: string, io: ResolveIo): ParseResult<D
   const components = new Map<string, ResolvedComponent>();
   const layouts: ResolvedLayout[] = [];
 
-  const seen = new Set<string>([entryPath]);
-  let fromPath = entryPath;
-  let fromDoc: StructuredDocument = entry;
-  let href = layoutHrefOf(entry);
-  while (href !== undefined) {
-    const path = io.resolve(fromPath, href);
-    const at = (fromDoc.type === 'route-document' || fromDoc.type === 'layout-document'
-      ? fromDoc.layoutLink?.span
-      : undefined) ?? fromDoc.span;
-    if (seen.has(path)) {
-      diagnostics.push(errorDiag(FUD_LAYOUT_CYCLE, `layout cycle: ${path} is already in the chain`, at));
-      break;
-    }
-    seen.add(path);
-
+  // ONE step, not a walk. A route names a layout and a layout names none (`FUD0439`), so
+  // there is nothing to recurse into: no chain to unwind, and no cycle to cut either — a
+  // cycle needs two links that both point onwards, and only one kind of file points at all.
+  if (entry.type === 'route-document' && entry.layoutHref !== '') {
+    const path = io.resolve(entryPath, entry.layoutHref);
+    const at = entry.layoutLink.span;
     const source = io.read(path);
     const doc = parse(source).value;
-    if (doc.type !== 'layout-document') {
+    if (doc.type === 'layout-document') {
+      const deps = doc.links.map(linkHref).filter((h): h is string => h !== undefined);
+      layouts.push({ path, source, doc, deps });
+    } else {
       // A shell with no `@RenderBody()` structures as a page: it was MEANT to be a layout
       // (something points at it), so name the missing directive rather than the role.
       diagnostics.push(
@@ -282,22 +277,7 @@ export function resolveDocument(entryPath: string, io: ResolveIo): ParseResult<D
           ? errorDiag(FUD_NO_RENDER_BODY, `a layout must contain @RenderBody(): ${path}`, at)
           : errorDiag(FUD_NOT_A_LAYOUT, `<link rel="layout"> must point at a layout: ${path}`, at),
       );
-      break;
     }
-
-    const deps = doc.links.map(linkHref).filter((h): h is string => h !== undefined);
-    const parentHref = doc.layoutHref;
-    layouts.push({
-      path,
-      source,
-      doc,
-      deps,
-      ...(parentHref !== undefined ? { parentHref } : {}),
-    });
-
-    fromPath = path;
-    fromDoc = doc;
-    href = parentHref;
   }
 
   // Components are collected OUTERMOST LAYOUT FIRST and the entry last, so the order of

@@ -165,23 +165,21 @@ describe('the walk crosses the layout by cursor (§6.4)', () => {
   });
 });
 
-describe('nested layouts change the depth of the walk and nothing else (§6.5)', () => {
-  const OUTER = [
-    '<!DOCTYPE html><html><head>@RenderHead()</head>',
-    '<body><div class="shell">@RenderBody()</div></body></html>',
-  ].join('\n');
-  const INNER = [
-    '<!DOCTYPE html><html><head><link rel="layout" href="./outer.fud">@RenderHead()</head>',
-    '<body><main>@RenderBody()</main></body></html>',
-  ].join('\n');
-
-  it('walks one more level and hooks up the same thing', () => {
+describe('the depth of the walk is the layout the author wrote, however deep (§6.5)', () => {
+  it('walks every level the ONE layout nests its hole in', () => {
+    // What used to be measured with a chain of two layouts. The depth never came from the
+    // nesting of files — it comes from where `@RenderBody()` sits inside the shell — so a
+    // single layout that wraps its hole twice asks the same thing of the walk.
+    const layout = [
+      '<!DOCTYPE html><html><head>@RenderHead()</head>',
+      '<body><div class="shell"><main>@RenderBody()</main></div></body></html>',
+    ].join('\n');
     const route = [
-      '<link rel="layout" href="./inner.fud">',
+      '<link rel="layout" href="./l.fud">',
       '@code { @client { const n = signal(1); } }',
       '<output>@n()</output>',
     ].join('\n');
-    const io = memoryIo({ '/r.fud': route, '/inner.fud': INNER, '/outer.fud': OUTER });
+    const io = memoryIo({ '/r.fud': route, '/l.fud': layout });
     const code = emitRouteClientModule(resolveDocument('/r.fud', io).value)!;
     expect(code).toContain('let $lc0 = $dom.firstElementChild($root);');
     expect(code).toContain('let $lc1 = $dom.firstElementChild($lp0);');

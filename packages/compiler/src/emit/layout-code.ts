@@ -28,8 +28,14 @@ const FUD_LAYOUT_CODE = 'FUD0700';
 const FUD_LAYOUT_REACTIVE_PROP = 'FUD0701';
 /** The route does not resolve a REQUIRED prop of its layout. */
 const FUD_LAYOUT_PROP_UNRESOLVED = 'FUD0702';
-/** Two layouts of one chain declare the same prop with incompatible types. */
-const FUD_LAYOUT_PROP_CLASH = 'FUD0703';
+/**
+ * `FUD0703` — «two layouts of one chain declare the same prop with incompatible types» — is
+ * RETIRED with the chain itself (`FUD0439`).
+ *
+ * It existed because the layout props of one render were ONE namespace shared by every link
+ * of a chain, so two links could ask the route for a single name that had to be two types.
+ * One layout has no one to disagree with. The code is not reused.
+ */
 
 /**
  * A reactive declaration written as a prop's DEFAULT: `const { theme = signal("light") }`.
@@ -62,11 +68,7 @@ export interface LayoutCode {
  * so the golden rule holds: Oxc runs once per file however many readers ask. What this adds
  * is the layout's own contract over the answer.
  */
-export function layoutCodeOf(
-  source: string,
-  doc: LayoutDocument,
-  inherited: readonly Prop[] = [],
-): LayoutCode {
+export function layoutCodeOf(source: string, doc: LayoutDocument): LayoutCode {
   const code = codeOfDocument(source, doc);
   const diagnostics: Diagnostic[] = [...code.diagnostics];
 
@@ -118,7 +120,6 @@ export function layoutCodeOf(
   }
 
   const props = code.props.map((p) => plain(p, diagnostics));
-  reportClashes(props, inherited, doc.layoutLink?.openSpan, diagnostics);
   return { props, diagnostics };
 }
 
@@ -170,50 +171,6 @@ export function unresolvedLayoutProps(
       ),
     );
 }
-
-/**
- * `FUD0703` — the same name declared twice in one chain, with two different types (§4.8).
- *
- * There is ONE namespace for the layout props of a render: what the route's
- * `layout(ctx, data)` returns is the union of what the chain declares, and each link takes
- * its own names out of the one object. So two links that spell the same name differently are
- * asking the route for one value that has to be two things.
- *
- * Anchored on the nested layout's `<link rel="layout">`, which is where THIS file declares
- * the relation — the same place `FUD0702` lands on the route's, and the only span of the
- * chain that belongs to the file being emitted. A type neither file states is not compared:
- * «not provable» invents no error, exactly as it does not for `optional` (BUG-23 §4.4).
- */
-function reportClashes(
-  own: readonly Prop[],
-  inherited: readonly Prop[],
-  anchor: Span | undefined,
-  out: Diagnostic[],
-): void {
-  if (anchor === undefined) return;
-  const above = new Map(inherited.map((p) => [p.name, p]));
-  for (const prop of own) {
-    const parent = above.get(prop.name);
-    if (parent === undefined || prop.type === undefined || parent.type === undefined) continue;
-    if (normalizeType(prop.type) === normalizeType(parent.type)) continue;
-    out.push(
-      errorDiag(
-        FUD_LAYOUT_PROP_CLASH,
-        `the layout prop \`${prop.name}\` is declared as \`${prop.type}\` here and as \`${parent.type}\` by a layout above it: one render resolves one value under one name`,
-        anchor,
-      ),
-    );
-  }
-}
-
-/**
- * Type sources compared as text, with whitespace collapsed.
- *
- * Deliberately not a type comparison: this pass has an AST, and `string` against `String` is
- * a question for a typechecker. What it catches is what it is for — the two layouts that
- * wrote `string` and `Post`.
- */
-const normalizeType = (type: string): string => type.replace(/\s+/gu, ' ').trim();
 
 /**
  * One prop, with whatever made it reactive taken off it and reported.

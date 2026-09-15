@@ -80,6 +80,19 @@ const FUD_RENDER_HEAD_OUTSIDE_HEAD = 'FUD0431';
 /** `<link rel="layout">` with an absent or interpolated `href` (decision 81). */
 const FUD_BAD_LAYOUT_HREF = 'FUD0436';
 /**
+ * A layout that declares its own `<link rel="layout">`: only a route may name a layout.
+ *
+ * Decision 87 let a layout have a parent, and the shape of a layout is what makes that
+ * unpayable: a layout IS a page — doctype, `<html>`, `<head>`, `<body>` — so a chain of two
+ * asks which doctype survives, which `<html>` and `<body>` attributes win, and what happens
+ * to two `<title>`s. There is no answer, and the emit never had one: it simply dropped the
+ * inner shell — doctype, both open tags and their attributes — and kept two fragments, the
+ * children of its `<body>` and the contents of its `<head>`, concatenated into the parent's
+ * with no merge of any kind. Silently discarding what the author wrote is not a composition
+ * rule, so the nesting goes rather than the shell.
+ */
+const FUD_NESTED_LAYOUT = 'FUD0439';
+/**
  * `FUD0437` — «a layout has no `@code` block» — is RETIRED (SDD-40 §3.1).
  *
  * It said a layout declares nothing, and that stopped being true the day a layout could
@@ -595,8 +608,20 @@ function buildLayout(
   rejectDuplicateNames(found.renderSections, 'rendered section', diagnostics);
   rejectDirectives(found, { render: true, section: false }, diagnostics);
 
-  const layoutHref =
-    parts.layoutLink === undefined ? undefined : layoutHrefOf(parts.layoutLink, diagnostics);
+  // Only a route names a layout (FUD0439). The link is KEPT on the node so the emit still
+  // skips it when it writes the `<head>`, and no `layoutHref` is set: with no href there is no
+  // chain, so the file degrades into the plain layout it already looks like — its own shell,
+  // its own doctype — instead of half of a composed one. The href is not validated either:
+  // `FUD0436` over a link that may not exist at all would be a second voice on one mistake.
+  if (parts.layoutLink !== undefined) {
+    diagnostics.push(
+      errorDiag(
+        FUD_NESTED_LAYOUT,
+        'a layout cannot declare <link rel="layout">: only a route may name a layout',
+        parts.layoutLink.span,
+      ),
+    );
+  }
   return {
     type: 'layout-document',
     span: doc.span,
@@ -608,7 +633,6 @@ function buildLayout(
     renderSections: found.renderSections,
     ...(parts.code !== undefined ? { code: parts.code } : {}),
     ...(parts.layoutLink !== undefined ? { layoutLink: parts.layoutLink } : {}),
-    ...(layoutHref !== undefined ? { layoutHref } : {}),
     ...(renderBody !== undefined ? { renderBody } : {}),
     ...(renderHead !== undefined ? { renderHead } : {}),
   };

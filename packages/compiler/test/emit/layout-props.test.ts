@@ -176,136 +176,54 @@ describe('§6.5 — the props reach the layout, destructured above the first yie
   });
 });
 
-describe('§6.6 — a nested chain: each link takes its own and forwards the rest', () => {
-  /**
-   * A two-level chain: the route → the inner layout → the outer one.
-   *
-   * The outer owns the shell (`<html>`, `<head>`, `<body>`); the inner delegates to it.
-   */
-  function nested(inner: string, outer: string): { inner: string; outer: string; route: string } {
-    const io = memoryIo({
-      '/app/index.fud': '<link rel="layout" href="./_inner.fud"><p>hola</p>',
-      '/app/_inner.fud': inner,
-      '/app/_outer.fud': outer,
-    });
-    const graph = resolveDocument('/app/index.fud', io).value;
-    return {
-      inner: emitLayoutModule(graph, graph.layouts[0]!),
-      outer: emitLayoutModule(graph, graph.layouts[1]!),
-      route: emitRouteModule(graph),
-    };
-  }
-
-  // Its `data-theme` hangs on a `<main>` and not on its own `<body>`: the OUTER layout owns
-  // the shell, so a nested layout's `<body>` tag is a container the emit splices through, not
-  // an element anyone builds.
-  const INNER =
-    '<!DOCTYPE html>\n<html>\n  <head>\n  <link rel="layout" href="./_outer.fud">\n' +
-    '  @code {\n  const { theme } = props<{ theme: string }>();\n}\n' +
-    '  @RenderHead()\n  </head>\n' +
-    '  <body><main data-theme="@theme">@RenderBody()</main></body>\n</html>\n';
+describe('§6.6 — one layout, one namespace: nothing is inherited because nothing is above', () => {
   const OUTER = layoutSource({
     code: 'const { culture } = props<{ culture: string }>();',
     html: 'lang="@culture"',
   });
 
-  it('gives each layout its own names and passes the one object up untouched', () => {
-    const sources = nested(INNER, OUTER);
-    expect(sources.inner).toContain('const { theme } = $props ?? {};');
-    expect(sources.inner).toContain('}, $ioc, $props);');
-    expect(sources.outer).toContain('const { culture } = $props ?? {};');
-  });
-
-  it('renders the union the route resolved, each link reading its half', () => {
+  it('takes only its OWN names, and the props object reaches it whole', () => {
     const io = memoryIo({
-      '/app/index.fud': '<link rel="layout" href="./_inner.fud"><p>hola</p>',
-      '/app/_inner.fud': INNER,
+      '/app/index.fud': '<link rel="layout" href="./_outer.fud"><p>hola</p>',
       '/app/_outer.fud': OUTER,
     });
     const graph = resolveDocument('/app/index.fud', io).value;
-    const evaluate = (code: string, bindings: Record<string, unknown>, returns: string): unknown => {
-      const body =
-        code.replace(/^import[^\n]*\n/gmu, '').replace(/^export\s+/gmu, '') + `\nreturn ${returns};`;
-      // eslint-disable-next-line @typescript-eslint/no-implied-eval
-      return new Function(...Object.keys(bindings), body)(...Object.values(bindings)) as unknown;
-    };
-    const parentLayout = evaluate(emitLayoutModule(graph, graph.layouts[1]!), {}, 'layout');
-    const layout = evaluate(emitLayoutModule(graph, graph.layouts[0]!), { parentLayout }, 'layout');
-    const page = evaluate(emitRouteModule(graph), { layout }, 'page') as (
-      data: unknown,
-      io: unknown,
-      ioc: unknown,
-      props: unknown,
-    ) => Iterable<string>;
-    const html = [
-      ...page({}, { ...minimalSsr(), nonce: '' }, undefined, { culture: 'gl', theme: 'dark' }),
-    ].join('');
-    expect(html).toContain('<html lang="gl">');
-    expect(html).toContain('data-theme="dark"');
-  });
-
-  it('`FUD0703` when two links of the chain spell one name differently', () => {
-    const clashing = layoutSource({
-      parent: './_outer.fud',
-      code: 'const { culture } = props<{ culture: number }>();',
-    });
-    const io = memoryIo({
-      '/app/index.fud': '<link rel="layout" href="./_inner.fud"><p>hola</p>',
-      '/app/_inner.fud': clashing,
-      '/app/_outer.fud': OUTER,
-    });
-    const graph = resolveDocument('/app/index.fud', io).value;
-    const reported = emitLayoutModuleMapped(graph, graph.layouts[0]!).diagnostics;
-    expect(reported.map((d) => d.code)).toEqual(['FUD0703']);
-    // Anchored on the `<link rel="layout">`: the only span of the chain this file owns.
-    expect(clashing.slice(reported[0]!.span.start, reported[0]!.span.end)).toBe(
-      '<link rel="layout" href="./_outer.fud">',
+    expect(emitLayoutModule(graph, graph.layouts[0]!)).toContain(
+      'const { culture } = $props ?? {};',
     );
-    // The OUTER layout says nothing: it declared first and its file is not the one in doubt.
-    expect(emitLayoutModuleMapped(graph, graph.layouts[1]!).diagnostics).toEqual([]);
   });
 
-  it('compares the chain the same way when the layout is its OWN entry', () => {
-    // How the Vite plugin emits it: one module per file, so `resolveDocument('_inner.fud')`
-    // returns a graph whose `layouts` ARE this layout's ancestry rather than a chain it is
-    // part of. The names above it are the same names, and so is the verdict.
-    const clashing = layoutSource({
+  it('says nothing about a name a DIFFERENT layout spells otherwise (was FUD0703)', () => {
+    // Two layouts declaring `culture` as two types used to be a clash, because one render
+    // resolved one object for the whole chain. Now each is the only layout of its own render,
+    // and neither is in a position to contradict the other.
+    const other = layoutSource({ code: 'const { culture } = props<{ culture: number }>();' });
+    const io = memoryIo({
+      '/app/index.fud': '<link rel="layout" href="./_other.fud"><p>hola</p>',
+      '/app/_other.fud': other,
+      '/app/_outer.fud': OUTER,
+    });
+    const graph = resolveDocument('/app/index.fud', io).value;
+    expect(emitLayoutModuleMapped(graph, graph.layouts[0]!).diagnostics).toEqual([]);
+  });
+
+  it('emits a layout that wrongly names a layout without inheriting anything', () => {
+    // `FUD0439` is the structuring pass's to report, not the emit's. What the emit must do
+    // is treat the file as the plain layout it degraded into: its own props, its own shell.
+    const offender = layoutSource({
       parent: './_outer.fud',
       code: 'const { culture } = props<{ culture: number }>();',
     });
-    const io = memoryIo({ '/app/_inner.fud': clashing, '/app/_outer.fud': OUTER });
-    const graph = resolveDocument('/app/_inner.fud', io).value;
-    const entry = graph.entry;
-    if (entry.type !== 'layout-document') throw new Error('expected a layout document');
-    const self: ResolvedLayout = {
-      path: '/app/_inner.fud',
-      source: graph.entrySource,
-      doc: entry,
-      deps: graph.entryDeps,
-    };
-    expect(emitLayoutModuleMapped(graph, self).diagnostics.map((d) => d.code)).toEqual([
-      'FUD0703',
-    ]);
-  });
-
-  it('says nothing when the two agree, nor when neither states a type', () => {
-    const same = layoutSource({
-      parent: './_outer.fud',
-      code: 'const { culture } = props<{ culture: string }>();',
+    const io = memoryIo({
+      '/app/index.fud': '<link rel="layout" href="./_inner.fud"><p>hola</p>',
+      '/app/_inner.fud': offender,
+      '/app/_outer.fud': OUTER,
     });
-    const untyped = layoutSource({
-      parent: './_outer.fud',
-      code: 'const { culture } = props();',
-    });
-    for (const inner of [same, untyped]) {
-      const io = memoryIo({
-        '/app/index.fud': '<link rel="layout" href="./_inner.fud"><p>hola</p>',
-        '/app/_inner.fud': inner,
-        '/app/_outer.fud': OUTER,
-      });
-      const graph = resolveDocument('/app/index.fud', io).value;
-      expect(emitLayoutModuleMapped(graph, graph.layouts[0]!).diagnostics).toEqual([]);
-    }
+    const graph = resolveDocument('/app/index.fud', io).value;
+    const emitted = emitLayoutModuleMapped(graph, graph.layouts[0]!);
+    expect(emitted.diagnostics).toEqual([]);
+    expect(emitted.code).toContain('const { culture } = $props ?? {};');
+    expect(emitted.code).toContain('<!DOCTYPE html>');
   });
 });
 
