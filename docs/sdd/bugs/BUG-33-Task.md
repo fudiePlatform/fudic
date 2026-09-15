@@ -3,7 +3,7 @@
 > **BUG:** [BUG-33 — Dos apps en el mismo origen se borran las cachés](./BUG-33-caches-por-app.md)
 > **Paquetes:** `@fudic/transport` · `@fudic/vite`
 > **Rama:** `bug-33-caches-por-app`
-> **Progreso:** 3 / 6
+> **Progreso:** 4 / 6
 > **Bloqueado por:** [SDD-41](../SDD-41-configuracion-de-aplicacion.md) — sin `id` no hay con qué
 > namespacear. Concretamente por su **tarea 7**: el plugin tiene que estar leyendo el config antes
 > de que este BUG pueda pasarle el `id` al worker.
@@ -47,7 +47,7 @@ nada.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 4 | 3 | **El `id` llega al worker.** `SwBootstrapOptions` gana `app`, el bootstrap emite `const APP = "<id>";` al lado de `const BUILD`, y `NAMES` sale de los dos. El valor viene del `fudic.json` que el plugin ya lee (SDD-41 tarea 7) — **no** de una opción nueva de `FudicOptions`. Sin token: el `id` se conoce en `configResolved` y `BUILD_TOKEN` sigue siendo la única sustitución, así que el mapa del worker sigue siendo válido. Criterios 7, 8 | `vite` | `src/bootstrap.ts` · `src/plugin.ts` · `src/swbuild.ts` · `test/sw-app-id.test.ts` |
+| [x] | 4 | 3 | **El `id` llega al worker.** `SwBootstrapOptions` gana `app`, el bootstrap emite `const APP = "<id>";` al lado de `const BUILD`, y `NAMES` sale de los dos. El valor viene del `fudic.json` que el plugin ya lee (SDD-41 tarea 7) — **no** de una opción nueva de `FudicOptions`. Sin token: el `id` se conoce en `configResolved` y `BUILD_TOKEN` sigue siendo la única sustitución, así que el mapa del worker sigue siendo válido. Criterios 7, 8 | `vite` | `src/bootstrap.ts` · `src/plugin.ts` · `src/swbuild.ts` · `test/sw-app-id.test.ts` |
 
 ---
 

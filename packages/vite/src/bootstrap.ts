@@ -17,6 +17,18 @@ export interface SwBootstrapOptions {
   readonly shell: readonly string[];
   /** `sw.json` resource classes, in evaluation order. */
   readonly resources: unknown;
+  /**
+   * The app id (SDD-41 §3.1), which namespaces this application's caches (BUG-33).
+   *
+   * A literal and not a token: it is known in `configResolved`, long before
+   * `generateBundle`, unlike the build id. So `BUILD_TOKEN` stays the only substitution
+   * made on the emitted code, and the map generated for it still describes it.
+   *
+   * It is never empty when a worker is emitted: a project with a `sw.json` and no `id` is
+   * FUD0721 and the build fails (SDD-41 §4.3), so there is no degraded case to invent a
+   * default for — one that would be the name three different apps collide under.
+   */
+  readonly app: string;
 }
 
 /**
@@ -31,9 +43,7 @@ export function emitSwBootstrap(options: SwBootstrapOptions): string {
 } from '@fudic/transport';
 import * as ssr from '@fudic/ssr';
 
-// TEMPORARY (BUG-33 task 2). The real id comes from the project's \`fudic.json\` in task 4;
-// until then the emitter carries one by hand so the worker it writes is coherent.
-const APP = "fudic-app";
+const APP = ${JSON.stringify(options.app)};
 const BUILD = ${JSON.stringify(BUILD_TOKEN)};
 const MANIFEST_URL = ${options.manifestUrlExpr};
 const SHELL = ${JSON.stringify(options.shell)};

@@ -12,6 +12,7 @@ describe('emitSwBootstrap', () => {
     manifestUrlExpr: '"/fudic-routes.json"',
     shell: ['/style.css'],
     resources: [{ pattern: '/api/**', policy: 'network-first', ttl: 300_000 }],
+    app: 'shop',
   });
 
   it('renders in the Service Worker itself: linker, stores and router', () => {
