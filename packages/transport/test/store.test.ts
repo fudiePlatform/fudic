@@ -75,6 +75,24 @@ describe('cacheNames', () => {
   });
 });
 
+/**
+ * BUG-33 criterion 1 — the defect, photographed before it is fixed.
+ *
+ * `CacheStorage` is per ORIGIN, not per scope, so the worker of `/admin/` enumerates and
+ * deletes the caches written by the worker of `/`. The names carry the build and nothing
+ * else, and a build id identifies a CONSTRUCTION, not an APPLICATION — so two apps look to
+ * this predicate exactly like two builds of the same one.
+ *
+ * This test passes today and is meant to. It is what the fix inverts.
+ */
+describe('the defect: one app declares another app’s cache garbage', () => {
+  it('a cache of a different application is reported stale', () => {
+    // `shell-a1b2c3d4` was written by the app at `/`. `ffffffff` is the build of the app
+    // at `/admin/`, which has never seen that cache and is about to delete it.
+    expect(isStaleCache('shell-a1b2c3d4', 'ffffffff')).toBe(true);
+  });
+});
+
 describe('Store.get', () => {
   it('§6.10 two concurrent gets share one network request, with independent bodies', async () => {
     const { store, calls } = makeStore(() => new Response('payload'));

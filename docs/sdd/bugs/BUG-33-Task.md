@@ -3,7 +3,7 @@
 > **BUG:** [BUG-33 — Dos apps en el mismo origen se borran las cachés](./BUG-33-caches-por-app.md)
 > **Paquetes:** `@fudic/transport` · `@fudic/vite`
 > **Rama:** `bug-33-caches-por-app`
-> **Progreso:** 0 / 6
+> **Progreso:** 1 / 6
 > **Bloqueado por:** [SDD-41](../SDD-41-configuracion-de-aplicacion.md) — sin `id` no hay con qué
 > namespacear. Concretamente por su **tarea 7**: el plugin tiene que estar leyendo el config antes
 > de que este BUG pueda pasarle el `id` al worker.
@@ -30,7 +30,7 @@ nada.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **(rojo primero)** **El defecto, afirmado.** Un test que declara lo que hoy pasa: `isStaleCache('shell-a1b2c3d4', 'ffffffff')` es `true`, o sea, un build declara basura la caché de otra aplicación. Se ve pasar **ahora** y se ve fallar en cuanto la 3 aterriza; se reescribe entonces como el criterio 3. Es la fotografía del defecto, y la razón de que este documento exista. Criterio 1 | `transport` | `test/store.test.ts` |
+| [x] | 1 | — | **(rojo primero)** **El defecto, afirmado.** Un test que declara lo que hoy pasa: `isStaleCache('shell-a1b2c3d4', 'ffffffff')` es `true`, o sea, un build declara basura la caché de otra aplicación. Se ve pasar **ahora** y se ve fallar en cuanto la 3 aterriza; se reescribe entonces como el criterio 3. Es la fotografía del defecto, y la razón de que este documento exista. Criterio 1 | `transport` | `test/store.test.ts` |
 
 ---
 
