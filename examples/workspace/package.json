@@ -1,0 +1,15 @@
+{
+  "name": "@fudic/example-workspace",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Several fudic applications published on ONE origin — the deployment, and the end-to-end evidence that they do not step on each other.",
+  "scripts": {
+    "build": "pnpm --filter @fudic/example-tienda build && pnpm --filter @fudic/example-admin build",
+    "serve": "node serve.mjs",
+    "test:e2e": "pnpm build && playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.0"
+  }
+}

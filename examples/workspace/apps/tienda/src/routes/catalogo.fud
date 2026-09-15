@@ -1,0 +1,11 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/tienda-card.fud">
+
+<head>
+  <title>Catálogo — Tienda</title>
+</head>
+
+<h1 data-app="tienda">Catálogo</h1>
+
+<tienda-card .title="Sudadera">Interior de rizo.</tienda-card>
+<tienda-card .title="Gorra">Visera curva.</tienda-card>

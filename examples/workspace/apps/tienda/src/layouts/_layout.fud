@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Where the fudic runtime goes, once, for every route of this app. The Service
+         Worker registration lands here, and that is what gives this application its own
+         worker on the origin it shares. -->
+    <script type="module" src="fudic:runtime"></script>
+
+    @RenderHead()
+  </head>
+  <body>
+    <main>@RenderBody()</main>
+  </body>
+</html>
