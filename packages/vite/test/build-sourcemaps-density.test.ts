@@ -97,6 +97,7 @@ async function buildRoot(): Promise<OutFile[]> {
   writeFileSync(join(root, 'src', 'components', 'app-counter.fud'), COUNTER);
   // With a Service Worker, so the LINK pass runs and its chunks can be measured too.
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
+  writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
   const result = (await build({
     root,
     logLevel: 'silent',

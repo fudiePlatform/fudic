@@ -77,6 +77,7 @@ function projectRoot(): string {
   writeFileSync(join(root, 'src', 'routes', 'about.fud'), PAGE);
   writeFileSync(join(root, 'src', 'components', 'app-badge.fud'), BADGE);
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: ['/fudic-main.js'] }));
+  writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
   return root;
 }
 

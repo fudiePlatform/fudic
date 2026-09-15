@@ -41,6 +41,7 @@ beforeAll(async () => {
   // A Service Worker, so the build publishes a render chunk to assert on: since SDD-27
   // §5.1 the `page` chunks are pruned, and `sw/c` is the render code that ships.
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: ['/fudic-main.js'] }));
+  writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
   const result = (await build({
     root,
     logLevel: 'silent',

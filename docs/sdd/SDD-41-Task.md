@@ -3,7 +3,7 @@
 > **SDD:** [SDD-41 — `fudic.json`: la aplicación se declara](./SDD-41-configuracion-de-aplicacion.md)
 > **Paquetes:** `@fudic/config` (nuevo) · `@fudic/cli` · `@fudic/vite` · `@fudic/language-server`
 > **Rama:** `sdd-41-config-de-aplicacion`
-> **Progreso:** 6 / 13
+> **Progreso:** 8 / 13
 
 Trece tareas. Cada una es un paso cerrado: se puede parar después de cualquiera con el
 workspace verde, porque §4.1 del SDD garantiza que un proyecto sin `fudic.json` se comporta
@@ -57,8 +57,8 @@ fases 2, 3 y 4 **no dependen entre sí** y pueden ir en el orden que convenga.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 7 | 3 | **La lectura en `configResolved`.** Junto a `readSwConfig`, con la misma `ConfigIo` de `node:fs`. El `id` queda disponible para quien lo necesite — hoy nadie, BUG-33 mañana. Los diagnósticos salen por `this.warn` / `this.error` como los de `resolveOptions`. **`FudicOptions` no se toca** | `vite` | `src/plugin.ts` · `src/config.ts` |
-| [ ] | 8 | 7 | **`FUD0721`: `sw.json` sin `id`.** Error que rompe el build. Y su contrario en verde: sin `sw.json` y sin `id`, build limpio y cero diagnósticos de este rango — que es el caso de todo proyecto existente. Criterios 11, 12 | `vite` | `src/plugin.ts` · `test/config-id.test.ts` |
+| [x] | 7 | 3 | **La lectura en `configResolved`.** Junto a `readSwConfig`, con la misma `ConfigIo` de `node:fs`. El `id` queda disponible para quien lo necesite — hoy nadie, BUG-33 mañana. Los diagnósticos salen por `this.warn` / `this.error` como los de `resolveOptions`. **`FudicOptions` no se toca** | `vite` | `src/plugin.ts` · `src/config.ts` |
+| [x] | 8 | 7 | **`FUD0721`: `sw.json` sin `id`.** Error que rompe el build. Y su contrario en verde: sin `sw.json` y sin `id`, build limpio y cero diagnósticos de este rango — que es el caso de todo proyecto existente. Criterios 11, 12 | `vite` | `src/plugin.ts` · `test/config-id.test.ts` |
 
 ---
 

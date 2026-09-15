@@ -85,6 +85,7 @@ describe('vite build — nothing of `@server` reaches the published output', () 
     writeFileSync(join(root, 'src', 'components', 'app-badge.fud'), BADGE);
     writeFileSync(join(root, 'src', 'data', 'secrets.ts'), SECRETS);
     writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
+    writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
     const result = (await build({
       root,
       logLevel: 'silent',
@@ -150,6 +151,7 @@ describe('vite build — written to disk, the boundary is a directory', () => {
     writeFileSync(join(root, 'src', 'components', 'app-badge.fud'), BADGE);
     writeFileSync(join(root, 'src', 'data', 'secrets.ts'), SECRETS);
     writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
+    writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
     await build({
       root,
       logLevel: 'silent',

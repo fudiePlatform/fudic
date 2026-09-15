@@ -22,6 +22,7 @@ function swRoot(): string {
   const dir = mkdtempSync(join(tmpdir(), 'fudic-swroot-'));
   cpSync(join(root, 'fixtures'), join(dir, 'fixtures'), { recursive: true });
   writeFileSync(join(dir, 'sw.json'), JSON.stringify({ shell: ['/style.css'] }));
+  writeFileSync(join(dir, 'fudic.json'), JSON.stringify({ id: 'test' }));
   return dir;
 }
 

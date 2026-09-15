@@ -49,6 +49,7 @@ beforeAll(async () => {
   writeFileSync(join(root, 'src', 'routes', 'about.fud'), PAGE);
   writeFileSync(join(root, 'src', 'components', 'dev-widget.fud'), WIDGET);
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
+  writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
   server = await createServer({
     root,
     logLevel: 'silent',

@@ -42,6 +42,7 @@ async function buildWith(options: FudicOptions): Promise<OutFile[]> {
   mkdirSync(join(root, 'src', 'routes', 'customer'), { recursive: true });
   writeFileSync(join(root, 'src', 'routes', 'customer', '[id].fud'), PAGE);
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
+  writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
   const result = (await build({
     root,
     logLevel: 'silent',

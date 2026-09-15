@@ -159,6 +159,7 @@ describe('vite dev (§6.15)', () => {
   beforeAll(async () => {
     root = project();
     writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
+    writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
     server = await createServer({
       root,
       logLevel: 'silent',

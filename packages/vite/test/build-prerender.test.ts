@@ -42,6 +42,7 @@ async function buildAbout(serviceWorker: boolean): Promise<OutFile[]> {
   writeFileSync(join(root, 'src', 'routes', 'about.fud'), PAGE);
   if (serviceWorker) {
     writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
+    writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
   }
   const result = (await build({
     root,

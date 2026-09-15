@@ -44,6 +44,7 @@ import {
 import { IOC_SUFFIX } from '@fudic/compiler';
 import { nodeIo } from './io.js';
 import { readSwConfig, type ResolvedSwConfig } from './swconfig.js';
+import { nodeConfigIo, readProject, type ProjectResult } from './config.js';
 import { runLinkPass, safeName, type LinkResult } from './link.js';
 import { runEdgePass } from './edge.js';
 import { buildServiceWorker } from './swbuild.js';
@@ -142,6 +143,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let isDev = false;
   let builds: readonly RouteBuild[] = [];
   let swConfig: ResolvedSwConfig | null = null;
+  /** Who this project is (SDD-41). Empty until `configResolved` has run. */
+  let project: ProjectResult = { config: null, warnings: [], errors: [] };
   let writeToDisk = true;
   let resolveAlias: unknown;
   // What the nested builds inherit from the host (BUG-05 §3.1, BUG-06 §3.1). Replaced
@@ -274,10 +277,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       manifestUrl = options.manifestUrl;
       manifestFileName = manifestUrl.startsWith(base) ? manifestUrl.slice(base.length) : 'fudic-routes.json';
       // No `sw.json`, no Service Worker: everything is server/SSG (SDD-20 §4.7).
-      swConfig = readSwConfig(root, {
-        exists: (p) => existsSync(p),
-        read: (p) => readFileSync(p, 'utf8'),
-      }).config;
+      const configIo = nodeConfigIo();
+      swConfig = readSwConfig(root, configIo).config;
+      // Who this project is (SDD-41). Read here, next to `sw.json`, and reported in
+      // `buildStart`, which is the first hook with a context to report through.
+      project = readProject(root, swConfig !== null, configIo);
     },
 
     configureServer(server) {
@@ -479,6 +483,16 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     },
 
     buildStart() {
+      // Who this project is, before anything is built with it. A malformed `fudic.json`
+      // is a warning and the build goes on without configuration; a `sw.json` with no
+      // `id` stops here, because caches named after nothing is not a degraded mode (§5).
+      for (const d of project.warnings) {
+        this.warn(`[${d.code}] ${d.message}`);
+      }
+      for (const d of project.errors) {
+        this.error(`[${d.code}] ${d.message}`);
+      }
+
       const discovered = discoverRoutes(root, options);
       builds = discovered.routes;
       for (const d of discovered.diagnostics) {
