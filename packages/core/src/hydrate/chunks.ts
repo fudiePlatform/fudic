@@ -33,9 +33,35 @@ export type ImportModule = (url: string) => Promise<unknown>;
  */
 export const importChunk: ImportModule = (url) => import(/* @vite-ignore */ url);
 
+/**
+ * What a ROUTE's chunk exports (SDD-39 §3.4): a factory, not a custom element.
+ *
+ * A route is not defined, not instantiated and never fabricated hot, so there is nothing for
+ * `customElements` to hold. What the runtime holds is the function and the three entry points
+ * it hands back — and `c` is not among them, because a route always comes from the server.
+ */
+export type RouteFactory = (props: readonly unknown[]) => RouteController;
+
+export interface RouteController {
+  /** Adopt the composed page and hook up. The counterpart of a component's `h`. */
+  h(): void;
+  /** The value channel, for whoever holds a cell of this route. */
+  u(): void;
+  /** Release. The hook SDD-20 will need the day a navigation stops reloading. */
+  r(): void;
+}
+
 export interface ChunkLoader {
   /** Define `tag`, downloading its chunk at most once per tag for the life of the page. */
   ensureDefined(tag: string): Promise<void>;
+  /**
+   * The factory of a ROUTE's chunk, by name — memoized on the same map and by the same rule.
+   *
+   * `null` when the module carries no default export, which is what a stale or wrong URL
+   * looks like from here. The runtime does not throw over it: the page stays as the server
+   * painted it, which is the whole point of a page that works before its JavaScript does.
+   */
+  loadRoute(name: string): Promise<RouteFactory | null>;
 }
 
 export interface ChunkLoaderConfig {
@@ -63,6 +89,19 @@ export function createChunkLoader(config: ChunkLoaderConfig): ChunkLoader {
         inflight.set(tag, pending);
       }
       await pending;
+    },
+
+    async loadRoute(name: string): Promise<RouteFactory | null> {
+      // The same map and the same memoization a tag gets: one download per name for the life
+      // of the page. What differs is what the module is asked for — a default export instead
+      // of a definition — because a route has no tag for the registry to hold.
+      let pending = inflight.get(name);
+      if (pending === undefined) {
+        pending = importModule(resolveChunk(name));
+        inflight.set(name, pending);
+      }
+      const module = (await pending) as { default?: RouteFactory } | null;
+      return typeof module?.default === 'function' ? module.default : null;
     },
   };
 }

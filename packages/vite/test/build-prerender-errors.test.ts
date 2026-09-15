@@ -1,7 +1,11 @@
 /**
- * SDD-19 §5 invariant + §6.6 edge: prerender never aborts the build. A `paths()` entry
- * that does not cover every param is skipped with FUD0362; a page that throws while
- * rendering is skipped with a `[prerender]` warning — the build still completes.
+ * What the prerender does with a route it cannot render.
+ *
+ * Two cases and they are NOT the same, which is the correction SDD-39 §4.11 brings. A
+ * `paths()` entry that does not cover every param is one URL of a route that still has
+ * others: it is skipped with FUD0362 and the build completes. A page that THROWS is a page
+ * that does not exist, and shipping the site without it — with CI in green — is publishing
+ * a hole. That is `FUD0620`, and it breaks the build (§6.17).
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
@@ -40,7 +44,7 @@ async function buildRoutes(files: Record<string, string>): Promise<{ output: Out
   return { output: result.output, warnings };
 }
 
-describe('prerender never aborts the build (§5)', () => {
+describe('what the prerender does with a route it cannot render', () => {
   describe('a paths() entry missing a param (FUD0362)', () => {
     let output: OutFile[];
     let warnings: string[];
@@ -69,24 +73,16 @@ export function paths() { return ['1', { wrong: 'x' }]; }
     });
   });
 
-  describe('a page that throws while rendering', () => {
-    let output: OutFile[];
-    let warnings: string[];
-    beforeAll(async () => {
-      // `boom` is undefined → the render throws a ReferenceError, caught per route.
+  describe('a page that throws while rendering (FUD0620, §6.17)', () => {
+    it('fails the build instead of shipping a site with one page missing', async () => {
+      // `boom` is undefined → the render throws a ReferenceError while prerendering.
       const page = `<!DOCTYPE html>
 <html>
 <head><title>Boom</title></head>
 <body><h1>@(boom.value)</h1></body>
 </html>
 `;
-      ({ output, warnings } = await buildRoutes({ 'boom.fud': page }));
+      await expect(buildRoutes({ 'boom.fud': page })).rejects.toThrow(/FUD0620/u);
     }, 120000);
-
-    it('completes the build and warns [prerender], emitting no HTML for it', () => {
-      expect(output.length).toBeGreaterThan(0); // build did not abort
-      expect(warnings.some((w) => w.includes('[prerender]'))).toBe(true);
-      expect(output.some((o) => o.fileName === 'boom/index.html')).toBe(false);
-    });
   });
 });

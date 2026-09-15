@@ -14,11 +14,12 @@
 
 import { build, transformWithOxc, type Plugin } from 'vite';
 import { type ResolveIo } from '@fudic/compiler';
+import { safeName } from '@fudic/transport';
 import { type RouteBuild } from './discover.js';
 import { isLinkable } from './mode.js';
 import { emitRenderChunk } from './wrapper.js';
 import { runtimeUrls } from './constants.js';
-import { routeUsesDi } from './client.js';
+import { routeNameLookup, routeUsesDi } from './client.js';
 import { transformFud } from './transform.js';
 import { LINK_DIR, LINK_PREFIX } from './constants.js';
 import { loadWithSourceMap } from './inputmaps.js';
@@ -60,11 +61,15 @@ interface BundleOutputLike {
   readonly output: readonly OutputChunkLike[];
 }
 
-/** A filesystem-safe chunk base name from a route pattern. */
-export function safeName(pattern: string): string {
-  const s = pattern.replace(/[^a-z0-9]+/giu, '-').replace(/^-+|-+$/gu, '');
-  return s.length > 0 ? s : 'index';
-}
+/**
+ * A filesystem-safe chunk base name from a route pattern — re-exported, never redefined.
+ *
+ * It lived here as a second copy of the one in `@fudic/transport`, byte for byte. The
+ * comment beside that one says why there must not be two: the build names the chunk with it
+ * and the runtime derives the name back, so a drift between the copies is a set of files
+ * nobody asks for, with no test failing.
+ */
+export { safeName } from '@fudic/transport';
 
 /**
  * The plugin of the nested build. Deliberately NOT `fudic()` itself: re-entering the
@@ -72,6 +77,9 @@ export function safeName(pattern: string): string {
  * how to serve the linked wrappers and compile `.fud`.
  */
 function linkPlugin(builds: readonly RouteBuild[], io: ResolveIo, base: string): Plugin {
+  // The Service Worker renders the same pages the edge does, so it publishes the same route
+  // names (SDD-39 §4.7): one map, resolved once for the pass.
+  const routeNameOf = routeNameLookup(builds, io);
   return {
     name: 'fudic:link',
     resolveId(id) {
@@ -102,7 +110,7 @@ function linkPlugin(builds: readonly RouteBuild[], io: ResolveIo, base: string):
       if (!path.endsWith('.fud')) {
         return null;
       }
-      const result = transformFud(path, io);
+      const result = transformFud(path, io, routeNameOf(path));
       if (result === null) return null;
       // Since SDD-34 the neutral zone of `@code` reaches this module verbatim, so it is
       // TypeScript whenever the author wrote it — same strip as the host plugin does.

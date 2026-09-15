@@ -73,6 +73,11 @@ export interface Cascade {
    * and the child cannot be given a slice that points at something nobody has filled yet.
    */
   prepareCells(tag: string): Promise<void>;
+  /**
+   * Prepare what the ROUTE hands values to, in post-order, leaving the route itself untouched
+   * (SDD-39 §4.10). `name` is the route's own name — what `fud-tree` filed its children under.
+   */
+  prepareRoute(name: string, host: Element): Promise<void>;
   /** Hand every instance of `tag` its slice of the payload, once. */
   attachAll(tag: string): void;
 }
@@ -168,15 +173,20 @@ export function createCascade(config: CascadeConfig): Cascade {
    * root is the one the caller is about to define (step 5 of §4.4, or `prepareTag`'s own
    * contract).
    */
-  const visit = async (host: Element, depth: number): Promise<void> => {
-    const shadow = host.shadowRoot;
-    if (shadow !== null) {
-      for (const childTag of maps.tree[host.localName] ?? []) {
-        // One level, inside THIS host's shadow; the recursion enters the next one. Searching
-        // from the document would not cross the boundary at all.
-        for (const kid of shadow.querySelectorAll(`${childTag}[${ID_ATTR}]`)) {
-          await visit(kid, depth + 1);
-        }
+  const visit = async (host: Element, depth: number, key = host.localName): Promise<void> => {
+    // Down the shadow when there is one, down the LIGHT when there is not (SDD-39 §4.10). A
+    // component always has one — the parser materialises a declarative shadow root whether or
+    // not the tag is defined — so the second half is the route's: its root is the `<body>`,
+    // which has no shadow and holds its children directly.
+    //
+    // `key` is how the tree is looked up, and it is the `localName` for every host there is
+    // except one: a route has no tag, so what names its entry is the route's own name.
+    const scope = host.shadowRoot ?? host;
+    for (const childTag of maps.tree[key] ?? []) {
+      // One level, inside THIS host's scope; the recursion enters the next one. Searching
+      // from the document would not cross the boundary at all.
+      for (const kid of scope.querySelectorAll(`${childTag}[${ID_ATTR}]`)) {
+        await visit(kid, depth + 1);
       }
     }
     if (depth === 0) {
@@ -201,5 +211,19 @@ export function createCascade(config: CascadeConfig): Cascade {
     }
   };
 
-  return { prepareTag, prepareCells, attachAll };
+  /**
+   * The subtree of the ROUTE, in the same post-order (SDD-39 §4.10).
+   *
+   * One host and not a list: there is exactly one route per page, and the caller holds the
+   * node — the `<body>` — because that is what carried the `data-fud-id` the gesture landed
+   * on. What it descends by is the route's NAME, which is what `fud-tree` filed its children
+   * under, and those children are only the ones the route hands a prop to: `$s()` gives
+   * values to the hosts it gives them to and to nobody else, so raising the rest would be
+   * lighting up every island on the page over one click on a loose button.
+   */
+  const prepareRoute = async (name: string, host: Element): Promise<void> => {
+    await visit(host, 0, name);
+  };
+
+  return { prepareTag, prepareCells, prepareRoute, attachAll };
 }

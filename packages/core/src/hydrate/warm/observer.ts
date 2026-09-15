@@ -26,7 +26,7 @@
 
 import { type ResolveChunk } from '../chunks.js';
 import { type PageMaps } from '../maps.js';
-import { allInstances } from '../registry.js';
+import { allInstances, ROUTE_HOST } from '../registry.js';
 import { type WarmChannel } from './channel.js';
 
 /** Port: watch these hosts and call back the first time each one becomes visible. */
@@ -104,7 +104,14 @@ export function startWarmObserver(config: WarmObserverConfig): void {
     }
   };
 
-  observe(allInstances(root), (target) => {
+  // The `<body>` is left out (SDD-39 §4.9). It carries a `data-fud-id` when the route is
+  // reactive, so `allInstances` finds it — and it is in the viewport from the first frame,
+  // which would put the route's chunk in the cache ON LOAD. A deposit evaluates nothing, but
+  // it is traffic with no interaction behind it, and the general case of a route is the
+  // gesture. An EAGER route does not need it either: it comes up at install, so its chunk is
+  // asked for outright rather than anticipated.
+  const watched = allInstances(root).filter((el) => el.localName !== ROUTE_HOST);
+  observe(watched, (target) => {
     const tags: string[] = [];
     closure(target.localName, tags);
     if (tags.length === 0) {

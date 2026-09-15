@@ -184,6 +184,11 @@ export function minimalSsr(): {
       state: (sr: unknown, values: unknown): void => {
         slices[ids.get((sr as TreeNode).host!)!] = [...(values as readonly unknown[])];
       },
+      // The route's door into the same slice: it holds the `<body>` itself, not a shadow
+      // that leads to it (SDD-39 §3.2).
+      stateOf: (host: unknown, values: unknown): void => {
+        slices[ids.get(host as TreeNode)!] = [...(values as readonly unknown[])];
+      },
       hydrationState: (): { offsets: number[]; data: unknown[] } => {
         const offsets = [0];
         const data: unknown[] = [];

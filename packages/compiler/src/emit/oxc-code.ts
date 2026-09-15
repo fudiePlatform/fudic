@@ -9,13 +9,13 @@
  * synthetic batch buffer and are mapped to the original source via `mapOffset`.
  */
 
-import type { ComponentDocument } from '../document/index.js';
+import type { ComponentDocument, PageDocument, RouteDocument } from '../document/index.js';
 import type { CodeBlockNode } from '../code/index.js';
 import type { ResolvedComponent } from './resolve.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import { errorDiag, isEmptySpan, span } from '../types/index.js';
 import { JsBatch, type JsFragmentKind, type OxcNode } from '../oxc/index.js';
-import { collectAttributeJs, collectTemplateJs } from './constructs.js';
+import { collectAttributeJs, collectTemplateJs, type JsFragmentVisitor } from './constructs.js';
 import type { Anchor } from './writer.js';
 import {
   changeableBindings,
@@ -240,6 +240,17 @@ export interface DiCall {
   readonly open: number;
 }
 
+/**
+ * How a region reads `data`: not at all, by a knowable set of roots, or in a way no read of
+ * the AST can bound (SDD-39 §4.8).
+ */
+export type DataAccess =
+  | { readonly kind: 'none' }
+  // `at` is the FIRST read, in source coordinates: a diagnostic about reading `data` has to
+  // point at a place the author can see, and the first one is where they would look.
+  | { readonly kind: 'roots'; readonly roots: readonly string[]; readonly at: Span }
+  | { readonly kind: 'all'; readonly at: Span };
+
 /** Which of the three zones of `@code` a statement was written in (SDD-08 §4.2). */
 export type CodeZone = 'neutral' | 'server' | 'client';
 
@@ -342,6 +353,32 @@ export interface ExtractedCode {
    */
   readonly clientImports: readonly string[];
   /**
+   * Whether `@code { @client }` calls `effect(...)` at its top level (SDD-39 §4.6).
+   *
+   * It is what puts a tag — or a route — in `fud-eager`: an effect is by definition what
+   * happens with nobody touching anything, so one that waits for a gesture is not an effect.
+   * The clock of §6.21 is the case that makes it: unhydrated it paints the server's time and
+   * freezes, which is not "works worse", it is does not work.
+   *
+   * Top level, like the `FUD0570` search it shares: an `effect` inside a helper is flow
+   * analysis, and flow analysis belongs to the language server (§7).
+   */
+  readonly clientEffects: boolean;
+  /**
+   * What the client half reads out of `data` — what `load()` returned (SDD-39 §4.8).
+   *
+   * `load` runs on the server and its result lives there; the moment a `@client` handler can
+   * read it, it has to travel. It travels TRIMMED, and this is what says to what: the ROOTS
+   * the region reads, so `data.user` and `data.items[0].id` publish `user` and `items` and
+   * the rest of the payload never leaves the server.
+   *
+   * `all` is the overapproximation, and it is deliberate: `data[campo]` names no root that
+   * can be known, and a function the region hands `data` to reads whatever it likes. It is
+   * NOT a diagnostic — that would be a warning for writing correct JavaScript — so it
+   * silently sends everything (§4.8).
+   */
+  readonly dataAccess: DataAccess;
+  /**
    * Every `emit(...)` of `@client` (§4.4), as the walk finds them — the patches are applied
    * by descending offset, so the order they arrive in is not one of. Empty when the
    * component does
@@ -363,6 +400,15 @@ export interface ExtractedCode {
    * (SDD-38 §4.1). Empty for the components — every one of them until now — that write none.
    */
   readonly server: ServerCode;
+  /**
+   * The names the `@server` region EXPORTS — `load`, `paths` (SDD-19 §4.3).
+   *
+   * Read off the AST rather than off the text, for the usual reason: an `export function load`
+   * inside a string or a comment exports nothing. One reader so far, and it is the one
+   * question §4.8 asks — a client half that reads `data` where no `load` ever ran is reading
+   * `undefined`, always, and that is knowable at compile time (`FUD0621`).
+   */
+  readonly serverExports: readonly string[];
   /**
    * The statements that REGISTER and run in a browser — the neutral zone's and `@client`'s
    * — with the imports they reference (SDD-38 §4.5).
@@ -387,11 +433,52 @@ export interface ExtractedCode {
 // A type predicate, not just a boolean: a node reached by `field` may be absent, and the
 // check that says which kind it is is also the check that says it is there.
 const is = (node: OxcNode | undefined, type: string): node is OxcNode => node?.type === type;
-const field = (node: OxcNode, key: string): OxcNode | undefined => node[key] as OxcNode | undefined;
+// `?? undefined`, and it is not decoration: Oxc writes an ABSENT field as `null`, not as a
+// missing key — `export { load }` is an `ExportNamedDeclaration` whose `declaration` is
+// `null` — and a reader that only guarded for `undefined` passed that `null` straight into
+// the next `field(...)` and threw. `is()` already treated the two alike; this makes the
+// accessor do the same, once, for every reader.
+const field = (node: OxcNode, key: string): OxcNode | undefined =>
+  (node[key] as OxcNode | null | undefined) ?? undefined;
 const fieldArray = (node: OxcNode, key: string): OxcNode[] => (node[key] as OxcNode[] | undefined) ?? [];
 const name = (node: OxcNode): string => String(node['name']);
 
 type MapOffset = (bufferOffset: number) => number;
+
+/**
+ * A file whose `@code` is the author's own half of a rendered tree — the three roles that
+ * have one (SDD-39 §4.1).
+ *
+ * A layout is NOT here, and that is §7: its markup is static in this version, so it has no
+ * client half to split a `@code` for. What it declares still reaches its own `?server`
+ * module, exactly as before.
+ */
+export type CodeDocument = ComponentDocument | RouteDocument | PageDocument;
+
+/**
+ * The JS fragments of a document's TEMPLATE, whichever role it takes.
+ *
+ * The three differ only in where their markup hangs: a component's inside the `<template>`
+ * its host wrapper opens, a route's at the top level plus one list per `@section`, a page's
+ * inside its `<body>`. A section is registered like any other run of markup — it is another
+ * position of the same walk, not a second kind of tree (SDD-39 §4.4).
+ */
+function collectDocumentJs(doc: CodeDocument, register: JsFragmentVisitor): void {
+  if (doc.type === 'route-document') {
+    collectTemplateJs(doc.markup, register);
+    for (const section of doc.sections) collectTemplateJs(section.children, register);
+    return;
+  }
+  if (doc.type === 'page-document') {
+    collectTemplateJs(doc.body.children, register);
+    return;
+  }
+  // The host wrapper's own attributes FIRST, which is source order — it opens the file's
+  // markup. Its attributes only: descending would walk the `<template>` a second time, and
+  // registering a span twice is two Oxc fragments for one piece of source.
+  if (doc.host !== undefined) collectAttributeJs(doc.host, register);
+  collectTemplateJs(doc.template?.children ?? [], register);
+}
 
 /**
  * Extract, in ONE Oxc invocation for the whole file, everything the two emit branches need
@@ -401,7 +488,7 @@ type MapOffset = (bufferOffset: number) => number;
  * The batch's diagnostics come out with them. A parse that failed is not a component
  * without code, and the caller is the only one that can still tell the difference.
  */
-export function extractCode(source: string, doc: ComponentDocument): ExtractedCode {
+export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
   const props: Prop[] = [];
   const signals: Reactive[] = [];
   const client: ClientCode = { imports: [], body: [] };
@@ -417,11 +504,7 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
     if (isEmptySpan(at)) return; // a degraded header has its own diagnostic already
     fragments.set(spanKey(at), batch.add(kind, at));
   };
-  // The host wrapper's own attributes FIRST, which is source order — it opens the file's
-  // markup. Its attributes only: descending would walk the `<template>` a second time, and
-  // registering a span twice is two Oxc fragments for one piece of source.
-  if (doc.host !== undefined) collectAttributeJs(doc.host, register);
-  collectTemplateJs(doc.template?.children ?? [], register);
+  collectDocumentJs(doc, register);
 
   const result = batch.parse();
   const map = result.value.mapOffset;
@@ -539,9 +622,12 @@ export function extractCode(source: string, doc: ComponentDocument): ExtractedCo
     clientFunctions: topLevelFunctions(clientStatements),
     setCalls: setCalls(clientStatements),
     clientImports: importedBindings(allStatements),
+    clientEffects: clientStatements.some((stmt) => effectCalls(stmt).length > 0),
+    dataAccess: readDataAccess(clientStatements, map),
     emitCalls,
     di,
     server: zoneCode(serverStatements, source, map, diEdits, () => true, rewritten),
+    serverExports: exportedNames(serverStatements),
     providers: mergeZones(
       zoneCode(
         neutralStatements,
@@ -585,40 +671,126 @@ export function codeOf(comp: ResolvedComponent): ExtractedCode {
 }
 
 /**
- * The DI calls of a `@code` that is NOT a component's — a page's, a route's, a layout's.
+ * The same, for a document held DIRECTLY rather than through a `ResolvedComponent` — which
+ * is how a route and a page reach the emit (SDD-39 §4.1).
  *
- * Those three roles never reach `extractCode`: they declare no props, no reactive names and
- * no client region, and their `@code` is the `?server` module the plugin copies out verbatim.
- * So this is the one and only Oxc invocation such a file gets, and it exists for one question
- * — is somebody calling `inject(…)` where `ctx.inject(…)` is the only thing that works
- * (SDD-38 §6.24) — asked by reading the AST, because a `// inject(` in a comment is not a call.
+ * Memoized on the document for the reason `codeOf` is memoized on the component: the golden
+ * rule is one Oxc invocation per FILE, and by now four readers want the same answers about
+ * the same route — the render module, the client chunk, and the two predicates the build
+ * asks (`isReactiveRoute`, `routeHydration`). The resolver parses each file once, so the
+ * document object is as good a key as the component was.
  */
-export function extractDiCalls(source: string, code: CodeBlockNode | undefined): readonly DiCall[] {
-  const parts = code?.parts ?? [];
-  if (parts.length === 0) return [];
-  const batch = new JsBatch(source);
-  const ids = parts.map((p) => batch.add('module-statements', p.js));
-  const result = batch.parse();
-  const map = result.value.mapOffset;
+const documentCodeCache = new WeakMap<CodeDocument, ExtractedCode>();
 
-  const byZone: Record<CodeZone, OxcNode[]> = { neutral: [], server: [], client: [] };
-  ids.forEach((id, i) => {
-    // A `module-statements` fragment is a LIST of top-level statements, always — that is
-    // what the kind means, and the batch has no other shape to hand back for it.
-    byZone[zoneOf(parts[i]!.type)].push(...(result.value.ast(id) as readonly OxcNode[]));
-  });
-
-  const all = [...byZone.neutral, ...byZone.server, ...byZone.client];
-  const bindings = diBindings(all);
-  if (bindings.size === 0) return [];
-  const out: DiCall[] = [];
-  const scan = { bindings, imports: importSources(all), source, map, out };
-  for (const zone of ['neutral', 'server', 'client'] as const) {
-    collectDiCalls(byZone[zone], { ...scan, zone });
-  }
-  return out;
+export function codeOfDocument(source: string, doc: CodeDocument): ExtractedCode {
+  const cached = documentCodeCache.get(doc);
+  if (cached !== undefined) return cached;
+  const code = extractCode(source, doc);
+  documentCodeCache.set(doc, code);
+  return code;
 }
 
+/** The name a route's `load()` result travels under, on both sides (SDD-39 §4.8). */
+const DATA_BINDING = 'data';
+
+/**
+ * The names an `export` binds: `export function load` → `load`.
+ *
+ * Three shapes and the third is the one a reader forgets. A declaration names itself; a
+ * `const` names one binding per declarator, and a DESTRUCTURING declarator names none this
+ * can read; and an export with no declaration at all is the clause form, `export { load }`,
+ * which names its bindings on the other side of the statement.
+ */
+function exportedNames(statements: readonly OxcNode[]): readonly string[] {
+  return statements.flatMap((stmt) =>
+    is(stmt, 'ExportNamedDeclaration') ? boundNames(stmt) : [],
+  );
+}
+
+function boundNames(stmt: OxcNode): readonly string[] {
+  const declaration = field(stmt, 'declaration');
+  if (declaration === undefined) {
+    // `export { load }` / `export { load as carga }`: what the module publishes is the
+    // EXPORTED side, which is the name an importer writes.
+    return fieldArray(stmt, 'specifiers').flatMap((spec) => {
+      const exported = field(spec, 'exported');
+      // `export { load as "mi-carga" }` publishes a string, not an identifier, and nothing
+      // can import it under a name — so it names nothing here.
+      return is(exported, 'Identifier') ? [name(exported)] : [];
+    });
+  }
+  if (is(declaration, 'VariableDeclaration')) {
+    return fieldArray(declaration, 'declarations').flatMap((declarator) => {
+      const bound = declaredName(declarator);
+      return bound === undefined ? [] : [bound];
+    });
+  }
+  // Everything else — `export function load()`, `export class`, `export type` — carries its
+  // name in `id`, always: a named export whose declaration has no name of its own is not a
+  // shape the grammar has (`export default` is a node type of its own).
+  return [name(field(declaration, 'id')!)];
+}
+
+/**
+ * What a region reads out of `data`, by walking its AST (SDD-39 §4.8).
+ *
+ * By offset and never by text, like every other question this file answers: a `data.` inside
+ * a string or a comment is prose, and `datalist` is a different word altogether.
+ *
+ * Three shapes and one of them ends the walk. `data.user` is a root. `data[campo]` is not
+ * knowable, and neither is a `data` that reaches anything BUT a static member access —
+ * handed to a function, spread, destructured. Both answer `all`.
+ */
+function readDataAccess(statements: readonly OxcNode[], map: MapOffset): DataAccess {
+  const roots = new Set<string>();
+  let all = false;
+  let at: Span | undefined;
+
+  const seen = (node: OxcNode): void => {
+    at ??= { start: map(node.start), end: map(node.end) };
+  };
+
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      for (const child of node) walk(child);
+      return;
+    }
+    if (node === null || typeof node !== 'object') return;
+    const current = node as OxcNode;
+    const object = field(current, 'object');
+    if (is(object, 'Identifier') && name(object) === DATA_BINDING) {
+      const property = field(current, 'property');
+      seen(object);
+      // A static member access names its root; anything else — `data[k]`, `data?.[k]` — does
+      // not, and there is no smaller answer than the whole object.
+      if (current['computed'] === true || !is(property, 'Identifier')) all = true;
+      else roots.add(name(property));
+      // Into the property and not into the object: descending back into `data` would read it
+      // as a bare reference and widen every access there is to `all`.
+      walk(property);
+      return;
+    }
+    if (is(current, 'Identifier') && name(current) === DATA_BINDING) {
+      seen(current);
+      all = true;
+      return;
+    }
+    for (const value of Object.values(current)) walk(value);
+  };
+
+  walk(statements);
+  if (at === undefined) return { kind: 'none' };
+  return all ? { kind: 'all', at } : { kind: 'roots', roots: [...roots], at };
+}
+
+/**
+ * `effect(...)` at the top level of a zone, as the two rules that care about it read it.
+ *
+ * One search, two readings. Outside `@code { @client }` it is `FUD0570` — an effect runs
+ * after the first render and the server has none. INSIDE it, the very same finding says
+ * something else: this file cannot wait for a gesture (SDD-39 §4.6). Where one says «this is
+ * in the wrong place», the other says «this cannot be deferred».
+ */
 /**
  * `effect(...)` outside `@code { @client }` → `FUD0570` (SDD-31 §5).
  *
@@ -627,16 +799,21 @@ export function extractDiCalls(source: string, code: CodeBlockNode | undefined):
  * reactive declarations to the emit anyway — and the rest of the file is emitted: the emit
  * does not throw. `computed` and `batch` are not flagged; both have a server meaning.
  */
-function checkNeutralEffect(stmt: OxcNode, map: MapOffset, out: Diagnostic[]): void {
+function effectCalls(stmt: OxcNode): readonly OxcNode[] {
   // The two shapes an `effect(...)` takes: called for its side effect, or bound to keep its
   // teardown. Anything else lands as `undefined` here and falls out on the first check.
   const calls = is(stmt, 'VariableDeclaration')
     ? fieldArray(stmt, 'declarations').map((decl) => field(decl, 'init'))
     : [field(stmt, 'expression')];
-  for (const call of calls) {
-    if (!is(call, 'CallExpression')) continue;
+  return calls.filter((call): call is OxcNode => {
+    if (!is(call, 'CallExpression')) return false;
     const callee = field(call, 'callee');
-    if (!is(callee, 'Identifier') || name(callee) !== 'effect') continue;
+    return is(callee, 'Identifier') && name(callee) === 'effect';
+  });
+}
+
+function checkNeutralEffect(stmt: OxcNode, map: MapOffset, out: Diagnostic[]): void {
+  for (const call of effectCalls(stmt)) {
     out.push(
       errorDiag(
         'FUD0570',

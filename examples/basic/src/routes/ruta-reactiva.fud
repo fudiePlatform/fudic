@@ -3,26 +3,27 @@
 <link rel="component" href="../components/signal-control.fud">
 
 @code {
-  // Casi el mismo código que `signal-control.fud`. La diferencia es DÓNDE está escrito:
-  // allí, dentro de un componente; aquí, en el `@code` de la RUTA, sin ningún componente
-  // de por medio.
-  //
-  // Y una segunda diferencia, que ya es un hallazgo: esto tiene que ir en la zona NEUTRA.
-  // Escrito dentro de @client, como lo escribe el componente, el prerender de la ruta se
-  // cae con "count is not defined" — el servidor de un componente sí tiene el stub inerte
-  // de los nombres de ese @client (SDD-31 §4.6) y el de una ruta, no.
-  import { signal, computed } from "@fudic/core";
+  @client {
+    // El mismo código que `signal-control.fud`, letra por letra. La única diferencia es
+    // DÓNDE está escrito: allí, dentro de un componente; aquí, en el `@code` de la RUTA,
+    // sin ningún componente de por medio. Eso es lo que esta página compara.
+    //
+    // Y va donde va el de un componente: dentro de `@client`. El servidor no ejecuta este
+    // cuerpo — declara los nombres reactivos inertes (SDD-31 §4.6), ahora también para una
+    // ruta, así que `@count()` se pinta con su valor inicial y la página prerenderiza.
+    import { signal, computed } from "@fudic/core";
 
-  const count = signal(1);
+    const count = signal(1);
 
-  const filas = computed(() => Array.from({ length: count() }, (_, i) => ({ id: i })));
+    const filas = computed(() => Array.from({ length: count() }, (_, i) => ({ id: i })));
 
-  function mas() {
-    count.set(count() + 1);
-  }
+    function mas() {
+      count.set(count() + 1);
+    }
 
-  function menos() {
-    count.set(Math.max(0, count() - 1));
+    function menos() {
+      count.set(Math.max(0, count() - 1));
+    }
   }
 }
 

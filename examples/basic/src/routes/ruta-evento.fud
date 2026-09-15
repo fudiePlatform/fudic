@@ -2,18 +2,20 @@
 <link rel="component" href="../components/site-nav.fud">
 
 @code {
-  // Ni una signal, ni un constructo que lea nada: solo un manejador. La pregunta que
-  // contesta esta ruta es la de antes de la reactividad — ¿llega una ruta a tener
-  // JavaScript PROPIO?
-  //
-  // Se pinta sin leer ningun nombre, asi que el servidor no puede tropezar y la pagina
-  // existe. Lo unico que puede fallar aqui es el clic.
-  let veces = 0;
+  @client {
+    // Ni una signal, ni un constructo que lea nada: solo un manejador. La pregunta que
+    // contesta esta ruta es la de antes de la reactividad — ¿llega una ruta a tener
+    // JavaScript PROPIO?
+    //
+    // Va en `@client` porque es lo que es: `document` no existe en el servidor, y el
+    // markup no lee ningún nombre de aquí, así que la página se pinta igual sin él.
+    let veces = 0;
 
-  function sube(): void {
-    veces += 1;
-    const salida = document.querySelector("#salida");
-    if (salida !== null) salida.textContent = String(veces);
+    function sube(): void {
+      veces += 1;
+      const salida = document.querySelector("#salida");
+      if (salida !== null) salida.textContent = String(veces);
+    }
   }
 }
 

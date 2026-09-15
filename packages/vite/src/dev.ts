@@ -14,6 +14,34 @@ import { type ManifestFile, type RouteRecord, DEFAULT_CSP } from '@fudic/transpo
 import { type RouteBuild } from './discover.js';
 import { DEV_CLIENT_PREFIX } from './constants.js';
 
+/**
+ * A dev module with its source map attached inline, ready to be written to the response.
+ *
+ * The dev server serves `/@fudic/h/*.js`, `fudic-main.js` and the two other bootstraps from a
+ * middleware of this plugin's own, because none of them has a file behind it. That middleware
+ * gets `{ code, map }` out of `transformRequest` and used to write only the code — and the
+ * piece that turns a map into something a browser can read is Vite's own module middleware,
+ * which this one goes around. The result was that no `.fud` had a source map in dev at all:
+ * DevTools showed the generated module, the `.fud` was in no Sources tree, and there was no
+ * line to put a breakpoint on. A `.ts` served the usual way had one; anything of fudic's did
+ * not.
+ *
+ * Inline rather than a `.map` URL: the module is not a file, so there is no second URL to
+ * serve it from and no middleware left to answer it.
+ *
+ * A map with no `mappings` is dropped instead of encoded. That is what a transform that
+ * produced nothing to map returns, and a comment pointing at an empty map costs a parse in the
+ * browser to describe nothing.
+ */
+export function withInlineSourceMap(code: string, map: unknown): string {
+  const mappings = (map as { mappings?: unknown } | null)?.mappings;
+  if (typeof mappings !== 'string' || mappings === '') {
+    return code;
+  }
+  const json = Buffer.from(JSON.stringify(map), 'utf8').toString('base64');
+  return `${code}\n//# sourceMappingURL=data:application/json;base64,${json}\n`;
+}
+
 /** The Vite dev URL for a virtual-module id: `\0x` is served at `/@id/__x00__x`. */
 export function devModuleUrl(base: string, id: string): string {
   return `${base}@id/${id.replace('\0', '__x00__')}`;

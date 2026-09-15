@@ -75,6 +75,14 @@ function project(): string {
     '<link rel="component" href="../components/x-secret.fud">\n' +
       '<head><title>H</title></head>\n<x-secret></x-secret>\n',
   );
+  // A route with a client half of its own (SDD-39): it gets a chunk, where `index.fud` —
+  // which declares nothing — gets none.
+  writeFileSync(
+    join(root, 'routes', 'viva.fud'),
+    '<link rel="layout" href="../layouts/_layout.fud">\n' +
+      '@code { @client { import { signal } from "@fudic/core"; const n = signal(1); } }\n' +
+      '<head><title>V</title></head>\n\n<output>@n()</output>\n',
+  );
   return root;
 }
 
@@ -141,12 +149,22 @@ describe('transformFudClient', () => {
     expect(transformFud(cardPath, io)!.code).toContain('export function render');
   });
 
-  it('returns null for anything that is not a component', () => {
-    // A page, a route and a layout are RENDERED; what comes alive in the browser is always
-    // a custom element.
-    expect(transformFudClient(join(root, 'routes', 'index.fud'), io)).toBeNull();
+  it('returns null for a layout, for a static route, and for what is not a `.fud`', () => {
+    // A LAYOUT's markup is static in this version (SDD-39 §7). A route with no client half
+    // of its own is the base case, and the base case costs no chunk — `index.fud` declares
+    // no `@client` and no hookup binding, so there is nothing to run there.
     expect(transformFudClient(join(root, 'layouts', '_layout.fud'), io)).toBeNull();
+    expect(transformFudClient(join(root, 'routes', 'index.fud'), io)).toBeNull();
     expect(transformFudClient(join(root, 'sw.json'), io)).toBeNull();
+  });
+
+  it('emits a default export for a route that DOES have a client half (SDD-39)', () => {
+    const out = transformFudClient(join(root, 'routes', 'viva.fud'), io)!;
+    expect(out.code).toContain('export default ($props) => {');
+    expect(out.code).toContain('let [$dom, $root, $data] = $props;');
+    // Not a custom element: a route is not defined and never fabricated hot (§3.4).
+    expect(out.code).not.toContain('customElements.define');
+    expect(out.map.mappings.length).toBeGreaterThan(0);
   });
 
   it('copies the @client region verbatim, TypeScript included', () => {
@@ -185,5 +203,26 @@ describe("the plugin's ?client branch", () => {
 
   it('leaves a non-component alone, even when asked for its client chunk', async () => {
     expect(await plugin.transform.call(ctx, '', clientId(join(root, 'routes', 'index.fud')))).toBeNull();
+  });
+});
+
+describe('in dev, a route chunk is served at the same stable prefix (SDD-39 §4.12)', () => {
+  const plugin = ((): AnyHook => {
+    const p = fudic({ routesDir: 'routes' }) as AnyHook;
+    p.config({});
+    p.configResolved({ root, base: '/', command: 'serve', build: { outDir: 'dist' } });
+    p.buildStart.call({ warn: vi.fn(), emitFile: vi.fn() });
+    return p;
+  })();
+
+  it('resolves `@fudic/h/<name>.js` to the route’s own `?client` module', () => {
+    // Dev builds nothing, so the URL is the one the bootstrap baked in — `CHUNKS + name` —
+    // and what answers at it is the module the `?client` transform produces.
+    const id = plugin.resolveId('/@fudic/h/viva.js');
+    expect(id).toBe(clientId(join(root, 'routes', 'viva.fud')));
+  });
+
+  it('and a name that is neither a tag nor a route falls through', () => {
+    expect(plugin.resolveId('/@fudic/h/no-existe.js')).toBeNull();
   });
 });

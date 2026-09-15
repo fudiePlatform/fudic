@@ -35,8 +35,10 @@ import {
   clientChunkName,
   clientId,
   discoverComponents,
+  discoverReactiveRoutes,
   iocChunkName,
   iocId,
+  routeNameLookup,
   routeUsesDi,
 } from './client.js';
 import { IOC_SUFFIX } from '@fudic/compiler';
@@ -57,9 +59,11 @@ import {
   FUD_PATHS_INCOMPLETE,
   FUD_ASSET_NOT_FOUND,
   FUD_CHUNK_NOT_EMITTED,
+  FUD_PRERENDER_FAILED,
+  FUD_ROUTE_NAME_COLLISION,
   FUD_SW_SHELL_MISSING,
 } from './diagnostics.js';
-import { devUrl, devManifest, devClientTag, devClientPrefix } from './dev.js';
+import { devUrl, devManifest, devClientTag, devClientPrefix, withInlineSourceMap } from './dev.js';
 import {
   matchRouteBuild,
   renderRouteHtml,
@@ -164,10 +168,43 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     const isIoc = tag.endsWith(IOC_SUFFIX);
     const bare = isIoc ? tag.slice(0, -IOC_SUFFIX.length) : tag;
     const comp = discoverComponents(builds, io).find((c) => c.tag === bare);
-    if (comp === undefined) {
-      return undefined;
+    if (comp !== undefined) {
+      return isIoc ? iocId(comp.path) : clientId(comp.path);
     }
-    return isIoc ? iocId(comp.path) : clientId(comp.path);
+    // A ROUTE's chunk lives at the same stable prefix under its own name (SDD-39 §4.12): dev
+    // builds nothing, so the derivation is the one the bootstrap baked in and the server
+    // publishes the `?client` module at that URL.
+    const route = discoverReactiveRoutes(builds, io).find((r) => r.name === bare);
+    return route === undefined ? undefined : clientId(route.path);
+  };
+
+  /**
+   * The chunk name of the route this `.fud` IS, or `undefined` when it is not one.
+   *
+   * A route with no client half has no name to publish either: what it would name is a chunk
+   * nobody emitted, and the block is then a byte for nothing (SDD-39 §4.7).
+   *
+   * The lookup is built ONCE per set of routes and kept, which is what `routeNameLookup`
+   * documents itself as — "one lookup, resolved once per pass", the way the link pass and the
+   * edge pass already hold theirs. Calling the factory per `transform` re-resolved every
+   * route's document graph for every `.fud` the build touched: sixteen routes parsed again
+   * for each of fifty-seven files, and the hook that does the compiling spent more than
+   * twenty times its own work rediscovering what had not changed (BUG-34 §2).
+   *
+   * Invalidated by the IDENTITY of `builds`: `discoverRoutes` hands back a NEW array every
+   * time it runs, and it runs whenever the route tree changes — which is what dev needs, and
+   * the reason this is not a plain `const` computed at plugin construction, when `builds` is
+   * still empty.
+   */
+  let routeNames: {
+    readonly from: readonly RouteBuild[];
+    readonly of: (path: string) => string | undefined;
+  } | null = null;
+  const routeNameOf = (path: string): string | undefined => {
+    if (routeNames === null || routeNames.from !== builds) {
+      routeNames = { from: builds, of: routeNameLookup(builds, io) };
+    }
+    return routeNames.of(path);
   };
 
   return {
@@ -277,7 +314,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               res.setHeader('Content-Security-Policy', devManifest(builds).csp.sw);
             }
             res.setHeader('Cache-Control', 'no-cache'); // these two govern updates
-            res.end(result?.code ?? '');
+            // WITH its map. `transformRequest` hands back both halves and this middleware
+            // used to write only the first, so nothing fudic emits was debuggable in dev.
+            res.end(result === null ? '' : withInlineSourceMap(result.code, result.map));
           })
           .catch((err) => {
             res.statusCode = 500;
@@ -498,6 +537,31 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           });
         }
       }
+
+      // And one per REACTIVE route (SDD-39 §3.5). Same directory and same arithmetic as a
+      // component's, because the runtime derives both URLs through one `resolveChunk` — what
+      // it is handed is a name, and `hydrateUrl` does not care where the name came from.
+      //
+      // A route IS filtered, unlike a component, and the asymmetry is the level rule: nobody
+      // hands a route a prop, so what it says about itself is the whole answer.
+      const tags = new Set(discoverComponents(builds, io).map((c) => c.tag));
+      for (const route of discoverReactiveRoutes(builds, io)) {
+        // Two files that would be written to one name (§3.5). A pattern does not normally
+        // produce a valid tag — `blog-slug` has no reason to be anybody's element — but
+        // «normally» is not a guarantee, and a silent overwrite is a page that hydrates as
+        // some other file.
+        if (tags.has(route.name)) {
+          this.error(
+            `[${FUD_ROUTE_NAME_COLLISION}] the chunk of route ${route.pattern} would be named "${route.name}", which is already a component tag`,
+          );
+        }
+        this.emitFile({
+          type: 'chunk',
+          id: clientId(route.path),
+          name: clientChunkName(route.name),
+          preserveSignature: 'strict',
+        });
+      }
     },
 
     resolveId(id) {
@@ -616,7 +680,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         );
         return stripped.map ? { code: stripped.code, map: stripped.map } : { code: stripped.code };
       }
-      const result = transformFud(path, io);
+      // The route's own name, when this `.fud` IS a built route: it is what the page
+      // publishes in `fud-route` and what the runtime derives the chunk URL from (SDD-39
+      // §4.7). A component, a layout, or a route the build excluded gets none, and then the
+      // page publishes no block and claims no id.
+      const result = transformFud(path, io, routeNameOf(path));
       if (result === null) {
         return null;
       }
@@ -934,9 +1002,16 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       //     The tag comes from the facade module, normalized: `emitFile` was given the path
       //     as the filesystem spells it and Vite hands it back with forward slashes.
       const slashes = (path: string): string => path.replace(/\\/gu, '/');
-      const tagOfFacade = new Map(
-        discoverComponents(builds, io).map((comp) => [slashes(clientId(comp.path)), comp.tag]),
-      );
+      const tagOfFacade = new Map([
+        ...discoverComponents(builds, io).map(
+          (comp) => [slashes(clientId(comp.path)), comp.tag] as const,
+        ),
+        // A route's chunk has imports to warm exactly as a component's does, and it is filed
+        // under its NAME because that is what the runtime asks by (SDD-39 §4.7).
+        ...discoverReactiveRoutes(builds, io).map(
+          (route) => [slashes(clientId(route.path)), route.name] as const,
+        ),
+      ]);
       const items = bundleItems(bundle);
       const hydrateDeps: Record<string, readonly string[]> = {};
       for (const [key, item] of Object.entries(bundle)) {
@@ -1013,8 +1088,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
                 emitted.add(htmlPathFor(rb.route.pattern));
               }
             } catch (err) {
-              // A broken page must not abort the build: warn and skip its file.
-              this.warn(`[prerender] ${rb.route.pattern}: ${(err as Error).message}`);
+              // A broken page BREAKS THE BUILD (SDD-39 §4.11). It used to warn and skip the
+              // file, which shipped a site with one page missing and CI in green — a route
+              // that throws while rendering is not a degradation, it is a page that does not
+              // exist. No span: this is the build's diagnostic and not the file's.
+              this.error(
+                `[${FUD_PRERENDER_FAILED}] ${rb.route.pattern} failed to prerender: ${(err as Error).message}`,
+              );
             }
           }
         } finally {

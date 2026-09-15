@@ -29,13 +29,17 @@ import { AssetLinker } from './assets.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import { formAssociatedTags, hydratableTags } from './level.js';
 import { hasDependencyInjection } from './di.js';
-import { needsRuntime, writeMapConstants, writeHydrationBlocks } from './maps.js';
+import { needsRuntime, routeBlocksOf, writeMapConstants, writeHydrationBlocks } from './maps.js';
 import type { DocumentGraph, ResolvedLayout } from './resolve.js';
 import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
+import { codeOfDocument } from './oxc-code.js';
+import type { Diagnostic } from '../types/index.js';
 import {
   quoteSpecifier,
   slice,
   specifierResolver,
+  writeEntryCode,
+  writeEntryImports,
   writeHeadElements,
   writeNonceBinding,
   writeRuntimeTags,
@@ -214,8 +218,9 @@ export function emitLayoutModuleMapped(
   options: EmitOptions = {},
 ): EmitOutput {
   const { writer, linker } = buildLayoutModule(graph, layout, options);
-  // No `diagnostics`: a page / layout / route does not go through `extractCode` — its
-  // `@code` is the `?server` module, which the plugin parses on its own.
+  // No `diagnostics`: a LAYOUT does not go through `extractCode` — its markup is static in
+  // this version (SDD-39 §7), so its `@code` is the `?server` module and nothing else, and
+  // the plugin parses that one on its own.
   return {
     code: writer.toString(),
     mappings: writer.mappings(),
@@ -231,12 +236,17 @@ export function emitLayoutModuleMapped(
 function buildRouteModule(
   graph: DocumentGraph,
   options: EmitOptions,
-): { writer: CodeWriter; linker: AssetLinker } {
+): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const ext = options.importExt ?? '.mjs';
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
   const route = graph.entry as RouteDocument;
   const source = graph.entrySource;
   const comps = [...graph.components.values()];
+  // The route's own `@code`, which until SDD-39 reached nowhere: its `@server` region is
+  // still the `?server` module and nothing else, but the neutral zone runs on BOTH sides and
+  // the names `@client` declares have to EXIST here, or a `@count()` in the markup is a
+  // `ReferenceError` that takes the whole prerender with it (§1.1).
+  const code = codeOfDocument(source, route);
 
   const hydratable = hydratableTags(graph);
   const formAssociated = formAssociatedTags(graph);
@@ -308,6 +318,10 @@ function buildRouteModule(
     w.line(`import { render as ${renderName(c.tag)}${style} } from ${specifier(c.tag)};`);
   }
   for (const line of linker.imports()) w.line(line);
+  // The neutral zone's own imports, hoisted — an `import` is only legal at module scope
+  // (decision 33.c). A route imports its form, its store or its data helper exactly as a
+  // component does, and both ends of the file need the binding.
+  writeEntryImports(w, code);
   w.line('');
   w.line(`const COMPONENTS = [${componentPairs(graph, styled).join(', ')}];`);
   // The MINIFIED form: it is inline in every page's head, once per page (BUG-07 §4.3).
@@ -316,10 +330,16 @@ function buildRouteModule(
   // `resolveDocument(route)` reaches the components of the whole chain — the layout's own
   // included — while a layout module is emitted from its own graph and cannot see the
   // route's. One map computed here would be missing half the page.
-  const maps = writeMapConstants(w, graph, hydratable);
+  // What the page says about its own client half (SDD-39 §4.2, §4.7). `FUD0621` comes out of
+  // the same read: a `data` the client reads and no `load` ever filled is knowable here.
+  const routeDiagnostics: Diagnostic[] = [];
+  const blocks = routeBlocksOf(graph, options.routeName, routeDiagnostics);
+  // The maps carry the route too — its entry in `fud-tree`, and its name in `fud-eager` when
+  // it comes up without a gesture — under the name it publishes, never under a tag.
+  const maps = writeMapConstants(w, graph, hydratable, blocks?.name);
   // The route's answer to the layout's `fudic:runtime` marker (BUG-31 §T1).
   const runtimeW = new CodeWriter();
-  writeRuntimeTags(runtimeW, needsRuntime(hydratable, hasDi));
+  writeRuntimeTags(runtimeW, needsRuntime(hydratable, hasDi, blocks !== undefined));
   w.line('');
   // Same public shape as a standalone page: the composition is invisible downstream.
   w.line('export function* page(data, io, $ioc) {');
@@ -329,6 +349,10 @@ function buildRouteModule(
   // The nonce belongs to the RESPONSE, so it is read here, where `io` is, and closed over
   // by the head slot the layout calls (SDD-20 §4.9).
   writeNonceBinding(w);
+  // And the author's own `@code`, BEFORE the slots that read it: every one of them — the
+  // head, the body, each section — is a closure over this scope, and the layout calls them
+  // from inside `layout(...)`, so a name declared here is in scope for all of them.
+  writeEntryCode(w, code);
   w.line('yield* layout(data, io, {');
   w.indent();
   w.line('head() {');
@@ -363,14 +387,14 @@ function buildRouteModule(
   // outermost layout knows where the body ends.
   w.line(`blocks(${DOM}, ${PARENT}) {`);
   w.indent();
-  writeHydrationBlocks(w, maps, DOM, PARENT, hasDi ? '$root' : undefined);
+  writeHydrationBlocks(w, maps, DOM, PARENT, hasDi ? '$root' : undefined, blocks);
   w.dedent();
   w.line('},');
   w.dedent();
   w.line(`}, ${ioc});`);
   w.dedent();
   w.line('}');
-  return { writer: w, linker };
+  return { writer: w, linker, diagnostics: [...code.diagnostics, ...routeDiagnostics] };
 }
 
 /** Emit the module of a route: `page(data, io)` composed with its layout chain. */
@@ -380,13 +404,11 @@ export function emitRouteModule(graph: DocumentGraph, options: EmitOptions = {})
 
 /** As `emitRouteModule`, plus the output↔source mappings and missing assets. */
 export function emitRouteModuleMapped(graph: DocumentGraph, options: EmitOptions = {}): EmitOutput {
-  const { writer, linker } = buildRouteModule(graph, options);
-  // No `diagnostics`: a page / layout / route does not go through `extractCode` — its
-  // `@code` is the `?server` module, which the plugin parses on its own.
+  const { writer, linker, diagnostics } = buildRouteModule(graph, options);
   return {
     code: writer.toString(),
     mappings: writer.mappings(),
     missingAssets: linker.missing(),
-    diagnostics: [],
+    diagnostics,
   };
 }

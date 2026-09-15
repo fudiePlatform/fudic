@@ -111,6 +111,26 @@ describe('vite dev server (SDD-19 §4.10)', () => {
     expect(code).not.toContain("from '@fudic/core'");
   });
 
+  it('BUG-36 serves that module WITH its source map, so the `.fud` is debuggable in dev', async () => {
+    // The middleware that answers this URL is the plugin's own, so Vite's module middleware
+    // — the one that attaches the map — never runs. It used to write only `result.code`, and
+    // the consequence was not a worse debugging experience but none: DevTools had the
+    // generated module, no `.fud` in the Sources tree, and no line to break on.
+    const code = await (await fetch(`${origin}/@fudic/h/dev-widget.js`)).text();
+    const marker = '//# sourceMappingURL=data:application/json;base64,';
+    expect(code).toContain(marker);
+    const encoded = code.slice(code.indexOf(marker) + marker.length).trim();
+    const map = JSON.parse(Buffer.from(encoded, 'base64').toString('utf8')) as {
+      sources: string[];
+      sourcesContent: string[];
+      mappings: string;
+    };
+    // It names the file the author wrote and carries it, which is what puts it in Sources.
+    expect(map.sources[0]).toContain('dev-widget.fud');
+    expect(map.sourcesContent[0]).toContain('function bump()');
+    expect(map.mappings.length).toBeGreaterThan(0);
+  });
+
   it('the same URL resolves in the module graph, and an unknown tag is nobody’s', async () => {
     expect((await server.transformRequest('/@fudic/h/dev-widget.js'))?.code).toContain(
       'customElements.define',

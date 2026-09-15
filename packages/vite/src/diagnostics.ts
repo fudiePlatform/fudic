@@ -38,3 +38,11 @@ export const FUD_NAME_COLLISION = 'FUD0501';
 // SDD-21 (FUD0420–FUD0449): layouts. Only the build-level one lives here; the rest are
 // span-carrying diagnostics the compiler emits (structure + resolveDocument).
 export const FUD_ORPHAN_LAYOUT = 'FUD0434';
+
+// SDD-39 (FUD0620–FUD0639): reactive routes. Both are the BUILD's and carry no span — one
+// is about a page that failed to render, the other about two files that would be written to
+// the same name.
+/** A route's prerender threw. The page is not generated AND the build fails (§4.11). */
+export const FUD_PRERENDER_FAILED = 'FUD0620';
+/** A route's chunk name collides with a component tag: two files, one name (§3.5). */
+export const FUD_ROUTE_NAME_COLLISION = 'FUD0622';

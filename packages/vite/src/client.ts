@@ -20,11 +20,13 @@
 import {
   hasDependencyInjection,
   iocName,
+  isReactiveRoute,
   ownsContainer,
   resolveDocument,
   usesDependencyInjection,
   type ResolveIo,
 } from '@fudic/compiler';
+import { safeName } from '@fudic/transport';
 import { type RouteBuild } from './discover.js';
 import { CLIENT_NAME_PREFIX } from './constants.js';
 
@@ -116,4 +118,62 @@ export function discoverComponents(
  */
 export function routeUsesDi(absPath: string, io: ResolveIo): boolean {
   return hasDependencyInjection(resolveDocument(absPath, io).value);
+}
+
+/** A ROUTE that has a client half, and therefore a chunk of its own (SDD-39 §4.5). */
+export interface RouteChunk {
+  /** `safeName(pattern)` — the name the page publishes and the runtime derives the URL from. */
+  readonly name: string;
+  /** Absolute path to the route's `.fud`. */
+  readonly path: string;
+  /** The URL pattern, for a diagnostic that has to name the route the author wrote. */
+  readonly pattern: string;
+}
+
+/**
+ * The routes of the build that get a client chunk — the ones `isReactiveRoute` says have a
+ * half to run (SDD-39 §4.5).
+ *
+ * Unlike a component, a route IS filtered here, and the asymmetry is the level rule itself: a
+ * component has no level of its own because an ancestor can make it reactive by handing it a
+ * prop, while nobody hands a route anything. What the route says about itself is the whole
+ * answer, and a route that says nothing costs no chunk and no request.
+ *
+ * By PATTERN and not by URL: `/blog/uno` and `/blog/dos` are the same route, the same chunk
+ * and the same name.
+ */
+export function discoverReactiveRoutes(
+  builds: readonly RouteBuild[],
+  io: ResolveIo,
+): readonly RouteChunk[] {
+  const out: RouteChunk[] = [];
+  for (const rb of builds) {
+    if (rb.decision.mode === 'excluded') continue;
+    if (!isReactiveRoute(resolveDocument(rb.absPath, io).value)) continue;
+    out.push({ name: safeName(rb.route.pattern), path: rb.absPath, pattern: rb.route.pattern });
+  }
+  return out;
+}
+
+/** A path as the module graph spells it: forward slashes, whatever the host filesystem uses. */
+const posix = (path: string): string => path.replace(/\\/gu, '/');
+
+/**
+ * `.fud` path → the route's chunk name, for the THREE passes that compile a render module.
+ *
+ * The host plugin, the link pass and the edge pass each run the emit over the same files, and
+ * a route that published its name in one and not in the others would be a page whose HTML
+ * disagrees with itself depending on who rendered it. One lookup, resolved once per pass.
+ *
+ * A FUNCTION and not a map, so the normalization cannot be forgotten at one of the three
+ * call sites: `discoverRoutes` spells a path the way the filesystem does and Vite hands the
+ * same file back with forward slashes — on Windows those are two different strings, and the
+ * lookup silently missed every route.
+ */
+export function routeNameLookup(
+  builds: readonly RouteBuild[],
+  io: ResolveIo,
+): (path: string) => string | undefined {
+  const names = new Map(discoverReactiveRoutes(builds, io).map((r) => [posix(r.path), r.name]));
+  return (path) => names.get(posix(path));
 }

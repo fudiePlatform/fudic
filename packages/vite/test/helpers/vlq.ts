@@ -1,9 +1,11 @@
 /**
  * A minimal Source Map v3 `mappings` decoder, for tests only (BUG-05 §6.7).
  *
- * Only the generated position is decoded: that is what tells whether a map still
- * describes the bytes that were emitted. The source fields are read to advance the VLQ
- * state — a segment's fields are relative to the previous one — and then dropped.
+ * The generated position tells whether a map still describes the bytes that were emitted;
+ * the SOURCE position tells which line of the `.fud` a breakpoint would land on, which is
+ * the question SDD-39 asks of a route's chunk. Both are decoded — the source fields were
+ * already being read to advance the VLQ state, since a segment's fields are relative to the
+ * previous one; they are simply no longer dropped.
  */
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -11,6 +13,9 @@ const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789
 export interface GeneratedPosition {
   readonly generatedLine: number;
   readonly generatedColumn: number;
+  /** Absent for a one-field segment: a generated position that maps to no source at all. */
+  readonly sourceIndex?: number;
+  readonly sourceLine?: number;
 }
 
 /** Decode one base64-VLQ run into its signed integers. */
@@ -40,15 +45,24 @@ function decodeSegment(segment: string): number[] {
 export function decodeMappings(mappings: string): GeneratedPosition[] {
   const out: GeneratedPosition[] = [];
   const lines = mappings.split(';');
+  // The source fields carry across lines; only the generated column resets.
+  let sourceIndex = 0;
+  let sourceLine = 0;
   for (let line = 0; line < lines.length; line += 1) {
     let column = 0;
     for (const segment of lines[line]!.split(',')) {
       if (segment.length === 0) {
         continue;
       }
-      const [deltaColumn] = decodeSegment(segment);
+      const [deltaColumn, deltaSource, deltaLine] = decodeSegment(segment);
       column += deltaColumn ?? 0;
-      out.push({ generatedLine: line, generatedColumn: column });
+      if (deltaSource === undefined || deltaLine === undefined) {
+        out.push({ generatedLine: line, generatedColumn: column });
+        continue;
+      }
+      sourceIndex += deltaSource;
+      sourceLine += deltaLine;
+      out.push({ generatedLine: line, generatedColumn: column, sourceIndex, sourceLine });
     }
   }
   return out;

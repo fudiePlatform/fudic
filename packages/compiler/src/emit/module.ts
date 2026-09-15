@@ -29,17 +29,19 @@ import { CodeWriter, type EmitMapping } from './writer.js';
 import { MarkupEmitter, renderName, tpl } from './markup.js';
 import { AssetLinker, type AssetExists } from './assets.js';
 import { compactStyleCss } from './css-compact.js';
-import { codeOf, diHelpers } from './oxc-code.js';
+import { codeOf, codeOfDocument, diHelpers } from './oxc-code.js';
 import { hasDependencyInjection } from './di.js';
 import { cellSlots, childTargets, reactiveScope } from './state.js';
 import { formAssociatedTags, hydratableTags } from './level.js';
-import { needsRuntime, writeMapConstants, writeHydrationBlocks } from './maps.js';
+import { needsRuntime, routeBlocksOf, writeMapConstants, writeHydrationBlocks } from './maps.js';
 import { planControls } from './controls.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import {
   type ComponentSpecifier,
   type LayoutSpecifier,
   specifierResolver,
+  writeEntryCode,
+  writeEntryImports,
   writeHeadElements,
   writeNonceBinding,
   writeRuntimeTags,
@@ -79,6 +81,16 @@ export interface EmitOptions {
    * `./<file base name><importExt>`, the sibling-file convention.
    */
   readonly layoutSpecifier?: LayoutSpecifier;
+  /**
+   * The route's chunk name — `safeName(pattern)` (SDD-39 §4.7). INJECTED for the same reason
+   * the two specifiers are: the compiler holds one file and has never heard of a URL pattern,
+   * while the plugin has the route table in hand.
+   *
+   * Its absence is what a build with no routing looks like — the standalone `.mjs` emit, a
+   * golden — and then a route publishes no `fud-route` block and claims no id: there is no
+   * chunk for it to name, so an id on the `<body>` would be an attribute nobody reads.
+   */
+  readonly routeName?: string;
 }
 
 export type { ComponentSpecifier, LayoutSpecifier };
@@ -408,12 +420,18 @@ export function emitComponentModuleMapped(
   };
 }
 
-function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer: CodeWriter; linker: AssetLinker } {
+function buildPageModule(
+  graph: ComponentGraph,
+  options: EmitOptions,
+): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const ext = options.importExt ?? '.mjs';
   const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
   const page = graph.entry as PageDocument;
   const source = graph.entrySource;
   const comps = [...graph.components.values()];
+  // A standalone page is a route that owns its own shell, so its `@code` is split exactly
+  // the same way (SDD-39 §4.1).
+  const code = codeOfDocument(source, page);
   // Only the components that HAVE a sheet reach the head: the rest carry no `COMPONENTS`
   // entry, no `<style type="module">` and no adopt marker anywhere (BUG-31 §T4). It is a
   // SECOND list and not a filter of the first, because `comps` also drives the `render`
@@ -450,6 +468,12 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
   // its favicon, its stylesheet and its `<script src>`. The `<link rel="component">`
   // elements are the component graph, not output, and are skipped.
   const componentLinks = new Set<HtmlContent>(page.links);
+  // A standalone page is a route that owns its shell, and it publishes the same three things
+  // about its own client half (SDD-39 §4.2, §4.7). Asked HERE, above the head, because the
+  // runtime tag below depends on the answer: the same condition that makes the `<body>` claim
+  // an id is what makes the page carry the runtime that reads it.
+  const routeDiagnostics: Diagnostic[] = [];
+  const blocks = routeBlocksOf(graph, options.routeName, routeDiagnostics);
   const headW = new CodeWriter();
   // A standalone page owns its whole `<head>`, so it answers the `fudic:runtime` marker
   // itself (BUG-31 §T1) — there is no layout to ask and no route slot to go through. The
@@ -461,7 +485,7 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
     {
       skip: componentLinks,
       linker,
-      onRuntime: () => writeRuntimeTags(headW, needsRuntime(hydratable, hasDi)),
+      onRuntime: () => writeRuntimeTags(headW, needsRuntime(hydratable, hasDi, blocks !== undefined)),
     },
     headW,
   );
@@ -478,11 +502,12 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
     w.line(`import { render as ${renderName(c.tag)}${style} } from ${specifier(c.tag)};`);
   }
   for (const line of linker.imports()) w.line(line); // asset imports Vite resolves (SDD-19 §4.5)
+  writeEntryImports(w, code); // the neutral zone's, hoisted (decision 33.c)
   w.line('');
   w.line(`const COMPONENTS = [${styledComps.map((c) => `{ tag: ${renderName(c.tag)}Tag, css: ${renderName(c.tag)}Css }`).join(', ')}];`);
   // The MINIFIED form: it is inline in every page's head, once per page (BUG-07 §4.3).
   if (styledComps.length > 0) w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL_MIN)};`);
-  const maps = writeMapConstants(w, graph, hydratable);
+  const maps = writeMapConstants(w, graph, hydratable, blocks?.name);
   w.line('');
   // Streaming a trozos (SDD-19 §4.3): a generator that yields the <head> FIRST, then the
   // body by pieces via `serialize` (serializeChunks), then the close. `io.serialize` is a
@@ -497,6 +522,9 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
   );
   if (hasDi) w.line('const $root = $ioc ?? iocRoot();');
   writeNonceBinding(w);
+  // The author's own `@code`, before anything that could read it: the head interpolates it
+  // (`<title>@titulo()</title>`) as readily as the body does.
+  writeEntryCode(w, code);
   w.line("let head = '';");
   w.appendWriter(headW);
   writeSharedHead(w, styledComps.length > 0);
@@ -507,12 +535,12 @@ function buildPageModule(graph: ComponentGraph, options: EmitOptions): { writer:
   w.line('const $dom = createDom();');
   w.line('const $body = $dom.element(\'body\');');
   w.appendWriter(bodyW);
-  writeHydrationBlocks(w, maps, '$dom', '$body', hasDi ? '$root' : undefined);
+  writeHydrationBlocks(w, maps, '$dom', '$body', hasDi ? '$root' : undefined, blocks);
   w.line('yield* serialize($body);');
   w.line("yield '</html>';");
   w.dedent();
   w.line('}');
-  return { writer: w, linker };
+  return { writer: w, linker, diagnostics: [...code.diagnostics, ...routeDiagnostics] };
 }
 
 export function emitPageModule(graph: ComponentGraph, options: EmitOptions = {}): string {
@@ -521,13 +549,11 @@ export function emitPageModule(graph: ComponentGraph, options: EmitOptions = {})
 
 /** As `emitPageModule`, plus the output↔source mappings and missing assets (§4.6/§6.13). */
 export function emitPageModuleMapped(graph: ComponentGraph, options: EmitOptions = {}): EmitOutput {
-  const { writer, linker } = buildPageModule(graph, options);
-  // No `diagnostics`: a page / layout / route does not go through `extractCode` — its
-  // `@code` is the `?server` module, which the plugin parses on its own.
+  const { writer, linker, diagnostics } = buildPageModule(graph, options);
   return {
     code: writer.toString(),
     mappings: writer.mappings(),
     missingAssets: linker.missing(),
-    diagnostics: [],
+    diagnostics,
   };
 }

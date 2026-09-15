@@ -1,8 +1,11 @@
 /**
  * The `?server` module (SDD-19 §4.3): the RenderChunk wrapper imports `load`/`paths`
- * from `<page>.fud?server`. This emits that module — the page's `@server` region(s)
+ * from `<page>.fud?server`. This emits that module — the page's `@server` REGION(s)
  * verbatim, which is where the `export function load`/`paths` live. Server-only code
  * never reaches any client bundle because it is only ever imported by the WW chunk.
+ *
+ * The region and not the `@code`: the other two zones of a route go somewhere else
+ * (SDD-39 §4.1), and that is the whole of what this module leaves out.
  */
 
 import { type ServerRegion } from '@fudic/compiler';
@@ -14,6 +17,12 @@ const EMPTY = 'export {};\n';
  * Emit the `?server` module for a route: its `@server` region code, or an empty module.
  * Any role that can BE a route qualifies — a page (doctype) and a route fragment
  * (SDD-21), which carries its `@code` at the top level instead of inside `<head>`.
+ *
+ * Its `@server` REGION, and never the whole `@code`. The filter below has always been the
+ * right one, and since SDD-39 the other two zones have a destination of their own: the
+ * neutral zone runs on both sides and is written into the render module and into the client
+ * chunk, and `@client` reaches the chunk verbatim and the render module as inert stubs
+ * (§4.1). What is dropped here is dropped because it is emitted elsewhere.
  */
 export function emitServerModule(source: string): string {
   const doc = parseFud(source);

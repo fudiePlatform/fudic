@@ -110,6 +110,33 @@ export class SsrDom implements Dom<SsrNode> {
    * host was never claimed — the emit's own hydration harness calls `render` with a shadow
    * made by hand — has no slice, and filling nothing is the honest answer.
    *
+   * The slice itself is `stateOf`'s, and this is the shadow-shaped door into it.
+   */
+  state(
+    shadow: SsrNode,
+    values: readonly unknown[],
+    cells: readonly CellDecl[] = [],
+    ioc?: number,
+  ): void {
+    const host = asImpl(shadow).parent;
+    if (host === null) return;
+    this.stateOf(host as SsrNode, values, cells, ioc);
+  }
+
+  /**
+   * Fill the slice of a host held DIRECTLY, rather than through the shadow it owns
+   * (SDD-39 §3.2).
+   *
+   * `state` reaches the host through `shadow.parent`, which is all a component's `render`
+   * ever holds. A ROUTE holds the node itself — the `<body>` — and there is no shadow to go
+   * through: the layout hands it to `blocks($dom, $parent)`, which is the one moment anybody
+   * knows where the body ends (SDD-21 §4.5). So `state` delegates here and there is one
+   * implementation of the slice rather than two that could drift.
+   *
+   * A host that was never claimed — the emit's own hydration harness calls `render` with a
+   * shadow made by hand, and a route that is not reactive claims no `<body>` — has no slice,
+   * and filling nothing is the honest answer.
+   *
    * ## The cells go BEHIND the props (BUG-24 §4.2)
    *
    *     slice = [ ...values, ...cells ]
@@ -124,14 +151,13 @@ export class SsrDom implements Dom<SsrNode> {
    * that cell», the runtime resolves it before handing the slice over, and parent and child
    * end up holding one object because nobody ever built a second one.
    */
-  state(
-    shadow: SsrNode,
+  stateOf(
+    host: SsrNode,
     values: readonly unknown[],
     cells: readonly CellDecl[] = [],
     ioc?: number,
   ): void {
-    const host = asImpl(shadow).parent;
-    const id = host === null ? undefined : this.#ids.get(host);
+    const id = this.#ids.get(asImpl(host));
     if (id === undefined) return;
     cells.forEach((cell, i) => {
       const ref: CellRef = [id, values.length + i];
@@ -140,7 +166,7 @@ export class SsrDom implements Dom<SsrNode> {
       this.#cells.set(cell.of, 'value' in cell ? { $: ref } : { $f: ref });
     });
     this.#slices[id] = [
-      ...values.map((value) => this.#cells.get(value) ?? value),
+      ...values,
       // JSON has no `undefined`: a callback's reserved slot is written as `null`, which is
       // exactly what «reserved, with nothing in it» has to look like on the wire.
       ...cells.map((cell) => cell.value ?? null),
@@ -149,6 +175,11 @@ export class SsrDom implements Dom<SsrNode> {
       // the wire are values, and the browser rebuilds the tree from the published map.
       ...(ioc === undefined ? [] : [ioc]),
     ];
+    // The values go in RAW and are resolved when the payload is built, not here. A consumer
+    // is rendered BEFORE its owner in one case that matters: a ROUTE owns the `<body>`, and
+    // the body is only claimable once it is finished (SDD-39 §4.2), so a component the route
+    // handed a signal to has already serialised its slot by the time the cell exists. Eager
+    // substitution wrote the number there and the two ends stopped sharing an object.
   }
 
   /**
@@ -161,7 +192,12 @@ export class SsrDom implements Dom<SsrNode> {
     const offsets: number[] = [0];
     const data: unknown[] = [];
     for (const slice of this.#slices) {
-      data.push(...slice);
+      // The cell substitution happens HERE, when every cell of the page has been registered:
+      // a slot holding the very object somebody published is written as that object's
+      // ADDRESS, and the runtime resolves it back before handing the slice over. Doing it at
+      // `state` time would depend on the order the tree happened to be walked in, and the
+      // route's own cells are registered last by construction (SDD-39 §4.2).
+      data.push(...slice.map((value) => this.#cells.get(value) ?? value));
       offsets.push(data.length);
     }
     return { offsets, data };
