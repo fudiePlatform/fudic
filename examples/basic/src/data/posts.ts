@@ -16,6 +16,14 @@ export interface Post {
   readonly body: string;
   readonly tag: string;
   readonly featured: boolean;
+  /**
+   * The language this post is written in.
+   *
+   * It is the evidence of SDD-40: the `lang` of the document comes out of the ROW, not out of
+   * the URL and not out of a constant in the layout — so two prerendered slugs come out with
+   * two different `<html lang>` because their posts are in two different languages.
+   */
+  readonly lang: string;
 }
 
 const POSTS: readonly Post[] = [
@@ -26,14 +34,19 @@ const POSTS: readonly Post[] = [
     body: 'Un <template shadowrootmode="open"> dentro de un custom element hace que el navegador cree el shadow root durante el parseo del documento. No hace falta JavaScript para que el componente se vea correcto en la primera pintura.',
     tag: 'plataforma',
     featured: true,
+    lang: 'es',
   },
+  // The one post in English, and the whole point of it: its `<html lang>` says `en` while
+  // its two neighbours say `es`, and all three are written by the same build from the same
+  // layout.
   {
-    slug: 'routing-por-fichero',
-    title: 'Routing por sistema de ficheros',
-    summary: 'routes/blog/[slug].fud es /blog/:slug. Sin registro de rutas.',
-    body: 'El plugin recorre routesDir, ordena las rutas por especificidad descendente y publica un manifest route→chunk que el Service Worker y el Web Worker cargan desde la MISMA URL absoluta.',
+    slug: 'file-system-routing',
+    title: 'File-system routing',
+    summary: 'routes/blog/[slug].fud is /blog/:slug. No route registry.',
+    body: 'The plugin walks routesDir, orders the routes by descending specificity and publishes a route→chunk manifest that the Service Worker and the Web Worker both load from the SAME absolute URL.',
     tag: 'build',
     featured: false,
+    lang: 'en',
   },
   {
     slug: 'ssg-estatico-e-incremental',
@@ -42,6 +55,7 @@ const POSTS: readonly Post[] = [
     body: 'Una página sin params ni load se prerenderiza en build. Una ruta con params y paths() prerenderiza el subconjunto enumerado. El resto queda dynamic:true: el Service Worker delega en el Web Worker y cachea la respuesta.',
     tag: 'build',
     featured: true,
+    lang: 'es',
   },
 ];
 

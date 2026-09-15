@@ -2,6 +2,12 @@
 <link rel="component" href="../components/site-nav.fud">
 
 @code {
+  @server {
+    export function layout() {
+      return { culture: "es" };
+    }
+  }
+
   @client {
     // Ni una signal, ni un constructo que lea nada: solo un manejador. La pregunta que
     // contesta esta ruta es la de antes de la reactividad — ¿llega una ruta a tener

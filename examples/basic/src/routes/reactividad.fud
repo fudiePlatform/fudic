@@ -5,6 +5,14 @@
 <link rel="component" href="../components/signal-while.fud">
 <link rel="component" href="../components/signal-code.fud">
 
+@code {
+  @server {
+    export function layout() {
+      return { culture: "es" };
+    }
+  }
+}
+
 <head>
   <title>Reactividad del control de flujo — fudic</title>
 </head>

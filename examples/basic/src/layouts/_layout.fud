@@ -1,6 +1,15 @@
 <!DOCTYPE html>
-<html lang="es">
+@* The `lang` of the document is the route's to decide, not this file's. A layout declares
+   what it needs with the same `props<T>()` a component and a route use, and the route
+   resolves it in `@server layout(ctx, data)` — after `load`, with what `load` brought. It is
+   required, so a route that forgets it is an error at build time and a light bulb in the
+   editor, and a prop with a default would demonstrate neither. *@
+<html lang="@culture">
   <head>
+    @code {
+      const { culture } = props<{ culture: string }>();
+    }
+
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="./logo.svg">

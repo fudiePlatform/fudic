@@ -3,7 +3,7 @@
 <link rel="component" href="../../components/app-badge.fud">
 
 @code {
-  type PageData = { title: string; tag: string; body: string; found: boolean };
+  type PageData = { title: string; tag: string; body: string; found: boolean; lang: string };
 
   @server {
     import { findPost, listSlugs } from "../../data/posts";
@@ -16,13 +16,22 @@
           tag: "404",
           body: `No hay ningún artículo con el slug "${params.slug}".`,
           found: false,
+          lang: "es",
         };
       }
-      return { title: post.title, tag: post.tag, body: post.body, found: true };
+      return { title: post.title, tag: post.tag, body: post.body, found: true, lang: post.lang };
     }
 
     export async function paths(): Promise<string[]> {
       return [...(await listSlugs())];
+    }
+
+    // The layout's props, resolved AFTER `load` and out of what it brought. The culture of
+    // this page is nowhere in its URL: it is a column of the row. Two slugs prerendered by
+    // the same build come out with two different `<html lang>` because their posts are in
+    // two different languages — which is the whole evidence of SDD-40.
+    export function layout(ctx: unknown, data: PageData) {
+      return { culture: data.lang };
     }
   }
 }

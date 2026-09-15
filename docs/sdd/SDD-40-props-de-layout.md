@@ -397,6 +397,13 @@ Tests en `packages/compiler/test/emit/` (1–7), `packages/vite/test/` (8–11),
 18. **Cobertura.** `@fudic/transport` y `@fudic/language-server` no bajan del número que tienen al
     empezar; el código nuevo de `@fudic/language-server` nace al 100 %.
 
+**Lo que costó la prop requerida, anotado porque se ve en el ejemplo.** `culture` sin default
+obliga a las **diecisiete** rutas de `examples/basic` a escribir su `export function layout()`,
+aunque dieciséis contesten lo mismo. Es lo que §6.15 pide y es lo que le da dientes al
+contrato —sin ello ni `FUD0702` ni la bombilla tendrían evidencia—, pero la ceremonia es real y
+la alternativa está escrita en la propia spec: un default (`culture = "es"`) la habría dejado en
+una sola ruta. Queda como observación, no como cambio.
+
 ---
 
 ## 7. Fuera de alcance

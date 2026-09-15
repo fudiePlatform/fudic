@@ -21,6 +21,10 @@
       ctx.publish(USER, name);
       return { name };
     }
+
+    export function layout() {
+      return { culture: "es" };
+    }
   }
 }
 

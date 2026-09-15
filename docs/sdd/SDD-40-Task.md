@@ -5,7 +5,7 @@
 > `@fudic/transport` (`RenderContext.layout`) · `@fudic/vite` (envoltorio, endpoint, prerender) ·
 > `@fudic/language-server` (la bombilla) · `@fudic/example-basic` (la evidencia)
 > **Rama:** `worktree-sdd-40-props-de-layout`
-> **Progreso:** 13 / 14
+> **Progreso:** 14 / 14
 > **Después de SDD-39**, no en paralelo: los dos tocan
 > `packages/compiler/src/emit/layout.ts`. No comparten ninguna decisión, solo el fichero.
 
@@ -101,7 +101,7 @@ un `load` propio del layout (§7).
       función entera si no existe —creando el `@server` si tampoco lo hay—. Con un valor **del
       tipo de cada prop**, por la razón de SDD-36: una reparación que deja errores de tipos que
       ella misma creó es peor que no tener bombilla. Criterios §6.13 y §6.14.
-- [ ] **14. La evidencia, en `examples/basic`.**
+- [x] **14. La evidencia, en `examples/basic`.**
       `_layout.fud` declara `culture` requerida y su `<html lang="@culture">` sale con lo que cada
       ruta resuelve. Una ruta con `:param` la deriva de lo que `load` trajo. Verificado en Chrome
       real en las tres formas: `pnpm dev`, build sin SW y build con SW. Criterios §6.15–§6.17.

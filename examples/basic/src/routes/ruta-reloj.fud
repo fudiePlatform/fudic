@@ -3,6 +3,12 @@
 <link rel="component" href="../components/app-clock.fud">
 
 @code {
+  @server {
+    export function layout() {
+      return { culture: "es" };
+    }
+  }
+
   @client {
     // El mismo reloj de `app-clock.fud`, letra por letra, escrito en la RUTA.
     //

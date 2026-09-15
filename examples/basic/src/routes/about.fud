@@ -2,6 +2,16 @@
 <link rel="component" href="../components/site-nav.fud">
 <link rel="component" href="../components/sin-css.fud">
 
+@code {
+  @server {
+    // The layout requires a `culture` and this is where this page answers it. Every route
+    // answers, because the prop has no default: that is what makes it an error to forget.
+    export function layout() {
+      return { culture: "es" };
+    }
+  }
+}
+
 <head>
   <title>Acerca de — fudic</title>
 </head>
