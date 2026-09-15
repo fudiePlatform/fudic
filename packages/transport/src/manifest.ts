@@ -218,8 +218,20 @@ function matchSegments(
 
 /** Pure and synchronous: the file becomes a table the fetch handler can query. */
 export function compileManifest(file: ManifestFile): RouteTable {
+  // `base` goes on the COMPILED segments and never on the record (BUG-39).
+  //
+  // What the fetch handler has in front of it is `url.pathname` — the whole path of the
+  // origin, base included — while a record stores the pattern the build named, base
+  // excluded like every other name in this file. Matching one against the other made an
+  // app published under `/admin/` decline every navigation of its own: no render, no warm,
+  // and an empty `routes-` cache, so it did not open offline. Invisible while `base` was
+  // `/`, which is every app until there are two on one origin.
+  //
+  // The record is left alone because it is what derives the chunk URL, and `renderUrl`
+  // applies `base` itself: prefixing it here would apply it twice.
+  const prefix = segmentsOf(file.base);
   const compiled: CompiledRoute[] = file.routes.map((record) => ({
-    segments: segmentsOf(record.pattern),
+    segments: [...prefix, ...segmentsOf(record.pattern)],
     record,
   }));
   const match = (pathname: string): RouteMatch | null => {
