@@ -3,7 +3,7 @@
 > **SDD:** [SDD-42 — La guía de estilos de una aplicación: la hoja adoptada](./SDD-42-guia-de-estilos.md)
 > **Paquetes:** `@fudic/compiler` · `@fudic/config` · `@fudic/ssr` · `@fudic/example-basic`
 > **Rama:** `sdd-42-guia-de-estilos`
-> **Progreso:** 7 / 10
+> **Progreso:** 10 / 10
 > **Bloqueado por:** [SDD-41](./SDD-41-configuracion-de-aplicacion.md) tareas 1–3 — el campo
 > `styles` cuelga de su lector. No necesita el resto de aquel SDD.
 
@@ -74,6 +74,6 @@ nada.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 8 | 4 | **`FUD0743`: `:root` dentro de un shadow no casa nada.** Warning sobre la regla, leído del AST de SDD-09 —los `parts` tapizan el span sin huecos (BUG-08 §2.2), así que no hace falta parser nuevo—, para `:root`, `html` y `body`. El mensaje dice a dónde mover la regla: al `<link rel="stylesheet">` del layout. **La hoja se emite igual**: es un aviso, no una poda. Criterio 9 | `compiler` | `src/emit/styles-lint.ts` · `src/emit/diagnostics.ts` |
-| [ ] | 9 | 7, 8, BUG-40 | **La evidencia.** `examples/basic` gana `src/styles/theme.css` con el espaciado y el color que hoy están repetidos en los `<style>` de sus componentes, y esos `<style>` adelgazan. Verificado en Chrome real en `pnpm dev`, build sin SW y build con SW — **y con el polyfill forzado**, que es el camino que la mayoría de navegadores toma hoy (SDD-18 §2.2). Criterio 13 | `example-basic` | `fudic.json` · `src/styles/theme.css` · `src/components/*.fud` |
-| [ ] | 10 | todas | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`, y los 14 criterios de §6 verdes — con el 1 visto fallar antes y el **golden de la tarea 1 verde sin haberse editado**. El código nuevo de `@fudic/compiler` al 100 % en las cuatro métricas; `@fudic/config` sigue al 100. SDD-42 a `Hecho` en [INDEX.md](./INDEX.md) | — | [INDEX.md](./INDEX.md) |
+| [x] | 8 | 4 | **`FUD0743`: `:root` dentro de un shadow no casa nada.** Warning sobre la regla, leído del AST de SDD-09 —los `parts` tapizan el span sin huecos (BUG-08 §2.2), así que no hace falta parser nuevo—, para `:root`, `html` y `body`. El mensaje dice a dónde mover la regla: al `<link rel="stylesheet">` del layout. **La hoja se emite igual**: es un aviso, no una poda. Criterio 9 | `compiler` | `src/emit/styles-lint.ts` · `src/emit/diagnostics.ts` |
+| [x] | 9 | 7, 8, BUG-40 | **La evidencia.** `examples/basic` gana `src/styles/theme.css` con el espaciado y el color que hoy están repetidos en los `<style>` de sus componentes, y esos `<style>` adelgazan. Verificado en Chrome real en `pnpm dev`, build sin SW y build con SW — **y con el polyfill forzado**, que es el camino que la mayoría de navegadores toma hoy (SDD-18 §2.2). Criterio 13 | `example-basic` | `fudic.json` · `src/styles/theme.css` · `src/components/*.fud` |
+| [x] | 10 | todas | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`, y los 14 criterios de §6 verdes — con el 1 visto fallar antes y el **golden de la tarea 1 verde sin haberse editado**. El código nuevo de `@fudic/compiler` al 100 % en las cuatro métricas; `@fudic/config` sigue al 100. SDD-42 a `Hecho` en [INDEX.md](./INDEX.md) | — | [INDEX.md](./INDEX.md) |

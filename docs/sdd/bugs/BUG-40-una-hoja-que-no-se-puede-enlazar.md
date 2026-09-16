@@ -1,6 +1,6 @@
 # BUG-40 · Una hoja de estilos enlazada: el import que no compila, y el nombre que nadie escribe
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Corrige:** [SDD-19](../SDD-19-plugin-vite.md) §4.5 (enlazado de assets) ·
 > [SDD-42](../SDD-42-guia-de-estilos.md) §1.2, §4.2 ·
 > [BUG-08](./BUG-08-css-verbatim.md) decisión 49 (comentarios)

@@ -5,7 +5,7 @@
 > **Paquetes:** `@fudic/compiler` · `@fudic/vite` · `@fudic/example-basic`
 > **Rama:** `sdd-42-guia-de-estilos` — se implementó dentro de [SDD-42](../SDD-42-guia-de-estilos.md),
 > que es quien lo destapó, y cierra con él.
-> **Progreso:** 7 / 10
+> **Progreso:** 10 / 10
 
 Diez tareas en tres fases. Las siete primeras están hechas y verificadas **en el navegador**
 antes de existir un solo test: era la condición del encargo — implementar de una tirada para
@@ -37,13 +37,13 @@ Lo que queda es la tanda de tests (§6 del BUG), la cobertura y el cierre.
 
 ---
 
-## Fase 3 — la red, la evidencia y el cierre (3)
+## Fase 3 — la red, la evidencia y el cierre (3) · hecha
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 8 | 1–7 | **La tanda de tests.** Los criterios 1–12 de §6, y el 13: el golden de [SDD-42](../SDD-42-guia-de-estilos.md) tarea 1 vuelve a verde sin editarse salvo por los comentarios que ya no viajan. **Hay un test en rojo a propósito**: el de la compactación afirmaba que un comentario sin cerrar se conserva, y ahora se tira — hay que reescribirlo, no restaurarlo. Criterios 1–13 | `vite` · `compiler` | `vite/test/` · `compiler/test/emit/` |
-| [ ] | 9 | 8 | **Cobertura.** El código nuevo al 100 % en las cuatro; ni `@fudic/vite` ni `@fudic/compiler` bajan de su suelo (medido al empezar la rama: compiler 99,27/98,23/99,48/99,70 · vite 96,17/90,28/96,41/96,06). Criterio 15 | — | — |
-| [ ] | 10 | 9 | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`, los 15 criterios, BUG-40 a `Hecho` en [INDEX.md](./INDEX.md) —tabla y grafo— y en el registro de progreso de [docs/sdd/INDEX.md](../INDEX.md), junto al cierre de SDD-42 | — | [INDEX.md](./INDEX.md) · [../INDEX.md](../INDEX.md) |
+| [x] | 8 | 1–7 | **La tanda de tests.** Los criterios 1–12 de §6, y el 13: el golden de [SDD-42](../SDD-42-guia-de-estilos.md) tarea 1 vuelve a verde sin editarse salvo por los comentarios que ya no viajan. **Hay un test en rojo a propósito**: el de la compactación afirmaba que un comentario sin cerrar se conserva, y ahora se tira — hay que reescribirlo, no restaurarlo. Criterios 1–13 | `vite` · `compiler` | `vite/test/` · `compiler/test/emit/` |
+| [x] | 9 | 8 | **Cobertura.** El código nuevo al 100 % en las cuatro; ni `@fudic/vite` ni `@fudic/compiler` bajan de su suelo (medido al empezar la rama: compiler 99,27/98,23/99,48/99,70 · vite 96,17/90,28/96,41/96,06). Criterio 15 | — | — |
+| [x] | 10 | 9 | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`, los 15 criterios, BUG-40 a `Hecho` en [INDEX.md](./INDEX.md) —tabla y grafo— y en el registro de progreso de [docs/sdd/INDEX.md](../INDEX.md), junto al cierre de SDD-42 | — | [INDEX.md](./INDEX.md) · [../INDEX.md](../INDEX.md) |
 
 ---
 

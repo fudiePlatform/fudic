@@ -1,6 +1,6 @@
 # SDD-42 — La guía de estilos de una aplicación: la hoja adoptada
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Paquetes:** `@fudic/compiler` (el hoisteo, la lista de specifiers, el diagnóstico) ·
 > `@fudic/config` (un campo más) · `@fudic/ssr` (la lista en el `<template>`) ·
 > `@fudic/example-basic` (la evidencia)
