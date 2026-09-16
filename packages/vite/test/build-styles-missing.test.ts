@@ -97,6 +97,24 @@ describe('vite build — the project style guide', () => {
     expect(raised[0]).toContain('<link rel="stylesheet">');
   }, 120000);
 
+  it('FUD0743: a document-only rule is warned once, and the sheet ships whole', async () => {
+    const { warnings, code } = await buildWith(
+      ['src/styles/theme.css'],
+      {
+        'src/styles/theme.css': ':host{--gap:8px}\n:root{--brand:red}\n',
+        'src/components/s-plain.fud': PLAIN,
+      },
+      PAGE_WITH_COMPONENT,
+    );
+    const raised = warnings.filter((w) => w.includes('FUD0743'));
+    // Once per sheet, not once per route it travels into: the reading happens where the
+    // file is read, and the build emits the same sheet into several modules.
+    expect(raised).toHaveLength(1);
+    expect(raised[0]).toContain('src/styles/theme.css:2:1');
+    // An advice, not a pruning (§4.5): the rule is still in the document.
+    expect(code).toContain('--brand:red');
+  }, 120000);
+
   it('§6.7 a project with a guide and no styled component still ships the polyfill', async () => {
     const { warnings, code } = await buildWith(
       ['src/styles/theme.css'],

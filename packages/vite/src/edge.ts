@@ -32,6 +32,7 @@ import { transformFud, type ProjectStyles } from './transform.js';
 import { safeName } from './link.js';
 import { EDGE_PREFIX } from './constants.js';
 import { serializeMap, type NestedArtifact, type NestedOutputOptions } from './nested.js';
+import { LinkedAssets } from './linked-assets.js';
 
 export interface EdgeResult {
   /** Every emitted file, in no particular order. Written outside `outDir` by the caller. */
@@ -65,6 +66,7 @@ export function edgePlugin(
   io: ResolveIo,
   base: string,
   styles: ProjectStyles = [],
+  assets?: LinkedAssets,
 ): Plugin {
   // Resolved once for the pass: the render module of a route publishes its name (SDD-39
   // §4.7), and this pass renders the very pages the prerender writes.
@@ -107,7 +109,7 @@ export function edgePlugin(
         /* v8 ignore next -- Oxc always returns a map for a `.ts` input; the guard is for the type, not for a case. */
         return stripped.map ? { code: stripped.code, map: stripped.map } : { code: stripped.code };
       }
-      const result = transformFud(path, io, routeNameOf(path), styles);
+      const result = transformFud(path, io, routeNameOf(path), styles, assets);
       /* v8 ignore next -- `transformFud` returns null only for a non-`.fud` id, and that was checked above. */
       if (result === null) return null;
       // Since SDD-34 the neutral zone of `@code` reaches this module verbatim, so it is
@@ -143,6 +145,7 @@ export async function runEdgePass(
   alias: unknown,
   nested: NestedOutputOptions,
   styles: ProjectStyles = [],
+  assets: LinkedAssets = new LinkedAssets(base),
 ): Promise<EdgeResult> {
   const routes = builds.filter((rb) => rb.decision.mode !== 'excluded');
   if (routes.length === 0) {
@@ -159,7 +162,7 @@ export async function runEdgePass(
     root,
     base,
     logLevel: 'error',
-    plugins: [edgePlugin(routes, io, base, styles)],
+    plugins: [edgePlugin(routes, io, base, styles, assets)],
     // Forwarded verbatim, for the same reason as the Service Worker's build: this one runs
     // with `configFile: false`, so a project that resolves `@fudic/*` through aliases —
     // every project the CLI scaffolds — would not resolve them here.

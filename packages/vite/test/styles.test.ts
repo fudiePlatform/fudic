@@ -7,7 +7,12 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { resolveComponents, emitPageModule, type ResolveIo } from '@fudic/compiler';
+import {
+  resolveComponents,
+  emitPageModule,
+  FUD_DOCUMENT_ONLY_SELECTOR,
+  type ResolveIo,
+} from '@fudic/compiler';
 import { FUD_STYLE_NOT_FOUND, FUD_STYLE_SPECIFIER_CLASH, type ConfigIo } from '@fudic/config';
 import { readStyles } from '../src/styles.js';
 
@@ -22,11 +27,11 @@ const CONFIG = { id: 'shop', kind: 'app', prefix: 'shop', styles: [] } as const;
 
 describe('readStyles', () => {
   it('is empty for a project with no fudic.json at all', () => {
-    expect(readStyles('/p', null, io({}))).toEqual({ styles: [], errors: [] });
+    expect(readStyles('/p', null, io({}))).toEqual({ styles: [], errors: [], warnings: [] });
   });
 
   it('is empty for a project whose fudic.json declares no styles', () => {
-    expect(readStyles('/p', CONFIG, io({}))).toEqual({ styles: [], errors: [] });
+    expect(readStyles('/p', CONFIG, io({}))).toEqual({ styles: [], errors: [], warnings: [] });
   });
 
   it('hands the emit a specifier and CSS, and nothing else — no path travels on', () => {
@@ -95,5 +100,35 @@ describe('the compiler never opens a stylesheet', () => {
     expect(code).not.toBe('');
     // Two `.fud` and nothing else. The sheet arrived READ, through the options.
     expect(asked).toEqual(['/home.fud', '/s-card.fud']);
+  });
+});
+
+describe('FUD0743 — read once per sheet, not once per route', () => {
+  it('points at the rule by file, line and column, and keeps the sheet', () => {
+    const result = readStyles(
+      '/p',
+      { ...CONFIG, styles: ['src/styles/theme.css'] },
+      io({ '/p/src/styles/theme.css': ':host{--gap:8px}\n\nbody { margin: 0; }\n' }),
+    );
+
+    expect(result.errors).toEqual([]);
+    const [w] = result.warnings;
+    expect(w!.code).toBe(FUD_DOCUMENT_ONLY_SELECTOR);
+    expect(w!.file).toBe('src/styles/theme.css');
+    expect(w!.message).toContain('src/styles/theme.css:3:1:');
+    expect(w!.message).toContain('"body"');
+    // An advice, not a pruning: the emit is handed the sheet exactly as it was read.
+    expect(result.styles).toEqual([
+      { specifier: '_theme', css: ':host{--gap:8px}\n\nbody { margin: 0; }\n' },
+    ]);
+  });
+
+  it('says nothing about a sheet written for where it goes', () => {
+    const result = readStyles(
+      '/p',
+      { ...CONFIG, styles: ['src/theme.css'] },
+      io({ '/p/src/theme.css': ':host{display:block}.card{padding:var(--gap)}' }),
+    );
+    expect(result.warnings).toEqual([]);
   });
 });

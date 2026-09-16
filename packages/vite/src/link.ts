@@ -24,6 +24,7 @@ import { transformFud, type ProjectStyles } from './transform.js';
 import { LINK_DIR, LINK_PREFIX } from './constants.js';
 import { loadWithSourceMap } from './inputmaps.js';
 import { serializeMap, type NestedOutputOptions } from './nested.js';
+import { LinkedAssets } from './linked-assets.js';
 
 export interface LinkChunk {
   readonly fileName: string;
@@ -81,6 +82,7 @@ function linkPlugin(
   io: ResolveIo,
   base: string,
   styles: ProjectStyles = [],
+  assets?: LinkedAssets,
 ): Plugin {
   // The Service Worker renders the same pages the edge does, so it publishes the same route
   // names (SDD-39 §4.7): one map, resolved once for the pass.
@@ -117,7 +119,7 @@ function linkPlugin(
       if (!path.endsWith('.fud')) {
         return null;
       }
-      const result = transformFud(path, io, routeNameOf(path), styles);
+      const result = transformFud(path, io, routeNameOf(path), styles, assets);
       if (result === null) return null;
       // Since SDD-34 the neutral zone of `@code` reaches this module verbatim, so it is
       // TypeScript whenever the author wrote it — same strip as the host plugin does.
@@ -178,6 +180,7 @@ export async function runLinkPass(
   io: ResolveIo,
   nested: NestedOutputOptions,
   styles: ProjectStyles = [],
+  assets: LinkedAssets = new LinkedAssets(base),
 ): Promise<LinkResult> {
   const linkable = builds.filter((rb) => isLinkable(rb.decision));
   if (linkable.length === 0) {
@@ -194,7 +197,7 @@ export async function runLinkPass(
     root,
     base,
     logLevel: 'error',
-    plugins: [linkPlugin(linkable, io, base, styles)],
+    plugins: [linkPlugin(linkable, io, base, styles, assets)],
     build: {
       write: false,
       emptyOutDir: false,

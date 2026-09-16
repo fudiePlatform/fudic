@@ -51,6 +51,7 @@ import { nodeIo } from './io.js';
 import { readSwConfig, type ResolvedSwConfig } from './swconfig.js';
 import { nodeConfigIo, readProject, type ProjectResult } from './config.js';
 import { readStyles } from './styles.js';
+import { LinkedAssets } from './linked-assets.js';
 import { CONFIG_FILE, type ConfigDiagnostic } from '@fudic/config';
 import { runLinkPass, safeName, type LinkResult } from './link.js';
 import { runEdgePass } from './edge.js';
@@ -168,7 +169,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let projectStyles: ProjectStyles = [];
   /** `FUD0740` / `FUD0741`, reported in `buildStart` alongside the config's own. */
   let styleErrors: readonly ConfigDiagnostic[] = [];
+  /** `FUD0743`, read once per sheet rather than once per route it travels into (§4.5). */
+  let styleWarnings: readonly ConfigDiagnostic[] = [];
   let writeToDisk = true;
+  /**
+   * The files the project's `.fud` link, and their published names (BUG-40).
+   *
+   * One registry for the whole build, handed to every nested pass: the name of a linked file
+   * has to be the same in the page that references it and in the output that contains it,
+   * and those two come out of different builds.
+   */
+  let linked = new LinkedAssets('/');
   let resolveAlias: unknown;
   // What the nested builds inherit from the host (BUG-05 §3.1, BUG-06 §3.1). Replaced
   // wholesale in `configResolved`; these are only the values before one has run.
@@ -279,6 +290,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     configResolved(config) {
       root = config.root;
       base = config.base;
+      linked = new LinkedAssets(config.base);
       outDir = resolvePath(config.root, config.build.outDir);
       // Copied verbatim into the output, so a shell entry may legitimately point there
       // without ever appearing in the bundle (BUG-01 §4.4).
@@ -314,6 +326,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       const resolvedStyles = readStyles(root, project.config, configIo);
       projectStyles = resolvedStyles.styles;
       styleErrors = resolvedStyles.errors;
+      styleWarnings = resolvedStyles.warnings;
     },
 
     configureServer(server) {
@@ -325,6 +338,18 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         [devUrl(base, DEV_BOOT_URL), BOOT_ID],
         [devUrl(base, DEV_SW_URL), SW_ID],
       ]);
+      // The files a `.fud` links, at the SAME URL the build publishes them under (BUG-40).
+      // Dev has no bundle to put them in, and a page that works built and 404s in dev — or
+      // the other way round — is the kind of difference that is found last.
+      server.middlewares.use((req, res, next) => {
+        const asset = linked.served((req.url ?? '').split('?')[0] ?? '');
+        if (asset === undefined) {
+          next();
+          return;
+        }
+        res.setHeader('Content-Type', asset.type);
+        res.end(asset.bytes);
+      });
       server.middlewares.use((req, res, next) => {
         const url = (req.url ?? '').split('?')[0] ?? '';
         if (url === manifestUrl) {
@@ -529,6 +554,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       for (const d of styleErrors) {
         this.error(`[${d.code}] ${d.message}`);
       }
+      // And what the sheet says that its destination cannot hear (§4.5). A warning, and
+      // the sheet is emitted whole: the same file served to the document too is a legitimate
+      // shape, and there those rules are the correct ones.
+      for (const d of styleWarnings) {
+        this.warn(`[${d.code}] ${d.message}`);
+      }
 
       const discovered = discoverRoutes(root, options);
       builds = discovered.routes;
@@ -724,7 +755,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         return ioc === null ? null : (await transformWithOxc(ioc.code, `${path}.ts`, { lang: 'ts' })).code;
       }
       if (query === CLIENT_QUERY) {
-        const chunk = transformFudClient(path, io, projectStyles);
+        const chunk = transformFudClient(path, io, projectStyles, linked);
         if (chunk === null) {
           return null;
         }
@@ -749,7 +780,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // publishes in `fud-route` and what the runtime derives the chunk URL from (SDD-39
       // §4.7). A component, a layout, or a route the build excluded gets none, and then the
       // page publishes no block and claims no id.
-      const result = transformFud(path, io, routeNameOf(path), projectStyles);
+      const result = transformFud(path, io, routeNameOf(path), projectStyles, linked);
       if (result === null) {
         return null;
       }
@@ -793,7 +824,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       const link: LinkResult =
         swConfig === null
           ? { chunks: [], entries: new Map(), deps: new Map() }
-          : await runLinkPass(root, base, builds, io, nested, projectStyles);
+          : await runLinkPass(root, base, builds, io, nested, projectStyles, linked);
       // A nested build's output is emitted as an ASSET, so nothing writes its `.map` or
       // appends its `sourceMappingURL` unless we do (BUG-05 §4.3).
       const emitWithMap = (artifact: NestedArtifact): void => {
@@ -815,7 +846,16 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // Written to disk in 3b, not here: an edge chunk imports the shared chunks by name and
       // those are renamed there (BUG-31 §T5), so what lands beside `outDir` — and what the
       // prerender runs — has to be the rewritten code.
-      const edge = await runEdgePass(root, base, builds, io, resolveAlias, nested, projectStyles);
+      const edge = await runEdgePass(
+        root,
+        base,
+        builds,
+        io,
+        resolveAlias,
+        nested,
+        projectStyles,
+        linked,
+      );
 
       // 2. The Service Worker's own bundle: one realm, one bundle (BUG-03 §4.1). Its
       //    code still carries BUILD_TOKEN — the id is computed from it, below.
@@ -840,6 +880,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
                   (entry.facadeModuleId === MAIN_ID || entry.facadeModuleId === BOOT_ID)
                 );
               }).map((fileName) => `${base}${fileName}`),
+              // And the stylesheets a `.fud` links (BUG-40). Same argument as the two
+              // entries above: their names are the build's, so `sw.json` cannot list them,
+              // and a page served from the cache without its stylesheet is a page that
+              // paints wrong — which is worse than one that does not paint at all.
+              ...linked.stylesheets(),
             ];
       const sw =
         swConfig === null
@@ -1168,6 +1213,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         } finally {
           rmSync(dir, { recursive: true, force: true });
         }
+      }
+
+      // 5b. The files the project's `.fud` link, published under the name every pass was
+      //     told (BUG-40). It happens HERE, after the link and edge passes have run, because
+      //     a file only one of them reached is still a file the documents reference.
+      for (const [fileName, source] of linked.files()) {
+        if (emitted.has(fileName)) {
+          continue;
+        }
+        this.emitFile({ type: 'asset', fileName, source });
+        emitted.add(fileName);
       }
 
       // 6. The declared shell, checked against what the build actually produced. The

@@ -4,9 +4,6 @@
 
 <head>
   <style>
-    :host {
-      display: block;
-    }
     nav {
       display: flex;
       gap: 1.25rem;
@@ -14,7 +11,7 @@
       padding: 0.9rem 0;
       border-bottom: 1px solid #e6e6e6;
       a {
-        color: #1a73e8;
+        color: var(--brand);
         text-decoration: none;
         font-weight: 500;
       }

@@ -1,0 +1,27 @@
+/* La mitad del sistema de estilos que vive en el DOCUMENTO: la carga el layout con un
+   <link rel="stylesheet"> y no entra en ningún shadow root. Lo que sí cruza el límite es la
+   herencia de las custom properties, así que estos nombres los lee todo componente de la
+   página — y `theme.css`, que sí se adopta dentro, está escrito entero con ellos. */
+
+:root {
+  /* Superficie y línea: la caja que dibuja cualquier panel del ejemplo. */
+  --line: #dcdcdc;
+  --surface: white;
+
+  /* Tinta. `--ink-faint` es el gris de los pies de panel. */
+  --ink-soft: #555;
+  --ink-faint: #666;
+
+  /* El único acento: el botón primario y el enlace de la sección actual. */
+  --brand: #1a73e8;
+
+  /* Forma. Dos radios, porque un control y una caja no son la misma esquina. */
+  --radius: 6px;
+  --radius-box: 10px;
+
+  /* Ritmo. Un hueco para todo lo que va en fila o en pila. */
+  --gap: 0.75rem;
+  --pad-box: 1rem 1.15rem;
+  --pad-control: 0.4rem 0.9rem;
+  --pad-field: 0.4rem 0.6rem;
+}

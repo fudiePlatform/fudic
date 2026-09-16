@@ -18,6 +18,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="./logo.svg">
 
+    @* La mitad del sistema de estilos que vive en el DOCUMENTO: los tokens. No entra en
+       ningún shadow root —ninguna hoja del documento lo hace—, y aun así la ven todos los
+       componentes, porque las custom properties heredan a través del límite. La otra mitad,
+       las reglas que casan elementos, la declara `fudic.json` en `styles` y se adopta dentro
+       de cada shadow. Las dos se necesitan. *@
+    <link rel="stylesheet" href="../styles/tokens.css">
+
     <!-- Where the fudic runtime goes. The layout says WHERE, once — before layouts
          every route had to remember it, and one that forgot silently lost the Service
          Worker. What lands here the compiler decides: the Service Worker registration

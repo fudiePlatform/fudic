@@ -168,7 +168,11 @@ function buildComponentClientModule(
   comp: ResolvedComponent,
   options: EmitOptions,
 ): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
-  const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
+  const linker = new AssetLinker(
+    options.linkAssets ?? false,
+    options.assetExists,
+    options.assetUrl,
+  );
   const { props, signals, client, neutral, template, mutable, emitCalls, clientImports, diagnostics, di } =
     codeOf(comp);
   // What runs in a browser: the neutral zone runs on both sides, `@client` only here, and an

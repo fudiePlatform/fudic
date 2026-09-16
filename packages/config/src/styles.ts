@@ -28,6 +28,13 @@ export interface ProjectStyleFile {
    * configurable prefix and no cross-check to write. The collision is unconstructible.
    */
   readonly specifier: string;
+  /**
+   * The `styles` entry as it was written, relative to the project root.
+   *
+   * It travels because a diagnostic ABOUT the sheet has to name it the way the author
+   * named it — `src/styles/theme.css`, not the absolute path a machine joined.
+   */
+  readonly entry: string;
   /** Where it was read from. Absolute, joined from the project root. */
   readonly path: string;
   /** The CSS as written. Minification and asset linking are the compiler's (§4.7). */
@@ -107,7 +114,7 @@ export function readProjectStyles(
     }
 
     claimed.set(specifier, entry);
-    styles.push({ specifier, path, css });
+    styles.push({ specifier, entry, path, css });
   }
 
   return { styles, diagnostics };

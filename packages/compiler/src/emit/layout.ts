@@ -135,7 +135,11 @@ function buildLayoutModule(
   options: EmitOptions,
 ): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const ext = options.importExt ?? '.mjs';
-  const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
+  const linker = new AssetLinker(
+    options.linkAssets ?? false,
+    options.assetExists,
+    options.assetUrl,
+  );
   const doc = layout.doc;
   const source = layout.source;
   // What its `@code` declares, and what is wrong with the rest of it (SDD-40 §3.1, §4.1).
@@ -251,7 +255,11 @@ function buildRouteModule(
   options: EmitOptions,
 ): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const ext = options.importExt ?? '.mjs';
-  const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
+  const linker = new AssetLinker(
+    options.linkAssets ?? false,
+    options.assetExists,
+    options.assetUrl,
+  );
   const route = graph.entry as RouteDocument;
   const source = graph.entrySource;
   const comps = [...graph.components.values()];

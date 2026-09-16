@@ -12,12 +12,13 @@
  * missing stylesheet looks exactly like a stylesheet that did nothing.
  */
 
-import type { ProjectStyle } from '@fudic/compiler';
+import { LineMap, lintProjectStyle, type ProjectStyle } from '@fudic/compiler';
 import {
   readProjectStyles,
   type ConfigDiagnostic,
   type ConfigIo,
   type ProjectConfig,
+  type ProjectStyleFile,
 } from '@fudic/config';
 
 export interface StylesResult {
@@ -25,6 +26,8 @@ export interface StylesResult {
   readonly styles: readonly ProjectStyle[];
   /** Fatal: the document would render with styles nobody declared (§4.1). */
   readonly errors: readonly ConfigDiagnostic[];
+  /** `FUD0743`: a rule of the sheet that matches nothing where the sheet goes (§4.5). */
+  readonly warnings: readonly ConfigDiagnostic[];
 }
 
 /** Resolve and read `<root>/<entry>` for every `styles` entry of the project. */
@@ -34,7 +37,7 @@ export function readStyles(
   io: ConfigIo,
 ): StylesResult {
   if (config === null || config.styles.length === 0) {
-    return { styles: [], errors: [] };
+    return { styles: [], errors: [], warnings: [] };
   }
   const { styles, diagnostics } = readProjectStyles(root, config.styles, io);
   // Only the two the emit needs: the path it was read from is the reader's business, and
@@ -42,5 +45,32 @@ export function readStyles(
   return {
     styles: styles.map(({ specifier, css }) => ({ specifier, css })),
     errors: diagnostics,
+    warnings: styles.flatMap(lintOne),
   };
+}
+
+/**
+ * `FUD0743` over one sheet, here and not in the emit.
+ *
+ * The sheet is handed to every module the build emits, so the same reading repeated there
+ * would be one warning per route for one mistake — the reason `FUD0742` sits in the plugin
+ * too. Read once, where the file is read.
+ *
+ * The position is resolved here as well: the compiler speaks in offsets on purpose
+ * (SDD-13), and a build log is the one place where that has to become a line and a column
+ * the author can click.
+ */
+function lintOne(file: ProjectStyleFile): readonly ConfigDiagnostic[] {
+  const found = lintProjectStyle(file.css);
+  if (found.length === 0) return [];
+  const lines = new LineMap(file.css);
+  return found.map((d) => {
+    const at = lines.positionAt(d.span.start);
+    return {
+      code: d.code,
+      message: `${file.entry}:${at.line + 1}:${at.character + 1}: ${d.message}`,
+      file: file.entry,
+      span: d.span,
+    };
+  });
 }

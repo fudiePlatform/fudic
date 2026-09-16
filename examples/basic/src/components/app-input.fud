@@ -16,17 +16,14 @@
 
 <head>
   <style>
-    :host {
-      display: block;
-    }
     .field {
       display: flex;
       gap: 0.5rem;
       align-items: center;
-      border: 1px solid #dcdcdc;
+      border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 0.4rem 0.6rem;
-      background: white;
+      padding: var(--pad-field);
+      background: var(--surface);
     }
     input {
       font: inherit;

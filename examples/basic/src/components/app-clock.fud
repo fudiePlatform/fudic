@@ -26,7 +26,7 @@
 
 <head>
   <style>
-    :host { display: block; padding: 1rem 1.25rem; background: #e6e6e6; }
+    :host { padding: 1rem 1.25rem; background: #e6e6e6; }
     .hora {
       font-size: 2.6rem;
       font-weight: 300;

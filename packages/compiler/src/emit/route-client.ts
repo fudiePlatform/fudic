@@ -126,7 +126,11 @@ function buildRouteClientModule(
   const source = graph.entrySource;
   const half = entryHalf(graph)!;
   const { code, roots } = half;
-  const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
+  const linker = new AssetLinker(
+    options.linkAssets ?? false,
+    options.assetExists,
+    options.assetUrl,
+  );
   const cells = entryCellSlots(graph, half);
 
   const bodies = newBodies();

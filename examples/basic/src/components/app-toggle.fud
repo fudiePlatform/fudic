@@ -14,16 +14,8 @@
 
 <head>
   <style>
-    :host {
-      display: block;
-    }
     button {
-      font: inherit;
-      padding: 0.5rem 1rem;
-      border: 1px solid #dcdcdc;
       border-radius: 999px;
-      background: white;
-      cursor: pointer;
     }
   </style>
 </head>

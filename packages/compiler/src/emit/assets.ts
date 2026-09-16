@@ -16,20 +16,34 @@
 /** Escape a literal chunk for embedding in a template literal (backtick/backslash/`$`). */
 const escapeTpl = (s: string): string => s.replace(/[`\\$]/gu, '\\$&');
 
+/**
+ * Injected URL resolver: the published URL of a linkable specifier.
+ *
+ * When the host provides one, the emit writes that URL as a literal and registers no import
+ * at all — which is the only shape that can be right. An import asks the bundler what a file
+ * means, and the answer depends on the extension (a `.css` is a stylesheet with no default
+ * export, and the build dies) and on WHICH build asks (an asset's hashed name is a property
+ * of the bundle, so three passes over the same `.fud` produce three different URLs for one
+ * file). The host knows the one answer; it is asked for it.
+ */
+export type AssetUrl = (spec: string) => string;
+
 /** Injected existence check: does a linkable specifier resolve to a real file? */
 export type AssetExists = (spec: string) => boolean;
 
 export class AssetLinker {
   readonly #enabled: boolean;
   readonly #exists: AssetExists | undefined;
+  readonly #url: AssetUrl | undefined;
   readonly #imports: string[] = [];
   readonly #bySpec = new Map<string, string>();
   readonly #missing: string[] = [];
   #id = 0;
 
-  constructor(enabled: boolean, exists?: AssetExists) {
+  constructor(enabled: boolean, exists?: AssetExists, url?: AssetUrl) {
     this.#enabled = enabled;
     this.#exists = exists;
+    this.#url = url;
   }
 
   get enabled(): boolean {
@@ -48,12 +62,31 @@ export class AssetLinker {
    */
   maybeRef(spec: string): string | null {
     if (!this.#enabled || !AssetLinker.linkable(spec)) return null;
-    if (this.#exists && !this.#exists(spec)) {
-      this.#missing.push(spec);
+    const file = AssetLinker.filePath(spec);
+    if (this.#exists && !this.#exists(file)) {
+      this.#missing.push(file);
       return null;
+    }
+    // The host answered: the URL goes in as a literal, and no import is registered.
+    if (this.#url !== undefined) {
+      return JSON.stringify(this.#url(spec));
     }
     return this.ref(spec);
   }
+
+  /**
+   * The file a specifier names: everything before its `?query`.
+   *
+   * A query is an instruction to the bundler, not part of a filename, and the one place that
+   * has to know the difference is the existence check — `theme.css?url` is a real file asked
+   * for in a particular way, and answering "not found" to it reports a missing asset that is
+   * sitting right there.
+   */
+  static filePath(spec: string): string {
+    const q = spec.indexOf('?');
+    return q === -1 ? spec : spec.slice(0, q);
+  }
+
 
   /**
    * A static, relative specifier the bundler can resolve to a hashed asset. Rejects

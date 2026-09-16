@@ -61,7 +61,7 @@ describe('specifierOf', () => {
 });
 
 describe('readProjectStyles', () => {
-  it('resolves each entry to a specifier, a path and its CSS, in order', () => {
+  it('resolves each entry to a specifier, the entry, a path and its CSS, in order', () => {
     const result = readProjectStyles(
       ROOT,
       ['src/theme.css', 'src/layout.css'],
@@ -69,8 +69,18 @@ describe('readProjectStyles', () => {
     );
     expect(result.diagnostics).toEqual([]);
     expect(result.styles).toEqual([
-      { specifier: '_theme', path: '/p/src/theme.css', css: ':host{--gap:8px}' },
-      { specifier: '_layout', path: '/p/src/layout.css', css: '.row{display:flex}' },
+      {
+        specifier: '_theme',
+        entry: 'src/theme.css',
+        path: '/p/src/theme.css',
+        css: ':host{--gap:8px}',
+      },
+      {
+        specifier: '_layout',
+        entry: 'src/layout.css',
+        path: '/p/src/layout.css',
+        css: '.row{display:flex}',
+      },
     ]);
   });
 

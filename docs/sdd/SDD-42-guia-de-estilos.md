@@ -30,6 +30,11 @@ doce veces y se mantiene en doce sitios.
 
 ### 1.2. Por qué un `<link rel="stylesheet">` no lo arregla
 
+> **Corrección de este párrafo.** «Ya pasa por el `AssetLinker`» era cierto y no bastaba:
+> pasaba, y el build moría. Lo destapó la evidencia de este SDD y lo arregla
+> [BUG-40](./bugs/BUG-40-una-hoja-que-no-se-puede-enlazar.md), que es de quién nombra un
+> asset y no solo del CSS. Lo que sigue describe el mecanismo ya corregido.
+
 Funciona, y no sirve para esto. Un `<link rel="stylesheet" href="./theme.css">` escrito en
 el layout ya pasa por `headElementExpr` y el `AssetLinker`
 ([`emit/parts.ts`](../../packages/compiler/src/emit/parts.ts)), así que Vite lo resuelve,

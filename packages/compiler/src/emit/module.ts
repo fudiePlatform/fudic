@@ -27,7 +27,7 @@ import { spaceModeOf } from './space.js';
 import { hasForeignDisplay, hostDisplay, tagDisplay, type Boxes, type Display } from './display.js';
 import { CodeWriter, type EmitMapping } from './writer.js';
 import { MarkupEmitter, renderName, tpl } from './markup.js';
-import { AssetLinker, type AssetExists } from './assets.js';
+import { AssetLinker, type AssetExists, type AssetUrl } from './assets.js';
 import { compactStyleCss } from './css-compact.js';
 import { codeOf, codeOfDocument, diHelpers } from './oxc-code.js';
 import { hasDependencyInjection } from './di.js';
@@ -81,6 +81,16 @@ export interface EmitOptions {
    * so the plugin can report FUD0363 without aborting the build (§6.13).
    */
   readonly assetExists?: AssetExists;
+  /**
+   * The published URL of a linked asset, INJECTED — and when it is given, what the emit
+   * writes is that URL and not an import.
+   *
+   * It is the host's answer because only the host can give one: a URL has to be the same in
+   * every pass of a build that compiles this file three times, and it has to be a URL and
+   * not whatever the bundler decides the extension means. Absent, the emit falls back to an
+   * import, which is what the standalone `.mjs` emit has always done.
+   */
+  readonly assetUrl?: AssetUrl;
   /**
    * Module specifier for a linked component, INJECTED — the compiler never touches
    * `node:path`, so it cannot compute a path relative to the importing module. Default:
@@ -234,7 +244,11 @@ function buildComponentModule(
   options: EmitOptions,
 ): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const ext = options.importExt ?? '.mjs';
-  const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
+  const linker = new AssetLinker(
+    options.linkAssets ?? false,
+    options.assetExists,
+    options.assetUrl,
+  );
   const { props, signals, neutral, diagnostics, di, server } = codeOf(comp);
   const cells = cellSlots(comp, graph);
   const hydratable = hydratableTags(graph);
@@ -440,7 +454,11 @@ function buildPageModule(
   options: EmitOptions,
 ): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const ext = options.importExt ?? '.mjs';
-  const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
+  const linker = new AssetLinker(
+    options.linkAssets ?? false,
+    options.assetExists,
+    options.assetUrl,
+  );
   const page = graph.entry as PageDocument;
   const source = graph.entrySource;
   const comps = [...graph.components.values()];

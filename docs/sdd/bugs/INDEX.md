@@ -99,6 +99,7 @@ Las siete secciones del SDD, reinterpretadas para un defecto:
 | [BUG-37](./BUG-37-submit-delegado.md) | El `submit` del formulario se delega, y un `stopPropagation()` del autor se lleva la validación | [SDD-37](../SDD-37-delegacion-de-eventos.md) aplicado a [SDD-34](../SDD-34-forms-compilador.md) §4.4 | `forms` | `Hecho` |
 | [BUG-38](./BUG-38-un-layout-dentro-de-otro.md) | Un layout dentro de otro: dos páginas completas que nadie sabía componer, y un shell descartado en silencio | [SDD-21](../SDD-21-layout.md) decisión 87 · [SDD-40](../SDD-40-props-de-layout.md) §4.8 | `compiler` · `cli` · `vite` · `language-server` | `Hecho` |
 | [BUG-39](./BUG-39-el-router-no-conoce-su-base.md) | El router casa `url.pathname` —que lleva el `base`— contra patrones que no lo llevan: una app bajo `/admin/` declina todas sus rutas y su Service Worker no hace nada | [SDD-20](../SDD-20-render-sw.md) §4.4, §4.6 · [SDD-27](../SDD-27-artefactos-y-manifiesto.md) §5.4 · [BUG-33](./BUG-33-caches-por-app.md) §2.3 | `transport` | `Hecho` |
+| [BUG-40](./BUG-40-una-hoja-que-no-se-puede-enlazar.md) | Una hoja de estilos enlazada desde un `.fud` no se puede usar: el import no compila, y con el sufijo que lo salva la página lleva un nombre que ningún fichero tiene | [SDD-19](../SDD-19-plugin-vite.md) §4.5 · [SDD-42](../SDD-42-guia-de-estilos.md) §1.2, §4.2 · [BUG-08](./BUG-08-css-verbatim.md) decisión 49 | `compiler` · `vite` | `Listo` |
 
 > **BUG-31 y BUG-32** se implementaron juntos en `worktree-bug-31-emit-incondicional` y ya están
 > en esta tabla. BUG-33 se numeró detrás de ellos a propósito aunque llegara antes al índice:
@@ -233,6 +234,14 @@ hidratación)           página una hoja global cambia el `display` de cualquier
                        una alternativa sintáctica sobre la mesa que no deduce
                        nada, las dos candidatas cambian el árbol que `h()`
                        adopta. Ese árbol no se ha visto adoptar todavía.
+
+SDD-42 ────▶ BUG-40  destapado por su evidencia, y la flecha es de USO, no de
+(la hoja del           mecanismo: el enlazado de assets de SDD-19 llevaba desde
+documento)             entonces sin ejercitarse con un fichero que no se
+                       incrusta, porque el único asset del ejemplo era un logo
+                       de 300 bytes. La primera hoja de estilos de una
+                       aplicación es también el primer asset que siempre es
+                       fichero. Se implementa dentro de SDD-42 y cierra con él.
 ```
 
 BUG-15 y BUG-16 salen del mismo diagnóstico —el interior de un tag abierto— y se reparten por

@@ -17,6 +17,7 @@
 
 import { existsSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
+import { assetUrlFrom, type LinkedAssets } from './linked-assets.js';
 import {
   resolveDocument,
   contractDiagnostics,
@@ -101,6 +102,7 @@ function emitOptionsFor(
   id: string,
   routeName: string | undefined,
   styles: ProjectStyles,
+  assets: LinkedAssets | undefined,
 ): Parameters<typeof emitPageModuleMapped>[1] {
   // A linkable asset exists when it resolves to a real file next to the `.fud` (§6.13).
   const baseDir = dirname(id);
@@ -108,6 +110,10 @@ function emitOptionsFor(
     importExt: IMPORT_EXT,
     linkAssets: true,
     assetExists: (spec: string): boolean => existsSync(resolve(baseDir, spec)),
+    // And its URL is the host's to decide, once for the whole build (BUG-40). Absent only
+    // for a caller that has no registry — then the emit falls back to an import, which is
+    // the pre-BUG-40 behaviour and what the standalone emit does.
+    ...(assets === undefined ? {} : { assetUrl: assetUrlFrom(assets, baseDir) }),
     // The compiler is filesystem-free and would emit the sibling default `./<tag>.fud`;
     // here the real path is known, so a component may live outside the importer's
     // directory (`components/app-card.fud` linked from `routes/blog/index.fud`).
@@ -133,6 +139,7 @@ export function transformFud(
   io: ResolveIo,
   routeName?: string,
   styles: ProjectStyles = [],
+  assets?: LinkedAssets,
 ): TransformResult | null {
   if (!id.endsWith('.fud')) {
     return null;
@@ -143,7 +150,7 @@ export function transformFud(
   const graph = resolved.value;
   const entry = graph.entry;
   const source = graph.entrySource;
-  const out = emitFor(id, graph, emitOptionsFor(id, routeName, styles));
+  const out = emitFor(id, graph, emitOptionsFor(id, routeName, styles, assets));
   return {
     code: out.code,
     map: buildMap(id, redactServerRegions(source, entry.code), out),
@@ -182,6 +189,7 @@ export function transformFudClient(
   id: string,
   io: ResolveIo,
   styles: ProjectStyles = [],
+  assets?: LinkedAssets,
 ): TransformResult | null {
   if (!id.endsWith('.fud')) {
     return null;
@@ -190,7 +198,7 @@ export function transformFudClient(
   const graph = resolved.value;
   const entry = graph.entry;
   if (entry.type === 'route-document' || entry.type === 'page-document') {
-    return routeClientResult(id, graph, styles, resolved.diagnostics);
+    return routeClientResult(id, graph, styles, resolved.diagnostics, assets);
   }
   if (entry.type !== 'component-document') {
     return null;
@@ -198,7 +206,11 @@ export function transformFudClient(
   // `entryComponent` and not a literal of the same fields: `ExtractedCode` is memoized on
   // the object, so a second one would be a second Oxc invocation for one file.
   const comp = entryComponent(graph)!;
-  const out = emitComponentClientModuleMapped(graph, comp, emitOptionsFor(id, undefined, styles));
+  const out = emitComponentClientModuleMapped(
+    graph,
+    comp,
+    emitOptionsFor(id, undefined, styles, assets),
+  );
   return {
     code: out.code,
     map: buildMap(id, redactServerRegions(graph.entrySource, entry.code), out),
@@ -216,8 +228,9 @@ function routeClientResult(
   graph: DocumentGraph,
   styles: ProjectStyles,
   graphDiagnostics: readonly Diagnostic[],
+  assets: LinkedAssets | undefined,
 ): TransformResult | null {
-  const out = emitRouteClientModuleMapped(graph, emitOptionsFor(id, undefined, styles));
+  const out = emitRouteClientModuleMapped(graph, emitOptionsFor(id, undefined, styles, assets));
   if (out === null) {
     return null;
   }

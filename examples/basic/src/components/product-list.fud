@@ -13,25 +13,12 @@
 
 <head>
   <style>
-    :host {
-      display: block;
-    }
     .panel {
       display: grid;
       gap: 0.5rem;
-      border: 1px solid #dcdcdc;
-      border-radius: 10px;
-      padding: 0.9rem 1.1rem;
-      background: white;
     }
     button {
-      font: inherit;
       text-align: left;
-      padding: 0.45rem 0.8rem;
-      border: 1px solid #dcdcdc;
-      border-radius: 6px;
-      background: white;
-      cursor: pointer;
     }
   </style>
 </head>
