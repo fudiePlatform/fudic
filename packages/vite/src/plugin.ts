@@ -51,7 +51,7 @@ import { nodeIo } from './io.js';
 import { readSwConfig, type ResolvedSwConfig } from './swconfig.js';
 import { nodeConfigIo, readProject, type ProjectResult } from './config.js';
 import { readStyles } from './styles.js';
-import type { ConfigDiagnostic } from '@fudic/config';
+import { CONFIG_FILE, type ConfigDiagnostic } from '@fudic/config';
 import { runLinkPass, safeName, type LinkResult } from './link.js';
 import { runEdgePass } from './edge.js';
 import { buildServiceWorker } from './swbuild.js';
@@ -69,6 +69,7 @@ import {
   FUD_CHUNK_NOT_EMITTED,
   FUD_PRERENDER_FAILED,
   FUD_ROUTE_NAME_COLLISION,
+  FUD_STYLES_NOT_ADOPTED,
   FUD_SW_SHELL_MISSING,
 } from './diagnostics.js';
 import { devUrl, devManifest, devClientTag, devClientPrefix, withInlineSourceMap } from './dev.js';
@@ -533,6 +534,16 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       builds = discovered.routes;
       for (const d of discovered.diagnostics) {
         this.warn(`[${d.code}] ${d.message}`);
+      }
+      // FUD0742, and it is the BUILD's rather than the emit's because what it is about is
+      // the PROJECT: a sheet that nothing adopts. The emit sees one file at a time, so the
+      // same fact stated there would be one warning per route for a single mistake.
+      if (projectStyles.length > 0 && discoverComponents(builds, io).length === 0) {
+        this.warn(
+          `[${FUD_STYLES_NOT_ADOPTED}] ${CONFIG_FILE} declares "styles" and this project defines no component: ` +
+            'a project sheet is adopted into the shadow roots of its own components, and there are none. ' +
+            'A stylesheet meant for the document goes in a <link rel="stylesheet"> in the layout.',
+        );
       }
       if (isDev) {
         // Dev has no emitFile/generateBundle: the module graph serves the wrappers and

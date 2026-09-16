@@ -30,6 +30,7 @@ import { isFormAssociated } from '../binding/index.js';
 import { movingNames } from './level.js';
 import { rootContext } from './display.js';
 import { cellSlots, childTargets, reactiveScope, type CellSlot } from './state.js';
+import { projectAdoptOf } from './project-styles.js';
 import {
   componentBoxes,
   componentContainer,
@@ -211,6 +212,9 @@ function buildComponentClientModule(
     // And the same set the server branch writes `data-fud-adopt` from (BUG-31 §T4): the two
     // fabricate the same host, so they have to answer this identically.
     styled: styledTags(graph),
+    // Same reason, one level up: the project's guide is in front of the component's own on
+    // both sides, or a host hydrates adopting a different list than it rendered with.
+    projectAdopt: projectAdoptOf(options.projectStyles),
   };
   // One channel for everything the emit has to SAY about this file, and one for what every
   // walk of it shares: a block three levels down reports through the same two.

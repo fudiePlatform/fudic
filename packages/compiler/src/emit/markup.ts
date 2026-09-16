@@ -38,6 +38,7 @@ import {
 } from './display.js';
 import { emitItems, type TextRun } from './runs.js';
 import { markerSite } from './marker.js';
+import { adoptListOf } from './project-styles.js';
 import { loopHead, type LoopNode } from './constructs.js';
 import { ERROR_SLOT_ATTR, SUMMARY_SLOT_ATTR, type ControlPlan } from './controls.js';
 
@@ -215,6 +216,20 @@ export interface MarkupOptions {
    * graph, and defaulting it empty would silently strip the styles off every component.
    */
   readonly styled: ReadonlySet<string>;
+  /**
+   * The project's sheet specifiers, in adoption order, already joined by a space — or `''`
+   * when the project declares no guide (SDD-42 §4.1).
+   *
+   * They go in FRONT of the component's own, and that is the cascade: the guide defines,
+   * the component adjusts. The other way round, a component could not override the guide
+   * without raising specificity.
+   *
+   * Required, like the three sets above and for the same reason: it is a fact about the
+   * PROJECT, so a caller that could forget it would emit a document whose components
+   * quietly adopt nothing. `''` is the honest value for a project with no guide, and it is
+   * what every emit that is not a project build passes.
+   */
+  readonly projectAdopt: string;
 }
 
 export class MarkupEmitter {
@@ -230,6 +245,7 @@ export class MarkupEmitter {
   readonly #controls: ControlPlan;
   readonly #formAssociated: ReadonlySet<string>;
   readonly #styled: ReadonlySet<string>;
+  readonly #projectAdopt: string;
   readonly #used = new Set<string>();
   #id = 0;
   /**
@@ -257,6 +273,7 @@ export class MarkupEmitter {
     this.#controls = options.controls ?? new Map();
     this.#formAssociated = options.formAssociated;
     this.#styled = options.styled;
+    this.#projectAdopt = options.projectAdopt;
   }
 
   /** The child component tags rendered so far, in first-use order (for ES imports). */
@@ -389,11 +406,17 @@ export class MarkupEmitter {
       // Prefixed for the same reason as `data-fud-id`: `data-*` is the author's vocabulary,
       // and an unprefixed marker is a name we do not own.
       //
-      // Only when there IS a sheet (BUG-31 §T4). The marker is what the serializer reads to
-      // decide the template's own attribute, so a component with no CSS announces no sheet
-      // anywhere and the polyfill never builds an empty one for it.
-      if (this.#styled.has(el.name)) {
-        this.#w.line(`$dom.setAttr(${v}, 'data-fud-adopt', ${JSON.stringify(el.name)});`);
+      // Only when there IS something to adopt (BUG-31 §T4, widened by SDD-42 §4.4). The
+      // marker is what the serializer reads to decide the template's own attribute, so a
+      // component that adopts nothing announces no sheet anywhere and the polyfill never
+      // builds an empty one for it.
+      //
+      // The condition used to be *this component has CSS*; it is now *its adopted list is
+      // empty*, and with no project guide the two say the same thing — which is why the
+      // output of every project that had none is unchanged.
+      const adopt = adoptListOf(this.#projectAdopt, el.name, this.#styled.has(el.name));
+      if (adopt !== '') {
+        this.#w.line(`$dom.setAttr(${v}, 'data-fud-adopt', ${JSON.stringify(adopt)});`);
       }
       // The host's own attributes — its `.prop`s and its plain HTML ones (BUG-16 §4.1).
       // Level 1 is HTML with no JS, so this is the only place they can live.

@@ -3,7 +3,7 @@
 > **SDD:** [SDD-42 — La guía de estilos de una aplicación: la hoja adoptada](./SDD-42-guia-de-estilos.md)
 > **Paquetes:** `@fudic/compiler` · `@fudic/config` · `@fudic/ssr` · `@fudic/example-basic`
 > **Rama:** `sdd-42-guia-de-estilos`
-> **Progreso:** 3 / 10
+> **Progreso:** 7 / 10
 > **Bloqueado por:** [SDD-41](./SDD-41-configuracion-de-aplicacion.md) tareas 1–3 — el campo
 > `styles` cuelga de su lector. No necesita el resto de aquel SDD.
 
@@ -51,10 +51,16 @@ nada.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 4 | 3 | **El hoisteo, una vez y en su sitio.** Un `<style type="module" specifier="_x">` por hoja distinta, **después** del polyfill y **antes** de todo `<style>` de componente — que es la regla 2 de SDD-18 §3.2 y no una preferencia de orden. El CSS pasa por la misma minificación y el mismo `AssetLinker` que el de un componente (§4.7). Criterios 1, 3, 8 | `compiler` | `src/emit/parts.ts` · `src/emit/module.ts` |
-| [ ] | 5 | 4 | **La lista adoptada.** Los specifiers del proyecto se **anteponen** a los del componente, en el orden del array, y la misma lista va a las dos salidas: `shadowrootadoptedstylesheets` en el `<template>` (vía `@fudic/ssr`) y `data-fud-adopt` en el host, en el camino de servidor **y** en el de cliente. Que las dos discrepen es un componente que hidrata con otros estilos. Criterios 1, 2, 4 | `compiler` · `ssr` | `src/emit/markup.ts` · `src/emit/markup-client.ts` · `ssr/src/serialize.ts` |
-| [ ] | 6 | 5 | **BUG-31 §T4, con la premisa ampliada.** La condición deja de ser *«este componente tiene CSS»* y pasa a ser *«su lista de adopción está vacía»*. Un componente sin CSS en un proyecto con `styles` emite `data-fud-adopt="_theme"` y **ningún** `<style specifier="<tag>">` propio. Sin `styles`, las dos condiciones dicen lo mismo — y por eso el golden de la tarea 1 sigue verde. Criterio 5 | `compiler` | `src/emit/module.ts` · `src/emit/client.ts` |
-| [ ] | 7 | 6 | **BUG-31 §T3, con la premisa ampliada.** El polyfill sale si hay algo que adoptar, **de componente o de proyecto**. Un proyecto con `styles` y cero componentes con CSS lo emite; hoy no. Y `FUD0742`: `styles` declarado y ningún componente propio, warning. Criterios 7, 12 | `compiler` | `src/emit/parts.ts` |
+| [x] | 4 | 3 | **El hoisteo, una vez y en su sitio.** Un `<style type="module" specifier="_x">` por hoja distinta, **después** del polyfill y **antes** de todo `<style>` de componente — que es la regla 2 de SDD-18 §3.2 y no una preferencia de orden. El CSS pasa por la misma minificación y el mismo `AssetLinker` que el de un componente (§4.7). Criterios 1, 3, 8 | `compiler` | `src/emit/parts.ts` · `src/emit/module.ts` |
+| [x] | 5 | 4 | **La lista adoptada.** Los specifiers del proyecto se **anteponen** a los del componente, en el orden del array, y la misma lista va a las dos salidas: `shadowrootadoptedstylesheets` en el `<template>` (vía `@fudic/ssr`) y `data-fud-adopt` en el host, en el camino de servidor **y** en el de cliente. Que las dos discrepen es un componente que hidrata con otros estilos. Criterios 1, 2, 4 | `compiler` · `ssr` | `src/emit/markup.ts` · `src/emit/markup-client.ts` · `ssr/src/serialize.ts` |
+| [x] | 6 | 5 | **BUG-31 §T4, con la premisa ampliada.** La condición deja de ser *«este componente tiene CSS»* y pasa a ser *«su lista de adopción está vacía»*. Un componente sin CSS en un proyecto con `styles` emite `data-fud-adopt="_theme"` y **ningún** `<style specifier="<tag>">` propio. Sin `styles`, las dos condiciones dicen lo mismo — y por eso el golden de la tarea 1 sigue verde. Criterio 5 | `compiler` | `src/emit/module.ts` · `src/emit/client.ts` |
+| [x] | 7 | 6 | **BUG-31 §T3, con la premisa ampliada.** El polyfill sale si hay algo que adoptar, **de componente o de proyecto**. Un proyecto con `styles` y cero componentes con CSS lo emite; hoy no. Y `FUD0742`: `styles` declarado y ningún componente propio, warning. Criterios 7, 12 | `compiler` · ~~`compiler`~~ **`vite`** para `FUD0742` | `src/emit/parts.ts` · `vite/src/plugin.ts` |
+
+> **Corrección de la tarea 7.** `FUD0742` habla del **proyecto** —«no define ningún
+> componente»—, y el emit ve un fichero cada vez: puesto en `parts.ts` daría un aviso por
+> cada ruta del build para un solo error. Va en el plugin, que es lo único que conoce el
+> proyecto entero. La spec ya lo situaba ahí: su criterio 12 está bajo *El build* y sus
+> tests en `packages/vite/test/`.
 
 ---
 

@@ -8,7 +8,12 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { SsrDom, serializeChunks, escapeText, escapeAttr, jsonBlock } from '@fudic/ssr';
-import { emitComponentModule, emitPageModule, type ComponentGraph } from '../../src/emit/index.js';
+import {
+  emitComponentModule,
+  emitPageModule,
+  type ComponentGraph,
+  type EmitOptions,
+} from '../../src/emit/index.js';
 import {
   parseDocument,
   type AtConstructParser,
@@ -225,14 +230,24 @@ export function minimalSsr(): {
  */
 export type PageFn = (data: unknown, io: unknown) => Iterable<string>;
 
-/** Emit every module of a graph to a temp dir and import the page's `page(data, io)`. */
-export async function pageModuleOf(graph: ComponentGraph): Promise<PageFn> {
+/**
+ * Emit every module of a graph to a temp dir and import the page's `page(data, io)`.
+ *
+ * `options` go to EVERY module and not just the page, because a component renders its
+ * children's hosts and those hosts carry the adopted list too (SDD-42 §4.1). Emitting the
+ * page with a project guide and its components without one would produce a document whose
+ * two halves disagree, which is a state the build cannot reach.
+ */
+export async function pageModuleOf(
+  graph: ComponentGraph,
+  options: EmitOptions = {},
+): Promise<PageFn> {
   const dir = mkdtempSync(join(tmpdir(), 'fudic-emit-'));
   mkdirSync(dir, { recursive: true });
   for (const comp of graph.components.values()) {
-    writeFileSync(join(dir, `${comp.tag}.mjs`), emitComponentModule(graph, comp), 'utf8');
+    writeFileSync(join(dir, `${comp.tag}.mjs`), emitComponentModule(graph, comp, options), 'utf8');
   }
-  writeFileSync(join(dir, 'home.mjs'), emitPageModule(graph), 'utf8');
+  writeFileSync(join(dir, 'home.mjs'), emitPageModule(graph, options), 'utf8');
   const mod = (await import(pathToFileURL(join(dir, 'home.mjs')).href)) as { page: PageFn };
   return mod.page;
 }

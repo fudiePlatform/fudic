@@ -32,6 +32,7 @@ import { entryHalf, entryMoving, isReactiveRoute } from './level.js';
 import { cellNameAt, lines, withCells, writeClosure } from './client.js';
 import { composePage, holeContent, type ComposeItem } from './compose.js';
 import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
+import { projectAdoptOf } from './project-styles.js';
 import type { DocumentGraph } from './resolve.js';
 import type { RouteDocument, PageDocument } from '../document/index.js';
 import type { Diagnostic } from '../types/index.js';
@@ -146,6 +147,7 @@ function buildRouteClientModule(
     signals: entryReactiveScope(half),
     moving: entryMoving(code),
     styled: styledTags(graph),
+    projectAdopt: projectAdoptOf(options.projectStyles),
   };
   const delegation = planDelegation(source, roots, templateDelegationJs(code.template));
   emitDiagnostics.push(...delegation.diagnostics);

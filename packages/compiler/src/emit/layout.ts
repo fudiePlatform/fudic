@@ -32,6 +32,7 @@ import { hasDependencyInjection } from './di.js';
 import { needsRuntime, routeBlocksOf, writeMapConstants, writeHydrationBlocks } from './maps.js';
 import type { DocumentGraph, ResolvedLayout } from './resolve.js';
 import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
+import { projectAdoptOf, renderProjectStyles } from './project-styles.js';
 import { codeOfDocument, type Prop } from './oxc-code.js';
 import { layoutCodeOf, requiredLayoutProps, unresolvedLayoutProps } from './layout-code.js';
 import { NO_SIGNALS, writeElementAttrs } from './attrs.js';
@@ -152,6 +153,7 @@ function buildLayoutModule(
     hydratable: hydratableTags(graph),
     formAssociated: formAssociatedTags(graph),
     styled: styledTags(graph),
+    projectAdopt: projectAdoptOf(options.projectStyles),
   });
   em.emitChildren(doc.body.children, '$body');
 
@@ -258,6 +260,11 @@ function buildRouteModule(
   // the names `@client` declares have to EXIST here, or a `@count()` in the markup is a
   // `ReferenceError` that takes the whole prerender with it (§1.1).
   const code = codeOfDocument(source, route);
+  // The project's guide (SDD-42), built before anything flushes the linker's imports —
+  // compacting a sheet can register one, and a binding imported after the flush is a
+  // module that does not parse.
+  const projectStylesLine = renderProjectStyles(options.projectStyles, linker);
+  const projectAdopt = projectAdoptOf(options.projectStyles);
 
   const hydratable = hydratableTags(graph);
   const formAssociated = formAssociatedTags(graph);
@@ -280,6 +287,7 @@ function buildRouteModule(
     ioc,
     formAssociated,
     styled,
+    projectAdopt,
   });
   em.emitChildren(route.markup, PARENT);
 
@@ -297,6 +305,7 @@ function buildRouteModule(
     ioc,
     formAssociated,
     styled,
+    projectAdopt,
   });
   for (const section of route.sections as readonly SectionNode[]) {
     if (section.name === '') continue;
@@ -311,7 +320,7 @@ function buildRouteModule(
   if (route.head !== undefined) {
     writeHeadElements(source, route.head, { skip: new Set<HtmlContent>(), linker }, headW);
   }
-  writeSharedHead(headW, styled.size > 0);
+  writeSharedHead(headW, styled.size > 0, projectStylesLine !== null);
 
 
   const w = new CodeWriter();
@@ -335,8 +344,11 @@ function buildRouteModule(
   writeEntryImports(w, code);
   w.line('');
   w.line(`const COMPONENTS = [${componentPairs(graph, styled).join(', ')}];`);
+  if (projectStylesLine !== null) w.line(projectStylesLine);
   // The MINIFIED form: it is inline in every page's head, once per page (BUG-07 §4.3).
-  if (styled.size > 0) w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL_MIN)};`);
+  if (styled.size > 0 || projectStylesLine !== null) {
+    w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL_MIN)};`);
+  }
   // The maps belong to the ROUTE and not to the layout, and that is not a placement choice:
   // `resolveDocument(route)` reaches the components of the whole chain — the layout's own
   // included — while a layout module is emitted from its own graph and cannot see the

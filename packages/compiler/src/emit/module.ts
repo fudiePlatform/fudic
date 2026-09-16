@@ -47,20 +47,11 @@ import {
   writeRuntimeTags,
   writeSharedHead,
 } from './parts.js';
-
-/**
- * A stylesheet the project adopts into every shadow root it owns (SDD-42 §4.1).
- *
- * It arrives READ. The compiler never touches a filesystem, so who turns a `styles` entry
- * of `fudic.json` into one of these is the host — the plugin, `fudic check` — exactly as it
- * already does for a component's linked assets.
- */
-export interface ProjectStyle {
-  /** The module-map specifier: `_<basename>`, impossible as a tag (SDD-42 §4.3). */
-  readonly specifier: string;
-  /** The CSS as written. It goes through the same minification a component's does. */
-  readonly css: string;
-}
+import {
+  projectAdoptOf,
+  renderProjectStyles,
+  type ProjectStyle,
+} from './project-styles.js';
 
 /**
  * Emit options. `importExt` is the extension used for sibling module imports: `.mjs`
@@ -116,7 +107,7 @@ export interface EmitOptions {
   readonly routeName?: string;
 }
 
-export type { ComponentSpecifier, LayoutSpecifier };
+export type { ComponentSpecifier, LayoutSpecifier, ProjectStyle };
 
 /**
  * A module's emitted text plus its output↔source mappings (SDD-19 §4.6) and the linkable
@@ -276,6 +267,7 @@ function buildComponentModule(
     controls,
     formAssociated: formAssociatedTags(graph),
     styled: styledTags(graph),
+    projectAdopt: projectAdoptOf(options.projectStyles),
   });
   // The host's own attributes FIRST, so `$host` is declared before anything below could read
   // it — and inside the markup body, which `appendWriter` puts after the props, the inert
@@ -461,6 +453,9 @@ function buildPageModule(
   // imports, and every component of the graph is rendered whether or not it is styled.
   const styled = styledTags(graph);
   const styledComps = comps.filter((c) => styled.has(c.tag));
+  // The project's guide (SDD-42), built here — before the body codegen and long before the
+  // linker's imports are flushed — because compacting it can register an asset import.
+  const projectStylesLine = renderProjectStyles(options.projectStyles, linker);
 
   // Body codegen.
   const hydratable = hydratableTags(graph);
@@ -482,6 +477,7 @@ function buildPageModule(
     ioc: hasDi ? '$root' : '$ioc',
     formAssociated: formAssociatedTags(graph),
     styled,
+    projectAdopt: projectAdoptOf(options.projectStyles),
   });
   em.emitChildren(page.body.children, '$body');
 
@@ -528,8 +524,12 @@ function buildPageModule(
   writeEntryImports(w, code); // the neutral zone's, hoisted (decision 33.c)
   w.line('');
   w.line(`const COMPONENTS = [${styledComps.map((c) => `{ tag: ${renderName(c.tag)}Tag, css: ${renderName(c.tag)}Css }`).join(', ')}];`);
+  // The project's guide (SDD-42), hoisted once per document like a component's sheet.
+  if (projectStylesLine !== null) w.line(projectStylesLine);
   // The MINIFIED form: it is inline in every page's head, once per page (BUG-07 §4.3).
-  if (styledComps.length > 0) w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL_MIN)};`);
+  if (styledComps.length > 0 || projectStylesLine !== null) {
+    w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL_MIN)};`);
+  }
   const maps = writeMapConstants(w, graph, hydratable, blocks?.name);
   w.line('');
   // Streaming a trozos (SDD-19 §4.3): a generator that yields the <head> FIRST, then the
@@ -550,7 +550,7 @@ function buildPageModule(
   writeEntryCode(w, code);
   w.line("let head = '';");
   w.appendWriter(headW);
-  writeSharedHead(w, styledComps.length > 0);
+  writeSharedHead(w, styledComps.length > 0, projectStylesLine !== null);
   // No whitespace in the skeleton (BUG-07 §4.2). Between the doctype, `<html>`, `<head>`
   // and its elements there is no context where a newline or an indent renders: the HTML
   // parser drops it before the tree is built. It is the free half of this BUG.
