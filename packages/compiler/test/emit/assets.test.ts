@@ -72,3 +72,77 @@ describe('emitComponentModule — linkAssets off (default)', () => {
     expect(src).toContain('url(./bg.png)');
   });
 });
+
+/**
+ * BUG-40 §3.1: with a resolver, the emit writes the published URL and registers NO import.
+ *
+ * An import asks the bundler what a file MEANS, and the answer depends on the extension —
+ * a `.css` is a stylesheet with no default export, and the build dies — and on which of the
+ * three passes is asking, because a bundler's asset hash is a property of the bundle. The
+ * host knows the one answer, so it is asked for it.
+ */
+describe('emitComponentModule — the host names the asset', () => {
+  const asked: string[] = [];
+  const src = (() => {
+    const io = memoryIo({
+      '/home.fud':
+        '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
+      '/m.fud':
+        '<m-el>\n  <template shadowrootmode="open">' +
+        '<img src="./logo.png">' +
+        '<img src="https://cdn/x.png">' +
+        '<link rel="stylesheet" href="./theme.css">' +
+        '</template>\n</m-el>\n' +
+        '<head><style>.x{ background: url(./bg.png) }</style>',
+    });
+    const g = resolveComponents('/home.fud', io);
+    return emitComponentModule(g, g.components.get('m-el')!, {
+      linkAssets: true,
+      assetUrl: (spec) => {
+        asked.push(spec);
+        return `/assets/${spec.replace(/^\.\//u, '').replace('.', '-Hs8')}`;
+      },
+    });
+  })();
+
+  it('writes the URL as a literal and imports nothing at all', () => {
+    expect(src).not.toContain('__fudic_asset_');
+    expect(src).not.toContain('import ');
+    expect(src).toContain('$dom.setAttr($n0, "src", "/assets/logo-Hs8png");');
+  });
+
+  it('names a stylesheet too — the import that used to kill the build', () => {
+    expect(src).toContain('"/assets/theme-Hs8css"');
+  });
+
+  it('reaches inside the CSS as well, so one file cannot get two names', () => {
+    expect(src).toContain('url(${"/assets/bg-Hs8png"})');
+  });
+
+  it('is never asked about a URL that is already final', () => {
+    expect(asked).not.toContain('https://cdn/x.png');
+  });
+});
+
+describe('AssetLinker.filePath', () => {
+  it('is the file a specifier names, without the instruction to the bundler', () => {
+    // `theme.css?url` is a real file asked for in a particular way. Answering "not found"
+    // to it reports a missing asset that is sitting right there.
+    expect(AssetLinker.filePath('./theme.css?url')).toBe('./theme.css');
+    expect(AssetLinker.filePath('./logo.png')).toBe('./logo.png');
+  });
+
+  it('is what the existence check is asked about, and what FUD0363 names', () => {
+    const linker = new AssetLinker(true, (file) => file === './there.css');
+    expect(linker.maybeRef('./there.css?url')).toBe('__fudic_asset_0');
+    expect(linker.maybeRef('./gone.css?url')).toBeNull();
+    expect(linker.missing()).toEqual(['./gone.css']);
+  });
+
+  it('registers one import per specifier, however many times it is referenced', () => {
+    const linker = new AssetLinker(true);
+    expect(linker.maybeRef('./logo.png')).toBe('__fudic_asset_0');
+    expect(linker.maybeRef('./logo.png')).toBe('__fudic_asset_0');
+    expect(linker.imports()).toEqual(['import __fudic_asset_0 from "./logo.png";']);
+  });
+});

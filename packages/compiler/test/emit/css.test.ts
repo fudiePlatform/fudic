@@ -135,24 +135,31 @@ describe('BUG-08 §6.5 — the emitted CSS is equivalent to the source CSS', () 
   });
 });
 
-describe('BUG-08 §6.3 — the CSS comments survive', () => {
+describe('BUG-08 §6.3 / BUG-40 §6.11 — the licence survives, the prose does not', () => {
   const io = memoryIo({
     '/home.fud':
       '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
     '/m.fud':
-      '<head>\n  <style>\n    /*! (c) keep   me */\n    .a { color: red; }\n  </style>\n</head>\n\n' +
+      '<head>\n  <style>\n    /*! (c) keep   me */\n    /* the card, for whoever opens this */\n' +
+      '    .a { color: red; }\n  </style>\n</head>\n\n' +
       '<m-el>\n  <template shadowrootmode="open"><span></span></template>\n</m-el>\n',
   });
   const g = resolveComponents('/home.fud', io);
   const css = emittedCss(emitComponentModule(g, g.components.get('m-el')!));
 
   it('keeps a banner comment, with the whitespace inside it', () => {
-    // Dropping comments is a SECOND decision (§4.3): it changes what the author wrote and
-    // it takes the licence with it. Compacting whitespace is one the browser already makes.
+    // The mark is what makes dropping the rest safe: a licence has to reach whoever
+    // downloads the file, and a build that strips one cannot ship what it was given.
     expect(css).toContain('/*! (c) keep   me */');
   });
 
-  it('compacts around it all the same', () => {
+  it('drops a comment written for whoever opens the file', () => {
+    // BUG-08 §4.3 left this as a SECOND decision; BUG-40 §4.6 takes it. What this CSS
+    // becomes is what a browser downloads, once per document and per component sheet.
+    expect(css).not.toContain('the card');
+  });
+
+  it('compacts around them all the same', () => {
     expect(css).toContain('.a{color:red;}');
   });
 });
