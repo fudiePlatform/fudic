@@ -18,16 +18,13 @@
 
 <head>
   <style>
-    :host {
-      display: block;
-    }
     form {
       display: grid;
-      gap: 0.75rem;
-      border: 1px solid #dcdcdc;
-      border-radius: 10px;
+      gap: var(--gap);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-box);
       padding: 1.1rem;
-      background: white;
+      background: var(--surface);
       margin-bottom: 1rem;
     }
     label {
@@ -35,19 +32,15 @@
     }
     input {
       font: inherit;
-      padding: 0.4rem 0.6rem;
-      border: 1px solid #dcdcdc;
-      border-radius: 6px;
+      padding: var(--pad-field);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
     }
     button {
-      font: inherit;
       justify-self: start;
-      padding: 0.4rem 0.9rem;
-      border: 1px solid #1a73e8;
-      border-radius: 6px;
-      background: #1a73e8;
+      border-color: var(--brand);
+      background: var(--brand);
       color: white;
-      cursor: pointer;
     }
     [data-fud-err],
     [data-fud-sum] {

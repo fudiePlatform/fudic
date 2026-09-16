@@ -35,7 +35,7 @@ describe('findProjectConfigs', () => {
     const fs = new MemoryFs({ 'fudic.json': config({ id: 'solo' }) }, ROOT);
 
     expect(findProjectConfigs(ROOT, fs)).toEqual([
-      { dir: '.', config: { id: 'solo', kind: 'app', prefix: '' } },
+      { dir: '.', config: { id: 'solo', kind: 'app', prefix: '', styles: [] } },
     ]);
   });
 

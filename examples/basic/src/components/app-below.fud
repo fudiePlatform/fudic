@@ -13,22 +13,8 @@
   }
 }
 
-<head>
-  <style>
-    :host {
-      display: block;
-    }
-    button {
-      font: inherit;
-      padding: 0.5rem 1rem;
-      border: 1px solid #dcdcdc;
-      border-radius: 6px;
-      background: white;
-      cursor: pointer;
-    }
-  </style>
-</head>
-
+@* Sin `<head>` y sin una sola regla: el bloque y el botón neutro los pone la guía del
+   proyecto, y este componente adopta esa hoja aunque no traiga CSS propio. *@
 <app-below>
   <template shadowrootmode="open">
     <button class="look" @click=@look>Bajo el pliegue: <span class="value">@seen()</span></button>

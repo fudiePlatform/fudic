@@ -33,6 +33,11 @@ export default defineConfig({
         lines: 80,
         functions: 80,
         branches: 75,
+        // New code is born at 100 (CLAUDE.md), and it stays there. The project style guide
+        // on its way into a document, and the reading that says a rule of it will match
+        // nothing where it is going (SDD-42).
+        'src/emit/project-styles.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/emit/styles-lint.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
       },
     },
   },

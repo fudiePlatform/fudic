@@ -1,7 +1,14 @@
 /**
  * SDD-19 §6.13: a literal `src` to a file that does not exist raises FUD0363 as a warning
  * and is left as a literal — the build completes (does not abort). A sibling asset that
- * does exist is still linked and emitted hashed, proving only the missing one is skipped.
+ * does exist is still linked, proving only the missing one is skipped.
+ *
+ * Since BUG-40 the shape a linked asset takes is the HOST's decision and not the bundler's:
+ * under 4096 bytes it travels as a `data:` URI, over it as a published file, and
+ * `build.assetsInlineLimit` no longer reaches it — the whole point being that three passes
+ * over one `.fud` cannot be allowed to answer differently. So what is asserted here is that
+ * the sibling was LINKED, which is the fact this test is about, and not which of the two
+ * shapes the threshold gave it.
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
@@ -50,7 +57,6 @@ beforeAll(async () => {
     build: {
       write: false,
       minify: false,
-      assetsInlineLimit: 0,
       rollupOptions: { onwarn: (w: Rollup.RollupLog) => warnings.push(w.message) },
     },
   })) as unknown as { output: OutFile[] };
@@ -66,7 +72,9 @@ describe('vite build — missing asset (FUD0363)', () => {
   it('leaves the missing URL as a literal but links the existing asset', () => {
     const code = allCode(output);
     expect(code).toContain('"./missing.png"'); // kept as a literal (not an import → no abort)
-    const present = output.find((o) => o.type === 'asset' && /present-[\w-]+\.png$/u.test(o.fileName));
-    expect(present).toBeDefined(); // the existing sibling WAS linked and emitted hashed
+    // The sibling is gone from the output as the author wrote it, which is what "linked"
+    // means: only the missing one was skipped.
+    expect(code).not.toContain('"./present.png"');
+    expect(code).toContain('data:image/png;base64,');
   });
 });

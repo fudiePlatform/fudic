@@ -46,3 +46,16 @@ export const FUD_ORPHAN_LAYOUT = 'FUD0434';
 export const FUD_PRERENDER_FAILED = 'FUD0620';
 /** A route's chunk name collides with a component tag: two files, one name (§3.5). */
 export const FUD_ROUTE_NAME_COLLISION = 'FUD0622';
+
+// SDD-42 (FUD0740–FUD0759): the project style guide. The other three of that range belong
+// to `@fudic/config`, which owns the field; this one is the BUILD's, because it is the only
+// place that knows the whole project.
+/**
+ * The project declares `styles` and defines no component of its own: nothing adopts the
+ * sheet (SDD-42 §5).
+ *
+ * A warning and a build that finishes, because a project with no components yet is what
+ * every project looks like on its first day — and it carries no span, because what it is
+ * about is the absence of files.
+ */
+export const FUD_STYLES_NOT_ADOPTED = 'FUD0742';

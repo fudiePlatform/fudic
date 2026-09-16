@@ -18,9 +18,17 @@ export {
   FUD_CONFIG_ID_REQUIRED,
   FUD_CONFIG_LIB_WITH_DEPLOYMENT,
   FUD_CONFIG_MALFORMED,
+  FUD_STYLE_NOT_FOUND,
+  FUD_STYLE_SPECIFIER_CLASH,
   type ConfigDiagnostic,
   type Span,
 } from './diagnostics.js';
+export {
+  readProjectStyles,
+  specifierOf,
+  type ProjectStyleFile,
+  type ProjectStylesResult,
+} from './styles.js';
 export {
   readProjectConfig,
   type ConfigIo,

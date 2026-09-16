@@ -16,16 +16,9 @@
 
 <head>
   <style>
-    :host {
-      display: block;
-    }
     .panel {
       display: grid;
       gap: 0.5rem;
-      border: 1px solid #dcdcdc;
-      border-radius: 10px;
-      padding: 1rem 1.15rem;
-      background: white;
     }
     ul {
       margin: 0;

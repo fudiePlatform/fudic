@@ -13,17 +13,14 @@
 
 <head>
   <style>
-    :host {
-      display: block;
-    }
     form {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 0.6rem;
-      border: 1px solid #dcdcdc;
-      border-radius: 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-box);
       padding: 1.1rem;
-      background: white;
+      background: var(--surface);
     }
     label {
       display: grid;
@@ -34,8 +31,8 @@
     input {
       font: inherit;
       padding: 0.35rem 0.5rem;
-      border: 1px solid #dcdcdc;
-      border-radius: 6px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
       min-width: 0;
     }
     [data-fud-err],
@@ -52,15 +49,11 @@
       border-color: #b3261e;
     }
     button {
-      font: inherit;
       grid-column: 1 / -1;
       justify-self: start;
-      padding: 0.4rem 0.9rem;
-      border: 1px solid #1a73e8;
-      border-radius: 6px;
-      background: #1a73e8;
+      border-color: var(--brand);
+      background: var(--brand);
       color: white;
-      cursor: pointer;
     }
   </style>
 </head>

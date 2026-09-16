@@ -22,30 +22,14 @@
 
 <head>
   <style>
-    :host {
-      display: block;
-    }
     .panel {
       display: grid;
       gap: 0.9rem;
-      border: 1px solid #dcdcdc;
-      border-radius: 10px;
-      padding: 1rem 1.15rem;
-      background: white;
-    }
-    .row {
-      display: flex;
-      gap: 0.6rem;
-      align-items: center;
     }
     button {
-      font: inherit;
-      padding: 0.35rem 0.8rem;
-      border: 1px solid #1a73e8;
-      border-radius: 6px;
-      background: #1a73e8;
+      border-color: var(--brand);
+      background: var(--brand);
       color: white;
-      cursor: pointer;
     }
     .valor {
       font-size: 1.4rem;

@@ -9,8 +9,7 @@
 <head>
   <style>
     :host {
-      display: block;
-      margin-top: 0.75rem;
+      margin-top: var(--gap);
     }
     .form {
       display: flex;
@@ -22,12 +21,8 @@
       background: #fffaf0;
     }
     .save {
-      font: inherit;
-      padding: 0.35rem 0.8rem;
-      border: 1px solid #e0a800;
-      border-radius: 6px;
+      border-color: #e0a800;
       background: #ffc107;
-      cursor: pointer;
     }
     .hint {
       margin: 0;

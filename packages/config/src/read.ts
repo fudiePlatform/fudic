@@ -30,6 +30,17 @@ export interface ProjectConfig {
    * and that is a choice, not a mistake (§4.4).
    */
   readonly prefix: string;
+  /**
+   * The stylesheets this project adopts into the shadow roots of ITS OWN components
+   * (SDD-42 §3.1). Paths relative to the project root, in adoption order. `[]` when the
+   * file declares none, which is every project that existed before SDD-42.
+   *
+   * The order is contract, not a detail: it is the cascade. The project's sheets go in
+   * front of the component's own, so the guide defines and the component adjusts — the
+   * other way round, a component could not override the guide without raising
+   * specificity, which is how a style guide becomes unmanageable.
+   */
+  readonly styles: readonly string[];
 }
 
 export interface ConfigResult {
@@ -89,13 +100,41 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
     ctx,
   );
 
+  const styles = readStringArray(fields, 'styles', ctx);
+
   // Fields are NOT rescued one by one (§4.2). Identity is a unit, and half an identity is
   // worse than none: an `id` that got through alone would namespace caches under a name
   // the next build, with the file fixed, would not use.
   if (ctx.diagnostics.length > 0) {
     return { config: null, diagnostics: ctx.diagnostics };
   }
-  return { config: { id, kind, prefix }, diagnostics: [] };
+  return { config: { id, kind, prefix, styles }, diagnostics: [] };
+}
+
+/**
+ * An absent array is `[]`; a present one has to be an array of strings.
+ *
+ * The strings are not validated as paths here, and that is the split of SDD-42: what a
+ * path means needs a filesystem, and this reader has none beyond the one file it was given.
+ * Whether the file exists (`FUD0740`) and whether two of them collide (`FUD0741`) is
+ * `readProjectStyles`, which is handed an `io`.
+ */
+function readStringArray(
+  fields: Record<string, unknown>,
+  field: string,
+  ctx: Ctx,
+): readonly string[] {
+  const value = fields[field];
+  if (value === undefined) {
+    return [];
+  }
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) {
+    ctx.diagnostics.push(
+      malformed(`"${field}" must be an array of strings`, fieldSpan(ctx.text, field)),
+    );
+    return [];
+  }
+  return value as readonly string[];
 }
 
 /** An absent field is its default; a present one has to be a string of the right shape. */

@@ -5,7 +5,7 @@
 
 export { CodeWriter } from './writer.js';
 export type { Anchor, EmitMapping, MappedPart, LinePart } from './writer.js';
-export { AssetLinker, type AssetExists } from './assets.js';
+export { AssetLinker, type AssetExists, type AssetUrl } from './assets.js';
 export {
   resolveComponents,
   resolveDocument,
@@ -30,7 +30,13 @@ export {
   type LayoutSpecifier,
   type EmitOptions,
   type EmitOutput,
+  type ProjectStyle,
 } from './module.js';
+export {
+  lintProjectStyle,
+  FUD_DOCUMENT_ONLY_SELECTOR,
+} from './styles-lint.js';
+export { compactProjectCss } from './project-styles.js';
 export {
   emitComponentClientModule,
   emitComponentClientModuleMapped,

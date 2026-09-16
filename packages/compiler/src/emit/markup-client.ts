@@ -60,6 +60,7 @@ import {
 } from './attrs.js';
 import { branchesOf } from './constructs.js';
 import { isControlNode, markerSite } from './marker.js';
+import { adoptListOf } from './project-styles.js';
 import { bodyContext, childrenContext, type RunContext } from './display.js';
 import { emitItems, type EmitItem, type TextRun } from './runs.js';
 import type { Prop } from './oxc-code.js';
@@ -267,6 +268,15 @@ export interface ClientScope {
    * condition — a marker on one side and not the other is a tree `h` would not recognise.
    */
   readonly styled: ReadonlySet<string>;
+  /**
+   * The project's sheet specifiers, joined, in front of the component's own (SDD-42 §4.1).
+   * The same string the server branch writes: a host that hydrates adopting a different
+   * list than it rendered with is a component that changes appearance on hydration.
+   *
+   * Required for the same reason `styled` is — it is a fact about the project, and the two
+   * branches have to answer it identically.
+   */
+  readonly projectAdopt: string;
 }
 
 /** One slot of a child's positional payload: the expression, and where it can move from. */
@@ -824,8 +834,9 @@ export class ClientMarkupEmitter {
       // `data-fud-adopt` carries the style specifier the shared sheet is keyed by (SDD-18 D-6),
       // and only for a child that HAS a sheet (BUG-31 §T4) — the same condition the server
       // branch applies, because both write the same host.
-      if (this.#scope.styled.has(el.name)) {
-        this.#fab.line(`$dom.setAttr(${v}, 'data-fud-adopt', ${JSON.stringify(el.name)});`);
+      const adopt = adoptListOf(this.#scope.projectAdopt, el.name, this.#scope.styled.has(el.name));
+      if (adopt !== '') {
+        this.#fab.line(`$dom.setAttr(${v}, 'data-fud-adopt', ${JSON.stringify(adopt)});`);
       }
       // The host's own attributes, same as the server writes them (BUG-16 §4.1): the two
       // branches have to agree byte for byte, or `h` adopts a tree it does not recognise.

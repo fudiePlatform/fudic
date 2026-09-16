@@ -41,15 +41,6 @@
 
 <head>
   <style>
-    :host {
-      display: block;
-    }
-    .panel {
-      border: 1px solid #dcdcdc;
-      border-radius: 10px;
-      padding: 0.9rem 1.1rem;
-      background: white;
-    }
     .grid {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
@@ -71,13 +62,10 @@
       border-color: #e8710a;
     }
     .cell button {
-      font: inherit;
       font-size: 0.7rem;
       padding: 0 0.3rem;
-      border: 1px solid #dcdcdc;
       border-radius: 4px;
       background: #fafafa;
-      cursor: pointer;
     }
     .bar {
       display: flex;
@@ -86,13 +74,9 @@
       flex-wrap: wrap;
     }
     .bar button {
-      font: inherit;
-      padding: 0.35rem 0.8rem;
-      border: 1px solid #e8710a;
-      border-radius: 6px;
+      border-color: #e8710a;
       background: #e8710a;
       color: white;
-      cursor: pointer;
     }
     output {
       font-weight: 500;

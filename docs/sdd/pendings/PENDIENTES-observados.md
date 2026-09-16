@@ -22,6 +22,7 @@
 | 2 | Un import map en el head de una **ruta** llega tarde y el navegador lo ignora | BUG-29 | Abierto |
 | 3 | Dos specs de dev server de `@fudic/vite` fallan de forma intermitente en `pnpm test` | SDD-37 | Abierto |
 | 4 | El e2e usa **puertos fijos** y `reuseExistingServer`, así que dos worktrees se miden entre sí sin avisar | SDD-37 y SDD-38, a la vez | Abierto |
+| 5 | Un `<link rel="component">` dentro del `<head>` de una **ruta con layout** ni registra el componente ni se borra: sale al documento, y desde BUG-40 sale con el `.fud` entero en base64 | BUG-40 | Abierto |
 
 ---
 
@@ -151,3 +152,50 @@ estar escrito en la config —una variable de entorno con `process.env.PORT ?? �
 derivado del nombre del worktree— y que `reuseExistingServer` deje de dar por bueno cualquier
 proceso que ya escuche ahí. Mientras tanto, y como apaño: puertos desplazados a mano en la
 rama que llegue segunda, revertidos al terminar.
+
+---
+
+## 5. Un `<link rel="component">` en el `<head>` de una ruta con layout sale al documento
+
+**Visto:** 2026-09-16, escribiendo la tanda de tests de
+[BUG-40](../bugs/BUG-40-una-hoja-que-no-se-puede-enlazar.md). No es de BUG-40 ni de SDD-42.
+
+**Síntoma.** Una ruta **fragmento** —la que declara `<link rel="layout">`— que escribe su
+enlace de componente dentro de su propio `<head>`:
+
+```html
+<link rel="layout" href="../layouts/_layout.fud">
+<head><link rel="component" href="../components/s-hero.fud"><title>Inicio</title></head>
+<s-hero></s-hero>
+```
+
+produce esta página pregenerada:
+
+```html
+… <link rel="component" href="data:application/octet-stream;base64,PGhlYWQ+PHN0eWxl…"> …
+<s-hero></s-hero>
+```
+
+Dos cosas, y la segunda es peor que la primera. **El componente no se registra**: `<s-hero>`
+sale vacío, sin su `<template shadowrootmode>`, así que el enlace no ha hecho lo que el autor
+creía. Y **el enlace no se borra**, así que se queda en el documento como un asset más — y
+desde BUG-40, con el asset ya resuelto por el host, eso significa el **fichero `.fud` entero
+en base64 dentro de cada página**: el código fuente del componente, servido al navegador.
+
+Escrito en el sitio canónico —al nivel superior del fichero, como lo escribe
+`examples/basic`— todo funciona. Es solo la forma de dentro del `<head>`, y solo en una ruta
+fragmento.
+
+**Causa, localizada.** Una página completa pasa sus enlaces de framework en el conjunto
+`skip` para que `writeHeadElements` no los emita
+([`emit/module.ts:523`](../../../packages/compiler/src/emit/module.ts)). Una ruta fragmento
+pasa `skip: new Set()` — vacío
+([`emit/layout.ts:329`](../../../packages/compiler/src/emit/layout.ts)). Ese es el bug
+entero.
+
+**Por dónde seguir.** Hay que decidir dos cosas, y son independientes: si un
+`<link rel="component">` ahí **registra** el componente (y entonces el resolutor de la ruta
+tiene que mirar también su `<head>`), o si **no es una forma válida** y merece un
+diagnóstico. Lo que no puede seguir siendo es lo de hoy: no hace nada y además se publica.
+Sea cual sea la respuesta, el enlace no sale al documento, y eso se arregla en la misma línea
+de `layout.ts`.

@@ -17,6 +17,7 @@
 
 import { existsSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
+import { assetUrlFrom, type LinkedAssets } from './linked-assets.js';
 import {
   resolveDocument,
   contractDiagnostics,
@@ -38,6 +39,7 @@ import {
   type ResolvedComponent,
   type ResolvedLayout,
   type EmitOutput,
+  type ProjectStyle,
   type SourceMapV3,
 } from '@fudic/compiler';
 
@@ -85,14 +87,33 @@ function buildMap(id: string, source: string, out: EmitOutput): SourceMapV3 {
   return builder.build();
 }
 
+/**
+ * The project's stylesheets, already read (SDD-42 §3.2).
+ *
+ * It travels through every emit path of the build — the host transform, the client chunk,
+ * the edge pass and the link pass — because the three ways of rendering a route have to
+ * produce the same document, and a sheet missing from one of them is exactly the kind of
+ * difference nobody sees until a page renders unstyled in one shape only.
+ */
+export type ProjectStyles = readonly ProjectStyle[];
+
 /** The emit options for one `.fud`: asset linking and the injected specifiers. */
-function emitOptionsFor(id: string, routeName?: string): Parameters<typeof emitPageModuleMapped>[1] {
+function emitOptionsFor(
+  id: string,
+  routeName: string | undefined,
+  styles: ProjectStyles,
+  assets: LinkedAssets | undefined,
+): Parameters<typeof emitPageModuleMapped>[1] {
   // A linkable asset exists when it resolves to a real file next to the `.fud` (§6.13).
   const baseDir = dirname(id);
   return {
     importExt: IMPORT_EXT,
     linkAssets: true,
     assetExists: (spec: string): boolean => existsSync(resolve(baseDir, spec)),
+    // And its URL is the host's to decide, once for the whole build (BUG-40). Absent only
+    // for a caller that has no registry — then the emit falls back to an import, which is
+    // the pre-BUG-40 behaviour and what the standalone emit does.
+    ...(assets === undefined ? {} : { assetUrl: assetUrlFrom(assets, baseDir) }),
     // The compiler is filesystem-free and would emit the sibling default `./<tag>.fud`;
     // here the real path is known, so a component may live outside the importer's
     // directory (`components/app-card.fud` linked from `routes/blog/index.fud`).
@@ -105,6 +126,10 @@ function emitOptionsFor(id: string, routeName?: string): Parameters<typeof emitP
     // and has never heard of a URL pattern. Absent for anything that is not a built route,
     // and then the page publishes no `fud-route` block and claims no id.
     ...(routeName === undefined ? {} : { routeName }),
+    // Omitted when the project declares none, rather than passed empty: an absent option is
+    // what the standalone emit and every pre-SDD-42 project look like, and the emit's own
+    // default is what keeps their output byte for byte the same.
+    ...(styles.length === 0 ? {} : { projectStyles: styles }),
   };
 }
 
@@ -113,6 +138,8 @@ export function transformFud(
   id: string,
   io: ResolveIo,
   routeName?: string,
+  styles: ProjectStyles = [],
+  assets?: LinkedAssets,
 ): TransformResult | null {
   if (!id.endsWith('.fud')) {
     return null;
@@ -123,7 +150,7 @@ export function transformFud(
   const graph = resolved.value;
   const entry = graph.entry;
   const source = graph.entrySource;
-  const out = emitFor(id, graph, emitOptionsFor(id, routeName));
+  const out = emitFor(id, graph, emitOptionsFor(id, routeName, styles, assets));
   return {
     code: out.code,
     map: buildMap(id, redactServerRegions(source, entry.code), out),
@@ -158,7 +185,12 @@ export function transformFud(
  * `null` for a LAYOUT, whose markup is static in this version (SDD-39 §7), and for a route
  * with no client half — which is the base case and the reason a level-1 page costs nothing.
  */
-export function transformFudClient(id: string, io: ResolveIo): TransformResult | null {
+export function transformFudClient(
+  id: string,
+  io: ResolveIo,
+  styles: ProjectStyles = [],
+  assets?: LinkedAssets,
+): TransformResult | null {
   if (!id.endsWith('.fud')) {
     return null;
   }
@@ -166,7 +198,7 @@ export function transformFudClient(id: string, io: ResolveIo): TransformResult |
   const graph = resolved.value;
   const entry = graph.entry;
   if (entry.type === 'route-document' || entry.type === 'page-document') {
-    return routeClientResult(id, graph, resolved.diagnostics);
+    return routeClientResult(id, graph, styles, resolved.diagnostics, assets);
   }
   if (entry.type !== 'component-document') {
     return null;
@@ -174,7 +206,11 @@ export function transformFudClient(id: string, io: ResolveIo): TransformResult |
   // `entryComponent` and not a literal of the same fields: `ExtractedCode` is memoized on
   // the object, so a second one would be a second Oxc invocation for one file.
   const comp = entryComponent(graph)!;
-  const out = emitComponentClientModuleMapped(graph, comp, emitOptionsFor(id));
+  const out = emitComponentClientModuleMapped(
+    graph,
+    comp,
+    emitOptionsFor(id, undefined, styles, assets),
+  );
   return {
     code: out.code,
     map: buildMap(id, redactServerRegions(graph.entrySource, entry.code), out),
@@ -190,9 +226,11 @@ export function transformFudClient(id: string, io: ResolveIo): TransformResult |
 function routeClientResult(
   id: string,
   graph: DocumentGraph,
+  styles: ProjectStyles,
   graphDiagnostics: readonly Diagnostic[],
+  assets: LinkedAssets | undefined,
 ): TransformResult | null {
-  const out = emitRouteClientModuleMapped(graph, emitOptionsFor(id));
+  const out = emitRouteClientModuleMapped(graph, emitOptionsFor(id, undefined, styles, assets));
   if (out === null) {
     return null;
   }
