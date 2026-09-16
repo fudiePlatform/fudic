@@ -45,3 +45,17 @@ export const FUD_CONFIG_LIB_WITH_DEPLOYMENT = 'FUD0723';
 
 /** Two projects of the workspace declare the same `id`. Never emitted by the plugin. */
 export const FUD_CONFIG_DUPLICATE_ID = 'FUD0724';
+
+/*
+ * The two below are SDD-42's range (`FUD0740`–`FUD0759`) and live here anyway, because
+ * what emits them is this package: they are the two things about `styles` that cannot be
+ * decided from the text of `fudic.json` alone, and they are decided by the same reader
+ * that owns the field. Splitting them into the compiler would mean a second place that
+ * knows how a `styles` entry turns into a specifier.
+ */
+
+/** A `styles` entry names a file that does not exist. Carries the path as written. */
+export const FUD_STYLE_NOT_FOUND = 'FUD0740';
+
+/** Two `styles` entries produce the same specifier: same basename, different directory. */
+export const FUD_STYLE_SPECIFIER_CLASH = 'FUD0741';

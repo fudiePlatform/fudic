@@ -3,7 +3,7 @@
 > **SDD:** [SDD-42 — La guía de estilos de una aplicación: la hoja adoptada](./SDD-42-guia-de-estilos.md)
 > **Paquetes:** `@fudic/compiler` · `@fudic/config` · `@fudic/ssr` · `@fudic/example-basic`
 > **Rama:** `sdd-42-guia-de-estilos`
-> **Progreso:** 0 / 10
+> **Progreso:** 3 / 10
 > **Bloqueado por:** [SDD-41](./SDD-41-configuracion-de-aplicacion.md) tareas 1–3 — el campo
 > `styles` cuelga de su lector. No necesita el resto de aquel SDD.
 
@@ -41,9 +41,9 @@ nada.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **El golden de hoy, congelado.** Un test que fija la salida actual de una página con componentes con y sin CSS: `<head>`, `shadowrootadoptedstylesheets`, `data-fud-adopt`, polyfill. Es la red de §5 —*sin `styles`, byte a byte lo de antes*— y **tiene que pasar en verde al final sin haberse editado**. Criterio 6 | `compiler` | `test/emit/__golden__/` · `test/emit/sin-styles.test.ts` |
-| [ ] | 2 | 1 | **`styles` en el config.** `ProjectConfig` gana `readonly styles: readonly string[]`, defecto `[]`, validado como array de strings con el resto (`FUD0720` si no lo es). Y los dos diagnósticos propios que el host comprueba al resolver: `FUD0740` (fichero inexistente) y `FUD0741` (dos basenames iguales). Criterio 10 | `config` | `src/read.ts` · `src/styles.ts` · `test/styles.test.ts` |
-| [ ] | 3 | 2 | **Las hojas llegan leídas.** `EmitOptions.projectStyles?: readonly ProjectStyle[]` y, del lado del plugin, la lectura del `fudic.json`, la resolución de cada ruta y el `specifier` `_<basename>`. **El compilador no abre un fichero**: se mide inyectando una `ResolveIo` que lanza si se le pide un `.css`. Criterio 11 | `compiler` · `vite` | `src/emit/index.ts` · `vite/src/styles.ts` |
+| [x] | 1 | — | **El golden de hoy, congelado.** Un test que fija la salida actual de una página con componentes con y sin CSS: `<head>`, `shadowrootadoptedstylesheets`, `data-fud-adopt`, polyfill. Es la red de §5 —*sin `styles`, byte a byte lo de antes*— y **tiene que pasar en verde al final sin haberse editado**. Criterio 6 | `compiler` | `test/emit/__golden__/` · `test/emit/sin-styles.test.ts` |
+| [x] | 2 | 1 | **`styles` en el config.** `ProjectConfig` gana `readonly styles: readonly string[]`, defecto `[]`, validado como array de strings con el resto (`FUD0720` si no lo es). Y los dos diagnósticos propios que el host comprueba al resolver: `FUD0740` (fichero inexistente) y `FUD0741` (dos basenames iguales). Criterio 10 | `config` | `src/read.ts` · `src/styles.ts` · `test/styles.test.ts` |
+| [x] | 3 | 2 | **Las hojas llegan leídas.** `EmitOptions.projectStyles?: readonly ProjectStyle[]` y, del lado del plugin, la lectura del `fudic.json`, la resolución de cada ruta y el `specifier` `_<basename>`. **El compilador no abre un fichero**: se mide inyectando una `ResolveIo` que lanza si se le pide un `.css`. Criterio 11 | `compiler` · `vite` | `src/emit/index.ts` · `vite/src/styles.ts` |
 
 ---
 

@@ -26,7 +26,12 @@ import { buildManifest } from './manifest.js';
 import { emitRenderChunk } from './wrapper.js';
 import { emitServerModule } from './server.js';
 import { emitBootBootstrap, emitMainBootstrap, emitSwBootstrap } from './bootstrap.js';
-import { transformFud, transformFudClient, transformFudIoc } from './transform.js';
+import {
+  transformFud,
+  transformFudClient,
+  transformFudIoc,
+  type ProjectStyles,
+} from './transform.js';
 import { eraseServerValidators } from './server-validators.js';
 import { loadWithSourceMap } from './inputmaps.js';
 import {
@@ -45,6 +50,8 @@ import { IOC_SUFFIX } from '@fudic/compiler';
 import { nodeIo } from './io.js';
 import { readSwConfig, type ResolvedSwConfig } from './swconfig.js';
 import { nodeConfigIo, readProject, type ProjectResult } from './config.js';
+import { readStyles } from './styles.js';
+import type { ConfigDiagnostic } from '@fudic/config';
 import { runLinkPass, safeName, type LinkResult } from './link.js';
 import { runEdgePass } from './edge.js';
 import { buildServiceWorker } from './swbuild.js';
@@ -152,6 +159,14 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    * `id` is FUD0721 and the build already stopped (SDD-41 §4.3).
    */
   let appId = '';
+  /**
+   * The project's stylesheets, already read (SDD-42). Every emit path of the build is
+   * handed this same list; `[]` — no `fudic.json`, or no `styles` — is byte for byte the
+   * output of before that SDD.
+   */
+  let projectStyles: ProjectStyles = [];
+  /** `FUD0740` / `FUD0741`, reported in `buildStart` alongside the config's own. */
+  let styleErrors: readonly ConfigDiagnostic[] = [];
   let writeToDisk = true;
   let resolveAlias: unknown;
   // What the nested builds inherit from the host (BUG-05 §3.1, BUG-06 §3.1). Replaced
@@ -290,6 +305,14 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // `buildStart`, which is the first hook with a context to report through.
       project = readProject(root, swConfig !== null, configIo);
       appId = project.config?.id ?? '';
+      // The project's style guide (SDD-42), read here for the same reason the id is: it is
+      // a property of the project, it is needed before anything is emitted, and every emit
+      // path of the build has to be handed the SAME list — `edge`, `sw` and `ssg` producing
+      // different stylesheets for one route is the difference nobody sees until a page
+      // renders unstyled in exactly one shape.
+      const resolvedStyles = readStyles(root, project.config, configIo);
+      projectStyles = resolvedStyles.styles;
+      styleErrors = resolvedStyles.errors;
     },
 
     configureServer(server) {
@@ -500,6 +523,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       for (const d of project.errors) {
         this.error(`[${d.code}] ${d.message}`);
       }
+      // The style guide's own (SDD-42 §5). Errors, and for the same reason: a sheet that is
+      // not there renders exactly like a sheet that did nothing.
+      for (const d of styleErrors) {
+        this.error(`[${d.code}] ${d.message}`);
+      }
 
       const discovered = discoverRoutes(root, options);
       builds = discovered.routes;
@@ -685,7 +713,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         return ioc === null ? null : (await transformWithOxc(ioc.code, `${path}.ts`, { lang: 'ts' })).code;
       }
       if (query === CLIENT_QUERY) {
-        const chunk = transformFudClient(path, io);
+        const chunk = transformFudClient(path, io, projectStyles);
         if (chunk === null) {
           return null;
         }
@@ -710,7 +738,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // publishes in `fud-route` and what the runtime derives the chunk URL from (SDD-39
       // §4.7). A component, a layout, or a route the build excluded gets none, and then the
       // page publishes no block and claims no id.
-      const result = transformFud(path, io, routeNameOf(path));
+      const result = transformFud(path, io, routeNameOf(path), projectStyles);
       if (result === null) {
         return null;
       }
@@ -754,7 +782,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       const link: LinkResult =
         swConfig === null
           ? { chunks: [], entries: new Map(), deps: new Map() }
-          : await runLinkPass(root, base, builds, io, nested);
+          : await runLinkPass(root, base, builds, io, nested, projectStyles);
       // A nested build's output is emitted as an ASSET, so nothing writes its `.map` or
       // appends its `sourceMappingURL` unless we do (BUG-05 §4.3).
       const emitWithMap = (artifact: NestedArtifact): void => {
@@ -776,7 +804,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // Written to disk in 3b, not here: an edge chunk imports the shared chunks by name and
       // those are renamed there (BUG-31 §T5), so what lands beside `outDir` — and what the
       // prerender runs — has to be the rewritten code.
-      const edge = await runEdgePass(root, base, builds, io, resolveAlias, nested);
+      const edge = await runEdgePass(root, base, builds, io, resolveAlias, nested, projectStyles);
 
       // 2. The Service Worker's own bundle: one realm, one bundle (BUG-03 §4.1). Its
       //    code still carries BUILD_TOKEN — the id is computed from it, below.

@@ -49,12 +49,35 @@ import {
 } from './parts.js';
 
 /**
+ * A stylesheet the project adopts into every shadow root it owns (SDD-42 §4.1).
+ *
+ * It arrives READ. The compiler never touches a filesystem, so who turns a `styles` entry
+ * of `fudic.json` into one of these is the host — the plugin, `fudic check` — exactly as it
+ * already does for a component's linked assets.
+ */
+export interface ProjectStyle {
+  /** The module-map specifier: `_<basename>`, impossible as a tag (SDD-42 §4.3). */
+  readonly specifier: string;
+  /** The CSS as written. It goes through the same minification a component's does. */
+  readonly css: string;
+}
+
+/**
  * Emit options. `importExt` is the extension used for sibling module imports: `.mjs`
  * for the standalone emit (build.ts / goldens), `.fud` for the Vite plugin so Vite
  * owns the module-graph resolution (SDD-19 §4.11.1).
  */
 export interface EmitOptions {
   readonly importExt?: string;
+  /**
+   * The project's own stylesheets, in adoption order (SDD-42 §3.2).
+   *
+   * They are hoisted ONCE per document and their specifiers are prepended to the adopted
+   * list of every component this project defines. Absent — the standalone emit, a golden,
+   * a project with no `styles` — and the output is byte for byte what it was before
+   * SDD-42, which is the invariant that SDD's net is built on.
+   */
+  readonly projectStyles?: readonly ProjectStyle[];
   /**
    * Rewrite static, relative asset URLs (`src`/`poster`/`<link href>`, CSS `url(…)`) to
    * ES imports Vite resolves and hashes (SDD-19 §4.5). Off by default so the standalone

@@ -30,6 +30,7 @@ export {
   type LayoutSpecifier,
   type EmitOptions,
   type EmitOutput,
+  type ProjectStyle,
 } from './module.js';
 export {
   emitComponentClientModule,
