@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/resolve` (**nuevo**) · `@fudic/vite` · `@fudic/cli` ·
 > `@fudic/language-server` · `@fudic/compiler` · `@fudic/config` (consumido, no modificado)
 > **Rama:** `sdd-43-librerias`
-> **Progreso:** 0 / 12
+> **Progreso:** 1 / 12
 > **Bloqueado por:** [SDD-41](./SDD-41-configuracion-de-aplicacion.md) — `kind: "lib"` es lo que
 > hace descubrible una librería. Conviene, no es obligatorio, tener
 > [SDD-44](./SDD-44-cli-de-workspace.md) para generar el caso de prueba en vez de escribirlo a
@@ -40,7 +40,19 @@ en paralelo.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **El informe, no el código.** Un workspace con una app y una librería, la app enlazando un componente de la librería, y las **cinco preguntas de §4.2** contestadas por escrito: ¿compone el build? ¿está en el índice? ¿`$Props` resuelve o es `any` (medido pasando una prop de tipo incorrecto)? ¿funciona el `href` relativo, y el de paquete? ¿cambia algo con el paquete instalado de verdad en vez de enlazado? Una línea por pregunta, **funciona** o **no funciona y por qué**. Al cerrar la tarea se reescribe este fichero marcando lo que ya está. Criterio 1 | — | `docs/sdd/SDD-43-medicion.md` |
+| [x] | 1 | — | **El informe, no el código.** Un workspace con una app y una librería, la app enlazando un componente de la librería, y las **cinco preguntas de §4.2** contestadas por escrito: ¿compone el build? ¿está en el índice? ¿`$Props` resuelve o es `any` (medido pasando una prop de tipo incorrecto)? ¿funciona el `href` relativo, y el de paquete? ¿cambia algo con el paquete instalado de verdad en vez de enlazado? Una línea por pregunta, **funciona** o **no funciona y por qué**. Al cerrar la tarea se reescribe este fichero marcando lo que ya está. Criterio 1 | — | `docs/sdd/SDD-43-medicion.md` |
+
+---
+
+**Resultado de la fase 1 → [SDD-43-medicion](./SDD-43-medicion.md).** Nada sale en verde
+entero: las once tareas siguen en pie. Lo que la medición cambia es el orden de importancia —
+la rama del índice (6–8) arregla un fallo que ya se puede provocar hoy con el `href` relativo,
+mientras que la de la resolución (2–5) añade una forma nueva de escribir lo mismo.
+
+**Y deja una decisión abierta que bloquea la fase 2**: `@acme/ui/card.fud` no se puede
+escribir, porque `@` abre un `@`-construct y el specifier pierde el scope antes de llegar al
+resolutor ([§4.3](./SDD-43-librerias.md) y el final del informe). Las tareas 2 y 3 se pueden
+escribir; el criterio 2 no se puede cerrar hasta esa decisión.
 
 ---
 

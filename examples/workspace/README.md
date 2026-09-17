@@ -13,14 +13,21 @@ except the host they end up on.
 
 ## Run it
 
-From the repo root, with the packages built:
+From the repo root:
 
 ```sh
 pnpm install
-pnpm build
-pnpm --filter @fudic/example-workspace build     # builds both apps
+pnpm build                                       # packages, then both apps
 pnpm --filter @fudic/example-workspace serve     # http://localhost:4373
 ```
+
+The two apps are workspace members of their own (`examples/workspace/apps/*` in
+`pnpm-workspace.yaml`), so `pnpm build` at the root builds them, in dependency order,
+like any other project. This package deliberately has **no** `build` script: an
+aggregate one here would be a second way to build the same two apps, and — because this
+package declares none of the `@fudic/*` it would be building — `pnpm -r` could order it
+before the packages it needs, which on a clean checkout it did. The `apps` script runs
+just the two, for when that is what you want.
 
 `/` is the storefront and `/admin/` is the back office. Each registers its own Service
 Worker, scoped to its own directory.

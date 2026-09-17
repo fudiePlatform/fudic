@@ -210,6 +210,15 @@ o un documento.
 <link rel="component" href="../../libs/ui/src/card.fud">   ← sigue siendo legal
 ```
 
+> **Abierto, y bloquea el criterio 2.** La medición de §4.2 encontró que el ejemplo de
+> arriba **no se puede escribir hoy**: `@` abre un `@`-construct, así que en
+> `href="@acme/ui/card.fud"` el parser lee la expresión `@acme` y el texto `/ui/card.fud`, y
+> `linkHref` descarta la parte de expresión en silencio. Al resolutor le llega
+> `/ui/card.fud`, y resolver bare specifiers no lo arregla porque la cadena nunca llega
+> entera. Las salidas y la recomendación están en
+> [SDD-43-medicion](./SDD-43-medicion.md#la-decisión-pendiente); la fase 2 no puede cerrarse
+> antes de esa decisión.
+
 Un `href` es **relativo** cuando empieza por `./` o `../`, y **de paquete** en cualquier
 otro caso que no sea una ruta absoluta ni un esquema. La resolución de paquete es la de
 módulos de Node desde el directorio del fichero que lo escribe: `exports` del paquete
