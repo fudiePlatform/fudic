@@ -1,8 +1,8 @@
 # SDD-43 — Tareas
 
 > **SDD:** [SDD-43 — Librerías fudic: qué se publica y cómo se resuelve](./SDD-43-librerias.md)
-> **Paquetes:** `@fudic/vite` · `@fudic/cli` · `@fudic/language-server` · `@fudic/compiler` ·
-> `@fudic/config`
+> **Paquetes:** `@fudic/resolve` (**nuevo**) · `@fudic/vite` · `@fudic/cli` ·
+> `@fudic/language-server` · `@fudic/compiler` · `@fudic/config` (consumido, no modificado)
 > **Rama:** `sdd-43-librerias`
 > **Progreso:** 0 / 12
 > **Bloqueado por:** [SDD-41](./SDD-41-configuracion-de-aplicacion.md) — `kind: "lib"` es lo que
@@ -48,7 +48,7 @@ en paralelo.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 2 | 1 | **Un resolutor, un módulo.** La función que resuelve un `href` desde un fichero: relativo contra el directorio, y **bare specifier** con el algoritmo de módulos de Node, `exports` del paquete incluido. Vive en **un** sitio y los tres hosts la importan; tres copias es tres respuestas el día que una se quede atrás | `config` | `src/resolve.ts` · `test/resolve.test.ts` |
+| [ ] | 2 | 1 | **Un resolutor, un paquete.** `@fudic/resolve`, nuevo (SDD-43 §3.1): el andamiaje del paquete —`package.json`, los dos `tsconfig`, `vitest.config.ts` con los cuatro umbrales al 100, README— y la función que resuelve un `href` desde un fichero: relativo contra el directorio, y **bare specifier** con el algoritmo de módulos de Node, `exports` del paquete incluido. Depende de `@fudic/config` y de nada más; los tres hosts lo importan y `@fudic/config` no se toca | `resolve` (nuevo) | `packages/resolve/**` |
 | [ ] | 3 | 2 | **(rojo primero)** **Los tres hosts la usan.** `vite/src/io.ts`, `cli/src/io.ts` y el del language server pasan a construir su `ResolveIo` sobre ella. `ResolveIo` **no gana un método** y el compilador no se toca. Se ve fallar antes: hoy `href="@acme/ui/card.fud"` no encuentra nada. Y el `href` relativo que cruza de paquete **sigue funcionando**. Criterios 2, 3 | `vite` · `cli` · `language-server` | `src/io.ts` (los tres) |
 | [ ] | 4 | 3 | **`FUD0760`, con sus dos mensajes.** Paquete no instalado y paquete que no exporta el fichero son dos arreglos distintos —`pnpm add` frente a abrir el `package.json` de la librería— y un mensaje único manda a leer el fichero equivocado. Criterio 4 | `vite` · `cli` | `src/diagnostics.ts` |
 | [ ] | 5 | 4 | **`FUD0763`.** El `href` apunta a un `.fud` de un paquete que no declara `kind: "lib"`. Error: es acoplamiento al interior de algo que no se pensó para consumirse. Criterio 5 | `vite` | `src/link-check.ts` |
