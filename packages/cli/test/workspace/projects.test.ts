@@ -164,6 +164,20 @@ describe('fudic g lib (criterion 5)', () => {
     expect(pkg['scripts']).toBeUndefined();
   });
 
+  it('declares @fudic/core: its components emit client chunks that import the runtime', async () => {
+    const fs = workspace();
+    await applied(await planLib('ui', libOptions(), fs), fs);
+
+    // Found by installing and building a generated workspace for real: the client chunk of a
+    // library component imports `@fudic/core`, and that import resolves from the file making
+    // it — which lives in the library. Without this the app's build dies on a specifier its
+    // author never typed, and only in a consumer's repository, never in the one that
+    // happens to hoist the runtime.
+    expect(JSON.parse(fs.at('libs/ui/package.json'))['dependencies']).toMatchObject({
+      '@fudic/core': expect.any(String),
+    });
+  });
+
   it('declares kind lib and carries no id: it has no caches', async () => {
     const fs = workspace();
     await applied(await planLib('ui', libOptions({ prefix: 'ui' }), fs), fs);

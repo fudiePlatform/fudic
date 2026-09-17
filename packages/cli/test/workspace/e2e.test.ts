@@ -9,11 +9,16 @@
  *
  * `pnpm install` is replaced by workspace aliases, exactly as `new-build.test.ts` does it and
  * for the same reason: the generated `package.json` asks for `@fudic/*` at their real
- * versions and none of them is on npm, so a real install dies with a 404. What that install
- * would add here is the `node_modules` link for `@mi-tienda/ui` — and the edge this criterion
- * is about does not go through it: `fudic g component --in` writes a RELATIVE href, which the
- * compiler resolves against the filesystem. `scripts/local-registry.mjs` is the harness for
- * the literal `pnpm install && pnpm build`, and it is a manual one.
+ * versions and none of them is on npm, so a real install dies with a 404.
+ *
+ * **What that substitution cannot see, and it cost a bug.** An alias resolves a specifier
+ * from anywhere, so this build is blind to WHICH package declares a dependency. Run for real
+ * against `scripts/local-registry.mjs`, the same workspace failed: the client chunk of the
+ * library's component imports `@fudic/core`, that import resolves from the library, and the
+ * library did not declare it. `projects.test.ts` now asserts the dependency directly, which is
+ * the guard this file structurally cannot provide. The literal `pnpm install && pnpm build`
+ * lives behind `pnpm registry`, and it is worth running whenever the generated
+ * `package.json`s change.
  *
  * This is the point where SDD-44 touches SDD-43: if resolution across packages were not there,
  * this test says so instead of leaving it for the day of a deployment.

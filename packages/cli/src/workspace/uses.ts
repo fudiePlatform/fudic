@@ -87,7 +87,7 @@ function entries(scope: string, uses: readonly string[]): readonly string[] {
 }
 
 /**
- * The dependencies of an app, appended INSIDE the block its template already opens.
+ * The extra dependencies, appended INSIDE the `dependencies` block a template already opens.
  *
  * A block builder rather than a conditional in the template, for the reason §4.2 gives:
  * templates substitute and nothing else. `''` leaves `fudic new`'s `package.json` byte for
@@ -96,10 +96,4 @@ function entries(scope: string, uses: readonly string[]): readonly string[] {
 export function appUses(scope: string, uses: readonly string[]): string {
   const lines = entries(scope, uses);
   return lines.length === 0 ? '' : `,\n    ${lines.join(',\n    ')}`;
-}
-
-/** The whole `dependencies` block of a library, which has none until `--uses` gives it one. */
-export function libUses(scope: string, uses: readonly string[]): string {
-  const lines = entries(scope, uses);
-  return lines.length === 0 ? '' : `,\n  "dependencies": {\n    ${lines.join(',\n    ')}\n  }`;
 }

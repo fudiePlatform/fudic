@@ -114,12 +114,12 @@ describe('fudic g lib --uses', () => {
     const plan = await planLib('cards', libOptions({ uses: ['theme'] }), fs);
     await apply(plan, { cwd: ROOT, force: false }, fs, new RecordingRunner());
 
-    expect(JSON.parse(fs.at('libs/cards/package.json'))['dependencies']).toEqual({
+    expect(JSON.parse(fs.at('libs/cards/package.json'))['dependencies']).toMatchObject({
       '@mi-tienda/theme': 'workspace:*',
     });
   });
 
-  it('has no dependencies key at all without it', async () => {
+  it('adds it beside the runtime the library already needs, not instead of it', async () => {
     const fs = workspace();
     await apply(
       await planLib('cards', libOptions(), fs),
@@ -128,7 +128,9 @@ describe('fudic g lib --uses', () => {
       new RecordingRunner(),
     );
 
-    expect(JSON.parse(fs.at('libs/cards/package.json'))['dependencies']).toBeUndefined();
+    expect(Object.keys(JSON.parse(fs.at('libs/cards/package.json'))['dependencies'])).toEqual([
+      '@fudic/core',
+    ]);
   });
 
   it('rejects an app just as g app does', async () => {
