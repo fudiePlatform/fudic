@@ -2,8 +2,9 @@
 
 > **Estado:** `Listo`
 > **Paquetes:** `@fudic/resolve` (**nuevo**, §3.1) · `@fudic/vite` · `@fudic/cli` ·
-> `@fudic/language-server` · `@fudic/compiler` (solo el diagnóstico; su `ResolveIo` **no**
-> cambia de forma) · `@fudic/config` (consumido por `@fudic/resolve`, no modificado)
+> `@fudic/language-server` · `@fudic/compiler` (el `href` literal de §4.3 y el diagnóstico;
+> su `ResolveIo` **no** cambia de forma) · `@fudic/config` (consumido por `@fudic/resolve`,
+> no modificado)
 > **Depende de:** 41, 12, 15, 23, 24, 39 (§4.5), 42 (§4.6)
 > **Rango de diagnósticos:** `FUD0760`–`FUD0779`
 > **Naturaleza:** resolución + índice + una decisión de producto.
@@ -210,14 +211,25 @@ o un documento.
 <link rel="component" href="../../libs/ui/src/card.fud">   ← sigue siendo legal
 ```
 
-> **Abierto, y bloquea el criterio 2.** La medición de §4.2 encontró que el ejemplo de
-> arriba **no se puede escribir hoy**: `@` abre un `@`-construct, así que en
-> `href="@acme/ui/card.fud"` el parser lee la expresión `@acme` y el texto `/ui/card.fud`, y
-> `linkHref` descarta la parte de expresión en silencio. Al resolutor le llega
-> `/ui/card.fud`, y resolver bare specifiers no lo arregla porque la cadena nunca llega
-> entera. Las salidas y la recomendación están en
-> [SDD-43-medicion](./SDD-43-medicion.md#la-decisión-pendiente); la fase 2 no puede cerrarse
-> antes de esa decisión.
+**El `href` de un `<link>` se lee literal.** La medición de §4.2 encontró que el ejemplo de
+arriba no se podía escribir: `@` abre un `@`-construct, así que el parser leía la expresión
+`@acme` y el texto `/ui/card.fud`, `linkHref` descartaba la parte de expresión en silencio, y
+al resolutor le llegaba `/ui/card.fud`. Resolver bare specifiers no lo arreglaba, porque la
+cadena nunca llegaba entera.
+
+Así que en el valor de `href` de un `<link rel="component">` o `<link rel="layout">` no se
+reconoce ningún `@`-construct: el valor se toma verbatim. El autor escribe el nombre del
+paquete tal cual, igual que en un `import`, y no hay nada que escapar:
+
+```html
+<link rel="component" href="@acme/ui/card.fud">
+```
+
+No se pierde ningún significado que hoy exista, porque `linkHref` ya descartaba esas partes.
+Y es lo que el atributo siempre fue: un `href` nombra un fichero que se resuelve en
+compilación, nunca un valor que se calcula. La consecuencia de tomarlo verbatim es que un
+`@(expr)` escrito ahí pasa a ser texto, y lo que se ve es el diagnóstico de un fichero que no
+resuelve — que es exactamente lo que es.
 
 Un `href` es **relativo** cuando empieza por `./` o `../`, y **de paquete** en cualquier
 otro caso que no sea una ruta absoluta ni un esquema. La resolución de paquete es la de

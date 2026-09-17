@@ -111,7 +111,7 @@ puede provocar hoy, con el `href` relativo que la spec dice que seguirá siendo 
 
 ---
 
-## La decisión pendiente
+## La decisión, ya tomada
 
 Un paquete npm con scope se llama `@acme/ui`, y `@` es el carácter de transición de la
 gramática. Las tres salidas, y ninguna es del implementador:
@@ -125,5 +125,6 @@ gramática. Las tres salidas, y ninguna es del implementador:
    documento.
 3. **Otra sintaxis para el specifier de paquete**, distinta de la de npm.
 
-La 1 es la que recomienda esta medición, y es la única que deja la spec escrita como está.
-Hasta que se decida, la fase 2 no puede cumplir su criterio 2.
+**Se eligió la 1**, y [§4.3](./SDD-43-librerias.md) la recoge: el `href` de un `<link>` se
+lee verbatim, el autor escribe `@acme/ui/card.fud` y no hay nada que escapar. Es la única de
+las tres que deja la spec escrita como estaba, y la fase 2 ya no está bloqueada.
