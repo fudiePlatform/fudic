@@ -3,7 +3,7 @@
 > **SDD:** [SDD-44 — CLI de workspace: N apps, N libs](./SDD-44-cli-de-workspace.md)
 > **Paquetes:** `@fudic/cli` (consume `@fudic/config`, que no cambia)
 > **Rama:** `sdd-44-cli-de-workspace`
-> **Progreso:** 7 / 12
+> **Progreso:** 10 / 12
 > **Bloqueado por:** [SDD-41](./SDD-41-configuracion-de-aplicacion.md) entera — este SDD escribe
 > el `fudic.json` que aquella define y descubre proyectos buscándolo. Y por la **decisión** de
 > [SDD-43](./SDD-43-librerias.md) §4.1 —qué publica una librería—, que es lo único que hace falta
@@ -71,9 +71,9 @@ planes independientes sobre plantillas distintas.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 8 | 5, 6 | **`--project` en los tres generadores.** `component`, `page` y `layout` resuelven su destino con `targetProject` y operan sobre la raíz de **ese** proyecto, no sobre `--cwd`. `FUD0782` con la lista de los que hay; `FUD0781` cuando no contesta ninguna de las dos vías —**y no se escribe nada**. Criterios 9, 10 | `cli` | `src/plans/component.ts` · `src/plans/page.ts` · `src/plans/layout.ts` · `src/args.ts` |
-| [ ] | 9 | 8 | **Cada proyecto, su prefijo.** El `tagOf` de SDD-41 se alimenta del config del **proyecto destino**, no del `cwd`: `cd apps/admin && fudic g component card` da `ad-card`, y `--project ui` desde la raíz da `ui-card`. Es donde SDD-41 y este SDD se tocan, y el test lo fija con dos proyectos de prefijos distintos. Criterios 7, 8 | `cli` | `src/plans/component.ts` · `test/generate/prefix-por-proyecto.test.ts` |
-| [ ] | 10 | 8 | **Una ruta no cabe en una librería.** `FUD0783` para `g page` con destino `kind: "lib"`; `g layout` sobre una librería es **legal** y escribe el fichero (§4.8, y SDD-40 es el motivo). Criterio 11 | `cli` | `src/plans/page.ts` · `src/plans/layout.ts` |
+| [x] | 8 | 5, 6 | **`--project` en los tres generadores.** `component`, `page` y `layout` resuelven su destino con `targetProject` y operan sobre la raíz de **ese** proyecto, no sobre `--cwd`. `FUD0782` con la lista de los que hay; `FUD0781` cuando no contesta ninguna de las dos vías —**y no se escribe nada**. Criterios 9, 10 | `cli` | `src/plans/component.ts` · `src/plans/page.ts` · `src/plans/layout.ts` · `src/args.ts` |
+| [x] | 9 | 8 | **Cada proyecto, su prefijo.** El `tagOf` de SDD-41 se alimenta del config del **proyecto destino**, no del `cwd`: `cd apps/admin && fudic g component card` da `ad-card`, y `--project ui` desde la raíz da `ui-card`. Es donde SDD-41 y este SDD se tocan, y el test lo fija con dos proyectos de prefijos distintos. Criterios 7, 8 | `cli` | `src/plans/component.ts` · `test/generate/prefix-por-proyecto.test.ts` |
+| [x] | 10 | 8 | **Una ruta no cabe en una librería.** `FUD0783` para `g page` con destino `kind: "lib"`; `g layout` sobre una librería es **legal** y escribe el fichero (§4.8, y SDD-40 es el motivo). Criterio 11 | `cli` | `src/plans/page.ts` · `src/plans/layout.ts` |
 
 ---
 

@@ -53,7 +53,7 @@ function parentOf(dir: string): string | null {
  * *At or above*, not above: `fudic g component` run in the project's own root has to find
  * that project, and a workspace root is the workspace root of itself.
  */
-function nearestWith(from: string, file: string, io: ReadIo): string | null {
+export function nearestWith(from: string, file: string, io: ReadIo): string | null {
   let dir: string | null = normalize(from);
   while (dir !== null) {
     if (io.exists(joinPosix(dir, file))) return dir;

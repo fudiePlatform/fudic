@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { run, type RunDeps } from '../src/run.js';
 import { parseArgs, USAGE } from '../src/args.js';
-import { captureStreams, MemoryFs, RecordingRunner } from './helpers.js';
+import { captureStreams, MemoryFs, projectFs, RecordingRunner } from './helpers.js';
 
 const CWD = '/project';
 
@@ -48,28 +48,31 @@ describe('run()', () => {
   it('--dry-run lists exactly what the real run writes, and writes nothing (§6.9)', async () => {
     const argv = ['g', 'component', 'app-card', '--cwd', CWD];
 
-    const dry = new MemoryFs({}, CWD);
+    const dry = projectFs({}, CWD);
     const dryDeps = deps(dry);
     expect(await run([...argv, '--dry-run'], dryDeps)).toBe(0);
-    expect(dry.paths()).toEqual([]);
+    expect(dry.paths()).toEqual(['fudic.json']); // nothing beyond what was already there
     expect(dryDeps.capture.stdout()).toContain('src/components/app-card.fud');
 
-    const real = new MemoryFs({}, CWD);
+    const real = projectFs({}, CWD);
     const realDeps = deps(real);
     expect(await run(argv, realDeps)).toBe(0);
-    expect(real.paths()).toEqual(['src/components/app-card.fud']);
+    expect(real.paths()).toEqual(['fudic.json', 'src/components/app-card.fud']);
 
     const listed = dryDeps.capture
       .stdout()
       .split('\n')
       .filter((line) => line.startsWith('  create') || line.startsWith('  modify'))
       .map((line) => line.trim());
-    const written = real.paths().map((path) => `create  ${path}`);
+    const written = real
+      .paths()
+      .filter((path) => path !== 'fudic.json')
+      .map((path) => `create  ${path}`);
     expect(listed).toEqual(written);
   });
 
   it('--dry-run shows a modification as a diff (§6.9)', async () => {
-    const fs = new MemoryFs(
+    const fs = projectFs(
       { 'src/components/app-card.fud': '<app-card>\n  <template shadowrootmode="open"></template>\n</app-card>\n' },
       CWD,
     );
@@ -84,7 +87,7 @@ describe('run()', () => {
   });
 
   it('--json puts JSON and only JSON on stdout (§6.12)', async () => {
-    const fs = new MemoryFs({}, CWD);
+    const fs = projectFs({}, CWD);
     const d = deps(fs);
     expect(await run(['g', 'component', 'app-card', '--cwd', CWD, '--json', '--dry-run'], d)).toBe(0);
 
@@ -113,7 +116,7 @@ describe('run()', () => {
   });
 
   it('generates a page against the project layout end to end', async () => {
-    const fs = new MemoryFs({ 'src/layouts/_layout.fud': LAYOUT }, CWD);
+    const fs = projectFs({ 'src/layouts/_layout.fud': LAYOUT }, CWD);
     const d = deps(fs);
     expect(await run(['g', 'p', 'blog', '--cwd', CWD], d)).toBe(0);
     expect(fs.at('src/routes/blog.fud')).toContain('@section nav {');

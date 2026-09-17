@@ -16,7 +16,8 @@ import { tagOf } from '@fudic/config';
 import { cliError, FUD_WIRE_TARGET_BROKEN, FUD_WIRE_TARGET_MISSING } from '../diagnostics.js';
 import { absolute, hrefBetween, joinPosix, toPosix } from '../paths.js';
 import { hasErrors, parseFud } from '../parse.js';
-import { existingTags, projectConfig, targetChange } from '../project.js';
+import { existingTags, targetChange } from '../project.js';
+import { resolveTarget } from '../workspace/target.js';
 import { codeBlock, renderTemplate, styleBlock } from '../templates.js';
 import { validateTag } from '../tag.js';
 import { wireComponentLink } from '../wire.js';
@@ -24,24 +25,24 @@ import { nodeReadIo, type ReadIo } from '../io.js';
 import type { CliError, ComponentOptions, FileChange, Plan, PlanDiagnostic } from '../types.js';
 
 /**
- * The argument is a NAME, and the project's prefix turns it into a tag (SDD-41 §4.4). An
- * argument that already carries a hyphen is a tag the author wrote and is respected whole:
- * `signal-counter` under `prefix: "app"` is `signal-counter`, not `app-signal-counter`.
- * Without a `fudic.json`, `tagOf` returns the argument untouched and the command is the
- * one it has always been — the full tag, or FUD0440.
+ * The argument is a NAME, and the TARGET PROJECT's prefix turns it into a tag (SDD-41 §4.4,
+ * SDD-44 §4.3). An argument that already carries a hyphen is a tag the author wrote and is
+ * respected whole: `signal-counter` under `prefix: "app"` is `signal-counter`, not
+ * `app-signal-counter`. A project that declares no prefix leaves the argument untouched, and
+ * the command is the one it has always been — the full tag, or FUD0440.
  */
 export function planComponent(name: string, opts: ComponentOptions, io: ReadIo = nodeReadIo()): Promise<Plan> {
-  const project = projectConfig(opts.cwd, io);
-  if (project.diagnostics.length > 0) {
-    // A `fudic.json` that does not read is fatal HERE and not elsewhere: the prefix is what
-    // decides the tag, so a broken file means the component would be written under a name
-    // the author did not choose. Saying so beats writing the wrong file.
-    const errors = project.diagnostics.map((entry) => cliError(entry.code, entry.message, entry.file));
-    return Promise.resolve({ changes: [], commands: [], diagnostics: [], errors });
+  // The piece goes to a PROJECT, and the project decides the prefix. Resolving the target
+  // first is what makes `cd apps/admin && fudic g component card` produce `ad-card` while
+  // `--project ui` from the root produces `ui-card` (§4.3, criteria 7 and 8).
+  const resolved = resolveTarget(opts, io);
+  if (resolved.target === undefined) {
+    return Promise.resolve({ changes: [], commands: [], diagnostics: [], errors: resolved.errors });
   }
+  const project = resolved.target;
 
-  const tag = tagOf(project.config?.prefix ?? '', name);
-  const invalid = validateTag(tag, existingTags(opts.cwd, io));
+  const tag = tagOf(project.config.prefix, name);
+  const invalid = validateTag(tag, existingTags(project.path, io));
   if (invalid !== null) {
     return Promise.resolve({ changes: [], commands: [], diagnostics: [], errors: [invalid] });
   }
@@ -50,7 +51,7 @@ export function planComponent(name: string, opts: ComponentOptions, io: ReadIo =
   const diagnostics: PlanDiagnostic[] = [];
   const errors: CliError[] = [];
 
-  const file = joinPosix(opts.dir, `${tag}.fud`);
+  const file = joinPosix(project.dir, opts.dir, `${tag}.fud`);
   const contents = renderTemplate('component.fud', {
     code: codeBlock(),
     head: opts.style ? styleBlock() : '',

@@ -54,6 +54,11 @@ export const USAGE = `fudic — scaffolding for Declarative Shadow DOM apps
     fudic g component <name>                                    (alias: c)
     fudic g layout <name>                                       (alias: l)
 
+Generators (component, page, layout) take a destination
+  --project <name>   the project the piece goes to, by directory name
+                     default: the nearest fudic.json at or above --cwd; there is no
+                     default project, and without either the command fails
+
 Global flags
   --dry-run          print the plan and exit; writes nothing
   --force, -f        overwrite existing targets
@@ -123,7 +128,7 @@ interface Tokens {
 function tokenize(argv: readonly string[]): Tokens {
   const positionals: string[] = [];
   const flags = new Map<string, string[]>();
-  const valued = new Set(['cwd', 'pm', 'layout', 'target', 'dir', 'in', 'sections', 'print-width', 'tab-width', 'quote', 'end-of-line', 'id', 'prefix', 'app', 'uses']);
+  const valued = new Set(['cwd', 'pm', 'layout', 'target', 'dir', 'in', 'sections', 'print-width', 'tab-width', 'quote', 'end-of-line', 'id', 'prefix', 'app', 'uses', 'project']);
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i] ?? '';
@@ -170,6 +175,18 @@ function list(tokens: Tokens, name: string): readonly string[] | null {
     .flatMap((value) => value.split(','))
     .map((value) => value.trim())
     .filter((value) => value !== '');
+}
+
+/**
+ * `--project`, omitted when it was not given.
+ *
+ * Omitted and not set to `undefined`: with `exactOptionalPropertyTypes` an absent field and a
+ * field holding `undefined` are different types, and "absent" is the one that means *resolve
+ * it from `cwd`*.
+ */
+function target(tokens: Tokens): { readonly project?: string } {
+  const project = tokens.flags.get('project')?.at(-1);
+  return project === undefined ? {} : { project };
 }
 
 /** Any flag outside the accepted set is an error, never a silent no-op. */
@@ -317,10 +334,11 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
   }
 
   if (type === 'component' || type === 'c') {
-    const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'in', 'no-style', 'slot']);
+    const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'in', 'no-style', 'slot', 'project']);
     if (unknown !== null) return { kind: 'error', error: unknown };
     const opts: ComponentOptions = {
       ...base,
+      ...target(tokens),
       dir: single(tokens, 'dir', COMPONENTS_DIR),
       wireInto: list(tokens, 'in') ?? [],
       style: !bool(tokens, 'no-style'),
@@ -330,11 +348,12 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
   }
 
   if (type === 'page' || type === 'p') {
-    const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'layout', 'no-layout', 'server', 'sections']);
+    const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'layout', 'no-layout', 'server', 'sections', 'project']);
     if (unknown !== null) return { kind: 'error', error: unknown };
     const forced = tokens.flags.get('layout')?.at(-1);
     const opts: PageOptions = {
       ...base,
+      ...target(tokens),
       dir: single(tokens, 'dir', ROUTES_DIR),
       ...(bool(tokens, 'no-layout') ? { layout: null } : forced !== undefined ? { layout: forced } : {}),
       server: bool(tokens, 'server'),
@@ -344,10 +363,11 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
   }
 
   if (type === 'layout' || type === 'l') {
-    const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'sections', 'no-head']);
+    const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'sections', 'no-head', 'project']);
     if (unknown !== null) return { kind: 'error', error: unknown };
     const opts: LayoutOptions = {
       ...base,
+      ...target(tokens),
       dir: single(tokens, 'dir', LAYOUTS_DIR),
       sections: list(tokens, 'sections') ?? [],
       head: !bool(tokens, 'no-head'),

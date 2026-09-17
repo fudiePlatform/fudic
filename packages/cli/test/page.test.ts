@@ -9,7 +9,7 @@ import { planLayout } from '../src/plans/layout.js';
 import { parseFud } from '../src/parse.js';
 import { routeToFile } from '../src/route.js';
 import { FUD_LAYOUT_INVALID, FUD_SECTION_UNKNOWN } from '../src/diagnostics.js';
-import { MemoryFs } from './helpers.js';
+import { projectFs } from './helpers.js';
 import type { PageOptions } from '../src/types.js';
 
 const CWD = '/project';
@@ -54,7 +54,7 @@ describe('route → file (§6.15)', () => {
 
 describe('g page', () => {
   it('declares every section the layout chain renders (§6.8)', async () => {
-    const fs = new MemoryFs({ 'src/layouts/_layout.fud': LAYOUT });
+    const fs = projectFs({ 'src/layouts/_layout.fud': LAYOUT });
     const plan = await planPage('perfil', options(), fs);
     expect(plan.errors).toEqual([]);
 
@@ -74,7 +74,7 @@ describe('g page', () => {
   });
 
   it('--sections restricts the set, and an unknown one is an error (§6.8)', async () => {
-    const fs = new MemoryFs({ 'src/layouts/_layout.fud': LAYOUT });
+    const fs = projectFs({ 'src/layouts/_layout.fud': LAYOUT });
 
     const restricted = await planPage('perfil', options({ sections: ['scripts'] }), fs);
     expect(restricted.errors).toEqual([]);
@@ -101,7 +101,7 @@ describe('g page', () => {
   </body>
 </html>
 `;
-    const fs = new MemoryFs({ 'src/layouts/_layout.fud': LAYOUT, 'src/layouts/_layout-admin.fud': admin });
+    const fs = projectFs({ 'src/layouts/_layout.fud': LAYOUT, 'src/layouts/_layout-admin.fud': admin });
     const plan = await planPage('admin', options({ layout: 'src/layouts/_layout-admin.fud' }), fs);
     expect(plan.errors).toEqual([]);
     expect(plan.changes[0]!.contents).toContain('@section admin {');
@@ -121,7 +121,7 @@ describe('g page', () => {
   </body>
 </html>
 `;
-    const fs = new MemoryFs({
+    const fs = projectFs({
       'src/layouts/_layout.fud': LAYOUT,
       'src/layouts/_layout-admin.fud': offender,
     });
@@ -130,7 +130,7 @@ describe('g page', () => {
   });
 
   it('picks the nearest _layout.fud walking up from the page (§6.7)', async () => {
-    const fs = new MemoryFs({ 'src/layouts/_layout.fud': LAYOUT, 'src/routes/admin/_layout.fud': LAYOUT });
+    const fs = projectFs({ 'src/layouts/_layout.fud': LAYOUT, 'src/routes/admin/_layout.fud': LAYOUT });
     const near = await planPage('admin/users', options(), fs);
     expect(near.changes[0]!.contents).toContain('href="./_layout.fud"');
 
@@ -139,7 +139,7 @@ describe('g page', () => {
   });
 
   it('falls back to a standalone page when the project has no layout', async () => {
-    const fs = new MemoryFs();
+    const fs = projectFs();
     const plan = await planPage('/', options(), fs);
     expect(plan.errors).toEqual([]);
     const doc = parseFud(plan.changes[0]!.contents).doc;
@@ -150,7 +150,7 @@ describe('g page', () => {
   it('--dir outside src/ writes where it is told (§6.6)', async () => {
     // The escape hatch of §3.3: `src/` is the convention, not a cage. A project that keeps
     // the old layout says so once per command and nothing else changes.
-    const fs = new MemoryFs({ 'routes/_layout.fud': LAYOUT });
+    const fs = projectFs({ 'routes/_layout.fud': LAYOUT });
     const plan = await planPage('perfil', options({ dir: 'routes' }), fs);
     expect(plan.errors).toEqual([]);
     expect(plan.changes[0]!.path).toBe('routes/perfil.fud');
@@ -159,20 +159,20 @@ describe('g page', () => {
   });
 
   it('--no-layout forces a standalone page even when a layout exists', async () => {
-    const fs = new MemoryFs({ 'src/layouts/_layout.fud': LAYOUT });
+    const fs = projectFs({ 'src/layouts/_layout.fud': LAYOUT });
     const plan = await planPage('solo', options({ layout: null }), fs);
     expect(parseFud(plan.changes[0]!.contents).doc.type).toBe('page-document');
   });
 
   it('rejects a --layout that is not a layout (FUD0449)', async () => {
-    const fs = new MemoryFs({ 'src/components/app-card.fud': '<app-card><template shadowrootmode="open"></template></app-card>' });
+    const fs = projectFs({ 'src/components/app-card.fud': '<app-card><template shadowrootmode="open"></template></app-card>' });
     const plan = await planPage('perfil', options({ layout: 'src/components/app-card.fud' }), fs);
     expect(plan.changes).toEqual([]);
     expect(plan.errors.map((e) => e.code)).toEqual([FUD_LAYOUT_INVALID]);
   });
 
   it('--server puts @code top-level in a route, and inside <head> in a standalone page', async () => {
-    const withLayout = new MemoryFs({ 'src/layouts/_layout.fud': LAYOUT });
+    const withLayout = projectFs({ 'src/layouts/_layout.fud': LAYOUT });
     const route = await planPage('blog', options({ server: true }), withLayout);
     const routeDoc = parseFud(route.changes[0]!.contents);
     expect(routeDoc.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
@@ -183,7 +183,7 @@ describe('g page', () => {
       expect(routeDoc.doc.code!.span.start).toBeLessThan(routeDoc.doc.head!.span.start);
     }
 
-    const bare = new MemoryFs();
+    const bare = projectFs();
     const page = await planPage('blog', options({ server: true }), bare);
     const pageDoc = parseFud(page.changes[0]!.contents);
     expect(pageDoc.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
@@ -196,7 +196,7 @@ describe('g page', () => {
 
 describe('g layout', () => {
   it('emits one @RenderSection per name, a single @RenderBody and a @RenderHead', async () => {
-    const fs = new MemoryFs();
+    const fs = projectFs();
     const plan = await planLayout('_layout', { cwd: CWD, force: false, dir: 'layouts', sections: ['nav', 'aside'], head: true }, fs);
     const change = plan.changes[0]!;
     expect(change.path).toBe('layouts/_layout.fud');
@@ -211,7 +211,7 @@ describe('g layout', () => {
   });
 
   it('--no-head omits @RenderHead()', async () => {
-    const fs = new MemoryFs();
+    const fs = projectFs();
     const plan = await planLayout('_layout', { cwd: CWD, force: false, dir: 'layouts', sections: [], head: false }, fs);
     const parsed = parseFud(plan.changes[0]!.contents);
     expect(parsed.doc.type).toBe('layout-document');

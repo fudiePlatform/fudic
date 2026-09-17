@@ -145,14 +145,25 @@ export interface AppOptions extends ProjectOptions {
   readonly sw: boolean;
 }
 
-export interface ComponentOptions extends BaseOptions {
+/**
+ * What the three generators share since SDD-44: the project the piece goes to.
+ *
+ * `dir` stays relative to the PROJECT, and `--cwd` keeps its meaning — the root to operate
+ * on. What changed is that the project's root is searched from `cwd` upwards (§4.3).
+ */
+export interface TargetedOptions extends BaseOptions {
+  /** A project's directory name. Absent ⇒ the nearest `fudic.json` at or above `cwd`. */
+  readonly project?: string;
+}
+
+export interface ComponentOptions extends TargetedOptions {
   readonly dir: string;
   readonly wireInto: readonly string[];
   readonly style: boolean;
   readonly slot: boolean;
 }
 
-export interface PageOptions extends BaseOptions {
+export interface PageOptions extends TargetedOptions {
   readonly dir: string;
   /** Path of the layout `.fud`, relative to `cwd`. `null` ⇒ --no-layout; absent ⇒ resolve. */
   readonly layout?: string | null;
@@ -161,7 +172,7 @@ export interface PageOptions extends BaseOptions {
   readonly sections: readonly string[] | null;
 }
 
-export interface LayoutOptions extends BaseOptions {
+export interface LayoutOptions extends TargetedOptions {
   readonly dir: string;
   /** One `@RenderSection(name)` per name. None is mandatory: SDD-21 §4.2. */
   readonly sections: readonly string[];

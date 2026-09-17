@@ -6,12 +6,21 @@
 
 import { joinPosix } from '../paths.js';
 import { targetChange } from '../project.js';
+import { resolveTarget } from '../workspace/target.js';
 import { renderSectionBlocks, renderTemplate } from '../templates.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
 import type { CliError, FileChange, LayoutOptions, Plan } from '../types.js';
 
 export function planLayout(name: string, opts: LayoutOptions, io: ReadIo = nodeReadIo()): Promise<Plan> {
-  const file = joinPosix(opts.dir, `${name}.fud`);
+  const resolved = resolveTarget(opts, io);
+  if (resolved.target === undefined) {
+    return Promise.resolve({ changes: [], commands: [], diagnostics: [], errors: resolved.errors });
+  }
+
+  // A layout in a LIBRARY is legal, and deliberately so: since SDD-40 a layout declares
+  // props, which makes it a shareable piece with a point — the common shell of several
+  // apps. It is the page that cannot live there (§4.8).
+  const file = joinPosix(resolved.target.dir, opts.dir, `${name}.fud`);
   const contents = renderTemplate('layout.fud', {
     lang: 'en',
     renderHead: opts.head ? '    @RenderHead()' : '',

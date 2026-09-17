@@ -8,7 +8,7 @@ import { planComponent } from '../src/plans/component.js';
 import { apply } from '../src/apply.js';
 import { parseFud } from '../src/parse.js';
 import { FUD_TAG_EXISTS, FUD_TAG_INVALID, FUD_TAG_RESERVED, FUD_TARGET_EXISTS } from '../src/diagnostics.js';
-import { MemoryFs } from './helpers.js';
+import { projectFs } from './helpers.js';
 import type { ComponentOptions } from '../src/types.js';
 
 const CWD = '/project';
@@ -38,7 +38,7 @@ const CARD = `<link rel="component" href="./app-badge.fud">
 
 describe('g component', () => {
   it('creates the shape of a component and nothing else (§6.2)', async () => {
-    const fs = new MemoryFs();
+    const fs = projectFs();
     const plan = await planComponent('app-card', options(), fs);
     expect(plan.errors).toEqual([]);
     expect(plan.changes).toHaveLength(1);
@@ -71,7 +71,7 @@ describe('g component', () => {
   });
 
   it('is written whole: exactly the file the user is shown', async () => {
-    const plan = await planComponent('app-button', options(), new MemoryFs());
+    const plan = await planComponent('app-button', options(), projectFs());
     expect(plan.changes[0]!.contents).toBe(`@code {
   type Props = {
   };
@@ -93,7 +93,7 @@ describe('g component', () => {
   });
 
   it('--no-style drops the head, --slot emits a slot', async () => {
-    const fs = new MemoryFs();
+    const fs = projectFs();
     const plan = await planComponent('app-icon', options({ style: false, slot: true }), fs);
     const contents = plan.changes[0]!.contents;
     expect(contents).not.toContain('<style>');
@@ -102,23 +102,24 @@ describe('g component', () => {
   });
 
   it('rejects a tag without a hyphen, writing nothing (§6.3)', async () => {
-    const fs = new MemoryFs();
+    const fs = projectFs();
     const plan = await planComponent('card', options(), fs);
     expect(plan.changes).toEqual([]);
     expect(plan.errors.map((e) => e.code)).toEqual([FUD_TAG_INVALID]);
     expect(plan.errors[0]!.message).toMatch(/hyphen/u);
     await apply(plan, options(), fs);
-    expect(fs.paths()).toEqual([]);
+    // Nothing beyond the project's own `fudic.json`, which was already there.
+    expect(fs.paths()).toEqual(['fudic.json']);
   });
 
   it('rejects a name reserved by the spec and a tag already in the project (§6.3)', async () => {
-    const fs = new MemoryFs({ 'components/app-card.fud': CARD });
+    const fs = projectFs({ 'components/app-card.fud': CARD });
     expect((await planComponent('font-face', options(), fs)).errors.map((e) => e.code)).toEqual([FUD_TAG_RESERVED]);
     expect((await planComponent('app-card', options(), fs)).errors.map((e) => e.code)).toEqual([FUD_TAG_EXISTS]);
   });
 
   it('wires into a component before its @code, and is idempotent (§6.4)', async () => {
-    const fs = new MemoryFs({ 'components/app-card.fud': CARD });
+    const fs = projectFs({ 'components/app-card.fud': CARD });
     const opts = options({ wireInto: ['components/app-card.fud'] });
 
     const plan = await planComponent('app-icon', opts, fs);
@@ -146,7 +147,7 @@ describe('g component', () => {
     // The target already links the component the command is about to create: the plan
     // creates the file and leaves the target alone — no duplicate, no diagnostic.
     const linked = `<link rel="component" href="./app-icon.fud">\n${CARD}`;
-    const fs = new MemoryFs({ 'components/app-card.fud': linked });
+    const fs = projectFs({ 'components/app-card.fud': linked });
     const plan = await planComponent('app-icon', options({ wireInto: ['components/app-card.fud'] }), fs);
 
     expect(plan.errors).toEqual([]);
@@ -155,7 +156,7 @@ describe('g component', () => {
   });
 
   it('a component with no links takes the link at offset 0', async () => {
-    const fs = new MemoryFs({
+    const fs = projectFs({
       'components/bare.fud': '<app-bare>\n  <template shadowrootmode="open"></template>\n</app-bare>\n',
     });
     const plan = await planComponent('app-icon', options({ wireInto: ['components/bare.fud'] }), fs);
@@ -166,7 +167,7 @@ describe('g component', () => {
   it('collides on an existing FILE even when the tag is free (§6.10)', async () => {
     // The file is named after another component, so the tag `app-box` is not taken but
     // the target path is: the collision is about the path, and it must not be silent.
-    const fs = new MemoryFs({
+    const fs = projectFs({
       'components/app-box.fud': '<other-tag>\n  <template shadowrootmode="open"></template>\n</other-tag>\n',
     });
     const plan = await planComponent('app-box', options(), fs);
@@ -174,7 +175,7 @@ describe('g component', () => {
     expect(plan.errors.map((e) => e.code)).toEqual([FUD_TARGET_EXISTS]);
 
     await apply(plan, options(), fs);
-    expect(fs.paths()).toEqual(['components/app-box.fud']);
+    expect(fs.paths()).toEqual(['components/app-box.fud', 'fudic.json']);
 
     const forced = await planComponent('app-box', options({ force: true }), fs);
     expect(forced.errors).toEqual([]);

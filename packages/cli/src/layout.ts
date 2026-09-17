@@ -12,7 +12,6 @@
  * arrives with its sections already declared.
  */
 
-import { LAYOUTS_DIR } from '@fudic/conventions';
 import { cliError, FUD_LAYOUT_INVALID } from './diagnostics.js';
 import { absolute, dirname, joinPosix, resolveHref } from './paths.js';
 import { parseFud } from './parse.js';
@@ -36,8 +35,14 @@ function isLayout(cwd: string, file: string, io: ReadIo): boolean {
   return parseFud(io.read(path)).doc.type === 'layout-document';
 }
 
-/** Candidate layouts for a page, nearest first. */
-function candidates(pageFile: string, routesDir: string): readonly string[] {
+/**
+ * Candidate layouts for a page, nearest first.
+ *
+ * `layoutsDir` is the project's, not `cwd`'s: since SDD-44 a page is written into a project
+ * that may be several directories below where the command was run, and the last fallback has
+ * to be that project's `src/layouts/` — the workspace root has none.
+ */
+function candidates(pageFile: string, routesDir: string, layoutsDir: string): readonly string[] {
   const out: string[] = [];
   let dir = dirname(pageFile);
   while (dir !== '' && dir !== '.') {
@@ -46,7 +51,7 @@ function candidates(pageFile: string, routesDir: string): readonly string[] {
     dir = dirname(dir);
   }
   out.push(joinPosix(routesDir, LAYOUT_FILE));
-  out.push(joinPosix(LAYOUTS_DIR, LAYOUT_FILE));
+  out.push(joinPosix(layoutsDir, LAYOUT_FILE));
   return [...new Set(out)];
 }
 
@@ -78,7 +83,7 @@ function collectSections(
 export function resolveLayout(
   pageFile: string,
   explicit: string | null | undefined,
-  opts: { readonly cwd: string; readonly routesDir: string },
+  opts: { readonly cwd: string; readonly routesDir: string; readonly layoutsDir: string },
   io: ReadIo,
 ): LayoutResolution {
   if (explicit === null) return { path: null, sections: [], diagnostics: [], errors: [] };
@@ -96,7 +101,7 @@ export function resolveLayout(
     return { path: explicit, sections: collected.sections, diagnostics: collected.diagnostics, errors: [] };
   }
 
-  for (const candidate of candidates(pageFile, opts.routesDir)) {
+  for (const candidate of candidates(pageFile, opts.routesDir, opts.layoutsDir)) {
     if (!isLayout(opts.cwd, candidate, io)) continue;
     const collected = collectSections(opts.cwd, candidate, io);
     return { path: candidate, sections: collected.sections, diagnostics: collected.diagnostics, errors: [] };

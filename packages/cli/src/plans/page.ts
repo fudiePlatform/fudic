@@ -5,23 +5,43 @@
  * declares the sections the layout can render.
  */
 
+import { LAYOUTS_DIR } from '@fudic/conventions';
 import { cliError, FUD_SECTION_UNKNOWN } from '../diagnostics.js';
 import { hrefBetween, joinPosix } from '../paths.js';
 import { resolveLayout } from '../layout.js';
 import { targetChange } from '../project.js';
 import { routeToFile } from '../route.js';
+import { resolveTarget, routeRefusal } from '../workspace/target.js';
 import { indent, renderTemplate, sectionBlocks, serverCodeBlock } from '../templates.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
 import type { CliError, FileChange, PageOptions, Plan, PlanDiagnostic } from '../types.js';
 
 export function planPage(route: string, opts: PageOptions, io: ReadIo = nodeReadIo()): Promise<Plan> {
+  const resolved = resolveTarget(opts, io);
+  if (resolved.target === undefined) {
+    return Promise.resolve({ changes: [], commands: [], diagnostics: [], errors: resolved.errors });
+  }
+  // A library has no routes (§4.8). Checked before the route is even mapped, because the
+  // answer does not depend on the route and a FUD0783 about `/alta` would read as though a
+  // different path might have worked.
+  const refusal = routeRefusal(resolved.target);
+  if (refusal !== null) {
+    return Promise.resolve({ changes: [], commands: [], diagnostics: [], errors: [refusal] });
+  }
+
   const mapped = routeToFile(route);
   if (mapped.error !== undefined) {
     return Promise.resolve({ changes: [], commands: [], diagnostics: [], errors: [mapped.error] });
   }
 
-  const file = joinPosix(opts.dir, mapped.file);
-  const layout = resolveLayout(file, opts.layout, { cwd: opts.cwd, routesDir: opts.dir }, io);
+  const routesDir = joinPosix(resolved.target.dir, opts.dir);
+  const file = joinPosix(routesDir, mapped.file);
+  const layout = resolveLayout(
+    file,
+    opts.layout,
+    { cwd: opts.cwd, routesDir, layoutsDir: joinPosix(resolved.target.dir, LAYOUTS_DIR) },
+    io,
+  );
   const diagnostics: PlanDiagnostic[] = [...layout.diagnostics];
   const errors: CliError[] = [...layout.errors];
 
