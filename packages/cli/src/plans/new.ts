@@ -3,138 +3,43 @@
  * against it with `<link rel="layout">`, the Vite config, and `sw.json` unless `--no-sw` —
  * the Service Worker itself is NOT a user file: the plugin emits `fudic-sw.js`, and the
  * project only declares the policy (SDD-20 §4.7).
+ *
+ * **Without `--workspace` this command has not changed at all** (SDD-44 §4.2). It is still a
+ * standalone project, with its own `tsconfig.json` and its own `fudic-globals.d.ts`, and that
+ * is what keeps the one-command start for the case that is still the common one.
  */
 
-import { CONFIG_FILE, FUD_CONFIG_MALFORMED, ID_PATTERN, PREFIX_PATTERN } from '@fudic/config';
-import { COMPONENTS_DIR, LAYOUTS_DIR, ROUTES_DIR } from '@fudic/conventions';
-import { GLOBALS_DTS, GLOBALS_FILE_NAME } from '@fudic/language-core';
-import { cliError, FUD_ADAPTER_UNAVAILABLE, FUD_TARGET_EXISTS } from '../diagnostics.js';
-import { absolute, hrefBetween, joinPosix } from '../paths.js';
-import { FUDIC_VERSION, TYPESCRIPT_VERSION, VITE_VERSION } from '../project.js';
-import { prefixField, renderSectionBlocks, renderTemplate } from '../templates.js';
+import { appFiles, scaffoldChanges, scaffoldRefusal } from './scaffold.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
-import type { CliError, FileChange, NewOptions, Plan, PlanCommand } from '../types.js';
-
-/** The only adapter that exists: none. Anything else is rejected, never ignored (§4.6). */
-const AVAILABLE_TARGETS = ['static'];
-
-/** `null` when the field is usable. An empty `prefix` is the field being absent, not a value. */
-function invalidField(field: string, value: string, pattern: RegExp): CliError | null {
-  if (field === 'prefix' && value === '') return null;
-  if (pattern.test(value)) return null;
-  return cliError(
-    FUD_CONFIG_MALFORMED,
-    `--${field} "${value}" is not usable in ${CONFIG_FILE}: it must match ${pattern.source}`,
-    CONFIG_FILE,
-  );
-}
+import { EMPTY_PLAN, type NewOptions, type Plan, type PlanCommand } from '../types.js';
 
 export function planNew(name: string, opts: NewOptions, io: ReadIo = nodeReadIo()): Promise<Plan> {
-  if (!AVAILABLE_TARGETS.includes(opts.target)) {
-    return Promise.resolve({
-      changes: [],
-      commands: [],
-      diagnostics: [],
-      errors: [
-        cliError(
-          FUD_ADAPTER_UNAVAILABLE,
-          `adapter '${opts.target}' is not available; installed adapters: ${AVAILABLE_TARGETS.join(', ')}`,
-        ),
-      ],
-    });
-  }
+  const refused = scaffoldRefusal(name, opts, io);
+  if (refused !== null) return Promise.resolve({ ...EMPTY_PLAN, errors: [refused] });
 
-  // The command refuses to WRITE a `fudic.json` its own reader would reject. A project
-  // whose id does not match is one whose build fails on its first run, with a diagnostic
-  // about a file the user never opened.
-  const badField = invalidField('id', opts.id, ID_PATTERN) ?? invalidField('prefix', opts.prefix, PREFIX_PATTERN);
-  if (badField !== null) {
-    return Promise.resolve({ changes: [], commands: [], diagnostics: [], errors: [badField] });
-  }
+  const { changes, errors } = scaffoldChanges(
+    opts,
+    appFiles({ dir: name, pkgName: name, up: null }, opts),
+    io,
+  );
 
-  const root = absolute(opts.cwd, name);
-  if (io.exists(root) && io.list(root).length > 0 && !opts.force) {
-    return Promise.resolve({
-      changes: [],
-      commands: [],
-      diagnostics: [],
-      errors: [cliError(FUD_TARGET_EXISTS, `${name} already exists and is not empty; pass --force to overwrite`, name)],
-    });
-  }
+  return Promise.resolve({ ...EMPTY_PLAN, changes, errors, commands: setupCommands(name, opts) });
+}
 
-  const layoutFile = joinPosix(name, LAYOUTS_DIR, `${opts.layout}.fud`);
-  const indexFile = joinPosix(name, ROUTES_DIR, 'index.fud');
-
-  const files: readonly (readonly [string, string])[] = [
-    [
-      joinPosix(name, 'package.json'),
-      renderTemplate('package.json.tmpl', {
-        name,
-        version: FUDIC_VERSION,
-        viteVersion: VITE_VERSION,
-        tsVersion: TYPESCRIPT_VERSION,
-      }),
-    ],
-    [joinPosix(name, 'vite.config.ts'), renderTemplate('vite.config.ts.tmpl', { routesDir: ROUTES_DIR })],
-    [
-      joinPosix(name, 'README.md'),
-      renderTemplate('README.md.tmpl', {
-        name,
-        pm: opts.pm,
-        layout: opts.layout,
-        layoutsDir: LAYOUTS_DIR,
-        routesDir: ROUTES_DIR,
-        componentsDir: COMPONENTS_DIR,
-      }),
-    ],
-    [joinPosix(name, '.gitignore'), renderTemplate('gitignore.tmpl', {})],
-    [
-      joinPosix(name, CONFIG_FILE),
-      renderTemplate('fudic.json.tmpl', { id: opts.id, prefix: prefixField(opts.prefix) }),
-    ],
-    [joinPosix(name, 'tsconfig.json'), renderTemplate('tsconfig.json.tmpl', {})],
-    // The ambient declarations the templates are typed against. Written from the same
-    // constant the language server mounts in memory (SDD-23 §3.3), so the editor and `tsc`
-    // can never disagree about what `props<T>()` or `$text` mean. Generated, hence the
-    // "do not edit" banner the constant carries.
-    [joinPosix(name, GLOBALS_FILE_NAME), GLOBALS_DTS],
-    ...(opts.sw ? ([[joinPosix(name, 'sw.json'), renderTemplate('sw.json.tmpl', {})]] as const) : []),
-    [layoutFile, renderTemplate('layout.fud', { lang: 'en', renderHead: '    @RenderHead()', sections: renderSectionBlocks([]) })],
-    [
-      indexFile,
-      renderTemplate('route.fud', {
-        layoutHref: hrefBetween(indexFile, layoutFile),
-        code: '',
-        title: 'Home',
-        sections: '',
-      }),
-    ],
-  ];
-
-  const changes: FileChange[] = [];
-  const errors: CliError[] = [];
-  for (const [file, contents] of files) {
-    const path = absolute(opts.cwd, file);
-    if (io.exists(path)) {
-      if (!opts.force) {
-        errors.push(cliError(FUD_TARGET_EXISTS, `${file} already exists; pass --force to overwrite`, file));
-        continue;
-      }
-      changes.push({ kind: 'modify', path: file, contents, before: io.read(path) });
-      continue;
-    }
-    changes.push({ kind: 'create', path: file, contents });
-  }
-
+/**
+ * The install and the initial commit, as plan commands rather than as side effects: a
+ * `--dry-run` that did not list them would describe a command that does more than it says.
+ *
+ * `-b main`, not a bare `git init`: without it the branch is whatever `init.defaultBranch`
+ * happens to be, which is `master` when nobody configured one. The scaffold has an opinion.
+ */
+export function setupCommands(dir: string, opts: NewOptions): readonly PlanCommand[] {
   const commands: PlanCommand[] = [];
-  if (opts.install) commands.push({ command: opts.pm, args: ['install'], dir: name });
+  if (opts.install) commands.push({ command: opts.pm, args: ['install'], dir });
   if (opts.git) {
-    // `-b main`, not a bare `git init`: without it the branch is whatever `init.defaultBranch`
-    // happens to be, which is `master` when nobody configured one. The scaffold has an opinion.
-    commands.push({ command: 'git', args: ['init', '-b', 'main'], dir: name });
-    commands.push({ command: 'git', args: ['add', '-A'], dir: name });
-    commands.push({ command: 'git', args: ['commit', '-m', 'chore: scaffold fudic app'], dir: name });
+    commands.push({ command: 'git', args: ['init', '-b', 'main'], dir });
+    commands.push({ command: 'git', args: ['add', '-A'], dir });
+    commands.push({ command: 'git', args: ['commit', '-m', 'chore: scaffold fudic app'], dir });
   }
-
-  return Promise.resolve({ changes, commands, diagnostics: [], errors });
+  return commands;
 }

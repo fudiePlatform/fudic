@@ -14,6 +14,7 @@ import type {
   NewOptions,
   PackageManager,
   PageOptions,
+  WorkspaceOptions,
 } from './types.js';
 
 export interface GlobalFlags {
@@ -23,6 +24,12 @@ export interface GlobalFlags {
 
 export type ParsedCommand =
   | { readonly kind: 'new'; readonly name: string; readonly opts: NewOptions; readonly flags: GlobalFlags }
+  | {
+      readonly kind: 'workspace';
+      readonly name: string;
+      readonly opts: WorkspaceOptions;
+      readonly flags: GlobalFlags;
+    }
   | { readonly kind: 'component'; readonly tag: string; readonly opts: ComponentOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'page'; readonly route: string; readonly opts: PageOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'layout'; readonly name: string; readonly opts: LayoutOptions; readonly flags: GlobalFlags }
@@ -34,6 +41,7 @@ export const USAGE = `fudic — scaffolding for Declarative Shadow DOM apps
 
   fudic fmt [path…]             format .fud files in place            (default: .)
   fudic new <name>              create a project
+  fudic new <name> --workspace  create a workspace and its first app
   fudic generate <type> <name>  add a piece                     (alias: g)
     fudic g page <route>                                        (alias: p)
     fudic g component <name>                                    (alias: c)
@@ -54,6 +62,8 @@ fudic fmt
   --end-of-line <lf|crlf|auto>  line terminator               (default: lf)
 
 fudic new
+  --workspace            create a workspace (apps/ + libs/) and its first app
+  --app <name>           the first app's name, with --workspace      (default: <name>)
   --id <id>              the app's identity; NEVER change it later  (default: <name>)
   --prefix <p>           what g component proposes here             (default: none)
   --pm <pnpm|npm|yarn>   package manager                 (default: pnpm)
@@ -93,7 +103,7 @@ interface Tokens {
 function tokenize(argv: readonly string[]): Tokens {
   const positionals: string[] = [];
   const flags = new Map<string, string[]>();
-  const valued = new Set(['cwd', 'pm', 'layout', 'target', 'dir', 'in', 'sections', 'print-width', 'tab-width', 'quote', 'end-of-line', 'id', 'prefix']);
+  const valued = new Set(['cwd', 'pm', 'layout', 'target', 'dir', 'in', 'sections', 'print-width', 'tab-width', 'quote', 'end-of-line', 'id', 'prefix', 'app']);
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i] ?? '';
@@ -218,7 +228,7 @@ function number(tokens: Tokens, name: string, fallback: number): number | undefi
 }
 
 function parseNew(tokens: Tokens, rest: readonly string[], base: Base, flags: GlobalFlags): ParsedCommand {
-  const unknown = unknownFlag(tokens, [...GLOBAL, 'pm', 'no-install', 'no-git', 'no-sw', 'layout', 'target', 'id', 'prefix']);
+  const unknown = unknownFlag(tokens, [...GLOBAL, 'pm', 'no-install', 'no-git', 'no-sw', 'layout', 'target', 'id', 'prefix', 'workspace', 'app']);
   if (unknown !== null) return { kind: 'error', error: unknown };
 
   const name = rest[0];
@@ -229,11 +239,16 @@ function parseNew(tokens: Tokens, rest: readonly string[], base: Base, flags: Gl
     return { kind: 'error', error: cliError(FUD_USAGE, `unknown package manager "${pm}"`) };
   }
 
+  // A workspace's first app is named after the workspace unless `--app` says otherwise, and
+  // the app's identity follows the APP — not the directory the monorepo happens to sit in.
+  const workspace = bool(tokens, 'workspace');
+  const app = single(tokens, 'app', name);
+
   const opts: NewOptions = {
     ...base,
     // The name the command was given, not the directory it lands in nor the npm name: the
     // two of those move, and an id that moves leaves caches nobody purges (§4.3).
-    id: single(tokens, 'id', name),
+    id: single(tokens, 'id', workspace ? app : name),
     prefix: single(tokens, 'prefix', ''),
     pm: pm as PackageManager,
     install: !bool(tokens, 'no-install'),
@@ -242,7 +257,8 @@ function parseNew(tokens: Tokens, rest: readonly string[], base: Base, flags: Gl
     layout: single(tokens, 'layout', '_layout'),
     target: single(tokens, 'target', 'static'),
   };
-  return { kind: 'new', name, opts, flags };
+  if (!workspace) return { kind: 'new', name, opts, flags };
+  return { kind: 'workspace', name, opts: { ...opts, app }, flags };
 }
 
 function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flags: GlobalFlags): ParsedCommand {

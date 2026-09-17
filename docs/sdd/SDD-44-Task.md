@@ -3,7 +3,7 @@
 > **SDD:** [SDD-44 — CLI de workspace: N apps, N libs](./SDD-44-cli-de-workspace.md)
 > **Paquetes:** `@fudic/cli` (consume `@fudic/config`, que no cambia)
 > **Rama:** `sdd-44-cli-de-workspace`
-> **Progreso:** 1 / 12
+> **Progreso:** 4 / 12
 > **Bloqueado por:** [SDD-41](./SDD-41-configuracion-de-aplicacion.md) entera — este SDD escribe
 > el `fudic.json` que aquella define y descubre proyectos buscándolo. Y por la **decisión** de
 > [SDD-43](./SDD-43-librerias.md) §4.1 —qué publica una librería—, que es lo único que hace falta
@@ -51,9 +51,9 @@ planes independientes sobre plantillas distintas.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 2 | 1 | **Las plantillas de raíz.** `package.json` privado sin dependencias de producción, `pnpm-workspace.yaml` con `apps/*` y `libs/*`, `tsconfig.base.json` con la config estricta, `.gitignore`, y `fudic-globals.d.ts` **una sola vez** (§4.6). `apps`/`libs` son literales de la CLI y **no** bajan a `@fudic/conventions` | `cli` | `templates/workspace/*` |
-| [ ] | 3 | 2 | **(rojo primero)** **`fudic new <n> --workspace`.** `planWorkspace` escribe la raíz **y** `apps/<app>/` con el árbol completo que `planNew` ya sabe hacer, más su `fudic.json`. `--app` cambia el nombre de esa primera app. Hoy el flag no existe: se ve fallar. Criterio 1 | `cli` | `src/plans/workspace.ts` · `src/args.ts` · `src/run.ts` |
-| [ ] | 4 | 3 | **La compatibilidad, afirmada.** `fudic new tienda` **sin** `--workspace` produce **byte a byte** el golden anterior más el `fudic.json` de SDD-41. Es el test que impide que este SDD se lleve por delante el arranque de un solo comando. Y `findProjects` sobre el workspace recién creado devuelve **uno**: la raíz no es un proyecto. Criterios 2, 3 | `cli` | `test/workspace/new-compat.test.ts` |
+| [x] | 2 | 1 | **Las plantillas de raíz.** `package.json` privado sin dependencias de producción, `pnpm-workspace.yaml` con `apps/*` y `libs/*`, `tsconfig.base.json` con la config estricta, `.gitignore`, y `fudic-globals.d.ts` **una sola vez** (§4.6). `apps`/`libs` son literales de la CLI y **no** bajan a `@fudic/conventions` | `cli` | `templates/workspace/*` |
+| [x] | 3 | 2 | **(rojo primero)** **`fudic new <n> --workspace`.** `planWorkspace` escribe la raíz **y** `apps/<app>/` con el árbol completo que `planNew` ya sabe hacer, más su `fudic.json`. `--app` cambia el nombre de esa primera app. Hoy el flag no existe: se ve fallar. Criterio 1 | `cli` | `src/plans/workspace.ts` · `src/args.ts` · `src/run.ts` |
+| [x] | 4 | 3 | **La compatibilidad, afirmada.** `fudic new tienda` **sin** `--workspace` produce **byte a byte** el golden anterior más el `fudic.json` de SDD-41. Es el test que impide que este SDD se lleve por delante el arranque de un solo comando. Y `findProjects` sobre el workspace recién creado devuelve **uno**: la raíz no es un proyecto. Criterios 2, 3 | `cli` | `test/workspace/new-compat.test.ts` |
 
 ---
 

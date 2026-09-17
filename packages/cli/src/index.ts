@@ -18,10 +18,19 @@ export type {
   Plan,
   PlanCommand,
   PlanDiagnostic,
+  WorkspaceOptions,
 } from './types.js';
 
 export { planFmt, filesOf } from './plans/fmt.js';
 export { planNew } from './plans/new.js';
+export { planWorkspace, APPS_DIR, LIBS_DIR } from './plans/workspace.js';
+export {
+  findProjects,
+  targetProject,
+  workspaceRoot,
+  WORKSPACE_FILE,
+  type Project,
+} from './workspace/discover.js';
 export { planComponent } from './plans/component.js';
 export { planPage } from './plans/page.js';
 export { planLayout } from './plans/layout.js';

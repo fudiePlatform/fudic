@@ -116,6 +116,15 @@ export interface NewOptions extends BaseOptions {
   readonly target: string;
 }
 
+/**
+ * `fudic new <nombre> --workspace` (SDD-44 §3.2). It inherits everything `fudic new` takes,
+ * because the app it creates is the one `fudic new` creates.
+ */
+export interface WorkspaceOptions extends NewOptions {
+  /** The first app's name. A workspace with no app is not a useful state. */
+  readonly app: string;
+}
+
 export interface ComponentOptions extends BaseOptions {
   readonly dir: string;
   readonly wireInto: readonly string[];
