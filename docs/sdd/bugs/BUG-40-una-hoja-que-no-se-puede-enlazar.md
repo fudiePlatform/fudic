@@ -5,8 +5,11 @@
 > [SDD-42](../SDD-42-guia-de-estilos.md) §1.2, §4.2 ·
 > [BUG-08](./BUG-08-css-verbatim.md) decisión 49 (comentarios)
 > **Paquetes:** `@fudic/compiler` · `@fudic/vite`
-> **Rango:** ninguno. **No reserva códigos**: `FUD0363` —el asset que no existe— ya dice lo
-> único que había que decir, y lo demás no es un aviso, es una salida rota.
+> **Rango:** `FUD0366` (del rango de [SDD-19](../SDD-19-plugin-vite.md)) y `FUD0438` (del de
+> [SDD-21](../SDD-21-layout.md)). `FUD0363` —el asset que no existe— ya decía lo único que
+> hacía falta para el defecto original; los otros dos salieron de cerrarlo: un enlace de
+> framework fuera del nivel superior, y el directorio público alcanzado por una ruta relativa
+> (§4.2.0).
 > **Descubierto por:** [SDD-42](../SDD-42-guia-de-estilos.md), al construir su evidencia. Es
 > la hoja del documento —la otra mitad de §4.2— la que lo destapa.
 
@@ -182,6 +185,33 @@ El umbral tenía sentido donde el bundler lo aplica: un asset que importa un **m
 la alternativa es una petición por icono en una página que ya ha parseado el código que los
 nombra. No lo tiene para un fichero que enlaza un **documento**. Así que no hay incrustación,
 a ningún tamaño.
+
+### 4.2.0. Las dos formas de nombrar un fichero propio, y la única diferencia entre ellas
+
+Esta es la regla que hay que leer antes que ninguna otra, porque es la que se puede explicar
+a alguien en una frase: **la diferencia es quién elige la URL.**
+
+| se escribe | quién elige la URL | qué le pasa al fichero |
+|---|---|---|
+| `./logo.svg` — relativa | **el framework** | se hashea, se publica en `/assets/`, se comprueba que existe, y entra en el shell si lo enlaza un `<head>` |
+| `/logo.svg` — absoluta de raíz | **quien lo escribe** | es el fichero público de ese nombre: ni se hashea ni se publica, ya está en su URL; se comprueba que existe, se le añade el `base`, y entra en el shell si lo enlaza un `<head>` |
+
+Lo que un desarrollador sabe de un fichero es exactamente eso: si el nombre le da igual —un
+icono, una imagen, una hoja— o si **tiene** que ser ese nombre porque lo pide algo que no es
+su código. No se le puede pedir que sepa de antemano qué hash va a salir, y con esta regla no
+hace falta: no escribe un nombre calculado en ningún sitio.
+
+> **Lo que estaba roto.** Una URL absoluta de raíz se dejaba pasar como *«ya es una URL
+> final»*, y esa frase escondía tres cosas: no se comprobaba que el fichero existiera —una
+> errata era un 404 que nadie reportaba—, el build no sabía de él, así que **había que
+> repetirlo a mano en el `shell` de `sw.json`** junto a nombres hasheados que nadie puede
+> predecir, y no se le aplicaba el `base`, así que el mismo enlace estaba roto bajo
+> `base: '/admin/'` — la forma exacta de [BUG-39](./BUG-39-el-router-no-conoce-su-base.md).
+
+Y hay una tercera forma que **no existe**: alcanzar el directorio público por una ruta
+relativa, `../../public/logo.svg`. Pide los dos esquemas a la vez y se lleva la peor mitad de
+cada uno —una segunda copia, hasheada, de un fichero que ya se sirve con su nombre—. Es
+`FUD0366`, error, y el mensaje dice la URL que se quería escribir.
 
 ### 4.2.1. Y lo que se enlaza es un asset, no código
 

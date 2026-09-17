@@ -70,6 +70,7 @@ import {
   FUD_CHUNK_NOT_EMITTED,
   FUD_PRERENDER_FAILED,
   FUD_ROUTE_NAME_COLLISION,
+  FUD_PUBLIC_BY_PATH,
   FUD_STYLES_NOT_ADOPTED,
   FUD_SW_SHELL_MISSING,
 } from './diagnostics.js';
@@ -290,11 +291,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     configResolved(config) {
       root = config.root;
       base = config.base;
-      linked = new LinkedAssets(config.base);
       outDir = resolvePath(config.root, config.build.outDir);
       // Copied verbatim into the output, so a shell entry may legitimately point there
       // without ever appearing in the bundle (BUG-01 §4.4).
       publicDir = typeof config.publicDir === 'string' ? config.publicDir : '';
+      // The registry knows it too, because a root-absolute `href` in a `.fud` names a file
+      // of THIS directory: that is what makes it checkable, and what puts it in the shell.
+      linked = new LinkedAssets(config.base, publicDir);
       isDev = config.command === 'serve';
       // Forwarded to the Service Worker's nested build, which runs `configFile: false`.
       resolveAlias = config.resolve?.alias;
@@ -1214,6 +1217,18 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         } finally {
           rmSync(dir, { recursive: true, force: true });
         }
+      }
+
+      // 5a. A public file somebody reached by a relative path (FUD0366). Reported here
+      //     rather than at the transform because the passes repeat: the same `.fud` is
+      //     compiled by the host, the link pass and the edge pass, and one mistake would
+      //     be said three times.
+      for (const url of linked.publicByPath()) {
+        this.error(
+          `[${FUD_PUBLIC_BY_PATH}] A public file is named by its URL, not by a path into the public directory: ` +
+            `write "${url}". Reaching it with a relative path publishes a second, hashed copy of a file ` +
+            'that is already served under its own name.',
+        );
       }
 
       // 5b. The files the project's `.fud` link, published under the name every pass was

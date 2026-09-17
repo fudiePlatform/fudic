@@ -32,6 +32,8 @@ beforeAll(() => {
   writeFileSync(join(root, 'small.svg'), SMALL_SVG);
   writeFileSync(join(root, 'data.bin'), Buffer.alloc(5000, 3));
   writeFileSync(join(root, 'LICENSE'), 'x'.repeat(5000));
+  mkdirSync(join(root, 'public'), { recursive: true });
+  writeFileSync(join(root, 'public', 'site.svg'), SMALL_SVG);
 });
 
 const sheet = (): string => join(root, 'styles', 'theme.css');
@@ -174,6 +176,57 @@ describe('LinkedAssets — §6.9 what the worker precaches', () => {
     const assets = new LinkedAssets('/');
     assets.url(sheet(), 'markup');
     expect(assets.shell()).toEqual([]);
+  });
+});
+
+describe('LinkedAssets — the project public directory', () => {
+  const publicDir = (): string => join(root, 'public');
+
+  it('answers for a file that is there, and not for one that is not', () => {
+    const assets = new LinkedAssets('/', publicDir());
+    expect(assets.publicFile('/site.svg')).toBe(join(publicDir(), 'site.svg'));
+    expect(assets.publicFile('/site.svg?v=2')).toBe(join(publicDir(), 'site.svg'));
+    expect(assets.publicFile('/ghost.svg')).toBeUndefined();
+  });
+
+  it('answers nothing at all when the project has no public directory', () => {
+    const assets = new LinkedAssets('/');
+    expect(assets.publicFile('/site.svg')).toBeUndefined();
+    // And then a relative path cannot be "inside" it either, so nothing is misnamed.
+    assets.url(join(publicDir(), 'site.svg'), 'head');
+    expect(assets.publicByPath()).toEqual([]);
+  });
+
+  it('keeps the URL the author wrote, and adds the base', () => {
+    expect(new LinkedAssets('/', publicDir()).publicUrl('/site.svg')).toBe('/site.svg');
+    expect(new LinkedAssets('/admin/', publicDir()).publicUrl('/site.svg')).toBe(
+      '/admin/site.svg',
+    );
+  });
+
+  it('puts one a head links into the shell, and one from markup nowhere', () => {
+    const assets = new LinkedAssets('/', publicDir());
+    assets.publicUrl('/site.svg', 'head');
+    assets.publicUrl('/probe.txt', 'markup');
+    expect(assets.shell()).toEqual(['/site.svg']);
+  });
+
+  it('FUD0366: a relative path into public is recorded, and answered with what was meant', () => {
+    const assets = new LinkedAssets('/', publicDir());
+    // What `../../public/logo.svg` resolves to. It gets the URL the author meant — the
+    // build complains, the page is still right — and nothing is published.
+    expect(assets.url(join(publicDir(), 'site.svg'), 'head')).toBe('/site.svg');
+    expect(assets.publicByPath()).toEqual(['/site.svg']);
+    expect(assets.files().size).toBe(0);
+    expect(assets.shell()).toEqual(['/site.svg']);
+  });
+
+  it('does not mistake a sibling of public for something inside it', () => {
+    // `relative()` on `public` → `public-assets` yields `../public-assets`, and the `..`
+    // is what says it is outside. Compared on the resolved path, never on the text.
+    const assets = new LinkedAssets('/', publicDir());
+    expect(assets.url(join(root, 'logo.png'))).toMatch(/^\/assets\/logo-/u);
+    expect(assets.publicByPath()).toEqual([]);
   });
 });
 

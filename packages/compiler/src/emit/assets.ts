@@ -125,23 +125,32 @@ export class AssetLinker {
   ]);
 
   /**
-   * A static, relative specifier the bundler can resolve to a hashed asset. Rejects
-   * schemes (`http:`, `data:`, …), protocol-relative (`//`), root-absolute/public
-   * (`/x`), and in-page fragments (`#x`) — those are already final URLs — and anything
-   * whose extension says it is code rather than an asset.
+   * A specifier the HOST is asked about. Two shapes reach it, and they are the two ways a
+   * project has of naming a file of its own:
+   *
+   * - **relative** (`./logo.svg`) — the framework owns the URL: hashed, immutable,
+   *   published. Code is excluded, because a `.js` is compiled and not fetched as it is.
+   * - **root-absolute** (`/logo.svg`) — the author owns the URL, and the file is the
+   *   project's public one. Nothing is hashed or published; it is already at its URL. It is
+   *   still ASKED about, which is the whole difference: it used to be waved through, so a
+   *   typo there was a 404 nobody reported and the Service Worker never heard of the file.
+   *   Code is fine here — a public `.js` is served as it is, which is why it is public.
+   *
+   * Rejected outright: schemes (`http:`, `data:`, …), protocol-relative (`//`) and in-page
+   * fragments (`#x`). Those are final URLs, and none of them is ours.
    */
   static linkable(spec: string): boolean {
     if (spec === '') return false;
     if (/^[a-z][a-z0-9+.-]*:/iu.test(spec)) return false; // scheme: http:, data:, blob:, mailto:
     if (spec.startsWith('//')) return false; // protocol-relative
-    if (spec.startsWith('/')) return false; // root-absolute (Vite public dir, served as-is)
     if (spec.startsWith('#')) return false; // in-page fragment
+    if (spec.startsWith('/')) return true; // the project's public file
     const file = AssetLinker.filePath(spec);
     const dot = file.lastIndexOf('.');
     if (dot > Math.max(file.lastIndexOf('/'), file.lastIndexOf('\\'))) {
       if (AssetLinker.#CODE.has(file.slice(dot).toLowerCase())) return false;
     }
-    return true; // relative path → link through Vite
+    return true; // relative path → the framework names it
   }
 
   /** The JS expression (an import binding) for a specifier, registering its import once. */

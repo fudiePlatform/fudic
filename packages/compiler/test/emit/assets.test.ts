@@ -9,14 +9,25 @@ import { resolveComponents, emitComponentModule, AssetLinker } from '../../src/e
 import { memoryIo } from './_support.js';
 
 describe('AssetLinker.linkable', () => {
-  it('links relative paths, rejects final URLs', () => {
+  it('asks the host about the two ways of naming a file of your own', () => {
+    // Relative: the framework chooses the URL — hashed, published.
     expect(AssetLinker.linkable('./logo.png')).toBe(true);
     expect(AssetLinker.linkable('../a/b.svg')).toBe(true);
     expect(AssetLinker.linkable('logo.png')).toBe(true);
+    // Root-absolute: the AUTHOR chose the URL, and the file is the project's public one.
+    // It used to be waved through as "already final", and that is why a typo there was a
+    // 404 nobody reported and the Service Worker never heard of the file. Asking about it
+    // changes nothing it produces — the URL comes back as written, plus `base`.
+    expect(AssetLinker.linkable('/logo.svg')).toBe(true);
+    // Including a `.js`, which is code and never published, but IS served as it is: that
+    // is what being public means.
+    expect(AssetLinker.linkable('/probe.js')).toBe(true);
+  });
+
+  it('rejects what is already a final URL, and none of it ours', () => {
     expect(AssetLinker.linkable('https://cdn/x.png')).toBe(false);
     expect(AssetLinker.linkable('data:image/png;base64,AAAA')).toBe(false);
     expect(AssetLinker.linkable('//cdn/x.png')).toBe(false);
-    expect(AssetLinker.linkable('/public/x.png')).toBe(false);
     expect(AssetLinker.linkable('#frag')).toBe(false);
     expect(AssetLinker.linkable('')).toBe(false);
   });

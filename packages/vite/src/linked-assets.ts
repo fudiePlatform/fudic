@@ -19,9 +19,9 @@
  */
 
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { resolve as resolvePath } from 'node:path';
-import { compactProjectCss, type AssetOrigin, type AssetUrl } from '@fudic/compiler';
+import { existsSync, readFileSync } from 'node:fs';
+import { isAbsolute, relative as relativePath, resolve as resolvePath } from 'node:path';
+import { AssetLinker, compactProjectCss, type AssetOrigin, type AssetUrl } from '@fudic/compiler';
 
 /**
  * A file a document links is published as a file. There is no inlining, at no size.
@@ -79,6 +79,8 @@ const slashes = (path: string): string => path.replace(/\\/gu, '/');
 /** The registry of linked files: their names, their bytes, and where they came from. */
 export class LinkedAssets {
   readonly #base: string;
+  /** Where the project's public files live, absolute. `''` when the project has none. */
+  readonly #publicDir: string;
   /** Absolute source path → the URL the document will carry. */
   readonly #urls = new Map<string, string>();
   /** Published file name → its bytes. What the host build writes. */
@@ -87,9 +89,54 @@ export class LinkedAssets {
   readonly #sources = new Map<string, string>();
   /** The URLs written in a document's `<head>` — the shell (§4.5). */
   readonly #shell = new Set<string>();
+  /** Public files named by a relative path instead of by their URL (`FUD0366`). */
+  readonly #byPath = new Set<string>();
 
-  constructor(base: string) {
+  constructor(base: string, publicDir = '') {
     this.#base = base.endsWith('/') ? base : `${base}/`;
+    this.#publicDir = publicDir;
+  }
+
+  /**
+   * The absolute path of a public file named by a root-absolute specifier, or `undefined`.
+   *
+   * `/logo.svg` means *the file at the root of what this project serves*, and that is
+   * `public/logo.svg`. Answering this is what turns a root-absolute `href` from a string
+   * nobody checks into a file the build knows: it exists or it is `FUD0363`, and if a
+   * `<head>` links it the Service Worker precaches it without anyone writing `sw.json`.
+   */
+  /**
+   * The root-absolute URL of a path that lands inside `public/`, or `undefined`.
+   *
+   * Compared on the resolved path, not on the text of the specifier: `../../public/x` and
+   * `../styles/../../public/x` are the same file, and only one of them looks like it.
+   */
+  #underPublic(absPath: string): string | undefined {
+    if (this.#publicDir === '') return undefined;
+    const rel = relativePath(this.#publicDir, absPath);
+    if (rel === '' || rel.startsWith('..') || isAbsolute(rel)) return undefined;
+    return `/${slashes(rel)}`;
+  }
+
+  publicFile(spec: string): string | undefined {
+    if (this.#publicDir === '') return undefined;
+    const path = resolvePath(this.#publicDir, `.${AssetLinker.filePath(spec)}`);
+    return existsSync(path) ? path : undefined;
+  }
+
+  /**
+   * The URL of a public file: its own path, under `base`.
+   *
+   * Nothing is hashed and nothing is published — the file is already at its URL, which is
+   * the entire reason it is public. What is added is `base`, because the author wrote
+   * `/logo.svg` meaning *the root of my app*, and under `base: '/admin/'` that is
+   * `/admin/logo.svg`. Without this the link is a 404 in exactly the deployment that is
+   * hardest to test, which is the shape BUG-39 already had once.
+   */
+  publicUrl(spec: string, origin: AssetOrigin = 'markup'): string {
+    const url = this.#base + spec.slice(1);
+    if (origin === 'head') this.#shell.add(url);
+    return url;
   }
 
   /**
@@ -98,7 +145,24 @@ export class LinkedAssets {
    * The hash is over the bytes, so a file that did not change keeps its name across builds
    * and stays in every cache that holds it, and a file that changed gets a new one.
    */
+  /**
+   * The public files somebody reached by a relative path — `../../public/logo.svg`
+   * (`FUD0366`). Reported by the plugin; the URL written is the one the author meant.
+   */
+  publicByPath(): readonly string[] {
+    return [...this.#byPath];
+  }
+
   url(absPath: string, origin: AssetOrigin = 'markup'): string {
+    // Inside `public/`: the author asked for both naming schemes at once and would get the
+    // worse half of each — a second, hashed copy of a file already served under its own
+    // name. Reported (FUD0366) and then written as what they meant, so the page is right
+    // even while the build is complaining.
+    const inside = this.#underPublic(absPath);
+    if (inside !== undefined) {
+      this.#byPath.add(inside);
+      return this.publicUrl(inside, origin);
+    }
     const path = slashes(absPath);
     const cached = this.#urls.get(path);
     if (cached !== undefined) {
@@ -178,5 +242,8 @@ export class LinkedAssets {
  * `./logo.svg` can be relative to.
  */
 export function assetUrlFrom(assets: LinkedAssets, fudDir: string): AssetUrl {
-  return (spec, origin) => assets.url(resolvePath(fudDir, spec), origin);
+  return (spec, origin) =>
+    spec.startsWith('/')
+      ? assets.publicUrl(spec, origin)
+      : assets.url(resolvePath(fudDir, spec), origin);
 }

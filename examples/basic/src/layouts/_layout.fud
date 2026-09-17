@@ -16,7 +16,12 @@
 
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="icon" href="./logo.svg">
+    @* Un fichero PÚBLICO: la URL la elige quien lo escribe, no el build. Va sin hash,
+       porque un favicon se pide por su nombre desde sitios que no son este código. La
+       ruta se resuelve contra `public/`, así que el fichero se comprueba —si no está es
+       `FUD0363`— y el Service Worker lo precachea solo, sin escribir nada en `sw.json`.
+       La otra forma es `./algo.svg`, y entonces el nombre lo pone el build. *@
+    <link rel="icon" href="/logo.svg">
 
     @* La mitad del sistema de estilos que vive en el DOCUMENTO: los tokens. No entra en
        ningún shadow root —ninguna hoja del documento lo hace—, y aun así la ven todos los

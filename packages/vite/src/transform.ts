@@ -104,12 +104,18 @@ function emitOptionsFor(
   styles: ProjectStyles,
   assets: LinkedAssets | undefined,
 ): Parameters<typeof emitPageModuleMapped>[1] {
-  // A linkable asset exists when it resolves to a real file next to the `.fud` (§6.13).
+  // A linkable asset exists when it resolves to a real file next to the `.fud` (§6.13) —
+  // or, for a root-absolute `/logo.svg`, when the project's public directory holds it.
+  // Without a registry there is nothing to ask, and a root-absolute URL is waved through
+  // rather than reported: it may well be served by something that is not this build.
   const baseDir = dirname(id);
   return {
     importExt: IMPORT_EXT,
     linkAssets: true,
-    assetExists: (spec: string): boolean => existsSync(resolve(baseDir, spec)),
+    assetExists: (spec: string): boolean =>
+      spec.startsWith('/')
+        ? assets === undefined || assets.publicFile(spec) !== undefined
+        : existsSync(resolve(baseDir, spec)),
     // And its URL is the host's to decide, once for the whole build (BUG-40). Absent only
     // for a caller that has no registry — then the emit falls back to an import, which is
     // the pre-BUG-40 behaviour and what the standalone emit does.
