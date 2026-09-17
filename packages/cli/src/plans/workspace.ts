@@ -16,19 +16,9 @@ import { joinPosix } from '../paths.js';
 import { TYPESCRIPT_VERSION } from '../project.js';
 import { renderTemplate } from '../templates.js';
 import { WORKSPACE_FILE } from '../workspace/discover.js';
+import { APPS_DIR } from '../workspace/place.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
 import { EMPTY_PLAN, type Plan, type WorkspaceOptions } from '../types.js';
-
-/**
- * Where apps and libraries hang by default.
- *
- * They belong to the CLI and **not** to `@fudic/conventions`: it writes them and nobody else
- * reads them, because discovery goes through `fudic.json` (§4.1). Moving them down into the
- * shared package would be declaring a convention no second package consumes — and
- * `@fudic/conventions` is for names two packages must agree on.
- */
-export const APPS_DIR = 'apps';
-export const LIBS_DIR = 'libs';
 
 /** The workspace root: tooling, the package list, and the two files §4.6 keeps in one place. */
 function rootFiles(name: string, opts: WorkspaceOptions): readonly ScaffoldFile[] {
@@ -59,7 +49,7 @@ export function planWorkspace(
       ...rootFiles(name, opts),
       // The same app `fudic new` writes, from the same builder — minus the two files that
       // now live at the root. `up` is what says so.
-      ...appFiles({ dir: appDir, pkgName: `@${name}/${opts.app}`, up: '../..' }, opts),
+      ...appFiles({ dir: appDir, pkgName: `@${name}/${opts.app}`, up: '../..', uses: '' }, opts),
     ],
     io,
   );

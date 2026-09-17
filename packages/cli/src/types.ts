@@ -125,6 +125,26 @@ export interface WorkspaceOptions extends NewOptions {
   readonly app: string;
 }
 
+/**
+ * What `fudic g app` and `fudic g lib` share (SDD-44 §3.2).
+ *
+ * `dir` hangs from the WORKSPACE ROOT, not from `cwd`: `cd apps/tienda && fudic g app admin`
+ * has to put the new app beside the old one, never inside it.
+ */
+export interface ProjectOptions extends BaseOptions {
+  readonly dir: string;
+  /** What `g component` proposes here. `''` ⇒ `fudic.json` does not carry the field. */
+  readonly prefix: string;
+  /** Workspace libraries this project depends on. */
+  readonly uses: readonly string[];
+}
+
+export interface AppOptions extends ProjectOptions {
+  /** Written, never derived from the directory nor from the npm name (§4.4). */
+  readonly id: string;
+  readonly sw: boolean;
+}
+
 export interface ComponentOptions extends BaseOptions {
   readonly dir: string;
   readonly wireInto: readonly string[];

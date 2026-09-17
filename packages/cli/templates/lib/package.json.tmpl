@@ -1,0 +1,13 @@
+{
+  "name": "{{name}}",
+  "version": "0.0.0",
+  "type": "module",
+  "files": [
+    "src",
+    "fudic.json"
+  ],
+  "exports": {
+    "./fudic.json": "./fudic.json",
+    "./*.fud": "./src/components/*.fud"
+  }{{uses}}
+}

@@ -6,7 +6,9 @@
 
 import { COMPONENTS_DIR, LAYOUTS_DIR, ROUTES_DIR } from '@fudic/conventions';
 import { cliError, FUD_USAGE } from './diagnostics.js';
+import { APPS_DIR, LIBS_DIR } from './workspace/place.js';
 import type {
+  AppOptions,
   CliError,
   ComponentOptions,
   FmtOptions,
@@ -14,6 +16,7 @@ import type {
   NewOptions,
   PackageManager,
   PageOptions,
+  ProjectOptions,
   WorkspaceOptions,
 } from './types.js';
 
@@ -30,6 +33,8 @@ export type ParsedCommand =
       readonly opts: WorkspaceOptions;
       readonly flags: GlobalFlags;
     }
+  | { readonly kind: 'app'; readonly name: string; readonly opts: AppOptions; readonly flags: GlobalFlags }
+  | { readonly kind: 'lib'; readonly name: string; readonly opts: ProjectOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'component'; readonly tag: string; readonly opts: ComponentOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'page'; readonly route: string; readonly opts: PageOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'layout'; readonly name: string; readonly opts: LayoutOptions; readonly flags: GlobalFlags }
@@ -43,6 +48,8 @@ export const USAGE = `fudic — scaffolding for Declarative Shadow DOM apps
   fudic new <name>              create a project
   fudic new <name> --workspace  create a workspace and its first app
   fudic generate <type> <name>  add a piece                     (alias: g)
+    fudic g app <name>            another app in the workspace  (alias: a)
+    fudic g lib <name>            a component library
     fudic g page <route>                                        (alias: p)
     fudic g component <name>                                    (alias: c)
     fudic g layout <name>                                       (alias: l)
@@ -72,6 +79,19 @@ fudic new
   --no-sw                do not write sw.json (no Service Worker)
   --layout <name>        initial layout name             (default: _layout)
   --target <name>        deployment adapter              (default: static)
+
+fudic g app <name>            (inside a workspace)
+  --dir <path>       where it hangs, from the workspace root  (default: apps)
+  --id <id>          the app's identity; NEVER change it later    (default: <name>)
+  --prefix <p>       what g component proposes here               (default: none)
+  --no-sw            do not write sw.json (no Service Worker)
+  --uses <lib>       depend on a workspace library; repeatable
+
+fudic g lib <name>            (inside a workspace)
+  a library publishes its .fud sources: no vite config, no routes, no sw.json, no id
+  --dir <path>       where it hangs, from the workspace root  (default: libs)
+  --prefix <p>       what g component proposes here               (default: none)
+  --uses <lib>       depend on another workspace library; repeatable
 
 fudic g component <name>
   the project's prefix turns a bare name into a tag; a name with a hyphen is used as is
@@ -103,7 +123,7 @@ interface Tokens {
 function tokenize(argv: readonly string[]): Tokens {
   const positionals: string[] = [];
   const flags = new Map<string, string[]>();
-  const valued = new Set(['cwd', 'pm', 'layout', 'target', 'dir', 'in', 'sections', 'print-width', 'tab-width', 'quote', 'end-of-line', 'id', 'prefix', 'app']);
+  const valued = new Set(['cwd', 'pm', 'layout', 'target', 'dir', 'in', 'sections', 'print-width', 'tab-width', 'quote', 'end-of-line', 'id', 'prefix', 'app', 'uses']);
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i] ?? '';
@@ -268,6 +288,34 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
   }
   if (name === undefined) return { kind: 'error', error: cliError(FUD_USAGE, `fudic g ${type} needs a name`) };
 
+  if (type === 'app' || type === 'a') {
+    const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'id', 'prefix', 'no-sw', 'uses']);
+    if (unknown !== null) return { kind: 'error', error: unknown };
+    const opts: AppOptions = {
+      ...base,
+      dir: single(tokens, 'dir', APPS_DIR),
+      // Written because it was given, not calculated from the directory nor from the npm
+      // name: both of those move, and a moved id leaves caches nobody purges (§4.4).
+      id: single(tokens, 'id', name),
+      prefix: single(tokens, 'prefix', ''),
+      sw: !bool(tokens, 'no-sw'),
+      uses: list(tokens, 'uses') ?? [],
+    };
+    return { kind: 'app', name, opts, flags };
+  }
+
+  if (type === 'lib') {
+    const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'prefix', 'uses']);
+    if (unknown !== null) return { kind: 'error', error: unknown };
+    const opts: ProjectOptions = {
+      ...base,
+      dir: single(tokens, 'dir', LIBS_DIR),
+      prefix: single(tokens, 'prefix', ''),
+      uses: list(tokens, 'uses') ?? [],
+    };
+    return { kind: 'lib', name, opts, flags };
+  }
+
   if (type === 'component' || type === 'c') {
     const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'in', 'no-style', 'slot']);
     if (unknown !== null) return { kind: 'error', error: unknown };
@@ -307,5 +355,5 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
     return { kind: 'layout', name, opts, flags };
   }
 
-  return { kind: 'error', error: cliError(FUD_USAGE, `unknown type "${type}": expected page, component or layout`) };
+  return { kind: 'error', error: cliError(FUD_USAGE, `unknown type "${type}": expected app, lib, page, component or layout`) };
 }

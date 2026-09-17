@@ -3,7 +3,7 @@
 > **SDD:** [SDD-44 — CLI de workspace: N apps, N libs](./SDD-44-cli-de-workspace.md)
 > **Paquetes:** `@fudic/cli` (consume `@fudic/config`, que no cambia)
 > **Rama:** `sdd-44-cli-de-workspace`
-> **Progreso:** 4 / 12
+> **Progreso:** 7 / 12
 > **Bloqueado por:** [SDD-41](./SDD-41-configuracion-de-aplicacion.md) entera — este SDD escribe
 > el `fudic.json` que aquella define y descubre proyectos buscándolo. Y por la **decisión** de
 > [SDD-43](./SDD-43-librerias.md) §4.1 —qué publica una librería—, que es lo único que hace falta
@@ -61,9 +61,9 @@ planes independientes sobre plantillas distintas.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 5 | 1 | **`fudic g app`.** `planApp` bajo `--dir` (defecto `apps`), con `vite.config.ts`, `sw.json` salvo `--no-sw`, y `fudic.json` con `kind: "app"`, el `--id` **escrito y no derivado** (§4.4) y el `--prefix`. `FUD0780` fuera de un workspace; `FUD0784` si el directorio ya existe. Criterio 4 | `cli` | `src/plans/app.ts` · `templates/` |
-| [ ] | 6 | 1 | **`fudic g lib`.** `planLib` con `package.json` cuyos `exports` y `files` apuntan a los **`.fud` fuente** (SDD-43 §4.1), `fudic.json` con `kind: "lib"` y **sin `id`**, `tsconfig.json` extendiendo el de la raíz, y `src/components/` vacío. **No** escribe `vite.config.ts`, `sw.json`, `src/routes/` ni layout. `--prefix` es **opcional**: sin él la librería se escribe igual, con un `fudic.json` sin ese campo (§4.5). Criterios 5, 6 | `cli` | `src/plans/lib.ts` · `templates/lib/*` |
-| [ ] | 7 | 5, 6 | **`--uses`.** Añade `"<scope>/<lib>": "workspace:*"` a las dependencias del proyecto, y **ni un `<link rel="component">`** (§4.7). `FUD0785` cuando nombra algo que no existe o que es una app. Criterio 12 | `cli` | `src/plans/app.ts` · `src/plans/lib.ts` · `src/workspace/uses.ts` |
+| [x] | 5 | 1 | **`fudic g app`.** `planApp` bajo `--dir` (defecto `apps`), con `vite.config.ts`, `sw.json` salvo `--no-sw`, y `fudic.json` con `kind: "app"`, el `--id` **escrito y no derivado** (§4.4) y el `--prefix`. `FUD0780` fuera de un workspace; `FUD0784` si el directorio ya existe. Criterio 4 | `cli` | `src/plans/app.ts` · `templates/` |
+| [x] | 6 | 1 | **`fudic g lib`.** `planLib` con `package.json` cuyos `exports` y `files` apuntan a los **`.fud` fuente** (SDD-43 §4.1), `fudic.json` con `kind: "lib"` y **sin `id`**, `tsconfig.json` extendiendo el de la raíz, y `src/components/` vacío. **No** escribe `vite.config.ts`, `sw.json`, `src/routes/` ni layout. `--prefix` es **opcional**: sin él la librería se escribe igual, con un `fudic.json` sin ese campo (§4.5). Criterios 5, 6 | `cli` | `src/plans/lib.ts` · `templates/lib/*` |
+| [x] | 7 | 5, 6 | **`--uses`.** Añade `"<scope>/<lib>": "workspace:*"` a las dependencias del proyecto, y **ni un `<link rel="component">`** (§4.7). `FUD0785` cuando nombra algo que no existe o que es una app. Criterio 12 | `cli` | `src/plans/app.ts` · `src/plans/lib.ts` · `src/workspace/uses.ts` |
 
 ---
 

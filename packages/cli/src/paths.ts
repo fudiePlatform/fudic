@@ -35,6 +35,11 @@ export function absolute(cwd: string, relPath: string): string {
   return nodeResolve(cwd, relPath);
 }
 
+/** `to`, expressed relative to the directory `from`. Both absolute; POSIX out. */
+export function relativeTo(from: string, to: string): string {
+  return toPosix(nodeRelative(from, to));
+}
+
 /** Resolve an `href` written inside `fromFile` back to a `cwd`-relative path. */
 export function resolveHref(fromFile: string, href: string): string {
   return toPosix(nodeRelative('.', nodeResolve(nodeDirname(fromFile), href)));

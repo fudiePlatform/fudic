@@ -40,6 +40,11 @@ export interface ProjectSite {
    * that.
    */
   readonly up: string | null;
+  /**
+   * The extra `dependencies` entries `--uses` asked for, already rendered (§4.7). `''` for a
+   * project that uses nothing, which leaves the `package.json` exactly as it was.
+   */
+  readonly uses: string;
 }
 
 /** `null` when the field is usable. An empty `prefix` is the field being absent, not a value. */
@@ -115,6 +120,7 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
         version: FUDIC_VERSION,
         viteVersion: VITE_VERSION,
         tsVersion: TYPESCRIPT_VERSION,
+        uses: site.uses,
       }),
     ],
     [

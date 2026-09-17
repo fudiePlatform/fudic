@@ -56,6 +56,99 @@ describe('fudic new --workspace, run end to end', () => {
   });
 });
 
+describe('parseArgs, fudic g app and fudic g lib', () => {
+  it('g app defaults to apps/, and its id to the name it was given', () => {
+    const parsed = parseArgs(['g', 'app', 'admin']);
+
+    expect(parsed.kind).toBe('app');
+    expect(parsed.kind === 'app' && parsed.opts.dir).toBe('apps');
+    expect(parsed.kind === 'app' && parsed.opts.id).toBe('admin');
+    expect(parsed.kind === 'app' && parsed.opts.sw).toBe(true);
+    expect(parsed.kind === 'app' && parsed.opts.uses).toEqual([]);
+  });
+
+  it('g a is the alias', () => {
+    expect(parseArgs(['g', 'a', 'admin']).kind).toBe('app');
+  });
+
+  it('g app takes --dir, --id, --prefix, --no-sw and a repeatable --uses', () => {
+    const parsed = parseArgs([
+      'g', 'app', 'admin',
+      '--dir', 'sites', '--id', 'back', '--prefix', 'ad', '--no-sw',
+      '--uses', 'ui', '--uses', 'theme',
+    ]);
+
+    expect(parsed.kind === 'app' && parsed.opts).toMatchObject({
+      dir: 'sites',
+      id: 'back',
+      prefix: 'ad',
+      sw: false,
+      uses: ['ui', 'theme'],
+    });
+  });
+
+  it('g lib defaults to libs/ and has no id to take', () => {
+    const parsed = parseArgs(['g', 'lib', 'ui', '--prefix', 'ui']);
+
+    expect(parsed.kind).toBe('lib');
+    expect(parsed.kind === 'lib' && parsed.opts.dir).toBe('libs');
+    expect(parsed.kind === 'lib' && parsed.opts.prefix).toBe('ui');
+  });
+
+  it('rejects --id on a library: it has no identity to declare', () => {
+    const parsed = parseArgs(['g', 'lib', 'ui', '--id', 'ui']);
+
+    expect(parsed.kind).toBe('error');
+  });
+
+  it('rejects an unknown flag on g app', () => {
+    expect(parseArgs(['g', 'app', 'admin', '--layout', 'x']).kind).toBe('error');
+  });
+
+  it('names both in the message for an unknown type', () => {
+    const parsed = parseArgs(['g', 'widget', 'x']);
+
+    expect(parsed.kind === 'error' && parsed.error.message).toContain('app, lib');
+  });
+});
+
+describe('fudic g app and g lib, run end to end', () => {
+  function inWorkspace(): MemoryFs {
+    return new MemoryFs(
+      {
+        'pnpm-workspace.yaml': "packages:\n  - 'apps/*'\n  - 'libs/*'\n",
+        'package.json': '{"name":"mi-tienda","private":true}',
+      },
+      CWD,
+    );
+  }
+
+  it('adds an app', async () => {
+    const fs = inWorkspace();
+    const d = deps(fs);
+
+    expect(await run(['g', 'app', 'admin', '--cwd', CWD], d)).toBe(0);
+    expect(fs.paths()).toContain('apps/admin/fudic.json');
+  });
+
+  it('adds a library', async () => {
+    const fs = inWorkspace();
+    const d = deps(fs);
+
+    expect(await run(['g', 'lib', 'ui', '--cwd', CWD, '--prefix', 'ui'], d)).toBe(0);
+    expect(fs.paths()).toContain('libs/ui/package.json');
+  });
+
+  it('exits 1 outside a workspace, having written nothing', async () => {
+    const fs = new MemoryFs({ 'README.md': '#' }, CWD);
+    const d = deps(fs);
+
+    expect(await run(['g', 'lib', 'ui', '--cwd', CWD], d)).toBe(1);
+    expect(fs.paths()).toEqual(['README.md']);
+    expect(d.capture.stdout()).toContain('FUD0780');
+  });
+});
+
 describe('scaffoldChanges', () => {
   /**
    * A scaffold never writes over a file it did not create. The whole-directory refusal

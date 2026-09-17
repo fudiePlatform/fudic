@@ -21,6 +21,8 @@ import { planFmt } from './plans/fmt.js';
 import { planNew } from './plans/new.js';
 import { planPage } from './plans/page.js';
 import { planWorkspace } from './plans/workspace.js';
+import { planApp } from './plans/app.js';
+import { planLib } from './plans/lib.js';
 import { formatDiff, formatError, formatDiagnostic, formatPlan, planToJson } from './report.js';
 import { nodeCommandRunner, nodeReadIo, nodeWriteIo, type CommandRunner, type ReadIo, type WriteIo } from './io.js';
 import type { Plan } from './types.js';
@@ -129,6 +131,10 @@ function build(command: Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } |
       return planNew(command.name, command.opts, io);
     case 'workspace':
       return planWorkspace(command.name, command.opts, io);
+    case 'app':
+      return planApp(command.name, command.opts, io);
+    case 'lib':
+      return planLib(command.name, command.opts, io);
     case 'component':
       return planComponent(command.tag, command.opts, io);
     case 'page':
