@@ -58,20 +58,64 @@ function makeStore(body: () => Response) {
   return { store, fake, clock, calls };
 }
 
-describe('cacheNames', () => {
-  it('namespaces the four caches by build id', () => {
-    expect(cacheNames('a3f9c1')).toEqual({
-      shell: 'shell-a3f9c1',
-      routes: 'routes-a3f9c1',
-      pages: 'pages-a3f9c1',
-      data: 'data-a3f9c1',
+describe('cacheNames (BUG-33 criterion 2)', () => {
+  it('namespaces the four caches by app and then by build', () => {
+    expect(cacheNames('shop', 'a1b2c3d4')).toEqual({
+      shell: 'shell-shop-a1b2c3d4',
+      routes: 'routes-shop-a1b2c3d4',
+      pages: 'pages-shop-a1b2c3d4',
+      data: 'data-shop-a1b2c3d4',
     });
   });
+});
 
-  it('recognises caches of another build (purged on activate)', () => {
-    expect(isStaleCache('routes-old', 'new')).toBe(true);
-    expect(isStaleCache('routes-new', 'new')).toBe(false);
-    expect(isStaleCache('some-other-cache', 'new')).toBe(false);
+/**
+ * BUG-33 criterion 1, inverted.
+ *
+ * This was the photograph of the defect: `CacheStorage` is per ORIGIN, not per scope, so
+ * the worker of `/admin/` enumerated the whole origin and deleted what the worker of `/`
+ * had written. A name carried the build and nothing else, and a build id identifies a
+ * CONSTRUCTION rather than an APPLICATION — so two apps looked to this predicate exactly
+ * like two builds of the same one.
+ */
+describe('isStaleCache — a cache belongs to an app and to a build', () => {
+  it('criterion 3: the cache of another app is never stale', () => {
+    expect(isStaleCache('shell-admin-ffffffff', 'shop', 'a1b2c3d4')).toBe(false);
+    expect(isStaleCache('shell-shop-ffffffff', 'admin', 'a1b2c3d4')).toBe(false);
+    // Whatever the build, including one that happens to match.
+    expect(isStaleCache('shell-admin-a1b2c3d4', 'shop', 'a1b2c3d4')).toBe(false);
+  });
+
+  it('criterion 4: the cut is by width, never by the last hyphen', () => {
+    // `shell-shop-` is a prefix of both, and an id may carry hyphens. What is left after it
+    // measures 14 here, not 8, so this cache is `shop-admin`'s and `shop` leaves it alone.
+    expect(isStaleCache('shell-shop-admin-ffffffff', 'shop', 'a1b2c3d4')).toBe(false);
+    expect(isStaleCache('shell-shop-admin-ffffffff', 'shop-admin', 'a1b2c3d4')).toBe(true);
+  });
+
+  it('criterion 5: an earlier build of this same app is stale', () => {
+    expect(isStaleCache('shell-shop-ffffffff', 'shop', 'a1b2c3d4')).toBe(true);
+    expect(isStaleCache('routes-shop-ffffffff', 'shop', 'a1b2c3d4')).toBe(true);
+    expect(isStaleCache('pages-shop-ffffffff', 'shop', 'a1b2c3d4')).toBe(true);
+    expect(isStaleCache('data-shop-ffffffff', 'shop', 'a1b2c3d4')).toBe(true);
+  });
+
+  it('this app and this build is not stale', () => {
+    expect(isStaleCache('shell-shop-a1b2c3d4', 'shop', 'a1b2c3d4')).toBe(false);
+  });
+
+  it('criterion 6: the pre-BUG-33 shape is purged, whoever finds it', () => {
+    expect(isStaleCache('shell-ffffffff', 'shop', 'a1b2c3d4')).toBe(true);
+    // Not even its own build saves it: with no app segment it cannot be attributed, and
+    // leaving it would keep it in the origin forever.
+    expect(isStaleCache('shell-a1b2c3d4', 'shop', 'a1b2c3d4')).toBe(true);
+  });
+
+  it('a name outside the scheme is left alone', () => {
+    expect(isStaleCache('mi-cache', 'shop', 'a1b2c3d4')).toBe(false);
+    expect(isStaleCache('mi-cache', 'admin', 'ffffffff')).toBe(false);
+    // The vocabulary is the four kinds and nothing else.
+    expect(isStaleCache('assets-shop-a1b2c3d4', 'shop', 'ffffffff')).toBe(false);
   });
 });
 

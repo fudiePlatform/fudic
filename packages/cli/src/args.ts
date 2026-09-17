@@ -36,7 +36,7 @@ export const USAGE = `fudic — scaffolding for Declarative Shadow DOM apps
   fudic new <name>              create a project
   fudic generate <type> <name>  add a piece                     (alias: g)
     fudic g page <route>                                        (alias: p)
-    fudic g component <tag>                                     (alias: c)
+    fudic g component <name>                                    (alias: c)
     fudic g layout <name>                                       (alias: l)
 
 Global flags
@@ -54,6 +54,8 @@ fudic fmt
   --end-of-line <lf|crlf|auto>  line terminator               (default: lf)
 
 fudic new
+  --id <id>              the app's identity; NEVER change it later  (default: <name>)
+  --prefix <p>           what g component proposes here             (default: none)
   --pm <pnpm|npm|yarn>   package manager                 (default: pnpm)
   --no-install           do not install dependencies
   --no-git               do not run git init and the initial commit
@@ -61,7 +63,8 @@ fudic new
   --layout <name>        initial layout name             (default: _layout)
   --target <name>        deployment adapter              (default: static)
 
-fudic g component <tag>
+fudic g component <name>
+  the project's prefix turns a bare name into a tag; a name with a hyphen is used as is
   --dir <path>       target directory                    (default: src/components)
   --in <file>        wire <link rel="component"> into <file>; repeatable
   --no-style         omit the <head> with the component's <style>
@@ -90,7 +93,7 @@ interface Tokens {
 function tokenize(argv: readonly string[]): Tokens {
   const positionals: string[] = [];
   const flags = new Map<string, string[]>();
-  const valued = new Set(['cwd', 'pm', 'layout', 'target', 'dir', 'in', 'sections', 'print-width', 'tab-width', 'quote', 'end-of-line']);
+  const valued = new Set(['cwd', 'pm', 'layout', 'target', 'dir', 'in', 'sections', 'print-width', 'tab-width', 'quote', 'end-of-line', 'id', 'prefix']);
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i] ?? '';
@@ -215,7 +218,7 @@ function number(tokens: Tokens, name: string, fallback: number): number | undefi
 }
 
 function parseNew(tokens: Tokens, rest: readonly string[], base: Base, flags: GlobalFlags): ParsedCommand {
-  const unknown = unknownFlag(tokens, [...GLOBAL, 'pm', 'no-install', 'no-git', 'no-sw', 'layout', 'target']);
+  const unknown = unknownFlag(tokens, [...GLOBAL, 'pm', 'no-install', 'no-git', 'no-sw', 'layout', 'target', 'id', 'prefix']);
   if (unknown !== null) return { kind: 'error', error: unknown };
 
   const name = rest[0];
@@ -228,6 +231,10 @@ function parseNew(tokens: Tokens, rest: readonly string[], base: Base, flags: Gl
 
   const opts: NewOptions = {
     ...base,
+    // The name the command was given, not the directory it lands in nor the npm name: the
+    // two of those move, and an id that moves leaves caches nobody purges (§4.3).
+    id: single(tokens, 'id', name),
+    prefix: single(tokens, 'prefix', ''),
     pm: pm as PackageManager,
     install: !bool(tokens, 'no-install'),
     git: !bool(tokens, 'no-git'),

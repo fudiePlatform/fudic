@@ -1,7 +1,12 @@
 /**
  * SDD-19 §6.13: a literal `src` to a file that does not exist raises FUD0363 as a warning
  * and is left as a literal — the build completes (does not abort). A sibling asset that
- * does exist is still linked and emitted hashed, proving only the missing one is skipped.
+ * does exist is still linked, proving only the missing one is skipped.
+ *
+ * Since BUG-40 a linked asset is named and published by the HOST and not by the bundler —
+ * three passes over one `.fud` cannot be allowed to answer differently — so
+ * `build.assetsInlineLimit` no longer reaches it, and there is no inlining at all: what a
+ * document links is a file, at any size.
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
@@ -41,6 +46,7 @@ beforeAll(async () => {
   // A Service Worker, so the build publishes a render chunk to assert on: since SDD-27
   // §5.1 the `page` chunks are pruned, and `sw/c` is the render code that ships.
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: ['/fudic-main.js'] }));
+  writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
   const result = (await build({
     root,
     logLevel: 'silent',
@@ -49,7 +55,6 @@ beforeAll(async () => {
     build: {
       write: false,
       minify: false,
-      assetsInlineLimit: 0,
       rollupOptions: { onwarn: (w: Rollup.RollupLog) => warnings.push(w.message) },
     },
   })) as unknown as { output: OutFile[] };
@@ -65,7 +70,10 @@ describe('vite build — missing asset (FUD0363)', () => {
   it('leaves the missing URL as a literal but links the existing asset', () => {
     const code = allCode(output);
     expect(code).toContain('"./missing.png"'); // kept as a literal (not an import → no abort)
-    const present = output.find((o) => o.type === 'asset' && /present-[\w-]+\.png$/u.test(o.fileName));
-    expect(present).toBeDefined(); // the existing sibling WAS linked and emitted hashed
+    // The sibling is gone from the output as the author wrote it, which is what "linked"
+    // means: only the missing one was skipped.
+    expect(code).not.toContain('"./present.png"');
+    const present = output.find((o) => /^assets\/present-[\w-]{8}\.png$/u.test(o.fileName));
+    expect(present).toBeDefined();
   });
 });

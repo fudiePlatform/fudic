@@ -20,10 +20,11 @@ import { isLinkable } from './mode.js';
 import { emitRenderChunk } from './wrapper.js';
 import { runtimeUrls } from './constants.js';
 import { routeNameLookup, routeUsesDi } from './client.js';
-import { transformFud } from './transform.js';
+import { transformFud, type ProjectStyles } from './transform.js';
 import { LINK_DIR, LINK_PREFIX } from './constants.js';
 import { loadWithSourceMap } from './inputmaps.js';
 import { serializeMap, type NestedOutputOptions } from './nested.js';
+import { LinkedAssets } from './linked-assets.js';
 
 export interface LinkChunk {
   readonly fileName: string;
@@ -76,7 +77,13 @@ export { safeName } from '@fudic/transport';
  * whole plugin would mean guarding every hook against recursion. This one only knows
  * how to serve the linked wrappers and compile `.fud`.
  */
-function linkPlugin(builds: readonly RouteBuild[], io: ResolveIo, base: string): Plugin {
+function linkPlugin(
+  builds: readonly RouteBuild[],
+  io: ResolveIo,
+  base: string,
+  styles: ProjectStyles = [],
+  assets?: LinkedAssets,
+): Plugin {
   // The Service Worker renders the same pages the edge does, so it publishes the same route
   // names (SDD-39 §4.7): one map, resolved once for the pass.
   const routeNameOf = routeNameLookup(builds, io);
@@ -112,7 +119,7 @@ function linkPlugin(builds: readonly RouteBuild[], io: ResolveIo, base: string):
       if (!path.endsWith('.fud')) {
         return null;
       }
-      const result = transformFud(path, io, routeNameOf(path));
+      const result = transformFud(path, io, routeNameOf(path), styles, assets);
       if (result === null) return null;
       // Since SDD-34 the neutral zone of `@code` reaches this module verbatim, so it is
       // TypeScript whenever the author wrote it — same strip as the host plugin does.
@@ -172,6 +179,8 @@ export async function runLinkPass(
   builds: readonly RouteBuild[],
   io: ResolveIo,
   nested: NestedOutputOptions,
+  styles: ProjectStyles = [],
+  assets: LinkedAssets = new LinkedAssets(base),
 ): Promise<LinkResult> {
   const linkable = builds.filter((rb) => isLinkable(rb.decision));
   if (linkable.length === 0) {
@@ -188,7 +197,7 @@ export async function runLinkPass(
     root,
     base,
     logLevel: 'error',
-    plugins: [linkPlugin(linkable, io, base)],
+    plugins: [linkPlugin(linkable, io, base, styles, assets)],
     build: {
       write: false,
       emptyOutDir: false,

@@ -1,0 +1,5 @@
+{
+  "id": "tienda-admin",
+  "kind": "app",
+  "prefix": "admin"
+}

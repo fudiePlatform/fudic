@@ -33,10 +33,10 @@
     .panel {
       display: grid;
       gap: 0.9rem;
-      border: 1px solid #dcdcdc;
-      border-radius: 10px;
-      padding: 1rem 1.15rem;
-      background: white;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-box);
+      padding: var(--pad-box);
+      background: var(--surface);
     }
     .row {
       display: flex;
@@ -46,9 +46,9 @@
     .panel button {
       font: inherit;
       padding: 0.35rem 0.8rem;
-      border: 1px solid #1a73e8;
-      border-radius: 6px;
-      background: #1a73e8;
+      border: 1px solid var(--brand);
+      border-radius: var(--radius);
+      background: var(--brand);
       color: white;
       cursor: pointer;
     }

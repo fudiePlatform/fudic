@@ -105,6 +105,8 @@ beforeAll(async () => {
   writeFileSync(join(root, 'src', 'routes', '_layout.fud'), LAYOUT);
   writeFileSync(join(root, 'src', 'routes', 'blog', '[slug].fud'), ROUTE);
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
+  // A project with a Service Worker has to say who it is: its caches are named after it.
+  writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
   const result = (await build({
     root,
     logLevel: 'silent',

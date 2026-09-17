@@ -1,0 +1,16 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/tienda-card.fud">
+
+<head>
+  <title>Tienda</title>
+</head>
+
+<h1 data-app="tienda">Tienda</h1>
+
+<p>
+  Esta aplicación vive en la raíz del origen. La de administración vive en
+  <code>/admin/</code>, y es un proyecto distinto: otro <code>package.json</code>, otro
+  build y otro Service Worker.
+</p>
+
+<tienda-card .title="Camiseta">Algodón orgánico, tallas S a XL.</tienda-card>

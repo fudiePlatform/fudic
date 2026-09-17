@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- The same line as the storefront's layout, and it resolves to a different worker:
+         the URL is derived from this build's `base`, so it is `/admin/fudic-sw.js` and its
+         scope is `/admin/`. -->
+    <script type="module" src="fudic:runtime"></script>
+
+    @RenderHead()
+  </head>
+  <body>
+    <main>@RenderBody()</main>
+  </body>
+</html>

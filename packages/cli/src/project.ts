@@ -4,10 +4,11 @@
  * `ReadIo`; nothing here guesses from a filename.
  */
 
+import { FUD_CONFIG_DUPLICATE_ID, readProjectConfig, type ConfigResult, type ProjectConfig } from '@fudic/config';
 import { cliError, FUD_TARGET_EXISTS } from './diagnostics.js';
-import { absolute } from './paths.js';
+import { absolute, joinPosix, toPosix } from './paths.js';
 import { parseFud } from './parse.js';
-import { walkFud, type ReadIo } from './io.js';
+import { SKIPPED, walkFud, type ReadIo } from './io.js';
 import type { CliError, FileChange } from './types.js';
 
 /** Exact dependency versions the generated project pins (repo rule: no `^`, no `~`). */
@@ -19,6 +20,73 @@ export const VITE_VERSION = '8.0.16';
  * would get diagnostics in the editor that its CI cannot reproduce.
  */
 export const TYPESCRIPT_VERSION = '5.9.3';
+
+/**
+ * The `fudic.json` of the project at `cwd`, read through the CLI's own read seam — which
+ * is already `ConfigIo`'s shape, so there is no adapter and no second reader.
+ *
+ * The root goes in POSIX form because the reader joins with `/`, and a Windows root would
+ * otherwise produce a path with both separators in it.
+ */
+export function projectConfig(cwd: string, io: ReadIo): ConfigResult {
+  return readProjectConfig(toPosix(absolute(cwd, '.')), io);
+}
+
+/** A fudic project found on disk: a directory that has a `fudic.json` that reads. */
+export interface WorkspaceProject {
+  /** Where it is, relative to the swept root, POSIX. `'.'` when the root is itself one. */
+  readonly dir: string;
+  readonly config: ProjectConfig;
+}
+
+/**
+ * Every fudic project under `root`. A directory is one if it has a `fudic.json` — that is
+ * the whole discovery rule, and it is why there is no workspace registry: a file listing
+ * the projects would be a second place the same fact lives.
+ *
+ * A configuration that does not read excludes that directory and does not stop the sweep.
+ */
+export function findProjectConfigs(root: string, io: ReadIo): readonly WorkspaceProject[] {
+  const found: WorkspaceProject[] = [];
+  const visit = (dir: string, rel: string): void => {
+    const { config } = readProjectConfig(dir, io);
+    if (config !== null) found.push({ dir: rel, config });
+    for (const entry of io.list(dir)) {
+      if (SKIPPED.has(entry)) continue;
+      const full = joinPosix(dir, entry);
+      if (io.isDirectory(full)) visit(full, rel === '.' ? entry : `${rel}/${entry}`);
+    }
+  };
+  visit(toPosix(absolute(root, '.')), '.');
+  return found;
+}
+
+/**
+ * `FUD0724` for every `id` more than one project declares (§4.7).
+ *
+ * It lives in the CLI and never in the plugin, and that is not an oversight: a Vite build
+ * sees one `root` and cannot know whether another project in the repo claims the same
+ * name, so a check of its would be a permanent false negative dressed up as one.
+ *
+ * A project with no `id` declares no identity and collides with nobody.
+ */
+export function duplicateIds(projects: readonly WorkspaceProject[]): readonly CliError[] {
+  const byId = new Map<string, string[]>();
+  for (const project of projects) {
+    if (project.config.id === '') continue;
+    byId.set(project.config.id, [...(byId.get(project.config.id) ?? []), project.dir]);
+  }
+
+  const errors: CliError[] = [];
+  for (const [id, dirs] of byId) {
+    if (dirs.length > 1) {
+      errors.push(
+        cliError(FUD_CONFIG_DUPLICATE_ID, `the id "${id}" is declared by more than one project: ${dirs.join(', ')}`),
+      );
+    }
+  }
+  return errors;
+}
 
 /**
  * Every custom element already defined in the project. Read from the AST — a component's

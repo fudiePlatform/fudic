@@ -38,6 +38,8 @@ describe('fudic new → vite build (§6.1)', () => {
     const opts: NewOptions = {
       cwd,
       force: false,
+      id: 'demo',
+      prefix: 'app',
       pm: 'pnpm',
       install: false,
       git: false,

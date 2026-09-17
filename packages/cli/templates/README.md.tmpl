@@ -16,8 +16,16 @@ Declarative Shadow DOM.
 {{layoutsDir}}/{{layout}}.fud   the shell every route shares (@RenderBody / @RenderHead)
 {{routesDir}}/index.fud      the `/` route
 {{componentsDir}}/           components, wired with <link rel="component">
+fudic.json                who this project is: its id, and the prefix it proposes
 sw.json                   Service Worker policy; delete it and no SW is emitted
 ```
+
+## The `id` in `fudic.json` is never changed
+
+It is what the Service Worker caches are named after. Change it and the caches written
+under the old one stop matching anybody's name — no worker ever purges them again, and
+they sit in the browser of everyone who visited the old build forever. It is not the
+directory name and not the npm name on purpose: those two move, and this one must not.
 
 Add pieces with the CLI — it writes the wiring for you:
 

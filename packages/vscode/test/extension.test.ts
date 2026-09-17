@@ -122,12 +122,17 @@ describe('activate', () => {
     ]);
   });
 
-  it('points the server at the bundled bundle and watches the three globs', async () => {
+  it('points the server at the bundled bundle and watches the four globs', async () => {
     await activate(context());
 
     const options = LanguageClient.created[0]?.serverOptions as { run: { module: string } };
     expect(options.run.module).toBe(join('/ext', 'dist', 'server.mjs'));
-    expect(state.watchers).toEqual(['**/*.fud', '**/tsconfig*.json', '**/package.json']);
+    expect(state.watchers).toEqual([
+      '**/*.fud',
+      '**/tsconfig*.json',
+      '**/package.json',
+      '**/fudic.json',
+    ]);
   });
 
   it('reports through the output channel and the warning surface', async () => {

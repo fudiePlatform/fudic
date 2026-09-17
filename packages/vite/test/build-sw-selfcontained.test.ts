@@ -50,6 +50,9 @@ function projectRoot(options: { serviceWorker: boolean; shell?: readonly string[
       join(root, 'sw.json'),
       JSON.stringify({ shell: options.shell ?? ['/fudic-main.js'] }),
     );
+    // A project with a Service Worker declares an id (SDD-41 §4.3): it is what namespaces
+    // its caches, and without it two apps on one origin wipe each other's.
+    writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
   }
   return root;
 }

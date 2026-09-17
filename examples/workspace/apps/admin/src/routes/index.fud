@@ -1,0 +1,16 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/admin-panel.fud">
+
+<head>
+  <title>Administración</title>
+</head>
+
+<h1 data-app="tienda-admin">Administración</h1>
+
+<p>
+  Esta aplicación vive en <code>/admin/</code> del mismo origen que la tienda. Su
+  <code>id</code> es <code>tienda-admin</code>: el de la tienda es un prefijo suyo, que es
+  justo el caso que un purgado por prefijo haría mal.
+</p>
+
+<admin-panel .heading="Pedidos de hoy">Nada pendiente.</admin-panel>

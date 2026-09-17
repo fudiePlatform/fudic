@@ -7,9 +7,6 @@
 
 <head>
   <style>
-    :host {
-      display: block;
-    }
     .out {
       margin: 0;
       padding: 0.75rem 0.9rem;

@@ -16,20 +16,49 @@
 /** Escape a literal chunk for embedding in a template literal (backtick/backslash/`$`). */
 const escapeTpl = (s: string): string => s.replace(/[`\\$]/gu, '\\$&');
 
+/**
+ * Injected URL resolver: the published URL of a linkable specifier.
+ *
+ * When the host provides one, the emit writes that URL as a literal and registers no import
+ * at all — which is the only shape that can be right. An import asks the bundler what a file
+ * means, and the answer depends on the extension (a `.css` is a stylesheet with no default
+ * export, and the build dies) and on WHICH build asks (an asset's hashed name is a property
+ * of the bundle, so three passes over the same `.fud` produce three different URLs for one
+ * file). The host knows the one answer; it is asked for it.
+ */
+export type AssetUrl = (spec: string, origin: AssetOrigin) => string;
+
+/**
+ * Where a linked reference was written — a fact about the SOURCE, which is the only thing
+ * the compiler is in a position to state.
+ *
+ * `'head'` is a `<head>` of a document: the layout's, the page's, the route's contribution.
+ * What is written there is what every page needs to render ITSELF — its stylesheet, its
+ * icon — and that is the definition of a shell, not a media type. `'markup'` is everything
+ * else: an `<img>` inside a component, a `url(…)` inside a sheet. That is content, and it
+ * belongs to a runtime cache.
+ *
+ * The compiler does not know what a shell is and must not: it says where the line was
+ * written and the host decides what that is worth.
+ */
+export type AssetOrigin = 'head' | 'markup';
+
 /** Injected existence check: does a linkable specifier resolve to a real file? */
 export type AssetExists = (spec: string) => boolean;
 
 export class AssetLinker {
   readonly #enabled: boolean;
   readonly #exists: AssetExists | undefined;
+  readonly #url: AssetUrl | undefined;
   readonly #imports: string[] = [];
   readonly #bySpec = new Map<string, string>();
   readonly #missing: string[] = [];
   #id = 0;
 
-  constructor(enabled: boolean, exists?: AssetExists) {
+  constructor(enabled: boolean, exists?: AssetExists, url?: AssetUrl) {
     this.#enabled = enabled;
     this.#exists = exists;
+    this.#url = url;
   }
 
   get enabled(): boolean {
@@ -46,27 +75,82 @@ export class AssetLinker {
    * means: linking off, an already-final URL, or a missing file (recorded for FUD0363,
    * left as a literal so the build does not abort — §4.5/§6.13).
    */
-  maybeRef(spec: string): string | null {
+  maybeRef(spec: string, origin: AssetOrigin = 'markup'): string | null {
     if (!this.#enabled || !AssetLinker.linkable(spec)) return null;
-    if (this.#exists && !this.#exists(spec)) {
-      this.#missing.push(spec);
+    const file = AssetLinker.filePath(spec);
+    if (this.#exists && !this.#exists(file)) {
+      this.#missing.push(file);
       return null;
+    }
+    // The host answered: the URL goes in as a literal, and no import is registered.
+    if (this.#url !== undefined) {
+      return JSON.stringify(this.#url(spec, origin));
     }
     return this.ref(spec);
   }
 
   /**
-   * A static, relative specifier the bundler can resolve to a hashed asset. Rejects
-   * schemes (`http:`, `data:`, …), protocol-relative (`//`), root-absolute/public
-   * (`/x`), and in-page fragments (`#x`) — those are already final URLs.
+   * The file a specifier names: everything before its `?query`.
+   *
+   * A query is an instruction to the bundler, not part of a filename, and the one place that
+   * has to know the difference is the existence check — `theme.css?url` is a real file asked
+   * for in a particular way, and answering "not found" to it reports a missing asset that is
+   * sitting right there.
+   */
+  static filePath(spec: string): string {
+    const q = spec.indexOf('?');
+    return q === -1 ? spec : spec.slice(0, q);
+  }
+
+
+  /**
+   * Extensions that are CODE, and therefore never an asset.
+   *
+   * An asset is a file the browser fetches as it is. These are files somebody compiles: a
+   * `.fud` is the component graph, a `.js` is a module. Publishing one as an asset copies
+   * the SOURCE into the output and hands the page a URL to it — which is how a misplaced
+   * `<link rel="component">` ended up shipping a component's source inside every document.
+   * Left as literals, the way every other URL this linker cannot vouch for is left.
+   */
+  static readonly #CODE = new Set([
+    '.fud',
+    '.js',
+    '.mjs',
+    '.cjs',
+    '.jsx',
+    '.ts',
+    '.mts',
+    '.cts',
+    '.tsx',
+  ]);
+
+  /**
+   * A specifier the HOST is asked about. Two shapes reach it, and they are the two ways a
+   * project has of naming a file of its own:
+   *
+   * - **relative** (`./logo.svg`) — the framework owns the URL: hashed, immutable,
+   *   published. Code is excluded, because a `.js` is compiled and not fetched as it is.
+   * - **root-absolute** (`/logo.svg`) — the author owns the URL, and the file is the
+   *   project's public one. Nothing is hashed or published; it is already at its URL. It is
+   *   still ASKED about, which is the whole difference: it used to be waved through, so a
+   *   typo there was a 404 nobody reported and the Service Worker never heard of the file.
+   *   Code is fine here — a public `.js` is served as it is, which is why it is public.
+   *
+   * Rejected outright: schemes (`http:`, `data:`, …), protocol-relative (`//`) and in-page
+   * fragments (`#x`). Those are final URLs, and none of them is ours.
    */
   static linkable(spec: string): boolean {
     if (spec === '') return false;
     if (/^[a-z][a-z0-9+.-]*:/iu.test(spec)) return false; // scheme: http:, data:, blob:, mailto:
     if (spec.startsWith('//')) return false; // protocol-relative
-    if (spec.startsWith('/')) return false; // root-absolute (Vite public dir, served as-is)
     if (spec.startsWith('#')) return false; // in-page fragment
-    return true; // relative path → link through Vite
+    if (spec.startsWith('/')) return true; // the project's public file
+    const file = AssetLinker.filePath(spec);
+    const dot = file.lastIndexOf('.');
+    if (dot > Math.max(file.lastIndexOf('/'), file.lastIndexOf('\\'))) {
+      if (AssetLinker.#CODE.has(file.slice(dot).toLowerCase())) return false;
+    }
+    return true; // relative path → the framework names it
   }
 
   /** The JS expression (an import binding) for a specifier, registering its import once. */

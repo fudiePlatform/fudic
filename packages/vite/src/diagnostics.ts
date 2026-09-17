@@ -15,6 +15,19 @@ export const FUD_MALFORMED_PARAM = 'FUD0360';
 export const FUD_ROUTE_COLLISION = 'FUD0361';
 export const FUD_PATHS_INCOMPLETE = 'FUD0362';
 export const FUD_ASSET_NOT_FOUND = 'FUD0363';
+/**
+ * A relative specifier that walks into the project's public directory.
+ *
+ * The two ways of naming a file of your own differ in WHO chooses the URL: a relative path
+ * hands it to the build, which hashes and publishes it; a root-absolute one keeps the name
+ * the author gave the file under `public/`. Reaching into `public/` with `../../public/x`
+ * asks for both at once, and gets the worse half of each — a second, hashed copy of a file
+ * that is already being served under its own name.
+ *
+ * Error, because there is no version of it the author meant: either `/x`, or the file does
+ * not belong in `public/`.
+ */
+export const FUD_PUBLIC_BY_PATH = 'FUD0366';
 export const FUD_UNKNOWN_ROUTE_OVERRIDE = 'FUD0364';
 export const FUD_MANIFEST_URL_NOT_ABSOLUTE = 'FUD0365';
 
@@ -46,3 +59,16 @@ export const FUD_ORPHAN_LAYOUT = 'FUD0434';
 export const FUD_PRERENDER_FAILED = 'FUD0620';
 /** A route's chunk name collides with a component tag: two files, one name (§3.5). */
 export const FUD_ROUTE_NAME_COLLISION = 'FUD0622';
+
+// SDD-42 (FUD0740–FUD0759): the project style guide. The other three of that range belong
+// to `@fudic/config`, which owns the field; this one is the BUILD's, because it is the only
+// place that knows the whole project.
+/**
+ * The project declares `styles` and defines no component of its own: nothing adopts the
+ * sheet (SDD-42 §5).
+ *
+ * A warning and a build that finishes, because a project with no components yet is what
+ * every project looks like on its first day — and it carries no span, because what it is
+ * about is the absence of files.
+ */
+export const FUD_STYLES_NOT_ADOPTED = 'FUD0742';

@@ -10,7 +10,6 @@
 <head>
   <style>
     :host {
-      display: block;
       margin-top: 0.6rem;
     }
     .deep {

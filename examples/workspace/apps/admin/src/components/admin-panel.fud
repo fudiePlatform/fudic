@@ -1,0 +1,29 @@
+@code {
+  const { heading } = props<{ heading: string }>();
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    .panel {
+      border-left: 4px solid #1a73e8;
+      padding: 0.75rem 1rem;
+      background: #f5f8ff;
+      h2 {
+        margin: 0 0 0.35rem;
+        font-size: 1.05rem;
+      }
+    }
+  </style>
+</head>
+
+<admin-panel>
+  <template shadowrootmode="open">
+    <section class="panel">
+      <h2>@heading</h2>
+      <slot></slot>
+    </section>
+  </template>
+</admin-panel>

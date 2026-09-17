@@ -44,6 +44,7 @@ beforeAll(async () => {
   // the published chunk would name no file at all.
   writeFileSync(join(root, 'src', 'routes', 'logo.png'), Buffer.alloc(5000, 7));
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: ['/fudic-main.js'] }));
+  writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
   const result = (await build({
     root,
     logLevel: 'silent',

@@ -16,8 +16,8 @@
       display: grid;
       place-items: center;
       color: #999;
-      border: 1px dashed #dcdcdc;
-      border-radius: 10px;
+      border: 1px dashed var(--line);
+      border-radius: var(--radius-box);
       margin: 1.5rem 0;
     }
     .pair {

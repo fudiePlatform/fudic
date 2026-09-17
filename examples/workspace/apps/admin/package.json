@@ -1,0 +1,22 @@
+{
+  "name": "@fudic/example-admin",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The back office of the two-app workspace: its own project, its own build, served under /admin/ of the same origin.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fudic/core": "workspace:*",
+    "@fudic/dom": "workspace:*",
+    "@fudic/ssr": "workspace:*",
+    "@fudic/transport": "workspace:*"
+  },
+  "devDependencies": {
+    "@fudic/vite": "workspace:*",
+    "vite": "8.0.16"
+  }
+}

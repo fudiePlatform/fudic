@@ -3,6 +3,12 @@ packages:
   # Runnable example apps. They consume the published entry points (`dist`) of the
   # workspace packages, exactly as a user's project would after `npm install`.
   - 'examples/*'
+  # `examples/workspace` is a workspace of its own: several applications, each a real
+  # project with its own `package.json` and its own build, published together on one
+  # origin. A nested `pnpm-workspace.yaml` would not be read — the outer one owns the
+  # list — so its members are declared here.
+  - 'examples/workspace/apps/*'
+  - 'examples/workspace/libs/*'
 
 # Both arrive through `@vscode/vsce` and both are native. Neither is built, on purpose:
 # `keytar` stores Marketplace credentials and `vsce-sign` signs a release — the two things

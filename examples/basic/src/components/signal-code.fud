@@ -16,30 +16,13 @@
 
 <head>
   <style>
-    :host {
-      display: block;
-    }
     .panel {
       display: grid;
-      gap: 0.75rem;
-      border: 1px solid #dcdcdc;
-      border-radius: 10px;
-      padding: 1rem 1.15rem;
-      background: white;
-    }
-    .row {
-      display: flex;
-      gap: 0.6rem;
-      align-items: center;
+      gap: var(--gap);
     }
     button {
-      font: inherit;
-      padding: 0.35rem 0.8rem;
-      border: 1px solid #9aa0a6;
-      border-radius: 6px;
-      background: white;
+      border-color: #9aa0a6;
       color: #3c4043;
-      cursor: pointer;
     }
     .marca {
       margin: 0;
@@ -48,11 +31,6 @@
       border-radius: 8px;
       background: #fdf3f2;
       font-variant-numeric: tabular-nums;
-    }
-    .pie {
-      margin: 0;
-      font-size: 0.78rem;
-      color: #666;
     }
   </style>
 </head>

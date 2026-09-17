@@ -12,17 +12,35 @@
  * there is no inference here to lie to.
  */
 
+import { tagOf } from '@fudic/config';
 import { cliError, FUD_WIRE_TARGET_BROKEN, FUD_WIRE_TARGET_MISSING } from '../diagnostics.js';
 import { absolute, hrefBetween, joinPosix, toPosix } from '../paths.js';
 import { hasErrors, parseFud } from '../parse.js';
-import { existingTags, targetChange } from '../project.js';
+import { existingTags, projectConfig, targetChange } from '../project.js';
 import { codeBlock, renderTemplate, styleBlock } from '../templates.js';
 import { validateTag } from '../tag.js';
 import { wireComponentLink } from '../wire.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
 import type { CliError, ComponentOptions, FileChange, Plan, PlanDiagnostic } from '../types.js';
 
-export function planComponent(tag: string, opts: ComponentOptions, io: ReadIo = nodeReadIo()): Promise<Plan> {
+/**
+ * The argument is a NAME, and the project's prefix turns it into a tag (SDD-41 §4.4). An
+ * argument that already carries a hyphen is a tag the author wrote and is respected whole:
+ * `signal-counter` under `prefix: "app"` is `signal-counter`, not `app-signal-counter`.
+ * Without a `fudic.json`, `tagOf` returns the argument untouched and the command is the
+ * one it has always been — the full tag, or FUD0440.
+ */
+export function planComponent(name: string, opts: ComponentOptions, io: ReadIo = nodeReadIo()): Promise<Plan> {
+  const project = projectConfig(opts.cwd, io);
+  if (project.diagnostics.length > 0) {
+    // A `fudic.json` that does not read is fatal HERE and not elsewhere: the prefix is what
+    // decides the tag, so a broken file means the component would be written under a name
+    // the author did not choose. Saying so beats writing the wrong file.
+    const errors = project.diagnostics.map((entry) => cliError(entry.code, entry.message, entry.file));
+    return Promise.resolve({ changes: [], commands: [], diagnostics: [], errors });
+  }
+
+  const tag = tagOf(project.config?.prefix ?? '', name);
   const invalid = validateTag(tag, existingTags(opts.cwd, io));
   if (invalid !== null) {
     return Promise.resolve({ changes: [], commands: [], diagnostics: [], errors: [invalid] });

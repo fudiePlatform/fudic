@@ -445,6 +445,7 @@ Se declaran aquí porque **solo el plugin los consume**; su implementación vive
 | `FUD0363` | Asset referenciado (literal) que no resuelve a un fichero existente (§4.5). |
 | `FUD0364` | Override de `options.routes` para un patrón que no existe en `routesDir`. |
 | `FUD0365` | `manifestUrl` no absoluta (SW y WW la cargan de la misma URL; una relativa derivaría). |
+| `FUD0366` | **Añadido al cerrar [BUG-40](./bugs/BUG-40-una-hoja-que-no-se-puede-enlazar.md).** El directorio público alcanzado por una ruta **relativa** (`../../public/logo.svg`). Hay dos formas de nombrar un fichero propio y se diferencian en quién elige la URL: relativa, la elige el framework —hashea, publica, comprueba—; absoluta de raíz, la eligió quien escribió el fichero y es el público de ese nombre. Esta tercera pide las dos a la vez y se lleva la peor mitad de cada una: una segunda copia, hasheada, de un fichero que ya se sirve con su nombre. Error, porque no hay versión de eso que el autor quisiera decir; el mensaje nombra la URL que se quería (`/logo.svg`), y el emit la escribe igualmente, de modo que la página es correcta mientras el build protesta. Ver BUG-40 §4.2.0. |
 | `FUD0366`–`FUD0389` | Reservados. |
 
 ---

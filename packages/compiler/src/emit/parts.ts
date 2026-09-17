@@ -8,6 +8,7 @@
  */
 
 import type { ElementNode, HtmlContent } from '../html/index.js';
+import { isComponentLink, isLayoutLink } from '../document/index.js';
 import type { Span } from '../types/index.js';
 import type { ComponentGraph, ResolvedComponent, ResolvedLayout } from './resolve.js';
 import type { CodeWriter } from './writer.js';
@@ -60,7 +61,12 @@ export function headElementExpr(source: string, el: ElementNode, linker: AssetLi
     const last = parts[parts.length - 1];
     if (parts.length === 0 || first === undefined || last === undefined) continue;
     if (!parts.every((p) => p.type === 'attribute-text')) continue; // interpolated: leave alone
-    const binding = linker.maybeRef(parts.map((p) => (p as { value: string }).value).join(''));
+    // `'head'`: this is a document's own head, so what it links is what every page needs to
+    // render itself — the shell, by definition rather than by media type.
+    const binding = linker.maybeRef(
+      parts.map((p) => (p as { value: string }).value).join(''),
+      'head',
+    );
     if (binding === null) continue; // linking off, already-final URL, or missing file
     return (
       JSON.stringify(source.slice(el.span.start, first.span.start)) +
@@ -120,6 +126,9 @@ export function writeNonceBinding(w: CodeWriter): void {
  */
 export const RUNTIME_MARKER = 'fudic:runtime';
 
+/** A `<link>` that names the component or layout graph: never output, in any role. */
+const isFrameworkLink = (el: ElementNode): boolean => isComponentLink(el) || isLayoutLink(el);
+
 /**
  * Whether this head element is that marker: a `<script>` whose `src` is literally
  * `fudic:runtime`. An interpolated `src` is not one — a marker is a constant by definition.
@@ -170,15 +179,34 @@ export function writeRuntimeTags(w: CodeWriter, hydrates: boolean): void {
  * The polyfill goes out BEFORE the body streams, so its observer adopts each host sheet as
  * it arrives; the style modules follow it.
  */
-export function writeSharedHead(w: CodeWriter, hasStyles: boolean): void {
-  // Nothing to adopt, nothing to adopt it WITH (BUG-31 §T3). `COMPONENTS` holds the styled
-  // components of the graph and only those, so an empty one is the whole answer: no sheet
-  // to register, no host wearing `data-fud-adopt`, and a polyfill that would observe the
-  // document for the lifetime of the page to do nothing.
-  if (!hasStyles) return;
+export function writeSharedHead(
+  w: CodeWriter,
+  hasStyles: boolean,
+  hasProjectStyles: boolean,
+): void {
+  // Nothing to adopt, nothing to adopt it WITH (BUG-31 §T3, widened by SDD-42 §4.4).
+  // `COMPONENTS` holds the styled components of the graph and only those, and
+  // `PROJECT_STYLES` the project's own; with both empty there is no sheet to register, no
+  // host wearing `data-fud-adopt`, and a polyfill that would observe the document for the
+  // lifetime of the page to do nothing.
+  //
+  // The premise BUG-31 was written on — *the only CSS is the components'* — is what SDD-42
+  // widened. An app whose components bring no rule of their own and that leans entirely on
+  // the project's guide used to emit the sheet and have no browser without native support
+  // adopt it.
+  if (!hasStyles && !hasProjectStyles) return;
   w.line('// The style-adoption polyfill (SDD-18 §5) goes in <head>, live BEFORE the body streams,');
   w.line('// so its observer adopts each host sheet as it arrives; the style modules follow it.');
   w.line("head += '<script' + $nonce + '>' + STYLE_POLYFILL + '</script>';");
+  // The project's guide FIRST, and the order is contract twice over. It is the cascade —
+  // the guide defines, the component adjusts (SDD-42 §4.1) — and it is rule 2 of SDD-18
+  // §3.2: a module has to be in the module map BEFORE the `<template>` that names it is
+  // parsed, and every template that adopts the guide is below this line.
+  if (hasProjectStyles) {
+    w.line(
+      "head += PROJECT_STYLES.map(function (s) { return '<style type=\"module\"' + $nonce + ' specifier=\"' + s.specifier + '\">' + s.css + '</style>'; }).join('');",
+    );
+  }
   // The style modules carry the nonce too, and the reason is `type="module"`. Under Chrome's
   // experimental web features a `<style type="module">` is no longer only a style: it is
   // checked against `script-src`, and without a nonce a strict policy refuses it — one
@@ -228,6 +256,11 @@ export function writeHeadElements(
       continue;
     }
     if (child.type !== 'element' || options.skip.has(child)) continue;
+    // A framework link is the component/layout graph and is never output — in ANY role.
+    // The `skip` set says so for the one role that collects them into a field; this says it
+    // for the rest, which is what stops a misplaced one (FUD0438) from being published as
+    // an asset by a build that recovered from the error and carried on.
+    if (isFrameworkLink(child)) continue;
     if (options.onRuntime !== undefined && isRuntimeMarker(child)) {
       options.onRuntime();
     } else if (child.name === 'title') {

@@ -1,5 +1,5 @@
 {
-  "shell": [],
+  "shell": ["/probe-listeners.js"],
   "resources": {
     "assets": {
       "pattern": "/assets/**",

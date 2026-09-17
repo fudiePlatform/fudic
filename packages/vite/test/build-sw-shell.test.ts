@@ -31,6 +31,7 @@ async function buildWithShell(shell: readonly string[]): Promise<string[]> {
   writeFileSync(join(root, 'routes', 'index.fud'), PAGE);
   writeFileSync(join(root, 'public', 'logo.svg'), '<svg/>');
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell }));
+  writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
   await build({
     root,
     logLevel: 'silent',

@@ -45,6 +45,7 @@ import type { CachedDocument } from '../document-cache.js';
 import { ROOT_CODE_ID, type FudicVirtualCode } from '../virtual-code.js';
 import { isFudSourceUri } from '../uri.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
+import type { ProjectConfigs } from '../project-config.js';
 import type { RequestStats } from '../stats.js';
 import { reindentLine } from '@fudic/formatter';
 import { fudicDiagnostics } from './compiler-diagnostics.js';
@@ -116,6 +117,11 @@ export interface FudicServiceContext {
    * Absent means mounted, which is the safe default — the duplicate is the visible failure.
    */
   readonly typescript?: boolean;
+  /**
+   * What each workspace folder declares about itself (SDD-41). Used for ONE thing: the tag
+   * the `component` skeleton proposes. Absent means the literal this server always wrote.
+   */
+  readonly configs?: ProjectConfigs;
 }
 
 const SEVERITY: Readonly<Record<Severity, DiagnosticSeverity>> = {
@@ -380,7 +386,7 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
           return stats.run(
             'completion',
             token,
-            () => completions(context, document, position, index, alone),
+            () => completions(context, document, position, index, alone, deps.configs),
             undefined,
           );
         },
@@ -633,6 +639,7 @@ function completions(
   position: { line: number; character: number },
   index: WorkspaceIndex,
   alone: boolean,
+  configs?: ProjectConfigs,
 ): CompletionList | undefined {
   const cached = fudicDocumentOf(context, document);
   if (cached === undefined) return undefined;
@@ -834,7 +841,15 @@ function completions(
       : []),
     ...(word === undefined
       ? []
-      : snippetItems(cached, document, word, (label) => !label.startsWith('@'))),
+      : snippetItems(
+          cached,
+          document,
+          word,
+          (label) => !label.startsWith('@'),
+          // Where the document skeletons come from, and the one place the project's prefix
+          // reaches the editor at all.
+          configs?.componentTagFor(cached.path),
+        )),
     ...(text === undefined
       ? []
       : [
@@ -1185,8 +1200,9 @@ function snippetItems(
   document: TextDocument,
   context: PartialName,
   wanted: (label: string) => boolean,
+  componentTag?: string,
 ): readonly CompletionItem[] {
-  return snippetsAt(cached, context.span.start)
+  return snippetsAt(cached, context.span.start, componentTag)
     .filter((snippet) => wanted(snippet.label))
     .map((snippet) => ({
       label: snippet.label,

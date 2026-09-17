@@ -45,6 +45,9 @@ beforeAll(async () => {
   // because then no file has to exist for the reference to resolve.
   writeFileSync(join(root, 'src', 'routes', 'logo.png'), Buffer.alloc(5000, 7));
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: ['/fudic-main.js'] }));
+  // A project with a Service Worker declares an id, or its caches are named after
+  // nothing and two apps on one origin wipe each other's (SDD-41 §4.3).
+  writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
   const result = (await build({
     root,
     logLevel: 'silent',

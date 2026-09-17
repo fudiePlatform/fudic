@@ -12,14 +12,11 @@
 
 <head>
   <style>
-    :host {
-      display: block;
-    }
     .card {
-      border: 1px solid #dcdcdc;
-      border-radius: 10px;
-      padding: 1rem 1.15rem;
-      background: white;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-box);
+      padding: var(--pad-box);
+      background: var(--surface);
       h2 {
         margin: 0 0 0.35rem;
         font-size: 1.05rem;
@@ -32,12 +29,12 @@
         text-decoration: underline;
       }
       .body {
-        color: #555;
+        color: var(--ink-soft);
         line-height: 1.45;
       }
     }
     .card.highlight {
-      border-color: #1a73e8;
+      border-color: var(--brand);
       box-shadow: 0 1px 6px rgb(26 115 232 / 15%);
     }
   </style>

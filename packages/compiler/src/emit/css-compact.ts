@@ -15,9 +15,13 @@
  *   `padding: @(size)rem @(size * 2)rem` — and the space next to it separates two values
  *   the compiler cannot evaluate. Each `CssText` is compacted on its own (§4.2).
  *
- * What it does NOT do is as deliberate: comments are kept (§4.3, decision 49 — dropping
- * them is a second decision, and it would take a `/*! license *\/` with it), and nothing
- * is merged, reordered or deduplicated. That needs the cascade, and it is out of scope.
+ * Comments are dropped, except the ones marked `/*!`. What BUG-08 wrote down was that
+ * dropping them was a SECOND decision — it is taken here, and the mark is what makes it
+ * safe: prose is written for whoever opens the file, a licence has to reach whoever
+ * downloads it, and the two are told apart by the one character the ecosystem already uses.
+ *
+ * What it still does NOT do: nothing is merged, reordered or deduplicated. That needs the
+ * cascade, and it is out of scope.
  */
 
 import type { StyleNode } from '../css/index.js';
@@ -72,7 +76,17 @@ export function compactCss(text: string): string {
     if (ch === '/' && text[i + 1] === '*') {
       const close = text.indexOf('*/', i + 2);
       const end = close === -1 ? text.length : close + 2;
-      out += text.slice(i, end);
+      // A prose comment is dropped — it is written for whoever opens the file, and what
+      // this produces is what a browser downloads, once per document and per component
+      // sheet. `/*!` is the one that stays: it is the mark a licence carries, and a build
+      // that strips a licence is a build that cannot ship the file it was given.
+      // The whitespace AROUND it is left exactly as it was, and that is not tidiness: a
+      // comment is not a separator, so `.a /* c */ .b` is a descendant selector only
+      // because of the two spaces, and `.a.b` — which is what removing them would leave —
+      // is a different rule.
+      if (text[i + 2] === '!') {
+        out += text.slice(i, end);
+      }
       i = end;
       continue;
     }
@@ -85,7 +99,9 @@ export function compactCss(text: string): string {
     if (SPACE.test(ch)) {
       let end = i + 1;
       while (end < text.length && SPACE.test(text[end]!)) end += 1;
-      if (!TIGHT_AFTER.has(out.slice(-1))) out += ' ';
+      // `endsWith(' ')` and not only the tight set: a dropped comment can leave a space on
+      // each side of it, and two spaces where the author wrote one.
+      if (!TIGHT_AFTER.has(out.slice(-1)) && !out.endsWith(' ')) out += ' ';
       i = end;
       continue;
     }

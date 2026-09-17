@@ -246,6 +246,26 @@ describe('emitted module shape (§6.12, SDD-21 §3.5)', () => {
     expect(code).not.toContain('rel="layout"');
   });
 
+  it('never writes a framework link into the head, whatever the role (FUD0438)', () => {
+    // The parser reports it and, as always, recovers and carries on. This is the other
+    // half: a link the author misplaced must not reach the document either. It is a
+    // `<link href>`, so before this the asset linker took it for an asset and published
+    // the `.fud` it named — the component's source, inside the page.
+    const files = {
+      '/r.fud':
+        '<link rel="layout" href="./l.fud">' +
+        '<head><link rel="component" href="./c.fud"><title>t</title></head><p>x</p>',
+      '/l.fud':
+        '<!DOCTYPE html><html><head>@RenderHead()</head><body>@RenderBody()</body></html>',
+    };
+    const code = emitRouteModule(resolveDocument('/r.fud', memoryIo(files)).value, {
+      linkAssets: true,
+    });
+    expect(code).toContain('<title>');
+    expect(code).not.toContain('rel="component"');
+    expect(code).not.toContain('c.fud');
+  });
+
   it('skips a nameless @section instead of emitting a broken arm', () => {
     const files = {
       '/r.fud': '<link rel="layout" href="./l.fud"><p>x</p>@section { <p>ghost</p> }',

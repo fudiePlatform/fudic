@@ -1,0 +1,39 @@
+/* La guía del proyecto: se adopta dentro del shadow root de cada componente, antes que su
+   hoja propia. Los valores vienen de `tokens.css`, que vive en el documento. */
+
+/* Treinta y siete componentes repetían esta línea. */
+:host {
+  display: block;
+}
+
+/* La caja. Sin `display` a propósito: unos la usan en grid y otros en fila. */
+.panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-box);
+  padding: var(--pad-box);
+  background: var(--surface);
+}
+
+.row {
+  display: flex;
+  gap: var(--gap);
+  align-items: center;
+}
+
+/* El control neutro. Lo único que un componente le cambia es el color. */
+button {
+  font: inherit;
+  padding: var(--pad-control);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+
+/* El pie de un panel de demostración. */
+.pie {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+}

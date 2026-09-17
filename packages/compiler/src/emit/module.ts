@@ -27,7 +27,7 @@ import { spaceModeOf } from './space.js';
 import { hasForeignDisplay, hostDisplay, tagDisplay, type Boxes, type Display } from './display.js';
 import { CodeWriter, type EmitMapping } from './writer.js';
 import { MarkupEmitter, renderName, tpl } from './markup.js';
-import { AssetLinker, type AssetExists } from './assets.js';
+import { AssetLinker, type AssetExists, type AssetUrl } from './assets.js';
 import { compactStyleCss } from './css-compact.js';
 import { codeOf, codeOfDocument, diHelpers } from './oxc-code.js';
 import { hasDependencyInjection } from './di.js';
@@ -47,6 +47,11 @@ import {
   writeRuntimeTags,
   writeSharedHead,
 } from './parts.js';
+import {
+  projectAdoptOf,
+  renderProjectStyles,
+  type ProjectStyle,
+} from './project-styles.js';
 
 /**
  * Emit options. `importExt` is the extension used for sibling module imports: `.mjs`
@@ -55,6 +60,15 @@ import {
  */
 export interface EmitOptions {
   readonly importExt?: string;
+  /**
+   * The project's own stylesheets, in adoption order (SDD-42 §3.2).
+   *
+   * They are hoisted ONCE per document and their specifiers are prepended to the adopted
+   * list of every component this project defines. Absent — the standalone emit, a golden,
+   * a project with no `styles` — and the output is byte for byte what it was before
+   * SDD-42, which is the invariant that SDD's net is built on.
+   */
+  readonly projectStyles?: readonly ProjectStyle[];
   /**
    * Rewrite static, relative asset URLs (`src`/`poster`/`<link href>`, CSS `url(…)`) to
    * ES imports Vite resolves and hashes (SDD-19 §4.5). Off by default so the standalone
@@ -67,6 +81,16 @@ export interface EmitOptions {
    * so the plugin can report FUD0363 without aborting the build (§6.13).
    */
   readonly assetExists?: AssetExists;
+  /**
+   * The published URL of a linked asset, INJECTED — and when it is given, what the emit
+   * writes is that URL and not an import.
+   *
+   * It is the host's answer because only the host can give one: a URL has to be the same in
+   * every pass of a build that compiles this file three times, and it has to be a URL and
+   * not whatever the bundler decides the extension means. Absent, the emit falls back to an
+   * import, which is what the standalone `.mjs` emit has always done.
+   */
+  readonly assetUrl?: AssetUrl;
   /**
    * Module specifier for a linked component, INJECTED — the compiler never touches
    * `node:path`, so it cannot compute a path relative to the importing module. Default:
@@ -93,7 +117,7 @@ export interface EmitOptions {
   readonly routeName?: string;
 }
 
-export type { ComponentSpecifier, LayoutSpecifier };
+export type { ComponentSpecifier, LayoutSpecifier, ProjectStyle };
 
 /**
  * A module's emitted text plus its output↔source mappings (SDD-19 §4.6) and the linkable
@@ -220,7 +244,11 @@ function buildComponentModule(
   options: EmitOptions,
 ): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const ext = options.importExt ?? '.mjs';
-  const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
+  const linker = new AssetLinker(
+    options.linkAssets ?? false,
+    options.assetExists,
+    options.assetUrl,
+  );
   const { props, signals, neutral, diagnostics, di, server } = codeOf(comp);
   const cells = cellSlots(comp, graph);
   const hydratable = hydratableTags(graph);
@@ -253,6 +281,7 @@ function buildComponentModule(
     controls,
     formAssociated: formAssociatedTags(graph),
     styled: styledTags(graph),
+    projectAdopt: projectAdoptOf(options.projectStyles),
   });
   // The host's own attributes FIRST, so `$host` is declared before anything below could read
   // it — and inside the markup body, which `appendWriter` puts after the props, the inert
@@ -425,7 +454,11 @@ function buildPageModule(
   options: EmitOptions,
 ): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
   const ext = options.importExt ?? '.mjs';
-  const linker = new AssetLinker(options.linkAssets ?? false, options.assetExists);
+  const linker = new AssetLinker(
+    options.linkAssets ?? false,
+    options.assetExists,
+    options.assetUrl,
+  );
   const page = graph.entry as PageDocument;
   const source = graph.entrySource;
   const comps = [...graph.components.values()];
@@ -438,6 +471,9 @@ function buildPageModule(
   // imports, and every component of the graph is rendered whether or not it is styled.
   const styled = styledTags(graph);
   const styledComps = comps.filter((c) => styled.has(c.tag));
+  // The project's guide (SDD-42), built here — before the body codegen and long before the
+  // linker's imports are flushed — because compacting it can register an asset import.
+  const projectStylesLine = renderProjectStyles(options.projectStyles, linker);
 
   // Body codegen.
   const hydratable = hydratableTags(graph);
@@ -459,6 +495,7 @@ function buildPageModule(
     ioc: hasDi ? '$root' : '$ioc',
     formAssociated: formAssociatedTags(graph),
     styled,
+    projectAdopt: projectAdoptOf(options.projectStyles),
   });
   em.emitChildren(page.body.children, '$body');
 
@@ -505,8 +542,12 @@ function buildPageModule(
   writeEntryImports(w, code); // the neutral zone's, hoisted (decision 33.c)
   w.line('');
   w.line(`const COMPONENTS = [${styledComps.map((c) => `{ tag: ${renderName(c.tag)}Tag, css: ${renderName(c.tag)}Css }`).join(', ')}];`);
+  // The project's guide (SDD-42), hoisted once per document like a component's sheet.
+  if (projectStylesLine !== null) w.line(projectStylesLine);
   // The MINIFIED form: it is inline in every page's head, once per page (BUG-07 §4.3).
-  if (styledComps.length > 0) w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL_MIN)};`);
+  if (styledComps.length > 0 || projectStylesLine !== null) {
+    w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL_MIN)};`);
+  }
   const maps = writeMapConstants(w, graph, hydratable, blocks?.name);
   w.line('');
   // Streaming a trozos (SDD-19 §4.3): a generator that yields the <head> FIRST, then the
@@ -527,7 +568,7 @@ function buildPageModule(
   writeEntryCode(w, code);
   w.line("let head = '';");
   w.appendWriter(headW);
-  writeSharedHead(w, styledComps.length > 0);
+  writeSharedHead(w, styledComps.length > 0, projectStylesLine !== null);
   // No whitespace in the skeleton (BUG-07 §4.2). Between the doctype, `<html>`, `<head>`
   // and its elements there is no context where a newline or an indent renders: the HTML
   // parser drops it before the tree is built. It is the free half of this BUG.

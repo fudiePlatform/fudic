@@ -47,6 +47,7 @@ beforeAll(async () => {
   writeFileSync(join(routes, 'db.ts'), 'export const db = { query: async () => [] };\n');
   // With a `sw.json` the build also emits the Service Worker and the linkable chunks.
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: ['/style.css'] }));
+  writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
   const result = (await build({
     root,
     logLevel: 'silent',

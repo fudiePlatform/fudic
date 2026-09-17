@@ -100,6 +100,7 @@ beforeAll(async () => {
   writeFileSync(join(root, 'src', 'components', 'x-plain.fud'), PLAIN);
   writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: ['/fudic-main.js'] }));
+  writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
   const result = (await build({
     root,
     logLevel: 'silent',

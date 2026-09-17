@@ -27,30 +27,14 @@
 
 <head>
   <style>
-    :host {
-      display: block;
-    }
     .panel {
       display: grid;
       gap: 0.5rem;
-      border: 1px solid #dcdcdc;
-      border-radius: 10px;
-      padding: 1rem 1.15rem;
-      background: white;
-    }
-    .row {
-      display: flex;
-      gap: 0.75rem;
-      align-items: center;
     }
     .add {
-      font: inherit;
-      padding: 0.4rem 0.9rem;
-      border: 1px solid #1a73e8;
-      border-radius: 6px;
-      background: #1a73e8;
+      border-color: var(--brand);
+      background: var(--brand);
       color: white;
-      cursor: pointer;
     }
     dl {
       margin: 0;
@@ -60,7 +44,7 @@
       font-variant-numeric: tabular-nums;
     }
     dt {
-      color: #555;
+      color: var(--ink-soft);
     }
     dd {
       margin: 0;
