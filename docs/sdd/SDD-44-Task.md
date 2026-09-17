@@ -3,7 +3,7 @@
 > **SDD:** [SDD-44 — CLI de workspace: N apps, N libs](./SDD-44-cli-de-workspace.md)
 > **Paquetes:** `@fudic/cli` (consume `@fudic/config`, que no cambia)
 > **Rama:** `sdd-44-cli-de-workspace`
-> **Progreso:** 10 / 12
+> **Progreso:** 12 / 12 — **Hecho**
 > **Bloqueado por:** [SDD-41](./SDD-41-configuracion-de-aplicacion.md) entera — este SDD escribe
 > el `fudic.json` que aquella define y descubre proyectos buscándolo. Y por la **decisión** de
 > [SDD-43](./SDD-43-librerias.md) §4.1 —qué publica una librería—, que es lo único que hace falta
@@ -81,5 +81,5 @@ planes independientes sobre plantillas distintas.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 11 | 7, 9, 10 | **El workspace que construye.** Un test que genera con estos comandos —una app, una librería con un componente, la app consumiéndolo con `--uses` y un `<link rel="component">` escrito por `g component --in`— y corre `pnpm install && pnpm build`. **Verde, y el componente de la librería en el HTML de la app.** Es el punto donde este SDD toca a SDD-43: si la resolución entre paquetes no está, este test lo dice con todas las letras en vez de dejarlo para el día del despliegue. Criterio 13 | `cli` | `test/workspace/e2e.test.ts` |
-| [ ] | 12 | todas | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`, y los 14 criterios de §6 verdes — con los dos de «rojo primero» (1 y 3) vistos fallar antes. El código nuevo de `@fudic/cli` al **100 %** en las cuatro métricas y el paquete no por debajo de donde empezó. SDD-44 a `Hecho` en [INDEX.md](./INDEX.md), con su fila y su línea de progreso | — | [INDEX.md](./INDEX.md) |
+| [x] | 11 | 7, 9, 10 | **El workspace que construye.** Un test que genera con estos comandos —una app, una librería con un componente, la app consumiéndolo con `--uses` y un `<link rel="component">` escrito por `g component --in`— y corre `pnpm install && pnpm build`. **Verde, y el componente de la librería en el HTML de la app.** Es el punto donde este SDD toca a SDD-43: si la resolución entre paquetes no está, este test lo dice con todas las letras en vez de dejarlo para el día del despliegue. Criterio 13 | `cli` | `test/workspace/e2e.test.ts` |
+| [x] | 12 | todas | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`, y los 14 criterios de §6 verdes — con los dos de «rojo primero» (1 y 3) vistos fallar antes. El código nuevo de `@fudic/cli` al **100 %** en las cuatro métricas y el paquete no por debajo de donde empezó. SDD-44 a `Hecho` en [INDEX.md](./INDEX.md), con su fila y su línea de progreso | — | [INDEX.md](./INDEX.md) |

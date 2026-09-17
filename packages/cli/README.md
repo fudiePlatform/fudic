@@ -11,6 +11,41 @@ fudic g page blog/:slug                              # a route under its layout
 fudic g layout admin --sections aside
 ```
 
+## More than one project
+
+An app that shares components with another app needs a workspace, and `--workspace` creates
+one with its first app already in it:
+
+```sh
+fudic new mi-tienda --workspace --app web   # apps/web, plus the workspace root
+cd mi-tienda
+fudic g lib ui --prefix ui                  # libs/ui — publishes its .fud sources
+fudic g app back --uses ui                  # apps/back, depending on the library
+fudic g component card --project ui         # ui-card, in the library
+```
+
+A library is not an app with fewer files. It has no routes, no `vite.config.ts`, no
+`sw.json` and no `id`, because none of those means anything to something that is consumed
+rather than served. What it does have is a `package.json` whose `exports` and `files` point
+at the `.fud` sources — there is no build step to publish.
+
+**A directory is a project when it has a `fudic.json`.** There is no workspace file listing
+them: `pnpm-workspace.yaml` already owns which packages exist, and a second list is a second
+thing to keep in sync. So the generators find their destination like this:
+
+| | |
+|---|---|
+| `--project <name>` | a project by its directory name, from anywhere in the workspace |
+| nothing | the nearest `fudic.json` at or above `--cwd` |
+| neither answers | the command fails |
+
+There is deliberately no default project. Picking the only one works right up until there
+are two, and then it writes into the wrong package.
+
+`--uses` adds the dependency and nothing else. It writes no `<link rel="component">`: which
+file uses which component is yours to decide, and `fudic g component --in` is how you say
+it.
+
 ## Why it exists
 
 The right scaffolding for a `.fud` is not obvious: the top-level order is strict
@@ -103,6 +138,11 @@ demo/
 ├── vite.config.ts
 └── .gitignore
 ```
+
+In a workspace the same tree hangs under `apps/<name>/`, with `tsconfig.base.json` and one
+`fudic-globals.d.ts` at the root instead of one per project. `apps/` and `libs/` are defaults
+of this package alone — nothing else reads them, and `--dir` moves a project elsewhere without
+anything breaking, because discovery goes by `fudic.json`.
 
 Those four names are not literals of this package: they come from `@fudic/conventions`, which
 `@fudic/vite` reads too — the directory the CLI writes to and the one the plugin discovers routes

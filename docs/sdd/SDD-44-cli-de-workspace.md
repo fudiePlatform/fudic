@@ -1,6 +1,6 @@
 # SDD-44 — CLI de workspace: N apps, N libs
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Paquetes:** `@fudic/cli` · `@fudic/config` (consumido, no modificado)
 > **Depende de:** 41, 22, 43 (su §4.1: qué publica una librería), 19, 20
 > **Rango de diagnósticos:** `FUD0780`–`FUD0799`
