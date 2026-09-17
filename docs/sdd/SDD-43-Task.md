@@ -49,6 +49,18 @@ entero: las once tareas siguen en pie. Lo que la medición cambia es el orden de
 la rama del índice (6–8) arregla un fallo que ya se puede provocar hoy con el `href` relativo,
 mientras que la de la resolución (2–5) añade una forma nueva de escribir lo mismo.
 
+**El suelo de cobertura**, medido en `4143ef8`, antes de tocar una línea de `src`. Cada fase
+se compara contra esto, no contra el `thresholds` del `vitest.config`. `@fudic/resolve` nace
+al 100 en las cuatro y no aparece aquí porque todavía no existe.
+
+| paquete | stmts | branch | funcs | lines |
+|---|---|---|---|---|
+| `@fudic/compiler` | 99,33 | 98,38 | 99,49 | 99,76 |
+| `@fudic/vite` | 96,46 | 91,06 | 96,66 | 96,29 |
+| `@fudic/cli` | 93,37 | 89,44 | 93,44 | 95,21 |
+| `@fudic/language-server` | 100 | 100 | 100 | 100 |
+| `@fudic/language-core` | 100 | 100 | 100 | 100 |
+
 **Y deja una decisión abierta que bloquea la fase 2**: `@acme/ui/card.fud` no se puede
 escribir, porque `@` abre un `@`-construct y el specifier pierde el scope antes de llegar al
 resolutor ([§4.3](./SDD-43-librerias.md) y el final del informe). Las tareas 2 y 3 se pueden
