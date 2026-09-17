@@ -26,7 +26,22 @@ const escapeTpl = (s: string): string => s.replace(/[`\\$]/gu, '\\$&');
  * of the bundle, so three passes over the same `.fud` produce three different URLs for one
  * file). The host knows the one answer; it is asked for it.
  */
-export type AssetUrl = (spec: string) => string;
+export type AssetUrl = (spec: string, origin: AssetOrigin) => string;
+
+/**
+ * Where a linked reference was written — a fact about the SOURCE, which is the only thing
+ * the compiler is in a position to state.
+ *
+ * `'head'` is a `<head>` of a document: the layout's, the page's, the route's contribution.
+ * What is written there is what every page needs to render ITSELF — its stylesheet, its
+ * icon — and that is the definition of a shell, not a media type. `'markup'` is everything
+ * else: an `<img>` inside a component, a `url(…)` inside a sheet. That is content, and it
+ * belongs to a runtime cache.
+ *
+ * The compiler does not know what a shell is and must not: it says where the line was
+ * written and the host decides what that is worth.
+ */
+export type AssetOrigin = 'head' | 'markup';
 
 /** Injected existence check: does a linkable specifier resolve to a real file? */
 export type AssetExists = (spec: string) => boolean;
@@ -60,7 +75,7 @@ export class AssetLinker {
    * means: linking off, an already-final URL, or a missing file (recorded for FUD0363,
    * left as a literal so the build does not abort — §4.5/§6.13).
    */
-  maybeRef(spec: string): string | null {
+  maybeRef(spec: string, origin: AssetOrigin = 'markup'): string | null {
     if (!this.#enabled || !AssetLinker.linkable(spec)) return null;
     const file = AssetLinker.filePath(spec);
     if (this.#exists && !this.#exists(file)) {
@@ -69,7 +84,7 @@ export class AssetLinker {
     }
     // The host answered: the URL goes in as a literal, and no import is registered.
     if (this.#url !== undefined) {
-      return JSON.stringify(this.#url(spec));
+      return JSON.stringify(this.#url(spec, origin));
     }
     return this.ref(spec);
   }

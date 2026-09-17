@@ -110,8 +110,14 @@ nunca se incrusta.
 ### 3.1. `@fudic/compiler`
 
 ```ts
+/**
+ * Dónde se escribió la referencia. Un hecho sobre el FUENTE, que es lo único que el
+ * compilador está en posición de afirmar: qué sea un shell lo decide el host (§4.5).
+ */
+export type AssetOrigin = 'head' | 'markup';
+
 /** La URL publicada de un asset enlazado. Inyectada: el compilador no tiene filesystem. */
-export type AssetUrl = (spec: string) => string;
+export type AssetUrl = (spec: string, origin: AssetOrigin) => string;
 
 export interface EmitOptions {
   // …linkAssets, assetExists
@@ -136,8 +142,8 @@ export class LinkedAssets {
   url(absPath: string): string;
   /** Lo que hay que publicar, con el nombre que los documentos ya llevan. */
   files(): ReadonlyMap<string, Uint8Array>;
-  /** Las hojas de estilos, como URLs, para el precacheo del worker. */
-  stylesheets(): readonly string[];
+  /** Lo que enlaza un `<head>`, como URLs, para el precacheo del worker (§4.5). */
+  shell(): readonly string[];
   /** Lo que el servidor de desarrollo contesta: los mismos bytes que publicaría el build. */
   served(url: string): { readonly bytes: Uint8Array; readonly type: string } | undefined;
 }
@@ -199,11 +205,30 @@ Un middleware sirve el registro en la misma ruta que publica el build, con los b
 compactados — no una relectura del fichero de origen. Una página que funciona construida y
 da 404 en desarrollo, o al revés, es la clase de diferencia que se encuentra la última.
 
-### 4.5. La hoja entra en el precacheo del worker
+### 4.5. Lo que enlaza un `<head>` entra en el precacheo del worker
 
-Su nombre lo elige el build, así que `sw.json` no puede listarla: es el mismo argumento por
-el que el shell ya incluye el grafo de los dos entries. Solo las hojas. Una imagen grande o
-un vídeo en la instalación es otra decisión, y es de caché en tiempo de uso.
+Su nombre lo elige el build, así que `sw.json` no puede listarlo: es el mismo argumento por
+el que el shell ya incluye el grafo de los dos entries.
+
+> **Corrección.** Esto decía *«solo las hojas»*, y la razón era el tipo de fichero: la hoja
+> porque su ausencia impide pintar, una imagen nunca porque *«una imagen grande o un vídeo en
+> la instalación es otra decisión»*. La segunda mitad es cierta de una fotografía dentro de
+> un componente y falsa de un favicon — y lo dijo el navegador: `install` precacheaba la hoja
+> y no el icono, así que la página necesitaba **tres cargas** para funcionar sin red. La
+> primera instala. En la segunda el icono se pide por fin a través del worker, que lo trae de
+> la red y lo cachea. Solo la tercera no le debe nada a la red. Y eso es exactamente lo que
+> hace una regla `cache-first`: cachea en la primera petición **que llega al worker**.
+
+La línea no es hojas contra imágenes, es **el documento contra su contenido**. Lo que se
+escribe en un `<head>` es lo que cada página necesita para renderizarse a sí misma —su hoja,
+su icono—, y eso es la definición de un shell. Un `<img>` dentro de un componente o un
+`url(…)` dentro de una hoja es contenido, y ahí sí la caché en tiempo de uso es la que debe
+encontrarlo primero: meter cada byte enlazado en la instalación es cómo una primera visita
+paga por una página que nadie ha abierto.
+
+El compilador no sabe qué es un shell y no debe saberlo. Dice **dónde** se escribió la
+referencia —`AssetOrigin`, `'head'` o `'markup'`, un hecho sobre el fuente— y el host decide
+lo que eso vale.
 
 **Un preload no.** Una hoja enlazada en la cabecera ya bloquea el render y se pide con la
 prioridad más alta; un `rel="preload"` delante no adelanta nada. Lo que le faltaba era el
@@ -270,7 +295,9 @@ que `.a /* c */ .b` es un descendiente solo por los dos espacios, y `.a.b` es ot
 
 **El worker**
 
-9. La hoja enlazada aparece en el shell precacheado; una imagen enlazada **no** (§4.5).
+9. Lo que enlaza un `<head>` —la hoja y el favicon— aparece en el shell precacheado, de
+   modo que la **segunda** carga ya funciona sin red; una imagen que solo referencia un
+   componente **no** entra, y la coge la regla de tiempo de uso (§4.5).
 
 **El CSS** — `packages/compiler/test/emit/`
 

@@ -61,7 +61,12 @@ export function headElementExpr(source: string, el: ElementNode, linker: AssetLi
     const last = parts[parts.length - 1];
     if (parts.length === 0 || first === undefined || last === undefined) continue;
     if (!parts.every((p) => p.type === 'attribute-text')) continue; // interpolated: leave alone
-    const binding = linker.maybeRef(parts.map((p) => (p as { value: string }).value).join(''));
+    // `'head'`: this is a document's own head, so what it links is what every page needs to
+    // render itself — the shell, by definition rather than by media type.
+    const binding = linker.maybeRef(
+      parts.map((p) => (p as { value: string }).value).join(''),
+      'head',
+    );
     if (binding === null) continue; // linking off, already-final URL, or missing file
     return (
       JSON.stringify(source.slice(el.span.start, first.span.start)) +

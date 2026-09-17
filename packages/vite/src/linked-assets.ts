@@ -21,7 +21,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve as resolvePath } from 'node:path';
-import { compactProjectCss } from '@fudic/compiler';
+import { compactProjectCss, type AssetOrigin, type AssetUrl } from '@fudic/compiler';
 
 /**
  * A file a document links is published as a file. There is no inlining, at no size.
@@ -85,6 +85,8 @@ export class LinkedAssets {
   readonly #files = new Map<string, Uint8Array>();
   /** URL path → absolute source path. What the dev server serves. */
   readonly #sources = new Map<string, string>();
+  /** The URLs written in a document's `<head>` — the shell (§4.5). */
+  readonly #shell = new Set<string>();
 
   constructor(base: string) {
     this.#base = base.endsWith('/') ? base : `${base}/`;
@@ -96,10 +98,16 @@ export class LinkedAssets {
    * The hash is over the bytes, so a file that did not change keeps its name across builds
    * and stays in every cache that holds it, and a file that changed gets a new one.
    */
-  url(absPath: string): string {
+  url(absPath: string, origin: AssetOrigin = 'markup'): string {
     const path = slashes(absPath);
     const cached = this.#urls.get(path);
-    if (cached !== undefined) return cached;
+    if (cached !== undefined) {
+      // The same file can be linked from a head in one document and from markup in
+      // another. Once it is the shell's, it stays the shell's: the install is the cheaper
+      // of the two answers for a file a document needs to render itself.
+      if (origin === 'head') this.#shell.add(cached);
+      return cached;
+    }
 
     const ext = extOf(path);
     // A linked stylesheet goes through the SAME compaction a component's `<style>` does.
@@ -116,6 +124,7 @@ export class LinkedAssets {
     this.#urls.set(path, url);
     this.#files.set(fileName, bytes);
     this.#sources.set(url, path);
+    if (origin === 'head') this.#shell.add(url);
     return url;
   }
 
@@ -125,17 +134,26 @@ export class LinkedAssets {
   }
 
   /**
-   * The stylesheets, as URLs, for the Service Worker to precache.
+   * What the Service Worker precaches: every file a document's own `<head>` links.
    *
-   * Stylesheets and nothing else: a document's own sheet is the one linked file whose
-   * absence stops the page from painting, and its name changes only when its bytes do, so
-   * precaching it costs one request the first time and none ever again. An image or a video
-   * is a different decision — it belongs to a runtime cache, not to the install.
+   * > **Corrección.** This was `stylesheets()`, and the rule was the media type: the sheet
+   * > because its absence stops the page painting, an image never, because "an image or a
+   * > video is a runtime cache's decision". The second half is true of a photograph inside a
+   * > component and false of a favicon, and the browser said so — `install` precached the
+   * > stylesheet and not the icon, so the page took THREE loads to work offline: one to
+   * > install, a second for the icon to be fetched through the worker and cached, and only
+   * > then a third that owed nothing to the network.
+   *
+   * The line is not stylesheets against images, it is the document against its content. What
+   * a `<head>` links is what every page needs to render ITSELF — that is what a shell is.
+   * An `<img>` in a component or a `url(…)` in a sheet is content, and that is the one a
+   * runtime cache should meet first.
+   *
+   * Their names change only when their bytes do, so precaching them costs one request the
+   * first time and none ever again.
    */
-  stylesheets(): readonly string[] {
-    return [...this.#files.keys()]
-      .filter((fileName) => extOf(fileName) === '.css')
-      .map((fileName) => this.#base + fileName);
+  shell(): readonly string[] {
+    return [...this.#shell];
   }
 
   /**
@@ -159,6 +177,6 @@ export class LinkedAssets {
  * `fudDir` is the directory of the file that wrote the specifier, which is the only thing
  * `./logo.svg` can be relative to.
  */
-export function assetUrlFrom(assets: LinkedAssets, fudDir: string): (spec: string) => string {
-  return (spec: string): string => assets.url(resolvePath(fudDir, spec));
+export function assetUrlFrom(assets: LinkedAssets, fudDir: string): AssetUrl {
+  return (spec, origin) => assets.url(resolvePath(fudDir, spec), origin);
 }

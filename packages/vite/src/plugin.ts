@@ -880,11 +880,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
                   (entry.facadeModuleId === MAIN_ID || entry.facadeModuleId === BOOT_ID)
                 );
               }).map((fileName) => `${base}${fileName}`),
-              // And the stylesheets a `.fud` links (BUG-40). Same argument as the two
-              // entries above: their names are the build's, so `sw.json` cannot list them,
-              // and a page served from the cache without its stylesheet is a page that
-              // paints wrong — which is worse than one that does not paint at all.
-              ...linked.stylesheets(),
+              // And everything a document's own `<head>` links (BUG-40 §4.5). Same argument
+              // as the two entries above: their names are the build's, so `sw.json` cannot
+              // list them. Left out of the install they are met by a runtime rule instead,
+              // and a cache-first rule caches on the first request that reaches the WORKER —
+              // which is the second load, so the page only worked offline on the third.
+              ...linked.shell(),
             ];
       const sw =
         swConfig === null

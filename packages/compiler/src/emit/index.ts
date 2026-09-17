@@ -5,7 +5,7 @@
 
 export { CodeWriter } from './writer.js';
 export type { Anchor, EmitMapping, MappedPart, LinePart } from './writer.js';
-export { AssetLinker, type AssetExists, type AssetUrl } from './assets.js';
+export { AssetLinker, type AssetExists, type AssetUrl, type AssetOrigin } from './assets.js';
 export {
   resolveComponents,
   resolveDocument,

@@ -148,14 +148,32 @@ describe('LinkedAssets — §6.8 what the dev server answers', () => {
 });
 
 describe('LinkedAssets — §6.9 what the worker precaches', () => {
-  it('lists the stylesheets and nothing else', () => {
+  it('is what a document HEAD links, and not what its content references', () => {
     const assets = new LinkedAssets('/');
-    assets.url(sheet());
-    assets.url(join(root, 'logo.png'));
-    assets.url(join(root, 'small.svg'));
-    // An image or a video in the install is a different decision, and it is a runtime
-    // cache's. A sheet is the one linked file whose absence stops the page painting.
-    expect(assets.stylesheets()).toEqual([expect.stringMatching(/^\/assets\/theme-.*\.css$/u)]);
+    assets.url(sheet(), 'head'); // <link rel="stylesheet">
+    assets.url(join(root, 'small.svg'), 'head'); // <link rel="icon">
+    assets.url(join(root, 'logo.png'), 'markup'); // an <img> inside a component
+
+    // The line is the document against its content, not stylesheets against images. What a
+    // head links is what every page needs to render ITSELF — and leaving the icon out is
+    // what made the example take three loads to work offline instead of two.
+    expect([...assets.shell()].sort()).toEqual([
+      expect.stringMatching(/^\/assets\/small-.*\.svg$/u),
+      expect.stringMatching(/^\/assets\/theme-.*\.css$/u),
+    ]);
+  });
+
+  it('keeps a file in the shell once any head has linked it', () => {
+    const assets = new LinkedAssets('/');
+    assets.url(join(root, 'logo.png'), 'markup');
+    assets.url(join(root, 'logo.png'), 'head'); // another document, its head
+    expect(assets.shell()).toHaveLength(1);
+  });
+
+  it('is empty when nothing was linked from a head', () => {
+    const assets = new LinkedAssets('/');
+    assets.url(sheet(), 'markup');
+    expect(assets.shell()).toEqual([]);
   });
 });
 
@@ -163,7 +181,13 @@ describe('assetUrlFrom', () => {
   it('resolves the specifier against the file that wrote it', () => {
     const assets = new LinkedAssets('/');
     const resolve = assetUrlFrom(assets, join(root, 'styles'));
-    expect(resolve('./theme.css')).toBe(assets.url(sheet()));
-    expect(resolve('../logo.png')).toBe(assets.url(join(root, 'logo.png')));
+    expect(resolve('./theme.css', 'head')).toBe(assets.url(sheet()));
+    expect(resolve('../logo.png', 'markup')).toBe(assets.url(join(root, 'logo.png')));
+  });
+
+  it('carries the origin through, so the head of one `.fud` reaches the shell', () => {
+    const assets = new LinkedAssets('/');
+    assetUrlFrom(assets, join(root, 'styles'))('./theme.css', 'head');
+    expect(assets.shell()).toHaveLength(1);
   });
 });
