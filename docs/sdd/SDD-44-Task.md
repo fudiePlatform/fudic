@@ -3,7 +3,7 @@
 > **SDD:** [SDD-44 — CLI de workspace: N apps, N libs](./SDD-44-cli-de-workspace.md)
 > **Paquetes:** `@fudic/cli` (consume `@fudic/config`, que no cambia)
 > **Rama:** `sdd-44-cli-de-workspace`
-> **Progreso:** 0 / 12
+> **Progreso:** 1 / 12
 > **Bloqueado por:** [SDD-41](./SDD-41-configuracion-de-aplicacion.md) entera — este SDD escribe
 > el `fudic.json` que aquella define y descubre proyectos buscándolo. Y por la **decisión** de
 > [SDD-43](./SDD-43-librerias.md) §4.1 —qué publica una librería—, que es lo único que hace falta
@@ -43,7 +43,7 @@ planes independientes sobre plantillas distintas.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **`findProjects` y `targetProject`.** Un directorio es un proyecto si tiene `fudic.json`; el barrido poda `node_modules` y `dist` como ya hace `walkFud`. `targetProject` resuelve `--project` primero y el `fudic.json` más cercano **subiendo** desde `cwd` después; **no hay defecto** — sin respuesta, `null`. Un `fudic.json` roto excluye a ese proyecto con su `FUD0720` y no tumba el barrido. Criterio 3 | `cli` | `src/workspace/discover.ts` · `test/workspace/discover.test.ts` |
+| [x] | 1 | — | **`findProjects` y `targetProject`.** Un directorio es un proyecto si tiene `fudic.json`; el barrido poda `node_modules` y `dist` como ya hace `walkFud`. `targetProject` resuelve `--project` primero y el `fudic.json` más cercano **subiendo** desde `cwd` después; **no hay defecto** — sin respuesta, `null`. Un `fudic.json` roto excluye a ese proyecto con su `FUD0720` y no tumba el barrido. Criterio 3 | `cli` | `src/workspace/discover.ts` · `test/workspace/discover.test.ts` |
 
 ---
 
