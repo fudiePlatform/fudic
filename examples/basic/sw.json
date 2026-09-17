@@ -1,5 +1,5 @@
 {
-  "shell": [],
+  "shell": ["/logo.svg", "/probe-listeners.js"],
   "resources": {
     "assets": {
       "pattern": "/assets/**",
