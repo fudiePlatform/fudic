@@ -260,6 +260,23 @@ El compilador no sabe qué es un shell y no debe saberlo. Dice **dónde** se esc
 referencia —`AssetOrigin`, `'head'` o `'markup'`, un hecho sobre el fuente— y el host decide
 lo que eso vale.
 
+#### Y entonces, ¿para qué queda el `shell` de `sw.json`?
+
+Para lo que **nadie enlaza desde un `<head>`**, que es lo único que el build no puede
+deducir. Casi siempre eso es un fichero público que carga otra cosa: un `<script>` en el
+cuerpo de una ruta, una librería que pide su propio worker, algo a lo que apunta un servicio
+de fuera.
+
+Lo que cambia —y es el motivo de que antes fuera confuso— es **qué clase de cadena se
+escribe ahí**. Antes convivían dos: un nombre público, que el autor conoce, y un nombre
+hasheado, que no puede predecir nadie. Ahora solo cabe la primera, porque todo lo que el
+build nombra llega solo. Si estás escribiendo en `shell` algo que no es una ruta pública tal
+cual, es que va en un `<head>`.
+
+`examples/basic` acabó con una sola entrada, y sirve de ejemplo de la regla: la hoja y el
+icono no están —los enlaza el `<head>` del layout—, y `/probe-listeners.js` sí, porque lo
+carga un `<script>` en el cuerpo de una ruta y nada en ningún `<head>` lo menciona.
+
 **Un preload no.** Una hoja enlazada en la cabecera ya bloquea el render y se pide con la
 prioridad más alta; un `rel="preload"` delante no adelanta nada. Lo que le faltaba era el
 precacheo.

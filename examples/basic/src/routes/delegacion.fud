@@ -63,7 +63,12 @@
    línea porque el emit vacía el cuerpo de un `<script>` escrito en la plantilla, y porque
    siendo un script CLÁSICO corre al parsearlo — antes que el módulo del layout, que está
    diferido—, así que ve el primer listener del día. No es parte del framework: es el
-   instrumento con el que se le mide. *@
+   instrumento con el que se le mide.
+
+   Y es la razón de que `sw.json` conserve un `shell`: lo que enlaza un `<head>` —la hoja y
+   el icono— entra en el precacheo solo, pero esto lo carga un `<script>` del CUERPO, así
+   que nada lo mete ahí. Lo que se escribe en `shell` es siempre una ruta pública tal cual;
+   si alguna vez hay que escribir un nombre con hash, es que el fichero va en un `<head>`. *@
 <script src="/probe-listeners.js"></script>
 
 <div class="probe">
