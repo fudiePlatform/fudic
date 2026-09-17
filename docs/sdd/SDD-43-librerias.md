@@ -1,9 +1,10 @@
 # SDD-43 — Librerías fudic: qué se publica y cómo se resuelve
 
 > **Estado:** `Listo`
-> **Paquetes:** `@fudic/vite` · `@fudic/cli` · `@fudic/language-server` ·
-> `@fudic/compiler` (solo el diagnóstico; su `ResolveIo` **no** cambia de forma) ·
-> `@fudic/config`
+> **Paquetes:** `@fudic/resolve` (**nuevo**, §3.1) · `@fudic/vite` · `@fudic/cli` ·
+> `@fudic/language-server` · `@fudic/compiler` (el `href` literal de §4.3 y el diagnóstico;
+> su `ResolveIo` **no** cambia de forma) · `@fudic/config` (consumido por `@fudic/resolve`,
+> no modificado)
 > **Depende de:** 41, 12, 15, 23, 24, 39 (§4.5), 42 (§4.6)
 > **Rango de diagnósticos:** `FUD0760`–`FUD0779`
 > **Naturaleza:** resolución + índice + una decisión de producto.
@@ -108,6 +109,19 @@ resolve(fromPath: string, href: string): string;
 comparten la implementación, que vive en **un** módulo. Tres copias del algoritmo de
 resolución de módulos es tres respuestas distintas el día que una de ellas se quede atrás.
 
+**Ese módulo es un paquete nuevo, `@fudic/resolve`**, y no una función más dentro de
+`@fudic/config`. Las dos opciones eran reales —los tres hosts ya dependen de `config`, y
+resolver un specifier necesita leer el `fudic.json` del paquete destino para `FUD0763`—,
+pero `@fudic/config` es *«leer y validar `fudic.json`»*, una responsabilidad, y la
+resolución de módulos de Node es otra. La que decide es la dirección: la resolución es lo
+que va a crecer después —los assets desde un paquete que §7 deja fuera hoy, y el runtime
+publicado de [SDD-45](./SDD-45-runtime-publicado.md)— y meterla en `config` es hacerla
+crecer dentro del paquete que importa todo el mundo. Nace, además, al 100 % de cobertura en
+las cuatro métricas sin arrastrar deuda ajena.
+
+`@fudic/resolve` depende de `@fudic/config` (necesita el `kind` del paquete destino) y de
+nada más. Los tres hosts lo declaran como dependencia; `@fudic/config` **no se modifica**.
+
 ### 3.2. El índice: las librerías del grafo de dependencias
 
 ```ts
@@ -196,6 +210,26 @@ o un documento.
 <link rel="component" href="@acme/ui/card.fud">
 <link rel="component" href="../../libs/ui/src/card.fud">   ← sigue siendo legal
 ```
+
+**El `href` de un `<link>` se lee literal.** La medición de §4.2 encontró que el ejemplo de
+arriba no se podía escribir: `@` abre un `@`-construct, así que el parser leía la expresión
+`@acme` y el texto `/ui/card.fud`, `linkHref` descartaba la parte de expresión en silencio, y
+al resolutor le llegaba `/ui/card.fud`. Resolver bare specifiers no lo arreglaba, porque la
+cadena nunca llegaba entera.
+
+Así que en el valor de `href` de un `<link rel="component">` o `<link rel="layout">` no se
+reconoce ningún `@`-construct: el valor se toma verbatim. El autor escribe el nombre del
+paquete tal cual, igual que en un `import`, y no hay nada que escapar:
+
+```html
+<link rel="component" href="@acme/ui/card.fud">
+```
+
+No se pierde ningún significado que hoy exista, porque `linkHref` ya descartaba esas partes.
+Y es lo que el atributo siempre fue: un `href` nombra un fichero que se resuelve en
+compilación, nunca un valor que se calcula. La consecuencia de tomarlo verbatim es que un
+`@(expr)` escrito ahí pasa a ser texto, y lo que se ve es el diagnóstico de un fichero que no
+resuelve — que es exactamente lo que es.
 
 Un `href` es **relativo** cuando empieza por `./` o `../`, y **de paquete** en cualquier
 otro caso que no sea una ruta absoluta ni un esquema. La resolución de paquete es la de
@@ -306,9 +340,10 @@ versión que no tiene lo que usa. Allí sube a **error**, `FUD0800`.
 
 - **El compilador sigue sin filesystem.** Todo lo de §4.3 vive en las implementaciones de
   `ResolveIo` del host. `ResolveIo` no gana un método.
-- **Una implementación de la resolución.** Un módulo, tres hosts. Tres copias es tres
-  respuestas el día que una se quede atrás, y el editor y el build discrepando sobre qué
-  fichero es un tag es la clase de defecto que cuesta un día encontrar.
+- **Una implementación de la resolución.** Un paquete —`@fudic/resolve`—, tres hosts. Tres
+  copias es tres respuestas el día que una se quede atrás, y el editor y el build
+  discrepando sobre qué fichero es un tag es la clase de defecto que cuesta un día
+  encontrar. Ningún host reimplementa la resolución de specifiers ni «ajusta» el resultado.
 - **El índice no barre `node_modules`.** Sigue el grafo de dependencias declaradas (§4.4).
   La poda de SDD-24 §4.5 se queda, y su motivo también.
 - **El contrato sale del AST.** No se inventa una vía alternativa —`.d.ts`, manifiesto,
