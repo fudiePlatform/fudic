@@ -1,7 +1,7 @@
 {
   "name": "@fudic/language-server",
   "version": "0.0.1",
-  "description": "Editor-agnostic LSP server for .fud files \u2014 Volar over the virtual TypeScript projection.",
+  "description": "Editor-agnostic LSP server for .fud files — Volar over the virtual TypeScript projection.",
   "type": "module",
   "license": "MIT",
   "author": "Pedro Hurtado",
@@ -53,6 +53,7 @@
     "@fudic/config": "workspace:*",
     "@fudic/formatter": "workspace:*",
     "@fudic/language-core": "workspace:*",
+    "@fudic/resolve": "workspace:*",
     "@volar/language-core": "2.4.28",
     "@volar/language-server": "2.4.28",
     "@volar/language-service": "2.4.28",

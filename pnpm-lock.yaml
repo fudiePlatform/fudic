@@ -275,6 +275,9 @@ importers:
       '@fudic/language-core':
         specifier: workspace:*
         version: link:../language-core
+      '@fudic/resolve':
+        specifier: workspace:*
+        version: link:../resolve
       '@volar/language-core':
         specifier: 2.4.28
         version: 2.4.28
@@ -325,6 +328,16 @@ importers:
         specifier: 22.20.0
         version: 22.20.0
 
+  packages/resolve:
+    dependencies:
+      '@fudic/config':
+        specifier: workspace:*
+        version: link:../config
+    devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+
   packages/ssr:
     dependencies:
       '@fudic/di':
@@ -360,6 +373,9 @@ importers:
       '@fudic/conventions':
         specifier: workspace:*
         version: link:../conventions
+      '@fudic/resolve':
+        specifier: workspace:*
+        version: link:../resolve
       '@fudic/ssr':
         specifier: workspace:*
         version: link:../ssr

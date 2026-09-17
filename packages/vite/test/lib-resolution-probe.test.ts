@@ -175,37 +175,34 @@ describe('SDD-43 §4.2 — a relative href that crosses into another package', (
 });
 
 describe('SDD-43 §4.2 — a bare specifier in an href', () => {
-  it.fails('composes the library component when the package is linked (question 4b)', () => {
+  it('composes the library component when the package is linked (question 4b)', () => {
     expect(bareLinked.error).toBeUndefined();
     expect(html(bareLinked)).toContain('Hola');
   });
 
-  it.fails('composes the library component when the package is copied', () => {
+  it('composes the library component when the package is copied', () => {
     expect(bareReal.error).toBeUndefined();
     expect(html(bareReal)).toContain('Hola');
   });
 
-  it('an UNSCOPED specifier is joined to the directory as if it were a path', () => {
-    // What the author gets today: no package resolution, so the specifier is treated as a
-    // relative path and the error names a file that could never exist. This is the message
-    // FUD0760 replaces.
-    expect(bareUnscoped.error ?? '').toMatch(/apps[\\/]tienda[\\/]src[\\/]routes[\\/]acme-ui/);
+  it('an UNSCOPED specifier that names no package is FUD0760', () => {
+    // The measurement found this joined to the file's directory as if it were a path, and
+    // the build died with an ENOENT over a file that could never have existed. Now it is
+    // told what is wrong and what to do about it.
+    expect(bareUnscoped.error ?? '').toMatch(/FUD0760/);
+    expect(bareUnscoped.error ?? '').toMatch(/not installed/);
   });
 
-  it('a SCOPED specifier loses its scope before anything resolves it', () => {
-    // The finding of the measurement, and it is not about resolution at all: `@` opens an
-    // `@`-construct in a `.fud`, so `href="@acme/ui/ui-card.fud"` is read as the expression
-    // `@acme` followed by the text `/ui/ui-card.fud`. What reaches the resolver is a
-    // ROOT-ABSOLUTE `/ui/ui-card.fud`, which is why the error names a file at the root of
-    // the drive and never mentions the package. Resolving bare specifiers does not fix this:
-    // the string never arrives.
-    expect(bareLinked.error ?? '').not.toMatch(/acme/);
-    expect(bareLinked.error ?? '').toMatch(/[\\/]ui[\\/]ui-card\.fud/);
+  it('hoists the library stylesheet the same way a relative href does', () => {
+    // Which is the point of the whole thing: how a component was NAMED changes nothing
+    // about what the build does with it once it is found.
+    expect(html(bareLinked)).toContain('.card{border:1px solid #ccc;}');
+    expect(html(bareLinked)).toBe(html(relativeLinked));
   });
 
-  it('the grammar\'s own `@@` escape delivers the scope intact', () => {
-    // Which says the parser needs no new rule to carry a scoped specifier — only a decision
-    // about whether an author has to write `@@acme/ui` for a package called `@acme/ui`.
-    expect(bareEscaped.error ?? '').toMatch(/@acme[\\/]ui[\\/]ui-card\.fud/);
+  it('`@@` is two characters now, because nothing in an href is escaped', () => {
+    // Verbatim is verbatim. `@@acme/ui` used to be the only way to write a scoped package
+    // and is now a package whose name begins with two `@` — which nothing installs.
+    expect(bareEscaped.error ?? '').not.toBe('');
   });
 });

@@ -128,6 +128,26 @@ function isPropertyName(name: string | RazorExpression): boolean {
   return typeof name === 'string' && name.startsWith('.');
 }
 
+/** Whether an attribute is the plainly-named `name`, case-insensitively as HTML is. */
+function attributeIs(attribute: Attribute, name: string): boolean {
+  return typeof attribute.name === 'string' && attribute.name.toLowerCase() === name;
+}
+
+/**
+ * The literal value of an attribute: its text parts joined, `''` when it has none.
+ *
+ * An interpolated `rel` therefore reads as `''` and decides nothing, which is the right
+ * answer — what `rel` a link has cannot depend on something computed at render time.
+ */
+function staticAttributeValue(attributes: readonly Attribute[], name: string): string {
+  const attribute = attributes.find((candidate) => attributeIs(candidate, name));
+  if (attribute === undefined) return '';
+  return attribute.value
+    .map((part) => (part.type === 'attribute-text' ? part.value : ''))
+    .join('')
+    .toLowerCase();
+}
+
 class HtmlParser {
   readonly #source: string;
   readonly #lexer: Lexer;
@@ -148,6 +168,16 @@ class HtmlParser {
    * a tree the parser has an opinion about.
    */
   #tagRanOff = false;
+
+  /**
+   * The slice of `#diagnostics` the current tag's `href` value produced.
+   *
+   * Reset per start tag and read by `#readLinkHrefLiterally`, which may decide that value
+   * was never a construct — and then what the construct had to say is not a diagnostic
+   * about a path. Kept as a range rather than a mark so that an attribute written AFTER
+   * the href keeps whatever it reported.
+   */
+  #hrefDiagnostics: { from: number; to: number } = { from: 0, to: 0 };
 
   constructor(source: string, atConstructs: AtConstructParser | undefined) {
     this.#source = source;
@@ -340,6 +370,7 @@ class HtmlParser {
         : parentNamespace;
 
     const { attributes, endToken } = this.#parseAttributes();
+    if (lower === 'link') this.#readLinkHrefLiterally(attributes);
     const openSpan = span(openToken.span.start, endToken?.span.end ?? openToken.span.end);
 
     const base = {
@@ -463,6 +494,8 @@ class HtmlParser {
 
   #parseAttributes(): { attributes: Attribute[]; endToken: Token | null } {
     const attributes: Attribute[] = [];
+    // Per tag: the href of THIS element, not of the last one that had one.
+    this.#hrefDiagnostics = { from: 0, to: 0 };
     for (;;) {
       const token = this.#lexer.peek();
       if (token.type === 'eof') return { attributes, endToken: null };
@@ -477,6 +510,59 @@ class HtmlParser {
       // Whitespace between attributes, or a stray token: neither produces a node.
       this.#next();
     }
+  }
+
+  /**
+   * The `href` of a `<link rel="component">` / `<link rel="layout">` is read VERBATIM
+   * (SDD-43 §4.3).
+   *
+   * An href names a file that is resolved at compile time, never a value that is computed,
+   * and `@` is the transition character of the grammar. `href="@acme/ui/card.fud"` was read
+   * as the expression `@acme` followed by the text `/ui/card.fud`, and `linkHref` kept only
+   * the text parts — so a scoped package could not be named at all, and the resolver was
+   * handed `/ui/card.fud`. Nothing that had meaning is lost: those parts were already being
+   * dropped, in silence, which is what made the failure so hard to read.
+   *
+   * AFTER the attributes rather than while parsing them, because `rel` decides and `rel`
+   * may be written second. And only when the value contains an `@`: an href without one
+   * parses to a single text run already, and re-reading it would be a chance to behave
+   * differently for no reason.
+   *
+   * Only these two `rel`s. A `<link rel="preload" href="@data.hero">` is an expression on
+   * purpose and stays one — what makes these two different is that their target is a file
+   * this compiler has to open.
+   */
+  #readLinkHrefLiterally(attributes: Attribute[]): void {
+    const rel = staticAttributeValue(attributes, 'rel');
+    if (rel !== 'component' && rel !== 'layout') return;
+
+    const index = attributes.findIndex((attribute) => attributeIs(attribute, 'href'));
+    const attribute = attributes[index];
+    if (attribute === undefined) return;
+
+    // The value's own extent, taken from its parts rather than from the attribute span,
+    // which includes the name, the `=` and the quotes. An empty value has no parts and
+    // there is nothing to re-read.
+    let start = Number.POSITIVE_INFINITY;
+    let end = -1;
+    for (const part of attribute.value) {
+      start = Math.min(start, part.span.start);
+      end = Math.max(end, part.span.end);
+    }
+    if (end < 0) return;
+
+    const at = span(start, end);
+    const raw = this.#slice(at);
+    if (!raw.includes('@')) return;
+
+    // What the `@` had to say while it was a construct is not a diagnostic about a path.
+    const { from, to } = this.#hrefDiagnostics;
+    this.#diagnostics.splice(from, to - from);
+
+    attributes[index] = {
+      ...attribute,
+      value: [{ type: 'attribute-text', span: at, value: raw }],
+    };
   }
 
   #parseAttribute(): Attribute {
@@ -498,6 +584,11 @@ class HtmlParser {
 
     const value: AttributeValuePart[] = [];
     this.#skipInTagWhitespace();
+    // Where this value's diagnostics start, kept only for `href` — the one attribute whose
+    // value may be re-read as text afterwards (`#readLinkHrefLiterally`), and whose
+    // complaints about an `@` then stop being about anything.
+    const isHref = typeof name === 'string' && name.toLowerCase() === 'href';
+    const before = this.#diagnostics.length;
     if (this.#lexer.peek().type === 'attr-eq') {
       const eq = this.#next();
       this.#skipInTagWhitespace();
@@ -507,6 +598,7 @@ class HtmlParser {
           ? this.#parseQuotedValue(value)
           : this.#parseUnquotedValue(value, name, eq.span.end);
     }
+    if (isHref) this.#hrefDiagnostics = { from: before, to: this.#diagnostics.length };
 
     return { type: 'attribute', span: span(nameToken.span.start, end), name, value };
   }

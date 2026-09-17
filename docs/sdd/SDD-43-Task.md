@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/resolve` (**nuevo**) · `@fudic/vite` · `@fudic/cli` ·
 > `@fudic/language-server` · `@fudic/compiler` · `@fudic/config` (consumido, no modificado)
 > **Rama:** `sdd-43-librerias`
-> **Progreso:** 1 / 13
+> **Progreso:** 6 / 13
 > **Bloqueado por:** [SDD-41](./SDD-41-configuracion-de-aplicacion.md) — `kind: "lib"` es lo que
 > hace descubrible una librería. Conviene, no es obligatorio, tener
 > [SDD-44](./SDD-44-cli-de-workspace.md) para generar el caso de prueba en vez de escribirlo a
@@ -75,11 +75,11 @@ bare specifiers.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 2 | 1 | **Un resolutor, un paquete.** `@fudic/resolve`, nuevo (SDD-43 §3.1): el andamiaje del paquete —`package.json`, los dos `tsconfig`, `vitest.config.ts` con los cuatro umbrales al 100, README— y la función que resuelve un `href` desde un fichero: relativo contra el directorio, y **bare specifier** con el algoritmo de módulos de Node, `exports` del paquete incluido. Depende de `@fudic/config` y de nada más; los tres hosts lo importan y `@fudic/config` no se toca | `resolve` (nuevo) | `packages/resolve/**` |
-| [ ] | 2b | 1 | **El `href` se lee literal** (§4.3). En el valor de `href` de un `<link rel="component">` / `<link rel="layout">` no se reconoce ningún `@`-construct: el valor se toma verbatim, y `@acme/ui/card.fud` llega entero al resolutor. Sale de la medición, y sin ella el criterio 2 no se cierra: hoy el parser lee la expresión `@acme` y `linkHref` la descarta en silencio. Nada que hoy tenga significado lo pierde | `compiler` | `src/html/parser.ts` |
-| [ ] | 3 | 2, 2b | **(rojo primero)** **Los tres hosts la usan.** `vite/src/io.ts`, `cli/src/io.ts` y el del language server pasan a construir su `ResolveIo` sobre ella. `ResolveIo` **no gana un método** y el compilador no se toca. Se ve fallar antes: hoy `href="@acme/ui/card.fud"` no encuentra nada. Y el `href` relativo que cruza de paquete **sigue funcionando**. Criterios 2, 3 | `vite` · `cli` · `language-server` | `src/io.ts` (los tres) |
-| [ ] | 4 | 3 | **`FUD0760`, con sus dos mensajes.** Paquete no instalado y paquete que no exporta el fichero son dos arreglos distintos —`pnpm add` frente a abrir el `package.json` de la librería— y un mensaje único manda a leer el fichero equivocado. Criterio 4 | `vite` · `cli` | `src/diagnostics.ts` |
-| [ ] | 5 | 4 | **`FUD0763`.** El `href` apunta a un `.fud` de un paquete que no declara `kind: "lib"`. Error: es acoplamiento al interior de algo que no se pensó para consumirse. Criterio 5 | `vite` | `src/link-check.ts` |
+| [x] | 2 | 1 | **Un resolutor, un paquete.** `@fudic/resolve`, nuevo (SDD-43 §3.1): el andamiaje del paquete —`package.json`, los dos `tsconfig`, `vitest.config.ts` con los cuatro umbrales al 100, README— y la función que resuelve un `href` desde un fichero: relativo contra el directorio, y **bare specifier** con el algoritmo de módulos de Node, `exports` del paquete incluido. Depende de `@fudic/config` y de nada más; los tres hosts lo importan y `@fudic/config` no se toca | `resolve` (nuevo) | `packages/resolve/**` |
+| [x] | 2b | 1 | **El `href` se lee literal** (§4.3). En el valor de `href` de un `<link rel="component">` / `<link rel="layout">` no se reconoce ningún `@`-construct: el valor se toma verbatim, y `@acme/ui/card.fud` llega entero al resolutor. Sale de la medición, y sin ella el criterio 2 no se cierra: hoy el parser lee la expresión `@acme` y `linkHref` la descarta en silencio. Nada que hoy tenga significado lo pierde | `compiler` | `src/html/parser.ts` |
+| [x] | 3 | 2, 2b | **(rojo primero)** **Los hosts la usan.** `vite/src/io.ts` y el barrido del language server (`node-fs.ts`, sobre el puerto `FileSystemScanner`) pasan a construir su resolución sobre ella. `ResolveIo` **no gana un método** y el compilador no lo toca. Se vio fallar antes: `href="@acme/ui/card.fud"` no encontraba nada. Y el `href` relativo que cruza de paquete **sigue funcionando**. Criterios 2, 3. **La CLI queda fuera, y no por olvido:** hoy no resuelve ningún `href` —solo compara cadenas en `alreadyLinked`— así que no tiene `ResolveIo` que convertir. Lo tendrá cuando aterrice `fudic check` (SDD-35) | `vite` · `language-server` | `vite/src/io.ts` · `ls/src/{types,node-fs,workspace-index}.ts` |
+| [x] | 4 | 3 | **`FUD0760`, con sus dos mensajes.** Paquete no instalado y paquete que no exporta el fichero son dos arreglos distintos —`pnpm add` frente a abrir el `package.json` de la librería— y un mensaje único manda a leer el fichero equivocado. Criterio 4. Va en un paso propio (`checkLinks`) que corre **antes** del recorrido del grafo: el compilador lee cada fichero que alcanza y moría con un `ENOENT` sobre una ruta que el autor no escribió | `vite` | `src/diagnostics.ts` · `src/link-check.ts` |
+| [x] | 5 | 4 | **`FUD0763`.** El `href` apunta a un `.fud` de un paquete que no declara `kind: "lib"`. Error: es acoplamiento al interior de algo que no se pensó para consumirse. Criterio 5 | `vite` | `src/link-check.ts` |
 
 ---
 

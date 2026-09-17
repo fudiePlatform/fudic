@@ -1,15 +1,15 @@
 {
-  "name": "@fudic/vite",
+  "name": "@fudic/resolve",
   "version": "0.0.1",
-  "description": "Vite plugin for fudic — compiles .fud, filesystem routing, incremental SSG.",
+  "description": "Where an `href` written in a `.fud` points — one implementation of relative and package resolution, shared by the CLI, the Vite plugin and the language server.",
   "type": "module",
   "license": "MIT",
   "author": "Pedro Hurtado",
-  "homepage": "https://github.com/fudiePlatform/fudic/tree/main/packages/vite#readme",
+  "homepage": "https://github.com/fudiePlatform/fudic/tree/main/packages/resolve#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/fudiePlatform/fudic.git",
-    "directory": "packages/vite"
+    "directory": "packages/resolve"
   },
   "bugs": {
     "url": "https://github.com/fudiePlatform/fudic/issues"
@@ -17,9 +17,8 @@
   "keywords": [
     "fudic",
     "fudie",
-    "declarative-shadow-dom",
-    "vite-plugin",
-    "ssg"
+    "resolve",
+    "package"
   ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -44,19 +43,9 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@fudic/compiler": "workspace:*",
-    "@fudic/config": "workspace:*",
-    "@fudic/conventions": "workspace:*",
-    "@fudic/resolve": "workspace:*",
-    "@fudic/ssr": "workspace:*",
-    "@fudic/transport": "workspace:*"
-  },
-  "peerDependencies": {
-    "vite": "8.0.16"
+    "@fudic/config": "workspace:*"
   },
   "devDependencies": {
-    "@fudic/tsconfig": "workspace:*",
-    "@types/node": "22.20.0",
-    "vite": "8.0.16"
+    "@fudic/tsconfig": "workspace:*"
   }
 }

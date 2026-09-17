@@ -47,7 +47,8 @@ import {
   routeUsesDi,
 } from './client.js';
 import { IOC_SUFFIX } from '@fudic/compiler';
-import { nodeIo } from './io.js';
+import { nodeIo, nodeLinkCheckIo } from './io.js';
+import { checkLinks } from './link-check.js';
 import { readSwConfig, type ResolvedSwConfig } from './swconfig.js';
 import { nodeConfigIo, readProject, type ProjectResult } from './config.js';
 import { readStyles } from './styles.js';
@@ -188,6 +189,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let manifestUrl = '/fudic-routes.json';
   let manifestFileName = 'fudic-routes.json';
   const io = nodeIo();
+  const linkCheckIo = nodeLinkCheckIo();
 
   /**
    * The client module a dev client URL names, or `undefined` when it names none.
@@ -568,6 +570,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       builds = discovered.routes;
       for (const d of discovered.diagnostics) {
         this.warn(`[${d.code}] ${d.message}`);
+      }
+
+      // What the links NAME, before anything walks them (SDD-43 §4.3). The graph walk reads
+      // every file it reaches and stops at the first one it cannot, with an `ENOENT` naming
+      // a path the author never wrote — so the questions only a resolver can answer are
+      // asked here, where there is still something to say about them.
+      for (const d of checkLinks(
+        builds.map((rb) => rb.absPath),
+        linkCheckIo,
+      )) {
+        this.error(`[${d.code}] ${d.message} (in ${d.file})`);
       }
       // FUD0742, and it is the BUILD's rather than the emit's because what it is about is
       // the PROJECT: a sheet that nothing adopts. The emit sees one file at a time, so the

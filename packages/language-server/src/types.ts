@@ -46,6 +46,18 @@ export interface FileSystemScanner {
   fudFiles(root: string): readonly string[];
   /** File contents, or `undefined` when it cannot be read. Never throws. */
   readFile(path: string): string | undefined;
+  /**
+   * Where an `href` written in `fromFile` points, as an absolute POSIX path (SDD-43 §4.3).
+   *
+   * A path resolves against the file, as it always did; a bare specifier
+   * (`@acme/ui/card.fud`) resolves as an `import` would. It lives on this port and not in
+   * the index because resolving a package is the one part of the question that needs a
+   * disk, and the index is the thing that must never touch one.
+   *
+   * An href that does not resolve still answers a path — one that is simply not in the
+   * index, which is the state a broken link has always had (`FUD0460`).
+   */
+  resolveHref(fromFile: string, href: string): string;
 }
 
 /**

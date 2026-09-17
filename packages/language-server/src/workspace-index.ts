@@ -19,7 +19,7 @@ import {
   type Contract,
   type FudRole,
 } from './mode.js';
-import { resolveFrom, toPosix } from './paths.js';
+import { toPosix } from './paths.js';
 import type { FileSystemScanner } from './types.js';
 
 /** What the index knows about one `.fud`. */
@@ -137,8 +137,14 @@ export class WorkspaceIndex {
     return this.all().filter((entry) => entry.role === role);
   }
 
-  /** What an `href` written inside `fromFile` points at, if anything. */
+  /**
+   * What an `href` written inside `fromFile` points at, if anything.
+   *
+   * The arithmetic moved to the scanner with SDD-43: an href may name a package and not
+   * only a location, and answering that needs a disk. What stays here is the lookup, which
+   * is what makes this a map access per keystroke and not a filesystem question.
+   */
   resolve(fromFile: string, href: string): IndexEntry | undefined {
-    return this.#entries.get(resolveFrom(toPosix(fromFile), href));
+    return this.#entries.get(toPosix(this.#scanner.resolveHref(toPosix(fromFile), href)));
   }
 }

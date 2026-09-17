@@ -8,18 +8,30 @@
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { GLOBALS_DTS } from '@fudic/language-core';
-import { toPosix } from '../src/paths.js';
+import { resolveFrom, toPosix } from '../src/paths.js';
 import type { FileSystemScanner } from '../src/types.js';
 
 /** Absolute POSIX path of the fixture workspace. */
 export const FIXTURES = toPosix(fileURLToPath(new URL('../fixtures', import.meta.url)));
 
-/** A `FileSystemScanner` over a map of path → source. */
-export function memoryFs(files: Readonly<Record<string, string>>): FileSystemScanner {
+/**
+ * A `FileSystemScanner` over a map of path → source.
+ *
+ * `resolveHref` is the path arithmetic alone (`resolveFrom`), with no package resolution:
+ * there is no `node_modules` in a `Record`, and a test that needs a package installed says
+ * so by passing `packages`. A specifier that is not listed there resolves the way a
+ * relative href does, which is a path the map does not hold — the same nowhere a broken
+ * link has always resolved to.
+ */
+export function memoryFs(
+  files: Readonly<Record<string, string>>,
+  packages: Readonly<Record<string, string>> = {},
+): FileSystemScanner {
   return {
     fudFiles: (root) =>
       Object.keys(files).filter((path) => path.startsWith(root) && path.endsWith('.fud')),
     readFile: (path) => files[path],
+    resolveHref: (fromFile, href) => packages[href] ?? resolveFrom(toPosix(fromFile), href),
   };
 }
 

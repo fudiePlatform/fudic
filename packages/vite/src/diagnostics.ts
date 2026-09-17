@@ -72,3 +72,19 @@ export const FUD_ROUTE_NAME_COLLISION = 'FUD0622';
  * about is the absence of files.
  */
 export const FUD_STYLES_NOT_ADOPTED = 'FUD0742';
+
+// SDD-43 (FUD0760–FUD0779): libraries. Both are the BUILD's and carry no span, because what
+// they are about is a package — whether it is installed, what it publishes, and whether it
+// ever meant to be consumed. None of that is anywhere in the `.fud` that named it.
+/**
+ * A `<link rel="component" href>` whose package specifier does not resolve (SDD-43 §4.3).
+ *
+ * The message distinguishes the two cases the author confuses, because they are two
+ * different fixes: the package is NOT INSTALLED, which is an install, and the package is
+ * installed but does NOT EXPORT the file, which is its `package.json`. One message for both
+ * sends them to read the wrong file.
+ */
+export const FUD_LINK_UNRESOLVED = 'FUD0760';
+
+/** The href resolves into a package whose `fudic.json` does not say `kind: "lib"`. */
+export const FUD_LINK_NOT_A_LIBRARY = 'FUD0763';
