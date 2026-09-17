@@ -20,6 +20,26 @@ describe('AssetLinker.linkable', () => {
     expect(AssetLinker.linkable('#frag')).toBe(false);
     expect(AssetLinker.linkable('')).toBe(false);
   });
+
+  it('never links CODE: a module is compiled, an asset is fetched as it is', () => {
+    // Publishing one as an asset copies the SOURCE into the output and hands the page a URL
+    // to it, which is how a misplaced `<link rel="component">` shipped a component's source
+    // inside every document.
+    expect(AssetLinker.linkable('./s-hero.fud')).toBe(false);
+    expect(AssetLinker.linkable('./analytics.js')).toBe(false);
+    expect(AssetLinker.linkable('../lib/index.mjs')).toBe(false);
+    expect(AssetLinker.linkable('./app.ts')).toBe(false);
+    expect(AssetLinker.linkable('./view.tsx')).toBe(false);
+    // The query is an instruction to the bundler, not part of the name.
+    expect(AssetLinker.linkable('./s-hero.fud?raw')).toBe(false);
+    // And the extension is read from the FILE, never from a directory that happens to
+    // carry a dot: `./v1.2/logo.png` is an image, and `./assets.js/logo` is not a `.js`.
+    expect(AssetLinker.linkable('./v1.2/logo.png')).toBe(true);
+    expect(AssetLinker.linkable('./assets.js/logo')).toBe(true);
+    expect(AssetLinker.linkable('./theme.css')).toBe(true);
+    expect(AssetLinker.linkable('./logo.SVG')).toBe(true);
+    expect(AssetLinker.linkable('./bundle.JS')).toBe(false);
+  });
 });
 
 const componentSrc = (linkAssets: boolean): string => {

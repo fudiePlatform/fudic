@@ -158,14 +158,33 @@ que resuelva el mismo fichero obtiene la misma cadena, porque la cadena no depen
 pregunta. Un fichero que no cambia conserva su nombre entre builds y sigue en las cachés que
 lo tienen; uno que cambia estrena nombre.
 
-### 4.2. Lo pequeño se incrusta; una hoja de estilos, nunca
+### 4.2. Lo que un documento enlaza es un fichero. Siempre
 
-Por debajo de 4096 bytes —el mismo umbral que usa el bundler— el fichero viaja como `data:`.
-Es lo que ya hacía que el logo del ejemplo funcionase, y se conserva.
+> **Corrección.** Este párrafo decía que por debajo de 4096 bytes el fichero viaja como
+> `data:`, copiando el umbral del bundler, con el `.css` como única excepción. Duró lo que
+> tardó Pedro en mirar la salida: **el favicon del ejemplo iba en base64 dentro de cada
+> página**. Las tres razones que se habían escrito para excluir el `.css` no hablaban de
+> hojas de estilo en ningún momento.
 
-La excepción es el `.css`, que siempre es fichero, y por tres razones de las que basta una:
-un `data:` no se revalida ni se precachea, se repite entero en cada página que lo enlaza, y
-una política `style-src` que no nombre `data:` lo bloquea.
+Un `data:` no se revalida, no se precachea, se repite entero en cada página que lo enlaza y
+muere bajo una política que no lo nombre. Eso es verdad de una hoja, de un icono y de una
+imagen por igual — y basta una de las cuatro. Además base64 es un tercio más grande que los
+bytes que transporta, y aterriza dentro de un documento que no se puede cachear como sí se
+cachearía el fichero.
+
+El umbral tenía sentido donde el bundler lo aplica: un asset que importa un **módulo**, donde
+la alternativa es una petición por icono en una página que ya ha parseado el código que los
+nombra. No lo tiene para un fichero que enlaza un **documento**. Así que no hay incrustación,
+a ningún tamaño.
+
+### 4.2.1. Y lo que se enlaza es un asset, no código
+
+Un asset es un fichero que el navegador descarga tal cual. Un `.fud` es el grafo de
+componentes y un `.js` es un módulo: los compila alguien. Publicar uno como asset copia el
+**fuente** a la salida y le da a la página una URL que apunta a él — que es exactamente lo que
+hacía un `<link rel="component">` mal colocado (`FUD0438`, SDD-21). El enlazador los rechaza
+por extensión y los deja como literales, que es la postura permisiva que ya aplica a todo lo
+que no puede avalar.
 
 ### 4.3. Publica una sola pasada
 
@@ -215,6 +234,8 @@ que `.a /* c */ .b` es un descendiente solo por los dos espacios, y `.a.b` es ot
 - **Desarrollo y build dicen la misma URL** y entregan los mismos bytes.
 - **Un solo camino para el CSS**, compartido con el `<style>` de componente (§4.6).
 - **El compilador sigue sin tocar el filesystem**: la URL llega inyectada.
+- **Nada que enlace un documento se incrusta** (§4.2), y **nada que sea código se enlaza**
+  (§4.2.1).
 - **Cobertura.** El código nuevo nace al 100 % en las cuatro métricas.
 
 ---
@@ -231,9 +252,13 @@ que `.a /* c */ .b` es un descendiente solo por los dos espacios, y `.a.b` es ot
    fichero emitido y el `href` coinciden carácter a carácter.
 3. **Una imagen grande tampoco se parte.** Un asset por encima del umbral, enlazado desde un
    componente, produce una URL que existe en la salida — el defecto no era del CSS (§2.3).
-4. **Lo pequeño se sigue incrustando.** Un `.svg` por debajo del umbral llega a la página
-   como `data:` y no emite fichero.
-5. **Una hoja nunca se incrusta**, por pequeña que sea (§4.2).
+4. **Lo pequeño también es un fichero.** Un `.svg` de trescientos bytes enlazado desde el
+   `<head>` —un favicon— se publica con su URL y **no** aparece un solo `data:` en el
+   documento (§4.2). Y lo mismo desde el `<head>` de una ruta y desde dentro de un
+   componente: el mismo fichero desde tres sitios, un nombre y un fichero publicado.
+5. **Una hoja tampoco**, por pequeña que sea (§4.2).
+5.b. **Un `<script src>` se queda como estaba.** Un `.js` no es un asset: no se publica, no
+   se incrusta y no se toca (§4.2.1). Lo mismo un `.fud`.
 6. **Un fichero, una vez.** Dos rutas que enlazan la misma hoja publican **un** fichero.
 7. **El hash es de los bytes.** Cambiar el contenido cambia el nombre; no cambiarlo lo
    conserva entre dos builds.

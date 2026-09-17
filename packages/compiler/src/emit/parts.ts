@@ -8,6 +8,7 @@
  */
 
 import type { ElementNode, HtmlContent } from '../html/index.js';
+import { isComponentLink, isLayoutLink } from '../document/index.js';
 import type { Span } from '../types/index.js';
 import type { ComponentGraph, ResolvedComponent, ResolvedLayout } from './resolve.js';
 import type { CodeWriter } from './writer.js';
@@ -119,6 +120,9 @@ export function writeNonceBinding(w: CodeWriter): void {
  * not a path, the way `<link rel="component">` is unmistakably not a stylesheet.
  */
 export const RUNTIME_MARKER = 'fudic:runtime';
+
+/** A `<link>` that names the component or layout graph: never output, in any role. */
+const isFrameworkLink = (el: ElementNode): boolean => isComponentLink(el) || isLayoutLink(el);
 
 /**
  * Whether this head element is that marker: a `<script>` whose `src` is literally
@@ -247,6 +251,11 @@ export function writeHeadElements(
       continue;
     }
     if (child.type !== 'element' || options.skip.has(child)) continue;
+    // A framework link is the component/layout graph and is never output — in ANY role.
+    // The `skip` set says so for the one role that collects them into a field; this says it
+    // for the rest, which is what stops a misplaced one (FUD0438) from being published as
+    // an asset by a build that recovered from the error and carried on.
+    if (isFrameworkLink(child)) continue;
     if (options.onRuntime !== undefined && isRuntimeMarker(child)) {
       options.onRuntime();
     } else if (child.name === 'title') {

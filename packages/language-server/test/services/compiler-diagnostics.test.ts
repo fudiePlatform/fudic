@@ -94,6 +94,18 @@ describe('fudicDiagnostics', () => {
     expect(codesOf('/p/components/app-x.fud', source)).toContain('FUD0461');
   });
 
+  it('forwards FUD0438: a framework link below the top level, in the editor too', () => {
+    // It has to be seen HERE and not only in a build. Nested, the link registers nothing —
+    // the tag renders empty — and it used to publish the `.fud` it named into the page. A
+    // mistake that silent is one the editor has to underline while it is being typed.
+    const source =
+      '<link rel="layout" href="../layouts/_layout.fud">\n' +
+      '<head><link rel="component" href="../components/app-badge.fud"><title>t</title></head>\n' +
+      '<app-badge></app-badge>\n';
+
+    expect(codesOf(SLUG, source)).toContain('FUD0438');
+  });
+
   it('keeps every diagnostic on a span of the .fud', () => {
     const source = route('../layouts/_layout.fud', ['../components/ghost.fud']);
     const { index, document } = setup(SLUG, source);

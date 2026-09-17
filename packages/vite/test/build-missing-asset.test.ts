@@ -3,12 +3,10 @@
  * and is left as a literal — the build completes (does not abort). A sibling asset that
  * does exist is still linked, proving only the missing one is skipped.
  *
- * Since BUG-40 the shape a linked asset takes is the HOST's decision and not the bundler's:
- * under 4096 bytes it travels as a `data:` URI, over it as a published file, and
- * `build.assetsInlineLimit` no longer reaches it — the whole point being that three passes
- * over one `.fud` cannot be allowed to answer differently. So what is asserted here is that
- * the sibling was LINKED, which is the fact this test is about, and not which of the two
- * shapes the threshold gave it.
+ * Since BUG-40 a linked asset is named and published by the HOST and not by the bundler —
+ * three passes over one `.fud` cannot be allowed to answer differently — so
+ * `build.assetsInlineLimit` no longer reaches it, and there is no inlining at all: what a
+ * document links is a file, at any size.
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
@@ -75,6 +73,7 @@ describe('vite build — missing asset (FUD0363)', () => {
     // The sibling is gone from the output as the author wrote it, which is what "linked"
     // means: only the missing one was skipped.
     expect(code).not.toContain('"./present.png"');
-    expect(code).toContain('data:image/png;base64,');
+    const present = output.find((o) => /^assets\/present-[\w-]{8}\.png$/u.test(o.fileName));
+    expect(present).toBeDefined();
   });
 });

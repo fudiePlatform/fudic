@@ -69,11 +69,22 @@ describe('LinkedAssets — the name is a property of the bytes', () => {
 });
 
 describe('LinkedAssets — what travels inside the document and what does not', () => {
-  it('§6.4 a small file is inlined, and emits no file to publish', () => {
+  it('publishes a small file too — nothing a document links is inlined', () => {
+    // The `data:` threshold is right for an asset a MODULE imports and wrong for a file a
+    // DOCUMENT links: a data URI is not revalidated, not precached, repeated in full in
+    // every page that links it, and blocked by a policy that does not name `data:`. A
+    // favicon is the case that says it out loud — three hundred bytes, in every page.
     const assets = new LinkedAssets('/');
     const url = assets.url(join(root, 'small.svg'));
-    expect(url.startsWith('data:image/svg+xml;base64,')).toBe(true);
-    expect(assets.files().size).toBe(0);
+    expect(url).toMatch(/^\/assets\/small-[\w-]{8}\.svg$/u);
+    expect(assets.files().size).toBe(1);
+  });
+
+  it('never writes a data: URI, whatever the size or the type', () => {
+    const assets = new LinkedAssets('/');
+    for (const file of ['small.svg', 'logo.png', 'styles/theme.css', 'data.bin']) {
+      expect(assets.url(join(root, file))).not.toContain('data:');
+    }
   });
 
   it('§6.3 a big one is a file, however ordinary — the defect was never the CSS', () => {
@@ -82,10 +93,8 @@ describe('LinkedAssets — what travels inside the document and what does not', 
     expect([...assets.files().keys()]).toEqual([expect.stringMatching(/\.png$/u)]);
   });
 
-  it('§6.5 a stylesheet is never inlined, however small', () => {
+  it('§6.5 a stylesheet is a file, however small', () => {
     const assets = new LinkedAssets('/');
-    // Any one of the three reasons is enough: a `data:` URI is not revalidated, not
-    // precached, and blocked by a `style-src` that does not name it.
     expect(assets.url(join(root, 'styles', 'other.css'))).toMatch(/^\/assets\/other-/u);
     expect(assets.files().size).toBe(1);
   });

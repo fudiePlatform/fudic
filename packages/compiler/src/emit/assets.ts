@@ -89,9 +89,31 @@ export class AssetLinker {
 
 
   /**
+   * Extensions that are CODE, and therefore never an asset.
+   *
+   * An asset is a file the browser fetches as it is. These are files somebody compiles: a
+   * `.fud` is the component graph, a `.js` is a module. Publishing one as an asset copies
+   * the SOURCE into the output and hands the page a URL to it — which is how a misplaced
+   * `<link rel="component">` ended up shipping a component's source inside every document.
+   * Left as literals, the way every other URL this linker cannot vouch for is left.
+   */
+  static readonly #CODE = new Set([
+    '.fud',
+    '.js',
+    '.mjs',
+    '.cjs',
+    '.jsx',
+    '.ts',
+    '.mts',
+    '.cts',
+    '.tsx',
+  ]);
+
+  /**
    * A static, relative specifier the bundler can resolve to a hashed asset. Rejects
    * schemes (`http:`, `data:`, …), protocol-relative (`//`), root-absolute/public
-   * (`/x`), and in-page fragments (`#x`) — those are already final URLs.
+   * (`/x`), and in-page fragments (`#x`) — those are already final URLs — and anything
+   * whose extension says it is code rather than an asset.
    */
   static linkable(spec: string): boolean {
     if (spec === '') return false;
@@ -99,6 +121,11 @@ export class AssetLinker {
     if (spec.startsWith('//')) return false; // protocol-relative
     if (spec.startsWith('/')) return false; // root-absolute (Vite public dir, served as-is)
     if (spec.startsWith('#')) return false; // in-page fragment
+    const file = AssetLinker.filePath(spec);
+    const dot = file.lastIndexOf('.');
+    if (dot > Math.max(file.lastIndexOf('/'), file.lastIndexOf('\\'))) {
+      if (AssetLinker.#CODE.has(file.slice(dot).toLowerCase())) return false;
+    }
     return true; // relative path → link through Vite
   }
 

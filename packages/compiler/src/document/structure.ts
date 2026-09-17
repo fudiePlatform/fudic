@@ -67,6 +67,17 @@ const FUD_DUPLICATE_LAYOUT_LINK = 'FUD0420';
 const FUD_ROUTE_ORDER = 'FUD0421';
 /** A repeated `@RenderBody()` / `@RenderHead()` (decision 86). */
 const FUD_DUPLICATE_DIRECTIVE = 'FUD0424';
+/**
+ * A `<link rel="component">` or `<link rel="layout">` written anywhere but the top level of
+ * a component or a route.
+ *
+ * Nested, it does nothing at all: the graph is read from the top-level phases, so the file
+ * it names is never resolved and the component never registers. And it is not inert — it is
+ * a `<link href>`, so the asset linker takes it for an asset and publishes the `.fud` it
+ * points at, source and all, into the page. Two wrongs that look like one typo, which is
+ * why this is an error and not a warning.
+ */
+const FUD_LINK_NOT_TOP_LEVEL = 'FUD0438';
 /** A layout with no `@RenderHead()`: the route's head is appended at the end (decision 86). */
 const FUD_NO_RENDER_HEAD = 'FUD0425';
 /** A `Render*` directive outside a layout (decision 84). */
@@ -323,6 +334,12 @@ function structureComponent(doc: HtmlDocument): ParseResult<StructuredDocument> 
     }
   }
 
+  // Every framework link the phase machine did NOT take, which is every one below the top
+  // level: they register nothing and they publish the file they name (FUD0438).
+  for (const top of significant(doc.children)) {
+    if (isElement(top)) collectNestedFrameworkLinks(top.children, diagnostics);
+  }
+
   const host = validateHost(rootNodes, doc.span, diagnostics);
   const template = host !== undefined ? validateTemplate(host, diagnostics) : undefined;
   if (head !== undefined) validateHeadStyles(head, diagnostics);
@@ -477,6 +494,12 @@ function structureRoute(doc: HtmlDocument): ParseResult<StructuredDocument> {
         rootNodes.push(node);
         break;
     }
+  }
+
+  // Same as a component (FUD0438), and here it is the likelier mistake: a route's `<head>`
+  // is a head, so writing the component links in it reads right and does nothing.
+  for (const top of significant(doc.children)) {
+    if (isElement(top)) collectNestedFrameworkLinks(top.children, diagnostics);
   }
 
   // `structureDocument` only routes here when a layout link exists, so the non-optional
@@ -690,6 +713,34 @@ function validateSkeleton(
  * Walk the whole tree (skipping the `<head>` subtree, whose links/`@code` are the valid
  * ones) reporting every component link (FUD0152) and `@code` (FUD0153) found elsewhere.
  */
+/**
+ * `FUD0438` over every framework link below the top level of a component or a route.
+ *
+ * It is called with the CHILDREN of each top-level node, so what it sees is by construction
+ * everything the phase machine did not accept — the `<head>` fragment included, which is
+ * where the mistake is actually made: it reads like a page's head, and in a page that is
+ * exactly where the link belongs (decision 59).
+ */
+function collectNestedFrameworkLinks(
+  nodes: readonly HtmlContent[],
+  diagnostics: Diagnostic[],
+): void {
+  for (const node of nodes) {
+    if (!isElement(node)) continue;
+    if (isComponentLink(node) || isLayoutLink(node)) {
+      diagnostics.push(
+        errorDiag(
+          FUD_LINK_NOT_TOP_LEVEL,
+          'A <link rel="component"> or <link rel="layout"> is a top-level node of the file: nested it registers nothing',
+          node.span,
+        ),
+      );
+      continue;
+    }
+    collectNestedFrameworkLinks(node.children, diagnostics);
+  }
+}
+
 function collectOutOfPlace(
   nodes: readonly HtmlContent[],
   head: ElementNode,

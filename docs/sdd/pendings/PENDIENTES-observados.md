@@ -22,7 +22,7 @@
 | 2 | Un import map en el head de una **ruta** llega tarde y el navegador lo ignora | BUG-29 | Abierto |
 | 3 | Dos specs de dev server de `@fudic/vite` fallan de forma intermitente en `pnpm test` | SDD-37 | Abierto |
 | 4 | El e2e usa **puertos fijos** y `reuseExistingServer`, así que dos worktrees se miden entre sí sin avisar | SDD-37 y SDD-38, a la vez | Abierto |
-| 5 | Un `<link rel="component">` dentro del `<head>` de una **ruta con layout** ni registra el componente ni se borra: sale al documento, y desde BUG-40 sale con el `.fud` entero en base64 | BUG-40 | Abierto |
+| ~~5~~ | ~~Un `<link rel="component">` dentro del `<head>` de una ruta con layout ni registra el componente ni se borra~~ | BUG-40 | **Arreglado** el mismo día: es `FUD0438` (SDD-21), error en build y en editor |
 
 ---
 
@@ -155,7 +155,16 @@ rama que llegue segunda, revertidos al terminar.
 
 ---
 
-## 5. Un `<link rel="component">` en el `<head>` de una ruta con layout sale al documento
+## 5. ~~Un `<link rel="component">` en el `<head>` de una ruta con layout sale al documento~~
+
+> **ARREGLADO** el 2026-09-17, el mismo día que se anotó, y sin BUG propio. Es **`FUD0438`**
+> del catálogo de [SDD-21](../SDD-21-layout.md): un enlace de componente o de layout fuera
+> del nivel superior es **error del compilador**, y se reporta en el build y en el editor. El
+> emit no escribe nunca un enlace de framework, en ningún rol, así que un build que se
+> recupere del error tampoco lo publica. Se quedó por escrito porque explica de dónde salió
+> lo que se arregló con él: mirando esta salida se vio que el favicon del ejemplo también
+> viajaba en base64, y [BUG-40](../bugs/BUG-40-una-hoja-que-no-se-puede-enlazar.md) §4.2 dejó
+> de incrustar nada que enlace un documento.
 
 **Visto:** 2026-09-16, escribiendo la tanda de tests de
 [BUG-40](../bugs/BUG-40-una-hoja-que-no-se-puede-enlazar.md). No es de BUG-40 ni de SDD-42.
@@ -193,9 +202,15 @@ pasa `skip: new Set()` — vacío
 ([`emit/layout.ts:329`](../../../packages/compiler/src/emit/layout.ts)). Ese es el bug
 entero.
 
-**Por dónde seguir.** Hay que decidir dos cosas, y son independientes: si un
-`<link rel="component">` ahí **registra** el componente (y entonces el resolutor de la ruta
-tiene que mirar también su `<head>`), o si **no es una forma válida** y merece un
-diagnóstico. Lo que no puede seguir siendo es lo de hoy: no hace nada y además se publica.
-Sea cual sea la respuesta, el enlace no sale al documento, y eso se arregla en la misma línea
-de `layout.ts`.
+**Lo que se decidió.** De las dos salidas que había —que el enlace anidado registrase el
+componente, o que no fuese una forma válida— se tomó la segunda, y la tomó Pedro en una
+línea: *«un link de componente o layout fuera del top level es error del compilador»*. Un
+componente y una ruta leen su grafo de las fases del nivel superior; una página y un layout,
+de su `<head>` (decisión 59). Cada rol tiene un sitio, y fuera de él es `FUD0438`.
+
+No se arregló en `layout.ts` como decía este párrafo. Se arregló en dos capas, porque son dos
+preguntas: `structureDocument` reporta el error —y de ahí sale tanto en el build como en el
+editor, por el mismo camino que cualquier diagnóstico estructural—, y `writeHeadElements`
+deja de escribir un enlace de framework **en cualquier rol**, para que un build que se
+recupere del error no lo publique igualmente. La línea de `layout.ts` sigue pasando un `skip`
+vacío, y ya da igual.

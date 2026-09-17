@@ -24,23 +24,20 @@ import { resolve as resolvePath } from 'node:path';
 import { compactProjectCss } from '@fudic/compiler';
 
 /**
- * Below this, a file travels inside the document as a `data:` URI instead of as a request.
+ * A file a document links is published as a file. There is no inlining, at no size.
  *
- * The same threshold Vite uses, and it is not only about weight: a data URI is byte for byte
- * the same in every pass, which is the reason the small logo of the example never showed the
- * bug this module exists to fix.
- */
-const INLINE_LIMIT = 4096;
-
-/**
- * A stylesheet is never inlined, however small.
+ * The threshold this module was born with was Vite's — under 4096 bytes, a `data:` URI —
+ * and it is the right default for an asset imported by a MODULE, where the alternative is a
+ * request per icon on a page that already parsed the code naming them. It is the wrong one
+ * for a file a DOCUMENT links, and the argument was already written down here for `.css`:
+ * a data URI is not revalidated, is not precached, is repeated in full in every page that
+ * links it, and dies under a `default-src` that does not name `data:`. Not one of those
+ * sentences is about stylesheets. A favicon is the case that made it obvious — three
+ * hundred bytes, one per page, in every page of the site, forever.
  *
- * Three reasons, and any one of them is enough: a `data:` URI cannot be revalidated or
- * precached, it is repeated in full in every page that links it, and a `style-src` policy
- * that does not name `data:` blocks it outright.
+ * And the weight is not even a wash: base64 is a third bigger than the bytes it carries,
+ * and it lands inside a document that cannot be cached the way the file could.
  */
-const NEVER_INLINE = new Set(['.css']);
-
 const MIME: Readonly<Record<string, string>> = {
   '.css': 'text/css',
   '.svg': 'image/svg+xml',
@@ -113,13 +110,6 @@ export class LinkedAssets {
       ext === '.css'
         ? Buffer.from(compactProjectCss(readFileSync(path, 'utf8')), 'utf8')
         : readFileSync(path);
-    const type = MIME[ext] ?? 'application/octet-stream';
-    if (bytes.length <= INLINE_LIMIT && !NEVER_INLINE.has(ext)) {
-      const inline = `data:${type};base64,${bytes.toString('base64')}`;
-      this.#urls.set(path, inline);
-      return inline;
-    }
-
     const hash = createHash('sha256').update(bytes).digest('base64url').slice(0, 8);
     const fileName = `assets/${baseNameOf(path)}-${hash}${ext}`;
     const url = this.#base + fileName;
