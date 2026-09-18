@@ -96,7 +96,13 @@ describe('fudic new → vite build (§6.1)', () => {
     expect(text).toContain('<!DOCTYPE html>');
     expect(text).toContain('<title>Home</title>');
     expect(text).toContain('<h1>Home</h1>');
-    expect(text).toContain('/fudic-main.js');
+    // The layout writes `fudic:runtime`, a marker rather than a URL, and the build answers
+    // it with the bootstrap it actually emitted — under the hashed name it gave it. The
+    // template used to write `/fudic-main.js` by hand, which named a file no build produces:
+    // FUD0363 from the asset check and FUD0391 from the Service Worker shell, on every
+    // generated project.
+    expect(text).toMatch(/<script type="module" src="\/fudic-(main|boot)-[0-9a-f]+\.js">/u);
+    expect(text).not.toContain('"/fudic-main.js"');
   });
 
   it('publishes the route in the manifest', () => {

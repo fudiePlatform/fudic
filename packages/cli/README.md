@@ -29,6 +29,19 @@ A library is not an app with fewer files. It has no routes, no `vite.config.ts`,
 rather than served. What it does have is a `package.json` whose `exports` and `files` point
 at the `.fud` sources — there is no build step to publish.
 
+It also names `@fudic/core` as a **peer** dependency. Every component compiles to a client
+chunk that imports the runtime, and that import is resolved from the file making it, which
+lives in the library — so the library has to declare it or a consumer's build cannot resolve
+it. A peer and not a dependency, because the runtime is not copyable: two copies mean two
+registrations of the same tag and two sets of signals that never see each other. A library
+published to npm and installed across a dozen apps uses each app's one copy.
+
+That is also how one component suite serves apps that look different. A library's components
+adopt the library's own stylesheets, never the consuming app's — but CSS custom properties
+inherit through a shadow boundary, which is the one thing that does. So the library styles
+with `var(--acme-accent)` and each app defines its own values on `:root` in a document
+stylesheet. Same package, same bytes, different look, and the library never changes.
+
 **A directory is a project when it has a `fudic.json`.** There is no workspace file listing
 them: `pnpm-workspace.yaml` already owns which packages exist, and a second list is a second
 thing to keep in sync. So the generators find their destination like this:

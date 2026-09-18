@@ -164,18 +164,20 @@ describe('fudic g lib (criterion 5)', () => {
     expect(pkg['scripts']).toBeUndefined();
   });
 
-  it('declares @fudic/core: its components emit client chunks that import the runtime', async () => {
+  it('names @fudic/core as a PEER, because a runtime cannot be copied', async () => {
     const fs = workspace();
     await applied(await planLib('ui', libOptions(), fs), fs);
+    const pkg = JSON.parse(fs.at('libs/ui/package.json')) as Record<string, unknown>;
 
-    // Found by installing and building a generated workspace for real: the client chunk of a
-    // library component imports `@fudic/core`, and that import resolves from the file making
-    // it — which lives in the library. Without this the app's build dies on a specifier its
-    // author never typed, and only in a consumer's repository, never in the one that
-    // happens to hoist the runtime.
-    expect(JSON.parse(fs.at('libs/ui/package.json'))['dependencies']).toMatchObject({
-      '@fudic/core': expect.any(String),
-    });
+    // That it must be named at all was found by installing and building for real: the client
+    // chunk of a library component imports the runtime, and that import resolves from the
+    // file making it, which lives in the library. That it must be a PEER is what keeps a
+    // library published to npm from bringing its own second copy alongside the app's — two
+    // copies mean two registrations of the same tag and two sets of signals that never see
+    // each other. The devDependency is what lets the library be built on its own.
+    expect(pkg['peerDependencies']).toMatchObject({ '@fudic/core': expect.any(String) });
+    expect(pkg['devDependencies']).toMatchObject({ '@fudic/core': expect.any(String) });
+    expect(pkg['dependencies']).toBeUndefined();
   });
 
   it('declares kind lib and carries no id: it has no caches', async () => {

@@ -10,11 +10,17 @@
  * `files` point at the **`.fud` sources**, not at a `dist` (SDD-43 §4.1). Generated as an app
  * minus some files, it would produce a package nobody can consume.
  *
- * It DOES depend on `@fudic/core`, and that is not an app file that slipped through. Every
- * component emits a client chunk (SDD-15) and that chunk imports the runtime; the import is
- * resolved from the file that makes it, which lives in the LIBRARY. A library that did not
- * declare it builds fine from a repository where something else happens to hoist the runtime,
- * and dies in a consumer's — which is the failure this line exists to prevent.
+ * It names `@fudic/core`, and it names it as a **peer**. Every component emits a client chunk
+ * (SDD-15) and that chunk imports the runtime, resolved from the file that makes it — which
+ * lives in the LIBRARY, so the library has to declare it or a consumer's build cannot resolve
+ * it. But a plain dependency would let a published library bring its OWN copy of the runtime
+ * alongside the app's, and the runtime is not copyable: two copies mean two custom-element
+ * registrations of the same tag and two sets of signals that do not see each other. A peer
+ * says *the app provides it, and there is one*, which is the only arrangement that survives
+ * a suite of components installed from npm across several apps.
+ *
+ * The `devDependencies` copy is what lets the library be developed and typechecked on its
+ * own; it is not what a consumer installs.
  */
 
 import { CONFIG_FILE } from '@fudic/config';
@@ -23,7 +29,7 @@ import { scaffoldChanges, tsconfigFor, type ScaffoldFile } from './scaffold.js';
 import { joinPosix } from '../paths.js';
 import { FUDIC_VERSION } from '../project.js';
 import { placeProject } from '../workspace/place.js';
-import { appUses, packageOf, usesErrors } from '../workspace/uses.js';
+import { libUses, packageOf, usesErrors } from '../workspace/uses.js';
 import { prefixField, renderTemplate } from '../templates.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
 import { EMPTY_PLAN, type Plan, type ProjectOptions } from '../types.js';
@@ -58,7 +64,7 @@ export function planLib(
       renderTemplate('lib/package.json.tmpl', {
         name: pkgName,
         version: FUDIC_VERSION,
-        uses: appUses(scope, opts.uses),
+        uses: libUses(scope, opts.uses),
       }),
     ],
     [joinPosix(dir, 'README.md'), renderTemplate('lib/README.md.tmpl', { name: pkgName, project: name })],

@@ -205,7 +205,7 @@ const PAGE_SKELETON = `<!DOCTYPE html>
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script type="module" src="/fudic-main.js"></script>
+    <script type="module" src="fudic:runtime"></script>
     <title>\${2:Home}</title>
 
     @code {
@@ -231,11 +231,14 @@ const LAYOUT_SKELETON = `<!DOCTYPE html>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    @* The main-thread bootstrap: it installs the hydration runtime -- always -- and
-       registers the render Service Worker when the app was built with one. It lives here,
-       once, so no route can forget it. Remove it and the page still paints, and nothing
-       ever reacts to a click. *@
-    <script type="module" src="/fudic-main.js"></script>
+    @* Where the fudic runtime goes. \`fudic:runtime\` is a marker, not a URL: the build
+       replaces it with the bootstrap it actually emitted, under the hashed name it gave
+       it. Writing that name by hand names a file no build produces.
+
+       The layout says WHERE, once, so no route can forget it. What lands here the
+       compiler decides: the Service Worker registration on every page, and the hydration
+       runtime only on a page with something to hydrate. *@
+    <script type="module" src="fudic:runtime"></script>
 
     @* Everything each route contributes to the head — its <title>, its component
        stylesheets, the style-adoption polyfill — is inserted exactly here. *@
