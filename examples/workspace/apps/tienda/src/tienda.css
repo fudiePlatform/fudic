@@ -1,0 +1,12 @@
+/*
+ * The storefront's own guide, adopted into the shadow roots of the components THIS project
+ * defines — and only those (SDD-43 §4.6).
+ *
+ * Which is why it can say this and the shared `ui-card` is unaffected: an app cannot restyle
+ * a library's component by dropping a sheet in its own project. The way to retheme one is the
+ * custom properties the library reads.
+ */
+:host {
+  --guia-accent: #0f7b3f;
+  font-family: system-ui, sans-serif;
+}

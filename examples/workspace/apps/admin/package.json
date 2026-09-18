@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fudic/example-ui": "workspace:*",
     "@fudic/core": "workspace:*",
     "@fudic/dom": "workspace:*",
     "@fudic/ssr": "workspace:*",

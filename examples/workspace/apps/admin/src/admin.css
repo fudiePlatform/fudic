@@ -1,0 +1,9 @@
+/*
+ * The back office's own guide. It says something different from the storefront's, and the
+ * component both apps share looks the same in both: the app's sheet reaches the components
+ * the app defines, and `ui-card` is not one of them (SDD-43 §4.6).
+ */
+:host {
+  --guia-accent: #7b0f5f;
+  font-family: system-ui, sans-serif;
+}

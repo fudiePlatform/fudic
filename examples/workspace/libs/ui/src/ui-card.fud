@@ -1,0 +1,28 @@
+@code {
+  const { title } = props<{ title: string }>();
+}
+
+<head>
+  <style>
+    .card {
+      border: 1px solid var(--guia-line);
+      border-left: 3px solid var(--guia-accent);
+      border-radius: var(--guia-radius);
+      padding: var(--guia-pad);
+      background: white;
+      h2 {
+        margin: 0 0 0.35rem;
+        font-size: 1.05rem;
+      }
+    }
+  </style>
+</head>
+
+<ui-card>
+  <template shadowrootmode="open">
+    <article class="card">
+      <h2>@title</h2>
+      <slot></slot>
+    </article>
+  </template>
+</ui-card>

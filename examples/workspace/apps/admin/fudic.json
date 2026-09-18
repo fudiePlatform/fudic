@@ -1,5 +1,6 @@
 {
   "id": "tienda-admin",
   "kind": "app",
-  "prefix": "admin"
+  "prefix": "admin",
+  "styles": ["src/admin.css"]
 }

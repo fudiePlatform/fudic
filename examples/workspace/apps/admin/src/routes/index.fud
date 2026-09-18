@@ -1,5 +1,6 @@
 <link rel="layout" href="../layouts/_layout.fud">
 <link rel="component" href="../components/admin-panel.fud">
+<link rel="component" href="@fudic/example-ui/ui-card.fud">
 
 <head>
   <title>Administración</title>
@@ -14,3 +15,12 @@
 </p>
 
 <admin-panel .heading="Pedidos de hoy">Nada pendiente.</admin-panel>
+
+<p>
+  Y la misma tarjeta de <code>@@fudic/example-ui</code> que la tienda: un fichero, dos
+  aplicaciones, y el mismo aspecto en las dos porque su guía viaja con ella.
+</p>
+
+<ui-card data-shared .title="Tarjeta compartida">
+  La misma en las dos aplicaciones.
+</ui-card>

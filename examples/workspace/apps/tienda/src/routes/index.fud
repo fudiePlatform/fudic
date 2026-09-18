@@ -1,5 +1,6 @@
 <link rel="layout" href="../layouts/_layout.fud">
 <link rel="component" href="../components/tienda-card.fud">
+<link rel="component" href="@fudic/example-ui/ui-card.fud">
 
 <head>
   <title>Tienda</title>
@@ -14,3 +15,13 @@
 </p>
 
 <tienda-card .title="Camiseta">Algodón orgánico, tallas S a XL.</tienda-card>
+
+<p>
+  La tarjeta de abajo no es de esta app: la define <code>@@fudic/example-ui</code>, que
+  consume a su vez <code>@@fudic/example-guia</code>. Sale igual aquí que en
+  <code>/admin/</code>, y adopta la guía de su propia cadena — no la de quien la usa.
+</p>
+
+<ui-card data-shared .title="Tarjeta compartida">
+  La misma en las dos aplicaciones.
+</ui-card>

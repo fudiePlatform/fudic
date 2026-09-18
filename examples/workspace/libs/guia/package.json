@@ -1,0 +1,14 @@
+{
+  "name": "@fudic/example-guia",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The style guide of the workspace: tokens and nothing else. A fudic library with no components, consumed by the one that has them.",
+  "files": [
+    "tokens.css",
+    "fudic.json"
+  ],
+  "exports": {
+    "./tokens.css": "./tokens.css"
+  }
+}

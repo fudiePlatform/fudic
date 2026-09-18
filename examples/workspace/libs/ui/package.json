@@ -1,0 +1,29 @@
+{
+  "name": "@fudic/example-ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The component library of the workspace: .fud source, no dist, consumed by both apps.",
+  "files": [
+    "src",
+    "ui.css",
+    "fudic.json"
+  ],
+  "exports": {
+    "./ui-card.fud": "./src/ui-card.fud",
+    "./ui.css": "./ui.css"
+  },
+  "dependencies": {
+    "@fudic/example-guia": "workspace:*"
+  },
+  "peerDependencies": {
+    "@fudic/compiler": "0.0.1",
+    "@fudic/core": "workspace:*",
+    "@fudic/dom": "workspace:*"
+  },
+  "devDependencies": {
+    "@fudic/compiler": "workspace:*",
+    "@fudic/core": "workspace:*",
+    "@fudic/dom": "workspace:*"
+  }
+}
