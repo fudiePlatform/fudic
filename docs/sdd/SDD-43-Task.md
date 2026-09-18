@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/resolve` (**nuevo**) · `@fudic/vite` · `@fudic/cli` ·
 > `@fudic/language-server` · `@fudic/compiler` · `@fudic/config` (consumido, no modificado)
 > **Rama:** `sdd-43-librerias`
-> **Progreso:** 12 / 13
+> **Progreso:** 13 / 13
 > **Bloqueado por:** [SDD-41](./SDD-41-configuracion-de-aplicacion.md) — `kind: "lib"` es lo que
 > hace descubrible una librería. Conviene, no es obligatorio, tener
 > [SDD-44](./SDD-44-cli-de-workspace.md) para generar el caso de prueba en vez de escribirlo a
@@ -129,4 +129,24 @@ bare specifiers.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 12 | todas | **La evidencia y el cierre.** Un workspace en `examples/` con una librería de guía, una de componentes y **dos apps** que la comparten — la forma exacta que motivó esta tanda. Construye, el componente compartido sale idéntico en las dos, verificado en Chrome real. Después: `pnpm typecheck`, `pnpm test`, `pnpm build`, los 13 criterios de §6 verdes con los tres de «rojo primero» (2, 6 y el de la tarea 7) vistos fallar antes, cobertura del código nuevo al 100 % en las cuatro y ningún paquete por debajo de donde empezó. SDD-43 a `Hecho` en [INDEX.md](./INDEX.md) | `examples` | `examples/workspace/*` · [INDEX.md](./INDEX.md) |
+| [x] | 12 | todas | **La evidencia y el cierre.** Un workspace en `examples/` con una librería de guía, una de componentes y **dos apps** que la comparten — la forma exacta que motivó esta tanda. Construye, el componente compartido sale idéntico en las dos, verificado en Chrome real. Después: `pnpm typecheck`, `pnpm test`, `pnpm build`, los 13 criterios de §6 verdes con los tres de «rojo primero» (2, 6 y el de la tarea 7) vistos fallar antes, cobertura del código nuevo al 100 % en las cuatro y ningún paquete por debajo de donde empezó. SDD-43 a `Hecho` en [INDEX.md](./INDEX.md) | `examples` | `examples/workspace/*` · [INDEX.md](./INDEX.md) |
+
+---
+
+**Resultado de la fase 5.** `examples/workspace` ya tenía las dos apps (las trajo BUG-33); lo
+que se le añade es `libs/guia` —tokens y ningún componente— y `libs/ui`, que la consume y define
+`ui-card`, sin `vite.config.ts` y sin `dist`. Las dos apps lo enlazan por nombre de paquete y
+sale **idéntico** en las dos, con `_tokens _ui ui-card`, mientras cada app pinta sus propios
+componentes con su propia hoja (`_tokens _ui _tienda tienda-card`, `_tokens _ui _admin
+admin-panel`): las dos ponen `--guia-accent` a colores distintos y la tarjeta compartida no se
+entera, que es §4.6 visto desde fuera. Cinco pruebas e2e en Chrome real, las tres de cachés que
+ya estaban más dos nuevas. La librería **no lleva script `build`** y eso es a propósito: no hay
+nada que construir, y `pnpm -r` la ordenaría antes de los paquetes que necesita.
+
+**Cierre:** `pnpm typecheck`, `pnpm test` (todos los paquetes) y `pnpm build` —examples
+incluidos— en verde. Cobertura: `@fudic/resolve` 100 / 100 / 100 / 100 en un paquete nuevo,
+`@fudic/language-server` sigue en 100, y contra el suelo de la fase 1 → `compiler`
+99,33 / 98,40 / 99,49 / 99,76 (suelo 99,33 / 98,38 / 99,49 / 99,76), `vite`
+96,88 / 92,19 / 97,06 / 96,70 (suelo 96,46 / 91,06 / 96,66 / 96,29), `cli`
+93,59 / 89,76 / 93,89 / 95,39 (suelo 93,37 / 89,44 / 93,44 / 95,21). Los ficheros nuevos de
+`vite` —`link-check.ts` y `peer-check.ts`— con su umbral al 100 escrito en el `vitest.config.ts`.

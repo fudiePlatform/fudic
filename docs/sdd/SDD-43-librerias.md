@@ -1,6 +1,6 @@
 # SDD-43 — Librerías fudic: qué se publica y cómo se resuelve
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Paquetes:** `@fudic/resolve` (**nuevo**, §3.1) · `@fudic/vite` · `@fudic/cli` ·
 > `@fudic/language-server` · `@fudic/compiler` (el `href` literal de §4.3 y el diagnóstico;
 > su `ResolveIo` **no** cambia de forma) · `@fudic/config` (consumido por `@fudic/resolve`,
