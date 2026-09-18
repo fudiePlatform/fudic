@@ -10,6 +10,22 @@ import type { Streams } from '../src/run.js';
 
 const key = (path: string): string => resolve(path).replace(/\\/gu, '/');
 
+/**
+ * A `MemoryFs` that is a fudic PROJECT — that is, one carrying a `fudic.json`.
+ *
+ * Since SDD-44 §4.3 a generated piece goes to a project, and a directory with no `fudic.json`
+ * at or above it is not one: `fudic g component` there is FUD0781, not a component written
+ * into a directory nobody claimed. So a fixture for the generators has to be a project, the
+ * way every tree `fudic new` writes has been one since SDD-41.
+ */
+export function projectFs(
+  entries: Readonly<Record<string, string>> = {},
+  cwd = '/project',
+  config: Readonly<Record<string, unknown>> = { id: 'demo', kind: 'app' },
+): MemoryFs {
+  return new MemoryFs({ 'fudic.json': JSON.stringify(config), ...entries }, cwd);
+}
+
 export class MemoryFs implements ReadIo, WriteIo {
   readonly files = new Map<string, string>();
 

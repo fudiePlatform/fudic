@@ -4,7 +4,7 @@
  * `ReadIo`; nothing here guesses from a filename.
  */
 
-import { FUD_CONFIG_DUPLICATE_ID, readProjectConfig, type ConfigResult, type ProjectConfig } from '@fudic/config';
+import { FUD_CONFIG_DUPLICATE_ID, readProjectConfig, type ProjectConfig } from '@fudic/config';
 import { findLibraries, type LibraryFs } from '@fudic/resolve';
 import { cliError, FUD_TARGET_EXISTS } from './diagnostics.js';
 import { absolute, joinPosix, toPosix } from './paths.js';
@@ -23,16 +23,12 @@ export const VITE_VERSION = '8.0.16';
  */
 export const TYPESCRIPT_VERSION = '5.9.3';
 
-/**
- * The `fudic.json` of the project at `cwd`, read through the CLI's own read seam — which
- * is already `ConfigIo`'s shape, so there is no adapter and no second reader.
- *
- * The root goes in POSIX form because the reader joins with `/`, and a Windows root would
- * otherwise produce a path with both separators in it.
+/*
+ * `projectConfig(cwd, io)` used to live here: the `fudic.json` of the project AT `cwd`. It
+ * is gone because since SDD-44 §4.3 a command does not operate on `cwd` — it resolves a
+ * target project first, and reads the config of THAT one. `workspace/target.ts` owns it now,
+ * and keeping a second reader keyed on `cwd` would be a way to get the wrong prefix back.
  */
-export function projectConfig(cwd: string, io: ReadIo): ConfigResult {
-  return readProjectConfig(toPosix(absolute(cwd, '.')), io);
-}
 
 /** A fudic project found on disk: a directory that has a `fudic.json` that reads. */
 export interface WorkspaceProject {

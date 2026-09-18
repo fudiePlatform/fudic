@@ -18,8 +18,10 @@ function options(overrides: Partial<ComponentOptions> = {}): ComponentOptions {
   return { cwd: CWD, force: false, dir: 'components', wireInto: [], style: true, slot: false, ...overrides };
 }
 
+/** A project whose `fudic.json` declares `prefix`, or — for `''` — leaves the field out. */
 function withPrefix(prefix: string): MemoryFs {
-  return new MemoryFs({ 'fudic.json': JSON.stringify({ id: 'shop', prefix }) }, CWD);
+  const config = prefix === '' ? { id: 'shop' } : { id: 'shop', prefix };
+  return new MemoryFs({ 'fudic.json': JSON.stringify(config) }, CWD);
 }
 
 describe('fudic g component, with a prefix declared', () => {
@@ -47,16 +49,21 @@ describe('fudic g component, with a prefix declared', () => {
   });
 });
 
-describe('fudic g component, without a fudic.json', () => {
-  it('still demands the whole tag — the command of before this SDD (§4.1)', async () => {
-    const plan = await planComponent('card', options(), new MemoryFs({}, CWD));
+/**
+ * A project that declares no prefix. Since SDD-44 §4.3 a piece needs a target project — a
+ * directory with no `fudic.json` above it at all is not one, and that is FUD0781 — so what
+ * "no prefix" means now is the field being absent from a file that is there.
+ */
+describe('fudic g component, with no prefix declared', () => {
+  it('still demands the whole tag — the command of before SDD-41 (§4.1)', async () => {
+    const plan = await planComponent('card', options(), withPrefix(''));
 
     expect(plan.changes).toEqual([]);
     expect(plan.errors[0]?.code).toBe(FUD_TAG_INVALID);
   });
 
   it('writes the tag it was handed', async () => {
-    const plan = await planComponent('app-card', options(), new MemoryFs({}, CWD));
+    const plan = await planComponent('app-card', options(), withPrefix(''));
 
     expect(plan.changes[0]?.path).toBe('components/app-card.fud');
   });

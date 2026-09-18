@@ -36,11 +36,18 @@ const component = (tag: string): string =>
 const manifest = (name: string, deps: Readonly<Record<string, string>> = {}): string =>
   JSON.stringify({ name, dependencies: deps });
 
-/** An app that depends on `@acme/ui`, a library defining `ui-card`. */
+/**
+ * An app that depends on `@acme/ui`, a library defining `ui-card`.
+ *
+ * The `fudic.json` is what makes this directory the TARGET PROJECT (SDD-44 §4.3): since a
+ * command resolves a project before it writes, an app without one is not a place a component
+ * can be generated into at all, and the answer would be FUD0781 before the graph is ever read.
+ */
 const withLibrary = (extra: Readonly<Record<string, string>> = {}): MemoryFs =>
   new MemoryFs(
     {
       'package.json': manifest('@acme/tienda', { '@acme/ui': 'workspace:*' }),
+      'fudic.json': JSON.stringify({ kind: 'app', id: 'tienda' }),
       'node_modules/@acme/ui/package.json': manifest('@acme/ui'),
       'node_modules/@acme/ui/fudic.json': JSON.stringify({ kind: 'lib', prefix: 'ui' }),
       'node_modules/@acme/ui/src/ui-card.fud': component('ui-card'),
@@ -89,6 +96,7 @@ describe('a tag a library already defines', () => {
     const fs = new MemoryFs(
       {
         'package.json': manifest('@acme/tienda', { '@acme/otra': '*' }),
+        'fudic.json': JSON.stringify({ kind: 'app', id: 'tienda' }),
         'node_modules/@acme/otra/package.json': manifest('@acme/otra'),
         'node_modules/@acme/otra/fudic.json': JSON.stringify({ kind: 'app', id: 'otra' }),
         'node_modules/@acme/otra/src/ui-card.fud': component('ui-card'),

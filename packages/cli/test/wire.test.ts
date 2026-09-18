@@ -10,7 +10,7 @@ import { apply } from '../src/apply.js';
 import { parseFud } from '../src/parse.js';
 import { run } from '../src/run.js';
 import { FUD_WIRE_TARGET_BROKEN, FUD_WIRE_TARGET_MISSING } from '../src/diagnostics.js';
-import { captureStreams, MemoryFs, RecordingRunner } from './helpers.js';
+import { captureStreams, projectFs, RecordingRunner } from './helpers.js';
 import type { ComponentOptions } from '../src/types.js';
 
 const CWD = '/project';
@@ -52,7 +52,7 @@ const PAGE = `<!DOCTYPE html>
 `;
 
 async function wire(file: string, source: string): Promise<string> {
-  const fs = new MemoryFs({ [file]: source });
+  const fs = projectFs({ [file]: source });
   const plan = await planComponent('app-icon', options({ wireInto: [file] }), fs);
   expect(plan.errors).toEqual([]);
   const change = plan.changes.find((c) => c.path === file);
@@ -94,7 +94,7 @@ describe('--in, by document role', () => {
 
   it('leaves a broken target byte-for-byte identical and exits 2 (§6.6)', async () => {
     const broken = '<link rel="layout" href="./x.fud">\n<div><span></div>\n';
-    const fs = new MemoryFs({ 'routes/broken.fud': broken });
+    const fs = projectFs({ 'routes/broken.fud': broken });
     const plan = await planComponent('app-icon', options({ wireInto: ['routes/broken.fud'] }), fs);
 
     expect(plan.errors.map((e) => e.code)).toContain(FUD_WIRE_TARGET_BROKEN);
@@ -118,10 +118,11 @@ describe('--in, by document role', () => {
   });
 
   it('reports a missing --in target without writing anything', async () => {
-    const fs = new MemoryFs();
+    const fs = projectFs();
     const plan = await planComponent('app-icon', options({ wireInto: ['routes/nope.fud'] }), fs);
     expect(plan.errors.map((e) => e.code)).toEqual([FUD_WIRE_TARGET_MISSING]);
     await apply(plan, options(), fs);
-    expect(fs.paths()).toEqual([]);
+    // Nothing beyond the project's own `fudic.json`, which was already there.
+    expect(fs.paths()).toEqual(['fudic.json']);
   });
 });

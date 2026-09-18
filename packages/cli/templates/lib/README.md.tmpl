@@ -1,0 +1,27 @@
+# {{name}}
+
+A [fudic](https://github.com/fudiePlatform/fudic) component library. It is **not** an
+application: it has no routes, no `vite.config.ts` and no `sw.json`, because it is not
+served — it is consumed.
+
+## What it publishes
+
+The `.fud` sources themselves, not a build. `exports` maps every component to its file, so
+an app that depends on it links a component by package specifier:
+
+```html
+<link rel="component" href="{{name}}/card.fud">
+```
+
+That is why there is no `build` script here and why `files` carries `src`: a library ships
+what the consumer's compiler reads.
+
+## Adding a component
+
+```sh
+fudic g component card --project {{project}}
+```
+
+The `prefix` in `fudic.json` is what turns `card` into a tag. It proposes and does not
+constrain — but a library is where it earns its keep, because its tags go on to live in the
+global `customElements` registry of applications it does not control.

@@ -6,6 +6,7 @@
 export const VERSION = '0.0.1';
 
 export type {
+  AppOptions,
   BaseOptions,
   CliError,
   ComponentOptions,
@@ -18,10 +19,23 @@ export type {
   Plan,
   PlanCommand,
   PlanDiagnostic,
+  ProjectOptions,
+  WorkspaceOptions,
 } from './types.js';
 
 export { planFmt, filesOf } from './plans/fmt.js';
 export { planNew } from './plans/new.js';
+export { planWorkspace } from './plans/workspace.js';
+export { planApp } from './plans/app.js';
+export { planLib } from './plans/lib.js';
+export {
+  findProjects,
+  targetProject,
+  workspaceRoot,
+  WORKSPACE_FILE,
+  type Project,
+} from './workspace/discover.js';
+export { placeProject, APPS_DIR, LIBS_DIR, type Placement } from './workspace/place.js';
 export { planComponent } from './plans/component.js';
 export { planPage } from './plans/page.js';
 export { planLayout } from './plans/layout.js';

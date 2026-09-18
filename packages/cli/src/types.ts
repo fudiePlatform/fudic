@@ -116,14 +116,54 @@ export interface NewOptions extends BaseOptions {
   readonly target: string;
 }
 
-export interface ComponentOptions extends BaseOptions {
+/**
+ * `fudic new <nombre> --workspace` (SDD-44 §3.2). It inherits everything `fudic new` takes,
+ * because the app it creates is the one `fudic new` creates.
+ */
+export interface WorkspaceOptions extends NewOptions {
+  /** The first app's name. A workspace with no app is not a useful state. */
+  readonly app: string;
+}
+
+/**
+ * What `fudic g app` and `fudic g lib` share (SDD-44 §3.2).
+ *
+ * `dir` hangs from the WORKSPACE ROOT, not from `cwd`: `cd apps/tienda && fudic g app admin`
+ * has to put the new app beside the old one, never inside it.
+ */
+export interface ProjectOptions extends BaseOptions {
+  readonly dir: string;
+  /** What `g component` proposes here. `''` ⇒ `fudic.json` does not carry the field. */
+  readonly prefix: string;
+  /** Workspace libraries this project depends on. */
+  readonly uses: readonly string[];
+}
+
+export interface AppOptions extends ProjectOptions {
+  /** Written, never derived from the directory nor from the npm name (§4.4). */
+  readonly id: string;
+  readonly sw: boolean;
+}
+
+/**
+ * What the three generators share since SDD-44: the project the piece goes to.
+ *
+ * `dir` stays relative to the PROJECT, and `--cwd` keeps its meaning — the root to operate
+ * on. What changed is that the project's root is searched from `cwd` upwards (§4.3).
+ */
+export interface TargetedOptions extends BaseOptions {
+  /** A project's directory name. Absent ⇒ the nearest `fudic.json` at or above `cwd`. */
+  readonly project?: string;
+}
+
+export interface ComponentOptions extends TargetedOptions {
   readonly dir: string;
   readonly wireInto: readonly string[];
   readonly style: boolean;
   readonly slot: boolean;
 }
 
-export interface PageOptions extends BaseOptions {
+export interface PageOptions extends TargetedOptions {
   readonly dir: string;
   /** Path of the layout `.fud`, relative to `cwd`. `null` ⇒ --no-layout; absent ⇒ resolve. */
   readonly layout?: string | null;
@@ -132,7 +172,7 @@ export interface PageOptions extends BaseOptions {
   readonly sections: readonly string[] | null;
 }
 
-export interface LayoutOptions extends BaseOptions {
+export interface LayoutOptions extends TargetedOptions {
   readonly dir: string;
   /** One `@RenderSection(name)` per name. None is mandatory: SDD-21 §4.2. */
   readonly sections: readonly string[];

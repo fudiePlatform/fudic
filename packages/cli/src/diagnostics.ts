@@ -32,6 +32,33 @@ export const FUD_COMMAND_FAILED = 'FUD0451';
  */
 export const FUD_DUPLICATE_TAG = 'FUD0761';
 
+/*
+ * The workspace range, FUD0780–FUD0799 (SDD-44 §5). Span-less like the rest of this file:
+ * none of them is a place in a source file — they are about directories, names and the
+ * shape of a monorepo.
+ *
+ * FUD0786 is RESERVED AND DELIBERATELY UNUSED. It was "`fudic g lib` without `--prefix`" in
+ * a draft. The prefix is optional and it is a guide (SDD-41 §4.4): no command requires it.
+ */
+
+/** `fudic g app` / `fudic g lib` outside a workspace: no `pnpm-workspace.yaml` at or above. */
+export const FUD_NOT_A_WORKSPACE = 'FUD0780';
+
+/** No target project: neither `--project`, nor a `fudic.json` at or above `--cwd`. */
+export const FUD_NO_TARGET_PROJECT = 'FUD0781';
+
+/** `--project <n>` names no project of the workspace. The message lists the ones there are. */
+export const FUD_PROJECT_UNKNOWN = 'FUD0782';
+
+/** `fudic g page` aimed at a `kind: "lib"` project. A library has no routes. */
+export const FUD_ROUTE_IN_LIB = 'FUD0783';
+
+/** A project already exists in that directory, or under that name. Without `--force`. */
+export const FUD_PROJECT_EXISTS = 'FUD0784';
+
+/** `--uses <x>` names something that is not a workspace library: absent, or an app. */
+export const FUD_USES_NOT_A_LIB = 'FUD0785';
+
 /** Build a `CliError`, omitting `file` when absent (exactOptionalPropertyTypes). */
 export function cliError(code: string, message: string, file?: string): CliError {
   return file === undefined ? { code, message } : { code, message, file };

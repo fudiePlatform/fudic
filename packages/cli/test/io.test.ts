@@ -13,7 +13,8 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { needsShell, nodeCommandRunner, nodeReadIo } from '../src/io.js';
+import { needsShell, nodeCommandRunner, nodeReadIo, walkFud } from '../src/io.js';
+import { MemoryFs } from './helpers.js';
 
 /** The message `fudic new` commits with: the spaces are the whole point. */
 const MESSAGE = 'chore: scaffold fudic app';
@@ -80,5 +81,28 @@ describe('nodeCommandRunner', () => {
 
     // Nothing by this name exists, so the process never started: `null`, not an exit code.
     expect(runner.run('fudic-no-such-binary', [], dir)).toBeNull();
+  });
+});
+
+describe('walkFud', () => {
+  it('is empty for a root that is not a directory, rather than throwing', () => {
+    // Since SDD-44 the sweep starts at the TARGET PROJECT's root, and a caller can name one
+    // whose directory does not exist yet. That is no `.fud` files, not an exception.
+    expect(walkFud('/nowhere', new MemoryFs({ 'a.fud': '' }, '/project'))).toEqual([]);
+  });
+
+  it('finds every .fud under the root, sorted, skipping node_modules and dist', () => {
+    const fs = new MemoryFs(
+      {
+        'src/components/b.fud': '',
+        'src/components/a.fud': '',
+        'src/notes.md': '',
+        'node_modules/pkg/x.fud': '',
+        'dist/y.fud': '',
+      },
+      '/project',
+    );
+
+    expect(walkFud('/project', fs)).toEqual(['src/components/a.fud', 'src/components/b.fud']);
   });
 });
