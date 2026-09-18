@@ -1,7 +1,8 @@
 # SDD-29 — Snippets de markup reutilizables (`@snippet` / `@render`)
 
-> **Estado:** `Listo`
-> **Depende de:** SDD-05 (parser HTML), SDD-06 (control de flujo), SDD-10 (estructura del documento), SDD-11 (Oxc), SDD-12 (semántica)
+> **Estado:** `Listo` · **Tareas:** [SDD-29-Task.md](./SDD-29-Task.md)
+> **Depende de:** SDD-05 (parser HTML), SDD-06 (control de flujo), SDD-10 (estructura del documento), SDD-11 (Oxc), SDD-12 (semántica), SDD-23 (§4.11: los tipos de los argumentos), SDD-43 §4.3 (el `href` verbatim y el specifier de paquete)
+> **Rango de diagnósticos:** `FUD0820`–`FUD0849`
 > **Decisiones de gramática ancladas:** 6, 41, 45, 53, 55, 62
 
 ---
@@ -354,7 +355,70 @@ en el formatter (SDD-26), todo para una gramática que es un subconjunto estrict
 ya se parsea.
 
 **Snippet es un tipo de fichero del framework**, junto a layout, route y component. La
-clasificación es explícita por el tipo, no una heurística sobre el contenido.
+clasificación es explícita por el tipo, no una heurística sobre el contenido. En el AST eso es
+un **quinto rol de documento**, `snippet-document`: un `.fud` sin doctype, sin
+`<link rel="layout">`, sin host wrapper y con al menos un `@snippet`. Sin él, un fichero de
+snippets nace en `FUD0156` —falta el wrapper que le da identidad a un componente— y no hay
+forma de curarlo. No se emite módulo por un documento de snippets, y no entra en el grafo de
+componentes: lo consume quien lo importa.
+
+### 4.10. Cómo se expande: una fuente sintética
+
+La spec dice *qué* hace la expansión (§4.8). Esto dice cómo cabe en este compilador, y es una
+decisión, no un detalle.
+
+El emit corta cada expresión, cada valor de atributo y cada cabecera de un **único** texto
+fuente —`entrySource` para el documento, `ResolvedComponent.source` para cada componente— y el
+`SourceMapBuilder` tiene **una sola** entrada de `sources` (SDD-13 §4.3). Eso es lo que hizo que
+los layouts se compongan por módulo ES y nunca por texto. Un snippet importado mete markup de
+un segundo fichero dentro del árbol del llamante, que es exactamente la fusión por texto que
+aquello evitó.
+
+La expansión la resuelve **fabricando el texto que el autor habría escrito**:
+
+1. Se parsea el fichero y se localizan sus `@render`.
+2. Se construye una **fuente sintética**: el texto original con cada `@render …(…)` sustituido
+   **en su sitio** por el cuerpo del snippet, con las referencias a parámetros ya sustituidas
+   por el texto de sus argumentos.
+3. Se reparsea el documento **una vez** desde ese texto.
+
+Lo que sale es, byte a byte, el árbol del markup escrito a mano —criterio 4 en su forma
+literal— y todas las fases posteriores leen un `source` normal y un AST normal. **El resto del
+compilador no aprende que existen los snippets**, que es la propiedad que §1 pide.
+
+El precio es una **tabla de offsets**, y es el mismo patrón que SDD-11 usa con Oxc: un buffer
+sintético con una tabla de regiones que devuelve cada posición a su fichero de origen. Con ella,
+un diagnóstico dentro de un cuerpo expandido se reporta en el fichero del snippet (§5), un
+argumento se reporta en el fichero del llamante, y el source map ancla una posición de cuerpo
+expandido en el `@render` que la generó — con lo que sigue habiendo una sola entrada de
+`sources`.
+
+Dos reglas de la sustitución, porque sin ellas el texto resultante no parsea:
+
+- **Las referencias las da Oxc**, nunca un regex: `obj.title` no nombra ningún `title`, y
+  `(title) => title` declara el suyo. Es el mismo análisis de scope de SDD-30 §3.3.
+- **El texto del argumento va entre paréntesis**, y una expresión implícita cuya cabeza se
+  sustituye se reescribe a la forma explícita: `@title.length` con `p.title` se convierte en
+  `@((p.title).length)` y no en `@(p.title).length`, que ya no es una cadena.
+
+### 4.11. El editor no expande: proyecta
+
+La expansión es del **build**. El editor hace lo contrario, y es lo que hace que un `.fud` con
+snippets se escriba como cualquier otro:
+
+- Un `@snippet` se proyecta al fichero virtual como una **función exportada** con su firma tal
+  cual la escribió el autor y su cuerpo proyectado por el mismo proyector de plantilla de
+  siempre.
+- Un `<link rel="snippet">` se proyecta como un `import`: sin `as`, nombrado; con `as`,
+  `import * as form`.
+- Un `@render form.card(x)` se proyecta como `form.card(x)`.
+
+De ahí salen **de TypeScript, sin código nuestro**: el chequeo de tipos de los argumentos que
+§7 delega en SDD-23, el hover con la firma completa, el ir-a-la-definición cruzando ficheros y
+la completación tras el punto del namespace.
+
+Lo que sí es nuestro son los diagnósticos de forma (§4.7), y esos los corre **la misma función**
+en el build y en el editor, sobre el árbol sin expandir. Una regla, un mensaje, un sitio.
 
 ---
 
@@ -375,6 +439,31 @@ clasificación es explícita por el tipo, no una heurística sobre el contenido.
 - **El `<link rel="snippet">` es un edge del grafo de dependencias del documento.**
   Modificar un fichero de snippets invalida a todos sus consumidores; el servidor debe
   reparsearlos.
+- **Cobertura.** El código nuevo nace al 100 % en las cuatro métricas; ningún paquete tocado
+  baja del número que tiene al empezar.
+
+### Catálogo de diagnósticos (`FUD0820`–`FUD0849`)
+
+| Código | Severidad | Qué dice |
+|---|---|---|
+| `FUD0820` | `error` | `@snippet` sin nombre, o con un nombre que no es `[a-zA-Z_][a-zA-Z0-9_]*` (§4.1: sin guiones). |
+| `FUD0821` | `error` | La firma de un `@snippet` no cierra su paréntesis. Lo que esté **dentro** y no sea una lista de parámetros válida lo dice Oxc, con su propio código y su span (criterio 8). |
+| `FUD0822` | `error` | `<style>` dentro de un `@snippet`: un snippet no aporta CSS ni participa del cascade del `<head>`. |
+| `FUD0823` | `error` | `@code` dentro de un `@snippet`: un snippet no tiene estado propio ni entorno de ejecución. |
+| `FUD0824` | `error` | `@snippet` anidado dentro de otro: las declaraciones son top-level. |
+| `FUD0825` | `error` | `<head>` dentro de un `@snippet`. |
+| `FUD0826` | `error` | El nombre de un `@render` no está en el `SnippetScope`. Span en el nombre. |
+| `FUD0827` | `error` | El namespace de un `@render` no lo declara ningún `<link rel="snippet" as>`. Span en el namespace. |
+| `FUD0828` | `error` | Aridad insuficiente: un parámetro sin default y no opcional que la llamada no cubre. Span en la llamada. |
+| `FUD0829` | `error` | Argumentos de más. Span en el primer sobrante. |
+| `FUD0830` | `error` | Un argumento nominal que no corresponde a ningún parámetro de la firma. |
+| `FUD0831` | `error` | Un parámetro recibido dos veces, por posición y por nombre. Span en el nominal, relacionado en el posicional. |
+| `FUD0832` | `error` | Un argumento posicional después de uno nominal. |
+| `FUD0833` | `error` | Un `@` dentro de la cabecera de un `@render`: la transición a modo JS ya la hizo el `@render`. |
+| `FUD0834` | `error` | Dos snippets con el mismo nombre en el ámbito global. Span en el segundo, relacionado en el primero; se cura con `as`. |
+| `FUD0835` | `error` | Recursión, directa o indirecta, con el ciclo entero en el mensaje. |
+| `FUD0836` | `error` | Un `<link rel="snippet">` cuyo `href` no resuelve, o resuelve a un fichero que no declara ningún `@snippet`. |
+| `0837`–`0849` | | Reservados. |
 
 ---
 
