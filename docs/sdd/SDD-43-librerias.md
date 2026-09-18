@@ -462,6 +462,8 @@ La **medición (1)** va primero y no tiene test: tiene informe. El resto en
 - **Diagnosticar o formatear los `.fud` de una librería.** §4.4: solo lectura.
 - **Resolver assets (`url(…)`, `<img src>`) desde un paquete.** El `AssetLinker` ya resuelve
   por Vite, que sabe de paquetes. Si la medición de §4.2 encuentra que no, entra aquí como
-  fase; si no, no se toca.
+  fase; si no, no se toca. **Medido al cerrar: funciona**, y se publica una vez para todas las
+  referencias — junto con un layout, una hoja enlazada y un `.js` propio de la librería
+  ([apéndice de la medición](./SDD-43-medicion.md)). No se tocó nada.
 - **`fudic check` sobre una librería aislada.** Comprobar una librería sin consumidor es
   útil y es un comando, no este SDD.
