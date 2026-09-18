@@ -23,6 +23,7 @@ import type { LanguageServicePlugin } from '@volar/language-service';
 import { commentSyntaxOf } from '@fudic/compiler';
 import { CONFIG_FILE } from '@fudic/config';
 import { create as createTypeScriptServices } from 'volar-service-typescript';
+import { silenceLibraryFiles } from './services/read-only.js';
 import { create as createHtmlService } from 'volar-service-html';
 import { create as createCssService } from 'volar-service-css';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
@@ -190,6 +191,11 @@ export function createFudicServer(
       createFudicTagService({ index, stats }),
     ];
 
+    // Nothing speaks over a library's file (SDD-43 §4.4): read-only means every service,
+    // not only ours, because a file underlined by TypeScript is underlined all the same.
+    const readOnly = (list: LanguageServicePlugin[]): LanguageServicePlugin[] =>
+      silenceLibraryFiles(list, index);
+
     let project: LanguageServerProject;
     if (withTypeScript) {
       // Wrapped, never raw: inside a `.fud` two of TypeScript's own lists are correct
@@ -227,7 +233,7 @@ export function createFudicServer(
       project = deps.createSimpleProject(languagePlugins);
     }
 
-    const result = server.initialize(params, project, plugins);
+    const result = server.initialize(params, project, readOnly(plugins));
     // §3.2 is a contract with the client, so it is declared rather than inferred from whichever
     // plugins happened to load: with no TypeScript the list must still say what a `.fud` supports.
     return { ...result, capabilities: { ...result.capabilities, ...SERVER_CAPABILITIES } };

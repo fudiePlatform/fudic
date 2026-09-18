@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/resolve` (**nuevo**) · `@fudic/vite` · `@fudic/cli` ·
 > `@fudic/language-server` · `@fudic/compiler` · `@fudic/config` (consumido, no modificado)
 > **Rama:** `sdd-43-librerias`
-> **Progreso:** 6 / 13
+> **Progreso:** 9 / 13
 > **Bloqueado por:** [SDD-41](./SDD-41-configuracion-de-aplicacion.md) — `kind: "lib"` es lo que
 > hace descubrible una librería. Conviene, no es obligatorio, tener
 > [SDD-44](./SDD-44-cli-de-workspace.md) para generar el caso de prueba en vez de escribirlo a
@@ -87,9 +87,9 @@ bare specifiers.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 6 | 1 | **`findLibraries`.** Recorre las dependencias **declaradas** de cada proyecto, resuelve cada paquete y se queda con los que tienen `fudic.json` con `kind: "lib"`. **La poda de `node_modules` no se toca**: esto no es una excepción a ella, es otra fuente, y su coste es proporcional a las dependencias y no al almacén. Criterio 9 | `language-server` | `src/libraries.ts` · `test/libraries.test.ts` |
-| [ ] | 7 | 6 | **(rojo primero)** **Al índice y al `Program`.** Los `.fud` de librería entran en `WorkspaceIndex` como un `IndexEntry` más y en `mountWorkspaceFuds`. Es lo que hace que `$Props` sea un tipo y no `any`. Se ve fallar antes con la prueba de BUG-23: pasar una prop del tipo equivocado a un componente de librería y que **no** se marque. Criterios 6, 7, 8 | `language-server` | `src/workspace-index.ts` · `src/project-files.ts` |
-| [ ] | 8 | 7 | **Solo lectura.** Un `.fud` de librería se navega, se hace hover y se le va a la definición; **no** se publican sus diagnósticos como propios ni se formatea al guardar. El autor de una app no arregla los warnings de una librería (§4.4) | `language-server` | `src/services/plugin.ts` · `src/services/formatting.ts` |
+| [x] | 6 | 1 | **`findLibraries`.** Recorre las dependencias **declaradas** de cada proyecto, resuelve cada paquete y se queda con los que tienen `fudic.json` con `kind: "lib"`. **La poda de `node_modules` no se toca**: esto no es una excepción a ella, es otra fuente, y su coste es proporcional a las dependencias y no al almacén. Criterio 9 | `language-server` | `src/libraries.ts` · `test/libraries.test.ts` |
+| [x] | 7 | 6 | **(rojo primero)** **Al índice y al `Program`.** Los `.fud` de librería entran en `WorkspaceIndex` como un `IndexEntry` más y en `mountWorkspaceFuds`. Es lo que hace que `$Props` sea un tipo y no `any`. Se ve fallar antes con la prueba de BUG-23: pasar una prop del tipo equivocado a un componente de librería y que **no** se marque. Criterios 6, 7, 8 | `language-server` | `src/workspace-index.ts` · `src/project-files.ts` |
+| [x] | 8 | 7 | **Solo lectura.** Un `.fud` de librería se navega, se hace hover y se le va a la definición; **no** se publican sus diagnósticos como propios ni se formatea al guardar. El autor de una app no arregla los warnings de una librería (§4.4) | `language-server` | `src/services/read-only.ts` · `src/server.ts` |
 
 ---
 

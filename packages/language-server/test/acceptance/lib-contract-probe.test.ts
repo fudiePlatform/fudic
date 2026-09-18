@@ -24,8 +24,11 @@ import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { URI } from 'vscode-uri';
 import {
+  DidOpenTextDocumentNotification,
   DocumentDiagnosticRequest,
+  DocumentFormattingRequest,
   type Diagnostic,
   type FullDocumentDiagnosticReport,
 } from 'vscode-languageserver-protocol/node';
@@ -120,6 +123,17 @@ function makeWorkspace(): string {
   }
   writeFileSync(join(app, 'src', 'routes', 'index.fud'), PAGE);
   writeFileSync(join(app, 'fudic.json'), JSON.stringify({ kind: 'app', id: 'tienda' }, null, 2));
+  // What makes the library findable without sweeping `node_modules`: the app SAYS it
+  // depends on it (SDD-43 §4.4). A dependency nobody declared is a dependency nobody can
+  // follow, here or in an install.
+  writeFileSync(
+    join(app, 'package.json'),
+    JSON.stringify(
+      { name: '@acme/tienda', version: '0.0.0', private: true, dependencies: { '@acme/ui': '*' } },
+      null,
+      2,
+    ),
+  );
   writeFileSync(join(app, 'tsconfig.json'), TSCONFIG);
   writeFileSync(join(ws, 'tsconfig.json'), TSCONFIG);
 
@@ -188,20 +202,53 @@ describe('SDD-43 §4.2 — the editor opened on the workspace root', () => {
 });
 
 describe('SDD-43 §4.2 — the editor opened on the app alone', () => {
-  it('does NOT index the library `.fud`: it is only reachable through node_modules', () => {
+  it('DOES index the library `.fud` now, through the declared dependency graph', () => {
+    // The measurement found this empty: the library was only reachable through
+    // `node_modules`, which the sweep prunes. `findLibraries` reaches it by following what
+    // the app declares, which costs the number of dependencies and not the size of the store.
     const paths = atApp.server.index.all().map((entry) => entry.path);
-    expect(paths.some((path) => path.endsWith('/ui-card.fud'))).toBe(false);
+    expect(paths.some((path) => path.toLowerCase().endsWith('/ui-card.fud'))).toBe(true);
   });
 
-  it.fails('reports a number passed to a `string` prop', () => {
-    // `$Props` is `any` here, so nothing is reported — the symptom of BUG-23, reached
-    // through the door of libraries. This is what SDD-43 §4.4 has to close.
+  it('marks it read-only, because it is not the author’s code', () => {
+    const entry = atApp.server.index.all().find((e) => e.path.toLowerCase().endsWith('/ui-card.fud'));
+    expect(entry?.external).toBe(true);
+    expect(entry?.tag).toBe('ui-card');
+  });
+
+  it('reports a number passed to a `string` prop', () => {
+    // `$Props` was `any` here, so nothing was reported — BUG-23, through the door of
+    // libraries. This is the half of SDD-43 that fixes a defect instead of adding a form.
     expect(appDiagnostics.map((d) => d.message).join('\n')).toMatch(/number.*string|string.*number/s);
   });
 
-  it('reports the href as pointing at no file (FUD0460), which it does', () => {
-    // Worse than silence: the library IS installed and the path IS right, but the index
-    // cannot see past the `node_modules` prune, so the editor calls a working link broken.
-    expect(appDiagnostics.map((d) => d.code)).toContain('FUD0460');
+  it('publishes no diagnostics on the library’s own file, and does not format it', async () => {
+    // Read-only (SDD-43 §4.4). The `.fud` is in the index and in the program so its contract
+    // is a type; what the author of an app cannot do is act on a warning inside it, and a
+    // formatter that rewrites it writes into something the next install replaces.
+    // By its ABSOLUTE uri, which is what an editor sends: the harness spells a path
+    // relative to the folder it opened, and the library is outside it.
+    const uri = URI.file(`${ws}/libs/ui/src/ui-card.fud`).toString();
+    expect(atApp.server.index.get(URI.parse(uri).fsPath)?.external).toBe(true);
+    await atApp.client.sendNotification(DidOpenTextDocumentNotification.type, {
+      textDocument: { uri, languageId: 'fudic', version: 1, text: CARD },
+    });
+
+    const report = (await atApp.client.sendRequest(DocumentDiagnosticRequest.type, {
+      textDocument: { uri },
+    })) as FullDocumentDiagnosticReport;
+    expect(report.items).toEqual([]);
+
+    const edits = await atApp.client.sendRequest(DocumentFormattingRequest.type, {
+      textDocument: { uri },
+      options: { tabSize: 2, insertSpaces: true },
+    });
+    expect(edits ?? []).toEqual([]);
+  });
+
+  it('no longer calls the working link broken', () => {
+    // Worse than silence: the library IS installed and the path IS right, and the editor
+    // used to answer FUD0460 — go and fix a link that works.
+    expect(appDiagnostics.map((d) => d.code)).not.toContain('FUD0460');
   });
 });

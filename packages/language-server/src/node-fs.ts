@@ -10,7 +10,7 @@
  * states of a project being edited, not failures.
  */
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { nodeResolveFs, resolveHrefPath } from '@fudic/resolve';
 import { toPosix } from './paths.js';
 import type { FileSystemScanner } from './types.js';
@@ -70,6 +70,22 @@ export function nodeFileSystem(): FileSystemScanner {
      */
     resolveHref(fromFile: string, href: string): string {
       return toPosix(resolveHrefPath(fromFile, href, resolver));
+    },
+
+    /**
+     * A path that cannot be resolved is its own real name: the file is simply not there.
+     *
+     * `realpathSync` and not `realpathSync.native`: the native one answers in the
+     * filesystem's canonical CASE, and on Windows that is a different string from the one
+     * the editor sent — which the index keys by. Same file, two keys, and every lookup
+     * between them misses.
+     */
+    realPath(path: string): string {
+      try {
+        return toPosix(realpathSync(path));
+      } catch {
+        return toPosix(path);
+      }
     },
   };
 }

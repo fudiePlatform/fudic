@@ -32,6 +32,8 @@ export function memoryFs(
       Object.keys(files).filter((path) => path.startsWith(root) && path.endsWith('.fud')),
     readFile: (path) => files[path],
     resolveHref: (fromFile, href) => packages[href] ?? resolveFrom(toPosix(fromFile), href),
+    // No symlinks in a Record: a path is already its own real name.
+    realPath: (path) => toPosix(path),
   };
 }
 

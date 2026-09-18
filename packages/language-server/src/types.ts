@@ -58,6 +58,15 @@ export interface FileSystemScanner {
    * index, which is the state a broken link has always had (`FUD0460`).
    */
   resolveHref(fromFile: string, href: string): string;
+  /**
+   * The same file under its real name, with symlinks followed (SDD-43 §4.4).
+   *
+   * A workspace package is installed as a LINK — `node_modules/@acme/ui` points at
+   * `libs/ui` — and a module resolver answers with the real path. Index one spelling and
+   * resolve to the other and every lookup misses, which reads exactly like a library that
+   * is not there. One spelling, and this is where it is chosen.
+   */
+  realPath(path: string): string;
 }
 
 /**
