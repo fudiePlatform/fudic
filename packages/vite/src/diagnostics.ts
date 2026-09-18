@@ -86,5 +86,22 @@ export const FUD_STYLES_NOT_ADOPTED = 'FUD0742';
  */
 export const FUD_LINK_UNRESOLVED = 'FUD0760';
 
+/**
+ * A library whose declared `@fudic/compiler` range excludes the compiler this build resolved
+ * (SDD-43 §4.7).
+ *
+ * A library publishes `.fud` SOURCE, so the consumer's compiler is what parses it: the two
+ * have to speak the same version of the language, or what the author sees is a parse error in
+ * a file they never wrote. The library says which versions it was written for, and this is
+ * what happens when the answer is no.
+ *
+ * A WARNING, and once per library rather than once per file. The range is written by the
+ * library's author with the information they had the day they published, and a range that is
+ * conservative by one minor must not stop a build that works. What it cannot do is fail in
+ * silence. SDD-45 §4.6 turns it into an error — there, mixed versions are a promise of the
+ * product rather than an accident, and this describes something that breaks late.
+ */
+export const FUD_LIB_PEER_MISMATCH = 'FUD0762';
+
 /** The href resolves into a package whose `fudic.json` does not say `kind: "lib"`. */
 export const FUD_LINK_NOT_A_LIBRARY = 'FUD0763';

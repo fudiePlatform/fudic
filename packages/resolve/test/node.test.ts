@@ -15,7 +15,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, cpSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { nodeResolveFs } from '../src/node.js';
+import { nodePackageFs, nodeResolveFs } from '../src/node.js';
 import { resolveHref } from '../src/resolve.js';
 
 const CARD = '<ui-card><template shadowrootmode="open"><slot></slot></template></ui-card>\n';
@@ -27,6 +27,8 @@ const manifest = (exports: Readonly<Record<string, string>>): string =>
 function workspace(options: { readonly linked: boolean; readonly exportsCard: boolean }): {
   readonly from: string;
   readonly card: string;
+  /** Where the app reaches the library: a link or a copy, by `linked`. */
+  readonly link: string;
 } {
   const ws = mkdtempSync(join(tmpdir(), 'fudic-resolve-'));
 
@@ -53,7 +55,7 @@ function workspace(options: { readonly linked: boolean; readonly exportsCard: bo
   if (options.linked) symlinkSync(lib, join(scope, 'ui'), 'junction');
   else cpSync(lib, join(scope, 'ui'), { recursive: true });
 
-  return { from, card: join(lib, 'src', 'ui-card.fud') };
+  return { from, card: join(lib, 'src', 'ui-card.fud'), link: join(scope, 'ui') };
 }
 
 const io = nodeResolveFs();
@@ -131,5 +133,23 @@ describe('the rest of the seam', () => {
     const { from, card } = workspace({ linked: true, exportsCard: true });
     const resolution = resolveHref(from, '../../../../libs/ui/src/ui-card.fud', io);
     expect(resolution).toEqual({ outcome: 'path', path: card });
+  });
+});
+
+describe('nodePackageFs — what walking a dependency graph needs of a disk', () => {
+  it('reads a file, answers undefined for one that is not there, and never throws', () => {
+    const { card } = workspace({ linked: true, exportsCard: true });
+    const fs = nodePackageFs();
+    expect(fs.readFile(card)).toBe(CARD);
+    expect(fs.readFile(`${card}.no`)).toBeUndefined();
+  });
+
+  it('follows a symlink to the real directory, and leaves a path that is not there alone', () => {
+    // Which is the whole point of the method: pnpm installs a workspace library as a link, so
+    // the same package is reachable under two names and a walk that counts both reads it twice.
+    const { link } = workspace({ linked: true, exportsCard: true });
+    const fs = nodePackageFs();
+    expect(fs.realPath(link).replace(/\\/gu, '/')).toMatch(/\/libs\/ui$/);
+    expect(fs.realPath('/nowhere/at/all')).toBe('/nowhere/at/all');
   });
 });

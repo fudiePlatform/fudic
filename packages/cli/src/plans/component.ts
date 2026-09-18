@@ -16,7 +16,7 @@ import { tagOf } from '@fudic/config';
 import { cliError, FUD_WIRE_TARGET_BROKEN, FUD_WIRE_TARGET_MISSING } from '../diagnostics.js';
 import { absolute, hrefBetween, joinPosix, toPosix } from '../paths.js';
 import { hasErrors, parseFud } from '../parse.js';
-import { existingTags, projectConfig, targetChange } from '../project.js';
+import { existingTags, libraryTags, projectConfig, targetChange } from '../project.js';
 import { codeBlock, renderTemplate, styleBlock } from '../templates.js';
 import { validateTag } from '../tag.js';
 import { wireComponentLink } from '../wire.js';
@@ -41,7 +41,9 @@ export function planComponent(name: string, opts: ComponentOptions, io: ReadIo =
   }
 
   const tag = tagOf(project.config?.prefix ?? '', name);
-  const invalid = validateTag(tag, existingTags(opts.cwd, io));
+  // Against the project AND against the graph (SDD-43 §4.5): a tag one of this project's
+  // libraries already defines is taken, and the only place it shows is the library.
+  const invalid = validateTag(tag, existingTags(opts.cwd, io), libraryTags(opts.cwd, io));
   if (invalid !== null) {
     return Promise.resolve({ changes: [], commands: [], diagnostics: [], errors: [invalid] });
   }

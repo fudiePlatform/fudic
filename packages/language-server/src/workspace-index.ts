@@ -19,7 +19,9 @@ import {
   type Contract,
   type FudRole,
 } from './mode.js';
-import { findLibraries } from './libraries.js';
+// The dependency walk lives in `@fudic/resolve`: the CLI asks the same question — which tags
+// a library already defines — and the build asks it in order, for the style chain of §4.6.
+import { findLibraries } from '@fudic/resolve';
 import { toPosix } from './paths.js';
 import type { FileSystemScanner } from './types.js';
 

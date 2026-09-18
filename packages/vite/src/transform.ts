@@ -20,6 +20,7 @@ import { dirname, relative, resolve } from 'node:path';
 import { assetUrlFrom, type LinkedAssets } from './linked-assets.js';
 import {
   resolveDocument,
+  allComponents,
   contractDiagnostics,
   injectionDiagnostics,
   entryComponent,
@@ -88,18 +89,70 @@ function buildMap(id: string, source: string, out: EmitOutput): SourceMapV3 {
 }
 
 /**
- * The project's stylesheets, already read (SDD-42 §3.2).
+ * The project's stylesheets, already read (SDD-42 §3.2), asked for BY FILE (SDD-43 §4.6).
  *
  * It travels through every emit path of the build — the host transform, the client chunk,
  * the edge pass and the link pass — because the three ways of rendering a route have to
  * produce the same document, and a sheet missing from one of them is exactly the kind of
  * difference nobody sees until a page renders unstyled in one shape only.
+ *
+ * By file and no longer one list, because a document can compose components from several
+ * packages and each adopts the chain of the package that defines it. A build with no
+ * libraries answers the same list for every file, which is SDD-42 exactly as it was.
  */
-export type ProjectStyles = readonly ProjectStyle[];
+export interface ProjectStyles {
+  /** The sheets a component defined in `file` adopts, cascade order, root of the chain first. */
+  chainFor(file: string): readonly ProjectStyle[];
+}
+
+/** A build with no style guide at all: the standalone emit, and every pre-SDD-42 project. */
+export const NO_STYLES: ProjectStyles = { chainFor: () => [] };
+
+/**
+ * What the emit is told about project sheets for ONE document: the sheets to hoist, and
+ * which of them each component adopts.
+ *
+ * The hoisted list is the UNION over the document — the entry's own chain plus every
+ * component's — in first-seen order, which is a cascade order because every chain is itself
+ * ordered from the root of its dependencies to the leaf, and a chain always carries its
+ * ancestors. Hoisting the whole build instead would put a library's sheet in the head of
+ * every page that composes nothing from it.
+ *
+ * Both options are OMITTED when the union is empty, rather than passed as empties: an absent
+ * option is what the standalone emit and every pre-SDD-42 project look like, and the emit's
+ * own default is what keeps their output byte for byte the same.
+ */
+function styleOptions(
+  graph: DocumentGraph,
+  styles: ProjectStyles,
+): { projectStyles?: readonly ProjectStyle[]; styleChains?: ReadonlyMap<string, readonly string[]> } {
+  const hoisted: ProjectStyle[] = [];
+  const seen = new Set<string>();
+  const hoist = (sheets: readonly ProjectStyle[]): void => {
+    for (const sheet of sheets) {
+      if (seen.has(sheet.specifier)) continue;
+      seen.add(sheet.specifier);
+      hoisted.push(sheet);
+    }
+  };
+
+  // The entry first: a page defines no component of its own, and its project's guide is
+  // still the one its head hoists — which is what a project whose components all come from
+  // a library looks like.
+  hoist(styles.chainFor(graph.entryPath));
+  const chains = new Map<string, readonly string[]>();
+  for (const component of allComponents(graph)) {
+    const chain = styles.chainFor(component.path);
+    chains.set(component.tag, chain.map((sheet) => sheet.specifier));
+    hoist(chain);
+  }
+  return hoisted.length === 0 ? {} : { projectStyles: hoisted, styleChains: chains };
+}
 
 /** The emit options for one `.fud`: asset linking and the injected specifiers. */
 function emitOptionsFor(
   id: string,
+  graph: DocumentGraph,
   routeName: string | undefined,
   styles: ProjectStyles,
   assets: LinkedAssets | undefined,
@@ -132,10 +185,8 @@ function emitOptionsFor(
     // and has never heard of a URL pattern. Absent for anything that is not a built route,
     // and then the page publishes no `fud-route` block and claims no id.
     ...(routeName === undefined ? {} : { routeName }),
-    // Omitted when the project declares none, rather than passed empty: an absent option is
-    // what the standalone emit and every pre-SDD-42 project look like, and the emit's own
-    // default is what keeps their output byte for byte the same.
-    ...(styles.length === 0 ? {} : { projectStyles: styles }),
+    // The project sheets this document hoists, and which of them each component adopts.
+    ...styleOptions(graph, styles),
   };
 }
 
@@ -144,7 +195,7 @@ export function transformFud(
   id: string,
   io: ResolveIo,
   routeName?: string,
-  styles: ProjectStyles = [],
+  styles: ProjectStyles = NO_STYLES,
   assets?: LinkedAssets,
 ): TransformResult | null {
   if (!id.endsWith('.fud')) {
@@ -156,7 +207,7 @@ export function transformFud(
   const graph = resolved.value;
   const entry = graph.entry;
   const source = graph.entrySource;
-  const out = emitFor(id, graph, emitOptionsFor(id, routeName, styles, assets));
+  const out = emitFor(id, graph, emitOptionsFor(id, graph, routeName, styles, assets));
   return {
     code: out.code,
     map: buildMap(id, redactServerRegions(source, entry.code), out),
@@ -194,7 +245,7 @@ export function transformFud(
 export function transformFudClient(
   id: string,
   io: ResolveIo,
-  styles: ProjectStyles = [],
+  styles: ProjectStyles = NO_STYLES,
   assets?: LinkedAssets,
 ): TransformResult | null {
   if (!id.endsWith('.fud')) {
@@ -215,7 +266,7 @@ export function transformFudClient(
   const out = emitComponentClientModuleMapped(
     graph,
     comp,
-    emitOptionsFor(id, undefined, styles, assets),
+    emitOptionsFor(id, graph, undefined, styles, assets),
   );
   return {
     code: out.code,
@@ -236,7 +287,10 @@ function routeClientResult(
   graphDiagnostics: readonly Diagnostic[],
   assets: LinkedAssets | undefined,
 ): TransformResult | null {
-  const out = emitRouteClientModuleMapped(graph, emitOptionsFor(id, undefined, styles, assets));
+  const out = emitRouteClientModuleMapped(
+    graph,
+    emitOptionsFor(id, graph, undefined, styles, assets),
+  );
   if (out === null) {
     return null;
   }

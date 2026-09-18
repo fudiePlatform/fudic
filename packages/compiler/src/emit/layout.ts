@@ -157,7 +157,7 @@ function buildLayoutModule(
     hydratable: hydratableTags(graph),
     formAssociated: formAssociatedTags(graph),
     styled: styledTags(graph),
-    projectAdopt: projectAdoptOf(options.projectStyles),
+    projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
   });
   em.emitChildren(doc.body.children, '$body');
 
@@ -272,7 +272,7 @@ function buildRouteModule(
   // compacting a sheet can register one, and a binding imported after the flush is a
   // module that does not parse.
   const projectStylesLine = renderProjectStyles(options.projectStyles, linker);
-  const projectAdopt = projectAdoptOf(options.projectStyles);
+  const projectAdopt = projectAdoptOf(options.projectStyles, options.styleChains);
 
   const hydratable = hydratableTags(graph);
   const formAssociated = formAssociatedTags(graph);

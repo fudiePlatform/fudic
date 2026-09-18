@@ -10,10 +10,11 @@
  * Nothing here throws. A resolution that fails comes back as a reason.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, resolve as resolvePath } from 'node:path';
 import { packageNameOf } from './specifier.js';
+import type { PackageFs } from './libraries.js';
 import type { PackageLookup, ResolveFs } from './resolve.js';
 
 /**
@@ -32,6 +33,22 @@ export function nodeResolveFs(): ResolveFs {
     join: (fromPath, href) => resolvePath(dirname(fromPath), href),
     dirname: (path) => dirname(path),
     resolvePackage: (specifier, fromPath) => lookup(specifier, fromPath),
+  };
+}
+
+/**
+ * The real filesystem, narrowed to what walking a dependency graph needs.
+ *
+ * Separate from `nodeResolveFs` because the two questions need different things: resolving an
+ * href needs Node's resolver, and walking dependencies needs only to read manifests and to
+ * know a directory's real name. A host that does one need not carry the other.
+ */
+export function nodePackageFs(): PackageFs {
+  return {
+    readFile: (path) => (existsSync(path) ? readFileSync(path, 'utf8') : undefined),
+    // A path that is not there answers itself: asking for the real name of something that
+    // does not exist is an absence, not a failure, and every caller here treats it as one.
+    realPath: (path) => (existsSync(path) ? realpathSync(path) : path),
   };
 }
 

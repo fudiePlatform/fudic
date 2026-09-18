@@ -218,7 +218,7 @@ function buildComponentClientModule(
     styled: styledTags(graph),
     // Same reason, one level up: the project's guide is in front of the component's own on
     // both sides, or a host hydrates adopting a different list than it rendered with.
-    projectAdopt: projectAdoptOf(options.projectStyles),
+    projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
   };
   // One channel for everything the emit has to SAY about this file, and one for what every
   // walk of it shares: a block three levels down reports through the same two.

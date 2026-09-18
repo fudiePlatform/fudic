@@ -5,10 +5,12 @@
  */
 
 import { FUD_CONFIG_DUPLICATE_ID, readProjectConfig, type ConfigResult, type ProjectConfig } from '@fudic/config';
+import { findLibraries, type LibraryFs } from '@fudic/resolve';
 import { cliError, FUD_TARGET_EXISTS } from './diagnostics.js';
 import { absolute, joinPosix, toPosix } from './paths.js';
 import { parseFud } from './parse.js';
 import { SKIPPED, walkFud, type ReadIo } from './io.js';
+import type { ForeignTag } from './tag.js';
 import type { CliError, FileChange } from './types.js';
 
 /** Exact dependency versions the generated project pins (repo rule: no `^`, no `~`). */
@@ -99,6 +101,45 @@ export function existingTags(cwd: string, io: ReadIo): ReadonlySet<string> {
     if (doc.type === 'component-document' && doc.name !== '') tags.add(doc.name);
   }
   return tags;
+}
+
+/**
+ * The tags the libraries this project depends on already define (SDD-43 §4.5).
+ *
+ * `customElements` is one registry per document, so a tag a library defines is taken for
+ * every app that consumes it — and the collision shows up at the second `define()`, in a
+ * browser, on a page that generated and built cleanly. Answering it here makes it a failure
+ * of `fudic g component`, which is days earlier and one command away from being fixed.
+ *
+ * The walk is `@fudic/resolve`'s, the same one the editor's index uses: it follows DECLARED
+ * dependencies rather than sweeping `node_modules`, so the cost is the number of dependencies
+ * and a project with a thousand packages and one fudic library reads one library.
+ */
+export function libraryTags(cwd: string, io: ReadIo): ReadonlyMap<string, ForeignTag> {
+  const root = toPosix(absolute(cwd, '.'));
+  const tags = new Map<string, ForeignTag>();
+  for (const library of findLibraries(root, libraryFs(io))) {
+    for (const file of library.files) {
+      const doc = parseFud(io.read(file)).doc;
+      // First definition wins, as it does in the graph: what matters is that the name is
+      // taken, and the file named is the one a reader will open.
+      if (doc.type === 'component-document' && doc.name !== '' && !tags.has(doc.name)) {
+        tags.set(doc.name, { library: library.name, file });
+      }
+    }
+  }
+  return tags;
+}
+
+/** `@fudic/resolve`'s dependency-walk port, over the read seam the CLI already has. */
+function libraryFs(io: ReadIo): LibraryFs {
+  return {
+    readFile: (path) => (io.exists(path) ? io.read(path) : undefined),
+    realPath: (path) => io.realPath(path),
+    // A library's own `node_modules` is not its source, which is exactly what `walkFud`
+    // already skips — so this is its paths made absolute and nothing else.
+    fudFiles: (root) => walkFud(root, io).map((file) => joinPosix(root, file)),
+  };
 }
 
 export interface TargetResult {

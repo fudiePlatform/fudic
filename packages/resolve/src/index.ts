@@ -6,6 +6,11 @@
  * on `resolveHrefPath`; each reads `resolveHref` when it needs to say WHY something did not
  * resolve.
  *
+ * And the other half of the same question: which packages a project DEPENDS on, and which of
+ * those declare themselves fudic libraries (§3.2, §4.4). The index needs them with their
+ * files, the CLI needs the tags they define and the build needs the chain in order — one
+ * walk, because three copies is three answers.
+ *
  * It is a package of its own and not a function inside `@fudic/config` because the two
  * answer different questions — one reads a project's `fudic.json`, the other resolves Node
  * modules — and because this is the side that grows: assets named from a package, and the
@@ -15,7 +20,16 @@
  * and `ResolveIo` does not gain a method (SDD-43 §5).
  */
 
-export { nodeResolveFs } from './node.js';
+export { nodeResolveFs, nodePackageFs } from './node.js';
+export {
+  findLibraries,
+  dependencyChain,
+  owningPackage,
+  type FudicPackage,
+  type Library,
+  type LibraryFs,
+  type PackageFs,
+} from './libraries.js';
 export {
   resolveHref,
   resolveHrefPath,

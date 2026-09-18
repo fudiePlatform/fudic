@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/resolve` (**nuevo**) · `@fudic/vite` · `@fudic/cli` ·
 > `@fudic/language-server` · `@fudic/compiler` · `@fudic/config` (consumido, no modificado)
 > **Rama:** `sdd-43-librerias`
-> **Progreso:** 9 / 13
+> **Progreso:** 12 / 13
 > **Bloqueado por:** [SDD-41](./SDD-41-configuracion-de-aplicacion.md) — `kind: "lib"` es lo que
 > hace descubrible una librería. Conviene, no es obligatorio, tener
 > [SDD-44](./SDD-44-cli-de-workspace.md) para generar el caso de prueba en vez de escribirlo a
@@ -97,9 +97,31 @@ bare specifiers.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 9 | 3 | **El espacio de tags.** `FUD0761` cuando dos componentes del grafo definen el mismo tag, con los **dos** ficheros en el mensaje; `validateTag` de la CLI comprueba contra el grafo y no solo contra el proyecto; `FUD0622` (SDD-39) igual. El prefijo **sigue sin comprobarse** (§4.5): lo que protege el registro global es el tag repetido, no que todos se llamen igual — y una app no tiene autoridad sobre cómo nombra sus componentes una librería. Criterio 10 | `compiler` · `cli` | `src/emit/resolve.ts` · `cli/src/tag.ts` |
-| [ ] | 10 | 3 | **La cadena de guías.** La lista adoptada de un componente es la unión de las `styles` de la cadena de dependencias **del paquete que lo define**, de la raíz hacia la hoja, y el componente al final. La hoja del consumidor **no entra**. Es la respuesta a la condición de reapertura de SDD-42 §7. Criterio 11 | `compiler` · `vite` | `src/emit/parts.ts` · `vite/src/styles.ts` |
-| [ ] | 11 | 3 | **`FUD0762`: la gramática compartida.** La librería declara `peerDependencies` sobre `@fudic/compiler`; un consumidor fuera del rango recibe un warning **una vez por librería**, no uno por fichero. Warning porque un rango conservador de más no debe romper un build que funciona — pero tampoco puede fallar en silencio (§4.7) | `vite` | `src/peer-check.ts` |
+| [x] | 9 | 3 | **El espacio de tags.** `FUD0761` cuando dos componentes del grafo definen el mismo tag, con los **dos** ficheros en el mensaje; `validateTag` de la CLI comprueba contra el grafo y no solo contra el proyecto; `FUD0622` (SDD-39) igual. El prefijo **sigue sin comprobarse** (§4.5): lo que protege el registro global es el tag repetido, no que todos se llamen igual — y una app no tiene autoridad sobre cómo nombra sus componentes una librería. Criterio 10 | `compiler` · `cli` | `src/emit/resolve.ts` · `cli/src/tag.ts` |
+| [x] | 10 | 3 | **La cadena de guías.** La lista adoptada de un componente es la unión de las `styles` de la cadena de dependencias **del paquete que lo define**, de la raíz hacia la hoja, y el componente al final. La hoja del consumidor **no entra**. Es la respuesta a la condición de reapertura de SDD-42 §7. Criterio 11 | `compiler` · `vite` | `src/emit/parts.ts` · `vite/src/styles.ts` |
+| [x] | 11 | 3 | **`FUD0762`: la gramática compartida.** La librería declara `peerDependencies` sobre `@fudic/compiler`; un consumidor fuera del rango recibe un warning **una vez por librería**, no uno por fichero. Warning porque un rango conservador de más no debe romper un build que funciona — pero tampoco puede fallar en silencio (§4.7) | `vite` | `src/peer-check.ts` |
+
+---
+
+---
+
+**Resultado de la fase 4**, y las tres cosas que decidió por el camino:
+
+- **`FUD0761` compara lo que el documento alcanza, no la entrada.** Un fichero compilado solo no
+  es un documento —nadie ejecuta un `define` por él— y el caso que importa, dos ficheros
+  definiendo un tag, lo ve igual la página que compone los dos. Meter la entrada en la
+  comparación acusaba a un fichero cuyo único elemento raíz es un tag de componente (que
+  estructura *como* componente) de chocar con su propia dependencia.
+- **El recorrido de paquetes vive en `@fudic/resolve`**, no en el language server: ahora lo
+  preguntan el índice, la CLI (`validateTag` contra las librerías) y el build (la cadena de
+  §4.6). `findLibraries` mantiene su firma y su sitio en la interfaz pública; lo que se movió es
+  la implementación, más `dependencyChain` y `owningPackage`, que son la misma travesía.
+- **La colisión de especificadores entre paquetes es `FUD0741`**, el de `@fudic/config`, aplicado
+  a un par nuevo: dos `tokens.css` en la cadena adoptan como `_tokens` y una taparía a la otra en
+  el module map. Se reporta una vez, nombrando los dos paquetes, y se queda la primera. No hace
+  falta código nuevo del rango porque no es un hecho nuevo.
+- **`FUD0622` ya comparaba contra el grafo entero** (`discoverComponents` lo recorre), así que la
+  tarea 9 solo añadió la prueba de que un tag de librería cuenta igual. No se reimplementó nada.
 
 ---
 
