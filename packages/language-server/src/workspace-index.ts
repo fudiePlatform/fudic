@@ -19,7 +19,10 @@ import {
   type Contract,
   type FudRole,
 } from './mode.js';
-import { resolveFrom, toPosix } from './paths.js';
+// The dependency walk lives in `@fudic/resolve`: the CLI asks the same question — which tags
+// a library already defines — and the build asks it in order, for the style chain of §4.6.
+import { findLibraries } from '@fudic/resolve';
+import { toPosix } from './paths.js';
 import type { FileSystemScanner } from './types.js';
 
 /** What the index knows about one `.fud`. */
@@ -54,6 +57,15 @@ export interface IndexEntry {
    * a component nobody has opened has to come from somewhere.
    */
   readonly contract: Contract;
+  /**
+   * Whether this `.fud` belongs to a LIBRARY and not to the workspace (SDD-43 §4.4).
+   *
+   * It is in the index and in the TypeScript program for the same reason every other file
+   * is — so the contract it declares is a type and not `any` — and it is read-only: it is
+   * navigated, hovered and jumped into, but not diagnosed as the author's own code and not
+   * formatted on save. The author of an app does not fix a library's warnings.
+   */
+  readonly external: boolean;
 }
 
 export class WorkspaceIndex {
@@ -76,9 +88,20 @@ export class WorkspaceIndex {
     return this.#revision;
   }
 
-  /** The start-up sweep. Replaces whatever the index held for `root`'s files. */
+  /**
+   * The start-up sweep. Replaces whatever the index held for `root`'s files.
+   *
+   * Two sources, and the second is not an exception to the first: the folder is swept with
+   * `node_modules` pruned exactly as before, and the libraries are reached by following the
+   * DECLARED dependency graph (SDD-43 §4.4). What that buys is a contract that survives the
+   * library being installed rather than linked — which in a pnpm workspace is the only
+   * reason this ever appeared to work.
+   */
   scan(root: string): void {
     for (const path of this.#scanner.fudFiles(root)) this.upsert(path);
+    for (const library of findLibraries(root, this.#scanner)) {
+      for (const path of library.files) this.upsert(path, true);
+    }
   }
 
   /**
@@ -88,7 +111,7 @@ export class WorkspaceIndex {
    * and this call the user may have deleted it, and a stale entry would resolve a tag to a
    * file that is not there.
    */
-  upsert(path: string): void {
+  upsert(path: string, external = false): void {
     const key = toPosix(path);
     const source = this.#scanner.readFile(key);
     if (source === undefined) {
@@ -109,6 +132,7 @@ export class WorkspaceIndex {
       sections: sectionsOf(document),
       requiredProps: contract.props.filter((prop) => prop.required).map((prop) => prop.name),
       contract,
+      external,
     });
   }
 
@@ -137,8 +161,14 @@ export class WorkspaceIndex {
     return this.all().filter((entry) => entry.role === role);
   }
 
-  /** What an `href` written inside `fromFile` points at, if anything. */
+  /**
+   * What an `href` written inside `fromFile` points at, if anything.
+   *
+   * The arithmetic moved to the scanner with SDD-43: an href may name a package and not
+   * only a location, and answering that needs a disk. What stays here is the lookup, which
+   * is what makes this a map access per keystroke and not a filesystem question.
+   */
   resolve(fromFile: string, href: string): IndexEntry | undefined {
-    return this.#entries.get(resolveFrom(toPosix(fromFile), href));
+    return this.#entries.get(toPosix(this.#scanner.resolveHref(toPosix(fromFile), href)));
   }
 }

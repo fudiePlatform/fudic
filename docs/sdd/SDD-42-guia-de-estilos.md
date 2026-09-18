@@ -373,6 +373,10 @@ Tests en `packages/compiler/test/emit/` (1–9), `packages/config/test/` (10),
   hay que decidir si la composición es unión de listas o sustitución — y decidirlo **antes**
   de implementarla, porque una lista que crece por cada paquete de la cadena es una cascada
   que nadie puede leer.
+  **Contestada** en [SDD-43 §4.6](./SDD-43-librerias.md): **unión**, en orden de dependencia y
+  solo por la cadena del paquete que **define** el componente, con lo que la lista crece con la
+  profundidad de ese paquete y no con lo que el documento componga. La hoja del consumidor no
+  entra, y dos paquetes que adoptan con el mismo especificador son el `FUD0741` de aquí.
 - **Razor en la hoja del proyecto.** §4.7. Es un `.css`.
 - **La purga.** Quitar de la guía lo que una página no usa es otra spec, y necesita
   medición antes que diseño: con Service Worker, una hoja distinta por página pierde el

@@ -10,6 +10,7 @@
 import { describe, expect, it } from 'vitest';
 import { nodeFileSystem } from '../src/node-fs.js';
 import { WorkspaceIndex } from '../src/workspace-index.js';
+import { toPosix } from '../src/paths.js';
 import { FIXTURES } from './_support.js';
 
 const fs = nodeFileSystem();
@@ -46,6 +47,28 @@ describe('readFile', () => {
 
   it('is undefined for what it cannot read', () => {
     expect(fs.readFile(`${FIXTURES}/components/ghost.fud`)).toBeUndefined();
+  });
+});
+
+describe('realPath', () => {
+  it('answers the file under one spelling, with a lower-case drive', () => {
+    const real = fs.realPath(`${FIXTURES}/components/app-badge.fud`);
+    expect(real.toLowerCase()).toBe(`${FIXTURES}/components/app-badge.fud`.toLowerCase());
+    expect(real).not.toMatch(/\\/);
+    expect(real).toBe(toPosix(real));
+  });
+
+  it('answers a path that is not there with itself', () => {
+    // Not a failure: a library being installed, or a file between a watcher event and a
+    // read, is an ordinary state of a project — and it is simply not in the index.
+    const ghost = `${FIXTURES}/components/ghost.fud`;
+    expect(fs.realPath(ghost)).toBe(ghost);
+  });
+
+  it('resolves an href the way the build does', () => {
+    expect(fs.resolveHref(`${FIXTURES}/blog/[slug].fud`, '../components/app-badge.fud')).toBe(
+      `${FIXTURES}/components/app-badge.fud`,
+    );
   });
 });
 

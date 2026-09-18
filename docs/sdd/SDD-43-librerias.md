@@ -1,6 +1,6 @@
 # SDD-43 — Librerías fudic: qué se publica y cómo se resuelve
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Paquetes:** `@fudic/resolve` (**nuevo**, §3.1) · `@fudic/vite` · `@fudic/cli` ·
 > `@fudic/language-server` · `@fudic/compiler` (el `href` literal de §4.3 y el diagnóstico;
 > su `ResolveIo` **no** cambia de forma) · `@fudic/config` (consumido por `@fudic/resolve`,
@@ -121,6 +121,12 @@ las cuatro métricas sin arrastrar deuda ajena.
 
 `@fudic/resolve` depende de `@fudic/config` (necesita el `kind` del paquete destino) y de
 nada más. Los tres hosts lo declaran como dependencia; `@fudic/config` **no se modifica**.
+
+Y con él viaja **el recorrido de dependencias declaradas**, por el mismo argumento: lo preguntan
+el índice (§3.2), la CLI —`validateTag` contra los tags que ya define una librería (§4.5)— y el
+build, que necesita la cadena en orden (§4.6). Son tres preguntas y una travesía:
+`findLibraries` con los ficheros, `dependencyChain` en orden de dependencia, y `owningPackage`,
+que dice de qué paquete es un fichero.
 
 ### 3.2. El índice: las librerías del grafo de dependencias
 
@@ -272,7 +278,10 @@ formatearlo al guardar. El autor de una app no arregla los warnings de una libre
 definir el mismo tag, y el segundo `define()` lanza en tiempo de ejecución.
 
 - **`FUD0761`**, error: dos componentes del grafo definen el mismo tag. Con los dos ficheros
-  en el mensaje, que es lo único accionable.
+  en el mensaje, que es lo único accionable. El grafo es **lo que el documento alcanza**: un
+  fichero compilado solo no es un documento y nadie ejecuta un `define` por él, mientras que la
+  página que compone los dos los alcanza a los dos. El mismo código lo emite `fudic g component`
+  antes de escribir el fichero —es un hecho, no dos, y se atrapa donde primero se puede.
 - **`validateTag`** (SDD-22) pasa a comprobar contra el grafo, no solo contra el proyecto
   local: `fudic g component card` en una app cuya librería ya define ese tag falla al
   generar, que es varios días antes de que falle al renderizar.
@@ -313,6 +322,17 @@ La cadena es la de **dependencias declaradas del paquete que define el component
 del documento. Está acotada, es la misma en las tres formas de renderizar, y se resuelve en
 compilación.
 
+Dos consecuencias de que la cadena cruce paquetes:
+
+- **El documento hoistea la unión de las cadenas que aparecen en él**, en orden de dependencia,
+  y no las hojas de todo el build: una página que no compone nada de una librería no carga su
+  hoja. La lista adoptada pasa a ser **por tag**, no por documento — es lo único que cambia en el
+  emit, y un proyecto sin librerías responde lo mismo para todos y emite lo que emitía.
+- **Dos paquetes de una cadena cuyas hojas adoptan con el mismo especificador es `FUD0741`**, el
+  de SDD-42: `_tokens` de la guía y `_tokens` de la app no se distinguen en el module map y una
+  taparía a la otra. Mismo código porque es el mismo hecho —dos hojas con el mismo basename—,
+  ahora entre dos `fudic.json`; el mensaje nombra los dos paquetes y se queda la primera.
+
 ### 4.7. La librería y el consumidor hablan la misma gramática
 
 El compilador del consumidor parsea el fuente de la librería. Si la librería usa sintaxis
@@ -327,6 +347,12 @@ fichero**: es un hecho del paquete.
 Warning y no error, porque el rango lo escribe el autor de la librería con la información
 que tenía el día que publicó, y un rango conservador de más no debe impedir un build que
 funciona. Lo que no puede es fallar en silencio.
+
+La versión con la que se compara es la del `@fudic/compiler` **que el proyecto resuelve**, leída
+del `node_modules` más cercano. Si no hay ninguno que leer, no hay nada que decir y no se dice.
+Y el lector de rangos es estrecho a propósito —`*`, exacto, `^`, `~`, los cuatro comparadores,
+comodines, `||`— porque **un rango que no sabe leer no produce diagnóstico**: un warning falso en
+cada build enseña a no leer los warnings, que cuesta más que el caso que habría cazado.
 
 **Condición de reapertura, ya cumplida:** eso vale mientras todas las apps de un repo
 comparten versión por fuerza, que es hoy. [SDD-45](./SDD-45-runtime-publicado.md) §4.6 hace
@@ -436,6 +462,8 @@ La **medición (1)** va primero y no tiene test: tiene informe. El resto en
 - **Diagnosticar o formatear los `.fud` de una librería.** §4.4: solo lectura.
 - **Resolver assets (`url(…)`, `<img src>`) desde un paquete.** El `AssetLinker` ya resuelve
   por Vite, que sabe de paquetes. Si la medición de §4.2 encuentra que no, entra aquí como
-  fase; si no, no se toca.
+  fase; si no, no se toca. **Medido al cerrar: funciona**, y se publica una vez para todas las
+  referencias — junto con un layout, una hoja enlazada y un `.js` propio de la librería
+  ([apéndice de la medición](./SDD-43-medicion.md)). No se tocó nada.
 - **`fudic check` sobre una librería aislada.** Comprobar una librería sin consumidor es
   útil y es un comando, no este SDD.

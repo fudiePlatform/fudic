@@ -30,6 +30,7 @@ import {
   transformFud,
   transformFudClient,
   transformFudIoc,
+  NO_STYLES,
   type ProjectStyles,
 } from './transform.js';
 import { eraseServerValidators } from './server-validators.js';
@@ -47,10 +48,13 @@ import {
   routeUsesDi,
 } from './client.js';
 import { IOC_SUFFIX } from '@fudic/compiler';
-import { nodeIo } from './io.js';
+import { nodeIo, nodeLinkCheckIo } from './io.js';
+import { checkLinks } from './link-check.js';
+import { checkPeers } from './peer-check.js';
 import { readSwConfig, type ResolvedSwConfig } from './swconfig.js';
 import { nodeConfigIo, readProject, type ProjectResult } from './config.js';
-import { readStyles } from './styles.js';
+import { ProjectStyleChains } from './styles.js';
+import { nodePackageFs } from '@fudic/resolve';
 import { LinkedAssets } from './linked-assets.js';
 import { CONFIG_FILE, type ConfigDiagnostic } from '@fudic/config';
 import { runLinkPass, safeName, type LinkResult } from './link.js';
@@ -163,11 +167,18 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    */
   let appId = '';
   /**
-   * The project's stylesheets, already read (SDD-42). Every emit path of the build is
-   * handed this same list; `[]` — no `fudic.json`, or no `styles` — is byte for byte the
-   * output of before that SDD.
+   * The project's stylesheets, already read (SDD-42), and those of the libraries it consumes
+   * (SDD-43 §4.6). Every emit path of the build is handed this same reader; a project with no
+   * `fudic.json`, or no `styles`, answers nothing for every file and its output is byte for
+   * byte what it was before that SDD.
    */
-  let projectStyles: ProjectStyles = [];
+  let projectStyles: ProjectStyles = NO_STYLES;
+  /**
+   * The reader behind `projectStyles`, kept typed so `buildStart` can ask it two things the
+   * seam does not carry: what THIS project declares (FUD0742), and what reading the
+   * libraries' sheets had to say.
+   */
+  let styleChains: ProjectStyleChains | null = null;
   /** `FUD0740` / `FUD0741`, reported in `buildStart` alongside the config's own. */
   let styleErrors: readonly ConfigDiagnostic[] = [];
   /** `FUD0743`, read once per sheet rather than once per route it travels into (§4.5). */
@@ -188,6 +199,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let manifestUrl = '/fudic-routes.json';
   let manifestFileName = 'fudic-routes.json';
   const io = nodeIo();
+  const linkCheckIo = nodeLinkCheckIo();
 
   /**
    * The client module a dev client URL names, or `undefined` when it names none.
@@ -326,8 +338,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // path of the build has to be handed the SAME list — `edge`, `sw` and `ssg` producing
       // different stylesheets for one route is the difference nobody sees until a page
       // renders unstyled in exactly one shape.
-      const resolvedStyles = readStyles(root, project.config, configIo);
-      projectStyles = resolvedStyles.styles;
+      //
+      // Read through the chain reader (SDD-43 §4.6), which answers per package: this
+      // project's sheets are the ones below, and a component that comes from a library
+      // adopts that library's chain instead. Its own diagnostics are this project's; the
+      // libraries' are collected and reported in `buildStart` with the rest.
+      const chains = new ProjectStyleChains(root, nodePackageFs());
+      const resolvedStyles = chains.own(root);
+      projectStyles = chains;
+      styleChains = chains;
       styleErrors = resolvedStyles.errors;
       styleWarnings = resolvedStyles.warnings;
     },
@@ -557,6 +576,22 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       for (const d of styleErrors) {
         this.error(`[${d.code}] ${d.message}`);
       }
+      // And the same questions asked of the LIBRARIES this project consumes (SDD-43 §4.6).
+      // Reading the whole chain here, before anything is emitted, is what makes this one
+      // report naming the package instead of one per document that happens to compose a
+      // component from it.
+      if (styleChains !== null) {
+        styleChains.chainOfPackage(root);
+        for (const d of styleChains.diagnostics) {
+          this.error(`[${d.code}] ${d.message}`);
+        }
+      }
+      // Whether each library can be parsed by THIS compiler (SDD-43 §4.7). A warning, once
+      // per library: the range is the library author's judgement from the day they published,
+      // and a range one minor too narrow must not stop a build that works.
+      for (const d of checkPeers(root, nodePackageFs())) {
+        this.warn(`[${d.code}] ${d.message}`);
+      }
       // And what the sheet says that its destination cannot hear (§4.5). A warning, and
       // the sheet is emitted whole: the same file served to the document too is a legitimate
       // shape, and there those rules are the correct ones.
@@ -569,10 +604,27 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       for (const d of discovered.diagnostics) {
         this.warn(`[${d.code}] ${d.message}`);
       }
+
+      // What the links NAME, before anything walks them (SDD-43 §4.3). The graph walk reads
+      // every file it reaches and stops at the first one it cannot, with an `ENOENT` naming
+      // a path the author never wrote — so the questions only a resolver can answer are
+      // asked here, where there is still something to say about them.
+      for (const d of checkLinks(
+        builds.map((rb) => rb.absPath),
+        linkCheckIo,
+      )) {
+        this.error(`[${d.code}] ${d.message} (in ${d.file})`);
+      }
       // FUD0742, and it is the BUILD's rather than the emit's because what it is about is
       // the PROJECT: a sheet that nothing adopts. The emit sees one file at a time, so the
       // same fact stated there would be one warning per route for a single mistake.
-      if (projectStyles.length > 0 && discoverComponents(builds, io).length === 0) {
+      // THIS project's own sheets, not the chain's: a library's guide is adopted by the
+      // library's own components, and whether this project defines any says nothing about it.
+      if (
+        styleChains !== null &&
+        styleChains.own(root).styles.length > 0 &&
+        discoverComponents(builds, io).length === 0
+      ) {
         this.warn(
           `[${FUD_STYLES_NOT_ADOPTED}] ${CONFIG_FILE} declares "styles" and this project defines no component: ` +
             'a project sheet is adopted into the shadow roots of its own components, and there are none. ' +

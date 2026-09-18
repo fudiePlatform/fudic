@@ -23,6 +23,15 @@ export const FUD_FORMAT_UNPARSEABLE = 'FUD0450';
 /** A command of the plan that exited non-zero, or that could not be started at all. */
 export const FUD_COMMAND_FAILED = 'FUD0451';
 
+/**
+ * A tag a LIBRARY of the dependency graph already defines (SDD-43 §4.5).
+ *
+ * Not in this range and not a code of its own, because it is not the CLI's fact: it is the
+ * same `FUD0761` the build reports over two components of one graph, reported here at the
+ * moment the second one would be written. One code for one mistake, wherever it is caught.
+ */
+export const FUD_DUPLICATE_TAG = 'FUD0761';
+
 /** Build a `CliError`, omitting `file` when absent (exactOptionalPropertyTypes). */
 export function cliError(code: string, message: string, file?: string): CliError {
   return file === undefined ? { code, message } : { code, message, file };

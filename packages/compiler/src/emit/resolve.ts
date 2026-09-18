@@ -19,7 +19,7 @@ import {
   type LayoutDocument,
   type RouteDocument,
 } from '../document/index.js';
-import { type Diagnostic, errorDiag, warningDiag } from '../types/index.js';
+import { type Diagnostic, type Span, errorDiag, warningDiag } from '../types/index.js';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 
 const constructs: AtConstructParser = { parseControl, parseCodeBlock, parseDirective };
@@ -37,6 +37,19 @@ const FUD_NO_RENDER_BODY = 'FUD0423';
 const FUD_ORPHAN_SECTION = 'FUD0429';
 /** `<link rel="layout">` pointing at a file that is not a layout (decision 82). */
 const FUD_NOT_A_LAYOUT = 'FUD0435';
+/**
+ * Two files of one graph that define the same tag (SDD-43 §4.5).
+ *
+ * It was a check nobody needed while every component of a document came from one project: two
+ * files with the same host wrapper meant somebody had copied a file. With libraries the tag
+ * space is SHARED — `customElements` is one registry per document, and the second `define()`
+ * for a name throws — and the two files are now routinely written by two people who never
+ * read each other's code.
+ *
+ * The message carries both paths because that is the only actionable part: one of the two has
+ * to be renamed, and which one is the author's call.
+ */
+const FUD_DUPLICATE_TAG = 'FUD0761';
 
 /** Host filesystem, injected so the compiler never touches `node:fs`/`node:path`. */
 export interface ResolveIo {
@@ -147,17 +160,21 @@ function parse(source: string): ParseResult<StructuredDocument> {
     : withDiagnostics(structured.value, diagnostics);
 }
 
-/** Resolve the transitive component graph from an entry `.fud` (page or component). */
+/**
+ * Resolve the transitive component graph from an entry `.fud` (page or component).
+ *
+ * The graph and nothing else: what the walk had to SAY about it — a tag two files define —
+ * is reported by `resolveDocument`, which is the entry point a build goes through. This one
+ * answers the shape of the graph for a caller that already has the file it cares about.
+ */
 export function resolveComponents(entryPath: string, io: ResolveIo): ComponentGraph {
   const entrySource = io.read(entryPath);
   const entry = parse(entrySource).value;
-  const components = new Map<string, ResolvedComponent>();
-  // Path → tag, filled by the same walk that reads the files, so nothing is read twice.
-  const byPath = new Map<string, string>();
-  visitComponents(entry.links, entryPath, io, components, byPath);
+  const walk = newWalk(io);
+  visitComponents(entry.links, entryPath, walk);
   const entryDeps = entry.links.map(linkHref).filter((h): h is string => h !== undefined);
-  const entryLinkTags = linkTags(entry.links, entryPath, io, byPath);
-  return { entry, entryPath, entrySource, entryDeps, components, entryLinkTags };
+  const entryLinkTags = linkTags(entry.links, entryPath, io, walk.byPath);
+  return { entry, entryPath, entrySource, entryDeps, components: walk.components, entryLinkTags };
 }
 
 /**
@@ -188,28 +205,87 @@ function linkTags(
   return out;
 }
 
+/**
+ * The state one graph walk carries.
+ *
+ * An object and not six parameters, because the walk grew a third map: `definedBy` is the
+ * one that spans the whole document — the entry included — and passing it alongside the
+ * other two is where a caller starts forgetting one.
+ */
+interface Walk {
+  readonly io: ResolveIo;
+  readonly components: Map<string, ResolvedComponent>;
+  /** Path → tag, filled by the same walk that reads the files, so nothing is read twice. */
+  readonly byPath: Map<string, string>;
+  /**
+   * Tag → the file the walk took it from. Almost `components` keyed the other way, and kept
+   * apart from it on purpose: `components` is *what is in the graph*, and a duplicate is not
+   * added to it, so it cannot answer which file claimed a tag first.
+   *
+   * What it holds is what the document REACHES, the entry not included. A file compiled on
+   * its own is not a document: nothing runs a `define` for it alone, and the page that
+   * composes it reaches it through the graph like everything else — which is where the two
+   * files meet and where the diagnostic belongs.
+   */
+  readonly definedBy: Map<string, string>;
+  readonly diagnostics: Diagnostic[];
+}
+
+function newWalk(io: ResolveIo): Walk {
+  return { io, components: new Map(), byPath: new Map(), definedBy: new Map(), diagnostics: [] };
+}
+
+/**
+ * The `href` of each link that has one, with the span to report about it.
+ *
+ * One place where a link without an `href` is dropped, used by both loops of the walk: the
+ * entry's links and every dependency's are the same question asked twice.
+ */
+function targetsOf(links: readonly ElementNode[]): readonly { href: string; at: Span }[] {
+  const out: { href: string; at: Span }[] = [];
+  for (const link of links) {
+    const href = linkHref(link);
+    if (href !== undefined) out.push({ href, at: link.span });
+  }
+  return out;
+}
+
 /** Walk the `<link rel="component">` graph from `links`, filling `components` by tag. */
-function visitComponents(
-  links: readonly ElementNode[],
-  fromPath: string,
-  io: ResolveIo,
-  components: Map<string, ResolvedComponent>,
-  byPath: Map<string, string>,
-): void {
-  const visit = (path: string): void => {
-    const source = io.read(path);
+function visitComponents(links: readonly ElementNode[], fromPath: string, walk: Walk): void {
+  const visit = (path: string, at: Span): void => {
+    const source = walk.io.read(path);
     const doc = parse(source).value;
     if (doc.type !== 'component-document') return; // a linked file must be a component
     // BEFORE the shared-dependency guard: a file reached twice still declares the same tag,
     // and the second link needs the answer as much as the first.
-    byPath.set(path, doc.name);
-    if (components.has(doc.name)) return; // already resolved (shared dependency)
+    walk.byPath.set(path, doc.name);
+    // The same file reached twice is a shared dependency and is the common case; a DIFFERENT
+    // file under the same tag is `FUD0761`, anchored on the link that brought the second one
+    // in — the one line an author can act on. One per such link, and not one per tag: two
+    // links onto the same wrong file are two places to go and fix it.
+    const defined = walk.definedBy.get(doc.name);
+    if (defined !== undefined && defined !== path) {
+      walk.diagnostics.push(
+        errorDiag(
+          FUD_DUPLICATE_TAG,
+          `two files define the tag "${doc.name}": ${defined} and ${path}. customElements is one registry per document, so the second define() throws`,
+          at,
+        ),
+      );
+      return;
+    }
+    // A cycle (A links B, B links A) reaches the ENTRY through the graph, and then the entry
+    // belongs in `components` like anything else — `entryComponent` reads that to hand every
+    // reader one object per file. So the shared-dependency guard stays on `components`, which
+    // is what «already resolved» means, and `definedBy` answers only the question above.
+    if (walk.components.has(doc.name)) return;
+    walk.definedBy.set(doc.name, path);
     const deps = doc.links.map(linkHref).filter((h): h is string => h !== undefined);
-    components.set(doc.name, { tag: doc.name, path, source, doc, deps });
-    for (const href of deps) visit(io.resolve(path, href));
+    walk.components.set(doc.name, { tag: doc.name, path, source, doc, deps });
+    for (const dep of targetsOf(doc.links)) visit(walk.io.resolve(path, dep.href), dep.at);
   };
-  for (const href of links.map(linkHref)) {
-    if (href !== undefined) visit(io.resolve(fromPath, href));
+  for (const target of targetsOf(links)) {
+    visit(walk.io.resolve(fromPath, target.href), target.at);
   }
 }
 
@@ -255,7 +331,8 @@ export function resolveDocument(entryPath: string, io: ResolveIo): ParseResult<D
   // diagnostics surface against its own source instead of being reported on this one.
   const diagnostics: Diagnostic[] = [...parsedEntry.diagnostics];
   const entry = parsedEntry.value;
-  const components = new Map<string, ResolvedComponent>();
+  const walk = newWalk(io);
+  const components = walk.components;
   const layouts: ResolvedLayout[] = [];
 
   // ONE step, not a walk. A route names a layout and a layout names none (`FUD0439`), so
@@ -283,16 +360,18 @@ export function resolveDocument(entryPath: string, io: ResolveIo): ParseResult<D
   // Components are collected OUTERMOST LAYOUT FIRST and the entry last, so the order of
   // the emitted `<style type="module">` block matches the head cascade of decision 88 —
   // and therefore matches the equivalent monolithic page.
-  const byPath = new Map<string, string>();
   for (const layout of [...layouts].reverse()) {
-    visitComponents(layout.doc.links, layout.path, io, components, byPath);
+    visitComponents(layout.doc.links, layout.path, walk);
   }
-  visitComponents(entry.links, entryPath, io, components, byPath);
+  visitComponents(entry.links, entryPath, walk);
+  // What the walk had to say, after the layout's links and the entry's: a tag two files
+  // define (`FUD0761`) is a fact of the whole document, and a layout is part of it.
+  diagnostics.push(...walk.diagnostics);
 
   reportOrphanSections(entry, layouts, diagnostics);
 
   const entryDeps = entry.links.map(linkHref).filter((h): h is string => h !== undefined);
-  const entryLinkTags = linkTags(entry.links, entryPath, io, byPath);
+  const entryLinkTags = linkTags(entry.links, entryPath, io, walk.byPath);
   const graph: DocumentGraph = {
     entry,
     entryPath,

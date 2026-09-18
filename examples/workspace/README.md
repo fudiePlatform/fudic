@@ -1,15 +1,51 @@
 # `@fudic/example-workspace`
 
-Two fudic applications published on **one origin**.
+Two fudic applications published on **one origin**, and two libraries they share.
 
 ```
 apps/tienda   →  /         id "tienda"
 apps/admin    →  /admin/   id "tienda-admin"
+
+libs/guia     tokens, no components          ← libs/ui ← both apps
+libs/ui       ui-card, .fud source, no dist
 ```
 
 They are two projects, not two configurations of one: each has its own `package.json`,
-its own dependencies, its own `src/` and its own build. Nothing is shared between them
-except the host they end up on.
+its own dependencies, its own `src/` and its own build. What they share they share the
+way any project shares code — by depending on a package.
+
+## The libraries
+
+A fudic library publishes **`.fud` source**, not a build. There is no `vite.config.ts`
+and no `dist` in either of them: the contract of a component — its props, its slots,
+whether it hydrates — is derived from the AST, and two of those are properties of the
+consumer's whole graph, so there is nothing to precompile. `package.json` points `exports`
+and `files` at the sources, and whoever consumes them compiles them with their own
+compiler. That is why `libs/ui` declares the compiler it was written for as a
+`peerDependency`: a build that resolves a compiler outside that range gets a warning,
+because what a mismatch produces is a syntax error in a file you did not write.
+
+Both apps link the same component by package name:
+
+```html
+<link rel="component" href="@fudic/example-ui/ui-card.fud">
+```
+
+and it comes out **identical in both**. Its stylesheets are the chain of the package that
+defines it — `libs/guia` then `libs/ui`, and then its own — so it reads the guide's tokens
+wherever it is used:
+
+```
+ui-card        →  data-fud-adopt="_tokens _ui ui-card"
+tienda-card    →  data-fud-adopt="_tokens _ui _tienda tienda-card"
+admin-panel    →  data-fud-adopt="_tokens _ui _admin admin-panel"
+```
+
+The two apps set `--guia-accent` to different colours in their own guides, and the shared
+card is the same in both: an app's sheet is adopted into the shadow roots of the components
+**that app defines**, and `ui-card` is not one of them. An app cannot restyle a library by
+dropping a file in its own project — what a library offers for that is the custom
+properties it reads.
 
 ## Run it
 

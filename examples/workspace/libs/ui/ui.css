@@ -1,0 +1,10 @@
+/*
+ * What every component of this library looks like before it looks like anything: the base
+ * the components adjust. It reads the guide's tokens, which reach it because the guide is
+ * this package's dependency and its sheet is adopted first (SDD-43 §4.6).
+ */
+:host {
+  display: block;
+  color: var(--guia-ink);
+  font: inherit;
+}

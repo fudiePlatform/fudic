@@ -1,0 +1,5 @@
+{
+  "kind": "lib",
+  "prefix": "ui",
+  "styles": ["ui.css"]
+}

@@ -111,6 +111,30 @@ puede provocar hoy, con el `href` relativo que la spec dice que seguirá siendo 
 
 ---
 
+## Apéndice — qué más puede llevar una librería (medido al cerrar)
+
+La pregunta que sale en cuanto el primer componente funciona: *si una librería es un paquete de
+fuentes, ¿puede llevar también un layout, una hoja, un asset o un `.js`?* Se midió igual que el
+resto, con un build real, y la evidencia está en
+[`packages/vite/test/lib-extras-probe.test.ts`](../../packages/vite/test/lib-extras-probe.test.ts).
+**Las cuatro funcionan, y no hacía falta tocar nada.**
+
+| Lo que lleva | Veredicto |
+|---|---|
+| **Un layout** (`<link rel="layout" href="@acme/ui/_layout.fud">`) | **Funciona.** Se compone como el propio: su `<head>`, `@RenderHead()` con lo que aporta la ruta, `@RenderBody()`. El marcador `fudic:runtime` se honra, así que la app sigue registrando su worker — el layout dice **dónde**, y qué va ahí lo decide el build del consumidor |
+| **Una hoja enlazada** (`<link rel="stylesheet" href="./lib.css">` desde un `.fud` suyo) | **Funciona.** Se publica con hash y se le reescribe el `href`. Es el registro de nombres de [BUG-40](./bugs/BUG-40-una-hoja-que-no-se-puede-enlazar.md), que resuelve contra el fichero que la enlaza — y ese fichero está dentro de la librería |
+| **Un asset** (`<img src>` en su layout y `url(…)` en el CSS de su componente) | **Funciona, y se publica una vez** para las dos referencias. Contesta lo que §7 dejó abierto: resolver assets desde un paquete no hace falta implementarlo |
+| **Un `.js` propio** (`import { shout } from './format.js'` en su `@code`) | **Funciona.** Resuelve desde el directorio de la librería, corre en el render del servidor y viaja al bundle del consumidor como un chunk suyo — que es la ventaja de publicar fuente: la librería no arrastra bundle propio |
+
+Lo único que conviene saber, y **no es de las librerías**: el marcador `fudic:runtime` solo se
+honra dentro de `<head>`. Escrito en el `<body>` sale literal —`src="fudic:runtime"`— en una app
+exactamente igual que en una librería.
+
+Lo que una librería sigue **sin** poder llevar: rutas (no tiene `base` ni origen; `fudic g page`
+sobre una `lib` es `FUD0783`) y paso de build propio (§4.1).
+
+---
+
 ## La decisión, ya tomada
 
 Un paquete npm con scope se llama `@acme/ui`, y `@` es el carácter de transición de la

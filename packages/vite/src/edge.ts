@@ -28,7 +28,7 @@ import { runtimeUrls } from './constants.js';
 import { loadWithSourceMap } from './inputmaps.js';
 import { routeNameLookup, routeUsesDi } from './client.js';
 import { emitServerModule } from './server.js';
-import { transformFud, type ProjectStyles } from './transform.js';
+import { transformFud, NO_STYLES, type ProjectStyles } from './transform.js';
 import { safeName } from './link.js';
 import { EDGE_PREFIX } from './constants.js';
 import { serializeMap, type NestedArtifact, type NestedOutputOptions } from './nested.js';
@@ -65,7 +65,7 @@ export function edgePlugin(
   builds: readonly RouteBuild[],
   io: ResolveIo,
   base: string,
-  styles: ProjectStyles = [],
+  styles: ProjectStyles = NO_STYLES,
   assets?: LinkedAssets,
 ): Plugin {
   // Resolved once for the pass: the render module of a route publishes its name (SDD-39
@@ -144,7 +144,7 @@ export async function runEdgePass(
   io: ResolveIo,
   alias: unknown,
   nested: NestedOutputOptions,
-  styles: ProjectStyles = [],
+  styles: ProjectStyles = NO_STYLES,
   assets: LinkedAssets = new LinkedAssets(base),
 ): Promise<EdgeResult> {
   const routes = builds.filter((rb) => rb.decision.mode !== 'excluded');

@@ -60,7 +60,7 @@ import {
 } from './attrs.js';
 import { branchesOf } from './constructs.js';
 import { isControlNode, markerSite } from './marker.js';
-import { adoptListOf } from './project-styles.js';
+import { adoptListOf, type ProjectAdopt } from './project-styles.js';
 import { bodyContext, childrenContext, type RunContext } from './display.js';
 import { emitItems, type EmitItem, type TextRun } from './runs.js';
 import type { Prop } from './oxc-code.js';
@@ -269,14 +269,15 @@ export interface ClientScope {
    */
   readonly styled: ReadonlySet<string>;
   /**
-   * The project's sheet specifiers, joined, in front of the component's own (SDD-42 §4.1).
-   * The same string the server branch writes: a host that hydrates adopting a different
-   * list than it rendered with is a component that changes appearance on hydration.
+   * The project's sheet specifiers of ONE tag, joined, in front of the component's own
+   * (SDD-42 §4.1, by tag since SDD-43 §4.6). The same answer the server branch writes: a host
+   * that hydrates adopting a different list than it rendered with is a component that changes
+   * appearance on hydration.
    *
    * Required for the same reason `styled` is — it is a fact about the project, and the two
    * branches have to answer it identically.
    */
-  readonly projectAdopt: string;
+  readonly projectAdopt: ProjectAdopt;
 }
 
 /** One slot of a child's positional payload: the expression, and where it can move from. */

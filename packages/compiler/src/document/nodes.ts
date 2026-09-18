@@ -74,7 +74,7 @@ export interface RouteDocument extends Node {
   readonly type: 'route-document';
   /** The `<link rel="layout" href>` that makes this file a route (decision 81). */
   readonly layoutLink: ElementNode;
-  /** Its static `href`. Empty string when absent or interpolated (FUD0436 degradation). */
+  /** Its `href`, read verbatim (SDD-43 §4.3). Empty when absent (FUD0436 degradation). */
   readonly layoutHref: string;
   /** `<link rel="component">`, any number (decision 55). */
   readonly links: readonly ElementNode[];

@@ -1,0 +1,51 @@
+{
+  "name": "@fudic/resolve",
+  "version": "0.0.1",
+  "description": "Where an `href` written in a `.fud` points — one implementation of relative and package resolution, shared by the CLI, the Vite plugin and the language server.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Pedro Hurtado",
+  "homepage": "https://github.com/fudiePlatform/fudic/tree/main/packages/resolve#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fudiePlatform/fudic.git",
+    "directory": "packages/resolve"
+  },
+  "bugs": {
+    "url": "https://github.com/fudiePlatform/fudic/issues"
+  },
+  "keywords": [
+    "fudic",
+    "fudie",
+    "resolve",
+    "package"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@fudic/config": "workspace:*"
+  },
+  "devDependencies": {
+    "@fudic/tsconfig": "workspace:*"
+  }
+}

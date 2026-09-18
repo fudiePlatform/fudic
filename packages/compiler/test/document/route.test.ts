@@ -140,9 +140,17 @@ describe('route structure rules (decisions 81, 83)', () => {
     expect(structureCodes).toContain('FUD0421');
   });
 
-  it('reports an absent or interpolated href with FUD0436', () => {
+  it('reports an absent href with FUD0436', () => {
     expect(structure('<link rel="layout"><p>x</p>').structureCodes).toContain('FUD0436');
-    expect(structure('<link rel="layout" href="@data.l"><p>x</p>').structureCodes).toContain('FUD0436');
+  });
+
+  it('no longer has an interpolated href to report (SDD-43 §4.3)', () => {
+    // The href of a layout link is read verbatim now, so there is no such thing as an
+    // interpolated one: `@data.l` is a static href that names a file, and what the author
+    // hears is that the file is not there — from whoever resolves it, not from here.
+    expect(structure('<link rel="layout" href="@data.l"><p>x</p>').structureCodes).not.toContain(
+      'FUD0436',
+    );
   });
 
   it('reports a nested @section with FUD0421 and keeps it out of `sections`', () => {

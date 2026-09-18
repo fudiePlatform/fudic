@@ -52,7 +52,8 @@
     "@fudic/config": "workspace:*",
     "@fudic/conventions": "workspace:*",
     "@fudic/formatter": "workspace:*",
-    "@fudic/language-core": "workspace:*"
+    "@fudic/language-core": "workspace:*",
+    "@fudic/resolve": "workspace:*"
   },
   "devDependencies": {
     "@fudic/tsconfig": "workspace:*",

@@ -46,6 +46,7 @@ describe('scan', () => {
       sections: [],
       requiredProps: [],
       contract: { props: [], slots: [], events: [] },
+      external: false,
     });
     expect(index.get('/p/blog/[slug].fud')).toEqual({
       path: '/p/blog/[slug].fud',
@@ -55,6 +56,7 @@ describe('scan', () => {
       sections: [],
       requiredProps: [],
       contract: { props: [], slots: [], events: [] },
+      external: false,
     });
   });
 

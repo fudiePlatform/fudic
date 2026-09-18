@@ -13,7 +13,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { needsShell, nodeCommandRunner } from '../src/io.js';
+import { needsShell, nodeCommandRunner, nodeReadIo } from '../src/io.js';
 
 /** The message `fudic new` commits with: the spaces are the whole point. */
 const MESSAGE = 'chore: scaffold fudic app';
@@ -32,6 +32,19 @@ describe('needsShell', () => {
     // Everywhere else nobody needs one: the shims are a Windows arrangement.
     expect(needsShell('pnpm', 'linux')).toBe(false);
     expect(needsShell('git', 'darwin')).toBe(false);
+  });
+});
+
+describe('nodeReadIo.realPath', () => {
+  it('answers POSIX for a real directory, and answers itself for one that is not there', () => {
+    // A library reached through a symlink has two spellings, and the walk that finds the
+    // packages of a project compares them as strings — so one spelling, chosen here. A path
+    // that does not exist is an absence, not a failure: it answers what it was asked.
+    const dir = mkdtempSync(join(tmpdir(), 'fudic-real-'));
+    const real = nodeReadIo().realPath(dir);
+    expect(real).not.toContain('\\');
+    expect(real.toLowerCase()).toContain('fudic-real-');
+    expect(nodeReadIo().realPath('/nowhere/at/all')).toBe('/nowhere/at/all');
   });
 });
 

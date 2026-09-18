@@ -151,7 +151,7 @@ function buildRouteClientModule(
     signals: entryReactiveScope(half),
     moving: entryMoving(code),
     styled: styledTags(graph),
-    projectAdopt: projectAdoptOf(options.projectStyles),
+    projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
   };
   const delegation = planDelegation(source, roots, templateDelegationJs(code.template));
   emitDiagnostics.push(...delegation.diagnostics);

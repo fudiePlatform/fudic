@@ -11,7 +11,10 @@ import { baseName, dirName, relativeHref, resolveFrom, toPosix } from '../src/pa
 
 describe('toPosix', () => {
   it.each([
-    ['C:\\p\\blog\\[slug].fud', 'C:/p/blog/[slug].fud'],
+    // The drive is lower-cased: every path the editor sends comes from a `file:` URI, which
+    // spells it that way, and the index keys by this (SDD-43 §4.4).
+    ['C:\\p\\blog\\[slug].fud', 'c:/p/blog/[slug].fud'],
+    ['c:/p/blog/[slug].fud', 'c:/p/blog/[slug].fud'],
     ['/p/blog/[slug].fud', '/p/blog/[slug].fud'],
     ['/p/blog/', '/p/blog'],
     ['/', '/'],
@@ -45,14 +48,14 @@ describe('resolveFrom', () => {
     ['/p/blog/[slug].fud', './sibling.fud', '/p/blog/sibling.fud'],
     ['/p/blog/[slug].fud', 'sibling.fud', '/p/blog/sibling.fud'],
     ['/p/blog/deep/x.fud', '../../a/./b.fud', '/p/a/b.fud'],
-    ['C:/p/blog/x.fud', '../c/y.fud', 'C:/p/c/y.fud'],
+    ['C:/p/blog/x.fud', '../c/y.fud', 'c:/p/c/y.fud'],
   ])('from %s, %s → %s', (from, href, expected) => {
     expect(resolveFrom(from, href)).toBe(expected);
   });
 
   it('takes an absolute href as it is', () => {
     expect(resolveFrom('/p/blog/x.fud', '/other/y.fud')).toBe('/other/y.fud');
-    expect(resolveFrom('/p/blog/x.fud', 'C:/other/y.fud')).toBe('C:/other/y.fud');
+    expect(resolveFrom('/p/blog/x.fud', 'C:/other/y.fud')).toBe('c:/other/y.fud');
   });
 
   it('cannot be walked above its root', () => {

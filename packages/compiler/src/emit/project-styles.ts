@@ -69,11 +69,20 @@ export function renderProjectStyles(
 }
 
 /**
+ * The project sheets ONE component adopts, joined — asked by tag (SDD-43 §4.6).
+ *
+ * By tag and no longer once per document, because with libraries the answer differs between
+ * two components of the same page: a component adopts the guides of the chain of the package
+ * that DEFINES it, so `ui-card` from `libs/ui` wears the guide `libs/ui` consumes and never
+ * the consumer app's — an app cannot restyle a library by accident.
+ */
+export type ProjectAdopt = (tag: string) => string;
+
+/**
  * The adopted list of one component, as it goes into BOTH outputs.
  *
- * `projectAdopt` is the project's specifiers already joined; `own` is whether this
- * component carries a sheet of its own. The project's come FIRST — the cascade of §4.1 —
- * and the component's tag last.
+ * `own` is whether this component carries a sheet of its own. The project's come FIRST — the
+ * cascade of §4.1 — and the component's tag last.
  *
  * `''` means *adopts nothing*, and that is the condition BUG-31 §T4 used to express as
  * *has no CSS*. With no project guide the two are the same sentence, which is what keeps
@@ -83,12 +92,28 @@ export function renderProjectStyles(
  * expression is a component that hydrates with different stylesheets than it rendered
  * with, and nothing in a test would say so.
  */
-export function adoptListOf(projectAdopt: string, tag: string, own: boolean): string {
-  if (!own) return projectAdopt;
-  return projectAdopt === '' ? tag : `${projectAdopt} ${tag}`;
+export function adoptListOf(projectAdopt: ProjectAdopt, tag: string, own: boolean): string {
+  const project = projectAdopt(tag);
+  if (!own) return project;
+  return project === '' ? tag : `${project} ${tag}`;
 }
 
-/** The specifiers a project's sheets contribute, joined for the adopted list. */
-export function projectAdoptOf(styles: readonly ProjectStyle[] | undefined): string {
-  return (styles ?? []).map((s) => s.specifier).join(' ');
+/**
+ * What each component of this document adopts from the project side.
+ *
+ * With no `chains` every component adopts every sheet, which is SDD-42 exactly as it was and
+ * what keeps a single-project build byte for byte unchanged. With `chains` the host has
+ * worked out the chain of the package each component belongs to (§4.6), and a tag that is not
+ * in the map adopts nothing — the map is built from the same graph the emit walks, so a tag
+ * missing from it is a tag that is not in the document.
+ */
+export function projectAdoptOf(
+  styles: readonly ProjectStyle[] | undefined,
+  chains?: ReadonlyMap<string, readonly string[]>,
+): ProjectAdopt {
+  if (chains !== undefined) {
+    return (tag) => (chains.get(tag) ?? []).join(' ');
+  }
+  const all = (styles ?? []).map((s) => s.specifier).join(' ');
+  return () => all;
 }

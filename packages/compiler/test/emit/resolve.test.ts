@@ -27,9 +27,26 @@ describe('linkHref', () => {
     expect(linkHref(link!)).toBeUndefined();
   });
 
-  it('treats an interpolated href as empty (only static text contributes)', () => {
+  it('returns an href with an `@` in it whole (SDD-43 §4.3)', () => {
+    // The href of a component or layout link is read verbatim, so `@` is a character like
+    // any other. It used to open a construct, and `linkHref` then dropped the expression
+    // part in silence — which is why `@acme/ui/card.fud` arrived here as `/ui/card.fud`.
     const [link] = linksOf(page('<head><link rel="component" href="@x"></head><body></body>'));
-    expect(linkHref(link!)).toBe('');
+    expect(linkHref(link!)).toBe('@x');
+  });
+
+  it('returns a scoped package specifier exactly as written', () => {
+    const [link] = linksOf(
+      page('<head><link rel="component" href="@acme/ui/card.fud"></head><body></body>'),
+    );
+    expect(linkHref(link!)).toBe('@acme/ui/card.fud');
+  });
+
+  it('leaves `@@` alone too: verbatim is verbatim', () => {
+    // Nothing is un-escaped in an href any more, because nothing is escaped in one. A
+    // package literally called `@@acme` would be spelt `@@acme`, and the rule stays one rule.
+    const [link] = linksOf(page('<head><link rel="component" href="@@a.fud"></head><body></body>'));
+    expect(linkHref(link!)).toBe('@@a.fud');
   });
 });
 

@@ -38,7 +38,7 @@ import {
 } from './display.js';
 import { emitItems, type TextRun } from './runs.js';
 import { markerSite } from './marker.js';
-import { adoptListOf } from './project-styles.js';
+import { adoptListOf, type ProjectAdopt } from './project-styles.js';
 import { loopHead, type LoopNode } from './constructs.js';
 import { ERROR_SLOT_ATTR, SUMMARY_SLOT_ATTR, type ControlPlan } from './controls.js';
 
@@ -226,10 +226,13 @@ export interface MarkupOptions {
    *
    * Required, like the three sets above and for the same reason: it is a fact about the
    * PROJECT, so a caller that could forget it would emit a document whose components
-   * quietly adopt nothing. `''` is the honest value for a project with no guide, and it is
-   * what every emit that is not a project build passes.
+   * quietly adopt nothing. A function that answers `''` for everyone is the honest value for
+   * a project with no guide, and it is what every emit that is not a project build passes.
+   *
+   * By TAG since SDD-43 §4.6: two components of one page can belong to two packages, and
+   * each adopts the guides of its own chain.
    */
-  readonly projectAdopt: string;
+  readonly projectAdopt: ProjectAdopt;
 }
 
 export class MarkupEmitter {
@@ -245,7 +248,7 @@ export class MarkupEmitter {
   readonly #controls: ControlPlan;
   readonly #formAssociated: ReadonlySet<string>;
   readonly #styled: ReadonlySet<string>;
-  readonly #projectAdopt: string;
+  readonly #projectAdopt: ProjectAdopt;
   readonly #used = new Set<string>();
   #id = 0;
   /**

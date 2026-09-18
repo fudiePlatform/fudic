@@ -10,12 +10,16 @@
  * states of a project being edited, not failures.
  */
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, realpathSync } from 'node:fs';
+import { nodeResolveFs, resolveHrefPath } from '@fudic/resolve';
 import { toPosix } from './paths.js';
 import type { FileSystemScanner } from './types.js';
 
 /** Folders a `.fud` sweep must never walk into. */
 const SKIPPED = new Set(['node_modules', 'dist', '.git']);
+
+/** One resolver for the server's lifetime: `createRequire` caches what it learns. */
+const resolver = nodeResolveFs();
 
 /** The real filesystem, narrowed to what the workspace index needs. */
 export function nodeFileSystem(): FileSystemScanner {
@@ -56,6 +60,31 @@ export function nodeFileSystem(): FileSystemScanner {
         return readFileSync(path, 'utf8');
       } catch {
         return undefined;
+      }
+    },
+
+    /**
+     * The SAME resolver the build uses (`@fudic/resolve`), normalized to the one spelling
+     * the index keys by. Two resolvers would be two ideas of which file a tag is, and the
+     * editor and the build disagreeing about that is the defect SDD-43 §5 names.
+     */
+    resolveHref(fromFile: string, href: string): string {
+      return toPosix(resolveHrefPath(fromFile, href, resolver));
+    },
+
+    /**
+     * A path that cannot be resolved is its own real name: the file is simply not there.
+     *
+     * `realpathSync` and not `realpathSync.native`: the native one answers in the
+     * filesystem's canonical CASE, and on Windows that is a different string from the one
+     * the editor sent — which the index keys by. Same file, two keys, and every lookup
+     * between them misses.
+     */
+    realPath(path: string): string {
+      try {
+        return toPosix(realpathSync(path));
+      } catch {
+        return toPosix(path);
       }
     },
   };

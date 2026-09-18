@@ -35,6 +35,10 @@ function normalizeHref(href: string): string {
  *
  * Strict on purpose: `href="./a@(x).fud"` is not a href anybody can compare, and treating the
  * interpolation as empty text would make it match a file that has nothing to do with it.
+ *
+ * Its only caller asks for the `href` of a `<link rel="component">`, and since SDD-43 §4.3
+ * that value is read verbatim — one run of literal text, `@` included. So the strict arm no
+ * longer has a case to answer and stays for the type.
  */
 function staticAttribute(element: ElementNode, name: string): string | null {
   const attribute = element.attributes.find((candidate) => candidate.name === name);
@@ -42,6 +46,7 @@ function staticAttribute(element: ElementNode, name: string): string | null {
 
   let text = '';
   for (const part of attribute.value) {
+    /* v8 ignore next -- a component link's href is one text run since SDD-43 §4.3; the guard is for the type. */
     if (part.type !== 'attribute-text') return null;
     text += part.value;
   }

@@ -20,7 +20,7 @@ import { isLinkable } from './mode.js';
 import { emitRenderChunk } from './wrapper.js';
 import { runtimeUrls } from './constants.js';
 import { routeNameLookup, routeUsesDi } from './client.js';
-import { transformFud, type ProjectStyles } from './transform.js';
+import { transformFud, NO_STYLES, type ProjectStyles } from './transform.js';
 import { LINK_DIR, LINK_PREFIX } from './constants.js';
 import { loadWithSourceMap } from './inputmaps.js';
 import { serializeMap, type NestedOutputOptions } from './nested.js';
@@ -81,7 +81,7 @@ function linkPlugin(
   builds: readonly RouteBuild[],
   io: ResolveIo,
   base: string,
-  styles: ProjectStyles = [],
+  styles: ProjectStyles = NO_STYLES,
   assets?: LinkedAssets,
 ): Plugin {
   // The Service Worker renders the same pages the edge does, so it publishes the same route
@@ -179,7 +179,7 @@ export async function runLinkPass(
   builds: readonly RouteBuild[],
   io: ResolveIo,
   nested: NestedOutputOptions,
-  styles: ProjectStyles = [],
+  styles: ProjectStyles = NO_STYLES,
   assets: LinkedAssets = new LinkedAssets(base),
 ): Promise<LinkResult> {
   const linkable = builds.filter((rb) => isLinkable(rb.decision));

@@ -32,7 +32,7 @@ export function isFudUri(uri: URI): boolean {
  * A URI check that does not see through the suffix refuses to build that throwaway, and Volar
  * answers the format request with nothing at all.
  */
-const FORMATTING_TEMP_SUFFIX = '.tmp';
+export const FORMATTING_TEMP_SUFFIX = '.tmp';
 
 /** Whether a URI names a `.fud` — including the temporary copy Volar formats through. */
 export function isFudSourceUri(uri: URI): boolean {

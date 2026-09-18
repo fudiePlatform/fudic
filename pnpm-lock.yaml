@@ -75,6 +75,9 @@ importers:
       '@fudic/dom':
         specifier: workspace:*
         version: link:../../../../packages/dom
+      '@fudic/example-ui':
+        specifier: workspace:*
+        version: link:../../libs/ui
       '@fudic/ssr':
         specifier: workspace:*
         version: link:../../../../packages/ssr
@@ -97,6 +100,9 @@ importers:
       '@fudic/dom':
         specifier: workspace:*
         version: link:../../../../packages/dom
+      '@fudic/example-ui':
+        specifier: workspace:*
+        version: link:../../libs/ui
       '@fudic/ssr':
         specifier: workspace:*
         version: link:../../../../packages/ssr
@@ -110,6 +116,24 @@ importers:
       vite:
         specifier: 8.0.16
         version: 8.0.16(@types/node@22.20.0)
+
+  examples/workspace/libs/guia: {}
+
+  examples/workspace/libs/ui:
+    dependencies:
+      '@fudic/example-guia':
+        specifier: workspace:*
+        version: link:../guia
+    devDependencies:
+      '@fudic/compiler':
+        specifier: workspace:*
+        version: link:../../../../packages/compiler
+      '@fudic/core':
+        specifier: workspace:*
+        version: link:../../../../packages/core
+      '@fudic/dom':
+        specifier: workspace:*
+        version: link:../../../../packages/dom
 
   packages/cli:
     dependencies:
@@ -128,6 +152,9 @@ importers:
       '@fudic/language-core':
         specifier: workspace:*
         version: link:../language-core
+      '@fudic/resolve':
+        specifier: workspace:*
+        version: link:../resolve
     devDependencies:
       '@fudic/tsconfig':
         specifier: workspace:*
@@ -275,6 +302,9 @@ importers:
       '@fudic/language-core':
         specifier: workspace:*
         version: link:../language-core
+      '@fudic/resolve':
+        specifier: workspace:*
+        version: link:../resolve
       '@volar/language-core':
         specifier: 2.4.28
         version: 2.4.28
@@ -325,6 +355,16 @@ importers:
         specifier: 22.20.0
         version: 22.20.0
 
+  packages/resolve:
+    dependencies:
+      '@fudic/config':
+        specifier: workspace:*
+        version: link:../config
+    devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+
   packages/ssr:
     dependencies:
       '@fudic/di':
@@ -360,6 +400,9 @@ importers:
       '@fudic/conventions':
         specifier: workspace:*
         version: link:../conventions
+      '@fudic/resolve':
+        specifier: workspace:*
+        version: link:../resolve
       '@fudic/ssr':
         specifier: workspace:*
         version: link:../ssr

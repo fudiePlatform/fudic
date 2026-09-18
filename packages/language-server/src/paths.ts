@@ -7,10 +7,19 @@
  * instead of a filesystem question.
  */
 
-/** Same file, one spelling: forward slashes, no trailing one. */
+/**
+ * Same file, one spelling: forward slashes, no trailing one, and a lower-case drive.
+ *
+ * The drive matters since SDD-43. A library reached through the dependency graph is found
+ * as a link and indexed under its REAL name, which Windows hands back in the filesystem's
+ * own case (`C:/…`), while every path the editor sends comes from a `file:` URI, which
+ * lower-cases it (`c:/…`). Two strings, one file, and the index that keys by them answers
+ * that a library which is right there is not: `FUD0460` over a link that works.
+ */
 export function toPosix(path: string): string {
   const forward = path.replace(/\\/g, '/');
-  return forward.length > 1 && forward.endsWith('/') ? forward.slice(0, -1) : forward;
+  const cased = /^[A-Z]:\//u.test(forward) ? forward[0]!.toLowerCase() + forward.slice(1) : forward;
+  return cased.length > 1 && cased.endsWith('/') ? cased.slice(0, -1) : cased;
 }
 
 /** The root a path is anchored at: `'/'`, `'C:/'`, or `''` when it is relative. */

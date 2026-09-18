@@ -4,7 +4,15 @@
  * not by discipline. Tests inject in-memory implementations; the binary injects Node.
  */
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 
@@ -15,6 +23,15 @@ export interface ReadIo {
   /** Entry names of a directory; `[]` when it does not exist. */
   list(dir: string): readonly string[];
   isDirectory(path: string): boolean;
+  /**
+   * The same path with symlinks followed, POSIX-shaped (SDD-43 §4.4).
+   *
+   * A workspace library is installed as a LINK — `node_modules/@acme/ui` points at `libs/ui` —
+   * so the same package is reachable under two spellings, and a walk that counts both reads it
+   * twice. One spelling, chosen here. A path that is not there answers itself: asking for the
+   * real name of something that does not exist is not a failure, it is an absence.
+   */
+  realPath(path: string): string;
 }
 
 /** What `apply` may do. */
@@ -40,7 +57,13 @@ export function nodeReadIo(): ReadIo {
     read: (path) => readFileSync(path, 'utf8'),
     list: (dir) => (existsSync(dir) ? readdirSync(dir) : []),
     isDirectory: (path) => existsSync(path) && statSync(path).isDirectory(),
+    realPath: (path) => toPosix(existsSync(path) ? realpathSync(path) : path),
   };
+}
+
+/** `\` → `/`. Every path a package walk compares is POSIX, so two spellings never disagree. */
+function toPosix(path: string): string {
+  return path.replace(/\\/gu, '/');
 }
 
 export function nodeWriteIo(): WriteIo {

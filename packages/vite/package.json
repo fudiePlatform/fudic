@@ -47,6 +47,7 @@
     "@fudic/compiler": "workspace:*",
     "@fudic/config": "workspace:*",
     "@fudic/conventions": "workspace:*",
+    "@fudic/resolve": "workspace:*",
     "@fudic/ssr": "workspace:*",
     "@fudic/transport": "workspace:*"
   },

@@ -39,6 +39,11 @@ export class MemoryFs implements ReadIo, WriteIo {
     return [...names];
   }
 
+  /** No symlinks in a Map: a path is already its own real name. */
+  realPath(path: string): string {
+    return key(path);
+  }
+
   isDirectory(path: string): boolean {
     const prefix = `${key(path)}/`;
     for (const file of this.files.keys()) if (file.startsWith(prefix)) return true;

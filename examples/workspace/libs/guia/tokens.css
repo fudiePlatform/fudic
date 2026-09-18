@@ -1,0 +1,13 @@
+/*
+ * The tokens every component of this workspace adopts, wherever it is defined.
+ *
+ * It is adopted INTO shadow roots (SDD-42 §4.1), so the selector is `:host`: a rule about
+ * `body` would match nothing where this sheet goes, and the build says so (FUD0743).
+ */
+:host {
+  --guia-ink: #1c1c1e;
+  --guia-line: #dcdcdc;
+  --guia-accent: #0b5fff;
+  --guia-radius: 10px;
+  --guia-pad: 1rem 1.15rem;
+}

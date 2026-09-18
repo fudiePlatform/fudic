@@ -178,8 +178,12 @@ export function isLayoutLink(el: ElementNode): boolean {
 }
 
 /**
- * The static `href` of a layout link. An absent or interpolated `href` is FUD0436: the
- * layout chain is resolved at build time, so it cannot depend on runtime data.
+ * The `href` of a layout link. An absent or empty one is FUD0436: the layout chain is
+ * resolved at build time, so it cannot depend on runtime data.
+ *
+ * It used to say «absent or interpolated». Since SDD-43 §4.3 there is no interpolated href
+ * to catch — the parser reads this one verbatim — so what is left of the rule is the half
+ * that was always the common one: nothing there at all.
  */
 function layoutHrefOf(link: ElementNode, diagnostics: Diagnostic[]): string {
   const href = findAttr(link, 'href');

@@ -18,6 +18,10 @@ export default defineConfig({
         // every file a `.fud` links (BUG-40). Same rule, same floor, from their first commit.
         'src/styles.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/linked-assets.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // The libraries of SDD-43: what a `<link>` names before the graph is walked, and the
+        // compiler range a library declares. Same rule, same floor, from their first commit.
+        'src/link-check.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/peer-check.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
       },
     },
   },

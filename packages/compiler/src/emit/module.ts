@@ -70,6 +70,18 @@ export interface EmitOptions {
    */
   readonly projectStyles?: readonly ProjectStyle[];
   /**
+   * Which of those sheets each component adopts, keyed by tag (SDD-43 §4.6).
+   *
+   * A document can compose components from several packages, and a component adopts the
+   * guides of the chain of the package that DEFINES it — the consumer's own sheet does not
+   * reach a library's component, which is what stops an app restyling a library by accident.
+   * Only the host can answer it: the chain is a fact of `package.json` files on a disk.
+   *
+   * Absent and every component adopts every sheet of `projectStyles`, which is SDD-42 as it
+   * was and what keeps a single-project build unchanged.
+   */
+  readonly styleChains?: ReadonlyMap<string, readonly string[]>;
+  /**
    * Rewrite static, relative asset URLs (`src`/`poster`/`<link href>`, CSS `url(…)`) to
    * ES imports Vite resolves and hashes (SDD-19 §4.5). Off by default so the standalone
    * `.mjs` emit stays runnable under Node (which cannot import a `.png`).
@@ -281,7 +293,7 @@ function buildComponentModule(
     controls,
     formAssociated: formAssociatedTags(graph),
     styled: styledTags(graph),
-    projectAdopt: projectAdoptOf(options.projectStyles),
+    projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
   });
   // The host's own attributes FIRST, so `$host` is declared before anything below could read
   // it — and inside the markup body, which `appendWriter` puts after the props, the inert
@@ -495,7 +507,7 @@ function buildPageModule(
     ioc: hasDi ? '$root' : '$ioc',
     formAssociated: formAssociatedTags(graph),
     styled,
-    projectAdopt: projectAdoptOf(options.projectStyles),
+    projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
   });
   em.emitChildren(page.body.children, '$body');
 
