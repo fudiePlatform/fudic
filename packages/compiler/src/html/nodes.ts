@@ -149,7 +149,12 @@ export type RazorConstructType =
   | 'render-body'
   | 'render-head'
   | 'render-section'
-  | 'section';
+  | 'section'
+  // Snippet directives (SDD-29). Same contract; SDD-29 narrows them to its own node types.
+  // They are the only two with an expiry date: the expansion removes them from the tree
+  // before the semantic pass, so nothing downstream of it ever sees one.
+  | 'snippet'
+  | 'render';
 
 /**
  * A node produced by an injected @-construct parser. Its concrete shape is narrowed

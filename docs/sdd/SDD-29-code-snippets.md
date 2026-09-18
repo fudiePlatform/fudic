@@ -447,7 +447,7 @@ en el build y en el editor, sobre el árbol sin expandir. Una regla, un mensaje,
 | Código | Severidad | Qué dice |
 |---|---|---|
 | `FUD0820` | `error` | `@snippet` sin nombre, o con un nombre que no es `[a-zA-Z_][a-zA-Z0-9_]*` (§4.1: sin guiones). |
-| `FUD0821` | `error` | La firma de un `@snippet` no cierra su paréntesis. Lo que esté **dentro** y no sea una lista de parámetros válida lo dice Oxc, con su propio código y su span (criterio 8). |
+| `FUD0821` | `error` | Faltan los paréntesis de la firma de un `@snippet` o de los argumentos de un `@render`. Que no **cierren** lo dice el balanceador con `FUD0002`, y lo que esté **dentro** y no sea una lista de parámetros válida lo dice Oxc, con su propio código y su span (criterio 8). |
 | `FUD0822` | `error` | `<style>` dentro de un `@snippet`: un snippet no aporta CSS ni participa del cascade del `<head>`. |
 | `FUD0823` | `error` | `@code` dentro de un `@snippet`: un snippet no tiene estado propio ni entorno de ejecución. |
 | `FUD0824` | `error` | `@snippet` anidado dentro de otro: las declaraciones son top-level. |

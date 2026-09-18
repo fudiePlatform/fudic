@@ -112,6 +112,14 @@ const SERVER_ROLE: Record<HtmlContent['type'], ServerRole> = {
   // A `@section` is collected by SDD-21 through another door — the layout reads it by name
   // and calls it back where `@RenderSection` sits; painting it in place would render it twice.
   section: 'none',
+  // The two nodes of SDD-29 never reach a correct build: the expansion replaces every
+  // `@render` with the markup it names and drops every `@snippet` before the semantic pass
+  // runs (§4.8). What DOES reach here is a call the expansion refused — an unresolved name,
+  // a wrong arity, a cycle — which is left inert on purpose, with its diagnostic already
+  // reported. Painting it is not possible (there is no markup to paint) and erroring twice
+  // about it helps nobody.
+  snippet: 'none',
+  render: 'none',
   // The component's `<style>` body is the component's stylesheet (`module.ts`), and a `<script>`
   // body is opaque author text: neither is a node this walk fabricates.
   'style-content': 'none',

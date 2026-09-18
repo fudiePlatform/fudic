@@ -8,10 +8,8 @@
  * only reads the links off the AST and walks them.
  */
 
-import { parseDocument, type AtConstructParser, type ElementNode } from '../html/index.js';
-import { parseControl } from '../control/index.js';
-import { parseCodeBlock } from '../code/index.js';
-import { parseDirective } from '../layout/index.js';
+import { parseDocument, type ElementNode } from '../html/index.js';
+import { atConstructs as constructs } from '../constructs.js';
 import {
   structureDocument,
   type StructuredDocument,
@@ -21,8 +19,6 @@ import {
 } from '../document/index.js';
 import { type Diagnostic, type Span, errorDiag, warningDiag } from '../types/index.js';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
-
-const constructs: AtConstructParser = { parseControl, parseCodeBlock, parseDirective };
 
 /**
  * `FUD0422` — «a cycle in the layout chain» — is RETIRED with the chain itself (`FUD0439`).

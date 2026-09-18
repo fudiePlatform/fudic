@@ -8,11 +8,8 @@
  */
 
 import {
-  parseCodeBlock,
-  parseControl,
-  parseDirective,
+  atConstructs as constructs,
   parseDocument,
-  type AtConstructParser,
   type Diagnostic,
   type HtmlContent,
   type HtmlDocument,
@@ -26,8 +23,6 @@ import { resolveOptions } from './options.js';
 import { printRoot } from './print/content.js';
 import { smallestNodeAround } from './range.js';
 import type { FormatOptions, FormatResult } from './types.js';
-
-const constructs: AtConstructParser = { parseControl, parseCodeBlock, parseDirective };
 
 interface Parsed {
   readonly document: HtmlDocument;

@@ -95,6 +95,11 @@ const ROLE: Record<HtmlContent['type'], ContentRole> = {
   'render-head': 'node',
   'render-section': 'node',
   section: 'node',
+  // Expanded away before any of this runs (SDD-29 §4.8). One that survives is a call the
+  // expansion refused, and it is not text: coalescing it into a run would splice the source
+  // of a broken construct into the output as literal characters.
+  snippet: 'node',
+  render: 'node',
 };
 
 const isTextish = (node: HtmlContent): boolean => ROLE[node.type] !== 'node';

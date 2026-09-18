@@ -27,7 +27,8 @@ export type JsFragmentKind =
   | 'module-statements' // @code region (neutral/server/client): top-level, imports allowed
   | 'block-statements' //  @{ … } inline code: lexically scoped block
   | 'for-of-header' //     @foreach header: `const x of xs`
-  | 'for-header'; //       @for header: `let i = 0; i < n; i++`
+  | 'for-header' //        @for header: `let i = 0; i < n; i++`
+  | 'params'; //           @snippet signature: a TypeScript parameter list (SDD-29 §4.1)
 
 export type FragmentId = number;
 
@@ -73,6 +74,11 @@ const WRAPPERS: Readonly<Record<JsFragmentKind, { readonly prefix: string; reado
   'block-statements': { prefix: '{', suffix: '}' },
   'for-of-header': { prefix: 'for (', suffix: ') {}' },
   'for-header': { prefix: 'for (', suffix: ') {}' },
+  // A parameter list is only valid JS inside a function head, and a DECLARATION is the one
+  // wrapper that keeps every form a signature may take: optionals, defaults, destructuring,
+  // type annotations. The name is `$` -prefixed because SDD-15 §4.7 reserves that prefix, so
+  // it can never collide with a parameter the author wrote.
+  params: { prefix: 'function $fudSignature(', suffix: ') {}' },
 };
 
 /** A registered fragment in original-source coordinates. */
@@ -224,6 +230,10 @@ function extractRoot(
     case 'for-of-header':
     case 'for-header':
       // `for ( header ) {}` → the sole ForOfStatement / ForStatement.
+      return stmts[0] ?? [];
+    case 'params':
+      // `function $fudSignature( params ) {}` → the sole FunctionDeclaration, whose
+      // `.params` is the list SDD-29 reads.
       return stmts[0] ?? [];
   }
 }

@@ -8,18 +8,13 @@
  */
 
 import {
-  parseCodeBlock,
-  parseControl,
-  parseDirective,
+  atConstructs as constructs,
   parseDocument,
   structureDocument,
-  type AtConstructParser,
   type Diagnostic,
   type HtmlDocument,
   type StructuredDocument,
 } from '@fudic/compiler';
-
-const constructs: AtConstructParser = { parseControl, parseCodeBlock, parseDirective };
 
 /** A parsed document with everything the parse itself had to say about it. */
 export interface ParsedFud {
