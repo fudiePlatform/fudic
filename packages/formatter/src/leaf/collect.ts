@@ -19,7 +19,9 @@ import type {
   ForeachNode,
   HtmlContent,
   IfNode,
+  RenderCallNode,
   SectionNode,
+  SnippetDeclNode,
   StyleNode,
   SwitchNode,
   WhileNode,
@@ -38,6 +40,8 @@ const asWhile = (node: HtmlContent): WhileNode => node as unknown as WhileNode;
 const asSwitch = (node: HtmlContent): SwitchNode => node as unknown as SwitchNode;
 const asCode = (node: HtmlContent): CodeBlockNode => node as unknown as CodeBlockNode;
 const asSection = (node: HtmlContent): SectionNode => node as unknown as SectionNode;
+const asSnippet = (node: HtmlContent): SnippetDeclNode => node as unknown as SnippetDeclNode;
+const asRender = (node: HtmlContent): RenderCallNode => node as unknown as RenderCallNode;
 
 /** A fragment to hand over, located by span so the printer can ask for it by node. */
 interface Job {
@@ -184,6 +188,19 @@ function collectContent(nodes: readonly HtmlContent[], depth: number, jobs: Job[
         break;
       case 'section':
         collectContent(asSection(node).children, depth + 1, jobs);
+        break;
+      case 'snippet': {
+        const snippet = asSnippet(node);
+        // The signature is a TS parameter list, which is not a program: it travels under its
+        // own kind so the wrapper that makes it one lives with the other wrappers.
+        jobs.push(js('params', snippet.signature, depth));
+        collectContent(snippet.children, depth + 1, jobs);
+        break;
+      }
+      case 'render':
+        // An argument is an expression evaluated at the expansion point (decision 14); the
+        // name of a nominal one is not JS and is printed as written.
+        for (const arg of asRender(node).args) jobs.push(js('expression', arg.value, depth));
         break;
       default:
         // Text, comments, doctype, cdata, raw text, `@@`, the `Render*` markers and the

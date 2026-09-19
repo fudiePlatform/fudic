@@ -1,0 +1,31 @@
+<app-snippets>
+  <template shadowrootmode="open">
+    <style>
+      :host {
+        display: block;
+      }
+    </style>
+
+    @render card("Hello", variant: "wide")
+    @render card("Bare")
+
+    @foreach (const tag of ["a", "b"]) {
+      key (tag)
+      @render tagged(tag, upper: tag.toUpperCase())
+    }
+  </template>
+</app-snippets>
+
+@* The declarations sit after the markup on purpose: `@snippet` is position-free. *@
+@snippet card(title: string, variant: "wide" | "tight" = "tight") {
+  <article class="card @variant">
+    <h2>@title</h2>
+  </article>
+}
+
+@snippet tagged(tag: string, upper?: string) {
+  <span class="tag">@tag</span>
+  @if (upper !== undefined) {
+    <b>@upper</b>
+  }
+}

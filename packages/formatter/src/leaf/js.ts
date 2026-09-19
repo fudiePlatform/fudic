@@ -30,6 +30,8 @@ export type JsFragmentKind =
   | 'iteration'
   /** The discriminant of `@switch`. */
   | 'discriminant'
+  /** The parameter list of a `@snippet` (SDD-29 §4.1). */
+  | 'params'
   /** `@code`, `@server`, `@client`, `@{ … }` — already a list of statements. */
   | 'statements';
 
@@ -56,6 +58,9 @@ const WRAPPERS: Readonly<Record<JsFragmentKind, readonly [string, string]>> = {
   condition: ['if (', ') {}'],
   iteration: ['for (', ') {}'],
   discriminant: ['switch (', ') {}'],
+  // The same wrapper the compiler uses to hand a signature to Oxc (SDD-29, task 2): a
+  // parameter list is not a program, and a function is the only thing that holds one.
+  params: ['function __fud(', ') {}'],
   statements: ['', ''],
 };
 

@@ -6,18 +6,13 @@
  */
 
 import {
-  parseCodeBlock,
-  parseControl,
-  parseDirective,
+  atConstructs as constructs,
   parseDocument,
-  type AtConstructParser,
   type HtmlDocument,
 } from '@fudic/compiler';
 import { resolveOptions } from '../src/options.js';
 import type { LeafEngine, LeafRequest } from '../src/leaf/index.js';
 import type { ResolvedOptions } from '../src/types.js';
-
-const constructs: AtConstructParser = { parseControl, parseCodeBlock, parseDirective };
 
 /** The flat HTML tree of a `.fud` source: what the printer walks. */
 export function parse(source: string): HtmlDocument {
