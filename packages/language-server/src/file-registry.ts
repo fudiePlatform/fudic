@@ -9,7 +9,13 @@
  * the virtual file imports it verbatim so that TypeScript resolves what the editor shows.
  */
 
-import { linkHref, readSnippetLink, type Span, type StructuredDocument } from '@fudic/compiler';
+import {
+  linkHref,
+  readSnippetLink,
+  type ElementNode,
+  type Span,
+  type StructuredDocument,
+} from '@fudic/compiler';
 import type { FileRegistry, SnippetImport } from '@fudic/language-core';
 import type { WorkspaceIndex } from './workspace-index.js';
 import { layoutHrefOf } from './mode.js';
@@ -38,10 +44,10 @@ export function createFileRegistry(
   // travels as written, like a component's, so TypeScript resolves what the editor shows.
   const snippets: SnippetImport[] = [];
   for (const link of document.snippetLinks) {
-    const read = readSnippetLink(link);
-    if (read.href === '') continue;
-    const namespace = namespaceOf(link, read.namespace);
-    snippets.push({ href: read.href, ...(namespace === undefined ? {} : { namespace }) });
+    const href = readSnippetLink(link).href;
+    if (href === '') continue;
+    const namespace = namespaceOf(link);
+    snippets.push({ href, ...(namespace === undefined ? {} : { namespace }) });
   }
 
   return {
@@ -53,20 +59,29 @@ export function createFileRegistry(
 
 /**
  * The `as` of a link, with the span of the VALUE so hovering the namespace in a `@render`
- * has somewhere to land. Its own function because an attribute's value is a list of parts
- * and the span that matters is the run they cover, not the attribute's.
+ * has somewhere to land.
+ *
+ * It reads the name here rather than taking the one `readSnippetLink` already returned, and
+ * that is the point: taking both would be two sources for one fact, and the arithmetic that
+ * joined them had to guard against a name with no attribute and an attribute with no parts —
+ * two states the reader cannot produce, so two branches nothing could ever reach. Read once,
+ * and the name and its span are either both there or both absent, by construction.
+ *
+ * The rule is the compiler's, not a second one: an `as` whose value is not static is no
+ * namespace (a dynamic one names nothing at compile time), and neither is an empty one.
  */
-function namespaceOf(
-  link: { readonly attributes: readonly { name: unknown; value: readonly { span: Span }[] }[] },
-  name: string | undefined,
-): { readonly name: string; readonly span: Span } | undefined {
-  if (name === undefined) return undefined;
+function namespaceOf(link: ElementNode): { readonly name: string; readonly span: Span } | undefined {
   for (const attribute of link.attributes) {
     if (attribute.name !== 'as') continue;
-    const first = attribute.value[0];
-    const last = attribute.value[attribute.value.length - 1];
-    if (first === undefined || last === undefined) return undefined;
-    return { name, span: { start: first.span.start, end: last.span.end } };
+    const parts = attribute.value;
+    let name = '';
+    for (const part of parts) {
+      if (part.type !== 'attribute-text') return undefined;
+      name += part.value;
+    }
+    // `as` bare or `as=""`: the global scope, which is what no `as` at all means.
+    if (name === '') return undefined;
+    return { name, span: { start: parts[0]!.span.start, end: parts[parts.length - 1]!.span.end } };
   }
   return undefined;
 }

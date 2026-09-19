@@ -32,9 +32,6 @@ export interface SnippetAliases {
   aliasFor(namespace: string | undefined, name: string): string | undefined;
 }
 
-/** Nothing imported and nothing declared: every call projects bare. */
-export const NO_SNIPPETS: SnippetAliases = { aliasFor: () => undefined };
-
 /**
  * Project every declaration of a file as an exported function.
  *

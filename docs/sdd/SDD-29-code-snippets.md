@@ -1,6 +1,6 @@
 # SDD-29 — Snippets de markup reutilizables (`@snippet` / `@render`)
 
-> **Estado:** `Listo` · **Tareas:** [SDD-29-Task.md](./SDD-29-Task.md)
+> **Estado:** `Hecho` · **Tareas:** [SDD-29-Task.md](./SDD-29-Task.md)
 > **Depende de:** SDD-05 (parser HTML), SDD-06 (control de flujo), SDD-10 (estructura del documento), SDD-11 (Oxc), SDD-12 (semántica), SDD-23 (§4.11: los tipos de los argumentos), SDD-43 §4.3 (el `href` verbatim y el specifier de paquete)
 > **Rango de diagnósticos:** `FUD0820`–`FUD0849`
 > **Decisiones de gramática ancladas:** 6, 41, 45, 53, 55, 62

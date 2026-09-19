@@ -7,6 +7,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import type { SnippetImport } from '@fudic/language-core';
 import { createFileRegistry } from '../src/file-registry.js';
 import { parseFud } from '../src/parse.js';
 import { WorkspaceIndex } from '../src/workspace-index.js';
@@ -72,6 +73,61 @@ describe('component', () => {
     const registry = registryFor('/p/components/app-card.fud', component('app-card', ['./app-badge.fud']));
 
     expect(registry.component('app-badge')).toBe('./app-badge.fud');
+  });
+});
+
+describe('snippets (SDD-29 §4.3)', () => {
+  const UI = '@snippet card(title: string) { <b>@title</b> }\n';
+
+  /** A component that imports snippets, with `links` written verbatim. */
+  const importing = (links: string): string =>
+    `${links}\n<app-card>\n  <template shadowrootmode="open"><p>x</p></template>\n</app-card>\n`;
+
+  const snippetsOf = (links: string): readonly SnippetImport[] =>
+    registryFor('/p/components/app-card.fud', importing(links), {
+      '/p/components/ui.fud': UI,
+    }).snippets();
+
+  it('answers with the href as written, and no namespace without `as`', () => {
+    expect(snippetsOf('<link rel="snippet" href="./ui.fud">')).toEqual([{ href: './ui.fud' }]);
+  });
+
+  it('carries the namespace and the span of the `as` VALUE, not of the attribute', () => {
+    const source = importing('<link rel="snippet" href="./ui.fud" as="form">');
+    const [first, ...rest] = snippetsOf('<link rel="snippet" href="./ui.fud" as="form">');
+
+    expect(rest).toEqual([]);
+    expect(first!.namespace?.name).toBe('form');
+    // Asserted by the text under it: hovering `form` in a `@render form.card(…)` has to land
+    // on the four characters, never on `as="form"`.
+    const span = first!.namespace!.span;
+    expect(source.slice(span.start, span.end)).toBe('form');
+  });
+
+  it('keeps every import, in source order', () => {
+    const links =
+      '<link rel="snippet" href="./ui.fud">\n<link rel="snippet" href="./ui.fud" as="form">';
+    expect(snippetsOf(links).map((s) => s.namespace?.name)).toEqual([undefined, 'form']);
+  });
+
+  it('skips an import with no href: there is nothing to import', () => {
+    expect(snippetsOf('<link rel="snippet">')).toEqual([]);
+  });
+
+  it('treats an empty `as` as no namespace, which is what the compiler does', () => {
+    expect(snippetsOf('<link rel="snippet" href="./ui.fud" as="">')).toEqual([
+      { href: './ui.fud' },
+    ]);
+  });
+
+  it('treats a dynamic `as` as no namespace: it names nothing at compile time', () => {
+    expect(snippetsOf('<link rel="snippet" href="./ui.fud" as="@ns">')).toEqual([
+      { href: './ui.fud' },
+    ]);
+  });
+
+  it('is empty for a file that imports none', () => {
+    expect(snippetsOf('')).toEqual([]);
   });
 });
 

@@ -5,7 +5,7 @@
 > `@fudic/formatter` · `@fudic/vite` · `@fudic/cli` · `fudic-vscode`
 > **Rama:** `SDD-29-code-snippets`
 > **Rango de diagnósticos:** `FUD0820`–`FUD0849` (lo fija esta tanda; el SDD no reservaba ninguno)
-> **Progreso:** 15 / 16
+> **Progreso:** 16 / 16
 > **Bloqueado por:** nada. SDD-05, 06, 10, 11 y 12 están `Hecho`, y la resolución de
 > specifiers de paquete que hereda el `<link rel="snippet">` la trajo
 > [SDD-43](./SDD-43-librerias.md) §4.3 sin tocar `ResolveIo`.
@@ -116,15 +116,18 @@ las reglas de cuerpo, y el ámbito necesita la estructura.
 
 ---
 
-## Dónde está esto ahora — para quien lo recoja
+## Dónde acabó
 
-Fases 1 a 5 **cerradas y commiteadas**, cinco commits en la rama, con
-`pnpm typecheck`, `pnpm test` y `pnpm build` en verde después de cada una. `src/snippet/` y
-`src/expand/` están al **100 %** en las cuatro métricas.
+Las dieciséis tareas, cerradas y commiteadas. `pnpm typecheck`, `pnpm test` y `pnpm build` en
+verde; `src/snippet/` y `src/expand/` al **100 %** en las cuatro métricas.
 
-Lo que queda:
-
-- **Tarea 16 — cierre.** Los 35 criterios de §6 repasados uno a uno, cobertura, e `INDEX.md`.
+**Los 35 criterios de §6, dónde se comprueba cada uno.** Los tres que no tenían prueba al
+llegar a la tarea 16 la tienen ahora: el **15** —una signal como argumento— compara el módulo
+emitido por la llamada con el del mismo markup escrito a mano, **byte a byte**, que es la forma
+de zanjar que un snippet no cambia el nivel de nadie sin hablar de niveles; y el **33** y el
+**35** —ir a la definición cruzando ficheros y el hover con la firma— se preguntan al **servidor
+vivo** sobre un programa real, porque un diseño cuya tesis es «esto lo da TypeScript» se
+demuestra preguntándole a TypeScript y no leyendo la proyección.
 
 **Lo que destapó la evidencia (tarea 15), ya arreglado.** Dos defectos que ninguna suite de
 las fases 1–5 podía ver, porque las dos preguntan por un fichero de snippets **como entrada**,
@@ -159,4 +162,4 @@ Dos decisiones tomadas por el camino que conviene no deshacer sin leer el porqu�
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 15 | 11, 13, 14 | **La evidencia.** Un fixture canónico `.fud` con los cuatro casos —declaración local, importación sin `as`, importación con `as`, y un snippet que instancia un componente que el llamante no declara— y el ejemplo que lo construye de verdad: `pnpm build` en verde y el markup expandido en el HTML, indistinguible del escrito a mano. Verificado en Chrome real, como pide el repo para todo lo que se ve. Criterios 21, 22, 23 | `compiler` · `examples` | `packages/compiler/fixtures/*.fud` · `examples/` |
-| [ ] | 16 | todas | **Cobertura y cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde y los 35 criterios de §6 verdes, con el «rojo primero» de la tarea 1 visto fallar antes. Todo fichero nuevo al **100 %** en las cuatro métricas; ningún paquete tocado por debajo del suelo medido al empezar. SDD-29 a `Hecho` en [INDEX.md](./INDEX.md), tabla y registro de progreso, y el rango `FUD0820`–`FUD0849` anotado en el catálogo | — | [INDEX.md](./INDEX.md) |
+| [x] | 16 | todas | **Cobertura y cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde y los 35 criterios de §6 verdes, con el «rojo primero» de la tarea 1 visto fallar antes. Todo fichero nuevo al **100 %** en las cuatro métricas; ningún paquete tocado por debajo del suelo medido al empezar. SDD-29 a `Hecho` en [INDEX.md](./INDEX.md), tabla y registro de progreso, y el rango `FUD0820`–`FUD0849` anotado en el catálogo | — | [INDEX.md](./INDEX.md) |

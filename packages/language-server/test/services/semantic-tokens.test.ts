@@ -167,6 +167,29 @@ describe('semanticTokens over the other roles', () => {
     ]);
   });
 
+  it('marks @snippet and @render, and colours inside a declaration body (SDD-29)', () => {
+    const source =
+      `@snippet card(title: string) {\n  <b>@title</b>\n  @if (title) {\n    <i>x</i>\n  }\n}\n` +
+      `<app-z>\n  <template shadowrootmode="open"><p>@render card("Hola")</p></template>\n</app-z>\n`;
+    const tokens = tokensOf('/p/components/app-z.fud', source).filter(
+      ([type]) => type === 'fudDirective',
+    );
+
+    // A declaration's body is markup and is walked — the `@if` inside it colours like any
+    // other; a call is a leaf, because its arguments are JavaScript and TypeScript colours
+    // those over the projection.
+    expect(tokens.map(([, text]) => text)).toEqual(['snippet', 'if', 'render']);
+  });
+
+  it('marks the two in a file that is nothing but snippets', () => {
+    const source = `@snippet a() {\n  <p>@render b()</p>\n}\n@snippet b() {\n  <i>x</i>\n}\n`;
+    const tokens = tokensOf('/p/components/ui.fud', source).filter(
+      ([type]) => type === 'fudDirective',
+    );
+
+    expect(tokens.map(([, text]) => text)).toEqual(['snippet', 'render', 'snippet']);
+  });
+
   it('has nothing to say about a document with no constructs', () => {
     expect(tokensOf('/p/components/app-plain.fud', component('app-plain'))).toEqual([]);
   });

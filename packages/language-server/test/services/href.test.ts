@@ -20,6 +20,7 @@ const WORKSPACE: Record<string, string> = {
   '/p/layouts/_layout.fud': LAYOUT,
   '/p/layouts/_admin.fud': LAYOUT,
   '/p/about.fud': PAGE,
+  '/p/components/ui.fud': '@snippet card(title: string) { <b>@title</b> }\n',
 };
 
 function setup(path: string, source: string) {
@@ -66,6 +67,19 @@ describe('hrefCompletions', () => {
       '../layouts/_layout.fud',
     ]);
     expect(items.every((item) => item.role === 'layout')).toBe(true);
+  });
+
+  it('offers files of snippets for rel="snippet", and neither components nor layouts', () => {
+    // The third role a `rel` may point at (SDD-29 §4.3). A component here would be a
+    // `FUD0836` the moment it landed: the file declares no `@snippet`.
+    const { index, document, context } = contextAt(
+      SLUG,
+      `<link rel="snippet" href="|">\n<article>hi</article>\n`,
+    );
+    const items = hrefCompletions(document, index, context);
+
+    expect(items.map((item) => item.href)).toEqual(['../components/ui.fud']);
+    expect(items.every((item) => item.role === 'snippet')).toBe(true);
   });
 
   it('carries the tag a component defines, so the list can show what it declares', () => {
