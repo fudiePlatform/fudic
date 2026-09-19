@@ -77,6 +77,11 @@ function roots(doc: StructuredDocument): readonly HtmlContent[] {
       return [doc.head, doc.host].filter(isElement);
     case 'route-document':
       return [...(doc.head === undefined ? [] : [doc.head]), ...doc.markup, ...doc.sections];
+    case 'snippet-document':
+      // A file of snippets has no `<head>` and therefore no stylesheet of its own: a
+      // `<style>` inside a body is `FUD0822`. Its bodies are walked all the same, so the one
+      // the author is in the middle of deleting is still coloured while it is there.
+      return doc.snippets;
     default:
       return [doc.head, doc.body];
   }

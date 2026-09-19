@@ -17,7 +17,13 @@ import {
   type LayoutDocument,
   type RouteDocument,
 } from '../document/index.js';
-import { type Diagnostic, type Span, errorDiag, warningDiag } from '../types/index.js';
+import {
+  type Diagnostic,
+  type ResolveIo,
+  type Span,
+  errorDiag,
+  warningDiag,
+} from '../types/index.js';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 
 /**
@@ -47,13 +53,7 @@ const FUD_NOT_A_LAYOUT = 'FUD0435';
  */
 const FUD_DUPLICATE_TAG = 'FUD0761';
 
-/** Host filesystem, injected so the compiler never touches `node:fs`/`node:path`. */
-export interface ResolveIo {
-  /** Read a `.fud` file's text by absolute path. */
-  read(path: string): string;
-  /** Resolve an `href` written in `fromPath` to an absolute path. */
-  resolve(fromPath: string, href: string): string;
-}
+export type { ResolveIo } from '../types/index.js';
 
 /** A component reached through the link graph. */
 export interface ResolvedComponent {

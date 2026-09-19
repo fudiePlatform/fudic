@@ -93,6 +93,8 @@ export function componentLinkAnchor(source: string, doc: StructuredDocument): Li
 
   switch (doc.type) {
     case 'component-document':
+    // A snippet file's top level is a component's: the links go first, at column zero.
+    case 'snippet-document':
       return { offset: 0, indent: '' };
     case 'route-document':
       return { offset: doc.layoutLink.span.end, indent: lineIndent(source, doc.layoutLink.span.start) };

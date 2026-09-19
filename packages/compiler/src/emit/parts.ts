@@ -8,7 +8,7 @@
  */
 
 import type { ElementNode, HtmlContent } from '../html/index.js';
-import { isComponentLink, isLayoutLink } from '../document/index.js';
+import { isComponentLink, isLayoutLink, isSnippetLink } from '../document/index.js';
 import type { Span } from '../types/index.js';
 import type { ComponentGraph, ResolvedComponent, ResolvedLayout } from './resolve.js';
 import type { CodeWriter } from './writer.js';
@@ -126,8 +126,15 @@ export function writeNonceBinding(w: CodeWriter): void {
  */
 export const RUNTIME_MARKER = 'fudic:runtime';
 
-/** A `<link>` that names the component or layout graph: never output, in any role. */
-const isFrameworkLink = (el: ElementNode): boolean => isComponentLink(el) || isLayoutLink(el);
+/**
+ * A `<link>` that names the component, layout or snippet graph: never output, in any role.
+ *
+ * All three are consumed at compile time and none of them is a stylesheet, a preload or
+ * anything a browser would know what to do with. Left in the head they would also reach the
+ * asset linker, which would publish the `.fud` they name — source and all — into the page.
+ */
+const isFrameworkLink = (el: ElementNode): boolean =>
+  isComponentLink(el) || isLayoutLink(el) || isSnippetLink(el);
 
 /**
  * Whether this head element is that marker: a `<script>` whose `src` is literally

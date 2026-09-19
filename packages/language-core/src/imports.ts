@@ -169,19 +169,36 @@ function headContent(head: ElementNode | undefined): readonly HtmlContent[] {
   return head === undefined ? [] : head.children;
 }
 
+/**
+ * The `@snippet` declarations a file holds, which the projection needs like any other markup.
+ *
+ * A snippet body is markup of THIS file: the tags it instantiates are resolved against this
+ * file's links, and leaving it out would be a hole in the editor exactly where the author is
+ * typing — completion, hover and prop checking would stop at the opening brace. The
+ * declarations themselves are what the projection turns into functions (SDD-29 §4.11), so it
+ * takes the NODES and not their children.
+ */
+function snippetDecls(doc: StructuredDocument): readonly HtmlContent[] {
+  return doc.snippets;
+}
+
 /** The markup a structured document exposes to the template projection. */
 export function templateContent(doc: StructuredDocument): readonly HtmlContent[] {
   switch (doc.type) {
     case 'component-document':
-      return [...headContent(doc.head), ...(doc.template?.children ?? [])];
+      return [...headContent(doc.head), ...(doc.template?.children ?? []), ...snippetDecls(doc)];
     case 'route-document':
       // The structuring pass lifts `@section` blocks out of the markup into their own
       // field; the projection needs both, or a component used only inside a section would
       // never get its contract imported.
-      return [...headContent(doc.head), ...doc.markup, ...doc.sections];
+      return [...headContent(doc.head), ...doc.markup, ...doc.sections, ...snippetDecls(doc)];
+    case 'snippet-document':
+      // A file of snippets IS its declarations: no head, no body, no host.
+      return snippetDecls(doc);
     default:
       // Source order: a page writes its head before its body, and the projection reads the
-      // same way round.
+      // same way round. A shell declares its snippets in its `<head>`, so they are already
+      // in `headContent` and are not added twice.
       return [...headContent(doc.head), ...doc.body.children];
   }
 }

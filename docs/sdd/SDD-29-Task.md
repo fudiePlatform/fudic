@@ -5,7 +5,7 @@
 > `@fudic/formatter` · `@fudic/vite` · `@fudic/cli` · `fudic-vscode`
 > **Rama:** `SDD-29-code-snippets`
 > **Rango de diagnósticos:** `FUD0820`–`FUD0849` (lo fija esta tanda; el SDD no reservaba ninguno)
-> **Progreso:** 3 / 16
+> **Progreso:** 7 / 16
 > **Bloqueado por:** nada. SDD-05, 06, 10, 11 y 12 están `Hecho`, y la resolución de
 > specifiers de paquete que hereda el `<link rel="snippet">` la trajo
 > [SDD-43](./SDD-43-librerias.md) §4.3 sin tocar `ResolveIo`.
@@ -35,6 +35,13 @@ El orden manda en tres puntos: la 1 antes que todo (sin nodos no hay nada que co
 —la comprobación— antes que la expansión, porque expandir una llamada mal formada es expandir
 basura; y la 13 después de la 11, porque la proyección del consumidor importa de la del
 declarante.
+
+**Dónde vive cada cosa, ya construido.** El paquete se parte en dos módulos y no en uno, y la
+frontera es la I/O: `src/snippet/` es gramática pura —nodos, parser, firma, reglas de cuerpo—
+sin filesystem y sin conocer el documento; `src/expand/` es todo lo que necesita leer otros
+ficheros —enlaces, ámbito, comprobación, expansión—. `document/` importa la primera, y la
+segunda importa a las dos. Sin esa frontera hay ciclo: la estructura del documento necesita
+las reglas de cuerpo, y el ámbito necesita la estructura.
 
 ---
 
@@ -74,10 +81,10 @@ declarante.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 4 | 1 | **El quinto rol: `snippet-document`.** Un `.fud` sin doctype, sin `<link rel="layout">`, sin host wrapper y con al menos un `@snippet` es un documento de snippets, y no `FUD0156`. Lleva `links`, `snippets` y nada más. Los sitios que discriminan por `doc.type` lo contemplan —la exhaustividad de TS los enumera—: no se emite módulo por él (`@fudic/vite` devuelve vacío), no entra en el grafo de componentes, y el editor lo abre sin un error que no se puede curar. `@snippet` es top-level en **cualquier** rol y en **cualquier** posición: la decisión 53 no se extiende a él (§4.1). Criterio 32 | `compiler` · `vite` · `cli` | `src/document/nodes.ts` · `src/document/structure.ts` · `packages/vite/src/transform.ts` |
-| [ ] | 5 | 4 | **Lo que un cuerpo no puede llevar.** `FUD0822` `<style>`, `FUD0823` `@code`, `FUD0824` un `@snippet` anidado, `FUD0825` un `<head>`. Span en el nodo infractor, el cuerpo se conserva y el resto del fichero se sigue analizando. Criterios 28, 29, 30, 31 | `compiler` | `src/snippet/body-rules.ts` |
-| [ ] | 6 | 4 | **`<link rel="snippet">`.** Un `rel` más para el mismo resolutor: `href` verbatim (SDD-43 §4.3), relativo o specifier de paquete, `as` que significa **solo** namespace y nunca se infiere. Se consume: no aparece en el HTML de salida ni lo toca el `AssetLinker`. `FUD0836` cuando no resuelve o el fichero no declara ningún `@snippet`. Criterio 20 | `compiler` | `src/document/structure.ts` · `src/snippet/links.ts` |
-| [ ] | 7 | 6, 2 | **`SnippetScope`.** Los `@snippet` del propio fichero más los de cada `<link rel="snippet">`, transitivamente: `global` y `namespaced`. `FUD0834` cuando dos nombres colisionan en `global`, con span en el segundo `<link>` (o en la segunda declaración) y **span secundario** en el primero — `Diagnostic` gana `related`, que es lo que §4.4 pide y hoy no existe. Un namespace nunca colisiona. Un ciclo de importación entre ficheros de snippets se corta y no cuelga. Criterios 16, 17, 18, 19 | `compiler` | `src/snippet/scope.ts` · `src/types/diagnostic.ts` |
+| [x] | 4 | 1 | **El quinto rol: `snippet-document`.** Un `.fud` sin doctype, sin `<link rel="layout">`, sin host wrapper y con al menos un `@snippet` es un documento de snippets, y no `FUD0156`. Lleva `links`, `snippets` y nada más. Los sitios que discriminan por `doc.type` lo contemplan —la exhaustividad de TS los enumera—: no se emite módulo por él (`@fudic/vite` devuelve vacío), no entra en el grafo de componentes, y el editor lo abre sin un error que no se puede curar. `@snippet` es top-level en **cualquier** rol y en **cualquier** posición: la decisión 53 no se extiende a él (§4.1). Criterio 32 | `compiler` · `vite` · `cli` | `src/document/nodes.ts` · `src/document/structure.ts` · `packages/vite/src/transform.ts` |
+| [x] | 5 | 4 | **Lo que un cuerpo no puede llevar.** `FUD0822` `<style>`, `FUD0823` `@code`, `FUD0824` un `@snippet` anidado, `FUD0825` un `<head>`. Span en el nodo infractor, el cuerpo se conserva y el resto del fichero se sigue analizando. Criterios 28, 29, 30, 31 | `compiler` | `src/snippet/body-rules.ts` |
+| [x] | 6 | 4 | **`<link rel="snippet">`.** Un `rel` más para el mismo resolutor: `href` verbatim (SDD-43 §4.3), relativo o specifier de paquete, `as` que significa **solo** namespace y nunca se infiere. Se consume: no aparece en el HTML de salida ni lo toca el `AssetLinker`. `FUD0836` cuando no resuelve o el fichero no declara ningún `@snippet`. Criterio 20 | `compiler` | `src/document/structure.ts` · `src/snippet/links.ts` |
+| [x] | 7 | 6, 2 | **`SnippetScope`.** Los `@snippet` del propio fichero más los de cada `<link rel="snippet">`, transitivamente: `global` y `namespaced`. `FUD0834` cuando dos nombres colisionan en `global`, con span en el segundo `<link>` (o en la segunda declaración) y **span secundario** en el primero — `Diagnostic` gana `related`, que es lo que §4.4 pide y hoy no existe. Un namespace nunca colisiona. Un ciclo de importación entre ficheros de snippets se corta y no cuelga. Criterios 16, 17, 18, 19 | `compiler` | `src/snippet/scope.ts` · `src/types/diagnostic.ts` |
 
 ---
 

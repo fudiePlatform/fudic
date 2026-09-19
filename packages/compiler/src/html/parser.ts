@@ -538,13 +538,13 @@ class HtmlParser {
    * parses to a single text run already, and re-reading it would be a chance to behave
    * differently for no reason.
    *
-   * Only these two `rel`s. A `<link rel="preload" href="@data.hero">` is an expression on
-   * purpose and stays one — what makes these two different is that their target is a file
-   * this compiler has to open.
+   * Only the framework `rel`s — `component`, `layout` and, since SDD-29, `snippet`. A
+   * `<link rel="preload" href="@data.hero">` is an expression on purpose and stays one; what
+   * makes these three different is that their target is a file this compiler has to open.
    */
   #readLinkHrefLiterally(attributes: Attribute[]): void {
     const rel = staticAttributeValue(attributes, 'rel');
-    if (rel !== 'component' && rel !== 'layout') return;
+    if (rel !== 'component' && rel !== 'layout' && rel !== 'snippet') return;
 
     const index = attributes.findIndex((attribute) => attributeIs(attribute, 'href'));
     const attribute = attributes[index];

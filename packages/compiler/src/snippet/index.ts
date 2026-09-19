@@ -11,5 +11,6 @@ export type {
   NamedArg,
 } from './nodes.js';
 export { parseSnippet } from './parser.js';
+export { checkSnippetBodies } from './body-rules.js';
 export type { SnippetParam } from './signature.js';
 export { registerSignature, readParams } from './signature.js';

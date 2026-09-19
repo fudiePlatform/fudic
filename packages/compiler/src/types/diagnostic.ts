@@ -26,11 +26,42 @@ export interface Diagnostic {
   readonly message: string;
   /** Location in the source. Required. */
   readonly span: Span;
+  /**
+   * The OTHER places the problem is about (LSP `relatedInformation`).
+   *
+   * Some rules are about a pair and not about a point: two snippets that claim one name, a
+   * parameter given twice, a body that fails inside the file that declares it because of the
+   * call written in another. Putting the second location in the prose leaves the reader to
+   * find it by hand; putting it here makes it a link in the editor and a second line in the
+   * terminal.
+   */
+  readonly related?: readonly RelatedLocation[];
+}
+
+/** One secondary location of a diagnostic: where, in which file, and why it matters. */
+export interface RelatedLocation {
+  readonly span: Span;
+  readonly message: string;
+  /**
+   * Absolute path of the file `span` belongs to. ABSENT means the file the diagnostic itself
+   * is reported on — which is the common case and the one nobody should have to state.
+   */
+  readonly file?: string;
 }
 
 /** Construction helper with severity: 'error'. */
 export function errorDiag(code: string, message: string, span: Span): Diagnostic {
   return { severity: 'error', code, message, span };
+}
+
+/** The same, with the second location the rule is about (`related`). */
+export function relatedError(
+  code: string,
+  message: string,
+  span: Span,
+  related: readonly RelatedLocation[],
+): Diagnostic {
+  return { severity: 'error', code, message, span, related };
 }
 
 /** Construction helper with severity: 'warning'. */

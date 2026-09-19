@@ -70,15 +70,20 @@ export function documentRoots(document: StructuredDocument): readonly HtmlConten
   if (document.type === 'page-document' || document.type === 'layout-document') {
     return [document.html];
   }
-  const roots: HtmlContent[] = [...document.links];
+  // A `@snippet` body is markup of THIS file until the expansion moves it: the tags it uses
+  // are resolved against this file's links and its `@` constructs are analyzed here, which is
+  // also the only pass an editor gets — it never expands (SDD-29 §4.11). Last in the list, so
+  // the order every analyzer downstream already assumes does not move.
+  const roots: HtmlContent[] = [...document.links, ...document.snippetLinks];
+  if (document.type === 'snippet-document') return [...roots, ...document.snippets];
   if (document.head) roots.push(document.head);
   if (document.type === 'route-document') {
     // A route has no host wrapper: its markup IS the fragment, and its sections are
     // markup too — they render at the layout's `@RenderSection` points (SDD-21 §4.5).
-    return [...roots, ...document.markup, ...document.sections];
+    return [...roots, ...document.markup, ...document.sections, ...document.snippets];
   }
   if (document.host) roots.push(document.host);
-  return roots;
+  return [...roots, ...document.snippets];
 }
 
 /** The `@code` block of either document shape, if present. */
