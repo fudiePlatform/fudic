@@ -13,27 +13,26 @@
  */
 
 import {
-  parseCodeBlock,
-  parseControl,
-  parseDirective,
+  atConstructs as constructs,
   parseDocument,
-  type AtConstructParser,
   type Attribute,
   type CodeBlockNode,
   type ForeachNode,
   type HtmlContent,
   type IfNode,
+  type RenderCallNode,
   type SectionNode,
+  type SnippetDeclNode,
   type SwitchNode,
 } from '@fudic/compiler';
-
-const constructs: AtConstructParser = { parseControl, parseCodeBlock, parseDirective };
 
 const asIf = (node: HtmlContent): IfNode => node as unknown as IfNode;
 const asLoop = (node: HtmlContent): ForeachNode => node as unknown as ForeachNode;
 const asSwitch = (node: HtmlContent): SwitchNode => node as unknown as SwitchNode;
 const asCode = (node: HtmlContent): CodeBlockNode => node as unknown as CodeBlockNode;
 const asSection = (node: HtmlContent): SectionNode => node as unknown as SectionNode;
+const asSnippet = (node: HtmlContent): SnippetDeclNode => node as unknown as SnippetDeclNode;
+const asRender = (node: HtmlContent): RenderCallNode => node as unknown as RenderCallNode;
 
 function attributeSignature(attribute: Attribute, out: string[]): void {
   const name = typeof attribute.name === 'string' ? attribute.name : '(expr)';
@@ -101,6 +100,23 @@ function signatureOf(nodes: readonly HtmlContent[], out: string[]): void {
         out.push(`section:${asSection(node).name}`);
         signatureOf(asSection(node).children, out);
         break;
+      case 'snippet': {
+        const snippet = asSnippet(node);
+        // The signature is delegated JS and may come back requoted; its SHAPE is what must
+        // survive, so the count of parameters travels and their text does not.
+        out.push(`snippet:${snippet.name}`);
+        signatureOf(snippet.children, out);
+        break;
+      }
+      case 'render': {
+        const call = asRender(node);
+        const ns = call.namespace === undefined ? '' : `${call.namespace.name}.`;
+        // The kind and the ORDER of the arguments: a positional that turns nominal, or two
+        // that swap places, is a different call.
+        const args = call.args.map((a) => (a.type === 'named-arg' ? `:${a.name}` : '+'));
+        out.push(`render:${ns}${call.name}(${args.join(',')})`);
+        break;
+      }
       default:
         out.push(node.type);
         break;

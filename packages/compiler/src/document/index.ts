@@ -9,6 +9,8 @@ export type {
   ComponentDocument,
   RouteDocument,
   LayoutDocument,
+  SnippetDocument,
+  SnippetHost,
 } from './nodes.js';
-export { structureDocument, isComponentLink, isLayoutLink } from './structure.js';
+export { structureDocument, isComponentLink, isLayoutLink, isSnippetLink } from './structure.js';
 export { alreadyLinked, componentLinkAnchor, componentLinkTag, type LinkAnchor } from './anchor.js';

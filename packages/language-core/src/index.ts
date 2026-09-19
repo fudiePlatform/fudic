@@ -8,7 +8,13 @@
 
 export const VERSION = '0.0.1';
 
-export type { VirtualFile, Mapping, MappingCaps, FileRegistry } from './types.js';
+export type {
+  VirtualFile,
+  Mapping,
+  MappingCaps,
+  FileRegistry,
+  SnippetImport,
+} from './types.js';
 export {
   USER_CAPS,
   USER_ECHO_CAPS,

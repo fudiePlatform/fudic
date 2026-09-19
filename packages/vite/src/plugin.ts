@@ -844,10 +844,16 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       for (const spec of result.missingAssets) {
         this.warn(`[${FUD_ASSET_NOT_FOUND}] asset "${spec}" not found (referenced by ${path})`);
       }
+      // The `.fud` this module's markup came from that Vite cannot see: a snippet file is
+      // not imported by the emitted code, it is expanded INTO it (SDD-29 §4.10), so without
+      // this an edit to it would rebuild nothing.
+      for (const file of result.watchFiles ?? []) this.addWatchFile(file);
       // Layout-chain diagnostics (SDD-21): a broken chain is an error, an unrendered
       // section a warning. Neither aborts the build — the other routes still compile.
+      // A diagnostic that names another file says so: a snippet's body is reported in the
+      // snippet's file, with the `@render` that pulled it in as the related location.
       for (const d of result.diagnostics) {
-        const message = `[${d.code}] ${d.message} (${path})`;
+        const message = `[${d.code}] ${d.message} (${d.file ?? path})`;
         if (d.severity === 'error') this.error(message);
         else this.warn(message);
       }

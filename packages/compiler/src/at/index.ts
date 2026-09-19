@@ -9,11 +9,13 @@ export type {
   RazorCommentNode,
   ControlKeyword,
   LayoutDirective,
+  SnippetDirective,
   TriggerResolution,
 } from './at.js';
 export {
   classifyKeyword,
   classifyDirective,
+  classifySnippet,
   resolveTrigger,
   scanImplicitExpression,
   expressionFromToken,

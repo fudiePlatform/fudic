@@ -39,7 +39,11 @@ export function styleClassNames(document: CachedDocument): readonly string[] {
 /** Every parsed `<style>` body the file reaches, in source order (§4.1). */
 function styleBodies(document: StructuredDocument): readonly StyleNode[] {
   const roots: ElementNode[] = [];
-  if (document.head !== undefined) roots.push(document.head);
+  // A file of snippets has no `<head>` and no stylesheet: it contributes no class names, and
+  // the empty list is what sends `completions()` to Emmet instead of silencing it.
+  if (document.type !== 'snippet-document' && document.head !== undefined) {
+    roots.push(document.head);
+  }
   if (document.type === 'component-document' && document.template !== undefined) {
     roots.push(document.template);
   }

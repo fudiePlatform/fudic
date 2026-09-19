@@ -14,7 +14,9 @@ import type {
   InlineCodeNode,
   RawExpressionNode,
   RazorExpression,
+  RenderCallNode,
   SectionNode,
+  SnippetDeclNode,
   SwitchNode,
   WhileNode,
   CodeBlockNode,
@@ -24,6 +26,7 @@ import { leafOf, sliceOf, type PrintContext } from './context.js';
 import { printElement } from './element.js';
 import { printCode, printInlineCode, printSection } from './code.js';
 import { printIf, printLoop, printSwitch, printWhile } from './control.js';
+import { printRender, printSnippet } from './snippet.js';
 
 // A construct is stored as the base `RazorConstruct`; recover the concrete node.
 const asIf = (node: HtmlContent): IfNode => node as unknown as IfNode;
@@ -32,6 +35,8 @@ const asWhile = (node: HtmlContent): WhileNode => node as unknown as WhileNode;
 const asSwitch = (node: HtmlContent): SwitchNode => node as unknown as SwitchNode;
 const asCode = (node: HtmlContent): CodeBlockNode => node as unknown as CodeBlockNode;
 const asSection = (node: HtmlContent): SectionNode => node as unknown as SectionNode;
+const asSnippet = (node: HtmlContent): SnippetDeclNode => node as unknown as SnippetDeclNode;
+const asRender = (node: HtmlContent): RenderCallNode => node as unknown as RenderCallNode;
 
 /** `@expr` or `@(expr)`, with the expression already formatted. */
 function printExpression(ctx: PrintContext, node: RazorExpression): Doc {
@@ -75,6 +80,10 @@ export function printNode(ctx: PrintContext, node: HtmlContent): Doc {
       return printCode(ctx, asCode(node));
     case 'section':
       return printSection(ctx, asSection(node));
+    case 'snippet':
+      return printSnippet(ctx, asSnippet(node));
+    case 'render':
+      return printRender(ctx, asRender(node));
     default:
       return sliceOf(ctx, node.span);
   }

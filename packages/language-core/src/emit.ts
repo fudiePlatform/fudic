@@ -12,6 +12,7 @@
 
 import {
   JsBatch,
+  collectTemplateJs,
   documentRoots,
   reactiveNames,
   walk,
@@ -190,6 +191,17 @@ function ownBatch(source: string, doc: StructuredDocument): EmitJs {
       );
     },
   });
+
+  // Every fragment a `@snippet` body holds (SDD-29 §4.11). A file of snippets declares the
+  // names its bodies read as `any` — they belong to whoever expands them — and knowing which
+  // names those are needs an AST for each fragment, headers and conditions included. Only the
+  // bodies, so a file with no declaration registers exactly what it registered before.
+  for (const snippet of doc.snippets) {
+    collectTemplateJs(snippet.children, (kind, at) => {
+      const key = spanKey(at);
+      if (at.end > at.start && !fragments.has(key)) fragments.set(key, batch.add(kind, at));
+    });
+  }
 
   const result = batch.parse().value;
   return {

@@ -11,11 +11,19 @@
  * into the module, and `return` and `break` cannot escape into it either.
  */
 
-import type { HtmlContent, OxcNode, Span, StructuredDocument, TextNode } from '@fudic/compiler';
-import { planDelegation, span, unwrapParens } from '@fudic/compiler';
+import type {
+  HtmlContent,
+  OxcNode,
+  RenderCallNode,
+  Span,
+  StructuredDocument,
+  TextNode,
+} from '@fudic/compiler';
+import { collectTemplateJs, planDelegation, span, unwrapParens } from '@fudic/compiler';
 import { partitionCode } from './code.js';
 import { emitDataDeclaration } from './data.js';
-import { emitImports, templateContent } from './imports.js';
+import { emitImports, emitSnippetImports, templateContent } from './imports.js';
+import { emitRenderCall, emitSnippets } from './template/snippets.js';
 import { clientFileName } from './paths.js';
 import { emitPropsProjection, type PropsCall } from './props.js';
 import { emitElementBindings, emitHostBindings } from './template/attrs.js';
@@ -52,6 +60,7 @@ export function emitClientVirtual(
   const content = templateContent(doc);
 
   const aliases = emitImports(w, content, registry);
+  const snippets = emitSnippetImports(w, doc, registry);
   emitDataDeclaration(w, doc, fudPath);
 
   emitNeutralZone(w, source, doc, props);
@@ -82,12 +91,17 @@ export function emitClientVirtual(
       source,
       w,
       aliases,
+      snippets,
       reactives: template.reactives ?? new Set(),
       ast: template.ast,
       delegation,
     },
     undefined,
   );
+
+  // The declarations BEFORE `$tpl`, at the top level: a consumer imports them, and a function
+  // nested inside another is not exportable (SDD-29 §4.11).
+  emitSnippets(ctx, doc);
 
   w.scaffold('function $tpl(): void {\n');
   // The component's own host wrapper, which `templateContent` leaves out because the walk
@@ -179,6 +193,13 @@ function emitContent(ctx: TemplateContext, content: readonly HtmlContent[]): voi
       case 'switch':
         emitControl(ctx, node as ControlLike);
         break;
+      case 'render':
+        emitRenderCall(ctx, node as unknown as RenderCallNode);
+        break;
+      // A `@snippet` is projected at the TOP level of the file, by `emitSnippets`, so the
+      // walk steps over it here: projecting it twice would declare one function twice.
+      case 'snippet':
+        break;
       default:
         break;
     }
@@ -224,11 +245,24 @@ export interface TemplateJs {
  * its host — which is what makes a `slot=` written three constructs deep still check against
  * the component it will actually be placed in.
  */
-function hostContext(base: Omit<TemplateContext, 'host' | 'emit'>, host: string | undefined): TemplateContext {
+function hostContext(
+  base: Omit<TemplateContext, 'host' | 'emit' | 'fragmentsOf'>,
+  host: string | undefined,
+): TemplateContext {
   const ctx: TemplateContext = {
     ...base,
     host,
     emit: (nodes) => emitContent(ctx, nodes),
+    fragmentsOf: (nodes) => {
+      const out: FragmentAst[] = [];
+      // The one walk that says which JS a run of markup holds — the same one the batch
+      // registered from, so every span it names has an AST waiting.
+      collectTemplateJs(nodes, (_kind: unknown, at: Span) => {
+        const ast = base.ast?.(at);
+        if (ast !== undefined) out.push(ast);
+      });
+      return out;
+    },
   };
   return ctx;
 }

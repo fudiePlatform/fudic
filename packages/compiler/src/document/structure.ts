@@ -12,7 +12,7 @@
  */
 
 import { type Span, span, emptySpan } from '../types/index.js';
-import { type Diagnostic, errorDiag, warningDiag } from '../types/index.js';
+import { type Diagnostic, errorDiag, relatedError, warningDiag } from '../types/index.js';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 import type {
   HtmlDocument,
@@ -29,12 +29,15 @@ import {
   type RenderDirectiveNode,
   type SectionNode,
 } from '../layout/index.js';
+import { checkSnippetBodies, type SnippetDeclNode } from '../snippet/index.js';
 import type {
   StructuredDocument,
   ComponentDocument,
   PageDocument,
   RouteDocument,
   LayoutDocument,
+  SnippetDocument,
+  SnippetHost,
 } from './nodes.js';
 
 /** Doctype other than `<!DOCTYPE html>` (decision 57). */
@@ -113,6 +116,14 @@ const FUD_NESTED_LAYOUT = 'FUD0439';
  * BESIDES that declaration (SDD-40 §4.1). The code is not reused.
  */
 
+// --- SDD-29 (snippets) -------------------------------------------------------------
+/** A `@snippet` written anywhere but the top level of its file (§4.1, §4.2). */
+const FUD_SNIPPET_NOT_TOP_LEVEL = 'FUD0824';
+/** `@code` in a file whose whole purpose is declaring snippets: it has no state (§4.2). */
+const FUD_SNIPPET_CODE = 'FUD0823';
+/** Two snippets of one scope under one name (§4.4) — here, the two written in one file. */
+const FUD_SNIPPET_COLLISION = 'FUD0834';
+
 const WHITESPACE_ONLY = /^\s*$/u;
 
 /** True for a node that carries no top-level structure (decision 56): blank text, comments. */
@@ -175,6 +186,96 @@ export function isLayoutLink(el: ElementNode): boolean {
   if (el.name !== 'link') return false;
   const rel = findAttr(el, 'rel');
   return rel !== undefined && staticValue(rel) === 'layout';
+}
+
+/** True if `el` is `<link>` with a static `rel="snippet"` (SDD-29 §4.3). */
+export function isSnippetLink(el: ElementNode): boolean {
+  if (el.name !== 'link') return false;
+  const rel = findAttr(el, 'rel');
+  return rel !== undefined && staticValue(rel) === 'snippet';
+}
+
+/** True for a `@snippet` declaration node (SDD-05 stores it as a bare `RazorConstruct`). */
+function isSnippetDecl(node: HtmlContent): node is SnippetDeclNode {
+  return node.type === 'snippet';
+}
+
+/**
+ * The `@snippet` declared among `nodes`, and everything else.
+ *
+ * A declaration is TRANSPARENT to the phase machine of every role, exactly as a comment is
+ * (decision 56): its position is free (§4.1), so letting it take a slot would turn writing it
+ * after the markup into an ordering error about a node that has no order.
+ */
+function partitionSnippets(nodes: readonly HtmlContent[]): {
+  snippets: readonly SnippetDeclNode[];
+  rest: readonly HtmlContent[];
+} {
+  const snippets: SnippetDeclNode[] = [];
+  const rest: HtmlContent[] = [];
+  for (const node of nodes) {
+    if (isSnippetDecl(node)) snippets.push(node);
+    else rest.push(node);
+  }
+  return { snippets, rest };
+}
+
+/**
+ * `FUD0824` over every `@snippet` below the top level of its file — inside an element,
+ * inside a control-flow body, inside another snippet.
+ *
+ * One rule covers the three cases §4.1 and §4.2 state separately, because they are one fact:
+ * a declaration is a top-level node. Nested, it declares nothing — the collection is a pass
+ * over the top level — and the markup it holds silently disappears.
+ */
+/**
+ * Two `@snippet` of one file under one name (§4.4), which is the half of that rule a single
+ * file can answer — the other half needs the imports and lives in the scope.
+ *
+ * Reported on the SECOND, with the first as the related location: the one that came first
+ * keeps the name, so the one the author has to rename is the one being pointed at.
+ */
+function rejectDuplicateSnippets(
+  snippets: readonly SnippetDeclNode[],
+  diagnostics: Diagnostic[],
+): void {
+  const seen = new Map<string, SnippetDeclNode>();
+  for (const snippet of snippets) {
+    if (snippet.name === '') continue; // already degraded (FUD0820)
+    const first = seen.get(snippet.name);
+    if (first !== undefined) {
+      diagnostics.push(
+        relatedError(
+          FUD_SNIPPET_COLLISION,
+          `this file declares two snippets called "${snippet.name}"`,
+          snippet.nameSpan,
+          [{ span: first.nameSpan, message: `"${snippet.name}" is already declared here` }],
+        ),
+      );
+      continue;
+    }
+    seen.set(snippet.name, snippet);
+  }
+}
+
+function rejectSnippetsOutside(
+  nodes: readonly HtmlContent[],
+  collected: ReadonlySet<SnippetDeclNode>,
+  diagnostics: Diagnostic[],
+): void {
+  for (const node of nodes) {
+    if (isSnippetDecl(node) && !collected.has(node)) {
+      diagnostics.push(
+        errorDiag(
+          FUD_SNIPPET_NOT_TOP_LEVEL,
+          '@snippet is a top-level node of the file: nested, it declares nothing',
+          node.span,
+        ),
+      );
+    }
+    const children = (node as { readonly children?: readonly HtmlContent[] }).children;
+    if (children !== undefined) rejectSnippetsOutside(children, collected, diagnostics);
+  }
 }
 
 /**
@@ -278,6 +379,18 @@ export function structureDocument(
   source: string,
   doc: HtmlDocument,
 ): ParseResult<StructuredDocument> {
+  const structured = byRole(source, doc);
+  // What a snippet body may not hold (SDD-29 §4.2) is the same question in all five roles,
+  // asked once here rather than in each of them — and asked of the `snippets` field, which is
+  // the one place every role has already collected them into.
+  const bodies: Diagnostic[] = [];
+  checkSnippetBodies(structured.value.snippets, bodies);
+  rejectDuplicateSnippets(structured.value.snippets, bodies);
+  if (bodies.length === 0) return structured;
+  return withDiagnostics(structured.value, [...structured.diagnostics, ...bodies]);
+}
+
+function byRole(source: string, doc: HtmlDocument): ParseResult<StructuredDocument> {
   // The role is decided here, not in the parser (SDD-21 §4.1): `doc.mode` stays the binary
   // doctype test of decision 51, and the `<link rel="layout">` splits each half in two.
   if (doc.mode === 'page') return structureShell(source, doc);
@@ -287,9 +400,15 @@ export function structureDocument(
 
 // --- Component mode (decisions 53–55, 62, 75–76) -----------------------------------
 
-/** The ordered phase a significant top-level node belongs to (decision 53). */
+/**
+ * The ordered phase a significant top-level node belongs to (decision 53).
+ *
+ * A `<link rel="snippet">` shares phase 1 with a component link: both are imports resolved at
+ * compile time, both are consumed and never emitted, and an author who writes them together
+ * is writing what reads right.
+ */
 function componentSlot(node: HtmlContent): 1 | 2 | 3 | 4 {
-  if (isElement(node) && isComponentLink(node)) return 1;
+  if (isElement(node) && (isComponentLink(node) || isSnippetLink(node))) return 1;
   if (isCodeBlock(node)) return 2;
   if (isElementNamed(node, 'head')) return 3;
   return 4;
@@ -298,14 +417,17 @@ function componentSlot(node: HtmlContent): 1 | 2 | 3 | 4 {
 function structureComponent(doc: HtmlDocument): ParseResult<StructuredDocument> {
   const diagnostics: Diagnostic[] = [];
   const links: ElementNode[] = [];
+  const snippetLinks: ElementNode[] = [];
   const rootNodes: HtmlContent[] = [];
   let code: CodeBlockNode | undefined;
   let head: ElementNode | undefined;
 
+  const { snippets, rest } = partitionSnippets(significant(doc.children));
+
   // Four-phase state machine in strict order (decisions 53, 75). A node arriving with a
   // slot below the highest seen is out of phase (FUD0155) but still placed (recovery).
   let maxSlot = 0;
-  for (const node of significant(doc.children)) {
+  for (const node of rest) {
     const slot = componentSlot(node);
     if (slot < maxSlot) {
       diagnostics.push(
@@ -316,7 +438,7 @@ function structureComponent(doc: HtmlDocument): ParseResult<StructuredDocument> 
     }
     switch (slot) {
       case 1:
-        links.push(node as ElementNode);
+        (isSnippetLink(node as ElementNode) ? snippetLinks : links).push(node as ElementNode);
         break;
       case 2:
         if (code !== undefined) {
@@ -343,6 +465,15 @@ function structureComponent(doc: HtmlDocument): ParseResult<StructuredDocument> 
   for (const top of significant(doc.children)) {
     if (isElement(top)) collectNestedFrameworkLinks(top.children, diagnostics);
   }
+  const collected = new Set(snippets);
+  rejectSnippetsOutside(doc.children, collected, diagnostics);
+
+  // The fifth role (SDD-29 §4.9). A file with no root element and at least one `@snippet` is
+  // not a component that forgot its host wrapper: it is a snippet file, and saying `FUD0156`
+  // at it would be an error born with the file that its author cannot act on.
+  if (snippets.length > 0 && rootNodes.filter(isElement).length === 0) {
+    return snippetDocument(doc, { links, snippets, snippetLinks, code }, diagnostics);
+  }
 
   const host = validateHost(rootNodes, doc.span, diagnostics);
   const template = host !== undefined ? validateTemplate(host, diagnostics) : undefined;
@@ -355,11 +486,52 @@ function structureComponent(doc: HtmlDocument): ParseResult<StructuredDocument> 
     type: 'component-document',
     span: doc.span,
     links,
+    snippets,
+    snippetLinks,
     name: host?.name ?? '',
     ...(code !== undefined ? { code } : {}),
     ...(head !== undefined ? { head } : {}),
     ...(host !== undefined ? { host } : {}),
     ...(template !== undefined ? { template } : {}),
+  };
+  return diagnostics.length === 0 ? ok(node) : withDiagnostics(node, diagnostics);
+}
+
+/** The pieces a file of snippets is made of, once the phase machine has sorted them. */
+interface SnippetParts extends SnippetHost {
+  readonly links: readonly ElementNode[];
+  readonly code: CodeBlockNode | undefined;
+}
+
+/**
+ * Assemble the fifth role (SDD-29 §4.9).
+ *
+ * A snippet file has no state: it declares no component, runs nothing of its own and its
+ * bodies cannot hold a `@code` (§4.2). A block written at its top level would therefore run
+ * nowhere, and silently dead code is what `FUD0823` is for. It is kept on the node all the
+ * same, so the editor still highlights and completes inside it while the author moves it.
+ */
+function snippetDocument(
+  doc: HtmlDocument,
+  parts: SnippetParts,
+  diagnostics: Diagnostic[],
+): ParseResult<StructuredDocument> {
+  if (parts.code !== undefined) {
+    diagnostics.push(
+      errorDiag(
+        FUD_SNIPPET_CODE,
+        'a file of snippets has no @code: a snippet has no state of its own and nothing here would run it',
+        parts.code.span,
+      ),
+    );
+  }
+  const node: SnippetDocument = {
+    type: 'snippet-document',
+    span: doc.span,
+    links: parts.links,
+    snippets: parts.snippets,
+    snippetLinks: parts.snippetLinks,
+    ...(parts.code !== undefined ? { code: parts.code } : {}),
   };
   return diagnostics.length === 0 ? ok(node) : withDiagnostics(node, diagnostics);
 }
@@ -434,7 +606,7 @@ function validateHeadStyles(head: ElementNode, diagnostics: Diagnostic[]): void 
 /** The ordered phase a significant top-level node of a route belongs to (decision 83). */
 function routeSlot(node: HtmlContent): 1 | 2 | 3 | 4 | 5 {
   if (isElement(node) && isLayoutLink(node)) return 1;
-  if (isElement(node) && isComponentLink(node)) return 2;
+  if (isElement(node) && (isComponentLink(node) || isSnippetLink(node))) return 2;
   if (isCodeBlock(node)) return 3;
   if (isElementNamed(node, 'head')) return 4;
   return 5;
@@ -448,13 +620,16 @@ function routeSlot(node: HtmlContent): 1 | 2 | 3 | 4 | 5 {
 function structureRoute(doc: HtmlDocument): ParseResult<StructuredDocument> {
   const diagnostics: Diagnostic[] = [];
   const links: ElementNode[] = [];
+  const snippetLinks: ElementNode[] = [];
   const rootNodes: HtmlContent[] = [];
   let layoutLink: ElementNode | undefined;
   let code: CodeBlockNode | undefined;
   let head: ElementNode | undefined;
 
+  const { snippets, rest } = partitionSnippets(significant(doc.children));
+
   let maxSlot = 0;
-  for (const node of significant(doc.children)) {
+  for (const node of rest) {
     const slot = routeSlot(node);
     if (slot < maxSlot) {
       diagnostics.push(
@@ -478,7 +653,7 @@ function structureRoute(doc: HtmlDocument): ParseResult<StructuredDocument> {
         }
         break;
       case 2:
-        links.push(node as ElementNode);
+        (isSnippetLink(node as ElementNode) ? snippetLinks : links).push(node as ElementNode);
         break;
       case 3:
         if (code !== undefined) {
@@ -505,6 +680,7 @@ function structureRoute(doc: HtmlDocument): ParseResult<StructuredDocument> {
   for (const top of significant(doc.children)) {
     if (isElement(top)) collectNestedFrameworkLinks(top.children, diagnostics);
   }
+  rejectSnippetsOutside(doc.children, new Set(snippets), diagnostics);
 
   // `structureDocument` only routes here when a layout link exists, so the non-optional
   // field is always filled; the placeholder keeps the type total without a cast.
@@ -527,6 +703,8 @@ function structureRoute(doc: HtmlDocument): ParseResult<StructuredDocument> {
     layoutLink: link,
     layoutHref: layoutLink === undefined ? '' : layoutHrefOf(layoutLink, diagnostics),
     links,
+    snippets,
+    snippetLinks,
     markup: rootNodes.filter((n) => !sections.has(n)),
     sections: found.sections,
     ...(code !== undefined ? { code } : {}),
@@ -547,10 +725,18 @@ function structureShell(source: string, doc: HtmlDocument): ParseResult<Structur
   // Links and @code are collected from <head> (decisions 59, 60); their order there is
   // not strict (61). Anywhere else in the tree they are out of place (FUD0152/FUD0153).
   const links: ElementNode[] = [];
+  const snippetLinks: ElementNode[] = [];
+  const snippets: SnippetDeclNode[] = [];
   let code: CodeBlockNode | undefined;
   let layoutLink: ElementNode | undefined;
   for (const child of head.children) {
-    if (isElement(child) && isComponentLink(child)) {
+    if (isSnippetDecl(child)) {
+      // A shell's top level is its `<head>`, the same place its links and its `@code` live
+      // (decisions 59, 60): a page declares its snippets where it declares everything else.
+      snippets.push(child);
+    } else if (isElement(child) && isSnippetLink(child)) {
+      snippetLinks.push(child);
+    } else if (isElement(child) && isComponentLink(child)) {
       links.push(child);
     } else if (isElement(child) && isLayoutLink(child)) {
       // A shell that declares a layout is a NESTED layout (decision 87).
@@ -570,6 +756,7 @@ function structureShell(source: string, doc: HtmlDocument): ParseResult<Structur
     }
   }
   collectOutOfPlace(doc.children, head, diagnostics);
+  rejectSnippetsOutside(doc.children, new Set(snippets), diagnostics);
 
   // Decision 82: a shell holding a `@RenderBody()` is a layout; without it, it is the
   // standalone page of decision 51 — unchanged, directives and all being out of place.
@@ -584,17 +771,24 @@ function structureShell(source: string, doc: HtmlDocument): ParseResult<Structur
       head,
       body,
       links,
+      snippets,
+      snippetLinks,
       ...(code !== undefined ? { code } : {}),
     };
     return diagnostics.length === 0 ? ok(page) : withDiagnostics(page, diagnostics);
   }
 
-  const layout = buildLayout(doc, { doctype, html, head, body, links, code, layoutLink }, found, diagnostics);
+  const layout = buildLayout(
+    doc,
+    { doctype, html, head, body, links, code, layoutLink, snippets, snippetLinks },
+    found,
+    diagnostics,
+  );
   return diagnostics.length === 0 ? ok(layout) : withDiagnostics(layout, diagnostics);
 }
 
 /** The pieces a shell contributes to a layout, before its directives are validated. */
-interface ShellParts {
+interface ShellParts extends SnippetHost {
   readonly doctype: DoctypeNode;
   readonly html: ElementNode;
   readonly head: ElementNode;
@@ -657,6 +851,8 @@ function buildLayout(
     head: parts.head,
     body: parts.body,
     links: parts.links,
+    snippets: parts.snippets,
+    snippetLinks: parts.snippetLinks,
     renderSections: found.renderSections,
     ...(parts.code !== undefined ? { code: parts.code } : {}),
     ...(parts.layoutLink !== undefined ? { layoutLink: parts.layoutLink } : {}),
@@ -731,11 +927,11 @@ function collectNestedFrameworkLinks(
 ): void {
   for (const node of nodes) {
     if (!isElement(node)) continue;
-    if (isComponentLink(node) || isLayoutLink(node)) {
+    if (isComponentLink(node) || isLayoutLink(node) || isSnippetLink(node)) {
       diagnostics.push(
         errorDiag(
           FUD_LINK_NOT_TOP_LEVEL,
-          'A <link rel="component"> or <link rel="layout"> is a top-level node of the file: nested it registers nothing',
+          'A <link rel="component">, <link rel="layout"> or <link rel="snippet"> is a top-level node of the file: nested it registers nothing',
           node.span,
         ),
       );

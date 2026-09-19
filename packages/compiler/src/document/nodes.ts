@@ -14,6 +14,22 @@ import type { Node } from '../types/index.js';
 import type { ElementNode, DoctypeNode, HtmlContent } from '../html/index.js';
 import type { CodeBlockNode } from '../code/index.js';
 import type { RenderDirectiveNode, RenderSectionNode, SectionNode } from '../layout/index.js';
+import type { SnippetDeclNode } from '../snippet/index.js';
+
+/**
+ * What every role of document carries about SDD-29, because every role may declare and
+ * import snippets — a component, a route, a page, a layout and a snippet file alike.
+ *
+ * Both lists are COLLECTED and not validated here: whether a name collides, whether the
+ * `href` resolves and whether a call is satisfiable are questions about several files, and
+ * this pass reads one.
+ */
+export interface SnippetHost {
+  /** The `@snippet` this file declares, in source order. Top-level only (SDD-29 §4.1). */
+  readonly snippets: readonly SnippetDeclNode[];
+  /** The `<link rel="snippet">` this file imports, in source order (SDD-29 §4.3). */
+  readonly snippetLinks: readonly ElementNode[];
+}
 
 /**
  * The top-level roles a `.fud` file can take. Two of them come from decision 51 (doctype ⇒
@@ -23,19 +39,25 @@ import type { RenderDirectiveNode, RenderSectionNode, SectionNode } from '../lay
  *   doctype, no `@RenderBody()` ⇒ PageDocument     (a standalone route, as before)
  *   no doctype + `rel="layout"` ⇒ RouteDocument    (a body fragment)
  *   no doctype, no layout link  ⇒ ComponentDocument
+ *
+ * SDD-29 adds the fifth: a file with no host wrapper and at least one `@snippet` is a
+ * SnippetDocument. Without it such a file is a component missing the wrapper that gives a
+ * component its identity (`FUD0156`) — an error born with the file and impossible to cure,
+ * for a file that is not trying to be a component at all.
  */
 export type StructuredDocument =
   | PageDocument
   | ComponentDocument
   | RouteDocument
-  | LayoutDocument;
+  | LayoutDocument
+  | SnippetDocument;
 
 /**
  * Component file: `<link rel="component">`* → `@code`? → `<head>`? → host wrapper
  * (decisions 53, 62, 75). The four phases are strictly ordered; a piece out of phase
  * is a diagnostic, not an exception — the fields are still filled best-effort.
  */
-export interface ComponentDocument extends Node {
+export interface ComponentDocument extends Node, SnippetHost {
   readonly type: 'component-document';
   /** All top-level `<link rel="component">`, in order. Any number (decision 55). */
   readonly links: readonly ElementNode[];
@@ -52,7 +74,7 @@ export interface ComponentDocument extends Node {
 }
 
 /** Page file: `<!DOCTYPE html>` + `<html><head>…</head><body>…</body></html>` (decisions 57, 58). */
-export interface PageDocument extends Node {
+export interface PageDocument extends Node, SnippetHost {
   readonly type: 'page-document';
   readonly doctype: DoctypeNode;
   readonly html: ElementNode;
@@ -70,7 +92,7 @@ export interface PageDocument extends Node {
  * point of the role — a leading `<link rel="layout">`, and markup with any number of roots
  * and no host wrapper.
  */
-export interface RouteDocument extends Node {
+export interface RouteDocument extends Node, SnippetHost {
   readonly type: 'route-document';
   /** The `<link rel="layout" href>` that makes this file a route (decision 81). */
   readonly layoutLink: ElementNode;
@@ -93,7 +115,7 @@ export interface RouteDocument extends Node {
  * renders a route into it. Identified by its FORM — doctype plus exactly one
  * `@RenderBody()` — never by its file name.
  */
-export interface LayoutDocument extends Node {
+export interface LayoutDocument extends Node, SnippetHost {
   readonly type: 'layout-document';
   readonly doctype: DoctypeNode;
   readonly html: ElementNode;
@@ -118,4 +140,26 @@ export interface LayoutDocument extends Node {
   readonly renderHead?: RenderDirectiveNode;
   /** Every `@RenderSection(name)`, in source order. */
   readonly renderSections: readonly RenderSectionNode[];
+}
+
+/**
+ * Snippet file (SDD-29 §4.9): `<link>`* → `@snippet`*, and no markup of its own.
+ *
+ * Identified by its FORM, like every other role: no doctype, no `<link rel="layout">`, no
+ * host wrapper, and at least one `@snippet`. It is not a component missing its wrapper — it
+ * declares no tag, defines no custom element and emits no module. Whoever imports it
+ * compiles its bodies into their own file, and nothing else ever reads it.
+ */
+export interface SnippetDocument extends Node, SnippetHost {
+  readonly type: 'snippet-document';
+  /**
+   * `<link rel="component">` the file declares, any number.
+   *
+   * They are its snippets' dependencies, and they travel to whoever invokes one (§4.5): a
+   * snippet that instantiates `<app-button>` carries the link that resolves it, so the caller
+   * declares nothing.
+   */
+  readonly links: readonly ElementNode[];
+  /** The single `@code`, if present — and it is `FUD0823`: a snippet file has no state. */
+  readonly code?: CodeBlockNode;
 }

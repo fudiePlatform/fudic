@@ -83,6 +83,18 @@ export type ControlKeyword = 'if' | 'else' | 'for' | 'foreach' | 'while' | 'swit
 export type LayoutDirective = 'RenderBody' | 'RenderHead' | 'RenderSection' | 'section';
 
 /**
+ * Snippet directives (SDD-29): the declaration and its invocation. A set of their own and
+ * not two more members of `LayoutDirective`, for the reason that set has an owner: a layout
+ * directive is parsed by SDD-21 and these two by SDD-29, and one keyword resolving into
+ * another module's parser is how a keyword ends up with two grammars.
+ *
+ * `@render` carries the keyword EXPLICITLY (decision 11 of SDD-29): `@card(…)` is
+ * indistinguishable from an implicit expression that calls a function, and the two produce
+ * different kinds of node — one interpolates a scalar, the other injects a tree of markup.
+ */
+export type SnippetDirective = 'snippet' | 'render';
+
+/**
  * What an `at-trigger` (`@` + identifier) resolves to.
  *  - 'control'    -> SDD-06 parses the construct body.
  *  - 'code-block' -> @code; SDD-08 parses it.
@@ -99,6 +111,11 @@ export type TriggerResolution =
   | { readonly kind: 'code-block'; readonly keywordSpan: Span }
   | { readonly kind: 'raw'; readonly expression: RazorExpression; readonly keywordSpan: Span }
   | { readonly kind: 'directive'; readonly directive: LayoutDirective; readonly keywordSpan: Span }
+  | {
+      readonly kind: 'snippet-directive';
+      readonly directive: SnippetDirective;
+      readonly keywordSpan: Span;
+    }
   | { readonly kind: 'implicit'; readonly expression: RazorExpression };
 
 /** The closed set of control keywords (decisions 9-17). */
@@ -118,6 +135,9 @@ const LAYOUT_DIRECTIVES: ReadonlySet<string> = new Set<LayoutDirective>([
   'RenderSection',
   'section',
 ]);
+
+/** The closed set of snippet directives (SDD-29 §4.1, §4.7). */
+const SNIPPET_DIRECTIVES: ReadonlySet<string> = new Set<SnippetDirective>(['snippet', 'render']);
 
 const IDENT_START = /[\p{ID_Start}$_]/u;
 const IDENT_PART = /[\p{ID_Continue}$]/u;
@@ -155,6 +175,15 @@ export function classifyKeyword(identifier: string): ControlKeyword | 'code' | n
  */
 export function classifyDirective(identifier: string): LayoutDirective | null {
   return LAYOUT_DIRECTIVES.has(identifier) ? (identifier as LayoutDirective) : null;
+}
+
+/**
+ * Classify the identifier that follows `@` as a snippet directive (SDD-29), or null. They are
+ * RESERVED: `@snippet` and `@render` never degrade to the implicit expressions `snippet` and
+ * `render`, so a malformed one is a diagnostic and not silence.
+ */
+export function classifySnippet(identifier: string): SnippetDirective | null {
+  return SNIPPET_DIRECTIVES.has(identifier) ? (identifier as SnippetDirective) : null;
 }
 
 /**
@@ -283,6 +312,10 @@ export function resolveTrigger(source: string, atOffset: number): ParseResult<Tr
   const directive = classifyDirective(identifier);
   if (directive !== null) return ok({ kind: 'directive', directive, keywordSpan });
 
+  // Snippet directives (SDD-29), resolved on the same footing and for the same reason.
+  const snippet = classifySnippet(identifier);
+  if (snippet !== null) return ok({ kind: 'snippet-directive', directive: snippet, keywordSpan });
+
   // `@raw( ... )` is the one non-control directive (decision 18, option A). The
   // `(` must be adjacent: `@raw (x)` is the implicit expression `raw`, since an
   // implicit expression never crosses whitespace (§4.3).
@@ -320,6 +353,7 @@ export function resolutionEnd(resolution: TriggerResolution): number {
     case 'control':
     case 'code-block':
     case 'directive':
+    case 'snippet-directive':
       return resolution.keywordSpan.end;
     case 'raw':
     case 'implicit':

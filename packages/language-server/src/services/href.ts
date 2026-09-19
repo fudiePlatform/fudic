@@ -37,7 +37,8 @@ export interface UnresolvedHref {
 
 /** The role a `rel` may point at. */
 function roleFor(rel: HrefContext['rel']): FudRole {
-  return rel === 'layout' ? 'layout' : 'component';
+  if (rel === 'layout') return 'layout';
+  return rel === 'snippet' ? 'snippet' : 'component';
 }
 
 /**

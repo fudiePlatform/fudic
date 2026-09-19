@@ -18,8 +18,8 @@ import {
   type StructuredDocument,
 } from '@fudic/compiler';
 
-/** The four roles the `href` completion filters by (§4.2). */
-export type FudRole = 'component' | 'page' | 'route' | 'layout';
+/** The roles the `href` completion filters by (§4.2), one per kind of file (SDD-29 §4.9). */
+export type FudRole = 'component' | 'page' | 'route' | 'layout' | 'snippet';
 
 /** The role of a parsed document. */
 export function roleOf(document: StructuredDocument): FudRole {
@@ -30,6 +30,8 @@ export function roleOf(document: StructuredDocument): FudRole {
       return 'page';
     case 'route-document':
       return 'route';
+    case 'snippet-document':
+      return 'snippet';
     default:
       return 'layout';
   }

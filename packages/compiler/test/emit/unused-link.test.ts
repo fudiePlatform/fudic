@@ -105,6 +105,47 @@ describe('what counts as a use', () => {
   });
 });
 
+describe('a snippet body uses it — the same false positive, one role further', () => {
+  /**
+   * A file of snippets is the shape where the body is the ONLY markup there is: it has no
+   * host wrapper and no page markup, so every tag it instantiates lives inside a `@snippet`.
+   * The walk stopped at the construct, so such a file was told each of its links was unused
+   * while its bodies were using all of them — a warning whose only fix is to delete the link
+   * the file needs (SDD-29, task 15).
+   */
+  const snippetFile = (body: string): ReturnType<typeof resolveComponents> =>
+    resolveComponents(
+      '/ui.fud',
+      memoryIo({
+        '/ui.fud': `${LINK}\n@snippet action(label: string) { ${body} }\n`,
+        '/app-badge.fud': BADGE,
+      }),
+    );
+
+  it('a tag used only inside a `@snippet` body is used', () => {
+    expect(codes(snippetFile('<app-badge>@label</app-badge>'))).not.toContain(FUD_UNUSED);
+  });
+
+  it('and when no body uses it, the warning still comes', () => {
+    expect(codes(snippetFile('<em>@label</em>'))).toContain(FUD_UNUSED);
+  });
+
+  it('holds for a snippet declared inside a component too', () => {
+    // Not only the fifth role: a component that declares a local snippet resolves the tags
+    // of its body against its own links, exactly as its template does.
+    const graph = resolveComponents(
+      '/app-host.fud',
+      memoryIo({
+        '/app-host.fud':
+          `${LINK}\n<app-host><template shadowrootmode="open"><p>@render row()</p></template></app-host>\n` +
+          '@snippet row() { <app-badge>x</app-badge> }\n',
+        '/app-badge.fud': BADGE,
+      }),
+    );
+    expect(codes(graph)).not.toContain(FUD_UNUSED);
+  });
+});
+
 describe('a route fills a section with it — the false positive T7 exists to avoid', () => {
   const LAYOUT =
     '<!DOCTYPE html><html><head>@RenderHead()</head>' +

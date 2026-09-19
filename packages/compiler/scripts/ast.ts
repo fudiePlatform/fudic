@@ -11,10 +11,11 @@
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { parseDocument, type AtConstructParser } from '../src/html/index.js';
-import { parseControl } from '../src/control/index.js';
-import { parseCodeBlock, type CodeBlockNode } from '../src/code/index.js';
+import { parseDocument } from '../src/html/index.js';
+import { atConstructs } from '../src/constructs.js';
+import type { CodeBlockNode } from '../src/code/index.js';
 import { structureDocument } from '../src/document/index.js';
+import { documentRoots } from '../src/semantic/index.js';
 import { classifyAttribute } from '../src/binding/index.js';
 import type { Span } from '../src/types/index.js';
 import type {
@@ -30,8 +31,6 @@ import type {
   SwitchNode,
 } from '../src/control/index.js';
 
-const constructs: AtConstructParser = { parseControl, parseCodeBlock };
-
 const arg = process.argv[2];
 if (arg === undefined) {
   console.error('usage: npx tsx scripts/ast.ts <file.fud>');
@@ -40,7 +39,7 @@ if (arg === undefined) {
 const path = resolve(process.cwd(), arg);
 const source = readFileSync(path, 'utf8');
 
-const parsed = parseDocument(source, { atConstructs: constructs });
+const parsed = parseDocument(source, { atConstructs });
 const structured = structureDocument(source, parsed.value);
 
 const RESET = '\x1b[0m';
@@ -111,20 +110,11 @@ if (doc.code) {
 
 // ── Markup tree ─────────────────────────────────────────────────────────────
 console.log(`\n${CYAN}markup tree${RESET}`);
-const roots: readonly HtmlContent[] = rootsOf(doc);
+const roots: readonly HtmlContent[] = documentRoots(doc);
 for (const node of roots) dumpNode(node, 1);
 console.log();
 
 // ── Dumpers ─────────────────────────────────────────────────────────────────
-/** The element-bearing roots of any of the four document roles. */
-function rootsOf(d: typeof doc): HtmlContent[] {
-  if (d.type === 'page-document' || d.type === 'layout-document') return [d.html];
-  const out: HtmlContent[] = [...d.links];
-  if (d.head) out.push(d.head);
-  if (d.type === 'route-document') return [...out, ...d.markup, ...d.sections];
-  if (d.host) out.push(d.host);
-  return out;
-}
 
 function dumpCode(code: CodeBlockNode, depth: number): void {
   for (const part of code.parts) {

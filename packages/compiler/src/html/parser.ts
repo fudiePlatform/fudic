@@ -18,6 +18,7 @@ import { Lexer, type Token } from '../lexer/index.js';
 import {
   type ControlKeyword,
   type LayoutDirective,
+  type SnippetDirective,
   expressionFromToken,
   resolveTrigger,
 } from '../at/index.js';
@@ -80,6 +81,15 @@ export interface AtConstructParser {
   parseDirective?(
     ctx: HtmlParseContext,
     directive: LayoutDirective,
+    keywordSpan: Span,
+  ): ParseResult<RazorConstruct>;
+  /**
+   * Snippet directives (SDD-29). OPTIONAL for the same reason the other two are, and
+   * omitted ⇒ an UnhandledConstructNode + FUD0055.
+   */
+  parseSnippet?(
+    ctx: HtmlParseContext,
+    directive: SnippetDirective,
     keywordSpan: Span,
   ): ParseResult<RazorConstruct>;
 }
@@ -528,13 +538,13 @@ class HtmlParser {
    * parses to a single text run already, and re-reading it would be a chance to behave
    * differently for no reason.
    *
-   * Only these two `rel`s. A `<link rel="preload" href="@data.hero">` is an expression on
-   * purpose and stays one — what makes these two different is that their target is a file
-   * this compiler has to open.
+   * Only the framework `rel`s — `component`, `layout` and, since SDD-29, `snippet`. A
+   * `<link rel="preload" href="@data.hero">` is an expression on purpose and stays one; what
+   * makes these three different is that their target is a file this compiler has to open.
    */
   #readLinkHrefLiterally(attributes: Attribute[]): void {
     const rel = staticAttributeValue(attributes, 'rel');
-    if (rel !== 'component' && rel !== 'layout') return;
+    if (rel !== 'component' && rel !== 'layout' && rel !== 'snippet') return;
 
     const index = attributes.findIndex((attribute) => attributeIs(attribute, 'href'));
     const attribute = attributes[index];
@@ -670,9 +680,10 @@ class HtmlParser {
         return resolution.expression;
       case 'control':
       case 'code-block':
-      case 'directive': {
-        // A control keyword or a layout directive cannot open a construct inside an
-        // attribute value: what the author wrote is literal text there.
+      case 'directive':
+      case 'snippet-directive': {
+        // A control keyword, a layout directive or a snippet directive cannot open a
+        // construct inside an attribute value: what the author wrote is literal text there.
         this.#lexer.seekTo(resolution.keywordSpan.end);
         const at = span(trigger.span.start, resolution.keywordSpan.end);
         return { type: 'attribute-text', span: at, value: this.#slice(at) };
@@ -801,6 +812,21 @@ class HtmlParser {
         }
         return this.#delegate(
           handler.parseDirective(
+            this.#context(namespace),
+            resolution.directive,
+            resolution.keywordSpan,
+          ),
+        );
+      }
+
+      case 'snippet-directive': {
+        this.#lexer.seekTo(resolution.keywordSpan.end);
+        const handler = this.#atConstructs;
+        if (handler?.parseSnippet === undefined) {
+          return this.#unhandled(at, resolution.keywordSpan, resolution.directive);
+        }
+        return this.#delegate(
+          handler.parseSnippet(
             this.#context(namespace),
             resolution.directive,
             resolution.keywordSpan,

@@ -21,6 +21,7 @@ import type {
 } from '../control/index.js';
 import { keyExpression } from '../control/index.js';
 import type { SectionNode } from '../layout/index.js';
+import type { RenderCallNode, SnippetDeclNode } from '../snippet/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { JsFragmentKind } from '../oxc/index.js';
 import type { Span } from '../types/index.js';
@@ -178,6 +179,19 @@ function collectNode(node: HtmlContent, visit: JsFragmentVisitor): void {
     }
     case 'section':
       collectTemplateJs((node as unknown as SectionNode).children, visit);
+      return;
+    case 'render':
+      // The arguments of a `@render` (SDD-29 §4.7). The expansion needs them parsed to know
+      // which of them mention a parameter of the body they are written in; the emit never
+      // sees one, because the expansion replaced it long before.
+      for (const arg of (node as unknown as RenderCallNode).args) visit('expression', arg.value);
+      return;
+    case 'snippet':
+      // A declaration's body is markup of this file until somebody expands it, and in the
+      // editor nobody ever does (SDD-29 §4.11): its expressions are projected and checked
+      // here, so they need an AST here. The build never reaches this case at all — the
+      // expansion removed every declaration before the emit read a line.
+      collectTemplateJs((node as unknown as SnippetDeclNode).children, visit);
       return;
     default:
       // Text, comments, doctype, cdata, raw text, `@@`, `@code`, the `Render*` markers and

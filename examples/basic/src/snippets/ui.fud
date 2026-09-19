@@ -1,0 +1,21 @@
+<!-- Un fichero de snippets: ni doctype, ni layout, ni host wrapper. No compila a ningún
+     módulo y no existe en runtime — es markup que se escribe una vez y se pega donde haga
+     falta al construir el árbol.
+
+     Declara los componentes que sus propios cuerpos instancian, y quien llame se los lleva
+     puestos sin declarar nada. `nota` está aquí para enseñar la otra mitad de esa regla:
+     quien no la invoque no se lleva `sin-css`. -->
+<link rel="component" href="../components/app-badge.fud">
+<link rel="component" href="../components/sin-css.fud">
+
+@snippet ficha(titulo: string, tono: "neutral" | "success" | "info" = "neutral") {
+  <article class="ficha">
+    <h3>@titulo</h3>
+    <app-badge .tone=@tono>@tono</app-badge>
+  </article>
+}
+
+@snippet nota(texto: string) {
+  <sin-css></sin-css>
+  <p>@texto</p>
+}

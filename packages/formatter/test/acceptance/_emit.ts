@@ -59,6 +59,9 @@ export function emitModule(path: string, source: string, read: (p: string) => st
       deps: graph.entryDeps,
     });
   }
+  // A file of snippets emits no module at all (SDD-29 §4.9) and never reaches this helper:
+  // it is not an entry a build compiles, it is markup another file expands.
+  if (entry.type === 'snippet-document') return '';
   return emitComponentModule(graph, {
     tag: entry.name,
     path,
