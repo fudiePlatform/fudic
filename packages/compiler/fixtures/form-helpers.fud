@@ -1,0 +1,17 @@
+<!--
+  The second file of snippets, and the reason `as` exists (§4.3): it declares `action`
+  too. Without a namespace the two would collide (FUD0834); with `as="form"` they do not,
+  and both are callable from the same document.
+
+  It declares no components: a snippet that drags nothing is the common case.
+-->
+@snippet action(label: string, kind: 'submit' | 'reset' = 'submit') {
+  <button class="form-action" type=@kind>@label</button>
+}
+
+@snippet field(name: string, label: string, required?: boolean) {
+  <label class="field">
+    <span>@label</span>
+    <input name=@name required=@required>
+  </label>
+}

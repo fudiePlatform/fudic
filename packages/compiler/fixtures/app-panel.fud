@@ -1,0 +1,60 @@
+<!--
+  The four cases of SDD-29 in one component (task 15):
+
+   1. a snippet declared locally (`row`),
+   2. a file imported with no `as` — its snippets come in by their own name (`action`),
+   3. a file imported with `as` — a namespace, and `form.action` no longer collides with
+      the `action` above (§4.4),
+   4. a snippet that instantiates a component this file never declares: `app-button`
+      comes from `ui-helpers.fud`, dragged in by the call (§4.5).
+
+  `app-button` is ALSO declared here, which is criterion 22: the caller and the snippet
+  naming the same component resolve to one dependency, not two.
+
+  Nothing below reaches the emit as a snippet. After the expansion this file is the same
+  tree as the markup written out by hand, and every phase after it sees only that.
+-->
+<link rel="component" href="./app-button.fud">
+<link rel="snippet" href="./ui-helpers.fud">
+<link rel="snippet" href="./form-helpers.fud" as="form">
+
+@code {
+  type Row = { id: string; label: string };
+
+  const { rows = [], title = 'Panel' } = props<{ rows?: Row[]; title?: string }>();
+}
+
+<head>
+  <style>
+    :host { display: block; }
+    .panel { display: grid; gap: 0.5rem; }
+    .row { display: flex; gap: 0.5rem; align-items: baseline; }
+  </style>
+</head>
+
+<app-panel>
+  <template shadowrootmode="open">
+    <section class="panel">
+      <h2>@title</h2>
+
+      @foreach (const r of rows) key (r.id) {
+        @render row(r.label, id: r.id)
+      }
+
+      @render action("Guardar")
+      @render action("Cancelar", variant: 'ghost')
+      @render form.action("Enviar")
+      @render form.field("email", "Correo", required: true)
+    </section>
+  </template>
+</app-panel>
+
+@* Position-free (§4.1): the declaration reads fine after the markup that calls it. *@
+@snippet row(label: string, id: string) {
+  <div class="row" data-id=@id>
+    <span>@label</span>
+    @if (label.length > 12) {
+      <small>largo</small>
+    }
+  </div>
+}

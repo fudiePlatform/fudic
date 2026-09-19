@@ -421,7 +421,8 @@ class Expander {
  * source and the document parsed from it.
  *
  * A file with neither is returned untouched — same text, same document object — so a project
- * that uses no snippets pays nothing, not even a re-parse.
+ * that uses no snippets pays nothing, not even a re-parse. So is a file of snippets, which is
+ * nobody's entry: see the guard below.
  */
 export function expandDocument(
   path: string,
@@ -437,7 +438,12 @@ export function expandDocument(
   // enter one: what a declaration renders is decided when somebody invokes it.
   const calls = rendersOf(documentRoots(document));
 
-  if (calls.length === 0 && document.snippets.length === 0) {
+  // A file of snippets is never expanded on its own (§4.9). It is not a document a build
+  // compiles — it emits no module, and its bodies are markup the CALLER inlines, where they
+  // are also checked. Rewriting it here would strip the very declarations that give the file
+  // its role and hand back a component with no host wrapper, which is what the role exists
+  // to avoid saying. The links are still resolved above, so a broken one still reports.
+  if (document.type === 'snippet-document' || (calls.length === 0 && document.snippets.length === 0)) {
     return {
       source,
       document,

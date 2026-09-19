@@ -1,0 +1,18 @@
+<!--
+  A file of snippets (SDD-29 §4.9): no doctype, no layout, no host wrapper, and at least
+  one `@snippet`. It emits no module of its own — it is markup somebody else expands.
+
+  It declares the components ITS OWN bodies instantiate, and the caller inherits them by
+  calling (§4.5). `tag` is here to prove the other half of that rule: a caller that never
+  calls it does not get `app-badge` in its bundle.
+-->
+<link rel="component" href="./app-button.fud">
+<link rel="component" href="./app-badge.fud">
+
+@snippet action(label: string, variant: 'primary' | 'ghost' = 'primary') {
+  <app-button .variant=@variant>@label</app-button>
+}
+
+@snippet tag(label: string) {
+  <app-badge .tone="success">@label</app-badge>
+}

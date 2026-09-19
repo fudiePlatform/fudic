@@ -1,0 +1,13 @@
+<!-- El segundo fichero de snippets, y la razón de que exista `as`: declara `ficha` igual
+     que `ui.fud`. Sin namespace los dos nombres chocarían; con `as="campos"` conviven y se
+     invocan los dos desde la misma página. -->
+@snippet ficha(nombre: string, etiqueta: string) {
+  <label class="campo">
+    <span>@etiqueta</span>
+    <input name=@nombre>
+  </label>
+}
+
+@snippet pie(texto: string) {
+  <small class="pie">@texto</small>
+}

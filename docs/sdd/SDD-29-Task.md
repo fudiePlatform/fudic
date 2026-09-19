@@ -5,7 +5,7 @@
 > `@fudic/formatter` · `@fudic/vite` · `@fudic/cli` · `fudic-vscode`
 > **Rama:** `SDD-29-code-snippets`
 > **Rango de diagnósticos:** `FUD0820`–`FUD0849` (lo fija esta tanda; el SDD no reservaba ninguno)
-> **Progreso:** 14 / 16
+> **Progreso:** 15 / 16
 > **Bloqueado por:** nada. SDD-05, 06, 10, 11 y 12 están `Hecho`, y la resolución de
 > specifiers de paquete que hereda el `<link rel="snippet">` la trajo
 > [SDD-43](./SDD-43-librerias.md) §4.3 sin tocar `ResolveIo`.
@@ -124,10 +124,24 @@ Fases 1 a 5 **cerradas y commiteadas**, cinco commits en la rama, con
 
 Lo que queda:
 
-- **Tarea 15 — la evidencia.** Sin empezar. El fixture canónico y el ejemplo que construye de
-  verdad, verificado en Chrome. El andamiaje está: `packages/vite/test/transform-snippets.test.ts`
-  ya compone un componente arrastrado extremo a extremo con ficheros reales.
 - **Tarea 16 — cierre.** Los 35 criterios de §6 repasados uno a uno, cobertura, e `INDEX.md`.
+
+**Lo que destapó la evidencia (tarea 15), ya arreglado.** Dos defectos que ninguna suite de
+las fases 1–5 podía ver, porque las dos preguntan por un fichero de snippets **como entrada**,
+y hasta aquí nadie se lo había dado a nadie:
+
+1. **Un fichero de snippets reventaba el plugin de Vite.** La expansión le quitaba las
+   declaraciones —que es lo que hace con cualquier documento—, y sin ellas el fichero dejaba
+   de ser del quinto rol: pasaba a ser un componente sin host wrapper, y el emisor moría
+   buscando un `<template>` que no existía. Ahora la expansión **no toca** un documento de
+   snippets (no es la entrada de nadie: sus cuerpos los inlinea quien llama, y allí se
+   comprueban) y el plugin emite un módulo vacío, que es lo que §4.9 dice.
+2. **`FUD0721` mentía en el único rol donde el cuerpo es todo el markup.** `documentRoots`
+   entregaba las declaraciones para que los tags de un cuerpo se resolvieran contra los
+   `<link>` de su fichero, pero el walker de SDD-12 no entraba en un `@snippet` — se paraba en
+   la construcción. Un fichero de snippets recibía «este componente está declarado y no se usa»
+   por cada componente que sus cuerpos sí usaban, y el único arreglo que el aviso sugería era
+   borrar el `<link>` que el fichero necesita. El walker ya entra, como entra en un `@section`.
 
 Dos decisiones tomadas por el camino que conviene no deshacer sin leer el porqué:
 
@@ -144,5 +158,5 @@ Dos decisiones tomadas por el camino que conviene no deshacer sin leer el porqu�
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 15 | 11, 13, 14 | **La evidencia.** Un fixture canónico `.fud` con los cuatro casos —declaración local, importación sin `as`, importación con `as`, y un snippet que instancia un componente que el llamante no declara— y el ejemplo que lo construye de verdad: `pnpm build` en verde y el markup expandido en el HTML, indistinguible del escrito a mano. Verificado en Chrome real, como pide el repo para todo lo que se ve. Criterios 21, 22, 23 | `compiler` · `examples` | `packages/compiler/fixtures/*.fud` · `examples/` |
+| [x] | 15 | 11, 13, 14 | **La evidencia.** Un fixture canónico `.fud` con los cuatro casos —declaración local, importación sin `as`, importación con `as`, y un snippet que instancia un componente que el llamante no declara— y el ejemplo que lo construye de verdad: `pnpm build` en verde y el markup expandido en el HTML, indistinguible del escrito a mano. Verificado en Chrome real, como pide el repo para todo lo que se ve. Criterios 21, 22, 23 | `compiler` · `examples` | `packages/compiler/fixtures/*.fud` · `examples/` |
 | [ ] | 16 | todas | **Cobertura y cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde y los 35 criterios de §6 verdes, con el «rojo primero» de la tarea 1 visto fallar antes. Todo fichero nuevo al **100 %** en las cuatro métricas; ningún paquete tocado por debajo del suelo medido al empezar. SDD-29 a `Hecho` en [INDEX.md](./INDEX.md), tabla y registro de progreso, y el rango `FUD0820`–`FUD0849` anotado en el catálogo | — | [INDEX.md](./INDEX.md) |

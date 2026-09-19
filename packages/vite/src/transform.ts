@@ -371,6 +371,12 @@ function emitFor(
 ): EmitOutput {
   const entry = graph.entry;
   switch (entry.type) {
+    case 'snippet-document':
+      // A file of snippets emits no module (SDD-29 §4.9): it has no host, no shadow root and
+      // nothing at runtime. It reaches here at all because it is a `.fud` like any other —
+      // a route directory it was dropped into, an editor save, an explicit import — and the
+      // honest answer is an empty module rather than a component with no wrapper.
+      return { code: '', mappings: [], missingAssets: [], diagnostics: [] };
     case 'page-document':
       return emitPageModuleMapped(graph, emitOptions);
     case 'route-document':

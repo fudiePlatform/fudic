@@ -1,0 +1,48 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/app-badge.fud">
+<link rel="snippet" href="../snippets/ui.fud">
+<link rel="snippet" href="../snippets/campos.fud" as="campos">
+
+<head>
+  <title>Snippets — fudic</title>
+</head>
+
+@section nav {
+  <site-nav .current="snippets"></site-nav>
+}
+
+<h1>Markup que no se repite</h1>
+
+<p>
+  Un snippet no es un componente: no tiene host, ni shadow root, ni identidad, ni una
+  línea de JavaScript. Se expande al construir el árbol y desaparece. Lo que ves abajo es,
+  nodo a nodo, el mismo HTML que si estuviera escrito a mano aquí — y esta página sigue
+  siendo estática, sin nada que hidratar.
+</p>
+
+<h2>Declarado aquí mismo</h2>
+@render fila("local", "el snippet vive en esta misma ruta")
+
+<h2>Importado sin <code>as</code></h2>
+@* `app-badge` lo declara `ui.fud`, no esta ruta… y esta ruta también lo declara: son una
+   sola dependencia, no dos. *@
+@render ficha("Primera", tono: "success")
+@render ficha("Segunda", tono: "info")
+@render ficha("Tercera")
+
+<h2>Importado con <code>as</code></h2>
+@* `campos.fud` declara otro `ficha`. Con namespace no chocan y los dos se invocan. *@
+<form class="campos">
+  @render campos.ficha("correo", "Correo")
+  @render campos.ficha("ciudad", "Ciudad")
+  @render campos.pie("Ningún input de arriba lo escribió nadie dos veces.")
+</form>
+
+@* Posición libre: la declaración se lee bien después del markup que la llama. *@
+@snippet fila(clave: string, texto: string) {
+  <p class="fila" data-clave=@clave>
+    <app-badge>@clave</app-badge>
+    @texto
+  </p>
+}

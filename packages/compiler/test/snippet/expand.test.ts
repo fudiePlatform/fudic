@@ -297,12 +297,18 @@ describe('every role of document expands (§4.9)', () => {
     expect(source).toContain('@section aside { <i>@("S")</i> }');
   });
 
-  it('a file of snippets renders nothing of its own', () => {
-    const { source, document } = expand({ [ENTRY]: `${card}\n@snippet other() { @render card("X") }` });
-    // Its declarations are removed and nothing is expanded in their place: what they hold is
-    // markup nobody renders until another file imports them.
-    expect(document.snippets).toEqual([]);
-    expect(source.trim()).toBe('');
+  it('a file of snippets is not expanded at all', () => {
+    const text = `${card}\n@snippet other() { @render card("X") }`;
+    const { source, document } = expand({ [ENTRY]: text });
+    // It renders nothing of its own, and it is nobody's entry: it emits no module and its
+    // bodies are inlined — and checked — where somebody calls them. So it comes back as it
+    // went in, declarations and all. Removing them instead, which is what this did until
+    // task 15, left a document with no root element and no snippets: a component with no
+    // host wrapper, which is the exact error the fifth role exists to avoid saying. It also
+    // crashed the Vite plugin, which then emitted a component out of it.
+    expect(source).toBe(text);
+    expect(document.type).toBe('snippet-document');
+    expect(document.snippets).toHaveLength(2);
   });
 });
 

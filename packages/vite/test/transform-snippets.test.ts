@@ -80,6 +80,21 @@ describe('a component that renders a snippet', () => {
   });
 });
 
+describe('the file of snippets itself, handed to the plugin', () => {
+  /**
+   * Nothing imports a file of snippets, so a build reaches it only sideways — dropped into
+   * a routes directory, saved in the editor, imported by hand. Until task 15 that threw a
+   * `TypeError` out of the emit: the expansion stripped the declarations, the role stopped
+   * being `snippet-document`, and the emitter went looking for the template of a component
+   * that was never there.
+   */
+  it('emits an empty module and does not throw (§4.9)', () => {
+    const result = transformFud(join(dir, 'ui.fud'), nodeIo())!;
+    expect(result.code).toBe('');
+    expect(result.diagnostics).toEqual([]);
+  });
+});
+
 describe('a snippet whose body does not add up', () => {
   it('reports it in the SNIPPET file and not in the page (criterion 34)', () => {
     write('broken.fud', '@snippet oops() { @render missing() }');

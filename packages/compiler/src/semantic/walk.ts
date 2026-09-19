@@ -18,6 +18,7 @@ import type {
   SwitchNode,
 } from '../control/index.js';
 import type { SectionNode } from '../layout/index.js';
+import type { SnippetDeclNode } from '../snippet/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { StructuredDocument } from '../document/index.js';
 import type { CodeBlockNode } from '../code/index.js';
@@ -160,6 +161,15 @@ function walkNode(node: HtmlContent, visitor: TreeVisitor, host: ElementNode | u
       // `@section name { … }` (SDD-21): its body is ordinary markup, so the analyzers
       // must see inside it — a duplicate attribute there is just as wrong.
       walk((node as unknown as SectionNode).children, visitor, host);
+      return;
+    case 'snippet':
+      // `@snippet name(…) { … }` (SDD-29). Same reason, and one more: `documentRoots` hands
+      // the declarations over precisely so the tags a body instantiates are resolved against
+      // THIS file's links, and stopping at the construct made that promise empty. A file of
+      // snippets was then told its every `<link rel="component">` was unused (FUD0721) while
+      // its bodies were using all of them, and it is the one document shape where the body is
+      // the only markup there is.
+      walk((node as unknown as SnippetDeclNode).children, visitor, host);
       return;
     default:
       // Leaves and JS-only nodes (text, comment, style, inline-code, @code, …): nothing to descend.
