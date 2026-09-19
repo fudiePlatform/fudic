@@ -22,11 +22,13 @@ import type {
   HtmlContent,
   IfNode,
   SectionNode,
+  SnippetDeclNode,
   StructuredDocument,
   SwitchNode,
   WhileNode,
 } from '@fudic/compiler';
 import { componentModuleSpecifier } from './paths.js';
+import type { SnippetAliases } from './template/snippets.js';
 import type { FileRegistry } from './types.js';
 import type { VirtualWriter } from './writer.js';
 
@@ -91,6 +93,56 @@ export function emitImports(
   };
 }
 
+/** The merged namespace of every import written without an `as`. */
+const GLOBAL_SNIPPETS = '$snippets';
+
+/**
+ * The `import * as` preamble of this file's `<link rel="snippet">`, and how a `@render`
+ * names what it calls (SDD-29 §4.11).
+ *
+ * One namespace per FILE, because that is the grain of the import: a link brings in every
+ * declaration of the file it names, and which those are is a question for the TypeScript
+ * program rather than for a registry of ours.
+ *
+ * The links written WITHOUT an `as` are merged into one object, so `@render card(…)` resolves
+ * to whichever of them declares `card` without this projection having to know which — and
+ * that is exactly what the global scope of §4.3 is. Two files that both declare it is
+ * `FUD0834`, said once, where the author can act on it.
+ */
+export function emitSnippetImports(
+  w: VirtualWriter,
+  doc: StructuredDocument,
+  registry: FileRegistry,
+): SnippetAliases {
+  const local = new Set(doc.snippets.map((s) => s.name));
+  const byNamespace = new Map<string, string>();
+  const global: string[] = [];
+
+  registry.snippets().forEach((imported, i) => {
+    const alias = `$Sn${i}`;
+    w.scaffold(`import * as ${alias} from '${componentModuleSpecifier(imported.href)}';\n`);
+    const namespace = imported.namespace?.name;
+    if (namespace === undefined) global.push(alias);
+    // A repeated `as` is the author naming two files the same: the first wins, and the
+    // second is an unreachable namespace — which is a rule for a diagnostic, not for here.
+    else if (!byNamespace.has(namespace)) byNamespace.set(namespace, alias);
+  });
+
+  if (global.length > 0) {
+    w.scaffold(`const ${GLOBAL_SNIPPETS} = { ${global.map((a) => `...${a}`).join(', ')} };\n`);
+  }
+
+  return {
+    aliasFor: (namespace, name) => {
+      if (namespace !== undefined) return byNamespace.get(namespace);
+      // A snippet this file declares is a function in this file: the bare name IS the call,
+      // and it is what makes go-to-definition land on the declaration a line above.
+      if (local.has(name) || global.length === 0) return undefined;
+      return GLOBAL_SNIPPETS;
+    },
+  };
+}
+
 /**
  * The alias of a tag with no `<link>`: `app-missing` → `$C_app_missing`.
  *
@@ -145,6 +197,11 @@ export function nestedContent(node: HtmlContent): readonly (readonly HtmlContent
       return (node as SwitchNode).cases.map((c) => c.body);
     case 'section':
       return [(node as SectionNode).children];
+    case 'snippet':
+      // A declaration hosts markup too, and the tags inside it are resolved against THIS
+      // file's links: leaving them out would be a hole in the editor exactly where the
+      // author is typing.
+      return [(node as SnippetDeclNode).children];
     default:
       return [];
   }

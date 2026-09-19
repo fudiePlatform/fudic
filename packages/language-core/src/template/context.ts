@@ -10,6 +10,7 @@
 import type { DelegationPlan, HtmlContent, OxcNode, Span } from '@fudic/compiler';
 import type { Aliases } from '../imports.js';
 import type { VirtualWriter } from '../writer.js';
+import type { SnippetAliases } from './snippets.js';
 
 /** The AST of one registered JS fragment: an expression, or a list of statements. */
 export type FragmentAst = OxcNode | readonly OxcNode[];
@@ -48,6 +49,20 @@ export interface TemplateContext {
    * the projection has to be told which loop before it can give the name a type (§4.5).
    */
   readonly delegation: DelegationPlan;
+  /**
+   * How a `@render` names what it calls (SDD-29 §4.11): a local function, the merged imports,
+   * or one namespace. The projector of a call asks; nobody else does.
+   */
+  readonly snippets: SnippetAliases;
   /** Project a list of children. The dispatcher supplies it. */
   emit(content: readonly HtmlContent[]): void;
+  /**
+   * The ASTs of every JS fragment a run of markup holds, from the file's single batch.
+   *
+   * One caller: the free names of a snippet body, which a file of snippets declares `any`
+   * because they belong to whoever expands it. It goes through the context because the batch
+   * does, and asking Oxc a second time for the same file is the one thing the golden rule
+   * forbids.
+   */
+  fragmentsOf(content: readonly HtmlContent[]): readonly FragmentAst[];
 }

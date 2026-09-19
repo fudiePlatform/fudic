@@ -31,9 +31,11 @@ import {
   type ForeachNode,
   type HtmlContent,
   type IfNode,
+  type RenderCallNode,
   type RenderDirectiveNode,
   type RenderSectionNode,
   type SectionNode,
+  type SnippetDeclNode,
   type Span,
   type SwitchNode,
   type WhileNode,
@@ -206,6 +208,19 @@ class TokenCollector {
       case 'render-section':
         this.atMarker(node.span.start);
         this.push('fudDirective', (node as unknown as RenderSectionNode).keywordSpan);
+        return;
+      // The two of SDD-29. A declaration's body is markup and is walked; a call is a leaf —
+      // its arguments are JavaScript, and TypeScript colours those over the projection.
+      case 'snippet': {
+        const snippet = node as unknown as SnippetDeclNode;
+        this.atMarker(node.span.start);
+        this.push('fudDirective', snippet.keywordSpan);
+        this.walk(snippet.children);
+        return;
+      }
+      case 'render':
+        this.atMarker(node.span.start);
+        this.push('fudDirective', (node as unknown as RenderCallNode).keywordSpan);
         return;
       default:
         // Text, comments, doctype, cdata, raw text: nothing of ours to colour.

@@ -81,5 +81,17 @@ export { injectionDiagnostics } from './di-diagnostics.js';
 // The `@code` reading itself, for a caller that holds ONE document and no graph — the
 // workspace index, which needs a child's props to expand its tag (BUG-23 task 25).
 export { extractCode, type Prop } from './oxc-code.js';
+/**
+ * The scope analysis of SDD-30 §3.3, public since SDD-29 §4.11: the projection needs the same
+ * reading of "a name this markup consumes and does not declare" the emit uses, and a second
+ * one would drift from it in exactly the cases that are hard to see.
+ */
+export { freeReferences, freeReferenceNodes, type FragmentAst } from './scope.js';
+/**
+ * The walk that says which JS a run of markup holds (SDD-30 §3.3), public for the same
+ * reason: the projection asks the batch for the AST of a span, and only this walk knows
+ * which spans were registered. A second enumeration would ask for a fragment nobody parsed.
+ */
+export { collectTemplateJs, type JsFragmentVisitor } from './constructs.js';
 
 export { spaceModeOf, collapseSpace, nestedSpaceMode, SPACE_ATTR, type SpaceMode } from './space.js';

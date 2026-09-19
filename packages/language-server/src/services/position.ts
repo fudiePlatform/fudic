@@ -30,7 +30,7 @@ export { attributeValueSpan };
 /** A `<link>` of this file and what it links. */
 export interface LinkRef {
   readonly element: ElementNode;
-  readonly rel: 'component' | 'layout';
+  readonly rel: 'component' | 'layout' | 'snippet';
 }
 
 /** The cursor sits inside the `href` of a `<link>`. */
@@ -49,6 +49,10 @@ export interface PartialName {
 /** Every `<link>` this file declares: the components, plus the layout when it has one. */
 export function linksOf(document: StructuredDocument): readonly LinkRef[] {
   const links: LinkRef[] = document.links.map((element) => ({ element, rel: 'component' as const }));
+
+  // The snippet imports (SDD-29 §4.3), which need the same two things a component link does:
+  // the paths completed as they are typed, and a diagnostic when the file is not there.
+  for (const element of document.snippetLinks) links.push({ element, rel: 'snippet' });
 
   if (document.type === 'route-document') {
     links.push({ element: document.layoutLink, rel: 'layout' });

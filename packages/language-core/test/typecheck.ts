@@ -14,7 +14,7 @@ import ts from 'typescript';
 import { GLOBALS_DTS, GLOBALS_FILE_NAME } from '../src/globals.js';
 import { emitVirtualFiles } from '../src/emit.js';
 import type { FileRegistry, VirtualFile } from '../src/types.js';
-import { linkHref, type StructuredDocument } from '@fudic/compiler';
+import { linkHref, readSnippetLink, type StructuredDocument } from '@fudic/compiler';
 import { parseFud } from './_support.js';
 
 const FIXTURES = resolve(fileURLToPath(new URL('../fixtures', import.meta.url)));
@@ -54,9 +54,19 @@ function registryFor(file: CorpusFile, corpus: readonly CorpusFile[]): FileRegis
 
   const layout = file.document.type === 'route-document' ? file.document.layoutHref : undefined;
 
+  // The snippet imports of a corpus file, by `href` exactly as it is written: the corpus is
+  // a flat list of `.fud`s, and the projection resolves the specifier, not this.
+  const snippets = file.document.snippetLinks.map((link) => {
+    const read = readSnippetLink(link);
+    return read.namespace === undefined
+      ? { href: read.href }
+      : { href: read.href, namespace: { name: read.namespace, span: link.span } };
+  });
+
   return {
     component: (tag) => byTag.get(tag),
     layout: () => (layout === undefined || layout === '' ? undefined : layout),
+    snippets: () => snippets,
   };
 }
 

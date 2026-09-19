@@ -9,8 +9,8 @@
  * the virtual file imports it verbatim so that TypeScript resolves what the editor shows.
  */
 
-import { linkHref, type StructuredDocument } from '@fudic/compiler';
-import type { FileRegistry } from '@fudic/language-core';
+import { linkHref, readSnippetLink, type Span, type StructuredDocument } from '@fudic/compiler';
+import type { FileRegistry, SnippetImport } from '@fudic/language-core';
 import type { WorkspaceIndex } from './workspace-index.js';
 import { layoutHrefOf } from './mode.js';
 
@@ -33,8 +33,40 @@ export function createFileRegistry(
 
   const layout = layoutHrefOf(document);
 
+  // The snippet imports, in source order and by FILE (SDD-29 §4.3): an import brings in every
+  // declaration of the file it names, so there is nothing here to resolve by name. The `href`
+  // travels as written, like a component's, so TypeScript resolves what the editor shows.
+  const snippets: SnippetImport[] = [];
+  for (const link of document.snippetLinks) {
+    const read = readSnippetLink(link);
+    if (read.href === '') continue;
+    const namespace = namespaceOf(link, read.namespace);
+    snippets.push({ href: read.href, ...(namespace === undefined ? {} : { namespace }) });
+  }
+
   return {
     component: (tag) => byTag.get(tag),
     layout: () => (layout === '' ? undefined : layout),
+    snippets: () => snippets,
   };
+}
+
+/**
+ * The `as` of a link, with the span of the VALUE so hovering the namespace in a `@render`
+ * has somewhere to land. Its own function because an attribute's value is a list of parts
+ * and the span that matters is the run they cover, not the attribute's.
+ */
+function namespaceOf(
+  link: { readonly attributes: readonly { name: unknown; value: readonly { span: Span }[] }[] },
+  name: string | undefined,
+): { readonly name: string; readonly span: Span } | undefined {
+  if (name === undefined) return undefined;
+  for (const attribute of link.attributes) {
+    if (attribute.name !== 'as') continue;
+    const first = attribute.value[0];
+    const last = attribute.value[attribute.value.length - 1];
+    if (first === undefined || last === undefined) return undefined;
+    return { name, span: { start: first.span.start, end: last.span.end } };
+  }
+  return undefined;
 }

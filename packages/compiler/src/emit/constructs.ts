@@ -21,7 +21,7 @@ import type {
 } from '../control/index.js';
 import { keyExpression } from '../control/index.js';
 import type { SectionNode } from '../layout/index.js';
-import type { RenderCallNode } from '../snippet/index.js';
+import type { RenderCallNode, SnippetDeclNode } from '../snippet/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { JsFragmentKind } from '../oxc/index.js';
 import type { Span } from '../types/index.js';
@@ -187,9 +187,11 @@ function collectNode(node: HtmlContent, visit: JsFragmentVisitor): void {
       for (const arg of (node as unknown as RenderCallNode).args) visit('expression', arg.value);
       return;
     case 'snippet':
-      // A DECLARATION holds markup that runs nowhere until it is invoked, and each invocation
-      // rewrites it with its own arguments. Registering its fragments here would hand Oxc the
-      // body as if it were the file's own code, with its parameters unbound.
+      // A declaration's body is markup of this file until somebody expands it, and in the
+      // editor nobody ever does (SDD-29 §4.11): its expressions are projected and checked
+      // here, so they need an AST here. The build never reaches this case at all — the
+      // expansion removed every declaration before the emit read a line.
+      collectTemplateJs((node as unknown as SnippetDeclNode).children, visit);
       return;
     default:
       // Text, comments, doctype, cdata, raw text, `@@`, `@code`, the `Render*` markers and

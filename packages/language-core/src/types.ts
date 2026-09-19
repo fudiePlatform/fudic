@@ -5,6 +5,8 @@
  * shapes without depending on each other.
  */
 
+import type { Span } from '@fudic/compiler';
+
 /**
  * A synthetic file handed to a language service, plus the mapping back to the `.fud`.
  *
@@ -93,4 +95,20 @@ export interface FileRegistry {
   component(tag: string): string | undefined;
   /** Path of this file's layout, when it declares `<link rel="layout">`. */
   layout(): string | undefined;
+  /**
+   * This file's `<link rel="snippet">`, in source order (SDD-29 §4.11).
+   *
+   * By LINK and not by name, because the import is by file: a snippet file's whole
+   * declaration list comes in at once, and which names those are is a question for the
+   * TypeScript program, not for this registry.
+   */
+  snippets(): readonly SnippetImport[];
+}
+
+/** One `<link rel="snippet">`, as the projection needs it. */
+export interface SnippetImport {
+  /** The `href` AS THE AUTHOR WROTE IT, so the virtual file imports what the editor shows. */
+  readonly href: string;
+  /** The `as` namespace, with its span, when the link declares one. */
+  readonly namespace?: { readonly name: string; readonly span: Span };
 }

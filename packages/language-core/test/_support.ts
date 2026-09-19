@@ -5,23 +5,16 @@
 
 import {
   JsBatch,
-  parseCodeBlock,
-  parseControl,
-  parseDirective,
+  atConstructs as constructs,
   parseDocument,
   structureDocument,
-  type AtConstructParser,
   type CodeBlockNode,
   type OxcNode,
   type Span,
   type StructuredDocument,
 } from '@fudic/compiler';
-import { partitionCode } from '../src/code.js';
-import { emitClientVirtual } from '../src/emit-client.js';
-import { findPropsCall, type PropsCall } from '../src/props.js';
-import type { FileRegistry, VirtualFile } from '../src/types.js';
-
-const constructs: AtConstructParser = { parseControl, parseCodeBlock, parseDirective };
+import { emitVirtualFiles } from '../src/emit.js';
+import type { FileRegistry, SnippetImport, VirtualFile } from '../src/types.js';
 
 /** Full parse of a `.fud` source into its structured document. */
 export function parseFud(source: string): StructuredDocument {
@@ -38,27 +31,30 @@ export function codeOf(doc: StructuredDocument): CodeBlockNode | undefined {
 export function registryOf(
   components: Readonly<Record<string, string>>,
   layout?: string,
+  snippets: readonly SnippetImport[] = [],
 ): FileRegistry {
   return {
     component: (tag) => components[tag],
     layout: () => layout,
+    snippets: () => snippets,
   };
 }
 
-/** Parse a `.fud` and emit its client virtual, wiring Oxc the way `emit.ts` will. */
+/**
+ * Parse a `.fud` and emit its client virtual through the real orchestrator.
+ *
+ * Through `emitVirtualFiles` and not straight into the client emitter, because the batch is
+ * what half the projection depends on: the handler shapes, the reactive names and — since
+ * SDD-29 — the free names of a snippet body. A helper that skipped it tested a projection
+ * nobody runs.
+ */
 export function emitClient(
   source: string,
   fudPath = 'x.fud',
   registry: FileRegistry = registryOf({}),
 ): VirtualFile {
-  const doc = parseFud(source);
-  const first = partitionCode(doc.code).neutral[0];
-  let props: PropsCall | undefined;
-  if (first !== undefined) {
-    const { statements, mapSpan } = statementsOf(source, first);
-    props = findPropsCall(statements, mapSpan);
-  }
-  return emitClientVirtual(source, fudPath, doc, registry, props);
+  const document = parseFud(source);
+  return emitVirtualFiles({ source, fileName: fudPath, document, registry })[0]!;
 }
 
 /** Parse one JS span as top-level statements, with its offset mapper. */

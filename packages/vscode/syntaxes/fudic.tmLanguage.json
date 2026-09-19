@@ -6,6 +6,8 @@
     { "include": "#razor-comment" },
     { "include": "#at-escape" },
     { "include": "#code-block" },
+    { "include": "#snippet" },
+    { "include": "#render" },
     { "include": "#section" },
     { "include": "#control" },
     { "include": "#at-block" },
@@ -56,6 +58,40 @@
       "end": "\\}",
       "endCaptures": { "0": { "name": "punctuation.section.block.end.fudic" } },
       "contentName": "source.ts",
+      "patterns": [{ "include": "#balanced-ts" }]
+    },
+
+    "snippet": {
+      "name": "meta.block.snippet.fudic",
+      "begin": "(@)(snippet)\\s+([A-Za-z_]\\w*)\\s*(\\()([^)]*)(\\))\\s*(\\{)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.keyword.fudic" },
+        "2": { "name": "keyword.control.directive.snippet.fudic" },
+        "3": { "name": "entity.name.function.fudic" },
+        "4": { "name": "punctuation.section.parens.begin.fudic" },
+        "5": { "name": "meta.parameters.fudic source.ts" },
+        "6": { "name": "punctuation.section.parens.end.fudic" },
+        "7": { "name": "punctuation.section.block.begin.fudic" }
+      },
+      "end": "\\}",
+      "endCaptures": { "0": { "name": "punctuation.section.block.end.fudic" } },
+      "patterns": [{ "include": "$self" }]
+    },
+
+    "render": {
+      "name": "meta.snippet-call.fudic",
+      "begin": "(@)(render)\\s+(?:([A-Za-z_]\\w*)(\\.))?([A-Za-z_]\\w*)?\\s*(\\()",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.keyword.fudic" },
+        "2": { "name": "keyword.control.directive.render.fudic" },
+        "3": { "name": "entity.name.namespace.fudic" },
+        "4": { "name": "punctuation.accessor.fudic" },
+        "5": { "name": "entity.name.function.fudic" },
+        "6": { "name": "punctuation.section.parens.begin.fudic" }
+      },
+      "end": "\\)",
+      "endCaptures": { "0": { "name": "punctuation.section.parens.end.fudic" } },
+      "contentName": "meta.arguments.fudic source.ts",
       "patterns": [{ "include": "#balanced-ts" }]
     },
 
