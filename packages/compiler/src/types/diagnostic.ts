@@ -27,6 +27,16 @@ export interface Diagnostic {
   /** Location in the source. Required. */
   readonly span: Span;
   /**
+   * The file `span` belongs to, absolute. ABSENT means the file being compiled or opened,
+   * which is the common case and the one nobody should have to state.
+   *
+   * It exists because a compilation can reach into a file the author did not ask about: a
+   * `@snippet` body lives in the file that declares it, and an error inside it belongs there
+   * and not at the `@render` that happened to pull it in (SDD-29 §5) — the call travels as a
+   * `related` location instead, which is the link back.
+   */
+  readonly file?: string;
+  /**
    * The OTHER places the problem is about (LSP `relatedInformation`).
    *
    * Some rules are about a pair and not about a point: two snippets that claim one name, a

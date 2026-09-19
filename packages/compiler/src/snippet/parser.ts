@@ -158,9 +158,7 @@ class SnippetParser {
     return {
       type: 'render',
       span: span(start, parens?.span.end ?? name.span.end),
-      ...(dotted !== undefined
-        ? { namespace: first.name, namespaceSpan: first.span }
-        : {}),
+      ...(dotted !== undefined ? { namespace: { name: first.name, span: first.span } } : {}),
       name: name.name,
       nameSpan: name.span,
       keywordSpan,

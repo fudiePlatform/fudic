@@ -50,9 +50,13 @@ export interface SnippetDeclNode extends Node {
  */
 export interface RenderCallNode extends Node {
   readonly type: 'render';
-  /** The `<link rel="snippet" as>` namespace, when the call carries one. */
-  readonly namespace?: string;
-  readonly namespaceSpan?: Span;
+  /**
+   * The `<link rel="snippet" as>` namespace, when the call carries one.
+   *
+   * The name and its span travel as ONE optional field rather than two, because they are one
+   * fact: a call either has a namespace, with a place in the source, or it does not.
+   */
+  readonly namespace?: { readonly name: string; readonly span: Span };
   /** Empty when the name was missing (`FUD0820`). */
   readonly name: string;
   readonly nameSpan: Span;

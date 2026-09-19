@@ -139,9 +139,9 @@ describe('@render: the invocation (§4.7)', () => {
   it('parses a namespace (criterion 17)', () => {
     const source = '<p>@render form.card("A")</p>';
     const node = call(source);
-    expect(node.namespace).toBe('form');
+    expect(node.namespace!.name).toBe('form');
     expect(node.name).toBe('card');
-    expect(text(source, node.namespaceSpan!)).toBe('form');
+    expect(text(source, node.namespace!.span)).toBe('form');
   });
 
   it('mixes positional and named arguments (criterion 9)', () => {

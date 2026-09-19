@@ -5,7 +5,7 @@
 > `@fudic/formatter` · `@fudic/vite` · `@fudic/cli` · `fudic-vscode`
 > **Rama:** `SDD-29-code-snippets`
 > **Rango de diagnósticos:** `FUD0820`–`FUD0849` (lo fija esta tanda; el SDD no reservaba ninguno)
-> **Progreso:** 7 / 16
+> **Progreso:** 8 / 16
 > **Bloqueado por:** nada. SDD-05, 06, 10, 11 y 12 están `Hecho`, y la resolución de
 > specifiers de paquete que hereda el `<link rel="snippet">` la trajo
 > [SDD-43](./SDD-43-librerias.md) §4.3 sin tocar `ResolveIo`.
@@ -92,7 +92,7 @@ las reglas de cuerpo, y el ámbito necesita la estructura.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 8 | 3, 7 | **`checkRenderCalls`, la misma para el build y para el editor.** Por cada `RenderCall`: resolución del nombre (`FUD0826`) y del namespace (`FUD0827`); ligado de argumentos a parámetros —posicionales por orden, nominales por nombre, defaults y `?` para los ausentes—; `FUD0828` aridad insuficiente con span en la llamada, `FUD0829` argumentos de más con span en el primer sobrante, `FUD0830` nominal que no corresponde a ningún parámetro, `FUD0831` parámetro asignado dos veces con span primario en el nominal y secundario en el posicional; y `FUD0835` recursión directa o indirecta, con el **ciclo entero** en el mensaje (`card → row → card`), detectada por pila de expansión. **Nada lanza y nada cuelga.** El resultado es el ligado, que la expansión reutiliza en vez de recalcularlo. Criterios 7, 9, 10, 11, 12, 25, 26, 27 | `compiler` | `src/snippet/check.ts` |
+| [x] | 8 | 3, 7 | **`checkRenderCalls`, la misma para el build y para el editor.** Por cada `RenderCall`: resolución del nombre (`FUD0826`) y del namespace (`FUD0827`); ligado de argumentos a parámetros —posicionales por orden, nominales por nombre, defaults y `?` para los ausentes—; `FUD0828` aridad insuficiente con span en la llamada, `FUD0829` argumentos de más con span en el primer sobrante, `FUD0830` nominal que no corresponde a ningún parámetro, `FUD0831` parámetro asignado dos veces con span primario en el nominal y secundario en el posicional; y `FUD0835` recursión directa o indirecta, con el **ciclo entero** en el mensaje (`card → row → card`), detectada por pila de expansión. **Nada lanza y nada cuelga.** El resultado es el ligado, que la expansión reutiliza en vez de recalcularlo. Criterios 7, 9, 10, 11, 12, 25, 26, 27 | `compiler` | `src/snippet/check.ts` |
 
 ---
 
