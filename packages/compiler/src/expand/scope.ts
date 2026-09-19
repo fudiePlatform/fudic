@@ -92,6 +92,21 @@ export class SnippetRegistry {
   }
 
   /**
+   * Every OTHER `.fud` this registry read, absolute.
+   *
+   * It is the dependency edge a host needs: a `<link rel="snippet">` makes the file it names
+   * part of the document, so changing it has to reparse every consumer (§5). The entry is not
+   * in the list — whoever asked already has it.
+   */
+  get files(): readonly string[] {
+    const out: string[] = [];
+    for (const [path, file] of this.#files) if (file !== null && path !== this.#entry) out.push(path);
+    return out;
+  }
+
+  #entry = '';
+
+  /**
    * The scope of a file already parsed by the caller — the entry of a build, or the document
    * an editor has open. Its own declarations come from `doc`, so it is never re-read.
    */
@@ -101,6 +116,7 @@ export class SnippetRegistry {
     doc: StructuredDocument,
     diagnostics: Diagnostic[],
   ): SnippetScope {
+    this.#entry = path;
     const own = this.#adopt({ path, source, doc });
     // Seeded so that a file importing back into the entry reuses what the caller already
     // parsed instead of reading it off disk — which in an editor is a stale copy of what the

@@ -139,6 +139,7 @@ class SnippetParser {
       signatureSpan: parens?.span ?? emptySpan(bodyFrom),
       children: block?.body ?? [],
       bodySpan: block?.span ?? emptySpan(bodyFrom),
+      contentSpan: block?.content ?? emptySpan(bodyFrom),
     };
   }
 
@@ -214,8 +215,14 @@ class SnippetParser {
     };
   }
 
-  /** `{ html_content* }`. `undefined` ⇒ FUD0071; otherwise the body plus the braces' span. */
-  #block(from: number): { body: readonly HtmlContent[]; span: Span } | undefined {
+  /**
+   * `{ html_content* }`. `undefined` ⇒ FUD0071; otherwise the body, the braces' span, and
+   * what lies between them — which is what the expansion copies, so it is measured here
+   * where the closing brace is known rather than inferred later.
+   */
+  #block(
+    from: number,
+  ): { body: readonly HtmlContent[]; span: Span; content: Span } | undefined {
     const at = skipTrivia(this.#source, from);
     if (charAt(this.#source, at) !== '{') {
       this.#error(FUD_MISSING_BLOCK, "expected '{' to open the block body", emptySpan(at));
@@ -227,11 +234,15 @@ class SnippetParser {
     const closing = lexer.peek();
     if (closing.type !== 'block-end') {
       this.#error(FUD_UNCLOSED_BLOCK, "unclosed block: expected '}'", span(at, at + 1));
-      return { body, span: span(at, lexer.offset) };
+      return { body, span: span(at, lexer.offset), content: span(at + 1, lexer.offset) };
     }
     const consumed = lexer.next();
     this.#diagnostics.push(...consumed.diagnostics);
-    return { body, span: span(at, closing.span.end) };
+    return {
+      body,
+      span: span(at, closing.span.end),
+      content: span(at + 1, closing.span.start),
+    };
   }
 
   /**

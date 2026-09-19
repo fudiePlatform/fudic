@@ -21,9 +21,11 @@ import {
   type Diagnostic,
   type ResolveIo,
   type Span,
+  emptySpan,
   errorDiag,
   warningDiag,
 } from '../types/index.js';
+import { expandDocument, type DraggedLink, type OffsetMap } from '../expand/index.js';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 
 /**
@@ -69,7 +71,29 @@ export interface ComponentGraph {
   readonly entry: StructuredDocument;
   /** Absolute path of the entry `.fud` — what makes the entry addressable as a component. */
   readonly entryPath: string;
+  /**
+   * The entry's source AFTER the snippet expansion (SDD-29 §4.10) — the text every pass
+   * downstream reads, and the one every span in `entry` is an offset into.
+   *
+   * Identical to the file when it holds no snippet, which is every file of a project that
+   * uses none.
+   */
   readonly entrySource: string;
+  /**
+   * Where each position of `entrySource` came from: the entry itself, or the file of a
+   * snippet it expanded. A file with no expansion has an empty table that answers nothing,
+   * and then a position is already where it says it is.
+   */
+  readonly entryMap: OffsetMap;
+  /**
+   * The entry exactly as it is ON DISK, before the expansion, with the document that text
+   * parses to.
+   *
+   * The source map needs it: a `.fud` in DevTools has to be the file the author opens, and
+   * `entrySource` is the text the compiler made. A position of a body expanded from another
+   * file has no line in it, and `entryMap.entryOffset` gives the `@render` instead.
+   */
+  readonly entryOrigin: { readonly source: string; readonly document: StructuredDocument };
   /** The `href`s the entry links directly. */
   readonly entryDeps: readonly string[];
   /** Every component reachable from the entry, keyed by tag. */
@@ -81,6 +105,15 @@ export interface ComponentGraph {
    * that does not resolve.
    */
   readonly entryLinkTags: ReadonlyMap<ElementNode, string>;
+  /**
+   * Every `.fud` reached through a `<link rel="snippet">`, absolute and deduplicated.
+   *
+   * A snippet file is an edge of the document's dependency graph like a component is: its
+   * markup ends up inside whoever imports it, so changing it has to rebuild them (SDD-29
+   * §5). It is not in `components` because it defines no tag and emits no module — the host
+   * watches it, and nothing else asks.
+   */
+  readonly snippetFiles: readonly string[];
 }
 
 /**
@@ -156,6 +189,49 @@ function parse(source: string): ParseResult<StructuredDocument> {
     : withDiagnostics(structured.value, diagnostics);
 }
 
+/** One `.fud`, read, parsed and EXPANDED: what every reader of the graph works on. */
+interface LoadedFud {
+  /** The expanded source — identical to the file when it holds no snippet (SDD-29 §4.10). */
+  readonly source: string;
+  readonly doc: StructuredDocument;
+  readonly map: OffsetMap;
+  readonly diagnostics: readonly Diagnostic[];
+  /** The `<link rel="snippet">` files it reached, for the host to watch. */
+  readonly snippetFiles: readonly string[];
+  /** The component links its invoked snippets drag in, each with the file it is written in. */
+  readonly dragged: readonly DraggedLink[];
+  /** The file as it is on disk, and the document that text parses to. */
+  readonly origin: { readonly source: string; readonly document: StructuredDocument };
+}
+
+/**
+ * Read one `.fud` and hand back the text the rest of the compiler works on.
+ *
+ * The expansion sits HERE, between reading a file and everything that reads its tree,
+ * because this is the one door a build comes through — and because after it there is no
+ * snippet left to see (SDD-29 §4.8). Every pass downstream gets a source and a document like
+ * any other; the table that sends a position back to the file it came from travels beside
+ * them, for whoever has to report.
+ *
+ * The diagnostics come back in ORIGINAL coordinates, as every caller of this compiler
+ * expects: the synthetic source is an artifact of the expansion and never leaves as a
+ * coordinate system.
+ */
+function load(path: string, io: ResolveIo): LoadedFud {
+  const source = io.read(path);
+  const parsed = parse(source);
+  const expansion = expandDocument(path, source, parsed.value, io);
+  return {
+    source: expansion.source,
+    doc: expansion.document,
+    map: expansion.map,
+    diagnostics: [...parsed.diagnostics, ...expansion.diagnostics],
+    snippetFiles: expansion.files,
+    dragged: expansion.dragged,
+    origin: { source, document: parsed.value },
+  };
+}
+
 /**
  * Resolve the transitive component graph from an entry `.fud` (page or component).
  *
@@ -164,13 +240,24 @@ function parse(source: string): ParseResult<StructuredDocument> {
  * answers the shape of the graph for a caller that already has the file it cares about.
  */
 export function resolveComponents(entryPath: string, io: ResolveIo): ComponentGraph {
-  const entrySource = io.read(entryPath);
-  const entry = parse(entrySource).value;
+  const loaded = load(entryPath, io);
+  const entry = loaded.doc;
   const walk = newWalk(io);
   visitComponents(entry.links, entryPath, walk);
+  visitDragged(loaded.dragged, walk);
   const entryDeps = entry.links.map(linkHref).filter((h): h is string => h !== undefined);
   const entryLinkTags = linkTags(entry.links, entryPath, io, walk.byPath);
-  return { entry, entryPath, entrySource, entryDeps, components: walk.components, entryLinkTags };
+  return {
+    entry,
+    entryPath,
+    entrySource: loaded.source,
+    entryMap: loaded.map,
+    entryOrigin: loaded.origin,
+    entryDeps,
+    components: walk.components,
+    entryLinkTags,
+    snippetFiles: [...new Set([...loaded.snippetFiles, ...walk.snippetFiles])],
+  };
 }
 
 /**
@@ -224,11 +311,20 @@ interface Walk {
    * files meet and where the diagnostic belongs.
    */
   readonly definedBy: Map<string, string>;
+  /** Every `<link rel="snippet">` file any component of the walk reached (SDD-29 §5). */
+  readonly snippetFiles: Set<string>;
   readonly diagnostics: Diagnostic[];
 }
 
 function newWalk(io: ResolveIo): Walk {
-  return { io, components: new Map(), byPath: new Map(), definedBy: new Map(), diagnostics: [] };
+  return {
+    io,
+    components: new Map(),
+    byPath: new Map(),
+    definedBy: new Map(),
+    snippetFiles: new Set(),
+    diagnostics: [],
+  };
 }
 
 /**
@@ -246,11 +342,39 @@ function targetsOf(links: readonly ElementNode[]): readonly { href: string; at: 
   return out;
 }
 
-/** Walk the `<link rel="component">` graph from `links`, filling `components` by tag. */
+/**
+ * Walk the `<link rel="component">` graph from `links`, filling `components` by tag.
+ *
+ * `visit` is exported through `visitDragged` as well, because a snippet's dependencies enter
+ * the graph by the same door: the only difference is which file their `href` is relative to.
+ */
 function visitComponents(links: readonly ElementNode[], fromPath: string, walk: Walk): void {
-  const visit = (path: string, at: Span): void => {
-    const source = walk.io.read(path);
-    const doc = parse(source).value;
+  for (const target of targetsOf(links)) {
+    visitComponent(walk.io.resolve(fromPath, target.href), target.at, walk);
+  }
+}
+
+/**
+ * The component links an expansion dragged in (SDD-29 §4.5).
+ *
+ * Each one is resolved against the file that WROTE it — the snippet's, never the caller's —
+ * which is the whole of what dragging means: the author of the page declares nothing, and
+ * the library keeps its own paths.
+ */
+function visitDragged(dragged: readonly DraggedLink[], walk: Walk): void {
+  for (const link of dragged) {
+    const path = walk.io.resolve(link.from, link.href);
+    visitComponent(path, emptySpan(0), walk);
+  }
+}
+
+/** One file of the graph: read it, expand it, register its tag, and follow what it names. */
+function visitComponent(path: string, at: Span, walk: Walk): void {
+  {
+    const loaded = load(path, walk.io);
+    const doc = loaded.doc;
+    const source = loaded.source;
+    for (const file of loaded.snippetFiles) walk.snippetFiles.add(file);
     if (doc.type !== 'component-document') return; // a linked file must be a component
     // BEFORE the shared-dependency guard: a file reached twice still declares the same tag,
     // and the second link needs the answer as much as the first.
@@ -278,10 +402,11 @@ function visitComponents(links: readonly ElementNode[], fromPath: string, walk: 
     walk.definedBy.set(doc.name, path);
     const deps = doc.links.map(linkHref).filter((h): h is string => h !== undefined);
     walk.components.set(doc.name, { tag: doc.name, path, source, doc, deps });
-    for (const dep of targetsOf(doc.links)) visit(walk.io.resolve(path, dep.href), dep.at);
-  };
-  for (const target of targetsOf(links)) {
-    visit(walk.io.resolve(fromPath, target.href), target.at);
+    for (const dep of targetsOf(doc.links)) {
+      visitComponent(walk.io.resolve(path, dep.href), dep.at, walk);
+    }
+    // A component may use snippets too, and theirs drag the same way (§4.5).
+    visitDragged(loaded.dragged, walk);
   }
 }
 
@@ -319,14 +444,14 @@ export interface DocumentGraph extends ComponentGraph {
  * message names the file, and the host (SDD-19) maps it back when it reports.
  */
 export function resolveDocument(entryPath: string, io: ResolveIo): ParseResult<DocumentGraph> {
-  const entrySource = io.read(entryPath);
-  const parsedEntry = parse(entrySource);
+  const loaded = load(entryPath, io);
   // The entry's OWN syntax errors, first because they come first in the file. Only the
   // entry's: a dependency's spans are offsets into a different file, and every dependency
   // — component or layout — is a module of its own that comes back through here, so its
   // diagnostics surface against its own source instead of being reported on this one.
-  const diagnostics: Diagnostic[] = [...parsedEntry.diagnostics];
-  const entry = parsedEntry.value;
+  const diagnostics: Diagnostic[] = [...loaded.diagnostics];
+  const entry = loaded.doc;
+  const entrySource = loaded.source;
   const walk = newWalk(io);
   const components = walk.components;
   const layouts: ResolvedLayout[] = [];
@@ -337,11 +462,15 @@ export function resolveDocument(entryPath: string, io: ResolveIo): ParseResult<D
   if (entry.type === 'route-document' && entry.layoutHref !== '') {
     const path = io.resolve(entryPath, entry.layoutHref);
     const at = entry.layoutLink.span;
-    const source = io.read(path);
-    const doc = parse(source).value;
+    const parent = load(path, io);
+    const source = parent.source;
+    const doc = parent.doc;
+    for (const file of parent.snippetFiles) walk.snippetFiles.add(file);
     if (doc.type === 'layout-document') {
       const deps = doc.links.map(linkHref).filter((h): h is string => h !== undefined);
       layouts.push({ path, source, doc, deps });
+      // A layout may render snippets of its own, and theirs join the document's graph.
+      visitDragged(parent.dragged, walk);
     } else {
       // A shell with no `@RenderBody()` structures as a page: it was MEANT to be a layout
       // (something points at it), so name the missing directive rather than the role.
@@ -360,6 +489,7 @@ export function resolveDocument(entryPath: string, io: ResolveIo): ParseResult<D
     visitComponents(layout.doc.links, layout.path, walk);
   }
   visitComponents(entry.links, entryPath, walk);
+  visitDragged(loaded.dragged, walk);
   // What the walk had to say, after the layout's links and the entry's: a tag two files
   // define (`FUD0761`) is a fact of the whole document, and a layout is part of it.
   diagnostics.push(...walk.diagnostics);
@@ -372,9 +502,12 @@ export function resolveDocument(entryPath: string, io: ResolveIo): ParseResult<D
     entry,
     entryPath,
     entrySource,
+    entryMap: loaded.map,
+    entryOrigin: loaded.origin,
     entryDeps,
     components,
     entryLinkTags,
+    snippetFiles: [...new Set([...loaded.snippetFiles, ...walk.snippetFiles])],
     layouts,
   };
   return diagnostics.length === 0 ? ok(graph) : withDiagnostics(graph, diagnostics);

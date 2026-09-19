@@ -34,8 +34,10 @@ import {
   SourceMapBuilder,
   LineMap,
   redactServerRegions,
+  remapDiagnostics,
   type Diagnostic,
   type DocumentGraph,
+  type OffsetMap,
   type ResolveIo,
   type ResolvedComponent,
   type ResolvedLayout,
@@ -59,6 +61,14 @@ export interface TransformResult {
    * (BUG-13): the syntax errors of a `@code` that Oxc could not parse.
    */
   readonly diagnostics: readonly Diagnostic[];
+  /**
+   * Files this module's content depends on that Vite cannot see from its imports.
+   *
+   * A `<link rel="snippet">` names a `.fud` whose markup ends up INSIDE this module (SDD-29
+   * §4.10), and the emitted code imports nothing from it — so without telling the watcher,
+   * editing a snippet would rebuild nothing.
+   */
+  readonly watchFiles?: readonly string[];
 }
 
 /** A POSIX, explicitly-relative specifier from `fromDir` to `target` (`./x.fud`, `../y/x.fud`). */
@@ -74,8 +84,16 @@ export function relativeSpecifier(fromDir: string, target: string): string {
  * map embeds the original file in `sourcesContent`, and the original file of a page holds
  * server-only code. The redaction is character for character, so every offset the emit
  * anchored still lands where it did — which is why the same text feeds `sourceLineMap`.
+ *
+ * And the map is against the `.fud` AS IT IS ON DISK.
+ *
+ * `out.mappings` speak in offsets of the source the emit was given, which since SDD-29 is the
+ * expanded text and not the file: a `@render` puts markup from another file in the middle of
+ * it. `entryOffset` sends each one back to a position of this file — its own when the text is
+ * the author's, and the `@render` that pulled it in when it is not — so the one `sources`
+ * entry a module's map has (SDD-13 §4.3) stays truthful.
  */
-function buildMap(id: string, source: string, out: EmitOutput): SourceMapV3 {
+function buildMap(id: string, source: string, out: EmitOutput, map: OffsetMap): SourceMapV3 {
   const file = id.replace(/\\/gu, '/');
   const builder = new SourceMapBuilder({
     file,
@@ -84,7 +102,9 @@ function buildMap(id: string, source: string, out: EmitOutput): SourceMapV3 {
     sourceLineMap: new LineMap(source),
     generatedLineMap: new LineMap(out.code),
   });
-  for (const m of out.mappings) builder.addMapping(m.generatedOffset, m.sourceOffset, m.name);
+  for (const m of out.mappings) {
+    builder.addMapping(m.generatedOffset, map.entryOffset(m.sourceOffset), m.name);
+  }
   return builder.build();
 }
 
@@ -205,13 +225,13 @@ export function transformFud(
   // component the chain is empty and the graph is the same one the emit always saw.
   const resolved = resolveDocument(id, io);
   const graph = resolved.value;
-  const entry = graph.entry;
-  const source = graph.entrySource;
+  const origin = graph.entryOrigin;
   const out = emitFor(id, graph, emitOptionsFor(id, graph, routeName, styles, assets));
   return {
     code: out.code,
-    map: buildMap(id, redactServerRegions(source, entry.code), out),
+    map: buildMap(id, redactServerRegions(origin.source, origin.document.code), out, graph.entryMap),
     missingAssets: out.missingAssets,
+    watchFiles: graph.snippetFiles,
     // The emit's own: a `@code` whose JS does not parse (BUG-13 §5.3). Without them the
     // module still gets written — degraded — and the build only trips later, in the
     // prerender, on an identifier the emit never declared.
@@ -222,12 +242,20 @@ export function transformFud(
     // And the injection contract (SDD-38 §6.21): an `inject` of a class no module enrols and
     // no component owns. It is the build's for the same reason, plus one of its own — it
     // READS the neighbouring module, which only whoever holds the I/O can do.
-    diagnostics: [
-      ...resolved.diagnostics,
-      ...out.diagnostics,
-      ...contractDiagnostics(graph),
-      ...injectionDiagnostics(graph, io),
-    ],
+    //
+    // All of them pass through the expansion's table on the way out (SDD-29 §5): everything
+    // after the expansion speaks in offsets of the text the compiler made, and a host reports
+    // against files the author can open.
+    diagnostics: remapDiagnostics(
+      [
+        ...resolved.diagnostics,
+        ...out.diagnostics,
+        ...contractDiagnostics(graph),
+        ...injectionDiagnostics(graph, io),
+      ],
+      graph.entryMap,
+      id,
+    ),
   };
 }
 
@@ -270,7 +298,7 @@ export function transformFudClient(
   );
   return {
     code: out.code,
-    map: buildMap(id, redactServerRegions(graph.entrySource, entry.code), out),
+    map: buildMap(id, redactServerRegions(graph.entryOrigin.source, graph.entryOrigin.document.code), out, graph.entryMap),
     missingAssets: out.missingAssets,
     // The emit's own: a `@code` whose JS does not parse (BUG-13 §5.3). Without them the
     // module still gets written — degraded — and the build only trips later, in the
@@ -296,7 +324,7 @@ function routeClientResult(
   }
   return {
     code: out.code,
-    map: buildMap(id, redactServerRegions(graph.entrySource, graph.entry.code), out),
+    map: buildMap(id, redactServerRegions(graph.entryOrigin.source, graph.entryOrigin.document.code), out, graph.entryMap),
     missingAssets: out.missingAssets,
     diagnostics: [...graphDiagnostics, ...out.diagnostics],
   };

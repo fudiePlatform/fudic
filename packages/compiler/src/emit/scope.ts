@@ -68,6 +68,7 @@ class ScopeStack {
   readonly #free: OxcNode[] = [];
   readonly #declared: OxcNode[] = [];
   readonly #seen = new Set<string>();
+  readonly #occurrences: OxcNode[] = [];
 
   /** Free references, deduplicated, in order of FIRST appearance (§3.3, determinism). */
   get free(): readonly string[] {
@@ -83,9 +84,22 @@ class ScopeStack {
     return [...this.#declared, ...this.#free];
   }
 
+  /**
+   * EVERY free reference, in source order and not deduplicated.
+   *
+   * `free` answers *which names* a block depends on, and once each is the right answer there.
+   * SDD-29 asks the other question — *where* each mention of a name is — because it replaces
+   * a snippet's parameter with the argument text at every point the body reads it, and a list
+   * that kept only the first would substitute one and leave the rest dangling.
+   */
+  get occurrences(): readonly OxcNode[] {
+    return this.#occurrences;
+  }
+
   reference(node: OxcNode): void {
     const name = nameOf(node);
     if (this.#frames.some((frame) => frame.has(name))) return;
+    this.#occurrences.push(node);
     if (this.#seen.has(name)) return;
     this.#seen.add(name);
     this.#free.push(node);
@@ -239,6 +253,22 @@ export function freeReferences(fragments: readonly FragmentAst[]): readonly stri
   const scope = new ScopeStack();
   for (const fragment of fragments) walk(fragment, scope);
   return scope.free;
+}
+
+/**
+ * Every free reference of a set of fragments as a NODE, in buffer order, repeats included.
+ *
+ * The same walk as `freeReferences`, and it has to be: SDD-29 replaces a snippet's parameter
+ * with the argument's text wherever the body reads it, and "wherever the body reads it" is
+ * exactly the question this walk already answers. A regular expression would replace the `a`
+ * of `data.a`, the key of `{ a: 1 }` and the parameter of `(a) => a`, all three of them
+ * wrong, and a second traversal with its own idea of a reference would drift from the one
+ * that decides a block's dependencies.
+ */
+export function freeReferenceNodes(fragments: readonly FragmentAst[]): readonly OxcNode[] {
+  const scope = new ScopeStack();
+  for (const fragment of fragments) walk(fragment, scope);
+  return [...scope.occurrences].sort((a, b) => a.start - b.start);
 }
 
 /**

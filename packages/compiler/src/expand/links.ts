@@ -40,10 +40,20 @@ function staticValue(a: Attribute | undefined): string | undefined {
   return out;
 }
 
+/**
+ * The statically decidable value of an attribute of an element, or `undefined`.
+ *
+ * Shared with the expansion, which reads the `href` of a component link the same way when it
+ * drags one (§4.5) — one reading of "an attribute the compiler can act on", not two.
+ */
+export function staticAttribute(el: ElementNode, name: string): string | undefined {
+  return staticValue(attr(el, name));
+}
+
 /** Read one import. Never throws: an absent `href` comes back empty and is reported later. */
 export function readSnippetLink(el: ElementNode): SnippetLink {
-  const href = staticValue(attr(el, 'href')) ?? '';
-  const namespace = staticValue(attr(el, 'as'));
+  const href = staticAttribute(el, 'href') ?? '';
+  const namespace = staticAttribute(el, 'as');
   return {
     el,
     href,

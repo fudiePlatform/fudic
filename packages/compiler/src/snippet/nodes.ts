@@ -40,6 +40,13 @@ export interface SnippetDeclNode extends Node {
   readonly children: readonly HtmlContent[];
   /** The `{ … }` of the body, braces included. Empty span when the body was missing. */
   readonly bodySpan: Span;
+  /**
+   * What is BETWEEN the braces: the text the expansion copies (§4.10).
+   *
+   * Its own field rather than `bodySpan` minus one on each side, because an unclosed body has
+   * no closing brace to subtract and the arithmetic would quietly eat a character of markup.
+   */
+  readonly contentSpan: Span;
 }
 
 /**

@@ -52,6 +52,15 @@ export interface BoundArgument {
   readonly value: { readonly start: number; readonly end: number };
   /** Absolute path of the file `value` is a span into. */
   readonly file: string;
+  /**
+   * `true` when the call wrote nothing and the DEFAULT is what fills it.
+   *
+   * Its own flag rather than comparing files, because a snippet declared in the file that
+   * calls it makes the two paths equal — and then an argument and a default become
+   * indistinguishable exactly where it matters: an argument's text is written in the
+   * caller's frame and may itself mention a parameter, a default's never does.
+   */
+  readonly fromDefault: boolean;
   /** `true` when nothing filled it: optional, no default. It expands to `undefined`. */
   readonly empty: boolean;
 }
@@ -182,13 +191,25 @@ function bind(
   params.forEach((param, index) => {
     const given = filled.get(index);
     if (given !== undefined) {
-      out.push({ param, value: given.value.value, file: callerFile, empty: false });
+      out.push({
+        param,
+        value: given.value.value,
+        file: callerFile,
+        fromDefault: false,
+        empty: false,
+      });
       return;
     }
     if (param.defaultValue !== undefined) {
       // A default is written in the snippet's own file, so it travels with that path: the
       // expansion copies its text from there and a diagnostic about it points there too.
-      out.push({ param, value: param.defaultValue, file: snippet.file, empty: false });
+      out.push({
+        param,
+        value: param.defaultValue,
+        file: snippet.file,
+        fromDefault: true,
+        empty: false,
+      });
       return;
     }
     if (param.required) {
@@ -200,7 +221,7 @@ function bind(
         ),
       );
     }
-    out.push({ param, value: param.span, file: snippet.file, empty: true });
+    out.push({ param, value: param.span, file: snippet.file, fromDefault: false, empty: true });
   });
   return out;
 }
