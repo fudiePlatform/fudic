@@ -5,7 +5,7 @@
 > `@fudic/formatter` · `@fudic/vite` · `@fudic/cli` · `fudic-vscode`
 > **Rama:** `SDD-29-code-snippets`
 > **Rango de diagnósticos:** `FUD0820`–`FUD0849` (lo fija esta tanda; el SDD no reservaba ninguno)
-> **Progreso:** 11 / 16
+> **Progreso:** 13 / 16
 > **Bloqueado por:** nada. SDD-05, 06, 10, 11 y 12 están `Hecho`, y la resolución de
 > specifiers de paquete que hereda el `<link rel="snippet">` la trajo
 > [SDD-43](./SDD-43-librerias.md) §4.3 sin tocar `ResolveIo`.
@@ -110,9 +110,37 @@ las reglas de cuerpo, y el ámbito necesita la estructura.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 12 | 8 | **La proyección: un snippet es una función.** El fichero virtual de un `.fud` exporta cada `@snippet` como `export function card(title: string, variant: 'a'\|'b' = 'a') { … }` con el cuerpo proyectado por el mismo proyector de plantilla que ya existe, y los parámetros mapeados a su span. En el consumidor, un `<link rel="snippet">` es un `import`: sin `as`, nombrado; con `as`, `import * as form`. Un `@render form.card(x)` se proyecta como `form.card(x)`. De ahí salen **gratis** el chequeo de tipos de los argumentos (§7), la aridad, el hover con la firma completa y el ir-a-la-definición cruzando ficheros. Criterios 33, 35 | `language-core` | `src/template/snippets.ts` · `src/emit-client.ts` · `src/imports.ts` |
-| [ ] | 13 | 12 | **La misma sensación que con cualquier `.fud`.** Un fichero de snippets se abre sin errores (rol nuevo en `mode.ts`); el `href` de un `<link rel="snippet">` completa rutas y va a la definición como el de `rel="component"`; tras `@render ` se completan los nombres del ámbito, con su firma en el detalle; `@snippet` y `@render` colorean como palabra clave —tokens semánticos y gramática de VS Code—; los diagnósticos de la tarea 8 llegan al editor por el canal que ya existe; y modificar un fichero de snippets reparsea a sus consumidores. Criterios 33, 34, 35 | `language-server` · `vscode` | `src/mode.ts` · `src/services/href.ts` · `src/services/snippets.ts` · `syntaxes/fudic.tmLanguage.json` |
+| [x] | 12 | 8 | **La proyección: un snippet es una función.** El fichero virtual de un `.fud` exporta cada `@snippet` como `export function card(title: string, variant: 'a'\|'b' = 'a') { … }` con el cuerpo proyectado por el mismo proyector de plantilla que ya existe, y los parámetros mapeados a su span. En el consumidor, un `<link rel="snippet">` es un `import`: sin `as`, nombrado; con `as`, `import * as form`. Un `@render form.card(x)` se proyecta como `form.card(x)`. De ahí salen **gratis** el chequeo de tipos de los argumentos (§7), la aridad, el hover con la firma completa y el ir-a-la-definición cruzando ficheros. Criterios 33, 35 | `language-core` | `src/template/snippets.ts` · `src/emit-client.ts` · `src/imports.ts` |
+| [x] | 13 | 12 | **La misma sensación que con cualquier `.fud`.** Un fichero de snippets se abre sin errores (rol nuevo en `mode.ts`); el `href` de un `<link rel="snippet">` completa rutas y va a la definición como el de `rel="component"`; tras `@render ` se completan los nombres del ámbito, con su firma en el detalle; `@snippet` y `@render` colorean como palabra clave —tokens semánticos y gramática de VS Code—; los diagnósticos de la tarea 8 llegan al editor por el canal que ya existe; y modificar un fichero de snippets reparsea a sus consumidores. Criterios 33, 34, 35 | `language-server` · `vscode` | `src/mode.ts` · `src/services/href.ts` · `src/services/snippets.ts` · `syntaxes/fudic.tmLanguage.json` |
 | [ ] | 14 | 1 | **El formateador no se come nada.** `@snippet name(firma) { … }` y `@render name(args)` se imprimen y se sangran como un `@section` y una directiva: el cuerpo es un `html_block` y no tiene reglas propias (§7). Ida y vuelta idempotente sobre el fixture | `formatter` | `src/format.ts` |
+
+---
+
+## Dónde está esto ahora — para quien lo recoja
+
+Fases 1 a 5 **cerradas y commiteadas**, cinco commits en la rama, con
+`pnpm typecheck`, `pnpm test` y `pnpm build` en verde después de cada una. `src/snippet/` y
+`src/expand/` están al **100 %** en las cuatro métricas.
+
+Lo que queda:
+
+- **Tarea 14 — el formateador.** Sin empezar. `@fudic/formatter` ya inyecta `parseSnippet`
+  (comparte `atConstructs`), así que parsea; lo que falta es **imprimir** los dos nodos en
+  `src/print/content.ts` y comprobar la ida y vuelta idempotente. Sin ello, un `.fud` con
+  snippets formateado al guardar se queda sin ellos.
+- **Tarea 15 — la evidencia.** Sin empezar. El fixture canónico y el ejemplo que construye de
+  verdad, verificado en Chrome. El andamiaje está: `packages/vite/test/transform-snippets.test.ts`
+  ya compone un componente arrastrado extremo a extremo con ficheros reales.
+- **Tarea 16 — cierre.** Los 35 criterios de §6 repasados uno a uno, cobertura, e `INDEX.md`.
+
+Dos decisiones tomadas por el camino que conviene no deshacer sin leer el porqué:
+
+1. **El editor no corre `checkRenderCalls`.** TypeScript ya reporta el nombre, la aridad y los
+   tipos sobre la proyección, y con mejores mensajes; duplicarlo es lo que BUG-23 enseñó a no
+   hacer. El build sí lo corre entero, porque allí no hay TypeScript. Queda un hueco conocido:
+   `FUD0834` entre dos ficheros importados sin `as` solo se ve en el build.
+2. **`src/snippet/` es gramática pura y `src/expand/` es todo lo que lee ficheros.** La
+   frontera evita un ciclo real entre `document/` y el ámbito.
 
 ---
 
