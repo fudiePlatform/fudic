@@ -2,17 +2,30 @@
 
 > **Estado:** `Listo`
 > **Paquetes:** `@fudic/core` · `@fudic/dom` · `@fudic/forms` · `@fudic/di` (publican) ·
-> `@fudic/vite` (enlaza) · `@fudic/conventions` (el nombre del directorio) ·
-> `@fudic/cli` · `@fudic/example-basic` (la evidencia)
+> `@fudic/vite` (publica `main` y enlaza) · `@fudic/conventions` (el nombre del directorio) ·
+> `@fudic/transport` · `@fudic/ssr` (el worker enlaza en vez de empaquetar) ·
+> `@fudic/core` (el índice de instancias) · `@fudic/cli` ·
+> `@fudic/example-basic` · `examples/workspace` (la evidencia)
 > **Depende de:** 41, 43, 15, 19, 27
 > **Rango de diagnósticos:** `FUD0800`–`FUD0819`
-> **Naturaleza:** artefactos de build y resolución. No toca el parser, ni el emit de un
-> `.fud`, ni el runtime de hidratación. **No toca el Service Worker** (§7).
+> **Naturaleza:** artefactos de build y resolución, y **la última revisión del runtime de
+> navegador antes de cerrar el framework**. No toca el parser ni el emit de un `.fud`.
 >
 > Hoy cada aplicación **compila** el runtime del framework. Dos apps en un mismo origen
 > producen dos copias de los mismos módulos, con nombres distintos, y el navegador se las
 > descarga y las cachea las dos. Este SDD invierte eso: el framework **publica** su runtime
 > una vez por versión, y la app lo **enlaza**.
+>
+> **Revisión del 2026-09-19.** Este documento se redactó con una afirmación falsa en §1.2
+> —que la URL distinta de `fudic-main` «se arregla moviendo la ruta»; hoy es §1.2(b), que
+> explica por qué no— y sobre ella descansaba
+> el 75 % del ahorro que promete §1.1. `fudic-main` lleva el `base` y el build id **compilados
+> dentro**, así que no hay ruta que lo arregle: mientras eso siga en pie el SDD ahorra 2 828
+> bytes por aplicación y no 11 233. Corregirlo arrastra el resto de la revisión, porque una
+> vez `main` se publica, el mismo mecanismo —`/_fudic/<version>/` servido desde **una caché de
+> origen**— alcanza al Service Worker, que §4.7 había dejado fuera por un motivo que resultó
+> no aplicarle. Es una sola iteración y no una segunda spec: lo que se añade abajo son las
+> partes que faltaban del mismo mecanismo, no un mecanismo nuevo.
 
 ---
 
@@ -22,37 +35,52 @@
 
 Sobre el build de `examples/basic`, lo que una aplicación se lleva del framework:
 
-| | bytes |
-|---|---|
-| `fudic-main-<build>.js` | 8 405 |
-| `assets/browser-<build>.js` | 1 161 |
-| `assets/live-<build>.js` | 945 |
-| `assets/signal-<build>.js` | 399 |
-| `assets/page-<build>.js` | 323 |
-| **cierre estático, obligatorio en toda app** | **11 233** |
-| el resto del runtime, solo si se usa (`computed`, `effect`, `bind-form`, `container`…) | ~9 800 |
+| | bytes | ¿lo comparten dos apps? |
+|---|---|---|
+| `fudic-main-<build>.js` | 8 405 | **no**, y no por la URL (§1.2) |
+| `assets/browser-<build>.js` | 1 161 | no |
+| `assets/live-<build>.js` | 945 | no |
+| `assets/signal-<build>.js` | 399 | no |
+| `assets/page-<build>.js` | 323 | no |
+| **cierre estático, obligatorio en toda app** | **11 233** | |
+| el resto del runtime, solo si se usa (`computed`, `effect`, `bind-form`, `container`…) | ~9 800 | no |
+| `fudic-sw.js` — `@fudic/transport` 8 703 · `@fudic/ssr` 4 587 · el arranque 2 048 · `@fudic/di` 1 241 | 16 765 | no |
 
-Con tres aplicaciones bajo un mismo origen eso son **unos 33 kB obligatorios repetidos**, y
-hasta 63 kB si las tres usan todo. Ni un byte se comparte, y no porque falte una caché
-compartida: `CacheStorage` es por origen y los tres workers podrían abrir la misma. No se
-comparte porque **no hay dos ficheros iguales que compartir**.
+Con tres aplicaciones bajo un mismo origen eso son **unos 33 kB obligatorios repetidos** más
+50 kB de workers, y hasta 63 kB si las tres usan todo. Ni un byte se comparte, y no porque
+falte una caché compartida: `CacheStorage` es por origen y los tres workers podrían abrir la
+misma. No se comparte porque **no hay dos ficheros iguales que compartir**.
+
+Y un coste que la tabla no enseña porque no depende de cuántas apps haya: esos 11 233 bytes
+llevan el build id en el nombre, así que **se vuelven a descargar enteros en cada
+despliegue**, aunque la aplicación sea una sola y aunque del framework no haya cambiado nada.
 
 ### 1.2. Por qué hoy no hay dos ficheros iguales
 
-Dos razones, y la segunda es la de fondo:
+Tres razones, y ninguna se arregla con la ruta:
 
-**(a) La URL lleva el `base` y el build id.** `/fudic-main-a1b2c3d4.js` y
-`/admin/fudic-main-9f8e7d6c.js` son dos URLs para el mismo arranque. Esto solo, se arregla
-moviendo la ruta.
-
-**(b) Cada app compila el runtime.** `@fudic/core`, `@fudic/dom`, `@fudic/forms` y
+**(a) Cada app compila el runtime.** `@fudic/core`, `@fudic/dom`, `@fudic/forms` y
 `@fudic/di` llegan al build de la aplicación **en fuente**, y es el rollup de esa aplicación
 el que los poda, los trocea y los minifica. El resultado depende del grafo de esa app, de su
 configuración de minificado y de la versión del bundler que tenga instalada. Aunque las dos
 apps usaran exactamente `signal.ts`, los bytes emitidos **no tienen por qué coincidir**, y
 esperar que coincidan es construir sobre una coincidencia.
 
-Mientras (b) siga en pie, el nombre del fichero da igual: no hay nada que compartir.
+**(b) `fudic-main` lleva el `base` y el build id DENTRO.** Esta es la que se redactó mal. El
+final del `main` de `examples/basic` es literalmente
+`createUrlResolver('/', 'b281ee14')`, y hay tres decisiones más tomadas en tiempo de build
+dentro de ese mismo módulo: si la app tiene DI (`import { buildTree } from '@fudic/di/page'`,
+escrito o no), qué canal de warm usa (worker o `modulepreload`), y si es dev o build. Dos
+aplicaciones **no pueden** producir el mismo `main`, porque `main` no describe al framework:
+describe a la aplicación. Mover la ruta no cambia un byte de eso, y es el fichero grande —
+8 405 de los 11 233.
+
+**(c) El worker se importa a sí mismo entero.** `@fudic/transport` y `@fudic/ssr` están
+dentro de `fudic-sw.js` por [BUG-03](./bugs/BUG-03-chunks-compartidos-sw.md), y ahí no hay
+URL que compartir porque no hay fichero: son bytes inlineados.
+
+Mientras (a) siga en pie el nombre del fichero da igual; y aunque se arregle (a), mientras
+siga (b) el fichero que más pesa se queda fuera del trato.
 
 ### 1.3. Lo que ya está a favor
 
@@ -71,9 +99,19 @@ compila** y no un rediseño del runtime.
 
 ### 1.4. El objetivo
 
-Que un byte del framework se descargue **una vez por origen**, lo pidan una aplicación o
-diez, sin que ninguna deje de llevarse solo lo que usa, y sin que dos versiones del
+Que un byte del framework se descargue **una vez por origen y por versión**, lo pidan una
+aplicación o diez, lo pida la página o el Service Worker, y **sobreviva a un despliegue de la
+aplicación**, sin que ninguna deje de llevarse solo lo que usa y sin que dos versiones del
 framework se estorben.
+
+Tres consecuencias que conviene leer por separado, porque son tres cosas distintas y la
+segunda es la que vale para todo el mundo:
+
+1. **N apps, un byte.** Es el caso que motivó el documento.
+2. **Un despliegue no invalida el framework.** Una app sola, desplegada diez veces, descarga
+   el runtime **una** vez. Hoy son diez.
+3. **El worker bebe de la misma caché que la página.** Lo que la página trajo a
+   `/_fudic/<version>/` no lo vuelve a traer el worker, ni el de al lado.
 
 ### 1.5. Lo que este SDD NO es
 
@@ -108,6 +146,15 @@ artefactos emitidos del plugin.
 **SDD-27 — Artefactos y manifiesto.** El esquema de nombres de salida y el manifiesto de
 rutas: lo que este SDD añade al `dist` tiene que caber ahí sin inventar un segundo esquema.
 
+**SDD-17 — Hidratación.** El orden bus → cascada → host → replay, y el hecho de que las
+instancias se buscan por recorrido del documento. §4.11 cambia de dónde sale esa lista y no
+toca el orden.
+
+**SDD-20 — Service Worker.** `createLinker`, `canLink`, el `Store` y `cacheNames`: las cuatro
+piezas con las que §4.7 enlaza lo que hoy empaqueta. **BUG-03** es la razón por la que el
+worker se importa entero, y §4.7 explica a qué se aplica y a qué no. **BUG-33** es el esquema
+de nombres de caché por aplicación, del que §4.8 es la excepción deliberada.
+
 ---
 
 ## 3. Interfaz pública
@@ -122,13 +169,16 @@ rutas: lo que este SDD añade al `dist` tiene que caber ahí sin inventar un seg
 /_fudic/0.0.1/signal.js
 /_fudic/0.0.1/computed.js
 /_fudic/0.0.1/browser.js
+/_fudic/0.0.1/main.js      ← el arranque de hidratación (§4.9)
+/_fudic/0.0.1/ssr.js       ← lo que el worker enlaza (§4.7)
+/_fudic/0.0.1/di.js
 ```
 
 | Pieza | Qué es |
 |---|---|
 | `_fudic` | El directorio del runtime, **fuera de todo `base`**. Empieza por `_` por lo mismo que el specifier de SDD-42: ninguna ruta de aplicación puede colisionar con él |
 | `<version>` | La versión del paquete del framework, tal cual la declara su `package.json`. No se abrevia, no se trunca |
-| `<unidad>` | El nombre del módulo fuente: `signal.ts` → `signal.js` (§4.3) |
+| `<unidad>` | El nombre del módulo fuente: `signal.ts` → `signal.js` (§4.3). `main` es la única unidad que no sale de un módulo de `core`/`dom`/`forms`/`di`: la escribe `@fudic/vite` y la publica igual que las demás (§4.9) |
 
 ### 3.2. `@fudic/conventions`
 
@@ -139,6 +189,20 @@ enlaza.
 ```ts
 /** Where the published runtime lives on the origin, outside every app's `base`. */
 export const RUNTIME_DIR = '_fudic';
+
+/**
+ * The origin-wide cache that holds `/_fudic/<version>/*`, read by the page and by EVERY
+ * Service Worker of the origin (§4.8). Not namespaced by app — that is the point — and so
+ * deliberately outside the `<kind>-<app>-<build>` scheme of BUG-33.
+ */
+export const runtimeCacheName = (version: string): string => `fudic-runtime-${version}`;
+
+/** The three facts a published `main` cannot carry inside it, as the page writes them (§4.9). */
+export const RUNTIME_ATTRS = {
+  base: 'data-fud-base',
+  build: 'data-fud-build',
+  sw: 'data-fud-sw',
+} as const;
 ```
 
 ### 3.3. Los paquetes de runtime publican
@@ -154,6 +218,14 @@ packages/core/runtime/       ← nuevo: signal.js, computed.js, effect.js, …
 
 Son ES modules, se importan entre ellos **por la misma ruta publicada** (`./signal.js`), y
 no los toca ningún build de aplicación.
+
+`@fudic/vite` publica dos unidades más por el mismo camino, y por el mismo motivo: son
+framework, no aplicación.
+
+```
+packages/vite/runtime/main.js    ← el arranque de hidratación (§4.9)
+packages/vite/runtime/ssr.js     ← lo que el worker enlaza (§4.7); reexporta @fudic/ssr
+```
 
 ### 3.4. `@fudic/vite`
 
@@ -279,28 +351,147 @@ momento en que este SDD hace de las versiones mezcladas una promesa del producto
 ya no basta: lo que describe **rompe**, y rompe tarde. `FUD0762` queda anotado como
 superado por este código.
 
-### 4.7. El Service Worker se queda como está
+### 4.7. El worker deja de empaquetar lo que ya sabe enlazar
 
-`fudic-sw.js` son 16 kB por aplicación, con `@fudic/transport` y `@fudic/ssr` **dentro**, y
-este SDD **no los toca**.
+Esta sección decía «el Service Worker se queda como está», y la razón que daba era
+[BUG-03](./bugs/BUG-03-chunks-compartidos-sw.md). BUG-03 sigue siendo cierto y no se reabre.
+Lo que se corrige es a qué se aplica.
 
-No es un olvido ni una fase pendiente: es la decisión de [BUG-03](./bugs/BUG-03-chunks-compartidos-sw.md),
-y su motivo sigue vigente. El grafo de scripts de un worker no pasa por el `fetch` de ese
-worker ni, con `updateViaCache: 'none'`, por la caché HTTP; un chunk compartido entre el
-worker y la página se descargaba dos veces, una por cada cargador. Meterlo todo dentro fue
-la solución, y sigue siéndolo.
+**Un worker carga código de dos maneras, y solo una es la que BUG-03 prohíbe.**
 
-**La consecuencia, dicha entera:** con N aplicaciones en un origen hay N workers y ninguno
-comparte un byte con los otros. Son 16 kB por aplicación que este SDD no ahorra. Lo que sí
-hace es dejar de duplicar los otros 21.
+| | quién lo trae | ¿pasa por el `fetch` del worker? | ¿pasa por `CacheStorage`? |
+|---|---|---|---|
+| `import` en la cabecera del fichero | el cargador de scripts del navegador | no | no, con `updateViaCache: 'none'` |
+| `createLinker` + `new Function` | **el propio worker**, por su `Store` | sí | **sí** |
 
-Que el worker se parta exige reabrir BUG-03, y eso es otra spec y otra medición.
+BUG-03 describe la primera fila: un módulo compartido entre la página y el worker se
+descargaba dos veces porque lo pedían dos cargadores distintos, y meterlo todo dentro del
+fichero del worker fue —y sigue siendo— la solución. La segunda fila es el camino por el que
+el worker ya trae **los chunks de ruta** en cada navegación: pide el texto por
+`stores.routes.get(url, 'cache-first')` y lo evalúa. Ese camino es suyo, va a
+`CacheStorage`, y `CacheStorage` es por origen.
 
-### 4.8. En desarrollo no cambia nada
+`@fudic/ssr` está hoy inlineado y entregado a los chunks como `builtins` para que no se
+descargue una vez por chunk. Pasa a traerse **por el segundo camino**: se pide
+`/_fudic/<version>/ssr.js` al `Store` de la caché compartida (§4.8), se enlaza con el linker
+que el worker ya tiene, y el módulo resultante entra en `builtins` exactamente igual que
+ahora. Lo mismo `@fudic/di`. Son 5 828 de los 16 765 bytes.
+
+**`@fudic/transport` no se mueve, y no es negociable:** es quien abre la caché, quien tiene
+el `Store` y quien tiene el linker. Pedirle que se traiga a sí mismo por el camino que él
+mismo implementa es la definición de un arranque imposible.
+
+Nada de esto añade un punto de fallo nuevo. El valor de seguridad ya existe: si el realm no
+puede evaluar, `canLink()` devuelve falso, el worker se declara inútil y las navegaciones caen
+al servidor — el mismo camino degradado de hoy. Y el enlace ocurre dentro de `build()`, que ya
+espera al manifiesto: es un `await` más en el sitio donde ya se espera, no un punto de
+serialización nuevo.
+
+**Lo que sigue dentro del worker:** `@fudic/transport` (8 703 B) y su propio arranque
+(2 048 B). Un worker pasa de 16 765 a unos 10 750 bytes, y esos 10 750 sí son de la
+aplicación.
+
+### 4.8. Una caché de origen, una por versión
+
+Todo `/_fudic/<version>/*` vive en **una** caché, `fudic-runtime-<version>`, que abren la
+página —a través del `fetch` de su worker— y todos los workers del origen.
+
+No lleva `app` en el nombre **a propósito**, y es la única caché del sistema de la que eso es
+cierto: BUG-33 namespacea por aplicación porque dos apps se estaban borrando las cachés, y esta
+es justo la que quieren compartir. La versión del framework en el nombre es lo que hace que
+`app-1` en 1.0 y `app-2` en 2.0 no se estorben, igual que en la ruta (§4.5).
+
+**El purgado no la toca, y no hay que escribir nada para eso.** `isStaleCache` solo reconoce
+nombres que empiezan por `shell-`, `routes-`, `pages-` o `data-`; `fudic-runtime-0.0.1` no
+casa con ninguno y sobrevive a todo `activate`. Es una propiedad del código de hoy, así que lo
+que hay que escribir es **el test que la fija**, no la lógica.
+
+Que una caché no se purgue nunca es correcto aquí y no en las otras: su contenido es inmutable
+por construcción —la versión está en la clave— y lo que sobra son directorios de versión que
+ya nadie nombra, que es exactamente lo que `fudic prune` computa desde el origen (§7).
+
+### 4.9. `main` se publica: la aplicación deja de compilar su propio arranque
+
+`fudic-main` es el fichero grande, y el único de los cinco que no puede compartirse tal cual
+está escrito (§1.2 b). Lleva dentro cuatro decisiones de build:
+
+| decisión | hoy | pasa a |
+|---|---|---|
+| `base` y build id | `createUrlResolver('/', 'b281ee14')` compilado | `data-fud-base` / `data-fud-build` del propio `<script>` |
+| canal de warm | la rama se elige al emitir, según haya worker | `data-fud-sw` |
+| ¿la app tiene DI? | el `import { buildTree }` se escribe o no | **el DOM**: el IIFE que ya sale si no hay `fud-ioc`, con `await import()` |
+| dev o build | dos modos de `resolveChunk` | dev no usa la unidad publicada (§4.13) |
+
+```html
+<script type="module" src="/_fudic/0.0.1/main.js"
+        data-fud-base="/" data-fud-build="b281ee14" data-fud-sw="1"></script>
+```
+
+Son unos 60 bytes de HTML por página que hidrata, y a cambio `main` deja de pertenecer a la
+aplicación: mismos bytes para todas las apps del origen, y —lo que vale para quien solo tiene
+una— **mismos bytes entre dos despliegues**.
+
+**`buildTree` es el único import que se vuelve dinámico**, y solo porque el sitio donde se
+usa ya es asíncrono y ya comprueba el hecho: el IIFE de DI sale antes si la página no publica
+`fud-ioc`. Ningún otro import de `main` se toca. Un `import()` en la ruta de arranque es un
+viaje de red serializado detrás de la evaluación de `main`, y lo que ahorraría —`live.js`,
+945 bytes que están en caché desde la segunda navegación— no lo paga.
+
+El autor sigue sin escribir una URL (§4.1): quien escribe los tres atributos es el mismo emit
+que hoy escribe el `src`.
+
+### 4.10. Sin Service Worker no hay `boot`
+
+Una aplicación sin `sw.json` emite hoy un `fudic-boot-<build>.js` cuyo contenido entero es
+`export {};`, y **todas sus páginas escriben el `<script>` que lo pide**. Es una petición HTTP
+por página para un módulo vacío.
+
+Pasa a no emitirse: ni el fichero ni la etiqueta. El `boot` es la mitad que registra el
+worker, así que cuando no hay worker no hay mitad. La condición es la que ya se evalúa para
+decidir su contenido, movida un escalón antes — del cuerpo del módulo a la etiqueta que lo
+carga.
+
+### 4.11. El índice de instancias: una pasada por gesto
+
+`allInstances` recorre el documento entero cruzando shadow roots, y el runtime lo vuelve a
+llamar **dentro del gesto**: una vez por tag en la cascada, una por receptor del bus, y una
+entera —`allInstances(root).find(...)`— para localizar **un** elemento por su id. Un clic
+sobre un árbol de N instancias son N+ recorridos completos del documento.
+
+Pasa a haber **uno**: al empezar un turno de hidratación se construye el índice —`id → Element`
+y `tag → Element[]`— y los buscadores lo consultan.
+
+**Por turno y no global, y esa es la decisión.** Un índice global exigiría mantenerlo vivo
+frente a todo lo que inserta nodos después —el fabricador de `live`, el render del worker, el
+propio usuario—, y un índice desactualizado es un fallo silencioso donde hoy hay una pasada
+lenta. El índice del turno nace con el gesto y muere con él: no puede envejecer.
+
+No cambia ningún invariante de SDD-17: el orden bus → cascada → host → replay es el mismo, y
+lo único que cambia es de dónde sale la lista de instancias.
+
+### 4.12. El polyfill se queda inline
+
+Se consideró publicarlo como una unidad más —`/_fudic/<version>/adopt.js`, clásico y
+bloqueante en el `<head>`— para quitar 1 292 caracteres de **cada** página. Se descarta, y el
+motivo es el que justifica que esté inline desde SDD-18 §5: **el FOUC**.
+
+Un `<script src>` sin `async` ni `defer` bloquea el parser igual, sí, pero pasa a bloquearlo
+**sobre un viaje de red**, y precisamente en la primera visita — la que no tiene ni caché HTTP
+ni worker instalado, y la que mide el LCP. Y añade un modo de fallo que el inline no tiene: si
+esa petición falla, no hay adopción de hojas y sí hay FOUC, de forma permanente y solo en los
+navegadores sin soporte nativo, que son los únicos que lo necesitaban.
+
+Unos 600 bytes brotli por página no compran eso. **El polyfill se emite inline, tal cual está
+hoy.**
+
+### 4.13. En desarrollo no cambia nada
 
 `pnpm dev` sigue sirviendo el runtime desde el grafo de módulos de Vite, sin `_fudic/` y sin
 versiones en la URL. Publicar unidades es una propiedad del **build**, y un dev server que
 las sirviera perdería el recargado en caliente del runtime a cambio de nada.
+
+Los tres atributos de §4.9 **sí** se escriben en dev, con los valores que dev tiene. Que el
+runtime lea siempre del mismo sitio es lo que evita que dev y build sean dos programas.
 
 ---
 
@@ -319,7 +510,16 @@ las sirviera perdería el recargado en caliente del runtime a cambio de nada.
 - **`FudicOptions` no gana ninguna opción.** La versión la posee el `package.json` y el
   directorio `@fudic/conventions`.
 - **El compilador sigue sin filesystem.** Las URLs llegan resueltas por el host.
-- **El Service Worker no se toca** (§4.7).
+- **La aplicación no compila su propio arranque.** `main` es framework y se publica como tal;
+  lo que es de la aplicación viaja en atributos del HTML, no compilado dentro (§4.9).
+- **`@fudic/transport` vive dentro del worker.** Es quien abre la caché y quien enlaza; todo
+  lo demás del worker puede enlazarse, y lo que se enlaza no pasa por un `import` (§4.7).
+- **La caché del runtime no lleva el `app` en el nombre**, y es la única. Es lo contrario de
+  BUG-33 y a propósito (§4.8).
+- **El polyfill se emite inline.** Sacarlo a una URL cambia bytes por riesgo de FOUC en la
+  primera visita, y no se hace (§4.12).
+- **Un índice de instancias no sobrevive a su gesto** (§4.11). Un índice que envejece es un
+  fallo silencioso donde hoy hay una pasada lenta.
 - **Cobertura.** El código nuevo nace al 100 % en las cuatro métricas; ningún paquete tocado
   baja del número que tiene al empezar.
 
@@ -336,8 +536,9 @@ las sirviera perdería el recargado en caliente del runtime a cambio de nada.
 
 ## 6. Criterios de aceptación
 
-Tests en `packages/core/test/` y hermanos (1–2), `packages/vite/test/` (3–9) y la evidencia
-en `examples/` (10–11).
+Tests en `packages/core/test/` y hermanos (1–2), `packages/vite/test/` (3–13),
+`packages/transport/test/` y `packages/core/test/` (14–17) y la evidencia en `examples/`
+(18–19).
 
 **Lo que publica el framework**
 
@@ -363,27 +564,72 @@ en `examples/` (10–11).
 7. Dos versiones distintas del framework producen dos directorios, y ninguno pisa al otro.
 8. `FUD0800`: una librería cuyo rango no incluye la versión resuelta **rompe el build**, con
    los tres datos en el mensaje. Y el caso en verde: dentro del rango, cero diagnósticos.
-9. **`pnpm dev` no cambia** (§4.8): no hay `_fudic/` en el grafo de dev y el runtime se
+9. **`pnpm dev` no cambia** (§4.13): no hay `_fudic/` en el grafo de dev y el runtime se
    sirve como hoy.
+
+**`main` deja de ser de la aplicación (§4.9, §4.10)**
+
+10. **(rojo primero)** Dos builds de la **misma** app con `base` distinto (`/` y `/admin/`)
+    producen el **mismo** `_fudic/<version>/main.js` byte a byte, y ninguno emite
+    `fudic-main-<build>.js`. Hoy produce dos ficheros distintos, y ese es el fallo que hay
+    que ver antes.
+11. Una página que hidrata escribe los tres atributos, y el runtime resuelve con ellos: bajo
+    `base` `/admin/`, la URL de un chunk de hidratación es `/admin/assets/h/<tag>-<build>.js`.
+    Se comprueba con el atributo, no con el bundle.
+12. Una página **sin** `fud-ioc` no pide `di/page`: se cuenta sobre las peticiones, no sobre
+    el grafo. Y una **con** `fud-ioc` lo pide y el árbol de contenedores se levanta igual que
+    hoy — los tests de SDD-38 siguen verdes sin tocarlos.
+13. Un proyecto **sin** `sw.json` no emite `fudic-boot-*.js` y ninguna de sus páginas escribe
+    su `<script>`. Con `sw.json`, las dos cosas siguen exactamente como hoy.
+
+**El worker y la caché compartida (§4.7, §4.8)**
+
+14. `fudic-sw.js` no contiene `@fudic/ssr` ni `@fudic/di` —se comprueba por ausencia de sus
+    símbolos en el fichero emitido— y baja de 16 765 a menos de 11 000 bytes.
+15. El worker enlaza `ssr` desde la caché compartida y **renderiza igual**: la batería de
+    navegación de SDD-20 pasa sin tocarla, offline incluido, que es donde una dependencia
+    traída por red se nota.
+16. `isStaleCache('fudic-runtime-0.0.1', app, build)` es `false` para **cualquier** `app` y
+    `build`, incluidos los que la harían stale si llevara el esquema de BUG-33. Es el test
+    que fija la propiedad de la que depende que dos apps no se borren el runtime.
+
+**El runtime de hidratación (§4.11)**
+
+17. Un gesto que hidrata un árbol de N instancias con receptores de bus hace **un** recorrido
+    del documento. Se mide instrumentando `querySelectorAll` sobre el documento doble que ya
+    usan los tests de SDD-17, y el número esperado es 1 — hoy crece con N.
 
 **La evidencia**
 
-10. El workspace de [SDD-43](./SDD-43-librerias.md) criterio 12 —dos apps y dos librerías—
+18. El workspace de [SDD-43](./SDD-43-librerias.md) criterio 12 —dos apps y dos librerías—
     se despliega en un origen y **el runtime aparece una sola vez**. Verificado en Chrome
     real: la pestaña de red de la segunda app no descarga ni un byte de framework que la
-    primera ya trajo, y `Application → Cache Storage` lo confirma. Es el criterio entero de
-    este SDD.
-11. **Cobertura.** El código nuevo al 100 % en las cuatro métricas.
+    primera ya trajo —`main` incluido, que es lo que este criterio no cubría—, y
+    `Application → Cache Storage` enseña `fudic-runtime-<version>` con las dos apps
+    apuntando a ella. Y **el despliegue**: rebuild de `app-1` con un build id nuevo, recarga,
+    y de `/_fudic/` no se vuelve a pedir nada.
+19. **Cobertura.** El código nuevo al 100 % en las cuatro métricas.
 
 ---
 
 ## 7. Fuera de alcance
 
-- **El Service Worker.** §4.7. Son 16 kB por aplicación que siguen sin compartirse, y
-  tocarlos exige reabrir [BUG-03](./bugs/BUG-03-chunks-compartidos-sw.md), que es otra spec
-  y otra medición. **Condición de reapertura:** que alguien mida qué pasa con
-  `updateViaCache: 'imports'` sobre URLs inmutables — si el grafo de scripts del worker pasa
-  entonces por la caché HTTP, la razón de BUG-03 deja de aplicar y el worker puede partirse.
+- **Sacar `@fudic/transport` del worker.** §4.7. Son 8 703 bytes por aplicación que siguen sin
+  compartirse, y no por BUG-03 sino porque transport **es** el enlazador. **Condición de
+  reapertura:** que alguien mida qué pasa con `updateViaCache: 'imports'` sobre URLs
+  inmutables — si el grafo de scripts del worker pasa entonces por la caché HTTP, la razón de
+  BUG-03 deja de aplicar y el `import` estático deja de duplicar.
+- **Publicar el polyfill de adopción.** §4.12. Descartado con su motivo, no aplazado: cambia
+  ~600 bytes brotli por página por un viaje de red bloqueante en la primera visita y por un
+  FOUC permanente si esa petición falla.
+- **Compactar `fudic-routes.json` internando las dependencias en un array.** Medido sobre
+  `examples/basic`: 4 937 → 2 998 bytes en crudo, y **787 → 781 brotli**. Seis bytes por la
+  red a cambio de un manifiesto ilegible y una indirección en el worker y en el linker: la
+  repetición de strings es exactamente lo que brotli ya elimina. **Condición de reapertura:**
+  que el coste del manifiesto pase a ser el `JSON.parse` y no los bytes, que no ocurre por
+  debajo de varios cientos de rutas.
+- **Más imports dinámicos en `main`.** §4.9. Solo `buildTree`, y solo porque su sitio ya era
+  asíncrono y ya comprobaba el hecho.
 - **El direccionamiento por contenido.** §1.5. **Condición de reapertura:** cuando exista una
   segunda versión publicada del framework, medir qué fracción de sus unidades es idéntica a
   la anterior. Si es alta, nombrar por hash convierte una actualización en el coste del diff;
