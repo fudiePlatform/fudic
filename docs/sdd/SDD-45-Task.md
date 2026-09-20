@@ -234,7 +234,12 @@ F1 las piezas existen ──→ F2 el reparto ──→ F3 enlazar ──→ F4 
 > **Hito en el navegador (criterio 12).** Una ruta que hidrata descarga sus piezas desde
 > `/_fudic/…` y **ni una** desde `assets/`.
 >
-> **Conseguido en el `dist`, pendiente de mirarlo en Chrome.** En `examples/basic` ya no queda
+> **Hito conseguido, visto en Chrome.** La ruta `/reactividad` de `examples/basic`: 15
+> peticiones, 10,5 kB, y **todo** lo del framework desde `/_fudic/0.0.1/…`. De `assets/` solo
+> baja la hoja de tokens. La cadena de iniciadores enseña además lo que la fase 5 tiene que
+> quitar: `main → core/hydrate → core/signal → core/tracking`, tres niveles de descubrimiento.
+>
+> En el `dist`: en `examples/basic` ya no queda
 > **ni un** fichero de framework en `assets/`: lo que hay son seis trozos de la aplicación y
 > 34 piezas bajo `_fudic/0.0.1/`. El arranque bajó de 8 405 a 1 836 bytes, y el trozo de un
 > componente nombra las URLs de sus piezas **directamente**, sin fichero intermedio.
