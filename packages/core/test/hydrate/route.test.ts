@@ -7,9 +7,21 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+import { browserDom } from '@fudic/dom';
 import { installHydration, HYDRATED_EVENT, type HydratedDetail } from '../../src/hydrate/install.js';
 import { startWarmObserver } from '../../src/hydrate/warm/observer.js';
+import { signal } from '../../src/signal.js';
 import { host, publish, TestRegistry } from './_page.js';
+
+/**
+ * The pieces the load does not pay for (SDD-45 §4.4.1), off-network like every other port
+ * here: hydration asks for the DOM adapter and the signal when something is hydrated, and a
+ * test that waited for a real `import` would be measuring the module loader.
+ */
+const deferred = async (): Promise<{ dom: typeof browserDom; signal: typeof signal }> => ({
+  dom: browserDom,
+  signal,
+});
 
 async function settle(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -45,6 +57,7 @@ function run(routeName: string): Run {
     root: document,
     document,
     registry,
+    importDeferred: deferred,
     resolveChunk: (name) => name,
     importModule: async (url) => {
       trace.push(`fetch:${url}`);
@@ -150,6 +163,7 @@ describe('a chunk that answers with something else', () => {
       root: document,
       document,
       registry: new TestRegistry(),
+      importDeferred: deferred,
       resolveChunk: (name) => name,
       // A module with no default export: a stale URL, a redirect, an HTML error page.
       importModule: async () => ({}),

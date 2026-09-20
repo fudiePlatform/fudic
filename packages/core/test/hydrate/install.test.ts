@@ -5,7 +5,19 @@ import {
   READY_EVENT,
   type HydratedDetail,
 } from '../../src/hydrate/install.js';
+import { browserDom } from '@fudic/dom';
+import { signal } from '../../src/signal.js';
 import { host, publish, TestRegistry } from './_page.js';
+
+/**
+ * The pieces the load does not pay for (SDD-45 §4.4.1), off-network like every other port
+ * here: path 2 awaits the DOM adapter and the signal at its top, and a test that waited for a
+ * real `import` would be measuring the module loader instead of the runtime.
+ */
+const deferred = async (): Promise<{ dom: typeof browserDom; signal: typeof signal }> => ({
+  dom: browserDom,
+  signal,
+});
 
 /** One macrotask turn drains every microtask the runtime chained; two, with room to spare. */
 async function settle(): Promise<void> {
@@ -58,6 +70,7 @@ function run(
     document,
     registry,
     ...(gate === undefined ? {} : { ready: gate }),
+    importDeferred: deferred,
     resolveChunk: (tag) => tag,
     importModule: async (tag) => {
       // A chunk that is still in flight, so a gesture can land while the runtime waits for
@@ -353,6 +366,7 @@ describe('the runtime installed', () => {
         root: app,
         document,
         registry: new TestRegistry(),
+        importDeferred: deferred,
         resolveChunk: (tag) => `/h/${tag}.js`,
         warm: { warm: (_urls, tags) => orders.push([...tags]) },
       });

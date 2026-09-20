@@ -210,8 +210,13 @@ const publishedOf = (pkg) => {
       url: `/_fudic/${version}/${pkg.short}/${name}.js`,
       bytes: Buffer.byteLength(body),
       compressed: brotli(body),
+      // Static and DYNAMIC, and the three quotes: a piece that asks for another one at the
+      // moment it needs it writes `import(`…`)`, which is how the pieces §4.4.1 took out of
+      // the load arrive. A URL that does not exist is the same 404 whichever form names it.
       imports: [
-        ...body.matchAll(/from\s*["']([^"']+)["']|import\s*["']([^"']+)["']/g),
+        ...body.matchAll(
+          /from\s*["'`]([^"'`]+)["'`]|import\s*\(?\s*["'`]([^"'`]+)["'`]/g,
+        ),
       ].map((m) => m[1] ?? m[2]),
       // What a consumer can actually import from this URL. Being INSIDE a piece is not
       // enough: `batch` travelled inside `core/signal` and was reachable from nowhere, which

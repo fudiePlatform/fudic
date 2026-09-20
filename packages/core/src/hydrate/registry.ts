@@ -59,6 +59,47 @@ export const browserRegistry: ElementRegistry = {
   },
 };
 
+/** How this page defines a tag: a download, so it belongs to hydration and to nobody else. */
+export type DefineTag = (tag: string) => Promise<void>;
+
+/**
+ * Where a tag comes from, for this page — published by hydration, read by whoever needs to
+ * bring up an element nobody painted (`live`).
+ *
+ * **It lives in this module because of SDD-45 §4.4.1, and that is the whole reason.** The
+ * fabricated-child bridge used to hold this pair itself, and hydration pushed it in by
+ * importing the bridge — which put `core/live` in the load of every page that hydrates, for a
+ * bridge most pages never cross. With the seam here, nothing in the load names it: the bridge
+ * arrives inside the chunk of the component that fabricates, which is the only code that
+ * imports it, and `core/live` is optional FOR REAL rather than merely late.
+ *
+ * Here and not in a piece of its own for the second rule of §4.3: this module is already
+ * reached by hydration and by the bridge, and its frontier is already paid.
+ *
+ * **Module state, and here that is sound.** A browser module lives in one page, the definer
+ * is that page's, and a second page is a second realm. A page that never installs hydration
+ * keeps the platform registry and no definer, which is the honest degraded behaviour: a
+ * fabricated element comes alive if something else defines its tag.
+ */
+let pageDefine: DefineTag | null = null;
+let pageRegistry: ElementRegistry = browserRegistry;
+
+/** Called once by `installHydration`, which owns the chunk loader and the injected registry. */
+export function publishTagSource(define: DefineTag, elements: ElementRegistry): void {
+  pageDefine = define;
+  pageRegistry = elements;
+}
+
+/** How this page downloads a definition, or `null` when nothing installed hydration. */
+export function tagDefiner(): DefineTag | null {
+  return pageDefine;
+}
+
+/** The registry this page's elements live in — the platform's until hydration says otherwise. */
+export function pageElements(): ElementRegistry {
+  return pageRegistry;
+}
+
 /** Why an instance came up: the `from` of `fud:hydrated` (SDD-17 §3). */
 export type HydratedFrom = 'downloaded' | 'shared-chunk' | 'bus' | 'subtree';
 

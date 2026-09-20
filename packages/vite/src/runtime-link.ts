@@ -288,7 +288,12 @@ export function linkedPieces(
   const queue: string[] = [];
 
   const take = (text: string): void => {
-    for (const match of text.matchAll(/["'](\/_fudic\/[^"']+\.js)["']/gu)) {
+    // The three quotes, and the third one is not cosmetic: a piece that reaches another with
+    // a DYNAMIC import writes the URL in a template literal — that is how `core/hydrate` asks
+    // for the pieces SDD-45 §4.4.1 took out of the load — and a scanner blind to backticks
+    // would leave those files uncopied. The application never names them, so the 404 would
+    // arrive on the first gesture of a page that had already loaded fine.
+    for (const match of text.matchAll(/["'`](\/_fudic\/[^"'`]+\.js)["'`]/gu)) {
       const url = match[1];
       if (url === undefined || reached.has(url)) continue;
       const piece = linkage.byUrl.get(url);

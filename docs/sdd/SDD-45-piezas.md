@@ -1,7 +1,7 @@
 # SDD-45 — Catálogo de piezas
 
 > Acompaña a [SDD-45](./SDD-45-runtime-publicado.md). Qué hace cada fichero publicado en
-> `/_fudic/<version>/`, en tres líneas o menos. **41 piezas, 32 556 bytes** (15 491
+> `/_fudic/<version>/`, en tres líneas o menos. **41 piezas, 33 070 bytes** (15 766
 > comprimidos).
 >
 > Cada una dice su tamaño y su clase: **arranque** si la pone en marcha el coordinador de la
@@ -16,17 +16,20 @@
 
 ---
 
-## `@fudic/core` — 11 piezas, 11 230 B
+## `@fudic/core` — 11 piezas, 11 528 B
 
-### `core/hydrate` · 5 946 B · arranque
+### `core/hydrate` · 6 132 B · arranque
 El runtime de hidratación entero: un escuchador de clic en la raíz del documento, el orden
 bus → cascada → componente → repetición del gesto, la lectura de los mapas de la página y el
 observador que mira qué entra en pantalla. Llega en toda página que tenga algo que hidratar.
+Pide él mismo, cuando hace falta y en una sola tanda, el adaptador del DOM y el signal: son las
+dos piezas que §4.4.1 sacó de la carga.
 
-### `core/registry` · 730 B · biblioteca
+### `core/registry` · 869 B · biblioteca
 El registro de instancias hidratables: encontrar los elementos que llevan identificador,
 cruzando shadow roots, y saber cuáles ya están vivos. Es pieza y no está dentro de la
-hidratación porque el fabricado también la usa.
+hidratación porque el fabricado también la usa. Guarda además cómo define esta página un tag
+—lo publica la hidratación— para que el puente del fabricado lo lea sin que nadie lo importe.
 
 ### `core/warm-sw` · 665 B · arranque
 El canal de calentado cuando la aplicación tiene service worker: le manda un aviso de qué
@@ -68,10 +71,10 @@ El canal por el que un componente empuja un valor a un hijo, al engancharlo y en
 Es una función suelta y no un método a propósito: quien la usa se queda a cargo de deshacer la
 suscripción.
 
-### `core/live` · 351 B · biblioteca
+### `core/live` · 324 B · biblioteca
 El puente para un componente que no pintó el servidor —uno que nace dentro de un bucle que
-crece en el navegador—. Su padre lo fabrica y esta pieza le trae la definición. La importan la
-hidratación y los trozos de componente.
+crece en el navegador—. Su padre lo fabrica y esta pieza le trae la definición. La importa solo
+el trozo del componente que fabrica: una página que no fabrica hijos no la descarga nunca.
 
 ---
 
@@ -94,7 +97,7 @@ emite; quien recibe no descarga nada.
 
 ---
 
-## `@fudic/di` — 6 piezas, 2 531 B
+## `@fudic/di` — 6 piezas, 2 747 B
 
 ### `di/resolve` · 1 114 B · biblioteca
 El contenedor ambiental, que existe dentro de una fábrica y en ningún otro sitio: entra al
@@ -111,9 +114,11 @@ El registro raíz de servicios, y el único estado de módulo del paquete. **Tie
 aunque pesara diez bytes**: dos copias serían dos registros, y un servicio dado de alta en uno
 no existiría para una resolución que fuera por el otro.
 
-### `di/page` · 386 B · arranque
+### `di/page` · 602 B · arranque
 Monta el árbol de contenedores de la ruta a partir del mapa que la página imprime, en memoria
-y sin mirar el DOM. Llega solo en las rutas que publican ese mapa.
+y sin mirar el DOM. Llega solo en las rutas que publican ese mapa. Carga aquí dentro los módulos
+de inyección que la ruta necesita, y eso son 1 100 bytes que el coordinador no paga: un
+`import()` en código de la aplicación le hace inyectar su ayudante de precarga.
 
 ### `di/seed` · 176 B · biblioteca
 La tabla que una página publica para que el otro lado reconstruya sus servicios. Cuelga del

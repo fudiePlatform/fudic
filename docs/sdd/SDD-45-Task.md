@@ -6,7 +6,7 @@
 > `@fudic/di` · `@fudic/compiler` · `@fudic/vite` · `@fudic/transport` · `@fudic/ssr` ·
 > `examples/basic` · `examples/workspace` · `examples/pieces-bench`
 > **Rama:** `sdd-45-runtime-publicado`
-> **Progreso:** 17 / 32
+> **Progreso:** 18 / 32
 > **Bloqueado por:** [SDD-43](./SDD-43-librerias.md) — su tarea 11 es el `peerDependencies`
 > que aquí se endurece, y su criterio 12 es el workspace sobre el que se mide la evidencia.
 
@@ -40,12 +40,25 @@ equivocó tres veces antes de asentarse:
 
 ## Dónde estamos
 
-**Fase 4 a medias: falta la tarea 16 y el hito.** El coordinador existe y es por ruta. En
-`examples/basic` salen **dos**: 321 bytes la ruta que solo hidrata y 572 la que además inyecta
-—contra los 1 836 de un arranque único para toda la app—, y cada página nombra el suyo. La
-tarea que queda es el **arranque mínimo** (§4.4.1): sacar de la carga el adaptador del DOM, el
-signal, el seguimiento y el puente del fabricado, que son 2 328 bytes que quien entra y sale no
-debería pagar. Eso toca `@fudic/core`, no el plugin, y es lo único que impide cerrar la fase.
+**Fase 4 con las cinco tareas hechas: falta que Pedro vea el hito en Chrome.** El coordinador
+existe y es por ruta —321 bytes la ruta que solo hidrata y 572 la que además inyecta, contra los
+1 836 de un arranque único para toda la app—, y el arranque ya trae solo lo que hace falta sin
+tocar nada: **cuatro peticiones y 8 507 bytes**, contra nueve y 10 707. El adaptador del DOM y
+el signal con su seguimiento los pide la propia hidratación, en una tanda de dos, cuando algo se
+va a hidratar, y el calentado los anticipa con el trozo del componente que entra en pantalla.
+
+**Y el puente del fabricado resultó ser opcional de verdad**, que era la pregunta abierta de la
+tarea 16: no viaja con el calentado, viaja con el trozo del componente que fabrica y con nadie
+más. Lo que lo retenía era la dirección de la dependencia —la hidratación lo importaba para
+meterle cómo define esta página un tag—, y ese asiento vive ahora en `core/registry`, que ya
+alcanzaban las dos piezas. §4.3.1 no necesita corrección.
+
+**Un defecto real que salió de esto y que no habría salido de un test de la tarea:** el escáner
+que decide qué piezas se copian al `dist` solo veía URLs entre comillas, y un `import()`
+minificado las escribe entre acentos. Una app cuyos componentes no importaran el signal —una que
+hidrate sin reactividad— habría desplegado sin `core/signal.js` y habría dado 404 en el primer
+gesto, con la página ya cargada. Arreglado en el enlazador y en la cuarta comprobación del banco,
+que ahora también mira los imports dinámicos.
 
 **Fase 3 cerrada y commiteada.** La aplicación ya no compila el runtime: lo enlaza. En
 `examples/basic` no queda un solo fichero de framework en `assets/` —seis trozos de la app y 34
@@ -209,6 +222,44 @@ por cubrir:
   nombra como paquete y el bundler lo resuelve, como antes de este SDD. La primera versión era
   un error para cualquier proyecto sin runtime publicado y tiró toda la batería de build.
 
+De la **tarea 16**, el arranque mínimo. Nace sin tests un fichero entero
+(`core/src/hydrate/deferred.ts`) y cambian de forma tres más, así que esto es lo que hay que
+fijar, empezando por lo único que de verdad protege la tarea:
+
+- **La propiedad está en los BYTES PUBLICADOS, no en el código fuente.** `core/hydrate.js` no
+  debe importar estáticamente `dom/browser`, `core/signal`, `core/tracking` ni `core/live`: se
+  comprueba sobre el fichero de `runtime/`, que es lo que descarga un navegador. Un test sobre
+  los imports del `.ts` se queda verde el día que alguien añada el import en otro módulo del
+  mismo empaquetado, que es exactamente cómo estaban los cuatro antes de esta tarea.
+- **El pedido es UNA tanda de dos y no una cadena** (`importDeferred`), y el memo guarda la
+  PROMESA: dos caminos que las piden a la vez son una sola descarga, y quien llega segundo
+  espera lo que ya está en vuelo. La `import()` de verdad es lo único que un test unitario no
+  puede ejercitar, igual que `importChunk` — y hoy está inyectada en `install.test.ts`,
+  `route.test.ts` y `cells.test.ts`, así que sin un test propio queda a cero.
+- **El orden dentro del camino 2**: las piezas se piden ARRIBA, antes de `ready`, y se esperan
+  ANTES del bus y de la cascada. No es una preferencia: cualquiera de los dos puede entregarle a
+  una instancia su rebanada, y una rebanada es donde se materializa una celda. Si se espera
+  después, la aserción de `install.ts` revienta —y eso es el contrato, no optimismo.
+- **El calentado las pide con el trozo, en la misma tanda de tiempo muerto.** El envoltorio del
+  canal vive en `install.ts` a propósito: qué piezas se saltó la carga es de ese fichero, y el
+  observador es una política sobre trozos. Y el caso sin canal: una página que no calienta sigue
+  siendo correcta, las pide en el gesto.
+- **El asiento de `core/registry`** (`publishTagSource` · `tagDefiner` · `pageElements`). Lo que
+  hay que fijar no son las tres funciones sino la consecuencia: **ninguna pieza de arranque
+  importa `core/live`**, y `live` sin nada instalado sigue esperando al registro de la plataforma
+  (eso ya lo cubre `live-alone.test.ts`, que es el único sitio donde ese estado existe una vez).
+- **Toda URL que una pieza nombra se copia, la nombre como la nombre.** El escáner del enlazador
+  solo veía comillas y un `import()` minificado escribe acentos; la propiedad a fijar es que una
+  pieza alcanzada **solo** por un import dinámico acaba en el `dist`. Se verificó a mano contando
+  ficheros, y es un 404 que llega en el primer gesto de una página que ya cargó bien. La cuarta
+  comprobación del banco mira ahora las dos formas.
+- **Y un test que hubo que adaptar, con la misma forma que los doce de la tarea 14:** el de
+  §6.16 —«el router recibe un registro que puede vaciar»— construía una celda sin haber hidratado
+  nada, y eso ya no existe: la celda se hace con el signal, que llega con las piezas diferidas.
+  Ahora hidrata una instancia anticipada primero y comprueba lo mismo que comprobaba. Lo que un
+  router usa de verdad es `clear()`; que `get()` antes de la primera hidratación no es un camino
+  soportado conviene fijarlo también.
+
 ---
 
 ## Mapa de dependencias
@@ -291,7 +342,7 @@ F1 las piezas existen ──→ F2 el reparto ──→ F3 enlazar ──→ F4 
 |---|---|---|---|---|---|
 | [x] | 14 | 13 | **(rojo primero)** **El arranque se parte en coordinador y piezas.** Un módulo por ruta que importa sus piezas y las arranca con los parámetros de esta app. Único sitio donde viven la carpeta y el id. Criterio 13 | `vite` | `src/coordinator.ts` |
 | [x] | 15 | 14 | **La tabla de correspondencias** (§4.4): qué piezas nombra una ruta sale de hechos que el compilador ya tiene. Formularios y reactividad **no** están en ella: los arrastra el trozo de cada componente | `vite` | `src/coordinator.ts` |
-| [ ] | 16 | 15 | **El arranque mínimo** (§4.4.1). El adaptador del DOM, el signal, el seguimiento y el puente del fabricado salen de la carga y pasan al calentado, que ya pide el trozo del componente cuando entra en pantalla. Son 2 328 de 9 900 bytes que quien entra y sale no paga. **Aquí se resuelve si `core/live` es opcional de verdad** o si hay que corregir §4.3.1. Criterio 34 | `core` · `vite` | `src/hydrate/install.ts` · `src/coordinator.ts` |
+| [x] | 16 | 15 | **El arranque mínimo** (§4.4.1). El adaptador del DOM, el signal, el seguimiento y el puente del fabricado salen de la carga y pasan al calentado, que ya pide el trozo del componente cuando entra en pantalla. Son 2 328 de 9 900 bytes que quien entra y sale no paga. **Aquí se resuelve si `core/live` es opcional de verdad** o si hay que corregir §4.3.1. Criterio 34 | `core` · `vite` | `src/hydrate/install.ts` · `src/coordinator.ts` |
 | [x] | 17 | 16 | **Se nombra por su contenido, y el orden va escrito.** Dos rutas con la misma necesidad, el mismo fichero. Una que no hidrata, sin coordinador. El orden entre piezas lo escribe el generador. Criterios 14, 16 | `vite` | `src/coordinator.ts` |
 | [x] | 18 | 17 | **El coordinador pesa menos de 1 kB**, y es una comprobación y no una aspiración. Criterio 15 | `vite` | `src/coordinator.ts` |
 

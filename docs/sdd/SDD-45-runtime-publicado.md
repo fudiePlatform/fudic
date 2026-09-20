@@ -570,6 +570,36 @@ del gesto, que es lo que se ve— y anticipar en paralelo, mucho antes.
 Quien no interactúa nunca no descarga esos 2 328 bytes. Quien interactúa los tiene antes de
 tocarlos.
 
+**Hecho, y esto es lo medido.** El arranque de una ruta que hidrata son ahora **cuatro
+peticiones y 8 507 bytes** en `examples/basic` —el coordinador, el canal de calentado, la
+derivación de URLs y la hidratación con su registro—, contra **nueve y 10 707** antes. De la
+tabla de arriba, la fila que se queda pesa 7 521 y no 7 200: la hidratación engordó 186 bytes
+con el pedido de las dos piezas que ahora pide sola, y el registro 139 con el asiento que se
+explica abajo. Cuatro peticiones menos y 2 200 bytes menos, y el número honrado es ese, no el
+2 328 que se estimó sin contar lo que cuesta pedirlas.
+
+**El puente del fabricado sale de otra manera, y esa es la respuesta a la pregunta que esta
+sección dejó abierta: `core/live` es opcional de verdad.** No viaja con el calentado: no viaja
+con nadie salvo con el trozo del componente que fabrica, que es el único código que lo importa.
+Lo que lo retenía en la carga no era una necesidad sino la dirección de la dependencia — la
+hidratación lo importaba para *meterle* cómo define esta página un tag. Ese asiento vive ahora
+en `core/registry`, que ya alcanzaban las dos piezas y cuya frontera ya estaba pagada: la
+hidratación lo publica y el puente lo lee. Una página que no fabrica hijos no descarga el puente
+nunca, ni al cargar ni al interactuar, y §4.3.1 no necesita corrección: el reparto es el mismo.
+
+Las otras dos —el adaptador y el signal con su seguimiento— sí llegan con el calentado, pedidas
+en **una** tanda de dos peticiones paralelas desde dentro de `core/hydrate`. Desde dentro de la
+pieza y no desde el coordinador, porque un `import()` en código de la aplicación hace que su
+empaquetador inyecte el ayudante de precarga —1 100 bytes— en el módulo que carga toda página;
+es el mismo motivo por el que la carga de los módulos de inyección se movió dentro de
+`@fudic/di`.
+
+Y una consecuencia que conviene escribir: una ruta con un componente **anticipado** —un control
+de formulario, un `@client` con `effect`— sí las pide al cargar, porque esa ruta hidrata al
+cargar por definición. Se piden al mismo nivel de descubrimiento que antes, dentro de
+`core/hydrate`, así que la cadena no crece: lo que cambia es que ahora las pide quien las
+necesita y no toda página.
+
 ### 4.5. Inline o fichero, y por qué el fichero ya no encadena
 
 Con la forma de **fichero**, el emit escribe además un `<link rel="modulepreload">` por pieza.
