@@ -5,7 +5,7 @@
 > `@fudic/di` · `@fudic/compiler` · `@fudic/vite` · `@fudic/transport` · `@fudic/ssr` ·
 > `examples/basic` · `examples/workspace`
 > **Rama:** `sdd-45-runtime-publicado`
-> **Progreso:** 0 / 24
+> **Progreso:** 1 / 24
 > **Bloqueado por:** [SDD-43](./SDD-43-librerias.md) — su tarea 11 es el `peerDependencies`
 > que aquí se endurece, y su criterio 12 es el workspace sobre el que se mide la evidencia.
 
@@ -29,11 +29,9 @@ como once, y las fases siguientes construyen lo que esa medición diga.
 
 ## Estado de la rama
 
-Commiteado: la revisión completa del SDD y de este Task.
-En curso, sin commitear: la tarea 1 en `@fudic/conventions`, que incluye un `RUNTIME_ATTRS`
-de un diseño anterior —los tres atributos en el `<script>`— que **ya no se usa**: el
-coordinador de §4.4 lleva esos datos dentro. **Hay que quitarlo** y dejar en su sitio
-`runtimeMarkerUrl`. La cobertura del paquete estaba al 100 en las cuatro métricas.
+Commiteado: la reescritura completa del SDD y de este Task, y la **tarea 1** —los nombres
+compartidos en `@fudic/conventions`, al 100 en las cuatro métricas—. Lo siguiente es la
+tarea 2, que es roja a propósito y va antes que cualquier otra cosa.
 
 ---
 
@@ -56,7 +54,7 @@ coordinador de §4.4 lleva esos datos dentro. **Hay que quitarlo** y dejar en su
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **Los nombres que nadie posee.** `RUNTIME_DIR`, `runtimeCacheName(version)` y `runtimeMarkerUrl(app)` en `@fudic/conventions` — nombres que el que publica y el que enlaza deben compartir y ninguno posee. La caché **no lleva `app`** y eso es deliberado (§4.9). **Quitar `RUNTIME_ATTRS`**, que sobra desde que el coordinador lleva la carpeta y el id dentro | `conventions` | `src/index.ts` |
+| [x] | 1 | — | **Los nombres que nadie posee.** `RUNTIME_DIR`, `runtimeCacheName(version)` y `runtimeMarkerUrl(app)` en `@fudic/conventions` — nombres que el que publica y el que enlaza deben compartir y ninguno posee. La caché **no lleva `app`** y eso es deliberado (§4.9). **Quitar `RUNTIME_ATTRS`**, que sobra desde que el coordinador lleva la carpeta y el id dentro | `conventions` | `src/index.ts` |
 | [ ] | 2 | 1 | **(rojo primero)** **Los bytes no dependen de quién construya.** Construir un paquete de runtime dos veces produce ficheros **idénticos byte a byte**. Es la condición de existencia del SDD: si esto no se sostiene, compartir es imposible por mucho que la URL coincida. Se ve fallar si el build arrastra fechas, rutas absolutas o cualquier cosa del entorno. Criterio 2 | `core` | `test/reproducible.test.ts` |
 | [ ] | 3 | 2 | **Un paquete declara que publica piezas, y el plugin no enumera a nadie.** `"fudic": { "runtime": "./runtime" }` en el `package.json`, y un `build` que produce ese directorio: una unidad por módulo, minificada, importándose entre ellas por ruta relativa. Los cuatro de hoy lo declaran. **Ninguna lista de paquetes en el plugin** — es el requisito que hace que `@fudic/http` no obligue a editar nada (§3.3). Criterio 1 | `core` · `dom` · `forms` · `di` | `package.json` · `tsconfig.runtime.json` · `scripts/` |
 | [ ] | 4 | 3 | **`FUD0804`:** un paquete declara el directorio y no existe o está vacío. Criterio 3 | `vite` | `src/runtime-pieces.ts` |
