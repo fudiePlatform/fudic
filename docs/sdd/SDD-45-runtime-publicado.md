@@ -179,23 +179,23 @@ llega la libertad de versiones (§4.8), y este SDD lo endurece.
 ### 3.1. La forma publicada
 
 ```
-<RUNTIME_DIR>/<version>/<paquete>/<ruta-del-módulo>.js
+<RUNTIME_DIR>/<version>/<paquete>/<pieza>.js
 ```
 
 ```
+/_fudic/0.0.1/core/hydrate.js
 /_fudic/0.0.1/core/signal.js
-/_fudic/0.0.1/core/hydrate/install.js
 /_fudic/0.0.1/dom/browser.js
-/_fudic/0.0.1/forms/element.js
-/_fudic/0.0.1/di/page.js
+/_fudic/0.0.1/forms/bind-form.js
+/_fudic/0.0.1/di/container.js
 ```
 
 | Pieza | Qué es |
 |---|---|
 | `_fudic` | El directorio del runtime, **fuera de todo `base`**. Empieza por `_` por lo mismo que el marcador de SDD-42: ninguna ruta de aplicación puede colisionar con él |
 | `<version>` | La versión del paquete del framework, tal cual la declara su `package.json`. No se abrevia, no se trunca. **Es lo que hace cambiar estos ficheros**, y por tanto lo que los identifica |
-| `<paquete>` | El nombre corto del paquete: `core`, `dom`, `forms`, `di`. **No es decoración**: `element` existe en `core` y en `forms`, `registry` en `core` y en `di`, y `index` en los cuatro. Sin el paquete delante, las piezas se pisan |
-| `<ruta-del-módulo>` | La ruta del módulo dentro de `src`, tal cual: `hydrate/install.js`. Así la URL de la pestaña de red se lee como el árbol de ficheros del repositorio |
+| `<paquete>` | El nombre corto del paquete: `core`, `dom`, `forms`, `di`. **No es decoración**: `element` existe en `core` y en `forms`, `registry` en `core` y en `di`. Sin el paquete delante, dos piezas distintas pueden pedir el mismo nombre |
+| `<pieza>` | El nombre de la pieza, que **no es el de un módulo fuente**: una pieza es un empaquetado (§4.3). `core/hydrate.js` son once módulos dentro de un fichero, y esa es justamente la propiedad que la hace barata de pedir |
 
 ### 3.2. `@fudic/conventions`
 
@@ -231,25 +231,50 @@ sus piezas se publiquen. Un paquete lo declara en su `package.json`:
 }
 ```
 
-Quien lo declara produce ese directorio en su `build`, con **una unidad de navegador por
-módulo**, ya minificada, importándose entre ellas por ruta relativa. El plugin descubre las
-piezas resolviendo el paquete, nunca por nombre.
+Quien lo declara produce ese directorio en su `build`: **un fichero por pieza**, ya
+empaquetado y minificado, con las demás piezas declaradas `external` y apuntadas por su URL
+publicada. El plugin descubre las piezas resolviendo el paquete y leyendo ese directorio;
+**cómo se construyeron no es asunto suyo**, que es lo que permite que un paquete futuro use
+otra frontera sin tocar el enlazador.
 
 ```
 packages/core/dist/      ← lo de hoy: lo que consume un bundler
-packages/core/runtime/   ← nuevo: signal.js, hydrate/install.js, …
+packages/core/runtime/   ← nuevo: hydrate.js, signal.js, live.js, …
 ```
 
-### 3.4. `@fudic/vite`
+### 3.4. El contrato de una pieza
+
+Una pieza es un programa: una entrada y unos parámetros. Por dentro **no sabe nada de la
+aplicación** —la hidratación hidrata igual aquí y allí, el enlazador de formularios enlaza
+igual, el inyector resuelve igual—, y lo único que cambia entre dos aplicaciones son los
+parámetros que recibe.
 
 ```ts
-/** One published unit this build links. */
+/**
+ * What every runtime piece exports. One name, one shape: a piece that invented its own
+ * signature would force the coordinator to know it specially, and then a new package could
+ * not be added without editing the generator — which is the thing §3.3 exists to prevent.
+ */
+export interface RuntimeEntry<Options> {
+  install(options: Options): unknown;
+}
+```
+
+Una entrada uniforme y **no** un registro: lo que el coordinador hace con las piezas está
+escrito al construir (§4.4), no se descubre al arrancar. Esa es la diferencia entre unos
+imports y unas llamadas —coste cero— y un sistema de plugins que habría que descargar en toda
+página para resolver algo que ya se sabía.
+
+### 3.5. `@fudic/vite`
+
+```ts
+/** One published piece this build links. */
 export interface RuntimePiece {
   /** The package that publishes it: `@fudic/core`. */
   readonly pkg: string;
-  /** Its module path within that package's runtime output: `hydrate/install`. */
-  readonly module: string;
-  /** The URL it resolves to: `/_fudic/0.0.1/core/hydrate/install.js`. */
+  /** Its name within that package: `hydrate`. */
+  readonly name: string;
+  /** The URL it resolves to: `/_fudic/0.0.1/core/hydrate.js`. */
   readonly url: string;
   /** Absolute path of the file to copy into the output. */
   readonly file: string;
@@ -266,7 +291,7 @@ export function routePieces(/* … */): readonly RuntimePiece[];
 directorio de `@fudic/conventions`, y el inline o fichero del layout. Ninguna de las tres es
 una decisión de quien configura el plugin.
 
-### 3.5. El marcador del layout
+### 3.6. El marcador del layout
 
 Lo que hoy es un marcador pasa a ser un marcador con una opción:
 
@@ -314,32 +339,62 @@ en cualquier orden. Cuando la segunda se despliega sobre el mismo origen, las pi
 estaban se sobrescriben con **los mismos bytes**, porque las produjo el mismo build del
 framework y no el suyo.
 
-### 4.3. Qué es una pieza: lo que siempre viaja junto
+### 4.3. Qué es una pieza: un empaquetado, no un módulo
 
-Una pieza es un módulo publicado. Pero **once módulos que nadie puede pedir por separado no
-son once piezas**: el arranque los importa todos, siempre, así que partirlos solo añade
-fronteras —nombres internos que el minificador ya no puede acortar, un `import` y un `export`
-por pareja— y, con la forma de fichero, **un `<link rel="modulepreload">` por pieza en cada
-página que la necesita**.
+**Una pieza es un empaquetado que decide el framework y construye su propio bundler**, con las
+demás piezas declaradas `external`. No es un módulo fuente, y esta distinción es la que
+sostiene la regla 2 de §1.5: por dentro de una pieza **no hay nada que descubrir**, ya está
+todo ahí. Publicar el árbol de ficheros fuente sería lo contrario — once URLs que se revelan
+unas a otras, y nadie sabe que hace falta la cuarta hasta que ha llegado la segunda.
 
-La regla es medible y está escrita para que no se decida por gusto:
+Dónde van las fronteras es **la única decisión de este documento**, y es un cambio de bytes
+por peticiones. Los dos costes no se pagan igual:
 
-> Se parte por donde algo sea **opcional**, no por donde haya un fichero. Dos módulos que
-> toda página que hidrata necesita juntos se publican como una pieza.
+- **Una petición se paga una vez por origen y por versión.** La URL es inmutable, el worker
+  la precarga, y a partir de ahí no vuelve.
+- **Los bytes de no compartir se pagan por aplicación y por despliegue**, para siempre.
 
-Lo opcional, hoy, es exactamente esto:
+Un gasto único contra uno recurrente: por eso el equilibrio no está en el medio, está más
+cerca de partir que de no partir. Y lo caro de verdad —la cadena— no lo produce el número de
+piezas sino su contenido, y una pieza empaquetada no encadena nada.
 
-| | cuándo llega |
-|---|---|
-| el runtime de hidratación | si la página tiene algo que hidratar |
-| el canal de calentado | **uno de dos**: con worker o sin él |
-| el puente de componentes fabricados (`live`) | si algún componente fabrica hijos en el navegador |
-| el árbol de inyección (`di/page`, `di/container`) | si la página publica su mapa de inyección |
+De ahí las dos reglas, y no hay una tercera:
 
-La decisión de si el runtime de hidratación es **una** pieza o **once** no se toma en este
-documento: se mide (tarea de la fase 2), en tres escenarios —una app un despliegue, dos apps,
-la misma app dos despliegues— y con **dos** varas, bytes y profundidad del árbol de
-descubrimiento. Si no apuntan al mismo sitio, **manda la profundidad** (regla 2 de §1.5).
+> **Una frontera existe solo si compra algo real.** O la pieza es **opcional** —hay rutas que
+> no la necesitan— o es **compartida** —la usan dos aplicaciones, o el worker y la página—.
+> Una frontera que no compra ninguna de las dos no es una frontera: es un peaje.
+
+> **Un módulo pertenece a una pieza y a una sola.** Si dos piezas se lo llevan dentro, sus
+> bytes están dos veces en el origen y se pierde justo lo que este SDD vino a ganar. Cuando
+> dos piezas necesitan el mismo módulo, **no se copia: se convierte en pieza** y las dos lo
+> declaran externo.
+
+**Casi todas las fronteras ya existen, y las puso el build.** Los trozos que hoy emite
+—`signal`, `browser`, `live`, `container`, `bind-form`, `min-length`…— son ejes de
+opcionalidad ya demostrados: un componente que no usa formularios no los arrastra. Lo único
+que falta partir es el runtime de hidratación, que hoy está pegado dentro de un fichero que
+es de la aplicación. **Este SDD no inventa fronteras nuevas: publica las que hay y saca esa.**
+
+Y lo que varía por aplicación y es pequeño **no es una pieza**: va dentro del coordinador. El
+canal de calentado son unos cuatrocientos bytes y es uno de dos según haya worker o no; darle
+una pieza sería gastar una petición y una frontera en algo que cabe en el trozo que ya es de
+la app.
+
+### 4.3.1. El reparto, hoy
+
+| pieza | qué lleva | cuándo la nombra una ruta |
+|---|---|---|
+| `core/hydrate` | capturador, cascada, bus, celdas, cargador de trozos, mapas, registro, repetición del gesto, observador de viewport | la página tiene algo que hidratar |
+| `core/signal` | signal y seguimiento de dependencias | lo pide la hidratación y lo piden los trozos de componente |
+| `core/live` | el puente de componentes fabricados en el navegador | algún componente fabrica hijos |
+| `dom/browser` | la capa fina sobre el DOM | cualquier componente que pinte |
+| `di/container` · `di/page` | contenedor y árbol de la ruta | la página publica su mapa de inyección |
+| `forms/*` | los enlazadores y validadores, como hoy | los arrastra el trozo del componente que los usa |
+| `transport/urls` | derivación de URLs de trozos | el coordinador y el worker |
+| `ssr/*` | el renderizador | solo el worker (§4.10) |
+
+`@fudic/http`, cuando llegue, es una fila más de esta tabla y nada más: declara su directorio
+(§3.3), expone la entrada de §3.4, y el coordinador la nombra en las rutas que la usan.
 
 ### 4.4. El coordinador: por ruta, y de unos cientos de bytes
 
@@ -347,19 +402,20 @@ descubrimiento. Si no apuntan al mismo sitio, **manda la profundidad** (regla 2 
 plugin, **por ruta**, y contiene solo lo que esa ruta necesita.
 
 ```js
-import { installHydration } from '/_fudic/0.0.1/core/hydrate/install.js';
-import { createServiceWorkerWarmChannel } from '/_fudic/0.0.1/core/hydrate/warm/sw.js';
+import { install as hydrate } from '/_fudic/0.0.1/core/hydrate.js';
+import { install as di } from '/_fudic/0.0.1/di/page.js';
 import { createUrlResolver } from '/_fudic/0.0.1/transport/urls.js';
 
 const urls = createUrlResolver('/', 'b281ee14');
-installHydration({
-  root: document,
-  resolveChunk: (tag) => urls.hydrateUrl(tag),
-  warm: createServiceWorkerWarmChannel(),
-});
+// El canal de calentado es de esta app y son cuatrocientos bytes: vive aquí, no en una pieza.
+const warm = (urls) => navigator.serviceWorker?.controller ?? null; /* … */
+
+// El ORDEN lo escribe el generador, que sabe que la inyección tiene que estar lista antes
+// de que se levante el primer componente. No se descubre en el navegador.
+hydrate({ root: document, resolveChunk: (tag) => urls.hydrateUrl(tag), warm, ready: di() });
 ```
 
-Cuatro hechos sobre él, y cada uno responde a una regla de §1.5:
+Cinco hechos sobre él, y cada uno responde a una regla de §1.5:
 
 - **Es lo único que el build de la app genera del runtime**, y donde viven la carpeta y el id
   de construcción. Por eso no hacen falta atributos en el `<script>` ni ningún otro sitio
@@ -372,6 +428,26 @@ Cuatro hechos sobre él, y cada uno responde a una regla de §1.5:
   ruta, hay uno por combinación, y eso pasa sin que nadie lo coordine.
 - **Una página que no hidrata no tiene coordinador.** No es un fichero vacío: no hay fichero
   y no hay etiqueta.
+- **Es la raíz de composición, y compone al construir.** El orden entre piezas —la inyección
+  lista antes del primer componente— lo escribe el generador, que lo sabe. En el navegador
+  quedan unos imports y unas llamadas. **Nada de un registro de piezas en tiempo de
+  ejecución**: sería descargar en toda página un mecanismo para resolver algo que ya estaba
+  resuelto al compilar.
+
+**De qué sale la lista de piezas de una ruta.** De hechos que el compilador ya tiene, y por
+eso esto es una tabla y no una heurística:
+
+| el hecho de la ruta | la pieza que nombra |
+|---|---|
+| tiene algo que hidratar | `core/hydrate`, `transport/urls` |
+| algún componente suyo fabrica hijos | `core/live` |
+| publica su mapa de inyección | `di/page`, `di/container` |
+| es una ruta reactiva, o alguno de sus componentes lo es | `core/signal` |
+| pinta | `dom/browser` |
+
+Lo de **formularios y reactividad no está en esta tabla a propósito**: ya lo arrastra el trozo
+de cada componente cuando se hidrata, y eso funciona desde SDD-17. El coordinador no los
+nombra porque no le toca.
 
 ### 4.5. Inline o fichero, y por qué el fichero ya no encadena
 
@@ -581,8 +657,14 @@ misma forma en los dos sitios es lo que evita que dev y build sean dos programas
 - **Una pieza no contiene ni un byte de la aplicación** (§4.13), y el build lo comprueba.
 - **La aplicación genera el coordinador y nada más**, y ahí viven la carpeta y el id de
   construcción — en un sitio y no en dos.
-- **Se parte por lo opcional, no por el fichero** (§4.3), y la duda se resuelve midiendo
-  bytes **y** profundidad, con la profundidad mandando.
+- **Una pieza es un empaquetado, no un módulo fuente** (§4.3). Por dentro no hay nada que
+  descubrir, y por eso pedirla es barato.
+- **Una frontera existe solo si la pieza es opcional o compartida.** Cualquier otra es un
+  peaje (§4.3).
+- **Un módulo pertenece a una pieza y a una sola.** Cuando dos la necesitan, el módulo se
+  convierte en pieza; no se copia (§4.3).
+- **Toda pieza expone la misma entrada** (§3.4), y la composición ocurre al construir, dentro
+  del coordinador. **No hay registro de piezas en tiempo de ejecución** (§4.4).
 - **Ningún paquete está enumerado en el plugin** (§3.3). `@fudic/http` tiene que poder
   publicar piezas sin que nadie edite el enlazador.
 - **Inline o fichero lo decide el layout** (§3.5), y el defecto es fichero.
@@ -623,90 +705,96 @@ pestaña indicada.
 
 **Lo que publica el framework**
 
-1. Un paquete que declara `fudic.runtime` produce ese directorio con una unidad por módulo,
-   minificada, importándose entre ellas por ruta relativa. Los cuatro de hoy lo declaran.
+1. Un paquete que declara `fudic.runtime` produce ese directorio con **un fichero por pieza**,
+   empaquetado y minificado, con las demás piezas como `external` apuntadas por su URL
+   publicada. Los cuatro de hoy lo declaran.
 2. **(rojo primero)** **Los bytes no dependen de quién construya.** Construir un paquete dos
    veces produce ficheros idénticos byte a byte. Es la condición de existencia del SDD.
 3. `FUD0804` cuando el directorio declarado no existe.
-4. **En Chrome:** `/_fudic/0.0.1/core/signal.js` se abre y se lee. Es el hito más pequeño que
-   hay y demuestra que la forma publicada existe de verdad.
+4. **En Chrome:** `/_fudic/0.0.1/core/hydrate.js` se abre y se lee, y **no tiene dentro ni un
+   import que no sea una pieza publicada**. Es el hito más pequeño que hay y demuestra las dos
+   cosas: que la forma publicada existe, y que por dentro no hay nada que descubrir.
 
-**La pieza y su tamaño**
+**La pieza**
 
-5. La medición de §4.3 está hecha y **escrita en el Task**: una pieza contra once, en tres
-   escenarios, con bytes y con profundidad. La decisión que salga es la que se implementa, y
-   queda anotada con sus números.
-6. `FUD0805` si dos paquetes produjeran la misma URL.
+5. **Ningún módulo está en dos piezas.** Se comprueba sobre los ficheros publicados, no sobre
+   la intención: es la regla de §4.3 y es la que, incumplida, devuelve el problema entero.
+6. **Toda pieza expone la misma entrada** (§3.4), y una pieza que no la expone rompe el
+   build. Es lo que hará que `@fudic/http` entre sin tocar el generador.
+7. `FUD0805` si dos paquetes produjeran la misma URL.
 
 **Lo que enlaza la app**
 
-7. **(rojo primero)** Un build que usa `signal` emite `_fudic/<version>/core/signal.js` y
+8. **(rojo primero)** Un build que usa `signal` emite `_fudic/<version>/core/signal.js` y
    **ningún** `assets/signal-<build>.js`.
-8. Los imports apuntan a `/_fudic/<version>/…`, **sin** el `base` de la aplicación.
-9. **La poda se conserva.** Una app que no usa signals derivadas **no** emite `computed.js`.
-   Se mide contando ficheros en el `dist`.
-10. `FUD0806`: una pieza con el token de construcción dentro rompe el build.
-11. **En Chrome:** una ruta que hidrata descarga sus piezas desde `/_fudic/…` y ni una desde
+9. Los imports apuntan a `/_fudic/<version>/…`, **sin** el `base` de la aplicación.
+10. **La poda se conserva.** Una app que no usa signals derivadas **no** emite `computed.js`.
+    Se mide contando ficheros en el `dist`.
+11. `FUD0806`: una pieza con el token de construcción dentro rompe el build.
+12. **En Chrome:** una ruta que hidrata descarga sus piezas desde `/_fudic/…` y ni una desde
     `assets/`. La pestaña de red es el criterio.
 
 **El coordinador**
 
-12. **(rojo primero)** Dos rutas con distinta necesidad producen distinto coordinador: la de
+13. **(rojo primero)** Dos rutas con distinta necesidad producen distinto coordinador: la de
     inyección lo nombra, la que no, no. Y dos rutas con la misma necesidad producen **el mismo
     fichero**.
-13. Una ruta que no hidrata no tiene coordinador: ni fichero ni etiqueta.
-14. El coordinador pesa menos de 1 kB. Es un número y no una aspiración: si sube de ahí, algo
+14. Una ruta que no hidrata no tiene coordinador: ni fichero ni etiqueta.
+15. El coordinador pesa menos de 1 kB. Es un número y no una aspiración: si sube de ahí, algo
     que es del framework se ha colado dentro de la aplicación.
-15. **En Chrome:** en una ruta sin inyección, la pestaña de red **no** contiene las piezas de
+16. **El orden entre piezas está escrito en el coordinador**, no resuelto en el navegador: una
+    ruta con inyección levanta el árbol antes del primer componente, y se comprueba leyendo el
+    módulo generado, no observando una carrera.
+17. **En Chrome:** en una ruta sin inyección, la pestaña de red **no** contiene las piezas de
     inyección. En una con inyección, sí. Mismo origen, misma sesión, dos rutas.
 
 **Inline o fichero**
 
-16. Con `fudic:runtime`, la página escribe un `modulepreload` por pieza; con `?inline`, el
+18. Con `fudic:runtime`, la página escribe un `modulepreload` por pieza; con `?inline`, el
     coordinador va dentro con `nonce` y no hay preloads.
-17. `FUD0803` cuando se pide `?inline` sin `nonce` en la política.
-18. **En Chrome, y este es el criterio de la regla 2 de §1.5:** en la cascada de red de una
+19. `FUD0803` cuando se pide `?inline` sin `nonce` en la política.
+20. **En Chrome, y este es el criterio de la regla 2 de §1.5:** en la cascada de red de una
     ruta, **las piezas empiezan todas a la vez** y ninguna espera a que otra termine.
     Se mira con la red a 3G lento, que es donde se ve. Las dos formas, fichero e inline,
     tienen que pasarlo.
 
 **La caché compartida**
 
-19. `isStaleCache('fudic-runtime-0.0.1', app, build)` es `false` para cualquier `app` y
+21. `isStaleCache('fudic-runtime-0.0.1', app, build)` es `false` para cualquier `app` y
     `build`. Es la propiedad de la que depende que dos apps no se borren el runtime.
-20. Un worker escribe su marca al activarse, y borra una versión cuyas marcas están todas
+22. Un worker escribe su marca al activarse, y borra una versión cuyas marcas están todas
     caducadas. Con reloj inyectado, sin esperar.
-21. **En Chrome:** `Application → Cache Storage` enseña `fudic-runtime-0.0.1` con las piezas
+23. **En Chrome:** `Application → Cache Storage` enseña `fudic-runtime-0.0.1` con las piezas
     y una marca por app. Se abre la segunda app y **no descarga ni un byte de framework**.
 
 **El worker**
 
-22. `fudic-sw.js` no contiene `@fudic/ssr` ni `@fudic/di` y baja de 16 765 a menos de 11 000
+24. `fudic-sw.js` no contiene `@fudic/ssr` ni `@fudic/di` y baja de 16 765 a menos de 11 000
     bytes.
-23. La batería de navegación de SDD-20 pasa sin tocarla, **offline incluido**, que es donde
+25. La batería de navegación de SDD-20 pasa sin tocarla, **offline incluido**, que es donde
     una dependencia traída por red se nota.
-24. **En Chrome:** se navega con red cortada y la página se renderiza. Es el mismo criterio
-    que 23 hecho a mano, y es el que de verdad da la tranquilidad.
+26. **En Chrome:** se navega con red cortada y la página se renderiza. Es el mismo criterio
+    que 25 hecho a mano, y es el que de verdad da la tranquilidad.
 
 **Lo que quedaba suelto**
 
-25. Un proyecto **sin** `sw.json` no emite `fudic-boot-*.js` y ninguna página escribe su
+27. Un proyecto **sin** `sw.json` no emite `fudic-boot-*.js` y ninguna página escribe su
     `<script>`. Con `sw.json`, todo sigue igual que hoy.
-26. `FUD0800`: una librería cuyo rango no incluye la versión resuelta rompe el build, con los
+28. `FUD0800`: una librería cuyo rango no incluye la versión resuelta rompe el build, con los
     tres datos en el mensaje. Y el caso en verde: dentro del rango, cero diagnósticos.
-27. Un gesto que hidrata un árbol de N instancias hace **un** recorrido del documento. Se mide
+29. Un gesto que hidrata un árbol de N instancias hace **un** recorrido del documento. Se mide
     instrumentando `querySelectorAll` sobre el documento doble de los tests de SDD-17.
-28. **En Chrome:** el INP de la ruta más pesada de `examples/basic` no empeora, y se anota el
+30. **En Chrome:** el INP de la ruta más pesada de `examples/basic` no empeora, y se anota el
     número antes y después.
-29. **`pnpm dev` no cambia** (§4.15): no hay `_fudic/` en el grafo de dev.
+31. **`pnpm dev` no cambia** (§4.15): no hay `_fudic/` en el grafo de dev.
 
 **El cierre**
 
-30. **En Chrome, el criterio entero de este SDD:** dos apps y dos librerías en un origen; la
+32. **En Chrome, el criterio entero de este SDD:** dos apps y dos librerías en un origen; la
     segunda app no descarga ni un byte de framework que la primera ya trajo. Y el despliegue:
     se reconstruye `app-1` con un id nuevo, se recarga, y de `/_fudic/` no se vuelve a pedir
     nada.
-31. **Cobertura.** El código nuevo al 100 % en las cuatro métricas.
+33. **Cobertura.** El código nuevo al 100 % en las cuatro métricas.
 
 ---
 
