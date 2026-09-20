@@ -132,3 +132,26 @@ export const FUD_RUNTIME_DIR_MISSING = 'FUD0804';
  * wrong bytes. Cheap to check and impossible to debug from a browser, so it is checked.
  */
 export const FUD_RUNTIME_URL_CLASH = 'FUD0805';
+
+/**
+ * The output already holds a published piece with different bytes (SDD-45 §4.2).
+ *
+ * A WARNING, because the build that is running is not the one that did something wrong and
+ * stopping it fixes nothing. It should not be possible: the same version of a package was
+ * built by the same build of the framework, so two applications deploying over one origin
+ * overwrite each other with identical bytes. Different bytes mean one version was published
+ * twice with two contents, and then whichever application deploys last silently decides what
+ * every page of that origin runs.
+ */
+export const FUD_RUNTIME_PIECE_DIFFERS = 'FUD0802';
+
+/**
+ * A piece about to be copied into `_fudic/` carries the build token (SDD-45 §4.13).
+ *
+ * An ERROR, and the one the whole architecture rests on: a piece is the same bytes for every
+ * application and every deploy, so it cannot contain a fact of one of them. If it does,
+ * something of the application was compiled into code of the framework — and the two
+ * applications sharing that URL would be sharing one's build id. Checked rather than trusted,
+ * because it is one comparison in the build and an afternoon in a browser.
+ */
+export const FUD_RUNTIME_PIECE_HAS_BUILD = 'FUD0806';

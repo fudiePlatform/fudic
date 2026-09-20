@@ -48,7 +48,20 @@ import {
   routeUsesDi,
 } from './client.js';
 import { IOC_SUFFIX } from '@fudic/compiler';
-import { nodeIo, nodeLinkCheckIo } from './io.js';
+import { nodeIo, nodeLinkCheckIo, nodeRuntimeFs } from './io.js';
+import { runtimePieces } from './runtime-pieces.js';
+import {
+  insidePublisher,
+  linkedPieces,
+  piecesToCopy,
+  publisherOf,
+  runtimeLinkage,
+  runtimeShim,
+  shimIdFor,
+  shimSpecifier,
+  RUNTIME_SHIM,
+  type RuntimeLinkage,
+} from './runtime-link.js';
 import { checkLinks } from './link-check.js';
 import { checkPeers } from './peer-check.js';
 import { readSwConfig, type ResolvedSwConfig } from './swconfig.js';
@@ -75,6 +88,7 @@ import {
   FUD_PRERENDER_FAILED,
   FUD_ROUTE_NAME_COLLISION,
   FUD_PUBLIC_BY_PATH,
+  FUD_RUNTIME_PIECE_HAS_BUILD,
   FUD_STYLES_NOT_ADOPTED,
   FUD_SW_SHELL_MISSING,
 } from './diagnostics.js';
@@ -200,6 +214,16 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let manifestFileName = 'fudic-routes.json';
   const io = nodeIo();
   const linkCheckIo = nodeLinkCheckIo();
+  const runtimeFs = nodeRuntimeFs();
+  /**
+   * The published runtime this build links (SDD-45 §4.2), discovered in `buildStart`.
+   *
+   * Empty in dev on purpose (§4.15): there the runtime is served out of Vite's module graph,
+   * with no `_fudic/` and no version in the URL, because publishing pieces is a property of
+   * the BUILD and a dev server that did it would lose hot reload of the runtime for nothing.
+   * Empty here also means «bundle it», which is exactly what dev should do.
+   */
+  let runtime: RuntimeLinkage = { urlOf: new Map(), byUrl: new Map(), packages: [], roots: [] };
 
   /**
    * The client module a dev client URL names, or `undefined` when it names none.
@@ -586,6 +610,19 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           this.error(`[${d.code}] ${d.message}`);
         }
       }
+      // The published runtime this build links instead of compiling (SDD-45 §4.2). Discovered
+      // here, before anything resolves an import: from `buildStart` on, `@fudic/core` is a set
+      // of URLs and not a package to bundle.
+      //
+      // Not in dev (§4.15): there the runtime comes out of Vite's module graph, unversioned
+      // and hot-reloadable, and an empty linkage is exactly the instruction to bundle it.
+      if (!isDev) {
+        const discovery = runtimePieces(root, runtimeFs);
+        for (const d of discovery.diagnostics) {
+          this.error(`[${d.code}] ${d.message}`);
+        }
+        runtime = runtimeLinkage(discovery.pieces, runtimeFs);
+      }
       // Whether each library can be parsed by THIS compiler (SDD-43 §4.7). A warning, once
       // per library: the range is the library author's judgement from the day they published,
       // and a range one minor too narrow must not stop a build that works.
@@ -711,9 +748,44 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       }
     },
 
-    resolveId(id) {
+    resolveId(id, importer) {
       if (id === MAIN_ID || id === BOOT_ID || id === SW_ID || id.startsWith(WRAPPER_PREFIX)) {
         return id;
+      }
+      if (id.startsWith(RUNTIME_SHIM)) {
+        return id;
+      }
+      // A published piece, named by a shim or by a coordinator: it leaves as the URL it is.
+      // `'absolute'` and not a plain `true`, or an id starting with `/` is read as a
+      // filesystem path and renormalized against the output directory — which would turn an
+      // origin-absolute URL into `../../…` and put the runtime back inside the app's `base`.
+      if (runtime.byUrl.has(id)) {
+        return { id, external: 'absolute', moduleSideEffects: false };
+      }
+      // A runtime package stops being a package and becomes a set of URLs (SDD-45 §4.2). The
+      // shim is what splits one import across the pieces that answer it — a resolver is handed
+      // the specifier and never the names — and it falls back to the real module for whatever
+      // that package does not publish, which is how `@fudic/transport` keeps working while
+      // only `urls` has a URL (§4.10).
+      // A render wrapper is the WORKER's code, not the page's (SDD-45 §4.10): its imports are
+      // resolved by the linker the worker carries — `@fudic/ssr` arrives as a builtin — and
+      // not by a URL a browser fetches. Moving those to the published runtime is SDD-45's
+      // phase 7, through the Store the worker already uses, and doing it here instead would
+      // hand the linker a specifier it has no way to answer.
+      const forTheWorker = importer?.startsWith(WRAPPER_PREFIX) ?? false;
+      // And the shim's OWN star re-export of the same specifier, which is how the part a
+      // package does not publish still reaches its real file: left alone here, it is resolved
+      // by whoever resolves packages. Without this it would come straight back.
+      const fromTheShim = importer?.startsWith(RUNTIME_SHIM) ?? false;
+      if (
+        !forTheWorker &&
+        !fromTheShim &&
+        // And a publisher's own internal imports, which are not the application's boundary.
+        !insidePublisher(importer, runtime) &&
+        publisherOf(id, runtime.packages) !== null
+      ) {
+        // Per importer, so it is never a shared chunk: see `shimIdFor`.
+        return shimIdFor(id, importer);
       }
       // Only in dev: in build these names are real emitted files (see `DEV_SCRIPT_IDS`).
       if (isDev) {
@@ -724,6 +796,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     },
 
     load(id) {
+      if (id.startsWith(RUNTIME_SHIM)) {
+        const specifier = shimSpecifier(id);
+        const pkg = publisherOf(specifier, runtime.packages);
+        // Answered in `resolveId` before this id existed, so the lookup cannot miss.
+        return pkg === null ? null : runtimeShim(pkg, runtime, specifier);
+      }
       if (id === MAIN_ID) {
         // The Service Worker is what is conditional here, NEVER the hydration (SDD-17
         // §4.7.1). This used to return `export {};` whenever there was no worker, which
@@ -787,6 +865,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     },
 
     async transform(code, id) {
+      // A runtime shim is this plugin's own generated module (SDD-45 §4.2), not a file: it has
+      // no `.fud` to compile and no validator body to erase.
+      if (id.startsWith(RUNTIME_SHIM)) return null;
       const { path, query } = splitId(id);
       if (!path.endsWith('.fud')) {
         // The schema of a form is an ordinary `.ts` that BOTH ends import, so the body of a
@@ -1163,6 +1244,39 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           delete bundle[fileName];
           emitted.delete(fileName);
         }
+      }
+
+      // 3c-bis. Copy the pieces this build LINKS, and only those (SDD-45 §4.2).
+      //
+      //     Read back out of the code that survived, not out of the module graph: what has to
+      //     be copied is what a browser will ask for, and the only honest record of that is
+      //     the import that came through minification, tree-shaking and the prune above. It is
+      //     also what makes the pruning measurable — an application that never derives a
+      //     signal emits no import of `computed`, so no `computed.js` lands in its `dist`.
+      //
+      //     A `dist` stays a complete, separately deployable tree: it carries the pieces it
+      //     names, at the same origin-absolute path the imports use, so two applications
+      //     deploy over one origin in any order and overwrite each other with identical bytes.
+      const copy = piecesToCopy(
+        linkedPieces(
+          Object.values(bundle).flatMap((item) => (item.type === 'chunk' ? [item.code] : [])),
+          runtime,
+        ),
+        (fileName) => {
+          // What is ALREADY on the origin, which is a question about the disk and not about
+          // this bundle. A build that writes nothing has no origin to disagree with.
+          if (!writeToDisk) return undefined;
+          const abs = join(outDir, fileName);
+          return existsSync(abs) ? readFileSync(abs, 'utf8') : undefined;
+        },
+      );
+      for (const d of copy.diagnostics) {
+        if (d.code === FUD_RUNTIME_PIECE_HAS_BUILD) this.error(`[${d.code}] ${d.message}`);
+        else this.warn(`[${d.code}] ${d.message}`);
+      }
+      for (const file of copy.files) {
+        this.emitFile({ type: 'asset', fileName: file.fileName, source: file.code });
+        emitted.add(file.fileName);
       }
 
       // 3d. What each hydration chunk IMPORTS (SDD-17 §4.7). The URL of a tag's chunk is

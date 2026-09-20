@@ -6,7 +6,7 @@
 > `@fudic/di` · `@fudic/compiler` · `@fudic/vite` · `@fudic/transport` · `@fudic/ssr` ·
 > `examples/basic` · `examples/workspace` · `examples/pieces-bench`
 > **Rama:** `sdd-45-runtime-publicado`
-> **Progreso:** 9 / 32
+> **Progreso:** 13 / 32
 > **Bloqueado por:** [SDD-43](./SDD-43-librerias.md) — su tarea 11 es el `peerDependencies`
 > que aquí se endurece, y su criterio 12 es el workspace sobre el que se mide la evidencia.
 
@@ -40,9 +40,14 @@ equivocó tres veces antes de asentarse:
 
 ## Dónde estamos
 
-**Fase 2 cerrada y commiteada.** El reparto ya no se deduce de lo que gasta un ejemplo: sale de
-lo que cada paquete exporta, y hay una herramienta que lo comprueba sobre los ficheros
-publicados. **41 piezas, 32 556 bytes** (15 491 comprimidos). El catálogo está en
+**Fase 3 cerrada y commiteada.** La aplicación ya no compila el runtime: lo enlaza. En
+`examples/basic` no queda un solo fichero de framework en `assets/` —seis trozos de la app y 34
+piezas bajo `_fudic/0.0.1/`—, el arranque pasó de 8 405 a 1 836 bytes, y las dos apps de
+`examples/workspace` enlazan las mismas nueve piezas con bytes idénticos.
+
+**Fase 2 cerrada.** El reparto ya no se deduce de lo que gasta un ejemplo: sale de lo que cada
+paquete exporta, y hay una herramienta que lo comprueba sobre los ficheros publicados.
+**41 piezas, 32 556 bytes** (15 491 comprimidos). El catálogo está en
 [SDD-45-piezas.md](./SDD-45-piezas.md).
 
 **Lo medido, que es lo que sostiene el resto:**
@@ -125,6 +130,48 @@ De la **fase 2**, y esto es lo que no se puede reconstruir leyendo el diff:
   fichero en el directorio, y `files` lo habría publicado. La propiedad a fijar: lo que hay en
   `runtime/` es exactamente lo que el config produce, ni un fichero más.
 
+De la **fase 3** (`src/runtime-link.ts`, y el cableado en `src/plugin.ts`). Es todo función
+pura sobre texto salvo el cableado, así que casi todo se prueba sin filesystem:
+
+- **`runtimeLinkage`.** El parseo de exports de una pieza —`export{r as signal}` da `signal`,
+  el nombre de antes del `as` es del minificador y cambia en el siguiente build—, varias
+  sentencias, llaves vacías, y una pieza que no se puede leer, que no es un fallo aquí porque
+  el descubrimiento ya lo dijo. Y la regla de la ambigüedad: un nombre en dos piezas **no se
+  ofrece**, salvo `install`, que es el contrato de §3.4 y que nadie importa por especificador.
+- **`runtimeShim`.** Que el `export *` va **primero** y las re-exportaciones explícitas lo
+  tapan, que hay **una sentencia por pieza** y no por nombre, y que el orden es estable
+  —lo genera un build y dos builds tienen que dar los mismos bytes.
+- **`shimIdFor` / `shimSpecifier`.** El especificador va **al final** del id, y esa no es una
+  colocación: el importador acaba en `…/app-card.fud?client`, y un id que acabe así es un
+  `.fud` para todo gancho que pregunte qué es un fichero. Sesenta de ellos intentaron compilar
+  `@fudic/core`. El test que lo fija es que el id no termine en algo que `splitId` lea como
+  fichero.
+- **Las tres exclusiones, que son la parte que se descubrió fallando** y la que nadie
+  reconstruye leyendo el resultado:
+  1. **El importador es un envoltorio de render.** Esos imports son del worker, resueltos por
+     su propio enlazador (`@fudic/ssr` llega como builtin), y reescribirlos le entrega un
+     especificador que no sabe contestar. Lo trajo `ssr/index.js` apareciendo en el `dist` de
+     `examples/basic` sin que ningún trozo lo nombrara.
+  2. **El importador es el propio shim**, que es como la parte no publicada de un paquete
+     llega a su fichero de verdad. Sin esto el especificador vuelve en bucle.
+  3. **El importador está dentro de un paquete publicador.** El enlace ocurre en la frontera
+     que cruza la **aplicación**, nunca dentro de un paquete. Esto rompió el build de las dos
+     apps del workspace: `@fudic/ssr` alcanza `@fudic/di` por dentro, y esa dependencia es del
+     paquete y no de la app —que no la declara—, así que no había forma de resolverla.
+- **`linkedPieces` es transitivo.** Una pieza nombra otras por URL, así que copiar solo lo que
+  la aplicación nombra deja un `dist` que da 404 en el segundo salto: `core/hydrate` pide
+  `dom/browser` y `core/registry` sin que ningún trozo de la app los mencione. Y se lee del
+  **código emitido**, no del grafo de módulos, que es lo que hace medible la poda.
+- **`piecesToCopy`.** `FUD0806` con el token dentro (y que esa pieza **no** se copia),
+  `FUD0802` cuando el destino ya tiene esos bytes distintos, y el caso en verde. Los dos se
+  verificaron **a mano** en esta fase —`FUD0802` solo es alcanzable con el `dist` sin vaciar,
+  que es el escenario real: dos apps desplegando sobre un mismo origen.
+- **Lo que hay que fijar sobre el resultado**, más que sobre las funciones: que ningún fichero
+  de `assets/` es del framework; que las URLs **no** llevan el `base` de la app (se comprobó
+  con `admin`, que va en `/admin/`); que una app sin signals derivadas no emite `computed.js`;
+  y que en dev **no hay nada de esto** —el enlace vive detrás de `!isDev` y el descubrimiento
+  ni se ejecuta.
+
 ---
 
 ## Mapa de dependencias
@@ -175,17 +222,24 @@ F1 las piezas existen ──→ F2 el reparto ──→ F3 enlazar ──→ F4 
 
 ---
 
-## Fase 3 — enlazar (4)
+## Fase 3 — enlazar (4) · **cerrada**
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 10 | 9 | **(rojo primero)** **El plugin enlaza en vez de empaquetar.** Los imports de los paquetes de runtime se reescriben a `/_fudic/<version>/<paquete>/<pieza>.js`, **sin** el `base` de la app. Se ve fallar antes: hoy emite `assets/signal-<build>.js`. Criterios 8, 9 | `vite` | `src/runtime-link.ts` · `src/plugin.ts` |
-| [ ] | 11 | 10 | **Copiar al `dist` lo que se enlaza, y solo eso**, más `FUD0802` si el destino ya tiene esa pieza con bytes distintos | `vite` | `src/runtime-link.ts` |
-| [ ] | 12 | 11 | **La poda se conserva, y se mide.** Una app que no usa signals derivadas no emite `computed.js`. Se cuenta sobre el `dist`. Criterio 10 | `vite` | `src/runtime-link.ts` |
-| [ ] | 13 | 11 | **`FUD0806`:** una pieza con el token de construcción dentro rompe el build (§4.13). Criterio 11 | `vite` | `src/runtime-link.ts` |
+| [x] | 10 | 9 | **(rojo primero)** **El plugin enlaza en vez de empaquetar.** Los imports de los paquetes de runtime se reescriben a `/_fudic/<version>/<paquete>/<pieza>.js`, **sin** el `base` de la app. Se ve fallar antes: hoy emite `assets/signal-<build>.js`. Criterios 8, 9 | `vite` | `src/runtime-link.ts` · `src/plugin.ts` |
+| [x] | 11 | 10 | **Copiar al `dist` lo que se enlaza, y solo eso**, más `FUD0802` si el destino ya tiene esa pieza con bytes distintos | `vite` | `src/runtime-link.ts` |
+| [x] | 12 | 11 | **La poda se conserva, y se mide.** Una app que no usa signals derivadas no emite `computed.js`. Se cuenta sobre el `dist`. Criterio 10 | `vite` | `src/runtime-link.ts` |
+| [x] | 13 | 11 | **`FUD0806`:** una pieza con el token de construcción dentro rompe el build (§4.13). Criterio 11 | `vite` | `src/runtime-link.ts` |
 
 > **Hito en el navegador (criterio 12).** Una ruta que hidrata descarga sus piezas desde
 > `/_fudic/…` y **ni una** desde `assets/`.
+>
+> **Conseguido en el `dist`, pendiente de mirarlo en Chrome.** En `examples/basic` ya no queda
+> **ni un** fichero de framework en `assets/`: lo que hay son seis trozos de la aplicación y
+> 34 piezas bajo `_fudic/0.0.1/`. El arranque bajó de 8 405 a 1 836 bytes, y el trozo de un
+> componente nombra las URLs de sus piezas **directamente**, sin fichero intermedio.
+> En `examples/workspace` las dos apps enlazan **las mismas nueve piezas, byte a byte
+> idénticas** entre ellas y con lo que publicó el framework.
 
 ---
 
@@ -263,3 +317,11 @@ F1 las piezas existen ──→ F2 el reparto ──→ F3 enlazar ──→ F4 
 |---|---|---|---|---|---|
 | [ ] | 31 | todas | **La evidencia, entera.** `examples/workspace` en un origen: la segunda app no descarga ni un byte de framework que la primera ya trajo. Y el despliegue: se reconstruye `app-1` con un id nuevo y de `/_fudic/` no se vuelve a pedir nada. Criterios 31, 32 | `examples` | `examples/workspace/*` |
 | [ ] | 32 | 31 | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`, y los 36 criterios de §6 verdes — con los tres de «rojo primero» (2, 10, 14) vistos fallar antes. SDD-45 a `Hecho` en [INDEX.md](./INDEX.md), tabla y registro | — | [INDEX.md](./INDEX.md) |
+
+> **Visto en la fase 3 y que la 31 tiene que resolver:** el servidor de `examples/workspace`
+> monta `/admin/` sobre el `dist` de admin y `/` sobre el de tienda, así que una petición de
+> `/_fudic/…` cae siempre en el montaje de tienda. Funciona mientras las dos apps enlacen el
+> mismo conjunto —hoy lo hacen—, y da 404 en cuanto admin enlace una pieza que tienda no.
+> Cada `dist` lleva sus piezas bajo `_fudic/`, que es lo que §4.2 pide y lo que hace que un
+> `dist` sea desplegable solo; lo que falta es que **el despliegue** las funda en la raíz del
+> origen, y `serve.mjs` es donde eso se representa.
