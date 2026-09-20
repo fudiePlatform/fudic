@@ -54,7 +54,17 @@ export const LINK_PREFIX = 'fudic-link:';
 /** Per-route EDGE wrapper in its own nested build (BUG-09 §3.1): same page, WITH `load`. */
 export const EDGE_PREFIX = 'fudic-edge:';
 export const SW_ID = 'fudic-sw';
+/**
+ * The coordinator, in DEV, where there is one for the whole app at a stable URL.
+ *
+ * In a build there is one per combination of pieces and its name carries a hash of its own
+ * content (SDD-45 §4.4), so there is no fixed id to name here: `COORD_PREFIX` is how those
+ * are addressed. Dev keeps this one because dev builds nothing and optimises nothing — what
+ * it needs is a URL that does not move between reloads.
+ */
 export const MAIN_ID = 'fudic-main';
+/** Per-route coordinator in a build: `fudic-main-<hash of its source>` is appended. */
+export const COORD_PREFIX = 'fudic-coordinator:';
 /** The always-on half of the main thread: register the Service Worker (BUG-31 §T2). */
 export const BOOT_ID = 'fudic-boot';
 
@@ -75,6 +85,17 @@ export const DEV_SW_URL = 'fudic-sw.js';
  * One function, two callers — the plugin names the files and the wrapper writes the URLs —
  * for the same reason `urls.ts` exists: two spellings of a name drift in silence.
  */
+/**
+ * Whether a file is a coordinator of this build.
+ *
+ * There used to be one `fudic-main-<id>.js` and asking was an equality. Since SDD-45 §4.4
+ * there is one per combination of pieces, each named by a hash of its own source, so the
+ * question is a shape: `fudic-main-<hash>-<id>.js`.
+ */
+export function isMainChunk(fileName: string): boolean {
+  return fileName.startsWith(`${MAIN_ID}-`) && fileName.endsWith('.js');
+}
+
 export function mainFileName(build: string): string {
   return `fudic-main-${build}.js`;
 }
@@ -85,9 +106,17 @@ export function bootFileName(build: string): string {
 /**
  * The two entry URLs a BUILT page writes into its head, with `BUILD_TOKEN` where the id will
  * be. Substituted in `generateBundle` like every other token — same length, maps intact.
+ *
+ * `main` is now the ROUTE's coordinator and therefore an argument (SDD-45 §4.4): two routes
+ * that need different pieces load different modules, and a route with nothing to hydrate
+ * names none at all — which arrives here as an empty string, the shape a standalone render
+ * already used, and which the head never reads because it writes no tag either.
  */
-export function runtimeUrls(base: string): { boot: string; main: string } {
-  return { boot: `${base}${bootFileName(BUILD_TOKEN)}`, main: `${base}${mainFileName(BUILD_TOKEN)}` };
+export function runtimeUrls(base: string, main: string): { boot: string; main: string } {
+  return {
+    boot: `${base}${bootFileName(BUILD_TOKEN)}`,
+    main: main === '' ? '' : `${base}${main}-${BUILD_TOKEN}.js`,
+  };
 }
 
 /**

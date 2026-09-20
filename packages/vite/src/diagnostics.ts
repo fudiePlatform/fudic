@@ -134,6 +134,16 @@ export const FUD_RUNTIME_DIR_MISSING = 'FUD0804';
 export const FUD_RUNTIME_URL_CLASH = 'FUD0805';
 
 /**
+ * An import reaches a piece the published runtime does not have (SDD-45 §5).
+ *
+ * An ERROR. It is the symptom of a `dist` copied halfway or of a package published without
+ * running its own runtime build, and the coordinator cannot be written without it: what would
+ * be emitted is a page importing a URL nobody wrote, which fails in a browser, inside a module
+ * the author did not write.
+ */
+export const FUD_RUNTIME_PIECE_MISSING = 'FUD0801';
+
+/**
  * The output already holds a published piece with different bytes (SDD-45 §4.2).
  *
  * A WARNING, because the build that is running is not the one that did something wrong and

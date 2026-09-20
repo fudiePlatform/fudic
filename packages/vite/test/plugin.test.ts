@@ -46,8 +46,13 @@ const emitCtx = (): { emitFile: ReturnType<typeof vi.fn>; warn: ReturnType<typeo
 });
 
 /** The `name` of every chunk a `buildStart` emitted, in call order. */
+// A coordinator is emitted with a pinned `fileName` and no `name` (SDD-45 §4.4): its file
+// has to be at the root, where the head names it. Everything else is emitted by name.
 const emittedNames = (ctx: { emitFile: ReturnType<typeof vi.fn> }): string[] =>
-  ctx.emitFile.mock.calls.map((call) => (call[0] as { name: string }).name);
+  ctx.emitFile.mock.calls.map((call) => {
+    const emitted = call[0] as { name?: string; fileName?: string };
+    return emitted.name ?? emitted.fileName ?? '';
+  });
 
 describe('config / configResolved', () => {
   it('config declares the custom shell entry', () => {
@@ -77,12 +82,16 @@ describe('load — with and without sw.json', () => {
     const main = p.load(MAIN_ID);
     // It used to be `export {};` here, which made "no Service Worker" mean "no hydration".
     expect(main).toContain(
-      'installHydration({ root: document, resolveChunk, warm: createPreloadWarmChannel() });',
+      'warm: $warm(),',
     );
     expect(main).not.toContain('registerRenderServiceWorker');
     // The home wrapper, and no Service Worker chunk. (The client chunks of the three
     // components are also emitted here; `buildStart` below is where they are asserted.)
-    expect(emittedNames(ctx).filter((n) => !n.startsWith('h/'))).toEqual(['c/home']);
+    // The coordinator is emitted here too now (SDD-45 §4.4): one per combination of pieces,
+    // named by a hash of its own source, so the assertion is about its shape and not its name.
+    const names = emittedNames(ctx).filter((n) => !n.startsWith('h/'));
+    expect(names.filter((n) => !n.startsWith('fudic-main-'))).toEqual(['c/home']);
+    expect(names.filter((n) => n.startsWith('fudic-main-'))).toHaveLength(1);
   });
 
   it('with sw.json: main registers the SW and the SW bootstrap renders locally', () => {
@@ -105,9 +114,9 @@ describe('load — with and without sw.json', () => {
     expect(main).not.toContain('registerRenderServiceWorker');
     // Dev is a first-class mode (SDD-17 §4.7.1): the resolver is the dev server's URL and
     // the warm goes through `modulepreload`, so dev is where warm is measurable at all.
-    expect(main).toContain("const resolveChunk = (tag) => CHUNKS + tag + '.js';");
+    expect(main).toContain("const $chunk = (tag) => $prefix + tag + '.js';");
     expect(main).toContain(
-      'installHydration({ root: document, resolveChunk, warm: createPreloadWarmChannel() });',
+      'warm: $warm(),',
     );
   });
 

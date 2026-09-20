@@ -94,7 +94,17 @@ export {
   renderRouteHtml,
   loadRouteData,
 } from './serve.js';
-export { type SwBootstrapOptions, emitSwBootstrap, emitMainBootstrap } from './bootstrap.js';
+export { type SwBootstrapOptions, emitSwBootstrap } from './bootstrap.js';
+// The coordinator (SDD-45 §4.4), which is what the app-wide `emitMainBootstrap` became: one
+// module per route, naming the pieces that route needs.
+export {
+  coordinatorFor,
+  type ChunkResolution,
+  type Coordinator,
+  type CoordinatorParams,
+  type PieceRef,
+  type RouteFacts,
+} from './coordinator.js';
 export {
   type RuntimePiece,
   type RuntimeFs,

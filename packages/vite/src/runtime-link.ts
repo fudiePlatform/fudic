@@ -167,6 +167,24 @@ function packageRootOf(file: string, io: RuntimeLinkIo): string | undefined {
 }
 
 /**
+ * The URL of one piece, by the package that publishes it and its name within that package.
+ *
+ * What the coordinator asks (SDD-45 §4.4): it names PIECES, so it needs `core/hydrate` to
+ * become a URL. `undefined` when this build does not have it — a publisher whose runtime was
+ * never built, which `FUD0804` has already said, or a piece that moved between versions.
+ */
+export function pieceUrl(
+  linkage: RuntimeLinkage,
+  pkg: string,
+  name: string,
+): string | undefined {
+  for (const piece of linkage.byUrl.values()) {
+    if (piece.pkg === pkg && piece.name === name) return piece.url;
+  }
+  return undefined;
+}
+
+/**
  * Whether a module is a publisher's OWN file, in which case its imports are not this pass's.
  *
  * Linking happens at the boundary the APPLICATION crosses — `import { signal } from

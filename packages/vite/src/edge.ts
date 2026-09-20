@@ -67,6 +67,7 @@ export function edgePlugin(
   base: string,
   styles: ProjectStyles = NO_STYLES,
   assets?: LinkedAssets,
+  mainNameOf: (pattern: string) => string = () => '',
 ): Plugin {
   // Resolved once for the pass: the render module of a route publishes its name (SDD-39
   // §4.7), and this pass renders the very pages the prerender writes.
@@ -92,7 +93,7 @@ export function edgePlugin(
         hasLayout: rb.analysis.hasLayout,
         hasDi: routeUsesDi(rb.absPath, io),
         withLoad: true, // the edge resolves data in process
-        runtime: runtimeUrls(base),
+        runtime: runtimeUrls(base, mainNameOf(pattern)),
       });
     },
     async transform(_code, id) {
@@ -146,6 +147,8 @@ export async function runEdgePass(
   nested: NestedOutputOptions,
   styles: ProjectStyles = NO_STYLES,
   assets: LinkedAssets = new LinkedAssets(base),
+  /** The coordinator a route names (SDD-45 §4.4). See `runLinkPass` for why it is passed in. */
+  mainNameOf: (pattern: string) => string = () => '',
 ): Promise<EdgeResult> {
   const routes = builds.filter((rb) => rb.decision.mode !== 'excluded');
   if (routes.length === 0) {
@@ -162,7 +165,7 @@ export async function runEdgePass(
     root,
     base,
     logLevel: 'error',
-    plugins: [edgePlugin(routes, io, base, styles, assets)],
+    plugins: [edgePlugin(routes, io, base, styles, assets, mainNameOf)],
     // Forwarded verbatim, for the same reason as the Service Worker's build: this one runs
     // with `configFile: false`, so a project that resolves `@fudic/*` through aliases —
     // every project the CLI scaffolds — would not resolve them here.

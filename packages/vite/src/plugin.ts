@@ -25,7 +25,7 @@ import { discoverRoutes, type RouteBuild } from './discover.js';
 import { buildManifest } from './manifest.js';
 import { emitRenderChunk } from './wrapper.js';
 import { emitServerModule } from './server.js';
-import { emitBootBootstrap, emitMainBootstrap, emitSwBootstrap } from './bootstrap.js';
+import { emitBootBootstrap, emitSwBootstrap } from './bootstrap.js';
 import {
   transformFud,
   transformFudClient,
@@ -44,6 +44,7 @@ import {
   discoverReactiveRoutes,
   iocChunkName,
   iocId,
+  routeHydrates,
   routeNameLookup,
   routeUsesDi,
 } from './client.js';
@@ -51,8 +52,16 @@ import { IOC_SUFFIX } from '@fudic/compiler';
 import { nodeIo, nodeLinkCheckIo, nodeRuntimeFs } from './io.js';
 import { runtimePieces } from './runtime-pieces.js';
 import {
+  coordinatorFor,
+  type ChunkResolution,
+  type Coordinator,
+  type CoordinatorParams,
+  type PieceRef,
+} from './coordinator.js';
+import {
   insidePublisher,
   linkedPieces,
+  pieceUrl,
   piecesToCopy,
   publisherOf,
   runtimeLinkage,
@@ -89,6 +98,7 @@ import {
   FUD_ROUTE_NAME_COLLISION,
   FUD_PUBLIC_BY_PATH,
   FUD_RUNTIME_PIECE_HAS_BUILD,
+  FUD_RUNTIME_PIECE_MISSING,
   FUD_STYLES_NOT_ADOPTED,
   FUD_SW_SHELL_MISSING,
 } from './diagnostics.js';
@@ -102,6 +112,7 @@ import {
 import {
   WRAPPER_PREFIX,
   SW_ID,
+  COORD_PREFIX,
   MAIN_ID,
   BOOT_ID,
   DATA_PREFIX,
@@ -224,6 +235,93 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    * Empty here also means «bundle it», which is exactly what dev should do.
    */
   let runtime: RuntimeLinkage = { urlOf: new Map(), byUrl: new Map(), packages: [], roots: [] };
+  /**
+   * Route pattern → the coordinator that route loads, or `null` when it has nothing to
+   * hydrate (SDD-45 §4.4).
+   *
+   * Built in `buildStart`, before anything is emitted, because three different passes — this
+   * plugin, the link pass and the edge pass — each render the same route and all three have
+   * to write the SAME URL into its head.
+   */
+  let coordinators = new Map<string, Coordinator | null>();
+  /** Source → the id it is emitted under, so one combination produces one chunk. */
+  const coordinatorIds = new Map<string, string>();
+  /** Id → source, for `load`. The inverse of the map above, kept rather than searched. */
+  const coordinatorSources = new Map<string, string>();
+
+  /**
+   * The chunk name a route's head writes, or `''` when the route has no coordinator.
+   *
+   * Empty is not a degraded case: a page that does not hydrate has no file and writes no tag
+   * (SDD-45 §4.4), and `writeRuntimeTags` decides the tag from the same fact.
+   */
+  const mainNameOf = (pattern: string): string => coordinators.get(pattern)?.name ?? '';
+
+  /**
+   * Whether a chunk is a coordinator, asked by its FACADE module.
+   *
+   * There used to be one `fudic-main` and this was an equality. There are now as many as
+   * there are combinations of pieces (SDD-45 §4.4), so everything that treated the startup as
+   * an entry — what the worker precaches, which chunks carry the build id, what the prune
+   * keeps — asks this instead. By facade and not by file name: the output naming is the
+   * host's to configure, and the one thing that cannot move is which module a chunk is of.
+   */
+  const isCoordinatorChunk = (facade: string | null | undefined): boolean =>
+    facade === MAIN_ID || (facade?.startsWith(COORD_PREFIX) ?? false);
+
+  /**
+   * How this build names the pieces a coordinator can start (SDD-45 §4.4, §4.15).
+   *
+   * In a BUILD each one is its published URL and the name is the uniform `install` of §3.4:
+   * the coordinator imports the piece, not the package that holds it. In DEV nothing is
+   * published, so it is the package specifier and the name the source exports, served out of
+   * Vite's module graph — unversioned, hot-reloadable, and the same SHAPE, which is what
+   * stops dev and build from being two programs.
+   *
+   * `missing` is what a build cannot write a coordinator without. It should be empty: the
+   * publisher's own build produced these, and `FUD0804` already spoke if the directory was
+   * not there at all.
+   */
+  const coordinatorParams = (
+    chunks: ChunkResolution,
+  ): { params: CoordinatorParams; missing: readonly string[] } => {
+    const hasWorker = swConfig !== null && (!isDev || swConfig.dev === 'preview');
+    const missing: string[] = [];
+    // A project that resolves no publisher at all is not a build that links — it bundles, the
+    // way every build did before SDD-45 and the way dev still does. Saying `FUD0801` there
+    // would be reporting a runtime nobody published as a missing piece.
+    const links = chunks.mode === 'build' && runtime.packages.length > 0;
+    const piece = (pkg: string, name: string, devFrom: string, devName: string): PieceRef => {
+      // A package this project does not reach publishes nothing HERE, and that is not a
+      // defect: the coordinator names it as a package and the bundler resolves it, exactly as
+      // it did before this SDD. `FUD0801` is for the other case — the publisher IS in the
+      // graph and the piece it should have produced is not there, which is a broken
+      // publication and would be a 404 in a browser.
+      if (!links || !runtime.packages.includes(pkg)) return { from: devFrom, name: devName };
+      const url = pieceUrl(runtime, pkg, name);
+      if (url === undefined) missing.push(`${pkg.replace('@fudic/', '')}/${name}`);
+      return { from: url ?? devFrom, name: url === undefined ? devName : 'install' };
+    };
+    return {
+      params: {
+        chunks,
+        pieces: {
+          hydrate: piece('@fudic/core', 'hydrate', '@fudic/core', 'installHydration'),
+          warm: hasWorker
+            ? piece('@fudic/core', 'warm-sw', '@fudic/core', 'createServiceWorkerWarmChannel')
+            : piece('@fudic/core', 'warm-preload', '@fudic/core', 'createPreloadWarmChannel'),
+          di: piece('@fudic/di', 'page', '@fudic/di/page', 'installPage'),
+          urls: {
+            ...piece('@fudic/transport', 'urls', '@fudic/transport', 'createUrlResolver'),
+            // Not a startup piece: the coordinator CALLS it to derive URLs, so it keeps the
+            // name it exports rather than the uniform one (§3.4, library pieces).
+            name: 'createUrlResolver',
+          },
+        },
+      },
+      missing,
+    };
+  };
 
   /**
    * The client module a dev client URL names, or `undefined` when it names none.
@@ -309,7 +407,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // Vite's default.
       const hasOutputConfig = userConfig?.build?.rollupOptions?.output !== undefined;
       const pinned = (chunk: { name: string }): string => {
-        if (chunk.name === 'fudic-main') return mainFileName(BUILD_TOKEN);
+        // A coordinator is named `fudic-main-<hash of its own source>` (SDD-45 §4.4), so
+        // this is a prefix and not an equality: there are as many as there are combinations of
+        // pieces. The build id is appended as the LAST segment, which is the one `planRename`
+        // replaces — the content hash in the middle survives it.
+        if (chunk.name.startsWith(MAIN_ID)) return `${chunk.name}-${BUILD_TOKEN}.js`;
         if (chunk.name === 'fudic-boot') return bootFileName(BUILD_TOKEN);
         return 'assets/[name]-[hash].js';
       };
@@ -317,7 +419,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         appType: 'custom',
         build: {
           rollupOptions: {
-            input: { 'fudic-main': MAIN_ID, 'fudic-boot': BOOT_ID },
+            // The coordinators are NOT inputs: there is one per combination of pieces and
+            // they are emitted in `buildStart`, where the routes are known (SDD-45 §4.4).
+            input: { 'fudic-boot': BOOT_ID },
             ...(hasOutputConfig ? {} : { output: { entryFileNames: pinned } }),
           },
         },
@@ -652,6 +756,53 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       )) {
         this.error(`[${d.code}] ${d.message} (in ${d.file})`);
       }
+
+      // The coordinators (SDD-45 §4.4): one per route, named by its content, so two routes
+      // that need the same pieces produce the same file and a route with nothing to hydrate
+      // produces none at all.
+      //
+      // Here, in `buildStart`, because three passes render the same route — this plugin, the
+      // link pass and the edge pass — and a route whose head named a different module in each
+      // would be a page that disagrees with itself depending on who rendered it.
+      coordinators = new Map();
+      coordinatorIds.clear();
+      if (!isDev) {
+        const { params, missing } = coordinatorParams({ mode: 'build', base });
+        for (const name of missing) {
+          this.error(
+            `[${FUD_RUNTIME_PIECE_MISSING}] the published runtime of this build has no ` +
+              `"${name}", which every route that hydrates has to start. Run the publisher's ` +
+              'build, or check that its version is the one this project resolves.',
+          );
+        }
+        for (const rb of builds) {
+          if (rb.decision.mode === 'excluded') continue;
+          const coordinator = coordinatorFor(
+            {
+              hydrates: routeHydrates(rb.absPath, io),
+              injects: routeUsesDi(rb.absPath, io),
+            },
+            params,
+          );
+          coordinators.set(rb.route.pattern, coordinator);
+          if (coordinator === null || coordinatorIds.has(coordinator.source)) continue;
+          // One emit per distinct SOURCE: that is what makes «same needs, same file» a
+          // property of the build rather than something to check afterwards.
+          const id = `${COORD_PREFIX}${coordinator.name}`;
+          coordinatorIds.set(coordinator.source, id);
+          coordinatorSources.set(id, coordinator.source);
+          // Its file name is PINNED rather than left to the output naming: the head writes
+          // it as `<base><name>-<id>.js` at the root of the output, and a chunk that landed
+          // under `assets/` instead would be a tag pointing at a file nobody wrote. The token
+          // is the last segment, so `planRename` swaps it for the build id like every other.
+          this.emitFile({
+            type: 'chunk',
+            id,
+            fileName: `${coordinator.name}-${BUILD_TOKEN}.js`,
+          });
+        }
+      }
+
       // FUD0742, and it is the BUILD's rather than the emit's because what it is about is
       // the PROJECT: a sheet that nothing adopts. The emit sees one file at a time, so the
       // same fact stated there would be one warning per route for a single mistake.
@@ -749,7 +900,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     },
 
     resolveId(id, importer) {
-      if (id === MAIN_ID || id === BOOT_ID || id === SW_ID || id.startsWith(WRAPPER_PREFIX)) {
+      if (
+        id === MAIN_ID ||
+        id === BOOT_ID ||
+        id === SW_ID ||
+        id.startsWith(WRAPPER_PREFIX) ||
+        id.startsWith(COORD_PREFIX)
+      ) {
         return id;
       }
       if (id.startsWith(RUNTIME_SHIM)) {
@@ -802,21 +959,28 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         // Answered in `resolveId` before this id existed, so the lookup cannot miss.
         return pkg === null ? null : runtimeShim(pkg, runtime, specifier);
       }
+      if (id.startsWith(COORD_PREFIX)) {
+        // Written in `buildStart`, before this id existed, so the lookup cannot miss.
+        return coordinatorSources.get(id) ?? null;
+      }
       if (id === MAIN_ID) {
-        // The Service Worker is what is conditional here, NEVER the hydration (SDD-17
-        // §4.7.1). This used to return `export {};` whenever there was no worker, which
-        // made "no SW" silently mean "no hydration" — and that is dev, and any project
-        // without `sw.json`. One expression for dev and build: `/fudic-sw.js` has a fixed,
-        // unhashed name because a Service Worker only controls its own directory and below.
-        const hasWorker = swConfig !== null && (!isDev || swConfig.dev === 'preview');
-        return emitMainBootstrap({
-          chunks: isDev ? { mode: 'dev', urlPrefix: devClientPrefix(base) } : { mode: 'build', base },
-          swUrlExpr: hasWorker ? JSON.stringify(devUrl(base, DEV_SW_URL)) : null,
-          // One bootstrap for the whole app, so the question is the app's: if no component
-          // anywhere writes a DI call, the module does not even name `@fudic/di/page`, and
-          // the bundle has no chunk for it.
-          hasDi: discoverComponents(builds, io).some((c) => c.usesDi),
-        });
+        // DEV's coordinator, and there is ONE for the whole application (SDD-45 §4.15): dev
+        // builds nothing and optimises nothing, what it needs is a URL that does not move
+        // between reloads. So the question is the app's — if no component anywhere writes a
+        // DI call, the module does not name the injector and nothing of it is served.
+        //
+        // The same generator as a build's, which is the point: the startup has one shape in
+        // both places, and dev and build do not become two programs.
+        const { params } = coordinatorParams(
+          isDev ? { mode: 'dev', urlPrefix: devClientPrefix(base) } : { mode: 'build', base },
+        );
+        const coordinator = coordinatorFor(
+          { hydrates: true, injects: discoverComponents(builds, io).some((c) => c.usesDi) },
+          params,
+        );
+        // `hydrates: true` above, so there is always one: in dev the tag is served at a fixed
+        // URL for every page, and which pages hydrate is still the head's decision.
+        return coordinator === null ? null : coordinator.source;
       }
       if (id === BOOT_ID) {
         // The half that is loaded unconditionally (BUG-31 §T2), so it carries the one thing
@@ -854,7 +1018,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           // Dev has no build and no id: the two entries are served at their stable URLs.
           runtime: isDev
             ? { boot: devUrl(base, DEV_BOOT_URL), main: devUrl(base, DEV_MAIN_URL) }
-            : runtimeUrls(base),
+            : runtimeUrls(base, mainNameOf(pattern)),
         });
       }
       // Nothing of ours: if the module is a built `dist/*.js` that ships its own map, hand
@@ -966,7 +1130,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       const link: LinkResult =
         swConfig === null
           ? { chunks: [], entries: new Map(), deps: new Map() }
-          : await runLinkPass(root, base, builds, io, nested, projectStyles, linked);
+          : await runLinkPass(root, base, builds, io, nested, projectStyles, linked, mainNameOf);
       // A nested build's output is emitted as an ASSET, so nothing writes its `.map` or
       // appends its `sourceMappingURL` unless we do (BUG-05 §4.3).
       const emitWithMap = (artifact: NestedArtifact): void => {
@@ -997,6 +1161,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         nested,
         projectStyles,
         linked,
+        mainNameOf,
       );
 
       // 2. The Service Worker's own bundle: one realm, one bundle (BUG-03 §4.1). Its
@@ -1019,7 +1184,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
                 const entry = bundle[item.fileName];
                 return (
                   entry?.type === 'chunk' &&
-                  (entry.facadeModuleId === MAIN_ID || entry.facadeModuleId === BOOT_ID)
+                  (isCoordinatorChunk(entry.facadeModuleId) || entry.facadeModuleId === BOOT_ID)
                 );
               }).map((fileName) => `${base}${fileName}`),
               // And everything a document's own `<head>` links (BUG-40 §4.5). Same argument
@@ -1080,7 +1245,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       //     measures exactly what the id measures, so no offset moves and the map stays
       //     valid, exactly as in the worker above.
       for (const item of Object.values(bundle)) {
-        if (item.type === 'chunk' && item.facadeModuleId === MAIN_ID) {
+        if (item.type === 'chunk' && isCoordinatorChunk(item.facadeModuleId)) {
           item.code = item.code.split(BUILD_TOKEN).join(buildId);
         }
       }
@@ -1108,7 +1273,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       //     to write out 8 characters of noise per dependency, because a hashed name is a
       //     fact of the build and cannot be derived. Same length, so the offsets hold.
       const isEntry = (facade: string | null | undefined): boolean =>
-        facade === MAIN_ID || facade === BOOT_ID;
+        isCoordinatorChunk(facade) || facade === BOOT_ID;
       const hashedShared = reachableChunks(bundleItems(bundle), (item) => {
         const entry = bundle[item.fileName];
         return (
@@ -1232,7 +1397,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           const entry = bundle[item.fileName];
           const facade = entry?.type === 'chunk' ? entry.facadeModuleId : null;
           return (
-            facade === MAIN_ID ||
+            isCoordinatorChunk(facade) ||
             facade === BOOT_ID ||
             (facade?.endsWith(`?${CLIENT_QUERY}`) ?? false) ||
             (facade?.endsWith(`?${IOC_QUERY}`) ?? false)

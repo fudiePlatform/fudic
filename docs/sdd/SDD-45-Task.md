@@ -6,7 +6,7 @@
 > `@fudic/di` · `@fudic/compiler` · `@fudic/vite` · `@fudic/transport` · `@fudic/ssr` ·
 > `examples/basic` · `examples/workspace` · `examples/pieces-bench`
 > **Rama:** `sdd-45-runtime-publicado`
-> **Progreso:** 13 / 32
+> **Progreso:** 17 / 32
 > **Bloqueado por:** [SDD-43](./SDD-43-librerias.md) — su tarea 11 es el `peerDependencies`
 > que aquí se endurece, y su criterio 12 es el workspace sobre el que se mide la evidencia.
 
@@ -39,6 +39,13 @@ equivocó tres veces antes de asentarse:
 ---
 
 ## Dónde estamos
+
+**Fase 4 a medias: falta la tarea 16 y el hito.** El coordinador existe y es por ruta. En
+`examples/basic` salen **dos**: 321 bytes la ruta que solo hidrata y 572 la que además inyecta
+—contra los 1 836 de un arranque único para toda la app—, y cada página nombra el suyo. La
+tarea que queda es el **arranque mínimo** (§4.4.1): sacar de la carga el adaptador del DOM, el
+signal, el seguimiento y el puente del fabricado, que son 2 328 bytes que quien entra y sale no
+debería pagar. Eso toca `@fudic/core`, no el plugin, y es lo único que impide cerrar la fase.
 
 **Fase 3 cerrada y commiteada.** La aplicación ya no compila el runtime: lo enlaza. En
 `examples/basic` no queda un solo fichero de framework en `assets/` —seis trozos de la app y 34
@@ -172,6 +179,36 @@ pura sobre texto salvo el cableado, así que casi todo se prueba sin filesystem:
   y que en dev **no hay nada de esto** —el enlace vive detrás de `!isDev` y el descubrimiento
   ni se ejecuta.
 
+De la **fase 4** (`src/coordinator.ts`). Doce aserciones se MOVIERON aquí desde
+`emitMainBootstrap`, que dejó de existir: están en `test/coordinator.test.ts` y comprueban lo
+mismo que comprobaban —hidratación siempre instalada, un solo canal de calentado, la URL
+derivada en build y la de dev sin identificador, el inyector nombrado solo cuando se usa— más
+las tres propiedades que el coordinador añade: sin nada que hidratar no hay coordinador, se
+nombra por su contenido, y dos rutas con la misma necesidad dan el mismo nombre. Lo que queda
+por cubrir:
+
+- **La tabla de §4.4 es de DOS hechos y no de cinco**, y los tres que faltan no son un olvido:
+  §4.4.1 saca de la carga el adaptador del DOM, el signal y el puente del fabricado, y
+  formularios y reactividad nunca estuvieron —los arrastra el trozo de cada componente. Un
+  test que vuelva a meterlos deshace la tarea 16 sin que nadie lo vea.
+- **El orden va escrito**: el árbol de inyección se arranca ANTES de instalar la hidratación y
+  se entrega como `ready`, no se espera delante. Se comprueba leyendo el módulo generado, no
+  observando una carrera.
+- **El coordinador por debajo de 1 kB**, y de dónde salía el peso: eran 1 836 bytes y 1 100 de
+  ellos eran el ayudante de precarga que el bundler de la APP inyecta al ver un `import()`
+  dinámico. Por eso la carga de los módulos de inyección se movió a `installPage`, dentro de
+  `@fudic/di`. Un test sobre el tamaño sin esa explicación al lado se «arregla» moviéndolo de
+  vuelta.
+- **`di/page` sigue sin tocar el DOM.** El mapa llega ya parseado: quien lee los dos bloques es
+  el coordinador, porque dónde guarda una página sus bloques es de la página.
+- **El nombre del fichero se fija a mano** (`emitFile` con `fileName`, no con `name`). La
+  cabecera lo nombra en la raíz del output; dejado al nombrado por defecto cae en `assets/` y
+  es una etiqueta apuntando a un fichero que nadie escribió. Pasó.
+- **`FUD0801` solo cuando el publicador ESTÁ en el grafo y le falta la pieza.** Un paquete que
+  este proyecto no alcanza no publica nada aquí, y eso no es un defecto: el coordinador lo
+  nombra como paquete y el bundler lo resuelve, como antes de este SDD. La primera versión era
+  un error para cualquier proyecto sin runtime publicado y tiró toda la batería de build.
+
 ---
 
 ## Mapa de dependencias
@@ -252,11 +289,11 @@ F1 las piezas existen ──→ F2 el reparto ──→ F3 enlazar ──→ F4 
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 14 | 13 | **(rojo primero)** **El arranque se parte en coordinador y piezas.** Un módulo por ruta que importa sus piezas y las arranca con los parámetros de esta app. Único sitio donde viven la carpeta y el id. Criterio 13 | `vite` | `src/coordinator.ts` |
-| [ ] | 15 | 14 | **La tabla de correspondencias** (§4.4): qué piezas nombra una ruta sale de hechos que el compilador ya tiene. Formularios y reactividad **no** están en ella: los arrastra el trozo de cada componente | `vite` | `src/coordinator.ts` |
+| [x] | 14 | 13 | **(rojo primero)** **El arranque se parte en coordinador y piezas.** Un módulo por ruta que importa sus piezas y las arranca con los parámetros de esta app. Único sitio donde viven la carpeta y el id. Criterio 13 | `vite` | `src/coordinator.ts` |
+| [x] | 15 | 14 | **La tabla de correspondencias** (§4.4): qué piezas nombra una ruta sale de hechos que el compilador ya tiene. Formularios y reactividad **no** están en ella: los arrastra el trozo de cada componente | `vite` | `src/coordinator.ts` |
 | [ ] | 16 | 15 | **El arranque mínimo** (§4.4.1). El adaptador del DOM, el signal, el seguimiento y el puente del fabricado salen de la carga y pasan al calentado, que ya pide el trozo del componente cuando entra en pantalla. Son 2 328 de 9 900 bytes que quien entra y sale no paga. **Aquí se resuelve si `core/live` es opcional de verdad** o si hay que corregir §4.3.1. Criterio 34 | `core` · `vite` | `src/hydrate/install.ts` · `src/coordinator.ts` |
-| [ ] | 17 | 16 | **Se nombra por su contenido, y el orden va escrito.** Dos rutas con la misma necesidad, el mismo fichero. Una que no hidrata, sin coordinador. El orden entre piezas lo escribe el generador. Criterios 14, 16 | `vite` | `src/coordinator.ts` |
-| [ ] | 18 | 17 | **El coordinador pesa menos de 1 kB**, y es una comprobación y no una aspiración. Criterio 15 | `vite` | `src/coordinator.ts` |
+| [x] | 17 | 16 | **Se nombra por su contenido, y el orden va escrito.** Dos rutas con la misma necesidad, el mismo fichero. Una que no hidrata, sin coordinador. El orden entre piezas lo escribe el generador. Criterios 14, 16 | `vite` | `src/coordinator.ts` |
+| [x] | 18 | 17 | **El coordinador pesa menos de 1 kB**, y es una comprobación y no una aspiración. Criterio 15 | `vite` | `src/coordinator.ts` |
 
 > **Hito en el navegador (criterios 17 y 34).** Dos rutas, una con inyección y otra sin: las
 > piezas de inyección solo en la primera. Y una ruta que hidrata en la que **no se toca nada**:

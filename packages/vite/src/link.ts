@@ -83,6 +83,7 @@ function linkPlugin(
   base: string,
   styles: ProjectStyles = NO_STYLES,
   assets?: LinkedAssets,
+  mainNameOf: (pattern: string) => string = () => '',
 ): Plugin {
   // The Service Worker renders the same pages the edge does, so it publishes the same route
   // names (SDD-39 §4.7): one map, resolved once for the pass.
@@ -111,7 +112,7 @@ function linkPlugin(
         // omission is the statement — the SW imports neither `load` nor `layout` (§4.5).
         hasDi: routeUsesDi(rb.absPath, io),
         withLoad: false, // server code never ships to the client (§4.5)
-        runtime: runtimeUrls(base),
+        runtime: runtimeUrls(base, mainNameOf(pattern)),
       });
     },
     async transform(_code, id) {
@@ -181,6 +182,15 @@ export async function runLinkPass(
   nested: NestedOutputOptions,
   styles: ProjectStyles = NO_STYLES,
   assets: LinkedAssets = new LinkedAssets(base),
+  /**
+   * The coordinator a route's head names (SDD-45 §4.4), by pattern. `''` for a route with
+   * nothing to hydrate — no file and no tag.
+   *
+   * Passed in rather than computed: the host plugin, this pass and the edge pass each render
+   * the same route, and a route whose head named a different module in each would be a page
+   * that disagrees with itself depending on who rendered it.
+   */
+  mainNameOf: (pattern: string) => string = () => '',
 ): Promise<LinkResult> {
   const linkable = builds.filter((rb) => isLinkable(rb.decision));
   if (linkable.length === 0) {
@@ -197,7 +207,7 @@ export async function runLinkPass(
     root,
     base,
     logLevel: 'error',
-    plugins: [linkPlugin(linkable, io, base, styles, assets)],
+    plugins: [linkPlugin(linkable, io, base, styles, assets, mainNameOf)],
     build: {
       write: false,
       emptyOutDir: false,

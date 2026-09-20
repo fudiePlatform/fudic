@@ -20,7 +20,7 @@ import { join } from 'node:path';
 import { fudic } from '../src/index.js';
 import { runtimeAlias } from './helpers/alias.js';
 import { routeTable, emitted, manifestFile } from './helpers/manifest.js';
-import { BUILD_TOKEN, mainFileName } from '../src/constants.js';
+import { BUILD_TOKEN, isMainChunk } from '../src/constants.js';
 
 /** A component that hydrates: it declares a signal and hooks up a click. */
 const COUNTER = `<link rel="component" href="./x-out.fud">
@@ -207,7 +207,8 @@ describe('the main-thread bootstrap, now that it hydrates (SDD-17 §4.6, §4.7.1
     // Named with the build id since BUG-31 T1: the layout writes a marker the emit resolves,
     // so the file no longer has to keep a fixed name for a hand-written `<script src>`.
     const build = manifestFile(output).build;
-    const main = String(output.find((o) => o.fileName === mainFileName(build))?.code);
+    // By SHAPE: one coordinator per combination of pieces (SDD-45 §4.4), one here.
+    const main = String(output.find((o) => isMainChunk(o.fileName))?.code);
     // A surviving token would ask for `…-__FUDB__.js` — a file no build ever writes.
     expect(main).not.toContain(BUILD_TOKEN);
     expect(main).toContain(`createUrlResolver("/", "${manifestFile(output).build}")`);
