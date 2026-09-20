@@ -378,7 +378,8 @@ Un gasto único contra uno recurrente: por eso el equilibrio no está en el medi
 cerca de partir que de no partir. Y lo caro de verdad —la cadena— no lo produce el número de
 piezas sino su contenido, y una pieza empaquetada no encadena nada.
 
-De ahí las dos reglas, y no hay una tercera:
+De ahí cuatro reglas. Las dos primeras dicen dónde puede haber frontera; las dos segundas,
+medidas, dicen cuándo esa frontera merece la pena y cómo se comprueba que no falta ninguna.
 
 > **Una frontera existe solo si compra algo real.** O la pieza es **opcional** —hay rutas que
 > no la necesitan— o es **compartida** —la usan dos aplicaciones, o el worker y la página—.
@@ -388,6 +389,22 @@ De ahí las dos reglas, y no hay una tercera:
 > bytes están dos veces en el origen y se pierde justo lo que este SDD vino a ganar. Cuando
 > dos piezas necesitan el mismo módulo, **no se copia: se convierte en pieza** y las dos lo
 > declaran externo.
+
+> **Los hermanos pequeños van juntos.** Una frontera cuesta unos **150 bytes comprimidos**
+> —medido: las 27 piezas de hoy comprimen a 10 434 y su contenido en un solo fichero a
+> 7 444— más las cabeceras de su petición y su entrada en la caché. Un grupo de módulos que
+> son **alternativas entre sí** y pesan menos que eso cada uno se publica como **una** pieza:
+> ocho validadores sueltos cuestan más en fronteras de lo que ahorra el que solo usa uno.
+> Opcional no basta; tiene que ser opcional **y** valer más que su frontera.
+
+> **Todo valor exportado pertenece a una pieza, y a una sola.** Es la regla anterior mirada
+> desde el otro lado, y la que evita el defecto real que tuvo este reparto en su primera
+> versión: se dedujo de los trozos que emitía **un** ejemplo, así que `minLength` tuvo pieza
+> —el ejemplo lo usaba— y `required`, `pattern` o `max` no tuvieron ninguna. Deducir de un
+> ejemplo es deducir de una casualidad, y el síntoma aparece tarde: un import que el enlazador
+> no sabe a qué URL mandar, en el build de otra aplicación. Las excepciones —los exports de
+> `@fudic/transport` que viven dentro del worker a propósito (§4.10), y las constantes que solo
+> consume el emit— se declaran por escrito, nunca se echan de menos en silencio.
 
 **Casi todas las fronteras ya existen, y las puso el build.** Los trozos que hoy emite
 —`signal`, `browser`, `live`, `container`, `bind-form`, `min-length`…— son ejes de
@@ -427,6 +444,12 @@ A esa lista este SDD **añade cuatro** y no toca ninguna:
 Un módulo que hoy no es un trozo propio —`batch`, `controller`, `strategy`— es porque lo
 alcanza un solo consumidor, y por la segunda regla va **dentro** de esa pieza. No se le da
 pieza por simetría.
+
+**La lista de arriba está incompleta a propósito y así se quedó su primera implementación**:
+sale de lo que emite `examples/basic`, que usa `minLength` y ningún otro validador. El reparto
+verdadero se deriva de **lo que cada paquete exporta**, no de lo que un ejemplo gasta, y por la
+tercera regla los validadores van en una pieza y las conversiones tipadas en otra, en vez de
+veinticinco piezas de cien bytes.
 
 **Y al revés: la regla descubre piezas que esta tabla no preveía, y eso es la regla
 funcionando.** Al construir aparecieron cinco módulos alcanzados por dos piezas —el registro
@@ -499,6 +522,30 @@ Lo de **formularios y reactividad no está en esta tabla a propósito**: ya lo a
 de cada componente cuando se hidrata, y eso funciona desde SDD-17. El coordinador no los
 nombra porque no le toca.
 
+### 4.4.1. Lo que el arranque necesita de verdad
+
+Una página se puede abrir y cerrar sin tocar nada, y esa visita no debería pagar el material
+de hidratar. Hoy paga: el arranque son 9 900 bytes y **2 328 de ellos no hacen falta hasta que
+alguien interactúa**.
+
+| | bytes | ¿se necesita al cargar? |
+|---|---|---|
+| `core/hydrate` · `core/registry` · `transport/urls` | ~7 200 | **sí**: poner el escuchador en la raíz, leer los mapas y saber derivar una URL |
+| `dom/browser` | 1 132 | no: es el adaptador con el que se **pinta**, y no se pinta nada hasta que un componente se levanta |
+| `core/signal` + `core/tracking` | 845 | no: se crean signals al entregarle a una instancia su estado, y eso es hidratar |
+| `core/live` | 351 | no: el puente del fabricado solo se cruza cuando un componente fabrica un hijo |
+
+`core/element` ya está fuera y conviene decirlo para que nadie lo «arregle»: no lo importa el
+arranque, lo importa el trozo del primer componente que se hidrata.
+
+**Y moverlas no reintroduce cadena, porque el calentado ya existe.** Cuando un componente entra
+en pantalla, el canal pide su trozo en tiempo muerto; pide estas piezas con él, en la misma
+tanda. Es exactamente para lo que está, y es la diferencia entre descubrir en cadena —dentro
+del gesto, que es lo que se ve— y anticipar en paralelo, mucho antes.
+
+Quien no interactúa nunca no descarga esos 2 328 bytes. Quien interactúa los tiene antes de
+tocarlos.
+
 ### 4.5. Inline o fichero, y por qué el fichero ya no encadena
 
 Con la forma de **fichero**, el emit escribe además un `<link rel="modulepreload">` por pieza.
@@ -510,6 +557,41 @@ desaparece.
 
 Con la forma **inline**, no hay preloads y no hacen falta: los `import` del propio script se
 descubren al leer el HTML, que es el instante más temprano que existe.
+
+### 4.5.1. Con Service Worker, se descarga lo que la aplicación enlaza
+
+Un worker precachea en su `install`, en una tanda, fuera del camino crítico y una sola vez por
+versión. Así que cuando hay worker **no se afina nada**: se traen todas las piezas que el
+manifiesto de la aplicación nombra, y a partir de ahí toda petición de runtime es una lectura
+de caché.
+
+Lo que la aplicación **enlaza**, no el runtime entero: una app que no usa formularios no
+precachea sus enlazadores, porque no están en su manifiesto. Precachear lo que nadie va a
+pedir es gastar cuota para nada.
+
+La consecuencia simplifica el resto del documento: **todo lo que viene después solo afecta a
+las aplicaciones sin worker**. Con worker, la granularidad deja de tener coste.
+
+### 4.5.2. Sin worker: un límite de peticiones, y el paquete por conjunto
+
+Sin worker no hay precacheo, así que las peticiones de una ruta se pagan en su primera visita,
+y ahí sí importa cuántas son. La regla es un número y no una doctrina:
+
+> Una ruta que necesitara **más de `N` piezas** carga en su lugar **un paquete** con todas.
+> Por debajo de `N`, las carga sueltas. `N` por defecto **10**, y la aplicación puede cambiarlo.
+
+Se emiten **las dos cosas**, sueltas y empaquetadas: en el peor caso son unos 17 kB más en el
+`dist`, que en disco no es nada, y cada ruta apunta a una o a otro.
+
+**El paquete es por conjunto de piezas, nunca por ruta**, y ese detalle es el que hace que la
+idea funcione. Dos rutas que necesitan lo mismo producen el mismo conjunto, luego el mismo
+paquete, luego el mismo fichero — y dos aplicaciones también, porque el contenido es framework
+y nada de la app. Un paquete por ruta no lo compartiría nadie y sería el monolito otra vez,
+troceado.
+
+El número por defecto no es arbitrario: con el reparto de hoy deja sueltos todos los
+escenarios salvo el arranque y el formulario con validación, que son justo los dos que pasan
+de diez peticiones.
 
 **`FUD0803`, error.** Un layout pide `?inline` y la política de seguridad del documento no
 declara `nonce-{nonce}`. Es decidible en el build y rompe en producción, así que rompe aquí.
@@ -726,7 +808,17 @@ misma forma en los dos sitios es lo que evita que dev y build sean dos programas
 - **`@fudic/transport` vive dentro del worker.** Es quien abre la caché y quien enlaza (§4.10).
 - **El polyfill se emite inline** (§4.14).
 - **Un índice de instancias no sobrevive a su gesto** (§4.12).
-- **`FudicOptions` no gana ninguna opción.**
+- **Los hermanos pequeños van juntos** (§4.3). Opcional no basta: una pieza tiene que valer
+  más que su frontera, que son unos 150 bytes comprimidos y una petición.
+- **Todo valor exportado pertenece a una pieza, y a una sola** (§4.3), con las excepciones
+  declaradas por escrito. El reparto se deriva de lo que un paquete exporta, nunca de lo que
+  un ejemplo gasta.
+- **El arranque solo trae lo que hace falta sin tocar nada** (§4.4.1). Lo de pintar, lo de los
+  signals y el puente del fabricado llegan con el calentado, no al cargar.
+- **Con Service Worker se precachea lo que la aplicación enlaza** (§4.5.1), y la granularidad
+  deja de tener coste.
+- **`FudicOptions` gana exactamente una opción**: el límite de peticiones de §4.5.2, porque es
+  una decisión de la aplicación y de nadie más. La versión y el directorio siguen sin serlo.
 - **El compilador sigue sin filesystem.** Las URLs llegan resueltas por el host.
 - **Cobertura.** El código nuevo nace al 100 % en las cuatro métricas; ningún paquete tocado
   baja del número que tiene al empezar.
@@ -767,8 +859,16 @@ pestaña indicada.
 
 **La pieza**
 
-5. **Ningún módulo está en dos piezas.** Se comprueba sobre los ficheros publicados, no sobre
-   la intención: es la regla de §4.3 y es la que, incumplida, devuelve el problema entero.
+5. **El reparto es completo y no se solapa.** Tres comprobaciones, las tres **sobre los
+   ficheros publicados** y no sobre la intención, porque las tres se rompen solas en cuanto
+   alguien añade un import:
+   - **Ningún módulo está en dos piezas.** Es la segunda regla de §4.3, y la que, incumplida,
+     devuelve el problema entero.
+   - **Ningún valor exportado se queda sin pieza.** Recorriendo lo que cada paquete exporta:
+     `required` y `pattern` tienen URL igual que `minLength`. Las excepciones del worker se
+     escriben en el propio test, para que añadir una sea un acto deliberado.
+   - **Ninguna pieza pesa menos que su frontera** —unos 150 bytes comprimidos— salvo que
+     guarde estado o no tenga hermanos con los que ir. El test los mide, no los supone.
 6. **Toda pieza de arranque expone la misma entrada** (§3.4) —las que el coordinador pone en
    marcha— y una que no la expone rompe el build. Las piezas de biblioteca están exentas por
    definición: a `signal` no se le pide un `install`. Es lo que hará que `@fudic/http` entre
@@ -809,6 +909,20 @@ pestaña indicada.
     ruta, **las piezas empiezan todas a la vez** y ninguna espera a que otra termine.
     Se mira con la red a 3G lento, que es donde se ve. Las dos formas, fichero e inline,
     tienen que pasarlo.
+
+**El arranque mínimo, el worker y el límite** (numerados al final porque se añadieron después;
+pertenecen a las fases 4 y 5)
+
+34. **Entrar y salir cuesta ~7 200 bytes y no 9 900** (§4.4.1): una ruta que hidrata y en la
+    que nadie toca nada **no** descarga el adaptador del DOM, el signal, el seguimiento ni el
+    puente del fabricado. Se mide en el navegador, contando peticiones sin interactuar.
+35. **Con `sw.json`, el worker precachea todas las piezas que el manifiesto nombra**, y
+    ninguna más (§4.5.1). Tras el `install`, toda petición de runtime es una lectura de caché:
+    se comprueba en `Application → Cache Storage` y en la pestaña de red.
+36. **El límite de peticiones decide** (§4.5.2): con el valor por defecto, una ruta de más de
+    diez piezas carga el paquete de su conjunto y una de menos las carga sueltas; bajar el
+    límite a uno empaqueta todas las rutas y subirlo a cien no empaqueta ninguna. Dos rutas
+    con el mismo conjunto apuntan **al mismo** paquete, y se comprueba que es el mismo fichero.
 
 **La caché compartida**
 
