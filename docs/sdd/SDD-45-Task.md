@@ -40,7 +40,7 @@ equivocó tres veces antes de asentarse:
 
 ## Dónde estamos
 
-**Fase 4 con las cinco tareas hechas: falta que Pedro vea el hito en Chrome.** El coordinador
+**Fase 4 cerrada, con el hito visto en Chrome.** El coordinador
 existe y es por ruta —321 bytes la ruta que solo hidrata y 572 la que además inyecta, contra los
 1 836 de un arranque único para toda la app—, y el arranque ya trae solo lo que hace falta sin
 tocar nada: **cuatro peticiones y 8 507 bytes**, contra nueve y 10 707. El adaptador del DOM y
@@ -349,6 +349,19 @@ F1 las piezas existen ──→ F2 el reparto ──→ F3 enlazar ──→ F4 
 > **Hito en el navegador (criterios 17 y 34).** Dos rutas, una con inyección y otra sin: las
 > piezas de inyección solo en la primera. Y una ruta que hidrata en la que **no se toca nada**:
 > 7 200 bytes, no 9 900.
+>
+> **Hito conseguido, visto en Chrome** en la ruta de hidratación de `examples/basic`, y la
+> pestaña de red lo enseña en tres momentos distintos, que es lo que lo hace una medida y no
+> una impresión:
+>
+> - **Al cargar, con nada que hidratar a la vista:** ocho peticiones —el documento, la hoja de
+>   tokens, el arranque del worker, el coordinador, la derivación de URLs, la hidratación, su
+>   registro y el canal de calentado— y **ni el adaptador del DOM, ni el signal, ni el
+>   seguimiento, ni el puente del fabricado**.
+> - **Cuando el primer componente entra en pantalla:** llegan las tres que el calentado
+>   anticipa —adaptador, signal y seguimiento—, las tres a la vez y fuera de todo gesto.
+> - **Al hacer clic:** solo el trozo del componente y lo suyo —la clase base, la suscripción y
+>   el efecto—. Las piezas del calentado ya estaban, así que el gesto no espera por ninguna.
 
 ---
 
