@@ -42,70 +42,168 @@ const published = (pkg: string, piece: string): string =>
 /**
  * The pieces of this package, piece name → entry module.
  *
- * §4.3.1 takes the split from evidence and not from taste: these are the chunks an
- * application's rollup already emits for this package, i.e. the splits a real graph proved to
- * be optional — a form that binds a text input does not thereby bind a form element, and a
- * field with no length rule never names the validator.
+ * **Derived from what this package EXPORTS**, and that sentence is the whole content of this
+ * table. The first split was read off the chunks `examples/basic` emits, so `minLength` had a
+ * piece and `required`, `pattern`, `max` and the twelve typed coercions had none — and six of
+ * the nine binders had none either, because that example binds a text field and a form.
+ * Deducing a split from an example is deducing it from a coincidence, and the symptom arrives
+ * late: an import the linker cannot answer, in somebody else's build.
+ * `examples/pieces-bench/check.mjs` walks `dist/` — where the types are already erased — and
+ * fails if a single exported value has no URL.
+ *
+ * **Where the frontiers are is measured, not argued** (§4.3, third rule). The nine binders are
+ * alternatives and each one clears the ~150 compressed bytes a frontier costs, so each is a
+ * piece: the page with one text field downloads one of them. The eight validators and the
+ * twelve typed coercions do NOT clear it — they are 50 to 130 bytes each — so they travel as
+ * two gathered pieces, entered from `bundle/`: whoever uses one validator pays one frontier
+ * instead of eight, and whoever uses three pays one instead of three.
  *
  * All of them are LIBRARY pieces (§3.4): nobody starts them, the chunk of whichever component
- * carries the form imports them, and they keep the names they export today. So this package
- * has no `bundle/` — a uniform entry here would be a ceremony invented for an
- * `import { bindText }`.
+ * carries the form imports them, and they keep the names they export today. The `bundle/`
+ * entries are not a uniform `install` ceremony — they exist to publish several exports from
+ * one piece.
  *
- * `wiring` is the one name here that §4.3.1's table does not list, and it is in the list for
- * the second rule of §4.3 rather than for an opinion: see `FRONTIERS`.
- *
- * `delegation` and `length` get no piece: each is reached by exactly one of the above and
- * travels inside it. A module with one consumer is not given a frontier for symmetry.
+ * `internals`, `run-rule` and `server-flag` are pieces nobody designed: the second rule of
+ * §4.3 made them, because two pieces reach each of them. See `FRONTIERS`.
  */
 const PIECES: Readonly<Record<string, string>> = {
+  // The model: a form that can be built, filled and validated with no `<form>` anywhere.
+  control: 'src/control.ts',
+  form: 'bundle/form.ts',
+  internals: 'src/internals.ts',
+  'run-rule': 'src/run-rule.ts',
+  'server-flag': 'src/server-flag.ts',
+  validators: 'bundle/validators.ts',
+  typed: 'bundle/typed.ts',
+  messages: 'src/messages.ts',
+  element: 'src/element.ts',
+  // The browser half: one binder per shape of field, which is why there is no `switch`.
+  wiring: 'src/dom/wiring.ts',
   'bind-form': 'src/dom/bind-form.ts',
   'bind-text': 'src/dom/bind-text.ts',
-  wiring: 'src/dom/wiring.ts',
-  'min-length': 'src/validators/min-length.ts',
-  messages: 'src/messages.ts',
+  'bind-number': 'src/dom/bind-number.ts',
+  'bind-checkbox': 'src/dom/bind-checkbox.ts',
+  'bind-radio': 'src/dom/bind-radio.ts',
+  'bind-select': 'src/dom/bind-select.ts',
+  'bind-select-multiple': 'src/dom/bind-select-multiple.ts',
+  'bind-group': 'src/dom/bind-group.ts',
+  'bind-by-type': 'src/dom/bind-by-type.ts',
 };
 
 /**
- * The source modules that ARE a frontier: reaching one from another piece is an import that
- * must leave the bundle. Keyed by source module and not by piece, because that is how the
- * question arrives — `bind-text.ts` writes `./wiring.js`, not `wiring`.
+ * Source module → the piece that owns it. Reaching one from ANOTHER piece is an import that
+ * must leave the bundle; reaching it from its own piece is not a frontier at all, which is
+ * what lets `bundle/validators.ts` gather nine modules into one piece.
  *
- * `wiring` is here and is not in §4.3.1's table, and the reason is the second rule of §4.3:
- * it is reached by `bind-form` — for `onSelf` and `undo` — AND by `bind-text`, for `bindErrors`
- * and `on`. Copying it would put the same bytes twice on the origin, which is exactly what
- * this SDD came to stop, so it becomes a piece and both sides declare it external. It is the
- * same case `core` hit twice with `registry` and `channel`.
+ * Keyed by source module and not by piece, because that is how the question arrives —
+ * `bind-text.ts` writes `./wiring.js`, not `wiring`.
  *
- * `messages` was already a piece and is reached by two of them — `bind-form` and `wiring` —
- * so the rule costs nothing there: it was going to be a frontier anyway.
+ * Three of these entries are the second rule of §4.3 writing itself down, and none of them was
+ * anybody's idea of a piece:
+ *
+ * - `wiring` is reached by six binders — listening, undoing, and painting the error into the
+ *   slot the emit already wrote.
+ * - `internals` and `run-rule` are reached by `control`, by `form` and, through `typed`, by
+ *   every coercion.
+ * - `server-flag` is reached by `control` and by `serverValidator`, and it is the case where
+ *   the rule is not about bytes at all: its whole content is one `Symbol`, and two copies
+ *   would be two symbols — a rule marked server-only through one would run on the client
+ *   because the other did not recognise the mark.
+ *
+ * `delegation` and `length` are listed as owned but are not frontiers today: each is reached
+ * by exactly one piece and travels inside it. They are here so that the table answers for
+ * every module rather than for the ones that happen to cross today.
  */
 const FRONTIERS: Readonly<Record<string, string>> = {
+  'src/control.ts': 'control',
+  'src/form.ts': 'form',
+  'src/group.ts': 'form',
+  'src/internals.ts': 'internals',
+  'src/run-rule.ts': 'run-rule',
+  'src/server-flag.ts': 'server-flag',
+  'src/messages.ts': 'messages',
+  'src/element.ts': 'element',
+  'src/validators/validator.ts': 'validators',
+  'src/validators/server.ts': 'validators',
+  'src/validators/required.ts': 'validators',
+  'src/validators/min-length.ts': 'validators',
+  'src/validators/max-length.ts': 'validators',
+  'src/validators/min.ts': 'validators',
+  'src/validators/max.ts': 'validators',
+  'src/validators/pattern.ts': 'validators',
+  'src/validators/length.ts': 'validators',
+  'src/typed/typed.ts': 'typed',
+  'src/typed/range.ts': 'typed',
+  'src/typed/u8.ts': 'typed',
+  'src/typed/i8.ts': 'typed',
+  'src/typed/u16.ts': 'typed',
+  'src/typed/i16.ts': 'typed',
+  'src/typed/u32.ts': 'typed',
+  'src/typed/i32.ts': 'typed',
+  'src/typed/f32.ts': 'typed',
+  'src/typed/f64.ts': 'typed',
+  'src/typed/bool.ts': 'typed',
+  'src/typed/str.ts': 'typed',
+  'src/typed/date.ts': 'typed',
+  'src/typed/arr.ts': 'typed',
+  'src/dom/wiring.ts': 'wiring',
+  'src/dom/delegation.ts': 'wiring',
   'src/dom/bind-form.ts': 'bind-form',
   'src/dom/bind-text.ts': 'bind-text',
-  'src/dom/wiring.ts': 'wiring',
-  'src/validators/min-length.ts': 'min-length',
-  'src/messages.ts': 'messages',
+  'src/dom/bind-number.ts': 'bind-number',
+  'src/dom/bind-checkbox.ts': 'bind-checkbox',
+  'src/dom/bind-radio.ts': 'bind-radio',
+  'src/dom/bind-select.ts': 'bind-select',
+  'src/dom/bind-select-multiple.ts': 'bind-select-multiple',
+  'src/dom/bind-group.ts': 'bind-group',
+  'src/dom/bind-by-type.ts': 'bind-by-type',
 };
 
-/** Absolute path → published URL, resolved once so the hook below is a lookup. */
-const FRONTIER_URLS = new Map<string, string>(
-  Object.entries(FRONTIERS).map(([file, piece]) => [here(`./${file}`), published('forms', piece)]),
+/** Absolute path → the piece that owns it, resolved once so the hook below is a lookup. */
+const FRONTIER_PIECES = new Map<string, string>(
+  Object.entries(FRONTIERS).map(([file, piece]) => [here(`./${file}`), piece]),
 );
 
 /**
- * The pieces of OTHER packages this one reaches.
+ * What this package takes from `@fudic/core`, export by export, and which piece publishes it.
  *
- * `@fudic/core` must never be inlined here: its `effect` piece is shared by every binder of
- * this package and by whatever else in the page is reactive, and a copy of it inside each
- * binder would be paid for by every app that has a form. The bare specifier resolves to one
- * piece because the pieces below import one thing from that package — `effect` — and the day
- * one of them imports `signal` as well this map stops being able to answer and has to become
- * per-export.
+ * Export by export and not package by package, because `@fudic/core` is not one piece. The
+ * previous version of this file mapped the whole specifier to `core/effect` and left a comment
+ * saying it would stop working the day something here imported `signal` as well. That day is
+ * this commit: `control` and `form` take `signal` and `untrack`, and `element` takes
+ * `FudicElement`, which live in three other pieces.
+ *
+ * `@fudic/core` must never be inlined here: `effect` is shared by every binder and by whatever
+ * else on the page is reactive, and a copy inside each binder would be paid for by every
+ * application that has a form.
  */
-const EXTERNAL_PACKAGES: Readonly<Record<string, string>> = {
-  '@fudic/core': published('core', 'effect'),
+const CORE_EXPORTS: Readonly<Record<string, readonly string[]>> = {
+  effect: ['effect'],
+  signal: ['signal'],
+  tracking: ['untrack'],
+  element: ['FudicElement'],
 };
+
+/** The id of the module that stands in for `@fudic/core`, and exists only during this build. */
+const CORE_SHIM = '\0fudic:core';
+
+/**
+ * A published piece, leaving as a URL and declared free of side effects.
+ *
+ * `'absolute'` keeps the URL exactly as written: with a plain `true` an id starting with `/`
+ * is read as a filesystem path and renormalized against the output directory, which would turn
+ * an origin-absolute URL into `../../…`.
+ *
+ * `moduleSideEffects: false` is not an optimisation, it is the difference between a split that
+ * works and one that costs three round trips per binder. A bundler assumes an external module
+ * may do something on import, so it keeps a bare `import "…"` for every one the shim names,
+ * used or not: `bind-text` came out asking for `core/signal`, `core/tracking` and
+ * `core/element` — three requests and 114 bytes, for three names it never mentions. A piece of
+ * this framework declares things and starts nothing, so saying so is true, and saying it here
+ * is what lets the shim drop what this build does not use.
+ */
+const external = (url: string) =>
+  ({ id: url, external: 'absolute', moduleSideEffects: false }) as const;
 
 /**
  * Rewrite every frontier import to its published URL.
@@ -115,30 +213,45 @@ const EXTERNAL_PACKAGES: Readonly<Record<string, string>> = {
  * `/_fudic/<version>/forms/wiring.js`. `'absolute'` keeps the URL exactly as written: with a
  * plain `true` an id starting with `/` is read as a filesystem path and renormalized against
  * the output directory, which would turn an origin-absolute URL into `../../…`.
+ *
+ * And a SHIM for `@fudic/core`, because the source says `import { signal, untrack }` while the
+ * answer is two different URLs: `resolveId` is handed the specifier and never the names, so it
+ * cannot split one import two ways. The shim can — it re-exports each name from its own piece,
+ * rolldown inlines it, drops what this build does not use, and what survives is one external
+ * import per piece actually reached. It is the same device `@fudic/ssr` uses for `@fudic/di`,
+ * and it costs no request and no byte: nothing of it remains but the imports themselves.
  */
 const publishedUrls = (self: string): Plugin => ({
   name: 'fudic-published-urls',
   resolveId(source, importer) {
-    const external = EXTERNAL_PACKAGES[source];
-    if (external !== undefined) return { id: external, external: 'absolute' };
+    if (source === '@fudic/core') return CORE_SHIM;
+    // The pieces the shim names: already URLs, and they leave as they are.
+    if (source.startsWith('/_fudic/')) return external(source);
     if (importer === undefined || !source.startsWith('.')) return null;
     // Source is TypeScript and its specifiers are the emitted `.js` (`verbatimModuleSyntax`),
     // so the frontier map — which is keyed by the files that exist — is asked in those terms.
     const file = fileURLToPath(new URL(source.replace(/\.js$/, '.ts'), pathToFileURL(importer)));
-    // Its own root is not a frontier: a piece cannot import itself.
-    if (file === self) return null;
-    const url = FRONTIER_URLS.get(file);
-    return url === undefined ? null : { id: url, external: 'absolute' };
+    const owner = FRONTIER_PIECES.get(file);
+    // A module of the piece being built is not a frontier: `bundle/validators.ts` reaches nine
+    // modules that all belong to `validators`. A piece cannot import itself, and the check
+    // that says so is about the PIECE and not about the entry file — an entry that gathers
+    // nine modules has nine ways to arrive at itself.
+    return owner === undefined || owner === self ? null : external(published('forms', owner));
+  },
+  load(id) {
+    if (id !== CORE_SHIM) return null;
+    return Object.entries(CORE_EXPORTS)
+      .map(([piece, names]) => `export { ${names.join(', ')} } from '${published('core', piece)}';`)
+      .join('\n');
   },
 });
 
 export default defineConfig(
   Object.entries(PIECES).map(([piece, entry]) => {
-    const input = here(`./${entry}`);
     return {
-      input: { [piece]: input },
+      input: { [piece]: here(`./${entry}`) },
       platform: 'browser' as const,
-      plugins: [publishedUrls(input)],
+      plugins: [publishedUrls(piece)],
       /**
        * Erase a type-only import instead of leaving it as a side effect.
        *

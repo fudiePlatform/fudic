@@ -6,7 +6,7 @@
 > `@fudic/di` · `@fudic/compiler` · `@fudic/vite` · `@fudic/transport` · `@fudic/ssr` ·
 > `examples/basic` · `examples/workspace` · `examples/pieces-bench`
 > **Rama:** `sdd-45-runtime-publicado`
-> **Progreso:** 5 / 32
+> **Progreso:** 9 / 32
 > **Bloqueado por:** [SDD-43](./SDD-43-librerias.md) — su tarea 11 es el `peerDependencies`
 > que aquí se endurece, y su criterio 12 es el workspace sobre el que se mide la evidencia.
 
@@ -40,32 +40,45 @@ equivocó tres veces antes de asentarse:
 
 ## Dónde estamos
 
-**Fase 1 cerrada y commiteada.** Los seis paquetes publican sus piezas: 27 ficheros, 22 124
-bytes, reconstruir los seis da los mismos bytes, y ningún import apunta a una URL que no
-exista. El catálogo de las 27 está en [SDD-45-piezas.md](./SDD-45-piezas.md).
+**Fase 2 cerrada y commiteada.** El reparto ya no se deduce de lo que gasta un ejemplo: sale de
+lo que cada paquete exporta, y hay una herramienta que lo comprueba sobre los ficheros
+publicados. **41 piezas, 32 556 bytes** (15 491 comprimidos). El catálogo está en
+[SDD-45-piezas.md](./SDD-45-piezas.md).
 
 **Lo medido, que es lo que sostiene el resto:**
 
-- **Partir cuesta.** 27 piezas sueltas comprimen a 10 434 bytes; su contenido en un fichero, a
-  7 444. Cada frontera son unos **150 bytes comprimidos** más su petición.
-- **El arranque son 9 900 bytes y 9 peticiones, con tres niveles de descubrimiento**
-  (`hydrate` → `signal` → `tracking`). Sin la precarga de la fase 5 esto es peor que hoy.
-- **2 328 de esos 9 900 no hacen falta al cargar**: el adaptador del DOM, el signal, el
+- **Partir cuesta.** Cada frontera son unos **150 bytes comprimidos** más su petición. Es el
+  número con el que se decide si una pieza vale la pena, y el que la tercera comprobación
+  aplica.
+- **El arranque son 10 386 bytes y 8 peticiones, con tres niveles de descubrimiento**
+  (`hydrate` → `signal` → `tracking`). Una petición menos que en la fase 1 —el canal de
+  calentado dejó de ser pieza— y 486 bytes más, casi todos del agrupado de escrituras, que
+  ahora es alcanzable. Sin la precarga de la fase 5 esto sigue siendo peor que hoy.
+- **2 328 de esos bytes no hacen falta al cargar**: el adaptador del DOM, el signal, el
   seguimiento y el puente del fabricado (§4.4.1).
+- **El formulario completo son 16 peticiones y 11 269 bytes**, y es la primera vez que esa
+  cuenta es verdad: siete de esas piezas —el modelo— no existían. Es el único escenario que
+  pasa del límite de diez de §4.5.2.
 - **Ocho piezas las pide toda ruta que hidrata**; `effect` y `subscribe` las evitan 13 de 17
   rutas, y `computed` 15 de 17.
-- **El reparto de formularios está incompleto**: solo `minLength` tiene pieza. Faltan
-  `required`, `max`, `min`, `maxLength`, `pattern`, los dos validadores genéricos, las trece
-  conversiones tipadas y `form`/`group`/`control`. En núcleo falta `batch`; en DOM, `cursorOf`.
 
-**Decidido y pendiente de implementar:** `core/channel` se mete dentro de los dos canales de
-calentado (184 bytes que cuestan más como pieza de lo que ahorran, y los dos canales nunca
-coexisten). Y el reparto de formularios se rehace agrupando: los validadores en una pieza, las
-conversiones tipadas en otra.
+**Lo que la fase 2 dejó decidido y medido**, por si alguien lo quiere reabrir:
+
+- Los ocho validadores van en **una** pieza y las doce conversiones tipadas en **otra**: cada
+  valor pesa entre 50 y 130 bytes y una frontera cuesta 150, así que sueltos pierden dinero.
+- `core/channel` (184 B) se metió dentro de los dos canales de calentado, y `forms/group`
+  (107 B) dentro del formulario. Los dos por lo mismo: pesaban menos que su frontera y no se
+  descargan sin lo que los acompaña.
+- Los nueve enlazadores **sí** son nueve piezas: el más pequeño comprime a 159 bytes y todos
+  pasan la frontera. La página con un campo de texto se lleva uno.
+- Tres piezas minúsculas existen porque su contenido entero es un `Symbol` —los internos del
+  nodo, la marca de regla de servidor— o porque las alcanzan dos piezas y copiarlas serían los
+  mismos bytes dos veces. Están escritas como excepción, con su razón, donde se comprueban.
 
 **Sigue abierto, y lo decide Pedro mirando el banco:** si el arranque con precarga vale, no se
 empaqueta nada; si no, se empaqueta por conjunto. La fase 5 implementa el límite de §4.5.2 en
-cualquier caso — lo que falta es el número por defecto confirmado, hoy escrito como 10.
+cualquier caso — lo que falta es el número por defecto confirmado, hoy escrito como 10. El
+formulario con sus 16 peticiones es el caso con el que decidirlo.
 
 ## Lo que la sesión de tests tendrá que cubrir
 
@@ -78,6 +91,39 @@ no-declaraciones que no son diagnóstico, normalización del valor declarado, no
 publicador sin `version`, determinismo del orden, solo `.js` de primer nivel, y
 `devDependencies`/`peerDependencies`. Y las tres comprobaciones del criterio 5, que la fase 2
 deja como herramienta y que ahí deben convertirse en test.
+
+De la **fase 2**, y esto es lo que no se puede reconstruir leyendo el diff:
+
+- **`FUD0805` (`src/runtime-pieces.ts`, `withoutClashes`).** Dos publicadores cuyos nombres
+  acaban en el mismo segmento y con la misma versión. Hace falta el caso en verde (nadie
+  choca, cero diagnósticos), el choque con **dos** paquetes, y el que se olvida: que la pieza
+  **que se queda** es la primera y no las dos, porque el resto del build no debe ver dos
+  entradas para una URL. La I/O ya está inyectada, así que el choque se monta con dos
+  manifiestos falsos y no con un `node_modules`.
+- **La comprobación es sobre los EXPORTS del fichero publicado, no sobre los módulos que lleva
+  dentro.** Es la distinción que hizo falta para ver el defecto de `batch`, que viajaba dentro
+  de `core/signal` sin que ninguna URL ofreciera el nombre. Un test que mire módulos vuelve a
+  dejar pasar ese caso exacto.
+- **De dónde sale cada cosa**, para que el test no la deduzca de otro sitio: qué módulos hay
+  dentro de una pieza se saca construyendo el propio `rolldown.config.ts` con mapas de fuentes
+  a un directorio temporal —el bundler de verdad respondiendo, no un segundo recorrido del
+  grafo que coincidiría hasta el día que no—; y qué valores exporta un paquete, de su `dist/`,
+  donde los tipos ya están borrados. Hay que recorrer **todos** los subcaminos de `exports`:
+  `@fudic/forms/dom` es el que se quedó fuera la primera vez, y con él seis enlazadores.
+- **Las excepciones escritas** (`check.mjs`, `EXCEPTIONS`). Cada una debería tener su test:
+  que el canal de calentado en dos piezas **no** es un fallo y en cualquier otro par **sí**;
+  que `install` repetido en las piezas de arranque es el contrato de §3.4 y no un choque; y
+  que una excepción que ya no hace falta se reporta —hubo una, `forms/internals`, que creció
+  por encima de la frontera y nadie se habría enterado.
+- **`moduleSideEffects: false` en los externos** (los cuatro `rolldown.config.ts`). No es una
+  optimización: sin eso el shim deja un `import "…"` desnudo por cada pieza que ofrece y no se
+  usa, y cada enlazador salía pidiendo `core/signal`, `core/tracking` y `core/element` —tres
+  peticiones y 114 bytes— por nombres que no menciona. Lo que hay que fijar es la propiedad, no
+  la opción: **ninguna pieza publicada importa una URL de la que no usa ningún nombre**. Eso se
+  comprueba sobre los ficheros publicados y protege los cuatro configs a la vez.
+- **El borrado previo de `runtime/`** en los seis `build:runtime`. Quitar una pieza dejaba su
+  fichero en el directorio, y `files` lo habría publicado. La propiedad a fijar: lo que hay en
+  `runtime/` es exactamente lo que el config produce, ni un fichero más.
 
 ---
 
@@ -111,17 +157,21 @@ F1 las piezas existen ──→ F2 el reparto ──→ F3 enlazar ──→ F4 
 
 ---
 
-## Fase 2 — el reparto, derivado de los exports (4)
+## Fase 2 — el reparto, derivado de los exports (4) · **cerrada**
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 6 | 5 | **Rehacer el reparto a partir de lo que cada paquete exporta.** En `@fudic/forms`: los validadores en **una** pieza y las conversiones tipadas en **otra** —cada uno pesa entre 50 y 130 bytes y una frontera cuesta 150, así que sueltos pierden dinero— más `form`/`group`/`control`. En `@fudic/core`, `batch`; en `@fudic/dom`, `cursorOf`. Criterio 5 | `forms` · `core` · `dom` | `rolldown.config.ts` |
-| [ ] | 7 | 6 | **`core/channel` desaparece como pieza** y se mete dentro de `warm-sw` y `warm-preload`. Decidido y medido: son 184 bytes, cuestan más como frontera, y los dos canales son excluyentes, así que nadie los descarga los dos. Es la excepción escrita a la segunda regla: vale para piezas que **pueden convivir** | `core` | `rolldown.config.ts` |
-| [ ] | 8 | 7 | **Las tres comprobaciones, como herramienta y en el banco.** Ningún módulo en dos piezas, ningún valor exportado sin pieza, ninguna pieza por debajo de su frontera. Sobre los ficheros publicados. Las excepciones de `@fudic/transport` (§4.10) se escriben, no se echan de menos en silencio. Criterio 5 | `examples` | `examples/pieces-bench/` |
-| [ ] | 9 | 8 | **`FUD0805`:** dos paquetes que produjeran la misma URL publicada. Criterio 7 | `vite` | `src/runtime-pieces.ts` |
+| [x] | 6 | 5 | **Rehacer el reparto a partir de lo que cada paquete exporta.** En `@fudic/forms`: los validadores en **una** pieza y las conversiones tipadas en **otra** —cada uno pesa entre 50 y 130 bytes y una frontera cuesta 150, así que sueltos pierden dinero— más `form`/`group`/`control`. En `@fudic/core`, `batch`; en `@fudic/dom`, `cursorOf`. Criterio 5 | `forms` · `core` · `dom` | `rolldown.config.ts` |
+| [x] | 7 | 6 | **`core/channel` desaparece como pieza** y se mete dentro de `warm-sw` y `warm-preload`. Decidido y medido: son 184 bytes, cuestan más como frontera, y los dos canales son excluyentes, así que nadie los descarga los dos. Es la excepción escrita a la segunda regla: vale para piezas que **pueden convivir** | `core` | `rolldown.config.ts` |
+| [x] | 8 | 7 | **Las tres comprobaciones, como herramienta y en el banco.** Ningún módulo en dos piezas, ningún valor exportado sin pieza, ninguna pieza por debajo de su frontera. Sobre los ficheros publicados. Las excepciones de `@fudic/transport` (§4.10) se escriben, no se echan de menos en silencio. Criterio 5 | `examples` | `examples/pieces-bench/` |
+| [x] | 9 | 8 | **`FUD0805`:** dos paquetes que produjeran la misma URL publicada. Criterio 7 | `vite` | `src/runtime-pieces.ts` |
 
-> **Hito en el navegador.** En el banco, cero en las tres comprobaciones, y el escenario del
-> formulario cambiando de nueve peticiones a las que salgan del reparto agrupado.
+> **Hito conseguido.** El banco enseña las tres comprobaciones en cero, arriba del todo y antes
+> que ningún escenario. Y el formulario pasó de nueve peticiones a dieciséis, que no es un
+> empeoramiento sino la primera medida honrada: las siete que faltaban eran el modelo —campos,
+> formulario, conversiones y reglas—, que hasta ahora no tenía URL y por tanto no aparecía en
+> ninguna cuenta. Es también el primer escenario que se sale del límite de diez de la fase 5,
+> que es justamente para lo que ese límite existe.
 
 ---
 

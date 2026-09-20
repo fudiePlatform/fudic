@@ -29,3 +29,17 @@ export {
   type HydrationOptions,
   type HydratedDetail,
 } from '../src/hydrate/install.js';
+
+/**
+ * `isCellMark` and the six block ids are deliberately NOT re-exported here, and the fourth
+ * rule of §4.3 lists them as the written exception it allows: constants the emit consumes.
+ *
+ * They are inside these bytes already, so the export looks free — it is not. Naming them
+ * keeps their identifiers out of the minifier's hands and costs 167 bytes on the ONE piece
+ * every hydrating page downloads, to publish names no browser imports: the compiler writes
+ * the block id as a literal, and `isCellMark` is read by the cells inside this very piece.
+ * Rule 1 of §1.5 decides it — nothing fixed that has to serve everybody.
+ *
+ * If a component ever does import one, the linker has no URL for it and says so (`FUD0801`),
+ * in the build, which is where that conversation belongs.
+ */

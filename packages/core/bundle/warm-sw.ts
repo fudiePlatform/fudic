@@ -27,3 +27,19 @@ export {
   type WarmMessage,
   type WarmedMessage,
 } from '../src/hydrate/warm/sw.js';
+
+/**
+ * What the two channels share, published from inside each of them rather than from a piece of
+ * its own (§4.3, second rule, and its one written exception).
+ *
+ * The rule says a module two pieces reach becomes a piece, so that its bytes are not twice on
+ * the origin. Here they cannot be: an application has a Service Worker or it does not, so no
+ * browser ever holds both channels, and the saving the rule protects can never be collected.
+ * What it did cost was real — 184 bytes paying a 150-byte frontier and a request.
+ */
+export {
+  nullWarmChannel,
+  WARMED_EVENT,
+  type WarmChannel,
+  type WarmedDetail,
+} from '../src/hydrate/warm/channel.js';

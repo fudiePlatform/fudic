@@ -30,42 +30,54 @@ const published = (pkg: string, piece: string): string => `/_fudic/${version}/${
 /**
  * The pieces of this package, piece name → entry module.
  *
- * §4.3.1 takes the split from evidence and not from taste: these are the two chunks an
- * application's rollup already emits for this package, i.e. the two frontiers a real graph
- * proved to be optional — a page that paints does not thereby dispatch bus events, and a
- * component that dispatches them may render nothing itself.
+ * **Derived from what this package EXPORTS**, which is where the first split came up short:
+ * it was read off the chunks an application's rollup emits, and `cursorOf` emits no chunk
+ * because nothing in the runtime reaches it — the emitted code of a component does, and that
+ * code does not exist until somebody compiles a `.fud`. So it had no URL, and an import of it
+ * had nowhere to be rewritten to. `examples/pieces-bench/check.mjs` is what catches that now.
  *
- * Both are LIBRARY pieces (§3.4): nobody starts them, whoever needs them imports them, and
- * they keep the names they export today. So neither has an entry in `bundle/`, and this
- * package has no `bundle/` at all.
+ * Three frontiers, and each one is an axis a real page moves along: a page that paints does
+ * not thereby dispatch bus events, and a component that walks the server's markup to attach
+ * itself does not thereby paint.
  *
- * `ns` and `dom` get no piece: `ns` is reached by `browser` alone and travels inside it, and
- * `dom` is types only and does not survive the transform. A module with one consumer is not
- * given a frontier for symmetry (§4.3.1).
+ * All LIBRARY pieces (§3.4): nobody starts them, whoever needs them imports them, and they
+ * keep the names they export today. `browser` is entered from `bundle/` for the other reason —
+ * to publish `NS` from the piece that already carries it.
  */
 const PIECES: Readonly<Record<string, string>> = {
-  browser: 'src/browser.ts',
+  browser: 'bundle/browser.ts',
+  cursor: 'src/cursor.ts',
   emit: 'src/emit.ts',
 };
 
 /**
- * The source modules that ARE a frontier: reaching one from another piece is an import that
- * must leave the bundle. Keyed by source module and not by piece, because that is how the
- * question arrives — an importer writes `./browser.js`, not `browser`.
+ * Source module → the piece that owns it. Reaching one from ANOTHER piece is an import that
+ * must leave the bundle; reaching it from its own piece is not a frontier at all, which is
+ * what lets `bundle/browser.ts` gather the adapter and the namespaces.
  *
- * Neither of today's two pieces reaches the other, so the map is declared and not exercised.
- * It is here because the rule it enforces is about the package's future and not its present:
+ * Keyed by source module and not by piece, because that is how the question arrives — an
+ * importer writes `./browser.js`, not `browser`.
+ *
+ * `ns` is owned by `browser` and is not a frontier: it is reached from there alone, and a
+ * module with one consumer is not given a frontier for symmetry (§4.3.1). What it does need is
+ * to be REACHABLE, which is the entry in `bundle/` and not this table. `dom.ts` is types only
+ * and does not survive the transform.
+ *
+ * None of today's three pieces reaches another, so the crossing this table describes does not
+ * happen yet. It is here because the rule is about the package's future and not its present:
  * the day `emit` needs the adapter, the import has to leave as a URL rather than put a second
  * copy of `browser` on the origin.
  */
 const FRONTIERS: Readonly<Record<string, string>> = {
   'src/browser.ts': 'browser',
+  'src/ns.ts': 'browser',
+  'src/cursor.ts': 'cursor',
   'src/emit.ts': 'emit',
 };
 
-/** Absolute path → published URL, resolved once so the hook below is a lookup. */
-const FRONTIER_URLS = new Map<string, string>(
-  Object.entries(FRONTIERS).map(([file, piece]) => [here(`./${file}`), published('dom', piece)]),
+/** Absolute path → the piece that owns it, resolved once so the hook below is a lookup. */
+const FRONTIER_PIECES = new Map<string, string>(
+  Object.entries(FRONTIERS).map(([file, piece]) => [here(`./${file}`), piece]),
 );
 
 /**
@@ -84,20 +96,25 @@ const publishedUrls = (self: string): Plugin => ({
     // Source is TypeScript and its specifiers are the emitted `.js` (`verbatimModuleSyntax`),
     // so the frontier map — which is keyed by the files that exist — is asked in those terms.
     const file = fileURLToPath(new URL(source.replace(/\.js$/, '.ts'), pathToFileURL(importer)));
-    // Its own root is not a frontier: a piece cannot import itself.
-    if (file === self) return null;
-    const url = FRONTIER_URLS.get(file);
-    return url === undefined ? null : { id: url, external: 'absolute' };
+    const owner = FRONTIER_PIECES.get(file);
+    // A module of the piece being built is not a frontier: `bundle/browser.ts` reaches the
+    // adapter and the namespaces, and both belong to `browser`. A piece cannot import itself,
+    // and the check that says so is about the PIECE and not about the entry file.
+    return owner === undefined || owner === self
+      ? null
+      : // `moduleSideEffects: false` because a piece of this framework declares things and
+        // starts nothing: without it a bundler keeps a bare `import "…"` for every external it
+        // was offered and did not use, which is a request bought for nothing.
+        ({ id: published('dom', owner), external: 'absolute', moduleSideEffects: false } as const);
   },
 });
 
 export default defineConfig(
   Object.entries(PIECES).map(([piece, entry]) => {
-    const input = here(`./${entry}`);
     return {
-      input: { [piece]: input },
+      input: { [piece]: here(`./${entry}`) },
       platform: 'browser' as const,
-      plugins: [publishedUrls(input)],
+      plugins: [publishedUrls(piece)],
       /**
        * Erase a type-only import instead of leaving it as a side effect.
        *

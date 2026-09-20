@@ -21,7 +21,9 @@
  *
  * Nothing here throws. A manifest that does not parse, a dependency that is not installed and
  * a declared directory that was never built are ordinary states of a project, and the last of
- * the three is the only one worth a word — `FUD0804`.
+ * the three is the only one worth a word — `FUD0804`. `FUD0805` is the other word, and it is
+ * about the result rather than about one package: two publishers that would claim the same
+ * URL, which only the whole set can see.
  *
  * Discovery only: which pieces exist and what they would be called. Rewriting imports,
  * copying files and naming them in a coordinator happen elsewhere.
@@ -29,7 +31,11 @@
 
 import { RUNTIME_DIR } from '@fudic/conventions';
 import { dependencyChain, type PackageFs } from '@fudic/resolve';
-import { FUD_RUNTIME_DIR_MISSING, type FudicDiagnostic } from './diagnostics.js';
+import {
+  FUD_RUNTIME_DIR_MISSING,
+  FUD_RUNTIME_URL_CLASH,
+  type FudicDiagnostic,
+} from './diagnostics.js';
 
 /** One published piece this build links. */
 export interface RuntimePiece {
@@ -104,7 +110,50 @@ export function runtimePieces(projectRoot: string, io: RuntimeFs): RuntimePieces
   visit(realRoot(projectRoot, io), true);
   for (const pkg of dependencyChain(projectRoot, io)) visit(pkg.root, true);
 
-  return { pieces, diagnostics };
+  return { pieces: withoutClashes(pieces, diagnostics), diagnostics };
+}
+
+/**
+ * The pieces, minus any second claimant to a URL, with `FUD0805` for each clash.
+ *
+ * It should not be possible: the URL carries the package segment for exactly this reason
+ * (§3.1), so `element` in `core` and `element` in `forms` are two files and not one. What is
+ * left is two packages with the same SHORT name and the same version — a scope and a fork of
+ * it — and then the copy into `_fudic/` has two candidates for one path, one of them wins by
+ * the order a directory happened to list, and a page gets bytes that answer to the right name
+ * and do the wrong thing. That is a whole afternoon in a browser, and one comparison here.
+ *
+ * The first claimant stays rather than both going, because a diagnostic is more useful than a
+ * cascade of «piece not found» underneath it, and the build stops on the error anyway.
+ */
+function withoutClashes(
+  pieces: readonly RuntimePiece[],
+  diagnostics: FudicDiagnostic[],
+): readonly RuntimePiece[] {
+  const byUrl = new Map<string, RuntimePiece>();
+  const kept: RuntimePiece[] = [];
+
+  for (const piece of pieces) {
+    const first = byUrl.get(piece.url);
+    if (first === undefined) {
+      byUrl.set(piece.url, piece);
+      kept.push(piece);
+      continue;
+    }
+    // The same package reached twice is already impossible — the walk visits a root once, and
+    // a workspace link resolves to its real path — so a repeat here is two packages.
+    const [a, b] = [first.pkg, piece.pkg].toSorted();
+    diagnostics.push({
+      code: FUD_RUNTIME_URL_CLASH,
+      file: piece.file,
+      message:
+        `the packages "${a}" and "${b}" would both publish "${piece.url}". Two packages ` +
+        'whose names end in the same segment and whose versions are equal claim one file in ' +
+        'the output, and whichever is copied last decides what every page that names it ' +
+        'receives: rename one of them, or keep only one in the dependency graph.',
+    });
+  }
+  return kept;
 }
 
 /**

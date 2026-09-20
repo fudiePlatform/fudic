@@ -16,10 +16,13 @@
 import { createServer } from 'node:http';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { runChecks } from './check.mjs';
 
 const ROOT = process.argv[2] ?? process.cwd();
 const PKGS = ['core', 'dom', 'di', 'forms', 'transport', 'ssr'];
-const PORT = 4545;
+// `PORT=4546 node examples/pieces-bench/serve.mjs .` when a bench from another session is
+// already holding the default — two of them side by side is also how a before/after is read.
+const PORT = Number(process.env.PORT ?? 4545);
 
 /** url (canonical, no run prefix) -> { file, size } */
 const pieces = new Map();
@@ -101,8 +104,22 @@ const SCENARIOS = [
   {
     id: 'formulario',
     title: 'Formulario con validación',
-    when: 'Enlace de formulario y de texto, mensajes y un validador. El módulo del formulario es de la app y no está aquí.',
-    entries: [P('forms', 'bind-form'), P('forms', 'bind-text'), P('forms', 'min-length'), P('core', 'effect'), P('core', 'element')],
+    when: 'El esquema —campos, formulario, una conversión tipada y sus reglas— más el enlace del formulario y de un campo de texto. Lo que el autor escribe no está aquí; todo lo demás sí.',
+    entries: [
+      P('forms', 'form'),
+      P('forms', 'control'),
+      P('forms', 'typed'),
+      P('forms', 'validators'),
+      P('forms', 'bind-form'),
+      P('forms', 'bind-text'),
+      P('core', 'element'),
+    ],
+  },
+  {
+    id: 'formulario-modelo',
+    title: 'Formulario sin navegador',
+    when: 'El mismo esquema validándose donde no hay DOM: el servidor, o una prueba. Ni un enlazador.',
+    entries: [P('forms', 'form'), P('forms', 'control'), P('forms', 'typed'), P('forms', 'validators')],
   },
   {
     id: 'inyeccion',
@@ -132,6 +149,36 @@ const model = SCENARIOS.map((s) => {
   };
 });
 
+/**
+ * The three checks of §6.5, run once at startup over the same published files this server
+ * hands the browser.
+ *
+ * They are on this page and not only in a terminal because that is where the decision gets
+ * taken: whoever is looking at a waterfall and about to move a frontier is the person who has
+ * to see that the split is still complete and still does not overlap.
+ */
+const CHECKS = runChecks(ROOT);
+
+const checksPanel = () => {
+  const bad = CHECKS.checks.filter((c) => c.failures.length > 0);
+  const rows = CHECKS.checks
+    .map(
+      (c) =>
+        `<tr><td>${c.failures.length === 0 ? '✔' : '✗'}</td><td>${c.title}</td>` +
+        `<td class="r">${c.failures.length}</td><td>${c.failures
+          .map((f) => Object.values(f).flat().join(' · '))
+          .join('<br>')}</td></tr>`,
+    )
+    .join('');
+  return `<div class="s ${bad.length > 0 ? 'bad' : ''}">
+  <h2>El reparto${bad.length === 0 ? '' : ' — ROTO'}</h2>
+  <p class="when">Derivado de lo que cada paquete exporta, comprobado sobre los ficheros publicados.
+  ${CHECKS.pieces} piezas · ${CHECKS.bytes.toLocaleString('es')} bytes · ${CHECKS.compressed.toLocaleString('es')} comprimidos · ${CHECKS.exports} valores exportados.</p>
+  <table>${rows}</table>
+  ${CHECKS.stale.map((s) => `<p class="when">Excepción que ya no hace falta: ${s}</p>`).join('')}
+</div>`;
+};
+
 const page = () => `<!doctype html><meta charset="utf-8"><title>SDD-45 · banco de medida</title>
 <style>
  :root{color-scheme:light dark}
@@ -139,6 +186,7 @@ const page = () => `<!doctype html><meta charset="utf-8"><title>SDD-45 · banco 
  h1{font-size:1.15rem;margin:0 0 .2rem}
  .lead{opacity:.75;margin:0 0 1.4rem}
  .s{border:1px solid #8884;border-radius:.5rem;padding:.8rem 1rem;margin:0 0 .9rem}
+ .s.bad{border-color:#c00}
  .s h2{font-size:1rem;margin:0 0 .15rem}
  .when{opacity:.7;margin:0 0 .6rem}
  .facts{display:flex;gap:1.4rem;flex-wrap:wrap;margin:0 0 .6rem}
@@ -158,6 +206,8 @@ const page = () => `<!doctype html><meta charset="utf-8"><title>SDD-45 · banco 
 <h1>SDD-45 · qué descarga cada escenario, de verdad</h1>
 <p class="lead">Cada botón importa las piezas reales. Pulsa con la pestaña de red abierta, y estrangula a «Slow 3G» para que la cascada se vea.
 Cada pulsación usa un prefijo nuevo, así que siempre se descarga de cero.</p>
+
+${checksPanel()}
 
 ${model
   .map(

@@ -53,7 +53,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && pnpm run build:runtime",
-    "build:runtime": "rolldown -c rolldown.config.ts",
+    "build:runtime": "node -e \"require('node:fs').rmSync('runtime',{recursive:true,force:true})\" && rolldown -c rolldown.config.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

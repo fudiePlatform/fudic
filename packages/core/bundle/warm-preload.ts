@@ -19,3 +19,11 @@ export {
   createPreloadWarmChannel,
   type PreloadChannelConfig,
 } from '../src/hydrate/warm/preload.js';
+
+/** The exclusive twin's half of the same exception — see `bundle/warm-sw.ts`. */
+export {
+  nullWarmChannel,
+  WARMED_EVENT,
+  type WarmChannel,
+  type WarmedDetail,
+} from '../src/hydrate/warm/channel.js';

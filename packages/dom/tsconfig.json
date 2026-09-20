@@ -3,5 +3,9 @@
   "compilerOptions": {
     "lib": ["ES2024", "DOM", "DOM.Iterable"]
   },
-  "include": ["src", "test"]
+  // `bundle` holds the entry of `dom/browser`, which publishes the adapter and the namespaces
+  // from one piece (SDD-45 §4.3). It is not part of `dist` — `tsconfig.build.json` keeps its
+  // `include` at `src` — but a re-export that names something `src` stopped exporting has to
+  // fail here and not in a browser.
+  "include": ["src", "test", "bundle"]
 }

@@ -102,7 +102,13 @@ const publishedUrls = (): Plugin => {
     resolveId(source) {
       if (source === '@fudic/di') return DI_SHIM;
       // The pieces the shim names: already URLs, and they leave as they are.
-      return source.startsWith('/_fudic/') ? { id: source, external: 'absolute' } : null;
+      // `moduleSideEffects: false` because a piece of this framework declares things and
+      // starts nothing. Without it the shim's three re-exports become three bare
+      // `import "…"` whenever this build uses only some of them: requests bought for
+      // nothing. It is true of every piece here, and saying so is what lets the shim shrink.
+      return source.startsWith('/_fudic/')
+        ? ({ id: source, external: 'absolute', moduleSideEffects: false } as const)
+        : null;
     },
     load(id) {
       if (id !== DI_SHIM) return null;

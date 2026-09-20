@@ -6,8 +6,23 @@ deduced from reading imports.
 ```sh
 pnpm -r build                      # the publishing packages must have produced `runtime/`
 node examples/pieces-bench/serve.mjs .
-# http://localhost:4545
+# http://localhost:4545          (PORT=4546 … when that one is taken)
+
+node examples/pieces-bench/check.mjs .        # the three checks, in a terminal
+node examples/pieces-bench/check.mjs . --json # the same, for something else to read
 ```
+
+The first panel of the page is **the split**: the three checks of §6.5 — no module in two
+pieces, no exported value without a piece, no piece below its frontier — plus the guard that
+every import inside a piece resolves to a piece that exists. They run over the published files
+and they are on this page, not only in a terminal, because whoever is looking at a waterfall
+about to move a frontier is the person who has to see them.
+
+`check.mjs` derives what it checks rather than reading a list: which modules are inside a piece
+comes from building each package's own `rolldown.config.ts` with source maps, and which values
+a package exports comes from its `dist/`, where the types are already erased. The exceptions —
+`@fudic/transport` living inside the worker, the constants only the emit consumes — are written
+at the top of that file, with their reason, which is where adding one is a deliberate act.
 
 Each scenario has two buttons. **Tal cual** imports only the entry pieces and lets the browser
 discover the rest by reading the code — what happens with no preload. **Con preload** names

@@ -120,3 +120,15 @@ export const FUD_LINK_NOT_A_LIBRARY = 'FUD0763';
  * unfixable to discover in a browser.
  */
 export const FUD_RUNTIME_DIR_MISSING = 'FUD0804';
+
+/**
+ * Two packages would publish the same URL (SDD-45 §3.1, §7).
+ *
+ * An ERROR, and one that should not be reachable: the URL carries the package segment
+ * precisely so that `element` in `core` and `element` in `forms` are two different files.
+ * What remains is two packages with the same short name and the same version — a scoped one
+ * and a fork of it, say, or `@fudic/core` beside somebody's `@acme/core` — and then one of
+ * the two files silently wins the copy into `_fudic/` and every page that names it gets the
+ * wrong bytes. Cheap to check and impossible to debug from a browser, so it is checked.
+ */
+export const FUD_RUNTIME_URL_CLASH = 'FUD0805';

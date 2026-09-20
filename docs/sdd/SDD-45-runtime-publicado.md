@@ -451,13 +451,37 @@ verdadero se deriva de **lo que cada paquete exporta**, no de lo que un ejemplo 
 tercera regla los validadores van en una pieza y las conversiones tipadas en otra, en vez de
 veinticinco piezas de cien bytes.
 
+**Derivado, son 41 piezas y 32 556 bytes**, y las catorce que aparecieron no son fronteras
+nuevas: son valores que el paquete ya exportaba y que no tenían URL —los siete enlazadores que
+`examples/basic` no usa, el modelo de formulario entero, el recorrido de hidratación de
+`@fudic/dom`, el agrupado de escrituras de `@fudic/core`—. Un import de cualquiera de ellos no
+habría tenido a dónde ir, y el reparto derivado es lo que lo hace imposible en vez de
+improbable. En sentido contrario, la tercera regla quitó dos: `core/channel` se metió en los
+dos canales de calentado, y `forms/group` en el formulario, porque los dos pesaban menos que su
+frontera y ninguno se descarga sin lo que lo acompaña.
+
+**Y ser parte de una pieza no es ser alcanzable desde ella**, que es el defecto que el criterio
+5 no habría cazado escrito de otro modo. `batch` viajaba dentro de `core/signal` desde el primer
+día y ninguna URL ofrecía el nombre: el enlazador no habría sabido a dónde mandar un
+`import { batch }`. La comprobación se hace sobre los **exports de los ficheros publicados**, no
+sobre los módulos que llevan dentro.
+
 **Y al revés: la regla descubre piezas que esta tabla no preveía, y eso es la regla
-funcionando.** Al construir aparecieron cinco módulos alcanzados por dos piezas —el registro
-de instancias, el canal de calentado, el cableado de formularios, y la resolución y la semilla
-de la inyección—, que por la segunda regla se convierten en pieza en vez de copiarse. **La
-lista de piezas no se escribe a mano: se deriva.** Cuando alguien añada un import que cruce
-dos piezas, o aparece una pieza nueva o hay bytes duplicados, y el criterio 5 es el que lo
-caza.
+funcionando.** Al construir aparecieron módulos alcanzados por dos piezas —el registro de
+instancias, el cableado de formularios, la resolución y la semilla de la inyección, y en el
+modelo de formulario la vista privilegiada de un nodo, la llamada a un validador y la marca de
+regla de servidor—, que por la segunda regla se convierten en pieza en vez de copiarse. Tres de
+esas no son una cuestión de bytes: su contenido entero es un `Symbol`, y dos copias serían dos
+identidades que no se reconocen. **La lista de piezas no se escribe a mano: se deriva.** Cuando
+alguien añada un import que cruce dos piezas, o aparece una pieza nueva o hay bytes duplicados,
+y el criterio 5 es el que lo caza.
+
+La excepción escrita a esa regla es el **canal de calentado**: lo alcanzan las dos piezas de
+calentado, así que debería ser pieza, pero las dos son **excluyentes** —una aplicación tiene
+service worker o no lo tiene— y nadie descarga jamás las dos copias. El ahorro que la regla
+protege no se puede cobrar, y lo que sí costaba era real: 184 bytes pagando una frontera de
+150 y una petición. La excepción vale solo para piezas que **no pueden convivir**, y está
+escrita donde se comprueba.
 
 `@fudic/http`, cuando llegue, es una fila más: declara su directorio (§3.3), expone la entrada
 de §3.4, y el coordinador la nombra en las rutas que la usan.

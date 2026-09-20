@@ -10,5 +10,9 @@
       "@fudic/core": ["../core/src/index.ts"]
     }
   },
-  "include": ["src", "test"]
+  // `bundle` holds the entries of the pieces that gather several modules (SDD-45 §4.3, third
+  // rule): the validators, the typed coercions, and the form with its group. They are not part
+  // of `dist` — `tsconfig.build.json` keeps its `include` at `src` — but a re-export that names
+  // something `src` stopped exporting has to fail here and not in a browser.
+  "include": ["src", "test", "bundle"]
 }
