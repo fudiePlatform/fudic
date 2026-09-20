@@ -95,5 +95,11 @@ export {
   loadRouteData,
 } from './serve.js';
 export { type SwBootstrapOptions, emitSwBootstrap, emitMainBootstrap } from './bootstrap.js';
+export {
+  type RuntimePiece,
+  type RuntimeFs,
+  type RuntimePiecesResult,
+  runtimePieces,
+} from './runtime-pieces.js';
 export { fudic } from './plugin.js';
 export { fudic as default } from './plugin.js';

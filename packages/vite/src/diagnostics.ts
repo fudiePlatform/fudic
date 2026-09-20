@@ -105,3 +105,18 @@ export const FUD_LIB_PEER_MISMATCH = 'FUD0762';
 
 /** The href resolves into a package whose `fudic.json` does not say `kind: "lib"`. */
 export const FUD_LINK_NOT_A_LIBRARY = 'FUD0763';
+
+// SDD-45 (FUD0800–FUD0819): the published runtime. The BUILD's, and with no span: what they
+// are about is a package's `package.json` and the directory it produced, neither of which any
+// `.fud` mentions.
+/**
+ * A package declares `fudic.runtime` and that directory does not exist or holds no piece
+ * (SDD-45 §3.3).
+ *
+ * An ERROR, because the declaration is a promise the consumer's build already believed: the
+ * application stopped bundling those modules and is linking URLs instead, so what an empty
+ * directory produces is a page that fetches files nobody wrote. The usual cause is a
+ * publisher whose runtime build has not run — which is a fixable thing to be told, and
+ * unfixable to discover in a browser.
+ */
+export const FUD_RUNTIME_DIR_MISSING = 'FUD0804';

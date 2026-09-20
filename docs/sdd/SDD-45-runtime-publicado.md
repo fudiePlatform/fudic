@@ -244,26 +244,36 @@ packages/core/runtime/   ← nuevo: hydrate.js, signal.js, live.js, …
 
 ### 3.4. El contrato de una pieza
 
-Una pieza es un programa: una entrada y unos parámetros. Por dentro **no sabe nada de la
-aplicación** —la hidratación hidrata igual aquí y allí, el enlazador de formularios enlaza
-igual, el inyector resuelve igual—, y lo único que cambia entre dos aplicaciones son los
-parámetros que recibe.
+Hay **dos clases de pieza**, y confundirlas es el error que este apartado existe para evitar.
+
+**Piezas de arranque.** Las que el coordinador pone en marcha: la hidratación, el árbol de
+inyección, el canal de calentado, y `@fudic/http` cuando llegue. Son programas: una entrada y
+unos parámetros. Por dentro **no saben nada de la aplicación** —la hidratación hidrata igual
+aquí y allí—, y lo único que cambia entre dos aplicaciones son los parámetros que reciben.
 
 ```ts
 /**
- * What every runtime piece exports. One name, one shape: a piece that invented its own
- * signature would force the coordinator to know it specially, and then a new package could
- * not be added without editing the generator — which is the thing §3.3 exists to prevent.
+ * What a piece the coordinator STARTS exports. One name, one shape: a piece that invented
+ * its own signature would force the coordinator to know it specially, and then a new package
+ * could not be added without editing the generator — which is what §3.3 exists to prevent.
  */
 export interface RuntimeEntry<Options> {
   install(options: Options): unknown;
 }
 ```
 
-Una entrada uniforme y **no** un registro: lo que el coordinador hace con las piezas está
-escrito al construir (§4.4), no se descubre al arrancar. Esa es la diferencia entre unos
-imports y unas llamadas —coste cero— y un sistema de plugins que habría que descargar en toda
-página para resolver algo que ya se sabía.
+**Piezas de biblioteca.** `signal`, `browser`, `element`, los enlazadores de formularios: no
+las arranca nadie, las **importa** quien las necesita —normalmente el trozo de un
+componente—, y conservan los nombres que exportan hoy. Pedirles una entrada uniforme sería
+inventar una ceremonia para un `import { signal }`.
+
+La clase de una pieza no es una etiqueta que haya que declarar: se ve en quién la nombra. Si
+la nombra el coordinador, es de arranque.
+
+Y en los dos casos, una entrada uniforme **no es un registro**: lo que el coordinador hace con
+las piezas está escrito al construir (§4.4), no se descubre al arrancar. Esa es la diferencia
+entre unos imports y unas llamadas —coste cero— y un sistema de plugins que habría que
+descargar en toda página para resolver algo que ya se sabía.
 
 ### 3.5. `@fudic/vite`
 
@@ -280,8 +290,18 @@ export interface RuntimePiece {
   readonly file: string;
 }
 
-/** Every piece this build links, in no particular order. */
-export function runtimePieces(/* … */): readonly RuntimePiece[];
+/**
+ * Every piece the packages of this project publish, and what was wrong while finding them.
+ *
+ * A result and not a bare array, like every other reader of this package: discovery raises
+ * `FUD0804`, and a function that can only return pieces has nowhere to put it. I/O is
+ * injected, so the walk is testable without a filesystem and never throws on a broken
+ * project.
+ */
+export function runtimePieces(projectRoot: string, io: RuntimeFs): {
+  readonly pieces: readonly RuntimePiece[];
+  readonly diagnostics: readonly FudicDiagnostic[];
+};
 
 /** The pieces ONE route names, which is what its coordinator imports (§4.4). */
 export function routePieces(/* … */): readonly RuntimePiece[];
@@ -375,26 +395,49 @@ opcionalidad ya demostrados: un componente que no usa formularios no los arrastr
 que falta partir es el runtime de hidratación, que hoy está pegado dentro de un fichero que
 es de la aplicación. **Este SDD no inventa fronteras nuevas: publica las que hay y saca esa.**
 
-Y lo que varía por aplicación y es pequeño **no es una pieza**: va dentro del coordinador. El
-canal de calentado son unos cuatrocientos bytes y es uno de dos según haya worker o no; darle
-una pieza sería gastar una petición y una frontera en algo que cabe en el trozo que ya es de
-la app.
+Y lo que varía por aplicación **no puede vivir dentro del coordinador si es código del
+framework**: el canal de calentado son unos cuatrocientos bytes y es uno de dos según haya
+worker o no, pero meterlo en el coordinador sería volver a compilar runtime en el build de la
+app, que es lo que este SDD vino a quitar. Son **dos piezas pequeñas y excluyentes**, y el
+coordinador elige cuál importa. Cuatrocientos bytes pedidos una vez por origen y por versión
+no son el problema; compilarlos en cada app sí lo era.
 
-### 4.3.1. El reparto, hoy
+### 4.3.1. El reparto no se inventa: ya lo hizo el bundler
 
-| pieza | qué lleva | cuándo la nombra una ruta |
-|---|---|---|
-| `core/hydrate` | capturador, cascada, bus, celdas, cargador de trozos, mapas, registro, repetición del gesto, observador de viewport | la página tiene algo que hidratar |
-| `core/signal` | signal y seguimiento de dependencias | lo pide la hidratación y lo piden los trozos de componente |
-| `core/live` | el puente de componentes fabricados en el navegador | algún componente fabrica hijos |
-| `dom/browser` | la capa fina sobre el DOM | cualquier componente que pinte |
-| `di/container` · `di/page` | contenedor y árbol de la ruta | la página publica su mapa de inyección |
-| `forms/*` | los enlazadores y validadores, como hoy | los arrastra el trozo del componente que los usa |
-| `transport/urls` | derivación de URLs de trozos | el coordinador y el worker |
-| `ssr/*` | el renderizador | solo el worker (§4.10) |
+Los trozos que el build de una aplicación emite **hoy** son el resultado de que rollup buscara
+exactamente lo que buscan las dos reglas de arriba: lo que comparten dos consumidores y lo que
+solo alcanza uno. Esa lista es el reparto, y usarla evita discutirlo:
 
-`@fudic/http`, cuando llegue, es una fila más de esta tabla y nada más: declara su directorio
-(§3.3), expone la entrada de §3.4, y el coordinador la nombra en las rutas que la usan.
+```
+browser  emit                                   ← @fudic/dom
+signal  tracking  computed  effect  subscribe  element  live   ← @fudic/core
+bind-form  bind-text  min-length  messages      ← @fudic/forms
+container  token  page                          ← @fudic/di
+```
+
+A esa lista este SDD **añade cuatro** y no toca ninguna:
+
+| pieza | clase | qué lleva | cuándo aparece |
+|---|---|---|---|
+| `core/hydrate` | arranque | capturador, cascada, bus, celdas, cargador de trozos, mapas, registro, repetición del gesto, observador de viewport | la página tiene algo que hidratar |
+| `core/warm-sw` · `core/warm-preload` | arranque | el canal de calentado, uno de dos | según la app tenga worker o no |
+| `transport/urls` | biblioteca | derivación de URLs de trozos | el coordinador. **El worker no la pide**: lleva `@fudic/transport` entero dentro (§4.10), así que estos bytes existen dos veces en el origen — el coste conocido de que sacar transport del worker esté en §7 |
+| `ssr/*` | biblioteca | el renderizador | solo el worker (§4.10) |
+
+Un módulo que hoy no es un trozo propio —`batch`, `controller`, `strategy`— es porque lo
+alcanza un solo consumidor, y por la segunda regla va **dentro** de esa pieza. No se le da
+pieza por simetría.
+
+**Y al revés: la regla descubre piezas que esta tabla no preveía, y eso es la regla
+funcionando.** Al construir aparecieron cinco módulos alcanzados por dos piezas —el registro
+de instancias, el canal de calentado, el cableado de formularios, y la resolución y la semilla
+de la inyección—, que por la segunda regla se convierten en pieza en vez de copiarse. **La
+lista de piezas no se escribe a mano: se deriva.** Cuando alguien añada un import que cruce
+dos piezas, o aparece una pieza nueva o hay bytes duplicados, y el criterio 5 es el que lo
+caza.
+
+`@fudic/http`, cuando llegue, es una fila más: declara su directorio (§3.3), expone la entrada
+de §3.4, y el coordinador la nombra en las rutas que la usan.
 
 ### 4.4. El coordinador: por ruta, y de unos cientos de bytes
 
@@ -412,7 +455,14 @@ const warm = (urls) => navigator.serviceWorker?.controller ?? null; /* … */
 
 // El ORDEN lo escribe el generador, que sabe que la inyección tiene que estar lista antes
 // de que se levante el primer componente. No se descubre en el navegador.
-hydrate({ root: document, resolveChunk: (tag) => urls.hydrateUrl(tag), warm, ready: di() });
+hydrate({
+  root: document,
+  resolveChunk: (tag) => urls.hydrateUrl(tag),
+  warm,
+  // Toda pieza de arranque recibe UN objeto (§3.4). La inyección necesita al menos el mapa
+  // de nodos que la página publica, así que no es una llamada sin argumentos.
+  ready: di({ nodes, register }),
+});
 ```
 
 Cinco hechos sobre él, y cada uno responde a una regla de §1.5:
@@ -719,8 +769,10 @@ pestaña indicada.
 
 5. **Ningún módulo está en dos piezas.** Se comprueba sobre los ficheros publicados, no sobre
    la intención: es la regla de §4.3 y es la que, incumplida, devuelve el problema entero.
-6. **Toda pieza expone la misma entrada** (§3.4), y una pieza que no la expone rompe el
-   build. Es lo que hará que `@fudic/http` entre sin tocar el generador.
+6. **Toda pieza de arranque expone la misma entrada** (§3.4) —las que el coordinador pone en
+   marcha— y una que no la expone rompe el build. Las piezas de biblioteca están exentas por
+   definición: a `signal` no se le pide un `install`. Es lo que hará que `@fudic/http` entre
+   sin tocar el generador.
 7. `FUD0805` si dos paquetes produjeran la misma URL.
 
 **Lo que enlaza la app**

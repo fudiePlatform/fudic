@@ -5,7 +5,7 @@
 > `@fudic/di` · `@fudic/compiler` · `@fudic/vite` · `@fudic/transport` · `@fudic/ssr` ·
 > `examples/basic` · `examples/workspace`
 > **Rama:** `sdd-45-runtime-publicado`
-> **Progreso:** 1 / 27
+> **Progreso:** 5 / 27
 > **Bloqueado por:** [SDD-43](./SDD-43-librerias.md) — su tarea 11 es el `peerDependencies`
 > que aquí se endurece, y su criterio 12 es el workspace sobre el que se mide la evidencia.
 
@@ -40,11 +40,56 @@ equivocó dos veces antes de asentarse:
 **El orden manda en un punto:** la tarea 2 va antes que todas las demás. Si los paquetes no
 producen bytes idénticos entre dos construcciones, no hay nada que compartir.
 
-## Estado de la rama
+## Dónde estamos
 
-Commiteado: la reescritura completa del SDD y de este Task, y la **tarea 1** —los nombres
-compartidos en `@fudic/conventions`, al 100 en las cuatro métricas—. Lo siguiente es la
-tarea 2, que es roja a propósito y va antes que cualquier otra cosa.
+**Fase 1 cerrada.** Los seis paquetes publican sus piezas: 27 ficheros, 22 124 bytes, y
+reconstruir los seis produce los mismos bytes. Ningún import de ninguna pieza apunta a una URL
+que no exista — comprobado sobre los ficheros publicados, no sobre la intención.
+
+**Lo medido en la fase 1**, que es lo que sostiene las decisiones de la fase 2:
+
+- **Partir cuesta.** Las 27 piezas sueltas comprimen a 10 434 bytes; el mismo contenido en un
+  solo fichero, a 7 444. Un 40 % más, y no por los `import`: un fichero de 300 bytes comprime
+  fatal porque no hay contexto que aprovechar. **Cada frontera cuesta unos 150 bytes
+  comprimidos**, más las cabeceras de su petición y su entrada en la caché.
+- **Ocho piezas las pide toda ruta que hidrata** (10 030 bytes): `core/hydrate`, `core/live`,
+  `core/registry`, `core/signal`, `core/tracking`, `core/element`, `dom/browser`,
+  `transport/urls`. Sus fronteras no compran ausencia dentro de una aplicación.
+- **Tres la compran, y mucho**: `core/effect` y `core/subscribe` las evitan 13 de 17 rutas, y
+  `core/computed` 15 de 17.
+- **El arranque tiene tres niveles de descubrimiento** (`hydrate` → `signal` → `tracking`).
+  Sin la precarga de la fase 5, esto es peor que lo de hoy en una conexión lenta.
+
+**El banco de medida está en el repositorio**: `examples/pieces-bench`. Ocho escenarios
+—arranque, `@click`, signals, derivada, bus, formulario, inyección, todo— cada uno con su
+descarga real, con y sin precarga. Es el hito de navegador de las fases 1, 3 y 5, y donde se
+decide lo que queda abierto.
+
+## Lo que está abierto y hay que decidir antes de la fase 3
+
+1. **Empaquetar por categorías o no empaquetar y precargar.** Es la decisión de §4.3 llevada
+   a su caso concreto, y el banco existe para contestarla: si el arranque con precarga vale,
+   no se empaqueta; si no, se empaqueta aceptando repetir bytes. **Pedro decide mirando la
+   cascada a 3G lento.** Todo lo demás de este SDD es independiente de esto.
+2. **`core/live` no es opcional, y la tabla de §4.3.1 dice que sí.** `hydrate` lo importa
+   siempre (`install.ts` llama a `installFabricator`). O se hace opcional de verdad —que el
+   fabricador lo instale el trozo del componente que fabrica— o hay que corregir la tabla.
+3. **`core/channel` se mete dentro de los dos canales de calentado.** Decidido por Pedro y
+   medido: hacer pieza de 184 bytes cuesta más de lo que ahorra, y los dos canales son
+   excluyentes, así que nadie los descarga los dos. **Falta implementarlo.**
+
+## Lo que la sesión de tests tendrá que cubrir de la fase 1
+
+Escrito aquí porque el código nació sin tests, por decisión explícita, y para que no haya que
+adivinar la intención: el descubrimiento de piezas de `@fudic/vite` (`src/runtime-pieces.ts`)
+tiene su I/O inyectada precisamente para esto, y los quince casos que lo cubren —camino feliz,
+forma de la URL sin `base`, publicador transitivo, a través de una librería, la regla de
+parada que mantiene `node_modules` fuera, deduplicación de symlinks, las tres formas de
+`FUD0804`, las no-declaraciones que no son diagnóstico, normalización del valor declarado, no
+lanzar nunca, publicador sin `version`, determinismo del orden, solo `.js` de primer nivel, y
+`devDependencies`/`peerDependencies`— están enumerados en el informe del agente que lo
+escribió. Además: `packages/di/test/package.test.ts` ya está actualizado para el tercer punto
+de entrada (`./package.json`), que el plugin necesita para leer `fudic.runtime`.
 
 ---
 
@@ -68,10 +113,10 @@ F1 las piezas existen ──→ F2 el reparto ──→ F3 enlazar ──→ F4 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 1 | — | **Los nombres que nadie posee.** `RUNTIME_DIR`, `runtimeCacheName(version)` y `runtimeMarkerUrl(app)` en `@fudic/conventions` — nombres que el que publica y el que enlaza deben compartir y ninguno posee. La caché **no lleva `app`** y eso es deliberado (§4.9) | `conventions` | `src/index.ts` |
-| [ ] | 2 | 1 | **(rojo primero)** **Los bytes no dependen de quién construya.** Construir un paquete de runtime dos veces produce ficheros **idénticos byte a byte**. Es la condición de existencia del SDD: si esto no se sostiene, compartir es imposible por mucho que la URL coincida. Ahora recae sobre **nuestra** configuración de bundler, no sobre la de cada app. Criterio 2 | `core` | `test/reproducible.test.ts` |
-| [ ] | 3 | 2 | **El contrato de una pieza.** Una entrada, un nombre, una forma: `install(options)` (§3.4). Uniforme **y no un registro** — si cada pieza inventa su firma, el coordinador acaba conociéndolas una a una y meter `@fudic/http` obliga a tocar el generador, que es justo lo que no puede pasar. Criterio 6 | `core` | `src/runtime-entry.ts` |
-| [ ] | 4 | 3 | **Un paquete declara que publica piezas, y el plugin no enumera a nadie.** `"fudic": { "runtime": "./runtime" }` en el `package.json`, y un `build` que produce ese directorio con **un fichero por pieza**, empaquetado y minificado, con las demás piezas como `external` apuntadas por su URL publicada. Los cuatro de hoy lo declaran. **Cómo se construyó una pieza no es asunto del plugin**: lee el directorio. Criterio 1 | `core` · `dom` · `forms` · `di` | `package.json` · `scripts/` |
-| [ ] | 5 | 4 | **`FUD0804`:** un paquete declara el directorio y no existe o está vacío. Criterio 3 | `vite` | `src/runtime-pieces.ts` |
+| [x] | 2 | 1 | **(rojo primero)** **Los bytes no dependen de quién construya.** Construir un paquete de runtime dos veces produce ficheros **idénticos byte a byte**. Es la condición de existencia del SDD: si esto no se sostiene, compartir es imposible por mucho que la URL coincida. Ahora recae sobre **nuestra** configuración de bundler, no sobre la de cada app. Criterio 2 | `core` | `test/reproducible.test.ts` |
+| [x] | 3 | 2 | **El contrato de una pieza.** Una entrada, un nombre, una forma: `install(options)` (§3.4). Uniforme **y no un registro** — si cada pieza inventa su firma, el coordinador acaba conociéndolas una a una y meter `@fudic/http` obliga a tocar el generador, que es justo lo que no puede pasar. Criterio 6 | `core` | `src/runtime-entry.ts` |
+| [x] | 4 | 3 | **Un paquete declara que publica piezas, y el plugin no enumera a nadie.** `"fudic": { "runtime": "./runtime" }` en el `package.json`, y un `build` que produce ese directorio con **un fichero por pieza**, empaquetado y minificado, con las demás piezas como `external` apuntadas por su URL publicada. Los cuatro de hoy lo declaran. **Cómo se construyó una pieza no es asunto del plugin**: lee el directorio. Criterio 1 | `core` · `dom` · `forms` · `di` | `package.json` · `scripts/` |
+| [x] | 5 | 4 | **`FUD0804`:** un paquete declara el directorio y no existe o está vacío. Criterio 3 | `vite` | `src/runtime-pieces.ts` |
 
 > **Hito en el navegador (criterio 4).** Servir `packages/core/runtime/` con un estático y
 > abrir `core/hydrate.js` en Chrome. Se lee empaquetado, y **sus únicos imports son piezas

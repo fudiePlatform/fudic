@@ -8,6 +8,10 @@ node_modules/
 
 # Build / emit output
 dist/
+# The published runtime pieces (SDD-45 §3.3): build output like `dist/`, and listed in each
+# publishing package's `files`, so what reaches npm is what the build produced — never what
+# somebody happened to have on disk when they committed.
+runtime/
 # Packaged VS Code extension: a build artefact of `pnpm --filter fudic-vscode package`.
 *.vsix
 out/
