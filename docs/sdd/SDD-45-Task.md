@@ -40,7 +40,7 @@ equivocó tres veces antes de asentarse:
 
 ## Dónde estamos
 
-**Fase 5 cerrada, y su última tarea se cierra retirando lo que pedía.** El
+**Fase 5 cerrada — su última tarea se cierra retirando lo que pedía—, y empieza la 6.** El
 interruptor del layout existe y `?inline` significa lo mismo en cualquier recurso que el autor
 referencia —el arranque y una hoja de estilos, hoy—; la precarga escribe un `<link>` por pieza
 de la CARGA; `FUD0803` está escrito donde cae; y con worker **no se descarga nada por
@@ -493,7 +493,7 @@ F1 las piezas existen ──→ F2 el reparto ──→ F3 enlazar ──→ F4 
 
 ---
 
-## Fase 5 — inline o fichero, y la política de carga (5)
+## Fase 5 — inline o fichero, y la política de carga (5) · **cerrada**
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
@@ -506,6 +506,11 @@ F1 las piezas existen ──→ F2 el reparto ──→ F3 enlazar ──→ F4 
 > **Hito en el navegador (criterio 20).** Slow 3G sobre el build sin worker, las dos formas
 > —fichero e inline— de la misma ruta: las piezas empiezan todas a la vez y ninguna espera a
 > otra.
+>
+> **Fase cerrada.** Sobre el build sin worker servido, cada página nombra en su cabecera las
+> piezas de su carga y solo esas: seis la que inyecta, cuatro la que hidrata, ninguna la que no
+> hidrata. La cascada a 3G lento del criterio 20 queda para la sesión que la mire con la red
+> delante; Pedro cierra la fase con la decisión de la tarea 23 tomada.
 
 ---
 
