@@ -29,6 +29,17 @@ export interface SwBootstrapOptions {
    * default for — one that would be the name three different apps collide under.
    */
   readonly app: string;
+  /**
+   * Where the published runtime lives on the origin — `/_fudic/` — and the cache that holds
+   * it (SDD-45 §4.5.1). Both empty when this project links none.
+   *
+   * The name carries the framework VERSION and neither the app nor the build id, and that is
+   * the whole of §4.9: it is the one cache two applications of an origin are meant to share,
+   * and a deploy must not throw it away. Deliberately outside the `<kind>-<app>-<build>`
+   * scheme BUG-33 introduced, and therefore outside its purge, which only knows those four.
+   */
+  readonly runtimePrefix: string;
+  readonly runtimeCache: string;
 }
 
 /**
@@ -48,6 +59,11 @@ const BUILD = ${JSON.stringify(BUILD_TOKEN)};
 const MANIFEST_URL = ${options.manifestUrlExpr};
 const SHELL = ${JSON.stringify(options.shell)};
 const RESOURCES = ${JSON.stringify(options.resources)};
+// Where the published runtime lives on this origin, and the cache it goes in (SDD-45 §4.5.1,
+// §4.9). Both empty for a project that links no published runtime, and then this worker
+// behaves exactly as it did before there was one.
+const RUNTIME_PREFIX = ${JSON.stringify(options.runtimePrefix)};
+const RUNTIME_CACHE = ${JSON.stringify(options.runtimeCache)};
 const NAMES = cacheNames(APP, BUILD);
 // ONE list, absolute, for the two things that must never drift: what install writes and
 // what the router will serve by identity. A Store key is an absolute URL (BUG-04 §3.1).
@@ -71,27 +87,14 @@ self.addEventListener('install', (e) => e.waitUntil((async () => {
       if (response.ok) await shell.put(url, response);
     } catch { /* a missing shell entry must not fail install */ }
   }
-  // And the published runtime this application LINKS (SDD-45 §4.5.1). One batch, here,
-  // because here is where it is free: out of the critical path and once per version. From
-  // the activation on, every runtime request is a cache read, and the granularity that pays
-  // for itself on a slow first load stops costing anything at all.
-  //
-  // The list comes from the MANIFEST and not from a constant in this file, and that is not
-  // indirection: which pieces survive is known only after the build has pruned, and what has
-  // to be precached is what a browser will actually ask for. The manifest is in the cache by
-  // now — it is the last entry of PRECACHE.
-  //
-  // No \`cache: 'reload'\`: a piece's URL carries its version, so the bytes behind it never
-  // change and the browser's own HTTP cache is exactly right. The shell is the opposite case
-  // — fixed names, new bytes — which is why it reloads.
-  const table = await loadManifest(MANIFEST_URL, cache).catch(() => null);
-  for (const url of table === null ? [] : table.runtime()) {
-    const abs = new URL(url, self.location.href).href;
-    try {
-      const response = await fetch(abs);
-      if (response.ok) await shell.put(abs, response);
-    } catch { /* a piece that does not answer is fetched again when it is needed */ }
-  }
+  // The published runtime is NOT precached here, and that is a decision rather than an
+  // omission (SDD-45 §4.5.1). Bringing every piece the application links at \`install\` was
+  // the first answer: it made the first visit download the whole framework — forms,
+  // injection, reactivity — to render a page that may use none of it, which is a monolith
+  // arriving by another road. A progressive application downloads what the page in front of
+  // the user needs; each piece is cached the first time some page asks for it, and from then
+  // on it is a cache read. The framework ends up entirely cached when it has entirely been
+  // needed, and not one request before.
   await self.skipWaiting();
 })()));
 
@@ -142,16 +145,19 @@ async function build() {
   });
   // The router is handed exactly the URLs install put in the cache — the manifest
   // included: what is precached is served, and served BY IDENTITY (BUG-01 §4.1, §4.3).
-  // The pieces go in beside the shell, and for the same reason the shell is here at all:
-  // what install wrote is what fetch serves, by identity (BUG-01 §4.1). A cache nobody
-  // reads is a bug by construction, and precaching the runtime without this would be one —
-  // the bytes would sit there while every page paid the network for them again.
   const r = createRouter({
     table,
     linker,
     stores,
     resources: RESOURCES,
-    shell: [...PRECACHE, ...table.runtime().map((url) => new URL(url, self.location.href).href)],
+    shell: PRECACHE,
+    // Everything under \`/_fudic/\` is served cache-first from a cache of its own and written
+    // the first time a page asks for it (SDD-45 §4.5.1). Its name carries the framework
+    // version and neither the app nor the build, which is what lets two applications of one
+    // origin share it and what keeps a deploy from throwing it away.
+    ...(RUNTIME_CACHE === '' ? {} : {
+      runtime: { prefix: RUNTIME_PREFIX, store: createStore({ cache: await caches.open(RUNTIME_CACHE) }) },
+    }),
   });
   await r.ready();
   controlBus().on((msg) => {

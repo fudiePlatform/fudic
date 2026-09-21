@@ -110,6 +110,24 @@ export interface RouterConfig {
    * globs would let one shell entry capture resources that were never precached.
    */
   readonly shell?: readonly string[];
+  /**
+   * The published runtime, cached AS IT IS ASKED FOR (SDD-45 §4.5.1).
+   *
+   * A prefix and a store, together, because neither means anything alone. Everything under
+   * the prefix is immutable by construction — the URL carries the version — so the policy is
+   * `cache-first` with no TTL and the entry is written the first time a page asks for it.
+   *
+   * **On demand and never up front, and that is the point of the whole SDD.** Precaching the
+   * runtime at `install` was the first answer and it was wrong: it turns a framework that is
+   * published in pieces back into one download, and the first visit pays for every branch of
+   * it — forms, injection, reactivity — to render a page that may use none. A progressive app
+   * downloads what the page in front of the user needs; the rest arrives when a page needs
+   * it, and then it is there for good.
+   *
+   * Absent for an application that links no published runtime — dev, or a project without
+   * one — and then nothing here changes.
+   */
+  readonly runtime?: { readonly prefix: string; readonly store: Store };
   /** Injected for tests; defaults to 128 random bits per response. */
   readonly nonce?: () => string;
   /** Base for resolving manifest paths. Defaults to the SW's own location. */
@@ -316,6 +334,16 @@ export function createRouter(config: RouterConfig): Router {
   };
 
   const handleResource = (event: FetchEvent, url: URL): void => {
+    // The published runtime, first and by PREFIX (SDD-45 §4.5.1). Before the classes because
+    // a `/_fudic/**` written by hand in `sw.json` would send these to `data-<app>-<build>`,
+    // which is purged on every deploy — and the one property this cache has is that it is
+    // not. Cache-first with no TTL: the version is in the URL, so the bytes behind it never
+    // change, and the entry is written the first time a page asks for it and not before.
+    const runtime = config.runtime;
+    if (runtime !== undefined && url.pathname.startsWith(runtime.prefix)) {
+      event.respondWith(runtime.store.get(event.request, 'cache-first', null));
+      return;
+    }
     if (shellUrls.has(url.href)) {
       // One policy, not configurable: the cache name carries the build id, so within a
       // build the shell cannot go stale. A TTL here would be a second expiry mechanism

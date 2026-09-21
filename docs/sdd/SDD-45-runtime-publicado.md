@@ -638,32 +638,43 @@ lo que el coordinador nombra deja la cadena intacta un nivel más abajo — `cor
 descubre dentro de la hidratación—. En `examples/basic` son cuatro `<link>` en una ruta que
 hidrata y seis en la que además inyecta; las que no hidratan no escriben ninguno.
 
-### 4.5.1. Con Service Worker, se descarga lo que la aplicación enlaza
+### 4.5.1. Con Service Worker, se cachea lo que la página pide, cuando lo pide
 
-Un worker precachea en su `install`, en una tanda, fuera del camino crítico y una sola vez por
-versión. Así que cuando hay worker **no se afina nada**: se traen todas las piezas que el
-manifiesto de la aplicación nombra, y a partir de ahí toda petición de runtime es una lectura
-de caché.
+**Esta sección decía lo contrario y era un error, medido en el navegador.** Decía que el
+worker precacheara en su `install` todas las piezas que la aplicación enlaza, porque ahí sale
+gratis: fuera del camino crítico y una sola vez por versión. Lo que se ve en la pestaña de red
+es otra cosa: la primera visita a una página que solo hidrata se traía **54 peticiones y 64 kB**
+—formularios, inyección, reactividad, los nueve enlazadores— para pintar algo que no usa nada
+de eso. Es el framework monolítico otra vez, entrando por la puerta de atrás: se parte en
+piezas para que una ruta nombre solo las suyas y luego se descargan todas de golpe.
 
-Lo que la aplicación **enlaza**, no el runtime entero: una app que no usa formularios no
-precachea sus enlazadores, porque no están en su manifiesto. Precachear lo que nadie va a
-pedir es gastar cuota para nada.
+Así que la regla es la de una aplicación progresiva, y es una sola frase: **se cachea lo que la
+página pide, en el momento en que lo pide.** Todo lo que cuelga de `/_fudic/` se sirve
+cache-first desde una caché propia, y la entrada se escribe la primera vez que alguna página la
+pide. Nada por adelantado. El runtime acaba entero en la caché cuando ha hecho falta entero, y
+ni una petición antes.
 
-La consecuencia simplifica el resto del documento: **todo lo que viene después solo afecta a
-las aplicaciones sin worker**. Con worker, la granularidad deja de tener coste.
+Lo que eso da, y es lo que el precacheo no daba:
 
-**Hecho: la lista la lleva el manifiesto.** No una constante dentro del worker, y el motivo es
-que la lista solo se sabe al final: qué piezas sobreviven lo decide la poda, y lo que hay que
-precachear es lo que un navegador va a pedir de verdad. El worker lee el manifiesto que acaba
-de precachear y se trae esas URLs en una tanda; el enrutador recibe las mismas, porque una
-caché que nadie lee es un defecto por construcción. Y sin `cache: 'reload'`, al revés que el
-shell: la URL de una pieza lleva su versión, así que los bytes detrás nunca cambian y la caché
-HTTP del navegador es justo lo que hay que usar.
+- **La primera visita cuesta lo que cuesta esa página**, que es la métrica que un usuario nota.
+- **Cada página siguiente añade lo suyo** —un formulario trae sus enlazadores la primera vez
+  que se abre un formulario— y a partir de ahí no vuelve a pedirlos nunca.
+- **La granularidad de §4.3 se cobra de verdad**: una app que no usa formularios no guarda sus
+  enlazadores, no porque no estén en un manifiesto, sino porque ninguna de sus páginas los pidió.
+
+Cache-first **sin TTL**, y eso no es una política elegida: la URL lleva la versión, así que los
+bytes detrás no cambian nunca. Y la caché es la de §4.9 —`fudic-runtime-<version>`, sin `app` y
+sin id de construcción—, que es lo que hace que un despliegue no la tire y que dos aplicaciones
+del mismo origen la compartan.
+
+Lo que se pierde a cambio, dicho en voz alta: una página que nunca se ha visitado no funciona
+sin red. Es exactamente la misma regla que ya regía para el trozo de cada componente, que
+tampoco está en la caché hasta que alguien lo pide.
 
 ### 4.5.2. Sin worker: un límite de peticiones, y el paquete por conjunto
 
-Sin worker no hay precacheo, así que las peticiones de una ruta se pagan en su primera visita,
-y ahí sí importa cuántas son. La regla es un número y no una doctrina:
+Con worker o sin él, las peticiones de una ruta se pagan en su primera visita —§4.5.1 dejó de
+adelantarlas—, y ahí sí importa cuántas son. La regla es un número y no una doctrina:
 
 > Una ruta que necesitara **más de `N` piezas** carga en su lugar **un paquete** con todas.
 > Por debajo de `N`, las carga sueltas. `N` por defecto **10**, y la aplicación puede cambiarlo.
@@ -903,8 +914,9 @@ misma forma en los dos sitios es lo que evita que dev y build sean dos programas
   un ejemplo gasta.
 - **El arranque solo trae lo que hace falta sin tocar nada** (§4.4.1). Lo de pintar, lo de los
   signals y el puente del fabricado llegan con el calentado, no al cargar.
-- **Con Service Worker se precachea lo que la aplicación enlaza** (§4.5.1), y la granularidad
-  deja de tener coste.
+- **Nada del runtime se descarga por adelantado, ni con Service Worker** (§4.5.1). Se cachea
+  lo que una página pide, cuando lo pide. Precachearlo entero convierte en monolito, por la
+  red, lo que se partió en piezas precisamente para que no lo fuera.
 - **`FudicOptions` gana exactamente una opción**: el límite de peticiones de §4.5.2, porque es
   una decisión de la aplicación y de nadie más. La versión y el directorio siguen sin serlo.
 - **El compilador sigue sin filesystem.** Las URLs llegan resueltas por el host.
@@ -1004,9 +1016,11 @@ pertenecen a las fases 4 y 5)
 34. **Entrar y salir cuesta ~7 200 bytes y no 9 900** (§4.4.1): una ruta que hidrata y en la
     que nadie toca nada **no** descarga el adaptador del DOM, el signal, el seguimiento ni el
     puente del fabricado. Se mide en el navegador, contando peticiones sin interactuar.
-35. **Con `sw.json`, el worker precachea todas las piezas que el manifiesto nombra**, y
-    ninguna más (§4.5.1). Tras el `install`, toda petición de runtime es una lectura de caché:
-    se comprueba en `Application → Cache Storage` y en la pestaña de red.
+35. **Con `sw.json`, la primera visita a una ruta descarga las piezas de ESA ruta y ninguna
+    más** (§4.5.1), y cada pieza queda cacheada desde la primera vez que alguna página la
+    pide. Se comprueba en la pestaña de red —la segunda visita no pide ni un byte de runtime—
+    y en `Application → Cache Storage`, donde la caché del runtime crece al navegar en vez de
+    aparecer entera en el `install`.
 36. **El límite de peticiones decide** (§4.5.2): con el valor por defecto, una ruta de más de
     diez piezas carga el paquete de su conjunto y una de menos las carga sueltas; bajar el
     límite a uno empaqueta todas las rutas y subirlo a cien no empaqueta ninguna. Dos rutas

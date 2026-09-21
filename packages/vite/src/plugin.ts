@@ -50,6 +50,7 @@ import {
   routeUsesDi,
 } from './client.js';
 import { INLINE_QUERY, IOC_SUFFIX, RUNTIME_MARKER } from '@fudic/compiler';
+import { RUNTIME_DIR } from '@fudic/conventions';
 import { nodeIo, nodeLinkCheckIo, nodeRuntimeFs } from './io.js';
 import { runtimePieces } from './runtime-pieces.js';
 import {
@@ -62,6 +63,7 @@ import {
 import {
   insidePublisher,
   linkedPieces,
+  runtimeCacheOf,
   loadedPieces,
   pieceUrl,
   piecesToCopy,
@@ -1020,6 +1022,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           // From the project's `fudic.json`, never from a plugin option: the identity of an
           // application belongs to the project (SDD-41 §3.3).
           app: appId,
+          // Nothing in DEV (§4.15): there the runtime comes out of Vite's module graph, at
+          // URLs that are not `/_fudic/…` and that must not be cached at all — a cached
+          // runtime in dev is a hot reload that does not arrive.
+          runtimePrefix: isDev ? '' : `/${RUNTIME_DIR}/`,
+          runtimeCache: isDev ? '' : runtimeCacheOf(runtime),
         });
       }
       if (id.startsWith(WRAPPER_PREFIX)) {
@@ -1247,6 +1254,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
                 manifestUrlExpr: JSON.stringify(manifestUrl),
                 shell: [...new Set(shell)],
                 resources: swConfig.resources,
+                // Where the published runtime lives, and the cache it fills AS IT IS USED
+                // (SDD-45 §4.5.1). Empty for a project that links none, and then the worker
+                // is the one it was before this SDD.
+                runtimePrefix: runtime.packages.length === 0 ? '' : `/${RUNTIME_DIR}/`,
+                runtimeCache: runtimeCacheOf(runtime),
                 // Non-empty by construction: a `sw.json` without an `id` is FUD0721 and
                 // this build already failed in `buildStart` (SDD-41 §4.3).
                 app: appId,
@@ -1531,10 +1543,6 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         base,
         serviceWorker: swConfig !== null,
         hydrateDeps,
-        // What this application links, as the copy above settled it: the pieces that really
-        // landed in the output, which is what a worker can precache without asking for a
-        // file nobody wrote (SDD-45 §4.5.1).
-        runtime: copy.files.map((file) => `/${file.fileName}`),
         depsOf: (rb) => {
           if (!link.entries.has(rb.route.pattern)) {
             this.warn(`[${FUD_CHUNK_NOT_EMITTED}] no linkable chunk for ${rb.route.pattern}`);

@@ -29,6 +29,7 @@
  * `FUD0806`), because a build that stops with a stack trace is a build nobody can read.
  */
 
+import { runtimeCacheName } from '@fudic/conventions';
 import { BUILD_TOKEN } from './constants.js';
 import {
   FUD_RUNTIME_PIECE_DIFFERS,
@@ -296,6 +297,27 @@ export function runtimeShim(pkg: string, linkage: RuntimeLinkage, specifier: str
  * The two forms are told apart by syntax and not by quote style: `from "…"` and `import "…"`
  * are the static ones, `import("…")` is not, whatever quotes the minifier chose.
  */
+/**
+ * The cache this origin keeps its published runtime in, or `''` when nothing is published
+ * (SDD-45 §4.9).
+ *
+ * Named by the FRAMEWORK's version, which is `@fudic/core`'s: it is the version the peer
+ * check is about (§4.8) and the one an application means when it says which fudic it is on.
+ * A library that publishes its own pieces writes them into this same cache — the entries are
+ * keyed by URL and every URL carries its own version, so two versions never read each other's
+ * bytes. What the name decides is when the whole cache becomes evictable, and that is the
+ * framework's move and nobody else's.
+ */
+export function runtimeCacheOf(linkage: RuntimeLinkage): string {
+  const pieces = [...linkage.byUrl.values()];
+  if (pieces.length === 0) return '';
+  const core = pieces.find((piece) => piece.pkg === 'core') ?? pieces[0];
+  // `/_fudic/<version>/<pkg>/<piece>.js` — the version is the segment after the directory,
+  // read back out of the URL the discovery wrote rather than resolved a second time.
+  const version = core === undefined ? '' : (core.url.split('/')[2] ?? '');
+  return version === '' ? '' : runtimeCacheName(version);
+}
+
 export function loadedPieces(code: string, linkage: RuntimeLinkage): readonly string[] {
   const seen = new Set<string>();
   const queue: string[] = [];

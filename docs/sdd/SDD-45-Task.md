@@ -43,14 +43,30 @@ equivocó tres veces antes de asentarse:
 **Fase 5 con cuatro de sus cinco tareas hechas: queda la 23, y es la que decide Pedro.** El
 interruptor del layout existe y `?inline` significa lo mismo en cualquier recurso que el autor
 referencia —el arranque y una hoja de estilos, hoy—; la precarga escribe un `<link>` por pieza
-de la CARGA; `FUD0803` está escrito donde cae; y con worker se precachea en el `install` lo que
-el manifiesto nombra, que es exactamente lo que la aplicación enlaza.
+de la CARGA; `FUD0803` está escrito donde cae; y con worker **no se descarga nada por
+adelantado**: cada pieza se cachea la primera vez que una página la pide.
+
+**La tarea 22 se hizo dos veces, y la primera estaba mal.** El requisito decía precachear en el
+`install` todo lo que la aplicación enlaza, y con la red delante se vio lo que era: 54
+peticiones y 64 kB en la primera visita a una ruta que solo hidrata, traídos para pintar algo
+que no usa ni formularios ni inyección ni reactividad. Partir el runtime en piezas y luego
+descargarlas todas de golpe es el monolito entrando por la puerta de atrás. Ahora todo lo que
+cuelga de `/_fudic/` se sirve cache-first desde la caché de origen y se escribe en la primera
+petición: la primera visita cuesta lo que cuesta esa página, y el runtime acaba entero en la
+caché cuando ha hecho falta entero.
 
 **La precarga cambió el número que había que mirar.** Una ruta que hidrata nombra **cuatro**
 piezas en su cabecera, y seis la que además inyecta: la cadena de tres niveles que se veía en
 la fase 3 ya no existe, porque el registro va nombrado arriba en vez de descubrirse dentro de
 la hidratación. Y lo dinámico se queda fuera a propósito: precargar el adaptador y el signal
 devolvería a toda página los bytes que la tarea 16 acaba de quitar.
+
+**Visto al quitar el precacheo, y sin resolver:** el calentado deposita el trozo de un
+componente y las dependencias que el manifiesto le conoce, que son trozos de la aplicación.
+Las **piezas** que ese trozo importa —`core/element`, `dom/browser`— no están en esa lista, así
+que se piden cuando el trozo se evalúa, o sea dentro del gesto. Antes de este SDD eran trozos
+compartidos y sí se calentaban. Es exactamente el defecto que BUG-31 §T5 arregló, una vuelta
+más: lo que hay que añadir es que el calentado sepa también qué piezas nombra un trozo.
 
 **Lo que eso deja encima de la mesa, que es la pregunta que esta fase tenía aparcada:** con el
 reparto de hoy **ninguna ruta llega a diez piezas de carga**, así que el límite de §4.5.2 no
@@ -310,11 +326,15 @@ De la **fase 5**, tareas 19 a 22:
   documento es una constante del framework y declara el nonce. Lo que se prueba es
   `policyDeclaresNonce` sobre una política sin él, y el cableado — que la pregunta se hace
   sobre el marcador del LAYOUT, que es donde suele estar, y no solo sobre el fichero de la ruta.
-- **El precacheado del worker lee el MANIFIESTO** y no una constante, porque la lista solo se
-  sabe después de la poda. Tres propiedades: que lo que el `install` escribe es lo que el
-  enrutador sirve —si no, es una caché que nadie lee—, que las piezas se piden **sin**
-  `cache: 'reload'` al contrario que el shell, y que un manifiesto sin `runtime` deja el
-  `install` exactamente como estaba.
+- **El worker NO precachea el runtime**, y eso hay que fijarlo con un test que lo diga, porque
+  es lo que un día alguien «arregla» pensando que falta: el `install` escribe el shell y el
+  manifiesto y nada más. Lo que se prueba del camino nuevo es el enrutador
+  (`config.runtime`): que una petición bajo el prefijo se sirve cache-first sin TTL desde SU
+  caché y se escribe en la primera, que va **antes** que las clases de `sw.json` —una regla
+  `/_fudic/**` escrita a mano mandaría las piezas a `data-<app>-<build>`, que se purga en cada
+  despliegue—, y que sin `runtime` configurado el enrutador es el de antes. Y del plugin, que
+  en dev el prefijo va vacío: en dev el runtime sale del grafo de módulos y cachearlo es una
+  recarga en caliente que no llega.
 - **Tres aserciones de `bootstrap.test.ts` se adaptaron**, no se borraron: comprobaban la forma
   exacta de un texto generado que esta fase cambia —el enrutador recibe ahora las piezas además
   del shell, y el `install` abre la caché en una variable porque la lee dos veces—. Siguen
@@ -432,7 +452,7 @@ F1 las piezas existen ──→ F2 el reparto ──→ F3 enlazar ──→ F4 
 | [x] | 19 | 18 | **El interruptor del layout.** `fudic:runtime` como fichero, `fudic:runtime?inline` dentro de la página con `nonce`. Por defecto fichero. Lo mismo para `fudic:styles`. Criterio 18 | `compiler` | `src/emit/parts.ts` |
 | [x] | 20 | 19 | **La precarga que antes no se podía escribir.** Un `modulepreload` por pieza de la ruta. Es lo que quita la cadena (§4.5). Criterio 18 | `vite` · `compiler` | `src/emit/parts.ts` |
 | [x] | 21 | 19 | **`FUD0803`:** `?inline` con una política que no declara `nonce`. Criterio 19 | `vite` | `src/diagnostics.ts` |
-| [x] | 22 | 20 | **Con worker, se precachea lo que la aplicación enlaza** (§4.5.1), ni más ni menos. A partir del `install`, toda petición de runtime es lectura de caché — y la granularidad deja de tener coste. Criterio 35 | `vite` | `src/bootstrap.ts` |
+| [x] | 22 | 20 | **Con worker, se cachea lo que la página pide cuando lo pide** (§4.5.1). Nada por adelantado: `/_fudic/**` se sirve cache-first desde su propia caché y la entrada se escribe en la primera petición. **El requisito original decía lo contrario** —precachear en el `install` todo lo que la app enlaza— y se cambió con la red delante: 54 peticiones y 64 kB en la primera visita a una ruta que solo hidrata es el monolito otra vez. Criterio 35 | `vite` · `transport` | `src/bootstrap.ts` · `src/router.ts` |
 | [ ] | 23 | 22 | **El límite de peticiones, y el paquete por conjunto** (§4.5.2). Más de `N` piezas en una ruta → un paquete con todas; por debajo, sueltas. `N` por defecto 10, y es **la única opción** que gana `FudicOptions`. El paquete es por **conjunto de piezas y jamás por ruta**: dos rutas con el mismo conjunto, el mismo fichero, y dos apps también. Se emiten las dos formas. Criterio 36 | `vite` | `src/coordinator.ts` |
 
 > **Hito en el navegador (criterios 20 y 36).** Slow 3G, la misma ruta con las dos formas:

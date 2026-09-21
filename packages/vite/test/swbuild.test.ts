@@ -16,6 +16,10 @@ const OPTIONS = {
   shell: ['/style.css'],
   resources: [],
   app: 'shop',
+  // A project that links no published runtime: both empty, and this worker is the one it
+  // was before SDD-45 (§4.5.1).
+  runtimePrefix: '',
+  runtimeCache: '',
 };
 
 describe('swChunkOf', () => {

@@ -13,6 +13,9 @@ describe('emitSwBootstrap', () => {
     shell: ['/style.css'],
     resources: [{ pattern: '/api/**', policy: 'network-first', ttl: 300_000 }],
     app: 'shop',
+    // The published runtime of this origin, cached as it is used (SDD-45 §4.5.1).
+    runtimePrefix: '/_fudic/',
+    runtimeCache: 'fudic-runtime-0.0.1',
   });
 
   it('renders in the Service Worker itself: linker, stores and router', () => {
@@ -26,10 +29,11 @@ describe('emitSwBootstrap', () => {
     // The shell cache is opened once and used for BOTH: reading the manifest and
     // serving. Without the store there is no reader, and the precache is decoration.
     expect(code).toContain('shell: createStore({ cache: shell })');
-    // The precached list is what the router is handed — plus the published pieces the
-    // install also wrote (SDD-45 §4.5.1), which are precached for the same reason and would
-    // be a write-only cache without this.
-    expect(code).toContain('shell: [...PRECACHE, ...table.runtime()');
+    // The precached list, and only it. The published runtime is NOT in here and is not
+    // precached either: it goes in its own cache, written as each page asks for a piece
+    // (SDD-45 §4.5.1).
+    expect(code).toContain('shell: PRECACHE');
+    expect(code).toContain('runtime: { prefix: RUNTIME_PREFIX,');
     // The very list the install loop iterates: the two cannot drift.
     const install = code.slice(code.indexOf("addEventListener('install'"), code.indexOf("addEventListener('activate'"));
     expect(install).toContain('for (const url of PRECACHE)');

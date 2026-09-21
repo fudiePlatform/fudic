@@ -68,6 +68,10 @@ describe('the app id reaches the emitted Service Worker (criterion 7)', () => {
       shell: [],
       resources: [],
       app: 'shop',
+      // The one cache of this worker that carries NEITHER the app nor the build: the
+      // published runtime is shared by every application of the origin (SDD-45 §4.9).
+      runtimePrefix: '/_fudic/',
+      runtimeCache: 'fudic-runtime-0.0.1',
     });
 
     expect(source).toContain('const APP = "shop";');
