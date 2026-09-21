@@ -6,7 +6,7 @@
 > `@fudic/di` · `@fudic/compiler` · `@fudic/vite` · `@fudic/transport` · `@fudic/ssr` ·
 > `examples/basic` · `examples/workspace` · `examples/pieces-bench`
 > **Rama:** `sdd-45-runtime-publicado`
-> **Progreso:** 27 / 32
+> **Progreso:** 29 / 32
 > **Bloqueado por:** [SDD-43](./SDD-43-librerias.md) — su tarea 11 es el `peerDependencies`
 > que aquí se endurece, y su criterio 12 es el workspace sobre el que se mide la evidencia.
 
@@ -644,8 +644,8 @@ F1 las piezas existen ──→ F2 el reparto ──→ F3 enlazar ──→ F4 
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 28 | 18 | **Sin `sw.json` no hay `boot`.** Ni fichero ni etiqueta. Hoy toda página pide un módulo cuyo contenido es `export {};`. Criterio 27 | `vite` | `src/plugin.ts` |
-| [ ] | 29 | 13 | **`FUD0800`: la librería manda.** Sube de warning a error respecto a SDD-43 §4.7. `FUD0762` queda superado. Criterio 28 | `vite` | `src/peer-check.ts` |
+| [x] | 28 | 18 | **Sin `sw.json` no hay `boot`.** Ni fichero ni etiqueta. La condición que ya decidía el CONTENIDO del módulo sube un escalón: la URL llega vacía y la cabecera no escribe la etiqueta; el trozo se descarta del bundle porque la entrada se declara antes de haber leído el `sw.json` del proyecto. También en dev con `dev: 'off'`. Criterio 27 | `vite` · `compiler` | `vite/src/plugin.ts` · `compiler/src/emit/parts.ts` |
+| [x] | 29 | 13 | **`FUD0800`: la librería manda.** Sube de warning a error respecto a SDD-43 §4.7. `FUD0762` queda en el catálogo marcado como superado — no se emite, pero un log de antes sigue queriendo decir algo. Criterio 28 | `vite` | `src/peer-check.ts` · `src/diagnostics.ts` |
 | [ ] | 30 | 18 | **Un recorrido por gesto, no uno por tag.** Índice `id → Element` y `tag → Element[]`, **por turno y no global**. El orden de SDD-17 no se toca. Criterio 29 | `core` | `src/hydrate/registry.ts` |
 
 > **Hito en el navegador (criterio 30).** El INP de la ruta más pesada de `examples/basic`,

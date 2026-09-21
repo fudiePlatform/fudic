@@ -276,9 +276,16 @@ function runtimeMarkerForm(el: ElementNode): RuntimeForm | null {
 export function writeRuntimeTags(w: CodeWriter, hydrates: boolean, form: RuntimeForm): void {
   w.line('if (io.runtime !== undefined) {');
   w.indent();
+  // Empty means this project has no Service Worker, and then there is no tag either
+  // (SDD-45 §4.11). The condition is the one that already decided the module's CONTENT,
+  // moved one step earlier: a page used to ask for a file whose whole body was `export {};`.
+  w.line("if (io.runtime.boot !== '') {");
+  w.indent();
   w.line(
     "head += '<script type=\"module\" src=\"' + io.runtime.boot + '\"></script>';",
   );
+  w.dedent();
+  w.line('}');
   if (hydrates && form === 'file') {
     // One `<link>` per piece THIS route names, so the browser opens every connection while
     // it is still reading the head instead of discovering them inside the coordinator.

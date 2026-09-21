@@ -95,11 +95,13 @@ export const FUD_LINK_UNRESOLVED = 'FUD0760';
  * a file they never wrote. The library says which versions it was written for, and this is
  * what happens when the answer is no.
  *
- * A WARNING, and once per library rather than once per file. The range is written by the
- * library's author with the information they had the day they published, and a range that is
- * conservative by one minor must not stop a build that works. What it cannot do is fail in
- * silence. SDD-45 §4.6 turns it into an error — there, mixed versions are a promise of the
- * product rather than an accident, and this describes something that breaks late.
+ * **SUPERSEDED by `FUD0800`, and no longer emitted** (SDD-45 §4.8). It was a WARNING, once per
+ * library: the range is written by the library's author with the information they had the day
+ * they published, and a range conservative by one minor must not stop a build that works. That
+ * held while every application of a repository shared a framework version by force. Since
+ * SDD-45 makes mixed versions a promise of the product, a warning is not enough — what this
+ * describes breaks, and breaks late. The code is kept here so that a build log from before
+ * still means something.
  */
 export const FUD_LIB_PEER_MISMATCH = 'FUD0762';
 
@@ -120,6 +122,21 @@ export const FUD_LINK_NOT_A_LIBRARY = 'FUD0763';
  * unfixable to discover in a browser.
  */
 export const FUD_RUNTIME_DIR_MISSING = 'FUD0804';
+
+/**
+ * A library of this graph declares a `peerDependencies` on the framework that excludes the
+ * version this build resolves (SDD-45 §4.8). **Supersedes `FUD0762`**, which said the same
+ * thing as a warning.
+ *
+ * An ERROR, and the promotion is the point. A library publishes `.fud` SOURCE, so the
+ * compiler that parses it is the CONSUMER's: a mismatch produces a syntax error, or a missing
+ * export, inside a file the author never wrote. While every application of a repository was on
+ * one version by force, a range conservative by one minor stopping a working build was the
+ * bigger harm. This SDD makes an application's version its own — `app-1` on 1.0 beside
+ * `app-2` on 2.0, sharing an origin and sharing libraries — and the moment a library is
+ * shared, **the library decides**. A warning about that is a build that fails in a browser.
+ */
+export const FUD_RUNTIME_PEER_MISMATCH = 'FUD0800';
 
 /**
  * Two packages would publish the same URL (SDD-45 §3.1, §7).

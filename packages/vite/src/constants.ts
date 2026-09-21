@@ -117,9 +117,13 @@ export function runtimeUrls(
   main: string,
   pieces: readonly string[] = [],
   inline = '',
+  boot = true,
 ): RuntimeEntries {
   return {
-    boot: `${base}${bootFileName(BUILD_TOKEN)}`,
+    // Empty when this application has no Service Worker (SDD-45 §4.11), and then the head
+    // writes no tag for it. There used to be one on every page of such a project, asking for
+    // a module whose whole content was `export {};` — a request per page for nothing.
+    boot: boot ? `${base}${bootFileName(BUILD_TOKEN)}` : '',
     main: main === '' ? '' : `${base}${main}-${BUILD_TOKEN}.js`,
     pieces,
     inline,
@@ -139,6 +143,7 @@ export function runtimeUrls(
  * a piece's URL is origin-absolute and shared by every app of the origin (§4.2).
  */
 export interface RuntimeEntries {
+  /** The worker registrar, or `''` when this project has none and writes no tag (§4.11). */
   readonly boot: string;
   readonly main: string;
   readonly pieces: readonly string[];

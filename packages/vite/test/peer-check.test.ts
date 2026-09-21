@@ -15,7 +15,7 @@
 import { describe, expect, it } from 'vitest';
 import type { PackageFs } from '@fudic/resolve';
 import { checkPeers, satisfies, COMPILER_PACKAGE } from '../src/peer-check.js';
-import { FUD_LIB_PEER_MISMATCH } from '../src/diagnostics.js';
+import { FUD_RUNTIME_PEER_MISMATCH } from '../src/diagnostics.js';
 
 const APP = '/ws/apps/tienda';
 
@@ -51,10 +51,12 @@ function workspace(options: {
 }
 
 describe('checkPeers', () => {
-  it('warns once, naming both versions, when the resolved compiler is out of range', () => {
+  it('reports once, naming both versions, when the resolved compiler is out of range', () => {
     const found = checkPeers(APP, fs(workspace({ compiler: '2.0.0', peer: '^1.0.0' })));
     expect(found).toHaveLength(1);
-    expect(found[0]?.code).toBe(FUD_LIB_PEER_MISMATCH);
+    // `FUD0800` and not `FUD0762`: the same fact, promoted to an error by SDD-45 §4.8 now
+    // that an application's framework version is its own and a shared library decides.
+    expect(found[0]?.code).toBe(FUD_RUNTIME_PEER_MISMATCH);
     expect(found[0]?.file).toBe('@acme/ui');
     expect(found[0]?.message).toContain('^1.0.0');
     expect(found[0]?.message).toContain('2.0.0');

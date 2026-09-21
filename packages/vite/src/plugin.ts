@@ -274,7 +274,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    */
   const runtimeEntriesFor = (pattern: string): RuntimeEntries => {
     const coordinator = coordinators.get(pattern) ?? null;
-    if (coordinator === null) return runtimeUrls(base, '');
+    // A route with nothing to hydrate still registers the worker — fudic is offline-first,
+    // and the first visit to a static route must not leave the app with none — unless the
+    // project has no worker at all, and then there is nothing to register (§4.11).
+    if (coordinator === null) return runtimeUrls(base, '', [], '', swConfig !== null);
     return runtimeUrls(
       base,
       coordinator.name,
@@ -292,6 +295,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // every load, forever.
       swConfig === null ? loadedPieces(coordinator.source, runtime) : [],
       coordinator.source,
+      swConfig !== null,
     );
   };
 
@@ -765,11 +769,14 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         }
         runtime = runtimeLinkage(discovery.pieces, runtimeFs);
       }
-      // Whether each library can be parsed by THIS compiler (SDD-43 §4.7). A warning, once
-      // per library: the range is the library author's judgement from the day they published,
-      // and a range one minor too narrow must not stop a build that works.
+      // Whether each library can be parsed by THIS compiler (SDD-43 §4.7). An ERROR since
+      // SDD-45 §4.8, once per library: it was a warning while every app of a repository was
+      // on one version by force, and this SDD makes an application's version its own. The
+      // moment a library is shared between two of them, the library decides — and what a
+      // mismatch produces is an export that does not exist, in a browser, inside a file the
+      // author never wrote.
       for (const d of checkPeers(root, nodePackageFs())) {
-        this.warn(`[${d.code}] ${d.message}`);
+        this.error(`[${d.code}] ${d.message}`);
       }
       // And what the sheet says that its destination cannot hear (§4.5). A warning, and
       // the sheet is emitted whole: the same file served to the document too is a legitimate
@@ -1074,7 +1081,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           // graph — and nothing to embed, so a layout that asks for `?inline` keeps the file
           // form there. That is §4.15: development does not change.
           runtime: isDev
-            ? { boot: devUrl(base, DEV_BOOT_URL), main: devUrl(base, DEV_MAIN_URL), pieces: [], inline: '' }
+            ? {
+                // `dev: 'off'` — or no `sw.json` at all — registers nothing, so the page
+                // asks for nothing either (§4.11).
+                boot:
+                  swConfig !== null && swConfig.dev === 'preview'
+                    ? devUrl(base, DEV_BOOT_URL)
+                    : '',
+                main: devUrl(base, DEV_MAIN_URL),
+                pieces: [],
+                inline: '',
+              }
             : runtimeEntriesFor(pattern),
         });
       }
@@ -1296,6 +1313,16 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               resolveAlias,
               nested,
             );
+
+      // 2-bis. No `sw.json`, no `boot` — neither the tag nor the FILE (§4.11). The entry is
+      //     declared in `config()`, long before this project's `sw.json` has been read, so
+      //     what is decidable here is dropping the chunk: nothing references it any more,
+      //     because the head stopped writing its tag.
+      if (swConfig === null) {
+        for (const [name, item] of Object.entries(bundle)) {
+          if (item.type === 'chunk' && item.facadeModuleId === BOOT_ID) delete bundle[name];
+        }
+      }
 
       // 3. The build id: it names every cache and lives inside the SW, so a new build
       //    changes the SW's own bytes → the browser updates → activate purges (§4.10).

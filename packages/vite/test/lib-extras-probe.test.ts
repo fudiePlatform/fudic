@@ -141,10 +141,14 @@ describe('a library holds a LAYOUT', () => {
     expect(html()).toContain('<header>');
   });
 
-  it('honours the runtime marker, so the app still registers its worker', () => {
-    // The marker is the layout saying WHERE, and who decides what goes there is the build —
-    // which is the app's build, not the library's.
-    expect(html()).toMatch(/<script type="module" src="\/fudic-boot-[0-9a-f]{8}\.js">/u);
+  it('honours the runtime marker, and this app has nothing to put there', () => {
+    // The marker is the layout saying WHERE, and who decides WHAT goes there is the build —
+    // the app's build, not the library's. This project has no `sw.json`, so since SDD-45
+    // §4.11 the answer is nothing: no worker to register, no tag, and no file either. It used
+    // to write one on every page, asking for a module whose whole body was `export {};`.
+    expect(html()).not.toContain('fudic-boot');
+    expect(output.some((o) => o.fileName.startsWith('fudic-boot'))).toBe(false);
+    // What must never survive either way: the marker itself, unanswered.
     expect(html()).not.toContain('src="fudic:runtime"');
   });
 });
