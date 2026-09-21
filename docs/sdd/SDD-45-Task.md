@@ -61,7 +61,12 @@ pide en uno y el grafo de módulos en el otro—, así que cada pieza se descarg
 cada carga controlada. Con worker la precarga no tiene casi nada que comprar: desde la segunda
 visita las piezas son lectura de caché. El caso sin worker no enlazaba piezas —`nosw` no tenía
 `package.json`, así que el descubrimiento no veía publicadores y el runtime se empaquetaba—;
-ahora sí, y es donde se mide el criterio 20.
+ahora sí, y es donde se mide el criterio 20. **Y esa variante venía renderizando una app
+distinta**: sin `fudic.json` propio no había guía de estilos que adoptar y sin directorio
+público no había favicon, así que la misma aplicación se veía de otra manera según por cuál de
+los dos builds entraras — que es justo lo que una comparación no puede hacer. Las dos cosas se
+apuntan a los ficheros de la app en vez de copiarlos, y el build de la variante entra ahora en
+`pnpm build`, para que se rompa cuando se rompa y no el día del hito.
 
 **La primera carga la arregla la página.** Un worker se instala durante ella y reclama al
 final, así que sin nada más el runtime se cachea en la segunda visita, que es entonces la
