@@ -6,7 +6,7 @@
 > `@fudic/di` · `@fudic/compiler` · `@fudic/vite` · `@fudic/transport` · `@fudic/ssr` ·
 > `examples/basic` · `examples/workspace` · `examples/pieces-bench`
 > **Rama:** `sdd-45-runtime-publicado`
-> **Progreso:** 29 / 32
+> **Progreso:** 30 / 32
 > **Bloqueado por:** [SDD-43](./SDD-43-librerias.md) — su tarea 11 es el `peerDependencies`
 > que aquí se endurece, y su criterio 12 es el workspace sobre el que se mide la evidencia.
 
@@ -39,6 +39,13 @@ equivocó tres veces antes de asentarse:
 ---
 
 ## Dónde estamos
+
+**Fase 8 cerrada: lo que quedaba suelto.** Una aplicación sin worker ya no pide en cada
+página un módulo vacío —ni la etiqueta ni el fichero—; el desajuste de versión de una
+librería pasa de aviso a error, porque desde este SDD la versión de cada app es suya y en
+cuanto una librería se comparte manda ella; y un gesto recorre el documento **una vez** en
+vez de una por tag, una por receptor del bus y otra entera para encontrar un elemento por su
+id.
 
 **Fase 7 cerrada: el renderizador sale del worker.** Cada aplicación llevaba dentro de su
 Service Worker los 5 918 bytes de `@fudic/ssr` —con la inyección dentro—, y los volvía a
@@ -486,6 +493,26 @@ De la **fase 7**, tareas 26 y 27:
   razón de ser de este SDD; el resto de la propiedad sigue en pie, y se añade que hay **una** y
   no una por aplicación.
 
+De la **fase 8**, tareas 28 a 30:
+
+- **Sin worker no hay etiqueta NI fichero**, y las dos mitades hay que fijarlas: una sola deja
+  o un `<script src="">` o un fichero que nadie pide. La condición vive donde ya vivía —la
+  que decidía el contenido del módulo—, subida un escalón. El trozo se **descarta** del
+  bundle en vez de no declararse, porque la entrada se nombra antes de haber leído el
+  `sw.json`; un test que compruebe que no se declara estaría probando otra cosa.
+- **`FUD0800` es error y eso cambia cómo se prueba.** Una fixture con un rango imposible ya no
+  es un aviso observable dentro de otro build: tumba el build entero. Por eso el rango
+  imposible tiene un build propio y la fixture compartida declara uno que casa. Un test que
+  vuelva a meter el rango imposible en la fixture común tira el fichero entero y el síntoma
+  no señala a la causa.
+- **El índice es POR TURNO, y eso es lo que hay que proteger.** Lo tentador es hacerlo global
+  —se construye una vez y ya— y es exactamente el fallo: habría que mantenerlo vivo frente al
+  fabricador de `live`, al render del worker y al script del usuario, y un índice caducado es
+  una respuesta incorrecta en silencio donde hoy hay una lenta correcta. Tests: que dos
+  gestos solapados no se devuelvan un índice viejo —cerrar solo limpia el propio—, que un
+  buscador preguntado por OTRA raíz recorra, y que el orden de `instancesOf` sea idéntico con
+  y sin turno, que es el invariante de SDD-17 que esto no puede tocar.
+
 ---
 
 ## Mapa de dependencias
@@ -646,7 +673,7 @@ F1 las piezas existen ──→ F2 el reparto ──→ F3 enlazar ──→ F4 
 |---|---|---|---|---|---|
 | [x] | 28 | 18 | **Sin `sw.json` no hay `boot`.** Ni fichero ni etiqueta. La condición que ya decidía el CONTENIDO del módulo sube un escalón: la URL llega vacía y la cabecera no escribe la etiqueta; el trozo se descarta del bundle porque la entrada se declara antes de haber leído el `sw.json` del proyecto. También en dev con `dev: 'off'`. Criterio 27 | `vite` · `compiler` | `vite/src/plugin.ts` · `compiler/src/emit/parts.ts` |
 | [x] | 29 | 13 | **`FUD0800`: la librería manda.** Sube de warning a error respecto a SDD-43 §4.7. `FUD0762` queda en el catálogo marcado como superado — no se emite, pero un log de antes sigue queriendo decir algo. Criterio 28 | `vite` | `src/peer-check.ts` · `src/diagnostics.ts` |
-| [ ] | 30 | 18 | **Un recorrido por gesto, no uno por tag.** Índice `id → Element` y `tag → Element[]`, **por turno y no global**. El orden de SDD-17 no se toca. Criterio 29 | `core` | `src/hydrate/registry.ts` |
+| [x] | 30 | 18 | **Un recorrido por gesto, no uno por tag.** Índice `id → Element` y `tag → Element[]`, **por turno y no global**: se abre en `raise` —la única entrada del camino 2— y se cierra en su `finally`. Los buscadores lo consultan si está abierto **y es de esa misma raíz**; si no, recorren como siempre. El orden de SDD-17 no se toca: se copia, porque el índice se construye del propio recorrido en preorden y un `Map` conserva el orden de inserción. Criterio 29 | `core` | `src/hydrate/registry.ts` · `src/hydrate/cascade.ts` · `src/hydrate/install.ts` |
 
 > **Hito en el navegador (criterio 30).** El INP de la ruta más pesada de `examples/basic`,
 > antes y después, anotado aquí. No tiene que bajar; tiene que no subir.

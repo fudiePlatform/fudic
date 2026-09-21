@@ -45,6 +45,7 @@ import {
   idOf,
   instanceState,
   instancesOf,
+  openTurn,
   publishTagSource,
   ROUTE_HOST,
   stopwatch,
@@ -244,8 +245,24 @@ export function installHydration(options: HydrationOptions): Hydration {
     replay();
   };
 
-  /** Path 2, in the one order §4.4 fixes. */
+  /**
+   * Path 2, in the one order §4.4 fixes.
+   *
+   * It is also the one TURN of SDD-45 §4.12: the document is walked once, here, and every
+   * finder the steps below use reads that index instead of walking again. The index is closed
+   * with the turn — it is a snapshot, and the only thing that keeps a snapshot honest is that
+   * it does not outlive the gesture it was taken for.
+   */
   const raise = async (host: Element, id: number, replay: () => void): Promise<void> => {
+    const closeTurn = openTurn(doc);
+    try {
+      await raiseInTurn(host, id, replay);
+    } finally {
+      closeTurn();
+    }
+  };
+
+  const raiseInTurn = async (host: Element, id: number, replay: () => void): Promise<void> => {
     // 1 — the two pieces of §4.4.1, ASKED FOR HERE and awaited two lines below. At the top of
     // path 2 so the request is on the network while `ready` is still pending, and on a page
     // with a warm channel it was ordered long ago, when this component came into view.
