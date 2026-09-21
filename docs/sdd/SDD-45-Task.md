@@ -685,8 +685,17 @@ F1 las piezas existen ──→ F2 el reparto ──→ F3 enlazar ──→ F4 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [ ] | 31 | todas | **La evidencia, entera.** `examples/workspace` en un origen: la segunda app no descarga ni un byte de framework que la primera ya trajo. Y el despliegue: se reconstruye `app-1` con un id nuevo y de `/_fudic/` no se vuelve a pedir nada. Criterios 31, 32 | `examples` | `examples/workspace/*` |
-| [ ] | 32 | 31 | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`, y los 35 criterios de §6 verdes — con los tres de «rojo primero» (2, 10, 14) vistos fallar antes. SDD-45 a `Hecho` en [INDEX.md](./INDEX.md), tabla y registro | — | [INDEX.md](./INDEX.md) |
+| [ ] | 32 | 31 | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`, y los 35 criterios de §6 verdes — con los tres de «rojo primero» (2, 10, 14) vistos fallar antes. **Y las dos cosas que Pedro fija como el cierre de esta fase: que los tests que fallan queden arreglados y que la cobertura de los proyectos no baje.** SDD-45 a `Hecho` en [INDEX.md](./INDEX.md), tabla y registro | — | [INDEX.md](./INDEX.md) |
 
+> **La fase 9 es de una sesión propia, y su alcance lo fijó Pedro.** Las ocho fases anteriores
+> se escribieron **sin tests por decisión expresa** —ahí está la sección de arriba, que es el
+> único registro de la intención— y se cerraron con evidencia en el navegador aprobada en
+> campo, que es lo que hacía falta para tomar decisiones de framework. Lo que cierra la 9 no es
+> sólo arreglar lo que falla: es **escribir los tests que hagan falta para que la cobertura de
+> los proyectos no baje**. Lo que está roto hoy y no entra en `pnpm test` —la batería de
+> navegador de `examples/basic`, que sólo corre a mano— es parte de ese trabajo, no de las
+> fases que ya cerraron.
+>
 > **Visto en la fase 3 y que la 31 tiene que resolver:** el servidor de `examples/workspace`
 > monta `/admin/` sobre el `dist` de admin y `/` sobre el de tienda, así que una petición de
 > `/_fudic/…` cae siempre en el montaje de tienda. Funciona mientras las dos apps enlacen el
