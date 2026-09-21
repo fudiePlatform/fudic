@@ -102,8 +102,10 @@ ahora sí, y es donde se mide el criterio 20. **Y esa variante venía renderizan
 distinta**: sin `fudic.json` propio no había guía de estilos que adoptar y sin directorio
 público no había favicon, así que la misma aplicación se veía de otra manera según por cuál de
 los dos builds entraras — que es justo lo que una comparación no puede hacer. Las dos cosas se
-apuntan a los ficheros de la app en vez de copiarlos, y el build de la variante entra ahora en
-`pnpm build`, para que se rompa cuando se rompa y no el día del hito.
+apuntan a los ficheros de la app en vez de copiarlos. La variante **se construye aparte** y no
+desde `pnpm build`: quien mide con worker y sin él es Pedro, y encadenar los dos builds le
+quita la decisión de cuál está mirando. `build:nosw` la construye y `preview:nosw` la sirve;
+la batería de navegador sigue construyendo las dos, porque las necesita a la vez.
 
 **La primera carga la arregla la página.** Un worker se instala durante ella y reclama al
 final, así que sin nada más el runtime se cachea en la segunda visita, que es entonces la

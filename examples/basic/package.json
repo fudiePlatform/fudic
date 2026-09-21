@@ -6,7 +6,7 @@
   "description": "Basic fudic example — filesystem routing, static + incremental SSG, zero-JS Declarative Shadow DOM.",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && pnpm run build:nosw",
+    "build": "vite build",
     "preview": "vite preview",
     "build:nosw": "vite build --config nosw/vite.config.ts",
     "preview:nosw": "vite preview --config nosw/vite.config.ts",
