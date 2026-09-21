@@ -6,7 +6,7 @@
 > `@fudic/di` · `@fudic/compiler` · `@fudic/vite` · `@fudic/transport` · `@fudic/ssr` ·
 > `examples/basic` · `examples/workspace` · `examples/pieces-bench`
 > **Rama:** `sdd-45-runtime-publicado`
-> **Progreso:** 22 / 32
+> **Progreso:** 23 / 32
 > **Bloqueado por:** [SDD-43](./SDD-43-librerias.md) — su tarea 11 es el `peerDependencies`
 > que aquí se endurece, y su criterio 12 es el workspace sobre el que se mide la evidencia.
 
@@ -40,7 +40,7 @@ equivocó tres veces antes de asentarse:
 
 ## Dónde estamos
 
-**Fase 5 con cuatro de sus cinco tareas hechas: queda la 23, y es la que decide Pedro.** El
+**Fase 5 cerrada, y su última tarea se cierra retirando lo que pedía.** El
 interruptor del layout existe y `?inline` significa lo mismo en cualquier recurso que el autor
 referencia —el arranque y una hoja de estilos, hoy—; la precarga escribe un `<link>` por pieza
 de la CARGA; `FUD0803` está escrito donde cae; y con worker **no se descarga nada por
@@ -88,14 +88,22 @@ que se piden cuando el trozo se evalúa, o sea dentro del gesto. Antes de este S
 compartidos y sí se calentaban. Es exactamente el defecto que BUG-31 §T5 arregló, una vuelta
 más: lo que hay que añadir es que el calentado sepa también qué piezas nombra un trozo.
 
-**Lo que eso deja encima de la mesa, que es la pregunta que esta fase tenía aparcada:** con el
-reparto de hoy **ninguna ruta llega a diez piezas de carga**, así que el límite de §4.5.2 no
-dispararía nunca sobre la carga. Las dieciséis peticiones del formulario no son de la carga:
-las trae el trozo del componente al hidratarse, y el coordinador no las nombra. Y hay un
-problema de fondo con el paquete: **empaquetar lo tiene que hacer un empaquetador, y el de la
-aplicación no produce los mismos bytes que el de otra** —que es justo lo que §1.2 dice y lo que
-hace que dos apps compartan—, así que un paquete por conjunto construido por la app **no lo
-comparte nadie**, al revés de lo que §4.5.2 promete.
+**La tarea 23 se cierra sin escribir código: el límite de peticiones y el paquete por conjunto
+se retiran.** El motivo que decide es uno solo, y es de construcción: **empaquetar lo tiene que
+hacer un empaquetador, y el de la aplicación no produce los mismos bytes que el de otra** —que
+es justo lo que §1.2 dice y lo que hace que dos apps compartan—, así que un paquete por
+conjunto construido por la app **no lo comparte nadie**, al revés de lo que §4.5.2 prometía; y
+además pondría bytes de una aplicación bajo `/_fudic/`. Con el límite se va la opción, y
+`FudicOptions` se queda como §3.5 decía: sin ninguna. Esa contradicción —una opción en el
+invariante de §5, ninguna en §3.5— queda resuelta.
+
+**Lo que NO se retira, dicho por Pedro y escrito en §4.5.2 para que no se pierda:** el problema
+sigue ahí. Hoy ninguna ruta se acerca a diez piezas de carga —cuatro la que hidrata, seis la
+que además inyecta, y las dieciséis del formulario no son de la carga sino del trozo que baja
+al interactuar—, pero eso es un hecho de `examples/basic` y no una propiedad del reparto: **una
+página que hidrate, inyecte y monte un formulario pasará de diez seguro**, y treinta viajes de
+ida y vuelta duelen por pequeños que sean los ficheros. No es prioritario ahora. Lo que queda
+decidido es por dónde no vendrá la respuesta: no empaquetando en la aplicación.
 
 **Fase 4 cerrada, con el hito visto en Chrome.** El coordinador
 existe y es por ruta —321 bytes la ruta que solo hidrata y 572 la que además inyecta, contra los
@@ -139,8 +147,9 @@ paquete exporta, y hay una herramienta que lo comprueba sobre los ficheros publi
 - **2 328 de esos bytes no hacen falta al cargar**: el adaptador del DOM, el signal, el
   seguimiento y el puente del fabricado (§4.4.1).
 - **El formulario completo son 16 peticiones y 11 269 bytes**, y es la primera vez que esa
-  cuenta es verdad: siete de esas piezas —el modelo— no existían. Es el único escenario que
-  pasa del límite de diez de §4.5.2.
+  cuenta es verdad: siete de esas piezas —el modelo— no existían. Ese escenario es el que
+  enseña que la cuenta de una página puede dispararse; el límite que iba a atajarla se retiró
+  en la fase 5, y por qué está escrito en §4.5.2.
 - **Ocho piezas las pide toda ruta que hidrata**; `effect` y `subscribe` las evitan 13 de 17
   rutas, y `computed` 15 de 17.
 
@@ -157,10 +166,13 @@ paquete exporta, y hay una herramienta que lo comprueba sobre los ficheros publi
   nodo, la marca de regla de servidor— o porque las alcanzan dos piezas y copiarlas serían los
   mismos bytes dos veces. Están escritas como excepción, con su razón, donde se comprueban.
 
-**Sigue abierto, y lo decide Pedro mirando el banco:** si el arranque con precarga vale, no se
-empaqueta nada; si no, se empaqueta por conjunto. La fase 5 implementa el límite de §4.5.2 en
-cualquier caso — lo que falta es el número por defecto confirmado, hoy escrito como 10. El
-formulario con sus 16 peticiones es el caso con el que decidirlo.
+**Decidido en la fase 5, y no por el lado por el que se esperaba:** no se empaqueta nada, y el
+límite desaparece con el paquete. El motivo no es que la precarga baste —Pedro dejó dicho lo
+contrario: una página que hidrate, inyecte y monte un formulario va a pasar de diez seguro, y
+treinta viajes duelen por pequeños que sean los ficheros— sino que **el paquete no lo puede
+construir la aplicación** sin romper lo único que hace que dos apps compartan (§1.2 a). El
+problema queda abierto y escrito en §4.5.2; la respuesta, cuando toque, será un reparto con
+piezas más gruesas decidido por el framework, no un empaquetado hecho por la app.
 
 ## Lo que la sesión de tests tendrá que cubrir
 
@@ -367,6 +379,14 @@ De la **fase 5**, tareas 19 a 22:
   exacta de un texto generado que esta fase cambia —el enrutador recibe ahora las piezas además
   del shell, y el `install` abre la caché en una variable porque la lee dos veces—. Siguen
   comprobando lo mismo.
+- **De la tarea 23 no hay código que cubrir, y eso mismo es lo que hay que fijar.** Se retiró
+  el límite de peticiones con su paquete por conjunto, así que la propiedad es negativa:
+  `FudicOptions` **no tiene ninguna opción** —su forma es la de SDD-20 más nada— y el
+  coordinador no elige entre piezas sueltas y un paquete porque paquete no hay. Un test que
+  añada una opción de límite, o que espere un fichero agrupado bajo `/_fudic/`, no está
+  completando la fase: está devolviendo bytes de la aplicación al sitio del framework. Lo que
+  sí vigila el problema de fondo —que una página con hidratación, inyección y formulario pase
+  de diez peticiones— es la cuenta por escenario del banco, que ya existe y no necesita test.
 
 ---
 
@@ -413,8 +433,8 @@ F1 las piezas existen ──→ F2 el reparto ──→ F3 enlazar ──→ F4 
 > que ningún escenario. Y el formulario pasó de nueve peticiones a dieciséis, que no es un
 > empeoramiento sino la primera medida honrada: las siete que faltaban eran el modelo —campos,
 > formulario, conversiones y reglas—, que hasta ahora no tenía URL y por tanto no aparecía en
-> ninguna cuenta. Es también el primer escenario que se sale del límite de diez de la fase 5,
-> que es justamente para lo que ese límite existe.
+> ninguna cuenta. Es también el escenario con el que se vio que una página puede pasar de diez
+> peticiones —y la fase 5 decidió que el remedio no puede ser que la app empaquete (§4.5.2)—.
 
 ---
 
@@ -481,11 +501,11 @@ F1 las piezas existen ──→ F2 el reparto ──→ F3 enlazar ──→ F4 
 | [x] | 20 | 19 | **La precarga que antes no se podía escribir.** Un `modulepreload` por pieza de la ruta. Es lo que quita la cadena (§4.5). Criterio 18 | `vite` · `compiler` | `src/emit/parts.ts` |
 | [x] | 21 | 19 | **`FUD0803`:** `?inline` con una política que no declara `nonce`. Criterio 19 | `vite` | `src/diagnostics.ts` |
 | [x] | 22 | 20 | **Con worker, se cachea lo que la página pide cuando lo pide** (§4.5.1). Nada por adelantado: `/_fudic/**` se sirve cache-first desde su propia caché y la entrada se escribe en la primera petición. **El requisito original decía lo contrario** —precachear en el `install` todo lo que la app enlaza— y se cambió con la red delante: 54 peticiones y 64 kB en la primera visita a una ruta que solo hidrata es el monolito otra vez. Criterio 35 | `vite` · `transport` | `src/bootstrap.ts` · `src/router.ts` |
-| [ ] | 23 | 22 | **El límite de peticiones, y el paquete por conjunto** (§4.5.2). Más de `N` piezas en una ruta → un paquete con todas; por debajo, sueltas. `N` por defecto 10, y es **la única opción** que gana `FudicOptions`. El paquete es por **conjunto de piezas y jamás por ruta**: dos rutas con el mismo conjunto, el mismo fichero, y dos apps también. Se emiten las dos formas. Criterio 36 | `vite` | `src/coordinator.ts` |
+| [x] | 23 | 22 | **El límite de peticiones y el paquete por conjunto se retiran** (§4.5.2). Decisión de Pedro, sin escribir una línea: empaquetar diez piezas en una lo tiene que hacer un empaquetador, y el único que hay en ese momento es el de la aplicación —cuyos bytes dependen de su grafo, su minificado y su versión del bundler (§1.2 a)—, así que el paquete de dos apps no sería el mismo fichero y no lo compartiría nadie. `FudicOptions` no gana ninguna opción, que es lo que §3.5 ya decía: la contradicción con el invariante de §5 queda resuelta por ahí. Criterio 36 retirado | `vite` | — |
 
-> **Hito en el navegador (criterios 20 y 36).** Slow 3G, la misma ruta con las dos formas:
-> las piezas empiezan todas a la vez y ninguna espera a otra. Y el límite decidiendo: bajarlo
-> a uno empaqueta todo, subirlo a cien no empaqueta nada.
+> **Hito en el navegador (criterio 20).** Slow 3G sobre el build sin worker, las dos formas
+> —fichero e inline— de la misma ruta: las piezas empiezan todas a la vez y ninguna espera a
+> otra.
 
 ---
 
@@ -530,7 +550,7 @@ F1 las piezas existen ──→ F2 el reparto ──→ F3 enlazar ──→ F4 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [ ] | 31 | todas | **La evidencia, entera.** `examples/workspace` en un origen: la segunda app no descarga ni un byte de framework que la primera ya trajo. Y el despliegue: se reconstruye `app-1` con un id nuevo y de `/_fudic/` no se vuelve a pedir nada. Criterios 31, 32 | `examples` | `examples/workspace/*` |
-| [ ] | 32 | 31 | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`, y los 36 criterios de §6 verdes — con los tres de «rojo primero» (2, 10, 14) vistos fallar antes. SDD-45 a `Hecho` en [INDEX.md](./INDEX.md), tabla y registro | — | [INDEX.md](./INDEX.md) |
+| [ ] | 32 | 31 | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`, y los 35 criterios de §6 verdes — con los tres de «rojo primero» (2, 10, 14) vistos fallar antes. SDD-45 a `Hecho` en [INDEX.md](./INDEX.md), tabla y registro | — | [INDEX.md](./INDEX.md) |
 
 > **Visto en la fase 3 y que la 31 tiene que resolver:** el servidor de `examples/workspace`
 > monta `/admin/` sobre el `dist` de admin y `/` sobre el de tienda, así que una petición de

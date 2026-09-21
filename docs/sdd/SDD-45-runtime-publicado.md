@@ -691,26 +691,38 @@ de su caché HTTP. Y lo que la página dice se comprueba —solo se guarda lo qu
 prefijo del runtime—, porque un mensaje puede nombrar cualquier URL y esta caché la comparte
 todo el origen.
 
-### 4.5.2. Sin worker: un límite de peticiones, y el paquete por conjunto
+### 4.5.2. Sin worker: por qué no se empaqueta, y lo que queda abierto
 
-Con worker o sin él, las peticiones de una ruta se pagan en su primera visita —§4.5.1 dejó de
-adelantarlas—, y ahí sí importa cuántas son. La regla es un número y no una doctrina:
+**Esta sección pedía un límite de peticiones y un paquete por conjunto, y se retira.** Decía
+que una ruta que necesitara más de `N` piezas —`N` por defecto diez, y la única opción que la
+aplicación podría configurar— cargara en su lugar **un paquete** con todas, emitido por
+conjunto de piezas y jamás por ruta, para que dos rutas y dos aplicaciones apuntaran al mismo
+fichero.
 
-> Una ruta que necesitara **más de `N` piezas** carga en su lugar **un paquete** con todas.
-> Por debajo de `N`, las carga sueltas. `N` por defecto **10**, y la aplicación puede cambiarlo.
+**Lo que lo tumba es quién puede construir ese paquete.** Juntar diez piezas en un fichero es
+empaquetar, y el único empaquetador presente en ese momento es el de la aplicación. §1.2 (a)
+dice exactamente por qué eso no sirve: los bytes que emite dependen del grafo de esa app, de su
+configuración de minificado y de la versión del bundler instalada, así que el paquete de la app
+A y el de la app B **no son el mismo fichero** aunque lleven dentro las mismas piezas. El
+paquete por conjunto no lo compartiría nadie —justo lo contrario de lo que prometía— y además
+metería bytes emitidos por una aplicación bajo `/_fudic/`, que es el sitio reservado a lo que
+el framework publica una sola vez (§4.2, §4.13). Es el monolito otra vez, con otra ropa.
 
-Se emiten **las dos cosas**, sueltas y empaquetadas: en el peor caso son unos 17 kB más en el
-`dist`, que en disco no es nada, y cada ruta apunta a una o a otro.
+La otra forma —que los paquetes los publique el framework, ya construidos— exige saber de
+antemano qué conjuntos van a pedir las aplicaciones. Son combinaciones y no una lista: no se
+pueden enumerar.
 
-**El paquete es por conjunto de piezas, nunca por ruta**, y ese detalle es el que hace que la
-idea funcione. Dos rutas que necesitan lo mismo producen el mismo conjunto, luego el mismo
-paquete, luego el mismo fichero — y dos aplicaciones también, porque el contenido es framework
-y nada de la app. Un paquete por ruta no lo compartiría nadie y sería el monolito otra vez,
-troceado.
-
-El número por defecto no es arbitrario: con el reparto de hoy deja sueltos todos los
-escenarios salvo el arranque y el formulario con validación, que son justo los dos que pasan
-de diez peticiones.
+**Lo que no se retira es el problema, y queda escrito para que no se pierda.** Treinta viajes
+de ida y vuelta duelen por pequeño que sea cada fichero. Hoy ninguna ruta de `examples/basic`
+se acerca —cuatro piezas la que hidrata, seis la que además inyecta, y las dieciséis del
+formulario no son de la carga sino del trozo que baja al interactuar—, pero eso es un hecho
+de esta aplicación y no una propiedad del reparto: **una página que hidrate, inyecte y monte
+un formulario las juntará**, y no es una página rara. No bloquea este SDD; la cuenta se
+vigila en el banco. Lo que sí queda decidido es por dónde **no** vendrá la respuesta: no por
+que la aplicación empaquete. Tendrá que venir de un reparto distinto —piezas más gruesas para
+los escenarios que de verdad viajan juntos, decididas y publicadas por el framework (§4.3)— o
+del protocolo. Quien lea esto y sienta la tentación de reconstruir el paquete por conjunto,
+que vuelva a §1.2 primero.
 
 **`FUD0803`, error.** Un layout pide `?inline` y la política de seguridad del documento no
 declara `nonce-{nonce}`. Es decidible en el build y rompe en producción, así que rompe aquí.
@@ -937,8 +949,9 @@ misma forma en los dos sitios es lo que evita que dev y build sean dos programas
 - **Nada del runtime se descarga por adelantado, ni con Service Worker** (§4.5.1). Se cachea
   lo que una página pide, cuando lo pide. Precachearlo entero convierte en monolito, por la
   red, lo que se partió en piezas precisamente para que no lo fuera.
-- **`FudicOptions` gana exactamente una opción**: el límite de peticiones de §4.5.2, porque es
-  una decisión de la aplicación y de nadie más. La versión y el directorio siguen sin serlo.
+- **`FudicOptions` no gana ninguna opción** (§3.5). La versión, el directorio y el inline o
+  fichero no son decisiones de quien configura el plugin, y el límite de peticiones que iba a
+  ser la única se retiró con §4.5.2.
 - **El compilador sigue sin filesystem.** Las URLs llegan resueltas por el host.
 - **Cobertura.** El código nuevo nace al 100 % en las cuatro métricas; ningún paquete tocado
   baja del número que tiene al empezar.
@@ -1034,7 +1047,7 @@ pestaña indicada.
     donde la precarga existe: con worker la segunda visita no toca la red y no hay cascada
     que mirar.
 
-**El arranque mínimo, el worker y el límite** (numerados al final porque se añadieron después;
+**El arranque mínimo y el worker** (numerados al final porque se añadieron después;
 pertenecen a las fases 4 y 5)
 
 34. **Entrar y salir cuesta ~7 200 bytes y no 9 900** (§4.4.1): una ruta que hidrata y en la
@@ -1045,11 +1058,6 @@ pertenecen a las fases 4 y 5)
     pide. Se comprueba en la pestaña de red —la segunda visita no pide ni un byte de runtime—
     y en `Application → Cache Storage`, donde la caché del runtime crece al navegar en vez de
     aparecer entera en el `install`.
-36. **El límite de peticiones decide** (§4.5.2): con el valor por defecto, una ruta de más de
-    diez piezas carga el paquete de su conjunto y una de menos las carga sueltas; bajar el
-    límite a uno empaqueta todas las rutas y subirlo a cien no empaqueta ninguna. Dos rutas
-    con el mismo conjunto apuntan **al mismo** paquete, y se comprueba que es el mismo fichero.
-
 **La caché compartida**
 
 21. `isStaleCache('fudic-runtime-0.0.1', app, build)` es `false` para cualquier `app` y
