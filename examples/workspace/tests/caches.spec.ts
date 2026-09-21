@@ -47,6 +47,15 @@ const ADMIN: App = {
 /** `<kind>-<app>-<build>`, with the build id at a fixed width. */
 const CACHE_NAME = /^(?:shell|routes|pages|data)-(.+)-[0-9a-f]{8}$/u;
 
+/**
+ * The one cache of this origin that belongs to no application (SDD-45 §4.9).
+ *
+ * It holds the published runtime, its name carries the FRAMEWORK's version and neither the
+ * app nor the build, and that is exactly what the two applications are meant to share — so
+ * it is outside the scheme above on purpose, and outside its purge.
+ */
+const SHARED_RUNTIME = /^fudic-runtime-\d/u;
+
 function ownedBy(names: readonly string[], id: string): string[] {
   return names.filter((name) => CACHE_NAME.exec(name)?.[1] === id);
 }
@@ -157,8 +166,14 @@ test.describe('two apps on one origin', () => {
     expect(ownedBy(both, TIENDA.id).length).toBeGreaterThan(0);
     expect(ownedBy(both, ADMIN.id).length).toBeGreaterThan(0);
 
-    // Every cache on this origin is attributable to one of the two applications. A name
-    // without an app segment is the pre-BUG-33 shape, and it must not be written any more.
-    expect(both.filter((name) => CACHE_NAME.exec(name) === null)).toEqual([]);
+    // Every cache on this origin is attributable to one of the two applications, with ONE
+    // exception, and it is the whole of SDD-45: the published runtime, which is shared on
+    // purpose. Any OTHER name without an app segment is the pre-BUG-33 shape and must not be
+    // written any more.
+    expect(
+      both.filter((name) => CACHE_NAME.exec(name) === null && !SHARED_RUNTIME.test(name)),
+    ).toEqual([]);
+    // And it is there: the two applications wrote into the same one instead of one each.
+    expect(both.filter((name) => SHARED_RUNTIME.test(name))).toHaveLength(1);
   });
 });

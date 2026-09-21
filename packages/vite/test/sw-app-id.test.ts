@@ -75,6 +75,7 @@ describe('the app id reaches the emitted Service Worker (criterion 7)', () => {
       runtimeCachePrefix: 'fudic-runtime-',
       // The mark DOES carry the app, and it is the only thing in that cache that does.
       runtimeMarker: '/_fudic/marker/shop',
+      renderer: '/_fudic/0.0.1/ssr/index.js',
     });
 
     expect(source).toContain('const APP = "shop";');

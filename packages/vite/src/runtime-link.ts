@@ -311,7 +311,11 @@ export function runtimeShim(pkg: string, linkage: RuntimeLinkage, specifier: str
 export function runtimeCacheOf(linkage: RuntimeLinkage): string {
   const pieces = [...linkage.byUrl.values()];
   if (pieces.length === 0) return '';
-  const core = pieces.find((piece) => piece.pkg === 'core') ?? pieces[0];
+  // By its FULL name: `pkg` is what the `package.json` says, `@fudic/core` and not `core`.
+  // Written short, this never matched and the fallback answered — the first piece in map
+  // order, whose version is its own package's. Right by coincidence while every package
+  // shares a number, and wrong the day one of them moves.
+  const core = pieces.find((piece) => piece.pkg === '@fudic/core') ?? pieces[0];
   // `/_fudic/<version>/<pkg>/<piece>.js` — the version is the segment after the directory,
   // read back out of the URL the discovery wrote rather than resolved a second time.
   const version = core === undefined ? '' : (core.url.split('/')[2] ?? '');

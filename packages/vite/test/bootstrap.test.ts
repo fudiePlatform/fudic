@@ -19,6 +19,9 @@ describe('emitSwBootstrap', () => {
     runtimeCache: 'fudic-runtime-0.0.1',
     runtimeCachePrefix: 'fudic-runtime-',
     runtimeMarker: '/_fudic/marker/shop',
+    // Linked, not bundled (§4.10): the worker asks its own cache for the renderer and
+    // evaluates it with the linker it already has.
+    renderer: '/_fudic/0.0.1/ssr/index.js',
   });
 
   it('renders in the Service Worker itself: linker, stores and router', () => {
@@ -47,9 +50,46 @@ describe('emitSwBootstrap', () => {
     expect(code).not.toContain('new MessageChannel');
   });
 
-  it('bundles the runtime as a linker builtin instead of shipping it per chunk', () => {
-    expect(code).toContain("import * as ssr from '@fudic/ssr';");
+  it('hands the renderer to chunks as a linker builtin, linked or bundled', () => {
+    // The property that does not move: a chunk resolves `@fudic/ssr` against ONE object the
+    // worker already holds, so the renderer is neither downloaded nor evaluated per chunk.
+    // What SDD-45 §4.10 changes is where that object comes from.
     expect(code).toContain("builtins: { '@fudic/ssr': ssr }");
+
+    // Linked: no static import at all — it is the import that drags `@fudic/ssr` into the
+    // nested build, so leaving it would link the renderer AND ship it — and the renderer is
+    // read from the SHARED cache with a linker of its own, never from this app's routes.
+    expect(code).not.toContain("import * as ssr from '@fudic/ssr';");
+    expect(code).toContain('const RENDERER = "/_fudic/0.0.1/ssr/index.js";');
+    expect(code).toContain('}).link(RENDERER)');
+
+    // Bundled, which is what an empty URL means: exactly the worker of before.
+    const bundled = emitSwBootstrap({
+      manifestUrlExpr: '"/fudic-routes.json"',
+      shell: [],
+      resources: [],
+      app: 'shop',
+      runtimePrefix: '',
+      runtimeCache: '',
+      runtimeCachePrefix: '',
+      runtimeMarker: '',
+      renderer: '',
+    });
+    expect(bundled).toContain("import * as ssr from '@fudic/ssr';");
+    expect(bundled).not.toContain('RENDERER');
+  });
+
+  it('brings the renderer at install, because it is the WORKER’s own dependency', () => {
+    // Not the page's runtime, which is cached as a page asks for it (§4.5.1): without the
+    // renderer in the cache, a first boot offline has nothing to render with. Cache-first, so
+    // the second application of the origin finds it there and asks the network for nothing.
+    const install = code.slice(
+      code.indexOf("addEventListener('install'"),
+      code.indexOf("addEventListener('activate'"),
+    );
+    expect(install).toContain("get(RENDERER, 'cache-first', null)");
+    // And still nothing else of the runtime: the pieces a PAGE uses are not brought here.
+    expect(install).not.toContain('RUNTIME_PREFIX');
   });
 
   it('precaches the shell and the manifest, and nothing else', () => {

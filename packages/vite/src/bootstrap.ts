@@ -50,6 +50,19 @@ export interface SwBootstrapOptions {
    */
   readonly runtimeCachePrefix: string;
   readonly runtimeMarker: string;
+  /**
+   * The URL of the published renderer, or `''` to bundle it in as before (SDD-45 §4.10).
+   *
+   * `@fudic/ssr` used to travel inside every application's worker — 5 918 bytes of framework,
+   * re-downloaded on every deploy because `fudic-sw.js` changes name-less bytes each build.
+   * Linked instead, it is one file per origin and per framework version, shared by every
+   * application there and untouched by a deploy.
+   *
+   * It is fetched by the linker the worker already has, which is why the published renderer
+   * is CommonJS: a Service Worker cannot `import()`, so what it downloads it evaluates with
+   * `new Function` — and an `import` statement inside one is a syntax error.
+   */
+  readonly renderer: string;
 }
 
 /**
@@ -58,12 +71,15 @@ export interface SwBootstrapOptions {
  * the synchronous decision of §4.4.1 always has the manifest in memory.
  */
 export function emitSwBootstrap(options: SwBootstrapOptions): string {
-  return `import {
+  // Linked or bundled, never both: the static import is what drags `@fudic/ssr` into the
+  // nested build, so leaving it in \"just in case\" would link the renderer AND ship it.
+  const linked = options.renderer !== '';
+  return `${linked ? '' : `import * as ssr from '@fudic/ssr';
+`}import {
   loadManifest, createLinker, canLink, createRouter, createStore, cacheNames,
   isStaleCache, sweepRuntimeCaches, controlBus, LOCATION_MESSAGE, RUNTIME_MESSAGE,
   WARM_MESSAGE, WARMED_MESSAGE,
 } from '@fudic/transport';
-import * as ssr from '@fudic/ssr';
 
 const APP = ${JSON.stringify(options.app)};
 const BUILD = ${JSON.stringify(BUILD_TOKEN)};
@@ -76,7 +92,10 @@ const RESOURCES = ${JSON.stringify(options.resources)};
 const RUNTIME_PREFIX = ${JSON.stringify(options.runtimePrefix)};
 const RUNTIME_CACHE = ${JSON.stringify(options.runtimeCache)};
 const RUNTIME_CACHES = ${JSON.stringify(options.runtimeCachePrefix)};
-const RUNTIME_MARKER = ${JSON.stringify(options.runtimeMarker)};
+const RUNTIME_MARKER = ${JSON.stringify(options.runtimeMarker)};${
+    linked ? `
+const RENDERER = ${JSON.stringify(options.renderer)};` : ''
+  }
 const NAMES = cacheNames(APP, BUILD);
 // ONE list, absolute, for the two things that must never drift: what install writes and
 // what the router will serve by identity. A Store key is an absolute URL (BUG-04 §3.1).
@@ -107,7 +126,18 @@ self.addEventListener('install', (e) => e.waitUntil((async () => {
   // arriving by another road. A progressive application downloads what the page in front of
   // the user needs; each piece is cached the first time some page asks for it, and from then
   // on it is a cache read. The framework ends up entirely cached when it has entirely been
-  // needed, and not one request before.
+  // needed, and not one request before.${
+    linked
+      ? `
+  // The renderer is the exception, and it is not the page's runtime: it is THIS WORKER's own
+  // dependency, as much part of it as the shell, and without it in the cache a first boot
+  // offline has nothing to render with. Cache-first, so the second application of this origin
+  // finds it already there and asks the network for nothing.
+  try {
+    await createStore({ cache: await caches.open(RUNTIME_CACHE) }).get(RENDERER, 'cache-first', null);
+  } catch { /* offline at install: \`build\` will ask again, and until then the server renders */ }`
+      : ''
+  }
   await self.skipWaiting();
 })()));
 
@@ -159,10 +189,25 @@ async function build() {
     pages: createStore({ cache: await caches.open(NAMES.pages) }),
     data: createStore({ cache: await caches.open(NAMES.data) }),
   };
+  // The shared runtime cache, opened once: the renderer is read from it and the router
+  // serves \`/_fudic/**\` out of it (SDD-45 §4.5.1, §4.9).
+  const runtime = RUNTIME_CACHE === '' ? null : createStore({ cache: await caches.open(RUNTIME_CACHE) });${
+    linked
+      ? `
+  // Its own linker, and that is the point: this one reads the SHARED cache, the route one
+  // reads this application's. The renderer is evaluated once here and handed to every chunk
+  // as a builtin, so it is neither downloaded nor evaluated per chunk — exactly what
+  // bundling it used to buy, without the bytes being this application's.
+  const ssr = runtime === null ? null : await createLinker({
+    fetchSource: (url) => runtime.get(url, 'cache-first', null).then((r) => r.text()),
+  }).link(RENDERER);
+  if (ssr === null) return null;`
+      : ''
+  }
   const linker = createLinker({
     fetchSource: (url) => stores.routes.get(url, 'cache-first', null).then((r) => r.text()),
-    // The runtime is bundled INTO this worker and handed to chunks as a builtin: it
-    // would otherwise be downloaded and evaluated again per chunk.
+    // Handed to chunks as a builtin: it would otherwise be downloaded and evaluated again
+    // per chunk.
     builtins: { '@fudic/ssr': ssr },
   });
   // The router is handed exactly the URLs install put in the cache — the manifest
@@ -177,9 +222,7 @@ async function build() {
     // the first time a page asks for it (SDD-45 §4.5.1). Its name carries the framework
     // version and neither the app nor the build, which is what lets two applications of one
     // origin share it and what keeps a deploy from throwing it away.
-    ...(RUNTIME_CACHE === '' ? {} : {
-      runtime: { prefix: RUNTIME_PREFIX, store: createStore({ cache: await caches.open(RUNTIME_CACHE) }) },
-    }),
+    ...(runtime === null ? {} : { runtime: { prefix: RUNTIME_PREFIX, store: runtime } }),
   });
   await r.ready();
   controlBus().on((msg) => {

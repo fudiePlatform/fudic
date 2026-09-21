@@ -22,6 +22,9 @@ const OPTIONS = {
   runtimeCache: '',
   runtimeCachePrefix: '',
   runtimeMarker: '',
+  // And the renderer bundled in, which is what an empty URL means (§4.10). This suite
+  // asserts the worker is ONE self-contained file, so it is the shape that must hold here.
+  renderer: '',
 };
 
 describe('swChunkOf', () => {

@@ -47,6 +47,9 @@ const FRONTIER_BYTES = 150;
  * `sharedModules` is the one relaxation of the second rule, and it only applies to pieces that
  * CANNOT COEXIST: if nobody can download both, the same bytes are never twice on the wire.
  *
+ * `otherRealm` is the other relaxation, and it is not that one: these bytes ARE twice on the
+ * origin, deliberately, because the two consumers cannot share a module system.
+ *
  * `unpieced` are exported values with no published piece, and each entry says who does own
  * them. Most of them are `@fudic/transport`, which is inside the worker on purpose (§4.10).
  *
@@ -63,6 +66,27 @@ const EXCEPTIONS = {
       why: 'The two warm channels are exclusive — an app has a Service Worker or it does not — so these bytes are never downloaded twice by anyone. As a piece it was 184 bytes paying a 150-byte frontier for a saving nobody could ever collect.',
     },
   ],
+  /**
+   * The renderer is the one published file that is not an ES module, and this is the price.
+   *
+   * A Service Worker may not `import()` — the specification forbids it in that scope — so it
+   * evaluates what it downloads with `new Function(exports, require, module, …)`, the same path
+   * it uses for every route chunk. An `import` statement inside that function body is a syntax
+   * error, so the renderer is published as CommonJS, and it cannot require DI's pieces either:
+   * those are ES modules, because documents import them. DI therefore travels INSIDE the
+   * renderer, and its bytes are on the origin twice — once as pieces for documents, once in
+   * here for the worker.
+   *
+   * ~2 kB, against ~6 kB taken out of every application's worker and out of every deploy of it.
+   * And not a state hazard: a document and a worker are different realms and never shared a
+   * module. Inside the worker's realm there is still one copy, because a route chunk requires
+   * `@fudic/ssr` and never `@fudic/di`.
+   */
+  otherRealm: {
+    piece: 'ssr/index',
+    modules: /^packages\/di\/src\//,
+    why: '§4.10: the worker cannot import, so the renderer it links is CommonJS with `@fudic/di` inside it. Documents import DI as pieces; the worker cannot. Two realms, two module systems, and the bytes twice on the origin is the price.',
+  },
   unpieced: [
     {
       match: /^@fudic\/transport:(?!.*\/urls\.ts$)/,
@@ -256,6 +280,15 @@ export const runChecks = (root = '.') => {
   const shared = [];
   for (const [module, pieces] of modules) {
     if (pieces.length < 2) continue;
+    const realm = EXCEPTIONS.otherRealm;
+    // The worker's copy: this module is in ITS piece and in the renderer, and nowhere else.
+    if (
+      pieces.length === 2 &&
+      pieces.includes(realm.piece) &&
+      realm.modules.test(module)
+    ) {
+      continue;
+    }
     const allowed = EXCEPTIONS.sharedModules.find(
       (e) => e.module === module && [...pieces].sort().join() === [...e.pieces].sort().join(),
     );
@@ -326,6 +359,14 @@ export const runChecks = (root = '.') => {
     ...EXCEPTIONS.sharedModules
       .filter((e) => (modules.get(e.module) ?? []).length < 2)
       .map((e) => `sharedModules: ${e.module} is no longer in two pieces`),
+    // The day the renderer stops carrying DI — because a worker can import, or because it
+    // stopped needing injection — this permission outlives its reason and says so.
+    ...([...modules].some(
+      ([module, pieces]) =>
+        pieces.includes(EXCEPTIONS.otherRealm.piece) && EXCEPTIONS.otherRealm.modules.test(module),
+    )
+      ? []
+      : [`otherRealm: ${EXCEPTIONS.otherRealm.piece} no longer carries a copy of anybody`]),
   ];
 
   return {

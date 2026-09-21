@@ -832,11 +832,40 @@ descargaba dos veces porque lo pedían dos cargadores distintos, y meterlo todo 
 sigue siendo— la solución. La segunda fila es el camino por el que el worker ya trae **los
 trozos de ruta** en cada navegación.
 
-`@fudic/ssr` está hoy inlineado y entregado a los trozos como `builtins` para que no se
-descargue una vez por trozo. Pasa a traerse por el segundo camino: se pide
+`@fudic/ssr` estaba inlineado y entregado a los trozos como `builtins` para que no se
+descargara una vez por trozo. Pasa a traerse por el segundo camino: se pide
 `/_fudic/<version>/ssr/index.js` al `Store` de la caché compartida, se enlaza con el linker
-que el worker ya tiene, y entra en `builtins` exactamente igual que ahora. Lo mismo
-`@fudic/di`. Son 5 828 de los 16 765 bytes.
+—uno propio, que lee esa caché y no la de esta aplicación— y entra en `builtins` exactamente
+igual que antes. **Medido:** el worker de `examples/basic` pasa de 17 819 a 12 032 bytes, y los
+5 918 que salen son un fichero por origen y por versión del framework, idéntico byte a byte
+para las tres aplicaciones de este repo y que **un despliegue no vuelve a pedir**, porque su
+URL lleva la versión y no el id de construcción.
+
+**Y aquí aparece lo que este documento no había visto: el renderizador publicado NO es un
+módulo.** Un Service Worker no puede `import()` —la especificación lo prohíbe en ese ámbito, y
+es la razón de que el linker exista—, así que lo que descarga lo evalúa con
+`new Function(exports, require, module, …)`. Un `import` dentro de ese cuerpo es un error de
+sintaxis, luego una pieza publicada como módulo ES **no se puede enlazar**. Se publica en la
+forma que su único consumidor sabe evaluar: CommonJS. Es el único fichero de `/_fudic/` que no
+es un módulo, y lo es porque su consumidor no es un documento.
+
+**Por lo mismo, `@fudic/di` viaja DENTRO de ese fichero** en vez de enlazarse aparte. Sus piezas
+son módulos ES —las importan las páginas— y el renderizador no puede requerir un módulo ES
+igual que no puede importarlo. Así que los bytes de la inyección quedan **dos veces en el
+origen**: una como piezas para los documentos y otra dentro del renderizador para el worker.
+Son unos 2 kB contra los casi 6 kB que salen de cada worker y de cada despliegue, y está
+escrito en las excepciones del banco para que se vea, no para que se descubra.
+
+No es un peligro de estado, y conviene decir por qué: un documento y un Service Worker son
+**realms distintos** y nunca compartieron un módulo —hoy tampoco, con el renderizador dentro
+del worker—. Y dentro del realm del worker sigue habiendo una sola copia, porque el trozo de
+una ruta requiere `@fudic/ssr` y jamás `@fudic/di`.
+
+**El renderizador sí se trae en el `install`, y no contradice §4.5.1.** Lo que esa sección
+prohíbe adelantar es el runtime de la PÁGINA; el renderizador es la dependencia del **propio
+worker**, tan suya como el shell, y sin él en la caché un primer arranque sin red no tiene con
+qué renderizar. Se pide cache-first, así que la segunda aplicación del origen lo encuentra
+puesto y no pide nada.
 
 **`@fudic/transport` no se mueve, y no es negociable:** es quien abre la caché, quien tiene el
 `Store` y quien tiene el linker. Pedirle que se traiga a sí mismo por el camino que él mismo

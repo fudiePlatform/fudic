@@ -1046,6 +1046,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           runtimeCache: isDev ? '' : runtimeCacheOf(runtime),
           runtimeCachePrefix: isDev ? '' : RUNTIME_CACHE_PREFIX,
           runtimeMarker: isDev ? '' : runtimeMarkerUrl(appId),
+          // In dev the renderer comes out of Vite's module graph like everything else
+          // (§4.15); there is nothing published to link.
+          renderer: isDev ? '' : (pieceUrl(runtime, '@fudic/ssr', 'index') ?? ''),
         });
       }
       if (id.startsWith(WRAPPER_PREFIX)) {
@@ -1282,6 +1285,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
                 // application's mark inside the one it uses.
                 runtimeCachePrefix: RUNTIME_CACHE_PREFIX,
                 runtimeMarker: runtimeMarkerUrl(appId),
+                // The renderer, linked instead of bundled (§4.10). Empty — and then bundled,
+                // as before — for a project where `@fudic/ssr` publishes nothing this build
+                // can see, which `FUD0804` has already said.
+                renderer: pieceUrl(runtime, '@fudic/ssr', 'index') ?? '',
                 // Non-empty by construction: a `sw.json` without an `id` is FUD0721 and
                 // this build already failed in `buildStart` (SDD-41 §4.3).
                 app: appId,
@@ -1502,7 +1509,14 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       //     deploy over one origin in any order and overwrite each other with identical bytes.
       const copy = piecesToCopy(
         linkedPieces(
-          Object.values(bundle).flatMap((item) => (item.type === 'chunk' ? [item.code] : [])),
+          [
+            ...Object.values(bundle).flatMap((item) => (item.type === 'chunk' ? [item.code] : [])),
+            // The worker's code too, and it is not a chunk of this bundle: it has its own
+            // build and arrives as an asset. Since §4.10 it names the renderer's URL, and a
+            // piece nobody copies is a 404 on the first navigation the worker tries to
+            // render — offline, where there is no server to fall through to.
+            ...(swCode === null ? [] : [swCode]),
+          ],
           runtime,
         ),
         (fileName) => {

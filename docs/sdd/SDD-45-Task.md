@@ -6,7 +6,7 @@
 > `@fudic/di` · `@fudic/compiler` · `@fudic/vite` · `@fudic/transport` · `@fudic/ssr` ·
 > `examples/basic` · `examples/workspace` · `examples/pieces-bench`
 > **Rama:** `sdd-45-runtime-publicado`
-> **Progreso:** 25 / 32
+> **Progreso:** 27 / 32
 > **Bloqueado por:** [SDD-43](./SDD-43-librerias.md) — su tarea 11 es el `peerDependencies`
 > que aquí se endurece, y su criterio 12 es el workspace sobre el que se mide la evidencia.
 
@@ -39,6 +39,26 @@ equivocó tres veces antes de asentarse:
 ---
 
 ## Dónde estamos
+
+**Fase 7 cerrada: el renderizador sale del worker.** Cada aplicación llevaba dentro de su
+Service Worker los 5 918 bytes de `@fudic/ssr` —con la inyección dentro—, y los volvía a
+descargar en cada despliegue, porque el worker cambia de bytes en cada construcción. Ahora los
+pide una vez por origen y por versión del framework, por el mismo camino por el que ya se trae
+el trozo de cada ruta: 17 819 → 12 032 bytes de worker, y un fichero idéntico para las tres
+apps del repo.
+
+**El hueco que apareció al mirar, y que Pedro decidió:** un worker no puede `import()`, así que
+evalúa lo que descarga con `new Function`, y un `import` ahí dentro es un error de sintaxis.
+El renderizador publicado no podía ser un módulo. Se publica en CommonJS —el único fichero de
+`/_fudic/` que no es un módulo— y la inyección viaja dentro de él, porque sus piezas sí son
+módulos que las páginas importan. El precio son ~2 kB de inyección dos veces en el origen,
+escrito en las excepciones del banco. No es un peligro de estado: un documento y un worker son
+realms distintos y nunca compartieron un módulo.
+
+**Y un defecto de paso, en código de la fase 6:** la caché compartida se nombraba buscando la
+pieza de `@fudic/core` por el nombre corto, `core`, cuando lo que se guarda es el nombre
+entero. No casaba nunca y contestaba el respaldo —la primera pieza del mapa—, con la versión
+de otro paquete. Correcto por casualidad mientras todos comparten número.
 
 **Fase 6 cerrada: la caché compartida ya tiene dueño.** Era lo que le faltaba a la idea —una
 caché que nadie se atreve a borrar no ahorra cuota, la gasta—. Cada worker, al activarse, deja
@@ -428,6 +448,44 @@ De la **fase 6**, tareas 24 y 25:
   es la edición deliberada que esa lista exige, y el comentario dice por qué existe. Sigue
   comprobando lo mismo: que crecer la superficie de ese paquete se hace a mano.
 
+De la **fase 7**, tareas 26 y 27:
+
+- **La propiedad que NO se mueve** es que un trozo de ruta resuelve `@fudic/ssr` contra **un
+  solo objeto** que el worker ya tiene, así que el renderizador ni se descarga ni se evalúa una
+  vez por trozo. Eso es lo que compraba empaquetarlo y es lo que hay que seguir comprobando;
+  lo que cambia es de dónde sale ese objeto. El test de `emitSwBootstrap` ya está adaptado en
+  esa forma — comprueba la propiedad primero y las dos formas después.
+- **Enlazado y empaquetado son excluyentes, y el test tiene que decirlo:** el `import` estático
+  es justo lo que arrastra `@fudic/ssr` al build anidado, así que dejarlo «por si acaso»
+  enlazaría el renderizador **y** lo embarcaría. Con URL no hay `import`; sin URL no hay
+  `RENDERER`.
+- **Dos linkers y no uno**, y el motivo no se deduce del código: el del renderizador lee la
+  caché **compartida** del origen y el de las rutas lee la de **esta** aplicación. Un solo
+  linker con una fuente que decidiera por prefijo sería una rama más en el camino crítico y
+  una fuga: un trozo de ruta podría pedir de la caché compartida.
+- **El renderizador se trae en el `install`, y eso es deliberado** (§4.10): no es el runtime de
+  la página —que no se adelanta jamás— sino la dependencia del propio worker. Sin él en la
+  caché, un primer arranque sin red no tiene con qué renderizar. El test que lo fija tiene que
+  comprobar también **lo que el `install` NO trae**, o se convierte en la puerta por la que
+  vuelve el precacheo que la fase 5 quitó.
+- **El nombre de un paquete es el entero.** `pieceUrl(runtime, 'ssr', 'index')` no encuentra
+  nada: lo que se guarda es `@fudic/ssr`. Es el mismo error que tenía `runtimeCacheOf` con
+  `core` y que aquí se corrige — no casaba nunca y contestaba el respaldo, con la versión de
+  otro paquete. Un test por cada uno, y con el nombre corto como caso negativo.
+- **El worker entra en el escaneo de copia.** No es un trozo de este bundle —tiene build propio
+  y llega como asset—, y desde ahora nombra la URL del renderizador. Si no se escanea, la pieza
+  no se copia y la primera navegación que el worker intenta renderizar es un 404, **offline**,
+  donde no hay servidor al que caer. Es el mismo defecto que el escaneo ciego a acentos de la
+  fase 4, una vuelta más.
+- **El renderizador es CommonJS y el banco tiene que seguir diciendo por qué.** La excepción
+  nueva permite que los módulos de inyección estén en su pieza **y** dentro del renderizador, y
+  trae su propio detector de excepción caducada: el día que el worker pueda importar, o deje de
+  necesitar inyección, el banco lo dice en vez de callarse.
+- **Una aserción de la batería de dos apps se adaptó:** exigía que **toda** caché del origen
+  llevara segmento de aplicación. Ahora hay exactamente una que no —la compartida— y es la
+  razón de ser de este SDD; el resto de la propiedad sigue en pie, y se añade que hay **una** y
+  no una por aplicación.
+
 ---
 
 ## Mapa de dependencias
@@ -566,14 +624,19 @@ F1 las piezas existen ──→ F2 el reparto ──→ F3 enlazar ──→ F4 
 
 ---
 
-## Fase 7 — el worker (2)
+## Fase 7 — el worker (2) · **cerrada**
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 26 | 25 | **El worker enlaza `ssr` y `di` en vez de empaquetarlos**, por el camino que ya usa para los trozos de ruta — el que BUG-03 **no** prohíbe. `@fudic/transport` no se mueve: es quien abre la caché y quien enlaza. Criterio 24 | `vite` · `transport` | `src/bootstrap.ts` |
-| [ ] | 27 | 26 | **La batería de navegación de SDD-20 pasa sin tocarla**, offline incluido. Criterio 25 | `transport` | — |
+| [x] | 26 | 25 | **El worker enlaza el renderizador en vez de empaquetarlo**, por el camino que ya usa para los trozos de ruta — el que BUG-03 **no** prohíbe. 17 819 → **12 032** bytes de worker, y los 5 918 que salen son un fichero por origen y por versión, idéntico en las tres apps del repo y que un despliegue no vuelve a pedir. **Con el hueco que la fase encontró:** un worker no puede `import()`, luego evalúa con `new Function`, luego **el renderizador publicado es CommonJS** —el único fichero de `/_fudic/` que no es un módulo— y `@fudic/di` viaja dentro en vez de enlazarse aparte, porque sus piezas son módulos ES que las páginas importan. Decidido con Pedro. `@fudic/transport` no se mueve. Criterio 24 | `vite` · `ssr` · `examples` | `ssr/rolldown.config.ts` · `vite/src/bootstrap.ts` |
+| [x] | 27 | 26 | **La batería de navegación de SDD-20 pasa sin tocarla**, offline incluido: `@fudic/transport` no se toca y sus 115 tests pasan iguales. Y la batería de dos apps sobre un origen pasa **con la red cortada**, que es el criterio 26 medido en Chrome de verdad. Una aserción sí se adaptó —la que exigía que **toda** caché del origen llevara app: ahora hay una que no, y es justo la que este SDD viene a crear—. Criterio 25 | `transport` · `examples` | `examples/workspace/tests/caches.spec.ts` |
 
 > **Hito en el navegador (criterio 26).** Red cortada y la página se renderiza.
+>
+> **Conseguido, y en Chrome de verdad.** La batería de `examples/workspace` corre sobre Chrome
+> del sistema con el worker vivo: la tienda abre sin red después de haber visitado el panel, y
+> el panel abre sin red después de haber visitado la tienda — las dos cosas con el
+> renderizador ya fuera del worker, que es lo que había que probar. Cinco de cinco.
 
 ---
 
