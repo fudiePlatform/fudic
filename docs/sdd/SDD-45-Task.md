@@ -55,6 +55,21 @@ cuelga de `/_fudic/` se sirve cache-first desde la caché de origen y se escribe
 petición: la primera visita cuesta lo que cuesta esa página, y el runtime acaba entero en la
 caché cuando ha hecho falta entero.
 
+**Y la precarga solo se escribe cuando la aplicación NO tiene worker**, corregido con la
+consola delante: Chrome descarta cada `<link>` por cruce de mundos —el escáner de precarga
+pide en uno y el grafo de módulos en el otro—, así que cada pieza se descargaba dos veces en
+cada carga controlada. Con worker la precarga no tiene casi nada que comprar: desde la segunda
+visita las piezas son lectura de caché. El caso sin worker no enlazaba piezas —`nosw` no tenía
+`package.json`, así que el descubrimiento no veía publicadores y el runtime se empaquetaba—;
+ahora sí, y es donde se mide el criterio 20.
+
+**La primera carga la arregla la página.** Un worker se instala durante ella y reclama al
+final, así que sin nada más el runtime se cachea en la segunda visita, que es entonces la
+primera que funciona sin red. Ahora la página, al terminar de cargar, le dice al worker qué
+piezas ha usado —leídas de su línea de tiempo de recursos— y el worker se las queda: son
+ficheros que el navegador ya tiene, así que cuesta una lectura de su caché HTTP. Lo que la
+página dice se comprueba contra el prefijo antes de guardarlo.
+
 **La precarga cambió el número que había que mirar.** Una ruta que hidrata nombra **cuatro**
 piezas en su cabecera, y seis la que además inyecta: la cadena de tres niveles que se veía en
 la fase 3 ya no existe, porque el registro va nombrado arriba en vez de descubrirse dentro de
@@ -326,6 +341,14 @@ De la **fase 5**, tareas 19 a 22:
   documento es una constante del framework y declara el nonce. Lo que se prueba es
   `policyDeclaresNonce` sobre una política sin él, y el cableado — que la pregunta se hace
   sobre el marcador del LAYOUT, que es donde suele estar, y no solo sobre el fichero de la ruta.
+- **La precarga desaparece cuando hay worker** y está cuando no lo hay. Es una propiedad del
+  plugin (`runtimeEntriesFor`) y la razón no se deduce del código: el navegador tira esos
+  `<link>` por cruce de mundos y descarga la pieza dos veces. Un test que compruebe «siempre
+  hay preloads» revive el defecto.
+- **Lo que la página reporta se comprueba antes de guardarse** (`keepRuntime`): una URL fuera
+  del prefijo se ignora, porque un mensaje puede nombrar cualquier cosa y esa caché la
+  comparte todo el origen. Y `notifyRuntimeUsed` no dice nada cuando la página no usó
+  ninguna pieza.
 - **El worker NO precachea el runtime**, y eso hay que fijarlo con un test que lo diga, porque
   es lo que un día alguien «arregla» pensando que falta: el `install` escribe el shell y el
   manifiesto y nada más. Lo que se prueba del camino nuevo es el enrutador

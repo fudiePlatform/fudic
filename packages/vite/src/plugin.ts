@@ -278,7 +278,19 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     return runtimeUrls(
       base,
       coordinator.name,
-      loadedPieces(coordinator.source, runtime),
+      // **No preloads when this application has a Service Worker**, and it is measured rather
+      // than argued: Chrome reports every one of them as «a preload … is not used because it
+      // is a cross-world service worker resource mismatch». The preload scanner fetches the
+      // URL in one world and the module graph asks for it in the other, so the file is
+      // downloaded twice and the preload is thrown away — on every controlled load.
+      //
+      // It is the same wall `writeRuntimeTags` hit for the two entries, written down there
+      // since BUG-31: «under the Service Worker the two requests land in different worlds and
+      // do not match». And with a worker the preload has almost nothing to buy: from the
+      // second visit the pieces are a cache read, so what it would flatten is the chain of
+      // ONE uncontrolled load — a round trip against a duplicated download of every piece,
+      // every load, forever.
+      swConfig === null ? loadedPieces(coordinator.source, runtime) : [],
       coordinator.source,
     );
   };
@@ -1012,7 +1024,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         // The half that is loaded unconditionally (BUG-31 §T2), so it carries the one thing
         // that must happen on every page: registering the worker. Empty when there is none.
         const hasWorker = swConfig !== null && (!isDev || swConfig.dev === 'preview');
-        return emitBootBootstrap(hasWorker ? JSON.stringify(devUrl(base, DEV_SW_URL)) : null);
+        return emitBootBootstrap(
+          hasWorker ? JSON.stringify(devUrl(base, DEV_SW_URL)) : null,
+          // Nothing to report in dev: there the runtime is not published and its URLs are
+          // the dev server's (§4.15).
+          isDev ? '' : `/${RUNTIME_DIR}/`,
+        );
       }
       if (id === SW_ID) {
         return emitSwBootstrap({

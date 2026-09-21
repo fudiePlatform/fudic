@@ -50,7 +50,7 @@ export interface SwBootstrapOptions {
 export function emitSwBootstrap(options: SwBootstrapOptions): string {
   return `import {
   loadManifest, createLinker, canLink, createRouter, createStore, cacheNames,
-  isStaleCache, controlBus, LOCATION_MESSAGE, WARM_MESSAGE, WARMED_MESSAGE,
+  isStaleCache, controlBus, LOCATION_MESSAGE, RUNTIME_MESSAGE, WARM_MESSAGE, WARMED_MESSAGE,
 } from '@fudic/transport';
 import * as ssr from '@fudic/ssr';
 
@@ -181,6 +181,11 @@ self.addEventListener('message', (e) => {
   if (!msg) return;
   if (msg.type === LOCATION_MESSAGE) {
     e.waitUntil(boot().then((r) => r && r.warm(new URL(msg.url).pathname)));
+  } else if (msg.type === RUNTIME_MESSAGE) {
+    // The pieces the page already used (SDD-45 §4.5.1), kept for the next visit. It is the
+    // answer to the one load this worker could not see — its own first one, during which it
+    // was still installing — and it is a read of the browser's HTTP cache, not a download.
+    e.waitUntil(boot().then((r) => r && r.keepRuntime(msg.urls)));
   } else if (msg.type === WARM_MESSAGE) {
     e.waitUntil(boot().then(async (r) => {
       if (!r) return;
@@ -231,14 +236,31 @@ self.addEventListener('fetch', (e) => {
  * the tag is still in the head, and what it loads is empty. That is the one shape that keeps
  * the layout's markup independent of a decision taken in `sw.json`.
  */
-export function emitBootBootstrap(swUrlExpr: string | null): string {
+export function emitBootBootstrap(swUrlExpr: string | null, runtimePrefix = ''): string {
   if (swUrlExpr === null) return 'export {};\n';
   return [
-    `import { registerRenderServiceWorker, notifyLocation } from '@fudic/transport';`,
+    `import { registerRenderServiceWorker, notifyLocation${
+      runtimePrefix === '' ? '' : ', notifyRuntimeUsed'
+    } } from '@fudic/transport';`,
     '',
     `if ('serviceWorker' in navigator) {`,
     `  registerRenderServiceWorker(${swUrlExpr}).then(() => notifyLocation());`,
     `}`,
+    ...(runtimePrefix === ''
+      ? []
+      : [
+          '',
+          `// What this page used of the published runtime, told to the worker AFTER the load`,
+          `// (SDD-45 §4.5.1). On a first visit the worker was still installing while all of`,
+          `// this went past it, so without the notice the runtime is only cached on the second`,
+          `// visit — which is then the first one that can work offline. Reported and not`,
+          `// precached: these files are already in the browser, and the worker just keeps them.`,
+          `if ('serviceWorker' in navigator) {`,
+          `  const report = () => { void notifyRuntimeUsed(${JSON.stringify(runtimePrefix)}); };`,
+          `  if (document.readyState === 'complete') report();`,
+          `  else addEventListener('load', report, { once: true });`,
+          `}`,
+        ]),
     '',
   ].join('\n');
 }

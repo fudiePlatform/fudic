@@ -14,9 +14,11 @@ export const VERSION = '0.0.1';
 export {
   type ControlMessage,
   type LocationMessage,
+  type RuntimeMessage,
   type WarmMessage,
   type WarmedMessage,
   LOCATION_MESSAGE,
+  RUNTIME_MESSAGE,
   WARM_MESSAGE,
   WARMED_MESSAGE,
 } from './messages.js';
@@ -81,4 +83,4 @@ export {
   createRouter,
 } from './router.js';
 export { type ControlBus, controlBus } from './control.js';
-export { registerRenderServiceWorker, notifyLocation } from './main.js';
+export { registerRenderServiceWorker, notifyLocation, notifyRuntimeUsed } from './main.js';

@@ -629,6 +629,16 @@ desaparece.
 Con la forma **inline**, no hay preloads y no hacen falta: los `import` del propio script se
 descubren al leer el HTML, que es el instante más temprano que existe.
 
+**Y no se precarga nada cuando la aplicación tiene Service Worker**, que es una corrección
+medida y no una excepción de comodidad. Chrome descarta cada uno de esos `<link>` con *«a
+preload … is not used because it is a cross-world service worker resource mismatch»*: el
+escáner de precarga pide la URL en un mundo y el grafo de módulos la pide en el otro, así que
+el fichero se descarga dos veces y la precarga se tira, en cada carga controlada. Es el mismo
+muro que este emit ya había documentado para las dos entradas desde BUG-31. Y con worker la
+precarga casi no tiene nada que comprar: desde la segunda visita las piezas son lectura de
+caché, así que lo que aplanaría es la cadena de **una** carga sin controlar — un viaje de ida y
+vuelta contra una descarga duplicada de cada pieza, en todas las cargas siguientes.
+
 **Hecho, y con una precisión que no estaba escrita: se precarga la CARGA, no todo lo que la
 ruta acabará usando.** La lista es el cierre transitivo de lo que el coordinador importa de
 forma **estática**, y lo dinámico se queda fuera a propósito: `core/hydrate` pide el adaptador
@@ -670,6 +680,16 @@ del mismo origen la compartan.
 Lo que se pierde a cambio, dicho en voz alta: una página que nunca se ha visitado no funciona
 sin red. Es exactamente la misma regla que ya regía para el trozo de cada componente, que
 tampoco está en la caché hasta que alguien lo pide.
+
+**Y hay una carga que el worker no puede ver: la primera.** Se instala durante ella y reclama
+al final, así que todo lo que esa página pidió pasó por delante sin que lo viera — y sin nada
+más, el runtime solo se cachea en la SEGUNDA visita, que es entonces la primera que funciona
+sin red. La arregla la propia página: al terminar de cargar le dice al worker qué piezas ha
+usado, leídas de su línea de tiempo de recursos, y el worker se las queda. No es un precacheo
+al revés: son ficheros que el navegador ya tiene, así que quedarse con ellos cuesta una lectura
+de su caché HTTP. Y lo que la página dice se comprueba —solo se guarda lo que cuelga del
+prefijo del runtime—, porque un mensaje puede nombrar cualquier URL y esta caché la comparte
+todo el origen.
 
 ### 4.5.2. Sin worker: un límite de peticiones, y el paquete por conjunto
 
@@ -1002,13 +1022,17 @@ pestaña indicada.
 
 **Inline o fichero**
 
-18. Con `fudic:runtime`, la página escribe un `modulepreload` por pieza; con `?inline`, el
-    coordinador va dentro con `nonce` y no hay preloads.
+18. Con `fudic:runtime` **y sin Service Worker**, la página escribe un `modulepreload` por
+    pieza de la carga; con worker no escribe ninguno, porque el navegador los descarta por
+    cruce de mundos y el fichero acaba descargado dos veces (§4.5). Con `?inline`, el
+    coordinador va dentro con `nonce` y no hay preloads en ningún caso.
 19. `FUD0803` cuando se pide `?inline` sin `nonce` en la política.
 20. **En Chrome, y este es el criterio de la regla 2 de §1.5:** en la cascada de red de una
     ruta, **las piezas empiezan todas a la vez** y ninguna espera a que otra termine.
     Se mira con la red a 3G lento, que es donde se ve. Las dos formas, fichero e inline,
-    tienen que pasarlo.
+    tienen que pasarlo. **Se mide en el build sin worker** (`examples/basic/nosw`), que es
+    donde la precarga existe: con worker la segunda visita no toca la red y no hay cascada
+    que mirar.
 
 **El arranque mínimo, el worker y el límite** (numerados al final porque se añadieron después;
 pertenecen a las fases 4 y 5)

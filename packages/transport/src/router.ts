@@ -158,6 +158,15 @@ export interface Router {
    * `fud:warmed` for those and only those.
    */
   warmHydration(tags: readonly string[]): Promise<readonly string[]>;
+  /**
+   * Keep the pieces a page reports having used (SDD-45 §4.5.1). Idempotent, and a no-op for
+   * an application that links no published runtime.
+   *
+   * It is a KEEP and not a warm: the page already downloaded these, so what happens here is
+   * a read of the browser's own HTTP cache into the origin's runtime cache. What it buys is
+   * the one load a worker cannot intercept — its own first one.
+   */
+  keepRuntime(urls: readonly string[]): Promise<void>;
   /** Seed the in-memory page index from the cache. Awaited before wiring `fetch`. */
   ready(): Promise<void>;
   /** Drop a concrete route's cached page and data. */
@@ -506,6 +515,28 @@ export function createRouter(config: RouterConfig): Router {
     warm,
 
     warmHydration,
+
+    async keepRuntime(urls: readonly string[]): Promise<void> {
+      const runtime = config.runtime;
+      if (runtime === undefined) return;
+      for (const url of urls) {
+        // The page's word is checked, not taken: a message can name any URL, and what this
+        // worker writes into the origin's shared cache must be a piece of the published
+        // runtime and nothing else.
+        const absolute = abs(url);
+        if (!new URL(absolute).pathname.startsWith(runtime.prefix)) continue;
+        try {
+          await runtime.store.get(
+            new Request(absolute, { priority: 'low' }),
+            'cache-first',
+            null,
+          );
+        } catch {
+          // Keeping is an optimisation: a piece that did not land is fetched on demand, the
+          // same way it would have been if this notice had never arrived.
+        }
+      }
+    },
 
     async ready(): Promise<void> {
       for (const url of await stores.pages.keys()) {

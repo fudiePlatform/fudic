@@ -50,6 +50,26 @@ export interface WarmMessage {
   readonly tags: readonly string[];
 }
 
+/**
+ * main → SW: "this page used these pieces of the published runtime" (SDD-45 §4.5.1).
+ *
+ * It exists because of the one load a Service Worker cannot see: the first. A worker
+ * installs during it and claims at the end, so everything that page fetched went past it —
+ * and without this notice the runtime is only cached on the SECOND visit, which is also the
+ * first one that could work offline. The page knows what it used, so it says so.
+ *
+ * URLs and not a list from the build, because what a page used is a fact of that page: its
+ * pieces, the ones the chunk of a component it hydrated dragged in, and the ones §4.4.1
+ * deferred. Nothing is precached on anybody's behalf — this is the opposite, a record of
+ * what already happened.
+ */
+export const RUNTIME_MESSAGE = 'fudic:runtime-used';
+
+export interface RuntimeMessage {
+  readonly type: typeof RUNTIME_MESSAGE;
+  readonly urls: readonly string[];
+}
+
 /** SW → main: these are in the cache, and not one of them was evaluated. */
 export const WARMED_MESSAGE = 'fudic:warmed';
 

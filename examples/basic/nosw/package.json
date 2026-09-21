@@ -1,0 +1,15 @@
+{
+  "name": "@fudic/example-basic-nosw",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The same app without a Service Worker. Not a workspace package: pnpm's globs are examples/*, so nothing installs here — this manifest exists so the build can see which packages publish a runtime, which is read from the ROOT of the project being built (SDD-45 §3.3).",
+  "dependencies": {
+    "@fudic/core": "workspace:*",
+    "@fudic/di": "workspace:*",
+    "@fudic/dom": "workspace:*",
+    "@fudic/forms": "workspace:*",
+    "@fudic/ssr": "workspace:*",
+    "@fudic/transport": "workspace:*"
+  }
+}
