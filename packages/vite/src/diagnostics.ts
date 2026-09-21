@@ -165,3 +165,28 @@ export const FUD_RUNTIME_PIECE_DIFFERS = 'FUD0802';
  * because it is one comparison in the build and an afternoon in a browser.
  */
 export const FUD_RUNTIME_PIECE_HAS_BUILD = 'FUD0806';
+
+/**
+ * A layout asks to carry the runtime inside the document and the policy has no nonce
+ * (SDD-45 §4.5.2, §3.6).
+ *
+ * An ERROR, and it is the one code of this range with a SPAN: what it is about is a line
+ * somebody wrote — `fudic:runtime?inline` — and not a package or a directory.
+ *
+ * It breaks in production and is decidable here, which is the whole argument for checking
+ * it: an inline module is exactly what a strict `script-src` refuses, so the page renders,
+ * the browser drops the script, and nothing hydrates — with no error the author can connect
+ * to the line that caused it. A build that can see both halves says so before that happens.
+ */
+export const FUD_INLINE_WITHOUT_NONCE = 'FUD0803';
+
+/**
+ * Whether a document policy leaves room for the inline form: does it declare the nonce?
+ *
+ * The token and not a parsed policy, because the token is what the response substitutes
+ * (`cspFor`): a policy that never writes `{nonce}` cannot produce a nonce for the page, and
+ * no amount of reading `script-src` changes that.
+ */
+export function policyDeclaresNonce(documentPolicy: string): boolean {
+  return documentPolicy.includes('{nonce}');
+}

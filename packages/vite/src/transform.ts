@@ -15,7 +15,7 @@
  * resolves, hashes and emits — the plugin is the linker, Vite owns the asset pipeline.
  */
 
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { assetUrlFrom, type LinkedAssets } from './linked-assets.js';
 import {
@@ -35,7 +35,9 @@ import {
   LineMap,
   redactServerRegions,
   remapDiagnostics,
+  inlineRuntimeMarker,
   type Diagnostic,
+  type ElementNode,
   type DocumentGraph,
   type OffsetMap,
   type ResolveIo,
@@ -54,6 +56,16 @@ export interface TransformResult {
   readonly map: SourceMapV3;
   /** Linkable asset specifiers that did not resolve to a file (reported as FUD0363). */
   readonly missingAssets: readonly string[];
+  /**
+   * The document asks to carry the runtime inside the page (`fudic:runtime?inline`), and
+   * where it says so — in this file or in a layout of its chain (SDD-45 §3.6).
+   *
+   * A FACT and not a diagnostic, for the same reason `missingAssets` is one: whether it is
+   * allowed depends on the security policy the application ships, which the compiler has
+   * never seen and this module has no business deciding either. The plugin holds the policy
+   * and raises `FUD0803`.
+   */
+  readonly inlineRuntime?: { readonly file: string; readonly offset: number };
   /**
    * Graph-level diagnostics from following the layout chain (SDD-21: FUD0422 cycle,
    * FUD0423/FUD0435 the target is not a layout, FUD0429 orphan section). They concern the
@@ -193,6 +205,21 @@ function emitOptionsFor(
     // for a caller that has no registry — then the emit falls back to an import, which is
     // the pre-BUG-40 behaviour and what the standalone emit does.
     ...(assets === undefined ? {} : { assetUrl: assetUrlFrom(assets, baseDir) }),
+    // The bytes of a resource the author asked to embed (SDD-45 §3.6). Read here because
+    // reading a file is the host's, and read at emit time and not before: `?inline` is rare,
+    // and a project's assets are not something to load into memory on the chance one of them
+    // is asked for. A file that cannot be read stays a URL, exactly as a missing one does.
+    assetText: (spec: string): string | null => {
+      const file = spec.startsWith('/') ? assets?.publicFile(spec) : resolve(baseDir, spec);
+      if (file === undefined) return null;
+      try {
+        return readFileSync(file, 'utf8');
+      } catch {
+        // Unreadable is the same answer as absent, and the reference the author wrote is
+        // what comes out. The missing-asset path (FUD0363) already reports the typo.
+        return null;
+      }
+    },
     // The compiler is filesystem-free and would emit the sibling default `./<tag>.fud`;
     // here the real path is known, so a component may live outside the importer's
     // directory (`components/app-card.fud` linked from `routes/blog/index.fud`).
@@ -211,6 +238,29 @@ function emitOptionsFor(
 }
 
 /** Transform one `.fud` file into its ES module, or `null` when `id` is not a `.fud`. */
+/**
+ * Where this render asks for the inline form: the entry's own head, or its layout's.
+ *
+ * The LAYOUT is where it usually is, and that is why the question is asked over the resolved
+ * graph rather than over one file: the marker belongs to whoever owns the `<head>`, and for
+ * a route that is the layout it links. The first one found is enough — what the plugin does
+ * with it is refuse the pairing, and a second line in the same project is the same refusal.
+ */
+function inlineRuntimeOf(
+  id: string,
+  graph: DocumentGraph,
+): { readonly inlineRuntime: { readonly file: string; readonly offset: number } } | null {
+  const heads: readonly { readonly file: string; readonly head: ElementNode }[] = [
+    ...('head' in graph.entry ? [{ file: id, head: graph.entry.head }] : []),
+    ...graph.layouts.map((layout) => ({ file: layout.path, head: layout.doc.head })),
+  ];
+  for (const { file, head } of heads) {
+    const span = inlineRuntimeMarker(head);
+    if (span !== null) return { inlineRuntime: { file, offset: span.start } };
+  }
+  return null;
+}
+
 export function transformFud(
   id: string,
   io: ResolveIo,
@@ -229,6 +279,7 @@ export function transformFud(
   const out = emitFor(id, graph, emitOptionsFor(id, graph, routeName, styles, assets));
   return {
     code: out.code,
+    ...(inlineRuntimeOf(id, graph) ?? {}),
     map: buildMap(id, redactServerRegions(origin.source, origin.document.code), out, graph.entryMap),
     missingAssets: out.missingAssets,
     watchFiles: graph.snippetFiles,

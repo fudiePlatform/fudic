@@ -17,6 +17,7 @@ import {
   applyNonce,
   cspFor,
   newNonce,
+  DEFAULT_CSP,
   type ManifestFile,
   type RouteRecord,
 } from '@fudic/transport';
@@ -48,7 +49,7 @@ import {
   routeNameLookup,
   routeUsesDi,
 } from './client.js';
-import { IOC_SUFFIX } from '@fudic/compiler';
+import { INLINE_QUERY, IOC_SUFFIX, RUNTIME_MARKER } from '@fudic/compiler';
 import { nodeIo, nodeLinkCheckIo, nodeRuntimeFs } from './io.js';
 import { runtimePieces } from './runtime-pieces.js';
 import {
@@ -61,6 +62,7 @@ import {
 import {
   insidePublisher,
   linkedPieces,
+  loadedPieces,
   pieceUrl,
   piecesToCopy,
   publisherOf,
@@ -97,10 +99,12 @@ import {
   FUD_PRERENDER_FAILED,
   FUD_ROUTE_NAME_COLLISION,
   FUD_PUBLIC_BY_PATH,
+  FUD_INLINE_WITHOUT_NONCE,
   FUD_RUNTIME_PIECE_HAS_BUILD,
   FUD_RUNTIME_PIECE_MISSING,
   FUD_STYLES_NOT_ADOPTED,
   FUD_SW_SHELL_MISSING,
+  policyDeclaresNonce,
 } from './diagnostics.js';
 import { devUrl, devManifest, devClientTag, devClientPrefix, withInlineSourceMap } from './dev.js';
 import {
@@ -127,7 +131,7 @@ import {
   PAGE_NAME_PREFIX,
 } from './constants.js';
 import { chunkNamesOf } from './names.js';
-import { runtimeUrls } from './constants.js';
+import { runtimeUrls, type RuntimeEntries } from './constants.js';
 import { planRename, rewriteReferences, mapNameOf, isHashedChunk } from './rename.js';
 import { keepSet, reachableChunks, type PruneItem } from './prune.js';
 
@@ -250,12 +254,32 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   const coordinatorSources = new Map<string, string>();
 
   /**
-   * The chunk name a route's head writes, or `''` when the route has no coordinator.
+   * What a route's head is handed about the runtime in a BUILD (SDD-45 §3.6, §4.5).
    *
-   * Empty is not a degraded case: a page that does not hydrate has no file and writes no tag
-   * (SDD-45 §4.4), and `writeRuntimeTags` decides the tag from the same fact.
+   * Everything empty when the route has no coordinator, and that is not a degraded case: a
+   * page that does not hydrate has no file and writes no tag, and the emit decides the tag
+   * from the same fact.
+   *
+   * The pieces are the LOAD closure of this route's coordinator — what a `modulepreload`
+   * has to name for the browser to open every connection while it is still reading the head
+   * — and `inline` is the coordinator's own source, for a layout that asked to carry it in
+   * the document. Both are derived from the same coordinator the file is emitted from, so
+   * the head cannot name a set the module does not import.
+   *
+   * The source goes in as it was generated, with `BUILD_TOKEN` still inside it: the edge
+   * chunk that carries this constant is substituted like every other emitted file, so the
+   * embedded module ends up with the same build id as the one on disk.
    */
-  const mainNameOf = (pattern: string): string => coordinators.get(pattern)?.name ?? '';
+  const runtimeEntriesFor = (pattern: string): RuntimeEntries => {
+    const coordinator = coordinators.get(pattern) ?? null;
+    if (coordinator === null) return runtimeUrls(base, '');
+    return runtimeUrls(
+      base,
+      coordinator.name,
+      loadedPieces(coordinator.source, runtime),
+      coordinator.source,
+    );
+  };
 
   /**
    * Whether a chunk is a coordinator, asked by its FACADE module.
@@ -1016,9 +1040,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           // the variant that does, outside `outDir`.
           withLoad: isDev,
           // Dev has no build and no id: the two entries are served at their stable URLs.
+          // Dev has no build and no id: the two entries are served at their stable URLs,
+          // there is nothing to preload — the dev server hands the runtime out of the module
+          // graph — and nothing to embed, so a layout that asks for `?inline` keeps the file
+          // form there. That is §4.15: development does not change.
           runtime: isDev
-            ? { boot: devUrl(base, DEV_BOOT_URL), main: devUrl(base, DEV_MAIN_URL) }
-            : runtimeUrls(base, mainNameOf(pattern)),
+            ? { boot: devUrl(base, DEV_BOOT_URL), main: devUrl(base, DEV_MAIN_URL), pieces: [], inline: '' }
+            : runtimeEntriesFor(pattern),
         });
       }
       // Nothing of ours: if the module is a built `dist/*.js` that ships its own map, hand
@@ -1089,6 +1117,21 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       for (const spec of result.missingAssets) {
         this.warn(`[${FUD_ASSET_NOT_FOUND}] asset "${spec}" not found (referenced by ${path})`);
       }
+      // The inline form against the policy this application ships (SDD-45 §4.5.2). An error
+      // rather than a warning because the page it would produce renders and does not
+      // hydrate: the browser drops the module and nothing connects that silence to the line
+      // that caused it.
+      //
+      // The policy is the framework's default today and declares the nonce, so this cannot
+      // fire yet. It is written where it will keep working the day the policy is the
+      // project's, which is the only reason a build check is worth anything.
+      if (result.inlineRuntime !== undefined && !policyDeclaresNonce(DEFAULT_CSP.document)) {
+        this.error(
+          `[${FUD_INLINE_WITHOUT_NONCE}] "${RUNTIME_MARKER}?${INLINE_QUERY}" needs the document ` +
+            `policy to declare 'nonce-{nonce}', and this one does not ` +
+            `(${result.inlineRuntime.file} at ${result.inlineRuntime.offset})`,
+        );
+      }
       // The `.fud` this module's markup came from that Vite cannot see: a snippet file is
       // not imported by the emitted code, it is expanded INTO it (SDD-29 §4.10), so without
       // this an edit to it would rebuild nothing.
@@ -1130,7 +1173,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       const link: LinkResult =
         swConfig === null
           ? { chunks: [], entries: new Map(), deps: new Map() }
-          : await runLinkPass(root, base, builds, io, nested, projectStyles, linked, mainNameOf);
+          : await runLinkPass(root, base, builds, io, nested, projectStyles, linked, runtimeEntriesFor);
       // A nested build's output is emitted as an ASSET, so nothing writes its `.map` or
       // appends its `sourceMappingURL` unless we do (BUG-05 §4.3).
       const emitWithMap = (artifact: NestedArtifact): void => {
@@ -1161,7 +1204,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         nested,
         projectStyles,
         linked,
-        mainNameOf,
+        runtimeEntriesFor,
       );
 
       // 2. The Service Worker's own bundle: one realm, one bundle (BUG-03 §4.1). Its
@@ -1488,6 +1531,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         base,
         serviceWorker: swConfig !== null,
         hydrateDeps,
+        // What this application links, as the copy above settled it: the pieces that really
+        // landed in the output, which is what a worker can precache without asking for a
+        // file nobody wrote (SDD-45 §4.5.1).
+        runtime: copy.files.map((file) => `/${file.fileName}`),
         depsOf: (rb) => {
           if (!link.entries.has(rb.route.pattern)) {
             this.warn(`[${FUD_CHUNK_NOT_EMITTED}] no linkable chunk for ${rb.route.pattern}`);

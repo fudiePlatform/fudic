@@ -63,12 +63,34 @@ self.addEventListener('install', (e) => e.waitUntil((async () => {
   // \`cache: 'reload'\` skips the browser's HTTP cache: the shell has fixed unhashed names,
   // so a host with a long max-age would otherwise let a new build precache the OLD bytes
   // — served forever, since the policy is cache-first with no TTL.
-  const shell = createStore({ cache: await caches.open(NAMES.shell) });
+  const cache = await caches.open(NAMES.shell);
+  const shell = createStore({ cache });
   for (const url of PRECACHE) {
     try {
       const response = await fetch(url, { cache: 'reload' });
       if (response.ok) await shell.put(url, response);
     } catch { /* a missing shell entry must not fail install */ }
+  }
+  // And the published runtime this application LINKS (SDD-45 §4.5.1). One batch, here,
+  // because here is where it is free: out of the critical path and once per version. From
+  // the activation on, every runtime request is a cache read, and the granularity that pays
+  // for itself on a slow first load stops costing anything at all.
+  //
+  // The list comes from the MANIFEST and not from a constant in this file, and that is not
+  // indirection: which pieces survive is known only after the build has pruned, and what has
+  // to be precached is what a browser will actually ask for. The manifest is in the cache by
+  // now — it is the last entry of PRECACHE.
+  //
+  // No \`cache: 'reload'\`: a piece's URL carries its version, so the bytes behind it never
+  // change and the browser's own HTTP cache is exactly right. The shell is the opposite case
+  // — fixed names, new bytes — which is why it reloads.
+  const table = await loadManifest(MANIFEST_URL, cache).catch(() => null);
+  for (const url of table === null ? [] : table.runtime()) {
+    const abs = new URL(url, self.location.href).href;
+    try {
+      const response = await fetch(abs);
+      if (response.ok) await shell.put(abs, response);
+    } catch { /* a piece that does not answer is fetched again when it is needed */ }
   }
   await self.skipWaiting();
 })()));
@@ -120,7 +142,17 @@ async function build() {
   });
   // The router is handed exactly the URLs install put in the cache — the manifest
   // included: what is precached is served, and served BY IDENTITY (BUG-01 §4.1, §4.3).
-  const r = createRouter({ table, linker, stores, resources: RESOURCES, shell: PRECACHE });
+  // The pieces go in beside the shell, and for the same reason the shell is here at all:
+  // what install wrote is what fetch serves, by identity (BUG-01 §4.1). A cache nobody
+  // reads is a bug by construction, and precaching the runtime without this would be one —
+  // the bytes would sit there while every page paid the network for them again.
+  const r = createRouter({
+    table,
+    linker,
+    stores,
+    resources: RESOURCES,
+    shell: [...PRECACHE, ...table.runtime().map((url) => new URL(url, self.location.href).href)],
+  });
   await r.ready();
   controlBus().on((msg) => {
     if (msg.type === 'version') { linker.reset(); caches.delete(NAMES.pages); }

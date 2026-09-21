@@ -280,6 +280,48 @@ export function runtimeShim(pkg: string, linkage: RuntimeLinkage, specifier: str
  * application ever mentioning them. Copying only what the application names leaves a `dist`
  * that 404s on the second hop — a deployable tree is the property §4.2 is about.
  */
+/**
+ * The pieces a route pays for at LOAD: the transitive closure of what its coordinator
+ * imports STATICALLY, which is the set a `<link rel="modulepreload">` has to name (§4.5).
+ *
+ * Static and not every URL, and the difference is the whole of §4.4.1: `core/hydrate` asks
+ * for the DOM adapter and the signal with a dynamic `import`, precisely so that a visit that
+ * touches nothing does not pay for them. Preloading them would buy back the bytes the last
+ * phase removed — and buy them for every page, which is worse than where it started.
+ *
+ * Transitive, because preloading only the direct imports leaves the chain intact one level
+ * down: the coordinator names `core/hydrate`, and `core/registry` is discovered inside it,
+ * one round trip late. That chain is what §1.5 rule 2 forbids and what this list removes.
+ *
+ * The two forms are told apart by syntax and not by quote style: `from "…"` and `import "…"`
+ * are the static ones, `import("…")` is not, whatever quotes the minifier chose.
+ */
+export function loadedPieces(code: string, linkage: RuntimeLinkage): readonly string[] {
+  const seen = new Set<string>();
+  const queue: string[] = [];
+
+  const take = (text: string): void => {
+    for (const match of text.matchAll(
+      /(?:^|[^.$\w])(?:from|import)\s*["'`](\/_fudic\/[^"'`]+\.js)["'`]/gu,
+    )) {
+      const url = match[1];
+      if (url === undefined || seen.has(url) || !linkage.byUrl.has(url)) continue;
+      seen.add(url);
+      queue.push(url);
+    }
+  };
+
+  take(code);
+  while (queue.length > 0) {
+    const url = queue.shift();
+    const piece = url === undefined ? undefined : linkage.byUrl.get(url);
+    if (piece !== undefined) take(piece.code);
+  }
+  // In the order the head will write them, which is stable across builds for the same reason
+  // the shim's is: two builds of one application must produce the same bytes.
+  return [...seen].toSorted((a, b) => a.localeCompare(b));
+}
+
 export function linkedPieces(
   code: Iterable<string>,
   linkage: RuntimeLinkage,

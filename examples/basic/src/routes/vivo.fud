@@ -1,4 +1,7 @@
-<link rel="layout" href="../layouts/_layout.fud">
+@* El único layout de este ejemplo que pide las dos cosas dentro de la página: el arranque
+   y la hoja de tokens. Está aquí para poder comparar las dos formas en la pestaña de red
+   con las demás rutas, que usan el layout normal. *@
+<link rel="layout" href="../layouts/_layout-inline.fud">
 <link rel="component" href="../components/site-nav.fud">
 <link rel="component" href="../components/vivo-lista.fud">
 

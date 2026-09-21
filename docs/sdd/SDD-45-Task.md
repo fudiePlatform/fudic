@@ -6,7 +6,7 @@
 > `@fudic/di` · `@fudic/compiler` · `@fudic/vite` · `@fudic/transport` · `@fudic/ssr` ·
 > `examples/basic` · `examples/workspace` · `examples/pieces-bench`
 > **Rama:** `sdd-45-runtime-publicado`
-> **Progreso:** 18 / 32
+> **Progreso:** 22 / 32
 > **Bloqueado por:** [SDD-43](./SDD-43-librerias.md) — su tarea 11 es el `peerDependencies`
 > que aquí se endurece, y su criterio 12 es el workspace sobre el que se mide la evidencia.
 
@@ -39,6 +39,27 @@ equivocó tres veces antes de asentarse:
 ---
 
 ## Dónde estamos
+
+**Fase 5 con cuatro de sus cinco tareas hechas: queda la 23, y es la que decide Pedro.** El
+interruptor del layout existe y `?inline` significa lo mismo en cualquier recurso que el autor
+referencia —el arranque y una hoja de estilos, hoy—; la precarga escribe un `<link>` por pieza
+de la CARGA; `FUD0803` está escrito donde cae; y con worker se precachea en el `install` lo que
+el manifiesto nombra, que es exactamente lo que la aplicación enlaza.
+
+**La precarga cambió el número que había que mirar.** Una ruta que hidrata nombra **cuatro**
+piezas en su cabecera, y seis la que además inyecta: la cadena de tres niveles que se veía en
+la fase 3 ya no existe, porque el registro va nombrado arriba en vez de descubrirse dentro de
+la hidratación. Y lo dinámico se queda fuera a propósito: precargar el adaptador y el signal
+devolvería a toda página los bytes que la tarea 16 acaba de quitar.
+
+**Lo que eso deja encima de la mesa, que es la pregunta que esta fase tenía aparcada:** con el
+reparto de hoy **ninguna ruta llega a diez piezas de carga**, así que el límite de §4.5.2 no
+dispararía nunca sobre la carga. Las dieciséis peticiones del formulario no son de la carga:
+las trae el trozo del componente al hidratarse, y el coordinador no las nombra. Y hay un
+problema de fondo con el paquete: **empaquetar lo tiene que hacer un empaquetador, y el de la
+aplicación no produce los mismos bytes que el de otra** —que es justo lo que §1.2 dice y lo que
+hace que dos apps compartan—, así que un paquete por conjunto construido por la app **no lo
+comparte nadie**, al revés de lo que §4.5.2 promete.
 
 **Fase 4 cerrada, con el hito visto en Chrome.** El coordinador
 existe y es por ruta —321 bytes la ruta que solo hidrata y 572 la que además inyecta, contra los
@@ -260,6 +281,45 @@ fijar, empezando por lo único que de verdad protege la tarea:
   router usa de verdad es `clear()`; que `get()` antes de la primera hidratación no es un camino
   soportado conviene fijarlo también.
 
+De la **fase 5**, tareas 19 a 22:
+
+- **El marcador tiene tres respuestas y no dos** (`runtimeMarkerForm`): fichero, dentro de la
+  página, y **nada**. `fudic:runtimeish` o el marcador con cualquier otra query no son el
+  marcador: una query desconocida es una errata, y contestarla como si fuera el defecto es cómo
+  una página acaba silenciosamente sin inlinear. Eso hay que fijarlo, porque es lo primero que
+  alguien «arregla» con un `startsWith`.
+- **La forma viaja del layout a la ruta como ARGUMENTO** (`runtime($inline)`), y el motivo es
+  que un layout se compila una vez y lo comparten muchas rutas. La ruta lleva las dos formas
+  escritas; cuál corre lo dice quien tiene el marcador. Un test que meta la forma en la ruta
+  hace que dos rutas con el mismo layout puedan discrepar.
+- **La precarga es el cierre transitivo de los imports ESTÁTICOS** (`loadedPieces`). Dos
+  propiedades y las dos son de la tarea 16: que `core/registry` esté en la lista aunque el
+  coordinador no lo nombre, y que el adaptador y el signal **no** lo estén aunque
+  `core/hydrate` los pida. Las dos formas se distinguen por sintaxis y no por comillas, que es
+  lo que hay que fijar: `from "…"` e `import "…"` sí, `import("…")` no, ponga el minificador
+  las comillas que quiera.
+- **`?inline` sobre un recurso** (`inlineStyleExpr`): una hoja de estilos y solo una hoja de
+  estilos; el `<link>` desaparece y no se registra ningún import, así que el build tampoco
+  publica el fichero. Pasa por las dos pasadas de CSS que ya existen —compactado y `url(…)`
+  enlazado—, y eso es lo que hay que fijar: un segundo camino para el CSS es cómo una de las
+  dos salidas deja de minificarse sin que nadie se entere, que es literalmente BUG-08.
+- **El nonce del layout se escribe solo cuando hace falta** (`headEmbedsAsset`). Un layout
+  nunca había escrito nada inline suyo, así que no declaraba el binding; el fallo fue un
+  `$nonce is not defined` en el prerender y no en un test.
+- **`FUD0803` no puede dispararse hoy**, y conviene que su test lo diga: la política del
+  documento es una constante del framework y declara el nonce. Lo que se prueba es
+  `policyDeclaresNonce` sobre una política sin él, y el cableado — que la pregunta se hace
+  sobre el marcador del LAYOUT, que es donde suele estar, y no solo sobre el fichero de la ruta.
+- **El precacheado del worker lee el MANIFIESTO** y no una constante, porque la lista solo se
+  sabe después de la poda. Tres propiedades: que lo que el `install` escribe es lo que el
+  enrutador sirve —si no, es una caché que nadie lee—, que las piezas se piden **sin**
+  `cache: 'reload'` al contrario que el shell, y que un manifiesto sin `runtime` deja el
+  `install` exactamente como estaba.
+- **Tres aserciones de `bootstrap.test.ts` se adaptaron**, no se borraron: comprobaban la forma
+  exacta de un texto generado que esta fase cambia —el enrutador recibe ahora las piezas además
+  del shell, y el `install` abre la caché en una variable porque la lee dos veces—. Siguen
+  comprobando lo mismo.
+
 ---
 
 ## Mapa de dependencias
@@ -369,10 +429,10 @@ F1 las piezas existen ──→ F2 el reparto ──→ F3 enlazar ──→ F4 
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 19 | 18 | **El interruptor del layout.** `fudic:runtime` como fichero, `fudic:runtime?inline` dentro de la página con `nonce`. Por defecto fichero. Lo mismo para `fudic:styles`. Criterio 18 | `compiler` | `src/emit/parts.ts` |
-| [ ] | 20 | 19 | **La precarga que antes no se podía escribir.** Un `modulepreload` por pieza de la ruta. Es lo que quita la cadena (§4.5). Criterio 18 | `vite` · `compiler` | `src/emit/parts.ts` |
-| [ ] | 21 | 19 | **`FUD0803`:** `?inline` con una política que no declara `nonce`. Criterio 19 | `vite` | `src/diagnostics.ts` |
-| [ ] | 22 | 20 | **Con worker, se precachea lo que la aplicación enlaza** (§4.5.1), ni más ni menos. A partir del `install`, toda petición de runtime es lectura de caché — y la granularidad deja de tener coste. Criterio 35 | `vite` | `src/bootstrap.ts` |
+| [x] | 19 | 18 | **El interruptor del layout.** `fudic:runtime` como fichero, `fudic:runtime?inline` dentro de la página con `nonce`. Por defecto fichero. Lo mismo para `fudic:styles`. Criterio 18 | `compiler` | `src/emit/parts.ts` |
+| [x] | 20 | 19 | **La precarga que antes no se podía escribir.** Un `modulepreload` por pieza de la ruta. Es lo que quita la cadena (§4.5). Criterio 18 | `vite` · `compiler` | `src/emit/parts.ts` |
+| [x] | 21 | 19 | **`FUD0803`:** `?inline` con una política que no declara `nonce`. Criterio 19 | `vite` | `src/diagnostics.ts` |
+| [x] | 22 | 20 | **Con worker, se precachea lo que la aplicación enlaza** (§4.5.1), ni más ni menos. A partir del `install`, toda petición de runtime es lectura de caché — y la granularidad deja de tener coste. Criterio 35 | `vite` | `src/bootstrap.ts` |
 | [ ] | 23 | 22 | **El límite de peticiones, y el paquete por conjunto** (§4.5.2). Más de `N` piezas en una ruta → un paquete con todas; por debajo, sueltas. `N` por defecto 10, y es **la única opción** que gana `FudicOptions`. El paquete es por **conjunto de piezas y jamás por ruta**: dos rutas con el mismo conjunto, el mismo fichero, y dos apps también. Se emiten las dos formas. Criterio 36 | `vite` | `src/coordinator.ts` |
 
 > **Hito en el navegador (criterios 20 y 36).** Slow 3G, la misma ruta con las dos formas:

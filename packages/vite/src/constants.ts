@@ -112,11 +112,37 @@ export function bootFileName(build: string): string {
  * names none at all — which arrives here as an empty string, the shape a standalone render
  * already used, and which the head never reads because it writes no tag either.
  */
-export function runtimeUrls(base: string, main: string): { boot: string; main: string } {
+export function runtimeUrls(
+  base: string,
+  main: string,
+  pieces: readonly string[] = [],
+  inline = '',
+): RuntimeEntries {
   return {
     boot: `${base}${bootFileName(BUILD_TOKEN)}`,
     main: main === '' ? '' : `${base}${main}-${BUILD_TOKEN}.js`,
+    pieces,
+    inline,
   };
+}
+
+/**
+ * What a page's `<head>` is handed about the runtime (SDD-45 §3.6, §4.5).
+ *
+ * Four facts and not two, and the two that arrived are the ones this SDD made knowable. The
+ * PIECES are what the coordinator imports at load, so the head can name them all at once and
+ * the browser stops discovering them one round trip deep. `inline` is the coordinator's own
+ * source, for a layout that asked to carry it in the document rather than fetch it; empty
+ * when there is nothing to embed, which is dev, where nothing is built (§4.15).
+ *
+ * None of the four is the `base` of the application except the two that are its own files:
+ * a piece's URL is origin-absolute and shared by every app of the origin (§4.2).
+ */
+export interface RuntimeEntries {
+  readonly boot: string;
+  readonly main: string;
+  readonly pieces: readonly string[];
+  readonly inline: string;
 }
 
 /**

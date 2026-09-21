@@ -43,6 +43,15 @@ export interface ManifestInputs {
   /** Emit `sw` records at all (no `sw.json` → no Service Worker). */
   readonly serviceWorker: boolean;
   /**
+   * The published pieces this build LINKS, origin-absolute (SDD-45 §4.5.1) — what a worker
+   * precaches in one batch at `install`.
+   *
+   * Stated here and nowhere else because here is the only place that knows the final answer:
+   * it is read back out of the code that survived the prune, so it names what a browser will
+   * really ask for rather than what the graph once reached.
+   */
+  readonly runtime?: readonly string[];
+  /**
    * Tag → what its hydration chunk statically imports, transitively (SDD-17 §4.7).
    *
    * The one exception to "the manifest states names, never URLs": these chunks are SHARED,
@@ -191,6 +200,9 @@ export function buildManifest(
       // object in the file would say "asked and answered nothing", which is not the case.
       ...(Object.keys(hydrate).length === 0 ? {} : { hydrate: folded }),
       ...(assets === '' ? {} : { assets }),
+      // Absent when this build links nothing — a project with no runtime published in its
+      // graph, or a dev manifest — and then a worker precaches exactly what it did before.
+      ...((inputs.runtime ?? []).length === 0 ? {} : { runtime: inputs.runtime }),
     },
     diagnostics,
   };

@@ -46,23 +46,47 @@ export type AssetOrigin = 'head' | 'markup';
 /** Injected existence check: does a linkable specifier resolve to a real file? */
 export type AssetExists = (spec: string) => boolean;
 
+/**
+ * Injected reader: the TEXT of an asset the author asked to embed (`…?inline`, SDD-45 §3.6).
+ *
+ * A port and not a filesystem call, for the reason every other one here is: the compiler has
+ * no filesystem, and the host is the only side that knows where a specifier lands. `null` is
+ * a file it cannot read, and then the reference stays what the author wrote — a URL — which
+ * is the same permissive stance the rest of this linker takes.
+ */
+export type AssetText = (spec: string) => string | null;
+
 export class AssetLinker {
   readonly #enabled: boolean;
   readonly #exists: AssetExists | undefined;
   readonly #url: AssetUrl | undefined;
+  readonly #text: AssetText | undefined;
   readonly #imports: string[] = [];
   readonly #bySpec = new Map<string, string>();
   readonly #missing: string[] = [];
   #id = 0;
 
-  constructor(enabled: boolean, exists?: AssetExists, url?: AssetUrl) {
+  constructor(enabled: boolean, exists?: AssetExists, url?: AssetUrl, text?: AssetText) {
     this.#enabled = enabled;
     this.#exists = exists;
     this.#url = url;
+    this.#text = text;
   }
 
   get enabled(): boolean {
     return this.#enabled;
+  }
+
+  /**
+   * The contents of a linkable asset, or `null` when nobody can read it here.
+   *
+   * Only for a specifier the author asked to embed: what comes back is put IN the document,
+   * so a file that cannot be read leaves the reference exactly as it was written.
+   */
+  textOf(spec: string): string | null {
+    if (!this.#enabled || this.#text === undefined) return null;
+    if (!AssetLinker.linkable(spec)) return null;
+    return this.#text(AssetLinker.filePath(spec));
   }
 
   /** Linkable specifiers that did not resolve to a file — the plugin reports them as FUD0363. */

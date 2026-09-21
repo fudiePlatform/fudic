@@ -17,7 +17,8 @@ describe('emitSwBootstrap', () => {
 
   it('renders in the Service Worker itself: linker, stores and router', () => {
     expect(code).toContain('createLinker');
-    expect(code).toContain('createRouter({ table, linker, stores, resources: RESOURCES');
+    expect(code).toContain('createRouter({');
+    expect(code).toContain('resources: RESOURCES,');
     expect(code).toContain("addEventListener('fetch'");
   });
 
@@ -25,7 +26,10 @@ describe('emitSwBootstrap', () => {
     // The shell cache is opened once and used for BOTH: reading the manifest and
     // serving. Without the store there is no reader, and the precache is decoration.
     expect(code).toContain('shell: createStore({ cache: shell })');
-    expect(code).toContain('shell: PRECACHE');
+    // The precached list is what the router is handed — plus the published pieces the
+    // install also wrote (SDD-45 §4.5.1), which are precached for the same reason and would
+    // be a write-only cache without this.
+    expect(code).toContain('shell: [...PRECACHE, ...table.runtime()');
     // The very list the install loop iterates: the two cannot drift.
     const install = code.slice(code.indexOf("addEventListener('install'"), code.indexOf("addEventListener('activate'"));
     expect(install).toContain('for (const url of PRECACHE)');
@@ -56,7 +60,8 @@ describe('emitSwBootstrap', () => {
     const install = code.slice(code.indexOf("addEventListener('install'"), code.indexOf("addEventListener('activate'"));
     // `cache.add` is what wrote an entry the page's own request could not match.
     expect(install).not.toContain('cache.add');
-    expect(install).toContain('createStore({ cache: await caches.open(NAMES.shell) })');
+    expect(install).toContain('await caches.open(NAMES.shell)');
+    expect(install).toContain('createStore({ cache })');
     expect(install).toContain('shell.put(url, response)');
     // A fixed unhashed name plus a long max-age would let a new build precache the OLD
     // bytes, and cache-first with no TTL would serve them forever.

@@ -14,6 +14,7 @@ import type { ComponentGraph, ResolvedComponent, ResolvedLayout } from './resolv
 import type { CodeWriter } from './writer.js';
 import { AssetLinker } from './assets.js';
 import { isAssetAttr } from './markup.js';
+import { compactProjectCss } from './project-styles.js';
 import { isLiteralText, literalText } from './runs.js';
 import type { ExtractedCode } from './oxc-code.js';
 
@@ -48,12 +49,56 @@ export function specifierResolver(
 }
 
 /**
+ * A `<link rel="stylesheet" href="…?inline">` as the sheet itself, or `null` when this
+ * element is not that (SDD-45 §3.6).
+ *
+ * A stylesheet and nothing else, deliberately. `?inline` is a general instruction — put this
+ * resource in the page — but a document has exactly one kind of resource whose embedding is
+ * free of consequences: CSS, which is text and which the page was going to apply anyway. An
+ * icon or an image embedded as a data URI grows the HTML of EVERY page by a third of the
+ * file, and that is a different trade with a different answer. It stays a URL, and the query
+ * travels to the bundler, which has its own meaning for it.
+ */
+function inlineStyleExpr(el: ElementNode, linker: AssetLinker): string | null {
+  if (el.name !== 'link') return null;
+  if (literalAttr(el, 'rel') !== 'stylesheet') return null;
+  const href = literalAttr(el, 'href');
+  if (href === null || !asksInline(href)) return null;
+  const css = linker.textOf(href);
+  if (css === null) return null;
+  return `'<style' + $nonce + '>' + ${linker.cssTemplate(compactProjectCss(css))} + '</style>'`;
+}
+
+/**
+ * Whether this `<head>` embeds a resource, and therefore needs the response's nonce.
+ *
+ * Asked by a LAYOUT, which writes no inline anything of its own and so has never declared
+ * the binding: the polyfill and the style modules are the route's contribution, written into
+ * the route's module where `$nonce` already lives. A layout that embeds a sheet is the first
+ * thing to put an inline element in the layout's own head (SDD-45 §3.6).
+ */
+export function headEmbedsAsset(head: ElementNode, linker: AssetLinker): boolean {
+  return head.children.some(
+    (child) => child.type === 'element' && inlineStyleExpr(child, linker) !== null,
+  );
+}
+
+/**
  * A page `<head>` element as a JS string expression: its verbatim source, with a static,
  * relative asset URL (`<link href>`, `<script src>`) spliced out and replaced by the import
  * binding Vite resolves and hashes (SDD-19 §4.5). Without a linkable URL this is just the
  * quoted source slice.
  */
 export function headElementExpr(source: string, el: ElementNode, linker: AssetLinker): string {
+  // A stylesheet the author asked to embed (SDD-45 §3.6). It becomes the sheet itself, with
+  // the nonce every other inline thing this emit writes carries, and no request is made for
+  // it — the import is never registered, so the build publishes no file either.
+  //
+  // It goes through the SAME two passes a component's `<style>` does — compacted, and its
+  // `url(…)` linked — because a second path for CSS is how one of two outputs stops being
+  // minified without anybody noticing, which is the defect BUG-08 fixed.
+  const inlined = inlineStyleExpr(el, linker);
+  if (inlined !== null) return inlined;
   for (const attr of el.attributes) {
     if (typeof attr.name !== 'string' || !isAssetAttr(el.name, attr.name)) continue;
     const parts = attr.value;
@@ -127,6 +172,32 @@ export function writeNonceBinding(w: CodeWriter): void {
 export const RUNTIME_MARKER = 'fudic:runtime';
 
 /**
+ * The query that puts a resource INSIDE the page instead of leaving it at a URL
+ * (SDD-45 §3.6).
+ *
+ * It is one query and it means one thing wherever it appears: `fudic:runtime?inline` embeds
+ * the coordinator, `href="./tokens.css?inline"` embeds that stylesheet. It never substitutes
+ * one thing for another — what the author wrote is still what comes out, only carried by the
+ * document rather than fetched from it.
+ *
+ * **The decision is the developer's and not the framework's**, which is why it is written in
+ * the layout: a strict security policy and a slow connection ask for opposite things, and
+ * only the person deploying knows which of the two they have. The default is the file: it is
+ * what works under the strictest policy and what is cached between navigations.
+ */
+export const INLINE_QUERY = 'inline';
+
+/** Whether a specifier asks to be embedded: `…?inline`, alone or among other queries. */
+export function asksInline(spec: string): boolean {
+  const q = spec.indexOf('?');
+  if (q === -1) return false;
+  return new URLSearchParams(spec.slice(q + 1)).has(INLINE_QUERY);
+}
+
+/** How the runtime is carried into the page: as a file, or inside the document (§3.6). */
+export type RuntimeForm = 'file' | 'inline';
+
+/**
  * A `<link>` that names the component, layout or snippet graph: never output, in any role.
  *
  * All three are consumed at compile time and none of them is a stylesheet, a preload or
@@ -137,44 +208,103 @@ const isFrameworkLink = (el: ElementNode): boolean =>
   isComponentLink(el) || isLayoutLink(el) || isSnippetLink(el);
 
 /**
- * Whether this head element is that marker: a `<script>` whose `src` is literally
- * `fudic:runtime`. An interpolated `src` is not one — a marker is a constant by definition.
+ * Where a `<head>` asks for the runtime to be carried IN the document, or `null` (§3.6).
+ *
+ * A fact about the source, reported rather than acted on: whether that is allowed depends on
+ * the security policy the application ships, and a compiler with no filesystem has never
+ * seen it. The host asks this question and raises `FUD0803` — the same split that already
+ * governs a missing asset, where the emit collects and the plugin reports.
  */
-function isRuntimeMarker(el: ElementNode): boolean {
-  if (el.name !== 'script') return false;
-  return el.attributes.some(
-    (a) =>
-      a.name === 'src' &&
-      a.value.every((p) => p.type === 'attribute-text') &&
-      a.value.map((p) => (p as { value: string }).value).join('') === RUNTIME_MARKER,
-  );
+export function inlineRuntimeMarker(head: ElementNode): Span | null {
+  for (const child of head.children) {
+    if (child.type !== 'element') continue;
+    if (runtimeMarkerForm(child) === 'inline') return child.span;
+  }
+  return null;
+}
+
+/** The literal text of an attribute, or `null` when it is interpolated. */
+function literalAttr(el: ElementNode, name: string): string | null {
+  for (const a of el.attributes) {
+    if (a.name !== name) continue;
+    if (!a.value.every((p) => p.type === 'attribute-text')) return null;
+    return a.value.map((p) => (p as { value: string }).value).join('');
+  }
+  return null;
+}
+
+/**
+ * Which form of the marker this head element is, or `null` when it is not one.
+ *
+ * A `<script>` whose `src` is literally `fudic:runtime`, with or without `?inline`. An
+ * interpolated `src` is not a marker — a marker is a constant by definition — and neither is
+ * `fudic:runtimeish` or a marker with any other query: an unknown query is a typo, and
+ * answering it as if it were the default is how a page ends up silently not inlining.
+ */
+function runtimeMarkerForm(el: ElementNode): RuntimeForm | null {
+  if (el.name !== 'script') return null;
+  const src = literalAttr(el, 'src');
+  if (src === null) return null;
+  if (src === RUNTIME_MARKER) return 'file';
+  if (src === `${RUNTIME_MARKER}?${INLINE_QUERY}`) return 'inline';
+  return null;
 }
 
 /**
  * What the marker becomes.
  *
  * `boot` rides every page: fudic is offline-first, so the Service Worker is registered
- * whether or not this page has a line of JavaScript of its own. `main` — the hydration
- * runtime — rides only a page that has something to hydrate.
+ * whether or not this page has a line of JavaScript of its own. The coordinator — the module
+ * that names this route's pieces — rides only a page that has something to hydrate.
  *
- * NEITHER is preloaded, and that is the point: a `<link rel="modulepreload">` for a file
- * whose `<script>` is on the next line buys nothing — the tag already starts the fetch — and
- * under the Service Worker the two requests land in different worlds and do not match, which
- * the browser reports as an unused preload. What WOULD earn a preload is the chunks `main`
- * imports, since the browser cannot discover those until it has parsed `main`; their names
- * are a fact of the bundle and do not reach this side.
+ * **Neither entry is preloaded, and the PIECES are** (SDD-45 §4.5). A `<link
+ * rel="modulepreload">` for a file whose `<script>` is on the next line buys nothing — the
+ * tag already started the fetch — and under the Service Worker the two requests land in
+ * different worlds and do not match, which the browser reports as an unused preload. What
+ * earns a preload is what the coordinator IMPORTS, because the browser cannot discover those
+ * until it has parsed it: that is the chain of §1.5 rule 2, one round trip deep, and it is
+ * now removable. This comment used to say those names «are a fact of the bundle and do not
+ * reach this side»; they do now, because the same plugin that writes this head decides the
+ * URLs of the pieces.
+ *
+ * With `?inline` there are no preloads and none are needed: the coordinator's own `import`s
+ * are read with the HTML, which is the earliest instant there is.
  *
  * `io.runtime` is absent in a standalone render (a golden, `renderToString`), and then the
  * marker produces nothing at all: there is no build, so there are no URLs to write.
  */
-export function writeRuntimeTags(w: CodeWriter, hydrates: boolean): void {
+export function writeRuntimeTags(w: CodeWriter, hydrates: boolean, form: RuntimeForm): void {
   w.line('if (io.runtime !== undefined) {');
   w.indent();
   w.line(
     "head += '<script type=\"module\" src=\"' + io.runtime.boot + '\"></script>';",
   );
-  if (hydrates) {
+  if (hydrates && form === 'file') {
+    // One `<link>` per piece THIS route names, so the browser opens every connection while
+    // it is still reading the head instead of discovering them inside the coordinator.
+    w.line(
+      "head += io.runtime.pieces.map(function (u) { return '<link rel=\"modulepreload\" href=\"' + u + '\">'; }).join('');",
+    );
     w.line("head += '<script type=\"module\" src=\"' + io.runtime.main + '\"></script>';");
+  }
+  if (hydrates && form === 'inline') {
+    // The nonce, because an inline module is exactly what a strict `script-src` refuses
+    // without one (`FUD0803` is the build saying so before a browser does).
+    //
+    // And the file when there is nothing to embed: in dev nothing is built, so there is no
+    // coordinator to carry, and the dev server serves it at its own URL. That is §4.15 —
+    // development does not change — and not a silent fallback: a build always has the source.
+    w.line("if (io.runtime.inline !== '') {");
+    w.indent();
+    w.line(
+      "head += '<script type=\"module\"' + $nonce + '>' + io.runtime.inline + '</script>';",
+    );
+    w.dedent();
+    w.line('} else {');
+    w.indent();
+    w.line("head += '<script type=\"module\" src=\"' + io.runtime.main + '\"></script>';");
+    w.dedent();
+    w.line('}');
   }
   w.dedent();
   w.line('}');
@@ -250,8 +380,12 @@ export function writeHeadElements(
      *
      * Absent means no marker is honoured: a head that is only a contribution has nowhere to
      * put a runtime.
+     *
+     * It receives the FORM the author asked for (SDD-45 §3.6), because that is the one half
+     * of this decision that belongs to the layout: where the runtime goes and how it travels
+     * are written in the same line. Whether there is any runtime at all remains the route's.
      */
-    readonly onRuntime?: () => void;
+    readonly onRuntime?: (form: RuntimeForm) => void;
   },
   w: CodeWriter,
 ): void {
@@ -268,8 +402,9 @@ export function writeHeadElements(
     // for the rest, which is what stops a misplaced one (FUD0438) from being published as
     // an asset by a build that recovered from the error and carried on.
     if (isFrameworkLink(child)) continue;
-    if (options.onRuntime !== undefined && isRuntimeMarker(child)) {
-      options.onRuntime();
+    const form = options.onRuntime === undefined ? null : runtimeMarkerForm(child);
+    if (options.onRuntime !== undefined && form !== null) {
+      options.onRuntime(form);
     } else if (child.name === 'title') {
       w.line(`head += '<title>' + (${titleExpr(source, child)}) + '</title>';`);
     } else {

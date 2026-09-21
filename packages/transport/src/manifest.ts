@@ -132,6 +132,19 @@ export interface ManifestFile {
    * and nothing special happens.
    */
   readonly assets?: string;
+  /**
+   * The published pieces this application LINKS, as origin-absolute URLs (SDD-45 §4.5.1).
+   *
+   * What the worker precaches at `install`, in one batch, out of the critical path and once
+   * per version — and from then on every runtime request is a cache read, which is what
+   * makes the granularity of §4.3 free when there is a worker.
+   *
+   * What the application links and not the runtime entire: an app with no forms precaches no
+   * binder, because none is here. And URLs and not names, unlike everything else in this
+   * file: a piece is not this application's file and does not live under its `base` — it is
+   * shared by every app of the origin, which is the whole point of publishing it.
+   */
+  readonly runtime?: readonly string[];
 }
 
 export interface RouteMatch {
@@ -170,6 +183,8 @@ export interface RouteTable {
    * already in the cache by asking each record where its chunk would live.
    */
   records(): readonly RouteRecord[];
+  /** The published pieces this application links (SDD-45 §4.5.1), as the file states them. */
+  runtime(): readonly string[];
 }
 
 interface CompiledRoute {
@@ -264,6 +279,11 @@ export function compileManifest(file: ManifestFile): RouteTable {
     },
     records(): readonly RouteRecord[] {
       return compiled.map((route) => route.record);
+    },
+    runtime(): readonly string[] {
+      // As they are written: origin-absolute, with no `base` applied and no arithmetic
+      // performed. A piece belongs to the origin and not to this application (SDD-45 §4.2).
+      return file.runtime ?? [];
     },
     hydrateDeps(tag: string): readonly string[] {
       // The names are relative to `file.assets` and carry the build id implicitly, both

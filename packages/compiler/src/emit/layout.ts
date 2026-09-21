@@ -38,6 +38,7 @@ import { layoutCodeOf, requiredLayoutProps, unresolvedLayoutProps } from './layo
 import { NO_SIGNALS, writeElementAttrs } from './attrs.js';
 import type { Diagnostic } from '../types/index.js';
 import {
+  headEmbedsAsset,
   quoteSpecifier,
   specifierResolver,
   writeEntryCode,
@@ -139,6 +140,7 @@ function buildLayoutModule(
     options.linkAssets ?? false,
     options.assetExists,
     options.assetUrl,
+    options.assetText,
   );
   const doc = layout.doc;
   const source = layout.source;
@@ -177,7 +179,11 @@ function buildLayoutModule(
       // The marker resolves to a fact of the ROUTE — whether THIS page hydrates — and a
       // layout is shared by many routes, so it asks, exactly as it does for the head
       // contributions (BUG-31 §T1).
-      onRuntime: () => headW.line(`head += ${SLOTS}.runtime();`),
+      // The FORM goes with the call, and that is the split this marker has always had: the
+      // layout says where the runtime goes and how it travels — the two halves of the line
+      // the author wrote — and the route says whether there is one (SDD-45 §3.6, BUG-31 §T1).
+      // A layout is compiled once and shared, so the answer cannot be baked into the route.
+      onRuntime: (form) => headW.line(`head += ${SLOTS}.runtime(${form === 'inline'});`),
     },
     headW,
   );
@@ -196,6 +202,10 @@ function buildLayoutModule(
   w.indent();
   w.line('const { createDom, serialize, escapeText, escapeAttr } = io;');
   writeLayoutProps(w, code.props);
+  // Only when this layout embeds something (SDD-45 §3.6): a nonce this head never writes is
+  // a binding nobody reads, and the layout's other inline elements are the route's — written
+  // into the route's module, where the binding already is.
+  if (headEmbedsAsset(doc.head, linker)) writeNonceBinding(w);
   w.line("let head = '';");
   w.appendWriter(headW);
   // The shell's opening tag, interpolated like any other element (§4.4). No whitespace in
@@ -259,6 +269,7 @@ function buildRouteModule(
     options.linkAssets ?? false,
     options.assetExists,
     options.assetUrl,
+    options.assetText,
   );
   const route = graph.entry as RouteDocument;
   const source = graph.entrySource;
@@ -384,9 +395,15 @@ function buildRouteModule(
   // The maps carry the route too — its entry in `fud-tree`, and its name in `fud-eager` when
   // it comes up without a gesture — under the name it publishes, never under a tag.
   const maps = writeMapConstants(w, graph, hydratable, blocks?.name);
-  // The route's answer to the layout's `fudic:runtime` marker (BUG-31 §T1).
-  const runtimeW = new CodeWriter();
-  writeRuntimeTags(runtimeW, needsRuntime(hydratable, hasDi, blocks !== undefined));
+  // The route's answer to the layout's `fudic:runtime` marker (BUG-31 §T1), in its two
+  // forms: which one runs is the layout's argument, and the route carries both because it
+  // does not know which layout will call it (SDD-45 §3.6). It costs a branch in the render
+  // module and nothing at all in the page.
+  const hydrates = needsRuntime(hydratable, hasDi, blocks !== undefined);
+  const runtimeFileW = new CodeWriter();
+  writeRuntimeTags(runtimeFileW, hydrates, 'file');
+  const runtimeInlineW = new CodeWriter();
+  writeRuntimeTags(runtimeInlineW, hydrates, 'inline');
   w.line('');
   // Same public shape as a standalone page: the composition is invisible downstream.
   // The fourth parameter is what `export function layout(ctx, data)` resolved: the union of
@@ -416,10 +433,18 @@ function buildRouteModule(
   // What the layout's `fudic:runtime` marker becomes for THIS route (BUG-31 §T1). The
   // layout says where the runtime goes; only the route knows whether there is anything to
   // hydrate, because its graph is the one that reaches the whole chain.
-  w.line('runtime() {');
+  w.line('runtime($inline) {');
   w.indent();
   w.line("let head = '';");
-  w.appendWriter(runtimeW);
+  w.line('if ($inline) {');
+  w.indent();
+  w.appendWriter(runtimeInlineW);
+  w.dedent();
+  w.line('} else {');
+  w.indent();
+  w.appendWriter(runtimeFileW);
+  w.dedent();
+  w.line('}');
   w.line('return head;');
   w.dedent();
   w.line('},');

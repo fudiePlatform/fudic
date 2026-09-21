@@ -328,8 +328,25 @@ Lo que hoy es un marcador pasa a ser un marcador con una opción:
 **Por defecto, fichero.** Es la forma que funciona con la política de seguridad más estricta
 y la que se cachea entre navegaciones. El inline lo pide quien lo quiere.
 
-El mismo interruptor, y por el mismo motivo, para la hoja de tokens de la aplicación:
-`fudic:styles` y `fudic:styles?inline`.
+**`?inline` no es una opción del marcador: es lo que significa `?inline` en cualquier recurso
+que el autor referencia.** No sustituye nada y no inventa ningún marcador nuevo — lo que el
+autor escribió sigue saliendo, solo que lo lleva el documento en vez de pedirlo:
+
+```html
+<link rel="stylesheet" href="../styles/tokens.css">          <!-- se pide por red -->
+<link rel="stylesheet" href="../styles/tokens.css?inline">   <!-- va dentro de la página -->
+```
+
+La hoja de estilos **se queda como está, sin marcador**. Y la decisión es del desarrollador y
+no del framework, que es todo el motivo de que se escriba en el layout: una política de
+seguridad estricta y una conexión lenta piden cosas opuestas, y solo quien despliega sabe cuál
+de las dos tiene.
+
+De momento se incrusta una hoja de estilos y nada más, y la restricción está razonada: el CSS
+es texto que la página iba a aplicar igual, mientras que un icono o una imagen como data URI
+engordan el HTML de **cada** página con un tercio del fichero, que es otro trato con otra
+respuesta. Lo demás sigue siendo una URL, y la query viaja al empaquetador, que tiene su propio
+significado para ella.
 
 ---
 
@@ -612,6 +629,15 @@ desaparece.
 Con la forma **inline**, no hay preloads y no hacen falta: los `import` del propio script se
 descubren al leer el HTML, que es el instante más temprano que existe.
 
+**Hecho, y con una precisión que no estaba escrita: se precarga la CARGA, no todo lo que la
+ruta acabará usando.** La lista es el cierre transitivo de lo que el coordinador importa de
+forma **estática**, y lo dinámico se queda fuera a propósito: `core/hydrate` pide el adaptador
+del DOM y el signal con un `import()` justamente para que quien entra y sale no los pague
+(§4.4.1), y precargarlos devolvería esos bytes a toda página. Transitivo, porque precargar solo
+lo que el coordinador nombra deja la cadena intacta un nivel más abajo — `core/registry` se
+descubre dentro de la hidratación—. En `examples/basic` son cuatro `<link>` en una ruta que
+hidrata y seis en la que además inyecta; las que no hidratan no escriben ninguno.
+
 ### 4.5.1. Con Service Worker, se descarga lo que la aplicación enlaza
 
 Un worker precachea en su `install`, en una tanda, fuera del camino crítico y una sola vez por
@@ -625,6 +651,14 @@ pedir es gastar cuota para nada.
 
 La consecuencia simplifica el resto del documento: **todo lo que viene después solo afecta a
 las aplicaciones sin worker**. Con worker, la granularidad deja de tener coste.
+
+**Hecho: la lista la lleva el manifiesto.** No una constante dentro del worker, y el motivo es
+que la lista solo se sabe al final: qué piezas sobreviven lo decide la poda, y lo que hay que
+precachear es lo que un navegador va a pedir de verdad. El worker lee el manifiesto que acaba
+de precachear y se trae esas URLs en una tanda; el enrutador recibe las mismas, porque una
+caché que nadie lee es un defecto por construcción. Y sin `cache: 'reload'`, al revés que el
+shell: la URL de una pieza lleva su versión, así que los bytes detrás nunca cambian y la caché
+HTTP del navegador es justo lo que hay que usar.
 
 ### 4.5.2. Sin worker: un límite de peticiones, y el paquete por conjunto
 
