@@ -13,9 +13,12 @@ describe('emitSwBootstrap', () => {
     shell: ['/style.css'],
     resources: [{ pattern: '/api/**', policy: 'network-first', ttl: 300_000 }],
     app: 'shop',
-    // The published runtime of this origin, cached as it is used (SDD-45 §4.5.1).
+    // The published runtime of this origin, cached as it is used (SDD-45 §4.5.1), and the
+    // names its §4.9 sweep walks: the family of runtime caches, and this app's mark.
     runtimePrefix: '/_fudic/',
     runtimeCache: 'fudic-runtime-0.0.1',
+    runtimeCachePrefix: 'fudic-runtime-',
+    runtimeMarker: '/_fudic/marker/shop',
   });
 
   it('renders in the Service Worker itself: linker, stores and router', () => {

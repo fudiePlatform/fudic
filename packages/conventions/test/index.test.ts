@@ -38,14 +38,19 @@ describe('@fudic/conventions', () => {
     expect(conventions.runtimeMarkerUrl('shop-admin')).not.toBe(conventions.runtimeMarkerUrl('shop'));
   });
 
-  it('exports those seven names and nothing else', () => {
-    // The door stays shut (BUG-20 §3.4). An eighth export is not a smaller change than a
+  it('exports those eight names and nothing else', () => {
+    // The door stays shut (BUG-20 §3.4). A ninth export is not a smaller change than a
     // second package: it is how a convention package turns into a drawer of shared strings,
     // so growing the surface has to be a deliberate edit to this list.
+    //
+    // `RUNTIME_CACHE_PREFIX` is the eighth, and it is the deliberate edit SDD-45 §4.9 asked
+    // for: the sweep walks the origin looking for OTHER versions of the runtime cache, and
+    // the family name cannot be sliced back off one — a prerelease has hyphens of its own.
     expect(Object.keys(conventions).sort()).toEqual([
       'COMPONENTS_DIR',
       'LAYOUTS_DIR',
       'ROUTES_DIR',
+      'RUNTIME_CACHE_PREFIX',
       'RUNTIME_DIR',
       'SRC_DIR',
       'runtimeCacheName',

@@ -46,8 +46,15 @@ export const RUNTIME_DIR = '_fudic';
  *
  * The version is what keeps two framework versions from colliding, the same way it does in
  * the URL: `app-1` on 1.0 and `app-2` on 2.0 never read each other's bytes.
+ *
+ * The prefix is exported because the sweep of §4.9 needs it: a worker walks the origin's
+ * caches looking for OTHER versions of this same cache, and slicing a version back off a
+ * name cannot be done by hand — `fudic-runtime-0.0.1-beta.1` would cut in the wrong place.
  */
-export const runtimeCacheName = (version: string): string => `fudic-runtime-${version}`;
+export const RUNTIME_CACHE_PREFIX = 'fudic-runtime-';
+
+export const runtimeCacheName = (version: string): string =>
+  `${RUNTIME_CACHE_PREFIX}${version}`;
 
 /**
  * Inside that cache, who is still using this version (SDD-45 §4.9). One entry per

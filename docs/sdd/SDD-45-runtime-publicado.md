@@ -806,7 +806,15 @@ borrarla y se queda para siempre — lo contrario de ahorrar cuota. La regla:
 
 Sin coordinación entre apps, sin registro aparte, y se arregla solo: una app que sube de
 versión deja de refrescar su marca en la vieja, y una app que se retira deja de refrescarlas
-todas. La caducidad es un valor del propio worker, no una opción del usuario.
+todas. La caducidad es un valor del propio worker, no una opción del usuario: **treinta días**,
+que es bastante para que una app que se abre una vez al mes conserve su runtime y poco para que
+una versión que ya no usa nadie se vaya al mes del último worker que la tocó.
+
+**Y una caché SIN ninguna marca se deja en paz**, que es la mitad prudente de la regla y no
+estaba escrita. Esa es la forma de una versión que se está usando ahora mismo por un worker que
+todavía no se ha activado —las piezas las escribe el `fetch`, la marca la escribe el
+`activate`—, así que borrarla es tirar bytes que alguien está descargando. Cuesta como mucho una
+versión de runtime en el origen, y el primer worker de esa versión que se active la marca.
 
 ### 4.10. El worker deja de empaquetar lo que ya sabe enlazar
 

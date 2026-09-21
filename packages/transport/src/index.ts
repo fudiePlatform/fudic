@@ -64,6 +64,11 @@ export {
   isStaleCache,
 } from './store.js';
 export {
+  type RuntimeSweepConfig,
+  RUNTIME_MARKER_TTL,
+  sweepRuntimeCaches,
+} from './runtime-cache.js';
+export {
   NONCE_TOKEN,
   DEFAULT_CSP,
   applyNonce,

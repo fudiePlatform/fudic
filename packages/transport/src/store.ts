@@ -77,6 +77,14 @@ export function cacheNames(app: string, build: string): CacheNames {
  * Also true for a name written BEFORE this fix, `<kind>-<build>` with no app segment: with
  * the new rule it matches nobody's prefix and would sit in the origin forever. It is
  * unambiguous — only a worker older than this fix could have written it — and transitory.
+ *
+ * **And FALSE for `fudic-runtime-<version>`, for every app and every build** (SDD-45 §4.9).
+ * Not by an exception written here but because this predicate knows four kinds and that
+ * cache is none of them — which is exactly why it is named outside the scheme. It is the
+ * property two applications of an origin depend on to stop deleting each other's
+ * framework, so it is stated here: widen these four kinds, or reach for a bare
+ * `startsWith`, and the shared runtime becomes collateral of the next deploy. What deletes
+ * that cache instead is `sweepRuntimeCaches`, by marks and never by build.
  */
 export function isStaleCache(name: string, app: string, build: string): boolean {
   for (const kind of KINDS) {

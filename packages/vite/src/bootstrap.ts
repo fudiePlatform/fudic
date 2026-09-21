@@ -40,6 +40,16 @@ export interface SwBootstrapOptions {
    */
   readonly runtimePrefix: string;
   readonly runtimeCache: string;
+  /**
+   * What every runtime cache of this origin is called, and this application's mark inside
+   * the one it uses (SDD-45 §4.9). Empty together with the two above.
+   *
+   * They are what the sweep needs and the worker cannot derive: the family prefix cannot be
+   * sliced back off a name — a prerelease version has hyphens of its own — and the mark
+   * carries the app id, which comes from the project and not from this package.
+   */
+  readonly runtimeCachePrefix: string;
+  readonly runtimeMarker: string;
 }
 
 /**
@@ -50,7 +60,8 @@ export interface SwBootstrapOptions {
 export function emitSwBootstrap(options: SwBootstrapOptions): string {
   return `import {
   loadManifest, createLinker, canLink, createRouter, createStore, cacheNames,
-  isStaleCache, controlBus, LOCATION_MESSAGE, RUNTIME_MESSAGE, WARM_MESSAGE, WARMED_MESSAGE,
+  isStaleCache, sweepRuntimeCaches, controlBus, LOCATION_MESSAGE, RUNTIME_MESSAGE,
+  WARM_MESSAGE, WARMED_MESSAGE,
 } from '@fudic/transport';
 import * as ssr from '@fudic/ssr';
 
@@ -64,6 +75,8 @@ const RESOURCES = ${JSON.stringify(options.resources)};
 // behaves exactly as it did before there was one.
 const RUNTIME_PREFIX = ${JSON.stringify(options.runtimePrefix)};
 const RUNTIME_CACHE = ${JSON.stringify(options.runtimeCache)};
+const RUNTIME_CACHES = ${JSON.stringify(options.runtimeCachePrefix)};
+const RUNTIME_MARKER = ${JSON.stringify(options.runtimeMarker)};
 const NAMES = cacheNames(APP, BUILD);
 // ONE list, absolute, for the two things that must never drift: what install writes and
 // what the router will serve by identity. A Store key is an absolute URL (BUG-04 §3.1).
@@ -101,6 +114,15 @@ self.addEventListener('install', (e) => e.waitUntil((async () => {
 self.addEventListener('activate', (e) => e.waitUntil((async () => {
   for (const name of await caches.keys()) {
     if (isStaleCache(name, APP, BUILD)) await caches.delete(name);
+  }
+  // The runtime cache is outside that purge by name and that is the point (SDD-45 §4.9):
+  // it is the one two applications of this origin share, so no build of ours may throw it
+  // away. It is swept the other way instead — this app refreshes its own mark, and a
+  // framework version whose marks have ALL expired belongs to nobody and goes.
+  if (RUNTIME_CACHE !== '') {
+    await sweepRuntimeCaches({
+      caches, cache: RUNTIME_CACHE, prefix: RUNTIME_CACHES, marker: RUNTIME_MARKER,
+    });
   }
   await self.clients.claim();
   await boot(); // the shell is in place now: this is the attempt that succeeds on a first install

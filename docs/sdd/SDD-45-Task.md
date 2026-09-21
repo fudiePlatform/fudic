@@ -6,7 +6,7 @@
 > `@fudic/di` · `@fudic/compiler` · `@fudic/vite` · `@fudic/transport` · `@fudic/ssr` ·
 > `examples/basic` · `examples/workspace` · `examples/pieces-bench`
 > **Rama:** `sdd-45-runtime-publicado`
-> **Progreso:** 23 / 32
+> **Progreso:** 25 / 32
 > **Bloqueado por:** [SDD-43](./SDD-43-librerias.md) — su tarea 11 es el `peerDependencies`
 > que aquí se endurece, y su criterio 12 es el workspace sobre el que se mide la evidencia.
 
@@ -40,7 +40,17 @@ equivocó tres veces antes de asentarse:
 
 ## Dónde estamos
 
-**Fase 5 cerrada — su última tarea se cierra retirando lo que pedía—, y empieza la 6.** El
+**Fase 6 cerrada: la caché compartida ya tiene dueño.** Era lo que le faltaba a la idea —una
+caché que nadie se atreve a borrar no ahorra cuota, la gasta—. Cada worker, al activarse, deja
+su marca fechada dentro de la caché de la versión que usa y borra las versiones cuyas marcas
+hayan caducado todas: treinta días, sin hablar con nadie y sin registro aparte. Una app que
+sube de versión deja de refrescar la marca de la vieja; una que se retira deja de refrescarlas
+todas. Y la caché sin ninguna marca se deja en paz, porque es la de una versión que alguien
+está estrenando ahora mismo. Lo demás ya era cierto: el purgado por despliegue no la ve,
+porque conoce cuatro clases de nombre y esta está fuera de las cuatro a propósito — eso se
+fija ahora en el contrato del predicado, que es donde alguien lo leerá antes de ensancharlo.
+
+**Fase 5 cerrada — su última tarea se cerró retirando lo que pedía—.** El
 interruptor del layout existe y `?inline` significa lo mismo en cualquier recurso que el autor
 referencia —el arranque y una hoja de estilos, hoy—; la precarga escribe un `<link>` por pieza
 de la CARGA; `FUD0803` está escrito donde cae; y con worker **no se descarga nada por
@@ -388,6 +398,36 @@ De la **fase 5**, tareas 19 a 22:
   sí vigila el problema de fondo —que una página con hidratación, inyección y formulario pase
   de diez peticiones— es la cuenta por escenario del banco, que ya existe y no necesita test.
 
+De la **fase 6**, tareas 24 y 25:
+
+- **`isStaleCache('fudic-runtime-0.0.1', app, build)` es `false` para cualquier `app` y
+  cualquier `build`** (criterio 21). Es el test que la tarea 24 pide y lo único que ella
+  produce: el código ya era correcto porque el predicado conoce cuatro clases y esa caché no
+  es ninguna. Hay que escribirlo **con la razón al lado**, porque no protege de un fallo sino
+  de un arreglo: el día que alguien ensanche las cuatro clases o cambie el `startsWith` por
+  algo más corto, dos apps vuelven a borrarse el framework y no hay síntoma hasta el
+  despliegue siguiente.
+- **El barrido tiene el reloj Y el `CacheStorage` inyectados** (`sweepRuntimeCaches`), así que
+  se prueba entero sin worker: que escribe la marca de esta app con la fecha, que **no** toca
+  la caché propia, que borra una versión cuyas marcas han caducado todas, que **conserva** una
+  con una sola marca viva, y que **conserva la que no tiene ninguna marca**. Esa última es la
+  que parece un olvido y es una decisión (§4.9): una caché sin marcas es una versión que un
+  worker está estrenando —las piezas las escribe el `fetch`, la marca el `activate`— y
+  borrarla es tirar bytes que alguien está descargando. Un test que la borre invierte la
+  decisión sin que nadie lo note.
+- **Solo se miran las cachés de la familia**: un nombre que no empieza por el prefijo no se
+  abre siquiera, y ahí viven las cuatro cachés de cada app. El prefijo llega **dado** desde
+  `@fudic/conventions` en vez de recortado del nombre propio, porque una versión de prerelease
+  —`fudic-runtime-0.0.1-beta.1`— cortaría por el sitio equivocado. Conviene un test con esa
+  versión exacta.
+- **Una marca ilegible cuenta como caducada.** Solo puede pasar si algo borra la entrada entre
+  listarla y leerla; lo que importa es hacia qué lado cae, y cae hacia borrar la versión
+  porque para sobrevivir basta **una** marca viva de quien sea.
+- **Y un test que hubo que adaptar:** el de `@fudic/conventions` que fija la lista exacta de
+  exports —la puerta cerrada de BUG-20— pasa de siete nombres a ocho. `RUNTIME_CACHE_PREFIX`
+  es la edición deliberada que esa lista exige, y el comentario dice por qué existe. Sigue
+  comprobando lo mismo: que crecer la superficie de ese paquete se hace a mano.
+
 ---
 
 ## Mapa de dependencias
@@ -514,12 +554,12 @@ F1 las piezas existen ──→ F2 el reparto ──→ F3 enlazar ──→ F4 
 
 ---
 
-## Fase 6 — la caché compartida (2)
+## Fase 6 — la caché compartida (2) · **cerrada**
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 24 | 13 | **La caché de origen, y la comprobación que la protege.** `fudic-runtime-<version>`, sin `app` en el nombre. Que el purgado de BUG-33 no la toque ya es cierto — `isStaleCache` solo reconoce `shell-`/`routes-`/`pages-`/`data-` —, así que lo que falta es fijarlo. Criterio 21 | `transport` | `src/store.ts` |
-| [ ] | 25 | 24 | **Quién la borra.** Cada worker escribe su marca fechada al activarse y borra las versiones cuyas marcas hayan caducado todas. Sin coordinación entre apps, sin registro aparte. Reloj inyectado. Criterio 22 | `vite` · `transport` | `src/bootstrap.ts` |
+| [x] | 24 | 13 | **La caché de origen, y la comprobación que la protege.** `fudic-runtime-<version>`, sin `app` en el nombre. Que el purgado de BUG-33 no la toque ya era cierto — `isStaleCache` solo reconoce `shell-`/`routes-`/`pages-`/`data-` —, así que lo que se escribe es **la propiedad, en el contrato del predicado**: falsa para `fudic-runtime-*` con cualquier app y cualquier build, con el motivo y con qué la borra en su lugar. El test que la fija va a la sesión de tests, apuntado abajo. Criterio 21 | `transport` | `src/store.ts` |
+| [x] | 25 | 24 | **Quién la borra.** Cada worker escribe su marca fechada al activarse y borra las versiones cuyas marcas hayan caducado todas. Sin coordinación entre apps, sin registro aparte. Reloj inyectado, y también el `CacheStorage`: así el barrido se prueba sin worker y sin una rama por defecto que nadie ejercita. Caducidad **treinta días**, constante del worker. Una caché sin ninguna marca se deja en paz (§4.9). Criterio 22 | `vite` · `transport` · `conventions` | `transport/src/runtime-cache.ts` · `vite/src/bootstrap.ts` |
 
 > **Hito en el navegador (criterio 23).** `Application → Cache Storage` con la caché, sus
 > piezas y una marca por app. Se abre la segunda app y no trae ni un byte de framework.

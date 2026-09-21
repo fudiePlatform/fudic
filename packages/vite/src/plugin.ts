@@ -50,7 +50,7 @@ import {
   routeUsesDi,
 } from './client.js';
 import { INLINE_QUERY, IOC_SUFFIX, RUNTIME_MARKER } from '@fudic/compiler';
-import { RUNTIME_DIR } from '@fudic/conventions';
+import { RUNTIME_CACHE_PREFIX, RUNTIME_DIR, runtimeMarkerUrl } from '@fudic/conventions';
 import { nodeIo, nodeLinkCheckIo, nodeRuntimeFs } from './io.js';
 import { runtimePieces } from './runtime-pieces.js';
 import {
@@ -1044,6 +1044,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           // runtime in dev is a hot reload that does not arrive.
           runtimePrefix: isDev ? '' : `/${RUNTIME_DIR}/`,
           runtimeCache: isDev ? '' : runtimeCacheOf(runtime),
+          runtimeCachePrefix: isDev ? '' : RUNTIME_CACHE_PREFIX,
+          runtimeMarker: isDev ? '' : runtimeMarkerUrl(appId),
         });
       }
       if (id.startsWith(WRAPPER_PREFIX)) {
@@ -1276,6 +1278,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
                 // is the one it was before this SDD.
                 runtimePrefix: runtime.packages.length === 0 ? '' : `/${RUNTIME_DIR}/`,
                 runtimeCache: runtimeCacheOf(runtime),
+                // The sweep of §4.9: the family of runtime caches to walk, and this
+                // application's mark inside the one it uses.
+                runtimeCachePrefix: RUNTIME_CACHE_PREFIX,
+                runtimeMarker: runtimeMarkerUrl(appId),
                 // Non-empty by construction: a `sw.json` without an `id` is FUD0721 and
                 // this build already failed in `buildStart` (SDD-41 §4.3).
                 app: appId,
