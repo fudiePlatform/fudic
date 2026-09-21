@@ -230,10 +230,16 @@ const publishedOf = (pkg) => {
     if (!file.endsWith('.js')) continue;
     const body = read(join(dir, file));
     const name = file.slice(0, -3);
+    // Weighed WITHOUT the `sourceMappingURL` line. Every piece carries one — minified
+    // framework code that a browser cannot debug without its map is code nobody can fix — and
+    // it is a constant ~34 compressed bytes on every piece alike. Counting it would move a
+    // fifth of a frontier onto each side of every comparison §4.3 asks for, which is how a
+    // piece that is underweight for a real reason starts looking like one that is not.
+    const code = body.replace(/\s*\/\/# sourceMappingURL=\S+\s*$/u, '');
     out.set(`${pkg.short}/${name}`, {
       url: `/_fudic/${version}/${pkg.short}/${name}.js`,
-      bytes: Buffer.byteLength(body),
-      compressed: brotli(body),
+      bytes: Buffer.byteLength(code),
+      compressed: brotli(code),
       // Static and DYNAMIC, and the three quotes: a piece that asks for another one at the
       // moment it needs it writes `import(`…`)`, which is how the pieces §4.4.1 took out of
       // the load arrive. A URL that does not exist is the same 404 whichever form names it.

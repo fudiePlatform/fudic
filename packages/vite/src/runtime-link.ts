@@ -49,6 +49,15 @@ export interface LinkedPiece extends RuntimePiece {
   readonly exports: readonly string[];
   /** Its bytes, read once: they are what gets copied, and what `FUD0806` is asked about. */
   readonly code: string;
+  /**
+   * Its source map, when the publisher emitted one — absent, not `undefined`, when it did not.
+   *
+   * It travels with the piece for one reason: what a browser downloads from `/_fudic/` is
+   * minified framework code, and a piece without its map is undebuggable exactly where this
+   * framework runs. The piece names it in its last line, so copying one without the other is a
+   * 404 in the devtools of anybody who opens them.
+   */
+  readonly map?: string;
 }
 
 /** Every piece this build can link, indexed the three ways the plugin asks. */
@@ -124,7 +133,8 @@ export function runtimeLinkage(
     const code = io.readFile(piece.file);
     if (code === undefined) continue; // discovery already said so; saying it twice helps nobody
     const exports = exportedNames(code);
-    byUrl.set(piece.url, { ...piece, exports, code });
+    const map = io.readFile(`${piece.file}.map`);
+    byUrl.set(piece.url, { ...piece, exports, code, ...(map === undefined ? {} : { map }) });
 
     const names = collected.get(piece.pkg) ?? new Map<string, string[]>();
     collected.set(piece.pkg, names);
@@ -440,6 +450,24 @@ export function piecesToCopy(
       });
     }
     files.push({ fileName, code: piece.code });
+    // The map beside it, under the same rule: same URL, same bytes, written by the framework's
+    // build and not by this one. It is checked like the piece because the argument is the same
+    // — two applications of an origin write this file too.
+    if (piece.map !== undefined) {
+      const mapName = `${fileName}.map`;
+      const onDiskMap = onDisk(mapName);
+      if (onDiskMap !== undefined && onDiskMap !== piece.map) {
+        diagnostics.push({
+          code: FUD_RUNTIME_PIECE_DIFFERS,
+          file: mapName,
+          message:
+            `the output already holds the source map of "${piece.url}" with different bytes ` +
+            `than "${piece.pkg}" would copy there. Same cause as a piece that differs: one ` +
+            'version of the package was published twice with two contents.',
+        });
+      }
+      files.push({ fileName: mapName, code: piece.map });
+    }
   }
   return { files, diagnostics };
 }

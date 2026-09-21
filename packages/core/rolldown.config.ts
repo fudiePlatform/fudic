@@ -206,11 +206,18 @@ export default defineConfig(
         entryFileNames: '[name].js',
         minify: true,
         /**
-         * The property everything else hangs on (§6.2): building twice produces the same
-         * bytes. So nothing that varies with the machine or the moment may reach the output —
-         * no source map (which would carry absolute paths), no banner, no legal comments.
+         * **A map per piece, and it does not cost determinism.** These files are minified
+         * framework code served from `/_fudic/`, so without one they are undebuggable in the
+         * browser — which is where this framework runs. This said « no source map, it would
+         * carry absolute paths »; it does not. Rolldown writes `sources` relative to the
+         * output directory, in POSIX form (`../src/signal.ts`), and `sourcesContent` is the
+         * file's own text. Nothing of the machine or the moment gets in, so §6.2 still holds:
+         * building twice produces the same bytes, map included.
+         *
+         * A browser fetches a `.js.map` only when devtools is open, and the piece grows by the
+         * `sourceMappingURL` line and nothing else.
          */
-        sourcemap: false,
+        sourcemap: true,
         comments: false,
       },
     };
