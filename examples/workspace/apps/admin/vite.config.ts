@@ -11,5 +11,8 @@ import { fudic } from '@fudic/vite';
 // `fudic.json`, and this app is the reason that field exists.
 export default defineConfig({
   base: '/admin/',
+  // Same as the storefront, and for the same reason: with maps on, the two boots can be
+  // compared as source instead of as minified text.
+  build: { sourcemap: true },
   plugins: [fudic()],
 });
