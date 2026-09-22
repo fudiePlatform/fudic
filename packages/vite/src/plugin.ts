@@ -128,7 +128,6 @@ import {
   DEV_MAIN_URL,
   DEV_BOOT_URL,
   DEV_SW_URL,
-  mainFileName,
   bootFileName,
   PAGE_NAME_PREFIX,
 } from './constants.js';

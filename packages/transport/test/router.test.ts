@@ -748,3 +748,158 @@ describe('createRouter.warmHydration — the hydration chunks', () => {
     expect(await r.warmHydration(['app-counter'])).toEqual([]);
   });
 });
+
+/**
+ * SDD-45 §4.5.1: the published runtime is cached AS IT IS ASKED FOR, and never up front.
+ *
+ * Everything under the prefix is immutable by construction — the URL carries the framework
+ * version — so the policy is `cache-first` with no TTL and the entry is written the first
+ * time a page asks for it. The store is the origin's SHARED one, `fudic-runtime-<version>`,
+ * which is the whole point of the SDD: two applications of an origin download the framework
+ * once between them.
+ */
+describe('createRouter — the published runtime (SDD-45)', () => {
+  const PREFIX = '/_fudic/';
+  const PIECE = `${ORIGIN}_fudic/0.0.1/core/hydrate.js`;
+
+  /** The shared runtime cache of the origin, and a handle on what landed in it. */
+  function runtimeStore(h: ReturnType<typeof harness>): {
+    readonly runtime: { readonly prefix: string; readonly store: Store };
+    readonly fake: ReturnType<typeof fakeCache>['fake'];
+  } {
+    const { cache, fake } = fakeCache();
+    return {
+      runtime: { prefix: PREFIX, store: createStore({ cache, net: h.net }) },
+      fake,
+    };
+  }
+
+  it('serves a piece cache-first from ITS cache, and writes the entry on the first ask', async () => {
+    const h = harness();
+    h.sources.set(PIECE, 'export const hydrate = 1;');
+    const { runtime, fake } = runtimeStore(h);
+    const r = router(h, { runtime });
+
+    // First ask: nothing cached, so it costs the network once and seals.
+    const first = fetchEvent(PIECE, { mode: 'no-cors' });
+    r.handle(first);
+    expect(await (await first.responded!).text()).toBe('export const hydrate = 1;');
+    expect(h.network).toEqual([PIECE]);
+    expect([...fake.entries.keys()]).toEqual([PIECE]);
+
+    // Second ask: read from the cache, and no TTL to make it expire. The version is in the
+    // URL, so the bytes behind it never change.
+    const second = fetchEvent(PIECE, { mode: 'no-cors' });
+    r.handle(second);
+    expect(await (await second.responded!).text()).toBe('export const hydrate = 1;');
+    expect(h.network).toEqual([PIECE]);
+  });
+
+  it('goes BEFORE the resource classes, so a deploy cannot purge the runtime', async () => {
+    const h = harness();
+    h.sources.set(PIECE, 'export const hydrate = 1;');
+    const { runtime, fake } = runtimeStore(h);
+    // A `/**` class written by hand in `sw.json` would send these to `data-<app>-<build>`,
+    // which is purged on every deploy — and the one property this cache has is that it is
+    // not. So the prefix is answered first, and the class never sees the request.
+    const r = router(h, {
+      runtime,
+      resources: [{ pattern: '/**', policy: 'cache-first' as const, ttl: null }],
+    });
+
+    const event = fetchEvent(PIECE, { mode: 'no-cors' });
+    r.handle(event);
+    await event.responded;
+
+    expect([...fake.entries.keys()]).toEqual([PIECE]);
+    expect(await h.stores.data.keys()).toEqual([]);
+  });
+
+  it('is the router of before for an application that links no published runtime', () => {
+    const h = harness();
+    // Dev, or a project without one. Nothing here changes: the piece URL is just a resource
+    // with no rule, and the router does not touch it.
+    const event = fetchEvent(PIECE, { mode: 'no-cors' });
+    router(h).handle(event);
+    expect(event.responded).toBeNull();
+  });
+});
+
+/**
+ * SDD-45 §4.5.1: the one load a Service Worker cannot intercept — its own first one.
+ *
+ * A worker installs during that load and claims at the end of it, so everything the page
+ * fetched went past it. The page reports what it used and the worker keeps it, which costs a
+ * read of the browser's own HTTP cache. It is a KEEP and not a warm: these bytes are already
+ * on the machine.
+ */
+describe('createRouter.keepRuntime (SDD-45)', () => {
+  const PREFIX = '/_fudic/';
+  const PIECE = `${ORIGIN}_fudic/0.0.1/core/hydrate.js`;
+
+  function runtimeStore(h: ReturnType<typeof harness>, net = h.net): {
+    readonly runtime: { readonly prefix: string; readonly store: Store };
+    readonly fake: ReturnType<typeof fakeCache>['fake'];
+  } {
+    const { cache, fake } = fakeCache();
+    return { runtime: { prefix: PREFIX, store: createStore({ cache, net }) }, fake };
+  }
+
+  it('keeps the pieces the page reports, and is idempotent', async () => {
+    const h = harness();
+    h.sources.set(PIECE, 'export const hydrate = 1;');
+    const { runtime, fake } = runtimeStore(h);
+    const r = router(h, { runtime });
+
+    await r.keepRuntime([PIECE]);
+    expect([...fake.entries.keys()]).toEqual([PIECE]);
+    expect(h.network).toEqual([PIECE]);
+
+    // Said twice, kept once: the second notice reads the cache it just wrote.
+    await r.keepRuntime([PIECE]);
+    expect(h.network).toEqual([PIECE]);
+  });
+
+  it('checks the page word against the prefix instead of taking it', async () => {
+    const h = harness();
+    const { runtime, fake } = runtimeStore(h);
+    const r = router(h, { runtime });
+
+    // A message can name any URL, and this cache is shared by the whole origin: what a
+    // worker writes into it must be a piece of the published runtime and nothing else.
+    await r.keepRuntime([`${ORIGIN}assets/app-abc123.js`, 'https://elsewhere.test/evil.js']);
+
+    expect([...fake.entries.keys()]).toEqual([]);
+    expect(h.network).toEqual([]);
+  });
+
+  it('resolves a relative URL before checking it', async () => {
+    const h = harness();
+    h.sources.set(PIECE, 'export const hydrate = 1;');
+    const { runtime, fake } = runtimeStore(h);
+    const r = router(h, { runtime });
+
+    await r.keepRuntime(['/_fudic/0.0.1/core/hydrate.js']);
+    expect([...fake.entries.keys()]).toEqual([PIECE]);
+  });
+
+  it('a piece that did not land is not an error: keeping is an optimisation', async () => {
+    const h = harness();
+    const { runtime, fake } = runtimeStore(h, async (request: Request): Promise<Response> => {
+      if (request.url === PIECE) throw new Error('offline');
+      return h.net(request);
+    });
+    const r = router(h, { runtime });
+
+    // It is fetched on demand later, exactly the way it would have been if this notice had
+    // never arrived.
+    await expect(r.keepRuntime([PIECE])).resolves.toBeUndefined();
+    expect([...fake.entries.keys()]).toEqual([]);
+  });
+
+  it('is a no-op for an application that links no published runtime', async () => {
+    const h = harness();
+    await expect(router(h).keepRuntime([PIECE])).resolves.toBeUndefined();
+    expect(h.network).toEqual([]);
+  });
+});

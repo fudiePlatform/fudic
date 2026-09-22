@@ -96,9 +96,6 @@ export function isMainChunk(fileName: string): boolean {
   return fileName.startsWith(`${MAIN_ID}-`) && fileName.endsWith('.js');
 }
 
-export function mainFileName(build: string): string {
-  return `fudic-main-${build}.js`;
-}
 export function bootFileName(build: string): string {
   return `fudic-boot-${build}.js`;
 }

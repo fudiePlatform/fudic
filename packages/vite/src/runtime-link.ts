@@ -98,10 +98,9 @@ export function shimIdFor(source: string, importer: string | undefined): string 
   return `${RUNTIME_SHIM}${importer ?? ''}\u0000${source}`;
 }
 
-/** The specifier a shim id stands for. */
+/** The specifier a shim id stands for: whatever follows the separator. */
 export function shimSpecifier(id: string): string {
-  const parts = id.split('\u0000');
-  return parts[parts.length - 1] ?? '';
+  return id.slice(id.lastIndexOf('\u0000') + 1);
 }
 
 /**
@@ -221,12 +220,15 @@ export function insidePublisher(importer: string | undefined, linkage: RuntimeLi
  */
 function exportedNames(code: string): readonly string[] {
   const names: string[] = [];
-  for (const statement of code.matchAll(/export\s*\{([^}]*)\}/gu)) {
-    for (const part of (statement[1] ?? '').split(',')) {
+  for (const statement of code.matchAll(/export\s*\{[^}]*\}/gu)) {
+    const inside = statement[0].slice(statement[0].indexOf('{') + 1, -1);
+    for (const part of inside.split(',')) {
       const trimmed = part.trim();
       if (trimmed === '') continue;
-      const pair = trimmed.split(/\s+as\s+/u);
-      const name = (pair[1] ?? pair[0] ?? '').trim();
+      // What follows `as`, or the whole of it when there is no `as`. Read by cutting rather
+      // than by indexing a split, so there is no «and if it has no second half» to answer.
+      const renamed = /\s+as\s+/u.test(trimmed);
+      const name = renamed ? trimmed.slice(trimmed.lastIndexOf(' ') + 1) : trimmed;
       if (name !== '' && name !== 'default') names.push(name);
     }
   }
@@ -320,39 +322,43 @@ export function runtimeShim(pkg: string, linkage: RuntimeLinkage, specifier: str
  */
 export function runtimeCacheOf(linkage: RuntimeLinkage): string {
   const pieces = [...linkage.byUrl.values()];
-  if (pieces.length === 0) return '';
   // By its FULL name: `pkg` is what the `package.json` says, `@fudic/core` and not `core`.
   // Written short, this never matched and the fallback answered — the first piece in map
   // order, whose version is its own package's. Right by coincidence while every package
   // shares a number, and wrong the day one of them moves.
   const core = pieces.find((piece) => piece.pkg === '@fudic/core') ?? pieces[0];
+  // One guard and not two: nothing published IS no first piece, so asking the length first
+  // would leave «and if the first one is missing» with no input that reaches it.
+  if (core === undefined) return '';
   // `/_fudic/<version>/<pkg>/<piece>.js` — the version is the segment after the directory,
   // read back out of the URL the discovery wrote rather than resolved a second time.
-  const version = core === undefined ? '' : (core.url.split('/')[2] ?? '');
+  const version = core.url.split('/')[2] ?? '';
   return version === '' ? '' : runtimeCacheName(version);
 }
 
 export function loadedPieces(code: string, linkage: RuntimeLinkage): readonly string[] {
   const seen = new Set<string>();
-  const queue: string[] = [];
+  const queue: LinkedPiece[] = [];
 
   const take = (text: string): void => {
     for (const match of text.matchAll(
       /(?:^|[^.$\w])(?:from|import)\s*["'`](\/_fudic\/[^"'`]+\.js)["'`]/gu,
     )) {
       const url = match[1];
-      if (url === undefined || seen.has(url) || !linkage.byUrl.has(url)) continue;
+      if (url === undefined || seen.has(url)) continue;
+      const piece = linkage.byUrl.get(url);
+      if (piece === undefined) continue;
       seen.add(url);
-      queue.push(url);
+      queue.push(piece);
     }
   };
 
   take(code);
-  while (queue.length > 0) {
-    const url = queue.shift();
-    const piece = url === undefined ? undefined : linkage.byUrl.get(url);
-    if (piece !== undefined) take(piece.code);
-  }
+  // `for…of` over the array `take` keeps appending to: the iterator reads `length` at every
+  // step, so the walk ends on the round that adds nothing. Not a `shift()` loop, because the
+  // type of `shift()` says the queue may be empty inside a loop that has just checked it is
+  // not — a branch no input can reach, which is surplus code and not a missing test.
+  for (const piece of queue) take(piece.code);
   // In the order the head will write them, which is stable across builds for the same reason
   // the shim's is: two builds of one application must produce the same bytes.
   return [...seen].toSorted((a, b) => a.localeCompare(b));
@@ -363,7 +369,7 @@ export function linkedPieces(
   linkage: RuntimeLinkage,
 ): readonly LinkedPiece[] {
   const reached = new Map<string, LinkedPiece>();
-  const queue: string[] = [];
+  const queue: LinkedPiece[] = [];
 
   const take = (text: string): void => {
     // The three quotes, and the third one is not cosmetic: a piece that reaches another with
@@ -379,16 +385,13 @@ export function linkedPieces(
       // what it could, and inventing a file here would publish bytes nobody built.
       if (piece === undefined) continue;
       reached.set(url, piece);
-      queue.push(url);
+      queue.push(piece);
     }
   };
 
   for (const text of code) take(text);
-  while (queue.length > 0) {
-    const url = queue.shift();
-    const piece = url === undefined ? undefined : reached.get(url);
-    if (piece !== undefined) take(piece.code);
-  }
+  // The same walk as `loadedPieces`, written the same way and for the same reason.
+  for (const piece of queue) take(piece.code);
   return [...reached.values()].toSorted((a, b) => a.url.localeCompare(b.url));
 }
 

@@ -11,7 +11,7 @@ import { describe, it, expect } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { nodeIo, nodeLinkCheckIo } from '../src/io.js';
+import { nodeIo, nodeLinkCheckIo, nodeRuntimeFs } from '../src/io.js';
 
 const CARD = '<ui-card><template shadowrootmode="open"><slot></slot></template></ui-card>\n';
 
@@ -89,5 +89,21 @@ describe('nodeLinkCheckIo', () => {
       specifier: '@otra/cosa/card.fud',
       reason: 'not-installed',
     });
+  });
+});
+
+describe('nodeRuntimeFs', () => {
+  it('lists what a declared runtime directory holds, and answers undefined for none', () => {
+    const root = mkdtempSync(join(tmpdir(), 'fudic-vite-runtime-fs-'));
+    mkdirSync(join(root, 'runtime'));
+    writeFileSync(join(root, 'runtime', 'signal.js'), 'export{};\n');
+
+    const fs = nodeRuntimeFs();
+    expect(fs.readDir(join(root, 'runtime'))).toEqual(['signal.js']);
+    // A package whose runtime build has not run is an ordinary state of a project, so the
+    // listing answers `undefined` instead of throwing — and `FUD0804` is what says so.
+    expect(fs.readDir(join(root, 'no-hay'))).toBeUndefined();
+    // And the reader it extends still answers, because discovery needs both.
+    expect(fs.readFile(join(root, 'runtime', 'signal.js'))).toBe('export{};\n');
   });
 });

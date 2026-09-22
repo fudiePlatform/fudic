@@ -82,8 +82,9 @@ function linkPlugin(
   io: ResolveIo,
   base: string,
   styles: ProjectStyles = NO_STYLES,
-  assets?: LinkedAssets,
-  runtimeFor: (pattern: string) => RuntimeEntries = () => runtimeUrls(base, ''),
+  assets: LinkedAssets | undefined,
+  /** Always given: `runLinkPass` has the default, and this is its one caller. */
+  runtimeFor: (pattern: string) => RuntimeEntries,
 ): Plugin {
   // The Service Worker renders the same pages the edge does, so it publishes the same route
   // names (SDD-39 §4.7): one map, resolved once for the pass.

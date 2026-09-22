@@ -17,6 +17,7 @@ import { type ModeDecision } from '../src/mode.js';
 import { type RouteBuild } from '../src/discover.js';
 import { NO_STRATEGY } from '../src/strategy.js';
 import { nodeIo } from '../src/io.js';
+import { EDGE_PREFIX } from '../src/constants.js';
 
 const PAGE = `<!DOCTYPE html>
 <html>
@@ -148,6 +149,20 @@ describe('runEdgePass', () => {
     const plugin = edgePlugin([routeBuild('/about', 'about.fud', mode('ssg'))], nodeIo(), '/') as any;
     expect(plugin.resolveId('@fudic/ssr')).toBeNull();
     expect(plugin.load('@fudic/ssr')).toBeNull();
-    expect(plugin.load('\0fudic-edge:/nope')).toBeNull();
+    // The wrapper prefix carries no NUL. Written with one, this asked the OTHER guard — the
+    // id-this-plugin-does-not-own one — and the unknown-route branch was never reached.
+    expect(plugin.resolveId(`${EDGE_PREFIX}/nope`)).toBe(`${EDGE_PREFIX}/nope`);
+    expect(plugin.load(`${EDGE_PREFIX}/nope`)).toBeNull();
+  });
+
+  it('wraps a route it DOES know, with the runtime URLs of this base', async () => {
+    const { edgePlugin } = await import('../src/edge.js');
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    const plugin = edgePlugin([routeBuild('/about', 'about.fud', mode('ssg'))], nodeIo(), '/') as any;
+
+    // `runtimeFor` defaults to this base's own URLs (SDD-45 §4.4): the edge pass renders the
+    // pages of ONE application, so a caller that does not name a route's pieces still gets a
+    // wrapper — with the shared answer rather than with none.
+    expect(plugin.load(`${EDGE_PREFIX}/about`)).toContain('export');
   });
 });

@@ -6,7 +6,7 @@
 > `@fudic/di` · `@fudic/compiler` · `@fudic/vite` · `@fudic/transport` · `@fudic/ssr` ·
 > `examples/basic` · `examples/workspace` · `examples/pieces-bench`
 > **Rama:** `sdd-45-runtime-publicado`
-> **Progreso:** 30 / 32
+> **Progreso:** 32 / 32
 > **Bloqueado por:** [SDD-43](./SDD-43-librerias.md) — su tarea 11 es el `peerDependencies`
 > que aquí se endurece, y su criterio 12 es el workspace sobre el que se mide la evidencia.
 
@@ -39,6 +39,51 @@ equivocó tres veces antes de asentarse:
 ---
 
 ## Dónde estamos
+
+**Fase 9 cerrada, y con ella el SDD.** La evidencia la midió Pedro a mano sobre el servidor,
+por decisión suya; lo que faltaba era la otra mitad del cierre, y es la que se hizo aquí: los
+tests que las ocho fases anteriores no escribieron, **medidos contra `main` y no contra el
+`thresholds` de cada `vitest.config`**, que es lo único que distingue «no baja» de «pasa».
+
+**El suelo se midió construyendo `main` aparte**, porque no estaba escrito en ninguna parte.
+Cinco de los nueve paquetes tocados habían bajado: `@fudic/core` (99,47 / 99,06 / 99,25 /
+99,63 contra un umbral de 100 — `pnpm coverage` **fallaba**, aunque `pnpm test` estuviera
+verde), `@fudic/di`, `@fudic/transport`, `@fudic/compiler` y `@fudic/vite`. Hoy los nueve
+están por encima de su suelo y los seis que estaban al 100 vuelven a estarlo.
+
+| paquete | `main` (stmts / branch / funcs / lines) | ahora |
+|---|---|---|
+| `conventions` · `core` · `di` · `dom` · `forms` · `ssr` | 100 / 100 / 100 / 100 | **100 / 100 / 100 / 100** |
+| `transport` | 95,74 / 89,42 / 94,26 / 95,99 | **96,17 / 90,59 / 94,65 / 96,38** |
+| `compiler` | 99,32 / 98,45 / 99,46 / 99,75 | **99,35 / 98,49 / 99,54 / 99,77** |
+| `vite` | 96,83 / 92,14 / 97,06 / 96,70 | **96,88 / 92,52 / 97,50 / 96,85** |
+
+Los ficheros que nacieron en este SDD están al 100 en las cuatro: `core/hydrate/deferred.ts`,
+`transport/runtime-cache.ts`, `vite/coordinator.ts`, `vite/runtime-link.ts` y
+`vite/runtime-pieces.ts`.
+
+**Lo que aparecieron por el camino, que es lo que un test compra de verdad:**
+
+- **Tres funciones que ya no servían a nadie.** `mainFileName` seguía importada en el plugin
+  sin usarse desde que el arranque pasó a ser por ruta; el valor por defecto de `runtimeFor`
+  en `linkPlugin` es inalcanzable porque su único llamante lo pasa siempre; y el enlazador
+  tenía tres guardas —`queue.shift()` dentro de un `while (queue.length > 0)`, un
+  `pieces.length === 0` delante de `pieces[0]`, un `?? ''` sobre un `split` que siempre tiene
+  primera parte— que ninguna entrada puede provocar. Retiradas: la regla dice que una rama
+  que no se puede provocar es código que sobra, y aquí lo era.
+- **Un test que pasaba por el motivo equivocado.** El de `edgePlugin` comprobaba la guarda de
+  «ruta desconocida» con `'\0fudic-edge:/nope'`, y el prefijo no lleva NUL — así que lo que
+  contestaba era la OTRA guarda y esa rama nunca se ejecutó.
+- **El hueco que la fase 3 dejó apuntado, cerrado:** `serve.mjs` servía `/_fudic/…` siempre
+  desde el montaje de tienda. Correcto mientras las dos apps enlacen el mismo conjunto, 404 el
+  día que no. Ahora busca la pieza en los dos `dist`, que es lo que hace un despliegue al
+  fundirlos en la raíz del origen.
+- **Y el test que faltaba y ninguna otra suite podía dar:** las demás pruebas de build alias
+  los paquetes a su `dist` y dejan el proyecto temporal sin `node_modules`, así que el
+  descubrimiento no encuentra publicadores y **todo SDD-45 se saltaba**. `build-runtime-linked`
+  instala los paquetes de verdad y mide sobre la salida lo que el SDD promete: ni un fichero de
+  framework en `assets/`, URLs sin `base`, el mapa de fuentes al lado de cada pieza, toda URL
+  que una pieza nombra copiada, y las piezas de formularios fuera porque esa página no las usa.
 
 **Fase 8 cerrada: lo que quedaba suelto.** Una aplicación sin worker ya no pide en cada
 página un módulo vacío —ni la etiqueta ni el fichero—; el desajuste de versión de una
@@ -686,8 +731,8 @@ F1 las piezas existen ──→ F2 el reparto ──→ F3 enlazar ──→ F4 
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 31 | todas | **La evidencia, entera.** `examples/workspace` en un origen: la segunda app no descarga ni un byte de framework que la primera ya trajo. Y el despliegue: se reconstruye `app-1` con un id nuevo y de `/_fudic/` no se vuelve a pedir nada. Criterios 31, 32 | `examples` | `examples/workspace/*` |
-| [ ] | 32 | 31 | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`, y los 35 criterios de §6 verdes — con los tres de «rojo primero» (2, 10, 14) vistos fallar antes. **Y las dos cosas que Pedro fija como el cierre de esta fase: que los tests que fallan queden arreglados y que la cobertura de los proyectos no baje.** SDD-45 a `Hecho` en [INDEX.md](./INDEX.md), tabla y registro | — | [INDEX.md](./INDEX.md) |
+| [x] | 31 | todas | **La evidencia, entera.** `examples/workspace` en un origen: la segunda app no descarga ni un byte de framework que la primera ya trajo. Y el despliegue: se reconstruye `app-1` con un id nuevo y de `/_fudic/` no se vuelve a pedir nada. Criterios 31, 32. **Medida por Pedro a mano sobre el servidor**, por decisión suya. Se cierra además el hueco que la fase 3 dejó apuntado: `serve.mjs` funde los dos `_fudic/` en la raíz del origen, que es lo que hace un despliegue | `examples` | `examples/workspace/*` |
+| [x] | 32 | 31 | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`, y los 35 criterios de §6 verdes — con los tres de «rojo primero» (2, 10, 14) vistos fallar antes. **Y las dos cosas que Pedro fija como el cierre de esta fase: que los tests que fallan queden arreglados y que la cobertura de los proyectos no baje.** SDD-45 a `Hecho` en [INDEX.md](./INDEX.md), tabla y registro | — | [INDEX.md](./INDEX.md) |
 
 > **La fase 9 es de una sesión propia, y su alcance lo fijó Pedro.** Las ocho fases anteriores
 > se escribieron **sin tests por decisión expresa** —ahí está la sección de arriba, que es el

@@ -1,6 +1,6 @@
 # SDD-45 — El runtime se publica en piezas, y cada ruta nombra las suyas
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Paquetes:** `@fudic/core` · `@fudic/dom` · `@fudic/forms` · `@fudic/di` (publican piezas) ·
 > `@fudic/vite` (genera el coordinador y enlaza) · `@fudic/compiler` (el marcador del layout) ·
 > `@fudic/conventions` (los nombres que nadie posee) · `@fudic/transport` · `@fudic/ssr`
