@@ -25,4 +25,5 @@ export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
   publicDir: fileURLToPath(new URL('../public', import.meta.url)),
   plugins: [fudic({ routesDir: '../src/routes' })],
+  build: { sourcemap: true },
 });
