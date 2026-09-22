@@ -28,9 +28,9 @@ import { type PageMaps } from './maps.js';
 import { type Cells } from './cells.js';
 import { type ChunkLoader } from './chunks.js';
 import {
-  allInstances,
   ID_ATTR,
   idOf,
+  instanceById,
   instancesOf,
   stopwatch,
   type ElementRegistry,
@@ -104,9 +104,8 @@ export function createCascade(config: CascadeConfig): Cascade {
     }
   };
 
-  /** The instance of an id, wherever it lives — `allInstances` crosses shadow roots. */
-  const byId = (id: number): Element | undefined =>
-    allInstances(root).find((el) => idOf(el) === id);
+  /** The instance of an id, wherever it lives — a lookup inside a turn (SDD-45 §4.12). */
+  const byId = (id: number): Element | undefined => instanceById(id, root);
 
   const prepareCells = async (tag: string): Promise<void> => {
     for (const host of instancesOf(tag, root)) {

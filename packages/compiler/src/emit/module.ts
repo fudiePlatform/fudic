@@ -27,7 +27,7 @@ import { spaceModeOf } from './space.js';
 import { hasForeignDisplay, hostDisplay, tagDisplay, type Boxes, type Display } from './display.js';
 import { CodeWriter, type EmitMapping } from './writer.js';
 import { MarkupEmitter, renderName, tpl } from './markup.js';
-import { AssetLinker, type AssetExists, type AssetUrl } from './assets.js';
+import { AssetLinker, type AssetExists, type AssetText, type AssetUrl } from './assets.js';
 import { compactStyleCss } from './css-compact.js';
 import { codeOf, codeOfDocument, diHelpers } from './oxc-code.js';
 import { hasDependencyInjection } from './di.js';
@@ -103,6 +103,14 @@ export interface EmitOptions {
    * import, which is what the standalone `.mjs` emit has always done.
    */
   readonly assetUrl?: AssetUrl;
+  /**
+   * The bytes of an asset the author asked to embed (`…?inline`, SDD-45 §3.6), INJECTED for
+   * the same reason as the two above: reading a file is the host's, never the compiler's.
+   *
+   * Absent — a standalone emit, a golden — and nothing is embedded: the reference stays the
+   * URL the author wrote, which is a page that still works.
+   */
+  readonly assetText?: AssetText;
   /**
    * Module specifier for a linked component, INJECTED — the compiler never touches
    * `node:path`, so it cannot compute a path relative to the importing module. Default:
@@ -260,6 +268,7 @@ function buildComponentModule(
     options.linkAssets ?? false,
     options.assetExists,
     options.assetUrl,
+    options.assetText,
   );
   const { props, signals, neutral, diagnostics, di, server } = codeOf(comp);
   const cells = cellSlots(comp, graph);
@@ -470,6 +479,7 @@ function buildPageModule(
     options.linkAssets ?? false,
     options.assetExists,
     options.assetUrl,
+    options.assetText,
   );
   const page = graph.entry as PageDocument;
   const source = graph.entrySource;
@@ -534,7 +544,10 @@ function buildPageModule(
     {
       skip: componentLinks,
       linker,
-      onRuntime: () => writeRuntimeTags(headW, needsRuntime(hydratable, hasDi, blocks !== undefined)),
+      // The form travels no further here: a standalone page writes the marker and the tags,
+      // so what the author asked for is decided and emitted in one place (SDD-45 §3.6).
+      onRuntime: (form) =>
+        writeRuntimeTags(headW, needsRuntime(hydratable, hasDi, blocks !== undefined), form),
     },
     headW,
   );

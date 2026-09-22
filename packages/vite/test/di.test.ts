@@ -11,7 +11,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { emitMainBootstrap } from '../src/bootstrap.js';
 import { iocChunkName, iocId, routeUsesDi } from '../src/client.js';
 import { nodeIo } from '../src/io.js';
 import { transformFudIoc } from '../src/transform.js';
@@ -114,36 +113,9 @@ describe('the render wrapper', () => {
   });
 });
 
-describe('the main bootstrap', () => {
-  const chunks = { mode: 'build', base: '/' } as const;
-
-  it('rebuilds the container tree from the published map, before hydration installs', () => {
-    const code = emitMainBootstrap({ chunks, swUrlExpr: null, hasDi: true });
-
-    expect(code).toContain(`import { buildTree } from '@fudic/di/page';`);
-    expect(code).toContain(`document.getElementById('fud-ioc')`);
-    expect(code).toContain(`document.getElementById('fud-di')`);
-    // One module per OWNING tag, by URL: the same arithmetic a hydration chunk uses.
-    expect(code).toContain(`resolveChunk(tag + '.ioc')`);
-    // STARTED before the runtime installs and handed to it as `ready`, not awaited in front
-    // of it. The capturer has to be listening from the first millisecond — a click before it
-    // is installed is lost, not deferred — and path 2 is where the tree is waited for, which
-    // is the last moment at which a chunk could resolve against one that is not built.
-    expect(code.indexOf('const $ioc = (async () => {')).toBeLessThan(
-      code.indexOf('installHydration({'),
-    );
-    expect(code).toContain('ready: $ioc');
-    expect(code).not.toMatch(/^await /mu);
-  });
-
-  it('does not so much as name the injector when the app has no DI', () => {
-    const code = emitMainBootstrap({ chunks, swUrlExpr: null });
-
-    expect(code).not.toContain('@fudic/di');
-    expect(code).not.toContain('fud-ioc');
-    expect(code).not.toContain('buildTree');
-  });
-});
+// The two bootstrap assertions moved to `coordinator.test.ts`: the injection is named by a
+// ROUTE now and not by the application (SDD-45 §4.4), and the loading of the owners' modules
+// moved into the `di/page` piece, where it is not compiled into every app.
 
 /**
  * The dev server publishes an IoC module at the same per-tag URL shape as a hydration chunk,

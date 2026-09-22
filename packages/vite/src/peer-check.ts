@@ -10,16 +10,22 @@
  *
  * So the library declares the compiler it was written for —
  * `"peerDependencies": { "@fudic/compiler": "<range>" }` — and this compares that range with
- * the compiler the build actually resolved. One warning per LIBRARY: it is a fact of the
+ * the compiler the build actually resolved. One diagnostic per LIBRARY: it is a fact of the
  * package, and saying it once per file would be the same sentence a hundred times.
  *
+ * **It is an ERROR since SDD-45 §4.8** (`FUD0800`, superseding `FUD0762`). It was a warning
+ * while every application of a repository shared a framework version by force; now an
+ * application's version is its own, and the moment a library is shared between two of them,
+ * the library decides. What a mismatch produces is not a worse build — it is an export that
+ * does not exist, in a browser, inside a file the author never wrote.
+ *
  * Nothing here throws, and nothing here guesses. A range this cannot read produces NO
- * diagnostic: a false warning on every build is worse than a missing one, because the first
- * thing an author learns from it is to stop reading warnings.
+ * diagnostic: a false failure on every build is worse than a missing one, and it is the
+ * fastest way to teach an author to stop reading diagnostics.
  */
 
 import { dependencyChain, type PackageFs } from '@fudic/resolve';
-import { FUD_LIB_PEER_MISMATCH, type FudicDiagnostic } from './diagnostics.js';
+import { FUD_RUNTIME_PEER_MISMATCH, type FudicDiagnostic } from './diagnostics.js';
 
 /** The package whose version decides whether a library's source can be parsed at all. */
 export const COMPILER_PACKAGE = '@fudic/compiler';
@@ -32,7 +38,7 @@ interface Version {
 }
 
 /**
- * `FUD0762` for every fudic library of this project whose compiler range excludes the
+ * `FUD0800` for every fudic library of this project whose compiler range excludes the
  * compiler this build resolved.
  *
  * The libraries come from the DECLARED dependency graph, which is the same walk the index and
@@ -53,7 +59,7 @@ export function checkPeers(root: string, io: PackageFs): readonly FudicDiagnosti
     if (range === undefined) continue; // declares nothing about the compiler: §4.7 is advice it did not take
     if (satisfies(resolved.version, range) !== false) continue; // in range, or a range nobody can read
     diagnostics.push({
-      code: FUD_LIB_PEER_MISMATCH,
+      code: FUD_RUNTIME_PEER_MISMATCH,
       file: pkg.name === '' ? pkg.root : pkg.name,
       message:
         `the library "${pkg.name === '' ? pkg.root : pkg.name}" was written for ` +

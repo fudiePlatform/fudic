@@ -177,3 +177,45 @@ describe('AssetLinker.filePath', () => {
     expect(linker.imports()).toEqual(['import __fudic_asset_0 from "./logo.png";']);
   });
 });
+
+/**
+ * SDD-45 §3.6 — the reader behind `?inline`.
+ *
+ * Only ever asked about a specifier the author asked to EMBED, and what comes back goes into
+ * the document, so every «no» here has to leave the reference exactly as it was written
+ * rather than put an empty `<style>` in the page.
+ */
+describe('AssetLinker.textOf', () => {
+  it('reads the file a linkable specifier names', () => {
+    const linker = new AssetLinker(true, undefined, undefined, (file) =>
+      file === './tokens.css' ? ':root{}' : null,
+    );
+    // The query is the instruction to the bundler and not part of the name, so the reader is
+    // asked about the FILE — the same cut `filePath` makes everywhere else.
+    expect(linker.textOf('./tokens.css?inline')).toBe(':root{}');
+    expect(linker.textOf('./gone.css?inline')).toBeNull();
+  });
+
+  it('answers null when nobody can read here: linking off, or no reader at all', () => {
+    // Two of the three «no»s, and they are the ordinary ones: a golden render and
+    // `renderToString` have no filesystem, and a project with `linkAssets` off has no
+    // business rewriting anything.
+    const off = new AssetLinker(false, undefined, undefined, () => ':root{}');
+    expect(off.textOf('./tokens.css?inline')).toBeNull();
+    const noReader = new AssetLinker(true);
+    expect(noReader.textOf('./tokens.css?inline')).toBeNull();
+  });
+
+  it('answers null for what is already a final URL, and never asks the reader', () => {
+    let asked = 0;
+    const linker = new AssetLinker(true, undefined, undefined, () => {
+      asked += 1;
+      return ':root{}';
+    });
+    // A sheet on a CDN is not ours to embed, and neither is a data URI — it is already in
+    // the document by another road.
+    expect(linker.textOf('https://cdn.test/x.css?inline')).toBeNull();
+    expect(linker.textOf('data:text/css,:root{}')).toBeNull();
+    expect(asked).toBe(0);
+  });
+});

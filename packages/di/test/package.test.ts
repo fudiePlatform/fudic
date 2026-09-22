@@ -28,7 +28,11 @@ describe('@fudic/di package contract', () => {
   });
 
   it('has exactly two entry points: the injector and the page', () => {
-    expect(Object.keys(manifest.exports ?? {})).toEqual(['.', './page']);
+    // `./package.json` is not a third entry point — it is the manifest itself, which the
+    // Vite plugin has to read to find `fudic.runtime` (SDD-45 §3.3). A package with
+    // `exports` hides its own manifest from `require.resolve` unless it says otherwise, so
+    // the alternative to this line is the plugin guessing paths inside node_modules.
+    expect(Object.keys(manifest.exports ?? {})).toEqual(['.', './page', './package.json']);
   });
 
   it('runs its suite in node: nothing here may reach for a DOM', () => {

@@ -4,6 +4,7 @@ import { createCells } from '../../src/hydrate/cells.js';
 import { createChunkLoader } from '../../src/hydrate/chunks.js';
 import { readPageMaps } from '../../src/hydrate/maps.js';
 import { instanceState, type InstanceState } from '../../src/hydrate/registry.js';
+import { signal } from '../../src/signal.js';
 import { defineRecorder, host, publish, TestRegistry, type Recorder } from './_page.js';
 
 interface Harness {
@@ -30,7 +31,7 @@ function harness(): Harness {
   });
   const cascade = createCascade({
     maps,
-    cells: createCells(maps),
+    cells: createCells(maps, signal),
     loader,
     registry,
     state,

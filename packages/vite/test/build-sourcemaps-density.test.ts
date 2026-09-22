@@ -170,7 +170,8 @@ describe('vite build — the hydration chunk is mapped, not merely accompanied',
     // The main-thread entry is a virtual module, so its own id has to be in there.
     const main = output.find((o) => o.fileName.startsWith('fudic-main-') && o.fileName.endsWith('.js'))!;
     const sources = mapOf(output, main.fileName).sources.map((s) => (s ?? '').replace(/\\/gu, '/'));
-    expect(sources.some((s) => s.endsWith('fudic-main'))).toBe(true);
+    // The coordinator's own virtual id (SDD-45 §4.4): `fudic-coordinator:fudic-main-<hash>`.
+    expect(sources.some((s) => s.includes('fudic-main'))).toBe(true);
     for (const file of output) {
       if (!file.fileName.endsWith('.map')) continue;
       expect(textOf(file)).not.toContain('\\u0000');

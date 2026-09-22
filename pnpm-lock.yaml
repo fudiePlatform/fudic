@@ -221,12 +221,21 @@ importers:
       happy-dom:
         specifier: 20.10.6
         version: 20.10.6
+      rolldown:
+        specifier: 1.2.1
+        version: 1.2.1
 
   packages/di:
     devDependencies:
+      '@fudic/core':
+        specifier: workspace:*
+        version: link:../core
       '@fudic/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      rolldown:
+        specifier: 1.2.1
+        version: 1.2.1
 
   packages/dom:
     devDependencies:
@@ -236,6 +245,9 @@ importers:
       happy-dom:
         specifier: 20.10.6
         version: 20.10.6
+      rolldown:
+        specifier: 1.2.1
+        version: 1.2.1
 
   packages/formatter:
     dependencies:
@@ -268,6 +280,9 @@ importers:
       happy-dom:
         specifier: 20.10.6
         version: 20.10.6
+      rolldown:
+        specifier: 1.2.1
+        version: 1.2.1
 
   packages/language-core:
     dependencies:
@@ -377,6 +392,9 @@ importers:
       '@fudic/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      rolldown:
+        specifier: 1.2.1
+        version: 1.2.1
 
   packages/transport:
     devDependencies:
@@ -386,6 +404,9 @@ importers:
       '@fudic/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      rolldown:
+        specifier: 1.2.1
+        version: 1.2.1
 
   packages/tsconfig: {}
 

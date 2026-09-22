@@ -106,9 +106,11 @@ async function buildWorkspace(files: Readonly<Record<string, string>> = {}): Pro
 
     'libs/ui/package.json': manifest('@acme/ui', {
       dependencies: { '@acme/guia': '*' },
-      // The grammar the library was written for (§4.7). Deliberately impossible, so the
-      // warning is observable in the same build as everything else.
-      peerDependencies: { '@fudic/compiler': '^99.0.0' },
+      // The grammar the library was written for (§4.7), and it has to MATCH here: since
+      // SDD-45 §4.8 a range that excludes the resolved compiler fails the build, so an
+      // impossible one would take every other test in this file down with it. The mismatch
+      // has a build of its own, below.
+      peerDependencies: { '@fudic/compiler': '^1.0.0' },
       exports: { './ui-card.fud': './src/ui-card.fud' },
       files: ['src', '*.css'],
     }),
@@ -197,12 +199,31 @@ describe('a guide library under a component library under an app (§4.6)', () =>
     expect(out).toContain('var(--acme-accent)');
   });
 
-  it('warns once that the library was written for another compiler (FUD0762)', () => {
-    const peers = built.warnings.filter((w) => w.includes('FUD0762'));
-    expect(peers).toHaveLength(1);
-    expect(peers[0]).toContain('@acme/ui');
-    expect(peers[0]).toContain('^99.0.0');
+  it('does not complain about a library whose range includes this compiler', () => {
+    expect(built.warnings.filter((w) => w.includes('FUD0800'))).toHaveLength(0);
+    expect(built.error ?? '').not.toMatch(/FUD0800/u);
   });
+});
+
+describe('the version frontier is the graph (SDD-45 §4.8)', () => {
+  it('REFUSES a library written for another compiler (FUD0800), naming both versions', async () => {
+    // It was a warning — `FUD0762` — while every application of a repository shared a
+    // framework version by force, and a range conservative by one minor must not stop a build
+    // that works. This SDD makes an application's version its own, and the moment a library is
+    // shared between two of them the library decides. What a mismatch produces is not a worse
+    // build: it is a missing export, in a browser, inside a file the author never wrote.
+    const built = await buildWorkspace({
+      'libs/ui/package.json': manifest('@acme/ui', {
+        dependencies: { '@acme/guia': '*' },
+        peerDependencies: { '@fudic/compiler': '^99.0.0' },
+        exports: { './ui-card.fud': './src/ui-card.fud' },
+        files: ['src', '*.css'],
+      }),
+    });
+    expect(built.error ?? '').toMatch(/FUD0800/u);
+    expect(built.error ?? '').toMatch(/@acme\/ui/u);
+    expect(built.error ?? '').toMatch(/\^99\.0\.0/u);
+  }, 300000);
 });
 
 describe('the tag space, now that it is shared (§4.5)', () => {

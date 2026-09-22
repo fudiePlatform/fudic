@@ -53,7 +53,31 @@ function resolveIn(root, rest) {
   return target;
 }
 
+/**
+ * The published runtime, which belongs to the ORIGIN and not to either application
+ * (SDD-45 §4.2).
+ *
+ * Each `dist` carries its own copy under `_fudic/`, because that is what makes a `dist`
+ * deployable on its own. On an origin that serves two of them, the deploy FUSES those trees
+ * at the root — the paths are identical and so are the bytes, since the framework built them
+ * and not the applications — and that fusion is what this server stands in for. Without it a
+ * `/_fudic/…` request always landed in the `/` mount, which works exactly while both
+ * applications link the same set and 404s the day one of them links a piece the other does
+ * not. That is the shape of a defect that shows up in production and never in a demo.
+ */
+const RUNTIME_PREFIX = '/_fudic/';
+
+async function runtimeFileFor(pathname) {
+  for (const mount of MOUNTS) {
+    const target = resolveIn(mount.root, pathname.slice(1));
+    if (target === null) continue;
+    if ((await stat(target).catch(() => null))?.isFile() === true) return target;
+  }
+  return null;
+}
+
 async function fileFor(pathname) {
+  if (pathname.startsWith(RUNTIME_PREFIX)) return runtimeFileFor(pathname);
   for (const mount of MOUNTS) {
     if (!pathname.startsWith(mount.prefix)) continue;
     const rest = pathname.slice(mount.prefix.length);

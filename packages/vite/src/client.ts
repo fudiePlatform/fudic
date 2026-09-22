@@ -19,8 +19,10 @@
 
 import {
   hasDependencyInjection,
+  hydratableTags,
   iocName,
   isReactiveRoute,
+  needsRuntime,
   ownsContainer,
   resolveDocument,
   usesDependencyInjection,
@@ -118,6 +120,23 @@ export function discoverComponents(
  */
 export function routeUsesDi(absPath: string, io: ResolveIo): boolean {
   return hasDependencyInjection(resolveDocument(absPath, io).value);
+}
+
+/**
+ * Whether the route at `absPath` has anything to hydrate, and therefore a coordinator
+ * (SDD-45 §4.4).
+ *
+ * Asked with the EMIT's own predicate and not with a second one. The head writes the runtime
+ * tag under exactly this condition, so a build that disagreed would either emit a tag for a
+ * file nobody wrote or write a file no page ever names — and both are silent.
+ */
+export function routeHydrates(absPath: string, io: ResolveIo): boolean {
+  const doc = resolveDocument(absPath, io).value;
+  return needsRuntime(
+    hydratableTags(doc),
+    hasDependencyInjection(doc),
+    isReactiveRoute(doc),
+  );
 }
 
 /** A ROUTE that has a client half, and therefore a chunk of its own (SDD-39 §4.5). */

@@ -9,10 +9,17 @@
  * is an `href` like any other, and the seam still hands back a string.
  */
 
-import { readFileSync } from 'node:fs';
-import { nodeResolveFs, resolveHref, resolveHrefPath, type HrefResolution } from '@fudic/resolve';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import {
+  nodePackageFs,
+  nodeResolveFs,
+  resolveHref,
+  resolveHrefPath,
+  type HrefResolution,
+} from '@fudic/resolve';
 import { type ResolveIo } from '@fudic/compiler';
 import type { LinkCheckIo } from './link-check.js';
+import type { RuntimeFs } from './runtime-pieces.js';
 
 /** One filesystem for the whole build: `createRequire` caches, and the disk does not move. */
 const fs = nodeResolveFs();
@@ -32,6 +39,23 @@ export function nodeIo(): ResolveIo {
  * Built on the same `fs` as `nodeIo`, so the check and the graph walk ask one resolver. Two
  * would be two opinions about which file a tag is, and they would drift (SDD-43 §5).
  */
+/**
+ * What discovering the published runtime needs (SDD-45 §3.5): a package filesystem plus a
+ * directory listing.
+ *
+ * The listing is the only addition, and it is what keeps §3.3 honest: a publisher declares a
+ * DIRECTORY and its pieces are whatever it holds, so nobody has to keep a list of names in
+ * step with a build. A directory that is not there answers `undefined` rather than throwing —
+ * a package whose runtime build has not run is an ordinary state of a project, and `FUD0804`
+ * is what says so.
+ */
+export function nodeRuntimeFs(): RuntimeFs {
+  return {
+    ...nodePackageFs(),
+    readDir: (dir) => (existsSync(dir) ? readdirSync(dir) : undefined),
+  };
+}
+
 export function nodeLinkCheckIo(): LinkCheckIo {
   return {
     read: (path) => {

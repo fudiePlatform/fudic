@@ -15,6 +15,8 @@
  * compiler-free (DIP).
  */
 
+import type { RuntimeEntries } from './constants.js';
+
 export interface RenderChunkOptions {
   /** Import specifier for the page module's `page(data, io)`. */
   readonly pageModule: string;
@@ -50,7 +52,7 @@ export interface RenderChunkOptions {
    * build. The caller is also what makes dev work: in a build these carry `BUILD_TOKEN` and
    * the plugin substitutes it, in dev they are the dev server's two stable URLs.
    */
-  readonly runtime?: { readonly boot: string; readonly main: string };
+  readonly runtime?: RuntimeEntries;
 }
 
 /** Generate the route chunk module text. */
@@ -93,7 +95,7 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   // `io.nonce` is the CSP nonce of THIS response: the emit puts it on the inline
   // style-adoption polyfill, which a strict `script-src 'self'` would otherwise kill.
   // The two main-thread entries, by URL (BUG-31 §T1).
-  const runtime = options.runtime ?? { boot: '', main: '' };
+  const runtime = options.runtime ?? { boot: '', main: '', pieces: [], inline: '' };
   lines.push(`const RUNTIME = ${JSON.stringify(runtime)};`);
   lines.push('');
   lines.push('function io(ctx) {');

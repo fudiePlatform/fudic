@@ -32,24 +32,32 @@
     "./page": {
       "types": "./dist/page.d.ts",
       "import": "./dist/page.js"
-    }
+    },
+    "./package.json": "./package.json"
+  },
+  "fudic": {
+    "runtime": "./runtime"
   },
   "sideEffects": false,
   "files": [
     "dist",
+    "runtime",
     "README.md"
   ],
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && pnpm run build:runtime",
+    "build:runtime": "node -e \"require('node:fs').rmSync('runtime',{recursive:true,force:true})\" && rolldown -c rolldown.config.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage"
   },
   "devDependencies": {
-    "@fudic/tsconfig": "workspace:*"
+    "@fudic/core": "workspace:*",
+    "@fudic/tsconfig": "workspace:*",
+    "rolldown": "1.2.1"
   }
 }

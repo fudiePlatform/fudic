@@ -30,11 +30,25 @@
  * SPA accumulates one cell per instance per route visited.
  */
 
-import { signal, type Signal } from '../signal.js';
+import type { Signal } from '../signal.js';
 import { type PageMaps } from './maps.js';
 
 /** The address of a cell: the instance that owns it, and the slot it occupies in its slice. */
 export type CellRef = readonly [owner: number, slot: number];
+
+/**
+ * How a cell is built — injected, and `core/signal` is why (SDD-45 §4.4.1).
+ *
+ * This module holds the identity of a shared signal, so it needs the factory; what it must
+ * not do is IMPORT it, because then the one module every hydrating page loads would drag the
+ * signal and its tracking into the load, and a page nobody touches pays for them. A cell is
+ * materialised only while an instance is being handed its slice, which is the moment path 2
+ * has the piece in hand.
+ *
+ * `unknown` in and `unknown` out, because a payload slot has no type until a component reads
+ * it: the generic `signal` satisfies this signature without the registry knowing it is one.
+ */
+export type MakeCell = (initial: unknown) => Signal<unknown>;
 
 /**
  * The marker that travels in `fud-state`. Two shapes, and the difference is urgency.
@@ -83,7 +97,7 @@ function refOf(mark: CellMark): CellRef | undefined {
 
 const keyOf = (ref: CellRef): string => `${ref[0]}:${ref[1]}`;
 
-export function createCells(maps: PageMaps): Cells {
+export function createCells(maps: PageMaps, make: MakeCell): Cells {
   const cells = new Map<string, Signal<unknown>>();
 
   // The sweep of §4.3: every address any marker in the page points at. It is done once, when
@@ -103,7 +117,7 @@ export function createCells(maps: PageMaps): Cells {
       // The initial value is the owner's own slot, which the runtime already knows how to
       // read. Whoever asks first materialises it; everyone after gets the same object, and
       // that is the whole of the identity this file exists for.
-      cell = signal(maps.slice(ref[0])[ref[1]]);
+      cell = make(maps.slice(ref[0])[ref[1]]);
       cells.set(key, cell);
     }
     return cell;

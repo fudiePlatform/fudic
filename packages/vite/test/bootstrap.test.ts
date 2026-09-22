@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { emitSwBootstrap, emitMainBootstrap, emitBootBootstrap } from '../src/bootstrap.js';
+import { emitSwBootstrap, emitBootBootstrap } from '../src/bootstrap.js';
 import { BUILD_TOKEN } from '../src/constants.js';
 
 describe('emitSwBootstrap', () => {
@@ -13,11 +13,21 @@ describe('emitSwBootstrap', () => {
     shell: ['/style.css'],
     resources: [{ pattern: '/api/**', policy: 'network-first', ttl: 300_000 }],
     app: 'shop',
+    // The published runtime of this origin, cached as it is used (SDD-45 §4.5.1), and the
+    // names its §4.9 sweep walks: the family of runtime caches, and this app's mark.
+    runtimePrefix: '/_fudic/',
+    runtimeCache: 'fudic-runtime-0.0.1',
+    runtimeCachePrefix: 'fudic-runtime-',
+    runtimeMarker: '/_fudic/marker/shop',
+    // Linked, not bundled (§4.10): the worker asks its own cache for the renderer and
+    // evaluates it with the linker it already has.
+    renderer: '/_fudic/0.0.1/ssr/index.js',
   });
 
   it('renders in the Service Worker itself: linker, stores and router', () => {
     expect(code).toContain('createLinker');
-    expect(code).toContain('createRouter({ table, linker, stores, resources: RESOURCES');
+    expect(code).toContain('createRouter({');
+    expect(code).toContain('resources: RESOURCES,');
     expect(code).toContain("addEventListener('fetch'");
   });
 
@@ -25,7 +35,11 @@ describe('emitSwBootstrap', () => {
     // The shell cache is opened once and used for BOTH: reading the manifest and
     // serving. Without the store there is no reader, and the precache is decoration.
     expect(code).toContain('shell: createStore({ cache: shell })');
+    // The precached list, and only it. The published runtime is NOT in here and is not
+    // precached either: it goes in its own cache, written as each page asks for a piece
+    // (SDD-45 §4.5.1).
     expect(code).toContain('shell: PRECACHE');
+    expect(code).toContain('runtime: { prefix: RUNTIME_PREFIX,');
     // The very list the install loop iterates: the two cannot drift.
     const install = code.slice(code.indexOf("addEventListener('install'"), code.indexOf("addEventListener('activate'"));
     expect(install).toContain('for (const url of PRECACHE)');
@@ -36,9 +50,46 @@ describe('emitSwBootstrap', () => {
     expect(code).not.toContain('new MessageChannel');
   });
 
-  it('bundles the runtime as a linker builtin instead of shipping it per chunk', () => {
-    expect(code).toContain("import * as ssr from '@fudic/ssr';");
+  it('hands the renderer to chunks as a linker builtin, linked or bundled', () => {
+    // The property that does not move: a chunk resolves `@fudic/ssr` against ONE object the
+    // worker already holds, so the renderer is neither downloaded nor evaluated per chunk.
+    // What SDD-45 §4.10 changes is where that object comes from.
     expect(code).toContain("builtins: { '@fudic/ssr': ssr }");
+
+    // Linked: no static import at all — it is the import that drags `@fudic/ssr` into the
+    // nested build, so leaving it would link the renderer AND ship it — and the renderer is
+    // read from the SHARED cache with a linker of its own, never from this app's routes.
+    expect(code).not.toContain("import * as ssr from '@fudic/ssr';");
+    expect(code).toContain('const RENDERER = "/_fudic/0.0.1/ssr/index.js";');
+    expect(code).toContain('}).link(RENDERER)');
+
+    // Bundled, which is what an empty URL means: exactly the worker of before.
+    const bundled = emitSwBootstrap({
+      manifestUrlExpr: '"/fudic-routes.json"',
+      shell: [],
+      resources: [],
+      app: 'shop',
+      runtimePrefix: '',
+      runtimeCache: '',
+      runtimeCachePrefix: '',
+      runtimeMarker: '',
+      renderer: '',
+    });
+    expect(bundled).toContain("import * as ssr from '@fudic/ssr';");
+    expect(bundled).not.toContain('RENDERER');
+  });
+
+  it('brings the renderer at install, because it is the WORKER’s own dependency', () => {
+    // Not the page's runtime, which is cached as a page asks for it (§4.5.1): without the
+    // renderer in the cache, a first boot offline has nothing to render with. Cache-first, so
+    // the second application of the origin finds it there and asks the network for nothing.
+    const install = code.slice(
+      code.indexOf("addEventListener('install'"),
+      code.indexOf("addEventListener('activate'"),
+    );
+    expect(install).toContain("get(RENDERER, 'cache-first', null)");
+    // And still nothing else of the runtime: the pieces a PAGE uses are not brought here.
+    expect(install).not.toContain('RUNTIME_PREFIX');
   });
 
   it('precaches the shell and the manifest, and nothing else', () => {
@@ -56,7 +107,8 @@ describe('emitSwBootstrap', () => {
     const install = code.slice(code.indexOf("addEventListener('install'"), code.indexOf("addEventListener('activate'"));
     // `cache.add` is what wrote an entry the page's own request could not match.
     expect(install).not.toContain('cache.add');
-    expect(install).toContain('createStore({ cache: await caches.open(NAMES.shell) })');
+    expect(install).toContain('await caches.open(NAMES.shell)');
+    expect(install).toContain('createStore({ cache })');
     expect(install).toContain('shell.put(url, response)');
     // A fixed unhashed name plus a long max-age would let a new build precache the OLD
     // bytes, and cache-first with no TTL would serve them forever.
@@ -147,81 +199,7 @@ describe('emitBootBootstrap — the always-on half (BUG-31 T2)', () => {
   });
 });
 
-describe('emitMainBootstrap', () => {
-  it('no longer registers the worker: that half moved out (BUG-31 T2)', () => {
-    const code = emitMainBootstrap({
-      chunks: { mode: 'build', base: '/' },
-      swUrlExpr: 'import.meta.ROLLUP_FILE_URL_sw',
-    });
-    expect(code).not.toContain('registerRenderServiceWorker');
-    expect(code).not.toContain('notifyLocation');
-    expect(code).not.toContain('new Worker'); // the WW is gone for good
-    // What it still reads from the worker is the warm channel, and only that: the page that
-    // knows how it was emitted is this one.
-    expect(code).toContain("import { installHydration, createServiceWorkerWarmChannel } from '@fudic/core';");
-  });
-
-  it('SDD-17 §4.7.1 installs the hydration ALWAYS — the Service Worker is what is optional', () => {
-    const withWorker = emitMainBootstrap({
-      chunks: { mode: 'build', base: '/' },
-      swUrlExpr: '"/fudic-sw.js"',
-    });
-    const without = emitMainBootstrap({ chunks: { mode: 'build', base: '/' }, swUrlExpr: null });
-
-    for (const code of [withWorker, without]) {
-      expect(code).toContain('installHydration({ root: document, resolveChunk, warm:');
-    }
-    // What used to be an `export {};` — and therefore no hydration at all — for three
-    // quarters of the real cases: no `sw.json`, `pnpm dev`, an uncontrolled first load.
-    expect(without).not.toContain('serviceWorker');
-    expect(without).not.toContain('registerRenderServiceWorker');
-  });
-
-  it('in a build the chunk URL is derived, with the build id substituted like the worker’s', () => {
-    const code = emitMainBootstrap({ chunks: { mode: 'build', base: '/app/' }, swUrlExpr: null });
-    expect(code).toContain(`createUrlResolver("/app/", "${BUILD_TOKEN}")`);
-    expect(code).toContain('const resolveChunk = (tag) => URLS.hydrateUrl(tag);');
-    // No map from tag to URL, here or anywhere (SDD-17 §4.6).
-    expect(code).not.toContain('fud-chunks');
-  });
-
-  it('SDD-17 §4.7.1 picks the warm channel here, once, and ships only that one', () => {
-    const withWorker = emitMainBootstrap({
-      chunks: { mode: 'build', base: '/' },
-      swUrlExpr: '"/fudic-sw.js"',
-    });
-    const without = emitMainBootstrap({
-      chunks: { mode: 'dev', urlPrefix: '/@fudic/h/' },
-      swUrlExpr: null,
-    });
-
-    expect(withWorker).toContain(
-      "import { installHydration, createServiceWorkerWarmChannel } from '@fudic/core';",
-    );
-    expect(withWorker).toContain('warm: createServiceWorkerWarmChannel()');
-    expect(withWorker).not.toContain('createPreloadWarmChannel');
-
-    // No worker — no `sw.json`, `pnpm dev`, an insecure context — and the page still warms:
-    // `modulepreload` fetches and parses without evaluating, so the invariant holds.
-    expect(without).toContain(
-      "import { installHydration, createPreloadWarmChannel } from '@fudic/core';",
-    );
-    expect(without).toContain('warm: createPreloadWarmChannel()');
-    expect(without).not.toContain('createServiceWorkerWarmChannel');
-  });
-
-  it('in dev it is the dev server’s per-tag URL, and no build id exists at all', () => {
-    const code = emitMainBootstrap({
-      chunks: { mode: 'dev', urlPrefix: '/@fudic/h/' },
-      swUrlExpr: null,
-    });
-    // Absolute: Vite's dev import analysis decorates a root-relative dynamic specifier with
-    // `?import` and leaves an absolute URL alone, so this is what keeps the URL the warm
-    // preloads and the URL the import asks for one and the same (SDD-17 §4.7.1).
-    expect(code).toContain('const CHUNKS = new URL("/@fudic/h/", document.baseURI).href;');
-    expect(code).toContain("const resolveChunk = (tag) => CHUNKS + tag + '.js';");
-    expect(code).not.toContain(BUILD_TOKEN);
-    // A dev page with no worker needs nothing from the transport package.
-    expect(code).not.toContain('@fudic/transport');
-  });
-});
+// The `emitMainBootstrap` block moved to `coordinator.test.ts`: SDD-45 §4.4 replaced the
+// app-wide bootstrap with one coordinator per route, and the four properties it checked —
+// hydration always installed, one warm channel, the derived chunk URL, dev without a build
+// id — are that generator's now.

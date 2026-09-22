@@ -5,7 +5,14 @@
 
 export { CodeWriter } from './writer.js';
 export type { Anchor, EmitMapping, MappedPart, LinePart } from './writer.js';
-export { AssetLinker, type AssetExists, type AssetUrl, type AssetOrigin } from './assets.js';
+export {
+  AssetLinker,
+  type AssetExists,
+  type AssetText,
+  type AssetUrl,
+  type AssetOrigin,
+} from './assets.js';
+export { inlineRuntimeMarker, RUNTIME_MARKER, INLINE_QUERY, asksInline } from './parts.js';
 export {
   resolveComponents,
   resolveDocument,
@@ -60,6 +67,12 @@ export {
   isReactiveRoute,
   routeHydration,
 } from './level.js';
+// Whether a page has anything to hydrate, and therefore whether it gets a runtime tag at all.
+// Exported because SDD-45 §4.4 makes the BUILD ask it too — a page that does not hydrate has
+// no coordinator, so the file has to not be emitted as well as not be linked. Two predicates
+// that agree today is a page whose head and whose output stop agreeing the day one of them
+// learns something.
+export { needsRuntime } from './maps.js';
 export {
   emitComponentIocModule,
   hasDependencyInjection,

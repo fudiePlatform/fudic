@@ -7,7 +7,12 @@
  * SDD-17, per instance and on interaction.
  */
 
-import { LOCATION_MESSAGE, type LocationMessage } from './messages.js';
+import {
+  LOCATION_MESSAGE,
+  RUNTIME_MESSAGE,
+  type LocationMessage,
+  type RuntimeMessage,
+} from './messages.js';
 
 export async function registerRenderServiceWorker(
   url: string,
@@ -32,5 +37,39 @@ export async function notifyLocation(url: string = location.href): Promise<void>
     return; // nothing to tell yet; the next navigation will be controlled
   }
   const message: LocationMessage = { type: LOCATION_MESSAGE, url };
+  serviceWorker.postMessage(message);
+}
+
+/**
+ * Tell the worker which pieces of the published runtime this page used (SDD-45 §4.5.1).
+ *
+ * **It is about the FIRST load and only about it.** A worker installs during that load and
+ * claims at the end of it, so every file the page fetched went past it: without this notice
+ * the runtime is cached on the second visit, and the second visit is therefore the first one
+ * that works offline. What the page reports it has already downloaded, so what the worker
+ * does with it costs a read of the browser's own HTTP cache.
+ *
+ * Read off the Performance timeline rather than from a list the build wrote, because what a
+ * page used is a fact of that page — its own pieces, the ones a hydrated component dragged
+ * in, the ones §4.4.1 defers — and nothing here has to be kept in step with a manifest.
+ *
+ * `prefix` is passed in: where the runtime lives on the origin is a convention this package
+ * does not own, and the generated boot script does.
+ */
+export async function notifyRuntimeUsed(prefix: string): Promise<void> {
+  const registration = await navigator.serviceWorker.ready;
+  const serviceWorker = navigator.serviceWorker.controller ?? registration.active;
+  if (serviceWorker === null) {
+    return; // nothing to tell yet; the next navigation will be controlled
+  }
+  const root = new URL(prefix, location.href).href;
+  const urls = performance
+    .getEntriesByType('resource')
+    .map((entry) => entry.name)
+    .filter((name) => name.startsWith(root));
+  if (urls.length === 0) {
+    return; // a page with nothing to hydrate used no piece, and says nothing
+  }
+  const message: RuntimeMessage = { type: RUNTIME_MESSAGE, urls };
   serviceWorker.postMessage(message);
 }

@@ -1,8 +1,22 @@
 {
   "extends": "@fudic/tsconfig/tsconfig.base.json",
-  // No `DOM` lib, and that is the contract rather than an oversight: the container
-  // tree of a route is emitted code and a published map, never something read back
-  // from the element tree (SDD-38 §4.2). A package that cannot name `document` is a
-  // package that cannot break that invariant by accident.
-  "include": ["src", "test"]
+  "compilerOptions": {
+    // `DOM` is here for `@fudic/core`, which `bundle/page.ts` typechecks against by SOURCE
+    // (see `paths`) to name `RuntimeEntry`, and whose `FudicElement` extends `HTMLElement`.
+    //
+    // It is NOT a licence for this package, and the contract it used to state by omission
+    // still holds: the container tree of a route is emitted code and a published map, never
+    // something read back from the element tree (SDD-38 §4.2). `test/no-dom.test.ts` is what
+    // enforces it now, by looking at every source file for the DOM walkers, which is the
+    // stronger check of the two — a missing lib never noticed a walker inside a comment.
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "paths": {
+      "@fudic/core": ["../core/src/index.ts"]
+    }
+  },
+  // `bundle` holds the entry of the published `page` piece (SDD-45 §3.4). It is not part of
+  // `dist` — `tsconfig.build.json` keeps its `include` at `src` — but it carries the
+  // annotation that makes the uniform `install` a contract, and an annotation nobody checks
+  // is a comment.
+  "include": ["src", "test", "bundle"]
 }

@@ -12,8 +12,17 @@ import { fudic } from '@fudic/vite';
  *
  * It shares the routes rather than copying them: `routesDir` points back at the app's own
  * `src/routes`, so the pages under test are the same files, not a fixture that can drift.
+ * The public directory is shared for the same reason — the favicon this app writes in its
+ * layout is `/logo.svg`, and a root without it serves a page with a broken icon.
+ *
+ * What cannot be shared is `fudic.json`: it is read from the ROOT of the project being built,
+ * and the root here is this directory. So there is one beside this file, and it points at the
+ * app's own style guide rather than copying it — without it the documents come out with no
+ * `_theme` to adopt, and the same app looks different depending on which of the two builds
+ * you are looking at, which is the one thing a comparison like this must not do.
  */
 export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
+  publicDir: fileURLToPath(new URL('../public', import.meta.url)),
   plugins: [fudic({ routesDir: '../src/routes' })],
 });

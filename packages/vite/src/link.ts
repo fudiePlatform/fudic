@@ -18,7 +18,7 @@ import { safeName } from '@fudic/transport';
 import { type RouteBuild } from './discover.js';
 import { isLinkable } from './mode.js';
 import { emitRenderChunk } from './wrapper.js';
-import { runtimeUrls } from './constants.js';
+import { runtimeUrls, type RuntimeEntries } from './constants.js';
 import { routeNameLookup, routeUsesDi } from './client.js';
 import { transformFud, NO_STYLES, type ProjectStyles } from './transform.js';
 import { LINK_DIR, LINK_PREFIX } from './constants.js';
@@ -82,7 +82,9 @@ function linkPlugin(
   io: ResolveIo,
   base: string,
   styles: ProjectStyles = NO_STYLES,
-  assets?: LinkedAssets,
+  assets: LinkedAssets | undefined,
+  /** Always given: `runLinkPass` has the default, and this is its one caller. */
+  runtimeFor: (pattern: string) => RuntimeEntries,
 ): Plugin {
   // The Service Worker renders the same pages the edge does, so it publishes the same route
   // names (SDD-39 §4.7): one map, resolved once for the pass.
@@ -111,7 +113,7 @@ function linkPlugin(
         // omission is the statement — the SW imports neither `load` nor `layout` (§4.5).
         hasDi: routeUsesDi(rb.absPath, io),
         withLoad: false, // server code never ships to the client (§4.5)
-        runtime: runtimeUrls(base),
+        runtime: runtimeFor(pattern),
       });
     },
     async transform(_code, id) {
@@ -181,6 +183,17 @@ export async function runLinkPass(
   nested: NestedOutputOptions,
   styles: ProjectStyles = NO_STYLES,
   assets: LinkedAssets = new LinkedAssets(base),
+  /**
+   * What a route's head is handed about the runtime (SDD-45 §4.4, §4.5), by pattern: the
+   * coordinator's URL, the pieces it loads — which the head preloads — and its source, for
+   * the layout that asked to carry it inline. All empty for a route with nothing to hydrate:
+   * no file and no tag.
+   *
+   * Passed in rather than computed: the host plugin, this pass and the edge pass each render
+   * the same route, and a route whose head named a different module in each would be a page
+   * that disagrees with itself depending on who rendered it.
+   */
+  runtimeFor: (pattern: string) => RuntimeEntries = () => runtimeUrls(base, ''),
 ): Promise<LinkResult> {
   const linkable = builds.filter((rb) => isLinkable(rb.decision));
   if (linkable.length === 0) {
@@ -197,7 +210,7 @@ export async function runLinkPass(
     root,
     base,
     logLevel: 'error',
-    plugins: [linkPlugin(linkable, io, base, styles, assets)],
+    plugins: [linkPlugin(linkable, io, base, styles, assets, runtimeFor)],
     build: {
       write: false,
       emptyOutDir: false,

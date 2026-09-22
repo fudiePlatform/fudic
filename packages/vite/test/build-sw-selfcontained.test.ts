@@ -16,7 +16,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fudic } from '../src/index.js';
 import { runtimeAlias } from './helpers/alias.js';
-import { BUILD_TOKEN, mainFileName, bootFileName } from '../src/constants.js';
+import { BUILD_TOKEN, isMainChunk, bootFileName } from '../src/constants.js';
 import { specifiersOf } from './helpers/specifiers.js';
 import { renderUrlOf, emitted } from './helpers/manifest.js';
 
@@ -90,14 +90,18 @@ describe('vite build — the Service Worker is a self-contained bundle', () => {
     // The two main-thread entries carry the build id since BUG-31 T1; the worker does not,
     // and cannot: a Service Worker's scope is its own directory, so its URL is written by
     // hand and has to stay nameable.
-    main = output.find((o) => o.fileName === mainFileName(idOf(output)))!;
+    // By SHAPE and not by name: there is one coordinator per combination of pieces now
+    // (SDD-45 §4.4), and this fixture has exactly one.
+    main = output.find((o) => isMainChunk(o.fileName))!;
     boot = output.find((o) => o.fileName === bootFileName(idOf(output)))!;
   }, 180000);
 
   it('§6.3 exists at the root of outDir, under that exact name, without a hash', () => {
     expect(sw).toBeDefined();
-    expect(main).toBeDefined();
     expect(boot).toBeDefined();
+    // `main` is NOT asserted here any more: since SDD-45 §4.4 a route with nothing to
+    // hydrate has no coordinator at all — no file and no tag — and this fixture's one route
+    // is exactly that. What has to exist on the main thread on every page is the boot half.
     // And no leftover of the old fixed names, which a stale layout tag would still fetch.
     expect(output.some((o) => o.fileName === 'fudic-main.js')).toBe(false);
   });
@@ -107,7 +111,10 @@ describe('vite build — the Service Worker is a self-contained bundle', () => {
   });
 
   it('§6.2 shares no file with the main thread: the intersection is empty', () => {
-    const mainSpecs = new Set(specifiersOf(textOf(main)));
+    // Every main-thread chunk this fixture emits: the boot half always, and the coordinator
+    // when the route hydrates (SDD-45 §4.4).
+    const mainThread = [boot, main].filter((f): f is OutFile => f !== undefined);
+    const mainSpecs = new Set(mainThread.flatMap((f) => specifiersOf(textOf(f))));
     const shared = specifiersOf(textOf(sw)).filter((s) => mainSpecs.has(s));
     expect(shared).toEqual([]);
   });

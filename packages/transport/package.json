@@ -28,17 +28,23 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./package.json": "./package.json"
+  },
+  "fudic": {
+    "runtime": "./runtime"
   },
   "files": [
     "dist",
+    "runtime",
     "README.md"
   ],
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && pnpm run build:runtime",
+    "build:runtime": "node -e \"require('node:fs').rmSync('runtime',{recursive:true,force:true})\" && rolldown -c rolldown.config.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -46,6 +52,7 @@
   },
   "devDependencies": {
     "@fudic/ssr": "workspace:*",
-    "@fudic/tsconfig": "workspace:*"
+    "@fudic/tsconfig": "workspace:*",
+    "rolldown": "1.2.1"
   }
 }

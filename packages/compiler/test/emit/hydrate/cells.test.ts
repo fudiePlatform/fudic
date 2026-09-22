@@ -21,6 +21,7 @@ import {
   instanceState,
   type ElementRegistry,
 } from '../../../../core/src/hydrate/registry.js';
+import { signal } from '../../../../core/src/signal.js';
 import { SsrDom, renderToString } from '@fudic/ssr';
 import { browserDom } from '@fudic/dom';
 import type { Controller, FudicElementCtor } from '@fudic/core';
@@ -214,7 +215,7 @@ function render(): Page {
   });
   const cascade = createCascade({
     maps,
-    cells: createCells(maps),
+    cells: createCells(maps, signal),
     loader,
     registry,
     state: instanceState(),

@@ -13,21 +13,20 @@
  * nothing else — it never reads the DOM to decide anything, and it never asks who the
  * parent is.
  *
- * **The page's loader is module state, and here that is sound.** The seed of SDD-38 could
- * not be, because a server renders many responses in one process; a browser module lives in
- * one page, the loader is that page's, and a second page is a second realm.
+ * **What this module does NOT hold is where a tag comes from.** The definer and the registry
+ * of the page live in `registry.js`, published there by hydration and read from here (SDD-45
+ * §4.4.1). Holding them here meant hydration had to import this module to fill them in, and
+ * then every page that hydrates downloaded a bridge it may never cross. Reading them makes
+ * this piece optional for real: the only code that imports it is the chunk of a component
+ * that fabricates, and it travels with that chunk.
  */
 
-import { browserRegistry, type ElementRegistry } from './registry.js';
+import { pageElements, tagDefiner, type ElementRegistry } from './registry.js';
 
 /** What an upgraded instance offers a parent: entry point 2 (SDD-15 §3.7). */
 interface FabricatedHost extends Element {
   c(props: readonly unknown[]): void;
 }
-
-/** How this page defines a tag, and where its elements live. Installed with hydration. */
-let define: ((tag: string) => Promise<void>) | null = null;
-let registry: ElementRegistry = browserRegistry;
 
 /**
  * Raised already, so a parent that fabricates and then re-runs its own creation path cannot
@@ -35,19 +34,6 @@ let registry: ElementRegistry = browserRegistry;
  * runtime does may be observable as an attribute of somebody's component.
  */
 const raised = new WeakSet<Element>();
-
-/**
- * Where `live` gets its definitions from. Called once by `installHydration`, which owns the
- * chunk loader; a page that never installs hydration keeps the platform registry, which is
- * the honest degraded behaviour — the tag comes alive if something else defines it.
- */
-export function installFabricator(
-  defineTag: (tag: string) => Promise<void>,
-  elements: ElementRegistry,
-): void {
-  define = defineTag;
-  registry = elements;
-}
 
 /**
  * Bring a fabricated host to life with the props its parent composed.
@@ -61,17 +47,19 @@ export function live(host: Element, props: readonly unknown[]): void {
   if (raised.has(host)) return;
   raised.add(host);
   const tag = host.localName;
+  const registry = pageElements();
   if (registry.get(tag) !== undefined) {
-    raise(host, props);
+    raise(host, props, registry);
     return;
   }
+  const define = tagDefiner();
   const pending = define === null ? registry.whenDefined(tag) : define(tag);
   void pending.then(() => {
-    raise(host, props);
+    raise(host, props, registry);
   });
 }
 
-function raise(host: Element, props: readonly unknown[]): void {
+function raise(host: Element, props: readonly unknown[], registry: ElementRegistry): void {
   // An element created before its definition existed is inert until it is upgraded, and a
   // fabricated one is never connected at that moment — `upgrade` is what makes the class
   // take over without waiting for the parent to mount it. A no-op on one already upgraded.

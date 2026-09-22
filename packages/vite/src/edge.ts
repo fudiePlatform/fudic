@@ -24,7 +24,7 @@ import { transformWithOxc } from 'vite';
 import { type ResolveIo } from '@fudic/compiler';
 import { type RouteBuild } from './discover.js';
 import { emitRenderChunk } from './wrapper.js';
-import { runtimeUrls } from './constants.js';
+import { runtimeUrls, type RuntimeEntries } from './constants.js';
 import { loadWithSourceMap } from './inputmaps.js';
 import { routeNameLookup, routeUsesDi } from './client.js';
 import { emitServerModule } from './server.js';
@@ -67,6 +67,7 @@ export function edgePlugin(
   base: string,
   styles: ProjectStyles = NO_STYLES,
   assets?: LinkedAssets,
+  runtimeFor: (pattern: string) => RuntimeEntries = () => runtimeUrls(base, ''),
 ): Plugin {
   // Resolved once for the pass: the render module of a route publishes its name (SDD-39
   // §4.7), and this pass renders the very pages the prerender writes.
@@ -92,7 +93,7 @@ export function edgePlugin(
         hasLayout: rb.analysis.hasLayout,
         hasDi: routeUsesDi(rb.absPath, io),
         withLoad: true, // the edge resolves data in process
-        runtime: runtimeUrls(base),
+        runtime: runtimeFor(pattern),
       });
     },
     async transform(_code, id) {
@@ -146,6 +147,11 @@ export async function runEdgePass(
   nested: NestedOutputOptions,
   styles: ProjectStyles = NO_STYLES,
   assets: LinkedAssets = new LinkedAssets(base),
+  /**
+   * What a route's head is handed about the runtime (SDD-45 §4.4, §4.5). See `runLinkPass`
+   * for why it is passed in rather than computed.
+   */
+  runtimeFor: (pattern: string) => RuntimeEntries = () => runtimeUrls(base, ''),
 ): Promise<EdgeResult> {
   const routes = builds.filter((rb) => rb.decision.mode !== 'excluded');
   if (routes.length === 0) {
@@ -162,7 +168,7 @@ export async function runEdgePass(
     root,
     base,
     logLevel: 'error',
-    plugins: [edgePlugin(routes, io, base, styles, assets)],
+    plugins: [edgePlugin(routes, io, base, styles, assets, runtimeFor)],
     // Forwarded verbatim, for the same reason as the Service Worker's build: this one runs
     // with `configFile: false`, so a project that resolves `@fudic/*` through aliases —
     // every project the CLI scaffolds — would not resolve them here.

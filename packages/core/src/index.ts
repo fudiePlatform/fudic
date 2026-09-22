@@ -22,6 +22,12 @@
 
 export const VERSION = '0.0.1';
 
+// The shape of a startup piece (SDD-45 §3.4). It is exported from here because the packages
+// that publish one — `@fudic/di` today, `@fudic/http` tomorrow — have to be able to name the
+// contract they satisfy, and a contract each package retyped for itself would be four
+// contracts that happen to agree until one of them stops.
+export type { RuntimeEntry } from './runtime-entry.js';
+
 export { FudicElement } from './element.js';
 export type { Controller, FudicElementCtor } from './controller.js';
 export { signal, type Signal } from './signal.js';

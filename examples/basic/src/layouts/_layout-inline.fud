@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+@* The `lang` of the document is the route's to decide, not this file's. A layout declares
+   what it needs with the same `props<T>()` a component and a route use, and the route
+   resolves it in `@server layout(ctx, data)` — after `load`, and with what `load` brought.
+
+   With a DEFAULT, which is the whole difference a default makes: the fifteen pages of this
+   example that are in Spanish say nothing at all, and only the one page whose language comes
+   out of its data bothers to answer. A prop with no default would make every route restate
+   the obvious. What a REQUIRED one looks like is in `_layout-articulo.fud`, where it belongs:
+   there the value is not obvious, and forgetting it is an error worth being told about. *@
+<html lang="@culture">
+  <head>
+    @code {
+      const { culture = "es" } = props<{ culture?: string }>();
+    }
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    @* Un fichero PÚBLICO: la URL la elige quien lo escribe, no el build. Va sin hash,
+       porque un favicon se pide por su nombre desde sitios que no son este código. La
+       ruta se resuelve contra `public/`, así que el fichero se comprueba —si no está es
+       `FUD0363`— y el Service Worker lo precachea solo, sin escribir nada en `sw.json`.
+       La otra forma es `./algo.svg`, y entonces el nombre lo pone el build. *@
+    <link rel="icon" href="/logo.svg">
+
+    @* La misma hoja de tokens que el otro layout, pedida con `?inline`: en vez de una URL
+       que el navegador va a buscar, sus reglas viajan DENTRO de la página. Una petición
+       menos y nada que esperar; a cambio, esos bytes no se comparten entre páginas ni los
+       guarda la caché del navegador. El `?inline` no sustituye nada: lo que el autor
+       escribió sigue saliendo, solo que lo lleva el documento. *@
+    <link rel="stylesheet" href="../styles/tokens.css?inline">
+
+    <!-- The same marker as the other layout, with the other answer: the coordinator travels
+         inside the document instead of being fetched. There are no preloads then, and none
+         are needed — its `import`s are read with the HTML, which is the earliest instant
+         there is. It is the developer's decision and not the framework's: a strict security
+         policy and a slow connection ask for opposite things, and only the person deploying
+         knows which of the two they have. -->
+    <script type="module" src="fudic:runtime?inline"></script>
+
+    @* Everything each route contributes to the head — its <title>, its component
+       stylesheets, the style-adoption polyfill — goes exactly here. *@
+    @RenderHead()
+  </head>
+  <body>
+    @* The nav is route-specific (it highlights the current section), so the route
+       fills this hole with `@section nav { … }`. A route that declares no `nav`
+       renders nothing here, without an error. *@
+    @RenderSection(nav)
+
+    <main>@RenderBody()</main>
+
+    <footer class="site">
+      <p>fudic — ejemplo básico. El shell de esta página lo escribe un solo fichero.</p>
+    </footer>
+  </body>
+</html>

@@ -7,6 +7,11 @@
  *     5. ensureDefined + attachAll — the host, LAST
  *     6. replay               — the original gesture, once
  *
+ * What this module imports is what a page pays for on the LOAD, and SDD-45 §4.4.1 is the
+ * reason the list is short: the adapter a component paints with and the signal an instance is
+ * handed arrive with the warm channel, not with the capturer. Adding a static import of either
+ * one back undoes that without anybody noticing.
+ *
  * The order 3 → 4 → 5 is this SDD's, and no previous document stated it: bus and cascade
  * were prototyped apart. Bus first because its receivers are siblings EXTERNAL to the host
  * while the subtree is INTERNAL to it, and a child emitting during its own hookup must not
@@ -28,20 +33,26 @@ import {
 import { createCascade } from './cascade.js';
 import { createBusPrehydrator } from './bus.js';
 import { createCapturer } from './capture.js';
-import { browserDom } from '@fudic/dom';
+import {
+  deferredOnce,
+  importDeferred,
+  type DeferredPieces,
+  type ImportDeferred,
+} from './deferred.js';
 import {
   browserRegistry,
   ID_ATTR,
   idOf,
   instanceState,
   instancesOf,
+  openTurn,
+  publishTagSource,
   ROUTE_HOST,
   stopwatch,
   type ElementRegistry,
   type HydratedFrom,
   type ReportHydrated,
 } from './registry.js';
-import { installFabricator } from './live.js';
 import { type WarmChannel } from './warm/channel.js';
 import { startWarmObserver } from './warm/observer.js';
 
@@ -109,6 +120,12 @@ export interface HydrationOptions {
   readonly document?: Document;
   /** How a chunk is fetched. Injected so the runtime is testable off-network. */
   readonly importModule?: ImportModule;
+  /**
+   * How the pieces of §4.4.1 are fetched — the DOM adapter and the signal, which the load
+   * does not pay for. Injected for the same reason as `importModule`, and the default is the
+   * real pair of requests.
+   */
+  readonly importDeferred?: ImportDeferred;
   /** The custom-element registry. Injected for the same reason (§4.4). */
   readonly registry?: ElementRegistry;
   /**
@@ -150,17 +167,34 @@ export function installHydration(options: HydrationOptions): Hydration {
   });
 
   // What a parent needs to raise a child nothing painted: this page's way of defining a tag.
-  // Installed here because the loader is this function's, and a chunk cannot be handed one.
+  // Published here because the loader is this function's, and a chunk cannot be handed one.
   // The loader's own function and not a wrapper around it: `ensureDefined` closes over its
   // memoization and never reads `this`, so the reference IS the capability.
-  installFabricator(loader.ensureDefined, registry);
+  //
+  // Published into the registry rather than pushed into the bridge, and that is what keeps
+  // `core/live` out of the load (SDD-45 §4.4.1): the bridge reads the pair from there and
+  // arrives inside the chunk of the component that fabricates.
+  publishTagSource(loader.ensureDefined, registry);
+
+  /**
+   * The pieces the load does not pay for (SDD-45 §4.4.1), ordered by the warm channel and
+   * awaited at the top of path 2.
+   *
+   * `landed` is written the moment they arrive and read without a guard on purpose: every
+   * path that can materialise a cell or paint a route awaits them first — the request goes
+   * out before `ready` and the await is before the bus, the cascade and any chunk. A cell
+   * built before the piece landed would be a signal nobody else shares, so the assertion is
+   * the contract of this file and not optimism about it.
+   */
+  const deferred = deferredOnce(options.importDeferred ?? importDeferred);
+  let landed: DeferredPieces | null = null;
 
   const report: ReportHydrated = (id, tag, ms, from) => {
     const detail: HydratedDetail = { id, tag, ms, from };
     doc.dispatchEvent(new CustomEvent(HYDRATED_EVENT, { detail }));
   };
 
-  const cells = createCells(maps);
+  const cells = createCells(maps, (initial) => landed!.signal(initial));
   const cascade = createCascade({ maps, cells, loader, registry, state, root: doc, report });
   const preHydrateBus = createBusPrehydrator({
     maps,
@@ -187,9 +221,17 @@ export function installHydration(options: HydrationOptions): Hydration {
    * markers into the very cells its children are holding, which is what lets a signal declared
    * in the route be the same object a component two levels down reads.
    */
-  const raiseRoute = async (host: Element, id: number, replay: () => void): Promise<void> => {
+  const raiseRoute = async (
+    host: Element,
+    id: number,
+    replay: () => void,
+    arriving: Promise<DeferredPieces>,
+  ): Promise<void> => {
     const name = maps.route!;
     await ready;
+    // 2c — the pieces of §4.4.1, in flight since the top of path 2 and normally warmed. The
+    // adapter is what the route paints with, and the signal is what its cells are made of.
+    landed = await arriving;
     await cascade.prepareRoute(name, host);
     const elapsed = stopwatch();
     const factory = await loader.loadRoute(name);
@@ -197,22 +239,45 @@ export function installHydration(options: HydrationOptions): Hydration {
     // stays as the server painted it — which is a page that works — and the gesture is
     // replayed anyway, because cancelling it was this runtime's doing.
     if (factory !== null) {
-      factory([browserDom, host, maps.data, ...cells.resolve(id)]).h();
+      factory([landed.dom, host, maps.data, ...cells.resolve(id)]).h();
       report(id, name, elapsed(), 'downloaded');
     }
     replay();
   };
 
-  /** Path 2, in the one order §4.4 fixes. */
+  /**
+   * Path 2, in the one order §4.4 fixes.
+   *
+   * It is also the one TURN of SDD-45 §4.12: the document is walked once, here, and every
+   * finder the steps below use reads that index instead of walking again. The index is closed
+   * with the turn — it is a snapshot, and the only thing that keeps a snapshot honest is that
+   * it does not outlive the gesture it was taken for.
+   */
   const raise = async (host: Element, id: number, replay: () => void): Promise<void> => {
+    const closeTurn = openTurn(doc);
+    try {
+      await raiseInTurn(host, id, replay);
+    } finally {
+      closeTurn();
+    }
+  };
+
+  const raiseInTurn = async (host: Element, id: number, replay: () => void): Promise<void> => {
+    // 1 — the two pieces of §4.4.1, ASKED FOR HERE and awaited two lines below. At the top of
+    // path 2 so the request is on the network while `ready` is still pending, and on a page
+    // with a warm channel it was ordered long ago, when this component came into view.
+    const arriving = deferred();
     // The `<body>` is the route's root and nobody else's (SDD-39 §4.2): a custom element
     // needs a dash in its name, so `body` can never be a tag the cascade would know.
     if (maps.route !== null && host.localName === ROUTE_HOST) {
-      await raiseRoute(host, id, replay);
+      await raiseRoute(host, id, replay, arriving);
       return;
     }
     const tag = host.localName;
     await ready; // 2b — what the page must have in place before any chunk runs
+    // 2c — before the bus and the cascade, because either of them can hand an instance its
+    // slice, and a slice is where a cell is materialised.
+    landed = await arriving;
     await preHydrateBus(tag); // 3 — the receivers, before anything internal
     await cascade.prepareTag(tag); // 4 — the subtree of every instance, post-order
     const elapsed = stopwatch();
@@ -301,13 +366,28 @@ export function installHydration(options: HydrationOptions): Hydration {
     })();
   }
   if (options.warm !== undefined) {
+    const channel = options.warm;
     // A separate axis from everything above: it observes viewports and orders network,
     // and it neither defines nor upgrades anything. A page with no channel simply has
     // no anticipated network — hydration does not change one line (§4.7).
     startWarmObserver({
       maps,
       resolveChunk: options.resolveChunk,
-      channel: options.warm,
+      // The pieces of §4.4.1 travel with the chunk they exist for, in the SAME idle batch
+      // (SDD-45 §4.4.1): a component came into view, so something is about to be hydrated,
+      // and what hydrating needs is its chunk plus the adapter and the signal. Wrapped here
+      // and not decided inside the observer, because which pieces the load skipped is this
+      // file's business and warming is a policy about chunks.
+      //
+      // The order is a real `import` and not a deposit, and the difference does not matter:
+      // these are framework pieces that declare and start nothing, so evaluating them runs no
+      // line of anybody's component — the founding invariant of §4.7 is untouched.
+      channel: {
+        warm: (urls, tags) => {
+          void deferred();
+          channel.warm(urls, tags);
+        },
+      },
       root: doc,
     });
   }

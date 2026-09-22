@@ -16,6 +16,15 @@ const OPTIONS = {
   shell: ['/style.css'],
   resources: [],
   app: 'shop',
+  // A project that links no published runtime: all four empty, and this worker is the one
+  // it was before SDD-45 (§4.5.1, §4.9).
+  runtimePrefix: '',
+  runtimeCache: '',
+  runtimeCachePrefix: '',
+  runtimeMarker: '',
+  // And the renderer bundled in, which is what an empty URL means (§4.10). This suite
+  // asserts the worker is ONE self-contained file, so it is the shape that must hold here.
+  renderer: '',
 };
 
 describe('swChunkOf', () => {

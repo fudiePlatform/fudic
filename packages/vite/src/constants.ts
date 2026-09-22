@@ -54,7 +54,17 @@ export const LINK_PREFIX = 'fudic-link:';
 /** Per-route EDGE wrapper in its own nested build (BUG-09 §3.1): same page, WITH `load`. */
 export const EDGE_PREFIX = 'fudic-edge:';
 export const SW_ID = 'fudic-sw';
+/**
+ * The coordinator, in DEV, where there is one for the whole app at a stable URL.
+ *
+ * In a build there is one per combination of pieces and its name carries a hash of its own
+ * content (SDD-45 §4.4), so there is no fixed id to name here: `COORD_PREFIX` is how those
+ * are addressed. Dev keeps this one because dev builds nothing and optimises nothing — what
+ * it needs is a URL that does not move between reloads.
+ */
 export const MAIN_ID = 'fudic-main';
+/** Per-route coordinator in a build: `fudic-main-<hash of its source>` is appended. */
+export const COORD_PREFIX = 'fudic-coordinator:';
 /** The always-on half of the main thread: register the Service Worker (BUG-31 §T2). */
 export const BOOT_ID = 'fudic-boot';
 
@@ -75,9 +85,17 @@ export const DEV_SW_URL = 'fudic-sw.js';
  * One function, two callers — the plugin names the files and the wrapper writes the URLs —
  * for the same reason `urls.ts` exists: two spellings of a name drift in silence.
  */
-export function mainFileName(build: string): string {
-  return `fudic-main-${build}.js`;
+/**
+ * Whether a file is a coordinator of this build.
+ *
+ * There used to be one `fudic-main-<id>.js` and asking was an equality. Since SDD-45 §4.4
+ * there is one per combination of pieces, each named by a hash of its own source, so the
+ * question is a shape: `fudic-main-<hash>-<id>.js`.
+ */
+export function isMainChunk(fileName: string): boolean {
+  return fileName.startsWith(`${MAIN_ID}-`) && fileName.endsWith('.js');
 }
+
 export function bootFileName(build: string): string {
   return `fudic-boot-${build}.js`;
 }
@@ -85,9 +103,48 @@ export function bootFileName(build: string): string {
 /**
  * The two entry URLs a BUILT page writes into its head, with `BUILD_TOKEN` where the id will
  * be. Substituted in `generateBundle` like every other token — same length, maps intact.
+ *
+ * `main` is now the ROUTE's coordinator and therefore an argument (SDD-45 §4.4): two routes
+ * that need different pieces load different modules, and a route with nothing to hydrate
+ * names none at all — which arrives here as an empty string, the shape a standalone render
+ * already used, and which the head never reads because it writes no tag either.
  */
-export function runtimeUrls(base: string): { boot: string; main: string } {
-  return { boot: `${base}${bootFileName(BUILD_TOKEN)}`, main: `${base}${mainFileName(BUILD_TOKEN)}` };
+export function runtimeUrls(
+  base: string,
+  main: string,
+  pieces: readonly string[] = [],
+  inline = '',
+  boot = true,
+): RuntimeEntries {
+  return {
+    // Empty when this application has no Service Worker (SDD-45 §4.11), and then the head
+    // writes no tag for it. There used to be one on every page of such a project, asking for
+    // a module whose whole content was `export {};` — a request per page for nothing.
+    boot: boot ? `${base}${bootFileName(BUILD_TOKEN)}` : '',
+    main: main === '' ? '' : `${base}${main}-${BUILD_TOKEN}.js`,
+    pieces,
+    inline,
+  };
+}
+
+/**
+ * What a page's `<head>` is handed about the runtime (SDD-45 §3.6, §4.5).
+ *
+ * Four facts and not two, and the two that arrived are the ones this SDD made knowable. The
+ * PIECES are what the coordinator imports at load, so the head can name them all at once and
+ * the browser stops discovering them one round trip deep. `inline` is the coordinator's own
+ * source, for a layout that asked to carry it in the document rather than fetch it; empty
+ * when there is nothing to embed, which is dev, where nothing is built (§4.15).
+ *
+ * None of the four is the `base` of the application except the two that are its own files:
+ * a piece's URL is origin-absolute and shared by every app of the origin (§4.2).
+ */
+export interface RuntimeEntries {
+  /** The worker registrar, or `''` when this project has none and writes no tag (§4.11). */
+  readonly boot: string;
+  readonly main: string;
+  readonly pieces: readonly string[];
+  readonly inline: string;
 }
 
 /**

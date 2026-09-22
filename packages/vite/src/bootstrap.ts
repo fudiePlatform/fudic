@@ -29,6 +29,40 @@ export interface SwBootstrapOptions {
    * default for — one that would be the name three different apps collide under.
    */
   readonly app: string;
+  /**
+   * Where the published runtime lives on the origin — `/_fudic/` — and the cache that holds
+   * it (SDD-45 §4.5.1). Both empty when this project links none.
+   *
+   * The name carries the framework VERSION and neither the app nor the build id, and that is
+   * the whole of §4.9: it is the one cache two applications of an origin are meant to share,
+   * and a deploy must not throw it away. Deliberately outside the `<kind>-<app>-<build>`
+   * scheme BUG-33 introduced, and therefore outside its purge, which only knows those four.
+   */
+  readonly runtimePrefix: string;
+  readonly runtimeCache: string;
+  /**
+   * What every runtime cache of this origin is called, and this application's mark inside
+   * the one it uses (SDD-45 §4.9). Empty together with the two above.
+   *
+   * They are what the sweep needs and the worker cannot derive: the family prefix cannot be
+   * sliced back off a name — a prerelease version has hyphens of its own — and the mark
+   * carries the app id, which comes from the project and not from this package.
+   */
+  readonly runtimeCachePrefix: string;
+  readonly runtimeMarker: string;
+  /**
+   * The URL of the published renderer, or `''` to bundle it in as before (SDD-45 §4.10).
+   *
+   * `@fudic/ssr` used to travel inside every application's worker — 5 918 bytes of framework,
+   * re-downloaded on every deploy because `fudic-sw.js` changes name-less bytes each build.
+   * Linked instead, it is one file per origin and per framework version, shared by every
+   * application there and untouched by a deploy.
+   *
+   * It is fetched by the linker the worker already has, which is why the published renderer
+   * is CommonJS: a Service Worker cannot `import()`, so what it downloads it evaluates with
+   * `new Function` — and an `import` statement inside one is a syntax error.
+   */
+  readonly renderer: string;
 }
 
 /**
@@ -37,17 +71,31 @@ export interface SwBootstrapOptions {
  * the synchronous decision of §4.4.1 always has the manifest in memory.
  */
 export function emitSwBootstrap(options: SwBootstrapOptions): string {
-  return `import {
+  // Linked or bundled, never both: the static import is what drags `@fudic/ssr` into the
+  // nested build, so leaving it in \"just in case\" would link the renderer AND ship it.
+  const linked = options.renderer !== '';
+  return `${linked ? '' : `import * as ssr from '@fudic/ssr';
+`}import {
   loadManifest, createLinker, canLink, createRouter, createStore, cacheNames,
-  isStaleCache, controlBus, LOCATION_MESSAGE, WARM_MESSAGE, WARMED_MESSAGE,
+  isStaleCache, sweepRuntimeCaches, controlBus, LOCATION_MESSAGE, RUNTIME_MESSAGE,
+  WARM_MESSAGE, WARMED_MESSAGE,
 } from '@fudic/transport';
-import * as ssr from '@fudic/ssr';
 
 const APP = ${JSON.stringify(options.app)};
 const BUILD = ${JSON.stringify(BUILD_TOKEN)};
 const MANIFEST_URL = ${options.manifestUrlExpr};
 const SHELL = ${JSON.stringify(options.shell)};
 const RESOURCES = ${JSON.stringify(options.resources)};
+// Where the published runtime lives on this origin, and the cache it goes in (SDD-45 §4.5.1,
+// §4.9). Both empty for a project that links no published runtime, and then this worker
+// behaves exactly as it did before there was one.
+const RUNTIME_PREFIX = ${JSON.stringify(options.runtimePrefix)};
+const RUNTIME_CACHE = ${JSON.stringify(options.runtimeCache)};
+const RUNTIME_CACHES = ${JSON.stringify(options.runtimeCachePrefix)};
+const RUNTIME_MARKER = ${JSON.stringify(options.runtimeMarker)};${
+    linked ? `
+const RENDERER = ${JSON.stringify(options.renderer)};` : ''
+  }
 const NAMES = cacheNames(APP, BUILD);
 // ONE list, absolute, for the two things that must never drift: what install writes and
 // what the router will serve by identity. A Store key is an absolute URL (BUG-04 §3.1).
@@ -63,12 +111,32 @@ self.addEventListener('install', (e) => e.waitUntil((async () => {
   // \`cache: 'reload'\` skips the browser's HTTP cache: the shell has fixed unhashed names,
   // so a host with a long max-age would otherwise let a new build precache the OLD bytes
   // — served forever, since the policy is cache-first with no TTL.
-  const shell = createStore({ cache: await caches.open(NAMES.shell) });
+  const cache = await caches.open(NAMES.shell);
+  const shell = createStore({ cache });
   for (const url of PRECACHE) {
     try {
       const response = await fetch(url, { cache: 'reload' });
       if (response.ok) await shell.put(url, response);
     } catch { /* a missing shell entry must not fail install */ }
+  }
+  // The published runtime is NOT precached here, and that is a decision rather than an
+  // omission (SDD-45 §4.5.1). Bringing every piece the application links at \`install\` was
+  // the first answer: it made the first visit download the whole framework — forms,
+  // injection, reactivity — to render a page that may use none of it, which is a monolith
+  // arriving by another road. A progressive application downloads what the page in front of
+  // the user needs; each piece is cached the first time some page asks for it, and from then
+  // on it is a cache read. The framework ends up entirely cached when it has entirely been
+  // needed, and not one request before.${
+    linked
+      ? `
+  // The renderer is the exception, and it is not the page's runtime: it is THIS WORKER's own
+  // dependency, as much part of it as the shell, and without it in the cache a first boot
+  // offline has nothing to render with. Cache-first, so the second application of this origin
+  // finds it already there and asks the network for nothing.
+  try {
+    await createStore({ cache: await caches.open(RUNTIME_CACHE) }).get(RENDERER, 'cache-first', null);
+  } catch { /* offline at install: \`build\` will ask again, and until then the server renders */ }`
+      : ''
   }
   await self.skipWaiting();
 })()));
@@ -76,6 +144,15 @@ self.addEventListener('install', (e) => e.waitUntil((async () => {
 self.addEventListener('activate', (e) => e.waitUntil((async () => {
   for (const name of await caches.keys()) {
     if (isStaleCache(name, APP, BUILD)) await caches.delete(name);
+  }
+  // The runtime cache is outside that purge by name and that is the point (SDD-45 §4.9):
+  // it is the one two applications of this origin share, so no build of ours may throw it
+  // away. It is swept the other way instead — this app refreshes its own mark, and a
+  // framework version whose marks have ALL expired belongs to nobody and goes.
+  if (RUNTIME_CACHE !== '') {
+    await sweepRuntimeCaches({
+      caches, cache: RUNTIME_CACHE, prefix: RUNTIME_CACHES, marker: RUNTIME_MARKER,
+    });
   }
   await self.clients.claim();
   await boot(); // the shell is in place now: this is the attempt that succeeds on a first install
@@ -112,15 +189,41 @@ async function build() {
     pages: createStore({ cache: await caches.open(NAMES.pages) }),
     data: createStore({ cache: await caches.open(NAMES.data) }),
   };
+  // The shared runtime cache, opened once: the renderer is read from it and the router
+  // serves \`/_fudic/**\` out of it (SDD-45 §4.5.1, §4.9).
+  const runtime = RUNTIME_CACHE === '' ? null : createStore({ cache: await caches.open(RUNTIME_CACHE) });${
+    linked
+      ? `
+  // Its own linker, and that is the point: this one reads the SHARED cache, the route one
+  // reads this application's. The renderer is evaluated once here and handed to every chunk
+  // as a builtin, so it is neither downloaded nor evaluated per chunk — exactly what
+  // bundling it used to buy, without the bytes being this application's.
+  const ssr = runtime === null ? null : await createLinker({
+    fetchSource: (url) => runtime.get(url, 'cache-first', null).then((r) => r.text()),
+  }).link(RENDERER);
+  if (ssr === null) return null;`
+      : ''
+  }
   const linker = createLinker({
     fetchSource: (url) => stores.routes.get(url, 'cache-first', null).then((r) => r.text()),
-    // The runtime is bundled INTO this worker and handed to chunks as a builtin: it
-    // would otherwise be downloaded and evaluated again per chunk.
+    // Handed to chunks as a builtin: it would otherwise be downloaded and evaluated again
+    // per chunk.
     builtins: { '@fudic/ssr': ssr },
   });
   // The router is handed exactly the URLs install put in the cache — the manifest
   // included: what is precached is served, and served BY IDENTITY (BUG-01 §4.1, §4.3).
-  const r = createRouter({ table, linker, stores, resources: RESOURCES, shell: PRECACHE });
+  const r = createRouter({
+    table,
+    linker,
+    stores,
+    resources: RESOURCES,
+    shell: PRECACHE,
+    // Everything under \`/_fudic/\` is served cache-first from a cache of its own and written
+    // the first time a page asks for it (SDD-45 §4.5.1). Its name carries the framework
+    // version and neither the app nor the build, which is what lets two applications of one
+    // origin share it and what keeps a deploy from throwing it away.
+    ...(runtime === null ? {} : { runtime: { prefix: RUNTIME_PREFIX, store: runtime } }),
+  });
   await r.ready();
   controlBus().on((msg) => {
     if (msg.type === 'version') { linker.reset(); caches.delete(NAMES.pages); }
@@ -143,6 +246,11 @@ self.addEventListener('message', (e) => {
   if (!msg) return;
   if (msg.type === LOCATION_MESSAGE) {
     e.waitUntil(boot().then((r) => r && r.warm(new URL(msg.url).pathname)));
+  } else if (msg.type === RUNTIME_MESSAGE) {
+    // The pieces the page already used (SDD-45 §4.5.1), kept for the next visit. It is the
+    // answer to the one load this worker could not see — its own first one, during which it
+    // was still installing — and it is a read of the browser's HTTP cache, not a download.
+    e.waitUntil(boot().then((r) => r && r.keepRuntime(msg.urls)));
   } else if (msg.type === WARM_MESSAGE) {
     e.waitUntil(boot().then(async (r) => {
       if (!r) return;
@@ -179,38 +287,6 @@ self.addEventListener('fetch', (e) => {
 }
 
 /**
- * How the main thread turns a tag into the URL of its hydration chunk (SDD-17 §4.6).
- *
- * Two modes and no third, because there are exactly two ways a page can have been emitted.
- * In a BUILD the URL is DERIVED from the manifest's arithmetic — `hydrateUrl(tag)` —
- * which is why the build id has to travel inside this chunk. In DEV nothing is built:
- * the component's client module is served by the dev server at a stable per-tag URL, and
- * the build id does not exist.
- *
- * The choice is made here, at emit time, so the runtime never carries a branch for it.
- */
-export type ChunkResolution =
-  | { readonly mode: 'build'; readonly base: string }
-  | { readonly mode: 'dev'; readonly urlPrefix: string };
-
-export interface MainBootstrapOptions {
-  readonly chunks: ChunkResolution;
-  /**
-   * Whether ANY component of the app injects or provides (SDD-38 §5).
-   *
-   * Off — the default — and the bootstrap does not so much as name `@fudic/di/page`, so the
-   * bundle has no chunk for it and `dist` has no file for it either. «A route without
-   * `inject` does not download a line of DI» is enforced by not writing the import.
-   */
-  readonly hasDi?: boolean;
-  /**
-   * The Service Worker's URL, as a JS expression — or `null` when the page has none: no
-   * `sw.json`, or `pnpm dev` with `dev: 'off'`. **Hydration does not depend on it.**
-   */
-  readonly swUrlExpr: string | null;
-}
-
-/**
  * The always-on half of the main thread (BUG-31 §T2): register the render Service Worker and
  * tell it where the user is. Nothing else — and nothing of the hydration runtime.
  *
@@ -225,118 +301,31 @@ export interface MainBootstrapOptions {
  * the tag is still in the head, and what it loads is empty. That is the one shape that keeps
  * the layout's markup independent of a decision taken in `sw.json`.
  */
-export function emitBootBootstrap(swUrlExpr: string | null): string {
+export function emitBootBootstrap(swUrlExpr: string | null, runtimePrefix = ''): string {
   if (swUrlExpr === null) return 'export {};\n';
   return [
-    `import { registerRenderServiceWorker, notifyLocation } from '@fudic/transport';`,
+    `import { registerRenderServiceWorker, notifyLocation${
+      runtimePrefix === '' ? '' : ', notifyRuntimeUsed'
+    } } from '@fudic/transport';`,
     '',
     `if ('serviceWorker' in navigator) {`,
     `  registerRenderServiceWorker(${swUrlExpr}).then(() => notifyLocation());`,
     `}`,
-    '',
-  ].join('\n');
-}
-
-/**
- * Main thread: install the hydration runtime, on the pages that have something to hydrate.
- *
- * It used to also register the Service Worker, and that is now `emitBootBootstrap` above
- * (BUG-31 §T2) — the two are loaded by different tags because they are needed under
- * different conditions. What is preserved from SDD-17 §4.7.1 is the fact that made them one
- * module in the first place: hydration must NOT depend on there being a worker. It does not.
- * What still branches on the worker here is the warm channel, because the page that knows how
- * it was emitted is this one.
- */
-export function emitMainBootstrap(options: MainBootstrapOptions): string {
-  const { chunks, swUrlExpr } = options;
-  const hasWorker = swUrlExpr !== null;
-  // Only what this page actually uses: a dev page with no Service Worker imports nothing
-  // from `@fudic/transport` at all.
-  const transport: string[] = [];
-  if (chunks.mode === 'build') transport.push('createUrlResolver');
-  // The warm channel, chosen HERE and once (SDD-17 §4.7.1): the page that knows whether it
-  // was emitted with a worker is this one, so the runtime carries no branch for it and the
-  // unused channel is not even in the bundle.
-  const channel = hasWorker ? 'createServiceWorkerWarmChannel' : 'createPreloadWarmChannel';
-  const head = [
-    `import { installHydration, ${channel} } from '@fudic/core';`,
-    // Static, and written only when the app has DI at all (SDD-38 §5). A dynamic import
-    // would be tidier on paper and is not worth it: an app with no DI does not emit this
-    // line, so nothing of the injector reaches the bundle either way, and a static edge is
-    // one the bundler cannot get wrong.
-    ...(options.hasDi === true ? [`import { buildTree } from '@fudic/di/page';`] : []),
-    ...(transport.length === 0
+    ...(runtimePrefix === ''
       ? []
-      : [`import { ${transport.join(', ')} } from '@fudic/transport';`]),
-    '',
-  ];
-  const resolver =
-    chunks.mode === 'build'
-      ? [
-          `// The build id travels inside this chunk, substituted like the Service Worker's`,
-          `// (SDD-27 §5.2): the URL of a hydration chunk is DERIVED, never mapped.`,
-          `const URLS = createUrlResolver(${JSON.stringify(chunks.base)}, ${JSON.stringify(BUILD_TOKEN)});`,
-          `const resolveChunk = (tag) => URLS.hydrateUrl(tag);`,
-        ]
       : [
-          `// In dev nothing is built: the dev server publishes each component's client`,
-          `// module at a stable URL per tag.`,
-          `//`,
-          `// ABSOLUTE, and that is the whole point of the \`new URL\`. Vite's dev import`,
-          `// analysis rewrites every \`import(url)\` whose specifier is a runtime value into`,
-          `// \`import(__vite__injectQuery(url, 'import'))\`, and that helper decorates a`,
-          `// relative or root-relative path — and ONLY those. With a root-relative prefix the`,
-          `// browser ends up asking for \`…js?import\` while the warm named \`…js\`: two URLs,`,
-          `// two downloads, and a preload that never lands. An absolute URL is returned`,
-          `// untouched, so the preload and the import are the same request again.`,
-          `const CHUNKS = new URL(${JSON.stringify(chunks.urlPrefix)}, document.baseURI).href;`,
-          `const resolveChunk = (tag) => CHUNKS + tag + '.js';`,
-        ];
-  // The registration lives in the boot entry now (BUG-31 §T2); what is left of `swUrlExpr`
-  // here is the fact it stands for — whether this page was emitted with a worker — which is
-  // what picks the warm channel above.
-  // The container tree, rebuilt from the published map (SDD-38 §4.2). Both imports are
-  // dynamic and both hang off the block existing, so a page with no DI fetches neither.
-  //
-  // It is STARTED here and handed to `installHydration` as `ready`, rather than awaited
-  // before it. The runtime's capturer has to be listening from the first millisecond: a
-  // click before it is installed is not deferred, it is lost, and this round trip is a
-  // compile away in dev. So the capturer goes up first and path 2 waits for the tree — no
-  // chunk resolves against a tree that is not built, and no gesture is dropped waiting.
-  const ready = options.hasDi !== true ? '' : ', ready: $ioc';
-  const di = options.hasDi !== true
-    ? []
-    : [
-        '',
-        'const $ioc = (async () => {',
-        `  const $iocBlock = document.getElementById('fud-ioc');`,
-        '  if ($iocBlock === null) return;',
-        '  const [$nodes, $tags] = JSON.parse($iocBlock.textContent);',
-        `  const $seedBlock = document.getElementById('fud-di');`,
-        '  // One IoC module per OWNING tag, by URL — the same arithmetic a hydration chunk',
-        '  // uses.',
-        '  const $owners = [...new Set($tags.filter(Boolean))];',
-        '  // `@vite-ignore` for the same reason the hydration loader carries one: the URL is',
-        '  // a runtime value derived from the manifest, not a build-time edge.',
-        `  const $mods = await Promise.all(`,
-        `    $owners.map((tag) => import(/* @vite-ignore */ resolveChunk(tag + '.ioc'))),`,
-        '  );',
-        '  const $byTag = new Map($owners.map((tag, i) => [tag, $mods[i]]));',
-        '  buildTree(',
-        '    $nodes,',
-        '    (node, container) => { const $m = $byTag.get($tags[node]); if ($m) $m.register(container); },',
-        '    $seedBlock === null ? undefined : JSON.parse($seedBlock.textContent),',
-        '  );',
-        '})();',
-      ];
-  return [
-    ...head,
-    ...resolver,
-    ...di,
-    '',
-    // The order does not matter: a warm ordered before the worker takes control is queued
-    // and flushed on `controllerchange`, which is the only case there is on a first load.
-    `installHydration({ root: document, resolveChunk, warm: ${channel}()${ready} });`,
+          '',
+          `// What this page used of the published runtime, told to the worker AFTER the load`,
+          `// (SDD-45 §4.5.1). On a first visit the worker was still installing while all of`,
+          `// this went past it, so without the notice the runtime is only cached on the second`,
+          `// visit — which is then the first one that can work offline. Reported and not`,
+          `// precached: these files are already in the browser, and the worker just keeps them.`,
+          `if ('serviceWorker' in navigator) {`,
+          `  const report = () => { void notifyRuntimeUsed(${JSON.stringify(runtimePrefix)}); };`,
+          `  if (document.readyState === 'complete') report();`,
+          `  else addEventListener('load', report, { once: true });`,
+          `}`,
+        ]),
     '',
   ].join('\n');
 }

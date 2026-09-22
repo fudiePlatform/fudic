@@ -29,7 +29,8 @@ import { installHydration } from '../../src/hydrate/install.js';
 import { readPageMaps } from '../../src/hydrate/maps.js';
 import { idOf, instancesOf, instanceState } from '../../src/hydrate/registry.js';
 import { signal, type Signal } from '../../src/signal.js';
-import { host, publish, TestRegistry } from './_page.js';
+import { browserDom } from '@fudic/dom';
+import { defineRecorder, host, publish, TestRegistry } from './_page.js';
 
 /**
  * The owner's chunk: a `start` prop, then its two cells — a signal and a callback — in the
@@ -115,7 +116,7 @@ function harness(): Harness {
   const maps = readPageMaps(document);
   const cascade = createCascade({
     maps,
-    cells: createCells(maps),
+    cells: createCells(maps, signal),
     loader,
     registry,
     state: instanceState(),
@@ -321,20 +322,20 @@ describe('the registry itself', () => {
 
   it('a slot that is not a marker is left exactly as it is', () => {
     publish({ state: [[0, 4], [1, 'two', null, { id: 3 }]] });
-    const cells = createCells(readPageMaps(document));
+    const cells = createCells(readPageMaps(document), signal);
     expect(cells.resolve(0)).toEqual([1, 'two', null, { id: 3 }]);
   });
 
   it('an instance with no `$f` depends on nobody', () => {
     publish({ state: [[0, 2, 3], [0, 0, { $: [0, 1] }]] });
-    const cells = createCells(readPageMaps(document));
+    const cells = createCells(readPageMaps(document), signal);
     expect(cells.eager(1)).toEqual([]);
     expect(cells.eager(0)).toEqual([]);
   });
 
   it('§6.16 — clear() empties it, so a second visit starts from the new payload', () => {
     publish({ state: [[0, 2, 3], [0, 7, { $: [0, 1] }]] });
-    const cells = createCells(readPageMaps(document));
+    const cells = createCells(readPageMaps(document), signal);
     const first = cells.get([0, 1]);
     expect(first()).toBe(7);
     first.set(99);
@@ -350,16 +351,29 @@ describe('the registry itself', () => {
 });
 
 describe('installHydration hands the registry back (§6.16)', () => {
-  it('so a router that navigates IN PLACE has something to clear', () => {
-    publish({ state: [[0, 2, 3], [0, 5, { $: [0, 1] }]] });
+  /**
+   * Hydrated FIRST, and that is SDD-45 §4.4.1 showing through: the signal a cell is made of
+   * arrives with the deferred pieces, so the registry a router is handed holds no cell until
+   * something has come up. The eager list is the shortest way to make something come up
+   * without a gesture, and what is measured afterwards is unchanged — a router that navigates
+   * in place has a registry it can empty.
+   */
+  it('so a router that navigates IN PLACE has something to clear', async () => {
+    publish({ state: [[0, 2, 3], [0, 5, { $: [0, 1] }]], eager: ['cell-parent'] });
     host('cell-parent', 0);
+    const registry = new TestRegistry();
     const { cells } = installHydration({
       root: document,
       document,
-      registry: new TestRegistry(),
+      registry,
       resolveChunk: (tag) => tag,
-      importModule: async () => {},
+      importModule: async (tag) => {
+        defineRecorder(registry, tag, []);
+      },
+      importDeferred: async () => ({ dom: browserDom, signal }),
     });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     const first = cells.get([0, 1]);
     first.set(42);

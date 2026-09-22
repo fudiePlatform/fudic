@@ -9,8 +9,8 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import type { ElementRegistry } from '../../src/hydrate/registry.js';
-import { installFabricator, live } from '../../src/hydrate/live.js';
+import { publishTagSource, type ElementRegistry } from '../../src/hydrate/registry.js';
+import { live } from '../../src/hydrate/live.js';
 
 /** A host that records the props it was raised with. Anything with `c` serves. */
 function host(tag: string): Element & { raised: unknown[][] } {
@@ -40,7 +40,7 @@ describe('live — a parent raising the child it fabricated', () => {
   it('raises it at once when the tag is already defined, downloading nothing', async () => {
     const registry = registryOf(['x-known']);
     const define = vi.fn(async () => {});
-    installFabricator(define, registry);
+    publishTagSource(define, registry);
     const el = host('x-known');
 
     live(el, ['a', 1]);
@@ -54,7 +54,7 @@ describe('live — a parent raising the child it fabricated', () => {
   it('asks the page for the definition when the tag is unknown, and raises after it', async () => {
     const registry = registryOf([]);
     const define = vi.fn(async () => {});
-    installFabricator(define, registry);
+    publishTagSource(define, registry);
     const el = host('x-new');
 
     live(el, ['b']);
@@ -69,7 +69,7 @@ describe('live — a parent raising the child it fabricated', () => {
   });
 
   it('raises one element once, however many times it is asked', async () => {
-    installFabricator(async () => {}, registryOf(['x-twice']));
+    publishTagSource(async () => {}, registryOf(['x-twice']));
     const el = host('x-twice');
 
     live(el, ['first']);

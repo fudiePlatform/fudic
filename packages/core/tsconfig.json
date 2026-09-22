@@ -6,5 +6,9 @@
       "@fudic/dom": ["../dom/src/index.ts"]
     }
   },
-  "include": ["src", "test"]
+  // `bundle` holds the entries of the published startup pieces (SDD-45 §3.4). They are not
+  // part of `dist` — `tsconfig.build.json` keeps its `include` at `src` — but they carry the
+  // annotation that makes the uniform `install` a contract, and an annotation nobody checks
+  // is a comment.
+  "include": ["src", "test", "bundle"]
 }
