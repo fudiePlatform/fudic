@@ -3,7 +3,7 @@
 > **BUG:** [BUG-41 — Un error de formulario que no se va al corregirlo, y un hueco que el autor no puede colocar](./BUG-41-el-error-que-no-se-va.md)
 > **Paquetes:** `@fudic/forms` · `@fudic/compiler` · `@fudic/language-core` · `@fudic/example-basic`
 > **Rama:** `bug-41-validacion-y-hueco-de-error` (worktree `.claude/worktrees/bug-41-validacion-y-hueco-de-error`, desde `main`)
-> **Progreso:** 0 / 14
+> **Progreso:** 3 / 14
 
 El orden es el de un defecto que se ve en el navegador: **primero la corrección**, luego
 Pedro la prueba en `/formularios`, y después los tests contra el código ya arreglado, vistos
@@ -29,9 +29,9 @@ quedar a medias.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **`validate()`, `message()` y `messages`.** `ControlOptions` como tercer argumento de `control()` y de `typed()` (los doce tipados lo pasan). El form, al clonar, deja a cada nodo su raíz (la del form más externo, también a través de grupos). `validate()` usa el `validateSubtree` del control con esa raíz, y fuera de un form da `TypeError`. `message()` tracked: control → `setMessages` → código. `FormOptions.messages` + `$message()`. §3.1, §4.4 | `forms` | `src/control.ts` · `src/form.ts` · `src/internals.ts` · `src/messages.ts` · `src/types.ts` · `src/typed/*.ts` |
-| [ ] | 2 | 1 | **Tarde para acusar, pronto para perdonar.** Todo en `wiring.ts`, sin que las siete bindings repitan lógica: `blur` → `touch()` + `validate()`; `input`/`change` → `validate()` solo si el error está visible. `bindErrors` escribe `message()` y acepta `ErrorSlot` `null`. §4.1 | `forms` | `src/dom/wiring.ts` · `src/dom/types.ts` · `src/dom/bind-*.ts` |
-| [ ] | 3 | 1 | **El submit.** `onSelf` con `{ capture: true }` para el submit. Con errores guardados, además `void $validate()`. Sin errores, una pasada síncrona de las reglas síncronas antes de decidir (interna, sin API pública). §4.2 | `forms` | `src/dom/bind-form.ts` · `src/dom/wiring.ts` · `src/form.ts` · `src/control.ts` |
+| [x] | 1 | — | **`validate()`, `message()` y `messages`.** `ControlOptions` como tercer argumento de `control()` y de `typed()` (los doce tipados lo pasan). El form, al clonar, deja a cada nodo su raíz (la del form más externo, también a través de grupos). `validate()` usa el `validateSubtree` del control con esa raíz, y fuera de un form da `TypeError`. `message()` tracked: control → `setMessages` → código. `FormOptions.messages` + `$message()`. §3.1, §4.4 | `forms` | `src/control.ts` · `src/form.ts` · `src/internals.ts` · `src/messages.ts` · `src/types.ts` · `src/typed/*.ts` |
+| [x] | 2 | 1 | **Tarde para acusar, pronto para perdonar.** Todo en `wiring.ts`, sin que las siete bindings repitan lógica: `blur` → `touch()` + `validate()`; `input`/`change` → `validate()` solo si el error está visible. `bindErrors` escribe `message()` y acepta `ErrorSlot` `null`. §4.1 | `forms` | `src/dom/wiring.ts` · `src/dom/types.ts` · `src/dom/bind-*.ts` |
+| [x] | 3 | 1 | **El submit.** `onSelf` en captura. `$validate()` antes de decidir, siempre: la validación publica en el acto lo que se resuelve en síncrono (los hijos arrancan en orden, sin esperarse), y la decisión lee ese estado. §4.2 | `forms` | `src/dom/bind-form.ts` · `src/dom/wiring.ts` · `src/form.ts` · `src/control.ts` |
 
 ---
 
@@ -76,7 +76,16 @@ quedar a medias.
 
 ## Notas
 
-- **Suelo de cobertura al abrir la rama:** pendiente de medir (tarea 13).
+- **Suelo de cobertura al abrir la rama:** `@fudic/forms` 100 / 100 / 100 / 100. `compiler` y
+  `language-core`, pendiente de medir antes de la tarea 4.
+- **Tras la fase 1, `@fudic/forms` está en 99,35 / 97,54 / 99,43 / 99,21** (líneas, ramas,
+  funciones, sentencias). Faltan cuatro huecos, todos de código nuevo y todos criterios de
+  la fase 4: el `TypeError` de un control sin formulario (1), `$message` (4), una validación
+  asíncrona adelantada por otra (2) y la revalidación al escribir con el error visible (5).
+  La suite existente sigue verde. Solo se tocaron los tests que fijaban el comportamiento
+  viejo: el primer submit con un `required` vacío pasaba (ahora es el caso asíncrono), y
+  seis bindings se hacían sobre controles sin formulario, que la emisión nunca produce
+  (`inForm` en `_dom.ts`).
 - **`106` está libre** en el índice de decisiones, pero se usa la `130` para que la enmienda
   a la 113 quede después de ella y no en un hueco anterior.
 - **El golden del emit cambia a propósito**: sin marcador ya no hay span. Un golden que

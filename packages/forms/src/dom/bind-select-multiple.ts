@@ -10,25 +10,20 @@
 import { effect } from '@fudic/core';
 import type { Control } from '../types.js';
 import type { Cleanup, ErrorSlot } from './types.js';
-import { bindErrors, on, undo } from './wiring.js';
+import { bindErrors, follow, undo } from './wiring.js';
 
 export function bindSelectMultiple(
   el: HTMLSelectElement,
   control: Control<readonly string[]>,
   slot: ErrorSlot,
 ): Cleanup {
-  const write = (): void => {
-    const chosen: string[] = [];
-    for (const option of el.options) {
-      if (option.selected) chosen.push(option.value);
-    }
-    control.set(chosen);
-  };
   return undo([
-    on(el, 'input', write),
-    on(el, 'change', write),
-    on(el, 'blur', () => {
-      control.touch();
+    ...follow([el], control, () => {
+      const chosen: string[] = [];
+      for (const option of el.options) {
+        if (option.selected) chosen.push(option.value);
+      }
+      control.set(chosen);
     }),
     effect(() => {
       const value = control();

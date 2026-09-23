@@ -25,7 +25,8 @@ import {
   type ValidateCtx,
   type WriteMode,
 } from './internals.js';
-import { runRule } from './run-rule.js';
+import { messageOf } from './messages.js';
+import { firstFailure, isPending } from './run-rule.js';
 import type {
   AnyForm,
   AnyNode,
@@ -137,23 +138,29 @@ export function build<S extends Schema>(
     }
   };
 
-  const validateSubtree = async (ctx: ValidateCtx): Promise<void> => {
+  /**
+   * Every child is STARTED in declaration order, and whatever each one decides
+   * synchronously is on record before this returns (BUG-41 §4.2). The form-level rule runs
+   * once the children have answered — at once if all of them did, after them if not.
+   */
+  const validateSubtree = (ctx: ValidateCtx): Promise<void> | undefined => {
     const mine = (epoch += 1);
+    const pending: Promise<void>[] = [];
     for (const node of nodes.values()) {
-      await internalsOf(node).validateSubtree(ctx);
+      const late = internalsOf(node).validateSubtree(ctx);
+      if (late !== undefined) pending.push(late);
     }
-    let found: Errors | null = null;
-    for (const rule of rules) {
-      const result = await runRule(rule, untrack(read), ctx.root);
-      if (result) {
-        found = result;
-        break;
+    const summarise = (): Promise<void> | undefined => {
+      const found = firstFailure(rules, untrack(read), ctx.root);
+      if (!isPending(found)) {
+        summary.set(found);
+        return undefined;
       }
-    }
-    if (mine !== epoch) {
-      return;
-    }
-    summary.set(found);
+      return found.then((late) => {
+        if (mine === epoch) summary.set(late);
+      });
+    };
+    return pending.length === 0 ? summarise() : Promise.all(pending).then(summarise);
   };
 
   const collect = (path: string, out: Record<string, Errors>): void => {
@@ -199,6 +206,12 @@ export function build<S extends Schema>(
     },
     check,
     validateSubtree,
+    // A nested form passes the adoption down: its fields' root is the form above it.
+    adopt: (root) => {
+      each((_, node) => {
+        node.adopt(root);
+      });
+    },
     // A group's own error is its summary: the map of `$errors()` is about fields.
     publish: (e) => {
       summary.set(e);
@@ -254,6 +267,11 @@ export function build<S extends Schema>(
 
     $summary: (): Errors | null => summary(),
 
+    $message: (): string => {
+      const e = summary();
+      return e === null ? '' : messageOf(e, options.messages);
+    },
+
     $setErrors: (errors: ErrorMap | null, sum?: Errors | null): void => {
       if (errors === null) {
         internals.clearAll();
@@ -286,5 +304,8 @@ export function build<S extends Schema>(
     Object.assign(Object.fromEntries(nodes), api) as unknown as Form<S>,
     internals,
   );
+  // Every field starts out with THIS form as its root. If this form is itself cloned into
+  // another as a group, that one adopts it in turn and the root moves outwards.
+  internals.adopt(self as unknown as AnyForm);
   return self;
 }

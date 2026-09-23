@@ -7,6 +7,18 @@
  * it on demand would be testing the prototype's design instead of this one.
  */
 
+import { form } from '../../src/index.js';
+import type { Control } from '../../src/index.js';
+
+/**
+ * A control as a binding always meets it: INSIDE a form (`FUD0595`). Leaving a field validates
+ * it (BUG-41 §4.1), and validating needs the root a form gives; a bare `control()` is a
+ * template, and binding one is not a case the emit can produce.
+ */
+export function inForm<T>(c: Control<T>): Control<T> {
+  return form({ c }).c as unknown as Control<T>;
+}
+
 /** One control's markup: the element, and the slot the emit left behind it. */
 export function field(html: string, id = 'e1'): { el: HTMLElement; slot: HTMLElement } {
   const host = document.createElement('div');

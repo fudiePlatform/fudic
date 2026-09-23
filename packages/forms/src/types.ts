@@ -12,6 +12,9 @@
 /** The errors of one node. `{ required: true }`, `{ minLength: 3 }`, `{ range: 'u8' }`. */
 export type Errors = Readonly<Record<string, unknown>>;
 
+/** rule name → the sentence for it, given whatever the validator measured against. */
+export type Messages = Readonly<Record<string, (v: unknown) => string>>;
+
 /** Anything readable in a tracked way. The `Readable<T>` of `@fudic/core`. */
 export type Readable<T> = () => T;
 
@@ -49,6 +52,24 @@ export interface Control<T> {
   touch(): void;
   /** Back to the initial value, or to the given one. Clears errors, touched and dirty. */
   reset(v?: T): void;
+  /**
+   * Validates THIS control alone, with the root of the form it belongs to as the `root` of
+   * its rules, and publishes if the value has not moved meanwhile. Resolves to whether the
+   * control is valid. A control that belongs to no form has no root: it rejects with a
+   * `TypeError`.
+   */
+  validate(opts?: { readonly server?: boolean }): Promise<boolean>;
+  /**
+   * The text of the current error, or `''`. Tracked. Worded by this control's own
+   * `messages`, then by `setMessages`, then by the rule's code.
+   */
+  readonly message: Readable<string>;
+}
+
+/** What `control()` and the typed factories take besides the value and the rules. */
+export interface ControlOptions {
+  /** This control's texts, by rule. They win over `setMessages`. */
+  readonly messages?: Messages;
 }
 
 /** The width a typed control declares. Inert data for the model, contract for transport. */
@@ -154,6 +175,8 @@ export type ErrorMap = Readonly<Record<string, Errors>>;
 export interface FormOptions<S extends Schema> {
   /** The form-level rule: the error that belongs to no single field. */
   readonly summary?: (root: Form<S>) => Errors | null | Promise<Errors | null>;
+  /** The texts of the summary, by rule. They win over `setMessages`. */
+  readonly messages?: Messages;
 }
 
 /** The `$` namespace of a form. Its fields hang next to it, by name. */
@@ -171,6 +194,8 @@ export interface FormApi<S extends Schema> {
   readonly $errors: Readable<ErrorMap | null>;
   /** The form-level error, or `null`. Tracked read. */
   readonly $summary: Readable<Errors | null>;
+  /** The text of `$summary()`, or `''`. Tracked. */
+  readonly $message: Readable<string>;
   /** Publishes errors that came from outside (a 422), indexed by path. */
   $setErrors(errors: ErrorMap | null, summary?: Errors | null): void;
 

@@ -38,8 +38,20 @@ export interface NodeInternals {
    * a failed `$set` leave the form untouched instead of half assigned.
    */
   check(v: unknown, mode: WriteMode, path: string): void;
-  /** Runs this node's subtree and publishes what is still current. */
-  validateSubtree(ctx: ValidateCtx): Promise<void>;
+  /**
+   * Runs this node's subtree and publishes what is still current.
+   *
+   * What can be decided synchronously is PUBLISHED synchronously, and the promise is only
+   * there when some rule answered later — `undefined` means the whole subtree is already on
+   * record. That is what a submit decides on (BUG-41 §4.2).
+   */
+  validateSubtree(ctx: ValidateCtx): Promise<void> | undefined;
+  /**
+   * Tells this node which form is its root: what its rules receive as `root` when it is
+   * validated on its own. Called by `form()` on every clone, and again — overriding — by the
+   * form a group is nested in, so the root is always the OUTERMOST form.
+   */
+  adopt(root: AnyForm): void;
   /** Publishes an error that came from outside. A control also marks itself touched. */
   publish(e: Errors | null): void;
   /** A child by name, for resolving a path. `undefined` when there is no such field. */

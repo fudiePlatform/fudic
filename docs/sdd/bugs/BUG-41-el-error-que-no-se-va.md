@@ -233,13 +233,19 @@ En `wiring.ts`, para las siete bindings a la vez:
 `onSelf`). En la fase de destino, los listeners de captura corren antes que los de burbuja,
 así que la validación va **antes** que el `@submit` del autor sin cambiar el orden del emit.
 
-- **Con errores guardados:** `preventDefault()`, `$touch()`, foco en el primer
-  `[aria-invalid="true"]` y **además** `void form.$validate()`. Un error que dependía de otro
-  campo (`confirmar === contraseña`) y ya no es verdad se limpia, y el siguiente submit pasa.
-- **Sin errores guardados:** se validan en síncrono las reglas **síncronas** de todo el
-  formulario antes de decidir. Si alguna falla, se sigue el camino anterior. Si no, se deja
-  pasar y las asíncronas corren detrás, como hasta ahora, porque su respuesta tardía no puede
-  des-enviar nada.
+- **Siempre, antes de decidir, `void form.$validate()`.** La validación publica en el acto
+  todo lo que se resuelve en síncrono: los hijos arrancan en orden y cada control que no tiene
+  reglas asíncronas deja su resultado antes de que `$validate` devuelva la promesa. La
+  decisión se toma **después**, con ese estado:
+  - **Hay errores** → `preventDefault()`, `$touch()` y foco en el primer
+    `[aria-invalid="true"]`. Un `required` vacío para ya el primer submit.
+  - **No hay** → se deja pasar. Un error ya corregido, incluido uno que dependía de otro campo
+    (`confirmar === contraseña`), se ha limpiado en esta misma pasada, así que el submit que
+    sigue a la corrección pasa **a la primera**.
+- **Una regla asíncrona** responde tarde para contar en este submit. Su veredicto queda
+  guardado para el siguiente, y no puede des-enviar el que ya salió.
+- La regla del resumen (`options.summary`) corre cuando han contestado los hijos: en el acto
+  si todos lo hicieron en síncrono, y detrás si no.
 - El `@submit` del autor ve `event.defaultPrevented === true` cuando el formulario es
   inválido, y esa es la forma documentada de saberlo.
 

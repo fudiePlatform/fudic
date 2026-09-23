@@ -52,6 +52,7 @@ export type {
   AnyNode,
   AnyValidator,
   Control,
+  ControlOptions,
   ErrorMap,
   Errors,
   Form,

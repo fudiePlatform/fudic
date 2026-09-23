@@ -2,11 +2,12 @@
 
 import { intRange } from './range.js';
 import { typed } from './typed.js';
-import type { AnyValidator, TypedControl } from '../types.js';
+import type { AnyValidator, ControlOptions, TypedControl } from '../types.js';
 
 const check = intRange('u16', 0, 65_535);
 
 export const u16 = (
   initial?: number | null,
   validators?: readonly AnyValidator<number | null>[],
-): TypedControl<number | null> => typed('u16', initial, check, validators);
+  options?: ControlOptions,
+): TypedControl<number | null> => typed('u16', initial, check, validators, options);

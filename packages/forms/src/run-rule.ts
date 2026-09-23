@@ -17,3 +17,34 @@ export const runRule = <T>(
   value: T,
   root: AnyForm,
 ): Errors | null | Promise<Errors | null> => (rule as Validator<T, AnyForm>)(value, root);
+
+/** Whether a rule answered later rather than now. */
+export const isPending = <T>(v: T | Promise<T>): v is Promise<T> =>
+  typeof (v as { then?: unknown } | null)?.then === 'function';
+
+/**
+ * The first rule that fails, in order — and SYNCHRONOUSLY for as long as the rules
+ * are (BUG-41 §4.2).
+ *
+ * The walk only turns asynchronous at the first rule that returns a promise. That
+ * is what lets a submit decide on the rules that CAN be decided now: a `required`
+ * on an empty field is known the instant it runs, and waiting a microtask for it is
+ * how a form ended up sent before its own validation answered.
+ */
+export function firstFailure<T>(
+  rules: readonly AnyValidator<T>[],
+  value: T,
+  root: AnyForm,
+): Errors | null | Promise<Errors | null> {
+  for (const [i, rule] of rules.entries()) {
+    const result = runRule(rule, value, root);
+    if (isPending(result)) {
+      return result.then(
+        (found) => found ?? firstFailure(rules.slice(i + 1), value, root),
+      );
+    }
+    // One error per field, not a list: the first failure stops the run.
+    if (result) return result;
+  }
+  return null;
+}

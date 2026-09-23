@@ -30,19 +30,17 @@ export function bindForm(el: HTMLFormElement, form: AnyForm, summary: HTMLElemen
     // single listener it holds now — and an author's `@submit` that calls `stopPropagation()`
     // would stop the event before the root ever saw it, which is this validation, gone quietly.
     onSelf(el, 'submit', (event) => {
-      // **Synchronous, with the last known state.** `$validate` is asynchronous and
-      // `preventDefault` is not: by the time a validation resolved, the submit would already
-      // have gone or already have been stopped. So if there are errors ON RECORD, stop; if
-      // there are none, let it through and start the validation, whose late answer cannot
-      // un-send anything.
+      // **Validate first, then decide on what is known NOW** (BUG-41 §4.2). `$validate`
+      // publishes every rule that answers synchronously before it returns, so a `required` on
+      // an empty field stops the very first submit, and an error the user has since corrected
+      // is gone before the decision reads it. Only an asynchronous rule answers too late to
+      // count; its verdict lands on record for the next submit, and it cannot un-send this one.
       //
       // That is not a resignation. The one who decides is the server — that is what the
       // server validators and the 422 are for (§4.7, SDD-33 §4.6). The client check is a
       // courtesy, and a courtesy that blocks the form while it thinks is worse than none.
-      if (form.$errors() === null && form.$summary() === null) {
-        void form.$validate();
-        return;
-      }
+      void form.$validate();
+      if (form.$errors() === null && form.$summary() === null) return;
       event.preventDefault();
       // Cascade first: errors are hidden until a control is touched (§4.2), so without this
       // the user would be stopped by errors they cannot see.

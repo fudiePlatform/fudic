@@ -10,7 +10,6 @@
 
 import { effect } from '@fudic/core';
 import type { Control } from '../types.js';
-import { errorText } from '../messages.js';
 import { delegate } from './delegation.js';
 import type { Cleanup, ErrorSlot } from './types.js';
 
@@ -43,11 +42,16 @@ export function on(el: Element, type: string, handler: (event: Event) => void): 
  * so delegating its `submit` saves no listener at all — and it charges the same price: a
  * `@submit` that stops propagation, which is the ordinary way to write one, would take the
  * form's validation down with it and say nothing. One listener for one node, at the node.
+ *
+ * **In the capture phase** (BUG-41 §4.2). On the event's own target, capture listeners run
+ * before bubble ones, so this runs ahead of the author's `@submit` on the same `<form>`
+ * without the emit having to change the order it registers them in — and the author's handler
+ * can read `defaultPrevented` to know the form was invalid, instead of sending it first.
  */
 export function onSelf(el: Element, type: string, handler: (event: Event) => void): Cleanup {
-  el.addEventListener(type, handler);
+  el.addEventListener(type, handler, true);
   return () => {
-    el.removeEventListener(type, handler);
+    el.removeEventListener(type, handler, true);
   };
 }
 
@@ -59,8 +63,38 @@ export function undo(all: readonly Cleanup[]): Cleanup {
 }
 
 /**
+ * The element → control half of every binding: `input` and `change` write, `blur` leaves.
+ *
+ * **Late to accuse, quick to forgive** (BUG-41 §4.1), and written ONCE so the seven bindings
+ * cannot drift apart on it:
+ *
+ * - leaving the field touches it and validates it — the error appears when the user is done
+ *   with the field, never while they are still typing it for the first time;
+ * - a write revalidates only when the error is ON SCREEN, so a corrected value takes its
+ *   message away at the keystroke that corrects it. A field whose error is not showing is not
+ *   validated per keystroke: it is unfilled, not wrong.
+ *
+ * `read` is the coercion of each shape — the only thing the bindings do differently.
+ */
+export function follow(
+  targets: readonly Element[],
+  control: Control<unknown>,
+  read: () => void,
+): Cleanup[] {
+  const edit = (): void => {
+    read();
+    if (control.touched() && control.errors() !== null) void control.validate();
+  };
+  const leave = (): void => {
+    control.touch();
+    void control.validate();
+  };
+  return targets.flatMap((el) => [on(el, 'input', edit), on(el, 'change', edit), on(el, 'blur', leave)]);
+}
+
+/**
  * The accessibility half of every binding (§4.2, step 4): `aria-invalid` on the element and
- * the message in the slot the emit left in the markup.
+ * the message in the element the author marked for it.
  *
  * **Only when the control is `touched`.** A required field is not WRONG for being still
  * empty; it is unfilled. Painting the error on first render is how a form greets a user with
@@ -70,9 +104,9 @@ export function undo(all: readonly Cleanup[]): Cleanup {
  * `targets` is a list because a radio group is N elements expressing one value, and all of
  * them carry the state of that value. Everything else passes one.
  *
- * The slot is only ever WRITTEN, never created: it exists in the HTML the server sent, with
- * its stable id and the `aria-describedby` that points at it (decision 113). That is the
- * invariant §6.10 measures.
+ * The slot is only ever WRITTEN, never created: it is the author's own element, in the HTML
+ * the server sent, with the `aria-describedby` that points at it. `null` when the author wrote
+ * none — then there is no text to write, and `aria-invalid` is still the element's own.
  */
 export function bindErrors(
   targets: readonly Element[],
@@ -80,12 +114,11 @@ export function bindErrors(
   slot: ErrorSlot,
 ): Cleanup {
   return effect(() => {
-    const errors = control.errors();
-    const show = control.touched() && errors !== null;
-    const text = show ? errorText(errors) : '';
+    const show = control.touched() && control.errors() !== null;
+    const text = show ? control.message() : '';
     // Compared before writing, like every other write in this module: replacing the text of a
     // node a screen reader is reading is an announcement, even when the text is the same one.
-    if (slot.textContent !== text) slot.textContent = text;
+    if (slot !== null && slot.textContent !== text) slot.textContent = text;
     for (const target of targets) {
       if (show) target.setAttribute('aria-invalid', 'true');
       else target.removeAttribute('aria-invalid');

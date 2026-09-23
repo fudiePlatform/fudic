@@ -18,17 +18,16 @@
  * reads a record and returns a string.
  */
 
-import type { Errors } from './types.js';
+import type { Errors, Messages } from './types.js';
 
-/** rule name → the sentence for it, given whatever the validator measured against. */
-export type Messages = Readonly<Record<string, (v: unknown) => string>>;
+export type { Messages };
 
 /**
  * Module state, and the one piece of it in this package.
  *
- * It is what the API declares — `setMessages(m)` — and a per-form registry would be worse: the
- * texts of an application are one set, and threading them through every `bind*` call would put
- * them in the emit, where the author cannot reach them.
+ * It is what the API declares — `setMessages(m)` — and it is the FALLBACK since BUG-41: a
+ * control or a form can carry its own texts, and those win. What stays global is the default
+ * sentence of a rule, which is one set per application.
  */
 let messages: Messages = {};
 
@@ -38,16 +37,22 @@ export function setMessages(m: Messages): void {
 }
 
 /**
- * The sentence for an error map: the FIRST rule that failed.
+ * The sentence for an error map: the FIRST rule that failed, worded by `own` if it knows the
+ * rule, by the global map if not, and by the rule's own code as the last resort (BUG-41 §4.4).
  *
  * One rule and not all of them, because a field shows one message. Which one is the first the
  * validator published, and the order of a validator list is the author's own.
  */
-export function errorText(errors: Errors): string {
+export function messageOf(errors: Errors, own: Messages = {}): string {
   for (const rule of Object.keys(errors)) {
-    const message = messages[rule];
+    const message = own[rule] ?? messages[rule];
     return message === undefined ? rule : message(errors[rule]);
   }
   // An empty map is not an error: a validator that found nothing returns `null`.
   return '';
+}
+
+/** The sentence for an error map, with the global texts only. */
+export function errorText(errors: Errors): string {
+  return messageOf(errors);
 }

@@ -13,7 +13,15 @@
 
 import { control } from '../control.js';
 import { internalsOf } from '../internals.js';
-import type { AnyNode, AnyValidator, Errors, TypeTag, TypedControl, Widen } from '../types.js';
+import type {
+  AnyNode,
+  AnyValidator,
+  ControlOptions,
+  Errors,
+  TypeTag,
+  TypedControl,
+  Widen,
+} from '../types.js';
 
 /** A synchronous check of one value against a declared width. */
 export type RangeCheck = (v: unknown) => Errors | null;
@@ -32,6 +40,7 @@ export function typed<T>(
   initial: T | undefined,
   check: RangeCheck,
   validators: readonly AnyValidator<T>[] | undefined,
+  options: ControlOptions = {},
   of?: TypeTag,
 ): TypedControl<T> {
   const rules: readonly AnyValidator<T>[] =
@@ -40,6 +49,7 @@ export function typed<T>(
   const self = control<T>(
     initial,
     rules as readonly AnyValidator<Widen<T>>[],
+    options,
   ) as unknown as Writable<T>;
   self.type = tag;
   if (of !== undefined) {
@@ -51,7 +61,8 @@ export function typed<T>(
   // typed: without this, `f.qty` inside a form would be a plain control and the
   // declared width would exist only on the object nobody uses.
   const internals = internalsOf(self as unknown as AnyNode);
-  internals.clone = () => typed(tag, initial, check, validators, of) as unknown as AnyNode;
+  internals.clone = () =>
+    typed(tag, initial, check, validators, options, of) as unknown as AnyNode;
 
   return self;
 }
