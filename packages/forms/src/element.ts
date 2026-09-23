@@ -94,6 +94,17 @@ export abstract class FudicControlElement extends FudicElement {
     this.#unwire();
   }
 
+  /**
+   * The host's validity, exposed the way a native control exposes its own.
+   *
+   * A form-associated element keeps it in its `ElementInternals`, which nobody outside can reach:
+   * without this, the `<form>` that owns the host cannot tell it is the field that failed, and a
+   * submit cannot send the focus into it (BUG-41).
+   */
+  get validity(): ValidityState {
+    return this.internals.validity;
+  }
+
   #unwire(): void {
     this.#wiring?.();
     this.#wiring = null;

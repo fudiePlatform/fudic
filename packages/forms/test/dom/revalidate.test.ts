@@ -323,6 +323,22 @@ describe('the submit decides on what is known now', () => {
     for (const off of offs) off();
   });
 
+  it('the focus reaches a field in another tree through its host’s validity', () => {
+    // A `required` input stands for the host of a control-component: an element this tree can
+    // only judge by its `validity`, never by an `aria-invalid` its inner `<input>` carries. It
+    // comes FIRST, inside a fieldset — a listed element that exposes no verdict of its own.
+    const host = mount(
+      '<form><fieldset><input id="h" required></fieldset><input id="a" type="text"></form>',
+    );
+    const el = host.querySelector('form')!;
+    const f = form({ a: control('', [required]) });
+    const offs = [bindText(host.querySelector<HTMLInputElement>('#a')!, f.a, null), bindForm(el, f, null)];
+
+    el.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    expect(document.activeElement?.id).toBe('h');
+    for (const off of offs) off();
+  });
+
   it('the summary goes into the form’s marker with its own words', async () => {
     const host = mount('<form><div id="s"></div></form>');
     const el = host.querySelector('form')!;

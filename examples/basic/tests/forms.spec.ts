@@ -124,6 +124,9 @@ test.describe('BUG-41 §1 — an error that goes when it is corrected (criterion
     expect(await page.evaluate(() => (window as unknown as { __submits: number }).__submits)).toBe(2);
     await expect(aliasError(page)).toHaveText('Elige un alias.');
     await expect(nameError(page)).toHaveText('');
+    // The first failing field is the alias now, and the caret goes INTO it: through its host,
+    // two shadow roots down, where no `aria-invalid` from the form's tree can be seen.
+    await expect(alias(page)).toBeFocused();
   });
 
   test('once left, the keystroke that breaks the value brings the error back', async ({ page }) => {

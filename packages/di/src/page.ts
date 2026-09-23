@@ -107,7 +107,8 @@ export async function installPage({
   // nodes is still one module.
   const owners = [...new Set(tags.filter((tag) => tag !== ''))];
   const loaded = (await Promise.all(
-    owners.map((tag) => import(resolveChunk(`${tag}.ioc`))),
+    // Resolved at run time from the manifest, on purpose: the bundler has nothing to analyse.
+    owners.map((tag) => import(/* @vite-ignore */ resolveChunk(`${tag}.ioc`))),
   )) as readonly IocModule[];
   const byTag = new Map(owners.map((tag, i) => [tag, loaded[i] as IocModule]));
   return buildTree(

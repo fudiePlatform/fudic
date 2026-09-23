@@ -19,8 +19,24 @@ import type { AnyForm } from '../types.js';
 import type { Cleanup } from './types.js';
 import { onSelf, undo } from './wiring.js';
 
-/** What the error effects marked. The first in DOCUMENT order is what `querySelector` gives. */
-const INVALID = '[aria-invalid="true"]';
+/**
+ * The first failing field of the form, in tree order — the order `elements` lists them in.
+ *
+ * Two marks, because a field can live in two trees. A field in the form's own tree carries the
+ * `aria-invalid` its error effect wrote. A control-component's `<input>` lives in ITS shadow root,
+ * where nothing from here reaches — but its host is a listed element of this form, its
+ * `validity` is the one `setValidity` keeps, and focusing the host lands in the `<input>` through
+ * `delegatesFocus`. A fieldset is never invalid by its own `validity`: it is barred from
+ * constraint validation, whatever it contains. A listed element with no `validity` at all — a
+ * form-associated element that does not expose it — is not one this can judge.
+ */
+function firstInvalid(el: HTMLFormElement): HTMLElement | undefined {
+  return [...el.elements].find(
+    (field) =>
+      field.getAttribute('aria-invalid') === 'true' ||
+      (field as { readonly validity?: ValidityState }).validity?.valid === false,
+  ) as HTMLElement | undefined;
+}
 
 export function bindForm(el: HTMLFormElement, form: AnyForm, summary: HTMLElement | null): Cleanup {
   const offs: Cleanup[] = [
@@ -44,8 +60,7 @@ export function bindForm(el: HTMLFormElement, form: AnyForm, summary: HTMLElemen
       // Cascade first: errors are hidden until a control is touched (§4.2), so without this
       // the user would be stopped by errors they cannot see.
       form.$touch();
-      const first = el.querySelector<HTMLElement>(INVALID);
-      first?.focus();
+      firstInvalid(el)?.focus();
     }),
   ];
   if (summary !== null) {

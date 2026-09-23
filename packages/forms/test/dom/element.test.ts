@@ -183,6 +183,14 @@ describe('the internals follow the control', () => {
     expect(calls.at(-1)?.[0]).toEqual({});
   });
 
+  it('the host exposes its validity, as a native control does', () => {
+    const el = mount();
+    const validity = { valid: false } as ValidityState;
+    Object.assign(el.seenInternals, { validity });
+    // What the owning `<form>` reads to send the focus into this host on a failed submit.
+    expect((el as unknown as { validity: ValidityState }).validity).toBe(validity);
+  });
+
   it('disconnecting stops both', () => {
     const f = form({ title: control('') });
     const el = mount();
