@@ -71,6 +71,51 @@ f.$setErrors({ 'seo.canonical': { protocol: true } });
 An overtaken async validation never publishes: each control carries an epoch, so a slow
 rule cannot paint the error of a value the user already changed.
 
+A single control validates on its own, against the root of the form it belongs to:
+
+```ts
+await f.title.validate();   // false — and only f.title's error changes
+```
+
+## Messages
+
+A rule returns what failed — `{ minLength: 3 }` — never a sentence. The sentence comes from
+the control first, then from the application's defaults, then falls back to the rule code:
+
+```ts
+import { setMessages } from '@fudic/forms';
+
+setMessages({ required: () => 'Required.' });
+
+const f = form({
+  alias: control('', [required, minLength(3)], {
+    messages: { minLength: (n) => `At least ${String(n)} characters.` },
+  }),
+});
+
+f.alias.message();   // '' until validated, then the text of its current error
+f.$message();        // the same for the form's summary (`form(schema, { messages })`)
+```
+
+## In a template
+
+`control=` binds an element to a node and `error=` marks the element that shows its
+message — any element, anywhere in the same block:
+
+```html
+<form control=@f>
+  <input control=@f.alias>
+  <small class="error" error=@f.alias></small>
+  <div error=@f></div>   <!-- the summary: a polite live region -->
+</form>
+```
+
+The compiler adds the `id` and the `aria-describedby`; without a marker no message element
+exists. A field's error appears when the user leaves it, updates on every edit while it is
+shown, and a submit validates before deciding — an invalid form never goes out, and the
+author's own `@submit` sees `defaultPrevented`. Inside a control-component, put the marker
+in its own template: `aria-describedby` does not cross a shadow root.
+
 ## The schema is a template
 
 `form(schema)` **clones** its nodes, so a schema declared at module scope can be shared

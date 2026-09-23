@@ -41,12 +41,71 @@ async function open(page: Page): Promise<void> {
   });
   await page.goto('/formularios');
   await page.waitForFunction(() => window.__ready);
+  // And the OWNER of the form up, which is what every test here drives. `fud:ready` says the
+  // runtime is installed, not that the eager pass of §4.5 has finished: reading the form before
+  // `app-form` reports hydrated was a race these tests lost more often than they won, because
+  // a focus or a `fill` is not a gesture that would bring it up on its own.
+  await page.waitForFunction(() => window.__hydrated.some((h) => h.tag === 'app-form'), null, {
+    timeout: 10_000,
+  });
 }
 
 /** The `<input>` inside the control-component, two shadow roots down. */
 const alias = (page: Page) => page.locator('app-form app-input input');
 /** The plain text field of the fudic form, one shadow root down. */
 const nameField = (page: Page) => page.locator('app-form input#nom');
+/** The element the view marked with `error=@userForm.name`, wherever it put it. */
+const nameError = (page: Page) => page.locator('app-form .campo .error');
+/** The alias's own marker, inside the control-component beside its `<input>`. */
+const aliasError = (page: Page) => page.locator('app-form app-input .error');
+const submit = (page: Page) => page.locator('app-form button[type="submit"]').click();
+
+test.describe('BUG-41 §1 — an error that goes when it is corrected (criterion 20)', () => {
+  test('the steps of §1 leave the form sendable, and each field says its own text', async ({
+    page,
+  }) => {
+    await open(page);
+    await expect.poll(() => alias(page).count()).toBe(1);
+
+    // 1. Two characters and a submit: the alias complains, in the words the CONTROL declared.
+    await nameField(page).fill('Ada');
+    await alias(page).fill('ab');
+    await submit(page);
+    await expect(aliasError(page)).toHaveText('El alias necesita al menos 3 caracteres.');
+    await expect(alias(page)).toHaveAttribute('aria-invalid', 'true');
+
+    // 2. Corrected: the message goes at the keystroke, with no submit in between.
+    await alias(page).fill('abc');
+    await expect(aliasError(page)).toHaveText('');
+    await expect(alias(page)).not.toHaveAttribute('aria-invalid');
+
+    // 3. And the next submit leaves nothing on screen: the form is valid again.
+    await submit(page);
+    await expect(aliasError(page)).toHaveText('');
+    await expect(nameError(page)).toHaveText('');
+  });
+
+  test('leaving an empty required field says so, and the marker is what the input points at', async ({
+    page,
+  }) => {
+    await open(page);
+    await nameField(page).focus();
+    await nameField(page).blur();
+    await expect(nameError(page)).toHaveText('Escribe tu nombre.');
+    const describedBy = await nameField(page).getAttribute('aria-describedby');
+    expect(await nameError(page).getAttribute('id')).toBe(describedBy);
+  });
+
+  test('the first submit of an empty form marks every field before anything is sent', async ({
+    page,
+  }) => {
+    await open(page);
+    await expect.poll(() => alias(page).count()).toBe(1);
+    await submit(page);
+    await expect(nameError(page)).toHaveText('Escribe tu nombre.');
+    await expect(aliasError(page)).toHaveText('Elige un alias.');
+  });
+});
 
 test.describe('§6.16 — the one hydration nobody asked for, beside one that waits', () => {
   test('the form-associated tag is up before any gesture; the plain one is not', async ({
@@ -162,7 +221,8 @@ test.describe('§6.18 — the internals: `:invalid` is real, and the type is a p
     // the form agreeing, not the attribute.
     await nameField(page).fill('Ada');
     await page.locator('app-form button[type="submit"]').click();
-    await expect(page.locator('app-form [data-fud-err]').first()).toHaveText('');
+    await expect(nameError(page)).toHaveText('');
+    await expect(aliasError(page)).toHaveText('');
   });
 
   test('`setValidity` gives the host a `:invalid` a stylesheet can rely on', async ({ page }) => {
@@ -217,21 +277,35 @@ function chunkOf(tag: string): string {
   return join(dir, file!);
 }
 
-/** Every module a route can end up evaluating, keyed by file name. */
+/**
+ * Every module a route can end up evaluating, keyed by file name.
+ *
+ * Imports are followed whether relative or absolute: since SDD-45 the runtime is PUBLISHED
+ * under `/_fudic/<version>/`, and the chunks reach it by an absolute specifier — a walk that
+ * followed only `./` stopped at the first runtime import and measured nothing.
+ */
 function closureOf(route: string): ReadonlyMap<string, string> {
   const out = new Map<string, string>();
   const walk = (file: string): void => {
     if (out.has(file)) return;
     const code = readFileSync(file, 'utf8');
     out.set(file, code);
-    for (const m of code.matchAll(/from\s*["'](\.[^"']+)["']/gu)) {
-      walk(join(dirname(file), m[1]!));
+    for (const m of code.matchAll(/(?:from|import)\s*["']([./][^"']+)["']/gu)) {
+      const spec = m[1]!;
+      walk(spec.startsWith('/') ? join(DIST, spec) : join(dirname(file), spec));
     }
   };
-  // The runtime travels with every page, so it is part of every route's budget.
-  walk(join(DIST, 'fudic-main.js'));
+  // The runtime travels with every page, so it is part of every route's budget. Its entry
+  // names carry a build id, so they are read off the page instead of spelled here.
+  for (const src of entriesOf(route)) walk(join(DIST, src));
   for (const tag of tagsOf(route)) walk(chunkOf(tag));
   return out;
+}
+
+/** The module scripts a prerendered route loads — the boot and the runtime entry. */
+function entriesOf(route: string): readonly string[] {
+  const html = readFileSync(join(DIST, route, 'index.html'), 'utf8');
+  return [...html.matchAll(/<script type="module" src="([^"]+)"/gu)].map((m) => m[1]!);
 }
 
 /**
@@ -262,7 +336,7 @@ test.describe('§6.15 — the budget, per route, over the chunk', () => {
     expect(modules.length).toBeGreaterThan(5); // it really is a page with components
     for (const module of modules) expect(module).not.toMatch(/^bind-|^user\.form$|^messages$/u);
     // And not by inlining either: nothing of the forms runtime is in the bytes.
-    for (const token of ['setFormValue', 'setValidity', 'data-fud-err', 'aria-invalid']) {
+    for (const token of ['setFormValue', 'setValidity', 'aria-invalid']) {
       expect(code, `\`${token}\` reached a route with no forms`).not.toContain(token);
     }
   });

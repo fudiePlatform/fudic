@@ -14,7 +14,24 @@
  * to, so they show up as plain network requests with no service-worker mark at all.
  */
 
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { type BrowserContext, type Page } from '@playwright/test';
+
+/**
+ * The path of the module the built home page loads — today `/fudic-boot-<build>.js`, since a
+ * page with nothing to hydrate carries only the boot.
+ *
+ * Read off the page and never spelled: since SDD-45 the entries carry a hash, and a spec that
+ * waited for `/fudic-main.js` counted zero requests of a file nobody asks for any more — and
+ * reported the worker as broken.
+ */
+export function runtimeEntry(): string {
+  const html = readFileSync(fileURLToPath(new URL('../dist/index.html', import.meta.url)), 'utf8');
+  const found = /<script type="module" src="(\/fudic-[^"]+\.js)"/u.exec(html);
+  if (found === null) throw new Error('the built home page loads no fudic module');
+  return found[1]!;
+}
 
 export interface Hit {
   /** Path only (query kept): the origin is noise in a table. */

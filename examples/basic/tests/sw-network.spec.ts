@@ -18,11 +18,12 @@ import {
   record,
   render,
   renderCaches,
+  runtimeEntry,
   servedBy,
   type Hit,
 } from './traffic.js';
 
-const MAIN = '/fudic-main.js';
+const MAIN = runtimeEntry();
 const SW = '/fudic-sw.js';
 const MANIFEST = '/fudic-routes.json';
 

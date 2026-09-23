@@ -67,6 +67,12 @@ describe('component-props — FUD0197, the required prop nobody passed', () => {
     expect(codes(page('<app-circle .name="Hola" .tone="warm"></app-circle>'))).toEqual([]);
   });
 
+  it('`control=` on the tag IS the `ctrl` prop, and fills it (decision 112)', () => {
+    const input = registry((tag) => (tag === 'app-circle' ? [prop('ctrl', true)] : undefined));
+    expect(codes(page('<app-circle control="@f.alias"></app-circle>'), input)).toEqual([]);
+    expect(codes(page('<app-circle></app-circle>'), input)).toEqual(['FUD0197']);
+  });
+
   it('lists every missing prop in one diagnostic', () => {
     const both = registry(() => [prop('title', true), prop('href', true)]);
     const [diag] = diagnose(page('<app-circle></app-circle>'), both);

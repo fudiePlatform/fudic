@@ -3,7 +3,7 @@
 > **BUG:** [BUG-41 — Un error de formulario que no se va al corregirlo, y un hueco que el autor no puede colocar](./BUG-41-el-error-que-no-se-va.md)
 > **Paquetes:** `@fudic/forms` · `@fudic/compiler` · `@fudic/language-core` · `@fudic/example-basic`
 > **Rama:** `bug-41-validacion-y-hueco-de-error` (worktree `.claude/worktrees/bug-41-validacion-y-hueco-de-error`, desde `main`)
-> **Progreso:** 7 / 14
+> **Progreso:** 11 / 14
 
 El orden es el de un defecto que se ve en el navegador: **primero la corrección**, luego
 Pedro la prueba en `/formularios`, y después los tests contra el código ya arreglado, vistos
@@ -58,10 +58,10 @@ quedar a medias.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 9 | 1 | **Modelo.** Criterios 1–4 | `forms` | `test/control.test.ts` · `test/validate.test.ts` · `test/messages.test.ts` |
-| [ ] | 10 | 2, 3 | **(visto fallar revirtiendo 2 y 3)** **Bindings y submit.** Criterios 5–12. El 8 es una tabla sobre las siete bindings. | `forms` | `test/dom/errors.test.ts` · `test/dom/bind-form.test.ts` · `test/dom/bind.test.ts` |
-| [ ] | 11 | 5 | **Compilador.** Criterios 13–18. Goldens regenerados y **revisados**: se van el span y el `aria-describedby` sin marcador, y nada más. | `compiler` | `test/emit/control.test.ts` · `test/emit/hydrate/control-a11y.test.ts` · `test/semantic/control.test.ts` · `test/binding/classify.test.ts` |
-| [ ] | 12 | 6, 7 | **Editor y e2e.** Criterio 19. `forms.spec.ts` se reescribe contra el marcador y gana el caso del §1 (corregir → mensaje fuera → submit pasa). | `language-core` · `example-basic` | `language-core/test/sdd34-control-projection.test.ts` · `examples/basic/tests/forms.spec.ts` |
+| [x] | 9 | 1 | **Modelo.** Criterios 1–4 | `forms` | `test/control-validate.test.ts` |
+| [x] | 10 | 2, 3 | **(visto fallar revirtiendo 2 y 3: caen 20 de 28)** **Bindings y submit.** Criterios 5–12. El 8 es una tabla sobre las siete bindings. | `forms` | `test/dom/revalidate.test.ts` |
+| [x] | 11 | 5 | **Compilador.** Criterios 13–18, adelantados a la fase 2 (ficheros nuevos al 100 %). | `compiler` | `test/emit/control.test.ts` · `test/emit/hydrate/control-a11y.test.ts` · `test/semantic/control.test.ts` · `test/binding/classify.test.ts` |
+| [x] | 12 | 6, 7 | **Editor y e2e.** Criterio 19 (adelantado a la fase 2). `forms.spec.ts` gana el caso del §1 y los tres del alias que ya caían antes del BUG vuelven a verde, con los hallazgos de §2.6 del BUG: `control=` en vez de `.ctrl=`, `FUD0197` que cuenta `control=`, el `id` en el host, `open()` que espera al dueño y el presupuesto que sigue el runtime publicado. | `language-core` · `example-basic` · `compiler` | `examples/basic/tests/forms.spec.ts` · `examples/basic/src/components/app-form.fud` · `compiler/src/semantic/analyzers/component-props.ts` |
 
 ---
 
@@ -73,6 +73,41 @@ quedar a medias.
 | [ ] | 14 | 13 | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`. BUG-41 a `Hecho` en [INDEX.md](./INDEX.md) (tabla y registro) y en el registro de [docs/sdd/INDEX.md](../INDEX.md). SDD-34 §4.2–§4.4 y §7 anotan que BUG-41 las corrige. README de `@fudic/forms` con el marcador y `messages`. | — | [INDEX.md](./INDEX.md) · [../INDEX.md](../INDEX.md) · `packages/forms/README.md` |
 
 ---
+
+## Relevo (2026-09-23) — para la sesión que cierra
+
+**Estado:** fases 1–4 commiteadas; quedan la tarea 8 (Pedro prueba `/formularios` en el
+navegador), la 13 (cobertura) y la 14 (cierre).
+
+**Lo último verificado, antes del commit de la fase 4:**
+- `@fudic/forms`, 100 en las cuatro métricas. `@fudic/compiler` sobre su suelo; `language-core`,
+  100.
+- `pnpm test` de transport en verde.
+- El e2e de `examples/basic` completo, los tres proyectos, en verde salvo lo que se arregló
+  después y se verificó por spec. Ya no se ha repetido entero.
+
+**Pedro pidió que TODO el e2e quede verde, sea o no de este BUG**, y eso metió en la fase 4
+arreglos fuera de forms. Van en §2.6 del BUG y hay que anotarlos al cerrar:
+- `transport/router.ts`: el precalentado deposita el runtime publicado (`/_fudic/`) en su caché
+  y lee sus imports estáticos de los propios bytes, de forma transitiva (SDD-45 §4.3). Test
+  nuevo en `router.test.ts`.
+- `transport/runtime-cache.ts`: la marca `/_fudic/marker/<app>` va sellada con `x-fudic-stored`.
+- Specs que se habían quedado atrás tras SDD-45: `fudic-main.js` pasó a llevar hash
+  (`runtimeEntry()` en `traffic.ts`), el canal del precalentado vive en el boot, hay
+  `modulepreload` del runtime en el camino crítico, y el slug `routing-por-fichero` pasó a ser
+  `file-system-routing`.
+- `delegacion.spec.ts`: espera a que el formulario esté hidratado antes de poner el contador a
+  cero.
+
+**Para cerrar:**
+1. `pnpm build` y después `pnpm --filter @fudic/example-basic exec vite build --config
+   nosw/vite.config.ts`.
+2. `pnpm --filter @fudic/example-basic exec playwright test`, todo verde. Antes, comprobar que
+   nadie tiene un `vite preview` levantado en el 4173: Playwright reutiliza el servidor.
+3. `pnpm test`, `pnpm typecheck` y `coverage` de forms, compiler, language-core y transport.
+   Transport y vite tienen deuda: comparar con el suelo, no con el 100.
+4. Tarea 14. Queda un aviso `FUD0721` en `app-card.fud` (`app-badge` sin usar) que ya estaba
+   antes; no rompe nada.
 
 ## Notas
 

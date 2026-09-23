@@ -84,9 +84,18 @@
         El `type` es una PROP del componente, no una constante suya: `app-input` sirve para
         cualquier forma de `<input>` y elige su enlace al enlazar (decisión 109). Sin eso haría
         falta un componente por tipo.
+
+        El nodo cruza con `control=`, no con `.ctrl=` (decisión 112). Como prop normal era un
+        valor más del estado que viaja serializado, y un `Control` no se serializa: al hidratar,
+        `app-input` se quedaba sin él —sin validar, sin `:invalid`, sin mensaje—. `control=`
+        cruza la REFERENCIA, y el padre se la entrega también cuando adopta.
+
+        Y el `id` va en el HOST, no en el `<input>` de dentro: un `<label for>` busca en su
+        propio árbol, y el input vive en otro shadow root. El host es el elemento asociado al
+        formulario —por eso se puede etiquetar—, y `delegatesFocus` lleva el foco adentro.
        *@
       <label for="ali" id="ali-label">Alias</label>
-      <app-input .id="ali" .type="text" .ctrl=@userForm.alias></app-input>
+      <app-input id="ali" .type="text" control=@userForm.alias></app-input>
       <button type="submit">Guardar</button>
     </form>
   </template>

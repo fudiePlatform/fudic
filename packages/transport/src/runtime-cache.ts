@@ -20,6 +20,8 @@
  * asks another application anything.
  */
 
+import { STAMP_HEADER } from './store.js';
+
 /**
  * How long a mark counts as alive.
  *
@@ -74,7 +76,11 @@ export async function sweepRuntimeCaches(
   const at = (config.now ?? Date.now)();
 
   const mine = await config.caches.open(config.cache);
-  await mine.put(config.marker, new Response(String(at)));
+  // Sealed like every other entry the worker writes: the stamp says when it was stored, and a
+  // mark is nothing BUT when it was stored. An unsealed entry in a fudic cache reads as one
+  // written behind the Store's back, which is what BUG-04 §6.13 exists to catch.
+  const stamp = String(at);
+  await mine.put(config.marker, new Response(stamp, { headers: { [STAMP_HEADER]: stamp } }));
 
   // Every mark of every application lives in the same directory, so the directory is what
   // recognises one — read off our own mark rather than passed a second time, because two

@@ -106,7 +106,31 @@ existe: una rejilla de dos columnas, o un mensaje encima del campo.
 contra un **único** mapa de módulo (`setMessages`, `messages.ts:33`). El control no participa,
 así que dos campos con la misma regla no pueden decir cosas distintas.
 
-### 2.6. Alcance
+### 2.6. Lo que destapó la evidencia en el navegador
+
+El e2e de `/formularios` (`examples/basic/tests/forms.spec.ts`) tenía cuatro tests del alias en
+rojo **antes** de este BUG. Salieron al escribir el criterio 20, y entran aquí porque comparten
+fichero con la corrección —`app-form.fud` y la spec del formulario—:
+
+- **El alias nunca recibía su control al hidratar.** `app-form` lo cruzaba como
+  `.ctrl=@userForm.alias`, una prop normal, que viaja serializada en `fud-state`, y un
+  `Control` no se serializa. `app-input` se quedaba con `control === null`: sin validar, sin
+  `:invalid` y sin mensaje. La forma de la decisión 112 es `control=@userForm.alias`, que cruza
+  la referencia y el padre la entrega también al adoptar.
+- **`FUD0197` no contaba `control=` como el prop `ctrl`**
+  ([`component-props.ts`](../../../packages/compiler/src/semantic/analyzers/component-props.ts)),
+  así que la forma correcta no compilaba. El editor ya lo contaba (`attrs.ts`).
+- **La etiqueta del alias no llegaba a nada.** `.id="ali"` ponía el id en el `<input>` de dentro
+  del shadow de `app-input`, y un `<label for>` busca en su propio árbol. El id va en el host,
+  que es el elemento asociado al formulario, y `delegatesFocus` lleva el foco adentro.
+- **El arnés leía el formulario antes de hidratarse.** `open()` esperaba a `fud:ready`, que
+  dice que el runtime está instalado, no que el dueño del formulario haya subido; un `fill` o
+  un `focus` no es un gesto que lo suba.
+- **El presupuesto de §6.15 no medía nada desde SDD-45.** Buscaba `dist/fudic-main.js`, que ya
+  lleva hash, y solo seguía imports relativos, cuando el runtime publicado se importa por
+  `/_fudic/<versión>/`.
+
+### 2.7. Alcance
 
 | sitio | causa | se corrige |
 |---|---|---|
