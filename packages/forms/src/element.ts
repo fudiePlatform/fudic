@@ -119,10 +119,11 @@ export abstract class FudicControlElement extends FudicElement {
       this.internals.setFormValue(value === null || value === undefined ? null : String(value));
     });
     const offValidity = effect(() => {
-      const errors = control.errors();
-      if (errors === null) this.internals.setValidity({});
-      // The first rule that failed names the state, exactly as the error slot shows it.
-      else this.internals.setValidity({ customError: true }, Object.keys(errors)[0] ?? 'invalid', this);
+      // Worded as the author's marker words it: a `<form>` fudic does not bind still validates
+      // natively, and its bubble should say what the page says, not the rule's code.
+      if (control.errors() === null) this.internals.setValidity({});
+      // An empty map has no text, and `setValidity` refuses a flag with an empty message.
+      else this.internals.setValidity({ customError: true }, control.message() || 'invalid', this);
     });
     this.#wiring = () => {
       offValue();

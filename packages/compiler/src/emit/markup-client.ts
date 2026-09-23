@@ -901,8 +901,11 @@ export class ClientMarkupEmitter {
    */
   #controlAttrs(el: ElementNode, v: string): void {
     const site = this.#hookup.controls.sites.get(el);
-    if (site === undefined || site.describedBy === '') return;
-    this.#fab.line(`$dom.setAttr(${v}, 'aria-describedby', ${JSON.stringify(site.describedBy)});`);
+    if (site === undefined) return;
+    if (site.describedBy !== '') {
+      this.#fab.line(`$dom.setAttr(${v}, 'aria-describedby', ${JSON.stringify(site.describedBy)});`);
+    }
+    if (site.noValidate) this.#fab.line(`$dom.setAttr(${v}, 'novalidate', '');`);
   }
 
   /**

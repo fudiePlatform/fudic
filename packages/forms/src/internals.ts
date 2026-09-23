@@ -8,6 +8,7 @@
  */
 
 import type { AnyForm, AnyNode, Errors } from './types.js';
+import type { ValidateOn } from './validate-on.js';
 
 /** The key under which every node carries its internals. Non-enumerable. */
 export const NODE = Symbol('fud.node');
@@ -50,8 +51,12 @@ export interface NodeInternals {
    * Tells this node which form is its root: what its rules receive as `root` when it is
    * validated on its own. Called by `form()` on every clone, and again — overriding — by the
    * form a group is nested in, so the root is always the OUTERMOST form.
+   *
+   * `validateOn` travels with it, the other way round: each form passes down its OWN policy
+   * when it has one and the inherited one when not, so the NEAREST form that chose wins.
+   * `undefined` when none did.
    */
-  adopt(root: AnyForm): void;
+  adopt(root: AnyForm, validateOn: ValidateOn | undefined): void;
   /** Publishes an error that came from outside. A control also marks itself touched. */
   publish(e: Errors | null): void;
   /** A child by name, for resolving a path. `undefined` when there is no such field. */

@@ -77,6 +77,25 @@ A single control validates on its own, against the root of the form it belongs t
 await f.title.validate();   // false — and only f.title's error changes
 ```
 
+When a bound field validates itself is `validateOn`, flags you combine. The submit always
+validates; the flags add the moments before it:
+
+```ts
+import { ValidateOn } from '@fudic/forms';
+
+const f = form(
+  {
+    alias: control('', [required, minLength(3)]),                          // the form's: Blur
+    email: control('', [required], { validateOn: ValidateOn.Blur | ValidateOn.Input }),
+  },
+  { validateOn: ValidateOn.Blur },
+);
+```
+
+`Blur` validates on leaving the field. `Input` validates on every edit once the field has been
+left once — never while it is typed for the first time. `Submit` (zero) waits for the submit.
+A control's own option wins over the nearest form's; with none, `Blur | Input`.
+
 ## Messages
 
 A rule returns what failed — `{ minLength: 3 }` — never a sentence. The sentence comes from
@@ -111,9 +130,10 @@ message — any element, anywhere in the same block:
 ```
 
 The compiler adds the `id` and the `aria-describedby`; without a marker no message element
-exists. A field's error appears when the user leaves it, updates on every edit while it is
-shown, and a submit validates before deciding — an invalid form never goes out, and the
-author's own `@submit` sees `defaultPrevented`. Inside a control-component, put the marker
+exists. A field's error follows its `validateOn`, and a submit validates before deciding — an
+invalid form never goes out, and the author's own `@submit` sees `defaultPrevented`. A bound
+`<form>` gets `novalidate`: the browser's own bubbles would stop the submit before this
+validation runs. Inside a control-component, put the marker
 in its own template: `aria-describedby` does not cross a shadow root.
 
 ## The schema is a template

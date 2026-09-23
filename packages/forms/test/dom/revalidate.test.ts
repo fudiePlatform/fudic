@@ -9,7 +9,7 @@
  */
 
 import { beforeEach, describe, expect, it } from 'vitest';
-import { control, form, required } from '../../src/index.js';
+import { ValidateOn, control, form, required } from '../../src/index.js';
 import type { Control, Validator } from '../../src/index.js';
 import {
   bindByType,
@@ -111,12 +111,24 @@ const SHAPES: readonly Shape[] = [
   },
 ];
 
+/**
+ * Whether a filled value is ALSO judged wrong. It stands for the write that breaks a value the
+ * user had already corrected — deleting a letter under `minLength` — without each shape having
+ * to know how to un-fill itself.
+ */
+let strict = false;
+const strictly: Validator<unknown> = () => (strict ? { strict: true } : null);
+
+beforeEach(() => {
+  strict = false;
+});
+
 /** Build a shape inside a form, with the author's marker beside it. */
 function build(shape: Shape) {
   const host = mount(`${shape.markup}<small id="m"></small>`);
   const els = [...host.querySelectorAll<HTMLElement>('input, select')];
   const slot = host.querySelector<HTMLElement>('#m')!;
-  const f = form({ c: control(shape.initial, [filled]) });
+  const f = form({ c: control(shape.initial, [filled, strictly]) });
   const c = f.c as Control<unknown>;
   const off = shape.bind(els, c, slot);
   const last = els[els.length - 1]!;
@@ -156,6 +168,85 @@ describe.each(SHAPES)('$name — late to accuse, quick to forgive (criterion 8)'
     await settle();
     expect(slot.textContent).toBe('');
     expect(last.hasAttribute('aria-invalid')).toBe(false);
+    off();
+  });
+
+  it('once touched, the write that breaks the value again brings the error back', async () => {
+    const { els, last, slot, off } = build(shape);
+    shape.fill(els);
+    fire(last, 'change');
+    blur(last);
+    await settle();
+    expect(slot.textContent).toBe('');
+
+    // Still in the field, no blur: the write alone has to say it.
+    strict = true;
+    fire(last, 'change');
+    await settle();
+    expect(slot.textContent).toBe('strict');
+    expect(last.getAttribute('aria-invalid')).toBe('true');
+    off();
+  });
+});
+
+describe('validateOn — when a field validates itself', () => {
+  /** A text field bound inside a form built with the given options. */
+  function text(formOn?: ValidateOn, controlOn?: ValidateOn) {
+    const host = mount('<input type="text"><small id="m"></small>');
+    const el = host.querySelector('input')!;
+    const slot = host.querySelector<HTMLElement>('#m')!;
+    const f = form(
+      { a: control('', [required], controlOn === undefined ? {} : { validateOn: controlOn }) },
+      formOn === undefined ? {} : { validateOn: formOn },
+    );
+    const off = bindText(el, f.a, slot);
+    const type = (v: string): void => {
+      el.value = v;
+      fire(el, 'input');
+    };
+    return { el, slot, f, off, type };
+  }
+
+  it('`Blur` alone: leaving validates, writing does not', async () => {
+    const { el, slot, off, type } = text(ValidateOn.Blur);
+    blur(el);
+    await settle();
+    expect(slot.textContent).toBe('required');
+    type('x');
+    await settle();
+    expect(slot.textContent).toBe('required');
+    blur(el);
+    await settle();
+    expect(slot.textContent).toBe('');
+    off();
+  });
+
+  it('`Input` alone: leaving only touches, and the next write validates', async () => {
+    const { el, slot, f, off, type } = text(ValidateOn.Input);
+    blur(el);
+    await settle();
+    expect(f.a.touched()).toBe(true);
+    expect(f.a.errors()).toBeNull();
+    type('');
+    await settle();
+    expect(slot.textContent).toBe('required');
+    off();
+  });
+
+  it('`Submit`: neither leaving nor writing validates', async () => {
+    const { el, f, off, type } = text(ValidateOn.Submit);
+    blur(el);
+    type('');
+    await settle();
+    expect(f.a.errors()).toBeNull();
+    off();
+  });
+
+  it('the control’s own policy wins over the form’s', async () => {
+    const { el, slot, off } = text(ValidateOn.Submit, ValidateOn.Blur);
+    blur(el);
+    await settle();
+    expect(slot.textContent).toBe('required');
     off();
   });
 });

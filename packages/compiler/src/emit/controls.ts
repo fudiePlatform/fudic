@@ -47,6 +47,15 @@ export interface ControlSite {
   /** The id `aria-describedby` points at — the marker's — or `''` without a marker. */
   readonly describedBy: string;
   /**
+   * Whether the compiler adds `novalidate`: a bound `<form>` whose author wrote none.
+   *
+   * `bindForm` validates on submit, and the browser's own constraint validation runs BEFORE the
+   * submit event: left on, a field whose error is already known stops the submit with a native
+   * bubble, and the form's validation never runs. One validator per form, the one the author
+   * configured.
+   */
+  readonly noValidate: boolean;
+  /**
    * The `@fudic/forms/dom` function THIS element calls, or `null` when it calls none.
    *
    * The name and the «does it call?» are one field and not two, and that is what keeps the
@@ -170,6 +179,7 @@ export function planControls(
       node: one.node,
       marker,
       describedBy: marker === null ? '' : markers.get(marker)!.id,
+      noValidate: one.target.kind === 'form' && !hasAttribute(one.el, 'novalidate'),
       // One call for the group, from its LAST element. Not the first, and that is a fact about
       // the client walk rather than a preference: the call names every radio's node variable,
       // and those variables only exist once the walk has been through them.

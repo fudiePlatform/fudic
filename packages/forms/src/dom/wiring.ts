@@ -10,6 +10,7 @@
 
 import { effect } from '@fudic/core';
 import type { Control } from '../types.js';
+import { ValidateOn } from '../validate-on.js';
 import { delegate } from './delegation.js';
 import type { Cleanup, ErrorSlot } from './types.js';
 
@@ -65,14 +66,16 @@ export function undo(all: readonly Cleanup[]): Cleanup {
 /**
  * The element → control half of every binding: `input` and `change` write, `blur` leaves.
  *
- * **Late to accuse, quick to forgive** (BUG-41 §4.1), and written ONCE so the seven bindings
- * cannot drift apart on it:
+ * **When it validates is the control's `validateOn`** (BUG-41 §4.1), and it is read ONCE, here,
+ * so the seven bindings cannot drift apart on it:
  *
- * - leaving the field touches it and validates it — the error appears when the user is done
- *   with the field, never while they are still typing it for the first time;
- * - a write revalidates only when the error is ON SCREEN, so a corrected value takes its
- *   message away at the keystroke that corrects it. A field whose error is not showing is not
- *   validated per keystroke: it is unfilled, not wrong.
+ * - leaving the field always touches it, and validates it under `Blur`;
+ * - a write validates it under `Input`, but only once the field is touched. A field the user has
+ *   not left yet is unfilled, not wrong, and is not judged while it is typed for the first time.
+ *   After that every keystroke counts — the one that corrects the value takes the message away,
+ *   and the one that breaks it again brings it back.
+ *
+ * The default, `Blur | Input`, is late to accuse and quick to forgive.
  *
  * `read` is the coercion of each shape — the only thing the bindings do differently.
  */
@@ -83,11 +86,11 @@ export function follow(
 ): Cleanup[] {
   const edit = (): void => {
     read();
-    if (control.touched() && control.errors() !== null) void control.validate();
+    if ((control.validateOn() & ValidateOn.Input) !== 0 && control.touched()) void control.validate();
   };
   const leave = (): void => {
     control.touch();
-    void control.validate();
+    if ((control.validateOn() & ValidateOn.Blur) !== 0) void control.validate();
   };
   return targets.flatMap((el) => [on(el, 'input', edit), on(el, 'change', edit), on(el, 'blur', leave)]);
 }

@@ -9,6 +9,8 @@
  * and `title.value` for a control — is one too many.
  */
 
+import type { ValidateOn } from './validate-on.js';
+
 /** The errors of one node. `{ required: true }`, `{ minLength: 3 }`, `{ range: 'u8' }`. */
 export type Errors = Readonly<Record<string, unknown>>;
 
@@ -64,12 +66,20 @@ export interface Control<T> {
    * `messages`, then by `setMessages`, then by the rule's code.
    */
   readonly message: Readable<string>;
+  /**
+   * When this control validates itself before the submit (`ValidateOn`): its own option, else
+   * that of the nearest form above it, else `Blur | Input`. Not tracked — it is settled once
+   * the control is in its form.
+   */
+  readonly validateOn: () => ValidateOn;
 }
 
 /** What `control()` and the typed factories take besides the value and the rules. */
 export interface ControlOptions {
   /** This control's texts, by rule. They win over `setMessages`. */
   readonly messages?: Messages;
+  /** When this control validates itself. Wins over the form's. */
+  readonly validateOn?: ValidateOn;
 }
 
 /** The width a typed control declares. Inert data for the model, contract for transport. */
@@ -177,6 +187,8 @@ export interface FormOptions<S extends Schema> {
   readonly summary?: (root: Form<S>) => Errors | null | Promise<Errors | null>;
   /** The texts of the summary, by rule. They win over `setMessages`. */
   readonly messages?: Messages;
+  /** When the controls of this form validate themselves, unless a control chose its own. */
+  readonly validateOn?: ValidateOn;
 }
 
 /** The `$` namespace of a form. Its fields hang next to it, by name. */

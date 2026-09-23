@@ -12,6 +12,7 @@ import { group } from '../src/group.js';
 import { errorText, setMessages } from '../src/messages.js';
 import { str } from '../src/typed/str.js';
 import { required } from '../src/validators/required.js';
+import { ValidateOn } from '../src/validate-on.js';
 import type { Validator } from '../src/types.js';
 
 afterEach(() => {
@@ -177,5 +178,28 @@ describe('$message() (criterion 4)', () => {
 
   it('is empty with no summary', () => {
     expect(form({ a: control('') }).$message()).toBe('');
+  });
+});
+
+describe('validateOn() — whose policy a control follows', () => {
+  it('`Blur | Input` when nobody chose, also for a control in no form', () => {
+    expect(control('').validateOn()).toBe(ValidateOn.Blur | ValidateOn.Input);
+    expect(form({ a: control('') }).a.validateOn()).toBe(ValidateOn.Blur | ValidateOn.Input);
+  });
+
+  it('the nearest form that chose wins, and the control’s own over any form', () => {
+    const f = form(
+      {
+        a: control(''),
+        own: control('', [], { validateOn: ValidateOn.Input }),
+        inner: form({ b: control('') }, { validateOn: ValidateOn.Submit }),
+        plain: group({ c: control('') }),
+      },
+      { validateOn: ValidateOn.Blur },
+    );
+    expect(f.a.validateOn()).toBe(ValidateOn.Blur);
+    expect(f.own.validateOn()).toBe(ValidateOn.Input);
+    expect(f.inner.b.validateOn()).toBe(ValidateOn.Submit);
+    expect(f.plain.c.validateOn()).toBe(ValidateOn.Blur);
   });
 });

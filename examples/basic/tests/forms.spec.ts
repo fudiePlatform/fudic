@@ -105,6 +105,41 @@ test.describe('BUG-41 §1 — an error that goes when it is corrected (criterion
     await expect(nameError(page)).toHaveText('Escribe tu nombre.');
     await expect(aliasError(page)).toHaveText('Elige un alias.');
   });
+
+  test('a known error does not hand the submit to the browser’s own bubble', async ({ page }) => {
+    await open(page);
+    await expect.poll(() => alias(page).count()).toBe(1);
+    // Counted in the capture phase, ahead of everything: a submit the browser's constraint
+    // validation stopped never fires at all, and this stays where it was.
+    await page.evaluate(() => {
+      const form = document.querySelector('app-form')!.shadowRoot!.querySelector('form')!;
+      (window as unknown as { __submits: number }).__submits = 0;
+      form.addEventListener('submit', () => (window as unknown as { __submits: number }).__submits++, true);
+    });
+    await expect(page.locator('app-form form')).toHaveAttribute('novalidate', '');
+
+    await submit(page);
+    await nameField(page).fill('Ada');
+    await submit(page);
+    expect(await page.evaluate(() => (window as unknown as { __submits: number }).__submits)).toBe(2);
+    await expect(aliasError(page)).toHaveText('Elige un alias.');
+    await expect(nameError(page)).toHaveText('');
+  });
+
+  test('once left, the keystroke that breaks the value brings the error back', async ({ page }) => {
+    await open(page);
+    await expect.poll(() => alias(page).count()).toBe(1);
+    await alias(page).fill('abc');
+    await alias(page).blur();
+    await expect(aliasError(page)).toHaveText('');
+
+    // Back in the field, and no blur this time: the keystroke alone has to say it.
+    await alias(page).focus();
+    await page.keyboard.press('Backspace');
+    await expect(aliasError(page)).toHaveText('El alias necesita al menos 3 caracteres.');
+    await page.keyboard.type('c');
+    await expect(aliasError(page)).toHaveText('');
+  });
 });
 
 test.describe('§6.16 — the one hydration nobody asked for, beside one that waits', () => {

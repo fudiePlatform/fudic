@@ -391,6 +391,22 @@ describe('§6.8 — the message lives in the author’s marker (BUG-41 §4.3)', 
     }
   });
 
+  it('a bound `<form>` gets `novalidate`: the browser must not stop the submit first', () => {
+    const { server, client } = emit('<form control="@f"></form><input control="@f.title">');
+    for (const out of [server, client]) {
+      expect(out).toContain(`$dom.setAttr($n0, 'novalidate', '');`);
+      // Only the form: a field has no constraint validation of its own to switch off.
+      expect(out.match(/'novalidate'/gu)).toHaveLength(1);
+    }
+  });
+
+  it('a `novalidate` the author wrote is not written twice', () => {
+    const { server, client } = emit('<form novalidate control="@f"></form>');
+    for (const out of [server, client]) {
+      expect(out).not.toContain(`'novalidate', ''`);
+    }
+  });
+
   it('a group’s marker gets its summary, and the group points at it', () => {
     const { server, client } = emit('<fieldset control="@f.seo"><p error="@f.seo"></p></fieldset>');
     expect(server).toContain('const $e = f.seo.$message();');

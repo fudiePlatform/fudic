@@ -23,6 +23,7 @@ import { attach, type NodeInternals, type ValidateCtx } from './internals.js';
 import { messageOf } from './messages.js';
 import { firstFailure, isPending } from './run-rule.js';
 import { isServerOnly } from './server-flag.js';
+import { DEFAULT_VALIDATE_ON, type ValidateOn } from './validate-on.js';
 import type {
   AnyForm,
   AnyValidator,
@@ -44,6 +45,7 @@ interface Mutable<T> {
   reset(v?: T): void;
   validate(opts?: { readonly server?: boolean }): Promise<boolean>;
   message: Readable<string>;
+  validateOn: () => ValidateOn;
 }
 
 /**
@@ -90,6 +92,8 @@ function build<T>(
   let epoch = 0;
   /** The outermost form this control lives in. `null` for a control that is still a template. */
   let root: AnyForm | null = null;
+  /** The policy of the nearest form that chose one, handed down with the root. */
+  let inherited: ValidateOn | undefined;
 
   const write = (v: T): void => {
     const next = (v === undefined ? null : v) as T;
@@ -148,8 +152,9 @@ function build<T>(
     // A control accepts any value: there is nothing to check before writing.
     check: () => {},
     validateSubtree,
-    adopt: (r) => {
+    adopt: (r, validateOn) => {
       root = r;
+      inherited = validateOn;
     },
     publish: (e) => {
       errors.set(e);
@@ -200,6 +205,7 @@ function build<T>(
     const e = errors();
     return e === null ? '' : messageOf(e, options.messages);
   };
+  self.validateOn = () => options.validateOn ?? inherited ?? DEFAULT_VALIDATE_ON;
 
   return attach(self, internals);
 }

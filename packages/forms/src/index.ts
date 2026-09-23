@@ -22,6 +22,7 @@ export const VERSION = '0.0.1';
 export { setMessages, errorText, type Messages } from './messages.js';
 
 export { control } from './control.js';
+export { ValidateOn } from './validate-on.js';
 export { form } from './form.js';
 export { group } from './group.js';
 

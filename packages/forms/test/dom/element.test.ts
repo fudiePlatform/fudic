@@ -165,15 +165,16 @@ describe('the internals follow the control', () => {
   });
 
   it('`setValidity` follows the errors, which is what gives a real `:invalid`', () => {
-    const f = form({ title: control('') });
+    const f = form({ title: control('', [], { messages: { required: () => 'Give it a title' } }) });
     const el = mount();
     const calls: unknown[][] = [];
     el.c([f.title]);
     el.seenInternals.setValidity = (...args: unknown[]): void => void calls.push(args);
     f.$setErrors({ title: { required: true } });
     expect(calls.at(-1)?.[0]).toEqual({ customError: true });
-    // The message names the first rule that failed — the same one the error slot shows.
-    expect(calls.at(-1)?.[1]).toBe('required');
+    // The message is the control's own text — what the author's marker shows — and never the
+    // rule's code, which is what a native bubble used to say (BUG-41).
+    expect(calls.at(-1)?.[1]).toBe('Give it a title');
     // An error map with no rule in it is still invalid, and the message says so rather than
     // being empty: a validity with no message cannot be reported.
     f.$setErrors({ title: {} });

@@ -206,10 +206,11 @@ export function build<S extends Schema>(
     },
     check,
     validateSubtree,
-    // A nested form passes the adoption down: its fields' root is the form above it.
-    adopt: (root) => {
+    // A nested form passes the adoption down: its fields' root is the form above it, and their
+    // policy is this form's own when it chose one.
+    adopt: (root, validateOn) => {
       each((_, node) => {
-        node.adopt(root);
+        node.adopt(root, options.validateOn ?? validateOn);
       });
     },
     // A group's own error is its summary: the map of `$errors()` is about fields.
@@ -306,6 +307,6 @@ export function build<S extends Schema>(
   );
   // Every field starts out with THIS form as its root. If this form is itself cloned into
   // another as a group, that one adopts it in turn and the root moves outwards.
-  internals.adopt(self as unknown as AnyForm);
+  internals.adopt(self as unknown as AnyForm, undefined);
   return self;
 }
