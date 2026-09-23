@@ -35,14 +35,12 @@
       border-radius: var(--radius);
       min-width: 0;
     }
-    [data-fud-err],
-    [data-fud-sum] {
+    .error {
       color: #b3261e;
       font-size: 0.8rem;
       font-weight: 400;
     }
-    [data-fud-err]:empty,
-    [data-fud-sum]:empty {
+    .error:empty {
       display: none;
     }
     [aria-invalid="true"] {
@@ -61,8 +59,9 @@
 <app-wide-form>
   <template shadowrootmode="open">
     <form control=@wideForm class="fudic" @submit=@stop>
-      <label>1 (obligatorio) <input control=@wideForm.a1 type="text"></label>
-      <label>2 (mín. 2) <input control=@wideForm.a2 type="text"></label>
+      @* Solo los dos campos con reglas llevan marcador: los otros diez no tienen nada que decir. *@
+      <label>1 (obligatorio) <input control=@wideForm.a1 type="text"><span class="error" error=@wideForm.a1></span></label>
+      <label>2 (mín. 2) <input control=@wideForm.a2 type="text"><span class="error" error=@wideForm.a2></span></label>
       <label>3 <input control=@wideForm.a3 type="text"></label>
       <label>4 <input control=@wideForm.a4 type="text"></label>
       <label>5 <input control=@wideForm.a5 type="text"></label>

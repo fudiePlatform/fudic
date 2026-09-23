@@ -14,9 +14,15 @@
 <h1>5 · Formularios</h1>
 <p class="lede">
   El formulario no está escrito en esta vista: vive en su propio <code>.ts</code> y lo
-  importan los dos extremos. El servidor pinta sus valores y sus errores en el HTML —con el
-  hueco del error y su <code>aria-describedby</code> ya puestos— y el cliente hidrata sobre
-  ese mismo marcado. Un formulario con errores es accesible <strong>con cero JavaScript</strong>.
+  importan los dos extremos. El servidor pinta sus valores y sus errores en el HTML y el
+  cliente hidrata sobre ese mismo marcado. Un formulario con errores es accesible
+  <strong>con cero JavaScript</strong>.
+</p>
+<p>
+  El mensaje de cada campo va donde lo pone la vista: <code>error=@@userForm.name</code> marca
+  el elemento que lo dice, y el compilador solo le añade el <code>id</code> y el
+  <code>aria-describedby</code> del campo. Cada control declara sus propios textos. El error
+  aparece al salir del campo, se va en cuanto lo corriges, y el envío valida antes de decidir.
 </p>
 
 <app-form></app-form>

@@ -16,11 +16,23 @@ import { control, form, minLength, required, serverValidator } from '@fudic/form
 import { aliasTaken } from '../data/aliases.js';
 
 export const userForm = form({
-  name: control('', [required]),
-  alias: control('', [
-    required,
-    minLength(3),
-    // Solo con `{ server: true }`: consulta la capa de datos, que no debe llegar al navegador.
-    serverValidator(async (v) => ((await aliasTaken(String(v))) ? { taken: true } : null)),
-  ]),
+  // Cada control dice sus propios textos: `required` no significa lo mismo en el nombre que en
+  // el alias. Lo que un control no dice lo dice `setMessages`, y si tampoco, el código de la regla.
+  name: control('', [required], { messages: { required: () => 'Escribe tu nombre.' } }),
+  alias: control(
+    '',
+    [
+      required,
+      minLength(3),
+      // Solo con `{ server: true }`: consulta la capa de datos, que no debe llegar al navegador.
+      serverValidator(async (v) => ((await aliasTaken(String(v))) ? { taken: true } : null)),
+    ],
+    {
+      messages: {
+        required: () => 'Elige un alias.',
+        minLength: (n) => `El alias necesita al menos ${String(n)} caracteres.`,
+        taken: () => 'Ese alias ya está cogido.',
+      },
+    },
+  ),
 });

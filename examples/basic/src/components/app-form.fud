@@ -42,13 +42,15 @@
       background: var(--brand);
       color: white;
     }
-    [data-fud-err],
-    [data-fud-sum] {
+    .campo {
+      display: grid;
+      gap: 0.3rem;
+    }
+    .error {
       color: #b3261e;
       font-size: 0.85rem;
     }
-    [data-fud-err]:empty,
-    [data-fud-sum]:empty {
+    .error:empty {
       display: none;
     }
     [aria-invalid="true"] {
@@ -60,8 +62,17 @@
 <app-form>
   <template shadowrootmode="open">
     <form control=@userForm class="fudic" @submit=@stop>
-      <label for="nom">Nombre</label>
-      <input id="nom" control=@userForm.name type="text">
+      @*
+        El mensaje lo coloca la vista: `error=@userForm.name` marca el elemento que lo dice, y
+        puede ir donde haga falta —aquí, bajo el campo y dentro de su propia caja de la
+        rejilla—. El compilador le pone el `id` y el `aria-describedby` del input; el texto lo
+        escribe el formulario, con el que el propio control declara.
+       *@
+      <div class="campo">
+        <label for="nom">Nombre</label>
+        <input id="nom" control=@userForm.name type="text">
+        <small class="error" error=@userForm.name></small>
+      </div>
       @*
         Un control-componente, y va DENTRO del formulario: por la decisión 115 un `control`
         exige un `<form control>` por encima. Antes esto colgaba de un `<form>` ajeno —uno que

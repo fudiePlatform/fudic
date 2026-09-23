@@ -3,7 +3,7 @@
 > **BUG:** [BUG-41 — Un error de formulario que no se va al corregirlo, y un hueco que el autor no puede colocar](./BUG-41-el-error-que-no-se-va.md)
 > **Paquetes:** `@fudic/forms` · `@fudic/compiler` · `@fudic/language-core` · `@fudic/example-basic`
 > **Rama:** `bug-41-validacion-y-hueco-de-error` (worktree `.claude/worktrees/bug-41-validacion-y-hueco-de-error`, desde `main`)
-> **Progreso:** 6 / 14
+> **Progreso:** 7 / 14
 
 El orden es el de un defecto que se ve en el navegador: **primero la corrección**, luego
 Pedro la prueba en `/formularios`, y después los tests contra el código ya arreglado, vistos
@@ -49,7 +49,7 @@ quedar a medias.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 7 | 3, 5 | **El ejemplo usa el marcador.** `app-form`: mensaje de *Nombre* donde lo ponga la vista y resumen dentro del `<form>`. `app-input`: el suyo dentro del shadow. `app-wide-form`: los doce. Fuera el CSS `[data-fud-err]:empty`. `user.form.ts` con `messages` por control. El texto de `formularios.fud`, que hoy habla del «hueco ya puesto», se actualiza. | `example-basic` | `src/components/app-form.fud` · `app-input.fud` · `app-wide-form.fud` · `src/forms/user.form.ts` · `src/routes/formularios.fud` |
+| [x] | 7 | 3, 5 | **El ejemplo usa el marcador.** `app-form`: mensaje de *Nombre* bajo su campo, en su propia caja de la rejilla (sin resumen: `userForm` no declara regla de formulario, y un marcador que nunca habla no enseña nada). `app-input`: el suyo dentro del shadow. `app-wide-form`: los dos campos con reglas; los otros diez no tienen nada que decir. Fuera el CSS `[data-fud-err]:empty`. `user.form.ts` con `messages` por control. El texto de `formularios.fud`, que hoy habla del «hueco ya puesto», se actualiza. | `example-basic` | `src/components/app-form.fud` · `app-input.fud` · `app-wide-form.fud` · `src/forms/user.form.ts` · `src/routes/formularios.fud` |
 | [ ] | 8 | 7 | **Probado donde se ve (Pedro).** Los pasos de §1 en `/formularios`: el error se va al corregir, el segundo submit pasa, el primer submit inválido se para, cada campo dice su texto, en dev y en `vite preview`. Criterio 20 | — | — |
 
 ---

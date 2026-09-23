@@ -31,11 +31,13 @@
       outline: none;
       flex: 1;
     }
-    [data-fud-err] {
+    .error {
+      display: block;
+      margin-top: 0.3rem;
       color: #b3261e;
       font-size: 0.85rem;
     }
-    [data-fud-err]:empty {
+    .error:empty {
       display: none;
     }
   </style>
@@ -47,5 +49,11 @@
       <slot name="icon"></slot>
       <input id=@id type=@type control=@ctrl>
     </div>
+    @*
+      El mensaje vive DENTRO del componente, junto a su `<input>`: `aria-describedby` no cruza
+      un shadow root, así que marcarlo desde la vista que usa `app-input` no podría describir
+      el campo (FUD0597).
+     *@
+    <small class="error" error=@ctrl></small>
   </template>
 </app-input>
