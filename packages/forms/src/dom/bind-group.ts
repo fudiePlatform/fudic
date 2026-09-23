@@ -14,13 +14,20 @@
 
 import { effect } from '@fudic/core';
 import type { AnyForm } from '../types.js';
-import type { Cleanup } from './types.js';
+import type { Cleanup, ErrorSlot } from './types.js';
 
-export function bindGroup(el: HTMLElement, group: AnyForm): Cleanup {
+/**
+ * `slot` is the element the author marked with `error="@group"`, or `null`: what it holds is
+ * the group's OWN error — its summary — and not the fields', which have markers of their own
+ * (BUG-41 §3.3).
+ */
+export function bindGroup(el: HTMLElement, group: AnyForm, slot: ErrorSlot = null): Cleanup {
   return effect(() => {
     const errors = group.$errors();
     const invalid = (errors !== null && Object.keys(errors).length > 0) || group.$summary() !== null;
     if (invalid) el.setAttribute('aria-invalid', 'true');
     else el.removeAttribute('aria-invalid');
+    const text = group.$message();
+    if (slot !== null && slot.textContent !== text) slot.textContent = text;
   });
 }

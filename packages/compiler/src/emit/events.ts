@@ -35,7 +35,7 @@ import { handlerShape, unwrapParens } from '../binding/index.js';
 import { span, type Diagnostic, type Span } from '../types/index.js';
 import type { FragmentAst } from './scope.js';
 import type { TemplateJs } from './oxc-code.js';
-import type { ControlPlan } from './controls.js';
+import { EMPTY_CONTROLS, type ControlPlan } from './controls.js';
 import type { DelegationJs, DelegationPlan, DelegationRead } from '../semantic/delegation.js';
 import { CodeWriter } from './writer.js';
 
@@ -113,7 +113,7 @@ export function hookupContext(
   template: TemplateJs,
   diagnostics: Diagnostic[],
   callbacks: ReadonlySet<string> = new Set(),
-  controls: ControlPlan = new Map(),
+  controls: ControlPlan = EMPTY_CONTROLS,
   props: ReadonlySet<string> = new Set(),
   delegation: DelegationPlan = EMPTY_DELEGATION,
 ): HookupContext {

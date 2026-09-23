@@ -20,6 +20,7 @@ export type Binding =
   | BusBinding
   | RefBinding
   | ControlBinding
+  | ErrorBinding
   | ClassBinding
   | StyleBinding
   | DelegateBinding;
@@ -115,6 +116,21 @@ export interface ControlBinding extends Node {
   readonly value: RazorExpression;
 }
 
+/**
+ * `error="@f.title"` — the element the author chose to carry that node's message (decision
+ * 130, BUG-41 §3.3). A reserved attribute of the `control` family, and its mirror: `control`
+ * says which element EDITS a node, `error` says which element SPEAKS for it.
+ *
+ * The element is the author's — its tag, its place, its classes. What the compiler adds is an
+ * `id` if it has none, the `aria-describedby` on the bound element that points at it, and, for
+ * a form's summary, an `aria-live`. Whether the node is bound in the same block is SDD-12's
+ * question (`FUD0597`), not this node's.
+ */
+export interface ErrorBinding extends Node {
+  readonly type: 'error';
+  readonly value: RazorExpression;
+}
+
 /** `class:foo="@x"` — conditional class (decision 22). */
 export interface ClassBinding extends Node {
   readonly type: 'class';
@@ -183,3 +199,6 @@ export const REF_NAME = 'ref';
 
 /** The reserved attribute name for a form binding (decision 108). */
 export const CONTROL_NAME = 'control';
+
+/** The reserved attribute name for the element that carries a node's message (decision 130). */
+export const ERROR_NAME = 'error';

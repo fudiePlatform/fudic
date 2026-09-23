@@ -40,7 +40,7 @@ import { emitItems, type TextRun } from './runs.js';
 import { markerSite } from './marker.js';
 import { adoptListOf, type ProjectAdopt } from './project-styles.js';
 import { loopHead, type LoopNode } from './constructs.js';
-import { ERROR_SLOT_ATTR, SUMMARY_SLOT_ATTR, type ControlPlan } from './controls.js';
+import { EMPTY_CONTROLS, type ControlPlan } from './controls.js';
 
 /** `render` + PascalCase of a `prefix-name` tag: `app-button` → `renderAppButton`. */
 export const renderName = (tag: string): string =>
@@ -281,7 +281,7 @@ export class MarkupEmitter {
     this.#declared = options.declared ?? (() => undefined);
     this.#hydratable = options.hydratable;
     this.#ioc = options.ioc ?? '$ioc';
-    this.#controls = options.controls ?? new Map();
+    this.#controls = options.controls ?? EMPTY_CONTROLS;
     this.#formAssociated = options.formAssociated;
     this.#styled = options.styled;
     this.#projectAdopt = options.projectAdopt;
@@ -445,6 +445,7 @@ export class MarkupEmitter {
       this.#w.line(`const ${v} = $dom.element(${JSON.stringify(el.name)});`);
       this.#elementAttrs(el, v, false);
       this.#controlAttrs(el, v);
+      this.#markerAttrs(el, v);
       // A data `<script>` — JSON-LD or an import map (decision 129) — carries its body
       // VERBATIM, and it is the one place a `raw-text` becomes a node. The generic walk cannot
       // do this: `raw-text` knows the element it belongs to and not its `type`, and the `type`
@@ -452,28 +453,31 @@ export class MarkupEmitter {
       // of it — a `<style>` body is the component's stylesheet and travels by another door.
       if (dataScriptType(el) !== undefined) this.#rawBody(el, v);
       else this.emitChildren(el.children, v);
+      this.#markerText(el, v);
     }
     this.#at = outer;
     this.#w.line(`$dom.append(${parent}, ${v});`);
-    this.#controlSlot(el, parent);
   }
 
   /**
-   * The accessibility wiring of a bound control, written into the MARKUP (§4.3, decision 113).
+   * The accessibility wiring of a bound element, written into the MARKUP (§4.3, BUG-41 §4.3).
    *
-   * `aria-describedby` is written ALWAYS, whether the slot is empty or not. Adding the
-   * reference only when an error appears is what makes some screen readers fail to announce
-   * it: the relationship has to exist before the text does.
+   * `aria-describedby` is written ALWAYS when the author marked a message element, whether it
+   * holds text or not. Adding the reference only when an error appears is what makes some
+   * screen readers fail to announce it: the relationship has to exist before the text does.
    *
-   * `aria-invalid` and the slot's text are written HERE when the form is rendered with errors
-   * already on it — a 422 the server published with `$setErrors`. That is the whole of §4.3:
-   * a form with errors is accessible with **zero JavaScript**, and the client, hydrating over
-   * this same HTML, produces byte for byte the same thing (§6.10).
+   * `aria-invalid` is written HERE when the form is rendered with errors already on it — a 422
+   * the server published with `$setErrors`. That is the whole of §4.3: a form with errors is
+   * accessible with **zero JavaScript**, and the client, hydrating over this same HTML,
+   * produces byte for byte the same thing (§6.10).
    */
   #controlAttrs(el: ElementNode, v: string): void {
-    const site = this.#controls.get(el);
-    if (site === undefined || site.target.kind !== 'value') return;
-    this.#w.line(`$dom.setAttr(${v}, 'aria-describedby', ${JSON.stringify(site.slotId)});`);
+    const site = this.#controls.sites.get(el);
+    if (site === undefined) return;
+    if (site.describedBy !== '') {
+      this.#w.line(`$dom.setAttr(${v}, 'aria-describedby', ${JSON.stringify(site.describedBy)});`);
+    }
+    if (site.target.kind !== 'value') return;
     // Touched, exactly as the client's effect asks: an untouched field is unfilled, not wrong,
     // and the two branches cannot disagree about that or the hydration would repaint.
     this.#w.line(
@@ -482,35 +486,35 @@ export class MarkupEmitter {
   }
 
   /**
-   * The element the emit writes BESIDE a bound one: the error slot of a control, or the live
-   * region of a `<form>`.
+   * What the compiler adds to the author's `error` marker: the `id` the bound element points
+   * at, when the author wrote none, and `aria-live` on a form's summary.
+   *
+   * A live region announces what CHANGES inside it, so it has to be there before the text is
+   * (§4.4). `polite`, because a form error is not an interruption.
+   */
+  #markerAttrs(el: ElementNode, v: string): void {
+    const marker = this.#controls.markers.get(el);
+    if (marker === undefined) return;
+    if (marker.writesId) this.#w.line(`$dom.setAttr(${v}, 'id', ${JSON.stringify(marker.id)});`);
+    if (marker.live) this.#w.line(`$dom.setAttr(${v}, 'aria-live', 'polite');`);
+  }
+
+  /**
+   * The message a marker holds at render time — a 422 already published, or nothing.
    *
    * It is a node of the server's tree like any other, and that is the point: the runtime only
-   * ever writes its text (decision 113). A slot fabricated on first error — which is what the
-   * prototype did — gives a hydrated form and a server-rendered one different markup, and with
-   * it different accessibility.
+   * ever writes its text (decision 113), so a hydrated form and a server-rendered one have the
+   * same markup, and with it the same accessibility.
    */
-  #controlSlot(el: ElementNode, parent: string): void {
-    const site = this.#controls.get(el);
-    if (site === undefined || !site.writesSlot) return;
-    const isForm = site.target.kind === 'form';
-    const v = this.#fresh();
-    this.#w.line(`const ${v} = $dom.element('span');`);
-    this.#w.line(`$dom.setAttr(${v}, 'id', ${JSON.stringify(site.slotId)});`);
-    this.#w.line(`$dom.setAttr(${v}, '${isForm ? SUMMARY_SLOT_ATTR : ERROR_SLOT_ATTR}', '');`);
-    // A live region announces what CHANGES inside it, so it has to be there before the text is
-    // (§4.4). `polite`, because a form error is not an interruption.
-    if (isForm) this.#w.line(`$dom.setAttr(${v}, 'aria-live', 'polite');`);
-    const errors = isForm
-      ? `${site.node}.$summary()`
-      : `(${site.node}.touched() ? ${site.node}.errors() : null)`;
+  #markerText(el: ElementNode, v: string): void {
+    const marker = this.#controls.markers.get(el);
+    if (marker === undefined) return;
     this.#w.line(`{`);
     this.#w.indent();
-    this.#w.line(`const $e = ${errors};`);
-    this.#w.line(`if ($e) $dom.append(${v}, $dom.text($fudErrorText($e)));`);
+    this.#w.line(`const $e = ${marker.text};`);
+    this.#w.line(`if ($e) $dom.append(${v}, $dom.text($e));`);
     this.#w.dedent();
     this.#w.line(`}`);
-    this.#w.line(`$dom.append(${parent}, ${v});`);
   }
 
   /** Write the body of one branch of a construct, in the context that branch sits in. */

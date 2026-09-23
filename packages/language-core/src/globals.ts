@@ -178,6 +178,13 @@ declare function $control(node: $ControlNode): void;
 declare function $controlGroup(node: $FormNode): void;
 
 /**
+ * \`error="@f.title"\` — the element that speaks for a node (decision 130). Any node: a control's
+ * error or a form's or a group's summary. What is checked is the PATH, exactly as for
+ * \`control\`: a misspelt field is a member access that does not resolve.
+ */
+declare function $errorOf(node: $ControlNode | $FormNode): void;
+
+/**
  * What a control looks like, structurally — the members of \`Control<T>\` that no other node has.
  *
  * Structural and not the real \`Control<T>\`, because the projection may not import

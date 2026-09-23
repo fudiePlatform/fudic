@@ -46,7 +46,7 @@ import type { ControlNode } from '../control/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { Span } from '../types/index.js';
 import { classifyAttribute, crossing, CONTROL_PROP } from '../binding/index.js';
-import { ERROR_SLOT_ATTR, SUMMARY_SLOT_ATTR, type ControlSite } from './controls.js';
+import type { ControlSite } from './controls.js';
 import { CodeWriter, type LinePart } from './writer.js';
 import { type AssetLinker } from './assets.js';
 import {
@@ -381,14 +381,22 @@ export class ClientMarkupEmitter {
   readonly #nodes: string[] = [];
   readonly #rootItems: RootItem[] = [];
   /**
-   * Where a bound element and its error slot ended up, by node variable.
+   * Where each element ended up, by node variable.
    *
    * They are per WALK and not per file: a block writes its own nodes into its own closure, so
    * a `control` inside an `@if` names the variables of that block. The plan they are looked up
    * from is the file's; what they resolve to is this walk's.
    */
   readonly #elementVars = new Map<ElementNode, string>();
-  readonly #errorSlots = new Map<ElementNode, string>();
+  /**
+   * Bind calls waiting for their `error` marker, keyed by the marker (BUG-41 §4.3).
+   *
+   * The author may write the marker AFTER the element it describes — a message under its
+   * field is the ordinary case — and the call names both variables. So a call whose marker the
+   * walk has not reached yet waits here, and is written the moment the walk reaches it. Both
+   * are in this walk by construction: `pairMarkers` pairs within one block.
+   */
+  readonly #awaiting = new Map<ElementNode, () => void>();
   #depth = 0;
   /** How many value writes `$a` owns so far — each one gets its own slot in `$w`. */
   #writes = 0;
@@ -866,6 +874,7 @@ export class ClientMarkupEmitter {
       // `aria-invalid` is not here: on the client it follows the errors, so it belongs to the
       // effect `bindErrors` installs, which is also what takes it back.
       this.#controlAttrs(el, v);
+      this.#markerAttrs(el, v);
     }
     this.#listeners(el, v);
     // Take the element the cursor is on, then advance it — before descending, so the
@@ -874,18 +883,12 @@ export class ClientMarkupEmitter {
     if (this.#tracked(level)) this.#adopt.line(`$r.push(${v});`);
     // After BOTH assignments: the fabricated node above, the adopted one on the line before.
     this.#delegationMarks(el, v);
-    // The slot's cursor step goes HERE, beside the element's own: it is the next element of
-    // this level, and the walk below descends with a cursor of its own.
-    const slot = this.#controlSlotVar(el);
-    if (slot !== null) {
-      this.#adopt.line(`${slot} = ${level.cursor!}; ${level.cursor} = $dom.nextElementSibling(${level.cursor});`);
-      if (this.#tracked(level)) this.#adopt.line(`$r.push(${slot});`);
-    }
     this.#children(el, v);
     this.#at = outer;
     this.#place(v, level.fab); // parent last: a node is filled before it joins the tree
-    if (slot !== null) this.#controlSlot(el, slot, level);
     this.#controlBinding(el, v);
+    // A marker the walk has just reached releases the call that was waiting for it.
+    this.#awaiting.get(el)?.();
   }
 
   /**
@@ -897,37 +900,24 @@ export class ClientMarkupEmitter {
    * it also has to take them back.
    */
   #controlAttrs(el: ElementNode, v: string): void {
-    const site = this.#hookup.controls.get(el);
-    if (site === undefined || site.target.kind !== 'value') return;
-    this.#fab.line(`$dom.setAttr(${v}, 'aria-describedby', ${JSON.stringify(site.slotId)});`);
-  }
-
-  /** The variable of the slot this element carries, allocated up front, or `null`. */
-  #controlSlotVar(el: ElementNode): string | null {
-    const site = this.#hookup.controls.get(el);
-    if (site === undefined || !site.writesSlot) return null;
-    const v = this.#fresh();
-    this.#errorSlots.set(el, v);
-    return v;
+    const site = this.#hookup.controls.sites.get(el);
+    if (site === undefined || site.describedBy === '') return;
+    this.#fab.line(`$dom.setAttr(${v}, 'aria-describedby', ${JSON.stringify(site.describedBy)});`);
   }
 
   /**
-   * The error slot — or the form's live region — fabricated as the sibling the server also
-   * painted (decision 113).
+   * The attributes the compiler adds to an `error` marker, identical to the server's.
    *
    * It carries no text here. The server writes the message it had at render time and the
    * effect writes it afterwards, so an instance created at runtime starts empty and one
    * adopted from the server keeps exactly what arrived — which is what makes the two paths
    * produce the same HTML (§6.10).
    */
-  #controlSlot(el: ElementNode, v: string, level: Level): void {
-    const site = this.#hookup.controls.get(el)!;
-    const isForm = site.target.kind === 'form';
-    this.#fab.line(`${v} = $dom.element('span');`);
-    this.#fab.line(`$dom.setAttr(${v}, 'id', ${JSON.stringify(site.slotId)});`);
-    this.#fab.line(`$dom.setAttr(${v}, '${isForm ? SUMMARY_SLOT_ATTR : ERROR_SLOT_ATTR}', '');`);
-    if (isForm) this.#fab.line(`$dom.setAttr(${v}, 'aria-live', 'polite');`);
-    this.#place(v, level.fab);
+  #markerAttrs(el: ElementNode, v: string): void {
+    const marker = this.#hookup.controls.markers.get(el);
+    if (marker === undefined) return;
+    if (marker.writesId) this.#fab.line(`$dom.setAttr(${v}, 'id', ${JSON.stringify(marker.id)});`);
+    if (marker.live) this.#fab.line(`$dom.setAttr(${v}, 'aria-live', 'polite');`);
   }
 
   /**
@@ -942,11 +932,32 @@ export class ClientMarkupEmitter {
    * position, and a projection can leave a variable unassigned.
    */
   #controlBinding(el: ElementNode, v: string): void {
-    const site = this.#hookup.controls.get(el);
+    const site = this.#hookup.controls.sites.get(el);
     if (site === undefined || site.bind === null) return;
+    const marker = site.marker;
+    // Its marker comes later in the document: the call is written when the walk gets there.
     const bind = site.bind;
+    if (marker !== null && !this.#elementVars.has(marker)) {
+      this.#awaiting.set(marker, () => {
+        this.#writeBinding(el, site, bind, v, this.#varOf(marker));
+      });
+      return;
+    }
+    this.#writeBinding(el, site, bind, v, marker === null ? null : this.#varOf(marker));
+  }
+
+  /**
+   * The call itself, once the variables of the bound element and of its marker both exist.
+   * `slot` is the marker's variable, or `null` when the author wrote none.
+   */
+  #writeBinding(
+    el: ElementNode,
+    site: ControlSite,
+    bind: string,
+    v: string,
+    slot: string | null,
+  ): void {
     this.#hookup.binds.add(bind);
-    const slot = this.#errorSlots.get(el);
     // A node that arrives as a prop is bound from `$cb` instead, under a name of its own and
     // behind a guard: at the moment this walk hooks up, that prop is still empty (§4.6).
     const prop = this.#crossedProp(site.node);
@@ -975,25 +986,19 @@ export class ClientMarkupEmitter {
     // is guaranteed current, whatever shape the author's `type` value had.
     const shapeArg =
       site.target.kind === 'value' && site.target.dynamicType === true ? `, ${v}.type` : '';
-    if (site.target.kind === 'group') {
-      out.line(`${v} && ${carries}${list}.push(${bind}(${v}, ${node}));`);
-      return;
-    }
-    if (site.target.kind === 'form') {
-      // The live region is optional in the signature, and here it always exists — the emit
-      // wrote it. `null` stays reachable for a caller that binds a form by hand.
-      out.line(`${v} && ${carries}${list}.push(${bind}(${v}, ${node}, ${slot!}));`);
-      return;
-    }
+    // The marker is guarded like the element: a variable the adoption could not fill is a
+    // position the DOM disagrees about, and binding half of it would write into nothing.
+    const slotGuard = slot === null ? '' : `${slot} && `;
+    const slotArg = slot ?? 'null';
     if (site.group.length > 0) {
       const guards = site.group.map((radio) => this.#varOf(radio));
       out.line(
-        `${guards.map((g) => `${g} && `).join('')}${carries}${list}.push(${bind}([${guards.join(', ')}], ${node}, ${slot!}));`,
+        `${guards.map((g) => `${g} && `).join('')}${slotGuard}${carries}${list}.push(${bind}([${guards.join(', ')}], ${node}, ${slotArg}));`,
       );
       return;
     }
     out.line(
-      `${v} && ${slot!} && ${carries}${list}.push(${bind}(${v}, ${node}, ${slot!}${shapeArg}));`,
+      `${v} && ${slotGuard}${carries}${list}.push(${bind}(${v}, ${node}, ${slotArg}${shapeArg}));`,
     );
   }
 

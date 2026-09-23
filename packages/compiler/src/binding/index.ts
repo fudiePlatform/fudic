@@ -11,6 +11,7 @@ export type {
   BusBinding,
   RefBinding,
   ControlBinding,
+  ErrorBinding,
   ClassBinding,
   StyleBinding,
   DelegateBinding,
@@ -25,6 +26,7 @@ export {
   PROPERTY_PREFIX,
   REF_NAME,
   CONTROL_NAME,
+  ERROR_NAME,
 } from './nodes.js';
 
 export { classifyAttribute, interpolate } from './classify.js';
@@ -39,6 +41,11 @@ export { crossing, reactiveNames } from './crossing.js';
 // What a `control` binding means on ITS element (decision 109) — the third rule of this kind:
 // the semantic pass reports `FUD0592` off it and the emit picks its bind module off it.
 export type { ControlTarget, BindFunction, UnsupportedControl } from './control.js';
+// Which element speaks for which bound node (decision 130): paired ONCE, for the analyzer that
+// reports what cannot be paired and the emit that writes the pairs.
+export type { Marker, MarkerKind, MarkerPairing, MarkerProblem } from './markers.js';
+export { pairMarkers } from './markers.js';
+
 export {
   controlTarget,
   isRadio,

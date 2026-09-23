@@ -654,6 +654,16 @@ function emitBehaviour(
       ctx.w.scaffold(');\n');
       return;
 
+    case 'error':
+      // The marker names a node the same way `control` does (decision 130), so it is checked
+      // the same way: the path is code the checker reads, and renaming a field in the form's
+      // `.ts` renames it here too. One call for every kind of node — which kind the marker
+      // speaks for is the pairing's business, not the type's.
+      ctx.w.scaffold('$errorOf(', attr.span);
+      copyRazor(ctx, binding.value);
+      ctx.w.scaffold(');\n');
+      return;
+
     default:
       return;
   }

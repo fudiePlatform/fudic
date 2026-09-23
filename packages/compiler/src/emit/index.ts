@@ -82,9 +82,10 @@ export {
   IOC_SUFFIX,
 } from './di.js';
 
-// The `control` bindings of a template, resolved once for both branches (SDD-34 §4.3).
-export { planControls, slotIdOf, ERROR_SLOT_ATTR, SUMMARY_SLOT_ATTR } from './controls.js';
-export type { ControlPlan, ControlSite } from './controls.js';
+// The `control` bindings of a template and their `error` markers, resolved once for both
+// branches (SDD-34 §4.3, BUG-41 §4.3).
+export { planControls, slotIdOf, EMPTY_CONTROLS } from './controls.js';
+export type { ControlPlan, ControlSite, MarkerSite } from './controls.js';
 
 // The contract questions only a resolved graph can answer, and the three diagnostics that
 // need them (BUG-23 §4.4).

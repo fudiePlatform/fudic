@@ -3,7 +3,7 @@
 > **BUG:** [BUG-41 — Un error de formulario que no se va al corregirlo, y un hueco que el autor no puede colocar](./BUG-41-el-error-que-no-se-va.md)
 > **Paquetes:** `@fudic/forms` · `@fudic/compiler` · `@fudic/language-core` · `@fudic/example-basic`
 > **Rama:** `bug-41-validacion-y-hueco-de-error` (worktree `.claude/worktrees/bug-41-validacion-y-hueco-de-error`, desde `main`)
-> **Progreso:** 3 / 14
+> **Progreso:** 6 / 14
 
 El orden es el de un defecto que se ve en el navegador: **primero la corrección**, luego
 Pedro la prueba en `/formularios`, y después los tests contra el código ya arreglado, vistos
@@ -39,9 +39,9 @@ quedar a medias.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 4 | — | **`error=@nodo` es un binding.** Reservado como `control` (decisión 130): `classifyAttribute` lo reconoce y `FUD0596` si no es una sola expresión `@`. Semántica: `FUD0597` (nodo sin `control=` en esta plantilla), `FUD0598` (duplicado o en bucle), `FUD0599` (con contenido). Decisión 130 al índice de la gramática y los cuatro códigos al catálogo de SDD-34 §5 y SDD-12. §3.3, §3.4 | `compiler` | `src/binding/classify.ts` · `src/binding/nodes.ts` · `src/semantic/analyzers/` · `docs/gramar/gramatica-v1-decisiones.md` |
-| [ ] | 5 | 4 | **El emit deja de fabricar el hueco.** `planControls` empareja cada control con su marcador (o ninguno): quita `writesSlot`, pone `id` si falta, `aria-describedby` en el elemento o en todos los radios y `aria-live` en el marcador de un form. Servidor: texto con `message()`/`$message()`. Cliente: adopción normal, y la llamada `bind*` va en el último de {control, marcador} en orden de documento. Fuera `data-fud-err`/`data-fud-sum` y el cursor del hueco. §4.3 | `compiler` | `src/emit/controls.ts` · `src/emit/markup.ts` · `src/emit/markup-client.ts` · `src/emit/module.ts` |
-| [ ] | 6 | 4 | **El editor ve el marcador.** El valor de `error` se proyecta como el de `control`: tipos, hover, rename y completado de rutas. Criterio 19 | `language-core` | `src/template/attrs.ts` |
+| [x] | 4 | — | **`error=@nodo` es un binding.** Reservado como `control` (decisión 130): `classifyAttribute` lo reconoce y `FUD0596` si no es una sola expresión `@`. Semántica: `FUD0597` (nodo sin `control=` en esta plantilla), `FUD0598` (duplicado o en bucle), `FUD0599` (con contenido). Decisión 130 al índice de la gramática y los cuatro códigos al catálogo de SDD-34 §5 y SDD-12. §3.3, §3.4 | `compiler` | `src/binding/classify.ts` · `src/binding/nodes.ts` · `src/semantic/analyzers/` · `docs/gramar/gramatica-v1-decisiones.md` |
+| [x] | 5 | 4 | **El emit deja de fabricar el hueco.** `planControls` empareja cada control con su marcador (o ninguno): quita `writesSlot`, pone `id` si falta, `aria-describedby` en el elemento o en todos los radios y `aria-live` en el marcador de un form. Servidor: texto con `message()`/`$message()`. Cliente: adopción normal, y la llamada `bind*` va en el último de {control, marcador} en orden de documento. Fuera `data-fud-err`/`data-fud-sum` y el cursor del hueco. §4.3 | `compiler` | `src/emit/controls.ts` · `src/emit/markup.ts` · `src/emit/markup-client.ts` · `src/emit/module.ts` |
+| [x] | 6 | 4 | **El editor ve el marcador.** El valor de `error` se proyecta como el de `control`: tipos, hover, rename y completado de rutas. Criterio 19 | `language-core` | `src/template/attrs.ts` |
 
 ---
 
@@ -76,8 +76,17 @@ quedar a medias.
 
 ## Notas
 
-- **Suelo de cobertura al abrir la rama:** `@fudic/forms` 100 / 100 / 100 / 100. `compiler` y
-  `language-core`, pendiente de medir antes de la tarea 4.
+- **Suelo de cobertura al abrir la rama** (líneas / ramas / funciones / sentencias):
+  `@fudic/forms` 100 / 100 / 100 / 100 · `@fudic/compiler` 99,77 / 98,49 / 99,54 / 99,35 ·
+  `@fudic/language-core` 100 / 100 / 100 / 100.
+- **Tras la fase 2:** `compiler` 99,77 / 98,51 / 99,54 / 99,36 y `language-core` 100 en las
+  cuatro. Los dos ficheros nuevos del compilador (`binding/markers.ts`,
+  `semantic/analyzers/error-marker.ts`) nacen al 100 %, y por eso sus tests —criterio 18— y los
+  del editor —criterio 19— se adelantaron a esta fase. Los once tests del compilador que fijaban
+  el span fabricado se reescribieron contra el marcador (criterios 13–17).
+- **Un marcador se empareja dentro de su bloque**, no de la plantilla entera. La spec lo decía de
+  la plantilla; lo impone el cliente, donde cada bloque es un recorrido con sus variables. `FUD0597`
+  lo cuenta así, y un `id` con `@` es `FUD0599`. Los dos anotados en §3.4 del BUG.
 - **Tras la fase 1, `@fudic/forms` está en 99,35 / 97,54 / 99,43 / 99,21** (líneas, ramas,
   funciones, sentencias). Faltan cuatro huecos, todos de código nuevo y todos criterios de
   la fase 4: el `TypeError` de un control sin formulario (1), `$message` (4), una validación

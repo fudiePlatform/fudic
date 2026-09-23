@@ -498,7 +498,11 @@ schema en el emit sería duplicar el chequeo y quedarse corto.
 | `FUD0593` | `formassociated` fuera del `<template shadowrootmode>` raíz de un componente — en un template anidado o en modo página (decisión 111). |
 | `FUD0594` | `control` dentro de un bucle (decisión 114, hermana de la 31). |
 | `FUD0595` | `control` sin un `<form control="…">` por encima en la misma plantilla (decisión 115, [BUG-25](./bugs/BUG-25-control-sin-editor.md)). Exento el control-componente: enlaza el nodo que le pasa su padre, y el sitio del cruce se comprueba en el fichero del padre. |
-| `FUD0596`–`FUD0619` | Reservados. |
+| `FUD0596` | El valor de `error` no es una expresión `@` (decisión 130, [BUG-41](./bugs/BUG-41-el-error-que-no-se-va.md)). |
+| `FUD0597` | Un marcador `error` nombra un nodo que ningún elemento de **su bloque** enlaza con `control` — también si el nodo solo cruza a un componente: su mensaje va dentro de él (BUG-41). |
+| `FUD0598` | Un segundo marcador `error` del mismo nodo, o uno dentro de un bucle (BUG-41). |
+| `FUD0599` | Un marcador `error` con contenido, o con un `id` que no es estático (BUG-41). |
+| `FUD0600`–`FUD0619` | Reservados. |
 
 Ninguno de los cinco lanza: el emit anota el diagnóstico con su span, omite **ese** enlace y sigue
 emitiendo el fichero (regla de oro del proyecto).

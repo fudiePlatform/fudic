@@ -171,8 +171,9 @@ ser la última capa de `message()`, no la única.
 export type ErrorSlot = HTMLElement | null;
 ```
 
-Las ocho `bind*` mantienen su firma. Solo se ensancha `ErrorSlot`, y `bindForm` ya aceptaba
-`null` como resumen.
+Las ocho `bind*` mantienen su firma, salvo `bindGroup`, que gana un tercer argumento opcional
+para el marcador de su resumen: `bindGroup(el, group, slot?: ErrorSlot)`. `ErrorSlot` se
+ensancha a `null`, y `bindForm` ya aceptaba `null` como resumen. Los dos escriben `$message()`.
 
 ### 3.3. Gramática — decisión 130 (enmienda la 113)
 
@@ -202,9 +203,9 @@ Las ocho `bind*` mantienen su firma. Solo se ensancha `ErrorSlot`, y `bindForm` 
 | código | cuándo | severidad |
 |---|---|---|
 | `FUD0596` | el valor de `error` no es una única expresión `@` | error |
-| `FUD0597` | el marcador nombra un nodo que **ningún** elemento de esta plantilla enlaza con `control=`, incluido el caso de que el nodo solo cruce como prop a un componente. `aria-describedby` no atraviesa un shadow root: el mensaje de un control-componente se coloca **dentro** de él | error |
+| `FUD0597` | el marcador nombra un nodo que **ningún** elemento de **su bloque** enlaza con `control=`, incluido el caso de que el nodo solo cruce como prop a un componente. Un bloque es una rama de `@if`, un caso de `@switch`, una `@section` o un `@snippet`: en el cliente cada bloque es un recorrido con sus propias variables, y la llamada de enlace nombra al control y a su marcador. `aria-describedby` no atraviesa un shadow root: el mensaje de un control-componente se coloca **dentro** de él | error |
 | `FUD0598` | más de un marcador para el mismo nodo en una plantilla, o un marcador dentro de un bucle (N elementos con el mismo id) | error |
-| `FUD0599` | el marcador tiene contenido. El runtime escribe su `textContent` y lo borraría | error |
+| `FUD0599` | el marcador tiene contenido que no es solo espacio (el runtime escribe su `textContent` y lo borraría), o un `id` con `@` (el compilador no puede apuntar `aria-describedby` a un id que no conoce) | error |
 
 Los cuatro rompen algo: un id duplicado, una relación ARIA que no existe o contenido que se
 pierde. Ninguno es una norma de estilo.

@@ -117,7 +117,7 @@ describe('§6.7 — the switch is spent at compile time', () => {
       "  import { f } from './user.form.js';\n  const t = 'number';",
     );
     expect(client).toContain(`import { bindByType } from '@fudic/forms/dom';`);
-    expect(client).toMatch(/bindByType\(\$n\d+, f\.title, \$n\d+, \$n\d+\.type\)/u);
+    expect(client).toMatch(/bindByType\(\$n\d+, f\.title, null, \$n\d+\.type\)/u);
   });
 
   it('and the page that never writes one still names none of it', () => {
@@ -152,16 +152,18 @@ describe('§6.7 — the switch is spent at compile time', () => {
   it('a `<form>` binds state and a `<fieldset>` binds a group', () => {
     const { client } = emit('<form control="@f"><fieldset control="@f.seo"></fieldset></form>');
     expect(client).toContain("import { bindForm, bindGroup } from '@fudic/forms/dom';");
-    expect(client).toMatch(/bindGroup\(\$n\d+, f\.seo\)/u);
+    expect(client).toMatch(/bindGroup\(\$n\d+, f\.seo, null\)/u);
   });
 
   it('binds inside an `@if`, into that block’s own hookup', () => {
     // A block is a walk of its own with its own nodes and its own `$d`: the binding has to
     // land in that closure, not in the component's (SDD-30 §3.1).
-    const { client } = emit('@if (true) { <input control="@f.title"> }');
+    const { client } = emit(
+      '@if (true) { <input control="@f.title"><small error="@f.title"></small> }',
+    );
     expect(client).toContain("import { bindText } from '@fudic/forms/dom';");
-    expect(client).toContain('bindText(');
-    // The block tracks its roots, the slot among them: it is a node the block owns and has
+    expect(client).toMatch(/bindText\(\$n\d+, f\.title, \$n\d+\)/u);
+    // The block tracks its roots, the marker among them: it is a node the block owns and has
     // to be able to take away.
     expect(client.match(/\$r\.push\(/gu)!.length).toBeGreaterThan(1);
   });
@@ -281,72 +283,118 @@ describe('§6.7 — the switch is spent at compile time', () => {
 // §6.8 — the markup: no `control`, a stable slot, `aria-describedby` always
 // ---------------------------------------------------------------------------
 
-describe('§6.8 — the error slot lives in the markup', () => {
-  it('the attribute `control` does not survive to the HTML, on either branch', () => {
-    const { server, client } = emit('<input control="@f.title">');
+describe('§6.8 — the message lives in the author’s marker (BUG-41 §4.3)', () => {
+  it('neither `control` nor `error` survives to the HTML, on either branch', () => {
+    const { server, client } = emit('<input control="@f.title"><p error="@f.title"></p>');
     for (const out of [server, client]) {
       expect(out).not.toContain("'control'");
       expect(out).not.toContain('"control"');
+      expect(out).not.toContain("'error'");
+      expect(out).not.toContain('"error"');
     }
   });
 
-  it('both branches write the same slot id and the same `aria-describedby`', () => {
-    const { server, client } = emit('<input control="@f.seo.canonical">');
+  it('without a marker the compiler writes no element and no `aria-describedby` (criterion 14)', () => {
+    const { server, client } = emit('<input control="@f.title">');
+    for (const out of [server, client]) {
+      expect(out).not.toContain('aria-describedby');
+      expect(out).not.toContain("$dom.element('span')");
+      expect(out).not.toContain('data-fud-err');
+    }
+    expect(client).toMatch(/bindText\(\$n\d+, f\.title, null\)/u);
+  });
+
+  it('both branches give the marker the same derived id, and point at it (criterion 13)', () => {
+    const { server, client } = emit('<input control="@f.seo.canonical"><p error="@f.seo.canonical"></p>');
     const id = 'fud-e-f-seo-canonical';
     for (const out of [server, client]) {
       expect(out).toContain(`$dom.setAttr($n0, 'aria-describedby', "${id}");`);
-      expect(out).toContain(`'id', "${id}"`);
-      expect(out).toContain("'data-fud-err', ''");
+      expect(out).toContain(`$dom.setAttr($n1, 'id', "${id}");`);
+      expect(out).toContain('$dom.element("p")');
+    }
+  });
+
+  it('the marker goes where the author put it — before the field too (criterion 13)', () => {
+    const { server, client } = emit('<small error="@f.title"></small><input control="@f.title">');
+    for (const out of [server, client]) {
+      expect(out).toContain(`$dom.setAttr($n0, 'id', "fud-e-f-title");`);
+      expect(out).toContain(`$dom.setAttr($n1, 'aria-describedby', "fud-e-f-title");`);
+    }
+    // The call waited for the marker it names, and names the element and the marker both.
+    expect(client).toContain('$n1 && $n0 && $d.push(bindText($n1, f.title, $n0));');
+  });
+
+  it('the author’s own static id is kept, and pointed at (criterion 13)', () => {
+    const { server, client } = emit('<input control="@f.title"><p id="mine" error="@f.title"></p>');
+    for (const out of [server, client]) {
+      expect(out).toContain(`'aria-describedby', "mine"`);
+      expect(out).not.toContain('fud-e-f-title');
     }
   });
 
   it('the id comes from the NODE, not from a counter: order does not move it', () => {
-    const first = emit('<input control="@f.a"><input control="@f.b">');
-    const second = emit('<input control="@f.b"><input control="@f.a">');
+    const markup = (a: string, b: string): string =>
+      `<input control="@f.${a}"><i error="@f.${a}"></i><input control="@f.${b}"><i error="@f.${b}"></i>`;
+    const first = emit(markup('a', 'b'));
+    const second = emit(markup('b', 'a'));
     for (const out of [first.server, first.client, second.server, second.client]) {
       expect(out).toContain('fud-e-f-a');
       expect(out).toContain('fud-e-f-b');
     }
   });
 
-  it('a radio group gets ONE slot, after its last element', () => {
+  it('every radio of a group points at the ONE marker (criterion 15)', () => {
     const { server, client } = emit(
-      ['a', 'b'].map((v) => `<input type="radio" value="${v}" control="@f.tone">`).join(''),
+      ['a', 'b'].map((v) => `<input type="radio" value="${v}" control="@f.tone">`).join('') +
+        '<p error="@f.tone"></p>',
     );
     for (const out of [server, client]) {
-      expect(out.match(/fud-e-f-tone/gu)!.length).toBeGreaterThanOrEqual(3); // 2 refs + 1 id
-      expect(out.match(/'data-fud-err', ''/gu)).toHaveLength(1);
+      expect(out.match(/'aria-describedby', "fud-e-f-tone"/gu)).toHaveLength(2);
+      expect(out.match(/'id', "fud-e-f-tone"/gu)).toHaveLength(1);
     }
+    expect(client).toMatch(/bindRadio\(\[\$n0, \$n1\], f\.tone, \$n2\)/u);
   });
 
   it('the server writes `aria-invalid` and the message when the form renders with errors', () => {
-    const { server } = emit('<input control="@f.title">');
+    const { server } = emit('<input control="@f.title"><p error="@f.title"></p>');
     expect(server).toContain('if (f.title.touched() && f.title.errors())');
     expect(server).toContain("$dom.setAttr($n0, 'aria-invalid', 'true')");
-    expect(server).toContain("import { errorText as $fudErrorText } from '@fudic/forms';");
-    expect(server).toContain('$dom.text($fudErrorText($e))');
+    expect(server).toContain("const $e = (f.title.touched() ? f.title.message() : '');");
+    expect(server).toContain('if ($e) $dom.append($n1, $dom.text($e));');
+    // The text is the model's own: nothing to import for it.
+    expect(server).not.toContain('@fudic/forms');
   });
 
   it('the client writes NEITHER: they follow the errors, so the effect owns them', () => {
-    const { client } = emit('<input control="@f.title">');
+    const { client } = emit('<input control="@f.title"><p error="@f.title"></p>');
     expect(client).not.toContain('aria-invalid');
-    expect(client).not.toContain('errorText');
+    expect(client).not.toContain('message()');
   });
 
-  it('a `<form>` gets a polite live region beside it', () => {
-    const { server, client } = emit('<form control="@f"></form>');
+  it('a `<form>`’s marker sits INSIDE it and is a polite live region (criterion 16)', () => {
+    const { server, client } = emit('<form control="@f"><div error="@f"></div></form>');
     for (const out of [server, client]) {
-      expect(out).toContain("'id', \"fud-s-f\"");
-      expect(out).toContain("'data-fud-sum', ''");
+      expect(out).toContain(`'id', "fud-s-f"`);
       expect(out).toContain("'aria-live', 'polite'");
+      expect(out).toContain(`$dom.setAttr($n0, 'aria-describedby', "fud-s-f");`);
     }
-    expect(server).toContain('const $e = f.$summary();');
+    expect(server).toContain('const $e = f.$message();');
+    expect(client).toMatch(/bindForm\(\$n0, f, \$n1\)/u);
   });
 
-  it('a group and a component tag get no slot of their own', () => {
-    const { server } = emit('<fieldset control="@f.seo"></fieldset>');
-    expect(server).not.toContain('data-fud-err');
-    expect(server).not.toContain('data-fud-sum');
+  it('an `aria-live` the author wrote is not overwritten (criterion 16)', () => {
+    const { server, client } = emit(
+      '<form control="@f"><div aria-live="assertive" error="@f"></div></form>',
+    );
+    for (const out of [server, client]) {
+      expect(out).not.toContain("'aria-live', 'polite'");
+    }
+  });
+
+  it('a group’s marker gets its summary, and the group points at it', () => {
+    const { server, client } = emit('<fieldset control="@f.seo"><p error="@f.seo"></p></fieldset>');
+    expect(server).toContain('const $e = f.seo.$message();');
+    expect(client).toMatch(/bindGroup\(\$n0, f\.seo, \$n1\)/u);
   });
 });
 

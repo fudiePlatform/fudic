@@ -8,8 +8,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { parseDocument, type AtConstructParser } from '../../src/html/index.js';
-import { parseControl } from '../../src/control/index.js';
-import { parseCodeBlock } from '../../src/code/index.js';
+import { atConstructs } from '../../src/constructs.js';
 import { structureDocument } from '../../src/document/index.js';
 import { JsBatch, type FragmentId } from '../../src/oxc/index.js';
 import type { Node, Diagnostic } from '../../src/types/index.js';
@@ -24,7 +23,8 @@ import {
 import { controlTarget, isFormAssociated, isRadio } from '../../src/binding/index.js';
 import type { ElementNode, HtmlContent } from '../../src/html/index.js';
 
-const constructs: AtConstructParser = { parseControl, parseCodeBlock };
+// The whole construct set, `@section` and `@snippet` included: a marker's block can be either.
+const constructs: AtConstructParser = atConstructs;
 
 const NO_COMPONENTS: ComponentRegistry = { has: () => false };
 const APP_INPUT: ComponentRegistry = { has: (tag) => tag === 'app-input' };
@@ -383,5 +383,113 @@ describe('FUD0593 — `formassociated` placement (§6.6)', () => {
 describe('control on a component tag', () => {
   it('is a crossing, not an unsupported element', () => {
     expect(codes(component('<app-input control="@f.body"></app-input>'), APP_INPUT)).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// BUG-41 §3.4 — the `error` marker (decision 130), criterion 18
+// ---------------------------------------------------------------------------
+
+describe('error marker — what pairs (BUG-41 §3.3)', () => {
+  it.each([
+    ['after its field', '<input control="@f.title"><p error="@f.title"></p>'],
+    ['before its field', '<p error="@f.title"></p><input control="@f.title">'],
+    ['somewhere else in the tree', '<div><input control="@f.title"></div><footer><p error="@f.title"></p></footer>'],
+    ['with its own static id', '<input control="@f.title"><p id="mine" error="@f.title"></p>'],
+    ['holding only whitespace', '<input control="@f.title"><p error="@f.title">  </p>'],
+    ['for a group', '<fieldset control="@f.seo"><p error="@f.seo"></p></fieldset>'],
+    ['for a radio group', '<input type="radio" control="@f.t"><input type="radio" control="@f.t"><p error="@f.t"></p>'],
+    ['inside the same @if branch', '@if (x) { <input control="@f.title"><p error="@f.title"></p> }'],
+    ['inside the same @else', '@if (x) { } else { <input control="@f.title"><p error="@f.title"></p> }'],
+    ['inside the same @switch case', '@switch (x) { case 1: <input control="@f.title"><p error="@f.title"></p> }'],
+  ])('pairs a marker %s', (_, inner) => {
+    expect(codes(component(inner))).toEqual([]);
+  });
+
+  it('pairs the form’s own summary, inside the form', () => {
+    expect(codes(component('<form control="@f"><div error="@f"></div></form>'))).toEqual([]);
+  });
+});
+
+describe('FUD0597 — a marker with nothing beside it to describe', () => {
+  it('names a node no element of the template binds', () => {
+    const source = component('<p error="@f.title"></p>');
+    const [diag] = diags(source);
+    expect(diag!.code).toBe('FUD0597');
+    expect(source.slice(diag!.span.start, diag!.span.end)).toBe('error="@f.title"');
+  });
+
+  it('names a node bound in ANOTHER block', () => {
+    expect(codes(component('@if (x) { <input control="@f.title"> }<p error="@f.title"></p>'))).toEqual(
+      ['FUD0597'],
+    );
+  });
+
+  it('names a node that only crosses into a component: the message goes inside it', () => {
+    const found = diags(
+      component('<app-input control="@f.body"></app-input><p error="@f.body"></p>'),
+      APP_INPUT,
+    );
+    expect(found.map((d) => d.code)).toEqual(['FUD0597']);
+    expect(found[0]!.message).toContain('shadow root');
+  });
+
+  it('names a node bound to an element that carries no value', () => {
+    expect(codes(component('<input type="submit" control="@f.go"><p error="@f.go"></p>'))).toEqual([
+      'FUD0592',
+      'FUD0597',
+    ]);
+  });
+});
+
+describe('FUD0598 — one node, one marker', () => {
+  it('reports the second marker of a node', () => {
+    const source = component('<input control="@f.title"><p error="@f.title"></p><i error="@f.title"></i>');
+    const [diag] = diags(source);
+    expect(diag!.code).toBe('FUD0598');
+    expect(source.slice(diag!.span.start)).toMatch(/^error="@f\.title"><\/i>/u);
+  });
+
+  it('reports a marker inside a loop: every row would carry the same id', () => {
+    const source = component(
+      '<input control="@f.title">@foreach (const it of items) key (it) { <p error="@f.title"></p> }',
+    );
+    expect(codes(source)).toEqual(['FUD0598']);
+  });
+});
+
+describe('FUD0599 — the runtime owns the marker’s text, and its id has to be readable', () => {
+  it('reports content the runtime would overwrite', () => {
+    expect(codes(component('<input control="@f.title"><p error="@f.title">Obligatorio</p>'))).toEqual([
+      'FUD0599',
+    ]);
+  });
+
+  it('reports an element inside it', () => {
+    expect(codes(component('<input control="@f.title"><p error="@f.title"><b></b></p>'))).toEqual([
+      'FUD0599',
+    ]);
+  });
+
+  it('reports an id the compiler cannot point at', () => {
+    expect(codes(component('<input control="@f.title"><p id="@x" error="@f.title"></p>'))).toEqual([
+      'FUD0599',
+    ]);
+  });
+});
+
+describe('error marker — the blocks a page and a snippet add', () => {
+  it('a `@section` body is a block of its own', () => {
+    const route =
+      '<link rel="layout" href="./_layout.fud">\n' +
+      '@section nav {\n  <form control="@f"><input control="@f.q"><p error="@f.q"></p></form>\n}\n';
+    expect(codes(route)).not.toContain('FUD0597');
+  });
+
+  it('a `@snippet` body is a block of its own', () => {
+    const file =
+      '@snippet row(x: string) { <form control="@f"><input control="@f.q"></form> }\n' +
+      '@snippet hint(x: string) { <p error="@f.q"></p> }\n';
+    expect(codes(file)).toContain('FUD0597');
   });
 });

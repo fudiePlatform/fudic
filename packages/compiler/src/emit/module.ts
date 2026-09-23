@@ -327,19 +327,12 @@ function buildComponentModule(
   // object, which is the whole reason a form is not declared in the view.
   const neutralImports = neutral.flatMap((s) => (s.hoisted ? [s.text] : []));
   for (const line of neutralImports) w.line(line);
-  // The text of an error, for the slots this template writes. From the MODEL entry point and
-  // not from `./dom`: the server paints the message into the HTML (§4.3), and turning
-  // `{ required: true }` into a sentence touches no DOM. Imported only when there is a slot,
-  // so a component with no form carries no import it never calls.
-  const writesErrors = [...controls.values()].some((site) => site.writesSlot);
-  if (writesErrors) w.line("import { errorText as $fudErrorText } from '@fudic/forms';");
   for (const line of linker.imports()) w.line(line);
   const preamble =
     helpers.length > 0 ||
     server.imports.length > 0 ||
     em.used.size > 0 ||
     neutralImports.length > 0 ||
-    writesErrors ||
     linker.imports().length > 0;
   if (preamble) w.line('');
   w.line(`export const tag = ${JSON.stringify(comp.tag)};`);

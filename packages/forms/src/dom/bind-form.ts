@@ -16,7 +16,6 @@
 
 import { effect } from '@fudic/core';
 import type { AnyForm } from '../types.js';
-import { errorText } from '../messages.js';
 import type { Cleanup } from './types.js';
 import { onSelf, undo } from './wiring.js';
 
@@ -52,11 +51,10 @@ export function bindForm(el: HTMLFormElement, form: AnyForm, summary: HTMLElemen
   if (summary !== null) {
     offs.push(
       effect(() => {
-        // Into the live region the emit left beside the form. A text that changes INSIDE a
-        // live region is announced; the same text changing outside one is not, which is why
-        // the element is the emit's and not something fabricated here.
-        const errors = form.$summary();
-        const text = errors === null ? '' : errorText(errors);
+        // Into the live region the author marked with `error="@form"`. A text that changes
+        // INSIDE a live region is announced; the same text changing outside one is not, which is
+        // why the element exists in the markup before this runs, `aria-live` included.
+        const text = form.$message();
         if (summary.textContent !== text) summary.textContent = text;
       }),
     );
