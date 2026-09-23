@@ -450,8 +450,9 @@ export function createRouter(config: RouterConfig): Router {
    *
    * The manifest cannot name them: it lists what THIS build emitted, and the runtime is
    * published apart, under a version and not a build (SDD-45). But the worker holds the bytes
-   * of every file it deposits, and a static import is written in them — `from"/_fudic/…"` —
-   * so the graph is read where it is. Dynamic `import()` is left alone on purpose: what a piece
+   * of every file it deposits, and a static import names its `/_fudic/…` specifier in them,
+   * so the graph is read where it is. (No literal import here: this comment ships inside the
+   * Service Worker, whose bundle must not contain one.) Dynamic `import()` is left alone on purpose: what a piece
    * loads on demand is that piece's own decision, and warming it would be guessing.
    */
   const runtimeImportsOf = async (response: Response, base: string): Promise<string[]> => {

@@ -3,7 +3,7 @@
 > **BUG:** [BUG-41 — Un error de formulario que no se va al corregirlo, y un hueco que el autor no puede colocar](./BUG-41-el-error-que-no-se-va.md)
 > **Paquetes:** `@fudic/forms` · `@fudic/compiler` · `@fudic/language-core` · `@fudic/example-basic`
 > **Rama:** `bug-41-validacion-y-hueco-de-error` (worktree `.claude/worktrees/bug-41-validacion-y-hueco-de-error`, desde `main`)
-> **Progreso:** 11 / 14
+> **Progreso:** 12 / 14
 
 El orden es el de un defecto que se ve en el navegador: **primero la corrección**, luego
 Pedro la prueba en `/formularios`, y después los tests contra el código ya arreglado, vistos
@@ -69,7 +69,7 @@ quedar a medias.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 13 | 9–12 | **Cobertura.** `@fudic/forms` en 100 / 100 / 100 / 100 sin `ignore`. `compiler` y `language-core` no bajan del suelo medido al abrir la rama (anotarlo aquí antes de la tarea 4). Criterio 21 | — | — |
+| [x] | 13 | 9–12 | **Cobertura.** `@fudic/forms` en 100 / 100 / 100 / 100 sin `ignore`. `compiler` y `language-core` no bajan del suelo medido al abrir la rama (anotarlo aquí antes de la tarea 4). Criterio 21 | — | — |
 | [ ] | 14 | 13 | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`. BUG-41 a `Hecho` en [INDEX.md](./INDEX.md) (tabla y registro) y en el registro de [docs/sdd/INDEX.md](../INDEX.md). SDD-34 §4.2–§4.4 y §7 anotan que BUG-41 las corrige. README de `@fudic/forms` con el marcador y `messages`. | — | [INDEX.md](./INDEX.md) · [../INDEX.md](../INDEX.md) · `packages/forms/README.md` |
 
 ---
@@ -119,6 +119,13 @@ arreglos fuera de forms. Van en §2.6 del BUG y hay que anotarlos al cerrar:
   `semantic/analyzers/error-marker.ts`) nacen al 100 %, y por eso sus tests —criterio 18— y los
   del editor —criterio 19— se adelantaron a esta fase. Los once tests del compilador que fijaban
   el span fabricado se reescribieron contra el marcador (criterios 13–17).
+- **Tarea 13, medida al cerrar** (líneas / ramas / funciones / sentencias): `@fudic/forms` 100 en
+  las cuatro · `@fudic/compiler` 99,77 / 98,51 / 99,54 / 99,36 · `@fudic/language-core` 100 en
+  las cuatro · `@fudic/transport` 96,53 / 91,05 / 94,73 / 96,34, sobre su suelo en `main`
+  (96,38 / 90,59 / 94,65 / 96,17). El e2e de `examples/basic` completo, los tres proyectos:
+  185 / 185. `pnpm test` destapó dos tests de `@fudic/vite` en rojo: un comentario de
+  `router.ts` escribía un import literal a `/_fudic/…`, y ese comentario viaja dentro del
+  bundle del Service Worker, que no puede contener ninguno. Se reescribió el comentario.
 - **Un marcador se empareja dentro de su bloque**, no de la plantilla entera. La spec lo decía de
   la plantilla; lo impone el cliente, donde cada bloque es un recorrido con sus variables. `FUD0597`
   lo cuenta así, y un `id` con `@` es `FUD0599`. Los dos anotados en §3.4 del BUG.
