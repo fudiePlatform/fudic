@@ -3,7 +3,7 @@
 > **BUG:** [BUG-41 — Un error de formulario que no se va al corregirlo, y un hueco que el autor no puede colocar](./BUG-41-el-error-que-no-se-va.md)
 > **Paquetes:** `@fudic/forms` · `@fudic/compiler` · `@fudic/language-core` · `@fudic/example-basic`
 > **Rama:** `bug-41-validacion-y-hueco-de-error` (worktree `.claude/worktrees/bug-41-validacion-y-hueco-de-error`, desde `main`)
-> **Progreso:** 12 / 14
+> **Progreso:** 17 / 17
 
 El orden es el de un defecto que se ve en el navegador: **primero la corrección**, luego
 Pedro la prueba en `/formularios`, y después los tests contra el código ya arreglado, vistos
@@ -21,7 +21,12 @@ quedar a medias.
 1 validate/message ──→ 2 wiring ──→ 3 bindForm ──┐
                                                  ├──→ 7 ejemplo ──→ 8 navegador ──→ 9…12 tests ──→ 13 cobertura ──→ 14 cierre
 4 marcador (classify) ──→ 5 emit ──→ 6 LSP ──────┘
+
+8 navegador ──→ 15 validateOn · 16 novalidate · 17 foco ──→ 14 cierre
 ```
+
+La fase 6 no estaba en el plan: salió de la tarea 8 (BUG §2.7). Se implementó antes del
+cierre, y la spec y este Task se redactaron después, con el visto bueno de Pedro.
 
 ---
 
@@ -50,7 +55,7 @@ quedar a medias.
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 7 | 3, 5 | **El ejemplo usa el marcador.** `app-form`: mensaje de *Nombre* bajo su campo, en su propia caja de la rejilla (sin resumen: `userForm` no declara regla de formulario, y un marcador que nunca habla no enseña nada). `app-input`: el suyo dentro del shadow. `app-wide-form`: los dos campos con reglas; los otros diez no tienen nada que decir. Fuera el CSS `[data-fud-err]:empty`. `user.form.ts` con `messages` por control. El texto de `formularios.fud`, que hoy habla del «hueco ya puesto», se actualiza. | `example-basic` | `src/components/app-form.fud` · `app-input.fud` · `app-wide-form.fud` · `src/forms/user.form.ts` · `src/routes/formularios.fud` |
-| [ ] | 8 | 7 | **Probado donde se ve (Pedro).** Los pasos de §1 en `/formularios`: el error se va al corregir, el segundo submit pasa, el primer submit inválido se para, cada campo dice su texto, en dev y en `vite preview`. Criterio 20 | — | — |
+| [x] | 8 | 7 | **Probado donde se ve (Pedro).** Los pasos de §1 en `/formularios`: el error se va al corregir, el segundo submit pasa, el primer submit inválido se para, cada campo dice su texto, en dev y en `vite preview`. Criterio 20 | — | — |
 
 ---
 
@@ -70,14 +75,27 @@ quedar a medias.
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 13 | 9–12 | **Cobertura.** `@fudic/forms` en 100 / 100 / 100 / 100 sin `ignore`. `compiler` y `language-core` no bajan del suelo medido al abrir la rama (anotarlo aquí antes de la tarea 4). Criterio 21 | — | — |
-| [ ] | 14 | 13 | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`. BUG-41 a `Hecho` en [INDEX.md](./INDEX.md) (tabla y registro) y en el registro de [docs/sdd/INDEX.md](../INDEX.md). SDD-34 §4.2–§4.4 y §7 anotan que BUG-41 las corrige. README de `@fudic/forms` con el marcador y `messages`. | — | [INDEX.md](./INDEX.md) · [../INDEX.md](../INDEX.md) · `packages/forms/README.md` |
+| [x] | 14 | 13, 15–17 | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`. BUG-41 a `Hecho` en [INDEX.md](./INDEX.md) (tabla y registro) y en el registro de [docs/sdd/INDEX.md](../INDEX.md). SDD-34 §4.2–§4.4 y §7 anotan que BUG-41 las corrige. README de `@fudic/forms` con el marcador y `messages`. | — | [INDEX.md](./INDEX.md) · [../INDEX.md](../INDEX.md) · `packages/forms/README.md` |
+
+---
+
+## Fase 6 — lo que destapó la prueba en el navegador (15–17)
+
+| ✓ | # | dep | tarea | package | fichero |
+|---|---|---|---|---|---|
+| [x] | 15 | 8 | **`validateOn`.** Flags `Blur` · `Input` · `Submit` (el cero) en `ControlOptions` y `FormOptions`; se resuelven control → form más cercano → `Blur \| Input`, y viajan con `adopt`. `follow` lee la política: `Input` valida cada escritura con el campo tocado (antes, solo con el error visible). README de forms. Criterios 22, 23 y 26. BUG §4.1, §4.5 | `forms` · `example-basic` | `src/validate-on.ts` · `src/control.ts` · `src/form.ts` · `src/internals.ts` · `src/types.ts` · `src/dom/wiring.ts` · `test/control-validate.test.ts` · `test/dom/revalidate.test.ts` · `tests/forms.spec.ts` |
+| [x] | 16 | 8 | **El navegador fuera del submit.** `novalidate` en todo `<form control>`, en las dos ramas, sin duplicar el del autor; `setValidity` con el texto de `message()`. Criterios 24 y 25. BUG §4.6 | `compiler` · `forms` | `src/emit/controls.ts` · `markup.ts` · `markup-client.ts` · `forms/src/element.ts` |
+| [x] | 17 | 8 | **El foco entra en un control-componente.** `bindForm` recorre `form.elements` y toma el primero con `aria-invalid` o `validity` inválida; `FudicControlElement` expone `validity`. De paso, `/* @vite-ignore */` en el `import()` del cargador de `@fudic/di`. Criterio 25. BUG §4.7 | `forms` · `di` | `src/dom/bind-form.ts` · `src/element.ts` · `di/src/page.ts` |
 
 ---
 
 ## Relevo (2026-09-23) — para la sesión que cierra
 
-**Estado:** fases 1–4 commiteadas; quedan la tarea 8 (Pedro prueba `/formularios` en el
-navegador), la 13 (cobertura) y la 14 (cierre).
+**Estado:** cerrado. El relevo se recogió, la tarea 8 destapó la fase 6 y todo se cerró en
+esta misma rama. Lo de abajo se deja tal como se escribió para el relevo.
+
+**Estado en el relevo:** fases 1–4 commiteadas; quedaban la tarea 8 (Pedro prueba
+`/formularios` en el navegador), la 13 (cobertura) y la 14 (cierre).
 
 **Lo último verificado, antes del commit de la fase 4:**
 - `@fudic/forms`, 100 en las cuatro métricas. `@fudic/compiler` sobre su suelo; `language-core`,
@@ -126,6 +144,10 @@ arreglos fuera de forms. Van en §2.6 del BUG y hay que anotarlos al cerrar:
   185 / 185. `pnpm test` destapó dos tests de `@fudic/vite` en rojo: un comentario de
   `router.ts` escribía un import literal a `/_fudic/…`, y ese comentario viaja dentro del
   bundle del Service Worker, que no puede contener ninguno. Se reescribió el comentario.
+- **Al cerrar, tras la fase 6:** `@fudic/forms` 100 en las cuatro (228 tests), `@fudic/di` 100,
+  `@fudic/compiler` 99,77 / 98,51 / 99,54 / 99,36, `language-core` 100, `transport` sobre su
+  suelo. E2E de `examples/basic` completo: 187 / 187. Los dos e2e nuevos (criterios 25 y 26) se
+  vieron fallar contra el build anterior a la fase 6.
 - **Un marcador se empareja dentro de su bloque**, no de la plantilla entera. La spec lo decía de
   la plantilla; lo impone el cliente, donde cada bloque es un recorrido con sus variables. `FUD0597`
   lo cuenta así, y un `id` con `@` es `FUD0599`. Los dos anotados en §3.4 del BUG.

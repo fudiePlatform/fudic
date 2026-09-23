@@ -1,9 +1,10 @@
 # BUG-41 · Un error de formulario que no se va al corregirlo, y un hueco que el autor no puede colocar
 
-> **Estado:** `Listo`
+> **Estado:** `Hecho`
 > **Corrige:** [SDD-33](../SDD-33-formularios-reactivos.md) §4.5 ·
 > [SDD-34](../SDD-34-forms-compilador.md) §4.2, §4.3, §4.4, §7 (decisión 113)
 > **Paquetes:** `@fudic/forms` · `@fudic/compiler` · `@fudic/language-core` · `@fudic/example-basic`
+> (y, por lo que destapó el e2e, `@fudic/transport` · `@fudic/di` — §2.6, §2.7)
 > **Rango:** `FUD0596`–`FUD0599`, del tramo que SDD-12 da a SDD-34 (`FUD0590`–`FUD0619`)
 
 ---
@@ -130,15 +131,49 @@ fichero con la corrección —`app-form.fud` y la spec del formulario—:
   lleva hash, y solo seguía imports relativos, cuando el runtime publicado se importa por
   `/_fudic/<versión>/`.
 
-### 2.7. Alcance
+Pedro pidió **todo** el e2e en verde, fuera o no de este BUG, y eso trajo arreglos fuera de
+forms:
+
+- **`transport/router.ts`**: el precalentado deposita en su caché el runtime publicado
+  (`/_fudic/`) y lee sus imports estáticos de los propios bytes, de forma transitiva (SDD-45
+  §4.3). Un comentario de ese código escribía un import literal, y ese comentario viaja dentro
+  del bundle del Service Worker, que no puede contener ninguno: dos tests de `@fudic/vite` en
+  rojo hasta reescribirlo.
+- **`transport/runtime-cache.ts`**: la marca `/_fudic/marker/<app>` va sellada con
+  `x-fudic-stored`.
+- **Specs que se habían quedado atrás tras SDD-45**: `fudic-main.js` con hash, el canal del
+  precalentado en el boot, el `modulepreload` del runtime y el slug `file-system-routing`.
+- **El snapshot de `fudic new`** copia las declaraciones del editor, y la del marcador `error=`
+  (tarea 6) lo cambió.
+
+### 2.7. Lo que destapó la prueba en el navegador (tarea 8)
+
+Con todo lo anterior en verde, Pedro probó `/formularios` a mano y salieron cuatro cosas más:
+
+- **La burbuja del navegador tapaba la validación.** El `<form>` no llevaba `novalidate`, y la
+  validación nativa corre **antes** que el evento `submit`. En cuanto el host de `app-input`
+  conocía su error (`setValidity`), el navegador paraba el envío con su propia burbuja —y el
+  texto era el código de la regla, `required`—, y `bindForm` no llegaba a correr.
+- **Un error corregido y vuelto a romper no volvía hasta el `blur`.** §4.1 revalidaba al
+  escribir solo con el error **visible**: `abc` → borrar una letra dejaba el campo mal y
+  callado mientras tuviera el foco. La política no era la que se quería. Y, más a fondo, es una
+  decisión del autor, no del framework (§4.5).
+- **El foco no entraba en un control-componente.** `bindForm` buscaba el primer
+  `[aria-invalid="true"]` en el árbol del `<form>`, y el `<input>` del alias vive en el shadow de
+  `app-input`. Con *Nombre* bien, el submit fallido no llevaba el foco a ningún sitio.
+- **`vite dev` avisaba** de un `import()` que no puede analizar, en el cargador de páginas de
+  `@fudic/di`. Se resuelve en ejecución a propósito: `/* @vite-ignore */`.
+
+### 2.8. Alcance
 
 | sitio | causa | se corrige |
 |---|---|---|
 | `bindText` · `bindNumber` · `bindCheckbox` · `bindSelect` · `bindSelectMultiple` · `bindRadio` · `bindByType` | `blur` solo toca; `input`/`change` no revalidan | sí, en `wiring.ts` para las siete a la vez |
-| `bindForm` | submit con errores no revalida; primer submit deja pasar; escucha detrás del autor | sí |
+| `bindForm` | submit con errores no revalida; primer submit deja pasar; escucha detrás del autor; el foco no cruza un shadow root | sí |
+| `ControlOptions` · `FormOptions` | la política de validación es fija | sí: `validateOn` |
 | `bindGroup` | lee `$errors`/`$summary`, que ahora se refrescan | nada propio |
-| `FudicControlElement` | `setValidity` sigue a `errors()` | nada propio: se arregla solo con §2.1 |
-| emit de servidor y de cliente | hueco fijo detrás del elemento | sí |
+| `FudicControlElement` | `setValidity` sigue a `errors()` con el código de la regla; su `validity` no se ve desde fuera | sí: el texto de `message()` y un getter `validity` |
+| emit de servidor y de cliente | hueco fijo detrás del elemento; `<form>` sin `novalidate` | sí |
 | `language-core` | proyecta `control=` para TypeScript | sí: el marcador nuevo se proyecta igual |
 
 ---
@@ -188,6 +223,33 @@ export interface FormApi<S extends Schema> {
 `errorText(errors)` sigue exportado y con el mismo comportamiento (solo mapa global). Pasa a
 ser la última capa de `message()`, no la única.
 
+**Cuándo valida un campo** (§4.5, añadido tras la tarea 8):
+
+```ts
+/** Flags que se combinan con `|`. El submit valida SIEMPRE; esto añade los momentos de antes. */
+export const ValidateOn = { Submit: 0, Blur: 1, Input: 2 } as const;
+export type ValidateOn = number;
+
+export interface ControlOptions {
+  readonly messages?: Messages;
+  /** Gana a la del formulario. */
+  readonly validateOn?: ValidateOn;
+}
+
+export interface FormOptions<S extends Schema> {
+  // … summary, messages …
+  /** La de todos sus controles, salvo el que elija la suya. */
+  readonly validateOn?: ValidateOn;
+}
+
+export interface Control<T> {
+  // …
+  /** La política vigente: la propia, si no la del form más cercano que eligió, si no
+   *  `Blur | Input`. No tracked: queda fijada al entrar el control en su formulario. */
+  readonly validateOn: () => ValidateOn;
+}
+```
+
 ### 3.2. `@fudic/forms/dom`
 
 ```ts
@@ -198,6 +260,9 @@ export type ErrorSlot = HTMLElement | null;
 Las ocho `bind*` mantienen su firma, salvo `bindGroup`, que gana un tercer argumento opcional
 para el marcador de su resumen: `bindGroup(el, group, slot?: ErrorSlot)`. `ErrorSlot` se
 ensancha a `null`, y `bindForm` ya aceptaba `null` como resumen. Los dos escriben `$message()`.
+
+`FudicControlElement` (`@fudic/forms/element`) gana `get validity(): ValidityState`, la de sus
+`ElementInternals`, igual que la expone un control nativo (§4.7).
 
 ### 3.3. Gramática — decisión 130 (enmienda la 113)
 
@@ -221,6 +286,7 @@ ensancha a `null`, y `bindForm` ya aceptaba `null` como resumen. Los dos escribe
 - **Sin marcador no se emite nada**: ni span, ni `aria-describedby`. `aria-invalid` se sigue
   escribiendo, porque va en el propio control.
 - `data-fud-err` y `data-fud-sum` **desaparecen** del marcado.
+- Un `<form control>` recibe **`novalidate`**, salvo que el autor ya lo haya escrito (§4.6).
 
 ### 3.4. Diagnósticos
 
@@ -240,13 +306,19 @@ pierde. Ninguno es una norma de estilo.
 
 ### 4.1. Tarde para acusar, pronto para perdonar
 
-En `wiring.ts`, para las siete bindings a la vez:
+En `wiring.ts`, para las siete bindings a la vez, con la política por defecto
+(`Blur | Input`, §4.5):
 
 1. **`blur`** → `touch()` y después `validate()`. El error aparece al **salir** del campo,
    nunca mientras se escribe por primera vez.
-2. **`input` / `change`** → `set(…)` y, **si el error está visible** (`touched() &&
-   errors() !== null`), `validate()`. El mensaje cambia o se va en cuanto el valor lo
-   permite.
+2. **`input` / `change`** → `set(…)` y, **si el campo ya está tocado**, `validate()`. El
+   mensaje se va con la tecla que corrige el valor y **vuelve** con la que lo rompe otra vez,
+   sin esperar al `blur`.
+
+> **Enmendado tras la tarea 8.** La primera redacción decía *«si el error está visible»*: un
+> campo corregido y vuelto a romper se quedaba callado hasta perder el foco (§2.7). Lo que
+> separa «sin rellenar» de «mal» es haber salido del campo una vez, no que haya un error en
+> pantalla.
 3. Un control que todavía no se ha tocado **no se valida al escribir**. Se mantiene la regla
    de §4.2 de SDD-34: un campo vacío no está mal, está sin rellenar.
 4. `validate()` usa el epoch que ya existe. Una validación asíncrona adelantada por una
@@ -292,6 +364,61 @@ así que la validación va **antes** que el `@submit` del autor sin cambiar el o
 → el código de la regla. Una sola función para las dos ramas, porque el servidor también
 escribe el texto.
 
+### 4.5. Cuándo valida un campo: `validateOn`
+
+Cuándo se acusa un error es una decisión de producto, y es del autor. Se escribe en el
+**modelo**, junto a los controles, y no en la plantilla: el servidor y el editor ya lo
+conocen, y la vista no carga con ello.
+
+```ts
+const userForm = form(
+  {
+    name:  control('', [required]),
+    alias: control('', [required, minLength(3)], { validateOn: ValidateOn.Blur }),
+  },
+  { validateOn: ValidateOn.Blur | ValidateOn.Input },
+);
+```
+
+- **Flags, no una lista de nombres**: una política es **un** valor que `|` construye y `&` lee,
+  igual en las opciones de un form que en las de un control.
+- **`Blur`** valida al salir del campo. **`Input`** valida cada escritura **una vez tocado el
+  campo** (§4.1). **`Submit`** es el cero: nada antes del envío.
+- **El submit valida siempre.** Es la puerta que impide que salga un formulario inválido, y
+  ninguna política la apaga.
+- **Resolución:** la opción del control → la del form **más cercano** que eligió una (un form
+  anidado le pasa a sus campos la suya, o la heredada si no tiene) → `Blur | Input`. Viaja con
+  la adopción de la raíz, que ya recorría el árbol (tarea 1).
+- `blur` **siempre** marca `touched`, valide o no: tocado es un hecho de la interacción, no de la
+  política.
+
+### 4.6. El navegador no se adelanta al submit
+
+La validación nativa de restricciones corre **antes** del evento `submit`. Con un
+control-componente cuyo `setValidity` ya conoce su error, el navegador paraba el envío con su
+propia burbuja y `bindForm` no llegaba a correr (§2.7).
+
+- El compilador escribe **`novalidate`** en todo `<form control>`, en servidor y en cliente,
+  igual byte a byte. Si el autor ya lo escribió, no se duplica. Un formulario, un validador: el
+  que el autor configuró.
+- El mensaje de `setValidity` pasa a ser `control.message()`, no el código de la regla. Un
+  `<form>` ajeno a fudic que sí valide de forma nativa muestra en su burbuja lo mismo que la
+  página.
+
+### 4.7. El foco entra en un control-componente
+
+En un submit inválido, `bindForm` recorre los **elementos listados** del `<form>`
+(`form.elements`, en orden de árbol) y enfoca el primero que tenga `aria-invalid="true"` o una
+`validity` inválida.
+
+- Un campo del árbol del form lleva el `aria-invalid` que escribió su efecto.
+- El `<input>` de un control-componente vive en su shadow root, donde nada de fuera llega. Su
+  **host** es un elemento listado del form, y su `validity` es la que mantiene `setValidity`:
+  `FudicControlElement` la expone con un getter, como un control nativo. Enfocar el host lleva
+  el foco al `<input>` por `delegatesFocus`.
+- Un `fieldset` está excluido de la validación de restricciones: su propia `validity` nunca es
+  inválida, contenga lo que contenga.
+
 ---
 
 ## 5. Invariantes
@@ -305,9 +432,11 @@ escribe el texto.
 
 **Los que añade.**
 
-- Un error visible **se recalcula con cada cambio del valor**, y uno no visible no se
-  adelanta.
-- La validación del `<form>` corre **antes** que cualquier `@submit` del autor.
+- Con la política por defecto, un campo ya tocado **se recalcula con cada cambio del valor**, y
+  uno sin tocar no se adelanta.
+- La validación del `<form>` corre **antes** que cualquier `@submit` del autor, y **ninguna**
+  política de `validateOn` la apaga.
+- En un `<form control>` valida **uno**: el de fudic. El navegador no se adelanta con el suyo.
 - El compilador **no inventa elementos** en el marcado del autor. Solo añade atributos
   (`id`, `aria-describedby`, `aria-live`, `aria-invalid`) a elementos que el autor escribió.
 
@@ -371,12 +500,28 @@ servidor y el hidratado coinciden.
     / 100 / 100. `@fudic/compiler` y `@fudic/language-core` no bajan del suelo medido al
     abrir la rama.
 
+**Tras la prueba en el navegador** (§2.7, §4.5–§4.7):
+
+22. **(rojo primero)** Las siete bindings: un campo tocado y válido que una escritura vuelve a
+    romper muestra el error en esa escritura, sin `blur`.
+23. `validateOn`: `Blur` solo valida al salir; `Input` solo al escribir con el campo tocado;
+    `Submit` en ninguno de los dos; el control gana al form, el form anidado al de fuera, y sin
+    nada es `Blur | Input`.
+24. `novalidate` en un `<form control>`, en servidor y en cliente, y no se duplica si el autor lo
+    escribió.
+25. **(rojo primero, e2e)** `/formularios` con *Nombre* bien y *Alias* vacío: el segundo submit
+    llega a `bindForm` (no lo para el navegador), el mensaje es el del control y el foco queda
+    **dentro** del alias.
+26. **(rojo primero, e2e)** *Alias* `abc`, salir, volver y borrar una letra: el mensaje aparece
+    sin perder el foco, y se va con la tecla que lo corrige.
+
 ---
 
 ## 7. Fuera de alcance
 
-- **Validar en cada tecla desde la primera.** Es otra política. Este BUG fija una, y
-  hacerla configurable (`updateOn`) sería un SDD.
+- **Validar en cada tecla desde la primera**, con el campo sin tocar. `validateOn` hace
+  configurable **cuándo** se valida (§4.5), pero `Input` espera siempre a que el campo se haya
+  tocado: antes está sin rellenar, no mal.
 - **Revalidar los campos que dependen de otro al cambiar ese otro.** El submit lo limpia
   (§4.2). Seguir dependencias entre reglas es un grafo que el modelo no tiene.
 - **`Reference Target`** para que `aria-describedby` cruce un shadow root. Sigue en SDD-34

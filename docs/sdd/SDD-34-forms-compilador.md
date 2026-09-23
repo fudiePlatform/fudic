@@ -244,7 +244,21 @@ La validación **no** la dispara el enlace en cada tecla: el enlace escribe el v
 lo llama el autor o el enlace del `<form>` en el submit. Un formulario que valida contra el
 servidor en cada pulsación es una decisión del que lo escribe, no del compilador.
 
+> **Corregido por [BUG-41](./bugs/BUG-41-el-error-que-no-se-va.md) §4.1 y §4.5.** Aquí se leía
+> que *«`$validate` lo llama el autor o el enlace del `<form>` en el submit»*. Con eso, un error
+> que aparecía no se iba nunca: ni escribir ni enviar lo recalculaba. Ahora las bindings validan
+> solas según la política `validateOn` del control o de su formulario (flags `Blur` · `Input`;
+> `Submit` es el cero). Por defecto, `Blur | Input`: al salir del campo, y en cada escritura una
+> vez tocado.
+
 ### 4.3. El hueco del error existe antes que el JavaScript
+
+> **Corregido por [BUG-41](./bugs/BUG-41-el-error-que-no-se-va.md) §3.3 y §4.3 (decisión 130,
+> que enmienda la 113).** El compilador ya **no fabrica** el `<span data-fud-err>` detrás del
+> elemento. El autor marca el suyo con `error=@nodo`, con el elemento y en el sitio que quiera,
+> y el compilador solo le añade `id`, `aria-describedby` y, en el de un `<form>`, `aria-live`.
+> Sin marcador no hay elemento de mensaje. Lo que sigue en pie de esta sección es la invariante
+> de la 113: el runtime solo escribe texto, y servidor y cliente coinciden byte a byte.
 
 Por cada control enlazado, el emit escribe **en el markup** —o sea, también en el HTML que sale de
 SSR— dos cosas:
@@ -266,6 +280,14 @@ texto**. Es la invariante que hace que un formulario tenga la misma accesibilida
 no, y es exactamente lo que el prototipo no podía cumplir fabricando el `<span>` al vuelo.
 
 ### 4.4. El `<form>`: estado, no acción
+
+> **Corregido por [BUG-41](./bugs/BUG-41-el-error-que-no-se-va.md) §4.2, §4.6 y §4.7.** El
+> submit **siempre** valida antes de decidir, escucha en **captura** para ir por delante del
+> `@submit` del autor (que ve `defaultPrevented` si el formulario es inválido) y decide con lo
+> que se resolvió en síncrono: un `required` vacío para ya el primer envío. El resumen va en el
+> marcador `error=@form` que el autor pone **dentro** del `<form>`. El `<form control>` lleva
+> `novalidate`, para que la burbuja nativa no se adelante. Y el foco entra también en un
+> control-componente: se busca en `form.elements` por `aria-invalid` o por `validity`.
 
 `bindForm` hace cuatro cosas, y ninguna es enviar:
 
@@ -601,9 +623,11 @@ las cuatro métricas, como el núcleo. En `@fudic/compiler` y `@fudic/vite` el c
 - **`bind:` (decisiones 83–85).** Sigue pendiente y no se toca: `control` no lo implementa, no lo
   presupone y no lo bloquea. Son dos mecanismos distintos y el hueco abierto de `bind:` —el nombre
   de la prop callback— sigue abierto donde estaba.
-- **Que el hueco del error lo escriba el autor** en un sitio elegido por él. En v1 lo emite el
+- ~~**Que el hueco del error lo escriba el autor** en un sitio elegido por él. En v1 lo emite el
   compilador siempre, justo detrás del elemento, y la maquetación se resuelve con CSS. Extensión
-  natural si aparece un caso que el CSS no cubra.
+  natural si aparece un caso que el CSS no cubra.~~ **Hecho en
+  [BUG-41](./bugs/BUG-41-el-error-que-no-se-va.md)** (decisión 130): el caso apareció —una
+  rejilla de dos columnas, un mensaje encima del campo— y el autor lo marca con `error=@nodo`.
 - **Mensajes de error internacionalizados.** `setMessages` acepta el mapa; de dónde salgan los
   textos es de la aplicación.
 - **Que el LSP exija `formassociated`** en un componente que recibe un `Control<T>` (§4.6), y que

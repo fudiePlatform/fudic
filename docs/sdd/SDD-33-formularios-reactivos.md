@@ -383,6 +383,11 @@ misma frontera que la que separa `$value` de `$positional` en §4.7.
 
 ### 4.5. Validar: por nodo, en cascada, y con orden garantizado
 
+> **Ampliado por [BUG-41](./bugs/BUG-41-el-error-que-no-se-va.md) §3.1 y §4.5.** Un control
+> se valida también **solo**, con `control.validate()` y la raíz de su formulario, y su texto es
+> `control.message()` (sus `messages` → `setMessages` → el código). **Cuándo** lo validan las
+> bindings lo decide `validateOn`, en `ControlOptions` o `FormOptions`.
+
 `$validate()` recorre el schema en orden de declaración y, por cada nodo:
 
 1. sus validadores, **en orden**, y **corta en el primero que falle** — un campo tiene un error,
