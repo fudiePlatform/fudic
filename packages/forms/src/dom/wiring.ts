@@ -96,6 +96,23 @@ export function follow(
 }
 
 /**
+ * Whether a control's error is visible: it has one, and the user has been through the field.
+ * Tracked. The rule every marker follows, whichever binding writes it (BUG-42 §4.9).
+ */
+export function shown(control: Control<unknown>): boolean {
+  return control.touched() && control.errors() !== null;
+}
+
+/**
+ * The text of a marker. Compared before writing, like every other write in this module:
+ * replacing the text of a node a screen reader is reading is an announcement, even when the
+ * text is the same one.
+ */
+export function write(slot: HTMLElement, text: string): void {
+  if (slot.textContent !== text) slot.textContent = text;
+}
+
+/**
  * The accessibility half of every binding (§4.2, step 4): `aria-invalid` on the element and
  * the message in the element the author marked for it.
  *
@@ -117,11 +134,8 @@ export function bindErrors(
   slot: ErrorSlot,
 ): Cleanup {
   return effect(() => {
-    const show = control.touched() && control.errors() !== null;
-    const text = show ? control.message() : '';
-    // Compared before writing, like every other write in this module: replacing the text of a
-    // node a screen reader is reading is an announcement, even when the text is the same one.
-    if (slot !== null && slot.textContent !== text) slot.textContent = text;
+    const show = shown(control);
+    if (slot !== null) write(slot, show ? control.message() : '');
     for (const target of targets) {
       if (show) target.setAttribute('aria-invalid', 'true');
       else target.removeAttribute('aria-invalid');

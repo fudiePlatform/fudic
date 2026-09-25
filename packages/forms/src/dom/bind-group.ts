@@ -14,20 +14,29 @@
 
 import { effect } from '@fudic/core';
 import type { AnyForm } from '../types.js';
+import { bindSummary } from './summary.js';
 import type { Cleanup, ErrorSlot } from './types.js';
+import { undo } from './wiring.js';
 
 /**
- * `slot` is the element the author marked with `error="@group"`, or `null`: what it holds is
- * the group's OWN error — its summary — and not the fields', which have markers of their own
- * (BUG-41 §3.3).
+ * `summary` is the element the author marked with `summary="@group"`, or `null`: what it holds
+ * is the group's OWN errors, as a list — and with `fields` (`links`), the visible errors of its
+ * fields after a submit too (BUG-42 §4.6, §4.7).
  */
-export function bindGroup(el: HTMLElement, group: AnyForm, slot: ErrorSlot = null): Cleanup {
-  return effect(() => {
-    const errors = group.$errors();
-    const invalid = (errors !== null && Object.keys(errors).length > 0) || group.$summary() !== null;
-    if (invalid) el.setAttribute('aria-invalid', 'true');
-    else el.removeAttribute('aria-invalid');
-    const text = group.$message();
-    if (slot !== null && slot.textContent !== text) slot.textContent = text;
-  });
+export function bindGroup(
+  el: HTMLElement,
+  group: AnyForm,
+  summary: ErrorSlot = null,
+  links: Readonly<Record<string, string>> | null = null,
+): Cleanup {
+  const offs: Cleanup[] = [
+    effect(() => {
+      const errors = group.$errors();
+      const invalid = (errors !== null && Object.keys(errors).length > 0) || group.$summary() !== null;
+      if (invalid) el.setAttribute('aria-invalid', 'true');
+      else el.removeAttribute('aria-invalid');
+    }),
+  ];
+  if (summary !== null) offs.push(bindSummary(summary, group, links));
+  return undo(offs);
 }

@@ -20,6 +20,9 @@ export const VERSION = '0.0.1';
 // because the SERVER writes that text into the HTML it renders (SDD-34 §4.3): a form that
 // arrives with its errors already painted is accessible with zero JavaScript.
 export { setMessages, errorText, type Messages } from './messages.js';
+// The markup of a summary, for the same reason: the server writes it and the client repaints it,
+// and one function is what keeps the two byte for byte (BUG-42 §4.6).
+export { issueId, summaryMarkup, summaryOf } from './summary-markup.js';
 
 export { control } from './control.js';
 export { ValidateOn } from './validate-on.js';
