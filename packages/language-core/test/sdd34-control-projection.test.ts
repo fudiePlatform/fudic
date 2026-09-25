@@ -182,6 +182,30 @@ describe('`error` — the element that speaks for a node (BUG-41, criterion 19)'
   });
 });
 
+describe('`summary` — projected like `error` (BUG-42 criterion 24)', () => {
+  it('the path is CODE: right is silent, misspelt is reported on the misspelling', () => {
+    expect(typecheckCorpus(corpus(`<form control="@f"><div summary="@f.seo"></div></form>`)).map(describeDiag)).toEqual([]);
+    const diags = typecheckCorpus(corpus(`<div summary="@f.seos"></div>`));
+    expect(diags).toHaveLength(1);
+    expect(diags[0]!.sourceText).toBe('seos');
+  });
+
+  it('the wrong KIND of node is not a type error: the pairing says it, once (FUD0601)', () => {
+    expect(typecheckCorpus(corpus(`<div summary="@f.title"></div>`)).map(describeDiag)).toEqual([]);
+  });
+
+  it('`fields` beside it is no unknown attribute', () => {
+    expect(typecheckCorpus(corpus(`<div summary="@f" fields></div>`)).map(describeDiag)).toEqual([]);
+  });
+
+  it('an open `summary=` and an open `error=` project a hole and report nothing the author can see', () => {
+    // The hole is one argument short, like the open `control`'s, and that reports to nobody:
+    // the anchor carries completion alone, so nothing maps back to the `.fud`.
+    const diags = typecheckCorpus(corpus(`<div summary=></div><app-badge control="@f.title" error=""></app-badge>`, CONTROL_BADGE));
+    expect(diags.map(describeDiag).filter((d) => !d.endsWith('@<unmapped>'))).toEqual([]);
+  });
+});
+
 describe('`control` on a component tag', () => {
   it('crosses as the `ctrl` prop and is accepted (decision 112)', () => {
     // The attribute is not HTML's here either: it is the one prop `CONTROL_PROP` names, and a

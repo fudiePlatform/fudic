@@ -31,8 +31,9 @@ import type {
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import {
   CLASS_PREFIX,
-  CONTROL_NAME,
+  ERROR_NAME,
   PROPERTY_PREFIX,
+  SUMMARY_NAME,
   regionAt,
   type ElementNode,
   type Region,
@@ -56,16 +57,18 @@ import {
   valueBegun,
   propertyContextAt,
   slotValueContextAt,
+  type NodeAttr,
   type PartialName,
 } from './position.js';
 import {
-  controlOfferAt,
   controlWants,
+  formAttributeOffers,
   nodeMembersBefore,
   nodesInScope,
   reaches,
-  type ControlOffer,
+  summaryNodesOf,
   type ControlWants,
+  type FormAttributeOffer,
   type NodeKind,
 } from './forms.js';
 import { typeScriptService } from './ts-service.js';
@@ -400,7 +403,8 @@ function allowedItems(
     const narrowed = controlValueItems({
       context,
       cached: source.cached,
-      element: controlOn,
+      element: controlOn.element,
+      attr: controlOn.attr,
       visible,
       projected: document.offsetAt(position),
       offset,
@@ -578,7 +582,7 @@ function allowedItems(
           // attribute is the `ctrl` prop under another name (decision 112), and the author has
           // no way to guess that from the contract — `ctrl` is what the child declared, and
           // `control` is what the parent writes.
-          ...controlGapItems(controlOfferAt(source.cached, gap.element, true)),
+          ...formGapItems(formAttributeOffers(source.cached, gap.element, true)),
           ...classItems(source.cached),
           SLOT_ITEM,
         ],
@@ -845,38 +849,36 @@ function gapItem(item: CompletionItem, range: ReturnType<typeof anchor>): Comple
 }
 
 /**
- * `control` at a gap on a COMPONENT tag — the twin of `controlItems` in `plugin.ts`.
+ * The form attributes at a gap on a COMPONENT tag — the twin of `controlItems` in `plugin.ts`.
  *
- * Two builders for one item because the two lists are anchored differently: this one travels
+ * Two builders for one list because the two lists are anchored differently: this one travels
  * unanchored and `anchored` stamps it, the native one carries its own `textEdit` because there
  * is nothing else in that reply to inherit a range from. What they must not differ in is what
- * they OFFER, and they do not: both ask `controlOfferAt`, which is the one place the three
- * refusals live.
+ * they OFFER, and they do not: both ask `formAttributeOffers`, which is the one place the
+ * refusals live (BUG-42 §4.1).
  */
-function controlGapItems(offer: ControlOffer | undefined): CompletionItem[] {
-  if (offer === undefined) return [];
-
-  return [
-    {
-      label: CONTROL_NAME,
-      kind: CompletionItemKind.Property,
-      filterText: CONTROL_NAME,
-      // With the props rather than after them: on a control-component it IS the prop the tag
-      // exists for, only spelled the way the parent writes it.
-      sortText: `0_${CONTROL_NAME}`,
-      detail: `${offer.label} of the form`,
-      insertText: `${CONTROL_NAME}=${EXPRESSION_PREFIX}`,
-      command: TRIGGER_SUGGEST,
-    },
-  ];
+function formGapItems(offers: readonly FormAttributeOffer[]): CompletionItem[] {
+  return offers.map((offer) => ({
+    label: offer.name,
+    kind: CompletionItemKind.Property,
+    filterText: offer.name,
+    // With the props rather than after them: on a control-component `control` IS the prop the
+    // tag exists for, only spelled the way the parent writes it.
+    sortText: `0_${offer.name}`,
+    detail: offer.detail,
+    insertText: offer.insertText,
+    ...(offer.suggest ? { command: TRIGGER_SUGGEST } : {}),
+  }));
 }
 
 /** Everything the `control` value branch needs, from the two coordinate systems it lives in. */
 interface ControlValue {
   readonly context: LanguageServiceContext;
   readonly cached: CachedDocument;
-  /** The element the `control` sits on: what decides which of the three kinds fits. */
+  /** The element the attribute sits on: what decides which of the three kinds fits. */
   readonly element: ElementNode;
+  /** Which of `control`, `error` and `summary` the value belongs to. */
+  readonly attr: NodeAttr;
   readonly visible: readonly CompletionItem[];
   /** The caret in the PROJECTION, which is the file the checker reads. */
   readonly projected: number;
@@ -909,9 +911,15 @@ interface ControlValue {
  * answer and no list is a wrong one.
  */
 function controlValueItems(input: ControlValue): Narrowed | undefined {
-  const { context, cached, element, visible, projected, offset, region, document, position } = input;
+  const { context, cached, element, attr, visible, projected, offset, region, document, position } = input;
 
-  const wants = controlWants(element, element.name.includes('-'));
+  // A summary names a node already bound around it, and nothing else (BUG-42 §4.1).
+  if (attr === SUMMARY_NAME) return summaryValueItems(input);
+
+  // An `error` marker names a CONTROL wherever it sits — the rule of a `control` on a field
+  // (`reaches` in a list, `accepts` in a finished binding) — and never a member of the form's
+  // own `$` API, which has no node's shape. A `control` asks the element (decision 109).
+  const wants = attr === ERROR_NAME ? 'control' : controlWants(element, element.name.includes('-'));
   if (wants === undefined) return undefined;
 
   const service = typeScriptService(context);
@@ -954,6 +962,43 @@ function controlValueItems(input: ControlValue): Narrowed | undefined {
 
   return {
     items: openingNodes(inScope, wants, plainAnchor(document, position, opening)),
+    at: offset,
+  };
+}
+
+/**
+ * The value of a `summary=`: the nodes the `<form>` and the groups around the marker bind, the
+ * nearest first (BUG-42 §4.1). Read off the markup and not off the checker — a summary speaks
+ * for a node that is already bound, so the list is those bindings and not a scope. After a `.`
+ * nothing: a member is never the answer here.
+ */
+function summaryValueItems(input: ControlValue): Narrowed | undefined {
+  const { cached, element, offset, region, document, position } = input;
+  if (memberContextAt(cached.source, offset, region) !== undefined) return { items: [], at: offset };
+
+  const nodes = summaryNodesOf(cached.document, cached.source, element);
+  const item = (node: string, i: number, label: string): CompletionItem => ({
+    label,
+    filterText: node,
+    kind: CompletionItemKind.Variable,
+    detail: 'form node',
+    sortText: `0_${String(i).padStart(3, '0')}`,
+  });
+
+  const value = expressionValueContextAt(cached.source, offset, region);
+  if (value !== undefined) {
+    const range = anchor(document, position, value);
+    return { items: anchored(nodes.map((node, i) => item(node, i, node)), range), at: offset };
+  }
+
+  const opening = controlValueOpeningAt(cached.source, offset, region);
+  if (opening === undefined) return undefined;
+  const range = plainAnchor(document, position, opening);
+  return {
+    items: nodes.map((node, i) => ({
+      ...item(node, i, `${EXPRESSION_PREFIX}${node}`),
+      textEdit: { range, newText: `${EXPRESSION_PREFIX}${node}` },
+    })),
     at: offset,
   };
 }

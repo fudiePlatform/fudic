@@ -316,9 +316,14 @@ declare function $control(node: $ControlNode): void;
 declare function $controlGroup(node: $FormNode): void;
 
 /**
- * \`error="@f.title"\` — the element that speaks for a node (decision 130). Any node: a control's
- * error or a form's or a group's summary. What is checked is the PATH, exactly as for
- * \`control\`: a misspelt field is a member access that does not resolve.
+ * \`error="@f.title"\` and \`summary="@f"\` — the element that speaks for a node (decisions 130 and
+ * 131): a control's message, or a form's or a group's summary. What is checked is the PATH,
+ * exactly as for \`control\`: a misspelt field is a member access that does not resolve.
+ *
+ * The type stays «a node» for both, on purpose. A root form and a group have the same shape, so
+ * no type can say «only the form of this \`<form>\`»: which KIND of node each marker takes is the
+ * pairing's to decide (\`FUD0600\`, \`FUD0601\`), once — checked here too, the editor would say it
+ * twice.
  */
 declare function $errorOf(node: $ControlNode | $FormNode): void;
 

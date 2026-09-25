@@ -19,6 +19,8 @@ import {
   CONTROL_NAME,
   CONTROL_PROP,
   controlTarget,
+  ERROR_NAME,
+  SUMMARY_NAME,
   crossing,
   handlerShape,
   unwrapParens,
@@ -83,6 +85,18 @@ function openControlValue(
 ): Span | undefined {
   if (binding.type === 'control') return undefined;
   if (typeof attr.name !== 'string' || attr.name.toLowerCase() !== CONTROL_NAME) return undefined;
+  return attributeValueSpan(ctx.source, attr);
+}
+
+/**
+ * An `error` or a `summary` whose value is OPEN — the twin of `openControlValue` for the two
+ * markers (BUG-42 §4.1), and degraded the same way: an empty value is a plain attribute by the
+ * time the projection sees it, so the verbatim name is what is read.
+ */
+function openMarkerValue(ctx: TemplateContext, attr: Attribute, binding: Binding): Span | undefined {
+  if (binding.type === 'error' || typeof attr.name !== 'string') return undefined;
+  const name = attr.name.toLowerCase();
+  if (name !== ERROR_NAME && name !== SUMMARY_NAME) return undefined;
   return attributeValueSpan(ctx.source, attr);
 }
 
@@ -263,7 +277,10 @@ function emitProps(ctx: TemplateContext, el: ElementNode, bindings: readonly Ent
     // is not HTML's vocabulary: it would report TS2353 on a name that is not wrong, only
     // unfinished. `slot` is nobody's vocabulary here — it is the parent's union.
     const opening = eventNameOf(entry.attr, entry.binding);
-    if (entry.binding.type === 'attr' && !isSlot(entry) && opening === undefined) {
+    // A marker half written — `error=`, `summary=` — is the compiler's word too, and its hole is
+    // written by the per-attribute pass (BUG-42 §4.1): HTML's literal would report its name.
+    const marker = openMarkerValue(ctx, entry.attr, entry.binding) !== undefined;
+    if (entry.binding.type === 'attr' && !isSlot(entry) && opening === undefined && !marker) {
       globals.push(entry);
     }
   }
@@ -576,6 +593,15 @@ function emitBehaviour(
   // A component tag is not here for the reason its finished twin is not: over there the
   // binding is the `ctrl` prop, and `emitProps` writes the hole inside the props literal so
   // the question is asked against the contract the CHILD declared.
+  // A marker still being written — `error=`, `summary=` — is the same position (BUG-42 §4.1),
+  // on ANY tag: a marker is never a prop, so a component's host takes it like a `<div>`.
+  const openMarker = openMarkerValue(ctx, attr, binding);
+  if (openMarker !== undefined) {
+    ctx.w.scaffold('$errorOf(', attr.span);
+    ctx.w.projected(' ', span(openMarker.end, openMarker.end), COMPLETION_ONLY_CAPS);
+    ctx.w.scaffold(');\n');
+    return;
+  }
   const openControl = openControlValue(ctx, attr, binding);
   if (openControl !== undefined && !isComponent(el.name)) {
     ctx.w.scaffold(controlCall(el), attr.span);
@@ -657,8 +683,9 @@ function emitBehaviour(
     case 'error':
       // The marker names a node the same way `control` does (decision 130), so it is checked
       // the same way: the path is code the checker reads, and renaming a field in the form's
-      // `.ts` renames it here too. One call for every kind of node — which kind the marker
-      // speaks for is the pairing's business, not the type's.
+      // `.ts` renames it here too. `summary` is the same binding under its own name (decision
+      // 131), projected alike. One call for every kind of node — which kind each marker speaks
+      // for is the pairing's business, not the type's.
       ctx.w.scaffold('$errorOf(', attr.span);
       copyRazor(ctx, binding.value);
       ctx.w.scaffold(');\n');

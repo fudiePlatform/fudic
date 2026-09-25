@@ -836,11 +836,16 @@ describe('controlValueAt', () => {
     // `control=@f.` — the caret is one past the atom and the dot is not part of its span, so
     // the region is the TAG and the attribute is gone. The text is all that is left, and it is
     // enough: `control=` followed by an open expression cannot be anything else.
-    expect(after('<input control=@f. type="text">', '@f.')?.name).toBe('input');
+    expect(after('<input control=@f. type="text">', '@f.')?.element.name).toBe('input');
+    // The two markers are read the same way, and say which they are (BUG-42 §4.1).
+    expect(after('<small error=@f. class="e"></small>', '@f.')?.attr).toBe('error');
+    expect(after('<div summary=@f. class="s"></div>', '@f.')?.attr).toBe('summary');
+    // onerror is not the marker.
+    expect(after('<img onerror=@f. alt="x">', '@f.')).toBeUndefined();
   });
 
   it('reads the `.ctrl` spelling on a component tag, and only there', () => {
-    expect(after('<app-input .ctrl=@f. id="a"></app-input>', '@f.')?.name).toBe('app-input');
+    expect(after('<app-input .ctrl=@f. id="a"></app-input>', '@f.')).toMatchObject({ attr: 'control', element: { name: 'app-input' } });
     // On a native tag `.ctrl` is an ordinary property whose value is any expression at all.
     expect(after('<input .ctrl=@f. type="text">', '@f.')).toBeUndefined();
   });
@@ -893,6 +898,16 @@ describe('controlNameAt', () => {
 
     expect(hit?.element.name).toBe('input');
     expect(source.slice(hit!.span.start, hit!.span.end)).toBe('control');
+  });
+
+  it('claims the two markers and a summary’s `fields`, and not a name that is an expression (BUG-42)', () => {
+    const source = '<div summary="@f" fields><small error="@f.a"></small><i bus:(n)=@h></i></div>';
+    expect(at(source, source.indexOf('summary') + 2)?.attr).toBe('summary');
+    expect(at(source, source.indexOf('fields') + 2)?.attr).toBe('fields');
+    expect(at(source, source.indexOf('error') + 2)?.attr).toBe('error');
+    expect(at(source, source.indexOf('bus:') + 1)).toBeUndefined();
+    const loose = '<div fields></div>';
+    expect(at(loose, loose.indexOf('fields') + 2)).toBeUndefined();
   });
 
   it('claims neither the value nor another attribute', () => {

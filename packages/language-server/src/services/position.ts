@@ -18,9 +18,13 @@ import type { Attribute, ElementNode, Region, Span, StructuredDocument } from '@
 import {
   CONTROL_NAME,
   CONTROL_PROP,
+  ERROR_NAME,
   EVENT_PREFIX,
+  FIELDS_NAME,
   PROPERTY_PREFIX,
+  SUMMARY_NAME,
   attributeValueSpan,
+  isSummaryFields,
   span,
 } from '@fudic/compiler';
 
@@ -277,7 +281,7 @@ export function controlValueAt(
   source: string,
   offset: number,
   region: Region,
-): ElementNode | undefined {
+): NodeValue | undefined {
   const element = region.element;
   if (element === undefined) return undefined;
 
@@ -285,7 +289,8 @@ export function controlValueAt(
   // sit in a `title` as legitimately as anywhere else, and reading it there would narrow a
   // position that is a string.
   if (region.kind === 'attr-value' || region.kind === 'expression') {
-    return namesControl(region.attribute?.name, element) ? element : undefined;
+    const attr = namesNode(region.attribute?.name, element);
+    return attr === undefined ? undefined : { element, attr };
   }
 
   if (region.kind !== 'tag') return undefined;
@@ -293,7 +298,22 @@ export function controlValueAt(
   if (opened === null) return undefined;
   // `.ctrl` is a `control` on a component tag and an ordinary property anywhere else, where the
   // value is any expression at all and narrowing it would be inventing a rule.
-  return opened[0].startsWith(PROPERTY_PREFIX) && !isComponentTag(element) ? undefined : element;
+  const named = opened[1]?.toLowerCase() as NodeAttr | undefined;
+  if (named !== undefined) return { element, attr: named };
+  return isComponentTag(element) ? { element, attr: CONTROL_NAME } : undefined;
+}
+
+/**
+ * The three attributes whose value names a form NODE (decisions 108, 130, 131): `control` binds
+ * it, `error` marks where a control's message goes, `summary` where a form's or a group's
+ * summary goes. One position, three filters (BUG-42 §4.1).
+ */
+export type NodeAttr = typeof CONTROL_NAME | typeof ERROR_NAME | typeof SUMMARY_NAME;
+
+/** The value of one of the three: which element it is on, and which attribute it is. */
+export interface NodeValue {
+  readonly element: ElementNode;
+  readonly attr: NodeAttr;
 }
 
 /**
@@ -323,12 +343,15 @@ export function controlValueOpeningAt(
     : undefined;
 }
 
-/** A `control`, or the `.ctrl` a component spells it with — never a `.ctrl` on a native tag. */
-function namesControl(name: Attribute['name'] | undefined, element: ElementNode): boolean {
-  if (typeof name !== 'string') return false;
+/**
+ * Which of the three an attribute name is: `control`, `error`, `summary`, or the `.ctrl` a
+ * component spells `control` with — never a `.ctrl` on a native tag.
+ */
+function namesNode(name: Attribute['name'] | undefined, element: ElementNode): NodeAttr | undefined {
+  if (typeof name !== 'string') return undefined;
   const written = name.toLowerCase();
-  if (written === CONTROL_NAME) return true;
-  return isComponentTag(element) && written === `${PROPERTY_PREFIX}${CONTROL_PROP}`;
+  if (written === CONTROL_NAME || written === ERROR_NAME || written === SUMMARY_NAME) return written;
+  return isComponentTag(element) && written === `${PROPERTY_PREFIX}${CONTROL_PROP}` ? CONTROL_NAME : undefined;
 }
 
 /** A dash in the tag name, which is what makes an element a component. */
@@ -343,14 +366,19 @@ function isComponentTag(element: ElementNode): boolean {
  * a `.control` prop of somebody's component is not this attribute.
  */
 const CONTROL_OPENED =
-  /(?:(?<![-.@\w])control|\.ctrl)[ \t]*=[ \t]*["']?(?:@[\w$]*(?:\??\.[\w$]*)*)?$/iu;
+  /(?:(?<![-.@\w])(control|error|summary)|\.ctrl)[ \t]*=[ \t]*["']?(?:@[\w$]*(?:\??\.[\w$]*)*)?$/iu;
 
 /** The same, narrowed to the value that is still EMPTY — not even the `@` is there. */
-const CONTROL_EMPTY = /(?:(?<![-.@\w])control|\.ctrl)[ \t]*=[ \t]*["']?$/iu;
+const CONTROL_EMPTY = /(?:(?<![-.@\w])(?:control|error|summary)|\.ctrl)[ \t]*=[ \t]*["']?$/iu;
 
-/** The `control` attribute whose NAME the cursor is on, and the element carrying it. */
+/** The attribute names a hover explains: the three that name a node, and a summary's `fields`. */
+export type FormAttr = NodeAttr | typeof FIELDS_NAME;
+
+/** The form attribute whose NAME the cursor is on, and the element carrying it. */
 export interface ControlNameHit {
   readonly element: ElementNode;
+  /** Which of them. */
+  readonly attr: FormAttr;
   /** The name alone — what the hover underlines. */
   readonly span: Span;
 }
@@ -371,12 +399,15 @@ export function controlNameAt(
   const element = region.element;
   const attribute = region.attribute;
   if (region.kind !== 'tag' || element === undefined || attribute === undefined) return undefined;
-  if (typeof attribute.name !== 'string' || attribute.name.toLowerCase() !== CONTROL_NAME) {
-    return undefined;
-  }
+  if (typeof attribute.name !== 'string') return undefined;
+  const written = attribute.name.toLowerCase();
+  // `fields` is the compiler's only beside a `summary=`; anywhere else it is the author's word.
+  const attr: FormAttr | undefined =
+    written === FIELDS_NAME ? (isSummaryFields(element, attribute) ? FIELDS_NAME : undefined) : namesNode(written, element);
+  if (attr === undefined || attr !== written) return undefined;
 
   const at = span(attribute.span.start, attribute.span.start + attribute.name.length);
-  return offset >= at.start && offset <= at.end ? { element, span: at } : undefined;
+  return offset >= at.start && offset <= at.end ? { element, attr, span: at } : undefined;
 }
 
 /** An empty position inside a start tag, whatever the tag is. */

@@ -32,8 +32,12 @@
 import {
   attributeValueSpan,
   classifyAttribute,
+  CONTROL_NAME,
   CONTROL_PROP,
   controlTarget,
+  ERROR_NAME,
+  FIELDS_NAME,
+  SUMMARY_NAME,
   documentRoots,
   isFormAssociated,
   walk,
@@ -336,6 +340,87 @@ export interface ControlOffer {
   readonly wants: ControlWants;
   /** `form`, `control`, `group` — what the element takes, in the words of the model. */
   readonly label: string;
+}
+
+/** One form attribute a gap offers: its name, what it says, and what accepting it writes. */
+export interface FormAttributeOffer {
+  readonly name: typeof CONTROL_NAME | typeof ERROR_NAME | typeof SUMMARY_NAME | typeof FIELDS_NAME;
+  readonly detail: string;
+  /** `control=@`, `error=@`, `summary=@` — or `fields`, which takes no value. */
+  readonly insertText: string;
+  /** Whether accepting it asks for the next list: the node, for the three that name one. */
+  readonly suggest: boolean;
+}
+
+/**
+ * Every form attribute that belongs in the attribute list of this element (BUG-42 §4.1): the
+ * ONE function the two gap voices ask — the native tag's, from the additional plugin, and the
+ * component's, from inside TypeScript's reply — so the same element answers the same way
+ * whoever is asking.
+ *
+ * - `control`, by `controlOfferAt`'s rules.
+ * - `error` and `summary` on the same sites as `control` (decision 115), unless the element
+ *   already carries that one. A marker is optional by design (decision 130), and outside a form
+ *   there is nothing to mark.
+ * - `fields`, only on an element that already carries a `summary=` and not `fields` yet.
+ *
+ * A layout offers none: it has no `@code` (`FUD0437`), so there is no node to name.
+ */
+export function formAttributeOffers(
+  cached: CachedDocument,
+  el: ElementNode,
+  isComponent: boolean,
+): readonly FormAttributeOffer[] {
+  if (cached.document.type === 'layout-document') return [];
+  const offers: FormAttributeOffer[] = [];
+
+  const control = controlOfferAt(cached, el, isComponent);
+  if (control !== undefined) {
+    offers.push({ name: CONTROL_NAME, detail: `${control.label} of the form`, insertText: `${CONTROL_NAME}=@`, suggest: true });
+  }
+  if (controlSites(cached.document, cached.source).has(el)) {
+    if (!carries(el, ERROR_NAME)) {
+      offers.push({ name: ERROR_NAME, detail: 'where a control says its error', insertText: `${ERROR_NAME}=@`, suggest: true });
+    }
+    if (!carries(el, SUMMARY_NAME)) {
+      offers.push({ name: SUMMARY_NAME, detail: 'the summary of a form or a group', insertText: `${SUMMARY_NAME}=@`, suggest: true });
+    }
+  }
+  if (carries(el, SUMMARY_NAME) && !carries(el, FIELDS_NAME)) {
+    offers.push({ name: FIELDS_NAME, detail: 'the summary lists the errors of the fields too', insertText: FIELDS_NAME, suggest: false });
+  }
+  return offers;
+}
+
+/** Whether the element already carries an attribute of that name, however it was written. */
+function carries(el: ElementNode, name: string): boolean {
+  return el.attributes.some((a) => typeof a.name === 'string' && a.name.toLowerCase() === name);
+}
+
+/**
+ * The nodes a `summary=` on this element may name, nearest first (BUG-42 §4.1): what the
+ * `<form>` and the group elements AROUND it — itself included — bind with `control=`. A summary
+ * speaks for a node that is already bound, so the list is the bindings above it, verbatim, and
+ * never a member of one.
+ */
+export function summaryNodesOf(document: StructuredDocument, source: string, el: ElementNode): readonly string[] {
+  const parents = new WeakMap<ElementNode, ElementNode>();
+  walk(documentRoots(document), {
+    element(child, parent) {
+      if (parent !== undefined) parents.set(child, parent);
+    },
+  });
+
+  const found: string[] = [];
+  for (let at: ElementNode | undefined = el; at !== undefined; at = parents.get(at)) {
+    const target = controlTarget(at, at.name.includes('-')).kind;
+    if (target !== 'form' && target !== 'group') continue;
+    for (const attr of at.attributes) {
+      const binding = classifyAttribute(attr, source).value;
+      if (binding.type === 'control') found.push(source.slice(binding.value.expr.start, binding.value.expr.end).trim());
+    }
+  }
+  return found;
 }
 
 /**
