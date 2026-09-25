@@ -605,6 +605,13 @@ export function group<S extends Schema>(
   options?: GroupOptions,
 ): GroupNode<S>;
 
+/**
+ * Marca una regla como ASÍNCRONA (§4.3). `valid()` nunca llama a una regla marcada: lee su
+ * veredicto de la época actual o la da por pendiente. Decidido por Pedro al implementar: una
+ * regla solo se sabe asíncrona al llamarla, y `valid()` no puede lanzar red (§7).
+ */
+export const asyncValidator: <T, R = AnyForm>(fn: Validator<T, R>) => Validator<T, R>;
+
 /** Una entrada del resumen: de qué nodo es (`''` el propio form o grupo) y qué dice. */
 export interface Issue {
   readonly path: string;
@@ -780,7 +787,10 @@ se explica en un elemento con `summary=`, y el `<template>` raíz ofrece y expli
 **Qué cuenta.** Un control **cuenta** para la validez si su política es `Validity.Rules`, o si es
 `Validity.Interacted` y el usuario ha interactuado con él: `touched() || dirty()`. Las dos
 condiciones hacen falta. `dirty` sola falla con quien escribe `abc` y lo borra: el valor vuelve al
-inicial, deja de estar sucio y dejaría de contar justo cuando está mal.
+inicial, deja de estar sucio y dejaría de contar justo cuando está mal. Por eso, al implementar,
+«lo ha cambiado» es una marca **que no vuelve atrás** (el valor se movió desde la última carga o
+`reset`), y no `dirty`: sin salir del campo, `touched` sigue en `false` y el criterio 2 no se
+cumpliría.
 
 **`control.valid()`**
 
@@ -792,6 +802,10 @@ inicial, deja de estar sucio y dejaría de contar justo cuando está mal.
      asíncrona, un 422 recibido con `$setErrors` o una validación del autor;
   3. una regla **asíncrona de cliente** todavía no tiene veredicto para el valor actual
      (*pendiente*).
+- **Qué regla es asíncrona lo dice el autor**, con `asyncValidator` (§3.1). `valid()` no llama a
+  una regla marcada. Una regla sin marcar se evalúa en vivo, y si contesta con una promesa cuenta
+  como *pendiente* y no se espera: el botón no se habilita nunca, que es un fallo visible que
+  lleva a marcarla.
 - Las reglas `serverValidator` no corren en el cliente, como hoy. Su veredicto llega en el 422 y
   cuenta por la condición 2 hasta que el valor cambie.
 
@@ -1164,7 +1178,7 @@ ejemplo.
   quiere proponer como estándar (§3.4).
 - **La bombilla para marcadores** (§4.1).
 - **Lanzar reglas asíncronas para calcular la validez.** `valid()` no dispara red: una regla
-  asíncrona se lanza en los momentos de `validateOn` y en el submit, como hoy. La documentación
+  asíncrona (marcada con `asyncValidator`) se lanza en los momentos de `validateOn` y en el submit, como hoy. La documentación
   tiene que decir la consecuencia: con `ValidateOn.Submit`, una regla asíncrona de cliente y el
   botón deshabilitado por `$valid()`, el control queda *pendiente* para siempre y el botón no se
   habilita. El ejemplo no tiene reglas asíncronas de cliente (`serverValidator` no corre en él).

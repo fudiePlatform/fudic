@@ -44,12 +44,20 @@ export function setMessages(m: Messages): void {
  * validator published, and the order of a validator list is the author's own.
  */
 export function messageOf(errors: Errors, own: Messages = {}): string {
-  for (const rule of Object.keys(errors)) {
+  // An empty map is not an error: a validator that found nothing returns `null`.
+  return messagesOf(errors, own)[0] ?? '';
+}
+
+/**
+ * The sentence for EVERY rule of an error map, in its key order, with the same chain as
+ * `messageOf` (BUG-42 §4.6). What a summary says: a form or a group lists all that is wrong with
+ * it, where a field says one thing.
+ */
+export function messagesOf(errors: Errors, own: Messages = {}): string[] {
+  return Object.keys(errors).map((rule) => {
     const message = own[rule] ?? messages[rule];
     return message === undefined ? rule : message(errors[rule]);
-  }
-  // An empty map is not an error: a validator that found nothing returns `null`.
-  return '';
+  });
 }
 
 /** The sentence for an error map, with the global texts only. */

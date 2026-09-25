@@ -3,7 +3,7 @@
 > **BUG:** [BUG-42 — Los formularios de SDD-34 no se pueden terminar desde la vista](./BUG-42-error-resumen-y-validez-en-la-vista.md)
 > **Paquetes:** `@fudic/forms` · `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/example-basic`
 > **Rama:** `bug-42-formularios-desde-la-vista`, creada desde `bug-41-validacion-y-hueco-de-error` y trabajada en el mismo worktree (`.claude/worktrees/bug-41-validacion-y-hueco-de-error`), por indicación de Pedro: el BUG sale de la revisión de BUG-41, y dos ramas permiten seguir cada uno por separado
-> **Progreso:** 0 / 27
+> **Progreso:** 5 / 27
 
 **Todo se cierra aquí.** Por decisión de Pedro no hay otro BUG ni otro SDD: el resumen con varios
 mensajes, el resumen con los errores de campo y la accesibilidad de los controles envueltos en
@@ -43,14 +43,14 @@ líneas que los hacen pasar.
 
 ## Antes de empezar
 
-- [ ] **Medir el suelo de cobertura** de `forms`, `compiler`, `language-core` y
+- [x] **Medir el suelo de cobertura** de `forms`, `compiler`, `language-core` y
   `language-server`, y anotarlo en *Notas*. Hay que hacerlo antes de la tarea 1: el criterio 42
   compara contra este número y no contra otro.
-- [ ] **Buscar todo `error=@<form o grupo>`** en fixtures, tests, goldens y ejemplos. Pasará a ser
+- [x] **Buscar todo `error=@<form o grupo>`** en fixtures, tests, goldens y ejemplos. Pasará a ser
   `FUD0600`, y cada uno se migra a `summary=` en la tarea 8, no cuando el build se rompa.
-- [ ] **Pasar Lighthouse y axe sobre `/formularios` tal como está** y guardar el resultado en
+- [x] **Pasar Lighthouse y axe sobre `/formularios` tal como está** y guardar el resultado en
   *Notas*. Es el «antes» de los criterios 34, 35, 39 y 41.
-- [ ] **Comprobar el soporte real**, en el Chromium de Playwright y en las versiones actuales de
+- [x] **Comprobar el soporte real**, en el Chromium de Playwright y en las versiones actuales de
   Chrome, Safari y Firefox, de `shadowrootreferencetarget` / `ShadowRoot.prototype.referenceTarget`
   y de *element reflection* (`ariaLabelledByElements`, `ariaDescribedByElements`). Anotarlo en
   *Notas*: decide qué camino prueba la pasada normal del e2e (criterio 37) y si hace falta el
@@ -62,10 +62,10 @@ líneas que los hacen pasar.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **Validez del control.** `Validity` (`Rules` · `Interacted`) en su propio módulo, exportado. `validity` en `ControlOptions` y `FormOptions`, resuelto control → form más cercano → `Interacted` y transmitido con `adopt`, como `validateOn`. `control.valid()` es un `computed`: no cuenta si `Interacted` y `!(touched() \|\| dirty())`; si cuenta, es inválido cuando falla una regla **síncrona de cliente** evaluada en vivo sobre el valor actual (sin `untrack`, para que una regla cruzada suscriba el campo que lee), cuando hay errores publicados **de la época actual**, o cuando una regla **asíncrona de cliente** no tiene veredicto para esta época. `errors` tiene que guardar la época en que se publicó: un 422 cuenta hasta que el valor cambia. Nada de esto publica, toca ni cambia `message()`. BUG §3.1, §4.3 | `forms` | `src/validity.ts` (nuevo) · `src/control.ts` · `src/internals.ts` · `src/run-rule.ts` · `src/types.ts` · `src/index.ts` |
-| [ ] | 2 | 1 | **Validez del form y del grupo.** `$valid()`, también `computed`: todos los hijos válidos **y** todas sus propias reglas (`summary` en un form, las del grupo en un grupo) cumplidas. Las propias cuentan con `Rules`, o con `Interacted` en cuanto algún descendiente cuenta. Asíncronas con la misma regla de *pendiente*. BUG §4.3 | `forms` | `src/form.ts` · `src/internals.ts` · `src/types.ts` |
-| [ ] | 3 | — | **`group()` con opciones.** `GroupOptions` (`messages` · `validateOn` · `validity`) como tercer argumento. `messages` redacta el resumen del grupo por delante de `setMessages`; las dos políticas se heredan como en un form anidado. BUG §3.1, §4.4 | `forms` | `src/group.ts` · `src/form.ts` · `src/types.ts` · `src/index.ts` |
-| [ ] | 4 | 3 | **El resumen dice todo.** Las reglas del resumen corren **todas** (una función `allFailures` junto a `firstFailure`, que se queda para los controles). `$summary()` es la unión en orden de regla (gana la primera clave repetida). `$messages()` redacta cada clave con la cadena `messages` → `setMessages` → código, y `$message()` es su primero. `$submitted()`, un signal que solo cambia `bindForm` (por un hook interno, no por API pública de escritura) y que limpian `$reset` y `$set`. `$issues()`: los propios con ruta `''` y, con `$submitted()`, los errores visibles (`touched && errors`) de cada nodo de debajo, en orden de declaración, con los propios de un grupo delante de sus campos. `Issue` exportado. BUG §3.1, §4.6, §4.7 | `forms` | `src/run-rule.ts` · `src/messages.ts` · `src/form.ts` · `src/internals.ts` · `src/types.ts` · `src/index.ts` |
+| [x] | 1 | — | **Validez del control.** `Validity` (`Rules` · `Interacted`) en su propio módulo, exportado. `validity` en `ControlOptions` y `FormOptions`, resuelto control → form más cercano → `Interacted` y transmitido con `adopt`, como `validateOn`. `control.valid()` es un `computed`: no cuenta si `Interacted` y `!(touched() \|\| dirty())`; si cuenta, es inválido cuando falla una regla **síncrona de cliente** evaluada en vivo sobre el valor actual (sin `untrack`, para que una regla cruzada suscriba el campo que lee), cuando hay errores publicados **de la época actual**, o cuando una regla **asíncrona de cliente** no tiene veredicto para esta época. `errors` tiene que guardar la época en que se publicó: un 422 cuenta hasta que el valor cambia. Nada de esto publica, toca ni cambia `message()`. BUG §3.1, §4.3 | `forms` | `src/validity.ts` (nuevo) · `src/control.ts` · `src/internals.ts` · `src/run-rule.ts` · `src/types.ts` · `src/index.ts` |
+| [x] | 2 | 1 | **Validez del form y del grupo.** `$valid()`, también `computed`: todos los hijos válidos **y** todas sus propias reglas (`summary` en un form, las del grupo en un grupo) cumplidas. Las propias cuentan con `Rules`, o con `Interacted` en cuanto algún descendiente cuenta. Asíncronas con la misma regla de *pendiente*. BUG §4.3 | `forms` | `src/form.ts` · `src/internals.ts` · `src/types.ts` |
+| [x] | 3 | — | **`group()` con opciones.** `GroupOptions` (`messages` · `validateOn` · `validity`) como tercer argumento. `messages` redacta el resumen del grupo por delante de `setMessages`; las dos políticas se heredan como en un form anidado. BUG §3.1, §4.4 | `forms` | `src/group.ts` · `src/form.ts` · `src/types.ts` · `src/index.ts` |
+| [x] | 4 | 3 | **El resumen dice todo.** Las reglas del resumen corren **todas** (una función `allFailures` junto a `firstFailure`, que se queda para los controles). `$summary()` es la unión en orden de regla (gana la primera clave repetida). `$messages()` redacta cada clave con la cadena `messages` → `setMessages` → código, y `$message()` es su primero. `$submitted()`, un signal que solo cambia `bindForm` (por un hook interno, no por API pública de escritura) y que limpian `$reset` y `$set`. `$issues()`: los propios con ruta `''` y, con `$submitted()`, los errores visibles (`touched && errors`) de cada nodo de debajo, en orden de declaración, con los propios de un grupo delante de sus campos. `Issue` exportado. BUG §3.1, §4.6, §4.7 | `forms` | `src/run-rule.ts` · `src/messages.ts` · `src/form.ts` · `src/internals.ts` · `src/types.ts` · `src/index.ts` |
 
 ---
 
@@ -117,7 +117,7 @@ líneas que los hacen pasar.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 21 | 1–4 | **Modelo.** Criterios 1–11. Los *rojo primero* (1, 5, 10) se ven fallar revirtiendo las tareas 1, 2 y 4. | `forms` | `test/validity.test.ts` (nuevo) · `test/summary.test.ts` (nuevo) · `test/form.test.ts` |
+| [x] | 21 | 1–4 | **Modelo.** Criterios 1–11. Los *rojo primero* (1, 5, 10) se ven fallar revirtiendo las tareas 1, 2 y 4. | `forms` | `test/validity.test.ts` (nuevo) · `test/summary.test.ts` (nuevo) · `test/form.test.ts` |
 | [ ] | 22 | 5–7 | **Enlaces del DOM.** Criterios 12–16, en happy-dom, con dobles para el puente, `internals.labels` y *element reflection*: la prueba real es §6.G. El 13 se ve fallar revirtiendo el foco al resumen. | `forms` | `test/dom/summary.test.ts` (nuevo) · `test/dom/bind-message.test.ts` (nuevo) · `test/dom/relay.test.ts` (nuevo) |
 | [ ] | 23 | 8–12 | **Compilador.** Criterios 17–23. Los *rojo primero* (19, 21, 22) se ven fallar revirtiendo las comprobaciones de las tareas 8, 9, 11 y 12. Los goldens que cambien se regeneran revisándolos, no a ciegas. | `compiler` | `test/binding/classify.test.ts` · `test/semantic/control.test.ts` · `test/emit/control.test.ts` · `test/emit/hydrate/control-a11y.test.ts` · `test/emit/reference-target.test.ts` (nuevo) |
 | [ ] | 24 | 13–17 | **Editor.** Criterios 24–31. El 26 es la captura de la revisión: `error=@userForm.` sin ningún `$`, en las tres formas. El 31 es **una tabla de paridad**: `control`, `error` y `summary` × oferta, valor, hover y tipos. | `language-core` · `language-server` | `language-core/test/sdd34-control-projection.test.ts` · `language-server/test/services/marker-parity.test.ts` (nuevo) · `language-server/test/services/template-attrs.test.ts` (nuevo) |
@@ -136,10 +136,30 @@ líneas que los hacen pasar.
 
 ## Notas
 
-- **Suelo de cobertura al abrir** (líneas / ramas / funciones / sentencias): *pendiente de medir,
-  ver «Antes de empezar»*.
-- **Lighthouse y axe antes del cambio:** *pendiente, ver «Antes de empezar»*.
-- **Soporte del puente y de *element reflection*:** *pendiente, ver «Antes de empezar»*.
+- **Suelo de cobertura al abrir** (sentencias / ramas / funciones / líneas), medido el 2026-09-25:
+  `forms`, `language-core` y `language-server` en 100 / 100 / 100 / 100; `compiler` en
+  99,36 / 98,51 / 99,54 / 99,77.
+- **`error=@<form o grupo>` a migrar** (tarea 8): `compiler/test/emit/control.test.ts` (3),
+  `compiler/test/semantic/control.test.ts` (2), `compiler/test/emit/hydrate/control-a11y.test.ts`
+  (1) y `packages/forms/README.md` (1). Ningún ejemplo lo usa.
+- **Lighthouse y axe antes del cambio:** Lighthouse no se puede pasar desde la sesión de Claude
+  Code; lo pasa Pedro en la tarea 20. axe no está instalado todavía: su «antes» es el *rojo
+  primero* de los criterios 34, 35 y 39 (tarea 25), sobre el `/formularios` de antes de las
+  tareas 7 y 11.
+- **Soporte del puente y de *element reflection*** (2026-09-25). El e2e usa el Chrome del sistema
+  (`channel: 'chrome'`, no hay navegadores de Playwright instalados): Chrome 153 trae
+  `ShadowRoot.prototype.referenceTarget`, `shadowrootreferencetarget` en DSD,
+  `ariaLabelledByElements`, `ariaDescribedByElements` y `ElementInternals.labels`. La pasada
+  normal del e2e prueba el camino nativo y la de `addInitScript` el respaldo. Safari (17.4+) y
+  Firefox (136+) traen *element reflection* y no el puente: el último recurso de copiar texto
+  **no** hace falta.
+- **Tests del modelo adelantados** (tarea 21): `forms` tiene umbral 100 y cada fase se cierra con
+  cobertura, así que `validity.test.ts` y `summary.test.ts` entran con la fase 1.
+- **«Lo ha cambiado» es una marca que no vuelve atrás** (`edited`), no `dirty`: sin ella el
+  criterio 2 no se cumple (BUG §4.3).
+- **Reglas asíncronas y validez** (decisión de Pedro, 2026-09-25): una regla solo se sabe
+  asíncrona al llamarla, y `valid()` no puede lanzar red. Se marca al declararla con
+  `asyncValidator` (BUG §3.1, §4.3).
 - **Por qué la validez no se deriva de `errors`.** `errors` es lo que se **enseña** y solo cambia
   en los momentos de `validateOn` y en el submit. Derivar `$valid()` de ahí daría «válido» al
   abrir un formulario con `required` vacíos, que es exactamente lo que el botón deshabilitado

@@ -7,7 +7,7 @@
  */
 
 import { build } from './form.js';
-import type { AnyValidator, GroupNode, Schema, Value } from './types.js';
+import type { AnyValidator, GroupNode, GroupOptions, Schema, Value } from './types.js';
 
 /**
  * `NoInfer` on the rules, or a rule written against the group's value would take
@@ -19,10 +19,15 @@ import type { AnyValidator, GroupNode, Schema, Value } from './types.js';
  * hand. TypeScript then falls back to `Schema` and the fields lose their types.
  * Either write the rule inline, or give the schema its own `const` — which is how
  * a schema is written anyway, since it is a template both ends import.
+ *
+ * options are a form's without summary (BUG-42 §4.4): the group's texts, which word its
+ * summary ahead of setMessages, and the two policies its controls inherit, exactly as from a
+ * nested form.
  */
 export function group<S extends Schema>(
   schema: S,
   validators: readonly AnyValidator<NoInfer<Value<S>>>[] = [],
+  options: GroupOptions = {},
 ): GroupNode<S> {
-  return build(schema, {}, validators as readonly AnyValidator<Value<S>>[]);
+  return build(schema, options, validators as readonly AnyValidator<Value<S>>[]);
 }

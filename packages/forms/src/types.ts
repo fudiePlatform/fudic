@@ -10,6 +10,7 @@
  */
 
 import type { ValidateOn } from './validate-on.js';
+import type { Validity } from './validity.js';
 
 /** The errors of one node. `{ required: true }`, `{ minLength: 3 }`, `{ range: 'u8' }`. */
 export type Errors = Readonly<Record<string, unknown>>;
@@ -72,6 +73,11 @@ export interface Control<T> {
    * the control is in its form.
    */
   readonly validateOn: () => ValidateOn;
+  /**
+   * Whether the current value obeys the rules, under this control's `validity` (BUG-42 §4.3).
+   * Tracked and SILENT: reading it publishes nothing, marks nothing and changes no message.
+   */
+  readonly valid: Readable<boolean>;
 }
 
 /** What `control()` and the typed factories take besides the value and the rules. */
@@ -80,6 +86,8 @@ export interface ControlOptions {
   readonly messages?: Messages;
   /** When this control validates itself. Wins over the form's. */
   readonly validateOn?: ValidateOn;
+  /** What counts for this control's validity. Wins over the form's. */
+  readonly validity?: Validity;
 }
 
 /** The width a typed control declares. Inert data for the model, contract for transport. */
@@ -189,6 +197,27 @@ export interface FormOptions<S extends Schema> {
   readonly messages?: Messages;
   /** When the controls of this form validate themselves, unless a control chose its own. */
   readonly validateOn?: ValidateOn;
+  /** What counts for the validity of its controls, unless a control chose its own. */
+  readonly validity?: Validity;
+}
+
+/**
+ * What `group()` takes besides its schema and its rules: a form's options without `summary`,
+ * because a group's rules already are its summary (BUG-42 §4.4).
+ */
+export interface GroupOptions {
+  /** The texts of the group's own errors, by rule. They win over `setMessages`. */
+  readonly messages?: Messages;
+  /** When the controls of this group validate themselves, unless a control chose its own. */
+  readonly validateOn?: ValidateOn;
+  /** What counts for the validity of its controls, unless a control chose its own. */
+  readonly validity?: Validity;
+}
+
+/** One entry of a summary: which node it belongs to (`''` the form or group itself), and what it says. */
+export interface Issue {
+  readonly path: string;
+  readonly message: string;
 }
 
 /** The `$` namespace of a form. Its fields hang next to it, by name. */
@@ -204,10 +233,25 @@ export interface FormApi<S extends Schema> {
   $validate(opts?: { readonly server?: boolean }): Promise<boolean>;
   /** The error map by path of the last validation, or `null`. Tracked read. */
   readonly $errors: Readable<ErrorMap | null>;
-  /** The form-level error, or `null`. Tracked read. */
+  /** The form-level error — the union of every summary rule that failed — or `null`. Tracked. */
   readonly $summary: Readable<Errors | null>;
-  /** The text of `$summary()`, or `''`. Tracked. */
+  /** The first of `$messages()`, or `''`. Tracked. */
   readonly $message: Readable<string>;
+  /** Every text of its own summary, in rule and key order, or `[]`. Tracked. */
+  readonly $messages: Readable<readonly string[]>;
+  /**
+   * Its own texts and, after a submit, the visible error of every node below it, in declaration
+   * order, with a group's own texts ahead of its fields. What a summary with `fields` paints.
+   * Tracked.
+   */
+  readonly $issues: Readable<readonly Issue[]>;
+  /** A submit was attempted. `bindForm` marks it; `$reset` and `$set` clear it. Tracked. */
+  readonly $submitted: Readable<boolean>;
+  /**
+   * Whether the whole tree and its own rules hold, under each control's `validity` (BUG-42 §4.3).
+   * Tracked and SILENT. A reading for the view, not the gate of the submit.
+   */
+  readonly $valid: Readable<boolean>;
   /** Publishes errors that came from outside (a 422), indexed by path. */
   $setErrors(errors: ErrorMap | null, summary?: Errors | null): void;
 

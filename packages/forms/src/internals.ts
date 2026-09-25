@@ -7,8 +7,9 @@
  * has a single `if` and it is about writing, not about shape.
  */
 
-import type { AnyForm, AnyNode, Errors } from './types.js';
+import type { AnyForm, AnyNode, Errors, Issue } from './types.js';
 import type { ValidateOn } from './validate-on.js';
+import type { Validity } from './validity.js';
 
 /** The key under which every node carries its internals. Non-enumerable. */
 export const NODE = Symbol('fud.node');
@@ -54,17 +55,30 @@ export interface NodeInternals {
    *
    * `validateOn` travels with it, the other way round: each form passes down its OWN policy
    * when it has one and the inherited one when not, so the NEAREST form that chose wins.
-   * `undefined` when none did.
+   * `undefined` when none did. `validity` travels the same way (BUG-42 §4.3).
    */
-  adopt(root: AnyForm, validateOn: ValidateOn | undefined): void;
+  adopt(root: AnyForm, validateOn: ValidateOn | undefined, validity: Validity | undefined): void;
   /** Publishes an error that came from outside. A control also marks itself touched. */
   publish(e: Errors | null): void;
   /** A child by name, for resolving a path. `undefined` when there is no such field. */
   child(name: string): AnyNode | undefined;
   /** Collects control errors into `out`, keyed by path. TRACKED. */
   collect(path: string, out: Record<string, Errors>): void;
-  /** Untracked: no error here and none below. */
+  /** Untracked: no error ON RECORD here and none below. What `$validate` resolves to. */
+  clean(): boolean;
+  /** TRACKED and silent: the current values obey the rules that count (BUG-42 §4.3). */
   valid(): boolean;
+  /** TRACKED: some control here or below counts for the validity. */
+  counts(): boolean;
+  /**
+   * Moves whenever a value here or below moves. A control's epoch; a form's is the sum of its
+   * children's, which only grows and changes exactly when one of them does.
+   */
+  epoch(): number;
+  /** Appends the visible errors of this node and, after a submit, of those below (BUG-42 §4.7). */
+  issues(path: string, out: Issue[]): void;
+  /** Records a submit attempt here and below. What `bindForm` calls; there is no public writer. */
+  markSubmitted(): void;
   touchAll(): void;
   resetAll(): void;
   clearAll(): void;

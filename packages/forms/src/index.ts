@@ -23,11 +23,13 @@ export { setMessages, errorText, type Messages } from './messages.js';
 
 export { control } from './control.js';
 export { ValidateOn } from './validate-on.js';
+export { Validity } from './validity.js';
 export { form } from './form.js';
 export { group } from './group.js';
 
 export { validator } from './validators/validator.js';
 export { serverValidator } from './validators/server.js';
+export { asyncValidator } from './validators/async.js';
 export { required } from './validators/required.js';
 export { minLength } from './validators/min-length.js';
 export { maxLength } from './validators/max-length.js';
@@ -60,6 +62,8 @@ export type {
   FormApi,
   FormOptions,
   GroupNode,
+  GroupOptions,
+  Issue,
   Readable,
   Schema,
   TypeTag,
