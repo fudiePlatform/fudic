@@ -24,7 +24,7 @@ import { SsrDom, renderToString } from '@fudic/ssr';
 import { browserDom } from '@fudic/dom';
 import { FudicElement, signal, computed, subscribe, type FudicElementCtor } from '@fudic/core';
 import { emit as busEmit } from '@fudic/dom';
-import { control, form, setMessages, type ErrorMap } from '@fudic/forms';
+import { control, form, setMessages, summaryEntriesOf, type ErrorMap } from '@fudic/forms';
 import {
   bindCheckbox,
   bindForm,
@@ -62,7 +62,7 @@ type UserForm = ReturnType<typeof schema>;
  */
 const TEMPLATE =
   '<form control="@f">' +
-  '<div error="@f"></div>' +
+  '<div summary="@f" fields></div>' +
   '<input control="@f.title"><p error="@f.title"></p>' +
   '<small error="@f.body"></small><textarea control="@f.body"></textarea>' +
   '</form>';
@@ -84,6 +84,7 @@ const BINDINGS = {
   computed,
   $sub: subscribe,
   emit: busEmit,
+  summaryEntriesOf,
   bindText,
   bindForm,
   bindGroup,

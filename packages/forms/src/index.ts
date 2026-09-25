@@ -22,7 +22,14 @@ export const VERSION = '0.0.1';
 export { setMessages, errorText, type Messages } from './messages.js';
 // The markup of a summary, for the same reason: the server writes it and the client repaints it,
 // and one function is what keeps the two byte for byte (BUG-42 §4.6).
-export { issueId, summaryMarkup, summaryOf } from './summary-markup.js';
+export {
+  issueId,
+  summaryEntries,
+  summaryEntriesOf,
+  summaryMarkup,
+  summaryOf,
+  type SummaryEntry,
+} from './summary-markup.js';
 
 export { control } from './control.js';
 export { ValidateOn } from './validate-on.js';

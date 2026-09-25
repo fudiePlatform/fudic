@@ -84,6 +84,17 @@ describe('browserDom shadow', () => {
     expect(seen).toEqual([{ mode: 'open', delegatesFocus: true }]);
   });
 
+  it('attachShadow passes the bridge of a control-component through (decision 132)', () => {
+    const host = dom.element('app-input') as Element;
+    const seen: ShadowRootInit[] = [];
+    host.attachShadow = ((init: ShadowRootInit) => {
+      seen.push(init);
+      return { mode: init.mode } as ShadowRoot;
+    }) as Element['attachShadow'];
+    dom.attachShadow(host, true, 'campo');
+    expect(seen).toEqual([{ mode: 'open', delegatesFocus: true, referenceTarget: 'campo' }]);
+  });
+
   it('host gives the shadow root back its host (SDD-15 §4.4)', () => {
     const host = dom.element('app-x');
     expect(dom.host(dom.attachShadow(host))).toBe(host);

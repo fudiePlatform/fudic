@@ -28,7 +28,7 @@ import { planDelegation } from '../semantic/delegation.js';
 import { planControls } from './controls.js';
 import { NO_BOXES, rootContext } from './display.js';
 import { childTargets, entryCellSlots, entryReactiveScope, type CellSlot } from './state.js';
-import { entryHalf, entryMoving, isReactiveRoute } from './level.js';
+import { entryHalf, entryMoving, formAssociatedTags, isReactiveRoute } from './level.js';
 import { cellNameAt, lines, withCells, writeClosure } from './client.js';
 import { composePage, holeContent, type ComposeItem } from './compose.js';
 import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
@@ -159,7 +159,10 @@ function buildRouteClientModule(
     code.template,
     emitDiagnostics,
     new Set<string>(), // a route has no props, so it receives no callback by cell
-    planControls(source, roots, (t) => graph.components.has(t)),
+    planControls(source, roots, {
+      isComponent: (t) => graph.components.has(t),
+      isFormAssociated: (t) => formAssociatedTags(graph).has(t),
+    }),
     new Set<string>(), // and no `control` node can have crossed into it
     delegation,
   );

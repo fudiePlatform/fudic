@@ -521,10 +521,16 @@ schema en el emit sería duplicar el chequeo y quedarse corto.
 | `FUD0594` | `control` dentro de un bucle (decisión 114, hermana de la 31). |
 | `FUD0595` | `control` sin un `<form control="…">` por encima en la misma plantilla (decisión 115, [BUG-25](./bugs/BUG-25-control-sin-editor.md)). Exento el control-componente: enlaza el nodo que le pasa su padre, y el sitio del cruce se comprueba en el fichero del padre. |
 | `FUD0596` | El valor de `error` no es una expresión `@` (decisión 130, [BUG-41](./bugs/BUG-41-el-error-que-no-se-va.md)). |
-| `FUD0597` | Un marcador `error` nombra un nodo que ningún elemento de **su bloque** enlaza con `control` — también si el nodo solo cruza a un componente: su mensaje va dentro de él (BUG-41). |
+| `FUD0597` | Un marcador `error` nombra un nodo que ningún elemento de **su bloque** enlaza con `control` — también si el nodo solo cruza a un componente que **no** es `formassociated` (BUG-41; estrechado por BUG-42: al lado de un control-componente empareja). |
 | `FUD0598` | Un segundo marcador `error` del mismo nodo, o uno dentro de un bucle (BUG-41). |
 | `FUD0599` | Un marcador `error` con contenido, o con un `id` que no es estático (BUG-41). |
-| `FUD0600`–`FUD0619` | Reservados. |
+| `FUD0600` | `error=` empareja con un form o un grupo: su resumen se marca con `summary=` (decisión 131, [BUG-42](./bugs/BUG-42-error-resumen-y-validez-en-la-vista.md)). |
+| `FUD0601` | `summary=` empareja con un control: su mensaje se marca con `error=` (BUG-42). |
+| `FUD0602` | El elemento de un `summary=` no admite la lista que escribe el runtime (`<p>`, `<span>`, `<small>`, `<label>`, `<a>`, `<button>`, `<strong>`, `<em>`, `<b>`, `<i>`, `<h1>`–`<h6>`, `<legend>`) (BUG-42). |
+| `FUD0603` | En un control-componente, radios enlazados sin un `<fieldset>` ni un `role="radiogroup"` alrededor (decisión 132, BUG-42). |
+| `FUD0604` | En un control-componente, el campo lleva un `id` dinámico: el puente no puede apuntarle (BUG-42). |
+| `FUD0605` | Un `shadowrootreferencetarget` escrito a mano es dinámico o nombra un id que no está en la plantilla (BUG-42). |
+| `FUD0606`–`FUD0619` | Reservados. |
 
 Ninguno de los cinco lanza: el emit anota el diagnóstico con su span, omite **ese** enlace y sigue
 emitiendo el fichero (regla de oro del proyecto).

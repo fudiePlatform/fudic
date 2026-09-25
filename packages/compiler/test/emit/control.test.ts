@@ -371,20 +371,21 @@ describe('§6.8 — the message lives in the author’s marker (BUG-41 §4.3)', 
     expect(client).not.toContain('message()');
   });
 
-  it('a `<form>`’s marker sits INSIDE it and is a polite live region (criterion 16)', () => {
-    const { server, client } = emit('<form control="@f"><div error="@f"></div></form>');
+  it('a `<form>`’s summary sits INSIDE it and is a polite live region (criterion 16, BUG-42 criterion 17)', () => {
+    const { server, client } = emit('<form control="@f"><div summary="@f"></div></form>');
     for (const out of [server, client]) {
       expect(out).toContain(`'id', "fud-s-f"`);
       expect(out).toContain("'aria-live', 'polite'");
       expect(out).toContain(`$dom.setAttr($n0, 'aria-describedby', "fud-s-f");`);
     }
-    expect(server).toContain('const $e = f.$message();');
+    expect(server).toContain('const $l = summaryEntriesOf(f, "fud-s-f", null);');
+    expect(server).toContain("import { summaryEntriesOf } from '@fudic/forms';");
     expect(client).toMatch(/bindForm\(\$n0, f, \$n1\)/u);
   });
 
   it('an `aria-live` the author wrote is not overwritten (criterion 16)', () => {
     const { server, client } = emit(
-      '<form control="@f"><div aria-live="assertive" error="@f"></div></form>',
+      '<form control="@f"><div aria-live="assertive" summary="@f"></div></form>',
     );
     for (const out of [server, client]) {
       expect(out).not.toContain("'aria-live', 'polite'");
@@ -407,9 +408,10 @@ describe('§6.8 — the message lives in the author’s marker (BUG-41 §4.3)', 
     }
   });
 
-  it('a group’s marker gets its summary, and the group points at it', () => {
-    const { server, client } = emit('<fieldset control="@f.seo"><p error="@f.seo"></p></fieldset>');
-    expect(server).toContain('const $e = f.seo.$message();');
+  it('a group’s summary gets its list and a live region, and the group points at it', () => {
+    const { server, client } = emit('<fieldset control="@f.seo"><div summary="@f.seo"></div></fieldset>');
+    expect(server).toContain('const $l = summaryEntriesOf(f.seo, "fud-s-f-seo", null);');
+    for (const out of [server, client]) expect(out).toContain("'aria-live', 'polite'");
     expect(client).toMatch(/bindGroup\(\$n0, f\.seo, \$n1\)/u);
   });
 });
@@ -425,5 +427,80 @@ describe('§4.8 — a control makes the component hydrate', () => {
 
   it('the same template without it is not', () => {
     expect(emit('<input>', '').hydratable.has('m-el')).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// BUG-42 §4.2, §4.7, §4.9 — `summary`, `fields`, and a marker beside a control-component
+// ---------------------------------------------------------------------------
+
+describe('BUG-42 — a summary with `fields` (criterion 18)', () => {
+  const TEMPLATE =
+    '<form control="@f"><div summary="@f" fields></div>' +
+    '<input id="nom" control="@f.name"><small error="@f.name"></small>' +
+    '<input control="@f.alias">' +
+    '<app-input control="@f.email"></app-input>' +
+    '<fieldset control="@f.acceso"><input control="@f.acceso.clave"></fieldset>' +
+    '<input id="@dyn" control="@f.web"></form>';
+
+  it('takes `fields` out of the HTML and makes the summary focusable', () => {
+    const { server, client } = emit(TEMPLATE);
+    for (const out of [server, client]) {
+      expect(out).not.toContain("'fields'");
+      expect(out).toContain(`'tabindex', '-1'`);
+    }
+  });
+
+  it('hands the map path → id over, with the derived id where the author wrote none', () => {
+    const { server, client } = emit(TEMPLATE);
+    const links =
+      '{"name":"nom","alias":"fud-c-f-alias","email":"fud-c-f-email","acceso":"fud-c-f-acceso","acceso.clave":"fud-c-f-acceso-clave"}';
+    expect(server).toContain(`summaryEntriesOf(f, "fud-s-f", ${links})`);
+    expect(client).toContain(`bindForm($n0, f, $n1, ${links})`);
+    for (const out of [server, client]) {
+      expect(out).toContain(`'id', "fud-c-f-alias"`);
+      // A dynamic id cannot be linked to.
+      expect(out).not.toContain('fud-c-f-web');
+    }
+  });
+
+  it('describes each listed field with no marker of its own by its entry — on the host of a control-component too', () => {
+    const { server, client } = emit(TEMPLATE);
+    for (const out of [server, client]) {
+      expect(out).toContain(`'aria-describedby', "fud-s-f-alias"`);
+      expect(out).toContain(`'aria-describedby', "fud-s-f-email"`);
+      expect(out).toContain(`'aria-describedby', "fud-s-f-acceso-clave"`);
+      // A field with its own marker keeps pointing at it.
+      expect(out).toContain(`'aria-describedby', "fud-e-f-name"`);
+      expect(out).not.toContain('fud-s-f-name');
+    }
+  });
+
+  it('a radio group links from its first radio', () => {
+    const { server } = emit(
+      '<form control="@f"><div summary="@f" fields></div>' +
+        '<input type="radio" id="r1" control="@f.t"><input type="radio" id="r2" control="@f.t"></form>',
+    );
+    expect(server).toContain('{"t":"r1"}');
+  });
+
+  it('`fields` on an element with no summary is an attribute like any other', () => {
+    const { server } = emit('<div fields></div>');
+    expect(server).toContain('"fields", ""');
+  });
+});
+
+describe('BUG-42 — a marker beside a control-component (criterion 22)', () => {
+  it('describes the host and writes its message with `bindMessage`', () => {
+    const { server, client } = emit(
+      '<form control="@f"><app-input control="@f.email"></app-input><app-error error="@f.email"></app-error></form>',
+    );
+    for (const out of [server, client]) {
+      expect(out).toContain(`'aria-describedby', "fud-e-f-email"`);
+      expect(out).toContain(`'id', "fud-e-f-email"`);
+    }
+    expect(server).toContain("f.email.touched() ? f.email.message() : ''");
+    expect(client).toContain("import { bindForm, bindMessage } from '@fudic/forms/dom';");
+    expect(client).toMatch(/\$n\d+ && \$d\.push\(bindMessage\(\$n\d+, f\.email\)\);/u);
   });
 });

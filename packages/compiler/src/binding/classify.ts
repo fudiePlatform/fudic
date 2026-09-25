@@ -29,6 +29,8 @@ import {
   REF_NAME,
   CONTROL_NAME,
   ERROR_NAME,
+  SUMMARY_NAME,
+  type MarkerName,
 } from './nodes.js';
 
 // ---------------------------------------------------------------------------
@@ -107,7 +109,7 @@ export function classifyAttribute(attr: Attribute, source: string): ParseResult<
   }
   if (name === REF_NAME) return classifyRef(attr, source);
   if (name === CONTROL_NAME) return classifyControl(attr);
-  if (name === ERROR_NAME) return classifyError(attr);
+  if (name === ERROR_NAME || name === SUMMARY_NAME) return classifyError(attr, name);
 
   return ok(plainAttribute(attr, name));
 }
@@ -375,13 +377,13 @@ function classifyControl(attr: Attribute): ParseResult<Binding> {
  * With no expression at all it degrades to a plain attribute, like `control` does: the author
  * wrote the name and nothing the emit could pair, and the diagnostic says what to write.
  */
-function classifyError(attr: Attribute): ParseResult<Binding> {
+function classifyError(attr: Attribute, name: MarkerName): ParseResult<Binding> {
   const handler = requireSingleExpression(attr);
   if (handler.expr === null) {
-    return degrade(plainAttribute(attr, ERROR_NAME), errorMarkerDiag(valueSpan(attr)));
+    return degrade(plainAttribute(attr, name), errorMarkerDiag(valueSpan(attr), name));
   }
-  const binding: Binding = { type: 'error', span: attr.span, value: handler.expr };
-  return handler.reason === null ? ok(binding) : degrade(binding, errorMarkerDiag(valueSpan(attr)));
+  const binding: Binding = { type: 'error', name, span: attr.span, value: handler.expr };
+  return handler.reason === null ? ok(binding) : degrade(binding, errorMarkerDiag(valueSpan(attr), name));
 }
 
 // ---------------------------------------------------------------------------
@@ -450,10 +452,11 @@ function controlDiag(at: Span): Diagnostic {
   );
 }
 
-function errorMarkerDiag(at: Span): Diagnostic {
+function errorMarkerDiag(at: Span, name: MarkerName): Diagnostic {
+  const example = name === ERROR_NAME ? 'error="@f.title"' : 'summary="@f"';
   return errorDiag(
     FUD_ERROR_NOT_EXPRESSION,
-    'error value must be a single `@` expression naming a form node, e.g. `error="@f.title"`',
+    `${name} value must be a single \`@\` expression naming a form node, e.g. \`${example}\``,
     at,
   );
 }

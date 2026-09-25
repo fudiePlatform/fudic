@@ -420,6 +420,27 @@ describe('classifyAttribute — error= (BUG-41 §3.3, decision 130)', () => {
     expect(binding.type).toBe('error');
   });
 
+  it('says which marker it is: `error` or `summary` (decision 131)', () => {
+    for (const name of ['error', 'summary'] as const) {
+      const { binding, diagnostics } = classifyOne(`<div ${name}="@f"></div>`);
+      expect(diagnostics).toEqual([]);
+      expect(binding.type === 'error' && binding.name).toBe(name);
+    }
+  });
+
+  it('FUD0596 names the attribute it is about, `summary` included (BUG-42 criterion 20)', () => {
+    const literal = classifyOne('<div summary="f"></div>');
+    expect(codes(literal.diagnostics)).toEqual(['FUD0596']);
+    expect(literal.diagnostics[0]!.message).toBe(
+      'summary value must be a single `@` expression naming a form node, e.g. `summary="@f"`',
+    );
+    expect(literal.binding.type === 'attr' && literal.binding.name).toBe('summary');
+    const mixed = classifyOne('<div summary="x @f"></div>');
+    expect(codes(mixed.diagnostics)).toEqual(['FUD0596']);
+    expect(mixed.binding.type).toBe('error');
+    expect(classifyOne('<p error="t"></p>').diagnostics[0]!.message).toContain('`error="@f.title"`');
+  });
+
   it('does not treat `onerror` as reserved', () => {
     const { binding, diagnostics } = classifyOne('<img onerror="x">');
     expect(diagnostics).toEqual([]);

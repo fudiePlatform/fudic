@@ -35,37 +35,67 @@ export const issueId = (summary: string, path: string): string =>
   `${summary}-${path.replaceAll('.', '-')}`;
 
 /**
- * The markup of the summary `id` for `issues`. `links` maps a path to the id of the element that
- * binds it, and is `null` for a summary without `fields`.
+ * One `<li>` of a summary. A linked one carries the id of its entry and the `href` of its field;
+ * a plain one, only its text.
  */
+export type SummaryEntry =
+  | { readonly text: string }
+  | { readonly text: string; readonly id: string; readonly href: string };
+
+/**
+ * The entries of the summary `id` for `issues`. `links` maps a path to the id of the element
+ * that binds it, and is `null` for a summary without `fields`. What the server builds its nodes
+ * from and what `summaryMarkup` writes: the one decision about the list, taken once.
+ */
+export function summaryEntries(
+  issues: readonly Issue[],
+  id: string,
+  links: Readonly<Record<string, string>> | null,
+): SummaryEntry[] {
+  const seen = new Set<string>();
+  return issues.map(({ path, message }) => {
+    const target = links?.[path];
+    // Linked, and only the first entry of a path carries the id: a group with two texts would
+    // otherwise write the same id twice.
+    if (target === undefined || seen.has(path)) return { text: message };
+    seen.add(path);
+    return { text: message, id: issueId(id, path), href: `#${target}` };
+  });
+}
+
+/** The markup of the summary `id` for `issues`: `''` with nothing to say, a list otherwise. */
 export function summaryMarkup(
   issues: readonly Issue[],
   id: string,
   links: Readonly<Record<string, string>> | null,
 ): string {
   if (issues.length === 0) return '';
-  const seen = new Set<string>();
-  const items = issues.map(({ path, message }) => {
-    const target = links?.[path];
-    // Linked, and only the first entry of a path carries the id: a group with two texts would
-    // otherwise write the same id twice.
-    if (target === undefined || seen.has(path)) return `<li>${text(message)}</li>`;
-    seen.add(path);
-    return `<li id="${attr(issueId(id, path))}"><a href="#${attr(target)}">${text(message)}</a></li>`;
-  });
+  const items = summaryEntries(issues, id, links).map((entry) =>
+    'href' in entry
+      ? `<li id="${attr(entry.id)}"><a href="${attr(entry.href)}">${text(entry.text)}</a></li>`
+      : `<li>${text(entry.text)}</li>`,
+  );
   return `<ul>${items.join('')}</ul>`;
 }
 
-/**
- * The markup of the summary of `node`: its own texts, or, with `fields` (`links`), its
- * `$issues()`. Tracked. What the server writes and what the client's effect repaints.
- */
+/** What `node` has to say in a summary: its own texts, or, with `fields` (`links`), its `$issues()`. */
+const issuesOf = (node: AnyForm, links: Readonly<Record<string, string>> | null): readonly Issue[] =>
+  links === null ? node.$messages().map((message) => ({ path: '', message })) : node.$issues();
+
+/** The entries of the summary of `node`. Tracked. What the server builds its list from. */
+export function summaryEntriesOf(
+  node: AnyForm,
+  id: string,
+  links: Readonly<Record<string, string>> | null,
+): SummaryEntry[] {
+  return summaryEntries(issuesOf(node, links), id, links);
+}
+
+/** The markup of the summary of `node`. Tracked. What the client's effect repaints. */
 export function summaryOf(
   node: AnyForm,
   id: string,
   links: Readonly<Record<string, string>> | null,
 ): string {
-  const issues =
-    links === null ? node.$messages().map((message) => ({ path: '', message })) : node.$issues();
-  return summaryMarkup(issues, id, links);
+  return summaryMarkup(issuesOf(node, links), id, links);
 }

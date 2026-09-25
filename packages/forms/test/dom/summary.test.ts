@@ -10,7 +10,9 @@ import { bindForm } from '../../src/dom/bind-form.js';
 import { bindGroup } from '../../src/dom/bind-group.js';
 import { bindText } from '../../src/dom/bind-text.js';
 import { control, form, group, required } from '../../src/index.js';
-import { issueId, summaryMarkup } from '../../src/summary-markup.js';
+import { internalsOf } from '../../src/internals.js';
+import { issueId, summaryEntriesOf, summaryMarkup } from '../../src/summary-markup.js';
+import type { AnyNode } from '../../src/types.js';
 import { fire, mount } from './_dom.js';
 
 beforeEach(() => {
@@ -53,6 +55,15 @@ describe('summaryMarkup', () => {
         { g: 'grupo' },
       ),
     ).toBe('<ul><li id="s-g"><a href="#grupo">uno</a></li><li>dos</li><li>tres</li></ul>');
+  });
+
+  it('the entries the server builds its nodes from are the ones the markup writes', () => {
+    const f = form({ a: control('', [required]) });
+    f.a.touch();
+    void f.$validate();
+    internalsOf(f as unknown as AnyNode).markSubmitted();
+    expect(summaryEntriesOf(f, 's', { a: 'x' })).toEqual([{ text: 'required', id: 's-a', href: '#x' }]);
+    expect(summaryEntriesOf(f, 's', null)).toEqual([]);
   });
 
   it('derives the id of a nested path with dashes', () => {

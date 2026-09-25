@@ -858,6 +858,9 @@ export class ClientMarkupEmitter {
         this.#host(true, el.name),
         this.#sinkFor(),
       );
+      // What a marker or a summary says of this control-component from outside, and the id a
+      // summary links to — the same attributes the server writes on the host (BUG-42 §4.9).
+      this.#controlAttrs(el, v);
       this.#childValues(el, v);
     } else {
       writeElementAttrs(
@@ -887,8 +890,21 @@ export class ClientMarkupEmitter {
     this.#at = outer;
     this.#place(v, level.fab); // parent last: a node is filled before it joins the tree
     this.#controlBinding(el, v);
+    this.#messageBinding(el, v);
     // A marker the walk has just reached releases the call that was waiting for it.
     this.#awaiting.get(el)?.();
+  }
+
+  /**
+   * The call of a marker that speaks for a control crossing into a control-component (BUG-42
+   * §4.9). The child binds the control to its own input; the marker is in THIS tree, so this
+   * template writes its text.
+   */
+  #messageBinding(el: ElementNode, v: string): void {
+    const marker = this.#hookup.controls.markers.get(el);
+    if (marker?.bind !== 'bindMessage') return;
+    this.#hookup.binds.add(marker.bind);
+    this.#hook.line(`${v} && $d.push(bindMessage(${v}, ${marker.node}));`);
   }
 
   /**
@@ -900,6 +916,8 @@ export class ClientMarkupEmitter {
    * it also has to take them back.
    */
   #controlAttrs(el: ElementNode, v: string): void {
+    const id = this.#hookup.controls.ids.get(el);
+    if (id !== undefined) this.#fab.line(`$dom.setAttr(${v}, 'id', ${JSON.stringify(id)});`);
     const site = this.#hookup.controls.sites.get(el);
     if (site === undefined) return;
     if (site.describedBy !== '') {
@@ -921,6 +939,7 @@ export class ClientMarkupEmitter {
     if (marker === undefined) return;
     if (marker.writesId) this.#fab.line(`$dom.setAttr(${v}, 'id', ${JSON.stringify(marker.id)});`);
     if (marker.live) this.#fab.line(`$dom.setAttr(${v}, 'aria-live', 'polite');`);
+    if (marker.links !== null) this.#fab.line(`$dom.setAttr(${v}, 'tabindex', '-1');`);
   }
 
   /**
@@ -992,7 +1011,9 @@ export class ClientMarkupEmitter {
     // The marker is guarded like the element: a variable the adoption could not fill is a
     // position the DOM disagrees about, and binding half of it would write into nothing.
     const slotGuard = slot === null ? '' : `${slot} && `;
-    const slotArg = slot ?? 'null';
+    // A summary with `fields` hands its map path → id to `bindForm` / `bindGroup` (BUG-42 §4.7).
+    const links = site.marker === null ? null : (this.#hookup.controls.markers.get(site.marker)?.links ?? null);
+    const slotArg = (slot ?? 'null') + (links === null ? '' : `, ${JSON.stringify(links)}`);
     if (site.group.length > 0) {
       const guards = site.group.map((radio) => this.#varOf(radio));
       out.line(

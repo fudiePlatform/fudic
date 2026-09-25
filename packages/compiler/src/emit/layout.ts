@@ -27,7 +27,7 @@ import { CodeWriter } from './writer.js';
 import { MarkupEmitter, renderName, tpl } from './markup.js';
 import { AssetLinker } from './assets.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
-import { formAssociatedTags, hydratableTags } from './level.js';
+import { bridgeIds, formAssociatedTags, hydratableTags } from './level.js';
 import { hasDependencyInjection } from './di.js';
 import { needsRuntime, routeBlocksOf, writeMapConstants, writeHydrationBlocks } from './maps.js';
 import type { DocumentGraph, ResolvedLayout } from './resolve.js';
@@ -158,6 +158,7 @@ function buildLayoutModule(
     slots: SLOTS,
     hydratable: hydratableTags(graph),
     formAssociated: formAssociatedTags(graph),
+    bridges: bridgeIds(graph),
     styled: styledTags(graph),
     projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
   });
@@ -287,6 +288,7 @@ function buildRouteModule(
 
   const hydratable = hydratableTags(graph);
   const formAssociated = formAssociatedTags(graph);
+  const bridges = bridgeIds(graph);
   // The styled half of the graph (BUG-31 §T4): what wears an adopt marker, what reaches
   // `COMPONENTS`, and — when it is empty — whether the polyfill is emitted at all.
   const styled = styledTags(graph);
@@ -305,6 +307,7 @@ function buildRouteModule(
     hydratable,
     ioc,
     formAssociated,
+    bridges,
     styled,
     projectAdopt,
   });
@@ -323,6 +326,7 @@ function buildRouteModule(
     hydratable,
     ioc,
     formAssociated,
+    bridges,
     styled,
     projectAdopt,
   });

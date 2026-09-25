@@ -22,6 +22,7 @@ import {
   classifyAttribute,
   crossing,
   CONTROL_PROP,
+  isSummaryFields,
   type Binding,
   type ComponentDeclaredProps,
 } from '../binding/index.js';
@@ -335,6 +336,8 @@ export function writeElementAttrs(
   let baseClass: string | undefined;
   const classExprs: string[] = [];
   for (const attr of el.attributes) {
+    // The `fields` of a summary is the compiler's, and it never reaches the HTML (decision 131).
+    if (isSummaryFields(el, attr)) continue;
     const b = classifyAttribute(attr, source).value;
     if (b.type === 'class') {
       // Through `crossingExpr` like every other value, and that is BUG-32 T4: composing this

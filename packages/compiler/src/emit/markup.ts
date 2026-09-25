@@ -40,7 +40,7 @@ import { emitItems, type TextRun } from './runs.js';
 import { markerSite } from './marker.js';
 import { adoptListOf, type ProjectAdopt } from './project-styles.js';
 import { loopHead, type LoopNode } from './constructs.js';
-import { EMPTY_CONTROLS, type ControlPlan } from './controls.js';
+import { EMPTY_CONTROLS, type ControlPlan, type MarkerSite } from './controls.js';
 
 /** `render` + PascalCase of a `prefix-name` tag: `app-button` → `renderAppButton`. */
 export const renderName = (tag: string): string =>
@@ -216,6 +216,12 @@ export interface MarkupOptions {
    */
   readonly formAssociated: ReadonlySet<string>;
   /**
+   * The id each control-component's shadow root forwards references to — its FIELD (decision
+   * 132) — which the serializer writes as `shadowrootreferencetarget` on the template. Empty by
+   * default: a tag with no entry opens its shadow root with no bridge.
+   */
+  readonly bridges?: ReadonlyMap<string, string>;
+  /**
    * The tags that carry a shared stylesheet (BUG-31 §T4). A host outside this set gets no
    * `data-fud-adopt`, and the serializer reads that absence to leave
    * `shadowrootadoptedstylesheets` off its template too: one decision, both outputs.
@@ -255,6 +261,8 @@ export class MarkupEmitter {
   readonly #ioc: string;
   readonly #controls: ControlPlan;
   readonly #formAssociated: ReadonlySet<string>;
+  readonly #bridges: ReadonlyMap<string, string>;
+  #summaries = false;
   readonly #styled: ReadonlySet<string>;
   readonly #projectAdopt: ProjectAdopt;
   readonly #used = new Set<string>();
@@ -283,8 +291,17 @@ export class MarkupEmitter {
     this.#ioc = options.ioc ?? '$ioc';
     this.#controls = options.controls ?? EMPTY_CONTROLS;
     this.#formAssociated = options.formAssociated;
+    this.#bridges = options.bridges ?? new Map();
     this.#styled = options.styled;
     this.#projectAdopt = options.projectAdopt;
+  }
+
+  /**
+   * Whether the walk painted a summary: the module then imports `summaryEntriesOf` from
+   * `@fudic/forms`, the one function that decides the list on both ends (BUG-42 §4.6).
+   */
+  get summaries(): boolean {
+    return this.#summaries;
   }
 
   /** The child component tags rendered so far, in first-use order (for ES imports). */
@@ -432,10 +449,16 @@ export class MarkupEmitter {
       // The host's own attributes — its `.prop`s and its plain HTML ones (BUG-16 §4.1).
       // Level 1 is HTML with no JS, so this is the only place they can live.
       this.#elementAttrs(el, v, true);
+      // A control-component host that a marker or a summary describes from outside, and the id a
+      // summary links to (BUG-42 §4.7, §4.9): the relay carries both to its input.
+      this.#controlAttrs(el, v);
       // A control-component's shadow root delegates focus, and the serializer turns that into
       // `shadowrootdelegatesfocus` on the template (SDD-34 §4.5). The argument is only written
       // when it is true: a page with no control-component keeps the bytes it had.
-      const focus = this.#formAssociated.has(el.name) ? ', true' : '';
+      const bridge = this.#bridges.get(el.name);
+      const focus = this.#formAssociated.has(el.name)
+        ? `, true${bridge === undefined ? '' : `, ${JSON.stringify(bridge)}`}`
+        : '';
       this.#w.line(`const ${s} = $dom.attachShadow(${v}${focus});`);
       this.#w.line(
         `${renderName(el.name)}($dom, ${s}, ${componentPropsExpr(this.#source, el, this.#signals, this.#declared(el.name))}, ${this.#ioc});`,
@@ -472,6 +495,10 @@ export class MarkupEmitter {
    * produces byte for byte the same thing (§6.10).
    */
   #controlAttrs(el: ElementNode, v: string): void {
+    // The id the compiler gives an element of the author's that has none: a field a summary
+    // links to, or the field of this control-component (BUG-42 §3.3, §3.4).
+    const id = this.#controls.ids.get(el);
+    if (id !== undefined) this.#w.line(`$dom.setAttr(${v}, 'id', ${JSON.stringify(id)});`);
     const site = this.#controls.sites.get(el);
     if (site === undefined) return;
     if (site.describedBy !== '') {
@@ -498,6 +525,8 @@ export class MarkupEmitter {
     if (marker === undefined) return;
     if (marker.writesId) this.#w.line(`$dom.setAttr(${v}, 'id', ${JSON.stringify(marker.id)});`);
     if (marker.live) this.#w.line(`$dom.setAttr(${v}, 'aria-live', 'polite');`);
+    // A summary with `fields` is where a failed submit sends the focus (BUG-42 §4.7).
+    if (marker.links !== null) this.#w.line(`$dom.setAttr(${v}, 'tabindex', '-1');`);
   }
 
   /**
@@ -512,8 +541,43 @@ export class MarkupEmitter {
     if (marker === undefined) return;
     this.#w.line(`{`);
     this.#w.indent();
-    this.#w.line(`const $e = ${marker.text};`);
-    this.#w.line(`if ($e) $dom.append(${v}, $dom.text($e));`);
+    if (marker.attr === 'summary') this.#summaryList(marker, v);
+    else {
+      this.#w.line(`const $e = ${marker.text};`);
+      this.#w.line(`if ($e) $dom.append(${v}, $dom.text($e));`);
+    }
+    this.#w.dedent();
+    this.#w.line(`}`);
+  }
+
+  /**
+   * The list a summary holds at render time (BUG-42 §4.6), built node by node from the entries
+   * `@fudic/forms` decides — the same function whose markup the client's effect writes, so the
+   * list is decided once for both ends. Nothing to say: no child at all, so `:empty` holds.
+   */
+  #summaryList(marker: MarkerSite, v: string): void {
+    this.#summaries = true;
+    const links = marker.links === null ? 'null' : JSON.stringify(marker.links);
+    this.#w.line(`const $l = summaryEntriesOf(${marker.node}, ${JSON.stringify(marker.id)}, ${links});`);
+    this.#w.line(`if ($l.length > 0) {`);
+    this.#w.indent();
+    this.#w.line(`const $u = $dom.element('ul');`);
+    this.#w.line(`for (const $i of $l) {`);
+    this.#w.indent();
+    this.#w.line(`const $li = $dom.element('li');`);
+    this.#w.line(`if ('href' in $i) {`);
+    this.#w.indent();
+    this.#w.line(`$dom.setAttr($li, 'id', $i.id);`);
+    this.#w.line(`const $a = $dom.element('a');`);
+    this.#w.line(`$dom.setAttr($a, 'href', $i.href);`);
+    this.#w.line(`$dom.append($a, $dom.text($i.text));`);
+    this.#w.line(`$dom.append($li, $a);`);
+    this.#w.dedent();
+    this.#w.line(`} else $dom.append($li, $dom.text($i.text));`);
+    this.#w.line(`$dom.append($u, $li);`);
+    this.#w.dedent();
+    this.#w.line(`}`);
+    this.#w.line(`$dom.append(${v}, $u);`);
     this.#w.dedent();
     this.#w.line(`}`);
   }

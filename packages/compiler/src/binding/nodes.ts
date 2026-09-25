@@ -128,8 +128,17 @@ export interface ControlBinding extends Node {
  */
 export interface ErrorBinding extends Node {
   readonly type: 'error';
+  /**
+   * Which of the two markers (decision 131): `error` speaks for a CONTROL, `summary` for a form
+   * or a group. One binding type, because both are paired, identified and wired the same way;
+   * what each may pair with is the pairing's to check (`FUD0600`, `FUD0601`).
+   */
+  readonly name: MarkerName;
   readonly value: RazorExpression;
 }
+
+/** The two marker attributes (decisions 130, 131). */
+export type MarkerName = 'error' | 'summary';
 
 /** `class:foo="@x"` — conditional class (decision 22). */
 export interface ClassBinding extends Node {
@@ -202,3 +211,12 @@ export const CONTROL_NAME = 'control';
 
 /** The reserved attribute name for the element that carries a node's message (decision 130). */
 export const ERROR_NAME = 'error';
+
+/** The reserved attribute name for the element that carries a form's or a group's summary (decision 131). */
+export const SUMMARY_NAME = 'summary';
+
+/**
+ * The boolean that makes a summary list the errors of the fields too (decision 131). Reserved
+ * only on an element with `summary=`: anywhere else it is an attribute like any other.
+ */
+export const FIELDS_NAME = 'fields';

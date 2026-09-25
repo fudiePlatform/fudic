@@ -77,9 +77,11 @@ function* serializeElement(n: SsrNodeImpl): Generator<string> {
     // component with no CSS says it adopts nothing. Deriving it from `tag` here announced
     // a sheet that did not exist, and the client built an empty one to honour it.
     const focus = n.delegatesFocus ? ' shadowrootdelegatesfocus' : '';
+    const bridge =
+      n.referenceTarget === null ? '' : ` shadowrootreferencetarget="${escapeAttr(n.referenceTarget)}"`;
     const specifier = n.attrs.get('data-fud-adopt');
     const adopts = specifier === undefined ? '' : ` shadowrootadoptedstylesheets="${escapeAttr(specifier)}"`;
-    yield `<template shadowrootmode="open"${focus}${adopts}>`;
+    yield `<template shadowrootmode="open"${focus}${bridge}${adopts}>`;
     yield* serializeChildren(n.shadow);
     yield '</template>';
   }

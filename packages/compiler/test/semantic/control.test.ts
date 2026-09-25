@@ -397,7 +397,7 @@ describe('error marker — what pairs (BUG-41 §3.3)', () => {
     ['somewhere else in the tree', '<div><input control="@f.title"></div><footer><p error="@f.title"></p></footer>'],
     ['with its own static id', '<input control="@f.title"><p id="mine" error="@f.title"></p>'],
     ['holding only whitespace', '<input control="@f.title"><p error="@f.title">  </p>'],
-    ['for a group', '<fieldset control="@f.seo"><p error="@f.seo"></p></fieldset>'],
+    ['for a group', '<fieldset control="@f.seo"><div summary="@f.seo"></div></fieldset>'],
     ['for a radio group', '<input type="radio" control="@f.t"><input type="radio" control="@f.t"><p error="@f.t"></p>'],
     ['inside the same @if branch', '@if (x) { <input control="@f.title"><p error="@f.title"></p> }'],
     ['inside the same @else', '@if (x) { } else { <input control="@f.title"><p error="@f.title"></p> }'],
@@ -407,7 +407,7 @@ describe('error marker — what pairs (BUG-41 §3.3)', () => {
   });
 
   it('pairs the form’s own summary, inside the form', () => {
-    expect(codes(component('<form control="@f"><div error="@f"></div></form>'))).toEqual([]);
+    expect(codes(component('<form control="@f"><div summary="@f"></div></form>'))).toEqual([]);
   });
 });
 
@@ -425,13 +425,23 @@ describe('FUD0597 — a marker with nothing beside it to describe', () => {
     );
   });
 
-  it('names a node that only crosses into a component: the message goes inside it', () => {
+  it('names a node that only crosses into a component that is not a control-component', () => {
     const found = diags(
       component('<app-input control="@f.body"></app-input><p error="@f.body"></p>'),
-      APP_INPUT,
+      { ...APP_INPUT, formAssociated: () => false },
     );
     expect(found.map((d) => d.code)).toEqual(['FUD0597']);
-    expect(found[0]!.message).toContain('shadow root');
+    expect(found[0]!.message).toContain('formassociated');
+  });
+
+  it('pairs a marker beside a control-component: the relay carries it inside (BUG-42 §4.9)', () => {
+    const source = component('<app-input control="@f.body"></app-input><p error="@f.body"></p>');
+    expect(codes(source, { ...APP_INPUT, formAssociated: () => true })).toEqual([]);
+  });
+
+  it('says nothing when it cannot know whether the component is a control-component', () => {
+    const source = component('<app-input control="@f.body"></app-input><p error="@f.body"></p>');
+    expect(codes(source, APP_INPUT)).toEqual([]);
   });
 
   it('names a node bound to an element that carries no value', () => {
@@ -491,5 +501,109 @@ describe('error marker — the blocks a page and a snippet add', () => {
       '@snippet row(x: string) { <form control="@f"><input control="@f.q"></form> }\n' +
       '@snippet hint(x: string) { <p error="@f.q"></p> }\n';
     expect(codes(file)).toContain('FUD0597');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// BUG-42 §3.6 — summary, fields and the bridge (criteria 19, 20)
+// ---------------------------------------------------------------------------
+
+describe('BUG-42 — the two markers, one meaning each (criterion 19)', () => {
+  it('FUD0600: `error` on a form or a group, on the attribute', () => {
+    for (const inner of [
+      '<form control="@f"><div error="@f"></div></form>',
+      '<fieldset control="@f.seo"><div error="@f.seo"></div></fieldset>',
+    ]) {
+      const source = component(inner);
+      const [diag] = diags(source);
+      expect(diag!.code).toBe('FUD0600');
+      expect(source.slice(diag!.span.start, diag!.span.end)).toMatch(/^error="@f(\.seo)?"$/u);
+      expect(diag!.message).toContain('summary=');
+    }
+  });
+
+  it('FUD0601: `summary` on a control', () => {
+    const source = component('<input control="@f.name"><div summary="@f.name"></div>');
+    const [diag] = diags(source);
+    expect(diag!.code).toBe('FUD0601');
+    expect(source.slice(diag!.span.start, diag!.span.end)).toBe('summary="@f.name"');
+    expect(diag!.message).toContain('error=');
+  });
+
+  it.each(['p', 'span', 'small', 'label', 'a', 'button', 'strong', 'em', 'b', 'i', 'h1', 'h6', 'legend'])(
+    'FUD0602: a summary on a <%s> cannot hold its list',
+    (tag) => {
+      const source = component(`<form control="@f"><${tag} summary="@f"></${tag}></form>`);
+      expect(codes(source)).toEqual(['FUD0602']);
+    },
+  );
+
+  it('a summary on a <div>, a <section> or a <ul> holder is fine', () => {
+    for (const tag of ['div', 'section', 'aside']) {
+      expect(codes(component(`<form control="@f"><${tag} summary="@f" fields></${tag}></form>`))).toEqual([]);
+    }
+  });
+
+  it('FUD0603: radios of a control-component with no container', () => {
+    const source =
+      '<app-test><template shadowrootmode="open" formassociated>' +
+      '<input type="radio" control="@ctrl"><input type="radio" control="@ctrl"></template></app-test>';
+    const found = diags(source);
+    expect(found.map((d) => d.code)).toEqual(['FUD0603']);
+    expect(source.slice(found[0]!.span.start, found[0]!.span.end)).toBe('control="@ctrl"');
+  });
+
+  it('radios inside a <fieldset> or a role="radiogroup" are bridged', () => {
+    for (const open of ['<fieldset>', '<div role="radiogroup">']) {
+      const close = open === '<fieldset>' ? '</fieldset>' : '</div>';
+      const source =
+        `<app-test><template shadowrootmode="open" formassociated>${open}` +
+        `<input type="radio" control="@ctrl">${close}</template></app-test>`;
+      expect(codes(source)).toEqual([]);
+    }
+  });
+
+  it('FUD0604: the field of a control-component with a dynamic id', () => {
+    const source =
+      '<app-test><template shadowrootmode="open" formassociated><input id="@x" control="@ctrl"></template></app-test>';
+    const found = diags(source);
+    expect(found.map((d) => d.code)).toEqual(['FUD0604']);
+    expect(source.slice(found[0]!.span.start, found[0]!.span.end)).toBe('id="@x"');
+  });
+
+  it('FUD0605: a hand-written reference target that is dynamic or names no id of the template', () => {
+    for (const target of ['@x', 'nadie']) {
+      const source =
+        `<app-test><template shadowrootmode="open" formassociated shadowrootreferencetarget="${target}">` +
+        '<input id="campo" control="@ctrl"></template></app-test>';
+      const found = diags(source);
+      expect(found.map((d) => d.code)).toEqual(['FUD0605']);
+      expect(source.slice(found[0]!.span.start, found[0]!.span.end)).toMatch(/^shadowrootreferencetarget=/u);
+    }
+  });
+
+  it('a hand-written reference target naming an id of the template is fine', () => {
+    const source =
+      '<app-test><template shadowrootmode="open" formassociated shadowrootreferencetarget="campo">' +
+      '<input id="campo" control="@ctrl"></template></app-test>';
+    expect(codes(source)).toEqual([]);
+  });
+
+  it('a control-component that binds nothing has no bridge and nothing to report', () => {
+    expect(codes('<app-test><template shadowrootmode="open" formassociated><p></p></template></app-test>')).toEqual([]);
+  });
+});
+
+describe('BUG-42 — FUD0596–FUD0599 speak for `summary` too (criterion 20)', () => {
+  it('FUD0597, FUD0598 and FUD0599 name it too', () => {
+    expect(diags(component('<div summary="@f.nada"></div>'))[0]!.code).toBe('FUD0597');
+    const loop = diags(
+      component('<form control="@f">@foreach (const it of items) key (it) { <div summary="@f"></div> }</form>'),
+    );
+    expect(loop.map((d) => d.code)).toContain('FUD0598');
+    expect(loop.find((d) => d.code === 'FUD0598')!.message).toContain('`summary`');
+    const full = diags(component('<form control="@f"><div summary="@f">x</div></form>'));
+    expect(full.map((d) => d.code)).toEqual(['FUD0599']);
+    expect(full[0]!.message).toContain('`summary`');
   });
 });

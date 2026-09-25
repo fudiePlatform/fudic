@@ -64,6 +64,7 @@ export {
   hydratableTags,
   isIntrinsicallyHydratable,
   formAssociatedTags,
+  bridgeIds,
   isReactiveRoute,
   routeHydration,
 } from './level.js';
@@ -84,7 +85,7 @@ export {
 
 // The `control` bindings of a template and their `error` markers, resolved once for both
 // branches (SDD-34 §4.3, BUG-41 §4.3).
-export { planControls, slotIdOf, EMPTY_CONTROLS } from './controls.js';
+export { planControls, slotIdOf, issueIdOf, EMPTY_CONTROLS } from './controls.js';
 export type { ControlPlan, ControlSite, MarkerSite } from './controls.js';
 
 // The contract questions only a resolved graph can answer, and the three diagnostics that

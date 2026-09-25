@@ -244,7 +244,7 @@ export class SsrDom implements Dom<SsrNode> {
     detach(asImpl(node));
   }
 
-  attachShadow(host: SsrNode, delegatesFocus = false): SsrNode {
+  attachShadow(host: SsrNode, delegatesFocus = false, referenceTarget?: string): SsrNode {
     const h = asImpl(host);
     if (h.shadow === null) {
       const shadow = SsrNodeImpl.fragment();
@@ -255,6 +255,8 @@ export class SsrDom implements Dom<SsrNode> {
     // `shadowrootdelegatesfocus` rides the `<template>` the host opens (SDD-34 §4.5). Once
     // set it stays set — a second `attachShadow` on the same host is the idempotent path.
     if (delegatesFocus) h.delegatesFocus = true;
+    // The bridge of a control-component (decision 132), on the same template.
+    if (referenceTarget !== undefined) h.referenceTarget = referenceTarget;
     return h.shadow;
   }
 
