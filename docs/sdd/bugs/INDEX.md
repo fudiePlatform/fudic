@@ -101,6 +101,7 @@ Las siete secciones del SDD, reinterpretadas para un defecto:
 | [BUG-39](./BUG-39-el-router-no-conoce-su-base.md) | El router casa `url.pathname` —que lleva el `base`— contra patrones que no lo llevan: una app bajo `/admin/` declina todas sus rutas y su Service Worker no hace nada | [SDD-20](../SDD-20-render-sw.md) §4.4, §4.6 · [SDD-27](../SDD-27-artefactos-y-manifiesto.md) §5.4 · [BUG-33](./BUG-33-caches-por-app.md) §2.3 | `transport` | `Hecho` |
 | [BUG-40](./BUG-40-una-hoja-que-no-se-puede-enlazar.md) | Una hoja de estilos enlazada desde un `.fud` no se puede usar: el import no compila, y con el sufijo que lo salva la página lleva un nombre que ningún fichero tiene | [SDD-19](../SDD-19-plugin-vite.md) §4.5 · [SDD-42](../SDD-42-guia-de-estilos.md) §1.2, §4.2 · [BUG-08](./BUG-08-css-verbatim.md) decisión 49 | `compiler` · `vite` | `Hecho` |
 | [BUG-41](./BUG-41-el-error-que-no-se-va.md) | Un error de formulario no se va al corregirlo —solo se valida en el primer submit y el segundo no revalida—, y el hueco del mensaje lo coloca el compilador detrás del input, sin que el autor pueda elegir sitio, elemento ni texto por campo | [SDD-33](../SDD-33-formularios-reactivos.md) §4.5 · [SDD-34](../SDD-34-forms-compilador.md) §4.2–§4.4, §7, decisión 113 | `forms` · `compiler` · `language-core` · `transport` · `di` | `Hecho` |
+| [BUG-42](./BUG-42-error-resumen-y-validez-en-la-vista.md) | Los formularios de SDD-34 no se pueden terminar desde la vista: `error` sin mitad de editor (no se ofrece, y su valor ofrece la API `$`), un resumen sin atributo propio que solo dice su primer error y no puede recoger los de campo, ninguna validez que leer para deshabilitar el submit, y los controles envueltos en componentes (`app-label` · `app-input` · `app-error`) sin nombre ni descripción accesibles (Lighthouse); el puente `shadowrootreferencetarget` con respaldo donde falta | [SDD-34](../SDD-34-forms-compilador.md) §3.3, §4.4, §4.5, §4.9 · [SDD-33](../SDD-33-formularios-reactivos.md) §3, §4.5 · [BUG-41](./BUG-41-el-error-que-no-se-va.md) §3.1, §3.3, §4.3, criterio 19 · decisiones 113 y 130, y añade la **131** | `forms` · `compiler` · `language-core` · `language-server` · `example-basic` | `Listo` |
 
 > **BUG-31 y BUG-32** se implementaron juntos en `worktree-bug-31-emit-incondicional` y ya están
 > en esta tabla. BUG-33 se numeró detrás de ellos a propósito aunque llegara antes al índice:
@@ -315,6 +316,17 @@ BUG-29  (independiente de todos: no toca el emit, ni el runtime, ni el editor.)
         con nada de lo anterior: es un escaneo de texto sobre JS al que le falta
         el contexto léxico que el balanceador ya había calculado. Se puede coger
         en cualquier momento y por cualquiera.
+
+BUG-41 ──▶ BUG-42  salió de revisar `/formularios` escribiendo de verdad en el editor,
+                   con BUG-41 ya cerrado: su `error=` no tenía mitad de editor (el
+                   criterio 19 solo pedía tipos), servía a la vez para el mensaje de un
+                   campo y para un resumen, y la vista no tenía cómo preguntar si el
+                   formulario es válido. Lighthouse añadió el input sin nombre de un
+                   control-componente. Parte en dos la decisión 130 (`error` · `summary`,
+                   decisión 131, que enmienda también la 113), separa la validez,
+                   silenciosa y viva, de los errores visibles, y cierra todo aquí: por
+                   decisión de Pedro no hay otro BUG ni otro SDD. El ejemplo de su §0 es
+                   el contrato.
 ```
 
 ## Registro de progreso
