@@ -3,7 +3,7 @@
 > **BUG:** [BUG-42 — Los formularios de SDD-34 no se pueden terminar desde la vista](./BUG-42-error-resumen-y-validez-en-la-vista.md)
 > **Paquetes:** `@fudic/forms` · `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/example-basic`
 > **Rama:** `bug-42-formularios-desde-la-vista`, creada desde `bug-41-validacion-y-hueco-de-error` y trabajada en el mismo worktree (`.claude/worktrees/bug-41-validacion-y-hueco-de-error`), por indicación de Pedro: el BUG sale de la revisión de BUG-41, y dos ramas permiten seguir cada uno por separado
-> **Progreso:** 21 / 27
+> **Progreso:** 23 / 27
 
 **Todo se cierra aquí.** Por decisión de Pedro no hay otro BUG ni otro SDD: el resumen con varios
 mensajes, el resumen con los errores de campo y la accesibilidad de los controles envueltos en
@@ -107,8 +107,8 @@ líneas que los hacen pasar.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 18 | 2, 4–7, 10–12 | **El ejemplo de §0, tal cual.** `user.form.ts` con `email`, `web`, el grupo `acceso`, la regla `summary` de dos mensajes y `validity`. `app-input.fud` **recortado** a solo el input (sin `id` como prop, sin `id=@id`, con `id="campo"` fijo y sin marcador interno). Nuevos: `app-error.fud`, `app-label.fud` y `app-field.fud`. `app-form.fud` con el resumen `fields`, el del grupo, los cuatro patrones (*Nombre*, *Alias*, *Email*, *Web*), el `*` en `aria-hidden` y el botón `disabled=@(!userForm.$valid())`. El texto de `formularios.fud` explica el resumen, `fields`, la validez y los cuatro patrones. Revisar que ningún otro uso de `app-input` (p. ej. `app-wide-form`) dependa del marcador interno que desaparece. Criterio 32 | `example-basic` | `src/forms/user.form.ts` · `src/components/app-form.fud` · `src/components/app-input.fud` · `src/components/app-error.fud` (nuevo) · `src/components/app-label.fud` (nuevo) · `src/components/app-field.fud` (nuevo) · `src/routes/formularios.fud` |
-| [ ] | 19 | 18 | **README de `@fudic/forms`.** Todo lo de §3: `summary=` y `fields`, `valid()` / `$valid()`, `Validity`, `GroupOptions`, `$messages()` / `$issues()` / `$submitted()`. Los cuatro patrones de un campo, por qué `app-label` proyecta el `<label>` (y la variante con `aria-labelledby`, que pierde el clic), el puente y su respaldo, y el `*` en `aria-hidden`. El ejemplo de §0 recortado y los avisos de §4.5 y §7. Deja de presentar `error=@f` como resumen. Anotar que `formassociated` es una propuesta de fudic. Criterio 33 | `forms` | `packages/forms/README.md` |
+| [x] | 18 | 2, 4–7, 10–12 | **El ejemplo de §0, tal cual.** `user.form.ts` con `email`, `web`, el grupo `acceso`, la regla `summary` de dos mensajes y `validity`. `app-input.fud` **recortado** a solo el input (sin `id` como prop, sin `id=@id`, con `id="campo"` fijo y sin marcador interno). Nuevos: `app-error.fud`, `app-label.fud` y `app-field.fud`. `app-form.fud` con el resumen `fields`, el del grupo, los cuatro patrones (*Nombre*, *Alias*, *Email*, *Web*), el `*` en `aria-hidden` y el botón `disabled=@(!userForm.$valid())`. El texto de `formularios.fud` explica el resumen, `fields`, la validez y los cuatro patrones. Revisar que ningún otro uso de `app-input` (p. ej. `app-wide-form`) dependa del marcador interno que desaparece. Criterio 32 | `example-basic` | `src/forms/user.form.ts` · `src/components/app-form.fud` · `src/components/app-input.fud` · `src/components/app-error.fud` (nuevo) · `src/components/app-label.fud` (nuevo) · `src/components/app-field.fud` (nuevo) · `src/routes/formularios.fud` |
+| [x] | 19 | 18 | **README de `@fudic/forms`.** Todo lo de §3: `summary=` y `fields`, `valid()` / `$valid()`, `Validity`, `GroupOptions`, `$messages()` / `$issues()` / `$submitted()`. Los cuatro patrones de un campo, por qué `app-label` proyecta el `<label>` (y la variante con `aria-labelledby`, que pierde el clic), el puente y su respaldo, y el `*` en `aria-hidden`. El ejemplo de §0 recortado y los avisos de §4.5 y §7. Deja de presentar `error=@f` como resumen. Anotar que `formassociated` es una propuesta de fudic. Criterio 33 | `forms` | `packages/forms/README.md` |
 | [ ] | 20 | 13–19 | **Probado donde se ve (Pedro).** Antes, **reconstruir y reinstalar la extensión** desde esta rama: la revisión que originó este BUG se hizo con una del 2026-09-19 y dos de sus avisos eran eso. Los catorce pasos de §0.6 en `/formularios`, en dev y en `vite preview`, en Chrome **y** en Safari o Firefox (sin puente nativo); la tabla de §0.5 escribiendo en el editor; y **Lighthouse** sin avisos de formulario. Criterio 41 | — | — |
 
 ---
@@ -176,6 +176,16 @@ líneas que los hacen pasar.
   markup y no del checker. La proyección escribe un hueco `$errorOf( )` para un `error=`/`summary=`
   aún vacío, también en un tag de componente (un marcador nunca es prop). Tests del editor
   adelantados (tarea 24). El snapshot de `fudic new` cambia solo por el comentario de `globals`.
+- **Fase 5, lo que destapó el ejemplo.** Dos cosas que los tests de las fases 1–4 no veían:
+  (1) un marcador que es **host de componente** (`<app-error error=@…>`) salía sin `id`, porque
+  el emit solo añadía los atributos de marcador a un tag nativo; el `aria-describedby` del
+  `app-input` apuntaba a nada. Corregido en los dos emits, con su test. (2) El runtime publicado
+  de `forms` no se construía (`computed` faltaba en el shim de `@fudic/core`) y
+  `examples/pieces-bench/check.mjs` fallaba con los módulos nuevos: `validity`, `validate-on`
+  y `verdicts` viajan en la pieza `internals`; las dos marcas (`server-flag`, `async-flag`) en
+  la pieza `flags`, que sustituye a `server-flag`; el resumen en la pieza `summary`;
+  `asyncValidator` en `validators`, y `bindMessage` dentro de `wiring` (siempre va con un
+  `bindForm`, y sola no pagaba su frontera).
 - **«Lo ha cambiado» es una marca que no vuelve atrás** (`edited`), no `dirty`: sin ella el
   criterio 2 no se cumple (BUG §4.3).
 - **Reglas asíncronas y validez** (decisión de Pedro, 2026-09-25): una regla solo se sabe

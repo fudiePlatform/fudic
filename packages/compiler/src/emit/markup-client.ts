@@ -861,6 +861,9 @@ export class ClientMarkupEmitter {
       // What a marker or a summary says of this control-component from outside, and the id a
       // summary links to — the same attributes the server writes on the host (BUG-42 §4.9).
       this.#controlAttrs(el, v);
+      // A marker that is itself a component host (`<app-error error=@f.email>`): the same id
+      // the server writes, or the `aria-describedby` that names it points at nothing.
+      this.#markerAttrs(el, v);
       this.#childValues(el, v);
     } else {
       writeElementAttrs(

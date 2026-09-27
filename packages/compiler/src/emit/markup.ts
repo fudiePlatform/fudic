@@ -452,6 +452,9 @@ export class MarkupEmitter {
       // A control-component host that a marker or a summary describes from outside, and the id a
       // summary links to (BUG-42 §4.7, §4.9): the relay carries both to its input.
       this.#controlAttrs(el, v);
+      // A marker can be a component host too — `<app-error error=@f.email>` — and it needs the
+      // same id as a native one, or the `aria-describedby` that names it points at nothing.
+      this.#markerAttrs(el, v);
       // A control-component's shadow root delegates focus, and the serializer turns that into
       // `shadowrootdelegatesfocus` on the template (SDD-34 §4.5). The argument is only written
       // when it is true: a page with no control-component keeps the bytes it had.
@@ -464,6 +467,8 @@ export class MarkupEmitter {
         `${renderName(el.name)}($dom, ${s}, ${componentPropsExpr(this.#source, el, this.#signals, this.#declared(el.name))}, ${this.#ioc});`,
       );
       this.emitChildren(el.children, v); // light DOM (projected by <slot>)
+      // A marker host's text goes into its light DOM, where the component's `<slot>` paints it.
+      this.#markerText(el, v);
     } else {
       this.#w.line(`const ${v} = $dom.element(${JSON.stringify(el.name)});`);
       this.#elementAttrs(el, v, false);

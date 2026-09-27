@@ -1,17 +1,20 @@
 @code {
   import type { Control } from "@fudic/forms";
 
-  // Un control-componente: recibe el NODO del formulario por la prop `ctrl` y lo enlaza a su
-  // propio `<input>`. El marcador `formassociated` del template es lo que decide de qué clase
-  // hereda lo que se emite, que su shadow root delegue el foco, y que su tag se defina al
-  // cargar la página en vez de al primer gesto.
+  // Un control-componente: recibe el NODO del formulario por `control=` y lo enlaza a su
+  // propio `<input>`. El marcador `formassociated` del template decide de qué clase hereda lo
+  // que se emite, que su shadow root delegue el foco, y que su tag se defina al cargar la
+  // página en vez de al primer gesto.
   //
-  // `Control<unknown>` y `type` como PROP, y las dos cosas van juntas. Un `Control<T>` es
-  // asignable a `Control<unknown>`, así que el cruce se sigue comprobando —tiene que ser un
-  // control, no un grupo ni un formulario— sin atar el componente a un solo tipo de valor. Y
-  // como el `type` no se conoce en compilación, el enlace lo elige `bindByType` al enlazar
-  // (decisión 109): un `app-input` para cualquier forma de `<input>`, en vez de uno por forma.
-  const { ctrl, type, id } = props<{ ctrl: Control<unknown>; type?: string; id?: string }>();
+  // Solo el input. El id del HOST lo pone la página, y el del input es FIJO: los ids de un
+  // shadow root son locales a él, así que `campo` no choca en ninguna instancia. El puente
+  // (`shadowrootreferencetarget="campo"`) lo escribe el compilador: lo que apunta al host —un
+  // `<label for>`— sigue hasta el input. El mensaje tampoco vive aquí: lo marca la página con
+  // `app-error`, y `FudicControlElement` lleva su descripción al input.
+  //
+  // `type` como PROP: el enlace lo elige `bindByType` al enlazar (decisión 109), un
+  // `app-input` para cualquier forma de `<input>`.
+  const { ctrl, type } = props<{ ctrl: Control<unknown>; type?: string }>();
 }
 
 <head>
@@ -31,15 +34,6 @@
       outline: none;
       flex: 1;
     }
-    .error {
-      display: block;
-      margin-top: 0.3rem;
-      color: #b3261e;
-      font-size: 0.85rem;
-    }
-    .error:empty {
-      display: none;
-    }
   </style>
 </head>
 
@@ -47,13 +41,7 @@
   <template shadowrootmode="open" formassociated>
     <div class="field">
       <slot name="icon"></slot>
-      <input id=@id type=@type control=@ctrl>
+      <input id="campo" type=@type control=@ctrl>
     </div>
-    @*
-      El mensaje vive DENTRO del componente, junto a su `<input>`: `aria-describedby` no cruza
-      un shadow root, así que marcarlo desde la vista que usa `app-input` no podría describir
-      el campo (FUD0597).
-     *@
-    <small class="error" error=@ctrl></small>
   </template>
 </app-input>

@@ -503,4 +503,36 @@ describe('BUG-42 — a marker beside a control-component (criterion 22)', () => 
     expect(client).toContain("import { bindForm, bindMessage } from '@fudic/forms/dom';");
     expect(client).toMatch(/\$n\d+ && \$d\.push\(bindMessage\(\$n\d+, f\.email\)\);/u);
   });
+
+  /**
+   * The marker on the HOST of a component, as `app-error` is in the example: the id the input is
+   * described by has to land on that host, and the message the server had goes into its light
+   * DOM, where the component's `<slot>` paints it.
+   */
+  it('a marker that is itself a component host gets its id, on both branches, and its text in the light DOM', () => {
+    const io = memoryIo({
+      '/home.fud':
+        '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
+      '/m.fud':
+        '<link rel="component" href="./app-input.fud">\n<link rel="component" href="./app-error.fud">\n' +
+        "@code {\n  import { f } from './user.form.js';\n}\n<m-el>\n  <template shadowrootmode=\"open\">" +
+        '<form control="@f"><div summary="@f" fields></div>' +
+        '<app-input control="@f.email"></app-input><app-error error="@f.email"></app-error>' +
+        '<app-error summary="@f"></app-error></form></template>\n</m-el>\n',
+      '/app-input.fud':
+        '@code {\n  const { ctrl } = props<{ ctrl?: unknown }>();\n}\n' +
+        '<app-input>\n  <template shadowrootmode="open" formassociated><input control="@ctrl"></template>\n</app-input>\n',
+      '/app-error.fud': '<app-error>\n  <template shadowrootmode="open"><slot></slot></template>\n</app-error>\n',
+    });
+    const graph = resolveComponents('/home.fud', io);
+    const comp = graph.components.get('m-el')!;
+    const server = emitComponentModule(graph, comp);
+    const client = emitComponentClientModule(graph, comp);
+    for (const out of [server, client]) {
+      expect(out).toContain(`'id', "fud-e-f-email"`);
+      expect(out).toContain(`'aria-describedby', "fud-e-f-email"`);
+    }
+    expect(server).toContain("f.email.touched() ? f.email.message() : ''");
+    expect(client).toMatch(/\$n\d+ && \$d\.push\(bindMessage\(\$n\d+, f\.email\)\);/u);
+  });
 });

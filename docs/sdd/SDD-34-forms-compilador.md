@@ -349,6 +349,10 @@ la nada. A partir de aquí:
 
 ### 4.5. `formassociated`: el marcador, la clase, y el JavaScript que sí se paga
 
+> **Nota (BUG-42, decisión 132).** `formassociated` es un marcador de fudic, no del estándar, y
+> fudic lo quiere **proponer**. Además de lo que dice este apartado, ahora decide el puente: el
+> compilador escribe `shadowrootreferencetarget` hacia el campo del control-componente.
+
 **Decisión 111.** `<template shadowrootmode="open" formassociated>` marca el componente como
 **control-componente**. El marcador es de compilación: el navegador nunca lo ve —un atributo
 desconocido en un `<template>` es inerte— y el compilador lo consume. **No inventa nada del

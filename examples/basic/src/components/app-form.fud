@@ -1,4 +1,7 @@
 <link rel="component" href="./app-input.fud">
+<link rel="component" href="./app-error.fud">
+<link rel="component" href="./app-label.fud">
+<link rel="component" href="./app-field.fud">
 
 @code {
   // El formulario NO se define aquí: se importa. La zona neutra corre en los dos lados, así
@@ -8,8 +11,8 @@
 
   @client {
     // El envío es del autor, no del framework (SDD-34 §7): aquí no hay a dónde mandar nada,
-    // así que se corta. `bindForm` ya ha hecho lo suyo en este mismo gesto —validar la
-    // primera vez, y parar con el foco en el primer campo malo cuando ya hay errores.
+    // así que se corta. `bindForm` ya ha hecho lo suyo en este mismo gesto: validar, y parar
+    // con el foco en el resumen cuando hay errores.
     function stop(e: Event) {
       e.preventDefault();
     }
@@ -18,14 +21,21 @@
 
 <head>
   <style>
-    form {
+    form, fieldset {
       display: grid;
       gap: var(--gap);
+    }
+    form {
       border: 1px solid var(--line);
       border-radius: var(--radius-box);
       padding: 1.1rem;
       background: var(--surface);
       margin-bottom: 1rem;
+    }
+    fieldset {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 0.8rem;
     }
     label {
       font-weight: 500;
@@ -42,6 +52,10 @@
       background: var(--brand);
       color: white;
     }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
     .campo {
       display: grid;
       gap: 0.3rem;
@@ -53,6 +67,17 @@
     .error:empty {
       display: none;
     }
+    .resumen {
+      border-left: 3px solid #b3261e;
+      padding-left: 0.6rem;
+    }
+    .resumen:empty {
+      display: none;
+    }
+    .resumen ul {
+      margin: 0;
+      padding-left: 1rem;
+    }
     [aria-invalid="true"] {
       border-color: #b3261e;
     }
@@ -62,41 +87,57 @@
 <app-form>
   <template shadowrootmode="open">
     <form control=@userForm class="fudic" @submit=@stop>
+
       @*
-        El mensaje lo coloca la vista: `error=@userForm.name` marca el elemento que lo dice, y
-        puede ir donde haga falta —aquí, bajo el campo y dentro de su propia caja de la
-        rejilla—. El compilador le pone el `id` y el `aria-describedby` del input; el texto lo
-        escribe el formulario, con el que el propio control declara.
-       *@
+        El resumen del formulario. Con `fields`, además de sus propios errores lista, tras un
+        envío fallido, el de cada campo, enlazado al campo. El compilador le pone `id`,
+        `aria-live` y `tabindex="-1"`, y el envío fallido le lleva el foco.
+      *@
+      <div class="error resumen" summary=@userForm fields></div>
+
+      @* 1 · Nativo. *@
       <div class="campo">
-        <label for="nom">Nombre</label>
+        <label for="nom">Nombre <span aria-hidden="true">*</span></label>
         <input id="nom" control=@userForm.name type="text">
         <small class="error" error=@userForm.name></small>
       </div>
-      @*
-        Un control-componente, y va DENTRO del formulario: por la decisión 115 un `control`
-        exige un `<form control>` por encima. Antes esto colgaba de un `<form>` ajeno —uno que
-        fudic no enlaza y que envía nativo—, y aquello no era interoperar: el valor que el
-        usuario escribe vive en `userForm` y el formulario del navegador lee el DOM, así que
-        los dos solo coincidían porque `setFormValue` copiaba uno en el otro bajo un atributo
-        `name` que no usa nadie más del lenguaje. Dos fuentes de verdad para un campo.
 
-        El `type` es una PROP del componente, no una constante suya: `app-input` sirve para
-        cualquier forma de `<input>` y elige su enlace al enlazar (decisión 109). Sin eso haría
-        falta un componente por tipo.
+      @* 2 · Label nativo + control envuelto + error envuelto. *@
+      <div class="campo">
+        <label for="ali">Alias <span aria-hidden="true">*</span></label>
+        <app-input id="ali" .type="text" control=@userForm.alias></app-input>
+        <app-error error=@userForm.alias></app-error>
+      </div>
 
-        El nodo cruza con `control=`, no con `.ctrl=` (decisión 112). Como prop normal era un
-        valor más del estado que viaja serializado, y un `Control` no se serializa: al hidratar,
-        `app-input` se quedaba sin él —sin validar, sin `:invalid`, sin mensaje—. `control=`
-        cruza la REFERENCIA, y el padre se la entrega también cuando adopta.
+      @* 3 · Tres envoltorios hermanos. *@
+      <div class="campo">
+        <app-label><label for="email">Email <span aria-hidden="true">*</span></label></app-label>
+        <app-input id="email" .type="email" control=@userForm.email></app-input>
+        <app-error error=@userForm.email></app-error>
+      </div>
 
-        Y el `id` va en el HOST, no en el `<input>` de dentro: un `<label for>` busca en su
-        propio árbol, y el input vive en otro shadow root. El host es el elemento asociado al
-        formulario —por eso se puede etiquetar—, y `delegatesFocus` lleva el foco adentro.
-       *@
-      <label for="ali" id="ali-label">Alias</label>
-      <app-input id="ali" .type="text" control=@userForm.alias></app-input>
-      <button type="submit">Guardar</button>
+      @* 4 · Todo dentro de un componente. *@
+      <app-field id="web" .label="Web" .type="url" control=@userForm.web></app-field>
+
+      <fieldset control=@userForm.acceso>
+        <legend>Acceso</legend>
+
+        @* Resumen del grupo, sin `fields`: solo «Las contraseñas no coinciden». *@
+        <div class="error resumen" summary=@userForm.acceso></div>
+
+        <div class="campo">
+          <label for="cla">Contraseña <span aria-hidden="true">*</span></label>
+          <input id="cla" control=@userForm.acceso.clave type="password">
+          <small class="error" error=@userForm.acceso.clave></small>
+        </div>
+        <div class="campo">
+          <label for="rep">Repite la contraseña <span aria-hidden="true">*</span></label>
+          <input id="rep" control=@userForm.acceso.repetir type="password">
+          <small class="error" error=@userForm.acceso.repetir></small>
+        </div>
+      </fieldset>
+
+      <button type="submit" disabled=@(!userForm.$valid())>Guardar</button>
     </form>
   </template>
 </app-form>
