@@ -205,3 +205,24 @@ describe('$issues and $submitted (criterion 11)', () => {
     expect(f.acceso.$submitted()).toBe(false);
   });
 });
+
+describe('BUG-42 §0.6 steps 3–4 — a summary speaks at the moments its fields do', () => {
+  it('a control validating on its own re-runs the rules of every group and form above it', async () => {
+    const f = userForm();
+    f.name.set('pedro');
+    f.alias.set('pedro');
+    f.acceso.clave.set('pedro1234');
+    // No submit and no `$validate`: the field the user just left validates, and that is all.
+    await f.acceso.clave.validate();
+    expect(f.$messages()).toEqual([
+      'El alias no puede ser tu nombre.',
+      'La contraseña no puede contener tu nombre.',
+    ]);
+    expect(f.acceso.$message()).toBe('Las contraseñas no coinciden.');
+
+    // Corrected the same way: the next time a field below validates, the summary follows.
+    f.acceso.repetir.set('pedro1234');
+    await f.acceso.repetir.validate();
+    expect(f.acceso.$message()).toBe('');
+  });
+});

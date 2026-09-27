@@ -536,3 +536,23 @@ describe('BUG-42 — a marker beside a control-component (criterion 22)', () => 
     expect(client).toMatch(/\$n\d+ && \$d\.push\(bindMessage\(\$n\d+, f\.email\)\);/u);
   });
 });
+
+describe('BUG-42 — a view that reads through an imported form (§4.3)', () => {
+  it('watches the expression, because the form itself is not a source', () => {
+    const { client } = emit(
+      '<form control="@f"><input control="@f.name"><button disabled="@(!f.$valid())">x</button></form>',
+    );
+    expect(client).toContain('$d.push($subIf(f, $u));');
+    expect(client).toContain('$d.push($sub(() => ((!f.$valid())), $u));');
+    expect(client).toContain('subscribe as $sub');
+  });
+
+  it('leaves a bare imported name to `$subIf`, and a member of a local alone', () => {
+    const { client } = emit(
+      '<p>@(count())</p><p>@(local.x)</p>',
+      "  import { count } from './store.js';\n  const local = { x: 1 };",
+    );
+    expect(client).toContain('$d.push($subIf(count, $u));');
+    expect(client).not.toContain('$sub(() =>');
+  });
+});

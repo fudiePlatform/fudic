@@ -334,6 +334,8 @@ function buildComponentClientModule(
     // rewritten inside the gesture INP measures just for hooking up.
     for (const name of reactive) bodies.hook.line(`$d.push($sub(${name}, $u));`);
     for (const name of imported) bodies.hook.line(`$d.push($subIf(${name}, $u));`);
+    // And what is read THROUGH an imported name — `userForm.$valid()` (BUG-42 §4.3).
+    if (em.watchImports(imported, bodies.hook)) usage.subscribes = true;
   }
 
   const w = new CodeWriter();

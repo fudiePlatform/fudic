@@ -177,22 +177,32 @@ export function build<S extends Schema>(
       const late = internalsOf(node).validateSubtree(ctx);
       if (late !== undefined) pending.push(late);
     }
-    /**
-     * EVERY rule of the summary runs (BUG-42 §4.6). What the synchronous ones found is on record
-     * at once, so a submit decides on it; the whole union follows when some rule answers later.
-     */
-    const summarise = (): Promise<void> | undefined => {
-      const { now, later } = allFailures(settle.watch(rules, at), untrack(read), ctx.root);
-      if (later === undefined) {
-        record(now, at);
-        return undefined;
-      }
-      if (now !== null) record(now, at);
-      return later.then((all) => {
-        if (mine === epoch) record(all, at);
-      });
-    };
-    return pending.length === 0 ? summarise() : Promise.all(pending).then(summarise);
+    return pending.length === 0
+      ? summarise(ctx, mine, at)
+      : Promise.all(pending).then(() => summarise(ctx, mine, at));
+  };
+
+  /**
+   * EVERY rule of the summary runs (BUG-42 §4.6). What the synchronous ones found is on record
+   * at once, so a submit decides on it; the whole union follows when some rule answers later.
+   */
+  const summarise = (ctx: ValidateCtx, mine: number, at: number): Promise<void> | undefined => {
+    const { now, later } = allFailures(settle.watch(rules, at), untrack(read), ctx.root);
+    if (later === undefined) {
+      record(now, at);
+      return undefined;
+    }
+    if (now !== null) record(now, at);
+    return later.then((all) => {
+      if (mine === epoch) record(all, at);
+    });
+  };
+
+  /** The own rules alone, after a control below validated on its own: see `adopt`'s `above`. */
+  let above: () => void;
+  const resummarise = (): void => {
+    void summarise({ root, server: false }, (epoch += 1), valueEpoch());
+    above();
   };
 
   const collect = (path: string, out: Record<string, Errors>): void => {
@@ -262,11 +272,12 @@ export function build<S extends Schema>(
     validateSubtree,
     // A nested form passes the adoption down: its fields' root is the form above it, and their
     // policy is this form's own when it chose one.
-    adopt: (outer, validateOn, validity) => {
+    adopt: (outer, validateOn, validity, up) => {
       root = outer;
       inheritedValidity = validity;
+      above = up;
       each((_, node) => {
-        node.adopt(outer, options.validateOn ?? validateOn, options.validity ?? validity);
+        node.adopt(outer, options.validateOn ?? validateOn, options.validity ?? validity, resummarise);
       });
     },
     // A group's own error is its summary: the map of `$errors()` is about fields.
@@ -383,6 +394,6 @@ export function build<S extends Schema>(
   );
   // Every field starts out with THIS form as its root. If this form is itself cloned into
   // another as a group, that one adopts it in turn and the root moves outwards.
-  internals.adopt(self as unknown as AnyForm, undefined, undefined);
+  internals.adopt(self as unknown as AnyForm, undefined, undefined, () => {});
   return self;
 }

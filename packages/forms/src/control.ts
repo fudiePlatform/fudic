@@ -105,6 +105,8 @@ function build<T>(
   let inherited: ValidateOn | undefined;
   /** The validity of the nearest form that chose one, handed down the same way. */
   let inheritedValidity: Validity | undefined;
+  /** Re-runs the own rules of the forms above. Set with the root: no root, no validation. */
+  let above: () => void;
   /**
    * The epoch the errors on record belong to. An error published for a value that has since
    * moved says nothing about the current one — a 422 counts until the field is edited.
@@ -209,10 +211,11 @@ function build<T>(
     // A control accepts any value: there is nothing to check before writing.
     check: () => {},
     validateSubtree,
-    adopt: (r, validateOn, validity) => {
+    adopt: (r, validateOn, validity, up) => {
       root = r;
       inherited = validateOn;
       inheritedValidity = validity;
+      above = up;
     },
     publish: (e) => {
       record(e);
@@ -261,7 +264,10 @@ function build<T>(
   };
   self.reset = reset;
   self.validate = async (opts = {}) => {
-    await validateSubtree({ root: rootOf('validate'), server: opts.server === true });
+    const late = validateSubtree({ root: rootOf('validate'), server: opts.server === true });
+    // The summaries above speak at the moments their fields do (BUG-42 §0.6, §4.7).
+    above();
+    await late;
     return untrack(errors) === null;
   };
   self.message = () => {

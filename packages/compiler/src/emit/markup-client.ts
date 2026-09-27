@@ -400,6 +400,8 @@ export class ClientMarkupEmitter {
   #depth = 0;
   /** How many value writes `$a` owns so far — each one gets its own slot in `$w`. */
   #writes = 0;
+  /** The expression of each of those writes, in slot order, for `watchImports`. */
+  readonly #expressions: (readonly LinePart[])[] = [];
   /** How many crossed nodes `$cb` has named so far: `$fc0`, `$fc1`… */
   #controlTemps = 0;
   /**
@@ -443,6 +445,33 @@ export class ClientMarkupEmitter {
   }
 
   /**
+   * Subscribe every value write of this walk that reads a MEMBER of an imported name — and
+   * say whether there was one (BUG-42 §4.3).
+   *
+   * `$subIf(name, $u)` hears an imported name only when the name itself is a source. An
+   * imported form is not: it is an object whose members are, so `@(!userForm.$valid())` went
+   * deaf — the button painted once and never moved again. The name cannot be subscribed, but
+   * the expression can: `$sub` over a function watches everything it reads, through `computed`
+   * and all, and its first pass only READS, so a hydration still writes nothing.
+   *
+   * Only member reads, and only this walk's writes: a bare imported name is `$subIf`'s, and a
+   * block's writes may name its own locals, which do not exist where `$s` runs.
+   */
+  watchImports(imported: readonly string[], hook: CodeWriter): boolean {
+    const member = imported.map(
+      (name) => new RegExp(`(?<![\\w$.])${name.replace(/\$/gu, '\\$')}\\s*\\??\\.`, 'u'),
+    );
+    let watched = false;
+    for (const value of this.#expressions) {
+      const text = value.map((part) => (typeof part === 'string' ? part : part.text)).join('');
+      if (!member.some((re) => re.test(text))) continue;
+      hook.mappedLine('$d.push($sub(() => (', ...value, '), $u));');
+      watched = true;
+    }
+    return watched;
+  }
+
+  /**
    * The roots of this walk, in document order — its own nodes and the constructs nested
    * among them. It is what `move` unrolls: reordering a block means placing every one of
    * its roots again, and a nested block's rows are as much its content as its own nodes.
@@ -459,6 +488,7 @@ export class ClientMarkupEmitter {
    * saves is a DOM mutation.
    */
   #applyValue(value: readonly LinePart[], write: (v: string) => string): void {
+    this.#expressions.push(value);
     const slot = this.#writes++;
     this.#apply.mappedLine('$v = ', ...value, ';');
     this.#apply.line(`if ($v !== $w[${slot}]) { $w[${slot}] = $v; ${write('$v')} }`);

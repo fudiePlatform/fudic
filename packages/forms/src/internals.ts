@@ -56,8 +56,18 @@ export interface NodeInternals {
    * `validateOn` travels with it, the other way round: each form passes down its OWN policy
    * when it has one and the inherited one when not, so the NEAREST form that chose wins.
    * `undefined` when none did. `validity` travels the same way (BUG-42 §4.3).
+   *
+   * `above` re-runs the own rules of every form and group above this node, nearest first. A
+   * control calls it each time it validates on its own, so a summary speaks at the same moments
+   * as the fields under it — «the passwords do not match» appears while typing, not only on a
+   * submit (BUG-42 §0.6, §4.7).
    */
-  adopt(root: AnyForm, validateOn: ValidateOn | undefined, validity: Validity | undefined): void;
+  adopt(
+    root: AnyForm,
+    validateOn: ValidateOn | undefined,
+    validity: Validity | undefined,
+    above: () => void,
+  ): void;
   /** Publishes an error that came from outside. A control also marks itself touched. */
   publish(e: Errors | null): void;
   /** A child by name, for resolving a path. `undefined` when there is no such field. */
