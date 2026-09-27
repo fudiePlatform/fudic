@@ -3,7 +3,7 @@
 > **BUG:** [BUG-42 — Los formularios de SDD-34 no se pueden terminar desde la vista](./BUG-42-error-resumen-y-validez-en-la-vista.md)
 > **Paquetes:** `@fudic/forms` · `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/example-basic`
 > **Rama:** `bug-42-formularios-desde-la-vista`, creada desde `bug-41-validacion-y-hueco-de-error` y trabajada en el mismo worktree (`.claude/worktrees/bug-41-validacion-y-hueco-de-error`), por indicación de Pedro: el BUG sale de la revisión de BUG-41, y dos ramas permiten seguir cada uno por separado
-> **Progreso:** 23 / 27
+> **Progreso:** 24 / 27
 
 **Todo se cierra aquí.** Por decisión de Pedro no hay otro BUG ni otro SDD: el resumen con varios
 mensajes, el resumen con los errores de campo y la accesibilidad de los controles envueltos en
@@ -121,7 +121,7 @@ líneas que los hacen pasar.
 | [x] | 22 | 5–7 | **Enlaces del DOM.** Criterios 12–16, en happy-dom, con dobles para el puente, `internals.labels` y *element reflection*: la prueba real es §6.G. El 13 se ve fallar revirtiendo el foco al resumen. | `forms` | `test/dom/summary.test.ts` (nuevo) · `test/dom/bind-message.test.ts` (nuevo) · `test/dom/relay.test.ts` (nuevo) |
 | [x] | 23 | 8–12 | **Compilador.** Criterios 17–23. Los *rojo primero* (19, 21, 22) se ven fallar revirtiendo las comprobaciones de las tareas 8, 9, 11 y 12. Los goldens que cambien se regeneran revisándolos, no a ciegas. | `compiler` | `test/binding/classify.test.ts` · `test/semantic/control.test.ts` · `test/emit/control.test.ts` · `test/emit/hydrate/control-a11y.test.ts` · `test/emit/reference-target.test.ts` (nuevo) |
 | [x] | 24 | 13–17 | **Editor.** Criterios 24–31. El 26 es la captura de la revisión: `error=@userForm.` sin ningún `$`, en las tres formas. El 31 es **una tabla de paridad**: `control`, `error` y `summary` × oferta, valor, hover y tipos. | `language-core` · `language-server` | `language-core/test/sdd34-control-projection.test.ts` · `language-server/test/services/marker-parity.test.ts` (nuevo) · `language-server/test/services/template-attrs.test.ts` (nuevo) |
-| [ ] | 25 | 18, 20 | **E2E.** `@axe-core/playwright` como dependencia de desarrollo de `@fudic/example-basic`, versión exacta. Criterios 34–36 con `getByRole` y `toHaveAccessibleDescription` (árbol de accesibilidad, no atributos). Criterio 37: la misma batería con una `addInitScript` que borra `referenceTarget` de `ShadowRoot.prototype`. Criterio 38 con una fixture de test para la variante de `app-label` con `aria-labelledby`. Criterio 39 con axe en los tres estados y en las dos pasadas. Criterio 40 con un test por paso de §0.6. Los *rojo primero* (34, 35, 39) se ven fallar sobre el `/formularios` de antes de las tareas 7 y 11. **Adaptar los tests de `forms.spec.ts` que dependen de lo que cambia:** `aliasError` busca `app-input .error` (el mensaje pasa a `app-error`), `alias` localiza «el» `app-input` (ahora hay dos, más `app-field`: se localizan por el id del host), y los de foco, hidratación y `bindByType` que nombran `app-input` se revisan uno a uno, no se borran. | `example-basic` | `tests/forms.spec.ts` · `tests/forms-a11y.spec.ts` (nuevo) · `package.json` |
+| [x] | 25 | 18, 20 | **E2E.** `@axe-core/playwright` como dependencia de desarrollo de `@fudic/example-basic`, versión exacta. Criterios 34–36 con `getByRole` y `toHaveAccessibleDescription` (árbol de accesibilidad, no atributos). Criterio 37: la misma batería con una `addInitScript` que borra `referenceTarget` de `ShadowRoot.prototype`. Criterio 38 con una fixture de test para la variante de `app-label` con `aria-labelledby`. Criterio 39 con axe en los tres estados y en las dos pasadas. Criterio 40 con un test por paso de §0.6. Los *rojo primero* (34, 35, 39) se ven fallar sobre el `/formularios` de antes de las tareas 7 y 11. **Adaptar los tests de `forms.spec.ts` que dependen de lo que cambia:** `aliasError` busca `app-input .error` (el mensaje pasa a `app-error`), `alias` localiza «el» `app-input` (ahora hay dos, más `app-field`: se localizan por el id del host), y los de foco, hidratación y `bindByType` que nombran `app-input` se revisan uno a uno, no se borran. | `example-basic` | `tests/forms.spec.ts` · `tests/forms-a11y.spec.ts` (nuevo) · `package.json` |
 
 ---
 
@@ -186,6 +186,20 @@ líneas que los hacen pasar.
   la pieza `flags`, que sustituye a `server-flag`; el resumen en la pieza `summary`;
   `asyncValidator` en `validators`, y `bindMessage` dentro de `wiring` (siempre va con un
   `bindForm`, y sola no pagaba su frontera).
+- **Lo que destapó el navegador en la tarea 25.** (1) `disabled=@(!userForm.$valid())` no se
+  movía: un form importado es un objeto, no una fuente, y `$subIf(userForm, $u)` no suscribía
+  nada. Una escritura que lee un **miembro** de un nombre importado se suscribe ahora como
+  expresión entera (`$sub(() => (…), $u)`), cuya primera pasada solo lee. (2) Las reglas propias de
+  un form o grupo solo se publicaban al enviar, y §0.6 pasos 3–4 las quieren al escribir: la
+  adopción pasa a cada nodo un `above` que vuelve a correr las reglas propias de los forms de
+  encima, y un control que valida solo lo llama. (3) axe y Lighthouse no ven el puente: enmienda de
+  los criterios 39 y 41 en el BUG. (4) El respaldo del criterio 37 quita también el atributo del
+  HTML. (5) `getByRole` y `toHaveAccessibleDescription` calculan el nombre por su cuenta y no
+  siguen la *element reflection*: nombres y descripciones se miden en el árbol de Chrome por CDP.
+- **Paso 8 de §0.6 en el e2e.** El ejemplo usa `Interacted`; el test construye en el navegador un
+  form con `Validity.Rules` desde las mismas piezas publicadas que usa la página.
+- **Rojo primero de 34, 35 y 37**, visto con el traslado desactivado: cae el 35 con puente y el 34
+  y el 35 sin él. El de axe (39) no puede caer por el traslado, porque axe no lo ve.
 - **«Lo ha cambiado» es una marca que no vuelve atrás** (`edited`), no `dirty`: sin ella el
   criterio 2 no se cumple (BUG §4.3).
 - **Reglas asíncronas y validez** (decisión de Pedro, 2026-09-25): una regla solo se sabe

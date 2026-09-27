@@ -277,6 +277,18 @@ describe('a `control` written straight in the route (§1.3)', () => {
     )!;
     expect(code).toContain('bindMessage(');
   });
+
+  it('a route that reads through an imported form watches the expression (BUG-42 §4.3)', () => {
+    const code = chunkOf(
+      [
+        '<link rel="layout" href="./l.fud">',
+        '@code { import { userForm } from "./user.form.js"; }',
+        '<form control="@userForm"><button disabled="@(!userForm.$valid())">x</button></form>',
+      ].join('\n'),
+    )!;
+    expect(code).toContain('$d.push($sub(() => ((!userForm.$valid())), $u));');
+    expect(code).toContain('subscribe as $sub');
+  });
 });
 
 describe('a signal of the route crossing to a component', () => {

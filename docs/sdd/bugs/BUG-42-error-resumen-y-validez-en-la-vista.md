@@ -1160,6 +1160,22 @@ ejemplo.
 40. Los catorce pasos de §0.6, uno por test en `forms.spec.ts`.
 41. Pedro pasa Lighthouse sobre `/formularios` (dev y `vite preview`): accesibilidad sin *«Form
     elements do not have associated labels»* ni ningún otro aviso de formulario.
+
+> **Enmienda de los criterios 39 y 41** (decisión de Pedro, 2026-09-27). axe-core (4.13.0), y por
+> tanto Lighthouse, calcula los nombres leyendo **atributos**: no conoce
+> `shadowrootreferencetarget` ni la *element reflection*. Da como «sin label» los dos inputs de
+> `app-input` (*Alias* y *Email*), aunque el árbol de accesibilidad de Chrome los nombra, que es lo
+> que lee un lector de pantalla (criterio 34, medido por el protocolo de DevTools). No se copia el
+> texto a `aria-label` para contentar a la herramienta: se mantiene «se referencia, no se copia»
+> (§4.8). El e2e admite **solo** ese hallazgo (reglas `label` y `label-title-only`, en esos dos
+> inputs), y un test comprueba que axe **todavía** lo da: cuando axe entienda el puente, ese test
+> falla y pide quitar la excepción. Hasta entonces Lighthouse avisa en esos dos inputs y en ningún
+> otro sitio.
+>
+> **Criterio 37, cómo se fuerza el respaldo.** Borrar `referenceTarget` del prototipo no basta: el
+> parser construye las raíces del servidor antes que ningún script, con el puente puesto, y Chrome
+> seguiría nombrando por él. La pasada sin puente quita además `shadowrootreferencetarget` del HTML
+> antes de que llegue al navegador.
 42. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde. `@fudic/forms`, `@fudic/language-core` y
     `@fudic/language-server` siguen en 100 / 100 / 100 / 100; `@fudic/compiler` no baja del suelo
     medido al abrir la rama.
