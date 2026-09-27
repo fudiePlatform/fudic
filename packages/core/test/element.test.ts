@@ -78,6 +78,28 @@ describe('FudicElement — instance entry points', () => {
     host.remove();
   });
 
+  it('opens the bridge its author wrote, as the server did (BUG-42, decision 132)', () => {
+    const tag = freshTag();
+    customElements.define(
+      tag,
+      class extends FudicElement {
+        static override readonly referenceTarget: string | null = 'campo';
+        static c(): Controller {
+          return { c: () => {}, h: () => {}, u: () => {}, r: () => {} };
+        }
+      },
+    );
+    const inits: ShadowRootInit[] = [];
+    const host = document.createElement(tag);
+    const open = host.attachShadow.bind(host);
+    host.attachShadow = (init: ShadowRootInit) => {
+      inits.push(init);
+      return open(init);
+    };
+    (host as FudicElement).c([]);
+    expect(inits).toEqual([{ mode: 'open', referenceTarget: 'campo' }]);
+  });
+
   it('passes the payload slice through verbatim, nested values included', () => {
     const s = spy();
     const host = document.createElement(define(s));

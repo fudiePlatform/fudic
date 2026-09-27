@@ -456,13 +456,19 @@ export class MarkupEmitter {
       // same id as a native one, or the `aria-describedby` that names it points at nothing.
       this.#markerAttrs(el, v);
       // A control-component's shadow root delegates focus, and the serializer turns that into
-      // `shadowrootdelegatesfocus` on the template (SDD-34 §4.5). The argument is only written
-      // when it is true: a page with no control-component keeps the bytes it had.
+      // `shadowrootdelegatesfocus` on the template (SDD-34 §4.5). The bridge its author wrote —
+      // any component's, not only a control-component's — becomes `shadowrootreferencetarget`
+      // (decision 132). Each argument is only written when it says something: a page with
+      // neither keeps the bytes it had.
       const bridge = this.#bridges.get(el.name);
-      const focus = this.#formAssociated.has(el.name)
-        ? `, true${bridge === undefined ? '' : `, ${JSON.stringify(bridge)}`}`
-        : '';
-      this.#w.line(`const ${s} = $dom.attachShadow(${v}${focus});`);
+      const focus = this.#formAssociated.has(el.name);
+      const init =
+        bridge !== undefined
+          ? `, ${String(focus)}, ${JSON.stringify(bridge)}`
+          : focus
+            ? ', true'
+            : '';
+      this.#w.line(`const ${s} = $dom.attachShadow(${v}${init});`);
       this.#w.line(
         `${renderName(el.name)}($dom, ${s}, ${componentPropsExpr(this.#source, el, this.#signals, this.#declared(el.name))}, ${this.#ioc});`,
       );

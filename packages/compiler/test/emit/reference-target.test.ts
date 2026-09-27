@@ -3,7 +3,7 @@
  *
  * The AUTHOR writes `shadowrootreferencetarget`; the compiler never chooses a field for them.
  * With it, the server writes the attribute on the template of the host its PARENT opens, and the
- * child's class carries the same id as `static field`, which `FudicControlElement` turns into the
+ * child's class carries the same id as `static referenceTarget`, which `FudicControlElement` turns into the
  * `referenceTarget` of its `attachShadow` and the element it relays to. Without it, there is no
  * bridge and nothing is relayed.
  */
@@ -49,7 +49,7 @@ describe('the bridge (criterion 21)', () => {
     expect(bridgeIds(graph).get('app-input')).toBe('campo');
     const parent = emitComponentModule(graph, graph.components.get('m-el')!);
     expect(parent).toMatch(/\$dom\.attachShadow\(\$n\d+, true, "campo"\)/u);
-    expect(emitComponentClientModule(graph, child(graph))).toContain('static field = "campo";');
+    expect(emitComponentClientModule(graph, child(graph))).toContain('static referenceTarget = "campo";');
   });
 
   it('any element of the template: the author decides what the bridge reaches', () => {
@@ -58,7 +58,7 @@ describe('the bridge (criterion 21)', () => {
         '<input id="campo" control="@ctrl"><span id="otro"></span></template>',
     );
     expect(bridgeIds(graph).get('app-input')).toBe('otro');
-    expect(emitComponentClientModule(graph, child(graph))).toContain('static field = "otro";');
+    expect(emitComponentClientModule(graph, child(graph))).toContain('static referenceTarget = "otro";');
   });
 
   it('without the attribute there is no bridge, and the compiler invents none', () => {
@@ -68,7 +68,7 @@ describe('the bridge (criterion 21)', () => {
     expect(parent).toMatch(/\$dom\.attachShadow\(\$n\d+, true\);/u);
     const server = emitComponentModule(graph, child(graph));
     const client = emitComponentClientModule(graph, child(graph));
-    expect(client).not.toContain('static field');
+    expect(client).not.toContain('static referenceTarget');
     // No id written on the field either: nothing names it.
     for (const out of [server, client]) expect(out).not.toContain(`'id', `);
   });
@@ -82,12 +82,19 @@ describe('the bridge (criterion 21)', () => {
     );
   });
 
-  it('a component that is not a control-component has none', () => {
+  it('any component keeps the bridge its author wrote: it is standard, not a fudic marker', () => {
     const graph = graphWith(
       '<template shadowrootmode="open" shadowrootreferencetarget="campo"><input id="campo" control="@ctrl"></template>',
     );
-    expect(bridgeIds(graph).has('app-input')).toBe(false);
-    expect(emitComponentClientModule(graph, child(graph))).not.toContain('static field');
-    expect(bridgeOf(child(graph).doc.template!)).toEqual({ bridge: null, problems: [] });
+    expect(bridgeIds(graph).get('app-input')).toBe('campo');
+    // Not a control-component: no delegated focus, and the bridge all the same.
+    const parent = emitComponentModule(graph, graph.components.get('m-el')!);
+    expect(parent).toMatch(/\$dom\.attachShadow\(\$n\d+, false, "campo"\)/u);
+    expect(emitComponentClientModule(graph, child(graph))).toContain('static referenceTarget = "campo";');
+    expect(bridgeOf(child(graph).doc.template!)).toEqual({ bridge: { id: 'campo' }, problems: [] });
+    const dom = new SsrDom();
+    const host = dom.element('app-input');
+    dom.attachShadow(host, false, 'campo');
+    expect(renderToString(host)).toContain('<template shadowrootmode="open" shadowrootreferencetarget="campo">');
   });
 });

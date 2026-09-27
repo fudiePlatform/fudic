@@ -34,9 +34,6 @@ import { FudicElement, effect, type Cleanup } from '@fudic/core';
 import { RELAYED, relay } from './relay.js';
 import type { Control } from './types.js';
 
-/** The init with `referenceTarget`, which not every `lib` knows yet (decision 132). */
-type BridgedInit = ShadowRootInit & { referenceTarget?: string };
-
 /**
  * Whether a crossed value is a `Control<T>`.
  *
@@ -60,14 +57,6 @@ export abstract class FudicControlElement extends FudicElement {
   /** The node the parent crossed. Filled from the payload as the instance comes alive. */
   protected control: Control<unknown> | null = null;
 
-  /**
-   * The id of its FIELD — the element its author named with `shadowrootreferencetarget`, or
-   * `null` when they wrote none. The emit copies it onto the subclass (decision 132): it is
-   * where the bridge points and where the relay carries the name and the description. No
-   * bridge, no relay.
-   */
-  static readonly field: string | null = null;
-
   #wiring: Cleanup | null = null;
 
   /** Watches the host attributes the relay carries. */
@@ -79,15 +68,12 @@ export abstract class FudicControlElement extends FudicElement {
   }
 
   /**
-   * `delegatesFocus`, so a click on an outside `<label for>` lands in the `<input>`; and
-   * `referenceTarget`, so what points at the host is forwarded to the field — the same bridge
-   * the server wrote as `shadowrootreferencetarget`.
+   * `delegatesFocus`, so a click on an outside `<label for>` lands in the `<input>`. The bridge
+   * — `referenceTarget`, the same one the server wrote — comes from the base, as for any
+   * component.
    */
   protected override shadowInit(): ShadowRootInit {
-    const init: BridgedInit = { mode: 'open', delegatesFocus: true };
-    const field = this.#fieldId();
-    if (field !== null) init.referenceTarget = field;
-    return init;
+    return { ...super.shadowInit(), delegatesFocus: true };
   }
 
   override h(props: readonly unknown[]): void {
@@ -125,8 +111,13 @@ export abstract class FudicControlElement extends FudicElement {
     this.#unwire();
   }
 
+  /**
+   * The FIELD: the element its author named with `shadowrootreferencetarget` (decision 132). It
+   * is where the bridge points and where the relay carries the name and the description. No
+   * bridge, no relay.
+   */
   #fieldId(): string | null {
-    return (this.constructor as typeof FudicControlElement).field;
+    return (this.constructor as typeof FudicControlElement).referenceTarget;
   }
 
   /** Relays now, and again whenever the host changes what it says of itself. */

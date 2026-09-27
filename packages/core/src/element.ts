@@ -84,8 +84,20 @@ export abstract class FudicElement extends Base {
    * has to open the same shadow root the server's `shadowrootdelegatesfocus` produced.
    */
   protected shadowInit(): ShadowRootInit {
-    return { mode: 'open' };
+    const init: ShadowRootInit & { referenceTarget?: string } = { mode: 'open' };
+    const target = (this.constructor as typeof FudicElement).referenceTarget;
+    if (target !== null) init.referenceTarget = target;
+    return init;
   }
+
+  /**
+   * The id its author wrote in `shadowrootreferencetarget` on the root template, or `null`
+   * (BUG-42, decision 132). The emit copies it onto the subclass, so an instance created at
+   * runtime opens the same bridge the server wrote as an attribute: standard HTML, for any
+   * component, and the author's decision — the compiler never chooses one. Typed wide
+   * (`referenceTarget` is not in every `lib` yet).
+   */
+  static readonly referenceTarget: string | null = null;
 
   /**
    * Entry point 3 — the owner of the value writes it again (BUG-12). Not a lifecycle

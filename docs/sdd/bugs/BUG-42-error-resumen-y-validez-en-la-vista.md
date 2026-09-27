@@ -705,6 +705,10 @@ shadowrootmode="open" formassociated>`:
   el padre, pasa `referenceTarget` al `attachShadow` del cliente y entrega el mismo id a
   `FudicControlElement`, que hace de respaldo sobre ese elemento (§4.8). Sin atributo no hay
   puente ni traslado.
+- **En cualquier componente**, no solo en un control-componente: el atributo es estándar, y
+  `formassociated` y él van de la mano porque los dos existen para que el formulario funcione en
+  SSR sin JavaScript. Un componente sin `formassociated` también lo ve respetado (servidor y
+  `attachShadow` del cliente); lo que solo tiene el control-componente es el respaldo.
 
 > **Enmienda de Pedro (2026-09-27).** La primera redacción hacía que el compilador eligiera el
 > campo (el elemento con `control=`, o el contenedor de sus radios) y escribiera el puente por su

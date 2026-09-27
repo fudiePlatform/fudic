@@ -47,9 +47,9 @@ export const formAssociatedPlacement: Analyzer = {
   name: 'form-associated-placement',
   run(input, report) {
     const root = rootTemplate(input.document);
-    // On the root template the marker is right, and the bridge its author wrote has to name an
-    // element of the template (decision 132): reported with the same function the emit reads
-    // the bridge with (`FUD0605`).
+    // The bridge its author wrote on the root template — any component's — has to name an element
+    // of that template (decision 132): reported with the same function the emit reads it with
+    // (`FUD0605`).
     if (root !== undefined) {
       for (const problem of bridgeOf(root).problems) {
         report(errorDiag(problem.code, problem.message, problem.span));

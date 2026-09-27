@@ -10,8 +10,12 @@
 import { control, form, minLength, required } from '@fudic/forms';
 
 export const wideForm = form({
-  a1: control('', [required]),
-  a2: control('', [minLength(2)]),
+  // Sus propios textos: el mensaje es la descripción accesible del campo, y el código de la
+  // regla (`required`) no le dice nada a quien lo oye.
+  a1: control('', [required], { messages: { required: () => 'El campo 1 es obligatorio.' } }),
+  a2: control('', [minLength(2)], {
+    messages: { minLength: (n) => `El campo 2 necesita al menos ${String(n)} caracteres.` },
+  }),
   a3: control(''),
   a4: control(''),
   a5: control(''),

@@ -110,7 +110,7 @@ describe('relay', () => {
 
 /** A control-component whose factory writes its template: an input with the fixed id. */
 class Field extends FudicControlElement {
-  static override readonly field: string | null = 'campo';
+  static override readonly referenceTarget: string | null = 'campo';
   static c([, root]: readonly unknown[]): Controller {
     const shadow = root as ShadowRoot;
     return {

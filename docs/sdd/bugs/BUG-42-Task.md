@@ -201,9 +201,12 @@ líneas que los hacen pasar.
   encuentra, y `FUD0603`/`FUD0604` quedan retirados (enmienda de §3.4 y de la decisión 132).
   `app-input` y `app-field` lo escriben a mano. (2) El marco de un componente —su etiqueta y su
   `<template>` raíz— deja de ofrecer `control`, `error`, `summary` y `class:`, y en el `<template>`
-  raíz calla la lista de HTML. Queda fuera, y se anota: un componente **sin** `formassociated`
-  que escriba `shadowrootreferencetarget` no lo ve respetado (el puente solo viaja en un
-  control-componente).
+  raíz calla la lista de HTML. (3) El puente vale en **cualquier** componente, no solo en un
+  control-componente: `FudicElement` abre la raíz con `static referenceTarget`, que el emit copia
+  del `<template>`. (4) Todos los formularios del ejemplo cumplen y se prueban en su ruta:
+  `/delegacion` saca el mensaje fuera del `<label>` (dentro, su texto formaba parte del nombre) y
+  sus reglas dicen textos propios; `/snippets` ya era accesible. Y `/formularios` sin JavaScript da
+  los cuatro nombres solo con el HTML del servidor.
 - **Paso 8 de §0.6 en el e2e.** El ejemplo usa `Interacted`; el test construye en el navegador un
   form con `Validity.Rules` desde las mismas piezas publicadas que usa la página.
 - **Rojo primero de 34, 35 y 37**, visto con el traslado desactivado: cae el 35 con puente y el 34

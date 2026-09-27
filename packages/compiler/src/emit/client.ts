@@ -384,10 +384,11 @@ function buildComponentClientModule(
   w.line('');
   w.line(`customElements.define(${JSON.stringify(comp.tag)}, class extends ${base} {`);
   w.indent();
-  // The field of a control-component (decision 132): where its `attachShadow` points the bridge
-  // and where `FudicControlElement` carries the name and the description.
-  const field = hookup.controls.field;
-  if (formAssociated && field !== null) w.line(`static field = ${JSON.stringify(field)};`);
+  // The bridge its author wrote (decision 132), for any component: an instance created at
+  // runtime opens the same one the server wrote, and on a control-component it is also where
+  // `FudicControlElement` carries the name and the description.
+  const target = hookup.controls.field;
+  if (target !== null) w.line(`static referenceTarget = ${JSON.stringify(target)};`);
   w.line('static c($props) {');
   w.indent();
   if (em.nodes.length > 0) w.line(`let ${em.nodes.join(', ')};`);

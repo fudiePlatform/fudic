@@ -226,7 +226,7 @@ test.describe('/delegacion — what a `@click` in a loop costs', () => {
     await expect(async () => {
       await first.focus();
       await page.locator('app-wide-form input').nth(1).focus();
-      await expect(message).toHaveText('required', { timeout: 500 });
+      await expect(message).toHaveText('El campo 1 es obligatorio.', { timeout: 500 });
     }).toPass();
     await first.fill('hola');
     await expect(page.locator('app-wide-form .error').first()).toHaveText('');

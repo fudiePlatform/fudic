@@ -266,3 +266,67 @@ test('the exception above is still needed: axe cannot see a name given through t
   const blind = found.filter((f) => f.rule === 'label').map((f) => f.target);
   expect(blind.sort()).toEqual([...KNOWN_TARGETS].sort());
 });
+
+/**
+ * Every other form of `examples/basic`, measured the same way: names and descriptions in
+ * Chrome's tree, and axe over the form. `/delegacion` binds twelve fields with `control`;
+ * `/snippets` builds a plain `<form>` out of snippets.
+ */
+test.describe('BUG-42 — the other forms of the example', () => {
+  /**
+   * Load a route. Nothing more: a name or a description is in the server's HTML before any
+   * script, and a form that needs JavaScript to be accessible is exactly what these tests catch.
+   */
+  async function load(page: Page, route: string): Promise<void> {
+    await page.goto(route);
+  }
+
+  const axeOn = async (page: Page, selector: string): Promise<readonly Finding[]> => {
+    const { violations } = await new AxeBuilder({ page }).include(selector).analyze();
+    return violations.flatMap((v) => v.nodes.map((n) => ({ rule: v.id, target: n.target.flat().join(' > ') })));
+  };
+
+  test('/delegacion: twelve named fields, the error is a description and not part of the name', async ({
+    page,
+  }) => {
+    await load(page, '/delegacion');
+    // Every field named before any script runs.
+    const before = await textboxes(page);
+    expect(Object.keys(before)).toEqual(expect.arrayContaining(['1 (obligatorio)', '2 (mín. 2)', '12']));
+    const first = page.locator('app-wide-form input').first();
+    // The form comes alive on a gesture (SDD-17); retried, because a blur that lands before the
+    // chunk is heard by nobody.
+    await first.click();
+    await expect(async () => {
+      await first.focus();
+      await page.locator('app-wide-form input').nth(1).focus();
+      await expect(page.locator('app-wide-form .error').first()).toHaveText('El campo 1 es obligatorio.', {
+        timeout: 500,
+      });
+    }).toPass();
+    const tree = await textboxes(page);
+    expect(tree['1 (obligatorio)']).toBe('El campo 1 es obligatorio.');
+    for (let i = 3; i <= 12; i++) expect(Object.keys(tree)).toContain(String(i));
+    expect(await axeOn(page, 'app-wide-form')).toEqual([]);
+  });
+
+  test('/snippets: the fields a snippet writes are named by the label that wraps them', async ({ page }) => {
+    await load(page, '/snippets');
+    const tree = await textboxes(page);
+    expect(Object.keys(tree)).toEqual(expect.arrayContaining(['Correo', 'Ciudad']));
+    expect(await axeOn(page, 'form.campos')).toEqual([]);
+  });
+});
+
+test.describe('BUG-42 — with no JavaScript at all', () => {
+  test.use({ javaScriptEnabled: false });
+
+  test('/formularios: every input is named by the server HTML alone, bridge included', async ({ page }) => {
+    // Declarative shadow DOM and `shadowrootreferencetarget` are the parser's: the `<label for>`
+    // of *Alias* and *Email* reaches the input inside `app-input` with no script. What does
+    // need one is the relay of a description written on the host, and the fallback.
+    await page.goto('/formularios');
+    const tree = await textboxes(page);
+    expect(Object.keys(tree)).toEqual(expect.arrayContaining(NAMES));
+  });
+});

@@ -116,7 +116,7 @@ export interface ControlPlan {
    * links to (`fud-c-…`).
    */
   readonly ids: ReadonlyMap<ElementNode, string>;
-  /** The id its author's `shadowrootreferencetarget` names, on a control-component, or `null`. */
+  /** The id its author's `shadowrootreferencetarget` names on the root template, or `null`. */
   readonly field: string | null;
 }
 

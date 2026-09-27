@@ -287,7 +287,9 @@ The page writes its label and marker as it would for a native control:
   to be a static id of that template (`FUD0605`). The compiler carries it where it has to go —
   the template the server writes, `referenceTarget` in the client's `attachShadow` — and nothing
   more. Only Chrome has the bridge today. Without the attribute there is no bridge, and nothing
-  for the relay below to work on.
+  for the relay below to work on. The attribute is honoured on ANY component, not only a
+  control-component: it is the parser's, so it works with server-rendered HTML and no JavaScript,
+  and `formassociated` only adds the fallback on top.
 - **The relay.** What is written *on* the host — the `aria-describedby` of an outside marker or
   of a summary entry, `aria-labelledby`, `aria-label` — the bridge does not forward, anywhere.
   `FudicControlElement` hands it to the field with element reflection

@@ -22,7 +22,7 @@
       padding: 1.1rem;
       background: var(--surface);
     }
-    label {
+    label, .campo {
       display: grid;
       gap: 0.2rem;
       font-size: 0.85rem;
@@ -59,9 +59,19 @@
 <app-wide-form>
   <template shadowrootmode="open">
     <form control=@wideForm class="fudic" @submit=@stop>
-      @* Solo los dos campos con reglas llevan marcador: los otros diez no tienen nada que decir. *@
-      <label>1 (obligatorio) <input control=@wideForm.a1 type="text"><span class="error" error=@wideForm.a1></span></label>
-      <label>2 (mín. 2) <input control=@wideForm.a2 type="text"><span class="error" error=@wideForm.a2></span></label>
+      @*
+        Solo los dos campos con reglas llevan marcador: los otros diez no tienen nada que decir.
+        El marcador va FUERA del `<label>`: dentro, su texto sería parte del nombre del campo, y
+        un error es su descripción.
+      *@
+      <div class="campo">
+        <label>1 (obligatorio) <input control=@wideForm.a1 type="text"></label>
+        <span class="error" error=@wideForm.a1></span>
+      </div>
+      <div class="campo">
+        <label>2 (mín. 2) <input control=@wideForm.a2 type="text"></label>
+        <span class="error" error=@wideForm.a2></span>
+      </div>
       <label>3 <input control=@wideForm.a3 type="text"></label>
       <label>4 <input control=@wideForm.a4 type="text"></label>
       <label>5 <input control=@wideForm.a5 type="text"></label>
