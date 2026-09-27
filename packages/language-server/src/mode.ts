@@ -38,6 +38,18 @@ export function roleOf(document: StructuredDocument): FudRole {
 }
 
 /**
+ * Whether the file has not said yet what it is.
+ *
+ * A route is recognised by its `<link rel="layout">` and a component by its own tag, so a file
+ * being started — a `<link>` with no `rel` yet, some markup — has neither and structures as a
+ * component with no name. It may still become a route, which is the one thing that matters to
+ * whoever offers it a layout.
+ */
+export function isUndecided(document: StructuredDocument): boolean {
+  return document.type === 'component-document' && document.name === '';
+}
+
+/**
  * The tag a file defines, or `''` when it defines none.
  *
  * Only a component owns a tag: its markup IS its own tag wrapping the shadow template

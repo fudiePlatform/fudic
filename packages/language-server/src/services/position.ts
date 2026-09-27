@@ -91,6 +91,31 @@ export function hrefContextAt(
   return undefined;
 }
 
+/**
+ * The attribute of a `<link>` whose value holds the caret — ANY `<link>`, fudic's or not.
+ *
+ * `hrefContextAt` knows only the links the structure already classified, and a link is
+ * classified by its `rel`: `<link href="|">` with no `rel` yet, or a `rel="stylesheet"`, is not
+ * one of them. Their values are still no place for the template's names — a `rel` is a keyword
+ * and an `href` is a path — so the question here is asked of the tree and not of the structure.
+ */
+export function linkValueAt(region: Region): LinkValue | undefined {
+  const element = region.element;
+  if (region.kind !== 'attr-value' || element?.name !== 'link') return undefined;
+  const attribute = region.attribute;
+  /* v8 ignore next -- an `attr-value` region always carries one; the guard is for the type. */
+  if (attribute === undefined) return undefined;
+  return { element, attribute, value: region.span };
+}
+
+/** A value of a `<link>`, with the element it is written on. */
+export interface LinkValue {
+  readonly element: ElementNode;
+  readonly attribute: Attribute;
+  /** The value, inside the quotes if it has any: what an item replaces. */
+  readonly value: Span;
+}
+
 /** A tag name being typed after `<`. */
 export function tagContextAt(source: string, offset: number): PartialName | undefined {
   const match = /<([A-Za-z][-\w]*)?$/.exec(source.slice(0, offset));

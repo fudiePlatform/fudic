@@ -241,6 +241,33 @@ describe('snippetsAt — inside @code', () => {
   });
 });
 
+describe('snippetsAt — the <link> of fudic (BUG-43)', () => {
+  const LINKS = ['link-component', 'link-snippet', 'link-layout'];
+  const links = (marked: string) => labelsAt(marked).filter((label) => label.startsWith('link-'));
+
+  it('offers a file being started all three, a layout among them', () => {
+    expect(links('<link rel="component" href="./a.fud">\n|\n<main>hi</main>\n')).toEqual(LINKS);
+  });
+
+  it('offers a route and a component the two imports at top level, and no second layout', () => {
+    expect(links(ROUTE_TOP)).toEqual(['link-component', 'link-snippet']);
+    expect(links(HOST_TOP)).toEqual(['link-component', 'link-snippet']);
+    expect(links(HOST)).toEqual([]);
+  });
+
+  it('offers a page and a layout the two imports in their <head>, and not in the body', () => {
+    expect(links(PAGE_HEAD)).toEqual(['link-component', 'link-snippet']);
+    expect(links(LAYOUT_HEAD)).toEqual(['link-component', 'link-snippet']);
+    expect(links(PAGE_BODY)).toEqual([]);
+  });
+
+  it('ends inside the href, and asks for the list of what it can link', () => {
+    const snippet = SNIPPETS.find((s) => s.label === 'link-layout');
+    expect(snippet?.body).toBe('<link rel="layout" href="$0">');
+    expect(SNIPPETS.filter((s) => s.label.startsWith('link-')).every((s) => s.suggest)).toBe(true);
+  });
+});
+
 describe('the catalogue', () => {
   it('offers nothing where the scope is none — a <style> body', () => {
     const source = '<head>\n  <style>\n    :host { |color: red }\n  </style>\n</head>\n' + HOST.replace('|', '');

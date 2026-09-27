@@ -54,7 +54,7 @@ import { reindentLine } from '@fudic/formatter';
 import { fudicDiagnostics } from './compiler-diagnostics.js';
 import { emmetCompletions } from './emmet.js';
 import { formattedText } from './formatting.js';
-import { hrefCompletions } from './href.js';
+import { hrefCompletions, relCompletions } from './href.js';
 import { codeActions } from './actions.js';
 import {
   attributeValueBindingAt,
@@ -68,6 +68,8 @@ import {
   expressionValueContextAt,
   handlerContextAt,
   hrefContextAt,
+  linkValueAt,
+  type LinkValue,
   valueBegun,
   nativeGapContextAt,
   ownedByProjection,
@@ -333,13 +335,20 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
                 return items.length === 0 ? undefined : list(items);
               }
 
-              // The `href` of a `<link>` is not a value, it is a PATH the build resolves: an
-              // interpolation there cannot be followed to a file, and decision 81 says as much
-              // for the layout. Its list is exact and closed — the `.fud` files of the project
-              // — and putting the template's names beside them offers a way to write something
-              // that will never resolve.
-              if (hrefContextAt(cached.source, cached.document, offset) !== undefined) {
-                return undefined;
+              // The values of a `<link>` — any of them, fudic's or not — are no template.
+              //
+              // Its `href` is a PATH the build resolves: an interpolation there cannot be
+              // followed to a file, and decision 81 says as much for the layout. On a fudic link
+              // the list is exact and closed and `createFudicService` answers it; on any other
+              // one (`rel="stylesheet"`, or no `rel` yet) the HTML service's paths are the whole
+              // answer. Putting the template's names beside either offers a way to write
+              // something that will never resolve.
+              //
+              // Its `rel` is a keyword, and the three that make the link fudic's are what the
+              // author came for: no other service has heard of them.
+              const link = linkValueAt(region);
+              if (link !== undefined) {
+                return link.attribute.name === 'rel' ? relList(cached, document, link) : undefined;
               }
 
               // Begun by hand, so the value is the author's and no name can finish it: the same
@@ -1285,6 +1294,27 @@ function scopeItems(
   ];
 }
 
+/**
+ * The `rel` of a `<link>`: the values that make it fudic's, first and marked as ours.
+ *
+ * The whole value is replaced, so `rel="comp|"` accepts into `rel="component"` and not into
+ * `rel="compcomponent"`; the editor filters against what is written. Accepting asks for the
+ * next list at once — the `href` is the only thing the link still needs.
+ */
+function relList(cached: CachedDocument, document: TextDocument, link: LinkValue): CompletionList {
+  const range = rangeOf(document, link.value);
+  return list(
+    relCompletions(cached, link.element).map((item, position) => ({
+      label: item.rel,
+      kind: CompletionItemKind.EnumMember,
+      detail: item.detail,
+      sortText: `0_${position}`,
+      labelDetails: { description: 'fudic' },
+      textEdit: { range, newText: item.rel },
+    })),
+  );
+}
+
 /** The snippets that apply here, filtered by how they are typed. */
 function snippetItems(
   cached: CachedDocument,
@@ -1303,6 +1333,7 @@ function snippetItems(
       labelDetails: { description: 'fudic' },
       insertTextFormat: InsertTextFormat.Snippet,
       textEdit: { range: rangeOf(document, context.span), newText: snippet.body },
+      ...(snippet.suggest ? { command: SUGGEST } : {}),
     }));
 }
 

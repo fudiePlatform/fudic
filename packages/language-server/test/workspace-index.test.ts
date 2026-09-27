@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { WorkspaceIndex } from '../src/workspace-index.js';
-import { component, LAYOUT, memoryFs, PAGE, route } from './_support.js';
+import { component, LAYOUT, memoryFs, MONOREPO, PAGE, route, TIENDA_ROUTE } from './_support.js';
 
 const WORKSPACE = {
   '/p/components/app-badge.fud': component('app-badge'),
@@ -172,5 +172,39 @@ describe('maintenance', () => {
     index.upsert('/p/components/app-card.fud');
 
     expect(index.get('/p/blog/[slug].fud')).toBe(before);
+  });
+});
+
+describe('linker (BUG-43)', () => {
+  const monorepo = (): WorkspaceIndex => {
+    const index = new WorkspaceIndex(memoryFs(MONOREPO));
+    index.scan('/ws');
+    return index;
+  };
+
+  it('writes a file of the same package as a relative path', () => {
+    const hrefTo = monorepo().linker(TIENDA_ROUTE);
+    expect(hrefTo('/ws/apps/tienda/src/components/tienda-card.fud')).toBe(
+      '../components/tienda-card.fud',
+    );
+  });
+
+  it('writes a file of a library it depends on by the name the library exports', () => {
+    const hrefTo = monorepo().linker(TIENDA_ROUTE);
+    expect(hrefTo('/ws/node_modules/@acme/ui/src/ui-card.fud')).toBe('@acme/ui/ui-card.fud');
+    // Exported by nobody: no name reaches it from outside.
+    expect(hrefTo('/ws/node_modules/@acme/ui/src/hidden.fud')).toBeUndefined();
+  });
+
+  it('reaches nothing of another project, nor of a library it does not depend on', () => {
+    expect(monorepo().linker(TIENDA_ROUTE)('/ws/apps/admin/src/components/admin-panel.fud')).toBeUndefined();
+    const admin = monorepo().linker('/ws/apps/admin/src/components/admin-panel.fud');
+    expect(admin('/ws/node_modules/@acme/ui/src/ui-card.fud')).toBeUndefined();
+  });
+
+  it('keeps relative paths in a folder with no package at all', () => {
+    expect(indexOf().linker('/p/blog/[slug].fud')('/p/components/app-badge.fud')).toBe(
+      '../components/app-badge.fud',
+    );
   });
 });

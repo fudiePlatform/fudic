@@ -166,6 +166,31 @@ describe('§6.5 — href', () => {
     const ours = items.filter((item) => item.detail === 'layout');
     expect(labels(ours)).toEqual(['../layouts/_layout.fud']);
   });
+
+  it('offers paths and no name of the template in the href of any other <link> (BUG-43)', async () => {
+    // What the editor showed: `@data` and `@()` where a stylesheet's path goes. The paths are
+    // the HTML service's and stay; the template's names are gone.
+    for (const link of ['<link rel="stylesheet" href="..|">', '<link href="|">']) {
+      const items = await completeTyping(
+        SLUG,
+        `<link rel="layout" href="../layouts/_layout.fud">\n${link}\n<article>hi</article>\n`,
+        '"',
+      );
+      expect(labels(items).some((label) => label.startsWith('@')), link).toBe(false);
+    }
+  });
+
+  it('offers the rel of fudic, and a layout only where the file can still take one (BUG-43)', async () => {
+    const started = await completeTyping(SLUG, `<link rel="|">\n<article>hi</article>\n`, '"');
+    expect(labels(started)).toEqual(['component', 'layout', 'snippet']);
+
+    const route = await completeTyping(
+      SLUG,
+      `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="|">\n<article>hi</article>\n`,
+      '"',
+    );
+    expect(labels(route)).toEqual(['component', 'snippet']);
+  });
 });
 
 describe('§6.6 — sections', () => {

@@ -21,7 +21,6 @@ import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { CONTROL_NAME, span, type Diagnostic, type Span } from '@fudic/compiler';
 import { URI } from 'vscode-uri';
 import type { CachedDocument } from '../document-cache.js';
-import { relativeHref } from '../paths.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
 import { contractIssues, type ContractIssue, type MissingLayoutProps } from './contract.js';
 import type { ContractProp } from '../mode.js';
@@ -118,28 +117,28 @@ const addComponentLink: Repairer = ({ cached, index, diagnostic }) => {
   // open tag open? That has one answer or none, and neither is a case the code has to invent a
   // value for — a name parsed out of the span would need an «unreadable» branch that no input
   // can reach and therefore no test can cover.
+  //
+  // Of the components that answer, the first this file can LINK: in a monorepo the folder holds
+  // other projects too, and a link into the app next door is one the build never resolves.
   const opened = cached.source.slice(diagnostic.span.start, diagnostic.span.end);
-  const entry = index
-    .byRole('component')
-    .find((candidate) => candidate.path !== cached.path && opensTag(opened, candidate.tag));
-  if (entry === undefined) return [];
+  const hrefTo = index.linker(cached.path);
+  for (const entry of index.byRole('component')) {
+    if (entry.path === cached.path || !opensTag(opened, entry.tag)) continue;
+    const href = hrefTo(entry.path);
+    if (href === undefined) continue;
 
-  const tag = entry.tag;
-
-  // Always an insertion, never `undefined`: `linkInsertionFor` declines only a file that already
-  // links the href, and a file that links it does not get `FUD0191` in the first place. The
-  // diagnostic and the repair read the same fact, so they cannot disagree about it.
-  const insertion = linkInsertionFor(cached, relativeHref(cached.path, entry.path)) as {
-    span: Span;
-    newText: string;
-  };
-
-  return [
-    {
-      title: `Añadir <link rel="component"> de <${tag}>`,
-      edits: [{ span: insertion.span, newText: insertion.newText }],
-    },
-  ];
+    // Always an insertion, never `undefined`: `linkInsertionFor` declines only a file that
+    // already links the href, and a file that links it does not get `FUD0191` in the first
+    // place. The diagnostic and the repair read the same fact, so they cannot disagree about it.
+    const insertion = linkInsertionFor(cached, href) as { span: Span; newText: string };
+    return [
+      {
+        title: `Añadir <link rel="component"> de <${entry.tag}>`,
+        edits: [{ span: insertion.span, newText: insertion.newText }],
+      },
+    ];
+  }
+  return [];
 };
 
 /**
