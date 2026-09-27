@@ -63,22 +63,22 @@ const published = (pkg: string, piece: string): string =>
  * entries are not a uniform `install` ceremony — they exist to publish several exports from
  * one piece.
  *
- * `internals`, `run-rule` and `server-flag` are pieces nobody designed: the second rule of
+ * `internals`, `run-rule` and `flags` are pieces nobody designed: the second rule of
  * §4.3 made them, because two pieces reach each of them. See `FRONTIERS`.
  */
 const PIECES: Readonly<Record<string, string>> = {
   // The model: a form that can be built, filled and validated with no `<form>` anywhere.
   control: 'src/control.ts',
   form: 'bundle/form.ts',
-  internals: 'src/internals.ts',
+  internals: 'bundle/internals.ts',
   'run-rule': 'src/run-rule.ts',
-  'server-flag': 'src/server-flag.ts',
+  flags: 'bundle/flags.ts',
   validators: 'bundle/validators.ts',
   typed: 'bundle/typed.ts',
   messages: 'src/messages.ts',
   element: 'src/element.ts',
   // The browser half: one binder per shape of field, which is why there is no `switch`.
-  wiring: 'src/dom/wiring.ts',
+  wiring: 'bundle/wiring.ts',
   'bind-form': 'src/dom/bind-form.ts',
   'bind-text': 'src/dom/bind-text.ts',
   'bind-number': 'src/dom/bind-number.ts',
@@ -88,6 +88,7 @@ const PIECES: Readonly<Record<string, string>> = {
   'bind-select-multiple': 'src/dom/bind-select-multiple.ts',
   'bind-group': 'src/dom/bind-group.ts',
   'bind-by-type': 'src/dom/bind-by-type.ts',
+  summary: 'bundle/summary.ts',
 };
 
 /**
@@ -105,10 +106,14 @@ const PIECES: Readonly<Record<string, string>> = {
  *   slot the emit already wrote.
  * - `internals` and `run-rule` are reached by `control`, by `form` and, through `typed`, by
  *   every coercion.
- * - `server-flag` is reached by `control` and by `serverValidator`, and it is the case where
- *   the rule is not about bytes at all: its whole content is one `Symbol`, and two copies
- *   would be two symbols — a rule marked server-only through one would run on the client
- *   because the other did not recognise the mark.
+ * - `flags` is reached by `control`, by `form`, by `run-rule` and by the validators, and it is
+ *   the case where the rule is not about bytes at all: its content is two `Symbol`s, and two
+ *   copies would be two symbols — a rule marked server-only through one would run on the
+ *   client because the other did not recognise the mark.
+ * - `summary` is reached by `bind-form` and `bind-group`, which both paint a summary.
+ *
+ * `internals` also carries the validity and `validateOn` policies and the record of async
+ * verdicts (BUG-42): reached by `control` and `form` alike, and too small to be pieces.
  *
  * `delegation` and `length` are listed as owned but are not frontiers today: each is reached
  * by exactly one piece and travels inside it. They are here so that the table answers for
@@ -119,8 +124,12 @@ const FRONTIERS: Readonly<Record<string, string>> = {
   'src/form.ts': 'form',
   'src/group.ts': 'form',
   'src/internals.ts': 'internals',
+  'src/validate-on.ts': 'internals',
+  'src/validity.ts': 'internals',
+  'src/verdicts.ts': 'internals',
   'src/run-rule.ts': 'run-rule',
-  'src/server-flag.ts': 'server-flag',
+  'src/server-flag.ts': 'flags',
+  'src/async-flag.ts': 'flags',
   'src/messages.ts': 'messages',
   'src/element.ts': 'element',
   'src/validators/validator.ts': 'validators',
@@ -131,6 +140,7 @@ const FRONTIERS: Readonly<Record<string, string>> = {
   'src/validators/min.ts': 'validators',
   'src/validators/max.ts': 'validators',
   'src/validators/pattern.ts': 'validators',
+  'src/validators/async.ts': 'validators',
   'src/validators/length.ts': 'validators',
   'src/typed/typed.ts': 'typed',
   'src/typed/range.ts': 'typed',
@@ -157,6 +167,9 @@ const FRONTIERS: Readonly<Record<string, string>> = {
   'src/dom/bind-select-multiple.ts': 'bind-select-multiple',
   'src/dom/bind-group.ts': 'bind-group',
   'src/dom/bind-by-type.ts': 'bind-by-type',
+  'src/dom/bind-message.ts': 'wiring',
+  'src/summary-markup.ts': 'summary',
+  'src/dom/summary.ts': 'summary',
 };
 
 /** Absolute path → the piece that owns it, resolved once so the hook below is a lookup. */
@@ -180,6 +193,7 @@ const FRONTIER_PIECES = new Map<string, string>(
 const CORE_EXPORTS: Readonly<Record<string, readonly string[]>> = {
   effect: ['effect'],
   signal: ['signal'],
+  computed: ['computed'],
   tracking: ['untrack'],
   element: ['FudicElement'],
 };

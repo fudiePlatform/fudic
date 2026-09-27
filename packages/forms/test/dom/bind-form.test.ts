@@ -120,15 +120,18 @@ describe('bindForm — a valid submit (§6.13)', () => {
     for (const o of offs) o();
   });
 
-  it('lets a never-validated form through, and starts the validation behind it', async () => {
-    const { el, summary, f, offs } = twoFields();
-    const off = bindForm(el, f, summary);
+  it('lets through what only an ASYNCHRONOUS rule rejects, and records it behind', async () => {
+    const host = mount('<form><input id="a" type="text"></form>');
+    const el = host.querySelector('form') as HTMLFormElement;
+    const f = form({ a: control('', [async (v: string) => (v === '' ? { taken: true } : null)]) });
+    const offs = [bindText(host.querySelector('#a') as HTMLInputElement, f.a, null)];
+    const off = bindForm(el, f, null);
 
     const submit = new Event('submit', { bubbles: true, cancelable: true });
     el.dispatchEvent(submit);
-    // `$validate` is asynchronous and `preventDefault` is not: a late answer cannot un-send
-    // anything, so the courtesy check does not block the form while it thinks. The one who
-    // decides is the server.
+    // An asynchronous answer arrives after `preventDefault` could have been called: a late
+    // answer cannot un-send anything, so the courtesy check does not block the form while it
+    // thinks. The one who decides is the server. What CAN be decided now is (BUG-41 §4.2).
     expect(submit.defaultPrevented).toBe(false);
     await Promise.resolve();
     await Promise.resolve();

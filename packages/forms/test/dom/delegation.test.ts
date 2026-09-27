@@ -12,7 +12,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { bindText } from '../../src/dom/bind-text.js';
 import { control } from '../../src/control.js';
-import { blur, fire } from './_dom.js';
+import { blur, fire, inForm } from './_dom.js';
 
 /**
  * A form of `n` text fields inside its OWN shadow root, each with the error slot the emit
@@ -106,7 +106,7 @@ describe('and it still behaves exactly as it did', () => {
 
   it('touches the field that lost the focus, and only that one', () => {
     const { root, inputs } = fields(3);
-    const controls = inputs.map(() => control(''));
+    const controls = inputs.map(() => inForm(control('')));
     inputs.forEach((el, i) =>
       bindText(el, controls[i]!, root.querySelector(`#e${i}`) as HTMLElement),
     );

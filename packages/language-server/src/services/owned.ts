@@ -26,6 +26,7 @@ import type { CompletionList, LanguageServicePlugin } from '@volar/language-serv
 import { regionAt } from '@fudic/compiler';
 import { fudicDocumentOf } from './plugin.js';
 import { ownedByProjection } from './position.js';
+import { atRootTemplateGap } from './template-attrs.js';
 
 /**
  * The two attributes whose VALUES this server can name: the classes of the file's `<style>`
@@ -107,6 +108,9 @@ export function silenceOwnedPositions(plugin: LanguageServicePlugin): LanguageSe
           const offset = document.offsetAt(position);
           const region = regionAt(cached.source, cached.html, offset);
           if (ownedByProjection(cached.source, offset, region)) return undefined;
+          // The root `<template>` becomes a shadow root, not an element: its six attributes are
+          // the whole list, and HTML's globals would bury them (BUG-42 §4.11).
+          if (atRootTemplateGap(cached, offset, region)) return undefined;
 
           // The reopening is a `.fud` fact — behind those quotes live the classes of THIS
           // file's `<style>` and the slots its parent declares — so a document that is not one

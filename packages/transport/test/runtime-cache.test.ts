@@ -121,6 +121,8 @@ describe('sweepRuntimeCaches', () => {
     const mine = storage.caches.get(`${PREFIX}0.0.1`) as MarkCache;
     const mark = await mine.match(MARKER);
     expect(await (mark as Response).text()).toBe(String(at));
+    // Sealed like every entry the worker writes (BUG-04 §6.13): the stamp is the same date.
+    expect((mark as Response).headers.get('x-fudic-stored')).toBe(String(at));
     expect(deleted).toEqual([]);
   });
 

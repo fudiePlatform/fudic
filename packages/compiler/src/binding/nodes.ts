@@ -20,6 +20,7 @@ export type Binding =
   | BusBinding
   | RefBinding
   | ControlBinding
+  | ErrorBinding
   | ClassBinding
   | StyleBinding
   | DelegateBinding;
@@ -115,6 +116,30 @@ export interface ControlBinding extends Node {
   readonly value: RazorExpression;
 }
 
+/**
+ * `error="@f.title"` — the element the author chose to carry that node's message (decision
+ * 130, BUG-41 §3.3). A reserved attribute of the `control` family, and its mirror: `control`
+ * says which element EDITS a node, `error` says which element SPEAKS for it.
+ *
+ * The element is the author's — its tag, its place, its classes. What the compiler adds is an
+ * `id` if it has none, the `aria-describedby` on the bound element that points at it, and, for
+ * a form's summary, an `aria-live`. Whether the node is bound in the same block is SDD-12's
+ * question (`FUD0597`), not this node's.
+ */
+export interface ErrorBinding extends Node {
+  readonly type: 'error';
+  /**
+   * Which of the two markers (decision 131): `error` speaks for a CONTROL, `summary` for a form
+   * or a group. One binding type, because both are paired, identified and wired the same way;
+   * what each may pair with is the pairing's to check (`FUD0600`, `FUD0601`).
+   */
+  readonly name: MarkerName;
+  readonly value: RazorExpression;
+}
+
+/** The two marker attributes (decisions 130, 131). */
+export type MarkerName = 'error' | 'summary';
+
 /** `class:foo="@x"` — conditional class (decision 22). */
 export interface ClassBinding extends Node {
   readonly type: 'class';
@@ -183,3 +208,15 @@ export const REF_NAME = 'ref';
 
 /** The reserved attribute name for a form binding (decision 108). */
 export const CONTROL_NAME = 'control';
+
+/** The reserved attribute name for the element that carries a node's message (decision 130). */
+export const ERROR_NAME = 'error';
+
+/** The reserved attribute name for the element that carries a form's or a group's summary (decision 131). */
+export const SUMMARY_NAME = 'summary';
+
+/**
+ * The boolean that makes a summary list the errors of the fields too (decision 131). Reserved
+ * only on an element with `summary=`: anywhere else it is an attribute like any other.
+ */
+export const FIELDS_NAME = 'fields';

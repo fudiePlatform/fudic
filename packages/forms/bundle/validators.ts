@@ -1,5 +1,5 @@
 /**
- * Entry of the `forms/validators` piece (SDD-45 §4.3, third rule): the eight validators of
+ * Entry of the `forms/validators` piece (SDD-45 §4.3, third rule): the nine validators of
  * this package in ONE piece, because apart they lose money.
  *
  * They are alternatives to each other and they are tiny — between 50 and 130 bytes once
@@ -29,3 +29,4 @@ export { maxLength } from '../src/validators/max-length.js';
 export { min } from '../src/validators/min.js';
 export { max } from '../src/validators/max.js';
 export { pattern } from '../src/validators/pattern.js';
+export { asyncValidator } from '../src/validators/async.js';

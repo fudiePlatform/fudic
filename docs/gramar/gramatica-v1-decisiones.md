@@ -447,6 +447,22 @@ hueco del error con un id estable derivado de la identidad del nodo, y el `aria-
 que lo apunta **siempre**, esté vacío o no. Es la invariante que hace que un formulario tenga la
 misma accesibilidad haya hidratado o no.
 
+> **Enmendada por la 130** ([BUG-41](../sdd/bugs/BUG-41-el-error-que-no-se-va.md)). El elemento ya
+> no lo fabrica el compilador: lo escribe el autor con `error="@nodo"` donde quiera. Sigue en pie
+> lo que importa de la 113: el runtime solo escribe texto, y SSR e hidratación dan el mismo HTML.
+
+**130.** **`error="@nodo"` marca el elemento que habla por un nodo** (`FUD0596`–`FUD0599`).
+Atributo reservado de la familia de `control` (108): `control` dice qué elemento EDITA un nodo,
+`error` qué elemento DICE su error. El elemento, su etiqueta y su sitio son del autor; el
+compilador solo añade atributos —el `id` si no lo trae (derivado del nodo, como en la 113), el
+`aria-describedby` del elemento enlazado (o de todos los radios del grupo) apuntándolo, y
+`aria-live="polite"` si es el resumen de un `<form>` y el autor no puso uno—. Un marcador de un
+control muestra su error cuando está tocado; el de un `<form>` o un grupo, su resumen. **Sin
+marcador no se emite nada**: ni elemento ni `aria-describedby`. El marcador y su control viven en
+el **mismo bloque** (rama de `@if`, caso de `@switch`, `@section`, `@snippet`), porque la
+llamada de enlace nombra a los dos; y dentro de un control-componente, porque
+`aria-describedby` no cruza un shadow root.
+
 **114.** **`control` dentro de un bucle (`@foreach`, `@for`, `@while`) es error** (`FUD0594`).
 Es la decisión 31 aplicada por la misma razón que a `ref`: la expresión enlazaría N elementos al
 mismo nodo. Las colecciones de controles están fuera de v1, y cuando entren traerán su propia
@@ -1430,9 +1446,9 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 108 | Interpolación | `control` es atributo **reservado** con valor de expresión `@`, de la familia de `ref` (30) y no un prefijo (`FUD0590`) |
 | 109 | Interpolación | **El elemento decide** qué se enlaza: `<form>`, elemento que porta valor, tag de componente, cualquier otro (grupo). `type` sin valor de usuario o `file` → `FUD0592`; `type` **dinámico** enlaza con `bindByType` (BUG-25) |
 | 110 | Interpolación | Un nodo, un elemento por componente (`FUD0591`); la única excepción es un grupo de `<input type="radio">` |
-| 111 | Interpolación | `formassociated` en el `<template shadowrootmode>` raíz marca un control-componente; fuera de ahí, `FUD0593` |
+| 111 | Interpolación | `formassociated` en el `<template shadowrootmode>` raíz marca un control-componente; fuera de ahí, `FUD0593`. **Enmendada por la 132** (el puente); `formassociated` es una propuesta de fudic, no del estándar |
 | 112 | Interpolación | Sobre un tag de componente, `control` **cruza la referencia** del nodo como prop; la 84 queda intacta y no se emite `u` |
-| 113 | Interpolación | El hueco del error lo escribe el **emit** (id estable + `aria-describedby` siempre); el runtime solo pone texto |
+| 113 | Interpolación | El hueco del error lo escribe el **emit** (id estable + `aria-describedby` siempre); el runtime solo pone texto. **Enmendada por la 130** y **por la 131** (el resumen es una lista) |
 | 114 | Interpolación | `control` dentro de un bucle → error (`FUD0594`), hermana de la 31 |
 | 115 | Interpolación | Un `control` necesita un `<form control>` por encima (`FUD0595`); exento el control-componente, cuyo nodo se comprueba en el fichero del padre (BUG-25) |
 | 116 | Control flujo | `@{ ... }` corre **en su sitio**, en las dos ramas y en las tres pasadas del cliente; y un nombre que el cuerpo de un bloque **asigna** va por closure, no por parámetro. Es lo que hace escribible el `@while` de la 91 (BUG-28) |
@@ -1449,3 +1465,6 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 127 | `@code` | Lo que cruza el cable son **valores publicados** bajo `token()` (`fud-di`), nunca instancias. Es la 84 aplicada al contenedor |
 | 128 | `@code` | `load(ctx)` resuelve por `ctx.inject(…)` (`FUD0683`); el contenedor ambiente vive solo dentro de una factoría, y el `@code` de un componente lo reescribe el compilador |
 | 129 | HTML | Un `<script>` de **código** no lleva cuerpo (`FUD0161`) y uno de **datos** sí, verbatim: lista cerrada `application/ld+json` + `importmap`. Precisa la 43, cuyo cuerpo el emit tiraba en silencio |
+| 130 | Interpolación | `error="@nodo"` marca el elemento que dice el error de un nodo, donde el autor quiera; el compilador añade `id`, `aria-describedby` y, en un resumen de `<form>`, `aria-live`. Sin marcador no se emite nada. Mismo bloque que su control (`FUD0596`–`FUD0599`, BUG-41). **Enmendada por la 131** |
+| 131 | Interpolación | `summary="@nodo"` marca el **resumen** de un form o de un grupo, y `error=` queda para un **control** (`FUD0600`/`FUD0601`). El resumen es una **lista** (`<ul>`), que el servidor y el cliente escriben igual (`FUD0602` donde no cabe); `fields` (booleano, solo junto a `summary=`) añade, tras un envío, el error de cada campo enlazado a él. Un `error=` puede describir desde fuera el control de un control-componente. Enmienda la 113 y la 130 (BUG-42) |
+| 132 | Interpolación | **El puente de un componente lo escribe su autor**: `shadowrootreferencetarget` es HTML estándar y va en el `<template>` raíz, a mano, en **cualquier** componente; el compilador **no** elige campo. Sale igual en SSR sin JavaScript que en una instancia creada en el cliente. Con él, el servidor lo escribe al abrir la raíz, el cliente pasa `referenceTarget` a `attachShadow`, y `FudicControlElement` hace de respaldo sobre ese mismo elemento (traslada lo escrito en el host, y los labels donde no hay puente). Tiene que ser estático y nombrar un id de la plantilla (`FUD0605`). `formassociated` se mantiene: es la aportación de fudic, que quiere proponerla como estándar. Enmienda la 111 (BUG-42). *Primera redacción, corregida por Pedro el 2026-09-27: el compilador derivaba el puente del elemento con `control=` (`FUD0603`, `FUD0604`, retirados). Era invasivo, y el día que el respaldo sobre, obligaría a reescribir los envoltorios.* |

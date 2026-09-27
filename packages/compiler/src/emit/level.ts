@@ -25,7 +25,7 @@
 import { allComponents, componentOf, type ComponentGraph, type ResolvedComponent } from './resolve.js';
 import type { ElementNode, HtmlContent } from '../html/index.js';
 import type { ControlNode } from '../control/index.js';
-import { classifyAttribute, isFormAssociated } from '../binding/index.js';
+import { bridgeOf, classifyAttribute, isFormAssociated } from '../binding/index.js';
 import { branchesOf } from './constructs.js';
 import { codeOf, codeOfDocument, type ExtractedCode } from './oxc-code.js';
 import { readsMoving } from './attrs.js';
@@ -220,6 +220,22 @@ export function formAssociatedTags(graph: ComponentGraph): ReadonlySet<string> {
     if (template !== undefined && isFormAssociated(template)) marked.add(comp.tag);
   }
   return marked;
+}
+
+/**
+ * The id each control-component's shadow root forwards references to — its field (decision 132,
+ * BUG-42 §3.4). The PARENT opens that shadow root on the server, so it is the parent's markup
+ * that needs the child's answer: a fact about the graph, read off each child's own template with
+ * the same `bridgeOf` the child's emit and its semantic pass use.
+ */
+export function bridgeIds(graph: ComponentGraph): ReadonlyMap<string, string> {
+  const out = new Map<string, string>();
+  for (const comp of allComponents(graph)) {
+    const template = comp.doc.template;
+    const bridge = template === undefined ? null : bridgeOf(template).bridge;
+    if (bridge !== null) out.set(comp.tag, bridge.id);
+  }
+  return out;
 }
 
 /** The component hosts of a run of markup, as `(host element, child tag)`. */

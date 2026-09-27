@@ -13,29 +13,19 @@
 import { effect } from '@fudic/core';
 import type { Control } from '../types.js';
 import type { Cleanup, ErrorSlot } from './types.js';
-import { bindErrors, on, undo } from './wiring.js';
+import { bindErrors, follow, undo } from './wiring.js';
 
 export function bindRadio(
   els: readonly HTMLInputElement[],
   control: Control<string>,
   slot: ErrorSlot,
 ): Cleanup {
-  const write = (): void => {
+  const offs: Cleanup[] = follow(els, control, () => {
     // The checked one, or the empty string: a group with nothing chosen holds no value, and
     // that is what a `required` on it is for.
     const chosen = els.find((el) => el.checked);
     control.set(chosen === undefined ? '' : chosen.value);
-  };
-  const offs: Cleanup[] = [];
-  for (const el of els) {
-    offs.push(on(el, 'input', write));
-    offs.push(on(el, 'change', write));
-    offs.push(
-      on(el, 'blur', () => {
-        control.touch();
-      }),
-    );
-  }
+  });
   offs.push(
     effect(() => {
       const value = control();

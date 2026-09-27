@@ -5,9 +5,10 @@
 
 import { dateRange } from './range.js';
 import { typed } from './typed.js';
-import type { AnyValidator, TypedControl } from '../types.js';
+import type { AnyValidator, ControlOptions, TypedControl } from '../types.js';
 
 export const date = (
   initial?: Date | null,
   validators?: readonly AnyValidator<Date | null>[],
-): TypedControl<Date | null> => typed('date', initial, dateRange, validators);
+  options?: ControlOptions,
+): TypedControl<Date | null> => typed('date', initial, dateRange, validators, options);

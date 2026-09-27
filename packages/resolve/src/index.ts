@@ -25,6 +25,7 @@ export {
   findLibraries,
   dependencyChain,
   owningPackage,
+  specifierOf,
   type FudicPackage,
   type Library,
   type LibraryFs,

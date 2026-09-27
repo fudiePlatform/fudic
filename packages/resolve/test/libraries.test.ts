@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { findLibraries, dependencyChain, owningPackage } from '../src/libraries.js';
+import { findLibraries, dependencyChain, owningPackage, specifierOf } from '../src/libraries.js';
 import type { LibraryFs } from '../src/libraries.js';
 
 /** A `LibraryFs` over a flat map: no disk, no symlinks — a path is its own real name. */
@@ -336,5 +336,44 @@ describe('dependencyChain — the same walk, in the order the style guides compo
       ).map((p) => p.name),
     ).toEqual(['']);
     expect(dependencyChain(APP, memoryFs({ [`${APP}/fudic.json`]: app })).map((p) => p.name)).toEqual(['']);
+  });
+});
+
+describe('specifierOf', () => {
+  const UI = { name: '@acme/ui', root: '/ws/libs/ui' };
+  const CARD = '/ws/libs/ui/src/ui-card.fud';
+  const withExports = (exports: unknown): LibraryFs =>
+    memoryFs({ '/ws/libs/ui/package.json': JSON.stringify({ name: '@acme/ui', exports }) });
+  const of = (exports: unknown, file = CARD) =>
+    specifierOf(UI, file, withExports(exports));
+
+  it('names every file of a package that publishes no exports', () => {
+    const io = memoryFs({ '/ws/libs/ui/package.json': manifest('@acme/ui') });
+    expect(specifierOf(UI, CARD, io)).toBe(
+      '@acme/ui/src/ui-card.fud',
+    );
+  });
+
+  it('names a file by the exact subpath that exports it', () => {
+    expect(of({ './ui.css': './ui.css', './ui-card.fud': './src/ui-card.fud' })).toBe(
+      '@acme/ui/ui-card.fud',
+    );
+  });
+
+  it('reads a map of conditions, and ignores what is not a path', () => {
+    expect(of({ './card.fud': { types: null, default: './src/ui-card.fud' } })).toBe('@acme/ui/card.fud');
+    expect(of({ './card.fud': 7 })).toBeUndefined();
+  });
+
+  it('fills a one-star pattern with the part of the file it matches', () => {
+    expect(of({ './*.fud': './src/*.fud' })).toBe('@acme/ui/ui-card.fud');
+    expect(of({ './*.fud': './lib/*.fud' })).toBeUndefined();
+    expect(of({ './*': './src/*.css' })).toBeUndefined();
+  });
+
+  it('has no name for a file the package does not export, nor under a malformed field', () => {
+    expect(of({ './other.fud': './src/other.fud' })).toBeUndefined();
+    expect(of('./src/index.js')).toBeUndefined();
+    expect(of(null)).toBeUndefined();
   });
 });

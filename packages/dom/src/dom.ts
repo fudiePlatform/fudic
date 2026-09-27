@@ -44,8 +44,12 @@ export interface Dom<N> {
    * outside the component would move the focus to the HOST and not to the `<input>` inside
    * its shadow root. On the server it becomes `shadowrootdelegatesfocus` on the template, so
    * the parser materialises the same shadow root the client would have opened.
+   *
+   * `referenceTarget` is the bridge of a control-component (decision 132): the id of the element
+   * of its shadow root that what points at the host is forwarded to. On the server it becomes
+   * `shadowrootreferencetarget` on the template.
    */
-  attachShadow(host: N, delegatesFocus?: boolean): N;
+  attachShadow(host: N, delegatesFocus?: boolean, referenceTarget?: string): N;
   /**
    * The host a shadow root hangs from — the inverse of `attachShadow`.
    *

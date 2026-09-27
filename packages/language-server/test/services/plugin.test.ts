@@ -402,6 +402,42 @@ describe('the tag plugin (BUG-15 §4.6)', () => {
     expect(await completionsOf(tagService, document, position)).toBeUndefined();
   });
 
+  it('nor in any value of a `<link>` that is not fudic’s yet — no `rel`, or a stylesheet', async () => {
+    // BUG-43: the structure knows a link by its `rel`, so these two are not links to it, and the
+    // template's names were what the editor offered where a path goes.
+    for (const link of ['<link href="|">', '<link rel="stylesheet" href="|">', '<link rel="stylesheet" media="|">']) {
+      const { tagService, document, position } = setup(
+        `<link rel="layout" href="../layouts/_layout.fud">\n${link}\n<article>hi</article>\n`,
+      );
+      expect(await completionsOf(tagService, document, position), link).toBeUndefined();
+    }
+  });
+
+  it('offers the three `rel` of fudic, replacing what is written, and nothing of the template', async () => {
+    const source = `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="comp|">\n<article>hi</article>\n`;
+    const { tagService, document, position, cached } = setup(source);
+    const list = await completionsOf(tagService, document, position);
+
+    expect(list?.items.map((item) => item.label)).toEqual(['component', 'snippet']);
+    const value = cached.source.indexOf('comp">');
+    expect(list?.items[0]?.textEdit).toEqual({
+      range: rangeOf(document, { start: value, end: value + 'comp'.length }),
+      newText: 'component',
+    });
+  });
+
+  it('replaces an unquoted `rel` too, which FUD0056 then asks to quote', async () => {
+    const source = `<link rel="layout" href="../layouts/_layout.fud">\n<link rel=c|>\n<article>hi</article>\n`;
+    const { tagService, document, position, cached } = setup(source);
+    const list = await completionsOf(tagService, document, position);
+
+    const value = cached.source.indexOf('c>');
+    expect(list?.items[0]?.textEdit).toEqual({
+      range: rangeOf(document, { start: value, end: value + 1 }),
+      newText: 'component',
+    });
+  });
+
   it('and declines a value the author opened with a `.`, which is FUD0056', async () => {
     // This plugin is ADDITIONAL, so nothing silences it for us: it has to decline itself, or
     // it fills a position the compiler is reporting an error on.
@@ -449,6 +485,23 @@ describe('completion — snippets and Emmet (SDD-28 §5.3–§5.5)', () => {
     // would silently stop expanding.
     expect(item(list, 'applet')?.textEdit?.newText).toBe('<applet>${0}</applet>');
     expect(list?.isIncomplete).toBe(true);
+  });
+
+  it('`link` offers the links of fudic, and accepting one opens the list of its href (BUG-43)', async () => {
+    const { service, document, position } = setup(
+      `<link rel="layout" href="../layouts/_layout.fud">\nlink|\n<article>hi</article>\n`,
+    );
+    const list = await completionsOf(service, document, position);
+
+    expect(item(list, 'link-component')?.textEdit?.newText).toBe('<link rel="component" href="$0">');
+    expect(item(list, 'link-component')?.command?.command).toBe('editor.action.triggerSuggest');
+    // A snippet that ends anywhere else does not ask for anything.
+    const { service: other, document: doc, position: at } = setup(
+      `<link rel="layout" href="../layouts/_layout.fud">\n<article>\n  @|\n</article>\n`,
+      SLUG,
+      false,
+    );
+    expect(item(await completionsOf(other, doc, at), '@if')?.command).toBeUndefined();
   });
 
   // BUG-23 criterion 21.b. An empty element is not what the author wants written: they want
@@ -1177,6 +1230,26 @@ describe('code actions', () => {
       expect(link?.title).toBe('Añadir <link rel="component"> de <app-badge>');
       // The very edit `linkInsertionFor` writes, which is what the tag completion uses.
       expect(edit(link)?.newText).toContain('<link rel="component" href="../components/app-badge.fud">');
+    });
+
+    it('links the one component of that tag this file can reach, never the app next door', async () => {
+      // BUG-43: in a monorepo the folder holds other projects, and the first `app-tag` the
+      // index read is one no href of this package resolves the way the build does.
+      const own = JSON.stringify({ name: 'app' });
+      const other = JSON.stringify({ name: 'other' });
+      const reachable = {
+        '/p/package.json': own,
+        '/p/other/package.json': other,
+        '/p/other/app-tag.fud': component('app-tag'),
+        '/p/components/app-tag.fud': component('app-tag'),
+      };
+      const source = `<link rel="layout" href="../layouts/_layout.fud">\n<app-tag></app-tag>\n`;
+      const link = (await fixesIn(source, reachable)).find((a) => a.title.startsWith('Añadir <link'));
+
+      expect(edit(link)?.newText).toContain('href="../components/app-tag.fud"');
+
+      const unreachable = { '/p/package.json': own, '/p/other/package.json': other, '/p/other/app-tag.fud': component('app-tag') };
+      expect((await fixesIn(source, unreachable)).filter((a) => a.title.startsWith('Añadir <link'))).toEqual([]);
     });
 
     it('adds the key of a loop that renders markup (FUD0540)', async () => {

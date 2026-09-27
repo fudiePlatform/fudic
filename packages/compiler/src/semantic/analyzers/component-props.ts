@@ -20,6 +20,7 @@
 
 import { errorDiag, span, type Span } from '../../types/index.js';
 import type { Attribute } from '../../html/index.js';
+import { CONTROL_NAME, CONTROL_PROP } from '../../binding/index.js';
 import type { Analyzer, ComponentDeclaredProps, MarkupInput, Report } from '../model.js';
 import { documentRoots, walk } from '../walk.js';
 
@@ -79,6 +80,13 @@ export function checkComponentProps(input: MarkupInput, report: Report): void {
       }
 
       const passed = new Set(written.map((prop) => prop.name));
+      // `control="@f.body"` on a component tag IS the `ctrl` prop (decision 112) — the one way
+      // to cross a node, since only a reference survives hydration. Leaving it out made this
+      // rule demand `.ctrl` from exactly the author who had just passed it correctly, which the
+      // projection already knew not to do.
+      if (el.attributes.some((a) => typeof a.name === 'string' && a.name === CONTROL_NAME)) {
+        passed.add(CONTROL_PROP);
+      }
       const missing = declared.filter((d) => d.required && !passed.has(d.name));
       if (missing.length === 0) return;
       report(

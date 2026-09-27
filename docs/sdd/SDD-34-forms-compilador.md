@@ -1,6 +1,7 @@
 # SDD-34 — Formularios en el compilador: `control`, control-componentes y accesibilidad
 
 > **Estado:** `Listo`
+> **Corregido por [BUG-42](./bugs/BUG-42-error-resumen-y-validez-en-la-vista.md)** en §3.3, §4.4, §4.5 y §4.9: `summary=` y `fields` (decisión 131), el respaldo del puente `shadowrootreferencetarget`, que escribe el autor, y el traslado de nombre y descripción al campo de un control-componente (decisión 132), `bindMessage` para un marcador fuera de él, y `FUD0600`–`FUD0605` (`FUD0603`–`FUD0604` ya retirados).
 > **Paquetes:** `@fudic/compiler` (parser, semántica y emit del atributo `control`) ·
 > `@fudic/forms` (el punto de entrada `./dom` y `FudicControlElement`) · `@fudic/core` (la lista
 > `eager` del mapa de página) · `@fudic/vite` (el borrado de los validadores de servidor)
@@ -244,7 +245,21 @@ La validación **no** la dispara el enlace en cada tecla: el enlace escribe el v
 lo llama el autor o el enlace del `<form>` en el submit. Un formulario que valida contra el
 servidor en cada pulsación es una decisión del que lo escribe, no del compilador.
 
+> **Corregido por [BUG-41](./bugs/BUG-41-el-error-que-no-se-va.md) §4.1 y §4.5.** Aquí se leía
+> que *«`$validate` lo llama el autor o el enlace del `<form>` en el submit»*. Con eso, un error
+> que aparecía no se iba nunca: ni escribir ni enviar lo recalculaba. Ahora las bindings validan
+> solas según la política `validateOn` del control o de su formulario (flags `Blur` · `Input`;
+> `Submit` es el cero). Por defecto, `Blur | Input`: al salir del campo, y en cada escritura una
+> vez tocado.
+
 ### 4.3. El hueco del error existe antes que el JavaScript
+
+> **Corregido por [BUG-41](./bugs/BUG-41-el-error-que-no-se-va.md) §3.3 y §4.3 (decisión 130,
+> que enmienda la 113).** El compilador ya **no fabrica** el `<span data-fud-err>` detrás del
+> elemento. El autor marca el suyo con `error=@nodo`, con el elemento y en el sitio que quiera,
+> y el compilador solo le añade `id`, `aria-describedby` y, en el de un `<form>`, `aria-live`.
+> Sin marcador no hay elemento de mensaje. Lo que sigue en pie de esta sección es la invariante
+> de la 113: el runtime solo escribe texto, y servidor y cliente coinciden byte a byte.
 
 Por cada control enlazado, el emit escribe **en el markup** —o sea, también en el HTML que sale de
 SSR— dos cosas:
@@ -266,6 +281,14 @@ texto**. Es la invariante que hace que un formulario tenga la misma accesibilida
 no, y es exactamente lo que el prototipo no podía cumplir fabricando el `<span>` al vuelo.
 
 ### 4.4. El `<form>`: estado, no acción
+
+> **Corregido por [BUG-41](./bugs/BUG-41-el-error-que-no-se-va.md) §4.2, §4.6 y §4.7.** El
+> submit **siempre** valida antes de decidir, escucha en **captura** para ir por delante del
+> `@submit` del autor (que ve `defaultPrevented` si el formulario es inválido) y decide con lo
+> que se resolvió en síncrono: un `required` vacío para ya el primer envío. El resumen va en el
+> marcador `error=@form` que el autor pone **dentro** del `<form>`. El `<form control>` lleva
+> `novalidate`, para que la burbuja nativa no se adelante. Y el foco entra también en un
+> control-componente: se busca en `form.elements` por `aria-invalid` o por `validity`.
 
 `bindForm` hace cuatro cosas, y ninguna es enviar:
 
@@ -326,6 +349,11 @@ la nada. A partir de aquí:
   hacía con `?server` y con `?client`. Los tres módulos emitidos siguen ahora la misma regla.
 
 ### 4.5. `formassociated`: el marcador, la clase, y el JavaScript que sí se paga
+
+> **Nota (BUG-42, decisión 132).** `formassociated` es un marcador de fudic, no del estándar, y
+> fudic lo quiere **proponer**. El puente, `shadowrootreferencetarget`, es estándar y lo escribe
+> el autor en el mismo `<template>`; lo que añade `formassociated` es el respaldo sobre ese
+> elemento donde el navegador aún no tiene puente.
 
 **Decisión 111.** `<template shadowrootmode="open" formassociated>` marca el componente como
 **control-componente**. El marcador es de compilación: el navegador nunca lo ve —un atributo
@@ -498,7 +526,16 @@ schema en el emit sería duplicar el chequeo y quedarse corto.
 | `FUD0593` | `formassociated` fuera del `<template shadowrootmode>` raíz de un componente — en un template anidado o en modo página (decisión 111). |
 | `FUD0594` | `control` dentro de un bucle (decisión 114, hermana de la 31). |
 | `FUD0595` | `control` sin un `<form control="…">` por encima en la misma plantilla (decisión 115, [BUG-25](./bugs/BUG-25-control-sin-editor.md)). Exento el control-componente: enlaza el nodo que le pasa su padre, y el sitio del cruce se comprueba en el fichero del padre. |
-| `FUD0596`–`FUD0619` | Reservados. |
+| `FUD0596` | El valor de `error` no es una expresión `@` (decisión 130, [BUG-41](./bugs/BUG-41-el-error-que-no-se-va.md)). |
+| `FUD0597` | Un marcador `error` nombra un nodo que ningún elemento de **su bloque** enlaza con `control` — también si el nodo solo cruza a un componente que **no** es `formassociated` (BUG-41; estrechado por BUG-42: al lado de un control-componente empareja). |
+| `FUD0598` | Un segundo marcador `error` del mismo nodo, o uno dentro de un bucle (BUG-41). |
+| `FUD0599` | Un marcador `error` con contenido, o con un `id` que no es estático (BUG-41). |
+| `FUD0600` | `error=` empareja con un form o un grupo: su resumen se marca con `summary=` (decisión 131, [BUG-42](./bugs/BUG-42-error-resumen-y-validez-en-la-vista.md)). |
+| `FUD0601` | `summary=` empareja con un control: su mensaje se marca con `error=` (BUG-42). |
+| `FUD0602` | El elemento de un `summary=` no admite la lista que escribe el runtime (`<p>`, `<span>`, `<small>`, `<label>`, `<a>`, `<button>`, `<strong>`, `<em>`, `<b>`, `<i>`, `<h1>`–`<h6>`, `<legend>`) (BUG-42). |
+| `FUD0603`–`FUD0604` | Retirados: la decisión 132, corregida, deja que el autor escriba el puente y el compilador ya no elige campo (BUG-42). |
+| `FUD0605` | Un `shadowrootreferencetarget` es dinámico o nombra un id que no está en la plantilla (BUG-42). |
+| `FUD0606`–`FUD0619` | Reservados. |
 
 Ninguno de los cinco lanza: el emit anota el diagnóstico con su span, omite **ese** enlace y sigue
 emitiendo el fichero (regla de oro del proyecto).
@@ -597,9 +634,11 @@ las cuatro métricas, como el núcleo. En `@fudic/compiler` y `@fudic/vite` el c
 - **`bind:` (decisiones 83–85).** Sigue pendiente y no se toca: `control` no lo implementa, no lo
   presupone y no lo bloquea. Son dos mecanismos distintos y el hueco abierto de `bind:` —el nombre
   de la prop callback— sigue abierto donde estaba.
-- **Que el hueco del error lo escriba el autor** en un sitio elegido por él. En v1 lo emite el
+- ~~**Que el hueco del error lo escriba el autor** en un sitio elegido por él. En v1 lo emite el
   compilador siempre, justo detrás del elemento, y la maquetación se resuelve con CSS. Extensión
-  natural si aparece un caso que el CSS no cubra.
+  natural si aparece un caso que el CSS no cubra.~~ **Hecho en
+  [BUG-41](./bugs/BUG-41-el-error-que-no-se-va.md)** (decisión 130): el caso apareció —una
+  rejilla de dos columnas, un mensaje encima del campo— y el autor lo marca con `error=@nodo`.
 - **Mensajes de error internacionalizados.** `setMessages` acepta el mapa; de dónde salgan los
   textos es de la aplicación.
 - **Que el LSP exija `formassociated`** en un componente que recibe un `Control<T>` (§4.6), y que

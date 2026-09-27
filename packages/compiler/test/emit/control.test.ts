@@ -117,7 +117,7 @@ describe('§6.7 — the switch is spent at compile time', () => {
       "  import { f } from './user.form.js';\n  const t = 'number';",
     );
     expect(client).toContain(`import { bindByType } from '@fudic/forms/dom';`);
-    expect(client).toMatch(/bindByType\(\$n\d+, f\.title, \$n\d+, \$n\d+\.type\)/u);
+    expect(client).toMatch(/bindByType\(\$n\d+, f\.title, null, \$n\d+\.type\)/u);
   });
 
   it('and the page that never writes one still names none of it', () => {
@@ -152,16 +152,18 @@ describe('§6.7 — the switch is spent at compile time', () => {
   it('a `<form>` binds state and a `<fieldset>` binds a group', () => {
     const { client } = emit('<form control="@f"><fieldset control="@f.seo"></fieldset></form>');
     expect(client).toContain("import { bindForm, bindGroup } from '@fudic/forms/dom';");
-    expect(client).toMatch(/bindGroup\(\$n\d+, f\.seo\)/u);
+    expect(client).toMatch(/bindGroup\(\$n\d+, f\.seo, null\)/u);
   });
 
   it('binds inside an `@if`, into that block’s own hookup', () => {
     // A block is a walk of its own with its own nodes and its own `$d`: the binding has to
     // land in that closure, not in the component's (SDD-30 §3.1).
-    const { client } = emit('@if (true) { <input control="@f.title"> }');
+    const { client } = emit(
+      '@if (true) { <input control="@f.title"><small error="@f.title"></small> }',
+    );
     expect(client).toContain("import { bindText } from '@fudic/forms/dom';");
-    expect(client).toContain('bindText(');
-    // The block tracks its roots, the slot among them: it is a node the block owns and has
+    expect(client).toMatch(/bindText\(\$n\d+, f\.title, \$n\d+\)/u);
+    // The block tracks its roots, the marker among them: it is a node the block owns and has
     // to be able to take away.
     expect(client.match(/\$r\.push\(/gu)!.length).toBeGreaterThan(1);
   });
@@ -281,72 +283,136 @@ describe('§6.7 — the switch is spent at compile time', () => {
 // §6.8 — the markup: no `control`, a stable slot, `aria-describedby` always
 // ---------------------------------------------------------------------------
 
-describe('§6.8 — the error slot lives in the markup', () => {
-  it('the attribute `control` does not survive to the HTML, on either branch', () => {
-    const { server, client } = emit('<input control="@f.title">');
+describe('§6.8 — the message lives in the author’s marker (BUG-41 §4.3)', () => {
+  it('neither `control` nor `error` survives to the HTML, on either branch', () => {
+    const { server, client } = emit('<input control="@f.title"><p error="@f.title"></p>');
     for (const out of [server, client]) {
       expect(out).not.toContain("'control'");
       expect(out).not.toContain('"control"');
+      expect(out).not.toContain("'error'");
+      expect(out).not.toContain('"error"');
     }
   });
 
-  it('both branches write the same slot id and the same `aria-describedby`', () => {
-    const { server, client } = emit('<input control="@f.seo.canonical">');
+  it('without a marker the compiler writes no element and no `aria-describedby` (criterion 14)', () => {
+    const { server, client } = emit('<input control="@f.title">');
+    for (const out of [server, client]) {
+      expect(out).not.toContain('aria-describedby');
+      expect(out).not.toContain("$dom.element('span')");
+      expect(out).not.toContain('data-fud-err');
+    }
+    expect(client).toMatch(/bindText\(\$n\d+, f\.title, null\)/u);
+  });
+
+  it('both branches give the marker the same derived id, and point at it (criterion 13)', () => {
+    const { server, client } = emit('<input control="@f.seo.canonical"><p error="@f.seo.canonical"></p>');
     const id = 'fud-e-f-seo-canonical';
     for (const out of [server, client]) {
       expect(out).toContain(`$dom.setAttr($n0, 'aria-describedby', "${id}");`);
-      expect(out).toContain(`'id', "${id}"`);
-      expect(out).toContain("'data-fud-err', ''");
+      expect(out).toContain(`$dom.setAttr($n1, 'id', "${id}");`);
+      expect(out).toContain('$dom.element("p")');
+    }
+  });
+
+  it('the marker goes where the author put it — before the field too (criterion 13)', () => {
+    const { server, client } = emit('<small error="@f.title"></small><input control="@f.title">');
+    for (const out of [server, client]) {
+      expect(out).toContain(`$dom.setAttr($n0, 'id', "fud-e-f-title");`);
+      expect(out).toContain(`$dom.setAttr($n1, 'aria-describedby', "fud-e-f-title");`);
+    }
+    // The call waited for the marker it names, and names the element and the marker both.
+    expect(client).toContain('$n1 && $n0 && $d.push(bindText($n1, f.title, $n0));');
+  });
+
+  it('the author’s own static id is kept, and pointed at (criterion 13)', () => {
+    const { server, client } = emit('<input control="@f.title"><p id="mine" error="@f.title"></p>');
+    for (const out of [server, client]) {
+      expect(out).toContain(`'aria-describedby', "mine"`);
+      expect(out).not.toContain('fud-e-f-title');
     }
   });
 
   it('the id comes from the NODE, not from a counter: order does not move it', () => {
-    const first = emit('<input control="@f.a"><input control="@f.b">');
-    const second = emit('<input control="@f.b"><input control="@f.a">');
+    const markup = (a: string, b: string): string =>
+      `<input control="@f.${a}"><i error="@f.${a}"></i><input control="@f.${b}"><i error="@f.${b}"></i>`;
+    const first = emit(markup('a', 'b'));
+    const second = emit(markup('b', 'a'));
     for (const out of [first.server, first.client, second.server, second.client]) {
       expect(out).toContain('fud-e-f-a');
       expect(out).toContain('fud-e-f-b');
     }
   });
 
-  it('a radio group gets ONE slot, after its last element', () => {
+  it('every radio of a group points at the ONE marker (criterion 15)', () => {
     const { server, client } = emit(
-      ['a', 'b'].map((v) => `<input type="radio" value="${v}" control="@f.tone">`).join(''),
+      ['a', 'b'].map((v) => `<input type="radio" value="${v}" control="@f.tone">`).join('') +
+        '<p error="@f.tone"></p>',
     );
     for (const out of [server, client]) {
-      expect(out.match(/fud-e-f-tone/gu)!.length).toBeGreaterThanOrEqual(3); // 2 refs + 1 id
-      expect(out.match(/'data-fud-err', ''/gu)).toHaveLength(1);
+      expect(out.match(/'aria-describedby', "fud-e-f-tone"/gu)).toHaveLength(2);
+      expect(out.match(/'id', "fud-e-f-tone"/gu)).toHaveLength(1);
     }
+    expect(client).toMatch(/bindRadio\(\[\$n0, \$n1\], f\.tone, \$n2\)/u);
   });
 
   it('the server writes `aria-invalid` and the message when the form renders with errors', () => {
-    const { server } = emit('<input control="@f.title">');
+    const { server } = emit('<input control="@f.title"><p error="@f.title"></p>');
     expect(server).toContain('if (f.title.touched() && f.title.errors())');
     expect(server).toContain("$dom.setAttr($n0, 'aria-invalid', 'true')");
-    expect(server).toContain("import { errorText as $fudErrorText } from '@fudic/forms';");
-    expect(server).toContain('$dom.text($fudErrorText($e))');
+    expect(server).toContain("const $e = (f.title.touched() ? f.title.message() : '');");
+    expect(server).toContain('if ($e) $dom.append($n1, $dom.text($e));');
+    // The text is the model's own: nothing to import for it.
+    expect(server).not.toContain('@fudic/forms');
   });
 
   it('the client writes NEITHER: they follow the errors, so the effect owns them', () => {
-    const { client } = emit('<input control="@f.title">');
+    const { client } = emit('<input control="@f.title"><p error="@f.title"></p>');
     expect(client).not.toContain('aria-invalid');
-    expect(client).not.toContain('errorText');
+    expect(client).not.toContain('message()');
   });
 
-  it('a `<form>` gets a polite live region beside it', () => {
-    const { server, client } = emit('<form control="@f"></form>');
+  it('a `<form>`’s summary sits INSIDE it and is a polite live region (criterion 16, BUG-42 criterion 17)', () => {
+    const { server, client } = emit('<form control="@f"><div summary="@f"></div></form>');
     for (const out of [server, client]) {
-      expect(out).toContain("'id', \"fud-s-f\"");
-      expect(out).toContain("'data-fud-sum', ''");
+      expect(out).toContain(`'id', "fud-s-f"`);
       expect(out).toContain("'aria-live', 'polite'");
+      expect(out).toContain(`$dom.setAttr($n0, 'aria-describedby', "fud-s-f");`);
     }
-    expect(server).toContain('const $e = f.$summary();');
+    expect(server).toContain('const $l = summaryEntriesOf(f, "fud-s-f", null);');
+    expect(server).toContain("import { summaryEntriesOf } from '@fudic/forms';");
+    expect(client).toMatch(/bindForm\(\$n0, f, \$n1\)/u);
   });
 
-  it('a group and a component tag get no slot of their own', () => {
-    const { server } = emit('<fieldset control="@f.seo"></fieldset>');
-    expect(server).not.toContain('data-fud-err');
-    expect(server).not.toContain('data-fud-sum');
+  it('an `aria-live` the author wrote is not overwritten (criterion 16)', () => {
+    const { server, client } = emit(
+      '<form control="@f"><div aria-live="assertive" summary="@f"></div></form>',
+    );
+    for (const out of [server, client]) {
+      expect(out).not.toContain("'aria-live', 'polite'");
+    }
+  });
+
+  it('a bound `<form>` gets `novalidate`: the browser must not stop the submit first', () => {
+    const { server, client } = emit('<form control="@f"></form><input control="@f.title">');
+    for (const out of [server, client]) {
+      expect(out).toContain(`$dom.setAttr($n0, 'novalidate', '');`);
+      // Only the form: a field has no constraint validation of its own to switch off.
+      expect(out.match(/'novalidate'/gu)).toHaveLength(1);
+    }
+  });
+
+  it('a `novalidate` the author wrote is not written twice', () => {
+    const { server, client } = emit('<form novalidate control="@f"></form>');
+    for (const out of [server, client]) {
+      expect(out).not.toContain(`'novalidate', ''`);
+    }
+  });
+
+  it('a group’s summary gets its list and a live region, and the group points at it', () => {
+    const { server, client } = emit('<fieldset control="@f.seo"><div summary="@f.seo"></div></fieldset>');
+    expect(server).toContain('const $l = summaryEntriesOf(f.seo, "fud-s-f-seo", null);');
+    for (const out of [server, client]) expect(out).toContain("'aria-live', 'polite'");
+    expect(client).toMatch(/bindGroup\(\$n0, f\.seo, \$n1\)/u);
   });
 });
 
@@ -361,5 +427,132 @@ describe('§4.8 — a control makes the component hydrate', () => {
 
   it('the same template without it is not', () => {
     expect(emit('<input>', '').hydratable.has('m-el')).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// BUG-42 §4.2, §4.7, §4.9 — `summary`, `fields`, and a marker beside a control-component
+// ---------------------------------------------------------------------------
+
+describe('BUG-42 — a summary with `fields` (criterion 18)', () => {
+  const TEMPLATE =
+    '<form control="@f"><div summary="@f" fields></div>' +
+    '<input id="nom" control="@f.name"><small error="@f.name"></small>' +
+    '<input control="@f.alias">' +
+    '<app-input control="@f.email"></app-input>' +
+    '<fieldset control="@f.acceso"><input control="@f.acceso.clave"></fieldset>' +
+    '<input id="@dyn" control="@f.web"></form>';
+
+  it('takes `fields` out of the HTML and makes the summary focusable', () => {
+    const { server, client } = emit(TEMPLATE);
+    for (const out of [server, client]) {
+      expect(out).not.toContain("'fields'");
+      expect(out).toContain(`'tabindex', '-1'`);
+    }
+  });
+
+  it('hands the map path → id over, with the derived id where the author wrote none', () => {
+    const { server, client } = emit(TEMPLATE);
+    const links =
+      '{"name":"nom","alias":"fud-c-f-alias","email":"fud-c-f-email","acceso":"fud-c-f-acceso","acceso.clave":"fud-c-f-acceso-clave"}';
+    expect(server).toContain(`summaryEntriesOf(f, "fud-s-f", ${links})`);
+    expect(client).toContain(`bindForm($n0, f, $n1, ${links})`);
+    for (const out of [server, client]) {
+      expect(out).toContain(`'id', "fud-c-f-alias"`);
+      // A dynamic id cannot be linked to.
+      expect(out).not.toContain('fud-c-f-web');
+    }
+  });
+
+  it('describes each listed field with no marker of its own by its entry — on the host of a control-component too', () => {
+    const { server, client } = emit(TEMPLATE);
+    for (const out of [server, client]) {
+      expect(out).toContain(`'aria-describedby', "fud-s-f-alias"`);
+      expect(out).toContain(`'aria-describedby', "fud-s-f-email"`);
+      expect(out).toContain(`'aria-describedby', "fud-s-f-acceso-clave"`);
+      // A field with its own marker keeps pointing at it.
+      expect(out).toContain(`'aria-describedby', "fud-e-f-name"`);
+      expect(out).not.toContain('fud-s-f-name');
+    }
+  });
+
+  it('a radio group links from its first radio', () => {
+    const { server } = emit(
+      '<form control="@f"><div summary="@f" fields></div>' +
+        '<input type="radio" id="r1" control="@f.t"><input type="radio" id="r2" control="@f.t"></form>',
+    );
+    expect(server).toContain('{"t":"r1"}');
+  });
+
+  it('`fields` on an element with no summary is an attribute like any other', () => {
+    const { server } = emit('<div fields></div>');
+    expect(server).toContain('"fields", ""');
+  });
+});
+
+describe('BUG-42 — a marker beside a control-component (criterion 22)', () => {
+  it('describes the host and writes its message with `bindMessage`', () => {
+    const { server, client } = emit(
+      '<form control="@f"><app-input control="@f.email"></app-input><app-error error="@f.email"></app-error></form>',
+    );
+    for (const out of [server, client]) {
+      expect(out).toContain(`'aria-describedby', "fud-e-f-email"`);
+      expect(out).toContain(`'id', "fud-e-f-email"`);
+    }
+    expect(server).toContain("f.email.touched() ? f.email.message() : ''");
+    expect(client).toContain("import { bindForm, bindMessage } from '@fudic/forms/dom';");
+    expect(client).toMatch(/\$n\d+ && \$d\.push\(bindMessage\(\$n\d+, f\.email\)\);/u);
+  });
+
+  /**
+   * The marker on the HOST of a component, as `app-error` is in the example: the id the input is
+   * described by has to land on that host, and the message the server had goes into its light
+   * DOM, where the component's `<slot>` paints it.
+   */
+  it('a marker that is itself a component host gets its id, on both branches, and its text in the light DOM', () => {
+    const io = memoryIo({
+      '/home.fud':
+        '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
+      '/m.fud':
+        '<link rel="component" href="./app-input.fud">\n<link rel="component" href="./app-error.fud">\n' +
+        "@code {\n  import { f } from './user.form.js';\n}\n<m-el>\n  <template shadowrootmode=\"open\">" +
+        '<form control="@f"><div summary="@f" fields></div>' +
+        '<app-input control="@f.email"></app-input><app-error error="@f.email"></app-error>' +
+        '<app-error summary="@f"></app-error></form></template>\n</m-el>\n',
+      '/app-input.fud':
+        '@code {\n  const { ctrl } = props<{ ctrl?: unknown }>();\n}\n' +
+        '<app-input>\n  <template shadowrootmode="open" formassociated><input control="@ctrl"></template>\n</app-input>\n',
+      '/app-error.fud': '<app-error>\n  <template shadowrootmode="open"><slot></slot></template>\n</app-error>\n',
+    });
+    const graph = resolveComponents('/home.fud', io);
+    const comp = graph.components.get('m-el')!;
+    const server = emitComponentModule(graph, comp);
+    const client = emitComponentClientModule(graph, comp);
+    for (const out of [server, client]) {
+      expect(out).toContain(`'id', "fud-e-f-email"`);
+      expect(out).toContain(`'aria-describedby', "fud-e-f-email"`);
+    }
+    expect(server).toContain("f.email.touched() ? f.email.message() : ''");
+    expect(client).toMatch(/\$n\d+ && \$d\.push\(bindMessage\(\$n\d+, f\.email\)\);/u);
+  });
+});
+
+describe('BUG-42 — a view that reads through an imported form (§4.3)', () => {
+  it('watches the expression, because the form itself is not a source', () => {
+    const { client } = emit(
+      '<form control="@f"><input control="@f.name"><button disabled="@(!f.$valid())">x</button></form>',
+    );
+    expect(client).toContain('$d.push($subIf(f, $u));');
+    expect(client).toContain('$d.push($sub(() => ((!f.$valid())), $u));');
+    expect(client).toContain('subscribe as $sub');
+  });
+
+  it('leaves a bare imported name to `$subIf`, and a member of a local alone', () => {
+    const { client } = emit(
+      '<p>@(count())</p><p>@(local.x)</p>',
+      "  import { count } from './store.js';\n  const local = { x: 1 };",
+    );
+    expect(client).toContain('$d.push($subIf(count, $u));');
+    expect(client).not.toContain('$sub(() =>');
   });
 });

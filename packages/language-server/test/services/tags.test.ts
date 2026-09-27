@@ -16,7 +16,7 @@ import {
   linkInsertionFor,
   tagDefinitionAt,
 } from '../../src/services/tags.js';
-import { component, LAYOUT, memoryFs, PAGE, route } from '../_support.js';
+import { component, LAYOUT, memoryFs, MONOREPO, PAGE, route, TIENDA_ROUTE } from '../_support.js';
 
 const SLUG = '/p/blog/[slug].fud';
 
@@ -107,6 +107,19 @@ describe('componentTags (SDD-28 §5.3)', () => {
     const document = new DocumentCache(index).get(SLUG, 1, files[SLUG] as string);
 
     expect(componentTags(document, index).filter((tag) => tag.tag === 'app-badge')).toHaveLength(1);
+  });
+});
+
+describe('componentTags in a monorepo (BUG-43)', () => {
+  it('offers its own components and what its libraries export, and nothing of another app', () => {
+    const index = new WorkspaceIndex(memoryFs(MONOREPO));
+    index.scan('/ws');
+    const document = new DocumentCache(index).get(TIENDA_ROUTE, 1, MONOREPO[TIENDA_ROUTE] as string);
+
+    expect(componentTags(document, index).map((tag) => `${tag.tag} ${tag.href}`)).toEqual([
+      'tienda-card ../components/tienda-card.fud',
+      'ui-card @acme/ui/ui-card.fud',
+    ]);
   });
 });
 

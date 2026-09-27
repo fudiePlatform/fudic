@@ -32,6 +32,11 @@ export class SsrNodeImpl implements SsrNode {
    * the host and not the `<input>` inside (SDD-34 §4.5).
    */
   delegatesFocus = false;
+  /**
+   * The id that shadow root forwards references to — `shadowrootreferencetarget` on the
+   * template — or `null`. The bridge of a control-component (decision 132).
+   */
+  referenceTarget: string | null = null;
 
   constructor(
     readonly kind: SsrKind,

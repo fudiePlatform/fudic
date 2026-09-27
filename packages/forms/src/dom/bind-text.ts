@@ -10,23 +10,18 @@
 import { effect } from '@fudic/core';
 import type { Control } from '../types.js';
 import type { Cleanup, ErrorSlot } from './types.js';
-import { bindErrors, on, undo } from './wiring.js';
+import { bindErrors, follow, undo } from './wiring.js';
 
 export function bindText(
   el: HTMLInputElement | HTMLTextAreaElement,
   control: Control<string>,
   slot: ErrorSlot,
 ): Cleanup {
-  const write = (): void => {
-    control.set(el.value);
-  };
   return undo([
     // `input` for every keystroke and `change` for what does not raise one — a browser
     // autofill, a datalist pick — so the model never lags behind what the user can see.
-    on(el, 'input', write),
-    on(el, 'change', write),
-    on(el, 'blur', () => {
-      control.touch();
+    ...follow([el], control, () => {
+      control.set(el.value);
     }),
     // Control → element, for the writes that did not come from the user: a `$patch`, a
     // `$reset`, a value loaded from the server.

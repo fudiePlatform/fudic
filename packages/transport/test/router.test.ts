@@ -728,6 +728,60 @@ describe('createRouter.warmHydration — the hydration chunks', () => {
     expect(h.network).toEqual([]);
   });
 
+  describe('the published runtime the chunk imports (SDD-45 §4.3)', () => {
+    const ELEMENT = `${ORIGIN}_fudic/0.0.1/core/element.js`;
+    const EFFECT = `${ORIGIN}_fudic/0.0.1/core/effect.js`;
+
+    function withRuntime(h: ReturnType<typeof harness>) {
+      const { cache, fake } = fakeCache();
+      const runtime = { prefix: '/_fudic/', store: createStore({ cache, net: h.net }) };
+      const r = createRouter({
+        table: compileManifest(FILE),
+        linker: linkerOver(h.stores.routes),
+        stores: h.stores,
+        origin: ORIGIN,
+        net: h.net,
+        resources: ASSETS,
+        runtime,
+      });
+      return { r, fake };
+    }
+
+    it('reads the pieces off the deposited bytes, transitively, into the runtime cache', async () => {
+      const h = harness();
+      // The chunk names one piece statically and loads another on demand; the first piece
+      // names a second. The manifest knows none of them.
+      h.sources.set(
+        CHUNK,
+        'import{FudicElement as t}from"/_fudic/0.0.1/core/element.js";const l=()=>import("/_fudic/0.0.1/core/live.js");',
+      );
+      h.sources.set(ELEMENT, 'import{effect as e}from"./effect.js";export const E=1;');
+      h.sources.set(EFFECT, 'export const effect = 1;');
+      const { r, fake } = withRuntime(h);
+
+      expect(await r.warmHydration(['app-counter'])).toEqual(['app-counter']);
+      // Static imports only: what a piece loads on demand is its own decision.
+      expect([...fake.entries.keys()]).toEqual([ELEMENT, EFFECT]);
+
+      // And the gesture then pays nothing for them.
+      for (const url of [ELEMENT, EFFECT]) {
+        const event = fetchEvent(url, { mode: 'cors' });
+        r.handle(event);
+        await event.responded;
+      }
+      expect(h.network).toEqual([CHUNK, ELEMENT, EFFECT]);
+    });
+
+    it('a piece that did not land leaves the tag unwarmed, and a repeat reads each file once', async () => {
+      const h = harness();
+      h.sources.set(CHUNK, 'import "/_fudic/0.0.1/core/element.js";import "/_fudic/0.0.1/core/element.js";');
+      const { r } = withRuntime(h);
+      // `element.js` has no source: a 404, which the Store refuses to keep.
+      expect(await r.warmHydration(['app-counter'])).toEqual([]);
+      expect(h.network).toEqual([CHUNK, ELEMENT]);
+    });
+  });
+
   it('reports nothing for a tag whose graph did not land whole', async () => {
     const h = harness(); // the chunk is there, its shared import is not
     h.sources.set(CHUNK, 'import "../element-DUSE73WP.js";');

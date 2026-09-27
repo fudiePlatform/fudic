@@ -408,26 +408,61 @@ export function createRouter(config: RouterConfig): Router {
    * first — so a repeated order costs one `cache.match` and nothing else. `priority: 'low'`
    * keeps the download off the critical path, which is what makes warm free.
    */
-  const deposit = async (url: string): Promise<boolean> => {
+  /** Whether a path belongs to the PUBLISHED runtime this worker serves by prefix. */
+  const isRuntimePiece = (pathname: string): boolean =>
+    config.runtime !== undefined && pathname.startsWith(config.runtime.prefix);
+
+  /** The deposited body, when it landed with a 200; `null` otherwise. */
+  const deposit = async (url: string): Promise<Response | null> => {
     const absolute = abs(url);
-    if (ruleFor(new URL(absolute).pathname) === null) {
-      return false;
+    const pathname = new URL(absolute).pathname;
+    // A piece of the PUBLISHED runtime goes where `handleResource` reads it from: the shared
+    // runtime cache, which no `sw.json` class claims (SDD-45 §4.5.1). Declining it here, as a
+    // URL nobody serves, left the gesture paying the network for the very imports of the
+    // chunk the warm had just deposited.
+    const store = isRuntimePiece(pathname)
+      ? config.runtime!.store
+      : ruleFor(pathname) === null
+        ? null
+        : stores.data;
+    if (store === null) {
+      return null;
     }
     try {
       // Only a 200 is stored (`Store` refuses the rest), so only a 200 may be reported: a
       // page told a chunk is warm and then paying network for it would be worse than never
       // having been told.
-      const response = await stores.data.get(
+      const response = await store.get(
         new Request(absolute, { priority: 'low' }),
         'cache-first',
         null,
       );
-      return response.status === 200;
+      return response.status === 200 ? response : null;
     } catch {
       // Warm is an optimization: a chunk that did not land is downloaded on demand, inside
       // the gesture, exactly as if warm had never existed.
-      return false;
+      return null;
     }
+  };
+
+  /**
+   * The published runtime pieces a module imports STATICALLY, read off its own bytes.
+   *
+   * The manifest cannot name them: it lists what THIS build emitted, and the runtime is
+   * published apart, under a version and not a build (SDD-45). But the worker holds the bytes
+   * of every file it deposits, and a static import names its `/_fudic/…` specifier in them,
+   * so the graph is read where it is. (No literal import here: this comment ships inside the
+   * Service Worker, whose bundle must not contain one.) Dynamic `import()` is left alone on purpose: what a piece
+   * loads on demand is that piece's own decision, and warming it would be guessing.
+   */
+  const runtimeImportsOf = async (response: Response, base: string): Promise<string[]> => {
+    const text = await response.clone().text();
+    const found: string[] = [];
+    for (const match of text.matchAll(/(?:\bfrom|\bimport)\s*["']([^"']+)["']/gu)) {
+      const url = new URL(match[1]!, base);
+      if (isRuntimePiece(url.pathname)) found.push(url.href);
+    }
+    return found;
   };
 
   /**
@@ -442,13 +477,28 @@ export function createRouter(config: RouterConfig): Router {
    *
    * A tag counts as warmed only when every one of its files landed: half a graph in cache
    * still pays network on the first interaction.
+   *
+   * **And the published runtime those files import**, transitively (SDD-45 §4.3: the pieces
+   * a component needs come «with the warm, in the same batch»). Read off the deposited bytes,
+   * because the manifest does not know them; a piece that fails to land still counts against
+   * the tag, for the same reason a chunk does.
    */
   const warmHydration = async (tags: readonly string[]): Promise<readonly string[]> => {
     const warmedTags: string[] = [];
     for (const tag of tags) {
       let complete = true;
-      for (const url of [table.urls.hydrateUrl(tag), ...table.hydrateDeps(tag)]) {
-        complete = (await deposit(url)) && complete;
+      const pending = [table.urls.hydrateUrl(tag), ...table.hydrateDeps(tag)];
+      const seen = new Set<string>();
+      while (pending.length > 0) {
+        const url = abs(pending.shift()!);
+        if (seen.has(url)) continue;
+        seen.add(url);
+        const response = await deposit(url);
+        if (response === null) {
+          complete = false;
+          continue;
+        }
+        pending.push(...(await runtimeImportsOf(response, url)));
       }
       if (complete) {
         warmedTags.push(tag);

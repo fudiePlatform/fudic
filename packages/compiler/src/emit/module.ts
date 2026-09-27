@@ -32,7 +32,7 @@ import { compactStyleCss } from './css-compact.js';
 import { codeOf, codeOfDocument, diHelpers } from './oxc-code.js';
 import { hasDependencyInjection } from './di.js';
 import { cellSlots, childTargets, reactiveScope } from './state.js';
-import { formAssociatedTags, hydratableTags } from './level.js';
+import { bridgeIds, formAssociatedTags, hydratableTags } from './level.js';
 import { needsRuntime, routeBlocksOf, writeMapConstants, writeHydrationBlocks } from './maps.js';
 import { planControls } from './controls.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
@@ -284,9 +284,12 @@ function buildComponentModule(
   const injects = di.some((d) => d.kind === 'inject' && d.zone !== 'server');
   // Resolved once, for both branches: the client chunk builds the very same nodes from the
   // very same plan, or `h` adopts a tree it does not recognise (SDD-34 §4.3).
-  const controls = planControls(comp.source, comp.doc.template!.children, (t) =>
-    graph.components.has(t),
-  );
+  const associated = formAssociatedTags(graph);
+  const controls = planControls(comp.source, comp.doc.template!.children, {
+    isComponent: (t) => graph.components.has(t),
+    isFormAssociated: (t) => associated.has(t),
+    template: comp.doc.template!,
+  });
   const em = new MarkupEmitter({
     source: comp.source,
     w: bodyW,
@@ -300,7 +303,8 @@ function buildComponentModule(
     hydratable,
     ...(owns ? { ioc: '$own' } : {}),
     controls,
-    formAssociated: formAssociatedTags(graph),
+    formAssociated: associated,
+    bridges: bridgeIds(graph),
     styled: styledTags(graph),
     projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
   });
@@ -320,6 +324,8 @@ function buildComponentModule(
   const helpers = diHelpers(di, (call) => call.zone !== 'client');
   if (helpers.length > 0) w.line(`import { ${helpers.join(', ')} } from '@fudic/di';`);
   for (const line of server.imports) w.line(line);
+  // The one function that decides a summary's list on both ends (BUG-42 §4.6).
+  if (em.summaries) w.line("import { summaryEntriesOf } from '@fudic/forms';");
   for (const tag of em.used) w.line(`import { render as ${renderName(tag)} } from ${specifier(tag)};`);
   // The neutral zone's imports, hoisted — decision 33.c, which until SDD-34 was true of
   // `@client` alone. It is what lets a form live in its own `.ts` and be reached by BOTH
@@ -327,19 +333,13 @@ function buildComponentModule(
   // object, which is the whole reason a form is not declared in the view.
   const neutralImports = neutral.flatMap((s) => (s.hoisted ? [s.text] : []));
   for (const line of neutralImports) w.line(line);
-  // The text of an error, for the slots this template writes. From the MODEL entry point and
-  // not from `./dom`: the server paints the message into the HTML (§4.3), and turning
-  // `{ required: true }` into a sentence touches no DOM. Imported only when there is a slot,
-  // so a component with no form carries no import it never calls.
-  const writesErrors = [...controls.values()].some((site) => site.writesSlot);
-  if (writesErrors) w.line("import { errorText as $fudErrorText } from '@fudic/forms';");
   for (const line of linker.imports()) w.line(line);
   const preamble =
     helpers.length > 0 ||
     server.imports.length > 0 ||
+    em.summaries ||
     em.used.size > 0 ||
     neutralImports.length > 0 ||
-    writesErrors ||
     linker.imports().length > 0;
   if (preamble) w.line('');
   w.line(`export const tag = ${JSON.stringify(comp.tag)};`);
@@ -516,6 +516,7 @@ function buildPageModule(
     hydratable,
     ioc: hasDi ? '$root' : '$ioc',
     formAssociated: formAssociatedTags(graph),
+    bridges: bridgeIds(graph),
     styled,
     projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
   });

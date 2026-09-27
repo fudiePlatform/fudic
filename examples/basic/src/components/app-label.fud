@@ -1,0 +1,17 @@
+@*
+  El label, envuelto. El `<label>` real lo escribe la página y el componente lo PROYECTA: así el
+  label vive en el árbol de la página y su `for` llega al host del control. Un `<label>` propio
+  dentro de este shadow root no podría apuntar fuera: no hay puente de salida en ningún estándar.
+*@
+
+<head>
+  <style>
+    ::slotted(label) { font-weight: 500; }
+  </style>
+</head>
+
+<app-label>
+  <template shadowrootmode="open">
+    <slot></slot>
+  </template>
+</app-label>

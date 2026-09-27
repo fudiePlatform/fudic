@@ -10,58 +10,78 @@
  * **Why the focus moves.** `aria-describedby` does not cross a shadow boundary, so a summary
  * living in the form's tree cannot describe a field living inside a control-component's. The
  * portable answer is to put the caret on the failing field: focus is announced wherever it
- * lands, with no IDREF involved. `Reference Target` is the standard's own answer and it is not
- * available yet (§7).
+ * lands, with no IDREF involved. A summary with `fields` is the other answer (BUG-42 §4.7): the
+ * focus goes to it, and each of its entries links to its field.
  */
 
-import { effect } from '@fudic/core';
-import type { AnyForm } from '../types.js';
-import { errorText } from '../messages.js';
+import { internalsOf } from '../internals.js';
+import type { AnyForm, AnyNode } from '../types.js';
+import { bindSummary } from './summary.js';
 import type { Cleanup } from './types.js';
 import { onSelf, undo } from './wiring.js';
 
-/** What the error effects marked. The first in DOCUMENT order is what `querySelector` gives. */
-const INVALID = '[aria-invalid="true"]';
+/**
+ * The first failing field of the form, in tree order — the order `elements` lists them in.
+ *
+ * Two marks, because a field can live in two trees. A field in the form's own tree carries the
+ * `aria-invalid` its error effect wrote. A control-component's `<input>` lives in ITS shadow root,
+ * where nothing from here reaches — but its host is a listed element of this form, its
+ * `validity` is the one `setValidity` keeps, and focusing the host lands in the `<input>` through
+ * `delegatesFocus`. A fieldset is never invalid by its own `validity`: it is barred from
+ * constraint validation, whatever it contains. A listed element with no `validity` at all — a
+ * form-associated element that does not expose it — is not one this can judge.
+ */
+function firstInvalid(el: HTMLFormElement): HTMLElement | undefined {
+  return [...el.elements].find(
+    (field) =>
+      field.getAttribute('aria-invalid') === 'true' ||
+      (field as { readonly validity?: ValidityState }).validity?.valid === false,
+  ) as HTMLElement | undefined;
+}
 
-export function bindForm(el: HTMLFormElement, form: AnyForm, summary: HTMLElement | null): Cleanup {
+/**
+ * `summary` is the element the author marked with `summary="@form"`, or `null`. `links` is the
+ * map path → id the emit writes for a summary with `fields`, and `null` without it (BUG-42 §4.7).
+ */
+export function bindForm(
+  el: HTMLFormElement,
+  form: AnyForm,
+  summary: HTMLElement | null,
+  links: Readonly<Record<string, string>> | null = null,
+): Cleanup {
   const offs: Cleanup[] = [
     // `onSelf` and not `on`: the form's `submit` is the one subscription in this package that
     // delegation cannot pay for. There is one form per root, so the root would hold the same
     // single listener it holds now — and an author's `@submit` that calls `stopPropagation()`
     // would stop the event before the root ever saw it, which is this validation, gone quietly.
     onSelf(el, 'submit', (event) => {
-      // **Synchronous, with the last known state.** `$validate` is asynchronous and
-      // `preventDefault` is not: by the time a validation resolved, the submit would already
-      // have gone or already have been stopped. So if there are errors ON RECORD, stop; if
-      // there are none, let it through and start the validation, whose late answer cannot
-      // un-send anything.
+      // **Validate first, then decide on what is known NOW** (BUG-41 §4.2). `$validate`
+      // publishes every rule that answers synchronously before it returns, so a `required` on
+      // an empty field stops the very first submit, and an error the user has since corrected
+      // is gone before the decision reads it. Only an asynchronous rule answers too late to
+      // count; its verdict lands on record for the next submit, and it cannot un-send this one.
       //
       // That is not a resignation. The one who decides is the server — that is what the
       // server validators and the 422 are for (§4.7, SDD-33 §4.6). The client check is a
       // courtesy, and a courtesy that blocks the form while it thinks is worse than none.
-      if (form.$errors() === null && form.$summary() === null) {
-        void form.$validate();
-        return;
-      }
+      // Every attempt counts: it is what lets a summary with `fields` list the errors of the
+      // fields — a summary sums up a submit, it does not chase the user field by field.
+      internalsOf(form as unknown as AnyNode).markSubmitted();
+      void form.$validate();
+      if (form.$errors() === null && form.$summary() === null) return;
       event.preventDefault();
       // Cascade first: errors are hidden until a control is touched (§4.2), so without this
       // the user would be stopped by errors they cannot see.
       form.$touch();
-      const first = el.querySelector<HTMLElement>(INVALID);
-      first?.focus();
+      // With a summary that lists the fields, the focus goes to IT: the user hears every error
+      // at once and each one links to its field (BUG-42 §4.7). Without one, to the first field.
+      if (summary !== null && links !== null) summary.focus();
+      else firstInvalid(el)?.focus();
     }),
   ];
-  if (summary !== null) {
-    offs.push(
-      effect(() => {
-        // Into the live region the emit left beside the form. A text that changes INSIDE a
-        // live region is announced; the same text changing outside one is not, which is why
-        // the element is the emit's and not something fabricated here.
-        const errors = form.$summary();
-        const text = errors === null ? '' : errorText(errors);
-        if (summary.textContent !== text) summary.textContent = text;
-      }),
-    );
-  }
+  // Into the live region the author marked with `summary="@form"`. A text that changes INSIDE a
+  // live region is announced; the same text changing outside one is not, which is why the
+  // element exists in the markup before this runs, `aria-live` included.
+  if (summary !== null) offs.push(bindSummary(summary, form, links));
   return undo(offs);
 }

@@ -10,13 +10,15 @@
  * silently says nothing is worse than one that is rejected — the author would be left believing
  * their `<label for>` works.
  *
+ * On the root template it also reports what the bridge to the field cannot be (BUG-42 §3.6).
+ *
  * Only `<template>` elements are examined. `formassociated` on any other element is an unknown
  * attribute like any other, and the compiler does not own the author's vocabulary outside the
  * one place it reads this word.
  */
 
 import { errorDiag } from '../../types/index.js';
-import { FORM_ASSOCIATED_ATTR } from '../../binding/index.js';
+import { bridgeOf, FORM_ASSOCIATED_ATTR } from '../../binding/index.js';
 import type { Attribute, ElementNode } from '../../html/index.js';
 import type { Analyzer } from '../model.js';
 import { documentRoots, walk } from '../walk.js';
@@ -45,6 +47,14 @@ export const formAssociatedPlacement: Analyzer = {
   name: 'form-associated-placement',
   run(input, report) {
     const root = rootTemplate(input.document);
+    // The bridge its author wrote on the root template — any component's — has to name an element
+    // of that template (decision 132): reported with the same function the emit reads it with
+    // (`FUD0605`).
+    if (root !== undefined) {
+      for (const problem of bridgeOf(root).problems) {
+        report(errorDiag(problem.code, problem.message, problem.span));
+      }
+    }
     walk(documentRoots(input.document), {
       element(el) {
         if (el === root || el.name.toLowerCase() !== 'template') return;

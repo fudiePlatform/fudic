@@ -17,7 +17,6 @@ import {
   span,
 } from '@fudic/compiler';
 import type { CachedDocument } from '../document-cache.js';
-import { relativeHref } from '../paths.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
 import { attributeOf, attributeValueSpan, linksOf, tagNameAt } from './position.js';
 
@@ -94,17 +93,23 @@ export function componentTags(
   const declared = declaredTags(document, index);
   const inScope = new Set(declared.map((item) => item.tag));
 
-  const unlinked = index
-    .byRole('component')
-    .filter((entry) => entry.path !== document.path && entry.tag !== '' && !inScope.has(entry.tag))
-    .map((entry) => ({
+  // Only what this file can LINK: in a monorepo the folder holds the app next door too, and
+  // its components are on disk but out of reach of any `href` the build would resolve.
+  const hrefTo = index.linker(document.path);
+  const unlinked: TagCompletion[] = [];
+  for (const entry of index.byRole('component')) {
+    if (entry.path === document.path || entry.tag === '' || inScope.has(entry.tag)) continue;
+    const href = hrefTo(entry.path);
+    if (href === undefined) continue;
+    unlinked.push({
       tag: entry.tag,
-      href: relativeHref(document.path, entry.path),
+      href,
       path: entry.path,
       linked: false,
       requiredProps: entry.requiredProps,
-    }))
-    .sort((a, b) => a.tag.localeCompare(b.tag));
+    });
+  }
+  unlinked.sort((a, b) => a.tag.localeCompare(b.tag));
 
   // Declaration order first — the user wrote those in the order they think about them — and
   // then the rest, alphabetically, because nothing about the workspace suggests an order.

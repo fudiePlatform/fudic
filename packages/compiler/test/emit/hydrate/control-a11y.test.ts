@@ -24,7 +24,7 @@ import { SsrDom, renderToString } from '@fudic/ssr';
 import { browserDom } from '@fudic/dom';
 import { FudicElement, signal, computed, subscribe, type FudicElementCtor } from '@fudic/core';
 import { emit as busEmit } from '@fudic/dom';
-import { control, form, errorText, setMessages, type ErrorMap } from '@fudic/forms';
+import { control, form, setMessages, summaryEntriesOf, type ErrorMap } from '@fudic/forms';
 import {
   bindCheckbox,
   bindForm,
@@ -44,14 +44,27 @@ import {
 import { memoryIo } from '../_support.js';
 import { mountAsDsd } from './_harness.js';
 
-/** The schema the view imports as a slice — the shape SDD-34 §4.4 is written around. */
-const schema = () => form({ title: control(''), body: control('') });
+/**
+ * The schema the view imports as a slice — the shape SDD-34 §4.4 is written around. `title`
+ * words its own `required`; `body` leaves every text to `setMessages` (BUG-41 §4.4).
+ */
+const schema = () =>
+  form({
+    title: control('', [], { messages: { required: () => 'Pon un título' } }),
+    body: control(''),
+  });
 type UserForm = ReturnType<typeof schema>;
 
+/**
+ * The markers where an author would put them (BUG-41 §4.3): the summary INSIDE the form, the
+ * title's message under its field, and the body's ABOVE it — the order the client walk has to
+ * wait for, measured here against the server.
+ */
 const TEMPLATE =
   '<form control="@f">' +
-  '<input control="@f.title">' +
-  '<textarea control="@f.body"></textarea>' +
+  '<div summary="@f" fields></div>' +
+  '<input control="@f.title"><p error="@f.title"></p>' +
+  '<small error="@f.body"></small><textarea control="@f.body"></textarea>' +
   '</form>';
 
 const io = memoryIo({
@@ -71,6 +84,7 @@ const BINDINGS = {
   computed,
   $sub: subscribe,
   emit: busEmit,
+  summaryEntriesOf,
   bindText,
   bindForm,
   bindGroup,
@@ -79,7 +93,6 @@ const BINDINGS = {
   bindSelect,
   bindSelectMultiple,
   bindCheckbox,
-  $fudErrorText: errorText,
 };
 
 const names = Object.keys(BINDINGS);
@@ -196,15 +209,18 @@ describe('§6.10 — the same form, the same errors, by the two paths', () => {
   it('the author’s messages reach both paths the same way', () => {
     setMessages({ required: () => 'Falta', minLength: (v) => `Mínimo ${String(v)}` });
     const server = schema();
-    server.$setErrors(ERRORS);
+    server.$setErrors(ERRORS, { mismatch: true });
     const painted = mountAsDsd('m-el', paint(server));
 
     const client = schema();
     const clean = mountAsDsd('m-el', paint(client));
     factoryHydrate(client, clean.shadow);
-    client.$setErrors(ERRORS);
+    client.$setErrors(ERRORS, { mismatch: true });
 
-    expect(painted.shadow.querySelector('#fud-e-f-title')!.textContent).toBe('Falta');
+    // The control's own text wins over the global one; the global one wins over the code.
+    expect(painted.shadow.querySelector('#fud-e-f-title')!.textContent).toBe('Pon un título');
+    expect(painted.shadow.querySelector('#fud-e-f-body')!.textContent).toBe('Mínimo 10');
+    expect(painted.shadow.querySelector('#fud-s-f')!.textContent).toBe('mismatch');
     expect(clean.shadow.innerHTML).toBe(painted.shadow.innerHTML);
   });
 });

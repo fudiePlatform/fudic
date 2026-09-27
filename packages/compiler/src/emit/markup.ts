@@ -40,7 +40,7 @@ import { emitItems, type TextRun } from './runs.js';
 import { markerSite } from './marker.js';
 import { adoptListOf, type ProjectAdopt } from './project-styles.js';
 import { loopHead, type LoopNode } from './constructs.js';
-import { ERROR_SLOT_ATTR, SUMMARY_SLOT_ATTR, type ControlPlan } from './controls.js';
+import { EMPTY_CONTROLS, type ControlPlan, type MarkerSite } from './controls.js';
 
 /** `render` + PascalCase of a `prefix-name` tag: `app-button` → `renderAppButton`. */
 export const renderName = (tag: string): string =>
@@ -216,6 +216,12 @@ export interface MarkupOptions {
    */
   readonly formAssociated: ReadonlySet<string>;
   /**
+   * The id each control-component's shadow root forwards references to — its FIELD (decision
+   * 132) — which the serializer writes as `shadowrootreferencetarget` on the template. Empty by
+   * default: a tag with no entry opens its shadow root with no bridge.
+   */
+  readonly bridges?: ReadonlyMap<string, string>;
+  /**
    * The tags that carry a shared stylesheet (BUG-31 §T4). A host outside this set gets no
    * `data-fud-adopt`, and the serializer reads that absence to leave
    * `shadowrootadoptedstylesheets` off its template too: one decision, both outputs.
@@ -255,6 +261,8 @@ export class MarkupEmitter {
   readonly #ioc: string;
   readonly #controls: ControlPlan;
   readonly #formAssociated: ReadonlySet<string>;
+  readonly #bridges: ReadonlyMap<string, string>;
+  #summaries = false;
   readonly #styled: ReadonlySet<string>;
   readonly #projectAdopt: ProjectAdopt;
   readonly #used = new Set<string>();
@@ -281,10 +289,19 @@ export class MarkupEmitter {
     this.#declared = options.declared ?? (() => undefined);
     this.#hydratable = options.hydratable;
     this.#ioc = options.ioc ?? '$ioc';
-    this.#controls = options.controls ?? new Map();
+    this.#controls = options.controls ?? EMPTY_CONTROLS;
     this.#formAssociated = options.formAssociated;
+    this.#bridges = options.bridges ?? new Map();
     this.#styled = options.styled;
     this.#projectAdopt = options.projectAdopt;
+  }
+
+  /**
+   * Whether the walk painted a summary: the module then imports `summaryEntriesOf` from
+   * `@fudic/forms`, the one function that decides the list on both ends (BUG-42 §4.6).
+   */
+  get summaries(): boolean {
+    return this.#summaries;
   }
 
   /** The child component tags rendered so far, in first-use order (for ES imports). */
@@ -432,19 +449,37 @@ export class MarkupEmitter {
       // The host's own attributes — its `.prop`s and its plain HTML ones (BUG-16 §4.1).
       // Level 1 is HTML with no JS, so this is the only place they can live.
       this.#elementAttrs(el, v, true);
+      // A control-component host that a marker or a summary describes from outside, and the id a
+      // summary links to (BUG-42 §4.7, §4.9): the relay carries both to its input.
+      this.#controlAttrs(el, v);
+      // A marker can be a component host too — `<app-error error=@f.email>` — and it needs the
+      // same id as a native one, or the `aria-describedby` that names it points at nothing.
+      this.#markerAttrs(el, v);
       // A control-component's shadow root delegates focus, and the serializer turns that into
-      // `shadowrootdelegatesfocus` on the template (SDD-34 §4.5). The argument is only written
-      // when it is true: a page with no control-component keeps the bytes it had.
-      const focus = this.#formAssociated.has(el.name) ? ', true' : '';
-      this.#w.line(`const ${s} = $dom.attachShadow(${v}${focus});`);
+      // `shadowrootdelegatesfocus` on the template (SDD-34 §4.5). The bridge its author wrote —
+      // any component's, not only a control-component's — becomes `shadowrootreferencetarget`
+      // (decision 132). Each argument is only written when it says something: a page with
+      // neither keeps the bytes it had.
+      const bridge = this.#bridges.get(el.name);
+      const focus = this.#formAssociated.has(el.name);
+      const init =
+        bridge !== undefined
+          ? `, ${String(focus)}, ${JSON.stringify(bridge)}`
+          : focus
+            ? ', true'
+            : '';
+      this.#w.line(`const ${s} = $dom.attachShadow(${v}${init});`);
       this.#w.line(
         `${renderName(el.name)}($dom, ${s}, ${componentPropsExpr(this.#source, el, this.#signals, this.#declared(el.name))}, ${this.#ioc});`,
       );
       this.emitChildren(el.children, v); // light DOM (projected by <slot>)
+      // A marker host's text goes into its light DOM, where the component's `<slot>` paints it.
+      this.#markerText(el, v);
     } else {
       this.#w.line(`const ${v} = $dom.element(${JSON.stringify(el.name)});`);
       this.#elementAttrs(el, v, false);
       this.#controlAttrs(el, v);
+      this.#markerAttrs(el, v);
       // A data `<script>` — JSON-LD or an import map (decision 129) — carries its body
       // VERBATIM, and it is the one place a `raw-text` becomes a node. The generic walk cannot
       // do this: `raw-text` knows the element it belongs to and not its `type`, and the `type`
@@ -452,28 +487,36 @@ export class MarkupEmitter {
       // of it — a `<style>` body is the component's stylesheet and travels by another door.
       if (dataScriptType(el) !== undefined) this.#rawBody(el, v);
       else this.emitChildren(el.children, v);
+      this.#markerText(el, v);
     }
     this.#at = outer;
     this.#w.line(`$dom.append(${parent}, ${v});`);
-    this.#controlSlot(el, parent);
   }
 
   /**
-   * The accessibility wiring of a bound control, written into the MARKUP (§4.3, decision 113).
+   * The accessibility wiring of a bound element, written into the MARKUP (§4.3, BUG-41 §4.3).
    *
-   * `aria-describedby` is written ALWAYS, whether the slot is empty or not. Adding the
-   * reference only when an error appears is what makes some screen readers fail to announce
-   * it: the relationship has to exist before the text does.
+   * `aria-describedby` is written ALWAYS when the author marked a message element, whether it
+   * holds text or not. Adding the reference only when an error appears is what makes some
+   * screen readers fail to announce it: the relationship has to exist before the text does.
    *
-   * `aria-invalid` and the slot's text are written HERE when the form is rendered with errors
-   * already on it — a 422 the server published with `$setErrors`. That is the whole of §4.3:
-   * a form with errors is accessible with **zero JavaScript**, and the client, hydrating over
-   * this same HTML, produces byte for byte the same thing (§6.10).
+   * `aria-invalid` is written HERE when the form is rendered with errors already on it — a 422
+   * the server published with `$setErrors`. That is the whole of §4.3: a form with errors is
+   * accessible with **zero JavaScript**, and the client, hydrating over this same HTML,
+   * produces byte for byte the same thing (§6.10).
    */
   #controlAttrs(el: ElementNode, v: string): void {
-    const site = this.#controls.get(el);
-    if (site === undefined || site.target.kind !== 'value') return;
-    this.#w.line(`$dom.setAttr(${v}, 'aria-describedby', ${JSON.stringify(site.slotId)});`);
+    // The id the compiler gives an element of the author's that has none: a field a summary
+    // links to, or the field of this control-component (BUG-42 §3.3, §3.4).
+    const id = this.#controls.ids.get(el);
+    if (id !== undefined) this.#w.line(`$dom.setAttr(${v}, 'id', ${JSON.stringify(id)});`);
+    const site = this.#controls.sites.get(el);
+    if (site === undefined) return;
+    if (site.describedBy !== '') {
+      this.#w.line(`$dom.setAttr(${v}, 'aria-describedby', ${JSON.stringify(site.describedBy)});`);
+    }
+    if (site.noValidate) this.#w.line(`$dom.setAttr(${v}, 'novalidate', '');`);
+    if (site.target.kind !== 'value') return;
     // Touched, exactly as the client's effect asks: an untouched field is unfilled, not wrong,
     // and the two branches cannot disagree about that or the hydration would repaint.
     this.#w.line(
@@ -482,35 +525,72 @@ export class MarkupEmitter {
   }
 
   /**
-   * The element the emit writes BESIDE a bound one: the error slot of a control, or the live
-   * region of a `<form>`.
+   * What the compiler adds to the author's `error` marker: the `id` the bound element points
+   * at, when the author wrote none, and `aria-live` on a form's summary.
+   *
+   * A live region announces what CHANGES inside it, so it has to be there before the text is
+   * (§4.4). `polite`, because a form error is not an interruption.
+   */
+  #markerAttrs(el: ElementNode, v: string): void {
+    const marker = this.#controls.markers.get(el);
+    if (marker === undefined) return;
+    if (marker.writesId) this.#w.line(`$dom.setAttr(${v}, 'id', ${JSON.stringify(marker.id)});`);
+    if (marker.live) this.#w.line(`$dom.setAttr(${v}, 'aria-live', 'polite');`);
+    // A summary with `fields` is where a failed submit sends the focus (BUG-42 §4.7).
+    if (marker.links !== null) this.#w.line(`$dom.setAttr(${v}, 'tabindex', '-1');`);
+  }
+
+  /**
+   * The message a marker holds at render time — a 422 already published, or nothing.
    *
    * It is a node of the server's tree like any other, and that is the point: the runtime only
-   * ever writes its text (decision 113). A slot fabricated on first error — which is what the
-   * prototype did — gives a hydrated form and a server-rendered one different markup, and with
-   * it different accessibility.
+   * ever writes its text (decision 113), so a hydrated form and a server-rendered one have the
+   * same markup, and with it the same accessibility.
    */
-  #controlSlot(el: ElementNode, parent: string): void {
-    const site = this.#controls.get(el);
-    if (site === undefined || !site.writesSlot) return;
-    const isForm = site.target.kind === 'form';
-    const v = this.#fresh();
-    this.#w.line(`const ${v} = $dom.element('span');`);
-    this.#w.line(`$dom.setAttr(${v}, 'id', ${JSON.stringify(site.slotId)});`);
-    this.#w.line(`$dom.setAttr(${v}, '${isForm ? SUMMARY_SLOT_ATTR : ERROR_SLOT_ATTR}', '');`);
-    // A live region announces what CHANGES inside it, so it has to be there before the text is
-    // (§4.4). `polite`, because a form error is not an interruption.
-    if (isForm) this.#w.line(`$dom.setAttr(${v}, 'aria-live', 'polite');`);
-    const errors = isForm
-      ? `${site.node}.$summary()`
-      : `(${site.node}.touched() ? ${site.node}.errors() : null)`;
+  #markerText(el: ElementNode, v: string): void {
+    const marker = this.#controls.markers.get(el);
+    if (marker === undefined) return;
     this.#w.line(`{`);
     this.#w.indent();
-    this.#w.line(`const $e = ${errors};`);
-    this.#w.line(`if ($e) $dom.append(${v}, $dom.text($fudErrorText($e)));`);
+    if (marker.attr === 'summary') this.#summaryList(marker, v);
+    else {
+      this.#w.line(`const $e = ${marker.text};`);
+      this.#w.line(`if ($e) $dom.append(${v}, $dom.text($e));`);
+    }
     this.#w.dedent();
     this.#w.line(`}`);
-    this.#w.line(`$dom.append(${parent}, ${v});`);
+  }
+
+  /**
+   * The list a summary holds at render time (BUG-42 §4.6), built node by node from the entries
+   * `@fudic/forms` decides — the same function whose markup the client's effect writes, so the
+   * list is decided once for both ends. Nothing to say: no child at all, so `:empty` holds.
+   */
+  #summaryList(marker: MarkerSite, v: string): void {
+    this.#summaries = true;
+    const links = marker.links === null ? 'null' : JSON.stringify(marker.links);
+    this.#w.line(`const $l = summaryEntriesOf(${marker.node}, ${JSON.stringify(marker.id)}, ${links});`);
+    this.#w.line(`if ($l.length > 0) {`);
+    this.#w.indent();
+    this.#w.line(`const $u = $dom.element('ul');`);
+    this.#w.line(`for (const $i of $l) {`);
+    this.#w.indent();
+    this.#w.line(`const $li = $dom.element('li');`);
+    this.#w.line(`if ('href' in $i) {`);
+    this.#w.indent();
+    this.#w.line(`$dom.setAttr($li, 'id', $i.id);`);
+    this.#w.line(`const $a = $dom.element('a');`);
+    this.#w.line(`$dom.setAttr($a, 'href', $i.href);`);
+    this.#w.line(`$dom.append($a, $dom.text($i.text));`);
+    this.#w.line(`$dom.append($li, $a);`);
+    this.#w.dedent();
+    this.#w.line(`} else $dom.append($li, $dom.text($i.text));`);
+    this.#w.line(`$dom.append($u, $li);`);
+    this.#w.dedent();
+    this.#w.line(`}`);
+    this.#w.line(`$dom.append(${v}, $u);`);
+    this.#w.dedent();
+    this.#w.line(`}`);
   }
 
   /** Write the body of one branch of a construct, in the context that branch sits in. */

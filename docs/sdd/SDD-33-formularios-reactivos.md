@@ -1,6 +1,7 @@
 # SDD-33 — Formularios reactivos: el núcleo (`@fudic/forms`)
 
 > **Estado:** `Hecho`
+> **Corregido por [BUG-42](./bugs/BUG-42-error-resumen-y-validez-en-la-vista.md)** en §3 y §4.5: la validez (`valid()` · `$valid()` · `Validity`), `group()` con opciones, un resumen que dice todas sus reglas (`$messages()` · `$issues()` · `$submitted()`) y que se publica cuando valida un campo de debajo, no solo al enviar.
 > **Paquete:** `@fudic/forms` — **paquete nuevo**, punto de entrada `.` (el núcleo). El punto de
 > entrada `./dom` y la clase base de un control-componente son de [SDD-34](./SDD-34-forms-compilador.md).
 > **Depende de:** 14 (`signal`), 31 (`computed`, `effect`, `untrack`, `subscribe` y la regla de
@@ -382,6 +383,11 @@ Decisión: **la normalización profunda se muda al SDD de transporte**, con su a
 misma frontera que la que separa `$value` de `$positional` en §4.7.
 
 ### 4.5. Validar: por nodo, en cascada, y con orden garantizado
+
+> **Ampliado por [BUG-41](./bugs/BUG-41-el-error-que-no-se-va.md) §3.1 y §4.5.** Un control
+> se valida también **solo**, con `control.validate()` y la raíz de su formulario, y su texto es
+> `control.message()` (sus `messages` → `setMessages` → el código). **Cuándo** lo validan las
+> bindings lo decide `validateOn`, en `ControlOptions` o `FormOptions`.
 
 `$validate()` recorre el schema en orden de declaración y, por cada nodo:
 

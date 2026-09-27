@@ -13,7 +13,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { fromNetwork, measure, record, render, type Hit } from './traffic.js';
+import { fromNetwork, measure, record, render, runtimeEntry, type Hit } from './traffic.js';
 
 /** Land on `/` and wait until the Service Worker controls the page. */
 async function boot(page: import('@playwright/test').Page): Promise<void> {
@@ -66,19 +66,19 @@ test.describe('the Service Worker renders', () => {
     const recorder = record(context);
     // First visit to this template: it is COLD, so the network serves it and the template
     // warms behind the navigation. That is the contract, not a defect (BUG-02 §6.6).
-    const cold = await measure(recorder, page, () => page.goto('/blog/routing-por-fichero'), {
+    const cold = await measure(recorder, page, () => page.goto('/blog/file-system-routing'), {
       settleMs: 1500,
     });
-    await expect(page.locator('body')).toContainText('Routing por sistema de ficheros');
+    await expect(page.locator('body')).toContainText('File-system routing');
     expect(await page.evaluate(() => document.querySelector('app-badge')?.shadowRoot !== null)).toBe(
       true,
     );
     expect(cold.find((h) => h.type === 'document')?.fromServiceWorker).toBe(false);
 
-    const warm = await measure(recorder, page, () => page.goto('/blog/routing-por-fichero'), {
+    const warm = await measure(recorder, page, () => page.goto('/blog/file-system-routing'), {
       settleMs: 1200,
     });
-    await expect(page.locator('body')).toContainText('Routing por sistema de ficheros');
+    await expect(page.locator('body')).toContainText('File-system routing');
 
     const back = await measure(recorder, page, () => page.goto('/blog'), { settleMs: 1200 });
     await expect(page.locator('body')).toContainText('Blog');
@@ -96,12 +96,12 @@ test.describe('the Service Worker renders', () => {
     page,
     context,
   }) => {
-    // `/blog/routing-por-fichero` has a prerendered `.html` on disk. Once warm, the SW
+    // `/blog/file-system-routing` has a prerendered `.html` on disk. Once warm, the SW
     // must build the document from chunk + data — and the proof is that a fresh nonce
     // comes out every time. Replaying a cached file cannot do that.
     await boot(page);
     const recorder = record(context);
-    await measure(recorder, page, () => page.goto('/blog/routing-por-fichero'), { settleMs: 1500 });
+    await measure(recorder, page, () => page.goto('/blog/file-system-routing'), { settleMs: 1500 });
     const first = await measure(recorder, page, () => page.reload(), { settleMs: 1200 });
     const second = await measure(recorder, page, () => page.reload(), { settleMs: 1200 });
 
@@ -149,8 +149,9 @@ test.describe('the Service Worker renders', () => {
 
     const document = offline.find((h) => h.type === 'document' && h.path === '/');
     expect(document?.fromServiceWorker, 'the navigation was not served offline').toBe(true);
-    const main = offline.filter((h) => h.path === '/fudic-main.js');
-    expect(main.length, '/fudic-main.js was not requested').toBeGreaterThan(0);
+    const entry = runtimeEntry();
+    const main = offline.filter((h) => h.path === entry);
+    expect(main.length, `${entry} was not requested`).toBeGreaterThan(0);
     expect(main.every((h) => h.fromServiceWorker && !h.failed), JSON.stringify(main)).toBe(true);
     expect(fromNetwork(offline).filter((h) => !h.failed).map((h) => h.path)).toEqual([]);
     await expect(page.locator('body')).not.toBeEmpty();

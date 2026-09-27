@@ -7,12 +7,13 @@
 
 import { typeOf } from './range.js';
 import { typed } from './typed.js';
-import type { AnyValidator, TypedControl } from '../types.js';
+import type { AnyValidator, ControlOptions, TypedControl } from '../types.js';
 
 const check = typeOf('bool', 'boolean');
 
 export const bool = (
   initial?: boolean,
   validators?: readonly AnyValidator<boolean>[],
+  options?: ControlOptions,
 ): TypedControl<boolean> =>
-  typed('bool', initial === undefined ? false : initial, check, validators);
+  typed('bool', initial === undefined ? false : initial, check, validators, options);

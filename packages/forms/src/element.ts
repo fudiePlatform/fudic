@@ -11,9 +11,11 @@
  *   extends, nothing more.
  * - **`ElementInternals`**, created in the constructor because that is the only moment
  *   `attachInternals()` may be called.
- * - **`delegatesFocus`** on its shadow root, without which a `<label for>` outside the
- *   component moves the focus to the host and not to the `<input>` inside it. Losing that is
- *   not an optimisation, it is an accessibility failure.
+ * - **`delegatesFocus`** on its shadow root, without which a click on a `<label for>` outside
+ *   the component moves the focus to the host and not to the `<input>` inside it. It carries
+ *   the CLICK and the FOCUS, and nothing else: the input's NAME and DESCRIPTION do not cross a
+ *   shadow boundary by focus. Those are carried by the bridge the component's author writes
+ *   (`shadowrootreferencetarget`) and by the relay below (BUG-42 §4.8).
  *
  * It lives in `@fudic/forms` and not in `@fudic/core`, and that is a direction of dependency
  * rather than a filing decision: this base needs the type `Control<T>`, so `forms` depends on
@@ -29,6 +31,7 @@
  */
 
 import { FudicElement, effect, type Cleanup } from '@fudic/core';
+import { RELAYED, relay } from './relay.js';
 import type { Control } from './types.js';
 
 /**
@@ -56,24 +59,38 @@ export abstract class FudicControlElement extends FudicElement {
 
   #wiring: Cleanup | null = null;
 
+  /** Watches the host attributes the relay carries. */
+  #watch: MutationObserver | null = null;
+
   constructor() {
     super();
     this.internals = this.attachInternals();
   }
 
-  /** `delegatesFocus`, so an outside `<label for>` reaches the `<input>` inside. */
+  /**
+   * `delegatesFocus`, so a click on an outside `<label for>` lands in the `<input>`. The bridge
+   * — `referenceTarget`, the same one the server wrote — comes from the base, as for any
+   * component.
+   */
   protected override shadowInit(): ShadowRootInit {
-    return { mode: 'open', delegatesFocus: true };
+    return { ...super.shadowInit(), delegatesFocus: true };
   }
 
   override h(props: readonly unknown[]): void {
     super.h(props);
     this.#wire(props);
+    this.#follow();
   }
 
   override c(props: readonly unknown[]): void {
     super.c(props);
     this.#wire(props);
+    this.#follow();
+  }
+
+  /** Created at runtime, the host may only now be in the tree its labels and markers live in. */
+  connectedCallback(): void {
+    this.#relay();
   }
 
   /**
@@ -92,6 +109,52 @@ export abstract class FudicControlElement extends FudicElement {
   override disconnectedCallback(): void {
     super.disconnectedCallback();
     this.#unwire();
+  }
+
+  /**
+   * The FIELD: the element its author named with `shadowrootreferencetarget` (decision 132). It
+   * is where the bridge points and where the relay carries the name and the description. No
+   * bridge, no relay.
+   */
+  #fieldId(): string | null {
+    return (this.constructor as typeof FudicControlElement).referenceTarget;
+  }
+
+  /** Relays now, and again whenever the host changes what it says of itself. */
+  #follow(): void {
+    this.#relay();
+    if (this.#watch !== null) return;
+    this.#watch = new MutationObserver(() => {
+      this.#relay();
+    });
+    this.#watch.observe(this, { attributes: true, attributeFilter: [...RELAYED] });
+  }
+
+  /**
+   * What the host says, carried to the field (BUG-42 §4.8). Its labels only where the browser
+   * has no bridge: with one, the `<label for>` already reaches the field, and relaying it too
+   * would say the name twice. The day the bridge is everywhere, the `labels` argument goes.
+   */
+  #relay(): void {
+    const id = this.#fieldId();
+    const field = id === null ? null : (this.shadowRoot?.getElementById(id) ?? null);
+    if (field === null) return;
+    const bridged =
+      'referenceTarget' in ShadowRoot.prototype &&
+      Boolean((this.shadowRoot as ShadowRoot & { referenceTarget?: string | null }).referenceTarget);
+    // `labels` is typed as a list of nodes, and every node in it is a `<label>`.
+    relay(this, field, bridged ? null : ([...this.internals.labels] as Element[]));
+  }
+
+  /**
+   * The host's validity, exposed the way a native control exposes its own.
+   *
+   * A form-associated element keeps it in its `ElementInternals`, which nobody outside can reach:
+   * without this, the `<form>` that owns the host cannot tell it is the field that failed, and a
+   * submit cannot send the focus into it (BUG-41).
+   */
+  get validity(): ValidityState {
+    return this.internals.validity;
   }
 
   #unwire(): void {
@@ -119,10 +182,11 @@ export abstract class FudicControlElement extends FudicElement {
       this.internals.setFormValue(value === null || value === undefined ? null : String(value));
     });
     const offValidity = effect(() => {
-      const errors = control.errors();
-      if (errors === null) this.internals.setValidity({});
-      // The first rule that failed names the state, exactly as the error slot shows it.
-      else this.internals.setValidity({ customError: true }, Object.keys(errors)[0] ?? 'invalid', this);
+      // Worded as the author's marker words it: a `<form>` fudic does not bind still validates
+      // natively, and its bubble should say what the page says, not the rule's code.
+      if (control.errors() === null) this.internals.setValidity({});
+      // An empty map has no text, and `setValidity` refuses a flag with an empty message.
+      else this.internals.setValidity({ customError: true }, control.message() || 'invalid', this);
     });
     this.#wiring = () => {
       offValue();

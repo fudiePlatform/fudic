@@ -31,6 +31,9 @@ import {
   DELEGATE_PREFIX,
   CONTROL_NAME,
   CONTROL_PROP,
+  ERROR_NAME,
+  FIELDS_NAME,
+  SUMMARY_NAME,
   regionAt,
   span,
   type Diagnostic,
@@ -51,7 +54,7 @@ import { reindentLine } from '@fudic/formatter';
 import { fudicDiagnostics } from './compiler-diagnostics.js';
 import { emmetCompletions } from './emmet.js';
 import { formattedText } from './formatting.js';
-import { hrefCompletions } from './href.js';
+import { hrefCompletions, relCompletions } from './href.js';
 import { codeActions } from './actions.js';
 import {
   attributeValueBindingAt,
@@ -65,23 +68,29 @@ import {
   expressionValueContextAt,
   handlerContextAt,
   hrefContextAt,
+  linkValueAt,
+  type LinkValue,
   valueBegun,
   nativeGapContextAt,
   ownedByProjection,
   sectionContextAt,
   tagContextAt,
   wordContextAt,
+  type NodeValue,
   type PartialName,
 } from './position.js';
 import {
-  controlOfferAt,
   controlWants,
+  componentFrame,
+  formAttributeOffers,
   nodeMembersAt,
   nodesInScope,
   projectedOffset,
   reaches,
-  type ControlOffer,
+  summaryNodesOf,
+  type FormAttributeOffer,
 } from './forms.js';
+import { referenceTargetIdsAt, templateAttributeAt, templateAttributeOffers } from './template-attrs.js';
 import { typeScriptService } from './ts-service.js';
 import { interpolates, scopeNames, templateScope } from './template-scope.js';
 import { styleClassNames } from './classes.js';
@@ -278,11 +287,17 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
                   // `control` before the classes: inside a form it is the reason the tag is
                   // being written at all, and the classes of the file are always there.
                   ...controlItems(
-                    controlOfferAt(cached, native.element, false),
+                    formAttributeOffers(cached, native.element, false),
                     document,
                     native.name,
                   ),
-                  ...classBindingItems(cached, document, native.name),
+                  // The root `<template>` of a component and its attributes (BUG-42 §4.11).
+                  ...templateAttributeItems(cached, native.element, document, native.name),
+                  // Not on the component's own tag or its root `<template>`: a class of this file
+                  // styles nothing there (`FUD0720` on the host).
+                  ...(componentFrame(cached.document).has(native.element)
+                    ? []
+                    : classBindingItems(cached, document, native.name)),
                   ...delegateBindingItems(cached, document, native.name, offset),
                 ];
                 return items.length === 0 ? undefined : list(items);
@@ -304,13 +319,36 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
               const binding = attributeValueBindingAt(cached.source, offset, region);
               if (binding === undefined) return undefined;
 
-              // The `href` of a `<link>` is not a value, it is a PATH the build resolves: an
-              // interpolation there cannot be followed to a file, and decision 81 says as much
-              // for the layout. Its list is exact and closed — the `.fud` files of the project
-              // — and putting the template's names beside them offers a way to write something
-              // that will never resolve.
-              if (hrefContextAt(cached.source, cached.document, offset) !== undefined) {
-                return undefined;
+              // `shadowrootreferencetarget="|"` on the root template: the ids of the template,
+              // the only thing the bridge can point at (BUG-42 §4.11, `FUD0605`).
+              const ids = referenceTargetIdsAt(cached, region);
+              if (ids !== undefined) {
+                const range = rangeOf(document, binding.span);
+                const items = ids.map((id) => ({
+                  label: id,
+                  kind: CompletionItemKind.Reference,
+                  detail: 'id de esta plantilla',
+                  sortText: `0_${id}`,
+                  labelDetails: { description: 'fudic' },
+                  textEdit: { range, newText: id },
+                }));
+                return items.length === 0 ? undefined : list(items);
+              }
+
+              // The values of a `<link>` — any of them, fudic's or not — are no template.
+              //
+              // Its `href` is a PATH the build resolves: an interpolation there cannot be
+              // followed to a file, and decision 81 says as much for the layout. On a fudic link
+              // the list is exact and closed and `createFudicService` answers it; on any other
+              // one (`rel="stylesheet"`, or no `rel` yet) the HTML service's paths are the whole
+              // answer. Putting the template's names beside either offers a way to write
+              // something that will never resolve.
+              //
+              // Its `rel` is a keyword, and the three that make the link fudic's are what the
+              // author came for: no other service has heard of them.
+              const link = linkValueAt(region);
+              if (link !== undefined) {
+                return link.attribute.name === 'rel' ? relList(cached, document, link) : undefined;
               }
 
               // Begun by hand, so the value is the author's and no name can finish it: the same
@@ -542,15 +580,27 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
               // HTML's, so the HTML service has never heard of it, and it is not a prop, so the
               // projection has no member to hover. What it says is the one thing the author
               // cannot read off the tag — WHICH of the three kinds this element takes.
-              const control = controlNameAt(cached.source, offset, regionAt(cached.source, cached.html, offset));
+              const region = regionAt(cached.source, cached.html, offset);
+              const control = controlNameAt(cached.source, offset, region);
               if (control !== undefined) {
                 const wants = controlWants(control.element, control.element.name.includes('-'));
-                if (wants !== undefined) {
+                // `error`, `summary` and `fields` say the same whatever the tag (BUG-42 §4.1).
+                const text = control.attr === CONTROL_NAME ? (wants === undefined ? undefined : controlHover(wants)) : markerHover(control.attr);
+                if (text !== undefined) {
                   return {
-                    contents: { kind: 'markdown' as const, value: controlHover(wants) },
+                    contents: { kind: 'markdown' as const, value: text },
                     range: rangeOf(document, control.span),
                   };
                 }
+              }
+
+              // The attributes of a component's root `<template>` (BUG-42 §4.11).
+              const template = templateAttributeAt(cached, offset, region);
+              if (template !== undefined) {
+                return {
+                  contents: { kind: 'markdown' as const, value: template.hover },
+                  range: rangeOf(document, template.span),
+                };
               }
 
               const card = tagCardAt(cached, index, offset);
@@ -981,6 +1031,45 @@ function controlHover(wants: ReturnType<typeof controlWants> & {}): string {
 }
 
 /**
+ * The attributes of a component's root `<template>` at a gap (BUG-42 §4.11): the standard's and
+ * `formassociated`, the ones it does not carry yet. Nothing on any other element.
+ */
+function templateAttributeItems(
+  cached: CachedDocument,
+  element: ElementNode,
+  document: TextDocument,
+  gap: PartialName,
+): readonly CompletionItem[] {
+  const range = rangeOf(document, gap.span);
+  return templateAttributeOffers(cached, element).map((attr) => ({
+    label: attr.name,
+    kind: CompletionItemKind.Property,
+    detail: attr.name === 'formassociated' ? 'control-componente' : 'raíz de sombra',
+    documentation: { kind: 'markdown' as const, value: attr.hover },
+    sortText: `0_${attr.name}`,
+    labelDetails: { description: 'fudic' },
+    insertTextFormat: InsertTextFormat.Snippet,
+    textEdit: { range, newText: attr.insertText },
+    ...(attr.suggest ? { command: { title: 'Suggest', command: 'editor.action.triggerSuggest' } } : {}),
+  }));
+}
+
+/**
+ * The card of the two markers and of `fields` (BUG-42 §4.1). Unlike `control` they say the same
+ * whatever the tag: the element is the author's, and what it is FOR is the attribute's.
+ */
+function markerHover(attr: typeof ERROR_NAME | typeof SUMMARY_NAME | typeof FIELDS_NAME): string {
+  switch (attr) {
+    case ERROR_NAME:
+      return '**`error`** · fudic\n\nMarca el elemento que dice el error de un control: `error=@userForm.alias`.\n\nEl compilador le pone `id` y apunta a él con `aria-describedby`; el mensaje sale cuando el campo está tocado.';
+    case SUMMARY_NAME:
+      return '**`summary`** · fudic\n\nMarca el resumen de un form o de un grupo: `summary=@userForm`.\n\nEs una lista de sus errores, en una región `aria-live`, vacía cuando no hay nada que decir.';
+    default:
+      return '**`fields`** · fudic\n\nEl resumen lista también, tras un envío, el error de cada campo, enlazado a él.\n\nUn envío fallido le lleva el foco.';
+  }
+}
+
+/**
  * `control` at a gap in a NATIVE tag: `<input |>`, `<form |>`, `<div co|>`.
  *
  * The attribute the author was expected to invent. It is not HTML's, so the HTML service has
@@ -998,27 +1087,20 @@ function controlHover(wants: ReturnType<typeof controlWants> & {}): string {
  * is `FUD0595`.
  */
 function controlItems(
-  offer: ControlOffer | undefined,
+  offers: readonly FormAttributeOffer[],
   document: TextDocument,
   gap: PartialName,
 ): readonly CompletionItem[] {
-  if (offer === undefined) return [];
-
-  return [
-    {
-      label: CONTROL_NAME,
-      kind: CompletionItemKind.Property,
-      detail: `${offer.label} of the form`,
-      // Ahead of the classes and of HTML's own vocabulary, which sorts by its labels.
-      sortText: `0_${CONTROL_NAME}`,
-      labelDetails: { description: 'fudic' },
-      textEdit: {
-        range: rangeOf(document, gap.span),
-        newText: `${CONTROL_NAME}=${EXPRESSION_PREFIX}`,
-      },
-      command: { title: 'Suggest', command: 'editor.action.triggerSuggest' },
-    },
-  ];
+  return offers.map((offer) => ({
+    label: offer.name,
+    kind: CompletionItemKind.Property,
+    detail: offer.detail,
+    // Ahead of the classes and of HTML's own vocabulary, which sorts by its labels.
+    sortText: `0_${offer.name}`,
+    labelDetails: { description: 'fudic' },
+    textEdit: { range: rangeOf(document, gap.span), newText: offer.insertText },
+    ...(offer.suggest ? { command: { title: 'Suggest', command: 'editor.action.triggerSuggest' } } : {}),
+  }));
 }
 
 /**
@@ -1035,15 +1117,33 @@ function controlItems(
 function controlNodeList(
   service: ReturnType<typeof typeScriptService>,
   cached: CachedDocument,
-  element: ElementNode,
+  value: NodeValue,
   document: TextDocument,
   binding: PartialName,
 ): CompletionList | undefined {
-  const wants = controlWants(element, element.name.includes('-'));
-  if (wants === undefined) return undefined;
-
+  const { element, attr } = value;
   const range = rangeOf(document, binding.span);
   const items: CompletionItem[] = [];
+
+  // A summary names a node bound around it, nearest first — read off the markup (BUG-42 §4.1).
+  if (attr === SUMMARY_NAME) {
+    summaryNodesOf(cached.document, cached.source, element).forEach((node, i) => {
+      items.push({
+        label: `${EXPRESSION_PREFIX}${node}`,
+        filterText: node,
+        kind: CompletionItemKind.Variable,
+        detail: 'form node',
+        sortText: `0_${String(i).padStart(3, '0')}`,
+        labelDetails: { description: 'fudic' },
+        textEdit: { range, newText: `${EXPRESSION_PREFIX}${node}` },
+      });
+    });
+    return items.length === 0 ? undefined : list(items, true);
+  }
+
+  // An `error` marker names a control wherever it sits; a `control` asks its element.
+  const wants = attr === ERROR_NAME ? 'control' : controlWants(element, element.name.includes('-'));
+  if (wants === undefined) return undefined;
 
   for (const [name, kind] of nodesInScope(service, cached.path, 0)) {
     // `reaches` and not `accepts`, which is the same rule the other list keeps and had to be
@@ -1194,6 +1294,27 @@ function scopeItems(
   ];
 }
 
+/**
+ * The `rel` of a `<link>`: the values that make it fudic's, first and marked as ours.
+ *
+ * The whole value is replaced, so `rel="comp|"` accepts into `rel="component"` and not into
+ * `rel="compcomponent"`; the editor filters against what is written. Accepting asks for the
+ * next list at once — the `href` is the only thing the link still needs.
+ */
+function relList(cached: CachedDocument, document: TextDocument, link: LinkValue): CompletionList {
+  const range = rangeOf(document, link.value);
+  return list(
+    relCompletions(cached, link.element).map((item, position) => ({
+      label: item.rel,
+      kind: CompletionItemKind.EnumMember,
+      detail: item.detail,
+      sortText: `0_${position}`,
+      labelDetails: { description: 'fudic' },
+      textEdit: { range, newText: item.rel },
+    })),
+  );
+}
+
 /** The snippets that apply here, filtered by how they are typed. */
 function snippetItems(
   cached: CachedDocument,
@@ -1212,6 +1333,7 @@ function snippetItems(
       labelDetails: { description: 'fudic' },
       insertTextFormat: InsertTextFormat.Snippet,
       textEdit: { range: rangeOf(document, context.span), newText: snippet.body },
+      ...(snippet.suggest ? { command: SUGGEST } : {}),
     }));
 }
 

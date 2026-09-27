@@ -216,6 +216,20 @@ test.describe('/delegacion — what a `@click` in a loop costs', () => {
     await first.click();
     await first.fill('hola');
     await expect(first).toHaveValue('hola');
+    // And wait until the form is really ALIVE, not until the DOM holds the text — the value is
+    // the element's own and is there before the chunk lands. The one thing only a hydrated form
+    // does is speak: leave the required field empty and its message appears. Resetting before
+    // that measured the hydration itself, five listeners that arrived after the zero.
+    // Retried, because a blur that lands before the chunk is a blur nobody heard.
+    await first.fill('');
+    const message = page.locator('app-wide-form .error').first();
+    await expect(async () => {
+      await first.focus();
+      await page.locator('app-wide-form input').nth(1).focus();
+      await expect(message).toHaveText('El campo 1 es obligatorio.', { timeout: 500 });
+    }).toPass();
+    await first.fill('hola');
+    await expect(page.locator('app-wide-form .error').first()).toHaveText('');
 
     await reset(page);
 

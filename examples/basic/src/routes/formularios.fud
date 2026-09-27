@@ -14,12 +14,58 @@
 <h1>5 · Formularios</h1>
 <p class="lede">
   El formulario no está escrito en esta vista: vive en su propio <code>.ts</code> y lo
-  importan los dos extremos. El servidor pinta sus valores y sus errores en el HTML —con el
-  hueco del error y su <code>aria-describedby</code> ya puestos— y el cliente hidrata sobre
-  ese mismo marcado. Un formulario con errores es accesible <strong>con cero JavaScript</strong>.
+  importan los dos extremos. El servidor pinta sus valores y sus errores en el HTML y el
+  cliente hidrata sobre ese mismo marcado. Un formulario con errores es accesible
+  <strong>con cero JavaScript</strong>.
+</p>
+<p>
+  El mensaje de cada campo va donde lo pone la vista: <code>error=@@userForm.name</code> marca
+  el elemento que lo dice, y el compilador solo le añade el <code>id</code> y el
+  <code>aria-describedby</code> del campo. Cada control declara sus propios textos. El error
+  aparece al salir del campo, se va en cuanto lo corriges, y el envío valida antes de decidir.
 </p>
 
 <app-form></app-form>
+
+<h2>El resumen</h2>
+<p>
+  <code>summary=@@userForm</code> marca el resumen del formulario, y
+  <code>summary=@@userForm.acceso</code> el del grupo. Un resumen dice
+  <strong>todos</strong> los errores que no son de ningún campo —escribe <em>pedro</em> como
+  nombre, como alias y dentro de la contraseña, y salen los dos a la vez— y los pinta como una
+  lista, que un lector anuncia como tal.
+</p>
+<p>
+  Con <code>fields</code>, tras un envío fallido el resumen lista además el error de cada campo,
+  enlazado a su campo, y el foco va al resumen. Pulsar un enlace lleva el foco al campo, y al
+  corregirlo su entrada sale de la lista en esa misma tecla.
+</p>
+
+<h2>La validez</h2>
+<p>
+  <code>userForm.$valid()</code> dice si los valores cumplen las reglas, y es silenciosa: leerla
+  no pinta ningún mensaje. El botón la usa para deshabilitarse. Con
+  <code>Validity.Interacted</code> un campo solo cuenta cuando ya has pasado por él, así que al
+  entrar el botón está habilitado; con <code>Validity.Rules</code> nacería deshabilitado.
+</p>
+
+<h2>Cuatro formas de escribir un campo</h2>
+<p>
+  <em>Nombre</em> es nativo: <code>&lt;label&gt;</code>, <code>&lt;input&gt;</code> y
+  <code>&lt;small&gt;</code>. <em>Alias</em> usa un <code>&lt;label for&gt;</code> nativo con
+  <code>app-input</code> y <code>app-error</code>. <em>Email</em> envuelve también el label, en
+  <code>app-label</code>, que proyecta el <code>&lt;label&gt;</code> de la página en vez de pintar
+  uno suyo. Y <em>Web</em> es <code>app-field</code>: label, input y error dentro de un mismo
+  componente.
+</p>
+<p>
+  En los cuatro el input tiene nombre y descripción. Cada componente escribe su puente, que es
+  HTML estándar: <code>shadowrootreferencetarget="campo"</code> lleva el
+  <code>&lt;label for&gt;</code> del host al input de dentro. Lo que fudic aporta es
+  <code>formassociated</code> y el respaldo: <code>FudicControlElement</code> traslada lo que
+  está escrito en el host —el <code>aria-describedby</code> del mensaje de fuera— y, donde el
+  navegador aún no tiene puente, también el label.
+</p>
 
 <h2>Y al lado, lo de siempre</h2>
 <p>

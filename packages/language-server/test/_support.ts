@@ -140,3 +140,34 @@ export function projectionService(path: string, text: string): ts.LanguageServic
   };
   return ts.createLanguageService(host);
 }
+
+/**
+ * Two apps and a library in one folder, as `examples/workspace` has them (BUG-43).
+ *
+ * `tienda` depends on `@acme/ui`; `admin` depends on nothing. The library is installed where a
+ * hoisting package manager puts it, so its real path IS the `node_modules` one and no symlink
+ * has to be faked. It exports `ui-card.fud` under a subpath of its own and keeps `hidden.fud`
+ * to itself.
+ */
+export const MONOREPO: Readonly<Record<string, string>> = {
+  '/ws/apps/tienda/package.json': JSON.stringify({
+    name: '@acme/tienda',
+    dependencies: { '@acme/ui': '*' },
+  }),
+  '/ws/apps/tienda/src/components/tienda-card.fud': component('tienda-card'),
+  '/ws/apps/tienda/src/layouts/_layout.fud': LAYOUT,
+  '/ws/apps/tienda/src/routes/index.fud': route('../layouts/_layout.fud'),
+  '/ws/apps/admin/package.json': JSON.stringify({ name: '@acme/admin' }),
+  '/ws/apps/admin/src/components/admin-panel.fud': component('admin-panel'),
+  '/ws/apps/admin/src/layouts/_admin.fud': LAYOUT,
+  '/ws/node_modules/@acme/ui/package.json': JSON.stringify({
+    name: '@acme/ui',
+    exports: { './ui-card.fud': './src/ui-card.fud' },
+  }),
+  '/ws/node_modules/@acme/ui/fudic.json': JSON.stringify({ kind: 'lib', prefix: 'ui' }),
+  '/ws/node_modules/@acme/ui/src/ui-card.fud': component('ui-card'),
+  '/ws/node_modules/@acme/ui/src/hidden.fud': component('ui-hidden'),
+};
+
+/** The route of `tienda` in `MONOREPO`. */
+export const TIENDA_ROUTE = '/ws/apps/tienda/src/routes/index.fud';

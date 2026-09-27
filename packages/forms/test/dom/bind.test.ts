@@ -19,7 +19,7 @@ import {
   bindSelectMultiple,
   bindText,
 } from '../../src/dom/index.js';
-import { blur, countWrites, field, fire, mount } from './_dom.js';
+import { blur, countWrites, field, fire, inForm, mount } from './_dom.js';
 
 beforeEach(() => {
   document.body.innerHTML = '';
@@ -45,7 +45,7 @@ describe('bindText (§6.11)', () => {
 
   it('marks `touched` on blur, and not before', () => {
     const { el, slot } = field('<input type="text">');
-    const c = control('');
+    const c = inForm(control(''));
     const off = bindText(el as HTMLInputElement, c, slot);
     expect(c.touched()).toBe(false);
     blur(el);
@@ -230,25 +230,25 @@ describe('every shape marks `touched` on blur (§6.11)', () => {
     const cases: readonly (() => { c: { touched: () => boolean }; el: HTMLElement })[] = [
       () => {
         const { el, slot } = field('<input type="checkbox">');
-        const c = control(false);
+        const c = inForm(control(false));
         bindCheckbox(el as HTMLInputElement, c, slot);
         return { c, el };
       },
       () => {
         const { el, slot } = field('<input type="number">');
-        const c = control<number | null>(null);
+        const c = inForm(control<number | null>(null));
         bindNumber(el as HTMLInputElement, c, slot);
         return { c, el };
       },
       () => {
         const { el, slot } = field('<select></select>');
-        const c = control('');
+        const c = inForm(control(''));
         bindSelect(el as HTMLSelectElement, c, slot);
         return { c, el };
       },
       () => {
         const { el, slot } = field('<select multiple></select>');
-        const c = control<readonly string[]>([]);
+        const c = inForm(control<readonly string[]>([]));
         bindSelectMultiple(el as HTMLSelectElement, c, slot);
         return { c, el };
       },
@@ -272,7 +272,7 @@ describe('bindRadio (§6.11, decision 110)', () => {
     );
     const radios = [...host.querySelectorAll('input')] as HTMLInputElement[];
     const slot = host.querySelector('#e1') as HTMLElement;
-    const c = control('');
+    const c = inForm(control(''));
     const off = bindRadio(radios, c, slot);
 
     radios[1]!.checked = true;

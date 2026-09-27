@@ -9,12 +9,12 @@
 export type Cleanup = () => void;
 
 /**
- * The error slot: the element the EMIT already wrote into the markup, `aria-describedby`
- * included (decision 113).
+ * The error slot: the element the AUTHOR marked with `error=@node`, wherever they put it, or
+ * `null` when they marked none (BUG-41 §3.2, decision 130).
  *
  * The runtime only ever writes its TEXT. It does not create it, does not move it and does
  * not remove it — which is exactly what makes a form's accessibility the same whether it
  * hydrated or not, and exactly what the prototype could not do while it fabricated the
  * `<span>` with `insertAdjacentElement` on first error.
  */
-export type ErrorSlot = HTMLElement;
+export type ErrorSlot = HTMLElement | null;

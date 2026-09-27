@@ -13,7 +13,7 @@
 
 import { documentRoots, walk, type CodeBlockNode, type ElementNode } from '@fudic/compiler';
 import type { CachedDocument } from '../document-cache.js';
-import { roleOf, type FudRole } from '../mode.js';
+import { isUndecided, roleOf, type FudRole } from '../mode.js';
 import { isEmptyDocument } from './position.js';
 import { isMarkupOffset } from './emmet.js';
 
@@ -135,6 +135,13 @@ export interface FudSnippet {
   readonly requiresNoZone?: 'server' | 'client';
   /** Where it is legal. Absent means anywhere the scope allows. */
   readonly placement?: SnippetPlacement;
+  /** Only in a file that may still become a route (`isUndecided`). */
+  readonly requiresUndecided?: true;
+  /**
+   * Whether accepting it opens the next list at once: its last tabstop is a position the
+   * server completes, and the author should not have to ask twice.
+   */
+  readonly suggest?: true;
 }
 
 // ── The document skeletons ────────────────────────────────────────────────────
@@ -289,6 +296,19 @@ const PROPS = `type \${1:Props} = {
 
 const {} = props<\${1:Props}>();`;
 
+/** A `<link>` of this `rel`, with the caret inside its `href`. */
+const LINK = (rel: string): string => `<link rel="${rel}" href="$0">`;
+
+/** The link snippet of one `rel`, placed where each role keeps its links. */
+function linkSnippets(rel: 'component' | 'snippet', detail: string): readonly FudSnippet[] {
+  const label = `link-${rel}`;
+  const body = LINK(rel);
+  return [
+    { label, detail, scope: 'markup', body, roles: ['component', 'route'], placement: 'top-level', suggest: true },
+    { label, detail, scope: 'markup', body, roles: ['page', 'layout'], placement: 'in-head', suggest: true },
+  ];
+}
+
 /** The catalogue, in the order it is offered. */
 export const SNIPPETS: readonly FudSnippet[] = [
   // Skeletons: only ever in a file with nothing in it.
@@ -385,6 +405,22 @@ export const SNIPPETS: readonly FudSnippet[] = [
     placement: 'in-head',
   },
 
+  // The three `<link>` fudic reads, each one ending inside its `href` with the list of what it
+  // can link already open. Top-level where a file's links live, in `<head>` in a page or a
+  // layout (decision 59). `link-layout` only where a layout can still be named: a route has
+  // its one already — it is how the file became a route — and nothing else takes one.
+  ...linkSnippets('component', 'import a component'),
+  ...linkSnippets('snippet', 'import the snippets of a file'),
+  {
+    label: 'link-layout',
+    detail: 'the layout this route renders inside',
+    scope: 'markup',
+    body: LINK('layout'),
+    placement: 'top-level',
+    requiresUndecided: true,
+    suggest: true,
+  },
+
   // Directives, each one only where it is legal.
   { label: '@RenderBody', detail: 'where the route body goes', scope: 'markup', roles: ['layout'], body: '@RenderBody()' },
   { label: '@RenderHead', detail: 'where each route contributes to the head', scope: 'markup', roles: ['layout'], body: '@RenderHead()' },
@@ -446,9 +482,9 @@ function hasZone(code: CodeBlockNode, zone: 'server' | 'client'): boolean {
 /**
  * The snippets that apply at this offset.
  *
- * Five filters and nothing else: the scope, the role of the document, whether a `@code` block
- * is already there, whether the region it would open is already written, and where the
- * construct is allowed to sit. In an empty file the role is `component` — that is what an empty
+ * Six filters and nothing else: the scope, the role of the document, whether a `@code` block
+ * is already there, whether the region it would open is already written, where the construct
+ * is allowed to sit, and whether the file may still become a route. In an empty file the role is `component` — that is what an empty
  * `.fud` structures as — but the skeletons declare no roles, so all four are offered.
  */
 export function snippetsAt(
@@ -471,7 +507,8 @@ export function snippetsAt(
       (snippet.roles === undefined || snippet.roles.includes(role)) &&
       (snippet.requiresNoCodeBlock === undefined || code === undefined) &&
       (snippet.requiresNoZone === undefined || !written.includes(snippet.requiresNoZone)) &&
-      (snippet.placement === undefined || placedAt(document, offset, snippet.placement)),
+      (snippet.placement === undefined || placedAt(document, offset, snippet.placement)) &&
+      (snippet.requiresUndecided === undefined || isUndecided(document.document)),
   ).map((snippet) =>
     snippet.label === 'component' ? { ...snippet, body: componentSkeleton(componentTag) } : snippet,
   );

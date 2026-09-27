@@ -1,0 +1,25 @@
+@code {
+  import type { Control } from "@fudic/forms";
+
+  // Label, input y error juntos: todo en el mismo árbol, todo nativo. El `for` y el
+  // `aria-describedby` no cruzan ningún shadow root.
+  const { ctrl, label, type } = props<{ ctrl: Control<unknown>; label: string; type?: string }>();
+}
+
+<head>
+  <style>
+    :host { display: grid; gap: 0.3rem; }
+    label { font-weight: 500; }
+    input { font: inherit; padding: var(--pad-field); border: 1px solid var(--line); border-radius: 8px; }
+    .error { color: #b3261e; font-size: 0.85rem; }
+    .error:empty { display: none; }
+  </style>
+</head>
+
+<app-field>
+  <template shadowrootmode="open" formassociated shadowrootreferencetarget="campo">
+    <label for="campo">@label</label>
+    <input id="campo" type=@type control=@ctrl>
+    <small class="error" error=@ctrl></small>
+  </template>
+</app-field>

@@ -99,7 +99,10 @@ describe('zero DOM', () => {
   it('does not reach the browser entry points', async () => {
     const files = await reachable(join(SRC, 'index.ts'));
     const browser = [...files].filter(
-      (f) => relative(SRC, f).startsWith('dom') || relative(SRC, f) === 'element.ts',
+      (f) =>
+        relative(SRC, f).startsWith('dom') ||
+        relative(SRC, f) === 'element.ts' ||
+        relative(SRC, f) === 'relay.ts',
     );
     expect(browser).toEqual([]);
   });
@@ -108,11 +111,13 @@ describe('zero DOM', () => {
     // Without this, a module nobody imports could hold anything at all and no rule would see
     // it — the same hole `coverage.include` closes for tests.
     const model = await reachable(join(SRC, 'index.ts'));
+    // What the browser entry points import is browser code too: the relay of `element.ts`.
+    const browser = new Set([
+      ...(await reachable(join(SRC, 'element.ts'))),
+      ...(await reachable(join(SRC, 'dom', 'index.ts'))),
+    ]);
     const all = await sources(SRC);
-    const unaccounted = all.filter((f) => {
-      const rel = relative(SRC, f).replaceAll('\\', '/');
-      return !model.has(f) && !rel.startsWith('dom/') && rel !== 'element.ts';
-    });
+    const unaccounted = all.filter((f) => !model.has(f) && !browser.has(f));
     expect(unaccounted).toEqual([]);
   });
 });

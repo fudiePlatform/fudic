@@ -28,6 +28,9 @@ import {
   PROPERTY_PREFIX,
   REF_NAME,
   CONTROL_NAME,
+  ERROR_NAME,
+  SUMMARY_NAME,
+  type MarkerName,
 } from './nodes.js';
 
 // ---------------------------------------------------------------------------
@@ -53,6 +56,9 @@ const FUD_PREFIX_NO_NAME = 'FUD0099';
  * `class:`. The other four are semantic and live in SDD-12's analyzers.
  */
 const FUD_CONTROL_NOT_EXPRESSION = 'FUD0590';
+
+/** `error=` is `control=`'s mirror (decision 130), and its value is wrong the same way. */
+const FUD_ERROR_NOT_EXPRESSION = 'FUD0596';
 
 /**
  * SDD-37 §5 owns `FUD0660`–`FUD0679`, and this is the only one of the eight decided HERE: a
@@ -103,6 +109,7 @@ export function classifyAttribute(attr: Attribute, source: string): ParseResult<
   }
   if (name === REF_NAME) return classifyRef(attr, source);
   if (name === CONTROL_NAME) return classifyControl(attr);
+  if (name === ERROR_NAME || name === SUMMARY_NAME) return classifyError(attr, name);
 
   return ok(plainAttribute(attr, name));
 }
@@ -363,6 +370,22 @@ function classifyControl(attr: Attribute): ParseResult<Binding> {
   return handler.reason === null ? ok(binding) : degrade(binding, controlDiag(valueSpan(attr)));
 }
 
+/**
+ * `error="@f.title"` (decision 130): the same single-expression rule as `control`, for the
+ * same reason — the value NAMES a node, and a node is a path.
+ *
+ * With no expression at all it degrades to a plain attribute, like `control` does: the author
+ * wrote the name and nothing the emit could pair, and the diagnostic says what to write.
+ */
+function classifyError(attr: Attribute, name: MarkerName): ParseResult<Binding> {
+  const handler = requireSingleExpression(attr);
+  if (handler.expr === null) {
+    return degrade(plainAttribute(attr, name), errorMarkerDiag(valueSpan(attr), name));
+  }
+  const binding: Binding = { type: 'error', name, span: attr.span, value: handler.expr };
+  return handler.reason === null ? ok(binding) : degrade(binding, errorMarkerDiag(valueSpan(attr), name));
+}
+
 // ---------------------------------------------------------------------------
 // Shared rules
 // ---------------------------------------------------------------------------
@@ -425,6 +448,15 @@ function controlDiag(at: Span): Diagnostic {
   return errorDiag(
     FUD_CONTROL_NOT_EXPRESSION,
     'control value must be a single `@` expression naming a form node, e.g. `control="@f.title"`',
+    at,
+  );
+}
+
+function errorMarkerDiag(at: Span, name: MarkerName): Diagnostic {
+  const example = name === ERROR_NAME ? 'error="@f.title"' : 'summary="@f"';
+  return errorDiag(
+    FUD_ERROR_NOT_EXPRESSION,
+    `${name} value must be a single \`@\` expression naming a form node, e.g. \`${example}\``,
     at,
   );
 }

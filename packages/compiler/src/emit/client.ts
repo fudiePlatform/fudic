@@ -27,7 +27,7 @@ import { hookupContext, templateDelegationJs } from './events.js';
 import { planDelegation } from '../semantic/delegation.js';
 import { planControls } from './controls.js';
 import { isFormAssociated } from '../binding/index.js';
-import { movingNames } from './level.js';
+import { formAssociatedTags, movingNames } from './level.js';
 import { rootContext } from './display.js';
 import { cellSlots, childTargets, reactiveScope, type CellSlot } from './state.js';
 import { projectAdoptOf } from './project-styles.js';
@@ -239,7 +239,11 @@ function buildComponentClientModule(
     new Set(props.flatMap((p) => (p.channel === 'fn' ? [p.name] : []))),
     // The same plan the server branch built, from the same function: the two branches write
     // the same nodes with the same ids, or `h` adopts a tree it does not recognise (SDD-34).
-    planControls(comp.source, comp.doc.template!.children, (t) => graph.components.has(t)),
+    planControls(comp.source, comp.doc.template!.children, {
+      isComponent: (t) => graph.components.has(t),
+      isFormAssociated: (t) => formAssociatedTags(graph).has(t),
+      template: comp.doc.template!,
+    }),
     // What tells a `control` whose node CROSSED from the parent (decision 112) from one this
     // component already holds. The two are hooked up at different moments, and only the first
     // has to be able to happen again.
@@ -330,6 +334,8 @@ function buildComponentClientModule(
     // rewritten inside the gesture INP measures just for hooking up.
     for (const name of reactive) bodies.hook.line(`$d.push($sub(${name}, $u));`);
     for (const name of imported) bodies.hook.line(`$d.push($subIf(${name}, $u));`);
+    // And what is read THROUGH an imported name — `userForm.$valid()` (BUG-42 §4.3).
+    if (em.watchImports(imported, bodies.hook)) usage.subscribes = true;
   }
 
   const w = new CodeWriter();
@@ -378,6 +384,11 @@ function buildComponentClientModule(
   w.line('');
   w.line(`customElements.define(${JSON.stringify(comp.tag)}, class extends ${base} {`);
   w.indent();
+  // The bridge its author wrote (decision 132), for any component: an instance created at
+  // runtime opens the same one the server wrote, and on a control-component it is also where
+  // `FudicControlElement` carries the name and the description.
+  const target = hookup.controls.field;
+  if (target !== null) w.line(`static referenceTarget = ${JSON.stringify(target)};`);
   w.line('static c($props) {');
   w.indent();
   if (em.nodes.length > 0) w.line(`let ${em.nodes.join(', ')};`);

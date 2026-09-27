@@ -1,0 +1,18 @@
+@*
+  El hueco del mensaje, envuelto. El marcador `error=` va en su HOST, en la vista que lo usa: el
+  runtime escribe el texto en el host y el componente lo pinta con un slot. Sin mensaje el host
+  está vacío, y `:host(:empty)` lo oculta.
+*@
+
+<head>
+  <style>
+    :host { display: block; color: #b3261e; font-size: 0.85rem; }
+    :host(:empty) { display: none; }
+  </style>
+</head>
+
+<app-error>
+  <template shadowrootmode="open">
+    <small><slot></slot></small>
+  </template>
+</app-error>

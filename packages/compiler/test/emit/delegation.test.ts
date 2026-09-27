@@ -15,6 +15,7 @@ import {
   type ComponentGraph,
 } from '../../src/emit/index.js';
 import { delegatedHandler, hookupContext, templateDelegationJs } from '../../src/emit/events.js';
+import { EMPTY_CONTROLS } from '../../src/emit/controls.js';
 import { extractCode } from '../../src/emit/oxc-code.js';
 import { planDelegation } from '../../src/semantic/delegation.js';
 import { classifyAttribute } from '../../src/binding/index.js';
@@ -74,7 +75,7 @@ describe('delegatedHandler — the wrapper itself (§4.1)', () => {
     const { template } = extractCode(source, doc);
     const roots = doc.template!.children;
     const plan = planDelegation(source, roots, templateDelegationJs(template));
-    const ctx = hookupContext(template, [], new Set(), new Map(), new Set(), plan);
+    const ctx = hookupContext(template, [], new Set(), EMPTY_CONTROLS, new Set(), plan);
     const [attr, reads] = [...plan.reads][0] ?? [];
     if (attr === undefined || reads === undefined) return undefined;
     const binding = classifyAttribute(attr, source).value;

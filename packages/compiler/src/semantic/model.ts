@@ -59,6 +59,11 @@ export interface ComponentRegistry {
   hydratable?(tag: string): boolean | undefined;
   /** Whether the tag WRITES that prop (`prop.set(…)`), or `undefined` when unknowable. */
   writes?(tag: string, prop: string): boolean | undefined;
+  /**
+   * Whether the tag is a control-component (`formassociated`, decision 111), or `undefined`
+   * when it cannot be known. What lets an `error` marker describe it from outside (BUG-42 §4.9).
+   */
+  formAssociated?(tag: string): boolean | undefined;
 }
 
 /**

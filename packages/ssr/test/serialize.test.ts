@@ -92,6 +92,16 @@ describe('renderToString — comments and shadow', () => {
     );
   });
 
+  it('carries `shadowrootreferencetarget`, escaped, when the host has a bridge (decision 132)', () => {
+    const d = new SsrDom();
+    const host = d.element('app-input');
+    d.attachShadow(host, true, 'cam"po');
+    expect(renderToString(host)).toBe(
+      '<app-input><template shadowrootmode="open" shadowrootdelegatesfocus ' +
+        'shadowrootreferencetarget="cam&quot;po"></template></app-input>',
+    );
+  });
+
   it('the second `attachShadow` on the same host does not take the flag back', () => {
     const d = new SsrDom();
     const host = d.element('app-input');

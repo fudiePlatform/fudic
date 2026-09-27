@@ -441,10 +441,13 @@ test.describe('warm: the network spent in proportion to what is seen', () => {
     await waitWarmed(page, 'app-counter');
 
     expect(priorities).toHaveLength(1); // one order, and it was the warm's
+    // The WARM's links, which are the ones that point at a hydration chunk. Since SDD-45 the
+    // build also writes `modulepreload`s of its own for the published runtime, and those are
+    // the critical path of the load: declaring them low would slow the page down, not warm it.
     const declared = await page.evaluate(() =>
-      [...document.querySelectorAll('link[rel=modulepreload]')].map((l) =>
-        l.getAttribute('fetchpriority'),
-      ),
+      [...document.querySelectorAll<HTMLLinkElement>('link[rel=modulepreload]')]
+        .filter((l) => new URL(l.href).pathname.includes('/h/'))
+        .map((l) => l.getAttribute('fetchpriority')),
     );
     expect(declared.length).toBeGreaterThan(0);
     expect(new Set(declared)).toEqual(new Set(['low']));
@@ -497,7 +500,9 @@ test.describe('warm: the network spent in proportion to what is seen', () => {
       // used to be downloaded inside the gesture with the tag already cached.
       expect(first).toEqual([]);
       const paths = await cached(page);
-      const shared = paths.filter((p) => /^\/assets\/[^/]+\.js$/u.test(p));
+      // Shared code is the build's own `/assets/*.js` or, since SDD-45, the published
+      // runtime under `/_fudic/` — which the worker now warms off the chunk's own imports.
+      const shared = paths.filter((p) => /^\/assets\/[^/]+\.js$|^\/_fudic\/.+\.js$/u.test(p));
       expect(
         shared.length,
         `the imports of the chunk are in cache: ${paths.join(', ')}`,
@@ -556,7 +561,17 @@ test.describe('warm: the network spent in proportion to what is seen', () => {
     // Where there is no worker there is no `postMessage` in the file at all: the case is not
     // "post and hope", it is code that was never emitted (§4.7.1). That the other channel is
     // the live one is what the seven tests above measured.
-    const main = await page.evaluate(async () => (await fetch('/fudic-main.js')).text());
+    // Every module script the page really loads. Their names carry a hash since SDD-45, and
+    // fetching `/fudic-main.js` read a 404 page, which has no `postMessage` whatever the
+    // channel; and the channel's code lives in the BOOT since then, not in the main entry.
+    const main = await page.evaluate(async () => {
+      // The framework's, not the dev server's own client, which talks to Vite by message.
+      const scripts = [
+        ...document.querySelectorAll<HTMLScriptElement>('script[type="module"][src]'),
+      ].filter((s) => !new URL(s.src).pathname.startsWith('/@vite/'));
+      const texts = await Promise.all(scripts.map(async (s) => (await fetch(s.src)).text()));
+      return texts.join('\n');
+    });
     expect(main.includes('postMessage')).toBe(hasWorker());
   });
 });

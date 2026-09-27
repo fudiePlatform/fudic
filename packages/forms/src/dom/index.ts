@@ -33,3 +33,6 @@ export { bindByType } from './bind-by-type.js';
 
 export { bindForm } from './bind-form.js';
 export { bindGroup } from './bind-group.js';
+// The message of a control that crosses into a control-component: the child binds the control,
+// and the parent writes the marker it placed next to it (BUG-42 §4.9).
+export { bindMessage } from './bind-message.js';

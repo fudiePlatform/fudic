@@ -143,6 +143,55 @@ export function owningPackage(file: string, io: PackageFs): string | undefined {
 }
 
 /**
+ * How a consumer names `file` of the package `pkg`: the inverse of resolving a specifier.
+ *
+ * What the editor offers inside an `href` has to be what the build then resolves, so this
+ * reads the same `exports` Node reads. A package that publishes none exposes every file under
+ * its name; one that does exposes only what it lists — exact subpaths and one-`*` patterns,
+ * each target either a string or a map of conditions. A file it does not export has no name
+ * from outside, and `undefined` says so: offering a path into its `src/` would be offering
+ * `FUD0760`.
+ */
+export function specifierOf(
+  pkg: Pick<FudicPackage, 'name' | 'root'>,
+  file: string,
+  io: PackageFs,
+): string | undefined {
+  const inside = toPosix(file).slice(pkg.root.length + 1);
+  const exports = manifestOf(pkg.root, io)?.['exports'];
+  if (exports === undefined) return `${pkg.name}/${inside}`;
+  if (exports === null || typeof exports !== 'object') return undefined;
+
+  for (const [key, value] of Object.entries(exports as Record<string, unknown>)) {
+    for (const target of targetsOf(value)) {
+      const subpath = subpathFor(key, target, `./${inside}`);
+      if (subpath !== undefined) return `${pkg.name}${subpath.slice(1)}`;
+    }
+  }
+  return undefined;
+}
+
+/** The paths an `exports` entry can point at: itself, or every string of a condition map. */
+function targetsOf(value: unknown): readonly string[] {
+  if (typeof value === 'string') return [value];
+  if (value === null || typeof value !== 'object') return [];
+  return Object.values(value as Record<string, unknown>).filter(
+    (target): target is string => typeof target === 'string',
+  );
+}
+
+/** The subpath `key` exports `file` under, when `target` is where it points. */
+function subpathFor(key: string, target: string, file: string): string | undefined {
+  const star = target.indexOf('*');
+  if (star === -1) return target === file ? key : undefined;
+
+  const prefix = target.slice(0, star);
+  const suffix = target.slice(star + 1);
+  if (!file.startsWith(prefix) || !file.endsWith(suffix)) return undefined;
+  return key.replace('*', file.slice(prefix.length, file.length - suffix.length));
+}
+
+/**
  * A directory under the one spelling this walk uses: real name, POSIX separators.
  *
  * Normalized HERE and not trusted to the port, because a host's `realPath` is whatever its

@@ -21,8 +21,8 @@ import {
 } from './mode.js';
 // The dependency walk lives in `@fudic/resolve`: the CLI asks the same question — which tags
 // a library already defines — and the build asks it in order, for the style chain of §4.6.
-import { findLibraries } from '@fudic/resolve';
-import { toPosix } from './paths.js';
+import { dependencyChain, findLibraries, owningPackage, specifierOf } from '@fudic/resolve';
+import { relativeHref, toPosix } from './paths.js';
 import type { FileSystemScanner } from './types.js';
 
 /** What the index knows about one `.fud`. */
@@ -170,5 +170,32 @@ export class WorkspaceIndex {
    */
   resolve(fromFile: string, href: string): IndexEntry | undefined {
     return this.#entries.get(toPosix(this.#scanner.resolveHref(toPosix(fromFile), href)));
+  }
+
+  /**
+   * How `fromFile` writes a link to each file it may link, and `undefined` for the rest.
+   *
+   * The inverse of `resolve`, and what the `href` completion offers. The index holds every
+   * `.fud` under the folder the editor opened, and in a monorepo that is several projects at
+   * once: a file of the app next door is on disk, but no `href` of this one reaches it the
+   * way the build does. So a file of the SAME package is written as a relative path, a file
+   * of a library this package depends on by the name its `exports` give it, and anything else
+   * is not a candidate at all.
+   *
+   * A function rather than an answer per file because the dependency walk is the costly part,
+   * and it is one per request, not one per candidate.
+   */
+  linker(fromFile: string): (target: string) => string | undefined {
+    const from = toPosix(fromFile);
+    const own = owningPackage(from, this.#scanner);
+    const libraries =
+      own === undefined ? [] : dependencyChain(own, this.#scanner).filter((pkg) => pkg.root !== own);
+
+    return (target) => {
+      const owner = owningPackage(target, this.#scanner);
+      if (owner === own) return relativeHref(from, target);
+      const library = libraries.find((pkg) => pkg.root === owner);
+      return library === undefined ? undefined : specifierOf(library, target, this.#scanner);
+    };
   }
 }
