@@ -62,6 +62,7 @@ import {
 } from './position.js';
 import {
   controlWants,
+  componentFrame,
   formAttributeOffers,
   nodeMembersBefore,
   nodesInScope,
@@ -583,7 +584,8 @@ function allowedItems(
           // no way to guess that from the contract — `ctrl` is what the child declared, and
           // `control` is what the parent writes.
           ...formGapItems(formAttributeOffers(source.cached, gap.element, true)),
-          ...classItems(source.cached),
+          // Not on the component's own tag: a class of this file styles nothing there (`FUD0720`).
+          ...(componentFrame(source.cached.document).has(gap.element) ? [] : classItems(source.cached)),
           SLOT_ITEM,
         ],
         range,

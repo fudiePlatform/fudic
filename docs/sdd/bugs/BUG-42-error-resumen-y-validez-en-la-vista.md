@@ -108,8 +108,8 @@ export const userForm = form(
 
 **`app-input.fud`: solo el input.** Deja de declarar `id` como prop y de escribir `id=@id`: el id
 del host lo pone la página, y el del input interno es **fijo** (los ids de un shadow root son
-locales a él, así que `campo` no choca en ninguna instancia). El autor **no** escribe
-`shadowrootreferencetarget`: lo añade el compilador (§4.9).
+locales a él, así que `campo` no choca en ninguna instancia). El autor escribe el puente,
+`shadowrootreferencetarget="campo"`, que es HTML estándar: el compilador no lo inventa (§3.4).
 
 ```razor
 @code {
@@ -134,7 +134,7 @@ locales a él, así que `campo` no choca en ninguna instancia). El autor **no** 
 </head>
 
 <app-input>
-  <template shadowrootmode="open" formassociated>
+  <template shadowrootmode="open" formassociated shadowrootreferencetarget="campo">
     <div class="field">
       <slot name="icon"></slot>
       <input id="campo" type=@type control=@ctrl>
@@ -199,7 +199,7 @@ lo **proyecta**. Así el label está en el árbol de la página, y su `for` lleg
 </head>
 
 <app-field>
-  <template shadowrootmode="open" formassociated>
+  <template shadowrootmode="open" formassociated shadowrootreferencetarget="campo">
     <label for="campo">@label</label>
     <input id="campo" type=@type control=@ctrl>
     <small class="error" error=@ctrl></small>
@@ -301,9 +301,10 @@ lo **proyecta**. Así el label está en el árbol de la página, y su `for` lleg
 El `*` va en `aria-hidden`. Es la marca visual de «obligatorio», no parte del nombre: sin
 `aria-hidden`, un lector anunciaría *«Nombre asterisco»*.
 
-### 0.4. Lo que escribe el compilador en *Alias* (el puente)
+### 0.4. Lo que sale en *Alias* (el puente)
 
-El autor no lo escribe. Así sale en el HTML del servidor:
+El puente lo escribe el autor de `app-input`; el compilador lo lleva al HTML del servidor, y
+añade el `aria-describedby` del host. Así sale:
 
 ```html
 <label for="ali">Alias <span aria-hidden="true">*</span></label>
@@ -690,21 +691,27 @@ y `error` (130). La 130 se parte en dos:
 
 ### 3.4. Gramática — decisión 132 (enmienda la 111)
 
-**Un control-componente lleva el puente hacia su campo.** En un componente con `<template
+**El puente de un control-componente lo escribe su autor.** En un componente con `<template
 shadowrootmode="open" formassociated>`:
 
 - **`formassociated` se mantiene.** Es un marcador de fudic, no del estándar, y fudic lo quiere
   proponer. Sigue decidiendo lo que decide la 111: la clase base (`FudicControlElement`),
-  `delegatesFocus` y la hidratación al cargar la página.
-- **El compilador escribe `shadowrootreferencetarget="<id del campo>"`** en el `<template>` del
-  HTML de servidor, y `referenceTarget` en el `attachShadow` del cliente. El campo es el elemento
-  que lleva `control=`, o el contenedor de sus radios.
-- **El id del campo** es el id estático que escribió el autor, o uno derivado si no escribió
-  ninguno. Un id **dinámico** es `FUD0604`: el puente tiene que apuntar a un id que el compilador
-  conoce. Los ids de un shadow root son locales a él, así que un id fijo sirve en todas las
-  instancias.
-- **Si el autor escribe `shadowrootreferencetarget` a mano**, el compilador respeta el suyo. Tiene
-  que ser estático y nombrar un id de esa plantilla (`FUD0605`).
+  `delegatesFocus` y la hidratación al cargar la página. Y ahora, el respaldo del puente.
+- **`shadowrootreferencetarget` es HTML estándar y va a mano** en el mismo `<template>`, con el id
+  del elemento al que el autor quiere llevar lo que apunta al host (el input, o el `<fieldset>` de
+  unos radios). Los ids de un shadow root son locales a él, así que un id fijo sirve en todas las
+  instancias. Tiene que ser estático y nombrar un id de esa plantilla (`FUD0605`).
+- **El compilador solo lo transporta**: lo escribe en el `<template>` del HTML de servidor que abre
+  el padre, pasa `referenceTarget` al `attachShadow` del cliente y entrega el mismo id a
+  `FudicControlElement`, que hace de respaldo sobre ese elemento (§4.8). Sin atributo no hay
+  puente ni traslado.
+
+> **Enmienda de Pedro (2026-09-27).** La primera redacción hacía que el compilador eligiera el
+> campo (el elemento con `control=`, o el contenedor de sus radios) y escribiera el puente por su
+> cuenta, con `FUD0603` y `FUD0604` para lo que no podía elegir. Es invasivo: la decisión es del
+> autor, y el día que el respaldo sobre, un envoltorio cuyo puente inventaba el compilador habría
+> que reescribirlo a mano. fudic aporta `formassociated` y el respaldo; el resto es estándar.
+> `FUD0603` y `FUD0604` quedan retirados.
 
 ### 3.5. Proyección (`language-core`)
 
@@ -725,8 +732,8 @@ veces (la lección de BUG-23).
 | `FUD0600` | `error=` empareja con un form o un grupo. Mensaje: usa `summary=` | error |
 | `FUD0601` | `summary=` empareja con un control. Mensaje: usa `error=` | error |
 | `FUD0602` | el elemento de un `summary=` no puede contener una lista (`<p>`, `<span>`, `<small>`, `<label>`, `<a>`, `<button>`, `<strong>`, `<em>`, `<b>`, `<i>`, `<h1>`–`<h6>`, `<legend>`): el `<ul>` que escribe el runtime sería HTML inválido | error |
-| `FUD0603` | en un control-componente, un grupo de radios enlazado que no está dentro de un `<fieldset>` o de un elemento con `role="radiogroup"`: no hay campo al que llevar el puente ni el nombre | error |
-| `FUD0604` | en un control-componente, el campo lleva un `id` dinámico: el puente no puede apuntarle | error |
+| `FUD0603` | *retirado* (enmienda de §3.4): el compilador ya no elige campo | — |
+| `FUD0604` | *retirado* (enmienda de §3.4) | — |
 | `FUD0605` | un `shadowrootreferencetarget` escrito a mano es dinámico o nombra un id que no está en la plantilla | error |
 
 `FUD0597` se estrecha: deja de incluir el caso de un nodo que cruza a un control-componente
@@ -752,7 +759,10 @@ se explica en un elemento con `summary=`, y el `<template>` raíz ofrece y expli
 - **Oferta del atributo.** `error` y `summary` se ofrecen en los mismos sitios que `control`
   (`controlSites`, decisión 115), en tags nativos y de componente, salvo en un elemento que ya
   lleve ese atributo. Un layout no ofrece ninguno (`FUD0437`), igual que hoy `control`. `fields`
-  solo se ofrece en un elemento que ya lleva `summary=`.
+  solo se ofrece en un elemento que ya lleva `summary=`. **Nunca en el marco del componente** —su
+  propia etiqueta y su `<template>` raíz—: declaran el componente, no son elementos de su
+  contenido, y tampoco se ofrece ahí `class:` (en el host es `FUD0720`). Visto por Pedro con la
+  extensión instalada (2026-09-27).
 - **Valor de `error=`.** Se ofrecen los nodos que **llevan** a un control, con la misma regla que
   `control=` en un campo (`reaches` en la lista, `accepts` en un enlace terminado): controles y
   grupos. **Ningún miembro `$`**: la API no es un nodo y no pasa la prueba de forma
@@ -907,8 +917,8 @@ id>` como con cualquier control, ni el del control-componente. El arreglo vive e
 | Quién | Qué hace |
 |---|---|
 | El autor de la página | lo mismo que con un control nativo: `<label for>`, un `<label>` que envuelve, `aria-label`, `aria-labelledby`, y un marcador `error=` donde quiera |
-| El autor del control-componente | nada; si pone su propio `<label>` dentro, se respeta |
-| El compilador | el puente (`shadowrootreferencetarget` / `referenceTarget`, §3.4), el `aria-describedby` en el host y la entrega del campo a la clase (§3.2) |
+| El autor del control-componente | el puente, `shadowrootreferencetarget`, hacia el elemento que elija (§3.4); si pone su propio `<label>` dentro, se respeta |
+| El compilador | lleva el puente del autor al HTML del servidor y al `attachShadow` del cliente, escribe el `aria-describedby` en el host y entrega ese mismo id a la clase (§3.2) |
 | `FudicControlElement` | traslada al campo lo que el host no le hace llegar solo |
 
 **Lo que hace `FudicControlElement`**, en esbozo (no es el código final):
@@ -961,7 +971,7 @@ export abstract class FudicControlElement extends FudicElement {
   texto a `aria-label` y la descripción a `aria-description`. La tarea que lo implementa verifica
   el soporte real en los tres motores y lo deja anotado.
 - **Un grupo de radios** dentro de un control-componente recibe todo en su contenedor, que tiene
-  que ser un `<fieldset>` o llevar `role="radiogroup"` (`FUD0603`).
+  que ser un `<fieldset>` o llevar `role="radiogroup"`, y el autor apunta el puente a él.
 - **El día que el puente esté en los tres motores**, el paso 2 se borra. El HTML no cambia: ya
   lleva el atributo.
 
@@ -1002,10 +1012,12 @@ ejemplo.
 - **Oferta:** en `<template |>` raíz de un componente, los atributos estándar
   (`shadowrootmode`, `shadowrootdelegatesfocus`, `shadowrootreferencetarget`,
   `shadowrootclonable`, `shadowrootserializable`) y `formassociated`, cada uno con su hover. El
-  hover de `formassociated` dice que es un marcador de fudic, qué decide, y que el compilador
-  escribe el puente.
+  hover de `formassociated` dice que es un marcador de fudic, qué decide, y que el puente es
+  estándar y lo escribe el autor.
+- **Solo esos seis.** En un hueco del `<template>` raíz calla la lista de HTML (`accesskey`,
+  `aria-*`…): el `<template>` se convierte en una raíz de sombra, no es un elemento.
 - **Valor de `shadowrootreferencetarget`:** los ids estáticos de la plantilla.
-- **Validación:** `FUD0604` y `FUD0605` salen en el editor como en el build.
+- **Validación:** `FUD0605` sale en el editor como en el build.
 
 ---
 
@@ -1091,14 +1103,13 @@ ejemplo.
     donde falte el id) y el `aria-describedby` de los campos sin marcador hacia su entrada, en el
     host si es un control-componente. En un elemento sin `summary=`, `fields` es un atributo más.
 19. **(rojo primero)** `error=@f` emparejado con el `<form>` da `FUD0600`; `summary=@f.name`
-    emparejado con un `<input>` da `FUD0601`; `<p summary=@f>` da `FUD0602`; radios en un
-    control-componente sin contenedor dan `FUD0603`; un campo con `id=@x` en un control-componente
-    da `FUD0604`; un `shadowrootreferencetarget` dinámico o con un id ajeno da `FUD0605`. Span
-    sobre el atributo o el elemento.
+    emparejado con un `<input>` da `FUD0601`; `<p summary=@f>` da `FUD0602`; un
+    `shadowrootreferencetarget` dinámico o con un id ajeno da `FUD0605`. Span sobre el atributo o
+    el elemento. (`FUD0603` y `FUD0604`, retirados por la enmienda de §3.4, ya no salen.)
 20. `FUD0596`–`FUD0599` se reportan igual para `summary`, con su nombre en el mensaje.
-21. **(rojo primero)** El puente: un control-componente emite `shadowrootreferencetarget` con el id
-    de su campo (el del autor, o uno derivado) en el servidor, y `referenceTarget` en el
-    `attachShadow` del cliente. Uno escrito a mano se respeta.
+21. **(rojo primero)** El puente: el `shadowrootreferencetarget` que escribe el autor de un
+    control-componente sale en el servidor y como `referenceTarget` en el `attachShadow` del
+    cliente, y es el elemento del respaldo. Sin él no hay puente: el compilador no inventa ninguno.
 22. **(rojo primero)** `<app-error error=@f.email>` junto a `<app-input control=@f.email>` (componente
     `formassociated`) ya no da `FUD0597`: emite `aria-describedby` en el host y `bindMessage`. Con
     un componente que no es `formassociated`, sigue dando `FUD0597`.

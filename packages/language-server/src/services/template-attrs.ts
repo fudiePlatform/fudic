@@ -13,6 +13,7 @@
 
 import { staticId, walkBlocks, type ElementNode, type Region, type Span } from '@fudic/compiler';
 import type { CachedDocument } from '../document-cache.js';
+import { nativeGapContextAt } from './position.js';
 
 /** One attribute of the root template: its name, what accepting it writes, and its card. */
 export interface TemplateAttribute {
@@ -43,7 +44,7 @@ export const TEMPLATE_ATTRIBUTES: readonly TemplateAttribute[] = [
     insertText: 'shadowrootreferencetarget="$1"',
     suggest: true,
     hover:
-      '**`shadowrootreferencetarget`** · HTML\n\nLo que apunta al host por id (un `<label for>`, un `aria-labelledby`) se reenvía al elemento de dentro con ese id.\n\nEn un control-componente lo escribe el compilador, hacia su campo.',
+      '**`shadowrootreferencetarget`** · HTML\n\nLo que apunta al host por id (un `<label for>`, un `aria-labelledby`) se reenvía al elemento de dentro con ese id.\n\nLo escribe el autor. En un control-componente, fudic lleva además a ese elemento lo que el puente no reenvía, y todo donde el navegador no tiene puente.',
   },
   {
     name: 'shadowrootclonable',
@@ -62,7 +63,7 @@ export const TEMPLATE_ATTRIBUTES: readonly TemplateAttribute[] = [
     insertText: 'formassociated',
     suggest: false,
     hover:
-      '**`formassociated`** · fudic\n\nMarca un control-componente: un marcador de fudic, no del estándar, que fudic quiere proponer.\n\nDecide su clase (`FudicControlElement`), `delegatesFocus` y que se hidrate al cargar la página. El compilador escribe además el puente (`shadowrootreferencetarget`) hacia su campo.',
+      '**`formassociated`** · fudic\n\nMarca un control-componente: un marcador de fudic, no del estándar, que fudic quiere proponer.\n\nDecide su clase (`FudicControlElement`), `delegatesFocus` y que se hidrate al cargar la página. El puente (`shadowrootreferencetarget`) es estándar y lo escribe el autor; fudic aporta el respaldo donde falta.',
   },
 ];
 
@@ -73,6 +74,16 @@ function isRootTemplate(cached: CachedDocument, el: ElementNode): boolean {
 
 function carries(el: ElementNode, name: string): boolean {
   return el.attributes.some((a) => typeof a.name === 'string' && a.name.toLowerCase() === name);
+}
+
+/**
+ * Whether the caret is at a gap of the root template. There the six attributes above are the
+ * whole list: HTML's globals (`accesskey`, `aria-*`…) describe an element, and this one becomes a
+ * shadow root, so the HTML service stays silent at this position.
+ */
+export function atRootTemplateGap(cached: CachedDocument, offset: number, region: Region): boolean {
+  const gap = nativeGapContextAt(cached.source, offset, region);
+  return gap !== undefined && isRootTemplate(cached, gap.element);
 }
 
 /** The attributes a gap in the root template offers: the ones it does not carry yet. */

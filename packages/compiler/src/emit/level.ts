@@ -232,7 +232,7 @@ export function bridgeIds(graph: ComponentGraph): ReadonlyMap<string, string> {
   const out = new Map<string, string>();
   for (const comp of allComponents(graph)) {
     const template = comp.doc.template;
-    const bridge = template === undefined ? null : bridgeOf(template, comp.source).bridge;
+    const bridge = template === undefined ? null : bridgeOf(template).bridge;
     if (bridge !== null) out.set(comp.tag, bridge.id);
   }
   return out;

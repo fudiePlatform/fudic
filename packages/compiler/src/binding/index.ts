@@ -52,7 +52,7 @@ export { pairMarkers, hasFields, isSummaryFields, staticId, walkBlocks } from '.
 // The bridge of a control-component (decision 132): its field and the id the bridge points at,
 // for the emit that writes it and the analyzer that reports what cannot be bridged.
 export type { Bridge, BridgeProblem, BridgeResult } from './bridge.js';
-export { bridgeOf, DERIVED_FIELD_ID, REFERENCE_TARGET_ATTR } from './bridge.js';
+export { bridgeOf, REFERENCE_TARGET_ATTR } from './bridge.js';
 
 export {
   controlTarget,

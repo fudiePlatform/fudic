@@ -158,6 +158,34 @@ describe('the offer at a gap (criterion 25)', () => {
     expect(await nativeGap('<small error="@userForm.name" |></small>')).not.toContain('error');
   });
 
+  describe('the frame of a control-component: its own tag and its root template', () => {
+    /** A control-component whose `<style>` declares a class, with `markup` as its tag. */
+    const controlComponent = (markup: string): string =>
+      '@code {\n  const { ctrl } = props<{ ctrl?: unknown }>();\n}\n' +
+      '<head>\n  <style>\n    .field { color: red; }\n  </style>\n</head>\n' +
+      `${markup}\n`;
+    const TEMPLATE = '<template shadowrootmode="open" formassociated><div class="field"><input id="campo" control="@ctrl"></div></template>';
+
+    it('the root template offers its own attributes and no binding, marker or class', async () => {
+      const found = await nativeGap(`<app-input>\n  ${TEMPLATE.replace('formassociated', 'formassociated |')}\n</app-input>`, controlComponent);
+      expect(found).toContain('shadowrootreferencetarget');
+      for (const absent of ['control', 'error', 'summary', 'class:field']) expect(found).not.toContain(absent);
+    });
+
+    it('its own tag offers none of them either', async () => {
+      const answer = await tsAt(`<app-input |>\n  ${TEMPLATE}\n</app-input>`, list(), controlComponent);
+      for (const absent of ['control', 'error', 'summary', 'class:field']) expect(labels(answer)).not.toContain(absent);
+    });
+
+    it('the elements inside it still get them', async () => {
+      const found = await nativeGap(
+        `<app-input>\n  ${TEMPLATE.replace('<div class="field">', '<div |>')}\n</app-input>`,
+        controlComponent,
+      );
+      expect(found).toEqual(expect.arrayContaining(['control', 'error', 'summary', 'class:field']));
+    });
+  });
+
   it('a layout offers none', () => {
     const path = '/p/layouts/_layout.fud';
     const source = LAYOUT.replace('@RenderBody()', '<form control="@f"><div></div></form>\n      @RenderBody()');

@@ -262,10 +262,18 @@ Without it a screen reader says *"Name star"*.
 | `app-label` + `app-input` + `app-error` | as above: the projected `<label>` lives in the page | the relay | native |
 | `app-field`: label, input and error in one component | `<label for>` inside, same tree | `aria-describedby` inside | native |
 
-A **control-component** is a component whose root template carries `formassociated`, and its
-field is the element with `control=` (or the container of its radios, which must be a
-`<fieldset>` or have `role="radiogroup"`: `FUD0603`). The page writes its label and marker as it
-would for a native control:
+A **control-component** is a component whose root template carries `formassociated`. Its author
+writes the bridge, which is plain standard HTML, on the same template:
+
+```html
+<app-input>
+  <template shadowrootmode="open" formassociated shadowrootreferencetarget="campo">
+    <input id="campo" type=@type control=@ctrl>
+  </template>
+</app-input>
+```
+
+The page writes its label and marker as it would for a native control:
 
 ```html
 <label for="ali">Alias</label>
@@ -273,12 +281,13 @@ would for a native control:
 <app-error error=@f.alias></app-error>
 ```
 
-- **The bridge.** The compiler writes `shadowrootreferencetarget="<field id>"` on the
-  component's `<template>` and `referenceTarget` in its `attachShadow`, so whatever points at
-  the host — the `<label for="ali">` — reaches the field inside. The field's id is the author's
-  static one or a derived one; a dynamic one is `FUD0604`. A `shadowrootreferencetarget` written
-  by hand is kept, and must name a static id of that template (`FUD0605`). Only Chrome has the
-  bridge today.
+- **The bridge.** `shadowrootreferencetarget="campo"` forwards whatever points at the host — the
+  `<label for="ali">` — to the element with that id inside. The author decides which element it
+  is (the input, or the `<fieldset>` around some radios); the compiler never chooses one. It has
+  to be a static id of that template (`FUD0605`). The compiler carries it where it has to go —
+  the template the server writes, `referenceTarget` in the client's `attachShadow` — and nothing
+  more. Only Chrome has the bridge today. Without the attribute there is no bridge, and nothing
+  for the relay below to work on.
 - **The relay.** What is written *on* the host — the `aria-describedby` of an outside marker or
   of a summary entry, `aria-labelledby`, `aria-label` — the bridge does not forward, anywhere.
   `FudicControlElement` hands it to the field with element reflection
@@ -301,7 +310,8 @@ the click.
 
 `formassociated` is a fudic marker, not a standard attribute; fudic intends to propose it. It
 decides the base class (`FudicControlElement`), `delegatesFocus`, loading the component with the
-page, and now the bridge.
+page, and the fallback of the bridge: the bridge itself is the standard attribute, and the
+component's author writes it. The day every browser has it, the fallback goes and no wrapper changes.
 
 ## The schema is a template
 

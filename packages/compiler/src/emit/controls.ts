@@ -5,8 +5,8 @@
  * It exists for the same reason `attrs.ts` exists: the server paints the markup and the client
  * adopts it, so the two must agree byte for byte about what an element becomes. Here that is
  * about the ATTRIBUTES the compiler adds — the marker's `id`, the `aria-describedby` that points
- * at it, a summary's `aria-live` and `tabindex`, the id of a field a summary links to, the id of
- * a control-component's field — and about what the server writes into a marker.
+ * at it, a summary's `aria-live` and `tabindex`, the id of a field a summary links to —
+ * and about what the server writes into a marker.
  *
  * **The compiler invents no element** (BUG-41 §5). The element that carries a message is the
  * author's, written with `error="@node"` or `summary="@node"` wherever the layout wants it; the
@@ -113,10 +113,10 @@ export interface ControlPlan {
   readonly markers: ReadonlyMap<ElementNode, MarkerSite>;
   /**
    * The ids the compiler writes on elements of the author's that have none: a field a summary
-   * links to (`fud-c-…`), and the field of a control-component (`fud-field`, decision 132).
+   * links to (`fud-c-…`).
    */
   readonly ids: ReadonlyMap<ElementNode, string>;
-  /** The id of this template's field when it is a control-component, or `null`. */
+  /** The id its author's `shadowrootreferencetarget` names, on a control-component, or `null`. */
   readonly field: string | null;
 }
 
@@ -187,8 +187,7 @@ export function planControls(
   });
 
   const ids = new Map<ElementNode, string>();
-  const bridge = ctx.template === undefined ? null : bridgeOf(ctx.template, source).bridge;
-  if (bridge?.field != null && bridge.writesId) ids.set(bridge.field, bridge.id);
+  const bridge = ctx.template === undefined ? null : bridgeOf(ctx.template).bridge;
 
   const pairing = pairMarkers(source, roots, ctx.isComponent, ctx.isFormAssociated);
   const markers = new Map<ElementNode, MarkerSite>();

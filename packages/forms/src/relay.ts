@@ -6,8 +6,8 @@
  * them, and this module is where they meet:
  *
  * - **Reference Target** forwards to the field what points AT the host: a `<label for>`, another
- *   element's `aria-labelledby`. The compiler writes it; where a browser has it, the labels need
- *   nothing from here.
+ *   element's `aria-labelledby`. The component's author writes it; where a browser has it, the
+ *   labels need nothing from here.
  * - **Element reflection** (`ariaLabelledByElements`, `ariaDescribedByElements`) lets an element
  *   of a shadow root reference elements of the trees around it. That is how what is written ON
  *   the host — `aria-describedby` of an outside marker, `aria-labelledby`, `aria-label` — reaches

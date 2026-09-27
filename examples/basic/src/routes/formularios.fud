@@ -59,11 +59,12 @@
   componente.
 </p>
 <p>
-  En los cuatro el input tiene nombre y descripción. El compilador escribe el puente
-  (<code>shadowrootreferencetarget</code>) que lleva el <code>&lt;label for&gt;</code> del host
-  al input de dentro, y <code>FudicControlElement</code> traslada lo que está escrito en el host
-  —el <code>aria-describedby</code> del mensaje de fuera— y, donde el navegador aún no tiene
-  puente, también el label.
+  En los cuatro el input tiene nombre y descripción. Cada componente escribe su puente, que es
+  HTML estándar: <code>shadowrootreferencetarget="campo"</code> lleva el
+  <code>&lt;label for&gt;</code> del host al input de dentro. Lo que fudic aporta es
+  <code>formassociated</code> y el respaldo: <code>FudicControlElement</code> traslada lo que
+  está escrito en el host —el <code>aria-describedby</code> del mensaje de fuera— y, donde el
+  navegador aún no tiene puente, también el label.
 </p>
 
 <h2>Y al lado, lo de siempre</h2>

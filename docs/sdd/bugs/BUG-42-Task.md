@@ -196,6 +196,14 @@ líneas que los hacen pasar.
   los criterios 39 y 41 en el BUG. (4) El respaldo del criterio 37 quita también el atributo del
   HTML. (5) `getByRole` y `toHaveAccessibleDescription` calculan el nombre por su cuenta y no
   siguen la *element reflection*: nombres y descripciones se miden en el árbol de Chrome por CDP.
+- **Revisión de Pedro con la extensión instalada (2026-09-27).** (1) El puente lo escribe el
+  autor: el compilador ya no deriva el campo, solo transporta el `shadowrootreferencetarget` que
+  encuentra, y `FUD0603`/`FUD0604` quedan retirados (enmienda de §3.4 y de la decisión 132).
+  `app-input` y `app-field` lo escriben a mano. (2) El marco de un componente —su etiqueta y su
+  `<template>` raíz— deja de ofrecer `control`, `error`, `summary` y `class:`, y en el `<template>`
+  raíz calla la lista de HTML. Queda fuera, y se anota: un componente **sin** `formassociated`
+  que escriba `shadowrootreferencetarget` no lo ve respetado (el puente solo viaja en un
+  control-componente).
 - **Paso 8 de §0.6 en el e2e.** El ejemplo usa `Interacted`; el test construye en el navegador un
   form con `Validity.Rules` desde las mismas piezas publicadas que usa la página.
 - **Rojo primero de 34, 35 y 37**, visto con el traslado desactivado: cae el 35 con puente y el 34

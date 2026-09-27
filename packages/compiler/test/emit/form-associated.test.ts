@@ -108,8 +108,8 @@ describe('§6.9 — the marker delegates focus', () => {
   });
 
   it('the page module passes the flag to the host it fabricates', () => {
-    // With the bridge to its field (decision 132): the input has no id, so it gets the derived one.
-    expect(emitPageModule(marked)).toContain('$dom.attachShadow($n0, true, "fud-field")');
+    // No bridge unless its author writes one (decision 132): the compiler invents no target.
+    expect(emitPageModule(marked)).toContain('$dom.attachShadow($n0, true)');
     expect(emitPageModule(plain)).toContain('$dom.attachShadow($n0)');
   });
 

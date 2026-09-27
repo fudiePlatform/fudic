@@ -145,6 +145,16 @@ export function wantsLabel(wants: ControlWants): string {
 }
 
 /**
+ * The two elements that DECLARE a component and are not part of its content: its own tag and
+ * its root `<template>` (decision 75). No binding of the template belongs on them — `control`,
+ * a marker or a `class:` there is a question about the component, not about an element of it.
+ */
+export function componentFrame(document: StructuredDocument): ReadonlySet<ElementNode> {
+  if (document.type !== 'component-document') return new Set();
+  return new Set([document.host, document.template].filter((el) => el !== undefined));
+}
+
+/**
  * Every element of this document where a `control` may legally be written (decision 115).
  *
  * The analyser's rule, read forwards instead of backwards: `control-inside-form` walks for the
@@ -163,6 +173,10 @@ export function controlSites(document: StructuredDocument, source: string): Read
   // in it by construction (decision 115's exemption). Everything in it is a site.
   const host = document.type === 'component-document' ? document.template : undefined;
   const anywhere = host !== undefined && isFormAssociated(host);
+  // "Everything in it" and not the frame around it: the component's own tag and its root
+  // `<template>` declare the component, they are not elements of its content, and nothing binds
+  // or marks there.
+  const frame = componentFrame(document);
 
   const inside = new WeakSet<ElementNode>();
 
@@ -170,6 +184,7 @@ export function controlSites(document: StructuredDocument, source: string): Read
     element(el, parent) {
       const under = parent !== undefined && (inside.has(parent) || opensForm(parent, source));
       if (under) inside.add(el);
+      if (frame.has(el)) return;
       if (anywhere || under || el.name.toLowerCase() === FORM_TAG) sites.add(el);
     },
   });

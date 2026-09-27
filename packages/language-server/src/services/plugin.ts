@@ -79,6 +79,7 @@ import {
 } from './position.js';
 import {
   controlWants,
+  componentFrame,
   formAttributeOffers,
   nodeMembersAt,
   nodesInScope,
@@ -290,7 +291,11 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
                   ),
                   // The root `<template>` of a component and its attributes (BUG-42 §4.11).
                   ...templateAttributeItems(cached, native.element, document, native.name),
-                  ...classBindingItems(cached, document, native.name),
+                  // Not on the component's own tag or its root `<template>`: a class of this file
+                  // styles nothing there (`FUD0720` on the host).
+                  ...(componentFrame(cached.document).has(native.element)
+                    ? []
+                    : classBindingItems(cached, document, native.name)),
                   ...delegateBindingItems(cached, document, native.name, offset),
                 ];
                 return items.length === 0 ? undefined : list(items);

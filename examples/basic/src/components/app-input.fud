@@ -7,10 +7,11 @@
   // página en vez de al primer gesto.
   //
   // Solo el input. El id del HOST lo pone la página, y el del input es FIJO: los ids de un
-  // shadow root son locales a él, así que `campo` no choca en ninguna instancia. El puente
-  // (`shadowrootreferencetarget="campo"`) lo escribe el compilador: lo que apunta al host —un
-  // `<label for>`— sigue hasta el input. El mensaje tampoco vive aquí: lo marca la página con
-  // `app-error`, y `FudicControlElement` lleva su descripción al input.
+  // shadow root son locales a él, así que `campo` no choca en ninguna instancia. El puente,
+  // `shadowrootreferencetarget="campo"`, es HTML estándar y se escribe aquí: lo que apunta al
+  // host —un `<label for>`— sigue hasta el input. Donde el navegador aún no lo tiene,
+  // `FudicControlElement` hace de respaldo sobre ese mismo elemento. El mensaje tampoco vive
+  // aquí: lo marca la página con `app-error`, y su descripción llega al input igual.
   //
   // `type` como PROP: el enlace lo elige `bindByType` al enlazar (decisión 109), un
   // `app-input` para cualquier forma de `<input>`.
@@ -38,7 +39,7 @@
 </head>
 
 <app-input>
-  <template shadowrootmode="open" formassociated>
+  <template shadowrootmode="open" formassociated shadowrootreferencetarget="campo">
     <div class="field">
       <slot name="icon"></slot>
       <input id="campo" type=@type control=@ctrl>

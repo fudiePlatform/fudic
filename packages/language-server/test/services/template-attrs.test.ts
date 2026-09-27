@@ -11,6 +11,7 @@ import { DocumentCache } from '../../src/document-cache.js';
 import { RequestStats } from '../../src/stats.js';
 import { createFudicService, createFudicTagService } from '../../src/services/plugin.js';
 import { TEMPLATE_ATTRIBUTES } from '../../src/services/template-attrs.js';
+import { silenceOwnedPositions } from '../../src/services/owned.js';
 import { WorkspaceIndex } from '../../src/workspace-index.js';
 import { fakeServiceContext, TOKEN } from '../_lsp.js';
 import { LAYOUT, memoryFs } from '../_support.js';
@@ -104,5 +105,33 @@ describe('the root template (criterion 30)', () => {
       '<app-input>\n  <template shadowrootmode="|"><input id="campo"></template>\n</app-input>\n',
     );
     expect(labels(await tagService.provideCompletionItems?.(document, position, { triggerKind: 1 }, TOKEN))).not.toContain('campo');
+  });
+});
+
+describe('the root template is not an element: HTML stays silent there', () => {
+  /** The HTML service double wrapped the way the server wraps the real one, at the `|`. */
+  async function htmlAt(template: string): Promise<string[]> {
+    const offset = template.indexOf('|');
+    const text = template.replace('|', '');
+    const index = new WorkspaceIndex(memoryFs({ '/p/layouts/_layout.fud': LAYOUT, [PATH]: text }));
+    index.scan('/p');
+    const cached = new DocumentCache(index).get(PATH, 1, text);
+    const document = TextDocument.create(URI.file(PATH).toString(), 'fud', 1, text);
+    const html = silenceOwnedPositions({
+      name: 'html-double',
+      capabilities: { completionProvider: {} },
+      create: () => ({ provideCompletionItems: () => ({ isIncomplete: false, items: [{ label: 'accesskey' }] }) }),
+    }).create(fakeServiceContext({ [URI.file(PATH).toString()]: cached }));
+    return labels(await html.provideCompletionItems?.(document, document.positionAt(offset), { triggerKind: 1 }, TOKEN));
+  }
+
+  it('says nothing at a gap of the root template', async () => {
+    expect(await htmlAt('<app-input>\n  <template shadowrootmode="open" |><input></template>\n</app-input>\n')).toEqual([]);
+  });
+
+  it('and still answers on the elements inside it', async () => {
+    expect(await htmlAt('<app-input>\n  <template shadowrootmode="open"><input |></template>\n</app-input>\n')).toEqual([
+      'accesskey',
+    ]);
   });
 });

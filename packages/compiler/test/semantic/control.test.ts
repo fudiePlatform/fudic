@@ -544,31 +544,15 @@ describe('BUG-42 — the two markers, one meaning each (criterion 19)', () => {
     }
   });
 
-  it('FUD0603: radios of a control-component with no container', () => {
-    const source =
-      '<app-test><template shadowrootmode="open" formassociated>' +
-      '<input type="radio" control="@ctrl"><input type="radio" control="@ctrl"></template></app-test>';
-    const found = diags(source);
-    expect(found.map((d) => d.code)).toEqual(['FUD0603']);
-    expect(source.slice(found[0]!.span.start, found[0]!.span.end)).toBe('control="@ctrl"');
-  });
-
-  it('radios inside a <fieldset> or a role="radiogroup" are bridged', () => {
-    for (const open of ['<fieldset>', '<div role="radiogroup">']) {
-      const close = open === '<fieldset>' ? '</fieldset>' : '</div>';
-      const source =
-        `<app-test><template shadowrootmode="open" formassociated>${open}` +
-        `<input type="radio" control="@ctrl">${close}</template></app-test>`;
-      expect(codes(source)).toEqual([]);
+  it('the compiler chooses no field: loose radios or a dynamic id are the author’s business', () => {
+    // `FUD0603` and `FUD0604` are retired (decision 132, amended): with no bridge written by
+    // the author there is nothing to point at, and so nothing to report.
+    for (const body of [
+      '<input type="radio" control="@ctrl"><input type="radio" control="@ctrl">',
+      '<input id="@x" control="@ctrl">',
+    ]) {
+      expect(codes(`<app-test><template shadowrootmode="open" formassociated>${body}</template></app-test>`)).toEqual([]);
     }
-  });
-
-  it('FUD0604: the field of a control-component with a dynamic id', () => {
-    const source =
-      '<app-test><template shadowrootmode="open" formassociated><input id="@x" control="@ctrl"></template></app-test>';
-    const found = diags(source);
-    expect(found.map((d) => d.code)).toEqual(['FUD0604']);
-    expect(source.slice(found[0]!.span.start, found[0]!.span.end)).toBe('id="@x"');
   });
 
   it('FUD0605: a hand-written reference target that is dynamic or names no id of the template', () => {

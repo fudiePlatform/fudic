@@ -1,7 +1,7 @@
 # SDD-34 — Formularios en el compilador: `control`, control-componentes y accesibilidad
 
 > **Estado:** `Listo`
-> **Corregido por [BUG-42](./bugs/BUG-42-error-resumen-y-validez-en-la-vista.md)** en §3.3, §4.4, §4.5 y §4.9: `summary=` y `fields` (decisión 131), el puente `shadowrootreferencetarget` y el traslado de nombre y descripción al campo de un control-componente (decisión 132), `bindMessage` para un marcador fuera de él, y `FUD0600`–`FUD0605`.
+> **Corregido por [BUG-42](./bugs/BUG-42-error-resumen-y-validez-en-la-vista.md)** en §3.3, §4.4, §4.5 y §4.9: `summary=` y `fields` (decisión 131), el respaldo del puente `shadowrootreferencetarget`, que escribe el autor, y el traslado de nombre y descripción al campo de un control-componente (decisión 132), `bindMessage` para un marcador fuera de él, y `FUD0600`–`FUD0605` (`FUD0603`–`FUD0604` ya retirados).
 > **Paquetes:** `@fudic/compiler` (parser, semántica y emit del atributo `control`) ·
 > `@fudic/forms` (el punto de entrada `./dom` y `FudicControlElement`) · `@fudic/core` (la lista
 > `eager` del mapa de página) · `@fudic/vite` (el borrado de los validadores de servidor)
@@ -351,8 +351,9 @@ la nada. A partir de aquí:
 ### 4.5. `formassociated`: el marcador, la clase, y el JavaScript que sí se paga
 
 > **Nota (BUG-42, decisión 132).** `formassociated` es un marcador de fudic, no del estándar, y
-> fudic lo quiere **proponer**. Además de lo que dice este apartado, ahora decide el puente: el
-> compilador escribe `shadowrootreferencetarget` hacia el campo del control-componente.
+> fudic lo quiere **proponer**. El puente, `shadowrootreferencetarget`, es estándar y lo escribe
+> el autor en el mismo `<template>`; lo que añade `formassociated` es el respaldo sobre ese
+> elemento donde el navegador aún no tiene puente.
 
 **Decisión 111.** `<template shadowrootmode="open" formassociated>` marca el componente como
 **control-componente**. El marcador es de compilación: el navegador nunca lo ve —un atributo
@@ -532,9 +533,8 @@ schema en el emit sería duplicar el chequeo y quedarse corto.
 | `FUD0600` | `error=` empareja con un form o un grupo: su resumen se marca con `summary=` (decisión 131, [BUG-42](./bugs/BUG-42-error-resumen-y-validez-en-la-vista.md)). |
 | `FUD0601` | `summary=` empareja con un control: su mensaje se marca con `error=` (BUG-42). |
 | `FUD0602` | El elemento de un `summary=` no admite la lista que escribe el runtime (`<p>`, `<span>`, `<small>`, `<label>`, `<a>`, `<button>`, `<strong>`, `<em>`, `<b>`, `<i>`, `<h1>`–`<h6>`, `<legend>`) (BUG-42). |
-| `FUD0603` | En un control-componente, radios enlazados sin un `<fieldset>` ni un `role="radiogroup"` alrededor (decisión 132, BUG-42). |
-| `FUD0604` | En un control-componente, el campo lleva un `id` dinámico: el puente no puede apuntarle (BUG-42). |
-| `FUD0605` | Un `shadowrootreferencetarget` escrito a mano es dinámico o nombra un id que no está en la plantilla (BUG-42). |
+| `FUD0603`–`FUD0604` | Retirados: la decisión 132, corregida, deja que el autor escriba el puente y el compilador ya no elige campo (BUG-42). |
+| `FUD0605` | Un `shadowrootreferencetarget` es dinámico o nombra un id que no está en la plantilla (BUG-42). |
 | `FUD0606`–`FUD0619` | Reservados. |
 
 Ninguno de los cinco lanza: el emit anota el diagnóstico con su span, omite **ese** enlace y sigue

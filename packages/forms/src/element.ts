@@ -14,8 +14,8 @@
  * - **`delegatesFocus`** on its shadow root, without which a click on a `<label for>` outside
  *   the component moves the focus to the host and not to the `<input>` inside it. It carries
  *   the CLICK and the FOCUS, and nothing else: the input's NAME and DESCRIPTION do not cross a
- *   shadow boundary by focus. Those are carried by the bridge the compiler writes
- *   (`referenceTarget`) and by the relay below (BUG-42 §4.8).
+ *   shadow boundary by focus. Those are carried by the bridge the component's author writes
+ *   (`shadowrootreferencetarget`) and by the relay below (BUG-42 §4.8).
  *
  * It lives in `@fudic/forms` and not in `@fudic/core`, and that is a direction of dependency
  * rather than a filing decision: this base needs the type `Control<T>`, so `forms` depends on
@@ -61,9 +61,10 @@ export abstract class FudicControlElement extends FudicElement {
   protected control: Control<unknown> | null = null;
 
   /**
-   * The id of its FIELD — the element of its shadow root that carries `control=`, or the
-   * container of its radios. The emit writes it on the subclass (decision 132): it is where the
-   * bridge points and where the relay carries the name and the description.
+   * The id of its FIELD — the element its author named with `shadowrootreferencetarget`, or
+   * `null` when they wrote none. The emit copies it onto the subclass (decision 132): it is
+   * where the bridge points and where the relay carries the name and the description. No
+   * bridge, no relay.
    */
   static readonly field: string | null = null;
 

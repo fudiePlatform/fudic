@@ -47,11 +47,11 @@ export const formAssociatedPlacement: Analyzer = {
   name: 'form-associated-placement',
   run(input, report) {
     const root = rootTemplate(input.document);
-    // On the root template the marker is right, and it asks the compiler for a bridge to the
-    // field (decision 132): what cannot be bridged is reported with the same function the emit
-    // writes the bridge with (`FUD0603`–`FUD0605`).
+    // On the root template the marker is right, and the bridge its author wrote has to name an
+    // element of the template (decision 132): reported with the same function the emit reads
+    // the bridge with (`FUD0605`).
     if (root !== undefined) {
-      for (const problem of bridgeOf(root, input.source).problems) {
+      for (const problem of bridgeOf(root).problems) {
         report(errorDiag(problem.code, problem.message, problem.span));
       }
     }
