@@ -3,7 +3,7 @@
 > **BUG:** [BUG-42 — Los formularios de SDD-34 no se pueden terminar desde la vista](./BUG-42-error-resumen-y-validez-en-la-vista.md)
 > **Paquetes:** `@fudic/forms` · `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/example-basic`
 > **Rama:** `bug-42-formularios-desde-la-vista`, creada desde `bug-41-validacion-y-hueco-de-error` y trabajada en el mismo worktree (`.claude/worktrees/bug-41-validacion-y-hueco-de-error`), por indicación de Pedro: el BUG sale de la revisión de BUG-41, y dos ramas permiten seguir cada uno por separado
-> **Progreso:** 24 / 27
+> **Progreso:** 25 / 27
 
 **Todo se cierra aquí.** Por decisión de Pedro no hay otro BUG ni otro SDD: el resumen con varios
 mensajes, el resumen con los errores de campo y la accesibilidad de los controles envueltos en
@@ -129,7 +129,7 @@ líneas que los hacen pasar.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 26 | 21–25 | **Cobertura.** `forms`, `language-core` y `language-server` en 100 / 100 / 100 / 100 sin `ignore`; los ficheros nuevos (`validity.ts`, `summary-markup.ts`, `relay.ts`, `dom/summary.ts`, `dom/bind-message.ts`, `template-attrs.ts`) nacen al 100 %. `compiler` no baja del suelo anotado en *Antes de empezar*. Criterio 42 | — | — |
+| [x] | 26 | 21–25 | **Cobertura.** `forms`, `language-core` y `language-server` en 100 / 100 / 100 / 100 sin `ignore`; los ficheros nuevos (`validity.ts`, `summary-markup.ts`, `relay.ts`, `dom/summary.ts`, `dom/bind-message.ts`, `template-attrs.ts`) nacen al 100 %. `compiler` no baja del suelo anotado en *Antes de empezar*. Criterio 42 | — | — |
 | [ ] | 27 | 26 | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build` y el e2e completo de `examples/basic` (los tres proyectos, sin un `vite preview` vivo en el 4173). BUG-42 a `Hecho` en [INDEX.md](./INDEX.md) (tabla y registro) y en el registro de [docs/sdd/INDEX.md](../INDEX.md). Anotar que BUG-42 corrige SDD-34 §3.3, §4.4, §4.5 y §4.9, SDD-33 §3 y §4.5, y BUG-41 §3.1, §3.3, §3.4, §4.3 y su criterio 19. | — | [INDEX.md](./INDEX.md) · [../INDEX.md](../INDEX.md) · `BUG-41-el-error-que-no-se-va.md` · `SDD-33-formularios-reactivos.md` · `SDD-34-forms-compilador.md` |
 
 ---
@@ -220,3 +220,8 @@ líneas que los hacen pasar.
   apuntar fuera, y no hay puente de salida en ningún estándar (BUG §2.10, §4.10).
 - **Por qué no hay bombilla para marcadores.** Un marcador es opcional por diseño (decisión 130).
   Una bombilla lo propondría como si faltara algo (BUG §4.1).
+- **Cobertura al cerrar** (2026-09-27): `forms`, `language-core` y `language-server` en
+  100 / 100 / 100 / 100; `compiler` en 99,38 / 98,53 / 99,55 / 99,78, por encima de su suelo.
+- **Cierre, lo hecho y lo pendiente.** `pnpm typecheck`, `pnpm test`, `pnpm build` y el e2e completo
+  (212 / 212, los tres proyectos) en verde; SDD-33, SDD-34 y BUG-41 anotados. Queda para después de
+  la tarea 20 (Pedro): pasar BUG-42 a `Hecho` en los dos `INDEX.md`, tabla y registro.

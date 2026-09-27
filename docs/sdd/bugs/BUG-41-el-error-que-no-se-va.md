@@ -1,6 +1,7 @@
 # BUG-41 · Un error de formulario que no se va al corregirlo, y un hueco que el autor no puede colocar
 
 > **Estado:** `Hecho`
+> **Corregido por [BUG-42](./BUG-42-error-resumen-y-validez-en-la-vista.md)** en §3.1, §3.3, §3.4 (`FUD0597` se estrecha a los componentes que no son `formassociated`), §4.3 (un resumen se marca con `summary=`, no con `error=`) y en su criterio 19 (la mitad de editor de `error`, que ahora tiene paridad con `control`).
 > **Corrige:** [SDD-33](../SDD-33-formularios-reactivos.md) §4.5 ·
 > [SDD-34](../SDD-34-forms-compilador.md) §4.2, §4.3, §4.4, §7 (decisión 113)
 > **Paquetes:** `@fudic/forms` · `@fudic/compiler` · `@fudic/language-core` · `@fudic/example-basic`

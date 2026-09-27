@@ -1,6 +1,7 @@
 # SDD-34 — Formularios en el compilador: `control`, control-componentes y accesibilidad
 
 > **Estado:** `Listo`
+> **Corregido por [BUG-42](./bugs/BUG-42-error-resumen-y-validez-en-la-vista.md)** en §3.3, §4.4, §4.5 y §4.9: `summary=` y `fields` (decisión 131), el puente `shadowrootreferencetarget` y el traslado de nombre y descripción al campo de un control-componente (decisión 132), `bindMessage` para un marcador fuera de él, y `FUD0600`–`FUD0605`.
 > **Paquetes:** `@fudic/compiler` (parser, semántica y emit del atributo `control`) ·
 > `@fudic/forms` (el punto de entrada `./dom` y `FudicControlElement`) · `@fudic/core` (la lista
 > `eager` del mapa de página) · `@fudic/vite` (el borrado de los validadores de servidor)

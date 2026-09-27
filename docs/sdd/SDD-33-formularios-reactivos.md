@@ -1,6 +1,7 @@
 # SDD-33 — Formularios reactivos: el núcleo (`@fudic/forms`)
 
 > **Estado:** `Hecho`
+> **Corregido por [BUG-42](./bugs/BUG-42-error-resumen-y-validez-en-la-vista.md)** en §3 y §4.5: la validez (`valid()` · `$valid()` · `Validity`), `group()` con opciones, un resumen que dice todas sus reglas (`$messages()` · `$issues()` · `$submitted()`) y que se publica cuando valida un campo de debajo, no solo al enviar.
 > **Paquete:** `@fudic/forms` — **paquete nuevo**, punto de entrada `.` (el núcleo). El punto de
 > entrada `./dom` y la clase base de un control-componente son de [SDD-34](./SDD-34-forms-compilador.md).
 > **Depende de:** 14 (`signal`), 31 (`computed`, `effect`, `untrack`, `subscribe` y la regla de
