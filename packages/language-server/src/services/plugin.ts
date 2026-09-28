@@ -879,11 +879,17 @@ function completions(
   // Inside `@code` a plain Ctrl+Space with nothing typed is a question too: «what goes here?».
   // In `@server` the answer is its three exports, and a developer who does not yet know their
   // names cannot ask for them by typing the first letter of one.
-  const named =
-    word ??
-    (directive === undefined && scopeAt(cached, offset) === 'code-block'
-      ? { span: span(offset, offset), text: '' }
-      : undefined);
+  //
+  // Only where a STATEMENT starts, though — first thing on its line. Every `@code` snippet is a
+  // whole declaration, and offering one after `ctx.` or inside a `return { }` put `layout`,
+  // `load` and `paths` on top of the members and the props that position is actually about.
+  const inCode = directive === undefined && scopeAt(cached, offset) === 'code-block';
+  const empty = { span: span(offset, offset), text: '' };
+  const named = inCode
+    ? statementStart(cached.source, (word ?? empty).span.start)
+      ? (word ?? empty)
+      : undefined
+    : word;
   if (named === undefined && text === undefined) return emmet;
 
   const ours = [
@@ -1321,6 +1327,11 @@ function relList(cached: CachedDocument, document: TextDocument, link: LinkValue
       textEdit: { range, newText: item.rel },
     })),
   );
+}
+
+/** Whether `at` is the first non-blank position of its line — where a declaration starts. */
+function statementStart(source: string, at: number): boolean {
+  return /^[ \t]*$/u.test(source.slice(source.lastIndexOf('\n', at - 1) + 1, at));
 }
 
 /** The snippets that apply here, filtered by how they are typed. */

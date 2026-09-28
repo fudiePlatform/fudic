@@ -27,7 +27,13 @@ import { emitCssVirtuals } from './css.js';
 import { emitClientVirtual, type TemplateJs } from './emit-client.js';
 import type { FragmentAst } from './template/context.js';
 import { emitServerVirtual, type LayoutContract } from './emit-server.js';
-import { exportsLoad, findLayoutResolver } from './layout-resolver.js';
+import {
+  exportsLoad,
+  exportsLoadInText,
+  findLayoutResolver,
+  findLayoutResolverInText,
+  type LayoutResolver,
+} from './layout-resolver.js';
 import { routeParams } from './paths.js';
 import { findPropsCall, type PropsCall } from './props.js';
 import type { FileRegistry, VirtualFile } from './types.js';
@@ -119,15 +125,23 @@ function layoutContract(
 ): LayoutContract | undefined {
   if (document.type !== 'route-document' || document.layoutHref === '') return undefined;
   const regions = (js.server ?? []).map((id) => statementsOf(js.result, id));
+  const contract = (resolver: LayoutResolver, hasLoad: boolean): LayoutContract => ({
+    href: document.layoutHref,
+    resolver,
+    params: routeParams(fileName),
+    hasLoad,
+  });
   for (const statements of regions) {
     const resolver = findLayoutResolver(source, statements, (s, e) => js.result.mapSpan(s, e));
+    if (resolver !== undefined) return contract(resolver, regions.some(exportsLoad));
+  }
+  // No AST answered — most often because the author is mid-keystroke (`ctx.`) and the region
+  // does not parse. The text still says where the resolver is.
+  const spans = partitionCode(document.code).server;
+  for (const region of spans) {
+    const resolver = findLayoutResolverInText(source, region);
     if (resolver === undefined) continue;
-    return {
-      href: document.layoutHref,
-      resolver,
-      params: routeParams(fileName),
-      hasLoad: regions.some(exportsLoad),
-    };
+    return contract(resolver, spans.some((s) => exportsLoadInText(source, s)));
   }
   return undefined;
 }

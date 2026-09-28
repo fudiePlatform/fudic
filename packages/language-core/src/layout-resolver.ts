@@ -75,6 +75,61 @@ export function exportsLoad(statements: readonly OxcNode[]): boolean {
 }
 
 /**
+ * `export [async] function layout(<params>)` or `export const layout = [async] (<params>)`,
+ * read off the TEXT. Group 1 is `async` when present, group 2 the parameter list.
+ */
+const LAYOUT_TEXT =
+  /\bexport\s+(?:(async)\s+function\s+layout|function\s+layout|const\s+layout\s*=\s*(?:async\s*)?)\s*\(([^()]*)\)/u;
+
+/** `export [async] function load` / `export const load`. */
+const LOAD_TEXT = /\bexport\s+(?:async\s+)?function\s+load\b|\bexport\s+const\s+load\b/u;
+
+/** A parameter written bare: a name, with nothing after it. */
+const BARE_PARAM = /^\s*[A-Za-z_$][\w$]*\s*$/u;
+
+/**
+ * The same annotation points, read off the region's TEXT — for when Oxc has no AST to give.
+ *
+ * The moment the author types `ctx.` the statement is unfinished, the region stops parsing,
+ * and the AST path finds no resolver: the types vanish exactly when `ctx.` asks what `ctx`
+ * is. An editor is broken code most of the time, so the answer cannot depend on the file
+ * parsing (SDD-23 §4.6). The scan is shallow on purpose — the parameter list up to its `)`,
+ * and only bare names get a type — and it runs only when the AST path found nothing.
+ */
+export function findLayoutResolverInText(source: string, region: Span): LayoutResolver | undefined {
+  const text = source.slice(region.start, region.end);
+  const match = LAYOUT_TEXT.exec(text);
+  if (match === null) return undefined;
+  const list = match[2] as string;
+  if (list.trim() === '') return undefined;
+
+  // The match ends just past `)`: `(` + list + `)` are its last `list.length + 2` characters.
+  const open = region.start + match.index + match[0].length - list.length - 2;
+  const params = list.split(',');
+  const at = (index: number): number | undefined => {
+    const param = params[index];
+    if (param === undefined || !BARE_PARAM.test(param)) return undefined;
+    const before = params.slice(0, index).reduce((n, p) => n + p.length + 1, 0);
+    return open + 1 + before + param.trimEnd().length;
+  };
+  const close = open + 1 + list.length;
+  const typed = /^\s*:/u.test(source.slice(close + 1, region.end));
+  const ctxAt = at(0);
+  const dataAt = at(1);
+  return {
+    async: match[1] !== undefined || /=\s*async\b/u.test(match[0]),
+    ...(typed ? {} : { annotateAt: close + 1 }),
+    ...(ctxAt === undefined ? {} : { ctxAt }),
+    ...(dataAt === undefined ? {} : { dataAt }),
+  };
+}
+
+/** Whether a region's TEXT exports `load` — the companion of `findLayoutResolverInText`. */
+export function exportsLoadInText(source: string, region: Span): boolean {
+  return LOAD_TEXT.test(source.slice(region.start, region.end));
+}
+
+/**
  * The function exported under `name`. Both declaration shapes count — the function statement
  * and the arrow — since both are how people write it.
  */
