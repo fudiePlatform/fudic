@@ -103,6 +103,15 @@ papeles, ruta, componente y layout.
 
 Ni `@server`, ni `@client`, ni lógica suelta en la zona neutra: `FUD0700`.
 
+> **Corregido por [BUG-44](./bugs/BUG-44-las-props-del-layout-a-ciegas.md) §3.4.** El
+> `<body data-theme="@theme">` de este ejemplo ya no vale: las props de un layout son
+> **bindings del head** —`<html>`, `<head>` y lo que hay dentro— y leer una en el `<body>`,
+> atributos del propio `<body>` incluidos, es `FUD0704`. El `<body>` de un layout escribe su
+> marcado, `@RenderBody()` y `@RenderSection()`, y nada más: control de flujo, una expresión,
+> un `@{ }` o un snippet ahí son `FUD0705`. Lo que cambia de una ruta a otra en el body lo
+> escribe la ruta, en un `@section`. El ejemplo correcto es `<html lang="@culture"
+> data-theme="@theme">`.
+
 **Esto retira `FUD0437`** —«un layout no tiene `@code`», decisión 82— que decía justo lo
 contrario. Lo que queda de aquella regla es más estrecho y cambia de dueño: distinguir una
 declaración de props de una sentencia suelta es una pregunta sobre JS, no sobre estructura,
@@ -135,6 +144,13 @@ export type LayoutResolver<D = unknown, P = unknown> = (
 
 Recibe `data` porque si no solo puede leer del contexto y se queda a medias: la culture puede
 salir tanto de una cabecera como de la fila que `load` acaba de traer.
+
+> **Corregido por [BUG-44](./bugs/BUG-44-las-props-del-layout-a-ciegas.md) §3.1.** En el editor,
+> los parámetros que el autor deja sin tipo los tipa la proyección: `ctx` es
+> `$LayoutContext<P> & $LayoutInject` —`origin`, `url`, `params`, `mode`, `nonce` e `inject`,
+> con `P` los params leídos del nombre del fichero— y `data` es
+> `Awaited<ReturnType<typeof load>>`, o `Record<string, never>` sin `load`. Se escribe
+> `layout(ctx, data)`, sin `unknown`: un `ctx: unknown` es del autor y la proyección lo respeta.
 
 ### 3.3. El cable
 
@@ -184,6 +200,14 @@ anclan en un diagnóstico propio sino en el contrato:
 | Hecho | Título | Escribe |
 |---|---|---|
 | El layout declara props requeridas que la ruta no resuelve | `Completar las props requeridas del layout` | El `export async function layout(ctx, data)` entero si no existe, o los campos que faltan en su `return`, con un valor **del tipo de cada prop** |
+
+> **Completado por [BUG-44](./bugs/BUG-44-las-props-del-layout-a-ciegas.md) §3.2–§3.3.** La
+> bombilla escribe `export function layout(ctx, data)` sin tipos en los parámetros. Además:
+> en el layout, un `@` ofrece sus props, solo fuera del `<body>` y sin `@()` ni `data`; en la
+> ruta, el `return { }` del resolver ofrece las props del layout. Snippets `layout` y `paths`
+> dentro de `@server`, y `@code` y `props` en el layout; cada snippet de `@code` sale solo en
+> su zona y donde empieza una declaración. `@RenderHead` se ofrece en el head, y
+> `@RenderBody` / `@RenderSection` fuera de él.
 
 ---
 
@@ -248,6 +272,13 @@ necesita — `<body data-theme="@theme">`.
 `export function* layout(data, io, route, props)`, así que `data` y las props ya están resueltas
 ahí y todavía no se ha emitido un byte. No es una restricción de streaming: era un atajo.
 
+> **Completado por [BUG-44](./bugs/BUG-44-las-props-del-layout-a-ciegas.md) §3.4.** El mismo
+> atajo seguía en el `<head>` del layout: sus elementos salían literales, `<title>` aparte, y
+> `<meta property="article:section" content="@seccion">` llegaba al navegador con el texto
+> `@seccion`. Un elemento del head cuyos atributos llevan `@` pasa ahora por la misma maquinaria
+> que el `<html>`. Los atributos del `<body>` siguen emitiéndose, pero leer ahí una prop es
+> `FUD0704`.
+
 ### 4.5. Los tres orígenes producen el mismo HTML
 
 Es la propiedad que define este SDD, y la que decide la forma de §3.2 y §3.3.
@@ -299,6 +330,11 @@ que el autor dice de su función.
 Un valor sin forma obvia se escribe `null as unknown as <el tipo>` y no `@()`: el `return` de un
 resolver es **código**, no un valor de atributo, y `@()` ahí no es gramática de nada.
 
+> **Corregido por [BUG-44](./bugs/BUG-44-las-props-del-layout-a-ciegas.md) §2.3.** El tipo de
+> retorno ya no es la unión `$LayoutProps | Promise<$LayoutProps>`: como tipo contextual del
+> `return { }`, la unión hacía que el autocompletado listara `then`, `catch` y `finally` junto a
+> las props. Es `$LayoutProps` en una función normal y `Promise<$LayoutProps>` en una `async`.
+
 ### 4.8. ~~Layouts anidados~~ — REVOCADA
 
 > **REVOCADA por [BUG-38](./bugs/BUG-38-un-layout-dentro-de-otro.md).** Un layout no puede
@@ -339,7 +375,9 @@ span de la cadena que pertenece al fichero que se está emitiendo, y el mismo si
 | `FUD0701` | `error` | Una prop de layout recibe un valor reactivo (`signal` / `computed`). Un layout no tiene mitad de cliente que pueda repintarlo. |
 | `FUD0702` | `error` | La ruta no resuelve una prop **requerida** del layout — porque falta en el `return` de `layout(ctx, data)`, o porque la ruta no exporta esa función. Sobre el `<link rel="layout">`. Es el que ancla la bombilla. |
 | `FUD0703` | — | **RETIRADO por [BUG-38](./bugs/BUG-38-un-layout-dentro-de-otro.md).** Existía porque las props de layout de un render eran **un** espacio de nombres compartido por los eslabones de una cadena, así que dos podían pedirle a la ruta un nombre que tenía que ser de dos tipos. Un layout no tiene con quién discrepar. El código no se reutiliza. |
-| `0704`–`0719` | | Reservados. |
+| `FUD0704` | `error` | Una prop de layout se lee en el `<body>`, atributos del propio `<body>` incluidos. Sobre el nombre. Lo añade [BUG-44](./bugs/BUG-44-las-props-del-layout-a-ciegas.md). |
+| `FUD0705` | `error` | El `<body>` de un layout escribe algo que no es marcado, `@RenderBody()` ni `@RenderSection()`: control de flujo, una expresión que no lee ninguna prop, un `@{ }`, un snippet. Sobre su `@palabra`, o sobre la expresión entera. Lo añade [BUG-44](./bugs/BUG-44-las-props-del-layout-a-ciegas.md). |
+| `0706`–`0719` | | Reservados. |
 
 ---
 
@@ -391,6 +429,13 @@ Tests en `packages/compiler/test/emit/` (1–7), `packages/vite/test/` (8–11),
     tiene valor obvio—, y el fichero resultante **no tiene errores de tipos nuevos**.
 14. Si la ruta no exporta `layout` en absoluto, la acción escribe la función entera con su `return`
     completo, dentro del `@server` que ya existe — y lo crea si no lo hay.
+
+> **Corregido por [BUG-44](./bugs/BUG-44-las-props-del-layout-a-ciegas.md).** §6.13: lo que no
+> tiene valor obvio se escribe `null as unknown as <el tipo>`, como ya dice §4.7, y no `@()`.
+> §6.12–§6.14: la función que escribe la bombilla es `layout(ctx, data)`, sin tipos. §6.15: el
+> blog usa `_layout-articulo.fud`, que **no** es un layout anidado —BUG-38 lo hizo imposible—
+> sino un segundo layout de una sola página; su `seccion` va al head como
+> `<meta property="article:section">`, y la miga de pan es la `@section nav` de la ruta.
 
 **La evidencia, en `examples/basic`**
 

@@ -8,7 +8,7 @@
 > **Forma de trabajo, por indicación de Pedro:** todo implementado primero y probado por él en el
 > editor, sin tests ni documentación por el camino. Los tests los hace otra sesión a partir de la
 > tarea 14.
-> **Progreso:** 12 / 14
+> **Progreso:** 14 / 14
 
 ---
 
@@ -49,7 +49,7 @@
 
 ## Fase 5 — Tests y cierre
 
-- [ ] 13. **Documentación de cierre.**
+- [x] 13. **Documentación de cierre.**
   - [SDD-40](../SDD-40-props-de-layout.md): anotación cruzada en §3.2, §3.5, §4.7 y §6.12–§6.15.
     `ctx` y `data` con tipo, retorno sin unión, el `@()` de §6.13 es `null as unknown as T` y
     `FUD0704` en el catálogo. §6.15 sigue llamando «anidado» a `_layout-articulo.fud`, cosa que
@@ -63,7 +63,7 @@
   - `INDEX.md` de bugs y el maestro: tabla y registro.
   - Sin tocar los ficheros de la plantilla del CLI, salvo que un test lo pida.
 
-- [ ] 14. **Los tests.** Cada criterio del BUG con su test, `pnpm typecheck`, `pnpm test` y
+- [x] 14. **Los tests.** Cada criterio del BUG con su test, `pnpm typecheck`, `pnpm test` y
   `pnpm build` en verde, y la cobertura. Primero hay que arreglar los tests existentes que este
   BUG rompe a propósito, **ajustando la expectativa y nunca el código**:
   - `language-core/test/layout-resolver.test.ts`: `ANNOTATION` era
@@ -137,3 +137,25 @@
   **Cobertura:** mide el suelo de `compiler`, `transport` y `vite` en `main` antes de empezar
   (`pnpm --filter <pkg> coverage`), y compara contra ese suelo. `language-core` y
   `language-server` al 100/100/100/100.
+
+  **Cómo se cerró** (`64c6dcc`, `e48701a`, `5784134`). Suelo en `main`: `compiler`
+  99,37 / 98,53 / 99,55 / 99,77 y `vite` 96,88 / 92,52 / 97,5 / 96,85 (statements / branches /
+  functions / lines). Al cerrar: `compiler` 99,39 / 98,54 / 99,63 / 99,78, `vite` igual,
+  `transport` sin tocar; `language-core` y `language-server` al 100 en las cuatro.
+
+  Los tests sacaron tres fallos de verdad, y Pedro decidió arreglarlos aquí y no en otro bug
+  (BUG §1.9–§1.11, §3.4–§3.5):
+  - El build no veía los atributos del `<body>`: el lote del emit no los registraba.
+  - Un bucle del body que sombreaba una prop daba un `FUD0704` falso. El fondo lo zanjó Pedro:
+    el `<body>` de un layout solo escribe marcado, `@RenderBody()` y `@RenderSection()`. Nace
+    `FUD0705`, el analizador pasa a llamarse `layout-body` y su núcleo, `layoutBodyDiagnostics`,
+    recorre el árbol del body y no los fragmentos. La asimetría del `@if` desaparece. El editor
+    ofrece `@RenderHead` solo en el head y los dos huecos fuera.
+  - El head del layout pintaba `@seccion` literal: ahora sus atributos interpolan como el
+    `<html>`.
+
+  Tests que cambiaron de expectativa porque leían una prop en el `<body>` de un layout, y ahora
+  la leen en el head: `compiler/test/emit/layout-props.test.ts` (§6.4–§6.5),
+  `vite/test/build-layout-props.test.ts`, el fixture `_layout.fud` de `language-core` y el layout
+  de `layout-props-action.test.ts`. El snapshot de `cli` recoge el `$LayoutContext` global. La
+  cabecera de `@foreach` ya no es `FUD0704`: el `@foreach` entero es `FUD0705`.

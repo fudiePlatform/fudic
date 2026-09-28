@@ -1,13 +1,14 @@
 # BUG-44 · Las props de un layout se escriben a ciegas: `ctx` sin tipo, ni Ctrl+Space en el layout ni en la ruta, y una prop que se colaba en el `<body>`
 
-> **Estado:** `En curso` — implementado y probado a mano por Pedro en el editor; faltan los tests
-> y el cierre (ver [BUG-44-Task.md](./BUG-44-Task.md), fase 5). Redactado el 2026-09-28.
-> **Corrige:** [SDD-40](../SDD-40-props-de-layout.md) §3.2, §3.5, §4.7 y §6.12–§6.15 ·
-> [SDD-28](../SDD-28-snippets.md) (catálogo de snippets de `@code`) ·
-> [SDD-23](../SDD-23-emisor-ts-virtual.md) §4.2 (`data` en un layout)
+> **Estado:** `Hecho` — implementado y probado a mano por Pedro en el editor, y con sus tests
+> (ver [BUG-44-Task.md](./BUG-44-Task.md)). Redactado y cerrado el 2026-09-28.
+> **Corrige:** [SDD-40](../SDD-40-props-de-layout.md) §3.1, §3.2, §3.5, §4.4, §4.7 y §6.12–§6.15 ·
+> [SDD-28](../SDD-28-snippets.md) (catálogo de snippets de `@code` y de los `@Render*`) ·
+> [SDD-23](../SDD-23-emisor-ts-virtual.md) §4.2 (`data` en un layout) ·
+> [SDD-12](../SDD-12-semantica.md) (catálogo)
 > **Paquetes:** `@fudic/language-core` · `@fudic/language-server` · `@fudic/compiler` ·
-> `@fudic/vite` (solo comentario) · `fudic-vscode` (empaquetado) · `examples/basic`
-> **Rango:** `FUD0704` (del rango `FUD0700`–`FUD0719` de SDD-40)
+> `@fudic/vite` (tests) · `fudic-vscode` (empaquetado) · `examples/basic`
+> **Rango:** `FUD0704`–`FUD0705` (del rango `FUD0700`–`FUD0719` de SDD-40)
 
 ---
 
@@ -35,6 +36,16 @@ Y, durante la prueba en el editor:
 8. En cuanto se escribía `ctx.`, el editor **perdía los tipos**: la línea a medias rompía el
    parseo de `@server`.
 
+Y al escribir los tests:
+
+9. El build **no avisaba** de una prop leída en un atributo del propio `<body>`
+   (`<body data-x="@culture">`); el editor sí.
+10. Un bucle del body que declaraba una variable con el nombre de una prop daba un `FUD0704`
+    falso. Pedro zanjó el fondo: en el `<body>` de un layout solo caben `@RenderBody()` y
+    `@RenderSection()`. Ni control de flujo, ni `@RenderHead()`, que va en el head.
+11. El HTML del blog llevaba `<meta property="article:section" content="@seccion">`, **literal**:
+    el head de un layout no interpolaba sus atributos. La prop llegaba, pero no se pintaba.
+
 ## 2. Causa raíz
 
 - **§2.1.** La proyección de SDD-40 solo añadía a `layout(ctx, data)` el **tipo de retorno**. Los
@@ -54,6 +65,14 @@ Y, durante la prueba en el editor:
   zona.
 - **§2.7.** El resolver se localizaba **solo por el AST**. Con la región sin parsear no había
   resolver, y sin resolver no había tipos.
+- **§2.8.** El emit del layout registraba en su lote de Oxc los atributos de `<html>` y los hijos
+  del `<body>`, pero no los atributos del `<body>`: la regla no tenía AST que leer ahí.
+- **§2.9.** La regla leía las referencias libres de todos los fragmentos del body como si fueran
+  uno, y un bucle abre y cierra su ámbito dentro de su propio fragmento. Pero el fondo era otro:
+  nada decía qué puede escribir el `<body>` de un layout.
+- **§2.10.** `writeHeadElements` escribe cada elemento del head **tal cual está en el fuente**,
+  salvo el `<title>`. SDD-40 §4.4 arregló el `<html>` y el `<body>`, y el resto del head se quedó
+  con el mismo atajo.
 
 ## 3. Qué cambia
 
@@ -113,25 +132,46 @@ export function layout(ctx: $LayoutContext<'slug'> & $LayoutInject, data: Awaite
 - Se ofrecen **solo donde empieza una declaración**, lo primero de su línea, incluido Ctrl+Space
   sin nada escrito. Detrás de `ctx.` o dentro de `return { }` no salen.
 
-### 3.4. `FUD0704` — una prop de layout leída en el `<body>` — `compiler`
+### 3.4. El `<body>` de un layout: `FUD0704` y `FUD0705` — `compiler` · `language-server`
 
-- Error. Salta sobre el nombre, en cualquier lectura dentro del `<body>`, incluidos sus propios
-  atributos. En `<html>`, en `<head>` y en todo lo que hay dentro del head está permitida.
-- Se detecta por **referencias libres**, no por texto: `@(post.seccion)` lee `post`.
-- Una sola regla con dos llamadores. El analizador semántico `layout-prop-in-body` la sirve al
-  editor. El emit del layout llama al mismo núcleo, `propReadsInBody`, porque el build lee de ahí
-  los diagnósticos de un layout.
-- **Asimetría conocida:** el servidor de lenguaje registra en su lote las interpolaciones, los
-  valores de atributo y las cabeceras de `@foreach`/`@for`, pero no las condiciones de `@if` ni el
-  `@{ }`. Un `@if (seccion)` en el body lo diagnostica el build y no el editor.
+La regla, en palabras de Pedro: **en el `<body>` de un layout solo se escriben `@RenderBody()` y
+`@RenderSection()`**, además del marcado. Lo que cambia de una ruta a otra lo escribe la ruta, en
+un `@section`.
 
-### 3.5. El ejemplo — `examples/basic`
+- **`FUD0704`**, error: una prop de layout leída en el `<body>`, atributos del propio `<body>`
+  incluidos. Salta sobre el nombre. Se detecta por **referencias libres**, no por texto: un
+  nombre que declara una lambda es suyo, y un miembro que se llama igual no es la prop.
+- **`FUD0705`**, error: cualquier otra construcción en el `<body>`. Control de flujo (`@if`,
+  `@foreach`, `@for`, `@while`, `@switch`), un `@{ }`, un `@render` o un `@snippet`, sobre su
+  `@palabra` y sin mirar dentro. Una expresión que no lee ninguna prop (`@(post.seccion)`), sobre
+  la expresión entera. `@RenderHead()` y `@section` en el body no pasan por aquí: ya tienen su
+  diagnóstico (`FUD0431`, `FUD0427`).
+- En `<html>`, en `<head>` y en todo lo que hay dentro del head, las props se leen libremente.
+- **Una sola regla con dos llamadores.** El núcleo es `layoutBodyDiagnostics`, que recorre el
+  árbol del `<body>` y pide el AST de cada expresión. El analizador semántico `layout-body` lo
+  sirve al editor con el lote del servidor de lenguaje, y el emit del layout con el suyo. El lote
+  del emit registra ahora también los atributos del `<body>` (§2.8). Como la regla recorre el
+  árbol y no los fragmentos del lote, la asimetría del `@if` que había (el build lo veía y el
+  editor no) desaparece: el `@if` es `FUD0705` en los dos, por lo que es y no por lo que lee.
+- **El editor lo acompaña:** `@RenderHead` solo se ofrece en el head, y `@RenderBody` y
+  `@RenderSection` fuera de él. El control de flujo ya no se ofrecía en un layout.
+
+### 3.5. El head del layout interpola sus atributos — `compiler`
+
+Un elemento del head cuyos atributos llevan `@` pasa por la misma maquinaria de atributos que el
+`<html>` (SDD-40 §4.4): escapado igual, y omitido si el valor es nulo (decisión 21). Un elemento
+sin `@` sigue saliendo tal cual. Solo en el head **del layout**: el de una ruta o una página no
+cambia (§4).
+
+### 3.6. El ejemplo — `examples/basic`
 
 - `blog/[slug].fud`: `layout(ctx, data)` sin `unknown`. La miga de pan pasa a su
   `@section nav`.
 - `_layout-articulo.fud`: `seccion` deja el `<body>` y va al head, como
-  `<meta property="article:section" content="@seccion">`. Sigue siendo la prop requerida que
-  enseña la bombilla.
+  `<meta property="article:section" content="@seccion">`, que ahora sí sale con su valor
+  (§3.5). Sigue siendo la prop requerida que enseña la bombilla.
+- Un e2e comprueba en las tres formas (preview, dev y build sin SW) que el blog lleva su `<meta>`
+  con `Blog` y la miga fuera del `<main>`.
 
 ## 4. Fuera de alcance
 
@@ -141,7 +181,12 @@ export function layout(ctx: $LayoutContext<'slug'> & $LayoutInject, data: Awaite
   `load`. Queda propuesto que cuente como uso de inyección, pendiente de que Pedro lo decida.
 - **`nonce` y `mode` en `$LayoutContext`.** Son fontanería del framework. Se quedan hasta que
   Pedro decida.
-- **`@if` / `@{ }` en el editor para `FUD0704`:** §3.4.
+- **Atributos con `@` en el head de una ruta o de una página.** Siguen saliendo literales, como
+  antes de este bug: §3.5 lo arregla solo en el layout, que es donde se leen sus props. En una
+  ruta, `<meta content="@data.x">` en su `<head>` es el mismo atajo, pendiente de que Pedro
+  decida si se extiende.
+- **Un `<style>` en el `<body>` de un layout.** Su contenido es CSS y la regla de §3.4 no lo
+  mira: un `@prop` dentro de un `<style>` del body no se diagnostica.
 
 ## 5. Criterios de aceptación
 
@@ -155,12 +200,14 @@ export function layout(ctx: $LayoutContext<'slug'> & $LayoutInject, data: Awaite
 4. En `return { | }` del resolver se ofrecen las props del layout, y no `then`/`catch`/`finally`.
 5. En un layout, `<html lang="@|">` ofrece solo sus props: ni `@data` ni `@()`. En el `<body>`, ni
    eso.
-6. Una prop de layout leída en el `<body>` es `FUD0704` en el build (`vite`, `fudic check`) y en el
-   editor. En `<html>` y en el head no lo es.
+6. Una prop de layout leída en el `<body>`, atributos del `<body>` incluidos, es `FUD0704` en el
+   build (`vite`, `fudic check`) y en el editor. En `<html>` y en el head no lo es. Cualquier
+   otra construcción en el `<body>` que no sea `@RenderBody()` ni `@RenderSection()` es
+   `FUD0705`, en los dos. El editor ofrece `@RenderHead` solo en el head y los dos huecos fuera.
 7. Dentro de `@server`, Ctrl+Space al principio de línea ofrece `load`, `paths` y `layout`, y no
    `@client`/`@server`/`props`. En la zona neutra es al revés. Detrás de `ctx.` no sale ninguno.
 8. La bombilla escribe `layout(ctx, data)` sin `unknown`.
-9. `examples/basic` compila, y el HTML del blog lleva su `<meta property="article:section">` y
-   la miga dentro de la ruta.
+9. `examples/basic` compila, y el HTML del blog lleva su `<meta property="article:section"
+   content="Blog">` —interpolado, no `@seccion`— y la miga dentro de la ruta.
 10. Cobertura: lo nuevo al 100 % en las cuatro métricas. `@fudic/compiler` y `@fudic/vite` no
     bajan de su suelo.
