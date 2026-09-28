@@ -21,6 +21,23 @@ import { VirtualWriter } from './writer.js';
 /** What the route's `layout(ctx, data)` is checked against (SDD-40 §4.7). */
 const LAYOUT_PROPS = '$LayoutProps';
 
+/**
+ * The half of the resolver's `ctx` that comes from dependency injection: `inject`, and only
+ * `inject`. A culture may come out of a service, so the resolver may ask for one; it has no
+ * business PUBLISHING anything, since what it resolves are bindings of the head and never
+ * reach the browser as state.
+ *
+ * Typed off `@fudic/di` by an `import()` type and not by an import statement, and here rather
+ * than in the globals: a project without that package gets an unresolved type — `inject`
+ * degrades to answering `unknown` — reported on scaffolding nobody can see, instead of an
+ * error in a file every `.fud` shares.
+ */
+const LAYOUT_INJECT_TYPE =
+  `type $LayoutInject = {\n` +
+  `  inject<T>(provider: import('@fudic/di').Provider<T>): T;\n` +
+  `  inject<T>(provider: import('@fudic/di').Provider<T>, options: import('@fudic/di').InjectOptions): T | undefined;\n` +
+  `};\n`;
+
 /** The layout this file declares, and where its resolver takes the types it lacks. */
 export interface LayoutContract {
   /** The `href` of the `<link rel="layout">` — the module `$Props` is imported from. */
@@ -60,6 +77,7 @@ export function emitServerVirtual(
       `import type { $Props as ${LAYOUT_PROPS} } from '${componentModuleSpecifier(layout.href)}';\n`,
     );
   }
+  if (layout?.resolver?.ctxAt !== undefined) w.scaffold(LAYOUT_INJECT_TYPE);
 
   // The neutral zone belongs to the client virtual (`USER_ECHO_CAPS`): it lives in both files,
   // and with two projections answering the same offset the editor shows the answer twice —
@@ -101,7 +119,7 @@ function resolverSplices(layout: LayoutContract): readonly Splice[] {
   const data = layout.hasLoad ? 'Awaited<ReturnType<typeof load>>' : 'Record<string, never>';
   const out: Splice[] = [];
   if (resolver.ctxAt !== undefined) {
-    out.push({ at: resolver.ctxAt, text: `: $LayoutContext<${params}>` });
+    out.push({ at: resolver.ctxAt, text: `: $LayoutContext<${params}> & $LayoutInject` });
   }
   if (resolver.dataAt !== undefined) out.push({ at: resolver.dataAt, text: `: ${data}` });
   if (resolver.annotateAt !== undefined) {
