@@ -7,8 +7,8 @@
 > [SDD-23](../SDD-23-emisor-ts-virtual.md) §4.2 (`data` en un layout) ·
 > [SDD-12](../SDD-12-semantica.md) (catálogo)
 > **Paquetes:** `@fudic/language-core` · `@fudic/language-server` · `@fudic/compiler` ·
-> `@fudic/vite` (tests) · `fudic-vscode` (empaquetado) · `examples/basic`
-> **Rango:** `FUD0704`–`FUD0705` (del rango `FUD0700`–`FUD0719` de SDD-40)
+> `@fudic/vite` · `@fudic/cli` (snapshot) · `fudic-vscode` (empaquetado) · `examples/basic`
+> **Rango:** `FUD0704`–`FUD0706` (del rango `FUD0700`–`FUD0719` de SDD-40)
 
 ---
 
@@ -82,21 +82,24 @@ La proyección añade al servidor virtual los tipos que el autor no escribió. L
 tipó se respeta:
 
 ```ts
-export function layout(ctx: $LayoutContext<'slug'> & $LayoutInject, data: Awaited<ReturnType<typeof load>>): $LayoutProps { … }
+export function layout(ctx: $LayoutContext<'slug'>, data: Awaited<ReturnType<typeof load>>): $LayoutProps { … }
 ```
 
 | Parámetro | Tipo | De dónde sale |
 |---|---|---|
-| `ctx` | `$LayoutContext<P> & $LayoutInject` | `$LayoutContext` es global y estructural: `origin`, `url`, `params`, `mode`, `nonce`. `P` son los params de la ruta, leídos del nombre del fichero bajo `routes/` (`blog/[slug].fud` → `'slug'`; sin params, `never`). `$LayoutInject` solo tiene `inject`, tipado con `import('@fudic/di')` |
+| `ctx` | `$LayoutContext<P>` | `$LayoutContext` es global y estructural: `origin`, `url` y `params`, y nada más. `P` son los params de la ruta, leídos del nombre del fichero bajo `routes/` (`blog/[slug].fud` → `'slug'`; sin params, `never`) |
 | `data` | `Awaited<ReturnType<typeof load>>` | Sin `load`: `Record<string, never>`, que es el `{}` que llega en ejecución |
 | retorno | `$LayoutProps` si la función es normal, `Promise<$LayoutProps>` si es `async` | §2.3 |
 
 - Solo se tipan los parámetros escritos «a pelo»: un nombre, `{…}` o `[…]`. Un valor por defecto
   o un rest se dejan como están.
-- **`inject` sí, `publish` no.** La culture puede salir de un servicio, así que el resolver puede
-  pedirlo. Pero publicar no tiene sentido: lo que resuelve son bindings del head y nunca viajan al
-  navegador como estado. En ejecución, el `ctx` del resolver es el mismo que recibe `load`: con
-  el contenedor encima cuando la página usa inyección de dependencias.
+- **Ni `inject` ni `publish`** (decisión de Pedro). Si las props necesitan un servicio, lo
+  inyecta `load`, que es el límite de arriba, y llega al resolver en `data`. En ejecución el
+  resolver recibe siempre el `ctx` desnudo, sin contenedor, en el borde y en el endpoint de datos
+  por igual.
+- **Ni `mode` ni `nonce`** (decisión de Pedro): son fontanería del framework, y las props de un
+  layout no tienen uso para ninguno. El `ctx` sigue llevándolos en ejecución; el editor no los
+  ofrece.
 - **Mientras se escribe.** Si ninguna región `@server` da AST, el resolver se localiza en el
   **texto** de la región: la lista de parámetros hasta su `)`, y solo los nombres a pelo.
   `findLayoutResolverInText` y `exportsLoadInText`.
@@ -153,15 +156,20 @@ un `@section`.
   del emit registra ahora también los atributos del `<body>` (§2.8). Como la regla recorre el
   árbol y no los fragmentos del lote, la asimetría del `@if` que había (el build lo veía y el
   editor no) desaparece: el `@if` es `FUD0705` en los dos, por lo que es y no por lo que lee.
+- **`FUD0706`**, error (decisión de Pedro): un `@` dentro de cualquier `<style>` del layout, en
+  el head o en el body. El CSS de un layout es el del shell, igual para todas las rutas. Salta
+  sobre cada `@`, y es la única voz sobre un `<style>` del body: §3.4 no mira dentro de él.
 - **El editor lo acompaña:** `@RenderHead` solo se ofrece en el head, y `@RenderBody` y
   `@RenderSection` fuera de él. El control de flujo ya no se ofrecía en un layout.
 
-### 3.5. El head del layout interpola sus atributos — `compiler`
+### 3.5. El head interpola sus atributos — `compiler`
 
 Un elemento del head cuyos atributos llevan `@` pasa por la misma maquinaria de atributos que el
 `<html>` (SDD-40 §4.4): escapado igual, y omitido si el valor es nulo (decisión 21). Un elemento
-sin `@` sigue saliendo tal cual. Solo en el head **del layout**: el de una ruta o una página no
-cambia (§4).
+sin `@` sigue saliendo tal cual. En los tres papeles, por decisión de Pedro: el head del layout
+(`<meta content="@seccion">`), el que aporta una ruta y el de una página
+(`<meta name="description" content="@data.summary">`). El escritor, `writeOpenTag`, es uno y lo
+comparten el `<html>` del layout y todo elemento del head.
 
 ### 3.6. El ejemplo — `examples/basic`
 
@@ -175,35 +183,32 @@ cambia (§4).
 
 ## 4. Fuera de alcance
 
-- **`ctx.inject` sin inyección en el grafo.** En ejecución, el `ctx` solo lleva `inject` si algún
-  componente de la página usa inyección de dependencias (`hasDependencyInjection`). Una ruta cuyo
-  único uso sea `ctx.inject` en `layout()` o en `load()` recibiría un `ctx` sin él. Ya pasaba con
-  `load`. Queda propuesto que cuente como uso de inyección, pendiente de que Pedro lo decida.
-- **`nonce` y `mode` en `$LayoutContext`.** Son fontanería del framework. Se quedan hasta que
-  Pedro decida.
-- **Atributos con `@` en el head de una ruta o de una página.** Siguen saliendo literales, como
-  antes de este bug: §3.5 lo arregla solo en el layout, que es donde se leen sus props. En una
-  ruta, `<meta content="@data.x">` en su `<head>` es el mismo atajo, pendiente de que Pedro
-  decida si se extiende.
-- **Un `<style>` en el `<body>` de un layout.** Su contenido es CSS y la regla de §3.4 no lo
-  mira: un `@prop` dentro de un `<style>` del body no se diagnostica.
+- **`ctx.inject` en un `load` sin inyección en el grafo.** En ejecución, el `ctx` de `load` solo
+  lleva `inject` si algún componente de la página usa inyección de dependencias
+  (`hasDependencyInjection`). Ya pasaba antes de este bug, y ya no toca al resolver (§3.1).
+
+Las cuatro decisiones pendientes al cerrar las tomó Pedro y están aplicadas: el resolver sin
+`inject` y sin `mode`/`nonce` (§3.1), los atributos con `@` del head en los tres papeles (§3.5) y
+ningún binding en un `<style>` de layout (`FUD0706`, §3.4).
 
 ## 5. Criterios de aceptación
 
 1. En el servidor virtual de una ruta, `layout(ctx, data)` sin tipos sale con
-   `ctx: $LayoutContext<'slug'> & $LayoutInject`, `data: Awaited<ReturnType<typeof load>>` y
+   `ctx: $LayoutContext<'slug'>`, `data: Awaited<ReturnType<typeof load>>` y
    `: $LayoutProps`. Sin `load`, `data: Record<string, never>`. Con `async`, `Promise<$LayoutProps>`.
    Lo que el autor tipó no se toca.
 2. Con `ctx.` a medio escribir, la región no parsea y los tres tipos siguen ahí.
-3. `ctx.` ofrece `url`, `params`, `origin`, `mode`, `nonce` e `inject`, y `ctx.params.` ofrece
-   `slug`. `data.` ofrece lo que devuelve `load`.
+3. `ctx.` ofrece `url`, `params` y `origin`, y nada más; `ctx.params.` ofrece `slug`. `data.`
+   ofrece lo que devuelve `load`. En ejecución el resolver recibe el `ctx` sin contenedor.
 4. En `return { | }` del resolver se ofrecen las props del layout, y no `then`/`catch`/`finally`.
 5. En un layout, `<html lang="@|">` ofrece solo sus props: ni `@data` ni `@()`. En el `<body>`, ni
    eso.
 6. Una prop de layout leída en el `<body>`, atributos del `<body>` incluidos, es `FUD0704` en el
    build (`vite`, `fudic check`) y en el editor. En `<html>` y en el head no lo es. Cualquier
    otra construcción en el `<body>` que no sea `@RenderBody()` ni `@RenderSection()` es
-   `FUD0705`, en los dos. El editor ofrece `@RenderHead` solo en el head y los dos huecos fuera.
+   `FUD0705`, en los dos. Un `@` en un `<style>` del layout es `FUD0706`, en los dos. El editor
+   ofrece `@RenderHead` solo en el head y los dos huecos fuera.
+6b. Un atributo con `@` en el head de un layout, de una ruta o de una página sale interpolado.
 7. Dentro de `@server`, Ctrl+Space al principio de línea ofrece `load`, `paths` y `layout`, y no
    `@client`/`@server`/`props`. En la zona neutra es al revés. Detrás de `ctx.` no sale ninguno.
 8. La bombilla escribe `layout(ctx, data)` sin `unknown`.

@@ -159,3 +159,17 @@
   `vite/test/build-layout-props.test.ts`, el fixture `_layout.fud` de `language-core` y el layout
   de `layout-props-action.test.ts`. El snapshot de `cli` recoge el `$LayoutContext` global. La
   cabecera de `@foreach` ya no es `FUD0704`: el `@foreach` entero es `FUD0705`.
+
+  **Las cuatro decisiones del cierre**, de Pedro, aplicadas después:
+  - El resolver no inyecta: `$LayoutInject` desaparece de la proyección y el envoltorio le pasa
+    el `ctx` desnudo también con inyección (`vite/test/wrapper.test.ts` cambia de expectativa).
+  - `$LayoutContext` pierde `mode` y `nonce` (snapshot de `cli` actualizado).
+  - Los atributos con `@` del head interpolan en los tres papeles: `writeOpenTag` pasa a
+    `parts.ts` y lo usan el `<html>` del layout y todo elemento del head. La rama de
+    `headElementExpr` que dejaba en paz un atributo interpolado ya no se alcanza y se quita.
+  - `FUD0706`: un `@` en un `<style>` de layout, con su núcleo `layoutStyleDiagnostics`.
+
+  Cobertura final: `compiler` 99,39 / 98,54 / 99,63 / 99,78 (por encima del suelo). `vite`
+  96,88 / **92,51** / 97,5 / 96,85: una centésima por debajo en ramas, y no por código nuevo sin
+  probar: la rama `hasDi ?` que elegía el `ctx` del resolver, que estaba cubierta, desaparece
+  con la decisión, y el cociente baja. `wrapper.ts` sigue al 100 %.

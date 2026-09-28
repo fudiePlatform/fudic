@@ -147,10 +147,12 @@ salir tanto de una cabecera como de la fila que `load` acaba de traer.
 
 > **Corregido por [BUG-44](./bugs/BUG-44-las-props-del-layout-a-ciegas.md) §3.1.** En el editor,
 > los parámetros que el autor deja sin tipo los tipa la proyección: `ctx` es
-> `$LayoutContext<P> & $LayoutInject` —`origin`, `url`, `params`, `mode`, `nonce` e `inject`,
-> con `P` los params leídos del nombre del fichero— y `data` es
+> `$LayoutContext<P>` —`origin`, `url` y `params`, con `P` los params leídos del nombre del
+> fichero— y `data` es
 > `Awaited<ReturnType<typeof load>>`, o `Record<string, never>` sin `load`. Se escribe
 > `layout(ctx, data)`, sin `unknown`: un `ctx: unknown` es del autor y la proyección lo respeta.
+> Y el resolver **no inyecta**: en ejecución recibe el `ctx` sin contenedor; un servicio que
+> sus props necesiten lo inyecta `load` y llega en `data`.
 
 ### 3.3. El cable
 
@@ -276,8 +278,9 @@ ahí y todavía no se ha emitido un byte. No es una restricción de streaming: e
 > atajo seguía en el `<head>` del layout: sus elementos salían literales, `<title>` aparte, y
 > `<meta property="article:section" content="@seccion">` llegaba al navegador con el texto
 > `@seccion`. Un elemento del head cuyos atributos llevan `@` pasa ahora por la misma maquinaria
-> que el `<html>`. Los atributos del `<body>` siguen emitiéndose, pero leer ahí una prop es
-> `FUD0704`.
+> que el `<html>`, y no solo en el layout: también en el head de una ruta y en el de una página.
+> Los atributos del `<body>` siguen emitiéndose, pero leer ahí una prop es `FUD0704`, y un `@`
+> en cualquier `<style>` del layout es `FUD0706`.
 
 ### 4.5. Los tres orígenes producen el mismo HTML
 
@@ -377,7 +380,8 @@ span de la cadena que pertenece al fichero que se está emitiendo, y el mismo si
 | `FUD0703` | — | **RETIRADO por [BUG-38](./bugs/BUG-38-un-layout-dentro-de-otro.md).** Existía porque las props de layout de un render eran **un** espacio de nombres compartido por los eslabones de una cadena, así que dos podían pedirle a la ruta un nombre que tenía que ser de dos tipos. Un layout no tiene con quién discrepar. El código no se reutiliza. |
 | `FUD0704` | `error` | Una prop de layout se lee en el `<body>`, atributos del propio `<body>` incluidos. Sobre el nombre. Lo añade [BUG-44](./bugs/BUG-44-las-props-del-layout-a-ciegas.md). |
 | `FUD0705` | `error` | El `<body>` de un layout escribe algo que no es marcado, `@RenderBody()` ni `@RenderSection()`: control de flujo, una expresión que no lee ninguna prop, un `@{ }`, un snippet. Sobre su `@palabra`, o sobre la expresión entera. Lo añade [BUG-44](./bugs/BUG-44-las-props-del-layout-a-ciegas.md). |
-| `0706`–`0719` | | Reservados. |
+| `FUD0706` | `error` | Un `@` dentro de un `<style>` del layout, en el head o en el body: el CSS de un layout es el del shell. Sobre cada `@`. Lo añade [BUG-44](./bugs/BUG-44-las-props-del-layout-a-ciegas.md). |
+| `0707`–`0719` | | Reservados. |
 
 ---
 
