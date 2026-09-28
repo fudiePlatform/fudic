@@ -876,7 +876,15 @@ function completions(
     tagContextAt(cached.source, offset) === undefined
       ? (word ?? { span: span(offset, offset), text: '' })
       : undefined;
-  if (word === undefined && text === undefined) return emmet;
+  // Inside `@code` a plain Ctrl+Space with nothing typed is a question too: «what goes here?».
+  // In `@server` the answer is its three exports, and a developer who does not yet know their
+  // names cannot ask for them by typing the first letter of one.
+  const named =
+    word ??
+    (directive === undefined && scopeAt(cached, offset) === 'code-block'
+      ? { span: span(offset, offset), text: '' }
+      : undefined);
+  if (named === undefined && text === undefined) return emmet;
 
   const ours = [
     // The snippet scope, not the region: in a file that has nothing in it yet the region is
@@ -889,12 +897,12 @@ function completions(
     ...(word !== undefined && directive === undefined && scopeAt(cached, offset) === 'markup'
       ? tagItems(cached, index, document, word, (name, body) => `<${name}${body}`)
       : []),
-    ...(word === undefined
+    ...(named === undefined
       ? []
       : snippetItems(
           cached,
           document,
-          word,
+          named,
           (label) => !label.startsWith('@'),
           // Where the document skeletons come from, and the one place the project's prefix
           // reaches the editor at all.

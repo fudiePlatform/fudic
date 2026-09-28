@@ -47,6 +47,23 @@ export function scopeAt(document: CachedDocument, offset: number): SnippetScope 
   return isMarkupOffset(document, offset) ? 'markup' : undefined;
 }
 
+/** The three zones of a `@code` block. */
+export type CodeZone = 'neutral' | 'server' | 'client';
+
+/**
+ * The zone of `@code` an offset is in: the region whose span holds it, or the neutral zone.
+ *
+ * Asked only once the scope is `code-block`, so the block is there.
+ */
+function zoneAt(code: CodeBlockNode, offset: number): CodeZone {
+  for (const part of code.parts) {
+    if (offset <= part.span.start || offset >= part.span.end) continue;
+    if (part.type === 'server-region') return 'server';
+    if (part.type === 'client-region') return 'client';
+  }
+  return 'neutral';
+}
+
 /**
  * Where a construct is allowed to sit, for the ones that cannot sit anywhere.
  *
@@ -135,6 +152,15 @@ export interface FudSnippet {
   readonly requiresNoZone?: 'server' | 'client';
   /** Where it is legal. Absent means anywhere the scope allows. */
   readonly placement?: SnippetPlacement;
+  /**
+   * Which zone of `@code` it belongs to, for a `code-block` snippet.
+   *
+   * The block is three languages' worth of audience, and a snippet belongs to one: a region is
+   * opened from the neutral zone — regions do not nest (`FUD0193`) — and `load`, `paths` and
+   * `layout` are exports of `@server` and nothing else. Offering `@client` inside `@server`
+   * offered an error, and offering `load` outside it offered code the wrapper never imports.
+   */
+  readonly zone?: CodeZone;
   /** Only in a file that may still become a route (`isUndecided`). */
   readonly requiresUndecided?: true;
   /**
@@ -288,6 +314,11 @@ const SERVER_CODE = `@code {
 
 const LOAD = `export async function load(): Promise<\${1:PageData}> {
   $0
+}`;
+
+/** Every value of the route's params the build prerenders — one path per page. */
+const PATHS = `export async function paths(): Promise<string[]> {
+  return [$0];
 }`;
 
 const PROPS = `type \${1:Props} = {
@@ -475,8 +506,8 @@ export const SNIPPETS: readonly FudSnippet[] = [
   // region, there is exactly one of each per file (decision 33.b, `FUD0194`), and the one
   // already written is not a candidate. `@client` used to be the component's alone, which was
   // the same rule read backwards — a route that declares a handler needs it as much.
-  { label: 'props', detail: 'the props contract of this component', scope: 'code-block', roles: ['component'], body: PROPS },
-  { label: 'props', detail: 'the props this layout asks its routes for', scope: 'code-block', roles: ['layout'], body: PROPS },
+  { label: 'props', detail: 'the props contract of this component', scope: 'code-block', roles: ['component'], body: PROPS, zone: 'neutral' },
+  { label: 'props', detail: 'the props this layout asks its routes for', scope: 'code-block', roles: ['layout'], body: PROPS, zone: 'neutral' },
   {
     label: '@client',
     detail: 'code that runs in the browser',
@@ -484,6 +515,7 @@ export const SNIPPETS: readonly FudSnippet[] = [
     roles: MARKUP_ROLES,
     body: '@client {\n  $0\n}',
     requiresNoZone: 'client',
+    zone: 'neutral',
   },
   {
     label: '@server',
@@ -492,8 +524,20 @@ export const SNIPPETS: readonly FudSnippet[] = [
     roles: MARKUP_ROLES,
     body: '@server {\n  $0\n}',
     requiresNoZone: 'server',
+    zone: 'neutral',
   },
-  { label: 'load', detail: 'the data hook of this page (decision 60)', scope: 'code-block', roles: ['route', 'page'], body: LOAD },
+
+  // The three reserved exports of `@server`, and only there: the wrapper imports them from
+  // that region and from nowhere else.
+  { label: 'load', detail: 'the data hook of this page (decision 60)', scope: 'code-block', roles: ['route', 'page'], body: LOAD, zone: 'server' },
+  {
+    label: 'paths',
+    detail: 'the params this route is prerendered with',
+    scope: 'code-block',
+    roles: ['route', 'page'],
+    body: PATHS,
+    zone: 'server',
+  },
   {
     label: 'layout',
     detail: 'the props this route hands its layout',
@@ -501,6 +545,7 @@ export const SNIPPETS: readonly FudSnippet[] = [
     roles: ['route'],
     body: LAYOUT_RESOLVER,
     suggest: true,
+    zone: 'server',
   },
 ];
 
@@ -546,6 +591,7 @@ export function snippetsAt(
       (snippet.requiresNoCodeBlock === undefined || code === undefined) &&
       (snippet.requiresNoZone === undefined || !written.includes(snippet.requiresNoZone)) &&
       (snippet.placement === undefined || placedAt(document, offset, snippet.placement)) &&
+      (snippet.zone === undefined || (code !== undefined && zoneAt(code, offset) === snippet.zone)) &&
       (snippet.requiresUndecided === undefined || isUndecided(document.document)),
   ).map((snippet) =>
     snippet.label === 'component' ? { ...snippet, body: componentSkeleton(componentTag) } : snippet,
