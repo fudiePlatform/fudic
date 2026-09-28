@@ -37,7 +37,7 @@
     // `seccion` es la requerida: bórrala de este `return` y el build para con `FUD0702`,
     // mientras el editor ofrece «Completar las props requeridas del layout» sobre el
     // `<link rel="layout">` de arriba.
-    export function layout(ctx: unknown, data: PageData) {
+    export function layout(ctx, data) {
       return { culture: data.lang, seccion: "Blog" };
     }
   }
