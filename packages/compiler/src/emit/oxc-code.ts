@@ -538,6 +538,10 @@ function collectDocumentJs(doc: CodeDocument, register: JsFragmentVisitor): void
     // other element's, so `<html lang="@culture">` needs a fragment to parse (§4.4). Its
     // attributes only — descending would walk the document twice.
     collectAttributeJs(doc.html, register);
+    // The `<body>`'s own attributes too: the emit writes them from the source, but the rule of
+    // what a body may hold (`FUD0704`) reads them by their AST, and a fragment nobody
+    // registered is one it could not tell a prop read from any other expression (BUG-44).
+    collectAttributeJs(doc.body, register);
     collectTemplateJs(doc.body.children, register);
     return;
   }

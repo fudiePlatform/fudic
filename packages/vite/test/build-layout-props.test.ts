@@ -33,9 +33,10 @@ const LAYOUT = `<!DOCTYPE html>
   const { culture, theme = "light" } = props<{ culture: string; theme?: string }>();
 }
 <title>Blog</title>
+<meta name="color-scheme" content="@theme">
 @RenderHead()
 </head>
-<body data-theme="@theme">
+<body>
 <main>@RenderBody()</main>
 </body>
 </html>
@@ -141,7 +142,8 @@ describe('SDD-40 §6.15–§6.16 — the layout gets its props, per route and pe
   });
 
   it('uses the default for a prop the route resolved nothing for', () => {
-    expect(prerendered('hola')).toContain('<body data-theme="light">');
+    // In the head, where a layout's props are read (BUG-44): the body may not read one.
+    expect(prerendered('hola')).toContain('<meta name="color-scheme" content="light">');
   });
 
   it('keeps `@server` out of every published file, resolver included (BUG-09)', () => {

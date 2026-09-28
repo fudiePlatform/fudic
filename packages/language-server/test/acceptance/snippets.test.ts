@@ -107,16 +107,29 @@ describe('criteria 5 and 7 — control flow and directives, by place and by role
     expect(labels(items)).not.toContain('@RenderBody');
   });
 
-  it('a layout offers @RenderBody and @RenderHead, and never @section', async () => {
+  it('a layout offers its two holes in the body, and neither @RenderHead nor @section', async () => {
     // The `@RenderBody()` stays where it is: a shell without one is a standalone page, not a
-    // layout (decision 82), and taking it out would be asking the wrong document.
+    // layout (decision 82), and taking it out would be asking the wrong document. The body of
+    // a layout writes its two holes and nothing else (BUG-44, `FUD0705`).
     const items = await completeAt(
       LAYOUT,
       `<!DOCTYPE html>\n<html lang="es">\n  <head>\n    @RenderHead()\n  </head>\n  <body>\n    @|\n    <main>@RenderBody()</main>\n  </body>\n</html>\n`,
     );
 
-    expect(labels(items)).toEqual(expect.arrayContaining(['@RenderBody', '@RenderHead']));
+    expect(labels(items)).toEqual(expect.arrayContaining(['@RenderBody', '@RenderSection']));
+    expect(labels(items)).not.toContain('@RenderHead');
     expect(labels(items)).not.toContain('@section');
+    expect(labels(items)).not.toContain('@if');
+  });
+
+  it('and @RenderHead in its head', async () => {
+    const items = await completeAt(
+      LAYOUT,
+      `<!DOCTYPE html>\n<html lang="es">\n  <head>\n    @|\n  </head>\n  <body>\n    <main>@RenderBody()</main>\n  </body>\n</html>\n`,
+    );
+
+    expect(labels(items)).toContain('@RenderHead');
+    expect(labels(items)).not.toContain('@RenderBody');
   });
 
   it('and none of them inside @code, where the language is TypeScript', async () => {

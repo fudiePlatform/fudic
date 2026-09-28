@@ -481,15 +481,32 @@ export const SNIPPETS: readonly FudSnippet[] = [
     suggest: true,
   },
 
-  // Directives, each one only where it is legal.
-  { label: '@RenderBody', detail: 'where the route body goes', scope: 'markup', roles: ['layout'], body: '@RenderBody()' },
-  { label: '@RenderHead', detail: 'where each route contributes to the head', scope: 'markup', roles: ['layout'], body: '@RenderHead()' },
+  // Directives, each one only where it is legal: `@RenderHead()` in the head (`FUD0431`), and
+  // the two holes a route fills in the body — which is all a layout's body may write (BUG-44,
+  // `FUD0705`).
+  {
+    label: '@RenderBody',
+    detail: 'where the route body goes',
+    scope: 'markup',
+    roles: ['layout'],
+    body: '@RenderBody()',
+    placement: 'outside-head',
+  },
+  {
+    label: '@RenderHead',
+    detail: 'where each route contributes to the head',
+    scope: 'markup',
+    roles: ['layout'],
+    body: '@RenderHead()',
+    placement: 'in-head',
+  },
   {
     label: '@RenderSection',
     detail: 'a hole a route may fill (decision 85)',
     scope: 'markup',
     roles: ['layout'],
     body: '@RenderSection(${1:nav})',
+    placement: 'outside-head',
   },
   {
     label: '@section',

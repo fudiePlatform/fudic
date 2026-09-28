@@ -147,10 +147,13 @@ describe('snippetsAt — by role', () => {
     expect(labelsAt(HOST)).toEqual(CONTROL_FLOW);
   });
 
-  it('a layout gets its three directives, and a route does not', () => {
-    expect(labelsAt(LAYOUT)).toContain('@RenderBody');
-    expect(labelsAt(LAYOUT)).toContain('@RenderHead');
-    expect(labelsAt(LAYOUT)).toContain('@RenderSection');
+  it('a layout gets its directives each where it is legal, and a route gets none', () => {
+    // The body of a layout writes its two holes and nothing else (BUG-44, `FUD0705`), and
+    // `@RenderHead()` lives in the head (`FUD0431`).
+    expect(labelsAt(LAYOUT)).toEqual(['@RenderBody', '@RenderSection']);
+    expect(labelsAt(LAYOUT_HEAD)).toContain('@RenderHead');
+    expect(labelsAt(LAYOUT_HEAD)).not.toContain('@RenderBody');
+    expect(labelsAt(LAYOUT_HEAD)).not.toContain('@RenderSection');
     expect(labelsAt(ROUTE)).not.toContain('@RenderBody');
   });
 
@@ -164,11 +167,14 @@ describe('snippetsAt — by role', () => {
     expect(bodyAt(ROUTE_TOP, '@code')).toContain('async function load');
   });
 
-  it('a layout gets no @code at all: it declares nothing and loads nothing (FUD0437)', () => {
-    // It used to be offered a bare one, narrowed from the route's on the grounds that a layout
-    // has no `load`. The narrowing was the wrong half of the rule: a layout owns the shell, so
-    // there is nothing a `@code` there could legally hold, and the block itself is the error.
-    expect(bodyAt(LAYOUT_HEAD, '@code')).toBeUndefined();
+  it('a layout gets a @code that declares its props and nothing else (BUG-44 §3.3)', () => {
+    // `FUD0437` was retired by SDD-40: a layout's `@code` declares the props its routes
+    // resolve, and that is all it may hold (`FUD0700`). So no `load`, and no zone.
+    const body = bodyAt(LAYOUT_HEAD, '@code');
+    expect(body).toContain('type ${1:Props}');
+    expect(body).toContain('props<${1:Props}>()');
+    expect(body).not.toContain('load');
+    expect(body).not.toContain('@client');
   });
 });
 
@@ -187,12 +193,20 @@ describe('snippetsAt — where a @code may go', () => {
     expect(labelsAt(PAGE_BODY)).not.toContain('@code');
   });
 
-  it('is never offered in a layout, head or body (FUD0437)', () => {
+  it('is offered in the <head> of a layout, and not in its body', () => {
     // The cursor of `LAYOUT_HEAD` sits right after a `<meta>`: a tag with no closing tag has no
-    // content, so it is never what the cursor is inside of. The placement is reachable and the
-    // ROLE is what declines — the layout has no `@code` to be offered anywhere.
-    expect(labelsAt(LAYOUT_HEAD)).not.toContain('@code');
+    // content, so it is never what the cursor is inside of. The head is where a layout's
+    // `@code` goes, as a page's does.
+    expect(labelsAt(LAYOUT_HEAD)).toContain('@code');
     expect(labelsAt(LAYOUT)).not.toContain('@code');
+  });
+
+  it('is not offered in a layout that already has one', () => {
+    const withCode = LAYOUT_HEAD.replace(
+      '<meta charset="utf-8">',
+      '@code {\n      const { a } = props<{ a: string }>();\n    }\n    <meta charset="utf-8">',
+    );
+    expect(labelsAt(withCode)).not.toContain('@code');
   });
 
   it('and control flow is the mirror: the body of a page, never its head', () => {
@@ -222,12 +236,12 @@ describe('snippetsAt — inside @code', () => {
     expect(labelsAt(componentCode)).toEqual(['props', '@client', '@server']);
   });
 
-  it('a route gets the two zones and load, but never props', () => {
+  it('a route gets the two zones in its neutral zone, and never props', () => {
     // `@client` used to be the component's alone, which was the rule read backwards: what makes
     // a zone legal is the `@code` around it, and a route that declares a handler needs the
     // browser half as much as a component does. `props` stays the component's — nobody
-    // instantiates a route as a tag.
-    expect(labelsAt(routeCode)).toEqual(['@client', '@server', 'load']);
+    // instantiates a route as a tag. `load` lives in `@server` now (BUG-44 §3.3).
+    expect(labelsAt(routeCode)).toEqual(['@client', '@server']);
   });
 
   it('a zone already written is not offered again (decision 33.b, FUD0194)', () => {
@@ -236,8 +250,53 @@ describe('snippetsAt — inside @code', () => {
     const both =
       '<link rel="layout" href="./_layout.fud">\n@code {\n  |\n  @client {\n  }\n  @server {\n  }\n}\n<article>hi</article>\n';
 
-    expect(labelsAt(withClient)).toEqual(['@server', 'load']);
-    expect(labelsAt(both)).toEqual(['load']);
+    expect(labelsAt(withClient)).toEqual(['@server']);
+    expect(labelsAt(both)).toEqual([]);
+  });
+});
+
+describe('snippetsAt — each @code snippet belongs to one zone (BUG-44 §3.3, criterion 7)', () => {
+  const routeServer =
+    '<link rel="layout" href="./_layout.fud">\n@code {\n  @server {\n    |\n  }\n}\n<article>hi</article>\n';
+  const routeClient =
+    '<link rel="layout" href="./_layout.fud">\n@code {\n  @client {\n    |\n  }\n}\n<article>hi</article>\n';
+  const pageServer = PAGE_HEAD.replace(
+    '    |\n',
+    '    @code {\n      @server {\n        |\n      }\n    }\n',
+  );
+  const componentServer =
+    '@code {\n  @server {\n    |\n  }\n}\n<app-x>\n  <template shadowrootmode="open"></template>\n</app-x>\n';
+  const layoutCode = LAYOUT_HEAD.replace('    |\n', '    @code {\n      |\n    }\n');
+
+  it('declares a zone for every snippet of `@code`, and for nothing else', () => {
+    for (const snippet of SNIPPETS) {
+      if (snippet.scope === 'code-block') expect(snippet.zone, snippet.label).toBeDefined();
+      else expect(snippet.zone, snippet.label).toBeUndefined();
+    }
+  });
+
+  it('inside a route’s @server: its three exports, and no zone, no props', () => {
+    expect(labelsAt(routeServer)).toEqual(['load', 'paths', 'layout']);
+  });
+
+  it('inside a page’s @server: load and paths — a page has no layout to resolve', () => {
+    expect(labelsAt(pageServer)).toEqual(['load', 'paths']);
+  });
+
+  it('inside a component’s @server, and inside any @client: nothing of ours', () => {
+    expect(labelsAt(componentServer)).toEqual([]);
+    expect(labelsAt(routeClient)).toEqual([]);
+  });
+
+  it('a layout’s @code offers `props` and no zone', () => {
+    expect(labelsAt(layoutCode)).toEqual(['props']);
+  });
+
+  it('the snippets write a resolver and a paths the projection can type', () => {
+    const at = (label: string): string | undefined => bodyAt(routeServer, label);
+    expect(at('layout')).toBe('export function layout(ctx, data) {\n  return { $0 };\n}');
+    expect(at('paths')).toBe('export async function paths(): Promise<string[]> {\n  return [$0];\n}');
+    expect(SNIPPETS.find((s) => s.label === 'layout' && s.scope === 'code-block')?.suggest).toBe(true);
   });
 });
 

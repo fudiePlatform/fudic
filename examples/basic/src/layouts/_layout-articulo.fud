@@ -12,7 +12,13 @@
    una prop requerida es un error en el build y una bombilla en el editor.
 
    Para ver la bombilla: borra `seccion` del `return` de `blog/[slug].fud` y pon el cursor
-   sobre su `<link rel="layout">`. *@
+   sobre su `<link rel="layout">`.
+
+   Las dos props se leen en el head, que es donde se leen las props de un layout: `culture`
+   en `<html lang>` y `seccion` en un `<meta>`. El `<body>` no lee ninguna —sería
+   `FUD0704`— ni escribe nada más que su marcado y sus dos huecos (`FUD0705`): lo que cambia
+   de una ruta a otra en el body lo escribe la ruta, en su `@section`, como la miga de pan
+   del blog. *@
 <html lang="@culture">
   <head>
     @code {

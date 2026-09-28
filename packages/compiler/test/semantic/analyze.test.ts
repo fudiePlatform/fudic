@@ -80,7 +80,8 @@ describe('analyze — runner', () => {
     // + script-body (decision 129: FUD0161, the body the emit was dropping in silence)
     // + host-bindings (BUG-32: FUD0720, a `class:` on the identity tag)
     // + error-marker (BUG-41: FUD0597–FUD0599, an `error` the emit can wire)
-    expect(ANALYZERS).toHaveLength(21);
+    // + layout-body (BUG-44: FUD0704–FUD0705, what a layout's <body> may hold)
+    expect(ANALYZERS).toHaveLength(22);
     const { value } = analyze(buildInput(component('<p>hi</p>')));
     expect(value).toEqual({});
     expect('strategies' in value).toBe(false); // decisions 63–65 retired: no hydration strategy

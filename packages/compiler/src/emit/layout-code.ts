@@ -20,10 +20,8 @@
 import type { LayoutDocument } from '../document/index.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import { errorDiag, span } from '../types/index.js';
-import { collectTemplateJs } from './constructs.js';
 import { codeOfDocument, type Prop } from './oxc-code.js';
-import type { FragmentAst } from './scope.js';
-import { propReadsInBody } from '../semantic/analyzers/layout-prop-in-body.js';
+import { layoutBodyDiagnostics } from '../semantic/analyzers/layout-body.js';
 
 /** A layout's `@code` contains something that is not its declaration of props. */
 const FUD_LAYOUT_CODE = 'FUD0700';
@@ -123,23 +121,16 @@ export function layoutCodeOf(source: string, doc: LayoutDocument): LayoutCode {
   }
 
   const props = code.props.map((p) => plain(p, diagnostics));
-  diagnostics.push(...propsInBody(doc, code, props));
+  // `FUD0704` / `FUD0705` — what the `<body>` may hold. The rule is the semantic pass's
+  // (`layoutBodyDiagnostics`); the build reads a layout's diagnostics off its emit, so it is
+  // asked here too, over the fragments this same batch already parsed.
+  diagnostics.push(
+    ...layoutBodyDiagnostics(source, doc.body, new Set(props.map((p) => p.name)), {
+      astOf: (expr) => code.template.ast(expr.expr),
+      toSource: code.template.offset,
+    }),
+  );
   return { props, diagnostics };
-}
-
-/**
- * `FUD0704` — a layout prop read anywhere in the `<body>`, its own attributes included. The
- * rule is the semantic pass's (`propReadsInBody`); the build reads a layout's diagnostics off
- * its emit, so it is asked here too, over every fragment of the body.
- */
-function propsInBody(
-  doc: LayoutDocument,
-  code: ReturnType<typeof codeOfDocument>,
-  props: readonly Prop[],
-): readonly Diagnostic[] {
-  const fragments: FragmentAst[] = [];
-  collectTemplateJs([doc.body], (_kind, at) => fragments.push(code.template.ast(at)));
-  return propReadsInBody(new Set(props.map((p) => p.name)), fragments, code.template.offset);
 }
 
 /**

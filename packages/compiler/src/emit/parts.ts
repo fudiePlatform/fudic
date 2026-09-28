@@ -223,6 +223,11 @@ export function inlineRuntimeMarker(head: ElementNode): Span | null {
   return null;
 }
 
+/** Whether the value of any attribute of `el` carries a `@`. */
+function interpolatesAttrs(el: ElementNode): boolean {
+  return el.attributes.some((a) => a.value.some((p) => p.type === 'razor-expression'));
+}
+
 /** The literal text of an attribute, or `null` when it is interpolated. */
 function literalAttr(el: ElementNode, name: string): string | null {
   for (const a of el.attributes) {
@@ -393,6 +398,12 @@ export function writeHeadElements(
      * are written in the same line. Whether there is any runtime at all remains the route's.
      */
     readonly onRuntime?: (form: RuntimeForm) => void;
+    /**
+     * Who writes an element whose attributes carry a `@` (BUG-44). A layout does: its head is
+     * where its props are read. Absent means the element goes out verbatim, as it always has
+     * for a page and a route.
+     */
+    readonly onInterpolated?: (el: ElementNode) => void;
   },
   w: CodeWriter,
 ): void {
@@ -414,6 +425,8 @@ export function writeHeadElements(
       options.onRuntime(form);
     } else if (child.name === 'title') {
       w.line(`head += '<title>' + (${titleExpr(source, child)}) + '</title>';`);
+    } else if (options.onInterpolated !== undefined && interpolatesAttrs(child)) {
+      options.onInterpolated(child);
     } else {
       w.line(`head += ${headElementExpr(source, child, options.linker)};`);
     }

@@ -88,18 +88,42 @@ function componentPairs(graph: DocumentGraph, styled: ReadonlySet<string>): read
  * `class:` composition, the asset linker) and the same escaping the serializer applies, which
  * is what keeps the shell byte-identical to what an element inside the body would produce.
  */
-function writeHtmlOpenTag(w: CodeWriter, source: string, html: ElementNode, linker: AssetLinker): void {
-  w.line(`let ${OPEN} = '<${html.name}';`);
+function writeOpenTag(w: CodeWriter, source: string, el: ElementNode, linker: AssetLinker): void {
+  w.line(`let ${OPEN} = '<${el.name}';`);
   w.line('{');
   w.indent();
   w.line(
     `const ${DOM} = { setAttr: ($t, $k, $v) => { ${OPEN} += ' ' + $k + '="' + escapeAttr(String($v)) + '"'; } };`,
   );
-  w.line('const $html = null;');
-  writeElementAttrs(source, html, '$html', w, linker, NO_SIGNALS);
+  w.line('const $el = null;');
+  writeElementAttrs(source, el, '$el', w, linker, NO_SIGNALS);
   w.dedent();
   w.line('}');
   w.line(`${OPEN} += '>';`);
+}
+
+/**
+ * An element of the layout's `<head>` whose attributes read a prop: `<meta
+ * property="article:section" content="@seccion">` (BUG-44).
+ *
+ * The head is where a layout's props are READ — they are bindings of the head, never of the
+ * body — and it was written verbatim, `<title>` aside, so the `@seccion` reached the browser as
+ * text. Its opening tag goes through the same machinery as `<html>`'s, in a block of its own so
+ * each element's `$open` is its own; what follows the tag — nothing, for a `<meta>` — is the
+ * source as written.
+ */
+function writeInterpolatedHeadElement(
+  w: CodeWriter,
+  source: string,
+  el: ElementNode,
+  linker: AssetLinker,
+): void {
+  w.line('{');
+  w.indent();
+  writeOpenTag(w, source, el, linker);
+  w.line(`head += ${OPEN} + ${JSON.stringify(source.slice(el.openSpan.end, el.span.end))};`);
+  w.dedent();
+  w.line('}');
 }
 
 /**
@@ -185,6 +209,7 @@ function buildLayoutModule(
       // the author wrote — and the route says whether there is one (SDD-45 §3.6, BUG-31 §T1).
       // A layout is compiled once and shared, so the answer cannot be baked into the route.
       onRuntime: (form) => headW.line(`head += ${SLOTS}.runtime(${form === 'inline'});`),
+      onInterpolated: (el) => writeInterpolatedHeadElement(headW, source, el, linker),
     },
     headW,
   );
@@ -211,7 +236,7 @@ function buildLayoutModule(
   w.appendWriter(headW);
   // The shell's opening tag, interpolated like any other element (§4.4). No whitespace in
   // the skeleton, as in `module.ts` (BUG-07 §4.2).
-  writeHtmlOpenTag(w, source, doc.html, linker);
+  writeOpenTag(w, source, doc.html, linker);
   w.line(`yield '<!DOCTYPE html>' + ${OPEN} + '<head>' + head + '</head>';`);
   w.line(`const ${DOM} = createDom();`);
   w.line(`const $body = ${DOM}.element('body');`);

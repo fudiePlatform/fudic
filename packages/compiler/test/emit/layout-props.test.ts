@@ -144,8 +144,9 @@ describe('§6.1 — the `<html>` is interpolated, not sliced out of the source',
 describe('§6.5 — the props reach the layout, destructured above the first yield', () => {
   const layout = layoutSource({
     code: 'const { culture, theme = "light" } = props<{ culture: string; theme?: string }>();',
-    html: 'lang="@culture"',
-    body: 'data-theme="@theme"',
+    // Both on `<html>`: a layout prop is a binding of the shell's head half, never of the
+    // `<body>` (BUG-44, `FUD0704`).
+    html: 'lang="@culture" data-theme="@theme"',
   });
 
   it('takes them as a fifth parameter and destructures them at the top', () => {
@@ -166,8 +167,7 @@ describe('§6.5 — the props reach the layout, destructured above the first yie
 
   it('uses the default of a prop the route did not resolve, with no diagnostic (§6.3)', () => {
     const html = render(chain(layout), { culture: 'es' });
-    expect(html).toContain('<html lang="es">');
-    expect(html).toContain('data-theme="light"');
+    expect(html).toContain('<html lang="es" data-theme="light">');
     expect(layoutDiagnostics(layout)).toEqual([]);
   });
 
@@ -399,6 +399,106 @@ describe('§6.2 — `FUD0700`: a layout `@code` declares props and nothing else'
   });
 });
 
+describe('BUG-44 §3.4 — `FUD0704`: a layout prop read in the <body>, in the build', () => {
+  const PROPS = 'const { culture, seccion } = props<{ culture: string; seccion: string }>();';
+  const withBody = (inner: string, attrs = ''): string =>
+    layoutSource({ code: PROPS, html: 'lang="@culture"', body: attrs }).replace(
+      '@RenderBody()</body>',
+      `${inner}@RenderBody()</body>`,
+    );
+
+  it('reports a read in the body over the name, and still emits the layout', () => {
+    const layout = withBody('<p>@seccion</p>');
+    const start = layout.indexOf('@seccion') + 1;
+    expect(layoutDiagnostics(layout)).toEqual([
+      { code: 'FUD0704', span: { start, end: start + 'seccion'.length } },
+    ]);
+    expect(chain(layout).layout).toContain('export function* layout(');
+  });
+
+  it('reports an attribute value in the body', () => {
+    const layout = withBody('<p title="@(culture)">x</p>');
+    expect(layoutDiagnostics(layout).map((d) => d.code)).toEqual(['FUD0704']);
+  });
+
+  it('reports an attribute of the <body> itself', () => {
+    const layout = withBody('', 'data-x="@culture"');
+    const start = layout.indexOf('data-x="@culture"') + 'data-x="@'.length;
+    expect(layoutDiagnostics(layout)).toEqual([
+      { code: 'FUD0704', span: { start, end: start + 'culture'.length } },
+    ]);
+  });
+
+  it('says nothing about `<html>` and the head', () => {
+    const layout = layoutSource({ code: PROPS, html: 'lang="@culture"' }).replace(
+      '@RenderHead()',
+      '<meta property="article:section" content="@seccion">\n  @RenderHead()',
+    );
+    expect(layoutDiagnostics(layout)).toEqual([]);
+  });
+});
+
+describe('BUG-44 §3.2 — a prop read in the head reaches the document', () => {
+  const layout = layoutSource({
+    code: 'const { seccion, culture = "es" } = props<{ seccion: string; culture?: string }>();',
+  }).replace(
+    '@RenderHead()',
+    '<meta charset="utf-8">\n  <meta property="article:section" content="@seccion">\n' +
+      '  <link rel="alternate" hreflang="@culture" href="/x">\n  @RenderHead()',
+  );
+
+  it('interpolates the attributes of a head element, escaped, and leaves a plain one verbatim', () => {
+    const html = render(chain(layout), { seccion: 'Blog & "más"' });
+    expect(html).toContain('<meta charset="utf-8">');
+    expect(html).toContain('<meta property="article:section" content="Blog &amp; &quot;más&quot;">');
+    expect(html).toContain('<link rel="alternate" hreflang="es" href="/x">');
+    expect(html).not.toContain('@seccion');
+  });
+
+  it('omits an attribute whose prop is nullish (decision 21)', () => {
+    expect(render(chain(layout), {})).toContain('<meta property="article:section">');
+  });
+});
+
+describe('BUG-44 §3.4 — `FUD0705`: the body of a layout writes only its two holes, in the build', () => {
+  const PROPS = 'const { seccion } = props<{ seccion: string }>();';
+  const withBody = (inner: string): string =>
+    layoutSource({ code: PROPS }).replace('@RenderBody()</body>', `${inner}@RenderBody()</body>`);
+
+  it('reports control flow over its `@keyword`, once, and does not look inside it', () => {
+    for (const [construct, keyword] of [
+      ['@if (seccion) {\n  <i>@seccion</i>\n}', '@if'],
+      ['@foreach (const seccion of items) {\n  <i>@seccion</i>\n}', '@foreach'],
+      ['@for (let i = 0; i < 2; i++) {\n  <i>x</i>\n}', '@for'],
+      ['@while (false) {\n  <i>x</i>\n}', '@while'],
+      ['@switch (seccion) {\n  case "a": { <i>x</i> }\n}', '@switch'],
+    ] as const) {
+      const layout = withBody(construct);
+      expect(layoutDiagnostics(layout), keyword).toEqual([
+        { code: 'FUD0705', span: at(layout, keyword) },
+      ]);
+    }
+  });
+
+  it('reports a `@{ }` over its opening', () => {
+    const layout = withBody('@{ const a = 1; }');
+    expect(layoutDiagnostics(layout)).toEqual([{ code: 'FUD0705', span: at(layout, '@{') }]);
+  });
+
+  it('reports an expression that reads no prop, over the whole expression', () => {
+    const layout = withBody('<p>@(post.seccion)</p>');
+    expect(layoutDiagnostics(layout)).toEqual([
+      { code: 'FUD0705', span: at(layout, '@(post.seccion)') },
+    ]);
+  });
+
+  it('says nothing about markup, a comment and the two holes', () => {
+    const layout = withBody('<nav>menu</nav>\n@* note *@\n@RenderSection(nav)\n');
+    expect(layoutDiagnostics(layout)).toEqual([]);
+    expect(chain(layout).layout).toContain('export function* layout(');
+  });
+});
+
 describe('§6.4 — `FUD0701`: a layout prop may not be reactive', () => {
   it('reports a prop whose declared type is `Signal<…>`, and hands it over by value', () => {
     const layout = layoutSource({
@@ -417,7 +517,7 @@ describe('§6.4 — `FUD0701`: a layout prop may not be reactive', () => {
   it('reports a reactive default and drops it', () => {
     const layout = layoutSource({
       code: 'const { theme = signal("light") } = props<{ theme?: string }>();',
-      body: 'data-theme="@theme"',
+      html: 'data-theme="@theme"',
     });
     expect(layoutDiagnostics(layout)).toEqual([
       { code: 'FUD0701', span: at(layout, 'theme = signal("light")') },
@@ -425,7 +525,7 @@ describe('§6.4 — `FUD0701`: a layout prop may not be reactive', () => {
     const sources = chain(layout);
     expect(sources.layout).not.toContain('signal("light")');
     // Dropped, not emitted: the attribute is omitted when nobody resolves the prop.
-    expect(render(sources, {})).toContain('<body>');
+    expect(render(sources, {})).toContain('<html>');
   });
 
   it('keeps a PLAIN default on a prop whose type was the reactive half', () => {
@@ -433,7 +533,7 @@ describe('§6.4 — `FUD0701`: a layout prop may not be reactive', () => {
     // default is an ordinary value the layout still has to fall back to.
     const layout = layoutSource({
       code: 'const { theme = "light" } = props<{ theme: Signal<string> }>();',
-      body: 'data-theme="@theme"',
+      html: 'data-theme="@theme"',
     });
     expect(layoutDiagnostics(layout).map((d) => d.code)).toEqual(['FUD0701']);
     expect(render(chain(layout), {})).toContain('data-theme="light"');
@@ -442,7 +542,7 @@ describe('§6.4 — `FUD0701`: a layout prop may not be reactive', () => {
   it('leaves a plain default alone', () => {
     const layout = layoutSource({
       code: 'const { theme = "light" } = props<{ theme?: string }>();',
-      body: 'data-theme="@theme"',
+      html: 'data-theme="@theme"',
     });
     expect(layoutDiagnostics(layout)).toEqual([]);
     expect(render(chain(layout), {})).toContain('data-theme="light"');
