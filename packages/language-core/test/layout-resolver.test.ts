@@ -39,11 +39,12 @@ function serverVirtual(server: string, link = LAYOUT_LINK, fileName = 'blog/[slu
 
 const ANNOTATION = ': $LayoutProps';
 const ASYNC_ANNOTATION = ': Promise<$LayoutProps>';
-const CTX = `: $LayoutContext<'slug'> & $LayoutInject`;
+const CTX = `: $LayoutContext<'slug'>`;
 const NO_LOAD = ': Record<string, never>';
 const WITH_LOAD = ': Awaited<ReturnType<typeof load>>';
 const IMPORT = `import type { $Props as $LayoutProps } from './_layout.fud';`;
-const INJECT = 'type $LayoutInject = {';
+/** What the resolver's `ctx` no longer carries: `load` injects, and hands it over in `data`. */
+const INJECT = '$LayoutInject';
 
 describe('the return type is spliced into the author’s own function', () => {
   it('annotates a `function` declaration, just past its `)`', () => {
@@ -138,11 +139,9 @@ describe('ctx and data get the types the runtime hands over (BUG-44 §3.1)', () 
   it('reads the params off the route’s file name, and a route with none gets `never`', () => {
     const src = '    export function layout(ctx, data) { return {}; }';
     expect(serverVirtual(src, LAYOUT_LINK, 'routes/[lang]/[id].fud')).toContain(
-      `ctx: $LayoutContext<'lang' | 'id'> & $LayoutInject`,
+      `ctx: $LayoutContext<'lang' | 'id'>,`,
     );
-    expect(serverVirtual(src, LAYOUT_LINK, 'about.fud')).toContain(
-      'ctx: $LayoutContext<never> & $LayoutInject',
-    );
+    expect(serverVirtual(src, LAYOUT_LINK, 'about.fud')).toContain('ctx: $LayoutContext<never>,');
   });
 
   it('types `data` with what `load` returns, whether `load` is a function or an arrow', () => {
@@ -158,19 +157,18 @@ describe('ctx and data get the types the runtime hands over (BUG-44 §3.1)', () 
     expect(arrow).toContain(`data${WITH_LOAD}`);
   });
 
-  it('declares `$LayoutInject` only when `ctx` is the projection’s to type', () => {
+  it('gives `ctx` no container: a service is `load`’s to inject, and arrives in `data`', () => {
     const bare = serverVirtual('    export function layout(ctx, data) { return {}; }');
     const typed = serverVirtual('    export function layout(ctx: unknown, data) { return {}; }');
-    expect(bare).toContain(INJECT);
-    expect(bare).toContain("inject<T>(provider: import('@fudic/di').Provider<T>): T;");
-    expect(typed).not.toContain(INJECT);
+    expect(bare).not.toContain(INJECT);
+    expect(bare).not.toContain('@fudic/di');
     expect(typed).toContain(`layout(ctx: unknown, data${NO_LOAD})${ANNOTATION}`);
   });
 
   it('imports `$LayoutProps` only when the return is the projection’s to type', () => {
     const typed = serverVirtual('    export function layout(ctx, data): object { return {}; }');
     expect(typed).not.toContain(IMPORT);
-    expect(typed).toContain(INJECT);
+    expect(typed).toContain(`layout(ctx${CTX}, data${NO_LOAD}): object`);
   });
 
   it('types a destructured context and an array pattern, and leaves a default or a rest alone', () => {

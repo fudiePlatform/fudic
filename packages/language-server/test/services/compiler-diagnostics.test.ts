@@ -130,6 +130,13 @@ describe('fudicDiagnostics', () => {
       expect(on(layout('', '<p>@(post.seccion)</p>'))).toEqual(['FUD0705: @(post.seccion)']);
     });
 
+    it('flags a binding in a `<style>` of the layout, head or body (FUD0706)', () => {
+      const source = layout('<style>:root { --s: @seccion; }</style>', '<p>x</p>');
+      const { index, document } = setup(PATH, source);
+      const style = fudicDiagnostics(document, index).filter((d) => d.code === 'FUD0706');
+      expect(style.map((d) => source.slice(d.span.start, d.span.end))).toEqual(['@seccion']);
+    });
+
     it('says nothing in `<html>`, in the head, or of the two holes', () => {
       expect(
         on(layout('<meta property="article:section" content="@seccion">', '@RenderSection(nav)')),

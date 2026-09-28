@@ -99,14 +99,14 @@ function completionsIn(body: string, marker: string): readonly string[] {
 }
 
 describe('ctx and data autocomplete (criterion 3)', () => {
-  it('`ctx.` lists the context, `inject` included', () => {
+  it('`ctx.` lists the request: its url, its params and who renders it', () => {
     const names = completionsIn(
       'export function layout(ctx, data) {\n      ctx.\n      return { culture: "es" };\n    }',
       'ctx.',
     );
-    expect(names).toEqual(
-      expect.arrayContaining(['url', 'params', 'origin', 'mode', 'nonce', 'inject']),
-    );
+    // What the request says and nothing else: no `inject` — a service is `load`'s to inject
+    // and reaches the resolver in `data` — and no `mode` nor `nonce`, which are plumbing.
+    expect([...names].sort()).toEqual(['origin', 'params', 'url']);
   });
 
   it('`ctx.params.` lists the route’s own params', () => {

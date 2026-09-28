@@ -190,14 +190,14 @@ describe('`?inline` on a stylesheet (§3.6)', () => {
     expect(module).not.toContain("'<style'");
   });
 
-  it('nor is it one in a route’s head, which still writes the element as it was written', () => {
-    // A layout interpolates the attributes of its head (BUG-44); a route's head contribution
-    // is written verbatim, so its `@` never reaches the asset linker either.
+  it('nor is it one in a route’s head, which interpolates it instead (BUG-44)', () => {
     const route = `${ROUTE}\n<head><link rel="stylesheet" href="@sheetUrl"></head>`;
     const io = memoryIo({ '/r.fud': route, '/l.fud': '<!DOCTYPE html><html><head>@RenderHead()</head><body>@RenderBody()</body></html>' });
     const graph = resolveDocument('/r.fud', io).value;
     const module = emitRouteModule(graph, { linkAssets: true, assetExists: () => true });
-    expect(module).toContain('<link rel=\\"stylesheet\\" href=\\"@sheetUrl\\">');
+    expect(module).not.toContain("'<style'");
+    expect(module).not.toContain('@sheetUrl');
+    expect(module).toContain("let $open = '<link';");
   });
 
   it('a `<link rel="stylesheet">` with no `href` is not one either', () => {

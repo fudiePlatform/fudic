@@ -278,9 +278,8 @@ describe('BUG-44 — what the editor offers inside the route’s resolver', () =
   it('`ctx.` offers the context while the region does not parse (criteria 2 and 3)', async () => {
     const labels = await labelsAt(resolver("ctx.|\n      return { culture: '' };"), '.');
 
-    expect(labels).toEqual(
-      expect.arrayContaining(['url', 'params', 'origin', 'mode', 'nonce', 'inject']),
-    );
+    expect(labels).toEqual(expect.arrayContaining(['url', 'params', 'origin']));
+    for (const gone of ['inject', 'mode', 'nonce']) expect(labels).not.toContain(gone);
     expect(labels).not.toContain('load');
   });
 

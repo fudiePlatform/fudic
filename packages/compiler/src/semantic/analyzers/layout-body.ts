@@ -11,6 +11,7 @@
  *              are bindings of the HEAD — the `<html lang>`, a `<meta>` — and never of the body.
  *   `FUD0705`  any other construct in the body: control flow, an expression, a `@{ }`, a
  *              snippet. Only `@RenderBody()` and `@RenderSection()` may be written there.
+ *   `FUD0706`  a `@` inside any `<style>` of the layout, head or body: its CSS is the shell's.
  *
  * ONE rule and two callers. The editor runs only the semantic pass, and the build reads the
  * layout's diagnostics off its emit; `layoutBodyDiagnostics` is what both of them call, so the
@@ -31,6 +32,7 @@ import type { Analyzer } from '../model.js';
 
 const FUD_LAYOUT_PROP_IN_BODY = 'FUD0704';
 const FUD_LAYOUT_BODY_CONSTRUCT = 'FUD0705';
+const FUD_LAYOUT_STYLE_BINDING = 'FUD0706';
 
 /**
  * What the two callers supply: the AST of one expression, and the way back to the `.fud`.
@@ -171,6 +173,36 @@ function expression(
   );
 }
 
+/**
+ * `FUD0706` — a `@` inside a `<style>` of a LAYOUT, head or body alike (BUG-44).
+ *
+ * A layout's CSS is the shell's, the same for every route, and a binding there would make it
+ * the one stylesheet that changes with the page. What changes from route to route is the
+ * route's to style. Structural — the `@` is there or it is not — so it needs no AST, and each
+ * one is reported over itself.
+ */
+export function layoutStyleDiagnostics(html: ElementNode): readonly Diagnostic[] {
+  const out: Diagnostic[] = [];
+  const visit = (el: ElementNode): void => {
+    for (const child of el.children) {
+      if (child.type === 'element') visit(child);
+      if (child.type !== 'style-content') continue;
+      for (const part of child.parts) {
+        if (part.type !== 'razor-expression') continue;
+        out.push(
+          errorDiag(
+            FUD_LAYOUT_STYLE_BINDING,
+            "a layout's <style> takes no binding: its CSS is the shell's, the same for every route, and what changes from route to route is the route's to style",
+            part.span,
+          ),
+        );
+      }
+    }
+  };
+  visit(html);
+  return out;
+}
+
 /** The free references of one expression that name a prop, in source order. */
 function propReads(props: ReadonlySet<string>, ast: FragmentAst): readonly OxcNode[] {
   return freeReferenceNodes([ast]).filter((node) => props.has(node['name'] as string));
@@ -199,6 +231,7 @@ export const layoutBody: Analyzer = {
       toSource: input.js.mapOffset,
     };
     for (const d of layoutBodyDiagnostics(input.source, document.body, props, js)) report(d);
+    for (const d of layoutStyleDiagnostics(document.html)) report(d);
   },
 };
 

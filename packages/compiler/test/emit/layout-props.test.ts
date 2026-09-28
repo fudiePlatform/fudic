@@ -21,7 +21,7 @@ import {
   emitRouteModuleMapped,
   type ResolvedLayout,
 } from '../../src/emit/index.js';
-import { memoryIo, minimalSsr } from './_support.js';
+import { memoryIo, minimalSsr, renderPageHtml } from './_support.js';
 
 const ROUTE = '<link rel="layout" href="./_layout.fud"><p>hola</p>';
 
@@ -457,6 +457,43 @@ describe('BUG-44 §3.2 — a prop read in the head reaches the document', () => 
 
   it('omits an attribute whose prop is nullish (decision 21)', () => {
     expect(render(chain(layout), {})).toContain('<meta property="article:section">');
+  });
+});
+
+describe('BUG-44 — `FUD0706`: a layout’s `<style>` takes no binding, in the build', () => {
+  it('reports each `@` of a `<style>` in the head and in the body, and still emits', () => {
+    const layout = layoutSource({ code: 'const { c } = props<{ c: string }>();' })
+      .replace('@RenderHead()', '<style>:root { --c: @c; }</style>\n  @RenderHead()')
+      .replace('@RenderBody()</body>', '<style>p { color: @c; }</style>@RenderBody()</body>');
+    const first = layout.indexOf('@c;');
+    const second = layout.indexOf('@c;', first + 1);
+    expect(layoutDiagnostics(layout)).toEqual([
+      { code: 'FUD0706', span: { start: first, end: first + 2 } },
+      { code: 'FUD0706', span: { start: second, end: second + 2 } },
+    ]);
+    expect(chain(layout).layout).toContain('export function* layout(');
+  });
+});
+
+describe('BUG-44 — the head of a route and of a page interpolates its attributes too', () => {
+  it('a route’s head contribution reads its `data`', () => {
+    const route =
+      '<link rel="layout" href="./_layout.fud">\n' +
+      '<head><meta name="description" content="@data.summary"><title>@data.title</title></head>\n' +
+      '<p>hola</p>';
+    const html = render(chain(layoutSource({}), route), undefined, { summary: 'a & "b"', title: 't' });
+    expect(html).toContain('<meta name="description" content="a &amp; &quot;b&quot;">');
+    expect(html).toContain('<title>t</title>');
+  });
+
+  it('a standalone page’s head reads its `data`', async () => {
+    const page =
+      '<!DOCTYPE html><html><head><meta name="description" content="@data.summary"></head>' +
+      '<body><p>x</p></body></html>';
+    const graph = resolveDocument('/p.fud', memoryIo({ '/p.fud': page })).value;
+    expect(await renderPageHtml(graph, { summary: 'resumen' })).toContain(
+      '<meta name="description" content="resumen">',
+    );
   });
 });
 

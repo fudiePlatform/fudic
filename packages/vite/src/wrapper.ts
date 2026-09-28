@@ -134,9 +134,13 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   // AFTER `load`, and with what it resolved in hand (§4.2). `ctx.layout` first for the same
   // reason `ctx.data` comes first: the Service Worker was handed both already resolved, and
   // running `@server` there is not a fallback, it is impossible.
+  //
+  // The bare `ctx`, never the one with the container on it (BUG-44): a service the props need
+  // is `load`'s to inject, and it reaches the resolver in `data`. The data endpoint above
+  // already hands it the bare one, so the two paths cannot disagree.
   if (edgeLayout) {
     lines.push(
-      `    const layout = ctx.layout !== undefined ? ctx.layout : await layoutProps(${hasDi ? 'withDi(ctx, $root)' : 'ctx'}, data);`,
+      '    const layout = ctx.layout !== undefined ? ctx.layout : await layoutProps(ctx, data);',
     );
   } else {
     lines.push('    const layout = ctx.layout;');

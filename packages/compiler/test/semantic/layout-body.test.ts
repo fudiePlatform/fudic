@@ -124,6 +124,26 @@ describe('FUD0705 — only the two holes may be written in the body', () => {
   });
 });
 
+describe('FUD0706 — no `<style>` of a layout takes a binding', () => {
+  const styled = (d: Diagnostic[] | readonly Diagnostic[], source: string): string[] =>
+    d.filter((x) => x.code === 'FUD0706').map((x) => source.slice(x.span.start, x.span.end));
+  const of = (source: string): string[] => styled(analyze(buildInput(source)).diagnostics, source);
+
+  it('in the head and in the body, over each `@`, whatever it reads', () => {
+    const source = layout({
+      head: '<style>:root { --c: @culture; }</style>',
+      body: '<style>main { color: @(tone); }</style>',
+    });
+    expect(of(source)).toEqual(['@culture', '@(tone)']);
+    // The body's `<style>` is this rule's alone: no second voice from `FUD0704`/`FUD0705`.
+    expect(flagged(source)).toEqual([]);
+  });
+
+  it('says nothing of a plain `<style>`, or of an escaped `@@`', () => {
+    expect(of(layout({ head: '<style>p { color: red } @@x {}</style>' }))).toEqual([]);
+  });
+});
+
 describe('what the rule leaves alone', () => {
   it('`<html>` and the head, anywhere in it', () => {
     expect(

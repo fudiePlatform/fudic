@@ -45,6 +45,7 @@ import {
   writeEntryImports,
   writeHeadElements,
   writeNonceBinding,
+  writeOpenTag,
   writeRuntimeTags,
   writeSharedHead,
 } from './parts.js';
@@ -71,59 +72,6 @@ function componentPairs(graph: DocumentGraph, styled: ReadonlySet<string>): read
   return [...graph.components.values()]
     .filter((c) => styled.has(c.tag))
     .map((c) => `{ tag: ${renderName(c.tag)}Tag, css: ${renderName(c.tag)}Css }`);
-}
-
-/**
- * The `<html>` opening tag, through the SAME attribute machinery every other element uses
- * (SDD-40 §4.4).
- *
- * It used to be `slice(source, doc.html.openSpan)` inside a `JSON.stringify`, so whatever the
- * author wrote in its attributes came out literally — `lang="@culture"` reached the browser
- * as the four characters `@cul…`. That was never a streaming restriction: this line lives
- * inside `layout(data, io, route, $ioc, props)`, where `data` and the props are already
- * resolved and not a byte has been emitted. It was a shortcut.
- *
- * `writeElementAttrs` writes `$dom.setAttr(…)`, so the sink is a `$dom` of three lines in a
- * block of its own: the same composition rules (decision 21's omitted falsy attribute, the
- * `class:` composition, the asset linker) and the same escaping the serializer applies, which
- * is what keeps the shell byte-identical to what an element inside the body would produce.
- */
-function writeOpenTag(w: CodeWriter, source: string, el: ElementNode, linker: AssetLinker): void {
-  w.line(`let ${OPEN} = '<${el.name}';`);
-  w.line('{');
-  w.indent();
-  w.line(
-    `const ${DOM} = { setAttr: ($t, $k, $v) => { ${OPEN} += ' ' + $k + '="' + escapeAttr(String($v)) + '"'; } };`,
-  );
-  w.line('const $el = null;');
-  writeElementAttrs(source, el, '$el', w, linker, NO_SIGNALS);
-  w.dedent();
-  w.line('}');
-  w.line(`${OPEN} += '>';`);
-}
-
-/**
- * An element of the layout's `<head>` whose attributes read a prop: `<meta
- * property="article:section" content="@seccion">` (BUG-44).
- *
- * The head is where a layout's props are READ — they are bindings of the head, never of the
- * body — and it was written verbatim, `<title>` aside, so the `@seccion` reached the browser as
- * text. Its opening tag goes through the same machinery as `<html>`'s, in a block of its own so
- * each element's `$open` is its own; what follows the tag — nothing, for a `<meta>` — is the
- * source as written.
- */
-function writeInterpolatedHeadElement(
-  w: CodeWriter,
-  source: string,
-  el: ElementNode,
-  linker: AssetLinker,
-): void {
-  w.line('{');
-  w.indent();
-  writeOpenTag(w, source, el, linker);
-  w.line(`head += ${OPEN} + ${JSON.stringify(source.slice(el.openSpan.end, el.span.end))};`);
-  w.dedent();
-  w.line('}');
 }
 
 /**
@@ -209,7 +157,6 @@ function buildLayoutModule(
       // the author wrote — and the route says whether there is one (SDD-45 §3.6, BUG-31 §T1).
       // A layout is compiled once and shared, so the answer cannot be baked into the route.
       onRuntime: (form) => headW.line(`head += ${SLOTS}.runtime(${form === 'inline'});`),
-      onInterpolated: (el) => writeInterpolatedHeadElement(headW, source, el, linker),
     },
     headW,
   );
@@ -234,8 +181,11 @@ function buildLayoutModule(
   if (headEmbedsAsset(doc.head, linker)) writeNonceBinding(w);
   w.line("let head = '';");
   w.appendWriter(headW);
-  // The shell's opening tag, interpolated like any other element (§4.4). No whitespace in
-  // the skeleton, as in `module.ts` (BUG-07 §4.2).
+  // The shell's opening tag, interpolated like any other element (§4.4). It used to be
+  // `slice(source, doc.html.openSpan)` inside a `JSON.stringify`, so `lang="@culture"` reached
+  // the browser as those characters — never a streaming restriction: `data` and the props are
+  // resolved here and not a byte has been emitted. No whitespace in the skeleton, as in
+  // `module.ts` (BUG-07 §4.2).
   writeOpenTag(w, source, doc.html, linker);
   w.line(`yield '<!DOCTYPE html>' + ${OPEN} + '<head>' + head + '</head>';`);
   w.line(`const ${DOM} = createDom();`);

@@ -21,7 +21,7 @@ import type { LayoutDocument } from '../document/index.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import { errorDiag, span } from '../types/index.js';
 import { codeOfDocument, type Prop } from './oxc-code.js';
-import { layoutBodyDiagnostics } from '../semantic/analyzers/layout-body.js';
+import { layoutBodyDiagnostics, layoutStyleDiagnostics } from '../semantic/analyzers/layout-body.js';
 
 /** A layout's `@code` contains something that is not its declaration of props. */
 const FUD_LAYOUT_CODE = 'FUD0700';
@@ -121,7 +121,8 @@ export function layoutCodeOf(source: string, doc: LayoutDocument): LayoutCode {
   }
 
   const props = code.props.map((p) => plain(p, diagnostics));
-  // `FUD0704` / `FUD0705` — what the `<body>` may hold. The rule is the semantic pass's
+  // `FUD0704` / `FUD0705` — what the `<body>` may hold — and `FUD0706`, a binding in any of
+  // the layout's `<style>`s. The rules are the semantic pass's
   // (`layoutBodyDiagnostics`); the build reads a layout's diagnostics off its emit, so it is
   // asked here too, over the fragments this same batch already parsed.
   diagnostics.push(
@@ -129,6 +130,7 @@ export function layoutCodeOf(source: string, doc: LayoutDocument): LayoutCode {
       astOf: (expr) => code.template.ast(expr.expr),
       toSource: code.template.offset,
     }),
+    ...layoutStyleDiagnostics(doc.html),
   );
   return { props, diagnostics };
 }
