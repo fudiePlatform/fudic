@@ -25,6 +25,7 @@ import { primitiveInterpolation } from './analyzers/primitive-interpolation.js';
 import { componentDeclared } from './analyzers/component-declared.js';
 import { eventHandlerShape } from './analyzers/event-handler-shape.js';
 import { layoutLoad } from './analyzers/layout-load.js';
+import { layoutPropInBody } from './analyzers/layout-prop-in-body.js';
 import { componentProps } from './analyzers/component-props.js';
 import { slotName } from './analyzers/slot-name.js';
 import { scriptBody } from './analyzers/script-body.js';
@@ -49,6 +50,7 @@ export const ANALYZERS: readonly Analyzer[] = [
   componentDeclared,
   eventHandlerShape,
   layoutLoad,
+  layoutPropInBody,
   componentProps,
   slotName,
   scriptBody,
