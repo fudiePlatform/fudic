@@ -22,6 +22,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="/logo.svg">
+    <meta property="article:section" content="@seccion">
 
     @* Los tokens, igual que en `_layout.fud`: una hoja del documento, fuera de todo shadow,
        y las custom properties que declara son lo único del documento que los componentes
@@ -34,8 +35,6 @@
   </head>
   <body>
     @RenderSection(nav)
-
-    <p class="miga"><a href="/">fudic</a> › @seccion</p>
 
     <main>@RenderBody()</main>
 

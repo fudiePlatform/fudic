@@ -49,6 +49,7 @@
 
 @section nav {
   <site-nav .current="blog"></site-nav>
+  <p class="miga"><a href="/">fudic</a> › <a href="/blog">Blog</a></p>
 }
 
 <article>

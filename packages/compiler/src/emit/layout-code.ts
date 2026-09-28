@@ -20,7 +20,9 @@
 import type { LayoutDocument } from '../document/index.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import { errorDiag, span } from '../types/index.js';
+import { collectTemplateJs } from './constructs.js';
 import { codeOfDocument, type Prop } from './oxc-code.js';
+import { freeReferenceNodes, type FragmentAst } from './scope.js';
 
 /** A layout's `@code` contains something that is not its declaration of props. */
 const FUD_LAYOUT_CODE = 'FUD0700';
@@ -28,6 +30,8 @@ const FUD_LAYOUT_CODE = 'FUD0700';
 const FUD_LAYOUT_REACTIVE_PROP = 'FUD0701';
 /** The route does not resolve a REQUIRED prop of its layout. */
 const FUD_LAYOUT_PROP_UNRESOLVED = 'FUD0702';
+/** A layout prop is read in the `<body>`, where the page belongs to the route. */
+const FUD_LAYOUT_PROP_IN_BODY = 'FUD0704';
 /**
  * `FUD0703` — «two layouts of one chain declare the same prop with incompatible types» — is
  * RETIRED with the chain itself (`FUD0439`).
@@ -120,7 +124,42 @@ export function layoutCodeOf(source: string, doc: LayoutDocument): LayoutCode {
   }
 
   const props = code.props.map((p) => plain(p, diagnostics));
+  diagnostics.push(...propsInBody(doc, code, props));
   return { props, diagnostics };
+}
+
+/**
+ * `FUD0704` — a layout prop read anywhere in the `<body>`, its own attributes included.
+ *
+ * A layout's props are bindings of the document's HEAD — the `<html lang>`, a `<meta>`, the
+ * `<head>` itself — and never of the body. What differs from route to route in the body
+ * already has its own mechanism: the route fills a `@RenderSection` with its own markup, the
+ * way `site-nav` is. A prop there is a second, hidden path for the same thing, and the page
+ * ends up painted half by the route and half by values the route handed over for its head
+ * (BUG-44).
+ *
+ * By FREE references, not by text: `@(post.seccion)` reads `post`, and a name a lambda
+ * declares is its own. The fragments are walked together in source order so a `@foreach`
+ * header's declaration shadows the prop inside its body, as it does at runtime.
+ */
+function propsInBody(
+  doc: LayoutDocument,
+  code: ReturnType<typeof codeOfDocument>,
+  props: readonly Prop[],
+): readonly Diagnostic[] {
+  if (props.length === 0) return [];
+  const names = new Set(props.map((p) => p.name));
+  const asts: FragmentAst[] = [];
+  collectTemplateJs([doc.body], (_kind, at) => asts.push(code.template.ast(at)));
+  return freeReferenceNodes(asts)
+    .filter((node) => names.has(node['name'] as string))
+    .map((node) =>
+      errorDiag(
+        FUD_LAYOUT_PROP_IN_BODY,
+        `the layout prop \`${node['name'] as string}\` is read in the <body>: a layout's props are bindings of the head — <html>, <head> and what is inside it — and what differs from route to route in the body is the route's to write, in a \`@section\``,
+        span(code.template.offset(node.start), code.template.offset(node.end)),
+      ),
+    );
 }
 
 /**
