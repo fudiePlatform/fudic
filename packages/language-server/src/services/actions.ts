@@ -305,11 +305,18 @@ function layoutHole(prop: ContractProp): string {
   return `null as unknown as ${type}`;
 }
 
-/** The resolver the repair writes when the route has none — its whole text, indented once. */
+/**
+ * The resolver the repair writes when the route has none — its whole text, indented once.
+ *
+ * Its parameters go untyped on purpose: the projection types them — `ctx` with the route's
+ * context, `data` with what `load` returns (BUG-44) — and an annotation written here would be
+ * the author's, which the projection leaves alone. `unknown` is what this used to write, and it
+ * is why `ctx.` offered nothing.
+ */
 function layoutResolverText(props: readonly ContractProp[], indent: string): string {
   const fields = props.map((prop) => `${indent}    ${prop.name}: ${layoutHole(prop)},`).join('\n');
   return (
-    `${indent}export function layout(ctx: unknown, data: unknown) {\n` +
+    `${indent}export function layout(ctx, data) {\n` +
     `${indent}  return {\n${fields}\n${indent}  };\n` +
     `${indent}}\n`
   );

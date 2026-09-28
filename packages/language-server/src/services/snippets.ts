@@ -261,10 +261,10 @@ const LAYOUT_SKELETON = `<!DOCTYPE html>
 
 // ── The `@code` block, by role ────────────────────────────────────────────────
 //
-// Two bodies for one label, over disjoint roles. A component wants its props and its
-// `@client`; a route and a page want the `load` that feeds them. A LAYOUT gets none: it has no
-// `@code` at all (`FUD0437`) — it owns the shell, declares nothing and loads nothing — so the
-// snippet that used to offer it one is gone rather than narrowed.
+// Three bodies for one label, over disjoint roles. A component wants its props and its
+// `@client`; a route and a page want the `load` that feeds them; a LAYOUT wants its props and
+// nothing else — declaring them is all its `@code` may do (`FUD0700`), and the route is who
+// resolves them.
 
 const COMPONENT_CODE = `@code {
   type \${1:Props} = {
@@ -295,6 +295,26 @@ const PROPS = `type \${1:Props} = {
 };
 
 const {} = props<\${1:Props}>();`;
+
+const LAYOUT_CODE = `@code {
+  type \${1:Props} = {
+    $2
+  };
+
+  const {} = props<\${1:Props}>();
+}`;
+
+/**
+ * The route's resolver of its layout's props (SDD-40 §3.2), ending INSIDE its `return { }`.
+ *
+ * The props are not written here, and they need not be: the projection gives the function the
+ * layout's `$Props` as its return type, so the list that opens at the caret is the layout's own
+ * props — the required and the optional, with their types — read from the file that declares
+ * them. `ctx` and `data` go untyped for the same reason: the projection types them.
+ */
+const LAYOUT_RESOLVER = `export function layout(ctx, data) {
+  return { $0 };
+}`;
 
 /** A `<link>` of this `rel`, with the caret inside its `href`. */
 const LINK = (rel: string): string => `<link rel="${rel}" href="$0">`;
@@ -404,6 +424,15 @@ export const SNIPPETS: readonly FudSnippet[] = [
     requiresNoCodeBlock: true,
     placement: 'in-head',
   },
+  {
+    label: '@code',
+    detail: 'the props this layout asks its routes for',
+    scope: 'markup',
+    body: LAYOUT_CODE,
+    roles: ['layout'],
+    requiresNoCodeBlock: true,
+    placement: 'in-head',
+  },
 
   // The three `<link>` fudic reads, each one ending inside its `href` with the list of what it
   // can link already open. Top-level where a file's links live, in `<head>` in a page or a
@@ -447,6 +476,7 @@ export const SNIPPETS: readonly FudSnippet[] = [
   // already written is not a candidate. `@client` used to be the component's alone, which was
   // the same rule read backwards — a route that declares a handler needs it as much.
   { label: 'props', detail: 'the props contract of this component', scope: 'code-block', roles: ['component'], body: PROPS },
+  { label: 'props', detail: 'the props this layout asks its routes for', scope: 'code-block', roles: ['layout'], body: PROPS },
   {
     label: '@client',
     detail: 'code that runs in the browser',
@@ -464,6 +494,14 @@ export const SNIPPETS: readonly FudSnippet[] = [
     requiresNoZone: 'server',
   },
   { label: 'load', detail: 'the data hook of this page (decision 60)', scope: 'code-block', roles: ['route', 'page'], body: LOAD },
+  {
+    label: 'layout',
+    detail: 'the props this route hands its layout',
+    scope: 'code-block',
+    roles: ['route'],
+    body: LAYOUT_RESOLVER,
+    suggest: true,
+  },
 ];
 
 /**
