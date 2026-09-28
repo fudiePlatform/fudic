@@ -105,7 +105,8 @@ function resolverSplices(layout: LayoutContract): readonly Splice[] {
   }
   if (resolver.dataAt !== undefined) out.push({ at: resolver.dataAt, text: `: ${data}` });
   if (resolver.annotateAt !== undefined) {
-    out.push({ at: resolver.annotateAt, text: `: ${LAYOUT_PROPS} | Promise<${LAYOUT_PROPS}>` });
+    const props = resolver.async ? `Promise<${LAYOUT_PROPS}>` : LAYOUT_PROPS;
+    out.push({ at: resolver.annotateAt, text: `: ${props}` });
   }
   return out;
 }

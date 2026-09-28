@@ -110,6 +110,12 @@ export function emitClientVirtual(
   if (doc.type === 'component-document' && doc.host !== undefined) {
     emitHostBindings(ctx, doc.host);
   }
+  // The shell's own elements, which `templateContent` steps inside of: a layout writes
+  // `<html lang="@culture">`, and until these were projected that `@culture` was a stretch
+  // the editor had no program behind — no completion, no hover, no error (BUG-44).
+  if (doc.type === 'page-document' || doc.type === 'layout-document') {
+    for (const shell of [doc.html, doc.head, doc.body]) emitElementBindings(ctx, shell);
+  }
   emitContent(ctx, content);
   // Referencing `$tpl` keeps "declared but never read" quiet without exporting it: the
   // template is not part of anyone's contract.

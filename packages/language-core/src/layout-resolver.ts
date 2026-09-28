@@ -34,6 +34,16 @@ const LOAD_EXPORT = 'load';
 export interface LayoutResolver {
   /** Just past the `)` of the parameter list — where `: T` goes. Absent when already typed. */
   readonly annotateAt?: number;
+  /**
+   * Whether the resolver is `async`, which decides the return type it is given.
+   *
+   * Not `P | Promise<P>` for both: that union is the contextual type of the author's
+   * `return { … }`, and completion lists the members of every object in it — `then`, `catch`
+   * and `finally` beside the layout's props. An `async` function's `return` is checked
+   * against the awaited type, so it gets `Promise<P>`; any other gets `P`, and one that wants
+   * to hand back a promise says so the way TypeScript expects, with `async`.
+   */
+  readonly async: boolean;
   /** Just past the first parameter — where its type goes. Absent when already typed. */
   readonly ctxAt?: number;
   /** Just past the second parameter — where its type goes. Absent when already typed. */
@@ -121,6 +131,7 @@ function annotationPoints(
   const dataAt = untypedEnd(params[1], end);
 
   return {
+    async: fn['async'] === true,
     ...(returnAt === undefined ? {} : { annotateAt: returnAt }),
     ...(ctxAt === undefined ? {} : { ctxAt }),
     ...(dataAt === undefined ? {} : { dataAt }),
