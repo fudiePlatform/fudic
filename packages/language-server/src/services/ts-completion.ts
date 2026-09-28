@@ -614,16 +614,22 @@ function allowedItems(
     // `@click=` has to be a listener, so a `const` holding a number is not a candidate however
     // legitimately it is in scope. Any other binding keeps the whole scope — a value is a value.
     const callableOnly = handlerContextAt(source.cached.source, offset, region) !== undefined;
+    // A layout reads its props and nothing else: no local TypeScript happens to know, and no
+    // `@()`, which would open exactly the arbitrary expression a layout does not write.
+    const open = interpolates(source.cached);
 
     const kept = visible.filter(
       (item) =>
-        inTemplateScope(item, scope) &&
+        (open ? inTemplateScope(item, scope) : scope.has(item.label)) &&
         (!callableOnly || (item.kind !== undefined && CALLABLE_KINDS.has(item.kind))),
     );
     const range = anchor(document, position, value);
     return {
       items: anchored(
-        [...reading([...kept, ...missingNames(scope, callableOnly, kept)]), escapeHatch()],
+        [
+          ...reading([...kept, ...missingNames(scope, callableOnly, kept)]),
+          ...(open ? [escapeHatch()] : []),
+        ],
         range,
       ),
       at: offset,
@@ -653,15 +659,17 @@ function allowedItems(
 
   if (directive !== undefined && directiveScope === 'markup') {
     const scope = templateScope(source.cached, offset);
-    const kept = visible.filter((item) => inTemplateScope(item, scope));
-    const range = anchor(document, position, directive);
-    // A LAYOUT keeps only the snippets, and there they are the three `@Render*`: it has no
-    // `@code` and no `data`, so an expression cannot read anything — `@()` included. See
-    // `interpolates`.
+    // A LAYOUT keeps its props — in the head, where `templateScope` offers them — and the
+    // three `@Render*` snippets: no `data`, no local TypeScript happens to know, and no `@()`.
+    // See `interpolates`.
     const open = interpolates(source.cached);
+    const kept = visible.filter((item) =>
+      open ? inTemplateScope(item, scope) : scope.has(item.label),
+    );
+    const range = anchor(document, position, directive);
     return {
       items: anchored([
-      ...(open ? reading([...kept, ...missingNames(scope, false, kept)]) : []),
+      ...reading([...kept, ...missingNames(scope, false, kept)]),
       // `@()` belongs here too, and its absence was the one defect this position had that the
       // suite did catch: a `@` in text may open any expression at all, exactly as a `=@` may,
       // and the way out has to be offered in both or in neither.

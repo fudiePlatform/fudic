@@ -3,11 +3,14 @@
    what it needs with the same `props<T>()` a component and a route use, and the route
    resolves it in `@server layout(ctx, data)` — after `load`, and with what `load` brought.
 
-   With a DEFAULT, which is the whole difference a default makes: the fifteen pages of this
-   example that are in Spanish say nothing at all, and only the one page whose language comes
-   out of its data bothers to answer. A prop with no default would make every route restate
-   the obvious. What a REQUIRED one looks like is in `_layout-articulo.fud`, where it belongs:
-   there the value is not obvious, and forgetting it is an error worth being told about. *@
+   With a DEFAULT, which is the whole difference a default makes: every page of this example
+   that uses this layout is in Spanish and says nothing at all. A prop with no default would
+   make every route restate the obvious. The page whose language comes out of its data is the
+   blog post, and it uses `_layout-articulo.fud` — which is also where a REQUIRED prop lives:
+   there the value is not obvious, and forgetting it is an error worth being told about.
+
+   A layout's props are read in the head — `<html>`, `<head>` and what is inside it — and
+   never in the `<body>`, which writes its markup and its two holes and nothing else. *@
 <html lang="@culture">
   <head>
     @code {

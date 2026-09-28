@@ -106,6 +106,44 @@ describe('fudicDiagnostics', () => {
     expect(codesOf(SLUG, source)).toContain('FUD0438');
   });
 
+  describe('FUD0704 / FUD0705 — the <body> of a layout, in the editor too (BUG-44 §3.4, criterion 6)', () => {
+    const PATH = '/p/layouts/_articulo.fud';
+    const layout = (head: string, body: string, bodyAttrs = ''): string =>
+      `<!DOCTYPE html>\n<html lang="@culture">\n  <head>\n` +
+      `    @code {\n      const { culture, seccion } = props<{ culture: string; seccion: string }>();\n    }\n` +
+      `    ${head}\n    @RenderHead()\n  </head>\n  <body${bodyAttrs}>\n    ${body}\n    <main>@RenderBody()</main>\n  </body>\n</html>\n`;
+    const on = (source: string): string[] => {
+      const { index, document } = setup(PATH, source);
+      return fudicDiagnostics(document, index)
+        .filter((d) => d.code === 'FUD0704' || d.code === 'FUD0705')
+        .map((d) => `${d.code}: ${source.slice(d.span.start, d.span.end)}`);
+    };
+
+    it('flags a prop read in an interpolation and in an attribute of the body, on the name', () => {
+      expect(on(layout('', '<p>@seccion</p>'))).toEqual(['FUD0704: seccion']);
+      expect(on(layout('', '<p title="@seccion">x</p>'))).toEqual(['FUD0704: seccion']);
+      expect(on(layout('', '', ' data-x="@culture"'))).toEqual(['FUD0704: culture']);
+    });
+
+    it('flags control flow and any other expression in the body: only the two holes go there', () => {
+      expect(on(layout('', '@if (seccion) {\n      <i>x</i>\n    }'))).toEqual(['FUD0705: @if']);
+      expect(on(layout('', '<p>@(post.seccion)</p>'))).toEqual(['FUD0705: @(post.seccion)']);
+    });
+
+    it('flags a binding in a `<style>` of the layout, head or body (FUD0706)', () => {
+      const source = layout('<style>:root { --s: @seccion; }</style>', '<p>x</p>');
+      const { index, document } = setup(PATH, source);
+      const style = fudicDiagnostics(document, index).filter((d) => d.code === 'FUD0706');
+      expect(style.map((d) => source.slice(d.span.start, d.span.end))).toEqual(['@seccion']);
+    });
+
+    it('says nothing in `<html>`, in the head, or of the two holes', () => {
+      expect(
+        on(layout('<meta property="article:section" content="@seccion">', '@RenderSection(nav)')),
+      ).toEqual([]);
+    });
+  });
+
   it('keeps every diagnostic on a span of the .fud', () => {
     const source = route('../layouts/_layout.fud', ['../components/ghost.fud']);
     const { index, document } = setup(SLUG, source);

@@ -27,7 +27,14 @@ import { emitCssVirtuals } from './css.js';
 import { emitClientVirtual, type TemplateJs } from './emit-client.js';
 import type { FragmentAst } from './template/context.js';
 import { emitServerVirtual, type LayoutContract } from './emit-server.js';
-import { findLayoutResolver } from './layout-resolver.js';
+import {
+  exportsLoad,
+  exportsLoadInText,
+  findLayoutResolver,
+  findLayoutResolverInText,
+  type LayoutResolver,
+} from './layout-resolver.js';
+import { routeParams } from './paths.js';
 import { findPropsCall, type PropsCall } from './props.js';
 import type { FileRegistry, VirtualFile } from './types.js';
 
@@ -94,7 +101,12 @@ export function emitVirtualFiles(input: EmitInput): readonly VirtualFile[] {
 
   return [
     emitClientVirtual(source, fileName, document, registry, findProps(js), templateJs(js)),
-    emitServerVirtual(source, fileName, document.code, layoutContract(source, document, js)),
+    emitServerVirtual(
+      source,
+      fileName,
+      document.code,
+      layoutContract(source, fileName, document, js),
+    ),
     ...emitCssVirtuals(source, fileName, document),
   ];
 }
@@ -107,15 +119,29 @@ export function emitVirtualFiles(input: EmitInput): readonly VirtualFile[] {
  */
 function layoutContract(
   source: string,
+  fileName: string,
   document: StructuredDocument,
   js: EmitJs,
 ): LayoutContract | undefined {
   if (document.type !== 'route-document' || document.layoutHref === '') return undefined;
-  for (const id of js.server ?? []) {
-    const resolver = findLayoutResolver(source, statementsOf(js.result, id), (s, e) =>
-      js.result.mapSpan(s, e),
-    );
-    if (resolver !== undefined) return { href: document.layoutHref, resolver };
+  const regions = (js.server ?? []).map((id) => statementsOf(js.result, id));
+  const contract = (resolver: LayoutResolver, hasLoad: boolean): LayoutContract => ({
+    href: document.layoutHref,
+    resolver,
+    params: routeParams(fileName),
+    hasLoad,
+  });
+  for (const statements of regions) {
+    const resolver = findLayoutResolver(source, statements, (s, e) => js.result.mapSpan(s, e));
+    if (resolver !== undefined) return contract(resolver, regions.some(exportsLoad));
+  }
+  // No AST answered — most often because the author is mid-keystroke (`ctx.`) and the region
+  // does not parse. The text still says where the resolver is.
+  const spans = partitionCode(document.code).server;
+  for (const region of spans) {
+    const resolver = findLayoutResolverInText(source, region);
+    if (resolver === undefined) continue;
+    return contract(resolver, spans.some((s) => exportsLoadInText(source, s)));
   }
   return undefined;
 }

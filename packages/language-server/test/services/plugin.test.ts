@@ -188,6 +188,44 @@ describe('completion', () => {
     expect(await completionsOf(service, document, position)).toBeUndefined();
   });
 
+  describe('Ctrl+Space inside `@code` offers a declaration where one starts (BUG-44 §3.3, criterion 7)', () => {
+    const server = (body: string): string =>
+      `<link rel="layout" href="../layouts/_layout.fud">\n@code {\n  @server {\n${body}\n  }\n}\n<p>x</p>\n`;
+    const labelsAt = async (source: string): Promise<string[] | undefined> => {
+      const { service, document, position } = setup(source);
+      return (await completionsOf(service, document, position))?.items.map((item) => item.label);
+    };
+
+    it('with nothing typed at the start of a line of `@server`: its three exports', async () => {
+      expect(await labelsAt(server('    |'))).toEqual(['load', 'paths', 'layout']);
+    });
+
+    it('with the start of a name typed: the export it begins', async () => {
+      expect(await labelsAt(server('    lay|'))).toEqual(
+        expect.arrayContaining(['layout']),
+      );
+    });
+
+    it('in the neutral zone: no export of `@server`, and a `@` opens the regions', async () => {
+      const neutral = (cursor: string): string =>
+        `<link rel="layout" href="../layouts/_layout.fud">\n@code {\n  ${cursor}\n}\n<p>x</p>\n`;
+      expect(await labelsAt(neutral('|'))).toBeUndefined();
+      expect(await labelsAt(neutral('@|'))).toEqual(['@client', '@server']);
+    });
+
+    it('a `@` inside `@server` opens no region: regions do not nest (`FUD0193`)', async () => {
+      expect(await labelsAt(server('    @|'))).toBeUndefined();
+    });
+
+    it('nothing after `ctx.`, inside a `return { }`, or halfway along a line', async () => {
+      const resolver = (inside: string): string =>
+        server(`    export function layout(ctx, data) {\n      ${inside}\n    }`);
+      expect(await labelsAt(resolver('ctx.|'))).toBeUndefined();
+      expect(await labelsAt(resolver('return { | };'))).toBeUndefined();
+      expect(await labelsAt(server('    const a = 1; |'))).toBeUndefined();
+    });
+  });
+
   it('replaces exactly the stretch being typed', async () => {
     const source = `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="component" href="../comp|">\n<p>x</p>\n`;
     const { service, document, position, cached } = setup(source);
@@ -382,15 +420,27 @@ describe('the tag plugin (BUG-15 §4.6)', () => {
     expect(titulo?.filterText).toBe('titulo');
   });
 
-  it('and offers none of them in a LAYOUT, which interpolates nothing at all', async () => {
-    // No `@code` (`FUD0437`) and no `load`, so there is no name a `@` could reach — `@()`
-    // included. An empty list rather than a wrong one, and the position travels on.
+  it('and offers none of them in the body of a LAYOUT', async () => {
+    // A layout's props are bindings of its head, and reading one in the body is `FUD0704`; it
+    // has no `load` either, so there is no name a `@` could reach there — `@()` included. An
+    // empty list rather than a wrong one, and the position travels on.
     const { tagService, document, position } = setup(
       LAYOUT_WITH_NAV.replace('<main>', '<main><div role="|"></div>'),
       '/p/layouts/_other.fud',
     );
 
     expect(await completionsOf(tagService, document, position)).toBeUndefined();
+  });
+
+  it('offers a LAYOUT’s props in an attribute of its `<html>`, and no `@()` (BUG-44 §3.2)', async () => {
+    const layout = LAYOUT_WITH_NAV.replace('<html lang="es">', '<html lang="|">').replace(
+      '<meta charset="utf-8">',
+      '@code {\n      const { culture } = props<{ culture: string }>();\n    }\n    <meta charset="utf-8">',
+    );
+    const { tagService, document, position } = setup(layout, '/p/layouts/_other.fud');
+    const list = await completionsOf(tagService, document, position);
+
+    expect(list?.items.map((item) => item.label)).toEqual(['@culture']);
   });
 
   it('but not inside the `href` of a `<link>`, whose list is a closed set of paths', async () => {

@@ -46,9 +46,18 @@ export type TemplateScope = ReadonlyMap<string, ScopeKind>;
  * `@client` regions hold the reactives and the handlers. And `data` is declared by the
  * projection itself — for a route or a page, never for a component, which receives props and
  * has no route data to read (SDD-23 §4.2).
+ *
+ * A LAYOUT is the exception, and a narrow one: it reads its own props and nothing else — no
+ * `data`, no loop — and only outside its `<body>`, since a prop read there is `FUD0704`
+ * (BUG-44). The offset is what says which side of that line the caret is on.
  */
 export function templateScope(cached: CachedDocument, offset?: number): TemplateScope {
-  if (!interpolates(cached)) return new Map();
+  const doc = cached.document;
+  if (doc.type === 'layout-document') {
+    const body = doc.body.span;
+    const inBody = offset !== undefined && offset >= body.start && offset <= body.end;
+    return inBody ? new Map() : declaredNames(cached, cached.js.neutral);
+  }
 
   const names = declaredNames(cached, [...cached.js.neutral, ...cached.js.client]);
   if (cached.document.type !== 'component-document') names.set('data', 'value');
@@ -116,12 +125,13 @@ export function loopBindingNames(statement: OxcNode | undefined): readonly strin
 }
 
 /**
- * Whether the template of this file may interpolate at all — and a LAYOUT may not.
+ * Whether the template of this file interpolates freely — and a LAYOUT does not.
  *
- * A layout owns the shell and nothing else: it has no `@code` (`FUD0437`), so it declares no
- * name; it does not `load` (`FUD0430`), so there is no `data` to read. What a `@` opens there
- * is one of the three `@Render*` directives and nothing else — not a name, not `@()`, not a
- * construct. Offering any of those is offering a file that is red the moment it lands.
+ * A layout owns the shell: its `@code` declares props and nothing else (`FUD0700`), and it
+ * does not `load` (`FUD0430`), so there is no `data` to read and no handler to name. What a
+ * `@` may read there is one of its props, in the head (see `templateScope`) — never an
+ * arbitrary expression, so never `@()`, and never an event. Beyond that, what a `@` opens is
+ * one of the three `@Render*` directives.
  */
 export function interpolates(cached: CachedDocument): boolean {
   return cached.document.type !== 'layout-document';

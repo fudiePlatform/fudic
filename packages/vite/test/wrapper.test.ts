@@ -144,9 +144,9 @@ describe('emitRenderChunk — the layout resolver (SDD-40)', () => {
     expect(linked).toContain('const layout = ctx.layout;');
   });
 
-  it('resolves it inside the SAME container `load` used, when the route injects', () => {
-    // One container per request: what `load` injects and what the resolver injects have to
-    // be the same instances, or a root service would be built twice for one response.
+  it('hands the resolver the bare ctx even when the route injects: `load` is who injects', () => {
+    // BUG-44: a service the layout's props need is injected in `load` and reaches the resolver
+    // in `data`. The container rides `load`'s ctx and the page's render, never the resolver's.
     const withDi = emitRenderChunk({
       pageModule: './blog/[slug].fud',
       hasLoad: true,
@@ -155,7 +155,8 @@ describe('emitRenderChunk — the layout resolver (SDD-40)', () => {
       withLoad: true,
     });
     expect(withDi).toContain('await load(withDi(ctx, $root))');
-    expect(withDi).toContain('await layoutProps(withDi(ctx, $root), data);');
+    expect(withDi).toContain('await layoutProps(ctx, data);');
+    expect(withDi).not.toContain('layoutProps(withDi(');
     expect(withDi).toContain('yield* page(data, io(ctx), $root, layout);');
   });
 

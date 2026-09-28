@@ -523,7 +523,8 @@ function buildPageModule(
   em.emitChildren(page.body.children, '$body');
 
   // Head codegen (page's own head elements + hoisted style modules at runtime). `<title>`
-  // is the one interpolated element (`@data.title`); every other element the author wrote
+  // interpolates its text (`@data.title`) and any element interpolates the attributes that
+  // carry a `@` (`<meta content="@data.summary">`, BUG-44); everything else the author wrote
   // — `meta`, `link`, `script`, `base`, `style` — passes through VERBATIM, so a page keeps
   // its favicon, its stylesheet and its `<script src>`. The `<link rel="component">`
   // elements are the component graph, not output, and are skipped.

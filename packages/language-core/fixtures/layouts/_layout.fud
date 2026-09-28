@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="@culture">
+<html lang="@culture" data-theme="@theme">
   <head>
     @code {
       const { culture, theme = "light" } = props<{ culture: string; theme?: string }>();
@@ -7,7 +7,7 @@
     <meta charset="utf-8">
     @RenderHead()
   </head>
-  <body data-theme="@theme">
+  <body>
     <header>
       @RenderSection(nav)
     </header>

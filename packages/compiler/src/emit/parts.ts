@@ -17,6 +17,7 @@ import { isAssetAttr } from './markup.js';
 import { compactProjectCss } from './project-styles.js';
 import { isLiteralText, literalText } from './runs.js';
 import type { ExtractedCode } from './oxc-code.js';
+import { NO_SIGNALS, writeElementAttrs } from './attrs.js';
 
 export const slice = (source: string, sp: Span): string => source.slice(sp.start, sp.end);
 
@@ -88,6 +89,9 @@ export function headEmbedsAsset(head: ElementNode, linker: AssetLinker): boolean
  * relative asset URL (`<link href>`, `<script src>`) spliced out and replaced by the import
  * binding Vite resolves and hashes (SDD-19 §4.5). Without a linkable URL this is just the
  * quoted source slice.
+ *
+ * Only for an element whose attributes carry no `@`: one that does is written by
+ * `writeOpenTag`, and `writeHeadElements` tells the two apart before calling either.
  */
 export function headElementExpr(source: string, el: ElementNode, linker: AssetLinker): string {
   // A stylesheet the author asked to embed (SDD-45 §3.6). It becomes the sheet itself, with
@@ -105,7 +109,8 @@ export function headElementExpr(source: string, el: ElementNode, linker: AssetLi
     const first = parts[0];
     const last = parts[parts.length - 1];
     if (parts.length === 0 || first === undefined || last === undefined) continue;
-    if (!parts.every((p) => p.type === 'attribute-text')) continue; // interpolated: leave alone
+    // Every part is text: an element whose attributes carry a `@` never gets here, it goes
+    // through `writeOpenTag` instead (BUG-44).
     // `'head'`: this is a document's own head, so what it links is what every page needs to
     // render itself — the shell, by definition rather than by media type.
     const binding = linker.maybeRef(
@@ -221,6 +226,59 @@ export function inlineRuntimeMarker(head: ElementNode): Span | null {
     if (runtimeMarkerForm(child) === 'inline') return child.span;
   }
   return null;
+}
+
+/** The sink an opening tag is written into, one `$open` per block. */
+const OPEN = '$open';
+
+/**
+ * An opening tag through the SAME attribute machinery every element of the body uses
+ * (SDD-40 §4.4): decision 21's omitted nullish attribute, the `class:` composition, the asset
+ * linker, and the serializer's escaping — `io.escapeAttr`, which every role has in scope.
+ *
+ * `writeElementAttrs` writes `$dom.setAttr(…)`, so the sink is a `$dom` of one method in a
+ * block of its own; what it leaves is `$open`, the tag up to and including its `>`.
+ */
+export function writeOpenTag(w: CodeWriter, source: string, el: ElementNode, linker: AssetLinker): void {
+  w.line(`let ${OPEN} = '<${el.name}';`);
+  w.line('{');
+  w.indent();
+  w.line(
+    `const $dom = { setAttr: ($t, $k, $v) => { ${OPEN} += ' ' + $k + '="' + io.escapeAttr(String($v)) + '"'; } };`,
+  );
+  w.line('const $el = null;');
+  writeElementAttrs(source, el, '$el', w, linker, NO_SIGNALS);
+  w.dedent();
+  w.line('}');
+  w.line(`${OPEN} += '>';`);
+}
+
+/**
+ * A head element whose attributes carry a `@`: `<meta property="article:section"
+ * content="@seccion">` in a layout, `<meta name="description" content="@data.summary">` in a
+ * route or a page (BUG-44).
+ *
+ * The head was written verbatim, `<title>` aside, so the `@` reached the browser as text. Its
+ * opening tag goes through `writeOpenTag`, in a block of its own so each element's `$open` is
+ * its own; what follows the tag — nothing, for a `<meta>` — is the source as written.
+ */
+function writeInterpolatedHeadElement(
+  w: CodeWriter,
+  source: string,
+  el: ElementNode,
+  linker: AssetLinker,
+): void {
+  w.line('{');
+  w.indent();
+  writeOpenTag(w, source, el, linker);
+  w.line(`head += ${OPEN} + ${JSON.stringify(source.slice(el.openSpan.end, el.span.end))};`);
+  w.dedent();
+  w.line('}');
+}
+
+/** Whether the value of any attribute of `el` carries a `@`. */
+function interpolatesAttrs(el: ElementNode): boolean {
+  return el.attributes.some((a) => a.value.some((p) => p.type === 'razor-expression'));
 }
 
 /** The literal text of an attribute, or `null` when it is interpolated. */
@@ -366,8 +424,9 @@ export function writeSharedHead(
 /**
  * Write the `head += …` statements for the elements of a `<head>`: every element the author
  * wrote passes VERBATIM (so a page keeps its favicon, its stylesheet and its `<script src>`),
- * except `<title>`, which is interpolated, and the framework links, which are the component /
- * layout graph and never output.
+ * except `<title>`, whose text is interpolated, an element whose attributes carry a `@`, which
+ * goes through the attribute machinery (BUG-44), and the framework links, which are the
+ * component / layout graph and never output.
  *
  * `onInject` fires when the walk reaches `injectAt` (a layout's `@RenderHead()`), which is how
  * SDD-21 §4.4 puts the route's contributions in the author's chosen place.
@@ -414,6 +473,8 @@ export function writeHeadElements(
       options.onRuntime(form);
     } else if (child.name === 'title') {
       w.line(`head += '<title>' + (${titleExpr(source, child)}) + '</title>';`);
+    } else if (interpolatesAttrs(child)) {
+      writeInterpolatedHeadElement(w, source, child, options.linker);
     } else {
       w.line(`head += ${headElementExpr(source, child, options.linker)};`);
     }

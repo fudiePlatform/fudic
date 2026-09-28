@@ -876,7 +876,21 @@ function completions(
     tagContextAt(cached.source, offset) === undefined
       ? (word ?? { span: span(offset, offset), text: '' })
       : undefined;
-  if (word === undefined && text === undefined) return emmet;
+  // Inside `@code` a plain Ctrl+Space with nothing typed is a question too: «what goes here?».
+  // In `@server` the answer is its three exports, and a developer who does not yet know their
+  // names cannot ask for them by typing the first letter of one.
+  //
+  // Only where a STATEMENT starts, though — first thing on its line. Every `@code` snippet is a
+  // whole declaration, and offering one after `ctx.` or inside a `return { }` put `layout`,
+  // `load` and `paths` on top of the members and the props that position is actually about.
+  const inCode = directive === undefined && scopeAt(cached, offset) === 'code-block';
+  const empty = { span: span(offset, offset), text: '' };
+  const named = inCode
+    ? statementStart(cached.source, (word ?? empty).span.start)
+      ? (word ?? empty)
+      : undefined
+    : word;
+  if (named === undefined && text === undefined) return emmet;
 
   const ours = [
     // The snippet scope, not the region: in a file that has nothing in it yet the region is
@@ -889,12 +903,12 @@ function completions(
     ...(word !== undefined && directive === undefined && scopeAt(cached, offset) === 'markup'
       ? tagItems(cached, index, document, word, (name, body) => `<${name}${body}`)
       : []),
-    ...(word === undefined
+    ...(named === undefined
       ? []
       : snippetItems(
           cached,
           document,
-          word,
+          named,
           (label) => !label.startsWith('@'),
           // Where the document skeletons come from, and the one place the project's prefix
           // reaches the editor at all.
@@ -1246,9 +1260,6 @@ function scopeItems(
    */
   atTyped = true,
 ): readonly CompletionItem[] {
-  // A layout interpolates nothing, `@()` included: see `interpolates`.
-  if (!interpolates(cached)) return [];
-
   // At the CONTEXT's offset, so the bindings of the loops around it are in the list too.
   const scope = templateScope(cached, context.span.end);
   // What is REPLACED is the name alone, never the `@`. See the note above: with the `@` inside
@@ -1273,6 +1284,9 @@ function scopeItems(
       textEdit: { range, newText: `${open}${name}` },
     }),
   );
+  // A layout reads its props — and in its head only, which `templateScope` already decided —
+  // but never an arbitrary expression, so it has no way out to one: see `interpolates`.
+  if (!interpolates(cached)) return names;
 
   return [
     ...names,
@@ -1313,6 +1327,11 @@ function relList(cached: CachedDocument, document: TextDocument, link: LinkValue
       textEdit: { range, newText: item.rel },
     })),
   );
+}
+
+/** Whether `at` is the first non-blank position of its line — where a declaration starts. */
+function statementStart(source: string, at: number): boolean {
+  return /^[ \t]*$/u.test(source.slice(source.lastIndexOf('\n', at - 1) + 1, at));
 }
 
 /** The snippets that apply here, filtered by how they are typed. */

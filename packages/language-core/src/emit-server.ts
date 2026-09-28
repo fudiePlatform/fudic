@@ -10,7 +10,7 @@
  * diagnostic the user can act on.
  */
 
-import type { CodeBlockNode } from '@fudic/compiler';
+import type { CodeBlockNode, Span } from '@fudic/compiler';
 import { USER_ECHO_CAPS } from './caps.js';
 import { partitionCode } from './code.js';
 import type { LayoutResolver } from './layout-resolver.js';
@@ -21,12 +21,22 @@ import { VirtualWriter } from './writer.js';
 /** What the route's `layout(ctx, data)` is checked against (SDD-40 §4.7). */
 const LAYOUT_PROPS = '$LayoutProps';
 
-/** The layout this file declares, and where its resolver takes a return type. */
+/** The layout this file declares, and where its resolver takes the types it lacks. */
 export interface LayoutContract {
   /** The `href` of the `<link rel="layout">` — the module `$Props` is imported from. */
   readonly href: string;
   /** The route's `export … layout`, when it has one the projection can annotate. */
   readonly resolver: LayoutResolver | undefined;
+  /** The route's params, read off its file name: what `ctx.params` carries. */
+  readonly params: readonly string[];
+  /** Whether the route exports `load` — without it, `data` is the empty object. */
+  readonly hasLoad: boolean;
+}
+
+/** One type spliced into the author's text, just past `at`. */
+interface Splice {
+  readonly at: number;
+  readonly text: string;
 }
 
 /**
@@ -45,8 +55,7 @@ export function emitServerVirtual(
   const w = new VirtualWriter(source);
   // The layout's contract, imported the way every other one is: `import type`, `$` namespace,
   // and only when this file has something to check against it (SDD-23 §4.4).
-  const annotateAt = layout?.resolver?.annotateAt;
-  if (layout !== undefined && annotateAt !== undefined) {
+  if (layout?.resolver?.annotateAt !== undefined) {
     w.scaffold(
       `import type { $Props as ${LAYOUT_PROPS} } from '${componentModuleSpecifier(layout.href)}';\n`,
     );
@@ -60,18 +69,9 @@ export function emitServerVirtual(
     w.copy(chunk, USER_ECHO_CAPS);
     w.scaffold('\n');
   }
+  const splices = layout === undefined ? [] : resolverSplices(layout);
   for (const region of server) {
-    // The route's `layout(ctx, data)` gets the return type it never wrote, spliced into the
-    // author's own text so `TS2739` lands on the author's own `return { … }` (SDD-40 §4.7).
-    // A synthetic assignment beside it would report on the synthetic assignment, which maps
-    // to nothing anyone can see — the exact failure `contract.ts` describes for props.
-    if (annotateAt !== undefined && annotateAt > region.start && annotateAt <= region.end) {
-      w.copy({ start: region.start, end: annotateAt });
-      w.scaffold(`: ${LAYOUT_PROPS} | Promise<${LAYOUT_PROPS}>`);
-      w.copy({ start: annotateAt, end: region.end });
-    } else {
-      w.copy(region);
-    }
+    copyWithSplices(w, region, splices);
     w.scaffold('\n');
   }
 
@@ -82,4 +82,43 @@ export function emitServerVirtual(
   w.scaffold('export {};\n');
 
   return w.build(serverFileName(fudPath), 'typescript');
+}
+
+/**
+ * The types the route's `layout(ctx, data)` is missing, in source order.
+ *
+ * The return type is spliced into the author's own text so `TS2739` lands on the author's own
+ * `return { … }` (SDD-40 §4.7): a synthetic assignment beside it would report on the synthetic
+ * assignment, which maps to nothing anyone can see. The parameter types are spliced for what
+ * they OFFER — `ctx.` lists the context, `data.` lists what `load` brought (BUG-44).
+ */
+function resolverSplices(layout: LayoutContract): readonly Splice[] {
+  const { resolver } = layout;
+  if (resolver === undefined) return [];
+  const params = layout.params.map((name) => `'${name}'`).join(' | ') || 'never';
+  // `load` is in scope: it is exported from this same region. With no `load` the runtime
+  // hands over the empty object, and saying so is what makes `data.x` an error here too.
+  const data = layout.hasLoad ? 'Awaited<ReturnType<typeof load>>' : 'Record<string, never>';
+  const out: Splice[] = [];
+  if (resolver.ctxAt !== undefined) {
+    out.push({ at: resolver.ctxAt, text: `: $LayoutContext<${params}>` });
+  }
+  if (resolver.dataAt !== undefined) out.push({ at: resolver.dataAt, text: `: ${data}` });
+  if (resolver.annotateAt !== undefined) {
+    const props = resolver.async ? `Promise<${LAYOUT_PROPS}>` : LAYOUT_PROPS;
+    out.push({ at: resolver.annotateAt, text: `: ${props}` });
+  }
+  return out;
+}
+
+/** Copy `region`, splicing in every type whose point falls inside it. */
+function copyWithSplices(w: VirtualWriter, region: Span, splices: readonly Splice[]): void {
+  let from = region.start;
+  for (const splice of splices) {
+    if (splice.at <= region.start || splice.at > region.end) continue;
+    w.copy({ start: from, end: splice.at });
+    w.scaffold(splice.text);
+    from = splice.at;
+  }
+  w.copy({ start: from, end: region.end });
 }

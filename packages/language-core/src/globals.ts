@@ -274,6 +274,25 @@ declare function $key(k?: unknown): void;
 type $El<T extends string> = T extends keyof HTMLElementTagNameMap
   ? HTMLElementTagNameMap[T]
   : HTMLElement;
+
+/**
+ * The \`ctx\` a route's \`layout(ctx, data)\` receives, when its author did not type it.
+ *
+ * Structural, and written here rather than imported: the projection cannot count on the
+ * project depending on the package that owns the runtime type, and a parameter left \`any\`
+ * is exactly what gives the author nothing to autocomplete. \`P\` are the route's own params,
+ * read off its file name — \`blog/[slug].fud\` answers \`ctx.params.slug\` and nothing else.
+ *
+ * What the request says and nothing else. No \`inject\`: a service the props need is \`load\`'s
+ * to inject, and it reaches the resolver in \`data\`. No \`mode\` nor \`nonce\`: they are the
+ * framework's plumbing, and a layout's props have no use for either (BUG-44).
+ */
+interface $LayoutContext<P extends string> {
+  /** Who renders this response: the server in process, the Service Worker, or the build. */
+  readonly origin: 'edge' | 'sw' | 'ssg';
+  readonly url: URL;
+  readonly params: Readonly<Record<P, string>>;
+}
 `;
 
 /** File name the CLI writes `GLOBALS_DTS` to, and the server mounts it under. */

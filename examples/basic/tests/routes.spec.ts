@@ -59,3 +59,16 @@ test('/blog/:slug renders a post', async ({ page }) => {
   expect(await overlayText(page)).toBeNull();
   await expect(page.locator('h1')).toBeVisible();
 });
+
+// BUG-44: the layout's prop is a binding of its head, and what differs from route to route in
+// the body is the route's to write. So `seccion` reaches a `<meta>` interpolated — it used to
+// go out as the text `@seccion` — and the breadcrumb is the route's own `@section nav`,
+// rendered where the layout left the hole, outside the `<main>` the route's body goes into.
+test('/blog/:slug puts the layout prop in the head and the breadcrumb in its section', async ({
+  page,
+}) => {
+  await page.goto('/blog/dsd-sin-framework');
+  await expect(page.locator('meta[property="article:section"]')).toHaveAttribute('content', 'Blog');
+  await expect(page.locator('p.miga')).toBeVisible();
+  await expect(page.locator('main p.miga')).toHaveCount(0);
+});

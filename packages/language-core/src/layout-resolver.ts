@@ -1,21 +1,24 @@
 /**
  * The route's `export function layout(ctx, data)`, located in its `@server` region so the
- * projection can give it a RETURN TYPE it never wrote (SDD-40 §4.7).
+ * projection can give it the types its author never wrote (SDD-40 §4.7, BUG-44).
  *
- * The point is where the error lands. The fact — «this route does not resolve a prop its
- * layout requires» — is TypeScript's to report, and one fact has one voice (SDD-36 §3.1). But
- * a check written as a synthetic assignment reports on the synthetic assignment, which maps
- * to nothing the author can see; that is the exact failure `contract.ts` describes for props.
- * So the projection annotates the USER's own function:
+ * The RETURN type is about where the error lands. The fact — «this route does not resolve a
+ * prop its layout requires» — is TypeScript's to report, and one fact has one voice (SDD-36
+ * §3.1). But a check written as a synthetic assignment reports on the synthetic assignment,
+ * which maps to nothing the author can see; that is the exact failure `contract.ts` describes
+ * for props. So the projection annotates the USER's own function:
  *
- *     export function layout(ctx, data): $LayoutProps | Promise<$LayoutProps> { return { … }; }
- *                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ scaffolding
+ *     export function layout(ctx: $LayoutContext<'slug'>, data: $LayoutData): $LayoutProps | … {
+ *                               ^^^^^^^^^^^^^^^^^^^^^^^^      ^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^
+ *                                                         scaffolding
  *
- * and TypeScript puts `TS2739` on the author's `{ … }`, naming the prop that is missing.
+ * and TypeScript puts `TS2739` on the author's `{ … }`, naming the prop that is missing. The
+ * PARAMETER types are about what the author can write at all: a `ctx` left untyped is `any`,
+ * and `any` autocompletes nothing — which is how a route ended up writing `ctx: unknown`.
  *
- * A resolver that already carries a return type is left exactly as written: the annotation is
- * the author's statement about their own function, and a projection that overrode it would be
- * arguing with the file instead of checking it.
+ * Whatever the author typed is left exactly as written: an annotation is the author's
+ * statement about their own function, and a projection that overrode it would be arguing with
+ * the file instead of checking it.
  */
 
 import type { OxcNode, Span } from '@fudic/compiler';
@@ -24,10 +27,27 @@ import { child, nodeList } from './oxc-node.js';
 /** The third reserved export of a route's `@server` (SDD-40 §3.2). */
 const LAYOUT_EXPORT = 'layout';
 
-/** Where the projection injects a return type, in original-source coordinates. */
+/** The export whose result `layout` receives as `data` (SDD-40 §4.2). */
+const LOAD_EXPORT = 'load';
+
+/** Where the projection injects a type, in original-source coordinates. */
 export interface LayoutResolver {
-  /** Just past the `)` of the parameter list — where `: T` goes. */
-  readonly annotateAt: number;
+  /** Just past the `)` of the parameter list — where `: T` goes. Absent when already typed. */
+  readonly annotateAt?: number;
+  /**
+   * Whether the resolver is `async`, which decides the return type it is given.
+   *
+   * Not `P | Promise<P>` for both: that union is the contextual type of the author's
+   * `return { … }`, and completion lists the members of every object in it — `then`, `catch`
+   * and `finally` beside the layout's props. An `async` function's `return` is checked
+   * against the awaited type, so it gets `Promise<P>`; any other gets `P`, and one that wants
+   * to hand back a promise says so the way TypeScript expects, with `async`.
+   */
+  readonly async: boolean;
+  /** Just past the first parameter — where its type goes. Absent when already typed. */
+  readonly ctxAt?: number;
+  /** Just past the second parameter — where its type goes. Absent when already typed. */
+  readonly dataAt?: number;
 }
 
 /** Map a pair of Oxc buffer offsets back to original-source coordinates (SDD-11 §4.4). */
@@ -38,62 +58,155 @@ export type MapSpan = (bufferStart: number, bufferEnd: number) => Span;
  *
  * Top level and exported, because that is what the wrapper imports: a `layout` nested in a
  * function is somebody's helper, and annotating it would put an error on code that resolves
- * nothing. Both declaration shapes count — the function statement and the arrow — since both
- * are how people write it.
+ * nothing.
  */
 export function findLayoutResolver(
   source: string,
   statements: readonly OxcNode[],
   mapSpan: MapSpan,
 ): LayoutResolver | undefined {
+  const fn = findExportedFunction(statements, LAYOUT_EXPORT);
+  return fn === undefined ? undefined : annotationPoints(source, fn, mapSpan);
+}
+
+/** Whether a `@server` region exports `load` — what decides the type `data` can be given. */
+export function exportsLoad(statements: readonly OxcNode[]): boolean {
+  return findExportedFunction(statements, LOAD_EXPORT) !== undefined;
+}
+
+/**
+ * `export [async] function layout(<params>)` or `export const layout = [async] (<params>)`,
+ * read off the TEXT. Group 1 is `async` when present, group 2 the parameter list.
+ */
+const LAYOUT_TEXT =
+  /\bexport\s+(?:(async)\s+function\s+layout|function\s+layout|const\s+layout\s*=\s*(?:async\s*)?)\s*\(([^()]*)\)/u;
+
+/** `export [async] function load` / `export const load`. */
+const LOAD_TEXT = /\bexport\s+(?:async\s+)?function\s+load\b|\bexport\s+const\s+load\b/u;
+
+/** A parameter written bare: a name, with nothing after it. */
+const BARE_PARAM = /^\s*[A-Za-z_$][\w$]*\s*$/u;
+
+/**
+ * The same annotation points, read off the region's TEXT — for when Oxc has no AST to give.
+ *
+ * The moment the author types `ctx.` the statement is unfinished, the region stops parsing,
+ * and the AST path finds no resolver: the types vanish exactly when `ctx.` asks what `ctx`
+ * is. An editor is broken code most of the time, so the answer cannot depend on the file
+ * parsing (SDD-23 §4.6). The scan is shallow on purpose — the parameter list up to its `)`,
+ * and only bare names get a type — and it runs only when the AST path found nothing.
+ */
+export function findLayoutResolverInText(source: string, region: Span): LayoutResolver | undefined {
+  const text = source.slice(region.start, region.end);
+  const match = LAYOUT_TEXT.exec(text);
+  if (match === null) return undefined;
+  const list = match[2] as string;
+  if (list.trim() === '') return undefined;
+
+  // The match ends just past `)`: `(` + list + `)` are its last `list.length + 2` characters.
+  const open = region.start + match.index + match[0].length - list.length - 2;
+  const params = list.split(',');
+  const at = (index: number): number | undefined => {
+    const param = params[index];
+    if (param === undefined || !BARE_PARAM.test(param)) return undefined;
+    const before = params.slice(0, index).reduce((n, p) => n + p.length + 1, 0);
+    return open + 1 + before + param.trimEnd().length;
+  };
+  const close = open + 1 + list.length;
+  const typed = /^\s*:/u.test(source.slice(close + 1, region.end));
+  const ctxAt = at(0);
+  const dataAt = at(1);
+  return {
+    async: match[1] !== undefined || /=\s*async\b/u.test(match[0]),
+    ...(typed ? {} : { annotateAt: close + 1 }),
+    ...(ctxAt === undefined ? {} : { ctxAt }),
+    ...(dataAt === undefined ? {} : { dataAt }),
+  };
+}
+
+/** Whether a region's TEXT exports `load` — the companion of `findLayoutResolverInText`. */
+export function exportsLoadInText(source: string, region: Span): boolean {
+  return LOAD_TEXT.test(source.slice(region.start, region.end));
+}
+
+/**
+ * The function exported under `name`. Both declaration shapes count — the function statement
+ * and the arrow — since both are how people write it.
+ */
+function findExportedFunction(statements: readonly OxcNode[], name: string): OxcNode | undefined {
   for (const statement of statements) {
     if (statement.type !== 'ExportNamedDeclaration') continue;
     const declaration = child(statement, 'declaration');
     if (declaration === undefined) continue;
 
     if (declaration.type === 'FunctionDeclaration') {
-      if (child(declaration, 'id')?.['name'] !== LAYOUT_EXPORT) continue;
-      return annotationPoint(source, declaration, mapSpan);
+      if (child(declaration, 'id')?.['name'] === name) return declaration;
+      continue;
     }
     if (declaration.type !== 'VariableDeclaration') continue;
     for (const declarator of nodeList(declaration, 'declarations')) {
-      if (child(declarator, 'id')?.['name'] !== LAYOUT_EXPORT) continue;
+      if (child(declarator, 'id')?.['name'] !== name) continue;
       const init = child(declarator, 'init');
-      if (init === undefined) return undefined;
-      if (init.type !== 'ArrowFunctionExpression' && init.type !== 'FunctionExpression') {
-        return undefined;
-      }
-      return annotationPoint(source, init, mapSpan);
+      return init?.type === 'ArrowFunctionExpression' || init?.type === 'FunctionExpression'
+        ? init
+        : undefined;
     }
   }
   return undefined;
 }
 
 /**
- * Where a function's return type goes: just past the `)` that closes its parameters.
+ * Where each missing annotation goes.
  *
- * One rule for both shapes, and it has to be that one: a function declaration would take the
- * annotation anywhere before its `{`, but an arrow's `=>` sits in between, so «before the
- * body» would write `(ctx, data) => : T ({…})`. Past the `)` is also where a person writes it.
- *
- * The `)` is found by scanning FROM the last parameter's end, which is an AST offset — so the
- * window is the closing delimiter and the whitespace around it, and the first `)` in it is the
- * one. A resolver that already declares a return type is left exactly as written.
+ * The return type goes just past the `)` that closes the parameters. One rule for both
+ * shapes, and it has to be that one: a function declaration would take the annotation
+ * anywhere before its `{`, but an arrow's `=>` sits in between, so «before the body» would
+ * write `(ctx, data) => : T ({…})`. Past the `)` is also where a person writes it. The `)` is
+ * found by scanning FROM the last parameter's end, which is an AST offset — so the window is
+ * the closing delimiter and the whitespace around it, and the first `)` in it is the one.
  */
-function annotationPoint(
+function annotationPoints(
   source: string,
   fn: OxcNode,
   mapSpan: MapSpan,
 ): LayoutResolver | undefined {
-  if (child(fn, 'returnType') !== undefined) return undefined;
   const params = nodeList(fn, 'params');
   const last = params[params.length - 1];
   // `layout()` with no parameters: a resolver that takes neither the context nor the data is
   // not one the author has finished writing, and there is nothing to check its return against
   // that they would recognise.
   if (last === undefined) return undefined;
+
+  const end = (node: OxcNode): number => mapSpan(node.end, node.end).start;
   // The `)` is there: Oxc gave back a function, so its parameter list closed. Guarding for an
   // absence the input cannot produce would be a branch no test could ever reach.
-  const from = mapSpan(last.end, last.end).start;
-  return { annotateAt: source.indexOf(')', from) + 1 };
+  const returnAt =
+    child(fn, 'returnType') === undefined ? source.indexOf(')', end(last)) + 1 : undefined;
+  const ctxAt = untypedEnd(params[0], end);
+  const dataAt = untypedEnd(params[1], end);
+
+  return {
+    async: fn['async'] === true,
+    ...(returnAt === undefined ? {} : { annotateAt: returnAt }),
+    ...(ctxAt === undefined ? {} : { ctxAt }),
+    ...(dataAt === undefined ? {} : { dataAt }),
+  };
+}
+
+/** The shapes a type can simply be appended to: `ctx`, `{ params }`, `[a, b]`. */
+const TYPEABLE = new Set(['Identifier', 'ObjectPattern', 'ArrayPattern']);
+
+/**
+ * The end of a parameter the author left untyped, where `: T` can be appended.
+ *
+ * A default (`ctx = x`) or a rest (`...args`) is left alone: the type goes somewhere else in
+ * each, and a parameter written that way is not the context the runtime hands over anyway.
+ */
+function untypedEnd(
+  param: OxcNode | undefined,
+  end: (node: OxcNode) => number,
+): number | undefined {
+  if (param === undefined || !TYPEABLE.has(param.type)) return undefined;
+  if (child(param, 'typeAnnotation') !== undefined || param['optional'] === true) return undefined;
+  return end(param);
 }

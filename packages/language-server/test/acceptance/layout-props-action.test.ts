@@ -13,7 +13,13 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { CodeActionRequest, DocumentDiagnosticRequest } from 'vscode-languageserver-protocol/node';
+import {
+  CodeActionRequest,
+  CompletionRequest,
+  DocumentDiagnosticRequest,
+  type CompletionItem,
+  type CompletionList,
+} from 'vscode-languageserver-protocol/node';
 import { copyWorkspace, startHarness, type Harness } from './_harness.js';
 
 let harness: Harness;
@@ -21,18 +27,18 @@ let root: string;
 
 /** A layout with four required props: one of each shape a repair can write. */
 const LAYOUT = `<!DOCTYPE html>
-<html lang="@culture">
+<html lang="@culture" data-theme="@(dark ? 'dark' : 'light')">
   <head>
     @code {
       type Props = { culture: string; year: number; dark: boolean; user: { id: string } };
       const { culture, year, dark, user } = props<Props>();
     }
     <meta charset="utf-8">
+    <meta name="copyright" content="@year @user.id">
     @RenderHead()
   </head>
-  <body data-theme="@(dark ? 'dark' : 'light')">
+  <body>
     <main>@RenderBody()</main>
-    <p>@year @user.id</p>
   </body>
 </html>
 `;
@@ -41,7 +47,7 @@ const LAYOUT = `<!DOCTYPE html>
 const OPTIONAL = LAYOUT.replace(
   'type Props = { culture: string; year: number; dark: boolean; user: { id: string } };',
   'type Props = { culture?: string; year?: number; dark?: boolean; user?: { id: string } };',
-).replace('<p>@year @user.id</p>', '<p>@year</p>');
+).replace('content="@year @user.id"', 'content="@year"');
 
 /** A layout whose one prop states no type at all — required, and not provable beyond that. */
 const UNTYPED = LAYOUT.replace(
@@ -49,8 +55,8 @@ const UNTYPED = LAYOUT.replace(
     '      const { culture, year, dark, user } = props<Props>();',
   'const { culture } = props<{ culture }>();',
 )
-  .replace(`data-theme="@(dark ? 'dark' : 'light')"`, '')
-  .replace('<p>@year @user.id</p>', '');
+  .replace(` data-theme="@(dark ? 'dark' : 'light')"`, '')
+  .replace('\n    <meta name="copyright" content="@year @user.id">', '');
 
 beforeAll(async () => {
   root = copyWorkspace();
@@ -203,7 +209,9 @@ describe('§6.14 — how much scaffolding it writes depends on what is already t
     );
     const written = applied(source, completing(await actionsOn(source)));
 
-    expect(written).toContain('export function layout(ctx: unknown, data: unknown) {');
+    // Untyped on purpose (BUG-44 §3.3): the projection types them, and a `ctx: unknown`
+    // written here would be the author's, which the projection leaves alone.
+    expect(written).toContain('export function layout(ctx, data) {');
     expect(written).toContain('export function load() { return {}; }');
     expect(await codesOf(written)).toEqual([]);
   });
@@ -213,7 +221,7 @@ describe('§6.14 — how much scaffolding it writes depends on what is already t
     const written = applied(source, completing(await actionsOn(source)));
 
     expect(written).toContain('@server {');
-    expect(written).toContain('export function layout(ctx: unknown, data: unknown) {');
+    expect(written).toContain('export function layout(ctx, data) {');
     expect(await codesOf(written)).toEqual([]);
   });
 
@@ -223,7 +231,62 @@ describe('§6.14 — how much scaffolding it writes depends on what is already t
 
     expect(written).toContain('@code {');
     expect(written).toContain('@server {');
+    expect(written).toContain('export function layout(ctx, data) {');
+    expect(written).not.toContain('unknown, data');
     expect(await codesOf(written)).toEqual([]);
+  });
+
+  it('keeps the parameters of a resolver that exists exactly as the author wrote them', async () => {
+    const source = route(
+      '@code {\n  @server {\n' +
+        '    export function layout(ctx, data) {\n' +
+        "      return { culture: 'es' };\n" +
+        '    }\n  }\n}\n',
+    );
+    const written = applied(source, completing(await actionsOn(source)));
+
+    expect(written).toContain('export function layout(ctx, data) {');
+    expect(await codesOf(written)).toEqual([]);
+  });
+});
+
+/** The labels the editor is offered at the `|` of a route, typed with `trigger` if given. */
+async function labelsAt(marked: string, trigger?: string): Promise<string[]> {
+  const text = marked.replace('|', '');
+  const { uri } = await harness.open('blog/[slug].fud', text);
+  const got = await harness.client.sendRequest(CompletionRequest.type, {
+    textDocument: { uri },
+    position: harness.positionAt(text, marked.indexOf('|')),
+    ...(trigger === undefined ? {} : { context: { triggerKind: 2, triggerCharacter: trigger } }),
+  });
+  const list = got as CompletionList | CompletionItem[] | null;
+  return (list === null ? [] : Array.isArray(list) ? list : list.items).map((item) => item.label);
+}
+
+describe('BUG-44 — what the editor offers inside the route’s resolver', () => {
+  const resolver = (body: string): string =>
+    route(`@code {\n  @server {\n    export function layout(ctx, data) {\n      ${body}\n    }\n  }\n}\n`);
+
+  it('`return { | }` offers every prop of the layout, and no member of a promise (criterion 4)', async () => {
+    const labels = await labelsAt(resolver('return { | };'));
+
+    expect(labels).toEqual(expect.arrayContaining(['culture', 'year', 'dark', 'user']));
+    expect(labels).not.toContain('then');
+    expect(labels).not.toContain('layout');
+  });
+
+  it('`ctx.` offers the context while the region does not parse (criteria 2 and 3)', async () => {
+    const labels = await labelsAt(resolver("ctx.|\n      return { culture: '' };"), '.');
+
+    expect(labels).toEqual(expect.arrayContaining(['url', 'params', 'origin']));
+    for (const gone of ['inject', 'mode', 'nonce']) expect(labels).not.toContain(gone);
+    expect(labels).not.toContain('load');
+  });
+
+  it('`ctx.params.` offers the route’s own params', async () => {
+    const labels = await labelsAt(resolver("ctx.params.|\n      return { culture: '' };"), '.');
+
+    expect(labels).toEqual(['slug']);
   });
 });
 
