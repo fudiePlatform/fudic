@@ -236,12 +236,36 @@ describe('templateScope inside a loop', () => {
     expect([...templateScope(cached(source)).keys()]).toEqual(['rows', 'data']);
   });
 
-  it('says nothing at all in a layout, loop or no loop', () => {
+  it('says nothing at all in the body of a layout, loop or no loop', () => {
     const layout =
       '<!DOCTYPE html>\n<html>\n<head>@RenderHead()</head>\n<body>\n' +
       '@foreach (const item of []) {\n  <b>x</b>\n}\n@RenderBody()\n</body>\n</html>\n';
 
     expect(templateScope(cached(layout), layout.indexOf('<b>')).size).toBe(0);
+  });
+});
+
+describe('templateScope — a layout reads its props, in its head only (BUG-44 §3.2)', () => {
+  const layout =
+    '<!DOCTYPE html>\n<html lang="@culture">\n<head>\n' +
+    '  @code {\n    const { culture, seccion = "blog" } = props<{ culture: string; seccion?: string }>();\n  }\n' +
+    '  <title>x</title>\n  @RenderHead()\n</head>\n<body data-x="">\n  <main>@RenderBody()</main>\n</body>\n</html>\n';
+  const at = (marker: string, offset = 0): string[] =>
+    [...templateScope(cached(layout), layout.indexOf(marker) + offset).keys()];
+
+  it('offers the props in `<html>` and in the head — and never `data`', () => {
+    expect(at('@culture', 1)).toEqual(['culture', 'seccion']);
+    expect(at('<title>')).toEqual(['culture', 'seccion']);
+  });
+
+  it('offers nothing in the body, its own attributes included', () => {
+    expect(at('data-x="', 8)).toEqual([]);
+    expect(at('<main>')).toEqual([]);
+  });
+
+  it('offers the props past the `</body>`, and when no offset is asked about', () => {
+    expect(at('</html>')).toEqual(['culture', 'seccion']);
+    expect([...templateScope(cached(layout)).keys()]).toEqual(['culture', 'seccion']);
   });
 });
 

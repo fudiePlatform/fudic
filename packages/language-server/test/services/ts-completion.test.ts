@@ -219,6 +219,73 @@ describe('the positions this package does not own', () => {
   });
 });
 
+/**
+ * A layout that declares two props, with `markup` in the slot `slot` names.
+ *
+ * Each slot is a place BUG-44 draws a line through: `<html>`'s attributes and the head read the
+ * props, the body reads none of them.
+ */
+const propsLayout =
+  (slot: 'html' | 'head' | 'body' | 'body-attr') =>
+  (markup: string): string =>
+    `<!DOCTYPE html>
+<html lang="${slot === 'html' ? markup : 'es'}">
+  <head>
+    @code {
+      const { culture, seccion } = props<{ culture: string; seccion: string }>();
+    }
+    <title>${slot === 'head' ? markup : 'x'}</title>
+    @RenderHead()
+  </head>
+  <body class="${slot === 'body-attr' ? markup : 'b'}">
+    <main>${slot === 'body' ? markup : ''}@RenderBody()</main>
+  </body>
+</html>
+`;
+
+describe('a `@` in a layout offers its props, and only in its head (BUG-44 §3.2, criterion 5)', () => {
+  const labels = (answer: CompletionList | undefined | null): string[] =>
+    (answer?.items ?? []).map((i) => i.label);
+  // What TypeScript would answer at any of these offsets: the props, a lib global and `data`,
+  // which a layout does not declare any more.
+  const ts = (): CompletionList => list(item('culture'), item('seccion'), item('atob'), item('data'));
+
+  it('`<html lang="@|">` offers the props, and neither `@()` nor `@data` nor a lib global', async () => {
+    const answer = await completeAt('@|', ts(), { build: propsLayout('html') });
+
+    expect(labels(answer).sort()).toEqual(['@culture', '@seccion']);
+  });
+
+  it('the same with TypeScript silent: the props come from the parse', async () => {
+    const answer = await completeAt('@|', undefined, { build: propsLayout('html') });
+
+    expect(labels(answer).sort()).toEqual(['@culture', '@seccion']);
+  });
+
+  it('a `@` in the text of the head offers the props, and no `@()`', async () => {
+    const answer = await completeAt('@|', ts(), { build: propsLayout('head') });
+
+    expect(labels(answer)).toEqual(expect.arrayContaining(['@culture', '@seccion']));
+    expect(labels(answer)).not.toContain('@()');
+    expect(labels(answer)).not.toContain('@data');
+    expect(labels(answer)).not.toContain('@atob');
+  });
+
+  it('a `@` in the body offers no prop — reading one there is `FUD0704`', async () => {
+    const answer = await completeAt('@|', ts(), { build: propsLayout('body') });
+
+    expect(labels(answer)).not.toContain('@culture');
+    expect(labels(answer)).not.toContain('@()');
+    expect(labels(answer)).not.toContain('@data');
+  });
+
+  it('nor in an attribute of the `<body>` itself', async () => {
+    const answer = await completeAt('@|', ts(), { build: propsLayout('body-attr') });
+
+    expect(labels(answer)).toEqual([]);
+  });
+});
+
 describe('a `@` in markup, when TypeScript says nothing at all', () => {
   it('answers with the template’s own names over an `undefined` reply', async () => {
     // A program that has not finished loading answers `undefined` at every offset. The names
