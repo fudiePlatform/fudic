@@ -1246,9 +1246,6 @@ function scopeItems(
    */
   atTyped = true,
 ): readonly CompletionItem[] {
-  // A layout interpolates nothing, `@()` included: see `interpolates`.
-  if (!interpolates(cached)) return [];
-
   // At the CONTEXT's offset, so the bindings of the loops around it are in the list too.
   const scope = templateScope(cached, context.span.end);
   // What is REPLACED is the name alone, never the `@`. See the note above: with the `@` inside
@@ -1273,6 +1270,9 @@ function scopeItems(
       textEdit: { range, newText: `${open}${name}` },
     }),
   );
+  // A layout reads its props — and in its head only, which `templateScope` already decided —
+  // but never an arbitrary expression, so it has no way out to one: see `interpolates`.
+  if (!interpolates(cached)) return names;
 
   return [
     ...names,

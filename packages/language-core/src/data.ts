@@ -27,14 +27,15 @@ import type { VirtualWriter } from './writer.js';
  *
  * Components never get one: a component receives props, not route data, and declaring
  * `data` for them would silently accept a template that reads something the runtime will
- * not pass.
+ * not pass. Nor does a layout: what it reads is its props, which the route resolves — the
+ * route's `data` is the route's to paint (BUG-44).
  */
 export function emitDataDeclaration(
   w: VirtualWriter,
   doc: StructuredDocument,
   fudPath: string,
 ): void {
-  if (doc.type === 'component-document') return;
+  if (doc.type === 'component-document' || doc.type === 'layout-document') return;
 
   const server = serverModuleSpecifier(fudPath);
   w.scaffold(
