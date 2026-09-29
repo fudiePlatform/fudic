@@ -331,6 +331,7 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
               const written = adoptedStylesAt(cached, region);
               if (written !== undefined) {
                 const names = deps.configs?.choosableStylesFor(cached.path) ?? [];
+                const range = rangeOf(document, binding.span);
                 const items = names
                   .filter((name) => !written.includes(name))
                   .map((name) => ({
@@ -339,6 +340,8 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
                     detail: 'styles de fudic.json',
                     sortText: `0_${name}`,
                     labelDetails: { description: 'fudic' },
+                    // The word under the caret only: the value is a space-separated list.
+                    textEdit: { range, newText: name },
                   }));
                 return items.length === 0 ? undefined : list(items);
               }

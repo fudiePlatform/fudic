@@ -188,7 +188,9 @@ export function createFudicServer(
       // components are a voice next to the native tags rather than in place of them. It is
       // additional, so it neither claims the position nor is silenced by the service above it
       // (BUG-15 §4.6).
-      createFudicTagService({ index, stats }),
+      // It also answers inside attribute values, and there the `styles` of the project's
+      // fudic.json are what the root template's `shadowrootadoptedstylesheets` chooses from.
+      createFudicTagService({ index, stats, configs }),
     ];
 
     // Nothing speaks over a library's file (SDD-43 §4.4): read-only means every service,
