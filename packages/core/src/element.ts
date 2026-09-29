@@ -18,6 +18,7 @@
 
 import { browserDom } from '@fudic/dom';
 import type { Controller, FudicElementCtor } from './controller.js';
+import { adoptSheets } from './adopt-sheets.js';
 
 /**
  * The subclass's own factory. `this.constructor` — not `new.target`, which is only bound
@@ -69,7 +70,9 @@ export abstract class FudicElement extends Base {
    * is no shadow to adopt, so one is opened and the controller FABRICATES the nodes.
    */
   c(props: readonly unknown[]): void {
-    const controller = factoryOf(this).c([browserDom, this.attachShadow(this.shadowInit()), ...props]);
+    const shadow = this.attachShadow(this.shadowInit());
+    adoptSheets(this, shadow);
+    const controller = factoryOf(this).c([browserDom, shadow, ...props]);
     this.#controller = controller;
     controller.c();
   }

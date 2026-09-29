@@ -4,6 +4,22 @@
 <link rel="layout" href="../layouts/_layout-inline.fud">
 <link rel="component" href="../components/site-nav.fud">
 <link rel="component" href="../components/vivo-lista.fud">
+<link rel="component" href="../components/vivo-item.fud">
+<link rel="component" href="../components/vivo-otro.fud">
+
+@code {
+  @client {
+    import { signal } from "@fudic/core";
+
+    // Las dos ramas pintan un componente distinto, y cada vez que se cambia de rama el que
+    // entra nace en el navegador: ninguno de los dos vuelve a ser el que pintó el servidor.
+    const verdadera = signal(true);
+
+    function alternar() {
+      verdadera.set(!verdadera());
+    }
+  }
+}
 
 <head>
   <title>Componentes creados al vuelo — fudic</title>
@@ -29,3 +45,20 @@
   componente vivo, no una etiqueta vacía. Los dos caminos —adoptar lo que vino pintado y
   fabricar lo que no vino— tienen que acabar en el mismo sitio.
 </p>
+
+<h2>Un componente en cada rama de un <code>@@if</code></h2>
+<p>
+  La rama verdadera pinta <code>&lt;vivo-item&gt;</code>, con borde gris; la falsa,
+  <code>&lt;vivo-otro&gt;</code>, con borde rojo discontinuo y fondo rosa. Pulsa
+  <strong>Cambiar de rama</strong>: el componente que entra nace en el navegador y tiene que
+  llegar con su estilo, igual que el que pintó el servidor. Una etiqueta sin borde ni fondo
+  es una hoja que nadie adoptó.
+</p>
+
+<p><button @click=@alternar data-id="alternar">Cambiar de rama</button></p>
+
+@if (verdadera()) {
+  <vivo-item .label="rama verdadera"></vivo-item>
+} else {
+  <vivo-otro .label="rama falsa"></vivo-otro>
+}

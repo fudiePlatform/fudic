@@ -78,6 +78,41 @@ describe('FudicElement — instance entry points', () => {
     host.remove();
   });
 
+  it('adopts the sheets its host names when it is created at runtime (BUG-45 §5.1)', () => {
+    const style = document.createElement('style');
+    style.setAttribute('type', 'module');
+    style.setAttribute('specifier', 'app-el-sheet');
+    style.textContent = '.x { color: red; }';
+    document.head.append(style);
+    const s = spy();
+    const host = document.createElement(define(s));
+    host.setAttribute('data-fud-adopt', 'app-el-sheet');
+
+    (host as FudicElement).c([]);
+
+    // Before the controller fabricates: the sheet is there by the time `c` builds anything.
+    expect(s.props[0]![1]).toBe(host.shadowRoot);
+    expect(host.shadowRoot!.adoptedStyleSheets).toHaveLength(1);
+    style.remove();
+  });
+
+  it('leaves a hydrated shadow root as the DSD left it: the parser adopted its sheets', () => {
+    const style = document.createElement('style');
+    style.setAttribute('type', 'module');
+    style.setAttribute('specifier', 'app-el-sheet-h');
+    style.textContent = '.x { color: red; }';
+    document.head.append(style);
+    const s = spy();
+    const host = document.createElement(define(s));
+    host.setAttribute('data-fud-adopt', 'app-el-sheet-h');
+    const shadow = host.attachShadow({ mode: 'open' });
+
+    (host as FudicElement).h([]);
+
+    expect(shadow.adoptedStyleSheets).toEqual([]);
+    style.remove();
+  });
+
   it('opens the bridge its author wrote, as the server did (BUG-42, decision 132)', () => {
     const tag = freshTag();
     customElements.define(

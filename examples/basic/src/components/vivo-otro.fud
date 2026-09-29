@@ -1,0 +1,41 @@
+@code {
+  const { label = "" } = props<{ label?: string }>();
+
+  @client {
+    import { signal } from "@fudic/core";
+
+    // Its own state, like `vivo-item`: an instance that comes alive has to answer its button.
+    const clicks = signal(0);
+
+    function count() {
+      clicks.set(clicks() + 1);
+    }
+  }
+}
+
+<head>
+  <style>
+    .otro {
+      display: flex;
+      gap: var(--gap);
+      align-items: center;
+      border: 2px dashed #c5221f;
+      border-radius: 8px;
+      padding: 0.4rem 0.75rem;
+      background: #fce8e6;
+      color: #a50e0e;
+    }
+    button {
+      padding: 0.2rem 0.6rem;
+    }
+  </style>
+</head>
+
+<vivo-otro>
+  <template shadowrootmode="open">
+    <span class="otro">
+      <span data-id="label">@label</span>
+      <button @click=@count data-id="count">tocado @clicks() veces</button>
+    </span>
+  </template>
+</vivo-otro>
