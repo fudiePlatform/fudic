@@ -1,7 +1,7 @@
 # BUG-45 · Un componente que nace en el navegador no adopta sus hojas, y un `@if` en el hueco de una ruta no arranca
 
-> **Estado:** `En curso` — arreglado y probado a mano por Pedro en el navegador; faltan los
-> tests (ver [BUG-45-Task.md](./BUG-45-Task.md)).
+> **Estado:** `Hecho` — arreglado, probado a mano por Pedro en el navegador y con sus tests (ver
+> [BUG-45-Task.md](./BUG-45-Task.md)). Redactado y cerrado el 2026-09-29.
 > **Corrige:** [SDD-18](../SDD-18-estilos-compartidos.md) (D-6: `data-fud-adopt` solo lo leía el
 > polyfill) · [SDD-15](../SDD-15-emit.md) §3.7 (`FudicElement.c`) ·
 > [SDD-39](../SDD-39-rutas-reactivas.md) §4.3 (el recorrido del layout en el chunk de la ruta)
@@ -108,4 +108,5 @@ libera en `r`, igual que a ellos.
 7. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde. `@fudic/core` al 100 % en las cuatro
    métricas y `@fudic/compiler` sin bajar de su suelo.
 8. En el navegador, en `/vivo`: los elementos que añade **Añadir** y los componentes que entran
-   al **cambiar de rama** llegan con su estilo (probado por Pedro).
+   al **cambiar de rama** llegan con su estilo. Lo probó Pedro, y lo comprueba el e2e
+   `examples/basic/tests/vivo.spec.ts`.
