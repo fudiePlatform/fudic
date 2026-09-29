@@ -220,11 +220,11 @@ describe('dependencyChain — the same walk, in the order the style guides compo
   /** guia ← ui ← tienda: the shape that motivated the whole thing. */
   const CHAIN: Readonly<Record<string, string>> = {
     [`${APP}/package.json`]: manifest('@acme/tienda', { '@acme/ui': '*' }),
-    [`${APP}/fudic.json`]: JSON.stringify({ kind: 'app', id: 'tienda', styles: ['tienda.css'] }),
+    [`${APP}/fudic.json`]: JSON.stringify({ kind: 'app', id: 'tienda', globalStyles: { tienda: 'tienda.css' } }),
     '/ws/node_modules/@acme/ui/package.json': manifest('@acme/ui', { '@acme/guia': '*' }),
-    '/ws/node_modules/@acme/ui/fudic.json': JSON.stringify({ kind: 'lib', styles: ['ui.css'] }),
+    '/ws/node_modules/@acme/ui/fudic.json': JSON.stringify({ kind: 'lib', globalStyles: { ui: 'ui.css' } }),
     '/ws/node_modules/@acme/guia/package.json': manifest('@acme/guia'),
-    '/ws/node_modules/@acme/guia/fudic.json': JSON.stringify({ kind: 'lib', styles: ['tokens.css'] }),
+    '/ws/node_modules/@acme/guia/fudic.json': JSON.stringify({ kind: 'lib', globalStyles: { tokens: 'tokens.css' } }),
   };
 
   it('answers dependencies first and the package itself last', () => {
@@ -291,7 +291,11 @@ describe('dependencyChain — the same walk, in the order the style guides compo
 
   it('carries the config, which is what the styles are read from', () => {
     const chain = dependencyChain(APP, memoryFs(CHAIN));
-    expect(chain.map((p) => p.config.styles)).toEqual([['tokens.css'], ['ui.css'], ['tienda.css']]);
+    expect(chain.map((p) => p.config.globalStyles.map((s) => s.path))).toEqual([
+      ['tokens.css'],
+      ['ui.css'],
+      ['tienda.css'],
+    ]);
     expect(chain.map((p) => p.root)).toEqual([
       '/ws/node_modules/@acme/guia',
       '/ws/node_modules/@acme/ui',
