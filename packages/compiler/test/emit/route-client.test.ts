@@ -61,6 +61,19 @@ describe('who gets a chunk (§6.3, §4.5)', () => {
     expect(code).toContain('const $s = () => {};');
   });
 
+  it('and with its hole straight in the `<body>`, no layout node either: nothing to declare', () => {
+    const route = [
+      '<link rel="layout" href="./l.fud">',
+      '@code { @client { const n = signal(1); function nada() {} } }',
+      'texto suelto',
+    ].join('\n');
+    const code = chunkOf(route, {
+      '/l.fud': '<!DOCTYPE html><html><head>@RenderHead()</head><body>@RenderBody()</body></html>',
+    })!;
+    expect(code).not.toContain('$lp0');
+    expect(code).toMatch(/export default \(\$props\) => \{\n {2}const \$d = \[\];/u);
+  });
+
   it('a route that only composes reactive components stays at zero JavaScript of its own', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
@@ -146,7 +159,7 @@ describe('the walk crosses the layout by cursor (§6.4)', () => {
     // The body level: its cursor opens on the `<body>`, and the section's button comes first.
     expect(code).toContain('let $lc0 = $dom.firstElementChild($root);');
     // `<main>` is entered — the route's own markup is inside it.
-    expect(code).toContain('const $lp0 = $lc0;');
+    expect(code).toContain('$lp0 = $lc0;');
     expect(code).toContain('let $lc1 = $dom.firstElementChild($lp0);');
   });
 
@@ -155,13 +168,40 @@ describe('the walk crosses the layout by cursor (§6.4)', () => {
     expect(code).not.toContain('footer');
     expect(code).not.toContain('pie');
     // And the walk stops at `<main>`: one element is ever entered, and nothing follows it.
-    expect(code).toContain('const $lp0 =');
+    expect(code).toContain('$lp0 =');
     expect(code).not.toContain('$lp1');
   });
 
   it('hooks up a listener written inside a `@section` exactly like one of the body', () => {
     const code = chunkOf(route, { '/nav.fud': NAV })!;
     expect(code).toContain('$dom.event(');
+  });
+});
+
+describe('a construct written straight in a hole (BUG-45 §2.3)', () => {
+  // The `@if` has no element of the route around it: its parent is `<main>`, a LAYOUT node.
+  const route = [
+    '<link rel="layout" href="./l.fud">',
+    '@code { @client { const v = signal(true); function t() { v.set(!v()); } } }',
+    '<button @click=@t>t</button>',
+    '@if (v()) { <p>a</p> } else { <p>b</p> }',
+  ].join('\n');
+
+  it('declares the layout node at closure scope, where the branch selector can see it', () => {
+    const code = chunkOf(route)!;
+    // In the closure's own `let`, ahead of every block; `h` only assigns it.
+    expect(code).toMatch(/^ {2}let \$lp0, /mu);
+    expect(code).not.toContain('const $lp0');
+    expect(code).toContain('$lp0 = $lc0;');
+    // The selector that hands a branch its parent names it outside `h`.
+    const adopt = code.indexOf('h: () => {');
+    expect(adopt).toBeGreaterThan(0);
+    expect(code.indexOf('($lp0, ')).toBeGreaterThan(0);
+    expect(code.indexOf('($lp0, ')).toBeLessThan(adopt);
+  });
+
+  it('releases it with the route’s own nodes', () => {
+    expect(chunkOf(route)!).toMatch(/r: \(\) => \{ .*\$lp0 = [^;]*\$root = null;/u);
   });
 });
 

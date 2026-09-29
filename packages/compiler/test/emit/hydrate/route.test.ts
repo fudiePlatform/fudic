@@ -179,6 +179,38 @@ describe('the constructs of a route reconcile like a component’s', () => {
   });
 });
 
+describe('a construct written straight in a hole of the layout (BUG-45 §2.3)', () => {
+  // No element of the route around the `@if`: its parent is `<main>`, a node of the LAYOUT,
+  // and its branch selector lives outside `h`. The `div.caso` above hid exactly this.
+  const route = [
+    '<link rel="layout" href="./l.fud">',
+    '@code { @client {',
+    '  const v = signal(true);',
+    '  function t() { v.set(!v()); }',
+    '} }',
+    '<button class="t" @click=@t>t</button>',
+    '@if (v()) { <p class="rama">verdadera</p> } else { <p class="rama">falsa</p> }',
+  ].join('\n');
+
+  it('adopts the server branch and switches, in both directions, inside `<main>`', () => {
+    hydrate(route);
+    const branch = (): Element => document.querySelector('main > p.rama')!;
+    expect(branch().textContent).toBe('verdadera');
+    (document.querySelector('button.t') as HTMLElement).click();
+    expect(branch().textContent).toBe('falsa');
+    (document.querySelector('button.t') as HTMLElement).click();
+    expect(branch().textContent).toBe('verdadera');
+    expect(document.querySelectorAll('p.rama')).toHaveLength(1);
+  });
+
+  it('releases the branch it switched to', () => {
+    const controller = hydrate(route);
+    (document.querySelector('button.t') as HTMLElement).click();
+    controller.r();
+    expect(document.querySelector('p.rama')).toBeNull();
+  });
+});
+
 describe('a page that owns its own shell adopts the same way', () => {
   it('walks straight off the `<body>`, with no layout to step over', () => {
     const io = memoryIo({
