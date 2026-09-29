@@ -26,7 +26,7 @@
 </head>
 
 <app-parent>
-  <template shadowrootmode="open">
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="panel">
     <div class="panel">
       <button class="inc" @click=@inc>+1 en la raíz</button>
       <app-child .count=@count></app-child>

@@ -54,8 +54,8 @@ export const FUD_CONFIG_DUPLICATE_ID = 'FUD0724';
  * knows how a `styles` entry turns into a specifier.
  */
 
-/** A `styles` entry names a file that does not exist. Carries the path as written. */
+/** A `globalStyles` or `styles` entry names a file that does not exist. Carries the path. */
 export const FUD_STYLE_NOT_FOUND = 'FUD0740';
 
-/** Two `styles` entries produce the same specifier: same basename, different directory. */
+/** Two sheets under one name: in `globalStyles` and `styles`, or in two packages of a chain. */
 export const FUD_STYLE_SPECIFIER_CLASH = 'FUD0741';

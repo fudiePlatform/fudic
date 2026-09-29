@@ -36,6 +36,9 @@ import {
   redactServerRegions,
   remapDiagnostics,
   inlineRuntimeMarker,
+  adoptedStylesOf,
+  errorDiag,
+  FUD_ADOPTED_STYLE_UNKNOWN,
   type Diagnostic,
   type ElementNode,
   type DocumentGraph,
@@ -135,10 +138,50 @@ function buildMap(id: string, source: string, out: EmitOutput, map: OffsetMap): 
 export interface ProjectStyles {
   /** The sheets a component defined in `file` adopts, cascade order, root of the chain first. */
   chainFor(file: string): readonly ProjectStyle[];
+  /** The sheets a component defined in `file` may choose by name on its root template. */
+  choosableFor(file: string): ReadonlyMap<string, ProjectStyle>;
 }
 
 /** A build with no style guide at all: the standalone emit, and every pre-SDD-42 project. */
-export const NO_STYLES: ProjectStyles = { chainFor: () => [] };
+export const NO_STYLES: ProjectStyles = { chainFor: () => [], choosableFor: () => new Map() };
+
+/**
+ * The sheets ONE component adopts from the project side, in cascade order: the chain's global
+ * sheets, then the ones its root template names, in the order it names them. A name the
+ * project does not declare is left out here and reported by `adoptDiagnostics`.
+ */
+function projectSheetsOf(component: ResolvedComponent, styles: ProjectStyles): readonly ProjectStyle[] {
+  const global = styles.chainFor(component.path);
+  const names = adoptedStylesOf(component.doc.template).names;
+  if (names.length === 0) return global;
+  const choosable = styles.choosableFor(component.path);
+  const chosen = names.flatMap(({ name }) => {
+    const sheet = choosable.get(name);
+    return sheet === undefined ? [] : [sheet];
+  });
+  return [...global, ...chosen];
+}
+
+/**
+ * `FUD0744` over the entry, when it is a component: every name its root template chooses that
+ * its project's `styles` does not declare. Only the entry's, so each mistake is reported once —
+ * by the transform of the file that holds it, whatever pages compose it.
+ */
+function adoptDiagnostics(graph: DocumentGraph, styles: ProjectStyles): readonly Diagnostic[] {
+  const own = entryComponent(graph);
+  if (own === undefined) return [];
+  const choosable = styles.choosableFor(own.path);
+  return adoptedStylesOf(own.doc.template)
+    .names.filter(({ name }) => !choosable.has(name))
+    .map(({ name, span }) =>
+      errorDiag(
+        FUD_ADOPTED_STYLE_UNKNOWN,
+        `"${name}" is not a stylesheet of this project: a component chooses from the "styles" of its fudic.json` +
+          (choosable.size === 0 ? ', and it declares none' : ` (${[...choosable.keys()].join(', ')})`),
+        span,
+      ),
+    );
+}
 
 /**
  * What the emit is told about project sheets for ONE document: the sheets to hoist, and
@@ -174,7 +217,7 @@ function styleOptions(
   hoist(styles.chainFor(graph.entryPath));
   const chains = new Map<string, readonly string[]>();
   for (const component of allComponents(graph)) {
-    const chain = styles.chainFor(component.path);
+    const chain = projectSheetsOf(component, styles);
     chains.set(component.tag, chain.map((sheet) => sheet.specifier));
     hoist(chain);
   }
@@ -303,6 +346,7 @@ export function transformFud(
         ...out.diagnostics,
         ...contractDiagnostics(graph),
         ...injectionDiagnostics(graph, io),
+        ...adoptDiagnostics(graph, styles),
       ],
       graph.entryMap,
       id,

@@ -23,37 +23,39 @@ function io(files: Record<string, string>): ConfigIo {
   };
 }
 
-const CONFIG = { id: 'shop', kind: 'app', prefix: 'shop', styles: [] } as const;
+const CONFIG = { id: 'shop', kind: 'app', prefix: 'shop', globalStyles: [], styles: [] } as const;
+const EMPTY = { global: [], optional: [], errors: [], warnings: [] };
+const theme = (path: string) => [{ name: 'theme', path }];
 
 describe('readStyles', () => {
   it('is empty for a project with no fudic.json at all', () => {
-    expect(readStyles('/p', null, io({}))).toEqual({ styles: [], errors: [], warnings: [] });
+    expect(readStyles('/p', null, io({}))).toEqual(EMPTY);
   });
 
   it('is empty for a project whose fudic.json declares no styles', () => {
-    expect(readStyles('/p', CONFIG, io({}))).toEqual({ styles: [], errors: [], warnings: [] });
+    expect(readStyles('/p', CONFIG, io({}))).toEqual(EMPTY);
   });
 
   it('hands the emit a specifier and CSS, and nothing else — no path travels on', () => {
     const result = readStyles(
       '/p',
-      { ...CONFIG, styles: ['src/theme.css'] },
+      { ...CONFIG, globalStyles: theme('src/theme.css') },
       io({ '/p/src/theme.css': ':host{--gap:8px}' }),
     );
-    expect(result.styles).toEqual([{ specifier: '_theme', css: ':host{--gap:8px}' }]);
+    expect(result.global).toEqual([{ specifier: 'theme', css: ':host{--gap:8px}' }]);
     expect(result.errors).toEqual([]);
   });
 
   it('surfaces the missing sheet as an error, not a warning', () => {
-    const result = readStyles('/p', { ...CONFIG, styles: ['src/theme.css'] }, io({}));
-    expect(result.styles).toEqual([]);
+    const result = readStyles('/p', { ...CONFIG, globalStyles: theme('src/theme.css') }, io({}));
+    expect(result.global).toEqual([]);
     expect(result.errors.map((d) => d.code)).toEqual([FUD_STYLE_NOT_FOUND]);
   });
 
-  it('surfaces a specifier clash the same way', () => {
+  it('surfaces a name clash the same way', () => {
     const result = readStyles(
       '/p',
-      { ...CONFIG, styles: ['a/theme.css', 'b/theme.css'] },
+      { ...CONFIG, globalStyles: theme('a/theme.css'), styles: theme('b/theme.css') },
       io({ '/p/a/theme.css': '.a{}', '/p/b/theme.css': '.b{}' }),
     );
     expect(result.errors.map((d) => d.code)).toEqual([FUD_STYLE_SPECIFIER_CLASH]);
@@ -107,7 +109,7 @@ describe('FUD0743 — read once per sheet, not once per route', () => {
   it('points at the rule by file, line and column, and keeps the sheet', () => {
     const result = readStyles(
       '/p',
-      { ...CONFIG, styles: ['src/styles/theme.css'] },
+      { ...CONFIG, globalStyles: theme('src/styles/theme.css') },
       io({ '/p/src/styles/theme.css': ':host{--gap:8px}\n\nbody { margin: 0; }\n' }),
     );
 
@@ -118,15 +120,15 @@ describe('FUD0743 — read once per sheet, not once per route', () => {
     expect(w!.message).toContain('src/styles/theme.css:3:1:');
     expect(w!.message).toContain('"body"');
     // An advice, not a pruning: the emit is handed the sheet exactly as it was read.
-    expect(result.styles).toEqual([
-      { specifier: '_theme', css: ':host{--gap:8px}\n\nbody { margin: 0; }\n' },
+    expect(result.global).toEqual([
+      { specifier: 'theme', css: ':host{--gap:8px}\n\nbody { margin: 0; }\n' },
     ]);
   });
 
   it('says nothing about a sheet written for where it goes', () => {
     const result = readStyles(
       '/p',
-      { ...CONFIG, styles: ['src/theme.css'] },
+      { ...CONFIG, globalStyles: theme('src/theme.css') },
       io({ '/p/src/theme.css': ':host{display:block}.card{padding:var(--gap)}' }),
     );
     expect(result.warnings).toEqual([]);

@@ -1,0 +1,23 @@
+/* Los paneles de demostración: solo la adoptan los componentes que la piden
+   (`styles` en fudic.json, `shadowrootadoptedstylesheets="panel"` en su template). */
+
+/* La caja. Sin `display` a propósito: unos la usan en grid y otros en fila. */
+.panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-box);
+  padding: var(--pad-box);
+  background: var(--surface);
+}
+
+.row {
+  display: flex;
+  gap: var(--gap);
+  align-items: center;
+}
+
+/* El pie de un panel de demostración. */
+.pie {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+}

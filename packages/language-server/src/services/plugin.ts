@@ -90,7 +90,13 @@ import {
   summaryNodesOf,
   type FormAttributeOffer,
 } from './forms.js';
-import { referenceTargetIdsAt, templateAttributeAt, templateAttributeOffers } from './template-attrs.js';
+import {
+  adoptedStyleDiagnostics,
+  adoptedStylesAt,
+  referenceTargetIdsAt,
+  templateAttributeAt,
+  templateAttributeOffers,
+} from './template-attrs.js';
 import { typeScriptService } from './ts-service.js';
 import { interpolates, scopeNames, templateScope } from './template-scope.js';
 import { styleClassNames } from './classes.js';
@@ -319,6 +325,27 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
               const binding = attributeValueBindingAt(cached.source, offset, region);
               if (binding === undefined) return undefined;
 
+              // `shadowrootadoptedstylesheets="|"` on the root template: the `styles` of the
+              // project's fudic.json that are not written yet. The list is space-separated, so
+              // each item is a word and the editor replaces only the word under the caret.
+              const written = adoptedStylesAt(cached, region);
+              if (written !== undefined) {
+                const names = deps.configs?.choosableStylesFor(cached.path) ?? [];
+                const range = rangeOf(document, binding.span);
+                const items = names
+                  .filter((name) => !written.includes(name))
+                  .map((name) => ({
+                    label: name,
+                    kind: CompletionItemKind.Color,
+                    detail: 'styles de fudic.json',
+                    sortText: `0_${name}`,
+                    labelDetails: { description: 'fudic' },
+                    // The word under the caret only: the value is a space-separated list.
+                    textEdit: { range, newText: name },
+                  }));
+                return items.length === 0 ? undefined : list(items);
+              }
+
               // `shadowrootreferencetarget="|"` on the root template: the ids of the template,
               // the only thing the bridge can point at (BUG-42 §4.11, `FUD0605`).
               const ids = referenceTargetIdsAt(cached, region);
@@ -535,9 +562,13 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
               const cached = fudicDocumentOf(context, document);
               if (cached === undefined) return undefined;
 
-              return fudicDiagnostics(cached, index).map((diagnostic) =>
-                toLspDiagnostic(document, diagnostic),
-              );
+              // The names the root template chooses, against the nearest fudic.json. With no
+              // fudic.json governing the file there is nothing to check them against.
+              const choosable = deps.configs?.choosableStylesFor(cached.path) ?? null;
+              return [
+                ...fudicDiagnostics(cached, index),
+                ...(choosable === null ? [] : adoptedStyleDiagnostics(cached, choosable)),
+              ].map((diagnostic) => toLspDiagnostic(document, diagnostic));
             },
             undefined,
           );

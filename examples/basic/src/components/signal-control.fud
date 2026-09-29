@@ -71,7 +71,7 @@
 </head>
 
 <signal-control>
-  <template shadowrootmode="open">
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="panel">
     <section class="panel">
       <div class="row">
         <button class="menos" @click=@menos>−1</button>

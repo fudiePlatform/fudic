@@ -25,31 +25,46 @@ import {
 import { dependencyChain, owningPackage, type PackageFs } from '@fudic/resolve';
 
 export interface StylesResult {
-  /** In adoption order. Empty for a project with no `fudic.json` or no `styles`. */
-  readonly styles: readonly ProjectStyle[];
+  /** `globalStyles`, in adoption order: every component of the project adopts them. */
+  readonly global: readonly ProjectStyle[];
+  /** `styles`: the ones a component names in its root template to adopt. */
+  readonly optional: readonly ProjectStyle[];
   /** Fatal: the document would render with styles nobody declared (§4.1). */
   readonly errors: readonly ConfigDiagnostic[];
   /** `FUD0743`: a rule of the sheet that matches nothing where the sheet goes (§4.5). */
   readonly warnings: readonly ConfigDiagnostic[];
 }
 
-/** Resolve and read `<root>/<entry>` for every `styles` entry of the project. */
+/** A project that declares no sheet at all. */
+const NO_SHEETS: StylesResult = { global: [], optional: [], errors: [], warnings: [] };
+
+/** Resolve and read every `globalStyles` and `styles` entry of the project. */
 export function readStyles(
   root: string,
   config: ProjectConfig | null,
   io: ConfigIo,
 ): StylesResult {
-  if (config === null || config.styles.length === 0) {
-    return { styles: [], errors: [], warnings: [] };
+  if (config === null || (config.globalStyles.length === 0 && config.styles.length === 0)) {
+    return NO_SHEETS;
   }
-  const { styles, diagnostics } = readProjectStyles(root, config.styles, io);
+  const { global, optional, diagnostics } = readProjectStyles(root, config, io);
   // Only the two the emit needs: the path it was read from is the reader's business, and
   // carrying it further would put a filesystem path inside the compiler's options.
+  const strip = ({ specifier, css }: ProjectStyleFile): ProjectStyle => ({ specifier, css });
   return {
-    styles: styles.map(({ specifier, css }) => ({ specifier, css })),
+    global: global.map(strip),
+    optional: optional.map(strip),
     errors: diagnostics,
-    warnings: styles.flatMap(lintOne),
+    warnings: [...global, ...optional].flatMap(lintOne),
   };
+}
+
+/** What a component of one package can adopt: the chain's global sheets, and what it may choose. */
+export interface PackageSheets {
+  /** Every component adopts these, root of the chain first. */
+  readonly global: readonly ProjectStyle[];
+  /** Name → sheet: what its root template may name, from any package of the chain. */
+  readonly optional: ReadonlyMap<string, ProjectStyle>;
 }
 
 /**
@@ -70,9 +85,9 @@ export class ProjectStyleChains {
   /** Package root → the sheets it declares itself. */
   readonly #own = new Map<string, StylesResult>();
   /** Package root → its whole chain, dependencies first. */
-  readonly #chain = new Map<string, readonly ProjectStyle[]>();
+  readonly #chain = new Map<string, PackageSheets>();
   /** File → the chain of the package that owns it. */
-  readonly #ofFile = new Map<string, readonly ProjectStyle[]>();
+  readonly #ofFile = new Map<string, PackageSheets>();
   readonly #diagnostics: ConfigDiagnostic[] = [];
 
   constructor(root: string, io: PackageFs) {
@@ -113,12 +128,21 @@ export class ProjectStyleChains {
    * package's dependency chain first, its own package last.
    */
   chainFor(file: string): readonly ProjectStyle[] {
+    return this.#sheetsFor(file).global;
+  }
+
+  /** The sheets a component defined in `file` may choose by name, from its whole chain. */
+  choosableFor(file: string): ReadonlyMap<string, ProjectStyle> {
+    return this.#sheetsFor(file).optional;
+  }
+
+  #sheetsFor(file: string): PackageSheets {
     const key = toPosix(file);
     const cached = this.#ofFile.get(key);
     if (cached !== undefined) return cached;
-    const chain = this.chainOfPackage(this.#ownerOf(key));
-    this.#ofFile.set(key, chain);
-    return chain;
+    const sheets = this.#chainOf(toPosix(this.#io.realPath(this.#ownerOf(key))));
+    this.#ofFile.set(key, sheets);
+    return sheets;
   }
 
   /**
@@ -129,7 +153,7 @@ export class ProjectStyleChains {
    * the first module is emitted rather than halfway through the first transform.
    */
   chainOfPackage(packageRoot: string): readonly ProjectStyle[] {
-    return this.#chainOf(toPosix(this.#io.realPath(toPosix(packageRoot))));
+    return this.#chainOf(toPosix(this.#io.realPath(toPosix(packageRoot)))).global;
   }
 
   /** What reading the OTHER packages' sheets had to say. The root's are `own(root)`'s. */
@@ -151,28 +175,38 @@ export class ProjectStyleChains {
     return owner;
   }
 
-  #chainOf(packageRoot: string): readonly ProjectStyle[] {
+  #chainOf(packageRoot: string): PackageSheets {
     const cached = this.#chain.get(packageRoot);
     if (cached !== undefined) return cached;
-    const sheets: ProjectStyle[] = [];
-    // Specifier → the package that already contributed it. Two sheets under one specifier
-    // cannot be told apart in the module map, and one of them would silently replace the
-    // other — the same `FUD0741` `@fudic/config` reports inside one project, across two.
+    const global: ProjectStyle[] = [];
+    const optional = new Map<string, ProjectStyle>();
+    // Name → the package that already contributed it. Two sheets under one name cannot be
+    // told apart in the module map, and one of them would silently replace the other — the
+    // same `FUD0741` `@fudic/config` reports inside one project, across two. Global and
+    // optional share it: the module map does not know which list a name came from.
     const claimed = new Map<string, string>();
+    const claim = (sheet: ProjectStyle, by: string): boolean => {
+      const owner = claimed.get(sheet.specifier);
+      if (owner !== undefined) {
+        this.#diagnostics.push(clash(sheet.specifier, owner, by));
+        return false;
+      }
+      claimed.set(sheet.specifier, by);
+      return true;
+    };
     for (const pkg of dependencyChain(packageRoot, this.#io)) {
       // By name where it has one, by directory where it does not: a diagnostic has to name
       // something the author can go and look at, and a private package often has no name.
       const by = pkg.name === '' ? pkg.root : pkg.name;
-      for (const sheet of this.own(pkg.root).styles) {
-        const owner = claimed.get(sheet.specifier);
-        if (owner !== undefined) {
-          this.#diagnostics.push(clash(sheet.specifier, owner, by));
-          continue;
-        }
-        claimed.set(sheet.specifier, by);
-        sheets.push(sheet);
+      const own = this.own(pkg.root);
+      for (const sheet of own.global) {
+        if (claim(sheet, by)) global.push(sheet);
+      }
+      for (const sheet of own.optional) {
+        if (claim(sheet, by)) optional.set(sheet.specifier, sheet);
       }
     }
+    const sheets = { global, optional };
     this.#chain.set(packageRoot, sheets);
     return sheets;
   }
@@ -187,9 +221,9 @@ function clash(specifier: string, first: string, second: string): ConfigDiagnost
     // what the message names, and it is what the author has to go and talk to.
     file: second,
     message:
-      `"${first}" and "${second}" both adopt a stylesheet as "${specifier}". Two sheets with ` +
-      'the same basename cannot be told apart in the module map, and one would silently ' +
-      'replace the other — rename one of the two files.',
+      `"${first}" and "${second}" both declare a stylesheet named "${specifier}". Two sheets ` +
+      'under one name cannot be told apart in the module map, and one would silently ' +
+      'replace the other — rename one of the two.',
   };
 }
 

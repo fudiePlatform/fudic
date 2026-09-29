@@ -92,7 +92,7 @@
 </head>
 
 <app-calendar>
-  <template shadowrootmode="open">
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="panel">
     <section class="panel">
       @* Un solo `@click`, en el contenedor. Las celdas no llevan listener: llevan marcador. *@
       <div class="grid" @click=@pick($day)>

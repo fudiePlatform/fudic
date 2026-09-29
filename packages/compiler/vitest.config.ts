@@ -37,6 +37,8 @@ export default defineConfig({
         // on its way into a document, and the reading that says a rule of it will match
         // nothing where it is going (SDD-42).
         'src/emit/project-styles.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // The names a component chooses on its root template (SDD-46).
+        'src/binding/adopt.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/emit/styles-lint.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
       },
     },

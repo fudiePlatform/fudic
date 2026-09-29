@@ -1,4 +1,4 @@
 {
   "kind": "lib",
-  "styles": ["tokens.css"]
+  "globalStyles": { "tokens": "tokens.css" }
 }

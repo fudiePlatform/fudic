@@ -2,5 +2,5 @@
   "id": "tienda-admin",
   "kind": "app",
   "prefix": "admin",
-  "styles": ["src/admin.css"]
+  "globalStyles": { "admin": "src/admin.css" }
 }

@@ -2,5 +2,5 @@
   "id": "tienda",
   "kind": "app",
   "prefix": "tienda",
-  "styles": ["src/tienda.css"]
+  "globalStyles": { "tienda": "src/tienda.css" }
 }

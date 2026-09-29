@@ -13,6 +13,7 @@ import { createFudicService, createFudicTagService } from '../../src/services/pl
 import { TEMPLATE_ATTRIBUTES } from '../../src/services/template-attrs.js';
 import { silenceOwnedPositions } from '../../src/services/owned.js';
 import { WorkspaceIndex } from '../../src/workspace-index.js';
+import { ProjectConfigs } from '../../src/project-config.js';
 import { fakeServiceContext, TOKEN } from '../_lsp.js';
 import { LAYOUT, memoryFs } from '../_support.js';
 
@@ -105,6 +106,101 @@ describe('the root template (criterion 30)', () => {
       '<app-input>\n  <template shadowrootmode="|"><input id="campo"></template>\n</app-input>\n',
     );
     expect(labels(await tagService.provideCompletionItems?.(document, position, { triggerKind: 1 }, TOKEN))).not.toContain('campo');
+  });
+});
+
+describe('the sheets a component chooses, from its fudic.json', () => {
+  const FUDIC = JSON.stringify({ globalStyles: { theme: 'theme.css' }, styles: { panel: 'panel.css', forms: 'forms.css' } });
+
+  /** Like `at`, with a fudic.json at the project root and the services handed its configs. */
+  function withConfig(template: string) {
+    const offset = template.indexOf('|');
+    const text = template.replace('|', '');
+    const fs = memoryFs({ '/p/fudic.json': FUDIC, [PATH]: text });
+    const index = new WorkspaceIndex(fs);
+    index.scan('/p');
+    const configs = new ProjectConfigs(fs);
+    const cached = new DocumentCache(index).get(PATH, 1, text);
+    const document = TextDocument.create(URI.file(PATH).toString(), 'fud', 1, text);
+    const context = fakeServiceContext({ [URI.file(PATH).toString()]: cached }, () => undefined, {});
+    const stats = new RequestStats();
+    return {
+      document,
+      position: document.positionAt(offset),
+      service: createFudicService({ index, stats, typescript: true, configs }).create(context),
+      tagService: createFudicTagService({ index, stats, configs }).create(context),
+    };
+  }
+
+  it('offers the attribute on the root template, and asks for its list on accepting it', async () => {
+    const { tagService, document, position } = at('<app-input>\n  <template |><input></template>\n</app-input>\n');
+    const answer = (await tagService.provideCompletionItems?.(document, position, { triggerKind: 1 }, TOKEN)) as CompletionList;
+    const item = answer.items.find((i) => i.label === 'shadowrootadoptedstylesheets');
+    expect(item?.command).toBeDefined();
+    expect(String((item?.documentation as { value: string }).value)).toContain('fudic.json');
+  });
+
+  it('offers nothing inside the value where no fudic.json governs the file', async () => {
+    const { tagService, document, position } = at(
+      '<app-input>\n  <template shadowrootmode="open" shadowrootadoptedstylesheets="|"><input></template>\n</app-input>\n',
+    );
+    expect(await tagService.provideCompletionItems?.(document, position, { triggerKind: 1 }, TOKEN)).toBeUndefined();
+  });
+
+  it('offers the `styles` names inside the value, and not the global ones', async () => {
+    const { tagService, document, position } = withConfig(
+      '<app-input>\n  <template shadowrootmode="open" shadowrootadoptedstylesheets="|"><input></template>\n</app-input>\n',
+    );
+    expect(labels(await tagService.provideCompletionItems?.(document, position, { triggerKind: 1 }, TOKEN))).toEqual([
+      'panel',
+      'forms',
+    ]);
+  });
+
+  it('leaves out the names already written, and completes the word being typed', async () => {
+    const { tagService, document, position } = withConfig(
+      '<app-input>\n  <template shadowrootmode="open" shadowrootadoptedstylesheets="panel f|"><input></template>\n</app-input>\n',
+    );
+    expect(labels(await tagService.provideCompletionItems?.(document, position, { triggerKind: 1 }, TOKEN))).toEqual([
+      'forms',
+    ]);
+  });
+
+  it('underlines a name the project does not declare', async () => {
+    const { service, document } = withConfig(
+      '<app-input>\n  <template shadowrootmode="open" shadowrootadoptedstylesheets="panel nope"><input></template>\n</app-input>\n',
+    );
+    const found = (await service.provideDiagnostics?.(document, TOKEN)) ?? [];
+    expect(found.filter((d) => d.code === 'FUD0744').map((d) => d.message)).toEqual([
+      expect.stringContaining('"nope"'),
+    ]);
+  });
+
+  it('with every name written, offers nothing more', async () => {
+    const { tagService, document, position } = withConfig(
+      '<app-input>\n  <template shadowrootmode="open" shadowrootadoptedstylesheets="panel forms |"><input></template>\n</app-input>\n',
+    );
+    expect(await tagService.provideCompletionItems?.(document, position, { triggerKind: 1 }, TOKEN)).toBeUndefined();
+  });
+
+  it('checks nothing on a page, which has no root template to choose from', async () => {
+    const { service, document } = withConfig('<!DOCTYPE html>\n<html><head><title>t</title></head><body></body></html>\n|');
+    const found = (await service.provideDiagnostics?.(document, TOKEN)) ?? [];
+    expect(found.filter((d) => d.code === 'FUD0744')).toEqual([]);
+  });
+
+  it('says the project declares none when its fudic.json has no `styles`', async () => {
+    const text = '<app-input>\n  <template shadowrootmode="open" shadowrootadoptedstylesheets="panel"><input></template>\n</app-input>\n';
+    const fs = memoryFs({ '/p/fudic.json': '{"globalStyles":{"theme":"t.css"}}', [PATH]: text });
+    const index = new WorkspaceIndex(fs);
+    index.scan('/p');
+    const configs = new ProjectConfigs(fs);
+    const cached = new DocumentCache(index).get(PATH, 1, text);
+    const document = TextDocument.create(URI.file(PATH).toString(), 'fud', 1, text);
+    const context = fakeServiceContext({ [URI.file(PATH).toString()]: cached }, () => undefined, {});
+    const service = createFudicService({ index, stats: new RequestStats(), typescript: true, configs }).create(context);
+    const found = (await service.provideDiagnostics?.(document, TOKEN)) ?? [];
+    expect(found.find((d) => d.code === 'FUD0744')?.message).toContain('declares none');
   });
 });
 

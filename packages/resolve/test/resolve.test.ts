@@ -106,7 +106,7 @@ describe('a package href', () => {
       target: {
         name: '@acme/ui',
         root: '/ws/libs/ui',
-        config: { id: '', kind: 'lib', prefix: 'ui', styles: [] },
+        config: { id: '', kind: 'lib', prefix: 'ui', globalStyles: [], styles: [] },
       },
     });
   });

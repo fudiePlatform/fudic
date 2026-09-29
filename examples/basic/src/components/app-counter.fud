@@ -35,7 +35,7 @@
 </head>
 
 <app-counter>
-  <template shadowrootmode="open">
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="panel">
     <div class="panel">
       <button class="inc" @click=@inc>+1</button>
       <output class="value">@n()</output>
