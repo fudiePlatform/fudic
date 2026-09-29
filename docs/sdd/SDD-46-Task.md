@@ -4,15 +4,19 @@
 > **Paquetes:** `@fudic/config` · `@fudic/compiler` · `@fudic/vite` · `@fudic/language-server` ·
 > `@fudic/cli` · `@fudic/example-basic` · `examples/workspace`
 > **Rama:** `worktree-SDD-46-estilos-a-eleccion`
-> **Progreso:** 11 / 17
+> **Progreso:** 17 / 17
 
 Se implementó al revés de lo habitual, por decisión expresa: primero el código y la migración de
 los ejemplos, para que Pedro lo probara en el navegador y en el editor; después este documento; y
-los tests y la cobertura en otra sesión. Las fases 1–6 están cerradas; la 7 es esa sesión.
+los tests y la cobertura al final (fase 7).
 
-Lo único escrito como test hasta ahora: los tests de config y de Vite que tocaban la forma vieja
-se adaptaron **para que compilen** (sin ejecutar la batería), y tres casos del editor en
-`template-attrs.test.ts`, que se escribieron para demostrar el fallo de la tarea 7 y pasan.
+**Cobertura, contra el suelo medido en `main`:** `@fudic/config` y `@fudic/language-server`
+siguen al 100 % en las cuatro; `@fudic/compiler` pasa de 99,39 a 99,40 en sentencias y queda
+igual en ramas (98,54); `@fudic/vite` sube (ramas 92,51 → 92,58); `@fudic/cli` no cambia. Los
+ficheros nuevos o con código nuevo —`binding/adopt.ts`, `vite/src/styles.ts`,
+`vite/src/transform.ts`— al 100 % en las cuatro, y `adopt.ts` fijado en los umbrales del
+compilador. El único hueco que apareció fue la rama de un `throw` que no es un `Error` en
+`config/src/styles.ts`, que el test reescrito había perdido.
 
 ---
 
@@ -61,14 +65,14 @@ se adaptaron **para que compilen** (sin ejecutar la batería), y tres casos del 
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 12 | 2 | **Config.** Criterios 1–3; completar `styles.test.ts` (ya adaptado) y el test del lector | `config` | `test/styles.test.ts` · `test/read.test.ts` |
-| [ ] | 13 | 3 | **Compilador.** Criterios 4–5 | `compiler` | `test/binding/adopt.test.ts` · test del analizador |
-| [ ] | 14 | 5 | **Build.** Criterios 6–10, en servidor y en cliente; poner al día los tests de emit que esperan `_theme` y los de `style-chains` con cadenas de librería | `vite` · `compiler` | `test/styles.test.ts` · `test/style-chains.test.ts` · `compiler/test/emit/*` |
-| [ ] | 15 | 7 | **Editor.** Criterios 11–14 (12 y 13 ya tienen caso en `template-attrs.test.ts`); el recuento de atributos del template y `project-config.test.ts` | `language-server` | `test/services/template-attrs.test.ts` · `test/project-config.test.ts` |
-| [ ] | 16 | 12–15 | **`pnpm test` verde y cobertura.** Criterio 16: ficheros nuevos al 100 %, ninguno existente por debajo de su suelo en `main` | todos | — |
+| [x] | 12 | 2 | **Config.** Criterios 1–3; completar `styles.test.ts` (ya adaptado) y el test del lector | `config` | `test/styles.test.ts` · `test/read.test.ts` |
+| [x] | 13 | 3 | **Compilador.** Criterios 4–5 | `compiler` | `test/binding/adopt.test.ts` · test del analizador |
+| [x] | 14 | 5 | **Build.** Criterios 6–10, en servidor y en cliente; poner al día `style-chains`, `build-lib-graph` y `build-styles-missing` (los de emit del compilador no necesitan cambio: el compilador recibe el especificador ya resuelto) | `vite` · `compiler` | `test/styles.test.ts` · `test/style-chains.test.ts` · `compiler/test/emit/*` |
+| [x] | 15 | 7 | **Editor.** Criterios 11–14 (12 y 13 ya tienen caso en `template-attrs.test.ts`); el recuento de atributos del template y `project-config.test.ts` | `language-server` | `test/services/template-attrs.test.ts` · `test/project-config.test.ts` |
+| [x] | 16 | 12–15 | **`pnpm test` verde y cobertura.** Criterio 16: ficheros nuevos al 100 %, ninguno existente por debajo de su suelo en `main` | todos | — |
 
 ## Cierre (1)
 
 | ✓ | # | dep | tarea |
 |---|---|---|---|
-| [ ] | 17 | 16 | `pnpm typecheck`, `pnpm test` y `pnpm build` verdes; SDD-46 a `Hecho` en la tabla y el registro del `INDEX.md` |
+| [x] | 17 | 16 | `pnpm typecheck`, `pnpm test` y `pnpm build` verdes; SDD-46 a `Hecho` en la tabla y el registro del `INDEX.md` |

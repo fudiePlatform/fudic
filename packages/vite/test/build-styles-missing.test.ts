@@ -40,9 +40,18 @@ interface BuildOut {
   readonly code: string;
 }
 
-/** A project whose `fudic.json` declares `styles`, with whatever files are given. */
+/** What `fudic.json` declares about sheets: the two maps of SDD-46. */
+interface Sheets {
+  readonly globalStyles?: Readonly<Record<string, string>>;
+  readonly styles?: Readonly<Record<string, string>>;
+}
+
+/** The guide every test below starts from: one global sheet, `theme`. */
+const THEME: Sheets = { globalStyles: { theme: 'src/styles/theme.css' } };
+
+/** A project whose `fudic.json` declares `sheets`, with whatever files are given. */
 async function buildWith(
-  styles: readonly string[],
+  sheets: Sheets,
   files: Record<string, string>,
   page = PAGE,
 ): Promise<BuildOut> {
@@ -51,7 +60,7 @@ async function buildWith(
   mkdirSync(join(root, 'src', 'styles'), { recursive: true });
   mkdirSync(join(root, 'src', 'components'), { recursive: true });
   writeFileSync(join(root, 'src', 'routes', 'index.fud'), page);
-  writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test', styles }));
+  writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test', ...sheets }));
   // A Service Worker, so the build publishes a render chunk to assert on: since SDD-27 §5.1
   // the `page` chunks are pruned and `sw/c` is the render code that actually ships.
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
@@ -75,20 +84,23 @@ async function buildWith(
 
 describe('vite build — the project style guide', () => {
   it('FUD0740: a sheet that is not there stops the build, naming the path as written', async () => {
-    await expect(buildWith(['src/styles/theme.css'], {})).rejects.toThrow(/FUD0740/u);
+    await expect(buildWith(THEME, {})).rejects.toThrow(/FUD0740/u);
   }, 120000);
 
-  it('FUD0741: two sheets that would adopt under the same specifier stop it too', async () => {
+  it('FUD0741: one name in both maps stops it too', async () => {
     await expect(
-      buildWith(['src/styles/theme.css', 'src/routes/theme.css'], {
-        'src/styles/theme.css': '.a{color:red}',
-        'src/routes/theme.css': '.b{color:blue}',
-      }),
+      buildWith(
+        { globalStyles: { theme: 'src/styles/theme.css' }, styles: { theme: 'src/routes/theme.css' } },
+        {
+          'src/styles/theme.css': '.a{color:red}',
+          'src/routes/theme.css': '.b{color:blue}',
+        },
+      ),
     ).rejects.toThrow(/FUD0741/u);
   }, 120000);
 
   it('FUD0742: a guide nothing can adopt builds, and says so once', async () => {
-    const { warnings } = await buildWith(['src/styles/theme.css'], {
+    const { warnings } = await buildWith(THEME, {
       'src/styles/theme.css': ':host{--gap:8px}',
     });
     const raised = warnings.filter((w) => w.includes('FUD0742'));
@@ -99,7 +111,7 @@ describe('vite build — the project style guide', () => {
 
   it('FUD0743: a document-only rule is warned once, and the sheet ships whole', async () => {
     const { warnings, code } = await buildWith(
-      ['src/styles/theme.css'],
+      THEME,
       {
         'src/styles/theme.css': ':host{--gap:8px}\n:root{--brand:red}\n',
         'src/components/s-plain.fud': PLAIN,
@@ -117,7 +129,7 @@ describe('vite build — the project style guide', () => {
 
   it('§6.7 a project with a guide and no styled component still ships the polyfill', async () => {
     const { warnings, code } = await buildWith(
-      ['src/styles/theme.css'],
+      THEME,
       {
         'src/styles/theme.css': ':host{--gap:8px}',
         'src/components/s-plain.fud': PLAIN,
@@ -128,9 +140,63 @@ describe('vite build — the project style guide', () => {
     expect(warnings.filter((w) => w.includes('FUD0742'))).toEqual([]);
     // The VALUE and never the name: the nested build renames every local, so `PROJECT_STYLES`
     // is not in the output and only what it held survives.
-    expect(code).toContain('_theme');
+    expect(code).toContain('"theme"');
     expect(code).toContain('--gap:8px');
     // BUG-31 §T3 widened: there is something to adopt, so the thing that adopts it ships.
     expect(code).toContain('adoptedStyleSheets');
+  }, 120000);
+});
+
+/** A page with two components: `s-pick` chooses `panel`, `s-plain` chooses nothing. */
+const PAGE_WITH_TWO = `<!DOCTYPE html>
+<html>
+<head>
+<link rel="component" href="../components/s-pick.fud">
+<link rel="component" href="../components/s-plain.fud">
+<title>Home</title>
+</head>
+<body><s-pick></s-pick><s-plain></s-plain></body>
+</html>
+`;
+
+const pick = (chosen: string): string =>
+  `<s-pick><template shadowrootmode="open" shadowrootadoptedstylesheets="${chosen}"><span><slot></slot></span></template></s-pick>\n`;
+
+const CHOOSING: Sheets = {
+  globalStyles: { theme: 'src/styles/theme.css' },
+  styles: { panel: 'src/styles/panel.css', extra: 'src/styles/extra.css' },
+};
+
+const SHEETS = {
+  'src/styles/theme.css': ':host{--gap:8px}',
+  'src/styles/panel.css': '.panel{padding:1rem}',
+  'src/styles/extra.css': '.extra{margin:0}',
+  'src/components/s-plain.fud': PLAIN,
+};
+
+describe('vite build — the sheets a component chooses (SDD-46)', () => {
+  it('puts the chosen sheets after the global ones, in the order written', async () => {
+    const { code } = await buildWith(CHOOSING, { ...SHEETS, 'src/components/s-pick.fud': pick('extra panel') }, PAGE_WITH_TWO);
+    expect(code).toContain('theme extra panel');
+    // The one that chose nothing adopts the guide alone.
+    expect(code).not.toContain('theme extra panel s-plain');
+  }, 120000);
+
+  it('hoists a chosen sheet only where some component chooses it', async () => {
+    const chosen = await buildWith(CHOOSING, { ...SHEETS, 'src/components/s-pick.fud': pick('panel') }, PAGE_WITH_TWO);
+    expect(chosen.code).toContain('.panel{padding:1rem}');
+    expect(chosen.code).not.toContain('.extra{margin:0}');
+  }, 120000);
+
+  it('FUD0744: a name the project does not declare stops the build, naming the word', async () => {
+    await expect(
+      buildWith(CHOOSING, { ...SHEETS, 'src/components/s-pick.fud': pick('panel nope') }, PAGE_WITH_TWO),
+    ).rejects.toThrow(/FUD0744[\s\S]*"nope"/u);
+  }, 120000);
+
+  it('FUD0744 says the project declares none when it has no `styles`', async () => {
+    await expect(
+      buildWith(THEME, { ...SHEETS, 'src/components/s-pick.fud': pick('panel') }, PAGE_WITH_TWO),
+    ).rejects.toThrow(/declares none/u);
   }, 120000);
 });

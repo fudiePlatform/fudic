@@ -101,7 +101,7 @@ async function buildWorkspace(files: Readonly<Record<string, string>> = {}): Pro
   const ws = mkdtempSync(join(tmpdir(), 'fudic-libgraph-'));
   const tree: Record<string, string> = {
     'libs/guia/package.json': manifest('@acme/guia', { files: ['*.css'] }),
-    'libs/guia/fudic.json': JSON.stringify({ kind: 'lib', styles: ['tokens.css'] }, null, 2),
+    'libs/guia/fudic.json': JSON.stringify({ kind: 'lib', globalStyles: { tokens: 'tokens.css' } }, null, 2),
     'libs/guia/tokens.css': ':host { --acme-accent: #c00; }',
 
     'libs/ui/package.json': manifest('@acme/ui', {
@@ -114,7 +114,7 @@ async function buildWorkspace(files: Readonly<Record<string, string>> = {}): Pro
       exports: { './ui-card.fud': './src/ui-card.fud' },
       files: ['src', '*.css'],
     }),
-    'libs/ui/fudic.json': JSON.stringify({ kind: 'lib', prefix: 'ui', styles: ['ui.css'] }, null, 2),
+    'libs/ui/fudic.json': JSON.stringify({ kind: 'lib', prefix: 'ui', globalStyles: { ui: 'ui.css' } }, null, 2),
     'libs/ui/ui.css': ':host { display: block; }',
     'libs/ui/src/ui-card.fud': CARD,
 
@@ -127,7 +127,7 @@ async function buildWorkspace(files: Readonly<Record<string, string>> = {}): Pro
       dependencies: { '@acme/ui': '*' },
     }),
     'apps/tienda/fudic.json': JSON.stringify(
-      { kind: 'app', id: 'tienda', prefix: 'app', styles: ['tienda.css'] },
+      { kind: 'app', id: 'tienda', prefix: 'app', globalStyles: { tienda: 'tienda.css' } },
       null,
       2,
     ),
@@ -182,19 +182,19 @@ describe('a guide library under a component library under an app (§4.6)', () =>
 
   it('gives the LIBRARY component the guides of its own chain, and not the app’s', () => {
     // `guia → ui`, and the app's sheet is absent because the app does not define `ui-card`.
-    expect(html(built)).toContain('shadowrootadoptedstylesheets="_tokens _ui ui-card"');
+    expect(html(built)).toContain('shadowrootadoptedstylesheets="tokens ui ui-card"');
   });
 
   it('gives the APP’s component the whole chain, its own project last', () => {
-    expect(html(built)).toContain('shadowrootadoptedstylesheets="_tokens _ui _tienda app-panel"');
+    expect(html(built)).toContain('shadowrootadoptedstylesheets="tokens ui tienda app-panel"');
   });
 
   it('hoists the three sheets, the guide first', () => {
     const out = html(built);
     const at = (specifier: string): number => out.indexOf(`specifier="${specifier}"`);
-    expect(at('_tokens')).toBeGreaterThan(-1);
-    expect(at('_tokens')).toBeLessThan(at('_ui'));
-    expect(at('_ui')).toBeLessThan(at('_tienda'));
+    expect(at('tokens')).toBeGreaterThan(-1);
+    expect(at('tokens')).toBeLessThan(at('ui'));
+    expect(at('ui')).toBeLessThan(at('tienda'));
     // And the library's own token reaches the component's sheet, which is what retheming is.
     expect(out).toContain('var(--acme-accent)');
   });

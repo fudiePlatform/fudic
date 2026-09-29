@@ -93,6 +93,43 @@ describe('ProjectConfigs', () => {
   });
 });
 
+describe('the styles a component may choose (SDD-46 criterion 14)', () => {
+  const WS = {
+    '/ws/examples/basic/fudic.json': '{"globalStyles":{"theme":"t.css"},"styles":{"panel":"p.css","forms":"f.css"}}',
+    '/ws/examples/other/fudic.json': '{"styles":{"cards":"c.css"}}',
+  };
+
+  it('come from the NEAREST fudic.json, even with the workspace opened at its root', () => {
+    const project = configs(WS, '/ws');
+    expect(project.choosableStylesFor('/ws/examples/basic/src/components/app-x.fud')).toEqual(['panel', 'forms']);
+    expect(project.choosableStylesFor('/ws/examples/other/app-y.fud')).toEqual(['cards']);
+  });
+
+  it('are null where no fudic.json governs the file, and on one that does not read', () => {
+    expect(configs(WS, '/ws').choosableStylesFor('/ws/loose/app-z.fud')).toBeNull();
+    expect(configs({ '/p/fudic.json': '{' }).choosableStylesFor('/p/app-z.fud')).toBeNull();
+  });
+
+  it('answer the second file of a directory from what the first one found', () => {
+    const project = configs(WS, '/ws');
+    project.choosableStylesFor('/ws/examples/basic/src/components/a.fud');
+    expect(project.choosableStylesFor('/ws/examples/basic/src/components/b.fud')).toEqual(['panel', 'forms']);
+    expect(project.choosableStylesFor('/ws/examples/basic/src/c.fud')).toEqual(['panel', 'forms']);
+  });
+
+  it('follow an edit of any fudic.json without a restart', () => {
+    const files: Record<string, string> = { ...WS };
+    const project = new ProjectConfigs(memoryFs(files));
+    project.scan('/ws');
+    expect(project.choosableStylesFor('/ws/examples/basic/a.fud')).toEqual(['panel', 'forms']);
+
+    files['/ws/examples/basic/fudic.json'] = '{"styles":{"grid":"g.css"}}';
+    project.invalidate('/ws/examples/basic/fudic.json');
+
+    expect(project.choosableStylesFor('/ws/examples/basic/a.fud')).toEqual(['grid']);
+  });
+});
+
 /**
  * Criterion 13, and the reason `FUD0722` stays reserved: a component whose tag departs from
  * the project's prefix publishes NOTHING. Not an error, not a warning.

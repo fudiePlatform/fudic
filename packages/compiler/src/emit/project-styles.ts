@@ -23,7 +23,7 @@ import type { AssetLinker } from './assets.js';
 
 /** A stylesheet the project adopts into every shadow root it owns (SDD-42 §3.2). */
 export interface ProjectStyle {
-  /** The module-map specifier: `_<basename>`, impossible as a tag (SDD-42 §4.3). */
+  /** The module-map specifier: the name `fudic.json` gives the sheet, never a tag (SDD-46). */
   readonly specifier: string;
   /** The CSS as written. The host read it; this module compacts and links it. */
   readonly css: string;

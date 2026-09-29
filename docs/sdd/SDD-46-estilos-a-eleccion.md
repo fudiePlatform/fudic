@@ -1,7 +1,6 @@
 # SDD-46 — Estilos a elección: `globalStyles` para todos, `styles` para quien los pida
 
-> **Estado:** `En curso` — implementado y verificado en navegador; faltan los tests y la
-> cobertura (fase 7 del [Task](./SDD-46-Task.md)).
+> **Estado:** `Hecho` — los 16 criterios de §6 verdes; [Task](./SDD-46-Task.md) 17 / 17.
 > **Paquetes:** `@fudic/config` (los dos mapas) · `@fudic/compiler` (el atributo del template,
 > `FUD0745`) · `@fudic/vite` (la lista por componente, `FUD0744`) · `@fudic/language-server`
 > (autocompletado y subrayado) · `@fudic/cli` (la forma nueva) · `@fudic/example-basic` y

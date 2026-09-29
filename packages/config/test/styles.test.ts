@@ -85,6 +85,18 @@ describe('readProjectStyles', () => {
     expect(unreadable.diagnostics[0]?.message).toContain('EACCES');
   });
 
+  it('and when what it throws is not an Error, the message still says something', () => {
+    const rude: ConfigIo = {
+      exists: () => true,
+      read: () => {
+        // eslint-disable-next-line @typescript-eslint/only-throw-error
+        throw 'nope';
+      },
+    };
+    const result = readProjectStyles(ROOT, { globalStyles: [{ name: 't', path: 'x.css' }], styles: [] }, rude);
+    expect(result.diagnostics[0]?.message).toContain('nope');
+  });
+
   it('FUD0741 when a name is in both maps, and the global one wins', () => {
     const result = readProjectStyles(
       ROOT,

@@ -566,6 +566,13 @@ describe('BUG-42 — the two markers, one meaning each (criterion 19)', () => {
     }
   });
 
+  it('FUD0745: a chosen stylesheet list with an `@` in it (SDD-46 criterion 5)', () => {
+    const source =
+      '<app-test><template shadowrootmode="open" shadowrootadoptedstylesheets="@sheets"><p></p></template></app-test>';
+    expect(codes(source)).toEqual(['FUD0745']);
+    expect(codes(source.replace('@sheets', 'panel forms'))).toEqual([]);
+  });
+
   it('a hand-written reference target naming an id of the template is fine', () => {
     const source =
       '<app-test><template shadowrootmode="open" formassociated shadowrootreferencetarget="campo">' +
