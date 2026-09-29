@@ -40,6 +40,8 @@ export class ProjectConfigs {
    * opened on, and SDD-44 is what teaches the editor about those.
    */
   invalidate(path: string): void {
+    // Any `fudic.json` may be the nearest one of some file: forget them all, they are cheap.
+    this.#nearestByDir.clear();
     const root = normalize(path.slice(0, path.lastIndexOf('/')));
     if (!this.#byRoot.has(root)) return;
     this.#byRoot.set(root, this.#read(root));
@@ -64,6 +66,43 @@ export class ProjectConfigs {
   componentTagFor(path: string): string {
     const prefix = this.configFor(path)?.prefix ?? '';
     return prefix === '' ? DEFAULT_COMPONENT_TAG : tagOf(prefix, 'button');
+  }
+
+  /**
+   * The `styles` names a component under `path` may choose in its root template, from the
+   * NEAREST `fudic.json` above it — not the workspace folder's: a workspace opened at its root
+   * holds several projects, and each component chooses from its own. `null` when no
+   * `fudic.json` governs the file, and then nothing is offered and nothing is checked.
+   */
+  choosableStylesFor(path: string): readonly string[] | null {
+    const config = this.#nearest(toPosix(path));
+    return config === null ? null : config.styles.map((style) => style.name);
+  }
+
+  /** Directory → the config of the nearest `fudic.json` at or above it. Cleared on change. */
+  readonly #nearestByDir = new Map<string, ProjectConfig | null>();
+
+  #nearest(file: string): ProjectConfig | null {
+    const visited: string[] = [];
+    let dir = file.slice(0, file.lastIndexOf('/'));
+    let found: ProjectConfig | null = null;
+    for (;;) {
+      const cached = this.#nearestByDir.get(dir);
+      if (cached !== undefined) {
+        found = cached;
+        break;
+      }
+      visited.push(dir);
+      if (this.#scanner.readFile(`${dir}/fudic.json`) !== undefined) {
+        found = this.#read(dir);
+        break;
+      }
+      const up = dir.lastIndexOf('/');
+      if (up <= 0) break;
+      dir = dir.slice(0, up);
+    }
+    for (const seen of visited) this.#nearestByDir.set(seen, found);
+    return found;
   }
 
   #read(root: string): ProjectConfig | null {

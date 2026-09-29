@@ -85,7 +85,7 @@ describe('ProjectStyleChains', () => {
   it('is empty for a project that declares no styles', () => {
     const chains = new ProjectStyleChains('/p', fs({ '/p/fudic.json': JSON.stringify({ kind: 'app', id: 'p' }) }));
     expect(chains.chainFor('/p/a.fud')).toEqual([]);
-    expect(chains.own('/p').styles).toEqual([]);
+    expect(chains.own('/p').global).toEqual([]);
   });
 
   it('reports two packages whose sheets adopt under one specifier, and keeps the first', () => {

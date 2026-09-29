@@ -11,7 +11,18 @@
  * about (`FUD0593`), and a page has no component at all.
  */
 
-import { staticId, walkBlocks, type ElementNode, type Region, type Span } from '@fudic/compiler';
+import {
+  ADOPTED_STYLESHEETS_ATTR,
+  adoptedStylesOf,
+  errorDiag,
+  FUD_ADOPTED_STYLE_UNKNOWN,
+  staticId,
+  walkBlocks,
+  type Diagnostic,
+  type ElementNode,
+  type Region,
+  type Span,
+} from '@fudic/compiler';
 import type { CachedDocument } from '../document-cache.js';
 import { nativeGapContextAt } from './position.js';
 
@@ -47,6 +58,13 @@ export const TEMPLATE_ATTRIBUTES: readonly TemplateAttribute[] = [
       '**`shadowrootreferencetarget`** · HTML\n\nLo que apunta al host por id (un `<label for>`, un `aria-labelledby`) se reenvía al elemento de dentro con ese id.\n\nLo escribe el autor. En un control-componente, fudic lleva además a ese elemento lo que el puente no reenvía, y todo donde el navegador no tiene puente.',
   },
   {
+    name: 'shadowrootadoptedstylesheets',
+    insertText: 'shadowrootadoptedstylesheets="$1"',
+    suggest: true,
+    hover:
+      '**`shadowrootadoptedstylesheets`** · HTML\n\nLas hojas que este componente elige, por nombre, de los `styles` de su `fudic.json`, separadas por espacios.\n\nSe adoptan después de las `globalStyles` y antes de su `<style>` propio, en el orden en que se escriben.',
+  },
+  {
     name: 'shadowrootclonable',
     insertText: 'shadowrootclonable',
     suggest: false,
@@ -66,6 +84,28 @@ export const TEMPLATE_ATTRIBUTES: readonly TemplateAttribute[] = [
       '**`formassociated`** · fudic\n\nMarca un control-componente: un marcador de fudic, no del estándar, que fudic quiere proponer.\n\nDecide su clase (`FudicControlElement`), `delegatesFocus` y que se hidrate al cargar la página. El puente (`shadowrootreferencetarget`) es estándar y lo escribe el autor; fudic aporta el respaldo donde falta.',
   },
 ];
+
+/**
+ * `FUD0744`: every name the root template chooses that its project's `styles` does not
+ * declare. The build reports the same thing; here it is underlined as it is typed.
+ */
+export function adoptedStyleDiagnostics(
+  cached: CachedDocument,
+  choosable: readonly string[],
+): readonly Diagnostic[] {
+  if (cached.document.type !== 'component-document') return [];
+  const known = new Set(choosable);
+  return adoptedStylesOf(cached.document.template)
+    .names.filter(({ name }) => !known.has(name))
+    .map(({ name, span }) =>
+      errorDiag(
+        FUD_ADOPTED_STYLE_UNKNOWN,
+        `"${name}" is not a stylesheet of this project: a component chooses from the "styles" of its fudic.json` +
+          (choosable.length === 0 ? ', and it declares none' : ` (${choosable.join(', ')})`),
+        span,
+      ),
+    );
+}
 
 /** Whether this element is the root `<template>` of the component being edited. */
 function isRootTemplate(cached: CachedDocument, el: ElementNode): boolean {
@@ -105,6 +145,19 @@ export function templateAttributeAt(
   const end = attribute.span.start + attribute.name.length;
   if (known === undefined || offset > end) return undefined;
   return { hover: known.hover, span: { start: attribute.span.start, end } };
+}
+
+/**
+ * The names already written, when the caret is inside the `shadowrootadoptedstylesheets` value
+ * of the root template — so the list offers the ones missing. `undefined` anywhere else.
+ */
+export function adoptedStylesAt(cached: CachedDocument, region: Region): readonly string[] | undefined {
+  const { element, attribute } = region;
+  if (region.kind !== 'attr-value' || element === undefined || !isRootTemplate(cached, element)) return undefined;
+  if (typeof attribute?.name !== 'string' || attribute.name.toLowerCase() !== ADOPTED_STYLESHEETS_ATTR) {
+    return undefined;
+  }
+  return adoptedStylesOf(element).names.map((written) => written.name);
 }
 
 /**
