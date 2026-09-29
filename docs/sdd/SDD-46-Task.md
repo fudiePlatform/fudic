@@ -3,7 +3,7 @@
 > **SDD:** [SDD-46 — Estilos a elección](./SDD-46-estilos-a-eleccion.md)
 > **Paquetes:** `@fudic/config` · `@fudic/compiler` · `@fudic/vite` · `@fudic/language-server` ·
 > `@fudic/cli` · `@fudic/example-basic` · `examples/workspace`
-> **Rama:** `worktree-SDD-44-estilos-a-eleccion`
+> **Rama:** `worktree-SDD-46-estilos-a-eleccion`
 > **Progreso:** 11 / 17
 
 Se implementó al revés de lo habitual, por decisión expresa: primero el código y la migración de
