@@ -24,7 +24,7 @@
 </head>
 
 <product-list>
-  <template shadowrootmode="open">
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="panel">
     <section class="panel">
       <button class="add" @click=@add(3.5)>Taza — 3,50 €</button>
       <button class="add" @click=@add(2)>Pegatina — 2,00 €</button>

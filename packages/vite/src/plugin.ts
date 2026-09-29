@@ -854,11 +854,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // library's own components, and whether this project defines any says nothing about it.
       if (
         styleChains !== null &&
-        styleChains.own(root).styles.length > 0 &&
+        styleChains.own(root).global.length + styleChains.own(root).optional.length > 0 &&
         discoverComponents(builds, io).length === 0
       ) {
         this.warn(
-          `[${FUD_STYLES_NOT_ADOPTED}] ${CONFIG_FILE} declares "styles" and this project defines no component: ` +
+          `[${FUD_STYLES_NOT_ADOPTED}] ${CONFIG_FILE} declares stylesheets and this project defines no component: ` +
             'a project sheet is adopted into the shadow roots of its own components, and there are none. ' +
             'A stylesheet meant for the document goes in a <link rel="stylesheet"> in the layout.',
         );

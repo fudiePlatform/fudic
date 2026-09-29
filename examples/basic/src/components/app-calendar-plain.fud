@@ -85,7 +85,7 @@
 </head>
 
 <app-calendar-plain>
-  <template shadowrootmode="open">
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="panel">
     <section class="panel">
       @* Un `@click` por celda y otro por botón: dos listeners por fila, y crecen con ella. *@
       <div class="grid">

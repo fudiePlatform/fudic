@@ -36,7 +36,7 @@
 </head>
 
 <signal-code>
-  <template shadowrootmode="open">
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="panel">
     <section class="panel">
       <div class="row">
         <button class="tocar" @click=@tocar>Tocar</button>

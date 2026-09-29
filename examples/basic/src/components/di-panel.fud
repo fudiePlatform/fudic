@@ -54,7 +54,7 @@
 </head>
 
 <di-panel>
-  <template shadowrootmode="open">
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="panel">
     <section class="panel">
       <div class="row">
         <button class="add" @click=@add>Añadir línea</button>

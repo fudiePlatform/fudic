@@ -60,7 +60,7 @@ export function planApp(name: string, opts: AppOptions, io: ReadIo = nodeReadIo(
     ...projects
       .filter((project) => project.name !== name)
       .map((project) => ({ dir: project.name, config: project.config })),
-    { dir: name, config: { id: opts.id, kind: 'app', prefix: opts.prefix, styles: [] } },
+    { dir: name, config: { id: opts.id, kind: 'app', prefix: opts.prefix, globalStyles: [], styles: [] } },
   ]);
 
   const errors = [...usesErrors(opts.uses, projects), ...clashing];

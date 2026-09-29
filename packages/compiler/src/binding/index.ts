@@ -53,6 +53,15 @@ export { pairMarkers, hasFields, isSummaryFields, staticId, walkBlocks } from '.
 // for the emit that writes it and the analyzer that reports what cannot be bridged.
 export type { Bridge, BridgeProblem, BridgeResult } from './bridge.js';
 export { bridgeOf, REFERENCE_TARGET_ATTR } from './bridge.js';
+// The sheets a component chooses by name on its root template, for the host to check against
+// its `fudic.json` and to put in the adopted list.
+export type { AdoptedName, AdoptedStylesResult } from './adopt.js';
+export {
+  adoptedStylesOf,
+  ADOPTED_STYLESHEETS_ATTR,
+  FUD_ADOPTED_STYLE_DYNAMIC,
+  FUD_ADOPTED_STYLE_UNKNOWN,
+} from './adopt.js';
 
 export {
   controlTarget,

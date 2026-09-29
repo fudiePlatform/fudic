@@ -12,7 +12,7 @@
  * it into something else.
  */
 
-export { CONFIG_FILE, ID_PATTERN, PREFIX_PATTERN } from './constants.js';
+export { CONFIG_FILE, ID_PATTERN, PREFIX_PATTERN, STYLE_NAME_PATTERN } from './constants.js';
 export {
   FUD_CONFIG_DUPLICATE_ID,
   FUD_CONFIG_ID_REQUIRED,
@@ -25,7 +25,6 @@ export {
 } from './diagnostics.js';
 export {
   readProjectStyles,
-  specifierOf,
   type ProjectStyleFile,
   type ProjectStylesResult,
 } from './styles.js';
@@ -33,6 +32,7 @@ export {
   readProjectConfig,
   type ConfigIo,
   type ConfigResult,
+  type NamedStyle,
   type ProjectConfig,
 } from './read.js';
 export { tagOf } from './tag.js';

@@ -14,7 +14,7 @@
  * single app on an origin.
  */
 
-import { CONFIG_FILE, ID_PATTERN, PREFIX_PATTERN } from './constants.js';
+import { CONFIG_FILE, ID_PATTERN, PREFIX_PATTERN, STYLE_NAME_PATTERN } from './constants.js';
 import { FUD_CONFIG_MALFORMED, type ConfigDiagnostic, type Span } from './diagnostics.js';
 
 /** What the file declares, with every default already filled. */
@@ -31,16 +31,27 @@ export interface ProjectConfig {
    */
   readonly prefix: string;
   /**
-   * The stylesheets this project adopts into the shadow roots of ITS OWN components
-   * (SDD-42 §3.1). Paths relative to the project root, in adoption order. `[]` when the
-   * file declares none, which is every project that existed before SDD-42.
+   * The stylesheets this project adopts into the shadow root of EVERY one of its own
+   * components, by name. In adoption order; `[]` when the file declares none.
    *
-   * The order is contract, not a detail: it is the cascade. The project's sheets go in
-   * front of the component's own, so the guide defines and the component adjusts — the
-   * other way round, a component could not override the guide without raising
-   * specificity, which is how a style guide becomes unmanageable.
+   * The order is contract, not a detail: it is the cascade. These go in front of everything
+   * a component adopts, so the guide defines and the component adjusts.
    */
-  readonly styles: readonly string[];
+  readonly globalStyles: readonly NamedStyle[];
+  /**
+   * The stylesheets a component of this project MAY adopt: it names them in the
+   * `shadowrootadoptedstylesheets` of its root `<template>`, in the order it wants them,
+   * after the global ones and before its own `<style>`.
+   */
+  readonly styles: readonly NamedStyle[];
+}
+
+/** One `"name": "path"` entry of `globalStyles` or `styles`. */
+export interface NamedStyle {
+  /** The name the author gave it — also its module-map specifier. */
+  readonly name: string;
+  /** The path as written, relative to the project root. */
+  readonly path: string;
 }
 
 export interface ConfigResult {
@@ -100,7 +111,8 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
     ctx,
   );
 
-  const styles = readStringArray(fields, 'styles', ctx);
+  const globalStyles = readStyleMap(fields, 'globalStyles', ctx);
+  const styles = readStyleMap(fields, 'styles', ctx);
 
   // Fields are NOT rescued one by one (§4.2). Identity is a unit, and half an identity is
   // worse than none: an `id` that got through alone would namespace caches under a name
@@ -108,33 +120,58 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
   if (ctx.diagnostics.length > 0) {
     return { config: null, diagnostics: ctx.diagnostics };
   }
-  return { config: { id, kind, prefix, styles }, diagnostics: [] };
+  return { config: { id, kind, prefix, globalStyles, styles }, diagnostics: [] };
 }
 
 /**
- * An absent array is `[]`; a present one has to be an array of strings.
+ * An absent map is `[]`; a present one is an object of `"name": "path"`, in written order.
  *
- * The strings are not validated as paths here, and that is the split of SDD-42: what a
- * path means needs a filesystem, and this reader has none beyond the one file it was given.
- * Whether the file exists (`FUD0740`) and whether two of them collide (`FUD0741`) is
- * `readProjectStyles`, which is handed an `io`.
+ * The paths are not validated here: what a path means needs a filesystem, and this reader has
+ * none beyond the one file it was given. Whether the file exists (`FUD0740`) and whether two
+ * names collide across the two maps (`FUD0741`) is `readProjectStyles`, which is handed an
+ * `io`. An ARRAY is refused with the way out spelled: it is the shape `styles` had when every
+ * sheet went to every component, and reading it as anything would change a project's looks
+ * without a word.
  */
-function readStringArray(
+function readStyleMap(
   fields: Record<string, unknown>,
   field: string,
   ctx: Ctx,
-): readonly string[] {
+): readonly NamedStyle[] {
   const value = fields[field];
   if (value === undefined) {
     return [];
   }
-  if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) {
+  const span = fieldSpan(ctx.text, field);
+  if (Array.isArray(value)) {
     ctx.diagnostics.push(
-      malformed(`"${field}" must be an array of strings`, fieldSpan(ctx.text, field)),
+      malformed(
+        `"${field}" must be an object of "name": "path" — a sheet for every component goes in ` +
+          '"globalStyles", one a component chooses goes in "styles"',
+        span,
+      ),
     );
     return [];
   }
-  return value as readonly string[];
+  if (value === null || typeof value !== 'object') {
+    ctx.diagnostics.push(malformed(`"${field}" must be an object of "name": "path"`, span));
+    return [];
+  }
+  const entries: NamedStyle[] = [];
+  for (const [name, path] of Object.entries(value)) {
+    if (!STYLE_NAME_PATTERN.test(name) || typeof path !== 'string') {
+      ctx.diagnostics.push(
+        malformed(
+          `"${field}.${name}" must be a path, under a name matching ${STYLE_NAME_PATTERN.source} ` +
+            '(no hyphen: the hyphen is what makes a tag)',
+          span,
+        ),
+      );
+      continue;
+    }
+    entries.push({ name, path });
+  }
+  return entries;
 }
 
 /** An absent field is its default; a present one has to be a string of the right shape. */

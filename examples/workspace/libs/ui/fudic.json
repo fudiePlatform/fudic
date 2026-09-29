@@ -1,5 +1,5 @@
 {
   "kind": "lib",
   "prefix": "ui",
-  "styles": ["ui.css"]
+  "globalStyles": { "ui": "ui.css" }
 }

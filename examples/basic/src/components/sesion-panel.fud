@@ -31,7 +31,7 @@
 </head>
 
 <sesion-panel>
-  <template shadowrootmode="open">
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="panel">
     <section class="panel">
       <dl>
         <dt>sesión inyectada</dt>

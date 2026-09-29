@@ -18,7 +18,7 @@
  */
 
 import { errorDiag } from '../../types/index.js';
-import { bridgeOf, FORM_ASSOCIATED_ATTR } from '../../binding/index.js';
+import { adoptedStylesOf, bridgeOf, FORM_ASSOCIATED_ATTR } from '../../binding/index.js';
 import type { Attribute, ElementNode } from '../../html/index.js';
 import type { Analyzer } from '../model.js';
 import { documentRoots, walk } from '../walk.js';
@@ -52,6 +52,11 @@ export const formAssociatedPlacement: Analyzer = {
     // (`FUD0605`).
     if (root !== undefined) {
       for (const problem of bridgeOf(root).problems) {
+        report(errorDiag(problem.code, problem.message, problem.span));
+      }
+      // And the sheets it chooses have to be a literal list (`FUD0745`); whether each name
+      // exists is the host's, which holds the `fudic.json`.
+      for (const problem of adoptedStylesOf(root).problems) {
         report(errorDiag(problem.code, problem.message, problem.span));
       }
     }

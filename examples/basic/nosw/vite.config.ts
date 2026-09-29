@@ -18,7 +18,7 @@ import { fudic } from '@fudic/vite';
  * What cannot be shared is `fudic.json`: it is read from the ROOT of the project being built,
  * and the root here is this directory. So there is one beside this file, and it points at the
  * app's own style guide rather than copying it — without it the documents come out with no
- * `_theme` to adopt, and the same app looks different depending on which of the two builds
+ * `theme` or `panel` to adopt, and the same app looks different depending on which of the two builds
  * you are looking at, which is the one thing a comparison like this must not do.
  */
 export default defineConfig({

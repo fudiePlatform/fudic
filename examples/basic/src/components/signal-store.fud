@@ -56,7 +56,7 @@
 </head>
 
 <signal-store>
-  <template shadowrootmode="open">
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="panel">
     <section class="panel">
       <div class="row">
         <button class="mas" @click=@inc>+1 al store</button>

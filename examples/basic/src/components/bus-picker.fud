@@ -26,7 +26,7 @@
 </head>
 
 <bus-picker>
-  <template shadowrootmode="open">
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="panel">
     <section class="panel">
       @foreach (const option of options) key (option.label) {
         <bus-option
