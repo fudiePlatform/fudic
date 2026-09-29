@@ -70,7 +70,13 @@ class ComposeWalker {
   readonly #adopt: CodeWriter;
   readonly #em: ClientMarkupEmitter;
   readonly #route: RouteDocument | PageDocument;
-  #nodes = 0;
+  /**
+   * The layout nodes `enter` held, declared at CLOSURE scope by the caller and only assigned
+   * here. A construct placed straight in a hole has that node as its parent, and its branch
+   * selector lives beside the blocks, outside `h`: a `const` scoped to the adopt body is a
+   * name the selector cannot see.
+   */
+  readonly nodes: string[] = [];
 
   constructor(adopt: CodeWriter, em: ClientMarkupEmitter, route: RouteDocument | PageDocument) {
     this.#adopt = adopt;
@@ -93,8 +99,9 @@ class ComposeWalker {
           this.#adopt.line(`${cursor} = $dom.nextElementSibling(${cursor});`);
           break;
         case 'enter': {
-          const node = layoutNode(this.#nodes++);
-          this.#adopt.line(`const ${node} = ${cursor};`);
+          const node = layoutNode(this.nodes.length);
+          this.nodes.push(node);
+          this.#adopt.line(`${node} = ${cursor};`);
           this.#adopt.line(`${cursor} = $dom.nextElementSibling(${cursor});`);
           // Braces so the inner cursor is scoped, exactly as a component's own descent does.
           this.#adopt.line('{').indent();
@@ -187,7 +194,9 @@ function buildRouteClientModule(
   for (const cell of cells) {
     if (cell.kind === 'fn') bodies.hook.line(`${cellName(cell)}?.set(${cell.name});`);
   }
-  new ComposeWalker(bodies.adopt, em, entry).level(composePage(graph), '$root', 0);
+  const walker = new ComposeWalker(bodies.adopt, em, entry);
+  walker.level(composePage(graph), '$root', 0);
+  const nodes = [...walker.nodes, ...em.nodes];
 
   const reactive = code.signals.flatMap((s) => (s.kind === 'signal' ? [s.name] : []));
   const imported = code.clientImports;
@@ -220,7 +229,7 @@ function buildRouteClientModule(
   // it returns.
   w.line('export default ($props) => {');
   w.indent();
-  if (em.nodes.length > 0) w.line(`let ${em.nodes.join(', ')};`);
+  if (nodes.length > 0) w.line(`let ${nodes.join(', ')};`);
   w.line('const $d = []; // teardowns');
   if (em.writes > 0) w.line('const $w = []; // last applied, per value write');
   w.line(declaration(cells));
@@ -250,7 +259,7 @@ function buildRouteClientModule(
   const pass = renews ? '$u();' : `$a();${reconcile}`;
   w.line(`u: () => { ${pass} },`);
   w.line(
-    `r: () => { ${releaseCalls(bodies.registries)}${[...em.nodes, '$root'].join(' = ')} = null; $d.forEach((d) => d()); },`,
+    `r: () => { ${releaseCalls(bodies.registries)}${[...nodes, '$root'].join(' = ')} = null; $d.forEach((d) => d()); },`,
   );
   w.dedent();
   w.line('};');
