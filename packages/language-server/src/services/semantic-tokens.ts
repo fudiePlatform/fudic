@@ -43,10 +43,16 @@ import {
 import type { FudicTokenType } from '../capabilities.js';
 import type { CachedDocument } from '../document-cache.js';
 
+/**
+ * What a token is: one of ours, or one of the two standard types a `@render` callee takes —
+ * a colour the projection leaves to the server (SDD-48).
+ */
+export type TokenType = FudicTokenType | 'function' | 'namespace';
+
 /** One token: a stretch of the `.fud` and what it is. */
 export interface FudicToken {
   readonly span: Span;
-  readonly type: FudicTokenType;
+  readonly type: TokenType;
 }
 
 /** Attribute name prefixes that make an attribute a binding (decisions 22–30, 117). */
@@ -98,7 +104,7 @@ class TokenCollector {
   }
 
   /** A token, over a span that is already known to exist — `marked` is what takes a maybe. */
-  push(type: FudicTokenType, at: Span): void {
+  push(type: TokenType, at: Span): void {
     this.#tokens.push({ span: at, type });
   }
 
@@ -218,10 +224,16 @@ class TokenCollector {
         this.walk(snippet.children);
         return;
       }
-      case 'render':
+      case 'render': {
+        const call = node as unknown as RenderCallNode;
         this.atMarker(node.span.start);
-        this.push('fudDirective', (node as unknown as RenderCallNode).keywordSpan);
+        this.push('fudDirective', call.keywordSpan);
+        // The callee, which the projection leaves uncoloured (SDD-48): a namespace and a
+        // function, not the property TypeScript would read through `$Sn0.`.
+        if (call.namespace !== undefined) this.push('namespace', call.namespace.span);
+        if (call.name !== '') this.push('function', call.nameSpan);
         return;
+      }
       default:
         // Text, comments, doctype, cdata, raw text: nothing of ours to colour.
         return;

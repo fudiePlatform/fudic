@@ -54,7 +54,7 @@
       @RenderSection(cabecera, required: true, slot: "cabecera")
       @RenderSection(lateral, slot: "lateral")
       @RenderBody(slot: "contenido")
-      @render pie(seccion)
+      @render pie(@seccion)
       <app-counter slot="pie" .start=@inicio></app-counter>
     </app-marco>
   </body>

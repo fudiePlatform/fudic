@@ -384,7 +384,25 @@ const addRequiredSections: Repairer = ({ cached, index }) => {
   ];
 };
 
+/**
+ * `FUD0444` — a `@render` argument that reads the scope, written without its `@` (SDD-48).
+ *
+ * A name or a path takes the `@` in front; anything else goes into `@( … )`, which is the one
+ * form that holds an arbitrary expression. The diagnostic's span IS the argument's value.
+ */
+const addArgumentAt: Repairer = ({ cached, diagnostic }) => {
+  const text = cached.source.slice(diagnostic.span.start, diagnostic.span.end);
+  const path = /^[A-Za-z_$][\w$]*(?:\??\.[A-Za-z_$][\w$]*)*$/u.test(text);
+  return [
+    {
+      title: path ? `Escribir @${text}` : 'Envolver en @( … )',
+      edits: [{ span: diagnostic.span, newText: path ? `@${text}` : `@(${text})` }],
+    },
+  ];
+};
+
 const REPAIRS: ReadonlyMap<string, Repairer> = new Map<string, Repairer>([
+  ['FUD0444', addArgumentAt],
   ['FUD0056', quoteValue],
   ['FUD0191', addComponentLink],
   ['FUD0440', addRequiredSections],

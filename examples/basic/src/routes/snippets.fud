@@ -4,6 +4,17 @@
 <link rel="snippet" href="../snippets/ui.fud">
 <link rel="snippet" href="../snippets/campos.fud" as="campos">
 
+@code {
+  // Valores del scope de esta vista, para pasarlos a un snippet. Un argumento que lee el
+  // scope va con `@`, igual que una prop: `@nombre`, `@a.b`, o `@( … )` para una expresión.
+  // Un literal va tal cual.
+  const destacada = "Cuarta";
+  const pasos = [
+    { clave: "uno", texto: "un paso sacado de un array del scope" },
+    { clave: "dos", texto: "y otro, en el mismo bucle" },
+  ];
+}
+
 <head>
   <title>Snippets — fudic</title>
 </head>
@@ -38,6 +49,14 @@
   @render campos.ficha("ciudad", "Ciudad")
   @render campos.pie("Ningún input de arriba lo escribió nadie dos veces.")
 </form>
+
+<h2>Con valores del scope</h2>
+@* Literal, tal cual; lo que viene del scope, con `@`. Sin la `@`, `destacada` sería un error
+   y la bombilla la pondría. *@
+@render ficha(@destacada, tono: @(destacada.length > 5 ? "info" : "neutral"))
+@foreach (const paso of pasos) key (paso.clave) {
+  @render fila(@paso.clave, @paso.texto)
+}
 
 @* Posición libre: la declaración se lee bien después del markup que la llama. *@
 @snippet fila(clave: string, texto: string) {

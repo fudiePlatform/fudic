@@ -9,6 +9,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import {
+  CodeActionRequest,
   CompletionRequest,
   CompletionTriggerKind,
   DocumentDiagnosticRequest,
@@ -167,6 +168,37 @@ describe('inside the parentheses of a hole', () => {
     const got = await inLayout('      @RenderSection(na|)\n      @RenderBody()');
 
     expect(labels(got)).not.toContain('required: true');
+  });
+});
+
+describe('the arguments of a `@render`', () => {
+  it('offers the values of this view behind their `@`, and the parameters by name', async () => {
+    const got = labels(await inLayout('      @RenderBody()\n      @render foot(|)', '('));
+
+    expect(got).toEqual(['@title', 'text:']);
+  });
+
+  it('after a `name:` offers only values', async () => {
+    const got = labels(await inLayout('      @RenderBody()\n      @render foot(text: |)'));
+
+    expect(got).toEqual(['@title']);
+  });
+
+  it('a reference with no `@` is FUD0444, and the bulb writes it', async () => {
+    const text = LAYOUT.replace('BODY', '      @RenderBody()\n      @render foot(title)');
+    const { uri } = await harness.open('layouts/_frame.fud', text);
+    await harness.change(uri, text, ++version);
+    const got = await harness.client.sendRequest(DocumentDiagnosticRequest.type, { textDocument: { uri } });
+    const items = (got as { items?: { code?: unknown; range: unknown }[] }).items ?? [];
+    const diagnostic = items.find((d) => d.code === 'FUD0444')!;
+    const actions = (await harness.client.sendRequest(CodeActionRequest.type, {
+      textDocument: { uri },
+      range: diagnostic.range as never,
+      context: { diagnostics: [diagnostic] as never },
+    })) as readonly { title: string; edit?: { changes?: Record<string, { newText: string }[]> } }[];
+    const fix = actions.find((a) => a.title === 'Escribir @title');
+
+    expect(Object.values(fix?.edit?.changes ?? {})[0]?.map((e) => e.newText)).toEqual(['@title']);
   });
 });
 

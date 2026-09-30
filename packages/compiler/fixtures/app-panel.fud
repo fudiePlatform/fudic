@@ -38,7 +38,7 @@
       <h2>@title</h2>
 
       @foreach (const r of rows) key (r.id) {
-        @render row(r.label, id: r.id)
+        @render row(@r.label, id: @r.id)
       }
 
       @render action("Guardar")

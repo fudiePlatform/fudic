@@ -18,7 +18,7 @@
  */
 
 import { freeReferences, type RenderCallNode, type SnippetDeclNode, type StructuredDocument } from '@fudic/compiler';
-import { DIAGNOSTIC_ONLY_CAPS } from '../caps.js';
+import { DIAGNOSTIC_ONLY_CAPS, USER_UNCOLOURED_CAPS } from '../caps.js';
 import type { TemplateContext } from './context.js';
 
 /**
@@ -113,7 +113,8 @@ export function emitRenderCall(ctx: TemplateContext, call: RenderCallNode): void
     w.projected(alias, call.namespace?.span ?? call.keywordSpan, DIAGNOSTIC_ONLY_CAPS);
     w.scaffold('.');
   }
-  w.copy(call.nameSpan);
+  // The name's colour is the server's: through `$Sn0.` TypeScript would call it a property.
+  w.projected(ctx.source.slice(call.nameSpan.start, call.nameSpan.end), call.nameSpan, USER_UNCOLOURED_CAPS);
   w.scaffold('(');
   call.args.forEach((arg, i) => {
     if (i > 0) w.scaffold(', ');

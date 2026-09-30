@@ -38,8 +38,22 @@ const FUD_BAD_NAME = 'FUD0820';
 const FUD_BAD_SIGNATURE = 'FUD0821';
 /** A positional argument written after a nominal one (decision 12). */
 const FUD_POSITIONAL_AFTER_NAMED = 'FUD0832';
-/** An `@` inside the header of a `@render` (decision 13). */
-const FUD_AT_IN_HEADER = 'FUD0833';
+/**
+ * `FUD0833` — «an `@` inside the header of a `@render`» (decision 13) — is RETIRED by SDD-48:
+ * an argument that reads the scope is now written WITH `@`, the way a prop is. The code is not
+ * reused.
+ */
+/** A `@render` argument that reads the scope and is not written with `@` (SDD-48). */
+const FUD_ARG_WITHOUT_AT = 'FUD0444';
+/** A `@render` argument whose `@` is followed by more than a path, or `@( … )` plus more. */
+const FUD_AT_EXPRESSION = 'FUD0445';
+/**
+ * What goes bare: a string (a template only without `${`), a number, `true`, `false`, `null`.
+ * Everything else reads the scope and goes behind an `@`.
+ */
+const LITERAL_ARG = /^(?:"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`[^`$]*`|-?\d[\d_]*(?:\.\d+)?(?:e[+-]?\d+)?|true|false|null)$/u;
+/** What a bare `@` may lead: a name and its path, each segment optionally called — `@count()`. */
+const IMPLICIT_ARG = /^@[A-Za-z_$][\w$]*(?:\([^()]*\))?(?:\??\.[A-Za-z_$][\w$]*(?:\([^()]*\))?)*$/u;
 /**
  * The `{ … }` of a `@snippet` reuses SDD-06's block diagnostics, exactly as `@section` does:
  * same rule, same message, so an author who forgets a brace reads one wording and not three.
@@ -254,7 +268,6 @@ class SnippetParser {
    * enclosing scan already walked are reused instead of re-lexing them.
    */
   #args(inner: Span, regions: readonly LexRegion[]): readonly RenderArg[] {
-    this.#rejectAt(inner, regions);
     const args: RenderArg[] = [];
     let seenNamed = false;
     for (const piece of this.#split(inner, regions)) {
@@ -271,32 +284,6 @@ class SnippetParser {
       args.push(arg);
     }
     return args;
-  }
-
-  /**
-   * The `@` written inside a header (decision 13). The `@render` already made the transition
-   * to JS mode, exactly as `@if (cond)` does; a second one there is a habit borrowed from
-   * attributes, where the default is literal text.
-   */
-  #rejectAt(inner: Span, regions: readonly LexRegion[]): void {
-    const opaque = new Map(regions.map((r) => [r.span.start, r.span.end] as const));
-    let i = inner.start;
-    while (i < inner.end) {
-      const skipTo = opaque.get(i);
-      if (skipTo !== undefined) {
-        i = skipTo;
-        continue;
-      }
-      if (charAt(this.#source, i) === '@') {
-        this.#error(
-          FUD_AT_IN_HEADER,
-          'no @ inside a @render header: the arguments are already JavaScript',
-          span(i, i + 1),
-        );
-        return;
-      }
-      i++;
-    }
   }
 
   /** The pieces between top-level commas. An empty list for an empty `( )`. */
@@ -336,14 +323,53 @@ class SnippetParser {
     const value = trimmed(this.#source, piece);
     if (value.start === value.end) return undefined;
     const label = this.#namedLabel(value);
-    if (label === undefined) return { type: 'positional-arg', span: value, value };
+    if (label === undefined) return { type: 'positional-arg', span: value, value: this.#value(value) };
     return {
       type: 'named-arg',
       span: value,
       name: label.name,
       nameSpan: label.span,
-      value: trimmed(this.#source, span(label.colon + 1, value.end)),
+      value: this.#value(trimmed(this.#source, span(label.colon + 1, value.end))),
     };
+  }
+
+  /**
+   * The JS of one argument value, written the way a component's prop is (SDD-48, revoking
+   * decision 13): a LITERAL as it is — `"Primera"`, `3`, `true` — and whatever reads the
+   * scope behind an `@` — `@seccion`, `@post.title`, `@(a ? b : c)`. The `@` is the author's
+   * transition and not JS, so the span that travels on is what follows it: the expansion, the
+   * check and the projection read the same expression they always did.
+   *
+   * A reference with no `@` is `FUD0444` and a bare `@` followed by more than a path is
+   * `FUD0445`; both keep their JS, so a degraded call still expands as it was written.
+   */
+  #value(value: Span): Span {
+    const text = this.#source.slice(value.start, value.end);
+    if (text.startsWith('@')) {
+      if (text.charAt(1) === '(') {
+        const group = scanBalanced(this.#source, value.start + 1, ')');
+        if (group.value.span.end !== value.end) {
+          this.#error(FUD_AT_EXPRESSION, 'an argument written `@( … )` is that group and nothing after it', value);
+        }
+        return span(value.start + 1, value.end);
+      }
+      if (!IMPLICIT_ARG.test(text)) {
+        this.#error(
+          FUD_AT_EXPRESSION,
+          'an argument after a bare `@` is a name or a path: wrap anything else in `@( … )`',
+          value,
+        );
+      }
+      return span(value.start + 1, value.end);
+    }
+    if (!LITERAL_ARG.test(text)) {
+      this.#error(
+        FUD_ARG_WITHOUT_AT,
+        'an argument that reads the scope is written with `@`, as a prop is: `@name`, `@a.b` or `@( … )`; only a literal goes bare',
+        value,
+      );
+    }
+    return value;
   }
 
   /**

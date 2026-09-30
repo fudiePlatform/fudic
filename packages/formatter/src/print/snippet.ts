@@ -19,9 +19,19 @@ import type { RenderArg, RenderCallNode, SnippetDeclNode } from '@fudic/compiler
 import { printChildren } from './content.js';
 import { leafOf, reindent, type PrintContext } from './context.js';
 
-/** One argument: `expr`, or `name: expr` (decision 12 — the separator is `:`). */
+/**
+ * One argument: `expr`, or `name: expr` (decision 12 — the separator is `:`).
+ *
+ * A value that reads the scope is written behind an `@` (SDD-48), and the node's `value` is
+ * the JS AFTER it — so the `@` is put back here, read off the source right before the value.
+ */
 function printArg(ctx: PrintContext, arg: RenderArg): Doc {
-  const value = reindent(leafOf(ctx, arg.value));
+  const at = ctx.source.charAt(arg.value.start - 1) === '@' ? '@' : '';
+  // `@( … )` stays as written: the leaf formatter would read `(a ? b : c)` as a parenthesised
+  // expression and drop the parentheses, leaving an `@a ? b : c` that is no argument at all.
+  const group = at !== '' && ctx.source.charAt(arg.value.start) === '(';
+  const body = group ? ctx.source.slice(arg.value.start, arg.value.end) : reindent(leafOf(ctx, arg.value));
+  const value = concat([at, body]);
   return arg.type === 'named-arg' ? concat([`${arg.name}: `, value]) : value;
 }
 

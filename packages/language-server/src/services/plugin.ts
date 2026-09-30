@@ -103,7 +103,7 @@ import { styleClassNames } from './classes.js';
 import { delegateNames } from './delegate.js';
 import { sectionCompletions } from './sections.js';
 import { HOLE_TRIGGER_CHARACTERS, holeArgumentContextAt, slotsAround } from './hole-args.js';
-import { renderContextAt, renderOffers } from './render.js';
+import { parameterNames, renderArgContextAt, renderContextAt, renderOffers, signatureOf } from './render.js';
 import { scopeAt, snippetsAt } from './snippets.js';
 import {
   componentTags,
@@ -741,9 +741,39 @@ function completions(
 
   const offset = document.offsetAt(position);
   const hole = cached.document.type === 'layout-document' ? holeArgumentContextAt(cached.source, offset) : undefined;
-  // `(` and `,` are triggers for a hole's arguments and for nothing else (SDD-48): typed
-  // anywhere else, the server stays out of the way rather than open a list nobody asked for.
-  if (hole === undefined && HOLE_TRIGGER_CHARACTERS.includes(trigger ?? '')) return undefined;
+  const renderArg = hole === undefined ? renderArgContextAt(cached.source, offset) : undefined;
+  // `(` and `,` are triggers for the arguments of a hole or a `@render` and for nothing else
+  // (SDD-48): typed anywhere else, the server stays out of the way rather than open a list
+  // nobody asked for.
+  if (hole === undefined && renderArg === undefined && HOLE_TRIGGER_CHARACTERS.includes(trigger ?? '')) {
+    return undefined;
+  }
+
+  // Exact: an argument of a `@render` is a value of the scope, behind its `@` — only what this
+  // view can see — or the name of a parameter the call has not given yet (SDD-48).
+  if (renderArg !== undefined) {
+    const range = rangeOf(document, renderArg.span);
+    const items: CompletionItem[] = [...templateScope(cached, offset).keys()].map((name) => ({
+      label: `@${name}`,
+      kind: CompletionItemKind.Variable,
+      detail: 'value of this view',
+      textEdit: { range, newText: `@${name}` },
+    }));
+    if (!renderArg.afterLabel) {
+      const signature = signatureOf(cached, index, renderArg);
+      const params = signature === undefined ? [] : parameterNames(signature);
+      for (const param of params.filter((p) => !renderArg.labels.includes(p))) {
+        items.push({
+          label: `${param}:`,
+          kind: CompletionItemKind.Property,
+          detail: `parameter of ${renderArg.name}${signature ?? ''}`,
+          textEdit: { range, newText: `${param}: ` },
+          command: { title: 'Suggest', command: 'editor.action.triggerSuggest' },
+        });
+      }
+    }
+    return list(items);
+  }
   // Asked once and handed to every context below: one traversal per completion request, and
   // one answer, so two contexts can never disagree about where the cursor is (BUG-22).
   const region = regionAt(cached.source, cached.html, offset);

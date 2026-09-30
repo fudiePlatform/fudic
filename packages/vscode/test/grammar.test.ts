@@ -344,3 +344,22 @@ describe('the corpus', () => {
     expect(await trailingScopes('@if (a) {\n  <p>x</p>\n')).toContain('meta.block.control.fudic');
   });
 });
+
+describe('snippets inside markup (SDD-48)', () => {
+  it('colours a `@render` nested in a component as a directive, its name as a function', async () => {
+    const source =
+      '<body>\n  <app-marco .titulo=@titulo>\n    @RenderBody(slot: "contenido")\n    @render pie(@seccion)\n  </app-marco>\n</body>\n';
+    const tokens = await tokenize(source);
+
+    expect(has(findExact(tokens, 'render'), 'keyword.control.directive.render')).toBe(true);
+    expect(has(findExact(tokens, 'pie'), 'entity.name.function')).toBe(true);
+  });
+
+  it('colours a `@snippet` declared after an HTML comment', async () => {
+    const source = '<!-- a note -->\n\n@snippet pie(seccion: string) {\n  <p slot="pie">@seccion</p>\n}\n';
+    const tokens = await tokenize(source);
+
+    expect(has(findExact(tokens, 'snippet'), 'keyword.control.directive.snippet')).toBe(true);
+    expect(has(findExact(tokens, 'pie'), 'entity.name.function')).toBe(true);
+  });
+});
