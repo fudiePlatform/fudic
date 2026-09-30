@@ -267,13 +267,14 @@ export interface TemplateJs {
  * the component it will actually be placed in.
  */
 function hostContext(
-  base: Omit<TemplateContext, 'host' | 'emit' | 'fragmentsOf'>,
-  host: string | undefined,
+  base: Omit<TemplateContext, 'host' | 'emit' | 'emitUnhosted' | 'fragmentsOf'>,
+  host: string | undefined | null,
 ): TemplateContext {
   const ctx: TemplateContext = {
     ...base,
     host,
     emit: (nodes) => emitContent(ctx, nodes),
+    emitUnhosted: (nodes) => emitContent(hostContext(base, null), nodes),
     fragmentsOf: (nodes) => {
       const out: FragmentAst[] = [];
       // The one walk that says which JS a run of markup holds — the same one the batch

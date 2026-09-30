@@ -81,6 +81,8 @@ const FUD_DUPLICATE_DIRECTIVE = 'FUD0424';
  * why this is an error and not a warning.
  */
 const FUD_LINK_NOT_TOP_LEVEL = 'FUD0438';
+/** A layout with holes but no `@RenderBody()` (decision 86, SDD-48). */
+const FUD_NO_RENDER_BODY = 'FUD0423';
 /** A layout with no `@RenderHead()`: the route's head is appended at the end (decision 86). */
 const FUD_NO_RENDER_HEAD = 'FUD0425';
 /** A `Render*` directive outside a layout (decision 84). */
@@ -758,10 +760,13 @@ function structureShell(source: string, doc: HtmlDocument): ParseResult<Structur
   collectOutOfPlace(doc.children, head, diagnostics);
   rejectSnippetsOutside(doc.children, new Set(snippets), diagnostics);
 
-  // Decision 82: a shell holding a `@RenderBody()` is a layout; without it, it is the
-  // standalone page of decision 51 — unchanged, directives and all being out of place.
+  // Decision 82: a shell holding a `@RenderBody()` is a layout; without any hole at all, it is
+  // the standalone page of decision 51. SDD-48 widens the first half to ANY hole: a layout whose
+  // `@RenderBody()` is being rewritten is still a layout — one missing its body (`FUD0423`) —
+  // and not a page that suddenly offers `data` and no holes in the editor.
   const found = collectDirectives([html]);
-  if (found.renderBody.length === 0) {
+  const holes = found.renderBody.length + found.renderHead.length + found.renderSections.length;
+  if (holes === 0) {
     rejectDirectives(found, { render: false, section: false }, diagnostics);
     const page: PageDocument = {
       type: 'page-document',
@@ -811,6 +816,13 @@ function buildLayout(
   // statement, which is a question about JS and not about structure: the emit answers it, with
   // `FUD0700`. Nothing here rejects the block any more.
   const renderBody = single(found.renderBody, '@RenderBody()', diagnostics);
+  // A shell is a layout by any hole it holds (SDD-48), so it can lack the one that makes it
+  // useful. Said in the file itself, over its `<body>`, where the hole is missing.
+  if (renderBody === undefined) {
+    diagnostics.push(
+      errorDiag(FUD_NO_RENDER_BODY, 'a layout must contain @RenderBody(): where does the route go?', parts.body.openSpan),
+    );
+  }
   const renderHead = single(found.renderHead, '@RenderHead()', diagnostics);
   if (renderHead !== undefined && !containsNode(parts.head, renderHead)) {
     diagnostics.push(

@@ -102,6 +102,8 @@ import { interpolates, scopeNames, templateScope } from './template-scope.js';
 import { styleClassNames } from './classes.js';
 import { delegateNames } from './delegate.js';
 import { sectionCompletions } from './sections.js';
+import { holeArgumentContextAt, slotsAround } from './hole-args.js';
+import { renderContextAt, renderOffers } from './render.js';
 import { scopeAt, snippetsAt } from './snippets.js';
 import {
   componentTags,
@@ -752,6 +754,71 @@ function completions(
         textEdit: { range: rangeOf(document, section.span), newText: name },
       })),
     );
+  }
+
+  // Exact: after `@render ` a word names a snippet or a namespace of them, nothing else. The
+  // snippet writes its parentheses and leaves the caret inside; the namespace writes its dot
+  // and asks again.
+  const render = renderContextAt(cached.source, offset);
+  if (render !== undefined) {
+    const range = rangeOf(document, render.span);
+    return list(
+      renderOffers(cached, index, render).map((offer): CompletionItem =>
+        offer.kind === 'namespace'
+          ? {
+              label: offer.name,
+              kind: CompletionItemKind.Module,
+              detail: 'snippets imported with `as`',
+              textEdit: { range, newText: `${offer.name}.` },
+              command: { title: 'Suggest', command: 'editor.action.triggerSuggest' },
+            }
+          : {
+              label: offer.name,
+              kind: CompletionItemKind.Function,
+              detail: `${offer.name}${offer.signature}`,
+              insertTextFormat: InsertTextFormat.Snippet,
+              textEdit: { range, newText: `${offer.name}($0)` },
+            },
+      ),
+    );
+  }
+
+  // Exact: inside the parentheses of a hole a word is one of its arguments (SDD-48). Each slot
+  // of the component around it comes as a whole `slot: "…"`, so the slot is picked, not typed.
+  const hole = cached.document.type === 'layout-document' ? holeArgumentContextAt(cached.source, offset) : undefined;
+  if (hole !== undefined) {
+    const slots = slotsAround(cached, index, offset);
+    const range = rangeOf(document, hole.span);
+    if (hole.kind === 'slot') {
+      return list(
+        slots.map((name) => ({
+          label: name,
+          kind: CompletionItemKind.EnumMember,
+          detail: 'slot of the component around this hole',
+          textEdit: { range, newText: name },
+        })),
+      );
+    }
+    const items: CompletionItem[] = [];
+    if (hole.keys.includes('required')) {
+      items.push({
+        label: 'required: true',
+        kind: CompletionItemKind.Property,
+        detail: 'every route of this layout must declare the section',
+        textEdit: { range, newText: 'required: true' },
+      });
+    }
+    if (hole.keys.includes('slot')) {
+      for (const name of slots) {
+        items.push({
+          label: `slot: "${name}"`,
+          kind: CompletionItemKind.Property,
+          detail: 'the roots the route writes here go into this slot',
+          textEdit: { range, newText: `slot: "${name}"` },
+        });
+      }
+    }
+    return list(items);
   }
 
   // Exact too: after those two colons a word can be neither an Emmet abbreviation nor a tag.

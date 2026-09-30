@@ -17,9 +17,11 @@ import {
   layoutHrefOf,
   roleOf,
   sectionsOf,
+  snippetsOf,
   tagOf,
   type Contract,
   type FudRole,
+  type SnippetSignature,
 } from './mode.js';
 // The dependency walk lives in `@fudic/resolve`: the CLI asks the same question — which tags
 // a library already defines — and the build asks it in order, for the style chain of §4.6.
@@ -50,6 +52,11 @@ export interface IndexEntry {
    * against its layout on every keystroke, and the layout was already parsed.
    */
   readonly holes: LayoutHoles;
+  /**
+   * The `@snippet`s the file declares, with their signatures: what a `@render` in a file that
+   * links this one completes to. Kept for the reason `sections` is.
+   */
+  readonly snippets: readonly SnippetSignature[];
   /**
    * The props a component declares without a `?`, in declaration order. Empty for everything
    * else — and empty also when they cannot be proven, which is what makes the tag expansion
@@ -139,6 +146,7 @@ export class WorkspaceIndex {
       layoutHref: layoutHrefOf(document),
       sections: sectionsOf(document),
       holes: holesOf(document),
+      snippets: snippetsOf(source, document),
       requiredProps: contract.props.filter((prop) => prop.required).map((prop) => prop.name),
       contract,
       external,

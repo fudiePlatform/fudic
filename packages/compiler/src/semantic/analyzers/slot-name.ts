@@ -19,6 +19,7 @@
 
 import { errorDiag, type Span } from '../../types/index.js';
 import type { ElementNode } from '../../html/index.js';
+import type { SnippetDeclNode } from '../../snippet/index.js';
 import type { Analyzer, MarkupInput, Report } from '../model.js';
 import { documentRoots, walk } from '../walk.js';
 
@@ -66,8 +67,12 @@ export function checkSlotName(input: MarkupInput, report: Report): void {
     report(errorDiag(FUD_UNDECLARED_SLOT, `\`${host.name}\` declares no slot \`${name}\``, at));
   };
 
+  const unhosted = snippetRoots(input.document.snippets);
   walk(documentRoots(input.document), {
     element(el, host) {
+      // A root of a `@snippet` body lands wherever it is rendered: its parent is the caller's,
+      // and the expansion is where it gets checked.
+      if (host === undefined && unhosted.has(el)) return;
       const slot = staticSlot(el);
       if (slot !== undefined) check(`\`slot="${slot.name}"\``, slot.name, slot.at, host);
     },
@@ -77,6 +82,19 @@ export function checkSlotName(input: MarkupInput, report: Report): void {
       if (node.slot !== undefined) check(`\`slot: "${node.slot.name}"\``, node.slot.name, node.slot.span, host);
     },
   });
+}
+
+/** The elements at the root of each `@snippet` body, constructs seen through. */
+function snippetRoots(snippets: readonly SnippetDeclNode[]): ReadonlySet<ElementNode> {
+  const roots = new Set<ElementNode>();
+  for (const snippet of snippets) {
+    walk(snippet.children, {
+      element(el, host) {
+        if (host === undefined) roots.add(el);
+      },
+    });
+  }
+  return roots;
 }
 
 export const slotName: Analyzer = {

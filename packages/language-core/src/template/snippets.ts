@@ -57,7 +57,9 @@ function emitSnippet(ctx: TemplateContext, snippet: SnippetDeclNode): void {
   // parameter list is allowed here, because the parser that owns the language reads it.
   w.copy(snippet.signature);
   w.scaffold('): void {\n');
-  ctx.emit(snippet.children);
+  // Unhosted: the body lands wherever it is rendered, so a `slot=` on one of its roots names a
+  // slot of a component this file cannot see. The build checks it after the expansion.
+  ctx.emitUnhosted(snippet.children);
   w.scaffold('}\n');
 }
 

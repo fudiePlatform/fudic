@@ -166,6 +166,8 @@ export interface FudSnippet {
   readonly zone?: CodeZone;
   /** Only in a file that may still become a route (`isUndecided`). */
   readonly requiresUndecided?: true;
+  /** Only in a file that has a snippet to render: it declares one or links a file of them. */
+  readonly requiresSnippets?: true;
   /**
    * Whether accepting it opens the next list at once: its last tabstop is a position the
    * server completes, and the author should not have to ask twice.
@@ -484,6 +486,19 @@ export const SNIPPETS: readonly FudSnippet[] = [
     suggest: true,
   },
 
+  // `@render`, wherever markup is written and there is a snippet to render. Accepting it opens
+  // the names the projection has in scope — local, imported and namespaced.
+  {
+    label: '@render',
+    detail: 'render a snippet (SDD-29)',
+    scope: 'markup',
+    roles: [...CONTROL_ROLES, 'snippet'],
+    body: '@render $0',
+    placement: 'outside-head',
+    requiresSnippets: true,
+    suggest: true,
+  },
+
   // Directives, each one only where it is legal: `@RenderHead()` in the head (`FUD0431`), and
   // the two holes a route fills in the body.
   {
@@ -611,7 +626,9 @@ export function snippetsAt(
       (snippet.requiresNoZone === undefined || !written.includes(snippet.requiresNoZone)) &&
       (snippet.placement === undefined || placedAt(document, offset, snippet.placement)) &&
       (snippet.zone === undefined || (code !== undefined && zoneAt(code, offset) === snippet.zone)) &&
-      (snippet.requiresUndecided === undefined || isUndecided(document.document)),
+      (snippet.requiresUndecided === undefined || isUndecided(document.document)) &&
+      (snippet.requiresSnippets === undefined ||
+        document.document.snippets.length + document.document.snippetLinks.length > 0),
   ).map((snippet) =>
     snippet.label === 'component' ? { ...snippet, body: componentSkeleton(componentTag) } : snippet,
   );
