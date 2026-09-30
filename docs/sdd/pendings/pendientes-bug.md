@@ -1,6 +1,6 @@
 1. (x)Layout props intellisense.
 
-2. Componentes N1 en layout y ver @rendersection( ) con required y con slot(explicar)
+2. (x) Componentes N1 en layout y ver @rendersection( ) con required y con slot(explicar)
 
 3. (x) Crear styles e importarlos en componentes.
       Guia de estilos global y ver como se pone inline
