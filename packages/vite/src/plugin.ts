@@ -106,6 +106,7 @@ import {
   FUD_RUNTIME_PIECE_MISSING,
   FUD_STYLES_NOT_ADOPTED,
   FUD_SW_SHELL_MISSING,
+  FUD_SHEET_UNUSED,
   policyDeclaresNonce,
 } from './diagnostics.js';
 import { devUrl, devManifest, devClientTag, devClientPrefix, withInlineSourceMap } from './dev.js';
@@ -128,6 +129,7 @@ import {
   DEV_MAIN_URL,
   DEV_BOOT_URL,
   DEV_SW_URL,
+  DEV_SHEET_DIR,
   bootFileName,
   PAGE_NAME_PREFIX,
 } from './constants.js';
@@ -478,8 +480,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       publicDir = typeof config.publicDir === 'string' ? config.publicDir : '';
       // The registry knows it too, because a root-absolute `href` in a `.fud` names a file
       // of THIS directory: that is what makes it checkable, and what puts it in the shell.
-      linked = new LinkedAssets(config.base, publicDir);
       isDev = config.command === 'serve';
+      // Pruned copies are served from memory in dev, under a prefix no file of the project
+      // can collide with (SDD-49 §4.8); a build publishes them beside every other asset.
+      linked = new LinkedAssets(config.base, publicDir, isDev ? DEV_SHEET_DIR : 'assets');
       // Forwarded to the Service Worker's nested build, which runs `configFile: false`.
       resolveAlias = config.resolve?.alias;
       // A nested build inherits the host's OUTPUT configuration; what it does not inherit
@@ -1683,6 +1687,20 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           `[${FUD_PUBLIC_BY_PATH}] A public file is named by its URL, not by a path into the public directory: ` +
             `write "${url}". Reaching it with a relative path publishes a second, hashed copy of a file ` +
             'that is already served under its own name.',
+        );
+      }
+
+      // 5a'. The sheets, once each and not once per page (SDD-49 §4.9): what a sheet says about
+      //      itself (an `@import` it cannot follow, text it cannot read), and a sheet no page
+      //      of the application keeps a single rule of. Here, after every pass has compiled
+      //      every route, because only then is «no page» a fact.
+      for (const [sheet, diagnostics] of linked.sheetDiagnostics()) {
+        for (const d of diagnostics) this.warn(`[${d.code}] ${d.message} (${sheet} at ${d.span.start})`);
+      }
+      for (const sheet of linked.unusedSheets()) {
+        this.warn(
+          `[${FUD_SHEET_UNUSED}] ${sheet} adds no rule to any page of the application: ` +
+            'nothing any page renders matches it. It is dead CSS.',
         );
       }
 

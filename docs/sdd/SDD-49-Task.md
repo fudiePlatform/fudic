@@ -3,7 +3,16 @@
 > **SDD:** [SDD-49 — El CSS que cada página usa](./SDD-49-css-por-pagina.md)
 > **Paquetes:** `@fudic/compiler` · `@fudic/vite` · `@fudic/example-basic`
 > **Rama:** `worktree-sdd-49-css-por-pagina`
-> **Progreso:** 13 / 18
+> **Progreso:** 15 / 18
+>
+> **Tests (los escribe otra sesión).** Ninguna tarea de este Task trae sus tests todavía:
+> `test/css/rules.test.ts`, `test/css/selectors.test.ts`, `test/emit/surface.test.ts`,
+> `test/emit/prune.test.ts`, `test/emit/page-sheets.test.ts` y los de `packages/vite/test/`
+> están por escribir. Además, cuatro tests existentes de `@fudic/vite` cambian de
+> expectativa por la spec y hay que actualizarlos: `build-styles-missing` (FUD0743, `:root`
+> en shadow se poda; `.panel` no casa con `s-pick`), `lib-extras-probe` (`.lib` no casa con
+> la página, la hoja queda vacía y no se publica) y `dev-linked-asset` (en dev la copia
+> podada vive en `/@fudic/sheet/…`, §4.8).
 
 El orden va de abajo arriba: primero leer CSS, después saber qué hay en cada ámbito, después
 decidir qué se queda, y solo entonces tocar el emit, que es donde un error se vuelve visible.
@@ -50,8 +59,8 @@ note.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 14 | 12 | **Nombre por contenido, en el shell, en dev.** `LinkedAssets.sheet`; `pruneStyles: true` y `AssetSheet` en los tres pases y en dev; el middleware de `/@fudic/sheet/…`. Criterios 21–23 | `vite` | `src/linked-assets.ts` · `src/transform.ts` · `src/plugin.ts` · `test/prune-build.test.ts` · `test/dev-sheets.test.ts` |
-| [ ] | 15 | 14 | **La hoja que no usa nadie.** `FUD0852` al cerrar el build, sobre la entrada de `fudic.json` o el `<link>`. Criterio 24 | `vite` | `src/plugin.ts` · `src/diagnostics.ts` · `test/prune-build.test.ts` |
+| [x] | 14 | 12 | **Nombre por contenido, en el shell, en dev.** `LinkedAssets.sheet`; `pruneStyles: true` y `AssetSheet` en los tres pases y en dev; el middleware de `/@fudic/sheet/…`. Criterios 21–23 | `vite` | `src/linked-assets.ts` · `src/transform.ts` · `src/plugin.ts` · `test/prune-build.test.ts` · `test/dev-sheets.test.ts` |
+| [x] | 15 | 14 | **La hoja que no usa nadie.** `FUD0852` al cerrar el build, sobre la entrada de `fudic.json` o el `<link>`. Criterio 24 | `vite` | `src/plugin.ts` · `src/diagnostics.ts` · `test/prune-build.test.ts` |
 
 ## Fase 6 — la evidencia (2)
 

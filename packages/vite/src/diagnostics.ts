@@ -197,6 +197,11 @@ export const FUD_RUNTIME_PIECE_HAS_BUILD = 'FUD0806';
  */
 export const FUD_INLINE_WITHOUT_NONCE = 'FUD0803';
 
+// SDD-49 (FUD0850–FUD0869): the CSS each page uses. The code is the compiler's, which owns
+// the range; the BUILD is the one that reports it, because only the build has seen every page.
+/** A sheet that adds no rule to any page of the application: dead CSS. */
+export { FUD_SHEET_UNUSED } from '@fudic/compiler';
+
 /**
  * Whether a document policy leaves room for the inline form: does it declare the nonce?
  *

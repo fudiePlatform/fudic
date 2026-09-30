@@ -17,7 +17,7 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
-import { assetUrlFrom, type LinkedAssets } from './linked-assets.js';
+import { assetSheetFrom, assetUrlFrom, type LinkedAssets } from './linked-assets.js';
 import {
   resolveDocument,
   allComponents,
@@ -248,6 +248,11 @@ function emitOptionsFor(
     // for a caller that has no registry — then the emit falls back to an import, which is
     // the pre-BUG-40 behaviour and what the standalone emit does.
     ...(assets === undefined ? {} : { assetUrl: assetUrlFrom(assets, baseDir) }),
+    // And every page gets only the CSS it uses (SDD-49): the same registry names each pruned
+    // copy by its content, so the host, the SW pass, the edge pass and dev write one URL.
+    ...(assets === undefined
+      ? {}
+      : { pruneStyles: true, assetSheet: assetSheetFrom(assets, baseDir) }),
     // The bytes of a resource the author asked to embed (SDD-45 §3.6). Read here because
     // reading a file is the host's, and read at emit time and not before: `?inline` is rare,
     // and a project's assets are not something to load into memory on the chance one of them
@@ -278,6 +283,33 @@ function emitOptionsFor(
     // The project sheets this document hoists, and which of them each component adopts.
     ...styleOptions(graph, styles),
   };
+}
+
+/**
+ * What this page kept of each sheet it receives, recorded for the whole build (SDD-49 §4.9),
+ * and the files behind those sheets.
+ *
+ * A linked sheet is named by its file and a project sheet by its `fudic.json` entry — the two
+ * places an author goes to delete one.
+ */
+function recordSheets(
+  id: string,
+  out: EmitOutput,
+  options: Parameters<typeof emitPageModuleMapped>[1],
+  assets: LinkedAssets,
+): readonly string[] {
+  const files: string[] = [];
+  for (const use of out.sheets ?? []) {
+    if ('spec' in use) {
+      const file = resolve(dirname(id), use.spec.split('?')[0]!);
+      files.push(file);
+      assets.recordSheet(file, readFileSync(file, 'utf8'), use.css);
+    } else {
+      const sheet = options?.projectStyles?.find((s) => s.specifier === use.specifier);
+      assets.recordSheet(`fudic.json "${use.specifier}"`, sheet?.css ?? '', use.css);
+    }
+  }
+  return files;
 }
 
 /** Transform one `.fud` file into its ES module, or `null` when `id` is not a `.fud`. */
@@ -319,13 +351,17 @@ export function transformFud(
   const resolved = resolveDocument(id, io);
   const graph = resolved.value;
   const origin = graph.entryOrigin;
-  const out = emitFor(id, graph, emitOptionsFor(id, graph, routeName, styles, assets));
+  const options = emitOptionsFor(id, graph, routeName, styles, assets);
+  const out = emitFor(id, graph, options);
+  const sheetFiles = assets === undefined ? [] : recordSheets(id, out, options, assets);
   return {
     code: out.code,
     ...(inlineRuntimeOf(id, graph) ?? {}),
     map: buildMap(id, redactServerRegions(origin.source, origin.document.code), out, graph.entryMap),
     missingAssets: out.missingAssets,
-    watchFiles: graph.snippetFiles,
+    // The sheets this page was pruned against are inputs of this module too: an edit to one
+    // has to prune the page again on the next navigation (SDD-49 §4.8).
+    watchFiles: [...graph.snippetFiles, ...sheetFiles],
     // The emit's own: a `@code` whose JS does not parse (BUG-13 §5.3). Without them the
     // module still gets written — degraded — and the build only trips later, in the
     // prerender, on an identifier the emit never declared.

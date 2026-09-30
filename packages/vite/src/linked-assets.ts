@@ -21,7 +21,15 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { isAbsolute, relative as relativePath, resolve as resolvePath } from 'node:path';
-import { AssetLinker, compactProjectCss, type AssetOrigin, type AssetUrl } from '@fudic/compiler';
+import {
+  AssetLinker,
+  compactProjectCss,
+  sheetDiagnostics,
+  type AssetOrigin,
+  type AssetSheet,
+  type AssetUrl,
+  type Diagnostic,
+} from '@fudic/compiler';
 
 /**
  * A file a document links is published as a file. There is no inlining, at no size.
@@ -91,10 +99,60 @@ export class LinkedAssets {
   readonly #shell = new Set<string>();
   /** Public files named by a relative path instead of by their URL (`FUD0366`). */
   readonly #byPath = new Set<string>();
+  /** Where pruned copies are named: `assets` in a build, `@fudic/sheet` in dev (SDD-49 §4.8). */
+  readonly #sheetDir: string;
+  /**
+   * Every sheet a page received, by what names it — its file, or its `fudic.json` entry —
+   * and whether ANY page kept a rule of it (SDD-49 §4.9). With the sheet's own diagnostics,
+   * which are about the file and reported once whatever number of pages link it.
+   */
+  readonly #sheets = new Map<string, { used: boolean; diagnostics: readonly Diagnostic[] }>();
 
-  constructor(base: string, publicDir = '') {
+  constructor(base: string, publicDir = '', sheetDir = 'assets') {
     this.#base = base.endsWith('/') ? base : `${base}/`;
     this.#publicDir = publicDir;
+    this.#sheetDir = sheetDir;
+  }
+
+  /**
+   * The URL of a PRUNED copy of a linked sheet (SDD-49 §4.7): named by the hash of the pruned
+   * bytes, so two pages that keep the same rules share one file — and one cache entry — and
+   * every pass of the build, compiling the same `.fud`, writes the same name. It enters the
+   * shell like anything a `<head>` links.
+   *
+   * `css` arrives compacted: it is the emit's `compactProjectCss` output, and compacting it
+   * again here would be the second path for CSS this module refuses to have.
+   */
+  sheet(absPath: string, css: string, origin: AssetOrigin = 'head'): string {
+    const path = slashes(absPath);
+    const bytes = Buffer.from(css, 'utf8');
+    const hash = createHash('sha256').update(bytes).digest('base64url').slice(0, 8);
+    const fileName = `${this.#sheetDir}/${baseNameOf(path)}-${hash}.css`;
+    const url = this.#base + fileName;
+    this.#files.set(fileName, bytes);
+    this.#sources.set(url, path);
+    if (origin === 'head') this.#shell.add(url);
+    return url;
+  }
+
+  /** One page's use of one sheet: `name` is its file or its `fudic.json` entry. */
+  recordSheet(name: string, source: string, pruned: string): void {
+    const seen = this.#sheets.get(name);
+    if (seen !== undefined) {
+      seen.used ||= pruned !== '';
+      return;
+    }
+    this.#sheets.set(name, { used: pruned !== '', diagnostics: sheetDiagnostics(source) });
+  }
+
+  /** The sheets no page kept a rule of (`FUD0852`). */
+  unusedSheets(): readonly string[] {
+    return [...this.#sheets].flatMap(([name, s]) => (s.used ? [] : [name]));
+  }
+
+  /** What each sheet says about itself: `FUD0850`, `FUD0851`. */
+  sheetDiagnostics(): ReadonlyMap<string, readonly Diagnostic[]> {
+    return new Map([...this.#sheets].map(([name, s]) => [name, s.diagnostics]));
   }
 
   /**
@@ -246,4 +304,10 @@ export function assetUrlFrom(assets: LinkedAssets, fudDir: string): AssetUrl {
     spec.startsWith('/')
       ? assets.publicUrl(spec, origin)
       : assets.url(resolvePath(fudDir, spec), origin);
+}
+
+/** The same, for the pruned copy of a sheet (SDD-49 §3.6): only relative sheets are pruned. */
+export function assetSheetFrom(assets: LinkedAssets, fudDir: string): AssetSheet {
+  return (spec, css, origin) =>
+    assets.sheet(resolvePath(fudDir, AssetLinker.filePath(spec)), css, origin);
 }
