@@ -256,8 +256,20 @@ class StyleScanner {
     this.#scanTrigger(at);
   }
 
+  /**
+   * A Razor comment has no place inside `<style>`: CSS has its own, `/* … *\/`, and a
+   * stylesheet is text more than one tool reads — the emit, the prune, a minifier, the
+   * browser — none of which knows what `@*` means. So it is an error, `FUD0132`, over the
+   * whole comment; it is still kept as a node, so the rest of the body scans on.
+   */
   #scanRazorComment(at: number): void {
     const close = this.#source.indexOf('*@', at + 2);
+    const end = close === -1 ? this.#end : Math.min(close + 2, this.#end);
+    this.#error(
+      'FUD0132',
+      'A Razor comment @* … *@ is not allowed inside <style>: write a CSS comment /* … */',
+      span(at, end),
+    );
     if (close === -1) {
       // Same code the lexer uses for the same mistake (SDD-03): a code is a
       // meaning, not a producer, so it is reused rather than renumbered.
@@ -265,7 +277,6 @@ class StyleScanner {
       this.#part({ type: 'razor-comment', span: span(at, this.#end) }, this.#end);
       return;
     }
-    const end = Math.min(close + 2, this.#end);
     this.#part({ type: 'razor-comment', span: span(at, end) }, end);
   }
 

@@ -12,7 +12,10 @@
 > expectativa por la spec y hay que actualizarlos: `build-styles-missing` (FUD0743, `:root`
 > en shadow se poda; `.panel` no casa con `s-pick`), `lib-extras-probe` (`.lib` no casa con
 > la página, la hoja queda vacía y no se publica) y `dev-linked-asset` (en dev la copia
-> podada vive en `/@fudic/sheet/…`, §4.8).
+> podada vive en `/@fudic/sheet/…`, §4.8). Y dos de `@fudic/compiler`,
+> `test/css/css.test.ts` («does not count braces inside a Razor comment» y «reports FUD0011
+> when it is never closed»): un `@* … *@` dentro de `<style>` es ahora `FUD0132` (error), por
+> decisión de Pedro durante la revisión en navegador.
 
 El orden va de abajo arriba: primero leer CSS, después saber qué hay en cada ámbito, después
 decidir qué se queda, y solo entonces tocar el emit, que es donde un error se vuelve visible.
