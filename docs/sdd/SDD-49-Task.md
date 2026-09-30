@@ -3,7 +3,7 @@
 > **SDD:** [SDD-49 — El CSS que cada página usa](./SDD-49-css-por-pagina.md)
 > **Paquetes:** `@fudic/compiler` · `@fudic/vite` · `@fudic/example-basic`
 > **Rama:** `worktree-sdd-49-css-por-pagina`
-> **Progreso:** 15 / 18
+> **Progreso:** 16 / 18
 >
 > **Tests (los escribe otra sesión).** Ninguna tarea de este Task trae sus tests todavía:
 > `test/css/rules.test.ts`, `test/css/selectors.test.ts`, `test/emit/surface.test.ts`,
@@ -66,7 +66,7 @@ note.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 16 | 15 | **Una guía de tamaño real, y su medición.** `base.css` de unos 10 KB enlazada con `?inline` en `_layout.fud`; bytes por página y hoja antes y después, y copias distintas publicadas. Criterio 25 | `example-basic` | `src/styles/base.css` · `src/layouts/_layout.fud` · `docs/sdd/SDD-49-medicion.md` |
+| [x] | 16 | 15 | **Una guía de tamaño real, y su medición.** `base.css` de unos 10 KB enlazada con `?inline` en `_layout.fud`; bytes por página y hoja antes y después, y copias distintas publicadas. Criterio 25 | `example-basic` | `src/styles/base.css` · `src/layouts/_layout.fud` · `docs/sdd/SDD-49-medicion.md` |
 | [ ] | 17 | 16 | **Pedro en navegador.** Todas las páginas iguales que antes; SW activo; una página no visitada abre offline con su hoja. Criterio 26 | — | — |
 
 ## Cierre (1)

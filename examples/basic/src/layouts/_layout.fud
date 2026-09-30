@@ -33,6 +33,12 @@
        de cada shadow. Las dos se necesitan. *@
     <link rel="stylesheet" href="../styles/tokens.css">
 
+    @* La guía del documento: reset, tipografía, listas, tablas, formularios. Va DENTRO de la
+       página (`?inline`) para no pintar un fotograma sin estilo, y por eso importa tanto que
+       cada página reciba solo las reglas que usa: el build la recorta contra lo que esa página
+       tiene en su light DOM, y lo que no casa con nada no viaja (SDD-49). *@
+    <link rel="stylesheet" href="../styles/base.css?inline">
+
     <!-- Where the fudic runtime goes. The layout says WHERE, once — before layouts
          every route had to remember it, and one that forgot silently lost the Service
          Worker. What lands here the compiler decides: the Service Worker registration

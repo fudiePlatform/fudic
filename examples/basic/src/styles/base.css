@@ -1,0 +1,581 @@
+/* La guía de estilos del DOCUMENTO: reset, tipografía, listas, tablas, formularios y un par
+   de animaciones. Pesa lo que pesa una guía real, y la enlaza `_layout.fud` con `?inline`, así
+   que viaja dentro de cada página para no pintar un solo fotograma sin estilo.
+
+   Ninguna página usa todo esto. Una sin tablas no necesita las reglas de las tablas, y una sin
+   formularios no necesita las de los formularios: el build le da a cada página solo las reglas
+   que casan con algo de su light DOM (SDD-49). Esta hoja está escrita como se escribe una guía
+   —para toda la aplicación— y es el build el que la recorta página a página. */
+
+/* ------------------------------------------------------------------------------------------
+   Reset
+   ------------------------------------------------------------------------------------------ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  line-height: 1.5;
+}
+
+body {
+  margin: 0;
+  padding: 0 1.25rem 2rem;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #222;
+  background: #fafafa;
+  -webkit-font-smoothing: antialiased;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  overflow-wrap: break-word;
+}
+
+/* ------------------------------------------------------------------------------------------
+   Tipografía
+   ------------------------------------------------------------------------------------------ */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  line-height: 1.2;
+  margin: 1.5rem 0 0.75rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-size: 2rem;
+  margin-top: 1.25rem;
+}
+
+h2 {
+  font-size: 1.4rem;
+}
+
+h3 {
+  font-size: 1.15rem;
+}
+
+h4 {
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+h5,
+h6 {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+p {
+  margin: 0 0 1rem;
+  max-width: 72ch;
+}
+
+small {
+  font-size: 0.85em;
+  color: var(--ink-faint);
+}
+
+strong,
+b {
+  font-weight: 650;
+}
+
+em,
+i {
+  font-style: italic;
+}
+
+a {
+  color: var(--brand);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+a:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+code,
+kbd,
+samp,
+pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.9em;
+}
+
+code {
+  padding: 0.05em 0.3em;
+  border-radius: 4px;
+  background: #eef1f5;
+}
+
+pre {
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+  border-radius: var(--radius);
+  background: #1e1e24;
+  color: #f1f1f1;
+}
+
+pre code {
+  padding: 0;
+  background: none;
+}
+
+kbd {
+  padding: 0.1em 0.4em;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: white;
+}
+
+blockquote {
+  margin: 1rem 0;
+  padding: 0.25rem 1rem;
+  border-left: 4px solid var(--line);
+  color: var(--ink-soft);
+}
+
+hr {
+  height: 1px;
+  margin: 2rem 0;
+  border: 0;
+  background: var(--line);
+}
+
+mark {
+  padding: 0 0.15em;
+  background: #fff3b0;
+}
+
+abbr[title] {
+  text-decoration: underline dotted;
+  cursor: help;
+}
+
+/* ------------------------------------------------------------------------------------------
+   Listas
+   ------------------------------------------------------------------------------------------ */
+
+ul,
+ol {
+  margin: 0 0 1rem;
+  padding-left: 1.4rem;
+}
+
+li + li {
+  margin-top: 0.25rem;
+}
+
+li > ul,
+li > ol {
+  margin: 0.25rem 0 0;
+}
+
+ul.plain {
+  padding-left: 0;
+  list-style: none;
+}
+
+dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0 0 1rem;
+}
+
+dt {
+  font-weight: 650;
+}
+
+dd {
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------------------------------
+   Tablas
+   ------------------------------------------------------------------------------------------ */
+
+table {
+  width: 100%;
+  margin: 0 0 1.25rem;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+caption {
+  padding: 0.5rem 0;
+  text-align: left;
+  font-weight: 650;
+  color: var(--ink-soft);
+}
+
+th,
+td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+thead th {
+  border-bottom-width: 2px;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+}
+
+tbody tr:nth-child(even) {
+  background: #f4f6f8;
+}
+
+tbody tr:hover {
+  background: #eaf1fd;
+}
+
+tfoot td {
+  border-bottom: 0;
+  font-weight: 650;
+}
+
+td.num,
+th.num {
+  text-align: right;
+}
+
+/* ------------------------------------------------------------------------------------------
+   Formularios
+   ------------------------------------------------------------------------------------------ */
+
+form {
+  margin: 0 0 1.5rem;
+}
+
+fieldset {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-box);
+}
+
+legend {
+  padding: 0 0.35rem;
+  font-weight: 650;
+}
+
+label {
+  display: inline-block;
+  margin-bottom: 0.25rem;
+  font-weight: 550;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="number"],
+input[type="url"],
+input[type="tel"],
+input[type="date"],
+select,
+textarea {
+  padding: var(--pad-field);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: inherit;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgb(26 115 232 / 20%);
+}
+
+input[aria-invalid="true"],
+select[aria-invalid="true"],
+textarea[aria-invalid="true"] {
+  border-color: #c62828;
+  animation: shake 240ms ease-in-out;
+}
+
+textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--brand);
+  vertical-align: -0.15em;
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+::placeholder {
+  color: #9a9a9a;
+}
+
+/* ------------------------------------------------------------------------------------------
+   Botones
+   ------------------------------------------------------------------------------------------ */
+
+button {
+  padding: var(--pad-control);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: inherit;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+button:hover {
+  border-color: #b8b8b8;
+  background: #f3f3f3;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+button.primary {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: white;
+}
+
+button.primary:hover {
+  filter: brightness(1.08);
+}
+
+/* ------------------------------------------------------------------------------------------
+   Bloques
+   ------------------------------------------------------------------------------------------ */
+
+main {
+  display: block;
+  max-width: 60rem;
+  margin: 0 auto;
+}
+
+section + section {
+  margin-top: 2rem;
+}
+
+article {
+  margin: 0 0 1.5rem;
+}
+
+aside {
+  padding: var(--pad-box);
+  border-left: 3px solid var(--brand);
+  background: #f2f6fd;
+}
+
+details {
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+details[open] > summary {
+  margin-bottom: 0.5rem;
+}
+
+details[open] > :not(summary) {
+  animation: reveal 180ms ease-out;
+}
+
+summary {
+  font-weight: 600;
+  cursor: pointer;
+}
+
+figure {
+  margin: 0 0 1.25rem;
+}
+
+figcaption {
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--ink-faint);
+}
+
+footer.site {
+  max-width: 60rem;
+  margin: 3rem auto 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.85rem;
+  color: var(--ink-faint);
+}
+
+footer.site p {
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------------------------------
+   Estados y utilidades
+   ------------------------------------------------------------------------------------------ */
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.loading {
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.muted {
+  color: var(--ink-faint);
+}
+
+.stack > * + * {
+  margin-top: var(--gap);
+}
+
+@media (max-width: 40rem) {
+  body {
+    padding: 0 0.75rem 1.5rem;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+  }
+
+  dl {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+@media print {
+  body {
+    background: white;
+  }
+
+  pre {
+    white-space: pre-wrap;
+  }
+
+  button,
+  details summary {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------------------------------------
+   Animaciones: cada una vive solo en la página que tiene algo que la use
+   ------------------------------------------------------------------------------------------ */
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
