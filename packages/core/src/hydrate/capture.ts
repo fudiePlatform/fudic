@@ -79,7 +79,8 @@ function isEditable(target: EventTarget): boolean {
   const el = target as Partial<HTMLInputElement>;
   if (el.isContentEditable === true) return true;
   if (el.localName === 'textarea' || el.localName === 'select') return true;
-  return el.localName === 'input' && !NON_TEXT_INPUTS.has(el.type ?? 'text');
+  // An `<input>` always answers `type` — `text` when nobody wrote one.
+  return el.localName === 'input' && !NON_TEXT_INPUTS.has((target as HTMLInputElement).type);
 }
 
 /** Cancel a gesture the handler is not there to see, keeping what the user typed. */

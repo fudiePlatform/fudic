@@ -3,11 +3,16 @@
 > **SDD:** [SDD-47 — Eventos en el host y en el shadow root](./SDD-47-eventos-en-host-y-shadow.md)
 > **Paquetes:** `@fudic/compiler` · `@fudic/core` · `@fudic/language-core` · `@fudic/example-basic`
 > **Rama:** `worktree-SDD-47-host-sahdow-events`
-> **Progreso:** 10 / 16
+> **Progreso:** 14 / 16
 
 Se implementó al revés de lo habitual, por decisión expresa: primero el código y el ejemplo, para
 que Pedro lo probara en el navegador y en el editor; después este documento; y los tests y la
 cobertura al final (fase 6).
+
+**Cobertura:** `@fudic/core` y `@fudic/language-core` siguen al 100 % en las cuatro métricas;
+`@fudic/compiler` queda en 99,40 / 98,54 / 99,63 / 99,78, su suelo de `main`, con las líneas
+nuevas cubiertas. Escribir los tests quitó una rama muerta del capturador: el `?? 'text'` del tipo
+de un `<input>`, que siempre responde `type`.
 
 ---
 
@@ -51,10 +56,10 @@ cobertura al final (fase 6).
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 12 | 2 | **Compilador.** Criterios 1–5 | `compiler` | `test/emit/shadow-events.test.ts` |
-| [ ] | 13 | 5 | **Runtime.** Criterios 6–9 | `core` | `test/hydrate/capture.test.ts` · `test/hydrate/replay.test.ts` · `test/hydrate/install.test.ts` |
-| [ ] | 14 | 6 | **Editor.** Criterios 10–12 | `language-core` · `language-server` | `test/shadow-events.test.ts` |
-| [ ] | 15 | 12–14 | **`pnpm test` verde y cobertura.** Criterio 15 | todos | — |
+| [x] | 12 | 2 | **Compilador.** Criterios 1–5 | `compiler` | `test/emit/shadow-events.test.ts` |
+| [x] | 13 | 5 | **Runtime.** Criterios 6–9, incluido el foco que levanta un componente sin perder el clic de detrás | `core` | `test/hydrate/capture.test.ts` · `test/hydrate/replay.test.ts` · `test/hydrate/install.test.ts` |
+| [x] | 14 | 6 | **Editor.** Criterio 10 en la proyección; 11 y 12 contra el servidor real | `language-core` · `language-server` | `test/shadow-bindings.test.ts` · `test/acceptance/shadow-events.test.ts` |
+| [x] | 15 | 12–14 | **`pnpm test` verde y cobertura.** Criterio 15 | todos | — |
 
 ## Cierre (1)
 
