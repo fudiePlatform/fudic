@@ -36,6 +36,7 @@ import { projectAdoptOf, renderProjectStyles } from './project-styles.js';
 import { codeOfDocument, type Prop } from './oxc-code.js';
 import { layoutCodeOf, requiredLayoutProps, unresolvedLayoutProps } from './layout-code.js';
 import { NO_SIGNALS, writeElementAttrs } from './attrs.js';
+import { holeSlot } from './compose.js';
 import type { Diagnostic } from '../types/index.js';
 import {
   headEmbedsAsset,
@@ -290,12 +291,7 @@ function buildRouteModule(
   // The slots the layout puts each hole in (SDD-48). Known here and not only in the layout:
   // the route builds the nodes, so the route is the one that stamps them — and a route has
   // exactly one layout, which its graph already holds.
-  const layoutDoc = graph.layouts[0]?.doc;
-  const bodySlot = layoutDoc?.renderBody?.slot?.name;
-  const sectionSlots = new Map<string, string>();
-  for (const rs of layoutDoc?.renderSections ?? []) {
-    if (rs.slot !== undefined) sectionSlots.set(rs.name, rs.slot.name);
-  }
+  const bodySlot = holeSlot(graph, { kind: 'body' });
   if (bodySlot === undefined) em.emitChildren(route.markup, PARENT);
   else em.emitSlotted(route.markup, PARENT, bodySlot);
 
@@ -320,7 +316,7 @@ function buildRouteModule(
     if (section.name === '') continue;
     sectionW.line(`if (name === ${JSON.stringify(section.name)}) {`);
     sectionW.indent();
-    const slot = sectionSlots.get(section.name);
+    const slot = holeSlot(graph, { kind: 'section', name: section.name });
     if (slot === undefined) sectionEm.emitChildren(section.children, PARENT);
     else sectionEm.emitSlotted(section.children, PARENT, slot);
     sectionW.dedent();

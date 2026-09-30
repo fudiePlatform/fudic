@@ -137,6 +137,11 @@ export interface BlockSite {
    * its turn.
    */
   readonly deferredMount: boolean;
+  /**
+   * The slot the construct's roots go in, when it sits at the root of a hole its layout
+   * slots (SDD-48 §4.5): the elements it builds on an update are roots of that hole too.
+   */
+  readonly slot?: string;
 }
 
 /** What the walk hands a control construct to. Implemented by `block.ts`. */
@@ -361,6 +366,11 @@ export interface MarkupOptions {
    * factory, and a block's node variables do not.
    */
   readonly rebindable?: boolean;
+  /**
+   * The slot every root element of this walk is stamped with (SDD-48 §4.5): a block body
+   * that sits at the root of a hole its layout slots.
+   */
+  readonly slot?: string;
 }
 
 export class ClientMarkupEmitter {
@@ -378,6 +388,8 @@ export class ClientMarkupEmitter {
   readonly #hookup: HookupContext;
   readonly #trackRoots: boolean;
   readonly #rebindable: boolean;
+  /** The slot the roots of the walk in progress are stamped with, if any (SDD-48 §4.5). */
+  #slot: string | undefined;
   readonly #nodes: string[] = [];
   readonly #rootItems: RootItem[] = [];
   /**
@@ -426,6 +438,7 @@ export class ClientMarkupEmitter {
     this.#hookup = options.hookup;
     this.#trackRoots = options.trackRoots ?? false;
     this.#rebindable = options.rebindable ?? false;
+    this.#slot = options.slot;
     this.#at = options.at;
   }
 
@@ -575,14 +588,21 @@ export class ClientMarkupEmitter {
    * `tail` says what the LAYOUT still has ahead at this level, which is what locates a
    * trailing text run of the route: with something after it the run is the cursor's previous
    * sibling, and only with nothing after it is it the last child of the parent.
+   *
+   * `slot` is the slot the layout puts the hole in (SDD-48 §4.5). The server stamped the
+   * roots it painted, so adopting them writes nothing; what needs it is every root a
+   * construct of the hole BUILDS on an update, or it would fall into the default slot.
    */
   emitHole(
     children: readonly HtmlContent[],
     parent: string,
     cursor: string | null,
     tail: Tail,
+    slot?: string,
   ): void {
+    this.#slot = slot;
     this.#items(this.#itemsOf(children), { fab: null, dom: parent, cursor, end: null }, tail);
+    this.#slot = undefined;
   }
 
   /**
@@ -922,6 +942,11 @@ export class ClientMarkupEmitter {
       // effect `bindErrors` installs, which is also what takes it back.
       this.#controlAttrs(el, v);
       this.#markerAttrs(el, v);
+    }
+    // A root of a hole its layout slots (SDD-48 §4.5), on the create path only: the server
+    // already wrote it on every node `h` adopts.
+    if (this.#slot !== undefined && level.fab === null) {
+      this.#fab.line(`$dom.setAttr(${v}, 'slot', ${JSON.stringify(this.#slot)});`);
     }
     this.#listeners(el, v);
     // Take the element the cursor is on, then advance it — before descending, so the
@@ -1416,6 +1441,8 @@ export class ClientMarkupEmitter {
       at,
       bodies: this.#bodies,
       deferredMount: level.fab === null,
+      // Only a construct at the root: one inside an element builds that element's children.
+      ...(this.#slot !== undefined && level.fab === null ? { slot: this.#slot } : {}),
     });
   }
 }

@@ -337,7 +337,7 @@ propiedad. La proyección no le cede ese color (`USER_UNCOLOURED_CAPS`) y el ser
    página.
 5. La ruta sella `slot="x"` en cada raíz del cuerpo y de la sección con slot, las de un `@if` o un
    bucle incluidas, y en nada más. **También en el cliente:** una raíz que el chunk de la ruta crea
-   al re-renderizar un `@if` o un bucle reactivo sale con su `slot=` (pendiente, tarea 22).
+   al re-renderizar un `@if` o un bucle reactivo sale con su `slot=`.
 6. `FUD0440` sobre el `<link rel="layout">` nombrando todas las que faltan; `FUD0441` y `FUD0442`
    sobre su nodo; nada cuando se cumple.
 7. `slot:` que el componente de alrededor no declara es `FUD0199` en el build; fuera de un

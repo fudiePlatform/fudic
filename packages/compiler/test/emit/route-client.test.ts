@@ -524,3 +524,55 @@ describe('how a route comes up (§4.6)', () => {
     expect(isReactiveRoute(graph)).toBe(false);
   });
 });
+
+describe('a hole its layout slots, on the client (SDD-48 §4.5, criterion 5)', () => {
+  const SLOTTED = [
+    '<!DOCTYPE html><html><head>@RenderHead()</head>',
+    '<body><app-marco>',
+    '@RenderSection(lateral, slot: "lateral")',
+    '@RenderBody(slot: "contenido")',
+    '</app-marco></body></html>',
+  ].join('\n');
+  const MARCO = [
+    '<app-marco><template shadowrootmode="open">',
+    '<slot name="contenido"></slot><slot name="lateral"></slot>',
+    '</template></app-marco>',
+  ].join('\n');
+  const withLayout = (route: string): string =>
+    chunkOf(route, { '/l.fud': SLOTTED, '/m.fud': MARCO })!;
+  const head = [
+    '<link rel="layout" href="./l.fud">',
+    '@code { @client { const on = signal(true); const xs = signal([1]); } }',
+  ];
+
+  it('stamps every root an `@if` of the body builds, and nothing below it', () => {
+    const code = withLayout([...head, '@if (on()) { <p><b>sí</b></p> } else { <em>no</em> }'].join('\n'));
+    const made = (tag: string): string => code.match(new RegExp(`(\\$n\\d+) = \\$dom\\.element\\("${tag}"\\)`, 'u'))![1]!;
+    const stamped = [...code.matchAll(/setAttr\((\$n\d+), 'slot', "contenido"\)/gu)].map((m) => m[1]);
+    expect(stamped).toEqual([made('p'), made('em')]);
+  });
+
+  it('stamps the rows of a loop, and a construct nested at the root of one', () => {
+    const code = withLayout(
+      [...head, '@foreach (const x of xs()) key (x) { <li>@x</li> @if (on()) { <hr> } }'].join('\n'),
+    );
+    expect(code.match(/'slot', "contenido"/gu)).toHaveLength(2);
+  });
+
+  it('stamps a section with the slot of ITS hole', () => {
+    const code = withLayout(
+      [...head, '<p>cuerpo</p>', '@section lateral { @if (on()) { <aside>a</aside> } }'].join('\n'),
+    );
+    expect(code).toContain(`'slot', "lateral"`);
+    expect(code).not.toContain(`'slot', "contenido"`);
+  });
+
+  it('writes nothing on the adopt path: the server already stamped what `h` adopts', () => {
+    const code = withLayout([...head, '<p>fijo</p>', '@if (on()) { <p>x</p> }'].join('\n'));
+    expect(code.match(/'slot'/gu)).toHaveLength(1);
+  });
+
+  it('and nothing at all when the layout names no slot', () => {
+    expect(chunkOf([...head, '@if (on()) { <p>x</p> }'].join('\n'))).not.toContain(`'slot'`);
+  });
+});

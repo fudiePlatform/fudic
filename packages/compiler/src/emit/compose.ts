@@ -142,6 +142,19 @@ export function composePage(graph: DocumentGraph): readonly ComposeItem[] {
   return trimAfterLastHole(from(0));
 }
 
+/**
+ * The slot the layout puts one of the route's holes in (SDD-48 §4.5), if it names one.
+ *
+ * Read from the route's OWN layout — the innermost of the chain, `graph.layouts[0]` — because
+ * that is the one whose `@RenderBody()` and `@RenderSection()` the route fills. Both halves ask
+ * here: the server stamps the roots it paints, the client the ones a construct builds later.
+ */
+export function holeSlot(graph: DocumentGraph, hole: Hole): string | undefined {
+  const layout = graph.layouts[0]?.doc;
+  if (hole.kind === 'body') return layout?.renderBody?.slot?.name;
+  return layout?.renderSections.find((rs) => rs.name === hole.name)?.slot?.name;
+}
+
 /** The route's own markup for one hole — its body, or the `@section` of that name. */
 export function holeContent(route: RouteDocument, hole: Hole): readonly HtmlContent[] {
   if (hole.kind === 'body') return route.markup;

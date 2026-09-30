@@ -60,3 +60,10 @@
   de su <code>@@foreach</code> incluidas— hasta encontrar sus propios nodos.
   <button @click=@sube>Pulsado @veces() veces</button>
 </p>
+@* Lo crea el cliente al primer clic, y cae en el mismo slot que sus hermanos. *@
+@if (veces() > 0) {
+  <p class="aviso">
+    Este párrafo no venía del servidor: lo creó la parte de cliente de la ruta, y también
+    lleva su <code>slot="contenido"</code>.
+  </p>
+}
