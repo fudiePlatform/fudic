@@ -372,3 +372,16 @@ function parseList(text: string): readonly ComplexSelector[] | null {
 export function parseSelectorList(prelude: string): readonly ComplexSelector[] | null {
   return parseList(prelude);
 }
+
+/**
+ * The selectors of a list as the author wrote them, one string each — what the prune keeps
+ * when it drops some of a list and not the rest. `null` when the list cannot be split, and
+ * then nothing is dropped from it.
+ */
+export function splitSelectorList(prelude: string): readonly string[] | null {
+  try {
+    return splitTopLevel(prelude);
+  } catch {
+    return null;
+  }
+}

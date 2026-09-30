@@ -3,7 +3,7 @@
 > **SDD:** [SDD-49 — El CSS que cada página usa](./SDD-49-css-por-pagina.md)
 > **Paquetes:** `@fudic/compiler` · `@fudic/vite` · `@fudic/example-basic`
 > **Rama:** `worktree-sdd-49-css-por-pagina`
-> **Progreso:** 7 / 18
+> **Progreso:** 10 / 18
 
 El orden va de abajo arriba: primero leer CSS, después saber qué hay en cada ámbito, después
 decidir qué se queda, y solo entonces tocar el emit, que es donde un error se vuelve visible.
@@ -34,9 +34,9 @@ note.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 8 | 3, 6, 7 | **Selectores contra una superficie.** Compuestos, listas recortadas, pseudoclases que no restringen, `:root`/`html`/`body` y `:host` por ámbito, `::slotted()`, `::part()`, anidamiento con `&`, preludio ininteligible conservado. Criterios 8–11, 14 | `compiler` | `src/emit/prune.ts` · `test/emit/prune.test.ts` |
-| [ ] | 9 | 8 | **At-rules y la página entera.** `prunePage`: interiores de `@media`/`@supports`/`@container`/`@layer`/`@scope`, sentencias conservadas, `@keyframes` y `@font-face` por identificador en **todas** las hojas de la página, `@import` con `FUD0850`, hoja ilegible entera. Criterios 12, 13, 15 | `compiler` | `src/emit/prune.ts` |
-| [ ] | 10 | 9 | **Salida idéntica con superficie total.** La salida pasa por `compactProjectCss`; con todo en la superficie es byte a byte la de hoy. Criterio 16 | `compiler` | `src/emit/prune.ts` |
+| [x] | 8 | 3, 6, 7 | **Selectores contra una superficie.** Compuestos, listas recortadas, pseudoclases que no restringen, `:root`/`html`/`body` y `:host` por ámbito, `::slotted()`, `::part()`, anidamiento con `&`, preludio ininteligible conservado. Criterios 8–11, 14 | `compiler` | `src/emit/prune.ts` · `test/emit/prune.test.ts` |
+| [x] | 9 | 8 | **At-rules y la página entera.** `prunePage`: interiores de `@media`/`@supports`/`@container`/`@layer`/`@scope`, sentencias conservadas, `@keyframes` y `@font-face` por identificador en **todas** las hojas de la página, `@import` con `FUD0850`, hoja ilegible entera. Criterios 12, 13, 15 | `compiler` | `src/emit/prune.ts` |
+| [x] | 10 | 9 | **Salida idéntica con superficie total.** La salida pasa por `compactProjectCss`; con todo en la superficie es byte a byte la de hoy. Criterio 16 | `compiler` | `src/emit/prune.ts` |
 
 ## Fase 4 — el emit (3)
 

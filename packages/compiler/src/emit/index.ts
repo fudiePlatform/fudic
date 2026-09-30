@@ -120,3 +120,11 @@ export {
   type ScopeSurface,
   type StyleScope,
 } from './surface.js';
+export {
+  prunePage,
+  FUD_SHEET_IMPORT,
+  FUD_SHEET_UNREADABLE,
+  FUD_SHEET_UNUSED,
+  type PageSheet,
+  type PrunedSheet,
+} from './prune.js';
