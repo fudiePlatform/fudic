@@ -54,8 +54,51 @@ function targeted(path: readonly EventTarget[]): { host: Element; target: EventT
   return null;
 }
 
+/** Input types whose default action is NOT typing: cancelling them loses no character. */
+const NON_TEXT_INPUTS = new Set([
+  'checkbox',
+  'radio',
+  'button',
+  'submit',
+  'reset',
+  'image',
+  'file',
+  'color',
+  'range',
+  'hidden',
+]);
+
+/**
+ * Whether the gesture's target is somewhere the user WRITES.
+ *
+ * There the default action is the point: a `keydown` cancelled on a text field is a character
+ * that never appears, and a synthetic event does not type it back. Duck-typed, like the rest
+ * of this runtime, because what matters is what the node offers and not its class.
+ */
+function isEditable(target: EventTarget): boolean {
+  const el = target as Partial<HTMLInputElement>;
+  if (el.isContentEditable === true) return true;
+  if (el.localName === 'textarea' || el.localName === 'select') return true;
+  // An `<input>` always answers `type` — `text` when nobody wrote one.
+  return el.localName === 'input' && !NON_TEXT_INPUTS.has((target as HTMLInputElement).type);
+}
+
+/** Cancel a gesture the handler is not there to see, keeping what the user typed. */
+function withhold(event: Event, target: EventTarget): void {
+  if (!isEditable(target)) event.preventDefault();
+  event.stopImmediatePropagation();
+}
+
 export function createCapturer(config: CaptureConfig): (event: Event) => void {
   const { state, registry, onCold, onShared } = config;
+  /**
+   * The gestures that landed on an instance while its path 2 is in flight, in arrival order.
+   *
+   * Without it the first gesture raises the instance and every later one falls into path 1
+   * with no listener there yet: a focus starts the download and the click that follows it by
+   * a hundred milliseconds is lost. They wait with the first, and are replayed after it.
+   */
+  const pending = new Map<number, (() => void)[]>();
 
   return (event: Event): void => {
     const hit = targeted(event.composedPath());
@@ -63,6 +106,13 @@ export function createCapturer(config: CaptureConfig): (event: Event) => void {
       return;
     }
     const id = idOf(hit.host);
+    const queue = pending.get(id);
+    if (queue !== undefined) {
+      // PATH 2, still in flight: this one waits behind the first.
+      withhold(event, hit.target);
+      queue.push(replayer(event, hit.target));
+      return;
+    }
     if (state.hydrated.has(id)) {
       return; // PATH 1
     }
@@ -78,8 +128,13 @@ export function createCapturer(config: CaptureConfig): (event: Event) => void {
 
     // PATH 2. The half-done gesture must not take effect: it is replayed in full once
     // everything the user's handler presupposes alive is alive.
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    onCold(hit.host, id, replayer(event, hit.target));
+    withhold(event, hit.target);
+    const waiting = [replayer(event, hit.target)];
+    pending.set(id, waiting);
+    onCold(hit.host, id, () => {
+      // Out of the queue BEFORE replaying, so each replay re-enters as path 1.
+      pending.delete(id);
+      for (const replay of waiting) replay();
+    });
   };
 }

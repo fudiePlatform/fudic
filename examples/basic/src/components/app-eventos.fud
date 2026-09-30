@@ -1,0 +1,119 @@
+@code {
+  // Dos oídos para el mismo componente. Los `@evento` del tag propio escuchan en el HOST: oyen
+  // lo que sale del shadow (`composed`), con `target` retargeteado al host. Los del
+  // `<template>` escuchan en el SHADOW ROOT: oyen todo lo que pasa dentro, cruce o no.
+  //
+  // El registro dice quién oyó qué, y sobre qué nodo nació. Lo que el host no oye no es un
+  // fallo del componente: es la plataforma, y esta página está para verlo.
+  @client {
+    import { signal } from "@fudic/core";
+
+    interface Linea {
+      readonly id: number;
+      readonly texto: string;
+    }
+
+    const lineas = signal<readonly Linea[]>([]);
+    let siguiente = 0;
+
+    // `nota` es opcional y solo la pasan las llamadas con valores: `@anota("host", $event, "…")`.
+    function anota(oido: string, ev: Event, nota = ""): void {
+      const origen = ev.composedPath()[0];
+      const nodo = origen instanceof Element ? origen.localName : "?";
+      const tecla = ev instanceof KeyboardEvent ? ` "${ev.key}"` : "";
+      const extra = nota === "" ? "" : ` (${nota})`;
+      const texto = `${oido} · ${ev.type}${tecla} ← ${nodo}${extra}`;
+      lineas.set([{ id: siguiente++, texto }, ...lineas()].slice(0, 14));
+    }
+
+    const enHost = (ev: Event): void => anota("host  ", ev);
+    const enShadow = (ev: Event): void => anota("shadow", ev);
+
+    function lanza(ev: MouseEvent): void {
+      const boton = ev.currentTarget as HTMLElement;
+      // Uno se queda dentro y el otro sale: la única diferencia es `composed`.
+      boton.dispatchEvent(new CustomEvent("aviso-dentro", { bubbles: true }));
+      boton.dispatchEvent(new CustomEvent("aviso-fuera", { bubbles: true, composed: true }));
+    }
+
+    function limpia(): void {
+      lineas.set([]);
+    }
+  }
+}
+
+<head>
+  <style>
+    .caja {
+      display: grid;
+      gap: 0.8rem;
+    }
+    .fila {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      align-items: center;
+    }
+    button {
+      font: inherit;
+      padding: 0.35rem 0.8rem;
+      border: 1px solid var(--brand);
+      border-radius: var(--radius);
+      background: var(--brand);
+      color: white;
+      cursor: pointer;
+    }
+    button.suave {
+      background: transparent;
+      color: var(--brand);
+    }
+    input {
+      font: inherit;
+      padding: 0.3rem 0.5rem;
+    }
+    ol {
+      margin: 0;
+      padding-left: 1.4rem;
+      font-family: ui-monospace, monospace;
+      font-size: 0.85rem;
+      white-space: pre;
+      min-height: 6rem;
+    }
+  </style>
+</head>
+
+@* Dos formas de colgar un handler, y valen igual en los dos sitios: una referencia
+   (`@enHost`), que recibe el evento, o una llamada con los valores que quieras
+   (`@anota("host", $event, …)`), donde `$event` es el evento. *@
+<app-eventos
+  @click=@anota("host  ", $event, "llamada con valores")
+  @dblclick=@anota("host  ", $event, "doble clic")
+  @keydown=@enHost
+  @input=@enHost
+  @change=@enHost
+  @focusin=@enHost
+  @aviso-dentro=@enHost
+  @aviso-fuera=@enHost>
+  <template shadowrootmode="open"
+    @click=@anota("shadow", $event, "llamada con valores")
+    @keydown=@enShadow
+    @input=@enShadow
+    @change=@enShadow
+    @focusin=@enShadow
+    @aviso-dentro=@enShadow
+    @aviso-fuera=@enShadow>
+    <div class="caja">
+      <div class="fila">
+        <button class="pulsa">Púlsame</button>
+        <button class="lanza" @click=@lanza>Lanza dos avisos</button>
+        <input class="campo" placeholder="Escribe y sal del campo">
+        <button class="suave limpia" @click=@limpia>Limpiar</button>
+      </div>
+      <ol class="registro">
+        @foreach (const linea of lineas()) key (linea.id) {
+          <li>@linea.texto</li>
+        }
+      </ol>
+    </div>
+  </template>
+</app-eventos>

@@ -152,6 +152,23 @@ export function emitHostBindings(ctx: TemplateContext, el: ElementNode): void {
   }
 }
 
+/**
+ * The `<template shadowrootmode>`'s own events — listeners on the component's SHADOW ROOT.
+ *
+ * The template is not an element of the output, so its attributes are the DSD's own
+ * (`shadowrootmode`, `shadowrootadoptedstylesheets`) and are not checked against anybody's
+ * vocabulary. What the author adds there is an event, and that goes through the same `$on` as
+ * on the host: the same `@` list, the same handler check, the same half-written recovery.
+ */
+export function emitShadowBindings(ctx: TemplateContext, el: ElementNode): void {
+  for (const attr of el.attributes) {
+    const binding = classifyAttribute(attr, ctx.source).value;
+    const isEvent =
+      binding.type === 'event' || binding.type === 'bus' || eventNameOf(attr, binding) !== undefined;
+    if (isEvent) emitBehaviour(ctx, el, attr, binding);
+  }
+}
+
 /** Project every attribute of an element. */
 export function emitElementBindings(ctx: TemplateContext, el: ElementNode): void {
   const bindings = el.attributes.map((attr) => ({

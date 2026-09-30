@@ -381,6 +381,53 @@ describe('the runtime installed', () => {
     }
   });
 
+  it('SDD-47 §4.2 — listens, in the capture phase, to the ten gestures and to nothing else', () => {
+    const heard: [string, boolean][] = [];
+    const root = {
+      addEventListener: (type: string, _l: unknown, capture: boolean) => heard.push([type, capture]),
+    } as unknown as EventTarget;
+
+    installHydration({ root, document, registry: new TestRegistry(), resolveChunk: (tag) => tag });
+
+    expect(heard).toEqual(
+      [
+        'click',
+        'dblclick',
+        'auxclick',
+        'contextmenu',
+        'keydown',
+        'keyup',
+        'beforeinput',
+        'input',
+        'focusin',
+        'focusout',
+      ].map((type) => [type, true]),
+    );
+  });
+
+  it('SDD-47 §4.4 — a focus that raises a component does not lose the click behind it', async () => {
+    publish({ state: [[0, 1], ['F']] });
+    app = document.createElement('div');
+    document.body.appendChild(app);
+    let release!: () => void;
+    const until = new Promise<void>((resolve) => (release = resolve));
+    const el = host('ins-focus', 0, app);
+    const button = document.createElement('button');
+    el.shadowRoot!.appendChild(button);
+    const r = run({ tag: 'ins-focus', until });
+
+    // The order a real press produces: the focus first, and the click a moment later, while
+    // the chunk the focus asked for is still on the network.
+    button.dispatchEvent(new FocusEvent('focusin', { bubbles: true, composed: true }));
+    click(button);
+    release();
+    await settle();
+
+    // Downloaded once, and the component's own listener heard the click on its replay.
+    expect(r.trace.filter((t) => t === 'define:ins-focus')).toHaveLength(1);
+    expect(r.trace).toContain('handler:ins-focus#0');
+  });
+
   it('with no ports named it uses the page: its document and its element registry', async () => {
     // The tag is already in the PLATFORM registry, so this is path 3 end to end over the
     // defaults — the document that publishes the blocks and receives the events, and the

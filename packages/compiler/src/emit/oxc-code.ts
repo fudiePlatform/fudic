@@ -553,6 +553,9 @@ function collectDocumentJs(doc: CodeDocument, register: JsFragmentVisitor): void
   // markup. Its attributes only: descending would walk the `<template>` a second time, and
   // registering a span twice is two Oxc fragments for one piece of source.
   if (doc.host !== undefined) collectAttributeJs(doc.host, register);
+  // Then the `<template>`'s own attributes: an event there is a listener on the shadow root,
+  // and its handler needs an AST exactly like the host's does.
+  if (doc.template !== undefined) collectAttributeJs(doc.template, register);
   collectTemplateJs(doc.template?.children ?? [], register);
 }
 

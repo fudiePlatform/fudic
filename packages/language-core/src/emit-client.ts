@@ -26,7 +26,7 @@ import { emitImports, emitSnippetImports, templateContent } from './imports.js';
 import { emitRenderCall, emitSnippets } from './template/snippets.js';
 import { clientFileName } from './paths.js';
 import { emitPropsProjection, type PropsCall } from './props.js';
-import { emitElementBindings, emitHostBindings } from './template/attrs.js';
+import { emitElementBindings, emitHostBindings, emitShadowBindings } from './template/attrs.js';
 import type { FragmentAst, TemplateContext } from './template/context.js';
 import { emitControl, emitInlineCode, type ControlLike } from './template/control.js';
 import { emitSection, emitSectionsContract, emitSlot, emitSlotsContract } from './template/sections.js';
@@ -109,6 +109,11 @@ export function emitClientVirtual(
   // much as the template's, and until now the editor had nothing to answer from over them.
   if (doc.type === 'component-document' && doc.host !== undefined) {
     emitHostBindings(ctx, doc.host);
+  }
+  // And its `<template>`'s events, which listen on the shadow root: the same `$on` the host's
+  // go through, so the two places complete and check alike.
+  if (doc.type === 'component-document' && doc.template !== undefined) {
+    emitShadowBindings(ctx, doc.template);
   }
   // The shell's own elements, which `templateContent` steps inside of: a layout writes
   // `<html lang="@culture">`, and until these were projected that `@culture` was a stretch

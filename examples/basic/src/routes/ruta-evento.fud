@@ -1,5 +1,6 @@
 <link rel="layout" href="../layouts/_layout.fud">
 <link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/app-eventos.fud">
 
 @code {
   @client {
@@ -79,4 +80,28 @@
   mitad de cliente y lo que falta es solo la suscripción. Si no sube —y la consola no dice
   nada—, entonces una ruta no tiene chunk de cliente en absoluto, y la reactividad de
   <a href="/ruta-reactiva">/ruta-reactiva</a> es un problema de después.
+</p>
+
+<h2>Eventos en el host y en el shadow root</h2>
+<p class="lede">
+  Un componente puede escuchar en dos sitios. Un <code>@@evento</code> en su propio tag
+  escucha en el <em>host</em>; uno en su <code>&lt;template&gt;</code> escucha en el
+  <em>shadow root</em>. Este componente cuelga los mismos eventos de los dos y anota quién
+  oyó cada uno. El <code>click</code> y el <code>dblclick</code> no pasan una referencia sino
+  una llamada con valores —<code>@@anota("host", $event, "doble clic")</code>—, y la nota
+  sale en el registro.
+</p>
+
+<div class="panel">
+  <app-eventos></app-eventos>
+</div>
+
+<p>
+  <strong>Qué comprobar.</strong> Recarga la página y pulsa <em>Púlsame</em> sin tocar nada
+  antes: el primer clic debe aparecer anotado dos veces, por el shadow y por el host, aunque
+  el componente estuviera sin hidratar. Escribe en el campo desde la primera tecla: ningún
+  carácter se pierde, y <code>keydown</code> llega con su tecla. Sal del campo: el
+  <code>change</code> lo oye solo el shadow, porque no cruza. <em>Lanza dos avisos</em>:
+  <code>aviso-dentro</code> solo lo oye el shadow y <code>aviso-fuera</code>, que es
+  <code>composed</code>, lo oyen los dos.
 </p>

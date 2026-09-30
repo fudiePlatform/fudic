@@ -140,7 +140,9 @@ export function hasControlIn(source: string, roots: readonly HtmlContent[]): boo
  * otherwise works right up to the first error.
  */
 function hasHookup(comp: ResolvedComponent): boolean {
-  return hasHookupIn(comp.source, templateOf(comp));
+  // From the host down, so the host's own events and the `<template>`'s — the shadow root's —
+  // count exactly like one on any element inside.
+  return hasHookupIn(comp.source, comp.doc.host === undefined ? templateOf(comp) : [comp.doc.host]);
 }
 
 /**

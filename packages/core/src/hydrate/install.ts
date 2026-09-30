@@ -71,11 +71,30 @@ export interface HydratedDetail {
 /**
  * The event types the capturer listens to.
  *
- * Only types that BUBBLE can be delegated from a global capturer, and the validated scope is
- * `click` (§4.2, §8). `focus`, `scroll` and `mouseenter` are outside it by nature, not by
- * omission: they never reach the root.
+ * A listener in the CAPTURE phase on the document hears every event that crosses the shadow
+ * boundary (`composed`), whether it bubbles or not. So what decides the list is not what can
+ * reach the root but what is a GESTURE: the discrete pointer ones, the keyboard, editing and
+ * focus. `focusin`/`focusout` and not `focus`/`blur`, because they are the same moment and one
+ * pair is enough.
+ *
+ * Out on purpose: the continuous ones (`mousemove`, `pointermove`, `mouseover`, `wheel`,
+ * `touchmove`, `scroll`), which fire hundreds of times a second — anticipating a download is
+ * the viewport's job, not the hover's. And the ones that do not cross a shadow (`change`,
+ * `submit`, `invalid`, `toggle`): they never reach the document from inside a component, and
+ * a form is already up at install.
  */
-const CAPTURED_TYPES: readonly string[] = ['click'];
+const CAPTURED_TYPES: readonly string[] = [
+  'click',
+  'dblclick',
+  'auxclick',
+  'contextmenu',
+  'keydown',
+  'keyup',
+  'beforeinput',
+  'input',
+  'focusin',
+  'focusout',
+];
 
 /** The eager path has no gesture behind it, so there is nothing to replay (SDD-34 §4.5). */
 const NOTHING = (): void => {};

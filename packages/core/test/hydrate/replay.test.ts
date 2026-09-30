@@ -39,3 +39,58 @@ describe('replaying the gesture that had nobody to handle it', () => {
     expect(seen[0]?.type).toBe('legacy');
   });
 });
+
+describe('SDD-47 §4.3 — what the handler reads travels with the replay', () => {
+  /** Replay `original` on a fresh target and hand back what a listener received. */
+  function replayed<E extends Event>(original: E): E {
+    const target = new EventTarget();
+    let seen: Event | undefined;
+    target.addEventListener(original.type, (e) => (seen = e));
+    replayer(original, target)();
+    return seen as E;
+  }
+
+  it('a keydown keeps its key, its code and its modifiers', () => {
+    const e = replayed(
+      new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', shiftKey: true, repeat: true }),
+    );
+    expect(e).toBeInstanceOf(KeyboardEvent);
+    expect(e.key).toBe('Enter');
+    expect(e.code).toBe('Enter');
+    expect(e.shiftKey).toBe(true);
+    expect(e.repeat).toBe(true);
+  });
+
+  it('an input keeps its inputType and its data', () => {
+    const e = replayed(new InputEvent('input', { inputType: 'insertText', data: 'a' }));
+    expect(e.inputType).toBe('insertText');
+    expect(e.data).toBe('a');
+  });
+
+  it('a click keeps its coordinates, its button and its detail', () => {
+    const e = replayed(
+      new MouseEvent('click', { clientX: 12, clientY: 34, button: 1, detail: 2, ctrlKey: true }),
+    );
+    expect(e.clientX).toBe(12);
+    expect(e.clientY).toBe(34);
+    expect(e.button).toBe(1);
+    expect(e.detail).toBe(2);
+    expect(e.ctrlKey).toBe(true);
+  });
+
+  it('a focusout keeps where the focus went', () => {
+    const next = document.createElement('button');
+    const e = replayed(new FocusEvent('focusout', { relatedTarget: next }));
+    expect(e.relatedTarget).toBe(next);
+  });
+
+  it('invents nothing the original does not carry', () => {
+    const e = replayed(new Event('custom-thing', { composed: true }));
+    expect('key' in e).toBe(false);
+    expect('clientX' in e).toBe(false);
+    expect(e.composed).toBe(true);
+    // Always replayable by the component's own listener on the bubble, and cancellable.
+    expect(e.bubbles).toBe(true);
+    expect(e.cancelable).toBe(true);
+  });
+});

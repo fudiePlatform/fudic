@@ -545,6 +545,17 @@ export class ClientMarkupEmitter {
     this.#listeners(el, '$host');
   }
 
+  /**
+   * The `<template shadowrootmode>`'s own events: listeners on the SHADOW ROOT.
+   *
+   * The template is not an element of the output — the parser consumes it into the shadow root
+   * — so it takes no attribute write at all, only its listeners. Where the host hears what
+   * leaves the shadow, the shadow root hears everything that happens inside it, composed or not.
+   */
+  emitShadow(el: ElementNode): void {
+    this.#listeners(el, '$shadow');
+  }
+
   /** The component template: the direct children of the shadow root. */
   emitRoots(children: readonly HtmlContent[]): void {
     const cursor = this.#cursorFor(children);
