@@ -172,6 +172,25 @@ export function planPageSheets(
       surface: unionSurfaces(adopters.map((c) => shadowSurface(graph, c.tag))),
     });
   }
+  // A `<style>` written in a document's head — the layout's or the entry's — is never pruned
+  // either, and what it says names fonts and animations just the same.
+  const heads = [
+    ...graph.layouts.map((l) => ({ head: l.doc.head, source: l.source })),
+    ...(entryHead === undefined ? [] : [{ head: entryHead, source: graph.entrySource }]),
+  ];
+  for (const { head, source } of heads) {
+    for (const child of head.children) {
+      const body = child.type === 'element' && child.name === 'style' ? child.children[0] : undefined;
+      if (body === undefined || body.type !== 'style-content') continue;
+      sheets.push({
+        key: `head-style:${body.span.start}`,
+        css: compactStyleCss(source, body),
+        scope: 'document',
+        surface: document,
+        reference: true,
+      });
+    }
+  }
   // A component's own `<style>` is never pruned, but what it keeps names fonts and animations.
   for (const c of components) {
     const style = componentStyleNode(c.doc);

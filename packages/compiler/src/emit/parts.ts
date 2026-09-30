@@ -15,6 +15,7 @@ import type { CodeWriter } from './writer.js';
 import { AssetLinker } from './assets.js';
 import { isAssetAttr } from './markup.js';
 import { compactProjectCss } from './project-styles.js';
+import { compactStyleCss } from './css-compact.js';
 import { isLiteralText, literalText } from './runs.js';
 import type { ExtractedCode } from './oxc-code.js';
 import { NO_SIGNALS, writeElementAttrs } from './attrs.js';
@@ -118,6 +119,26 @@ export function linkWithHref(source: string, el: ElementNode, url: string): stri
 }
 
 /**
+ * A `<style>` the author wrote in a document's `<head>`, as a JS expression — or `null` when
+ * this element is not one.
+ *
+ * It used to be copied from the source like any other head element, and that skipped the
+ * two passes every other stylesheet of the framework goes through: it reached the page
+ * uncompacted, and WITHOUT the response's nonce, which is exactly what a strict `style-src`
+ * refuses. It now gets both, and the author's own attributes (`media`) travel untouched.
+ */
+function headStyleExpr(source: string, el: ElementNode, linker: AssetLinker): string | null {
+  if (el.name !== 'style') return null;
+  const body = el.children[0];
+  if (body === undefined || body.type !== 'style-content') return null;
+  const attrs = source.slice(el.openSpan.start + '<style'.length, el.openSpan.end - 1);
+  return (
+    `'<style' + $nonce + ${JSON.stringify(attrs)} + '>' + ` +
+    `${linker.cssTemplate(compactStyleCss(source, body))} + '</style>'`
+  );
+}
+
+/**
  * Whether this `<head>` embeds a resource, and therefore needs the response's nonce.
  *
  * Asked by a LAYOUT, which writes no inline anything of its own and so has never declared
@@ -127,7 +148,9 @@ export function linkWithHref(source: string, el: ElementNode, url: string): stri
  */
 export function headEmbedsAsset(head: ElementNode, linker: AssetLinker): boolean {
   return head.children.some(
-    (child) => child.type === 'element' && inlineStyleExpr(child, linker) !== null,
+    (child) =>
+      child.type === 'element' &&
+      (inlineStyleExpr(child, linker) !== null || child.name === 'style'),
   );
 }
 
@@ -524,6 +547,11 @@ export function writeHeadElements(
     const pruned = options.sheet?.(child) ?? null;
     if (pruned !== null) {
       w.line(`head += ${pruned};`);
+      continue;
+    }
+    const style = headStyleExpr(source, child, options.linker);
+    if (style !== null) {
+      w.line(`head += ${style};`);
       continue;
     }
     const form = options.onRuntime === undefined ? null : runtimeMarkerForm(child);
