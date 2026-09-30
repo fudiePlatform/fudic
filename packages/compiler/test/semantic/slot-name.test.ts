@@ -12,12 +12,13 @@ import { parseDocument, type AtConstructParser } from '../../src/html/index.js';
 import { parseControl } from '../../src/control/index.js';
 import { parseCodeBlock } from '../../src/code/index.js';
 import { parseDirective } from '../../src/layout/index.js';
+import { parseSnippet } from '../../src/snippet/index.js';
 import { structureDocument } from '../../src/document/index.js';
 import type { ComponentRegistry } from '../../src/semantic/index.js';
 import { checkSlotName, slotName } from '../../src/semantic/analyzers/slot-name.js';
 import type { Diagnostic } from '../../src/types/index.js';
 
-const constructs: AtConstructParser = { parseControl, parseCodeBlock, parseDirective };
+const constructs: AtConstructParser = { parseControl, parseCodeBlock, parseDirective, parseSnippet };
 
 const registry = (slotsOf?: (tag: string) => readonly string[] | undefined): ComponentRegistry => ({
   has: (tag) => tag === 'app-circle',
@@ -118,5 +119,41 @@ describe('slot-name — the analyzer', () => {
   it('is the same rule under a name the runner can list', () => {
     expect(slotName.name).toBe('slot-name');
     expect(slotName.run).toBe(checkSlotName);
+  });
+});
+
+describe('slot-name — the `slot:` of a layout hole (SDD-48 §4.5, criterion 7)', () => {
+  const layout = (body: string): string =>
+    '<!DOCTYPE html>\n<html>\n<head><link rel="component" href="./app-circle.fud">@RenderHead()</head>\n' +
+    `<body>${body}</body>\n</html>\n`;
+
+  it('checks it against the component around the hole, over the literal', () => {
+    const source = layout('<app-circle>@RenderBody(slot: "p")@RenderSection(n, slot: "PEPITO")</app-circle>');
+    const [diag, ...rest] = diagnose(source);
+    expect(rest).toEqual([]);
+    expect(diag!.code).toBe('FUD0199');
+    expect(diag!.message).toBe('`app-circle` declares no slot `p`');
+    expect(source.slice(diag!.span.start, diag!.span.end)).toBe('"p"');
+  });
+
+  it('reports one with no component around it, and says nothing of a hole with no slot', () => {
+    const [diag] = diagnose(layout('<main>@RenderBody(slot: "x")</main>@RenderSection(n)'));
+    expect(diag!.message).toBe('`slot: "x"` fills nothing: `main` is not a component');
+    expect(diagnose(layout('@RenderBody(slot: "x")')).map((d) => d.message)).toEqual([
+      '`slot: "x"` fills nothing: `body` is not a component',
+    ]);
+  });
+});
+
+describe('slot-name — the root of a `@snippet` does not know its component (SDD-48 §4.8, criterion 11)', () => {
+  it('leaves a `slot=` at the root of a snippet body alone, even through a construct', () => {
+    const source =
+      '@snippet pie(texto: string) {\n  <p slot="pie">@texto</p>\n  @if (texto) { <b slot="x">!</b> }\n}\n';
+    expect(codes(source)).toEqual([]);
+  });
+
+  it('but checks one deeper in the body, against the component the snippet itself writes', () => {
+    const source = '@snippet marco() {\n  <app-circle><i slot="p"></i></app-circle>\n}\n';
+    expect(codes(source)).toEqual(['FUD0199']);
   });
 });

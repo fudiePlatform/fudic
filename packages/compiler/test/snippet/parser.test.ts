@@ -179,14 +179,53 @@ describe('@render: the invocation (§4.7)', () => {
     expect(parse(`<p>@render card(variant: 'b', "A")</p>`).codes).toContain('FUD0832');
   });
 
-  it('reports an @ inside the header (criterion 13, FUD0833)', () => {
-    const source = '<p>@render card(@title)</p>';
-    const parsed = parse(source);
-    expect(parsed.codes).toContain('FUD0833');
-  });
+  describe('each value is written like a prop (SDD-48 §4.7, criterion 9)', () => {
+    /** The JS each argument carries on, and the codes of the call. */
+    const values = (header: string): { values: string[]; codes: readonly string[] } => {
+      const source = `<p>@render card(${header})</p>`;
+      const parsed = parse(source);
+      const node = find(parsed.nodes, 'render') as unknown as RenderCallNode;
+      return {
+        values: node.args.map((a) => text(source, a.value)),
+        codes: parsed.codes,
+      };
+    };
 
-  it('does not see an @ that lives inside a string of the header', () => {
-    expect(parse(`<p>@render card("a@b")</p>`).codes).not.toContain('FUD0833');
+    it('takes a literal as it is', () => {
+      expect(values(`"a@b", 'x', \`t\`, 3, -1.5e2, true, false, null`)).toEqual({
+        values: ['"a@b"', `'x'`, '`t`', '3', '-1.5e2', 'true', 'false', 'null'],
+        codes: [],
+      });
+    });
+
+    it('takes a name, a path and a call behind `@`, without the `@`', () => {
+      expect(values('@title, @a?.b, @count(), @f(x).y, tone: @post.tono')).toEqual({
+        values: ['title', 'a?.b', 'count()', 'f(x).y', 'post.tono'],
+        codes: [],
+      });
+    });
+
+    it('takes a whole `@( … )` group, without the `@`', () => {
+      expect(values(`tone: @(ok ? "a" : "b")`)).toEqual({ values: ['(ok ? "a" : "b")'], codes: [] });
+    });
+
+    it('reports a reference with no `@` as FUD0444, over it, and keeps its JS', () => {
+      const source = '<p>@render card(titulo, tone: a.b)</p>';
+      const result = parseDocument(source, { atConstructs });
+      const flagged = result.diagnostics.filter((d) => d.code === 'FUD0444');
+      expect(flagged.map((d) => text(source, d.span))).toEqual(['titulo', 'a.b']);
+      expect(values('titulo, tone: a.b').values).toEqual(['titulo', 'a.b']);
+    });
+
+    it('reports a template with a substitution as FUD0444: it reads the scope', () => {
+      expect(values('`a${b}`').codes).toEqual(['FUD0444']);
+    });
+
+    it('reports FUD0445 for more than a path after `@`, or anything after `@( … )`', () => {
+      expect(values('@a + b').codes).toEqual(['FUD0445']);
+      expect(values('@(a) b').codes).toEqual(['FUD0445']);
+      expect(values('@(a) b').values).toEqual(['(a) b']);
+    });
   });
 
   it('reports a missing argument list (FUD0821)', () => {

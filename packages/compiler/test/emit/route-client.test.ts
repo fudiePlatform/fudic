@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'vitest';
 import { resolveDocument } from '../../src/emit/resolve.js';
 import {
+  emitLayoutModuleMapped,
   emitRouteClientModule,
   emitRouteClientModuleMapped,
   hydratableTags,
@@ -247,7 +248,36 @@ describe('the layout can put anything in front of the hole', () => {
     expect(code).not.toContain('título');
   });
 
-  it('finds a `@RenderBody()` written inside a construct of the layout', () => {
+  it('jumps over each construct of the layout to the anchor it left (SDD-48 §4.3, criterion 8)', () => {
+    const layout = [
+      '<!DOCTYPE html><html><head>@code { const { migas = [] } = props<{ migas?: string[] }>(); }@RenderHead()</head>',
+      '<body>@foreach (const m of migas) key (m) { <span>@m</span> }',
+      '<hr>',
+      '@if (migas.length > 0) { <i>hay</i> <b>migas</b> }',
+      '<main>@RenderBody()</main></body></html>',
+    ].join('\n');
+    const io = memoryIo({
+      '/r.fud': [
+        '<link rel="layout" href="./x.fud">',
+        '@code { @client { const n = signal(1); } }',
+        '<output>@n()</output>',
+      ].join('\n'),
+      '/x.fud': layout,
+    });
+    const graph = resolveDocument('/r.fud', io).value;
+    const code = emitRouteClientModule(graph)!;
+    // The two constructs are the 0th and the 1st anchor of the level, whatever they wrote.
+    expect(code).toContain('$k = 0; $a !== null;');
+    expect(code).toContain('$k = 1; $a !== null;');
+    expect(code).toContain('$a.data === "fud:l" && $k-- === 0) { $lc0 = $dom.nextElementSibling($a); break; }');
+    // From the second anchor the cursor is on `<main>`, and the route descends into it.
+    expect(code).toContain('$lp0 = $lc0;');
+    expect(code).toContain('let $lc1 = $dom.firstElementChild($lp0);');
+    // Nothing of the layout's source reached the chunk.
+    expect(code).not.toContain('migas');
+  });
+
+  it('walks nothing into a hole that a construct holds: that is `FUD0443` (criterion 3)', () => {
     const layout = [
       '<!DOCTYPE html><html><head>@RenderHead()</head>',
       '<body>@if (true) { <main>@RenderBody()</main> }</body></html>',
@@ -260,8 +290,11 @@ describe('the layout can put anything in front of the hole', () => {
       ].join('\n'),
       '/x.fud': layout,
     });
-    const code = emitRouteClientModule(resolveDocument('/r.fud', io).value)!;
-    expect(code).toContain('let $lc1 = $dom.firstElementChild($lp0);');
+    const graph = resolveDocument('/r.fud', io).value;
+    expect(emitLayoutModuleMapped(graph, graph.layouts[0]!).diagnostics.map((d) => d.code)).toEqual([
+      'FUD0443',
+    ]);
+    expect(emitRouteClientModule(graph)).not.toContain('$lc1');
   });
 });
 

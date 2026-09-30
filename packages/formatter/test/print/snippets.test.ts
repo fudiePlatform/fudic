@@ -78,9 +78,15 @@ describe('a render call', () => {
     );
   });
 
-  it('hands each argument to the leaf formatter', async () => {
-    expect(await fmt('<div>@render card( 1+2 , n:  {a:1} )</div>\n')).toBe(
-      '<div>@render card(1 + 2, n: { a: 1 })</div>\n',
+  it('hands each argument to the leaf formatter, and puts back the `@` of a path (SDD-48)', async () => {
+    expect(await fmt(`<div>@render card( 'A' , n:  @post?.titulo , m: @count() )</div>\n`)).toBe(
+      '<div>@render card("A", n: @post?.titulo, m: @count())</div>\n',
+    );
+  });
+
+  it('leaves an `@( … )` exactly as written: the leaf formatter would drop its parentheses', async () => {
+    expect(await fmt('<div>@render card(tono: @(ok?"a" : "b"))</div>\n')).toBe(
+      '<div>@render card(tono: @(ok?"a" : "b"))</div>\n',
     );
   });
 });

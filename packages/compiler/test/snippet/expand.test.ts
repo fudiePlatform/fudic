@@ -106,6 +106,13 @@ describe('the expansion writes the markup in place (§4.8)', () => {
     expect(source).toContain('<i title="@("A")">@("A")</i>');
   });
 
+  it('substitutes several reads inside ONE expression, each in its place', () => {
+    const { source } = expand({
+      [ENTRY]: `@snippet card(a: string, b: string) { <i>@(b + a + b)</i> }\n${component('@render card("A", "B")')}`,
+    });
+    expect(source).toContain('<i>@(("B") + ("A") + ("B"))</i>');
+  });
+
   it('removes several declarations, wherever in the file they were written', () => {
     const { source } = expand({
       [ENTRY]: `@snippet b(t: string) { <b>@t</b> }\n${component('@render a()@render b("B")')}\n@snippet a() { <i></i> }`,

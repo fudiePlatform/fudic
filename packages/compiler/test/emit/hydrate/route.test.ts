@@ -239,3 +239,52 @@ describe('a page that owns its own shell adopts the same way', () => {
     expect(out.textContent).toBe('4');
   });
 });
+
+describe('a layout with constructs and slotted holes (SDD-48, criteria 5 and 8)', () => {
+  // A loop and a branch of the LAYOUT in front of the holes: they write elements the route's
+  // chunk cannot count, so it has to jump to the anchors they leave. The wrapper is a plain
+  // element, which is all a slot stamp needs to be seen from here.
+  const SLOTTED = [
+    '<!DOCTYPE html><html><head>@RenderHead()</head>',
+    '<body>',
+    '@foreach (const m of ["a", "b", "c"]) key (m) { <span class="miga">@m</span> }',
+    '@if (true) { <hr> <hr> }',
+    '<div class="marco">',
+    '@RenderSection(lateral, slot: "lateral")',
+    '@RenderBody(slot: "contenido")',
+    '</div>',
+    '</body></html>',
+  ].join('\n');
+  const route = [
+    '<link rel="layout" href="./l.fud">',
+    '@code { @client {',
+    '  const v = signal(false);',
+    '  const xs = signal([1]);',
+    '  function t() { v.set(!v()); xs.set([...xs(), xs().length + 1]); }',
+    '} }',
+    '@section lateral { <a class="l">l</a> @foreach (const x of xs()) key (x) { <i class="x">@x</i> } }',
+    '<button class="t" @click=@t>t</button>',
+    '@if (v()) { <p class="nuevo">nuevo</p> }',
+  ].join('\n');
+  const slotOf = (selector: string): (string | null)[] =>
+    [...document.querySelectorAll(selector)].map((el) => el.getAttribute('slot'));
+
+  it('stamps what the server paints, and the button responds past the layout’s constructs', () => {
+    hydrate(route, { '/l.fud': SLOTTED });
+    expect(document.querySelectorAll('span.miga')).toHaveLength(3);
+    expect(slotOf('div.marco > button.t')).toEqual(['contenido']);
+    expect(slotOf('div.marco > a.l, div.marco > i.x')).toEqual(['lateral', 'lateral']);
+    expect(document.querySelector('p.nuevo')).toBeNull();
+    (document.querySelector('button.t') as HTMLElement).click();
+    expect(document.querySelector('p.nuevo')).not.toBeNull();
+  });
+
+  it('stamps what the chunk BUILDS on an update with the slot of its hole', () => {
+    hydrate(route, { '/l.fud': SLOTTED });
+    (document.querySelector('button.t') as HTMLElement).click();
+    expect(slotOf('div.marco > p.nuevo')).toEqual(['contenido']);
+    expect(slotOf('div.marco > i.x')).toEqual(['lateral', 'lateral']);
+    // Nothing outside the holes was touched.
+    expect(slotOf('span.miga')).toEqual([null, null, null]);
+  });
+});
