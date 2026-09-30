@@ -1,0 +1,82 @@
+@code {
+  // El marco de una página: la rejilla, sus bordes y sus huecos, escritos UNA vez. Un layout
+  // lo usa como su body y le pasa el título, que es una prop del layout; la ruta no sabe que
+  // existe y solo rellena secciones. Si mañana hay tres layouts con la misma forma, los tres
+  // envuelven su ruta en este mismo tag y el CSS no se repite en ninguno.
+  const { titulo } = props<{ titulo: string }>();
+}
+
+<head>
+  <style>
+    :host {
+      display: block;
+    }
+    .marco {
+      display: grid;
+      grid-template-columns: 13rem 1fr;
+      grid-template-areas:
+        "cabecera cabecera"
+        "lateral contenido"
+        "pie pie";
+      gap: var(--gap);
+    }
+    header {
+      grid-area: cabecera;
+      padding: var(--pad-box);
+      border-bottom: 2px solid var(--brand);
+    }
+    .titulo {
+      margin: 0;
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--brand);
+    }
+    aside {
+      grid-area: lateral;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      padding: var(--pad-box);
+      border-right: 1px solid var(--line);
+    }
+    .contenido {
+      grid-area: contenido;
+      padding: var(--pad-box);
+    }
+    footer {
+      grid-area: pie;
+      display: flex;
+      gap: var(--gap);
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--pad-box);
+      border-top: 1px solid var(--line);
+      color: var(--ink-faint);
+    }
+    .vacio {
+      color: var(--ink-faint);
+      font-style: italic;
+    }
+  </style>
+</head>
+
+<app-marco>
+  <template shadowrootmode="open">
+    <div class="marco">
+      <header>
+        <p class="titulo">@titulo</p>
+        <slot name="cabecera"></slot>
+      </header>
+      <aside>
+        <slot name="lateral"><p class="vacio">Esta ruta no rellena el lateral.</p></slot>
+      </aside>
+      <div class="contenido">
+        <slot name="contenido"></slot>
+      </div>
+      <footer>
+        <slot name="pie"></slot>
+      </footer>
+    </div>
+  </template>
+</app-marco>

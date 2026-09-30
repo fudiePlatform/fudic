@@ -47,39 +47,34 @@ export function checkSlotName(input: MarkupInput, report: Report): void {
   const slotsOf = components.slotsOf?.bind(components);
   if (slotsOf === undefined) return;
 
+  const check = (label: string, name: string, at: Span, host: ElementNode | undefined): void => {
+    if (host === undefined) {
+      report(errorDiag(FUD_UNDECLARED_SLOT, `${label} fills nothing: it has no component parent`, at));
+      return;
+    }
+    const declared = slotsOf(host.name);
+    if (declared === undefined) {
+      // A tag the registry knows but cannot read is not an error: `undefined` there means
+      // «I cannot know», and only a parent that is definitely not a host is reportable.
+      if (components.has(host.name)) return;
+      report(
+        errorDiag(FUD_UNDECLARED_SLOT, `${label} fills nothing: \`${host.name}\` is not a component`, at),
+      );
+      return;
+    }
+    if (declared.includes(name)) return;
+    report(errorDiag(FUD_UNDECLARED_SLOT, `\`${host.name}\` declares no slot \`${name}\``, at));
+  };
+
   walk(documentRoots(input.document), {
     element(el, host) {
       const slot = staticSlot(el);
-      if (slot === undefined) return;
-
-      if (host === undefined) {
-        report(
-          errorDiag(
-            FUD_UNDECLARED_SLOT,
-            `\`slot="${slot.name}"\` fills nothing: this element has no component parent`,
-            slot.at,
-          ),
-        );
-        return;
-      }
-      const declared = slotsOf(host.name);
-      if (declared === undefined) {
-        // A tag the registry knows but cannot read is not an error: `undefined` there means
-        // «I cannot know», and only a parent that is definitely not a host is reportable.
-        if (components.has(host.name)) return;
-        report(
-          errorDiag(
-            FUD_UNDECLARED_SLOT,
-            `\`slot="${slot.name}"\` fills nothing: \`${host.name}\` is not a component`,
-            slot.at,
-          ),
-        );
-        return;
-      }
-      if (declared.includes(slot.name)) return;
-      report(
-        errorDiag(FUD_UNDECLARED_SLOT, `\`${host.name}\` declares no slot \`${slot.name}\``, slot.at),
-      );
+      if (slot !== undefined) check(`\`slot="${slot.name}"\``, slot.name, slot.at, host);
+    },
+    // The `slot:` of a layout's hole (SDD-48) names a slot of the element around the hole —
+    // the same question, asked of the same parent.
+    hole(node, host) {
+      if (node.slot !== undefined) check(`\`slot: "${node.slot.name}"\``, node.slot.name, node.slot.span, host);
     },
   });
 }

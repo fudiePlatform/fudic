@@ -52,6 +52,12 @@ export const tpl = (s: string): string => '`' + s.replace(/[`\\$]/gu, '\\$&') + 
 export { isAssetAttr } from './attrs.js';
 
 // A control construct is stored as its base RazorConstruct; recover the concrete node.
+/**
+ * The comment a layout leaves behind each outermost construct of its body (SDD-48): what a
+ * route's chunk jumps to where it cannot count the elements the construct wrote.
+ */
+export const LAYOUT_ANCHOR = 'fud:l';
+
 const asIf = (node: HtmlContent): IfNode => node as unknown as IfNode;
 const asLoop = (node: HtmlContent): LoopNode => node as unknown as LoopNode;
 const asSwitch = (node: HtmlContent): SwitchNode => node as unknown as SwitchNode;
@@ -155,6 +161,11 @@ export interface MarkupOptions {
    * of place by SDD-10, and the emit must not invent markup for it.
    */
   readonly slots?: string;
+  /**
+   * Whether each outermost construct is followed by a `LAYOUT_ANCHOR` comment (SDD-48). Only
+   * a layout's body: it is the markup a route's chunk crosses without knowing what it holds.
+   */
+  readonly anchors?: boolean;
   /**
    * The mode AROUND the nodes this emitter walks: a component's own `<style>` can put its
    * whole template in a preserving context, and a page body starts in the default one.
@@ -266,6 +277,11 @@ export class MarkupEmitter {
   readonly #styled: ReadonlySet<string>;
   readonly #projectAdopt: ProjectAdopt;
   readonly #used = new Set<string>();
+  /** The slot the roots of the walk in progress are stamped with (SDD-48), if any. */
+  #rootSlot: { readonly parent: string; readonly name: string } | undefined;
+  /** Whether each outermost construct leaves an anchor behind it — a layout (SDD-48). */
+  readonly #anchors: boolean;
+  #constructDepth = 0;
   #id = 0;
   /**
    * Where the walk is: the whitespace mode in force (`white-space` inherits, BUG-07 §4.4)
@@ -280,6 +296,7 @@ export class MarkupEmitter {
     this.#isComponent = options.isComponent;
     this.#linker = options.linker;
     this.#slots = options.slots;
+    this.#anchors = options.anchors ?? false;
     this.#at = rootContext(
       options.space ?? 'collapse',
       options.container ?? 'unknown',
@@ -307,6 +324,16 @@ export class MarkupEmitter {
   /** The child component tags rendered so far, in first-use order (for ES imports). */
   get used(): ReadonlySet<string> {
     return this.#used;
+  }
+
+  /**
+   * As `emitChildren`, for the roots of a hole its layout puts in the named slot `slot`
+   * (SDD-48): every element appended straight under `parent` gets `slot="<slot>"`.
+   */
+  emitSlotted(children: readonly HtmlContent[], parent: string, slot: string): void {
+    this.#rootSlot = { parent, name: slot };
+    this.emitChildren(children, parent);
+    this.#rootSlot = undefined;
   }
 
   /**
@@ -356,13 +383,13 @@ export class MarkupEmitter {
         this.#element(node as ElementNode, parent);
         return;
       case 'if':
-        this.#if(asIf(node), parent, body);
+        this.#construct(parent, () => this.#if(asIf(node), parent, body));
         return;
       case 'loop':
-        this.#loop(asLoop(node), parent, body);
+        this.#construct(parent, () => this.#loop(asLoop(node), parent, body));
         return;
       case 'switch':
-        this.#switch(asSwitch(node), parent, body);
+        this.#construct(parent, () => this.#switch(asSwitch(node), parent, body));
         return;
       case 'render-body':
         // `@RenderBody()`: the route appends its nodes under the SAME parent, with the
@@ -490,6 +517,12 @@ export class MarkupEmitter {
       this.#markerText(el, v);
     }
     this.#at = outer;
+    // A root of a hole the layout slots (SDD-48): the layout named the slot, the route wrote
+    // siblings, and each of them carries the name. A construct keeps the same `parent`, so
+    // what a branch or a loop writes at the root is stamped too.
+    if (this.#rootSlot !== undefined && this.#rootSlot.parent === parent) {
+      this.#w.line(`$dom.setAttr(${v}, 'slot', ${JSON.stringify(this.#rootSlot.name)});`);
+    }
     this.#w.line(`$dom.append(${parent}, ${v});`);
   }
 
@@ -594,6 +627,26 @@ export class MarkupEmitter {
   }
 
   /** Write the body of one branch of a construct, in the context that branch sits in. */
+  /**
+   * One construct, and — in a LAYOUT, for the outermost construct of a run of siblings — the
+   * anchor that follows it (SDD-48).
+   *
+   * A construct writes a number of elements nobody can know before it runs, and the route's
+   * chunk crosses the layout counting elements (SDD-39 §4.3). So the layout leaves a comment
+   * behind each one, and the chunk jumps to it instead of counting (`compose.ts`). Only the
+   * outermost: an inner construct's anchor would land among the siblings of the outer one's
+   * output, and the chunk looks for the anchors of ONE level by their order.
+   */
+  #construct(parent: string, write: () => void): void {
+    this.#constructDepth++;
+    write();
+    this.#constructDepth--;
+    if (this.#anchors && this.#constructDepth === 0) {
+      const v = this.#fresh();
+      this.#w.line(`const ${v} = $dom.comment(${JSON.stringify(LAYOUT_ANCHOR)}); $dom.append(${parent}, ${v});`);
+    }
+  }
+
   #branch(children: readonly HtmlContent[], parent: string, body: RunContext): void {
     const outer = this.#at;
     this.#at = body;

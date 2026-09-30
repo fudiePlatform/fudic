@@ -14,11 +14,14 @@ import type {
   AttributeValuePart,
   ElementNode,
   HtmlContent,
+  RenderDirectiveNode,
+  RenderSectionNode,
   SectionNode,
   Span,
   StructuredDocument,
 } from '@fudic/compiler';
-import { DIAGNOSTIC_ONLY_CAPS } from '../caps.js';
+import { DIAGNOSTIC_ONLY_CAPS, LITERAL_NAME_CAPS } from '../caps.js';
+import { slotsAlias } from './attrs.js';
 import { nestedContent, templateContent } from '../imports.js';
 import type { VirtualWriter } from '../writer.js';
 import type { TemplateContext } from './context.js';
@@ -42,6 +45,24 @@ export function emitSection(ctx: TemplateContext, node: SectionNode): void {
   );
   ctx.w.scaffold(');\n');
   ctx.emit(node.children);
+}
+
+/**
+ * `@RenderBody(slot: "x")` / `@RenderSection(nav, slot: "x")` → `$intoSlot<$S_parent>("x");`
+ * (SDD-48).
+ *
+ * The `slot:` of a hole is the `slot=` of every root the route writes into it, so it is checked
+ * the way a `slot=` is: against the slots of the component AROUND the hole. The literal is
+ * copied whole, quotes included, as one stretch — the diagnostic must land on it and the
+ * completion list is the point: asking inside `slot: "|"` is asking for the parent's slots.
+ */
+export function emitHoleSlot(ctx: TemplateContext, node: RenderDirectiveNode | RenderSectionNode): void {
+  if (node.slot === undefined) return;
+  const alias = slotsAlias(ctx);
+  if (alias === undefined) return;
+  ctx.w.scaffold(`$intoSlot<${alias}>(`, node.slot.span);
+  ctx.w.projected(ctx.source.slice(node.slot.span.start, node.slot.span.end), node.slot.span, LITERAL_NAME_CAPS);
+  ctx.w.scaffold(');\n');
 }
 
 /** `<slot>` — a marker inside the component. What its NAME means is `$Slots`, below. */

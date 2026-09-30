@@ -26,6 +26,7 @@ import {
   warningDiag,
 } from '../types/index.js';
 import { expandDocument, type DraggedLink, type OffsetMap } from '../expand/index.js';
+import { holeContractDiagnostics } from '../layout/index.js';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 
 /**
@@ -529,6 +530,8 @@ function reportOrphanSections(
   for (const layout of layouts) {
     for (const rs of layout.doc.renderSections) rendered.add(rs.name);
   }
+  // The holes' own contract (SDD-48): required sections, and what a slotted hole may hold.
+  for (const layout of layouts) diagnostics.push(...holeContractDiagnostics(route, layout.doc));
   for (const section of route.sections) {
     if (section.name !== '' && !rendered.has(section.name)) {
       diagnostics.push(

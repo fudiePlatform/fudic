@@ -31,6 +31,7 @@ import { childTargets, entryCellSlots, entryReactiveScope, type CellSlot } from 
 import { entryHalf, entryMoving, formAssociatedTags, isReactiveRoute } from './level.js';
 import { cellNameAt, lines, withCells, writeClosure } from './client.js';
 import { composePage, holeContent, type ComposeItem } from './compose.js';
+import { LAYOUT_ANCHOR } from './markup.js';
 import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
 import { projectAdoptOf } from './project-styles.js';
 import type { DocumentGraph } from './resolve.js';
@@ -97,6 +98,20 @@ class ComposeWalker {
       switch (item.kind) {
         case 'skip':
           this.#adopt.line(`${cursor} = $dom.nextElementSibling(${cursor});`);
+          break;
+        case 'anchor':
+          // A construct of the layout wrote elements nobody counted (SDD-48): the cursor lands
+          // on the first element after the anchor it left behind, found by its order among
+          // the anchors of this level.
+          this.#adopt.line(`${cursor} = null;`);
+          this.#adopt.line(
+            `for (let $a = $dom.firstChild(${parent}), $k = ${item.index}; $a !== null; $a = $dom.nextSibling($a)) {`,
+          );
+          this.#adopt.indent();
+          this.#adopt.line(
+            `if ($a.nodeType === 8 && $a.data === ${JSON.stringify(LAYOUT_ANCHOR)} && $k-- === 0) { ${cursor} = $dom.nextElementSibling($a); break; }`,
+          );
+          this.#adopt.dedent().line('}');
           break;
         case 'enter': {
           const node = layoutNode(this.nodes.length);

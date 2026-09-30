@@ -10,8 +10,10 @@
  */
 
 import { parseFud } from './parse.js';
+import type { LayoutHoles } from '@fudic/compiler';
 import {
   contractOf,
+  holesOf,
   layoutHrefOf,
   roleOf,
   sectionsOf,
@@ -42,6 +44,12 @@ export interface IndexEntry {
    * `@section `: the file was already parsed to learn its role, so the names are free.
    */
   readonly sections: readonly string[];
+  /**
+   * A layout's holes — which sections are required, which slot each one goes in (SDD-48).
+   * Empty for everything else. Kept for the reason `sections` is: a route is diagnosed
+   * against its layout on every keystroke, and the layout was already parsed.
+   */
+  readonly holes: LayoutHoles;
   /**
    * The props a component declares without a `?`, in declaration order. Empty for everything
    * else — and empty also when they cannot be proven, which is what makes the tag expansion
@@ -130,6 +138,7 @@ export class WorkspaceIndex {
       tag: tagOf(document),
       layoutHref: layoutHrefOf(document),
       sections: sectionsOf(document),
+      holes: holesOf(document),
       requiredProps: contract.props.filter((prop) => prop.required).map((prop) => prop.name),
       contract,
       external,

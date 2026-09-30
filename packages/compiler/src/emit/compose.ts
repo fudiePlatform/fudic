@@ -21,9 +21,7 @@
 
 import type { HtmlContent } from '../html/index.js';
 import type { LayoutDocument, RouteDocument } from '../document/index.js';
-import type { ControlNode } from '../control/index.js';
 import type { RenderSectionNode, SectionNode } from '../layout/index.js';
-import { branchesOf } from './constructs.js';
 import type { DocumentGraph } from './resolve.js';
 
 /** Which of the route's own runs of markup goes at a point of the walk. */
@@ -43,7 +41,13 @@ export type Hole =
 export type ComposeItem =
   | { readonly kind: 'skip' }
   | { readonly kind: 'enter'; readonly items: readonly ComposeItem[] }
-  | { readonly kind: 'hole'; readonly hole: Hole };
+  | { readonly kind: 'hole'; readonly hole: Hole }
+  /**
+   * A construct of the layout (SDD-48): the elements it wrote cannot be counted, so the cursor
+   * jumps past the `index`-th anchor of the level instead — the comment the layout left behind
+   * that construct.
+   */
+  | { readonly kind: 'anchor'; readonly index: number };
 
 /** Whether a level — or anything under it — reaches a hole. An `enter` is one that does. */
 function reachesHole(items: readonly ComposeItem[]): boolean {
@@ -84,6 +88,7 @@ function levelOf(
   inner: () => readonly ComposeItem[],
 ): readonly ComposeItem[] {
   const items: ComposeItem[] = [];
+  let anchors = 0;
   for (const child of children) {
     switch (child.type) {
       case 'element': {
@@ -106,13 +111,11 @@ function levelOf(
       case 'foreach':
       case 'for':
       case 'while':
-        // A construct in a LAYOUT. Its branches are walked so a hole inside one is still
-        // found, and its own elements contribute no step: a layout's markup is static in
-        // this version (§7), so a skeleton is what there is to walk. The day a layout may
-        // render conditionally around the route's body, this is the line that has to change.
-        for (const branch of branchesOf(child as unknown as ControlNode)) {
-          items.push(...levelOf(branch.body, inner));
-        }
+        // A construct in a LAYOUT (SDD-48). It wrote a number of elements nobody knows here,
+        // so the walk does not count them: it jumps to the anchor the layout left behind the
+        // construct. No hole lives inside one — that is `FUD0443` — so there is nothing to
+        // descend into.
+        items.push({ kind: 'anchor', index: anchors++ });
         break;
       default:
         // Text, comments, interpolations, `@code`, `@RenderHead()`: the walk is an ELEMENT

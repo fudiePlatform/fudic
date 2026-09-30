@@ -25,6 +25,7 @@ import type { WorkspaceIndex } from '../workspace-index.js';
 import { contractIssues, type ContractIssue, type MissingLayoutProps } from './contract.js';
 import type { ContractProp } from '../mode.js';
 import type { PropDetail, PropHolds } from './tag-card.js';
+import { missingSections } from './holes.js';
 import { unresolvedHrefs } from './href.js';
 import { linkInsertionFor } from './tags.js';
 import { loopBindingNames } from './template-scope.js';
@@ -361,9 +362,32 @@ function layoutFix(issue: MissingLayoutProps): Fix {
  * A code that is not here has no bulb, and that is the normal case — most diagnostics describe
  * a decision only the author can make. Adding a row is the whole cost of adding a quick fix.
  */
+/**
+ * `FUD0440` — the route leaves a `required: true` section of its layout unfilled (SDD-48).
+ *
+ * One action writes every missing section, empty, after the route's last `@section` — or at
+ * the end of the file when it has none — because that is where the route keeps its sections
+ * and an author who asked for one would be asked again for the next.
+ */
+const addRequiredSections: Repairer = ({ cached, index }) => {
+  const missing = missingSections(cached, index);
+  const route = cached.document;
+  if (missing.length === 0 || route.type !== 'route-document') return [];
+  const at = route.sections.at(-1)?.span.end ?? cached.source.trimEnd().length;
+  const text = missing.map((s) => `\n\n@section ${s.name} {\n}`).join('');
+  const names = missing.map((s) => s.name).join(', ');
+  return [
+    {
+      title: `Añadir las secciones requeridas del layout (${names})`,
+      edits: [{ span: span(at, at), newText: text }],
+    },
+  ];
+};
+
 const REPAIRS: ReadonlyMap<string, Repairer> = new Map<string, Repairer>([
   ['FUD0056', quoteValue],
   ['FUD0191', addComponentLink],
+  ['FUD0440', addRequiredSections],
   ['FUD0540', addLoopKey],
 ]);
 

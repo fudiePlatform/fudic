@@ -13,6 +13,7 @@
 import { analyze, type ComponentRegistry, type Diagnostic } from '@fudic/compiler';
 import type { CachedDocument } from '../document-cache.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
+import { holeDiagnostics } from './holes.js';
 import { hrefDiagnostics } from './href.js';
 import { reservedDollarDiagnostics } from './reserved-dollar.js';
 
@@ -61,6 +62,7 @@ export function fudicDiagnostics(
     ...document.diagnostics,
     ...semanticDiagnostics(document),
     ...hrefDiagnostics(document, index),
+    ...holeDiagnostics(document, index),
     ...reservedDollarDiagnostics(document),
   ];
 }

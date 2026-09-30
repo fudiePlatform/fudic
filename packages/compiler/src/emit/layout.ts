@@ -128,6 +128,7 @@ function buildLayoutModule(
     isComponent: (t) => graph.components.has(t),
     linker,
     slots: SLOTS,
+    anchors: true,
     hydratable: hydratableTags(graph),
     formAssociated: formAssociatedTags(graph),
     bridges: bridgeIds(graph),
@@ -286,7 +287,17 @@ function buildRouteModule(
     styled,
     projectAdopt,
   });
-  em.emitChildren(route.markup, PARENT);
+  // The slots the layout puts each hole in (SDD-48). Known here and not only in the layout:
+  // the route builds the nodes, so the route is the one that stamps them — and a route has
+  // exactly one layout, which its graph already holds.
+  const layoutDoc = graph.layouts[0]?.doc;
+  const bodySlot = layoutDoc?.renderBody?.slot?.name;
+  const sectionSlots = new Map<string, string>();
+  for (const rs of layoutDoc?.renderSections ?? []) {
+    if (rs.slot !== undefined) sectionSlots.set(rs.name, rs.slot.name);
+  }
+  if (bodySlot === undefined) em.emitChildren(route.markup, PARENT);
+  else em.emitSlotted(route.markup, PARENT, bodySlot);
 
   // One `if` arm per declared section; an unknown name renders nothing (decision 85). Its
   // own emitter, because a section builds into the layout's `@RenderSection` point — NOT
@@ -309,7 +320,9 @@ function buildRouteModule(
     if (section.name === '') continue;
     sectionW.line(`if (name === ${JSON.stringify(section.name)}) {`);
     sectionW.indent();
-    sectionEm.emitChildren(section.children, PARENT);
+    const slot = sectionSlots.get(section.name);
+    if (slot === undefined) sectionEm.emitChildren(section.children, PARENT);
+    else sectionEm.emitSlotted(section.children, PARENT, slot);
     sectionW.dedent();
     sectionW.line('}');
   }

@@ -1,0 +1,62 @@
+<link rel="layout" href="../layouts/_layout-marco.fud">
+<link rel="component" href="../components/site-nav.fud">
+
+@code {
+  @server {
+    export function layout(ctx, data) {
+      return {
+        titulo: "Un layout con marco",
+        seccion: "Marco",
+        inicio: 5,
+        migas: ["Inicio", "Ejemplos"],
+      };
+    }
+  }
+
+  @client {
+    import { signal } from "@fudic/core";
+
+    const veces = signal(0);
+
+    function sube() {
+      veces.set(veces() + 1);
+    }
+  }
+}
+
+<head>
+  <title>Marco — fudic</title>
+</head>
+
+@section nav {
+  <site-nav .current="marco"></site-nav>
+}
+
+@* Dos hermanos que van a la cabecera del marco. Ninguno escribe `slot=`: lo pone el layout. *@
+@section cabecera {
+  <h1>Un layout con marco</h1>
+  <p>La rejilla, los bordes y el pie son de un componente. Esta ruta solo trae contenido.</p>
+}
+
+@section lateral {
+  <a href="/marco">Con lateral</a>
+  <a href="/marco-sin-lateral">Sin lateral</a>
+}
+
+<p>
+  Estos párrafos son el cuerpo de la ruta, y caen en el slot <code>contenido</code> del marco
+  porque el layout escribió <code>@@RenderBody(slot: "contenido")</code>.
+</p>
+<p>
+  Mira el HTML: cada elemento raíz de una sección y del cuerpo lleva su
+  <code>slot="…"</code>, y ninguno lo escribió esta ruta.
+</p>
+<p>
+  El contador de abajo es del layout, arranca en el <code>inicio</code> que esta ruta le
+  pasa — 5 — y responde al clic.
+</p>
+<p>
+  Y este botón es de la ruta: su parte de cliente atraviesa el marco del layout —las migas
+  de su <code>@@foreach</code> incluidas— hasta encontrar sus propios nodos.
+  <button @click=@sube>Pulsado @veces() veces</button>
+</p>

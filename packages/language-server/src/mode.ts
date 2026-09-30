@@ -15,6 +15,7 @@ import {
   type CodeBlockNode,
   type ComponentDocument,
   type LayoutDocument,
+  type LayoutHoles,
   type StructuredDocument,
 } from '@fudic/compiler';
 
@@ -70,6 +71,15 @@ export function tagOf(document: StructuredDocument): string {
 export function sectionsOf(document: StructuredDocument): readonly string[] {
   if (document.type !== 'layout-document') return [];
   return document.renderSections.map((section) => section.name).filter((name) => name !== '');
+}
+
+/** A layout's holes (SDD-48); no hole at all for anything that is not a layout. */
+export function holesOf(document: StructuredDocument): LayoutHoles {
+  if (document.type !== 'layout-document') return { renderSections: [] };
+  return {
+    renderSections: document.renderSections,
+    ...(document.renderBody !== undefined ? { renderBody: document.renderBody } : {}),
+  };
 }
 
 /** One prop of a component, as a consumer of that component sees it. */

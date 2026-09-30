@@ -8,7 +8,13 @@
  * matching concrete node, so the walk narrows by discriminant and casts to the SDD-06 shape.
  */
 
-import type { HtmlContent, ElementNode, Attribute, RawExpressionNode } from '../html/index.js';
+import type {
+  HtmlContent,
+  ElementNode,
+  Attribute,
+  InlineCodeNode,
+  RawExpressionNode,
+} from '../html/index.js';
 import type {
   ControlNode,
   IfNode,
@@ -17,7 +23,7 @@ import type {
   WhileNode,
   SwitchNode,
 } from '../control/index.js';
-import type { SectionNode } from '../layout/index.js';
+import type { RenderDirectiveNode, RenderSectionNode, SectionNode } from '../layout/index.js';
 import type { SnippetDeclNode } from '../snippet/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { StructuredDocument } from '../document/index.js';
@@ -58,6 +64,13 @@ export interface TreeVisitor {
    * only the node knows where those parentheses are (BUG-17 §4.3).
    */
   control?(node: ControlNode): void;
+  /** Every `@{ … }` statement block — the layout's body refuses them (SDD-48). */
+  inlineCode?(node: InlineCodeNode): void;
+  /**
+   * Every `@RenderBody()` / `@RenderSection()`, with the nearest ancestor element: the
+   * `slot:` of a hole fills a slot of that element, exactly as a `slot=` would (SDD-48).
+   */
+  hole?(node: RenderDirectiveNode | RenderSectionNode, host?: ElementNode): void;
 }
 
 /**
@@ -133,6 +146,13 @@ function walkNode(node: HtmlContent, visitor: TreeVisitor, host: ElementNode | u
       return;
     case 'raw-expression':
       visitor.interpolation?.((node as RawExpressionNode).expr);
+      return;
+    case 'inline-code':
+      visitor.inlineCode?.(node as InlineCodeNode);
+      return;
+    case 'render-body':
+    case 'render-section':
+      visitor.hole?.(node as unknown as RenderDirectiveNode | RenderSectionNode, host);
       return;
     case 'if': {
       const ifNode = node as unknown as IfNode;

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+@* Un layout cuyo body es un componente. `app-marco` encapsula la rejilla y su CSS, así que
+   este fichero no escribe una sola regla de maquetación: la pide. Otro layout con la misma
+   forma escribiría el mismo `<app-marco>` y ya está.
+
+   Las props del layout llegan al body por la vía normal: `titulo` va al componente, y
+   `seccion` a un snippet. Las dos las resuelve la ruta en su `@server layout(ctx, data)`.
+
+   Cada hueco dice en qué slot del componente cae. La ruta escribe hermanos sueltos dentro de
+   su `@section`, sin un `<div slot>` que los envuelva, y cada uno sale con su `slot=`
+   puesto. `cabecera` es obligatoria: una ruta que no la declare es un error en el build y
+   una bombilla en el editor. `lateral` no lo es, y sin ella el componente pinta lo que su
+   slot tenga por defecto.
+
+   El contador del pie es interactivo: un componente del layout también se hidrata, y su
+   `start` sale de otra prop del layout.
+
+   Las migas son un `@foreach` sobre una prop, delante de los huecos. Cuántos elementos
+   escribe no se sabe hasta que corre, así que el layout deja un comentario detrás del
+   bucle y la parte de cliente de la ruta salta hasta él en vez de contar: por eso el
+   botón de `/marco` sigue respondiendo. Un hueco DENTRO de un `@if` o un bucle sí es un
+   error: la ruta saldría cero o varias veces. *@
+<html lang="es">
+  <head>
+    <link rel="component" href="../components/app-marco.fud">
+    <link rel="component" href="../components/app-counter.fud">
+    <link rel="snippet" href="../snippets/marco.fud">
+
+    @code {
+      const { titulo, seccion = "Marco", inicio = 0, migas = [] } = props<{
+        titulo: string;
+        seccion?: string;
+        inicio?: number;
+        migas?: string[];
+      }>();
+    }
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="/logo.svg">
+    <link rel="stylesheet" href="../styles/tokens.css">
+
+    <script type="module" src="fudic:runtime"></script>
+
+    @RenderHead()
+  </head>
+  <body>
+    @RenderSection(nav)
+
+    <app-marco .titulo=@titulo>
+      @foreach (const miga of migas) key (miga) {
+        <span slot="cabecera" class="miga">@miga ›</span>
+      }
+      @RenderSection(cabecera, required: true, slot: "cabecera")
+      @RenderSection(lateral, slot: "lateral")
+      @RenderBody(slot: "contenido")
+      @render pie(seccion)
+      <app-counter slot="pie" .start=@inicio></app-counter>
+    </app-marco>
+  </body>
+</html>

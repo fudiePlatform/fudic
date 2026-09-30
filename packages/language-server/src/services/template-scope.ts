@@ -47,20 +47,17 @@ export type TemplateScope = ReadonlyMap<string, ScopeKind>;
  * projection itself — for a route or a page, never for a component, which receives props and
  * has no route data to read (SDD-23 §4.2).
  *
- * A LAYOUT is the exception, and a narrow one: it reads its own props and nothing else — no
- * `data`, no loop — and only outside its `<body>`, since a prop read there is `FUD0704`
- * (BUG-44). The offset is what says which side of that line the caret is on.
+ * A LAYOUT is the exception, and a narrow one: it reads its own props and no `data` (BUG-44).
+ * Since SDD-48 it reads them in its `<body>` too — that is where it hands them to the
+ * component that wraps the route — and a loop there declares names like anywhere else.
  */
 export function templateScope(cached: CachedDocument, offset?: number): TemplateScope {
-  const doc = cached.document;
-  if (doc.type === 'layout-document') {
-    const body = doc.body.span;
-    const inBody = offset !== undefined && offset >= body.start && offset <= body.end;
-    return inBody ? new Map() : declaredNames(cached, cached.js.neutral);
-  }
-
-  const names = declaredNames(cached, [...cached.js.neutral, ...cached.js.client]);
-  if (cached.document.type !== 'component-document') names.set('data', 'value');
+  const layout = cached.document.type === 'layout-document';
+  const names = declaredNames(
+    cached,
+    layout ? cached.js.neutral : [...cached.js.neutral, ...cached.js.client],
+  );
+  if (!layout && cached.document.type !== 'component-document') names.set('data', 'value');
   if (offset !== undefined) addLoopBindings(cached, offset, names);
   return names;
 }

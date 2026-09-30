@@ -1,0 +1,7 @@
+<!-- El pie del marco, escrito como snippet: el layout lo invoca en su body y le pasa una de
+     sus props. Se expande dentro del `<app-marco>`, así que su `slot="pie"` llena el pie del
+     componente como lo haría cualquier elemento escrito ahí a mano. -->
+
+@snippet pie(seccion: string) {
+  <p slot="pie">Sección: <strong>@seccion</strong></p>
+}

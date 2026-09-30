@@ -15,19 +15,35 @@ import type { HtmlContent } from '../html/index.js';
 export type LayoutNode = RenderDirectiveNode | RenderSectionNode | SectionNode;
 
 /**
- * `@RenderBody()` / `@RenderHead()` — no arguments, parentheses mandatory (decision 85).
- * A missing `(` is FUD0432 and the node is still produced (recovery): the layout keeps
- * its insertion point, the author gets the diagnostic.
+ * `slot: "name"` — the named slot of the component that wraps a hole (SDD-48).
+ *
+ * Every root element the route writes into that hole comes out with `slot="name"`, so the
+ * route writes siblings and never the wrapper `<div slot>` it would otherwise need.
+ */
+export interface SlotArgument {
+  /** The slot name, without its quotes. */
+  readonly name: string;
+  /** The string literal, quotes included. */
+  readonly span: Span;
+}
+
+/**
+ * `@RenderBody()` / `@RenderHead()` — parentheses mandatory (decision 85). A missing `(` is
+ * FUD0432 and the node is still produced (recovery): the layout keeps its insertion point,
+ * the author gets the diagnostic. `@RenderBody(slot: "x")` is the one argument either takes.
  */
 export interface RenderDirectiveNode extends Node {
   readonly type: 'render-body' | 'render-head';
   /** Covers the identifier only, never the leading `@` (SDD-04 convention). */
   readonly keywordSpan: Span;
+  /** `@RenderBody(slot: "x")` (SDD-48). Never on a `@RenderHead()`. */
+  readonly slot?: SlotArgument;
 }
 
 /**
  * `@RenderSection(name)` — a bare identifier, never a string (decision 85), so the name
- * is resolvable by construction, with no constant folding.
+ * is resolvable by construction, with no constant folding. SDD-48 adds two named
+ * arguments after it: `required: true` and `slot: "x"`.
  */
 export interface RenderSectionNode extends Node {
   readonly type: 'render-section';
@@ -35,6 +51,9 @@ export interface RenderSectionNode extends Node {
   readonly name: string;
   readonly nameSpan: Span;
   readonly keywordSpan: Span;
+  /** `required: true`: every route of this layout must declare the section (SDD-48). */
+  readonly required: boolean;
+  readonly slot?: SlotArgument;
 }
 
 /** `@section name { … }` — declared in a route, rendered by its layout (decision 84). */

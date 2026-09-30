@@ -127,8 +127,11 @@ function placedAt(document: CachedDocument, offset: number, placement: SnippetPl
   return element !== undefined && element.name === 'head';
 }
 
-/** The roles whose markup is a template: every one but the layout. */
+/** The roles whose markup is a template with a client half: every one but the layout. */
 const MARKUP_ROLES: readonly FudRole[] = ['component', 'route', 'page'];
+
+/** The roles that branch and loop in their markup: the layout's body too, since SDD-48. */
+const CONTROL_ROLES: readonly FudRole[] = [...MARKUP_ROLES, 'layout'];
 
 /** One entry of the catalogue. */
 export interface FudSnippet {
@@ -377,7 +380,7 @@ export const SNIPPETS: readonly FudSnippet[] = [
     detail: 'conditional',
     scope: 'markup',
     body: '@if (${1:condition}) {\n  $0\n}',
-    roles: MARKUP_ROLES,
+    roles: CONTROL_ROLES,
     placement: 'outside-head',
   },
   {
@@ -385,7 +388,7 @@ export const SNIPPETS: readonly FudSnippet[] = [
     detail: 'conditional with an else branch',
     scope: 'markup',
     body: '@if (${1:condition}) {\n  $2\n} else {\n  $0\n}',
-    roles: MARKUP_ROLES,
+    roles: CONTROL_ROLES,
     placement: 'outside-head',
   },
   // The three loops carry their `key (…)`, and not as decoration: a loop that renders markup
@@ -397,7 +400,7 @@ export const SNIPPETS: readonly FudSnippet[] = [
     detail: 'declarative iteration (decisions 11, 91)',
     scope: 'markup',
     body: '@foreach (const ${1:item} of ${2:items}) key (${1:item}.${3:id}) {\n  $0\n}',
-    roles: MARKUP_ROLES,
+    roles: CONTROL_ROLES,
     placement: 'outside-head',
   },
   {
@@ -405,7 +408,7 @@ export const SNIPPETS: readonly FudSnippet[] = [
     detail: 'iteration with an index (decisions 11, 91)',
     scope: 'markup',
     body: '@for (let ${1:i} = 0; ${1:i} < ${2:items}.length; ${1:i}++) key (${1:i}) {\n  $0\n}',
-    roles: MARKUP_ROLES,
+    roles: CONTROL_ROLES,
     placement: 'outside-head',
   },
   {
@@ -413,7 +416,7 @@ export const SNIPPETS: readonly FudSnippet[] = [
     detail: 'loop (decision 91)',
     scope: 'markup',
     body: '@while (${1:condition}) key (${2:id}) {\n  $0\n}',
-    roles: MARKUP_ROLES,
+    roles: CONTROL_ROLES,
     placement: 'outside-head',
   },
   {
@@ -421,7 +424,7 @@ export const SNIPPETS: readonly FudSnippet[] = [
     detail: 'multi-way branch, no fall-through (decision 14)',
     scope: 'markup',
     body: "@switch (${1:value}) {\n  case ${2:'a'}:\n    $0\n  default:\n}",
-    roles: MARKUP_ROLES,
+    roles: CONTROL_ROLES,
     placement: 'outside-head',
   },
 
@@ -482,8 +485,7 @@ export const SNIPPETS: readonly FudSnippet[] = [
   },
 
   // Directives, each one only where it is legal: `@RenderHead()` in the head (`FUD0431`), and
-  // the two holes a route fills in the body — which is all a layout's body may write (BUG-44,
-  // `FUD0705`).
+  // the two holes a route fills in the body.
   {
     label: '@RenderBody',
     detail: 'where the route body goes',
