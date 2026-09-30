@@ -56,25 +56,50 @@ export type AssetExists = (spec: string) => boolean;
  */
 export type AssetText = (spec: string) => string | null;
 
+/**
+ * The URL of the pruned copy of a linked sheet (SDD-49 §3.5). The host names it by its
+ * content and publishes it; the compiler has no filesystem.
+ */
+export type AssetSheet = (spec: string, css: string, origin: AssetOrigin) => string;
+
 export class AssetLinker {
   readonly #enabled: boolean;
   readonly #exists: AssetExists | undefined;
   readonly #url: AssetUrl | undefined;
   readonly #text: AssetText | undefined;
+  readonly #sheet: AssetSheet | undefined;
   readonly #imports: string[] = [];
   readonly #bySpec = new Map<string, string>();
   readonly #missing: string[] = [];
   #id = 0;
 
-  constructor(enabled: boolean, exists?: AssetExists, url?: AssetUrl, text?: AssetText) {
+  constructor(
+    enabled: boolean,
+    exists?: AssetExists,
+    url?: AssetUrl,
+    text?: AssetText,
+    sheet?: AssetSheet,
+  ) {
     this.#enabled = enabled;
     this.#exists = exists;
     this.#url = url;
     this.#text = text;
+    this.#sheet = sheet;
   }
 
   get enabled(): boolean {
     return this.#enabled;
+  }
+
+  /**
+   * The URL of the pruned copy of the sheet `spec`, whose content is `css` — or `null` when
+   * no host publishes copies, and then the `href` stays what the author wrote.
+   *
+   * Always from a `<head>`: a pruned sheet is one a document links, which is the shell.
+   */
+  sheetRef(spec: string, css: string): string | null {
+    if (!this.#enabled || this.#sheet === undefined) return null;
+    return this.#sheet(spec, css, 'head');
   }
 
   /**

@@ -11,7 +11,10 @@ export {
   type AssetText,
   type AssetUrl,
   type AssetOrigin,
+  type AssetSheet,
 } from './assets.js';
+export { sheetKey } from './parts.js';
+export type { SheetUse } from './page-sheets.js';
 export { inlineRuntimeMarker, RUNTIME_MARKER, INLINE_QUERY, asksInline } from './parts.js';
 export {
   resolveComponents,
@@ -125,6 +128,7 @@ export {
   FUD_SHEET_IMPORT,
   FUD_SHEET_UNREADABLE,
   FUD_SHEET_UNUSED,
+  sheetDiagnostics,
   type PageSheet,
   type PrunedSheet,
 } from './prune.js';

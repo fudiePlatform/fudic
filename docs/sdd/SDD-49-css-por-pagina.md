@@ -392,9 +392,14 @@ llegan todos.
   lo que queda es el que escribió el autor, compactado por `compactProjectCss`. Con una
   superficie que lo contiene todo, la salida es idéntica byte a byte a la de hoy.
 - Una hoja que queda vacía en una página **no se emite** en esa página: ni `<link>`, ni
-  `<style>`, ni `specifier`. Si una `globalStyles` o una `styles` desaparece así, desaparece
-  también de `data-fud-adopt` y de `shadowrootadoptedstylesheets`, porque una lista no puede
-  nombrar una hoja que el documento no registró.
+  `<style>`, ni `specifier`.
+- **Corrección (implementación).** Una `globalStyles` o una `styles` que queda vacía pero que
+  **algún componente de la página adopta** se registra **vacía**
+  (`<style type="module" specifier>` sin contenido), y las listas de adopción no cambian. La
+  lista de un host anidado —y la de un componente creado en el navegador— se escribe en el
+  módulo de su componente padre, que es único para todas las páginas, así que no puede
+  quitarla por página; y una lista no puede nombrar una hoja que el documento no registró.
+  Una hoja de proyecto que **ningún** componente de la página adopta no se emite.
 - Una hoja que `parseCssRules` no puede leer (llaves sin cerrar, un string o un comentario sin
   terminar) llega **entera**, y es `FUD0851`.
 
@@ -533,8 +538,9 @@ o sobre su `<link>`. Es CSS muerto, y el autor debería saberlo.
     con la URL de `AssetSheet` y un `<style nonce>` con el CSS podado, conservando los demás
     atributos del `<link>` (`media`).
 18. Dos rutas con el mismo layout y markup distinto entregan CSS distinto para la misma clave.
-19. Una `styles` que queda vacía en una página sale de `PROJECT_STYLES`, de `data-fud-adopt` y
-    del `shadowrootadoptedstylesheets` de esa página.
+19. Una `styles` que ningún componente de la página adopta sale de `PROJECT_STYLES`; una que
+    algún componente adopta y queda vacía se queda con `css` vacío, y `data-fud-adopt` y
+    `shadowrootadoptedstylesheets` no cambian (§4.5, corrección).
 20. Sin `pruneStyles` el emit es idéntico al de `main` (los fixtures actuales, sin cambios).
 
 **Build** (`packages/vite/test/`)

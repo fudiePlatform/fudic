@@ -71,6 +71,53 @@ function inlineStyleExpr(el: ElementNode, linker: AssetLinker): string | null {
 }
 
 /**
+ * The `href` of a `<link rel="stylesheet">` this build can prune, or `null` (SDD-49 §4.1).
+ *
+ * Only what the compiler can READ: a relative `href`, written literally, whose text the host
+ * hands over. A root-absolute URL, another origin, an interpolated `href` or a file nobody can
+ * read stays exactly as the author wrote it. The layout and the route ask this same question
+ * about the same element, so they cannot disagree about which ones the route delivers.
+ *
+ * `resolve` turns the `href` into the specifier `linker` understands: the route reads its
+ * layout's sheets through its own linker, relative to its own directory.
+ */
+export function prunableHref(
+  el: ElementNode,
+  linker: AssetLinker,
+  resolve: (href: string) => string = (href) => href,
+): string | null {
+  if (el.name !== 'link' || literalAttr(el, 'rel') !== 'stylesheet') return null;
+  if (interpolatesAttrs(el)) return null;
+  const href = literalAttr(el, 'href');
+  if (href === null || href.startsWith('/')) return null;
+  return linker.textOf(resolve(href)) === null ? null : href;
+}
+
+/**
+ * The key under which a route hands its layout each prunable sheet of that layout's `<head>`
+ * (SDD-49 §4.6): the layout's depth — how many layouts it has above it, which does not depend
+ * on the route — and the sheet's position among the prunable ones of that head.
+ */
+export function sheetKey(depth: number, ordinal: number): string {
+  return `${depth}:${ordinal}`;
+}
+
+/**
+ * The `<link>` element as the author wrote it, with its `href` replaced by `url` — a JS
+ * expression. Every other attribute (`media`, `crossorigin`, …) travels untouched.
+ */
+export function linkWithHref(source: string, el: ElementNode, url: string): string {
+  const href = el.attributes.find((a) => a.name === 'href')!;
+  const first = href.value[0]!;
+  const last = href.value[href.value.length - 1]!;
+  return (
+    JSON.stringify(source.slice(el.span.start, first.span.start)) +
+    ` + ${url} + ` +
+    JSON.stringify(source.slice(last.span.end, el.span.end))
+  );
+}
+
+/**
  * Whether this `<head>` embeds a resource, and therefore needs the response's nonce.
  *
  * Asked by a LAYOUT, which writes no inline anything of its own and so has never declared
@@ -452,6 +499,12 @@ export function writeHeadElements(
      * are written in the same line. Whether there is any runtime at all remains the route's.
      */
     readonly onRuntime?: (form: RuntimeForm) => void;
+    /**
+     * What a prunable stylesheet becomes here (SDD-49 §4.6): a JS expression for its element,
+     * or `null` for one this head writes as it always did. Absent — no pruning — and every
+     * sheet is written as the author wrote it.
+     */
+    readonly sheet?: (el: ElementNode) => string | null;
   },
   w: CodeWriter,
 ): void {
@@ -468,6 +521,11 @@ export function writeHeadElements(
     // for the rest, which is what stops a misplaced one (FUD0438) from being published as
     // an asset by a build that recovered from the error and carried on.
     if (isFrameworkLink(child)) continue;
+    const pruned = options.sheet?.(child) ?? null;
+    if (pruned !== null) {
+      w.line(`head += ${pruned};`);
+      continue;
+    }
     const form = options.onRuntime === undefined ? null : runtimeMarkerForm(child);
     if (options.onRuntime !== undefined && form !== null) {
       options.onRuntime(form);

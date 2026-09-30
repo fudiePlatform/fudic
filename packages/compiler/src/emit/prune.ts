@@ -46,6 +46,13 @@ export interface PageSheet {
   readonly css: string;
   readonly scope: StyleScope;
   readonly surface: ScopeSurface;
+  /**
+   * A sheet that is READ and never pruned nor reported: a component's own `<style>` (§7). What
+   * it keeps still names fonts and animations the page's sheets declare — a family the
+   * document's guide defines is used from inside a shadow root — so it takes part in that
+   * decision, and nothing comes out for it.
+   */
+  readonly reference?: boolean;
 }
 
 export interface PrunedSheet {
@@ -326,24 +333,36 @@ export function prunePage(sheets: readonly PageSheet[]): ParseResult<readonly Pr
   const referenced: string[] = [];
   const plans: SheetPlan[] = sheets.map((sheet) => {
     const parsed = parseCssRules(sheet.css);
+    if (!sheet.reference) diagnostics.push(...sheetDiagnostics(sheet.css, parsed));
     if (parsed.diagnostics.length > 0) {
-      diagnostics.push(...parsed.diagnostics);
       // Unreadable, so every word of it may be what names a font or an animation.
       referenced.push(sheet.css);
       return { sheet, rules: null, dropped: new Set(), trimmed: new Map() };
     }
-    diagnostics.push(...imports(parsed.value.rules));
     const pass = new StylePass(sheet, referenced);
     pass.rules(parsed.value.rules, false);
     return { sheet, rules: parsed.value.rules, dropped: pass.dropped, trimmed: pass.trimmed };
   });
   const said = referenced.join('\n');
-  const out = plans.map((plan): PrunedSheet => {
-    if (plan.rules === null) return { key: plan.sheet.key, css: compactProjectCss(plan.sheet.css) };
+  const out = plans.flatMap((plan): PrunedSheet[] => {
+    if (plan.sheet.reference) return [];
+    if (plan.rules === null) return [{ key: plan.sheet.key, css: compactProjectCss(plan.sheet.css) }];
     const pass = new RenderPass(plan, said);
     const kept = pass.rules(plan.rules, false);
     const css = kept === 0 ? '' : compactProjectCss(applyEdits(plan.sheet.css, pass.edits));
-    return { key: plan.sheet.key, css };
+    return [{ key: plan.sheet.key, css }];
   });
   return diagnostics.length === 0 ? ok(out) : withDiagnostics(out, diagnostics);
+}
+
+/**
+ * What a sheet has to say about itself, whatever page it lands in: `FUD0851` where it cannot
+ * be read, `FUD0850` on each `@import`. Its spans are over the sheet's own text, so the host —
+ * which knows the file — reports them, once per sheet and not once per page.
+ */
+export function sheetDiagnostics(
+  css: string,
+  parsed: ParseResult<{ readonly rules: readonly CssRule[] }> = parseCssRules(css),
+): readonly Diagnostic[] {
+  return [...parsed.diagnostics, ...imports(parsed.value.rules)];
 }

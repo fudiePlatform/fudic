@@ -3,7 +3,7 @@
 > **SDD:** [SDD-49 — El CSS que cada página usa](./SDD-49-css-por-pagina.md)
 > **Paquetes:** `@fudic/compiler` · `@fudic/vite` · `@fudic/example-basic`
 > **Rama:** `worktree-sdd-49-css-por-pagina`
-> **Progreso:** 10 / 18
+> **Progreso:** 13 / 18
 
 El orden va de abajo arriba: primero leer CSS, después saber qué hay en cada ámbito, después
 decidir qué se queda, y solo entonces tocar el emit, que es donde un error se vuelve visible.
@@ -42,9 +42,9 @@ note.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 11 | 10 | **El puerto y la clave.** `EmitOptions.pruneStyles`; `AssetSheet` y `AssetLinker.sheetRef`; `sheetKey(depth, ordinal)` | `compiler` | `src/emit/module.ts` · `src/emit/assets.ts` · `src/emit/parts.ts` |
-| [ ] | 12 | 11 | **Layout y ruta.** El layout escribe `route.sheet(K)` por cada `<link>` podable; la ruta calcula `prunePage` y entrega `<link>` (atributos del autor, `href` podado), `<style nonce>` o `''`; `PROJECT_STYLES`, `data-fud-adopt` y `shadowrootadoptedstylesheets` sin las hojas vacías. El módulo de página sin layout hace lo mismo. Criterios 17–19 | `compiler` | `src/emit/layout.ts` · `src/emit/module.ts` · `src/emit/parts.ts` · `src/emit/project-styles.ts` · `test/emit/page-sheets.test.ts` |
-| [ ] | 13 | 12 | **Sin la opción, como hoy.** Los tests y fixtures existentes pasan sin cambios. Criterio 20 | `compiler` | — |
+| [x] | 11 | 10 | **El puerto y la clave.** `EmitOptions.pruneStyles`; `AssetSheet` y `AssetLinker.sheetRef`; `sheetKey(depth, ordinal)` | `compiler` | `src/emit/module.ts` · `src/emit/assets.ts` · `src/emit/parts.ts` |
+| [x] | 12 | 11 | **Layout y ruta.** El layout escribe `route.sheet(K)` por cada `<link>` podable; la ruta calcula `prunePage` y entrega `<link>` (atributos del autor, `href` podado), `<style nonce>` o `''`; `PROJECT_STYLES`, `data-fud-adopt` y `shadowrootadoptedstylesheets` sin las hojas vacías. El módulo de página sin layout hace lo mismo. Criterios 17–19 | `compiler` | `src/emit/layout.ts` · `src/emit/module.ts` · `src/emit/parts.ts` · `src/emit/project-styles.ts` · `test/emit/page-sheets.test.ts` |
+| [x] | 13 | 12 | **Sin la opción, como hoy.** Los tests y fixtures existentes pasan sin cambios. Criterio 20 | `compiler` | — |
 
 ## Fase 5 — el build (2)
 
