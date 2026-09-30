@@ -10,6 +10,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import {
   CompletionRequest,
+  CompletionTriggerKind,
   DocumentDiagnosticRequest,
   type CompletionItem,
   type CompletionList,
@@ -64,11 +65,19 @@ afterAll(async () => {
   await harness.stop();
 });
 
-async function completeAt(relative: string, marked: string): Promise<CompletionItem[]> {
+async function completeAt(relative: string, marked: string, trigger?: string): Promise<CompletionItem[]> {
   const { text, position } = harness.cursor(marked);
   const { uri } = await harness.open(relative, text);
   await harness.change(uri, text, ++version);
-  const answer = (await harness.client.sendRequest(CompletionRequest.type, { textDocument: { uri }, position })) as
+  const context =
+    trigger === undefined
+      ? {}
+      : { context: { triggerKind: CompletionTriggerKind.TriggerCharacter, triggerCharacter: trigger } };
+  const answer = (await harness.client.sendRequest(CompletionRequest.type, {
+    textDocument: { uri },
+    position,
+    ...context,
+  })) as
     | CompletionList
     | CompletionItem[]
     | null;
@@ -76,8 +85,8 @@ async function completeAt(relative: string, marked: string): Promise<CompletionI
   return Array.isArray(answer) ? answer : answer.items;
 }
 
-const inLayout = (body: string): Promise<CompletionItem[]> =>
-  completeAt('layouts/_frame.fud', LAYOUT.replace('BODY', body));
+const inLayout = (body: string, trigger?: string): Promise<CompletionItem[]> =>
+  completeAt('layouts/_frame.fud', LAYOUT.replace('BODY', body), trigger);
 const labels = (items: readonly CompletionItem[]): string[] => items.map((i) => i.label);
 
 describe('a `@` in the body of a layout', () => {
@@ -128,6 +137,30 @@ describe('inside the parentheses of a hole', () => {
     const got = labels(await inLayout('      @RenderBody(slot: "|")'));
 
     expect(got).toEqual(['top', 'content', 'bottom']);
+  });
+
+  it('opens by itself on `(` and on `,`, with no space typed', async () => {
+    expect(labels(await inLayout('      @RenderBody(|)', '('))).toContain('slot: "top"');
+    expect(labels(await inLayout('      @RenderSection(nav,|)\n      @RenderBody()', ','))).toContain('required: true');
+  });
+
+  it('filters the keys by the word being typed, never offering a tag', async () => {
+    const got = labels(await inLayout('      @RenderSection(nav,required:true,sl|)\n      @RenderBody()'));
+
+    expect(got).toEqual(['slot: "top"', 'slot: "content"', 'slot: "bottom"']);
+  });
+
+  it('after `slot:` offers each slot as a quoted value, and after `required:` the two booleans', async () => {
+    expect(labels(await inLayout('      @RenderBody(slot:|)', ':'))).toEqual(['"top"', '"content"', '"bottom"']);
+    expect(labels(await inLayout('      @RenderSection(nav, required: |)\n      @RenderBody()'))).toEqual([
+      'true',
+      'false',
+    ]);
+  });
+
+  it('a `,` or a `(` anywhere else opens nothing', async () => {
+    expect(await inLayout('      <p>uno,|</p>\n      @RenderBody()', ',')).toEqual([]);
+    expect(await inLayout('      <p>(|</p>\n      @RenderBody()', '(')).toEqual([]);
   });
 
   it('says nothing on the name of a section', async () => {

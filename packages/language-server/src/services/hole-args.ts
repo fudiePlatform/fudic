@@ -30,7 +30,19 @@ export type HoleArgumentContext =
       readonly kind: 'slot';
       /** The inside of the quotes, up to the caret and the name that follows it. */
       readonly span: Span;
+    }
+  | {
+      /** Right after `slot:` or `required:`, before any value: the whole value is offered. */
+      readonly kind: 'value';
+      readonly key: 'required' | 'slot';
+      readonly span: Span;
     };
+
+/**
+ * The characters that open this list by themselves (SDD-48): `(` opens a hole, `,` starts its
+ * next argument. Anywhere else they mean nothing to this server, and it says nothing.
+ */
+export const HOLE_TRIGGER_CHARACTERS: readonly string[] = ['(', ','];
 
 const OPENING = /@(RenderBody|RenderSection)\s*\(/gu;
 
@@ -50,6 +62,9 @@ export function holeArgumentContextAt(source: string, offset: number): HoleArgum
     const rest = /^[^"'\n)]*/u.exec(source.slice(offset)) as RegExpExecArray;
     return { kind: 'slot', span: span(start, offset + rest[0].length) };
   }
+
+  const bare = /\b(required|slot)\s*:\s*$/u.exec(typed);
+  if (bare !== null) return { kind: 'value', key: bare[1] as 'required' | 'slot', span: span(offset, offset) };
 
   // A section's name comes first: until its comma, the caret is on the name.
   const section = open.directive === 'RenderSection';

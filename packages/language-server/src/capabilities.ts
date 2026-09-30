@@ -18,6 +18,7 @@ import {
   type ServerCapabilities,
 } from 'vscode-languageserver-protocol';
 import { EMMET_TRIGGER_CHARACTERS } from './services/emmet.js';
+import { HOLE_TRIGGER_CHARACTERS } from './services/hole-args.js';
 
 /**
  * The token types this server adds to the standard ones (§4.3).
@@ -96,7 +97,7 @@ export function tokenTypeIndex(type: string): number {
  * happens in a `.html` and what the user expects.
  */
 export const COMPLETION_TRIGGER_CHARACTERS: readonly string[] = [
-  ...new Set(['@', '<', '.', ':', '"', '/', ...EMMET_TRIGGER_CHARACTERS]),
+  ...new Set(['@', '<', '.', ':', '"', '/', ...EMMET_TRIGGER_CHARACTERS, ...HOLE_TRIGGER_CHARACTERS]),
 ];
 
 export const SERVER_CAPABILITIES: ServerCapabilities = {

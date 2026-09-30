@@ -102,7 +102,7 @@ import { interpolates, scopeNames, templateScope } from './template-scope.js';
 import { styleClassNames } from './classes.js';
 import { delegateNames } from './delegate.js';
 import { sectionCompletions } from './sections.js';
-import { holeArgumentContextAt, slotsAround } from './hole-args.js';
+import { HOLE_TRIGGER_CHARACTERS, holeArgumentContextAt, slotsAround } from './hole-args.js';
 import { renderContextAt, renderOffers } from './render.js';
 import { scopeAt, snippetsAt } from './snippets.js';
 import {
@@ -255,13 +255,15 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
         // one last, which is where a voice that adds to another one belongs.
         isAdditionalCompletion: true,
 
-        provideCompletionItems(document, position, _completionContext, token) {
+        provideCompletionItems(document, position, completionContext, token) {
           return stats.run(
             'tagCompletion',
             token,
             () => {
               const cached = fudicDocumentOf(context, document);
               if (cached === undefined) return undefined;
+              // A hole's `(` or `,` (SDD-48) is the root service's alone; this one adds nothing.
+              if (HOLE_TRIGGER_CHARACTERS.includes(completionContext.triggerCharacter ?? '')) return undefined;
 
               const offset = document.offsetAt(position);
               const tag = tagContextAt(cached.source, offset);
@@ -449,11 +451,20 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
 
     create(context) {
       return {
-        provideCompletionItems(document, position, _completionContext, token) {
+        provideCompletionItems(document, position, completionContext, token) {
           return stats.run(
             'completion',
             token,
-            () => completions(context, document, position, index, alone, deps.configs),
+            () =>
+              completions(
+                context,
+                document,
+                position,
+                index,
+                alone,
+                deps.configs,
+                completionContext.triggerCharacter,
+              ),
             undefined,
           );
         },
@@ -723,11 +734,16 @@ function completions(
   index: WorkspaceIndex,
   alone: boolean,
   configs?: ProjectConfigs,
+  trigger?: string,
 ): CompletionList | undefined {
   const cached = fudicDocumentOf(context, document);
   if (cached === undefined) return undefined;
 
   const offset = document.offsetAt(position);
+  const hole = cached.document.type === 'layout-document' ? holeArgumentContextAt(cached.source, offset) : undefined;
+  // `(` and `,` are triggers for a hole's arguments and for nothing else (SDD-48): typed
+  // anywhere else, the server stays out of the way rather than open a list nobody asked for.
+  if (hole === undefined && HOLE_TRIGGER_CHARACTERS.includes(trigger ?? '')) return undefined;
   // Asked once and handed to every context below: one traversal per completion request, and
   // one answer, so two contexts can never disagree about where the cursor is (BUG-22).
   const region = regionAt(cached.source, cached.html, offset);
@@ -785,7 +801,6 @@ function completions(
 
   // Exact: inside the parentheses of a hole a word is one of its arguments (SDD-48). Each slot
   // of the component around it comes as a whole `slot: "…"`, so the slot is picked, not typed.
-  const hole = cached.document.type === 'layout-document' ? holeArgumentContextAt(cached.source, offset) : undefined;
   if (hole !== undefined) {
     const slots = slotsAround(cached, index, offset);
     const range = rangeOf(document, hole.span);
@@ -796,6 +811,18 @@ function completions(
           kind: CompletionItemKind.EnumMember,
           detail: 'slot of the component around this hole',
           textEdit: { range, newText: name },
+        })),
+      );
+    }
+    if (hole.kind === 'value') {
+      const values = hole.key === 'slot' ? slots.map((name) => `"${name}"`) : ['true', 'false'];
+      return list(
+        values.map((value) => ({
+          label: value,
+          kind: CompletionItemKind.EnumMember,
+          detail: hole.key === 'slot' ? 'slot of the component around this hole' : 'whether every route must declare it',
+          // The space after the colon is the house style; written only when it is missing.
+          textEdit: { range, newText: cached.source.charAt(offset - 1) === ':' ? ` ${value}` : value },
         })),
       );
     }

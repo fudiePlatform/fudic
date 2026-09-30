@@ -506,8 +506,11 @@ export const SNIPPETS: readonly FudSnippet[] = [
     detail: 'where the route body goes',
     scope: 'markup',
     roles: ['layout'],
-    body: '@RenderBody()',
+    // The caret stays inside, and the list opens: inside a component its slots are what is
+    // written there next (SDD-48); anywhere else the list is empty and `)` closes it.
+    body: '@RenderBody($0)',
     placement: 'outside-head',
+    suggest: true,
   },
   {
     label: '@RenderHead',
