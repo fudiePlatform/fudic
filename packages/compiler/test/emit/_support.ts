@@ -135,6 +135,8 @@ interface TreeNode {
   /** The host of a shadow root — the link `claim`/`state` travel over (SDD-15 §3.3). */
   host?: TreeNode;
   text?: string;
+  /** A comment — the anchor a layout leaves behind a construct of its body (SDD-48 §4.3). */
+  comment?: string;
 }
 
 const escapeHtml = (s: string): string =>
@@ -142,6 +144,7 @@ const escapeHtml = (s: string): string =>
 
 function serializeNode(node: TreeNode): string {
   if (node.text !== undefined) return escapeHtml(node.text);
+  if (node.comment !== undefined) return `<!--${node.comment}-->`;
   const attrs = node.attrs
     ? [...node.attrs].map(([k, v]) => ` ${k}="${v.replace(/"/gu, '&quot;')}"`).join('')
     : '';
@@ -167,6 +170,7 @@ export function minimalSsr(): {
     return {
       element: (tag: unknown): TreeNode => ({ tag: String(tag), attrs: new Map(), children: [] }),
       text: (s: unknown): TreeNode => ({ text: String(s), children: [] }),
+      comment: (s: unknown): TreeNode => ({ comment: String(s), children: [] }),
       setAttr: (n: unknown, k: unknown, v: unknown): void => {
         (n as TreeNode).attrs!.set(String(k), String(v));
       },

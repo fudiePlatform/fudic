@@ -36,6 +36,7 @@ import { projectAdoptOf, renderProjectStyles } from './project-styles.js';
 import { codeOfDocument, type Prop } from './oxc-code.js';
 import { layoutCodeOf, requiredLayoutProps, unresolvedLayoutProps } from './layout-code.js';
 import { NO_SIGNALS, writeElementAttrs } from './attrs.js';
+import { holeSlot } from './compose.js';
 import type { Diagnostic } from '../types/index.js';
 import {
   headEmbedsAsset,
@@ -128,6 +129,7 @@ function buildLayoutModule(
     isComponent: (t) => graph.components.has(t),
     linker,
     slots: SLOTS,
+    anchors: true,
     hydratable: hydratableTags(graph),
     formAssociated: formAssociatedTags(graph),
     bridges: bridgeIds(graph),
@@ -286,7 +288,12 @@ function buildRouteModule(
     styled,
     projectAdopt,
   });
-  em.emitChildren(route.markup, PARENT);
+  // The slots the layout puts each hole in (SDD-48). Known here and not only in the layout:
+  // the route builds the nodes, so the route is the one that stamps them — and a route has
+  // exactly one layout, which its graph already holds.
+  const bodySlot = holeSlot(graph, { kind: 'body' });
+  if (bodySlot === undefined) em.emitChildren(route.markup, PARENT);
+  else em.emitSlotted(route.markup, PARENT, bodySlot);
 
   // One `if` arm per declared section; an unknown name renders nothing (decision 85). Its
   // own emitter, because a section builds into the layout's `@RenderSection` point — NOT
@@ -309,7 +316,9 @@ function buildRouteModule(
     if (section.name === '') continue;
     sectionW.line(`if (name === ${JSON.stringify(section.name)}) {`);
     sectionW.indent();
-    sectionEm.emitChildren(section.children, PARENT);
+    const slot = holeSlot(graph, { kind: 'section', name: section.name });
+    if (slot === undefined) sectionEm.emitChildren(section.children, PARENT);
+    else sectionEm.emitSlotted(section.children, PARENT, slot);
     sectionW.dedent();
     sectionW.line('}');
   }

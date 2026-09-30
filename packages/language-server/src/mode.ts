@@ -15,6 +15,7 @@ import {
   type CodeBlockNode,
   type ComponentDocument,
   type LayoutDocument,
+  type LayoutHoles,
   type StructuredDocument,
 } from '@fudic/compiler';
 
@@ -70,6 +71,29 @@ export function tagOf(document: StructuredDocument): string {
 export function sectionsOf(document: StructuredDocument): readonly string[] {
   if (document.type !== 'layout-document') return [];
   return document.renderSections.map((section) => section.name).filter((name) => name !== '');
+}
+
+/** One `@snippet` a file declares, as a `@render` elsewhere sees it. */
+export interface SnippetSignature {
+  readonly name: string;
+  /** The parameter list as written, parentheses included. */
+  readonly signature: string;
+}
+
+/** The snippets a file declares, in source order — any role may declare them (SDD-29). */
+export function snippetsOf(source: string, document: StructuredDocument): readonly SnippetSignature[] {
+  return document.snippets
+    .filter((s) => s.name !== '')
+    .map((s) => ({ name: s.name, signature: source.slice(s.signatureSpan.start, s.signatureSpan.end) }));
+}
+
+/** A layout's holes (SDD-48); no hole at all for anything that is not a layout. */
+export function holesOf(document: StructuredDocument): LayoutHoles {
+  if (document.type !== 'layout-document') return { renderSections: [] };
+  return {
+    renderSections: document.renderSections,
+    ...(document.renderBody !== undefined ? { renderBody: document.renderBody } : {}),
+  };
 }
 
 /** One prop of a component, as a consumer of that component sees it. */

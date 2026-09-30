@@ -222,8 +222,8 @@ describe('the positions this package does not own', () => {
 /**
  * A layout that declares two props, with `markup` in the slot `slot` names.
  *
- * Each slot is a place BUG-44 draws a line through: `<html>`'s attributes and the head read the
- * props, the body reads none of them.
+ * Each slot is a place BUG-44 drew a line through and SDD-48 erased: the whole layout reads
+ * its props.
  */
 const propsLayout =
   (slot: 'html' | 'head' | 'body' | 'body-attr') =>
@@ -238,12 +238,12 @@ const propsLayout =
     @RenderHead()
   </head>
   <body class="${slot === 'body-attr' ? markup : 'b'}">
-    <main>${slot === 'body' ? markup : ''}@RenderBody()</main>
+    <main>${slot === 'body' ? markup : ''} @RenderBody()</main>
   </body>
 </html>
 `;
 
-describe('a `@` in a layout offers its props, and only in its head (BUG-44 §3.2, criterion 5)', () => {
+describe('a `@` in a layout offers its props, head and body (BUG-44 §3.2, SDD-48 §4.9)', () => {
   const labels = (answer: CompletionList | undefined | null): string[] =>
     (answer?.items ?? []).map((i) => i.label);
   // What TypeScript would answer at any of these offsets: the props, a lib global and `data`,
@@ -271,18 +271,19 @@ describe('a `@` in a layout offers its props, and only in its head (BUG-44 §3.2
     expect(labels(answer)).not.toContain('@atob');
   });
 
-  it('a `@` in the body offers no prop — reading one there is `FUD0704`', async () => {
+  it('a `@` in the body offers the props too, and neither `@()` nor `@data` (SDD-48 §4.9)', async () => {
     const answer = await completeAt('@|', ts(), { build: propsLayout('body') });
 
-    expect(labels(answer)).not.toContain('@culture');
+    expect(labels(answer)).toEqual(expect.arrayContaining(['@culture', '@seccion']));
     expect(labels(answer)).not.toContain('@()');
     expect(labels(answer)).not.toContain('@data');
+    expect(labels(answer)).not.toContain('@atob');
   });
 
-  it('nor in an attribute of the `<body>` itself', async () => {
+  it('and so does an attribute of the `<body>` itself', async () => {
     const answer = await completeAt('@|', ts(), { build: propsLayout('body-attr') });
 
-    expect(labels(answer)).toEqual([]);
+    expect(labels(answer).sort()).toEqual(['@culture', '@seccion']);
   });
 });
 

@@ -121,17 +121,10 @@ export function layoutCodeOf(source: string, doc: LayoutDocument): LayoutCode {
   }
 
   const props = code.props.map((p) => plain(p, diagnostics));
-  // `FUD0704` / `FUD0705` — what the `<body>` may hold — and `FUD0706`, a binding in any of
-  // the layout's `<style>`s. The rules are the semantic pass's
-  // (`layoutBodyDiagnostics`); the build reads a layout's diagnostics off its emit, so it is
-  // asked here too, over the fragments this same batch already parsed.
-  diagnostics.push(
-    ...layoutBodyDiagnostics(source, doc.body, new Set(props.map((p) => p.name)), {
-      astOf: (expr) => code.template.ast(expr.expr),
-      toSource: code.template.offset,
-    }),
-    ...layoutStyleDiagnostics(doc.html),
-  );
+  // `FUD0705` — a `@{ }` in the `<body>` — and `FUD0706`, a binding in any of the layout's
+  // `<style>`s. The rules are the semantic pass's; the build reads a layout's diagnostics off
+  // its emit, so they are asked here too.
+  diagnostics.push(...layoutBodyDiagnostics(doc.body), ...layoutStyleDiagnostics(doc.html));
   return { props, diagnostics };
 }
 

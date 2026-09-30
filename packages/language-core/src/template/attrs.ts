@@ -497,7 +497,8 @@ function emitIntoSlot(ctx: TemplateContext, attr: Attribute, binding: SlotBindin
 }
 
 /** The slot union to check against: the parent's, `never` with no component parent. */
-function slotsAlias(ctx: TemplateContext): string | undefined {
+export function slotsAlias(ctx: TemplateContext): string | undefined {
+  if (ctx.host === null) return undefined;
   return ctx.host === undefined ? 'never' : ctx.aliases.slotsAliasOf(ctx.host);
 }
 

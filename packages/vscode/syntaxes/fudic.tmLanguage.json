@@ -9,6 +9,7 @@
     { "include": "#snippet" },
     { "include": "#render" },
     { "include": "#section" },
+    { "include": "#hole" },
     { "include": "#control" },
     { "include": "#at-block" },
     { "include": "#style-element" },
@@ -92,7 +93,12 @@
       "end": "\\)",
       "endCaptures": { "0": { "name": "punctuation.section.parens.end.fudic" } },
       "contentName": "meta.arguments.fudic source.ts",
-      "patterns": [{ "include": "#balanced-ts" }]
+      "patterns": [
+        { "include": "#interpolation" },
+        { "include": "#implicit-expression" },
+        { "include": "#balanced-parens" },
+        { "include": "#balanced-ts" }
+      ]
     },
 
     "section": {
@@ -109,13 +115,38 @@
       "patterns": [{ "include": "$self" }]
     },
 
+    "hole": {
+      "comment": "The holes of a layout (SDD-21, SDD-48): the keyword is a directive like `@foreach`; its arguments are the name of a section and `required:` / `slot:`.",
+      "name": "meta.directive.hole.fudic",
+      "begin": "(@)(RenderBody|RenderHead|RenderSection)\\s*(\\()",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.keyword.fudic" },
+        "2": { "name": "keyword.control.directive.hole.fudic" },
+        "3": { "name": "punctuation.section.parens.begin.fudic" }
+      },
+      "end": "\\)",
+      "endCaptures": { "0": { "name": "punctuation.section.parens.end.fudic" } },
+      "patterns": [
+        { "match": "\\b(required|slot)\\s*(:)", "captures": { "1": { "name": "variable.parameter.fudic" }, "2": { "name": "punctuation.separator.key-value.fudic" } } },
+        { "match": "\\b(true|false)\\b", "name": "constant.language.boolean.fudic" },
+        { "match": "\"[^\"\\n]*\"|'[^'\\n]*'", "name": "string.quoted.fudic" },
+        { "match": "\\b[A-Za-z_]\\w*\\b", "name": "entity.name.section.fudic" }
+      ]
+    },
+
     "control": {
       "name": "meta.block.control.fudic",
       "begin": "(@)(if|foreach|for|while|switch)\\b([^{]*)(\\{)",
       "beginCaptures": {
         "1": { "name": "punctuation.definition.keyword.fudic" },
         "2": { "name": "keyword.control.directive.fudic" },
-        "3": { "name": "meta.expression.fudic source.ts" },
+        "3": {
+          "name": "meta.expression.fudic source.ts",
+          "patterns": [
+            { "match": "(?<=\\))\\s*\\b(key)\\b(?=\\s*\\()", "captures": { "1": { "name": "keyword.control.directive.key.fudic" } } },
+            { "include": "source.ts" }
+          ]
+        },
         "4": { "name": "punctuation.section.block.begin.fudic" }
       },
       "end": "(\\})(?!\\s*else\\b)",

@@ -114,6 +114,8 @@ describe('initialize', () => {
       '>',
       '+',
       ')',
+      '(',
+      ',',
     ]);
     // Not announced: Volar put this server in the push model, and saying "ask me too" is what
     // made every diagnostic arrive twice (BUG-22 §2).

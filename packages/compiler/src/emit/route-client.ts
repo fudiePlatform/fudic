@@ -30,7 +30,8 @@ import { NO_BOXES, rootContext } from './display.js';
 import { childTargets, entryCellSlots, entryReactiveScope, type CellSlot } from './state.js';
 import { entryHalf, entryMoving, formAssociatedTags, isReactiveRoute } from './level.js';
 import { cellNameAt, lines, withCells, writeClosure } from './client.js';
-import { composePage, holeContent, type ComposeItem } from './compose.js';
+import { composePage, holeContent, holeSlot, type ComposeItem } from './compose.js';
+import { LAYOUT_ANCHOR } from './markup.js';
 import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
 import { projectAdoptOf } from './project-styles.js';
 import type { DocumentGraph } from './resolve.js';
@@ -70,6 +71,7 @@ class ComposeWalker {
   readonly #adopt: CodeWriter;
   readonly #em: ClientMarkupEmitter;
   readonly #route: RouteDocument | PageDocument;
+  readonly #graph: DocumentGraph;
   /**
    * The layout nodes `enter` held, declared at CLOSURE scope by the caller and only assigned
    * here. A construct placed straight in a hole has that node as its parent, and its branch
@@ -78,10 +80,11 @@ class ComposeWalker {
    */
   readonly nodes: string[] = [];
 
-  constructor(adopt: CodeWriter, em: ClientMarkupEmitter, route: RouteDocument | PageDocument) {
+  constructor(adopt: CodeWriter, em: ClientMarkupEmitter, graph: DocumentGraph) {
     this.#adopt = adopt;
     this.#em = em;
-    this.#route = route;
+    this.#graph = graph;
+    this.#route = graph.entry as RouteDocument | PageDocument;
   }
 
   level(items: readonly ComposeItem[], parent: string, depth: number): void {
@@ -98,6 +101,20 @@ class ComposeWalker {
         case 'skip':
           this.#adopt.line(`${cursor} = $dom.nextElementSibling(${cursor});`);
           break;
+        case 'anchor':
+          // A construct of the layout wrote elements nobody counted (SDD-48): the cursor lands
+          // on the first element after the anchor it left behind, found by its order among
+          // the anchors of this level.
+          this.#adopt.line(`${cursor} = null;`);
+          this.#adopt.line(
+            `for (let $a = $dom.firstChild(${parent}), $k = ${item.index}; $a !== null; $a = $dom.nextSibling($a)) {`,
+          );
+          this.#adopt.indent();
+          this.#adopt.line(
+            `if ($a.nodeType === 8 && $a.data === ${JSON.stringify(LAYOUT_ANCHOR)} && $k-- === 0) { ${cursor} = $dom.nextElementSibling($a); break; }`,
+          );
+          this.#adopt.dedent().line('}');
+          break;
         case 'enter': {
           const node = layoutNode(this.nodes.length);
           this.nodes.push(node);
@@ -110,7 +127,13 @@ class ComposeWalker {
           break;
         }
         default:
-          this.#em.emitHole(this.#content(item.hole), parent, cursor, ahead);
+          this.#em.emitHole(
+            this.#content(item.hole),
+            parent,
+            cursor,
+            ahead,
+            holeSlot(this.#graph, item.hole),
+          );
           break;
       }
     });
@@ -129,7 +152,6 @@ function buildRouteClientModule(
   options: EmitOptions,
 ): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } | null {
   if (!isReactiveRoute(graph)) return null;
-  const entry = graph.entry as RouteDocument | PageDocument;
   const source = graph.entrySource;
   const half = entryHalf(graph)!;
   const { code, roots } = half;
@@ -194,7 +216,7 @@ function buildRouteClientModule(
   for (const cell of cells) {
     if (cell.kind === 'fn') bodies.hook.line(`${cellName(cell)}?.set(${cell.name});`);
   }
-  const walker = new ComposeWalker(bodies.adopt, em, entry);
+  const walker = new ComposeWalker(bodies.adopt, em, graph);
   walker.level(composePage(graph), '$root', 0);
   const nodes = [...walker.nodes, ...em.nodes];
 

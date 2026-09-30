@@ -21,7 +21,13 @@ import { scanParens } from '../balancer/index.js';
 import type { LayoutDirective } from '../at/index.js';
 import type { HtmlContent, HtmlParseContext } from '../html/index.js';
 import type { Token } from '../lexer/index.js';
-import type { LayoutNode, RenderDirectiveNode, RenderSectionNode, SectionNode } from './nodes.js';
+import type {
+  LayoutNode,
+  RenderDirectiveNode,
+  RenderSectionNode,
+  SectionNode,
+  SlotArgument,
+} from './nodes.js';
 
 /** A `Render*` directive written without its mandatory parentheses (decision 85). */
 const FUD_MISSING_PARENS = 'FUD0432';
@@ -70,6 +76,34 @@ function identifierAt(source: string, from: number): { name: string; span: Span 
   return { name: source.slice(from, i), span: span(from, i) };
 }
 
+/** The named arguments each directive takes (SDD-48). */
+const NO_ARGUMENTS: ReadonlySet<string> = new Set();
+const BODY_ARGUMENTS: ReadonlySet<string> = new Set(['slot']);
+const SECTION_ARGUMENTS: ReadonlySet<string> = new Set(['required', 'slot']);
+
+interface NamedArguments {
+  readonly required?: boolean;
+  readonly slot?: SlotArgument;
+}
+
+function argumentMessage(label: string, allowed: ReadonlySet<string>): string {
+  return allowed.size === 0
+    ? `${label}() takes no arguments`
+    : `${label} takes the named arguments ${[...allowed].map((k) => `\`${k}:\``).join(' and ')}, each at most once`;
+}
+
+/** A `"…"` or `'…'` literal with no escapes and no line break, or null. */
+function stringAt(source: string, from: number): SlotArgument | null {
+  const quote = charAt(source, from);
+  if (quote !== '"' && quote !== "'") return null;
+  let i = from + 1;
+  while (i < source.length && charAt(source, i) !== quote && charAt(source, i) !== '\n') {
+    if (charAt(source, i) === '\\') return null;
+    i++;
+  }
+  if (charAt(source, i) !== quote) return null;
+  return { name: source.slice(from + 1, i), span: span(from, i + 1) };
+}
 /** The `}` that closes a `@section` body is its only boundary (mirrors SDD-06 §4.6). */
 function isBlockEnd(next: Token): boolean {
   return next.type === 'block-end';
@@ -110,7 +144,11 @@ class DirectiveParser {
     this.#diagnostics.push(errorDiag(code, message, at));
   }
 
-  /** `@RenderBody()` / `@RenderHead()`: parentheses mandatory, no arguments (decision 85). */
+  /**
+   * `@RenderBody()` / `@RenderHead()`: parentheses mandatory (decision 85). `@RenderBody`
+   * takes one named argument, `slot: "x"` (SDD-48); `@RenderHead` takes none — the head is
+   * not markup a component can wrap.
+   */
   #parseRender(
     directive: 'RenderBody' | 'RenderHead',
     keywordSpan: Span,
@@ -119,27 +157,119 @@ class DirectiveParser {
     const type = directive === 'RenderBody' ? 'render-body' : 'render-head';
     const parens = this.#parens(keywordSpan, `@${directive}`);
     if (parens === null) return { type, span: span(start, keywordSpan.end), keywordSpan };
-    if (this.#source.slice(parens.inner.start, parens.inner.end).trim() !== '') {
-      this.#error(FUD_BAD_ARGUMENT, `@${directive}() takes no arguments`, parens.inner);
-    }
-    return { type, span: span(start, parens.end), keywordSpan };
+    const allowed = directive === 'RenderBody' ? BODY_ARGUMENTS : NO_ARGUMENTS;
+    const args = this.#namedArguments(parens.inner.start, parens.inner, `@${directive}`, allowed);
+    return {
+      type,
+      span: span(start, parens.end),
+      keywordSpan,
+      ...(args.slot !== undefined ? { slot: args.slot } : {}),
+    };
   }
 
-  /** `@RenderSection(name)`: a bare identifier, never a string (decision 85). */
+  /**
+   * `@RenderSection(name)`: a bare identifier, never a string (decision 85), followed by
+   * the named arguments `required: true|false` and `slot: "x"` (SDD-48).
+   */
   #parseRenderSection(keywordSpan: Span, start: number): RenderSectionNode {
     const parens = this.#parens(keywordSpan, '@RenderSection');
     if (parens === null) {
       const at = emptySpan(keywordSpan.end);
-      return { type: 'render-section', span: span(start, keywordSpan.end), name: '', nameSpan: at, keywordSpan };
+      return {
+        type: 'render-section',
+        span: span(start, keywordSpan.end),
+        name: '',
+        nameSpan: at,
+        keywordSpan,
+        required: false,
+      };
     }
-    const name = this.#identifierIn(parens.inner, '@RenderSection(name) expects a bare identifier');
+    const inner = parens.inner;
+    const from = skipTrivia(this.#source, inner.start);
+    const ident = identifierAt(this.#source, from);
+    const rest = ident === null ? from : skipTrivia(this.#source, ident.span.end);
+    // The name is the whole argument, or it is followed by a comma and the named ones.
+    if (ident === null || (rest !== inner.end && charAt(this.#source, rest) !== ',')) {
+      this.#error(FUD_BAD_ARGUMENT, '@RenderSection(name) expects a bare identifier', inner);
+      return {
+        type: 'render-section',
+        span: span(start, parens.end),
+        name: '',
+        nameSpan: inner,
+        keywordSpan,
+        required: false,
+      };
+    }
+    const args =
+      rest === inner.end
+        ? {}
+        : this.#namedArguments(rest + 1, inner, '@RenderSection', SECTION_ARGUMENTS);
     return {
       type: 'render-section',
       span: span(start, parens.end),
-      name: name?.name ?? '',
-      nameSpan: name?.span ?? parens.inner,
+      name: ident.name,
+      nameSpan: ident.span,
       keywordSpan,
+      required: args.required ?? false,
+      ...(args.slot !== undefined ? { slot: args.slot } : {}),
     };
+  }
+
+  /**
+   * `key: value, key: value` from `from` to the end of `inner` (SDD-48). The keys are a
+   * closed set per directive, each written at most once: `required` takes `true` or
+   * `false`, `slot` a string literal. Anything else is FUD0433 over what is wrong, and the
+   * arguments read so far are kept.
+   */
+  #namedArguments(
+    from: number,
+    inner: Span,
+    label: string,
+    allowed: ReadonlySet<string>,
+  ): NamedArguments {
+    const found: { required?: boolean; slot?: SlotArgument } = {};
+    const seen = new Set<string>();
+    let at = skipTrivia(this.#source, from);
+    if (at === inner.end && from === inner.start) return found;
+    for (;;) {
+      const key = identifierAt(this.#source, at);
+      if (key === null || !allowed.has(key.name) || seen.has(key.name)) {
+        this.#error(FUD_BAD_ARGUMENT, argumentMessage(label, allowed), span(at, inner.end));
+        return found;
+      }
+      seen.add(key.name);
+      const colon = skipTrivia(this.#source, key.span.end);
+      if (charAt(this.#source, colon) !== ':') {
+        this.#error(FUD_BAD_ARGUMENT, `${label}: expected ':' after \`${key.name}\``, key.span);
+        return found;
+      }
+      const valueAt = skipTrivia(this.#source, colon + 1);
+      let end: number;
+      if (key.name === 'slot') {
+        const slot = stringAt(this.#source, valueAt);
+        if (slot === null) {
+          this.#error(FUD_BAD_ARGUMENT, `${label}: \`slot\` takes a string literal`, span(valueAt, inner.end));
+          return found;
+        }
+        found.slot = slot;
+        end = slot.span.end;
+      } else {
+        const word = identifierAt(this.#source, valueAt);
+        if (word?.name !== 'true' && word?.name !== 'false') {
+          this.#error(FUD_BAD_ARGUMENT, `${label}: \`required\` takes \`true\` or \`false\``, span(valueAt, inner.end));
+          return found;
+        }
+        found.required = word.name === 'true';
+        end = word.span.end;
+      }
+      const next = skipTrivia(this.#source, end);
+      if (next === inner.end) return found;
+      if (charAt(this.#source, next) !== ',') {
+        this.#error(FUD_BAD_ARGUMENT, argumentMessage(label, allowed), span(next, inner.end));
+        return found;
+      }
+      at = skipTrivia(this.#source, next + 1);
+    }
   }
 
   /** `@section name { … }` (decision 84). */
@@ -175,17 +305,6 @@ class DirectiveParser {
     if (scanned.diagnostics.length > 0) this.#diagnostics.push(...scanned.diagnostics);
     this.#ctx.lexer.seekTo(scanned.value.span.end);
     return { inner: scanned.value.inner, end: scanned.value.span.end };
-  }
-
-  /** The single identifier inside `( … )`, or null (FUD0433) when it is anything else. */
-  #identifierIn(inner: Span, message: string): { name: string; span: Span } | null {
-    const from = skipTrivia(this.#source, inner.start);
-    const ident = identifierAt(this.#source, from);
-    if (ident === null || skipTrivia(this.#source, ident.span.end) !== inner.end) {
-      this.#error(FUD_BAD_ARGUMENT, message, inner);
-      return null;
-    }
-    return ident;
   }
 
   /** `{ html_content* }`. null ⇒ FUD0071; otherwise the body plus the offset past `}`. */

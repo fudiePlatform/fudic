@@ -29,7 +29,13 @@ import { emitPropsProjection, type PropsCall } from './props.js';
 import { emitElementBindings, emitHostBindings, emitShadowBindings } from './template/attrs.js';
 import type { FragmentAst, TemplateContext } from './template/context.js';
 import { emitControl, emitInlineCode, type ControlLike } from './template/control.js';
-import { emitSection, emitSectionsContract, emitSlot, emitSlotsContract } from './template/sections.js';
+import {
+  emitHoleSlot,
+  emitSection,
+  emitSectionsContract,
+  emitSlot,
+  emitSlotsContract,
+} from './template/sections.js';
 import { emitDanglingAt, emitInterpolation } from './template/text.js';
 import type { FileRegistry, VirtualFile } from './types.js';
 import { VirtualWriter } from './writer.js';
@@ -197,6 +203,10 @@ function emitContent(ctx: TemplateContext, content: readonly HtmlContent[]): voi
       case 'section':
         emitSection(ctx, node as Parameters<typeof emitSection>[1]);
         break;
+      case 'render-body':
+      case 'render-section':
+        emitHoleSlot(ctx, node as Parameters<typeof emitHoleSlot>[1]);
+        break;
       case 'if':
       case 'foreach':
       case 'for':
@@ -257,13 +267,14 @@ export interface TemplateJs {
  * the component it will actually be placed in.
  */
 function hostContext(
-  base: Omit<TemplateContext, 'host' | 'emit' | 'fragmentsOf'>,
-  host: string | undefined,
+  base: Omit<TemplateContext, 'host' | 'emit' | 'emitUnhosted' | 'fragmentsOf'>,
+  host: string | undefined | null,
 ): TemplateContext {
   const ctx: TemplateContext = {
     ...base,
     host,
     emit: (nodes) => emitContent(ctx, nodes),
+    emitUnhosted: (nodes) => emitContent(hostContext(base, null), nodes),
     fragmentsOf: (nodes) => {
       const out: FragmentAst[] = [];
       // The one walk that says which JS a run of markup holds — the same one the batch

@@ -1,0 +1,30 @@
+<link rel="layout" href="../layouts/_layout-marco.fud">
+<link rel="component" href="../components/site-nav.fud">
+
+@code {
+  @server {
+    export function layout(ctx, data) {
+      return { titulo: "El mismo marco, otra ruta" };
+    }
+  }
+}
+
+<head>
+  <title>Marco sin lateral — fudic</title>
+</head>
+
+@section nav {
+  <site-nav .current="marco"></site-nav>
+}
+
+@* Para ver el error y su bombilla: borra esta sección y pon el cursor sobre el
+   `<link rel="layout">`. *@
+@section cabecera {
+  <h1>El mismo marco</h1>
+  <p>Otra ruta, el mismo layout. No declara el lateral, así que el marco pinta el suyo.</p>
+}
+
+<p>
+  Sin <code>@@section lateral</code>, el slot del componente muestra su contenido por
+  defecto. El pie usa los valores por defecto del layout: sección «Marco» y contador desde 0.
+</p>

@@ -399,7 +399,7 @@ describe('§6.2 — `FUD0700`: a layout `@code` declares props and nothing else'
   });
 });
 
-describe('BUG-44 §3.4 — `FUD0704`: a layout prop read in the <body>, in the build', () => {
+describe('SDD-48 §4.1 — the body reads its props, in the build (criterion 2)', () => {
   const PROPS = 'const { culture, seccion } = props<{ culture: string; seccion: string }>();';
   const withBody = (inner: string, attrs = ''): string =>
     layoutSource({ code: PROPS, html: 'lang="@culture"', body: attrs }).replace(
@@ -407,26 +407,12 @@ describe('BUG-44 §3.4 — `FUD0704`: a layout prop read in the <body>, in the b
       `${inner}@RenderBody()</body>`,
     );
 
-  it('reports a read in the body over the name, and still emits the layout', () => {
-    const layout = withBody('<p>@seccion</p>');
-    const start = layout.indexOf('@seccion') + 1;
-    expect(layoutDiagnostics(layout)).toEqual([
-      { code: 'FUD0704', span: { start, end: start + 'seccion'.length } },
-    ]);
-    expect(chain(layout).layout).toContain('export function* layout(');
-  });
-
-  it('reports an attribute value in the body', () => {
-    const layout = withBody('<p title="@(culture)">x</p>');
-    expect(layoutDiagnostics(layout).map((d) => d.code)).toEqual(['FUD0704']);
-  });
-
-  it('reports an attribute of the <body> itself', () => {
-    const layout = withBody('', 'data-x="@culture"');
-    const start = layout.indexOf('data-x="@culture"') + 'data-x="@'.length;
-    expect(layoutDiagnostics(layout)).toEqual([
-      { code: 'FUD0704', span: { start, end: start + 'culture'.length } },
-    ]);
+  it('renders a read in the body, in an attribute value and on the <body> itself', () => {
+    const layout = withBody('<p title="@(culture)">@seccion</p>', 'data-x="@culture"');
+    expect(layoutDiagnostics(layout)).toEqual([]);
+    const html = render(chain(layout), { culture: 'eu', seccion: 'Blog' });
+    expect(html).toContain('data-x="eu"');
+    expect(html).toContain('<p title="eu">Blog</p>');
   });
 
   it('says nothing about `<html>` and the head', () => {
@@ -497,36 +483,39 @@ describe('BUG-44 — the head of a route and of a page interpolates its attribut
   });
 });
 
-describe('BUG-44 §3.4 — `FUD0705`: the body of a layout writes only its two holes, in the build', () => {
-  const PROPS = 'const { seccion } = props<{ seccion: string }>();';
+describe('SDD-48 §4.1–§4.2 — what the body may not write, in the build', () => {
+  const PROPS = 'const { seccion, items = [] } = props<{ seccion: string; items?: string[] }>();';
   const withBody = (inner: string): string =>
     layoutSource({ code: PROPS }).replace('@RenderBody()</body>', `${inner}@RenderBody()</body>`);
 
-  it('reports control flow over its `@keyword`, once, and does not look inside it', () => {
-    for (const [construct, keyword] of [
-      ['@if (seccion) {\n  <i>@seccion</i>\n}', '@if'],
-      ['@foreach (const seccion of items) {\n  <i>@seccion</i>\n}', '@foreach'],
-      ['@for (let i = 0; i < 2; i++) {\n  <i>x</i>\n}', '@for'],
-      ['@while (false) {\n  <i>x</i>\n}', '@while'],
-      ['@switch (seccion) {\n  case "a": { <i>x</i> }\n}', '@switch'],
-    ] as const) {
-      const layout = withBody(construct);
-      expect(layoutDiagnostics(layout), keyword).toEqual([
-        { code: 'FUD0705', span: at(layout, keyword) },
-      ]);
+  it('writes every construct and expression without a word (criterion 2)', () => {
+    for (const construct of [
+      '@if (seccion) {\n  <i>@seccion</i>\n}',
+      '@foreach (const s of items) key (s) {\n  <i>@s</i>\n}',
+      '@for (let i = 0; i < 2; i++) {\n  <i>x</i>\n}',
+      '@while (false) {\n  <i>x</i>\n}',
+      '@switch (seccion) {\n  case "a": { <i>x</i> }\n}',
+      '<p>@(seccion.length)</p>',
+    ]) {
+      expect(layoutDiagnostics(withBody(construct)), construct).toEqual([]);
     }
+    const html = render(chain(withBody('@if (seccion) {\n  <i>@seccion</i>\n}')), { seccion: 'Blog' });
+    // And the construct leaves its anchor behind it, for the route's chunk (§4.3).
+    expect(html).toContain('<body> <i>Blog</i> <!--fud:l--><p>hola</p></body>');
   });
 
-  it('reports a `@{ }` over its opening', () => {
+  it('reports a `@{ }` over its opening, and still emits', () => {
     const layout = withBody('@{ const a = 1; }');
     expect(layoutDiagnostics(layout)).toEqual([{ code: 'FUD0705', span: at(layout, '@{') }]);
+    expect(chain(layout).layout).toContain('export function* layout(');
   });
 
-  it('reports an expression that reads no prop, over the whole expression', () => {
-    const layout = withBody('<p>@(post.seccion)</p>');
-    expect(layoutDiagnostics(layout)).toEqual([
-      { code: 'FUD0705', span: at(layout, '@(post.seccion)') },
-    ]);
+  it('reports a hole inside a construct over the hole, once (criterion 3)', () => {
+    const layout = layoutSource({ code: PROPS }).replace(
+      '@RenderBody()</body>',
+      '@if (seccion) {\n  @foreach (const s of items) key (s) {\n    <main>@RenderBody()</main>\n  }\n}</body>',
+    );
+    expect(layoutDiagnostics(layout)).toEqual([{ code: 'FUD0443', span: at(layout, '@RenderBody()') }]);
   });
 
   it('says nothing about markup, a comment and the two holes', () => {

@@ -11,7 +11,7 @@
 
     @foreach (const tag of ["a", "b"]) {
       key (tag)
-      @render tagged(tag, upper: tag.toUpperCase())
+      @render tagged(@tag, upper: @tag.toUpperCase())
     }
   </template>
 </app-snippets>

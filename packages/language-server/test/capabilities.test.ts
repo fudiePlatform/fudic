@@ -38,6 +38,8 @@ describe('SERVER_CAPABILITIES', () => {
       '>',
       '+',
       ')',
+      '(',
+      ',',
     ]);
   });
 

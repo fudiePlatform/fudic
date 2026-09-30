@@ -31,6 +31,7 @@ import {
   type ForeachNode,
   type HtmlContent,
   type IfNode,
+  type KeyedNode,
   type RenderCallNode,
   type RenderDirectiveNode,
   type RenderSectionNode,
@@ -43,10 +44,16 @@ import {
 import type { FudicTokenType } from '../capabilities.js';
 import type { CachedDocument } from '../document-cache.js';
 
+/**
+ * What a token is: one of ours, or one of the two standard types a `@render` callee takes —
+ * a colour the projection leaves to the server (SDD-48).
+ */
+export type TokenType = FudicTokenType | 'function' | 'namespace';
+
 /** One token: a stretch of the `.fud` and what it is. */
 export interface FudicToken {
   readonly span: Span;
-  readonly type: FudicTokenType;
+  readonly type: TokenType;
 }
 
 /** Attribute name prefixes that make an attribute a binding (decisions 22–30, 117). */
@@ -98,7 +105,7 @@ class TokenCollector {
   }
 
   /** A token, over a span that is already known to exist — `marked` is what takes a maybe. */
-  push(type: FudicTokenType, at: Span): void {
+  push(type: TokenType, at: Span): void {
     this.#tokens.push({ span: at, type });
   }
 
@@ -130,6 +137,17 @@ class TokenCollector {
   /** The `@keyword` of a construct that carries no keyword span of its own. */
   directiveAt(at: number): void {
     this.marked('fudDirective', keywordSpanAt(this.#source, at));
+  }
+
+  /**
+   * A control construct's `@keyword`, and the `key` of its clause in the same colour: the two
+   * are one directive's words. Left alone, `key` fell to the header's TypeScript and read as a
+   * stray identifier beside a coloured `@foreach`.
+   */
+  control(at: number, node: KeyedNode): void {
+    this.directiveAt(at);
+    const clause = node.key?.span;
+    if (clause !== undefined) this.push('fudDirective', span(clause.start, clause.start + 'key'.length));
   }
 
   element(element: ElementNode): void {
@@ -173,7 +191,7 @@ class TokenCollector {
         return;
       case 'if': {
         const branches = node as unknown as IfNode;
-        this.directiveAt(node.span.start);
+        this.control(node.span.start, node as unknown as KeyedNode);
         for (const branch of branches.branches) this.walk(branch.body);
         if (branches.elseBody) this.walk(branches.elseBody);
         return;
@@ -181,12 +199,12 @@ class TokenCollector {
       case 'foreach':
       case 'for':
       case 'while': {
-        this.directiveAt(node.span.start);
+        this.control(node.span.start, node as unknown as KeyedNode);
         this.walk((node as unknown as ForeachNode | ForNode | WhileNode).body);
         return;
       }
       case 'switch': {
-        this.directiveAt(node.span.start);
+        this.control(node.span.start, node as unknown as KeyedNode);
         for (const branch of (node as unknown as SwitchNode).cases) this.walk(branch.body);
         return;
       }
@@ -218,10 +236,16 @@ class TokenCollector {
         this.walk(snippet.children);
         return;
       }
-      case 'render':
+      case 'render': {
+        const call = node as unknown as RenderCallNode;
         this.atMarker(node.span.start);
-        this.push('fudDirective', (node as unknown as RenderCallNode).keywordSpan);
+        this.push('fudDirective', call.keywordSpan);
+        // The callee, which the projection leaves uncoloured (SDD-48): a namespace and a
+        // function, not the property TypeScript would read through `$Sn0.`.
+        if (call.namespace !== undefined) this.push('namespace', call.namespace.span);
+        if (call.name !== '') this.push('function', call.nameSpan);
         return;
+      }
       default:
         // Text, comments, doctype, cdata, raw text: nothing of ours to colour.
         return;

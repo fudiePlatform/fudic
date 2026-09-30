@@ -107,19 +107,16 @@ describe('criteria 5 and 7 — control flow and directives, by place and by role
     expect(labels(items)).not.toContain('@RenderBody');
   });
 
-  it('a layout offers its two holes in the body, and neither @RenderHead nor @section', async () => {
-    // The `@RenderBody()` stays where it is: a shell without one is a standalone page, not a
-    // layout (decision 82), and taking it out would be asking the wrong document. The body of
-    // a layout writes its two holes and nothing else (BUG-44, `FUD0705`).
+  it('a layout offers its holes and control flow in the body, and neither @RenderHead nor @section', async () => {
+    // The body of a layout is markup since SDD-48 §4.1: it branches and loops like any other.
     const items = await completeAt(
       LAYOUT,
       `<!DOCTYPE html>\n<html lang="es">\n  <head>\n    @RenderHead()\n  </head>\n  <body>\n    @|\n    <main>@RenderBody()</main>\n  </body>\n</html>\n`,
     );
 
-    expect(labels(items)).toEqual(expect.arrayContaining(['@RenderBody', '@RenderSection']));
+    expect(labels(items)).toEqual(expect.arrayContaining(['@RenderBody', '@RenderSection', '@if', '@foreach']));
     expect(labels(items)).not.toContain('@RenderHead');
     expect(labels(items)).not.toContain('@section');
-    expect(labels(items)).not.toContain('@if');
   });
 
   it('and @RenderHead in its head', async () => {

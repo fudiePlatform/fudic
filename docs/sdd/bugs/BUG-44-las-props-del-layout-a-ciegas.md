@@ -1,5 +1,9 @@
 # BUG-44 · Las props de un layout se escriben a ciegas: `ctx` sin tipo, ni Ctrl+Space en el layout ni en la ruta, y una prop que se colaba en el `<body>`
 
+> **Enmendado por [SDD-48](../SDD-48-componentes-en-layout.md).** La regla del `<body>` de §3.4
+> ya no rige: el body de un layout admite componentes, snippets, expresiones y constructos, y lee
+> sus props (`FUD0704` retirado); `FUD0705` queda solo para `@{ }`. `FUD0706` no cambia.
+>
 > **Estado:** `Hecho` — implementado y probado a mano por Pedro en el editor, y con sus tests
 > (ver [BUG-44-Task.md](./BUG-44-Task.md)). Redactado y cerrado el 2026-09-28.
 > **Corrige:** [SDD-40](../SDD-40-props-de-layout.md) §3.1, §3.2, §3.5, §4.4, §4.7 y §6.12–§6.15 ·

@@ -226,6 +226,8 @@ export class BlockEmitter implements BlockSink {
       // its edges already narrowed to where the construct sits (BUG-21 §4.2.b).
       at: at.at,
       trackRoots: true,
+      // The body's roots are the hole's roots when the construct sits in one (SDD-48 §4.5).
+      ...(at.slot === undefined ? {} : { slot: at.slot }),
     });
     em.emitBlockBody(branch.body, '$c', at.tail);
 

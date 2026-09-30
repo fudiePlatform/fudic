@@ -25,8 +25,11 @@ export interface TemplateContext {
    * The COMPONENT that hosts what is being projected, or `undefined` when the nearest
    * enclosing element is not one. It is what a `slot=` is checked against: a slot is declared
    * by the component a child goes into, never by the child itself (BUG-23 §2.6).
+   *
+   * `null` at the root of a `@snippet` body: the body lands wherever it is rendered, so the
+   * component around it is not known in this file and a `slot=` there checks against nothing.
    */
-  readonly host: string | undefined;
+  readonly host: string | undefined | null;
   /**
    * The names this `.fud` declares with `signal(...)` / `computed(...)`, from `reactiveNames`.
    *
@@ -56,6 +59,8 @@ export interface TemplateContext {
   readonly snippets: SnippetAliases;
   /** Project a list of children. The dispatcher supplies it. */
   emit(content: readonly HtmlContent[]): void;
+  /** As `emit`, for a `@snippet` body: its root has no known host (`host: null`). */
+  emitUnhosted(content: readonly HtmlContent[]): void;
   /**
    * The ASTs of every JS fragment a run of markup holds, from the file's single batch.
    *

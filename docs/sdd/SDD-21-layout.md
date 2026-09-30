@@ -317,6 +317,12 @@ con la separación sintáctico/semántico del repo:
 | `@RenderSection(name)` | layout | n, con nombre único (repetido → `FUD0428`) |
 | `@section name { … }` | ruta, top-level | n, con nombre único (repetido → `FUD0428`) |
 
+> **Ampliado por [SDD-48](./SDD-48-componentes-en-layout.md).** Un hueco toma argumentos con
+> nombre: `@RenderBody(slot: "x")`, `@RenderSection(nombre, required: true, slot: "x")`
+> (decisión 134). Una sección `required` sin declarar es `FUD0440`. Un shell es layout por
+> cualquier hueco, no solo por `@RenderBody()` (enmienda a la 82), y el body de un layout admite
+> componentes, snippets y constructos (decisión 133).
+
 - **Paréntesis obligatorios y sin argumentos** en `@RenderBody()`/`@RenderHead()` (decisión 85):
   sin ellos, `@RenderBody` sería una expresión implícita válida (decisión 3, camino de
   propiedades) y el usuario obtendría el texto literal `RenderBody` en su página. La forma sin
@@ -512,7 +518,8 @@ hoy el nombre de la variable padre (`'$body'`, `'$shadow'`), así que ya está p
 | `FUD0437` | — | **RETIRADO por [SDD-40](./SDD-40-props-de-layout.md) §3.1.** Decía que un layout no declara nada, y dejó de ser cierto el día en que un layout declara sus props con el mismo `props<{…}>()` que una ruta y un componente. Lo que queda de aquella regla es más estrecho y es del emit, que es el único lector capaz de distinguir una declaración de props de todo lo demás: **`FUD0700`**, sobre lo que el `@code` de un layout contenga **además** de esa declaración. El código no se reutiliza. |
 | `FUD0439` | error | **Añadido por [BUG-38](./bugs/BUG-38-un-layout-dentro-de-otro.md).** Un layout declara `<link rel="layout">`: solo una ruta nombra un layout. Se ancla sobre el `<link>` y el documento degrada a layout raíz — conserva el nodo del link (para que el emit lo salte) y **no** recibe `layoutHref`. |
 | `FUD0438` | error | **Añadido al cerrar [BUG-40](./bugs/BUG-40-una-hoja-que-no-se-puede-enlazar.md).** Un `<link rel="component">` o `<link rel="layout">` escrito fuera del nivel superior de un componente o de una ruta — dentro del `<head>`, o enterrado en el markup. Anidado **no registra nada**: el grafo se lee de las fases del nivel superior, así que el fichero que nombra no se resuelve nunca y el tag sale vacío. Y no es inerte: es un `<link href>`, así que el enlazador lo tomaba por un asset y publicaba el `.fud` entero —el fuente— dentro de cada documento. Dos fallos que parecen una errata, y por eso es error y no aviso. El sitio fácil de equivocarse es el `<head>` de una **ruta**: es un head, y en una página el head es justo donde estos enlaces viven (decisión 59). Se reporta en el build y en el editor, y el emit no escribe nunca un enlace de framework, en ningún rol, para que un build que se recupere del error tampoco lo publique. |
-| `FUD0440`–`FUD0449` | — | Reservados. |
+| `FUD0440`–`FUD0445` | error | **Añadidos por [SDD-48](./SDD-48-componentes-en-layout.md).** Sección `required: true` sin declarar (`0440`), texto (`0441`) o un `slot=` propio (`0442`) en la raíz de un hueco con slot, hueco dentro de un constructo (`0443`), y los argumentos de `@render` sin `@` (`0444`, `0445`). |
+| `FUD0446`–`FUD0449` | — | Reservados. |
 
 **Quién emite qué.** Los códigos decidibles con un solo fichero (`FUD0420`, `0421`, `0424`–`0428`,
 `0431`, `0436`, `0439`) los emite la pasada de estructura (SDD-10); los que exigen ver **dos**

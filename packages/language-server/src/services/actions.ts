@@ -18,13 +18,14 @@
 
 import type { CodeAction, Range } from '@volar/language-service';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
-import { CONTROL_NAME, span, type Diagnostic, type Span } from '@fudic/compiler';
+import { CONTROL_NAME, span, type Diagnostic, type RouteDocument, type Span } from '@fudic/compiler';
 import { URI } from 'vscode-uri';
 import type { CachedDocument } from '../document-cache.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
 import { contractIssues, type ContractIssue, type MissingLayoutProps } from './contract.js';
 import type { ContractProp } from '../mode.js';
 import type { PropDetail, PropHolds } from './tag-card.js';
+import { missingSections } from './holes.js';
 import { unresolvedHrefs } from './href.js';
 import { linkInsertionFor } from './tags.js';
 import { loopBindingNames } from './template-scope.js';
@@ -361,9 +362,51 @@ function layoutFix(issue: MissingLayoutProps): Fix {
  * A code that is not here has no bulb, and that is the normal case — most diagnostics describe
  * a decision only the author can make. Adding a row is the whole cost of adding a quick fix.
  */
+/**
+ * `FUD0440` — the route leaves a `required: true` section of its layout unfilled (SDD-48).
+ *
+ * One action writes every missing section, empty, after the route's last `@section` — or at
+ * the end of the file when it has none — because that is where the route keeps its sections
+ * and an author who asked for one would be asked again for the next.
+ */
+const addRequiredSections: Repairer = ({ cached, index }) => {
+  // The diagnostic is the server's own, and only a route that leaves a required section of
+  // its layout unfilled carries it: the document is that route, and the list is not empty.
+  const route = cached.document as RouteDocument;
+  const missing = missingSections(cached, index);
+  const at = route.sections.at(-1)?.span.end ?? cached.source.trimEnd().length;
+  const text = missing.map((s) => `\n\n@section ${s.name} {\n}`).join('');
+  const names = missing.map((s) => s.name).join(', ');
+  return [
+    {
+      title: `Añadir las secciones requeridas del layout (${names})`,
+      edits: [{ span: span(at, at), newText: text }],
+    },
+  ];
+};
+
+/**
+ * `FUD0444` — a `@render` argument that reads the scope, written without its `@` (SDD-48).
+ *
+ * A name or a path takes the `@` in front; anything else goes into `@( … )`, which is the one
+ * form that holds an arbitrary expression. The diagnostic's span IS the argument's value.
+ */
+const addArgumentAt: Repairer = ({ cached, diagnostic }) => {
+  const text = cached.source.slice(diagnostic.span.start, diagnostic.span.end);
+  const path = /^[A-Za-z_$][\w$]*(?:\??\.[A-Za-z_$][\w$]*)*$/u.test(text);
+  return [
+    {
+      title: path ? `Escribir @${text}` : 'Envolver en @( … )',
+      edits: [{ span: diagnostic.span, newText: path ? `@${text}` : `@(${text})` }],
+    },
+  ];
+};
+
 const REPAIRS: ReadonlyMap<string, Repairer> = new Map<string, Repairer>([
+  ['FUD0444', addArgumentAt],
   ['FUD0056', quoteValue],
   ['FUD0191', addComponentLink],
+  ['FUD0440', addRequiredSections],
   ['FUD0540', addLoopKey],
 ]);
 

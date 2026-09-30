@@ -8,7 +8,12 @@ import { describe, expect, it } from 'vitest';
 import { parseDocument, type AtConstructParser } from '../../src/html/index.js';
 import { parseControl } from '../../src/control/index.js';
 import { parseCodeBlock } from '../../src/code/index.js';
-import { parseDirective, type SectionNode, type RenderSectionNode } from '../../src/layout/index.js';
+import {
+  parseDirective,
+  type RenderDirectiveNode,
+  type RenderSectionNode,
+  type SectionNode,
+} from '../../src/layout/index.js';
 import { classifyDirective, resolveTrigger } from '../../src/at/index.js';
 import type { Diagnostic } from '../../src/types/index.js';
 import type { HtmlContent } from '../../src/html/index.js';
@@ -99,6 +104,81 @@ describe('@RenderSection(name) (decision 85)', () => {
   it('rejects a property path with FUD0433', () => {
     const { codes } = parse('<body>@RenderSection(a.b)</body>');
     expect(codes).toContain('FUD0433');
+  });
+});
+
+describe('the named arguments of a hole (SDD-48 §3.1, criterion 1)', () => {
+  /** The node of `type` in `source`, and each diagnostic as `code: text-under-it`. */
+  function hole<T>(source: string, type: string): { node: T; flagged: string[] } {
+    const result = parseDocument(source, { atConstructs: constructs });
+    return {
+      node: find(result.value.children, type) as unknown as T,
+      flagged: result.diagnostics.map((d) => `${d.code}: ${source.slice(d.span.start, d.span.end)}`),
+    };
+  }
+  const body = (args: string) => hole<RenderDirectiveNode>(`<main>@RenderBody(${args})</main>`, 'render-body');
+  const section = (args: string) => hole<RenderSectionNode>(`<p>@RenderSection(${args})</p>`, 'render-section');
+
+  it('reads `slot:` on `@RenderBody`, its name without quotes and its span with them', () => {
+    const source = `<main>@RenderBody( slot : 'contenido' )</main>`;
+    const { node, flagged } = hole<RenderDirectiveNode>(source, 'render-body');
+    expect(flagged).toEqual([]);
+    expect(node.slot!.name).toBe('contenido');
+    expect(source.slice(node.slot!.span.start, node.slot!.span.end)).toBe(`'contenido'`);
+    expect(body('').node.slot).toBeUndefined();
+  });
+
+  it('reads `required:` and `slot:` on `@RenderSection`, in either order', () => {
+    for (const args of ['n, required: true, slot: "x"', 'n, slot: "x", required: true', 'n,@* c *@ slot: "x" ,required:true']) {
+      const { node, flagged } = section(args);
+      expect(flagged, args).toEqual([]);
+      expect([node.name, node.required, node.slot!.name], args).toEqual(['n', true, 'x']);
+    }
+    expect(section('n, required: false').node.required).toBe(false);
+    expect(section('n').node).not.toHaveProperty('slot');
+    expect(section('n').node.required).toBe(false);
+  });
+
+  it('reports an unknown key, a repeated one and one with no `:` as FUD0433, keeping what it read', () => {
+    expect(section('n, tone: "x"').flagged).toEqual(['FUD0433: tone: "x"']);
+    const repeated = section('n, slot: "a", slot: "b"');
+    expect(repeated.flagged).toEqual(['FUD0433: slot: "b"']);
+    expect(repeated.node.slot!.name).toBe('a');
+    expect(section('n, required true').flagged).toEqual(['FUD0433: required']);
+    expect(section('n, 1').flagged).toEqual(['FUD0433: 1']);
+  });
+
+  it('reports a value of the wrong kind as FUD0433', () => {
+    expect(section('n, required: "true"').flagged).toEqual(['FUD0433: "true"']);
+    expect(section('n, required: yes').flagged).toEqual(['FUD0433: yes']);
+    expect(body('slot: x').flagged).toEqual(['FUD0433: x']);
+    // A slot name is a plain literal: no escape, no line break, and it has to close.
+    expect(body('slot: "a\\"b"').flagged).toEqual(['FUD0433: "a\\"b"']);
+    // The balancer has its own say about a string broken by a line; the hole still refuses it.
+    expect(body('slot: "a\nb"').flagged.some((f) => f.startsWith('FUD0433: "a\nb"'))).toBe(true);
+  });
+
+  it('reports what follows a value without a comma', () => {
+    expect(body('slot: "a" required: true').flagged).toEqual(['FUD0433: required: true']);
+  });
+
+  it('gives `@RenderHead` no argument at all, and `@RenderBody` no `required`', () => {
+    const head = hole<RenderDirectiveNode>('<head>@RenderHead(slot: "x")</head>', 'render-head');
+    expect(head.flagged).toEqual(['FUD0433: slot: "x"']);
+    expect(parseDocument('<head>@RenderHead(slot: "x")</head>', { atConstructs: constructs }).diagnostics[0]!.message).toBe(
+      '@RenderHead() takes no arguments',
+    );
+    expect(body('required: true').flagged).toEqual(['FUD0433: required: true']);
+  });
+
+  it('rejects a name followed by anything but a comma', () => {
+    expect(section('n slot: "x"').flagged).toEqual(['FUD0433: n slot: "x"']);
+  });
+
+  it('still produces an unnamed, optional section without its parentheses (FUD0432)', () => {
+    const { node, flagged } = hole<RenderSectionNode>('<p>@RenderSection</p>', 'render-section');
+    expect(flagged.map((f) => f.slice(0, 7))).toEqual(['FUD0432']);
+    expect([node.name, node.required]).toEqual(['', false]);
   });
 });
 

@@ -8,7 +8,13 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { SCAFFOLD_CAPS, USER_CAPS, DIAGNOSTIC_ONLY_CAPS, type Mapping } from '@fudic/language-core';
+import { isHoverEnabled, isSemanticTokensEnabled } from '@volar/language-core';
+import {
+  SCAFFOLD_CAPS,
+  USER_CAPS,
+  DIAGNOSTIC_ONLY_CAPS,
+  type Mapping,
+} from '@fudic/language-core';
 import { identityMapping, toCodeInformation, toCodeMapping, toCodeMappings } from '../src/mappings.js';
 
 const mapping = (over: Partial<Mapping> = {}): Mapping => ({
@@ -46,6 +52,15 @@ describe('toCodeInformation', () => {
     expect(information.verification).toBe(true);
     expect(information.completion).toBe(false);
     expect(information.navigation).toBe(false);
+  });
+
+  it('keeps hover and drops only the colour of an uncoloured stretch (SDD-48)', () => {
+    // The profile the name of a `@render` is projected under.
+    const information = toCodeInformation({ ...USER_CAPS, semantic: { highlight: false } });
+
+    expect(isHoverEnabled(information)).toBe(true);
+    expect(isSemanticTokensEnabled(information)).toBe(false);
+    expect(isSemanticTokensEnabled(toCodeInformation(USER_CAPS))).toBe(true);
   });
 });
 

@@ -212,11 +212,28 @@ describe('layout directive rules (§6.5, §6.6 — decision 86)', () => {
 });
 
 describe('directives in the roles that do not own them (§6.6)', () => {
-  it('rejects them in a page with FUD0426 / FUD0427', () => {
-    const page = (body: string): string =>
-      `<!DOCTYPE html><html><head></head><body>${body}</body></html>`;
-    expect(structure(page('@RenderHead()')).structureCodes).toContain('FUD0426');
-    expect(structure(page('@section s { <p>x</p> }')).structureCodes).toContain('FUD0427');
+  it('rejects a `@section` in a page with FUD0427', () => {
+    const page = '<!DOCTYPE html><html><head></head><body>@section s { <p>x</p> }</body></html>';
+    const { value, structureCodes } = structure(page);
+    expect(value.type).toBe('page-document');
+    expect(structureCodes).toContain('FUD0427');
+  });
+
+  it('makes a shell with ANY hole a layout, and one with none a page (SDD-48 §4.4, criterion 4)', () => {
+    const shell = (body: string): string =>
+      `<!DOCTYPE html><html><head>@RenderHead()</head><body>${body}</body></html>`;
+    for (const body of ['', '@RenderSection(nav)']) {
+      const { value, diagnostics } = structure(shell(body));
+      expect(value.type, body).toBe('layout-document');
+      expect((value as LayoutDocument).renderBody).toBeUndefined();
+      // Over the `<body>`, in the layout's own file.
+      const missing = diagnostics.filter((d) => d.code === 'FUD0423');
+      expect(missing).toHaveLength(1);
+      expect(shell(body).slice(missing[0]!.span.start, missing[0]!.span.start + 5)).toBe('<body');
+    }
+    const page = structure('<!DOCTYPE html><html><head></head><body><p>x</p></body></html>');
+    expect(page.value.type).toBe('page-document');
+    expect(page.structureCodes).toEqual([]);
   });
 
   it('rejects them in a component with FUD0426 / FUD0427', () => {

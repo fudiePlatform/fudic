@@ -5,10 +5,8 @@
  * `@RenderSection` (decision 84), which the workspace index already knows: the layout was
  * parsed to learn its role, so its section names came for free.
  *
- * There is no diagnostic here. SDD-24 §4.4 asks for one when a page does not fill a section
- * the layout declares, but SDD-21 §4.2 states the opposite in as many words — «it is Razor's
- * `required: false` by default» — and there is no `required` flag on a declaration to read.
- * Until that contradiction is resolved, silence is what the layout spec mandates.
+ * There is no diagnostic here. A section is optional unless the layout says
+ * `required: true`, and that one — `FUD0440` — is `holes.ts`'s (SDD-48).
  */
 
 import type { CachedDocument } from '../document-cache.js';

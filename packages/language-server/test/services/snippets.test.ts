@@ -148,9 +148,18 @@ describe('snippetsAt — by role', () => {
   });
 
   it('a layout gets its directives each where it is legal, and a route gets none', () => {
-    // The body of a layout writes its two holes and nothing else (BUG-44, `FUD0705`), and
-    // `@RenderHead()` lives in the head (`FUD0431`).
-    expect(labelsAt(LAYOUT)).toEqual(['@RenderBody', '@RenderSection']);
+    // The body of a layout is markup (SDD-48 §4.1): control flow and its two holes. What it
+    // still does not write is `@RenderHead()`, which lives in the head (`FUD0431`).
+    expect(labelsAt(LAYOUT)).toEqual([
+      '@if',
+      '@if else',
+      '@foreach',
+      '@for',
+      '@while',
+      '@switch',
+      '@RenderBody',
+      '@RenderSection',
+    ]);
     expect(labelsAt(LAYOUT_HEAD)).toContain('@RenderHead');
     expect(labelsAt(LAYOUT_HEAD)).not.toContain('@RenderBody');
     expect(labelsAt(LAYOUT_HEAD)).not.toContain('@RenderSection');

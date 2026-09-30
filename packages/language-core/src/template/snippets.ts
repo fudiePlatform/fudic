@@ -18,7 +18,7 @@
  */
 
 import { freeReferences, type RenderCallNode, type SnippetDeclNode, type StructuredDocument } from '@fudic/compiler';
-import { DIAGNOSTIC_ONLY_CAPS } from '../caps.js';
+import { DIAGNOSTIC_ONLY_CAPS, USER_UNCOLOURED_CAPS } from '../caps.js';
 import type { TemplateContext } from './context.js';
 
 /**
@@ -57,7 +57,9 @@ function emitSnippet(ctx: TemplateContext, snippet: SnippetDeclNode): void {
   // parameter list is allowed here, because the parser that owns the language reads it.
   w.copy(snippet.signature);
   w.scaffold('): void {\n');
-  ctx.emit(snippet.children);
+  // Unhosted: the body lands wherever it is rendered, so a `slot=` on one of its roots names a
+  // slot of a component this file cannot see. The build checks it after the expansion.
+  ctx.emitUnhosted(snippet.children);
   w.scaffold('}\n');
 }
 
@@ -111,7 +113,8 @@ export function emitRenderCall(ctx: TemplateContext, call: RenderCallNode): void
     w.projected(alias, call.namespace?.span ?? call.keywordSpan, DIAGNOSTIC_ONLY_CAPS);
     w.scaffold('.');
   }
-  w.copy(call.nameSpan);
+  // The name's colour is the server's: through `$Sn0.` TypeScript would call it a property.
+  w.projected(ctx.source.slice(call.nameSpan.start, call.nameSpan.end), call.nameSpan, USER_UNCOLOURED_CAPS);
   w.scaffold('(');
   call.args.forEach((arg, i) => {
     if (i > 0) w.scaffold(', ');
