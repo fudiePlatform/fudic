@@ -1,7 +1,7 @@
 # SDD-48 — Componentes y snippets en el layout, y huecos con slot
 
-> **Estado:** `En curso` — implementado y probado por Pedro en navegador y editor; faltan los
-> tests y la cobertura (fase 5 del [Task](./SDD-48-Task.md)).
+> **Estado:** `Hecho` — implementado, probado por Pedro en navegador y editor, y con sus
+> criterios cubiertos por tests ([Task](./SDD-48-Task.md), 26 / 26).
 > **Paquetes:** `@fudic/compiler` (directivas, contrato ruta↔layout, emit, argumentos de
 > `@render`) · `@fudic/language-core` (proyección) · `@fudic/language-server` (diagnósticos,
 > bombillas, autocompletado, colores) · `@fudic/formatter` (la `@` de los argumentos) ·
