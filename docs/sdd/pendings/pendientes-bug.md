@@ -14,4 +14,4 @@ Por tanto al hacer create del componente en el browser me temo que eso no va a f
 5. Limpieza de la cache del sw cuando algo caduca.
 
 
-6. Eventos en el host
+6. (x) Eventos en el host
