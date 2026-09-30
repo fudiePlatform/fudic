@@ -3,7 +3,7 @@
 > **SDD:** [SDD-47 — Eventos en el host y en el shadow root](./SDD-47-eventos-en-host-y-shadow.md)
 > **Paquetes:** `@fudic/compiler` · `@fudic/core` · `@fudic/language-core` · `@fudic/example-basic`
 > **Rama:** `worktree-SDD-47-host-sahdow-events`
-> **Progreso:** 14 / 16
+> **Progreso:** 16 / 16
 
 Se implementó al revés de lo habitual, por decisión expresa: primero el código y el ejemplo, para
 que Pedro lo probara en el navegador y en el editor; después este documento; y los tests y la
@@ -50,7 +50,7 @@ de un `<input>`, que siempre responde `type`.
 |---|---|---|---|---|---|
 | [x] | 9 | 7 | **Build y typecheck verdes.** El chunk de `app-eventos` lleva los listeners del host y del shadow root | — | — |
 | [x] | 10 | 9 | **Pedro en navegador y editor.** Criterio 13 | — | — |
-| [ ] | 11 | 8 | **Pedro en el editor: los calendarios sin `TS2345`.** Criterio 14 | — | — |
+| [x] | 11 | 8 | **Pedro en el editor: los calendarios sin `TS2345`.** Criterio 14 | — | — |
 
 ## Fase 6 — tests y cobertura (4)
 
@@ -65,4 +65,4 @@ de un `<input>`, que siempre responde `type`.
 
 | ✓ | # | dep | tarea |
 |---|---|---|---|
-| [ ] | 16 | 15 | `pnpm typecheck`, `pnpm test` y `pnpm build` verdes; SDD-47 a `Hecho` en la tabla y el registro del `INDEX.md` |
+| [x] | 16 | 15 | `pnpm typecheck`, `pnpm test` y `pnpm build` verdes; SDD-47 a `Hecho` en la tabla y el registro del `INDEX.md` |

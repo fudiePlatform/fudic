@@ -1,7 +1,7 @@
 # SDD-47 — Eventos en el host y en el shadow root, y un capturador que oye gestos
 
-> **Estado:** `En curso` — implementado y verificado por Pedro en navegador y editor; faltan
-> los tests y la cobertura ([Task](./SDD-47-Task.md), fase 6).
+> **Estado:** `Hecho` — los 15 criterios de §6 verdes, verificado por Pedro en navegador y
+> editor; [Task](./SDD-47-Task.md) 16 / 16.
 > **Paquetes:** `@fudic/compiler` (listeners en el shadow root) · `@fudic/core` (el
 > capturador) · `@fudic/language-core` (la proyección del `<template>`) ·
 > `@fudic/example-basic` (la evidencia)
