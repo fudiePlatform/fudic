@@ -70,8 +70,11 @@ export interface MappingCaps {
   readonly completion: boolean | { readonly isAdditional: true };
   /** Diagnostics: reported back onto the source, or dropped. */
   readonly verification: boolean;
-  /** Hover, inlay hints, signature help, semantic tokens. */
-  readonly semantic: boolean;
+  /**
+   * Hover, inlay hints, signature help, semantic tokens. `{ highlight: false }` keeps every one
+   * of them but the colour, which the server gives instead (SDD-48).
+   */
+  readonly semantic: boolean | { readonly highlight: false };
   /** Definition, references, rename, highlight. */
   readonly navigation: boolean;
   /** Document symbols, folding, linked editing. */

@@ -13,22 +13,26 @@ import {
   type Diagnostic,
   type LayoutHoles,
   type RenderSectionNode,
+  type RouteDocument,
 } from '@fudic/compiler';
 import type { CachedDocument } from '../document-cache.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
 
-/** The holes of the layout this route names, or nothing for anything that is not a route. */
-function layoutHolesOf(cached: CachedDocument, index: WorkspaceIndex): LayoutHoles | undefined {
-  const doc = cached.document;
-  if (doc.type !== 'route-document' || doc.layoutHref === '') return undefined;
-  return index.resolve(cached.path, doc.layoutHref)?.holes;
+/** The route and the holes of the layout it names, or nothing for anything that is not one. */
+function contractOf(
+  cached: CachedDocument,
+  index: WorkspaceIndex,
+): { readonly route: RouteDocument; readonly holes: LayoutHoles } | undefined {
+  const route = cached.document;
+  if (route.type !== 'route-document' || route.layoutHref === '') return undefined;
+  const holes = index.resolve(cached.path, route.layoutHref)?.holes;
+  return holes === undefined ? undefined : { route, holes };
 }
 
 /** Every diagnostic of the route's contract with its layout's holes. */
 export function holeDiagnostics(cached: CachedDocument, index: WorkspaceIndex): readonly Diagnostic[] {
-  const holes = layoutHolesOf(cached, index);
-  if (holes === undefined || cached.document.type !== 'route-document') return [];
-  return holeContractDiagnostics(cached.document, holes);
+  const contract = contractOf(cached, index);
+  return contract === undefined ? [] : holeContractDiagnostics(contract.route, contract.holes);
 }
 
 /** The required sections of the layout this route leaves unfilled, in layout order. */
@@ -36,7 +40,6 @@ export function missingSections(
   cached: CachedDocument,
   index: WorkspaceIndex,
 ): readonly RenderSectionNode[] {
-  const holes = layoutHolesOf(cached, index);
-  if (holes === undefined || cached.document.type !== 'route-document') return [];
-  return missingRequiredSections(cached.document, holes);
+  const contract = contractOf(cached, index);
+  return contract === undefined ? [] : missingRequiredSections(contract.route, contract.holes);
 }

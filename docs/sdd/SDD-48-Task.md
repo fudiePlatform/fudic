@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` ·
 > `@fudic/formatter` · `fudic-vscode` · `@fudic/example-basic`
 > **Rama:** `worktree-SDD-48-componentes-layout`
-> **Progreso:** 23 / 26
+> **Progreso:** 24 / 26
 
 Se implementó al revés de lo habitual, por decisión expresa de Pedro: primero el código y la
 evidencia en `examples/basic`, para que la probara en el navegador y en el editor; después este
@@ -62,7 +62,7 @@ de escribir los argumentos de `@render` como una prop (decisión 135).
 |---|---|---|---|---|---|
 | [x] | 22 | 4 | **El slot también en el cliente.** Una raíz que el chunk de la ruta crea al re-renderizar un `@if` o un bucle reactivo de un hueco con slot sale con su `slot=`; `holeSlot` es la regla que leen el servidor y el cliente. En `/marco`, un párrafo que crea el primer clic. Criterio 5 | `compiler` · `example-basic` | `src/emit/markup-client.ts` · `src/emit/block.ts` · `src/emit/route-client.ts` · `src/emit/compose.ts` · `src/emit/layout.ts` · `src/routes/marco.fud` |
 | [x] | 23 | 1–9 | **Compilador y formateador.** Criterios 1–11; se reescriben los tests de `FUD0704`/`FUD0705`/`FUD0833` y el de un `@RenderBody()` dentro de un constructo, que pasan a esperar lo contrario | `compiler` · `formatter` | `test/layout/*` · `test/semantic/layout-body.test.ts` · `test/emit/layout-props.test.ts` · `test/emit/route-client.test.ts` · `test/snippet/parser.test.ts` · `test/print/snippets.test.ts` |
-| [ ] | 24 | 10–16 | **Editor.** Criterios 12–17; los de aceptación ya escritos (`holes`, `layout-editor`, el de gramática) más los unitarios que la cobertura pida; se rehacen los que esperaban la regla del body de BUG-44 | `language-core` · `language-server` · `fudic-vscode` | `test/acceptance/holes.test.ts` · `test/acceptance/layout-editor.test.ts` · `test/services/*` · `test/grammar.test.ts` |
+| [x] | 24 | 10–16 | **Editor.** Criterios 12–17; los de aceptación ya escritos (`holes`, `layout-editor`, el de gramática) más los unitarios que la cobertura pida; se rehacen los que esperaban la regla del body de BUG-44 | `language-core` · `language-server` · `fudic-vscode` | `test/acceptance/holes.test.ts` · `test/acceptance/layout-editor.test.ts` · `test/services/*` · `test/grammar.test.ts` |
 | [ ] | 25 | 22–24 | **`pnpm test` verde y cobertura.** Ficheros nuevos al 100 % en las cuatro; ningún paquete por debajo de su suelo en `main`. Criterio 20 | todos | — |
 
 ## Cierre (1)

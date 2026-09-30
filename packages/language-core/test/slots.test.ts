@@ -251,3 +251,62 @@ describe('BUG-11 §6.8 — a PARENT with no <link>', () => {
     expect(diagnostics[0]!.sourceText).toBe('meta');
   });
 });
+
+describe('SDD-48 §4.5 — the `slot:` of a layout hole, against the component around it', () => {
+  const LAYOUT = 'layouts/_layout.fud';
+  /** The corpus layout, its body replaced by `body`, with `app-badge` in reach. */
+  const layoutWith = (body: string): Record<string, string> => ({
+    [LAYOUT]: `<!DOCTYPE html>
+<html lang="@culture">
+  <head>
+    <link rel="component" href="../components/app-badge.fud">
+    @code {
+      const { culture } = props<{ culture: string }>();
+    }
+    @RenderHead()
+  </head>
+  <body>
+    ${body}
+  </body>
+</html>
+`,
+  });
+
+  it('accepts a slot the component declares, on the body and on a section (criterion 16)', () => {
+    const diagnostics = typecheckCorpus({
+      ...badgeTemplate(`<slot name="meta"></slot><slot name="nav"></slot>`),
+      ...layoutWith(`<app-badge>@RenderSection(nav, slot: "nav")@RenderBody(slot: "meta")</app-badge>`),
+    });
+    expect(diagnostics).toEqual([]);
+  });
+
+  it('reports one it does not declare, over the literal that was written', () => {
+    const diagnostics = typecheckCorpus({
+      ...badgeTemplate(`<slot name="meta"></slot>`),
+      ...layoutWith(`<app-badge>@RenderSection(nav, slot: 'nope')@RenderBody(slot: "meta")</app-badge>`),
+    });
+    expect(diagnostics.map((d) => [d.code, d.sourceText])).toEqual([[2345, `'nope'`]]);
+  });
+
+  it('reports any slot with no component around the hole, and projects nothing without one', () => {
+    const diagnostics = typecheckCorpus(layoutWith(`<main>@RenderBody(slot: "meta")</main>@RenderSection(nav)`));
+    expect(diagnostics.map((d) => [d.code, d.sourceText])).toEqual([[2345, '"meta"']]);
+  });
+});
+
+describe('SDD-48 §4.8 — a snippet does not know its component', () => {
+  it('projects no check for a `slot=` or a hole at the root of a `@snippet` body', () => {
+    const { text } = emitClient(
+      `@snippet pie(texto: string) {
+  <p slot="pie">@texto</p>
+  @RenderBody(slot: "x")
+  <app-badge><i slot="meta">m</i></app-badge>
+}
+`,
+      'snippets.fud',
+      registryOf({ 'app-badge': './app-badge.fud' }),
+    );
+    // Only the `<i>`, whose parent the snippet itself writes, is checked.
+    expect(text.match(/\$intoSlot/gu)).toHaveLength(1);
+  });
+});

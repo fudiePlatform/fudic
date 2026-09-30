@@ -34,9 +34,10 @@ export const USER_CAPS: MappingCaps = {
  * The name in `@render card(…)` is projected as `$Sn0.card`, a property of the object the
  * imports merge into — so TypeScript paints it as a property, the colour of `.title=` on a
  * tag, and a call reads as markup. The server paints it as the function it is, and this is
- * `USER_CAPS` with that one voice left to the server.
+ * `USER_CAPS` with that one voice left to the server — the colour only: the hover that shows
+ * the snippet's signature is TypeScript's, and rides the same flag.
  */
-export const USER_UNCOLOURED_CAPS: MappingCaps = { ...USER_CAPS, semantic: false };
+export const USER_UNCOLOURED_CAPS: MappingCaps = { ...USER_CAPS, semantic: { highlight: false } };
 
 /**
  * User code that ANOTHER projection already owns.

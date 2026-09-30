@@ -44,6 +44,8 @@ describe('scan', () => {
       tag: 'app-badge',
       layoutHref: '',
       sections: [],
+      holes: { renderSections: [] },
+      snippets: [],
       requiredProps: [],
       contract: { props: [], slots: [], events: [] },
       external: false,
@@ -54,10 +56,32 @@ describe('scan', () => {
       tag: '',
       layoutHref: '../layouts/_layout.fud',
       sections: [],
+      holes: { renderSections: [] },
+      snippets: [],
       requiredProps: [],
       contract: { props: [], slots: [], events: [] },
       external: false,
     });
+  });
+
+  it('keeps a layout’s holes and a file’s snippets, parsed once (SDD-48 §3.5)', () => {
+    const index = indexOf({
+      '/p/layouts/_marco.fud': LAYOUT.replace(
+        '@RenderBody()',
+        '@RenderSection(cabecera, required: true, slot: "c")@RenderBody(slot: "contenido")',
+      ),
+      '/p/layouts/_sin-cuerpo.fud': LAYOUT.replace('@RenderBody()', ''),
+      '/p/snippets/ui.fud': '@snippet ficha(titulo: string, tono?: string) { <p>@titulo</p> }\n@snippet () { }\n',
+    });
+    // A layout whose `@RenderBody()` is being rewritten: a layout still, with no body hole.
+    expect(index.get('/p/layouts/_sin-cuerpo.fud')!.holes).toEqual({ renderSections: [] });
+    const holes = index.get('/p/layouts/_marco.fud')!.holes;
+    expect(holes.renderBody?.slot?.name).toBe('contenido');
+    expect(holes.renderSections.map((s) => [s.name, s.required, s.slot?.name])).toEqual([['cabecera', true, 'c']]);
+    // The unnamed one is a degraded declaration: nothing a `@render` could name.
+    expect(index.get('/p/snippets/ui.fud')!.snippets).toEqual([
+      { name: 'ficha', signature: '(titulo: string, tono?: string)' },
+    ]);
   });
 
   it('answers with the same entry however the path is spelled', () => {

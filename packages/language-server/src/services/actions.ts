@@ -18,7 +18,7 @@
 
 import type { CodeAction, Range } from '@volar/language-service';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
-import { CONTROL_NAME, span, type Diagnostic, type Span } from '@fudic/compiler';
+import { CONTROL_NAME, span, type Diagnostic, type RouteDocument, type Span } from '@fudic/compiler';
 import { URI } from 'vscode-uri';
 import type { CachedDocument } from '../document-cache.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
@@ -370,9 +370,10 @@ function layoutFix(issue: MissingLayoutProps): Fix {
  * and an author who asked for one would be asked again for the next.
  */
 const addRequiredSections: Repairer = ({ cached, index }) => {
+  // The diagnostic is the server's own, and only a route that leaves a required section of
+  // its layout unfilled carries it: the document is that route, and the list is not empty.
+  const route = cached.document as RouteDocument;
   const missing = missingSections(cached, index);
-  const route = cached.document;
-  if (missing.length === 0 || route.type !== 'route-document') return [];
   const at = route.sections.at(-1)?.span.end ?? cached.source.trimEnd().length;
   const text = missing.map((s) => `\n\n@section ${s.name} {\n}`).join('');
   const names = missing.map((s) => s.name).join(', ');

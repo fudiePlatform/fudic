@@ -759,14 +759,13 @@ function completions(
       detail: 'value of this view',
       textEdit: { range, newText: `@${name}` },
     }));
-    if (!renderArg.afterLabel) {
-      const signature = signatureOf(cached, index, renderArg);
-      const params = signature === undefined ? [] : parameterNames(signature);
-      for (const param of params.filter((p) => !renderArg.labels.includes(p))) {
+    const signature = renderArg.afterLabel ? undefined : signatureOf(cached, index, renderArg);
+    if (signature !== undefined) {
+      for (const param of parameterNames(signature).filter((p) => !renderArg.labels.includes(p))) {
         items.push({
           label: `${param}:`,
           kind: CompletionItemKind.Property,
-          detail: `parameter of ${renderArg.name}${signature ?? ''}`,
+          detail: `parameter of ${renderArg.name}${signature}`,
           textEdit: { range, newText: `${param}: ` },
           command: { title: 'Suggest', command: 'editor.action.triggerSuggest' },
         });

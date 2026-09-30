@@ -51,7 +51,7 @@ export function renderArgContextAt(source: string, offset: number): RenderArgCon
   const before = source.slice(0, offset);
   let open: { namespace?: string; name: string; at: number } | undefined;
   for (const m of before.matchAll(/@render\s+(?:([A-Za-z_$][\w$]*)\.)?([A-Za-z_$][\w$]*)\s*\(/gu)) {
-    const at = (m.index ?? 0) + m[0].length;
+    const at = m.index! + m[0].length;
     open = m[1] === undefined ? { name: m[2] as string, at } : { namespace: m[1], name: m[2] as string, at };
   }
   if (open === undefined) return undefined;
@@ -90,7 +90,8 @@ export function parameterNames(signature: string): readonly string[] {
   for (let i = 0; i < inner.length; i++) {
     const c = inner.charAt(i);
     if ('([{<'.includes(c)) depth++;
-    else if (')]}>'.includes(c)) depth--;
+    // The `>` of an arrow type — `cb: (x: number) => void` — closes nothing.
+    else if (')]}>'.includes(c) && !(c === '>' && inner.charAt(i - 1) === '=')) depth--;
     else if (c === ',' && depth === 0) {
       take(inner.slice(from, i));
       from = i + 1;

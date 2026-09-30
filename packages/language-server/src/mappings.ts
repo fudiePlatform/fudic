@@ -20,7 +20,8 @@ export function toCodeInformation(caps: MappingCaps): CodeInformation {
   return {
     verification: caps.verification,
     completion: caps.completion,
-    semantic: caps.semantic,
+    // Volar's way of keeping hover and dropping only the colour.
+    semantic: typeof caps.semantic === 'object' ? { shouldHighlight: () => false } : caps.semantic,
     navigation: caps.navigation,
     structure: caps.structure,
     format: caps.format,

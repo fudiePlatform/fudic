@@ -106,28 +106,29 @@ describe('fudicDiagnostics', () => {
     expect(codesOf(SLUG, source)).toContain('FUD0438');
   });
 
-  describe('FUD0704 / FUD0705 — the <body> of a layout, in the editor too (BUG-44 §3.4, criterion 6)', () => {
+  describe('the <body> of a layout, in the editor too (BUG-44 §3.4 as SDD-48 §4.1–§4.2 narrowed it)', () => {
     const PATH = '/p/layouts/_articulo.fud';
-    const layout = (head: string, body: string, bodyAttrs = ''): string =>
+    const layout = (head: string, body: string, bodyAttrs = '', hole = '<main>@RenderBody()</main>'): string =>
       `<!DOCTYPE html>\n<html lang="@culture">\n  <head>\n` +
       `    @code {\n      const { culture, seccion } = props<{ culture: string; seccion: string }>();\n    }\n` +
-      `    ${head}\n    @RenderHead()\n  </head>\n  <body${bodyAttrs}>\n    ${body}\n    <main>@RenderBody()</main>\n  </body>\n</html>\n`;
+      `    ${head}\n    @RenderHead()\n  </head>\n  <body${bodyAttrs}>\n    ${body}\n    ${hole}\n  </body>\n</html>\n`;
     const on = (source: string): string[] => {
       const { index, document } = setup(PATH, source);
       return fudicDiagnostics(document, index)
-        .filter((d) => d.code === 'FUD0704' || d.code === 'FUD0705')
+        .filter((d) => ['FUD0443', 'FUD0704', 'FUD0705'].includes(d.code))
         .map((d) => `${d.code}: ${source.slice(d.span.start, d.span.end)}`);
     };
 
-    it('flags a prop read in an interpolation and in an attribute of the body, on the name', () => {
-      expect(on(layout('', '<p>@seccion</p>'))).toEqual(['FUD0704: seccion']);
-      expect(on(layout('', '<p title="@seccion">x</p>'))).toEqual(['FUD0704: seccion']);
-      expect(on(layout('', '', ' data-x="@culture"'))).toEqual(['FUD0704: culture']);
+    it('lets the body read its props and branch, as the build does (criterion 2)', () => {
+      expect(on(layout('', '<p title="@seccion">@seccion</p>', ' data-x="@culture"'))).toEqual([]);
+      expect(on(layout('', '@if (seccion) {\n      <i>x</i>\n    }\n    <p>@(seccion.length)</p>'))).toEqual([]);
     });
 
-    it('flags control flow and any other expression in the body: only the two holes go there', () => {
-      expect(on(layout('', '@if (seccion) {\n      <i>x</i>\n    }'))).toEqual(['FUD0705: @if']);
-      expect(on(layout('', '<p>@(post.seccion)</p>'))).toEqual(['FUD0705: @(post.seccion)']);
+    it('flags a `@{ }` (FUD0705) and a hole inside a construct (FUD0443)', () => {
+      expect(on(layout('', '<div>@{ let a = 1; }</div>'))).toEqual(['FUD0705: @{']);
+      expect(on(layout('', '', '', '@if (seccion) {\n      <main>@RenderBody()</main>\n    }'))).toEqual([
+        'FUD0443: @RenderBody()',
+      ]);
     });
 
     it('flags a binding in a `<style>` of the layout, head or body (FUD0706)', () => {

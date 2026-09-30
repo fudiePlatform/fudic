@@ -50,7 +50,7 @@ const OPENING = /@(RenderBody|RenderSection)\s*\(/gu;
 export function holeArgumentContextAt(source: string, offset: number): HoleArgumentContext | undefined {
   let open: { directive: string; at: number } | undefined;
   for (const match of source.slice(0, offset).matchAll(OPENING)) {
-    open = { directive: match[1] as string, at: (match.index ?? 0) + match[0].length };
+    open = { directive: match[1] as string, at: match.index! + match[0].length };
   }
   if (open === undefined) return undefined;
   const typed = source.slice(open.at, offset);
