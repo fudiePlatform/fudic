@@ -238,7 +238,15 @@ export function createFudicServer(
     const result = server.initialize(params, project, readOnly(plugins));
     // §3.2 is a contract with the client, so it is declared rather than inferred from whichever
     // plugins happened to load: with no TypeScript the list must still say what a `.fud` supports.
-    return { ...result, capabilities: { ...result.capabilities, ...SERVER_CAPABILITIES } };
+    //
+    // Written INTO Volar's own object, never into a copy. Volar encodes every semantic token
+    // against `capabilities.semanticTokensProvider.legend`, read off this very object at request
+    // time; a copy told the editor one order of token types while the tokens were numbered in
+    // another, and every standard type came out as its neighbour — a variable painted as a
+    // parameter, the name of a `@render` as an enum member. Our own `fud…` types lined up only
+    // by accident of position.
+    Object.assign(result.capabilities, SERVER_CAPABILITIES);
+    return result;
   });
 
   connection.onInitialized(() => {
