@@ -282,6 +282,7 @@ function buildComponentClientModule(
   // The host's own bindings before the template's, so `hostUsed` is already set when the
   // preamble below decides whether to materialize `$host` (BUG-32 T2).
   if (comp.doc.host !== undefined) em.emitHost(comp.doc.host);
+  em.emitShadow(comp.doc.template!);
   em.emitRoots(comp.doc.template!.children);
 
   // The component's OWN reactivity, and the only consumer a signal has: the emitted code
