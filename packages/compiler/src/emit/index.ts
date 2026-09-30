@@ -110,3 +110,13 @@ export { freeReferences, freeReferenceNodes, type FragmentAst } from './scope.js
 export { collectTemplateJs, type JsFragmentVisitor } from './constructs.js';
 
 export { spaceModeOf, collapseSpace, nestedSpaceMode, SPACE_ATTR, type SpaceMode } from './space.js';
+
+// What each style scope of a page can match (SDD-49 §3.3).
+export {
+  documentSurface,
+  shadowSurface,
+  unionSurfaces,
+  frameworkAttributesOf,
+  type ScopeSurface,
+  type StyleScope,
+} from './surface.js';

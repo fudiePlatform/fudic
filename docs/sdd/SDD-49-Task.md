@@ -3,7 +3,7 @@
 > **SDD:** [SDD-49 — El CSS que cada página usa](./SDD-49-css-por-pagina.md)
 > **Paquetes:** `@fudic/compiler` · `@fudic/vite` · `@fudic/example-basic`
 > **Rama:** `worktree-sdd-49-css-por-pagina`
-> **Progreso:** 3 / 18
+> **Progreso:** 7 / 18
 
 El orden va de abajo arriba: primero leer CSS, después saber qué hay en cada ámbito, después
 decidir qué se queda, y solo entonces tocar el emit, que es donde un error se vuelve visible.
@@ -25,10 +25,10 @@ note.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 4 | — | **Lo que añade el framework.** `frameworkAttributesOf`: `slot` de un hueco, los atributos de `controls.ts`, `aria-invalid`/`aria-label` de `@fudic/forms`, `data-fud-*`. El test que recorre `@fudic/forms` y compara. Criterio 7 | `compiler` | `src/emit/surface.ts` · `test/emit/surface.test.ts` |
-| [ ] | 5 | 4 | **Un elemento.** Tag, clases literales y de `class:`, `openClasses`, `id`/`openIds`, atributos con valor literal o `null`; `.prop` no cuenta. Criterio 6 | `compiler` | `src/emit/surface.ts` |
-| [ ] | 6 | 5 | **El ámbito de un componente.** `shadowSurface`: template, todas las ramas, snippets renderizados dentro, hosts anidados con su contenido proyectado; `slotted` y `parts`. Criterio 5 | `compiler` | `src/emit/surface.ts` |
-| [ ] | 7 | 5 | **El ámbito del documento.** `documentSurface`: `html`, `body`, la cadena de layouts, la ruta, sus secciones, los snippets, los hosts y lo proyectado, **sin** entrar en ningún template; `unionSurfaces`. Criterio 4 | `compiler` | `src/emit/surface.ts` |
+| [x] | 4 | — | **Lo que añade el framework.** `frameworkAttributesOf`: `slot` de un hueco, los atributos de `controls.ts`, `aria-invalid`/`aria-label` de `@fudic/forms`, `data-fud-*`. El test que recorre `@fudic/forms` y compara. Criterio 7 | `compiler` | `src/emit/surface.ts` · `test/emit/surface.test.ts` |
+| [x] | 5 | 4 | **Un elemento.** Tag, clases literales y de `class:`, `openClasses`, `id`/`openIds`, atributos con valor literal o `null`; `.prop` no cuenta. Criterio 6 | `compiler` | `src/emit/surface.ts` |
+| [x] | 6 | 5 | **El ámbito de un componente.** `shadowSurface`: template, todas las ramas, snippets renderizados dentro, hosts anidados con su contenido proyectado; `slotted` y `parts`. Criterio 5 | `compiler` | `src/emit/surface.ts` |
+| [x] | 7 | 5 | **El ámbito del documento.** `documentSurface`: `html`, `body`, la cadena de layouts, la ruta, sus secciones, los snippets, los hosts y lo proyectado, **sin** entrar en ningún template; `unionSurfaces`. Criterio 4 | `compiler` | `src/emit/surface.ts` |
 
 ## Fase 3 — la poda (3)
 
