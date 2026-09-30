@@ -2,8 +2,8 @@
 
 > **SDD:** [SDD-49 — El CSS que cada página usa](./SDD-49-css-por-pagina.md)
 > **Paquetes:** `@fudic/compiler` · `@fudic/vite` · `@fudic/example-basic`
-> **Rama:** por crear desde `main`
-> **Progreso:** 0 / 18
+> **Rama:** `worktree-sdd-49-css-por-pagina`
+> **Progreso:** 3 / 18
 
 El orden va de abajo arriba: primero leer CSS, después saber qué hay en cada ámbito, después
 decidir qué se queda, y solo entonces tocar el emit, que es donde un error se vuelve visible.
@@ -17,9 +17,9 @@ note.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **El árbol de reglas.** `parseCssRules`: reglas de estilo, at-rules de bloque (con hijos o con declaraciones), sentencias, anidamiento; spans en todo; nunca lanza (`FUD0851` en el punto donde se pierde). Criterios 1–2 | `compiler` | `src/css/rules.ts` · `src/css/index.ts` · `test/css/rules.test.ts` |
-| [ ] | 2 | — | **Los selectores.** `parseSelectorList`: listas, compuestos, combinadores, atributos con operador, `:is()`/`:where()`/`:matches()`, `::slotted()`, `::part()`; `null` para lo que no entiende. Criterio 3 | `compiler` | `src/css/selectors.ts` · `test/css/selectors.test.ts` |
-| [ ] | 3 | 1, 2 | **El índice.** `parseCssRules`, `parseSelectorList` y sus tipos exportados desde el paquete | `compiler` | `src/index.ts` |
+| [x] | 1 | — | **El árbol de reglas.** `parseCssRules`: reglas de estilo, at-rules de bloque (con hijos o con declaraciones), sentencias, anidamiento; spans en todo; nunca lanza (`FUD0851` en el punto donde se pierde). Criterios 1–2 | `compiler` | `src/css/rules.ts` · `src/css/index.ts` · `test/css/rules.test.ts` |
+| [x] | 2 | — | **Los selectores.** `parseSelectorList`: listas, compuestos, combinadores, atributos con operador, `:is()`/`:where()`/`:matches()`, `::slotted()`, `::part()`; `null` para lo que no entiende. Criterio 3 | `compiler` | `src/css/selectors.ts` · `test/css/selectors.test.ts` |
+| [x] | 3 | 1, 2 | **El índice.** `parseCssRules`, `parseSelectorList` y sus tipos exportados desde el paquete | `compiler` | `src/index.ts` |
 
 ## Fase 2 — la superficie (4)
 
