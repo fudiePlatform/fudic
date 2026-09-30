@@ -87,7 +87,9 @@
   Un componente puede escuchar en dos sitios. Un <code>@@evento</code> en su propio tag
   escucha en el <em>host</em>; uno en su <code>&lt;template&gt;</code> escucha en el
   <em>shadow root</em>. Este componente cuelga los mismos eventos de los dos y anota quién
-  oyó cada uno.
+  oyó cada uno. El <code>click</code> y el <code>dblclick</code> no pasan una referencia sino
+  una llamada con valores —<code>@@anota("host", $event, "doble clic")</code>—, y la nota
+  sale en el registro.
 </p>
 
 <div class="panel">

@@ -16,11 +16,13 @@
     const lineas = signal<readonly Linea[]>([]);
     let siguiente = 0;
 
-    function anota(oido: string, ev: Event): void {
+    // `nota` es opcional y solo la pasan las llamadas con valores: `@anota("host", $event, "…")`.
+    function anota(oido: string, ev: Event, nota = ""): void {
       const origen = ev.composedPath()[0];
       const nodo = origen instanceof Element ? origen.localName : "?";
       const tecla = ev instanceof KeyboardEvent ? ` "${ev.key}"` : "";
-      const texto = `${oido} · ${ev.type}${tecla} ← ${nodo}`;
+      const extra = nota === "" ? "" : ` (${nota})`;
+      const texto = `${oido} · ${ev.type}${tecla} ← ${nodo}${extra}`;
       lineas.set([{ id: siguiente++, texto }, ...lineas()].slice(0, 14));
     }
 
@@ -80,9 +82,12 @@
   </style>
 </head>
 
+@* Dos formas de colgar un handler, y valen igual en los dos sitios: una referencia
+   (`@enHost`), que recibe el evento, o una llamada con los valores que quieras
+   (`@anota("host", $event, …)`), donde `$event` es el evento. *@
 <app-eventos
-  @click=@enHost
-  @dblclick=@enHost
+  @click=@anota("host  ", $event, "llamada con valores")
+  @dblclick=@anota("host  ", $event, "doble clic")
   @keydown=@enHost
   @input=@enHost
   @change=@enHost
@@ -90,7 +95,7 @@
   @aviso-dentro=@enHost
   @aviso-fuera=@enHost>
   <template shadowrootmode="open"
-    @click=@enShadow
+    @click=@anota("shadow", $event, "llamada con valores")
     @keydown=@enShadow
     @input=@enShadow
     @change=@enShadow
