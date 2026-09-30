@@ -378,8 +378,8 @@ span de la cadena que pertenece al fichero que se está emitiendo, y el mismo si
 | `FUD0701` | `error` | Una prop de layout recibe un valor reactivo (`signal` / `computed`). Un layout no tiene mitad de cliente que pueda repintarlo. |
 | `FUD0702` | `error` | La ruta no resuelve una prop **requerida** del layout — porque falta en el `return` de `layout(ctx, data)`, o porque la ruta no exporta esa función. Sobre el `<link rel="layout">`. Es el que ancla la bombilla. |
 | `FUD0703` | — | **RETIRADO por [BUG-38](./bugs/BUG-38-un-layout-dentro-de-otro.md).** Existía porque las props de layout de un render eran **un** espacio de nombres compartido por los eslabones de una cadena, así que dos podían pedirle a la ruta un nombre que tenía que ser de dos tipos. Un layout no tiene con quién discrepar. El código no se reutiliza. |
-| `FUD0704` | `error` | Una prop de layout se lee en el `<body>`, atributos del propio `<body>` incluidos. Sobre el nombre. Lo añade [BUG-44](./bugs/BUG-44-las-props-del-layout-a-ciegas.md). |
-| `FUD0705` | `error` | El `<body>` de un layout escribe algo que no es marcado, `@RenderBody()` ni `@RenderSection()`: control de flujo, una expresión que no lee ninguna prop, un `@{ }`, un snippet. Sobre su `@palabra`, o sobre la expresión entera. Lo añade [BUG-44](./bugs/BUG-44-las-props-del-layout-a-ciegas.md). |
+| `FUD0704` | — | **RETIRADO por [SDD-48](./SDD-48-componentes-en-layout.md) §4.1.** Decía que una prop de layout no se lee en el `<body>`. Leerla ahí es justo para lo que sirve envolver la ruta en un componente que la reciba (decisión 133). El código no se reutiliza. |
+| `FUD0705` | `error` | *Estrechado por [SDD-48](./SDD-48-componentes-en-layout.md) §4.1:* un `@{ }` en el `<body>` de un layout, a cualquier profundidad. Componentes, snippets, expresiones y constructos ya caben. Lo añadió [BUG-44](./bugs/BUG-44-las-props-del-layout-a-ciegas.md). |
 | `FUD0706` | `error` | Un `@` dentro de un `<style>` del layout, en el head o en el body: el CSS de un layout es el del shell. Sobre cada `@`. Lo añade [BUG-44](./bugs/BUG-44-las-props-del-layout-a-ciegas.md). |
 | `0707`–`0719` | | Reservados. |
 

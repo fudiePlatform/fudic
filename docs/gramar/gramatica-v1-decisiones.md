@@ -1109,6 +1109,11 @@ afina en la pasada de estructura (SDD-10).
 doctype (page-shaped) que contiene **exactamente un** `@RenderBody()`. Un documento con doctype sin
 `@RenderBody()` sigue siendo una página autónoma. `_layout.fud` es convención de estilo, no regla.
 
+> **Enmendada por [SDD-48](../sdd/SDD-48-componentes-en-layout.md) §4.4.** Un documento con doctype
+> es layout si tiene **cualquier** hueco —`@RenderBody()`, `@RenderHead()` o `@RenderSection()`—, y
+> sin ninguno es página. Un layout sin `@RenderBody()` es `FUD0423` en su propio fichero: borrar el
+> `@RenderBody()` para reescribirlo ya no convierte el fichero en página a mitad de edición.
+
 **83.** **Orden top-level de una ruta:** `<link rel="layout">` (uno, el primero) →
 `<link rel="component">`* → `@code`? → `<head>`-fragment? → markup. El markup de una ruta admite
 **múltiples raíces** y **no** lleva envoltorio host (contraste deliberado con la decisión 75, que
@@ -1128,6 +1133,11 @@ válida (decisión 3) y emitiría el texto literal. `@RenderSection` toma un **i
 constant folding (contraste deliberado con la regla permisiva del bus, 28.c: aquí el nombre es
 estructura del documento, no dato). Una sección que el layout renderiza y la ruta no declara **no
 es error**: no emite nada (el `required: false` de Razor por defecto).
+
+> **Enmendada por la 134 ([SDD-48](../sdd/SDD-48-componentes-en-layout.md)).** `@RenderBody` toma
+> un argumento con nombre, `slot: "x"`, y `@RenderSection` dos tras su identificador,
+> `required: true|false` y `slot: "x"`. `@RenderHead()` sigue sin argumentos. Con
+> `required: true` una sección no declarada **sí** es error (`FUD0440`).
 
 **86.** **Cardinalidad.** Por layout: **exactamente un** `@RenderBody()`, **a lo sumo un**
 `@RenderHead()` (y dentro de su `<head>`), y `@RenderSection` con **nombre único**. Por ruta:
@@ -1177,6 +1187,29 @@ Lo que se prohíbe es **exportar** `load`: un `load` nombrado en un comentario o
 **90.** **`@section` es exclusivo del par ruta↔layout.** No existe en componentes: ahí la
 proyección de contenido es `<slot>`, el mecanismo estándar de DSD, y dos mecanismos compitiendo
 sería un error de diseño. Su cuerpo es un `html_block` y no es anidable.
+
+**133.** **El `<body>` de un layout es marcado como cualquier otro**
+([SDD-48](../sdd/SDD-48-componentes-en-layout.md) §4.1). Admite componentes, `@render`,
+expresiones, `@if`, `@switch` y bucles, y lee las props del layout en cualquier sitio: envolver la
+ruta en un componente que reciba lo que cambia es justo para lo que sirve un layout. Solo queda
+fuera `@{ }` (`FUD0705`): un layout declara sus props y ninguna lógica propia. Un hueco no vive
+dentro de un constructo (`FUD0443`): la ruta saldría cero o varias veces. Revoca la regla del body
+de BUG-44 (`FUD0704` retirado).
+
+**134.** **Un hueco nombra el slot del componente que lo rodea, y puede ser obligatorio**
+([SDD-48](../sdd/SDD-48-componentes-en-layout.md) §3.1). `@RenderBody(slot: "x")` y
+`@RenderSection(nombre, required: true, slot: "x")`: argumentos con nombre, cada uno a lo sumo una
+vez, en cualquier orden. Con `slot`, cada raíz que la ruta escribe en ese hueco sale con
+`slot="x"`, así que la ruta escribe hermanos sueltos sin un `<div slot>` que los envuelva y sin
+saber qué slots tiene el componente. Es la razón por la que se adoptó `@section` de Razor. Con
+`required: true`, una ruta que no la declare es error (`FUD0440`), con bombilla. Enmienda la 85.
+
+**135.** **Los argumentos de `@render` se escriben como una prop**
+([SDD-48](../sdd/SDD-48-componentes-en-layout.md) §4.7). Un literal —string, número, `true`,
+`false`, `null`— va tal cual; lo que lee el scope va con `@`: `@nombre`, `@a.b`, o `@( … )` para
+una expresión. Es la regla de `.tone="info"` frente a `.tone=@tono`, por uniformidad. Una
+referencia sin `@` es `FUD0444`, con bombilla. Revoca la decisión 13 de SDD-29 («sin `@` en la
+cabecera de un `@render`», `FUD0833` retirado).
 
 ### Gramática de referencia
 
@@ -1468,3 +1501,6 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 130 | Interpolación | `error="@nodo"` marca el elemento que dice el error de un nodo, donde el autor quiera; el compilador añade `id`, `aria-describedby` y, en un resumen de `<form>`, `aria-live`. Sin marcador no se emite nada. Mismo bloque que su control (`FUD0596`–`FUD0599`, BUG-41). **Enmendada por la 131** |
 | 131 | Interpolación | `summary="@nodo"` marca el **resumen** de un form o de un grupo, y `error=` queda para un **control** (`FUD0600`/`FUD0601`). El resumen es una **lista** (`<ul>`), que el servidor y el cliente escriben igual (`FUD0602` donde no cabe); `fields` (booleano, solo junto a `summary=`) añade, tras un envío, el error de cada campo enlazado a él. Un `error=` puede describir desde fuera el control de un control-componente. Enmienda la 113 y la 130 (BUG-42) |
 | 132 | Interpolación | **El puente de un componente lo escribe su autor**: `shadowrootreferencetarget` es HTML estándar y va en el `<template>` raíz, a mano, en **cualquier** componente; el compilador **no** elige campo. Sale igual en SSR sin JavaScript que en una instancia creada en el cliente. Con él, el servidor lo escribe al abrir la raíz, el cliente pasa `referenceTarget` a `attachShadow`, y `FudicControlElement` hace de respaldo sobre ese mismo elemento (traslada lo escrito en el host, y los labels donde no hay puente). Tiene que ser estático y nombrar un id de la plantilla (`FUD0605`). `formassociated` se mantiene: es la aportación de fudic, que quiere proponerla como estándar. Enmienda la 111 (BUG-42). *Primera redacción, corregida por Pedro el 2026-09-27: el compilador derivaba el puente del elemento con `control=` (`FUD0603`, `FUD0604`, retirados). Era invasivo, y el día que el respaldo sobre, obligaría a reescribir los envoltorios.* |
+| 133 | Layout | El `<body>` de un layout es marcado: componentes, `@render`, expresiones, constructos y props del layout; solo `@{ }` queda fuera (`FUD0705`) y un hueco no vive dentro de un constructo (`FUD0443`). Revoca la regla del body de BUG-44 (`FUD0704` retirado) (SDD-48) |
+| 134 | Layout | `@RenderBody(slot: "x")`, `@RenderSection(n, required: true, slot: "x")`: la ruta escribe hermanos y cada raíz sale con su `slot=`; una sección `required` sin declarar es `FUD0440`. Enmienda la 85 (SDD-48) |
+| 135 | Snippets | Los argumentos de `@render` como una prop: literal tal cual, lo que lee el scope con `@` / `@( … )` (`FUD0444`, `FUD0445`). Revoca la 13 de SDD-29 (`FUD0833` retirado) (SDD-48) |

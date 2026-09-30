@@ -459,7 +459,7 @@ en el build y en el editor, sobre el árbol sin expandir. Una regla, un mensaje,
 | `FUD0830` | `error` | Un argumento nominal que no corresponde a ningún parámetro de la firma. |
 | `FUD0831` | `error` | Un parámetro recibido dos veces, por posición y por nombre. Span en el nominal, relacionado en el posicional. |
 | `FUD0832` | `error` | Un argumento posicional después de uno nominal. |
-| `FUD0833` | `error` | Un `@` dentro de la cabecera de un `@render`: la transición a modo JS ya la hizo el `@render`. |
+| `FUD0833` | — | **RETIRADO por [SDD-48](./SDD-48-componentes-en-layout.md) §4.7.** Decía que no cabía un `@` en la cabecera de un `@render`. Pedro fijó lo contrario por uniformidad con las props (decisión 135 de la gramática, que revoca la 13 de esta spec): un argumento que lee el scope se escribe `@nombre`, `@a.b` o `@( … )`, y un literal va tal cual. Sin `@` es `FUD0444`; una `@` seguida de algo que no es un camino, `FUD0445`. El código no se reutiliza. |
 | `FUD0834` | `error` | Dos snippets con el mismo nombre en el ámbito global. Span en el segundo, relacionado en el primero; se cura con `as`. |
 | `FUD0835` | `error` | Recursión, directa o indirecta, con el ciclo entero en el mensaje. |
 | `FUD0836` | `error` | Un `<link rel="snippet">` cuyo `href` no resuelve, o resuelve a un fichero que no declara ningún `@snippet`. |
