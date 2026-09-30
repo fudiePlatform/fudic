@@ -31,6 +31,7 @@ import {
   type ForeachNode,
   type HtmlContent,
   type IfNode,
+  type KeyedNode,
   type RenderCallNode,
   type RenderDirectiveNode,
   type RenderSectionNode,
@@ -138,6 +139,17 @@ class TokenCollector {
     this.marked('fudDirective', keywordSpanAt(this.#source, at));
   }
 
+  /**
+   * A control construct's `@keyword`, and the `key` of its clause in the same colour: the two
+   * are one directive's words. Left alone, `key` fell to the header's TypeScript and read as a
+   * stray identifier beside a coloured `@foreach`.
+   */
+  control(at: number, node: KeyedNode): void {
+    this.directiveAt(at);
+    const clause = node.key?.span;
+    if (clause !== undefined) this.push('fudDirective', span(clause.start, clause.start + 'key'.length));
+  }
+
   element(element: ElementNode): void {
     if (this.#isComponent(element.name)) {
       // `<app-badge>` and `</app-badge>`: the name only, never the angle brackets.
@@ -179,7 +191,7 @@ class TokenCollector {
         return;
       case 'if': {
         const branches = node as unknown as IfNode;
-        this.directiveAt(node.span.start);
+        this.control(node.span.start, node as unknown as KeyedNode);
         for (const branch of branches.branches) this.walk(branch.body);
         if (branches.elseBody) this.walk(branches.elseBody);
         return;
@@ -187,12 +199,12 @@ class TokenCollector {
       case 'foreach':
       case 'for':
       case 'while': {
-        this.directiveAt(node.span.start);
+        this.control(node.span.start, node as unknown as KeyedNode);
         this.walk((node as unknown as ForeachNode | ForNode | WhileNode).body);
         return;
       }
       case 'switch': {
-        this.directiveAt(node.span.start);
+        this.control(node.span.start, node as unknown as KeyedNode);
         for (const branch of (node as unknown as SwitchNode).cases) this.walk(branch.body);
         return;
       }

@@ -355,6 +355,36 @@ describe('snippets inside markup (SDD-48)', () => {
     expect(has(findExact(tokens, 'pie'), 'entity.name.function')).toBe(true);
   });
 
+  it('closes a `@render` whose arguments are written with `@` (decision 135), and colours what follows', async () => {
+    // TypeScript's grammar reads `@seccion` as a decorator and swallows the rest of the file:
+    // every closing tag after the call lost its colour.
+    const source =
+      '<body>\n  <app-marco>\n    @render pie(@seccion, tono: @(a ? "x" : "y"), @f(g(1)).h)\n    <app-counter></app-counter>\n  </app-marco>\n</body>\n';
+    const tokens = await tokenize(source);
+
+    expect(has(findExact(tokens, 'seccion'), 'variable.other.fudic')).toBe(true);
+    const tags = tokens.filter((t) => t.text === 'app-counter' || t.text === 'app-marco' || t.text === 'body');
+    expect(tags).toHaveLength(6);
+    for (const tag of tags) expect(has(tag, 'entity.name.tag'), tag.text).toBe(true);
+  });
+
+  it('colours the holes and the `key` of a clause as the directives they are', async () => {
+    const source =
+      '<body>\n  @foreach (const miga of migas) key (miga) {\n    <span>@miga</span>\n  }\n' +
+      '  @RenderSection(cabecera, required: true, slot: "cabecera")\n  @RenderBody(slot: "contenido")\n</body>\n';
+    const tokens = await tokenize(source);
+
+    for (const word of ['foreach', 'key', 'RenderSection', 'RenderBody']) {
+      expect(has(findExact(tokens, word), 'keyword.control.directive'), word).toBe(true);
+    }
+    // The header's own JavaScript is still TypeScript's, and a `key` inside it is not the clause.
+    expect(has(findExact(tokens, 'cabecera'), 'entity.name.section')).toBe(true);
+    expect(has(findExact(tokens, 'true'), 'constant.language')).toBe(true);
+    expect(has(findExact(tokens, '"contenido"'), 'string')).toBe(true);
+    const plain = await tokenize('@foreach (const key of keys) key (key) {\n}\n');
+    expect(plain.filter((t) => t.text === 'key' && has(t, 'keyword.control.directive'))).toHaveLength(1);
+  });
+
   it('colours a `@snippet` declared after an HTML comment', async () => {
     const source = '<!-- a note -->\n\n@snippet pie(seccion: string) {\n  <p slot="pie">@seccion</p>\n}\n';
     const tokens = await tokenize(source);

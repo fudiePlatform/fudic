@@ -97,6 +97,17 @@ describe('semanticTokens', () => {
     expect(of('fudDirective')).toContain('{');
   });
 
+  it('marks the `key` of a clause as the directive it belongs to, and nothing else of it', () => {
+    const tokens = tokensOf(
+      '/p/blog/key.fud',
+      '<link rel="layout" href="../layouts/_layout.fud">\n' +
+        '@foreach (const x of xs) key (x) { <i>@x</i> }\n@while (go()) key (n) { <b>w</b> }\n',
+    );
+    const directives = tokens.filter(([type]) => type === 'fudDirective').map(([, text]) => text);
+
+    expect(directives).toEqual(['foreach', 'key', 'while', 'key']);
+  });
+
   it('marks interpolations, escaped and raw alike', () => {
     expect(of('fudInterpolation')).toContain('tone');
     expect(of('fudInterpolation').some((text) => text.startsWith('raw('))).toBe(true);

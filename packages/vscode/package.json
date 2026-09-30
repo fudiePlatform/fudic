@@ -137,6 +137,11 @@
         "id": "fudAt",
         "superType": "keyword",
         "description": "The @ that opens a transition to fudic: a directive, an interpolation or a binding."
+      },
+      {
+        "id": "fudDirective",
+        "superType": "keyword",
+        "description": "A fudic directive keyword — @foreach, @render, @RenderBody, the key of a clause — painted as one family."
       }
     ],
     "semanticTokenScopes": [
@@ -147,6 +152,10 @@
             "punctuation.definition.keyword.fudic",
             "keyword.control.fudic",
             "keyword"
+          ],
+          "fudDirective": [
+            "keyword.control.directive.fudic",
+            "keyword.control"
           ]
         }
       }
