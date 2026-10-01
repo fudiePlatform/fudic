@@ -13,6 +13,8 @@ export default defineConfig({
         lines: 80,
         functions: 80,
         branches: 75,
+        // New code is born at 100 (CLAUDE.md): how `--in` links across packages (SDD-35).
+        'src/workspace/link.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
       },
     },
   },

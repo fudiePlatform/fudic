@@ -204,6 +204,7 @@ export * from './codes/FUD0782.js';
 export * from './codes/FUD0783.js';
 export * from './codes/FUD0784.js';
 export * from './codes/FUD0785.js';
+export * from './codes/FUD0787.js';
 export * from './codes/FUD0800.js';
 export * from './codes/FUD0801.js';
 export * from './codes/FUD0802.js';
