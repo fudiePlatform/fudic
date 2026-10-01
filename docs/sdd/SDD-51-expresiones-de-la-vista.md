@@ -1,6 +1,6 @@
 # SDD-51 — Lo que se puede escribir en la vista
 
-> **Estado:** `Listo`
+> **Estado:** `Listo` — [tareas](./SDD-51-Task.md), 0 / 16.
 > **Paquetes:** `@fudic/compiler` (analizadores semánticos, emit de `setUrl`) ·
 > `@fudic/diagnostics` (los códigos) · `@fudic/dom` (`setUrl` en el contrato `Dom<N>` y en `browserDom`) · `@fudic/ssr` (`setUrl` en sus adaptadores) ·
 > `@fudic/language-core` (la proyección deja de ofrecer `on*`)
@@ -229,8 +229,11 @@ emitido: es una forma más de escribir un atributo, y por eso vive en el contrat
    `mailto:`, `tel:`; `data:image/…` solo en `src` de `<img>`. Cualquier otro se sustituye por
    un valor inerte y en desarrollo se avisa por consola.
 
-`TrustedURL` es un tipo marcador que se salta el guardia, para un esquema propio. Las entidades
-HTML no necesitan tratamiento: `escapeAttr` codifica el `&` en el servidor y `setAttribute` no
+**La excepción, para un esquema propio, es una marca en el valor, no en el tipo.** El
+compilador no tiene información de tipos, así que un tipo `TrustedURL` no lo podría ver nadie
+en el emit. `trustedUrl(s)`, exportado de `@fudic/dom`, devuelve un `TrustedURL`: un valor
+marcado que el guardia reconoce en runtime y escribe tal cual. El autor lo llama en `@code`,
+donde se ve en una revisión. Las entidades HTML no necesitan tratamiento: `escapeAttr` codifica el `&` en el servidor y `setAttribute` no
 decodifica en el cliente.
 
 Sin diagnóstico: el guardia no es un error del autor.
@@ -415,7 +418,9 @@ An `@{ }` block holds declarations, assignments, calls, conditionals and loops; 
     `  javascript:x`, `java\tscript:x` y `vbscript:x`, el HTML del servidor y el atributo del
     cliente quedan inertes, y **coinciden**. `https://a.b`, `mailto:a@b`, `/x` y `x/y` pasan
     intactos. `data:image/png;base64,…` pasa en `<img src>` y no en `<a href>`.
-17. **`TrustedURL`.** Un valor de ese tipo con `miapp:abrir` pasa sin guardia.
+17. **`trustedUrl`.** `href="@abrir"` con `const abrir = trustedUrl('miapp:abrir')` en `@code`
+    se escribe como `miapp:abrir`, igual en servidor y cliente; la misma cadena sin marcar
+    queda inerte.
 18. **Catálogo.** Los diez códigos tienen `.ts`, `.md` de la forma de SDD-50 y línea en
     `index.ts`; los tests de `@fudic/diagnostics` pasan.
 19. **Editor.** Los diez se ven en el editor con el mismo span que en el build (el canal de
