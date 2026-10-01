@@ -15,7 +15,7 @@ export type {
   StatementAtRule,
 } from './rules.js';
 export { parseCssRules } from './rules.js';
-export type { CssImport, CssRead, FlatRegion, FileDiagnostic, FlatSheet } from './flatten.js';
+export type { CssImport, CssRead, FlatRegion, FileDiagnostic, FlatSheet, ImportSite } from './flatten.js';
 export { parseImport, flattenImports, originOf, plainSheet } from './flatten.js';
 export type {
   AttributeOperator,

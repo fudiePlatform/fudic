@@ -225,15 +225,18 @@ describe('vite build — the copies are not precached (criterion 37, corrected)'
 describe('vite build — what nobody uses, and what a sheet says about itself (criterion 39)', () => {
   const unused = (): string[] => built.warnings.filter((w) => w.includes('FUD0852'));
 
-  it('FUD0852 on a linked sheet that no page keeps a rule of', () => {
-    // Named by its absolute path, as the platform writes it: the file the author deletes.
-    const dead = join(built.root, 'src', 'styles', 'dead.css');
-    expect(unused().filter((w) => w.includes(dead))).toHaveLength(1);
+  it('FUD0852 on a linked sheet that no page keeps a rule of, at its `<link>`', () => {
+    // At the line to remove, clickable; the sheet named from the project, not the disk.
+    const [dead] = unused().filter((w) => w.includes('src/styles/dead.css adds no rule'));
+    expect(dead).toMatch(/^src\/layouts\/_layout\.fud:6:5 - warning FUD0852: /u);
+    expect(dead).toContain('<link rel="stylesheet" href="../styles/dead.css">');
+    expect(dead).not.toContain(built.root);
   });
 
-  it('FUD0852 on a file a sheet imports that no page keeps a rule of', () => {
-    const inputs = join(built.root, 'src', 'styles', 'inputs.css');
-    expect(unused().filter((w) => w.includes(inputs))).toHaveLength(1);
+  it('FUD0852 on a file a sheet imports that no page keeps a rule of, at its `@import`', () => {
+    const [inputs] = unused().filter((w) => w.includes('src/styles/inputs.css adds no rule'));
+    expect(inputs).toMatch(/^src\/styles\/main\.css:2:1 - warning FUD0852: /u);
+    expect(inputs).toContain('@import "./inputs.css";');
   });
 
   it('FUD0852 on the fudic.json entry of a project sheet nothing matches', () => {

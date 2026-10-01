@@ -14,7 +14,7 @@ export {
   type AssetSheet,
 } from './assets.js';
 export { sheetKey } from './parts.js';
-export type { SheetUse } from './page-sheets.js';
+export type { SheetSite, SheetUse } from './page-sheets.js';
 export { inlineRuntimeMarker, RUNTIME_MARKER, INLINE_QUERY, asksInline } from './parts.js';
 export {
   resolveComponents,

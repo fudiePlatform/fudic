@@ -11,7 +11,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve as resolvePath } from 'node:path';
+import { dirname, join, relative, resolve as resolvePath } from 'node:path';
 import { type Plugin, transformWithOxc } from 'vite';
 import {
   applyNonce,
@@ -81,6 +81,7 @@ import { readSwConfig, type ResolvedSwConfig } from './swconfig.js';
 import { nodeConfigIo, readProject, type ProjectResult } from './config.js';
 import { ProjectStyleChains } from './styles.js';
 import { nodePackageFs } from '@fudic/resolve';
+import { CONFIG_FILE } from '@fudic/config';
 import { LinkedAssets } from './linked-assets.js';
 import { runLinkPass, safeName, type LinkResult } from './link.js';
 import { runEdgePass } from './edge.js';
@@ -1695,8 +1696,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           else this.warn(text);
         }
       }
-      for (const sheet of linked.unusedSheets()) {
-        const unused = FUD0852({ file: sheet });
+      // At the line that brings the sheet in, which is the one to remove; a `fudic.json`
+      // entry has no line of its own here, and points at the file.
+      for (const { name, site } of linked.unusedSheets()) {
+        const unused =
+          site === undefined
+            ? FUD0852({ file: join(root, CONFIG_FILE), sheet: name })
+            : FUD0852({ file: site.file, span: site.span, sheet: relative(root, name).replace(/\\/gu, '/') });
         this.warn(reportText(unused, root));
       }
       if (sheetErrors.length > 0) this.error(sheetErrors.join('\n'));

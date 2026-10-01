@@ -296,12 +296,15 @@ function recordSheets(id: string, out: EmitOutput, assets: LinkedAssets): readon
     // an input of this page, and each one can be dead CSS on its own (SDD-49 §4.11).
     const root = fileOf(use.spec);
     const contributing = new Set(use.contributing);
-    for (const spec of use.files) {
+    for (const [i, spec] of use.files.entries()) {
       const file = fileOf(spec);
       watched.push(file);
       const diagnostics = use.diagnostics.filter((d) => d.file === spec).map((d) => d.diagnostic);
       const used = file === root ? use.css !== '' : contributing.has(spec);
-      assets.recordSheet(file, used, diagnostics);
+      // `sites` runs parallel to `files`; `at` is a `.fud` path or a spec, and `resolve`
+      // leaves the former as it is.
+      const site = use.sites[i]!;
+      assets.recordSheet(file, used, diagnostics, { file: fileOf(site.at), span: site.span });
     }
   }
   return watched;

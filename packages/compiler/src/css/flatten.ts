@@ -66,12 +66,25 @@ export interface FileDiagnostic {
   readonly diagnostic: Diagnostic;
 }
 
+/** Where a file entered the sheet: the `@import` that first named it, in the file that wrote it. */
+export interface ImportSite {
+  /** The importing file's specifier, relative to the `.fud`. */
+  readonly file: string;
+  /** Over the whole `@import` rule, in the importing file's text. */
+  readonly span: Span;
+}
+
 export interface FlatSheet {
   readonly css: string;
   readonly regions: readonly FlatRegion[];
   /** Every file read, the root first: what the host watches (§4.10). */
   readonly files: readonly string[];
   readonly diagnostics: readonly FileDiagnostic[];
+  /**
+   * Every file but the root, by the `@import` that first brought it in: where an author goes
+   * to remove one nobody uses (`FUD0852`). Absent for a `plainSheet`, which reads no imports.
+   */
+  readonly importedAt?: ReadonlyMap<string, ImportSite>;
 }
 
 // ---------------------------------------------------------------------------
@@ -239,6 +252,7 @@ class Flattener {
   readonly #read: CssRead;
   readonly #parsed = new Map<string, ParsedFile | null>();
   readonly #files: string[] = [];
+  readonly #importedAt = new Map<string, ImportSite>();
   readonly #diagnostics: FileDiagnostic[] = [];
   /** The last appearance of each key, in document order: any earlier one is skipped. */
   readonly #last = new Map<string, Occurrence>();
@@ -318,6 +332,7 @@ class Flattener {
         this.#report(file.spec, FUD0853({ span: rule.span, url: imp.url }));
         continue;
       }
+      if (!this.#importedAt.has(spec)) this.#importedAt.set(spec, { file: file.spec, span: rule.span });
       const childKey = `${spec}|${imp.layer ?? '-'}|${imp.supports ?? '-'}|${imp.media ?? '-'}`;
       occurrence.children.set(rule, this.tree(child, childKey, [...stack, file.spec]));
     }
@@ -436,6 +451,7 @@ class Flattener {
       regions: this.#regions,
       files: this.#files,
       diagnostics: this.#diagnostics,
+      importedAt: this.#importedAt,
     };
   }
 }

@@ -345,12 +345,18 @@ describe('LinkedAssets — the sheets no page uses (FUD0852) and what they say (
 
   it('a sheet no page keeps a rule of is unused; one any page uses is not', () => {
     const assets = new LinkedAssets('/');
-    assets.recordSheet('/s/dead.css', false);
+    const link = { file: '/s/page.fud', span: { start: 3, end: 9 } };
+    assets.recordSheet('/s/dead.css', false, [], link);
+    assets.recordSheet('/s/dead.css', false, [], { file: '/s/other.fud', span: { start: 0, end: 1 } });
     assets.recordSheet('/s/main.css', false);
     assets.recordSheet('/s/main.css', true);
     assets.recordSheet('/s/main.css', false);
     assets.recordSheet('fudic.json "panel"', false);
-    expect(assets.unusedSheets()).toEqual(['/s/dead.css', 'fudic.json "panel"']);
+    // Where it came in is the first page's answer, like what it says about itself.
+    expect(assets.unusedSheets()).toEqual([
+      { name: '/s/dead.css', site: link },
+      { name: 'fudic.json "panel"' },
+    ]);
   });
 
   it('keeps what a sheet says from the first page that read it: once per file, not per page', () => {

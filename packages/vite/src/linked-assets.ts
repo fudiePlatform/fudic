@@ -28,6 +28,7 @@ import {
   type AssetSheet,
   type AssetUrl,
   type Diagnostic,
+  type Span,
 } from '@fudic/compiler';
 
 /**
@@ -80,6 +81,19 @@ const baseNameOf = (path: string): string => {
   return ext === '' ? name : name.slice(0, -ext.length);
 };
 
+/** Where a sheet is brought in: the `<link>` or `@import` an author removes, in its file. */
+export interface SheetPlace {
+  /** Absolute. */
+  readonly file: string;
+  readonly span: Span;
+}
+
+/** A sheet no page kept a rule of: its name, and where it came in when that is a line. */
+export interface UnusedSheet {
+  readonly name: string;
+  readonly site?: SheetPlace;
+}
+
 /** Forward slashes, always: these strings end up in ids, in URLs and in comparisons. */
 const slashes = (path: string): string => path.replace(/\\/gu, '/');
 
@@ -106,7 +120,10 @@ export class LinkedAssets {
    * (SDD-49 §4.11). With the file's own diagnostics, reported once whatever number of pages
    * read it.
    */
-  readonly #sheets = new Map<string, { used: boolean; diagnostics: readonly Diagnostic[] }>();
+  readonly #sheets = new Map<
+    string,
+    { used: boolean; diagnostics: readonly Diagnostic[]; site: SheetPlace | undefined }
+  >();
 
   constructor(base: string, publicDir = '', sheetDir = 'assets') {
     this.#base = base.endsWith('/') ? base : `${base}/`;
@@ -138,20 +155,23 @@ export class LinkedAssets {
   /**
    * One page's use of one sheet or imported file: `name` is its file or its `fudic.json`
    * entry, `used` whether this page kept a rule of it, `diagnostics` what it says about itself
-   * — kept from the first page that read it, since they are about the file.
+   * and `site` where it is brought in — both kept from the first page that read it, since
+   * they are about the file.
    */
-  recordSheet(name: string, used: boolean, diagnostics: readonly Diagnostic[] = []): void {
+  recordSheet(name: string, used: boolean, diagnostics: readonly Diagnostic[] = [], site?: SheetPlace): void {
     const seen = this.#sheets.get(name);
     if (seen !== undefined) {
       seen.used ||= used;
       return;
     }
-    this.#sheets.set(name, { used, diagnostics });
+    this.#sheets.set(name, { used, diagnostics, site });
   }
 
-  /** The sheets and imported files no page kept a rule of (`FUD0852`). */
-  unusedSheets(): readonly string[] {
-    return [...this.#sheets].flatMap(([name, s]) => (s.used ? [] : [name]));
+  /** The sheets and imported files no page kept a rule of (`FUD0852`), with where each came in. */
+  unusedSheets(): readonly UnusedSheet[] {
+    return [...this.#sheets].flatMap(([name, s]) =>
+      s.used ? [] : [s.site === undefined ? { name } : { name, site: s.site }],
+    );
   }
 
   /** What each file says about itself: `FUD0850`, `FUD0851`, `FUD0853`, `FUD0856`–`FUD0858`. */
