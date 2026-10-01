@@ -1,0 +1,64 @@
+/* Bloques de la página: contenedor, avisos, pie. */
+
+main {
+  display: block;
+  max-width: 60rem;
+  margin: 0 auto;
+}
+
+section + section {
+  margin-top: var(--space-12);
+}
+
+article {
+  margin: 0 0 var(--space-11);
+}
+
+aside {
+  padding: var(--pad-box);
+  border-left: 3px solid var(--brand);
+  background: var(--color-callout-bg);
+}
+
+details {
+  margin: 0 0 var(--space-8);
+  padding: var(--space-4) var(--space-6);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+details[open] > summary {
+  margin-bottom: var(--space-4);
+}
+
+details[open] > :not(summary) {
+  animation: reveal 180ms ease-out;
+}
+
+summary {
+  font-weight: 600;
+  cursor: pointer;
+}
+
+figure {
+  margin: 0 0 var(--space-9);
+}
+
+figcaption {
+  margin-top: var(--space-3);
+  font-size: 0.85rem;
+  color: var(--ink-faint);
+}
+
+footer.site {
+  max-width: 60rem;
+  margin: var(--space-13) auto 0;
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--line);
+  font-size: 0.85rem;
+  color: var(--ink-faint);
+}
+
+footer.site p {
+  margin: 0;
+}

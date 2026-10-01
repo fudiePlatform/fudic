@@ -49,7 +49,7 @@ import {
   routeNameLookup,
   routeUsesDi,
 } from './client.js';
-import { INLINE_QUERY, IOC_SUFFIX, RUNTIME_MARKER } from '@fudic/compiler';
+import { INLINE_QUERY, IOC_SUFFIX, LineMap, RUNTIME_MARKER } from '@fudic/compiler';
 import { RUNTIME_CACHE_PREFIX, RUNTIME_DIR, runtimeMarkerUrl } from '@fudic/conventions';
 import { nodeIo, nodeLinkCheckIo, nodeRuntimeFs } from './io.js';
 import { runtimePieces } from './runtime-pieces.js';
@@ -1690,19 +1690,29 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         );
       }
 
-      // 5a'. The sheets, once each and not once per page (SDD-49 §4.9): what a sheet says about
-      //      itself (an `@import` it cannot follow, text it cannot read), and a sheet no page
-      //      of the application keeps a single rule of. Here, after every pass has compiled
-      //      every route, because only then is «no page» a fact.
+      // 5a'. The sheets, once each and not once per page (SDD-49 §4.11): what a sheet or a
+      //      file it imports says about itself (an `@import` it cannot flatten or that breaks,
+      //      text it cannot read), and a sheet or imported file no page of the application
+      //      keeps a single rule of. Here, after every pass has compiled every route, because
+      //      only then is «no page» a fact. The errors last, so every warning is out first.
+      const sheetErrors: string[] = [];
       for (const [sheet, diagnostics] of linked.sheetDiagnostics()) {
-        for (const d of diagnostics) this.warn(`[${d.code}] ${d.message} (${sheet} at ${d.span.start})`);
+        if (diagnostics.length === 0) continue;
+        const lines = new LineMap(existsSync(sheet) ? readFileSync(sheet, 'utf8') : '');
+        for (const d of diagnostics) {
+          const at = lines.positionAt(d.span.start);
+          const text = `[${d.code}] ${sheet}:${at.line + 1}:${at.character + 1}: ${d.message}`;
+          if (d.severity === 'error') sheetErrors.push(text);
+          else this.warn(text);
+        }
       }
       for (const sheet of linked.unusedSheets()) {
         this.warn(
           `[${FUD_SHEET_UNUSED}] ${sheet} adds no rule to any page of the application: ` +
-            'nothing any page renders matches it. It is dead CSS.',
+            'nothing any page renders matches it. It is dead CSS — if a sheet imports it, that @import can go.',
         );
       }
+      if (sheetErrors.length > 0) this.error(sheetErrors.join('\n'));
 
       // 5b. The files the project's `.fud` link, published under the name every pass was
       //     told (BUG-40). It happens HERE, after the link and edge passes have run, because

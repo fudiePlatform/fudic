@@ -450,9 +450,10 @@ cascada que el navegador daría a la original.
 - **Posición.** El navegador solo atiende un `@import` que va antes de cualquier regla que no sea
   `@charset`, `@layer a, b;` u otro `@import`. Uno escrito después lo ignora: se quita y es
   `FUD0857`.
-- **`url()` relativos.** Un `url(…)` relativo de un fichero importado se reescribe para que siga
-  apuntando al mismo recurso desde la hoja raíz. Después de aplanar, todo `url()` relativo es
-  relativo a la raíz (§4.7 decide qué URL lleva al final).
+- **`url()` relativos.** Todo `url(…)` relativo —de la raíz o de un fichero importado— se
+  reescribe relativo al `.fud`, que es el sistema en el que están todos los specifiers del
+  aplanado y el que usa el enlazador. Así sigue apuntando al mismo recurso escrito en cualquier
+  fichero (§4.7 decide qué URL lleva al final).
 - **`@charset`** de un fichero importado se quita: solo cuenta el de la raíz.
 - **Un fichero repetido** con las mismas condiciones se incluye **una vez, en su última
   aparición**, que es la que gana la cascada. Si declara o abre capas (`@layer`), se conservan
@@ -806,8 +807,8 @@ llegado a `main`, así que se amplía en lugar de retirarse y reservar otro.
    `@import` válido es `null`.
 5. `main.css` con tres `@import` relativos sale como una hoja con su contenido en orden, y las
    condiciones se traducen a `@layer`, `@supports` y `@media` anidados en ese orden.
-6. Un `url(../fonts/x.woff2)` de un fichero importado de otra carpeta se reescribe relativo a
-   la raíz. Un `@charset` importado se quita.
+6. Un `url(../fonts/x.woff2)` de un fichero importado de otra carpeta se reescribe relativo al
+   `.fud`. Un `@charset` importado se quita.
 7. Un fichero importado dos veces sale una vez, en su última aparición; si abre una capa, salen
    las dos.
 8. Ciclo → `FUD0856`; fichero que no existe → `FUD0853`; `@import` detrás de una regla →

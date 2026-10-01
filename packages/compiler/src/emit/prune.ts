@@ -1,32 +1,40 @@
 /**
- * The CSS each page uses (SDD-49 §3.4, §4.3–§4.5).
+ * The CSS each page uses (SDD-49 §3.5, §4.4–§4.7).
  *
- * Every sheet a page receives is pruned against the SURFACE of the scope it applies to: a
- * rule stays when some selector of it can match some element there, and goes when none can.
- * The error has one direction — a rule may stay that nothing needs, a rule somebody needs
- * never goes — so every doubt keeps: a selector this module does not understand, a class
- * written from an expression, a value that is not literal.
+ * Every sheet a page receives is pruned twice over.
  *
- * It only REMOVES. What stays is the text the author wrote, in the order they wrote it, and
- * the result goes through `compactProjectCss` like any other sheet of the framework. With a
- * surface that holds everything nothing is removed, and the output is the compacted input
- * byte for byte.
+ * Its RULES against the surface of the scope it applies to: a rule stays when some selector of
+ * it can match some element there, and goes when none can. The error has one direction — a rule
+ * may stay that nothing needs, a rule somebody needs never goes — so every doubt keeps: a
+ * selector this module does not understand, a class written from an expression, a value that is
+ * not literal.
  *
- * The sheets of one page are pruned TOGETHER because two kinds of rule are decided by what
- * the others keep: a `@keyframes` lives while some kept declaration names it, and a
- * `@font-face` while some kept declaration names its family — and a family the document
- * declares serves the shadow roots as well.
+ * Its TOKENS against the whole page. Custom properties are inherited, so they are the one thing
+ * that crosses the shadow boundary: a token of the document's `:root` is read from inside a
+ * component's `<style>`. A token lives while some live text names it — a kept declaration of any
+ * sheet, a component's `<style>`, a `style=` of the markup — and a live token's value is live
+ * text too, so `--btn: var(--blue)` keeps `--blue` alive. `@keyframes` and `@font-face` are
+ * decided in the same fixed point, because a token's value can name them; `@property` lives with
+ * its token.
+ *
+ * It only REMOVES. What stays is the text the author wrote, in the order they wrote it, and the
+ * result goes through `compactProjectCss` like any other sheet of the framework. With a surface
+ * and a use that hold everything nothing is removed, and the output is the compacted input byte
+ * for byte.
  */
 
 import type { Diagnostic, ParseResult, Span } from '../types/index.js';
-import { ok, warningDiag, withDiagnostics } from '../types/index.js';
+import { errorDiag, ok, span } from '../types/index.js';
 import {
+  originOf,
   parseCssRules,
   parseSelectorList,
   type BlockAtRule,
   type ComplexSelector,
   type CompoundSelector,
   type CssRule,
+  type FileDiagnostic,
+  type FlatSheet,
   type StyleRule,
 } from '../css/index.js';
 import { splitSelectorList } from '../css/selectors.js';
@@ -36,29 +44,27 @@ import type { ScopeSurface, StyleScope } from './surface.js';
 
 export { FUD_SHEET_UNREADABLE } from '../css/rules.js';
 
-/** The sheet holds an `@import`: the file it imports arrives whole. */
-export const FUD_SHEET_IMPORT = 'FUD0850';
 /** A sheet that adds no rule to any page of the application (reported by the host). */
 export const FUD_SHEET_UNUSED = 'FUD0852';
+/** `@import` in a `globalStyles` or `styles` sheet: an adopted sheet does not take one. */
+export const FUD_IMPORT_IN_PROJECT_SHEET = 'FUD0854';
+/** `@import` in a component's `<style>`. */
+export const FUD_IMPORT_IN_COMPONENT_STYLE = 'FUD0855';
 
 export interface PageSheet {
   readonly key: string;
-  readonly css: string;
+  /** A project sheet is a `FlatSheet` of one region (`plainSheet`). */
+  readonly sheet: FlatSheet;
   readonly scope: StyleScope;
   readonly surface: ScopeSurface;
-  /**
-   * A sheet that is READ and never pruned nor reported: a component's own `<style>` (§7). What
-   * it keeps still names fonts and animations the page's sheets declare — a family the
-   * document's guide defines is used from inside a shadow root — so it takes part in that
-   * decision, and nothing comes out for it.
-   */
-  readonly reference?: boolean;
 }
 
 export interface PrunedSheet {
   readonly key: string;
   /** Compacted (`compactProjectCss`). `''` when no rule is left. */
   readonly css: string;
+  /** The files of the flattened sheet that keep at least one rule on this page (§4.11). */
+  readonly contributing: readonly string[];
 }
 
 /** The at-rules whose block holds rules, pruned from the inside. */
@@ -141,14 +147,99 @@ function complexMatches(s: ComplexSelector, scope: StyleScope, surface: ScopeSur
 }
 
 // ---------------------------------------------------------------------------
-// One sheet
+// Names
 // ---------------------------------------------------------------------------
 
-/** A change to the source text: `[start, end)` becomes `text`. */
-interface Edit {
-  readonly start: number;
-  readonly end: number;
-  readonly text: string;
+/** Where an identifier appears on its own in `text`, not as part of a longer name. */
+function namesIdentifier(text: string, name: string, flags = 'u'): boolean {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+  return new RegExp(`(^|[^\\w-])${escaped}($|[^\\w-])`, flags).test(text);
+}
+
+/** Every custom property name `text` mentions, outside its comments. */
+function tokensIn(text: string): string[] {
+  const bare = text.replace(/\/\*[\s\S]*?\*\//gu, ' ');
+  return [...bare.matchAll(/(?<![\w-])--[\w\-\u0080-￿]+/gu)].map((m) => m[0]);
+}
+
+/** The name a `@keyframes` prelude declares: an identifier or a string. */
+function keyframesName(prelude: string): string {
+  return prelude.trim().replace(/^(['"])(.*)\1$/su, '$2');
+}
+
+/** The family a `@font-face` declares, or `null` when its body names none. */
+function fontFamily(body: string): string | null {
+  const m = /font-family\s*:\s*([^;]+)/iu.exec(body);
+  if (m === null) return null;
+  return m[1]!.trim().replace(/^(['"])(.*)\1$/su, '$2');
+}
+
+// ---------------------------------------------------------------------------
+// The first pass: rules, and what they say
+// ---------------------------------------------------------------------------
+
+/**
+ * What the whole page says: the live text the fixed point starts from, and the things it can
+ * bring to life — every token's definitions, every animation, every font.
+ */
+class PageText {
+  readonly live: string[] = [];
+  readonly definitions = new Map<string, string[]>();
+  readonly keyframes = new Map<string, string[]>();
+  readonly fonts = new Map<string, string[]>();
+
+  define(name: string, value: string): void {
+    const seen = this.definitions.get(name);
+    if (seen === undefined) this.definitions.set(name, [value]);
+    else seen.push(value);
+  }
+
+  keyframe(name: string, body: string): void {
+    const seen = this.keyframes.get(name);
+    if (seen === undefined) this.keyframes.set(name, [body]);
+    else seen.push(body);
+  }
+
+  font(family: string, body: string): void {
+    const key = family.toLowerCase();
+    const seen = this.fonts.get(key);
+    if (seen === undefined) this.fonts.set(key, [body]);
+    else seen.push(body);
+  }
+
+  /** The fixed point (§4.6): what is alive once nothing more comes to life. */
+  solve(): Alive {
+    const tokens = new Set<string>();
+    const keyframes = new Set<string>();
+    const fonts = new Set<string>();
+    const queue = [...this.live];
+    while (queue.length > 0) {
+      const chunk = queue.pop()!;
+      for (const token of tokensIn(chunk)) {
+        if (tokens.has(token)) continue;
+        tokens.add(token);
+        queue.push(...(this.definitions.get(token) ?? []));
+      }
+      for (const [name, bodies] of this.keyframes) {
+        if (keyframes.has(name) || !namesIdentifier(chunk, name)) continue;
+        keyframes.add(name);
+        queue.push(...bodies);
+      }
+      for (const [family, bodies] of this.fonts) {
+        if (fonts.has(family) || !namesIdentifier(chunk, family, 'iu')) continue;
+        fonts.add(family);
+        queue.push(...bodies);
+      }
+    }
+    return { tokens, keyframes, fonts };
+  }
+}
+
+interface Alive {
+  readonly tokens: ReadonlySet<string>;
+  readonly keyframes: ReadonlySet<string>;
+  /** Lower case. */
+  readonly fonts: ReadonlySet<string>;
 }
 
 /** What the first pass decided about one sheet. */
@@ -162,23 +253,20 @@ interface SheetPlan {
   readonly trimmed: Map<StyleRule, string>;
 }
 
-/**
- * The first pass over one sheet: which style rules stay, and what their kept declarations
- * say — the text `@keyframes` and `@font-face` are decided against.
- */
+/** The first pass over one sheet: which style rules stay, and what the kept ones say. */
 class StylePass {
   readonly #sheet: PageSheet;
-  readonly #referenced: string[];
+  readonly #page: PageText;
   readonly dropped = new Set<StyleRule>();
   readonly trimmed = new Map<StyleRule, string>();
 
-  constructor(sheet: PageSheet, referenced: string[]) {
+  constructor(sheet: PageSheet, page: PageText) {
     this.#sheet = sheet;
-    this.#referenced = referenced;
+    this.#page = page;
   }
 
   #text(sp: Span): string {
-    return this.#sheet.css.slice(sp.start, sp.end);
+    return this.#sheet.sheet.css.slice(sp.start, sp.end);
   }
 
   rules(rules: readonly CssRule[], nested: boolean): void {
@@ -189,12 +277,25 @@ class StylePass {
   }
 
   #block(rule: BlockAtRule, nested: boolean): void {
-    // Inside a style rule a grouping block holds the parent's own declarations, which the
-    // rule tree does not list: all of it counts as said.
-    if (nested) this.#referenced.push(this.#text(rule.body));
-    if (rule.children !== undefined) this.rules(rule.children, nested);
-    else if (!KEYFRAMES.has(rule.name) && rule.name !== 'font-face') {
-      this.#referenced.push(this.#text(rule.body));
+    if (rule.children !== undefined) {
+      // A container query can ask about a token: `@container style(--x: y)`.
+      this.#page.live.push(this.#text(rule.prelude));
+      // Inside a style rule a grouping block holds the parent's own declarations, which the
+      // rule tree does not list: all of it counts as said.
+      if (nested) this.#page.live.push(this.#text(rule.body));
+      this.rules(rule.children, nested);
+      return;
+    }
+    const body = this.#text(rule.body);
+    if (KEYFRAMES.has(rule.name)) {
+      this.#page.keyframe(keyframesName(this.#text(rule.prelude)), body);
+    } else if (rule.name === 'font-face') {
+      const family = fontFamily(body);
+      if (family === null) this.#page.live.push(body);
+      else this.#page.font(family, body);
+    } else if (rule.name !== 'property') {
+      // `@page`, `@counter-style`, an unknown at-rule: kept, so what it says is said.
+      this.#page.live.push(body);
     }
   }
 
@@ -212,46 +313,52 @@ class StylePass {
       }
       if (kept.length < parts.length) this.trimmed.set(rule, kept.map((p) => p.trim()).join(','));
     }
-    for (const decl of rule.declarations) this.#referenced.push(this.#text(decl));
+    for (const decl of rule.declarations) {
+      const value = this.#text(decl.value);
+      if (decl.name.startsWith('--')) this.#page.define(decl.name, value);
+      else this.#page.live.push(value);
+    }
     this.rules(rule.children, true);
   }
 }
 
-/** Where an identifier appears on its own in `text`, not as part of a longer name. */
-function namesIdentifier(text: string, name: string, flags = 'u'): boolean {
-  const escaped = name.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
-  return new RegExp(`(^|[^\\w-])${escaped}($|[^\\w-])`, flags).test(text);
+// ---------------------------------------------------------------------------
+// The second pass: the edits
+// ---------------------------------------------------------------------------
+
+/** A change to the source text: `[start, end)` becomes `text`. */
+interface Edit {
+  readonly start: number;
+  readonly end: number;
+  readonly text: string;
 }
 
-/** The name a `@keyframes` prelude declares: an identifier or a string. */
-function keyframesName(prelude: string): string {
-  return prelude.trim().replace(/^(['"])(.*)\1$/su, '$2');
-}
-
-/** The family a `@font-face` declares, or `null` when its body names none. */
-function fontFamily(body: string): string | null {
-  const m = /font-family\s*:\s*([^;]+)/iu.exec(body);
-  if (m === null) return null;
-  return m[1]!.trim().replace(/^(['"])(.*)\1$/su, '$2');
-}
-
-/** The second pass over one sheet: the edits, and whether any rule is left. */
+/** The second pass over one sheet: the edits, and the files that keep a rule. */
 class RenderPass {
   readonly #plan: SheetPlan;
-  readonly #referenced: string;
+  readonly #alive: Alive;
   readonly edits: Edit[] = [];
+  readonly contributing = new Set<string>();
 
-  constructor(plan: SheetPlan, referenced: string) {
+  constructor(plan: SheetPlan, alive: Alive) {
     this.#plan = plan;
-    this.#referenced = referenced;
+    this.#alive = alive;
+  }
+
+  get #css(): string {
+    return this.#plan.sheet.sheet.css;
   }
 
   #text(sp: Span): string {
-    return this.#plan.sheet.css.slice(sp.start, sp.end);
+    return this.#css.slice(sp.start, sp.end);
   }
 
   #drop(rule: CssRule): void {
     this.edits.push({ start: rule.span.start, end: rule.span.end, text: '' });
+  }
+
+  #contributes(rule: CssRule): void {
+    this.contributing.add(originOf(this.#plan.sheet.sheet, rule.span.start).file);
   }
 
   /**
@@ -272,29 +379,61 @@ class RenderPass {
 
   /** Whether one rule stays. */
   #rule(rule: CssRule, nested: boolean): boolean {
-    if (rule.type === 'at-statement') return true;
-    if (rule.type === 'style-rule') {
-      if (this.#plan.dropped.has(rule)) return false;
-      const prelude = this.#plan.trimmed.get(rule);
-      if (prelude !== undefined) this.edits.push({ ...rule.prelude, text: prelude });
-      this.rules(rule.children, true);
+    if (rule.type === 'at-statement') {
+      // What is left of `@import` in a document sheet cannot be flattened, and stays; in an
+      // adopted sheet it is an error (`FUD0854`), and goes.
+      if (rule.name === 'import' && this.#plan.sheet.scope === 'shadow') return false;
+      if (!INERT.has(rule.name)) this.#contributes(rule);
       return true;
     }
+    if (rule.type === 'style-rule') return this.#style(rule);
     if (rule.children !== undefined && GROUPING.has(rule.name)) {
       const kept = this.rules(rule.children, nested);
       // Inside a style rule it holds the parent's own declarations too, which are not rules:
       // it stays with its parent whatever its nested rules do.
       return nested || kept > 0;
     }
+    const stays = this.#leaf(rule);
+    if (stays) this.#contributes(rule);
+    return stays;
+  }
+
+  #leaf(rule: BlockAtRule): boolean {
     if (KEYFRAMES.has(rule.name)) {
-      return namesIdentifier(this.#referenced, keyframesName(this.#text(rule.prelude)));
+      return this.#alive.keyframes.has(keyframesName(this.#text(rule.prelude)));
     }
     if (rule.name === 'font-face') {
       const family = fontFamily(this.#text(rule.body));
-      return family === null || namesIdentifier(this.#referenced, family, 'iu');
+      return family === null || this.#alive.fonts.has(family.toLowerCase());
     }
-    // `@property`, `@page`, `@counter-style`, `@font-feature-values`, any unknown at-rule.
+    if (rule.name === 'property') return this.#alive.tokens.has(this.#text(rule.prelude).trim());
+    // `@page`, `@counter-style`, `@font-feature-values`, any unknown at-rule.
     return true;
+  }
+
+  #style(rule: StyleRule): boolean {
+    if (this.#plan.dropped.has(rule)) return false;
+    let declarations = 0;
+    for (const decl of rule.declarations) {
+      if (decl.name.startsWith('--') && !this.#alive.tokens.has(decl.name)) {
+        this.edits.push({ start: decl.span.start, end: this.#pastSemicolon(decl.span.end), text: '' });
+      } else {
+        declarations += 1;
+      }
+    }
+    const children = this.rules(rule.children, true);
+    if (declarations === 0 && children === 0) return false;
+    const prelude = this.#plan.trimmed.get(rule);
+    if (prelude !== undefined) this.edits.push({ ...rule.prelude, text: prelude });
+    if (declarations > 0) this.#contributes(rule);
+    return true;
+  }
+
+  /** `at`, or past the `;` that ends the declaration ending at `at`. */
+  #pastSemicolon(at: number): number {
+    let i = at;
+    while (i < this.#css.length && /\s/u.test(this.#css[i]!)) i += 1;
+    return this.#css[i] === ';' ? i + 1 : at;
   }
 }
 
@@ -311,58 +450,78 @@ function applyEdits(css: string, edits: readonly Edit[]): string {
   return out + css.slice(at);
 }
 
-/** Every `@import` of a sheet, which the prune keeps and cannot follow. */
-function imports(rules: readonly CssRule[]): readonly Diagnostic[] {
-  return rules
-    .filter((r) => r.type === 'at-statement' && r.name === 'import')
-    .map((r) =>
-      warningDiag(
-        FUD_SHEET_IMPORT,
-        'this stylesheet @imports another: the imported file is shipped whole, without pruning',
-        r.span,
-      ),
-    );
-}
+// ---------------------------------------------------------------------------
+// The page
+// ---------------------------------------------------------------------------
 
 /**
- * All the sheets of ONE page at once: `@keyframes`, `@font-face` and `@property` are decided
- * looking at what is kept in all of them (§4.4).
+ * All the sheets of ONE page at once: tokens, `@keyframes`, `@font-face` and `@property` are
+ * decided looking at what is kept in all of them and at `consumers` — the CSS of the page that
+ * is never pruned but reads tokens: each component's `<style>`, each `style=` (§4.6).
  */
-export function prunePage(sheets: readonly PageSheet[]): ParseResult<readonly PrunedSheet[]> {
-  const diagnostics: Diagnostic[] = [];
-  const referenced: string[] = [];
+export function prunePage(
+  sheets: readonly PageSheet[],
+  consumers: readonly string[],
+): ParseResult<readonly PrunedSheet[]> {
+  const page = new PageText();
+  page.live.push(...consumers);
   const plans: SheetPlan[] = sheets.map((sheet) => {
-    const parsed = parseCssRules(sheet.css);
-    if (!sheet.reference) diagnostics.push(...sheetDiagnostics(sheet.css, parsed));
+    const parsed = parseCssRules(sheet.sheet.css);
     if (parsed.diagnostics.length > 0) {
-      // Unreadable, so every word of it may be what names a font or an animation.
-      referenced.push(sheet.css);
+      // Unreadable, so every word of it may be what names a token, a font or an animation.
+      page.live.push(sheet.sheet.css);
       return { sheet, rules: null, dropped: new Set(), trimmed: new Map() };
     }
-    const pass = new StylePass(sheet, referenced);
+    const pass = new StylePass(sheet, page);
     pass.rules(parsed.value.rules, false);
     return { sheet, rules: parsed.value.rules, dropped: pass.dropped, trimmed: pass.trimmed };
   });
-  const said = referenced.join('\n');
-  const out = plans.flatMap((plan): PrunedSheet[] => {
-    if (plan.sheet.reference) return [];
-    if (plan.rules === null) return [{ key: plan.sheet.key, css: compactProjectCss(plan.sheet.css) }];
-    const pass = new RenderPass(plan, said);
+  const alive = page.solve();
+  const out = plans.map((plan): PrunedSheet => {
+    const { key, sheet } = plan.sheet;
+    if (plan.rules === null) {
+      return { key, css: compactProjectCss(sheet.css), contributing: sheet.files };
+    }
+    const pass = new RenderPass(plan, alive);
     const kept = pass.rules(plan.rules, false);
-    const css = kept === 0 ? '' : compactProjectCss(applyEdits(plan.sheet.css, pass.edits));
-    return [{ key: plan.sheet.key, css }];
+    const css = kept === 0 ? '' : compactProjectCss(applyEdits(sheet.css, pass.edits));
+    return { key, css, contributing: [...pass.contributing] };
   });
-  return diagnostics.length === 0 ? ok(out) : withDiagnostics(out, diagnostics);
+  return ok(out);
 }
 
 /**
- * What a sheet has to say about itself, whatever page it lands in: `FUD0851` where it cannot
- * be read, `FUD0850` on each `@import`. Its spans are over the sheet's own text, so the host —
- * which knows the file — reports them, once per sheet and not once per page.
+ * What a document sheet has to say about itself, whatever page it lands in: what the
+ * flattening found (`FUD0850`, `FUD0853`, `FUD0856`–`FUD0858`) and `FUD0851` where it cannot be
+ * read — each over the file it is about, so the host reports it once per file and not once per
+ * page.
  */
-export function sheetDiagnostics(
-  css: string,
-  parsed: ParseResult<{ readonly rules: readonly CssRule[] }> = parseCssRules(css),
-): readonly Diagnostic[] {
-  return [...parsed.diagnostics, ...imports(parsed.value.rules)];
+export function sheetDiagnostics(sheet: FlatSheet): readonly FileDiagnostic[] {
+  const unreadable = parseCssRules(sheet.css).diagnostics.map((d): FileDiagnostic => {
+    const from = originOf(sheet, d.span.start);
+    const to = originOf(sheet, d.span.end);
+    const end = to.file === from.file ? Math.max(to.offset, from.offset) : from.offset;
+    return { file: from.file, diagnostic: { ...d, span: span(from.offset, end) } };
+  });
+  return [...sheet.diagnostics, ...unreadable];
+}
+
+/** `FUD0854` on every `@import` of a `globalStyles` or `styles` sheet, over its text. */
+export function projectSheetDiagnostics(css: string): readonly Diagnostic[] {
+  return importsOf(parseCssRules(css).value.rules).map((r) =>
+    errorDiag(
+      FUD_IMPORT_IN_PROJECT_SHEET,
+      'a sheet of globalStyles or styles is adopted, and an adopted sheet does not take @import: it is dropped. Import it from a stylesheet a layout links, or list the file in fudic.json',
+      r.span,
+    ),
+  );
+}
+
+/** Every `@import` of a rule list, at any depth. */
+function importsOf(rules: readonly CssRule[]): readonly CssRule[] {
+  return rules.flatMap((r): CssRule[] => {
+    if (r.type === 'at-statement') return r.name === 'import' ? [r] : [];
+    if (r.type === 'style-rule') return [...importsOf(r.children)];
+    return r.children === undefined ? [] : [...importsOf(r.children)];
+  });
 }

@@ -1,0 +1,65 @@
+/* Estados y utilidades. */
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.loading {
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.muted {
+  color: var(--ink-faint);
+}
+
+.stack > * + * {
+  margin-top: var(--gap);
+}
+
+@media (max-width: 40rem) {
+  body {
+    padding: 0 var(--space-6) var(--space-11);
+  }
+
+  h1 {
+    font-size: 1.6rem;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+  }
+
+  dl {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+@media print {
+  body {
+    background: white;
+  }
+
+  pre {
+    white-space: pre-wrap;
+  }
+
+  button,
+  details summary {
+    display: none;
+  }
+}

@@ -292,24 +292,27 @@ function emitOptionsFor(
  * A linked sheet is named by its file and a project sheet by its `fudic.json` entry — the two
  * places an author goes to delete one.
  */
-function recordSheets(
-  id: string,
-  out: EmitOutput,
-  options: Parameters<typeof emitPageModuleMapped>[1],
-  assets: LinkedAssets,
-): readonly string[] {
-  const files: string[] = [];
+function recordSheets(id: string, out: EmitOutput, assets: LinkedAssets): readonly string[] {
+  const watched: string[] = [];
+  const fileOf = (spec: string): string => resolve(dirname(id), spec.split('?')[0]!);
   for (const use of out.sheets ?? []) {
-    if ('spec' in use) {
-      const file = resolve(dirname(id), use.spec.split('?')[0]!);
-      files.push(file);
-      assets.recordSheet(file, readFileSync(file, 'utf8'), use.css);
-    } else {
-      const sheet = options?.projectStyles?.find((s) => s.specifier === use.specifier);
-      assets.recordSheet(`fudic.json "${use.specifier}"`, sheet?.css ?? '', use.css);
+    if (!('spec' in use)) {
+      assets.recordSheet(`fudic.json "${use.specifier}"`, use.css !== '');
+      continue;
+    }
+    // The sheet the `<link>` names, and every file its `@import`s flattened in: each one is
+    // an input of this page, and each one can be dead CSS on its own (SDD-49 §4.11).
+    const root = fileOf(use.spec);
+    const contributing = new Set(use.contributing);
+    for (const spec of use.files) {
+      const file = fileOf(spec);
+      watched.push(file);
+      const diagnostics = use.diagnostics.filter((d) => d.file === spec).map((d) => d.diagnostic);
+      const used = file === root ? use.css !== '' : contributing.has(spec);
+      assets.recordSheet(file, used, diagnostics);
     }
   }
-  return files;
+  return watched;
 }
 
 /** Transform one `.fud` file into its ES module, or `null` when `id` is not a `.fud`. */
@@ -353,7 +356,7 @@ export function transformFud(
   const origin = graph.entryOrigin;
   const options = emitOptionsFor(id, graph, routeName, styles, assets);
   const out = emitFor(id, graph, options);
-  const sheetFiles = assets === undefined ? [] : recordSheets(id, out, options, assets);
+  const sheetFiles = assets === undefined ? [] : recordSheets(id, out, assets);
   return {
     code: out.code,
     ...(inlineRuntimeOf(id, graph) ?? {}),

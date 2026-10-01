@@ -1,0 +1,22 @@
+/* La guía de estilos del DOCUMENTO, escrita como se escribe una de verdad: un fichero por
+   tema —reset, colores con su modo oscuro, espaciado, tipografía, listas, tablas,
+   formularios, botones, bloques, utilidades y animaciones— reunidos aquí con `@import`. La
+   enlaza `_layout.fud` con `?inline`, así que viaja dentro de cada página para no pintar un
+   solo fotograma sin estilo.
+
+   Ninguna página usa todo esto. El build aplana los `@import` y le da a cada página solo las
+   reglas que casan con algo de su light DOM, y solo los tokens que algo de la página nombra
+   (SDD-49). Una página cuyos campos viven dentro de componentes no recibe nada de
+   `forms.css`, y una sin tablas nada de `tables.css`. */
+
+@import "./guide/reset.css";
+@import "./guide/tokens/color.css";
+@import "./guide/tokens/space.css";
+@import "./guide/typography.css";
+@import "./guide/lists.css";
+@import "./guide/tables.css";
+@import "./guide/forms.css";
+@import "./guide/buttons.css";
+@import "./guide/blocks.css";
+@import "./guide/utilities.css";
+@import "./guide/motion.css";

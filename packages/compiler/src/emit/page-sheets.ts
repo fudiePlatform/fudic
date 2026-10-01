@@ -15,21 +15,32 @@
 import type { ElementNode } from '../html/index.js';
 import { isComponentLink, isLayoutLink, isSnippetLink } from '../document/index.js';
 import type { AssetLinker } from './assets.js';
-import { compactStyleCss } from './css-compact.js';
-import { componentStyleNode, type EmitOptions } from './module.js';
+import { flattenImports, plainSheet, type FileDiagnostic, type FlatSheet } from '../css/index.js';
+import type { EmitOptions } from './module.js';
 import { asksInline, linkWithHref, prunableHref, sheetKey } from './parts.js';
 import { projectAdoptOf, type ProjectStyle } from './project-styles.js';
-import { prunePage, type PageSheet } from './prune.js';
+import { prunePage, sheetDiagnostics, type PageSheet } from './prune.js';
 import { allComponents, type DocumentGraph } from './resolve.js';
-import { documentSurface, shadowSurface, unionSurfaces } from './surface.js';
+import { documentSurface, pageTokenConsumers, shadowSurface, unionSurfaces } from './surface.js';
 
 /**
  * What a page kept of one sheet, for the host: the file behind it — `spec`, relative to the
  * compiled entry — or the project sheet's `specifier`, and the pruned CSS (`''` when nothing
  * was left). It is how the build learns, page by page, which sheets nobody uses (`FUD0852`).
+ *
+ * A linked sheet also says which files its `@import`s flattened in (`files`, every one relative
+ * to the entry: what the host watches), which of them kept a rule on this page
+ * (`contributing`), and what the sheet says about itself (`diagnostics`, each over its own
+ * file) — reported by the host once per file, not once per page.
  */
 export type SheetUse =
-  | { readonly spec: string; readonly css: string }
+  | {
+      readonly spec: string;
+      readonly css: string;
+      readonly files: readonly string[];
+      readonly contributing: readonly string[];
+      readonly diagnostics: readonly FileDiagnostic[];
+    }
   | { readonly specifier: string; readonly css: string };
 
 /** A `<link>` of a `<head>` the page delivers pruned. */
@@ -42,7 +53,8 @@ interface LinkedSheet {
   readonly href: string;
   /** The same file, relative to the entry being compiled. */
   readonly spec: string;
-  readonly css: string;
+  /** Its text with every relative `@import` flattened in (§4.2). */
+  readonly flat: FlatSheet;
 }
 
 export interface PageSheets {
@@ -104,7 +116,8 @@ function linkedSheets(
     const href = prunableHref(child, linker, resolve);
     if (href === null) continue;
     const spec = resolve(href);
-    out.push({ key: key(out.length), el: child, source, href, spec, css: linker.textOf(spec)! });
+    const flat = flattenImports(spec, linker.textOf(spec)!, (s) => linker.textOf(s));
+    out.push({ key: key(out.length), el: child, source, href, spec, flat });
   }
   return out;
 }
@@ -115,7 +128,8 @@ function sheetElement(sheet: LinkedSheet, css: string, linker: AssetLinker): str
   if (asksInline(sheet.href)) {
     return `'<style' + $nonce + '>' + ${linker.cssTemplate(css)} + '</style>'`;
   }
-  const url = linker.sheetRef(sheet.spec, css);
+  // A static file has no import bindings: every `url()` in it is written as its final URL.
+  const url = linker.sheetRef(sheet.spec, linker.cssLinked(css));
   if (url !== null) return linkWithHref(sheet.source, sheet.el, JSON.stringify(url));
   // No host publishes copies: the file as it is, under the URL it always had.
   const whole = linker.maybeRef(sheet.spec, 'head') ?? JSON.stringify(sheet.href);
@@ -154,7 +168,7 @@ export function planPageSheets(
   const linked = [...layoutSheets, ...ownSheets];
   const sheets: PageSheet[] = linked.map((s) => ({
     key: s.key,
-    css: s.css,
+    sheet: s.flat,
     scope: 'document',
     surface: document,
   }));
@@ -167,45 +181,14 @@ export function planPageSheets(
     adopted.set(style.specifier, adopters.length > 0);
     sheets.push({
       key: `project:${style.specifier}`,
-      css: style.css,
+      sheet: plainSheet(style.specifier, style.css),
       scope: 'shadow',
       surface: unionSurfaces(adopters.map((c) => shadowSurface(graph, c.tag))),
     });
   }
-  // A `<style>` written in a document's head — the layout's or the entry's — is never pruned
-  // either, and what it says names fonts and animations just the same.
-  const heads = [
-    ...graph.layouts.map((l) => ({ head: l.doc.head, source: l.source })),
-    ...(entryHead === undefined ? [] : [{ head: entryHead, source: graph.entrySource }]),
-  ];
-  for (const { head, source } of heads) {
-    for (const child of head.children) {
-      const body = child.type === 'element' && child.name === 'style' ? child.children[0] : undefined;
-      if (body === undefined || body.type !== 'style-content') continue;
-      sheets.push({
-        key: `head-style:${body.span.start}`,
-        css: compactStyleCss(source, body),
-        scope: 'document',
-        surface: document,
-        reference: true,
-      });
-    }
-  }
-  // A component's own `<style>` is never pruned, but what it keeps names fonts and animations.
-  for (const c of components) {
-    const style = componentStyleNode(c.doc);
-    if (style === null) continue;
-    sheets.push({
-      key: `component:${c.tag}`,
-      css: compactStyleCss(c.source, style),
-      scope: 'shadow',
-      surface: shadowSurface(graph, c.tag),
-      reference: true,
-    });
-  }
-
-  const pruned = prunePage(sheets);
+  const pruned = prunePage(sheets, pageTokenConsumers(graph));
   const cssOf = new Map(pruned.value.map((s) => [s.key, s.css]));
+  const contributingOf = new Map(pruned.value.map((s) => [s.key, s.contributing]));
 
   const layout = new Map(layoutSheets.map((s) => [s.key, sheetElement(s, cssOf.get(s.key)!, linker)]));
   const own = new Map(ownSheets.map((s) => [s.el, sheetElement(s, cssOf.get(s.key)!, linker)]));
@@ -216,13 +199,17 @@ export function planPageSheets(
     ?.filter((s) => adopted.get(s.specifier))
     .map((s) => ({ specifier: s.specifier, css: cssOf.get(`project:${s.specifier}`)! }));
   const uses: SheetUse[] = [
-    ...linked.map((s) => ({ spec: s.spec, css: cssOf.get(s.key)! })),
+    ...linked.map((s) => ({
+      spec: s.spec,
+      css: cssOf.get(s.key)!,
+      files: s.flat.files,
+      contributing: contributingOf.get(s.key)!,
+      diagnostics: sheetDiagnostics(s.flat),
+    })),
     ...(options.projectStyles ?? []).map((s) => ({
       specifier: s.specifier,
       css: adopted.get(s.specifier) ? cssOf.get(`project:${s.specifier}`)! : '',
     })),
   ];
-  // What the sheets have to say about themselves (`sheetDiagnostics`) is not returned: their
-  // spans are over the sheet's text, and the host — which knows the file — reports them once.
   return { layout, own: (el) => own.get(el) ?? null, projectStyles, uses };
 }

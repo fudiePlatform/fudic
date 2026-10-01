@@ -1,54 +1,57 @@
 # SDD-49 — Medición en `examples/basic`
 
-> Criterio 25 de [SDD-49](./SDD-49-css-por-pagina.md). Build de `examples/basic` en la rama
-> `worktree-sdd-49-css-por-pagina`. Bytes del CSS **compactado** (`compactProjectCss`), que es
-> lo que viajaba antes de este SDD y lo que viaja ahora.
+> Criterio 40 de [SDD-49](./SDD-49-css-por-pagina.md), segunda redacción. Build de
+> `examples/basic` en la rama `worktree-sdd-49-css-por-pagina`. Bytes del CSS **compactado**
+> (`compactProjectCss`), que es lo que viaja.
 
-## Las hojas enteras (antes)
+## La guía
 
-| Hoja | Cómo llega | Ámbito | Bytes enteros |
+`src/styles/main.css` importa once ficheros: `reset`, `tokens/color` (91 colores de paleta, 18
+nombres de uso y su modo oscuro), `tokens/space` (20 huecos), `typography`, `lists`, `tables`,
+`forms`, `buttons`, `blocks`, `utilities` y `motion`. `_layout.fud` la enlaza con `?inline`, y
+`tokens.css` —los tokens que leen los componentes— sigue enlazado como fichero.
+
+| | Bytes | Tokens |
+|---|---|---|
+| `main.css` aplanado entero (lo que llegaría sin poda) | 9 547 | 133 |
+| `tokens.css` entero | 209 | 10 |
+
+## Por página
+
+`main.css` va dentro del HTML; `tokens.css` es un fichero, y su columna es el tamaño de la copia
+podada que enlaza la página. `—`: la página usa otro layout, que no enlaza `main.css`.
+
+| Página | `main.css` (bytes) | Tokens de `main.css` que llegan | `tokens.css` (bytes) |
 |---|---|---|---|
-| `base.css` | `_layout.fud`, `?inline` | documento | 5 920 |
-| `tokens.css` | `_layout.fud`, fichero | documento | 209 |
-| `theme.css` | `globalStyles` | shadow | 167 |
-| `panel.css` | `styles` | shadow | 227 |
+| `/` | 1 986 | 23 de 133 | 128 |
+| `/about` | 2 033 | 22 | 55 |
+| `/delegacion` | 2 714 | 25 | 153 |
+| `/di` | 1 991 | 23 | 183 |
+| `/formularios` | 1 967 | 21 | 193 |
+| `/hidratacion` | 2 184 | 22 | 167 |
+| `/mapas` | 1 967 | 21 | 153 |
+| `/reactividad` | 1 945 | 21 | 167 |
+| `/ruta-evento` | 2 751 | 23 | 153 |
+| `/ruta-reactiva` | 2 894 | 25 | 167 |
+| `/ruta-reloj` | 1 945 | 21 | 112 |
+| `/signal-prop` | 2 196 | 23 | 183 |
+| `/snippets` | 2 558 | 23 | 55 |
+| `/value-prop` | 2 218 | 23 | 183 |
+| `/blog/*` (3) | — | — | 23 |
+| `/marco`, `/marco-sin-lateral` | — | — | 167 |
+| `/vivo` | — | — | — |
 
-Antes, toda página del layout principal recibía las cuatro enteras: 6 523 bytes, de los que
-5 920 iban dentro del HTML.
-
-## Por página (después)
-
-`—` es que la hoja no llega a esa página: el layout no la enlaza, o ningún componente de la
-página la adopta.
-
-| Página | `base.css` | `tokens.css` | `theme.css` | `panel.css` |
-|---|---|---|---|---|
-| `/` | 1 202 | 209 | 21 | — |
-| `/about` | 1 263 | 209 | 21 | — |
-| `/delegacion` | 1 766 | 209 | 167 | 118 |
-| `/di` | 1 218 | 209 | 167 | 171 |
-| `/formularios` | 1 240 | 209 | 167 | 118 |
-| `/hidratacion` | 1 415 | 209 | 167 | 118 |
-| `/mapas` | 1 240 | 209 | 167 | 118 |
-| `/reactividad` | 1 218 | 209 | 167 | 227 |
-| `/ruta-evento` | 1 872 | 209 | 167 | — |
-| `/ruta-reactiva` | 1 946 | 209 | 167 | 171 |
-| `/ruta-reloj` | 1 218 | 209 | 21 | — |
-| `/signal-prop` | 1 423 | 209 | 167 | 171 |
-| `/snippets` | 1 754 | 209 | 21 | — |
-| `/value-prop` | 1 445 | 209 | 167 | 171 |
-| `/blog/*` (3) | — | 209 | 21 | — |
-| `/marco`, `/marco-sin-lateral` | — | 209 | 167 | 118 |
-| `/vivo` | — | — (inline, 209) | 167 | 118 |
-
-`/blog/*`, `/marco*` y `/vivo` usan otros layouts, que no enlazan `base.css`.
+Cada página recibe entre el 20 % y el 30 % de la guía. Lo que más pesa de lo que se queda fuera
+son los tokens: de 133 llegan entre 21 y 25. `/formularios` no recibe nada de `forms.css`,
+porque todos sus campos viven dentro de componentes y el CSS del documento no los alcanza.
 
 ## Lo que se publica
 
 | Hoja | Copias distintas publicadas |
 |---|---|
-| `tokens.css` | 1 — solo tiene `:root`, que siempre se queda, así que la copia de todas las páginas es la misma y conserva el nombre de antes |
-| `base.css` | 0 — va `?inline`, dentro de cada página |
+| `main.css` | 0 ficheros — va `?inline`; 13 contenidos distintos entre 20 páginas |
+| `tokens.css` | 8 — una por contenido podado; las páginas que usan los mismos tokens comparten fichero |
 | `theme.css`, `panel.css` | 0 — van como `<style type="module" specifier>` dentro de cada página |
 
-Ninguna hoja queda vacía en todas las páginas: el build no emite `FUD0852`.
+El build emite un `FUD0852`: `guide/tables.css` no aporta ninguna regla a ninguna página — el
+ejemplo no tiene una sola tabla en su light DOM —, así que su `@import` sobra.

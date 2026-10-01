@@ -12,7 +12,13 @@
  * missing stylesheet looks exactly like a stylesheet that did nothing.
  */
 
-import { LineMap, lintProjectStyle, type ProjectStyle } from '@fudic/compiler';
+import {
+  LineMap,
+  lintProjectStyle,
+  projectSheetDiagnostics,
+  type Diagnostic,
+  type ProjectStyle,
+} from '@fudic/compiler';
 import {
   FUD_STYLE_SPECIFIER_CLASH,
   readProjectConfig,
@@ -54,7 +60,9 @@ export function readStyles(
   return {
     global: global.map(strip),
     optional: optional.map(strip),
-    errors: diagnostics,
+    // `FUD0854`: an adopted sheet takes no `@import` (SDD-49 §4.1). Once per sheet, here
+    // where it is read, for the same reason as `FUD0743` below.
+    errors: [...diagnostics, ...[...global, ...optional].flatMap(importErrors)],
     warnings: [...global, ...optional].flatMap(lintOne),
   };
 }
@@ -244,7 +252,16 @@ function toPosix(path: string): string {
  * the author can click.
  */
 function lintOne(file: ProjectStyleFile): readonly ConfigDiagnostic[] {
-  const found = lintProjectStyle(file.css);
+  return located(file, lintProjectStyle(file.css));
+}
+
+/** `FUD0854` over one sheet: each `@import` it holds. */
+function importErrors(file: ProjectStyleFile): readonly ConfigDiagnostic[] {
+  return located(file, projectSheetDiagnostics(file.css));
+}
+
+/** The compiler's diagnostics over a sheet, with the line and column the author can click. */
+function located(file: ProjectStyleFile, found: readonly Diagnostic[]): readonly ConfigDiagnostic[] {
   if (found.length === 0) return [];
   const lines = new LineMap(file.css);
   return found.map((d) => {

@@ -29,12 +29,21 @@ export interface CssRuleTree extends Node {
 
 export type CssRule = StyleRule | BlockAtRule | StatementAtRule;
 
+/** `name: value`, without the `;`. */
+export interface CssDeclaration extends Node {
+  readonly type: 'css-declaration';
+  /** Lower case; a custom property's (`--x`) as written, because it is case-sensitive. */
+  readonly name: string;
+  /** What follows the `:`, trimmed; empty when there is no `:`. */
+  readonly value: Span;
+}
+
 /** `selector { declarations; nested rules }` */
 export interface StyleRule extends Node {
   readonly type: 'style-rule';
   readonly prelude: Span;
   /** Its own declarations, without the nested rules. */
-  readonly declarations: readonly Span[];
+  readonly declarations: readonly CssDeclaration[];
   /** CSS nesting: the rules written inside the block. */
   readonly children: readonly CssRule[];
 }
@@ -196,6 +205,27 @@ class RuleScanner {
     return span(start, end);
   }
 
+  /** The declaration in `[start, end)`: its name before the first top-level `:`, its value after. */
+  #declaration(start: number, end: number): CssDeclaration {
+    const whole = this.#trim(start, end);
+    const colon = this.#find(whole.start, ':');
+    if (colon >= whole.end) {
+      return {
+        type: 'css-declaration',
+        span: whole,
+        name: this.#css.slice(whole.start, whole.end).toLowerCase(),
+        value: span(whole.end, whole.end),
+      };
+    }
+    const raw = this.#css.slice(whole.start, colon).trim();
+    return {
+      type: 'css-declaration',
+      span: whole,
+      name: raw.startsWith('--') ? raw : raw.toLowerCase(),
+      value: this.#trim(colon + 1, whole.end),
+    };
+  }
+
   /**
    * The rules of a list: the sheet (`inBlock` false) or a grouping block. It returns at the
    * `}` that closes the block, or at the end of the text.
@@ -237,7 +267,7 @@ class RuleScanner {
   /** `prelude { … }` with its `{` at `open`, or `null` when it never closes. */
   #styleRule(start: number, open: number): StyleRule | null {
     const css = this.#css;
-    const declarations: Span[] = [];
+    const declarations: CssDeclaration[] = [];
     const children: CssRule[] = [];
     let i = open + 1;
     for (;;) {
@@ -266,7 +296,7 @@ class RuleScanner {
           children.push(rule);
           i = rule.span.end;
         } else {
-          declarations.push(this.#trim(i, stop));
+          declarations.push(this.#declaration(i, stop));
           i = css[stop] === ';' ? stop + 1 : stop;
         }
       }

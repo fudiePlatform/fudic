@@ -1,0 +1,36 @@
+/* Botones. */
+
+button {
+  padding: var(--pad-control);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: inherit;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+button:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-control-hover);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+button.primary {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: white;
+}
+
+button.primary:hover {
+  filter: brightness(1.08);
+}

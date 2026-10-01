@@ -1,0 +1,80 @@
+/* Formularios: la página sin formulario no recibe nada de aquí. */
+
+form {
+  margin: 0 0 var(--space-11);
+}
+
+fieldset {
+  margin: 0 0 var(--space-8);
+  padding: var(--space-6) var(--space-8) var(--space-8);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-box);
+}
+
+legend {
+  padding: 0 var(--space-2);
+  font-weight: 650;
+}
+
+label {
+  display: inline-block;
+  margin-bottom: var(--space-1);
+  font-weight: 550;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="number"],
+input[type="url"],
+input[type="tel"],
+input[type="date"],
+select,
+textarea {
+  padding: var(--pad-field);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: inherit;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgb(26 115 232 / 20%);
+}
+
+input[aria-invalid="true"],
+select[aria-invalid="true"],
+textarea[aria-invalid="true"] {
+  border-color: var(--color-danger);
+  animation: shake 240ms ease-in-out;
+}
+
+textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--brand);
+  vertical-align: -0.15em;
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+::placeholder {
+  color: var(--color-disabled);
+}

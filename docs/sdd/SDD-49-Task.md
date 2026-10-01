@@ -3,7 +3,7 @@
 > **SDD:** [SDD-49 — El CSS que cada página usa](./SDD-49-css-por-pagina.md)
 > **Paquetes:** `@fudic/compiler` · `@fudic/vite` · `@fudic/example-basic`
 > **Rama:** `worktree-sdd-49-css-por-pagina`
-> **Progreso:** 16 / 28 — las fases 1–6 están en el código, sin tests. La **segunda redacción**
+> **Progreso:** 24 / 28 — las fases 1–6 están en el código, sin tests. La **segunda redacción**
 > (2026-10-01) añade la fase 7: aplanar `@import`, podar tokens, `url()` en la copia enlazada y
 > los errores de `@import` en hojas adoptadas y **quitar el Razor del CSS** (decisión 136, que
 > revoca la 42; tarea 25). Después, los tests, el OK de Pedro en navegador (tarea 27) y el
@@ -84,7 +84,7 @@ mismo worktree y rama. Los números son los criterios de la spec (§6, segunda r
   combinaciones; `null` para lo inválido (sin URL, `layer(` sin cerrar, orden de condiciones
   incorrecto).
 - 5: orden del contenido; anidado `@layer` > `@supports` > `@media`; importación en dos niveles.
-- 6: `url()` rebasado desde otra carpeta (subir, bajar, misma), con comillas y sin ellas; un
+- 6: `url()` rebasado al `.fud` desde otra carpeta (subir, bajar, misma), con comillas y sin ellas; un
   `url()` absoluto o `data:` no se toca; `@charset` importado se quita y el de la raíz se queda.
 - 7: repetido → una vez, última aparición; repetido con capas → todas; repetido con
   condiciones distintas → son dos imports.
@@ -257,14 +257,14 @@ nadie lo note.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 17 | 1 | **Declaraciones con nombre.** `CssDeclaration` (`name` en minúsculas salvo custom property, `value`); `StyleRule.declarations` pasa a esa forma. Criterio 1 | `compiler` | `src/css/rules.ts` · `test/css/rules.test.ts` |
-| [ ] | 18 | 17 | **El aplanado.** `parseImport`, `flattenImports`, `originOf`: resolución relativa por aritmética de rutas, condiciones a bloques, posición, `url()` rebasados, `@charset`, repetidos, ciclos; `FUD0850`, `FUD0853`, `FUD0856`, `FUD0857`, `FUD0858`; tabla de regiones. Exportado desde el índice. Criterios 4–9 | `compiler` | `src/css/flatten.ts` · `src/css/index.ts` · `src/index.ts` · `test/css/flatten.test.ts` |
-| [ ] | 19 | 7 | **Los consumidores de tokens.** `pageTokenConsumers`: `<style>` de cada componente de la página y partes literales de `style="…"`. Criterio 14 | `compiler` | `src/emit/surface.ts` · `test/emit/surface.test.ts` |
-| [ ] | 20 | 9, 17, 18, 19 | **La poda de tokens.** `prunePage(sheets, consumers)` sobre `FlatSheet`: punto fijo de tokens, `@keyframes` y `@font-face`; quitar declaraciones `--x` muertas, `@property` muertos y reglas vacías; `contributing` por fichero; `FUD0850` con su sentido nuevo. Criterios 21–29 | `compiler` | `src/emit/prune.ts` · `test/emit/prune.test.ts` |
-| [ ] | 21 | 20 | **El emit aplana.** La ruta (y la página sin layout) aplana cada hoja del documento con `AssetLinker.textOf` antes de `prunePage`, y pasa `pageTokenConsumers`. En la copia enlazada, cada `url()` relativo que queda se escribe con la URL del host. Criterios 31–34 | `compiler` | `src/emit/page-sheets.ts` · `src/emit/layout.ts` · `src/emit/module.ts` · `test/emit/page-sheets.test.ts` |
-| [ ] | 22 | — | **`@import` en el `<style>` de un componente.** `FUD0855`, sobre el `@import`, que se quita; también sin `pruneStyles`. Criterio 30 | `compiler` | `src/css/css.ts` · `test/emit/page-sheets.test.ts` |
-| [ ] | 23 | 21 | **Lo que hace el host.** `FUD0854` sobre cada hoja de `fudic.json` con `@import`, una vez por hoja; vigilar `FlatSheet.files` en dev; `FUD0852` por fichero importado que no aporta nada (`contributing`), sobre su `@import`. Criterios 30, 38, 39 | `vite` | `src/styles.ts` · `src/linked-assets.ts` · `src/plugin.ts` · `test/prune-build.test.ts` · `test/dev-sheets.test.ts` |
-| [ ] | 24 | 23 | **La guía partida en ficheros, y su medición.** `src/styles/main.css` importa reset, tokens de color (con modo oscuro) y de espaciado, tipografía, listas, tablas, formularios y animaciones, ~12 KB entre todos; `_layout.fud` la enlaza con `?inline`. `SDD-49-medicion.md` rehecho: bytes por página antes y después, tokens que llegan de cuántos, copias distintas publicadas. Criterio 40 | `example-basic` | `src/styles/*.css` · `src/layouts/_layout.fud` · `docs/sdd/SDD-49-medicion.md` |
+| [x] | 17 | 1 | **Declaraciones con nombre.** `CssDeclaration` (`name` en minúsculas salvo custom property, `value`); `StyleRule.declarations` pasa a esa forma. Criterio 1 | `compiler` | `src/css/rules.ts` · `test/css/rules.test.ts` |
+| [x] | 18 | 17 | **El aplanado.** `parseImport`, `flattenImports`, `originOf`: resolución relativa por aritmética de rutas, condiciones a bloques, posición, `url()` rebasados, `@charset`, repetidos, ciclos; `FUD0850`, `FUD0853`, `FUD0856`, `FUD0857`, `FUD0858`; tabla de regiones. Exportado desde el índice. Criterios 4–9 | `compiler` | `src/css/flatten.ts` · `src/css/index.ts` · `src/index.ts` · `test/css/flatten.test.ts` |
+| [x] | 19 | 7 | **Los consumidores de tokens.** `pageTokenConsumers`: `<style>` de cada componente de la página y partes literales de `style="…"`. Criterio 14 | `compiler` | `src/emit/surface.ts` · `test/emit/surface.test.ts` |
+| [x] | 20 | 9, 17, 18, 19 | **La poda de tokens.** `prunePage(sheets, consumers)` sobre `FlatSheet`: punto fijo de tokens, `@keyframes` y `@font-face`; quitar declaraciones `--x` muertas, `@property` muertos y reglas vacías; `contributing` por fichero; `FUD0850` con su sentido nuevo. Criterios 21–29 | `compiler` | `src/emit/prune.ts` · `test/emit/prune.test.ts` |
+| [x] | 21 | 20 | **El emit aplana.** La ruta (y la página sin layout) aplana cada hoja del documento con `AssetLinker.textOf` antes de `prunePage`, y pasa `pageTokenConsumers`. En la copia enlazada, cada `url()` relativo que queda se escribe con la URL del host. Criterios 31–34 | `compiler` | `src/emit/page-sheets.ts` · `src/emit/layout.ts` · `src/emit/module.ts` · `test/emit/page-sheets.test.ts` |
+| [x] | 22 | — | **`@import` en el `<style>` de un componente.** `FUD0855`, sobre el `@import`, que se quita; también sin `pruneStyles`. Criterio 30 | `compiler` | `src/css/css.ts` · `test/emit/page-sheets.test.ts` |
+| [x] | 23 | 21 | **Lo que hace el host.** `FUD0854` sobre cada hoja de `fudic.json` con `@import`, una vez por hoja; vigilar `FlatSheet.files` en dev; `FUD0852` por fichero importado que no aporta nada (`contributing`), sobre su `@import`. Criterios 30, 38, 39 | `vite` | `src/styles.ts` · `src/linked-assets.ts` · `src/plugin.ts` · `test/prune-build.test.ts` · `test/dev-sheets.test.ts` |
+| [x] | 24 | 23 | **La guía partida en ficheros, y su medición.** `src/styles/main.css` importa reset, tokens de color (con modo oscuro) y de espaciado, tipografía, listas, tablas, formularios y animaciones, ~12 KB entre todos; `_layout.fud` la enlaza con `?inline`. `SDD-49-medicion.md` rehecho: bytes por página antes y después, tokens que llegan de cuántos, copias distintas publicadas. Criterio 40 | `example-basic` | `src/styles/*.css` · `src/layouts/_layout.fud` · `docs/sdd/SDD-49-medicion.md` |
 
 ## Fase 8 — el `<style>` es CSS plano (1)
 

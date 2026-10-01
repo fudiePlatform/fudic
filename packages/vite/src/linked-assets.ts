@@ -24,7 +24,6 @@ import { isAbsolute, relative as relativePath, resolve as resolvePath } from 'no
 import {
   AssetLinker,
   compactProjectCss,
-  sheetDiagnostics,
   type AssetOrigin,
   type AssetSheet,
   type AssetUrl,
@@ -102,9 +101,10 @@ export class LinkedAssets {
   /** Where pruned copies are named: `assets` in a build, `@fudic/sheet` in dev (SDD-49 §4.8). */
   readonly #sheetDir: string;
   /**
-   * Every sheet a page received, by what names it — its file, or its `fudic.json` entry —
-   * and whether ANY page kept a rule of it (SDD-49 §4.9). With the sheet's own diagnostics,
-   * which are about the file and reported once whatever number of pages link it.
+   * Every sheet a page received — and every file a sheet's `@import`s flattened in — by what
+   * names it: its file, or its `fudic.json` entry; and whether ANY page kept a rule of it
+   * (SDD-49 §4.11). With the file's own diagnostics, reported once whatever number of pages
+   * read it.
    */
   readonly #sheets = new Map<string, { used: boolean; diagnostics: readonly Diagnostic[] }>();
 
@@ -135,22 +135,26 @@ export class LinkedAssets {
     return url;
   }
 
-  /** One page's use of one sheet: `name` is its file or its `fudic.json` entry. */
-  recordSheet(name: string, source: string, pruned: string): void {
+  /**
+   * One page's use of one sheet or imported file: `name` is its file or its `fudic.json`
+   * entry, `used` whether this page kept a rule of it, `diagnostics` what it says about itself
+   * — kept from the first page that read it, since they are about the file.
+   */
+  recordSheet(name: string, used: boolean, diagnostics: readonly Diagnostic[] = []): void {
     const seen = this.#sheets.get(name);
     if (seen !== undefined) {
-      seen.used ||= pruned !== '';
+      seen.used ||= used;
       return;
     }
-    this.#sheets.set(name, { used: pruned !== '', diagnostics: sheetDiagnostics(source) });
+    this.#sheets.set(name, { used, diagnostics });
   }
 
-  /** The sheets no page kept a rule of (`FUD0852`). */
+  /** The sheets and imported files no page kept a rule of (`FUD0852`). */
   unusedSheets(): readonly string[] {
     return [...this.#sheets].flatMap(([name, s]) => (s.used ? [] : [name]));
   }
 
-  /** What each sheet says about itself: `FUD0850`, `FUD0851`. */
+  /** What each file says about itself: `FUD0850`, `FUD0851`, `FUD0853`, `FUD0856`–`FUD0858`. */
   sheetDiagnostics(): ReadonlyMap<string, readonly Diagnostic[]> {
     return new Map([...this.#sheets].map(([name, s]) => [name, s.diagnostics]));
   }

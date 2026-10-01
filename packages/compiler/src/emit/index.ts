@@ -120,15 +120,18 @@ export {
   shadowSurface,
   unionSurfaces,
   frameworkAttributesOf,
+  pageTokenConsumers,
   type ScopeSurface,
   type StyleScope,
 } from './surface.js';
 export {
   prunePage,
-  FUD_SHEET_IMPORT,
   FUD_SHEET_UNREADABLE,
   FUD_SHEET_UNUSED,
+  FUD_IMPORT_IN_PROJECT_SHEET,
+  FUD_IMPORT_IN_COMPONENT_STYLE,
   sheetDiagnostics,
+  projectSheetDiagnostics,
   type PageSheet,
   type PrunedSheet,
 } from './prune.js';

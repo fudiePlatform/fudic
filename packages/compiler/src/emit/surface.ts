@@ -22,6 +22,7 @@ import { branchesOf } from './constructs.js';
 import { allComponents, componentOf, type DocumentGraph } from './resolve.js';
 import { holeSlot } from './compose.js';
 import { SPACE_ATTR } from './space.js';
+import { compactStyleCss } from './css-compact.js';
 
 export interface ScopeSurface {
   readonly tags: ReadonlySet<string>;
@@ -282,6 +283,44 @@ export function shadowSurface(graph: DocumentGraph, tag: string): ScopeSurface {
   const b = new SurfaceBuilder();
   b.markup(componentOf(graph, tag)?.doc.template?.children ?? []);
   return b.build(slottedInto(graph, tag), partsOf(graph));
+}
+
+/** The CSS text of a `<style>` element, compacted — or `null` when it holds none. */
+function styleText(el: ElementNode, source: string): string | null {
+  const body = el.children[0];
+  return body !== undefined && body.type === 'style-content' ? compactStyleCss(source, body) : null;
+}
+
+/** Every `<style>` among the children of a `<head>`. */
+function headStyles(head: ElementNode | undefined, source: string): string[] {
+  if (head === undefined) return [];
+  return head.children.flatMap((c) => {
+    if (c.type !== 'element' || c.name !== 'style') return [];
+    const css = styleText(c, source);
+    return css === null ? [] : [css];
+  });
+}
+
+/**
+ * The CSS of the page that is never pruned but reads tokens (§4.6): the `<style>` of each
+ * component of the page — one born only in the browser included, it is in the graph — the
+ * `<style>` written in a document's head, and the literal parts of every `style="…"` of the
+ * markup, in any scope.
+ */
+export function pageTokenConsumers(graph: DocumentGraph): readonly string[] {
+  const out: string[] = [];
+  for (const c of allComponents(graph)) out.push(...headStyles(c.doc.head, c.source));
+  for (const layout of graph.layouts) out.push(...headStyles(layout.doc.head, layout.source));
+  if ('head' in graph.entry) out.push(...headStyles(graph.entry.head, graph.entrySource));
+  for (const run of allRuns(graph)) {
+    walkElements(run, (el) => {
+      for (const attr of el.attributes) {
+        if (typeof attr.name !== 'string' || attr.name.toLowerCase() !== 'style') continue;
+        for (const part of attr.value) if (part.type === 'attribute-text') out.push(part.value);
+      }
+    });
+  }
+  return out;
 }
 
 /** The union of several surfaces: what a sheet adopted by several components can match. */

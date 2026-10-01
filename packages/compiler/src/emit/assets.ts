@@ -219,6 +219,19 @@ export class AssetLinker {
   }
 
   /**
+   * `css` with each linkable `url(…)` written as the URL the host gave it (SDD-49 §4.7) — for
+   * a pruned copy published as a FILE, where there is no module to carry an import binding.
+   * Without a host that names URLs, or for an absolute or missing file, the literal stays.
+   */
+  cssLinked(css: string): string {
+    if (!this.#enabled || this.#url === undefined) return css;
+    return css.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/gu, (whole, _q: string, spec: string) => {
+      const ref = this.maybeRef(spec);
+      return ref === null ? whole : `url(${ref})`;
+    });
+  }
+
+  /**
    * Build the `export const css` template-literal body (including its backticks),
    * rewriting each linkable `url(…)` to `url(${binding})`. When disabled or with no
    * linkable URLs this is byte-identical to the plain escaped template.
