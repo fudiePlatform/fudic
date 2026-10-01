@@ -18,14 +18,12 @@
  * reads (BUG-23 §5).
  */
 
-import { errorDiag, span, type Span } from '../../types/index.js';
+import { FUD0197, FUD0198 } from '@fudic/diagnostics';
+import { span, type Span } from '../../types/index.js';
 import type { Attribute } from '../../html/index.js';
 import { CONTROL_NAME, CONTROL_PROP } from '../../binding/index.js';
-import type { Analyzer, ComponentDeclaredProps, MarkupInput, Report } from '../model.js';
+import type { Analyzer, MarkupInput, Report } from '../model.js';
 import { documentRoots, walk } from '../walk.js';
-
-const FUD_MISSING_REQUIRED_PROP = 'FUD0197';
-const FUD_UNKNOWN_PROP = 'FUD0198';
 
 /** The `.` that makes an attribute a property binding (decision 23). */
 const PROPERTY_PREFIX = '.';
@@ -50,11 +48,6 @@ function writtenProps(attributes: readonly Attribute[]): readonly { name: string
   return out;
 }
 
-/** `` `.a`, `.b` `` — the missing names as the author would have to write them. */
-function listed(props: readonly ComponentDeclaredProps[]): string {
-  return props.map((prop) => `\`.${prop.name}\``).join(', ');
-}
-
 /** The rule itself, over markup alone: the semantic pass and the build both call this. */
 export function checkComponentProps(input: MarkupInput, report: Report): void {
   const { components } = input;
@@ -74,9 +67,7 @@ export function checkComponentProps(input: MarkupInput, report: Report): void {
       const written = writtenProps(el.attributes);
       for (const prop of written) {
         if (declared.some((d) => d.name === prop.name)) continue;
-        report(
-          errorDiag(FUD_UNKNOWN_PROP, `\`${el.name}\` declares no property \`${prop.name}\``, prop.at),
-        );
+        report(FUD0198({ span: prop.at, tag: el.name, prop: prop.name }));
       }
 
       const passed = new Set(written.map((prop) => prop.name));
@@ -89,9 +80,7 @@ export function checkComponentProps(input: MarkupInput, report: Report): void {
       }
       const missing = declared.filter((d) => d.required && !passed.has(d.name));
       if (missing.length === 0) return;
-      report(
-        errorDiag(FUD_MISSING_REQUIRED_PROP, `\`${el.name}\` requires ${listed(missing)}`, el.openSpan),
-      );
+      report(FUD0197({ span: el.openSpan, tag: el.name, missing: missing.map((d) => d.name) }));
     },
   });
 }

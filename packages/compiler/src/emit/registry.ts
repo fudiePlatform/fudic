@@ -11,7 +11,8 @@
  * time costs nothing and, above all, opens no second Oxc invocation for that file.
  */
 
-import { warningDiag, type Diagnostic } from '../types/index.js';
+import type { Diagnostic } from '../types/index.js';
+import { FUD0721 } from '@fudic/diagnostics';
 import type { ComponentDeclaredProps } from '../binding/index.js';
 import type { ComponentRegistry, CrossingKind } from '../semantic/model.js';
 import { checkComponentProps } from '../semantic/analyzers/component-props.js';
@@ -23,9 +24,6 @@ import type { ComponentGraph, ResolvedComponent } from './resolve.js';
 import { componentOf } from './resolve.js';
 import { codeOf } from './oxc-code.js';
 import { hydratableTags } from './level.js';
-
-/** A declaration nobody uses (BUG-32 T6). The only `warning` of this module. */
-const FUD_UNUSED_COMPONENT_LINK = 'FUD0721';
 
 /** The `<slot name="…">` names a component declares, in source order. */
 function slotNames(comp: ResolvedComponent): readonly string[] {
@@ -190,12 +188,6 @@ function checkUnusedComponentLinks(
   });
   for (const [link, tag] of graph.entryLinkTags) {
     if (used.has(tag)) continue;
-    report(
-      warningDiag(
-        FUD_UNUSED_COMPONENT_LINK,
-        `\`<${tag}>\` is declared here and used nowhere in this file: the \`<link rel="component">\` can go`,
-        link.openSpan,
-      ),
-    );
+    report(FUD0721({ span: link.openSpan, tag }));
   }
 }

@@ -24,7 +24,8 @@
  */
 
 import type { Diagnostic, ParseResult, Span } from '../types/index.js';
-import { errorDiag, ok, span } from '../types/index.js';
+import { ok, span } from '../types/index.js';
+import { FUD0854 } from '@fudic/diagnostics';
 import {
   originOf,
   parseCssRules,
@@ -41,15 +42,6 @@ import { splitSelectorList } from '../css/selectors.js';
 import type { AttributeSelector } from '../css/selectors.js';
 import { compactProjectCss } from './project-styles.js';
 import type { ScopeSurface, StyleScope } from './surface.js';
-
-export { FUD_SHEET_UNREADABLE } from '../css/rules.js';
-
-/** A sheet that adds no rule to any page of the application (reported by the host). */
-export const FUD_SHEET_UNUSED = 'FUD0852';
-/** `@import` in a `globalStyles` or `styles` sheet: an adopted sheet does not take one. */
-export const FUD_IMPORT_IN_PROJECT_SHEET = 'FUD0854';
-/** `@import` in a component's `<style>`. */
-export const FUD_IMPORT_IN_COMPONENT_STYLE = 'FUD0855';
 
 export interface PageSheet {
   readonly key: string;
@@ -518,13 +510,7 @@ export function sheetDiagnostics(sheet: FlatSheet): readonly FileDiagnostic[] {
 
 /** `FUD0854` on every `@import` of a `globalStyles` or `styles` sheet, over its text. */
 export function projectSheetDiagnostics(css: string): readonly Diagnostic[] {
-  return importsOf(parseCssRules(css).value.rules).map((r) =>
-    errorDiag(
-      FUD_IMPORT_IN_PROJECT_SHEET,
-      'a sheet of globalStyles or styles is adopted, and an adopted sheet does not take @import: it is dropped. Import it from a stylesheet a layout links, or list the file in fudic.json',
-      r.span,
-    ),
-  );
+  return importsOf(parseCssRules(css).value.rules).map((r) => FUD0854({ span: r.span }));
 }
 
 /** Every `@import` of a rule list, at any depth. */

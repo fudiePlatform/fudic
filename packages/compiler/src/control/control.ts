@@ -14,7 +14,18 @@
  */
 
 import { type Span, span, emptySpan, isEmptySpan } from '../types/index.js';
-import { type Diagnostic, errorDiag } from '../types/index.js';
+import type { Diagnostic } from '../types/index.js';
+import {
+  FUD0070,
+  FUD0071,
+  FUD0072,
+  FUD0073,
+  FUD0074,
+  FUD0075,
+  FUD0540,
+  FUD0541,
+  FUD0542,
+} from '@fudic/diagnostics';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 import { scanBrackets, scanBraces, scanParens } from '../balancer/index.js';
 import type { ControlKeyword, RazorExpression } from '../at/index.js';
@@ -405,10 +416,6 @@ class ControlParser {
     return charAt(this.#source, before) === '@' ? before : keywordSpan.start;
   }
 
-  #error(code: string, message: string, at: Span): void {
-    this.#diagnostics.push(errorDiag(code, message, at));
-  }
-
   /** Consume one token, keeping the diagnostics the lexer produced reading it. */
   #next(): Token {
     const result = this.#ctx.lexer.next();
@@ -430,7 +437,7 @@ class ControlParser {
   #header(from: number): ControlHeader | null {
     const at = skipTrivia(this.#source, from);
     if (charAt(this.#source, at) !== '(') {
-      this.#error('FUD0070', "expected '(' after the control keyword", emptySpan(at));
+      this.#diagnostics.push(FUD0070({ span: emptySpan(at) }));
       return null;
     }
     const scanned = scanParens(this.#source, at);
@@ -444,7 +451,7 @@ class ControlParser {
   #block(from: number): { body: readonly HtmlContent[]; end: number } | null {
     const at = skipTrivia(this.#source, from);
     if (charAt(this.#source, at) !== '{') {
-      this.#error('FUD0071', "expected '{' to open the block body", emptySpan(at));
+      this.#diagnostics.push(FUD0071({ span: emptySpan(at), body: 'block' }));
       return null;
     }
     const lexer = this.#ctx.lexer;
@@ -452,7 +459,7 @@ class ControlParser {
     const body = this.#ctx.parseContentUntil(isBlockEnd).value;
     const closing = lexer.peek();
     if (closing.type !== 'block-end') {
-      this.#error('FUD0072', "unclosed block: expected '}'", span(at, at + 1));
+      this.#diagnostics.push(FUD0072({ span: span(at, at + 1), body: 'block' }));
       return { body, end: lexer.offset };
     }
     this.#next();
@@ -517,14 +524,14 @@ class ControlParser {
    */
   #checkLoopKey(header: ControlHeader, clause: KeyClause | null): void {
     if (clause === null) {
-      this.#error('FUD0540', "a loop must declare 'key (…)'", header.span);
+      this.#diagnostics.push(FUD0540({ span: header.span }));
       return;
     }
     // Written but holding nothing — `key`, `key ()`, `key (   )`, `key (r.id` — all reach
     // here the same way: no expression to read. The clause still travels in the AST so the
     // editor can ask inside it; the diagnostic is what tells the AUTHOR it is not finished.
     if (clause.key === null || isEmptySpan(clause.key.expr)) {
-      this.#error('FUD0541', "'key (…)' must hold an expression", header.span);
+      this.#diagnostics.push(FUD0541({ span: header.span }));
     }
   }
 
@@ -537,7 +544,7 @@ class ControlParser {
   #rejectKey(header: ControlHeader): KeyClause {
     const clause = this.#keyClause(header.span.end);
     if (clause === null) return { key: null, end: header.span.end };
-    this.#error('FUD0542', "'key (…)' is only valid on a loop", header.span);
+    this.#diagnostics.push(FUD0542({ span: header.span }));
     return clause;
   }
 
@@ -627,7 +634,7 @@ class ControlParser {
 
   #orphanElse(keywordSpan: Span, start: number): IfNode {
     const at = span(start, keywordSpan.end);
-    this.#error('FUD0073', 'else without a matching @if', at);
+    this.#diagnostics.push(FUD0073({ span: at }));
     return { type: 'if', span: at, branches: [] };
   }
 
@@ -650,7 +657,7 @@ class ControlParser {
     const key = withKey(clause.key);
     const braceAt = skipTrivia(this.#source, clause.end);
     if (charAt(this.#source, braceAt) !== '{') {
-      this.#error('FUD0071', "expected '{' to open the @switch body", emptySpan(braceAt));
+      this.#diagnostics.push(FUD0071({ span: emptySpan(braceAt), body: 'switch' }));
       return { type: 'switch', span: span(start, clause.end), header, cases: [], ...key };
     }
 
@@ -665,7 +672,7 @@ class ControlParser {
     for (;;) {
       const token = lexer.peek();
       if (token.type === 'eof') {
-        this.#error('FUD0072', "unclosed @switch body: expected '}'", span(braceAt, braceAt + 1));
+        this.#diagnostics.push(FUD0072({ span: span(braceAt, braceAt + 1), body: 'switch' }));
         end = lexer.offset;
         break;
       }
@@ -706,11 +713,7 @@ class ControlParser {
     // `parseContentUntil` also stops on a close tag belonging to an element still open
     // outside the switch; consume one token so the loop can never stall on it.
     if (lexer.offset === before) this.#next();
-    this.#error(
-      'FUD0074',
-      'only case and default labels may appear directly in a @switch body',
-      span(before, lexer.offset),
-    );
+    this.#diagnostics.push(FUD0074({ span: span(before, lexer.offset) }));
   }
 
   /** One `case <test>:` / `default:` plus its independent body (decision 14). */
@@ -722,7 +725,7 @@ class ControlParser {
     if (this.#slice(labelSpan) === 'case') {
       const scanned = scanCaseTest(this.#source, labelSpan.end);
       if (scanned === null) {
-        this.#error('FUD0075', "expected ':' to close the case label", emptySpan(labelSpan.end));
+        this.#diagnostics.push(FUD0075({ span: emptySpan(labelSpan.end), label: 'case' }));
       } else {
         test = scanned.test;
         lexer.seekTo(scanned.end);
@@ -731,7 +734,7 @@ class ControlParser {
       const colon = skipTrivia(this.#source, labelSpan.end);
       if (charAt(this.#source, colon) === ':') lexer.seekTo(colon + 1);
       else {
-        this.#error('FUD0075', "expected ':' to close the default label", emptySpan(labelSpan.end));
+        this.#diagnostics.push(FUD0075({ span: emptySpan(labelSpan.end), label: 'default' }));
       }
     }
 

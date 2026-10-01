@@ -18,21 +18,14 @@
  * decides whether `$day` is legal.
  */
 
-import { errorDiag, span, type Diagnostic, type Span } from '../types/index.js';
+import { FUD0660, FUD0661, FUD0662, FUD0663, FUD0664, FUD0665, FUD0666 } from '@fudic/diagnostics';
+import { span, type Diagnostic, type Span } from '../types/index.js';
 import { classifyAttribute } from '../binding/classify.js';
 import { loopHeaderNames, type OxcNode } from '../oxc/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { Attribute, ElementNode, HtmlContent } from '../html/index.js';
 import type { ControlNode, ForeachNode, ForNode, WhileNode } from '../control/index.js';
 import { walk } from './walk.js';
-
-const FUD_NO_MARKER = 'FUD0660';
-const FUD_NO_READER = 'FUD0661';
-const FUD_NOT_A_HEADER_BINDING = 'FUD0662';
-const FUD_MARKER_OUTSIDE_LOOP = 'FUD0663';
-const FUD_NAME_TWICE = 'FUD0664';
-const FUD_EVENT_DOES_NOT_BUBBLE = 'FUD0665';
-const FUD_READ_OUTSIDE_ARGUMENTS = 'FUD0666';
 
 /** The event prefix, as the attribute writes it. */
 const EVENT_PREFIX = '@';
@@ -313,11 +306,7 @@ function strayDollars(
   visitDollars(root, (found) => {
     if (exempt?.has(found) === true) return;
     out.push(
-      errorDiag(
-        FUD_READ_OUTSIDE_ARGUMENTS,
-        `\`${String(found['name'])}\` is only readable in the argument list of an event binding`,
-        js.spanOf(found),
-      ),
+      FUD0666({ span: js.spanOf(found), name: String(found['name']) }),
     );
   });
 }
@@ -379,13 +368,7 @@ function pair(collected: Collected): DelegationPlan {
 
   for (const marker of markers) {
     if (marker.enclosing.length === 0) {
-      diagnostics.push(
-        errorDiag(
-          FUD_MARKER_OUTSIDE_LOOP,
-          '`delegate:` is only allowed inside a loop (@foreach/@for/@while): outside one there is no row to identify',
-          marker.attr.span,
-        ),
-      );
+      diagnostics.push(FUD0663({ span: marker.attr.span }));
       continue;
     }
     // Innermost first: with two loops declaring `row`, the row a marker hands over is the one
@@ -398,13 +381,7 @@ function pair(collected: Collected): DelegationPlan {
     }
     const reader = readerOf(marker.element, marker.name);
     if (reader === undefined) {
-      diagnostics.push(
-        errorDiag(
-          FUD_NO_READER,
-          `no ancestor handler reads \`$${marker.name}\`: this marker is never read`,
-          marker.attr.span,
-        ),
-      );
+      diagnostics.push(FUD0661({ span: marker.attr.span, name: marker.name }));
       continue;
     }
     const key = keyOf(reader, marker.name);
@@ -425,13 +402,7 @@ function pair(collected: Collected): DelegationPlan {
     // cannot say which loop it came from, and that is true even when both iterate the same
     // type — which is what keeps this check on the AST and out of the checker (§5).
     if (entry.loops.length > 0 && !entry.loops.includes(declaring.loop)) {
-      diagnostics.push(
-        errorDiag(
-          FUD_NAME_TWICE,
-          `\`${marker.name}\` is already delegated to that handler by another loop: one name, one loop`,
-          marker.attr.span,
-        ),
-      );
+      diagnostics.push(FUD0664({ span: marker.attr.span, name: marker.name }));
       continue;
     }
     entry.loops.push(declaring.loop);
@@ -446,13 +417,7 @@ function pair(collected: Collected): DelegationPlan {
     for (const read of reader.reads) {
       const entry = bound.get(keyOf(reader.element, read.name));
       if (entry === undefined) {
-        diagnostics.push(
-          errorDiag(
-            FUD_NO_MARKER,
-            `no descendant declares \`delegate:${read.name}\`: \`$${read.name}\` would have no row to read`,
-            read.at,
-          ),
-        );
+        diagnostics.push(FUD0660({ span: read.at, name: read.name }));
         continue;
       }
       resolved.push({
@@ -470,13 +435,12 @@ function pair(collected: Collected): DelegationPlan {
     // `$name` is an ordinary listener on that very element, and stays legal.
     const substitute = NON_BUBBLING.get(reader.eventName);
     if (substitute === undefined) continue;
-    const advice = substitute === null ? '' : `, use \`@${substitute}\``;
     diagnostics.push(
-      errorDiag(
-        FUD_EVENT_DOES_NOT_BUBBLE,
-        `\`${reader.eventName}\` does not bubble, so it can never be delegated${advice}`,
-        reader.at,
-      ),
+      FUD0665({
+        span: reader.at,
+        event: reader.eventName,
+        ...(substitute === null ? {} : { substitute }),
+      }),
     );
   }
 
@@ -486,15 +450,6 @@ function pair(collected: Collected): DelegationPlan {
 function notAHeaderBinding(marker: Marker): Diagnostic {
   // Every enclosing loop's names and not only the innermost's: with nested loops, all of them
   // are in scope here, so all of them are what the author may have meant.
-  const names = [...new Set(marker.enclosing.flatMap((at) => at.names))];
-  const available = names.map((name) => `\`${name}\``).join(', ');
-  const offer =
-    available.length > 0
-      ? `this loop declares ${available}`
-      : 'this loop declares no binding to delegate';
-  return errorDiag(
-    FUD_NOT_A_HEADER_BINDING,
-    `\`${marker.name}\` is not a binding of the loop header: ${offer}`,
-    marker.nameSpan,
-  );
+  const available = [...new Set(marker.enclosing.flatMap((at) => at.names))];
+  return FUD0662({ span: marker.nameSpan, name: marker.name, available });
 }

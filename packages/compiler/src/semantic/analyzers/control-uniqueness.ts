@@ -19,14 +19,12 @@
  * owns it (§4.9); what this rule owns is the shape a reader can see — the same words twice.
  */
 
-import { errorDiag } from '../../types/index.js';
+import { FUD0591 } from '@fudic/diagnostics';
 import { classifyAttribute, isRadio } from '../../binding/index.js';
 import type { ElementNode } from '../../html/index.js';
 import type { Attribute } from '../../html/index.js';
 import type { Analyzer } from '../model.js';
 import { documentRoots, walk } from '../walk.js';
-
-const FUD_CONTROL_DUPLICATE = 'FUD0591';
 
 /** One `control` binding, as this rule needs to see it: where it is, and on what. */
 interface Bound {
@@ -59,13 +57,7 @@ export const controlUniqueness: Analyzer = {
       // Every element past the first: the first is the binding that stands, and the rest are
       // the ones the author has to remove.
       for (const duplicate of list.slice(1)) {
-        report(
-          errorDiag(
-            FUD_CONTROL_DUPLICATE,
-            `\`${expression}\` is already bound to another element in this component: a form node binds one element, unless every one of them is an \`<input type="radio">\``,
-            duplicate.attr.span,
-          ),
-        );
+        report(FUD0591({ span: duplicate.attr.span, expression }));
       }
     }
   },

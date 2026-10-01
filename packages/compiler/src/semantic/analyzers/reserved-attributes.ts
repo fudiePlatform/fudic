@@ -32,11 +32,9 @@
  * not — the DOM lowercases it, so `DATA-FUD-ID` is the same marker with a different spelling.
  */
 
-import { errorDiag } from '../../types/index.js';
+import { FUD0294 } from '@fudic/diagnostics';
 import type { Analyzer } from '../model.js';
 import { documentRoots, walk } from '../walk.js';
-
-const FUD_RESERVED_ATTRIBUTE = 'FUD0294';
 
 /** The reserved namespace, and the one name inside it the author is meant to write. */
 const RESERVED_PREFIX = 'data-fud-';
@@ -66,13 +64,7 @@ export const reservedAttributes: Analyzer = {
           const written = attributeName(attr.name);
           if (written === undefined) continue;
           if (!written.startsWith(RESERVED_PREFIX) || AUTHORED.has(written)) continue;
-          report(
-            errorDiag(
-              FUD_RESERVED_ATTRIBUTE,
-              `\`${attr.name}\` is reserved: the \`data-fud-\` namespace belongs to the compiler. Use a \`data-\` name of your own.`,
-              attr.span,
-            ),
-          );
+          report(FUD0294({ span: attr.span, name: attr.name }));
         }
       },
     });

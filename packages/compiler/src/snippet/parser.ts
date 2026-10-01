@@ -17,7 +17,16 @@
  */
 
 import { type Span, span, emptySpan } from '../types/index.js';
-import { type Diagnostic, errorDiag } from '../types/index.js';
+import type { Diagnostic } from '../types/index.js';
+import {
+  FUD0071,
+  FUD0072,
+  FUD0820,
+  FUD0821,
+  FUD0832,
+  FUD0894,
+  FUD0895,
+} from '@fudic/diagnostics';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 import { type LexRegion, scanBalanced, scanParens } from '../balancer/index.js';
 import type { SnippetDirective } from '../at/index.js';
@@ -32,21 +41,15 @@ import type {
   SnippetNode,
 } from './nodes.js';
 
-/** A `@snippet` / `@render` whose name is missing, or is not `[A-Za-z_][A-Za-z0-9_]*`. */
-const FUD_BAD_NAME = 'FUD0820';
-/** A signature or an argument list with no closing parenthesis. */
-const FUD_BAD_SIGNATURE = 'FUD0821';
-/** A positional argument written after a nominal one (decision 12). */
-const FUD_POSITIONAL_AFTER_NAMED = 'FUD0832';
-/**
- * `FUD0833` — «an `@` inside the header of a `@render`» (decision 13) — is RETIRED by SDD-48:
- * an argument that reads the scope is now written WITH `@`, the way a prop is. The code is not
- * reused.
- */
-/** A `@render` argument that reads the scope and is not written with `@` (SDD-48). */
-const FUD_ARG_WITHOUT_AT = 'FUD0444';
-/** A `@render` argument whose `@` is followed by more than a path, or `@( … )` plus more. */
-const FUD_AT_EXPRESSION = 'FUD0445';
+// `FUD0820`: a `@snippet` / `@render` whose name is missing, or is not
+// `[A-Za-z_][A-Za-z0-9_]*`. `FUD0821`: a signature or an argument list with no parenthesis.
+// `FUD0832`: a positional argument written after a nominal one (decision 12).
+//
+// `FUD0833` — «an `@` inside the header of a `@render`» (decision 13) — is RETIRED by SDD-48:
+// an argument that reads the scope is now written WITH `@`, the way a prop is. The code is not
+// reused. `FUD0894`: a `@render` argument that reads the scope and is not written with `@`.
+// `FUD0895`: a `@render` argument whose `@` is followed by more than a path, or `@( … )` plus
+// more.
 /**
  * What goes bare: a string (a template only without `${`), a number, `true`, `false`, `null`.
  * Everything else reads the scope and goes behind an `@`.
@@ -54,13 +57,6 @@ const FUD_AT_EXPRESSION = 'FUD0445';
 const LITERAL_ARG = /^(?:"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`[^`$]*`|-?\d[\d_]*(?:\.\d+)?(?:e[+-]?\d+)?|true|false|null)$/u;
 /** What a bare `@` may lead: a name and its path, each segment optionally called — `@count()`. */
 const IMPLICIT_ARG = /^@[A-Za-z_$][\w$]*(?:\([^()]*\))?(?:\??\.[A-Za-z_$][\w$]*(?:\([^()]*\))?)*$/u;
-/**
- * The `{ … }` of a `@snippet` reuses SDD-06's block diagnostics, exactly as `@section` does:
- * same rule, same message, so an author who forgets a brace reads one wording and not three.
- */
-const FUD_MISSING_BLOCK = 'FUD0071';
-const FUD_UNCLOSED_BLOCK = 'FUD0072';
-
 const WHITESPACE = /\s/u;
 /**
  * A snippet name. Narrower than a tag name (decision 41, which allows hyphens) and narrower
@@ -132,10 +128,6 @@ class SnippetParser {
     return this.#diagnostics.length === 0 ? ok(node) : withDiagnostics(node, this.#diagnostics);
   }
 
-  #error(code: string, message: string, at: Span): void {
-    this.#diagnostics.push(errorDiag(code, message, at));
-  }
-
   /** `@snippet name(firma) { markup }`. */
   #parseDecl(keywordSpan: Span, start: number): SnippetDeclNode {
     const name = this.#name(keywordSpan.end, '@snippet');
@@ -196,13 +188,7 @@ class SnippetParser {
     const text = this.#source.slice(at, i);
     if (SNIPPET_NAME.test(text)) return { name: text, span: span(at, i) };
     const where = i === at ? emptySpan(at) : span(at, i);
-    this.#error(
-      FUD_BAD_NAME,
-      text === ''
-        ? `${label} expects a name`
-        : `"${text}" is not a valid snippet name: letters, digits and underscore, never a hyphen`,
-      where,
-    );
+    this.#diagnostics.push(FUD0820({ span: where, keyword: label, text }));
     return { name: '', span: where };
   }
 
@@ -216,7 +202,7 @@ class SnippetParser {
   ): { inner: Span; span: Span; regions: readonly LexRegion[] } | undefined {
     const at = skipTrivia(this.#source, from);
     if (charAt(this.#source, at) !== '(') {
-      this.#error(FUD_BAD_SIGNATURE, `${label} requires parentheses`, emptySpan(at));
+      this.#diagnostics.push(FUD0821({ span: emptySpan(at), keyword: label }));
       return undefined;
     }
     const scanned = scanParens(this.#source, at);
@@ -239,7 +225,9 @@ class SnippetParser {
   ): { body: readonly HtmlContent[]; span: Span; content: Span } | undefined {
     const at = skipTrivia(this.#source, from);
     if (charAt(this.#source, at) !== '{') {
-      this.#error(FUD_MISSING_BLOCK, "expected '{' to open the block body", emptySpan(at));
+      // The `{ … }` of a `@snippet` reuses SDD-06's block diagnostics, exactly as `@section`
+      // does: same rule, same message, so an author who forgets a brace reads one wording.
+      this.#diagnostics.push(FUD0071({ span: emptySpan(at), body: 'block' }));
       return undefined;
     }
     const lexer = this.#ctx.lexer;
@@ -247,7 +235,7 @@ class SnippetParser {
     const body = this.#ctx.parseContentUntil(isBlockEnd).value;
     const closing = lexer.peek();
     if (closing.type !== 'block-end') {
-      this.#error(FUD_UNCLOSED_BLOCK, "unclosed block: expected '}'", span(at, at + 1));
+      this.#diagnostics.push(FUD0072({ span: span(at, at + 1), body: 'block' }));
       return { body, span: span(at, lexer.offset), content: span(at + 1, lexer.offset) };
     }
     const consumed = lexer.next();
@@ -274,13 +262,7 @@ class SnippetParser {
       const arg = this.#arg(piece);
       if (arg === undefined) continue;
       if (arg.type === 'named-arg') seenNamed = true;
-      else if (seenNamed) {
-        this.#error(
-          FUD_POSITIONAL_AFTER_NAMED,
-          'a positional argument cannot follow a named one: positionals first, names after',
-          arg.span,
-        );
-      }
+      else if (seenNamed) this.#diagnostics.push(FUD0832({ span: arg.span }));
       args.push(arg);
     }
     return args;
@@ -340,8 +322,8 @@ class SnippetParser {
    * transition and not JS, so the span that travels on is what follows it: the expansion, the
    * check and the projection read the same expression they always did.
    *
-   * A reference with no `@` is `FUD0444` and a bare `@` followed by more than a path is
-   * `FUD0445`; both keep their JS, so a degraded call still expands as it was written.
+   * A reference with no `@` is `FUD0894` and a bare `@` followed by more than a path is
+   * `FUD0895`; both keep their JS, so a degraded call still expands as it was written.
    */
   #value(value: Span): Span {
     const text = this.#source.slice(value.start, value.end);
@@ -349,26 +331,14 @@ class SnippetParser {
       if (text.charAt(1) === '(') {
         const group = scanBalanced(this.#source, value.start + 1, ')');
         if (group.value.span.end !== value.end) {
-          this.#error(FUD_AT_EXPRESSION, 'an argument written `@( … )` is that group and nothing after it', value);
+          this.#diagnostics.push(FUD0895({ span: value, form: 'group' }));
         }
         return span(value.start + 1, value.end);
       }
-      if (!IMPLICIT_ARG.test(text)) {
-        this.#error(
-          FUD_AT_EXPRESSION,
-          'an argument after a bare `@` is a name or a path: wrap anything else in `@( … )`',
-          value,
-        );
-      }
+      if (!IMPLICIT_ARG.test(text)) this.#diagnostics.push(FUD0895({ span: value, form: 'path' }));
       return span(value.start + 1, value.end);
     }
-    if (!LITERAL_ARG.test(text)) {
-      this.#error(
-        FUD_ARG_WITHOUT_AT,
-        'an argument that reads the scope is written with `@`, as a prop is: `@name`, `@a.b` or `@( … )`; only a literal goes bare',
-        value,
-      );
-    }
+    if (!LITERAL_ARG.test(text)) this.#diagnostics.push(FUD0894({ span: value }));
     return value;
   }
 

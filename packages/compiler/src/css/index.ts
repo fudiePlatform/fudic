@@ -16,17 +16,7 @@ export type {
 } from './rules.js';
 export { parseCssRules } from './rules.js';
 export type { CssImport, CssRead, FlatRegion, FileDiagnostic, FlatSheet } from './flatten.js';
-export {
-  parseImport,
-  flattenImports,
-  originOf,
-  plainSheet,
-  FUD_IMPORT_EXTERNAL,
-  FUD_IMPORT_MISSING,
-  FUD_IMPORT_CYCLE,
-  FUD_IMPORT_MISPLACED,
-  FUD_IMPORT_REORDERED,
-} from './flatten.js';
+export { parseImport, flattenImports, originOf, plainSheet } from './flatten.js';
 export type {
   AttributeOperator,
   AttributeSelector,

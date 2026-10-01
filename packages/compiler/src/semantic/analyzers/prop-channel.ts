@@ -23,16 +23,12 @@
  * So the build owns these four, as it owns `FUD0197`–`FUD0199`: one voice per fact.
  */
 
+import { FUD0200, FUD0201, FUD0202, FUD0203 } from '@fudic/diagnostics';
 import { classifyAttribute } from '../../binding/index.js';
-import { errorDiag, span, type Span } from '../../types/index.js';
+import { span, type Span } from '../../types/index.js';
 import type { Attribute, AttributeValuePart, ElementNode } from '../../html/index.js';
 import type { ChannelInput, CrossingKind, Report } from '../model.js';
 import { documentRoots, walk } from '../walk.js';
-
-const FUD_NOT_A_SIGNAL = 'FUD0200';
-const FUD_NOT_A_FUNCTION = 'FUD0201';
-const FUD_CELL_TO_INERT = 'FUD0202';
-const FUD_COMPUTED_WRITTEN = 'FUD0203';
 
 /** The `.` that makes an attribute a property binding (decision 23). */
 const PROPERTY_PREFIX = '.';
@@ -89,23 +85,11 @@ export function checkPropChannel(input: ChannelInput, report: Report): void {
 
         if (channel === 'fn') {
           if (kind !== 'fn') {
-            report(
-              errorDiag(
-                FUD_NOT_A_FUNCTION,
-                `\`.${binding.name}\` takes a function by reference: name one of @code { @client }`,
-                at,
-              ),
-            );
+            report(FUD0201({ span: at, prop: binding.name }));
             continue;
           }
         } else if (kind === undefined || !REACTIVE.has(kind)) {
-          report(
-            errorDiag(
-              FUD_NOT_A_SIGNAL,
-              `\`.${binding.name}\` takes a Signal by reference: name a signal(…) or computed(…)`,
-              at,
-            ),
-          );
+          report(FUD0200({ span: at, prop: binding.name }));
           continue;
         }
 
@@ -116,11 +100,11 @@ export function checkPropChannel(input: ChannelInput, report: Report): void {
         // wrong here is the pairing rather than what the parent named.
         if (hydratable?.(el.name) === false) {
           report(
-            errorDiag(
-              FUD_CELL_TO_INERT,
-              `\`${el.name}\` does not hydrate, so it can never receive \`.${binding.name}\` by reference`,
-              nameSpan(attr, PROPERTY_PREFIX + binding.name),
-            ),
+            FUD0202({
+              span: nameSpan(attr, PROPERTY_PREFIX + binding.name),
+              tag: el.name,
+              prop: binding.name,
+            }),
           );
           continue;
         }
@@ -128,13 +112,7 @@ export function checkPropChannel(input: ChannelInput, report: Report): void {
         // would try. Only when the child really writes it: a `computed` a child only READS
         // crosses perfectly well.
         if (kind === 'computed' && writes?.(el.name, binding.name) === true) {
-          report(
-            errorDiag(
-              FUD_COMPUTED_WRITTEN,
-              `\`${name}\` is a computed and \`${el.name}\` writes \`.${binding.name}\`: a derived value is not writable`,
-              at,
-            ),
-          );
+          report(FUD0203({ span: at, name: name!, tag: el.name, prop: binding.name }));
         }
       }
     },

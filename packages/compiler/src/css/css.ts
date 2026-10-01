@@ -17,7 +17,8 @@
  */
 
 import { type Span, span, emptySpan } from '../types/index.js';
-import { type Diagnostic, errorDiag } from '../types/index.js';
+import type { Diagnostic } from '../types/index.js';
+import { FUD0131, FUD0132 } from '@fudic/diagnostics';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 import { scanParens } from '../balancer/index.js';
 import type { StyleNode } from './nodes.js';
@@ -33,10 +34,6 @@ const LINE_TERMINATORS: ReadonlySet<number> = new Set([0x0a, 0x0d, 0x2028, 0x202
 function isLineTerminator(c: string): boolean {
   return LINE_TERMINATORS.has(c.charCodeAt(0));
 }
-
-/** The one message of `FUD0132`, whatever form the Razor took. */
-const RAZOR_IN_CSS =
-  'Razor is not allowed inside <style>: its body is plain CSS. Write what changes in the markup (style=, style:, class:)';
 
 /**
  * Scans one `<style>` body. Stateful cursor, one instance per `parseStyle` call: the public
@@ -93,11 +90,7 @@ class StyleScanner {
 
     if (this.#depth > 0) {
       this.#diagnostics.push(
-        errorDiag(
-          'FUD0131',
-          `Unbalanced CSS braces in <style>: ${this.#depth} block(s) left unclosed`,
-          emptySpan(this.#end),
-        ),
+        FUD0131({ span: emptySpan(this.#end), kind: 'unclosed', blocks: this.#depth }),
       );
     }
 
@@ -148,9 +141,7 @@ class StyleScanner {
   /** A `}` with no open block is reported where it occurs, and the depth stays at 0. */
   #closeBrace(): void {
     if (this.#depth === 0) {
-      this.#diagnostics.push(
-        errorDiag('FUD0131', 'Unbalanced CSS braces in <style>: unmatched }', emptySpan(this.#i)),
-      );
+      this.#diagnostics.push(FUD0131({ span: emptySpan(this.#i), kind: 'unmatched' }));
     } else {
       this.#depth--;
     }
@@ -159,7 +150,7 @@ class StyleScanner {
 
   /** `FUD0132` over `[from, to)`, and the scan resumes at `to`. */
   #razor(from: number, to: number): void {
-    this.#diagnostics.push(errorDiag('FUD0132', RAZOR_IN_CSS, span(from, to)));
+    this.#diagnostics.push(FUD0132({ span: span(from, to) }));
     this.#i = to;
   }
 

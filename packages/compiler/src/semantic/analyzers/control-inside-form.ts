@@ -26,13 +26,11 @@
  * The `<form control>` itself is of course allowed: it is the form.
  */
 
-import { errorDiag } from '../../types/index.js';
+import { FUD0595 } from '@fudic/diagnostics';
 import { classifyAttribute, isFormAssociated } from '../../binding/index.js';
 import type { ElementNode } from '../../html/index.js';
 import type { Analyzer } from '../model.js';
 import { documentRoots, walk } from '../walk.js';
-
-const FUD_CONTROL_OUTSIDE_FORM = 'FUD0595';
 
 /** The tag a form binding may sit on — HTML's own, not a component that happens to be named so. */
 const FORM_TAG = 'form';
@@ -69,13 +67,7 @@ export const controlInsideForm: Analyzer = {
 
         for (const attr of el.attributes) {
           if (classifyAttribute(attr, input.source).value.type !== 'control') continue;
-          report(
-            errorDiag(
-              FUD_CONTROL_OUTSIDE_FORM,
-              '`control` needs a `<form control="…">` above it: a node binds inside its own form, and a component that binds one it received must mark its template `formassociated`',
-              attr.span,
-            ),
-          );
+          report(FUD0595({ span: attr.span }));
         }
       },
     });

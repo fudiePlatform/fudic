@@ -18,7 +18,8 @@
  * cannot see.
  */
 
-import type { Span } from '../types/index.js';
+import type { Diagnostic } from '../types/index.js';
+import { FUD0605 } from '@fudic/diagnostics';
 import type { Attribute, ElementNode } from '../html/index.js';
 import { isFormAssociated } from './control.js';
 import { staticId, walkBlocks } from './markers.js';
@@ -31,11 +32,8 @@ export interface Bridge {
   readonly id: string;
 }
 
-export interface BridgeProblem {
-  readonly code: 'FUD0605';
-  readonly message: string;
-  readonly span: Span;
-}
+/** What the bridge cannot be: `FUD0605`, already built. */
+export type BridgeProblem = Diagnostic;
 
 export interface BridgeResult {
   /** `null` when its author wrote no target. */
@@ -73,13 +71,7 @@ export function bridgeOf(template: ElementNode): BridgeResult {
   if (id === undefined || !ids.has(id)) {
     return {
       bridge: null,
-      problems: [
-        {
-          code: 'FUD0605',
-          message: `\`${REFERENCE_TARGET_ATTR}\` must be a static id of an element of this template: the bridge points at an element the compiler can see`,
-          span: written.span,
-        },
-      ],
+      problems: [FUD0605({ span: written.span })],
     };
   }
   return { bridge: { id }, problems: [] };

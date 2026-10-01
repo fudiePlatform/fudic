@@ -17,43 +17,24 @@
  * reports it (`FUD0824`).
  */
 
-import { type Diagnostic, errorDiag } from '../types/index.js';
+import type { Diagnostic, Span } from '../types/index.js';
+import { FUD0822, FUD0823, FUD0825 } from '@fudic/diagnostics';
 import type { ElementNode, HtmlContent } from '../html/index.js';
 import type { SnippetDeclNode } from './nodes.js';
 
-/** A `<style>` inside a snippet body: a snippet contributes no CSS (decision 62). */
-const FUD_SNIPPET_STYLE = 'FUD0822';
-/** A `@code` inside a snippet body: a snippet has no state of its own. */
-const FUD_SNIPPET_CODE = 'FUD0823';
-/** A `<head>` inside a snippet body: a snippet is not a document. */
-const FUD_SNIPPET_HEAD = 'FUD0825';
-
-interface Rule {
-  readonly code: string;
-  readonly message: string;
-}
+/** A broken rule: the diagnostic it reports, given where. */
+type Rule = (span: Span) => Diagnostic;
 
 /** The rule a node of a body breaks, or `undefined`. */
 function broken(node: HtmlContent): Rule | undefined {
-  if (node.type === 'code') {
-    return {
-      code: FUD_SNIPPET_CODE,
-      message:
-        'a @snippet has no @code: it has no state of its own, and every value in its markup arrives as an argument',
-    };
-  }
+  // A `@code` inside a snippet body: a snippet has no state of its own.
+  if (node.type === 'code') return (span) => FUD0823({ span, where: 'snippet' });
   if (node.type !== 'element') return undefined;
   const name = (node as ElementNode).name;
-  if (name === 'style') {
-    return {
-      code: FUD_SNIPPET_STYLE,
-      message:
-        'a @snippet has no <style>: it contributes no CSS and takes no part in the cascade of the head it expands into',
-    };
-  }
-  if (name === 'head') {
-    return { code: FUD_SNIPPET_HEAD, message: 'a @snippet has no <head>: it is markup, not a document' };
-  }
+  // A `<style>`: a snippet contributes no CSS (decision 62).
+  if (name === 'style') return (span) => FUD0822({ span });
+  // A `<head>`: a snippet is not a document.
+  if (name === 'head') return (span) => FUD0825({ span });
   return undefined;
 }
 
@@ -67,7 +48,7 @@ function broken(node: HtmlContent): Rule | undefined {
 function walkBody(nodes: readonly HtmlContent[], diagnostics: Diagnostic[]): void {
   for (const node of nodes) {
     const rule = broken(node);
-    if (rule !== undefined) diagnostics.push(errorDiag(rule.code, rule.message, node.span));
+    if (rule !== undefined) diagnostics.push(rule(node.span));
     const children = (node as { readonly children?: readonly HtmlContent[] }).children;
     if (children !== undefined) walkBody(children, diagnostics);
   }

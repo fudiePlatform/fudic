@@ -11,16 +11,12 @@
  * before the render (`FUD0745`).
  */
 
-import type { Span } from '../types/index.js';
+import type { Diagnostic, Span } from '../types/index.js';
+import { FUD0745 } from '@fudic/diagnostics';
 import type { Attribute, ElementNode } from '../html/index.js';
 
 /** The standard attribute of a declarative shadow root that lists its adopted sheets. */
 export const ADOPTED_STYLESHEETS_ATTR = 'shadowrootadoptedstylesheets';
-
-/** The attribute names a sheet the project does not declare under `styles`. */
-export const FUD_ADOPTED_STYLE_UNKNOWN = 'FUD0744';
-/** The attribute is not a literal. */
-export const FUD_ADOPTED_STYLE_DYNAMIC = 'FUD0745';
 
 /** One name, where the author wrote it. */
 export interface AdoptedName {
@@ -31,11 +27,8 @@ export interface AdoptedName {
 export interface AdoptedStylesResult {
   /** In written order, repeats dropped. Empty when the attribute is absent. */
   readonly names: readonly AdoptedName[];
-  readonly problems: readonly {
-    readonly code: typeof FUD_ADOPTED_STYLE_DYNAMIC;
-    readonly message: string;
-    readonly span: Span;
-  }[];
+  /** `FUD0745` when the attribute is not a literal, already built. */
+  readonly problems: readonly Diagnostic[];
 }
 
 const NONE: AdoptedStylesResult = { names: [], problems: [] };
@@ -54,16 +47,7 @@ export function adoptedStylesOf(template: ElementNode | undefined): AdoptedStyle
   const seen = new Set<string>();
   for (const part of written.value) {
     if (part.type !== 'attribute-text') {
-      return {
-        names: [],
-        problems: [
-          {
-            code: FUD_ADOPTED_STYLE_DYNAMIC,
-            message: `\`${ADOPTED_STYLESHEETS_ATTR}\` must be a literal list of names: the sheets are chosen when the component is compiled`,
-            span: written.span,
-          },
-        ],
-      };
+      return { names: [], problems: [FUD0745({ span: written.span })] };
     }
     for (const match of part.value.matchAll(/\S+/gu)) {
       const name = match[0];

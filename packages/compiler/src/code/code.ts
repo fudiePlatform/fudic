@@ -19,18 +19,12 @@
  */
 
 import { type Span, span, emptySpan } from '../types/index.js';
-import { type Diagnostic, errorDiag } from '../types/index.js';
+import type { Diagnostic } from '../types/index.js';
+import { FUD0110, FUD0111, FUD0114 } from '@fudic/diagnostics';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 import { type BalancedGroup, type LexRegion, scanBraces, scanParens } from '../balancer/index.js';
 import type { HtmlParseContext } from '../html/index.js';
 import type { CodeBlockNode, CodePart, ClientRegion, ServerRegion } from './nodes.js';
-
-/** Missing `{` after `@code` / `@server` / `@client` (SDD-08 §4.4). */
-const FUD_EXPECTED_BRACE = 'FUD0110';
-/** `@server` / `@client` take no parameter (decision 66). */
-const FUD_UNEXPECTED_PARAMETER = 'FUD0111';
-/** A Razor comment inside `@code` (decision 35.a, BUG-13 §3). FUD0112/0113 are burned. */
-const FUD_RAZOR_COMMENT_IN_CODE = 'FUD0114';
 
 /**
  * The body of `@code` is JavaScript, and JavaScript has its own two comment forms.
@@ -214,11 +208,7 @@ class BodySplitter {
     if (this.#source[cursor] === '(') {
       const parameters = scanParens(this.#source, cursor);
       this.#diagnostics.push(...parameters.diagnostics);
-      this.#error(
-        FUD_UNEXPECTED_PARAMETER,
-        `@${name} does not take a parameter`,
-        parameters.value.span,
-      );
+      this.#diagnostics.push(FUD0111({ span: parameters.value.span, name }));
       cursor = parameters.value.span.end;
     }
 
@@ -226,7 +216,7 @@ class BodySplitter {
     // the `@code` block (or nothing at all), so neither can be mistaken for the brace.
     const brace = skipWhitespace(this.#source, cursor, this.#end);
     if (this.#source[brace] !== '{') {
-      this.#error(FUD_EXPECTED_BRACE, `Expected '{' after @${name}`, emptySpan(brace));
+      this.#diagnostics.push(FUD0110({ span: emptySpan(brace), name }));
       return brace;
     }
 
@@ -249,10 +239,6 @@ class BodySplitter {
     this.#chunkStart = upTo;
     if (!NON_WHITESPACE.test(this.#source.slice(at.start, at.end))) return;
     this.#parts.push({ type: 'neutral-js', span: at, js: at });
-  }
-
-  #error(code: string, message: string, at: Span): void {
-    this.#diagnostics.push(errorDiag(code, message, at));
   }
 }
 
@@ -280,9 +266,7 @@ export function parseCodeBlock(
       parts: [],
       regions: [],
     };
-    return withDiagnostics(degraded, [
-      errorDiag(FUD_EXPECTED_BRACE, "Expected '{' after @code", emptySpan(brace)),
-    ]);
+    return withDiagnostics(degraded, [FUD0110({ span: emptySpan(brace), name: 'code' })]);
   }
 
   const block = scanBraces(source, brace, RAZOR_COMMENTS);
@@ -323,13 +307,7 @@ function razorCommentErrors(regions: readonly LexRegion[]): Diagnostic[] {
   const out: Diagnostic[] = [];
   for (const region of regions) {
     if (region.kind !== 'razor-comment') continue;
-    out.push(
-      errorDiag(
-        FUD_RAZOR_COMMENT_IN_CODE,
-        'Razor comments are not allowed inside @code; comment the JavaScript with // or /*…*/',
-        region.span,
-      ),
-    );
+    out.push(FUD0114({ span: region.span }));
   }
   return out;
 }

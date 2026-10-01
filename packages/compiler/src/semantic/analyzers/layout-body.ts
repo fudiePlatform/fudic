@@ -8,7 +8,7 @@
  *   `FUD0705`  a `@{ }` block, anywhere in the body. A layout declares its props and no logic
  *              of its own (SDD-40 §4.1): a statement block would be the loose logic its
  *              `@code` already refuses, written one level down.
- *   `FUD0443`  a hole inside a construct: the route would be written zero or many times.
+ *   `FUD0893`  a hole inside a construct: the route would be written zero or many times.
  *
  * `FUD0706` — a `@` inside a `<style>` of the layout — is RETIRED by decision 136 (SDD-49): no
  * `<style>` takes Razor any more, and `FUD0132` says so for every one of them.
@@ -21,32 +21,24 @@
  * two cannot disagree about what the body may hold.
  */
 
+import { FUD0705, FUD0893 } from '@fudic/diagnostics';
 import type { Diagnostic } from '../../types/index.js';
-import { errorDiag, span } from '../../types/index.js';
+import { span } from '../../types/index.js';
 import type { ElementNode, HtmlContent } from '../../html/index.js';
 import type { Analyzer } from '../model.js';
 import { walk } from '../walk.js';
-
-const FUD_LAYOUT_BODY_CONSTRUCT = 'FUD0705';
-const FUD_HOLE_IN_CONSTRUCT = 'FUD0443';
 
 const CONSTRUCTS: ReadonlySet<string> = new Set(['if', 'switch', 'foreach', 'for', 'while']);
 
 /**
  * Every `@{ }` of a layout's `<body>`, reported over its opening `@{`, and every hole written
- * inside a construct (`FUD0443`).
+ * inside a construct (`FUD0893`).
  */
 export function layoutBodyDiagnostics(body: ElementNode): readonly Diagnostic[] {
   const out: Diagnostic[] = [];
   walk(body.children, {
     inlineCode(node) {
-      out.push(
-        errorDiag(
-          FUD_LAYOUT_BODY_CONSTRUCT,
-          'the <body> of a layout writes no `@{ }`: a layout declares its props and no logic of its own — what the block would compute belongs to a component or to the route',
-          span(node.span.start, node.span.start + 2),
-        ),
-      );
+      out.push(FUD0705({ span: span(node.span.start, node.span.start + 2) }));
     },
   });
   holesInConstructs(body.children, out);
@@ -54,7 +46,7 @@ export function layoutBodyDiagnostics(body: ElementNode): readonly Diagnostic[] 
 }
 
 /**
- * `FUD0443` — a `@RenderBody()` or `@RenderSection()` inside a construct of the layout.
+ * `FUD0893` — a `@RenderBody()` or `@RenderSection()` inside a construct of the layout.
  *
  * A branch that does not run drops the route, a loop writes it N times, and in both the
  * route's chunk — which crosses the layout by position — no longer finds its own nodes. A
@@ -67,13 +59,7 @@ function holesInConstructs(content: readonly HtmlContent[], out: Diagnostic[]): 
     } else if (CONSTRUCTS.has(node.type)) {
       walk([node], {
         hole(hole) {
-          out.push(
-            errorDiag(
-              FUD_HOLE_IN_CONSTRUCT,
-              'a hole of the layout cannot live inside `@if`, `@switch` or a loop: the route would be written zero or many times. Keep the hole fixed and branch inside the route',
-              hole.span,
-            ),
-          );
+          out.push(FUD0893({ span: hole.span }));
         },
       });
     }

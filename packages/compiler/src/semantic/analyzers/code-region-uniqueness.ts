@@ -3,11 +3,9 @@
  * `@code`. Zero of either is fine; a repeat is the error, blamed on the repeated region.
  */
 
-import { errorDiag, type Span } from '../../types/index.js';
+import { FUD0194 } from '@fudic/diagnostics';
 import type { Analyzer } from '../model.js';
 import { documentCode } from '../walk.js';
-
-const FUD_DUPLICATE_REGION = 'FUD0194';
 
 export const codeRegionUniqueness: Analyzer = {
   name: 'code-region-uniqueness',
@@ -20,19 +18,11 @@ export const codeRegionUniqueness: Analyzer = {
     for (const part of code.parts) {
       if (part.type === 'server-region') {
         servers += 1;
-        if (servers > 1) report(duplicate(part.span, '@server'));
+        if (servers > 1) report(FUD0194({ span: part.span, region: '@server' }));
       } else if (part.type === 'client-region') {
         clients += 1;
-        if (clients > 1) report(duplicate(part.span, '@client'));
+        if (clients > 1) report(FUD0194({ span: part.span, region: '@client' }));
       }
     }
   },
 };
-
-function duplicate(span: Span, region: string) {
-  return errorDiag(
-    FUD_DUPLICATE_REGION,
-    `at most one \`${region}\` region is allowed per \`@code\``,
-    span,
-  );
-}

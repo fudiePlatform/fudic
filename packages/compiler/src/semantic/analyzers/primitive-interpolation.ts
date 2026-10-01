@@ -5,12 +5,10 @@
  * literal. A non-literal (`@items`, typed `User[]`) is deferred to the type layer / runtime (§8.1).
  */
 
-import { errorDiag } from '../../types/index.js';
+import { FUD0195 } from '@fudic/diagnostics';
 import type { OxcNode } from '../../oxc/index.js';
 import type { Analyzer } from '../model.js';
 import { documentRoots, walk } from '../walk.js';
-
-const FUD_NON_PRIMITIVE_INTERPOLATION = 'FUD0195';
 
 export const primitiveInterpolation: Analyzer = {
   name: 'primitive-interpolation',
@@ -24,13 +22,7 @@ export const primitiveInterpolation: Analyzer = {
         if (Array.isArray(root)) return; // an expression fragment is a single node
         const node = unwrapParens(root as OxcNode);
         if (node.type === 'ArrayExpression' || node.type === 'ObjectExpression') {
-          report(
-            errorDiag(
-              FUD_NON_PRIMITIVE_INTERPOLATION,
-              'interpolation of an array/object literal is not allowed; only scalar primitives',
-              expr.span,
-            ),
-          );
+          report(FUD0195({ span: expr.span }));
         }
       },
     });

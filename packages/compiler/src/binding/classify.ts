@@ -13,8 +13,22 @@
  * SDD-05 `Attribute` keeps only the `RazorExpression` for it. See SDD-07 §3.3.
  */
 
-import { type Diagnostic, errorDiag, type ParseResult, ok, withDiagnostics } from '../types/index.js';
+import { type Diagnostic, type ParseResult, ok, withDiagnostics } from '../types/index.js';
 import { type Span, span } from '../types/index.js';
+import {
+  FUD0091,
+  FUD0092,
+  FUD0093,
+  FUD0094,
+  FUD0095,
+  FUD0096,
+  FUD0097,
+  FUD0098,
+  FUD0099,
+  FUD0590,
+  FUD0596,
+  FUD0667,
+} from '@fudic/diagnostics';
 import type { RazorExpression } from '../at/index.js';
 import type { Attribute, AttributeValuePart } from '../html/index.js';
 import {
@@ -40,33 +54,16 @@ import {
 // FUD0090 (property value must be a lone `@`) is RETIRED by BUG-16: the dot is the only way
 // to write a prop, so a constant has to be one of the things it accepts. The code stays
 // reserved in SDD-07's range and is emitted by nobody.
-const FUD_PROPERTY_CONCATENATION = 'FUD0091';
-const FUD_EVENT_NO_HANDLER = 'FUD0092';
-const FUD_CLASS_STYLE_NO_EXPRESSION = 'FUD0093';
-const FUD_REF_NOT_SIMPLE_IDENTIFIER = 'FUD0094';
-const FUD_CLASS_STYLE_NO_NAME = 'FUD0095';
-const FUD_BUS_NO_HANDLER = 'FUD0096';
-const FUD_BUS_NO_NAME = 'FUD0097';
-const FUD_EXPRESSION_NAME_NOT_BUS = 'FUD0098';
-const FUD_PREFIX_NO_NAME = 'FUD0099';
-
-/**
- * SDD-34 §5 owns `FUD0590`–`FUD0619`, and the first of them is decided HERE because it is a
- * rule about the FORM of the value — the same layer that already answers it for `ref` and for
- * `class:`. The other four are semantic and live in SDD-12's analyzers.
- */
-const FUD_CONTROL_NOT_EXPRESSION = 'FUD0590';
-
-/** `error=` is `control=`'s mirror (decision 130), and its value is wrong the same way. */
-const FUD_ERROR_NOT_EXPRESSION = 'FUD0596';
-
-/**
- * SDD-37 §5 owns `FUD0660`–`FUD0679`, and this is the only one of the eight decided HERE: a
- * marker that takes a value is wrong by its FORM, the same layer that answers "a `class:` needs
- * an expression". The other seven need the loop header and the ancestor's handler, and those
- * are SDD-12's analyzers.
- */
-const FUD_DELEGATE_HAS_VALUE = 'FUD0667';
+//
+// SDD-34 §5 owns `FUD0590`–`FUD0619`, and the first of them (`FUD0590`) is decided HERE
+// because it is a rule about the FORM of the value — the same layer that already answers it
+// for `ref` and for `class:`. `error=` is `control=`'s mirror (decision 130), and its value is
+// wrong the same way (`FUD0596`).
+//
+// SDD-37 §5 owns `FUD0660`–`FUD0679`, and `FUD0667` is the only one of the eight decided HERE:
+// a marker that takes a value is wrong by its FORM, the same layer that answers "a `class:`
+// needs an expression". The other seven need the loop header and the ancestor's handler, and
+// those are SDD-12's analyzers.
 
 /** A JS identifier, the only shape `ref="@id"` accepts (decision 30). */
 const SIMPLE_IDENTIFIER = /^[\p{ID_Start}$_][\p{ID_Continue}$]*$/u;
@@ -138,14 +135,7 @@ function classifyExpressionName(
   // Only `bus:` may be followed by an expression name (decision 28.b). The SDD-05 lexer
   // accepts ANY `name:` before the `(`, so the check belongs to this dispatch layer.
   if (prefix !== BUS_PREFIX) {
-    return degrade(
-      plainAttribute(attr, prefix),
-      errorDiag(
-        FUD_EXPRESSION_NAME_NOT_BUS,
-        `an expression attribute name is only valid after the reserved \`bus:\` prefix, not \`${prefix}\``,
-        prefixSpan,
-      ),
-    );
+    return degrade(plainAttribute(attr, prefix), FUD0098({ span: prefixSpan, prefix }));
   }
 
   const handler = requireSingleExpression(attr);
@@ -168,13 +158,7 @@ function classifyBusLiteral(attr: Attribute, eventName: string): ParseResult<Bin
 
   // `bus:="@h"` — the prefix is there but names nothing (FUD0097).
   if (eventName.length === 0) {
-    diagnostics.push(
-      errorDiag(
-        FUD_BUS_NO_NAME,
-        'bus binding has no event name after `bus:`',
-        nameSpan(attr, BUS_PREFIX + eventName),
-      ),
-    );
+    diagnostics.push(FUD0097({ span: nameSpan(attr, BUS_PREFIX + eventName) }));
   }
 
   const handler = requireSingleExpression(attr);
@@ -192,25 +176,11 @@ function classifyEvent(attr: Attribute, eventName: string): ParseResult<Binding>
   const diagnostics: Diagnostic[] = [];
 
   if (eventName.length === 0) {
-    diagnostics.push(
-      errorDiag(
-        FUD_PREFIX_NO_NAME,
-        'event binding has no event name after `@`',
-        nameSpan(attr, EVENT_PREFIX + eventName),
-      ),
-    );
+    diagnostics.push(FUD0099({ span: nameSpan(attr, EVENT_PREFIX + eventName), binding: 'event' }));
   }
 
   const handler = requireSingleExpression(attr);
-  if (handler.reason !== null) {
-    diagnostics.push(
-      errorDiag(
-        FUD_EVENT_NO_HANDLER,
-        'event binding value must be exactly one `@` handler (a reference or a lambda)',
-        valueSpan(attr),
-      ),
-    );
-  }
+  if (handler.reason !== null) diagnostics.push(FUD0092({ span: valueSpan(attr) }));
   if (handler.expr === null) {
     return withDiagnostics(plainAttribute(attr, EVENT_PREFIX + eventName), diagnostics);
   }
@@ -233,11 +203,7 @@ function classifyProperty(attr: Attribute, propertyName: string): ParseResult<Bi
 
   if (propertyName.length === 0) {
     diagnostics.push(
-      errorDiag(
-        FUD_PREFIX_NO_NAME,
-        'property binding has no property name after `.`',
-        nameSpan(attr, PROPERTY_PREFIX + propertyName),
-      ),
+      FUD0099({ span: nameSpan(attr, PROPERTY_PREFIX + propertyName), binding: 'property' }),
     );
   }
 
@@ -245,13 +211,7 @@ function classifyProperty(attr: Attribute, propertyName: string): ParseResult<Bi
     // Decision 24: a property carries a VALUE, not a string built by concatenation. The
     // binding survives it — degrading to a plain attribute named `.prop` would hide the
     // prop from the editor over a mistake in its value.
-    diagnostics.push(
-      errorDiag(
-        FUD_PROPERTY_CONCATENATION,
-        'property binding value must not concatenate parts: use one value or one `@` expression',
-        valueSpan(attr),
-      ),
-    );
+    diagnostics.push(FUD0091({ span: valueSpan(attr) }));
   }
 
   return withDiagnostics(
@@ -300,26 +260,10 @@ function classifyDelegate(attr: Attribute, name: string): ParseResult<Binding> {
   const diagnostics: Diagnostic[] = [];
 
   if (name.length === 0) {
-    diagnostics.push(
-      errorDiag(
-        FUD_PREFIX_NO_NAME,
-        'delegation marker has no name after `delegate:`',
-        nameSpan(attr, DELEGATE_PREFIX + name),
-      ),
-    );
+    diagnostics.push(FUD0099({ span: nameSpan(attr, DELEGATE_PREFIX + name), binding: 'delegate' }));
   }
 
-  if (attr.value.length > 0) {
-    diagnostics.push(
-      errorDiag(
-        FUD_DELEGATE_HAS_VALUE,
-        '`delegate:` marker takes no value: the ancestor handler reads it as `$' +
-          (name.length > 0 ? name : 'name') +
-          '`',
-        valueSpan(attr),
-      ),
-    );
-  }
+  if (attr.value.length > 0) diagnostics.push(FUD0667({ span: valueSpan(attr), name }));
 
   // The name is the tail of the attribute NAME, and the attribute always spans at least its
   // own name, so neither end needs clamping the way `nameSpan` does for a prefix it is handed.
@@ -423,50 +367,27 @@ function conditionalNameDiagnostics(
   kind: 'class' | 'style',
 ): Diagnostic[] {
   if (name.length > 0) return [];
-  return [
-    errorDiag(
-      FUD_CLASS_STYLE_NO_NAME,
-      `\`${kind}:\` binding has no name after \`:\``,
-      nameSpan(attr, `${kind}:${name}`),
-    ),
-  ];
+  return [FUD0095({ span: nameSpan(attr, `${kind}:${name}`), kind })];
 }
 
 function conditionalValueDiag(attr: Attribute, kind: 'class' | 'style'): Diagnostic {
-  return errorDiag(
-    FUD_CLASS_STYLE_NO_EXPRESSION,
-    `\`${kind}:\` binding value must be a single \`@\` expression`,
-    valueSpan(attr),
-  );
+  return FUD0093({ span: valueSpan(attr), kind });
 }
 
 function busHandlerDiag(at: Span): Diagnostic {
-  return errorDiag(FUD_BUS_NO_HANDLER, 'bus binding value must be exactly one `@` handler', at);
+  return FUD0096({ span: at });
 }
 
 function controlDiag(at: Span): Diagnostic {
-  return errorDiag(
-    FUD_CONTROL_NOT_EXPRESSION,
-    'control value must be a single `@` expression naming a form node, e.g. `control="@f.title"`',
-    at,
-  );
+  return FUD0590({ span: at });
 }
 
 function errorMarkerDiag(at: Span, name: MarkerName): Diagnostic {
-  const example = name === ERROR_NAME ? 'error="@f.title"' : 'summary="@f"';
-  return errorDiag(
-    FUD_ERROR_NOT_EXPRESSION,
-    `${name} value must be a single \`@\` expression naming a form node, e.g. \`${example}\``,
-    at,
-  );
+  return FUD0596({ span: at, name });
 }
 
 function refDiag(at: Span): Diagnostic {
-  return errorDiag(
-    FUD_REF_NOT_SIMPLE_IDENTIFIER,
-    'ref value must be a single simple identifier, e.g. `ref="@input"`',
-    at,
-  );
+  return FUD0094({ span: at });
 }
 
 /** The degraded plain attribute every failing binding falls back to. */

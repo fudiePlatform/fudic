@@ -19,7 +19,8 @@
 import { allComponents, componentOf, type ComponentGraph, type ResolvedComponent } from './resolve.js';
 import type { CodeWriter } from './writer.js';
 import { classifyAttribute } from '../binding/index.js';
-import { warningDiag, type Diagnostic } from '../types/index.js';
+import type { Diagnostic } from '../types/index.js';
+import { FUD0621 } from '@fudic/diagnostics';
 import { codeOf, type ExtractedCode } from './oxc-code.js';
 import {
   entryHalf,
@@ -297,9 +298,6 @@ function writeRouteBlocks(w: CodeWriter, route: RouteBlocks, dom: string, parent
 const ROUTE_BLOCK = 'fud-route';
 const DATA_BLOCK = 'fud-data';
 
-/** A client half that reads `data` where nothing ever ran `load` (SDD-39 §4.8). */
-const FUD_DATA_WITHOUT_LOAD = 'FUD0621';
-
 /**
  * What this route publishes about itself, or `undefined` when it publishes nothing.
  *
@@ -346,13 +344,7 @@ function dataExpression(code: ExtractedCode, out: Diagnostic[]): string | null {
   const access = code.dataAccess;
   if (access.kind === 'none') return null;
   if (!code.serverExports.includes('load')) {
-    out.push(
-      warningDiag(
-        FUD_DATA_WITHOUT_LOAD,
-        'The client half reads `data` and this route declares no `load`: what it finds there is `undefined`, always.',
-        access.at,
-      ),
-    );
+    out.push(FUD0621({ span: access.at }));
   }
   if (access.kind === 'all') return 'data';
   return `{ ${access.roots.map((r) => `${JSON.stringify(r)}: data?.${r}`).join(', ')} }`;

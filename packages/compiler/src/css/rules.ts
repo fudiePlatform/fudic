@@ -17,10 +17,8 @@
  */
 
 import type { Diagnostic, Node, ParseResult, Span } from '../types/index.js';
-import { ok, span, warningDiag, withDiagnostics } from '../types/index.js';
-
-/** The sheet could not be read as CSS, and arrives whole (SDD-49 §4.5). */
-export const FUD_SHEET_UNREADABLE = 'FUD0851';
+import { ok, span, withDiagnostics } from '../types/index.js';
+import { FUD0851, type FUD0851Params } from '@fudic/diagnostics';
 
 export interface CssRuleTree extends Node {
   readonly type: 'css-sheet';
@@ -103,8 +101,8 @@ class RuleScanner {
     return this.#error;
   }
 
-  #fail(message: string, at: Span): number {
-    this.#error ??= warningDiag(FUD_SHEET_UNREADABLE, message, at);
+  #fail(kind: FUD0851Params['kind'], at: Span): number {
+    this.#error ??= FUD0851({ span: at, kind });
     return this.#css.length;
   }
 
@@ -112,10 +110,7 @@ class RuleScanner {
   #comment(i: number): number {
     const close = this.#css.indexOf('*/', i + 2);
     if (close === -1) {
-      return this.#fail(
-        'this stylesheet has a comment that never ends: it is shipped whole, without pruning',
-        span(i, this.#css.length),
-      );
+      return this.#fail('comment', span(i, this.#css.length));
     }
     return close + 2;
   }
@@ -131,10 +126,7 @@ class RuleScanner {
       else if (ch === quote) return j + 1;
       else j += 1;
     }
-    return this.#fail(
-      'this stylesheet has a string that never ends: it is shipped whole, without pruning',
-      span(i, css.length),
-    );
+    return this.#fail('string', span(i, css.length));
   }
 
   /** Past whitespace and comments. */
@@ -180,10 +172,7 @@ class RuleScanner {
 
   /** The `{` at `open` never closed. */
   #unclosed(open: number): number {
-    return this.#fail(
-      'this stylesheet has a "{" that never closes: it is shipped whole, without pruning',
-      span(open, open + 1),
-    );
+    return this.#fail('brace', span(open, open + 1));
   }
 
   /** The index just past the `}` that closes the `{` at `open`. */
