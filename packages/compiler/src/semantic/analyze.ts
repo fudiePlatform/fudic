@@ -28,6 +28,10 @@ import { layoutLoad } from './analyzers/layout-load.js';
 import { layoutBody } from './analyzers/layout-body.js';
 import { scriptBody } from './analyzers/script-body.js';
 import { hostBindings } from './analyzers/host-bindings.js';
+import { viewExpressions } from './analyzers/view-expressions.js';
+import { viewStatements } from './analyzers/view-statements.js';
+import { viewIdentifiers } from './analyzers/view-identifiers.js';
+import { nativeEventAttributes } from './analyzers/native-event-attributes.js';
 
 /** The ordered list of analyzers (§4). One rule per unit. */
 export const ANALYZERS: readonly Analyzer[] = [
@@ -51,6 +55,10 @@ export const ANALYZERS: readonly Analyzer[] = [
   layoutBody,
   scriptBody,
   hostBindings,
+  viewExpressions,
+  viewStatements,
+  viewIdentifiers,
+  nativeEventAttributes,
 ];
 
 /** The empty semantic model of v1 (§3): no facts are produced yet. */

@@ -13,7 +13,9 @@
 import {
   JsBatch,
   documentRoots,
+  keyExpression,
   walk,
+  type JsFragmentKind,
   type ClientRegion,
   type Diagnostic,
   type FragmentId,
@@ -95,28 +97,57 @@ export function batchDocumentJs(source: string, document: StructuredDocument): D
   const regions: CodeRegion[] = [];
   const loops: { span: Span; headerEnd: number; headerClose: number; id: FragmentId }[] = [];
 
-  const register = (node: Node, at: Span): void => {
-    const id = batch.add('expression', at);
+  const add = (node: Node, at: Span, kind: JsFragmentKind = 'expression'): void => {
+    const id = batch.add(kind, at);
     ids.set(node, id);
     bySpan.set(spanKey(at), id);
+  };
+  // An empty span is a construct the parser already degraded (FUD0070 and friends) or a value
+  // not typed yet: the wrapper alone would be a syntax error of the server's own making.
+  const register = (node: Node, at: Span, kind: JsFragmentKind = 'expression'): void => {
+    if (at.end > at.start) add(node, at, kind);
   };
 
   walk(documentRoots(document), {
     interpolation(expr) {
-      register(expr, expr.expr);
+      add(expr, expr.expr);
     },
     // The values of attributes, which nobody registered before BUG-23 §2.4 — so the
     // projection could not ask about them, and opened a second batch or gave up. An empty
     // one (`@click="@()"`) registers nothing: the wrapper alone is a syntax error of the
     // server's own making, on a value the author has not finished typing.
     binding(expr) {
-      if (expr.expr.end > expr.expr.start) register(expr, expr.expr);
+      register(expr, expr.expr);
     },
-    // The two constructs that DECLARE a name. `@while` and `@if` hold a condition, which binds
-    // nothing, and `@switch` a discriminant — none of them opens a scope the template can read
-    // a new name from, so registering them would buy an AST nobody asks a question of.
+    // Every other piece of JS the view evaluates (SDD-51 §3.1): the statements of an `@{ }`,
+    // and the arguments of a `@render`. They were parsed only by the emit, so the editor had
+    // no AST to judge what they DO — and what a view may do is a question about the AST.
+    inlineCode(node) {
+      register(node, node.group.inner, 'block-statements');
+    },
+    render(node) {
+      for (const arg of node.args) register(arg, arg.value);
+    },
     control(node) {
-      if (node.type !== 'foreach' && node.type !== 'for') return;
+      // The conditions, the discriminant and the `case` tests: each is a value the render
+      // computes, keyed by the node that owns it — the arm, the switch, the case.
+      if (node.type === 'if') {
+        for (const branch of node.branches) register(branch, branch.header.inner);
+        return;
+      }
+      if (node.type === 'switch') {
+        register(node, node.header.inner);
+        for (const branch of node.cases) if (branch.test !== undefined) register(branch, branch.test);
+        return;
+      }
+      // A loop's key is read in the scope of its body (decision 91), keyed by its own node.
+      const key = keyExpression(node);
+      if (key !== undefined && node.key !== undefined) register(node.key, key);
+      if (node.type === 'while') {
+        register(node, node.header.inner);
+        return;
+      }
+      // The two constructs that DECLARE a name: their header is a `for` head, not a value.
       const header = node.header.inner;
       // An unclosed or missing `( … )` is FUD0070 and has an empty span: `for () {}` would make
       // the whole batch unparseable, and the file being edited is the one that must keep
@@ -137,6 +168,10 @@ export function batchDocumentJs(source: string, document: StructuredDocument): D
       });
     },
   });
+
+  // The parameter list of every `@snippet`: the only names its body declares (SDD-29 §4.1),
+  // which is what the view's scope answers for a fragment inside it (SDD-51 §3.4).
+  for (const decl of document.snippets) register(decl, decl.signature, 'params');
 
   for (const part of document.code?.parts ?? []) {
     const id = batch.add('module-statements', part.js);
