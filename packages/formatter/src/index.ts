@@ -19,15 +19,6 @@ export type {
 
 export { DEFAULT_OPTIONS, indentUnit, resolveOptions } from './options.js';
 export { applyEndOfLine, detectEndOfLine, resolveEndOfLine, stripCr } from './eol.js';
-export {
-  FUD_FRAGMENT_NOT_FORMATTED,
-  FUD_STYLE_NOT_FORMATTED,
-  fragmentNotFormatted,
-  styleNotFormatted,
-  internalFailure,
-  FUD_INTERNAL_FAILURE,
-  type StyleFailure,
-} from './diagnostics.js';
 
 export { format, formatRange, formatRangeWith, formatWith } from './format.js';
 export { reindentLine, type Reindent } from './on-type.js';

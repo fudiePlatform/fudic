@@ -19,6 +19,8 @@
 import type { CodeAction, Range } from '@volar/language-service';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { CONTROL_NAME, span, type Diagnostic, type RouteDocument, type Span } from '@fudic/compiler';
+import type { FudCode } from '@fudic/diagnostics';
+import { explanationFile } from '@fudic/diagnostics/explain';
 import { URI } from 'vscode-uri';
 import type { CachedDocument } from '../document-cache.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
@@ -363,7 +365,7 @@ function layoutFix(issue: MissingLayoutProps): Fix {
  * a decision only the author can make. Adding a row is the whole cost of adding a quick fix.
  */
 /**
- * `FUD0440` — the route leaves a `required: true` section of its layout unfilled (SDD-48).
+ * `FUD0890` — the route leaves a `required: true` section of its layout unfilled (SDD-48).
  *
  * One action writes every missing section, empty, after the route's last `@section` — or at
  * the end of the file when it has none — because that is where the route keeps its sections
@@ -386,7 +388,7 @@ const addRequiredSections: Repairer = ({ cached, index }) => {
 };
 
 /**
- * `FUD0444` — a `@render` argument that reads the scope, written without its `@` (SDD-48).
+ * `FUD0894` — a `@render` argument that reads the scope, written without its `@` (SDD-48).
  *
  * A name or a path takes the `@` in front; anything else goes into `@( … )`, which is the one
  * form that holds an arbitrary expression. The diagnostic's span IS the argument's value.
@@ -402,11 +404,11 @@ const addArgumentAt: Repairer = ({ cached, diagnostic }) => {
   ];
 };
 
-const REPAIRS: ReadonlyMap<string, Repairer> = new Map<string, Repairer>([
-  ['FUD0444', addArgumentAt],
+const REPAIRS: ReadonlyMap<FudCode, Repairer> = new Map<FudCode, Repairer>([
+  ['FUD0894', addArgumentAt],
   ['FUD0056', quoteValue],
   ['FUD0191', addComponentLink],
-  ['FUD0440', addRequiredSections],
+  ['FUD0890', addRequiredSections],
   ['FUD0540', addLoopKey],
 ]);
 
@@ -546,6 +548,23 @@ export interface ActionDeps {
   readonly formNodes: FormNodes;
 }
 
+/** The client command that opens an explanation in the markdown preview (`fudic-vscode`). */
+export const EXPLAIN_COMMAND = 'fudic.explain';
+
+/**
+ * "Explain FUDnnnn": opens the code's `.md`. Where it is on disk is `@fudic/diagnostics`'
+ * answer — its own `src/codes/` in the workspace, `codes/` beside the bundled server in the
+ * `.vsix`, where the extension's build copies them.
+ */
+function explainAction(code: FudCode): CodeAction {
+  const title = `Explain ${code}`;
+  return {
+    title,
+    kind: 'quickfix',
+    command: { title, command: EXPLAIN_COMMAND, arguments: [explanationFile(code)] },
+  };
+}
+
 /**
  * Every quick fix that applies inside `range`.
  *
@@ -575,12 +594,21 @@ export function codeActions(deps: ActionDeps): CodeAction[] {
     });
   };
 
+  const explained = new Set<FudCode>();
   for (const diagnostic of diagnostics) {
-    const repair = REPAIRS.get(diagnostic.code);
-    if (repair === undefined) continue;
     if (!overlaps(rangeOf(document, diagnostic.span), range)) continue;
 
-    for (const fix of repair({ cached, index, document, diagnostic })) emit(fix);
+    const repair = REPAIRS.get(diagnostic.code);
+    if (repair !== undefined) {
+      for (const fix of repair({ cached, index, document, diagnostic })) emit(fix);
+    }
+
+    // Every code also explains itself, once per code however many times it fires here. A
+    // `command` and not an edit, which the header rules out for REPAIRS: this one edits nothing,
+    // and its argument is a path on disk, not a document uri Volar would have to rewrite.
+    if (explained.has(diagnostic.code)) continue;
+    explained.add(diagnostic.code);
+    actions.push(explainAction(diagnostic.code));
   }
 
   for (const issue of contractIssues(cached, index)) {

@@ -26,12 +26,6 @@ export {
   tokenTypeIndex,
   type FudicTokenType,
 } from './capabilities.js';
-export {
-  FUD_HREF_UNRESOLVED,
-  FUD_RESERVED_DOLLAR,
-  hrefUnresolved,
-  reservedDollar,
-} from './diagnostics.js';
 export { parseFud, type ParsedFud } from './parse.js';
 export { roleOf, tagOf, layoutHrefOf, type FudRole } from './mode.js';
 export { WorkspaceIndex, type IndexEntry } from './workspace-index.js';

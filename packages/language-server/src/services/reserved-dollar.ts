@@ -13,7 +13,7 @@
 
 import type { Diagnostic, OxcNode } from '@fudic/compiler';
 import type { FragmentId, JsBatchResult } from '@fudic/compiler';
-import { reservedDollar } from '../diagnostics.js';
+import { FUD0461 } from '@fudic/diagnostics';
 import type { CachedDocument } from '../document-cache.js';
 
 /**
@@ -74,7 +74,7 @@ export function reservedDollarDiagnostics(document: CachedDocument): readonly Di
     for (const statement of statementsOf(document.js.result, region.id)) {
       visit(statement, (node) => {
         const span = document.js.result.mapSpan(node.start, node.end);
-        diagnostics.push(reservedDollar(String(node['name']), span));
+        diagnostics.push(FUD0461({ span, name: String(node['name']) }));
       });
     }
   }

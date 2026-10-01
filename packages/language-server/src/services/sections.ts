@@ -6,7 +6,7 @@
  * parsed to learn its role, so its section names came for free.
  *
  * There is no diagnostic here. A section is optional unless the layout says
- * `required: true`, and that one — `FUD0440` — is `holes.ts`'s (SDD-48).
+ * `required: true`, and that one — `FUD0890` — is `holes.ts`'s (SDD-48).
  */
 
 import type { CachedDocument } from '../document-cache.js';

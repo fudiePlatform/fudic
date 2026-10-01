@@ -7,7 +7,7 @@
  */
 
 import type { Diagnostic, Span, StyleNode } from '@fudic/compiler';
-import { styleNotFormatted } from '../diagnostics.js';
+import { FUD0480 } from '@fudic/diagnostics';
 import type { ResolvedOptions } from '../types.js';
 import type { LeafEngine } from './engine.js';
 
@@ -38,6 +38,6 @@ export async function formatStyleBody(
     { language: 'css', source: verbatim, indentColumns, singleQuote: false, singleLine: false },
     options,
   );
-  if (!out.ok) return { text: verbatim, note: styleNotFormatted(span, 'parse') };
+  if (!out.ok) return { text: verbatim, note: FUD0480({ span }) };
   return { text: out.code };
 }
