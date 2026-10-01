@@ -29,14 +29,11 @@ import { create as createCssService } from 'volar-service-css';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import { SERVER_CAPABILITIES } from './capabilities.js';
+import { mountGlobals, mountWorkspaceFuds, nodeFileSystem, toPosix } from '@fudic/typecheck';
 import { DocumentCache, type CachedDocument } from './document-cache.js';
-import { mountGlobals } from './globals.js';
 import { createFudicLanguagePlugin } from './language-plugin.js';
-import { nodeFileSystem } from './node-fs.js';
 import { resolveOptions } from './options.js';
-import { toPosix } from './paths.js';
 import { ProjectConfigs } from './project-config.js';
-import { mountWorkspaceFuds } from './project-files.js';
 import {
   AUTO_CLOSE_TAG_REQUEST,
   autoCloseTagPayload,

@@ -11,7 +11,7 @@
  */
 
 import { readProjectConfig, tagOf, type ProjectConfig } from '@fudic/config';
-import { toPosix } from './paths.js';
+import { toPosix } from '@fudic/typecheck';
 import type { FileSystemScanner } from './types.js';
 
 /** What the snippet proposes when the project declares no prefix — the literal of today. */

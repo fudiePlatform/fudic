@@ -10,49 +10,27 @@
  * that file, is what keeps a `fudic generate` from repainting the whole workspace: the AST
  * and its Oxc batch, which are the expensive halves, survive untouched.
  *
- * Nothing here is shared with the Vite plugin. They are two processes with no channel
- * between them, and serializing an AST over IPC would cost more than re-parsing.
+ * The recipe itself — parse, JS batch, projection — is `@fudic/typecheck`'s, the one the build
+ * runs too (SDD-35 §4.1). What is the editor's own is only the caching around it.
  */
 
-import { emitVirtualFiles, type FileRegistry, type VirtualFile } from '@fudic/language-core';
-import type { Diagnostic, HtmlDocument, StructuredDocument } from '@fudic/compiler';
-import { batchDocumentJs, type DocumentJs } from './js-batch.js';
-import { createFileRegistry } from './file-registry.js';
-import { parseFud } from './parse.js';
-import { toPosix } from './paths.js';
+import { parseSource, projectParsed, toPosix, type ParsedSource, type ProjectedFud } from '@fudic/typecheck';
 import type { WorkspaceIndex } from './workspace-index.js';
 
 /** Everything the server knows about one open document at one version. */
-export interface CachedDocument {
-  /** Absolute POSIX path of the `.fud`. */
-  readonly path: string;
+export interface CachedDocument extends ProjectedFud {
   readonly version: number;
-  readonly source: string;
-  readonly document: StructuredDocument;
-  /** The flat tree `regionAt` answers over (BUG-22). */
-  readonly html: HtmlDocument;
-  /** Parse diagnostics plus the Oxc syntax errors, all in `.fud` coordinates. */
-  readonly diagnostics: readonly Diagnostic[];
-  readonly js: DocumentJs;
-  readonly registry: FileRegistry;
-  readonly virtuals: readonly VirtualFile[];
 }
 
 /** The parse half of an entry: keyed by version alone. */
 interface ParsedEntry {
   readonly version: number;
-  readonly source: string;
-  readonly document: StructuredDocument;
-  readonly html: HtmlDocument;
-  readonly diagnostics: readonly Diagnostic[];
-  readonly js: DocumentJs;
+  readonly parsed: ParsedSource;
 }
 
 /** The projection half: keyed by version AND by the revision of the index. */
 interface ProjectedEntry {
   readonly revision: number;
-  readonly registry: FileRegistry;
-  readonly virtuals: readonly VirtualFile[];
   readonly cached: CachedDocument;
 }
 
@@ -81,7 +59,8 @@ export class DocumentCache {
     const revision = this.#index.revision;
 
     if (entry.projected === undefined || entry.projected.revision !== revision) {
-      entry.projected = this.#project(key, entry.parsed, revision);
+      const projected = projectParsed(key, entry.parsed.parsed, this.#index);
+      entry.projected = { revision, cached: { ...projected, version: entry.parsed.version } };
     }
     return entry.projected.cached;
   }
@@ -100,60 +79,8 @@ export class DocumentCache {
     const existing = this.#entries.get(key);
     if (existing !== undefined && existing.parsed.version === version) return existing;
 
-    const { document, html, diagnostics } = parseFud(source);
-    const js = batchDocumentJs(source, document);
-    const entry: Entry = {
-      parsed: {
-        version,
-        source,
-        document,
-        html,
-        diagnostics: [...diagnostics, ...js.diagnostics],
-        js,
-      },
-    };
+    const entry: Entry = { parsed: { version, parsed: parseSource(source) } };
     this.#entries.set(key, entry);
     return entry;
-  }
-
-  #project(key: string, parsed: ParsedEntry, revision: number): ProjectedEntry {
-    const registry = createFileRegistry(key, parsed.document, this.#index);
-    const virtuals = emitVirtualFiles({
-      source: parsed.source,
-      fileName: key,
-      document: parsed.document,
-      registry,
-      // The whole batch, not just the neutral chunks: the projection needs the `@client`
-      // regions for the reactive names (decision 84) and the attribute values for the shape
-      // of a handler (decisions 96–98). Handing them over is what keeps Oxc at one
-      // invocation per file in the process that types the most.
-      js: {
-        result: parsed.js.result,
-        neutral: parsed.js.neutral,
-        client: parsed.js.client,
-        // The `@server` regions too, since SDD-40: the route's `layout(ctx, data)` is looked
-        // for in them, and what the projection does with it is give it the return type that
-        // makes TypeScript the voice of the layout contract.
-        server: parsed.js.regions.flatMap((r) => (r.part.type === 'server-region' ? [r.id] : [])),
-        ast: (at) => parsed.js.ast(at),
-      },
-    });
-
-    return {
-      revision,
-      registry,
-      virtuals,
-      cached: {
-        path: key,
-        version: parsed.version,
-        source: parsed.source,
-        document: parsed.document,
-        html: parsed.html,
-        diagnostics: parsed.diagnostics,
-        js: parsed.js,
-        registry,
-        virtuals,
-      },
-    };
   }
 }

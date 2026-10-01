@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/typecheck` (nuevo) · `@fudic/language-server` · `@fudic/vite` ·
 > `@fudic/compiler` · `@fudic/example-basic`
 > **Rama:** `worktree-sdd-35-compilo-o-no-compilo`
-> **Progreso:** 0 / 22
+> **Progreso:** 7 / 22
 >
 > **Reparto (decisión de Pedro).** Esta sesión escribe el código; los tests (tareas 1 y 12, los
 > tests unitarios que se mudan con sus piezas y la cobertura) los escribe otra sesión. Una tarea
@@ -50,13 +50,13 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 2 | — | **El paquete.** `@fudic/typecheck`: `package.json` con versiones exactas (`typescript` 5.9.3, `@volar/language-core` y `@volar/typescript` 2.4.28 de runtime; `@volar/language-server` 2.4.28 solo dev), `tsconfig` que extiende la base, `vitest.config.ts` con `include: ['src/**/*.ts']` y umbrales al 100 en las cuatro | `typecheck` | `package.json` · `tsconfig*.json` · `vitest.config.ts` · `src/index.ts` |
-| [ ] | 3 | 2 | **La receta.** `parse.ts`, `js-batch.ts` y la parte de `document-cache.ts` que hace parse → lote → emit, como `projectFud`. La caché por versión se queda en el servidor | `typecheck` · `language-server` | `src/project.ts` · `src/parse.ts` · `src/js-batch.ts` |
-| [ ] | 4 | 3 | **El registry.** `createFileRegistry` sobre un puerto `resolve(from, href)`, y de `mode.ts` lo que hace falta para el tag de un fichero y los huecos de un layout. Lo que es solo del editor se queda (§4.1) | `typecheck` · `language-server` | `src/file-registry.ts` · `src/mode.ts` |
-| [ ] | 5 | 3 | **Los globals y los ficheros del proyecto.** `mountGlobals` y el barrido de `project-files.ts` / `node-fs.ts` (`node_modules`, `dist`, `.git` fuera; librerías por `findLibraries`, marcadas externas) | `typecheck` · `language-server` | `src/globals.ts` · `src/files.ts` |
-| [ ] | 6 | 4, 5 | **El `LanguagePlugin`.** `language-plugin.ts` y `mappings.ts` como `fudLanguagePlugin`, sin dependencia de `@volar/language-server` | `typecheck` · `language-server` | `src/language-plugin.ts` · `src/mappings.ts` |
-| [ ] | 7 | 4 | **Las reglas `FUD` del editor.** `fudicDiagnostics` con `semanticDiagnostics`, `href.ts`, `holes.ts`, `reserved-dollar.ts`, sobre el puerto del índice | `typecheck` · `language-server` | `src/fudic-diagnostics.ts` |
-| [ ] | 8 | 3–7 | **El servidor importa.** `language-server/src` ya no contiene ninguna función movida, y su `WorkspaceIndex` implementa los puertos. Sus tests de aceptación pasan **sin cambiar una expectativa**. Criterio 5 | `language-server` | `src/**` |
+| [x] | 2 | — | **El paquete.** `@fudic/typecheck`: `package.json` con versiones exactas (`typescript` 5.9.3, `@volar/language-core` y `@volar/typescript` 2.4.28 de runtime; `@volar/language-server` 2.4.28 solo dev), `tsconfig` que extiende la base, `vitest.config.ts` con `include: ['src/**/*.ts']` y umbrales al 100 en las cuatro | `typecheck` | `package.json` · `tsconfig*.json` · `vitest.config.ts` · `src/index.ts` |
+| [x] | 3 | 2 | **La receta.** `parse.ts`, `js-batch.ts` y la parte de `document-cache.ts` que hace parse → lote → emit, como `projectFud`. La caché por versión se queda en el servidor | `typecheck` · `language-server` | `src/project.ts` · `src/parse.ts` · `src/js-batch.ts` |
+| [x] | 4 | 3 | **El registry.** `createFileRegistry` sobre un puerto `resolve(from, href)`, y de `mode.ts` lo que hace falta para el tag de un fichero y los huecos de un layout. Lo que es solo del editor se queda (§4.1) | `typecheck` · `language-server` | `src/file-registry.ts` · `src/mode.ts` |
+| [x] | 5 | 3 | **Los globals y los ficheros del proyecto.** `mountGlobals` y el barrido de `project-files.ts` / `node-fs.ts` (`node_modules`, `dist`, `.git` fuera; librerías por `findLibraries`, marcadas externas) | `typecheck` · `language-server` | `src/globals.ts` · `src/files.ts` |
+| [x] | 6 | 4, 5 | **El `LanguagePlugin`.** `language-plugin.ts` y `mappings.ts` como `fudLanguagePlugin`, sin dependencia de `@volar/language-server` | `typecheck` · `language-server` | `src/language-plugin.ts` · `src/mappings.ts` |
+| [x] | 7 | 4 | **Las reglas `FUD` del editor.** `fudicDiagnostics` con `semanticDiagnostics`, `href.ts`, `holes.ts`, `reserved-dollar.ts`, sobre el puerto del índice | `typecheck` · `language-server` | `src/fudic-diagnostics.ts` |
+| [x] | 8 | 3–7 | **El servidor importa.** `language-server/src` ya no contiene ninguna función movida, y su `WorkspaceIndex` implementa los puertos. Sus tests de aceptación pasan **sin cambiar una expectativa**. Criterio 5 | `language-server` | `src/**` |
 
 ## Fase 3 — el chequeo (4)
 

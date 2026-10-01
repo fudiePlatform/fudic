@@ -9,16 +9,21 @@
  * would turn each scaffolding into a full repaint of the workspace.
  */
 
-import { parseFud } from './parse.js';
 import type { LayoutHoles } from '@fudic/compiler';
 import {
-  contractOf,
   holesOf,
   layoutHrefOf,
+  parseFud,
+  relativeHref,
+  tagOf,
+  toPosix,
+  type LinkIndex,
+} from '@fudic/typecheck';
+import {
+  contractOf,
   roleOf,
   sectionsOf,
   snippetsOf,
-  tagOf,
   type Contract,
   type FudRole,
   type SnippetSignature,
@@ -26,7 +31,6 @@ import {
 // The dependency walk lives in `@fudic/resolve`: the CLI asks the same question — which tags
 // a library already defines — and the build asks it in order, for the style chain of §4.6.
 import { dependencyChain, findLibraries, owningPackage, specifierOf } from '@fudic/resolve';
-import { relativeHref, toPosix } from './paths.js';
 import type { FileSystemScanner } from './types.js';
 
 /** What the index knows about one `.fud`. */
@@ -83,7 +87,8 @@ export interface IndexEntry {
   readonly external: boolean;
 }
 
-export class WorkspaceIndex {
+/** The editor's index. It is also the link index the shared typecheck rules ask (SDD-35 §3.1). */
+export class WorkspaceIndex implements LinkIndex {
   readonly #scanner: FileSystemScanner;
   readonly #entries = new Map<string, IndexEntry>();
   #revision = 0;

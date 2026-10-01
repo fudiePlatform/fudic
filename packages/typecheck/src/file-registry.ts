@@ -1,5 +1,6 @@
 /**
- * The `FileRegistry` of SDD-23, implemented against the workspace index (SDD-24 §2, §4.5).
+ * The `FileRegistry` of SDD-23, implemented against a link index (SDD-24 §2, §4.5): the
+ * editor's workspace index or the build's project index, through the same narrow port.
  *
  * SDD-23 refuses to touch the filesystem, and the `ComponentRegistry` of SDD-12 only answers
  * yes/no, so this is the seam where a tag becomes a path. It resolves the `<link>`s of ONE
@@ -17,14 +18,14 @@ import {
   type StructuredDocument,
 } from '@fudic/compiler';
 import type { FileRegistry, SnippetImport } from '@fudic/language-core';
-import type { WorkspaceIndex } from './workspace-index.js';
+import type { LinkIndex } from './link-index.js';
 import { layoutHrefOf } from './mode.js';
 
 /** The registry of one `.fud`: its own `<link>`s resolved against the index. */
 export function createFileRegistry(
   filePath: string,
   document: StructuredDocument,
-  index: WorkspaceIndex,
+  index: LinkIndex,
 ): FileRegistry {
   const byTag = new Map<string, string>();
 

@@ -19,7 +19,7 @@
 
 import type { IScriptSnapshot, VirtualCode } from '@volar/language-core';
 import type { VirtualFile } from '@fudic/language-core';
-import type { CachedDocument } from './document-cache.js';
+import type { ProjectedFud } from './project.js';
 import { identityMapping, toCodeMappings } from './mappings.js';
 
 /** The `languageId` a `.fud` is registered under. */
@@ -31,9 +31,14 @@ export const CLIENT_CODE_ID = 'client_ts';
 export const SERVER_CODE_ID = 'server_ts';
 export const styleCodeId = (index: number): string => `style_${index}`;
 
-/** The root code of a `.fud`, with the parse it was built from. */
-export interface FudicVirtualCode extends VirtualCode {
-  readonly document: CachedDocument;
+/**
+ * The root code of a `.fud`, with the parse it was built from.
+ *
+ * Generic over the document because the editor attaches more than the check needs — its
+ * version — and its services read it back off the root.
+ */
+export interface FudicVirtualCode<D extends ProjectedFud = ProjectedFud> extends VirtualCode {
+  readonly document: D;
   /** The projection TypeScript treats as this file's script. */
   readonly client: VirtualCode;
   /** The `@server` region as a file of its own. */
@@ -67,7 +72,7 @@ function emptyCode(id: string, languageId: string): VirtualCode {
 }
 
 /** The three kinds of projection, sorted out by what SDD-23 named them. */
-function sortVirtuals(document: CachedDocument): {
+function sortVirtuals(document: ProjectedFud): {
   client: VirtualCode;
   server: VirtualCode;
   styles: VirtualCode[];
@@ -94,7 +99,7 @@ function sortVirtuals(document: CachedDocument): {
 }
 
 /** The root virtual code of a `.fud`. */
-export function createFudicVirtualCode(document: CachedDocument): FudicVirtualCode {
+export function createFudicVirtualCode<D extends ProjectedFud>(document: D): FudicVirtualCode<D> {
   const { client, server, styles } = sortVirtuals(document);
 
   return {

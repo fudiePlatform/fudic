@@ -26,30 +26,48 @@ export {
   tokenTypeIndex,
   type FudicTokenType,
 } from './capabilities.js';
-export { parseFud, type ParsedFud } from './parse.js';
-export { roleOf, tagOf, layoutHrefOf, type FudRole } from './mode.js';
-export { WorkspaceIndex, type IndexEntry } from './workspace-index.js';
-export { createFileRegistry } from './file-registry.js';
-export { nodeFileSystem } from './node-fs.js';
-export { toPosix, dirName, baseName, resolveFrom, relativeHref } from './paths.js';
-export { batchDocumentJs, type DocumentJs, type CodeRegion } from './js-batch.js';
-export { DocumentCache, type CachedDocument } from './document-cache.js';
-export { uriToPath, pathToUri, isFudUri } from './uri.js';
+// The shared machine moved to `@fudic/typecheck` (SDD-35 §4.1). Re-exported so nobody who
+// imported it from here breaks; the code itself exists once, there.
 export {
+  parseFud,
+  tagOf,
+  layoutHrefOf,
+  createFileRegistry,
+  nodeFileSystem,
+  toPosix,
+  dirName,
+  baseName,
+  resolveFrom,
+  relativeHref,
+  batchDocumentJs,
   toCodeInformation,
   toCodeMapping,
   toCodeMappings,
   identityMapping,
-} from './mappings.js';
-export {
   createFudicVirtualCode,
   snapshotOf,
   styleCodeId,
   CLIENT_CODE_ID,
   SERVER_CODE_ID,
   FUD_LANGUAGE_ID,
+  mountGlobals,
+  GLOBALS_DTS,
+  GLOBALS_FILE_NAME,
+  unresolvedHrefs,
+  hrefDiagnostics,
+  reservedDollarDiagnostics,
+  fudicDiagnostics,
+  semanticDiagnostics,
+  type ParsedFud,
+  type DocumentJs,
+  type CodeRegion,
   type FudicVirtualCode,
-} from './virtual-code.js';
+  type UnresolvedHref,
+} from '@fudic/typecheck';
+export { roleOf, type FudRole } from './mode.js';
+export { WorkspaceIndex, type IndexEntry } from './workspace-index.js';
+export { DocumentCache, type CachedDocument } from './document-cache.js';
+export { uriToPath, pathToUri, isFudUri } from './uri.js';
 export { createFudicLanguagePlugin } from './language-plugin.js';
 export {
   linksOf,
@@ -62,13 +80,7 @@ export {
   type HrefContext,
   type PartialName,
 } from './services/position.js';
-export {
-  hrefCompletions,
-  hrefDiagnostics,
-  unresolvedHrefs,
-  type HrefCompletion,
-  type UnresolvedHref,
-} from './services/href.js';
+export { hrefCompletions, type HrefCompletion } from './services/href.js';
 export {
   declaredTags,
   documentLinks,
@@ -76,8 +88,6 @@ export {
   type DocumentLinkRef,
 } from './services/tags.js';
 export { sectionCompletions } from './services/sections.js';
-export { reservedDollarDiagnostics } from './services/reserved-dollar.js';
-export { fudicDiagnostics, semanticDiagnostics } from './services/compiler-diagnostics.js';
 export { semanticTokens, keywordSpanAt, type FudicToken } from './services/semantic-tokens.js';
 export {
   createFudicService,
@@ -88,7 +98,6 @@ export {
 } from './services/plugin.js';
 export { RequestStats, type RequestCounts, type RequestKind } from './stats.js';
 export { loadTypeScript, hasTypeScript, DEFAULT_LOADERS, type TypeScriptSource, type TsdkLoaders } from './tsdk.js';
-export { mountGlobals, GLOBALS_DTS, GLOBALS_FILE_NAME } from './globals.js';
 export {
   VIRTUAL_FILES_REQUEST,
   COMPONENT_REGISTRY_REQUEST,

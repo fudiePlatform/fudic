@@ -14,7 +14,7 @@
 import type { Diagnostic, OxcNode } from '@fudic/compiler';
 import type { FragmentId, JsBatchResult } from '@fudic/compiler';
 import { FUD0461 } from '@fudic/diagnostics';
-import type { CachedDocument } from '../document-cache.js';
+import type { ProjectedFud } from './project.js';
 
 /**
  * Fields that name something instead of referring to it.
@@ -67,7 +67,7 @@ function visit(node: OxcNode, report: (node: OxcNode) => void): void {
  * The neutral zone is deliberately not covered: §4.4 names the two regions, and widening the
  * rule is a decision for the spec, not for the implementation.
  */
-export function reservedDollarDiagnostics(document: CachedDocument): readonly Diagnostic[] {
+export function reservedDollarDiagnostics(document: ProjectedFud): readonly Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
 
   for (const region of document.js.regions) {

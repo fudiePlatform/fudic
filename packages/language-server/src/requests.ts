@@ -12,7 +12,7 @@
 import { closingTagAt, commentSyntaxAt, linkHref, type CommentSyntax } from '@fudic/compiler';
 import type { CachedDocument } from './document-cache.js';
 import type { WorkspaceIndex } from './workspace-index.js';
-import { layoutHrefOf } from './mode.js';
+import { layoutHrefOf } from '@fudic/typecheck';
 
 export const VIRTUAL_FILES_REQUEST = 'fudic/virtualFiles';
 export const COMPONENT_REGISTRY_REQUEST = 'fudic/componentRegistry';

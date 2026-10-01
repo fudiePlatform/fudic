@@ -1,15 +1,15 @@
 {
-  "name": "@fudic/language-server",
+  "name": "@fudic/typecheck",
   "version": "0.0.1",
-  "description": "Editor-agnostic LSP server for .fud files — Volar over the virtual TypeScript projection.",
+  "description": "The one machine that typechecks .fud files: the projection, the Volar language plugin and the fudic rules, shared by the editor and the build.",
   "type": "module",
   "license": "MIT",
   "author": "Pedro Hurtado",
-  "homepage": "https://github.com/fudiePlatform/fudic/tree/main/packages/language-server#readme",
+  "homepage": "https://github.com/fudiePlatform/fudic/tree/main/packages/typecheck#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/fudiePlatform/fudic.git",
-    "directory": "packages/language-server"
+    "directory": "packages/typecheck"
   },
   "bugs": {
     "url": "https://github.com/fudiePlatform/fudic/issues"
@@ -18,13 +18,10 @@
     "fudic",
     "fudie",
     "declarative-shadow-dom",
-    "language-server",
-    "lsp",
+    "typescript",
     "volar"
   ],
-  "bin": {
-    "fudic-language-server": "./bin/fudic-language-server.js"
-  },
+  "sideEffects": false,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -34,7 +31,6 @@
     }
   },
   "files": [
-    "bin",
     "dist",
     "README.md"
   ],
@@ -42,7 +38,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && node scripts/verify-bin.mjs",
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -50,29 +46,16 @@
   },
   "dependencies": {
     "@fudic/compiler": "workspace:*",
-    "@fudic/config": "workspace:*",
     "@fudic/diagnostics": "workspace:*",
-    "@fudic/formatter": "workspace:*",
     "@fudic/language-core": "workspace:*",
     "@fudic/resolve": "workspace:*",
-    "@fudic/typecheck": "workspace:*",
     "@volar/language-core": "2.4.28",
-    "@volar/language-server": "2.4.28",
-    "@volar/language-service": "2.4.28",
     "@volar/typescript": "2.4.28",
-    "@vscode/emmet-helper": "2.11.0",
-    "typescript": "5.9.3",
-    "volar-service-css": "0.0.71",
-    "volar-service-html": "0.0.71",
-    "volar-service-typescript": "0.0.71",
-    "vscode-languageserver": "9.0.1",
-    "vscode-languageserver-protocol": "3.17.5",
-    "vscode-languageserver-textdocument": "1.0.12",
-    "vscode-uri": "3.1.0"
+    "typescript": "5.9.3"
   },
   "devDependencies": {
-    "@fudic/cli": "workspace:*",
     "@fudic/tsconfig": "workspace:*",
-    "@types/node": "22.20.0"
+    "@types/node": "22.20.0",
+    "@volar/language-server": "2.4.28"
   }
 }

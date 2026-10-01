@@ -1,10 +1,10 @@
 /**
- * The ambient declarations, mounted in memory (SDD-24 §2).
+ * The ambient declarations, mounted in memory (SDD-24 §2, SDD-35 §4.2).
  *
  * `GLOBALS_DTS` is the text the projection of SDD-23 is written against — `$text`, `$attrs`,
- * `$section`, `props<T>()`. The CLI writes it to disk so `tsc` and CI see what the editor sees;
- * the server mounts the same constant as a file of the program, so the LSP also works in a
- * project that never ran `fudic new`. One source, two consumers.
+ * `$section`, `props<T>()`. The CLI writes it to disk; the editor and the build mount the same
+ * constant as a file of the program, so both also work in a project that never ran
+ * `fudic new`. One source, every consumer.
  *
  * When the file DOES exist on disk it declares exactly the same names, so mounting it again
  * would be a program with two of everything — TS2300 on every identifier. Hence the check: this
@@ -17,6 +17,12 @@ import { snapshotOf } from './virtual-code.js';
 
 export { GLOBALS_DTS, GLOBALS_FILE_NAME };
 
+/** The part of a language service host the globals are mounted on. */
+export type GlobalsHost = Pick<
+  ts.LanguageServiceHost,
+  'getScriptFileNames' | 'getScriptSnapshot' | 'getScriptVersion' | 'fileExists' | 'readFile'
+>;
+
 /**
  * Make the ambient declarations of THIS server the ones the project typechecks against.
  *
@@ -27,7 +33,7 @@ export { GLOBALS_DTS, GLOBALS_FILE_NAME };
  * A project that already lists one gets its CONTENT replaced instead, and that is the point
  * below.
  */
-export function mountGlobals(host: ts.LanguageServiceHost, root: string): boolean {
+export function mountGlobals(host: GlobalsHost, root: string): boolean {
   const snapshot = snapshotOf(GLOBALS_DTS);
   const getScriptFileNames = host.getScriptFileNames.bind(host);
   const getScriptSnapshot = host.getScriptSnapshot.bind(host);

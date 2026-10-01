@@ -4,6 +4,9 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   test: {
     include: ['test/**/*.test.ts'],
+    // Checking a project builds a whole TypeScript program, and under `pnpm -r test` the other
+    // packages have the CPUs: a cold start is well over the 5s default.
+    testTimeout: 60_000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
@@ -22,12 +25,9 @@ export default defineConfig({
     // Dev-time source resolution of the workspace siblings: no build coupling.
     alias: {
       '@fudic/compiler': fileURLToPath(new URL('../compiler/src/index.ts', import.meta.url)),
-      '@fudic/cli': fileURLToPath(new URL('../cli/src/index.ts', import.meta.url)),
-      '@fudic/formatter': fileURLToPath(new URL('../formatter/src/index.ts', import.meta.url)),
       '@fudic/language-core': fileURLToPath(
         new URL('../language-core/src/index.ts', import.meta.url),
       ),
-      '@fudic/typecheck': fileURLToPath(new URL('../typecheck/src/index.ts', import.meta.url)),
     },
   },
 });
