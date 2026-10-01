@@ -3,7 +3,7 @@
 > **SDD:** [SDD-49 — El CSS que cada página usa](./SDD-49-css-por-pagina.md)
 > **Paquetes:** `@fudic/compiler` · `@fudic/vite` · `@fudic/example-basic`
 > **Rama:** `worktree-sdd-49-css-por-pagina`
-> **Progreso:** 25 / 28 — las fases 1–6 están en el código, sin tests. La **segunda redacción**
+> **Progreso:** 26 / 28 — las fases 1–6 están en el código, sin tests. La **segunda redacción**
 > (2026-10-01) añade la fase 7: aplanar `@import`, podar tokens, `url()` en la copia enlazada y
 > los errores de `@import` en hojas adoptadas y **quitar el Razor del CSS** (decisión 136, que
 > revoca la 42; tarea 25). Después, los tests, el OK de Pedro en navegador (tarea 27) y el
@@ -291,5 +291,5 @@ nadie lo note.
 | ✓ | # | dep | tarea |
 |---|---|---|---|
 | [ ] | 26 | 24, 25 | Los tests pendientes de arriba, y los 6 en rojo con su expectativa nueva |
-| [ ] | 27 | 26 | **Pedro en navegador.** Todas las páginas iguales que antes, en modo claro y oscuro; SW activo; una página ya visitada abre offline con su hoja (las copias no van en el shell). Criterio 41 |
+| [x] | 27 | 26 | **Pedro en navegador.** Todas las páginas iguales que antes, en modo claro y oscuro; SW activo; una página ya visitada abre offline con su hoja (las copias no van en el shell). Criterio 41. **Verificado por Pedro el 2026-10-01** |
 | [ ] | 28 | 27 | Cobertura de los ficheros nuevos al 100 % en las cuatro métricas, con su umbral en el `vitest.config.ts`, y ninguno por debajo de su suelo en `main` (criterio 42); `pnpm typecheck`, `pnpm test` y `pnpm build` verdes; SDD-49 a `Hecho` en la tabla y el registro del `INDEX.md` |
