@@ -30,14 +30,13 @@ const graphOf = (inner: string, circle: string = CIRCLE): ReturnType<typeof reso
   resolveComponents('/page.fud', memoryIo({ '/page.fud': page(inner), '/app-circle.fud': circle }));
 
 describe('graphRegistry', () => {
-  it('answers the three questions for a component the graph reached', () => {
+  it('answers what a component the graph reached is and declares', () => {
     const registry = graphRegistry(graphOf('<app-circle .name="a"></app-circle>'));
     expect(registry.has('app-circle')).toBe(true);
     expect(registry.propsOf!('app-circle')).toEqual([
       { name: 'name', required: true },
       { name: 'tone', required: false },
     ]);
-    expect(registry.slotsOf!('app-circle')).toEqual(['PEPITO']);
   });
 
   it('and the two the GRAPH alone can answer: who hydrates, and who writes what', () => {
@@ -52,19 +51,8 @@ describe('graphRegistry', () => {
     const registry = graphRegistry(graphOf('<div></div>'));
     expect(registry.has('app-other')).toBe(false);
     expect(registry.propsOf!('app-other')).toBeUndefined();
-    expect(registry.slotsOf!('app-other')).toBeUndefined();
     expect(registry.hydratable!('app-other')).toBeUndefined();
     expect(registry.writes!('app-other', 'name')).toBeUndefined();
-  });
-
-  it('a slot with no name, an empty one and an interpolated one declare nothing', () => {
-    const odd = component(
-      'app-circle',
-      '',
-      '<slot></slot><slot name=""></slot><slot name="@(x)"></slot><slot id="x" name="OK"></slot>',
-    );
-    const registry = graphRegistry(graphOf('<app-circle></app-circle>', odd));
-    expect(registry.slotsOf!('app-circle')).toEqual(['OK']);
   });
 
   it('a component with no `props<T>()` declares no props at all', () => {
@@ -75,23 +63,14 @@ describe('graphRegistry', () => {
   });
 });
 
-describe('contractDiagnostics — the three the build owes the editor', () => {
-  it('FUD0197 over the opening tag of a host that skipped a required prop', () => {
-    const found = contractDiagnostics(graphOf('<app-circle></app-circle>'));
-    expect(found.map((d) => d.code)).toEqual(['FUD0197']);
-    expect(found[0]!.message).toContain('`.name`');
-  });
-
-  it('FUD0198 over a `.prop` the child does not declare', () => {
-    const found = contractDiagnostics(graphOf('<app-circle .name="a" .colour="red"></app-circle>'));
-    expect(found.map((d) => d.code)).toEqual(['FUD0198']);
-  });
-
-  it('FUD0199 over a slot the parent does not declare', () => {
-    const found = contractDiagnostics(
-      graphOf('<app-circle .name="a"><div slot="nope"></div></app-circle>'),
-    );
-    expect(found.map((d) => d.code)).toEqual(['FUD0199']);
+describe('contractDiagnostics — what the build still owes the editor', () => {
+  it('no longer reports the contract of a child: TypeScript does, in both (SDD-35 §4.7)', () => {
+    // The required prop nobody passed, the prop the child does not declare and the slot it does
+    // not open were FUD0197–FUD0199. They are now cases of the parity corpus, with the TS code
+    // that replaced them (language-server/test/acceptance/parity.test.ts).
+    expect(contractDiagnostics(graphOf('<app-circle></app-circle>'))).toEqual([]);
+    expect(contractDiagnostics(graphOf('<app-circle .name="a" .colour="red"></app-circle>'))).toEqual([]);
+    expect(contractDiagnostics(graphOf('<app-circle .name="a"><div slot="nope"></div></app-circle>'))).toEqual([]);
   });
 
   it('says nothing about a host that honours the contract', () => {
@@ -107,8 +86,9 @@ describe('contractDiagnostics — the three the build owes the editor', () => {
       '@code {\n  type P = { name: string };\n  const { name } = props<P>();\n}\n',
       '<b>@name</b>',
     );
-    const found = contractDiagnostics(graphOf('<app-circle></app-circle>', named));
-    expect(found.map((d) => d.code)).toEqual(['FUD0197']);
+    expect(graphRegistry(graphOf('<app-circle></app-circle>', named)).propsOf!('app-circle')).toEqual([
+      { name: 'name', required: true },
+    ]);
   });
 
   it('a type from ANOTHER file proves nothing, so nothing is required (criterion 19)', () => {
@@ -119,7 +99,9 @@ describe('contractDiagnostics — the three the build owes the editor', () => {
       "@code {\n  import type { P } from './p';\n\n  const { name } = props<P>();\n}\n",
       '<b>@name</b>',
     );
-    expect(contractDiagnostics(graphOf('<app-circle></app-circle>', imported))).toEqual([]);
+    expect(graphRegistry(graphOf('<app-circle></app-circle>', imported)).propsOf!('app-circle')).toEqual([
+      { name: 'name', required: false },
+    ]);
   });
 
   it('FUD0161 over the body of a `<script>`, which is the build half of decision 129', () => {

@@ -81,7 +81,8 @@ describe('analyze — runner', () => {
     // + host-bindings (BUG-32: FUD0720, a `class:` on the identity tag)
     // + error-marker (BUG-41: FUD0597–FUD0599, an `error` the emit can wire)
     // + layout-body (BUG-44: FUD0704–FUD0705, what a layout's <body> may hold)
-    expect(ANALYZERS).toHaveLength(22);
+    // − component-props and slot-name (SDD-35: FUD0197–FUD0199 retired, TypeScript says them)
+    expect(ANALYZERS).toHaveLength(20);
     const { value } = analyze(buildInput(component('<p>hi</p>')));
     expect(value).toEqual({});
     expect('strategies' in value).toBe(false); // decisions 63–65 retired: no hydration strategy
