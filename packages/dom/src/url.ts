@@ -38,12 +38,18 @@ const TRUSTED: unique symbol = Symbol.for('fudic.trustedUrl');
  */
 export interface TrustedURL {
   readonly [TRUSTED]: string;
+  /**
+   * The URL again, under a plain name: what the template's types recognise a trusted URL by,
+   * since the projection cannot name this module's symbol. The guard never reads it — a plain
+   * object with this property is not marked, only typed alike.
+   */
+  readonly fudicTrustedUrl: string;
   toString(): string;
 }
 
 /** Mark a URL as trusted: the guard writes it untouched, whatever its scheme. */
 export function trustedUrl(url: string): TrustedURL {
-  return Object.freeze({ [TRUSTED]: url, toString: () => url });
+  return Object.freeze({ [TRUSTED]: url, fudicTrustedUrl: url, toString: () => url });
 }
 
 /** Whether `value` was made by `trustedUrl`. */

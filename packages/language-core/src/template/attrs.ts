@@ -24,6 +24,7 @@ import {
   crossing,
   handlerShape,
   isNativeEventAttribute,
+  isUrlAttr,
   unwrapParens,
   type Attribute,
   type AttributeValuePart,
@@ -179,7 +180,7 @@ export function emitElementBindings(ctx: TemplateContext, el: ElementNode): void
   }));
 
   if (isComponent(el.name)) emitProps(ctx, el, bindings);
-  else emitNativeAttrs(ctx, bindings);
+  else emitNativeAttrs(ctx, el, bindings);
 
   // On EVERY element, and against the parent: a `<div slot="x">` is exactly as wrong as a
   // `<app-badge slot="x">` when the host declares no `x` (BUG-23 §2.6).
@@ -520,7 +521,7 @@ export function slotsAlias(ctx: TemplateContext): string | undefined {
 }
 
 /** Native tags: only the interpolations are checked, one `$attr` each. */
-function emitNativeAttrs(ctx: TemplateContext, bindings: readonly Entry[]): void {
+function emitNativeAttrs(ctx: TemplateContext, el: ElementNode, bindings: readonly Entry[]): void {
   for (const { binding } of bindings) {
     // `.prop` and a plain attribute carry the same shape of value, so a native tag checks
     // them the same way: whatever interpolation is inside, and nothing else.
@@ -528,9 +529,13 @@ function emitNativeAttrs(ctx: TemplateContext, bindings: readonly Entry[]): void
     // The emit crosses `id="@titulo"` as `titulo()` too — `crossingExpr` has exactly two
     // callers and this is the second (BUG-23 §2.8).
     const read = crossesAsRead(ctx, binding.value);
+    // A lone value of a URL attribute may be a `trustedUrl(…)` (SDD-51 §3.7). Mixed with text
+    // it is stringified into the rest, so there it is a scalar like any other.
+    const lone = binding.value.length === 1;
+    const check = binding.type === 'attr' && lone && isUrlAttr(el.name, binding.name) ? '$url(' : '$attr(';
     for (const part of binding.value) {
       if (part.type !== 'razor-expression') continue;
-      ctx.w.scaffold('$attr(', part.span);
+      ctx.w.scaffold(check, part.span);
       copyRazor(ctx, part);
       if (read) ctx.w.scaffold('()');
       ctx.w.scaffold(');\n');

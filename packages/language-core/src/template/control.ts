@@ -119,11 +119,20 @@ function emitSwitch(ctx: TemplateContext, node: SwitchNode): void {
   ctx.w.scaffold('}\n');
 }
 
-/** `@{ … }` — a lexically scoped block of statements, copied verbatim. */
+/**
+ * `@{ … }` — statements copied verbatim, INTO the block that contains them.
+ *
+ * Without braces of its own, because that is what the emit does (decision 17): it splices the
+ * statements where they are written, so what they declare is in scope for everything after
+ * them in the same block. Wrapped in `{ }` here, `@{ const x = 1; } <p>@x</p>` was `TS2304`
+ * in the editor and in the build over a name the runtime reads without complaint — and the
+ * view's scope (SDD-51 §3.4) says the same name resolves. The leading `;` keeps the copy from
+ * running into whatever statement the projection wrote before it.
+ */
 export function emitInlineCode(ctx: TemplateContext, node: InlineCodeNode): void {
-  ctx.w.scaffold('{\n', node.span);
+  ctx.w.scaffold(';\n', node.span);
   copyExpression(ctx, node.group.inner);
-  ctx.w.scaffold('\n}\n');
+  ctx.w.scaffold('\n');
 }
 
 /**

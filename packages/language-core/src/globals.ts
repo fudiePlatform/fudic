@@ -97,6 +97,12 @@ ${HTML_ATTRIBUTE_MEMBERS}
 
 declare function $text(v: $Scalar): void;
 declare function $attr(v: $Scalar): void;
+/**
+ * A URL attribute of a native tag (SDD-51 §3.7): a scalar, or a URL \`trustedUrl()\` marked,
+ * which the guard writes as it is. Structural, so the projection needs no import to accept it.
+ */
+interface $TrustedURL { readonly fudicTrustedUrl: string }
+declare function $url(v: $Scalar | $TrustedURL): void;
 declare function $attrs<T>(a: T & $GlobalAttrs): void;
 
 /**
