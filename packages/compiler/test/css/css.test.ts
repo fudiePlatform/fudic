@@ -1,7 +1,7 @@
 /**
  * SDD-09 acceptance criteria (§6) for the `<style>` body. Decision 136 (SDD-49) made it plain
- * CSS: the criteria about Razor inside it are gone with it, and its own (criterion 43 of
- * SDD-49) are still to be written.
+ * CSS: the criteria about Razor inside it are gone with it, replaced by its own (criterion 43
+ * of SDD-49): every `@` that is not CSS is `FUD0132`.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -178,11 +178,121 @@ describe('robustness (§5: never throws)', () => {
   });
 
   it('scans only the requested slice of a larger source', () => {
-    const source = 'PRE<style>.a { gap: @g; }</style>POST';
+    // Decision 136: the `@g` is no longer an expression between two runs, but an error
+    // inside the one run — and the scan still stops at the end of the body.
+    const source = 'PRE<style>.a { gap: @g; }</style>@POST';
     const body = span(10, 25);
-    const { value } = parseStyle(source, body);
+    const { value, diagnostics } = parseStyle(source, body);
     expect(value.span).toEqual(body);
     assertTiles(source, value);
-    expect(value.parts.map((p) => p.type)).toEqual(['css-text', 'razor-expression', 'css-text']);
+    expect(value.parts.map((p) => p.type)).toEqual(['css-text']);
+    expect(diagnostics.map((d) => [d.code, d.span])).toEqual([['FUD0132', span(20, 22)]]);
+  });
+});
+
+describe('SDD-49 criterion 43 — a <style> body is plain CSS (decision 136)', () => {
+  /** The `FUD0132`s of a body, each as `[severity, the text its span covers]`. */
+  function razor(source: string): readonly (readonly [string, string])[] {
+    return parse(source)
+      .diagnostics.filter((d) => d.code === 'FUD0132')
+      .map((d) => [d.severity, source.slice(d.span.start, d.span.end)] as const);
+  }
+
+  /** Every Razor form is FUD0132, the body stays one run, and nothing else is reported. */
+  function expectRazor(source: string, covered: readonly string[]): void {
+    expect(() => parse(source)).not.toThrow();
+    expect(razor(source)).toEqual(covered.map((c) => ['error', c]));
+    expect(codes(source).filter((c) => c !== 'FUD0132')).toEqual([]);
+    expect(shape(source)).toEqual([['css-text', source]]);
+    assertTiles(source, parse(source).node);
+  }
+
+  it('an explicit expression `@(x)`, up to its `)`', () => {
+    expectRazor('.a { color: @(x); }', ['@(x)']);
+    expectRazor('.a { width: @(f(a, b))px; }', ['@(f(a, b))']);
+  });
+
+  it('an explicit expression that never closes runs to the end of the body', () => {
+    expectRazor('.a { } @(x', ['@(x']);
+  });
+
+  it('an implicit expression `@foo`: the `@` and the identifier', () => {
+    expectRazor('.a { color: @foo; }', ['@foo']);
+    expectRazor('.a { color: @foo.prop; }', ['@foo']);
+    expectRazor('.a { color: @$x; }', ['@$x']);
+  });
+
+  it('a construct `@if (…) { }`: the `@` and its keyword', () => {
+    expectRazor('@if (dark) { .a { color: red; } }', ['@if']);
+    expectRazor('@foreach (x of xs) { }', ['@foreach']);
+  });
+
+  it('an at-rule that is not on the closed list', () => {
+    expectRazor('@bp tablet { }', ['@bp']);
+    expectRazor('@custom-media --x (min-width: 1px);', ['@custom']);
+  });
+
+  it('a Razor comment `@* c *@`, up to its `*@`', () => {
+    expectRazor('.a { } @* c *@ .b { }', ['@* c *@']);
+    // Its braces are inside the reported stretch, and do not count.
+    expectRazor('@* { *@', ['@* { *@']);
+  });
+
+  it('a Razor comment that never closes runs to the end of the body, without FUD0011', () => {
+    expectRazor('.a { } @* never closed', ['@* never closed']);
+    expect(codes('@* x')).not.toContain('FUD0011');
+  });
+
+  it('the `@@` escape, which escapes nothing in CSS', () => {
+    expectRazor('.a::after { content: x; } @@media', ['@@']);
+  });
+
+  it('a lone `@`', () => {
+    expectRazor('.a { color: @ red; }', ['@']);
+    expectRazor('.a { color: red; } @', ['@']);
+    expectRazor('.a { width: @1px; }', ['@']);
+  });
+
+  it('reports each one where it is', () => {
+    const source = '.a { color: @x; } @(y) @@';
+    const { diagnostics } = parse(source);
+    expect(diagnostics.map((d) => [d.code, d.span])).toEqual([
+      ['FUD0132', span(12, 14)],
+      ['FUD0132', span(18, 22)],
+      ['FUD0132', span(23, 25)],
+    ]);
+  });
+
+  it('says CSS takes no Razor and points at the markup', () => {
+    const [d] = parse('@x').diagnostics;
+    expect(d?.message).toContain('plain CSS');
+    expect(d?.message).toContain('style=');
+  });
+
+  it('an at-rule of the list is CSS, in any case', () => {
+    for (const source of [
+      '@media print { .a { color: red; } }',
+      '@MEDIA print { }',
+      '@font-face { font-family: x; }',
+      '@layer base, theme;',
+      '@supports (display: grid) { }',
+    ]) {
+      expect(codes(source)).toEqual([]);
+      expect(shape(source)).toEqual([['css-text', source]]);
+    }
+  });
+
+  it('a vendor at-rule is CSS', () => {
+    const source = '@-webkit-keyframes spin { from { opacity: 0; } }';
+    expect(codes(source)).toEqual([]);
+    expect(shape(source)).toEqual([['css-text', source]]);
+  });
+
+  it('an `@` inside a string or a CSS comment is text', () => {
+    expect(codes('.a::after { content: "@(x) @foo @@"; }')).toEqual([]);
+    expect(codes(".a::after { content: '@'; }")).toEqual([]);
+    // An escaped quote does not end the string: the `@` after it is still inside.
+    expect(codes('.a::after { content: "\\"@x"; }')).toEqual([]);
+    expect(codes('/* @(x) @* @@ @ */ .a { }')).toEqual([]);
   });
 });

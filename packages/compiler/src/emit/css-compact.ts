@@ -113,17 +113,11 @@ export function compactCss(text: string): string {
 }
 
 /**
- * The compacted body of a parsed `<style>`. The parts tile the body span with no gaps and
- * no overlaps (`css/nodes.ts`), which is what makes this walk complete by construction:
- * every byte of the source body is either compacted as text or copied verbatim.
+ * The compacted body of a parsed `<style>`: plain CSS since decision 136, so every part is a
+ * literal run, compacted. `source` stays in the signature for its callers.
  */
 export function compactStyleCss(source: string, style: StyleNode): string {
   let out = '';
-  for (const part of style.parts) {
-    out +=
-      part.type === 'css-text'
-        ? compactCss(part.value)
-        : source.slice(part.span.start, part.span.end);
-  }
+  for (const part of style.parts) out += compactCss(part.value);
   return out.trim();
 }

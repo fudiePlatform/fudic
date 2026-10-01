@@ -14,7 +14,7 @@
 
 import { errorDiag, infoDiag, span as spanOf, type Diagnostic, type Span } from '@fudic/compiler';
 
-/** A `<style>` left untouched because its placeholders did not survive the CSS pass (§4.3). */
+/** A `<style>` left untouched because its body does not parse as CSS (§4.3). */
 export const FUD_STYLE_NOT_FORMATTED = 'FUD0480';
 
 /** A JS/TS fragment left untouched because it does not parse (§4.2). */

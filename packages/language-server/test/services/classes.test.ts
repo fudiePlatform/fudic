@@ -97,23 +97,21 @@ describe('§6.7 — comments declare nothing', () => {
   });
 });
 
-describe('§6.8 — Razor inside the CSS', () => {
-  it('does not offer the prefix of an interpolated name', () => {
-    // `.item-@(n)` is a prefix that dies at the edge of its part: it is not a name.
-    expect(names('.item-@(n) { color: red }\n.item { color: blue }')).toEqual(['item']);
+describe('§6.8 — the body is plain CSS (decision 136)', () => {
+  it('reads the rules nested in an at-rule, and not the at-rule prelude', () => {
+    expect(names('@media (min-width: 48.5rem) {\n  .wide { padding: 0 }\n}')).toEqual(['wide']);
   });
 
-  it('a name that ends before the edge of the part still counts', () => {
-    expect(names('.a .b@(n) { color: red }')).toEqual(['a']);
+  it('a stray `@` (FUD0132) does not stop the names around it from being offered', () => {
+    expect(names('.a { color: @(fg) }\n.b { color: red }')).toEqual(['a', 'b']);
   });
 
-  it('a run carries on across a Razor atom', () => {
-    expect(names('.a@(n).b { color: red }')).toEqual(['b']);
-  });
-
-  it('a `.` that the part ends on opens nothing', () => {
+  it('a `.` the body ends on opens nothing', () => {
     // The one position where the character after the dot is not a character at all.
-    expect(names('.a { color: red }\n.@(n) { color: blue }')).toEqual(['a']);
+    // Written by hand: `componentWith` puts a newline after the body.
+    const source = componentWith('').replace('<style>\n\n</style>', '<style>.a { color: red }.</style>');
+    expect(source).toContain('}.</style>');
+    expect(namesOf(source)).toEqual(['a']);
   });
 });
 

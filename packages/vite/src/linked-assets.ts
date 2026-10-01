@@ -123,7 +123,7 @@ export class LinkedAssets {
    * `css` arrives compacted: it is the emit's `compactProjectCss` output, and compacting it
    * again here would be the second path for CSS this module refuses to have.
    */
-  sheet(absPath: string, css: string, origin: AssetOrigin = 'head'): string {
+  sheet(absPath: string, css: string, origin: AssetOrigin = 'markup'): string {
     const path = slashes(absPath);
     const bytes = Buffer.from(css, 'utf8');
     const hash = createHash('sha256').update(bytes).digest('base64url').slice(0, 8);

@@ -20,14 +20,15 @@ describe('emitCssVirtuals', () => {
     }
   });
 
-  it('replaces a Razor region with a filler of exactly the same length', () => {
-    const source = withStyle('    @media (min-width: @bp.tablet) { :host { color: red; } }');
+  it('copies the body verbatim, a stray `@` included, at the same offsets', () => {
+    // A `@` that is not CSS is FUD0132 (decision 136): the virtual does not hide it, it
+    // carries the body exactly as written.
+    const body = '    @media (min-width: @bp.tablet) { :host { color: red; } }';
+    const source = withStyle(body);
     const [css] = emitCssVirtuals(source, 'app-host.fud', parseFud(source));
 
-    expect(css!.text).toContain('(min-width: zzzzzzzzzz)');
-    // Same offsets as the source: the placeholder is as long as `@bp.tablet`, and the
-    // markup above the body is blanked out rather than dropped.
-    expect(css!.text.indexOf('zzzzzzzzzz')).toBe(source.indexOf('@bp.tablet'));
+    const start = source.indexOf(body);
+    expect(css!.text.slice(start)).toBe(source.slice(start, source.indexOf('</style>')));
     expect(css!.text.length).toBe(source.indexOf('</style>'));
   });
 

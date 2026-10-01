@@ -616,7 +616,6 @@ function validateStyleImports(style: ElementNode, diagnostics: Diagnostic[]): vo
   const body = style.children[0];
   if (body === undefined || body.type !== 'style-content') return;
   for (const part of body.parts) {
-    if (part.type !== 'css-text') continue;
     const text = part.value.replace(/\/\*[\s\S]*?(\*\/|$)/gu, (c) => ' '.repeat(c.length));
     for (const m of text.matchAll(/@import\b[^;{}]*;?/giu)) {
       const start = part.span.start + m.index;

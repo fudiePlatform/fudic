@@ -210,8 +210,10 @@ describe('regionAt — CSS', () => {
     expect(kindAt('<head><style>:host { disp|lay: block; }</style></head>')).toBe('css');
   });
 
-  it('a Razor atom inside CSS is an expression', () => {
-    expect(kindAt('<head><style>.a { color: @(to|ne); }</style></head>')).toBe('expression');
+  it('an `@( … )` inside CSS is CSS too: the body is plain CSS (decision 136)', () => {
+    const marked = '<head><style>.a { color: @(to|ne); }</style></head>';
+    expect(kindAt(marked)).toBe('css');
+    expect(textAt(marked)).toBe('.a { color: @(tone); }');
   });
 
   it('the <style> tag itself is a tag', () => {

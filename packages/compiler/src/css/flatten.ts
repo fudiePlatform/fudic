@@ -319,7 +319,7 @@ class Flattener {
       const imp = parseImport(file.text.slice(rule.prelude.start, rule.prelude.end));
       if (imp === null || !isRelative(imp.url)) continue;
       const spec = joinSpec(file.spec, imp.url);
-      if (stack.includes(spec) || spec === file.spec || spec === stack[0]) {
+      if (stack.includes(spec) || spec === file.spec) {
         this.#report(
           file.spec,
           errorDiag(FUD_IMPORT_CYCLE, `this @import closes a cycle (${imp.url}): it is dropped`, rule.span),

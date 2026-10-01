@@ -72,8 +72,10 @@ function page(
 
 describe('assetText — the bytes of a resource the author asked to embed', () => {
   it('reads a relative sheet and puts it in the document', () => {
+    // A RELATIVE sheet is pruned against the page (SDD-49), so its token has to be used for
+    // anything to be embedded: a `?inline` sheet that ends empty writes nothing.
     const { root, id } = page('<link rel="stylesheet" href="./tokens.css?inline">', {
-      'tokens.css': SHEET,
+      'tokens.css': `${SHEET}output { margin: var(--gap); }\n`,
     });
     const result = transformFud(id, nodeIo(), 'ruta', undefined, new LinkedAssets('/', root));
 

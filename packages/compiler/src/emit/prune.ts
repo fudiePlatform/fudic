@@ -132,6 +132,10 @@ function compoundMatches(c: CompoundSelector, scope: StyleScope, surface: ScopeS
     if (!c.part.split(/\s+/u).every((p) => exposed.has(p))) return false;
   }
   if (c.type !== undefined && !surface.tags.has(c.type)) return false;
+  // `::placeholder` exists only on a text field: without one in the scope, nothing to match.
+  if (c.pseudo.includes('placeholder') && !surface.tags.has('input') && !surface.tags.has('textarea')) {
+    return false;
+  }
   if (!surface.openClasses && !c.classes.every((k) => surface.classes.has(k))) return false;
   if (!surface.openIds && !c.ids.every((i) => surface.ids.has(i))) return false;
   if (!c.attributes.every((a) => attributeMatches(a, surface))) return false;
@@ -437,9 +441,13 @@ class RenderPass {
   }
 }
 
-/** `css` with its edits applied, outermost first; an edit inside a removed span is moot. */
+/**
+ * `css` with its edits applied, in order; an edit inside a removed span is moot. No two edits
+ * start at the same offset: a dropped rule starts at the rule, a dead declaration inside its
+ * body, and a trimmed prelude is only written for a rule that stays.
+ */
 function applyEdits(css: string, edits: readonly Edit[]): string {
-  const sorted = [...edits].sort((a, b) => a.start - b.start || b.end - a.end);
+  const sorted = [...edits].sort((a, b) => a.start - b.start);
   let out = '';
   let at = 0;
   for (const edit of sorted) {
@@ -499,8 +507,10 @@ export function prunePage(
 export function sheetDiagnostics(sheet: FlatSheet): readonly FileDiagnostic[] {
   const unreadable = parseCssRules(sheet.css).diagnostics.map((d): FileDiagnostic => {
     const from = originOf(sheet, d.span.start);
-    const to = originOf(sheet, d.span.end);
-    const end = to.file === from.file ? Math.max(to.offset, from.offset) : from.offset;
+    // The end is mapped through its last character: an end that falls exactly where an
+    // imported file's region ends belongs to that file, not to the one written after it.
+    const last = originOf(sheet, Math.max(d.span.end - 1, d.span.start));
+    const end = d.span.end > d.span.start && last.file === from.file ? last.offset + 1 : from.offset;
     return { file: from.file, diagnostic: { ...d, span: span(from.offset, end) } };
   });
   return [...sheet.diagnostics, ...unreadable];

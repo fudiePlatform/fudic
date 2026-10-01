@@ -1,0 +1,15 @@
+<head>
+  <style>
+    :host { display: block; color: var(--fg, #222); }
+
+    @media (min-width: 48rem) {
+      .wide { padding: 1rem 2rem; --accent: rebeccapurple; }
+    }
+  </style>
+</head>
+
+<app-css>
+  <template shadowrootmode="open">
+    <div class="wide"><slot></slot></div>
+  </template>
+</app-css>

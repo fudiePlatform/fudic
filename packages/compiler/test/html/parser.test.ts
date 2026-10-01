@@ -182,12 +182,15 @@ describe('raw elements (§6.6, decision 43)', () => {
     expect(text(source, body.span)).toBe(':host{}');
   });
 
-  it('interpolates a Razor expression inside a style body', () => {
+  it('reports Razor inside a style body as FUD0132 and keeps it as CSS text (decision 136)', () => {
     const source = '<style>.a{color:@brand}</style>';
     const el = firstElement(source);
     const body = el.children[0]!;
     if (body.type !== 'style-content') throw new Error('unreachable');
-    expect(body.parts.map((p) => p.type)).toEqual(['css-text', 'razor-expression', 'css-text']);
+    expect(body.parts.map((p) => p.type)).toEqual(['css-text']);
+    expect(text(source, body.parts[0]!.span)).toBe('.a{color:@brand}');
+    const razor = parse(source).diagnostics.filter((d) => d.code === 'FUD0132');
+    expect(razor.map((d) => text(source, d.span))).toEqual(['@brand']);
   });
 
   it('handles an empty raw body', () => {

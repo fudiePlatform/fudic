@@ -13,7 +13,8 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { LinkedAssets, assetUrlFrom } from '../src/linked-assets.js';
+import { LinkedAssets, assetSheetFrom, assetUrlFrom } from '../src/linked-assets.js';
+import type { Diagnostic } from '@fudic/compiler';
 
 /** Over the inline limit (4096), so it is a file and not a `data:` URI. */
 const BIG_PNG = Buffer.alloc(5000, 7);
@@ -238,9 +239,128 @@ describe('assetUrlFrom', () => {
     expect(resolve('../logo.png', 'markup')).toBe(assets.url(join(root, 'logo.png')));
   });
 
+  it('hands a root-absolute specifier to the public directory, unhashed', () => {
+    const assets = new LinkedAssets('/app/', join(root, 'public'));
+    expect(assetUrlFrom(assets, join(root, 'styles'))('/site.svg', 'markup')).toBe('/app/site.svg');
+    expect(assets.files().size).toBe(0);
+  });
+
   it('carries the origin through, so the head of one `.fud` reaches the shell', () => {
     const assets = new LinkedAssets('/');
     assetUrlFrom(assets, join(root, 'styles'))('./theme.css', 'head');
     expect(assets.shell()).toHaveLength(1);
+  });
+});
+
+/**
+ * SDD-49 §3.7, §4.9–§4.11: the pruned copy of a sheet, and what the build learns about each
+ * sheet page by page.
+ */
+describe('LinkedAssets.sheet — a pruned copy is named by its own bytes', () => {
+  it('names it like `url()` does, over the pruned CSS: same bytes, same name, from any registry', () => {
+    const first = new LinkedAssets('/').sheet(sheet(), '.a{color:red}', 'markup');
+    expect(first).toMatch(/^\/assets\/theme-[\w-]{8}\.css$/u);
+    expect(new LinkedAssets('/').sheet(sheet(), '.a{color:red}', 'markup')).toBe(first);
+    // Another prune of the same file is another file.
+    expect(new LinkedAssets('/').sheet(sheet(), '.b{color:red}', 'markup')).not.toBe(first);
+  });
+
+  it('is not the whole file: its name says nothing about the bytes on disk', () => {
+    const assets = new LinkedAssets('/');
+    expect(assets.sheet(sheet(), '.a{color:red}', 'markup')).not.toBe(assets.url(sheet()));
+  });
+
+  it('two pages that keep the same rules publish one file', () => {
+    const assets = new LinkedAssets('/');
+    const one = assets.sheet(sheet(), '.a{color:red}', 'markup');
+    const two = assets.sheet(sheet(), '.a{color:red}', 'markup');
+    expect(two).toBe(one);
+    expect([...assets.files().keys()]).toEqual([one.slice(1)]);
+    expect(new TextDecoder().decode(assets.files().get(one.slice(1)))).toBe('.a{color:red}');
+  });
+
+  it('publishes the CSS it is handed as it is: it arrives compacted, and is not compacted twice', () => {
+    const assets = new LinkedAssets('/');
+    const url = assets.sheet(sheet(), '.a { color: red; }', 'markup');
+    expect(new TextDecoder().decode(assets.files().get(url.slice(1)))).toBe('.a { color: red; }');
+  });
+
+  it('carries the base', () => {
+    expect(new LinkedAssets('/app/').sheet(sheet(), '.a{}', 'markup')).toMatch(/^\/app\/assets\/theme-/u);
+  });
+
+  it('lives under the directory it is told: `@fudic/sheet` in dev, served from memory', () => {
+    const assets = new LinkedAssets('/', '', '@fudic/sheet');
+    const url = assets.sheet(sheet(), '.a{color:red}', 'markup');
+    expect(url).toMatch(/^\/@fudic\/sheet\/theme-[\w-]{8}\.css$/u);
+    const served = assets.served(url);
+    expect(served?.type).toBe('text/css');
+    expect(new TextDecoder().decode(served?.bytes)).toBe('.a{color:red}');
+  });
+
+  it('does not enter the shell when linked as the compiler links it, from markup (§4.9)', () => {
+    const assets = new LinkedAssets('/');
+    assets.sheet(sheet(), '.a{color:red}', 'markup');
+    expect(assets.shell()).toEqual([]);
+  });
+
+  it('honours an explicit head origin, as every resolver of the registry does', () => {
+    const assets = new LinkedAssets('/');
+    const url = assets.sheet(sheet(), '.a{color:red}', 'head');
+    expect(assets.shell()).toEqual([url]);
+    // The default is the markup's: a pruned copy is one page's, cached on visit.
+    assets.sheet(sheet(), '.b{color:red}');
+    expect(assets.shell()).toEqual([url]);
+  });
+});
+
+describe('assetSheetFrom', () => {
+  it('resolves the specifier against the file that wrote it, its query dropped', () => {
+    const assets = new LinkedAssets('/');
+    const named = assetSheetFrom(assets, join(root, 'styles'));
+    expect(named('./theme.css?inline', '.a{}', 'markup')).toBe(
+      new LinkedAssets('/').sheet(sheet(), '.a{}', 'markup'),
+    );
+    expect(named('../styles/theme.css', '.a{}', 'markup')).toBe(
+      new LinkedAssets('/').sheet(sheet(), '.a{}', 'markup'),
+    );
+    expect(assets.shell()).toEqual([]);
+  });
+});
+
+describe('LinkedAssets — the sheets no page uses (FUD0852) and what they say (§4.11)', () => {
+  const warning = (code: string, start: number): Diagnostic => ({
+    code,
+    severity: 'warning',
+    message: code,
+    span: { start, end: start + 1 },
+  });
+
+  it('has nothing to say before any page was compiled', () => {
+    const assets = new LinkedAssets('/');
+    expect(assets.unusedSheets()).toEqual([]);
+    expect(assets.sheetDiagnostics().size).toBe(0);
+  });
+
+  it('a sheet no page keeps a rule of is unused; one any page uses is not', () => {
+    const assets = new LinkedAssets('/');
+    assets.recordSheet('/s/dead.css', false);
+    assets.recordSheet('/s/main.css', false);
+    assets.recordSheet('/s/main.css', true);
+    assets.recordSheet('/s/main.css', false);
+    assets.recordSheet('fudic.json "panel"', false);
+    expect(assets.unusedSheets()).toEqual(['/s/dead.css', 'fudic.json "panel"']);
+  });
+
+  it('keeps what a sheet says from the first page that read it: once per file, not per page', () => {
+    const assets = new LinkedAssets('/');
+    const first = [warning('FUD0850', 0)];
+    assets.recordSheet('/s/main.css', true, first);
+    assets.recordSheet('/s/main.css', true, [warning('FUD0850', 0)]);
+    assets.recordSheet('/s/quiet.css', true);
+    const said = assets.sheetDiagnostics();
+    expect(said.get('/s/main.css')).toBe(first);
+    expect(said.get('/s/quiet.css')).toEqual([]);
+    expect([...said.keys()]).toEqual(['/s/main.css', '/s/quiet.css']);
   });
 });

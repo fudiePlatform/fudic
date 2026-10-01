@@ -1,5 +1,5 @@
 /**
- * Acceptance criteria 6 to 10: opaque regions, Razor comments, CSS with Razor, inline
+ * Acceptance criteria 6 to 10: opaque regions, Razor comments, plain CSS, inline
  * adjacency and long attribute lists.
  */
 
@@ -70,19 +70,19 @@ describe('criterion 7 — no Razor comment disappears', () => {
   });
 });
 
-describe('criterion 8 — CSS with Razor', () => {
-  const css = fixture('own/css-razor.fud');
+describe('criterion 8 — CSS is formatted as plain CSS', () => {
+  const css = fixture('own/css.fud');
 
-  it('formats the sheet and puts every Razor region back exactly', async () => {
+  it('formats the sheet, at-rules and custom properties included', async () => {
     const out = await formatted(css);
-    expect(out).toContain('@media (min-width: @bp.tablet)');
-    expect(out).toContain('color: @(theme.fg)');
-    expect(out).toContain('--accent: @(theme.accent)');
+    expect(out).toContain('@media (min-width: 48rem)');
+    expect(out).toContain('color: var(--fg, #222);');
+    expect(out).toContain('--accent: rebeccapurple;');
   });
 
   it('actually formatted it, rather than giving up and copying', async () => {
     const out = await formatted(css);
-    // `:host { display: block; color: @(theme.fg); }` was one line in the source.
+    // `:host { display: block; color: var(--fg, #222); }` was one line in the source.
     expect(out).toContain(':host {\n      display: block;');
     const result = await format(css.source);
     expect(result.ok && result.notes).toEqual([]);

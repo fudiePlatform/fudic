@@ -10,6 +10,7 @@
 import type { ElementNode, HtmlContent } from '../html/index.js';
 import { isComponentLink, isLayoutLink, isSnippetLink } from '../document/index.js';
 import type { Span } from '../types/index.js';
+import type { StyleNode } from '../css/index.js';
 import type { ComponentGraph, ResolvedComponent, ResolvedLayout } from './resolve.js';
 import type { CodeWriter } from './writer.js';
 import { AssetLinker } from './assets.js';
@@ -129,8 +130,9 @@ export function linkWithHref(source: string, el: ElementNode, url: string): stri
  */
 function headStyleExpr(source: string, el: ElementNode, linker: AssetLinker): string | null {
   if (el.name !== 'style') return null;
-  const body = el.children[0];
-  if (body === undefined || body.type !== 'style-content') return null;
+  // A parsed `<style>` always holds exactly one `StyleNode`: the lexer hands its body over as
+  // a raw-text token even when it is empty, and the parser turns that into the node.
+  const body = el.children[0] as StyleNode;
   const attrs = source.slice(el.openSpan.start + '<style'.length, el.openSpan.end - 1);
   return (
     `'<style' + $nonce + ${JSON.stringify(attrs)} + '>' + ` +

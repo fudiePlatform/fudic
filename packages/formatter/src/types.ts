@@ -51,7 +51,7 @@ export interface ResolvedOptions {
  * returns the negative result.
  *
  * `notes` rides on the successful branch: they are things the formatter decided not to
- * touch (a fragment that does not parse, a `<style>` whose placeholders came back wrong),
+ * touch (a fragment that does not parse, a `<style>` that does not parse as CSS),
  * never reasons to refuse. The output is still complete and still safe.
  */
 export type FormatResult =
