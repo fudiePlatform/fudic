@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/typecheck` (nuevo) · `@fudic/language-server` · `@fudic/vite` ·
 > `@fudic/compiler` · `@fudic/example-basic`
 > **Rama:** `worktree-sdd-35-compilo-o-no-compilo`
-> **Progreso:** 10 / 22
+> **Progreso:** 11 / 22
 >
 > **Reparto (decisión de Pedro).** Esta sesión escribe el código; los tests (tareas 1 y 12, los
 > tests unitarios que se mudan con sus piezas y la cobertura) los escribe otra sesión. Una tarea
@@ -71,7 +71,7 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 13 | 12 | **Retirar `FUD0197`–`FUD0199`.** Fuera de `contractDiagnostics` y del pase semántico; borrar los analizadores que solo existían para ellos; sus casos pasan al corpus de paridad con su `TS`. SDD-12 los anota como retirados. Criterio 14 | `compiler` · `vite` | `src/semantic/analyzers/**` · `vite/src/transform.ts` · `docs/sdd/SDD-12-semantica.md` |
+| [x] | 13 | 12 | **Retirar `FUD0197`–`FUD0199`.** Fuera de `contractDiagnostics` y del pase semántico; borrar los analizadores que solo existían para ellos (y `slotsOf`, que solo servía a `FUD0199`); sus casos pasan al corpus de paridad con su `TS` (eso, en la sesión de tests). Sus `.ts` se borran y sus `.md` quedan como retirados. SDD-12 los anota. Criterio 14 | `compiler` · `diagnostics` | `src/semantic/analyzers/**` · `src/emit/registry.ts` · `docs/sdd/SDD-12-semantica.md` |
 
 ## Fase 5 — el build (3)
 

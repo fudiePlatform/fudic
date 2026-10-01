@@ -36,18 +36,19 @@ export type { ComponentDeclaredProps } from '../binding/index.js';
 /**
  * Resolves whether a custom tag is a declared component (decision 41). Cross-file; injected (DIP).
  *
- * The two contract questions are OPTIONAL, and `undefined` from either is a legitimate answer
- * meaning «I cannot know». The build serves them off the resolved graph, which holds the
- * child's own document; a host that cannot read the child — the language server, where
- * TypeScript already checks these two things over the projection — leaves them out, and the
- * rules that need them stay silent instead of guessing (BUG-23 §4.4).
+ * The contract questions are OPTIONAL, and `undefined` from any is a legitimate answer meaning
+ * «I cannot know». The build serves them off the resolved graph, which holds the child's own
+ * document; a host that cannot read the child leaves them out, and the rules that need them
+ * stay silent instead of guessing (BUG-23 §4.4).
+ *
+ * There is no question about a child's slots, nor a rule for a prop the child does not declare
+ * or a required one nobody passes: TypeScript reports all three over the projection, in the
+ * editor and — since SDD-35 — in the build, so `FUD0197`–`FUD0199` were retired.
  */
 export interface ComponentRegistry {
   has(tag: string): boolean;
   /** What the tag declares as props, or `undefined` when it cannot be known. */
   propsOf?(tag: string): readonly ComponentDeclaredProps[] | undefined;
-  /** The names the tag declares with `<slot name="…">`, or `undefined` when unknowable. */
-  slotsOf?(tag: string): readonly string[] | undefined;
   /**
    * Whether the tag HYDRATES, or `undefined` when it cannot be known.
    *

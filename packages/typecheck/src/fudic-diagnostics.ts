@@ -22,12 +22,11 @@ import { reservedDollarDiagnostics } from './reserved-dollar.js';
  * What the semantic pass may ask about another component: whether the tag is declared, and
  * nothing else.
  *
- * `propsOf` and `slotsOf` are deliberately absent, and the reason was measured rather than
- * assumed. Supplying them turns on the two contract rules of BUG-23 — the required prop nobody
- * passes, the slot the parent does not declare — and both are already reported by TypeScript
- * over the projection, with more to say: `<site-nav .currnt=>` came back as `TS2561` *and*
- * `FUD0198`, the same mistake said twice, and only one of the two knows the name was meant to
- * be `current`. One voice per fact — the rule BUG-23 spent a month learning.
+ * `propsOf` is deliberately absent. The contract of a child — its props, required or not, and
+ * its slots — is TypeScript's to check over the projection, with more to say than a fudic rule:
+ * `<site-nav .currnt=>` is `TS2561`, which knows the name was meant to be `current`. The three
+ * fudic rules that used to say it too (`FUD0197`–`FUD0199`) were retired by SDD-35. One voice
+ * per fact — the rule BUG-23 spent a month learning.
  */
 function registryOf(document: ProjectedFud): ComponentRegistry {
   return { has: (tag) => document.registry.component(tag) !== undefined };

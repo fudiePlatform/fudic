@@ -26,8 +26,6 @@ import { componentDeclared } from './analyzers/component-declared.js';
 import { eventHandlerShape } from './analyzers/event-handler-shape.js';
 import { layoutLoad } from './analyzers/layout-load.js';
 import { layoutBody } from './analyzers/layout-body.js';
-import { componentProps } from './analyzers/component-props.js';
-import { slotName } from './analyzers/slot-name.js';
 import { scriptBody } from './analyzers/script-body.js';
 import { hostBindings } from './analyzers/host-bindings.js';
 
@@ -51,8 +49,6 @@ export const ANALYZERS: readonly Analyzer[] = [
   eventHandlerShape,
   layoutLoad,
   layoutBody,
-  componentProps,
-  slotName,
   scriptBody,
   hostBindings,
 ];

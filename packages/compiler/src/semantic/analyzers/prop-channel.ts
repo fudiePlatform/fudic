@@ -11,16 +11,15 @@
  *  - **`FUD0203`** a `computed` crossing to a prop the child WRITES. A derived value has no
  *    value of its own (SDD-31 §4.3), so the write would have nowhere to land.
  *
- * Like the two contract rules of BUG-23 §4.4, all four are silent where the child cannot be
- * READ: with no `propsOf` there is no channel to check anything against, and a build does not
- * invent what it cannot demonstrate.
+ * All four are silent where the child cannot be READ: with no `propsOf` there is no channel to
+ * check anything against, and a build does not invent what it cannot demonstrate.
  *
  * **It is not in `ANALYZERS`, and that is the same split BUG-23 settled.** The rule needs four
  * things only a caller holding the resolved graph can answer — what the child declares, whether
  * it hydrates, whether it writes the prop, and what each name of THIS component can cross as —
  * and the editor has none of them. Over there TypeScript already rejects the same values across
  * the projection, with the real type and more to say; a second voice would only repeat it worse.
- * So the build owns these four, as it owns `FUD0197`–`FUD0199`: one voice per fact.
+ * So the build owns these four: one voice per fact.
  */
 
 import { FUD0200, FUD0201, FUD0202, FUD0203 } from '@fudic/diagnostics';
