@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/typecheck` (nuevo) · `@fudic/language-server` · `@fudic/vite` ·
 > `@fudic/compiler` · `@fudic/example-basic`
 > **Rama:** `worktree-sdd-35-compilo-o-no-compilo`
-> **Progreso:** 18 / 22
+> **Progreso:** 19 / 22
 >
 > **Reparto (decisión de Pedro).** Esta sesión escribe el código; los tests (tareas 1 y 12, los
 > tests unitarios que se mudan con sus piezas y la cobertura) los escribe otra sesión. Una tarea
@@ -44,7 +44,7 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **El hueco, en rojo.** Un build real con `.tone="@(42)"` contra `tone?: 'neutral' \| 'success' \| 'info'` que afirma que el build **falla**. Hoy pasa, y el test queda en rojo en su propio commit. Criterio 1 | `vite` | `test/build-typecheck.test.ts` |
+| [x] | 1 | — | **El hueco, en rojo.** Un build real con `.tone="@(42)"` contra `tone?: 'neutral' \| 'success' \| 'info'` que afirma que el build **falla**. Hoy pasa, y el test queda en rojo en su propio commit. Criterio 1. *Nota:* el código del chequeo aterrizó antes que el test (reparto en dos sesiones), así que el rojo no quedó registrado; el test nace en verde junto con los criterios 2, 6–12, 14 y 17 | `vite` | `test/build-typecheck.test.ts` |
 
 ## Fase 2 — la mudanza (7)
 
