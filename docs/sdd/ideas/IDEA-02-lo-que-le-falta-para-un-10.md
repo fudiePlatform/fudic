@@ -17,7 +17,7 @@
 >
 > | § | destino |
 > |---|---|
-> | 1 · `fudic check` | [SDD-35](../SDD-35-fudic-check.md) · [tareas](../SDD-35-Task.md) |
+> | 1 · `fudic check` | [SDD-35](../SDD-35-compilo-o-no-compilo.md) · [tareas](../SDD-35-Task.md). **Reescrito el 2026-10-01:** no hay comando; el chequeo de tipos corre dentro de `pnpm build` y `pnpm dev` |
 > | 2 · las bombillas | [SDD-36](../SDD-36-editor-terminado.md) fase 2 |
 > | 3 · renombrar | [SDD-36](../SDD-36-editor-terminado.md) **tarea 1: medir primero**. El resultado decide si hay SDD propio |
 > | 4 · hover del contrato | [SDD-36](../SDD-36-editor-terminado.md) fase 3 |

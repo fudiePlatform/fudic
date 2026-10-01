@@ -283,7 +283,7 @@ fichero lleva no protege de eso.
 
 `tsconfig.base.json` en la raíz lleva la config estricta; cada proyecto la extiende y solo
 declara su `include`. Sin referencias de proyecto: un `.fud` no se compila con `tsc`, lo
-comprueba `fudic check` (SDD-35), y las referencias serían andamiaje para un build que no
+comprueba el propio build (SDD-35), y las referencias serían andamiaje para un build que no
 existe.
 
 ### 4.7. `--uses` enlaza paquetes, no componentes
