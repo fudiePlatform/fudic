@@ -8,7 +8,9 @@
 > `fudic-vscode` (la gramática, sin cambios; un test) · `@fudic/example-basic` (la evidencia)
 > **Depende de:** 12, 15, 21, 24, 28, 29, 36, 39, 40, BUG-44
 > **Rango de diagnósticos:** `FUD0440`–`FUD0445` (del rango reservado de SDD-21). Retira
-> `FUD0704` y `FUD0833`; estrecha `FUD0705`.
+> `FUD0704` y `FUD0833`; estrecha `FUD0705`. **Renumerados por SDD-50** (chocaban con la CLI,
+> dueña de `FUD0440`–`0459`): `FUD0440`–`0445` son ahora **`FUD0890`–`FUD0895`**, en el mismo
+> orden. El texto de abajo conserva los números antiguos.
 > **Decisiones de gramática:** 133–135 (nuevas). Enmienda la 82 y la 85, y revoca la 13 de
 > SDD-29.
 > **Rama:** `worktree-SDD-48-componentes-layout`

@@ -4,7 +4,10 @@
 > **Paquetes:** `@fudic/config` (nuevo) · `@fudic/cli` · `@fudic/vite` ·
 > `@fudic/language-server` · `@fudic/example-basic` (la evidencia)
 > **Depende de:** 19, 20, 22, 24, 28
-> **Rango de diagnósticos:** `FUD0720`–`FUD0739`
+> **Rango de diagnósticos:** `FUD0720`–`FUD0739`. **Renumerados por SDD-50** (chocaban con
+> BUG-32, que llegó antes): el `fudic.json` mal formado `FUD0720` es ahora **`FUD0725`**, y
+> `error` también en el build; el `id` obligatorio `FUD0721` es ahora **`FUD0726`**. El texto
+> de abajo conserva los números antiguos.
 > **Naturaleza:** configuración + CLI + editor. No toca el parser, ni el emit, ni el runtime.
 >
 > Un proyecto fudic no dice de sí mismo absolutamente nada. No tiene nombre estable, no

@@ -114,7 +114,10 @@ una spec aterrice.
 - **Versiones exactas.** Ancla las dependencias exactas (sin `^`/`~`). Solo
   `engines.node` usa un rango `>=`.
 - **Códigos de diagnóstico.** Formato `FUD` + 4 dígitos (`FUD0001`). Cada SDD reserva su
-  propio rango; el catálogo consolidado vive en SDD-12.
+  propio rango. Un código nuevo es **un fichero nuevo** en `@fudic/diagnostics`
+  (`packages/diagnostics/src/codes/FUDnnnn.ts`, una función tipada, con su `FUDnnnn.md` en
+  inglés de unas cinco líneas al lado y su línea en `index.ts`). Esa carpeta es el catálogo.
+  Ningún otro paquete escribe un `'FUDnnnn'` a mano: llama a la función del código.
 - **Commits de git.** Solo asunto + cuerpo. **Sin** `Co-Authored-By`, firmas ni ningún
   trailer de atribución. Commitea/pushea **solo cuando se pida explícitamente**; crea
   antes una rama desde `main`.

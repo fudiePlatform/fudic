@@ -5,7 +5,7 @@
 > `@fudic/language-server` · `@fudic/formatter` · `@fudic/resolve` · `@fudic/config` ·
 > `@fudic/cli` · `@fudic/vite` · `fudic-vscode`
 > **Rama sugerida:** `sdd-50-diagnosticos`
-> **Progreso:** 4 / 21
+> **Progreso:** 19 / 21 — código entregado; faltan los tests y el cierre (otra sesión).
 
 **Por decisión de Pedro, esta sesión escribe el código y no los tests.** Los tests nuevos, el
 suelo de cobertura y las guardas (fase 6) los hace otra sesión en este mismo worktree y rama.
@@ -58,36 +58,36 @@ cambiadas a la función. Mensaje movido tal cual.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 5 | 4 | **Lexer y parser.** Balanceador, lexer, parser HTML, regiones, modos | `compiler` · `diagnostics` | `src/balancer/**` · `src/lexer/**` · `src/html/**` · `src/region/**` · `src/types/mode.ts` · `src/constructs.ts` |
-| [ ] | 6 | 5 | **Las construcciones.** Control de flujo, bindings, `@code`, CSS, documento, Oxc | `compiler` · `diagnostics` | `src/control/**` · `src/binding/**` · `src/code/**` · `src/css/**` · `src/document/**` · `src/oxc/**` |
-| [ ] | 7 | 6 | **La semántica.** Todos los analizadores y `semantic/` | `compiler` · `diagnostics` | `src/semantic/**` |
-| [ ] | 8 | 7 | **El emit.** `emit/`, `layout/`, `snippet/`, `expand/` | `compiler` · `diagnostics` | `src/emit/**` · `src/layout/**` · `src/snippet/**` · `src/expand/**` |
-| [ ] | 9 | 8 | **Los helpers fuera.** `errorDiag`, `relatedError`, `warningDiag`, `infoDiag`, `hintDiag` borrados; el compilador no contiene ningún literal `'FUDnnnn'`. Criterio 6 | `compiler` | `src/types/diagnostic.ts` |
+| [x] | 5 | 4 | **Lexer y parser.** Balanceador, lexer, parser HTML, regiones, modos | `compiler` · `diagnostics` | `src/balancer/**` · `src/lexer/**` · `src/html/**` · `src/region/**` · `src/types/mode.ts` · `src/constructs.ts` |
+| [x] | 6 | 5 | **Las construcciones.** Control de flujo, bindings, `@code`, CSS, documento, Oxc | `compiler` · `diagnostics` | `src/control/**` · `src/binding/**` · `src/code/**` · `src/css/**` · `src/document/**` · `src/oxc/**` |
+| [x] | 7 | 6 | **La semántica.** Todos los analizadores y `semantic/` | `compiler` · `diagnostics` | `src/semantic/**` |
+| [x] | 8 | 7 | **El emit.** `emit/`, `layout/`, `snippet/`, `expand/` | `compiler` · `diagnostics` | `src/emit/**` · `src/layout/**` · `src/snippet/**` · `src/expand/**` |
+| [x] | 9 | 8 | **Los helpers fuera.** `errorDiag`, `relatedError`, `warningDiag`, `infoDiag`, `hintDiag` borrados; el compilador no contiene ningún literal `'FUDnnnn'`. Criterio 6 | `compiler` | `src/types/diagnostic.ts` |
 
 ## Fase 3 — el editor (3)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 10 | 9 | **`language-core`**: sus códigos de proyección, plantilla y CSS | `language-core` · `diagnostics` | `src/**` |
-| [ ] | 11 | 10 | **`language-server`**: sus códigos, y `docs` publicado como `codeDescription.href`. Criterio 10 | `language-server` · `diagnostics` | `src/**` |
-| [ ] | 12 | 11 | **La bombilla.** «Explain FUDnnnn» sobre todo diagnóstico `FUD`, que abre su `.md` en la vista previa de markdown. El cliente pasa al servidor la carpeta de los `.md`; sin ella, la del paquete. El build de la extensión copia los `.md` al bundle. Criterio 11 | `language-server` · `vscode` | `src/services/**` · `vscode/src/**` · `vscode/scripts/**` |
+| [x] | 10 | 9 | **`language-core`**: sus códigos de proyección, plantilla y CSS | `language-core` · `diagnostics` | `src/**` |
+| [x] | 11 | 10 | **`language-server`**: sus códigos, y `docs` publicado como `codeDescription.href`. Criterio 10 | `language-server` · `diagnostics` | `src/**` |
+| [x] | 12 | 11 | **La bombilla.** «Explain FUDnnnn» sobre todo diagnóstico `FUD`, que abre su `.md` en la vista previa de markdown (comando interno `fudic.explain` de la extensión). El build de la extensión copia los `.md` a `dist/codes/`, junto al servidor empaquetado, que es donde `@fudic/diagnostics/explain` los busca cuando corre en el bundle. Criterio 11 | `language-server` · `vscode` | `src/services/**` · `vscode/src/**` · `vscode/scripts/**` |
 
 ## Fase 4 — el build y la CLI (4)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 13 | 9 | **`resolve` y `config`**, con la **renumeración**: los `FUD0720`/`0721` de config pasan a `FUD0725`/`0726`. `ConfigDiagnostic` y su copia de `Span` fuera; los de SDD-42 que viven en config (`FUD0740`/`0741`) también migran | `resolve` · `config` · `diagnostics` | `src/**` |
-| [ ] | 14 | 9 | **`formatter`**: `FUD0480`–`0482`, constantes `FUD_*` fuera | `formatter` · `diagnostics` | `src/**` |
-| [ ] | 15 | 9 | **`cli`**: constantes `FUD_*` fuera; `CliError` contiene el diagnóstico; texto de terminal con `format`. `FUD0761` es el mismo fichero que usa el build | `cli` · `diagnostics` | `src/**` |
-| [ ] | 16 | 9 | **`vite`**: `FudicDiagnostic` y constantes `FUD_*` fuera; mensajes con `format`. Pasar `loc`/`frame` a Vite **no** es de aquí (SDD-35) | `vite` · `diagnostics` | `src/**` |
+| [x] | 13 | 9 | **`resolve` y `config`**, con la **renumeración**: los `FUD0720`/`0721` de config pasan a `FUD0725`/`0726`. `ConfigDiagnostic` y su copia de `Span` fuera; los de SDD-42 que viven en config (`FUD0740`/`0741`) también migran | `resolve` · `config` · `diagnostics` | `src/**` |
+| [x] | 14 | 9 | **`formatter`**: `FUD0480`–`0482`, constantes `FUD_*` fuera | `formatter` · `diagnostics` | `src/**` |
+| [x] | 15 | 9 | **`cli`**: constantes `FUD_*` fuera; `CliError` contiene el diagnóstico; texto de terminal con `format`. `FUD0761` es el mismo fichero que usa el build | `cli` · `diagnostics` | `src/**` |
+| [x] | 16 | 9 | **`vite`**: `FudicDiagnostic` y constantes `FUD_*` fuera; mensajes con `format`. Pasar `loc`/`frame` a Vite **no** es de aquí (SDD-35) | `vite` · `diagnostics` | `src/**` |
 
 ## Fase 5 — la entrega (3)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 17 | 1 | **Los retirados.** Un `.md` de retirado por cada código retirado o quemado del inventario, con su sustituto. Sin `.ts` | `diagnostics` | `src/codes/*.md` |
-| [ ] | 18 | 5–17 | **`index.ts` y los docs del repo.** `index.ts` completo y en orden; SDD-12 §5 apunta a `codes/` como catálogo; SDD-41 y SDD-12 anotan la renumeración; `CLAUDE.md`: un código nuevo es un fichero nuevo en `@fudic/diagnostics`. Criterio 16 | `diagnostics` · — | `src/index.ts` · `docs/sdd/**` · `.claude/CLAUDE.md` |
-| [ ] | 19 | 18 | **Entrega a Pedro.** `pnpm typecheck` y `pnpm build` verdes; un `.fud` roto en `examples/basic` enseña el formato nuevo en la terminal de `dev`/`build` y la bombilla en el editor | — | — |
+| [x] | 17 | 1 | **Los retirados.** Un `.md` de retirado por cada código retirado o quemado del inventario, con su sustituto. Sin `.ts` | `diagnostics` | `src/codes/*.md` |
+| [x] | 18 | 5–17 | **`index.ts` y los docs del repo.** `index.ts` completo y en orden; SDD-12 §5 apunta a `codes/` como catálogo; SDD-41 y SDD-12 anotan la renumeración; `CLAUDE.md`: un código nuevo es un fichero nuevo en `@fudic/diagnostics`. Criterio 16 | `diagnostics` · — | `src/index.ts` · `docs/sdd/**` · `.claude/CLAUDE.md` |
+| [x] | 19 | 18 | **Entrega a Pedro.** `pnpm typecheck` y `pnpm build` verdes; un `.fud` roto en `examples/basic` enseña el formato nuevo en la terminal de `dev`/`build` y la bombilla en el editor | — | — |
 
 ## Fase 6 — tests y cierre (otra sesión) (2)
 
@@ -97,6 +97,37 @@ cambiadas a la función. Mensaje movido tal cual.
 | [ ] | 21 | 20 | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`; `@fudic/diagnostics` al 100 % en las cuatro y ningún paquete bajo su suelo. SDD-50 a `Hecho` en [INDEX.md](./INDEX.md). Criterios 14, 15 | — | [INDEX.md](./INDEX.md) |
 
 ---
+
+## Para la sesión de tests (tarea 20)
+
+Estado al entregar: `pnpm build` verde (ejemplos incluidos) y **todo `src` sin errores de
+tipos**. `pnpm -r --no-bail typecheck` da 75 errores, **todos en 38 ficheros de `test/`** que
+importan lo que la migración quitó:
+
+- **Constantes y tipos borrados:** los `FUD_*` de vite, cli, config, formatter, el compilador
+  (`css/flatten`, `css/rules`, `emit/prune`, `emit/styles-lint`, `binding/adopt`) y el servidor;
+  `FudicDiagnostic` (vite), `ConfigDiagnostic` (config), `ProjectResult.warnings` (vite), los
+  helpers `errorDiag`/`warningDiag`/`infoDiag`/`hintDiag`/`relatedError` del compilador; los
+  ficheros `language-server/src/diagnostics.ts`, `formatter/src/diagnostics.ts` y
+  `config/src/diagnostics.ts`; `cliError` y `FUD_DUPLICATE_TAG` de la CLI. Un test que los
+  importa pasa a llamar a la función del código en `@fudic/diagnostics`, o a comparar el string.
+- **Cambios de forma pedidos por la spec:** los diagnósticos de `vite`, `cli` y `config` ganan
+  `severity`; `CliError` es ahora `FileDiagnostic | ProjectDiagnostic`; el `--json` de la CLI
+  lleva `severity`. El LSP lleva `codeDescription.href`. La bombilla añade «Explain FUDnnnn» a
+  todo diagnóstico `FUD`, así que los tests que cuentan acciones ven una más por código.
+- **Texto de terminal:** vite y la CLI imprimen con `format` (`ruta:línea:col - error FUDnnnn:
+  mensaje`, la línea subrayada y el enlace), no `[FUDnnnn] mensaje (fichero)`.
+- **Renumerados:** `0720`/`0721` de config → `0725`/`0726`; `0440`–`0445` de layouts/snippets →
+  `0890`–`0895`; `FUD0725` es `error` en el build.
+- **Spans que se mueven a `@fudic/diagnostics`:** los tests de `Span` y `LineMap` del compilador
+  (`test/types/span.test.ts`, `test/sourcemap/*`) siguen pasando por la reexportación, pero son
+  de ese paquete y se mueven con él.
+
+Decidido al implementar: el código `FUD0761` (dos componentes con el mismo tag) es una función
+con dos formas tipadas, `kind: 'link'` (fuente, en el build) y `kind: 'library'` (proyecto, en la
+CLI). Las tres tablas de lectura por código (`REPAIRS`, `KEY_RULES`, `BROKEN_SOURCE`) quedan como
+literales `FudCode` (SDD §5, invariante 1). El plugin ya no busca `FUD0806` por valor: decide error
+o aviso por `severity`.
 
 ## Inventario (tarea 1)
 

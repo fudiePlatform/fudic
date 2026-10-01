@@ -306,8 +306,9 @@ con `@Raw` (§7).
 - **La bombilla.** Todo diagnóstico `FUD` ofrece en el editor una acción **«Explain FUDnnnn»**
   que abre su `.md` en la vista previa de markdown de VS Code. Es la ayuda de quien escribe un
   `.fud` sin un LLM al lado: funciona ya, sin conexión y sin la web. Los `.md` se publican con
-  `@fudic/diagnostics` (`files`) y viajan dentro del `.vsix`; el servidor recibe del cliente la
-  carpeta donde están y, si no la recibe, usa la del paquete. Es una acción más, junto a las
+  `@fudic/diagnostics` (`files`) y viajan dentro del `.vsix`, copiados junto al servidor
+  empaquetado (`codes/`). Dónde están lo contesta `@fudic/diagnostics/explain`, que sabe si corre
+  desde el paquete o desde el bundle; el cliente no tiene que decírselo al servidor. Es una acción más, junto a las
   que ya ofrezca la bombilla para ese código (SDD-36).
 - **`@fudic/vite`, `@fudic/cli`:** usan `format` para el texto de terminal, que ahora incluye la
   línea del enlace. Pasar `loc` y `frame` a Vite, y no pararse en el primer error, es de SDD-35;
@@ -359,7 +360,10 @@ SDD-12 se anotan. Estas renumeraciones son los únicos tests de código o severi
 ## 5. Invariantes
 
 1. **Una casa.** Fuera de `packages/diagnostics/src`, ningún fichero de `src` contiene un
-   literal de string `'FUDnnnn'`. Los comentarios no cuentan.
+   literal de string `'FUDnnnn'`. Los comentarios no cuentan. **Excepción:** las tablas que
+   **leen** un código ya emitido para decidir algo —la bombilla (`REPAIRS` del servidor), las
+   reglas de `key` del formateador (`KEY_RULES`) y el código de salida de la CLI
+   (`BROKEN_SOURCE`)—, con la clave tipada `FudCode`. No crean diagnósticos; los reconocen.
 2. **Un código, un fichero.** Todo código vivo tiene `.ts` y `.md`; todo retirado, solo `.md`.
    Ningún `.ts` sin `.md`.
 3. **Tipado.** Ningún código acepta parámetros sueltos: entrada y salida están tipadas por
@@ -387,7 +391,7 @@ SDD-12 se anotan. Estas renumeraciones son los únicos tests de código o severi
 4. Los tests de **todos** los paquetes pasan **sin cambiar una expectativa** de código, mensaje,
    severidad ni span, salvo las renumeraciones y la severidad de `FUD0725` (§4.6, §4.6.b).
 5. Un test barre `packages/*/src` (salvo `diagnostics`) y no encuentra ningún literal de string
-   `FUD` + cuatro dígitos (invariante 1).
+   `FUD` + cuatro dígitos fuera de las tres tablas de lectura del invariante 1.
 6. `errorDiag`, `warningDiag`, `infoDiag`, `hintDiag`, `relatedError`, `FudicDiagnostic`,
    `ConfigDiagnostic` y las constantes `FUD_*` ya no existen.
 7. Llamar a un código con un parámetro que falta, o con uno que no declara, no compila (test de
