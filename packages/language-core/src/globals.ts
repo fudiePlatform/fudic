@@ -21,6 +21,7 @@
  * child writes from OUTSIDE to pick the slot it goes into.
  */
 
+import { isNativeEventAttribute } from '@fudic/compiler';
 import { getDefaultHTMLDataProvider } from 'vscode-html-languageservice';
 
 /**
@@ -34,18 +35,23 @@ import { getDefaultHTMLDataProvider } from 'vscode-html-languageservice';
  *
  * Measured: the provider returns the same 150 names for `div` and for `app-input` — an unknown
  * tag gets the global vocabulary, which is exactly what a custom element is to HTML. 34 plain,
- * 48 `aria-*` and 68 `on*`, and all three families are kept. Picking among them is the mistake
- * this replaces: `onclick` is HTML's, and a developer who reaches for it is not wrong, however
- * much fudic prefers `@click`.
+ * 48 `aria-*` and 68 `on*`.
  *
- * ONE name is dropped, and it is not a matter of taste: `slot` is checked against the PARENT's
- * `$Slots` (see `$intoSlot`), so declaring it here as a plain scalar would give up the name
- * checking and the completion that make it worth projecting at all.
+ * Two families are kept and one is dropped, and neither cut is a matter of taste:
+ *
+ * - The `on*` go (SDD-51, decision 139). Each is an inline script, and fudic's default
+ *   Content-Security-Policy never runs one: `onclick="go()"` compiles, ships, and does nothing.
+ *   The semantic pass says so with `FUD0909` on the name; declaring the name here as well would
+ *   offer the error in the completion list. `@click` is the binding. This revokes the reading
+ *   this comment used to defend, that a developer reaching for `onclick` was not wrong.
+ * - `slot` goes: it is checked against the PARENT's `$Slots` (see `$intoSlot`), so declaring it
+ *   here as a plain scalar would give up the name checking and the completion that make it
+ *   worth projecting at all.
  */
 const HTML_ATTRIBUTES: readonly string[] = getDefaultHTMLDataProvider()
   .provideAttributes('div')
   .map((attribute) => attribute.name)
-  .filter((name) => name !== 'slot');
+  .filter((name) => name !== 'slot' && !isNativeEventAttribute(name));
 
 /** `aria-checked` is no identifier, so it is written as a quoted key; `id` needs no quotes. */
 const PLAIN_KEY = /^[A-Za-z_$][\w$]*$/;

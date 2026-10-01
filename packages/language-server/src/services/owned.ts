@@ -23,7 +23,7 @@
  */
 
 import type { CompletionList, LanguageServicePlugin } from '@volar/language-service';
-import { regionAt } from '@fudic/compiler';
+import { isNativeEventAttribute, regionAt } from '@fudic/compiler';
 import { fudicDocumentOf } from './plugin.js';
 import { ownedByProjection } from './position.js';
 import { atRootTemplateGap } from './template-attrs.js';
@@ -75,7 +75,9 @@ function htmlItems(list: CompletionList | null | undefined): CompletionList | nu
   return {
     ...list,
     items: list.items
-      .filter((item) => !closesATag(item.label))
+      // An `on*` attribute is an inline script fudic's CSP never runs: `FUD0909` on the name,
+      // so offering it would be offering an error (SDD-51 §3.6). `@click` is the binding.
+      .filter((item) => !closesATag(item.label) && !isNativeEventAttribute(item.label))
       .map((item) =>
         REOPENS.has(item.label) && item.command === undefined
           ? { ...item, command: TRIGGER_SUGGEST }

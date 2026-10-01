@@ -23,6 +23,7 @@ import {
   SUMMARY_NAME,
   crossing,
   handlerShape,
+  isNativeEventAttribute,
   unwrapParens,
   type Attribute,
   type AttributeValuePart,
@@ -134,6 +135,7 @@ export function emitHostBindings(ctx: TemplateContext, el: ElementNode): void {
     // An event half written degrades to a plain attribute, and it is an event all the same:
     // reporting `TS2353` on a name the author is still typing helps nobody.
     if (binding.type !== 'attr' || eventNameOf(attr, binding) !== undefined) continue;
+    if (nativeEvent(attr)) continue;
     globals.push({ attr, binding });
   }
 
@@ -226,6 +228,15 @@ function ctxSelfClosing(el: ElementNode): boolean {
   return el.children.length === 0 && el.closeSpan === undefined;
 }
 
+/**
+ * An `on*` attribute of HTML. Kept out of the literal `$GlobalAttrs` checks: the vocabulary no
+ * longer declares it, so TypeScript would answer `TS2353` on the very name `FUD0909` already
+ * underlines — one voice per fact (SDD-51 §3.6).
+ */
+function nativeEvent(attr: Attribute): boolean {
+  return typeof attr.name === 'string' && isNativeEventAttribute(attr.name);
+}
+
 /** A custom element: the hyphen is what makes it one (decision 41). */
 function isComponent(tag: string): boolean {
   return tag.includes('-');
@@ -297,7 +308,13 @@ function emitProps(ctx: TemplateContext, el: ElementNode, bindings: readonly Ent
     // A marker half written — `error=`, `summary=` — is the compiler's word too, and its hole is
     // written by the per-attribute pass (BUG-42 §4.1): HTML's literal would report its name.
     const marker = openMarkerValue(ctx, entry.attr, entry.binding) !== undefined;
-    if (entry.binding.type === 'attr' && !isSlot(entry) && opening === undefined && !marker) {
+    if (
+      entry.binding.type === 'attr' &&
+      !isSlot(entry) &&
+      opening === undefined &&
+      !marker &&
+      !nativeEvent(entry.attr)
+    ) {
       globals.push(entry);
     }
   }
