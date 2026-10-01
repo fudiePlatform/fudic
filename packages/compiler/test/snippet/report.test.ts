@@ -11,7 +11,7 @@ import { parseDocument } from '../../src/html/index.js';
 import { atConstructs } from '../../src/constructs.js';
 import { structureDocument } from '../../src/document/index.js';
 import { expandDocument, remapDiagnostics } from '../../src/expand/index.js';
-import { errorDiag, relatedError, type Diagnostic, type ResolveIo } from '../../src/types/index.js';
+import type { Diagnostic, RelatedLocation, ResolveIo, Span } from '../../src/types/index.js';
 
 const ENTRY = '/app/page.fud';
 const component = (body: string, head = ''): string =>
@@ -41,10 +41,15 @@ function expanded(): { source: string; map: ReturnType<typeof expandDocument>['m
   return { source: out.source, map: out.map };
 }
 
+/** A bare diagnostic: the remap reads only spans and files, never the code. */
+function diag(message: string, span: Span, related?: readonly RelatedLocation[]): Diagnostic {
+  return { severity: 'error', code: 'FUD9999', message, span, ...(related ? { related } : {}) };
+}
+
 /** A diagnostic over the text `needle` of the expanded source. */
 function at(source: string, needle: string): Diagnostic {
   const start = source.indexOf(needle);
-  return errorDiag('FUD9999', 'something', { start, end: start + needle.length });
+  return diag('something', { start, end: start + needle.length });
 }
 
 describe('remapDiagnostics (§5)', () => {
@@ -66,12 +71,12 @@ describe('remapDiagnostics (§5)', () => {
     const { source, map } = expanded();
     const start = source.indexOf('class="card"');
     const other = source.indexOf('<app-page>');
-    const diagnostic = relatedError('FUD9999', 'something', { start, end: start + 12 }, [
+    const diagnostic = diag('something', { start, end: start + 12 }, [
       { span: { start: other, end: other + 10 }, message: 'and here' },
       { span: { start: 0, end: 1 }, message: 'already placed', file: '/elsewhere.fud' },
     ]);
     const inBody = source.indexOf('<article');
-    const withBody = relatedError('FUD9999', 'something', { start: other, end: other + 10 }, [
+    const withBody = diag('something', { start: other, end: other + 10 }, [
       { span: { start: inBody, end: inBody + 8 }, message: 'declared here' },
     ]);
     expect(remapDiagnostics([withBody], map, ENTRY)[0]!.related![0]!.file).toBe('/app/ui.fud');
@@ -87,7 +92,7 @@ describe('remapDiagnostics (§5)', () => {
 
   it('leaves alone one that already names its file', () => {
     const { map } = expanded();
-    const placed: Diagnostic = { ...errorDiag('FUD9999', 'x', { start: 0, end: 1 }), file: '/x.fud' };
+    const placed: Diagnostic = { ...diag('x', { start: 0, end: 1 }), file: '/x.fud' };
     expect(remapDiagnostics([placed], map, ENTRY)[0]).toBe(placed);
   });
 
@@ -103,7 +108,7 @@ describe('remapDiagnostics (§5)', () => {
     const source = component('<p>hi</p>');
     const doc = structureDocument(source, parseDocument(source, { atConstructs }).value).value;
     const { map } = expandDocument(ENTRY, source, doc, io);
-    const one = relatedError('FUD9999', 'x', { start: 0, end: 1 }, [
+    const one = diag('x', { start: 0, end: 1 }, [
       { span: { start: 2, end: 3 }, message: 'there' },
     ]);
     // Nothing moves, related included: with no table there is nothing to move it to, and the

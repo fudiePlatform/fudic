@@ -4,7 +4,6 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { FUD_CONFIG_DUPLICATE_ID } from '@fudic/config';
 import { duplicateIds, findProjectConfigs } from '../src/project.js';
 import { MemoryFs } from './helpers.js';
 
@@ -80,7 +79,7 @@ describe('duplicateIds (criterion 10)', () => {
 
     const errors = duplicateIds(findProjectConfigs(ROOT, fs));
 
-    expect(errors.map((error) => error.code)).toEqual([FUD_CONFIG_DUPLICATE_ID]);
+    expect(errors.map((error) => error.code)).toEqual(['FUD0724']);
     expect(errors[0]?.message).toContain('apps/uno, apps/dos');
   });
 

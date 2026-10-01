@@ -7,13 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { planNew } from '../src/plans/new.js';
 import { apply } from '../src/apply.js';
 import { parseFud } from '../src/parse.js';
-import {
-  commandFailed,
-  FUD_ADAPTER_UNAVAILABLE,
-  FUD_COMMAND_FAILED,
-  FUD_TARGET_EXISTS,
-} from '../src/diagnostics.js';
-import { FUD_CONFIG_MALFORMED } from '@fudic/config';
+import { commandFailed } from '../src/diagnostics.js';
 import { TYPESCRIPT_VERSION } from '../src/project.js';
 import { GLOBALS_DTS } from '@fudic/language-core';
 import { MemoryFs, RecordingRunner } from './helpers.js';
@@ -191,7 +185,7 @@ describe('fudic new', () => {
 
     const broken = await apply(plan, options(), fs, new RecordingRunner({ pnpm: 1 }));
     expect(commandFailed(broken.failed!).message).toContain('exited with code 1');
-    expect(commandFailed(broken.failed!).code).toBe(FUD_COMMAND_FAILED);
+    expect(commandFailed(broken.failed!).code).toBe('FUD0451');
   });
 
   it('rejects an unknown adapter and writes nothing (§6.11)', async () => {
@@ -199,7 +193,7 @@ describe('fudic new', () => {
     const plan = await planNew('demo', options({ target: 'cloudflare' }), fs);
     expect(plan.changes).toEqual([]);
     expect(plan.commands).toEqual([]);
-    expect(plan.errors.map((e) => e.code)).toEqual([FUD_ADAPTER_UNAVAILABLE]);
+    expect(plan.errors.map((e) => e.code)).toEqual(['FUD0447']);
     expect(plan.errors[0]!.message).toContain("adapter 'cloudflare' is not available");
 
     const runner = new RecordingRunner();
@@ -219,7 +213,7 @@ describe('fudic new', () => {
     const fs = new MemoryFs({ 'demo/package.json': '{}' }, CWD);
     const plan = await planNew('demo', options(), fs);
     expect(plan.changes).toEqual([]);
-    expect(plan.errors.map((e) => e.code)).toEqual([FUD_TARGET_EXISTS]);
+    expect(plan.errors.map((e) => e.code)).toEqual(['FUD0443']);
   });
 });
 
@@ -250,13 +244,13 @@ describe('fudic new writes fudic.json', () => {
     const plan = await planNew('Tienda', options({ id: 'Tienda' }), new MemoryFs({}, CWD));
 
     expect(plan.changes).toEqual([]);
-    expect(plan.errors.map((error) => error.code)).toEqual([FUD_CONFIG_MALFORMED]);
+    expect(plan.errors.map((error) => error.code)).toEqual(['FUD0725']);
   });
 
   it('refuses a prefix carrying the hyphen — tagOf is what adds it', async () => {
     const plan = await planNew('tienda', options({ id: 'tienda', prefix: 'app-' }), new MemoryFs({}, CWD));
 
     expect(plan.changes).toEqual([]);
-    expect(plan.errors.map((error) => error.code)).toEqual([FUD_CONFIG_MALFORMED]);
+    expect(plan.errors.map((error) => error.code)).toEqual(['FUD0725']);
   });
 });

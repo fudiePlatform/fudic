@@ -15,6 +15,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { LinkedAssets, assetSheetFrom, assetUrlFrom } from '../src/linked-assets.js';
 import type { Diagnostic } from '@fudic/compiler';
+import type { FudCode } from '@fudic/diagnostics';
 
 /** Over the inline limit (4096), so it is a file and not a `data:` URI. */
 const BIG_PNG = Buffer.alloc(5000, 7);
@@ -329,7 +330,7 @@ describe('assetSheetFrom', () => {
 });
 
 describe('LinkedAssets — the sheets no page uses (FUD0852) and what they say (§4.11)', () => {
-  const warning = (code: string, start: number): Diagnostic => ({
+  const warning = (code: FudCode, start: number): Diagnostic => ({
     code,
     severity: 'warning',
     message: code,

@@ -13,7 +13,6 @@
  */
 
 import {
-  LineMap,
   lintProjectStyle,
   projectSheetDiagnostics,
   type Diagnostic,
@@ -252,20 +251,11 @@ function importErrors(file: ProjectStyleFile): readonly FileDiagnostic[] {
   return located(file, projectSheetDiagnostics(file.css));
 }
 
-/** The compiler's diagnostics over a sheet, with the line and column the author can click. */
+/**
+ * The compiler's diagnostics over a sheet, placed in the file the author named. A passthrough
+ * of the compiler's own diagnostic (`FUD0743`, `FUD0854`), not a code made here: the line and
+ * column are `format`'s, from the span and the file's text.
+ */
 function located(file: ProjectStyleFile, found: readonly Diagnostic[]): readonly FileDiagnostic[] {
-  if (found.length === 0) return [];
-  const lines = new LineMap(file.css);
-  return found.map((d) => {
-    const at = lines.positionAt(d.span.start);
-    // A passthrough of the compiler's own diagnostic (`FUD0743`, `FUD0854`), relocated from
-    // the sheet's text to the file and prefixed with the position: not a code made here.
-    return {
-      severity: d.severity,
-      code: d.code,
-      message: `${file.entry}:${at.line + 1}:${at.character + 1}: ${d.message}`,
-      file: file.entry,
-      span: d.span,
-    };
-  });
+  return found.map((d) => ({ ...d, file: file.entry }));
 }

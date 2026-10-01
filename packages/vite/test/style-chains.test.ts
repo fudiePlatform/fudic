@@ -10,7 +10,6 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { FUD_STYLE_SPECIFIER_CLASH } from '@fudic/config';
 import type { PackageFs } from '@fudic/resolve';
 import { ProjectStyleChains } from '../src/styles.js';
 
@@ -108,7 +107,7 @@ describe('ProjectStyleChains — the global sheets', () => {
       [`${APP}/tokens.css`]: ':host { --accent: blue; }',
     }));
     expect(specifiers(chains, `${APP}/src/a.fud`)).toEqual(['tokens', 'ui']);
-    const clash = chains.diagnostics.find((d) => d.code === FUD_STYLE_SPECIFIER_CLASH);
+    const clash = chains.diagnostics.find((d) => d.code === 'FUD0741');
     expect(clash?.message).toContain('@acme/guia');
     expect(clash?.message).toContain('@acme/tienda');
   });
@@ -188,6 +187,6 @@ describe('ProjectStyleChains — what a component may choose (SDD-46 §4.2)', ()
       [`${APP}/mine.css`]: '.mine{}',
     }));
     expect(choosable(chains, `${APP}/src/a.fud`)).toEqual(['cards']);
-    expect(chains.diagnostics.map((d) => d.code)).toEqual([FUD_STYLE_SPECIFIER_CLASH]);
+    expect(chains.diagnostics.map((d) => d.code)).toEqual(['FUD0741']);
   });
 });

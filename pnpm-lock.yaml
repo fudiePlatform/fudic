@@ -258,6 +258,9 @@ importers:
       '@types/node':
         specifier: 22.20.0
         version: 22.20.0
+      rolldown:
+        specifier: 1.2.1
+        version: 1.2.1
 
   packages/dom:
     devDependencies:

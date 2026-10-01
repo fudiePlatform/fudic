@@ -9,7 +9,6 @@ import { planComponent } from '../src/plans/component.js';
 import { apply } from '../src/apply.js';
 import { parseFud } from '../src/parse.js';
 import { run } from '../src/run.js';
-import { FUD_WIRE_TARGET_BROKEN, FUD_WIRE_TARGET_MISSING } from '../src/diagnostics.js';
 import { captureStreams, projectFs, RecordingRunner } from './helpers.js';
 import type { ComponentOptions } from '../src/types.js';
 
@@ -97,7 +96,7 @@ describe('--in, by document role', () => {
     const fs = projectFs({ 'routes/broken.fud': broken });
     const plan = await planComponent('app-icon', options({ wireInto: ['routes/broken.fud'] }), fs);
 
-    expect(plan.errors.map((e) => e.code)).toContain(FUD_WIRE_TARGET_BROKEN);
+    expect(plan.errors.map((e) => e.code)).toContain('FUD0445');
     expect(plan.diagnostics.length).toBeGreaterThan(0);
     expect(plan.diagnostics[0]!.file).toBe('routes/broken.fud');
     expect(plan.diagnostics[0]!.diagnostic.span.start).toBeGreaterThanOrEqual(0);
@@ -120,7 +119,7 @@ describe('--in, by document role', () => {
   it('reports a missing --in target without writing anything', async () => {
     const fs = projectFs();
     const plan = await planComponent('app-icon', options({ wireInto: ['routes/nope.fud'] }), fs);
-    expect(plan.errors.map((e) => e.code)).toEqual([FUD_WIRE_TARGET_MISSING]);
+    expect(plan.errors.map((e) => e.code)).toEqual(['FUD0444']);
     await apply(plan, options(), fs);
     // Nothing beyond the project's own `fudic.json`, which was already there.
     expect(fs.paths()).toEqual(['fudic.json']);

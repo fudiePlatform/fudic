@@ -8,7 +8,6 @@ import { buildManifest, type ManifestInputs } from '../src/manifest.js';
 import { type RouteBuild } from '../src/discover.js';
 import { type ModeDecision } from '../src/mode.js';
 import { NO_STRATEGY, type StrategyAnalysis } from '../src/strategy.js';
-import { FUD_TTL_INVALID, FUD_TWO_TTLS } from '../src/diagnostics.js';
 
 function routeBuild(
   pattern: string,
@@ -184,7 +183,7 @@ describe('buildManifest', () => {
       [routeBuild('/blog/:slug', { mode: 'sw' }, { hasLoad: true, strategy })],
       INPUTS,
     );
-    expect(diagnostics[0]?.code).toBe(FUD_TTL_INVALID);
+    expect(diagnostics[0]?.code).toBe('FUD0392');
     // The route stays reachable: a bad TTL is a diagnostic, never a dropped record.
     expect(file.routes[0]?.dataPolicy).toEqual({ policy: 'cache-first', ttl: null });
   });
@@ -200,7 +199,7 @@ describe('buildManifest', () => {
       INPUTS,
     );
     expect(file.routes[0]?.page).toEqual({ cache: 'persist', ttl: 300_000 });
-    expect(diagnostics[0]?.code).toBe(FUD_TWO_TTLS);
+    expect(diagnostics[0]?.code).toBe('FUD0396');
   });
 
   it('without a Service Worker a sw route degrades to ssr — the server renders it', () => {

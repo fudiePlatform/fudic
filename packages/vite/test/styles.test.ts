@@ -10,10 +10,10 @@ import { describe, expect, it } from 'vitest';
 import {
   resolveComponents,
   emitPageModule,
-  FUD_DOCUMENT_ONLY_SELECTOR,
   type ResolveIo,
 } from '@fudic/compiler';
-import { FUD_STYLE_NOT_FOUND, FUD_STYLE_SPECIFIER_CLASH, type ConfigIo } from '@fudic/config';
+import type { ConfigIo } from '@fudic/config';
+import { format } from '@fudic/diagnostics';
 import { readStyles } from '../src/styles.js';
 
 function io(files: Record<string, string>): ConfigIo {
@@ -49,7 +49,7 @@ describe('readStyles', () => {
   it('surfaces the missing sheet as an error, not a warning', () => {
     const result = readStyles('/p', { ...CONFIG, globalStyles: theme('src/theme.css') }, io({}));
     expect(result.global).toEqual([]);
-    expect(result.errors.map((d) => d.code)).toEqual([FUD_STYLE_NOT_FOUND]);
+    expect(result.errors.map((d) => d.code)).toEqual(['FUD0740']);
   });
 
   it('surfaces a name clash the same way', () => {
@@ -58,7 +58,7 @@ describe('readStyles', () => {
       { ...CONFIG, globalStyles: theme('a/theme.css'), styles: theme('b/theme.css') },
       io({ '/p/a/theme.css': '.a{}', '/p/b/theme.css': '.b{}' }),
     );
-    expect(result.errors.map((d) => d.code)).toEqual([FUD_STYLE_SPECIFIER_CLASH]);
+    expect(result.errors.map((d) => d.code)).toEqual(['FUD0741']);
   });
 });
 
@@ -115,10 +115,12 @@ describe('FUD0743 — read once per sheet, not once per route', () => {
 
     expect(result.errors).toEqual([]);
     const [w] = result.warnings;
-    expect(w!.code).toBe(FUD_DOCUMENT_ONLY_SELECTOR);
+    expect(w!.code).toBe('FUD0743');
     expect(w!.file).toBe('src/styles/theme.css');
-    expect(w!.message).toContain('src/styles/theme.css:3:1:');
-    expect(w!.message).toContain('"body"');
+    // The line and column are `format`'s, from the span: the message does not repeat them.
+    expect(format(w!, { source: ':host{--gap:8px}\n\nbody { margin: 0; }\n' })).toMatch(
+      /^src\/styles\/theme\.css:3:1 - warning FUD0743: [^\n]*"body"/u,
+    );
     // An advice, not a pruning: the emit is handed the sheet exactly as it was read.
     expect(result.global).toEqual([
       { specifier: 'theme', css: ':host{--gap:8px}\n\nbody { margin: 0; }\n' },

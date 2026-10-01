@@ -11,7 +11,6 @@
 import { describe, it, expect } from 'vitest';
 import { planRename, rewriteReferences, mapNameOf } from '../src/rename.js';
 import { chunkNameOf, chunkNamesOf } from '../src/names.js';
-import { FUD_HASH_LENGTH, FUD_NAME_COLLISION } from '../src/diagnostics.js';
 import { BUILD_TOKEN } from '../src/constants.js';
 import { manifestFile, renderUrlOf } from './helpers/manifest.js';
 
@@ -53,7 +52,7 @@ describe('planRename', () => {
       BUILD,
     );
     expect(files.size).toBe(0);
-    expect(diagnostics.map((d) => d.code)).toEqual([FUD_HASH_LENGTH]);
+    expect(diagnostics.map((d) => d.code)).toEqual(['FUD0500']);
     expect(diagnostics[0]?.message).toContain('blog-ABC.js');
   });
 
@@ -66,7 +65,7 @@ describe('planRename', () => {
     expect(files.has('sw/c/blog-slug-AAAAAAAA.js')).toBe(false);
     expect(files.has('sw/c/blog-slug-BBBBBBBB.js')).toBe(false);
     expect(files.get('sw/c/about-CCCCCCCC.js')).toBe(`sw/c/about-${BUILD}.js`);
-    expect(diagnostics.map((d) => d.code)).toEqual([FUD_NAME_COLLISION]);
+    expect(diagnostics.map((d) => d.code)).toEqual(['FUD0501']);
     expect(diagnostics[0]?.message).toContain('sw/c/blog-slug-AAAAAAAA.js and sw/c/blog-slug-BBBBBBBB.js');
   });
 
@@ -82,7 +81,7 @@ describe('planRename', () => {
     // FUD0501 refuses the WHOLE plan, and `__FUDB__` stays in the file names on disk.
     const duplicated = ['fudic-main-__FUDB__.js', 'fudic-main-__FUDB__.js', 'sw/c/about-CCCCCCCC.js'];
     expect(planRename(duplicated, BUILD).diagnostics.map((d) => d.code)).toEqual([
-      FUD_NAME_COLLISION,
+      'FUD0501',
     ]);
     // Deduplicated — which is what the plugin does — and the plan goes through.
     const { files, diagnostics } = planRename([...new Set(duplicated)], BUILD);

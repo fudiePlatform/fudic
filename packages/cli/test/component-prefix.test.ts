@@ -7,8 +7,6 @@
 
 import { describe, expect, it } from 'vitest';
 import { planComponent } from '../src/plans/component.js';
-import { FUD_CONFIG_MALFORMED } from '@fudic/config';
-import { FUD_TAG_INVALID } from '../src/diagnostics.js';
 import { MemoryFs } from './helpers.js';
 import type { ComponentOptions } from '../src/types.js';
 
@@ -59,7 +57,7 @@ describe('fudic g component, with no prefix declared', () => {
     const plan = await planComponent('card', options(), withPrefix(''));
 
     expect(plan.changes).toEqual([]);
-    expect(plan.errors[0]?.code).toBe(FUD_TAG_INVALID);
+    expect(plan.errors[0]?.code).toBe('FUD0440');
   });
 
   it('writes the tag it was handed', async () => {
@@ -76,7 +74,7 @@ describe('fudic g component, with a fudic.json that does not read', () => {
     const plan = await planComponent('card', options(), broken);
 
     expect(plan.changes).toEqual([]);
-    expect(plan.errors[0]?.code).toBe(FUD_CONFIG_MALFORMED);
+    expect(plan.errors[0]?.code).toBe('FUD0725');
     expect(plan.errors[0]?.file).toBe('fudic.json');
   });
 });

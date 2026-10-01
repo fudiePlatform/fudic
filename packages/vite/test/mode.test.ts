@@ -6,7 +6,6 @@
 import { describe, it, expect } from 'vitest';
 import { resolveMode, type PageFacts } from '../src/mode.js';
 import { NO_STRATEGY, type StrategyDecl } from '../src/strategy.js';
-import { FUD_SSG_WITHOUT_PATHS, FUD_STRATEGY_AND_DEFAULT } from '../src/diagnostics.js';
 
 function facts(over: Partial<PageFacts> = {}): PageFacts {
   return { hasLoad: false, hasPaths: false, strategy: NO_STRATEGY, ...over };
@@ -85,7 +84,7 @@ describe('resolveMode — the page is the authority (§4.8.2)', () => {
   it('a declared ssg param route without paths() falls back to sw with FUD0398', () => {
     const result = resolveMode(true, facts({ strategy: declared({ mode: 'ssg' }) }), 'lazy');
     expect(result.decision.mode).toBe('sw');
-    expect(result.diagnostics[0]?.code).toBe(FUD_SSG_WITHOUT_PATHS);
+    expect(result.diagnostics[0]?.code).toBe('FUD0398');
   });
 
   it('a config default only fills in for a page that declares nothing', () => {
@@ -96,7 +95,7 @@ describe('resolveMode — the page is the authority (§4.8.2)', () => {
       'lazy',
     );
     expect(both.decision.mode).toBe('ssg'); // the page wins
-    expect(both.diagnostics[0]?.code).toBe(FUD_STRATEGY_AND_DEFAULT);
+    expect(both.diagnostics[0]?.code).toBe('FUD0397');
   });
 
   it('exclude drops the route entirely', () => {

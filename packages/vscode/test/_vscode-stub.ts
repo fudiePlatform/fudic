@@ -40,6 +40,8 @@ export interface StubState {
   openedDocuments: [URI, string][];
   /** Commands run through `executeCommand`. */
   executed: string[];
+  /** The arguments each of those was run with, in the same order. */
+  executedArgs: unknown[][];
   /** Handlers registered for `onDidChangeTextDocument`. */
   changeListeners: ((event: ChangeEventStub) => void)[];
   /** Handlers registered for `onDidChangeTextEditorSelection`. */
@@ -183,6 +185,7 @@ export const state: StubState = {
   contentProviders: new Map(),
   openedDocuments: [],
   executed: [],
+  executedArgs: [],
   changeListeners: [],
   selectionListeners: [],
   snippets: [],
@@ -205,6 +208,7 @@ export const reset = (): void => {
   state.contentProviders = new Map();
   state.openedDocuments = [];
   state.executed = [];
+  state.executedArgs = [];
   state.changeListeners = [];
   state.selectionListeners = [];
   state.snippets = [];
@@ -287,12 +291,13 @@ export const window = {
 };
 
 export const commands = {
-  registerCommand: (id: string, handler: () => unknown) => {
-    state.commandHandlers.set(id, handler);
+  registerCommand: (id: string, handler: (...args: never[]) => unknown) => {
+    state.commandHandlers.set(id, handler as () => unknown);
     return { dispose: () => undefined };
   },
-  executeCommand: (id: string) => {
+  executeCommand: (id: string, ...args: unknown[]) => {
     state.executed.push(id);
+    state.executedArgs.push(args);
     return Promise.resolve(undefined);
   },
 };
@@ -315,6 +320,7 @@ export const languages = {
  */
 export const Uri = {
   parse: (value: string) => URI.parse(value),
+  file: (path: string) => URI.file(path),
 };
 
 export const workspace = {

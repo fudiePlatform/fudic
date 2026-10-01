@@ -6,7 +6,7 @@ import {
   isEmptySpan,
   mergeSpans,
   spanContains,
-} from '../../src/types/span.js';
+} from '../src/span.js';
 
 describe('span', () => {
   it('builds a half-open range', () => {

@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { LineMap, rangeOf } from '../../src/sourcemap/index.js';
-import { span } from '../../src/types/index.js';
+import { LineMap, rangeOf } from '../src/linemap.js';
+import { span } from '../src/span.js';
 
 describe('LineMap — basics (crit. #2)', () => {
   const lm = new LineMap('ab\ncd');

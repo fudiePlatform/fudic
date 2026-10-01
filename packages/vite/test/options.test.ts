@@ -5,7 +5,6 @@
 
 import { describe, it, expect } from 'vitest';
 import { resolveOptions } from '../src/options.js';
-import { FUD_MANIFEST_URL_NOT_ABSOLUTE } from '../src/diagnostics.js';
 
 describe('resolveOptions — defaults', () => {
   it('fills the defaults with base "/"', () => {
@@ -59,6 +58,6 @@ describe('resolveOptions — manifestUrl validation (FUD0365)', () => {
 
   it('rejects a relative manifestUrl', () => {
     const { diagnostics } = resolveOptions({ manifestUrl: 'fudic-routes.json' });
-    expect(diagnostics.map((d) => d.code)).toEqual([FUD_MANIFEST_URL_NOT_ABSOLUTE]);
+    expect(diagnostics.map((d) => d.code)).toEqual(['FUD0365']);
   });
 });

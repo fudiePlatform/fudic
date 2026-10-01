@@ -199,6 +199,18 @@ describe('the status bar', () => {
     state.commandHandlers.get('fudic.showOutput')?.();
     expect(state.outputShown).toBe(1);
   });
+
+  it('opens a code’s explanation in the markdown preview (SDD-50 criterion 11)', async () => {
+    await activate(context());
+    const explain = state.commandHandlers.get('fudic.explain') as ((path: string) => unknown) | undefined;
+
+    // The server sends a path, as JSON; the preview wants a `Uri` of the file.
+    await explain?.('/ext/dist/codes/FUD0056.md');
+    expect(state.executed).toEqual(['markdown.showPreview']);
+    const [uri] = state.executedArgs[0] as [{ scheme: string; path: string }];
+    expect(uri.scheme).toBe('file');
+    expect(uri.path).toBe('/ext/dist/codes/FUD0056.md');
+  });
 });
 
 describe('the commands, through the adapter', () => {

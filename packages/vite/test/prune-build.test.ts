@@ -250,7 +250,7 @@ describe('vite build — what nobody uses, and what a sheet says about itself (c
     const external = built.warnings.filter((w) => w.includes('FUD0850'));
     expect(external).toHaveLength(1);
     // At the line and column the author can click, in the file that wrote it.
-    expect(external[0]).toMatch(/main\.css:1:1: /u);
+    expect(external[0]).toMatch(/main\.css:1:1 - warning FUD0850: /u);
   });
 });
 
@@ -261,7 +261,7 @@ describe('vite build — @import errors', () => {
       'src/styles/main.css': '.a { color: red; }\n',
       'src/styles/dead.css': '@import "./missing.css";\n.a { color: blue; }\n',
     };
-    await expect(buildProject(files)).rejects.toThrow(/FUD0853[^\n]*dead\.css:1:1/u);
+    await expect(buildProject(files)).rejects.toThrow(/dead\.css:1:1 - error FUD0853: /u);
   }, 300000);
 
   it('FUD0854: an @import in a fudic.json sheet fails the build, once for the sheet (criterion 30)', async () => {
@@ -276,7 +276,7 @@ describe('vite build — @import errors', () => {
     );
     expect(failure).toMatch(/FUD0854/u);
     // Once for the sheet, not once per page that adopts it.
-    expect(count(failure, 'FUD0854')).toBe(1);
-    expect(failure).toContain('src/styles/panel.css:1:1');
+    expect(count(failure, 'error FUD0854:')).toBe(1);
+    expect(failure).toContain('src/styles/panel.css:1:1 - error FUD0854: ');
   }, 300000);
 });

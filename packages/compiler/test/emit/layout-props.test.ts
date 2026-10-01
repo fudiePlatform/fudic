@@ -522,7 +522,7 @@ describe('SDD-48 §4.1–§4.2 — what the body may not write, in the build', (
       '@RenderBody()</body>',
       '@if (seccion) {\n  @foreach (const s of items) key (s) {\n    <main>@RenderBody()</main>\n  }\n}</body>',
     );
-    expect(layoutDiagnostics(layout)).toEqual([{ code: 'FUD0443', span: at(layout, '@RenderBody()') }]);
+    expect(layoutDiagnostics(layout)).toEqual([{ code: 'FUD0893', span: at(layout, '@RenderBody()') }]);
   });
 
   it('says nothing about markup, a comment and the two holes', () => {

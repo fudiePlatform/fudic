@@ -4,10 +4,16 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { mkdtempSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { htmlPathFor, materializeBundle, urlForEntry, type BundleItem } from '../src/prerender.js';
+import {
+  htmlPathFor,
+  materializeBundle,
+  prerenderEnumerated,
+  urlForEntry,
+  type BundleItem,
+} from '../src/prerender.js';
 
 describe('htmlPathFor', () => {
   it('maps the root to index.html', () => {
@@ -56,5 +62,15 @@ describe('urlForEntry', () => {
 
   it('rejects a primitive for a multi-param pattern', () => {
     expect(urlForEntry('/team/:org/:id', 'x')).toHaveProperty('missing');
+  });
+});
+
+describe('prerenderEnumerated', () => {
+  it('prerenders nothing for a chunk that exports no paths()', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'fudic-enum-'));
+    const chunk = join(dir, 'route.mjs');
+    writeFileSync(chunk, 'export function render() { return ""; }\n');
+
+    expect(await prerenderEnumerated(chunk, '/blog/:slug')).toEqual({ files: [], incomplete: [] });
   });
 });

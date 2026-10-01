@@ -10,7 +10,6 @@ import { describe, expect, it } from 'vitest';
 import { planApp } from '../../src/plans/app.js';
 import { planLib } from '../../src/plans/lib.js';
 import { apply } from '../../src/apply.js';
-import { FUD_USES_NOT_A_LIB } from '../../src/diagnostics.js';
 import { workspaceScope } from '../../src/workspace/uses.js';
 import { MemoryFs, RecordingRunner } from '../helpers.js';
 import type { AppOptions, ProjectOptions } from '../../src/types.js';
@@ -81,14 +80,14 @@ describe('fudic g app --uses', () => {
     const plan = await planApp('tienda2', appOptions({ uses: ['tienda'] }), workspace());
 
     expect(plan.changes).toEqual([]);
-    expect(plan.errors[0]?.code).toBe(FUD_USES_NOT_A_LIB);
+    expect(plan.errors[0]?.code).toBe('FUD0785');
     expect(plan.errors[0]?.message).toContain('that is an app');
   });
 
   it('rejects a name nothing answers to, and says which libraries there are', async () => {
     const plan = await planApp('tienda2', appOptions({ uses: ['nope'] }), workspace());
 
-    expect(plan.errors[0]?.code).toBe(FUD_USES_NOT_A_LIB);
+    expect(plan.errors[0]?.code).toBe('FUD0785');
     expect(plan.errors[0]?.message).toContain('libraries: ui');
   });
 
@@ -149,7 +148,7 @@ describe('fudic g lib --uses', () => {
   it('rejects an app just as g app does', async () => {
     const plan = await planLib('cards', libOptions({ uses: ['tienda'] }), workspace());
 
-    expect(plan.errors[0]?.code).toBe(FUD_USES_NOT_A_LIB);
+    expect(plan.errors[0]?.code).toBe('FUD0785');
   });
 });
 

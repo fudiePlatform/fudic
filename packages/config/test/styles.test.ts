@@ -3,7 +3,6 @@
 import { describe, expect, it } from 'vitest';
 import { readProjectConfig, type ConfigIo } from '../src/read.js';
 import { readProjectStyles } from '../src/styles.js';
-import { FUD_CONFIG_MALFORMED, FUD_STYLE_NOT_FOUND, FUD_STYLE_SPECIFIER_CLASH } from '../src/diagnostics.js';
 
 /** An in-memory filesystem: present keys exist, everything else does not. */
 function io(files: Record<string, string>): ConfigIo {
@@ -39,10 +38,10 @@ describe('the two maps', () => {
     expect(config?.styles).toEqual([{ name: 'panel', path: 'p.css' }]);
   });
 
-  it('an array — the old shape — is FUD0720 and leaves no config at all', () => {
+  it('an array — the old shape — is FUD0725 and leaves no config at all', () => {
     const result = readProjectConfig(ROOT, io(configWith({ styles: ['theme.css'] })));
     expect(result.config).toBeNull();
-    expect(result.diagnostics.map((d) => d.code)).toEqual([FUD_CONFIG_MALFORMED]);
+    expect(result.diagnostics.map((d) => d.code)).toEqual(['FUD0725']);
     expect(result.diagnostics[0]?.message).toContain('globalStyles');
     expect(result.diagnostics[0]?.span).toBeDefined();
   });
@@ -73,7 +72,7 @@ describe('readProjectStyles', () => {
   it('FUD0740 for a file that is not there, and for one that cannot be read', () => {
     const missing = readProjectStyles(ROOT, { globalStyles: [{ name: 't', path: 'src/theme.css' }], styles: [] }, io({}));
     expect(missing.global).toEqual([]);
-    expect(missing.diagnostics.map((d) => d.code)).toEqual([FUD_STYLE_NOT_FOUND]);
+    expect(missing.diagnostics.map((d) => d.code)).toEqual(['FUD0740']);
 
     const angry: ConfigIo = {
       exists: () => true,
@@ -105,6 +104,6 @@ describe('readProjectStyles', () => {
     );
     expect(result.global.map((s) => s.path)).toEqual(['/p/a.css']);
     expect(result.optional).toEqual([]);
-    expect(result.diagnostics.map((d) => d.code)).toEqual([FUD_STYLE_SPECIFIER_CLASH]);
+    expect(result.diagnostics.map((d) => d.code)).toEqual(['FUD0741']);
   });
 });

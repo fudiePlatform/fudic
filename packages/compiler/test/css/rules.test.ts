@@ -7,7 +7,6 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  FUD_SHEET_UNREADABLE,
   parseCssRules,
   type BlockAtRule,
   type CssDeclaration,
@@ -261,7 +260,7 @@ describe('text it cannot read: FUD0851, never throws (criterion 2)', () => {
     }).not.toThrow();
     expect(result.diagnostics).toHaveLength(1);
     const [d] = result.diagnostics;
-    expect(d!.code).toBe(FUD_SHEET_UNREADABLE);
+    expect(d!.code).toBe('FUD0851');
     expect(d!.severity).toBe('warning');
     return { rules: result.value.rules, at: slice(css, d!.span), message: d!.message };
   }
@@ -305,7 +304,7 @@ describe('text it cannot read: FUD0851, never throws (criterion 2)', () => {
     const css = 'a { } @font-face { font-family: x; ';
     const { value, diagnostics } = parseCssRules(css);
     expect(value.rules).toHaveLength(1);
-    expect(diagnostics.map((d) => [d.code, d.span])).toEqual([[FUD_SHEET_UNREADABLE, { start: 17, end: 18 }]]);
+    expect(diagnostics.map((d) => [d.code, d.span])).toEqual([['FUD0851', { start: 17, end: 18 }]]);
   });
 
   it('a nested `{` inside an opaque body that never closes', () => {

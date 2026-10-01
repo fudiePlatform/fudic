@@ -10,11 +10,6 @@ import { describe, expect, it } from 'vitest';
 import { planApp } from '../../src/plans/app.js';
 import { planLib } from '../../src/plans/lib.js';
 import { apply } from '../../src/apply.js';
-import {
-  FUD_NOT_A_WORKSPACE,
-  FUD_PROJECT_EXISTS,
-} from '../../src/diagnostics.js';
-import { FUD_CONFIG_DUPLICATE_ID } from '@fudic/config';
 import { MemoryFs, RecordingRunner } from '../helpers.js';
 import type { AppOptions, Plan, ProjectOptions } from '../../src/types.js';
 
@@ -109,14 +104,14 @@ describe('fudic g app (criterion 4)', () => {
     const plan = await planApp('admin', appOptions(), fs);
 
     expect(plan.changes).toEqual([]);
-    expect(plan.errors[0]?.code).toBe(FUD_NOT_A_WORKSPACE);
+    expect(plan.errors[0]?.code).toBe('FUD0780');
   });
 
   it('refuses a name the workspace already uses: FUD0784', async () => {
     const plan = await planApp('tienda', appOptions({ id: 'otra' }), workspace());
 
     expect(plan.changes).toEqual([]);
-    expect(plan.errors[0]?.code).toBe(FUD_PROJECT_EXISTS);
+    expect(plan.errors[0]?.code).toBe('FUD0784');
   });
 
   it('refuses a directory that already holds a fudic.json it cannot read', async () => {
@@ -124,7 +119,7 @@ describe('fudic g app (criterion 4)', () => {
 
     const plan = await planApp('admin', appOptions(), fs);
 
-    expect(plan.errors[0]?.code).toBe(FUD_PROJECT_EXISTS);
+    expect(plan.errors[0]?.code).toBe('FUD0784');
   });
 
   it('--force overwrites a project that is already there', async () => {
@@ -139,7 +134,7 @@ describe('fudic g app (criterion 4)', () => {
     const plan = await planApp('admin', appOptions({ id: 'tienda' }), workspace());
 
     expect(plan.changes).toEqual([]);
-    expect(plan.errors[0]?.code).toBe(FUD_CONFIG_DUPLICATE_ID);
+    expect(plan.errors[0]?.code).toBe('FUD0724');
   });
 
   it('refuses an id its own reader would reject, before writing anything', async () => {
@@ -208,7 +203,7 @@ describe('fudic g lib (criterion 5)', () => {
   it('refuses outside a workspace, exactly as g app does', async () => {
     const fs = new MemoryFs({ 'fudic.json': '{"id":"solo","kind":"app"}' }, ROOT);
 
-    expect((await planLib('ui', libOptions(), fs)).errors[0]?.code).toBe(FUD_NOT_A_WORKSPACE);
+    expect((await planLib('ui', libOptions(), fs)).errors[0]?.code).toBe('FUD0780');
   });
 });
 

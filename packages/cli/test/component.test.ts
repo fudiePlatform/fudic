@@ -7,7 +7,6 @@ import { describe, expect, it } from 'vitest';
 import { planComponent } from '../src/plans/component.js';
 import { apply } from '../src/apply.js';
 import { parseFud } from '../src/parse.js';
-import { FUD_TAG_EXISTS, FUD_TAG_INVALID, FUD_TAG_RESERVED, FUD_TARGET_EXISTS } from '../src/diagnostics.js';
 import { projectFs } from './helpers.js';
 import type { ComponentOptions } from '../src/types.js';
 
@@ -105,7 +104,7 @@ describe('g component', () => {
     const fs = projectFs();
     const plan = await planComponent('card', options(), fs);
     expect(plan.changes).toEqual([]);
-    expect(plan.errors.map((e) => e.code)).toEqual([FUD_TAG_INVALID]);
+    expect(plan.errors.map((e) => e.code)).toEqual(['FUD0440']);
     expect(plan.errors[0]!.message).toMatch(/hyphen/u);
     await apply(plan, options(), fs);
     // Nothing beyond the project's own `fudic.json`, which was already there.
@@ -114,8 +113,8 @@ describe('g component', () => {
 
   it('rejects a name reserved by the spec and a tag already in the project (§6.3)', async () => {
     const fs = projectFs({ 'components/app-card.fud': CARD });
-    expect((await planComponent('font-face', options(), fs)).errors.map((e) => e.code)).toEqual([FUD_TAG_RESERVED]);
-    expect((await planComponent('app-card', options(), fs)).errors.map((e) => e.code)).toEqual([FUD_TAG_EXISTS]);
+    expect((await planComponent('font-face', options(), fs)).errors.map((e) => e.code)).toEqual(['FUD0442']);
+    expect((await planComponent('app-card', options(), fs)).errors.map((e) => e.code)).toEqual(['FUD0441']);
   });
 
   it('wires into a component before its @code, and is idempotent (§6.4)', async () => {
@@ -172,7 +171,7 @@ describe('g component', () => {
     });
     const plan = await planComponent('app-box', options(), fs);
     expect(plan.changes).toEqual([]);
-    expect(plan.errors.map((e) => e.code)).toEqual([FUD_TARGET_EXISTS]);
+    expect(plan.errors.map((e) => e.code)).toEqual(['FUD0443']);
 
     await apply(plan, options(), fs);
     expect(fs.paths()).toEqual(['components/app-box.fud', 'fudic.json']);

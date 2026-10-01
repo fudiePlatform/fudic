@@ -277,7 +277,7 @@ describe('the layout can put anything in front of the hole', () => {
     expect(code).not.toContain('migas');
   });
 
-  it('walks nothing into a hole that a construct holds: that is `FUD0443` (criterion 3)', () => {
+  it('walks nothing into a hole that a construct holds: that is `FUD0893` (criterion 3)', () => {
     const layout = [
       '<!DOCTYPE html><html><head>@RenderHead()</head>',
       '<body>@if (true) { <main>@RenderBody()</main> }</body></html>',
@@ -292,7 +292,7 @@ describe('the layout can put anything in front of the hole', () => {
     });
     const graph = resolveDocument('/r.fud', io).value;
     expect(emitLayoutModuleMapped(graph, graph.layouts[0]!).diagnostics.map((d) => d.code)).toEqual([
-      'FUD0443',
+      'FUD0893',
     ]);
     expect(emitRouteClientModule(graph)).not.toContain('$lc1');
   });

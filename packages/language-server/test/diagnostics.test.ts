@@ -4,17 +4,12 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { span } from '@fudic/compiler';
-import {
-  FUD_HREF_UNRESOLVED,
-  FUD_RESERVED_DOLLAR,
-  hrefUnresolved,
-  reservedDollar,
-} from '../src/diagnostics.js';
+import { FUD0460, FUD0461, span } from '@fudic/diagnostics';
 
 describe('catalogue', () => {
   it('lives in the range the SDD reserves', () => {
-    for (const code of [FUD_HREF_UNRESOLVED, FUD_RESERVED_DOLLAR]) {
+    const codes = [FUD0460({ span: span(0, 1), href: 'x' }).code, FUD0461({ span: span(0, 1), name: '$x' }).code];
+    for (const code of codes) {
       const number = Number(code.slice(3));
       expect(code).toMatch(/^FUD\d{4}$/);
       expect(number).toBeGreaterThanOrEqual(460);
@@ -23,25 +18,25 @@ describe('catalogue', () => {
   });
 });
 
-describe('hrefUnresolved', () => {
+describe('FUD0460 — an href that resolves to nothing', () => {
   it('reports on the attribute value with the href in the message', () => {
-    const diagnostic = hrefUnresolved('../components/missing.fud', span(10, 35));
+    const diagnostic = FUD0460({ href: '../components/missing.fud', span: span(10, 35) });
 
     expect(diagnostic).toEqual({
       severity: 'error',
-      code: FUD_HREF_UNRESOLVED,
+      code: 'FUD0460',
       message: 'Cannot resolve "../components/missing.fud" to a .fud file',
       span: { start: 10, end: 35 },
     });
   });
 });
 
-describe('reservedDollar', () => {
+describe('FUD0461 — a reserved `$` identifier', () => {
   it('names the offending identifier', () => {
-    const diagnostic = reservedDollar('$x', span(4, 6));
+    const diagnostic = FUD0461({ name: '$x', span: span(4, 6) });
 
     expect(diagnostic.severity).toBe('error');
-    expect(diagnostic.code).toBe(FUD_RESERVED_DOLLAR);
+    expect(diagnostic.code).toBe('FUD0461');
     expect(diagnostic.message).toContain('"$x" is reserved');
     expect(diagnostic.span).toEqual({ start: 4, end: 6 });
   });

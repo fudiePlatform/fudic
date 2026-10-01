@@ -209,21 +209,21 @@ describe('@render: the invocation (§4.7)', () => {
       expect(values(`tone: @(ok ? "a" : "b")`)).toEqual({ values: ['(ok ? "a" : "b")'], codes: [] });
     });
 
-    it('reports a reference with no `@` as FUD0444, over it, and keeps its JS', () => {
+    it('reports a reference with no `@` as FUD0894, over it, and keeps its JS', () => {
       const source = '<p>@render card(titulo, tone: a.b)</p>';
       const result = parseDocument(source, { atConstructs });
-      const flagged = result.diagnostics.filter((d) => d.code === 'FUD0444');
+      const flagged = result.diagnostics.filter((d) => d.code === 'FUD0894');
       expect(flagged.map((d) => text(source, d.span))).toEqual(['titulo', 'a.b']);
       expect(values('titulo, tone: a.b').values).toEqual(['titulo', 'a.b']);
     });
 
-    it('reports a template with a substitution as FUD0444: it reads the scope', () => {
-      expect(values('`a${b}`').codes).toEqual(['FUD0444']);
+    it('reports a template with a substitution as FUD0894: it reads the scope', () => {
+      expect(values('`a${b}`').codes).toEqual(['FUD0894']);
     });
 
-    it('reports FUD0445 for more than a path after `@`, or anything after `@( … )`', () => {
-      expect(values('@a + b').codes).toEqual(['FUD0445']);
-      expect(values('@(a) b').codes).toEqual(['FUD0445']);
+    it('reports FUD0895 for more than a path after `@`, or anything after `@( … )`', () => {
+      expect(values('@a + b').codes).toEqual(['FUD0895']);
+      expect(values('@(a) b').codes).toEqual(['FUD0895']);
       expect(values('@(a) b').values).toEqual(['(a) b']);
     });
   });

@@ -5,6 +5,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { format, type FudDiagnostic } from '@fudic/diagnostics';
 
 /**
@@ -13,7 +14,9 @@ import { format, type FudDiagnostic } from '@fudic/diagnostics';
  */
 export function reportText(diagnostic: FudDiagnostic, root: string, module?: string): string {
   const located = locate(diagnostic, module);
-  const source = located.span !== undefined && located.file !== undefined ? read(located.file) : undefined;
+  // A file the author named in `fudic.json` travels relative to the root; the rest, absolute.
+  const source =
+    located.span !== undefined && located.file !== undefined ? read(resolve(root, located.file)) : undefined;
   return format(located, source === undefined ? { root } : { root, source });
 }
 

@@ -8,7 +8,6 @@ import { describe, it, expect } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import { discoverRoutes } from '../src/discover.js';
 import { resolveOptions } from '../src/options.js';
-import { FUD_UNKNOWN_ROUTE_OVERRIDE } from '../src/diagnostics.js';
 
 // The compiler fixtures (home.fud + its component siblings) act as a routes dir.
 const root = fileURLToPath(new URL('../../compiler', import.meta.url));
@@ -25,7 +24,7 @@ describe('discoverRoutes', () => {
       root,
       resolveOptions({ routesDir: 'fixtures', defaults: { '/nope': { mode: 'exclude' } } }).options,
     );
-    expect(diagnostics.map((d) => d.code)).toContain(FUD_UNKNOWN_ROUTE_OVERRIDE);
+    expect(diagnostics.map((d) => d.code)).toContain('FUD0364');
   });
 
   it('returns no routes when the dir is absent', () => {

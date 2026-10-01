@@ -9,7 +9,6 @@
 import { describe, expect, it } from 'vitest';
 import { flattenImports, plainSheet, type FlatSheet } from '../../src/css/index.js';
 import {
-  FUD_IMPORT_IN_PROJECT_SHEET,
   prunePage,
   projectSheetDiagnostics,
   sheetDiagnostics,
@@ -453,7 +452,7 @@ describe('projectSheetDiagnostics — `FUD0854`', () => {
     const css =
       '@import "./a.css";\n@charset "x";\np { @import "./b.css"; }\n@media screen { @import "./c.css"; }\n@font-face { src: x }';
     const found = projectSheetDiagnostics(css);
-    expect(found.map((d) => d.code)).toEqual([FUD_IMPORT_IN_PROJECT_SHEET, FUD_IMPORT_IN_PROJECT_SHEET, FUD_IMPORT_IN_PROJECT_SHEET]);
+    expect(found.map((d) => d.code)).toEqual(['FUD0854', 'FUD0854', 'FUD0854']);
     expect(found.map((d) => css.slice(d.span.start, d.span.end))).toEqual([
       '@import "./a.css";',
       '@import "./b.css";',
