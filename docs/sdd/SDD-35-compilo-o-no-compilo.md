@@ -1,7 +1,6 @@
 # SDD-35 — O compila o no compila: lo que el editor marca, el build lo rompe
 
-> **Estado:** `En curso` — código en la rama `worktree-sdd-35-compilo-o-no-compilo`; los tests,
-> en otra sesión.
+> **Estado:** `Hecho` — rama `worktree-sdd-35-compilo-o-no-compilo`; los 24 criterios de §6 verdes.
 > **Paquetes:** `@fudic/typecheck` (**nuevo**: la máquina que hoy vive dentro del servidor de
 > lenguaje, sacada a un sitio donde el build también la pueda usar) · `@fudic/language-server`
 > (deja de tener su copia y la importa) · `@fudic/vite` (corre el chequeo en `build` y en `dev`,

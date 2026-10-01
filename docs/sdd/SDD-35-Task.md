@@ -4,11 +4,11 @@
 > **Paquetes:** `@fudic/typecheck` (nuevo) · `@fudic/language-server` · `@fudic/vite` ·
 > `@fudic/compiler` · `@fudic/example-basic`
 > **Rama:** `worktree-sdd-35-compilo-o-no-compilo`
-> **Progreso:** 20 / 22
+> **Progreso:** 22 / 22
 >
 > **Reparto (decisión de Pedro).** Esta sesión escribe el código; los tests (tareas 1 y 12, los
 > tests unitarios que se mudan con sus piezas y la cobertura) los escribe otra sesión. Una tarea
-> marcada `[x]` aquí tiene su código hecho; sus tests están pendientes.
+> marcada `[x]` aquí tiene su código hecho y, desde el cierre, también sus tests.
 
 **El orden manda en tres puntos.**
 
@@ -94,5 +94,5 @@
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 20 | 16, 18 | **`examples/basic` compila bajo la regla.** `pnpm build` y `pnpm dev` limpios. Lo que salga se arregla en el ejemplo o en la proyección, nunca en el chequeo. Salieron cuatro parámetros sin tipo (`TS7006`) que el editor ya marcaba; se tiparon en el ejemplo (commit de la fase 5). Criterio 21 | `example-basic` | `examples/basic/**` |
-| [ ] | 21 | 20 | **Pedro en Chrome.** `.tone="@(42)"` en una página: overlay en `pnpm dev`, `pnpm build` en rojo, y al quitarlo la página vuelve sola. Criterio 22 | — | — |
-| [ ] | 22 | todas | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`. Los 24 criterios de §6 verdes. `@fudic/typecheck` al 100 % en las cuatro, los ficheros nuevos de `vite` con umbral por fichero al 100, `language-server` sigue al 100. SDD-35 a `Hecho` en [INDEX.md](./INDEX.md). Criterios 23, 24 | — | [INDEX.md](./INDEX.md) |
+| [x] | 21 | 20 | **Pedro en Chrome.** `.tone="@(42)"` en una página: overlay en `pnpm dev`, `pnpm build` en rojo, y al quitarlo la página vuelve sola. Criterio 22. *Nota:* Pedro lo probó en `pnpm dev` (overlay y subrayado) durante la sesión de código | — | — |
+| [x] | 22 | todas | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`. Los 24 criterios de §6 verdes. `@fudic/typecheck` al 100 % en las cuatro, los ficheros nuevos de `vite` con umbral por fichero al 100, `language-server` sigue al 100. SDD-35 a `Hecho` en [INDEX.md](./INDEX.md). Criterios 23, 24. *Nota:* verde en las tres; `@fudic/typecheck`, `diagnostics` y `language-server` al 100 %; `report.ts`, `typecheck.ts` y `dev-typecheck.ts` de `vite` con umbral por fichero al 100 y `vite` subiendo de 90,96 a 93,4 en ramas; `compiler` en 98,84 de ramas. El cierre destapó que `fudic g component --project <lib> --in` escribía una ruta que salía de la app (`FUD0460` en editor y build): ahora enlaza por el nombre de la librería y declara la dependencia (`FUD0787` si la carpeta no se exporta; anotado en SDD-44) | — | [INDEX.md](./INDEX.md) |
