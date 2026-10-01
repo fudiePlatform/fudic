@@ -1,6 +1,6 @@
 # SDD-49 — El CSS que cada página usa
 
-> **Estado:** `Listo` — segunda redacción (2026-10-01), pendiente de la revisión de Pedro.
+> **Estado:** `Hecho` (2026-10-01) — segunda redacción, verificada por Pedro en navegador.
 > **Paquetes:** `@fudic/compiler` (el árbol de reglas, los selectores, el aplanado de `@import`,
 > la superficie de cada ámbito, la poda de reglas y de tokens, y el emit por página) ·
 > `@fudic/vite` (el nombre de cada hoja podada, el servidor de dev, el shell y los diagnósticos
@@ -695,9 +695,11 @@ una hoja importa (`PrunedSheet.contributing`). Es `FUD0852`:
 
 - una hoja que queda vacía **en todas** las páginas, sobre su entrada de `fudic.json` o sobre
   su `<link>`;
-- un fichero importado que no conserva ninguna regla **en ninguna** página, sobre su
-  `@import`. Es el caso de `inputs.css` en una aplicación donde todo input va dentro de un
-  componente: el `@import` sobra.
+- un fichero importado que no conserva ninguna regla **en ninguna** página, nombrando ese
+  fichero; el mensaje dice que el `@import` que lo trae sobra. Es el caso de `inputs.css` en una
+  aplicación donde todo input va dentro de un componente. *(Corrección de implementación: un
+  fichero puede importarse desde varias hojas, y el aviso es uno por fichero, así que nombra el
+  fichero y no una línea.)*
 
 Es CSS muerto, y el autor debería saberlo. Un token suelto sin uso no se diagnostica (§7).
 
@@ -773,7 +775,7 @@ en el navegador que su `@(x)` no hace nada.
 |---|---|---|
 | `FUD0850` | warning | Un `@import` que no se puede aplanar (URL absoluta, de otro origen o de `public/`): se conserva y lo que importa llega entero, sin podar. Sobre el `@import`. |
 | `FUD0851` | warning | La hoja no se puede leer como CSS (llaves sin cerrar, string o comentario sin terminar) y llega entera. Sobre el punto donde se pierde, en su fichero. |
-| `FUD0852` | warning | Una hoja no aporta ninguna regla a ninguna página, o un fichero importado no aporta ninguna. Sobre su entrada de `fudic.json`, su `<link>` o su `@import`. |
+| `FUD0852` | warning | Una hoja no aporta ninguna regla a ninguna página, o un fichero importado no aporta ninguna. Sobre su entrada de `fudic.json` o su `<link>`; el de un fichero importado nombra el fichero. |
 | `FUD0853` | error | El fichero de un `@import` relativo no existe o no se puede leer. Sobre el `@import`, que se quita. |
 | `FUD0854` | error | `@import` en una hoja de `globalStyles` o `styles`: una hoja adoptada no lo admite. Sobre el `@import`, que se quita. |
 | `FUD0855` | error | `@import` en el `<style>` de un componente. Sobre el `@import`, que se quita. |
@@ -901,7 +903,7 @@ llegado a `main`, así que se amplía en lugar de retirarse y reservar otro.
 38. En `vite dev` el `<link>` de la página apunta a `/@fudic/sheet/…` y el middleware sirve
     ese CSS. Tras editar un fichero **importado**, la siguiente navegación trae la poda nueva.
 39. `FUD0852` para una hoja que no aporta nada a ninguna página y para un fichero importado que
-    no aporta nada a ninguna, sobre su `@import`. Los diagnósticos de una hoja salen una vez
+    no aporta nada a ninguna, nombrando el fichero. Los diagnósticos de una hoja salen una vez
     aunque la enlacen varias páginas.
 
 **Evidencia** (`examples/basic`)

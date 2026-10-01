@@ -3,11 +3,9 @@
 > **SDD:** [SDD-49 — El CSS que cada página usa](./SDD-49-css-por-pagina.md)
 > **Paquetes:** `@fudic/compiler` · `@fudic/vite` · `@fudic/example-basic`
 > **Rama:** `worktree-sdd-49-css-por-pagina`
-> **Progreso:** 26 / 28 — las fases 1–6 están en el código, sin tests. La **segunda redacción**
-> (2026-10-01) añade la fase 7: aplanar `@import`, podar tokens, `url()` en la copia enlazada y
-> los errores de `@import` en hojas adoptadas y **quitar el Razor del CSS** (decisión 136, que
-> revoca la 42; tarea 25). Después, los tests, el OK de Pedro en navegador (tarea 27) y el
-> cierre (tarea 28).
+> **Progreso:** 28 / 28 — `Hecho` (2026-10-01). Código, tests, verificación de Pedro en
+> navegador y cobertura: los ficheros nuevos al 100 % y ninguno existente por debajo de su
+> suelo en `main`.
 
 ## Qué cambió en la segunda redacción
 
@@ -48,6 +46,16 @@ mismo worktree y rama. Los números son los criterios de la spec (§6, segunda r
   `recordSheet`, `unusedSheets`, `sheetDiagnostics`) no tienen test: `coverage` de vite está en
   rojo hasta el apartado 7.
 - Hoy fallan 6 tests existentes, todos por cambio de comportamiento pedido (apartado 8).
+
+**Suelo medido en `main` (`9355b81`, 2026-10-01)** — statements / branches / functions / lines:
+
+| Paquete | Suelo |
+|---|---|
+| `@fudic/compiler` | 99,44 / 98,64 / 99,64 / 99,81 |
+| `@fudic/vite` | 96,92 / 92,58 / 97,56 / 96,88 |
+| `@fudic/formatter` | 100 / 100 / 100 / 100 |
+| `@fudic/language-core` | 100 / 100 / 100 / 100 |
+| `@fudic/language-server` | 100 / 100 / 100 / 100 |
 
 ### 1. `packages/compiler/test/css/rules.test.ts` — criterios 1–2 (`src/css/rules.ts`, 100 %)
 
@@ -290,6 +298,6 @@ nadie lo note.
 
 | ✓ | # | dep | tarea |
 |---|---|---|---|
-| [ ] | 26 | 24, 25 | Los tests pendientes de arriba, y los 6 en rojo con su expectativa nueva |
+| [x] | 26 | 24, 25 | Los tests pendientes de arriba, y los 6 en rojo con su expectativa nueva |
 | [x] | 27 | 26 | **Pedro en navegador.** Todas las páginas iguales que antes, en modo claro y oscuro; SW activo; una página ya visitada abre offline con su hoja (las copias no van en el shell). Criterio 41. **Verificado por Pedro el 2026-10-01** |
-| [ ] | 28 | 27 | Cobertura de los ficheros nuevos al 100 % en las cuatro métricas, con su umbral en el `vitest.config.ts`, y ninguno por debajo de su suelo en `main` (criterio 42); `pnpm typecheck`, `pnpm test` y `pnpm build` verdes; SDD-49 a `Hecho` en la tabla y el registro del `INDEX.md` |
+| [x] | 28 | 27 | Cobertura de los ficheros nuevos al 100 % en las cuatro métricas, con su umbral en el `vitest.config.ts`, y ninguno por debajo de su suelo en `main` (criterio 42); `pnpm typecheck`, `pnpm test` y `pnpm build` verdes; SDD-49 a `Hecho` en la tabla y el registro del `INDEX.md` |
