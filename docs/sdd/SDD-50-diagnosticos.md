@@ -95,9 +95,10 @@ interface DiagnosticBase {
   readonly severity: Severity;
   /** English, single line, no trailing period. Composed by the code's function. */
   readonly message: string;
-  /** Public explanation: `${DOCS_BASE}#FUD0050` (§3.5). */
-  readonly docs: string;
 }
+
+/** Public explanation of a code: `${DOCS_BASE}#FUD0050` (§3.5). */
+export function docsUrl(code: FudCode): string;
 
 /** A place in a source file: the compiler, the editor. Span REQUIRED (LSP invariant). */
 export interface SourceDiagnostic extends DiagnosticBase {
@@ -242,8 +243,10 @@ campo falta, está vacío o no es una URL absoluta.
 - **`Span`, `span()`, `emptySpan()`, `RelatedLocation`, `Severity`** salen de
   `compiler/src/types/` y **`LineMap`, `Position`, `Range`** de `compiler/src/sourcemap/`. El
   compilador los **reexporta** para no romper a nadie que los importe de `@fudic/compiler`.
-- **`Diagnostic`** del compilador pasa a ser un alias de `SourceDiagnostic`. Gana el campo
-  `docs`; nada más cambia.
+- **`Diagnostic`** del compilador pasa a ser un alias de `SourceDiagnostic`, con los mismos
+  campos que hoy. El enlace **no** se guarda en el objeto: lo calcula `docsUrl(code)` al pintar
+  (`render`) y al publicar en el editor. Así un diagnóstico sigue siendo el mismo objeto y
+  ningún test que lo compare entero cambia.
 - **`errorDiag`, `relatedError`, `warningDiag`, `infoDiag`, `hintDiag`** se borran. Todas sus
   llamadas pasan a la función de su código.
 - **`FudicDiagnostic`** (vite), **`ConfigDiagnostic`** (config, y su copia de `Span`) y la parte
@@ -277,32 +280,18 @@ no hay ni `.ts` ni `.md` con ese nombre.
 
 ### 4.4. El `.md`
 
-En inglés, con una forma fija que un test comprueba:
+En inglés y **corto: unas cinco líneas**. Es la ayuda de un error, no una spec; si alguno
+necesita más, se alarga, pero es la excepción. Forma fija que un test comprueba:
 
 ~~~md
 # FUD0050 — Closing tag does not match
+**error** · SDD-05
 
-**Severity:** error · **Spec:** SDD-05
-
-## What happened
-One or two sentences, in the author's terms.
-
-## Why it is an error
-The rule behind it, and what would go wrong if fudic let it through.
-
-## Example
-```fud
-<!-- wrong -->
-```
-```fud
-<!-- right -->
-```
-
-## How to fix
-The concrete change.
+What happened and why it is an error, in one or two sentences.
+**Fix:** the concrete change, with a short inline example when it helps.
 ~~~
 
-Un retirado lleva el título, `**Retired:** <spec>` y una sección `## Replaced by`.
+Un retirado lleva el título, `**retired** · <spec>` y una línea `**Replaced by:** …`.
 
 Este SDD solo garantiza que los `.md` existen y tienen esa forma. Convertirlos a HTML y
 publicarlos en `DOCS_BASE` es de la web de documentación, que se hará con fudic y los pintará
@@ -312,7 +301,7 @@ con `@Raw` (§7).
 
 - **Compilador y analizadores:** cada `errorDiag('FUD0050', \`…\`, span)` pasa a
   `FUD0050({ span, open, close })`.
-- **`@fudic/language-server`:** publica `docs` como `codeDescription.href` de LSP, así que en el
+- **`@fudic/language-server`:** publica `docsUrl(code)` como `codeDescription.href` de LSP, así que en el
   editor el código sale como un enlace a su explicación.
 - **La bombilla.** Todo diagnóstico `FUD` ofrece en el editor una acción **«Explain FUDnnnn»**
   que abre su `.md` en la vista previa de markdown de VS Code. Es la ayuda de quien escribe un
@@ -334,8 +323,30 @@ El catálogo de SDD-12 los asigna a BUG-32, que llegó primero. SDD-41 los reuti
 | `FUD0720` (config) | `FUD0725` | `fudic.json` ilegible o con forma inválida |
 | `FUD0721` (config) | `FUD0726` | falta el `id` obligatorio |
 
-`FUD0720` y `FUD0721` quedan para BUG-32. SDD-41 y SDD-12 se anotan. Son los únicos tests de
-texto o código que cambian (§6.4).
+`FUD0720` y `FUD0721` quedan para BUG-32. SDD-41 y SDD-12 se anotan.
+
+`FUD0725` es **`error` en todos los sitios** (decisión de Pedro): hoy la CLI lo da como error y el
+build lo rebajaba a aviso, y un código tiene una sola severidad. Un `fudic.json` roto rompe el
+build igual que rompe la CLI.
+
+### 4.6.b. La colisión `FUD0440`–`FUD0445`
+
+El inventario encontró otra: el rango `FUD0440`–`0459` es de la CLI (SDD-22), y SDD-48 usó
+`FUD0440`–`0445` para layouts y snippets. Se mueven los de SDD-48, que llegaron después
+(decisión de Pedro):
+
+| Antes | Después | Qué es |
+|---|---|---|
+| `FUD0440` (layout) | `FUD0890` | sección `required: true` que la ruta no rellena |
+| `FUD0441` (layout) | `FUD0891` | texto en la raíz de un hueco con slot |
+| `FUD0442` (layout) | `FUD0892` | elemento en la raíz de un hueco con slot que escribe su propio `slot=` |
+| `FUD0443` (layout) | `FUD0893` | un hueco dentro de un constructo |
+| `FUD0444` (snippet) | `FUD0894` | argumento de `@render` que lee el ámbito sin `@` |
+| `FUD0445` (snippet) | `FUD0895` | `@` de un argumento no seguido de una ruta |
+
+La bombilla del editor que repara `FUD0440` y `FUD0444` pasa a `FUD0890` y `FUD0894`. SDD-48 y
+SDD-12 se anotan. Estas renumeraciones son los únicos tests de código o severidad que cambian
+(§6.4).
 
 ### 4.7. Lo que no se toca
 
@@ -356,7 +367,7 @@ texto o código que cambian (§6.4).
 4. **Spans hasta pintar.** Ningún diagnóstico guarda línea ni columna. Solo `render` las calcula.
 5. **Podable.** `"sideEffects": false`; ningún fichero de `codes/` ejecuta nada al importarse.
 6. **Sin dependencias de runtime** en `@fudic/diagnostics`.
-7. **Nada cambia para el autor** salvo `docs` y la renumeración de §4.6.
+7. **Nada cambia para el autor** salvo el enlace, la bombilla y las renumeraciones de §4.6.
 
 ---
 
@@ -369,12 +380,12 @@ texto o código que cambian (§6.4).
    test barre `codes/` y falla si falta alguna de las tres cosas, si hay una línea en `index.ts`
    sin fichero, o si `index.ts` no está en orden numérico.
 3. Cada `.md` tiene la forma de §4.4: título `# FUDnnnn — …` con el mismo número que el fichero,
-   severidad igual a la del `.ts`, y las cuatro secciones (o la forma de retirado).
+   severidad igual a la del `.ts`, y la línea `**Fix:**` (o la forma de retirado).
 
 **La migración.**
 
 4. Los tests de **todos** los paquetes pasan **sin cambiar una expectativa** de código, mensaje,
-   severidad ni span, salvo los de `FUD0725`/`FUD0726` (§4.6).
+   severidad ni span, salvo las renumeraciones y la severidad de `FUD0725` (§4.6, §4.6.b).
 5. Un test barre `packages/*/src` (salvo `diagnostics`) y no encuentra ningún literal de string
    `FUD` + cuatro dígitos (invariante 1).
 6. `errorDiag`, `warningDiag`, `infoDiag`, `hintDiag`, `relatedError`, `FudicDiagnostic`,
@@ -389,10 +400,10 @@ texto o código que cambian (§6.4).
    tres campos.
 9. `format` produce `ruta:línea:col - error FUD0050: mensaje`, el frame y la línea del enlace;
    con `root`, la ruta sale relativa y en POSIX.
-10. En el editor, un diagnóstico `FUD` lleva `codeDescription.href` igual a su `docs`.
+10. En el editor, un diagnóstico `FUD` lleva `codeDescription.href` igual a `docsUrl(code)`.
 11. Sobre cualquier diagnóstico `FUD`, la bombilla ofrece «Explain FUDnnnn», y la acción abre
     su `.md` en la vista previa de markdown, también desde el `.vsix` instalado.
-12. `docs` de cualquier código es `fudic.docs` del `package.json` + `#FUDnnnn`. Ningún fichero de
+12. `docsUrl` de cualquier código es `fudic.docs` del `package.json` + `#FUDnnnn`. Ningún fichero de
     `src` contiene la URL, y un test falla si el campo falta, está vacío o no es una URL absoluta.
 
 **Podado.**

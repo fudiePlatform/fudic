@@ -1,0 +1,58 @@
+{
+  "name": "@fudic/diagnostics",
+  "version": "0.0.1",
+  "description": "Every fudic diagnostic: one typed function per FUD code, its explanation beside it, and the one place an offset becomes a line.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Pedro Hurtado",
+  "homepage": "https://github.com/fudiePlatform/fudic/tree/main/packages/diagnostics#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fudiePlatform/fudic.git",
+    "directory": "packages/diagnostics"
+  },
+  "bugs": {
+    "url": "https://github.com/fudiePlatform/fudic/issues"
+  },
+  "keywords": [
+    "fudic",
+    "fudie",
+    "diagnostics"
+  ],
+  "fudic": {
+    "docs": "http://localhost:8080/diagnostic"
+  },
+  "sideEffects": false,
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    },
+    "./explain": {
+      "types": "./dist/src/explain.d.ts",
+      "import": "./dist/src/explain.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "src/codes/*.md",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@fudic/tsconfig": "workspace:*",
+    "@types/node": "22.20.0"
+  }
+}

@@ -46,6 +46,7 @@
   "dependencies": {
     "@fudic/compiler": "workspace:*",
     "@fudic/config": "workspace:*",
+    "@fudic/diagnostics": "workspace:*",
     "@fudic/conventions": "workspace:*",
     "@fudic/resolve": "workspace:*",
     "@fudic/ssr": "workspace:*",

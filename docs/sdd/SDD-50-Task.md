@@ -5,7 +5,7 @@
 > `@fudic/language-server` · `@fudic/formatter` · `@fudic/resolve` · `@fudic/config` ·
 > `@fudic/cli` · `@fudic/vite` · `fudic-vscode`
 > **Rama sugerida:** `sdd-50-diagnosticos`
-> **Progreso:** 0 / 21
+> **Progreso:** 4 / 21
 
 **Por decisión de Pedro, esta sesión escribe el código y no los tests.** Los tests nuevos, el
 suelo de cobertura y las guardas (fase 6) los hace otra sesión en este mismo worktree y rama.
@@ -46,10 +46,10 @@ migración, no en el test. La única excepción son `FUD0725`/`FUD0726` (tarea 1
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **El inventario.** Todos los códigos de `packages/*/src` y del catálogo: vivo / retirado / reservado sin usar, severidad, forma (fuente, fichero, proyecto) y dónde se emite. Los que salen **con dos severidades** se paran y se preguntan; los de **varios mensajes** se modelan con un parámetro (SDD §3.2). Apuntado aquí abajo | — | este Task |
-| [ ] | 2 | — | **El paquete.** `package.json` sin dependencias de runtime, `"sideEffects": false`, `"fudic": { "docs": "http://localhost:8080/diagnostic" }` y los `.md` en `files`; `tsconfig` que extiende la base con `resolveJsonModule`; `vitest.config.ts` con `include: ['src/**/*.ts']` y umbrales al 100 en las cuatro. Criterio 1 | `diagnostics` | `package.json` · `tsconfig*.json` · `vitest.config.ts` |
-| [ ] | 3 | 2 | **Span y `LineMap` se mudan.** `Span`, `span`, `emptySpan`, `RelatedLocation`, `Severity`, `LineMap`, `Position`, `Range` salen del compilador; el compilador los reexporta. `Diagnostic` del compilador pasa a alias de `SourceDiagnostic` | `diagnostics` · `compiler` | `src/span.ts` · `src/linemap.ts` · `compiler/src/types/**` · `compiler/src/sourcemap/**` |
-| [ ] | 4 | 3 | **Lo que construye y lo que pinta.** Las tres formas y las dos entradas; `source`, `file`, `project` sin exportar; `DOCS_BASE` leído del `package.json`; `render` y `format` con línea y columna 1-based, frame y enlace. Criterios 8, 9, 12 | `diagnostics` | `src/types.ts` · `src/make.ts` · `src/docs.ts` · `src/render.ts` |
+| [x] | 1 | — | **El inventario.** Todos los códigos de `packages/*/src` y del catálogo: vivo / retirado / reservado sin usar, severidad, forma (fuente, fichero, proyecto) y dónde se emite. Los que salen **con dos severidades** se paran y se preguntan; los de **varios mensajes** se modelan con un parámetro (SDD §3.2). Apuntado aquí abajo | — | este Task |
+| [x] | 2 | — | **El paquete.** `package.json` sin dependencias de runtime, `"sideEffects": false`, `"fudic": { "docs": "http://localhost:8080/diagnostic" }` y los `.md` en `files`; `tsconfig` que extiende la base con `resolveJsonModule`; `vitest.config.ts` con `include: ['src/**/*.ts']` y umbrales al 100 en las cuatro. Criterio 1 | `diagnostics` | `package.json` · `tsconfig*.json` · `vitest.config.ts` |
+| [x] | 3 | 2 | **Span y `LineMap` se mudan.** `Span`, `span`, `emptySpan`, `RelatedLocation`, `Severity`, `LineMap`, `Position`, `Range` salen del compilador; el compilador los reexporta. `Diagnostic` del compilador pasa a alias de `SourceDiagnostic` | `diagnostics` · `compiler` | `src/span.ts` · `src/linemap.ts` · `compiler/src/types/**` · `compiler/src/sourcemap/**` |
+| [x] | 4 | 3 | **Lo que construye y lo que pinta.** Las tres formas y las dos entradas; `source`, `file`, `project` sin exportar; `DOCS_BASE` leído del `package.json`; `render` y `format` con línea y columna 1-based, frame y enlace. Criterios 8, 9, 12 | `diagnostics` | `src/types.ts` · `src/make.ts` · `src/docs.ts` · `src/render.ts` |
 
 ## Fase 2 — el compilador (5)
 
@@ -100,4 +100,20 @@ cambiadas a la función. Mensaje movido tal cual.
 
 ## Inventario (tarea 1)
 
-_Pendiente._
+Completo en [SDD-50-inventario.md](./SDD-50-inventario.md): 213 códigos con sitio de emisión,
+cada sitio con `fichero:línea`, mensajes literales, retirados y búsquedas por código.
+
+Decisiones de Pedro sobre lo que salió:
+
+- **Colisión `FUD0440`–`0445`** (CLI contra SDD-48): los de SDD-48 pasan a `FUD0890`–`0895`
+  (SDD §4.6.b).
+- **`FUD0725`** (el `fudic.json` roto, antes `FUD0720` de config) es `error` también en el build,
+  que lo rebajaba a aviso.
+
+Encontrado y fuera de alcance (no se toca aquí): `FUD0365` y `FUD0390` se construyen y el
+plugin los descarta sin reportarlos (`plugin.ts`, lectura de opciones y de `swconfig`).
+
+**Los tests que cambian por decisión, no por defecto** (para la sesión de tests): las
+renumeraciones (`0720`/`0721` de config, `0440`–`0445` de SDD-48) y la severidad de `FUD0725` en
+el build; y los diagnósticos de `vite`, `cli` y `config`, que **ganan `severity`** al pasar a
+`FileDiagnostic`/`ProjectDiagnostic` (hoy no la llevan y el plugin la decide aparte).

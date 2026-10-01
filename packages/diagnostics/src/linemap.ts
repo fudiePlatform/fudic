@@ -6,7 +6,7 @@
  * a pure utility).
  */
 
-import { type Span } from '../types/index.js';
+import { type Span } from './span.js';
 import { type Position, type Range } from './position.js';
 
 const LF = 10; // \n
