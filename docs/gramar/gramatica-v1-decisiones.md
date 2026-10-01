@@ -735,7 +735,7 @@ Subset estricto de HTML5. No se implementa error recovery ni inserciones implíc
 
 El prefijo dice quién contesta: `.` el contrato del componente, `@` el diccionario de eventos del DOM, `class:` el `<style>` de este fichero, nada el vocabulario de HTML. **Sobre un tag nativo no cambia nada**: ahí un `.prop` sigue siendo propiedad del DOM (enganche de cliente, ausente de SSR) y un atributo sigue siendo un atributo.
 
-**42.** Razor activo dentro de `<style>`. Desambiguación por lista blanca de at-rules CSS.
+**42.** ~~Razor activo dentro de `<style>`. Desambiguación por lista blanca de at-rules CSS.~~ **Revocada por la 136**, con 42.a–c.
 
 **42.a.** Lista blanca de at-rules mantenida en el compilador. Lista inicial: `@charset`, `@import`, `@namespace`, `@media`, `@supports`, `@container`, `@layer`, `@scope`, `@starting-style`, `@keyframes`, `@font-face`, `@font-feature-values`, `@font-palette-values`, `@counter-style`, `@page`, `@property`, `@document` (obsoleto).
 
@@ -1211,6 +1211,15 @@ una expresión. Es la regla de `.tone="info"` frente a `.tone=@tono`, por unifor
 referencia sin `@` es `FUD0444`, con bombilla. Revoca la decisión 13 de SDD-29 («sin `@` en la
 cabecera de un `@render`», `FUD0833` retirado).
 
+**136.** **El cuerpo de un `<style>` es CSS plano**
+([SDD-49](../sdd/SDD-49-css-por-pagina.md) §4.12). No lleva Razor: ni `@(expr)`, ni `@ident`, ni
+comentarios `@* *@`, ni el escape `@@`. **Escribirlo es error** (`FUD0132`): un `@` en un
+`<style>` solo es válido delante de una at-rule de la lista cerrada (que se queda, estricta) o de
+un prefijo de fabricante (`@-webkit-…`), o dentro de un string o un comentario CSS. Lo dinámico
+de un estilo se escribe en el markup (`style=`, `style:`, `class:`), que sigue siendo Razor. El
+motivo es doble: no aporta nada que el markup no dé, y un nombre de token interpolado
+(`var(--x-@y)`) es invisible para la poda de tokens de SDD-49. Revoca la 42 y sus 42.a–c.
+
 ### Gramática de referencia
 
 ```
@@ -1413,10 +1422,10 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 41 | HTML | Tag names alfanuméricos con guión |
 | 41.b | HTML | Modo SVG/MathML |
 | 41.c | HTML | Sobre un componente, `property_binding` es la única vía de prop (BUG-16) |
-| 42 | HTML | Razor en `<style>` activo |
-| 42.a | HTML | Lista blanca de at-rules CSS |
-| 42.b | HTML | Lista cerrada estricta |
-| 42.c | HTML | Escape `@@` en CSS |
+| 42 | HTML | ~~Razor en `<style>` activo~~ **Revocada por la 136** |
+| 42.a | HTML | ~~Lista blanca de at-rules CSS~~ **Revocada por la 136** |
+| 42.b | HTML | ~~Lista cerrada estricta~~ **Revocada por la 136** |
+| 42.c | HTML | ~~Escape `@@` en CSS~~ **Revocada por la 136** |
 | 42.d | HTML | Razor en prelude y cuerpo de at-rules |
 | 42.e | HTML | Nesting CSS nativo soportado |
 | 43 | HTML | `<script>` raw puro, válvula de escape |
@@ -1504,3 +1513,4 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 133 | Layout | El `<body>` de un layout es marcado: componentes, `@render`, expresiones, constructos y props del layout; solo `@{ }` queda fuera (`FUD0705`) y un hueco no vive dentro de un constructo (`FUD0443`). Revoca la regla del body de BUG-44 (`FUD0704` retirado) (SDD-48) |
 | 134 | Layout | `@RenderBody(slot: "x")`, `@RenderSection(n, required: true, slot: "x")`: la ruta escribe hermanos y cada raíz sale con su `slot=`; una sección `required` sin declarar es `FUD0440`. Enmienda la 85 (SDD-48) |
 | 135 | Snippets | Los argumentos de `@render` como una prop: literal tal cual, lo que lee el scope con `@` / `@( … )` (`FUD0444`, `FUD0445`). Revoca la 13 de SDD-29 (`FUD0833` retirado) (SDD-48) |
+| 136 | HTML | El cuerpo de un `<style>` es CSS plano: Razor ahí —expresión, constructo, comentario, `@@`— es error (`FUD0132`); un `@` solo vale delante de una at-rule de la lista cerrada o de un prefijo de fabricante. Revoca la 42 y sus 42.a–c (SDD-49) |
