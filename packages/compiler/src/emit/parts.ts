@@ -315,8 +315,11 @@ export function writeOpenTag(w: CodeWriter, source: string, el: ElementNode, lin
   w.line(`let ${OPEN} = '<${el.name}';`);
   w.line('{');
   w.indent();
+  // `setUrl` is the guard of SDD-51 §3.7, applied to the tag as written: the same function the
+  // body's adapters call, read from `io` like the escaping.
   w.line(
-    `const $dom = { setAttr: ($t, $k, $v) => { ${OPEN} += ' ' + $k + '="' + io.escapeAttr(String($v)) + '"'; } };`,
+    `const $dom = { setAttr: ($t, $k, $v) => { ${OPEN} += ' ' + $k + '="' + io.escapeAttr(String($v)) + '"'; }, ` +
+      `setUrl: ($t, $k, $v) => $dom.setAttr($t, $k, io.guardUrl(${JSON.stringify(el.name)}, $k, $v)) };`,
   );
   w.line('const $el = null;');
   writeElementAttrs(source, el, '$el', w, linker, NO_SIGNALS);

@@ -81,6 +81,105 @@ export function attrExpr(source: string, attr: Attribute): string {
 }
 
 /**
+ * The attributes a browser navigates to or loads from (SDD-51 §3.7, decision 140). `data` is
+ * one only on an `<object>`; everywhere else it is a plain attribute.
+ */
+const URL_ATTRIBUTES: ReadonlySet<string> = new Set([
+  'href',
+  'src',
+  'action',
+  'formaction',
+  'poster',
+  'cite',
+  'xlink:href',
+  'srcset',
+]);
+
+export function isUrlAttr(element: string, attribute: string): boolean {
+  const name = attribute.toLowerCase();
+  return URL_ATTRIBUTES.has(name) || (name === 'data' && element.toLowerCase() === 'object');
+}
+
+/** The schemes a literal prefix may pin: the guard's own list (`@fudic/dom`). */
+const PINNED_SCHEMES: ReadonlySet<string> = new Set(['http', 'https', 'mailto', 'tel']);
+
+/**
+ * Whether an interpolated URL attribute is written through the guard (`$dom.setUrl`) rather
+ * than `setAttr`: when what the author wrote literally at its start does not pin the origin.
+ *
+ * The prefix is the literal text of the value parts (decision 20) up to the first expression,
+ * plus the first chunk of that expression when it is one template literal and nothing else —
+ * `` href=@(`/posts/${id}`) `` is the same value as `href="/posts/@id"`. It pins the origin when
+ * it opens with `/` and something that is neither `/` nor `\`, with `./`, `../`, `#` or `?`, or
+ * with a scheme the guard would let through anyway. Anything else — `@url`, `` `${base}/x` ``,
+ * `` `/${x}` ``, whose `x` could be `/evil.example` — is guarded.
+ *
+ * A `srcset` is a list, and its prefix only says something about the first candidate: it is
+ * always guarded, and the guard reads every candidate.
+ */
+export function guardsUrl(
+  source: string,
+  element: string,
+  attribute: string,
+  value: readonly AttributeValuePart[],
+): boolean {
+  if (!isUrlAttr(element, attribute)) return false;
+  if (attribute.toLowerCase() === 'srcset') return true;
+  return !pinsOrigin(fixedPrefix(source, value), element, attribute);
+}
+
+function fixedPrefix(source: string, value: readonly AttributeValuePart[]): string {
+  let prefix = '';
+  for (const part of value) {
+    if (part.type === 'attribute-text') {
+      prefix += attrText(part);
+      continue;
+    }
+    return prefix + templateHead(source.slice(part.expr.start, part.expr.end).trim());
+  }
+  return prefix;
+}
+
+/**
+ * The text before the first `${` of an expression that is ONE template literal, or `''`.
+ *
+ * Read off the text and conservative by construction: exactly two backticks, one at each end,
+ * is one template and nothing around it — `` `/p/`.replace(…) `` or `` `/a` + x `` would put a
+ * third one in or leave one off the end. A backslash ends the head where it stands, so an
+ * escape never has to be decoded. Whatever this cannot read is no prefix, and is guarded.
+ */
+function templateHead(expr: string): string {
+  if (!expr.startsWith('`') || !expr.endsWith('`') || expr.split('`').length !== 3) return '';
+  let head = '';
+  for (let i = 1; i < expr.length - 1; i++) {
+    const char = expr[i]!;
+    if (char === '\\' || (char === '$' && expr[i + 1] === '{')) break;
+    head += char;
+  }
+  return head;
+}
+
+function pinsOrigin(prefix: string, element: string, attribute: string): boolean {
+  // What a browser drops before it reads a URL: tabs and line breaks anywhere. Leading spaces
+  // or control characters are dropped too, and then the literal no longer says where it goes.
+  const text = prefix.replace(/[\t\n\r]/gu, '');
+  if (/^[\x00-\x20]/u.test(text)) return false;
+  if (text.startsWith('./') || text.startsWith('../') || text.startsWith('#') || text.startsWith('?')) {
+    return true;
+  }
+  if (text.length >= 2 && text[0] === '/' && text[1] !== '/' && text[1] !== '\\') return true;
+  const scheme = /^([A-Za-z][A-Za-z0-9+.-]*):/u.exec(text)?.[1]?.toLowerCase();
+  if (scheme === undefined) return false;
+  if (PINNED_SCHEMES.has(scheme)) return true;
+  return (
+    scheme === 'data' &&
+    element.toLowerCase() === 'img' &&
+    attribute.toLowerCase() === 'src' &&
+    text.slice('data:'.length).toLowerCase().startsWith('image/')
+  );
+}
+
+/**
  * What the emitters need to know ABOUT the element they are writing attributes for, beyond
  * the node itself.
  *
@@ -372,11 +471,16 @@ export function writeElementAttrs(
       // otherwise leave the attribute the previous value put there.
       const name = JSON.stringify(written.name);
       const clear = values.repeats ? ` else $dom.removeAttr(${v}, ${name});` : '';
+      // A URL whose prefix does not pin the origin goes through the guard (SDD-51 §3.7), and
+      // goes UNSTRINGIFIED: a `trustedUrl(…)` is told apart by what it is, not by its text.
+      const write = guardsUrl(source, el.name, written.name, written.value)
+        ? ($v: string): string => `$dom.setUrl(${v}, ${name}, ${$v})`
+        : ($v: string): string => `$dom.setAttr(${v}, ${name}, String(${$v}))`;
       values.bound(
         crossingExpr(source, attr, written.value, host.signals),
         ($v) =>
           `if (${$v} === true) $dom.setAttr(${v}, ${name}, ''); ` +
-          `else if (${$v} !== false && ${$v} != null) $dom.setAttr(${v}, ${name}, String(${$v}));${clear}`,
+          `else if (${$v} !== false && ${$v} != null) ${write($v)};${clear}`,
       );
     }
   }

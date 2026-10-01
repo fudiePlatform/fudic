@@ -17,7 +17,7 @@
  * order never to call it.
  */
 
-import { type Dom, type Ns } from '@fudic/dom';
+import { guardUrl, type Dom, type Ns } from '@fudic/dom';
 import { type SsrNode, SsrNodeImpl, asImpl } from './tree.js';
 
 /** The identity attribute of a hydratable instance (SDD-15 §3.1). */
@@ -215,6 +215,11 @@ export class SsrDom implements Dom<SsrNode> {
 
   setAttr(el: SsrNode, name: string, value: string): void {
     asImpl(el).attrs.set(name, value);
+  }
+  /** The guard the browser applies, the same function: both sides write the same bytes. */
+  setUrl(el: SsrNode, name: string, value: unknown): void {
+    const node = asImpl(el);
+    node.attrs.set(name, guardUrl(node.tag ?? '', name, value));
   }
   removeAttr(el: SsrNode, name: string): void {
     asImpl(el).attrs.delete(name);
