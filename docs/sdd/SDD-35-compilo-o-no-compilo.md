@@ -277,8 +277,12 @@ algún error:
    src/routes/index.fud:12:15 - error TS2322: Type 'number' is not assignable to type '"neutral" | "success" | "info"'.
 
      12   <app-badge .tone="@(42)"></app-badge>
-                     ~~~~
+                     ^^^^
    ```
+
+   El subrayado es `^` y no `~` (corregido al probar en `dev`): la terminal de VS Code lee
+   una palabra de virgulillas como la carpeta personal, y Ctrl+Click sobre ella abría el home
+   del usuario como espacio de trabajo, en modo restringido.
 
 2. El build falla **una vez**, con `this.error` y un resumen: `N errores en M ficheros`. No se
    escribe ningún fichero.

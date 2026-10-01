@@ -50,7 +50,9 @@ export function pluginLog(diagnostic: FudDiagnostic, root: string, module?: stri
   return {
     message: `${where} - ${shown.severity} ${shown.code}: ${shown.message}\n\n  ${shown.docs}`,
     id: file,
-    loc: { file, line: shown.start.line, column: shown.start.column - 1 },
+    // 1-based like the message: Vite prints `loc` as it is, and two links to one place that
+    // disagree by a column are two places to the person who clicks them.
+    loc: { file, line: shown.start.line, column: shown.start.column },
     frame: shown.frame,
   };
 }
