@@ -69,7 +69,7 @@ export function locate(source: string, at: Span): Located {
 }
 
 /**
- * The line the span starts on, with a gutter and a `^` underline. A span that runs past its
+ * The line the span starts on, with a gutter and a `─` underline. A span that runs past its
  * first line is underlined to the end of that line: the first line is where the reader looks.
  */
 function frame(
@@ -86,9 +86,11 @@ function frame(
   const gutter = String(line + 1);
   const pad = ' '.repeat(gutter.length);
   const width = Math.max(1, until - from);
-  // `^` and not `~`: a terminal reads a word of tildes as a path to the home folder, and VS
-  // Code's Ctrl+Click on the underline opened the user's home as a workspace (SDD-35).
-  return `  ${gutter}  ${text}\n  ${pad}  ${' '.repeat(from)}${'^'.repeat(width)}`;
+  // `─` and not `~` or `^`: VS Code's terminal turns every WORD into a Ctrl+Click link, and a
+  // word of tildes is a path to the home folder — it opened the user's home as a workspace
+  // (SDD-35). `─` is one of the terminal's default word separators, so the underline is no
+  // word at all and nothing to click.
+  return `  ${gutter}  ${text}\n  ${pad}  ${' '.repeat(from)}${'─'.repeat(width)}`;
 }
 
 export interface FormatOptions {
@@ -104,7 +106,7 @@ export interface FormatOptions {
  *     src/routes/index.fud:12:15 - error FUD0050: message
  *
  *       12  <app-badge .tone="@(42)"></app-badge>
- *                      ^^^^
+ *                      ────
  *
  *       http://…/diagnostic#FUD0050
  */

@@ -4,7 +4,7 @@
  *     src/routes/index.fud:12:15 - error TS2322: Type 'number' is not assignable to …
  *
  *       12  <app-badge .tone="@(42)"></app-badge>
- *                      ^^^^
+ *                      ────
  *
  * Line, column and frame come from `@fudic/diagnostics`' `locate`, the one place an offset
  * becomes a line; a fudic code also gets the link to its explanation, as `format` prints it.
