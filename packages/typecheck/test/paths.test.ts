@@ -7,7 +7,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { baseName, dirName, relativeHref, resolveFrom, toPosix } from '../src/paths.js';
+import { baseName, dirName, relativeHref, resolveFrom, toPosix } from '../src/index.js';
 
 describe('toPosix', () => {
   it.each([

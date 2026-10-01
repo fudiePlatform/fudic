@@ -6,8 +6,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { contractOf, layoutHrefOf, roleOf, tagOf } from '../src/mode.js';
-import { parseFud } from '../src/parse.js';
+import { contractOf, roleOf } from '../src/mode.js';
+import { layoutHrefOf, parseFud, tagOf } from '@fudic/typecheck';
 import { component, LAYOUT, NESTED_LAYOUT, PAGE, route } from './_support.js';
 
 const doc = (source: string) => parseFud(source).document;

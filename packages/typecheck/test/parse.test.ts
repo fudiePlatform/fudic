@@ -7,7 +7,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { parseFud } from '../src/parse.js';
+import { parseFud } from '../src/index.js';
 import { component, LAYOUT } from './_support.js';
 
 describe('parseFud', () => {

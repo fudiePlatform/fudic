@@ -8,10 +8,9 @@
 
 import { describe, expect, it } from 'vitest';
 import type { SnippetImport } from '@fudic/language-core';
-import { createFileRegistry } from '../src/file-registry.js';
-import { parseFud } from '../src/parse.js';
-import { WorkspaceIndex } from '../src/workspace-index.js';
-import { component, LAYOUT, memoryFs, PAGE, route } from './_support.js';
+import { createFileRegistry } from '../src/index.js';
+import { parseFud } from '../src/index.js';
+import { component, indexOf, LAYOUT, PAGE, route } from './_support.js';
 
 const SLUG = '/p/blog/[slug].fud';
 
@@ -24,8 +23,7 @@ const WORKSPACE: Record<string, string> = {
 
 function registryFor(path: string, source: string, extra: Readonly<Record<string, string>> = {}) {
   const files = { ...WORKSPACE, ...extra, [path]: source };
-  const index = new WorkspaceIndex(memoryFs(files));
-  index.scan('/p');
+  const index = indexOf(files);
 
   return createFileRegistry(path, parseFud(source).document, index);
 }

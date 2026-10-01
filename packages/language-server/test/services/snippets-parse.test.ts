@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { parseFud } from '../../src/parse.js';
+import { parseFud } from '@fudic/typecheck';
 import { SNIPPETS, type FudSnippet } from '../../src/services/snippets.js';
 
 /**

@@ -11,7 +11,7 @@ import type { TextDocument } from 'vscode-languageserver-textdocument';
 import type { CancellationToken } from 'vscode-languageserver-protocol';
 import type { URI } from 'vscode-uri';
 import type { VolarServer } from '../src/server.js';
-import { createFudicVirtualCode } from '../src/virtual-code.js';
+import { createFudicVirtualCode } from '@fudic/typecheck';
 import type { CachedDocument } from '../src/document-cache.js';
 
 /** A cancellation token that is already spent, or never will be. */

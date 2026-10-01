@@ -8,8 +8,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { documentRoots, walk, type Node, type RazorExpression } from '@fudic/compiler';
-import { batchDocumentJs } from '../src/js-batch.js';
-import { parseFud } from '../src/parse.js';
+import { batchDocumentJs } from '../src/index.js';
+import { parseFud } from '../src/index.js';
 import { component } from './_support.js';
 
 const WITH_CODE = `@code {

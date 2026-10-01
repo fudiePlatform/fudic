@@ -9,8 +9,8 @@
 
 import { describe, expect, it } from 'vitest';
 import type { CachedDocument } from '../../src/document-cache.js';
-import { batchDocumentJs } from '../../src/js-batch.js';
-import { parseFud } from '../../src/parse.js';
+import { batchDocumentJs } from '@fudic/typecheck';
+import { parseFud } from '@fudic/typecheck';
 import { scopeNames, templateScope } from '../../src/services/template-scope.js';
 
 /** A `CachedDocument` with only what this module reads: the tree and the Oxc batch. */

@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type * as ts from 'typescript';
-import { GLOBALS_DTS, GLOBALS_FILE_NAME, mountGlobals } from '../src/globals.js';
+import { GLOBALS_DTS, GLOBALS_FILE_NAME, mountGlobals } from '../src/index.js';
 
 /** A language service host with `files` in it, and nothing else. */
 function fakeHost(files: readonly string[]): ts.LanguageServiceHost {

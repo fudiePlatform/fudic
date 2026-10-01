@@ -12,7 +12,7 @@ import type * as ts from 'typescript';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import { createFudicServer, type FudicServerDeps } from '../src/server.js';
-import { GLOBALS_DTS, GLOBALS_FILE_NAME } from '../src/globals.js';
+import { GLOBALS_DTS, GLOBALS_FILE_NAME } from '@fudic/typecheck';
 import {
   AUTO_CLOSE_TAG_REQUEST,
   COMMENT_SYNTAX_REQUEST,

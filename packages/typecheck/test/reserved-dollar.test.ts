@@ -6,10 +6,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { DocumentCache } from '../../src/document-cache.js';
-import { WorkspaceIndex } from '../../src/workspace-index.js';
-import { reservedDollarDiagnostics } from '../../src/services/reserved-dollar.js';
-import { component, memoryFs } from '../_support.js';
+import { reservedDollarDiagnostics } from '../src/index.js';
+import { component, projected } from './_support.js';
 
 const PATH = '/p/components/app-x.fud';
 
@@ -18,9 +16,7 @@ const withClient = (code: string): string =>
   `@code {\n  @client {\n${code}\n  }\n}\n\n${component('app-x')}`;
 
 function diagnosticsOf(source: string) {
-  const index = new WorkspaceIndex(memoryFs({ [PATH]: source }));
-  index.scan('/p');
-  const document = new DocumentCache(index).get(PATH, 1, source);
+  const { document } = projected(PATH, source);
 
   return { source, diagnostics: reservedDollarDiagnostics(document) };
 }

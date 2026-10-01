@@ -15,7 +15,7 @@ import {
   DIAGNOSTIC_ONLY_CAPS,
   type Mapping,
 } from '@fudic/language-core';
-import { identityMapping, toCodeInformation, toCodeMapping, toCodeMappings } from '../src/mappings.js';
+import { identityMapping, toCodeInformation, toCodeMapping, toCodeMappings } from '../src/index.js';
 
 const mapping = (over: Partial<Mapping> = {}): Mapping => ({
   sourceOffset: 10,

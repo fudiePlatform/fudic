@@ -9,12 +9,8 @@ import { describe, expect, it } from 'vitest';
 import { DocumentCache } from '../../src/document-cache.js';
 import { WorkspaceIndex } from '../../src/workspace-index.js';
 import { regionAt } from '@fudic/compiler';
-import {
-  hrefCompletions,
-  hrefDiagnostics,
-  relCompletions,
-  unresolvedHrefs,
-} from '../../src/services/href.js';
+import { hrefDiagnostics, unresolvedHrefs } from '@fudic/typecheck';
+import { hrefCompletions, relCompletions } from '../../src/services/href.js';
 import { hrefContextAt, linkValueAt } from '../../src/services/position.js';
 import { component, LAYOUT, memoryFs, MONOREPO, PAGE, route, TIENDA_ROUTE } from '../_support.js';
 

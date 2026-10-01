@@ -18,7 +18,7 @@ import { SEMANTIC_TOKENS_LEGEND } from '../../src/capabilities.js';
 import { createFudicService } from '../../src/services/plugin.js';
 import { holeArgumentContextAt, slotsAround } from '../../src/services/hole-args.js';
 import { parameterNames, renderArgContextAt, renderContextAt, signatureOf } from '../../src/services/render.js';
-import { holeDiagnostics, missingSections } from '../../src/services/holes.js';
+import { holeDiagnostics, missingSections } from '@fudic/typecheck';
 import { fakeServiceContext, TOKEN } from '../_lsp.js';
 import { LAYOUT, memoryFs } from '../_support.js';
 

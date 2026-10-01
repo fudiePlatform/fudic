@@ -22,7 +22,7 @@ import type ts from 'typescript';
 import { clientFileName, mapToGenerated } from '@fudic/language-core';
 import { DocumentCache } from '../../src/document-cache.js';
 import { filterTypeScriptCompletions } from '../../src/services/ts-completion.js';
-import { CLIENT_CODE_ID, SERVER_CODE_ID } from '../../src/virtual-code.js';
+import { CLIENT_CODE_ID, SERVER_CODE_ID } from '@fudic/typecheck';
 import { WorkspaceIndex } from '../../src/workspace-index.js';
 import type { CachedDocument } from '../../src/document-cache.js';
 import { fakeServiceContext, TOKEN } from '../_lsp.js';

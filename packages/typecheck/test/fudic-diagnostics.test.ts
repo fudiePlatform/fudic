@@ -7,26 +7,19 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { DocumentCache } from '../../src/document-cache.js';
-import { WorkspaceIndex } from '../../src/workspace-index.js';
 import {
   fudicDiagnostics,
   semanticDiagnostics,
-} from '../../src/services/compiler-diagnostics.js';
-import { component, LAYOUT, memoryFs, route } from '../_support.js';
+} from '../src/index.js';
+import { component, LAYOUT, projected, route } from './_support.js';
 
 const SLUG = '/p/blog/[slug].fud';
 
 function setup(path: string, source: string) {
-  const files: Record<string, string> = {
+  return projected(path, source, {
     '/p/components/app-badge.fud': component('app-badge'),
     '/p/layouts/_layout.fud': LAYOUT,
-    [path]: source,
-  };
-  const index = new WorkspaceIndex(memoryFs(files));
-  index.scan('/p');
-
-  return { index, document: new DocumentCache(index).get(path, 1, source) };
+  });
 }
 
 const codesOf = (path: string, source: string): readonly string[] => {
