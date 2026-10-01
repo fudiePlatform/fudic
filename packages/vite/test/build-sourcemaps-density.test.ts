@@ -19,7 +19,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fudic } from '../src/index.js';
-import { runtimeAlias } from './helpers/alias.js';
+import { runtimeAlias, writeTypecheckConfig } from './helpers/alias.js';
 import { decodeMappings } from './helpers/vlq.js';
 
 const PAGE = `<!DOCTYPE html>
@@ -91,6 +91,7 @@ function density(code: string, mappings: string): number {
 
 async function buildRoot(): Promise<OutFile[]> {
   const root = mkdtempSync(join(tmpdir(), 'fudic-density-'));
+  writeTypecheckConfig(root);
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
   mkdirSync(join(root, 'src', 'components'), { recursive: true });
   writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);

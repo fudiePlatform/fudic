@@ -14,6 +14,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fudic } from '../src/index.js';
+import { writeTypecheckConfig } from './helpers/alias.js';
 
 const ssrDist = fileURLToPath(new URL('../../ssr/dist/index.js', import.meta.url));
 const transportDist = fileURLToPath(new URL('../../transport/dist/index.js', import.meta.url));
@@ -78,6 +79,7 @@ interface OutFile {
 /** One real `vite build` of a three-file app, in a throwaway root. */
 async function buildApp(files: Readonly<Record<string, string>>): Promise<OutFile[]> {
   const root = mkdtempSync(join(tmpdir(), 'fudic-di-build-'));
+  writeTypecheckConfig(root);
   mkdirSync(join(root, 'src', 'components'), { recursive: true });
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
   for (const [path, text] of Object.entries(files)) writeFileSync(join(root, path), text);

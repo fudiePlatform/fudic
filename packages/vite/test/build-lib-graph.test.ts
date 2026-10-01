@@ -17,7 +17,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fudic } from '../src/index.js';
-import { runtimeAlias } from './helpers/alias.js';
+import { runtimeAlias, TYPECHECK_TSCONFIG } from './helpers/alias.js';
 
 /** The library's component, with a sheet of its own and a token from the guide. */
 const CARD = `<head>
@@ -252,6 +252,8 @@ describe('the tag space, now that it is shared (§4.5)', () => {
         '@code { @client { import { signal } from "@fudic/core"; const n = signal(1); } }',
         '</head><body><ui-card></ui-card><output>@n()</output></body></html>',
       ].join('\n'),
+      // The route imports `@fudic/core`, which the typecheck has to find first (SDD-35).
+      'apps/tienda/tsconfig.json': TYPECHECK_TSCONFIG,
     });
     expect(built.error ?? '').toMatch(/FUD0622/u);
   }, 300000);

@@ -5,6 +5,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { discoverRoutes } from '../src/discover.js';
 import { resolveOptions } from '../src/options.js';
@@ -46,5 +49,23 @@ describe('discoverRoutes', () => {
       resolveOptions({ routesDir: 'fixtures', defaults: { '/home': { mode: 'exclude' } } }).options,
     );
     expect(routes[0]?.decision.mode).toBe('excluded');
+  });
+});
+
+describe('discoverRoutes — what parsing the routes said (SDD-35 §1.1)', () => {
+  it('keeps every parse diagnostic, naming the file it is about', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'fudic-discover-parse-'));
+    mkdirSync(join(dir, 'routes'), { recursive: true });
+    const broken = join(dir, 'routes', 'broken.fud');
+    writeFileSync(broken, '<!DOCTYPE html>\n<html><head><title>x</title></head><body><p>hi</q></p></body></html>\n');
+    writeFileSync(join(dir, 'routes', 'fine.fud'), '<!DOCTYPE html>\n<html><head><title>x</title></head><body></body></html>\n');
+    const { routes, parse } = discoverRoutes(dir, resolveOptions({ routesDir: 'routes' }).options);
+    // A route that does not parse is still a route: discovery reports, it does not drop.
+    expect(routes.map((r) => r.route.pattern).sort()).toEqual(['/broken', '/fine']);
+    expect(parse).toEqual([expect.objectContaining({ code: 'FUD0051', file: broken, severity: 'error' })]);
+  });
+
+  it('a project whose routes parse has nothing to say', () => {
+    expect(discoverRoutes(root, resolveOptions({ routesDir: 'fixtures' }).options).parse).toEqual([]);
   });
 });

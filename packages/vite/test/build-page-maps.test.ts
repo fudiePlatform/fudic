@@ -22,7 +22,7 @@ import { join } from 'node:path';
 import { createLinker, NONCE_TOKEN, type ModuleExports } from '@fudic/transport';
 import * as ssr from '@fudic/ssr';
 import { fudic } from '../src/index.js';
-import { runtimeAlias } from './helpers/alias.js';
+import { runtimeAlias, writeTypecheckConfig } from './helpers/alias.js';
 import { manifestFile, routeTable } from './helpers/manifest.js';
 
 /** The leaf: props of its own and a signal, so it is hydratable and its slice is not empty. */
@@ -186,6 +186,7 @@ async function renderThroughLinker(): Promise<string> {
 
 beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-page-maps-'));
+  writeTypecheckConfig(root);
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
   mkdirSync(join(root, 'src', 'components'), { recursive: true });
   writeFileSync(join(root, 'src', 'components', 'x-row.fud'), ROW);

@@ -22,6 +22,17 @@ import { fileURLToPath } from 'node:url';
  */
 const factory = vi.hoisted(() => ({ calls: 0 }));
 
+// The project typecheck that `buildStart` runs since SDD-35, answered clean: the routes dir of
+// the first tests is the compiler's fixtures folder, and checking the whole compiler package
+// is minutes of work that says nothing about how often the table is built.
+vi.mock('@fudic/typecheck', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fudic/typecheck')>()),
+  createProjectChecker: () => ({
+    check: () => ({ problems: [], project: [], inputs: [] }),
+    invalidate: () => undefined,
+  }),
+}));
+
 // Only `routeNameLookup` is wrapped; every other export of the module stays the real one,
 // so the plugin's component discovery, its DI probe and its id helpers are untouched.
 vi.mock('../src/client.js', async (importOriginal) => {

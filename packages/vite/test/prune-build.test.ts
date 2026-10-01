@@ -46,7 +46,12 @@ async function buildProject(files: Readonly<Record<string, string>>): Promise<Bu
     build: {
       write: false,
       minify: false,
-      rollupOptions: { onwarn: (w: Rollup.RollupLog) => warnings.push(w.message) },
+      // The underlined line travels in `frame`, beside the message, since SDD-35 §4.4: it is
+      // where Vite puts it in the terminal and the overlay. Joined back here, as printed.
+      rollupOptions: {
+        onwarn: (w: Rollup.RollupLog) =>
+          warnings.push(w.frame === undefined ? w.message : `${w.message}\n\n${w.frame}`),
+      },
     },
   })) as unknown as { output: OutFile[] };
   return { root, output: result.output, warnings };

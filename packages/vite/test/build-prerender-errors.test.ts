@@ -75,11 +75,13 @@ export function paths() { return ['1', { wrong: 'x' }]; }
 
   describe('a page that throws while rendering (FUD0620, §6.17)', () => {
     it('fails the build instead of shipping a site with one page missing', async () => {
-      // `boom` is undefined → the render throws a ReferenceError while prerendering.
+      // Well typed — `JSON.parse` is `any` — and broken at run time: the render throws a
+      // SyntaxError while prerendering. A name that does not exist would no longer get this
+      // far: since SDD-35 the typecheck stops the build on it first (TS2304).
       const page = `<!DOCTYPE html>
 <html>
 <head><title>Boom</title></head>
-<body><h1>@(boom.value)</h1></body>
+<body><h1>@(JSON.parse('{').value)</h1></body>
 </html>
 `;
       await expect(buildRoutes({ 'boom.fud': page })).rejects.toThrow(/FUD0620/u);

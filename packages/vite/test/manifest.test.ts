@@ -24,6 +24,7 @@ function routeBuild(
       hasPaths: false,
       hasLayout: over.hasLayout ?? false,
       strategy: over.strategy ?? NO_STRATEGY,
+      diagnostics: [],
     },
     decision: { prerender: false, enumerate: false, prerenderedHtml: false, ...decision },
   };

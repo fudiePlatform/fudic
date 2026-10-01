@@ -19,7 +19,7 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import { build } from 'vite';
+import { build, createLogger } from 'vite';
 import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, cpSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -80,6 +80,8 @@ interface OutFile {
 interface Built {
   readonly output?: OutFile[];
   readonly error?: string;
+  /** What the build printed as errors: since SDD-35, one block per problem the typecheck found. */
+  readonly printed: readonly string[];
 }
 
 /**
@@ -105,6 +107,13 @@ async function buildWorkspace(options: {
   mkdirSync(join(app, 'src', 'routes'), { recursive: true });
   writeFileSync(join(app, 'src', 'routes', 'index.fud'), page(options.href));
   writeFileSync(join(app, 'fudic.json'), JSON.stringify({ kind: 'app', id: 'tienda' }, null, 2));
+  // The app DECLARES the library, as a real app does. Since SDD-35 the build typechecks first
+  // with the editor's index, which finds a library by the dependencies of `package.json`
+  // (`findLibraries`): an undeclared one is an href the editor cannot resolve (FUD0460).
+  writeFileSync(
+    join(app, 'package.json'),
+    JSON.stringify({ name: 'tienda', private: true, dependencies: { '@acme/ui': '1.0.0' } }),
+  );
 
   // Where the app resolves `@acme/ui` from. Both shapes are real installs, and the point of
   // measuring both is that a symlinked package keeps its files under the workspace root while
@@ -114,17 +123,23 @@ async function buildWorkspace(options: {
   if (options.linked) symlinkSync(lib, join(installed, 'ui'), 'junction');
   else cpSync(lib, join(installed, 'ui'), { recursive: true });
 
+  const printed: string[] = [];
+  const logger = createLogger('silent');
+  logger.error = (message) => {
+    printed.push(message);
+  };
   try {
     const result = (await build({
       root: app,
       logLevel: 'silent',
+      customLogger: logger,
       resolve: { alias: { ...runtimeAlias } },
       plugins: [fudic()],
       build: { write: false, minify: false },
     })) as unknown as { output: OutFile[] };
-    return { output: result.output };
+    return { output: result.output, printed };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : String(error) };
+    return { error: error instanceof Error ? error.message : String(error), printed };
   }
 }
 
@@ -168,7 +183,12 @@ describe('SDD-43 §4.2 — a relative href that crosses into another package', (
     expect(html(relativeLinked)).toContain('.card{border:1px solid #ccc;}');
   });
 
-  it('is indifferent to the package being linked or copied (question 5)', () => {
+  // A negative measurement since SDD-35, in this file's sense (see the header). Copied, the
+  // package lives under `node_modules` and the href still walks to `libs/ui`, a file on disk
+  // that is neither in the project nor an installed library. The compiler's resolver reads it;
+  // the editor's index — which the build now typechecks with first — does not, says FUD0460,
+  // and the build stops there. Linked, `libs/ui` IS the installed library, and it resolves.
+  it.fails('is indifferent to the package being linked or copied (question 5)', () => {
     expect(html(relativeReal)).toContain('<template shadowrootmode="open"');
     expect(html(relativeReal)).toContain('Hola');
   });
@@ -189,8 +209,13 @@ describe('SDD-43 §4.2 — a bare specifier in an href', () => {
     // The measurement found this joined to the file's directory as if it were a path, and
     // the build died with an ENOENT over a file that could never have existed. Now it is
     // told what is wrong and what to do about it.
-    expect(bareUnscoped.error ?? '').toMatch(/FUD0760/);
-    expect(bareUnscoped.error ?? '').toMatch(/not installed/);
+    //
+    // Since SDD-35 the build stops earlier, in the typecheck, and what it prints there is the
+    // editor's word for the same href — FUD0460, «cannot resolve» — so the build fails before
+    // FUD0760's «not installed» is ever reached.
+    expect(bareUnscoped.error ?? '').toMatch(/the typecheck failed/u);
+    expect(bareUnscoped.printed.join('\n')).toMatch(/index\.fud:4:33 - error FUD0460: Cannot resolve "acme-ui\/ui-card\.fud"/u);
+    expect(bareUnscoped.printed.join('\n')).not.toMatch(/FUD0760/u);
   });
 
   it('hoists the library stylesheet the same way a relative href does', () => {

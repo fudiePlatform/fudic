@@ -67,9 +67,10 @@ export function startLiveCheck(
       if (block.severity === 'error') logger.error(block.text);
       else logger.warn(block.text);
     }
+    // A report with a first error is a report that fails, so the summary has its line.
+    if (summary.failure !== undefined) logger.error(summary.failure);
     const first = firstError(report);
     if (first !== undefined) {
-      logger.error(summary.failure ?? first.message);
       server.ws.send({ type: 'error', err: first });
     } else if (hadErrors) {
       logger.info('fudic: the typecheck is clean again');

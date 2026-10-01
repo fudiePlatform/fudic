@@ -18,7 +18,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fudic } from '../src/index.js';
-import { runtimeAlias } from './helpers/alias.js';
+import { runtimeAlias, writeTypecheckConfig } from './helpers/alias.js';
 import { routeTable, emitted, manifestFile } from './helpers/manifest.js';
 import { BUILD_TOKEN, isMainChunk } from '../src/constants.js';
 
@@ -93,6 +93,7 @@ let output: OutFile[];
 
 beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-hydration-urls-'));
+  writeTypecheckConfig(root);
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
   mkdirSync(join(root, 'src', 'components'), { recursive: true });
   writeFileSync(join(root, 'src', 'components', 'x-counter.fud'), COUNTER);

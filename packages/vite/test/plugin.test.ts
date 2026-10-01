@@ -3,15 +3,41 @@
  * Rollup/Vite contexts, so the dev/build branches, the middleware paths and the
  * diagnostics wiring are exercised deterministically without a full `vite build`
  * (which the build-*.test.ts files cover).
+ *
+ * The project typecheck (SDD-35) is replaced by a scripted one: the routes dir here is the
+ * compiler's own fixtures folder, and checking the whole compiler package on every
+ * `buildStart` would test the compiler's fixtures, not these hooks. What the typecheck does
+ * to a build and to the dev server is what this file asks of it, with the report it answers
+ * set by each test.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { cpSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { FUD0870, span } from '@fudic/diagnostics';
+import { toPosix, type CheckReport } from '@fudic/typecheck';
 import { fudic } from '../src/index.js';
 import { WRAPPER_PREFIX, SW_ID, MAIN_ID, BOOT_ID } from '../src/constants.js';
+import { fakeDevServerParts } from './helpers/dev-server.js';
+
+/** What the scripted typecheck answers; clean unless a test says otherwise. */
+const checked = vi.hoisted(() => ({
+  report: { problems: [], project: [], inputs: [] } as CheckReport,
+}));
+
+vi.mock('@fudic/typecheck', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@fudic/typecheck')>();
+  return {
+    ...original,
+    createProjectChecker: () => ({ check: () => checked.report, invalidate: () => undefined }),
+  };
+});
+
+beforeEach(() => {
+  checked.report = { problems: [], project: [], inputs: [] };
+});
 
 // The compiler fixtures act as a routes dir: `home.fud` is the single page route.
 const root = fileURLToPath(new URL('../../compiler', import.meta.url));
@@ -160,7 +186,50 @@ describe('buildStart', () => {
   it('warns route diagnostics (FUD0364 default with no match)', () => {
     const ctx = emitCtx();
     setup('build', { defaults: { '/nope': { mode: 'exclude' } } }).buildStart.call(ctx);
-    expect(ctx.warn).toHaveBeenCalledWith(expect.stringContaining('FUD0364'));
+    // A positioned log since SDD-35 §4.4: the text travels in `message`.
+    expect(ctx.warn).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('FUD0364') }));
+  });
+
+  it('SDD-35 §4.4 — a typecheck error prints every problem and fails once, before anything is emitted', () => {
+    const { config } = fakeDevServerParts();
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    const plugin = fudic({ routesDir: 'fixtures' }) as AnyHook;
+    plugin.config({});
+    plugin.configResolved({
+      root,
+      base: '/',
+      command: 'build',
+      build: { outDir: 'dist' },
+      logger: { ...config.logger, error: (m: string) => errors.push(m), warn: (m: string) => warnings.push(m) },
+    });
+    checked.report = {
+      problems: [
+        { file: toPosix(homeFud), span: span(0, 9), severity: 'error', code: 'TS2322', message: 'first' },
+        { file: toPosix(homeFud), span: span(0, 9), severity: 'warning', code: 'TS6133', message: 'second' },
+      ],
+      project: [FUD0870()],
+      inputs: [],
+    };
+    const ctx = {
+      ...emitCtx(),
+      error: vi.fn((message: string): never => {
+        throw new Error(message);
+      }),
+    };
+    expect(() => plugin.buildStart.call(ctx)).toThrow('the typecheck failed: 1 error in 1 file');
+    expect(errors).toEqual([expect.stringMatching(/^fixtures\/home\.fud:1:1 - error TS2322: first/u)]);
+    expect(warnings).toEqual([
+      expect.stringContaining('warning FUD0870'),
+      expect.stringMatching(/^fixtures\/home\.fud:1:1 - warning TS6133: second/u),
+    ]);
+    expect(ctx.emitFile).not.toHaveBeenCalled();
+  });
+
+  it('SDD-35 §4.4 — warnings alone print and do not fail; no logger is not a crash', () => {
+    checked.report = { problems: [], project: [FUD0870()], inputs: [] };
+    const ctx = emitCtx();
+    expect(() => setup('build').buildStart.call(ctx)).not.toThrow();
   });
 
   it('is a no-op in dev (no emitFile)', () => {
@@ -196,7 +265,11 @@ describe('configureServer middleware', () => {
     transformRequest: (id: string) => Promise<{ code: string }>,
   ): (req: { url: string }, res: FakeRes, next: () => void) => void {
     let handler!: (req: { url: string }, res: FakeRes, next: () => void) => void;
-    const server = { middlewares: { use: (fn: typeof handler) => (handler = fn) }, transformRequest };
+    const server = {
+      ...fakeDevServerParts(),
+      middlewares: { use: (fn: typeof handler) => (handler = fn) },
+      transformRequest,
+    };
     setup('serve').configureServer(server);
     return handler;
   }
@@ -227,13 +300,134 @@ describe('configureServer middleware', () => {
     expect(next).toHaveBeenCalled();
   });
 
-  it('responds 500 when the transform fails', async () => {
-    const handler = withServer(() => Promise.reject(new Error('boom')));
+  // SDD-35 criterion 20. It used to answer `500` with a `// fudic dev: failed…` comment: a
+  // script that loaded, did nothing, and showed no overlay and no log.
+  it('hands a failing transform of a bootstrap to next(err), for the overlay — not a 500', async () => {
+    const boom = Object.assign(new Error('boom'), { loc: { file: homeFud, line: 1, column: 1 }, frame: 'x' });
+    const handler = withServer(() => Promise.reject(boom));
+    for (const url of ['/fudic-main.js', '/fudic-boot.js', '/fudic-sw.js']) {
+      const res = fakeRes();
+      const next = vi.fn();
+      handler({ url }, res, next);
+      await flush();
+      expect(next).toHaveBeenCalledWith(boom);
+      expect(res.statusCode).toBeUndefined();
+      expect(res.body).toBe('');
+    }
+  });
+
+  it('hands a failing transform of a component chunk (/@fudic/h/<tag>.js) to next(err)', async () => {
+    const boom = new Error('the chunk did not compile');
+    const asked: string[] = [];
+    const handler = withServer((id) => {
+      asked.push(id);
+      return Promise.reject(boom);
+    });
+    const next = vi.fn();
     const res = fakeRes();
-    handler({ url: '/fudic-sw.js' }, res, () => undefined);
+    handler({ url: '/@fudic/h/app-card.js' }, res, next);
     await flush();
-    expect(res.statusCode).toBe(500);
-    expect(res.body).toContain('boom');
+    expect(asked[0]).toMatch(/app-card\.fud\?client$/u);
+    expect(next).toHaveBeenCalledWith(boom);
+    expect(res.body).toBe('');
+  });
+});
+
+describe('configureServer — the page and the live typecheck (SDD-35 §4.5)', () => {
+  type Req = { url: string; method: string; headers: Record<string, string> };
+  type Next = (err?: unknown) => void;
+
+  /** The HTML middleware (registered by the post hook), over a fake server. */
+  function htmlMiddleware(): {
+    handle: (req: Req, res: FakeRes, next: Next) => void;
+    parts: ReturnType<typeof fakeDevServerParts>;
+    close: () => void;
+  } {
+    const handlers: Array<(req: Req, res: FakeRes, next: Next) => void> = [];
+    const parts = fakeDevServerParts();
+    let onClose: (() => void) | undefined;
+    const server = {
+      ...parts,
+      middlewares: { use: (fn: (req: Req, res: FakeRes, next: Next) => void) => handlers.push(fn) },
+      httpServer: { once: (_event: string, fn: () => void) => (onClose = fn) },
+      transformRequest: async () => ({ code: '' }),
+      ssrLoadModule: async () => ({
+        render: () =>
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode('<!DOCTYPE html><h1>home</h1>'));
+              controller.close();
+            },
+          }),
+      }),
+      ssrFixStacktrace: vi.fn(),
+      transformIndexHtml: async (_url: string, html: string) => html,
+    };
+    const post = setup('serve').configureServer(server) as () => void;
+    post();
+    return { handle: handlers[handlers.length - 1]!, parts, close: () => onClose?.() };
+  }
+
+  const page = (url: string): Req => ({ url, method: 'GET', headers: { accept: 'text/html' } });
+
+  /** Run the middleware to its end: a response, or a `next`. */
+  function run(handle: (req: Req, res: FakeRes, next: Next) => void, req: Req): Promise<{ res: FakeRes; err: unknown; nexted: boolean }> {
+    return new Promise((resolve) => {
+      const res = fakeRes();
+      const end = res.end.bind(res);
+      res.end = (body?: string) => {
+        end(body);
+        resolve({ res, err: undefined, nexted: false });
+      };
+      handle(req, res, (err?: unknown) => resolve({ res, err, nexted: true }));
+    });
+  }
+
+  it('criterion 18 — a page whose graph has a type error is not served: next(err) with loc and frame', async () => {
+    // The error is in a COMPONENT the page links, not in the page.
+    const card = fileURLToPath(new URL('../../compiler/fixtures/app-card.fud', import.meta.url));
+    checked.report = {
+      problems: [{ file: toPosix(card), span: span(0, 5), severity: 'error', code: 'TS2322', message: 'nope' }],
+      project: [],
+      inputs: [],
+    };
+    const { handle, parts, close } = htmlMiddleware();
+    const { err, nexted, res } = await run(handle, page('/home'));
+    expect(nexted).toBe(true);
+    expect(res.statusCode).toBeUndefined();
+    expect(err).toBeInstanceOf(Error);
+    expect(err).toMatchObject({
+      message: 'TS2322: nope',
+      id: toPosix(card),
+      plugin: 'fudic',
+      loc: { file: toPosix(card), line: 1, column: 1 },
+    });
+    expect((err as { frame: string }).frame).toContain('─');
+    // And the overlay was pushed at start, without a request.
+    expect(parts.told.sent).toEqual([{ type: 'error', err: expect.objectContaining({ message: 'TS2322: nope' }) }]);
+    close();
+  });
+
+  it('an error in a file outside the page’s graph does not block it', async () => {
+    const elsewhere = join(tmpdir(), 'not-in-the-graph.fud');
+    checked.report = {
+      problems: [{ file: toPosix(elsewhere), span: span(0, 1), severity: 'error', code: 'TS2322', message: 'x' }],
+      project: [],
+      inputs: [],
+    };
+    const { handle, close } = htmlMiddleware();
+    const { res, nexted } = await run(handle, page('/home'));
+    expect(nexted).toBe(false);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toContain('<h1>home</h1>');
+    close();
+  });
+
+  it('a clean project serves the page', async () => {
+    const { handle, close } = htmlMiddleware();
+    const { res } = await run(handle, page('/home'));
+    expect(res.statusCode).toBe(200);
+    close();
   });
 });
 

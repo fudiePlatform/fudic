@@ -20,7 +20,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type AddressInfo } from 'node:net';
 import { fudic } from '../src/index.js';
-import { runtimeAlias } from './helpers/alias.js';
+import { runtimeAlias, writeTypecheckConfig } from './helpers/alias.js';
 import { runEdgePass } from '../src/edge.js';
 import { discoverRoutes } from '../src/discover.js';
 import { resolveOptions } from '../src/options.js';
@@ -37,6 +37,7 @@ let servedUrl = '';
 
 beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-serve-'));
+  writeTypecheckConfig(root);
   const routes = join(root, 'src', 'routes');
   mkdirSync(routes, { recursive: true });
   for (const f of [
@@ -53,7 +54,7 @@ beforeAll(async () => {
   // home's @server load reads ./db — a stub with one item so the components render.
   writeFileSync(
     join(routes, 'db.ts'),
-    "export const db = { query: async () => [{ id: '1', title: 'Uno', description: 'D', featured: true }] };\n",
+    "export const db = { query: async (_sql: string) => [{ id: '1', title: 'Uno', description: 'D', featured: true }] };\n",
   );
 
   const bundleDir = mkdtempSync(join(tmpdir(), 'fudic-serve-out-'));
