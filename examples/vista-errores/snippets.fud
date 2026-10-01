@@ -1,0 +1,7 @@
+@* El snippet que `vista-errores.fud` invoca con `@render fila(…)`.
+
+   FUD0907 sobre `document`: el cuerpo de un snippet es vista como cualquier otra, aunque se
+   expanda en otro fichero. `texto` es su parámetro y resuelve. *@
+@snippet fila(texto: unknown) {
+  <p>@String(texto) @document.title</p>
+}

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <link rel="component" href="./app-pieza.fud">
+    <link rel="snippet" href="./snippets.fud">
+
+    @code {
+      // SDD-51 — lo que NO se puede escribir en la vista. Cada caso lleva encima un comentario
+      // Razor con el código que debe salir y dónde va el subrayado. Este fichero vive fuera de
+      // `examples/basic` a propósito: con él dentro, `pnpm build` fallaría — que es justo lo
+      // que tiene que pasar.
+      //
+      // Lo que SÍ se puede está en `examples/basic/src/routes/vista.fud`.
+      //
+      // TypeScript añade sus propios errores en algunas líneas (escribir un `const`, leer
+      // `this` en un módulo…). Son de otra capa y no se comentan: aquí solo los FUD09xx.
+      import { importado, ayuda } from "./util";
+
+      type Fila = { id: number; n: number; ok: boolean; next: Fila | null };
+
+      // Zona neutra: `let` reasignable desde `@{ }`; `const` no.
+      // `n`, `a` y `x` son `let` para que TypeScript no hable encima: escribirlos desde una
+      // expresión es FUD0900 igual, sea `let` o `const`.
+      let total = 0;
+      const constante = 1;
+      let n = 3;
+      let a = 1;
+      const b = 2;
+      let x: unknown = 1;
+      const o: { k?: number } = { k: 1 };
+      const s: number[] = [1, 2, 3];
+      const xs: Fila[] = [];
+      const p = Promise.resolve(1);
+
+      @server {
+        export function load(ctx: { url: URL }) {
+          return { titulo: "errores", ruta: ctx.url.pathname };
+        }
+        let deServidor = 1;
+      }
+
+      @client {
+        let deCliente = 1;
+      }
+    }
+
+    <title>@data.titulo</title>
+  </head>
+  <body>
+    <h1>Lo que no se escribe en la vista</h1>
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       FUD0900 — la vista escribe
+       Subrayado: el operador y su operando, nunca el @( ) entero.
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* FUD0900 sobre `n++`: un incremento se ejecuta en cada pasada, en los dos lados. *@
+    <p>@(n++)</p>
+    @* FUD0900 sobre `--n`. *@
+    <p>@(--n)</p>
+    @* FUD0900 sobre `a = 1`: asignación. *@
+    <p>@(a = 1)</p>
+    @* FUD0900 sobre `a += 1`: asignación compuesta. *@
+    <p>@(a += 1)</p>
+    @* FUD0900 sobre `a ??= 1`, `a ||= 1` y `a &&= 1`: asignaciones lógicas. *@
+    <p>@(a ??= 1) @(a ||= 1) @(a &&= 1)</p>
+    @* FUD0900 sobre `delete o.k`: borrar es mutar un objeto. *@
+    <p>@(delete o.k)</p>
+    @* FUD0900 sobre `x = true`: en un `class:`. *@
+    <p class:on=@(x = true)>class:</p>
+    @* FUD0900 sobre `n++`: en un valor de atributo normal. *@
+    <p data-x=@(n++)>atributo</p>
+    @* FUD0900 sobre `x.n = 1`: dentro de una flecha de expresión sigue siendo una escritura. *@
+    <p>@(xs.map(x => x.n = 1).length)</p>
+    @* FUD0900 sobre `n++`: en la condición de un `@if`. *@
+    @if (n++ > 0) { <p>if</p> }
+    @* FUD0900 sobre `total++`: la actualización de `@for` solo puede escribir lo que SU
+       cabecera declara (aquí, `i`). *@
+    @for (let i = 0; i < n; total++) key (i) { <span>@i</span> }
+    @* FUD0900 sobre `total = 0`: la inicialización no declara nada, escribe un nombre de fuera. *@
+    @for (total = 0; total < 3; total++) key (total) { <span>@total</span> }
+    @* FUD0900 sobre `total`: un `@foreach` sin `const` escribe una variable que vive fuera. *@
+    @foreach (total of s) key (total) { <span>@total</span> }
+    @* FUD0900 sobre `n++`: en la key de un bucle. *@
+    @foreach (const f of xs) key (n++) { <span>@f.id</span> }
+    @* FUD0900 sobre `n++`: en el test de un `case`. *@
+    @switch (n) {
+      case n++: <p>case</p>
+      default: <p>default</p>
+    }
+    @* FUD0900 sobre `n++`: en un argumento de `@render`. *@
+    @render fila(@(n++))
+    @* FUD0900 sobre `o.k`: en `@{ }` se reasigna una variable, nunca el miembro de un objeto. *@
+    @{ o.k = 2; }
+    @* FUD0900 sobre `s[0]`: tampoco un índice. *@
+    @{ s[0] = 0; }
+    @* FUD0900 sobre `o.k`: tampoco como destino de una desestructuración. *@
+    @{ ({ k: o.k } = o); }
+    @* FUD0900 sobre `total = 1`: dentro de `@{ }` una asignación vale como SENTENCIA, no metida
+       en otra expresión. *@
+    @{ const copia = (total = 1); }
+    @* FUD0900 sobre `delete o.k`: también en `@{ }`. *@
+    @{ delete o.k; }
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       FUD0901 — `@{ }` escribe un nombre que no es suyo
+       Solo se reasigna lo que declara el template o un `let` de la zona neutra.
+       Subrayado: el nombre.
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* FUD0901 sobre `importado`: un import. *@
+    @{ importado = 2; }
+    @* FUD0901 sobre `constante`: es de la zona neutra, pero `const`, no `let`. *@
+    @{ constante = 2; }
+    @* FUD0901 sobre `deCliente`: un `let` de `@client` no es de la vista. *@
+    @{ deCliente = 2; }
+    @* FUD0901 sobre `deServidor`: ni uno de `@server`. *@
+    @{ deServidor = 2; }
+    @* FUD0901 sobre `data`: lo que devuelve `load()` se lee, no se reasigna. *@
+    @{ data = null; }
+    @* FUD0901 sobre `noExiste`: un nombre que no declara nadie. *@
+    @{ noExiste = 1; }
+    @* FUD0901 sobre `ayuda` (con `++`): una función importada. *@
+    @{ ayuda++; }
+    @* Esto SÍ: `total` es un `let` de la zona neutra. Sin diagnóstico. *@
+    @{ total = a + b; }
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       FUD0902 — asincronía en la vista
+       Subrayado: la expresión asíncrona; si hay una dentro de otra, solo la de fuera.
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* FUD0902 sobre `await p`. *@
+    <p>@(await p)</p>
+    @* FUD0902 sobre la flecha `async`. *@
+    <p>@((async () => 1).length)</p>
+    @* FUD0902 sobre `async function`. *@
+    <p>@((async function () {}).name)</p>
+    @* UN solo FUD0902, sobre la flecha: dentro de un nodo prohibido no se sigue mirando. *@
+    <p>@((async () => await p).length)</p>
+    @* FUD0902 sobre `await p`: también en `@{ }`. *@
+    @{ const r = await p; }
+    @* FUD0902 sobre `for await`. *@
+    @{ for await (const v of s) {} }
+    @* FUD0902 sobre la declaración `async function`. *@
+    @{ async function f() {} }
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       FUD0903 — módulos desde la vista
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* FUD0903 sobre `import('./util')`. *@
+    <p>@(String(import("./util")))</p>
+    @* FUD0903 sobre `import.meta`. *@
+    <p>@(import.meta.url)</p>
+    @* FUD0903 sobre `import.meta`, en `@{ }`. *@
+    @{ const m = import.meta; }
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       FUD0904 — contexto implícito
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* FUD0904 sobre `this`. *@
+    <p>@(this.x)</p>
+    @* FUD0904 sobre `arguments`. *@
+    <p>@(arguments[0])</p>
+    @* FUD0904 sobre `this`, aunque esté dentro de una flecha. *@
+    <p>@(s.map(() => this).length)</p>
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       FUD0905 — definir código en la vista
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* FUD0905 sobre `function () {}`. *@
+    <p>@((function () {}).name)</p>
+    @* FUD0905 sobre `class {}`. *@
+    <p>@((class {}).name)</p>
+    @* FUD0905 sobre la flecha con cuerpo `{ }`: es una puerta trasera para meter sentencias. *@
+    <p>@((() => { return 1; })())</p>
+    @* FUD0905 sobre el método `f() {}` de un objeto literal. *@
+    <p>@(Object.keys({ f() {} }).length)</p>
+    @* FUD0905 sobre el getter y sobre el setter. *@
+    <p>@(Object.keys({ get g() { return 1; }, set h(v: number) {} }).length)</p>
+    @* FUD0905 sobre la flecha con cuerpo `{ }`, aunque sea el argumento de un `forEach`. *@
+    <p>@(String(s.forEach((v) => { total = v; })))</p>
+    @* FUD0905 sobre la declaración `function`, en `@{ }`. *@
+    @{ function g() {} }
+    @* FUD0905 sobre la declaración `class`, en `@{ }`. *@
+    @{ class C {} }
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       FUD0906 — el operador coma
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* FUD0906 sobre `ayuda(), b`: el primer valor se tira; solo se escribe por un efecto. *@
+    <p>@((ayuda(), b))</p>
+    @* FUD0906 sobre `i++, j++`: también en la actualización de un bucle dentro de `@{ }`. *@
+    @{ for (let i = 0, j = 0; i < 3; i++, j++) {} }
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       FUD0907 — un nombre que la vista no puede leer
+       Lista blanca: lo que declaran el fichero y el template, `data` en página/ruta/layout,
+       y globales iguales en servidor y navegador (Math, JSON, Intl…).
+       Subrayado: el nombre.
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* FUD0907 sobre `window`, `document`, `globalThis` y `self`: solo existen en un lado. *@
+    <p>@(window.innerWidth) @(document.title) @(String(globalThis)) @(String(self))</p>
+    @* FUD0907 sobre `document`: también detrás de `typeof` — ramificar según el lado es lo que
+       rompe la hidratación. *@
+    <p>@(typeof document)</p>
+    @* FUD0907 sobre `localStorage`, `sessionStorage`, `navigator` y `location`. *@
+    <p>@(localStorage.length) @(sessionStorage.length) @(navigator.language) @(location.href)</p>
+    @* FUD0907 sobre `fetch`, `setTimeout`, `console` y `crypto`: efectos. *@
+    <p>@(String(fetch)) @(String(setTimeout)) @(String(console)) @(String(crypto))</p>
+    @* FUD0907 sobre `process` y `require`: de Node. *@
+    <p>@(String(process)) @(String(require))</p>
+    @* FUD0907 sobre `eval`, `Function`, `Promise`, `Reflect` y `Proxy`. *@
+    <p>@(eval("1")) @(String(Function)) @(String(Promise)) @(String(Reflect)) @(String(Proxy))</p>
+    @* FUD0907 sobre `$shadow`, `$dom` y `$ioc`: son del emit. Sale también FUD0666, la regla
+       de SDD-37 que solo los deja leer en los argumentos de un manejador. *@
+    <p>@(String($shadow)) @(String($dom)) @(String($ioc))</p>
+    @* FUD0907 sobre `ctx`: es el parámetro de `load(ctx)`, no un nombre de la vista. *@
+    <p>@ctx.url</p>
+    @* FUD0907 sobre `tarde`: lo declara un `@{ }` hermano POSTERIOR. *@
+    <p>@tarde</p>
+    @{ const tarde = 1; }
+    @* FUD0907 sobre `dentroDelIf`: lo declara un `@{ }` de un bloque que NO contiene a este. *@
+    @if (a > 0) { @{ const dentroDelIf = 1; } }
+    <p>@dentroDelIf</p>
+    @* FUD0907 sobre `window`: en un atributo, en una cabecera, en una key, en un case, en un
+       argumento de `@render` y en un `@raw`. Todos son vista. *@
+    <p title=@window.name>atributo</p>
+    @if (window) { <p>cabecera</p> }
+    @foreach (const f of xs) key (window) { <span>@f.id</span> }
+    @switch (n) {
+      case window.length: <p>case</p>
+      default: <p>default</p>
+    }
+    @render fila(@window.name)
+    @raw(document.cookie)
+    @* FUD0907 sobre `window`: el valor por defecto de una flecha también se lee. *@
+    <p>@(((v = window) => String(v))())</p>
+    @* FUD0907 sobre `window`: y una clave computada. *@
+    <p>@(Object.keys({ [String(window)]: 1 }).length)</p>
+    @* (El snippet `fila`, en `snippets.fud`, da FUD0907 sobre `document` dentro de su cuerpo.) *@
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       FUD0908 — sentencias que no caben en `@{ }`
+       Subrayado: la palabra clave.
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* FUD0908 sobre `return`. Oxc añade su FUD0170: fuera de una función no es ni sintaxis. *@
+    @{ return; }
+    @* FUD0908 sobre `var`: se escapa del bloque. *@
+    @{ var v = 1; }
+    @* FUD0908 sobre `throw`. *@
+    @{ throw new Error("x"); }
+    @* FUD0908 sobre `try`. *@
+    @{ try { total = 1; } catch { total = 2; } }
+    @* FUD0908 sobre `debugger`. *@
+    @{ debugger; }
+    @* FUD0908 sobre la etiqueta `fuera:`; lo que hay dentro ya no se mira. *@
+    @{ fuera: for (;;) { break fuera; } }
+    @* FUD0908 sobre `break`: no hay un bucle del propio bloque. *@
+    @{ break; }
+    @* FUD0908 sobre `continue`: tampoco. *@
+    @{ continue; }
+    @* FUD0908 sobre `using`. *@
+    @{ using recurso = { [Symbol.dispose]() {} }; }
+    @* FUD0908 sobre `enum`. *@
+    @{ enum Color { Rojo } }
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       FUD0909 — atributos de evento nativos
+       La CSP de fudic los bloquea siempre: el manejador no se ejecutaría nunca.
+       Subrayado: el nombre del atributo.
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* FUD0909 sobre `onclick`, con valor estático. *@
+    <button onclick="alert(1)">estático</button>
+    @* FUD0909 sobre `onclick`, con valor dinámico. *@
+    <button onclick=@("alert(1)")>dinámico</button>
+    @* FUD0909 sobre `ONMOUSEOVER`: el nombre no distingue mayúsculas. *@
+    <div ONMOUSEOVER="x">mayúsculas</div>
+    @* FUD0909 sobre `onerror`: el vector clásico de XSS con una imagen rota. *@
+    <img src="/no-existe.png" alt="" onerror="alert(1)">
+    @* FUD0909 sobre `onfocus`, `onanimationend` y `ontoggle`: la lista es la de la plataforma. *@
+    <input onfocus="x"> <div onanimationend="x"></div> <details ontoggle="x"></details>
+    @* FUD0909 sobre `onclick` en un componente: también es un elemento, y el navegador lo lee.
+       Sin un TS2353 duplicado encima. *@
+    <app-pieza onclick="x"></app-pieza>
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       Esto SÍ — ningún código de esta spec
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* `.onSave` es una prop (decisión 41.c), no un atributo de evento. *@
+    <app-pieza .onSave=@ayuda></app-pieza>
+    @* `@click` es invocación diferida (decisión 96): ahí el efecto es el objetivo. *@
+    <button @click="@(() => total++)">@@click</button>
+  </body>
+</html>

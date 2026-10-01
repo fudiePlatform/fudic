@@ -1,0 +1,69 @@
+@code {
+  @client {
+    // SDD-51 en el cliente: la URL vive en una signal, y cada botón la cambia. El atributo
+    // se reescribe en la pasada de actualizar con `browserDom.setUrl`, que aplica la misma
+    // función pura que el servidor. En desarrollo, cada sustitución avisa por la consola.
+    import { signal } from "@fudic/core";
+    import { trustedUrl, type TrustedURL } from "@fudic/dom";
+
+    const url = signal<string | TrustedURL>("/blog");
+    const clics = signal(0);
+
+    // Un `let` que solo cambia un manejador: `@click` es invocación diferida (decisión 96),
+    // así que su valor puede escribir. Ninguna regla de esta spec mira ahí (criterio 12).
+    let silencioso = 0;
+
+    function elegir(nueva: string | TrustedURL): void {
+      url.set(nueva);
+    }
+
+    const marcada = trustedUrl("miapp:abrir");
+  }
+}
+
+<head>
+  <style>
+    .panel {
+      display: grid;
+      gap: var(--gap);
+    }
+    .botones {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+    .destino {
+      font-size: 1.2rem;
+    }
+  </style>
+</head>
+
+<vista-url>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="panel">
+    <section class="panel">
+      <div class="botones">
+        @* Seguras: llegan intactas. *@
+        <button @click="@(() => elegir('/blog'))">/blog</button>
+        <button @click="@(() => elegir('https://example.com/'))">https:</button>
+        <button @click="@(() => elegir('mailto:ana@example.com'))">mailto:</button>
+        @* Peligrosas: el atributo pasa a about:blank. *@
+        <button @click="@(() => elegir('javascript:alert(1)'))">javascript:</button>
+        <button @click="@(() => elegir('JaVaScRiPt:alert(1)'))">JaVaScRiPt:</button>
+        <button @click="@(() => elegir('  javascript:alert(1)'))">espacios + javascript:</button>
+        <button @click="@(() => elegir('java\tscript:alert(1)'))">java\tscript:</button>
+        <button @click="@(() => elegir('vbscript:x'))">vbscript:</button>
+        <button @click="@(() => elegir('miapp:abrir'))">miapp: sin marcar</button>
+        @* Marcada con `trustedUrl`: pasa tal cual. *@
+        <button @click="@(() => elegir(marcada))">miapp: marcada</button>
+      </div>
+
+      @* Un valor sin prefijo: `setUrl` en el servidor y en el navegador. *@
+      <a class="destino" href=@url()>Enlace con la URL elegida</a>
+      <p>Elegida: <code>@(String(url()))</code></p>
+
+      @* Criterio 12: en un `@click` el efecto ES el objetivo, y la flecha puede escribir. *@
+      <button @click="@(() => silencioso++)">Escribe un let sin pintar nada</button>
+      <button @click="@(() => clics.set(clics() + 1))">Clics: @clics()</button>
+    </section>
+  </template>
+</vista-url>

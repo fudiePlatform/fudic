@@ -54,6 +54,7 @@
         aria-current=@(current === 'ruta-reloj' ? 'page' : 'false')>Ruta · reloj</a>
       <a href="/snippets" aria-current=@(current === 'snippets' ? 'page' : 'false')>Snippets</a>
       <a href="/marco" aria-current=@(current === 'marco' ? 'page' : 'false')>Marco</a>
+      <a href="/vista" aria-current=@(current === 'vista' ? 'page' : 'false')>Vista</a>
       <a href="/about" aria-current=@(current === 'about' ? 'page' : 'false')>Acerca de</a>
     </nav>
   </template>
