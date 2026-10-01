@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/typecheck` (nuevo) · `@fudic/language-server` · `@fudic/vite` ·
 > `@fudic/compiler` · `@fudic/example-basic`
 > **Rama:** `worktree-sdd-35-compilo-o-no-compilo`
-> **Progreso:** 11 / 22
+> **Progreso:** 14 / 22
 >
 > **Reparto (decisión de Pedro).** Esta sesión escribe el código; los tests (tareas 1 y 12, los
 > tests unitarios que se mudan con sus piezas y la cobertura) los escribe otra sesión. Una tarea
@@ -77,9 +77,9 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 14 | 12 | **El chequeo en `buildStart`**, antes de compilar: todos los problemas impresos con `formatProblem`, un `this.error` con el resumen `N errores en M ficheros`, nada escrito. La tarea 1 pasa a verde. Criterios 2, 6, 7, 8 | `vite` | `src/typecheck.ts` · `src/plugin.ts` |
-| [ ] | 15 | 14 | **El `transform` con posición.** `loc` y `frame` en cada `this.error` / `this.warn`; todos los diagnósticos de un fichero y un solo fallo; lo que ya dijo el chequeo no se repite. El comentario obsoleto «Neither aborts the build» se corrige | `vite` | `src/plugin.ts` · `src/diagnostics.ts` |
-| [ ] | 16 | 15 | **Los caminos que descartan.** `?client`, `?ioc`, `link`, `edge` y `analyzePage` reportan sus diagnósticos. Un test por camino. Criterio 15 | `vite` | `src/plugin.ts` · `src/link.ts` · `src/edge.ts` · `src/analyze.ts` |
+| [x] | 14 | 12 | **El chequeo en `buildStart`**, antes de compilar: todos los problemas impresos con `formatProblem`, un `this.error` con el resumen `N errores en M ficheros` (en inglés en el código: `N errors in M files`), nada escrito. La tarea 1 pasa a verde. Criterios 2, 6, 7, 8 | `vite` | `src/typecheck.ts` · `src/plugin.ts` |
+| [x] | 15 | 14 | **El `transform` con posición.** `loc` y `frame` en cada `this.error` / `this.warn`; todos los diagnósticos de un fichero y un solo fallo; lo que ya dijo el chequeo no se repite. El comentario obsoleto «Neither aborts the build» se corrige. Hecho con un `BuildReporter` compartido por el plugin y las pasadas `link`/`edge`, usado también en `buildStart` y `generateBundle` | `vite` | `src/plugin.ts` · `src/report.ts` |
+| [x] | 16 | 15 | **Los caminos que descartan.** `?client`, `?ioc`, `link`, `edge` y `analyzePage` reportan sus diagnósticos. Un test por camino. Criterio 15 | `vite` | `src/plugin.ts` · `src/link.ts` · `src/edge.ts` · `src/analyze.ts` |
 
 ## Fase 6 — el dev server (3)
 

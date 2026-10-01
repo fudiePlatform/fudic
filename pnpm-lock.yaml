@@ -507,6 +507,9 @@ importers:
       '@fudic/transport':
         specifier: workspace:*
         version: link:../transport
+      '@fudic/typecheck':
+        specifier: workspace:*
+        version: link:../typecheck
     devDependencies:
       '@fudic/tsconfig':
         specifier: workspace:*
