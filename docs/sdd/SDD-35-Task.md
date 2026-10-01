@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/typecheck` (nuevo) · `@fudic/language-server` · `@fudic/vite` ·
 > `@fudic/compiler` · `@fudic/example-basic`
 > **Rama:** `worktree-sdd-35-compilo-o-no-compilo`
-> **Progreso:** 17 / 22
+> **Progreso:** 18 / 22
 >
 > **Reparto (decisión de Pedro).** Esta sesión escribe el código; los tests (tareas 1 y 12, los
 > tests unitarios que se mudan con sus piezas y la cobertura) los escribe otra sesión. Una tarea
@@ -93,6 +93,6 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 20 | 16, 18 | **`examples/basic` compila bajo la regla.** `pnpm build` y `pnpm dev` limpios. Lo que salga se arregla en el ejemplo o en la proyección, nunca en el chequeo. Criterio 21 | `example-basic` | `examples/basic/**` |
+| [x] | 20 | 16, 18 | **`examples/basic` compila bajo la regla.** `pnpm build` y `pnpm dev` limpios. Lo que salga se arregla en el ejemplo o en la proyección, nunca en el chequeo. Salieron cuatro parámetros sin tipo (`TS7006`) que el editor ya marcaba; se tiparon en el ejemplo (commit de la fase 5). Criterio 21 | `example-basic` | `examples/basic/**` |
 | [ ] | 21 | 20 | **Pedro en Chrome.** `.tone="@(42)"` en una página: overlay en `pnpm dev`, `pnpm build` en rojo, y al quitarlo la página vuelve sola. Criterio 22 | — | — |
 | [ ] | 22 | todas | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`. Los 24 criterios de §6 verdes. `@fudic/typecheck` al 100 % en las cuatro, los ficheros nuevos de `vite` con umbral por fichero al 100, `language-server` sigue al 100. SDD-35 a `Hecho` en [INDEX.md](./INDEX.md). Criterios 23, 24 | — | [INDEX.md](./INDEX.md) |
