@@ -13,6 +13,7 @@
  */
 
 import type { ElementNode } from '../html/index.js';
+import type { Span } from '../types/index.js';
 import { isComponentLink, isLayoutLink, isSnippetLink } from '../document/index.js';
 import type { AssetLinker } from './assets.js';
 import { flattenImports, plainSheet, type FileDiagnostic, type FlatSheet } from '../css/index.js';
@@ -30,8 +31,9 @@ import { documentSurface, pageTokenConsumers, shadowSurface, unionSurfaces } fro
  *
  * A linked sheet also says which files its `@import`s flattened in (`files`, every one relative
  * to the entry: what the host watches), which of them kept a rule on this page
- * (`contributing`), and what the sheet says about itself (`diagnostics`, each over its own
- * file) — reported by the host once per file, not once per page.
+ * (`contributing`), what the sheet says about itself (`diagnostics`, each over its own
+ * file) — reported by the host once per file, not once per page — and where each file was
+ * brought in (`sites`).
  */
 export type SheetUse =
   | {
@@ -40,8 +42,23 @@ export type SheetUse =
       readonly files: readonly string[];
       readonly contributing: readonly string[];
       readonly diagnostics: readonly FileDiagnostic[];
+      readonly sites: readonly SheetSite[];
     }
   | { readonly specifier: string; readonly css: string };
+
+/**
+ * Where one file of a linked sheet was brought into the page: the `<link>` of the root, in the
+ * `.fud` that writes it, or the `@import` that first named an imported file. The line an
+ * author goes to when the file turns out to be dead CSS (`FUD0852`).
+ */
+export interface SheetSite {
+  /** The file brought in, as in `files`. */
+  readonly file: string;
+  /** Where: the `.fud`'s path for a `<link>`, the importing file's specifier for an `@import`. */
+  readonly at: string;
+  /** Over the `<link>` or the `@import`, in the text of `at`. */
+  readonly span: Span;
+}
 
 /** A `<link>` of a `<head>` the page delivers pruned. */
 interface LinkedSheet {
@@ -49,6 +66,8 @@ interface LinkedSheet {
   readonly el: ElementNode;
   /** The `.fud` whose text `el` is written in. */
   readonly source: string;
+  /** Its path, as the graph holds it. */
+  readonly path: string;
   /** The `href` as the author wrote it. */
   readonly href: string;
   /** The same file, relative to the entry being compiled. */
@@ -106,6 +125,7 @@ export function rebaseSpec(spec: string, from: string, to: string): string {
 function linkedSheets(
   head: ElementNode,
   source: string,
+  path: string,
   linker: AssetLinker,
   key: (ordinal: number) => string,
   resolve: (href: string) => string,
@@ -117,9 +137,22 @@ function linkedSheets(
     if (href === null) continue;
     const spec = resolve(href);
     const flat = flattenImports(spec, linker.textOf(spec)!, (s) => linker.textOf(s));
-    out.push({ key: key(out.length), el: child, source, href, spec, flat });
+    out.push({ key: key(out.length), el: child, source, path, href, spec, flat });
   }
   return out;
+}
+
+/** Where each file of a linked sheet came in: the root at its `<link>`, the rest at an `@import`. */
+function sitesOf(sheet: LinkedSheet): SheetSite[] {
+  const [root, ...imported] = sheet.flat.files;
+  return [
+    { file: root!, at: sheet.path, span: sheet.el.span },
+    // Every file past the root was read because an `@import` named it: `flattenImports` saw it.
+    ...imported.map((file) => {
+      const site = sheet.flat.importedAt!.get(file)!;
+      return { file, at: site.file, span: site.span };
+    }),
+  ];
 }
 
 /** The element a pruned `<link>` becomes: a `<link>` to the copy, a `<style>`, or nothing. */
@@ -154,6 +187,7 @@ export function planPageSheets(
     linkedSheets(
       layout.doc.head,
       layout.source,
+      layout.path,
       linker,
       (ordinal) => sheetKey(graph.layouts.length - 1 - i, ordinal),
       (href) => rebaseSpec(href, layout.path, graph.entryPath),
@@ -162,7 +196,7 @@ export function planPageSheets(
   const ownSheets =
     entryHead === undefined
       ? []
-      : linkedSheets(entryHead, graph.entrySource, linker, (ordinal) => `head:${ordinal}`, (h) => h);
+      : linkedSheets(entryHead, graph.entrySource, graph.entryPath, linker, (ordinal) => `head:${ordinal}`, (h) => h);
 
   const document = documentSurface(graph);
   const linked = [...layoutSheets, ...ownSheets];
@@ -205,6 +239,7 @@ export function planPageSheets(
       files: s.flat.files,
       contributing: contributingOf.get(s.key)!,
       diagnostics: sheetDiagnostics(s.flat),
+      sites: sitesOf(s),
     })),
     ...(options.projectStyles ?? []).map((s) => ({
       specifier: s.specifier,

@@ -8,7 +8,6 @@ import { planPage } from '../src/plans/page.js';
 import { planLayout } from '../src/plans/layout.js';
 import { parseFud } from '../src/parse.js';
 import { routeToFile } from '../src/route.js';
-import { FUD_LAYOUT_INVALID, FUD_SECTION_UNKNOWN } from '../src/diagnostics.js';
 import { projectFs } from './helpers.js';
 import type { PageOptions } from '../src/types.js';
 
@@ -83,7 +82,7 @@ describe('g page', () => {
 
     const unknown = await planPage('perfil', options({ sections: ['nope'] }), fs);
     expect(unknown.changes).toEqual([]);
-    expect(unknown.errors.map((e) => e.code)).toEqual([FUD_SECTION_UNKNOWN]);
+    expect(unknown.errors.map((e) => e.code)).toEqual(['FUD0446']);
   });
 
   it('collects the sections of the chosen layout, and only that one (FUD0439)', async () => {
@@ -168,7 +167,7 @@ describe('g page', () => {
     const fs = projectFs({ 'src/components/app-card.fud': '<app-card><template shadowrootmode="open"></template></app-card>' });
     const plan = await planPage('perfil', options({ layout: 'src/components/app-card.fud' }), fs);
     expect(plan.changes).toEqual([]);
-    expect(plan.errors.map((e) => e.code)).toEqual([FUD_LAYOUT_INVALID]);
+    expect(plan.errors.map((e) => e.code)).toEqual(['FUD0449']);
   });
 
   it('--server puts @code top-level in a route, and inside <head> in a standalone page', async () => {

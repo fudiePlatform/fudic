@@ -14,7 +14,6 @@ import { describe, expect, it } from 'vitest';
 import { planComponent } from '../src/plans/component.js';
 import { libraryTags } from '../src/project.js';
 import { validateTag } from '../src/tag.js';
-import { FUD_DUPLICATE_TAG, FUD_TAG_EXISTS } from '../src/diagnostics.js';
 import { MemoryFs } from './helpers.js';
 import type { ComponentOptions } from '../src/types.js';
 
@@ -61,7 +60,7 @@ describe('a tag a library already defines', () => {
     const plan = await planComponent('ui-card', options(), withLibrary());
     expect(plan.changes).toEqual([]);
     expect(plan.errors).toHaveLength(1);
-    expect(plan.errors[0]?.code).toBe(FUD_DUPLICATE_TAG);
+    expect(plan.errors[0]?.code).toBe('FUD0761');
     expect(plan.errors[0]?.message).toContain('@acme/ui');
     expect(plan.errors[0]?.message).toContain('ui-card.fud');
   });
@@ -76,7 +75,7 @@ describe('a tag a library already defines', () => {
     // A name the author already used is the likelier mistake and the cheaper fix.
     const fs = withLibrary({ 'components/ui-card.fud': component('ui-card') });
     const plan = await planComponent('ui-card', options(), fs);
-    expect(plan.errors[0]?.code).toBe(FUD_TAG_EXISTS);
+    expect(plan.errors[0]?.code).toBe('FUD0441');
   });
 
   it('follows a library that consumes another one', async () => {
@@ -87,7 +86,7 @@ describe('a tag a library already defines', () => {
       'node_modules/@acme/guia/g-box.fud': component('g-box'),
     });
     const plan = await planComponent('g-box', options(), fs);
-    expect(plan.errors[0]?.code).toBe(FUD_DUPLICATE_TAG);
+    expect(plan.errors[0]?.code).toBe('FUD0761');
   });
 
   it('says nothing about a dependency that is not a fudic library', async () => {
@@ -110,7 +109,7 @@ describe('a tag a library already defines', () => {
     // Which is what every caller that has no dependency graph to ask about passes — the
     // shape SDD-22 left, and the one a project with no libraries never needs more than.
     expect(validateTag('app-card', new Set())).toBeNull();
-    expect(validateTag('app-card', new Set(['app-card']))?.code).toBe(FUD_TAG_EXISTS);
+    expect(validateTag('app-card', new Set(['app-card']))?.code).toBe('FUD0441');
   });
 
   it('is empty for a project with no dependencies at all', () => {

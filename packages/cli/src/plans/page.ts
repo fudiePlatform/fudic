@@ -6,7 +6,7 @@
  */
 
 import { LAYOUTS_DIR } from '@fudic/conventions';
-import { cliError, FUD_SECTION_UNKNOWN } from '../diagnostics.js';
+import { FUD0446 } from '@fudic/diagnostics';
 import { hrefBetween, joinPosix } from '../paths.js';
 import { resolveLayout } from '../layout.js';
 import { targetChange } from '../project.js';
@@ -85,12 +85,7 @@ function chooseSections(
   if (requested === null) return available;
   const unknown = requested.filter((name) => !available.includes(name));
   for (const name of unknown) {
-    errors.push(
-      cliError(
-        FUD_SECTION_UNKNOWN,
-        `the layout declares no @RenderSection(${name})${available.length > 0 ? `; it declares: ${available.join(', ')}` : ''}`,
-      ),
-    );
+    errors.push(FUD0446({ name, available }));
   }
   return requested.filter((name) => available.includes(name));
 }

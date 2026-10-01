@@ -395,6 +395,6 @@ describe('delegation — the eight, out of the AST and out of the checker (§6.1
     const manifest: { dependencies: Record<string, string> } = (
       await import('../../package.json', { with: { type: 'json' } })
     ).default;
-    expect(Object.keys(manifest.dependencies)).toEqual(['oxc-parser']);
+    expect(Object.keys(manifest.dependencies)).toEqual(['@fudic/diagnostics', 'oxc-parser']);
   });
 });

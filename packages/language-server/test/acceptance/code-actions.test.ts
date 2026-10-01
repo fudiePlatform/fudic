@@ -12,8 +12,11 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { CodeActionRequest, DocumentDiagnosticRequest } from 'vscode-languageserver-protocol/node';
+import { docsUrl, type FudCode } from '@fudic/diagnostics';
+import { explanationFile } from '@fudic/diagnostics/explain';
+import { EXPLAIN_COMMAND } from '../../src/services/actions.js';
 import { copyWorkspace, startHarness, type Harness } from './_harness.js';
 
 let harness: Harness;
@@ -165,5 +168,38 @@ describe('a repair as the client receives it', () => {
     const action = completing(await actionsOn('<app-input></app-input>'));
 
     expect(Object.values(action?.edit?.changes ?? {})[0]).toHaveLength(1);
+  });
+});
+
+describe('a FUD code explains itself (SDD-50 criteria 10 and 11)', () => {
+  /** Two unquoted values: `FUD0056` twice, on one line. */
+  const BODY = '<p class=a title=b>x</p>';
+
+  it('carries its explanation’s address as codeDescription', async () => {
+    const { items } = await report(BODY);
+    const fud = items.filter((item) => String((item as { code?: unknown }).code).startsWith('FUD'));
+
+    expect(fud.length).toBeGreaterThan(0);
+    for (const item of fud as { code: FudCode; codeDescription?: { href: string } }[]) {
+      expect(item.codeDescription).toEqual({ href: docsUrl(item.code) });
+    }
+  });
+
+  it('offers "Explain FUDnnnn" once per code, as a command that opens its .md', async () => {
+    const { uri, items } = await report(BODY);
+    const got = (await harness.client.sendRequest(CodeActionRequest.type, {
+      textDocument: { uri },
+      range: { start: { line: 0, character: 0 }, end: { line: 4, character: 0 } },
+      context: { diagnostics: items as never },
+    })) as readonly WireAction[];
+
+    const explain = got.filter((action) => action.title.startsWith('Explain '));
+    expect(explain.map((action) => action.title)).toEqual(['Explain FUD0056']);
+    const command = explain[0]!.command as { command: string; arguments: string[] };
+    expect(command.command).toBe(EXPLAIN_COMMAND);
+    expect(command.arguments).toEqual([explanationFile('FUD0056')]);
+    expect(existsSync(command.arguments[0]!)).toBe(true);
+    // The repair of the same code is still there, beside it: the bulb adds, it does not replace.
+    expect(got.some((action) => action.edit !== undefined)).toBe(true);
   });
 });

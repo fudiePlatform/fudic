@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { parseDocument, type AtConstructParser, type ElementNode } from '../../src/html/index.js';
 import { atConstructs } from '../../src/constructs.js';
 import { structureDocument } from '../../src/document/index.js';
-import { adoptedStylesOf, FUD_ADOPTED_STYLE_DYNAMIC } from '../../src/binding/index.js';
+import { adoptedStylesOf } from '../../src/binding/index.js';
 
 const constructs: AtConstructParser = atConstructs;
 
@@ -48,7 +48,7 @@ describe('adoptedStylesOf', () => {
     const { source, template } = templateWith(' shadowrootadoptedstylesheets="panel @extra"');
     const { names, problems } = adoptedStylesOf(template);
     expect(names).toEqual([]);
-    expect(problems.map((p) => p.code)).toEqual([FUD_ADOPTED_STYLE_DYNAMIC]);
+    expect(problems.map((p) => p.code)).toEqual(['FUD0745']);
     expect(source.slice(problems[0]!.span.start, problems[0]!.span.end)).toMatch(/^shadowrootadoptedstylesheets=/u);
   });
 });

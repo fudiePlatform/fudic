@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { ok, withDiagnostics, collectDiagnostics } from '../../src/types/result.js';
-import { errorDiag } from '../../src/types/diagnostic.js';
+import type { Diagnostic } from '../../src/types/diagnostic.js';
 import { span } from '../../src/types/span.js';
 
-const d = errorDiag('FUD0001', 'boom', span(0, 1));
+const d: Diagnostic = { severity: 'error', code: 'FUD0001', message: 'boom', span: span(0, 1) };
 
 describe('ok', () => {
   it('wraps a value with no diagnostics', () => {

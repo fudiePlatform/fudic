@@ -56,12 +56,7 @@ export { bridgeOf, REFERENCE_TARGET_ATTR } from './bridge.js';
 // The sheets a component chooses by name on its root template, for the host to check against
 // its `fudic.json` and to put in the adopted list.
 export type { AdoptedName, AdoptedStylesResult } from './adopt.js';
-export {
-  adoptedStylesOf,
-  ADOPTED_STYLESHEETS_ATTR,
-  FUD_ADOPTED_STYLE_DYNAMIC,
-  FUD_ADOPTED_STYLE_UNKNOWN,
-} from './adopt.js';
+export { adoptedStylesOf, ADOPTED_STYLESHEETS_ATTR } from './adopt.js';
 
 export {
   controlTarget,

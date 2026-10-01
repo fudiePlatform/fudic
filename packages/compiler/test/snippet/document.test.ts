@@ -131,6 +131,16 @@ describe('<link rel="snippet"> (§4.3)', () => {
     expect(doc.links).toHaveLength(1);
   });
 
+  it('lives in the <head> of a page, beside its component links (decisions 59, 60)', () => {
+    const { doc, codes } = structure(
+      '<!DOCTYPE html>\n<html>\n<head>\n<link rel="snippet" href="./ui.fud">\n' +
+        '<link rel="component" href="./app-button.fud">\n<title>x</title>\n</head>\n<body></body>\n</html>\n',
+    );
+    expect(codes).toEqual([]);
+    expect(doc.snippetLinks).toHaveLength(1);
+    expect(doc.links).toHaveLength(1);
+  });
+
   it('is reported when nested, like every other framework link (FUD0438)', () => {
     const { codes } = structure(`<app-card><template shadowrootmode="open">
       <link rel="snippet" href="./ui.fud"></template></app-card>`);

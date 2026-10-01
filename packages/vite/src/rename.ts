@@ -19,7 +19,7 @@
  */
 
 import { BUILD_ID_LENGTH } from './constants.js';
-import { type FudicDiagnostic, FUD_HASH_LENGTH, FUD_NAME_COLLISION } from './diagnostics.js';
+import { FUD0500, FUD0501, type FileDiagnostic } from '@fudic/diagnostics';
 
 /**
  * `sw/c/blog-slug-N9OIQ_Kf.js` → dir `sw/c/`, base `blog-slug`, hash `N9OIQ_Kf`.
@@ -47,7 +47,7 @@ export function isHashedChunk(fileName: string): boolean {
 export interface RenamePlan {
   /** Old file name → new file name, for the `.js` files only. */
   readonly files: ReadonlyMap<string, string>;
-  readonly diagnostics: readonly FudicDiagnostic[];
+  readonly diagnostics: readonly FileDiagnostic[];
 }
 
 /**
@@ -57,16 +57,12 @@ export interface RenamePlan {
  * naming scheme is worse than none.
  */
 export function planRename(fileNames: readonly string[], build: string): RenamePlan {
-  const diagnostics: FudicDiagnostic[] = [];
+  const diagnostics: FileDiagnostic[] = [];
   const candidates: Array<{ from: string; to: string }> = [];
 
   for (const fileName of fileNames) {
     if (!HASHED.test(fileName)) {
-      diagnostics.push({
-        code: FUD_HASH_LENGTH,
-        message: `chunk "${fileName}" does not end in a ${String(BUILD_ID_LENGTH)}-character hash; build-id naming needs the default build.rollupOptions.output`,
-        file: fileName,
-      });
+      diagnostics.push(FUD0500({ file: fileName, length: BUILD_ID_LENGTH }));
       return { files: new Map(), diagnostics };
     }
     // Sliced, not reassembled from capture groups: the shape is already guaranteed, and
@@ -84,11 +80,7 @@ export function planRename(fileNames: readonly string[], build: string): RenameP
   const files = new Map<string, string>();
   for (const [to, claimants] of owners) {
     if (claimants.length > 1) {
-      diagnostics.push({
-        code: FUD_NAME_COLLISION,
-        message: `chunk name collision after build-id naming: "${to}" is produced by ${claimants.join(' and ')}`,
-        file: to,
-      });
+      diagnostics.push(FUD0501({ file: to, claimants }));
       continue;
     }
     for (const from of claimants) {

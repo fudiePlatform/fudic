@@ -1,10 +1,10 @@
 /**
  * SDD-48 §4.6 — the contract between a route and its layout's holes, criterion 6.
  *
- *   `FUD0440`  a `required: true` section the route does not declare: ONE diagnostic, over the
+ *   `FUD0890`  a `required: true` section the route does not declare: ONE diagnostic, over the
  *              route's `<link rel="layout">`, naming every one that is missing.
- *   `FUD0441`  text or an expression at the root of a slotted hole, constructs seen through.
- *   `FUD0442`  a root of a slotted hole that writes its own `slot=`.
+ *   `FUD0891`  text or an expression at the root of a slotted hole, constructs seen through.
+ *   `FUD0892`  a root of a slotted hole that writes its own `slot=`.
  *
  * Pure over the two structured documents; the build reaches it through `resolveDocument`.
  */
@@ -36,7 +36,7 @@ function contract(route: string, body: string): string[] {
   );
 }
 
-describe('FUD0440 — a required section the route does not declare', () => {
+describe('FUD0890 — a required section the route does not declare', () => {
   const body = '@RenderSection(cabecera, required: true)@RenderSection(nav)@RenderSection(pie, required: true)@RenderBody()';
 
   it('lists the missing ones in layout order, skipping the optional and the declared', () => {
@@ -48,7 +48,7 @@ describe('FUD0440 — a required section the route does not declare', () => {
     const source = `${LINK}\n<p>x</p>`;
     const [d, ...rest] = holeContractDiagnostics(structured(source) as RouteDocument, layoutOf(body));
     expect(rest).toEqual([]);
-    expect(d!.code).toBe('FUD0440');
+    expect(d!.code).toBe('FUD0890');
     expect(d!.severity).toBe('error');
     expect(source.slice(d!.span.start, d!.span.end)).toBe(LINK);
     expect(d!.message).toContain('sections `cabecera`, `pie`: declare them');
@@ -66,14 +66,14 @@ describe('FUD0440 — a required section the route does not declare', () => {
   });
 });
 
-describe('FUD0441 / FUD0442 — the roots of a slotted hole', () => {
+describe('FUD0891 / FUD0892 — the roots of a slotted hole', () => {
   const slotted = '<app-marco>@RenderBody(slot: "contenido")@RenderSection(lateral, slot: "lateral")</app-marco>';
 
   it('reports text, an expression and `@raw` at the root of the body, over the node', () => {
     expect(contract('suelto\n<p>ok</p>\n@titulo\n@raw(html)', slotted)).toEqual([
-      'FUD0441: suelto',
-      'FUD0441: @titulo',
-      'FUD0441: @raw(html)',
+      'FUD0891: suelto',
+      'FUD0891: @titulo',
+      'FUD0891: @raw(html)',
     ]);
   });
 
@@ -87,22 +87,22 @@ describe('FUD0441 / FUD0442 — the roots of a slotted hole', () => {
       '@if (c) { <p>sin else</p> }',
     ].join('\n');
     expect(contract(route, slotted)).toEqual([
-      'FUD0441: hola',
-      'FUD0441: adiós',
-      'FUD0441: uno',
-      'FUD0441: @x',
+      'FUD0891: hola',
+      'FUD0891: adiós',
+      'FUD0891: uno',
+      'FUD0891: @x',
     ]);
   });
 
   it('reports a root that writes its own `slot=`, over the attribute', () => {
     expect(contract('<p slot="otro">x</p>\n<div><span slot="dentro">y</span></div>', slotted)).toEqual([
-      'FUD0442: slot="otro"',
+      'FUD0892: slot="otro"',
     ]);
   });
 
   it('reads a section against ITS hole, and a section of an unslotted hole not at all', () => {
     expect(contract('<p>x</p>\n@section lateral { texto }\n@section otra { texto }', slotted)).toEqual([
-      'FUD0441: texto',
+      'FUD0891: texto',
     ]);
   });
 
@@ -124,8 +124,8 @@ describe('in the build: `resolveDocument` reports the contract', () => {
     );
 
   it('with the build’s other voices, and nothing when it holds', () => {
-    expect(codes('<p>x</p>')).toEqual(['FUD0440']);
-    expect(codes('suelto\n@section lateral { <p slot="x">a</p> }')).toEqual(['FUD0441', 'FUD0442']);
+    expect(codes('<p>x</p>')).toEqual(['FUD0890']);
+    expect(codes('suelto\n@section lateral { <p slot="x">a</p> }')).toEqual(['FUD0891', 'FUD0892']);
     expect(codes('<p>x</p>\n@section lateral { <p>a</p> }')).toEqual([]);
   });
 });

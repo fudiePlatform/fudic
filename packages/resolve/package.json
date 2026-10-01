@@ -43,7 +43,8 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@fudic/config": "workspace:*"
+    "@fudic/config": "workspace:*",
+    "@fudic/diagnostics": "workspace:*"
   },
   "devDependencies": {
     "@fudic/tsconfig": "workspace:*"

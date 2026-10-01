@@ -9,11 +9,6 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  FUD_IMPORT_CYCLE,
-  FUD_IMPORT_EXTERNAL,
-  FUD_IMPORT_MISPLACED,
-  FUD_IMPORT_MISSING,
-  FUD_IMPORT_REORDERED,
   flattenImports,
   joinSpec,
   originOf,
@@ -275,7 +270,7 @@ describe('a file imported twice (criterion 7)', () => {
   it('reports a diagnostic of a file imported twice once', () => {
     const files = { './a.css': '.x{}\n@import "z.css";' };
     const sheet = flat('@import "a.css" print;\n@import "a.css" screen;', files);
-    expect(sheet.diagnostics.map((d) => d.diagnostic.code)).toEqual([FUD_IMPORT_MISPLACED]);
+    expect(sheet.diagnostics.map((d) => d.diagnostic.code)).toEqual(['FUD0857']);
   });
 });
 
@@ -285,7 +280,7 @@ describe('what cannot be flattened (criterion 8)', () => {
     const root = '@import "a.css";';
     const sheet = flat(root, files);
     expect(sheet.css).toBe('\n.b{}\n.a{}');
-    expect(diags(sheet, files)).toEqual([['./b.css', FUD_IMPORT_CYCLE, 'error', '@import "a.css";']]);
+    expect(diags(sheet, files)).toEqual([['./b.css', 'FUD0856', 'error', '@import "a.css";']]);
   });
 
   it('a file importing the root, and a file importing itself, are cycles', () => {
@@ -293,12 +288,12 @@ describe('what cannot be flattened (criterion 8)', () => {
     const sheet = flat('@import "a.css";', files);
     expect(sheet.css).toBe('\n\n.a{}');
     expect(diags(sheet, files)).toEqual([
-      ['./a.css', FUD_IMPORT_CYCLE, 'error', '@import "main.css";'],
-      ['./a.css', FUD_IMPORT_CYCLE, 'error', '@import "a.css";'],
+      ['./a.css', 'FUD0856', 'error', '@import "main.css";'],
+      ['./a.css', 'FUD0856', 'error', '@import "a.css";'],
     ]);
     const self = '@import "./main.css";';
     expect(diags(flat(self, {}), { './main.css': self })).toEqual([
-      ['./main.css', FUD_IMPORT_CYCLE, 'error', self],
+      ['./main.css', 'FUD0856', 'error', self],
     ]);
   });
 
@@ -310,8 +305,8 @@ describe('what cannot be flattened (criterion 8)', () => {
     expect(sheet.css).toBe('\n\n.a{}');
     expect(asked).toEqual(['./gone.css', './a.css']);
     expect(diags(sheet, { ...files, './main.css': root })).toEqual([
-      ['./main.css', FUD_IMPORT_MISSING, 'error', '@import "gone.css";'],
-      ['./a.css', FUD_IMPORT_MISSING, 'error', '@import "gone.css";'],
+      ['./main.css', 'FUD0853', 'error', '@import "gone.css";'],
+      ['./a.css', 'FUD0853', 'error', '@import "gone.css";'],
     ]);
     expect(sheet.files).toEqual(['./main.css', './a.css']);
   });
@@ -323,7 +318,7 @@ describe('what cannot be flattened (criterion 8)', () => {
     expect(sheet.css).toBe('.a{}\n\n.c{}');
     expect(asked).toEqual([]);
     expect(diags(sheet, { './main.css': root })).toEqual([
-      ['./main.css', FUD_IMPORT_MISPLACED, 'warning', '@import "b.css";'],
+      ['./main.css', 'FUD0857', 'warning', '@import "b.css";'],
     ]);
   });
 
@@ -332,7 +327,7 @@ describe('what cannot be flattened (criterion 8)', () => {
     const sheet = flat(root, {});
     expect(sheet.css).toBe('@charset "utf-8";@import url(https://fonts.example/x.css)  screen;\n\n.a{}');
     expect(diags(sheet, { './main.css': root })).toEqual([
-      ['./main.css', FUD_IMPORT_EXTERNAL, 'warning', '@import url(https://fonts.example/x.css)  screen ;'],
+      ['./main.css', 'FUD0850', 'warning', '@import url(https://fonts.example/x.css)  screen ;'],
     ]);
   });
 
@@ -345,7 +340,7 @@ describe('what cannot be flattened (criterion 8)', () => {
     const root = `@import "${url}";\n.a{}`;
     const sheet = flat(root, {});
     expect(sheet.css).toBe(`@import "${url}";\n.a{}`);
-    expect(sheet.diagnostics.map((d) => d.diagnostic.code)).toEqual([FUD_IMPORT_EXTERNAL]);
+    expect(sheet.diagnostics.map((d) => d.diagnostic.code)).toEqual(['FUD0850']);
   });
 
   it('FUD0858 when it was in an imported file', () => {
@@ -355,8 +350,8 @@ describe('what cannot be flattened (criterion 8)', () => {
     const nested = flat('@import "a.css";\n.r{}', files);
     expect(nested.css).toBe('@import "https://x/y.css";\n.a{}\n.r{}');
     expect(diags(nested, files)).toEqual([
-      ['./a.css', FUD_IMPORT_EXTERNAL, 'warning', '@import "https://x/y.css";'],
-      ['./a.css', FUD_IMPORT_REORDERED, 'warning', '@import "https://x/y.css";'],
+      ['./a.css', 'FUD0850', 'warning', '@import "https://x/y.css";'],
+      ['./a.css', 'FUD0858', 'warning', '@import "https://x/y.css";'],
     ]);
   });
 
@@ -364,7 +359,7 @@ describe('what cannot be flattened (criterion 8)', () => {
     const root = '@import "a.css";\n@import "https://x/y.css";\n.r{}';
     const sheet = flat(root, { './a.css': '.a{}' });
     expect(sheet.css).toBe('@import "https://x/y.css";.a{}\n\n.r{}');
-    expect(sheet.diagnostics.map((d) => d.diagnostic.code)).toEqual([FUD_IMPORT_EXTERNAL, FUD_IMPORT_REORDERED]);
+    expect(sheet.diagnostics.map((d) => d.diagnostic.code)).toEqual(['FUD0850', 'FUD0858']);
   });
 
   it('hoists the same external @import once', () => {

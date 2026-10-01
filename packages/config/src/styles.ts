@@ -14,11 +14,7 @@
  */
 
 import { CONFIG_FILE } from './constants.js';
-import {
-  FUD_STYLE_NOT_FOUND,
-  FUD_STYLE_SPECIFIER_CLASH,
-  type ConfigDiagnostic,
-} from './diagnostics.js';
+import { FUD0740, FUD0741, type FileDiagnostic } from '@fudic/diagnostics';
 import type { ConfigIo, NamedStyle, ProjectConfig } from './read.js';
 
 /** One project stylesheet, resolved and read. */
@@ -43,7 +39,7 @@ export interface ProjectStylesResult {
   readonly global: readonly ProjectStyleFile[];
   /** `styles`: the ones a component may choose. Failed entries absent. */
   readonly optional: readonly ProjectStyleFile[];
-  readonly diagnostics: readonly ConfigDiagnostic[];
+  readonly diagnostics: readonly FileDiagnostic[];
 }
 
 /**
@@ -60,42 +56,34 @@ export function readProjectStyles(
   config: Pick<ProjectConfig, 'globalStyles' | 'styles'>,
   io: ConfigIo,
 ): ProjectStylesResult {
-  const diagnostics: ConfigDiagnostic[] = [];
+  const diagnostics: FileDiagnostic[] = [];
   const claimed = new Set<string>();
 
   const read = (entries: readonly NamedStyle[]): ProjectStyleFile[] => {
     const files: ProjectStyleFile[] = [];
     for (const { name, path: entry } of entries) {
       if (claimed.has(name)) {
-        diagnostics.push({
-          code: FUD_STYLE_SPECIFIER_CLASH,
-          message:
-            `${CONFIG_FILE}: "${name}" is both in "globalStyles" and in "styles". A name is ` +
-            'one sheet in the module map — rename one.',
-          file: CONFIG_FILE,
-        });
+        diagnostics.push(FUD0741({ file: CONFIG_FILE, where: 'project', name }));
         continue;
       }
       const path = `${root}/${entry}`;
       if (!io.exists(path)) {
-        diagnostics.push({
-          code: FUD_STYLE_NOT_FOUND,
-          message: `${CONFIG_FILE}: "${name}": "${entry}" does not exist.`,
-          file: CONFIG_FILE,
-        });
+        diagnostics.push(FUD0740({ file: CONFIG_FILE, name, entry, problem: 'missing' }));
         continue;
       }
       let css: string;
       try {
         css = io.read(path);
       } catch (error) {
-        diagnostics.push({
-          code: FUD_STYLE_NOT_FOUND,
-          message: `${CONFIG_FILE}: "${name}": "${entry}" could not be read: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-          file: CONFIG_FILE,
-        });
+        diagnostics.push(
+          FUD0740({
+            file: CONFIG_FILE,
+            name,
+            entry,
+            problem: 'unreadable',
+            reason: error instanceof Error ? error.message : String(error),
+          }),
+        );
         continue;
       }
       claimed.add(name);

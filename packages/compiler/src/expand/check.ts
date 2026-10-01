@@ -12,7 +12,16 @@
  * parameter is covered exactly once, and whether the call is inside itself.
  */
 
-import { type Diagnostic, errorDiag, relatedError } from '../types/index.js';
+import type { Diagnostic } from '../types/index.js';
+import {
+  FUD0826,
+  FUD0827,
+  FUD0828,
+  FUD0829,
+  FUD0830,
+  FUD0831,
+  FUD0835,
+} from '@fudic/diagnostics';
 import type { HtmlContent } from '../html/index.js';
 import type {
   NamedArg,
@@ -22,21 +31,6 @@ import type {
   SnippetParam,
 } from '../snippet/index.js';
 import type { ResolvedSnippet, SnippetScope } from './scope.js';
-
-/** A `@render` whose name is in no scope. */
-const FUD_UNKNOWN_SNIPPET = 'FUD0826';
-/** A `@render ns.name` whose namespace no `<link rel="snippet" as>` declares. */
-const FUD_UNKNOWN_NAMESPACE = 'FUD0827';
-/** A parameter with no default and no `?` that the call does not cover. */
-const FUD_MISSING_ARGUMENT = 'FUD0828';
-/** More arguments than the signature has parameters. */
-const FUD_EXTRA_ARGUMENT = 'FUD0829';
-/** A named argument that matches no parameter. */
-const FUD_UNKNOWN_ARGUMENT = 'FUD0830';
-/** A parameter covered twice, by position and by name. */
-const FUD_DUPLICATE_ARGUMENT = 'FUD0831';
-/** A snippet that expands into itself, directly or through others. */
-const FUD_RECURSION = 'FUD0835';
 
 /** What one argument of a resolved call is: where its text is, and where it was written. */
 export interface BoundArgument {
@@ -94,34 +88,18 @@ function resolve(
   if (call.namespace === undefined) {
     const found = scope.global.get(call.name);
     if (found !== undefined) return found;
-    diagnostics.push(
-      errorDiag(
-        FUD_UNKNOWN_SNIPPET,
-        `no snippet called "${call.name}" is in scope: declare it here, or import the file that does with <link rel="snippet">`,
-        call.nameSpan,
-      ),
-    );
+    diagnostics.push(FUD0826({ span: call.nameSpan, name: call.name }));
     return undefined;
   }
   const namespace = scope.namespaced.get(call.namespace.name);
   if (namespace === undefined) {
-    diagnostics.push(
-      errorDiag(
-        FUD_UNKNOWN_NAMESPACE,
-        `no <link rel="snippet" as="${call.namespace.name}"> in this file: "as" is the only thing that declares a namespace, and it is never inferred`,
-        call.namespace.span,
-      ),
-    );
+    diagnostics.push(FUD0827({ span: call.namespace.span, namespace: call.namespace.name }));
     return undefined;
   }
   const found = namespace.get(call.name);
   if (found !== undefined) return found;
   diagnostics.push(
-    errorDiag(
-      FUD_UNKNOWN_SNIPPET,
-      `"${call.namespace.name}" declares no snippet called "${call.name}"`,
-      call.nameSpan,
-    ),
+    FUD0826({ span: call.nameSpan, name: call.name, namespace: call.namespace.name }),
   );
   return undefined;
 }
@@ -149,13 +127,7 @@ function bind(
       const index = next++;
       const param = params[index];
       if (param === undefined) {
-        diagnostics.push(
-          errorDiag(
-            FUD_EXTRA_ARGUMENT,
-            `@render ${call.name} takes ${params.length} argument${params.length === 1 ? '' : 's'}`,
-            arg.span,
-          ),
-        );
+        diagnostics.push(FUD0829({ span: arg.span, name: call.name, count: params.length }));
         continue;
       }
       filled.set(index, { value: arg, index });
@@ -163,24 +135,17 @@ function bind(
     }
     const index = params.findIndex((p) => p.name === arg.name);
     if (index === -1) {
-      diagnostics.push(
-        errorDiag(
-          FUD_UNKNOWN_ARGUMENT,
-          `"${arg.name}" is not a parameter of @snippet ${call.name}`,
-          arg.nameSpan,
-        ),
-      );
+      diagnostics.push(FUD0830({ span: arg.nameSpan, arg: arg.name, name: call.name }));
       continue;
     }
     const taken = filled.get(index);
     if (taken !== undefined) {
       diagnostics.push(
-        relatedError(
-          FUD_DUPLICATE_ARGUMENT,
-          `"${arg.name}" is given twice`,
-          arg.nameSpan,
-          [{ span: taken.value.span, message: 'it already arrived by position here' }],
-        ),
+        FUD0831({
+          span: arg.nameSpan,
+          arg: arg.name,
+          related: [{ span: taken.value.span, message: 'it already arrived by position here' }],
+        }),
       );
       continue;
     }
@@ -213,13 +178,7 @@ function bind(
       return;
     }
     if (param.required) {
-      diagnostics.push(
-        errorDiag(
-          FUD_MISSING_ARGUMENT,
-          `@render ${call.name} is missing "${param.name === '' ? `argument ${index + 1}` : param.name}", which has no default`,
-          call.span,
-        ),
-      );
+      diagnostics.push(FUD0828({ span: call.span, name: call.name, param: param.name, index }));
     }
     out.push({ param, value: param.span, file: snippet.file, fromDefault: false, empty: true });
   });
@@ -248,13 +207,7 @@ export function checkRenderCall(
   const cycle = stack.findIndex((f) => f.file === snippet.file && f.name === snippet.decl.name);
   if (cycle !== -1) {
     const names = [...stack.slice(cycle).map((f) => f.name), snippet.decl.name];
-    diagnostics.push(
-      errorDiag(
-        FUD_RECURSION,
-        `a snippet cannot expand into itself: ${names.join(' → ')}`,
-        call.span,
-      ),
-    );
+    diagnostics.push(FUD0835({ span: call.span, names }));
     return undefined;
   }
 

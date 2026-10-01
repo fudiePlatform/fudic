@@ -10,7 +10,8 @@
  */
 
 import { type Span, span, emptySpan } from '../types/index.js';
-import { type Diagnostic, errorDiag } from '../types/index.js';
+import type { Diagnostic } from '../types/index.js';
+import { FUD0002, FUD0003, FUD0004, FUD0005, FUD0006, FUD0007 } from '@fudic/diagnostics';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 
 /**
@@ -168,10 +169,6 @@ class Scanner {
     this.#regions.push({ kind, span: span(start, Math.min(end, this.#length)) });
   }
 
-  #error(code: string, message: string, at: number): void {
-    this.#diagnostics.push(errorDiag(code, message, emptySpan(at)));
-  }
-
   /**
    * Counts delimiters in code context until the one that balances `openOffset`.
    * Depth is tracked per delimiter type and balanced independently: locating the
@@ -305,7 +302,7 @@ class Scanner {
     }
     const end = Math.min(i, this.#length);
     this.#region('string', start, end);
-    this.#error('FUD0003', 'Unterminated string literal', end);
+    this.#diagnostics.push(FUD0003({ span: emptySpan(end) }));
     return end;
   }
 
@@ -335,7 +332,7 @@ class Scanner {
       i++;
     }
     this.#region('template', start, this.#length);
-    this.#error('FUD0004', 'Unterminated template literal', this.#length);
+    this.#diagnostics.push(FUD0004({ span: emptySpan(this.#length) }));
     return this.#length;
   }
 
@@ -362,7 +359,7 @@ class Scanner {
       i++;
     }
     this.#region('block-comment', start, this.#length);
-    this.#error('FUD0005', 'Unterminated block comment', this.#length);
+    this.#diagnostics.push(FUD0005({ span: emptySpan(this.#length) }));
     return this.#length;
   }
 
@@ -419,7 +416,7 @@ class Scanner {
     }
     const end = Math.min(i, this.#length);
     this.#region('regex', start, end);
-    this.#error('FUD0006', 'Unterminated regular expression literal', end);
+    this.#diagnostics.push(FUD0006({ span: emptySpan(end) }));
     return end;
   }
 }
@@ -443,7 +440,7 @@ export function scanBalanced(
   if (source[openOffset] !== opener) {
     const at = emptySpan(openOffset);
     return withDiagnostics({ span: at, inner: at, closed: false, regions: [] }, [
-      errorDiag('FUD0007', `Expected '${opener}' at the opening offset`, at),
+      FUD0007({ span: at, opener }),
     ]);
   }
 
@@ -460,9 +457,7 @@ export function scanBalanced(
   if (!closed && diagnostics.length === 0) {
     // No opaque region was left unterminated: the group itself just ran out of
     // source. The generic code is emitted only when no specific one exists (§4.5).
-    return withDiagnostics(group, [
-      errorDiag('FUD0002', `Unterminated group, expected '${closer}'`, emptySpan(source.length)),
-    ]);
+    return withDiagnostics(group, [FUD0002({ span: emptySpan(source.length), closer })]);
   }
   return diagnostics.length === 0 ? ok(group) : withDiagnostics(group, diagnostics);
 }

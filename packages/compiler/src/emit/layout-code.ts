@@ -19,16 +19,11 @@
 
 import type { LayoutDocument } from '../document/index.js';
 import type { Diagnostic, Span } from '../types/index.js';
-import { errorDiag, span } from '../types/index.js';
+import { span } from '../types/index.js';
+import { FUD0700, FUD0701, FUD0702 } from '@fudic/diagnostics';
 import { codeOfDocument, type Prop } from './oxc-code.js';
 import { layoutBodyDiagnostics } from '../semantic/analyzers/layout-body.js';
 
-/** A layout's `@code` contains something that is not its declaration of props. */
-const FUD_LAYOUT_CODE = 'FUD0700';
-/** A layout prop asks for a reactive value. */
-const FUD_LAYOUT_REACTIVE_PROP = 'FUD0701';
-/** The route does not resolve a REQUIRED prop of its layout. */
-const FUD_LAYOUT_PROP_UNRESOLVED = 'FUD0702';
 /**
  * `FUD0703` — «two layouts of one chain declare the same prop with incompatible types» — is
  * RETIRED with the chain itself (`FUD0439`).
@@ -76,22 +71,8 @@ export function layoutCodeOf(source: string, doc: LayoutDocument): LayoutCode {
   // A region of its own. The span covers the whole `@server { … }` marker, because what is
   // wrong is the region and not one statement inside it.
   for (const part of doc.code?.parts ?? []) {
-    if (part.type === 'server-region') {
-      diagnostics.push(
-        errorDiag(
-          FUD_LAYOUT_CODE,
-          'a layout has no `@server` region: it would be a second `load` with no route to call it. Its data comes from the route, which resolves its props in `export function layout(ctx, data)`',
-          part.span,
-        ),
-      );
-    } else if (part.type === 'client-region') {
-      diagnostics.push(
-        errorDiag(
-          FUD_LAYOUT_CODE,
-          'a layout has no `@client` region: there is no layout chunk for it to travel in, and a layout prop is a render value that never repaints',
-          part.span,
-        ),
-      );
+    if (part.type === 'server-region' || part.type === 'client-region') {
+      diagnostics.push(FUD0700({ span: part.span, kind: part.type }));
     }
   }
 
@@ -100,28 +81,18 @@ export function layoutCodeOf(source: string, doc: LayoutDocument): LayoutCode {
   // `props<T>()` destructuring is not in it — everything that IS, is left over.
   for (const statement of code.neutral) {
     diagnostics.push(
-      errorDiag(
-        FUD_LAYOUT_CODE,
-        'the `@code` of a layout declares its props and nothing else: this statement would run in both renderers with nobody able to say when',
-        span(statement.at, statement.at + statement.text.length),
-      ),
+      FUD0700({ span: span(statement.at, statement.at + statement.text.length), kind: 'statement' }),
     );
   }
   // A `signal(…)` / `computed(…)` declaration is left out of `neutral` — the emit writes its
   // own form of one — so it has to be asked for separately. In a layout it is the same fact
   // as the loose statement above and the same code says it.
   for (const reactive of code.signals) {
-    diagnostics.push(
-      errorDiag(
-        FUD_LAYOUT_CODE,
-        `a layout declares no reactive state: \`${reactive.name}\` has no half of client that could repaint it`,
-        reactive.span,
-      ),
-    );
+    diagnostics.push(FUD0700({ span: reactive.span, kind: 'reactive', name: reactive.name }));
   }
 
   const props = code.props.map((p) => plain(p, diagnostics));
-  // `FUD0705` — a `@{ }` in the `<body>` — and `FUD0443`, a hole inside a construct. The rules
+  // `FUD0705` — a `@{ }` in the `<body>` — and `FUD0893`, a hole inside a construct. The rules
   // are the semantic pass's; the build reads a layout's diagnostics off its emit, so they are
   // asked here too. (`FUD0706` is retired: Razor in any `<style>` is `FUD0132`, decision 136.)
   diagnostics.push(...layoutBodyDiagnostics(doc.body));
@@ -169,10 +140,10 @@ export function unresolvedLayoutProps(
   return required
     .filter((prop) => !has.has(prop.name))
     .map((prop) =>
-      errorDiag(
-        FUD_LAYOUT_PROP_UNRESOLVED,
-        `the layout requires the prop \`${prop.name}\`${prop.type === undefined ? '' : `: ${prop.type}`} and this route does not resolve it — return it from \`export function layout(ctx, data)\``,
-        anchor,
+      FUD0702(
+        prop.type === undefined
+          ? { span: anchor, name: prop.name }
+          : { span: anchor, name: prop.name, type: prop.type },
       ),
     );
 }
@@ -187,13 +158,7 @@ export function unresolvedLayoutProps(
 function plain(prop: Prop, out: Diagnostic[]): Prop {
   const reactiveDefault = prop.def !== undefined && REACTIVE_DEFAULT.test(prop.def);
   if (prop.channel !== 'signal' && !reactiveDefault) return prop;
-  out.push(
-    errorDiag(
-      FUD_LAYOUT_REACTIVE_PROP,
-      `the layout prop \`${prop.name}\` may not be reactive: a layout has no half of client that could repaint it, and a chunk that had to know which of its nodes to repaint would have to anchor them (SDD-39 §4.3)`,
-      prop.at,
-    ),
-  );
+  out.push(FUD0701({ span: prop.at, name: prop.name }));
   // The value is ignored: the prop crosses by value, and a reactive default is dropped
   // rather than emitted — a `signal` the module cannot import is a `ReferenceError`.
   const { channel: _channel, def: _def, ...rest } = prop;

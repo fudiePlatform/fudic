@@ -12,7 +12,16 @@
  */
 
 import { type Span, span, emptySpan } from '../types/index.js';
-import { type Diagnostic, errorDiag } from '../types/index.js';
+import type { Diagnostic } from '../types/index.js';
+import {
+  FUD0051,
+  FUD0052,
+  FUD0053,
+  FUD0054,
+  FUD0055,
+  FUD0056,
+  FUD0057,
+} from '@fudic/diagnostics';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 import { Lexer, type Token } from '../lexer/index.js';
 import {
@@ -224,10 +233,6 @@ class HtmlParser {
     return this.#source.slice(at.start, at.end);
   }
 
-  #error(code: string, message: string, at: Span): void {
-    this.#diagnostics.push(errorDiag(code, message, at));
-  }
-
   // ------------------------------------------------------------------
   // Content
   // ------------------------------------------------------------------
@@ -286,7 +291,7 @@ class HtmlParser {
         // Valid only inside foreign content (decision 50); elsewhere it is an error,
         // but the node is still produced so the tree stays navigable.
         if (namespace === 'html') {
-          this.#error('FUD0054', 'CDATA section outside SVG or MathML content', token.span);
+          this.#diagnostics.push(FUD0054({ span: token.span }));
         }
         return { type: 'cdata', span: token.span, value: this.#cdataValue(token.span) };
       }
@@ -345,7 +350,7 @@ class HtmlParser {
    */
   #checkReferences(at: Span): void {
     for (const unknown of unknownReferences(this.#slice(at), at.start)) {
-      this.#error('FUD0057', `unknown character reference ${unknown.text}`, unknown.span);
+      this.#diagnostics.push(FUD0057({ span: unknown.span, reference: unknown.text }));
     }
   }
 
@@ -458,7 +463,7 @@ class HtmlParser {
     // Unclosed: located on the START tag, which is the actionable place in an editor. One
     // report per file once a tag ran off the end — everything outside it is a consequence.
     if (!this.#tagRanOff) {
-      this.#error('FUD0052', `unclosed <${name}> element`, openSpan);
+      this.#diagnostics.push(FUD0052({ span: openSpan, name }));
       this.#tagRanOff = this.#ranOff(openSpan);
     }
     // `closeSpan` is OMITTED, never set to undefined (exactOptionalPropertyTypes).
@@ -492,10 +497,10 @@ class HtmlParser {
 
   #orphanClose(name: string, at: Span): void {
     if (VOID_ELEMENTS.has(name.toLowerCase())) {
-      this.#error('FUD0053', `void element <${name}> must not have a close tag`, at);
+      this.#diagnostics.push(FUD0053({ span: at, name }));
       return;
     }
-    this.#error('FUD0051', `close tag </${name}> matches no open element`, at);
+    this.#diagnostics.push(FUD0051({ span: at, name }));
   }
 
   // ------------------------------------------------------------------
@@ -720,7 +725,7 @@ class HtmlParser {
     // Quotes are the way to write a value away from its `=`, and they are unaffected.
     if (token.span.start !== afterEq) {
       const at = emptySpan(afterEq);
-      this.#error('FUD0056', 'attribute value must be quoted', at);
+      this.#diagnostics.push(FUD0056({ span: at }));
       return at.end;
     }
 
@@ -748,13 +753,13 @@ class HtmlParser {
         });
         return token.span.end;
       }
-      this.#error('FUD0056', 'attribute value must be quoted', token.span);
+      this.#diagnostics.push(FUD0056({ span: token.span }));
       this.#checkReferences(token.span);
       parts.push({ type: 'attribute-text', span: token.span, value: this.#slice(token.span) });
       return token.span.end;
     }
     const at = emptySpan(this.#lexer.offset);
-    this.#error('FUD0056', 'attribute value must be quoted', at);
+    this.#diagnostics.push(FUD0056({ span: at }));
     return at.end;
   }
 
@@ -843,7 +848,7 @@ class HtmlParser {
 
   #unhandled(at: number, keywordSpan: Span, keyword: string): HtmlContent {
     const whole = span(at, keywordSpan.end);
-    this.#error('FUD0055', `no parser injected for the @${keyword} construct`, whole);
+    this.#diagnostics.push(FUD0055({ span: whole, keyword }));
     return { type: 'unhandled-construct', span: whole, keyword };
   }
 

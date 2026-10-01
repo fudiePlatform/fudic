@@ -7,11 +7,9 @@
  * Expression names (`bus:(expr)`) are not statically comparable and are skipped.
  */
 
-import { errorDiag } from '../../types/index.js';
+import { FUD0190 } from '@fudic/diagnostics';
 import type { Analyzer } from '../model.js';
 import { documentRoots, walk } from '../walk.js';
-
-const FUD_DUPLICATE_ATTRIBUTE = 'FUD0190';
 
 export const duplicateAttributes: Analyzer = {
   name: 'duplicate-attributes',
@@ -22,7 +20,7 @@ export const duplicateAttributes: Analyzer = {
         for (const attr of el.attributes) {
           if (typeof attr.name !== 'string') continue;
           if (seen.has(attr.name)) {
-            report(errorDiag(FUD_DUPLICATE_ATTRIBUTE, `duplicate attribute \`${attr.name}\``, attr.span));
+            report(FUD0190({ span: attr.span, name: attr.name }));
           } else {
             seen.add(attr.name);
           }

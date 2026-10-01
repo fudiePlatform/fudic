@@ -149,6 +149,9 @@ importers:
       '@fudic/conventions':
         specifier: workspace:*
         version: link:../conventions
+      '@fudic/diagnostics':
+        specifier: workspace:*
+        version: link:../diagnostics
       '@fudic/formatter':
         specifier: workspace:*
         version: link:../formatter
@@ -174,6 +177,9 @@ importers:
 
   packages/compiler:
     dependencies:
+      '@fudic/diagnostics':
+        specifier: workspace:*
+        version: link:../diagnostics
       oxc-parser:
         specifier: 0.137.0
         version: 0.137.0
@@ -201,6 +207,10 @@ importers:
         version: 0.137.0
 
   packages/config:
+    dependencies:
+      '@fudic/diagnostics':
+        specifier: workspace:*
+        version: link:../diagnostics
     devDependencies:
       '@fudic/tsconfig':
         specifier: workspace:*
@@ -240,6 +250,18 @@ importers:
         specifier: 1.2.1
         version: 1.2.1
 
+  packages/diagnostics:
+    devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/node':
+        specifier: 22.20.0
+        version: 22.20.0
+      rolldown:
+        specifier: 1.2.1
+        version: 1.2.1
+
   packages/dom:
     devDependencies:
       '@fudic/tsconfig':
@@ -257,6 +279,9 @@ importers:
       '@fudic/compiler':
         specifier: workspace:*
         version: link:../compiler
+      '@fudic/diagnostics':
+        specifier: workspace:*
+        version: link:../diagnostics
       oxfmt:
         specifier: 0.61.0
         version: 0.61.0
@@ -292,6 +317,9 @@ importers:
       '@fudic/compiler':
         specifier: workspace:*
         version: link:../compiler
+      '@fudic/diagnostics':
+        specifier: workspace:*
+        version: link:../diagnostics
       vscode-html-languageservice:
         specifier: 5.6.2
         version: 5.6.2
@@ -314,6 +342,9 @@ importers:
       '@fudic/config':
         specifier: workspace:*
         version: link:../config
+      '@fudic/diagnostics':
+        specifier: workspace:*
+        version: link:../diagnostics
       '@fudic/formatter':
         specifier: workspace:*
         version: link:../formatter
@@ -378,6 +409,9 @@ importers:
       '@fudic/config':
         specifier: workspace:*
         version: link:../config
+      '@fudic/diagnostics':
+        specifier: workspace:*
+        version: link:../diagnostics
     devDependencies:
       '@fudic/tsconfig':
         specifier: workspace:*
@@ -424,6 +458,9 @@ importers:
       '@fudic/conventions':
         specifier: workspace:*
         version: link:../conventions
+      '@fudic/diagnostics':
+        specifier: workspace:*
+        version: link:../diagnostics
       '@fudic/resolve':
         specifier: workspace:*
         version: link:../resolve

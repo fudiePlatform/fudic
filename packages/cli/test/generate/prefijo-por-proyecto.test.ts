@@ -11,12 +11,6 @@ import { planComponent } from '../../src/plans/component.js';
 import { planPage } from '../../src/plans/page.js';
 import { planLayout } from '../../src/plans/layout.js';
 import { apply } from '../../src/apply.js';
-import {
-  FUD_NO_TARGET_PROJECT,
-  FUD_PROJECT_UNKNOWN,
-  FUD_ROUTE_IN_LIB,
-} from '../../src/diagnostics.js';
-import { FUD_CONFIG_MALFORMED } from '@fudic/config';
 import { MemoryFs, RecordingRunner } from '../helpers.js';
 import type { ComponentOptions, LayoutOptions, PageOptions } from '../../src/types.js';
 
@@ -106,7 +100,7 @@ describe('when no project answers (criteria 9 and 10)', () => {
     const plan = await planComponent('card', componentOptions({ project: 'noexiste' }), workspace());
 
     expect(plan.changes).toEqual([]);
-    expect(plan.errors[0]?.code).toBe(FUD_PROJECT_UNKNOWN);
+    expect(plan.errors[0]?.code).toBe('FUD0782');
     expect(plan.errors[0]?.message).toContain('admin');
     expect(plan.errors[0]?.message).toContain('ui');
   });
@@ -124,7 +118,7 @@ describe('when no project answers (criteria 9 and 10)', () => {
 
     const plan = await planComponent('card', componentOptions({ project: 'ui' }), fs);
 
-    expect(plan.errors[0]?.code).toBe(FUD_PROJECT_UNKNOWN);
+    expect(plan.errors[0]?.code).toBe('FUD0782');
     expect(plan.errors[0]?.message).toContain('there are none here');
   });
 
@@ -133,7 +127,7 @@ describe('when no project answers (criteria 9 and 10)', () => {
     const plan = await planComponent('card', componentOptions(), fs);
 
     expect(plan.changes).toEqual([]);
-    expect(plan.errors.map((error) => error.code)).toEqual([FUD_NO_TARGET_PROJECT]);
+    expect(plan.errors.map((error) => error.code)).toEqual(['FUD0781']);
 
     await apply(plan, componentOptions(), fs, new RecordingRunner());
     expect(fs.paths().some((path) => path.endsWith('card.fud'))).toBe(false);
@@ -141,10 +135,10 @@ describe('when no project answers (criteria 9 and 10)', () => {
 
   it('page and layout refuse there too: there is no default project', async () => {
     expect((await planPage('/alta', pageOptions(), workspace())).errors[0]?.code).toBe(
-      FUD_NO_TARGET_PROJECT,
+      'FUD0781',
     );
     expect((await planLayout('base', layoutOptions(), workspace())).errors[0]?.code).toBe(
-      FUD_NO_TARGET_PROJECT,
+      'FUD0781',
     );
   });
 
@@ -154,7 +148,7 @@ describe('when no project answers (criteria 9 and 10)', () => {
     const plan = await planComponent('card', componentOptions({ cwd: `${ROOT}/apps/admin` }), fs);
 
     expect(plan.changes).toEqual([]);
-    expect(plan.errors[0]?.code).toBe(FUD_CONFIG_MALFORMED);
+    expect(plan.errors[0]?.code).toBe('FUD0725');
     expect(plan.errors[0]?.file).toBe('fudic.json');
   });
 });
@@ -164,7 +158,7 @@ describe('a route does not fit in a library (criterion 11)', () => {
     const plan = await planPage('/alta', pageOptions({ project: 'ui' }), workspace());
 
     expect(plan.changes).toEqual([]);
-    expect(plan.errors.map((error) => error.code)).toEqual([FUD_ROUTE_IN_LIB]);
+    expect(plan.errors.map((error) => error.code)).toEqual(['FUD0783']);
   });
 
   it('fudic g layout --project ui is legal, and writes the layout (§4.8)', async () => {

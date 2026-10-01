@@ -31,11 +31,7 @@
 
 import { RUNTIME_DIR } from '@fudic/conventions';
 import { dependencyChain, type PackageFs } from '@fudic/resolve';
-import {
-  FUD_RUNTIME_DIR_MISSING,
-  FUD_RUNTIME_URL_CLASH,
-  type FudicDiagnostic,
-} from './diagnostics.js';
+import { FUD0804, FUD0805, type FileDiagnostic } from '@fudic/diagnostics';
 
 /** One published piece this build links. */
 export interface RuntimePiece {
@@ -65,7 +61,7 @@ export interface RuntimeFs extends PackageFs {
 /** Every piece this build links, and what was wrong with a declaration that has none. */
 export interface RuntimePiecesResult {
   readonly pieces: readonly RuntimePiece[];
-  readonly diagnostics: readonly FudicDiagnostic[];
+  readonly diagnostics: readonly FileDiagnostic[];
 }
 
 /** The fields of a `package.json` a dependency graph is walked through. */
@@ -81,7 +77,7 @@ const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies'
  */
 export function runtimePieces(projectRoot: string, io: RuntimeFs): RuntimePiecesResult {
   const pieces: RuntimePiece[] = [];
-  const diagnostics: FudicDiagnostic[] = [];
+  const diagnostics: FileDiagnostic[] = [];
   const seen = new Set<string>();
 
   const visit = (root: string, fromConsumer: boolean): void => {
@@ -128,7 +124,7 @@ export function runtimePieces(projectRoot: string, io: RuntimeFs): RuntimePieces
  */
 function withoutClashes(
   pieces: readonly RuntimePiece[],
-  diagnostics: FudicDiagnostic[],
+  diagnostics: FileDiagnostic[],
 ): readonly RuntimePiece[] {
   const byUrl = new Map<string, RuntimePiece>();
   const kept: RuntimePiece[] = [];
@@ -143,15 +139,7 @@ function withoutClashes(
     // The same package reached twice is already impossible — the walk visits a root once, and
     // a workspace link resolves to its real path — so a repeat here is two packages.
     const [a, b] = [first.pkg, piece.pkg].toSorted();
-    diagnostics.push({
-      code: FUD_RUNTIME_URL_CLASH,
-      file: piece.file,
-      message:
-        `the packages "${a}" and "${b}" would both publish "${piece.url}". Two packages ` +
-        'whose names end in the same segment and whose versions are equal claim one file in ' +
-        'the output, and whichever is copied last decides what every page that names it ' +
-        'receives: rename one of them, or keep only one in the dependency graph.',
-    });
+    diagnostics.push(FUD0805({ file: piece.file, a: String(a), b: String(b), url: piece.url }));
   }
   return kept;
 }
@@ -170,7 +158,7 @@ function collect(
   declared: string,
   io: RuntimeFs,
   pieces: RuntimePiece[],
-  diagnostics: FudicDiagnostic[],
+  diagnostics: FileDiagnostic[],
 ): void {
   const name = stringField(manifest, 'name');
   const label = name ?? root; // a manifest with no name still has to be nameable in a message
@@ -183,15 +171,7 @@ function collect(
     .toSorted();
 
   if (files.length === 0) {
-    diagnostics.push({
-      code: FUD_RUNTIME_DIR_MISSING,
-      file: label,
-      message:
-        `the package "${label}" declares fudic.runtime "${declared}", and that directory ` +
-        'does not exist or holds no piece. A package that declares it produces one bundled ' +
-        'file per piece there in its own build, and this build links those files by URL: run ' +
-        "the publisher's build, or remove the declaration.",
-    });
+    diagnostics.push(FUD0804({ file: label, declared }));
     return;
   }
 

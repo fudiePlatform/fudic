@@ -17,7 +17,7 @@ import {
 } from '@fudic/compiler';
 import { printDoc } from './doc/index.js';
 import { applyEndOfLine } from './eol.js';
-import { internalFailure } from './diagnostics.js';
+import { FUD0482, span, type FudCode } from '@fudic/diagnostics';
 import { collectLeaves, oxfmtEngine, type LeafEngine } from './leaf/index.js';
 import { resolveOptions } from './options.js';
 import { printRoot } from './print/content.js';
@@ -49,7 +49,7 @@ interface Parsed {
  * unconditional, keeping it here would switch the formatter off for every loop from the moment
  * it is typed until the key is written, which is exactly the window formatting is asked for.
  */
-const KEY_RULES: ReadonlySet<string> = new Set(['FUD0540', 'FUD0541', 'FUD0542']);
+const KEY_RULES: ReadonlySet<FudCode> = new Set(['FUD0540', 'FUD0541', 'FUD0542']);
 
 function parseFud(source: string): Parsed {
   const html = parseDocument(source, { atConstructs: constructs });
@@ -97,7 +97,7 @@ export async function formatWith(
       notes: printed.notes,
     };
   } catch (error) {
-    return { ok: false, diagnostics: [internalFailure(source, error)] };
+    return { ok: false, diagnostics: [FUD0482({ span: span(0, source.length), error })] };
   }
 }
 
@@ -138,7 +138,7 @@ export async function formatRangeWith(
       source.slice(target.span.end);
     return { ok: true, text, notes: printed.notes };
   } catch (error) {
-    return { ok: false, diagnostics: [internalFailure(source, error)] };
+    return { ok: false, diagnostics: [FUD0482({ span: span(0, source.length), error })] };
   }
 }
 

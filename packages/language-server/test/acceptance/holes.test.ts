@@ -55,10 +55,10 @@ async function report(body: string): Promise<{ uri: string; items: readonly Wire
   return { uri, items: ((got as { items?: WireDiagnostic[] }).items ?? []) };
 }
 
-describe('FUD0440 — a required section the route leaves unfilled', () => {
+describe('FUD0890 — a required section the route leaves unfilled', () => {
   it('is reported on the layout link, naming every missing section', async () => {
     const { items } = await report('@section pie {\n  <p>pie</p>\n}\n');
-    const missing = items.filter((d) => d.code === 'FUD0440');
+    const missing = items.filter((d) => d.code === 'FUD0890');
 
     expect(missing).toHaveLength(1);
     expect(missing[0]?.message).toContain('`cabecera`');
@@ -68,12 +68,12 @@ describe('FUD0440 — a required section the route leaves unfilled', () => {
   it('says nothing once every required section is declared', async () => {
     const { items } = await report('@section cabecera {\n}\n\n@section pie {\n}\n');
 
-    expect(items.map((d) => d.code)).not.toContain('FUD0440');
+    expect(items.map((d) => d.code)).not.toContain('FUD0890');
   });
 
   it('offers a bulb that writes the missing sections after the last one', async () => {
     const { uri, items } = await report('<p>cuerpo</p>\n');
-    const diagnostic = items.find((d) => d.code === 'FUD0440')!;
+    const diagnostic = items.find((d) => d.code === 'FUD0890')!;
     const got = (await harness.client.sendRequest(CodeActionRequest.type, {
       textDocument: { uri },
       range: diagnostic.range as never,

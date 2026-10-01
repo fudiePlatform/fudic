@@ -16,7 +16,6 @@ import { discoverRoutes } from '../src/discover.js';
 import { resolveOptions } from '../src/options.js';
 import { transformFud } from '../src/transform.js';
 import { nodeIo } from '../src/io.js';
-import { FUD_ORPHAN_LAYOUT } from '../src/diagnostics.js';
 
 
 const LAYOUT = `<!DOCTYPE html>
@@ -79,13 +78,13 @@ describe('discovery (§6.15, SDD-21 §4.7)', () => {
   it('reports a layout under routesDir that nobody points at (FUD0434)', () => {
     const root = project({ 'src/routes/_layout.fud': LAYOUT });
     const { diagnostics } = discoverRoutes(root, resolveOptions({}).options);
-    expect(diagnostics.map((d) => d.code)).toEqual([FUD_ORPHAN_LAYOUT]);
+    expect(diagnostics.map((d) => d.code)).toEqual(['FUD0434']);
   });
 
   it('stays silent for the layout the route actually uses', () => {
     const root = project({ 'src/routes/_used.fud': LAYOUT, 'src/routes/r.fud': '<link rel="layout" href="./_used.fud"><p>x</p>' });
     const { diagnostics } = discoverRoutes(root, resolveOptions({}).options);
-    expect(diagnostics.map((d) => d.code)).not.toContain(FUD_ORPHAN_LAYOUT);
+    expect(diagnostics.map((d) => d.code)).not.toContain('FUD0434');
   });
 });
 

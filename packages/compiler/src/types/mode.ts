@@ -5,7 +5,7 @@
  */
 
 import { emptySpan } from './span.js';
-import { errorDiag } from './diagnostic.js';
+import { FUD0001 } from '@fudic/diagnostics';
 import { ok, withDiagnostics, type ParseResult } from './result.js';
 
 /**
@@ -57,9 +57,7 @@ export class ModeStack {
    */
   pop(at: number): ParseResult<Mode> {
     if (this.#stack.length <= 1) {
-      return withDiagnostics(this.current, [
-        errorDiag('FUD0001', 'mode stack underflow: pop on the background mode', emptySpan(at)),
-      ]);
+      return withDiagnostics(this.current, [FUD0001({ span: emptySpan(at) })]);
     }
     return ok(this.#stack.pop()!);
   }

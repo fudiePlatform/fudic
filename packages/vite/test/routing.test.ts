@@ -5,7 +5,6 @@
 
 import { describe, it, expect } from 'vitest';
 import { routesFromFiles } from '../src/routing.js';
-import { FUD_MALFORMED_PARAM, FUD_ROUTE_COLLISION } from '../src/diagnostics.js';
 
 /** Convenience: map file → pattern for the resolved routes. */
 function patterns(files: readonly string[]): Record<string, string> {
@@ -55,17 +54,17 @@ describe('routing — collisions and malformed params (crit. #3)', () => {
     const { routes, diagnostics } = routesFromFiles(['products/index.fud', 'products.fud']);
     // Both map to `/products`; only the first (sorted) survives.
     expect(routes.map((r) => r.pattern)).toEqual(['/products']);
-    expect(diagnostics.map((d) => d.code)).toContain(FUD_ROUTE_COLLISION);
+    expect(diagnostics.map((d) => d.code)).toContain('FUD0361');
   });
 
   it('reports an empty param segment and drops it, without throwing', () => {
     const { diagnostics } = routesFromFiles(['x/[].fud']);
-    expect(diagnostics.map((d) => d.code)).toContain(FUD_MALFORMED_PARAM);
+    expect(diagnostics.map((d) => d.code)).toContain('FUD0360');
   });
 
   it('reports a duplicated param name in one path', () => {
     const { diagnostics } = routesFromFiles(['[id]/[id].fud']);
-    expect(diagnostics.filter((d) => d.code === FUD_MALFORMED_PARAM)).toHaveLength(1);
+    expect(diagnostics.filter((d) => d.code === 'FUD0360')).toHaveLength(1);
   });
 
   it('ignores non-.fud files', () => {

@@ -10,11 +10,7 @@ import { routesFromFiles, type Route } from './routing.js';
 import { analyzePage, type PageAnalysis } from './analyze.js';
 import { resolveMode, type ModeDecision, type PageFacts } from './mode.js';
 import { type ResolvedOptions } from './options.js';
-import {
-  type FudicDiagnostic,
-  FUD_ORPHAN_LAYOUT,
-  FUD_UNKNOWN_ROUTE_OVERRIDE,
-} from './diagnostics.js';
+import { FUD0364, FUD0434, type FileDiagnostic } from '@fudic/diagnostics';
 
 export interface RouteBuild {
   readonly route: Route;
@@ -26,7 +22,7 @@ export interface RouteBuild {
 
 export interface DiscoverResult {
   readonly routes: readonly RouteBuild[];
-  readonly diagnostics: readonly FudicDiagnostic[];
+  readonly diagnostics: readonly FileDiagnostic[];
 }
 
 /** All `.fud` files under `dir`, as POSIX-style paths relative to `dir`. */
@@ -44,7 +40,7 @@ function listFud(dir: string): string[] {
 export function discoverRoutes(root: string, options: ResolvedOptions): DiscoverResult {
   const routesRoot = join(root, options.routesDir);
   const { routes, diagnostics } = routesFromFiles(listFud(routesRoot));
-  const diags: FudicDiagnostic[] = [...diagnostics];
+  const diags: FileDiagnostic[] = [...diagnostics];
 
   const builds: RouteBuild[] = [];
   // A layout is never a route (SDD-21 §4.7), wherever it lives; these two sets turn the
@@ -84,11 +80,7 @@ export function discoverRoutes(root: string, options: ResolvedOptions): Discover
   // A layout under routesDir that no route (nor another layout) points at renders nothing.
   for (const path of layouts) {
     if (!usedLayouts.has(path)) {
-      diags.push({
-        code: FUD_ORPHAN_LAYOUT,
-        message: 'Layout is not referenced by any route: it renders nothing',
-        file: path,
-      });
+      diags.push(FUD0434({ file: path }));
     }
   }
 
@@ -96,11 +88,7 @@ export function discoverRoutes(root: string, options: ResolvedOptions): Discover
   const known = new Set(builds.map((b) => b.route.pattern));
   for (const pattern of Object.keys(options.defaults)) {
     if (!known.has(pattern)) {
-      diags.push({
-        code: FUD_UNKNOWN_ROUTE_OVERRIDE,
-        message: `Route default for "${pattern}" matches no route`,
-        file: pattern,
-      });
+      diags.push(FUD0364({ file: pattern }));
     }
   }
 

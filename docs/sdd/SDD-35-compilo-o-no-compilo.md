@@ -6,7 +6,8 @@
 > (deja de tener su copia y la importa) · `@fudic/vite` (corre el chequeo en `build` y en `dev`,
 > y deja de callarse errores) · `@fudic/compiler` (retira `FUD0197`–`FUD0199`)
 > **Depende de:** 19 (el plugin), 23 (la proyección), 24 (el servidor), BUG-23 (el reparto
-> compilador/TypeScript)
+> compilador/TypeScript), 50 (`FUD0870`/`FUD0871` nacen en `@fudic/diagnostics`, y
+> `formatProblem` pinta con su `format`)
 > **Rango de diagnósticos:** `FUD0870`–`FUD0889`
 > **Decisiones de gramática:** ninguna. El autor no escribe nada nuevo.
 > **Naturaleza:** build + editor. No toca el parser, la proyección ni el runtime.

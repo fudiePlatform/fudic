@@ -13,25 +13,6 @@
 
 export const VERSION = '0.0.1';
 
-export {
-  type FudicDiagnostic,
-  FUD_MALFORMED_PARAM,
-  FUD_ROUTE_COLLISION,
-  FUD_PATHS_INCOMPLETE,
-  FUD_ASSET_NOT_FOUND,
-  FUD_UNKNOWN_ROUTE_OVERRIDE,
-  FUD_MANIFEST_URL_NOT_ABSOLUTE,
-  FUD_SW_CONFIG_MALFORMED,
-  FUD_SW_SHELL_MISSING,
-  FUD_TTL_INVALID,
-  FUD_STRATEGY_NOT_LITERAL,
-  FUD_STRATEGY_DUPLICATE,
-  FUD_UNLINKABLE_CONSTRUCT,
-  FUD_TWO_TTLS,
-  FUD_STRATEGY_AND_DEFAULT,
-  FUD_SSG_WITHOUT_PATHS,
-  FUD_CHUNK_NOT_EMITTED,
-} from './diagnostics.js';
 export { type Route, type RoutingResult, routesFromFiles } from './routing.js';
 export { type RenderChunkOptions, emitRenderChunk } from './wrapper.js';
 export {

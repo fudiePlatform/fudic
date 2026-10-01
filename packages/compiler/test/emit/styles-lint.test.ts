@@ -8,7 +8,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   lintProjectStyle,
-  FUD_DOCUMENT_ONLY_SELECTOR,
   resolveComponents,
   type ProjectStyle,
 } from '../../src/emit/index.js';
@@ -26,7 +25,7 @@ describe('SDD-42 §4.5 — the selectors a project sheet cannot use', () => {
     const [d] = lintProjectStyle(css);
 
     expect(d).toBeDefined();
-    expect(d!.code).toBe(FUD_DOCUMENT_ONLY_SELECTOR);
+    expect(d!.code).toBe('FUD0743');
     expect(d!.severity).toBe('warning');
     expect(d!.span).toEqual({ start: 0, end: 5 });
     expect(css.slice(d!.span.start, d!.span.end)).toBe(':root');

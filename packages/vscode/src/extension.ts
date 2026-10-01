@@ -38,6 +38,14 @@ let session: FudicSession | undefined;
 const SHOW_OUTPUT = 'fudic.showOutput';
 
 /**
+ * The command behind every "Explain FUDnnnn" bulb: the server sends the path of the code's
+ * explanation and this opens it in the markdown preview. Not contributed either — it only makes
+ * sense with a path, which only the server has. It exists because a command sent by the server
+ * carries plain JSON, and the preview wants a `Uri`.
+ */
+const EXPLAIN = 'fudic.explain';
+
+/**
  * Exported so the narrowing below is reachable from a test.
  *
  * It is the whole of what this package does with `vscode-languageclient`, and leaving it
@@ -96,6 +104,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     output,
     bar,
     vscode.commands.registerCommand(SHOW_OUTPUT, () => output.show()),
+    vscode.commands.registerCommand(EXPLAIN, (path: string) =>
+      vscode.commands.executeCommand('markdown.showPreview', vscode.Uri.file(path)),
+    ),
     vscode.window.onDidChangeActiveTextEditor((editor) =>
       session?.status.setActiveLanguage(languageOf(editor)),
     ),

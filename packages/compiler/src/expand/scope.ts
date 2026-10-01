@@ -12,7 +12,8 @@
  * same memo table that makes the second import of a file free.
  */
 
-import { type Diagnostic, type ResolveIo, errorDiag, relatedError } from '../types/index.js';
+import type { Diagnostic, ResolveIo } from '../types/index.js';
+import { FUD0834, FUD0836 } from '@fudic/diagnostics';
 import { parseDocument, type ElementNode } from '../html/index.js';
 import { atConstructs } from '../constructs.js';
 import { structureDocument, type StructuredDocument } from '../document/index.js';
@@ -24,11 +25,6 @@ import {
   type SnippetParam,
 } from '../snippet/index.js';
 import { readSnippetLink } from './links.js';
-
-/** A `<link rel="snippet">` that names nothing readable, or a file with no snippet in it. */
-const FUD_BAD_SNIPPET_LINK = 'FUD0836';
-/** Two snippets of one global scope under one name (§4.4). */
-const FUD_SNIPPET_COLLISION = 'FUD0834';
 
 /** One snippet, with everything its call site needs to check it and expand it. */
 export interface ResolvedSnippet {
@@ -228,32 +224,20 @@ export class SnippetRegistry {
     el: ElementNode,
     diagnostics: Diagnostic[],
   ): ReadonlyMap<string, ResolvedSnippet> | undefined {
+    // `FUD0836`: a `<link rel="snippet">` that names nothing readable, or a file with no
+    // snippet in it.
     if (href === '') {
-      diagnostics.push(
-        errorDiag(FUD_BAD_SNIPPET_LINK, '<link rel="snippet"> requires a static href', el.span),
-      );
+      diagnostics.push(FUD0836({ span: el.span, problem: 'no-href' }));
       return undefined;
     }
     const path = this.#resolve(fromPath, href);
     const file = path === undefined ? null : this.#load(path);
     if (file === null) {
-      diagnostics.push(
-        errorDiag(
-          FUD_BAD_SNIPPET_LINK,
-          `<link rel="snippet"> does not resolve: no file for "${href}"`,
-          el.span,
-        ),
-      );
+      diagnostics.push(FUD0836({ span: el.span, problem: 'unresolved', href }));
       return undefined;
     }
     if (file.declared.size === 0) {
-      diagnostics.push(
-        errorDiag(
-          FUD_BAD_SNIPPET_LINK,
-          `${file.path} declares no @snippet: nothing is imported from it`,
-          el.span,
-        ),
-      );
+      diagnostics.push(FUD0836({ span: el.span, problem: 'empty', path: file.path }));
       return undefined;
     }
     return file.declared;
@@ -278,14 +262,16 @@ function collision(
   el: ElementNode,
   firstLink: ElementNode | undefined,
 ): Diagnostic {
-  return relatedError(
-    FUD_SNIPPET_COLLISION,
-    `two snippets are called "${name}" in this file's scope: ${first.file} and ${second.file}. Give one of the two imports an "as" to put it under a namespace`,
-    el.span,
-    [
+  return FUD0834({
+    span: el.span,
+    where: 'scope',
+    name,
+    first: first.file,
+    second: second.file,
+    related: [
       firstLink === undefined
         ? { span: first.decl.nameSpan, message: `"${name}" is declared here`, file: first.file }
         : { span: firstLink.span, message: `"${name}" came in through this import` },
     ],
-  );
+  });
 }

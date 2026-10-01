@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   CONFIG_FILE,
-  FUD_CONFIG_MALFORMED,
   readProjectConfig,
   type ConfigIo,
 } from '../src/index.js';
@@ -62,7 +61,7 @@ describe('readProjectConfig', () => {
 
       expect(result.config).toBeNull();
       expect(result.diagnostics).toHaveLength(1);
-      expect(result.diagnostics[0]?.code).toBe(FUD_CONFIG_MALFORMED);
+      expect(result.diagnostics[0]?.code).toBe('FUD0725');
       expect(result.diagnostics[0]?.file).toBe(CONFIG_FILE);
     });
 
@@ -132,7 +131,7 @@ describe('readProjectConfig', () => {
       const result = readProjectConfig(ROOT, throwingIo(new Error('EACCES')));
 
       expect(result.config).toBeNull();
-      expect(result.diagnostics[0]?.code).toBe(FUD_CONFIG_MALFORMED);
+      expect(result.diagnostics[0]?.code).toBe('FUD0725');
       expect(result.diagnostics[0]?.message).toContain('EACCES');
       expect(result.diagnostics[0]?.span).toBeUndefined();
     });

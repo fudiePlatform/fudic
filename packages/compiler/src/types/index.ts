@@ -7,7 +7,6 @@ export type { Span } from './span.js';
 export { span, emptySpan, spanLength, isEmptySpan, mergeSpans, spanContains } from './span.js';
 
 export type { Severity, Diagnostic, RelatedLocation } from './diagnostic.js';
-export { errorDiag, relatedError, warningDiag, infoDiag, hintDiag } from './diagnostic.js';
 
 export type { ParseResult } from './result.js';
 export { ok, withDiagnostics, collectDiagnostics } from './result.js';

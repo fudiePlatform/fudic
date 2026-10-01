@@ -9,7 +9,16 @@
  */
 
 import { type Span, span, emptySpan } from '../types/index.js';
-import { type Diagnostic, errorDiag } from '../types/index.js';
+import type { Diagnostic } from '../types/index.js';
+import {
+  FUD0010,
+  FUD0011,
+  FUD0012,
+  FUD0013,
+  FUD0014,
+  FUD0015,
+  FUD0016,
+} from '@fudic/diagnostics';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 import { type Mode, ModeStack } from '../types/index.js';
 import { scanParens, scanBraces } from '../balancer/index.js';
@@ -225,10 +234,6 @@ export class Lexer {
     return withDiagnostics(this.#plain(type, start, end), diagnostics);
   }
 
-  #error(code: string, message: string, at: Span): Diagnostic {
-    return errorDiag(code, message, at);
-  }
-
   // ------------------------------------------------------------------
   // Dispatch
   // ------------------------------------------------------------------
@@ -350,7 +355,7 @@ export class Lexer {
 
     // Anything else: degrade to literal text, never throw.
     return this.#emitWith('text', start, start + 1, [
-      this.#error('FUD0010', 'character after @ does not start a Razor construct', emptySpan(start)),
+      FUD0010({ span: emptySpan(start) }),
     ]);
   }
 
@@ -358,7 +363,7 @@ export class Lexer {
     const close = this.#source.indexOf('*@', start + 2);
     if (close === -1) {
       return this.#emitWith('razor-comment', start, this.#length, [
-        this.#error('FUD0011', 'unterminated Razor comment', emptySpan(this.#length)),
+        FUD0011({ span: emptySpan(this.#length) }),
       ]);
     }
     return this.#emit('razor-comment', start, close + 2);
@@ -401,7 +406,7 @@ export class Lexer {
   /** `<` not followed by a name, `/` or `!`: emit it as text and carry on. */
   #malformedTag(start: number): ParseResult<Token> {
     return this.#emitWith('text', start, start + 1, [
-      this.#error('FUD0013', 'malformed tag', emptySpan(start)),
+      FUD0013({ span: emptySpan(start) }),
     ]);
   }
 
@@ -409,7 +414,7 @@ export class Lexer {
     const close = this.#source.indexOf('-->', start + 4);
     if (close === -1) {
       return this.#emitWith('html-comment', start, this.#length, [
-        this.#error('FUD0012', 'unterminated HTML comment', emptySpan(this.#length)),
+        FUD0012({ span: emptySpan(this.#length) }),
       ]);
     }
     return this.#emit('html-comment', start, close + 3);
@@ -419,7 +424,7 @@ export class Lexer {
     const close = this.#source.indexOf(']]>', start + 9);
     if (close === -1) {
       return this.#emitWith('cdata', start, this.#length, [
-        this.#error('FUD0016', 'unterminated CDATA section', emptySpan(this.#length)),
+        FUD0016({ span: emptySpan(this.#length) }),
       ]);
     }
     return this.#emit('cdata', start, close + 3);
@@ -633,7 +638,7 @@ export class Lexer {
         this.#inAttrValue = false;
       };
       return this.#emitWith('text', start, this.#length, [
-        this.#error('FUD0015', 'unterminated attribute value', emptySpan(this.#length)),
+        FUD0015({ span: emptySpan(this.#length) }),
       ]);
     }
     return this.#emit('text', start, i);
@@ -702,7 +707,7 @@ export class Lexer {
         this.#offset = this.#length;
         return withDiagnostics(
           { type: 'raw-text', span: span(start, this.#length), element },
-          [this.#error('FUD0014', `unterminated <${element}> element`, emptySpan(this.#length))],
+          [FUD0014({ span: emptySpan(this.#length), element })],
         );
       }
       this.#offset = close;
@@ -720,7 +725,7 @@ export class Lexer {
         this.#rawRazor = false;
       };
       return this.#emitWith('text', start, this.#length, [
-        this.#error('FUD0014', `unterminated <${element}> element`, emptySpan(this.#length)),
+        FUD0014({ span: emptySpan(this.#length), element }),
       ]);
     }
 

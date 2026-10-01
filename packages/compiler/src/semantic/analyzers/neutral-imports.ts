@@ -7,12 +7,10 @@
  * side effect into the shared scope. Detection reads the neutral fragment's Oxc AST.
  */
 
-import { warningDiag } from '../../types/index.js';
+import { FUD0196 } from '@fudic/diagnostics';
 import type { OxcNode } from '../../oxc/index.js';
 import type { Analyzer } from '../model.js';
 import { documentCode } from '../walk.js';
-
-const FUD_NEUTRAL_SIDE_EFFECT_IMPORT = 'FUD0196';
 
 export const neutralImports: Analyzer = {
   name: 'neutral-imports',
@@ -29,13 +27,7 @@ export const neutralImports: Analyzer = {
       const statements = input.js.ast(id) as readonly OxcNode[];
       for (const statement of statements) {
         if (statement.type === 'ImportDeclaration' && isSideEffectImport(statement)) {
-          report(
-            warningDiag(
-              FUD_NEUTRAL_SIDE_EFFECT_IMPORT,
-              'side-effect import in the neutral zone; only pure shared modules belong here',
-              input.js.mapSpan(statement.start, statement.end),
-            ),
-          );
+          report(FUD0196({ span: input.js.mapSpan(statement.start, statement.end) }));
         }
       }
     }

@@ -20,11 +20,9 @@
  * component — and what a `.prop` there means is a question BUG-32 does not answer.
  */
 
-import { errorDiag } from '../../types/index.js';
+import { FUD0720 } from '@fudic/diagnostics';
 import { classifyAttribute } from '../../binding/classify.js';
 import type { Analyzer } from '../model.js';
-
-const FUD_CLASS_ON_HOST = 'FUD0720';
 
 export const hostBindings: Analyzer = {
   name: 'host-bindings',
@@ -36,13 +34,7 @@ export const hostBindings: Analyzer = {
     for (const attr of host.attributes) {
       const binding = classifyAttribute(attr, input.source).value;
       if (binding.type !== 'class') continue;
-      report(
-        errorDiag(
-          FUD_CLASS_ON_HOST,
-          '`class:` on the component\'s own tag styles nothing: the classes of this file live inside its shadow, and a class on the host is resolved against the page — write the class where it applies, or expose the state as an attribute',
-          attr.span,
-        ),
-      );
+      report(FUD0720({ span: attr.span }));
     }
   },
 };

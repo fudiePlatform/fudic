@@ -2,7 +2,6 @@
 
 import { describe, it, expect } from 'vitest';
 import { parseTtl, readSwConfig, type ConfigIo } from '../src/swconfig.js';
-import { FUD_SW_CONFIG_MALFORMED, FUD_TTL_INVALID } from '../src/diagnostics.js';
 
 const io = (files: Record<string, string>): ConfigIo => ({
   exists: (p) => p in files,
@@ -63,7 +62,7 @@ describe('readSwConfig', () => {
   it('invalid JSON and a missing shell are FUD0390, with no Service Worker', () => {
     expect(readSwConfig('/app', io({ '/app/sw.json': '{oops' })).config).toBeNull();
     expect(readSwConfig('/app', io({ '/app/sw.json': '{oops' })).diagnostics[0]?.code).toBe(
-      FUD_SW_CONFIG_MALFORMED,
+      'FUD0390',
     );
     expect(readSwConfig('/app', io({ '/app/sw.json': '{"resources":{}}' })).config).toBeNull();
     expect(readSwConfig('/app', io({ '/app/sw.json': 'null' })).config).toBeNull();
@@ -84,6 +83,6 @@ describe('readSwConfig', () => {
       }),
     );
     expect(config?.resources).toEqual([{ pattern: '/z/**', policy: 'network-only', ttl: null }]);
-    expect(diagnostics.map((d) => d.code)).toEqual([FUD_SW_CONFIG_MALFORMED, FUD_TTL_INVALID]);
+    expect(diagnostics.map((d) => d.code)).toEqual(['FUD0390', 'FUD0392']);
   });
 });

@@ -26,7 +26,7 @@ import type {
   SwitchNode,
   WhileNode,
 } from '@fudic/compiler';
-import { fragmentNotFormatted } from '../diagnostics.js';
+import { FUD0481 } from '@fudic/diagnostics';
 import { OPAQUE_ELEMENTS } from '../tags.js';
 import type { ResolvedOptions } from '../types.js';
 import type { LeafEngine } from './engine.js';
@@ -258,7 +258,7 @@ export async function collectLeaves(
       );
       return out.ok
         ? { text: out.text }
-        : { text: out.text, note: fragmentNotFormatted({ start: job.start, end: job.end }) };
+        : { text: out.text, note: FUD0481({ span: { start: job.start, end: job.end } }) };
     }),
   );
 

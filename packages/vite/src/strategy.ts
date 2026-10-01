@@ -9,11 +9,7 @@
 
 import { type OxcNode } from '@fudic/compiler';
 import { type CachePolicy, type RouteMode } from '@fudic/transport';
-import {
-  type FudicDiagnostic,
-  FUD_STRATEGY_DUPLICATE,
-  FUD_STRATEGY_NOT_LITERAL,
-} from './diagnostics.js';
+import { FUD0393, FUD0394, type FileDiagnostic } from '@fudic/diagnostics';
 
 export interface StrategyDecl {
   readonly mode?: RouteMode;
@@ -25,7 +21,7 @@ export interface StrategyAnalysis {
   /** Whether the page called `strategy()` at all — the page is then the authority. */
   readonly declared: boolean;
   readonly strategy: StrategyDecl;
-  readonly diagnostics: readonly FudicDiagnostic[];
+  readonly diagnostics: readonly FileDiagnostic[];
 }
 
 export const NO_STRATEGY: StrategyAnalysis = { declared: false, strategy: {}, diagnostics: [] };
@@ -82,7 +78,7 @@ function strategyCall(statement: OxcNode): OxcNode | null {
 
 /** Read the page's declared strategy from the top-level statements of its `@code`. */
 export function strategyFrom(statements: readonly OxcNode[], file: string): StrategyAnalysis {
-  const diagnostics: FudicDiagnostic[] = [];
+  const diagnostics: FileDiagnostic[] = [];
   let found: StrategyDecl | null = null;
 
   for (const statement of statements) {
@@ -91,21 +87,13 @@ export function strategyFrom(statements: readonly OxcNode[], file: string): Stra
       continue;
     }
     if (found !== null) {
-      diagnostics.push({
-        code: FUD_STRATEGY_DUPLICATE,
-        message: 'A page may call strategy() only once; the first call wins',
-        file,
-      });
+      diagnostics.push(FUD0394({ file }));
       continue;
     }
     const argument = fieldArray(call, 'arguments')[0];
     const value = literalOf(argument);
     if (value === undefined || typeof value !== 'object') {
-      diagnostics.push({
-        code: FUD_STRATEGY_NOT_LITERAL,
-        message: 'strategy() needs an object literal with literal values (it is read statically, never run)',
-        file,
-      });
+      diagnostics.push(FUD0393({ file }));
       found = {};
       continue;
     }

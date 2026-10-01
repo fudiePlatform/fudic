@@ -15,7 +15,7 @@
  */
 
 import { CONFIG_FILE, ID_PATTERN, PREFIX_PATTERN, STYLE_NAME_PATTERN } from './constants.js';
-import { FUD_CONFIG_MALFORMED, type ConfigDiagnostic, type Span } from './diagnostics.js';
+import { FUD0725, type FUD0725Problem, type FileDiagnostic, type Span } from '@fudic/diagnostics';
 
 /** What the file declares, with every default already filled. */
 export interface ProjectConfig {
@@ -57,7 +57,7 @@ export interface NamedStyle {
 export interface ConfigResult {
   /** `null` when there is no `fudic.json`, or it is unusable. Degrades; never throws. */
   readonly config: ProjectConfig | null;
-  readonly diagnostics: readonly ConfigDiagnostic[];
+  readonly diagnostics: readonly FileDiagnostic[];
 }
 
 /** Minimal I/O seam, identical in shape to SDD-20's `ConfigIo`. */
@@ -69,7 +69,7 @@ export interface ConfigIo {
 /** What a field validator needs: the text to point into, and where to leave its verdict. */
 interface Ctx {
   readonly text: string;
-  readonly diagnostics: ConfigDiagnostic[];
+  readonly diagnostics: FileDiagnostic[];
 }
 
 /** Read `<root>/fudic.json`. */
@@ -84,18 +84,18 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
   try {
     text = io.read(path);
   } catch (error) {
-    return { config: null, diagnostics: [malformed(`could not be read: ${reason(error)}`)] };
+    return { config: null, diagnostics: [malformed({ problem: 'unreadable', reason: reason(error) })] };
   }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch (error) {
-    return { config: null, diagnostics: [malformed(`is not valid JSON: ${reason(error)}`)] };
+    return { config: null, diagnostics: [malformed({ problem: 'not-json', reason: reason(error) })] };
   }
 
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    return { config: null, diagnostics: [malformed('must be a JSON object')] };
+    return { config: null, diagnostics: [malformed({ problem: 'not-object' })] };
   }
 
   const fields = parsed as Record<string, unknown>;
@@ -144,28 +144,18 @@ function readStyleMap(
   }
   const span = fieldSpan(ctx.text, field);
   if (Array.isArray(value)) {
-    ctx.diagnostics.push(
-      malformed(
-        `"${field}" must be an object of "name": "path" — a sheet for every component goes in ` +
-          '"globalStyles", one a component chooses goes in "styles"',
-        span,
-      ),
-    );
+    ctx.diagnostics.push(malformed({ problem: 'style-array', field }, span));
     return [];
   }
   if (value === null || typeof value !== 'object') {
-    ctx.diagnostics.push(malformed(`"${field}" must be an object of "name": "path"`, span));
+    ctx.diagnostics.push(malformed({ problem: 'style-not-object', field }, span));
     return [];
   }
   const entries: NamedStyle[] = [];
   for (const [name, path] of Object.entries(value)) {
     if (!STYLE_NAME_PATTERN.test(name) || typeof path !== 'string') {
       ctx.diagnostics.push(
-        malformed(
-          `"${field}.${name}" must be a path, under a name matching ${STYLE_NAME_PATTERN.source} ` +
-            '(no hyphen: the hyphen is what makes a tag)',
-          span,
-        ),
+        malformed({ problem: 'style-entry', field, name, pattern: STYLE_NAME_PATTERN.source }, span),
       );
       continue;
     }
@@ -188,10 +178,7 @@ function readString(
   }
   if (typeof value !== 'string' || !pattern.test(value)) {
     ctx.diagnostics.push(
-      malformed(
-        `"${field}" must be a string matching ${pattern.source} (${note})`,
-        fieldSpan(ctx.text, field),
-      ),
+      malformed({ problem: 'string-field', field, pattern: pattern.source, note }, fieldSpan(ctx.text, field)),
     );
     return '';
   }
@@ -205,7 +192,7 @@ function readKind(fields: Record<string, unknown>, ctx: Ctx): 'app' | 'lib' {
     return 'app';
   }
   if (value !== 'app' && value !== 'lib') {
-    ctx.diagnostics.push(malformed('"kind" must be "app" or "lib"', fieldSpan(ctx.text, 'kind')));
+    ctx.diagnostics.push(malformed({ problem: 'kind' }, fieldSpan(ctx.text, 'kind')));
     return 'app';
   }
   return value;
@@ -234,13 +221,8 @@ function fieldSpan(text: string, field: string): Span | undefined {
   }
 }
 
-function malformed(what: string, span?: Span): ConfigDiagnostic {
-  return {
-    code: FUD_CONFIG_MALFORMED,
-    message: `${CONFIG_FILE} ${what}`,
-    file: CONFIG_FILE,
-    ...(span === undefined ? {} : { span }),
-  };
+function malformed(problem: FUD0725Problem, span?: Span): FileDiagnostic {
+  return FUD0725({ file: CONFIG_FILE, ...problem, ...(span === undefined ? {} : { span }) });
 }
 
 function reason(error: unknown): string {

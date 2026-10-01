@@ -184,13 +184,13 @@ describe('the arguments of a `@render`', () => {
     expect(got).toEqual(['@title']);
   });
 
-  it('a reference with no `@` is FUD0444, and the bulb writes it', async () => {
+  it('a reference with no `@` is FUD0894, and the bulb writes it', async () => {
     const text = LAYOUT.replace('BODY', '      @RenderBody()\n      @render foot(title)');
     const { uri } = await harness.open('layouts/_frame.fud', text);
     await harness.change(uri, text, ++version);
     const got = await harness.client.sendRequest(DocumentDiagnosticRequest.type, { textDocument: { uri } });
     const items = (got as { items?: { code?: unknown; range: unknown }[] }).items ?? [];
-    const diagnostic = items.find((d) => d.code === 'FUD0444')!;
+    const diagnostic = items.find((d) => d.code === 'FUD0894')!;
     const actions = (await harness.client.sendRequest(CodeActionRequest.type, {
       textDocument: { uri },
       range: diagnostic.range as never,

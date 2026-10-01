@@ -68,10 +68,9 @@ import {
   busHandler,
   delegatedHandler,
   eventHandler,
-  FUD_UNSUITABLE_HANDLER,
   type HookupContext,
 } from './events.js';
-import { errorDiag } from '../types/index.js';
+import { FUD0291 } from '@fudic/diagnostics';
 
 const isControl = isControlNode;
 const asControl = (node: HtmlContent): ControlNode => node as unknown as ControlNode;
@@ -1187,13 +1186,7 @@ export class ClientMarkupEmitter {
             : busHandler(this.#source, at, this.#hookup);
       if (handler === undefined) {
         // The emit does not throw (§5): the binding is dropped and the page still emits.
-        this.#hookup.diagnostics.push(
-          errorDiag(
-            FUD_UNSUITABLE_HANDLER,
-            'event binding value must be a reference, a lambda or a call: this expression cannot be subscribed',
-            at,
-          ),
-        );
+        this.#hookup.diagnostics.push(FUD0291({ span: at, by: 'emit' }));
         continue;
       }
       if (b.type === 'event') {

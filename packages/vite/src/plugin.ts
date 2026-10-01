@@ -11,7 +11,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve as resolvePath } from 'node:path';
+import { dirname, join, relative, resolve as resolvePath } from 'node:path';
 import { type Plugin, transformWithOxc } from 'vite';
 import {
   applyNonce,
@@ -49,7 +49,7 @@ import {
   routeNameLookup,
   routeUsesDi,
 } from './client.js';
-import { INLINE_QUERY, IOC_SUFFIX, LineMap, RUNTIME_MARKER } from '@fudic/compiler';
+import { INLINE_QUERY, IOC_SUFFIX, RUNTIME_MARKER } from '@fudic/compiler';
 import { RUNTIME_CACHE_PREFIX, RUNTIME_DIR, runtimeMarkerUrl } from '@fudic/conventions';
 import { nodeIo, nodeLinkCheckIo, nodeRuntimeFs } from './io.js';
 import { runtimePieces } from './runtime-pieces.js';
@@ -81,8 +81,8 @@ import { readSwConfig, type ResolvedSwConfig } from './swconfig.js';
 import { nodeConfigIo, readProject, type ProjectResult } from './config.js';
 import { ProjectStyleChains } from './styles.js';
 import { nodePackageFs } from '@fudic/resolve';
+import { CONFIG_FILE } from '@fudic/config';
 import { LinkedAssets } from './linked-assets.js';
-import { CONFIG_FILE, type ConfigDiagnostic } from '@fudic/config';
 import { runLinkPass, safeName, type LinkResult } from './link.js';
 import { runEdgePass } from './edge.js';
 import { buildServiceWorker } from './swbuild.js';
@@ -94,21 +94,22 @@ import {
   prerenderEnumerated,
   type BundleItem,
 } from './prerender.js';
+import { policyDeclaresNonce } from './diagnostics.js';
+import { reportText } from './report.js';
 import {
-  FUD_PATHS_INCOMPLETE,
-  FUD_ASSET_NOT_FOUND,
-  FUD_CHUNK_NOT_EMITTED,
-  FUD_PRERENDER_FAILED,
-  FUD_ROUTE_NAME_COLLISION,
-  FUD_PUBLIC_BY_PATH,
-  FUD_INLINE_WITHOUT_NONCE,
-  FUD_RUNTIME_PIECE_HAS_BUILD,
-  FUD_RUNTIME_PIECE_MISSING,
-  FUD_STYLES_NOT_ADOPTED,
-  FUD_SW_SHELL_MISSING,
-  FUD_SHEET_UNUSED,
-  policyDeclaresNonce,
-} from './diagnostics.js';
+  FUD0362,
+  FUD0363,
+  FUD0366,
+  FUD0391,
+  FUD0399,
+  FUD0620,
+  FUD0622,
+  FUD0742,
+  FUD0801,
+  FUD0803,
+  FUD0852,
+  type FileDiagnostic,
+} from '@fudic/diagnostics';
 import { devUrl, devManifest, devClientTag, devClientPrefix, withInlineSourceMap } from './dev.js';
 import {
   matchRouteBuild,
@@ -190,7 +191,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let builds: readonly RouteBuild[] = [];
   let swConfig: ResolvedSwConfig | null = null;
   /** Who this project is (SDD-41). Empty until `configResolved` has run. */
-  let project: ProjectResult = { config: null, warnings: [], errors: [] };
+  let project: ProjectResult = { config: null, errors: [] };
   /**
    * The app id that namespaces this application's caches (BUG-33). Resolved once, here,
    * so the two places that bake it into the worker read a string and not an optional:
@@ -212,9 +213,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    */
   let styleChains: ProjectStyleChains | null = null;
   /** `FUD0740` / `FUD0741`, reported in `buildStart` alongside the config's own. */
-  let styleErrors: readonly ConfigDiagnostic[] = [];
+  let styleErrors: readonly FileDiagnostic[] = [];
   /** `FUD0743`, read once per sheet rather than once per route it travels into (§4.5). */
-  let styleWarnings: readonly ConfigDiagnostic[] = [];
+  let styleWarnings: readonly FileDiagnostic[] = [];
   let writeToDisk = true;
   /**
    * The files the project's `.fud` link, and their published names (BUG-40).
@@ -736,18 +737,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
 
     buildStart() {
       // Who this project is, before anything is built with it. A malformed `fudic.json`
-      // is a warning and the build goes on without configuration; a `sw.json` with no
-      // `id` stops here, because caches named after nothing is not a degraded mode (§5).
-      for (const d of project.warnings) {
-        this.warn(`[${d.code}] ${d.message}`);
-      }
+      // stops here, as it does in the CLI (`FUD0725`); so does a `sw.json` with no `id`,
+      // because caches named after nothing is not a degraded mode (§5).
       for (const d of project.errors) {
-        this.error(`[${d.code}] ${d.message}`);
+        this.error(reportText(d, root));
       }
       // The style guide's own (SDD-42 §5). Errors, and for the same reason: a sheet that is
       // not there renders exactly like a sheet that did nothing.
       for (const d of styleErrors) {
-        this.error(`[${d.code}] ${d.message}`);
+        this.error(reportText(d, root));
       }
       // And the same questions asked of the LIBRARIES this project consumes (SDD-43 §4.6).
       // Reading the whole chain here, before anything is emitted, is what makes this one
@@ -756,7 +754,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       if (styleChains !== null) {
         styleChains.chainOfPackage(root);
         for (const d of styleChains.diagnostics) {
-          this.error(`[${d.code}] ${d.message}`);
+          this.error(reportText(d, root));
         }
       }
       // The published runtime this build links instead of compiling (SDD-45 §4.2). Discovered
@@ -768,7 +766,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       if (!isDev) {
         const discovery = runtimePieces(root, runtimeFs);
         for (const d of discovery.diagnostics) {
-          this.error(`[${d.code}] ${d.message}`);
+          this.error(reportText(d, root));
         }
         runtime = runtimeLinkage(discovery.pieces, runtimeFs);
       }
@@ -779,19 +777,19 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // mismatch produces is an export that does not exist, in a browser, inside a file the
       // author never wrote.
       for (const d of checkPeers(root, nodePackageFs())) {
-        this.error(`[${d.code}] ${d.message}`);
+        this.error(reportText(d, root));
       }
       // And what the sheet says that its destination cannot hear (§4.5). A warning, and
       // the sheet is emitted whole: the same file served to the document too is a legitimate
       // shape, and there those rules are the correct ones.
       for (const d of styleWarnings) {
-        this.warn(`[${d.code}] ${d.message}`);
+        this.warn(reportText(d, root));
       }
 
       const discovered = discoverRoutes(root, options);
       builds = discovered.routes;
       for (const d of discovered.diagnostics) {
-        this.warn(`[${d.code}] ${d.message}`);
+        this.warn(reportText(d, root));
       }
 
       // What the links NAME, before anything walks them (SDD-43 §4.3). The graph walk reads
@@ -802,7 +800,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         builds.map((rb) => rb.absPath),
         linkCheckIo,
       )) {
-        this.error(`[${d.code}] ${d.message} (in ${d.file})`);
+        this.error(reportText(d, root));
       }
 
       // The coordinators (SDD-45 §4.4): one per route, named by its content, so two routes
@@ -817,11 +815,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       if (!isDev) {
         const { params, missing } = coordinatorParams({ mode: 'build', base });
         for (const name of missing) {
-          this.error(
-            `[${FUD_RUNTIME_PIECE_MISSING}] the published runtime of this build has no ` +
-              `"${name}", which every route that hydrates has to start. Run the publisher's ` +
-              'build, or check that its version is the one this project resolves.',
-          );
+          const d = FUD0801({ name });
+          this.error(reportText(d, root));
         }
         for (const rb of builds) {
           if (rb.decision.mode === 'excluded') continue;
@@ -861,11 +856,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         styleChains.own(root).global.length + styleChains.own(root).optional.length > 0 &&
         discoverComponents(builds, io).length === 0
       ) {
-        this.warn(
-          `[${FUD_STYLES_NOT_ADOPTED}] ${CONFIG_FILE} declares stylesheets and this project defines no component: ` +
-            'a project sheet is adopted into the shadow roots of its own components, and there are none. ' +
-            'A stylesheet meant for the document goes in a <link rel="stylesheet"> in the layout.',
-        );
+        const d = FUD0742();
+        this.warn(reportText(d, root));
       }
       if (isDev) {
         // Dev has no emitFile/generateBundle: the module graph serves the wrappers and
@@ -934,9 +926,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         // «normally» is not a guarantee, and a silent overwrite is a page that hydrates as
         // some other file.
         if (tags.has(route.name)) {
-          this.error(
-            `[${FUD_ROUTE_NAME_COLLISION}] the chunk of route ${route.pattern} would be named "${route.name}", which is already a component tag`,
-          );
+          const d = FUD0622({ pattern: route.pattern, name: route.name });
+          this.error(reportText(d, root));
         }
         this.emitFile({
           type: 'chunk',
@@ -1137,7 +1128,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           return null;
         }
         for (const spec of chunk.missingAssets) {
-          this.warn(`[${FUD_ASSET_NOT_FOUND}] asset "${spec}" not found (referenced by ${path})`);
+          const d = FUD0363({ file: path, spec });
+          this.warn(reportText(d, root));
         }
         // Same reason as `?server`: the `@code { @client }` region is copied VERBATIM, so
         // the chunk is TypeScript whenever the author wrote TypeScript. The emit's map goes
@@ -1164,7 +1156,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // A literal asset URL with no file on disk: warn (FUD0363) and keep the literal —
       // the emit already left it un-linked, so the build does not abort.
       for (const spec of result.missingAssets) {
-        this.warn(`[${FUD_ASSET_NOT_FOUND}] asset "${spec}" not found (referenced by ${path})`);
+        const d = FUD0363({ file: path, spec });
+        this.warn(reportText(d, root));
       }
       // The inline form against the policy this application ships (SDD-45 §4.5.2). An error
       // rather than a warning because the page it would produce renders and does not
@@ -1175,11 +1168,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // fire yet. It is written where it will keep working the day the policy is the
       // project's, which is the only reason a build check is worth anything.
       if (result.inlineRuntime !== undefined && !policyDeclaresNonce(DEFAULT_CSP.document)) {
-        this.error(
-          `[${FUD_INLINE_WITHOUT_NONCE}] "${RUNTIME_MARKER}?${INLINE_QUERY}" needs the document ` +
-            `policy to declare 'nonce-{nonce}', and this one does not ` +
-            `(${result.inlineRuntime.file} at ${result.inlineRuntime.offset})`,
-        );
+        const d = FUD0803({
+          file: result.inlineRuntime.file,
+          specifier: `${RUNTIME_MARKER}?${INLINE_QUERY}`,
+          offset: result.inlineRuntime.offset,
+        });
+        this.error(reportText(d, root));
       }
       // The `.fud` this module's markup came from that Vite cannot see: a snippet file is
       // not imported by the emitted code, it is expanded INTO it (SDD-29 §4.10), so without
@@ -1190,7 +1184,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // A diagnostic that names another file says so: a snippet's body is reported in the
       // snippet's file, with the `@render` that pulled it in as the related location.
       for (const d of result.diagnostics) {
-        const message = `[${d.code}] ${d.message} (${d.file ?? path})`;
+        const message = reportText(d, root, path);
         if (d.severity === 'error') this.error(message);
         else this.warn(message);
       }
@@ -1431,7 +1425,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         buildId,
       );
       for (const d of rename.diagnostics) {
-        this.warn(`[${d.code}] ${d.message}`);
+        this.warn(reportText(d, root));
       }
       const renames = rename.files;
       // Every chunk of the bundle, not only the renamed ones: a shared chunk that moved is
@@ -1558,8 +1552,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         },
       );
       for (const d of copy.diagnostics) {
-        if (d.code === FUD_RUNTIME_PIECE_HAS_BUILD) this.error(`[${d.code}] ${d.message}`);
-        else this.warn(`[${d.code}] ${d.message}`);
+        if (d.severity === 'error') this.error(reportText(d, root));
+        else this.warn(reportText(d, root));
       }
       for (const file of copy.files) {
         this.emitFile({ type: 'asset', fileName: file.fileName, source: file.code });
@@ -1612,14 +1606,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         hydrateDeps,
         depsOf: (rb) => {
           if (!link.entries.has(rb.route.pattern)) {
-            this.warn(`[${FUD_CHUNK_NOT_EMITTED}] no linkable chunk for ${rb.route.pattern}`);
+            const d = FUD0399({ pattern: rb.route.pattern });
+            this.warn(reportText(d, root));
             return null;
           }
           return chunkNamesOf(link.deps.get(rb.route.pattern) ?? []);
         },
       });
       for (const d of diagnostics) {
-        this.warn(`[${d.code}] ${d.message} (${d.file})`);
+        this.warn(reportText(d, root));
       }
       this.emitFile({ type: 'asset', fileName: manifestFileName, source: JSON.stringify(file) });
       emitted.add(manifestFileName);
@@ -1656,7 +1651,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
                   emitted.add(f.path);
                 }
                 for (const bad of incomplete) {
-                  this.warn(`[${FUD_PATHS_INCOMPLETE}] paths() entry ${bad} does not cover every param of ${rb.route.pattern}`);
+                  const d = FUD0362({ entry: bad, pattern: rb.route.pattern });
+                  this.warn(reportText(d, root));
                 }
               } else if (!rb.route.pattern.includes(':')) {
                 const html = await renderChunkToHtml(chunkPath, rb.route.pattern);
@@ -1668,9 +1664,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               // file, which shipped a site with one page missing and CI in green — a route
               // that throws while rendering is not a degradation, it is a page that does not
               // exist. No span: this is the build's diagnostic and not the file's.
-              this.error(
-                `[${FUD_PRERENDER_FAILED}] ${rb.route.pattern} failed to prerender: ${(err as Error).message}`,
-              );
+              const d = FUD0620({ pattern: rb.route.pattern, reason: (err as Error).message });
+              this.error(reportText(d, root));
             }
           }
         } finally {
@@ -1683,11 +1678,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       //     compiled by the host, the link pass and the edge pass, and one mistake would
       //     be said three times.
       for (const url of linked.publicByPath()) {
-        this.error(
-          `[${FUD_PUBLIC_BY_PATH}] A public file is named by its URL, not by a path into the public directory: ` +
-            `write "${url}". Reaching it with a relative path publishes a second, hashed copy of a file ` +
-            'that is already served under its own name.',
-        );
+        const d = FUD0366({ url });
+        this.error(reportText(d, root));
       }
 
       // 5a'. The sheets, once each and not once per page (SDD-49 §4.11): what a sheet or a
@@ -1698,19 +1690,20 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       const sheetErrors: string[] = [];
       for (const [sheet, diagnostics] of linked.sheetDiagnostics()) {
         if (diagnostics.length === 0) continue;
-        const lines = new LineMap(existsSync(sheet) ? readFileSync(sheet, 'utf8') : '');
         for (const d of diagnostics) {
-          const at = lines.positionAt(d.span.start);
-          const text = `[${d.code}] ${sheet}:${at.line + 1}:${at.character + 1}: ${d.message}`;
+          const text = reportText(d, root, sheet);
           if (d.severity === 'error') sheetErrors.push(text);
           else this.warn(text);
         }
       }
-      for (const sheet of linked.unusedSheets()) {
-        this.warn(
-          `[${FUD_SHEET_UNUSED}] ${sheet} adds no rule to any page of the application: ` +
-            'nothing any page renders matches it. It is dead CSS — if a sheet imports it, that @import can go.',
-        );
+      // At the line that brings the sheet in, which is the one to remove; a `fudic.json`
+      // entry has no line of its own here, and points at the file.
+      for (const { name, site } of linked.unusedSheets()) {
+        const unused =
+          site === undefined
+            ? FUD0852({ file: join(root, CONFIG_FILE), sheet: name })
+            : FUD0852({ file: site.file, span: site.span, sheet: relative(root, name).replace(/\\/gu, '/') });
+        this.warn(reportText(unused, root));
       }
       if (sheetErrors.length > 0) this.error(sheetErrors.join('\n'));
 
@@ -1728,7 +1721,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // 6. The declared shell, checked against what the build actually produced. The
       //    install's `catch` stays as the last safety net, not as the detector.
       for (const entry of missingShellEntries(swConfig?.shell ?? [], base, emitted, publicDir)) {
-        this.warn(`[${FUD_SW_SHELL_MISSING}] shell entry "${entry}" is not in the build output`);
+        const d = FUD0391({ entry });
+        this.warn(reportText(d, root));
       }
     },
   };

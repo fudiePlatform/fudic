@@ -10,11 +10,9 @@
  *   elements, so only the `html` namespace is checked (decision 41.b).
  */
 
-import { errorDiag } from '../../types/index.js';
+import { FUD0191 } from '@fudic/diagnostics';
 import type { Analyzer } from '../model.js';
 import { documentRoots, walk } from '../walk.js';
-
-const FUD_UNDECLARED_COMPONENT = 'FUD0191';
 
 export const componentDeclared: Analyzer = {
   name: 'component-declared',
@@ -29,13 +27,7 @@ export const componentDeclared: Analyzer = {
         if (!el.name.includes('-')) return;
         if (input.components.has(el.name)) return;
 
-        report(
-          errorDiag(
-            FUD_UNDECLARED_COMPONENT,
-            `custom element \`<${el.name}>\` used without a \`<link rel="component">\` declaration`,
-            el.openSpan,
-          ),
-        );
+        report(FUD0191({ span: el.openSpan, tag: el.name }));
       },
     });
   },

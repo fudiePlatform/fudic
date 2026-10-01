@@ -17,13 +17,11 @@
  * one place it reads this word.
  */
 
-import { errorDiag } from '../../types/index.js';
+import { FUD0593 } from '@fudic/diagnostics';
 import { adoptedStylesOf, bridgeOf, FORM_ASSOCIATED_ATTR } from '../../binding/index.js';
 import type { Attribute, ElementNode } from '../../html/index.js';
 import type { Analyzer } from '../model.js';
 import { documentRoots, walk } from '../walk.js';
-
-const FUD_FORM_ASSOCIATED_PLACEMENT = 'FUD0593';
 
 /** The one template a component may mark: its own (`ComponentDocument.template`). */
 function rootTemplate(document: { readonly type: string }): ElementNode | undefined {
@@ -51,27 +49,17 @@ export const formAssociatedPlacement: Analyzer = {
     // of that template (decision 132): reported with the same function the emit reads it with
     // (`FUD0605`).
     if (root !== undefined) {
-      for (const problem of bridgeOf(root).problems) {
-        report(errorDiag(problem.code, problem.message, problem.span));
-      }
+      for (const problem of bridgeOf(root).problems) report(problem);
       // And the sheets it chooses have to be a literal list (`FUD0745`); whether each name
       // exists is the host's, which holds the `fudic.json`.
-      for (const problem of adoptedStylesOf(root).problems) {
-        report(errorDiag(problem.code, problem.message, problem.span));
-      }
+      for (const problem of adoptedStylesOf(root).problems) report(problem);
     }
     walk(documentRoots(input.document), {
       element(el) {
         if (el === root || el.name.toLowerCase() !== 'template') return;
         const at = marker(el);
         if (at === undefined) return;
-        report(
-          errorDiag(
-            FUD_FORM_ASSOCIATED_PLACEMENT,
-            '`formassociated` belongs to the root `<template shadowrootmode>` of a component: it decides the emitted class, and there is none here',
-            at.span,
-          ),
-        );
+        report(FUD0593({ span: at.span }));
       },
     });
   },

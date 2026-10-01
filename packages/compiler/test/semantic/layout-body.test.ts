@@ -3,7 +3,7 @@
  *
  *   `FUD0705`  a `@{ }` block, at any depth of the body — and nothing else any more.
  *   `FUD0706`  retired by decision 136: a `@` inside any `<style>` is the CSS parser's `FUD0132`.
- *   `FUD0443`  a hole inside a construct of the layout, once per hole.
+ *   `FUD0893`  a hole inside a construct of the layout, once per hole.
  *
  * `FUD0704` is retired (SDD-48 §4.1): the body reads its props like any markup does.
  */
@@ -44,7 +44,7 @@ function buildInput(source: string): SemanticInput {
   };
 }
 
-const RULES = new Set(['FUD0443', 'FUD0704', 'FUD0705']);
+const RULES = new Set(['FUD0893', 'FUD0704', 'FUD0705']);
 
 /** `code: text-under-the-span` for every diagnostic of the body rules. */
 function flagged(source: string): string[] {
@@ -110,10 +110,10 @@ describe('FUD0705 — a `@{ }` block, at any depth', () => {
   });
 });
 
-describe('FUD0443 — a hole inside a construct (criterion 3)', () => {
+describe('FUD0893 — a hole inside a construct (criterion 3)', () => {
   it('reports a `@RenderBody()` in an `@if`, over the hole', () => {
     const source = layout({ hole: '@if (seccion) {\n  <main>@RenderBody()</main>\n}' });
-    const diagnostics = analyze(buildInput(source)).diagnostics.filter((d) => d.code === 'FUD0443');
+    const diagnostics = analyze(buildInput(source)).diagnostics.filter((d) => d.code === 'FUD0893');
     expect(diagnostics.map((d) => source.slice(d.span.start, d.span.end))).toEqual(['@RenderBody()']);
     expect(diagnostics[0]!.severity).toBe('error');
   });
@@ -127,7 +127,7 @@ describe('FUD0443 — a hole inside a construct (criterion 3)', () => {
             '@if (seccion) {\n  @foreach (const i of items) key (i) {\n    <aside>@RenderSection(lateral)</aside>\n  }\n}',
         }),
       ),
-    ).toEqual(['FUD0443: @RenderSection(nav)', 'FUD0443: @RenderSection(lateral)']);
+    ).toEqual(['FUD0893: @RenderSection(nav)', 'FUD0893: @RenderSection(lateral)']);
   });
 
   it('says nothing of a hole beside a construct, or inside an element', () => {

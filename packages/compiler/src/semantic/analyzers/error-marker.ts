@@ -19,7 +19,6 @@
  * reports them.
  */
 
-import { errorDiag } from '../../types/index.js';
 import { pairMarkers } from '../../binding/index.js';
 import type { Analyzer } from '../model.js';
 import { documentRoots } from '../walk.js';
@@ -33,8 +32,6 @@ export const errorMarker: Analyzer = {
       (tag) => input.components.has(tag),
       (tag) => input.components.formAssociated?.(tag),
     );
-    for (const problem of pairing.problems) {
-      report(errorDiag(problem.code, problem.message, problem.span));
-    }
+    for (const problem of pairing.problems) report(problem);
   },
 };

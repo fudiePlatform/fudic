@@ -13,13 +13,11 @@
  * complaint about a value this pass could not read.
  */
 
-import { errorDiag } from '../../types/index.js';
+import { FUD0291 } from '@fudic/diagnostics';
 import { handlerShape } from '../../binding/index.js';
 import type { OxcNode } from '../../oxc/index.js';
 import type { Analyzer } from '../model.js';
 import { documentRoots, walk } from '../walk.js';
-
-const FUD_UNSUITABLE_HANDLER = 'FUD0291';
 
 /** The prefixes whose value is a handler: an event, and a bus subscription. */
 const EVENT_PREFIX = '@';
@@ -45,13 +43,7 @@ export const eventHandlerShape: Analyzer = {
         if (Array.isArray(root)) return; // an expression fragment is a single node
 
         if (handlerShape(root as OxcNode) === 'unsuitable') {
-          report(
-            errorDiag(
-              FUD_UNSUITABLE_HANDLER,
-              'an event handler must be a reference, a call, a lambda or a function',
-              expr.span,
-            ),
-          );
+          report(FUD0291({ span: expr.span, by: 'analysis' }));
         }
       },
     });

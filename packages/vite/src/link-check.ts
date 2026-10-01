@@ -17,11 +17,7 @@
 import { linkHref, type ElementNode } from '@fudic/compiler';
 import type { HrefResolution } from '@fudic/resolve';
 import { parseFud } from './parse.js';
-import {
-  FUD_LINK_NOT_A_LIBRARY,
-  FUD_LINK_UNRESOLVED,
-  type FudicDiagnostic,
-} from './diagnostics.js';
+import { FUD0760, FUD0763, type FileDiagnostic } from '@fudic/diagnostics';
 
 /** What the check needs of the world: read a file, and resolve an href written in one. */
 export interface LinkCheckIo {
@@ -39,8 +35,8 @@ export interface LinkCheckIo {
 export function checkLinks(
   entries: readonly string[],
   io: LinkCheckIo,
-): readonly FudicDiagnostic[] {
-  const diagnostics: FudicDiagnostic[] = [];
+): readonly FileDiagnostic[] {
+  const diagnostics: FileDiagnostic[] = [];
   const seen = new Set<string>();
   const queue = [...entries];
 
@@ -82,7 +78,7 @@ function problemWith(
   resolution: HrefResolution,
   href: string,
   from: string,
-): FudicDiagnostic | undefined {
+): FileDiagnostic | undefined {
   switch (resolution.outcome) {
     case 'path':
       // A path that is not there is FUD0460's business, in the editor and in the emit: it
@@ -93,17 +89,9 @@ function problemWith(
       return undefined;
 
     case 'unresolved':
-      return {
-        code: FUD_LINK_UNRESOLVED,
-        file: from,
-        message:
-          resolution.reason === 'not-installed'
-            ? `"${href}" names a package that is not installed. Add it to this project's ` +
-              'dependencies and install — the file cannot be found until the package is there.'
-            : `the package "${packageOf(href)}" is installed but does not publish ` +
-              `"${href}". Its "exports" decides what a consumer may link; the fix is in that ` +
-              "package's package.json, not in an install.",
-      };
+      return resolution.reason === 'not-installed'
+        ? FUD0760({ file: from, reason: 'not-installed', href })
+        : FUD0760({ file: from, reason: 'not-exported', href, pkg: packageOf(href) });
 
     case 'package':
       // A `.fud` inside a package that never declared itself a library. Reaching into one is
@@ -111,14 +99,7 @@ function problemWith(
       // breaks with no warning — so it is an error, not a warning.
       return resolution.target.config?.kind === 'lib'
         ? undefined
-        : {
-            code: FUD_LINK_NOT_A_LIBRARY,
-            file: from,
-            message:
-              `"${href}" resolves inside "${resolution.target.name}", which does not declare ` +
-              'itself a fudic library. A package is consumable when its fudic.json says ' +
-              '{ "kind": "lib" }; without it, what you are linking is somebody\'s private file.',
-          };
+        : FUD0763({ file: from, href, pkg: resolution.target.name });
   }
 }
 

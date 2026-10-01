@@ -5,7 +5,6 @@
 
 import { describe, it, expect } from 'vitest';
 import { analyzePage } from '../src/analyze.js';
-import { FUD_STRATEGY_DUPLICATE, FUD_STRATEGY_NOT_LITERAL } from '../src/diagnostics.js';
 
 const page = (body: string): string => `<!DOCTYPE html>
 <html>
@@ -42,18 +41,24 @@ strategy({ mode: 'sw', data: { ttl: '5m', policy: 'cache-first' } });`),
 
   it('a non-literal argument is FUD0393 and declares nothing usable', () => {
     const { strategy } = analyzePage(page('strategy(config);'));
-    expect(strategy.diagnostics[0]?.code).toBe(FUD_STRATEGY_NOT_LITERAL);
+    expect(strategy.diagnostics[0]?.code).toBe('FUD0393');
+    expect(strategy.strategy).toEqual({});
+  });
+
+  it('a call with no argument at all is FUD0393 as well', () => {
+    const { strategy } = analyzePage(page('strategy();'));
+    expect(strategy.diagnostics[0]?.code).toBe('FUD0393');
     expect(strategy.strategy).toEqual({});
   });
 
   it('a computed value inside the literal is FUD0393 too', () => {
     const { strategy } = analyzePage(page('strategy({ mode: MODES.sw });'));
-    expect(strategy.diagnostics[0]?.code).toBe(FUD_STRATEGY_NOT_LITERAL);
+    expect(strategy.diagnostics[0]?.code).toBe('FUD0393');
   });
 
   it('a spread is not statically readable', () => {
     const { strategy } = analyzePage(page('strategy({ ...base, mode: "ssg" });'));
-    expect(strategy.diagnostics[0]?.code).toBe(FUD_STRATEGY_NOT_LITERAL);
+    expect(strategy.diagnostics[0]?.code).toBe('FUD0393');
   });
 
   it('two calls are FUD0394; the first wins', () => {
@@ -62,7 +67,7 @@ strategy({ mode: 'sw', data: { ttl: '5m', policy: 'cache-first' } });`),
 strategy({ mode: 'ssr' });`),
     );
     expect(strategy.strategy.mode).toBe('ssg');
-    expect(strategy.diagnostics[0]?.code).toBe(FUD_STRATEGY_DUPLICATE);
+    expect(strategy.diagnostics[0]?.code).toBe('FUD0394');
   });
 
   it('ignores calls that are not strategy(), and other expression statements', () => {

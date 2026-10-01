@@ -37,19 +37,13 @@
  */
 
 import { parseSync } from 'oxc-parser';
-import { errorDiag, type Diagnostic } from '../types/index.js';
+import type { Diagnostic } from '../types/index.js';
+import { FUD0680, FUD0681, FUD0683 } from '@fudic/diagnostics';
 import { codeOf, codeOfDocument } from './oxc-code.js';
 import { allComponents, type ComponentGraph, type ResolveIo } from './resolve.js';
 import { collectTemplateJs } from './constructs.js';
 import { hydratableTags, templateOf } from './level.js';
 import { freeReferences } from './scope.js';
-
-/** Injecting something no registry will ever hold. */
-const FUD_UNREGISTERED_PROVIDER = 'FUD0680';
-/** A name the server injected, read by markup the browser re-renders. */
-const FUD_SERVER_NAME_IN_TEMPLATE = 'FUD0681';
-/** A route reaching for the ambient container, which a route does not have. */
-const FUD_ROUTE_AMBIENT_INJECT = 'FUD0683';
 
 /**
  * What a bare specifier may turn into on disk. The `.fud` writes what TypeScript writes —
@@ -193,13 +187,7 @@ function serverNamesInTemplates(graph: ComponentGraph, out: Diagnostic[]): void 
       // there is no fragment under that span and an empty AST reads nothing.
       const read = freeReferences([code.template.ast(at)]).find((name) => injected.has(name));
       if (read === undefined) return;
-      out.push(
-        errorDiag(
-          FUD_SERVER_NAME_IN_TEMPLATE,
-          `\`${read}\` is injected in @server and read by a binding of a component that hydrates: @server never reaches the browser chunk, so the first update throws on a name that is not there.`,
-          at,
-        ),
-      );
+      out.push(FUD0681({ span: at, name: read }));
     });
   }
 }
@@ -227,13 +215,7 @@ function routeAmbientInjections(graph: ComponentGraph, out: Diagnostic[]): void 
   if (!(entry.code?.parts ?? []).some((part) => part.type === 'server-region')) return;
   for (const call of codeOfDocument(graph.entrySource, entry).di) {
     if (call.kind !== 'inject' || call.zone !== 'server') continue;
-    out.push(
-      errorDiag(
-        FUD_ROUTE_AMBIENT_INJECT,
-        `A route resolves through \`ctx.inject(…)\`: \`load(ctx)\` is the only async function of the system and takes no ambient container, so \`inject(…)\` here has none to read.`,
-        call.providerSpan,
-      ),
-    );
+    out.push(FUD0683({ span: call.providerSpan }));
   }
 }
 
@@ -265,13 +247,7 @@ function unregisteredProviders(graph: ComponentGraph, io: ResolveIo, out: Diagno
       // Only a class: everything else this module exports may reach the injector through the
       // seed, and a rule that cannot tell those apart would report the seed as an error.
       if (!known.classes.has(call.provider) || known.registered.has(call.provider)) continue;
-      out.push(
-        errorDiag(
-          FUD_UNREGISTERED_PROVIDER,
-          `Nothing registers \`${call.provider}\`: its module neither calls \`Service(${call.provider})\` nor \`provide(${call.provider}, …)\`, and no component provides it`,
-          call.providerSpan,
-        ),
-      );
+      out.push(FUD0680({ span: call.providerSpan, provider: call.provider }));
     }
   }
 }

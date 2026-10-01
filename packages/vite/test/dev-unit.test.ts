@@ -5,7 +5,14 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { devManifest, devModuleUrl, devUrl, withInlineSourceMap } from '../src/dev.js';
+import {
+  devClientPrefix,
+  devClientUrl,
+  devManifest,
+  devModuleUrl,
+  devUrl,
+  withInlineSourceMap,
+} from '../src/dev.js';
 import { type RouteBuild } from '../src/discover.js';
 
 const build = (pattern: string, mode: 'sw' | 'excluded'): RouteBuild =>
@@ -33,6 +40,11 @@ describe('devUrl / devModuleUrl', () => {
 
   it('maps a \\0-virtual id to its /@id/__x00__ dev URL', () => {
     expect(devModuleUrl('/', '\0fudic-sw')).toBe('/@id/__x00__fudic-sw');
+  });
+
+  it('serves a component’s client module by its tag, under the dev client prefix', () => {
+    expect(devClientUrl('/app/', 'x-card')).toBe(`${devClientPrefix('/app/')}x-card.js`);
+    expect(devClientUrl('/app/', 'x-card').startsWith('/app/')).toBe(true);
   });
 });
 

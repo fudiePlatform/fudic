@@ -20,7 +20,8 @@
  * that binds it: `FUD0600` and `FUD0601`, once, for the build and for the editor.
  */
 
-import type { Span } from '../types/index.js';
+import type { Diagnostic } from '../types/index.js';
+import { FUD0597, FUD0598, FUD0599, FUD0600, FUD0601, FUD0602 } from '@fudic/diagnostics';
 import type { Attribute, ElementNode, HtmlContent } from '../html/index.js';
 import type { ForeachNode, ForNode, IfNode, SwitchNode, WhileNode } from '../control/index.js';
 import type { SectionNode } from '../layout/index.js';
@@ -48,12 +49,11 @@ export interface Marker {
   readonly id: string | null;
 }
 
-/** Something about a marker that cannot be emitted, for the semantic pass to report. */
-export interface MarkerProblem {
-  readonly code: 'FUD0597' | 'FUD0598' | 'FUD0599' | 'FUD0600' | 'FUD0601' | 'FUD0602';
-  readonly message: string;
-  readonly span: Span;
-}
+/**
+ * Something about a marker that cannot be emitted, for the semantic pass to report: one of
+ * `FUD0597`–`FUD0602`, already built.
+ */
+export type MarkerProblem = Diagnostic;
 
 export interface MarkerPairing {
   /** Every marker that pairs, keyed by its element. */
@@ -115,37 +115,27 @@ export function pairMarkers(
   const describedBy = new Map<ElementNode, ElementNode>();
   const problems: MarkerProblem[] = [];
   const named = new Set<string>();
-  const fail = (code: MarkerProblem['code'], message: string, span: Span): void => {
-    problems.push({ code, message, span });
-  };
 
   for (const m of marked) {
     const attr = m.name as MarkerName;
+    const span = m.attr.span;
     if (m.inLoop) {
-      fail('FUD0598', `a \`${attr}\` marker cannot sit inside a loop: every row would carry the same id for \`${m.node}\``, m.attr.span);
+      problems.push(FUD0598({ span, reason: 'loop', attr, node: m.node }));
       continue;
     }
     if (named.has(m.node)) {
-      fail('FUD0598', `\`${m.node}\` already has a marker in this component: a node speaks through one element`, m.attr.span);
+      problems.push(FUD0598({ span, reason: 'second', node: m.node }));
       continue;
     }
     named.add(m.node);
 
     const id = staticId(m.el);
     if (id === undefined || hasContent(m.el)) {
-      fail(
-        'FUD0599',
-        `a \`${attr}\` marker must be empty and, if it has an \`id\`, a static one: the runtime writes its content, and \`aria-describedby\` has to name it`,
-        m.attr.span,
-      );
+      problems.push(FUD0599({ span, attr }));
       continue;
     }
     if (attr === SUMMARY_NAME && NO_LIST.has(m.el.name.toLowerCase())) {
-      fail(
-        'FUD0602',
-        `a summary is a list, and a \`<${m.el.name}>\` cannot hold one: mark a \`<div>\` or a \`<section>\``,
-        m.attr.span,
-      );
+      problems.push(FUD0602({ span, element: m.el.name }));
       continue;
     }
 
@@ -165,22 +155,17 @@ export function pairMarkers(
     });
     const first = targets[0];
     if (first === undefined) {
-      if (!unknown) {
-        fail(
-          'FUD0597',
-          `no element of this block binds \`${m.node}\` with \`control\`: a marker describes an element beside it — a native control, or a \`formassociated\` component`,
-          m.attr.span,
-        );
-      }
+      if (!unknown) problems.push(FUD0597({ span, node: m.node }));
       continue;
     }
-    const summarising = first.kind === 'form' || first.kind === 'group';
+    const kind = first.kind;
+    const summarising = kind === 'form' || kind === 'group';
     if (attr !== SUMMARY_NAME && summarising) {
-      fail('FUD0600', `\`${m.node}\` is a ${first.kind}: its errors are a summary — write \`summary="@${m.node}"\``, m.attr.span);
+      problems.push(FUD0600({ span, node: m.node, kind }));
       continue;
     }
     if (attr === SUMMARY_NAME && !summarising) {
-      fail('FUD0601', `\`${m.node}\` is a control: its message is not a summary — write \`error="@${m.node}"\``, m.attr.span);
+      problems.push(FUD0601({ span, node: m.node }));
       continue;
     }
     markers.set(m.el, { node: m.node, kind: first.kind, attr, fields: attr === SUMMARY_NAME && hasFields(m.el), id });

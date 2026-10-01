@@ -10,7 +10,6 @@ import { GLOBALS_DTS, GLOBALS_FILE_NAME } from '@fudic/language-core';
 import { planWorkspace } from '../../src/plans/workspace.js';
 import { findProjects } from '../../src/workspace/discover.js';
 import { apply } from '../../src/apply.js';
-import { FUD_TARGET_EXISTS } from '../../src/diagnostics.js';
 import { MemoryFs, RecordingRunner } from '../helpers.js';
 import type { WorkspaceOptions } from '../../src/types.js';
 
@@ -123,7 +122,7 @@ describe('fudic new --workspace', () => {
     const plan = await planWorkspace('tienda', options(), fs);
 
     expect(plan.changes).toEqual([]);
-    expect(plan.errors[0]?.code).toBe(FUD_TARGET_EXISTS);
+    expect(plan.errors[0]?.code).toBe('FUD0443');
   });
 
   it('the root is not a fudic project: findProjects sees the app and only the app (criterion 3)', async () => {

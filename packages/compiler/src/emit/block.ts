@@ -19,7 +19,8 @@
 
 import type { ControlNode } from '../control/index.js';
 import { keyExpression } from '../control/index.js';
-import { errorDiag, type Span } from '../types/index.js';
+import type { Span } from '../types/index.js';
+import { FUD0543 } from '@fudic/diagnostics';
 import { type OxcNode, loopHeaderNames } from '../oxc/index.js';
 import { CodeWriter } from './writer.js';
 import type { AssetLinker } from './assets.js';
@@ -159,13 +160,7 @@ export class BlockEmitter implements BlockSink {
     const header = this.#ctx.hookup.template.ast(node.header.inner);
     const names = loopHeaderNames(Array.isArray(header) ? undefined : header, node.type);
     if (names.length === 0) {
-      this.#ctx.hookup.diagnostics.push(
-        errorDiag(
-          'FUD0543',
-          'a loop header that declares no binding cannot have a key that identifies its rows',
-          node.header.span,
-        ),
-      );
+      this.#ctx.hookup.diagnostics.push(FUD0543({ span: node.header.span }));
     }
     return names;
   }

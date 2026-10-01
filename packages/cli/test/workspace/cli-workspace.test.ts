@@ -7,7 +7,6 @@ import { describe, expect, it } from 'vitest';
 import { parseArgs } from '../../src/args.js';
 import { run, type RunDeps } from '../../src/run.js';
 import { scaffoldChanges } from '../../src/plans/scaffold.js';
-import { FUD_TARGET_EXISTS } from '../../src/diagnostics.js';
 import { captureStreams, MemoryFs, RecordingRunner } from '../helpers.js';
 
 const CWD = '/here';
@@ -168,7 +167,7 @@ describe('scaffoldChanges', () => {
       fs,
     );
 
-    expect(result.errors.map((error) => error.code)).toEqual([FUD_TARGET_EXISTS]);
+    expect(result.errors.map((error) => error.code)).toEqual(['FUD0443']);
     expect(result.changes.map((change) => change.path)).toEqual(['apps/admin/package.json']);
   });
 

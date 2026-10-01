@@ -30,12 +30,10 @@
  * `FUD0667`, and it is cheaper to not open it than to find it later.
  */
 
-import { errorDiag } from '../../types/index.js';
+import { FUD0161 } from '@fudic/diagnostics';
 import { dataScriptType } from '../../html/index.js';
 import type { Analyzer, MarkupInput, Report } from '../model.js';
 import { documentRoots, walk } from '../walk.js';
-
-const FUD_SCRIPT_BODY = 'FUD0161';
 
 /** The rule itself, over markup alone: the semantic pass and the build both call this. */
 export function checkScriptBody(input: MarkupInput, report: Report): void {
@@ -46,13 +44,7 @@ export function checkScriptBody(input: MarkupInput, report: Report): void {
       if (dataScriptType(el) !== undefined) return;
       for (const child of el.children) {
         if (child.type !== 'raw-text' || child.value.trim() === '') continue;
-        report(
-          errorDiag(
-            FUD_SCRIPT_BODY,
-            'a `<script>` of code cannot carry a body: fudic does not support inline script, and the body is not emitted. Move the code to a file and reference it with `src`. Data blocks are supported inline: `application/ld+json` and `importmap`',
-            child.span,
-          ),
-        );
+        report(FUD0161({ span: child.span }));
       }
     },
   });

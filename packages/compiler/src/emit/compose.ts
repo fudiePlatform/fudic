@@ -113,7 +113,7 @@ function levelOf(
       case 'while':
         // A construct in a LAYOUT (SDD-48). It wrote a number of elements nobody knows here,
         // so the walk does not count them: it jumps to the anchor the layout left behind the
-        // construct. No hole lives inside one — that is `FUD0443` — so there is nothing to
+        // construct. No hole lives inside one — that is `FUD0893` — so there is nothing to
         // descend into.
         items.push({ kind: 'anchor', index: anchors++ });
         break;

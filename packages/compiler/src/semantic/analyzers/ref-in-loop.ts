@@ -7,12 +7,10 @@
  * classification diagnostics belong to SDD-07's own pass and are discarded here.
  */
 
-import { errorDiag } from '../../types/index.js';
+import { FUD0192 } from '@fudic/diagnostics';
 import { classifyAttribute } from '../../binding/index.js';
 import type { Analyzer } from '../model.js';
 import { documentRoots, walk } from '../walk.js';
-
-const FUD_REF_IN_LOOP = 'FUD0192';
 
 export const refInLoop: Analyzer = {
   name: 'ref-in-loop',
@@ -30,13 +28,7 @@ export const refInLoop: Analyzer = {
         for (const attr of el.attributes) {
           const binding = classifyAttribute(attr, input.source).value;
           if (binding.type === 'ref') {
-            report(
-              errorDiag(
-                FUD_REF_IN_LOOP,
-                '`ref` is not allowed inside a loop (@foreach/@for/@while)',
-                attr.span,
-              ),
-            );
+            report(FUD0192({ span: attr.span }));
           }
         }
       },

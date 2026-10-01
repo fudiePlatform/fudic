@@ -13,7 +13,7 @@
  */
 
 import { tagOf } from '@fudic/config';
-import { cliError, FUD_WIRE_TARGET_BROKEN, FUD_WIRE_TARGET_MISSING } from '../diagnostics.js';
+import { FUD0444, FUD0445 } from '@fudic/diagnostics';
 import { absolute, hrefBetween, joinPosix, toPosix } from '../paths.js';
 import { hasErrors, parseFud } from '../parse.js';
 import { existingTags, libraryTags, targetChange } from '../project.js';
@@ -88,7 +88,7 @@ function wire(
 ): void {
   const path = absolute(opts.cwd, into);
   if (!io.exists(path)) {
-    errors.push(cliError(FUD_WIRE_TARGET_MISSING, `--in ${into}: no such file`, into));
+    errors.push(FUD0444({ file: into }));
     return;
   }
 
@@ -96,7 +96,7 @@ function wire(
   const parsed = parseFud(source);
   diagnostics.push(...parsed.diagnostics.map((diagnostic) => ({ file: into, diagnostic })));
   if (hasErrors(parsed.diagnostics)) {
-    errors.push(cliError(FUD_WIRE_TARGET_BROKEN, `--in ${into}: the file does not parse; it was left untouched`, into));
+    errors.push(FUD0445({ file: into }));
     return;
   }
 

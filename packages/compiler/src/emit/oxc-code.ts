@@ -18,7 +18,8 @@ import type {
 import type { CodeBlockNode } from '../code/index.js';
 import type { ResolvedComponent } from './resolve.js';
 import type { Diagnostic, Span } from '../types/index.js';
-import { errorDiag, isEmptySpan, span } from '../types/index.js';
+import { isEmptySpan, span } from '../types/index.js';
+import { FUD0290, FUD0570, FUD0682, FUD0684 } from '@fudic/diagnostics';
 import { JsBatch, type JsFragmentKind, type OxcNode } from '../oxc/index.js';
 import { unwrapParens } from '../binding/index.js';
 import { collectAttributeJs, collectTemplateJs, type JsFragmentVisitor } from './constructs.js';
@@ -985,13 +986,7 @@ function effectCalls(stmt: OxcNode): readonly OxcNode[] {
 
 function checkNeutralEffect(stmt: OxcNode, map: MapOffset, out: Diagnostic[]): void {
   for (const call of effectCalls(stmt)) {
-    out.push(
-      errorDiag(
-        'FUD0570',
-        'effect(...) belongs in @code { @client }: an effect runs after the first render, and the server has none.',
-        { start: map(call.start), end: map(call.end) },
-      ),
-    );
+    out.push(FUD0570({ span: { start: map(call.start), end: map(call.end) } }));
   }
 }
 
@@ -1019,13 +1014,7 @@ function checkReservedPrefix(
   out: Diagnostic[],
 ): void {
   for (const id of reservedIdentifiers(statements)) {
-    out.push(
-      errorDiag(
-        'FUD0290',
-        `"${name(id)}" is reserved: the $ prefix belongs to the identifiers the compiler emits into this scope. Rename it — a trailing $ ("${name(id).slice(1)}$") is yours.`,
-        { start: map(id.start), end: map(id.end) },
-      ),
-    );
+    out.push(FUD0290({ span: { start: map(id.start), end: map(id.end) }, name: name(id) }));
   }
 }
 
@@ -1327,13 +1316,7 @@ function checkDiZones(di: readonly DiCall[], out: Diagnostic[]): void {
       continue;
     }
     seen.add(call.zone);
-    out.push(
-      errorDiag(
-        'FUD0684',
-        `\`${call.provider}\` is provided twice in this @code: the second registration replaces the first, and one of the two factories never runs.`,
-        call.providerSpan,
-      ),
-    );
+    out.push(FUD0684({ span: call.providerSpan, provider: call.provider }));
   }
   for (const call of di) {
     if (call.kind !== 'inject' || call.zone === 'neutral') continue;
@@ -1342,14 +1325,7 @@ function checkDiZones(di: readonly DiCall[], out: Diagnostic[]): void {
     // this file does not write at all is an ancestor's or a `@Service`'s, and that is FUD0680's
     // question — asked of the graph, with the module next door open.
     if (zones === undefined || zones.has('neutral') || zones.has(call.zone)) continue;
-    const there = call.zone === 'client' ? '@server' : '@client';
-    out.push(
-      errorDiag(
-        'FUD0682',
-        `\`${call.provider}\` is injected in @${call.zone} but this @code only provides it in ${there}: the two never run on the same side. Move the provider to the neutral zone to have it on both.`,
-        call.providerSpan,
-      ),
-    );
+    out.push(FUD0682({ span: call.providerSpan, provider: call.provider, zone: call.zone }));
   }
 }
 

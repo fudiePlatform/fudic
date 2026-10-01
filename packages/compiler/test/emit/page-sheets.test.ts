@@ -172,6 +172,7 @@ describe('the route delivers each sheet (criteria 31, 34)', () => {
         files: ['./base.css', './parts/inputs.css'],
         contributing: ['./base.css'],
         diagnostics: [],
+        sites: expect.any(Array),
       },
       {
         spec: './inline.css?inline',
@@ -179,8 +180,29 @@ describe('the route delivers each sheet (criteria 31, 34)', () => {
         files: ['./inline.css'],
         contributing: ['./inline.css'],
         diagnostics: [],
+        sites: expect.any(Array),
       },
-      { spec: './empty.css', css: '', files: ['./empty.css'], contributing: [], diagnostics: [] },
+      {
+        spec: './empty.css',
+        css: '',
+        files: ['./empty.css'],
+        contributing: [],
+        diagnostics: [],
+        sites: expect.any(Array),
+      },
+    ]);
+  });
+
+  it('`sites`: where each file came in — the `<link>` in its `.fud`, or the `@import` (FUD0852)', () => {
+    const base = sheets.uses[0]!;
+    if (!('sites' in base)) throw new Error('a linked sheet');
+    const link = '<link rel="stylesheet" href="./base.css" media="screen">';
+    const at = LAYOUT.indexOf(link);
+    const css = SHEETS['./base.css']!;
+    const imp = '@import "./parts/inputs.css";';
+    expect(base.sites).toEqual([
+      { file: './base.css', at: '/app/_layout.fud', span: { start: at, end: at + link.length } },
+      { file: './parts/inputs.css', at: './base.css', span: { start: css.indexOf(imp), end: css.indexOf(imp) + imp.length } },
     ]);
   });
 
@@ -259,9 +281,12 @@ describe('the route’s own head, and a page without a layout', () => {
     // Nothing of `base.css` matches an `<em>`: its `<link>` is gone.
     expect(h.copies).toHaveLength(1);
     expect(out.sheets).toEqual([
-      { spec: './own.css', css: 'em{font-style:normal}', files: ['./own.css'], contributing: ['./own.css'], diagnostics: [] },
-      { spec: './base.css', css: '', files: ['./base.css', './parts/inputs.css'], contributing: [], diagnostics: [] },
+      { spec: './own.css', css: 'em{font-style:normal}', files: ['./own.css'], contributing: ['./own.css'], diagnostics: [], sites: expect.any(Array) },
+      { spec: './base.css', css: '', files: ['./base.css', './parts/inputs.css'], contributing: [], diagnostics: [], sites: expect.any(Array) },
     ]);
+    // The page's own `<link>` is in the page itself.
+    const own = out.sheets![0]!;
+    expect('sites' in own && own.sites[0]!.at).toBe('/app/p.fud');
   });
 });
 
@@ -349,7 +374,7 @@ describe('a layout in another folder (rebaseSpec)', () => {
     });
     expect(read).toContain('../styles/base.css');
     expect(sheets.uses).toEqual([
-      { spec: '../styles/base.css', css: 'p{a:1}', files: ['../styles/base.css'], contributing: ['../styles/base.css'], diagnostics: [] },
+      { spec: '../styles/base.css', css: 'p{a:1}', files: ['../styles/base.css'], contributing: ['../styles/base.css'], diagnostics: [], sites: expect.any(Array) },
     ]);
   });
 

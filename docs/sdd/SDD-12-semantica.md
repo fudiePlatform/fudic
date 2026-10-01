@@ -115,6 +115,12 @@ decisión 43; no hay analyzer. El patrón queda por si una futura regla de `<scr
 
 ## 5. Catálogo consolidado de códigos `FUD`
 
+> **Desde SDD-50, el catálogo es [`packages/diagnostics/src/codes/`](../../packages/diagnostics/src/codes/):**
+> un fichero `FUDnnnn.ts` por código vivo, con su `FUDnnnn.md` al lado, y solo el `.md` para
+> los retirados. La tabla de abajo queda como historia de los rangos; si discrepa de la
+> carpeta, manda la carpeta. Renumerados por SDD-50 (colisiones): los de `fudic.json`
+> `FUD0720`/`0721` → `FUD0725`/`0726`, y los de SDD-48 `FUD0440`–`0445` → `FUD0890`–`0895`.
+
 Cada SDD reserva su rango; aquí está el registro maestro. Formato `FUD` + 4 dígitos.
 
 | Rango | SDD | Códigos definidos |

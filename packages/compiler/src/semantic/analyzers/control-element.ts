@@ -20,18 +20,10 @@
  * up disagreeing about what `<input type="range">` is.
  */
 
-import { errorDiag } from '../../types/index.js';
-import { classifyAttribute, controlTarget, type UnsupportedControl } from '../../binding/index.js';
+import { FUD0592 } from '@fudic/diagnostics';
+import { classifyAttribute, controlTarget } from '../../binding/index.js';
 import type { Analyzer } from '../model.js';
 import { documentRoots, walk } from '../walk.js';
-
-const FUD_CONTROL_UNSUPPORTED_ELEMENT = 'FUD0592';
-
-const MESSAGES: Readonly<Record<UnsupportedControl, string>> = {
-  'no-value':
-    '`control` needs an element that carries a user value: `submit`, `reset`, `button` and `image` inputs have none',
-  file: '`control` on `<input type="file">` is not supported: file upload needs multipart and a value that is not JSON',
-};
 
 export const controlElement: Analyzer = {
   name: 'control-element',
@@ -43,7 +35,7 @@ export const controlElement: Analyzer = {
           if (binding.type !== 'control') continue;
           const target = controlTarget(el, input.components.has(el.name));
           if (target.kind !== 'unsupported') continue;
-          report(errorDiag(FUD_CONTROL_UNSUPPORTED_ELEMENT, MESSAGES[target.reason], attr.span));
+          report(FUD0592({ span: attr.span, reason: target.reason }));
         }
       },
     });

@@ -13,12 +13,10 @@
  * `@if`/`@switch` do not iterate, so they open no loop context.
  */
 
-import { errorDiag } from '../../types/index.js';
+import { FUD0594 } from '@fudic/diagnostics';
 import { classifyAttribute } from '../../binding/index.js';
 import type { Analyzer } from '../model.js';
 import { documentRoots, walk } from '../walk.js';
-
-const FUD_CONTROL_IN_LOOP = 'FUD0594';
 
 export const controlInLoop: Analyzer = {
   name: 'control-in-loop',
@@ -36,13 +34,7 @@ export const controlInLoop: Analyzer = {
         for (const attr of el.attributes) {
           const binding = classifyAttribute(attr, input.source).value;
           if (binding.type !== 'control') continue;
-          report(
-            errorDiag(
-              FUD_CONTROL_IN_LOOP,
-              '`control` is not allowed inside a loop (@foreach/@for/@while): the expression would bind every row to the same form node',
-              attr.span,
-            ),
-          );
+          report(FUD0594({ span: attr.span }));
         }
       },
     });

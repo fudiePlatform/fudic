@@ -278,9 +278,13 @@ describe('the bulbs (criteria 14 and 15)', () => {
   it('writes every missing section after the last one, or at the end of the file', async () => {
     expect(await fixes(route('<p>x</p>\n@section cabecera {\n}\n\n'))).toEqual([
       { title: 'Añadir las secciones requeridas del layout (pie)', text: '\n\n@section pie {\n}' },
+      { title: 'Explain FUD0890', text: undefined },
     ]);
     const bare = await fixes(route('<p>x</p>\n'));
-    expect(bare.map((f) => f.title)).toEqual(['Añadir las secciones requeridas del layout (cabecera, pie)']);
+    expect(bare.map((f) => f.title)).toEqual([
+      'Añadir las secciones requeridas del layout (cabecera, pie)',
+      'Explain FUD0890',
+    ]);
   });
 
   it('writes the `@` of a path, and wraps anything else in `@( … )`', async () => {
@@ -288,6 +292,7 @@ describe('the bulbs (criteria 14 and 15)', () => {
     const got = await fixes(source.replace('<link rel="layout" href="../layouts/_frame.fud">', '<link rel="layout" href="../layouts/_frame.fud">\n<link rel="snippet" href="../snippets/ui.fud">'));
     expect(got).toEqual([
       { title: 'Escribir @titulo', text: '@titulo' },
+      { title: 'Explain FUD0894', text: undefined },
       { title: 'Envolver en @( … )', text: '@(a ? "a" : "b")' },
     ]);
   });
@@ -296,7 +301,7 @@ describe('the bulbs (criteria 14 and 15)', () => {
 describe('the contract in the editor, and who has one', () => {
   it('reads a route against its layout, and nothing for a layout or a route with no layout', () => {
     const r = setup('<link rel="layout" href="../layouts/_frame.fud">\nsuelto\n', '/p/blog/marco.fud');
-    expect(holeDiagnostics(r.cached, r.index).map((d) => d.code)).toEqual(['FUD0440', 'FUD0441']);
+    expect(holeDiagnostics(r.cached, r.index).map((d) => d.code)).toEqual(['FUD0890', 'FUD0891']);
     expect(missingSections(r.cached, r.index).map((s) => s.name)).toEqual(['cabecera', 'pie']);
 
     const l = setup(FRAME_LAYOUT);

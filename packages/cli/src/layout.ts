@@ -12,7 +12,7 @@
  * arrives with its sections already declared.
  */
 
-import { cliError, FUD_LAYOUT_INVALID } from './diagnostics.js';
+import { FUD0449 } from '@fudic/diagnostics';
 import { absolute, dirname, joinPosix, resolveHref } from './paths.js';
 import { parseFud } from './parse.js';
 import type { ReadIo } from './io.js';
@@ -94,7 +94,7 @@ export function resolveLayout(
         path: null,
         sections: [],
         diagnostics: [],
-        errors: [cliError(FUD_LAYOUT_INVALID, `"${explicit}" is not a layout (no doctype + @RenderBody())`, explicit)],
+        errors: [FUD0449({ file: explicit })],
       };
     }
     const collected = collectSections(opts.cwd, explicit, io);

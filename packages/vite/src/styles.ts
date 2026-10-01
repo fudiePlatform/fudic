@@ -13,17 +13,15 @@
  */
 
 import {
-  LineMap,
   lintProjectStyle,
   projectSheetDiagnostics,
   type Diagnostic,
   type ProjectStyle,
 } from '@fudic/compiler';
+import { FUD0741, type FileDiagnostic } from '@fudic/diagnostics';
 import {
-  FUD_STYLE_SPECIFIER_CLASH,
   readProjectConfig,
   readProjectStyles,
-  type ConfigDiagnostic,
   type ConfigIo,
   type ProjectConfig,
   type ProjectStyleFile,
@@ -36,9 +34,9 @@ export interface StylesResult {
   /** `styles`: the ones a component names in its root template to adopt. */
   readonly optional: readonly ProjectStyle[];
   /** Fatal: the document would render with styles nobody declared (§4.1). */
-  readonly errors: readonly ConfigDiagnostic[];
+  readonly errors: readonly FileDiagnostic[];
   /** `FUD0743`: a rule of the sheet that matches nothing where the sheet goes (§4.5). */
-  readonly warnings: readonly ConfigDiagnostic[];
+  readonly warnings: readonly FileDiagnostic[];
 }
 
 /** A project that declares no sheet at all. */
@@ -96,7 +94,7 @@ export class ProjectStyleChains {
   readonly #chain = new Map<string, PackageSheets>();
   /** File → the chain of the package that owns it. */
   readonly #ofFile = new Map<string, PackageSheets>();
-  readonly #diagnostics: ConfigDiagnostic[] = [];
+  readonly #diagnostics: FileDiagnostic[] = [];
 
   constructor(root: string, io: PackageFs) {
     // Under its real name, because that is the spelling `owningPackage` answers with: a
@@ -165,7 +163,7 @@ export class ProjectStyleChains {
   }
 
   /** What reading the OTHER packages' sheets had to say. The root's are `own(root)`'s. */
-  get diagnostics(): readonly ConfigDiagnostic[] {
+  get diagnostics(): readonly FileDiagnostic[] {
     return this.#diagnostics;
   }
 
@@ -221,18 +219,11 @@ export class ProjectStyleChains {
 }
 
 /** Two packages of one chain whose sheets adopt under the same specifier. */
-function clash(specifier: string, first: string, second: string): ConfigDiagnostic {
-  return {
-    code: FUD_STYLE_SPECIFIER_CLASH,
-    // The file is the OTHER package's `fudic.json`, and naming it as a path relative to this
-    // project would be a path into `node_modules` that means nothing to read. The package is
-    // what the message names, and it is what the author has to go and talk to.
-    file: second,
-    message:
-      `"${first}" and "${second}" both declare a stylesheet named "${specifier}". Two sheets ` +
-      'under one name cannot be told apart in the module map, and one would silently ' +
-      'replace the other — rename one of the two.',
-  };
+function clash(specifier: string, first: string, second: string): FileDiagnostic {
+  // The file is the OTHER package's `fudic.json`, and naming it as a path relative to this
+  // project would be a path into `node_modules` that means nothing to read. The package is
+  // what the message names, and it is what the author has to go and talk to.
+  return FUD0741({ file: second, where: 'chain', name: specifier, first });
 }
 
 /** `\` → `/`: a package root is compared as a string, so one spelling only. */
@@ -251,26 +242,20 @@ function toPosix(path: string): string {
  * (SDD-13), and a build log is the one place where that has to become a line and a column
  * the author can click.
  */
-function lintOne(file: ProjectStyleFile): readonly ConfigDiagnostic[] {
+function lintOne(file: ProjectStyleFile): readonly FileDiagnostic[] {
   return located(file, lintProjectStyle(file.css));
 }
 
 /** `FUD0854` over one sheet: each `@import` it holds. */
-function importErrors(file: ProjectStyleFile): readonly ConfigDiagnostic[] {
+function importErrors(file: ProjectStyleFile): readonly FileDiagnostic[] {
   return located(file, projectSheetDiagnostics(file.css));
 }
 
-/** The compiler's diagnostics over a sheet, with the line and column the author can click. */
-function located(file: ProjectStyleFile, found: readonly Diagnostic[]): readonly ConfigDiagnostic[] {
-  if (found.length === 0) return [];
-  const lines = new LineMap(file.css);
-  return found.map((d) => {
-    const at = lines.positionAt(d.span.start);
-    return {
-      code: d.code,
-      message: `${file.entry}:${at.line + 1}:${at.character + 1}: ${d.message}`,
-      file: file.entry,
-      span: d.span,
-    };
-  });
+/**
+ * The compiler's diagnostics over a sheet, placed in the file the author named. A passthrough
+ * of the compiler's own diagnostic (`FUD0743`, `FUD0854`), not a code made here: the line and
+ * column are `format`'s, from the span and the file's text.
+ */
+function located(file: ProjectStyleFile, found: readonly Diagnostic[]): readonly FileDiagnostic[] {
+  return found.map((d) => ({ ...d, file: file.entry }));
 }

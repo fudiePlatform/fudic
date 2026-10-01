@@ -10,7 +10,7 @@
  */
 
 import type { Diagnostic, ElementNode, Span } from '@fudic/compiler';
-import { hrefUnresolved } from '../diagnostics.js';
+import { FUD0460 } from '@fudic/diagnostics';
 import { resolveFrom } from '../paths.js';
 import { isUndecided, type FudRole } from '../mode.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
@@ -132,6 +132,6 @@ export function hrefDiagnostics(
   index: WorkspaceIndex,
 ): readonly Diagnostic[] {
   return unresolvedHrefs(document, index).map((unresolved) =>
-    hrefUnresolved(unresolved.href, unresolved.value),
+    FUD0460({ span: unresolved.value, href: unresolved.href }),
   );
 }

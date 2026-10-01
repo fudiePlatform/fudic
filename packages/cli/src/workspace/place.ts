@@ -10,9 +10,9 @@
  */
 
 import { CONFIG_FILE } from '@fudic/config';
-import { cliError, FUD_NOT_A_WORKSPACE, FUD_PROJECT_EXISTS } from '../diagnostics.js';
+import { FUD0780, FUD0784 } from '@fudic/diagnostics';
 import { absolute, joinPosix, relativeTo, toPosix } from '../paths.js';
-import { findProjects, workspaceRoot, WORKSPACE_FILE, type Project } from './discover.js';
+import { findProjects, workspaceRoot, type Project } from './discover.js';
 import { workspaceScope } from './uses.js';
 import type { ReadIo } from '../io.js';
 import type { CliError, ProjectOptions } from '../types.js';
@@ -64,13 +64,7 @@ export function placeProject(
   const root = workspaceRoot(opts.cwd, io);
   if (root === null) {
     return {
-      errors: [
-        cliError(
-          FUD_NOT_A_WORKSPACE,
-          `not inside a workspace: no ${WORKSPACE_FILE} here or above. ` +
-            'Create one with `fudic new <name> --workspace`.',
-        ),
-      ],
+      errors: [FUD0780()],
     };
   }
 
@@ -82,12 +76,12 @@ export function placeProject(
     if (taken !== undefined) {
       return {
         errors: [
-          cliError(
-            FUD_PROJECT_EXISTS,
-            `a project named "${name}" is already at ${relativeTo(root, taken.path)}; ` +
-              'pass --force to overwrite',
-            relativeTo(opts.cwd, taken.path),
-          ),
+          FUD0784({
+            file: relativeTo(opts.cwd, taken.path),
+            taken: 'name',
+            name,
+            at: relativeTo(root, taken.path),
+          }),
         ],
       };
     }
@@ -97,11 +91,7 @@ export function placeProject(
     if (io.exists(joinPosix(target, CONFIG_FILE))) {
       return {
         errors: [
-          cliError(
-            FUD_PROJECT_EXISTS,
-            `${relativeTo(root, target)} is already a fudic project; pass --force to overwrite`,
-            relativeTo(opts.cwd, target),
-          ),
+          FUD0784({ file: relativeTo(opts.cwd, target), taken: 'directory', at: relativeTo(root, target) }),
         ],
       };
     }

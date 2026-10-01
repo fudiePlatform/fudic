@@ -115,7 +115,7 @@ describe('fudicDiagnostics', () => {
     const on = (source: string): string[] => {
       const { index, document } = setup(PATH, source);
       return fudicDiagnostics(document, index)
-        .filter((d) => ['FUD0443', 'FUD0704', 'FUD0705'].includes(d.code))
+        .filter((d) => ['FUD0893', 'FUD0704', 'FUD0705'].includes(d.code))
         .map((d) => `${d.code}: ${source.slice(d.span.start, d.span.end)}`);
     };
 
@@ -124,10 +124,10 @@ describe('fudicDiagnostics', () => {
       expect(on(layout('', '@if (seccion) {\n      <i>x</i>\n    }\n    <p>@(seccion.length)</p>'))).toEqual([]);
     });
 
-    it('flags a `@{ }` (FUD0705) and a hole inside a construct (FUD0443)', () => {
+    it('flags a `@{ }` (FUD0705) and a hole inside a construct (FUD0893)', () => {
       expect(on(layout('', '<div>@{ let a = 1; }</div>'))).toEqual(['FUD0705: @{']);
       expect(on(layout('', '', '', '@if (seccion) {\n      <main>@RenderBody()</main>\n    }'))).toEqual([
-        'FUD0443: @RenderBody()',
+        'FUD0893: @RenderBody()',
       ]);
     });
 

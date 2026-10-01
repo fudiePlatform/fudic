@@ -41,6 +41,7 @@ import {
   type Severity,
   type Span,
 } from '@fudic/compiler';
+import { docsUrl } from '@fudic/diagnostics';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import { COMPLETION_TRIGGER_CHARACTERS, SEMANTIC_TOKENS_LEGEND } from '../capabilities.js';
@@ -153,12 +154,16 @@ export function rangeOf(document: TextDocument, span: Span): Range {
   return { start: document.positionAt(span.start), end: document.positionAt(span.end) };
 }
 
-/** A compiler diagnostic as an LSP one. Same span, same code: nothing is translated. */
+/**
+ * A compiler diagnostic as an LSP one. Same span, same code: nothing is translated. The code
+ * carries its public explanation as `codeDescription`, so the editor shows it as a link.
+ */
 export function toLspDiagnostic(document: TextDocument, diagnostic: Diagnostic): LspDiagnostic {
   return {
     range: rangeOf(document, diagnostic.span),
     severity: SEVERITY[diagnostic.severity],
     code: diagnostic.code,
+    codeDescription: { href: docsUrl(diagnostic.code) },
     source: 'fudic',
     message: diagnostic.message,
   };

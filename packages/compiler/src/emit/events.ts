@@ -39,9 +39,6 @@ import { EMPTY_CONTROLS, type ControlPlan } from './controls.js';
 import type { DelegationJs, DelegationPlan, DelegationRead } from '../semantic/delegation.js';
 import { CodeWriter } from './writer.js';
 
-/** The value of an event binding whose root node is none of the four shapes (§4.5). */
-export const FUD_UNSUITABLE_HANDLER = 'FUD0291';
-
 /**
  * What the hookup needs beyond the markup, shared by every walk of ONE file.
  *

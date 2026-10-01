@@ -15,11 +15,11 @@ import {
   type Span,
   span,
   type Diagnostic,
-  errorDiag,
   type ParseResult,
   withDiagnostics,
 } from '../types/index.js';
 import { parseSync } from 'oxc-parser';
+import { FUD0170 } from '@fudic/diagnostics';
 
 /** How a JS fragment must be wrapped so the synthetic buffer is valid JS/TS (§4.1). */
 export type JsFragmentKind =
@@ -60,9 +60,6 @@ export interface JsBatchResult {
   /** Map a buffer [start, end) back to an original-source Span. */
   mapSpan(bufferStart: number, bufferEnd: number): Span;
 }
-
-/** Diagnostic code range reserved by SDD-11 is FUD0170–FUD0189. */
-const FUD_OXC_SYNTAX = 'FUD0170';
 
 /** Synthetic filename: `.ts` enables TypeScript; no JSX appears in the JS of a `.fud`. */
 const SYNTHETIC_FILENAME = 'fudic-batch.ts';
@@ -174,7 +171,7 @@ export class JsBatch {
       const sp = label
         ? mapSpan(label.start, label.end)
         : mapSpan(0, buffer.length);
-      diagnostics.push(errorDiag(FUD_OXC_SYNTAX, err.message, sp));
+      diagnostics.push(FUD0170({ span: sp, detail: err.message }));
     }
 
     const result: JsBatchResult = {

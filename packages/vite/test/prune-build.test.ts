@@ -225,15 +225,18 @@ describe('vite build — the copies are not precached (criterion 37, corrected)'
 describe('vite build — what nobody uses, and what a sheet says about itself (criterion 39)', () => {
   const unused = (): string[] => built.warnings.filter((w) => w.includes('FUD0852'));
 
-  it('FUD0852 on a linked sheet that no page keeps a rule of', () => {
-    // Named by its absolute path, as the platform writes it: the file the author deletes.
-    const dead = join(built.root, 'src', 'styles', 'dead.css');
-    expect(unused().filter((w) => w.includes(dead))).toHaveLength(1);
+  it('FUD0852 on a linked sheet that no page keeps a rule of, at its `<link>`', () => {
+    // At the line to remove, clickable; the sheet named from the project, not the disk.
+    const [dead] = unused().filter((w) => w.includes('src/styles/dead.css adds no rule'));
+    expect(dead).toMatch(/^src\/layouts\/_layout\.fud:6:5 - warning FUD0852: /u);
+    expect(dead).toContain('<link rel="stylesheet" href="../styles/dead.css">');
+    expect(dead).not.toContain(built.root);
   });
 
-  it('FUD0852 on a file a sheet imports that no page keeps a rule of', () => {
-    const inputs = join(built.root, 'src', 'styles', 'inputs.css');
-    expect(unused().filter((w) => w.includes(inputs))).toHaveLength(1);
+  it('FUD0852 on a file a sheet imports that no page keeps a rule of, at its `@import`', () => {
+    const [inputs] = unused().filter((w) => w.includes('src/styles/inputs.css adds no rule'));
+    expect(inputs).toMatch(/^src\/styles\/main\.css:2:1 - warning FUD0852: /u);
+    expect(inputs).toContain('@import "./inputs.css";');
   });
 
   it('FUD0852 on the fudic.json entry of a project sheet nothing matches', () => {
@@ -250,7 +253,7 @@ describe('vite build — what nobody uses, and what a sheet says about itself (c
     const external = built.warnings.filter((w) => w.includes('FUD0850'));
     expect(external).toHaveLength(1);
     // At the line and column the author can click, in the file that wrote it.
-    expect(external[0]).toMatch(/main\.css:1:1: /u);
+    expect(external[0]).toMatch(/main\.css:1:1 - warning FUD0850: /u);
   });
 });
 
@@ -261,7 +264,7 @@ describe('vite build — @import errors', () => {
       'src/styles/main.css': '.a { color: red; }\n',
       'src/styles/dead.css': '@import "./missing.css";\n.a { color: blue; }\n',
     };
-    await expect(buildProject(files)).rejects.toThrow(/FUD0853[^\n]*dead\.css:1:1/u);
+    await expect(buildProject(files)).rejects.toThrow(/dead\.css:1:1 - error FUD0853: /u);
   }, 300000);
 
   it('FUD0854: an @import in a fudic.json sheet fails the build, once for the sheet (criterion 30)', async () => {
@@ -276,7 +279,7 @@ describe('vite build — @import errors', () => {
     );
     expect(failure).toMatch(/FUD0854/u);
     // Once for the sheet, not once per page that adopts it.
-    expect(count(failure, 'FUD0854')).toBe(1);
-    expect(failure).toContain('src/styles/panel.css:1:1');
+    expect(count(failure, 'error FUD0854:')).toBe(1);
+    expect(failure).toContain('src/styles/panel.css:1:1 - error FUD0854: ');
   }, 300000);
 });

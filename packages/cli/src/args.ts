@@ -5,7 +5,7 @@
  */
 
 import { COMPONENTS_DIR, LAYOUTS_DIR, ROUTES_DIR } from '@fudic/conventions';
-import { cliError, FUD_USAGE } from './diagnostics.js';
+import { FUD0448 } from '@fudic/diagnostics';
 import { APPS_DIR, LIBS_DIR } from './workspace/place.js';
 import type {
   AppOptions,
@@ -146,7 +146,7 @@ function tokenize(argv: readonly string[]): Tokens {
     }
     const value = inlineValue ?? argv[i + 1];
     if (value === undefined || value.startsWith('-')) {
-      return { positionals, flags, error: cliError(FUD_USAGE, `flag --${name} needs a value`) };
+      return { positionals, flags, error: FUD0448({ problem: 'flag-needs-value', name }) };
     }
     if (inlineValue === undefined) i += 1;
     flags.set(name, [...previous, value]);
@@ -192,7 +192,7 @@ function target(tokens: Tokens): { readonly project?: string } {
 /** Any flag outside the accepted set is an error, never a silent no-op. */
 function unknownFlag(tokens: Tokens, accepted: readonly string[]): CliError | null {
   for (const name of tokens.flags.keys()) {
-    if (!accepted.includes(name)) return cliError(FUD_USAGE, `unknown flag --${name}`);
+    if (!accepted.includes(name)) return FUD0448({ problem: 'unknown-flag', name });
   }
   return null;
 }
@@ -212,7 +212,7 @@ export function parseArgs(argv: readonly string[]): ParsedCommand {
   if (command === 'fmt') return parseFmt(tokens, rest, { cwd, force }, flags);
   if (command === 'new') return parseNew(tokens, rest, { cwd, force }, flags);
   if (command === 'generate' || command === 'g') return parseGenerate(tokens, rest, { cwd, force }, flags);
-  return { kind: 'error', error: cliError(FUD_USAGE, `unknown command "${command ?? ''}"`) };
+  return { kind: 'error', error: FUD0448({ problem: 'unknown-command', command: command ?? '' }) };
 }
 
 interface Base {
@@ -228,19 +228,19 @@ function parseFmt(tokens: Tokens, rest: readonly string[], base: Base, flags: Gl
 
   const quote = single(tokens, 'quote', 'double');
   if (quote !== 'double' && quote !== 'single') {
-    return { kind: 'error', error: cliError(FUD_USAGE, `unknown quote style "${quote}"`) };
+    return { kind: 'error', error: FUD0448({ problem: 'quote-style', value: quote }) };
   }
   const endOfLine = single(tokens, 'end-of-line', 'lf');
   if (endOfLine !== 'lf' && endOfLine !== 'crlf' && endOfLine !== 'auto') {
-    return { kind: 'error', error: cliError(FUD_USAGE, `unknown line terminator "${endOfLine}"`) };
+    return { kind: 'error', error: FUD0448({ problem: 'line-terminator', value: endOfLine }) };
   }
   const printWidth = number(tokens, 'print-width', 100);
   if (printWidth === undefined) {
-    return { kind: 'error', error: cliError(FUD_USAGE, '--print-width needs a number') };
+    return { kind: 'error', error: FUD0448({ problem: 'print-width' }) };
   }
   const tabWidth = number(tokens, 'tab-width', 2);
   if (tabWidth === undefined) {
-    return { kind: 'error', error: cliError(FUD_USAGE, '--tab-width needs a number') };
+    return { kind: 'error', error: FUD0448({ problem: 'tab-width' }) };
   }
 
   const opts: FmtOptions = {
@@ -269,11 +269,11 @@ function parseNew(tokens: Tokens, rest: readonly string[], base: Base, flags: Gl
   if (unknown !== null) return { kind: 'error', error: unknown };
 
   const name = rest[0];
-  if (name === undefined) return { kind: 'error', error: cliError(FUD_USAGE, 'fudic new needs a project name') };
+  if (name === undefined) return { kind: 'error', error: FUD0448({ problem: 'new-needs-name' }) };
 
   const pm = single(tokens, 'pm', 'pnpm');
   if (pm !== 'pnpm' && pm !== 'npm' && pm !== 'yarn') {
-    return { kind: 'error', error: cliError(FUD_USAGE, `unknown package manager "${pm}"`) };
+    return { kind: 'error', error: FUD0448({ problem: 'package-manager', value: pm }) };
   }
 
   // A workspace's first app is named after the workspace unless `--app` says otherwise, and
@@ -301,9 +301,9 @@ function parseNew(tokens: Tokens, rest: readonly string[], base: Base, flags: Gl
 function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flags: GlobalFlags): ParsedCommand {
   const [type, name] = rest;
   if (type === undefined) {
-    return { kind: 'error', error: cliError(FUD_USAGE, 'fudic g needs a type: page (p), component (c) or layout (l)') };
+    return { kind: 'error', error: FUD0448({ problem: 'generate-needs-type' }) };
   }
-  if (name === undefined) return { kind: 'error', error: cliError(FUD_USAGE, `fudic g ${type} needs a name`) };
+  if (name === undefined) return { kind: 'error', error: FUD0448({ problem: 'generate-needs-name', type }) };
 
   if (type === 'app' || type === 'a') {
     const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'id', 'prefix', 'no-sw', 'uses']);
@@ -375,5 +375,5 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
     return { kind: 'layout', name, opts, flags };
   }
 
-  return { kind: 'error', error: cliError(FUD_USAGE, `unknown type "${type}": expected app, lib, page, component or layout`) };
+  return { kind: 'error', error: FUD0448({ problem: 'unknown-type', type }) };
 }

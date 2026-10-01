@@ -15,7 +15,8 @@
  */
 
 import { type Span, span, emptySpan } from '../types/index.js';
-import { type Diagnostic, errorDiag } from '../types/index.js';
+import type { Diagnostic } from '../types/index.js';
+import { FUD0071, FUD0072, FUD0432, FUD0433 } from '@fudic/diagnostics';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 import { scanParens } from '../balancer/index.js';
 import type { LayoutDirective } from '../at/index.js';
@@ -29,17 +30,9 @@ import type {
   SlotArgument,
 } from './nodes.js';
 
-/** A `Render*` directive written without its mandatory parentheses (decision 85). */
-const FUD_MISSING_PARENS = 'FUD0432';
-/** Invalid directive argument: a non-identifier name, or arguments where none are taken. */
-const FUD_BAD_ARGUMENT = 'FUD0433';
-/**
- * The `{ … }` of a `@section` reuses SDD-06's block diagnostics: same rule, same message,
- * so an author who forgets a brace reads one wording, not two.
- */
-const FUD_MISSING_BLOCK = 'FUD0071';
-const FUD_UNCLOSED_BLOCK = 'FUD0072';
-
+// `FUD0432`: a `Render*` directive written without its mandatory parentheses (decision 85).
+// `FUD0433`: an invalid directive argument — a non-identifier name, or arguments where none
+// are taken.
 const WHITESPACE = /\s/u;
 const IDENT_START = /[\p{ID_Start}$_]/u;
 const IDENT_PART = /[\p{ID_Continue}$]/u;
@@ -84,12 +77,6 @@ const SECTION_ARGUMENTS: ReadonlySet<string> = new Set(['required', 'slot']);
 interface NamedArguments {
   readonly required?: boolean;
   readonly slot?: SlotArgument;
-}
-
-function argumentMessage(label: string, allowed: ReadonlySet<string>): string {
-  return allowed.size === 0
-    ? `${label}() takes no arguments`
-    : `${label} takes the named arguments ${[...allowed].map((k) => `\`${k}:\``).join(' and ')}, each at most once`;
 }
 
 /** A `"…"` or `'…'` literal with no escapes and no line break, or null. */
@@ -140,10 +127,6 @@ class DirectiveParser {
     return charAt(this.#source, before) === '@' ? before : keywordSpan.start;
   }
 
-  #error(code: string, message: string, at: Span): void {
-    this.#diagnostics.push(errorDiag(code, message, at));
-  }
-
   /**
    * `@RenderBody()` / `@RenderHead()`: parentheses mandatory (decision 85). `@RenderBody`
    * takes one named argument, `slot: "x"` (SDD-48); `@RenderHead` takes none — the head is
@@ -190,7 +173,7 @@ class DirectiveParser {
     const rest = ident === null ? from : skipTrivia(this.#source, ident.span.end);
     // The name is the whole argument, or it is followed by a comma and the named ones.
     if (ident === null || (rest !== inner.end && charAt(this.#source, rest) !== ',')) {
-      this.#error(FUD_BAD_ARGUMENT, '@RenderSection(name) expects a bare identifier', inner);
+      this.#diagnostics.push(FUD0433({ span: inner, problem: 'section-name' }));
       return {
         type: 'render-section',
         span: span(start, parens.end),
@@ -234,13 +217,15 @@ class DirectiveParser {
     for (;;) {
       const key = identifierAt(this.#source, at);
       if (key === null || !allowed.has(key.name) || seen.has(key.name)) {
-        this.#error(FUD_BAD_ARGUMENT, argumentMessage(label, allowed), span(at, inner.end));
+        this.#badArguments(span(at, inner.end), label, allowed);
         return found;
       }
       seen.add(key.name);
       const colon = skipTrivia(this.#source, key.span.end);
       if (charAt(this.#source, colon) !== ':') {
-        this.#error(FUD_BAD_ARGUMENT, `${label}: expected ':' after \`${key.name}\``, key.span);
+        this.#diagnostics.push(
+          FUD0433({ span: key.span, problem: 'colon', directive: label, key: key.name }),
+        );
         return found;
       }
       const valueAt = skipTrivia(this.#source, colon + 1);
@@ -248,7 +233,9 @@ class DirectiveParser {
       if (key.name === 'slot') {
         const slot = stringAt(this.#source, valueAt);
         if (slot === null) {
-          this.#error(FUD_BAD_ARGUMENT, `${label}: \`slot\` takes a string literal`, span(valueAt, inner.end));
+          this.#diagnostics.push(
+            FUD0433({ span: span(valueAt, inner.end), problem: 'slot', directive: label }),
+          );
           return found;
         }
         found.slot = slot;
@@ -256,7 +243,9 @@ class DirectiveParser {
       } else {
         const word = identifierAt(this.#source, valueAt);
         if (word?.name !== 'true' && word?.name !== 'false') {
-          this.#error(FUD_BAD_ARGUMENT, `${label}: \`required\` takes \`true\` or \`false\``, span(valueAt, inner.end));
+          this.#diagnostics.push(
+            FUD0433({ span: span(valueAt, inner.end), problem: 'required', directive: label }),
+          );
           return found;
         }
         found.required = word.name === 'true';
@@ -265,11 +254,18 @@ class DirectiveParser {
       const next = skipTrivia(this.#source, end);
       if (next === inner.end) return found;
       if (charAt(this.#source, next) !== ',') {
-        this.#error(FUD_BAD_ARGUMENT, argumentMessage(label, allowed), span(next, inner.end));
+        this.#badArguments(span(next, inner.end), label, allowed);
         return found;
       }
       at = skipTrivia(this.#source, next + 1);
     }
+  }
+
+  /** `FUD0433` over an argument list that is not the directive's closed set of keys. */
+  #badArguments(at: Span, label: string, allowed: ReadonlySet<string>): void {
+    this.#diagnostics.push(
+      FUD0433({ span: at, problem: 'arguments', directive: label, allowed: [...allowed] }),
+    );
   }
 
   /** `@section name { … }` (decision 84). */
@@ -277,7 +273,7 @@ class DirectiveParser {
     const at = skipTrivia(this.#source, keywordSpan.end);
     const ident = identifierAt(this.#source, at);
     if (ident === null) {
-      this.#error(FUD_BAD_ARGUMENT, '@section expects a name', emptySpan(at));
+      this.#diagnostics.push(FUD0433({ span: emptySpan(at), problem: 'missing-name' }));
     }
     const nameEnd = ident?.span.end ?? at;
     const block = this.#block(nameEnd);
@@ -298,7 +294,7 @@ class DirectiveParser {
   #parens(keywordSpan: Span, label: string): { inner: Span; end: number } | null {
     const at = skipTrivia(this.#source, keywordSpan.end);
     if (charAt(this.#source, at) !== '(') {
-      this.#error(FUD_MISSING_PARENS, `${label} requires parentheses: write ${label}()`, emptySpan(at));
+      this.#diagnostics.push(FUD0432({ span: emptySpan(at), directive: label }));
       return null;
     }
     const scanned = scanParens(this.#source, at);
@@ -311,7 +307,9 @@ class DirectiveParser {
   #block(from: number): { body: readonly HtmlContent[]; end: number } | null {
     const at = skipTrivia(this.#source, from);
     if (charAt(this.#source, at) !== '{') {
-      this.#error(FUD_MISSING_BLOCK, "expected '{' to open the block body", emptySpan(at));
+      // The `{ … }` of a `@section` reuses SDD-06's block diagnostics: same rule, same message,
+      // so an author who forgets a brace reads one wording, not two.
+      this.#diagnostics.push(FUD0071({ span: emptySpan(at), body: 'block' }));
       return null;
     }
     const lexer = this.#ctx.lexer;
@@ -319,7 +317,7 @@ class DirectiveParser {
     const body = this.#ctx.parseContentUntil(isBlockEnd).value;
     const closing = lexer.peek();
     if (closing.type !== 'block-end') {
-      this.#error(FUD_UNCLOSED_BLOCK, "unclosed block: expected '}'", span(at, at + 1));
+      this.#diagnostics.push(FUD0072({ span: span(at, at + 1), body: 'block' }));
       return { body, end: lexer.offset };
     }
     const consumed = lexer.next();

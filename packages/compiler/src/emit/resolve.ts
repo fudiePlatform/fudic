@@ -22,9 +22,8 @@ import {
   type ResolveIo,
   type Span,
   emptySpan,
-  errorDiag,
-  warningDiag,
 } from '../types/index.js';
+import { FUD0423, FUD0429, FUD0435, FUD0761 } from '@fudic/diagnostics';
 import { expandDocument, type DraggedLink, type OffsetMap } from '../expand/index.js';
 import { holeContractDiagnostics } from '../layout/index.js';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
@@ -36,12 +35,6 @@ import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
  * once and a layout points nowhere, so the shortest loop that could exist needs a file that
  * may no longer exist. The code is not reused.
  */
-/** A file used as a layout that holds no `@RenderBody()` (decision 82). */
-const FUD_NO_RENDER_BODY = 'FUD0423';
-/** A `@section` no `@RenderSection` in the chain consumes: its content would vanish. */
-const FUD_ORPHAN_SECTION = 'FUD0429';
-/** `<link rel="layout">` pointing at a file that is not a layout (decision 82). */
-const FUD_NOT_A_LAYOUT = 'FUD0435';
 /**
  * Two files of one graph that define the same tag (SDD-43 §4.5).
  *
@@ -52,10 +45,8 @@ const FUD_NOT_A_LAYOUT = 'FUD0435';
  * read each other's code.
  *
  * The message carries both paths because that is the only actionable part: one of the two has
- * to be renamed, and which one is the author's call.
+ * to be renamed, and which one is the author's call. It is `FUD0761`, raised in `resolveLink`.
  */
-const FUD_DUPLICATE_TAG = 'FUD0761';
-
 export type { ResolveIo } from '../types/index.js';
 
 /** A component reached through the link graph. */
@@ -386,13 +377,7 @@ function visitComponent(path: string, at: Span, walk: Walk): void {
     // links onto the same wrong file are two places to go and fix it.
     const defined = walk.definedBy.get(doc.name);
     if (defined !== undefined && defined !== path) {
-      walk.diagnostics.push(
-        errorDiag(
-          FUD_DUPLICATE_TAG,
-          `two files define the tag "${doc.name}": ${defined} and ${path}. customElements is one registry per document, so the second define() throws`,
-          at,
-        ),
-      );
+      walk.diagnostics.push(FUD0761({ span: at, kind: 'link', tag: doc.name, defined, path }));
       return;
     }
     // A cycle (A links B, B links A) reaches the ENTRY through the graph, and then the entry
@@ -477,8 +462,8 @@ export function resolveDocument(entryPath: string, io: ResolveIo): ParseResult<D
       // (something points at it), so name the missing directive rather than the role.
       diagnostics.push(
         doc.type === 'page-document'
-          ? errorDiag(FUD_NO_RENDER_BODY, `a layout must contain @RenderBody(): ${path}`, at)
-          : errorDiag(FUD_NOT_A_LAYOUT, `<link rel="layout"> must point at a layout: ${path}`, at),
+          ? FUD0423({ span: at, path })
+          : FUD0435({ span: at, path }),
       );
     }
   }
@@ -534,13 +519,7 @@ function reportOrphanSections(
   for (const layout of layouts) diagnostics.push(...holeContractDiagnostics(route, layout.doc));
   for (const section of route.sections) {
     if (section.name !== '' && !rendered.has(section.name)) {
-      diagnostics.push(
-        warningDiag(
-          FUD_ORPHAN_SECTION,
-          `no @RenderSection(${section.name}) in the layout chain: this section is not rendered`,
-          section.span,
-        ),
-      );
+      diagnostics.push(FUD0429({ span: section.span, section: section.name }));
     }
   }
 }

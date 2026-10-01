@@ -26,19 +26,9 @@
  */
 
 import type { Diagnostic, Span } from '../types/index.js';
-import { errorDiag, span, warningDiag } from '../types/index.js';
+import { span } from '../types/index.js';
+import { FUD0850, FUD0853, FUD0856, FUD0857, FUD0858 } from '@fudic/diagnostics';
 import { parseCssRules, type CssRule } from './rules.js';
-
-/** An `@import` that cannot be flattened: it stays, and what it imports arrives whole. */
-export const FUD_IMPORT_EXTERNAL = 'FUD0850';
-/** The file of a relative `@import` does not exist or cannot be read. */
-export const FUD_IMPORT_MISSING = 'FUD0853';
-/** An `@import` that closes a cycle. */
-export const FUD_IMPORT_CYCLE = 'FUD0856';
-/** An `@import` after a rule: the browser ignores it. */
-export const FUD_IMPORT_MISPLACED = 'FUD0857';
-/** Hoisting an `@import` that cannot be flattened moves it ahead of what came before it. */
-export const FUD_IMPORT_REORDERED = 'FUD0858';
 
 /** The prelude of an `@import`, read. */
 export interface CssImport {
@@ -76,12 +66,25 @@ export interface FileDiagnostic {
   readonly diagnostic: Diagnostic;
 }
 
+/** Where a file entered the sheet: the `@import` that first named it, in the file that wrote it. */
+export interface ImportSite {
+  /** The importing file's specifier, relative to the `.fud`. */
+  readonly file: string;
+  /** Over the whole `@import` rule, in the importing file's text. */
+  readonly span: Span;
+}
+
 export interface FlatSheet {
   readonly css: string;
   readonly regions: readonly FlatRegion[];
   /** Every file read, the root first: what the host watches (§4.10). */
   readonly files: readonly string[];
   readonly diagnostics: readonly FileDiagnostic[];
+  /**
+   * Every file but the root, by the `@import` that first brought it in: where an author goes
+   * to remove one nobody uses (`FUD0852`). Absent for a `plainSheet`, which reads no imports.
+   */
+  readonly importedAt?: ReadonlyMap<string, ImportSite>;
 }
 
 // ---------------------------------------------------------------------------
@@ -249,6 +252,7 @@ class Flattener {
   readonly #read: CssRead;
   readonly #parsed = new Map<string, ParsedFile | null>();
   readonly #files: string[] = [];
+  readonly #importedAt = new Map<string, ImportSite>();
   readonly #diagnostics: FileDiagnostic[] = [];
   /** The last appearance of each key, in document order: any earlier one is skipped. */
   readonly #last = new Map<string, Occurrence>();
@@ -320,24 +324,15 @@ class Flattener {
       if (imp === null || !isRelative(imp.url)) continue;
       const spec = joinSpec(file.spec, imp.url);
       if (stack.includes(spec) || spec === file.spec) {
-        this.#report(
-          file.spec,
-          errorDiag(FUD_IMPORT_CYCLE, `this @import closes a cycle (${imp.url}): it is dropped`, rule.span),
-        );
+        this.#report(file.spec, FUD0856({ span: rule.span, url: imp.url }));
         continue;
       }
       const child = this.#file(spec);
       if (child === null) {
-        this.#report(
-          file.spec,
-          errorDiag(
-            FUD_IMPORT_MISSING,
-            `the file this @import names (${imp.url}) does not exist or cannot be read: it is dropped`,
-            rule.span,
-          ),
-        );
+        this.#report(file.spec, FUD0853({ span: rule.span, url: imp.url }));
         continue;
       }
+      if (!this.#importedAt.has(spec)) this.#importedAt.set(spec, { file: file.spec, span: rule.span });
       const childKey = `${spec}|${imp.layer ?? '-'}|${imp.supports ?? '-'}|${imp.media ?? '-'}`;
       occurrence.children.set(rule, this.tree(child, childKey, [...stack, file.spec]));
     }
@@ -345,14 +340,7 @@ class Flattener {
   }
 
   #misplaced(file: ParsedFile, rule: CssRule): void {
-    this.#report(
-      file.spec,
-      warningDiag(
-        FUD_IMPORT_MISPLACED,
-        'this @import comes after a rule, and the browser ignores it: it is dropped',
-        rule.span,
-      ),
-    );
+    this.#report(file.spec, FUD0857({ span: rule.span }));
   }
 
   /** Append text from `file`, starting at `offset` there. */
@@ -432,23 +420,9 @@ class Flattener {
   }
 
   #external(file: ParsedFile, rule: CssRule, prelude: string, root: boolean): void {
-    this.#report(
-      file.spec,
-      warningDiag(
-        FUD_IMPORT_EXTERNAL,
-        'this @import names a file the build cannot read: it stays, and what it imports arrives whole, without pruning',
-        rule.span,
-      ),
-    );
+    this.#report(file.spec, FUD0850({ span: rule.span }));
     if (!root || this.#flattenedOne) {
-      this.#report(
-        file.spec,
-        warningDiag(
-          FUD_IMPORT_REORDERED,
-          'this @import is moved to the top of the flattened sheet, ahead of rules that came before it: the cascade order changes',
-          rule.span,
-        ),
-      );
+      this.#report(file.spec, FUD0858({ span: rule.span }));
     }
     const text = `@import ${prelude.trim()};`;
     if (!this.#hoisted.some((h) => h.text === text)) {
@@ -477,6 +451,7 @@ class Flattener {
       regions: this.#regions,
       files: this.#files,
       diagnostics: this.#diagnostics,
+      importedAt: this.#importedAt,
     };
   }
 }

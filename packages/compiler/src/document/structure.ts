@@ -12,7 +12,36 @@
  */
 
 import { type Span, span, emptySpan } from '../types/index.js';
-import { type Diagnostic, errorDiag, relatedError, warningDiag } from '../types/index.js';
+import type { Diagnostic } from '../types/index.js';
+import {
+  FUD0150,
+  FUD0151,
+  FUD0152,
+  FUD0153,
+  FUD0154,
+  FUD0155,
+  FUD0156,
+  FUD0157,
+  FUD0158,
+  FUD0159,
+  FUD0160,
+  FUD0420,
+  FUD0421,
+  FUD0423,
+  FUD0424,
+  FUD0425,
+  FUD0426,
+  FUD0427,
+  FUD0428,
+  FUD0431,
+  FUD0436,
+  FUD0438,
+  FUD0439,
+  FUD0823,
+  FUD0824,
+  FUD0834,
+  FUD0855,
+} from '@fudic/diagnostics';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 import type {
   HtmlDocument,
@@ -40,91 +69,30 @@ import type {
   SnippetHost,
 } from './nodes.js';
 
-/** Doctype other than `<!DOCTYPE html>` (decision 57). */
-const FUD_BAD_DOCTYPE = 'FUD0150';
-/** Page mode: missing or misordered `<html>`/`<head>`/`<body>` (decision 58). */
-const FUD_PAGE_SKELETON = 'FUD0151';
-/** `<link rel="component">` outside `<head>` in page mode (decision 59). */
-const FUD_LINK_OUT_OF_HEAD = 'FUD0152';
-/** `@code` outside `<head>` in page mode (decision 60). */
-const FUD_CODE_OUT_OF_HEAD = 'FUD0153';
-/** More than one `@code` in the document (decisions 54, 33.d). */
-const FUD_DUPLICATE_CODE = 'FUD0154';
-/** Invalid top-level order in a component: link/code/head/host out of order (decision 53). */
-const FUD_COMPONENT_ORDER = 'FUD0155';
-/** Invalid host wrapper: absent, multiple, or a tag without a hyphen (decision 75). */
-const FUD_BAD_HOST = 'FUD0156';
-/** The wrapper does not hold exactly one `<template>` (decision 75.a). */
-const FUD_BAD_TEMPLATE = 'FUD0157';
-/** `shadowrootmode` absent or other than `open` — `closed` is out of v1 (decision 75.a). */
-const FUD_BAD_SHADOWROOT = 'FUD0158';
-/** More than one `<style>` in the component `<head>` fragment (decision 76). */
-const FUD_DUPLICATE_STYLE = 'FUD0159';
-/** A `host` attribute written in the source — a reserved output marker (decision 76). */
-const FUD_RESERVED_HOST_ATTR = 'FUD0160';
-
-// --- SDD-21 (layouts) --------------------------------------------------------------
-/** More than one `<link rel="layout">` in the document (decision 81). */
-const FUD_DUPLICATE_LAYOUT_LINK = 'FUD0420';
-/** Invalid top-level order in a route: layout/links/code/head/markup out of order (83). */
-const FUD_ROUTE_ORDER = 'FUD0421';
-/** A repeated `@RenderBody()` / `@RenderHead()` (decision 86). */
-const FUD_DUPLICATE_DIRECTIVE = 'FUD0424';
-/**
- * A `<link rel="component">` or `<link rel="layout">` written anywhere but the top level of
- * a component or a route.
- *
- * Nested, it does nothing at all: the graph is read from the top-level phases, so the file
- * it names is never resolved and the component never registers. And it is not inert — it is
- * a `<link href>`, so the asset linker takes it for an asset and publishes the `.fud` it
- * points at, source and all, into the page. Two wrongs that look like one typo, which is
- * why this is an error and not a warning.
- */
-const FUD_LINK_NOT_TOP_LEVEL = 'FUD0438';
-/** A layout with holes but no `@RenderBody()` (decision 86, SDD-48). */
-const FUD_NO_RENDER_BODY = 'FUD0423';
-/** A layout with no `@RenderHead()`: the route's head is appended at the end (decision 86). */
-const FUD_NO_RENDER_HEAD = 'FUD0425';
-/** A `Render*` directive outside a layout (decision 84). */
-const FUD_DIRECTIVE_OUTSIDE_LAYOUT = 'FUD0426';
-/** `@section` outside a route, or nested instead of top-level (decisions 83, 90). */
-const FUD_SECTION_OUTSIDE_ROUTE = 'FUD0427';
-/** A repeated section name, declared or rendered (decision 86). */
-const FUD_DUPLICATE_SECTION = 'FUD0428';
-/** `@RenderHead()` outside the layout's `<head>` (decision 86). */
-const FUD_RENDER_HEAD_OUTSIDE_HEAD = 'FUD0431';
-/** `<link rel="layout">` with an absent or interpolated `href` (decision 81). */
-const FUD_BAD_LAYOUT_HREF = 'FUD0436';
-/**
- * A layout that declares its own `<link rel="layout">`: only a route may name a layout.
- *
- * Decision 87 let a layout have a parent, and the shape of a layout is what makes that
- * unpayable: a layout IS a page — doctype, `<html>`, `<head>`, `<body>` — so a chain of two
- * asks which doctype survives, which `<html>` and `<body>` attributes win, and what happens
- * to two `<title>`s. There is no answer, and the emit never had one: it simply dropped the
- * inner shell — doctype, both open tags and their attributes — and kept two fragments, the
- * children of its `<body>` and the contents of its `<head>`, concatenated into the parent's
- * with no merge of any kind. Silently discarding what the author wrote is not a composition
- * rule, so the nesting goes rather than the shell.
- */
-const FUD_NESTED_LAYOUT = 'FUD0439';
-/**
- * `FUD0437` — «a layout has no `@code` block» — is RETIRED (SDD-40 §3.1).
- *
- * It said a layout declares nothing, and that stopped being true the day a layout could
- * declare its props with the same `props<T>()` a component and a route use. What is left of
- * the old rule is narrower and belongs to the emit, which is the only reader that can tell a
- * props declaration from everything else: `FUD0700`, over whatever a layout's `@code` holds
- * BESIDES that declaration (SDD-40 §4.1). The code is not reused.
- */
-
-// --- SDD-29 (snippets) -------------------------------------------------------------
-/** A `@snippet` written anywhere but the top level of its file (§4.1, §4.2). */
-const FUD_SNIPPET_NOT_TOP_LEVEL = 'FUD0824';
-/** `@code` in a file whose whole purpose is declaring snippets: it has no state (§4.2). */
-const FUD_SNIPPET_CODE = 'FUD0823';
-/** Two snippets of one scope under one name (§4.4) — here, the two written in one file. */
-const FUD_SNIPPET_COLLISION = 'FUD0834';
+// SDD-10 owns `FUD0150`–`FUD0160`; SDD-21 (layouts) `FUD0420`–`FUD0439`; SDD-29 (snippets)
+// `FUD0824` here.
+//
+// `FUD0438` — a `<link rel="component">`/`"layout"`/`"snippet"` written anywhere but the top
+// level of a component or a route. Nested, it does nothing at all: the graph is read from the
+// top-level phases, so the file it names is never resolved and the component never registers.
+// And it is not inert — it is a `<link href>`, so the asset linker takes it for an asset and
+// publishes the `.fud` it points at, source and all, into the page. Two wrongs that look like
+// one typo, which is why this is an error and not a warning.
+//
+// `FUD0439` — a layout that declares its own `<link rel="layout">`: only a route may name a
+// layout. Decision 87 let a layout have a parent, and the shape of a layout is what makes that
+// unpayable: a layout IS a page — doctype, `<html>`, `<head>`, `<body>` — so a chain of two
+// asks which doctype survives, which `<html>` and `<body>` attributes win, and what happens to
+// two `<title>`s. There is no answer, and the emit never had one: it simply dropped the inner
+// shell and kept two fragments concatenated into the parent's with no merge of any kind.
+// Silently discarding what the author wrote is not a composition rule, so the nesting goes
+// rather than the shell.
+//
+// `FUD0437` — «a layout has no `@code` block» — is RETIRED (SDD-40 §3.1). It said a layout
+// declares nothing, and that stopped being true the day a layout could declare its props with
+// the same `props<T>()` a component and a route use. What is left of the old rule is narrower
+// and belongs to the emit: `FUD0700`, over whatever a layout's `@code` holds BESIDES that
+// declaration (SDD-40 §4.1). The code is not reused.
 
 const WHITESPACE_ONLY = /^\s*$/u;
 
@@ -247,12 +215,12 @@ function rejectDuplicateSnippets(
     const first = seen.get(snippet.name);
     if (first !== undefined) {
       diagnostics.push(
-        relatedError(
-          FUD_SNIPPET_COLLISION,
-          `this file declares two snippets called "${snippet.name}"`,
-          snippet.nameSpan,
-          [{ span: first.nameSpan, message: `"${snippet.name}" is already declared here` }],
-        ),
+        FUD0834({
+          span: snippet.nameSpan,
+          where: 'file',
+          name: snippet.name,
+          related: [{ span: first.nameSpan, message: `"${snippet.name}" is already declared here` }],
+        }),
       );
       continue;
     }
@@ -266,15 +234,7 @@ function rejectSnippetsOutside(
   diagnostics: Diagnostic[],
 ): void {
   for (const node of nodes) {
-    if (isSnippetDecl(node) && !collected.has(node)) {
-      diagnostics.push(
-        errorDiag(
-          FUD_SNIPPET_NOT_TOP_LEVEL,
-          '@snippet is a top-level node of the file: nested, it declares nothing',
-          node.span,
-        ),
-      );
-    }
+    if (isSnippetDecl(node) && !collected.has(node)) diagnostics.push(FUD0824({ span: node.span }));
     const children = (node as { readonly children?: readonly HtmlContent[] }).children;
     if (children !== undefined) rejectSnippetsOutside(children, collected, diagnostics);
   }
@@ -292,9 +252,7 @@ function layoutHrefOf(link: ElementNode, diagnostics: Diagnostic[]): string {
   const href = findAttr(link, 'href');
   const value = href === undefined ? undefined : staticValue(href);
   if (value === undefined || value === '') {
-    diagnostics.push(
-      errorDiag(FUD_BAD_LAYOUT_HREF, '<link rel="layout"> requires a static href', link.span),
-    );
+    diagnostics.push(FUD0436({ span: link.span }));
     return '';
   }
   return value;
@@ -311,20 +269,12 @@ function rejectDirectives(
 ): void {
   if (!allow.render) {
     for (const node of [...found.renderBody, ...found.renderHead, ...found.renderSections]) {
-      diagnostics.push(
-        errorDiag(
-          FUD_DIRECTIVE_OUTSIDE_LAYOUT,
-          '@RenderBody/@RenderHead/@RenderSection are only valid in a layout',
-          node.span,
-        ),
-      );
+      diagnostics.push(FUD0426({ span: node.span }));
     }
   }
   if (!allow.section) {
     for (const node of [...found.sections, ...found.nestedSections]) {
-      diagnostics.push(
-        errorDiag(FUD_SECTION_OUTSIDE_ROUTE, '@section is only valid in a route', node.span),
-      );
+      diagnostics.push(FUD0427({ span: node.span }));
     }
   }
 }
@@ -332,14 +282,14 @@ function rejectDirectives(
 /** Duplicate section names, declared (`@section`) or rendered (`@RenderSection`) — FUD0428. */
 function rejectDuplicateNames(
   nodes: readonly { readonly name: string; readonly span: Span }[],
-  what: string,
+  what: 'section' | 'rendered section',
   diagnostics: Diagnostic[],
 ): void {
   const seen = new Set<string>();
   for (const node of nodes) {
     if (node.name === '') continue; // already degraded (FUD0433)
     if (seen.has(node.name)) {
-      diagnostics.push(errorDiag(FUD_DUPLICATE_SECTION, `duplicate ${what} "${node.name}"`, node.span));
+      diagnostics.push(FUD0428({ span: node.span, what, name: node.name }));
     }
     seen.add(node.name);
   }
@@ -348,11 +298,11 @@ function rejectDuplicateNames(
 /** The single directive of its kind, reporting every extra as FUD0424 (decision 86). */
 function single(
   nodes: readonly RenderDirectiveNode[],
-  what: string,
+  directive: '@RenderBody()' | '@RenderHead()',
   diagnostics: Diagnostic[],
 ): RenderDirectiveNode | undefined {
   for (const extra of nodes.slice(1)) {
-    diagnostics.push(errorDiag(FUD_DUPLICATE_DIRECTIVE, `a layout has at most one ${what}`, extra.span));
+    diagnostics.push(FUD0424({ span: extra.span, directive }));
   }
   return nodes[0];
 }
@@ -432,9 +382,7 @@ function structureComponent(doc: HtmlDocument): ParseResult<StructuredDocument> 
   for (const node of rest) {
     const slot = componentSlot(node);
     if (slot < maxSlot) {
-      diagnostics.push(
-        errorDiag(FUD_COMPONENT_ORDER, 'Top-level order must be link → @code → head → host', node.span),
-      );
+      diagnostics.push(FUD0155({ span: node.span, kind: 'order' }));
     } else {
       maxSlot = slot;
     }
@@ -444,14 +392,14 @@ function structureComponent(doc: HtmlDocument): ParseResult<StructuredDocument> 
         break;
       case 2:
         if (code !== undefined) {
-          diagnostics.push(errorDiag(FUD_DUPLICATE_CODE, 'A component has at most one @code block', node.span));
+          diagnostics.push(FUD0154({ span: node.span, role: 'component' }));
         } else {
           code = node as CodeBlockNode;
         }
         break;
       case 3:
         if (head !== undefined) {
-          diagnostics.push(errorDiag(FUD_COMPONENT_ORDER, 'A component has at most one <head> fragment', node.span));
+          diagnostics.push(FUD0155({ span: node.span, kind: 'head' }));
         } else {
           head = node as ElementNode;
         }
@@ -519,13 +467,7 @@ function snippetDocument(
   diagnostics: Diagnostic[],
 ): ParseResult<StructuredDocument> {
   if (parts.code !== undefined) {
-    diagnostics.push(
-      errorDiag(
-        FUD_SNIPPET_CODE,
-        'a file of snippets has no @code: a snippet has no state of its own and nothing here would run it',
-        parts.code.span,
-      ),
-    );
+    diagnostics.push(FUD0823({ span: parts.code.span, where: 'file' }));
   }
   const node: SnippetDocument = {
     type: 'snippet-document',
@@ -552,11 +494,11 @@ function validateHost(
   const host = rootElements.find((el) => el.name.includes('-'));
 
   if (rootElements.length === 0) {
-    diagnostics.push(errorDiag(FUD_BAD_HOST, 'A component must have exactly one custom-element host wrapper', docSpan));
+    diagnostics.push(FUD0156({ span: docSpan, problem: 'missing' }));
   } else if (rootElements.length > 1) {
-    diagnostics.push(errorDiag(FUD_BAD_HOST, 'A component must have exactly one root host wrapper', rootElements[1]!.span));
+    diagnostics.push(FUD0156({ span: rootElements[1]!.span, problem: 'several' }));
   } else if (host === undefined) {
-    diagnostics.push(errorDiag(FUD_BAD_HOST, 'The host wrapper tag must be a custom element (contain a hyphen)', rootElements[0]!.span));
+    diagnostics.push(FUD0156({ span: rootElements[0]!.span, problem: 'no-hyphen' }));
   }
   return host;
 }
@@ -570,15 +512,15 @@ function validateTemplate(host: ElementNode, diagnostics: Diagnostic[]): Element
   const only = children.length === 1 ? children[0] : undefined;
   if (only === undefined || !isElementNamed(only, 'template')) {
     const at = children[0]?.span ?? host.span;
-    diagnostics.push(errorDiag(FUD_BAD_TEMPLATE, 'The host wrapper must contain exactly one <template>', at));
+    diagnostics.push(FUD0157({ span: at }));
     return undefined;
   }
 
   const mode = findAttr(only, 'shadowrootmode');
   if (mode === undefined) {
-    diagnostics.push(errorDiag(FUD_BAD_SHADOWROOT, 'The <template> requires shadowrootmode="open"', only.openSpan));
+    diagnostics.push(FUD0158({ span: only.openSpan, problem: 'missing' }));
   } else if (staticValue(mode) !== 'open') {
-    diagnostics.push(errorDiag(FUD_BAD_SHADOWROOT, 'shadowrootmode must be "open" (closed is out of v1)', mode.span));
+    diagnostics.push(FUD0158({ span: mode.span, problem: 'not-open' }));
   }
   return only;
 }
@@ -593,19 +535,14 @@ function validateHeadStyles(head: ElementNode, diagnostics: Diagnostic[]): void 
   for (const child of head.children) {
     if (!isElementNamed(child, 'style')) continue;
     if (seen) {
-      diagnostics.push(errorDiag(FUD_DUPLICATE_STYLE, 'A component <head> fragment holds at most one <style>', child.span));
+      diagnostics.push(FUD0159({ span: child.span }));
     }
     seen = true;
     const hostAttr = findAttr(child, 'host');
-    if (hostAttr !== undefined) {
-      diagnostics.push(errorDiag(FUD_RESERVED_HOST_ATTR, 'The host attribute is a reserved output marker and cannot be written in source', hostAttr.span));
-    }
+    if (hostAttr !== undefined) diagnostics.push(FUD0160({ span: hostAttr.span }));
     validateStyleImports(child, diagnostics);
   }
 }
-
-/** `@import` in a component's `<style>` (SDD-49 §4.1). */
-const FUD_IMPORT_IN_COMPONENT_STYLE = 'FUD0855';
 
 /**
  * A component's `<style>` takes no `@import` (`FUD0855`): its sheet is adopted, and an adopted
@@ -619,13 +556,7 @@ function validateStyleImports(style: ElementNode, diagnostics: Diagnostic[]): vo
     const text = part.value.replace(/\/\*[\s\S]*?(\*\/|$)/gu, (c) => ' '.repeat(c.length));
     for (const m of text.matchAll(/@import\b[^;{}]*;?/giu)) {
       const start = part.span.start + m.index;
-      diagnostics.push(
-        errorDiag(
-          FUD_IMPORT_IN_COMPONENT_STYLE,
-          'a component <style> takes no @import: its sheet is adopted, and an adopted sheet ignores it. Choose the sheet in fudic.json "styles" instead',
-          span(start, start + m[0].length),
-        ),
-      );
+      diagnostics.push(FUD0855({ span: span(start, start + m[0].length) }));
     }
   }
 }
@@ -661,22 +592,14 @@ function structureRoute(doc: HtmlDocument): ParseResult<StructuredDocument> {
   for (const node of rest) {
     const slot = routeSlot(node);
     if (slot < maxSlot) {
-      diagnostics.push(
-        errorDiag(
-          FUD_ROUTE_ORDER,
-          'Top-level order must be layout link → component links → @code → head → markup',
-          node.span,
-        ),
-      );
+      diagnostics.push(FUD0421({ span: node.span, kind: 'order' }));
     } else {
       maxSlot = slot;
     }
     switch (slot) {
       case 1:
         if (layoutLink !== undefined) {
-          diagnostics.push(
-            errorDiag(FUD_DUPLICATE_LAYOUT_LINK, 'A route declares exactly one layout', node.span),
-          );
+          diagnostics.push(FUD0420({ span: node.span, role: 'route' }));
         } else {
           layoutLink = node as ElementNode;
         }
@@ -686,14 +609,14 @@ function structureRoute(doc: HtmlDocument): ParseResult<StructuredDocument> {
         break;
       case 3:
         if (code !== undefined) {
-          diagnostics.push(errorDiag(FUD_DUPLICATE_CODE, 'A route has at most one @code block', node.span));
+          diagnostics.push(FUD0154({ span: node.span, role: 'route' }));
         } else {
           code = node as CodeBlockNode;
         }
         break;
       case 4:
         if (head !== undefined) {
-          diagnostics.push(errorDiag(FUD_ROUTE_ORDER, 'A route has at most one <head> fragment', node.span));
+          diagnostics.push(FUD0421({ span: node.span, kind: 'head' }));
         } else {
           head = node as ElementNode;
         }
@@ -718,9 +641,7 @@ function structureRoute(doc: HtmlDocument): ParseResult<StructuredDocument> {
   rejectDirectives(found, { render: false, section: true }, diagnostics);
   rejectDuplicateNames(found.sections, 'section', diagnostics);
   for (const nested of found.nestedSections) {
-    diagnostics.push(
-      errorDiag(FUD_ROUTE_ORDER, '@section must be a top-level node of the route', nested.span),
-    );
+    diagnostics.push(FUD0421({ span: nested.span, kind: 'nested-section' }));
   }
 
   // The sections are lifted out of the body: the layout renders them at its own
@@ -770,15 +691,13 @@ function structureShell(source: string, doc: HtmlDocument): ParseResult<Structur
     } else if (isElement(child) && isLayoutLink(child)) {
       // A shell that declares a layout is a NESTED layout (decision 87).
       if (layoutLink !== undefined) {
-        diagnostics.push(
-          errorDiag(FUD_DUPLICATE_LAYOUT_LINK, 'A document declares at most one layout', child.span),
-        );
+        diagnostics.push(FUD0420({ span: child.span, role: 'document' }));
       } else {
         layoutLink = child;
       }
     } else if (isCodeBlock(child)) {
       if (code !== undefined) {
-        diagnostics.push(errorDiag(FUD_DUPLICATE_CODE, 'A document has at most one @code block', child.span));
+        diagnostics.push(FUD0154({ span: child.span, role: 'document' }));
       } else {
         code = child;
       }
@@ -846,25 +765,13 @@ function buildLayout(
   // A shell is a layout by any hole it holds (SDD-48), so it can lack the one that makes it
   // useful. Said in the file itself, over its `<body>`, where the hole is missing.
   if (renderBody === undefined) {
-    diagnostics.push(
-      errorDiag(FUD_NO_RENDER_BODY, 'a layout must contain @RenderBody(): where does the route go?', parts.body.openSpan),
-    );
+    diagnostics.push(FUD0423({ span: parts.body.openSpan }));
   }
   const renderHead = single(found.renderHead, '@RenderHead()', diagnostics);
   if (renderHead !== undefined && !containsNode(parts.head, renderHead)) {
-    diagnostics.push(
-      errorDiag(FUD_RENDER_HEAD_OUTSIDE_HEAD, '@RenderHead() must live inside <head>', renderHead.span),
-    );
+    diagnostics.push(FUD0431({ span: renderHead.span }));
   }
-  if (renderHead === undefined) {
-    diagnostics.push(
-      warningDiag(
-        FUD_NO_RENDER_HEAD,
-        "a layout without @RenderHead() appends the route's head contributions at the end of <head>",
-        parts.head.openSpan,
-      ),
-    );
-  }
+  if (renderHead === undefined) diagnostics.push(FUD0425({ span: parts.head.openSpan }));
   rejectDuplicateNames(found.renderSections, 'rendered section', diagnostics);
   rejectDirectives(found, { render: true, section: false }, diagnostics);
 
@@ -874,13 +781,7 @@ function buildLayout(
   // its own doctype — instead of half of a composed one. The href is not validated either:
   // `FUD0436` over a link that may not exist at all would be a second voice on one mistake.
   if (parts.layoutLink !== undefined) {
-    diagnostics.push(
-      errorDiag(
-        FUD_NESTED_LAYOUT,
-        'a layout cannot declare <link rel="layout">: only a route may name a layout',
-        parts.layoutLink.span,
-      ),
-    );
+    diagnostics.push(FUD0439({ span: parts.layoutLink.span }));
   }
   return {
     type: 'layout-document',
@@ -913,7 +814,7 @@ function validateDoctype(
   const doctype: DoctypeNode = found ?? { type: 'doctype', span: emptySpan(doc.span.start) };
   const text = source.slice(doctype.span.start, doctype.span.end).trim().toLowerCase();
   if (text !== '<!doctype html>') {
-    diagnostics.push(errorDiag(FUD_BAD_DOCTYPE, 'The doctype must be <!DOCTYPE html>', doctype.span));
+    diagnostics.push(FUD0150({ span: doctype.span }));
   }
   return doctype;
 }
@@ -930,7 +831,7 @@ function validateSkeleton(
 ): { html: ElementNode; head: ElementNode; body: ElementNode } {
   const html = top.find((n): n is ElementNode => isElementNamed(n, 'html'));
   if (html === undefined) {
-    diagnostics.push(errorDiag(FUD_PAGE_SKELETON, 'A page must have an <html> root', doc.span));
+    diagnostics.push(FUD0151({ span: doc.span, missing: 'html' }));
     const at = emptySpan(doc.span.start);
     return { html: placeholder('html', at), head: placeholder('head', at), body: placeholder('body', at) };
   }
@@ -939,7 +840,7 @@ function validateSkeleton(
   const headIdx = inner.findIndex((n) => isElementNamed(n, 'head'));
   const bodyIdx = inner.findIndex((n) => isElementNamed(n, 'body'));
   if (headIdx === -1 || bodyIdx === -1 || headIdx > bodyIdx) {
-    diagnostics.push(errorDiag(FUD_PAGE_SKELETON, 'A page must have <head> then <body> inside <html>', html.span));
+    diagnostics.push(FUD0151({ span: html.span, missing: 'head-body' }));
   }
 
   const at = emptySpan(html.span.start);
@@ -967,13 +868,7 @@ function collectNestedFrameworkLinks(
   for (const node of nodes) {
     if (!isElement(node)) continue;
     if (isComponentLink(node) || isLayoutLink(node) || isSnippetLink(node)) {
-      diagnostics.push(
-        errorDiag(
-          FUD_LINK_NOT_TOP_LEVEL,
-          'A <link rel="component">, <link rel="layout"> or <link rel="snippet"> is a top-level node of the file: nested it registers nothing',
-          node.span,
-        ),
-      );
+      diagnostics.push(FUD0438({ span: node.span }));
       continue;
     }
     collectNestedFrameworkLinks(node.children, diagnostics);
@@ -989,11 +884,11 @@ function collectOutOfPlace(
     if (node === head) continue;
     if (isElement(node)) {
       if (isComponentLink(node)) {
-        diagnostics.push(errorDiag(FUD_LINK_OUT_OF_HEAD, '<link rel="component"> must live inside <head>', node.span));
+        diagnostics.push(FUD0152({ span: node.span }));
       }
       collectOutOfPlace(node.children, head, diagnostics);
     } else if (isCodeBlock(node)) {
-      diagnostics.push(errorDiag(FUD_CODE_OUT_OF_HEAD, '@code must live inside <head>', node.span));
+      diagnostics.push(FUD0153({ span: node.span }));
     }
   }
 }

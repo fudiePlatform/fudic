@@ -14,8 +14,6 @@
 import {
   ADOPTED_STYLESHEETS_ATTR,
   adoptedStylesOf,
-  errorDiag,
-  FUD_ADOPTED_STYLE_UNKNOWN,
   staticId,
   walkBlocks,
   type Diagnostic,
@@ -23,6 +21,7 @@ import {
   type Region,
   type Span,
 } from '@fudic/compiler';
+import { FUD0744 } from '@fudic/diagnostics';
 import type { CachedDocument } from '../document-cache.js';
 import { nativeGapContextAt } from './position.js';
 
@@ -97,14 +96,7 @@ export function adoptedStyleDiagnostics(
   const known = new Set(choosable);
   return adoptedStylesOf(cached.document.template)
     .names.filter(({ name }) => !known.has(name))
-    .map(({ name, span }) =>
-      errorDiag(
-        FUD_ADOPTED_STYLE_UNKNOWN,
-        `"${name}" is not a stylesheet of this project: a component chooses from the "styles" of its fudic.json` +
-          (choosable.length === 0 ? ', and it declares none' : ` (${choosable.join(', ')})`),
-        span,
-      ),
-    );
+    .map(({ name, span }) => FUD0744({ span, name, choosable }));
 }
 
 /** Whether this element is the root `<template>` of the component being edited. */

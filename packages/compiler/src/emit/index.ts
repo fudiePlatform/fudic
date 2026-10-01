@@ -14,7 +14,7 @@ export {
   type AssetSheet,
 } from './assets.js';
 export { sheetKey } from './parts.js';
-export type { SheetUse } from './page-sheets.js';
+export type { SheetSite, SheetUse } from './page-sheets.js';
 export { inlineRuntimeMarker, RUNTIME_MARKER, INLINE_QUERY, asksInline } from './parts.js';
 export {
   resolveComponents,
@@ -42,10 +42,7 @@ export {
   type EmitOutput,
   type ProjectStyle,
 } from './module.js';
-export {
-  lintProjectStyle,
-  FUD_DOCUMENT_ONLY_SELECTOR,
-} from './styles-lint.js';
+export { lintProjectStyle } from './styles-lint.js';
 export { compactProjectCss } from './project-styles.js';
 export {
   emitComponentClientModule,
@@ -126,10 +123,6 @@ export {
 } from './surface.js';
 export {
   prunePage,
-  FUD_SHEET_UNREADABLE,
-  FUD_SHEET_UNUSED,
-  FUD_IMPORT_IN_PROJECT_SHEET,
-  FUD_IMPORT_IN_COMPONENT_STYLE,
   sheetDiagnostics,
   projectSheetDiagnostics,
   type PageSheet,

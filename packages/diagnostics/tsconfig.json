@@ -1,0 +1,7 @@
+{
+  "extends": "@fudic/tsconfig/tsconfig.base.json",
+  "compilerOptions": {
+    "resolveJsonModule": true
+  },
+  "include": ["src", "test"]
+}

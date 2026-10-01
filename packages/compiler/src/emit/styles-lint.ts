@@ -20,10 +20,8 @@
  */
 
 import { parseStyle } from '../css/index.js';
-import { warningDiag, type Diagnostic } from '../types/index.js';
-
-/** A project sheet holds a rule whose selector only means something in the document. */
-export const FUD_DOCUMENT_ONLY_SELECTOR = 'FUD0743';
+import type { Diagnostic } from '../types/index.js';
+import { FUD0743 } from '@fudic/diagnostics';
 
 /**
  * The document-only rules of a project stylesheet, in source order.
@@ -59,7 +57,7 @@ export function lintProjectStyle(css: string): readonly Diagnostic[] {
       if (c === '{') {
         const name = documentOnly(prelude);
         if (name !== null) {
-          found.push(warningDiag(FUD_DOCUMENT_ONLY_SELECTOR, messageFor(name), { start, end }));
+          found.push(FUD0743({ span: { start, end }, selector: name }));
         }
         prelude = '';
         start = -1;
@@ -144,11 +142,4 @@ function endOfString(text: string, i: number): number {
     j++;
   }
   return text.length;
-}
-
-function messageFor(name: string): string {
-  return (
-    `a "${name}" rule in a project stylesheet matches nothing inside a shadow root — ` +
-    'move it to the document stylesheet, the <link rel="stylesheet"> of the layout'
-  );
 }

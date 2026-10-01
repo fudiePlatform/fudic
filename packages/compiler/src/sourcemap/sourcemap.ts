@@ -8,7 +8,7 @@
  * source column) and no `names` (the 5th field) — identifiers are not mapped yet.
  */
 
-import { type LineMap } from './linemap.js';
+import { type LineMap } from '@fudic/diagnostics';
 
 export interface SourceMapV3 {
   readonly version: 3;

@@ -5,26 +5,22 @@
  * holds the pair: `resolveDocument` in the build, the workspace index in the editor. Pure
  * over the two documents, with no filesystem, so both call the same function.
  *
- *   `FUD0440`  a `@RenderSection(x, required: true)` the route does not fill. Over the
+ *   `FUD0890`  a `@RenderSection(x, required: true)` the route does not fill. Over the
  *              route's `<link rel="layout">`, where it declares the relation — the same
  *              anchor as a required layout prop (`FUD0702`), and the one the bulb repairs.
- *   `FUD0441`  text at the root of a hole the layout slots. `slot="x"` is an attribute, so
+ *   `FUD0891`  text at the root of a hole the layout slots. `slot="x"` is an attribute, so
  *              only an element can carry it: a text node there falls into the component's
  *              DEFAULT slot, somewhere the author never put it.
- *   `FUD0442`  an element at the root of a slotted hole that writes its own `slot=`. The
+ *   `FUD0892`  an element at the root of a slotted hole that writes its own `slot=`. The
  *              layout already names the slot, and one element cannot fill two.
  */
 
 import type { Diagnostic, Span } from '../types/index.js';
-import { errorDiag } from '../types/index.js';
+import { FUD0890, FUD0891, FUD0892 } from '@fudic/diagnostics';
 import type { ElementNode, HtmlContent, RawExpressionNode } from '../html/index.js';
 import type { ControlNode } from '../control/index.js';
 import type { LayoutDocument, RouteDocument } from '../document/index.js';
 import type { RenderSectionNode } from './nodes.js';
-
-const FUD_REQUIRED_SECTION = 'FUD0440';
-const FUD_TEXT_IN_SLOTTED_HOLE = 'FUD0441';
-const FUD_OWN_SLOT_IN_SLOTTED_HOLE = 'FUD0442';
 
 /**
  * What a route needs to know about its layout's holes: where the body goes and which
@@ -49,14 +45,7 @@ export function holeContractDiagnostics(
   const out: Diagnostic[] = [];
   const missing = missingRequiredSections(route, layout);
   if (missing.length > 0) {
-    const names = missing.map((s) => `\`${s.name}\``).join(', ');
-    out.push(
-      errorDiag(
-        FUD_REQUIRED_SECTION,
-        `the layout requires the section${missing.length > 1 ? 's' : ''} ${names}: declare ${missing.length > 1 ? 'them' : 'it'} with \`@section name { … }\``,
-        route.layoutLink.openSpan,
-      ),
-    );
+    out.push(FUD0890({ span: route.layoutLink.openSpan, names: missing.map((s) => s.name) }));
   }
 
   const bodySlot = layout.renderBody?.slot?.name;
@@ -104,25 +93,13 @@ function slottedRoots(content: readonly HtmlContent[], slot: string, out: Diagno
 }
 
 function textAtRoot(at: Span, slot: string, out: Diagnostic[]): void {
-  out.push(
-    errorDiag(
-      FUD_TEXT_IN_SLOTTED_HOLE,
-      `the layout puts this hole in the slot "${slot}", and only an element can carry \`slot\`: wrap this text in an element`,
-      at,
-    ),
-  );
+  out.push(FUD0891({ span: at, slot }));
 }
 
 function ownSlot(el: ElementNode, slot: string, out: Diagnostic[]): void {
   const own = el.attributes.find((a) => a.name === 'slot');
   if (own === undefined) return;
-  out.push(
-    errorDiag(
-      FUD_OWN_SLOT_IN_SLOTTED_HOLE,
-      `the layout already puts this hole in the slot "${slot}": remove this \`slot\``,
-      own.span,
-    ),
-  );
+  out.push(FUD0892({ span: own.span, slot }));
 }
 
 /** The bodies of a construct, whichever of the three shapes it has. */

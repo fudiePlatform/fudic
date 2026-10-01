@@ -12,7 +12,6 @@ import { build } from 'vite';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { FUD_CONFIG_ID_REQUIRED, FUD_CONFIG_MALFORMED } from '@fudic/config';
 import { fudic } from '../src/index.js';
 import { readProject } from '../src/config.js';
 import { runtimeAlias } from './helpers/alias.js';
@@ -55,13 +54,13 @@ describe('vite build — fudic.json and the id', () => {
   it('a project with sw.json and no id fails the build (criterion 11)', async () => {
     const failure = await buildProject({ sw: true });
 
-    expect(failure).toContain(FUD_CONFIG_ID_REQUIRED);
+    expect(failure).toContain('FUD0726');
   }, 180000);
 
   it('a fudic.json without an id is no better than none of it', async () => {
     const failure = await buildProject({ sw: true, config: JSON.stringify({ prefix: 'app' }) });
 
-    expect(failure).toContain(FUD_CONFIG_ID_REQUIRED);
+    expect(failure).toContain('FUD0726');
   }, 180000);
 
   it('a project without sw.json and without an id builds green (criterion 12)', async () => {
@@ -73,32 +72,29 @@ describe('vite build — fudic.json and the id', () => {
   }, 180000);
 });
 
-describe('readProject — the two severities of §5', () => {
+describe('readProject — a broken fudic.json breaks the build (SDD-50 §4.6)', () => {
   const io = {
     exists: () => true,
     read: () => '{"id":"Shop"}',
   };
 
-  it('a malformed file is a warning: the build goes on without configuration', () => {
+  it('a malformed file is an error, as it is in the CLI', () => {
     const result = readProject('/p', false, io);
 
     expect(result.config).toBeNull();
-    expect(result.warnings.map((d) => d.code)).toEqual([FUD_CONFIG_MALFORMED]);
-    expect(result.errors).toEqual([]);
+    expect(result.errors.map((d) => [d.code, d.severity])).toEqual([['FUD0725', 'error']]);
   });
 
   it('a malformed file under a Service Worker is also missing an id', () => {
     const result = readProject('/p', true, io);
 
-    expect(result.warnings.map((d) => d.code)).toEqual([FUD_CONFIG_MALFORMED]);
-    expect(result.errors.map((d) => d.code)).toEqual([FUD_CONFIG_ID_REQUIRED]);
+    expect(result.errors.map((d) => d.code)).toEqual(['FUD0725', 'FUD0726']);
   });
 
   it('a good id under a Service Worker is nothing at all', () => {
     const result = readProject('/p', true, { exists: () => true, read: () => '{"id":"shop"}' });
 
     expect(result.config?.id).toBe('shop');
-    expect(result.warnings).toEqual([]);
     expect(result.errors).toEqual([]);
   });
 });

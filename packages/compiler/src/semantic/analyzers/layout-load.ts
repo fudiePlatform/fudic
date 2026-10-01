@@ -16,12 +16,10 @@
  * the scan stays textual and independent of Oxc, and stops reading prose as an export.
  */
 
+import { FUD0430 } from '@fudic/diagnostics';
 import type { Diagnostic } from '../../types/index.js';
-import { errorDiag } from '../../types/index.js';
 import type { Analyzer, SemanticInput } from '../model.js';
 import { maskOpaque } from '../opaque.js';
-
-const FUD_LAYOUT_LOAD = 'FUD0430';
 
 /** `export function load` / `export async function load` / `export const load` … */
 const EXPORTED_LOAD =
@@ -37,13 +35,7 @@ export const layoutLoad: Analyzer = {
       if (part.type !== 'server-region') continue;
       const js = maskOpaque(input.source, code.regions, part.js.start, part.js.end);
       if (EXPORTED_LOAD.test(js)) {
-        report(
-          errorDiag(
-            FUD_LAYOUT_LOAD,
-            'a layout cannot export load: it receives the route data (v1)',
-            part.span,
-          ),
-        );
+        report(FUD0430({ span: part.span }));
       }
     }
   },
