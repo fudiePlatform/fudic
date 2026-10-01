@@ -131,11 +131,15 @@ describe('fudicDiagnostics', () => {
       ]);
     });
 
-    it('flags a binding in a `<style>` of the layout, head or body (FUD0706)', () => {
+    it('flags a binding in a `<style>` of the layout as Razor in plain CSS (FUD0132)', () => {
+      // Decision 136: a `<style>` body is plain CSS everywhere, so the layout's own FUD0706
+      // is retired and the parser's FUD0132 is what the editor publishes.
       const source = layout('<style>:root { --s: @seccion; }</style>', '<p>x</p>');
       const { index, document } = setup(PATH, source);
-      const style = fudicDiagnostics(document, index).filter((d) => d.code === 'FUD0706');
+      const diagnostics = fudicDiagnostics(document, index);
+      const style = diagnostics.filter((d) => d.code === 'FUD0132');
       expect(style.map((d) => source.slice(d.span.start, d.span.end))).toEqual(['@seccion']);
+      expect(diagnostics.map((d) => d.code)).not.toContain('FUD0706');
     });
 
     it('says nothing in `<html>`, in the head, or of the two holes', () => {

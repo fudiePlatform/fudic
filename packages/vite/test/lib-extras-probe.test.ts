@@ -31,6 +31,7 @@ const LIB_LAYOUT = `<!DOCTYPE html>
   </head>
   <body>
     <header><img src="./logo.svg" alt=""></header>
+    <footer class="lib"></footer>
     @RenderBody()
   </body>
 </html>

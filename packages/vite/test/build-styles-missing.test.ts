@@ -109,7 +109,7 @@ describe('vite build — the project style guide', () => {
     expect(raised[0]).toContain('<link rel="stylesheet">');
   }, 120000);
 
-  it('FUD0743: a document-only rule is warned once, and the sheet ships whole', async () => {
+  it('FUD0743: a document-only rule is warned once, and the page does not get it', async () => {
     const { warnings, code } = await buildWith(
       THEME,
       {
@@ -123,15 +123,17 @@ describe('vite build — the project style guide', () => {
     // file is read, and the build emits the same sheet into several modules.
     expect(raised).toHaveLength(1);
     expect(raised[0]).toContain('src/styles/theme.css:2:1');
-    // An advice, not a pruning (§4.5): the rule is still in the document.
-    expect(code).toContain('--brand:red');
+    // And since SDD-49 the page gets only what it can use: `:root` matches nothing inside a
+    // shadow root, so the rule the warning is about does not travel.
+    expect(code).not.toContain('--brand:red');
   }, 120000);
 
   it('§6.7 a project with a guide and no styled component still ships the polyfill', async () => {
     const { warnings, code } = await buildWith(
       THEME,
       {
-        'src/styles/theme.css': ':host{--gap:8px}',
+        // The token is used, so the prune (SDD-49) keeps it and there is CSS to adopt.
+        'src/styles/theme.css': ':host{--gap:8px}span{padding:var(--gap)}',
         'src/components/s-plain.fud': PLAIN,
       },
       PAGE_WITH_COMPONENT,
@@ -160,7 +162,9 @@ const PAGE_WITH_TWO = `<!DOCTYPE html>
 `;
 
 const pick = (chosen: string): string =>
-  `<s-pick><template shadowrootmode="open" shadowrootadoptedstylesheets="${chosen}"><span><slot></slot></span></template></s-pick>\n`;
+  // `class="panel"`: the chosen sheet is pruned against this template (SDD-49), and a rule
+  // that matches nothing in it would not travel.
+  `<s-pick><template shadowrootmode="open" shadowrootadoptedstylesheets="${chosen}"><span class="panel"><slot></slot></span></template></s-pick>\n`;
 
 const CHOOSING: Sheets = {
   globalStyles: { theme: 'src/styles/theme.css' },

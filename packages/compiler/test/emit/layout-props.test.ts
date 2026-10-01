@@ -446,17 +446,24 @@ describe('BUG-44 §3.2 — a prop read in the head reaches the document', () => 
   });
 });
 
-describe('BUG-44 — `FUD0706`: a layout’s `<style>` takes no binding, in the build', () => {
-  it('reports each `@` of a `<style>` in the head and in the body, and still emits', () => {
+describe('decision 136 — a `@` in a layout’s `<style>` is `FUD0132`, no longer `FUD0706`', () => {
+  it('the layout’s own parse reports each `@` of a `<style>`, the emit adds nothing, and it still emits', () => {
     const layout = layoutSource({ code: 'const { c } = props<{ c: string }>();' })
       .replace('@RenderHead()', '<style>:root { --c: @c; }</style>\n  @RenderHead()')
       .replace('@RenderBody()</body>', '<style>p { color: @c; }</style>@RenderBody()</body>');
     const first = layout.indexOf('@c;');
     const second = layout.indexOf('@c;', first + 1);
-    expect(layoutDiagnostics(layout)).toEqual([
-      { code: 'FUD0706', span: { start: first, end: first + 2 } },
-      { code: 'FUD0706', span: { start: second, end: second + 2 } },
+    // A layout's syntax errors surface when it is compiled as its own module.
+    const own = resolveDocument('/app/_layout.fud', memoryIo({ '/app/_layout.fud': layout }));
+    expect(
+      own.diagnostics
+        .filter((d) => d.code === 'FUD0132' || d.code === 'FUD0706')
+        .map((d) => ({ code: d.code, span: { start: d.span.start, end: d.span.end } })),
+    ).toEqual([
+      { code: 'FUD0132', span: { start: first, end: first + 2 } },
+      { code: 'FUD0132', span: { start: second, end: second + 2 } },
     ]);
+    expect(layoutDiagnostics(layout)).toEqual([]);
     expect(chain(layout).layout).toContain('export function* layout(');
   });
 });

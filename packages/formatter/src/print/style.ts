@@ -2,7 +2,7 @@
  * The `<style>` element (§4.3).
  *
  * Its body is the one leaf that is not JS, and it arrives from the leaf table already
- * formatted — or already verbatim, when a placeholder did not survive. Either way it comes
+ * formatted — or already verbatim, when it did not parse as CSS. Either way it comes
  * back at column zero, so `dedent` is applied before reindenting: for formatted CSS it is a
  * no-op, and for a body copied as written it removes exactly the indentation the author had
  * it at, so the reindent that follows does not add a second one.

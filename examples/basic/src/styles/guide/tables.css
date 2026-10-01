@@ -1,0 +1,49 @@
+/* Tablas: solo las páginas que tienen una las reciben. */
+
+table {
+  width: 100%;
+  margin: 0 0 var(--space-9);
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+caption {
+  padding: var(--space-4) 0;
+  text-align: left;
+  font-weight: 650;
+  color: var(--ink-soft);
+}
+
+th,
+td {
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+thead th {
+  border-bottom-width: 2px;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+}
+
+tbody tr:nth-child(even) {
+  background: var(--color-row-alt);
+}
+
+tbody tr:hover {
+  background: var(--color-row-hover);
+}
+
+tfoot td {
+  border-bottom: 0;
+  font-weight: 650;
+}
+
+td.num,
+th.num {
+  text-align: right;
+}

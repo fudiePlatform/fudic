@@ -11,10 +11,8 @@
  * document copy those rules are correct. Prohibiting them would force a split the author
  * has reasons not to make.
  *
- * It reads the AST of SDD-09 rather than the raw text, because `parts` tile the span with
- * no gaps and no overlaps (BUG-08 §2.2): whatever the parser resolved as literal CSS is
- * what this walks, and a Razor atom — which a `.css` cannot produce, but the parser can
- * still hand back for a stray `@` — contributes nothing to a selector.
+ * It reads the AST of SDD-09 rather than the raw text: a `<style>` body is plain CSS since
+ * decision 136, so its parts are the literal runs that cover the sheet.
  *
  * Who CALLS it is the host, once per sheet, and not the emit. The sheet travels into every
  * module the build emits, so the same rule stated at emit time would be one warning per
@@ -44,7 +42,6 @@ export function lintProjectStyle(css: string): readonly Diagnostic[] {
   let end = -1;
 
   for (const part of parsed.value.parts) {
-    if (part.type !== 'css-text') continue;
     const text = part.value;
     const base = part.span.start;
     let i = 0;

@@ -42,13 +42,18 @@ const INDEX = `<link rel="layout" href="../layouts/_layout.fud">
 
 /** A second route through the SAME layout: the sheet is met twice and published once. */
 const ABOUT = `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/s-hero.fud">
 <head><title>Acerca</title></head>
 <h1>Acerca</h1>
+<s-hero></s-hero>
 `;
 
-/** A component linking an image well over the inline limit — the defect was never the CSS. */
+/**
+ * A component linking an image well over the inline limit — the defect was never the CSS.
+ * It uses both tokens, so the page-pruned copy of the sheet (SDD-49) keeps every rule.
+ */
 const HERO =
-  '<head><style>.h{padding:var(--gap)}</style></head>\n' +
+  '<head><style>.h{padding:var(--gap);color:var(--brand)}</style></head>\n' +
   '<s-hero><template shadowrootmode="open"><img src="./hero.png"><slot></slot></template></s-hero>\n';
 
 const TOKENS = ':root{--gap:8px;--brand:rebeccapurple}\n';
@@ -138,12 +143,18 @@ describe('vite build — a layout links a stylesheet', () => {
     expect(output.some((o) => `/${o.fileName}` === url![0])).toBe(true);
   });
 
-  it('§6.9 the worker precaches the stylesheet, and not the image', () => {
+  it('§6.9 the worker precaches neither the pruned stylesheet nor the image', () => {
     const sw = textOf(output.find((o) => o.fileName === 'fudic-sw.js')!);
-    // Its name is the build's, so `sw.json` could not have listed it — the same argument by
-    // which the shell already carries the two entries. A page served from the cache without
-    // its stylesheet paints wrong, which is worse than not painting.
-    expect(sw).toContain(sheetHrefIn('index.html'));
-    expect(sw).not.toMatch(/\/assets\/hero-[\w-]{8}\.png/u);
+    const shell = /(?:const|var) SHELL = (\[[^\n]*\]);/u.exec(sw);
+    expect(shell).not.toBeNull();
+    const precached = JSON.parse(shell![1]!) as string[];
+    // > Corrección (SDD-49 §4.9). This test used to assert the opposite for the sheet. A
+    // > linked sheet is now a pruned copy that belongs to ONE page, and precaching every
+    // > page's copy at install would download CSS for pages the user may never open. It is
+    // > cached the first time its page asks for it, by the resource class over `assets/`,
+    // > like an image.
+    expect(precached).not.toContain(sheetHrefIn('index.html'));
+    expect(sw).not.toContain(sheetHrefIn('index.html'));
+    expect(precached.some((url) => /\/assets\/hero-[\w-]{8}\.png/u.test(url))).toBe(false);
   });
 });

@@ -18,7 +18,12 @@
  * `page(data, io)` returns the whole HTML string; `io` injects the SSR adapter.
  */
 
-import { allComponents, type ComponentGraph, type ResolvedComponent } from './resolve.js';
+import {
+  allComponents,
+  type ComponentGraph,
+  type DocumentGraph,
+  type ResolvedComponent,
+} from './resolve.js';
 import type { ElementNode, HtmlContent } from '../html/index.js';
 import type { StyleNode } from '../css/index.js';
 import type { PageDocument, ComponentDocument } from '../document/index.js';
@@ -27,7 +32,14 @@ import { spaceModeOf } from './space.js';
 import { hasForeignDisplay, hostDisplay, tagDisplay, type Boxes, type Display } from './display.js';
 import { CodeWriter, type EmitMapping } from './writer.js';
 import { MarkupEmitter, renderName, tpl } from './markup.js';
-import { AssetLinker, type AssetExists, type AssetText, type AssetUrl } from './assets.js';
+import {
+  AssetLinker,
+  type AssetExists,
+  type AssetSheet,
+  type AssetText,
+  type AssetUrl,
+} from './assets.js';
+import { planPageSheets, type PageSheets, type SheetUse } from './page-sheets.js';
 import { compactStyleCss } from './css-compact.js';
 import { codeOf, codeOfDocument, diHelpers } from './oxc-code.js';
 import { hasDependencyInjection } from './di.js';
@@ -112,6 +124,18 @@ export interface EmitOptions {
    */
   readonly assetText?: AssetText;
   /**
+   * Prune the page's sheets (SDD-49 §4): every sheet a page receives — the ones its layout
+   * and its own `<head>` link, and the project's — keeps only the rules that can apply to
+   * some element of the scope it reaches. Absent, and every sheet arrives whole, as before.
+   */
+  readonly pruneStyles?: boolean;
+  /**
+   * The URL of the pruned copy of a linked sheet, INJECTED for the reason `assetUrl` is: the
+   * host names it by its content and publishes it (SDD-49 §3.5). Absent, and a pruned sheet
+   * the page links keeps the URL of the whole file.
+   */
+  readonly assetSheet?: AssetSheet;
+  /**
    * Module specifier for a linked component, INJECTED — the compiler never touches
    * `node:path`, so it cannot compute a path relative to the importing module. Default:
    * `./<tag><importExt>`, the sibling-file convention of the standalone `.mjs` emit. The
@@ -155,6 +179,11 @@ export interface EmitOutput {
    * `ReferenceError` in a file that never mentioned the cause.
    */
   readonly diagnostics: readonly Diagnostic[];
+  /**
+   * What this page kept of each sheet it receives (SDD-49 §4.9) — present only for a page or
+   * a route compiled with `pruneStyles`. The host adds them up across the application.
+   */
+  readonly sheets?: readonly SheetUse[];
 }
 
 /** The component's single `<style>` element, if it wrote one (decision 62). */
@@ -473,13 +502,19 @@ export function emitComponentModuleMapped(
 function buildPageModule(
   graph: ComponentGraph,
   options: EmitOptions,
-): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
+): {
+  writer: CodeWriter;
+  linker: AssetLinker;
+  diagnostics: readonly Diagnostic[];
+  sheets: PageSheets | null;
+} {
   const ext = options.importExt ?? '.mjs';
   const linker = new AssetLinker(
     options.linkAssets ?? false,
     options.assetExists,
     options.assetUrl,
     options.assetText,
+    options.assetSheet,
   );
   const page = graph.entry as PageDocument;
   const source = graph.entrySource;
@@ -493,9 +528,15 @@ function buildPageModule(
   // imports, and every component of the graph is rendered whether or not it is styled.
   const styled = styledTags(graph);
   const styledComps = comps.filter((c) => styled.has(c.tag));
+  // The page's sheets, pruned (SDD-49). A page owns its whole shell, so it does alone what a
+  // route and its layout share: prune, and write the result into its own head.
+  const sheets = planPageSheets('layouts' in graph ? (graph as DocumentGraph) : { ...graph, layouts: [] }, options, linker);
   // The project's guide (SDD-42), built here — before the body codegen and long before the
   // linker's imports are flushed — because compacting it can register an asset import.
-  const projectStylesLine = renderProjectStyles(options.projectStyles, linker);
+  const projectStylesLine = renderProjectStyles(
+    sheets === null ? options.projectStyles : sheets.projectStyles,
+    linker,
+  );
 
   // Body codegen.
   const hydratable = hydratableTags(graph);
@@ -550,6 +591,7 @@ function buildPageModule(
       // so what the author asked for is decided and emitted in one place (SDD-45 §3.6).
       onRuntime: (form) =>
         writeRuntimeTags(headW, needsRuntime(hydratable, hasDi, blocks !== undefined), form),
+      ...(sheets === null ? {} : { sheet: sheets.own }),
     },
     headW,
   );
@@ -608,7 +650,7 @@ function buildPageModule(
   w.line("yield '</html>';");
   w.dedent();
   w.line('}');
-  return { writer: w, linker, diagnostics: [...code.diagnostics, ...routeDiagnostics] };
+  return { writer: w, linker, diagnostics: [...code.diagnostics, ...routeDiagnostics], sheets };
 }
 
 export function emitPageModule(graph: ComponentGraph, options: EmitOptions = {}): string {
@@ -617,11 +659,12 @@ export function emitPageModule(graph: ComponentGraph, options: EmitOptions = {})
 
 /** As `emitPageModule`, plus the output↔source mappings and missing assets (§4.6/§6.13). */
 export function emitPageModuleMapped(graph: ComponentGraph, options: EmitOptions = {}): EmitOutput {
-  const { writer, linker, diagnostics } = buildPageModule(graph, options);
+  const { writer, linker, diagnostics, sheets } = buildPageModule(graph, options);
   return {
     code: writer.toString(),
     mappings: writer.mappings(),
     missingAssets: linker.missing(),
     diagnostics,
+    ...(sheets === null ? {} : { sheets: sheets.uses }),
   };
 }

@@ -87,26 +87,15 @@ class PreludeScanner {
     return [...new Set(this.#names)];
   }
 
-  /**
-   * One `<style>` body, part by part.
-   *
-   * Only the `CssText` parts are scanned: a `RazorExpression`, an `AtEscapeNode` and a
-   * `RazorCommentNode` are skipped whole, because an interpolated name is not a name. A run
-   * carries on across an atom — `.a@(x)b` is one prelude — so the candidates survive between
-   * parts and only a delimiter clears them.
-   */
+  /** One `<style>` body: plain CSS since decision 136, so one literal run (or none). */
   style(style: StyleNode): void {
-    style.parts.forEach((part, index) => {
-      if (part.type !== 'css-text') return;
-      const next = style.parts[index + 1];
-      this.#run(part.value, next !== undefined && next.type !== 'css-text');
-    });
+    for (const part of style.parts) this.#run(part.value);
     // The tail of a body is a run that never reached a `{`.
     this.#pending = [];
   }
 
-  /** One literal CSS run. `razorFollows` when a Razor atom comes right after it. */
-  #run(text: string, razorFollows: boolean): void {
+  /** One literal CSS run. */
+  #run(text: string): void {
     let i = 0;
     while (i < text.length) {
       const c = text[i] as string;
@@ -126,9 +115,7 @@ class PreludeScanner {
         i++;
       } else if (c === '.' && IDENT_START.test(text[i + 1] ?? '')) {
         const end = identEnd(text, i + 1);
-        // A name that dies exactly at the edge of a part followed by a Razor atom is a
-        // PREFIX, not a name: `.item-@(n)` does not offer `item-`.
-        if (end < text.length || !razorFollows) this.#pending.push(text.slice(i + 1, end));
+        this.#pending.push(text.slice(i + 1, end));
         i = end;
       } else {
         i++;

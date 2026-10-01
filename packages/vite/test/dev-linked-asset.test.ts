@@ -16,6 +16,8 @@ import { type AddressInfo } from 'node:net';
 import { fudic } from '../src/index.js';
 import { runtimeAlias } from './helpers/alias.js';
 import { LinkedAssets } from '../src/linked-assets.js';
+import { DEV_SHEET_DIR } from '../src/constants.js';
+import { compactProjectCss } from '@fudic/compiler';
 
 const LAYOUT = `<!DOCTYPE html>
 <html lang="es">
@@ -33,7 +35,9 @@ const ROUTE = `<link rel="layout" href="../layouts/_layout.fud">
 <h1>Inicio</h1>
 `;
 
-const TOKENS = '/* the document half of the system */\n:root  {\n  --gap:  8px;\n}\n';
+/** The token is used by the page's `<h1>`, so the page-pruned copy (SDD-49) keeps every byte. */
+const TOKENS =
+  '/* the document half of the system */\n:root  {\n  --gap:  8px;\n}\nh1 { margin: var(--gap); }\n';
 
 let server: ViteDevServer;
 let origin: string;
@@ -77,7 +81,13 @@ async function sheetUrl(): Promise<string> {
 
 describe('vite dev — a linked stylesheet', () => {
   it('names it exactly as the build would: the hash is the bytes, not the bundle', async () => {
-    expect(await sheetUrl()).toBe(new LinkedAssets('/').url(sheetPath));
+    // The pruned copy (SDD-49 §4.10): the same name by the hash of the pruned bytes, under
+    // `/@fudic/sheet/` instead of `/assets/` — dev serves it from memory.
+    const url = await sheetUrl();
+    expect(url).toMatch(/^\/@fudic\/sheet\/tokens-[\w-]{8}\.css$/u);
+    expect(url).toBe(
+      new LinkedAssets('/', '', DEV_SHEET_DIR).sheet(sheetPath, compactProjectCss(TOKENS)),
+    );
   });
 
   it('serves it, with its content type and the bytes the build publishes', async () => {
@@ -85,7 +95,7 @@ describe('vite dev — a linked stylesheet', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toContain('text/css');
     // Compacted, not a re-read of the source: dev and the output are the same file.
-    expect(await res.text()).toBe(':root{--gap:8px;}');
+    expect(await res.text()).toBe(compactProjectCss(TOKENS));
   });
 
   it('answers it with a query too, the way a browser may ask', async () => {

@@ -11,7 +11,10 @@ export {
   type AssetText,
   type AssetUrl,
   type AssetOrigin,
+  type AssetSheet,
 } from './assets.js';
+export { sheetKey } from './parts.js';
+export type { SheetUse } from './page-sheets.js';
 export { inlineRuntimeMarker, RUNTIME_MARKER, INLINE_QUERY, asksInline } from './parts.js';
 export {
   resolveComponents,
@@ -110,3 +113,25 @@ export { freeReferences, freeReferenceNodes, type FragmentAst } from './scope.js
 export { collectTemplateJs, type JsFragmentVisitor } from './constructs.js';
 
 export { spaceModeOf, collapseSpace, nestedSpaceMode, SPACE_ATTR, type SpaceMode } from './space.js';
+
+// What each style scope of a page can match (SDD-49 §3.3).
+export {
+  documentSurface,
+  shadowSurface,
+  unionSurfaces,
+  frameworkAttributesOf,
+  pageTokenConsumers,
+  type ScopeSurface,
+  type StyleScope,
+} from './surface.js';
+export {
+  prunePage,
+  FUD_SHEET_UNREADABLE,
+  FUD_SHEET_UNUSED,
+  FUD_IMPORT_IN_PROJECT_SHEET,
+  FUD_IMPORT_IN_COMPONENT_STYLE,
+  sheetDiagnostics,
+  projectSheetDiagnostics,
+  type PageSheet,
+  type PrunedSheet,
+} from './prune.js';

@@ -72,6 +72,8 @@ export const BOOT_ID = 'fudic-boot';
 export const DEV_MAIN_URL = 'fudic-main.js';
 export const DEV_BOOT_URL = 'fudic-boot.js';
 export const DEV_SW_URL = 'fudic-sw.js';
+/** Where dev serves the pruned copies of the sheets, from memory (SDD-49 §4.8). */
+export const DEV_SHEET_DIR = '@fudic/sheet';
 
 /**
  * The built names of the two main-thread entries, which carry the build id (BUG-31 §T1).

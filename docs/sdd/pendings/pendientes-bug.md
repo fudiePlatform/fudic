@@ -1,6 +1,6 @@
 1. (x)Layout props intellisense.
 
-2. Componentes N1 en layout y ver @rendersection( ) con required y con slot(explicar)
+2. (x) Componentes N1 en layout y ver @rendersection( ) con required y con slot(explicar)
 
 3. (x) Crear styles e importarlos en componentes.
       Guia de estilos global y ver como se pone inline
@@ -15,3 +15,6 @@ Por tanto al hacer create del componente en el browser me temo que eso no va a f
 
 
 6. (x) Eventos en el host
+
+7. Quitar el Razor del CSS: el cuerpo de un <style> pasa a ser CSS plano (decisión 136,
+   revoca la 42 y sus 42.a–c). Se hace dentro de SDD-49 (tarea 25).

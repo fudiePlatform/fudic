@@ -56,25 +56,52 @@ export type AssetExists = (spec: string) => boolean;
  */
 export type AssetText = (spec: string) => string | null;
 
+/**
+ * The URL of the pruned copy of a linked sheet (SDD-49 §3.5). The host names it by its
+ * content and publishes it; the compiler has no filesystem.
+ */
+export type AssetSheet = (spec: string, css: string, origin: AssetOrigin) => string;
+
 export class AssetLinker {
   readonly #enabled: boolean;
   readonly #exists: AssetExists | undefined;
   readonly #url: AssetUrl | undefined;
   readonly #text: AssetText | undefined;
+  readonly #sheet: AssetSheet | undefined;
   readonly #imports: string[] = [];
   readonly #bySpec = new Map<string, string>();
   readonly #missing: string[] = [];
   #id = 0;
 
-  constructor(enabled: boolean, exists?: AssetExists, url?: AssetUrl, text?: AssetText) {
+  constructor(
+    enabled: boolean,
+    exists?: AssetExists,
+    url?: AssetUrl,
+    text?: AssetText,
+    sheet?: AssetSheet,
+  ) {
     this.#enabled = enabled;
     this.#exists = exists;
     this.#url = url;
     this.#text = text;
+    this.#sheet = sheet;
   }
 
   get enabled(): boolean {
     return this.#enabled;
+  }
+
+  /**
+   * The URL of the pruned copy of the sheet `spec`, whose content is `css` — or `null` when
+   * no host publishes copies, and then the `href` stays what the author wrote.
+   *
+   * Never the shell, although a `<head>` links it (SDD-49 §4.9): a pruned copy is ONE page's,
+   * and precaching every page's copy at install would download, on the first visit, the CSS of
+   * pages the user may never open. It is content: cached the first time its page asks for it.
+   */
+  sheetRef(spec: string, css: string): string | null {
+    if (!this.#enabled || this.#sheet === undefined) return null;
+    return this.#sheet(spec, css, 'markup');
   }
 
   /**
@@ -191,6 +218,19 @@ export class AssetLinker {
   /** The import lines to emit at the top of the module (empty when nothing was linked). */
   imports(): readonly string[] {
     return this.#imports;
+  }
+
+  /**
+   * `css` with each linkable `url(…)` written as the URL the host gave it (SDD-49 §4.7) — for
+   * a pruned copy published as a FILE, where there is no module to carry an import binding.
+   * Without a host that names URLs, or for an absolute or missing file, the literal stays.
+   */
+  cssLinked(css: string): string {
+    if (!this.#enabled || this.#url === undefined) return css;
+    return css.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/gu, (whole, _q: string, spec: string) => {
+      const ref = this.maybeRef(spec);
+      return ref === null ? whole : `url(${ref})`;
+    });
   }
 
   /**

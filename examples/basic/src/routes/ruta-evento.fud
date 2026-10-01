@@ -23,9 +23,9 @@
 <head>
   <title>Un manejador en la ruta — fudic</title>
   <style>
-    @* Estas reglas NO las puede poner la guía del proyecto: el markup de una ruta es luz
+    /* Estas reglas NO las puede poner la guía del proyecto: el markup de una ruta es luz
        del documento, no un shadow root, y una hoja adoptada no sale de su shadow. Lo que sí
-       cruza son los tokens, y por eso los valores sí vienen de `tokens.css`. *@
+       cruza son los tokens, y por eso los valores sí vienen de `tokens.css`. */
     .panel {
       display: grid;
       gap: 0.9rem;

@@ -49,7 +49,7 @@ import {
   routeNameLookup,
   routeUsesDi,
 } from './client.js';
-import { INLINE_QUERY, IOC_SUFFIX, RUNTIME_MARKER } from '@fudic/compiler';
+import { INLINE_QUERY, IOC_SUFFIX, LineMap, RUNTIME_MARKER } from '@fudic/compiler';
 import { RUNTIME_CACHE_PREFIX, RUNTIME_DIR, runtimeMarkerUrl } from '@fudic/conventions';
 import { nodeIo, nodeLinkCheckIo, nodeRuntimeFs } from './io.js';
 import { runtimePieces } from './runtime-pieces.js';
@@ -106,6 +106,7 @@ import {
   FUD_RUNTIME_PIECE_MISSING,
   FUD_STYLES_NOT_ADOPTED,
   FUD_SW_SHELL_MISSING,
+  FUD_SHEET_UNUSED,
   policyDeclaresNonce,
 } from './diagnostics.js';
 import { devUrl, devManifest, devClientTag, devClientPrefix, withInlineSourceMap } from './dev.js';
@@ -128,6 +129,7 @@ import {
   DEV_MAIN_URL,
   DEV_BOOT_URL,
   DEV_SW_URL,
+  DEV_SHEET_DIR,
   bootFileName,
   PAGE_NAME_PREFIX,
 } from './constants.js';
@@ -478,8 +480,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       publicDir = typeof config.publicDir === 'string' ? config.publicDir : '';
       // The registry knows it too, because a root-absolute `href` in a `.fud` names a file
       // of THIS directory: that is what makes it checkable, and what puts it in the shell.
-      linked = new LinkedAssets(config.base, publicDir);
       isDev = config.command === 'serve';
+      // Pruned copies are served from memory in dev, under a prefix no file of the project
+      // can collide with (SDD-49 §4.8); a build publishes them beside every other asset.
+      linked = new LinkedAssets(config.base, publicDir, isDev ? DEV_SHEET_DIR : 'assets');
       // Forwarded to the Service Worker's nested build, which runs `configFile: false`.
       resolveAlias = config.resolve?.alias;
       // A nested build inherits the host's OUTPUT configuration; what it does not inherit
@@ -1685,6 +1689,30 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             'that is already served under its own name.',
         );
       }
+
+      // 5a'. The sheets, once each and not once per page (SDD-49 §4.11): what a sheet or a
+      //      file it imports says about itself (an `@import` it cannot flatten or that breaks,
+      //      text it cannot read), and a sheet or imported file no page of the application
+      //      keeps a single rule of. Here, after every pass has compiled every route, because
+      //      only then is «no page» a fact. The errors last, so every warning is out first.
+      const sheetErrors: string[] = [];
+      for (const [sheet, diagnostics] of linked.sheetDiagnostics()) {
+        if (diagnostics.length === 0) continue;
+        const lines = new LineMap(existsSync(sheet) ? readFileSync(sheet, 'utf8') : '');
+        for (const d of diagnostics) {
+          const at = lines.positionAt(d.span.start);
+          const text = `[${d.code}] ${sheet}:${at.line + 1}:${at.character + 1}: ${d.message}`;
+          if (d.severity === 'error') sheetErrors.push(text);
+          else this.warn(text);
+        }
+      }
+      for (const sheet of linked.unusedSheets()) {
+        this.warn(
+          `[${FUD_SHEET_UNUSED}] ${sheet} adds no rule to any page of the application: ` +
+            'nothing any page renders matches it. It is dead CSS — if a sheet imports it, that @import can go.',
+        );
+      }
+      if (sheetErrors.length > 0) this.error(sheetErrors.join('\n'));
 
       // 5b. The files the project's `.fud` link, published under the name every pass was
       //     told (BUG-40). It happens HERE, after the link and edge passes have run, because

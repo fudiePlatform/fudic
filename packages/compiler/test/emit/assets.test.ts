@@ -219,3 +219,24 @@ describe('AssetLinker.textOf', () => {
     expect(asked).toBe(0);
   });
 });
+
+describe('AssetLinker.cssLinked — a pruned copy published as a file (SDD-49 §4.7)', () => {
+  const url = (spec: string): string => `/assets/${spec.replace(/^\.\//u, '')}`;
+
+  it('writes each linkable url() as the URL the host gave it', () => {
+    const linker = new AssetLinker(true, undefined, url);
+    expect(linker.cssLinked('a{background:url("./bg.png")}')).toBe('a{background:url("/assets/bg.png")}');
+  });
+
+  it('leaves a final URL, and everything without a host that names URLs, as written', () => {
+    const linker = new AssetLinker(true, undefined, url);
+    const css = 'a{background:url(https://cdn.test/x.png)}';
+    expect(linker.cssLinked(css)).toBe(css);
+    expect(new AssetLinker(true).cssLinked('a{background:url(./bg.png)}')).toBe(
+      'a{background:url(./bg.png)}',
+    );
+    expect(new AssetLinker(false, undefined, url).cssLinked('a{background:url(./bg.png)}')).toBe(
+      'a{background:url(./bg.png)}',
+    );
+  });
+});

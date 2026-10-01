@@ -14,7 +14,7 @@
 
 import { errorDiag, infoDiag, span as spanOf, type Diagnostic, type Span } from '@fudic/compiler';
 
-/** A `<style>` left untouched because its placeholders did not survive the CSS pass (§4.3). */
+/** A `<style>` left untouched because its body does not parse as CSS (§4.3). */
 export const FUD_STYLE_NOT_FORMATTED = 'FUD0480';
 
 /** A JS/TS fragment left untouched because it does not parse (§4.2). */
@@ -42,15 +42,15 @@ export function internalFailure(source: string, error: unknown): Diagnostic {
   );
 }
 
-/** Why a `<style>` was left alone. Both end the same way; the author deserves to know which. */
+/**
+ * Why a `<style>` was left alone. Only one reason is left since decision 136 (SDD-49): the
+ * body is plain CSS, so there is no Razor region to restore after formatting.
+ */
 export type StyleFailure =
-  /** The CSS came back without a placeholder, or with one twice. */
-  | 'placeholder'
   /** The body does not parse as CSS. */
-  | 'parse';
+  'parse';
 
 const STYLE_REASON: Readonly<Record<StyleFailure, string>> = {
-  placeholder: 'a Razor region could not be restored after formatting',
   parse: 'it does not parse as CSS',
 };
 

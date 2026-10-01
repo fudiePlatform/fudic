@@ -37,10 +37,13 @@ import { codeOfDocument, type Prop } from './oxc-code.js';
 import { layoutCodeOf, requiredLayoutProps, unresolvedLayoutProps } from './layout-code.js';
 import { NO_SIGNALS, writeElementAttrs } from './attrs.js';
 import { holeSlot } from './compose.js';
+import { planPageSheets, type PageSheets } from './page-sheets.js';
 import type { Diagnostic } from '../types/index.js';
 import {
   headEmbedsAsset,
+  prunableHref,
   quoteSpecifier,
+  sheetKey,
   specifierResolver,
   writeEntryCode,
   writeEntryImports,
@@ -143,6 +146,17 @@ function buildLayoutModule(
   const headW = new CodeWriter();
   const skip = new Set<HtmlContent>(doc.links);
   if (doc.layoutLink !== undefined) skip.add(doc.layoutLink);
+  // Each prunable sheet of this head is the ROUTE's to write (SDD-49 §4.6): the layout is
+  // shared and cannot know which page it paints. It asks by key — its depth, always 0 since a
+  // layout names no layout (FUD0439), and the sheet's place among the prunable ones.
+  let ordinal = 0;
+  const sheet =
+    options.pruneStyles === true
+      ? (el: ElementNode): string | null =>
+          prunableHref(el, linker) === null
+            ? null
+            : `${SLOTS}.sheet(${JSON.stringify(sheetKey(0, ordinal++))})`
+      : undefined;
   writeHeadElements(
     source,
     doc.head,
@@ -159,6 +173,7 @@ function buildLayoutModule(
       // the author wrote — and the route says whether there is one (SDD-45 §3.6, BUG-31 §T1).
       // A layout is compiled once and shared, so the answer cannot be baked into the route.
       onRuntime: (form) => headW.line(`head += ${SLOTS}.runtime(${form === 'inline'});`),
+      ...(sheet === undefined ? {} : { sheet }),
     },
     headW,
   );
@@ -241,13 +256,19 @@ export function emitLayoutModuleMapped(
 function buildRouteModule(
   graph: DocumentGraph,
   options: EmitOptions,
-): { writer: CodeWriter; linker: AssetLinker; diagnostics: readonly Diagnostic[] } {
+): {
+  writer: CodeWriter;
+  linker: AssetLinker;
+  diagnostics: readonly Diagnostic[];
+  sheets: PageSheets | null;
+} {
   const ext = options.importExt ?? '.mjs';
   const linker = new AssetLinker(
     options.linkAssets ?? false,
     options.assetExists,
     options.assetUrl,
     options.assetText,
+    options.assetSheet,
   );
   const route = graph.entry as RouteDocument;
   const source = graph.entrySource;
@@ -257,10 +278,17 @@ function buildRouteModule(
   // the names `@client` declares have to EXIST here, or a `@count()` in the markup is a
   // `ReferenceError` that takes the whole prerender with it (§1.1).
   const code = codeOfDocument(source, route);
+  // Every sheet of the page, pruned (SDD-49 §4.6): the route's graph is the one that reaches
+  // the whole page, so the route decides — for its own head, for its layout's and for the
+  // project's guide. Before the linker's imports are flushed, like the guide below.
+  const sheets = planPageSheets(graph, options, linker);
   // The project's guide (SDD-42), built before anything flushes the linker's imports —
   // compacting a sheet can register one, and a binding imported after the flush is a
   // module that does not parse.
-  const projectStylesLine = renderProjectStyles(options.projectStyles, linker);
+  const projectStylesLine = renderProjectStyles(
+    sheets === null ? options.projectStyles : sheets.projectStyles,
+    linker,
+  );
   const projectAdopt = projectAdoptOf(options.projectStyles, options.styleChains);
 
   const hydratable = hydratableTags(graph);
@@ -325,7 +353,12 @@ function buildRouteModule(
 
   const headW = new CodeWriter();
   if (route.head !== undefined) {
-    writeHeadElements(source, route.head, { skip: new Set<HtmlContent>(), linker }, headW);
+    writeHeadElements(
+      source,
+      route.head,
+      { skip: new Set<HtmlContent>(), linker, ...(sheets === null ? {} : { sheet: sheets.own }) },
+      headW,
+    );
   }
   writeSharedHead(headW, styled.size > 0, projectStylesLine !== null);
 
@@ -436,6 +469,21 @@ function buildRouteModule(
   w.line('return head;');
   w.dedent();
   w.line('},');
+  // Each prunable sheet of the layout's head, as THIS page needs it (SDD-49 §4.6): a `<link>`
+  // to the pruned copy, a `<style>`, or nothing. Only with pruning on, which is also the only
+  // way the layout writes a call to it.
+  if (sheets !== null) {
+    w.line('sheet(key) {');
+    w.indent();
+    w.line('switch (key) {');
+    w.indent();
+    for (const [key, element] of sheets.layout) w.line(`case ${JSON.stringify(key)}: return ${element};`);
+    w.line("default: return '';");
+    w.dedent();
+    w.line('}');
+    w.dedent();
+    w.line('},');
+  }
   w.line(`body(${DOM}, ${PARENT}) {`);
   w.indent();
   w.appendWriter(bodyW);
@@ -458,7 +506,7 @@ function buildRouteModule(
   w.line(`}, ${ioc}, ${PROPS});`);
   w.dedent();
   w.line('}');
-  return { writer: w, linker, diagnostics: [...code.diagnostics, ...routeDiagnostics] };
+  return { writer: w, linker, diagnostics: [...code.diagnostics, ...routeDiagnostics], sheets };
 }
 
 /** Emit the module of a route: `page(data, io)` composed with its layout chain. */
@@ -468,11 +516,12 @@ export function emitRouteModule(graph: DocumentGraph, options: EmitOptions = {})
 
 /** As `emitRouteModule`, plus the output↔source mappings and missing assets. */
 export function emitRouteModuleMapped(graph: DocumentGraph, options: EmitOptions = {}): EmitOutput {
-  const { writer, linker, diagnostics } = buildRouteModule(graph, options);
+  const { writer, linker, diagnostics, sheets } = buildRouteModule(graph, options);
   return {
     code: writer.toString(),
     mappings: writer.mappings(),
     missingAssets: linker.missing(),
     diagnostics,
+    ...(sheets === null ? {} : { sheets: sheets.uses }),
   };
 }

@@ -65,9 +65,7 @@ const PRESERVING_DECL = /white-space(?:-collapse)?\s*:\s*[^;}]*\b(?:pre|break-sp
  * disagreed about what is literal would disagree about the whitespace too.
  */
 export function literalCss(style: StyleNode): string {
-  return style.parts
-    .map((part) => (part.type === 'css-text' ? part.value : ''))
-    .join('\n');
+  return style.parts.map((part) => part.value).join('\n');
 }
 
 /**

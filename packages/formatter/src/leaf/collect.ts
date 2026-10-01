@@ -47,7 +47,7 @@ const asRender = (node: HtmlContent): RenderCallNode => node as unknown as Rende
 interface Job {
   readonly language: 'ts' | 'css';
   readonly kind: JsFragmentKind;
-  /** Present only for a `<style>`: the parts are what the placeholders are built from. */
+  /** Present only for a `<style>`: its body, plain CSS (decision 136). */
   readonly style?: StyleNode;
   readonly start: number;
   readonly end: number;

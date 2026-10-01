@@ -17,7 +17,7 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
-import { assetUrlFrom, type LinkedAssets } from './linked-assets.js';
+import { assetSheetFrom, assetUrlFrom, type LinkedAssets } from './linked-assets.js';
 import {
   resolveDocument,
   allComponents,
@@ -248,6 +248,11 @@ function emitOptionsFor(
     // for a caller that has no registry — then the emit falls back to an import, which is
     // the pre-BUG-40 behaviour and what the standalone emit does.
     ...(assets === undefined ? {} : { assetUrl: assetUrlFrom(assets, baseDir) }),
+    // And every page gets only the CSS it uses (SDD-49): the same registry names each pruned
+    // copy by its content, so the host, the SW pass, the edge pass and dev write one URL.
+    ...(assets === undefined
+      ? {}
+      : { pruneStyles: true, assetSheet: assetSheetFrom(assets, baseDir) }),
     // The bytes of a resource the author asked to embed (SDD-45 §3.6). Read here because
     // reading a file is the host's, and read at emit time and not before: `?inline` is rare,
     // and a project's assets are not something to load into memory on the chance one of them
@@ -278,6 +283,36 @@ function emitOptionsFor(
     // The project sheets this document hoists, and which of them each component adopts.
     ...styleOptions(graph, styles),
   };
+}
+
+/**
+ * What this page kept of each sheet it receives, recorded for the whole build (SDD-49 §4.9),
+ * and the files behind those sheets.
+ *
+ * A linked sheet is named by its file and a project sheet by its `fudic.json` entry — the two
+ * places an author goes to delete one.
+ */
+function recordSheets(id: string, out: EmitOutput, assets: LinkedAssets): readonly string[] {
+  const watched: string[] = [];
+  const fileOf = (spec: string): string => resolve(dirname(id), spec.split('?')[0]!);
+  for (const use of out.sheets ?? []) {
+    if (!('spec' in use)) {
+      assets.recordSheet(`fudic.json "${use.specifier}"`, use.css !== '');
+      continue;
+    }
+    // The sheet the `<link>` names, and every file its `@import`s flattened in: each one is
+    // an input of this page, and each one can be dead CSS on its own (SDD-49 §4.11).
+    const root = fileOf(use.spec);
+    const contributing = new Set(use.contributing);
+    for (const spec of use.files) {
+      const file = fileOf(spec);
+      watched.push(file);
+      const diagnostics = use.diagnostics.filter((d) => d.file === spec).map((d) => d.diagnostic);
+      const used = file === root ? use.css !== '' : contributing.has(spec);
+      assets.recordSheet(file, used, diagnostics);
+    }
+  }
+  return watched;
 }
 
 /** Transform one `.fud` file into its ES module, or `null` when `id` is not a `.fud`. */
@@ -319,13 +354,17 @@ export function transformFud(
   const resolved = resolveDocument(id, io);
   const graph = resolved.value;
   const origin = graph.entryOrigin;
-  const out = emitFor(id, graph, emitOptionsFor(id, graph, routeName, styles, assets));
+  const options = emitOptionsFor(id, graph, routeName, styles, assets);
+  const out = emitFor(id, graph, options);
+  const sheetFiles = assets === undefined ? [] : recordSheets(id, out, assets);
   return {
     code: out.code,
     ...(inlineRuntimeOf(id, graph) ?? {}),
     map: buildMap(id, redactServerRegions(origin.source, origin.document.code), out, graph.entryMap),
     missingAssets: out.missingAssets,
-    watchFiles: graph.snippetFiles,
+    // The sheets this page was pruned against are inputs of this module too: an edit to one
+    // has to prune the page again on the next navigation (SDD-49 §4.8).
+    watchFiles: [...graph.snippetFiles, ...sheetFiles],
     // The emit's own: a `@code` whose JS does not parse (BUG-13 §5.3). Without them the
     // module still gets written — degraded — and the build only trips later, in the
     // prerender, on an identifier the emit never declared.

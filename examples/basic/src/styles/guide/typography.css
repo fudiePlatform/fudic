@@ -1,0 +1,133 @@
+/* Tipografía: titulares, párrafos, enlaces, código y citas. */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  line-height: 1.2;
+  margin: var(--space-11) 0 var(--space-6);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-size: 2rem;
+  margin-top: var(--space-9);
+}
+
+h2 {
+  font-size: 1.4rem;
+}
+
+h3 {
+  font-size: 1.15rem;
+}
+
+h4 {
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+h5,
+h6 {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+p {
+  margin: 0 0 var(--space-8);
+  max-width: 72ch;
+}
+
+small {
+  font-size: 0.85em;
+  color: var(--ink-faint);
+}
+
+strong,
+b {
+  font-weight: 650;
+}
+
+em,
+i {
+  font-style: italic;
+}
+
+a {
+  color: var(--brand);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+a:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+code,
+kbd,
+samp,
+pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.9em;
+}
+
+code {
+  padding: 0.05em 0.3em;
+  border-radius: 4px;
+  background: var(--color-code-bg);
+}
+
+pre {
+  padding: var(--space-7) var(--space-8);
+  overflow-x: auto;
+  border-radius: var(--radius);
+  background: var(--color-pre-bg);
+  color: var(--color-pre-text);
+}
+
+pre code {
+  padding: 0;
+  background: none;
+}
+
+kbd {
+  padding: 0.1em 0.4em;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: white;
+}
+
+blockquote {
+  margin: var(--space-8) 0;
+  padding: var(--space-1) var(--space-8);
+  border-left: 4px solid var(--line);
+  color: var(--ink-soft);
+}
+
+hr {
+  height: 1px;
+  margin: var(--space-12) 0;
+  border: 0;
+  background: var(--line);
+}
+
+mark {
+  padding: 0 0.15em;
+  background: var(--color-mark);
+}
+
+abbr[title] {
+  text-decoration: underline dotted;
+  cursor: help;
+}

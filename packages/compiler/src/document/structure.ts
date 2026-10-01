@@ -600,6 +600,33 @@ function validateHeadStyles(head: ElementNode, diagnostics: Diagnostic[]): void 
     if (hostAttr !== undefined) {
       diagnostics.push(errorDiag(FUD_RESERVED_HOST_ATTR, 'The host attribute is a reserved output marker and cannot be written in source', hostAttr.span));
     }
+    validateStyleImports(child, diagnostics);
+  }
+}
+
+/** `@import` in a component's `<style>` (SDD-49 §4.1). */
+const FUD_IMPORT_IN_COMPONENT_STYLE = 'FUD0855';
+
+/**
+ * A component's `<style>` takes no `@import` (`FUD0855`): its sheet is adopted, and an adopted
+ * sheet ignores one without a word. What it would bring belongs in `styles`, which also shares
+ * the sheet between instances. Over each `@import`, up to its `;`; CSS comments are not read.
+ */
+function validateStyleImports(style: ElementNode, diagnostics: Diagnostic[]): void {
+  const body = style.children[0];
+  if (body === undefined || body.type !== 'style-content') return;
+  for (const part of body.parts) {
+    const text = part.value.replace(/\/\*[\s\S]*?(\*\/|$)/gu, (c) => ' '.repeat(c.length));
+    for (const m of text.matchAll(/@import\b[^;{}]*;?/giu)) {
+      const start = part.span.start + m.index;
+      diagnostics.push(
+        errorDiag(
+          FUD_IMPORT_IN_COMPONENT_STYLE,
+          'a component <style> takes no @import: its sheet is adopted, and an adopted sheet ignores it. Choose the sheet in fudic.json "styles" instead',
+          span(start, start + m[0].length),
+        ),
+      );
+    }
   }
 }
 

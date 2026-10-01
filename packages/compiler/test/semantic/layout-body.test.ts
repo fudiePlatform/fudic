@@ -2,7 +2,7 @@
  * The `<body>` of a layout, in the semantic pass the editor runs (BUG-44, narrowed by SDD-48).
  *
  *   `FUD0705`  a `@{ }` block, at any depth of the body — and nothing else any more.
- *   `FUD0706`  a `@` inside a `<style>` of the layout.
+ *   `FUD0706`  retired by decision 136: a `@` inside any `<style>` is the CSS parser's `FUD0132`.
  *   `FUD0443`  a hole inside a construct of the layout, once per hole.
  *
  * `FUD0704` is retired (SDD-48 §4.1): the body reads its props like any markup does.
@@ -137,23 +137,24 @@ describe('FUD0443 — a hole inside a construct (criterion 3)', () => {
   });
 });
 
-describe('FUD0706 — no `<style>` of a layout takes a binding', () => {
-  const of = (source: string): string[] =>
-    analyze(buildInput(source))
-      .diagnostics.filter((x) => x.code === 'FUD0706')
-      .map((x) => source.slice(x.span.start, x.span.end));
+describe('decision 136 — a `@` in a layout’s `<style>` is the CSS parser’s `FUD0132`, not `FUD0706`', () => {
+  /** `code: text-under-the-span` for every diagnostic of the parse and of the semantic pass. */
+  const all = (source: string): string[] =>
+    [...parseDocument(source, { atConstructs }).diagnostics, ...analyze(buildInput(source)).diagnostics]
+      .filter((d) => d.code === 'FUD0132' || d.code === 'FUD0706')
+      .map((d) => `${d.code}: ${source.slice(d.span.start, d.span.end)}`);
 
-  it('in the head and in the body, over each `@`, whatever it reads', () => {
+  it('in the head and in the body, each `@` is `FUD0132`, and the semantic pass says nothing', () => {
     const source = layout({
       head: '<style>:root { --c: @culture; }</style>',
       body: '<style>main { color: @(tone); }</style>',
     });
-    expect(of(source)).toEqual(['@culture', '@(tone)']);
+    expect(all(source)).toEqual(['FUD0132: @culture', 'FUD0132: @(tone)']);
     expect(flagged(source)).toEqual([]);
   });
 
-  it('says nothing of a plain `<style>`, or of an escaped `@@`', () => {
-    expect(of(layout({ head: '<style>p { color: red } @@x {}</style>' }))).toEqual([]);
+  it('says nothing of a plain `<style>`', () => {
+    expect(all(layout({ head: '<style>p { color: red }</style>' }))).toEqual([]);
   });
 });
 

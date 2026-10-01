@@ -40,6 +40,14 @@ export default defineConfig({
         // The names a component chooses on its root template (SDD-46).
         'src/binding/adopt.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/emit/styles-lint.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // The CSS each page uses (SDD-49): reading a plain sheet, its selectors and its
+        // imports; what each scope can match; the prune; and the page's sheets in the emit.
+        'src/css/rules.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/css/selectors.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/css/flatten.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/emit/surface.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/emit/prune.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/emit/page-sheets.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
       },
     },
   },

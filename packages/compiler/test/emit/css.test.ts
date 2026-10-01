@@ -92,11 +92,12 @@ describe('BUG-08 §6.1 — the CSS is emitted compacted', () => {
   });
 });
 
-describe('BUG-08 §6.2 — an interpolation in the middle of a declaration', () => {
+describe('BUG-08 §6.2 / decision 136 — what was an interpolation is plain CSS text', () => {
   /**
-   * The one case that can break user CSS, and the reason task 2 comes before task 4: the
-   * text around a `@(…)` is NOT continuous with it. The two runs of spaces inside the
-   * second expression are deliberate — nothing but a verbatim copy keeps them.
+   * BUG-08 guarded the text around a `@(…)`, which used to be an interpolation. Decision 136
+   * (SDD-49 §4.12) made the `<style>` body plain CSS: the `@(…)` is now an error (`FUD0132`)
+   * and, as text, one more stretch of the single CSS run. It is never interpolated, and the
+   * compactor treats it like any other CSS: the space between the two values survives.
    */
   const io = memoryIo({
     '/home.fud':
@@ -109,13 +110,13 @@ describe('BUG-08 §6.2 — an interpolation in the middle of a declaration', () 
   const g = resolveComponents('/home.fud', io);
   const css = emittedCss(emitComponentModule(g, g.components.get('m-el')!));
 
-  it('emits each expression byte for byte, inner spacing included', () => {
-    expect(css).toContain('@(size)');
-    expect(css).toContain('@(size  *  2)');
+  it('ships the `@(…)` as literal CSS, never as a template interpolation', () => {
+    expect(css).not.toContain('${');
+    expect(css).toBe('.badge{padding:@(size)rem @(size * 2)rem;}');
   });
 
   it('keeps the space that separated the two values', () => {
-    expect(css).toContain('@(size)rem @(size  *  2)rem');
+    expect(css).toContain('@(size)rem @(size * 2)rem');
   });
 });
 
@@ -187,36 +188,3 @@ describe('BUG-08 §6.4 — the asset linking still reaches into the compacted CS
   });
 });
 
-describe('BUG-08 §6.6 — the source maps do not degrade', () => {
-  /**
-   * There is no emit anchor for a CSS interpolation: `export const css` is one line, and
-   * what resolves a position inside it back to the `.fud` is the `RazorExpression`'s own
-   * span in the AST. That is exactly why §4.1 emits those parts VERBATIM — compacting
-   * them, or emitting anything but their source bytes, would leave every span in the
-   * `<style>` pointing at text that is no longer there.
-   */
-  const io = memoryIo({
-    '/home.fud':
-      '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
-    '/m.fud':
-      '@code {\n  const { size = 1 } = props<{ size?: number }>();\n}\n\n' +
-      '<head>\n  <style>\n    .badge { padding: @(size)rem; }\n  </style>\n</head>\n\n' +
-      '<m-el>\n  <template shadowrootmode="open"><span class="badge"></span></template>\n</m-el>\n',
-  });
-  const g = resolveComponents('/home.fud', io);
-  const comp = g.components.get('m-el')!;
-  const style = comp.doc.head!.children.find(
-    (c): c is ElementNode => c.type === 'element' && c.name === 'style',
-  )!.children[0]!;
-  const css = emittedCss(emitComponentModule(g, comp));
-
-  it('every interpolation of the <style> still resolves to its offset in the .fud', () => {
-    const exprs = (style as StyleNode).parts.filter((p) => p.type === 'razor-expression');
-    expect(exprs.length).toBe(1);
-    for (const expr of exprs) {
-      const atSpan = comp.source.slice(expr.span.start, expr.span.end);
-      expect(atSpan).toBe('@(size)'); // the span still covers the expression in the source
-      expect(css).toContain(atSpan); // and those same bytes are what the module ships
-    }
-  });
-});

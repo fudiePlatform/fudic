@@ -33,6 +33,13 @@
        de cada shadow. Las dos se necesitan. *@
     <link rel="stylesheet" href="../styles/tokens.css">
 
+    @* La guía del documento: un `main.css` que importa un fichero por tema. Va DENTRO de la
+       página (`?inline`) para no pintar un fotograma sin estilo, y por eso importa tanto que
+       cada página reciba solo lo que usa: el build aplana sus `@import` y la recorta contra lo
+       que esa página tiene en su light DOM, y de sus tokens deja los que algo de la página
+       nombra. Lo que no casa con nada no viaja (SDD-49). *@
+    <link rel="stylesheet" href="../styles/main.css?inline">
+
     <!-- Where the fudic runtime goes. The layout says WHERE, once — before layouts
          every route had to remember it, and one that forgot silently lost the Service
          Worker. What lands here the compiler decides: the Service Worker registration

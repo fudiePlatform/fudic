@@ -192,7 +192,9 @@ SDD-09 reserva **`FUD0130`–`FUD0149`**. Definidos:
 | `FUD0130` | Construcción Razor no permitida en `<style>` en v1 (control/`@code`/`raw`). |
 | `FUD0131` | Llaves CSS desbalanceadas en `<style>` (decisión 42.e). |
 
-`FUD0132`–`FUD0149` libres (SDD-09 no ha necesitado ninguno). Los códigos de módulos de los que
+| `FUD0132` | Comentario Razor `@* … *@` dentro de `<style>`: error. El CSS tiene su comentario, `/* … */`, y una hoja la leen herramientas que no saben qué es `@*` (añadido por SDD-49). |
+
+`FUD0133`–`FUD0149` libres. Los códigos de módulos de los que
 depende afloran **sin renumerarse**: `FUD0002` del balanceador (`@( … )` sin cerrar) y `FUD0011`
 del lexer (`@*` sin cerrar, §4.2).
 
