@@ -166,7 +166,7 @@ mismo worktree y rama. Los números son los criterios de la spec (§6, segunda r
 
 - `prune-build.test.ts`: dos páginas con la misma hoja podada → mismo fichero; una tercera →
   otro; host, pase SW y edge escriben la misma URL; el fichero se publica una vez; las copias
-  están en el shell del manifiesto/SW (37); `FUD0852` sobre la entrada de `fudic.json`, sobre el
+  **no** están en el shell del manifiesto/SW (37, corregido); `FUD0852` sobre la entrada de `fudic.json`, sobre el
   `<link>` y sobre el `@import` de un fichero importado que no aporta nada (39); los
   diagnósticos de una hoja, una sola vez aunque la enlacen varias páginas; `FUD0854` sobre una
   hoja de `fudic.json` con `@import`, una vez por hoja (30).
@@ -291,5 +291,5 @@ nadie lo note.
 | ✓ | # | dep | tarea |
 |---|---|---|---|
 | [ ] | 26 | 24, 25 | Los tests pendientes de arriba, y los 6 en rojo con su expectativa nueva |
-| [ ] | 27 | 26 | **Pedro en navegador.** Todas las páginas iguales que antes, en modo claro y oscuro; SW activo; una página no visitada abre offline con su hoja. Criterio 41 |
+| [ ] | 27 | 26 | **Pedro en navegador.** Todas las páginas iguales que antes, en modo claro y oscuro; SW activo; una página ya visitada abre offline con su hoja (las copias no van en el shell). Criterio 41 |
 | [ ] | 28 | 27 | Cobertura de los ficheros nuevos al 100 % en las cuatro métricas, con su umbral en el `vitest.config.ts`, y ninguno por debajo de su suelo en `main` (criterio 42); `pnpm typecheck`, `pnpm test` y `pnpm build` verdes; SDD-49 a `Hecho` en la tabla y el registro del `INDEX.md` |

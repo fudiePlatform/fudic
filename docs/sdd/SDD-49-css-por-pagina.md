@@ -401,8 +401,8 @@ elemento completo que va en el `<head>` en su lugar: un `<link>`, un `<style>` o
 ### 3.7. `@fudic/vite`
 
 - `LinkedAssets.sheet(absPath, css, origin): string` — el mismo nombre por hash de bytes que
-  `url()` (`assets/<base>-<hash>.css`), sobre el CSS **podado**. Entra en el shell igual que
-  cualquier cosa enlazada desde un `<head>`.
+  `url()` (`assets/<base>-<hash>.css`), sobre el CSS **podado**. **No** entra en el shell: el
+  compilador la pide con origen `'markup'` (§4.9).
 - En `vite dev`, las hojas podadas se sirven desde memoria bajo `/@fudic/sheet/<base>-<hash>.css`.
 - El plugin pasa `pruneStyles: true` en los tres pases (host, SW y edge) y en dev.
 - El plugin diagnostica `FUD0854` sobre cada hoja de `fudic.json`, una vez por hoja, donde hoy
@@ -670,9 +670,13 @@ Service Worker, ni el edge hacen nada al pintar.
   sí, dentro del HTML o en un fichero precacheado, y son los mismos bytes.
 - **Mismo nombre en todos los pases.** Los tres pases de build compilan el mismo `.fud`, y
   todos obtienen el mismo nombre porque la hash sale del contenido y no del bundler.
-- **Entran en el shell.** Las copias podadas se enlazan desde un `<head>`, así que entran en el
-  shell (SDD-19 `'head'`) y el Service Worker las precachea al instalar. Una página que nunca
-  se visitó abre offline con su hoja.
+- **No entran en el shell.** Aunque las enlaza un `<head>`, una copia podada es de **una**
+  página: precachearlas todas al instalar descargaría en la primera visita el CSS de páginas
+  que el usuario quizá no abra nunca, y retrasaría el Service Worker. Se enlazan con origen
+  `'markup'` y se guardan **la primera vez que su página las pide**, por la clase de recursos de
+  `sw.json` que cubre `assets/`, como una imagen. Una página abre sin conexión con su hoja
+  después de haberla visitado una vez, que es la doctrina de fudic.
+  *Corrección de Pedro (2026-10-01): la primera redacción las metía en el shell.*
 - **El `<link>` sigue en el `<head>`.** Bloquea el render como hoy, así que no hay FOUC. Solo
   cambia a qué fichero apunta.
 
@@ -892,7 +896,8 @@ llegado a `main`, así que se amplía en lugar de retirarse y reservar otro.
 36. Dos páginas con la misma hoja podada apuntan al mismo fichero; una tercera distinta, a
     otro. El host, el pase del SW y el edge escriben la misma URL, y el fichero se publica una
     sola vez.
-37. Las copias podadas están en el shell del manifiesto.
+37. Las copias podadas **no** están en el shell del manifiesto; tras visitar una página, su
+    copia está en la caché de recursos y la página abre sin conexión.
 38. En `vite dev` el `<link>` de la página apunta a `/@fudic/sheet/…` y el middleware sirve
     ese CSS. Tras editar un fichero **importado**, la siguiente navegación trae la poda nueva.
 39. `FUD0852` para una hoja que no aporta nada a ninguna página y para un fichero importado que
@@ -908,7 +913,7 @@ llegado a `main`, así que se amplía en lugar de retirarse y reservar otro.
     después, **cuántos tokens llegan de cuántos**, y cuántas copias distintas de cada hoja
     publica el build.
 41. **Todas las páginas se ven igual que antes de podar**, en Chrome, en modo claro y oscuro, y
-    con el Service Worker activo, también offline en una página que no se ha visitado.
+    con el Service Worker activo, también offline en una página ya visitada.
     **Verificado por Pedro en navegador.**
 42. **Cobertura.** Los ficheros nuevos al 100 % en las cuatro métricas, con su umbral en el
     `vitest.config.ts`; ninguno existente por debajo de su suelo en `main`.

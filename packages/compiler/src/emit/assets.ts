@@ -95,11 +95,13 @@ export class AssetLinker {
    * The URL of the pruned copy of the sheet `spec`, whose content is `css` — or `null` when
    * no host publishes copies, and then the `href` stays what the author wrote.
    *
-   * Always from a `<head>`: a pruned sheet is one a document links, which is the shell.
+   * Never the shell, although a `<head>` links it (SDD-49 §4.9): a pruned copy is ONE page's,
+   * and precaching every page's copy at install would download, on the first visit, the CSS of
+   * pages the user may never open. It is content: cached the first time its page asks for it.
    */
   sheetRef(spec: string, css: string): string | null {
     if (!this.#enabled || this.#sheet === undefined) return null;
-    return this.#sheet(spec, css, 'head');
+    return this.#sheet(spec, css, 'markup');
   }
 
   /**

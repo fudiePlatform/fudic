@@ -117,8 +117,8 @@ export class LinkedAssets {
   /**
    * The URL of a PRUNED copy of a linked sheet (SDD-49 §4.7): named by the hash of the pruned
    * bytes, so two pages that keep the same rules share one file — and one cache entry — and
-   * every pass of the build, compiling the same `.fud`, writes the same name. It enters the
-   * shell like anything a `<head>` links.
+   * every pass of the build, compiling the same `.fud`, writes the same name. It does NOT
+   * enter the shell (§4.9): it is one page's, and arrives when that page is visited.
    *
    * `css` arrives compacted: it is the emit's `compactProjectCss` output, and compacting it
    * again here would be the second path for CSS this module refuses to have.
