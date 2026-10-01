@@ -5,7 +5,7 @@
 > `@fudic/language-server` · `@fudic/formatter` · `@fudic/resolve` · `@fudic/config` ·
 > `@fudic/cli` · `@fudic/vite` · `fudic-vscode`
 > **Rama sugerida:** `sdd-50-diagnosticos`
-> **Progreso:** 19 / 21 — código entregado; faltan los tests y el cierre (otra sesión).
+> **Progreso:** 21 / 21 — `Hecho`.
 
 **Por decisión de Pedro, esta sesión escribe el código y no los tests.** Los tests nuevos, el
 suelo de cobertura y las guardas (fase 6) los hace otra sesión en este mismo worktree y rama.
@@ -93,8 +93,8 @@ cambiadas a la función. Mensaje movido tal cual.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 20 | 19 | **Tests y guardas.** Suelo de cobertura medido en `main` de cada paquete tocado; los tests existentes sin cambiar una expectativa (salvo `FUD0725`/`0726`); tests de `render`, `format`, `DOCS_BASE` y la bombilla; barrido de `codes/` contra `index.ts`; forma de cada `.md`; ningún literal `'FUDnnnn'` fuera de `diagnostics`; parámetros que faltan o sobran no compilan; bundle de rolldown con solo `FUD0050`. Criterios 2–5, 7–13 | todos | `test/**` |
-| [ ] | 21 | 20 | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`; `@fudic/diagnostics` al 100 % en las cuatro y ningún paquete bajo su suelo. SDD-50 a `Hecho` en [INDEX.md](./INDEX.md). Criterios 14, 15 | — | [INDEX.md](./INDEX.md) |
+| [x] | 20 | 19 | **Tests y guardas.** Suelo de cobertura medido en `main` de cada paquete tocado; los tests existentes sin cambiar una expectativa (salvo `FUD0725`/`0726`); tests de `render`, `format`, `DOCS_BASE` y la bombilla; barrido de `codes/` contra `index.ts`; forma de cada `.md`; ningún literal `'FUDnnnn'` fuera de `diagnostics`; parámetros que faltan o sobran no compilan; bundle de rolldown con solo `FUD0050`. Criterios 2–5, 7–13 | todos | `test/**` |
+| [x] | 21 | 20 | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build`; `@fudic/diagnostics` al 100 % en las cuatro y ningún paquete bajo su suelo. SDD-50 a `Hecho` en [INDEX.md](./INDEX.md). Criterios 14, 15 | — | [INDEX.md](./INDEX.md) |
 
 ---
 
@@ -128,6 +128,40 @@ con dos formas tipadas, `kind: 'link'` (fuente, en el build) y `kind: 'library'`
 CLI). Las tres tablas de lectura por código (`REPAIRS`, `KEY_RULES`, `BROKEN_SOURCE`) quedan como
 literales `FudCode` (SDD §5, invariante 1). El plugin ya no busca `FUD0806` por valor: decide error
 o aviso por `severity`.
+
+## Lo que hizo la sesión de tests (tareas 20 y 21)
+
+**Suelo de cobertura**, medido en `main` (`5af24c9`) y al cerrar (stmts / branches / funcs / lines):
+
+| paquete | `main` | al cerrar |
+|---|---|---|
+| `diagnostics` (nuevo) | — | 100 / 100 / 100 / 100 |
+| `compiler` | 99,51 / 98,84 / 99,67 / 99,83 | 99,51 / 98,85 / 99,67 / 99,84 |
+| `vite` | 97,05 / 92,66 / 97,65 / 96,96 | 97,07 / 92,87 / 97,92 / 96,98 |
+| `cli` | 95,96 / 93,11 / 95,37 / 97,33 | 95,96 / 93,34 / 95,88 / 97,39 |
+| `config`, `resolve`, `formatter`, `language-core`, `language-server`, `vscode` | 100 | 100 |
+
+En `compiler`, `vite` y `cli` la migración no dejó una línea nueva sin cubrir salvo tres en
+`vite`. Pero los ficheros encogieron al irse las constantes, y las mismas líneas sin cubrir
+pesaban más. Se recuperó con tests de líneas que ya estaban sin cubrir en `main`:
+`<link rel="snippet">` en el `<head>` de una página, `resolveHref`, `devClientUrl`,
+`strategy()` sin argumento y `prerenderEnumerated` sin `paths()`.
+
+**Los tests existentes** pasan con estos cambios, todos previstos por la spec: las
+renumeraciones (`0440`–`0445` → `0890`–`0895`, `0720`/`0721` de config → `0725`/`0726`), `FUD0725`
+como error en el build, las constantes `FUD_*` cambiadas por el string, «Explain» en las
+bombillas, el texto de terminal de `format` y `@fudic/diagnostics` como dependencia del
+compilador. Los tests de `Span` y `LineMap` se movieron a `diagnostics`, y el de los helpers
+borrados (`errorDiag`…) se borró con ellos.
+
+**Un defecto arreglado.** Las hojas de `fudic.json` (`FUD0743`, `FUD0854`) metían
+`ruta:línea:col:` en el mensaje, y con `format` la terminal decía la posición dos veces. Ahora
+el diagnóstico lleva su span, y `reportText` lee el fichero relativo a la raíz para pintar
+línea, columna y frame (`vite/src/styles.ts`, `vite/src/report.ts`).
+
+**Criterio 13** con `FUD0051`: `FUD0050` está retirado y no tiene función que importar.
+**`explanationsDir(from?)`** recibe la URL del módulo para que un test cubra el caso
+`dist/src` y el del bundle.
 
 ## Inventario (tarea 1)
 

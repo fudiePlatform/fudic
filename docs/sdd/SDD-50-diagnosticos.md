@@ -1,6 +1,6 @@
 # SDD-50 — Los diagnósticos tienen casa: `@fudic/diagnostics`
 
-> **Estado:** `Listo` — pendiente de la revisión de Pedro.
+> **Estado:** `Hecho` — 21/21 ([Task](./SDD-50-Task.md)).
 > **Paquetes:** `@fudic/diagnostics` (**nuevo**) · y todos los que hoy escriben un `FUD` a mano:
 > `@fudic/compiler` · `@fudic/vite` · `@fudic/cli` · `@fudic/config` · `@fudic/resolve` ·
 > `@fudic/formatter` · `@fudic/language-core` · `@fudic/language-server`
@@ -412,8 +412,9 @@ SDD-12 se anotan. Estas renumeraciones son los únicos tests de código o severi
 
 **Podado.**
 
-13. Un bundle de prueba con rolldown que importa solo `FUD0050` no contiene el texto de ningún
-    otro código.
+13. Un bundle de prueba con rolldown que importa solo `FUD0051` no contiene el texto de ningún
+    otro código. (La primera redacción decía `FUD0050`, que el inventario encontró retirado: no
+    tiene función que importar.)
 
 **El cierre.**
 
