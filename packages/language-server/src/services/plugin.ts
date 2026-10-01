@@ -46,13 +46,12 @@ import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import { COMPLETION_TRIGGER_CHARACTERS, SEMANTIC_TOKENS_LEGEND } from '../capabilities.js';
 import type { CachedDocument } from '../document-cache.js';
-import { ROOT_CODE_ID, type FudicVirtualCode } from '../virtual-code.js';
+import { fudicDiagnostics, ROOT_CODE_ID, type FudicVirtualCode } from '@fudic/typecheck';
 import { isFudSourceUri } from '../uri.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
 import type { ProjectConfigs } from '../project-config.js';
 import type { RequestStats } from '../stats.js';
 import { reindentLine } from '@fudic/formatter';
-import { fudicDiagnostics } from './compiler-diagnostics.js';
 import { emmetCompletions } from './emmet.js';
 import { formattedText } from './formatting.js';
 import { hrefCompletions, relCompletions } from './href.js';
@@ -204,7 +203,7 @@ export function fudicDocumentOf(
   if (!isFudSourceUri(source)) return undefined;
 
   const root = context.language.scripts.get(source)?.generated?.root as
-    | FudicVirtualCode
+    | FudicVirtualCode<CachedDocument>
     | undefined;
   return root?.document;
 }

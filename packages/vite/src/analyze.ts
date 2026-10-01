@@ -13,11 +13,12 @@
 import {
   JsBatch,
   type CodeBlockNode,
+  type Diagnostic,
   type OxcNode,
   type ServerRegion,
   type StructuredDocument,
 } from '@fudic/compiler';
-import { parseFud } from './parse.js';
+import { parseFudReporting } from './parse.js';
 import { NO_STRATEGY, strategyFrom, type StrategyAnalysis } from './strategy.js';
 
 /**
@@ -47,6 +48,12 @@ export interface PageAnalysis {
   readonly strategy: StrategyAnalysis;
   /** The `href` of `<link rel="layout">`, when the file declares one (SDD-21). */
   readonly layoutHref?: string;
+  /**
+   * What the parse and the `@server` batch had to say, over this file's text (SDD-35 §4.4).
+   * Kept rather than dropped: a route that does not parse is analysed all the same, and the
+   * build has to be told why.
+   */
+  readonly diagnostics: readonly Diagnostic[];
 }
 
 // ── Typed access over the untyped Oxc node (quarantined, as in the emit) ──
@@ -61,7 +68,8 @@ const nameOf = (node: OxcNode): string => String(node['name']);
  * "Oxc runs exactly once per file" is a repo invariant, not an optimization.
  */
 export function analyzePage(source: string, file = ''): PageAnalysis {
-  const doc = parseFud(source);
+  const parsed = parseFudReporting(source);
+  const doc = parsed.document;
   const role = roleOf(doc);
   // A ROUTE's link and nothing else. A layout that declares one is `FUD0439`: a mistake to
   // delete, not a relation — counting it as «this layout is used» would keep a layout alive
@@ -76,11 +84,12 @@ export function analyzePage(source: string, file = ''): PageAnalysis {
       hasLayout: false,
       strategy: NO_STRATEGY,
       ...(layoutHref ? { layoutHref } : {}),
+      diagnostics: parsed.diagnostics,
     };
   }
-  const statements = serverStatements(source, doc.code);
+  const server = serverStatements(source, doc.code);
   const names = new Set<string>();
-  for (const statement of statements) {
+  for (const statement of server.statements) {
     collectExports(statement, names);
   }
   return {
@@ -89,8 +98,9 @@ export function analyzePage(source: string, file = ''): PageAnalysis {
     hasLoad: names.has('load'),
     hasPaths: names.has('paths'),
     hasLayout: names.has('layout'),
-    strategy: strategyFrom(statements, file),
+    strategy: strategyFrom(server.statements, file),
     ...(layoutHref ? { layoutHref } : {}),
+    diagnostics: [...parsed.diagnostics, ...server.diagnostics],
   };
 }
 
@@ -108,11 +118,14 @@ function roleOf(doc: StructuredDocument): DocumentRole {
   }
 }
 
-/** Top-level statements of a `@server` region, parsed in one batch. */
-function serverStatements(source: string, code: CodeBlockNode | undefined): OxcNode[] {
+/** Top-level statements of a `@server` region, parsed in one batch, with its syntax errors. */
+function serverStatements(
+  source: string,
+  code: CodeBlockNode | undefined,
+): { readonly statements: OxcNode[]; readonly diagnostics: readonly Diagnostic[] } {
   const regions = code?.parts.filter((p): p is ServerRegion => p.type === 'server-region') ?? [];
   if (regions.length === 0) {
-    return [];
+    return { statements: [], diagnostics: [] };
   }
   const batch = new JsBatch(source);
   const ids = regions.map((r) => batch.add('module-statements', r.js));
@@ -122,7 +135,7 @@ function serverStatements(source: string, code: CodeBlockNode | undefined): OxcN
     const root = result.value.ast(id);
     statements.push(...(Array.isArray(root) ? (root as OxcNode[]) : [root as OxcNode]));
   }
-  return statements;
+  return { statements, diagnostics: result.diagnostics };
 }
 
 /** Add the names exported by one `export …` statement (declaration or specifier list). */

@@ -16,6 +16,7 @@ import { nodeIo } from '../src/io.js';
 import { transformFudIoc } from '../src/transform.js';
 import { emitRenderChunk } from '../src/wrapper.js';
 import { fudic } from '../src/index.js';
+import { fakeDevServerParts } from './helpers/dev-server.js';
 
 /** A project on disk: `resolveDocument` follows real `<link rel="component">` hrefs. */
 function project(files: Record<string, string>): string {
@@ -157,6 +158,8 @@ describe('the dev server', () => {
     plugin.configResolved({ root, base: '/', command: 'serve', build: { outDir: 'dist' } });
     let handler!: (req: { url: string }, r: Res, next: () => void) => void;
     plugin.configureServer({
+      // What the live typecheck (SDD-35) talks to.
+      ...fakeDevServerParts(),
       middlewares: { use: (fn: typeof handler) => (handler = fn) },
       transformRequest: async (id: string) => {
         asked.push(id);

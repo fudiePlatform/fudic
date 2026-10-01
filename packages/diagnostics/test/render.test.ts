@@ -22,7 +22,7 @@ describe('render — line and column, 1-based (criterion 8)', () => {
       const r = render(FUD0051({ span: span(start, start + 4), name: 'p' }), source);
       expect(r.start).toEqual({ line: 3, column: 3 });
       expect(r.end).toEqual({ line: 3, column: 7 });
-      expect(r.frame).toBe('  3    </p>\n       ~~~~');
+      expect(r.frame).toBe('  3    </p>\n       ────');
     });
   }
 
@@ -57,20 +57,20 @@ describe('render — line and column, 1-based (criterion 8)', () => {
     const r = render(d, source);
     expect(r.start).toEqual({ line: 2, column: 3 });
     expect(r.end).toEqual({ line: 3, column: 2 });
-    expect(r.frame).toBe('  2    cdef\n       ~~~~');
+    expect(r.frame).toBe('  2    cdef\n       ────');
   });
 
   it('underlines one column for an empty span, and reads the last line with no line end', () => {
     const source = 'ab\ncd';
     const r = render(FUD0051({ span: span(4, 4), name: 'p' }), source);
     expect(r.start).toEqual({ line: 2, column: 2 });
-    expect(r.frame).toBe('  2  cd\n      ~');
+    expect(r.frame).toBe('  2  cd\n      ─');
   });
 
   it('pads the underline under a gutter of two digits', () => {
     const source = `${'\n'.repeat(11)}<x>`;
     const r = render(FUD0051({ span: span(11, 14), name: 'p' }), source);
-    expect(r.frame).toBe('  12  <x>\n      ~~~');
+    expect(r.frame).toBe('  12  <x>\n      ───');
   });
 });
 
@@ -84,7 +84,7 @@ describe('format — the terminal text (criterion 9)', () => {
         `/p/src/a.fud:2:3 - error FUD0051: ${d.message}`,
         '',
         '  2    </q>',
-        '       ~~~~',
+        '       ────',
         '',
         `  ${docsUrl('FUD0051')}`,
       ].join('\n'),

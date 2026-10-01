@@ -198,7 +198,9 @@ describe("the plugin's ?client branch", () => {
   it('reports an asset the component references and the build has not got', async () => {
     ctx.warn.mockClear();
     await plugin.transform.call(ctx, '', clientId(join(root, 'components', 'x-typed.fud')));
-    expect(ctx.warn.mock.calls.flat().join('\n')).toContain('nope.png');
+    // A positioned log since SDD-35 §4.4, not a string: the text is its `message`.
+    const said = ctx.warn.mock.calls.map(([log]) => (log as { message: string }).message).join('\n');
+    expect(said).toContain('nope.png');
   });
 
   it('leaves a non-component alone, even when asked for its client chunk', async () => {

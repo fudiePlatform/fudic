@@ -10,7 +10,7 @@ import { routesFromFiles, type Route } from './routing.js';
 import { analyzePage, type PageAnalysis } from './analyze.js';
 import { resolveMode, type ModeDecision, type PageFacts } from './mode.js';
 import { type ResolvedOptions } from './options.js';
-import { FUD0364, FUD0434, type FileDiagnostic } from '@fudic/diagnostics';
+import { FUD0364, FUD0434, type FileDiagnostic, type SourceDiagnostic } from '@fudic/diagnostics';
 
 export interface RouteBuild {
   readonly route: Route;
@@ -23,6 +23,12 @@ export interface RouteBuild {
 export interface DiscoverResult {
   readonly routes: readonly RouteBuild[];
   readonly diagnostics: readonly FileDiagnostic[];
+  /**
+   * What parsing each file under `routesDir` had to say, with the file named (SDD-35 §4.4).
+   * Apart from `diagnostics` because its errors are the typecheck's to report first: the build
+   * says them only if the check did not, and dev shows them in its live overlay.
+   */
+  readonly parse: readonly SourceDiagnostic[];
 }
 
 /** All `.fud` files under `dir`, as POSIX-style paths relative to `dir`. */
@@ -41,6 +47,7 @@ export function discoverRoutes(root: string, options: ResolvedOptions): Discover
   const routesRoot = join(root, options.routesDir);
   const { routes, diagnostics } = routesFromFiles(listFud(routesRoot));
   const diags: FileDiagnostic[] = [...diagnostics];
+  const parse: SourceDiagnostic[] = [];
 
   const builds: RouteBuild[] = [];
   // A layout is never a route (SDD-21 §4.7), wherever it lives; these two sets turn the
@@ -50,6 +57,7 @@ export function discoverRoutes(root: string, options: ResolvedOptions): Discover
   for (const route of routes) {
     const absPath = join(routesRoot, route.file);
     const analysis = analyzePage(readFileSync(absPath, 'utf8'), absPath);
+    for (const d of analysis.diagnostics) parse.push({ ...d, file: absPath });
     if (analysis.role === 'layout') {
       layouts.add(absPath);
     }
@@ -92,5 +100,5 @@ export function discoverRoutes(root: string, options: ResolvedOptions): Discover
     }
   }
 
-  return { routes: builds, diagnostics: diags };
+  return { routes: builds, diagnostics: diags, parse };
 }

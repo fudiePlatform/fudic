@@ -41,7 +41,7 @@ import {
 import { clientFileName, mapToSource, type VirtualFile } from '@fudic/language-core';
 import { URI } from 'vscode-uri';
 import type { CachedDocument } from '../document-cache.js';
-import { CLIENT_CODE_ID, type FudicVirtualCode } from '../virtual-code.js';
+import { CLIENT_CODE_ID, type FudicVirtualCode } from '@fudic/typecheck';
 import { isFudSourceUri } from '../uri.js';
 import {
   attributeGapContextAt,
@@ -1380,7 +1380,7 @@ function fudSourceAt(
   if (!isFudSourceUri(sourceUri)) return undefined;
 
   const root = context.language.scripts.get(sourceUri)?.generated?.root as
-    | FudicVirtualCode
+    | FudicVirtualCode<CachedDocument>
     | undefined;
   if (root === undefined) return undefined;
 

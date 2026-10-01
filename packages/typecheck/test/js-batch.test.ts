@@ -1,0 +1,188 @@
+/**
+ * The single Oxc invocation per document (SDD-24 §4.5).
+ *
+ * What is asserted is not "it parses" but WHO gets to see the result: the neutral chunks for
+ * the emitter of SDD-23, the regions for the `$` rule, and a fragment id per node for the
+ * semantic pass of SDD-12. One batch, three consumers.
+ */
+
+import { describe, expect, it } from 'vitest';
+import { documentRoots, walk, type Node, type RazorExpression } from '@fudic/compiler';
+import { batchDocumentJs } from '../src/index.js';
+import { parseFud } from '../src/index.js';
+import { component } from './_support.js';
+
+const WITH_CODE = `@code {
+  type Tone = 'neutral' | 'info';
+
+  const { tone = 'neutral' } = props<{ tone?: Tone }>();
+
+  @server {
+    export async function load(): Promise<{ n: number }> {
+      return { n: 1 };
+    }
+  }
+
+  @client {
+    const label = 'hi';
+  }
+}
+
+<app-badge>
+  <template shadowrootmode="open">
+    <span>@tone</span>
+  </template>
+</app-badge>
+`;
+
+const parse = (source: string) => {
+  const { document } = parseFud(source);
+  return { document, js: batchDocumentJs(source, document) };
+};
+
+/** The first content-level interpolation of a document. */
+function firstInterpolation(document: ReturnType<typeof parse>['document']): RazorExpression {
+  let found: RazorExpression | undefined;
+  walk(documentRoots(document), {
+    interpolation(expr) {
+      found ??= expr;
+    },
+  });
+  return found as RazorExpression;
+}
+
+describe('batchDocumentJs', () => {
+  it('registers the neutral chunks the emitter looks for props<T>() in', () => {
+    const { js } = parse(WITH_CODE);
+
+    expect(js.neutral.length).toBeGreaterThan(0);
+    for (const id of js.neutral) {
+      expect(js.result.ast(id)).toBeDefined();
+    }
+  });
+
+  it('registers the @server and @client regions the $ rule needs', () => {
+    const { js } = parse(WITH_CODE);
+
+    expect(js.regions.map((region) => region.part.type).sort()).toEqual([
+      'client-region',
+      'server-region',
+    ]);
+  });
+
+  it('registers the @client regions the reactive names are read from (BUG-23 task 14)', () => {
+    const { js } = parse(WITH_CODE);
+
+    expect(js.client).toHaveLength(1);
+    expect(js.result.ast(js.client[0]!)).toBeDefined();
+  });
+
+  it('registers the ATTRIBUTE values too, and answers their AST by span', () => {
+    const source = WITH_CODE.replace('<span>@tone</span>', '<span @click="@onClick($event)"></span>');
+    const { js } = parse(source);
+    const at = source.indexOf('onClick($event)');
+    const root = js.ast({ start: at, end: at + 'onClick($event)'.length });
+
+    // The one question no regular expression answers: is the root of this value a call?
+    expect(Array.isArray(root) ? undefined : (root as { type: string }).type).toBe(
+      'CallExpression',
+    );
+  });
+
+  it('answers nothing for a span nobody registered', () => {
+    expect(parse(WITH_CODE).js.ast({ start: 0, end: 1 })).toBeUndefined();
+  });
+
+  it('answers a fragment id per JS-bearing node, and nothing for the rest', () => {
+    const { document, js } = parse(WITH_CODE);
+    const interpolation = firstInterpolation(document);
+    const part = document.code?.parts[0] as Node;
+
+    expect(js.fragmentId(interpolation)).toBeTypeOf('number');
+    expect(js.fragmentId(part)).toBeTypeOf('number');
+    expect(js.fragmentId({ type: 'element', span: { start: 0, end: 1 } } as Node)).toBeUndefined();
+  });
+
+  it('has nothing to register in a document without @code', () => {
+    const { js } = parse(component('app-badge'));
+
+    expect(js.neutral).toEqual([]);
+    expect(js.regions).toEqual([]);
+    expect(js.diagnostics).toEqual([]);
+  });
+
+  it('reports a syntax error as a diagnostic over the .fud, not as a throw', () => {
+    const source = `@code {\n  @client {\n    const = ;\n  }\n}\n${component('app-badge')}`;
+    const { js } = parse(source);
+
+    expect(js.diagnostics.length).toBeGreaterThan(0);
+    const [first] = js.diagnostics;
+    expect(first?.code).toBe('FUD0170');
+    expect(source.slice(first?.span.start ?? 0, first?.span.end ?? 0)).toBeDefined();
+    expect(first?.span.end).toBeLessThanOrEqual(source.length);
+  });
+
+  it('registers every @foreach / @for header in the same batch, and answers its statement', () => {
+    const source = `<app-x>
+  <template shadowrootmode="open">
+@foreach (const item of [1, 2]) {
+  <i>@item</i>
+}
+@for (let i = 0; i < 2; i++) {
+  <b>@i</b>
+}
+@while (false) {
+  <u>x</u>
+}
+  </template>
+</app-x>
+`;
+    const { js } = parse(source);
+
+    expect(js.loops).toHaveLength(2);
+    const [forOf, forLoop] = js.loops;
+    expect(forOf?.statement?.type).toBe('ForOfStatement');
+    expect(forLoop?.statement?.type).toBe('ForStatement');
+    expect(source.slice(forOf!.span.start, forOf!.headerClose)).toBe('@foreach (const item of [1, 2])');
+    expect(source.charAt(forOf!.headerEnd)).toBe(')');
+  });
+
+  it('registers no fragment for an empty binding: there is nothing to parse yet', () => {
+    const { document, js } = parse(`<app-x>
+  <template shadowrootmode="open"><button @click="@()">x</button></template>
+</app-x>
+`);
+    let ids = 0;
+    walk(documentRoots(document), {
+      binding(expr) {
+        if (js.fragmentId(expr) !== undefined) ids++;
+      },
+    });
+
+    expect(ids).toBe(0);
+    expect(js.diagnostics).toEqual([]);
+  });
+
+  it('skips a header with nothing in it, and keeps no statement for one Oxc could not read', () => {
+    const empty = parse(`<app-x>
+  <template shadowrootmode="open">
+@foreach () {
+  <i>x</i>
+}
+  </template>
+</app-x>
+`);
+    expect(empty.js.loops).toEqual([]);
+
+    const broken = parse(`<app-x>
+  <template shadowrootmode="open">
+@foreach (const of) {
+  <i>x</i>
+}
+  </template>
+</app-x>
+`);
+    expect(broken.js.loops).toHaveLength(1);
+    expect(broken.js.loops[0]).not.toHaveProperty('statement');
+  });
+});

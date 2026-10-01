@@ -1,6 +1,6 @@
 # SDD-35 — O compila o no compila: lo que el editor marca, el build lo rompe
 
-> **Estado:** `Listo` — pendiente de la revisión de Pedro.
+> **Estado:** `Hecho` — rama `worktree-sdd-35-compilo-o-no-compilo`; los 24 criterios de §6 verdes.
 > **Paquetes:** `@fudic/typecheck` (**nuevo**: la máquina que hoy vive dentro del servidor de
 > lenguaje, sacada a un sitio donde el build también la pueda usar) · `@fudic/language-server`
 > (deja de tener su copia y la importa) · `@fudic/vite` (corre el chequeo en `build` y en `dev`,
@@ -77,10 +77,18 @@ diagnósticos de sugerencia. Es exactamente el tipo de divergencia que este SDD 
 impedir.
 
 Así que se **mueve** la máquina del servidor a un paquete, `@fudic/typecheck`, y la usan los dos.
-Para el lado de TypeScript se usa `@volar/typescript` —`proxyCreateProgram`, lo mismo que usa
-`vue-tsc`—, que aplica a los diagnósticos de un `Program` normal el mismo filtro
-`shouldReportDiagnostics` sobre `verification` que el servidor. El build no reimplementa nada de
-Volar: lo usa.
+Para el lado de TypeScript se usa `@volar/typescript` montado **como lo monta el servidor**:
+`createLanguageServiceHost` sobre un `Language` de Volar con `fudLanguagePlugin`, y el
+`LanguageService` de TypeScript encima. Los diagnósticos vuelven al `.fud` por el mapeo de Volar
+con su mismo filtro `shouldReportDiagnostics` sobre `verification`. El build no reimplementa
+nada de Volar: lo usa.
+
+> **Corrección en la implementación.** La primera redacción decía `proxyCreateProgram` (lo que
+> usa `vue-tsc`). No sirve aquí: Volar 2.4.28 no admite `getExtraServiceScripts` en ese camino
+> (solo avisa `getExtraServiceScripts() is not available in this use case`), así que el virtual
+> `x.fud.server.ts` no existiría, `typeof import('./x.fud.server')` no resolvería y `$Data`
+> sería `any` en el build y no en el editor. El camino del `LanguageServiceHost` sí monta los
+> scripts extra, que es por lo que el servidor lo usa.
 
 ### 1.4. Lo que este SDD NO es
 
@@ -100,7 +108,7 @@ Volar: lo usa.
 | SDD-24 | El servidor: `language-plugin.ts` (el `LanguagePlugin` de Volar para `.fud`), `mappings.ts` (`MappingCaps` → `CodeInformation`), `document-cache.ts` (la receta parse → lote → emit), `parse.ts`, `js-batch.ts`, `file-registry.ts`, `globals.ts`, `project-files.ts` y `services/compiler-diagnostics.ts` con sus tres reglas (`href.ts`, `holes.ts`, `reserved-dollar.ts`). **Se mueven**, no se copian (§4.1). |
 | SDD-19 | El plugin: `buildStart`, el hook `transform`, el middleware HTML de `dev` que ya manda los errores al overlay con `next(err)`. |
 | BUG-23 | El reparto «una voz por hecho»: en el editor, las reglas de contrato las dice TypeScript y no `FUD0197`–`FUD0199`. Con TypeScript también en el build, el reparto se extiende al build (§4.7). |
-| `@volar/typescript` 2.4.28 | `proxyCreateProgram`. La misma versión exacta que ya usa el servidor. |
+| `@volar/typescript` 2.4.28 | `createLanguageServiceHost` y el mapeo de diagnósticos (§1.3). La misma versión exacta que ya usa el servidor. |
 | TypeScript 5.9.3 | Dependencia de runtime de `@fudic/typecheck`. |
 
 ---
@@ -233,19 +241,19 @@ mismas, escritas como constante y comprobadas contra las de Volar en un test— 
 (`warning`): el chequeo corre con opciones que el proyecto no eligió, y callarlo sería mentir
 sobre lo que se ha comprobado.
 
-**El montaje** es `proxyCreateProgram(ts, ts.createProgram, …)` con `fudLanguagePlugin`, la misma
-instancia de lógica que el servidor. Los nombres de los virtuales, la resolución de
-`'./app-badge.fud'` y de `typeof import('./x.fud.server')`, y el filtro de andamiaje salen de ahí
-y no se reescriben.
+**El montaje** es el del servidor (§1.3): un `Language` de Volar con `fudLanguagePlugin`,
+`createLanguageServiceHost` de `@volar/typescript` y `ts.createLanguageService` encima. Los
+nombres de los virtuales, la resolución de `'./app-badge.fud'` y de
+`typeof import('./x.fud.server')`, y el filtro de andamiaje salen de ahí y no se reescriben.
 
 ### 4.3. Qué es un error
 
 Por cada `.fud` que no es de librería se recogen:
 
 1. **De TypeScript:** los sintácticos y los semánticos del `Program`, y los de declaración si el
-   `tsconfig` pide `declaration` o `composite`, que es lo que pide el editor. Ya llegan mapeados al
-   `.fud` por `proxyCreateProgram`. Un diagnóstico que cae entero o en parte en andamiaje se
-   descarta con la misma regla que en el editor.
+   `tsconfig` pide `declaration` o `composite`, que es lo que pide el editor. Se mapean al `.fud`
+   por el mapeo de Volar. Un diagnóstico que cae entero o en parte en andamiaje se descarta con la
+   misma regla que en el editor.
 2. **De fudic:** `fudicDiagnostics`, lo mismo que publica el servidor: parser, estructura, Oxc,
    pase semántico, `FUD0460`, huecos de layout, `FUD0461`.
 
@@ -268,8 +276,13 @@ algún error:
    src/routes/index.fud:12:15 - error TS2322: Type 'number' is not assignable to type '"neutral" | "success" | "info"'.
 
      12   <app-badge .tone="@(42)"></app-badge>
-                     ~~~~
+                     ────
    ```
+
+   El subrayado es `─` y no `~` (corregido al probar en `dev`): la terminal de VS Code
+   convierte cada palabra en un enlace Ctrl+Click, y una palabra de virgulillas es la carpeta
+   personal — abría el home del usuario en modo restringido. `^^^^` seguía siendo una palabra
+   clicable; `─` es separador de palabras por defecto de la terminal, así que no es enlace.
 
 2. El build falla **una vez**, con `this.error` y un resumen: `N errores en M ficheros`. No se
    escribe ningún fichero.
@@ -292,8 +305,9 @@ El dev server tiene un `ProjectChecker` vivo:
 
 - **Al arrancar** comprueba el proyecto entero e imprime lo que haya.
 - **Al cambiar un fichero** de `CheckReport.inputs` —un `.fud` o un `.ts` que el `Program` leyó—,
-  o al aparecer o desaparecer un `.fud`, llama a `invalidate` y vuelve a comprobar. El `Program`
-  anterior se pasa como `oldProgram`, así que TypeScript solo rehace lo que cambió.
+  o al aparecer o desaparecer un `.fud`, llama a `invalidate` y vuelve a comprobar. El
+  `LanguageService` sigue vivo y solo cambia la versión del fichero tocado, así que TypeScript
+  reutiliza el `Program` anterior y solo rehace lo que cambió.
 - **Si hay errores**, los imprime en la terminal y empuja el primero al overlay
   (`server.ws.send({ type: 'error', err })` con `message`, `id`, `loc` y `frame`). El overlay
   aparece sin recargar, aunque el error esté en un componente que la página abierta usa y no en

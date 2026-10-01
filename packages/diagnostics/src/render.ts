@@ -5,6 +5,7 @@
 
 import { docsUrl } from './docs.js';
 import { LineMap } from './linemap.js';
+import type { Span } from './span.js';
 import type { FudCode, FudDiagnostic, Severity } from './types.js';
 
 /** A 1-based line and column, for humans (LSP positions stay 0-based in `LineMap`). */
@@ -40,11 +41,27 @@ export function render(diagnostic: FudDiagnostic, source?: string): Rendered {
   if (at === undefined || source === undefined) {
     return base;
   }
+  return { ...base, ...locate(source, at) };
+}
+
+/** Where a span is, for a human: 1-based start and end, and the frame. */
+export interface Located {
+  readonly start: Place;
+  readonly end: Place;
+  readonly frame: string;
+}
+
+/**
+ * Line, column and frame of a span in a text.
+ *
+ * Exported for the problems that are not fudic's own — a TypeScript error over a `.fud`
+ * (SDD-35) — so that they are painted by this same code and not by a second one.
+ */
+export function locate(source: string, at: Span): Located {
   const lines = new LineMap(source);
   const start = lines.positionAt(at.start);
   const end = lines.positionAt(at.end);
   return {
-    ...base,
     start: { line: start.line + 1, column: start.character + 1 },
     end: { line: end.line + 1, column: end.character + 1 },
     frame: frame(source, lines, start.line, start.character, end.line === start.line ? end.character : undefined),
@@ -52,7 +69,7 @@ export function render(diagnostic: FudDiagnostic, source?: string): Rendered {
 }
 
 /**
- * The line the span starts on, with a gutter and a `~` underline. A span that runs past its
+ * The line the span starts on, with a gutter and a `─` underline. A span that runs past its
  * first line is underlined to the end of that line: the first line is where the reader looks.
  */
 function frame(
@@ -69,7 +86,11 @@ function frame(
   const gutter = String(line + 1);
   const pad = ' '.repeat(gutter.length);
   const width = Math.max(1, until - from);
-  return `  ${gutter}  ${text}\n  ${pad}  ${' '.repeat(from)}${'~'.repeat(width)}`;
+  // `─` and not `~` or `^`: VS Code's terminal turns every WORD into a Ctrl+Click link, and a
+  // word of tildes is a path to the home folder — it opened the user's home as a workspace
+  // (SDD-35). `─` is one of the terminal's default word separators, so the underline is no
+  // word at all and nothing to click.
+  return `  ${gutter}  ${text}\n  ${pad}  ${' '.repeat(from)}${'─'.repeat(width)}`;
 }
 
 export interface FormatOptions {
@@ -85,7 +106,7 @@ export interface FormatOptions {
  *     src/routes/index.fud:12:15 - error FUD0050: message
  *
  *       12  <app-badge .tone="@(42)"></app-badge>
- *                      ~~~~
+ *                      ────
  *
  *       http://…/diagnostic#FUD0050
  */

@@ -335,7 +335,8 @@ una pieza compartible con sentido —la cáscara común de varias apps—, así 
 | `FUD0784` | `error` | Ya existe un proyecto en ese directorio, o con ese nombre. Sin `--force`. |
 | `FUD0785` | `error` | `--uses <x>` nombra algo que no es una librería del workspace: no existe, o es una app. |
 | `FUD0786` | — | **Reservado y sin usar.** Fue «`fudic g lib` sin `--prefix`» en un borrador. El prefijo es opcional y es una guía (SDD-41 §4.4); ningún comando lo exige. |
-| `0787`–`0799` | | Reservados. |
+| `FUD0787` | `error` | `fudic g component --project <lib> --in <fichero de otro paquete>` para un componente en una carpeta que los `exports` de la librería no listan: desde fuera no tiene nombre. Añadido por SDD-35, que hace que `--in` entre paquetes enlace por el nombre de la librería y no por una ruta que sale de la app. |
+| `0788`–`0799` | | Reservados. |
 
 ---
 

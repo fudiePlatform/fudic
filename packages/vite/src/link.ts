@@ -21,6 +21,7 @@ import { emitRenderChunk } from './wrapper.js';
 import { runtimeUrls, type RuntimeEntries } from './constants.js';
 import { routeNameLookup, routeUsesDi } from './client.js';
 import { transformFud, NO_STYLES, type ProjectStyles } from './transform.js';
+import type { BuildReporter } from './report.js';
 import { LINK_DIR, LINK_PREFIX } from './constants.js';
 import { loadWithSourceMap } from './inputmaps.js';
 import { serializeMap, type NestedOutputOptions } from './nested.js';
@@ -85,6 +86,8 @@ function linkPlugin(
   assets: LinkedAssets | undefined,
   /** Always given: `runLinkPass` has the default, and this is its one caller. */
   runtimeFor: (pattern: string) => RuntimeEntries,
+  /** The host's reporter: what this pass compiles again is not said twice (SDD-35 §4.4). */
+  reporter: BuildReporter | undefined,
 ): Plugin {
   // The Service Worker renders the same pages the edge does, so it publishes the same route
   // names (SDD-39 §4.7): one map, resolved once for the pass.
@@ -123,6 +126,8 @@ function linkPlugin(
       }
       const result = transformFud(path, io, routeNameOf(path), styles, assets);
       if (result === null) return null;
+      // What the emit had to say about the file, which this pass used to drop (SDD-35 §1.1).
+      reporter?.report(this, result.diagnostics, path);
       // Since SDD-34 the neutral zone of `@code` reaches this module verbatim, so it is
       // TypeScript whenever the author wrote it — same strip as the host plugin does.
       // The map goes back too (BUG-05 §4.2). Dropping it was not a missing feature but a
@@ -194,6 +199,8 @@ export async function runLinkPass(
    * that disagrees with itself depending on who rendered it.
    */
   runtimeFor: (pattern: string) => RuntimeEntries = () => runtimeUrls(base, ''),
+  /** Where this pass reports what it compiles; the host's, so nothing is said twice. */
+  reporter?: BuildReporter,
 ): Promise<LinkResult> {
   const linkable = builds.filter((rb) => isLinkable(rb.decision));
   if (linkable.length === 0) {
@@ -210,7 +217,7 @@ export async function runLinkPass(
     root,
     base,
     logLevel: 'error',
-    plugins: [linkPlugin(linkable, io, base, styles, assets, runtimeFor)],
+    plugins: [linkPlugin(linkable, io, base, styles, assets, runtimeFor, reporter)],
     build: {
       write: false,
       emptyOutDir: false,

@@ -8,7 +8,7 @@
     const items = signal(0);
     const total = signal(0);
 
-    function onCarrito(ev) {
+    function onCarrito(ev: CustomEvent) {
       items.set(items() + 1);
       total.set(total() + Number(ev.detail));
     }

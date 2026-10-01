@@ -36,7 +36,7 @@ import {
 } from 'vscode-languageserver-protocol/node';
 import { URI } from 'vscode-uri';
 import { createFudicServer, type FudicServer, type FudicServerDeps } from '../../src/server.js';
-import { toPosix } from '../../src/paths.js';
+import { toPosix } from '@fudic/typecheck';
 import { FIXTURES } from '../_support.js';
 
 // These are integration tests, and the default five seconds are a unit test's budget: a request

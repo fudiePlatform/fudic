@@ -59,6 +59,11 @@ are two, and then it writes into the wrong package.
 file uses which component is yours to decide, and `fudic g component --in` is how you say
 it.
 
+Across packages, `--in` links the component by the library's name
+(`@mi-tienda/ui/ui-card.fud`), never by a path that climbs out of the app, and adds the
+library to the app's dependencies if it is not there yet. A component in a folder the
+library does not export has no name from outside it (`FUD0787`).
+
 ## Why it exists
 
 The right scaffolding for a `.fud` is not obvious: the top-level order is strict

@@ -32,7 +32,7 @@ import {
   type Diagnostic,
   type FullDocumentDiagnosticReport,
 } from 'vscode-languageserver-protocol/node';
-import { toPosix } from '../../src/paths.js';
+import { toPosix } from '@fudic/typecheck';
 import { startHarness, type Harness } from './_harness.js';
 
 /** The library's component: one REQUIRED prop, typed, so a wrong value is observable. */

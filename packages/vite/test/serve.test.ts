@@ -28,6 +28,7 @@ const build = (pattern: string, params: string[] = [], mode = 'ssg'): RouteBuild
       hasPaths: false,
       hasLayout: false,
       strategy: NO_STRATEGY,
+      diagnostics: [],
     },
     decision: { mode, prerender: mode === 'ssg', enumerate: false, prerenderedHtml: mode === 'ssg' },
   }) as RouteBuild;

@@ -7,7 +7,7 @@
  */
 
 import { URI } from 'vscode-uri';
-import { toPosix } from './paths.js';
+import { toPosix } from '@fudic/typecheck';
 
 /** The path a document URI points at, POSIX-shaped. */
 export function uriToPath(uri: URI): string {

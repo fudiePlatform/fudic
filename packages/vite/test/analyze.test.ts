@@ -47,6 +47,7 @@ describe('analyzePage — page vs component', () => {
       hasPaths: false,
       hasLayout: false,
       strategy: NO_STRATEGY,
+      diagnostics: [],
     });
   });
 
@@ -58,6 +59,7 @@ describe('analyzePage — page vs component', () => {
       hasPaths: false,
       hasLayout: false,
       strategy: NO_STRATEGY,
+      diagnostics: [],
     });
   });
 });
@@ -108,5 +110,31 @@ describe('analyzePage — @server hooks', () => {
   it('a route with no layout resolver says so', () => {
     const src = page(serverBlock('export function load(ctx) { return {}; }'));
     expect(analyzePage(src).hasLayout).toBe(false);
+  });
+});
+
+describe('analyzePage — what the parse said (SDD-35 §1.1)', () => {
+  it('a route whose markup is broken is analysed all the same, and says why', () => {
+    const src = page('<p>hi</q></p>');
+    const analysis = analyzePage(src);
+    expect(analysis.isPage).toBe(true);
+    expect(analysis.diagnostics).toEqual([expect.objectContaining({ code: 'FUD0051', severity: 'error' })]);
+    const [d] = analysis.diagnostics;
+    expect(src.slice(d!.span.start, d!.span.end)).toBe('</q>');
+  });
+
+  it('a `@server` that does not parse says so, over the file’s own offsets', () => {
+    const src = page(serverBlock('export function load( { return 1; }'));
+    const [d, ...rest] = analyzePage(src).diagnostics;
+    expect(rest).toEqual([]);
+    expect(d).toMatchObject({ code: 'FUD0170', severity: 'error' });
+    expect(src.slice(d!.span.start)).toMatch(/^1; \}/u);
+  });
+
+  it('a component that does not parse says so too', () => {
+    const component = '<app-badge><template shadowrootmode="open"><p>x</q></p></template></app-badge>\n';
+    const analysis = analyzePage(component);
+    expect(analysis.role).toBe('component');
+    expect(analysis.diagnostics.map((d) => d.code)).toEqual(['FUD0051']);
   });
 });

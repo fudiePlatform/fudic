@@ -364,9 +364,8 @@ export function transformFud(
     // module still gets written — degraded — and the build only trips later, in the
     // prerender, on an identifier the emit never declared.
     //
-    // Plus the component contract (BUG-23 §4.4): a required prop nobody passed, a `.prop` the
-    // child does not declare, a `slot=` the parent does not. Only a caller that RESOLVED the
-    // graph can ask those, which is why they are the build's to report and not the parser's.
+    // Plus the rules only a caller that RESOLVED the graph can ask (`contractDiagnostics`):
+    // the form of every crossing, a `<script>` body, a component link nobody uses.
     // And the injection contract (SDD-38 §6.21): an `inject` of a class no module enrols and
     // no component owns. It is the build's for the same reason, plus one of its own — it
     // READS the neighbouring module, which only whoever holds the I/O can do.
@@ -431,8 +430,9 @@ export function transformFudClient(
     missingAssets: out.missingAssets,
     // The emit's own: a `@code` whose JS does not parse (BUG-13 §5.3). Without them the
     // module still gets written — degraded — and the build only trips later, in the
-    // prerender, on an identifier the emit never declared.
-    diagnostics: [...resolved.diagnostics, ...out.diagnostics],
+    // prerender, on an identifier the emit never declared. Remapped like the module's, so
+    // the build reports them at a place in a file the author can open (SDD-35 §4.4).
+    diagnostics: remapDiagnostics([...resolved.diagnostics, ...out.diagnostics], graph.entryMap, id),
   };
 }
 
@@ -455,7 +455,7 @@ function routeClientResult(
     code: out.code,
     map: buildMap(id, redactServerRegions(graph.entryOrigin.source, graph.entryOrigin.document.code), out, graph.entryMap),
     missingAssets: out.missingAssets,
-    diagnostics: [...graphDiagnostics, ...out.diagnostics],
+    diagnostics: remapDiagnostics([...graphDiagnostics, ...out.diagnostics], graph.entryMap, id),
   };
 }
 

@@ -10,7 +10,7 @@
  */
 
 import type { CachedDocument } from '../document-cache.js';
-import { layoutHrefOf } from '../mode.js';
+import { layoutHrefOf } from '@fudic/typecheck';
 import type { WorkspaceIndex } from '../workspace-index.js';
 
 /**

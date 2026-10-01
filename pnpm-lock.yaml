@@ -354,6 +354,9 @@ importers:
       '@fudic/resolve':
         specifier: workspace:*
         version: link:../resolve
+      '@fudic/typecheck':
+        specifier: workspace:*
+        version: link:../typecheck
       '@volar/language-core':
         specifier: 2.4.28
         version: 2.4.28
@@ -447,6 +450,40 @@ importers:
 
   packages/tsconfig: {}
 
+  packages/typecheck:
+    dependencies:
+      '@fudic/compiler':
+        specifier: workspace:*
+        version: link:../compiler
+      '@fudic/diagnostics':
+        specifier: workspace:*
+        version: link:../diagnostics
+      '@fudic/language-core':
+        specifier: workspace:*
+        version: link:../language-core
+      '@fudic/resolve':
+        specifier: workspace:*
+        version: link:../resolve
+      '@volar/language-core':
+        specifier: 2.4.28
+        version: 2.4.28
+      '@volar/typescript':
+        specifier: 2.4.28
+        version: 2.4.28
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+    devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/node':
+        specifier: 22.20.0
+        version: 22.20.0
+      '@volar/language-server':
+        specifier: 2.4.28
+        version: 2.4.28
+
   packages/vite:
     dependencies:
       '@fudic/compiler':
@@ -470,6 +507,9 @@ importers:
       '@fudic/transport':
         specifier: workspace:*
         version: link:../transport
+      '@fudic/typecheck':
+        specifier: workspace:*
+        version: link:../typecheck
     devDependencies:
       '@fudic/tsconfig':
         specifier: workspace:*

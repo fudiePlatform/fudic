@@ -11,8 +11,24 @@
  * the drain are testable without a dev server.
  */
 
+import { resolveDocument, type ResolveIo } from '@fudic/compiler';
 import { type RenderContext } from '@fudic/transport';
 import { type RouteBuild } from './discover.js';
+
+/**
+ * Every `.fud` a route's page is made of: the route, its layout, every component either of
+ * them reaches, and every snippet file (SDD-35 §4.5). The dev server refuses to render the page
+ * while one of them has an error — the graph the build compiles, read by the same resolver.
+ */
+export function documentFiles(entry: string, io: ResolveIo): readonly string[] {
+  const graph = resolveDocument(entry, io).value;
+  return [
+    graph.entryPath,
+    ...graph.layouts.map((layout) => layout.path),
+    ...[...graph.components.values()].map((component) => component.path),
+    ...graph.snippetFiles,
+  ];
+}
 
 /** The route wrapper module: the render fn, and `data` when the page has `load`. */
 export interface RenderModule {

@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fudic } from '../src/index.js';
-import { runtimeAlias } from './helpers/alias.js';
+import { runtimeAlias, writeTypecheckConfig } from './helpers/alias.js';
 import { allCode } from './helpers/output.js';
 import { BUILD_TOKEN } from '../src/constants.js';
 import { renderUrlOf, emitted, routeTable } from './helpers/manifest.js';
@@ -29,6 +29,7 @@ let output: OutFile[];
 
 beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-vite-'));
+  writeTypecheckConfig(root);
   const routes = join(root, 'src', 'routes');
   mkdirSync(routes, { recursive: true });
   for (const f of [
@@ -44,7 +45,7 @@ beforeAll(async () => {
   }
   // home's `@server load` imports its data source `./db`; stub it so the ?server module
   // resolves (home stays incremental — hasLoad ⇒ dynamic:true — so it is not prerendered).
-  writeFileSync(join(routes, 'db.ts'), 'export const db = { query: async () => [] };\n');
+  writeFileSync(join(routes, 'db.ts'), 'export const db = { query: async (_sql: string) => [] };\n');
   // With a `sw.json` the build also emits the Service Worker and the linkable chunks.
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: ['/style.css'] }));
   writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));

@@ -20,7 +20,7 @@ import { RequestStats } from '../../src/stats.js';
 import { createFudicService, createFudicTagService } from '../../src/services/plugin.js';
 import { filterTypeScriptCompletions } from '../../src/services/ts-completion.js';
 import { formAttributeOffers, summaryNodesOf } from '../../src/services/forms.js';
-import { CLIENT_CODE_ID } from '../../src/virtual-code.js';
+import { CLIENT_CODE_ID } from '@fudic/typecheck';
 import { WorkspaceIndex } from '../../src/workspace-index.js';
 import { fakeServiceContext, TOKEN } from '../_lsp.js';
 import { component, LAYOUT, memoryFs, projectionService } from '../_support.js';

@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { regionAt, type Attribute } from '@fudic/compiler';
-import { parseFud } from '../../src/parse.js';
+import { parseFud } from '@fudic/typecheck';
 import {
   attributeGapContextAt,
   attributeOf,

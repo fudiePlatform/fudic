@@ -1,0 +1,61 @@
+{
+  "name": "@fudic/typecheck",
+  "version": "0.0.1",
+  "description": "The one machine that typechecks .fud files: the projection, the Volar language plugin and the fudic rules, shared by the editor and the build.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Pedro Hurtado",
+  "homepage": "https://github.com/fudiePlatform/fudic/tree/main/packages/typecheck#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fudiePlatform/fudic.git",
+    "directory": "packages/typecheck"
+  },
+  "bugs": {
+    "url": "https://github.com/fudiePlatform/fudic/issues"
+  },
+  "keywords": [
+    "fudic",
+    "fudie",
+    "declarative-shadow-dom",
+    "typescript",
+    "volar"
+  ],
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@fudic/compiler": "workspace:*",
+    "@fudic/diagnostics": "workspace:*",
+    "@fudic/language-core": "workspace:*",
+    "@fudic/resolve": "workspace:*",
+    "@volar/language-core": "2.4.28",
+    "@volar/typescript": "2.4.28",
+    "typescript": "5.9.3"
+  },
+  "devDependencies": {
+    "@fudic/tsconfig": "workspace:*",
+    "@types/node": "22.20.0",
+    "@volar/language-server": "2.4.28"
+  }
+}

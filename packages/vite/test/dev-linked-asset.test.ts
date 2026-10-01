@@ -80,6 +80,8 @@ async function sheetUrl(): Promise<string> {
 }
 
 describe('vite dev — a linked stylesheet', () => {
+  // The first page of a dev server waits for the project's first typecheck (SDD-35 §4.5),
+  // which under a full parallel run is more than the default five seconds.
   it('names it exactly as the build would: the hash is the bytes, not the bundle', async () => {
     // The pruned copy (SDD-49 §4.10): the same name by the hash of the pruned bytes, under
     // `/@fudic/sheet/` instead of `/assets/` — dev serves it from memory.
@@ -88,7 +90,7 @@ describe('vite dev — a linked stylesheet', () => {
     expect(url).toBe(
       new LinkedAssets('/', '', DEV_SHEET_DIR).sheet(sheetPath, compactProjectCss(TOKENS)),
     );
-  });
+  }, 60_000);
 
   it('serves it, with its content type and the bytes the build publishes', async () => {
     const res = await fetch(`${origin}${await sheetUrl()}`);

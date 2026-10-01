@@ -55,6 +55,7 @@
     "@fudic/formatter": "workspace:*",
     "@fudic/language-core": "workspace:*",
     "@fudic/resolve": "workspace:*",
+    "@fudic/typecheck": "workspace:*",
     "@volar/language-core": "2.4.28",
     "@volar/language-server": "2.4.28",
     "@volar/language-service": "2.4.28",

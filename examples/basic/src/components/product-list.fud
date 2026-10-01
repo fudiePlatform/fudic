@@ -5,7 +5,7 @@
   @client {
     import { emit } from "@fudic/dom";
 
-    function add(precio) {
+    function add(precio: number) {
       emit("carrito", precio);
     }
   }

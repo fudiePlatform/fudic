@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { build } from 'vite';
+import { build, createLogger } from 'vite';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -38,6 +38,17 @@ const GOOD = `<link rel="layout" href="../layouts/_layout.fud">
 <s-hero></s-hero>
 `;
 
+/**
+ * Every error the build printed. Since SDD-35 the typecheck runs first and says FUD0438 — the
+ * editor's own rule — in the terminal, one block per problem; what the build then throws is
+ * the one line it fails with, the count.
+ */
+const printed: string[] = [];
+const logger = createLogger('silent');
+logger.error = (message) => {
+  printed.push(message);
+};
+
 async function buildRoute(route: string): Promise<{ readonly html: string }> {
   const root = mkdtempSync(join(tmpdir(), 'fudic-nested-link-'));
   for (const dir of ['routes', 'layouts', 'components']) {
@@ -51,6 +62,7 @@ async function buildRoute(route: string): Promise<{ readonly html: string }> {
   const result = (await build({
     root,
     logLevel: 'silent',
+    customLogger: logger,
     resolve: { alias: { ...runtimeAlias } },
     plugins: [fudic()],
     build: { write: false, minify: false },
@@ -61,7 +73,9 @@ async function buildRoute(route: string): Promise<{ readonly html: string }> {
 
 describe('vite build — a framework link below the top level', () => {
   it('stops the build, naming the code', async () => {
-    await expect(buildRoute(BAD)).rejects.toThrow(/FUD0438/u);
+    printed.length = 0;
+    await expect(buildRoute(BAD)).rejects.toThrow(/the typecheck failed/u);
+    expect(printed.some((text) => /^src\/routes\/index\.fud:2:7 - error FUD0438: /u.test(text))).toBe(true);
   }, 120000);
 
   it('builds the same route with the link at the top level, and renders the component', async () => {

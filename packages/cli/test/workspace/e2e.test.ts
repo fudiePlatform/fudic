@@ -26,7 +26,7 @@
 
 import { describe, expect, it, beforeAll } from 'vitest';
 import { build } from 'vite';
-import { mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -48,6 +48,8 @@ describe('a generated workspace builds (criterion 13)', () => {
   let output: { fileName: string; code?: string; source?: string }[];
   let ws: string;
   let appPkg: Record<string, unknown>;
+  let webPkg: Record<string, unknown>;
+  let routeSource: string;
 
   beforeAll(async () => {
     const tmp = mkdtempSync(join(tmpdir(), 'fudic-ws-'));
@@ -117,9 +119,19 @@ describe('a generated workspace builds (criterion 13)', () => {
     const route = join(ws, 'apps/web/src/routes/index.fud');
     const source = io.read(route);
     expect(source, 'the link across the package boundary').toContain('rel="component"');
+    // By the library's NAME, never a path that climbs out of the app (SDD-35): the editor and
+    // the build index the app and the libraries it depends on, and nothing else.
+    expect(source).toContain('href="@mi-tienda/ui/ui-card.fud"');
+    routeSource = source;
     write.write(route, `${source}<ui-card>from the library</ui-card>\n`);
 
     appPkg = JSON.parse(io.read(join(ws, 'apps/back/package.json'))) as Record<string, unknown>;
+    webPkg = JSON.parse(io.read(join(ws, 'apps/web/package.json'))) as Record<string, unknown>;
+
+    // What `pnpm install` does for a `workspace:*` dependency: a link from the app's
+    // `node_modules` to the library. A junction, so it needs no privilege on Windows.
+    mkdirSync(join(ws, 'apps/web/node_modules/@mi-tienda'), { recursive: true });
+    symlinkSync(join(ws, 'libs/ui'), join(ws, 'apps/web/node_modules/@mi-tienda/ui'), 'junction');
 
     const result = (await build({
       root: join(ws, 'apps/web'),
@@ -156,5 +168,10 @@ describe('a generated workspace builds (criterion 13)', () => {
 
   it('wrote the dependency as workspace:*, and no link for it', () => {
     expect(appPkg['dependencies']).toMatchObject({ '@mi-tienda/ui': 'workspace:*' });
+  });
+
+  it('--in across packages links by name and declares the library in the app', () => {
+    expect(routeSource).toContain('<link rel="component" href="@mi-tienda/ui/ui-card.fud">');
+    expect(webPkg['dependencies']).toMatchObject({ '@mi-tienda/ui': 'workspace:*' });
   });
 });

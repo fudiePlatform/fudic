@@ -56,6 +56,7 @@ function routeBuild(pattern: string, file: string, decision: ModeDecision): Rout
       hasPaths: false,
       hasLayout: false,
       strategy: NO_STRATEGY,
+      diagnostics: [],
     },
     decision,
   };

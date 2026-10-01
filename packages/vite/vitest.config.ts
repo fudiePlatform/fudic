@@ -22,6 +22,11 @@ export default defineConfig({
         // compiler range a library declares. Same rule, same floor, from their first commit.
         'src/link-check.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/peer-check.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // SDD-35: born at 100. How the build tells a diagnostic, how it says a typecheck, and
+        // the live check of `vite dev`.
+        'src/report.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/typecheck.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/dev-typecheck.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
       },
     },
   },

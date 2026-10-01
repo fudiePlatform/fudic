@@ -55,9 +55,11 @@ describe('transformFud', () => {
     expect(result.map.mappings.length).toBeGreaterThan(0); // Base64 VLQ segments present
   });
 
-  // BUG-23 §4.4, criteria 17–19. Only a caller that resolved the graph can see these, which
-  // is why the transform is where they surface: the parser has one file, this has the child.
-  describe('the component contract (FUD0197–FUD0199)', () => {
+  // BUG-23 §4.4, criteria 17–19, retired by SDD-35 §4.7: the build typechecks now, and
+  // TypeScript says each of these with more to say (TS2741, TS2561, …). Saying them here too
+  // would be the same error twice, so the transform says nothing about the contract — and
+  // `build-typecheck.test.ts` is where the build is seen failing on it.
+  describe('the component contract (FUD0197–FUD0199, retired)', () => {
     /** A page linking one `app-circle`, written to a temp dir and transformed. */
     function contractOf(body: string, circle: string): readonly string[] {
       const root = mkdtempSync(join(tmpdir(), 'fudic-contract-'));
@@ -73,12 +75,10 @@ describe('transformFud', () => {
       '@code {\n  const { name } = props<{ name: string }>();\n}\n' +
       '<app-circle>\n  <template shadowrootmode="open"><b>@name</b><slot name="PEPITO"></slot></template>\n</app-circle>\n';
 
-    it('reports the required prop, the unknown prop and the unknown slot', () => {
-      expect(contractOf('<app-circle></app-circle>', CIRCLE)).toEqual(['FUD0197']);
-      expect(contractOf('<app-circle .name="a" .x="1"></app-circle>', CIRCLE)).toEqual(['FUD0198']);
-      expect(contractOf('<app-circle .name="a"><i slot="no"></i></app-circle>', CIRCLE)).toEqual([
-        'FUD0199',
-      ]);
+    it('no longer reports the required prop, the unknown prop or the unknown slot', () => {
+      expect(contractOf('<app-circle></app-circle>', CIRCLE)).toEqual([]);
+      expect(contractOf('<app-circle .name="a" .x="1"></app-circle>', CIRCLE)).toEqual([]);
+      expect(contractOf('<app-circle .name="a"><i slot="no"></i></app-circle>', CIRCLE)).toEqual([]);
     });
 
     it('says nothing when the host honours the contract', () => {

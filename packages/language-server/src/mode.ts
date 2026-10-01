@@ -6,6 +6,9 @@
  * a convention of the CLI, not a rule of the language.
  *
  * Pure — the disk enters in the workspace index, which is the only module that reads it.
+ *
+ * The three facts the typecheck needs too — the tag, the layout `href`, the holes — live in
+ * `@fudic/typecheck`; what is here is what only the editor asks.
  */
 
 import {
@@ -15,7 +18,6 @@ import {
   type CodeBlockNode,
   type ComponentDocument,
   type LayoutDocument,
-  type LayoutHoles,
   type StructuredDocument,
 } from '@fudic/compiler';
 
@@ -51,17 +53,6 @@ export function isUndecided(document: StructuredDocument): boolean {
 }
 
 /**
- * The tag a file defines, or `''` when it defines none.
- *
- * Only a component owns a tag: its markup IS its own tag wrapping the shadow template
- * (decision 75). A page, a route and a layout are reached by URL or by `<link>`, never by
- * being written as an element.
- */
-export function tagOf(document: StructuredDocument): string {
-  return document.type === 'component-document' ? document.name : '';
-}
-
-/**
  * The sections a layout declares with `@RenderSection`, in source order.
  *
  * Only a layout declares any: a route FILLS sections, it does not declare them. A directive
@@ -85,15 +76,6 @@ export function snippetsOf(source: string, document: StructuredDocument): readon
   return document.snippets
     .filter((s) => s.name !== '')
     .map((s) => ({ name: s.name, signature: source.slice(s.signatureSpan.start, s.signatureSpan.end) }));
-}
-
-/** A layout's holes (SDD-48); no hole at all for anything that is not a layout. */
-export function holesOf(document: StructuredDocument): LayoutHoles {
-  if (document.type !== 'layout-document') return { renderSections: [] };
-  return {
-    renderSections: document.renderSections,
-    ...(document.renderBody !== undefined ? { renderBody: document.renderBody } : {}),
-  };
 }
 
 /** One prop of a component, as a consumer of that component sees it. */
@@ -319,14 +301,4 @@ function componentDoc(source: string, code: CodeBlockNode): string | undefined {
     if (doc !== undefined) return doc;
   }
   return undefined;
-}
-
-/**
- * The `href` of this ROUTE's `<link rel="layout">`, or `''` when there is none to have.
- *
- * Only a route declares one (decision 81, `FUD0439`); the empty string is also what the
- * parser leaves behind when the `href` is absent or interpolated (FUD0436).
- */
-export function layoutHrefOf(document: StructuredDocument): string {
-  return document.type === 'route-document' ? document.layoutHref : '';
 }

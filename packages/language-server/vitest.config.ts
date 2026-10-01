@@ -27,6 +27,7 @@ export default defineConfig({
       '@fudic/language-core': fileURLToPath(
         new URL('../language-core/src/index.ts', import.meta.url),
       ),
+      '@fudic/typecheck': fileURLToPath(new URL('../typecheck/src/index.ts', import.meta.url)),
     },
   },
 });

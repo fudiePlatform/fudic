@@ -17,7 +17,7 @@ import {
   SERVER_CODE_ID,
   snapshotOf,
   styleCodeId,
-} from '../src/virtual-code.js';
+} from '@fudic/typecheck';
 import { component, LAYOUT, memoryFs, route } from './_support.js';
 
 const BADGE_PATH = '/p/components/app-badge.fud';

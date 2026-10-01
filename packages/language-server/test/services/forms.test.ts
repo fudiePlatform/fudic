@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest';
 import ts from 'typescript';
 import { clientFileName } from '@fudic/language-core';
 import { DocumentCache } from '../../src/document-cache.js';
-import { parseFud } from '../../src/parse.js';
+import { parseFud } from '@fudic/typecheck';
 import {
   accepts,
   bindsControl,

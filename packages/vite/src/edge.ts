@@ -29,6 +29,7 @@ import { loadWithSourceMap } from './inputmaps.js';
 import { routeNameLookup, routeUsesDi } from './client.js';
 import { emitServerModule } from './server.js';
 import { transformFud, NO_STYLES, type ProjectStyles } from './transform.js';
+import type { BuildReporter } from './report.js';
 import { safeName } from './link.js';
 import { EDGE_PREFIX } from './constants.js';
 import { serializeMap, type NestedArtifact, type NestedOutputOptions } from './nested.js';
@@ -68,6 +69,8 @@ export function edgePlugin(
   styles: ProjectStyles = NO_STYLES,
   assets?: LinkedAssets,
   runtimeFor: (pattern: string) => RuntimeEntries = () => runtimeUrls(base, ''),
+  /** The host's reporter: what this pass compiles again is not said twice (SDD-35 §4.4). */
+  reporter?: BuildReporter,
 ): Plugin {
   // Resolved once for the pass: the render module of a route publishes its name (SDD-39
   // §4.7), and this pass renders the very pages the prerender writes.
@@ -113,6 +116,8 @@ export function edgePlugin(
       const result = transformFud(path, io, routeNameOf(path), styles, assets);
       /* v8 ignore next -- `transformFud` returns null only for a non-`.fud` id, and that was checked above. */
       if (result === null) return null;
+      // What the emit had to say about the file, which this pass used to drop (SDD-35 §1.1).
+      reporter?.report(this, result.diagnostics, path);
       // Since SDD-34 the neutral zone of `@code` reaches this module verbatim, so it is
       // TypeScript whenever the author wrote it — same strip as the host plugin does.
       // `inMap`, for the same reason as the host plugin and the link pass: Oxc composes
@@ -152,6 +157,8 @@ export async function runEdgePass(
    * for why it is passed in rather than computed.
    */
   runtimeFor: (pattern: string) => RuntimeEntries = () => runtimeUrls(base, ''),
+  /** Where this pass reports what it compiles; the host's, so nothing is said twice. */
+  reporter?: BuildReporter,
 ): Promise<EdgeResult> {
   const routes = builds.filter((rb) => rb.decision.mode !== 'excluded');
   if (routes.length === 0) {
@@ -168,7 +175,7 @@ export async function runEdgePass(
     root,
     base,
     logLevel: 'error',
-    plugins: [edgePlugin(routes, io, base, styles, assets, runtimeFor)],
+    plugins: [edgePlugin(routes, io, base, styles, assets, runtimeFor, reporter)],
     // Forwarded verbatim, for the same reason as the Service Worker's build: this one runs
     // with `configFile: false`, so a project that resolves `@fudic/*` through aliases —
     // every project the CLI scaffolds — would not resolve them here.

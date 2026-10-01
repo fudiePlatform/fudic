@@ -8,7 +8,7 @@
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { GLOBALS_DTS } from '@fudic/language-core';
-import { resolveFrom, toPosix } from '../src/paths.js';
+import { resolveFrom, toPosix } from '@fudic/typecheck';
 import type { FileSystemScanner } from '../src/types.js';
 
 /** Absolute POSIX path of the fixture workspace. */

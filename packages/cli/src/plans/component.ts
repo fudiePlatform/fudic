@@ -14,13 +14,14 @@
 
 import { tagOf } from '@fudic/config';
 import { FUD0444, FUD0445 } from '@fudic/diagnostics';
-import { absolute, hrefBetween, joinPosix, toPosix } from '../paths.js';
+import { absolute, joinPosix, toPosix } from '../paths.js';
 import { hasErrors, parseFud } from '../parse.js';
 import { existingTags, libraryTags, targetChange } from '../project.js';
 import { resolveTarget } from '../workspace/target.js';
 import { codeBlock, renderTemplate, styleBlock } from '../templates.js';
 import { validateTag } from '../tag.js';
 import { wireComponentLink } from '../wire.js';
+import { componentLink } from '../workspace/link.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
 import type { CliError, ComponentOptions, FileChange, Plan, PlanDiagnostic } from '../types.js';
 
@@ -100,7 +101,16 @@ function wire(
     return;
   }
 
-  const next = wireComponentLink(source, parsed.doc, hrefBetween(into, componentFile));
+  // A path inside one package, the library's name across two (SDD-35): see `workspace/link.ts`.
+  const link = componentLink(into, componentFile, opts.cwd, io);
+  if ('error' in link) {
+    errors.push(link.error);
+    return;
+  }
+  const next = wireComponentLink(source, parsed.doc, link.href);
   if (next === null) return; // already linked: idempotent, not a modification
   changes.push({ kind: 'modify', path: into, contents: next, before: source });
+  if (link.dependency !== undefined && !changes.some((change) => change.path === link.dependency!.path)) {
+    changes.push(link.dependency);
+  }
 }

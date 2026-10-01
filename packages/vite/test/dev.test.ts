@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { type AddressInfo } from 'node:net';
 import { fudic } from '../src/index.js';
-import { runtimeAlias } from './helpers/alias.js';
+import { runtimeAlias, writeTypecheckConfig } from './helpers/alias.js';
 
 
 const PAGE = `<!DOCTYPE html>
@@ -44,6 +44,7 @@ let origin: string;
 
 beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-dev-'));
+  writeTypecheckConfig(root);
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
   mkdirSync(join(root, 'src', 'components'), { recursive: true });
   writeFileSync(join(root, 'src', 'routes', 'about.fud'), PAGE);

@@ -13,7 +13,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fudic } from '../src/index.js';
-import { runtimeAlias } from './helpers/alias.js';
+import { runtimeAlias, writeTypecheckConfig } from './helpers/alias.js';
 
 /** A parameterised route with a client half: one chunk, many URLs. */
 const BLOG = `<!DOCTYPE html>
@@ -70,6 +70,7 @@ function blockOf(html: string, id: string): string | null {
 
 async function buildRoot(): Promise<OutFile[]> {
   const root = mkdtempSync(join(tmpdir(), 'fudic-routechunk-'));
+  writeTypecheckConfig(root);
   mkdirSync(join(root, 'src', 'routes', 'blog'), { recursive: true });
   writeFileSync(join(root, 'src', 'routes', 'blog', '[slug].fud'), BLOG);
   writeFileSync(join(root, 'src', 'routes', 'estatica.fud'), ESTATICA);
@@ -126,6 +127,7 @@ describe('two files that would be written to one name (FUD0622, §3.5)', () => {
     // pattern does not normally produce a valid tag, but «normally» is not a guarantee, and
     // the silent outcome is a page that hydrates as some other file.
     const root = mkdtempSync(join(tmpdir(), 'fudic-routecol-'));
+    writeTypecheckConfig(root);
     mkdirSync(join(root, 'src', 'routes', 'app'), { recursive: true });
     mkdirSync(join(root, 'src', 'components'), { recursive: true });
     writeFileSync(

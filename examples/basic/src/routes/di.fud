@@ -5,11 +5,12 @@
 @code {
   @server {
     import { strategy } from "@fudic/core";
+    import type { DiContext } from "@fudic/ssr";
     import { LINES } from "../services/cart";
 
     strategy({ mode: "ssg" });
 
-    export function load(ctx) {
+    export function load(ctx: DiContext) {
       const lines = ["manzanas", "peras"];
       // The ONLY thing that crosses: a value, under a token. The `Cart` the server builds
       // and the one the browser builds start from this same array, and neither of them

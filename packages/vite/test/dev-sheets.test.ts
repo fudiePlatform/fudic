@@ -96,9 +96,11 @@ async function sheetText(): Promise<string> {
 const NEXT_NAVIGATION = { timeout: 15000, interval: 100 };
 
 describe('vite dev — the pruned sheets of a page (SDD-49 §4.10)', () => {
+  // The first page of a dev server waits for the project's first typecheck (SDD-35 §4.5),
+  // which under a full parallel run is more than the default five seconds.
   it('links the pruned copy under /@fudic/sheet/, not under /assets/', async () => {
     expect(await sheetUrl()).toMatch(/^\/@fudic\/sheet\/main-[\w-]{8}\.css$/u);
-  });
+  }, 60_000);
 
   it('serves that copy: the import flattened in, the rule nobody uses gone', async () => {
     const css = await sheetText();

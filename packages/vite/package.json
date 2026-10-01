@@ -50,7 +50,8 @@
     "@fudic/conventions": "workspace:*",
     "@fudic/resolve": "workspace:*",
     "@fudic/ssr": "workspace:*",
-    "@fudic/transport": "workspace:*"
+    "@fudic/transport": "workspace:*",
+    "@fudic/typecheck": "workspace:*"
   },
   "peerDependencies": {
     "vite": "8.0.16"
