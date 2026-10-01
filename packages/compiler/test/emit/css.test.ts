@@ -187,36 +187,3 @@ describe('BUG-08 §6.4 — the asset linking still reaches into the compacted CS
   });
 });
 
-describe('BUG-08 §6.6 — the source maps do not degrade', () => {
-  /**
-   * There is no emit anchor for a CSS interpolation: `export const css` is one line, and
-   * what resolves a position inside it back to the `.fud` is the `RazorExpression`'s own
-   * span in the AST. That is exactly why §4.1 emits those parts VERBATIM — compacting
-   * them, or emitting anything but their source bytes, would leave every span in the
-   * `<style>` pointing at text that is no longer there.
-   */
-  const io = memoryIo({
-    '/home.fud':
-      '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
-    '/m.fud':
-      '@code {\n  const { size = 1 } = props<{ size?: number }>();\n}\n\n' +
-      '<head>\n  <style>\n    .badge { padding: @(size)rem; }\n  </style>\n</head>\n\n' +
-      '<m-el>\n  <template shadowrootmode="open"><span class="badge"></span></template>\n</m-el>\n',
-  });
-  const g = resolveComponents('/home.fud', io);
-  const comp = g.components.get('m-el')!;
-  const style = comp.doc.head!.children.find(
-    (c): c is ElementNode => c.type === 'element' && c.name === 'style',
-  )!.children[0]!;
-  const css = emittedCss(emitComponentModule(g, comp));
-
-  it('every interpolation of the <style> still resolves to its offset in the .fud', () => {
-    const exprs = (style as StyleNode).parts.filter((p) => p.type === 'razor-expression');
-    expect(exprs.length).toBe(1);
-    for (const expr of exprs) {
-      const atSpan = comp.source.slice(expr.span.start, expr.span.end);
-      expect(atSpan).toBe('@(size)'); // the span still covers the expression in the source
-      expect(css).toContain(atSpan); // and those same bytes are what the module ships
-    }
-  });
-});

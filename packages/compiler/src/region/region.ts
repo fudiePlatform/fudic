@@ -243,13 +243,8 @@ function codeRegion(node: CodeBlockNode, offset: number): Region {
   return { kind: 'ts', span: node.span };
 }
 
-/** A `<style>` body: literal CSS with Razor atoms interleaved (SDD-09). */
-function styleRegion(node: StyleNode, offset: number): Region {
-  for (const part of node.parts) {
-    if (part.type === 'razor-expression' && contains(part.span, offset)) {
-      return { kind: 'expression', span: part.span };
-    }
-  }
+/** A `<style>` body: plain CSS, all of it (decision 136). */
+function styleRegion(node: StyleNode): Region {
   return { kind: 'css', span: node.span };
 }
 
@@ -308,7 +303,7 @@ function nodeRegion(source: string, node: HtmlContent, offset: number): Region |
     case 'element':
       return elementRegion(source, node, offset);
     case 'style-content':
-      return styleRegion(node, offset);
+      return styleRegion(node);
     // The `@` itself stays markup, and that is not a detail: a half-written `@fore` parses as
     // an implicit expression, so claiming the boundary would call the very position where a
     // directive is being typed an expression. The `@` is where the construct BEGINS.

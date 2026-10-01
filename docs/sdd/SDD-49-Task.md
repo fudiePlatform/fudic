@@ -3,7 +3,7 @@
 > **SDD:** [SDD-49 — El CSS que cada página usa](./SDD-49-css-por-pagina.md)
 > **Paquetes:** `@fudic/compiler` · `@fudic/vite` · `@fudic/example-basic`
 > **Rama:** `worktree-sdd-49-css-por-pagina`
-> **Progreso:** 24 / 28 — las fases 1–6 están en el código, sin tests. La **segunda redacción**
+> **Progreso:** 25 / 28 — las fases 1–6 están en el código, sin tests. La **segunda redacción**
 > (2026-10-01) añade la fase 7: aplanar `@import`, podar tokens, `url()` en la copia enlazada y
 > los errores de `@import` en hojas adoptadas y **quitar el Razor del CSS** (decisión 136, que
 > revoca la 42; tarea 25). Después, los tests, el OK de Pedro en navegador (tarea 27) y el
@@ -190,6 +190,20 @@ mismo worktree y rama. Los números son los criterios de la spec (§6, segunda r
   es `FUD0132` (error) y ya no hay `FUD0011` ahí: se reescriben con el resto de tests de Razor
   en CSS (tarea 25).
 
+### 8b. Tests borrados por la decisión 136 (tarea 25)
+
+Probaban el Razor dentro de `<style>`, que ya no existe. Se borraron para que compile el
+typecheck; los del criterio 43 los sustituyen:
+
+- `packages/compiler/test/css/css.test.ts`: los bloques §6.3, §6.4, §6.5, §6.6, §6.9 y «Razor
+  comments in CSS», y los dos de §6.7 que interpolaban dentro de un string.
+- `packages/compiler/test/emit/css.test.ts`: «BUG-08 §6.6 — the source maps do not degrade».
+
+Siguen en rojo, y hay que reescribirlos o borrarlos en la tanda de tests: los de `FUD0706` en
+`test/semantic/layout-body.test.ts` y `test/emit/layout-props.test.ts` (código retirado), los
+del formatter que esperan el motivo `placeholder`, y los del language server que prueban
+placeholders o prefijos de clase junto a un `@( … )` en CSS.
+
 ### 9. Cambios hechos durante la revisión, también sin test
 
 - `FUD0132` (`src/css/css.ts`): hoy cubre solo el comentario Razor dentro de `<style>`; la
@@ -270,7 +284,7 @@ nadie lo note.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 25 | — | **Quitar el Razor del CSS** (decisión 136, revoca la 42 y 42.a–c). `parseStyle` da un solo run `css-text`; todo `@` que no abre una at-rule de la lista cerrada (`atrules.ts`, que se queda) ni lleva prefijo de fabricante, fuera de strings y comentarios, es `FUD0132` (error): expresión, constructo, comentario Razor, `@@`, `@` suelto; sin `FUD0011` en `<style>`; el lexer, el formatter y el código virtual CSS del language server sin huecos de Razor; reescribir los tests de Razor en CSS. Criterio 43 | `compiler` · `formatter` · `language-core` · `language-server` | `src/css/css.ts` · `src/css/atrules.ts` · `src/lexer/lexer.ts` · `formatter/src/leaf/css.ts` · `language-core/src/css.ts` · `language-server/src/virtual-code.ts` · `test/css/css.test.ts` |
+| [x] | 25 | — | **Quitar el Razor del CSS** (decisión 136, revoca la 42 y 42.a–c). `parseStyle` da un solo run `css-text`; todo `@` que no abre una at-rule de la lista cerrada (`atrules.ts`, que se queda) ni lleva prefijo de fabricante, fuera de strings y comentarios, es `FUD0132` (error): expresión, constructo, comentario Razor, `@@`, `@` suelto; sin `FUD0011` en `<style>`; el lexer, el formatter y el código virtual CSS del language server sin huecos de Razor; reescribir los tests de Razor en CSS. Criterio 43 | `compiler` · `formatter` · `language-core` · `language-server` | `src/css/css.ts` · `src/css/atrules.ts` · `src/lexer/lexer.ts` · `formatter/src/leaf/css.ts` · `language-core/src/css.ts` · `language-server/src/virtual-code.ts` · `test/css/css.test.ts` |
 
 ## Navegador y cierre (3)
 

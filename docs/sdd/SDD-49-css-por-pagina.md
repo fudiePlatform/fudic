@@ -726,7 +726,8 @@ en el navegador que su `@(x)` no hace nada.
 - **La lista cerrada sigue siendo estricta** (como decía la 42.b): una at-rule nueva que no está
   en la lista es `FUD0132` hasta que se añade al compilador.
 - **Lo que deja de tener objeto se retira:** el caso de `FUD0011` dentro de `<style>` (un
-  comentario Razor sin cerrar es ahora solo `FUD0132`); en el lexer, en el formatter y en el
+  comentario Razor sin cerrar es ahora solo `FUD0132`); `FUD0706` (un `@` en el `<style>` de
+  un layout, BUG-44), que `FUD0132` cubre para todo `<style>`; en el lexer, en el formatter y en el
   language server, los huecos de Razor dentro del CSS, de modo que el código virtual CSS es el
   texto del `<style>` tal cual, y los `FUD0132` los publica el diagnóstico de fudic.
 - **Sin migración.** Ningún `.fud` de `packages/compiler/fixtures` ni de `examples/basic` usa

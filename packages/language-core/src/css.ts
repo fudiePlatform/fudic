@@ -1,13 +1,10 @@
 /**
  * The CSS virtual files: one per `<style>` (SDD-23 §4.5).
  *
- * The CSS service needs valid CSS, and a `<style>` body is not — it holds Razor. Each Razor
- * region is therefore replaced by a placeholder of **exactly the same length**, which makes
- * the mapping the identity: every offset of the virtual is the same offset in the `.fud`,
- * so no mapping table is needed for the CSS side at all. That is the whole trick, and it is
- * why length matters here and uniqueness does not — the opposite of the formatter (SDD-26
- * §4.3), where the text moves and the placeholder must be findable again. Confusing the two
- * criteria breaks one of the two consumers.
+ * Since decision 136 (SDD-49) a `<style>` body is plain CSS, so the virtual is the body
+ * itself, at the same offsets: the mapping is the identity, and the CSS service reports on
+ * the user's own positions. A `@` written there that is not CSS is `FUD0132`, which fudic's
+ * own diagnostics publish.
  */
 
 import type {
@@ -22,10 +19,8 @@ import type { VirtualFile } from './types.js';
 import { VirtualWriter } from './writer.js';
 
 /**
- * Emit one CSS virtual per `<style>` of the document.
- *
- * The whole body is copied verbatim except the Razor regions, so the mapping is a single
- * identity stretch and the CSS service reports on the user's own offsets.
+ * Emit one CSS virtual per `<style>` of the document: the body copied verbatim, so the
+ * mapping is a single identity stretch.
  */
 export function emitCssVirtuals(source: string, fudPath: string, doc: StructuredDocument): readonly VirtualFile[] {
   return collectStyles(doc).map((style, index) => {
@@ -37,25 +32,10 @@ export function emitCssVirtuals(source: string, fudPath: string, doc: Structured
     // the length of the markup above it.
     w.scaffold(blankOut(source.slice(0, style.span.start)));
 
-    for (const part of style.parts) {
-      if (part.type === 'css-text') w.copy(part.span);
-      else w.scaffold(placeholder(part.span.end - part.span.start), part.span);
-    }
+    for (const part of style.parts) w.copy(part.span);
 
     return w.build(styleFileName(fudPath, index), 'css');
   });
-}
-
-/**
- * Filler of the same length as the region it replaces.
- *
- * An identifier, because that is what a Razor region in CSS almost always stands for — a
- * value (`color: @theme.fg`, `min-width: @bp.tablet`). It cannot be lexically right in
- * every grammatical position at once; where it is not, the resulting complaint is the
- * server's to suppress (SDD-24 §4.4), not the emitter's to guess at.
- */
-function placeholder(length: number): string {
-  return 'z'.repeat(length);
 }
 
 /** Same length, same lines: every character but a newline becomes a space. */

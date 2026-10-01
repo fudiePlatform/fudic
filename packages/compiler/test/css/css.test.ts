@@ -1,5 +1,7 @@
 /**
- * SDD-09 acceptance criteria (§6) for CSS with Razor inside `<style>`.
+ * SDD-09 acceptance criteria (§6) for the `<style>` body. Decision 136 (SDD-49) made it plain
+ * CSS: the criteria about Razor inside it are gone with it, and its own (criterion 43 of
+ * SDD-49) are still to be written.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -8,7 +10,6 @@ import {
   atRuleNameEnd,
   isCssAtRule,
   parseStyle,
-  type CssPart,
   type StyleNode,
 } from '../../src/css/index.js';
 import { span, type Diagnostic } from '../../src/types/index.js';
@@ -28,12 +29,6 @@ function shape(source: string): readonly (readonly [string, string])[] {
 
 function codes(source: string): readonly string[] {
   return parse(source).diagnostics.map((d) => d.code);
-}
-
-/** The JS text of a razor-expression part. */
-function exprText(source: string, part: CssPart): string {
-  if (part.type !== 'razor-expression') throw new Error(`not an expression: ${part.type}`);
-  return source.slice(part.expr.start, part.expr.end);
 }
 
 /** §5: parts tile the body with no gaps and no overlaps. */
@@ -106,141 +101,7 @@ describe('§6.2 static CSS (fixture app-card)', () => {
   });
 });
 
-describe('§6.3 at-rule prelude and body interpolation (42.a, 42.d)', () => {
-  const source = '@media (min-width: @bp.tablet) { .card { gap: @gap; } }';
-
-  it('splits into literal runs and Razor atoms in source order', () => {
-    expect(shape(source)).toEqual([
-      ['css-text', '@media (min-width: '],
-      ['razor-expression', '@bp.tablet'],
-      ['css-text', ') { .card { gap: '],
-      ['razor-expression', '@gap'],
-      ['css-text', '; } }'],
-    ]);
-  });
-
-  it('keeps the atoms implicit and tiles the body', () => {
-    const { node, diagnostics } = parse(source);
-    expect(diagnostics).toEqual([]);
-    assertTiles(source, node);
-    const atoms = node.parts.filter((p) => p.type === 'razor-expression');
-    expect(atoms.map((a) => exprText(source, a))).toEqual(['bp.tablet', 'gap']);
-    expect(atoms.every((a) => a.type === 'razor-expression' && a.kind === 'implicit')).toBe(true);
-  });
-});
-
-describe('§6.4 whitelist decides literal vs Razor (42.b)', () => {
-  it('absorbs a whitelisted at-rule as literal CSS', () => {
-    const source = '@keyframes spin { to { transform: rotate(360deg); } }';
-    expect(shape(source)).toEqual([['css-text', source]]);
-    expect(codes(source)).toEqual([]);
-  });
-
-  it('treats a non-whitelisted identifier as a Razor expression', () => {
-    expect(shape('color: @bp;')).toEqual([
-      ['css-text', 'color: '],
-      ['razor-expression', '@bp'],
-      ['css-text', ';'],
-    ]);
-  });
-
-  it('reads hyphenated at-rule names in full', () => {
-    expect(shape('@font-face { src: local(x); }')).toEqual([
-      ['css-text', '@font-face { src: local(x); }'],
-    ]);
-    // `@font-palette-values` is whitelisted; `@font-weird` is not, and only the
-    // JS identifier `font` is taken as the expression — the hyphen ends it.
-    expect(shape('@font-weird {}')).toEqual([
-      ['razor-expression', '@font'],
-      ['css-text', '-weird {}'],
-    ]);
-  });
-
-  it('leaves a vendor-prefixed at-rule as plain literal text', () => {
-    const source = '@-webkit-keyframes spin { }';
-    expect(shape(source)).toEqual([['css-text', source]]);
-    expect(codes(source)).toEqual([]);
-  });
-
-  it('leaves `@` followed by whitespace, a symbol or nothing as literal text', () => {
-    expect(shape('a { x: @ y; }')).toEqual([['css-text', 'a { x: @ y; }']]);
-    expect(shape('a { x: @+; }')).toEqual([['css-text', 'a { x: @+; }']]);
-    expect(shape('@')).toEqual([['css-text', '@']]);
-  });
-});
-
-describe('§6.5 the `@@` escape (42.c)', () => {
-  it('produces an AtEscapeNode inside a CSS string', () => {
-    const source = 'a::before { content: "@@"; }';
-    expect(shape(source)).toEqual([
-      ['css-text', 'a::before { content: "'],
-      ['at-escape', '@@'],
-      ['css-text', '"; }'],
-    ]);
-    assertTiles(source, parse(source).node);
-  });
-
-  it('produces an AtEscapeNode in ordinary CSS text', () => {
-    expect(shape('content: "\\00a0"; @@')).toEqual([
-      ['css-text', 'content: "\\00a0"; '],
-      ['at-escape', '@@'],
-    ]);
-  });
-
-  it('does NOT escape inside a CSS comment: §4.1 wins over the criterion example', () => {
-    const source = 'content: "x"; /* @@ */';
-    expect(shape(source)).toEqual([['css-text', source]]);
-  });
-});
-
-describe('§6.6 the explicit form `@( ... )`', () => {
-  it('embeds an explicit expression', () => {
-    const source = 'width: @(base * 2);';
-    const { node, diagnostics } = parse(source);
-    expect(diagnostics).toEqual([]);
-    expect(shape(source)).toEqual([
-      ['css-text', 'width: '],
-      ['razor-expression', '@(base * 2)'],
-      ['css-text', ';'],
-    ]);
-    const atom = node.parts[1];
-    expect(atom !== undefined && exprText(source, atom)).toBe('base * 2');
-    expect(atom?.type === 'razor-expression' ? atom.kind : '').toBe('explicit');
-  });
-
-  it('reports FUD0002 on an unterminated group and still tiles the body', () => {
-    const source = 'width: @(base * 2;';
-    const { node, diagnostics } = parse(source);
-    expect(diagnostics.map((d) => d.code)).toEqual(['FUD0002']);
-    assertTiles(source, node);
-    expect(node.parts.at(-1)?.type).toBe('razor-expression');
-  });
-
-  it('surfaces the balancer regions of the group', () => {
-    const source = "content: @('a}b');";
-    const atom = parse(source).node.parts[1];
-    expect(atom?.type === 'razor-expression' ? atom.regions.map((r) => r.kind) : []).toEqual([
-      'string',
-    ]);
-    // The `}` lives inside the JS string, so it never reaches the brace counter.
-    expect(codes(source)).toEqual([]);
-  });
-
-  it('never lets an unterminated group escape past the end of the body', () => {
-    const source = '<style>a { b: @(c }</style><p>after</p>';
-    const body = span(7, 19);
-    const { value, diagnostics } = parseStyle(source, body);
-    // The `}` is swallowed by the unterminated group, so the block stays open:
-    // both the group and the brace balance report, and neither reaches past 19.
-    expect(diagnostics.map((d) => d.code)).toEqual(['FUD0002', 'FUD0131']);
-    expect(diagnostics.every((d) => d.span.end <= 19)).toBe(true);
-    expect(value.span).toEqual(body);
-    assertTiles(source, value);
-    expect(value.parts.at(-1)?.span.end).toBe(19);
-  });
-});
-
-describe('§6.7 comments are inert, strings interpolate (§4.1, §8)', () => {
+describe('§6.7 comments and strings are inert (§4.1)', () => {
   it('keeps a CSS comment literal, `@` included', () => {
     const source = '/* @media no cuenta */ .a { color: red; }';
     expect(shape(source)).toEqual([['css-text', source]]);
@@ -251,25 +112,6 @@ describe('§6.7 comments are inert, strings interpolate (§4.1, §8)', () => {
     const source = '/* { @if } */';
     expect(shape(source)).toEqual([['css-text', source]]);
     expect(codes(source)).toEqual([]);
-  });
-
-  it('interpolates inside a CSS string (option A)', () => {
-    const source = 'content: "hola @name";';
-    expect(shape(source)).toEqual([
-      ['css-text', 'content: "hola '],
-      ['razor-expression', '@name'],
-      ['css-text', '";'],
-    ]);
-  });
-
-  it('ignores braces inside a string and honours the backslash escape', () => {
-    const source = 'a::after { content: "}{ \\" @x"; }';
-    expect(codes(source)).toEqual([]);
-    expect(shape(source)).toEqual([
-      ['css-text', 'a::after { content: "}{ \\" '],
-      ['razor-expression', '@x'],
-      ['css-text', '"; }'],
-    ]);
   });
 
   it('ends an unterminated string at the line break, not at the end of the body', () => {
@@ -310,64 +152,6 @@ describe('§6.8 brace balance (42.e)', () => {
     const { diagnostics } = parse('@media x { .a { color: red;');
     expect(diagnostics.map((d) => d.code)).toEqual(['FUD0131']);
     expect(diagnostics[0]?.message).toContain('2 block(s)');
-  });
-});
-
-describe('§6.9 Razor control flow is out of v1 (§4.4)', () => {
-  it('rejects `@if` with FUD0130 and degrades to literal text', () => {
-    const source = '@if (x) { color: red; }';
-    const { node, diagnostics } = parse(source);
-    expect(diagnostics.map((d) => d.code)).toEqual(['FUD0130']);
-    expect(diagnostics[0]?.span).toEqual(span(0, 3));
-    // Degraded: the whole body stays literal, and its braces still balance.
-    expect(node.parts.map((p) => p.type)).toEqual(['css-text']);
-    assertTiles(source, node);
-  });
-
-  it('rejects every control keyword, `@code` and `@raw`', () => {
-    for (const keyword of ['if', 'else', 'for', 'foreach', 'while', 'switch', 'code']) {
-      const source = `@${keyword} (x) { }`;
-      expect(codes(source)).toEqual(['FUD0130']);
-    }
-    // `@raw(...)` is a directive, not a control keyword: same verdict (§4.5).
-    const raw = '@raw(x)';
-    expect(codes(raw)).toEqual(['FUD0130']);
-    // Its own parenthesis scan is discarded: no FUD0002 leaks out of a rejected
-    // construct.
-    expect(codes('@raw(x')).toEqual(['FUD0130']);
-    expect(shape('@raw(x')).toEqual([['css-text', '@raw(x']]);
-  });
-
-  it('resumes scanning right after the rejected keyword', () => {
-    const source = '@if @gap';
-    expect(shape(source)).toEqual([
-      ['css-text', '@if '],
-      ['razor-expression', '@gap'],
-    ]);
-  });
-});
-
-describe('Razor comments in CSS (§4.2, decision 37)', () => {
-  it('produces a RazorCommentNode', () => {
-    const source = 'a { @* nota *@ color: red; }';
-    expect(shape(source)).toEqual([
-      ['css-text', 'a { '],
-      ['razor-comment', '@* nota *@'],
-      ['css-text', ' color: red; }'],
-    ]);
-  });
-
-  it('does not count braces inside a Razor comment', () => {
-    expect(codes('@* { *@')).toEqual([]);
-  });
-
-  it('reports FUD0011 when it is never closed', () => {
-    const source = 'a { @* nota';
-    const { node, diagnostics } = parse(source);
-    // The comment runs to the end of the body, so the `{` is unclosed too.
-    expect(diagnostics.map((d) => d.code)).toEqual(['FUD0011', 'FUD0131']);
-    expect(node.parts.at(-1)?.type).toBe('razor-comment');
-    assertTiles(source, node);
   });
 });
 

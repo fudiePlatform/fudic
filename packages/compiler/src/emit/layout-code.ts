@@ -21,7 +21,7 @@ import type { LayoutDocument } from '../document/index.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import { errorDiag, span } from '../types/index.js';
 import { codeOfDocument, type Prop } from './oxc-code.js';
-import { layoutBodyDiagnostics, layoutStyleDiagnostics } from '../semantic/analyzers/layout-body.js';
+import { layoutBodyDiagnostics } from '../semantic/analyzers/layout-body.js';
 
 /** A layout's `@code` contains something that is not its declaration of props. */
 const FUD_LAYOUT_CODE = 'FUD0700';
@@ -124,7 +124,7 @@ export function layoutCodeOf(source: string, doc: LayoutDocument): LayoutCode {
   // `FUD0705` — a `@{ }` in the `<body>` — and `FUD0706`, a binding in any of the layout's
   // `<style>`s. The rules are the semantic pass's; the build reads a layout's diagnostics off
   // its emit, so they are asked here too.
-  diagnostics.push(...layoutBodyDiagnostics(doc.body), ...layoutStyleDiagnostics(doc.html));
+  diagnostics.push(...layoutBodyDiagnostics(doc.body));
   return { props, diagnostics };
 }
 
