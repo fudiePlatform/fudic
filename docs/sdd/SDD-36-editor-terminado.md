@@ -267,4 +267,4 @@ Reservado y vacío. Este SDD repara y describe; no diagnostica.
 - El renombrado cruzando ficheros (IDEA-02 §3): no se toca, ni para medirlo.
 - Acciones que no reparan un diagnóstico (extraer componente, envolver en `@if`).
 - El hover de una prop, un evento o una expresión: ya lo da TypeScript.
-- `fudic check` (SDD-35) y el banco de trabajo (SDD-32).
+- Los tipos en el build (SDD-35) y el banco de trabajo (SDD-32).
