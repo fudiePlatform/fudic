@@ -8,7 +8,7 @@
  *   blog/:slug   → blog/[slug].fud
  */
 
-import { cliError, FUD_USAGE } from './diagnostics.js';
+import { FUD0448 } from '@fudic/diagnostics';
 import type { CliError } from './types.js';
 
 const SEGMENT = /^[a-z0-9][a-z0-9._-]*$/iu;
@@ -29,7 +29,7 @@ export function routeToFile(route: string): RouteFile {
     const param = part.startsWith(':') ? part.slice(1) : /^\[(.+)\]$/u.exec(part)?.[1];
     const name = param ?? part;
     if (!SEGMENT.test(name)) {
-      return { file: '', error: cliError(FUD_USAGE, `invalid route segment "${part}" in "${route}"`) };
+      return { file: '', error: FUD0448({ problem: 'route-segment', part, route }) };
     }
     segments.push(param === undefined ? name : `[${name}]`);
   }

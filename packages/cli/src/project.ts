@@ -4,9 +4,9 @@
  * `ReadIo`; nothing here guesses from a filename.
  */
 
-import { FUD_CONFIG_DUPLICATE_ID, readProjectConfig, type ProjectConfig } from '@fudic/config';
+import { readProjectConfig, type ProjectConfig } from '@fudic/config';
+import { FUD0443, FUD0724 } from '@fudic/diagnostics';
 import { findLibraries, type LibraryFs } from '@fudic/resolve';
-import { cliError, FUD_TARGET_EXISTS } from './diagnostics.js';
 import { absolute, joinPosix, toPosix } from './paths.js';
 import { parseFud } from './parse.js';
 import { SKIPPED, walkFud, type ReadIo } from './io.js';
@@ -78,9 +78,7 @@ export function duplicateIds(projects: readonly WorkspaceProject[]): readonly Cl
   const errors: CliError[] = [];
   for (const [id, dirs] of byId) {
     if (dirs.length > 1) {
-      errors.push(
-        cliError(FUD_CONFIG_DUPLICATE_ID, `the id "${id}" is declared by more than one project: ${dirs.join(', ')}`),
-      );
+      errors.push(FUD0724({ id, dirs }));
     }
   }
   return errors;
@@ -158,7 +156,7 @@ export function targetChange(
   const path = absolute(cwd, file);
   if (!io.exists(path)) return { change: { kind: 'create', path: file, contents } };
   if (!force) {
-    return { error: cliError(FUD_TARGET_EXISTS, `${file} already exists; pass --force to overwrite`, file) };
+    return { error: FUD0443({ file, target: 'file' }) };
   }
   return { change: { kind: 'modify', path: file, contents, before: io.read(path) } };
 }

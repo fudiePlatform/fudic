@@ -25,7 +25,7 @@
  */
 
 import { dependencyChain, type PackageFs } from '@fudic/resolve';
-import { FUD_RUNTIME_PEER_MISMATCH, type FudicDiagnostic } from './diagnostics.js';
+import { FUD0800, type FileDiagnostic } from '@fudic/diagnostics';
 
 /** The package whose version decides whether a library's source can be parsed at all. */
 export const COMPILER_PACKAGE = '@fudic/compiler';
@@ -46,28 +46,26 @@ interface Version {
  * one this project builds with, and whether the grammar matches is true before any `.fud`
  * names it.
  */
-export function checkPeers(root: string, io: PackageFs): readonly FudicDiagnostic[] {
+export function checkPeers(root: string, io: PackageFs): readonly FileDiagnostic[] {
   const resolved = resolvedCompiler(root, io);
   // No compiler to compare against — the plugin is running from somewhere this walk cannot
   // see, which is every test that builds a temp directory. Nothing can be said, so nothing is.
   if (resolved === undefined) return [];
 
-  const diagnostics: FudicDiagnostic[] = [];
+  const diagnostics: FileDiagnostic[] = [];
   for (const pkg of dependencyChain(root, io)) {
     if (pkg.config.kind !== 'lib') continue; // the consumer itself, and anything that is not a library
     const range = peerRange(pkg.root, io);
     if (range === undefined) continue; // declares nothing about the compiler: §4.7 is advice it did not take
     if (satisfies(resolved.version, range) !== false) continue; // in range, or a range nobody can read
-    diagnostics.push({
-      code: FUD_RUNTIME_PEER_MISMATCH,
-      file: pkg.name === '' ? pkg.root : pkg.name,
-      message:
-        `the library "${pkg.name === '' ? pkg.root : pkg.name}" was written for ` +
-        `${COMPILER_PACKAGE} "${range}", and this build resolved ${resolved.version}. A library ` +
-        'publishes .fud source, so that compiler is the one parsing it: what a mismatch produces ' +
-        'is a syntax error in a file you did not write. Upgrade one of the two, or ask the ' +
-        'library to widen its range.',
-    });
+    diagnostics.push(
+      FUD0800({
+        file: pkg.name === '' ? pkg.root : pkg.name,
+        compiler: COMPILER_PACKAGE,
+        range,
+        version: resolved.version,
+      }),
+    );
   }
   return diagnostics;
 }

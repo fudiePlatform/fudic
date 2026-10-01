@@ -18,11 +18,7 @@
  */
 
 import { type CachePolicy, type ResourceRule } from '@fudic/transport';
-import {
-  type FudicDiagnostic,
-  FUD_SW_CONFIG_MALFORMED,
-  FUD_TTL_INVALID,
-} from './diagnostics.js';
+import { FUD0390, FUD0392, type FileDiagnostic } from '@fudic/diagnostics';
 import { SW_CONFIG_FILE } from './constants.js';
 
 export interface ResourceRuleFile {
@@ -48,7 +44,7 @@ export interface ResolvedSwConfig {
 export interface SwConfigResult {
   /** `null` when there is no `sw.json`, or it is unusable. */
   readonly config: ResolvedSwConfig | null;
-  readonly diagnostics: readonly FudicDiagnostic[];
+  readonly diagnostics: readonly FileDiagnostic[];
 }
 
 const POLICIES: readonly string[] = [
@@ -85,44 +81,32 @@ export function readSwConfig(root: string, io: ConfigIo, file = SW_CONFIG_FILE):
     return { config: null, diagnostics: [] }; // explicit: no SW at all
   }
 
-  const diagnostics: FudicDiagnostic[] = [];
+  const diagnostics: FileDiagnostic[] = [];
   let parsed: SwConfigFile;
   try {
     parsed = JSON.parse(io.read(path)) as SwConfigFile;
   } catch (error) {
     return {
       config: null,
-      diagnostics: [
-        { code: FUD_SW_CONFIG_MALFORMED, message: `${file} is not valid JSON: ${(error as Error).message}`, file },
-      ],
+      diagnostics: [FUD0390({ file, problem: 'not-json', reason: (error as Error).message })],
     };
   }
   if (parsed === null || typeof parsed !== 'object' || !Array.isArray(parsed.shell)) {
     return {
       config: null,
-      diagnostics: [
-        { code: FUD_SW_CONFIG_MALFORMED, message: `${file} must be an object with a "shell" array`, file },
-      ],
+      diagnostics: [FUD0390({ file, problem: 'no-shell' })],
     };
   }
 
   const resources: ResourceRule[] = [];
   for (const [name, rule] of Object.entries(parsed.resources ?? {})) {
     if (typeof rule?.pattern !== 'string' || !POLICIES.includes(rule.policy)) {
-      diagnostics.push({
-        code: FUD_SW_CONFIG_MALFORMED,
-        message: `${file}: resource "${name}" needs a pattern and a valid policy`,
-        file,
-      });
+      diagnostics.push(FUD0390({ file, problem: 'resource', name }));
       continue;
     }
     const ttl = parseTtl(rule.ttl);
     if (ttl === undefined) {
-      diagnostics.push({
-        code: FUD_TTL_INVALID,
-        message: `${file}: resource "${name}" has an invalid ttl "${String(rule.ttl)}" (expected 30s/5m/2h/7d)`,
-        file,
-      });
+      diagnostics.push(FUD0392({ file, where: 'resource', name, ttl: rule.ttl }));
       continue;
     }
     resources.push({

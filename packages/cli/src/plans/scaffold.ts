@@ -8,10 +8,10 @@
  * a copy rather than of the thing it copies.
  */
 
-import { CONFIG_FILE, FUD_CONFIG_MALFORMED, ID_PATTERN, PREFIX_PATTERN } from '@fudic/config';
+import { CONFIG_FILE, ID_PATTERN, PREFIX_PATTERN } from '@fudic/config';
+import { FUD0443, FUD0447, FUD0725 } from '@fudic/diagnostics';
 import { COMPONENTS_DIR, LAYOUTS_DIR, ROUTES_DIR } from '@fudic/conventions';
 import { GLOBALS_DTS, GLOBALS_FILE_NAME } from '@fudic/language-core';
-import { cliError, FUD_ADAPTER_UNAVAILABLE, FUD_TARGET_EXISTS } from '../diagnostics.js';
 import { absolute, hrefBetween, joinPosix } from '../paths.js';
 import { FUDIC_VERSION, targetChange, TYPESCRIPT_VERSION, VITE_VERSION } from '../project.js';
 import { prefixField, renderSectionBlocks, renderTemplate } from '../templates.js';
@@ -51,11 +51,7 @@ export interface ProjectSite {
 function invalidField(field: string, value: string, pattern: RegExp): CliError | null {
   if (field === 'prefix' && value === '') return null;
   if (pattern.test(value)) return null;
-  return cliError(
-    FUD_CONFIG_MALFORMED,
-    `--${field} "${value}" is not usable in ${CONFIG_FILE}: it must match ${pattern.source}`,
-    CONFIG_FILE,
-  );
+  return FUD0725({ file: CONFIG_FILE, problem: 'flag', field, value, pattern: pattern.source });
 }
 
 /**
@@ -71,10 +67,7 @@ export function scaffoldRefusal(
   io: ReadIo,
 ): CliError | null {
   if (!AVAILABLE_TARGETS.includes(opts.target)) {
-    return cliError(
-      FUD_ADAPTER_UNAVAILABLE,
-      `adapter '${opts.target}' is not available; installed adapters: ${AVAILABLE_TARGETS.join(', ')}`,
-    );
+    return FUD0447({ target: opts.target, available: AVAILABLE_TARGETS });
   }
 
   const badField =
@@ -83,11 +76,7 @@ export function scaffoldRefusal(
 
   const root = absolute(opts.cwd, name);
   if (io.exists(root) && io.list(root).length > 0 && !opts.force) {
-    return cliError(
-      FUD_TARGET_EXISTS,
-      `${name} already exists and is not empty; pass --force to overwrite`,
-      name,
-    );
+    return FUD0443({ file: name, target: 'directory' });
   }
   return null;
 }

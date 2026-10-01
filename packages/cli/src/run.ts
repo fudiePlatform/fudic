@@ -13,7 +13,8 @@
 
 import { parseArgs, USAGE } from './args.js';
 import { apply } from './apply.js';
-import { commandFailed, FUD_FORMAT_UNPARSEABLE, FUD_WIRE_TARGET_BROKEN } from './diagnostics.js';
+import type { FudCode } from '@fudic/diagnostics';
+import { commandFailed } from './diagnostics.js';
 import { absolute } from './paths.js';
 import { planComponent } from './plans/component.js';
 import { planLayout } from './plans/layout.js';
@@ -27,8 +28,11 @@ import { formatDiff, formatError, formatDiagnostic, formatPlan, planToJson } fro
 import { nodeCommandRunner, nodeReadIo, nodeWriteIo, type CommandRunner, type ReadIo, type WriteIo } from './io.js';
 import type { Plan } from './types.js';
 
-/** The errors that mean "a source file could not be read", which is exit code 2. */
-const BROKEN_SOURCE: ReadonlySet<string> = new Set([FUD_WIRE_TARGET_BROKEN, FUD_FORMAT_UNPARSEABLE]);
+/**
+ * The errors that mean "a source file could not be read", which is exit code 2: `--in` that
+ * does not parse, and a file `fudic fmt` could not parse. A code-keyed lookup (SDD-50).
+ */
+const BROKEN_SOURCE: ReadonlySet<FudCode> = new Set<FudCode>(['FUD0445', 'FUD0450']);
 
 /** Output seam: tests capture, the binary writes to the real streams. */
 export interface Streams {

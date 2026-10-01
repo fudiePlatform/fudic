@@ -13,16 +13,9 @@
  */
 
 export { CONFIG_FILE, ID_PATTERN, PREFIX_PATTERN, STYLE_NAME_PATTERN } from './constants.js';
-export {
-  FUD_CONFIG_DUPLICATE_ID,
-  FUD_CONFIG_ID_REQUIRED,
-  FUD_CONFIG_LIB_WITH_DEPLOYMENT,
-  FUD_CONFIG_MALFORMED,
-  FUD_STYLE_NOT_FOUND,
-  FUD_STYLE_SPECIFIER_CLASH,
-  type ConfigDiagnostic,
-  type Span,
-} from './diagnostics.js';
+// The diagnostics of `fudic.json` live in `@fudic/diagnostics` (SDD-50): `FUD0724`–`FUD0726`,
+// `FUD0740`, `FUD0741`. `FUD0722` is reserved and deliberately unused (the prefix is a guide,
+// and what breaks — two components defining one tag — is `FUD0761`).
 export {
   readProjectStyles,
   type ProjectStyleFile,

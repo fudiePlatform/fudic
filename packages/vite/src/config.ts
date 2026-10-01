@@ -6,31 +6,20 @@
  * plugin option and `FudicOptions` does not gain one: the configuration belongs to the
  * project, and a plugin that redefined it would be a second place to declare the same fact.
  *
- * The two severities come straight from §5. A malformed file degrades: the project goes on
- * without configuration, because a configuration error that aborts the build leaves the
- * user without the output that would have told them what they wrote wrong. A `sw.json`
- * with no `id` does not degrade, because there is no correct behaviour to degrade to —
- * the caches would be named after nothing.
+ * Both are errors. A malformed file (`FUD0725`) is the same error here as in the CLI: one code,
+ * one severity, wherever it is caught (SDD-50). A `sw.json` with no `id` has no correct
+ * behaviour to degrade to either — the caches would be named after nothing.
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import {
-  CONFIG_FILE,
-  FUD_CONFIG_ID_REQUIRED,
-  readProjectConfig,
-  type ConfigDiagnostic,
-  type ConfigIo,
-  type ProjectConfig,
-} from '@fudic/config';
-import { SW_CONFIG_FILE } from './constants.js';
+import { CONFIG_FILE, readProjectConfig, type ConfigIo, type ProjectConfig } from '@fudic/config';
+import { FUD0726, type FileDiagnostic } from '@fudic/diagnostics';
 
 export interface ProjectResult {
   /** `null` when there is no `fudic.json`, or it is unusable. */
   readonly config: ProjectConfig | null;
-  /** Degraded: reported, and the build goes on without configuration (§5). */
-  readonly warnings: readonly ConfigDiagnostic[];
-  /** Fatal: what these describe has no correct behaviour possible (§5). */
-  readonly errors: readonly ConfigDiagnostic[];
+  /** Fatal: a malformed `fudic.json`, or what has no correct behaviour possible (§5). */
+  readonly errors: readonly FileDiagnostic[];
 }
 
 /** The real filesystem, in the shape the reader asks for. */
@@ -52,14 +41,10 @@ export function nodeConfigIo(): ConfigIo {
 export function readProject(root: string, hasSw: boolean, io: ConfigIo): ProjectResult {
   const { config, diagnostics } = readProjectConfig(root, io);
 
-  const errors: ConfigDiagnostic[] = [];
+  const errors: FileDiagnostic[] = [...diagnostics];
   if (hasSw && (config?.id ?? '') === '') {
-    errors.push({
-      code: FUD_CONFIG_ID_REQUIRED,
-      message: `${SW_CONFIG_FILE} is present, so ${CONFIG_FILE} must declare an "id": it is what namespaces this application's caches, and without it two apps on one origin wipe each other's`,
-      file: CONFIG_FILE,
-    });
+    errors.push(FUD0726({ file: CONFIG_FILE }));
   }
 
-  return { config, warnings: diagnostics, errors };
+  return { config, errors };
 }

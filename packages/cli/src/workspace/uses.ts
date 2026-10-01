@@ -7,7 +7,7 @@
  * a command for that — `fudic g component --in`.
  */
 
-import { cliError, FUD_USES_NOT_A_LIB } from '../diagnostics.js';
+import { FUD0785 } from '@fudic/diagnostics';
 import { joinPosix } from '../paths.js';
 import type { ReadIo } from '../io.js';
 import type { CliError } from '../types.js';
@@ -64,21 +64,15 @@ export function usesErrors(
     const project = projects.find((candidate) => candidate.name === name);
     if (project?.config.kind === 'lib') continue;
     errors.push(
-      cliError(
-        FUD_USES_NOT_A_LIB,
-        project === undefined
-          ? `--uses ${name}: no such project in the workspace${listOf(projects)}`
-          : `--uses ${name}: that is an app, and an app exports nothing${listOf(projects)}`,
-      ),
+      FUD0785({ name, problem: project === undefined ? 'missing' : 'app', libraries: librariesOf(projects) }),
     );
   }
   return errors;
 }
 
 /** The libraries there ARE, so the message is actionable and not just a refusal. */
-function listOf(projects: readonly Project[]): string {
-  const libs = projects.filter((project) => project.config.kind === 'lib').map((project) => project.name);
-  return libs.length === 0 ? '; this workspace has no libraries' : `; libraries: ${libs.join(', ')}`;
+function librariesOf(projects: readonly Project[]): readonly string[] {
+  return projects.filter((project) => project.config.kind === 'lib').map((project) => project.name);
 }
 
 /** One `"@scope/name": "workspace:*"` per dependency, already quoted for JSON. */

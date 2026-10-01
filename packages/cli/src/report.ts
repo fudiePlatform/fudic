@@ -6,7 +6,7 @@
  * Messages are in English, like every string in this repo; only the spec is in Spanish.
  */
 
-import { LineMap } from '@fudic/compiler';
+import { format } from '@fudic/diagnostics';
 import type { CliError, FileChange, Plan, PlanDiagnostic } from './types.js';
 
 export function formatChange(change: FileChange): string {
@@ -49,24 +49,18 @@ export function formatDiff(change: FileChange): readonly string[] {
 }
 
 /**
- * A compiler diagnostic, with its span turned into line:column for a terminal. `source`
- * is the text the span refers to; without it the offsets are printed raw, which is still
- * a span — the invariant is that a diagnostic never loses its location.
+ * A compiler diagnostic for a terminal, in the one format every fudic tool prints
+ * (`@fudic/diagnostics`): `file:line:col - error FUDnnnn: message`, the underlined line and the
+ * link to the code's explanation. `source` is the text the span refers to; without it there is
+ * no line to show, and the file is still named.
  */
 export function formatDiagnostic(entry: PlanDiagnostic, source?: string): string {
-  const { file, diagnostic } = entry;
-  const where =
-    source === undefined
-      ? `${file}@${diagnostic.span.start}-${diagnostic.span.end}`
-      : (() => {
-          const p = new LineMap(source).positionAt(diagnostic.span.start);
-          return `${file}:${p.line + 1}:${p.character + 1}`;
-        })();
-  return `${where} ${diagnostic.severity} ${diagnostic.code} ${diagnostic.message}`;
+  const located = { ...entry.diagnostic, file: entry.file };
+  return format(located, source === undefined ? {} : { source });
 }
 
 export function formatError(error: CliError): string {
-  return `error ${error.code} ${error.message}`;
+  return format(error);
 }
 
 /** The `--json` payload: the plan, verbatim, with no human text mixed in. */

@@ -11,11 +11,7 @@
  * and the page/component discrimination.
  */
 
-import {
-  type FudicDiagnostic,
-  FUD_MALFORMED_PARAM,
-  FUD_ROUTE_COLLISION,
-} from './diagnostics.js';
+import { FUD0360, FUD0361, type FileDiagnostic } from '@fudic/diagnostics';
 
 /** A resolved route: its source file, its path pattern, and its param names in order. */
 export interface Route {
@@ -30,7 +26,7 @@ export interface Route {
 export interface RoutingResult {
   /** Routes ordered by descending specificity (ready for the manifest). */
   readonly routes: readonly Route[];
-  readonly diagnostics: readonly FudicDiagnostic[];
+  readonly diagnostics: readonly FileDiagnostic[];
 }
 
 const PARAM_SEGMENT = /^\[(.*)\]$/u;
@@ -40,7 +36,7 @@ interface Compiled {
   readonly file: string;
   readonly pattern: string;
   readonly params: readonly string[];
-  readonly diagnostics: readonly FudicDiagnostic[];
+  readonly diagnostics: readonly FileDiagnostic[];
 }
 
 /** Turn one page file path into its route pattern + params (+ any param diagnostics). */
@@ -55,7 +51,7 @@ function compile(file: string): Compiled {
 
   const params: string[] = [];
   const out: string[] = [];
-  const diagnostics: FudicDiagnostic[] = [];
+  const diagnostics: FileDiagnostic[] = [];
   for (const seg of rawSegments) {
     const m = PARAM_SEGMENT.exec(seg);
     if (m === null) {
@@ -64,19 +60,11 @@ function compile(file: string): Compiled {
     }
     const name = m[1] ?? '';
     if (!PARAM_NAME.test(name)) {
-      diagnostics.push({
-        code: FUD_MALFORMED_PARAM,
-        message: `Malformed route param segment "[${name}]" in ${file}`,
-        file,
-      });
+      diagnostics.push(FUD0360({ file, problem: 'malformed', name }));
       continue;
     }
     if (params.includes(name)) {
-      diagnostics.push({
-        code: FUD_MALFORMED_PARAM,
-        message: `Duplicate route param ":${name}" in ${file}`,
-        file,
-      });
+      diagnostics.push(FUD0360({ file, problem: 'duplicate', name }));
       continue;
     }
     params.push(name);
@@ -117,7 +105,7 @@ export function routesFromFiles(files: readonly string[]): RoutingResult {
   const sorted = [...files].filter((f) => f.endsWith('.fud')).sort();
 
   const routes: Route[] = [];
-  const diagnostics: FudicDiagnostic[] = [];
+  const diagnostics: FileDiagnostic[] = [];
   const seen = new Map<string, string>(); // pattern → first file that produced it
 
   for (const file of sorted) {
@@ -125,11 +113,7 @@ export function routesFromFiles(files: readonly string[]): RoutingResult {
     diagnostics.push(...c.diagnostics);
     const owner = seen.get(c.pattern);
     if (owner !== undefined) {
-      diagnostics.push({
-        code: FUD_ROUTE_COLLISION,
-        message: `Route "${c.pattern}" is produced by both ${owner} and ${file}`,
-        file,
-      });
+      diagnostics.push(FUD0361({ file, pattern: c.pattern, owner }));
       continue;
     }
     seen.set(c.pattern, file);

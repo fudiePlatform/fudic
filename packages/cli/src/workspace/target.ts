@@ -11,12 +11,7 @@
  */
 
 import { CONFIG_FILE, readProjectConfig, type ProjectConfig } from '@fudic/config';
-import {
-  cliError,
-  FUD_NO_TARGET_PROJECT,
-  FUD_PROJECT_UNKNOWN,
-  FUD_ROUTE_IN_LIB,
-} from '../diagnostics.js';
+import { FUD0781, FUD0782, FUD0783 } from '@fudic/diagnostics';
 import { relativeTo } from '../paths.js';
 import { findProjects, nearestWith, workspaceRoot } from './discover.js';
 import type { ReadIo } from '../io.js';
@@ -57,14 +52,7 @@ function byName(project: string, cwd: string, io: ReadIo): TargetResolution {
   if (found === undefined) {
     const names = projects.map((candidate) => candidate.name);
     return {
-      errors: [
-        cliError(
-          FUD_PROJECT_UNKNOWN,
-          `--project ${project}: no such project${
-            names.length === 0 ? ' — there are none here' : `; there is: ${names.join(', ')}`
-          }`,
-        ),
-      ],
+      errors: [FUD0782({ project, names })],
     };
   }
   return { target: { dir: relativeTo(cwd, found.path), path: found.path, config: found.config }, errors: [] };
@@ -75,13 +63,7 @@ function byWalkingUp(cwd: string, io: ReadIo): TargetResolution {
   const dir = nearestWith(cwd, CONFIG_FILE, io);
   if (dir === null) {
     return {
-      errors: [
-        cliError(
-          FUD_NO_TARGET_PROJECT,
-          `no target project: there is no ${CONFIG_FILE} here or above. ` +
-            'Run this inside a project, or name one with --project.',
-        ),
-      ],
+      errors: [FUD0781()],
     };
   }
 
@@ -90,7 +72,7 @@ function byWalkingUp(cwd: string, io: ReadIo): TargetResolution {
     // A `fudic.json` that does not read is reported AS ITSELF, not as "no project found":
     // the prefix is what decides the tag, so a broken file means the piece would be written
     // under a name its author did not choose. Saying which file, and why, beats both.
-    return { errors: diagnostics.map((entry) => cliError(entry.code, entry.message, entry.file)) };
+    return { errors: diagnostics };
   }
   return { target: { dir: relativeTo(cwd, dir), path: dir, config }, errors: [] };
 }
@@ -105,9 +87,5 @@ function byWalkingUp(cwd: string, io: ReadIo): TargetResolution {
  */
 export function routeRefusal(target: Target): CliError | null {
   if (target.config.kind !== 'lib') return null;
-  return cliError(
-    FUD_ROUTE_IN_LIB,
-    `${target.dir} is a library, and a library has no routes: no base, no URL, and no plugin ` +
-      'builds it. A layout can live here; a page cannot.',
-  );
+  return FUD0783({ dir: target.dir });
 }

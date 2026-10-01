@@ -6,6 +6,7 @@
  */
 
 import type { Diagnostic } from '@fudic/compiler';
+import type { FileDiagnostic, ProjectDiagnostic } from '@fudic/diagnostics';
 
 /** A file the plan creates, or an existing file it rewrites (`before` = its current text). */
 export type FileChange =
@@ -43,15 +44,11 @@ export interface CommandFailure {
 
 /**
  * A CLI error that does NOT come from a source file: an invalid tag, a collision, a
- * missing adapter. It cannot be a `Diagnostic` — a `Diagnostic` requires a span, and here
- * there is no source to point at. Faking one would be exactly the lie SDD-22 §5 forbids.
+ * missing adapter. It cannot be a source diagnostic — that requires a span, and here there
+ * is no source to point at. Faking one would be exactly the lie SDD-22 §5 forbids. So it is
+ * about a file, or about nothing in particular (SDD-50).
  */
-export interface CliError {
-  /** FUD0440–FUD0459 (SDD-22 §3.3). */
-  readonly code: string;
-  readonly message: string;
-  readonly file?: string;
-}
+export type CliError = FileDiagnostic | ProjectDiagnostic;
 
 /**
  * A compiler diagnostic plus the file it belongs to. The span alone is not actionable in

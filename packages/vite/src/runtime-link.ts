@@ -31,11 +31,7 @@
 
 import { runtimeCacheName } from '@fudic/conventions';
 import { BUILD_TOKEN } from './constants.js';
-import {
-  FUD_RUNTIME_PIECE_DIFFERS,
-  FUD_RUNTIME_PIECE_HAS_BUILD,
-  type FudicDiagnostic,
-} from './diagnostics.js';
+import { FUD0802, FUD0806, type FileDiagnostic } from '@fudic/diagnostics';
 import { type RuntimePiece } from './runtime-pieces.js';
 
 /** What linking needs of the world: the text of a file, if it is there. */
@@ -419,21 +415,13 @@ export interface PieceFile {
 export function piecesToCopy(
   pieces: readonly LinkedPiece[],
   onDisk: (fileName: string) => string | undefined,
-): { readonly files: readonly PieceFile[]; readonly diagnostics: readonly FudicDiagnostic[] } {
+): { readonly files: readonly PieceFile[]; readonly diagnostics: readonly FileDiagnostic[] } {
   const files: PieceFile[] = [];
-  const diagnostics: FudicDiagnostic[] = [];
+  const diagnostics: FileDiagnostic[] = [];
 
   for (const piece of pieces) {
     if (piece.code.includes(BUILD_TOKEN)) {
-      diagnostics.push({
-        code: FUD_RUNTIME_PIECE_HAS_BUILD,
-        file: piece.file,
-        message:
-          `the piece "${piece.url}" carries this build's token. A published piece is the ` +
-          'same bytes for every application and every deploy, so it cannot hold a fact of ' +
-          'one of them: something that belongs to the application was compiled into code ' +
-          `that belongs to the framework, in "${piece.pkg}".`,
-      });
+      diagnostics.push(FUD0806({ file: piece.file, url: piece.url, pkg: piece.pkg }));
       continue;
     }
     // `url` is origin-absolute and outside every app's `base` (§3.1); the file it names sits
@@ -441,16 +429,7 @@ export function piecesToCopy(
     const fileName = piece.url.slice(1);
     const existing = onDisk(fileName);
     if (existing !== undefined && existing !== piece.code) {
-      diagnostics.push({
-        code: FUD_RUNTIME_PIECE_DIFFERS,
-        file: fileName,
-        message:
-          `the output already holds "${piece.url}" with different bytes than "${piece.pkg}" ` +
-          'would copy there. Two applications sharing an origin write the same file with the ' +
-          'same content, because the framework built it and not their builds: different ' +
-          'content means one version of the package was published twice with two contents, ' +
-          'and whichever deploys last decides what every page of the origin runs.',
-      });
+      diagnostics.push(FUD0802({ file: fileName, what: 'piece', url: piece.url, pkg: piece.pkg }));
     }
     files.push({ fileName, code: piece.code });
     // The map beside it, under the same rule: same URL, same bytes, written by the framework's
@@ -460,14 +439,7 @@ export function piecesToCopy(
       const mapName = `${fileName}.map`;
       const onDiskMap = onDisk(mapName);
       if (onDiskMap !== undefined && onDiskMap !== piece.map) {
-        diagnostics.push({
-          code: FUD_RUNTIME_PIECE_DIFFERS,
-          file: mapName,
-          message:
-            `the output already holds the source map of "${piece.url}" with different bytes ` +
-            `than "${piece.pkg}" would copy there. Same cause as a piece that differs: one ` +
-            'version of the package was published twice with two contents.',
-        });
+        diagnostics.push(FUD0802({ file: mapName, what: 'map', url: piece.url, pkg: piece.pkg }));
       }
       files.push({ fileName: mapName, code: piece.map });
     }

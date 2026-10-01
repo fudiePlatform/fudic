@@ -15,11 +15,7 @@
  */
 
 import { type RouteMode } from '@fudic/transport';
-import {
-  type FudicDiagnostic,
-  FUD_SSG_WITHOUT_PATHS,
-  FUD_STRATEGY_AND_DEFAULT,
-} from './diagnostics.js';
+import { FUD0397, FUD0398, type FileDiagnostic } from '@fudic/diagnostics';
 import { type StrategyAnalysis } from './strategy.js';
 
 export type { RouteMode };
@@ -52,7 +48,7 @@ export interface ModeDecision {
 
 export interface ModeResult {
   readonly decision: ModeDecision;
-  readonly diagnostics: readonly FudicDiagnostic[];
+  readonly diagnostics: readonly FileDiagnostic[];
 }
 
 /**
@@ -99,13 +95,9 @@ export function resolveMode(
   paramFallback: ParamFallback,
   file = '',
 ): ModeResult {
-  const diagnostics: FudicDiagnostic[] = [];
+  const diagnostics: FileDiagnostic[] = [];
   if (facts.strategy.declared && facts.fallback !== undefined) {
-    diagnostics.push({
-      code: FUD_STRATEGY_AND_DEFAULT,
-      message: 'This route declares strategy() and also appears in defaults; the page wins',
-      file,
-    });
+    diagnostics.push(FUD0397({ file }));
   }
 
   const declared: ModeDefault | undefined = facts.strategy.declared
@@ -127,11 +119,7 @@ export function resolveMode(
     }
     if (!facts.hasPaths) {
       // Nothing to enumerate: an explicit `ssg` here cannot be honoured.
-      diagnostics.push({
-        code: FUD_SSG_WITHOUT_PATHS,
-        message: 'A param route needs paths() to be prerendered; falling back to sw',
-        file,
-      });
+      diagnostics.push(FUD0398({ file }));
       return { decision: decision('sw', false, false, false), diagnostics };
     }
     // Enumerated. With a `lazy` fallback the pattern ALSO renders unknown ids locally,

@@ -13,7 +13,7 @@
  */
 
 import { format, type FormatOptions } from '@fudic/formatter';
-import { cliError, FUD_FORMAT_UNPARSEABLE } from '../diagnostics.js';
+import { FUD0450 } from '@fudic/diagnostics';
 import { absolute, joinPosix, toPosix } from '../paths.js';
 import { nodeReadIo, walkFud, type ReadIo } from '../io.js';
 import type { CliError, FileChange, FmtOptions, Plan, PlanDiagnostic } from '../types.js';
@@ -59,7 +59,7 @@ export async function planFmt(
 
     if (!result.ok) {
       for (const diagnostic of result.diagnostics) diagnostics.push({ file, diagnostic });
-      errors.push(cliError(FUD_FORMAT_UNPARSEABLE, `${file} does not parse; left unchanged`, file));
+      errors.push(FUD0450({ file }));
       continue;
     }
 

@@ -5,13 +5,7 @@
  * name, or `customElements.define` throws at runtime, far from here.
  */
 
-import {
-  cliError,
-  FUD_DUPLICATE_TAG,
-  FUD_TAG_EXISTS,
-  FUD_TAG_INVALID,
-  FUD_TAG_RESERVED,
-} from './diagnostics.js';
+import { FUD0440, FUD0441, FUD0442, FUD0761 } from '@fudic/diagnostics';
 import type { CliError } from './types.js';
 
 /** Kebab-case with at least one hyphen — the custom-element rule (decision 41). */
@@ -53,27 +47,19 @@ export function validateTag(
   foreign: ReadonlyMap<string, ForeignTag> = new Map(),
 ): CliError | null {
   if (!CUSTOM_ELEMENT.test(tag)) {
-    return cliError(
-      FUD_TAG_INVALID,
-      `invalid custom element name "${tag}": it must be kebab-case and contain a hyphen (e.g. "app-${tag || 'card'}")`,
-    );
+    return FUD0440({ tag });
   }
   if (RESERVED.has(tag)) {
-    return cliError(FUD_TAG_RESERVED, `"${tag}" is reserved by the HTML/SVG/MathML specs and cannot be defined`);
+    return FUD0442({ tag });
   }
   if (taken.has(tag)) {
-    return cliError(FUD_TAG_EXISTS, `a component named "${tag}" already exists in this project`);
+    return FUD0441({ tag });
   }
   const defined = foreign.get(tag);
   if (defined !== undefined) {
     // The same `FUD0761` the build reports, said before the file exists: it is one fact — two
     // components of one graph under one tag — and generating the second is where it starts.
-    return cliError(
-      FUD_DUPLICATE_TAG,
-      `the library "${defined.library}" already defines "${tag}" (${defined.file}). ` +
-        'customElements is one registry per document, so the second define() throws: give this ' +
-        "one another name, or a prefix of this project's own",
-    );
+    return FUD0761({ kind: 'library', tag, library: defined.library, file: defined.file });
   }
   return null;
 }

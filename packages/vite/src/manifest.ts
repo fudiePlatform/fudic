@@ -26,7 +26,7 @@ import {
 import { type RouteBuild } from './discover.js';
 import { isLinkable } from './mode.js';
 import { parseTtl } from './swconfig.js';
-import { type FudicDiagnostic, FUD_TTL_INVALID, FUD_TWO_TTLS } from './diagnostics.js';
+import { FUD0392, FUD0396, type FileDiagnostic } from '@fudic/diagnostics';
 
 export interface ManifestInputs {
   readonly build: string;
@@ -55,24 +55,20 @@ export interface ManifestInputs {
 
 export interface ManifestResult {
   readonly file: ManifestFile;
-  readonly diagnostics: readonly FudicDiagnostic[];
+  readonly diagnostics: readonly FileDiagnostic[];
 }
 
 const DEFAULT_DATA_POLICY: DataPolicy = { policy: 'cache-first', ttl: null };
 
 /** Read the route's data policy from its declared strategy. */
-function dataPolicyOf(rb: RouteBuild, out: FudicDiagnostic[]): DataPolicy {
+function dataPolicyOf(rb: RouteBuild, out: FileDiagnostic[]): DataPolicy {
   const declared = rb.analysis.strategy.strategy.data;
   if (declared === undefined) {
     return DEFAULT_DATA_POLICY;
   }
   const ttl = parseTtl(declared.ttl);
   if (ttl === undefined) {
-    out.push({
-      code: FUD_TTL_INVALID,
-      message: `strategy().data.ttl "${String(declared.ttl)}" is invalid (expected 30s/5m/2h/7d)`,
-      file: rb.absPath,
-    });
+    out.push(FUD0392({ file: rb.absPath, where: 'strategy', ttl: declared.ttl }));
     return DEFAULT_DATA_POLICY;
   }
   return { policy: (declared.policy ?? 'cache-first') as CachePolicy, ttl };
@@ -82,18 +78,14 @@ function dataPolicyOf(rb: RouteBuild, out: FudicDiagnostic[]): DataPolicy {
  * The page policy. `persist` is the surviving shape of SDD-19's incremental mode, and
  * it carries ONE rule: a route never has two TTLs — the HTML expires with its data.
  */
-function pagePolicyOf(rb: RouteBuild, data: DataPolicy, out: FudicDiagnostic[]): PagePolicy | undefined {
+function pagePolicyOf(rb: RouteBuild, data: DataPolicy, out: FileDiagnostic[]): PagePolicy | undefined {
   const declared = rb.analysis.strategy.strategy.page;
   if (declared?.cache !== 'persist') {
     return undefined; // 'never' is the default; no need to spell it out
   }
   const ttl = parseTtl(declared.ttl);
   if (ttl !== null && ttl !== undefined && ttl !== data.ttl) {
-    out.push({
-      code: FUD_TWO_TTLS,
-      message: 'page.ttl differs from data.ttl with cache:"persist"; the data TTL wins',
-      file: rb.absPath,
-    });
+    out.push(FUD0396({ file: rb.absPath }));
   }
   return { cache: 'persist', ttl: data.ttl };
 }
@@ -121,7 +113,7 @@ export function buildManifest(
   routes: readonly RouteBuild[],
   inputs: ManifestInputs,
 ): ManifestResult {
-  const diagnostics: FudicDiagnostic[] = [];
+  const diagnostics: FileDiagnostic[] = [];
   const records: RouteRecord[] = [];
 
   for (const rb of routes) {

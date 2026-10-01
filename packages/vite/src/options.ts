@@ -8,7 +8,7 @@
 
 import { ROUTES_DIR } from '@fudic/conventions';
 
-import { type FudicDiagnostic, FUD_MANIFEST_URL_NOT_ABSOLUTE } from './diagnostics.js';
+import { FUD0365, type FileDiagnostic } from '@fudic/diagnostics';
 import { type ModeDefault, type ParamFallback } from './mode.js';
 
 /**
@@ -44,7 +44,7 @@ export interface ResolvedOptions {
 
 export interface ResolveOptionsResult {
   readonly options: ResolvedOptions;
-  readonly diagnostics: readonly FudicDiagnostic[];
+  readonly diagnostics: readonly FileDiagnostic[];
 }
 
 const DEFAULT_MANIFEST_NAME = 'fudic-routes.json';
@@ -59,13 +59,9 @@ export function resolveOptions(user: FudicOptions = {}, base = '/'): ResolveOpti
   const normalizedBase = base.endsWith('/') ? base : `${base}/`;
   const manifestUrl = user.manifestUrl ?? `${normalizedBase}${DEFAULT_MANIFEST_NAME}`;
 
-  const diagnostics: FudicDiagnostic[] = [];
+  const diagnostics: FileDiagnostic[] = [];
   if (!isAbsoluteUrl(manifestUrl)) {
-    diagnostics.push({
-      code: FUD_MANIFEST_URL_NOT_ABSOLUTE,
-      message: `manifestUrl must be absolute (SW and WW load the same URL); got "${manifestUrl}"`,
-      file: manifestUrl,
-    });
+    diagnostics.push(FUD0365({ file: manifestUrl }));
   }
 
   return {

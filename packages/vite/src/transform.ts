@@ -37,8 +37,6 @@ import {
   remapDiagnostics,
   inlineRuntimeMarker,
   adoptedStylesOf,
-  errorDiag,
-  FUD_ADOPTED_STYLE_UNKNOWN,
   type Diagnostic,
   type ElementNode,
   type DocumentGraph,
@@ -50,6 +48,7 @@ import {
   type ProjectStyle,
   type SourceMapV3,
 } from '@fudic/compiler';
+import { FUD0744 } from '@fudic/diagnostics';
 
 /** The extension the emitted imports point at, so Vite resolves the `.fud` graph. */
 const IMPORT_EXT = '.fud';
@@ -173,14 +172,7 @@ function adoptDiagnostics(graph: DocumentGraph, styles: ProjectStyles): readonly
   const choosable = styles.choosableFor(own.path);
   return adoptedStylesOf(own.doc.template)
     .names.filter(({ name }) => !choosable.has(name))
-    .map(({ name, span }) =>
-      errorDiag(
-        FUD_ADOPTED_STYLE_UNKNOWN,
-        `"${name}" is not a stylesheet of this project: a component chooses from the "styles" of its fudic.json` +
-          (choosable.size === 0 ? ', and it declares none' : ` (${[...choosable.keys()].join(', ')})`),
-        span,
-      ),
-    );
+    .map(({ name, span }) => FUD0744({ span, name, choosable: [...choosable.keys()] }));
 }
 
 /**
