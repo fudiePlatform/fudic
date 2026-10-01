@@ -26,6 +26,12 @@ export {
   type ParsedSource,
 } from './project.js';
 export type { LinkIndex, LinkTarget } from './link-index.js';
+export {
+  FudIndex,
+  describeFud,
+  type IndexedFud,
+  type DescribeInput,
+} from './fud-index.js';
 export { createFileRegistry } from './file-registry.js';
 export { tagOf, holesOf, layoutHrefOf } from './mode.js';
 export { toPosix, dirName, baseName, resolveFrom, relativeHref } from './paths.js';
@@ -62,3 +68,19 @@ export { unresolvedHrefs, hrefDiagnostics, type UnresolvedHref } from './href.js
 export { holeDiagnostics, missingSections } from './holes.js';
 export { reservedDollarDiagnostics } from './reserved-dollar.js';
 export { fudicDiagnostics, semanticDiagnostics } from './fudic-diagnostics.js';
+
+// The project check (§3.1).
+export {
+  createProjectChecker,
+  type CheckOptions,
+  type ProjectChecker,
+} from './checker.js';
+export {
+  compareProblems,
+  hasErrors,
+  type CheckProblem,
+  type CheckReport,
+  type ProjectProblem,
+} from './report.js';
+export { formatProblem, locateProblem, relativePath } from './format.js';
+export { INFERRED_OPTIONS, readCommandLine, type CheckCommandLine } from './options.js';

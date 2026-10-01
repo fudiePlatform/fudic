@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/typecheck` (nuevo) · `@fudic/language-server` · `@fudic/vite` ·
 > `@fudic/compiler` · `@fudic/example-basic`
 > **Rama:** `worktree-sdd-35-compilo-o-no-compilo`
-> **Progreso:** 7 / 22
+> **Progreso:** 10 / 22
 >
 > **Reparto (decisión de Pedro).** Esta sesión escribe el código; los tests (tareas 1 y 12, los
 > tests unitarios que se mudan con sus piezas y la cobertura) los escribe otra sesión. Una tarea
@@ -62,9 +62,9 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 9 | 5 | **Ficheros y opciones.** Todos los `.fud` del proyecto y los de librerías; `tsconfig` más cercano con `.fud` registrado, `outDir` anulado y `noEmit`; sin él, las opciones inferidas de Volar como constante, el test que las compara con las de `@volar/language-server`, y `FUD0870`. Criterios 4, 11 | `typecheck` | `src/options.ts` · `src/checker.ts` |
-| [ ] | 10 | 6, 7, 9 | **El `Program` y lo que se recoge.** `createLanguageServiceHost` + `ts.createLanguageService` con `fudLanguagePlugin` (§1.3: `proxyCreateProgram` no monta el virtual `.fud.server`); sintácticos + semánticos (+ declaración si se pide) mapeados por Volar con `shouldReportDiagnostics`, y `fudicDiagnostics`; librerías calladas; `error` / `warning` y nada más; un fichero que no parsea se proyecta igual; `invalidate` sube la versión y el `LanguageService` reutiliza el `Program`. Criterios 9, 10, 12, 13 | `typecheck` | `src/checker.ts` |
-| [ ] | 11 | 10 | **Orden, formato y fallo honesto.** Orden ruta → offset → código; `formatProblem` con `LineMap` y trozo de código; un `ts` que lanza da `FUD0871`, nunca un chequeo vacío. Criterios 16, 17 | `typecheck` | `src/format.ts` · `src/diagnostics.ts` |
+| [x] | 9 | 5 | **Ficheros y opciones.** Todos los `.fud` del proyecto y los de librerías; `tsconfig` más cercano con `.fud` registrado, `outDir` anulado y `noEmit`; sin él, las opciones inferidas de Volar como constante, el test que las compara con las de `@volar/language-server`, y `FUD0870`. Criterios 4, 11 | `typecheck` | `src/options.ts` · `src/checker.ts` |
+| [x] | 10 | 6, 7, 9 | **El `Program` y lo que se recoge.** `createLanguageServiceHost` + `ts.createLanguageService` con `fudLanguagePlugin` (§1.3: `proxyCreateProgram` no monta el virtual `.fud.server`); sintácticos + semánticos (+ declaración si se pide) mapeados por Volar con `shouldReportDiagnostics`, y `fudicDiagnostics`; librerías calladas; `error` / `warning` y nada más; un fichero que no parsea se proyecta igual; `invalidate` sube la versión y el `LanguageService` reutiliza el `Program`. Criterios 9, 10, 12, 13 | `typecheck` | `src/checker.ts` |
+| [x] | 11 | 10 | **Orden, formato y fallo honesto.** Orden ruta → offset → código; `formatProblem` con `LineMap` y trozo de código; un `ts` que lanza da `FUD0871`, nunca un chequeo vacío. Criterios 16, 17 | `typecheck` | `src/format.ts` · `src/report.ts` |
 | [ ] | 12 | 8, 11 | **La paridad.** El corpus de §6.3 por el servidor y por `createProjectChecker`, comparando conjuntos `error`/`warning` (fichero, span, código, severidad). Una diferencia aquí es un defecto de la mudanza y se arregla en la mudanza. Criterio 3 | `typecheck` | `test/parity.test.ts` · `test/fixtures/**` |
 
 ## Fase 4 — una voz por hecho (1)

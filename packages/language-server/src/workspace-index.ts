@@ -1,23 +1,19 @@
 /**
  * The workspace index (SDD-24 §4.5): every `.fud` of the folder with its role and its tag.
  *
- * This is the state that makes the `FileRegistry` of SDD-23 implementable without synchronous
- * I/O per keystroke. One sweep at start-up, maintained afterwards by the watchers; resolving
- * a file's `<link>`s then becomes a map lookup in memory.
- *
- * Invalidation is per file, never global: dropping the whole index on every `fudic generate`
- * would turn each scaffolding into a full repaint of the workspace.
+ * The sweep, the per-file update and the lookup are `@fudic/typecheck`'s `FudIndex`, the same
+ * one the build indexes a project with (SDD-35 §4.1). What is the editor's own is what it keeps
+ * about each file — role, sections, snippets, contract — for its completions and its card, and
+ * the two questions only the editor asks: which files have a role, and how to write a link.
  */
 
-import type { LayoutHoles } from '@fudic/compiler';
 import {
-  holesOf,
+  describeFud,
+  FudIndex,
   layoutHrefOf,
-  parseFud,
   relativeHref,
-  tagOf,
   toPosix,
-  type LinkIndex,
+  type IndexedFud,
 } from '@fudic/typecheck';
 import {
   contractOf,
@@ -30,16 +26,12 @@ import {
 } from './mode.js';
 // The dependency walk lives in `@fudic/resolve`: the CLI asks the same question — which tags
 // a library already defines — and the build asks it in order, for the style chain of §4.6.
-import { dependencyChain, findLibraries, owningPackage, specifierOf } from '@fudic/resolve';
+import { dependencyChain, owningPackage, specifierOf } from '@fudic/resolve';
 import type { FileSystemScanner } from './types.js';
 
 /** What the index knows about one `.fud`. */
-export interface IndexEntry {
-  /** Absolute path, POSIX-shaped — the key. */
-  readonly path: string;
+export interface IndexEntry extends IndexedFud {
   readonly role: FudRole;
-  /** The tag it defines, `''` for anything that is not a component. */
-  readonly tag: string;
   /** Its `<link rel="layout">` href, `''` when it declares none. */
   readonly layoutHref: string;
   /**
@@ -50,12 +42,6 @@ export interface IndexEntry {
    * `@section `: the file was already parsed to learn its role, so the names are free.
    */
   readonly sections: readonly string[];
-  /**
-   * A layout's holes — which sections are required, which slot each one goes in (SDD-48).
-   * Empty for everything else. Kept for the reason `sections` is: a route is diagnosed
-   * against its layout on every keystroke, and the layout was already parsed.
-   */
-  readonly holes: LayoutHoles;
   /**
    * The `@snippet`s the file declares, with their signatures: what a `@render` in a file that
    * links this one completes to. Kept for the reason `sections` is.
@@ -76,122 +62,31 @@ export interface IndexEntry {
    * a component nobody has opened has to come from somewhere.
    */
   readonly contract: Contract;
-  /**
-   * Whether this `.fud` belongs to a LIBRARY and not to the workspace (SDD-43 §4.4).
-   *
-   * It is in the index and in the TypeScript program for the same reason every other file
-   * is — so the contract it declares is a type and not `any` — and it is read-only: it is
-   * navigated, hovered and jumped into, but not diagnosed as the author's own code and not
-   * formatted on save. The author of an app does not fix a library's warnings.
-   */
-  readonly external: boolean;
 }
 
-/** The editor's index. It is also the link index the shared typecheck rules ask (SDD-35 §3.1). */
-export class WorkspaceIndex implements LinkIndex {
-  readonly #scanner: FileSystemScanner;
-  readonly #entries = new Map<string, IndexEntry>();
-  #revision = 0;
-
+export class WorkspaceIndex extends FudIndex<IndexEntry> {
   constructor(scanner: FileSystemScanner) {
-    this.#scanner = scanner;
-  }
-
-  /**
-   * Bumped whenever the set of `.fud` changes.
-   *
-   * What a tag resolves to is not a property of one file: creating `app-card.fud` changes the
-   * projection of every page that links it. This counter is how the document cache notices,
-   * without anyone walking the workspace to find out who cared.
-   */
-  get revision(): number {
-    return this.#revision;
-  }
-
-  /**
-   * The start-up sweep. Replaces whatever the index held for `root`'s files.
-   *
-   * Two sources, and the second is not an exception to the first: the folder is swept with
-   * `node_modules` pruned exactly as before, and the libraries are reached by following the
-   * DECLARED dependency graph (SDD-43 §4.4). What that buys is a contract that survives the
-   * library being installed rather than linked — which in a pnpm workspace is the only
-   * reason this ever appeared to work.
-   */
-  scan(root: string): void {
-    for (const path of this.#scanner.fudFiles(root)) this.upsert(path);
-    for (const library of findLibraries(root, this.#scanner)) {
-      for (const path of library.files) this.upsert(path, true);
-    }
-  }
-
-  /**
-   * (Re)read one file into the index.
-   *
-   * A file that cannot be read is dropped rather than kept stale: between the watcher event
-   * and this call the user may have deleted it, and a stale entry would resolve a tag to a
-   * file that is not there.
-   */
-  upsert(path: string, external = false): void {
-    const key = toPosix(path);
-    const source = this.#scanner.readFile(key);
-    if (source === undefined) {
-      this.remove(key);
-      return;
-    }
-
-    this.#revision++;
-    const { document } = parseFud(source);
-    // One read of the contract, and the required props come OUT of it: asking twice would run
-    // the `@code` extraction twice per change, and — worse — would let the two answers differ.
-    const contract = contractOf(source, document);
-    this.#entries.set(key, {
-      path: key,
-      role: roleOf(document),
-      tag: tagOf(document),
-      layoutHref: layoutHrefOf(document),
-      sections: sectionsOf(document),
-      holes: holesOf(document),
-      snippets: snippetsOf(source, document),
-      requiredProps: contract.props.filter((prop) => prop.required).map((prop) => prop.name),
-      contract,
-      external,
+    super(scanner, (input) => {
+      const { source, document } = input;
+      // One read of the contract, and the required props come OUT of it: asking twice would
+      // run the `@code` extraction twice per change, and — worse — would let the two answers
+      // differ.
+      const contract = contractOf(source, document);
+      return {
+        ...describeFud(input),
+        role: roleOf(document),
+        layoutHref: layoutHrefOf(document),
+        sections: sectionsOf(document),
+        snippets: snippetsOf(source, document),
+        requiredProps: contract.props.filter((prop) => prop.required).map((prop) => prop.name),
+        contract,
+      };
     });
-  }
-
-  /** Drop a file. The revision only moves when something was actually there to drop. */
-  remove(path: string): void {
-    if (this.#entries.delete(toPosix(path))) this.#revision++;
-  }
-
-  /** A rename is a removal plus a read: the role travels with the content, not with the name. */
-  rename(from: string, to: string): void {
-    this.remove(from);
-    this.upsert(to);
-  }
-
-  get(path: string): IndexEntry | undefined {
-    return this.#entries.get(toPosix(path));
-  }
-
-  /** Every entry, in insertion order. */
-  all(): readonly IndexEntry[] {
-    return [...this.#entries.values()];
   }
 
   /** Every entry of one role — what the `href` completion filters with (§4.2). */
   byRole(role: FudRole): readonly IndexEntry[] {
     return this.all().filter((entry) => entry.role === role);
-  }
-
-  /**
-   * What an `href` written inside `fromFile` points at, if anything.
-   *
-   * The arithmetic moved to the scanner with SDD-43: an href may name a package and not
-   * only a location, and answering that needs a disk. What stays here is the lookup, which
-   * is what makes this a map access per keystroke and not a filesystem question.
-   */
-  resolve(fromFile: string, href: string): IndexEntry | undefined {
-    return this.#entries.get(toPosix(this.#scanner.resolveHref(toPosix(fromFile), href)));
   }
 
   /**
@@ -209,15 +104,15 @@ export class WorkspaceIndex implements LinkIndex {
    */
   linker(fromFile: string): (target: string) => string | undefined {
     const from = toPosix(fromFile);
-    const own = owningPackage(from, this.#scanner);
+    const own = owningPackage(from, this.fs);
     const libraries =
-      own === undefined ? [] : dependencyChain(own, this.#scanner).filter((pkg) => pkg.root !== own);
+      own === undefined ? [] : dependencyChain(own, this.fs).filter((pkg) => pkg.root !== own);
 
     return (target) => {
-      const owner = owningPackage(target, this.#scanner);
+      const owner = owningPackage(target, this.fs);
       if (owner === own) return relativeHref(from, target);
       const library = libraries.find((pkg) => pkg.root === owner);
-      return library === undefined ? undefined : specifierOf(library, target, this.#scanner);
+      return library === undefined ? undefined : specifierOf(library, target, this.fs);
     };
   }
 }

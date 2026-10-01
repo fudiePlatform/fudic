@@ -19,8 +19,8 @@ export type { Span } from './span.js';
 export { span, emptySpan, spanLength, isEmptySpan, mergeSpans, spanContains } from './span.js';
 export type { Position, Range } from './position.js';
 export { LineMap, rangeOf } from './linemap.js';
-export type { Place, Rendered, FormatOptions } from './render.js';
-export { render, format } from './render.js';
+export type { Place, Rendered, FormatOptions, Located } from './render.js';
+export { render, format, locate } from './render.js';
 export { DOCS_BASE, docsUrl } from './docs.js';
 
 // ── codes ──────────────────────────────────────────────────────────────────────
@@ -239,6 +239,8 @@ export * from './codes/FUD0855.js';
 export * from './codes/FUD0856.js';
 export * from './codes/FUD0857.js';
 export * from './codes/FUD0858.js';
+export * from './codes/FUD0870.js';
+export * from './codes/FUD0871.js';
 export * from './codes/FUD0890.js';
 export * from './codes/FUD0891.js';
 export * from './codes/FUD0892.js';

@@ -5,6 +5,7 @@
 
 import { docsUrl } from './docs.js';
 import { LineMap } from './linemap.js';
+import type { Span } from './span.js';
 import type { FudCode, FudDiagnostic, Severity } from './types.js';
 
 /** A 1-based line and column, for humans (LSP positions stay 0-based in `LineMap`). */
@@ -40,11 +41,27 @@ export function render(diagnostic: FudDiagnostic, source?: string): Rendered {
   if (at === undefined || source === undefined) {
     return base;
   }
+  return { ...base, ...locate(source, at) };
+}
+
+/** Where a span is, for a human: 1-based start and end, and the frame. */
+export interface Located {
+  readonly start: Place;
+  readonly end: Place;
+  readonly frame: string;
+}
+
+/**
+ * Line, column and frame of a span in a text.
+ *
+ * Exported for the problems that are not fudic's own — a TypeScript error over a `.fud`
+ * (SDD-35) — so that they are painted by this same code and not by a second one.
+ */
+export function locate(source: string, at: Span): Located {
   const lines = new LineMap(source);
   const start = lines.positionAt(at.start);
   const end = lines.positionAt(at.end);
   return {
-    ...base,
     start: { line: start.line + 1, column: start.character + 1 },
     end: { line: end.line + 1, column: end.character + 1 },
     frame: frame(source, lines, start.line, start.character, end.line === start.line ? end.character : undefined),
