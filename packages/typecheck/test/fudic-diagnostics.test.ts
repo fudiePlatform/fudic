@@ -9,7 +9,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   fudicDiagnostics,
+  hrefDiagnostics,
+  linksOf,
+  missingSections,
   semanticDiagnostics,
+  unresolvedHrefs,
 } from '../src/index.js';
 import { component, LAYOUT, projected, route } from './_support.js';
 
@@ -150,5 +154,52 @@ describe('fudicDiagnostics', () => {
       expect(diagnostic.span.start).toBeGreaterThanOrEqual(0);
       expect(diagnostic.span.end).toBeLessThanOrEqual(source.length);
     }
+  });
+});
+
+describe('the links and holes the rules read', () => {
+  it('leaves FUD0460 to an href that is there: none for a link with no href or an empty one', () => {
+    const source =
+      '<link rel="layout" href="../layouts/_layout.fud">\n<link rel="component">\n<link rel="component" href="">\n<article>hi</article>\n';
+    const { index, document } = setup(SLUG, source);
+
+    expect(unresolvedHrefs(document, index)).toEqual([]);
+    expect(hrefDiagnostics(document, index)).toEqual([]);
+  });
+
+  it('says where the file of an unresolved href would have to be created', () => {
+    const { index, document } = setup(SLUG, route('../layouts/_layout.fud', ['../components/ghost.fud']));
+
+    expect(unresolvedHrefs(document, index).map((unresolved) => unresolved.target)).toEqual([
+      '/p/components/ghost.fud',
+    ]);
+  });
+
+  it("reads a nested layout's own <link rel=\"layout\">, and a snippet import", () => {
+    const nested = LAYOUT.replace('<meta charset="utf-8">', '<link rel="layout" href="./_root.fud">\n    <meta charset="utf-8">');
+    const { document } = setup('/p/layouts/_nested.fud', nested);
+    expect(linksOf(document.document).map((link) => link.rel)).toEqual(['layout']);
+
+    const withSnippets = `<link rel="snippet" href="./ui.fud">\n${component('app-x')}`;
+    expect(linksOf(setup('/p/components/app-x.fud', withSnippets).document.document).map((link) => link.rel)).toEqual([
+      'snippet',
+    ]);
+  });
+
+  it('lists the required sections a route leaves unfilled, and none for what is not a route', () => {
+    const layout = LAYOUT.replace('@RenderHead()', '@RenderHead()\n    @RenderSection(nav, required: true)');
+    const files = { '/p/layouts/_layout.fud': layout };
+
+    const bare = projected(SLUG, route('../layouts/_layout.fud'), files);
+    expect(missingSections(bare.document, bare.index).map((section) => section.name)).toEqual(['nav']);
+
+    const filled = projected(SLUG, `${route('../layouts/_layout.fud')}@section nav {\n  <i>x</i>\n}\n`, files);
+    expect(missingSections(filled.document, filled.index)).toEqual([]);
+
+    const notRoute = projected('/p/components/app-x.fud', component('app-x'), files);
+    expect(missingSections(notRoute.document, notRoute.index)).toEqual([]);
+
+    const unknownLayout = projected(SLUG, route('../layouts/ghost.fud'), files);
+    expect(missingSections(unknownLayout.document, unknownLayout.index)).toEqual([]);
   });
 });

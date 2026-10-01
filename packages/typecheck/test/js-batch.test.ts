@@ -121,4 +121,68 @@ describe('batchDocumentJs', () => {
     expect(source.slice(first?.span.start ?? 0, first?.span.end ?? 0)).toBeDefined();
     expect(first?.span.end).toBeLessThanOrEqual(source.length);
   });
+
+  it('registers every @foreach / @for header in the same batch, and answers its statement', () => {
+    const source = `<app-x>
+  <template shadowrootmode="open">
+@foreach (const item of [1, 2]) {
+  <i>@item</i>
+}
+@for (let i = 0; i < 2; i++) {
+  <b>@i</b>
+}
+@while (false) {
+  <u>x</u>
+}
+  </template>
+</app-x>
+`;
+    const { js } = parse(source);
+
+    expect(js.loops).toHaveLength(2);
+    const [forOf, forLoop] = js.loops;
+    expect(forOf?.statement?.type).toBe('ForOfStatement');
+    expect(forLoop?.statement?.type).toBe('ForStatement');
+    expect(source.slice(forOf!.span.start, forOf!.headerClose)).toBe('@foreach (const item of [1, 2])');
+    expect(source.charAt(forOf!.headerEnd)).toBe(')');
+  });
+
+  it('registers no fragment for an empty binding: there is nothing to parse yet', () => {
+    const { document, js } = parse(`<app-x>
+  <template shadowrootmode="open"><button @click="@()">x</button></template>
+</app-x>
+`);
+    let ids = 0;
+    walk(documentRoots(document), {
+      binding(expr) {
+        if (js.fragmentId(expr) !== undefined) ids++;
+      },
+    });
+
+    expect(ids).toBe(0);
+    expect(js.diagnostics).toEqual([]);
+  });
+
+  it('skips a header with nothing in it, and keeps no statement for one Oxc could not read', () => {
+    const empty = parse(`<app-x>
+  <template shadowrootmode="open">
+@foreach () {
+  <i>x</i>
+}
+  </template>
+</app-x>
+`);
+    expect(empty.js.loops).toEqual([]);
+
+    const broken = parse(`<app-x>
+  <template shadowrootmode="open">
+@foreach (const of) {
+  <i>x</i>
+}
+  </template>
+</app-x>
+`);
+    expect(broken.js.loops).toHaveLength(1);
+    expect(broken.js.loops[0]).not.toHaveProperty('statement');
+  });
 });

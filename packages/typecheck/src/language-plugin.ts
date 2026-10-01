@@ -33,6 +33,16 @@ import { createFudicVirtualCode, FUD_LANGUAGE_ID, type FudicVirtualCode } from '
 const SCRIPT_KIND_TS = 3;
 const SCRIPT_KIND_DEFERRED = 7;
 
+/**
+ * What TypeScript is told about the `.fud` extension. `isMixedContent` is what tells it that a
+ * `.fud` is not TypeScript itself: its script comes from the projection, and `Deferred` keeps
+ * tsserver from guessing. Exported because the build parses its `tsconfig.json` with it, so that
+ * an `include` of `.fud` files matches there as it does in the editor.
+ */
+export const FUD_EXTRA_FILE_EXTENSIONS = [
+  { extension: 'fud', isMixedContent: true, scriptKind: SCRIPT_KIND_DEFERRED },
+] as const;
+
 /** Where the documents of a `.fud` come from: a versioned cache in the editor, the disk in the build. */
 export interface FudDocuments<D extends ProjectedFud> {
   /** The document at this version, parsed and projected. */
@@ -100,11 +110,7 @@ export function fudLanguagePlugin<T, D extends ProjectedFud = ProjectedFud>(
     },
 
     typescript: {
-      // `isMixedContent` is what tells TypeScript that a `.fud` is not TypeScript itself: its
-      // script comes from the projection, and `Deferred` keeps tsserver from guessing.
-      extraFileExtensions: [
-        { extension: 'fud', isMixedContent: true, scriptKind: SCRIPT_KIND_DEFERRED },
-      ],
+      extraFileExtensions: [...FUD_EXTRA_FILE_EXTENSIONS],
 
       // Volar's augmentation is not generic over the root code, so these two hooks receive a
       // plain `VirtualCode`. The narrowing is safe by construction: the only roots that exist

@@ -36,7 +36,7 @@ import { nodeFileSystem, type CheckFs } from './files.js';
 import { describeFud, FudIndex } from './fud-index.js';
 import { fudicDiagnostics } from './fudic-diagnostics.js';
 import { mountGlobals } from './globals.js';
-import { fudLanguagePlugin } from './language-plugin.js';
+import { FUD_EXTRA_FILE_EXTENSIONS, fudLanguagePlugin } from './language-plugin.js';
 import { readCommandLine, type CheckCommandLine } from './options.js';
 import { toPosix } from './paths.js';
 import { parseSource, projectParsed, type ParsedSource, type ProjectedFud } from './project.js';
@@ -109,7 +109,7 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
       },
     });
 
-    const commandLine = readCommandLine(typescript, root, plugin.typescript?.extraFileExtensions ?? []);
+    const commandLine = readCommandLine(typescript, root, [...FUD_EXTRA_FILE_EXTENSIONS]);
     const snapshots = new Map<string, IScriptSnapshot | undefined>();
     const read = (fileName: string): string | undefined =>
       fileName.endsWith('.fud') ? fs.readFile(fileName) : typescript.sys.readFile(fileName);

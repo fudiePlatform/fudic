@@ -60,6 +60,7 @@ export {
 } from './virtual-code.js';
 export {
   fudLanguagePlugin,
+  FUD_EXTRA_FILE_EXTENSIONS,
   type LanguageDeps,
   type FudDocuments,
 } from './language-plugin.js';
