@@ -115,11 +115,13 @@ import {
 } from '@fudic/diagnostics';
 import { devUrl, devManifest, devClientTag, devClientPrefix, withInlineSourceMap } from './dev.js';
 import {
+  documentFiles,
   matchRouteBuild,
   renderRouteHtml,
   loadRouteData,
   type RenderModule,
 } from './serve.js';
+import { asError, startLiveCheck } from './dev-typecheck.js';
 import {
   WRAPPER_PREFIX,
   SW_ID,
@@ -540,6 +542,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
 
     configureServer(server) {
       builds = discoverRoutes(root, options).routes;
+      // What the editor marks, live (SDD-35 §4.5): checked at start, re-checked on every save
+      // of a file the program read, pushed to the overlay without a reload, and the page
+      // comes back by itself once it is clean.
+      const live = startLiveCheck(server, root);
+      server.httpServer?.once('close', () => live.dispose());
       // Dev serves the bootstraps at stable root URLs (so the SW would register at root
       // scope), but registers nothing unless `sw.json` says `"dev": "preview"` (§4.11).
       const scripts = new Map<string, string>([
@@ -588,9 +595,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             // used to write only the first, so nothing fudic emits was debuggable in dev.
             res.end(result === null ? '' : withInlineSourceMap(result.code, result.map));
           })
-          .catch((err) => {
-            res.statusCode = 500;
-            res.end(`// fudic dev: failed to serve ${url}: ${(err as Error).message}`);
+          // To Vite's error middleware, which puts it in the overlay like the HTML's own
+          // (SDD-35 §4.5). A `500` with a comment in it was an error nobody saw: the browser
+          // loaded a script that did nothing.
+          .catch((err: Error) => {
+            next(err);
           });
       });
 
@@ -643,13 +652,21 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             return;
           }
           const nonce = newNonce();
-          renderRouteHtml(
-            (id) => server.ssrLoadModule(id) as Promise<RenderModule>,
-            WRAPPER_PREFIX + rb.route.pattern,
-            rb.route.pattern,
-            pathname,
-            nonce,
-          )
+          // A page whose graph has an error is not served (SDD-35 §4.5): the overlay goes in
+          // its place, with the same position and message the editor shows. A check in flight
+          // is waited for, so a save followed by a reload never sees the previous verdict.
+          live
+            .blocking(documentFiles(rb.absPath, io))
+            .then((blocked) => {
+              if (blocked !== undefined) throw asError(blocked);
+              return renderRouteHtml(
+                (id) => server.ssrLoadModule(id) as Promise<RenderModule>,
+                WRAPPER_PREFIX + rb.route.pattern,
+                rb.route.pattern,
+                pathname,
+                nonce,
+              );
+            })
             .then((html) => server.transformIndexHtml(url, html)) // injects the dev client
             .then((html) => {
               res.statusCode = 200;

@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/typecheck` (nuevo) · `@fudic/language-server` · `@fudic/vite` ·
 > `@fudic/compiler` · `@fudic/example-basic`
 > **Rama:** `worktree-sdd-35-compilo-o-no-compilo`
-> **Progreso:** 14 / 22
+> **Progreso:** 17 / 22
 >
 > **Reparto (decisión de Pedro).** Esta sesión escribe el código; los tests (tareas 1 y 12, los
 > tests unitarios que se mudan con sus piezas y la cobertura) los escribe otra sesión. Una tarea
@@ -85,9 +85,9 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 17 | 14 | **El chequeo vivo.** Un `ProjectChecker` en `configureServer`; vigila `CheckReport.inputs` y los `.fud` que aparecen o se van; `invalidate` + `check`; terminal con todo, overlay con el primero (`server.ws.send({ type: 'error' })`), `full-reload` al quedar limpio. Criterio 19 | `vite` | `src/dev-typecheck.ts` · `src/plugin.ts` |
-| [ ] | 18 | 17 | **La página bloqueada.** El middleware HTML mira el grafo de la ruta pedida (`resolveDocument`) contra el último reporte, espera una comprobación en curso, y con un error llama a `next(err)` con `loc` y `frame`. Criterio 18 | `vite` | `src/plugin.ts` · `src/serve.ts` |
-| [ ] | 19 | 17 | **El middleware de scripts** deja el `500` con comentario y pasa el error a `next(err)`. Criterio 20 | `vite` | `src/plugin.ts` |
+| [x] | 17 | 14 | **El chequeo vivo.** Un `ProjectChecker` en `configureServer`; vigila `CheckReport.inputs` y los `.fud` que aparecen o se van; `invalidate` + `check`; terminal con todo, overlay con el primero (`server.ws.send({ type: 'error' })`), `full-reload` al quedar limpio. Criterio 19 | `vite` | `src/dev-typecheck.ts` · `src/plugin.ts` |
+| [x] | 18 | 17 | **La página bloqueada.** El middleware HTML mira el grafo de la ruta pedida (`resolveDocument`) contra el último reporte, espera una comprobación en curso, y con un error llama a `next(err)` con `loc` y `frame`. Criterio 18 | `vite` | `src/plugin.ts` · `src/serve.ts` |
+| [x] | 19 | 17 | **El middleware de scripts** deja el `500` con comentario y pasa el error a `next(err)`. Criterio 20 | `vite` | `src/plugin.ts` |
 
 ## Fase 7 — la evidencia y el cierre (3)
 
