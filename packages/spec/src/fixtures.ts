@@ -13,6 +13,8 @@ export interface Fixtures {
   readonly path: string;
   /** The keys of the `export default`, with their spans in the fixture file. */
   readonly names: readonly Name[];
+  /** Offset of the closing `}` of the default-exported object; absent when there is none. */
+  readonly end?: number;
 }
 
 /**
@@ -29,5 +31,5 @@ export function readFixtures(source: string, path: string): Fixtures {
     const text = keyName(property);
     if (text !== undefined) names.push({ text, span: span(property.key.start, property.key.end) });
   }
-  return { path, names };
+  return object === undefined ? { path, names } : { path, names, end: object.end - 1 };
 }

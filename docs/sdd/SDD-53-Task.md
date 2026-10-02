@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/spec` · `@fudic/typecheck` · `@fudic/cli` · `@fudic/language-server` ·
 > `fudic-vscode` · `@fudic/diagnostics`
 > **Rama:** `sdd-53-fudspec-autoria` (nace de `sdd-52-fudspec`)
-> **Progreso:** 2 / 30 — `En curso`.
+> **Progreso:** 7 / 30 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -47,11 +47,11 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 3 | — | **`PropShape` y `sampleValue`.** Los tipos de §3.1 y la tabla de §4.3, exportados desde `index.ts` | `spec` | `src/scaffold/shape.ts` |
-| [ ] | 4 | 3 | **Fixtures.** `fixtureEntry` y `fixtureModule` (§3.2), con el `import type` relativo y el `satisfies`. `readFixtures` gana `Fixtures.end`, el offset de la `}` del objeto exportado | `spec` | `src/scaffold/fixture.ts` · `src/fixtures.ts` |
-| [ ] | 5 | — | **Módulo de término.** `termModule(block, name, params)` (§4.2): `meta`, `run` que devuelve `{ pass: false, evidence: 'not implemented' }` y `selfTest = []` | `spec` | `src/scaffold/term.ts` |
-| [ ] | 6 | — | **Esqueleto.** `specSkeleton(tag)` con la forma comentada de §4.1. Recibe si lleva la línea `props base` | `spec` | `src/scaffold/spec.ts` |
-| [ ] | 7 | — | **`closest`.** Distancia de edición ≤ 2 y ≤ un tercio del nombre; empate, el alfabético | `spec` | `src/scaffold/closest.ts` |
+| [x] | 3 | — | **`PropShape` y `sampleValue`.** Los tipos de §3.1 y la tabla de §4.3, exportados desde `index.ts` | `spec` | `src/scaffold/shape.ts` |
+| [x] | 4 | 3 | **Fixtures.** `fixtureEntry` y `fixtureModule` (§3.2), con el `import type` relativo y el `satisfies`. `readFixtures` gana `Fixtures.end`, el offset de la `}` del objeto exportado | `spec` | `src/scaffold/fixture.ts` · `src/fixtures.ts` |
+| [x] | 5 | — | **Módulo de término.** `termModule(block, name, params)` (§4.2): `meta`, `run` que devuelve `{ pass: false, evidence: 'not implemented' }` y `selfTest = []` | `spec` | `src/scaffold/term.ts` |
+| [x] | 6 | — | **Esqueleto.** `specSkeleton(tag)` con la forma comentada de §4.1. Recibe si lleva la línea `props base` | `spec` | `src/scaffold/spec.ts` |
+| [x] | 7 | — | **`closest`.** Distancia de edición ≤ 2 y ≤ un tercio del nombre; empate, el alfabético | `spec` | `src/scaffold/closest.ts` |
 | [ ] | 8 | 3–7 | **Tests de los generadores.** Criterios 1–5. `@fudic/spec` sigue al 100 % | `spec` | `test/scaffold/*.test.ts` |
 
 ## Fase 3 — tipos (3)

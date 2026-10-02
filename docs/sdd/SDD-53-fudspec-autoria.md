@@ -1,6 +1,6 @@
 # SDD-53 — Escribir una `.fudspec` sin saberse el lenguaje: CLI, editor y formateador
 
-> **Estado:** `En curso` — [tareas](./SDD-53-Task.md), 2 / 30.
+> **Estado:** `En curso` — [tareas](./SDD-53-Task.md), 7 / 30.
 > **Paquetes:** `@fudic/spec` (generadores y formateador) · `@fudic/typecheck` (la forma de las
 > props) · `@fudic/cli` (`g spec`, `g term`, `fmt`) · `@fudic/language-server` (snippets, bombilla
 > y formato) · `fudic-vscode` (formato al guardar) · `@fudic/diagnostics` (los códigos de la CLI)
@@ -86,7 +86,8 @@ Funciones puras, sin disco. La CLI y el server las llaman igual, así que el fic
 
 ```ts
 /** The text of a new `.fudspec`: `component <tag>`, a blank line and the commented skeleton. */
-export function specSkeleton(tag: string): string;
+/** `props` adds the `props base` line, for a component that needs a fixture. */
+export function specSkeleton(tag: string, props: boolean): string;
 
 /** A sample value for a shape, as TypeScript source; undefined when none can be written. */
 export function sampleValue(shape: PropShape): string | undefined;
@@ -152,7 +153,7 @@ fudic fmt [path…]    ahora formatea también los .fudspec
 1. Resuelve el proyecto como `g component` y busca el componente por tag en él. Acepta el tag
    (`app-card`) o el nombre sin prefijo (`card`), con la misma regla que `g component`. Si no
    está: `FUD0960`.
-2. Escribe `<carpeta del .fud>/<tag>.fudspec` con `specSkeleton(tag)`. Si existe y no hay
+2. Escribe `<carpeta del .fud>/<tag>.fudspec` con `specSkeleton(tag, <tiene props obligatorias>)`. Si existe y no hay
    `--force`: `FUD0443`.
 3. Si el componente tiene **props obligatorias**, escribe también `<tag>.fixture.ts` con
    `fixtureModule(tag, ['base'], props)`. Si el fichero ya existe, no lo toca (no es error: la
@@ -322,7 +323,7 @@ Todos son `error` y solo los emite la CLI.
 
 **Generadores**
 
-1. **Esqueleto.** `specSkeleton('app-card')` parsea y valida sin diagnósticos contra un contexto
+1. **Esqueleto.** `specSkeleton('app-card', true)` y `specSkeleton('app-card', false)` parsean y validan sin diagnósticos contra un contexto
    donde `app-card` existe.
 2. **Valores.** Cada fila de §4.3 da su valor, con un caso por forma. `object` omite las opcionales
    y las que no tienen valor; `union` salta `null` y `undefined`; `any` y `opaque` no dan valor.
