@@ -59,9 +59,17 @@ export function signatureOf(module: TermModule): string {
   return [module.name, ...module.params.map((p) => `${p.name}:${p.type}`)].join(' ');
 }
 
-/** A span of any file as an LSP range, the file read through `read` unless it is this one. */
-export function rangeIn(spec: SpecDocument, path: string, span: Span, read: (path: string) => string | undefined): Range {
-  const text = path === spec.path ? spec.text : (read(path) ?? '');
+function toRange(path: string, text: string, span: Span): Range {
   const document = TextDocument.create(pathToUri(path).toString(), 'plaintext', 0, text);
   return { start: document.positionAt(span.start), end: document.positionAt(span.end) };
+}
+
+/** A span of the `.fudspec` itself as an LSP range. */
+export function spanRange(spec: SpecDocument, span: Span): Range {
+  return toRange(spec.path, spec.text, span);
+}
+
+/** A span of any file as an LSP range, the file read through `read` unless it is this one. */
+export function rangeIn(spec: SpecDocument, path: string, span: Span, read: (path: string) => string | undefined): Range {
+  return toRange(path, path === spec.path ? spec.text : (read(path) ?? ''), span);
 }

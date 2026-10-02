@@ -11,7 +11,7 @@ import type { Span } from '@fudic/diagnostics';
 import { normalizeTerm, type ComponentInfo, type Fixtures, type Name, type TermModule } from '@fudic/spec';
 import type { Hover, LocationLink, Range } from 'vscode-languageserver-protocol';
 import { pathToUri } from '../uri.js';
-import { rangeIn, signatureOf, termLines, touches, type SpecDocument } from './document.js';
+import { rangeIn, signatureOf, spanRange, termLines, touches, type SpecDocument } from './document.js';
 import type { SpecHost } from './host.js';
 
 type Target =
@@ -64,7 +64,7 @@ export function specHover(spec: SpecDocument, offset: number, host: SpecHost): H
   if (target === undefined) return undefined;
   return {
     contents: { kind: 'markdown', value: markdownOf(target) },
-    range: rangeIn(spec, spec.path, target.span, (path) => host.read(path)),
+    range: spanRange(spec, target.span),
   };
 }
 
@@ -88,7 +88,7 @@ export function specDefinition(spec: SpecDocument, offset: number, host: SpecHos
       targetUri: pathToUri(path).toString(),
       targetRange: range,
       targetSelectionRange: range,
-      originSelectionRange: rangeIn(spec, spec.path, target.span, read),
+      originSelectionRange: spanRange(spec, target.span),
     },
   ];
 }

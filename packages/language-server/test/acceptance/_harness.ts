@@ -84,8 +84,8 @@ export interface Harness {
   readonly client: ProtocolConnection;
   readonly server: FudicServer;
   readonly capabilities: InitializeResult;
-  /** Tell the server about a document, at version 1. */
-  open(relative: string, text?: string): Promise<{ uri: string; text: string }>;
+  /** Tell the server about a document, at version 1, as the editor names its language. */
+  open(relative: string, text?: string, languageId?: string): Promise<{ uri: string; text: string }>;
   /** Replace a document's text, at a new version. */
   change(uri: string, text: string, version: number): Promise<void>;
   /** LSP position of an offset in `text`. */
@@ -241,13 +241,13 @@ export async function startHarness(
       if (pending.length > 0) toServer.write(Buffer.concat(pending));
     },
 
-    async open(relative, text) {
+    async open(relative, text, languageId = EDITOR_LANGUAGE_ID) {
       const uri = uriOf(relative);
       const source = text ?? textOf(relative);
       // Awaited: the notification has to be on the wire before the request that reads it, or
       // the server answers about the version it had a moment ago.
       await client.sendNotification(DidOpenTextDocumentNotification.type, {
-        textDocument: { uri, languageId: EDITOR_LANGUAGE_ID, version: 1, text: source },
+        textDocument: { uri, languageId, version: 1, text: source },
       });
       return { uri, text: source };
     },

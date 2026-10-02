@@ -284,6 +284,67 @@ describe('watched files', () => {
     expect(server.configs.componentTagFor('/p/x.fud')).toBe('shop-button');
   });
 
+  it('drops the .fudspec catalogs and asks for a refresh once per batch (SDD-52 criterion 25)', () => {
+    const { fake, server, volar } = setup();
+    const refreshes: boolean[] = [];
+    volar.languageFeatures = { requestRefresh: async (clear) => void refreshes.push(clear) };
+    fake.onInitialize?.(params());
+    const before = server.specs.terms('/p/components/app-badge.fudspec');
+
+    fake.onDidChangeWatchedFiles?.({
+      changes: [
+        { uri: URI.file('/p/fudic/terms/then/min-height.js').toString(), type: 3 },
+        { uri: URI.file('/p/components/app-badge.fixture.ts').toString(), type: 2 },
+      ],
+    });
+
+    expect(server.specs.terms('/p/components/app-badge.fudspec')).not.toBe(before);
+    expect(refreshes).toEqual([false]);
+  });
+
+  it('leaves the .fudspec catalogs alone for a change that cannot affect them', () => {
+    const { fake, server, volar } = setup();
+    const refreshes: boolean[] = [];
+    volar.languageFeatures = { requestRefresh: async (clear) => void refreshes.push(clear) };
+    fake.onInitialize?.(params());
+    const before = server.specs.terms('/p/components/app-badge.fudspec');
+
+    fake.onDidChangeWatchedFiles?.({ changes: [{ uri: URI.file('/p/tsconfig.json').toString(), type: 2 }] });
+
+    expect(server.specs.terms('/p/components/app-badge.fudspec')).toBe(before);
+    expect(refreshes).toEqual([]);
+  });
+
+  it('copes with a Volar server that cannot refresh', () => {
+    const { fake, server } = setup();
+    fake.onInitialize?.(params());
+    const before = server.specs.terms('/p/x.fudspec');
+    fake.onDidChangeWatchedFiles?.({ changes: [{ uri: URI.file('/p/components/app-badge.fud').toString(), type: 2 }] });
+    expect(server.specs.terms('/p/x.fudspec')).not.toBe(before);
+  });
+
+  it('reads the .fudspec terms from the workspace folder, then the injected framework folder', () => {
+    const files: Record<string, string | undefined> = {
+      '/p/fudic/terms/then/a.js': 'export {}',
+      '/fw/terms/then/b.js': 'export {}',
+    };
+    const specFs = {
+      readDirectory: (dir: string) =>
+        Object.keys(files).filter((f) => f.startsWith(`${dir}/`)).map((f) => f.slice(dir.length + 1)),
+      readFile: (path: string) => files[path],
+    };
+    const withFramework = setup({ specFs, frameworkTerms: '/fw/terms' });
+    withFramework.fake.onInitialize?.(params());
+    expect(withFramework.server.specs.terms('/p/x.fudspec').list('then').map((m) => [m.name, m.layer])).toEqual([
+      ['a', 'workspace'],
+      ['b', 'framework'],
+    ]);
+
+    const without = setup({ specFs });
+    without.fake.onInitialize?.(params());
+    expect(without.server.specs.terms('/p/x.fudspec').list('then').map((m) => m.name)).toEqual(['a']);
+  });
+
   it('ignores a change to anything that is not a .fud', () => {
     const { fake, server } = setup();
     fake.onInitialize?.(params());

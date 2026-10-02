@@ -71,8 +71,12 @@ export class SpecHost {
     return catalog;
   }
 
+  /**
+   * The components with a tag. A file being started structures as a component with no name
+   * (`isUndecided`), and an empty tag is nothing a criterion can name.
+   */
   #components() {
-    return this.#deps.index.all().filter((e) => e.role === 'component');
+    return this.#deps.index.all().filter((e) => e.role === 'component' && e.tag !== '');
   }
 
   /** A component of the workspace, by its tag. */

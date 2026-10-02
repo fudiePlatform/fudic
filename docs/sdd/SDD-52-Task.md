@@ -3,7 +3,7 @@
 > **SDD:** [SDD-52 — El lenguaje `.fudspec`](./SDD-52-fudspec.md)
 > **Paquetes:** `@fudic/spec` · `@fudic/diagnostics` · `@fudic/language-server` · `fudic-vscode`
 > **Rama:** `sdd-52-fudspec` (nace de `worktree-sdd-32-abrir-en-el-navegador`)
-> **Progreso:** 27 / 31 — `En curso`.
+> **Progreso:** 28 / 31 — `En curso`.
 
 **El parser se escribió sin tests, por decisión de Pedro.** Las tareas 1–6 se hicieron solo con
 `typecheck` y `build`; sus tests (tarea 7) los escribió otra sesión y dejan `@fudic/spec` al 100 %
@@ -13,8 +13,9 @@ en las cuatro métricas.
 desechable; sus tests (tarea 28) los escribió otra sesión y mantienen `@fudic/spec` al 100 %.
 
 **El language server, igual.** Las tareas 17–23 se hicieron con `typecheck`, la suite que ya había
-en verde y una prueba de humo desechable; sus tests (tarea 30) los escribe otra sesión. Hasta
-entonces `pnpm coverage` de `@fudic/language-server` no llega a su umbral del 100 %.
+en verde y una prueba de humo desechable; sus tests (tarea 30) los escribió otra sesión y dejan
+`@fudic/language-server` al 100 %. Destaparon un defecto, corregido en el servidor: un `.fud` a
+medio escribir (componente sin nombre) daba una etiqueta vacía al completado.
 
 **El orden manda en dos puntos.**
 
@@ -99,7 +100,7 @@ entonces `pnpm coverage` de `@fudic/language-server` no llega a su umbral del 10
 | [x] | 21 | 18 | **Hover e ir a la definición.** Firma, `describe`, capa y ruta; término → `.js`, `component` → `.fud`, `props x` → la clave. Criterio 23 | `language-server` | `src/fudspec/hover.ts` · `src/fudspec/definition.ts` |
 | [x] | 22 | 18 | **Semantic tokens.** Término existente frente a inexistente, argumento `element` como tag | `language-server` | `src/fudspec/semantic-tokens.ts` |
 | [x] | 23 | 19 | **Invalidación.** Un cambio en `fudic/terms/**/*.js`, en un `*.fixture.ts` o en un `.fud` revalida las `.fudspec` abiertas. Criterio 25 | `language-server` | `src/fudspec/service.ts` |
-| [ ] | 30 | 17–23 | **Los tests del language server** (otra sesión). Criterios 21–25 y las decisiones de SDD §8.2, con `@fudic/language-server` al 100 % en las cuatro métricas. Si un test destapa un defecto, se corrige el servidor, no el test | `language-server` | `test/` |
+| [x] | 30 | 17–23 | **Los tests del language server**. Criterios 21–25 y las decisiones de SDD §8.2, con `@fudic/language-server` al 100 % en las cuatro métricas. Si un test destapa un defecto, se corrige el servidor, no el test | `language-server` | `test/` |
 
 ## Fase 6 — VS Code y cierre (3)
 
