@@ -36,7 +36,26 @@ export const FIXTURES: readonly string[] = [
   ].join('\n'),
 ];
 
-export const slice = (source: string, s: Span): string => source.slice(s.start, s.end);
+/** Every fixture cut short at each offset, re-indented line by line and with noise at each end. */
+export function* inputs(): Generator<string> {
+  const noise = ['"', '\t', '\r', '\\', '#', 'role:', '/"x', ' '];
+  for (const fixture of FIXTURES) {
+    for (let i = 0; i <= fixture.length; i++) yield fixture.slice(0, i);
+    const lines = fixture.split('\n');
+    for (const [n, line] of lines.entries()) {
+      const bare = line.trimStart();
+      for (let spaces = 0; spaces <= 6; spaces++) {
+        yield [...lines.slice(0, n), ' '.repeat(spaces) + bare, ...lines.slice(n + 1)].join('\n');
+      }
+      for (const extra of noise) {
+        yield [...lines.slice(0, n), line + extra, ...lines.slice(n + 1)].join('\n');
+        yield [...lines.slice(0, n), extra + line, ...lines.slice(n + 1)].join('\n');
+      }
+    }
+  }
+}
+
+export const slice =(source: string, s: Span): string => source.slice(s.start, s.end);
 
 export const codes = (source: string): readonly string[] => parseSpec(source).diagnostics.map((d) => d.code);
 

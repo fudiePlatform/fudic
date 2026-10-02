@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/spec` · `@fudic/typecheck` · `@fudic/cli` · `@fudic/language-server` ·
 > `fudic-vscode` · `@fudic/diagnostics`
 > **Rama:** `sdd-53-fudspec-autoria` (nace de `sdd-52-fudspec`)
-> **Progreso:** 12 / 30 — `En curso`.
+> **Progreso:** 13 / 30 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -67,7 +67,7 @@
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 12 | — | **`formatSpec`.** Las siete reglas de §4.6, con el mismo lector de líneas que el parser (`lines`, `readLine` y `levelOf` pasan a `line.ts`), para imprimir todo token leído y no perder el texto que el árbol no recoge. `ok: false` solo con `FUD0920` | `spec` | `src/format.ts` |
-| [ ] | 13 | 12 | **Tests del formateador.** Criterios 19–22: el `app-card.fudspec` del ejemplo, una entrada por regla, `\r\n`, idempotencia sobre todas las fixtures y árbol igual salvo spans | `spec` | `test/format.test.ts` |
+| [x] | 13 | 12 | **Tests del formateador.** Criterios 19–22: el `app-card.fudspec` del ejemplo, una entrada por regla, `\r\n`, idempotencia sobre todas las fixtures y árbol igual salvo spans | `spec` | `test/format.test.ts` |
 
 ## Fase 5 — CLI (6)
 
