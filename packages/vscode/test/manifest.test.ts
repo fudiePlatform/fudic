@@ -266,13 +266,15 @@ describe('the .fudspec language (SDD-52 criterion 26)', () => {
     expect(manifest['activationEvents']).toEqual(['workspaceContains:**/*.fud', 'workspaceContains:**/*.fudspec']);
   });
 
-  it('indents with two spaces, always, and suggests no loose words', () => {
+  it('indents with two spaces, always, suggests no loose words and formats on save with this extension (SDD-53 criterion 23)', () => {
     // The indentation is the structure of the file: a tab or a detected width of four would
     // write lines the parser reads at the wrong level.
     expect(at(manifest, 'contributes', 'configurationDefaults', '[fudspec]')).toEqual({
       'editor.insertSpaces': true,
       'editor.tabSize': 2,
       'editor.detectIndentation': false,
+      'editor.defaultFormatter': 'fudic.fudic-vscode',
+      'editor.formatOnSave': true,
       'editor.wordBasedSuggestions': 'off',
     });
   });

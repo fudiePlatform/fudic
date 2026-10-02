@@ -20,9 +20,11 @@ function offered(marked: string, w = world()): CompletionList | undefined {
 }
 
 describe('keywords by indentation', () => {
-  it('offers component and criterion at column 0', () => {
-    expect(labels('|')).toEqual(['component', 'criterion']);
-    expect(labels(`${HEAD}crit|`)).toEqual(['component', 'criterion']);
+  it('offers component and criterion at column 0, plus their snippets (SDD-53 §4.4)', () => {
+    // The component snippet first, while the file has no component line.
+    expect(labels('|')).toEqual(['component', 'component', 'criterion', 'criterion']);
+    // Once the file has its component line, only the criterion snippet is added.
+    expect(labels(`${HEAD}crit|`)).toEqual(['component', 'criterion', 'criterion']);
   });
 
   it('offers the blocks at two spaces', () => {
@@ -45,9 +47,18 @@ describe('terms of the block', () => {
         kind: 3,
         labelDetails: { description: 'workspace' },
         detail: 'min-height target:element px:number',
+        insertText: 'min-height ${1|fud-button,fud-card,role:|} ${2:px}',
+        insertTextFormat: 2,
         documentation: '({ target, px }) => `${target} ${px}px`',
       },
-      { label: 'visible', kind: 3, labelDetails: { description: 'framework' }, detail: 'visible target:element' },
+      {
+        label: 'visible',
+        kind: 3,
+        labelDetails: { description: 'framework' },
+        detail: 'visible target:element',
+        insertText: 'visible ${1|fud-button,fud-card,role:|}',
+        insertTextFormat: 2,
+      },
     ]);
   });
 

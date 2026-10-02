@@ -163,7 +163,7 @@ describe('the .fudspec language plugin (criterion 24)', () => {
     expect(code).toMatchObject({ id: 'root', languageId: 'fudspec', snapshot });
     expect(code?.embeddedCodes).toBeUndefined();
     expect(code?.mappings).toEqual([
-      { sourceOffsets: [0], generatedOffsets: [0], lengths: [11], data: expect.objectContaining({ format: false, completion: true }) },
+      { sourceOffsets: [0], generatedOffsets: [0], lengths: [11], data: expect.objectContaining({ format: true, completion: true }) },
     ]);
   });
 

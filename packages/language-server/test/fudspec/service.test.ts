@@ -9,6 +9,7 @@ import { CancellationToken, type Diagnostic, type Hover } from 'vscode-languages
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import { docsUrl } from '@fudic/diagnostics';
+import { formatSpec } from '@fudic/spec';
 import { SEMANTIC_TOKENS_LEGEND } from '../../src/capabilities.js';
 import { createFudspecService } from '../../src/fudspec/service.js';
 import { RequestStats } from '../../src/stats.js';
@@ -112,7 +113,7 @@ describe('the other requests', () => {
 
   it('takes the .fudspec URI itself as well as its root code', async () => {
     const list = await service().provideCompletionItems?.(doc('', SPEC_URI), { line: 0, character: 0 }, { triggerKind: 1 }, NONE);
-    expect(list?.items.map((i) => i.label)).toEqual(['component', 'criterion']);
+    expect(list?.items.map((i) => i.label)).toEqual(['component', 'component', 'criterion', 'criterion']);
   });
 });
 
@@ -126,5 +127,66 @@ describe('isolation (criterion 24)', () => {
     expect(await s.provideHover?.(fud, zero, NONE)).toBeUndefined();
     expect(await s.provideDefinition?.(fud, zero, NONE)).toBeUndefined();
     expect(await s.provideDocumentSemanticTokens?.(fud, { start: zero, end: zero }, SEMANTIC_TOKENS_LEGEND, NONE)).toBeUndefined();
+  });
+});
+
+describe('the light bulb and formatting (SDD-53 §4.5, §4.6)', () => {
+  const FIXTURE = `${ROOT}/components/fud-card.fixture.ts`;
+  const NO_FIXTURE = { ...FILES, [FIXTURE]: undefined };
+  const NEEDS_FIXTURE = 'component fud-card\n\ncriterion a\n  given\n    props base\n  then\n    visible fud-card\n';
+  const WHOLE = { start: { line: 0, character: 0 }, end: { line: 9, character: 0 } };
+  const ACTION_CONTEXT = { diagnostics: [], triggerKind: 1 as const };
+
+  function withTypeScript(files: typeof FILES, provided: Readonly<Record<string, unknown>>): LanguageServicePluginInstance {
+    const { host } = world({ files });
+    const decode = (uri: URI): [URI, string] | undefined =>
+      uri.toString() === EMBEDDED.toString() ? [SPEC_URI, 'root'] : undefined;
+    return createFudspecService({ host, stats: new RequestStats() }).create(fakeServiceContext({}, decode, provided));
+  }
+
+  const created = async (s: LanguageServicePluginInstance): Promise<string> => {
+    const actions = (await s.provideCodeActions?.(doc(NEEDS_FIXTURE), WHOLE, ACTION_CONTEXT, NONE)) ?? [];
+    const [action] = actions as { title: string; edit: { documentChanges: { edits?: { newText: string }[] }[] } }[];
+    expect(action?.title).toBe('Create fud-card.fixture.ts');
+    return action?.edit.documentChanges[1]?.edits?.[0]?.newText ?? '';
+  };
+
+  it('answers the light bulb, with a fixture without props when TypeScript has no program (criterion 18)', async () => {
+    expect(await created(service(NO_FIXTURE))).toContain('  base: {},\n');
+    const noProgram = { 'typescript/languageService': { getProgram: () => undefined } };
+    expect(await created(withTypeScript(NO_FIXTURE, noProgram))).toContain('  base: {},\n');
+  });
+
+  it('asks the program for the props of the component', async () => {
+    const asked: string[] = [];
+    const program = { getSourceFile: (path: string) => (asked.push(path), undefined) };
+    const provided = { 'typescript/languageService': { getProgram: () => program } };
+    expect(await created(withTypeScript(NO_FIXTURE, provided))).toContain('  base: {},\n');
+    expect(asked).toEqual([`${ROOT}/components/fud-card.fud`]);
+  });
+
+  it('formats with one edit of the whole document, the same text formatSpec gives (criterion 23)', async () => {
+    const messy = 'component fud-card\ncriterion a\n   then   \n      visible   fud-card';
+    const edits = await service().provideDocumentFormattingEdits?.(doc(messy), WHOLE, { tabSize: 2, insertSpaces: true }, undefined as never, NONE);
+    expect(edits).toEqual([
+      {
+        range: { start: { line: 0, character: 0 }, end: { line: 3, character: 24 } },
+        newText: formatSpec(messy).text,
+      },
+    ]);
+  });
+
+  it('formats to no edit when the file is formatted or cannot be formatted', async () => {
+    const options = { tabSize: 2, insertSpaces: true };
+    const s = service();
+    expect(await s.provideDocumentFormattingEdits?.(doc(formatSpec('component fud-card\n').text), WHOLE, options, undefined as never, NONE)).toEqual([]);
+    expect(await s.provideDocumentFormattingEdits?.(doc('component "fud-card\n'), WHOLE, options, undefined as never, NONE)).toEqual([]);
+  });
+
+  it('answers neither in a document that is not a .fudspec', async () => {
+    const s = service();
+    const fud = doc('component fud-card\n', URI.file(`${ROOT}/components/fud-card.fud`));
+    expect(await s.provideCodeActions?.(fud, WHOLE, ACTION_CONTEXT, NONE)).toBeUndefined();
+    expect(await s.provideDocumentFormattingEdits?.(fud, WHOLE, { tabSize: 2, insertSpaces: true }, undefined as never, NONE)).toBeUndefined();
   });
 });

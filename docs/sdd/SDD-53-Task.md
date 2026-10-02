@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/spec` · `@fudic/typecheck` · `@fudic/cli` · `@fudic/language-server` ·
 > `fudic-vscode` · `@fudic/diagnostics`
 > **Rama:** `sdd-53-fudspec-autoria` (nace de `sdd-52-fudspec`)
-> **Progreso:** 26 / 30 — `En curso`.
+> **Progreso:** 28 / 30 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -89,8 +89,8 @@
 | [x] | 21 | 4, 5, 7, 19 | **La bombilla.** `provideCodeActions` y `codeActionProvider` en el servicio `.fudspec`. Una función por fila de §4.5, cada una con su `WorkspaceEdit` entero (`CreateFile` + texto para los ficheros nuevos). Las props desde `propShapes` o, sin programa, la fixture sin props | `language-server` | `src/fudspec/actions.ts` · `src/fudspec/service.ts` · `src/fudspec/host.ts` |
 | [x] | 23 | 12 | **Formato en el server.** `provideDocumentFormattingEdits` en el servicio `.fudspec`: una edición entera o `[]`. El mapeo del virtual code pasa a `format: true` (§8.1) | `language-server` | `src/fudspec/service.ts` |
 | [x] | 24 | 23 | **VS Code.** `configurationDefaults["[fudspec]"]` con `editor.defaultFormatter` y `editor.formatOnSave` | `vscode` | `package.json` |
-| [ ] | 25 | 20–24 | **Tests del editor.** Criterios 14–18 y la parte server y extensión del 23, unitarios y sobre la conexión viva (como en SDD-28, para que Volar no se trague nuestros ítems) | `language-server` · `vscode` | `test/fudspec/*.test.ts` |
-| [ ] | 26 | 15, 21 | **Mismo fichero.** Criterio 13: la `.fudspec` y la fixture de `g spec` frente a las de la bombilla, byte a byte | `language-server` | `test/fudspec/same-file.test.ts` |
+| [x] | 25 | 20–24 | **Tests del editor.** Criterios 14–18 y la parte server y extensión del 23, unitarios y sobre la conexión viva (como en SDD-28, para que Volar no se trague nuestros ítems) | `language-server` · `vscode` | `test/fudspec/*.test.ts` |
+| [x] | 26 | 15, 21 | **Mismo fichero.** Criterio 13: la `.fudspec` y la fixture de `g spec` frente a las de la bombilla, byte a byte | `language-server` | `test/fudspec/same-file.test.ts` |
 
 ## Fase 7 — entrega (4)
 
