@@ -3,7 +3,7 @@
 > **SDD:** [SDD-52 — El lenguaje `.fudspec`](./SDD-52-fudspec.md)
 > **Paquetes:** `@fudic/spec` · `@fudic/diagnostics` · `@fudic/language-server` · `fudic-vscode`
 > **Rama:** `sdd-52-fudspec` (nace de `worktree-sdd-32-abrir-en-el-navegador`)
-> **Progreso:** 19 / 29 — `En curso`.
+> **Progreso:** 26 / 30 — `En curso`.
 
 **El parser se escribió sin tests, por decisión de Pedro.** Las tareas 1–6 se hicieron solo con
 `typecheck` y `build`; sus tests (tarea 7) los escribió otra sesión y dejan `@fudic/spec` al 100 %
@@ -11,6 +11,10 @@ en las cuatro métricas.
 
 **El validador, igual.** Las tareas 8–14 se hicieron con `typecheck`, `build` y una prueba de humo
 desechable; sus tests (tarea 28) los escribió otra sesión y mantienen `@fudic/spec` al 100 %.
+
+**El language server, igual.** Las tareas 17–23 se hicieron con `typecheck`, la suite que ya había
+en verde y una prueba de humo desechable; sus tests (tarea 30) los escribe otra sesión. Hasta
+entonces `pnpm coverage` de `@fudic/language-server` no llega a su umbral del 100 %.
 
 **El orden manda en dos puntos.**
 
@@ -84,24 +88,25 @@ desechable; sus tests (tarea 28) los escribió otra sesión y mantienen `@fudic/
 | [x] | 16 | 15 | **`language-configuration`.** Comentario `#`, cierre de comillas y sangría al pulsar Intro tras `criterion` y tras un bloque. El ancho de dos espacios es `editor.tabSize`, y lo fija la tarea 24 | `vscode` | `language-configuration.fudspec.json` |
 | [x] | 29 | 15 | **El test de la gramática**. Snapshot de tokens TextMate sobre el fichero canónico y sobre uno con todos los casos de SDD §4.3, con el arnés `test/_tokenize.ts`, que ahora carga las dos gramáticas. Criterio 20 | `vscode` | `test/` |
 
-## Fase 5 — el language server (7)
+## Fase 5 — el language server (8)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 17 | 6 | **El `LanguagePlugin` aislado.** Reconoce solo `.fudspec` (`languageId: 'fudspec'`, sin códigos embebidos), registrado junto al del `.fud`. Comprobar servicio por servicio (HTML, CSS, TS, fudic, etiquetas) que ninguno responde en una `.fudspec`; el que responda se acota. Criterio 24 | `language-server` | `src/fudspec/language-plugin.ts` · `src/server.ts` |
-| [ ] | 18 | 14, 17 | **El host del validador.** `SpecFs` sobre el sistema de ficheros del servidor; raíces `<workspace>/fudic/terms/` y la del framework; `component(tag)` desde el índice del workspace; `requiredProps` con el programa TS de `@fudic/typecheck` sobre `$Props` (`'unknown'` si no se puede leer); `fixtures(tag)` del `<tag>.fixture.ts` hermano | `language-server` | `src/fudspec/host.ts` |
-| [ ] | 19 | 18 | **Diagnósticos.** Parser más validador en cada cambio. Criterio 21 | `language-server` | `src/fudspec/service.ts` |
-| [ ] | 20 | 18 | **Completado.** Palabras clave por indentación; términos del bloque con su capa; argumentos según `meta.params` (tags y `role:` para `element`); claves de fixture tras `props`. Criterio 22 | `language-server` | `src/fudspec/completion.ts` |
-| [ ] | 21 | 18 | **Hover e ir a la definición.** Firma, `describe`, capa y ruta; término → `.js`, `component` → `.fud`, `props x` → la clave. Criterio 23 | `language-server` | `src/fudspec/hover.ts` · `src/fudspec/definition.ts` |
-| [ ] | 22 | 18 | **Semantic tokens.** Término existente frente a inexistente, argumento `element` como tag | `language-server` | `src/fudspec/semantic-tokens.ts` |
-| [ ] | 23 | 19 | **Invalidación.** Un cambio en `fudic/terms/**/*.js`, en un `*.fixture.ts` o en un `.fud` revalida las `.fudspec` abiertas. Criterio 25 | `language-server` | `src/fudspec/service.ts` |
+| [x] | 17 | 6 | **El `LanguagePlugin` aislado.** Reconoce solo `.fudspec` (`languageId: 'fudspec'`, sin códigos embebidos), registrado junto al del `.fud`. Comprobar servicio por servicio (HTML, CSS, TS, fudic, etiquetas) que ninguno responde en una `.fudspec`; el que responda se acota. Criterio 24 | `language-server` | `src/fudspec/language-plugin.ts` · `src/server.ts` |
+| [x] | 18 | 14, 17 | **El host del validador.** `SpecFs` sobre el sistema de ficheros del servidor; raíces `<workspace>/fudic/terms/` y la del framework; `component(tag)` desde el índice del workspace; `requiredProps` con el programa TS de `@fudic/typecheck` sobre `$Props` (`'unknown'` si no se puede leer); `fixtures(tag)` del `<tag>.fixture.ts` hermano | `language-server` | `src/fudspec/host.ts` |
+| [x] | 19 | 18 | **Diagnósticos.** Parser más validador en cada cambio. Criterio 21 | `language-server` | `src/fudspec/service.ts` |
+| [x] | 20 | 18 | **Completado.** Palabras clave por indentación; términos del bloque con su capa; argumentos según `meta.params` (tags y `role:` para `element`); claves de fixture tras `props`. Criterio 22 | `language-server` | `src/fudspec/completion.ts` |
+| [x] | 21 | 18 | **Hover e ir a la definición.** Firma, `describe`, capa y ruta; término → `.js`, `component` → `.fud`, `props x` → la clave. Criterio 23 | `language-server` | `src/fudspec/hover.ts` · `src/fudspec/definition.ts` |
+| [x] | 22 | 18 | **Semantic tokens.** Término existente frente a inexistente, argumento `element` como tag | `language-server` | `src/fudspec/semantic-tokens.ts` |
+| [x] | 23 | 19 | **Invalidación.** Un cambio en `fudic/terms/**/*.js`, en un `*.fixture.ts` o en un `.fud` revalida las `.fudspec` abiertas. Criterio 25 | `language-server` | `src/fudspec/service.ts` |
+| [ ] | 30 | 17–23 | **Los tests del language server** (otra sesión). Criterios 21–25 y las decisiones de SDD §8.2, con `@fudic/language-server` al 100 % en las cuatro métricas. Si un test destapa un defecto, se corrige el servidor, no el test | `language-server` | `test/` |
 
 ## Fase 6 — VS Code y cierre (3)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [ ] | 24 | 16, 23 | **El wiring.** `contributes.languages` (`fudspec`, `.fudspec`, configuración e icono claro/oscuro), `contributes.grammars`, `configurationDefaults` de `[fudspec]` con `editor.tabSize: 2` e `insertSpaces`, `workspaceContains:**/*.fudspec`, `documentSelector` con `fudspec` y vigilancia de ficheros para la tarea 23. Criterio 26 | `vscode` | `package.json` · `src/client-options.ts` · `icons/` |
-| [ ] | 25 | 7, 24, 28, 29 | **Entrega.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; `@fudic/spec` y `@fudic/diagnostics` al 100 % sin `v8 ignore`; el umbral de `language-server` y `vscode` no baja. Criterio 27 | todos | — |
+| [ ] | 25 | 7, 24, 28, 29, 30 | **Entrega.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; `@fudic/spec` y `@fudic/diagnostics` al 100 % sin `v8 ignore`; el umbral de `language-server` y `vscode` no baja. Criterio 27 | todos | — |
 | [ ] | 26 | 25 | **Cierre.** SDD-52 a `Hecho`, su fila del `INDEX.md` y entrada en el registro de progreso | — | `docs/sdd/` |
 
 ---
@@ -117,10 +122,10 @@ desechable; sus tests (tarea 28) los escribió otra sesión y mantienen `@fudic/
 | 17, 18 | 14 · 28 (tests) |
 | 19 | 12 · 28 (tests) |
 | 20 | 15 · 29 (test) |
-| 21 | 19 |
-| 22 | 20 |
-| 23 | 21 |
-| 24 | 17 |
-| 25 | 23 |
+| 21 | 19 · 30 (tests) |
+| 22 | 20 · 30 (tests) |
+| 23 | 21 · 30 (tests) |
+| 24 | 17 · 30 (tests) |
+| 25 | 23 · 30 (tests) |
 | 26 | 24 |
 | 27 | 25 |

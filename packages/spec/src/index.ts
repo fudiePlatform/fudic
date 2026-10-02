@@ -24,4 +24,4 @@ export { createTermCatalog } from './catalog.js';
 export type { Fixtures } from './fixtures.js';
 export { readFixtures } from './fixtures.js';
 export type { ComponentInfo, SpecContext } from './validate.js';
-export { validateSpec } from './validate.js';
+export { normalizeTerm, validateSpec } from './validate.js';

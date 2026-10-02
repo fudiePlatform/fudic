@@ -7,6 +7,7 @@
  */
 
 import { URI } from 'vscode-uri';
+import { SPEC_EXTENSION } from '@fudic/spec';
 import { toPosix } from '@fudic/typecheck';
 
 /** The path a document URI points at, POSIX-shaped. */
@@ -22,6 +23,11 @@ export function pathToUri(path: string): URI {
 /** Whether a URI names a `.fud`. */
 export function isFudUri(uri: URI): boolean {
   return uri.path.endsWith('.fud');
+}
+
+/** Whether a URI names a `.fudspec`: criteria, not a component (SDD-52). */
+export function isFudspecUri(uri: URI): boolean {
+  return uri.path.endsWith(SPEC_EXTENSION);
 }
 
 /**

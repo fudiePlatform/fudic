@@ -1,6 +1,7 @@
 # SDD-52 — El lenguaje `.fudspec`: parser, validador, colorizer y language server
 
-> **Estado:** `En curso` — [tareas](./SDD-52-Task.md), 19 / 29. El parser, el validador y la gramática están escritos y probados.
+> **Estado:** `En curso` — [tareas](./SDD-52-Task.md), 26 / 30. El parser, el validador y la gramática están escritos y probados; el servicio
+> del language server, escrito, y sus tests los hace otra sesión.
 > **Paquetes:** `@fudic/spec` (nuevo: parser y validador) · `@fudic/diagnostics` (los códigos) ·
 > `@fudic/language-server` (servicio `.fudspec`) · `fudic-vscode` (gramática y wiring)
 > **Depende de:** 50 (catálogo de diagnósticos), 25 (extensión de VS Code), 23 (`$Props`),
@@ -520,3 +521,23 @@ interface SpecFs {
   `FUD0948`, como un término con un parámetro `string`). Un `props` fuera de `given` o repetido
   (`FUD0952`) cuenta como presente para `FUD0951`.
 - Con la aridad mal (`FUD0947`) no se comprueban los tipos de esa línea.
+
+### 8.2. Lo que decidió la fase del language server
+
+- **`requiredProps` sale del índice del workspace**, no de un programa TS aparte: el índice ya
+  lee el contrato del componente, que es de donde se escribe su `$Props`, y §4.4 dice que del
+  `.fud` solo se toma el índice. Cuando no se pueden probar, el índice no da ninguna, así que el
+  host nunca contesta `'unknown'` y `FUD0951` no salta por una suposición.
+- **La fixture es `<carpeta del .fud>/<tag>.fixture.ts`.**
+- **Las raíces de términos:** `<carpeta del workspace>/fudic/terms/`, tomando la carpeta más
+  larga que contiene la `.fudspec`, y después la del framework, que el servidor recibe inyectada
+  (`frameworkTerms`). Mientras el framework no publique su carpeta, la segunda capa está vacía.
+- **`normalizeTerm`** se exporta de `@fudic/spec`: el servidor resuelve el término de una línea
+  igual que el validador.
+- **Semantic tokens con tipos estándar**, porque la leyenda es una para todo el servidor: un
+  término que existe es `function` (y además `defaultLibrary` si es del framework); uno que no
+  existe es `function` con `deprecated`, que el editor tacha junto a su error; un argumento
+  `bare` de un parámetro `element` es `fudComponentTag`.
+- **Invalidación:** el servidor ya escucha los ficheros vigilados. Un cambio en
+  `fudic/terms/**/*.js`, en un `*.fixture.ts` o en un `.fud` vacía los catálogos y pide a Volar
+  que vuelva a publicar los diagnósticos de todo lo abierto.

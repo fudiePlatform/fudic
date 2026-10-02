@@ -54,7 +54,7 @@ const ACCEPTS: Readonly<Record<ParamType, (arg: Arg) => boolean>> = {
 };
 
 /** `minHeight` → `min-height`: the file name is the term, and file names are kebab-case. */
-function kebab(term: string): string {
+export function normalizeTerm(term: string): string {
   return term.replace(/(?<=.)[A-Z]/gu, (upper) => `-${upper}`).toLowerCase();
 }
 
@@ -101,7 +101,7 @@ function checkCriterion(
 
 /** A term line: it resolves, its module is sound, and its arguments fit `meta.params`. */
 function checkTerm(term: TermLine, block: BlockKind, terms: TermCatalog, out: SourceDiagnostic[]): void {
-  const name = kebab(term.name.text);
+  const name = normalizeTerm(term.name.text);
   const module = terms.resolve(block, name);
   if (module === undefined) {
     const available = terms.list(block).map((m) => m.name);
