@@ -15,7 +15,7 @@ const settings: FudicSettings = {
 };
 
 describe('buildClientLaunch', () => {
-  it('watches the four things that invalidate the server', () => {
+  it('watches the six things that invalidate the server', () => {
     // Missing any one of them is a silent failure with a slow diagnosis: `.fud` and a new
     // component never resolves, `tsconfig` and the program keeps stale options,
     // `package.json` and the server keeps typechecking with the previous TypeScript,
@@ -26,12 +26,17 @@ describe('buildClientLaunch', () => {
       '**/tsconfig*.json',
       '**/package.json',
       '**/fudic.json',
+      // What an open .fudspec is validated against (SDD-52 criterion 25): a term module deleted
+      // on disk, or a fixture renamed, changes its diagnostics without reopening it.
+      '**/fudic/terms/**/*.js',
+      '**/*.fixture.ts',
     ]);
   });
 
-  it('selects file-scheme fudic documents only', () => {
+  it('selects file-scheme fudic and fudspec documents only (SDD-52 criterion 26)', () => {
     expect(buildClientLaunch(settings, '/srv.js', '/lib').documentSelector).toEqual([
       { scheme: 'file', language: 'fudic' },
+      { scheme: 'file', language: 'fudspec' },
     ]);
   });
 

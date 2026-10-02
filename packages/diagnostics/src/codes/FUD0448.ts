@@ -27,6 +27,8 @@ export type FUD0448Params =
   | { readonly problem: 'generate-needs-name'; readonly type: string }
   /** `fudic g` with a type it does not generate. */
   | { readonly problem: 'unknown-type'; readonly type: string }
+  /** `fudic g term` with a block that is not given, when or then. */
+  | { readonly problem: 'term-block'; readonly value: string }
   /** A route with a segment that cannot be a file name. */
   | { readonly problem: 'route-segment'; readonly part: string; readonly route: string };
 
@@ -51,11 +53,13 @@ function describe(p: FUD0448Params): string {
     case 'package-manager':
       return `unknown package manager "${p.value}"`;
     case 'generate-needs-type':
-      return 'fudic g needs a type: page (p), component (c) or layout (l)';
+      return 'fudic g needs a type: page (p), component (c), layout (l), spec (s) or term (t)';
     case 'generate-needs-name':
       return `fudic g ${p.type} needs a name`;
     case 'unknown-type':
-      return `unknown type "${p.type}": expected app, lib, page, component or layout`;
+      return `unknown type "${p.type}": expected app, lib, page, component, layout, spec or term`;
+    case 'term-block':
+      return `unknown block "${p.value}": expected given, when or then`;
     case 'route-segment':
       return `invalid route segment "${p.part}" in "${p.route}"`;
   }

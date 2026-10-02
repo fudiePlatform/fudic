@@ -18,6 +18,7 @@ const PACKAGES = fileURLToPath(new URL('../../', import.meta.url));
 /** The tables of invariant 1: a file, and the `const` whose initializer may hold codes. */
 const READERS: Readonly<Record<string, string>> = {
   'language-server/src/services/actions.ts': 'REPAIRS',
+  'language-server/src/fudspec/actions.ts': 'REPAIRS',
   'formatter/src/format.ts': 'KEY_RULES',
   'cli/src/run.ts': 'BROKEN_SOURCE',
 };

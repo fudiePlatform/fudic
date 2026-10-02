@@ -49,6 +49,7 @@
     "@fudic/diagnostics": "workspace:*",
     "@fudic/language-core": "workspace:*",
     "@fudic/resolve": "workspace:*",
+    "@fudic/spec": "workspace:*",
     "@volar/language-core": "2.4.28",
     "@volar/typescript": "2.4.28",
     "typescript": "5.9.3"

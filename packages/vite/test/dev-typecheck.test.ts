@@ -55,6 +55,7 @@ function fakeServer(): { server: ViteDevServer; watcher: EventEmitter; told: Tol
 function scripted(...reports: CheckReport[]): {
   check: Mock<ProjectChecker['check']>;
   invalidate: Mock<ProjectChecker['invalidate']>;
+  propShapes: Mock<ProjectChecker['propShapes']>;
 } {
   let last = reports[reports.length - 1]!;
   return {
@@ -63,6 +64,8 @@ function scripted(...reports: CheckReport[]): {
       return last;
     }),
     invalidate: vi.fn<ProjectChecker['invalidate']>(),
+    // The dev check never reads props (SDD-53 uses them for fixtures).
+    propShapes: vi.fn<ProjectChecker['propShapes']>(),
   };
 }
 

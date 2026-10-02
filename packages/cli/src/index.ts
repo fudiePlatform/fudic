@@ -20,6 +20,8 @@ export type {
   PlanCommand,
   PlanDiagnostic,
   ProjectOptions,
+  SpecOptions,
+  TermOptions,
   WorkspaceOptions,
 } from './types.js';
 
@@ -37,6 +39,8 @@ export {
 } from './workspace/discover.js';
 export { placeProject, APPS_DIR, LIBS_DIR, type Placement } from './workspace/place.js';
 export { planComponent } from './plans/component.js';
+export { planSpec, typeScriptProps, type PropsReader } from './plans/spec.js';
+export { planTerm } from './plans/term.js';
 export { planPage } from './plans/page.js';
 export { planLayout } from './plans/layout.js';
 export { apply } from './apply.js';

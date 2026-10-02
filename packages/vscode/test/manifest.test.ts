@@ -232,3 +232,72 @@ describe('language configuration', () => {
     expect('class:success="@(tone)"'.match(word)?.[0]).toBe('class:success');
   });
 });
+
+describe('the .fudspec language (SDD-52 criterion 26)', () => {
+  const languages = at(manifest, 'contributes', 'languages') as readonly unknown[];
+  const grammars = at(manifest, 'contributes', 'grammars') as readonly unknown[];
+  const language = languages.find((l) => at(l, 'id') === 'fudspec');
+  const grammar = grammars.find((g) => at(g, 'language') === 'fudspec');
+  const specConfig = readJson('../language-configuration.fudspec.json');
+
+  it('claims .fudspec under the id the server registers it with', () => {
+    expect(at(language, 'extensions')).toEqual(['.fudspec']);
+    expect(at(language, 'aliases')).toEqual(['Fudic spec', 'fudspec']);
+    // The other language keeps .fud alone: a criteria file is never a component.
+    expect(at(languages.find((l) => at(l, 'id') === 'fudic'), 'extensions')).toEqual(['.fud']);
+  });
+
+  it('points at a configuration and two icons that exist', () => {
+    expect(at(language, 'configuration')).toBe('./language-configuration.fudspec.json');
+    expect(at(language, 'icon')).toEqual({ light: './icons/fudspec-light.svg', dark: './icons/fudspec-dark.svg' });
+    expect(exists('../language-configuration.fudspec.json')).toBe(true);
+    expect(exists('../icons/fudspec-light.svg')).toBe(true);
+    expect(exists('../icons/fudspec-dark.svg')).toBe(true);
+  });
+
+  it('registers the scope the grammar file declares, with nothing embedded', () => {
+    expect(at(grammar, 'scopeName')).toBe('source.fudspec');
+    expect(at(grammar, 'path')).toBe('./syntaxes/fudspec.tmLanguage.json');
+    expect(at(grammar, 'embeddedLanguages')).toBeUndefined();
+    expect(at(readJson('../syntaxes/fudspec.tmLanguage.json'), 'scopeName')).toBe('source.fudspec');
+  });
+
+  it('activates on a workspace that only has .fudspec files', () => {
+    expect(manifest['activationEvents']).toEqual(['workspaceContains:**/*.fud', 'workspaceContains:**/*.fudspec']);
+  });
+
+  it('indents with two spaces, always, suggests no loose words and formats on save with this extension (SDD-53 criterion 23)', () => {
+    // The indentation is the structure of the file: a tab or a detected width of four would
+    // write lines the parser reads at the wrong level.
+    expect(at(manifest, 'contributes', 'configurationDefaults', '[fudspec]')).toEqual({
+      'editor.insertSpaces': true,
+      'editor.tabSize': 2,
+      'editor.detectIndentation': false,
+      'editor.defaultFormatter': 'fudic.fudic-vscode',
+      'editor.formatOnSave': true,
+      'editor.wordBasedSuggestions': 'off',
+    });
+  });
+
+  it('comments with #, closes quotes and indents after a criterion or a block', () => {
+    expect(at(specConfig, 'comments', 'lineComment')).toBe('#');
+    expect(at(specConfig, 'comments', 'blockComment')).toBeUndefined();
+    expect(at(specConfig, 'autoClosingPairs')).toEqual([{ open: '"', close: '"', notIn: ['string', 'comment'] }]);
+    const indent = new RegExp(String(at(specConfig, 'indentationRules', 'increaseIndentPattern')));
+    expect(indent.test('criterion tamano-tactil')).toBe(true);
+    expect(indent.test('  given')).toBe(true);
+    expect(indent.test('  then # note')).toBe(true);
+    expect(indent.test('    min-height fud-button 44')).toBe(false);
+    expect(indent.test('component fud-button')).toBe(false);
+    const enter = new RegExp(String(at(specConfig, 'onEnterRules', 0, 'beforeText')));
+    expect(enter.test('criterion a')).toBe(true);
+    expect(enter.test('  when')).toBe(true);
+    expect(at(specConfig, 'onEnterRules', 0, 'action')).toEqual({ indent: 'indent' });
+  });
+
+  it('selects a term or a tag whole on double click', () => {
+    const word = new RegExp(String(at(specConfig, 'wordPattern')), 'g');
+    expect('    min-height fud-button 44'.match(word)).toEqual(['min-height', 'fud-button', '44']);
+    expect('    click role:button/"Detalles"'.match(word)?.[1]).toBe('role:button/');
+  });
+});

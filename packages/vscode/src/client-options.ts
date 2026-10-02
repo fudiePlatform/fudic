@@ -9,7 +9,7 @@ import type { ClientLaunch } from './ports.js';
 import type { FudicSettings } from './settings.js';
 
 /**
- * The four patterns of §4.1.
+ * The patterns the server watches: the four of §4.1, and the two a `.fudspec` needs (SDD-52).
  *
  * `**\/*.fud` keeps the workspace index current, so a new component resolves without a
  * restart. Two of the others are what invalidates the TypeScript program: a `tsconfig`
@@ -22,6 +22,10 @@ export const FILE_EVENTS: readonly string[] = [
   '**/tsconfig*.json',
   '**/package.json',
   '**/fudic.json',
+  // What an open `.fudspec` is validated against (SDD-52 §4.4): the workspace's term modules
+  // and the fixture files. A term deleted on disk turns its lines red without reopening.
+  '**/fudic/terms/**/*.js',
+  '**/*.fixture.ts',
 ];
 
 export const buildClientLaunch = (
@@ -32,7 +36,11 @@ export const buildClientLaunch = (
   serverPath,
   // `scheme: 'file'` on purpose: the server resolves `href` against the workspace index,
   // which is paths on disk. An untitled buffer has nothing to resolve against.
-  documentSelector: [{ scheme: 'file', language: 'fudic' }],
+  // A `.fudspec` too (SDD-52): its terms resolve against the disk the same way.
+  documentSelector: [
+    { scheme: 'file', language: 'fudic' },
+    { scheme: 'file', language: 'fudspec' },
+  ],
   fileEvents: FILE_EVENTS,
   initializationOptions: {
     typescript: { tsdk },

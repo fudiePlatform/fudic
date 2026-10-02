@@ -20,6 +20,7 @@ import {
   type LanguageServerProject,
 } from '@volar/language-server/node.js';
 import type { LanguageServicePlugin } from '@volar/language-service';
+import type { SpecFs } from '@fudic/spec';
 import { commentSyntaxOf } from '@fudic/compiler';
 import { CONFIG_FILE } from '@fudic/config';
 import { create as createTypeScriptServices } from 'volar-service-typescript';
@@ -31,6 +32,10 @@ import { URI } from 'vscode-uri';
 import { SERVER_CAPABILITIES } from './capabilities.js';
 import { mountGlobals, mountWorkspaceFuds, nodeFileSystem, toPosix } from '@fudic/typecheck';
 import { DocumentCache, type CachedDocument } from './document-cache.js';
+import { createFudspecLanguagePlugin } from './fudspec/language-plugin.js';
+import { SpecHost } from './fudspec/host.js';
+import { nodeSpecFs } from './fudspec/node-spec-fs.js';
+import { createFudspecService } from './fudspec/service.js';
 import { createFudicLanguagePlugin } from './language-plugin.js';
 import { resolveOptions } from './options.js';
 import { ProjectConfigs } from './project-config.js';
@@ -63,6 +68,11 @@ export interface VolarServer {
   initialized(): void;
   shutdown(): void;
   documents: { get(uri: URI): TextDocument | undefined };
+  /**
+   * Asks every open document for its diagnostics again. Optional because only the `.fudspec`
+   * service needs it: a term module changing on disk is not a document the editor has open.
+   */
+  languageFeatures?: { requestRefresh(clearDiagnostics: boolean): Promise<void> };
 }
 
 /** What the server is built out of. Every one has a real default. */
@@ -73,6 +83,10 @@ export interface FudicServerDeps {
   /** Volar's TypeScript project factory. Injected so the `setup` hook can be driven in a test. */
   createTypeScriptProject: typeof createTypeScriptProject;
   createSimpleProject: typeof createSimpleProject;
+  /** The disk the `.fudspec` validator reads term modules and fixtures from (SDD-52). */
+  specFs: SpecFs;
+  /** The framework's `terms/` folder, the second layer of a `.fudspec` vocabulary (SDD-52). */
+  frameworkTerms?: string;
 }
 
 /** The state a running server holds. Exposed so the acceptance tests can look at it. */
@@ -81,6 +95,8 @@ export interface FudicServer {
   readonly cache: DocumentCache;
   readonly stats: RequestStats;
   readonly configs: ProjectConfigs;
+  /** What a `.fudspec` is validated against (SDD-52). */
+  readonly specs: SpecHost;
 }
 
 const DEFAULTS: FudicServerDeps = {
@@ -89,6 +105,7 @@ const DEFAULTS: FudicServerDeps = {
   fileSystem: nodeFileSystem(),
   createTypeScriptProject,
   createSimpleProject,
+  specFs: nodeSpecFs(),
 };
 
 /**
@@ -139,6 +156,13 @@ export function createFudicServer(
   const stats = new RequestStats();
   const logger = loggerFor(connection);
   const server = deps.createServer(connection);
+  let workspaceRoots: readonly string[] = [];
+  const specs = new SpecHost({
+    index,
+    fs: deps.specFs,
+    roots: () => workspaceRoots,
+    ...(deps.frameworkTerms !== undefined ? { frameworkTerms: deps.frameworkTerms } : {}),
+  });
 
   /** The parse behind a URI: the open document if there is one, the disk otherwise. */
   const documentOf = (raw: string): CachedDocument | undefined => {
@@ -155,6 +179,7 @@ export function createFudicServer(
   connection.onInitialize((params) => {
     const options = resolveOptions(params.initializationOptions);
     const roots = rootsOf(params);
+    workspaceRoots = roots;
     for (const root of roots) {
       index.scan(root);
       // Who each folder is (SDD-41). One per workspace folder, and the editor uses it for
@@ -163,7 +188,8 @@ export function createFudicServer(
     }
 
     const typescript = deps.loadTypeScript(options.tsdk, params.locale, logger);
-    const languagePlugins = [createFudicLanguagePlugin(cache)];
+    // The `.fudspec` plugin sits next to the `.fud` one and shares nothing with it (SDD-52).
+    const languagePlugins = [createFudicLanguagePlugin(cache), createFudspecLanguagePlugin()];
     // Whether the decorator below will be mounted. The service needs to know: at a binding
     // value and at a `@` in markup both of them can produce the template's scope, and with
     // both speaking the developer sees every name twice.
@@ -188,6 +214,8 @@ export function createFudicServer(
       // It also answers inside attribute values, and there the `styles` of the project's
       // fudic.json are what the root template's `shadowrootadoptedstylesheets` chooses from.
       createFudicTagService({ index, stats, configs }),
+      // Criteria files: a service of their own, which answers only in a `.fudspec` (SDD-52).
+      createFudspecService({ host: specs, stats }),
     ];
 
     // Nothing speaks over a library's file (SDD-43 §4.4): read-only means every service,
@@ -258,8 +286,12 @@ export function createFudicServer(
   });
 
   connection.onDidChangeWatchedFiles(({ changes }) => {
+    // Whether an open `.fudspec` may now say something else: a term module, a fixture or a
+    // component changed. Asked once for the whole batch.
+    let criteria = false;
     for (const change of changes) {
       const path = uriToPath(URI.parse(change.uri));
+      if (SpecHost.affects(path)) criteria = true;
       // The same channel that keeps the index current keeps the project current: editing
       // `fudic.json` and saving changes what the next file's snippet proposes, with no
       // restart. A new channel for one file would be a second thing that can fall behind.
@@ -274,6 +306,10 @@ export function createFudicServer(
       if (change.type === 3) index.remove(path);
       else index.upsert(path);
       cache.invalidate(path);
+    }
+    if (criteria) {
+      specs.invalidate();
+      void server.languageFeatures?.requestRefresh(false);
     }
   });
 
@@ -307,5 +343,5 @@ export function createFudicServer(
     },
   );
 
-  return { index, cache, stats, configs };
+  return { index, cache, stats, configs, specs };
 }

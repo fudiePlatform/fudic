@@ -32,7 +32,8 @@
   },
   "main": "./dist/extension.cjs",
   "activationEvents": [
-    "workspaceContains:**/*.fud"
+    "workspaceContains:**/*.fud",
+    "workspaceContains:**/*.fudspec"
   ],
   "contributes": {
     "languages": [
@@ -50,6 +51,21 @@
           "light": "./icons/fud-light.svg",
           "dark": "./icons/fud-dark.svg"
         }
+      },
+      {
+        "id": "fudspec",
+        "aliases": [
+          "Fudic spec",
+          "fudspec"
+        ],
+        "extensions": [
+          ".fudspec"
+        ],
+        "configuration": "./language-configuration.fudspec.json",
+        "icon": {
+          "light": "./icons/fudspec-light.svg",
+          "dark": "./icons/fudspec-dark.svg"
+        }
       }
     ],
     "grammars": [
@@ -62,6 +78,11 @@
           "source.css": "css",
           "text.html": "html"
         }
+      },
+      {
+        "language": "fudspec",
+        "scopeName": "source.fudspec",
+        "path": "./syntaxes/fudspec.tmLanguage.json"
       }
     ],
     "commands": [
@@ -186,6 +207,14 @@
         },
         "editor.wordBasedSuggestions": "off",
         "editor.suggest.showWords": false
+      },
+      "[fudspec]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.detectIndentation": false,
+        "editor.defaultFormatter": "fudic.fudic-vscode",
+        "editor.formatOnSave": true,
+        "editor.wordBasedSuggestions": "off"
       }
     }
   },

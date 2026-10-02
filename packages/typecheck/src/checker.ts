@@ -47,6 +47,8 @@ import {
   type ProjectProblem,
 } from './report.js';
 import type { FudicVirtualCode } from './virtual-code.js';
+import type { PropField } from '@fudic/spec';
+import { propShapes } from './prop-shapes.js';
 
 /** What a project check is made over. */
 export interface CheckOptions {
@@ -61,6 +63,8 @@ export interface ProjectChecker {
   check(): CheckReport;
   /** A file changed, appeared or went away: the next `check()` re-reads it. */
   invalidate(path: string): void;
+  /** The props of the component in `file`, as shapes (SDD-53 §3.3); undefined when unreadable. */
+  propShapes(file: string): readonly PropField[] | undefined;
 }
 
 /** Everything a check holds between runs. Rebuilt only when the `tsconfig.json` changes. */
@@ -228,6 +232,18 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
         mounted = undefined;
         const reason = error instanceof Error ? error.message : String(error);
         return { problems: [], project: [FUD0871({ reason })], inputs: [...inputs.values()] };
+      }
+    },
+
+    propShapes(file) {
+      try {
+        mounted ??= mount();
+        const program = mounted.service.getProgram();
+        return program === undefined ? undefined : propShapes(program, toPosix(file));
+      } catch {
+        // Unreadable is an answer here: the caller writes the fixture without props.
+        mounted = undefined;
+        return undefined;
       }
     },
 
