@@ -37,18 +37,11 @@ import {
 } from '@fudic/diagnostics';
 import { toArg } from './args.js';
 import type { Block, BlockKind, ComponentDecl, Criterion, Name, ParseResult, SpecFile, TermLine } from './ast.js';
-import { readLine, type Token } from './line.js';
+import { levelOf, lines, readLine, type Token } from './line.js';
 
 const BLOCKS: readonly BlockKind[] = ['given', 'when', 'then'];
 
 const isBlock = (word: string): word is BlockKind => (BLOCKS as readonly string[]).includes(word);
-
-/** The level a line is read at, from its first word when its indentation is wrong. */
-function levelOf(indent: number, head: string): number {
-  if (indent === 0 || indent === 2 || indent === 4) return indent;
-  if (head === 'component' || head === 'criterion') return 0;
-  return isBlock(head) ? 2 : 4;
-}
 
 interface OpenBlock {
   readonly block: BlockKind;
@@ -176,19 +169,6 @@ export function parseSpec(source: string): ParseResult<SpecFile> {
     // In reading order: some are only known when a criterion closes, lines after their place.
     diagnostics: out.sort((a, b) => a.span.start - b.span.start),
   };
-}
-
-/** `[start, end)` of every line, terminator excluded. `\n`, `\r\n` and `\r` all end a line. */
-function* lines(source: string): Generator<readonly [number, number]> {
-  let start = 0;
-  for (let i = 0; i < source.length; i++) {
-    const c = source[i];
-    if (c !== '\n' && c !== '\r') continue;
-    yield [start, i];
-    if (c === '\r' && source[i + 1] === '\n') i++;
-    start = i + 1;
-  }
-  yield [start, source.length];
 }
 
 /** The name after `component` or `criterion`, and a report for anything missing or extra. */

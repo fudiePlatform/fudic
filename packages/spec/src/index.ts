@@ -32,3 +32,5 @@ export { fixtureEntry, fixtureModule } from './scaffold/fixture.js';
 export { termModule } from './scaffold/term.js';
 export { specSkeleton } from './scaffold/spec.js';
 export { closest } from './scaffold/closest.js';
+export type { FormatSpecResult } from './format.js';
+export { formatSpec } from './format.js';

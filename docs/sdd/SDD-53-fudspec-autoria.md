@@ -1,6 +1,6 @@
 # SDD-53 — Escribir una `.fudspec` sin saberse el lenguaje: CLI, editor y formateador
 
-> **Estado:** `En curso` — [tareas](./SDD-53-Task.md), 11 / 30.
+> **Estado:** `En curso` — [tareas](./SDD-53-Task.md), 12 / 30.
 > **Paquetes:** `@fudic/spec` (generadores y formateador) · `@fudic/typecheck` (la forma de las
 > props) · `@fudic/cli` (`g spec`, `g term`, `fmt`) · `@fudic/language-server` (snippets, bombilla
 > y formato) · `fudic-vscode` (formato al guardar) · `@fudic/diagnostics` (los códigos de la CLI)
@@ -261,8 +261,8 @@ y **sin props** dentro: el chequeo del proyecto dirá cuáles faltan.
 
 ### 4.6. El formateador
 
-`formatSpec(source)`, en `@fudic/spec`. El árbol de SDD-52 más el texto original bastan: los
-comentarios están en `SpecFile.comments` y las líneas en blanco se ven entre spans.
+`formatSpec(source)`, en `@fudic/spec`. Lee las líneas con el mismo lector que el parser e imprime todo token leído: imprimir desde el árbol perdería las líneas que el parser no coloca.
+Los comentarios y las líneas en blanco salen del mismo lector.
 
 Reglas, en orden:
 

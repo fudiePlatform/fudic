@@ -102,3 +102,23 @@ function readQuoted(source: string, open: number, end: number): Quoted {
   }
   return { span: span(open, end), text, closed: false };
 }
+
+/** `[start, end)` of every line, terminator excluded. `\n`, `\r\n` and `\r` all end a line. */
+export function* lines(source: string): Generator<readonly [number, number]> {
+  let start = 0;
+  for (let i = 0; i < source.length; i++) {
+    const c = source[i];
+    if (c !== '\n' && c !== '\r') continue;
+    yield [start, i];
+    if (c === '\r' && source[i + 1] === '\n') i++;
+    start = i + 1;
+  }
+  yield [start, source.length];
+}
+
+/** The level a line is read at, from its first word when its indentation is wrong. */
+export function levelOf(indent: number, head: string): number {
+  if (indent === 0 || indent === 2 || indent === 4) return indent;
+  if (head === 'component' || head === 'criterion') return 0;
+  return head === 'given' || head === 'when' || head === 'then' ? 2 : 4;
+}
