@@ -480,6 +480,9 @@ importers:
       '@fudic/resolve':
         specifier: workspace:*
         version: link:../resolve
+      '@fudic/spec':
+        specifier: workspace:*
+        version: link:../spec
       '@volar/language-core':
         specifier: 2.4.28
         version: 2.4.28

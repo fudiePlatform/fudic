@@ -70,6 +70,8 @@ export { holeDiagnostics, missingSections } from './holes.js';
 export { reservedDollarDiagnostics } from './reserved-dollar.js';
 export { fudicDiagnostics, semanticDiagnostics } from './fudic-diagnostics.js';
 
+export { propShapes } from './prop-shapes.js';
+
 // The project check (§3.1).
 export {
   createProjectChecker,
