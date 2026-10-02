@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/spec` · `@fudic/typecheck` · `@fudic/cli` · `@fudic/language-server` ·
 > `fudic-vscode` · `@fudic/diagnostics`
 > **Rama:** `sdd-53-fudspec-autoria` (nace de `sdd-52-fudspec`)
-> **Progreso:** 10 / 30 — `En curso`.
+> **Progreso:** 11 / 30 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -60,7 +60,7 @@
 |---|---|---|---|---|---|
 | [x] | 9 | 3 | **`propShapes(program, file)`.** `ts.Type` → `PropField[]` desde el export `$Props`, con el corte por ciclo y a profundidad 4 (§4.3). Igual que `propDetails`: los primitivos se reconocen por el nombre que imprime el checker, sin `TypeFlags`. `@fudic/typecheck` añade `@fudic/spec` a sus dependencias | `typecheck` | `src/prop-shapes.ts` · `package.json` |
 | [x] | 10 | 9 | **`ProjectChecker.propShapes(file)`.** Sobre el programa del checker, sin lanzar | `typecheck` | `src/checker.ts` |
-| [ ] | 11 | 10 | **Tests de tipos.** Criterio 6, sobre el `app-card` del ejemplo y un `.fud` por forma | `typecheck` | `test/prop-shapes.test.ts` |
+| [x] | 11 | 10 | **Tests de tipos.** Criterio 6, sobre el `app-card` del ejemplo y un `.fud` por forma | `typecheck` | `test/prop-shapes.test.ts` |
 
 ## Fase 4 — formateador (2)
 
