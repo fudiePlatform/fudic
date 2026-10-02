@@ -43,6 +43,7 @@ import {
   type CoreUsage,
   type NodeIds,
   type RootItem,
+  renderPass,
 } from './markup-client.js';
 
 /** Everything a block needs that belongs to the FILE rather than to one construct. */
@@ -224,6 +225,7 @@ export class BlockEmitter implements BlockSink {
       // The body's roots are the hole's roots when the construct sits in one (SDD-48 §4.5).
       ...(at.slot === undefined ? {} : { slot: at.slot }),
     });
+    em.planInPlace(branch.body);
     em.emitBlockBody(branch.body, '$c', at.tail);
 
     const w = at.bodies.decls;
@@ -233,6 +235,7 @@ export class BlockEmitter implements BlockSink {
     w.line('const $r = [];');
     w.line('const $d = []; // teardowns');
     if (em.writes > 0) w.line('const $w = []; // last applied, per value write');
+    if (em.writes > 0 && em.inPlace) w.line('const $x = []; // values, evaluated in place');
     w.appendWriter(bodies.decls);
     writeClosure(w, '$a', bodies.apply, 'let $v;');
     writeClosure(w, '$s', bodies.hook);
@@ -264,8 +267,8 @@ export class BlockEmitter implements BlockSink {
     w.line('s: $s,');
     w.line(
       block.params.length === 0
-        ? `u: () => { $a();${updateCalls(bodies.update)} },`
-        : `u: (...$p) => { [${block.params.join(', ')}] = $p; $a();${updateCalls(bodies.update)} },`,
+        ? `u: () => { ${renderPass(em.inPlace, updateCalls(bodies.update))} },`
+        : `u: (...$p) => { [${block.params.join(', ')}] = $p; ${renderPass(em.inPlace, updateCalls(bodies.update))} },`,
     );
     // Back to front, each root before the one that follows it: what every step needs as a
     // reference is where the piece it just placed BEGINS, which is what `move` returns.

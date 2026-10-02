@@ -210,8 +210,14 @@ describe('the same app with no DI at all', () => {
     // Every file this build emits, the DI build emits too — so the difference between the
     // two is entirely what the injector brought, and a page that injects nothing is left
     // with exactly the output it had before this SDD existed.
+    //
+    // One exception, and it is the bundler's and not the injector's: the URL guard (SDD-51
+    // §3.7) is ONE module the server's and the browser's `$dom` both import, so when the
+    // runtime is bundled into the app Rollup gives it a chunk of its own — or folds it into
+    // another one, depending on what else is shared. Where it lands says nothing about DI.
     const withDi = new Set(unhashed(output));
-    for (const file of unhashed(plain)) expect(withDi.has(file)).toBe(true);
+    const shared = new Set(['assets/url.js']);
+    for (const file of unhashed(plain)) if (!shared.has(file)) expect(withDi.has(file)).toBe(true);
     expect(unhashed(plain).some((name) => name.includes('.ioc'))).toBe(false);
     expect(plain.length).toBeLessThan(output.length);
   });

@@ -12,6 +12,8 @@ import { describe, expect, it } from 'vitest';
 import { posix } from 'node:path';
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
+import { isNativeEventAttribute } from '@fudic/compiler';
+import { getDefaultHTMLDataProvider } from 'vscode-html-languageservice';
 import { GLOBALS_DTS, GLOBALS_FILE_NAME } from '../src/globals.js';
 
 const ROOT = '/probe';
@@ -99,5 +101,32 @@ describe('a plain attribute is checked against $GlobalAttrs alone (§3.3, §6.6)
     const [only] = check(withProps);
     expect(only!.code).toBe(2322); // not assignable
     expect(only!.text).toBe('tone');
+  });
+});
+
+/**
+ * SDD-51 §3.6, decision 139: the `on*` attributes are gone from `$GlobalAttrs`, so the editor
+ * stops offering them — and the compiler's list of event attributes, a constant because the
+ * compiler cannot depend on the editor's HTML service, covers every one that service knows.
+ * The day the service learns a new one, this says so.
+ */
+describe('the native event attributes (SDD-51, decision 139)', () => {
+  const served = getDefaultHTMLDataProvider()
+    .provideAttributes('div')
+    .map((attribute) => attribute.name)
+    .filter((name) => name.startsWith('on'));
+
+  it('the HTML service still knows some, so the check below checks something', () => {
+    expect(served.length).toBeGreaterThan(50);
+  });
+
+  it('the compiler knows every one of them', () => {
+    expect(served.filter((name) => !isNativeEventAttribute(name))).toEqual([]);
+  });
+
+  it('none is a member of $GlobalAttrs: onclick is no attribute the projection offers', () => {
+    const [only] = check(`$attrs<{}>({ onclick: 'go()' });`);
+    expect(only!.code).toBe(2353);
+    expect(only!.text).toBe('onclick');
   });
 });

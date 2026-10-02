@@ -219,7 +219,8 @@ export class SsrDom implements Dom<SsrNode> {
   /** The guard the browser applies, the same function: both sides write the same bytes. */
   setUrl(el: SsrNode, name: string, value: unknown): void {
     const node = asImpl(el);
-    node.attrs.set(name, guardUrl(node.tag ?? '', name, value));
+    // Only an element carries attributes, and an element always has its tag.
+    node.attrs.set(name, guardUrl(node.tag!, name, value));
   }
   removeAttr(el: SsrNode, name: string): void {
     asImpl(el).attrs.delete(name);

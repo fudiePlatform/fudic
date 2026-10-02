@@ -93,12 +93,17 @@ const URL_ATTRIBUTES: ReadonlySet<string> = new Set([
   'cite',
   'xlink:href',
   'srcset',
+  'imagesrcset',
+  'ping',
 ]);
 
 export function isUrlAttr(element: string, attribute: string): boolean {
   const name = attribute.toLowerCase();
   return URL_ATTRIBUTES.has(name) || (name === 'data' && element.toLowerCase() === 'object');
 }
+
+/** The URL attributes that hold a LIST: a prefix speaks for the first URL only. */
+const LIST_ATTRIBUTES: ReadonlySet<string> = new Set(['srcset', 'imagesrcset', 'ping']);
 
 /** The schemes a literal prefix may pin: the guard's own list (`@fudic/dom`). */
 const PINNED_SCHEMES: ReadonlySet<string> = new Set(['http', 'https', 'mailto', 'tel']);
@@ -114,8 +119,8 @@ const PINNED_SCHEMES: ReadonlySet<string> = new Set(['http', 'https', 'mailto', 
  * with a scheme the guard would let through anyway. Anything else — `@url`, `` `${base}/x` ``,
  * `` `/${x}` ``, whose `x` could be `/evil.example` — is guarded.
  *
- * A `srcset` is a list, and its prefix only says something about the first candidate: it is
- * always guarded, and the guard reads every candidate.
+ * A `srcset`, an `imagesrcset` and a `ping` are lists, and a prefix only says something about
+ * the first URL: they are always guarded, and the guard reads every one.
  */
 export function guardsUrl(
   source: string,
@@ -124,7 +129,7 @@ export function guardsUrl(
   value: readonly AttributeValuePart[],
 ): boolean {
   if (!isUrlAttr(element, attribute)) return false;
-  if (attribute.toLowerCase() === 'srcset') return true;
+  if (LIST_ATTRIBUTES.has(attribute.toLowerCase())) return true;
   return !pinsOrigin(fixedPrefix(source, value), element, attribute);
 }
 

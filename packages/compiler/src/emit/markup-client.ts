@@ -411,6 +411,8 @@ export class ClientMarkupEmitter {
   #depth = 0;
   /** How many value writes `$a` owns so far — each one gets its own slot in `$w`. */
   #writes = 0;
+  /** See `inPlace`. */
+  #inPlace = false;
   /** The expression of each of those writes, in slot order, for `watchImports`. */
   readonly #expressions: (readonly LinePart[])[] = [];
   /** How many crossed nodes `$cb` has named so far: `$fc0`, `$fc1`… */
@@ -502,8 +504,31 @@ export class ClientMarkupEmitter {
   #applyValue(value: readonly LinePart[], write: (v: string) => string): void {
     this.#expressions.push(value);
     const slot = this.#writes++;
-    this.#apply.mappedLine('$v = ', ...value, ';');
+    if (this.#inPlace) {
+      // Evaluated where the server evaluates it — after the `@{ }`s before it and before the
+      // ones after it — on both passes that render: `c` and `u` (SDD-51 §3.8). `$a` then only
+      // applies, so it reads what the pass saw at this point and not the end state of it.
+      this.#fab.mappedLine(`$x[${slot}] = `, ...value, ';');
+      this.#bodies.update.mappedLine(`$x[${slot}] = `, ...value, ';');
+      this.#apply.line(`$v = $x[${slot}];`);
+    } else {
+      this.#apply.mappedLine('$v = ', ...value, ';');
+    }
     this.#apply.line(`if ($v !== $w[${slot}]) { $w[${slot}] = $v; ${write('$v')} }`);
+  }
+
+  /**
+   * Whether this closure evaluates its values in place: it, or a block nested in it, holds an
+   * `@{ }` (SDD-51 §3.8). Without one, nothing in the pass can change state between two values,
+   * and `$a` evaluating them all at once is the same thing, cheaper.
+   */
+  get inPlace(): boolean {
+    return this.#inPlace;
+  }
+
+  /** Decide `inPlace` from what the closure will walk. Called before any value is written. */
+  planInPlace(content: unknown): void {
+    if (holdsInlineCode(content, new WeakSet())) this.#inPlace = true;
   }
 
   /**
@@ -1438,4 +1463,21 @@ export class ClientMarkupEmitter {
       ...(this.#slot !== undefined && level.fab === null ? { slot: this.#slot } : {}),
     });
   }
+}
+
+/** Whether a piece of the tree holds an `@{ }` at any depth: what makes a closure `inPlace`. */
+function holdsInlineCode(value: unknown, seen: WeakSet<object>): boolean {
+  if (typeof value !== 'object' || value === null || seen.has(value)) return false;
+  seen.add(value);
+  if ((value as { readonly type?: unknown }).type === 'inline-code') return true;
+  return Object.values(value).some((item) => holdsInlineCode(item, seen));
+}
+
+/**
+ * One rendering pass of a closure: its reconciliation, and the value writes. In order when the
+ * closure is `inPlace` — the values were evaluated inside the reconciliation, at their place,
+ * and `$a` only applies them — and `$a` first otherwise, as it always was.
+ */
+export function renderPass(inPlace: boolean, reconcile: string): string {
+  return inPlace ? `${reconcile.trim()} $a();`.trim() : `$a();${reconcile}`;
 }

@@ -6,8 +6,8 @@
 > `@fudic/language-core` (la proyección deja de ofrecer `on*`)
 > **Depende de:** 11 (lote Oxc, `mapSpan`), 12 (pase semántico, `walk`), 50 (catálogo de
 > diagnósticos)
-> **Rango de diagnósticos:** `FUD0900`–`FUD0919` (nuevo). Usa `0900`–`0909`.
-> **Decisiones de gramática:** 137–140 (nuevas). Enmienda la 104 (fuera `await`).
+> **Rango de diagnósticos:** `FUD0900`–`FUD0919` (nuevo), entero.
+> **Decisiones de gramática:** 137–141 (nuevas). Enmienda la 104 (fuera `await`).
 > **Origen:** T-18 de [SDD-25-Task-Claude](./SDD-25-Task-Claude.md), aplazada a spec propia.
 >
 > **Qué añade en una frase.** La vista es una función del estado: lo que se escribe en `@( )`,
@@ -152,9 +152,10 @@ resolver a uno de:
 
 1. **Un nombre del template en scope:** lo que declara un `@{ }` en un bloque que lo contiene
    (decisión 17), la cabecera de un bucle que lo contiene, o un parámetro de snippet.
-2. **Un nombre de nivel superior del `@code`**, de cualquiera de sus zonas, incluidos los
-   imports. (Que un nombre de `@client` no exista en el servidor no es asunto de esta regla: el
-   emit ya lo cubre con su stub inerte.)
+2. **Un nombre de nivel superior del `@code`**: de la zona neutra, incluidos los imports, y
+   las señales de `@client` (el servidor las deja inertes). Un nombre de `@server` no: lo dice
+   TypeScript (TS2304, la proyección no ve esa zona). Un nombre no reactivo de `@client`
+   tampoco: el servidor renderiza sin él, y es `FUD0907` (§3.8).
 3. **`data`**, en una ruta y en un layout: lo que devuelve `load()`. Es el único nombre que
    fudic pone en el scope de la vista. `ctx` **no**: es el contexto, y solo existe como
    parámetro de las funciones de `@server` (`load(ctx)`, `layout(ctx, data)`). Tampoco ningún
@@ -238,6 +239,52 @@ decodifica en el cliente.
 
 Sin diagnóstico: el guardia no es un error del autor.
 
+### 3.8. Lo que la revisión del 2026-10-02 añadió (decisión 141)
+
+La revisión de [casos no cubiertos](./SDD-51-casos-no-cubiertos.md) y la evidencia R1–R14 de
+`examples/vista-errores` encontraron lo que la lista blanca dejaba pasar y lo que el emit del
+cliente rompía. Cada regla es sintáctica y por nombre, sin tipos.
+
+| Qué | Código | Subrayado |
+|---|---|---|
+| `.constructor`, `__proto__`, `prototype` (también `x["constructor"]`), `Object.getPrototypeOf`/`setPrototypeOf`, `Symbol.for`/`keyFor` | `FUD0910` | el miembro |
+| Un método que muta — `push`, `pop`, `shift`, `unshift`, `splice`, `sort`, `reverse`, `fill`, `copyWithin`, `set`, `add`, `delete`, `clear`, `set…` — o `Object.assign`/`defineProperty`/`defineProperties`/`freeze`/`seal`/`preventExtensions` sobre algo que la pasada no ha construido | `FUD0911` | el método |
+| `Math.random()`, `Date.now()`, `new Date()` y `Date()`, `Symbol()`, `new Intl.X()` sin argumentos, los getters locales de `Date` (`getHours`…), `toLocale*` y `localeCompare` sin locale (y sin zona horaria para fecha y hora); una `key` que es un objeto, array, flecha, función, clase o `new` | `FUD0912` | la llamada / la key |
+| Un bucle de `@{ }` sin condición o con una siempre verdadera y sin `break`; un `@while` siempre verdadero, o cuya condición no llama a nada ni lee nada que un `@{ }` de su cuerpo escriba; `Array(n)` / `new Array(n)` con un `n` que no es un literal ≤ 10 000 | `FUD0913` | la palabra clave / la condición / `Array` |
+| Un snippet que se invoca a sí mismo sin un constructo de control en medio | `FUD0914` | el nombre en el `@render` |
+| `javascript:`, `vbscript:` o un `data:` que no es imagen, literal, en un atributo URL o `codebase`; todo `srcdoc`; `<meta http-equiv="refresh">`; `<base>` con `href` dinámico; `<animate>`/`<set>` con `attributeName` sobre `href`; `style` dinámico (se escribe `style:prop`) | `FUD0915` | el atributo |
+| `.innerHTML`, `.outerHTML`, `.srcdoc` | `FUD0916` | la prop |
+| `.stack`; una función del `@code` convertida en texto: `String(f)`, `f.toString()`, `f + ""`, `` `${f}` `` | `FUD0917` | `stack` / el nombre |
+| Lo que el template declara (`@{ }`, cabecera de bucle) con un nombre del `@code`, `data` o un global de la lista: en el primer nivel es un `SyntaxError` del servidor, y sombrear `String` cambia lo que llama el emit | `FUD0918` | el nombre |
+| Un literal regex, `RegExp` (sale de la lista blanca), `match`/`matchAll`/`search`, y `test`/`exec` sobre una regex del `@code` | `FUD0919` | el literal / el método |
+| Una plantilla etiquetada: es una llamada con argumentos que no se ven | `FUD0905` | la etiqueta |
+| `.then`, `.catch`, `.finally`, `Array.fromAsync` | `FUD0902` | el método |
+| `var` en la cabecera de `@for`/`@foreach` | `FUD0908` | `var` |
+| Escribir desde `@{ }` lo que el template no deja reasignar: una variable de cabecera de bucle, un `const` de un `@{ }`, un parámetro de snippet | `FUD0901` | el nombre |
+| Acumular (`+=`, `++`, `x = x + …`) sobre un `let` neutro que ningún `@{ }` anterior de la pasada ha resembrado con una asignación simple | `FUD0900` | el nombre |
+| Declarar en el template un nombre con `$` | `FUD0461` | el nombre |
+| Leer un nombre no reactivo de `@client` (salvo como valor entero de un `.prop`, que el servidor deja inerte) | `FUD0907` | el nombre |
+| `.onX` en un tag **nativo** | `FUD0909` | la prop |
+
+**Los manejadores.** El valor de un `@evento` o de un `bus:` sigue fuera de §3.2: corre después
+y escribir es su objetivo. Pero los nombres que lee son de la vista, y lo que no resuelve —ni
+template, ni `@code`, ni `data`, ni la lista de globales— es `FUD0907`; también lo que declara
+un `@{ }`, que vive en la pasada y no donde corre el manejador. Los `$` son de `FUD0666`.
+
+**El cliente evalúa en orden.** En un closure con un `@{ }` (suyo o de un bloque anidado), cada
+valor se evalúa en su sitio de `c` y de `u`, intercalado con los `@{ }` y la reconciliación, y
+`$a` solo aplica. Antes `$a` los evaluaba todos juntos, al final de `c` y al principio de `u`, en
+otro closure: un nombre de un `@{ }` daba `ReferenceError`, y dos `@{ }` que reasignaban lo leído
+daban otro valor que el servidor. Sin `@{ }` el emit no cambia.
+
+**El guardia.** `//`, `/\`, `\/` y `\\` al principio son otro origen y se escriben inertes.
+`srcset` e `imagesrcset` se leen candidato a candidato —un `data:` con comas sale entero— y
+admiten `data:image/`; `ping` se lee URL a URL. Los tres se guardan siempre.
+
+**Límites conocidos**, sin diagnóstico: una clave computada no literal (`o["const" + "ructor"]`);
+un `id`/`name` dinámico en una página (DOM clobbering: prohibirlo prohibiría las anclas); una
+recursión entre snippets distintos o entre ficheros.
+
 ---
 
 ## 4. Comportamiento
@@ -292,7 +339,7 @@ Se retira `await` de la lista de ejemplos de `@( … )`. Lo asíncrono se resuel
 
 ### Catálogo de diagnósticos
 
-Los diez son `error` y su `.md` (SDD-50 §4.4) es este:
+Los veinte son `error` y su `.md` (SDD-50 §4.4) es este:
 
 ~~~md
 # FUD0900 — The view writes
@@ -374,6 +421,86 @@ An `@{ }` block holds declarations, assignments, calls, conditionals and loops; 
 **Fix:** use the fudic event binding: `@click="@save"`.
 ~~~
 
+~~~md
+# FUD0910 — Reflective access in the view
+**error** · SDD-51
+
+A member named `constructor`, `__proto__` or `prototype`, `Object.getPrototypeOf`/`setPrototypeOf` or `Symbol.for` reaches what the white list keeps out: `Function` is `eval`, and `Symbol.for` forges a `trustedUrl`.
+**Fix:** read the value you need in `@code` and use its name in the view.
+~~~
+
+~~~md
+# FUD0911 — The view mutates an object
+**error** · SDD-51
+
+`sort`, `push`, `splice`, `set`, `add`, `delete`, `Object.assign` and their kin write as surely as `=`. Mutating what the pass itself built is fine; mutating `data`, a prop or the `@code` state is not.
+**Fix:** work on a copy (`toSorted()`, `[...xs].sort()`, `Object.assign({}, o)`) or do it in `@code`.
+~~~
+
+~~~md
+# FUD0912 — A value that differs between server and browser
+**error** · SDD-51
+
+`Math.random()`, `Date.now()`, `new Date()`, `Symbol()`, a locale or time zone left implicit, and a `key` that is a new object on every pass give each side, or each pass, its own answer.
+**Fix:** compute it in `load()` or `@code`, pass a locale and a time zone, and key by a primitive: `key (item.id)`.
+~~~
+
+~~~md
+# FUD0913 — A loop or allocation without a bound
+**error** · SDD-51
+
+A loop whose condition is absent or always true, a `@while` whose body never writes what its condition reads, and `Array(n)` with a size that is not a small literal run on the server for every request.
+**Fix:** give the loop an exit the view can see, or build the list in `@code`.
+~~~
+
+~~~md
+# FUD0914 — A snippet renders itself unconditionally
+**error** · SDD-51
+
+A recursive `@render` is fine under an `@if`, `@switch` or loop that ends it; with nothing in between, every call makes another.
+**Fix:** wrap the recursive `@render` in the condition that ends it: `@if (f.next) { @render fila(@f.next) }`.
+~~~
+
+~~~md
+# FUD0915 — An attribute that runs, loads or redirects
+**error** · SDD-51
+
+A `javascript:` URL, an `srcdoc`, a `meta` refresh, a dynamic `<base>`, an `<animate>` over `href` and a dynamic `style` are scripts, documents or redirects the view writes outside the guard.
+**Fix:** link with a plain URL, build the document as a component, and style with `style:prop`.
+~~~
+
+~~~md
+# FUD0916 — A property that writes HTML
+**error** · SDD-51
+
+`.innerHTML`, `.outerHTML` and `.srcdoc` turn a string into markup: whatever the data says becomes elements and scripts.
+**Fix:** render the content with the template, where every value is escaped.
+~~~
+
+~~~md
+# FUD0917 — Server internals in the HTML
+**error** · SDD-51
+
+An error's `.stack` carries the server's absolute paths, and a function turned into a string carries its source, which differs between the server and the browser bundles.
+**Fix:** render a message you choose, and call the function instead of printing it.
+~~~
+
+~~~md
+# FUD0918 — The view redeclares a name
+**error** · SDD-51
+
+The template shares the render function with `@code`: redeclaring one of its names is a `SyntaxError` on the server, and shadowing `data` or a global like `String` changes what the emitted code calls.
+**Fix:** pick another name.
+~~~
+
+~~~md
+# FUD0919 — Regular expression in the view
+**error** · SDD-51
+
+A regex literal, `RegExp`, and `match`, `matchAll` and `search`, which build one from a string, carry `lastIndex` from one pass to the next and backtrack without limit on what the data says.
+**Fix:** test the text in `@code` and render the result.
+~~~
+
 ---
 
 ## 6. Criterios de aceptación
@@ -429,13 +556,17 @@ An `@{ }` block holds declarations, assignments, calls, conditionals and loops; 
     construye `examples/basic`.
 21. **Cobertura.** Los analizadores nuevos y el guardia al 100 % en las cuatro métricas, y el
     umbral de `@fudic/dom`, `@fudic/ssr` y `@fudic/language-core` no baja.
+22. **La vista de errores.** `examples/vista-errores` lleva cada caso de §3.2–§3.8 con un
+    comentario «FUDnnnn sobre `texto`» o «sin diagnóstico», y da exactamente eso y nada más,
+    por el pase semántico y por el canal del editor. Los casos del cliente (§3.8, «El cliente
+    evalúa en orden») y del guardia tienen su test de emit y de `@fudic/dom`.
 
 ---
 
 ## 7. Fuera de alcance
 
 - **La pureza de las llamadas.** `@(save())` pasa (§1.2).
-- **El no determinismo.** `Math.random()` o `new Date()` en la vista hacen que la hidratación
+- **El no determinismo más allá de §3.8.** La lista de §3.8 es por nombre; lo que una función de `@code` haga dentro no se ve. `Math.random()` o `new Date()` en la vista hacen que la hidratación
   no case, pero no se escapan: un aviso para ellos es otra spec, si hace falta.
 - **El cuerpo de `<script>`** (decisión 43) y **el `@code`**: sin restricción.
 - **Los valores de `@evento` y `bus:`**: su forma es de `FUD0291`.

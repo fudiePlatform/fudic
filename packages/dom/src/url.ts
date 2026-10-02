@@ -61,24 +61,47 @@ export function isTrustedUrl(value: unknown): value is TrustedURL {
  * The value a URL attribute is written with: the value itself when it is safe, `INERT_URL` when
  * it is not. Pure, and therefore the same on every side.
  *
- * `tag` and `name` matter for one case only: `data:image/…` is an image, and only an
- * `<img src>` loads one as such.
+ * `tag` and `name` matter for two things: a list attribute (`srcset`, `imagesrcset`, `ping`)
+ * is judged URL by URL, and `data:image/…` is an image only where an image is loaded — an
+ * `<img src>` and a `srcset`.
  */
 export function safeUrl(tag: string, name: string, value: unknown): string {
   if (isTrustedUrl(value)) return value[TRUSTED];
   const text = String(value);
-  if (name.toLowerCase() === 'srcset') {
-    // A list: each candidate is a URL and a descriptor, and every URL has to pass.
-    return text.split(',').every((candidate) => isSafe(tag, name, candidateUrl(candidate)))
-      ? text
-      : INERT_URL;
-  }
-  return isSafe(tag, name, text) ? text : INERT_URL;
+  const attribute = name.toLowerCase();
+  // A list: every URL in it has to pass, or none is written.
+  const urls = attribute === 'ping' ? tokens(text) : IMAGE_LISTS.has(attribute) ? candidateUrls(text) : [text];
+  return urls.every((url) => isSafe(tag, attribute, url)) ? text : INERT_URL;
 }
 
-/** The URL of one `srcset` candidate: what comes before its descriptor. */
-function candidateUrl(candidate: string): string {
-  return candidate.trim().split(/\s+/u)[0] ?? '';
+/** The attributes that are a `srcset`-style list of image candidates. */
+const IMAGE_LISTS: ReadonlySet<string> = new Set(['srcset', 'imagesrcset']);
+
+/** The URLs of a `ping`: separated by whitespace. */
+function tokens(text: string): readonly string[] {
+  return text.split(/\s+/u).filter((url) => url !== '');
+}
+
+/**
+ * The URLs of a `srcset`, as the HTML parser reads it: a candidate is a URL — a run with no
+ * whitespace, which may hold commas, as a `data:` URL does — then descriptors up to the next
+ * comma. Splitting on every comma would cut `data:image/png;base64,…` in two and refuse an
+ * image that is perfectly fine.
+ */
+function candidateUrls(text: string): readonly string[] {
+  const urls: string[] = [];
+  let i = 0;
+  for (;;) {
+    while (i < text.length && /[\s,]/u.test(text[i]!)) i++;
+    const start = i;
+    while (i < text.length && !/\s/u.test(text[i]!)) i++;
+    if (i === start) return urls;
+    const url = text.slice(start, i);
+    urls.push(url.replace(/,+$/u, ''));
+    if (url.endsWith(',')) continue;
+    // The descriptors: everything up to the comma that ends the candidate.
+    while (i < text.length && text[i] !== ',') i++;
+  }
 }
 
 function isSafe(tag: string, name: string, url: string): boolean {
@@ -86,15 +109,14 @@ function isSafe(tag: string, name: string, url: string): boolean {
   // characters and spaces in front. `java\tscript:` and `  javascript:` are both `javascript:`.
   // `\x00` and not the `\u` form: the source travels in the maps, which must hold no NUL escape.
   const normalized = url.replace(/[\t\n\r]/gu, '').replace(/^[\x00-\x20]+/u, '');
+  // Two slashes, either way round, are another ORIGIN: a browser reads `//evil.example`,
+  // `/\evil.example` and `\\evil.example` as a host, with the page's own scheme.
+  if (/^[/\\]{2}/u.test(normalized)) return false;
   const scheme = schemeOf(normalized);
   if (scheme === undefined) return true;
   if (SAFE_SCHEMES.has(scheme)) return true;
-  return (
-    scheme === 'data:' &&
-    tag.toLowerCase() === 'img' &&
-    name.toLowerCase() === 'src' &&
-    normalized.slice(scheme.length).toLowerCase().startsWith('image/')
-  );
+  const image = (tag.toLowerCase() === 'img' && name === 'src') || IMAGE_LISTS.has(name);
+  return scheme === 'data:' && image && normalized.slice(scheme.length).toLowerCase().startsWith('image/');
 }
 
 /**
@@ -107,8 +129,18 @@ function schemeOf(url: string): string | undefined {
   return url.slice(0, end + 1).toLowerCase();
 }
 
-/** `import.meta.env.DEV`, which Vite replaces in a build, so the warning is pruned with it. */
-const DEV = (import.meta as ImportMeta & { readonly env?: { readonly DEV?: boolean } }).env?.DEV === true;
+/**
+ * `import.meta.env.DEV`, which Vite replaces in a build, so the warning is pruned with it. Read
+ * at the call and not once at load, so a test can switch it.
+ */
+function dev(): boolean {
+  const meta = import.meta as ImportMeta & { readonly env?: { readonly DEV?: boolean } };
+  // A runtime that loads this module without Vite has no `import.meta.env` at all: the server
+  // of a published app, reading `@fudic/ssr` from `node_modules`. The test runner is Vite, so
+  // there it always has one.
+  /* v8 ignore next */
+  return meta.env?.DEV === true;
+}
 
 /**
  * `safeUrl`, telling the developer when it replaced a value. The warning is the only thing this
@@ -116,7 +148,7 @@ const DEV = (import.meta as ImportMeta & { readonly env?: { readonly DEV?: boole
  */
 export function guardUrl(tag: string, name: string, value: unknown): string {
   const written = safeUrl(tag, name, value);
-  if (DEV && written === INERT_URL && String(value) !== INERT_URL) {
+  if (dev() && written === INERT_URL && String(value) !== INERT_URL) {
     console.warn(
       `fudic: the URL ${JSON.stringify(String(value))} of <${tag} ${name}> was replaced with ${INERT_URL}: ` +
         'its scheme is not one a view may produce. Wrap it in trustedUrl() in @code if it is meant.',

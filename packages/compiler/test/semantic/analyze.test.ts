@@ -83,7 +83,8 @@ describe('analyze — runner', () => {
     // + layout-body (BUG-44: FUD0704–FUD0705, what a layout's <body> may hold)
     // − component-props and slot-name (SDD-35: FUD0197–FUD0199 retired, TypeScript says them)
     // + view-expressions, view-statements, view-identifiers, native-event-attributes (SDD-51)
-    expect(ANALYZERS).toHaveLength(24);
+    // + view-attributes, snippet-recursion (SDD-51 §3.8)
+    expect(ANALYZERS).toHaveLength(26);
     const { value } = analyze(buildInput(component('<p>hi</p>')));
     expect(value).toEqual({});
     expect('strategies' in value).toBe(false); // decisions 63–65 retired: no hydration strategy

@@ -24,8 +24,6 @@
   const perfil: { x?: string } | undefined = {};
   const valores = [1, 2, 3, 4];
   const articulo = { titulo: "Hola", autor: "Ana", fecha: "hoy" };
-  const tag = (partes: TemplateStringsArray, ...valores: unknown[]): string =>
-    partes.reduce((acc, parte, i) => acc + parte + (i < valores.length ? String(valores[i]).toUpperCase() : ""), "");
 
   // La zona neutra se declara DENTRO de la función de render: sus `let` son estado de la
   // instancia y el template puede reasignarlos con `@{ }` (§3.5).
@@ -135,8 +133,8 @@
 <p>TypeScript: @(user!.name as string) · @(prop1 satisfies number)</p>
 @* Globales permitidos: Math, JSON, Number, String, Date, Array, Object… *@
 <p>Globales: @(Math.max(prop1, prop2)) · @(JSON.stringify({ a: 1 })) · @(Number.isInteger(id))</p>
-@* Plantilla y plantilla etiquetada (es una llamada). *@
-<p>Plantilla: @(`id ${id}`) · etiquetada: @(tag`hola ${"mundo"}`)</p>
+@* Plantilla. (La ETIQUETADA no: es una llamada con argumentos que no se ven, FUD0905.) *@
+<p>Plantilla: @(`id ${id}`)</p>
 @* Array y objeto literales con spread, dentro de una expresión que devuelve un escalar. *@
 <p>Spread: @([...valores, 5].length) · @(Object.keys({ ...articulo, extra: 1 }).length)</p>
 @* Unarios salvo `delete`. *@

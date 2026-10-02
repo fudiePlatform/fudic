@@ -27,7 +27,6 @@ export const VIEW_GLOBALS: ReadonlySet<string> = new Set([
   'Intl',
   'Map',
   'Set',
-  'RegExp',
   'parseInt',
   'parseFloat',
   'isNaN',

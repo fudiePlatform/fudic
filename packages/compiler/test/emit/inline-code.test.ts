@@ -76,12 +76,43 @@ describe('@{ … } — the author JS that runs in place', () => {
         '    const n = signal(0);\n  }\n',
       '<b>@(n())</b>@{ marca = 3; }<p>@marca</p>',
     );
-    expect(src).toContain('const $u = () => { $a(); marca = 3; };');
+    // In place (SDD-51 §3.8): each value is evaluated where the server evaluates it — `n()`
+    // before the block, `marca` after it — and `$a` applies them last. Evaluated all at once
+    // in front, `marca` would show the previous pass's value.
+    expect(src).toContain(
+      "const $u = () => { $x[0] = String((n()) ?? ''); marca = 3; $x[1] = String((marca) ?? ''); $a(); };",
+    );
   });
 
   it('emits nothing for a template that has none', () => {
     const src = client(SEEN, '<p>@marca</p>');
     expect(src).not.toContain('marca = 3');
+  });
+});
+
+/**
+ * SDD-51 §3.8: the client evaluates each value where the server does. `$a` used to read every
+ * value at once, in a closure of its own — so it could not see a name an `@{ }` declared, and
+ * it saw the LAST value of a name two `@{ }` reassigned in between.
+ */
+describe('the client evaluates in place (SDD-51 §3.8)', () => {
+  it('reads a name an @{ } declared in the closure that declares it', () => {
+    const fab = between(client('', '@{ const y = 2; }<p>@y</p>'), 'c: () => {', 'h: () => {');
+    expect(fab.indexOf('const y = 2;')).toBeLessThan(fab.indexOf("$x[0] = String((y) ?? '');"));
+  });
+
+  it('reads each value between the @{ } before it and the one after it', () => {
+    const src = client('  let total = 0;\n', '@{ total = 1; }<p>@total</p>@{ total = 2; }<p>@total</p>');
+    const fab = between(src, 'c: () => {', 'h: () => {');
+    const order = ['total = 1;', '$x[0] =', 'total = 2;', '$x[1] =', '$a();'].map((s) => fab.indexOf(s));
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    expect(src).toContain("u: () => { total = 1; $x[0] = String((total) ?? ''); total = 2; $x[1] = String((total) ?? ''); $a(); },");
+  });
+
+  it('and leaves a closure with no @{ } exactly as it was', () => {
+    const src = client('  const n = 1;\n', '<p>@n</p>');
+    expect(src).not.toContain('$x');
+    expect(src).toContain('u: () => { $a(); },');
   });
 });
 
@@ -129,6 +160,8 @@ describe('the canonical @while of decision 91', () => {
     // that was alive. The seed is what makes the pass repeatable, and it is the author's to
     // write — in the template, where the emit can put it in the update body.
     const src = client(LISTA, WALK);
-    expect(src).toContain('u: () => { $a(); cur = lista; $u0(); },');
+    expect(src).toContain('u: () => { cur = lista; $u0(); $a(); },');
+    // And each row reads its cursor BEFORE its own block advances it, as the server does.
+    expect(src).toContain("u: () => { $x[0] = String((cur.n) ?? '');  cur = cur.next; $a(); },");
   });
 });

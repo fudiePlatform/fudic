@@ -6,15 +6,17 @@
 
     @code {
       // SDD-51 — lo que NO se puede escribir en la vista. Cada caso lleva encima un comentario
-      // Razor con el código que debe salir y dónde va el subrayado. Este fichero vive fuera de
-      // `examples/basic` a propósito: con él dentro, `pnpm build` fallaría — que es justo lo
-      // que tiene que pasar.
+      // Razor con el código que sale y dónde va el subrayado: «FUDnnnn sobre `texto`», o «sin
+      // diagnóstico». Ese comentario es el contrato: `typecheck/test/vista-errores.test.ts` lo
+      // lee y comprueba que entre él y el comentario siguiente sale exactamente eso y nada más.
       //
-      // Lo que SÍ se puede está en `examples/basic/src/routes/vista.fud`.
+      // Este fichero vive fuera de `examples/basic` a propósito: con él dentro, `pnpm build`
+      // fallaría — que es justo lo que tiene que pasar. Lo que SÍ se puede está en
+      // `examples/basic/src/routes/vista.fud`.
       //
       // TypeScript añade sus propios errores en algunas líneas (escribir un `const`, leer
-      // `this` en un módulo…). Son de otra capa y no se comentan: aquí solo los FUD09xx.
-      import { importado, ayuda } from "./util";
+      // `this` en un módulo…). Son de otra capa y no se comentan: aquí solo los FUD.
+      import { importado, ayuda, signal } from "./util";
 
       type Fila = { id: number; n: number; ok: boolean; next: Fila | null };
 
@@ -32,19 +34,44 @@
       const xs: Fila[] = [];
       const p = Promise.resolve(1);
 
+      // Para los casos de §3.8 (la revisión del 2026-10-02), al final del fichero.
+      let choque = 0;
+      const redeclarada = 1;
+      const mapa = new Map<string, number>();
+      const conjunto = new Set<number>();
+      const fecha = new Date(0);
+      const re = /x/g;
+      const contador = signal(0);
+      const urlProtocolo = "//evil.example/x";
+      const urlBarraInvertida = "/\\evil.example/x";
+      const srcsetConDatos = "data:image/png;base64,AAAA 1x";
+      const fallo = new Error("x");
+      function formatea(v: number): string {
+        return String(v);
+      }
+
       @server {
         export function load(ctx: { url: URL }) {
           return { titulo: "errores", ruta: ctx.url.pathname };
         }
         let deServidor = 1;
+        const SECRETO = "clave-del-servidor";
       }
 
       @client {
         let deCliente = 1;
+        function alGuardar(): void {}
       }
     }
 
     <title>@data.titulo</title>
+
+    @* FUD0915 sobre `http-equiv`: un `refresh` redirige sin script, y la CSP no lo frena.
+       Estático o dinámico, da igual (§3.8, casos no cubiertos §G.1). *@
+    <meta http-equiv="refresh" content=@("0;url=" + data.ruta)>
+    @* FUD0915 sobre `href`: una `<base>` dinámica decide adónde va TODA URL relativa del
+       documento, scripts incluidos, y el guardia deja pasar cualquier `https:`. *@
+    <base href=@data.ruta>
   </head>
   <body>
     <h1>Lo que no se escribe en la vista</h1>
@@ -77,7 +104,8 @@
     @* FUD0900 sobre `total++`: la actualización de `@for` solo puede escribir lo que SU
        cabecera declara (aquí, `i`). *@
     @for (let i = 0; i < n; total++) key (i) { <span>@i</span> }
-    @* FUD0900 sobre `total = 0`: la inicialización no declara nada, escribe un nombre de fuera. *@
+    @* FUD0900 sobre `total = 0` y `total++`: ni la inicialización ni la actualización
+       declaran nada; escriben un nombre de fuera. *@
     @for (total = 0; total < 3; total++) key (total) { <span>@total</span> }
     @* FUD0900 sobre `total`: un `@foreach` sin `const` escribe una variable que vive fuera. *@
     @foreach (total of s) key (total) { <span>@total</span> }
@@ -120,9 +148,9 @@
     @{ data = null; }
     @* FUD0901 sobre `noExiste`: un nombre que no declara nadie. *@
     @{ noExiste = 1; }
-    @* FUD0901 sobre `ayuda` (con `++`): una función importada. *@
+    @* FUD0901 sobre `ayuda`: una función importada, aunque sea con `++`. *@
     @{ ayuda++; }
-    @* Esto SÍ: `total` es un `let` de la zona neutra. Sin diagnóstico. *@
+    @* Esto SÍ, sin diagnóstico: `total` es un `let` de la zona neutra. *@
     @{ total = a + b; }
 
     @* ════════════════════════════════════════════════════════════════════════════════
@@ -132,24 +160,25 @@
 
     @* FUD0902 sobre `await p`. *@
     <p>@(await p)</p>
-    @* FUD0902 sobre la flecha `async`. *@
+    @* FUD0902 sobre `async () => 1`: la flecha `async`. *@
     <p>@((async () => 1).length)</p>
-    @* FUD0902 sobre `async function`. *@
+    @* FUD0902 sobre `async function () {}`. *@
     <p>@((async function () {}).name)</p>
-    @* UN solo FUD0902, sobre la flecha: dentro de un nodo prohibido no se sigue mirando. *@
+    @* Un solo FUD0902 sobre `async () => await p`: dentro de un nodo prohibido no se sigue
+       mirando. *@
     <p>@((async () => await p).length)</p>
     @* FUD0902 sobre `await p`: también en `@{ }`. *@
     @{ const r = await p; }
     @* FUD0902 sobre `for await`. *@
     @{ for await (const v of s) {} }
-    @* FUD0902 sobre la declaración `async function`. *@
+    @* FUD0902 sobre `async function f() {}`: la declaración. *@
     @{ async function f() {} }
 
     @* ════════════════════════════════════════════════════════════════════════════════
        FUD0903 — módulos desde la vista
        ════════════════════════════════════════════════════════════════════════════════ *@
 
-    @* FUD0903 sobre `import('./util')`. *@
+    @* FUD0903 sobre `import("./util")`. *@
     <p>@(String(import("./util")))</p>
     @* FUD0903 sobre `import.meta`. *@
     <p>@(import.meta.url)</p>
@@ -175,17 +204,19 @@
     <p>@((function () {}).name)</p>
     @* FUD0905 sobre `class {}`. *@
     <p>@((class {}).name)</p>
-    @* FUD0905 sobre la flecha con cuerpo `{ }`: es una puerta trasera para meter sentencias. *@
+    @* FUD0905 sobre `() => { return 1; }`: una flecha con cuerpo `{ }` es una puerta trasera
+       para meter sentencias. *@
     <p>@((() => { return 1; })())</p>
-    @* FUD0905 sobre el método `f() {}` de un objeto literal. *@
+    @* FUD0905 sobre `f() {}`: el método de un objeto literal. *@
     <p>@(Object.keys({ f() {} }).length)</p>
-    @* FUD0905 sobre el getter y sobre el setter. *@
+    @* FUD0905 sobre `get g() { return 1; }` y `set h(v: number) {}`: el getter y el setter. *@
     <p>@(Object.keys({ get g() { return 1; }, set h(v: number) {} }).length)</p>
-    @* FUD0905 sobre la flecha con cuerpo `{ }`, aunque sea el argumento de un `forEach`. *@
+    @* FUD0905 sobre `(v) => { total = v; }`: la flecha con cuerpo `{ }`, aunque sea el
+       argumento de un `forEach`. *@
     <p>@(String(s.forEach((v) => { total = v; })))</p>
-    @* FUD0905 sobre la declaración `function`, en `@{ }`. *@
+    @* FUD0905 sobre `function g() {}`: la declaración, en `@{ }`. *@
     @{ function g() {} }
-    @* FUD0905 sobre la declaración `class`, en `@{ }`. *@
+    @* FUD0905 sobre `class C {}`: la declaración, en `@{ }`. *@
     @{ class C {} }
 
     @* ════════════════════════════════════════════════════════════════════════════════
@@ -217,8 +248,8 @@
     <p>@(String(process)) @(String(require))</p>
     @* FUD0907 sobre `eval`, `Function`, `Promise`, `Reflect` y `Proxy`. *@
     <p>@(eval("1")) @(String(Function)) @(String(Promise)) @(String(Reflect)) @(String(Proxy))</p>
-    @* FUD0907 sobre `$shadow`, `$dom` y `$ioc`: son del emit. Sale también FUD0666, la regla
-       de SDD-37 que solo los deja leer en los argumentos de un manejador. *@
+    @* FUD0907 sobre `$shadow`, `$dom` y `$ioc`, y FUD0666 sobre `$shadow`, `$dom` y `$ioc`: son
+       del emit, y la regla de SDD-37 solo los deja leer en los argumentos de un manejador. *@
     <p>@(String($shadow)) @(String($dom)) @(String($ioc))</p>
     @* FUD0907 sobre `ctx`: es el parámetro de `load(ctx)`, no un nombre de la vista. *@
     <p>@ctx.url</p>
@@ -228,8 +259,8 @@
     @* FUD0907 sobre `dentroDelIf`: lo declara un `@{ }` de un bloque que NO contiene a este. *@
     @if (a > 0) { @{ const dentroDelIf = 1; } }
     <p>@dentroDelIf</p>
-    @* FUD0907 sobre `window`: en un atributo, en una cabecera, en una key, en un case, en un
-       argumento de `@render` y en un `@raw`. Todos son vista. *@
+    @* FUD0907 sobre `window` (×5) y `document`: en un atributo, en una cabecera, en una key,
+       en un case, en un argumento de `@render` y en un `@raw`. Todos son vista. *@
     <p title=@window.name>atributo</p>
     @if (window) { <p>cabecera</p> }
     @foreach (const f of xs) key (window) { <span>@f.id</span> }
@@ -243,14 +274,16 @@
     <p>@(((v = window) => String(v))())</p>
     @* FUD0907 sobre `window`: y una clave computada. *@
     <p>@(Object.keys({ [String(window)]: 1 }).length)</p>
-    @* (El snippet `fila`, en `snippets.fud`, da FUD0907 sobre `document` dentro de su cuerpo.) *@
+    @* (El snippet `fila`, en `snippets.fud`, da su FUD0907 en `document`, dentro de su
+       cuerpo.) *@
 
     @* ════════════════════════════════════════════════════════════════════════════════
        FUD0908 — sentencias que no caben en `@{ }`
        Subrayado: la palabra clave.
        ════════════════════════════════════════════════════════════════════════════════ *@
 
-    @* FUD0908 sobre `return`. Oxc añade su FUD0170: fuera de una función no es ni sintaxis. *@
+    @* FUD0908 sobre `return`, y FUD0170 sobre `return`: Oxc añade el suyo, porque fuera de
+       una función no es ni sintaxis. *@
     @{ return; }
     @* FUD0908 sobre `var`: se escapa del bloque. *@
     @{ var v = 1; }
@@ -260,7 +293,7 @@
     @{ try { total = 1; } catch { total = 2; } }
     @* FUD0908 sobre `debugger`. *@
     @{ debugger; }
-    @* FUD0908 sobre la etiqueta `fuera:`; lo que hay dentro ya no se mira. *@
+    @* FUD0908 sobre `fuera`: la etiqueta; lo que hay dentro ya no se mira. *@
     @{ fuera: for (;;) { break fuera; } }
     @* FUD0908 sobre `break`: no hay un bucle del propio bloque. *@
     @{ break; }
@@ -290,6 +323,343 @@
     @* FUD0909 sobre `onclick` en un componente: también es un elemento, y el navegador lo lee.
        Sin un TS2353 duplicado encima. *@
     <app-pieza onclick="x"></app-pieza>
+
+    @* ████████████████████████████████████████████████████████████████████████████████████
+       §3.8 — lo que la revisión del 2026-10-02 encontró (`SDD-51-casos-no-cubiertos.md` y
+       la evidencia R1–R14). Todo lo que sigue, hasta «Límites conocidos», compilaba sin
+       diagnóstico o rompía el emit.
+       ████████████████████████████████████████████████████████████████████████████████████ *@
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       R1 — `@{ }` y el cliente
+       El cliente evaluaba todas las lecturas juntas en `$a`, en otro closure que el `@{ }` y
+       después de todos ellos: ni el orden ni el scope eran los del servidor. Ahora cada valor
+       se evalúa en su sitio, en `c` y en `u`, y `$a` solo aplica.
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* Sin diagnóstico: el cliente lee `deBloque` donde lo lee el servidor. Antes, ReferenceError
+       en la primera actualización. *@
+    @{ const deBloque = 2; }
+    <p>@deBloque</p>
+    @* Sin diagnóstico, y el cliente pinta «1» y «2» como el servidor. Antes, «2» y «2». *@
+    @{ total = 1; }
+    <p>@total</p>
+    @{ total = 2; }
+    <p>@total</p>
+    @* FUD0900 sobre `choque`: acumula sobre un `let` neutro que ningún `@{ }` anterior de la
+       pasada ha resembrado. El cliente lo conserva de una pasada a otra; el servidor, no. *@
+    @{ choque += 1; }
+    <p>@choque</p>
+    @* Sin diagnóstico: resembrado antes en la pasada, acumular es avanzar, como el cursor de
+       la decisión 91. *@
+    @{ choque = 0; }
+    @{ choque += 1; }
+    @* FUD0907 sobre `doble`: el manejador corre fuera de la pasada, y lo que declara un `@{ }`
+       no existe donde corre. *@
+    @{ const doble = n * 2; }
+    <button @click="@(() => total = doble)">doble</button>
+    @* FUD0918 sobre `redeclarada`: el `@{ }` de primer nivel comparte función con el `@code`, y
+       redeclarar uno de sus nombres es un SyntaxError en el servidor. *@
+    @{ const redeclarada = 2; }
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       R2 — la vista lee `@server` y `@client` (casos no cubiertos §C)
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* Sin diagnóstico FUD: lo dice TypeScript, TS2304 sobre el nombre, porque la proyección no
+       ve `@server`, y un hecho tiene una sola voz (BUG-23). Sin él, el SSR pintaba
+       «clave-del-servidor» en el HTML. *@
+    <p>@SECRETO</p>
+    @* Sin diagnóstico FUD: TS2304, como el anterior. *@
+    <p>@deServidor</p>
+    @* FUD0907 sobre `deCliente`: el servidor renderiza sin él. Una señal de `@client` sí se
+       lee: el servidor la deja inerte. *@
+    <p>@deCliente</p>
+    @* Sin diagnóstico FUD: `load` es de `@server`; TS2304. *@
+    <p>@(String(load))</p>
+    @* FUD0907 sobre `URL`, que no está en la lista blanca; `load` es TS2304. *@
+    <p>@(load({ url: new URL("http://x") }).titulo)</p>
+    @* Sin diagnóstico: un callback de `@client` que se pasa POR NOMBRE a un hijo; el servidor
+       lo deja inerte para registrar su identidad (BUG-24). *@
+    <app-pieza .onSave=@alGuardar></app-pieza>
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       R3 — `var` en la cabecera de un bucle
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* FUD0908 sobre `var` (×2): sube a la función de render, como un `@{ var }`. *@
+    @for (var iVar = 0; iVar < 3; iVar++) key (iVar) { <span>@iVar</span> }
+    @foreach (var vVar of s) key (vVar) { <span>@vVar</span> }
+    @* FUD0908 sobre `var`: y con `let choque` en la zona neutra sería un SyntaxError. *@
+    @for (var choque = 0; choque < 3; choque++) key (choque) { <span>@choque</span> }
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       R4 — acceso reflexivo: FUD0910 (casos no cubiertos §A)
+       `.constructor` llega a `Function`, que es `eval`; en el servidor no hay CSP.
+       Subrayado: el nombre del miembro.
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* FUD0910 sobre `constructor` (×7): desde una flecha, una cadena, un array, un global, un
+       import y el prototipo — y un `as any` no lo tapa. *@
+    <p>@(String((() => 1).constructor("return 1")()))</p>
+    <p>@(String("".constructor.constructor("return 1")()))</p>
+    <p>@(String([].constructor.constructor("return 1")()))</p>
+    <p>@(String(Math.max.constructor("return 1")()))</p>
+    <p>@(String(ayuda.constructor("return 1")()))</p>
+    <p>@(String(Object.getPrototypeOf(ayuda).constructor))</p>
+    <p>@(String((ayuda as any).__proto__.constructor))</p>
+    @* FUD0910 sobre `"constructor"`: con una clave literal es lo mismo. *@
+    <p>@(String(ayuda["constructor"]))</p>
+    @* FUD0910 sobre `constructor`: con `new`, también; llegaría a `navigator`. *@
+    <p>@(String(new (Math.max.constructor)("return navigator.sendBeacon('/x', 'y')")()))</p>
+    @* FUD0910 sobre `prototype`. *@
+    <p>@(String(Object.prototype))</p>
+    @* FUD0910 sobre `for`: con `Symbol.for` y una clave computada se FALSIFICABA un
+       `trustedUrl` desde la vista. *@
+    <a href=@({ [Symbol.for("fudic.trustedUrl")]: data.ruta })>falsificado</a>
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       R5 — escrituras sin operador: FUD0911 (casos no cubiertos §B)
+       Subrayado: el nombre del método.
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* FUD0911 sobre `sort`: ordena `xs` en sitio, en cada pasada. *@
+    <p>@(xs.sort((a, b) => a.n - b.n).length)</p>
+    @* FUD0911 sobre `push`, `pop`, `shift`, `unshift` y `splice`. *@
+    <p>@(s.push(4)) @(s.pop()) @(s.shift()) @(s.unshift(0)) @(s.splice(0, 1).length)</p>
+    @* FUD0911 sobre `reverse`, `fill` y `copyWithin`. *@
+    <p>@(s.reverse().length) @(s.fill(0).length) @(s.copyWithin(0, 1).length)</p>
+    @* FUD0911 sobre `set`, `delete` y `add`. *@
+    <p>@(String(mapa.set("k", 1))) @(String(mapa.delete("k"))) @(String(conjunto.add(1)))</p>
+    @* FUD0911 sobre `setFullYear`. *@
+    <p>@(fecha.setFullYear(2000))</p>
+    @* FUD0911 sobre `assign`: escribe su primer argumento. *@
+    <p>@(String(Object.assign(o, { k: 2 })))</p>
+    @* FUD0911 sobre `assign`: sobre `Object.prototype`, en el SERVIDOR, para todas las
+       peticiones. *@
+    @{ Object.assign(Object.prototype, { pwn: 1 }); }
+    @* FUD0911 sobre `defineProperty`. *@
+    @{ Object.defineProperty(o, "k", { value: 2 }); }
+    @* FUD0911 sobre `set`: escribir una señal durante el render es un bucle de
+       actualizaciones. *@
+    <p>@(String(contador.set(contador() + 1)))</p>
+    @* Sin diagnóstico: lo que la pasada misma construye se puede mutar — una copia, un objeto
+       nuevo, una lista de un `@{ }`. *@
+    <p>@([...s].sort().length) @(String(Object.assign({}, o)))</p>
+    @{ const filas: number[] = []; for (const v of s) { filas.push(v); } }
+    <p>@filas.length</p>
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       R6 — asincronía sin `await`: FUD0902
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* FUD0902 sobre `then`: la flecha corre después de la pasada. *@
+    <p>@(String(p.then((v) => ayuda() + v)))</p>
+    @* FUD0902 sobre `fromAsync`: devuelve una promesa. *@
+    <p>@(String(Array.fromAsync(s)))</p>
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       R7 — lo que da distinto en servidor y cliente: FUD0912 (casos no cubiertos §D)
+       Subrayado: la llamada.
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* FUD0912 sobre `Math.random()`. *@
+    <p>@(Math.random())</p>
+    @* FUD0912 sobre `Date.now()` y `new Date()`, y FUD0907 sobre `performance`: no está en la
+       lista blanca. *@
+    <p>@(Date.now()) @(new Date().toISOString()) @(performance.now())</p>
+    @* FUD0912 sobre `Symbol()`. *@
+    <p>@(String(Symbol()))</p>
+    @* FUD0912 sobre `data.ruta.length.toLocaleString()`, `fecha.toLocaleDateString()` y
+       `"a".localeCompare("b")`: locale y zona horaria implícitos. *@
+    <p>@(data.ruta.length.toLocaleString()) @(fecha.toLocaleDateString()) @("a".localeCompare("b"))</p>
+    @* FUD0912 sobre `new Intl.NumberFormat()`, `new Intl.DateTimeFormat()` y
+       `fecha.getHours()`. *@
+    <p>@(new Intl.NumberFormat().format(1)) @(new Intl.DateTimeFormat().format(fecha)) @(fecha.getHours())</p>
+    @* Sin diagnóstico: con locale y zona horaria explícitos, el valor es el mismo en los dos
+       lados. *@
+    <p>@(new Intl.NumberFormat("es").format(1)) @(fecha.toLocaleDateString("es", { timeZone: "UTC" }))</p>
+    @* FUD0912 sobre `Math.random()`: una key nueva en cada pasada. *@
+    @foreach (const f of xs) key (Math.random()) { <span>@f.id</span> }
+    @* FUD0912 sobre `{ id: f.id }`: un objeto nuevo en cada pasada; la reconciliación remonta
+       la lista entera. *@
+    @foreach (const f of xs) key ({ id: f.id }) { <span>@f.id</span> }
+    @* FUD0912 sobre `[f.id]`. *@
+    @foreach (const f of xs) key ([f.id]) { <span>@f.id</span> }
+    @* FUD0912 sobre `Symbol()`. *@
+    @foreach (const f of xs) key (Symbol()) { <span>@f.id</span> }
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       R8 — contextos que el recorrido tiene que alcanzar (casos no cubiertos §E)
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* FUD0900 sobre `n--`, en la cabecera de un `@while`. *@
+    @while (n-- > 0) key (n) { <p>while</p> }
+    @* FUD0900 sobre `a = 1`, en un `.prop`. *@
+    <input .value=@(a = 1)>
+    @* FUD0900 sobre `n++`, en un `style:`. *@
+    <p style:color=@(n++)>style:</p>
+    @* FUD0900 sobre `n++`, dentro de `${ }`. *@
+    <p>@(`x${n++}`)</p>
+    @* FUD0900 sobre `n++`, en el valor por defecto de una flecha. *@
+    <p>@(((v = n++) => v)())</p>
+    @* FUD0900 sobre `n++`, en una clave computada. *@
+    <p>@(Object.keys({ [n++]: 1 }).length)</p>
+    @* FUD0906 sobre `total = v, v`, y NO FUD0900 encima: dentro de un nodo prohibido no se
+       sigue mirando. *@
+    <p>@(s.map((v) => (total = v, v)).length)</p>
+    @* FUD0907 sobre `Function`. *@
+    <p>@(new Function("return 1")())</p>
+    @* FUD0461 sobre `$n1`: los nombres `$` son del emit, también en el template. *@
+    @{ const $n1 = 1; }
+    @* FUD0918 sobre `data`: el template no sombrea lo que el fichero ya nombra. *@
+    @if (a > 1) { @{ const data = 1; } <p>@data</p> }
+    @* FUD0918 sobre `data`: tampoco desde la cabecera de un bucle. *@
+    @foreach (const data of xs) key (data.id) { <p>@data.id</p> }
+    @* FUD0918 sobre `Math`, `JSON` y `String`: el emit llama a `String(…)` sin calificar. *@
+    @if (a > 2) { @{ const Math = 1; let JSON = null; const String = (v: unknown) => "x"; } <p title=@a>@Math @JSON</p> }
+    @* FUD0901 sobre `i`: una variable de cabecera no se reasigna desde el cuerpo. *@
+    @for (let i = 0; i < n; i++) key (i) { @{ i = 10; } <span>@i</span> }
+    @* FUD0901 sobre `f`: ni la de un `@foreach`. *@
+    @foreach (const f of xs) key (f.id) { @{ f = xs[0]!; } <span>@f.id</span> }
+    @* FUD0905 sobre `function* gen() {}` y `function* () {}`: los generadores también. *@
+    @{ function* gen() {} }
+    <p>@((function* () {}).name)</p>
+    @* FUD0908 sobre `namespace`: tiene runtime, como `enum`. *@
+    @{ namespace N { export const k = 1; } }
+    @* Sin diagnóstico: `do…while` y un `switch` que pasa de un `case` al siguiente están en
+       la lista de §3.3. *@
+    @{ do { total = 1; } while (false); }
+    @{ switch (n) { case 1: case 2: total = 2; break; } }
+    @* (El snippet `escribeFuera`, en `snippets.fud`, da su FUD0901 en `total`: un snippet no
+       escribe el estado de quien lo invoca. Esta línea solo lo invoca.) *@
+    @render escribeFuera()
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       R9 — DoS en el servidor: FUD0913 (casos no cubiertos §F)
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* FUD0913 sobre `for`, `while`, `while` y `do`: sin condición o con una que siempre se
+       cumple, y sin `break`. *@
+    @{ for (;;) {} }
+    @{ while (true) {} }
+    @{ while (1) {} }
+    @{ do {} while (true); }
+    @* FUD0913 sobre `true`. *@
+    @while (true) key (n) { <p>x</p> }
+    @* FUD0913 sobre `constante > 0`: ningún `@{ }` del cuerpo escribe lo que lee. *@
+    @while (constante > 0) key (n) { <p>x</p> }
+    @* (El snippet `bucle`, en `snippets.fud`, da su FUD0914 en `bucle`: se invoca a sí mismo
+       sin condición. Esta línea solo lo invoca.) *@
+    @render bucle(@n)
+    @* FUD0919 sobre `RegExp`: con la regex fuera de la vista, el ReDoS desde la vista también. *@
+    <p>@(String(new RegExp(data.titulo).test("aaaaaaaaaaaaaaaaaaaaaaaa!")))</p>
+    @* FUD0913 sobre `Array` (×2): un tamaño que no es un literal pequeño. *@
+    <p>@(new Array(1e9).length) @(Array(data.ruta.length * 1e9).length)</p>
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       R10 — XSS y redirecciones fuera de `on*` (casos no cubiertos §G)
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* FUD0915 sobre `href`, `action`, `formaction`, `src` y `xlink:href`: un `javascript:`
+       literal está igual de muerto bajo la CSP que un `onclick`. *@
+    <a href="javascript:alert(1)">x</a>
+    <form action="javascript:alert(1)"></form>
+    <button formaction="javascript:alert(1)">x</button>
+    <iframe src="javascript:alert(1)"></iframe>
+    <svg><a xlink:href="javascript:alert(1)"><text>x</text></a></svg>
+    @* FUD0915 sobre `srcdoc` (×2): un documento HTML entero, con el origen de la página. *@
+    <iframe srcdoc="<img src=x onerror=alert(1)>"></iframe>
+    <iframe srcdoc=@data.titulo></iframe>
+    @* FUD0915 sobre `attributeName` (×2): `<animate>`/`<set>` sobre un `href` es el vector SVG
+       clásico de `javascript:`. *@
+    <svg><a><animate attributeName="href" values=@data.ruta></animate><text>t</text></a></svg>
+    <svg><a><set attributeName="href" to="javascript:alert(1)"></set><text>t</text></a></svg>
+    @* Sin diagnóstico: `imagesrcset` y `ping` son listas de URL y van por el guardia, URL a
+       URL. *@
+    <link rel="preload" as="image" imagesrcset=@data.ruta>
+    <a href="/x" ping=@data.ruta>ping</a>
+    @* FUD0915 sobre `style`: un `style` dinámico es inyección de CSS; se escribe `style:prop`. *@
+    <p style=@data.titulo>style</p>
+    @* Sin diagnóstico: el guardia escribe `about:blank`. Leía `//evil.example/x` y
+       `/\evil.example/x` como relativas «sin esquema», y el navegador las resuelve a OTRO
+       origen. *@
+    <a href=@urlProtocolo>protocolo</a>
+    <a href=@urlBarraInvertida>barra invertida</a>
+    <script src=@urlProtocolo></script>
+    @* Sin diagnóstico: el guardia lee el `srcset` candidato a candidato, y el `data:image/…`
+       pasa entero. Partido por cada coma, salía `about:blank`. *@
+    <img alt="" srcset=@srcsetConDatos>
+    @* FUD0916 sobre `.innerHTML`, `.outerHTML` y `.srcdoc`: la única vía, sin `@raw`, por la
+       que un string llega al DOM sin escapar. *@
+    <div .innerHTML=@data.titulo></div>
+    <div .outerHTML=@data.titulo></div>
+    <iframe .srcdoc=@data.titulo></iframe>
+    @* FUD0909 sobre `.onerror`, en un tag NATIVO: un manejador puesto como propiedad no lo
+       bloquea la CSP, y ya existe `@error`. *@
+    <img src="/x.png" alt="" .onerror=@ayuda>
+    @* FUD0909 sobre `.onclick`, y FUD0900 sobre `total++`: un `.prop` no es invocación
+       diferida. *@
+    <button .onclick=@(() => total++)>x</button>
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       R11 — información del servidor al HTML: FUD0917 (casos no cubiertos §H)
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* FUD0917 sobre `stack` (×2): rutas absolutas del servidor en el HTML. *@
+    <p>@(new Error("x").stack)</p>
+    <p>@fallo.stack</p>
+    @* FUD0917 sobre `formatea` (×3): el código fuente de una función del fichero, distinto en
+       el bundle de servidor y en el de cliente. *@
+    <p>@(String(formatea))</p>
+    <p>@(formatea + "")</p>
+    <p>@(formatea.toString())</p>
+    @* Sin diagnóstico: llamarla es lo que se quería. *@
+    <p>@formatea(1)</p>
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       R12 — regex en la vista: FUD0919
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* FUD0919 sobre `/a+$/`. *@
+    <p>@(String(/a+$/.test(data.titulo)))</p>
+    @* FUD0919 sobre `match` y `search`: construyen una regex a partir del string. *@
+    <p>@(String(data.titulo.match("(a+)+$"))) @(data.titulo.search("a+"))</p>
+    @* FUD0919 sobre `RegExp`. *@
+    <p>@(String(new RegExp("x")))</p>
+    @* FUD0919 sobre `test`: `re` lleva `g`, y `test` avanza `lastIndex` entre pasadas. *@
+    <p>@(String(re.test(data.titulo)))</p>
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       R13 — plantillas etiquetadas: FUD0905
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* FUD0905 sobre `String.raw`: una llamada con argumentos que no se ven escritos. La
+       plantilla normal sí vale. *@
+    <p>@(String.raw`a${data.titulo}`)</p>
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       R14 — los manejadores leen nombres de la vista: FUD0907
+       Corren después, en el navegador, y pueden escribir; pero lo que leen es de la vista.
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* FUD0907 sobre `navigator`, `window` y `addEventListener`: lo del navegador se nombra en
+       `@code { @client }`. *@
+    <button @click="@(() => navigator.sendBeacon('/x', data.titulo))">beacon</button>
+    <button @click="@(() => window.fetch('/x'))">fetch</button>
+    <button @click="@(() => addEventListener('click', ayuda))">listener</button>
+
+    @* ════════════════════════════════════════════════════════════════════════════════
+       Límites conocidos — sin diagnóstico, y escritos en SDD §3.8
+       ════════════════════════════════════════════════════════════════════════════════ *@
+
+    @* Sin diagnóstico: una clave computada que no es literal no la cierra ninguna regla
+       sintáctica. *@
+    <p>@(String((ayuda as any)["const" + "ructor"]))</p>
+    @* Sin diagnóstico: un `id` o un `name` dinámico en una página puede pisar `window.x`
+       (DOM clobbering). Prohibirlo prohibiría también las anclas de los títulos. *@
+    <form name=@data.titulo></form>
+    <img alt="" id=@data.titulo>
 
     @* ════════════════════════════════════════════════════════════════════════════════
        Esto SÍ — ningún código de esta spec
