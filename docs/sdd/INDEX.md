@@ -118,7 +118,7 @@ alcance), y el **mismo par de ficheros** que un SDD: `BUG-NN-<slug>.md` +
 | [50](./SDD-50-diagnosticos.md) · [tareas](./SDD-50-Task.md) | Los diagnósticos tienen casa: `@fudic/diagnostics` — un código, un fichero, una función tipada, con su explicación en inglés al lado | `Hecho` | 01, 12, 13 | — |
 | [51](./SDD-51-expresiones-de-la-vista.md) · [tareas](./SDD-51-Task.md) | Lo que se puede escribir en la vista: lista blanca de nodos en `@( )`, cabeceras y atributos, lista blanca de sentencias en `@{ }` (reasignar sí, mutar no), identificadores libres acotados, `on*` nativo prohibido y `setUrl` en el contrato `Dom<N>` | `Listo` | 11, 12, 50 | 137–140; enmienda 104 |
 | [52](./SDD-52-fudspec.md) · [tareas](./SDD-52-Task.md) | El lenguaje `.fudspec`: criterios de aceptación en un fichero hermano del componente, con parser, validador estático contra los módulos de término (`given/`, `when/`, `then/`, dos capas), colorizer y servicio aislado en el language server | `Hecho` · rango `FUD0920`–`FUD0959` | 23, 25, 35, 50 | — |
-| [53](./SDD-53-fudspec-autoria.md) · [tareas](./SDD-53-Task.md) | Escribir una `.fudspec` sin saberse el lenguaje: `fudic g spec` (con su fixture rellena por tipo), `fudic g term`, snippets, bombilla y formateador de `.fudspec` (editor y `fudic fmt`), con los generadores en `@fudic/spec` | `Listo` · rango `FUD0960`–`FUD0969` | 22, 26, 28, 35, 36, 44, 52 | — |
+| [53](./SDD-53-fudspec-autoria.md) · [tareas](./SDD-53-Task.md) | Escribir una `.fudspec` sin saberse el lenguaje: `fudic g spec` (con su fixture rellena por tipo), `fudic g term`, snippets, bombilla y formateador de `.fudspec` (editor y `fudic fmt`), con los generadores en `@fudic/spec` | `En curso` · rango `FUD0960`–`FUD0969` | 22, 26, 28, 35, 36, 44, 52 | — |
 
 ---
 

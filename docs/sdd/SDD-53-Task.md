@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/spec` · `@fudic/typecheck` · `@fudic/cli` · `@fudic/language-server` ·
 > `fudic-vscode` · `@fudic/diagnostics`
 > **Rama:** `sdd-53-fudspec-autoria` (nace de `sdd-52-fudspec`)
-> **Progreso:** 1 / 30 — `Listo`.
+> **Progreso:** 2 / 30 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -41,7 +41,7 @@
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 1 | — | **El rango.** `FUD0960`–`FUD0969` reservado en la fila de SDD-53 del `INDEX.md` | — | `docs/sdd/INDEX.md` |
-| [ ] | 2 | 1 | **Los cuatro códigos de la CLI.** `FUD0960`–`FUD0963`: `.ts` con su función tipada (severidad `error`, mensaje en inglés), `.md` con la forma de SDD-50 §4.4 citando `SDD-53` y su línea en `index.ts`. `@fudic/diagnostics` sigue al 100 % | `diagnostics` | `src/codes/FUD0960`–`0963.{ts,md}` · `src/index.ts` |
+| [x] | 2 | 1 | **Los cuatro códigos de la CLI.** `FUD0960`–`FUD0963`: `.ts` con su función tipada (severidad `error`, mensaje en inglés), `.md` con la forma de SDD-50 §4.4 citando `SDD-53` y su línea en `index.ts`. `@fudic/diagnostics` sigue al 100 % | `diagnostics` | `src/codes/FUD0960`–`0963.{ts,md}` · `src/index.ts` |
 
 ## Fase 2 — generadores (6)
 
