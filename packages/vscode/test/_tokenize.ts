@@ -1,5 +1,6 @@
 /**
- * The tokenisation harness for the TextMate grammar (SDD-25 §4.2).
+ * The tokenisation harness for the TextMate grammars: `.fud` (SDD-25 §4.2) and `.fudspec`
+ * (SDD-52 §4.3).
  *
  * The grammar is data, so it never appears in the coverage report — and it is still half of
  * what this package contributes. This runs it under the same engine VS Code uses,
@@ -24,6 +25,12 @@ const require = createRequire(import.meta.url);
 /** The scopes the grammar embeds. Each is registered as a grammar with no patterns. */
 const EMBEDDED = ['source.ts', 'source.css', 'source.js', 'text.html'] as const;
 
+/** The grammars this extension contributes, by scope. */
+const GRAMMARS: Readonly<Record<string, string>> = {
+  'text.html.fudic': 'fudic.tmLanguage.json',
+  'source.fudspec': 'fudspec.tmLanguage.json',
+};
+
 const onigLib = loadWASM(readFileSync(require.resolve('vscode-oniguruma/release/onig.wasm')).buffer).then(
   () => ({
     createOnigScanner: (patterns: string[]) => new OnigScanner(patterns),
@@ -34,8 +41,9 @@ const onigLib = loadWASM(readFileSync(require.resolve('vscode-oniguruma/release/
 const registry = new Registry({
   onigLib,
   loadGrammar: async (scopeName) => {
-    if (scopeName === 'text.html.fudic') {
-      const path = fileURLToPath(new URL('../syntaxes/fudic.tmLanguage.json', import.meta.url));
+    const file = GRAMMARS[scopeName];
+    if (file !== undefined) {
+      const path = fileURLToPath(new URL(`../syntaxes/${file}`, import.meta.url));
       return parseRawGrammar(readFileSync(path, 'utf8'), path);
     }
     if ((EMBEDDED as readonly string[]).includes(scopeName)) {
@@ -45,14 +53,20 @@ const registry = new Registry({
   },
 });
 
-let cached: IGrammar | undefined;
+/** A grammar the extension contributes: the `.fud` one, or the `.fudspec` one. */
+export type Scope = 'text.html.fudic' | 'source.fudspec';
 
-const grammar = async (): Promise<IGrammar> => {
-  // One load for the whole run: the WASM engine and the grammar are immutable, and reloading
-  // them per test turns a 300 ms suite into a 30 s one.
-  cached ??= (await registry.loadGrammar('text.html.fudic')) ?? undefined;
-  if (cached === undefined) throw new Error('the fudic grammar failed to load');
-  return cached;
+const cached = new Map<Scope, IGrammar>();
+
+const grammar = async (scope: Scope): Promise<IGrammar> => {
+  // One load per grammar for the whole run: the WASM engine and the grammar are immutable,
+  // and reloading them per test turns a 300 ms suite into a 30 s one.
+  const known = cached.get(scope);
+  if (known !== undefined) return known;
+  const loaded = await registry.loadGrammar(scope);
+  if (loaded === null) throw new Error(`the ${scope} grammar failed to load`);
+  cached.set(scope, loaded);
+  return loaded;
 };
 
 export interface Token {
@@ -63,8 +77,8 @@ export interface Token {
 }
 
 /** Tokenises a whole document, line by line, exactly as the editor does. */
-export const tokenize = async (source: string): Promise<Token[]> => {
-  const g = await grammar();
+export const tokenize = async (source: string, scope: Scope = 'text.html.fudic'): Promise<Token[]> => {
+  const g = await grammar(scope);
   const tokens: Token[] = [];
   let stack = INITIAL;
 

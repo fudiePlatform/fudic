@@ -1,7 +1,6 @@
 # SDD-52 — El lenguaje `.fudspec`: parser, validador, colorizer y language server
 
-> **Estado:** `En curso` — [tareas](./SDD-52-Task.md), 18 / 29. El parser y el validador están escritos y probados; la gramática, escrita, y su
-> test lo hace otra sesión.
+> **Estado:** `En curso` — [tareas](./SDD-52-Task.md), 19 / 29. El parser, el validador y la gramática están escritos y probados.
 > **Paquetes:** `@fudic/spec` (nuevo: parser y validador) · `@fudic/diagnostics` (los códigos) ·
 > `@fudic/language-server` (servicio `.fudspec`) · `fudic-vscode` (gramática y wiring)
 > **Depende de:** 50 (catálogo de diagnósticos), 25 (extensión de VS Code), 23 (`$Props`),

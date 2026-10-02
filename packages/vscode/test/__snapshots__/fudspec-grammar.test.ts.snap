@@ -1,0 +1,139 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the .fudspec grammar — snapshots (criterion 20) > tokenises a file with every case 1`] = `
+"0  "component"  keyword.control.fudspec
+0  " "  -
+0  "fud-card"  entity.name.type.fudspec
+0  " "  -
+0  "#"  comment.line.number-sign.fudspec punctuation.definition.comment.fudspec
+0  " the card"  comment.line.number-sign.fudspec
+1  "#"  comment.line.number-sign.fudspec punctuation.definition.comment.fudspec
+1  " a full-line note"  comment.line.number-sign.fudspec
+2  "criterion"  keyword.control.fudspec
+2  " "  -
+2  "all-cases"  entity.name.section.fudspec
+2  "   "  -
+2  "#"  comment.line.number-sign.fudspec punctuation.definition.comment.fudspec
+2  " nota"  comment.line.number-sign.fudspec
+3  "  "  -
+3  "given"  keyword.other.block.fudspec
+3  " "  -
+3  "#"  comment.line.number-sign.fudspec punctuation.definition.comment.fudspec
+3  " setup"  comment.line.number-sign.fudspec
+4  "    "  -
+4  "props"  support.function.fudspec
+4  " titulo-largo"  -
+5  "    "  -
+5  "route"  entity.name.function.fudspec
+5  " /x "  -
+5  "\\""  string.quoted.double.fudspec punctuation.definition.string.begin.fudspec
+5  "dice "  string.quoted.double.fudspec
+5  "\\\\\\""  string.quoted.double.fudspec constant.character.escape.fudspec
+5  "hola"  string.quoted.double.fudspec
+5  "\\\\\\""  string.quoted.double.fudspec constant.character.escape.fudspec
+5  " y "  string.quoted.double.fudspec
+5  "\\\\\\\\"  string.quoted.double.fudspec constant.character.escape.fudspec
+5  "\\""  string.quoted.double.fudspec punctuation.definition.string.end.fudspec
+6  "  "  -
+6  "when"  keyword.other.block.fudspec
+7  "    "  -
+7  "click"  entity.name.function.fudspec
+7  " "  -
+7  "role:"  keyword.operator.role.fudspec
+7  "button"  entity.name.tag.fudspec
+7  "/"  -
+7  "\\""  string.quoted.double.fudspec punctuation.definition.string.begin.fudspec
+7  "Detalles con espacio"  string.quoted.double.fudspec
+7  "\\""  string.quoted.double.fudspec punctuation.definition.string.end.fudspec
+8  "    "  -
+8  "focus"  entity.name.function.fudspec
+8  " "  -
+8  "role:"  keyword.operator.role.fudspec
+8  "textbox"  entity.name.tag.fudspec
+9  "    "  -
+9  "type"  entity.name.function.fudspec
+9  " "  -
+9  "\\""  string.quoted.double.fudspec punctuation.definition.string.begin.fudspec
+9  "x # y"  string.quoted.double.fudspec
+9  "\\""  string.quoted.double.fudspec punctuation.definition.string.end.fudspec
+9  " "  -
+9  "#"  comment.line.number-sign.fudspec punctuation.definition.comment.fudspec
+9  "fff"  comment.line.number-sign.fudspec
+10  "    "  -
+10  "set"  entity.name.function.fudspec
+10  " a#b 12px "  -
+10  "-1.5e3"  constant.numeric.fudspec
+10  " "  -
+10  ".5"  constant.numeric.fudspec
+10  " "  -
+10  "44"  constant.numeric.fudspec
+11  "    "  -
+11  "open"  entity.name.function.fudspec
+11  " "  -
+11  "\\""  string.quoted.double.fudspec punctuation.definition.string.begin.fudspec
+11  "unclosed"  string.quoted.double.fudspec
+12  "  "  -
+12  "then"  keyword.other.block.fudspec
+13  "      "  -
+13  "#"  comment.line.number-sign.fudspec punctuation.definition.comment.fudspec
+13  " an indented note"  comment.line.number-sign.fudspec
+14  "    "  -
+14  "min-height"  entity.name.function.fudspec
+14  " fud-card "  -
+14  "44"  constant.numeric.fudspec
+15  "   off-by-one"  -
+16  "  thn"  -
+17  "\\tthen"  -
+18  "component"  keyword.control.fudspec
+18  " \\"quoted\\""  -
+19  "criterion"  keyword.control.fudspec
+19  " "  -
+19  "#"  comment.line.number-sign.fudspec punctuation.definition.comment.fudspec
+19  "not-a-slug"  comment.line.number-sign.fudspec
+20  ""  -"
+`;
+
+exports[`the .fudspec grammar — snapshots (criterion 20) > tokenises the canonical file 1`] = `
+"0  "component"  keyword.control.fudspec
+0  " "  -
+0  "fud-button"  entity.name.type.fudspec
+1  ""  -
+2  "criterion"  keyword.control.fudspec
+2  " "  -
+2  "tamano-tactil-minimo"  entity.name.section.fudspec
+3  "  "  -
+3  "given"  keyword.other.block.fudspec
+4  "    "  -
+4  "route"  entity.name.function.fudspec
+4  " /playground/button"  -
+5  "  "  -
+5  "then"  keyword.other.block.fudspec
+6  "    "  -
+6  "min-height"  entity.name.function.fudspec
+6  " fud-button "  -
+6  "44"  constant.numeric.fudspec
+7  ""  -
+8  "criterion"  keyword.control.fudspec
+8  " "  -
+8  "icono-cambia"  entity.name.section.fudspec
+9  "  "  -
+9  "when"  keyword.other.block.fudspec
+10  "    "  -
+10  "set-attribute"  entity.name.function.fudspec
+10  " fud-button icon "  -
+10  "\\""  string.quoted.double.fudspec punctuation.definition.string.begin.fudspec
+10  "search"  string.quoted.double.fudspec
+10  "\\""  string.quoted.double.fudspec punctuation.definition.string.end.fudspec
+11  "  "  -
+11  "then"  keyword.other.block.fudspec
+12  "    "  -
+12  "visible"  entity.name.function.fudspec
+12  " "  -
+12  "role:"  keyword.operator.role.fudspec
+12  "button"  entity.name.tag.fudspec
+12  "/"  -
+12  "\\""  string.quoted.double.fudspec punctuation.definition.string.begin.fudspec
+12  "Buscar"  string.quoted.double.fudspec
+12  "\\""  string.quoted.double.fudspec punctuation.definition.string.end.fudspec
+13  ""  -"
+`;

@@ -3,7 +3,7 @@
 > **SDD:** [SDD-52 — El lenguaje `.fudspec`](./SDD-52-fudspec.md)
 > **Paquetes:** `@fudic/spec` · `@fudic/diagnostics` · `@fudic/language-server` · `fudic-vscode`
 > **Rama:** `sdd-52-fudspec` (nace de `worktree-sdd-32-abrir-en-el-navegador`)
-> **Progreso:** 18 / 29 — `En curso`.
+> **Progreso:** 19 / 29 — `En curso`.
 
 **El parser se escribió sin tests, por decisión de Pedro.** Las tareas 1–6 se hicieron solo con
 `typecheck` y `build`; sus tests (tarea 7) los escribió otra sesión y dejan `@fudic/spec` al 100 %
@@ -82,7 +82,7 @@ desechable; sus tests (tarea 28) los escribió otra sesión y mantienen `@fudic/
 |---|---|---|---|---|---|
 | [x] | 15 | 6 | **La gramática.** `source.fudspec` con los scopes de SDD §4.3, línea a línea: una cadena sin cerrar termina con su línea | `vscode` | `syntaxes/fudspec.tmLanguage.json` |
 | [x] | 16 | 15 | **`language-configuration`.** Comentario `#`, cierre de comillas y sangría al pulsar Intro tras `criterion` y tras un bloque. El ancho de dos espacios es `editor.tabSize`, y lo fija la tarea 24 | `vscode` | `language-configuration.fudspec.json` |
-| [ ] | 29 | 15 | **El test de la gramática** (otra sesión). Snapshot de tokens TextMate sobre el fichero canónico y sobre uno con todos los casos de SDD §4.3, con el arnés `test/_tokenize.ts` (hoy solo carga `text.html.fudic`). Criterio 20 | `vscode` | `test/` |
+| [x] | 29 | 15 | **El test de la gramática**. Snapshot de tokens TextMate sobre el fichero canónico y sobre uno con todos los casos de SDD §4.3, con el arnés `test/_tokenize.ts`, que ahora carga las dos gramáticas. Criterio 20 | `vscode` | `test/` |
 
 ## Fase 5 — el language server (7)
 
