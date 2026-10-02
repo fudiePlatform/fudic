@@ -425,6 +425,9 @@ importers:
       '@fudic/diagnostics':
         specifier: workspace:*
         version: link:../diagnostics
+      oxc-parser:
+        specifier: 0.137.0
+        version: 0.137.0
     devDependencies:
       '@fudic/tsconfig':
         specifier: workspace:*

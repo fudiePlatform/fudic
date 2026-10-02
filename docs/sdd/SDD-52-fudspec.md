@@ -1,6 +1,7 @@
 # SDD-52 — El lenguaje `.fudspec`: parser, validador, colorizer y language server
 
-> **Estado:** `En curso` — [tareas](./SDD-52-Task.md), 8 / 27. El parser está escrito y probado.
+> **Estado:** `En curso` — [tareas](./SDD-52-Task.md), 15 / 28. El parser está escrito y probado; el validador, escrito, y sus tests
+> los hace otra sesión.
 > **Paquetes:** `@fudic/spec` (nuevo: parser y validador) · `@fudic/diagnostics` (los códigos) ·
 > `@fudic/language-server` (servicio `.fudspec`) · `fudic-vscode` (gramática y wiring)
 > **Depende de:** 50 (catálogo de diagnósticos), 25 (extensión de VS Code), 23 (`$Props`),
@@ -257,7 +258,7 @@ export function readFixtures(source: string, path: string): Fixtures;
 export function validateSpec(file: SpecFile, ctx: SpecContext): readonly SourceDiagnostic[];
 ```
 
-El sistema de ficheros se inyecta (`SpecFs`), así que todo es comprobable sin disco.
+El sistema de ficheros se inyecta (`SpecFs`, §8.1), así que todo es comprobable sin disco.
 
 ## 4. Comportamiento
 
@@ -478,22 +479,45 @@ Los `.md` de `FUD0920`–`FUD0935` ya existen en `packages/diagnostics/src/codes
 
 ## 7. Fuera de alcance
 
+- **Un plugin de TS server** que entienda `.fud` dentro de un `.ts` (§8, decisión 1).
 - **Ejecutar criterios:** el runner, los locators, el webview, el iframe y los motores (webview
   y Playwright) son de SDD-32 y de las specs que salgan de él.
 - **La salida de `run` y el registro de trabajo** (`{ pass, evidence }`, la procedencia por capa
   y el hash del término).
 - **Qué hace un tag que coincide con varios elementos:** es de ejecución.
 
-## 8. Preguntas abiertas
+## 8. Decisiones (antes preguntas abiertas)
 
-Hay que contestarlas antes de la fase del validador.
+Cerradas antes de la fase del validador. Ninguna cambia la interfaz de §3.
 
-1. **El `.fixture.ts` en el editor.** `import type { $Props } from './fud-card.fud'` lo resuelve
-   `@fudic/typecheck`, pero un `.ts` en VS Code lo comprueba el TS server del propio editor, que
-   no sabe qué es un `.fud`, y la extensión no registra ningún `typescriptServerPlugins`. Lo
-   esperable es que el import salga en rojo en el `.fixture.ts`. Hay tres salidas: un plugin de
-   TS server, una declaración `*.fud` ambiental que dé `$Props` como `any`, o fixtures en un
-   formato que valide el servidor propio.
-2. **`props` con callbacks y slots.** En SSR de nivel 1 una función no llega al HTML, y un slot
-   es markup, no una prop.
-3. **Fixture por defecto.** Una clave reservada que usarían los criterios sin `props`.
+1. **El `.fixture.ts` en el editor: declaración ambiental.** El TS server de VS Code no sabe qué
+   es un `.fud` y la extensión no registra `typescriptServerPlugins`, así que el proyecto lleva
+   `declare module '*.fud' { export type $Props = any }` en su `env.d.ts`, como cualquier otro
+   módulo que no es TS. El import deja de salir en rojo; el editor no comprueba los valores de la
+   fixture, y la `.fudspec` sigue comprobando los nombres. La tarea 24 la añade al ejemplo y el
+   README de `@fudic/spec` la documenta. Un plugin de TS server no entra en esta spec.
+2. **Callbacks y slots no son fixtures.** Una fixture es datos serializables: una función no
+   llega al HTML del SSR y un slot es markup, no una prop. El validador no cambia, porque solo
+   mira nombres.
+3. **Sin fixture por defecto.** No hay clave reservada: un componente con props obligatorias
+   exige `props` en cada criterio (`FUD0951`).
+
+### 8.1. Lo que §3.7 nombraba sin definir
+
+```ts
+interface TermRoot { readonly layer: Layer; readonly path: string }   // absolute, in layer order
+interface SpecFs {
+  /** File names in a directory; empty when it does not exist. */
+  readDirectory(path: string): readonly string[];
+  /** The text of a file; undefined when it cannot be read. */
+  readFile(path: string): string | undefined;
+}
+```
+
+- Un `.js` que el listado da pero no se puede leer, o que no parsea, es `FUD0941`.
+- **Módulo roto** (§4.2, paso 2) es un módulo con cualquier diagnóstico propio: no se comprueban
+  sus argumentos.
+- `props` lleva exactamente un argumento, `bare` o `string` (la aridad y el tipo son `FUD0947` y
+  `FUD0948`, como un término con un parámetro `string`). Un `props` fuera de `given` o repetido
+  (`FUD0952`) cuenta como presente para `FUD0951`.
+- Con la aridad mal (`FUD0947`) no se comprueban los tipos de esa línea.

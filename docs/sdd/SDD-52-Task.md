@@ -3,11 +3,15 @@
 > **SDD:** [SDD-52 — El lenguaje `.fudspec`](./SDD-52-fudspec.md)
 > **Paquetes:** `@fudic/spec` · `@fudic/diagnostics` · `@fudic/language-server` · `fudic-vscode`
 > **Rama:** `sdd-52-fudspec` (nace de `worktree-sdd-32-abrir-en-el-navegador`)
-> **Progreso:** 8 / 27 — `En curso`.
+> **Progreso:** 15 / 28 — `En curso`.
 
 **El parser se escribió sin tests, por decisión de Pedro.** Las tareas 1–6 se hicieron solo con
 `typecheck` y `build`; sus tests (tarea 7) los escribió otra sesión y dejan `@fudic/spec` al 100 %
 en las cuatro métricas.
+
+**El validador, igual.** Las tareas 8–14 se hicieron con `typecheck`, `build` y una prueba de humo
+desechable; sus tests (tarea 28) los escribe otra sesión. Hasta entonces `pnpm coverage` de
+`@fudic/spec` no llega a su umbral del 100 %, que no se baja.
 
 **El orden manda en dos puntos.**
 
@@ -60,17 +64,18 @@ en las cuatro métricas.
 | [x] | 6 | 3, 5 | **`parseSpec`.** Las reglas de SDD §4.1: niveles 0/2/4 con recuperación por primera palabra, sumideros sin cascada, cierre de criterio con `FUD0933`/`FUD0934`, `FUD0922` en `[0, 0)`, diagnósticos ordenados por posición y saltos `\n`, `\r\n` y `\r`. Exportado desde `index.ts` | `spec` | `src/parse.ts` · `src/index.ts` |
 | [x] | 7 | 6 | **Los tests del parser**. Criterios 1–10, con `@fudic/spec` al 100 % en las cuatro métricas. Si un test destapa un defecto, se corrige el parser, no el test | `spec` | `test/` |
 
-## Fase 3 — el validador (7)
+## Fase 3 — el validador (8)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 8 | — | **Las preguntas de SDD §8**, contestadas por Pedro y escritas en la spec: el `.fixture.ts` en el editor, callbacks y slots, fixture por defecto | — | `docs/sdd/SDD-52-fudspec.md` |
-| [ ] | 9 | 8 | **Los quince códigos del validador.** `FUD0940`–`FUD0954`, igual que la tarea 2. `FUD0940` y `FUD0950` llevan la lista de nombres disponibles | `diagnostics` | `src/codes/FUD0940`–`0954.{ts,md}` · `src/index.ts` |
-| [ ] | 10 | 9 | **`readTermModule`.** `oxc-parser` (misma versión exacta que el compilador) como dependencia de `@fudic/spec`. Extrae `meta` sin ejecutar: objeto literal, `name`/`block`/`params` literales, tipos de la lista cerrada, nombres de parámetro únicos, texto fuente de `describe`, exports `run` y `selfTest`. `FUD0941`–`0946`, `FUD0954`. Criterios 14, 15 | `spec` | `src/term-module.ts` |
-| [ ] | 11 | 10 | **`createTermCatalog`.** Las dos raíces en orden, primera coincidencia entera, `SpecFs` inyectado, `resolve` y `list` por bloque. Criterios 11, 13 | `spec` | `src/catalog.ts` |
-| [ ] | 12 | 9 | **`readFixtures`.** Las claves del `export default`, con y sin `satisfies`, con y sin comillas, cada una con su span. Criterio 19 | `spec` | `src/fixtures.ts` |
-| [ ] | 13 | 11 | **`validateSpec`: términos.** Normalización a kebab-case, `FUD0940` con la lista del bloque, problemas del módulo sobre el término con `related` al `.js`, aridad (`FUD0947`) y tipos según SDD §3.5 (`FUD0948`). Criterios 12, 16 | `spec` | `src/validate.ts` |
-| [ ] | 14 | 12, 13 | **`validateSpec`: componente y props.** `FUD0949`; `props` como primitiva: `FUD0950`, `FUD0952`, `FUD0953`; `FUD0951` solo con `requiredProps` no vacío. Criterios 17, 18 | `spec` | `src/validate.ts` |
+| [x] | 8 | — | **Las preguntas de SDD §8**, cerradas como decisiones en la spec (§8 y §8.1, con `SpecFs` y `TermRoot`): el `.fixture.ts` en el editor, callbacks y slots, fixture por defecto | — | `docs/sdd/SDD-52-fudspec.md` |
+| [x] | 9 | 8 | **Los quince códigos del validador.** `FUD0940`–`FUD0954`, igual que la tarea 2. `FUD0940` y `FUD0950` llevan la lista de nombres disponibles | `diagnostics` | `src/codes/FUD0940`–`0954.{ts,md}` · `src/index.ts` |
+| [x] | 10 | 9 | **`readTermModule`.** `oxc-parser` (misma versión exacta que el compilador) como dependencia de `@fudic/spec`. Extrae `meta` sin ejecutar: objeto literal, `name`/`block`/`params` literales, tipos de la lista cerrada, nombres de parámetro únicos, texto fuente de `describe`, exports `run` y `selfTest`. `FUD0941`–`0946`, `FUD0954`. Criterios 14, 15 | `spec` | `src/term-module.ts` |
+| [x] | 11 | 10 | **`createTermCatalog`.** Las dos raíces en orden, primera coincidencia entera, `SpecFs` inyectado, `resolve` y `list` por bloque. Criterios 11, 13 | `spec` | `src/catalog.ts` |
+| [x] | 12 | 9 | **`readFixtures`.** Las claves del `export default`, con y sin `satisfies`, con y sin comillas, cada una con su span. Criterio 19 | `spec` | `src/fixtures.ts` |
+| [x] | 13 | 11 | **`validateSpec`: términos.** Normalización a kebab-case, `FUD0940` con la lista del bloque, problemas del módulo sobre el término con `related` al `.js`, aridad (`FUD0947`) y tipos según SDD §3.5 (`FUD0948`). Criterios 12, 16 | `spec` | `src/validate.ts` |
+| [x] | 14 | 12, 13 | **`validateSpec`: componente y props.** `FUD0949`; `props` como primitiva: `FUD0950`, `FUD0952`, `FUD0953`; `FUD0951` solo con `requiredProps` no vacío. Criterios 17, 18 | `spec` | `src/validate.ts` |
+| [ ] | 28 | 10–14 | **Los tests del validador** (otra sesión). Criterios 11–19, con `@fudic/spec` al 100 % en las cuatro métricas. Si un test destapa un defecto, se corrige el validador, no el test | `spec` | `test/` |
 
 ## Fase 4 — el colorizer (2)
 
@@ -96,7 +101,7 @@ en las cuatro métricas.
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [ ] | 24 | 16, 23 | **El wiring.** `contributes.languages` (`fudspec`, `.fudspec`, configuración e icono claro/oscuro), `contributes.grammars`, `workspaceContains:**/*.fudspec`, `documentSelector` con `fudspec` y vigilancia de ficheros para la tarea 23. Criterio 26 | `vscode` | `package.json` · `src/client-options.ts` · `icons/` |
-| [ ] | 25 | 7, 24 | **Entrega.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; `@fudic/spec` y `@fudic/diagnostics` al 100 % sin `v8 ignore`; el umbral de `language-server` y `vscode` no baja. Criterio 27 | todos | — |
+| [ ] | 25 | 7, 24, 28 | **Entrega.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; `@fudic/spec` y `@fudic/diagnostics` al 100 % sin `v8 ignore`; el umbral de `language-server` y `vscode` no baja. Criterio 27 | todos | — |
 | [ ] | 26 | 25 | **Cierre.** SDD-52 a `Hecho`, su fila del `INDEX.md` y entrada en el registro de progreso | — | `docs/sdd/` |
 
 ---
@@ -106,11 +111,11 @@ en las cuatro métricas.
 | Criterio | Tareas |
 |---|---|
 | 1–10 | 3, 4, 5, 6 (código) · 7 (tests) |
-| 11, 13 | 11 |
-| 12, 16 | 13 |
-| 14, 15 | 10 |
-| 17, 18 | 14 |
-| 19 | 12 |
+| 11, 13 | 11 · 28 (tests) |
+| 12, 16 | 13 · 28 (tests) |
+| 14, 15 | 10 · 28 (tests) |
+| 17, 18 | 14 · 28 (tests) |
+| 19 | 12 · 28 (tests) |
 | 20 | 15 |
 | 21 | 19 |
 | 22 | 20 |
