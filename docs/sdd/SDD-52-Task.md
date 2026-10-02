@@ -3,7 +3,7 @@
 > **SDD:** [SDD-52 — El lenguaje `.fudspec`](./SDD-52-fudspec.md)
 > **Paquetes:** `@fudic/spec` · `@fudic/diagnostics` · `@fudic/language-server` · `fudic-vscode`
 > **Rama:** `sdd-52-fudspec` (nace de `worktree-sdd-32-abrir-en-el-navegador`)
-> **Progreso:** 29 / 31 — `En curso`.
+> **Progreso:** 31 / 31 — `Hecho`.
 
 **El parser se escribió sin tests, por decisión de Pedro.** Las tareas 1–6 se hicieron solo con
 `typecheck` y `build`; sus tests (tarea 7) los escribió otra sesión y dejan `@fudic/spec` al 100 %
@@ -108,8 +108,8 @@ medio escribir (componente sin nombre) daba una etiqueta vacía al completado.
 |---|---|---|---|---|---|
 | [x] | 24 | 16, 23 | **El wiring.** `contributes.languages` (`fudspec`, `.fudspec`, configuración e icono claro/oscuro), `contributes.grammars`, `configurationDefaults` de `[fudspec]` con `editor.tabSize: 2` e `insertSpaces`, `workspaceContains:**/*.fudspec`, `documentSelector` con `fudspec` y vigilancia de ficheros para la tarea 23. Criterio 26 | `vscode` | `package.json` · `src/client-options.ts` · `icons/` |
 | [x] | 31 | 24 | **Los tests del wiring**. Tres tests que ya había afirman el wiring de antes y fallan a propósito: `FILE_EVENTS` (ahora con `**/fudic/terms/**/*.js` y `**/*.fixture.ts`), el `documentSelector` (ahora con `fudspec`) y el de `activate` que cuenta los globs. Más el manifiesto (lenguaje, gramática, iconos, `configurationDefaults`, `workspaceContains`). Criterio 26 | `vscode` | `test/` |
-| [ ] | 25 | 7, 24, 28, 29, 30, 31 | **Entrega.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; `@fudic/spec` y `@fudic/diagnostics` al 100 % sin `v8 ignore`; el umbral de `language-server` y `vscode` no baja. Criterio 27 | todos | — |
-| [ ] | 26 | 25 | **Cierre.** SDD-52 a `Hecho`, su fila del `INDEX.md` y entrada en el registro de progreso | — | `docs/sdd/` |
+| [x] | 25 | 7, 24, 28, 29, 30, 31 | **Entrega.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; `@fudic/spec` y `@fudic/diagnostics` al 100 % sin `v8 ignore`; el umbral de `language-server` y `vscode` no baja. Criterio 27 | todos | — |
+| [x] | 26 | 25 | **Cierre.** SDD-52 a `Hecho`, su fila del `INDEX.md` y entrada en el registro de progreso | — | `docs/sdd/` |
 
 ---
 
