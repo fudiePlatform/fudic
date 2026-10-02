@@ -25,7 +25,6 @@ import {
   DidChangeTextDocumentNotification,
   DidOpenTextDocumentNotification,
   DocumentDiagnosticRequest,
-  ExitNotification,
   InitializedNotification,
   InitializeRequest,
   ShutdownRequest,
@@ -267,7 +266,12 @@ export async function startHarness(
 
     async stop() {
       await client.sendRequest(ShutdownRequest.type, undefined);
-      await client.sendNotification(ExitNotification.type);
+      // No `exit` notification. In `vscode-languageserver` it ends the SERVER's connection (and
+      // calls `process.exit`), so a late write had nowhere to go: the rejected log notification
+      // was reported with `console.error("Sending log message failed")`, and under a loaded
+      // run that console write landed while Vitest was closing the file — "Closing rpc while
+      // onUserConsoleLog was pending". The server is in-process; shutdown is all it needs.
+      //
       // Only the client side is torn down, and the pipes are left open on purpose.
       //
       // `interFileDependencies: true` (§3.2) puts Volar in the PUSH model as well as the pull
