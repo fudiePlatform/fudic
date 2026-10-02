@@ -40,10 +40,12 @@ function snippet(label: string, detail: string, insertText: string): CompletionI
 
 /** Column 0: the two keywords, the whole criterion and, while the file has none, the component line. */
 function topLevel(spec: SpecDocument, host: SpecHost): CompletionList {
-  const items = TOP_LEVEL.map(keyword);
-  if (spec.file.component === undefined) {
-    items.push({ ...snippet('component', 'component <tag>', componentSnippet(spec, host)), preselect: true });
-  }
+  // In a file still without its component line, that line is what comes first (criterion 14).
+  const first: CompletionItem[] =
+    spec.file.component === undefined
+      ? [{ ...snippet('component', 'component <tag>', componentSnippet(spec, host)), preselect: true, sortText: '0' }]
+      : [];
+  const items = [...first, ...TOP_LEVEL.map(keyword)];
   items.push(snippet('criterion', 'criterion <slug> given … then …', criterionSnippet(spec, host)));
   return { isIncomplete: false, items };
 }

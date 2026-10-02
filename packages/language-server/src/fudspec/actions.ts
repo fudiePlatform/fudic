@@ -20,9 +20,12 @@ import {
   normalizeTerm,
   termModule,
   validateSpec,
+  type BareArg,
   type BlockKind,
   type Criterion,
+  type Name,
   type PropField,
+  type StringArg,
   type TermLine,
 } from '@fudic/spec';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
@@ -99,17 +102,27 @@ function argumentText(text: string): string {
   return /^[^\s"#]+$/u.test(text) ? text : `"${text.replace(/[\\"]/gu, (c) => `\\${c}`)}"`;
 }
 
-/** The props of the declared component, or none when no program can read them. */
+/**
+ * The repairers run only on a diagnostic the validator has just emitted, and each code exists
+ * only in the state its repairer reads: FUD0940 and FUD0947 sit on a term line, FUD0949,
+ * FUD0950, FUD0951 and FUD0953 need the `component` line and its tag, and the last three need
+ * that component to exist. The non-null assertions below say so instead of guarding against a
+ * state the code cannot reach.
+ */
+
+/** The tag of the `component` line; every caller runs on a code that needs it. */
+function declaredTag(repair: Repair): Name {
+  return repair.spec.file.component!.tag!;
+}
+
+/** The props of the declared component, which exists, or none when no program can read them. */
 function fieldsOf(repair: Repair, tag: string): readonly PropField[] {
-  const component = repair.host.component(tag);
-  return (component === undefined ? undefined : repair.propsOf(component.path)) ?? [];
+  return repair.propsOf(repair.host.component(tag)!.path) ?? [];
 }
 
 /** FUD0940: the term does not exist — the closest one, and a new module. */
 const unknownTerm: Repairer = (repair) => {
-  const found = termAt(repair);
-  if (found === undefined) return [];
-  const { block, term } = found;
+  const { block, term } = termAt(repair)!;
   const name = normalizeTerm(term.name.text);
   const actions: CodeAction[] = [];
 
@@ -128,9 +141,9 @@ const unknownTerm: Repairer = (repair) => {
 
 /** FUD0949: the component does not exist — the closest tag. */
 const unknownComponent: Repairer = (repair) => {
-  const tag = repair.spec.file.component?.tag;
-  const near = tag === undefined ? undefined : closest(tag.text, repair.host.componentTags());
-  return tag === undefined || near === undefined ? [] : [local(repair, `Change to '${near}'`, [{ span: tag.span, newText: near }])];
+  const tag = declaredTag(repair);
+  const near = closest(tag.text, repair.host.componentTags());
+  return near === undefined ? [] : [local(repair, `Change to '${near}'`, [{ span: tag.span, newText: near }])];
 };
 
 /** FUD0922: no `component` line — the component the file is named after. */
@@ -142,20 +155,20 @@ const missingComponent: Repairer = (repair) => {
 
 /** FUD0953: no fixture file — create it, with every key the file names, filled by type. */
 const missingFixtures: Repairer = (repair) => {
-  const tag = repair.spec.file.component?.tag?.text;
-  const path = tag === undefined ? undefined : repair.host.fixturePath(tag);
-  if (tag === undefined || path === undefined) return [];
-  const keys = propsKeys(repair);
+  const tag = declaredTag(repair).text;
+  const path = repair.host.fixturePath(tag);
+  if (path === undefined) return [];
   const file = path.slice(path.lastIndexOf('/') + 1);
-  return [create(`Create ${file}`, path, fixtureModule(tag, keys.length === 0 ? [BASE_FIXTURE] : keys, fieldsOf(repair, tag)))];
+  // The code is emitted on a `props` line with a name, so there is always a key.
+  return [create(`Create ${file}`, path, fixtureModule(tag, propsKeys(repair), fieldsOf(repair, tag)))];
 };
 
 /** FUD0950: the fixture does not exist — the closest key, or the key added to the file. */
 const unknownFixture: Repairer = (repair) => {
-  const tag = repair.spec.file.component?.tag?.text;
-  const fixtures = tag === undefined ? undefined : repair.host.fixtures(tag);
-  const arg = termAt(repair)?.term.args[0];
-  if (tag === undefined || fixtures === undefined || arg === undefined || arg.kind === 'role') return [];
+  const tag = declaredTag(repair).text;
+  // Emitted only when the fixture file was read and the line names a key that is not in it.
+  const fixtures = repair.host.fixtures(tag)!;
+  const arg = termAt(repair)!.term.args[0] as BareArg | StringArg;
   const actions: CodeAction[] = [];
 
   const near = closest(arg.text, fixtures.names.map((n) => n.text));
@@ -177,9 +190,8 @@ const unknownFixture: Repairer = (repair) => {
 
 /** FUD0951: the component needs props and the criterion has none — a `props` line in `given`. */
 const missingProps: Repairer = (repair) => {
-  const criterion = criterionAt(repair);
-  const tag = repair.spec.file.component?.tag?.text;
-  if (criterion === undefined || tag === undefined) return [];
+  const criterion = criterionAt(repair)!;
+  const tag = declaredTag(repair).text;
   const key = argumentText(repair.host.fixtures(tag)?.names[0]?.text ?? BASE_FIXTURE);
   const given = criterion.blocks.find((b) => b.block === 'given');
   const edit =
@@ -191,10 +203,10 @@ const missingProps: Repairer = (repair) => {
 
 /** FUD0947: the number of arguments — complete with a marker per missing one, or drop the extra. */
 const wrongArity: Repairer = (repair) => {
-  const found = termAt(repair);
-  const module = found === undefined ? undefined : repair.host.terms(repair.spec.path).resolve(found.block, normalizeTerm(found.term.name.text));
-  if (found === undefined || module === undefined) return [];
-  const { term } = found;
+  const { block, term } = termAt(repair)!;
+  // A `props` line has no module: its arity has nothing to complete from.
+  const module = repair.host.terms(repair.spec.path).resolve(block, normalizeTerm(term.name.text));
+  if (module === undefined) return [];
   const { params } = module;
   if (term.args.length < params.length) {
     const missing = params.slice(term.args.length).map((p) => ` <${p.name}>`).join('');
@@ -227,22 +239,22 @@ const REPAIRS: ReadonlyMap<FudCode, Repairer> = new Map<FudCode, Repairer>([
   ['FUD0921', badIndentation],
 ]);
 
-/** The actions of the diagnostics that touch `[start, end]`, each code's repairs once per diagnostic. */
+/**
+ * The actions of the diagnostics that touch `[start, end]`. Two diagnostics can propose the same
+ * repair — every badly indented line «Format the document», every `props` line of a file
+ * without fixtures «Create <tag>.fixture.ts» — and the bulb lists each title once.
+ */
 export function specCodeActions(deps: SpecActionDeps): CodeAction[] {
   const { spec, host, start, end } = deps;
   const diagnostics = [...spec.parseDiagnostics, ...validateSpec(spec.file, host.context(spec.path))];
-  const actions: CodeAction[] = [];
-  let formatted = false;
+  const actions = new Map<string, CodeAction>();
   for (const diagnostic of diagnostics) {
     if (diagnostic.span.start > end || diagnostic.span.end < start) continue;
     const repair = REPAIRS.get(diagnostic.code);
     if (repair === undefined) continue;
-    // One "format the document" however many lines are indented wrong.
-    if (repair === badIndentation) {
-      if (formatted) continue;
-      formatted = true;
+    for (const action of repair({ ...deps, diagnostic })) {
+      if (!actions.has(action.title)) actions.set(action.title, action);
     }
-    actions.push(...repair({ ...deps, diagnostic }));
   }
-  return actions;
+  return [...actions.values()];
 }
