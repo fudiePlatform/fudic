@@ -9,6 +9,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { COMPONENTS_DIR } from '@fudic/conventions';
 import { fixtureModule, specSkeleton, type PropField } from '@fudic/spec';
 import { parseArgs } from '../src/args.js';
 import { nodeReadIo, nodeWriteIo } from '../src/io.js';
@@ -202,12 +203,31 @@ describe('g spec over what already exists (criterion 9)', () => {
   });
 });
 
-describe('g spec errors (criterion 10)', () => {
-  it('FUD0960 for a component the project does not have, even when a page has the name', async () => {
+describe('g spec of a component that does not exist (criterion 10)', () => {
+  it('creates a component that does not exist, exactly as g component --spec writes it', async () => {
+    const asked = reader(PROPS);
+    const plan = await planSpec('nope', options(), project(), asked);
+    const same = await planComponent('nope', { ...options(), dir: COMPONENTS_DIR, wireInto: [], style: true, slot: false, spec: true }, project());
+    expect(plan).toEqual(same);
+    expect(created(plan)).toEqual(['create src/components/app-nope.fud', 'create src/components/app-nope.fudspec']);
+    expect(plan.changes[1]?.contents).toBe(specSkeleton('app-nope', false));
+    // A new component has no props to read, and so no fixture.
+    expect(asked.calls).toEqual([]);
+  });
+
+  it('treats a page with the name as no component: it creates one', async () => {
     const plan = await planSpec('index', options(), project(), reader(PROPS));
-    expect(plan.errors.map((error) => error.code)).toEqual(['FUD0960']);
-    expect(plan.changes).toEqual([]);
-    expect((await planSpec('nope', options(), project(), reader(PROPS))).errors.map((e) => e.code)).toEqual(['FUD0960']);
+    expect(plan.errors).toEqual([]);
+    expect(created(plan)).toEqual(['create src/components/app-index.fud', 'create src/components/app-index.fudspec']);
+  });
+
+  it('keeps --force on the way to g component', async () => {
+    const taken = project({ 'src/components/app-nope.fudspec': 'component app-nope\n' });
+    expect((await planSpec('nope', options(), taken, reader(PROPS))).errors.map((e) => e.code)).toEqual(['FUD0443']);
+    expect(created(await planSpec('nope', options({ force: true }), taken, reader(PROPS)))).toEqual([
+      'create src/components/app-nope.fud',
+      'modify src/components/app-nope.fudspec',
+    ]);
   });
 
   it('the project errors of every generator: no project, an unknown --project', async () => {
@@ -288,7 +308,7 @@ describe('g spec through the binary, over a real project (criteria 7 and 10)', (
     expect(untouched.paths()).toEqual([]);
   });
 
-  it('writes them, and FUD0960 for a component that is not there exits 1', async () => {
+  it('writes them, and writes the component and its .fudspec when it is not there', async () => {
     const root = disk();
     const capture = captureStreams();
     const deps = { readIo: nodeReadIo(), writeIo: nodeWriteIo(), runner: new RecordingRunner(), streams: capture.streams };
@@ -297,7 +317,8 @@ describe('g spec through the binary, over a real project (criteria 7 and 10)', (
     expect(readFileSync(join(root, 'src/components/app-card.fixture.ts'), 'utf8')).toBe(FIXTURE);
     expect(readFileSync(join(root, 'src/fudic-env.d.ts'), 'utf8')).toBe(ENV_DECLARATION);
 
-    expect(await run(['g', 'spec', 'nope', '--cwd', root], deps)).toBe(1);
-    expect(capture.stdout()).toContain('FUD0960');
+    expect(await run(['g', 'spec', 'nope', '--cwd', root], deps)).toBe(0);
+    expect(readFileSync(join(root, 'src/components/app-nope.fud'), 'utf8')).toContain('<app-nope>');
+    expect(readFileSync(join(root, 'src/components/app-nope.fudspec'), 'utf8')).toBe(specSkeleton('app-nope', false));
   });
 });
