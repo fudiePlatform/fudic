@@ -3,15 +3,14 @@
 > **SDD:** [SDD-52 — El lenguaje `.fudspec`](./SDD-52-fudspec.md)
 > **Paquetes:** `@fudic/spec` · `@fudic/diagnostics` · `@fudic/language-server` · `fudic-vscode`
 > **Rama:** `sdd-52-fudspec` (nace de `worktree-sdd-32-abrir-en-el-navegador`)
-> **Progreso:** 15 / 28 — `En curso`.
+> **Progreso:** 16 / 28 — `En curso`.
 
 **El parser se escribió sin tests, por decisión de Pedro.** Las tareas 1–6 se hicieron solo con
 `typecheck` y `build`; sus tests (tarea 7) los escribió otra sesión y dejan `@fudic/spec` al 100 %
 en las cuatro métricas.
 
 **El validador, igual.** Las tareas 8–14 se hicieron con `typecheck`, `build` y una prueba de humo
-desechable; sus tests (tarea 28) los escribe otra sesión. Hasta entonces `pnpm coverage` de
-`@fudic/spec` no llega a su umbral del 100 %, que no se baja.
+desechable; sus tests (tarea 28) los escribió otra sesión y mantienen `@fudic/spec` al 100 %.
 
 **El orden manda en dos puntos.**
 
@@ -75,7 +74,7 @@ desechable; sus tests (tarea 28) los escribe otra sesión. Hasta entonces `pnpm 
 | [x] | 12 | 9 | **`readFixtures`.** Las claves del `export default`, con y sin `satisfies`, con y sin comillas, cada una con su span. Criterio 19 | `spec` | `src/fixtures.ts` |
 | [x] | 13 | 11 | **`validateSpec`: términos.** Normalización a kebab-case, `FUD0940` con la lista del bloque, problemas del módulo sobre el término con `related` al `.js`, aridad (`FUD0947`) y tipos según SDD §3.5 (`FUD0948`). Criterios 12, 16 | `spec` | `src/validate.ts` |
 | [x] | 14 | 12, 13 | **`validateSpec`: componente y props.** `FUD0949`; `props` como primitiva: `FUD0950`, `FUD0952`, `FUD0953`; `FUD0951` solo con `requiredProps` no vacío. Criterios 17, 18 | `spec` | `src/validate.ts` |
-| [ ] | 28 | 10–14 | **Los tests del validador** (otra sesión). Criterios 11–19, con `@fudic/spec` al 100 % en las cuatro métricas. Si un test destapa un defecto, se corrige el validador, no el test | `spec` | `test/` |
+| [x] | 28 | 10–14 | **Los tests del validador**. Criterios 11–19, con `@fudic/spec` al 100 % en las cuatro métricas. Si un test destapa un defecto, se corrige el validador, no el test | `spec` | `test/` |
 
 ## Fase 4 — el colorizer (2)
 
