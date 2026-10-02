@@ -6,7 +6,8 @@
 > y formato) · `fudic-vscode` (formato al guardar) · `@fudic/diagnostics` (los códigos de la CLI)
 > **Depende de:** 52 (el lenguaje `.fudspec`), 22 y 44 (la CLI), 26 (`fudic fmt`), 28 (snippets
 > servidos por el server), 35 (`@fudic/typecheck`), 36 (la bombilla del `.fud`)
-> **Rango de diagnósticos:** `FUD0960`–`FUD0969` (nuevo). Solo la CLI los usa.
+> **Rango de diagnósticos:** `FUD0960`–`FUD0969` (nuevo). Solo la CLI los usa. `FUD0960` queda libre:
+> nació para «el componente no existe», y `g spec` ahora lo crea (§8, decisión 6).
 >
 > **Qué añade en una frase.** Todo lo que SDD-52 obliga a escribir de memoria (el fichero, el
 > criterio, el término, la fixture, la forma de un módulo de término) lo escribe la herramienta:
@@ -152,7 +153,8 @@ fudic fmt [path…]    ahora formatea también los .fudspec
 
 1. Resuelve el proyecto como `g component` y busca el componente por tag en él. Acepta el tag
    (`app-card`) o el nombre sin prefijo (`card`), con la misma regla que `g component`. Si no
-   está: `FUD0960`.
+   está, lo crea con su `.fudspec`, igual que `fudic g component <nombre> --spec`, y termina
+   ahí: un componente recién creado no tiene props.
 2. Escribe `<carpeta del .fud>/<tag>.fudspec` con `specSkeleton(tag, <tiene props obligatorias>)`. Si existe y no hay
    `--force`: `FUD0443`.
 3. Si el componente tiene **props obligatorias**, escribe también `<tag>.fixture.ts` con
@@ -318,7 +320,6 @@ Todos son `error` y solo los emite la CLI.
 
 | Código | Cuándo |
 |---|---|
-| `FUD0960` | `g spec`: el componente no existe en el proyecto. |
 | `FUD0961` | `g term`: el nombre no está en kebab-case. |
 | `FUD0962` | `g term`: un `--param` no es `<nombre>:<tipo>` o su tipo no está en la lista cerrada. |
 | `FUD0963` | `g term`: dos `--param` con el mismo nombre. |
@@ -353,7 +354,8 @@ Todos son `error` y solo los emite la CLI.
 8. **Sin props.** Un componente sin props obligatorias recibe solo la `.fudspec`, sin `props base`.
 9. **Lo que ya existe.** Con la fixture ya escrita, no se toca. Con la `.fudspec`, `FUD0443` salvo
    `--force`. Con la declaración `*.fud` ya en un `.d.ts`, no se crea `fudic-env.d.ts`.
-10. **Errores de `g spec`.** Un componente que no existe da `FUD0960`.
+10. **Spec primero.** `g spec` de un componente que no existe escribe lo mismo que
+    `g component <nombre> --spec`: el `.fud` y su `.fudspec`.
 11. **`g term`.** `fudic g term then tiene-sombra --param target:element --param px:number` escribe
     un módulo que la `.fudspec` puede usar sin diagnósticos. Cada código (`FUD0448`, `FUD0961`–
     `FUD0963`, `FUD0443`) con una entrada mínima.
@@ -413,6 +415,9 @@ Todos son `error` y solo los emite la CLI.
 4. **El formateador no cambia lo que el autor escribió**, solo los blancos.
 5. **El esqueleto no trae criterios**, solo su forma comentada: un término que no existiera haría
    nacer el fichero en rojo.
+6. **El orden es del autor.** Fudic no impone escribir el componente antes que su spec ni al revés:
+   `g spec` de un componente que no existe lo crea, y `g component --spec` crea la spec con él. Quien no
+   quiera criterios no pone `--spec`. Decisión de Pedro.
 
 ### 8.1. Medido al empezar la fase del editor
 

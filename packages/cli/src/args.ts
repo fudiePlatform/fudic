@@ -125,9 +125,10 @@ fudic g layout <name>
   --no-head          omit @RenderHead()
 
 fudic g spec <component>
-  the component's tag, or its name without the project's prefix; it must exist
+  the component's tag, or its name without the project's prefix
   writes <tag>.fudspec next to its .fud and, when it has required props, <tag>.fixture.ts
-  filled by type (an existing fixture is kept) and src/fudic-env.d.ts if nothing declares *.fud
+  filled by type (an existing fixture is kept) and src/fudic-env.d.ts if nothing declares *.fud;
+  a component that does not exist yet is created with it, as g component <name> --spec does
 
 fudic g term <block> <name>
   <block> is given, when or then; <name> is kebab-case

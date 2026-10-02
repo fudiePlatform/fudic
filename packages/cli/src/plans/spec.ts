@@ -1,6 +1,10 @@
 /**
- * `fudic g spec <component>` (SDD-53 §4.1): the criteria file of a component that exists, and
- * the fixture it needs when the component has required props.
+ * `fudic g spec <component>` (SDD-53 §4.1): the criteria file of a component, and the fixture it
+ * needs when the component has required props.
+ *
+ * The order is the author's. A component that does not exist yet is created with its criteria
+ * file, exactly as `fudic g component <name> --spec` does; one that exists gets them next to it.
+ * Spec first or component first, the result is the same files.
  *
  * Nothing here writes a line of its own: the `.fudspec` and the fixture are what `@fudic/spec`
  * generates, which is also what the editor's light bulb creates, so the terminal and the editor
@@ -13,11 +17,12 @@
  */
 
 import { tagOf } from '@fudic/config';
-import { FUD0960 } from '@fudic/diagnostics';
+import { COMPONENTS_DIR } from '@fudic/conventions';
 import { FIXTURE_EXTENSION, SPEC_EXTENSION, fixtureModule, specSkeleton, type PropField } from '@fudic/spec';
 import { dirname, joinPosix } from '../paths.js';
 import { parseFud } from '../parse.js';
 import { targetChange } from '../project.js';
+import { planComponent } from './component.js';
 import { resolveTarget, type Target } from '../workspace/target.js';
 import { nodeReadIo, walkFiles, walkFud, type ReadIo } from '../io.js';
 import type { CliError, FileChange, Plan, SpecOptions } from '../types.js';
@@ -61,7 +66,8 @@ export async function planSpec(
   const tag = tagOf(project.config.prefix, name);
   const source = componentFile(project, tag, io);
   if (source === undefined) {
-    return { changes: [], commands: [], diagnostics: [], errors: [FUD0960({ component: name })] };
+    // Spec first: the component is born with it, empty, as `g component --spec` writes it.
+    return planComponent(name, { ...opts, dir: COMPONENTS_DIR, wireInto: [], style: true, slot: false, spec: true }, io);
   }
 
   const changes: FileChange[] = [];

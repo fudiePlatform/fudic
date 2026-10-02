@@ -41,7 +41,7 @@
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 1 | — | **El rango.** `FUD0960`–`FUD0969` reservado en la fila de SDD-53 del `INDEX.md` | — | `docs/sdd/INDEX.md` |
-| [x] | 2 | 1 | **Los cuatro códigos de la CLI.** `FUD0960`–`FUD0963`: `.ts` con su función tipada (severidad `error`, mensaje en inglés), `.md` con la forma de SDD-50 §4.4 citando `SDD-53` y su línea en `index.ts`. `@fudic/diagnostics` sigue al 100 % | `diagnostics` | `src/codes/FUD0960`–`0963.{ts,md}` · `src/index.ts` |
+| [x] | 2 | 1 | **Los códigos de la CLI.** `FUD0961`–`FUD0963` (`FUD0960` se escribió y se retiró: `g spec` crea el componente que falta): `.ts` con su función tipada (severidad `error`, mensaje en inglés), `.md` con la forma de SDD-50 §4.4 citando `SDD-53` y su línea en `index.ts`. `@fudic/diagnostics` sigue al 100 % | `diagnostics` | `src/codes/FUD0960`–`0963.{ts,md}` · `src/index.ts` |
 
 ## Fase 2 — generadores (6)
 
@@ -74,7 +74,7 @@
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 14 | 2 | **Argumentos.** `g spec|s <component>`, `g term|t <block> <name>` con `--param` repetible y valorado, y `--spec` en `g component`. Nuevas variantes de `ParsedCommand` y `USAGE` | `cli` | `src/args.ts` · `src/types.ts` |
-| [x] | 15 | 4, 6, 10, 14 | **`planSpec`.** §4.1, pasos 1–3: el componente por tag o nombre (`FUD0960`), la `.fudspec` (`FUD0443` sin `--force`) y la fixture si hay props obligatorias y no existe. `@fudic/cli` añade `@fudic/spec` y `@fudic/typecheck` | `cli` | `src/plans/spec.ts` · `src/run.ts` · `package.json` |
+| [x] | 15 | 4, 6, 10, 14 | **`planSpec`.** §4.1, pasos 1–3: el componente por tag o nombre, y si no existe lo crea con su `.fudspec` (`planComponent` con `spec`), la `.fudspec` (`FUD0443` sin `--force`) y la fixture si hay props obligatorias y no existe. `@fudic/cli` añade `@fudic/spec` y `@fudic/typecheck` | `cli` | `src/plans/spec.ts` · `src/run.ts` · `package.json` |
 | [x] | 16 | 15 | **La declaración `*.fud`.** §4.1, paso 4: buscar `declare module '*.fud'` en los `.d.ts` de `src/` y, si no está, `src/fudic-env.d.ts` | `cli` | `src/plans/spec.ts` |
 | [x] | 17 | 5, 14 | **`planTerm`.** §4.2: bloque (`FUD0448`), nombre (`FUD0961`), parámetros (`FUD0962`, `FUD0963`), destino (`FUD0443`). Y `g component --spec` encadena `planSpec` | `cli` | `src/plans/term.ts` · `src/plans/component.ts` · `src/run.ts` |
 | [x] | 18 | 12 | **`fudic fmt` con `.fudspec`.** `filesOf` y el recorrido incluyen `.fudspec`; uno que no se puede formatear es `FUD0450`; `--check` cuenta los dos | `cli` | `src/plans/fmt.ts` · `src/io.ts` |

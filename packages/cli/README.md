@@ -19,7 +19,9 @@ fudic g term then has-shadow --param target:element  # a term module for .fudspe
 required props it also writes `<tag>.fixture.ts`, each prop filled by its type, which it reads
 with TypeScript over the project's own program; an existing fixture is kept. If no `.d.ts` in
 `src/` declares `*.fud`, it adds `src/fudic-env.d.ts`, so the fixture's import is not red in VS
-Code. `fudic g component <name> --spec` writes the skeleton with the new component.
+Code. A component that does not exist yet is created with its `.fudspec`, as `fudic g component <name>
+--spec` does: write the criteria first or the component first, the files are the same. Without
+`--spec`, `fudic g component` writes no criteria at all.
 
 `fudic g term <block> <name>` writes `fudic/terms/<block>/<name>.js` with one `--param
 <name>:<type>` per parameter (`element`, `number`, `string` or `token`). `fudic fmt` formats
