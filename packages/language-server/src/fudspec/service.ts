@@ -1,6 +1,6 @@
 /**
  * The service of a `.fudspec` (SDD-52 §4.4): diagnostics, completion, hover, definition and
- * semantic tokens, and only for a `.fudspec`. Every request starts by asking whether the
+ * semantic tokens, and since SDD-53 the light bulb and formatting; only for a `.fudspec`. Every request starts by asking whether the
  * document is one and answers nothing otherwise, so this service never speaks in a `.fud` —
  * and, with no embedded codes, no service of the `.fud` finds anything to speak in here.
  *
@@ -10,7 +10,8 @@
  */
 
 import { docsUrl, type Severity, type SourceDiagnostic } from '@fudic/diagnostics';
-import { validateSpec } from '@fudic/spec';
+import { formatSpec, validateSpec } from '@fudic/spec';
+import { propShapes } from '@fudic/typecheck';
 import type { LanguageServicePlugin, SemanticToken } from '@volar/language-service';
 import {
   DiagnosticSeverity,
@@ -19,8 +20,10 @@ import {
 import { SEMANTIC_TOKENS_LEGEND } from '../capabilities.js';
 import type { RequestStats } from '../stats.js';
 import { pathToUri } from '../uri.js';
+import { typeScriptService } from '../services/ts-service.js';
+import { specCodeActions } from './actions.js';
 import { specCompletions } from './completion.js';
-import { rangeIn, specDocumentOf, type SpecDocument } from './document.js';
+import { rangeIn, spanRange, specDocumentOf, type SpecDocument } from './document.js';
 import type { SpecHost } from './host.js';
 import { specDefinition, specHover } from './navigation.js';
 import { specSemanticTokens } from './semantic-tokens.js';
@@ -67,6 +70,8 @@ export function createFudspecService(deps: FudspecServiceContext): LanguageServi
       definitionProvider: true,
       semanticTokensProvider: { legend: SEMANTIC_TOKENS_LEGEND },
       diagnosticProvider: { interFileDependencies: true, workspaceDiagnostics: false },
+      codeActionProvider: { codeActionKinds: ['quickfix'] },
+      documentFormattingProvider: true,
     },
 
     create(context) {
@@ -80,6 +85,48 @@ export function createFudspecService(deps: FudspecServiceContext): LanguageServi
               if (spec === undefined) return undefined;
               const found = [...spec.parseDiagnostics, ...validateSpec(spec.file, host.context(spec.path))];
               return found.map((d) => toLsp(spec, d, host));
+            },
+            undefined,
+          );
+        },
+
+        provideCodeActions(document, range, _codeActionContext, token) {
+          return stats.run(
+            'codeActions',
+            token,
+            () => {
+              const spec = specDocumentOf(context, document);
+              if (spec === undefined) return undefined;
+              return specCodeActions({
+                spec,
+                host,
+                document,
+                start: document.offsetAt(range.start),
+                end: document.offsetAt(range.end),
+                // The project's program, the one the `.fud` services read the card from. Without
+                // TypeScript a fixture is still created, with its keys and no props (SDD-53 §4.5).
+                propsOf: (path) => {
+                  const program = typeScriptService(context)?.getProgram();
+                  return program === undefined ? undefined : propShapes(program, path);
+                },
+              });
+            },
+            undefined,
+          );
+        },
+
+        provideDocumentFormattingEdits(document, _range, _options, _embedded, token) {
+          return stats.run(
+            'formatting',
+            token,
+            () => {
+              const spec = specDocumentOf(context, document);
+              if (spec === undefined) return undefined;
+              const formatted = formatSpec(spec.text);
+              // An empty list, not `undefined`, when there is nothing to do: a nullish answer
+              // sends Volar on to the next service, and no other one knows a `.fudspec`.
+              if (!formatted.ok || formatted.text === spec.text) return [];
+              return [{ range: spanRange(spec, { start: 0, end: spec.text.length }), newText: formatted.text }];
             },
             undefined,
           );

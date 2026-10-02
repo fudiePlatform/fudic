@@ -12,6 +12,7 @@
  */
 
 import {
+  TERMS_DIR,
   createTermCatalog,
   readFixtures,
   type ComponentInfo,
@@ -25,7 +26,7 @@ import { CONFIG_FILE } from '@fudic/config';
 import type { WorkspaceIndex } from '../workspace-index.js';
 
 /** Where a project keeps its own terms, next to its `fudic.json`. */
-export const WORKSPACE_TERMS = 'fudic/terms';
+export const WORKSPACE_TERMS = TERMS_DIR;
 
 export interface SpecHostDeps {
   readonly index: WorkspaceIndex;
@@ -65,6 +66,12 @@ export class SpecHost {
     return workspace;
   }
 
+  /** The workspace-layer root of terms for a `.fudspec` at `path`, where a new term is created. */
+  workspaceTerms(path: string): string | undefined {
+    const folder = this.#folderOf(path);
+    return folder === '' ? undefined : `${folder}/${WORKSPACE_TERMS}`;
+  }
+
   /** The term catalog a `.fudspec` at `path` resolves against. */
   terms(path: string): TermCatalog {
     const folder = this.#folderOf(path);
@@ -72,7 +79,8 @@ export class SpecHost {
     if (known !== undefined) return known;
 
     const roots: TermRoot[] = [];
-    if (folder !== '') roots.push({ layer: 'workspace', path: `${folder}/${WORKSPACE_TERMS}` });
+    const own = this.workspaceTerms(path);
+    if (own !== undefined) roots.push({ layer: 'workspace', path: own });
     const framework = this.#deps.frameworkTerms;
     if (framework !== undefined) roots.push({ layer: 'framework', path: framework });
 

@@ -21,7 +21,8 @@ const EVERYTHING: CodeInformation = {
   semantic: true,
   navigation: true,
   structure: true,
-  format: false,
+  // SDD-53: the `.fudspec` service formats the file.
+  format: true,
 };
 
 function rootCode(snapshot: IScriptSnapshot): VirtualCode {

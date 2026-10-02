@@ -212,6 +212,8 @@
         "editor.insertSpaces": true,
         "editor.tabSize": 2,
         "editor.detectIndentation": false,
+        "editor.defaultFormatter": "fudic.fudic-vscode",
+        "editor.formatOnSave": true,
         "editor.wordBasedSuggestions": "off"
       }
     }

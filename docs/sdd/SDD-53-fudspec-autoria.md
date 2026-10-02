@@ -1,6 +1,6 @@
 # SDD-53 — Escribir una `.fudspec` sin saberse el lenguaje: CLI, editor y formateador
 
-> **Estado:** `En curso` — [tareas](./SDD-53-Task.md), 19 / 30.
+> **Estado:** `En curso` — [tareas](./SDD-53-Task.md), 24 / 30.
 > **Paquetes:** `@fudic/spec` (generadores y formateador) · `@fudic/typecheck` (la forma de las
 > props) · `@fudic/cli` (`g spec`, `g term`, `fmt`) · `@fudic/language-server` (snippets, bombilla
 > y formato) · `fudic-vscode` (formato al guardar) · `@fudic/diagnostics` (los códigos de la CLI)
@@ -293,7 +293,7 @@ Lo usan tres sitios:
 - **Language server.** `provideDocumentFormattingEdits` del servicio `.fudspec`: una edición del
   documento entero, o `[]` si no hay cambios o no se puede formatear.
 - **VS Code.** `configurationDefaults["[fudspec]"]` gana `editor.defaultFormatter` (la extensión)
-  y `editor.formatOnSave: true`, como el `.fud`. `fudic.format.enable` lo apaga también aquí.
+  y `editor.formatOnSave: true`, como el `.fud`.
 - **CLI.** `fudic fmt` recorre `.fud` y `.fudspec`. Un `.fudspec` que no se puede formatear es
   `FUD0450`, como un `.fud` que no parsea. `--check` cuenta los dos.
 
@@ -413,9 +413,20 @@ Todos son `error` y solo los emite la CLI.
 5. **El esqueleto no trae criterios**, solo su forma comentada: un término que no existiera haría
    nacer el fichero en rojo.
 
-### 8.1. A comprobar al empezar
+### 8.1. Medido al empezar la fase del editor
 
 - **El programa TS desde el servicio `.fudspec`.** El servicio del `.fud` lo obtiene con
   `context.inject('typescript/languageService')`. Hay que medir que la misma llamada da, desde una
   `.fudspec`, el programa del proyecto que contiene el `.fud` del componente. Si no lo da, la
   bombilla crea la fixture sin props (criterio 18) y la decisión queda anotada aquí.
+
+  **Resultado (2026-10-02): sí lo da.** El servidor añade todos los `.fud` del workspace al programa
+  de cada proyecto (`mountWorkspaceFuds`), así que desde una `.fudspec` el programa contiene el
+  componente. Medido con el servidor vivo: la bombilla de `FUD0953` crea
+  `primera: { label: '', tone: 'info', items: [] }` para `props<{ label: string; tone: Tone;
+  items: { id: number }[]; extra?: string }>`.
+- **El formato necesita `format: true` en el mapeo.** El virtual code de la `.fudspec` lo tenía a
+  `false` (SDD-52 no formateaba), y con él Volar no llama a `provideDocumentFormattingEdits`.
+- **`fudic.format.enable` no entra en el servidor.** En el `.fud` solo apaga el comando
+  `fudic.formatDocument`; el formato al guardar lo decide `editor.formatOnSave`. La `.fudspec` hace
+  lo mismo.

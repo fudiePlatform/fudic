@@ -8,9 +8,15 @@
  */
 
 import { normalizeTerm, type BlockKind } from '@fudic/spec';
-import { CompletionItemKind, type CompletionItem, type CompletionList } from 'vscode-languageserver-protocol';
+import {
+  CompletionItemKind,
+  InsertTextFormat,
+  type CompletionItem,
+  type CompletionList,
+} from 'vscode-languageserver-protocol';
 import { signatureOf, type SpecDocument } from './document.js';
 import type { SpecHost } from './host.js';
+import { componentSnippet, criterionSnippet, propsSnippet, termSnippet } from './snippets.js';
 
 const TOP_LEVEL = ['component', 'criterion'] as const;
 const BLOCKS = ['given', 'when', 'then'] as const;
@@ -20,7 +26,26 @@ const PROPS = 'props';
 const ARGUMENT = /(?:[^\s"]|"(?:[^"\\]|\\.)*"?)+/gu;
 
 function keywords(words: readonly string[]): CompletionList {
-  return { isIncomplete: false, items: words.map((label) => ({ label, kind: CompletionItemKind.Keyword })) };
+  return { isIncomplete: false, items: words.map(keyword) };
+}
+
+function keyword(label: string): CompletionItem {
+  return { label, kind: CompletionItemKind.Keyword };
+}
+
+/** A snippet item (SDD-53 §4.4): offered next to the keyword, never instead of it. */
+function snippet(label: string, detail: string, insertText: string): CompletionItem {
+  return { label, kind: CompletionItemKind.Snippet, detail, insertText, insertTextFormat: InsertTextFormat.Snippet };
+}
+
+/** Column 0: the two keywords, the whole criterion and, while the file has none, the component line. */
+function topLevel(spec: SpecDocument, host: SpecHost): CompletionList {
+  const items = TOP_LEVEL.map(keyword);
+  if (spec.file.component === undefined) {
+    items.push({ ...snippet('component', 'component <tag>', componentSnippet(spec, host)), preselect: true });
+  }
+  items.push(snippet('criterion', 'criterion <slug> given … then …', criterionSnippet(spec, host)));
+  return { isIncomplete: false, items };
 }
 
 /** The block the line starting at `lineStart` is under, looking up to the criterion. */
@@ -41,7 +66,7 @@ export function specCompletions(spec: SpecDocument, offset: number, host: SpecHo
   // Inside a comment nothing is offered.
   if (/(?:^|\s)#/u.test(before)) return undefined;
 
-  if (/^\S*$/u.test(before)) return keywords(TOP_LEVEL);
+  if (/^\S*$/u.test(before)) return topLevel(spec, host);
   if (/^ {2}\S*$/u.test(before)) return keywords(BLOCKS);
 
   const block = blockAbove(spec.text, lineStart);
@@ -69,9 +94,20 @@ function terms(spec: SpecDocument, block: BlockKind, host: SpecHost): Completion
       kind: CompletionItemKind.Function,
       labelDetails: { description: module.layer },
       detail: signatureOf(module),
+      // One tab stop per parameter (SDD-53 §4.4).
+      insertText: termSnippet(module, host),
+      insertTextFormat: InsertTextFormat.Snippet,
       ...(module.describe !== undefined ? { documentation: module.describe } : {}),
     }));
-  if (block === 'given') items.push({ label: PROPS, kind: CompletionItemKind.Keyword, detail: 'props <fixture>' });
+  if (block === 'given') {
+    items.push({
+      label: PROPS,
+      kind: CompletionItemKind.Keyword,
+      detail: 'props <fixture>',
+      insertText: propsSnippet(spec, host),
+      insertTextFormat: InsertTextFormat.Snippet,
+    });
+  }
   return { isIncomplete: false, items };
 }
 
