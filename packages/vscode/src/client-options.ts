@@ -9,7 +9,7 @@ import type { ClientLaunch } from './ports.js';
 import type { FudicSettings } from './settings.js';
 
 /**
- * The four patterns of §4.1.
+ * The patterns the server watches: the four of §4.1, and the two a `.fudspec` needs (SDD-52).
  *
  * `**\/*.fud` keeps the workspace index current, so a new component resolves without a
  * restart. Two of the others are what invalidates the TypeScript program: a `tsconfig`
