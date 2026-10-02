@@ -528,9 +528,11 @@ interface SpecFs {
   `.fud` solo se toma el índice. Cuando no se pueden probar, el índice no da ninguna, así que el
   host nunca contesta `'unknown'` y `FUD0951` no salta por una suposición.
 - **La fixture es `<carpeta del .fud>/<tag>.fixture.ts`.**
-- **Las raíces de términos:** `<carpeta del workspace>/fudic/terms/`, tomando la carpeta más
-  larga que contiene la `.fudspec`, y después la del framework, que el servidor recibe inyectada
-  (`frameworkTerms`). Mientras el framework no publique su carpeta, la segunda capa está vacía.
+- **Las raíces de términos:** `<proyecto>/fudic/terms/`, donde el proyecto es la carpeta más
+  cercana por encima de la `.fudspec` con un `fudic.json`, sin salir de su carpeta del workspace
+  (la más larga que la contiene; ella misma si no hay `fudic.json` en el camino). En un monorepo
+  el editor abre el repositorio, y los términos son del proyecto. Después va la del framework, que
+  el servidor recibe inyectada (`frameworkTerms`). Mientras el framework no publique su carpeta, la segunda capa está vacía.
 - **`normalizeTerm`** se exporta de `@fudic/spec`: el servidor resuelve el término de una línea
   igual que el validador.
 - **Semantic tokens con tipos estándar**, porque la leyenda es una para todo el servidor: un

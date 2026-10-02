@@ -21,9 +21,10 @@ import {
   type TermCatalog,
   type TermRoot,
 } from '@fudic/spec';
+import { CONFIG_FILE } from '@fudic/config';
 import type { WorkspaceIndex } from '../workspace-index.js';
 
-/** Where the workspace keeps its own terms, under each workspace folder. */
+/** Where a project keeps its own terms, next to its `fudic.json`. */
 export const WORKSPACE_TERMS = 'fudic/terms';
 
 export interface SpecHostDeps {
@@ -42,17 +43,26 @@ function dirname(path: string): string {
 
 export class SpecHost {
   readonly #deps: SpecHostDeps;
-  /** One catalog per workspace folder, until a term changes. */
+  /** One catalog per project folder, until a term changes. */
   readonly #catalogs = new Map<string, TermCatalog>();
 
   constructor(deps: SpecHostDeps) {
     this.#deps = deps;
   }
 
-  /** The workspace folder a file belongs to: the longest one that contains it. */
+  /**
+   * The project a file belongs to: the nearest folder above it with a `fudic.json`, without
+   * leaving its workspace folder (the longest one that contains it), and that workspace folder
+   * when no project file is on the way. In a monorepo the editor opens the repository, and the
+   * terms are the project's, next to its `fudic.json` — not the repository's.
+   */
   #folderOf(path: string): string {
     const owners = this.#deps.roots().filter((root) => path.startsWith(`${root}/`));
-    return owners.reduce((best, root) => (root.length > best.length ? root : best), '');
+    const workspace = owners.reduce((best, root) => (root.length > best.length ? root : best), '');
+    for (let dir = dirname(path); dir.length > workspace.length; dir = dirname(dir)) {
+      if (this.#deps.fs.readDirectory(dir).includes(CONFIG_FILE)) return dir;
+    }
+    return workspace;
   }
 
   /** The term catalog a `.fudspec` at `path` resolves against. */

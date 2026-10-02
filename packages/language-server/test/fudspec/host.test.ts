@@ -8,7 +8,7 @@ import { createFudspecLanguagePlugin, FUDSPEC_LANGUAGE_ID } from '../../src/fuds
 import { isFudspecUri } from '../../src/uri.js';
 import { URI } from 'vscode-uri';
 import { component } from '../_support.js';
-import { FUDS, FW_TERMS, ROOT, SPEC_PATH, WS_TERMS, termSource, world } from './_spec.js';
+import { FILES, FUDS, FW_TERMS, ROOT, SPEC_PATH, WS_TERMS, termSource, world } from './_spec.js';
 
 describe('SpecHost — term roots (SDD-52 §8.2)', () => {
   it('reads the workspace folder first, then the framework', () => {
@@ -33,6 +33,29 @@ describe('SpecHost — term roots (SDD-52 §8.2)', () => {
     });
     expect(host.terms(`${inner}/x.fudspec`).resolve('then', 'shop')?.path).toBe(`${inner}/fudic/terms/then/shop.js`);
     expect(host.terms(SPEC_PATH).resolve('then', 'shop')).toBeUndefined();
+  });
+
+  it('reads the terms of the nearest project with a fudic.json, inside the workspace folder', () => {
+    // A monorepo opened at its root: the terms belong to the project, next to its fudic.json.
+    const app = `${ROOT}/examples/basic`;
+    const { host } = world({
+      files: {
+        ...FILES,
+        // Above the workspace folder: never a project of this file.
+        '/fudic.json': '{}',
+        [`${app}/fudic.json`]: '{}',
+        [`${app}/fudic/terms/then/shop.js`]: termSource('shop', 'then'),
+      },
+    });
+    const inApp = host.terms(`${app}/src/components/app-card.fudspec`);
+    expect(inApp.resolve('then', 'shop')?.path).toBe(`${app}/fudic/terms/then/shop.js`);
+    // The workspace layer is the project's alone: the repository's terms are not merged in.
+    expect(inApp.resolve('then', 'min-height')).toBeUndefined();
+    // Outside any project, the workspace folder — and a catalog of its own.
+    const atRoot = host.terms(SPEC_PATH);
+    expect(atRoot).not.toBe(inApp);
+    expect(atRoot.resolve('then', 'min-height')?.path).toBe(`${WS_TERMS}/then/min-height.js`);
+    expect(atRoot.resolve('then', 'shop')).toBeUndefined();
   });
 
   it('has no workspace layer for a file outside every folder', () => {
