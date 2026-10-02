@@ -420,6 +420,16 @@ importers:
         specifier: workspace:*
         version: link:../tsconfig
 
+  packages/spec:
+    dependencies:
+      '@fudic/diagnostics':
+        specifier: workspace:*
+        version: link:../diagnostics
+    devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+
   packages/ssr:
     dependencies:
       '@fudic/di':
