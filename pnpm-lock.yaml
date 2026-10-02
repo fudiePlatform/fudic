@@ -161,6 +161,12 @@ importers:
       '@fudic/resolve':
         specifier: workspace:*
         version: link:../resolve
+      '@fudic/spec':
+        specifier: workspace:*
+        version: link:../spec
+      '@fudic/typecheck':
+        specifier: workspace:*
+        version: link:../typecheck
     devDependencies:
       '@fudic/tsconfig':
         specifier: workspace:*

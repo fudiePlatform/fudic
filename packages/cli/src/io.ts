@@ -118,6 +118,11 @@ export const SKIPPED: ReadonlySet<string> = new Set(['node_modules', 'dist', '.g
  * the tags already taken (FUD0441) and the layouts available to a new page.
  */
 export function walkFud(root: string, io: ReadIo): readonly string[] {
+  return walkFiles(root, io, '.fud');
+}
+
+/** Every file under `root` whose name ends in `extension`, relative to it, POSIX, sorted. */
+export function walkFiles(root: string, io: ReadIo, extension: string): readonly string[] {
   const found: string[] = [];
   const visit = (dir: string, prefix: string): void => {
     for (const entry of io.list(dir)) {
@@ -125,7 +130,7 @@ export function walkFud(root: string, io: ReadIo): readonly string[] {
       const full = join(dir, entry);
       const rel = prefix === '' ? entry : `${prefix}/${entry}`;
       if (io.isDirectory(full)) visit(full, rel);
-      else if (entry.endsWith('.fud')) found.push(rel);
+      else if (entry.endsWith(extension)) found.push(rel);
     }
   };
   if (io.isDirectory(root)) visit(root, '');

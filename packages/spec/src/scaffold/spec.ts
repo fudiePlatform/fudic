@@ -6,8 +6,8 @@
  */
 
 /**
- * The text of a new `.fudspec`. `props` adds the `props base` line to the commented criterion,
- * for a component that needs a fixture.
+ * The text of a new `.fudspec`. With `props`, the commented `given` starts with `props base`,
+ * for a component that needs a fixture; without, with a term like the other blocks.
  */
 export function specSkeleton(tag: string, props: boolean): string {
   return (
@@ -15,7 +15,7 @@ export function specSkeleton(tag: string, props: boolean): string {
     '\n' +
     '# criterion <slug>\n' +
     '#   given\n' +
-    (props ? '#     props base\n' : '') +
+    (props ? '#     props base\n' : '#     <term> <args>\n') +
     '#   when\n' +
     '#     <term> <args>\n' +
     '#   then\n' +

@@ -49,7 +49,8 @@ export function formatSpec(source: string): FormatSpecResult {
       opens: level === 0 && (head.raw === 'component' || head.raw === 'criterion'),
     });
   }
-  if (diagnostics.some((d) => d.code === 'FUD0920')) return { ok: false, text: source };
+  // The line reader reports one thing only, an unclosed quote: any report is a refusal.
+  if (diagnostics.length > 0) return { ok: false, text: source };
 
   const eol = /\r\n|\n|\r/u.exec(source)?.[0] ?? '\n';
   const levels = commentLevels(rows);

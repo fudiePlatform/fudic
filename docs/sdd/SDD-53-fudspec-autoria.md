@@ -1,6 +1,6 @@
 # SDD-53 — Escribir una `.fudspec` sin saberse el lenguaje: CLI, editor y formateador
 
-> **Estado:** `En curso` — [tareas](./SDD-53-Task.md), 13 / 30.
+> **Estado:** `En curso` — [tareas](./SDD-53-Task.md), 18 / 30.
 > **Paquetes:** `@fudic/spec` (generadores y formateador) · `@fudic/typecheck` (la forma de las
 > props) · `@fudic/cli` (`g spec`, `g term`, `fmt`) · `@fudic/language-server` (snippets, bombilla
 > y formato) · `fudic-vscode` (formato al guardar) · `@fudic/diagnostics` (los códigos de la CLI)
@@ -178,7 +178,8 @@ component app-card
 #     <term> <args>
 ```
 
-La línea `props base` solo aparece si se ha escrito la fixture.
+La línea `props base` solo aparece si el componente tiene props obligatorias; si no, el `given`
+comentado lleva `<term> <args>` como los demás bloques.
 
 ### 4.2. `fudic g term <block> <name>`
 
@@ -266,7 +267,10 @@ Los comentarios y las líneas en blanco salen del mismo lector.
 
 Reglas, en orden:
 
-1. `component` y `criterion` a columna 0, bloques a 2, términos a 4.
+1. Una indentación inválida (1, 3, 5 o más espacios, o un tabulador) pasa al nivel que le da el
+   parser por su primera palabra: `component` y `criterion` a 0, bloques a 2, términos a 4. Una
+   línea que ya está a 0, 2 o 4 se queda donde está aunque no sea su sitio (`  component x`): el
+   parser la lee ahí, y moverla cambiaría el árbol.
 2. Entre tokens de una línea, un solo espacio. El interior de una cadena no se toca.
 3. Un comentario al final de una línea queda a un espacio del último token. Un comentario solo en
    su línea toma la indentación de la línea que le sigue; al final del fichero, la de la anterior.

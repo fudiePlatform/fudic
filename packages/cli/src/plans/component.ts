@@ -14,6 +14,7 @@
 
 import { tagOf } from '@fudic/config';
 import { FUD0444, FUD0445 } from '@fudic/diagnostics';
+import { SPEC_EXTENSION, specSkeleton } from '@fudic/spec';
 import { absolute, joinPosix, toPosix } from '../paths.js';
 import { hasErrors, parseFud } from '../parse.js';
 import { existingTags, libraryTags, targetChange } from '../project.js';
@@ -69,6 +70,14 @@ export function planComponent(name: string, opts: ComponentOptions, io: ReadIo =
   const target = targetChange(opts.cwd, file, contents, opts.force, io);
   if (target.error !== undefined) errors.push(target.error);
   if (target.change !== undefined) changes.push(target.change);
+
+  // `--spec`: its criteria file beside it (SDD-53). A new component declares no props yet, so
+  // the skeleton names no fixture.
+  if (opts.spec === true) {
+    const spec = targetChange(opts.cwd, joinPosix(project.dir, opts.dir, `${tag}${SPEC_EXTENSION}`), specSkeleton(tag, false), opts.force, io);
+    if (spec.error !== undefined) errors.push(spec.error);
+    if (spec.change !== undefined) changes.push(spec.change);
+  }
 
   for (const into of opts.wireInto) {
     wire(toPosix(into), file, opts, io, changes, diagnostics, errors);

@@ -14,19 +14,22 @@
 
 import { format, type FormatOptions } from '@fudic/formatter';
 import { FUD0450 } from '@fudic/diagnostics';
+import { SPEC_EXTENSION, formatSpec } from '@fudic/spec';
 import { absolute, joinPosix, toPosix } from '../paths.js';
-import { nodeReadIo, walkFud, type ReadIo } from '../io.js';
+import { nodeReadIo, walkFiles, walkFud, type ReadIo } from '../io.js';
 import type { CliError, FileChange, FmtOptions, Plan, PlanDiagnostic } from '../types.js';
 
-/** Every `.fud` a path argument stands for, relative to `cwd`, in a stable order. */
+/** Every `.fud` and `.fudspec` a path argument stands for, relative to `cwd`, in a stable order. */
 export function filesOf(paths: readonly string[], opts: FmtOptions, io: ReadIo): readonly string[] {
   const found = new Set<string>();
   for (const path of paths) {
     const rel = toPosix(path);
     const full = absolute(opts.cwd, rel);
     if (io.isDirectory(full)) {
-      for (const file of walkFud(full, io)) found.add(rel === '.' ? file : joinPosix(rel, file));
-    } else if (rel.endsWith('.fud') && io.exists(full)) {
+      for (const file of [...walkFud(full, io), ...walkFiles(full, io, SPEC_EXTENSION)]) {
+        found.add(rel === '.' ? file : joinPosix(rel, file));
+      }
+    } else if ((rel.endsWith('.fud') || rel.endsWith(SPEC_EXTENSION)) && io.exists(full)) {
       found.add(rel);
     }
   }
@@ -55,6 +58,15 @@ export async function planFmt(
 
   for (const file of filesOf(paths, opts, io)) {
     const before = io.read(absolute(opts.cwd, file));
+
+    // A `.fudspec` has its own formatter, with no options: its layout is fixed (SDD-53 §4.6).
+    if (file.endsWith(SPEC_EXTENSION)) {
+      const spec = formatSpec(before);
+      if (!spec.ok) errors.push(FUD0450({ file }));
+      else if (spec.text !== before) changes.push({ kind: 'modify', path: file, contents: spec.text, before });
+      continue;
+    }
+
     const result = await format(before, formatOptions(opts));
 
     if (!result.ok) {

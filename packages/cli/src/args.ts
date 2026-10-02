@@ -17,6 +17,8 @@ import type {
   PackageManager,
   PageOptions,
   ProjectOptions,
+  SpecOptions,
+  TermOptions,
   WorkspaceOptions,
 } from './types.js';
 
@@ -38,13 +40,15 @@ export type ParsedCommand =
   | { readonly kind: 'component'; readonly tag: string; readonly opts: ComponentOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'page'; readonly route: string; readonly opts: PageOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'layout'; readonly name: string; readonly opts: LayoutOptions; readonly flags: GlobalFlags }
+  | { readonly kind: 'spec'; readonly name: string; readonly opts: SpecOptions; readonly flags: GlobalFlags }
+  | { readonly kind: 'term'; readonly name: string; readonly opts: TermOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'fmt'; readonly paths: readonly string[]; readonly opts: FmtOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'help' }
   | { readonly kind: 'error'; readonly error: CliError };
 
 export const USAGE = `fudic — scaffolding for Declarative Shadow DOM apps
 
-  fudic fmt [path…]             format .fud files in place            (default: .)
+  fudic fmt [path…]             format .fud and .fudspec files in place  (default: .)
   fudic new <name>              create a project
   fudic new <name> --workspace  create a workspace and its first app
   fudic generate <type> <name>  add a piece                     (alias: g)
@@ -53,8 +57,10 @@ export const USAGE = `fudic — scaffolding for Declarative Shadow DOM apps
     fudic g page <route>                                        (alias: p)
     fudic g component <name>                                    (alias: c)
     fudic g layout <name>                                       (alias: l)
+    fudic g spec <component>      its .fudspec (and fixture)    (alias: s)
+    fudic g term <block> <name>   a term module for .fudspec    (alias: t)
 
-Generators (component, page, layout) take a destination
+Generators (component, page, layout, spec, term) take a destination
   --project <name>   the project the piece goes to, by directory name
                      default: the nearest fudic.json at or above --cwd; there is no
                      default project, and without either the command fails
@@ -104,6 +110,7 @@ fudic g component <name>
   --in <file>        wire <link rel="component"> into <file>; repeatable
   --no-style         omit the <head> with the component's <style>
   --slot             emit <slot></slot> in the markup
+  --spec             also write <tag>.fudspec next to it
 
 fudic g page <route>
   --dir <path>       target directory                    (default: src/routes)
@@ -116,6 +123,16 @@ fudic g layout <name>
   --dir <path>       target directory                    (default: src/layouts)
   --sections <a,b>   one @RenderSection(name) per name
   --no-head          omit @RenderHead()
+
+fudic g spec <component>
+  the component's tag, or its name without the project's prefix; it must exist
+  writes <tag>.fudspec next to its .fud and, when it has required props, <tag>.fixture.ts
+  filled by type (an existing fixture is kept) and src/fudic-env.d.ts if nothing declares *.fud
+
+fudic g term <block> <name>
+  <block> is given, when or then; <name> is kebab-case
+  writes fudic/terms/<block>/<name>.js in the project
+  --param <name>:<type>   a parameter, in order; repeatable. <type>: element|number|string|token
 `;
 
 interface Tokens {
@@ -128,7 +145,7 @@ interface Tokens {
 function tokenize(argv: readonly string[]): Tokens {
   const positionals: string[] = [];
   const flags = new Map<string, string[]>();
-  const valued = new Set(['cwd', 'pm', 'layout', 'target', 'dir', 'in', 'sections', 'print-width', 'tab-width', 'quote', 'end-of-line', 'id', 'prefix', 'app', 'uses', 'project']);
+  const valued = new Set(['cwd', 'pm', 'layout', 'target', 'dir', 'in', 'sections', 'print-width', 'tab-width', 'quote', 'end-of-line', 'id', 'prefix', 'app', 'uses', 'project', 'param']);
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i] ?? '';
@@ -334,7 +351,7 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
   }
 
   if (type === 'component' || type === 'c') {
-    const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'in', 'no-style', 'slot', 'project']);
+    const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'in', 'no-style', 'slot', 'spec', 'project']);
     if (unknown !== null) return { kind: 'error', error: unknown };
     const opts: ComponentOptions = {
       ...base,
@@ -343,6 +360,7 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
       wireInto: list(tokens, 'in') ?? [],
       style: !bool(tokens, 'no-style'),
       slot: bool(tokens, 'slot'),
+      spec: bool(tokens, 'spec'),
     };
     return { kind: 'component', tag: name, opts, flags };
   }
@@ -373,6 +391,22 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
       head: !bool(tokens, 'no-head'),
     };
     return { kind: 'layout', name, opts, flags };
+  }
+
+  if (type === 'spec' || type === 's') {
+    const unknown = unknownFlag(tokens, [...GLOBAL, 'project']);
+    if (unknown !== null) return { kind: 'error', error: unknown };
+    return { kind: 'spec', name, opts: { ...base, ...target(tokens) }, flags };
+  }
+
+  if (type === 'term' || type === 't') {
+    const unknown = unknownFlag(tokens, [...GLOBAL, 'param', 'project']);
+    if (unknown !== null) return { kind: 'error', error: unknown };
+    // `g term <block> <name>`: what the other generators call the name is the block here.
+    const term = rest[2];
+    if (term === undefined) return { kind: 'error', error: FUD0448({ problem: 'generate-needs-name', type }) };
+    const opts: TermOptions = { ...base, ...target(tokens), block: name, params: tokens.flags.get('param') ?? [] };
+    return { kind: 'term', name: term, opts, flags };
   }
 
   return { kind: 'error', error: FUD0448({ problem: 'unknown-type', type }) };

@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/spec` · `@fudic/typecheck` · `@fudic/cli` · `@fudic/language-server` ·
 > `fudic-vscode` · `@fudic/diagnostics`
 > **Rama:** `sdd-53-fudspec-autoria` (nace de `sdd-52-fudspec`)
-> **Progreso:** 13 / 30 — `En curso`.
+> **Progreso:** 18 / 30 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -73,11 +73,11 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 14 | 2 | **Argumentos.** `g spec|s <component>`, `g term|t <block> <name>` con `--param` repetible y valorado, y `--spec` en `g component`. Nuevas variantes de `ParsedCommand` y `USAGE` | `cli` | `src/args.ts` · `src/types.ts` |
-| [ ] | 15 | 4, 6, 10, 14 | **`planSpec`.** §4.1, pasos 1–3: el componente por tag o nombre (`FUD0960`), la `.fudspec` (`FUD0443` sin `--force`) y la fixture si hay props obligatorias y no existe. `@fudic/cli` añade `@fudic/spec` y `@fudic/typecheck` | `cli` | `src/plans/spec.ts` · `src/run.ts` · `package.json` |
-| [ ] | 16 | 15 | **La declaración `*.fud`.** §4.1, paso 4: buscar `declare module '*.fud'` en los `.d.ts` de `src/` y, si no está, `src/fudic-env.d.ts` | `cli` | `src/plans/spec.ts` |
-| [ ] | 17 | 5, 14 | **`planTerm`.** §4.2: bloque (`FUD0448`), nombre (`FUD0961`), parámetros (`FUD0962`, `FUD0963`), destino (`FUD0443`). Y `g component --spec` encadena `planSpec` | `cli` | `src/plans/term.ts` · `src/plans/component.ts` · `src/run.ts` |
-| [ ] | 18 | 12 | **`fudic fmt` con `.fudspec`.** `filesOf` y el recorrido incluyen `.fudspec`; uno que no se puede formatear es `FUD0450`; `--check` cuenta los dos | `cli` | `src/plans/fmt.ts` · `src/io.ts` |
+| [x] | 14 | 2 | **Argumentos.** `g spec|s <component>`, `g term|t <block> <name>` con `--param` repetible y valorado, y `--spec` en `g component`. Nuevas variantes de `ParsedCommand` y `USAGE` | `cli` | `src/args.ts` · `src/types.ts` |
+| [x] | 15 | 4, 6, 10, 14 | **`planSpec`.** §4.1, pasos 1–3: el componente por tag o nombre (`FUD0960`), la `.fudspec` (`FUD0443` sin `--force`) y la fixture si hay props obligatorias y no existe. `@fudic/cli` añade `@fudic/spec` y `@fudic/typecheck` | `cli` | `src/plans/spec.ts` · `src/run.ts` · `package.json` |
+| [x] | 16 | 15 | **La declaración `*.fud`.** §4.1, paso 4: buscar `declare module '*.fud'` en los `.d.ts` de `src/` y, si no está, `src/fudic-env.d.ts` | `cli` | `src/plans/spec.ts` |
+| [x] | 17 | 5, 14 | **`planTerm`.** §4.2: bloque (`FUD0448`), nombre (`FUD0961`), parámetros (`FUD0962`, `FUD0963`), destino (`FUD0443`). Y `g component --spec` encadena `planSpec` | `cli` | `src/plans/term.ts` · `src/plans/component.ts` · `src/run.ts` |
+| [x] | 18 | 12 | **`fudic fmt` con `.fudspec`.** `filesOf` y el recorrido incluyen `.fudspec`; uno que no se puede formatear es `FUD0450`; `--check` cuenta los dos | `cli` | `src/plans/fmt.ts` · `src/io.ts` |
 | [ ] | 22 | 15–18 | **Tests de la CLI.** Criterios 7–12 y la parte CLI del 23, con `--dry-run` y `--json` | `cli` | `test/spec.test.ts` · `test/term.test.ts` · `test/fmt.test.ts` |
 
 ## Fase 6 — editor (7)

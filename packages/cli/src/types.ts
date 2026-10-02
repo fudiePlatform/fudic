@@ -158,6 +158,18 @@ export interface ComponentOptions extends TargetedOptions {
   readonly wireInto: readonly string[];
   readonly style: boolean;
   readonly slot: boolean;
+  /** Also write `<tag>.fudspec` next to it (SDD-53). Absent ⇒ no. */
+  readonly spec?: boolean;
+}
+
+/** `fudic g spec <component>` (SDD-53 §4.1): only the project the component is in. */
+export type SpecOptions = TargetedOptions;
+
+/** `fudic g term <block> <name>` (SDD-53 §4.2), its arguments as given, checked by the plan. */
+export interface TermOptions extends TargetedOptions {
+  readonly block: string;
+  /** Every `--param`, in order, as written: `<name>:<type>`. */
+  readonly params: readonly string[];
 }
 
 export interface PageOptions extends TargetedOptions {
