@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/spec` · `@fudic/typecheck` · `@fudic/cli` · `@fudic/language-server` ·
 > `fudic-vscode` · `@fudic/diagnostics`
 > **Rama:** `sdd-53-fudspec-autoria` (nace de `sdd-52-fudspec`)
-> **Progreso:** 7 / 30 — `En curso`.
+> **Progreso:** 8 / 30 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -52,7 +52,7 @@
 | [x] | 5 | — | **Módulo de término.** `termModule(block, name, params)` (§4.2): `meta`, `run` que devuelve `{ pass: false, evidence: 'not implemented' }` y `selfTest = []` | `spec` | `src/scaffold/term.ts` |
 | [x] | 6 | — | **Esqueleto.** `specSkeleton(tag)` con la forma comentada de §4.1. Recibe si lleva la línea `props base` | `spec` | `src/scaffold/spec.ts` |
 | [x] | 7 | — | **`closest`.** Distancia de edición ≤ 2 y ≤ un tercio del nombre; empate, el alfabético | `spec` | `src/scaffold/closest.ts` |
-| [ ] | 8 | 3–7 | **Tests de los generadores.** Criterios 1–5. `@fudic/spec` sigue al 100 % | `spec` | `test/scaffold/*.test.ts` |
+| [x] | 8 | 3–7 | **Tests de los generadores.** Criterios 1–5. `@fudic/spec` sigue al 100 % | `spec` | `test/scaffold/*.test.ts` |
 
 ## Fase 3 — tipos (3)
 
