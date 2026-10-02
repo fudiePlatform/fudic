@@ -4,7 +4,12 @@
 > **Paquetes:** `@fudic/spec` · `@fudic/typecheck` · `@fudic/cli` · `@fudic/language-server` ·
 > `fudic-vscode` · `@fudic/diagnostics`
 > **Rama:** `sdd-53-fudspec-autoria` (nace de `sdd-52-fudspec`)
-> **Progreso:** 29 / 30 — `En curso`.
+> **Progreso:** 30 / 30 — `Hecho`.
+
+**El código se escribió en una sesión y los tests en otra.** Cada fase se commiteó sin tests y
+la otra sesión los escribió después (tareas 8, 11, 13, 22, 25 y 26); las fases 4–6 esperaban la
+aprobación de Pedro. Los tests destaparon guardas inalcanzables en `propShapes` y en la bombilla,
+que se quitaron, y ningún fallo de comportamiento.
 
 **El orden manda en tres puntos.**
 
@@ -99,4 +104,4 @@
 | [x] | 27 | 18 | **El ejemplo.** `fudic fmt` sobre `examples/basic`: `app-card.fudspec` formateada; `pnpm build` verde | `example-basic` | `examples/basic/src/components/app-card.fudspec` |
 | [x] | 28 | 22, 25 | **READMEs.** `@fudic/spec` (generadores y `formatSpec`) y `@fudic/cli` (`g spec`, `g term`, `--spec`, `fmt`) | `spec` · `cli` | `README.md` |
 | [x] | 29 | 27, 28 | **Cobertura.** Criterio 24: los cuatro paquetes al 100 %, y el código nuevo de `cli` y `typecheck` al 100 % por fichero | — | `vitest.config.ts` |
-| [ ] | 30 | 29 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` verdes; estado `Hecho` aquí, en la SDD y en el `INDEX.md`, con su línea en el registro de progreso | — | `docs/sdd/*` |
+| [x] | 30 | 29 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` verdes; estado `Hecho` aquí, en la SDD y en el `INDEX.md`, con su línea en el registro de progreso | — | `docs/sdd/*` |
