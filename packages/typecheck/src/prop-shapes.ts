@@ -8,16 +8,24 @@
  * The checker, never the text: `$Props` is `typeof $p0` and `$p0` is a `props<T>()` call, so
  * the members are reachable only by resolving that chain. The primitives are recognised by the
  * name the checker prints, as `propDetails` does, because the program may come from another
- * copy of TypeScript than this package's. Only `SymbolFlags` is read, whose values every 5.x
- * shares.
+ * copy of TypeScript than this package's. Only three `SymbolFlags` are read, whose values every
+ * 5.x shares.
+ *
+ * Type-only import, and the flags as literals: the language server bundles this file and loads
+ * TypeScript by path from the project. A value import of `typescript` survives into the bundle
+ * as a static `import`, and the installed extension, which ships no `node_modules`, dies on it.
  *
  * What a fixture cannot write honestly is `opaque`: a function, a class instance, a type of
  * the standard library (`Date`, `Map`), a cycle, and anything below `MAX_DEPTH`.
  */
 
-import defaultTypeScript from 'typescript';
 import type * as ts from 'typescript';
 import type { PropField, PropShape } from '@fudic/spec';
+
+/** `ts.SymbolFlags.Optional`, `Class` and `Interface`. */
+const OPTIONAL = 1 << 24;
+const CLASS = 1 << 5;
+const INTERFACE = 1 << 6;
 
 const PROPS_EXPORT = '$Props';
 
@@ -67,7 +75,7 @@ class ShapeReader {
   fields(type: ts.Type, depth: number, path: ReadonlySet<ts.Type>): readonly PropField[] {
     return this.checker.getPropertiesOfType(type).map((prop) => ({
       name: prop.name,
-      required: (prop.flags & defaultTypeScript.SymbolFlags.Optional) === 0,
+      required: (prop.flags & OPTIONAL) === 0,
       shape: this.shape(this.checker.getTypeOfSymbolAtLocation(prop, this.source), depth, path),
     }));
   }
@@ -116,10 +124,10 @@ class ShapeReader {
     if (type.getCallSignatures().length > 0 || type.getConstructSignatures().length > 0) return true;
     const symbol = type.getSymbol();
     if (symbol === undefined) return false;
-    if ((symbol.flags & defaultTypeScript.SymbolFlags.Class) !== 0) return true;
+    if ((symbol.flags & CLASS) !== 0) return true;
     // An interface exists only by being declared, so its symbol always carries declarations.
     return (
-      (symbol.flags & defaultTypeScript.SymbolFlags.Interface) !== 0 &&
+      (symbol.flags & INTERFACE) !== 0 &&
       symbol.declarations!.some((d) => this.program.isSourceFileDefaultLibrary(d.getSourceFile()))
     );
   }
