@@ -1,0 +1,99 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Fudic spec",
+  "scopeName": "source.fudspec",
+  "patterns": [
+    { "include": "#component" },
+    { "include": "#criterion" },
+    { "include": "#block" },
+    { "include": "#props-line" },
+    { "include": "#term-line" },
+    { "include": "#comment" }
+  ],
+  "repository": {
+    "component": {
+      "match": "^(component)(?=\\s|$)(?:[ ]+([^\\s#\"][^\\s\"]*))?",
+      "captures": {
+        "1": { "name": "keyword.control.fudspec" },
+        "2": { "name": "entity.name.type.fudspec" }
+      }
+    },
+
+    "criterion": {
+      "match": "^(criterion)(?=\\s|$)(?:[ ]+([^\\s#\"][^\\s\"]*))?",
+      "captures": {
+        "1": { "name": "keyword.control.fudspec" },
+        "2": { "name": "entity.name.section.fudspec" }
+      }
+    },
+
+    "block": {
+      "match": "^[ ]{2}(given|when|then)(?=\\s|$)",
+      "captures": {
+        "1": { "name": "keyword.other.block.fudspec" }
+      }
+    },
+
+    "props-line": {
+      "begin": "^[ ]{4}(props)(?=\\s|$)",
+      "beginCaptures": {
+        "1": { "name": "support.function.fudspec" }
+      },
+      "end": "$",
+      "patterns": [{ "include": "#argument" }]
+    },
+
+    "term-line": {
+      "begin": "^[ ]{4}([^\\s#\"]+)",
+      "beginCaptures": {
+        "1": { "name": "entity.name.function.fudspec" }
+      },
+      "end": "$",
+      "patterns": [{ "include": "#argument" }]
+    },
+
+    "argument": {
+      "patterns": [
+        { "include": "#comment" },
+        { "include": "#string" },
+        { "include": "#role" },
+        { "include": "#number" }
+      ]
+    },
+
+    "comment": {
+      "comment": "`#` opens a comment only at the start of a token: in `a#b` or `#fff` it is text, and inside a string the string rule has already taken it.",
+      "name": "comment.line.number-sign.fudspec",
+      "match": "(?:^|(?<=\\s))(#).*$",
+      "captures": {
+        "1": { "name": "punctuation.definition.comment.fudspec" }
+      }
+    },
+
+    "string": {
+      "comment": "A string never crosses a line: an unclosed one ends with it.",
+      "name": "string.quoted.double.fudspec",
+      "begin": "\"",
+      "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.fudspec" } },
+      "end": "\"|$",
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.fudspec" } },
+      "patterns": [
+        { "name": "constant.character.escape.fudspec", "match": "\\\\[\"\\\\]" }
+      ]
+    },
+
+    "role": {
+      "comment": "`role:button` and `role:button/\"Name\"`: the quoted name is an ordinary string.",
+      "match": "(?<=\\s)(role:)([^\\s/\"#]*)",
+      "captures": {
+        "1": { "name": "keyword.operator.role.fudspec" },
+        "2": { "name": "entity.name.tag.fudspec" }
+      }
+    },
+
+    "number": {
+      "name": "constant.numeric.fudspec",
+      "match": "(?<=\\s)[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?(?=\\s|$)"
+    }
+  }
+}

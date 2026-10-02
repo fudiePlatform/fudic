@@ -3,7 +3,7 @@
 > **SDD:** [SDD-52 — El lenguaje `.fudspec`](./SDD-52-fudspec.md)
 > **Paquetes:** `@fudic/spec` · `@fudic/diagnostics` · `@fudic/language-server` · `fudic-vscode`
 > **Rama:** `sdd-52-fudspec` (nace de `worktree-sdd-32-abrir-en-el-navegador`)
-> **Progreso:** 16 / 28 — `En curso`.
+> **Progreso:** 18 / 29 — `En curso`.
 
 **El parser se escribió sin tests, por decisión de Pedro.** Las tareas 1–6 se hicieron solo con
 `typecheck` y `build`; sus tests (tarea 7) los escribió otra sesión y dejan `@fudic/spec` al 100 %
@@ -76,12 +76,13 @@ desechable; sus tests (tarea 28) los escribió otra sesión y mantienen `@fudic/
 | [x] | 14 | 12, 13 | **`validateSpec`: componente y props.** `FUD0949`; `props` como primitiva: `FUD0950`, `FUD0952`, `FUD0953`; `FUD0951` solo con `requiredProps` no vacío. Criterios 17, 18 | `spec` | `src/validate.ts` |
 | [x] | 28 | 10–14 | **Los tests del validador**. Criterios 11–19, con `@fudic/spec` al 100 % en las cuatro métricas. Si un test destapa un defecto, se corrige el validador, no el test | `spec` | `test/` |
 
-## Fase 4 — el colorizer (2)
+## Fase 4 — el colorizer (3)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 15 | 6 | **La gramática.** `source.fudspec` con los scopes de SDD §4.3 y un test de snapshot de tokens sobre el fichero canónico y sobre uno con todos los casos. Criterio 20 | `vscode` | `syntaxes/fudspec.tmLanguage.json` |
-| [ ] | 16 | 15 | **`language-configuration`.** Comentario `#`, cierre de comillas, indentación de dos espacios | `vscode` | `language-configuration.fudspec.json` |
+| [x] | 15 | 6 | **La gramática.** `source.fudspec` con los scopes de SDD §4.3, línea a línea: una cadena sin cerrar termina con su línea | `vscode` | `syntaxes/fudspec.tmLanguage.json` |
+| [x] | 16 | 15 | **`language-configuration`.** Comentario `#`, cierre de comillas y sangría al pulsar Intro tras `criterion` y tras un bloque. El ancho de dos espacios es `editor.tabSize`, y lo fija la tarea 24 | `vscode` | `language-configuration.fudspec.json` |
+| [ ] | 29 | 15 | **El test de la gramática** (otra sesión). Snapshot de tokens TextMate sobre el fichero canónico y sobre uno con todos los casos de SDD §4.3, con el arnés `test/_tokenize.ts` (hoy solo carga `text.html.fudic`). Criterio 20 | `vscode` | `test/` |
 
 ## Fase 5 — el language server (7)
 
@@ -99,8 +100,8 @@ desechable; sus tests (tarea 28) los escribió otra sesión y mantienen `@fudic/
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 24 | 16, 23 | **El wiring.** `contributes.languages` (`fudspec`, `.fudspec`, configuración e icono claro/oscuro), `contributes.grammars`, `workspaceContains:**/*.fudspec`, `documentSelector` con `fudspec` y vigilancia de ficheros para la tarea 23. Criterio 26 | `vscode` | `package.json` · `src/client-options.ts` · `icons/` |
-| [ ] | 25 | 7, 24, 28 | **Entrega.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; `@fudic/spec` y `@fudic/diagnostics` al 100 % sin `v8 ignore`; el umbral de `language-server` y `vscode` no baja. Criterio 27 | todos | — |
+| [ ] | 24 | 16, 23 | **El wiring.** `contributes.languages` (`fudspec`, `.fudspec`, configuración e icono claro/oscuro), `contributes.grammars`, `configurationDefaults` de `[fudspec]` con `editor.tabSize: 2` e `insertSpaces`, `workspaceContains:**/*.fudspec`, `documentSelector` con `fudspec` y vigilancia de ficheros para la tarea 23. Criterio 26 | `vscode` | `package.json` · `src/client-options.ts` · `icons/` |
+| [ ] | 25 | 7, 24, 28, 29 | **Entrega.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; `@fudic/spec` y `@fudic/diagnostics` al 100 % sin `v8 ignore`; el umbral de `language-server` y `vscode` no baja. Criterio 27 | todos | — |
 | [ ] | 26 | 25 | **Cierre.** SDD-52 a `Hecho`, su fila del `INDEX.md` y entrada en el registro de progreso | — | `docs/sdd/` |
 
 ---
@@ -115,7 +116,7 @@ desechable; sus tests (tarea 28) los escribió otra sesión y mantienen `@fudic/
 | 14, 15 | 10 · 28 (tests) |
 | 17, 18 | 14 · 28 (tests) |
 | 19 | 12 · 28 (tests) |
-| 20 | 15 |
+| 20 | 15 · 29 (test) |
 | 21 | 19 |
 | 22 | 20 |
 | 23 | 21 |
