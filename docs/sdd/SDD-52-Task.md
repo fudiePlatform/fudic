@@ -3,11 +3,11 @@
 > **SDD:** [SDD-52 — El lenguaje `.fudspec`](./SDD-52-fudspec.md)
 > **Paquetes:** `@fudic/spec` · `@fudic/diagnostics` · `@fudic/language-server` · `fudic-vscode`
 > **Rama:** `sdd-52-fudspec` (nace de `worktree-sdd-32-abrir-en-el-navegador`)
-> **Progreso:** 7 / 27 — `En curso`.
+> **Progreso:** 8 / 27 — `En curso`.
 
-**El parser se escribió sin tests, por decisión de Pedro.** Las tareas 1–6 están hechas y
-pasan `typecheck` y `build`; sus tests son la tarea 7 y los escribe otra sesión. Hasta entonces
-`pnpm coverage` de `@fudic/spec` falla su umbral del 100 %, que no se baja.
+**El parser se escribió sin tests, por decisión de Pedro.** Las tareas 1–6 se hicieron solo con
+`typecheck` y `build`; sus tests (tarea 7) los escribió otra sesión y dejan `@fudic/spec` al 100 %
+en las cuatro métricas.
 
 **El orden manda en dos puntos.**
 
@@ -58,7 +58,7 @@ pasan `typecheck` y `build`; sus tests son la tarea 7 y los escribe otra sesión
 | [x] | 4 | 2 | **Las líneas.** `readLine`: indentación (ancho, span, tabulador), tokens con sus secciones entre comillas (escapes `\"` y `\\`, sin cruzar de línea, `FUD0920` si no cierran) y el comentario cuando `#` abre un token | `spec` | `src/line.ts` |
 | [x] | 5 | 4 | **Los argumentos.** `toArg`: `bare`, `string` (con `contentSpan`) o `role` (`role:x` y `role:x/"nombre"`). Lo mal formado es `FUD0935` y se degrada a `bare`; con una comilla sin cerrar, solo `FUD0920` | `spec` | `src/args.ts` |
 | [x] | 6 | 3, 5 | **`parseSpec`.** Las reglas de SDD §4.1: niveles 0/2/4 con recuperación por primera palabra, sumideros sin cascada, cierre de criterio con `FUD0933`/`FUD0934`, `FUD0922` en `[0, 0)`, diagnósticos ordenados por posición y saltos `\n`, `\r\n` y `\r`. Exportado desde `index.ts` | `spec` | `src/parse.ts` · `src/index.ts` |
-| [ ] | 7 | 6 | **Los tests del parser** (otra sesión). Criterios 1–10, con `@fudic/spec` al 100 % en las cuatro métricas. Si un test destapa un defecto, se corrige el parser, no el test | `spec` | `test/` |
+| [x] | 7 | 6 | **Los tests del parser**. Criterios 1–10, con `@fudic/spec` al 100 % en las cuatro métricas. Si un test destapa un defecto, se corrige el parser, no el test | `spec` | `test/` |
 
 ## Fase 3 — el validador (7)
 
