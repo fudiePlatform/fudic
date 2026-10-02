@@ -68,6 +68,12 @@ describe('formatSpec — one input per rule (criterion 20)', () => {
     );
   });
 
+  it('1. leaves a line already at 0, 2 or 4 where it is, even at the wrong level', () => {
+    expect(format('  component x', 'criterion a', '  then', '  min-height x 1')).toBe(
+      text('  component x', '', 'criterion a', '  then', '  min-height x 1'),
+    );
+  });
+
   it('2. leaves one space between tokens and the inside of a string untouched', () => {
     expect(format('component x', 'criterion a', '  then', '    text    x   "a   b"', '    visible  role:button/"Say   hi"')).toBe(
       text('component x', '', 'criterion a', '  then', '    text x "a   b"', '    visible role:button/"Say   hi"'),

@@ -13,6 +13,7 @@ describe('specSkeleton (criterion 1)', () => {
         '',
         '# criterion <slug>',
         '#   given',
+        '#     <term> <args>',
         '#   when',
         '#     <term> <args>',
         '#   then',
@@ -22,7 +23,7 @@ describe('specSkeleton (criterion 1)', () => {
     );
   });
 
-  it('adds the `props base` line only when asked', () => {
+  it('puts `props base` under the commented given only when asked', () => {
     expect(specSkeleton('app-card', true).split('\n').slice(3, 5)).toEqual(['#   given', '#     props base']);
     expect(specSkeleton('app-card', false)).not.toContain('props');
   });
