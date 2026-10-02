@@ -42,6 +42,21 @@ const TSDK = dirname(
   ),
 );
 
+/**
+ * No static import of `typescript` in the bundle.
+ *
+ * It is external, so a value import anywhere in the server's graph survives as `import … from
+ * "typescript"`. From the repo Node resolves it by walking up into `node_modules` and the session
+ * below works; installed, the extension ships none and the server dies before its first line.
+ */
+const staticTypeScript = /^import\s[^;]*\sfrom\s*["']typescript["']/m.exec(readFileSync(SERVER, 'utf8'));
+if (staticTypeScript !== null) {
+  console.error(
+    `the bundled server does not work: it imports TypeScript statically (${staticTypeScript[0]}), and the .vsix ships no node_modules`,
+  );
+  process.exit(1);
+}
+
 const child = spawn(process.execPath, [SERVER, '--stdio'], { stdio: ['pipe', 'pipe', 'pipe'] });
 
 let seq = 0;
