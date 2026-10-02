@@ -32,7 +32,7 @@ Una tanda, un worktree. Dentro de una tanda, el orden importa.
 | T-15 | `@RenderSection(` y la query inversa del índice | 4 · edición | `language-server` | **Anulada** |
 | T-16 | Anotar el guion de verificación manual | 5 · cierre | `vscode` | Pendiente |
 | T-17 | `<link rel="modulepreload">` | Aplazada · SDD-15/17 | `compiler` · `vite` | Aplazada |
-| T-18 | El template acepta TypeScript que no debería | Aplazada · spec propia | `compiler` | Aplazada |
+| T-18 | El template acepta TypeScript que no debería | Cerrada por [SDD-51](./SDD-51-expresiones-de-la-vista.md) | `compiler` | Hecho |
 
 **Decisiones tomadas, no se rediscuten:** solo T-11 lleva documento propio (`bugs/BUG-11`),
 el resto se implementa desde aquí · el `[Error]` del reinicio se documenta, no se filtra ·
@@ -674,7 +674,7 @@ expresiones que ya se recorren con `walk`. La mitad de tipos ya existe: `$text` 
 (decisión 19), así que interpolar un objeto ya falla. Falta la parte sintáctica.
 
 **Aplazada:** spec propia, y es lo grande — la lista de lo prohibido, con qué código `FUD` y
-sobre qué span.
+sobre qué span. **Cerrada por [SDD-51](./SDD-51-expresiones-de-la-vista.md)** (`FUD0900`–`FUD0919`).
 
 ---
 

@@ -1,0 +1,316 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/vista-url.fud">
+
+@code {
+  // SDD-51 — lo que se PUEDE escribir en la vista. Todo lo de esta ruta compila sin un solo
+  // diagnóstico. Lo que NO se puede está en `examples/vista-errores/vista-errores.fud`, fuera
+  // de este proyecto para que `pnpm build` siga construyendo.
+  //
+  // `safeUrl` es la función pura del guardia: la misma que aplican `setUrl` en el servidor y
+  // en el navegador. La página la llama para ENSEÑAR qué llega a cada atributo sin abrir las
+  // herramientas de desarrollo. `trustedUrl` marca una URL que el autor avala.
+  import { safeUrl, trustedUrl } from "@fudic/dom";
+
+  const prop1 = 2;
+  const prop2 = 3;
+  const ok = true;
+  const a = true;
+  const b = false;
+  const n = 1234.5;
+  const id = 42;
+  const items = [{ ok: true }, { ok: false }, { ok: true }];
+  const user: { name: string } | undefined = { name: "Ana" };
+  const perfil: { x?: string } | undefined = {};
+  const valores = [1, 2, 3, 4];
+  const articulo = { titulo: "Hola", autor: "Ana", fecha: "hoy" };
+
+  // La zona neutra se declara DENTRO de la función de render: sus `let` son estado de la
+  // instancia y el template puede reasignarlos con `@{ }` (§3.5).
+  let total = 0;
+
+  type Nodo = { id: string; n: number; next: Nodo | null };
+  const lista: Nodo = { id: "a", n: 1, next: { id: "b", n: 2, next: { id: "c", n: 3, next: null } } };
+  let cur: Nodo | null = lista;
+
+  // ── URLs ──
+  // Una imagen de 1×1 en `data:image/…`: pasa en `<img src>` y en ningún otro sitio.
+  const png =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+
+  type Caso = { clave: string; url: string };
+
+  // Las que el guardia DEBE dejar inertes: `about:blank`.
+  const peligrosas: Caso[] = [
+    { clave: "javascript:", url: "javascript:alert('xss')" },
+    { clave: "mayúsculas", url: "JaVaScRiPt:alert('xss')" },
+    { clave: "espacios delante", url: "   javascript:alert('xss')" },
+    { clave: "tabulador dentro", url: "java\tscript:alert('xss')" },
+    { clave: "salto de línea dentro", url: "java\nscript:alert('xss')" },
+    { clave: "retorno de carro dentro", url: "java\rscript:alert('xss')" },
+    { clave: "carácter de control delante", url: "\x01javascript:alert('xss')" },
+    { clave: "vbscript:", url: "vbscript:msgbox(1)" },
+    { clave: "data:text/html", url: "data:text/html,<script>alert('xss')</script>" },
+    { clave: "data:image en <a href>", url: png },
+    { clave: "file:", url: "file:///etc/passwd" },
+    { clave: "blob:", url: "blob:https://example.com/uuid" },
+    { clave: "esquema propio sin marcar", url: "miapp:abrir" },
+  ];
+
+  // Las que el guardia DEBE dejar intactas.
+  const seguras: Caso[] = [
+    { clave: "https:", url: "https://example.com/ruta?q=1" },
+    { clave: "http:", url: "http://example.com/" },
+    { clave: "mailto:", url: "mailto:ana@example.com" },
+    { clave: "tel:", url: "tel:+34600000000" },
+    { clave: "absoluta", url: "/blog" },
+    { clave: "relativa", url: "blog/primer-post" },
+    { clave: "query", url: "?pagina=2" },
+    { clave: "ancla", url: "#urls" },
+    { clave: "dos puntos tras la barra", url: "/a:b" },
+    { clave: "entidad sin decodificar", url: "javascript&colon;alert('xss')" },
+  ];
+
+  // Lo que el prefijo fijo NO fija: el valor va por el guardia aunque al final pase.
+  const base = "https://cdn.example.com";
+  const otroHost = "/evil.example";
+  const malicioso = "javascript:alert('xss')";
+
+  // `srcset` es una lista: cada candidato pasa por el guardia, y uno malo deja inerte el todo.
+  const srcsetBueno = "/a.png 1x, /b.png 2x";
+  const srcsetMalo = "/a.png 1x, javascript:alert('xss') 2x";
+
+  // `trustedUrl` es la única excepción, y es una marca en el VALOR: la misma cadena sin
+  // marcar queda inerte (ver `peligrosas`).
+  const abrir = trustedUrl("miapp:abrir");
+}
+
+<head>
+  <title>Lo que se escribe en la vista — fudic</title>
+  <style>
+    .caso {
+      display: grid;
+      grid-template-columns: 14rem 1fr 1fr;
+      gap: 0.6rem;
+      align-items: baseline;
+      padding: 0.25rem 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .caso code {
+      overflow-wrap: anywhere;
+    }
+    .punto {
+      width: 16px;
+      height: 16px;
+      border: 1px solid var(--line);
+    }
+  </style>
+</head>
+
+@section nav {
+  <site-nav .current="vista"></site-nav>
+}
+
+<h1>Lo que se escribe en la vista</h1>
+<p>
+  La vista es una función del estado: lo que se escribe en <code>@@( )</code>, en
+  <code>@@{ }</code>, en un valor de atributo o en una cabecera de control no puede salirse
+  de la pasada de render. Todo lo de esta página está permitido y compila sin avisos.
+</p>
+
+<h2>Expresiones permitidas</h2>
+@* Operadores, lógicos, ternario: puros y deterministas. *@
+<p>Suma: @(prop1 + prop2)</p>
+@* `?.` y `??`. `perfil` viene de `@code`; en una ruta con `load()` sería `data`. *@
+<p>Opcional: @(perfil?.x ?? "—")</p>
+<p>Lógico: @(a && b) · @(a || b)</p>
+<p>Ternario: @(ok ? "sí" : "no")</p>
+@* Una flecha con cuerpo de EXPRESIÓN es un valor: la puede consumir un `filter`. *@
+<p>Flecha de expresión: @(items.filter(x => x.ok).length)</p>
+@* `new`, y un global de la lista corta que es igual en servidor y navegador. *@
+<p>Intl: @(new Intl.NumberFormat("es").format(n))</p>
+@* Lo que TypeScript borra: `!`, `as`, `satisfies`. *@
+<p>TypeScript: @(user!.name as string) · @(prop1 satisfies number)</p>
+@* Globales permitidos: Math, JSON, Number, String, Date, Array, Object… *@
+<p>Globales: @(Math.max(prop1, prop2)) · @(JSON.stringify({ a: 1 })) · @(Number.isInteger(id))</p>
+@* Plantilla. (La ETIQUETADA no: es una llamada con argumentos que no se ven, FUD0905.) *@
+<p>Plantilla: @(`id ${id}`)</p>
+@* Array y objeto literales con spread, dentro de una expresión que devuelve un escalar. *@
+<p>Spread: @([...valores, 5].length) · @(Object.keys({ ...articulo, extra: 1 }).length)</p>
+@* Unarios salvo `delete`. *@
+<p>Unarios: @(-prop1) · @(!ok) · @(typeof id) · @(String(void 0))</p>
+@* Una llamada pasa siempre: la pureza de una función no es decidible (§1.2). *@
+<p>Llamada: @(safeUrl("a", "href", "/x"))</p>
+
+<h2>Bloques <code>@@{ }</code> permitidos</h2>
+@* `const`/`let` con desestructuración y rest; bucle con `break` sin etiqueta; reasignar una
+   variable LOCAL del bloque dentro del bucle. *@
+@{
+  const { titulo, ...resto } = articulo;
+  let suma = 0;
+  for (const v of valores) {
+    if (v > 3) break;
+    suma += v;
+  }
+}
+<p>Desestructurado: @titulo · resto: @(Object.keys(resto).length) campos · suma hasta 3: @suma</p>
+
+@* Reasignar un `let` de la zona neutra: es estado de la instancia (§3.5). *@
+@{ total = prop1 + prop2; }
+<p>Total reasignado: @total</p>
+
+@* `switch`, `while`, `do…while`, `for` clásico y tipos de TS: todo vale dentro de `@{ }`. *@
+@{
+  type Etiqueta = "par" | "impar";
+  let etiqueta: Etiqueta = "impar";
+  switch (id % 2) {
+    case 0:
+      etiqueta = "par";
+      break;
+    default:
+      etiqueta = "impar";
+  }
+  let vueltas = 0;
+  while (vueltas < 3) vueltas++;
+  do {
+    vueltas += 10;
+  } while (vueltas < 20);
+  let pares = 0;
+  for (let i = 0; i < valores.length; i++) {
+    if (i % 2 === 1) continue;
+    pares++;
+  }
+}
+<p>Switch: @etiqueta · while/do: @vueltas · for con continue: @pares</p>
+
+@* Un nombre declarado en un `@{ }` se ve DESPUÉS, también dentro de un elemento. *@
+<div>
+  @{ const dentro = "visible"; }
+  <p>Dentro del div: @dentro</p>
+</div>
+<p>Fuera del div, mismo bloque: @dentro</p>
+
+<h2>Cabeceras de control</h2>
+@* `@for` puede escribir la variable que SU cabecera declara: la única excepción a FUD0900. *@
+<p>
+  @for (let i = 0; i < 3; i++) key (i) {
+    <span>[@i]</span>
+  }
+</p>
+@* `@foreach` con desestructuración y valor por defecto; la key ve lo que declara la cabecera. *@
+<ul>
+  @foreach (const { ok: bien = false } of items) key (bien) {
+    <li>@(bien ? "ok" : "no")</li>
+  }
+</ul>
+@* El `@while` canónico: el cursor vive en la zona neutra y el template lo resiembra. *@
+@{ cur = lista; }
+<ul>
+  @while (cur !== null) key (cur.id) {
+    <li>nodo @cur.n</li>
+    @{ cur = cur.next; }
+  }
+</ul>
+@* `@switch` y `case` con expresiones arbitrarias (decisión 15). *@
+@switch (id % 3) {
+  case 0: <p>múltiplo de 3</p>
+  case prop1 - 1: <p>resto 1</p>
+  default: <p>resto 2</p>
+}
+@if (items.some(x => !x.ok)) {
+  <p>Hay algún elemento que no está ok.</p>
+}
+
+<h2 id="urls">URLs que el prefijo fija: sin guardia</h2>
+<p>
+  El texto literal del principio fija el origen, así que el compilador escribe el valor con
+  <code>setAttr</code> tal cual. Aunque el valor sea <code>@malicioso</code>, queda dentro de
+  una ruta y no hay nada que ejecutar. Pasa el ratón por encima para ver el destino.
+</p>
+<ul>
+  @* `/` seguido de algo que no es `/` ni `\`. *@
+  <li><a href="/posts/@malicioso">href="/posts/@@malicioso"</a></li>
+  @* El primer tramo de una plantilla cuenta igual que el texto literal. *@
+  <li><a href=@(`/p/${malicioso}`)>href=@@(`/p/${malicioso}`)</a></li>
+  @* `#`, `?`, `./` y `../` también fijan. *@
+  <li><a href="#@malicioso">href="#@@malicioso"</a></li>
+  <li><a href="?q=@malicioso">href="?q=@@malicioso"</a></li>
+  <li><a href="./@malicioso">href="./@@malicioso"</a></li>
+  @* Un esquema literal de la lista. *@
+  <li><a href="https://example.com/@malicioso">href="https://example.com/@@malicioso"</a></li>
+  @* `data:image/` literal en `<img src>`. *@
+  <li><img class="punto" src="data:image/png;base64,@("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==")" alt="punto"> src="data:image/png;base64,@@(…)"</li>
+</ul>
+
+<h2>URLs que el prefijo no fija: con guardia</h2>
+<p>
+  Cada fila enseña lo que escribe el autor y lo que llega al atributo. La tercera columna la
+  calcula <code>safeUrl</code>, la misma función que aplica <code>setUrl</code>: el HTML del
+  servidor y el atributo del cliente coinciden.
+</p>
+<h3>Peligrosas: quedan en <code>about:blank</code></h3>
+@foreach (const c of peligrosas) key (c.clave) {
+  <div class="caso">
+    @* `href=@c.url`: un valor sin prefijo, así que va por `setUrl`. *@
+    <a href=@c.url>@c.clave</a>
+    <code>@(JSON.stringify(c.url))</code>
+    <code>→ @safeUrl("a", "href", c.url)</code>
+  </div>
+}
+<h3>Seguras: llegan intactas</h3>
+@foreach (const c of seguras) key (c.clave) {
+  <div class="caso">
+    <a href=@c.url>@c.clave</a>
+    <code>@(JSON.stringify(c.url))</code>
+    <code>→ @safeUrl("a", "href", c.url)</code>
+  </div>
+}
+
+<h3>Con guardia aunque el valor sea bueno</h3>
+<ul>
+  @* `/${x}`: la barra sola no fija nada; con `x = "/evil.example"` sale `//evil.example`, que es
+     otro host. El guardia lo deja pasar porque no es un esquema peligroso: las redirecciones a
+     nivel de camino son de `encodeURIComponent`, no de esta spec (§7). *@
+  <li><a href=@(`/${otroHost}`)>href=@@(`/${otroHost}`)</a> → @safeUrl("a", "href", `/${otroHost}`)</li>
+  @* Concatenación: no es una plantilla, así que no hay prefijo. *@
+  <li><img class="punto" src=@(base + "/a.png") alt="cdn"> src=@@(base + "/a.png") → @safeUrl("img", "src", base + "/a.png")</li>
+  @* La misma imagen `data:` pasa en `<img src>`… *@
+  <li><img class="punto" src=@png alt="punto rojo"> src=@@png en &lt;img&gt; → pasa</li>
+  @* …y no en `<a href>`, ni en `srcset`. *@
+  <li><a href=@png>href=@@png</a> → @safeUrl("a", "href", png)</li>
+  @* `srcset`, candidato a candidato. *@
+  <li><img class="punto" srcset=@srcsetBueno alt="srcset"> srcset bueno → @safeUrl("img", "srcset", srcsetBueno)</li>
+  <li><img class="punto" srcset=@srcsetMalo alt="srcset"> srcset malo → @safeUrl("img", "srcset", srcsetMalo)</li>
+  @* El resto de atributos URL: `action`, `formaction`, `poster`, `cite`, `data` de `<object>`. *@
+  <li>
+    <form action=@malicioso method="get">
+      <button formaction=@malicioso>action y formaction</button>
+    </form>
+    → @safeUrl("form", "action", malicioso)
+  </li>
+  <li><video class="punto" poster=@malicioso></video> poster → @safeUrl("video", "poster", malicioso)</li>
+  <li><blockquote cite=@malicioso>cite</blockquote> → @safeUrl("blockquote", "cite", malicioso)</li>
+  <li><object data=@malicioso></object> data de &lt;object&gt; → @safeUrl("object", "data", malicioso)</li>
+  @* SVG: `href` y `xlink:href`. *@
+  <li>
+    <svg width="120" height="20">
+      <a href=@malicioso><text x="0" y="15">svg href</text></a>
+    </svg>
+    → @safeUrl("a", "href", malicioso)
+  </li>
+</ul>
+
+<h3><code>trustedUrl</code>: la excepción, marcada en el valor</h3>
+<ul>
+  @* Marcada en `@code`: el guardia la escribe tal cual. *@
+  <li><a href=@abrir>href=@@abrir</a> → @safeUrl("a", "href", abrir)</li>
+  @* La misma cadena sin marcar está arriba, en las peligrosas: `about:blank`. *@
+</ul>
+
+<h2>En el cliente</h2>
+<p>
+  El mismo guardia en el navegador: el componente cambia la URL con una signal y el
+  atributo se reescribe con <code>setUrl</code> de <code>browserDom</code>. En desarrollo,
+  cada sustitución avisa por la consola.
+</p>
+<vista-url></vista-url>

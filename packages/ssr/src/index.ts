@@ -21,6 +21,11 @@ export {
   neutralizeComment,
 } from './serialize.js';
 export { jsonBlock, escapeJson } from './json-block.js';
+/**
+ * The URL guard of `@fudic/dom` (SDD-51 §3.7), handed on: the shell's opening tags are written
+ * as strings before there is a DOM, and they need the very function `setUrl` applies.
+ */
+export { guardUrl } from '@fudic/dom';
 export {
   iocRoot,
   iocIsEmpty,

@@ -76,6 +76,9 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
     // and since SDD-40 §4.4 its attributes are interpolated rather than sliced out of the
     // source — so the layout needs the serializer's own escaping to stay byte-identical.
     'escapeAttr',
+    // And the URL guard, for the same opening tags: a `<link href="@x">` in the head is a URL
+    // written as a string, and it must come out as the body's `setUrl` writes it (SDD-51 §3.7).
+    'guardUrl',
     'jsonBlock',
     ...(hasDi ? ['iocRoot', 'publishedSeed', 'withDi'] : []),
   ];
@@ -100,7 +103,7 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   lines.push('');
   lines.push('function io(ctx) {');
   lines.push(
-    `  return { createDom: () => new SsrDom(), serialize: serializeChunks, escapeText, escapeAttr, jsonBlock${hasDi ? ', iocRoot, publishedSeed' : ''}, nonce: ctx.nonce, runtime: RUNTIME };`,
+    `  return { createDom: () => new SsrDom(), serialize: serializeChunks, escapeText, escapeAttr, guardUrl, jsonBlock${hasDi ? ', iocRoot, publishedSeed' : ''}, nonce: ctx.nonce, runtime: RUNTIME };`,
   );
   lines.push('}');
   lines.push('');

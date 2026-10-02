@@ -31,6 +31,14 @@ export interface Dom<N> {
   text(data: string): N;
   comment(data: string): N;
   setAttr(el: N, name: string, value: string): void;
+  /**
+   * Write a URL attribute whose value is not known at build time (SDD-51 §3.7): `setAttr`
+   * through the guard, which replaces a scheme a view may not produce (`javascript:`…) with an
+   * inert value. Every adapter applies the same pure function, so the server and the browser
+   * write the same bytes. The value is taken UNSTRINGIFIED: a `trustedUrl(…)` is recognised by
+   * what it is, and a string carries no mark.
+   */
+  setUrl(el: N, name: string, value: unknown): void;
   removeAttr(el: N, name: string): void;
   append(parent: N, child: N): void;
   /** `anchor.before(node)`: in the browser fires `connectedCallback`; in SSR it fixes tree order. */

@@ -19,7 +19,7 @@
 import type { ComponentGraph, ResolvedComponent } from './resolve.js';
 import { spaceModeOf } from './space.js';
 import { CodeWriter } from './writer.js';
-import { ClientMarkupEmitter, coreUsage, nodeIds } from './markup-client.js';
+import { ClientMarkupEmitter, coreUsage, nodeIds, renderPass } from './markup-client.js';
 import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js';
 import { AssetLinker } from './assets.js';
 import { codeOf, splicedOffset, type ClientStatement, type Prop } from './oxc-code.js';
@@ -281,6 +281,7 @@ function buildComponentClientModule(
   }
   // The host's own bindings before the template's, so `hostUsed` is already set when the
   // preamble below decides whether to materialize `$host` (BUG-32 T2).
+  em.planInPlace(comp.doc.template!.children);
   if (comp.doc.host !== undefined) em.emitHost(comp.doc.host);
   em.emitShadow(comp.doc.template!);
   em.emitRoots(comp.doc.template!.children);
@@ -398,6 +399,7 @@ function buildComponentClientModule(
   // Its own list, because it is the only one that is emptied while the instance lives.
   if (rebinds) w.line('const $cd = []; // the control bindings, remade when the node moves');
   if (em.writes > 0) w.line('const $w = []; // last applied, per value write');
+  if (em.writes > 0 && em.inPlace) w.line('const $x = []; // values, evaluated in place');
   w.line(declaration(props, cells, injects));
   // Before the neutral zone, because that is where the injections are written and `$ioc` is
   // what they resolve from.
@@ -467,7 +469,7 @@ function buildComponentClientModule(
   // `$u` — one rendering pass: the values, then the reconciliation of every construct. It
   // is extracted only when something subscribes to it, because it is the SAME body `u` runs
   // and a component with no signal of its own would pay a closure to say so.
-  if (renews) w.line(`const $u = () => { $a();${reconcile} };`);
+  if (renews) w.line(`const $u = () => { ${renderPass(em.inPlace, reconcile)} };`);
   w.line('');
   w.line('return {');
   w.indent();
@@ -500,7 +502,7 @@ function buildComponentClientModule(
   // The pass itself is `$u` when the component subscribes to its own signals: one body, so
   // a value that moves by prop and a value that moves by signal cannot be applied
   // differently.
-  const pass = renews ? '$u();' : `$a();${reconcile}`;
+  const pass = renews ? '$u();' : renderPass(em.inPlace, reconcile);
   // And, after the pass, the bindings of a crossed node — but only when THAT prop is the one
   // that moved. A rebind tears listeners down and puts them back, so doing it on every
   // update would charge every prop of the component for a node that did not change.

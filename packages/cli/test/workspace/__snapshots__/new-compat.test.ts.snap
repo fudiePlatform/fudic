@@ -109,74 +109,6 @@ type $GlobalAttrs = {
   title?: $Scalar;
   translate?: $Scalar;
   virtualkeyboardpolicy?: $Scalar;
-  onabort?: $Scalar;
-  onblur?: $Scalar;
-  oncanplay?: $Scalar;
-  oncanplaythrough?: $Scalar;
-  onchange?: $Scalar;
-  onclick?: $Scalar;
-  oncontextmenu?: $Scalar;
-  ondblclick?: $Scalar;
-  ondrag?: $Scalar;
-  ondragend?: $Scalar;
-  ondragenter?: $Scalar;
-  ondragleave?: $Scalar;
-  ondragover?: $Scalar;
-  ondragstart?: $Scalar;
-  ondrop?: $Scalar;
-  ondurationchange?: $Scalar;
-  onemptied?: $Scalar;
-  onended?: $Scalar;
-  onerror?: $Scalar;
-  onfocus?: $Scalar;
-  onformchange?: $Scalar;
-  onforminput?: $Scalar;
-  oninput?: $Scalar;
-  oninvalid?: $Scalar;
-  onkeydown?: $Scalar;
-  onkeypress?: $Scalar;
-  onkeyup?: $Scalar;
-  onload?: $Scalar;
-  onloadeddata?: $Scalar;
-  onloadedmetadata?: $Scalar;
-  onloadstart?: $Scalar;
-  onmousedown?: $Scalar;
-  onmousemove?: $Scalar;
-  onmouseout?: $Scalar;
-  onmouseover?: $Scalar;
-  onmouseup?: $Scalar;
-  onmousewheel?: $Scalar;
-  onmouseenter?: $Scalar;
-  onmouseleave?: $Scalar;
-  onpause?: $Scalar;
-  onplay?: $Scalar;
-  onplaying?: $Scalar;
-  onprogress?: $Scalar;
-  onratechange?: $Scalar;
-  onreset?: $Scalar;
-  onresize?: $Scalar;
-  onreadystatechange?: $Scalar;
-  onscroll?: $Scalar;
-  onseeked?: $Scalar;
-  onseeking?: $Scalar;
-  onselect?: $Scalar;
-  onshow?: $Scalar;
-  onstalled?: $Scalar;
-  onsubmit?: $Scalar;
-  onsuspend?: $Scalar;
-  ontimeupdate?: $Scalar;
-  onvolumechange?: $Scalar;
-  onwaiting?: $Scalar;
-  onpointercancel?: $Scalar;
-  onpointerdown?: $Scalar;
-  onpointerenter?: $Scalar;
-  onpointerleave?: $Scalar;
-  onpointerlockchange?: $Scalar;
-  onpointerlockerror?: $Scalar;
-  onpointermove?: $Scalar;
-  onpointerout?: $Scalar;
-  onpointerover?: $Scalar;
-  onpointerup?: $Scalar;
   'aria-activedescendant'?: $Scalar;
   'aria-atomic'?: $Scalar;
   'aria-autocomplete'?: $Scalar;
@@ -229,6 +161,12 @@ type $GlobalAttrs = {
 
 declare function $text(v: $Scalar): void;
 declare function $attr(v: $Scalar): void;
+/**
+ * A URL attribute of a native tag (SDD-51 §3.7): a scalar, or a URL \`trustedUrl()\` marked,
+ * which the guard writes as it is. Structural, so the projection needs no import to accept it.
+ */
+interface $TrustedURL { readonly fudicTrustedUrl: string }
+declare function $url(v: $Scalar | $TrustedURL): void;
 declare function $attrs<T>(a: T & $GlobalAttrs): void;
 
 /**

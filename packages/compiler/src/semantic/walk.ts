@@ -24,7 +24,8 @@ import type {
   SwitchNode,
 } from '../control/index.js';
 import type { RenderDirectiveNode, RenderSectionNode, SectionNode } from '../layout/index.js';
-import type { SnippetDeclNode } from '../snippet/index.js';
+import type { RenderCallNode, SnippetDeclNode } from '../snippet/index.js';
+import type { Node } from '../types/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { StructuredDocument } from '../document/index.js';
 import type { CodeBlockNode } from '../code/index.js';
@@ -71,6 +72,21 @@ export interface TreeVisitor {
    * `slot:` of a hole fills a slot of that element, exactly as a `slot=` would (SDD-48).
    */
   hole?(node: RenderDirectiveNode | RenderSectionNode, host?: ElementNode): void;
+  /**
+   * Every `@render` call: its arguments are expressions evaluated where the call is written
+   * (SDD-29 §4.7), so they are the view's JS like any interpolation (SDD-51 §3.1).
+   */
+  render?(node: RenderCallNode): void;
+  /**
+   * Entering a body that opens a JS block of its own: an arm of `@if`, a `case`, the body of a
+   * loop, a `@section` and a `@snippet`. `owner` is the node the body belongs to — the arm, the
+   * case, the loop, the section, the declaration — so a reader can tell which header declares
+   * into it. An element is not one: its children are emitted in the same block as its
+   * siblings, which is what lets an `@{ }` declare a name an element further down reads.
+   */
+  enterBlock?(owner: Node): void;
+  /** Leaving a body. Balanced with `enterBlock`. */
+  exitBlock?(): void;
 }
 
 /**
@@ -134,6 +150,18 @@ function walkBindings(el: ElementNode, visitor: TreeVisitor): void {
   }
 }
 
+/** A body that opens a JS block of its own, framed by `enterBlock` / `exitBlock`. */
+function walkBlock(
+  owner: Node,
+  body: readonly HtmlContent[],
+  visitor: TreeVisitor,
+  host: ElementNode | undefined,
+): void {
+  visitor.enterBlock?.(owner);
+  walk(body, visitor, host);
+  visitor.exitBlock?.();
+}
+
 function walkNode(node: HtmlContent, visitor: TreeVisitor, host: ElementNode | undefined): void {
   switch (node.type) {
     case 'element':
@@ -157,8 +185,8 @@ function walkNode(node: HtmlContent, visitor: TreeVisitor, host: ElementNode | u
     case 'if': {
       const ifNode = node as unknown as IfNode;
       visitor.control?.(ifNode);
-      for (const branch of ifNode.branches) walk(branch.body, visitor, host);
-      if (ifNode.elseBody) walk(ifNode.elseBody, visitor, host);
+      for (const branch of ifNode.branches) walkBlock(branch, branch.body, visitor, host);
+      if (ifNode.elseBody) walkBlock(ifNode, ifNode.elseBody, visitor, host);
       return;
     }
     case 'foreach':
@@ -167,21 +195,26 @@ function walkNode(node: HtmlContent, visitor: TreeVisitor, host: ElementNode | u
       const loop = node as unknown as ForeachNode | ForNode | WhileNode;
       visitor.control?.(loop);
       visitor.enterLoop?.();
-      walk(loop.body, visitor, host);
+      walkBlock(loop, loop.body, visitor, host);
       visitor.exitLoop?.();
       return;
     }
     case 'switch': {
       const switchNode = node as unknown as SwitchNode;
       visitor.control?.(switchNode);
-      for (const branch of switchNode.cases) walk(branch.body, visitor, host);
+      for (const branch of switchNode.cases) walkBlock(branch, branch.body, visitor, host);
       return;
     }
-    case 'section':
+    case 'render':
+      visitor.render?.(node as unknown as RenderCallNode);
+      return;
+    case 'section': {
       // `@section name { … }` (SDD-21): its body is ordinary markup, so the analyzers
       // must see inside it — a duplicate attribute there is just as wrong.
-      walk((node as unknown as SectionNode).children, visitor, host);
+      const section = node as unknown as SectionNode;
+      walkBlock(section, section.children, visitor, host);
       return;
+    }
     case 'snippet':
       // `@snippet name(…) { … }` (SDD-29). Same reason, and one more: `documentRoots` hands
       // the declarations over precisely so the tags a body instantiates are resolved against
@@ -189,7 +222,7 @@ function walkNode(node: HtmlContent, visitor: TreeVisitor, host: ElementNode | u
       // snippets was then told its every `<link rel="component">` was unused (FUD0721) while
       // its bodies were using all of them, and it is the one document shape where the body is
       // the only markup there is.
-      walk((node as unknown as SnippetDeclNode).children, visitor, host);
+      walkBlock(node, (node as unknown as SnippetDeclNode).children, visitor, host);
       return;
     default:
       // Leaves and JS-only nodes (text, comment, style, inline-code, @code, …): nothing to descend.

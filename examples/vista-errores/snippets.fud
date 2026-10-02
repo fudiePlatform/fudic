@@ -1,0 +1,20 @@
+@* Los snippets que `vista-errores.fud` invoca con `@render`.
+
+   FUD0907 sobre `document`: el cuerpo de un snippet es vista como cualquier otra, aunque se
+   expanda en otro fichero. `texto` es su parámetro y resuelve. *@
+@snippet fila(texto: unknown) {
+  <p>@String(texto) @document.title</p>
+}
+
+@* FUD0901 sobre `total`: un snippet no escribe el estado de quien lo invoca — aquí nadie lo
+   declara —, y el resultado dependería del orden de los `@render` (§3.8). *@
+@snippet escribeFuera() {
+  @{ total = 1; }
+  <p>escribe fuera</p>
+}
+
+@* FUD0914 sobre `bucle`: se invoca a sí mismo sin un `@if` ni un `@foreach` en medio, y la
+   expansión no termina (§3.8). *@
+@snippet bucle(v: unknown) {
+  <p>@String(v) @render bucle(@v)</p>
+}

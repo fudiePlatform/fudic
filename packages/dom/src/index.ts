@@ -17,3 +17,4 @@ export { type Dom, type DomClient } from './dom.js';
 export { browserDom } from './browser.js';
 export { type Cursor, cursorOf } from './cursor.js';
 export { emit } from './emit.js';
+export { type TrustedURL, trustedUrl, isTrustedUrl, safeUrl, guardUrl, INERT_URL } from './url.js';

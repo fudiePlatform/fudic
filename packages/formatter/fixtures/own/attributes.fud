@@ -1,6 +1,7 @@
 @code {
   const tone = 'neutral';
   const on = true;
+  const handle = () => {};
 }
 
 <app-attrs>

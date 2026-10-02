@@ -108,6 +108,11 @@ export { freeReferences, freeReferenceNodes, type FragmentAst } from './scope.js
  * which spans were registered. A second enumeration would ask for a fragment nobody parsed.
  */
 export { collectTemplateJs, type JsFragmentVisitor } from './constructs.js';
+/**
+ * Which attributes are URLs (SDD-51 §3.7), public because the projection types them apart: a
+ * URL attribute also takes a `trustedUrl(…)`, and the one list both read cannot drift.
+ */
+export { isUrlAttr } from './attrs.js';
 
 export { spaceModeOf, collapseSpace, nestedSpaceMode, SPACE_ATTR, type SpaceMode } from './space.js';
 

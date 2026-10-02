@@ -1,0 +1,9 @@
+@code {
+  const { onSave } = props<{ onSave?: () => void }>();
+}
+
+<app-pieza>
+  <template shadowrootmode="open">
+    <button @click=@(() => onSave?.())>pieza</button>
+  </template>
+</app-pieza>

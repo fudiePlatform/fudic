@@ -19,7 +19,7 @@
 
 import type { HtmlContent } from '../html/index.js';
 import { CodeWriter } from './writer.js';
-import { ClientMarkupEmitter, coreUsage, nodeIds, NOTHING_AHEAD, type Tail } from './markup-client.js';
+import { ClientMarkupEmitter, coreUsage, nodeIds, NOTHING_AHEAD, renderPass, type Tail } from './markup-client.js';
 import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js';
 import { AssetLinker } from './assets.js';
 import { codeOf, type ExtractedCode } from './oxc-code.js';
@@ -216,6 +216,7 @@ function buildRouteClientModule(
   for (const cell of cells) {
     if (cell.kind === 'fn') bodies.hook.line(`${cellName(cell)}?.set(${cell.name});`);
   }
+  em.planInPlace(roots);
   const walker = new ComposeWalker(bodies.adopt, em, graph);
   walker.level(composePage(graph), '$root', 0);
   const nodes = [...walker.nodes, ...em.nodes];
@@ -254,13 +255,14 @@ function buildRouteClientModule(
   if (nodes.length > 0) w.line(`let ${nodes.join(', ')};`);
   w.line('const $d = []; // teardowns');
   if (em.writes > 0) w.line('const $w = []; // last applied, per value write');
+  if (em.writes > 0 && em.inPlace) w.line('const $x = []; // values, evaluated in place');
   w.line(declaration(cells));
   writeBody(w, code, cells);
   w.line('');
   w.appendWriter(bodies.decls);
   writeClosure(w, '$s', bodies.hook);
   writeClosure(w, '$a', bodies.apply, 'let $v;');
-  if (renews) w.line(`const $u = () => { $a();${reconcile} };`);
+  if (renews) w.line(`const $u = () => { ${renderPass(em.inPlace, reconcile)} };`);
   w.line('');
   w.line('return {');
   w.indent();
@@ -278,7 +280,7 @@ function buildRouteClientModule(
   // And there is no `$cb` either, for a reason that is structural rather than an omission: a
   // rebind exists for a `control` whose NODE arrived as a prop (SDD-34 §4.6), and nobody
   // hands a route props. Every `control` a route writes is one it already holds.
-  const pass = renews ? '$u();' : `$a();${reconcile}`;
+  const pass = renews ? '$u();' : renderPass(em.inPlace, reconcile);
   w.line(`u: () => { ${pass} },`);
   w.line(
     `r: () => { ${releaseCalls(bodies.registries)}${[...nodes, '$root'].join(' = ')} = null; $d.forEach((d) => d()); },`,

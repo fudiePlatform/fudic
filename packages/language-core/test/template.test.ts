@@ -237,7 +237,7 @@ describe('attributes', () => {
   });
 
   it('checks interpolations of a native tag through $attr', () => {
-    const { text } = emitClient(component('    <a href="@url" title="static">x</a>'));
+    const { text } = emitClient(component('    <a id="@url" title="static">x</a>'));
 
     expect(text).toContain('$attr(url);');
     expect(text).not.toContain('static');

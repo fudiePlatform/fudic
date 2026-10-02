@@ -9,6 +9,7 @@
 
 import { NS, type Ns } from './ns.js';
 import { type DomClient } from './dom.js';
+import { guardUrl } from './url.js';
 
 export const browserDom: DomClient<Node> = {
   element(tag: string, ns: Ns = 'html'): Node {
@@ -25,6 +26,9 @@ export const browserDom: DomClient<Node> = {
 
   setAttr(el: Node, name: string, value: string): void {
     (el as Element).setAttribute(name, value);
+  },
+  setUrl(el: Node, name: string, value: unknown): void {
+    (el as Element).setAttribute(name, guardUrl((el as Element).localName, name, value));
   },
   removeAttr(el: Node, name: string): void {
     (el as Element).removeAttribute(name);
