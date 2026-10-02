@@ -117,9 +117,10 @@ class ShapeReader {
     const symbol = type.getSymbol();
     if (symbol === undefined) return false;
     if ((symbol.flags & defaultTypeScript.SymbolFlags.Class) !== 0) return true;
+    // An interface exists only by being declared, so its symbol always carries declarations.
     return (
       (symbol.flags & defaultTypeScript.SymbolFlags.Interface) !== 0 &&
-      (symbol.declarations ?? []).some((d) => this.program.isSourceFileDefaultLibrary(d.getSourceFile()))
+      symbol.declarations!.some((d) => this.program.isSourceFileDefaultLibrary(d.getSourceFile()))
     );
   }
 }
