@@ -219,7 +219,8 @@ const wrongArity: Repairer = (repair) => {
 /** FUD0921: a wrong indentation — the formatter puts every line where it goes. */
 const badIndentation: Repairer = (repair) => {
   const formatted = formatSpec(repair.spec.text);
-  if (!formatted.ok || formatted.text === repair.spec.text) return [];
+  // FUD0921 is a line the formatter moves, so a formatted text always differs.
+  if (!formatted.ok) return [];
   return [local(repair, 'Format the document', [{ span: { start: 0, end: repair.spec.text.length }, newText: formatted.text }])];
 };
 
@@ -242,7 +243,8 @@ const REPAIRS: ReadonlyMap<FudCode, Repairer> = new Map<FudCode, Repairer>([
 /**
  * The actions of the diagnostics that touch `[start, end]`. Two diagnostics can propose the same
  * repair — every badly indented line «Format the document», every `props` line of a file
- * without fixtures «Create <tag>.fixture.ts» — and the bulb lists each title once.
+ * without fixtures «Create <tag>.fixture.ts» — and the bulb lists each one once. Same title AND
+ * same edit: two lines with the same typo each keep their own «Change to».
  */
 export function specCodeActions(deps: SpecActionDeps): CodeAction[] {
   const { spec, host, start, end } = deps;
@@ -253,7 +255,9 @@ export function specCodeActions(deps: SpecActionDeps): CodeAction[] {
     const repair = REPAIRS.get(diagnostic.code);
     if (repair === undefined) continue;
     for (const action of repair({ ...deps, diagnostic })) {
-      if (!actions.has(action.title)) actions.set(action.title, action);
+      const key = `${action.title}
+${JSON.stringify(action.edit)}`;
+      if (!actions.has(key)) actions.set(key, action);
     }
   }
   return [...actions.values()];

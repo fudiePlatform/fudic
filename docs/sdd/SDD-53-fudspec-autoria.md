@@ -1,6 +1,6 @@
 # SDD-53 — Escribir una `.fudspec` sin saberse el lenguaje: CLI, editor y formateador
 
-> **Estado:** `En curso` — [tareas](./SDD-53-Task.md), 28 / 30.
+> **Estado:** `En curso` — [tareas](./SDD-53-Task.md), 29 / 30.
 > **Paquetes:** `@fudic/spec` (generadores y formateador) · `@fudic/typecheck` (la forma de las
 > props) · `@fudic/cli` (`g spec`, `g term`, `fmt`) · `@fudic/language-server` (snippets, bombilla
 > y formato) · `fudic-vscode` (formato al guardar) · `@fudic/diagnostics` (los códigos de la CLI)
@@ -358,8 +358,9 @@ Todos son `error` y solo los emite la CLI.
     un módulo que la `.fudspec` puede usar sin diagnósticos. Cada código (`FUD0448`, `FUD0961`–
     `FUD0963`, `FUD0443`) con una entrada mínima.
 12. **`g component --spec`.** Escribe el `.fud` y su `.fudspec`.
-13. **Mismo fichero.** La `.fudspec` y la fixture que escribe la CLI son, byte a byte, las que crea
-    la bombilla para el mismo componente.
+13. **Mismo fichero.** La fixture que escribe la CLI es, byte a byte, la que crea la bombilla para el
+    mismo componente y la misma clave, y la `.fudspec` de la CLI es `specSkeleton`. El editor no
+    escribe una `.fudspec` entera: su snippet `component` y la bombilla de `FUD0922` añaden la línea.
 
 **Editor**
 
