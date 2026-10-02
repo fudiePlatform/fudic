@@ -163,3 +163,62 @@ describe('the command end to end', () => {
     expect(capture.stdout()).toContain('dry run');
   });
 });
+
+describe('fmt over .fudspec files (SDD-53 criterion 23)', () => {
+  const SPEC_MESSY = 'component app-x\ncriterion a\n   then   \n      visible   app-x\n';
+  const SPEC_TIDY = 'component app-x\n\ncriterion a\n  then\n    visible app-x\n';
+  const SPEC_BROKEN = 'component app-x\ncriterion a\n  then\n    text app-x "unclosed\n';
+
+  const deps = (fs: MemoryFs) => {
+    const capture = captureStreams();
+    return { capture, deps: { readIo: fs, writeIo: fs, runner: new RecordingRunner(), streams: capture.streams } };
+  };
+
+  it('walks .fud and .fudspec together, takes a single .fudspec, and skips node_modules', () => {
+    const fs = new MemoryFs({
+      'a.fud': MESSY,
+      'src/b.fudspec': SPEC_MESSY,
+      'src/c.fixture.ts': 'export default {};\n',
+      'node_modules/pkg/d.fudspec': SPEC_MESSY,
+    });
+    expect(filesOf(['.'], options(), fs)).toEqual(['a.fud', 'src/b.fudspec']);
+    expect(filesOf(['src/b.fudspec', 'src/missing.fudspec'], options(), fs)).toEqual(['src/b.fudspec']);
+  });
+
+  it('formats a .fudspec with formatSpec, and plans nothing for one already formatted', async () => {
+    const fs = new MemoryFs({ 'a.fudspec': SPEC_MESSY, 'b.fudspec': SPEC_TIDY });
+    const plan = await planFmt(['.'], options(), fs);
+    expect(plan.errors).toEqual([]);
+    expect(plan.changes).toEqual([{ kind: 'modify', path: 'a.fudspec', contents: SPEC_TIDY, before: SPEC_MESSY }]);
+  });
+
+  it('FUD0450 for a .fudspec it cannot format, left alone', async () => {
+    const fs = new MemoryFs({ 'broken.fudspec': SPEC_BROKEN, 'a.fudspec': SPEC_MESSY });
+    const plan = await planFmt(['.'], options(), fs);
+    expect(plan.errors.map((error) => error.code)).toEqual(['FUD0450']);
+    expect(plan.changes.map((change) => change.path)).toEqual(['a.fudspec']);
+
+    const { deps: d } = deps(fs);
+    expect(await run(['fmt', '--cwd', '/project'], d)).toBe(2);
+    expect(fs.at('broken.fudspec')).toBe(SPEC_BROKEN);
+  });
+
+  it('writes the formatted .fudspec', async () => {
+    const fs = new MemoryFs({ 'src/a.fudspec': SPEC_MESSY });
+    const { deps: d } = deps(fs);
+    expect(await run(['fmt', 'src/a.fudspec', '--cwd', '/project'], d)).toBe(0);
+    expect(fs.at('src/a.fudspec')).toBe(SPEC_TIDY);
+  });
+
+  it('--check counts .fud and .fudspec alike', async () => {
+    const fs = new MemoryFs({ 'a.fud': MESSY, 'b.fudspec': SPEC_MESSY });
+    const { deps: d, capture } = deps(fs);
+    expect(await run(['fmt', '--check', '--cwd', '/project'], d)).toBe(1);
+    expect(capture.stdout()).toContain('would format  a.fud');
+    expect(capture.stdout()).toContain('would format  b.fudspec');
+    expect(fs.at('b.fudspec')).toBe(SPEC_MESSY);
+
+    const tidy = new MemoryFs({ 'a.fud': TIDY, 'b.fudspec': SPEC_TIDY });
+    expect(await run(['fmt', '--check', '--cwd', '/project'], deps(tidy).deps)).toBe(0);
+  });
+});
