@@ -9,7 +9,21 @@ fudic new demo                                       # a project that builds
 fudic g component app-card --in src/routes/index.fud # a component, already wired
 fudic g page blog/:slug                              # a route under its layout
 fudic g layout admin --sections aside
+fudic g spec app-card                                # its .fudspec, and a fixture if it has props
+fudic g term then has-shadow --param target:element  # a term module for .fudspec criteria
 ```
+
+## Acceptance criteria
+
+`fudic g spec <component>` writes `<tag>.fudspec` next to the component. When the component has
+required props it also writes `<tag>.fixture.ts`, each prop filled by its type, which it reads
+with TypeScript over the project's own program; an existing fixture is kept. If no `.d.ts` in
+`src/` declares `*.fud`, it adds `src/fudic-env.d.ts`, so the fixture's import is not red in VS
+Code. `fudic g component <name> --spec` writes the skeleton with the new component.
+
+`fudic g term <block> <name>` writes `fudic/terms/<block>/<name>.js` with one `--param
+<name>:<type>` per parameter (`element`, `number`, `string` or `token`). `fudic fmt` formats
+`.fudspec` files as well as `.fud`.
 
 ## More than one project
 

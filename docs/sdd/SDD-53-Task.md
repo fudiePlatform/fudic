@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/spec` · `@fudic/typecheck` · `@fudic/cli` · `@fudic/language-server` ·
 > `fudic-vscode` · `@fudic/diagnostics`
 > **Rama:** `sdd-53-fudspec-autoria` (nace de `sdd-52-fudspec`)
-> **Progreso:** 24 / 30 — `En curso`.
+> **Progreso:** 26 / 30 — `En curso`.
 
 **El orden manda en tres puntos.**
 
@@ -96,7 +96,7 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 27 | 18 | **El ejemplo.** `fudic fmt` sobre `examples/basic`: `app-card.fudspec` formateada; `pnpm build` verde | `example-basic` | `examples/basic/src/components/app-card.fudspec` |
-| [ ] | 28 | 22, 25 | **READMEs.** `@fudic/spec` (generadores y `formatSpec`) y `@fudic/cli` (`g spec`, `g term`, `--spec`, `fmt`) | `spec` · `cli` | `README.md` |
+| [x] | 27 | 18 | **El ejemplo.** `fudic fmt` sobre `examples/basic`: `app-card.fudspec` formateada; `pnpm build` verde | `example-basic` | `examples/basic/src/components/app-card.fudspec` |
+| [x] | 28 | 22, 25 | **READMEs.** `@fudic/spec` (generadores y `formatSpec`) y `@fudic/cli` (`g spec`, `g term`, `--spec`, `fmt`) | `spec` · `cli` | `README.md` |
 | [ ] | 29 | 27, 28 | **Cobertura.** Criterio 24: los cuatro paquetes al 100 %, y el código nuevo de `cli` y `typecheck` al 100 % por fichero | — | `vitest.config.ts` |
 | [ ] | 30 | 29 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` verdes; estado `Hecho` aquí, en la SDD y en el `INDEX.md`, con su línea en el registro de progreso | — | `docs/sdd/*` |

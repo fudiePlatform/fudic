@@ -5,14 +5,15 @@ criterion altura-minima
   given
     props minima
     route /blog
-  then    
+  then
     min-height app-card 44
+
 criterion titulo-largo-visible
   given
     props titulo-largo
   then
     visible app-card
-    text app-card "A title long enough"   
+    text app-card "A title long enough"
 
 criterion destacada-al-cambiar-variante
   given
