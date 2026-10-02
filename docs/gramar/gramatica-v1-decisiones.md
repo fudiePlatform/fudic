@@ -319,11 +319,12 @@ completado es exactamente aquel en que el punto está escrito y el nombre no.
 siendo un error. Es una excepción **a la decisión 8**, no su derogación.
 
 **104.** **`@( … )` es para expresiones que no son cadenas, y para nada más.** Operadores,
-`new`, ternarios, `await`, plantillas: `@(1 + 1)`, `@(new Date().toISOString())`,
+`new`, ternarios, plantillas: `@(1 + 1)`, `@(n.toFixed(2))`,
 `@(a ? b : c)`, ``@(`Hola ${data.nombre}`)``. Todo lo que sea **acceder a algo que el fichero
 declara** —una señal, una prop, una función, un `data`, con sus puntos, sus llamadas y sus
 índices— se escribe con el `@` desnudo. Los paréntesis no son una alternativa estilística de la
-cadena: son otra cosa.
+cadena: son otra cosa. *Enmendada por la 137: fuera `await` —lo asíncrono se resuelve en
+`load()` o en `@code`— y el ejemplo de `new Date()`, que da un valor distinto en cada lado.*
 
 **105.** **El valor de una `.prop` admite un literal escalar desnudo.** Tras el `=` de una
 `.prop`, sin comillas, valen un `@` (decisión 103) **o** un literal escalar: número —con signo,
@@ -1219,6 +1220,40 @@ un prefijo de fabricante (`@-webkit-…`), o dentro de un string o un comentario
 de un estilo se escribe en el markup (`style=`, `style:`, `class:`), que sigue siendo Razor. El
 motivo es doble: no aporta nada que el markup no dé, y un nombre de token interpolado
 (`var(--x-@y)`) es invisible para la poda de tokens de SDD-49. Revoca la 42 y sus 42.a–c.
+*Precisada por la 141: un `style=` dinámico es `FUD0915`; lo dinámico va en `style:prop`.*
+
+**137.** **Lo que una expresión de la vista puede ser, y los nombres que puede leer**
+([SDD-51](../sdd/SDD-51-expresiones-de-la-vista.md) §3.2, §3.4). La vista es una función del
+estado: corre en el servidor y en las tres pasadas del cliente, y nada de lo que escribe puede
+salirse de la pasada. Por **lista blanca**: identificadores, literales, plantillas, miembros,
+llamadas y `new`, unarios salvo `delete`, binarios, lógicos, ternarios, arrays y objetos con
+spread, flechas de cuerpo expresión y lo que TypeScript borra. Lo demás es error: escribir
+(`FUD0900`), asincronía (`FUD0902`), módulos (`FUD0903`), contexto implícito (`FUD0904`),
+definir código (`FUD0905`), la coma (`FUD0906`). Un nombre libre resuelve al template, al
+`@code`, a `data` o a una lista corta de globales iguales en los dos lados (`FUD0907`).
+
+**138.** **Lo que cabe en un `@{ }`, y lo que puede reasignar** (SDD-51 §3.3, §3.5).
+Declaraciones, asignaciones como sentencia, llamadas, condicionales y bucles; nada que salga del
+bloque (`FUD0908`). Se **reasigna una variable** —del template o un `let` de la zona neutra—, y
+nunca se **muta un objeto** (`FUD0900`, `FUD0901`).
+
+**139.** **Los atributos de evento nativos son error** (SDD-51 §3.6, `FUD0909`). `onclick` y el
+resto de `on*` son scripts en línea que la CSP de fudic no ejecuta nunca; se escribe `@click`.
+
+**140.** **Un atributo URL cuyo prefijo no fija el origen se escribe por el guardia**
+(SDD-51 §3.7). `setUrl`, en el contrato `Dom<N>`, con la misma función pura en servidor y
+navegador: lista blanca de esquemas y valor inerte para lo demás. `trustedUrl(s)`, en `@code`,
+marca la excepción en el valor.
+
+**141.** **Lo que la revisión del 2026-10-02 añadió a la vista** (SDD-51 §3.8). El acceso
+reflexivo (`FUD0910`), los métodos que mutan lo que la pasada no ha construido (`FUD0911`), lo
+que da distinto en servidor y cliente y las `key` que no son primitivas (`FUD0912`), los bucles y
+reservas sin límite (`FUD0913`), el snippet que se invoca sin condición (`FUD0914`), los atributos
+que ejecutan, cargan o redirigen fuera del guardia (`FUD0915`), las props que escriben HTML
+(`FUD0916`), la información del servidor en el HTML (`FUD0917`), redeclarar un nombre del `@code`
+(`FUD0918`) y las regex (`FUD0919`). Los manejadores leen los nombres de la vista. El cliente
+evalúa cada valor en su sitio, entre los `@{ }` que lo rodean, como el servidor. Precisa la 136
+(`style=` dinámico) y la 137.
 
 ### Gramática de referencia
 
@@ -1481,7 +1516,7 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 101 | Interpolación | La adyacencia manda: la cadena nunca cruza un blanco (`@del (x)` es el camino `del` más texto) |
 | 102 | Interpolación | El `.` colgante se anota y no se consume: la salida no cambia, el editor puede ofrecer los miembros |
 | 103 | Interpolación | Valor de atributo sin comillas si es **una sola** expresión `@` (excepción a la 8, no su derogación) |
-| 104 | Interpolación | `@( … )` es para lo que no es una cadena: operadores, `new`, ternarios, `await`, plantillas |
+| 104 | Interpolación | `@( … )` es para lo que no es una cadena: operadores, `new`, ternarios, plantillas. **Enmendada por la 137** (fuera `await`) |
 | 105 | Interpolación | El valor de una `.prop` admite un **literal escalar** desnudo: número, `true`, `false`, `null`, `undefined` |
 | 106 | — | **Libre.** La reservó SDD-34 antes de la colisión de numeración y la devolvió al correr su bloque a 108–114. No está tomada: el siguiente que numere puede usarla |
 | 107 | Documentación | **Dónde se documenta un componente**: el JSDoc del nivel superior de un tramo neutro documenta el componente, el del miembro de `props<T>()` documenta esa prop, y el del `new CustomEvent` documenta ese evento. Sin sintaxis nueva (SDD-36 §3.3) |
@@ -1513,4 +1548,9 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 133 | Layout | El `<body>` de un layout es marcado: componentes, `@render`, expresiones, constructos y props del layout; solo `@{ }` queda fuera (`FUD0705`) y un hueco no vive dentro de un constructo (`FUD0443`). Revoca la regla del body de BUG-44 (`FUD0704` retirado) (SDD-48) |
 | 134 | Layout | `@RenderBody(slot: "x")`, `@RenderSection(n, required: true, slot: "x")`: la ruta escribe hermanos y cada raíz sale con su `slot=`; una sección `required` sin declarar es `FUD0440`. Enmienda la 85 (SDD-48) |
 | 135 | Snippets | Los argumentos de `@render` como una prop: literal tal cual, lo que lee el scope con `@` / `@( … )` (`FUD0444`, `FUD0445`). Revoca la 13 de SDD-29 (`FUD0833` retirado) (SDD-48) |
-| 136 | HTML | El cuerpo de un `<style>` es CSS plano: Razor ahí —expresión, constructo, comentario, `@@`— es error (`FUD0132`); un `@` solo vale delante de una at-rule de la lista cerrada o de un prefijo de fabricante. Revoca la 42 y sus 42.a–c (SDD-49) |
+| 136 | HTML | El cuerpo de un `<style>` es CSS plano: Razor ahí —expresión, constructo, comentario, `@@`— es error (`FUD0132`); un `@` solo vale delante de una at-rule de la lista cerrada o de un prefijo de fabricante. Revoca la 42 y sus 42.a–c (SDD-49). **Precisada por la 141** |
+| 137 | Interpolación | La vista es una función del estado: lista blanca de expresiones (`FUD0900`, `FUD0902`–`FUD0906`) y de nombres libres —template, `@code`, `data`, globales iguales en los dos lados— (`FUD0907`). Enmienda la 104 (SDD-51) |
+| 138 | Interpolación | `@{ }` admite declaraciones, asignaciones, llamadas, condicionales y bucles (`FUD0908`); reasigna variables del template o `let` neutros, nunca muta objetos (`FUD0900`, `FUD0901`) (SDD-51) |
+| 139 | HTML | Los atributos `on*` nativos son error, estáticos o dinámicos (`FUD0909`): la CSP no los ejecuta (SDD-51) |
+| 140 | Interpolación | Un atributo URL sin origen fijo se escribe con `setUrl`, el mismo guardia en servidor y navegador; `trustedUrl()` marca la excepción en el valor (SDD-51) |
+| 141 | Interpolación | Lo que la revisión añadió: `FUD0910`–`FUD0919`, los manejadores leen nombres de la vista, y el cliente evalúa cada valor en su sitio (SDD-51 §3.8) |

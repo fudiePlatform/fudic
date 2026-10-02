@@ -1,6 +1,6 @@
 # SDD-51 — Lo que se puede escribir en la vista
 
-> **Estado:** `Listo` — [tareas](./SDD-51-Task.md), 0 / 16.
+> **Estado:** `Hecho` — [tareas](./SDD-51-Task.md), 24 / 24.
 > **Paquetes:** `@fudic/compiler` (analizadores semánticos, emit de `setUrl`) ·
 > `@fudic/diagnostics` (los códigos) · `@fudic/dom` (`setUrl` en el contrato `Dom<N>` y en `browserDom`) · `@fudic/ssr` (`setUrl` en sus adaptadores) ·
 > `@fudic/language-core` (la proyección deja de ofrecer `on*`)

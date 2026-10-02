@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/dom` · `@fudic/ssr` ·
 > `@fudic/vite` · `@fudic/language-core` · `@fudic/language-server`
 > **Rama sugerida:** `sdd-51-expresiones-de-la-vista`
-> **Progreso:** 21 / 24 — `Listo`.
+> **Progreso:** 24 / 24 — `Hecho`.
 
 **Cada tarea nace con sus tests.** Lo nuevo va al 100 % en las cuatro métricas desde su primer
 commit (CLAUDE.md). En el compilador, que arrastra deuda, el umbral del paquete no baja y los
@@ -112,9 +112,9 @@ que lo que el pase dice.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 14 | 8, 11, 24 | **La gramática.** Decisiones 137 (lista blanca de expresiones e identificadores), 138 (sentencias y escrituras de `@{ }`), 139 (`on*` nativo prohibido), 140 (`setUrl` y `trustedUrl`) y 141 (los huecos de §3.8), con su fila en la tabla índice; la 104 enmendada: fuera `await` de sus ejemplos | — | `docs/gramar/gramatica-v1-decisiones.md` |
-| [ ] | 15 | 13, 14 | **Entrega.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; cobertura 100 % en `diagnostics`, `dom`, `ssr`, `language-core` y en los ficheros nuevos del compilador, sin `v8 ignore`. Criterio 21 | todos | — |
-| [ ] | 16 | 15 | **Cierre.** SDD-51 a `Hecho`, su fila del `INDEX.md` y entrada en el registro de progreso; T-18 de [SDD-25-Task-Claude](./SDD-25-Task-Claude.md) apunta a SDD-51 | — | `docs/sdd/` |
+| [x] | 14 | 8, 11, 24 | **La gramática.** Decisiones 137 (lista blanca de expresiones e identificadores), 138 (sentencias y escrituras de `@{ }`), 139 (`on*` nativo prohibido), 140 (`setUrl` y `trustedUrl`) y 141 (los huecos de §3.8), con su fila en la tabla índice; la 104 enmendada: fuera `await` de sus ejemplos | — | `docs/gramar/gramatica-v1-decisiones.md` |
+| [x] | 15 | 13, 14 | **Entrega.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; cobertura 100 % en `diagnostics`, `dom`, `ssr`, `language-core` y en los ficheros nuevos del compilador, sin `v8 ignore`. Criterio 21 | todos | — |
+| [x] | 16 | 15 | **Cierre.** SDD-51 a `Hecho`, su fila del `INDEX.md` y entrada en el registro de progreso; T-18 de [SDD-25-Task-Claude](./SDD-25-Task-Claude.md) apunta a SDD-51 | — | `docs/sdd/` |
 
 ---
 

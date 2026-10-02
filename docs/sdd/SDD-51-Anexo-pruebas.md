@@ -4,9 +4,9 @@
 
 ## Estado
 
-Implementado. `pnpm build` y `pnpm typecheck` están en verde. Falla un test de Vite (ver abajo).
-Quedan para otra sesión los tests, la cobertura, la gramática (tarea 14) y el cierre. No se ha
-marcado ninguna tarea en el Task.
+`Hecho`. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde, y el Task cerrado (24 / 24).
+La revisión del 2026-10-02 añadió §3.8; `examples/vista-errores` es su contrato, caso a caso
+(`typecheck/test/vista-errores.test.ts`).
 
 ## En el navegador
 
@@ -50,3 +50,5 @@ En `examples/basic`, que enlaza el runtime publicado, no aparece ningún fichero
 
 **Propuesta.** Aceptar ese fichero y ajustar el test. La alternativa sería copiar la función en
 `@fudic/ssr`, que rompe la regla de «la misma función» de §3.7.
+
+**Resuelto así:** el test acepta ese fichero, con el porqué escrito al lado.

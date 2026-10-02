@@ -48,6 +48,13 @@ describe('what the host’s literal accepts', () => {
     expect(project('role="group"')).toContain('role: "group",');
   });
 
+  it('leaves a native `on*` out: FUD0909 says it, and TypeScript would only say it twice', () => {
+    // SDD-51 §3.6, decision 139: on the identity tag as much as on any other.
+    const text = hostPart(project('onclick="go()" role="group"'));
+    expect(text).not.toContain('onclick');
+    expect(text).toContain('role: "group",');
+  });
+
   it('sends an interpolated attribute through with its expression intact', () => {
     // Quoted, because `data-state` is not a bare identifier — the literal keeps the name the
     // author wrote rather than a camel-cased invention of the emitter.
