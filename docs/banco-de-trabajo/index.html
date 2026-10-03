@@ -94,8 +94,14 @@ textarea,.code{flex:1;margin:0;border:0;padding:12px 14px;background:var(--panel
   <div class="sub">Sin salir del editor: la <code>.fudspec</code> a la izquierda y el componente con sus criterios a la derecha, como la vista previa de un markdown.</div>
 </header>
 
-<section style="border:1px solid var(--hot);border-radius:6px;padding:10px 14px;background:var(--panel)">
-  <h2 style="margin-top:4px;color:var(--hot)">Aparcado el 2026-10-01: para retomar</h2>
+<section style="border:2px solid var(--live);border-radius:6px;padding:10px 14px;background:var(--panel)">
+  <h2 style="margin-top:4px;color:var(--live)">Actualizado el 2026-10-03: la arquitectura está probada</h2>
+  <p><b>Empieza por <a href="./prueba-arquitectura.md">prueba-arquitectura.md</a>.</b> Ahí están las decisiones tomadas con Pedro, la arquitectura (Vite dentro del servidor del banco, Playwright sin ventana, una página por criterio, la fixture ejecutada, hidratación y volver a ejecutar al guardar), lo que se probó con el plugin real y en VS Code real, y dos bugs de <code>main</code>. <b>No hay que repetir las pruebas.</b> El siguiente paso es el SDD.</p>
+  <p>Lo que sigue en esta página es anterior a esa prueba: la maqueta y las preguntas del 2026-10-01. Las respuestas a sus preguntas están en ese documento.</p>
+</section>
+
+<section style="border:1px solid var(--hot);border-radius:6px;padding:10px 14px;background:var(--panel);margin-top:14px">
+  <h2 style="margin-top:4px;color:var(--hot)">Aparcado el 2026-10-01 (histórico)</h2>
   <p><b>Qué es esto:</b> una sesión de pensar, no de implementar. Pedro trajo un borrador del DSL de criterios (<code>.fudspec</code>, términos en <code>given/</code>, <code>when/</code> y <code>then/</code>, dos capas, workspace y núcleo). De ahí salió la idea de esta página: la vista previa de criterios dentro de VS Code.</p>
   <p><b>Estado del worktree</b> <code>worktree-sdd-32-abrir-en-el-navegador</code>:</p>
   <ul>
