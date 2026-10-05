@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/workbench` (nuevo) · `fudic-vscode` · `@fudic/dom` · `@fudic/vite` ·
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `worktree-SDD-32-1-abrir-en-el-navegador` (nace de `main` en `0ebd073`)
-> **Progreso:** 1 / 31 — `Listo`.
+> **Progreso:** 2 / 31 — `En curso`.
 
 Sustituye a la lista de tareas de la versión anterior de SDD-32, de la que no se hizo ninguna.
 
@@ -42,7 +42,7 @@ Sustituye a la lista de tareas de la versión anterior de SDD-32, de la que no s
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 1 | — | **El arreglo.** `dev()` lee `import.meta.env.DEV` entero, sin alias ni cast; el tipo en `src/env.d.ts`; guarda `typeof import.meta.env !== 'object'` para Node sin Vite (§9.1). Verificado a mano: `/`, `/blog` y `/about` de `examples/basic` dan 200 en `vite dev`; el `dist` importado con Node no lanza; los tests de `@fudic/dom` pasan | `dom` | `src/url.ts` · `src/env.d.ts` |
-| [ ] | 2 | 1 | **Tests de regresión.** Criterio 28 en `@fudic/dom` (module runner de Vite con `ssrLoadModule`, Node sobre `dist`, `vi.stubEnv`) y criterio 29 en `@fudic/vite` (una ruta que pinta un atributo URL da 200 en dev). Rojo primero: revertir la tarea 1 en local y ver los dos en rojo | `dom` · `vite` | `test/url-runner.test.ts` · `test/dev-url.test.ts` |
+| [x] | 2 | 1 | **Tests de regresión.** En `@fudic/dom`, `url.ts` ejecutado por Node sin Vite (proceso hijo, tipos quitados por Node): no lanza y no avisa; `vi.stubEnv` ya lo cubría `url.test.ts`. En `@fudic/vite`, el dev server sirve con 200 una ruta que pinta un `href` desde un valor, con `@fudic/dom` cargado en el module runner. Con el `url.ts` de `main`, el de Vite sale en rojo. Pedro lo probó en el navegador. `@fudic/dom` sigue al 100 % y `@fudic/vite` en su suelo (97,7 / 93,4 / 97,94 / 97,7) | `dom` · `vite` | `test/url-node.test.ts` · `test/dev.test.ts` |
 
 ## Fase 2 — catálogo (2)
 

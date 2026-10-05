@@ -1,7 +1,7 @@
 # SDD-32 — El banco de trabajo: un componente, sus criterios, en verde o en rojo al guardar
 
-> **Estado:** `Listo` — [tareas](./SDD-32-Task.md). Redactado el 2026-10-05, con las
-> decisiones de §8.2 cerradas.
+> **Estado:** `En curso` — [tareas](./SDD-32-Task.md), 2 / 31. Redactado el 2026-10-05, con
+> las decisiones de §8.2 cerradas.
 > **Paquetes:** `@fudic/workbench` (**nuevo**) · `fudic-vscode` (un comando, un atajo, un panel)
 > · `@fudic/dom` (bug B, §9.1) · `@fudic/diagnostics` (los códigos) · `examples/basic` (el
 > ejemplo en verde)
@@ -859,7 +859,8 @@ medidas:
 | `typeof import.meta.env` + `import.meta.env.DEV` (la elegida) | ✅ | ✅ | ✅ |
 
 Verificado: `/`, `/blog` y `/about` dan 200 con `vite dev`; `guardUrl` importado del `dist` con
-Node no lanza; los tests de `@fudic/dom` pasan. Faltan los criterios 28 y 29 como regresión.
+Node no lanza; los tests de `@fudic/dom` pasan; y Pedro lo probó en el navegador (2026-10-05).
+Los criterios 28 y 29 son su regresión, y el de Vite sale en rojo con el código de `main`.
 
 ### 9.2. Bug A — «el primer click se pierde» (del banco, no de `main`)
 

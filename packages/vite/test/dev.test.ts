@@ -39,6 +39,23 @@ const WIDGET = `@code {
 </dev-widget>
 `;
 
+/**
+ * A page that paints a URL attribute from a value: the server writes it through `guardUrl`,
+ * which `@fudic/dom` loads INSIDE Vite's module runner here. Reading `import.meta.env` there
+ * through an alias made this a 500 (SDD-32 §9.1).
+ */
+const LINK = `<!DOCTYPE html>
+<html>
+<head>
+<title>Link</title>
+@code {
+  const target = "/about";
+}
+</head>
+<body><a href="@target">About</a></body>
+</html>
+`;
+
 let server: ViteDevServer;
 let origin: string;
 
@@ -48,6 +65,7 @@ beforeAll(async () => {
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
   mkdirSync(join(root, 'src', 'components'), { recursive: true });
   writeFileSync(join(root, 'src', 'routes', 'about.fud'), PAGE);
+  writeFileSync(join(root, 'src', 'routes', 'link.fud'), LINK);
   writeFileSync(join(root, 'src', 'components', 'dev-widget.fud'), WIDGET);
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
   writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
@@ -72,8 +90,10 @@ describe('vite dev server (SDD-19 §4.10)', () => {
     const res = await fetch(`${origin}/fudic-routes.json`);
     expect(res.headers.get('content-type')).toContain('application/json');
     const manifest = (await res.json()) as { routes: Array<Record<string, unknown>> };
-    expect(manifest.routes).toHaveLength(1);
-    expect(manifest.routes[0]).toEqual({ pattern: '/about', mode: 'ssr' });
+    expect(manifest.routes).toEqual([
+      { pattern: '/about', mode: 'ssr' },
+      { pattern: '/link', mode: 'ssr' },
+    ]);
   });
 
   it('serves the Service Worker at a root URL with Service-Worker-Allowed', async () => {
@@ -149,6 +169,12 @@ describe('vite dev server (SDD-19 §4.10)', () => {
     expect(html.startsWith('<!DOCTYPE html>')).toBe(true);
     expect(html).toContain('About us'); // the page body, rendered by the wrapper chunk
     expect(html).toContain('/@vite/client'); // dev client injected, so edits reload
+  });
+
+  it('SDD-32 §9.1 renders a page that paints a URL attribute (guardUrl in the module runner)', async () => {
+    const res = await fetch(`${origin}/link`, { headers: { accept: 'text/html' } });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain('href="/about"');
   });
 
   it('leaves a non-route path to the rest of the middlewares', async () => {
