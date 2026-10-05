@@ -56,6 +56,10 @@
     "vite": "8.0.16"
   },
   "devDependencies": {
+    "@fudic/core": "workspace:*",
+    "@fudic/dom": "workspace:*",
+    "@fudic/ssr": "workspace:*",
+    "@fudic/transport": "workspace:*",
     "@fudic/tsconfig": "workspace:*",
     "@fudic/vite": "workspace:*",
     "@types/node": "22.20.0",

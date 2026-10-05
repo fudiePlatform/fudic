@@ -1,6 +1,6 @@
 # SDD-32 — El banco de trabajo: un componente, sus criterios, en verde o en rojo al guardar
 
-> **Estado:** `En curso` — [tareas](./SDD-32-Task.md), 10 / 31. Redactado el 2026-10-05, con
+> **Estado:** `En curso` — [tareas](./SDD-32-Task.md), 15 / 31. Redactado el 2026-10-05, con
 > las decisiones de §8.2 cerradas.
 > **Paquetes:** `@fudic/workbench` (**nuevo**) · `fudic-vscode` (un comando, un atajo, un panel)
 > · `@fudic/dom` (bug B, §9.1) · `@fudic/diagnostics` (los códigos) · `examples/basic` (el

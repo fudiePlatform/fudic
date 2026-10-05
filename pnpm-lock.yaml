@@ -595,6 +595,18 @@ importers:
         specifier: 1.62.0
         version: 1.62.0
     devDependencies:
+      '@fudic/core':
+        specifier: workspace:*
+        version: link:../core
+      '@fudic/dom':
+        specifier: workspace:*
+        version: link:../dom
+      '@fudic/ssr':
+        specifier: workspace:*
+        version: link:../ssr
+      '@fudic/transport':
+        specifier: workspace:*
+        version: link:../transport
       '@fudic/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig

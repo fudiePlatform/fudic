@@ -1,0 +1,29 @@
+@code {
+  @client {
+    import { signal } from "@fudic/core";
+
+    const active = signal(0);
+
+    function pickA() {
+      active.set(0);
+    }
+
+    function pickB() {
+      active.set(1);
+    }
+  }
+}
+
+<head>
+  <style>
+    p { border: 1px solid #999; padding: 6px; }
+  </style>
+</head>
+
+<app-tabs>
+  <template shadowrootmode="open">
+    <button role="tab" @click=@pickA>Tab A</button>
+    <button role="tab" @click=@pickB>Tab B</button>
+    <p role="tabpanel">@(active() === 0 ? "panel A" : "panel B")</p>
+  </template>
+</app-tabs>

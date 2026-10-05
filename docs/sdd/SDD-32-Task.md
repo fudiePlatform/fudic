@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/workbench` (nuevo) · `fudic-vscode` · `@fudic/dom` · `@fudic/vite` ·
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `worktree-SDD-32-1-abrir-en-el-navegador` (nace de `main` en `0ebd073`)
-> **Progreso:** 10 / 31 — `En curso`.
+> **Progreso:** 15 / 31 — `En curso`.
 
 Sustituye a la lista de tareas de la versión anterior de SDD-32, de la que no se hizo ninguna.
 
@@ -66,11 +66,11 @@ Sustituye a la lista de tareas de la versión anterior de SDD-32, de la que no s
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 11 | 5 | **El navegador.** `src/browser.ts`, el único que importa `playwright-core`: `chromium.launch({ channel: 'chrome', headless: true })` adaptado a `BrowserLike`/`PageLike`; sin Chrome, `FUD0975` | `workbench` | `src/browser.ts` |
-| [ ] | 12 | 11 | **El `ctx`.** §3.4 y §4.6.2: referencias por tag y por rol (con `exact: true`), modo estricto con el número de elementos en el error, `textContent` del árbol aplanado (shadow roots, slots asignados o contenido por defecto, sin `style`/`script`/`template`), `goto` que no navega, 5 s por llamada | `workbench` | `src/context.ts` · `src/flat-text.ts` |
-| [ ] | 13 | 12 | **(rojo primero) La espera del gesto.** §4.6.3: el script de observación por `addInitScript` (un `Set` de ids de `fud:hydrated`), el host más cercano con `data-fud-id` cruzando shadow roots, `customElements.get` antes de actuar, espera del id y un fotograma. Antes de escribirla, el criterio 11 en rojo con el componente de pestañas | `workbench` | `src/settle.ts` · `src/context.ts` |
-| [ ] | 14 | 13 | **`runCriterion`.** §4.6.1: página nueva, `routeWebSocket` a todo lo que no sea `/__bench`, pasos en orden, conversión por `meta.params`, `layer` en cada paso, veredicto (`error` corta, `fail` no corta los `then`, `pageerror` es `error`), cierre de la página | `workbench` | `src/engine.ts` |
-| [ ] | 15 | 14 | **Tests del motor.** Criterios 8–15, con un proyecto de prueba en `test/fixtures/` (componente de pestañas, uno con `Signal<number>` y botón, uno con slot) servido por un Vite de prueba | `workbench` | `test/context.test.ts` · `test/engine.test.ts` · `test/fixtures/**` |
+| [x] | 11 | 5 | **El navegador.** `src/browser.ts`, el único que importa `playwright-core`: `chromium.launch({ channel: 'chrome', headless: true })` adaptado a `BrowserLike`/`PageLike`; sin Chrome, `FUD0975` | `workbench` | `src/browser.ts` |
+| [x] | 12 | 11 | **El `ctx`.** §3.4 y §4.6.2: referencias por tag y por rol (con `exact: true`), modo estricto con el número de elementos en el error, `textContent` del árbol aplanado (shadow roots, slots asignados o contenido por defecto, sin `style`/`script`/`template`), `goto` que no navega, 5 s por llamada | `workbench` | `src/context.ts` · `src/flat-text.ts` |
+| [x] | 13 | 12 | **(rojo primero) La espera del gesto.** §4.6.3: el script de observación por `addInitScript` (un `Set` de ids de `fud:hydrated`), el host más cercano con `data-fud-id` cruzando shadow roots, `customElements.get` antes de actuar, espera del id y un fotograma. Antes de escribirla, el criterio 11 en rojo con el componente de pestañas | `workbench` | `src/settle.ts` · `src/context.ts` |
+| [x] | 14 | 13 | **`runCriterion`.** §4.6.1: página nueva, `routeWebSocket` a todo lo que no sea `/__bench`, pasos en orden, conversión por `meta.params`, `layer` en cada paso, veredicto (`error` corta, `fail` no corta los `then`, `pageerror` es `error`), cierre de la página | `workbench` | `src/engine.ts` |
+| [x] | 15 | 14 | **Tests del motor.** Criterios 8–15, con un proyecto de prueba en `test/fixtures/` (componente de pestañas, uno con `Signal<number>` y botón, uno con slot) servido por un Vite de prueba | `workbench` | `test/context.test.ts` · `test/engine.test.ts` · `test/fixtures/**` |
 
 ## Fase 5 — la sesión, el servidor y el guardado (6)
 

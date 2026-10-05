@@ -1,0 +1,18 @@
+@code {
+  import type { Signal } from "@fudic/core";
+
+  const { value } = props<{ value: Signal<number> }>();
+
+  @client {
+    function bump() {
+      value.set(value() + 1);
+    }
+  }
+}
+
+<app-bump>
+  <template shadowrootmode="open">
+    <button @click=@bump>more</button>
+    <output>@value()</output>
+  </template>
+</app-bump>
