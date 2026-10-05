@@ -124,6 +124,12 @@
         "key": "ctrl+k v",
         "mac": "cmd+k v",
         "when": "editorLangId == fudic || editorLangId == fudspec"
+      },
+      {
+        "command": "fudic.openWorkbench",
+        "key": "ctrl+k ctrl+v",
+        "mac": "cmd+k cmd+v",
+        "when": "editorLangId == fudic || editorLangId == fudspec"
       }
     ],
     "menus": {

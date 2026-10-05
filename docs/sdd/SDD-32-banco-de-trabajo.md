@@ -1,6 +1,6 @@
 # SDD-32 — El banco de trabajo: un componente, sus criterios, en verde o en rojo al guardar
 
-> **Estado:** `En curso` — [tareas](./SDD-32-Task.md), 29 / 31. Redactado el 2026-10-05, con
+> **Estado:** `Hecho` — [tareas](./SDD-32-Task.md), 31 / 31 (2026-10-05). Redactado el 2026-10-05, con
 > las decisiones de §8.2 cerradas.
 > **Paquetes:** `@fudic/workbench` (**nuevo**) · `fudic-vscode` (un comando, un atajo, un panel)
 > · `@fudic/dom` (bug B, §9.1) · `@fudic/diagnostics` (los códigos) · `examples/basic` (el
@@ -583,6 +583,8 @@ interface ProblemMessage { readonly v: 1; readonly type: 'problem'; readonly mes
 - **Ctrl+K V** (`cmd+k v` en Mac) con `when: editorLangId == fudic || editorLangId == fudspec`.
   Es el mismo atajo que la vista previa de markdown, que solo lo reclama con
   `editorLangId == markdown`: no chocan.
+- **Ctrl+K Ctrl+V** (`cmd+k cmd+v`), con el mismo `when`: el mismo atajo sin soltar Ctrl, que es
+  como lo pulsa la mano sin pensar (decisión de Pedro en su prueba, 2026-10-05).
 - En `editor/title`, con el icono `$(open-preview)`, para los mismos dos lenguajes. Y en la
   paleta.
 

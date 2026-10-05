@@ -185,6 +185,12 @@ describe('commands', () => {
         mac: 'cmd+k v',
         when: 'editorLangId == fudic || editorLangId == fudspec',
       },
+      {
+        command: 'fudic.openWorkbench',
+        key: 'ctrl+k ctrl+v',
+        mac: 'cmd+k cmd+v',
+        when: 'editorLangId == fudic || editorLangId == fudspec',
+      },
     ]);
   });
 
@@ -315,12 +321,13 @@ describe('the .fudspec language (SDD-52 criterion 26)', () => {
 describe('the workbench contributions (SDD-32 criterion 23)', () => {
   const WHEN = 'editorLangId == fudic || editorLangId == fudspec';
 
-  it('opens with Ctrl+K V (Cmd+K V) on a .fud or a .fudspec, and nowhere else', () => {
+  it('opens with Ctrl+K V, or Ctrl+K Ctrl+V without letting go of Ctrl, on a .fud or a .fudspec only', () => {
     // The markdown preview claims the same chord, but only under `editorLangId == markdown`:
     // scoped by language, the two never collide.
     const bindings = at(manifest, 'contributes', 'keybindings') as readonly { command: string }[];
     expect(bindings.filter((b) => b.command === 'fudic.openWorkbench')).toEqual([
       { command: 'fudic.openWorkbench', key: 'ctrl+k v', mac: 'cmd+k v', when: WHEN },
+      { command: 'fudic.openWorkbench', key: 'ctrl+k ctrl+v', mac: 'cmd+k cmd+v', when: WHEN },
     ]);
   });
 

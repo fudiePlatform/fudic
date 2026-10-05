@@ -1,5 +1,9 @@
 # Banco de trabajo: la arquitectura, probada (2026-10-03)
 
+> **2026-10-05 — implementado.** Esta arquitectura es hoy
+> [SDD-32](../sdd/SDD-32-banco-de-trabajo.md) (`Hecho`), con el paquete `@fudic/workbench`. Lo que
+> pasó con los dos bugs de §5 está en su §9.
+
 > **Para la sesión que retome esto.** La arquitectura de abajo **está demostrada** con el plugin
 > de fudic real, Playwright real y una ventana de VS Code real. **No hay que volver a probarla**:
 > el siguiente paso es redactar el SDD (reescribir SDD-32 o abrir uno encima) con estas
