@@ -1,0 +1,13 @@
+component app-tabs
+
+# The first tab is the one open when the page loads.
+criterion empieza-en-a
+  then
+    text role:tabpanel "panel A"
+
+# One click on the second tab shows its panel, even on a component not yet hydrated.
+criterion cambia-de-pestana
+  when
+    click role:tab/"Tab B"
+  then
+    text role:tabpanel "panel B"

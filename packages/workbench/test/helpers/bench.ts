@@ -44,9 +44,12 @@ export interface TestBench {
   close(): Promise<void>;
 }
 
-/** One workbench folder per project and tag, as the session lays it out. */
-export async function startBench(root: string, tag: string): Promise<TestBench> {
-  const dir = benchDir({ tag, component: '', spec: null, fixture: null, projectRoot: root });
+/**
+ * One workbench folder per project and tag, as the session lays it out. `folder` names it
+ * otherwise, for a test that shares a project with a real workbench running in parallel.
+ */
+export async function startBench(root: string, tag: string, folder = tag): Promise<TestBench> {
+  const dir = benchDir({ tag: folder, component: '', spec: null, fixture: null, projectRoot: root });
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(`${dir}/routes`, { recursive: true });
 

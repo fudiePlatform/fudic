@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/workbench` (nuevo) · `fudic-vscode` · `@fudic/dom` · `@fudic/vite` ·
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `worktree-SDD-32-1-abrir-en-el-navegador` (nace de `main` en `0ebd073`)
-> **Progreso:** 26 / 31 — `En curso`.
+> **Progreso:** 29 / 31 — `En curso`.
 
 Sustituye a la lista de tareas de la versión anterior de SDD-32, de la que no se hizo ninguna.
 
@@ -97,8 +97,8 @@ Sustituye a la lista de tareas de la versión anterior de SDD-32, de la que no s
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 27 | 21, 26 | **El ejemplo.** `examples/basic` gana el componente de pestañas con su `.fudspec` (criterios 11 y 18) y `@fudic/workbench` como devDependency; `app-card.fudspec` queda con al menos un criterio en verde (criterio 30). Qué se cambia en `app-card` o en su `.fudspec` para eso (§4.2 de la prueba: el host `inline`, el link que navega) se decide con Pedro | `examples/basic` | `src/components/app-tabs.{fud,fudspec}` · `src/components/app-card.*` · `package.json` |
-| [ ] | 28 | 27 | **README.** Guía corta en inglés del paquete: qué abre, el binario, el `ctx` de los términos y la espera del gesto. Sin citas a SDD | `workbench` | `README.md` |
-| [ ] | 29 | 28 | **Cobertura.** `@fudic/workbench` al 100 % en las cuatro métricas, sin `v8 ignore`; `fudic-vscode`, `@fudic/diagnostics` y `@fudic/dom` sin bajar. `pnpm typecheck` y `pnpm build` en verde | todos | — |
+| [x] | 27 | 21, 26 | **El ejemplo.** `examples/basic` gana el componente de pestañas con su `.fudspec` (criterios 11 y 18) y `@fudic/workbench` como devDependency; `app-card.fudspec` queda con al menos un criterio en verde (criterio 30). Qué se cambia en `app-card` o en su `.fudspec` para eso (§4.2 de la prueba: el host `inline`, el link que navega) se decide con Pedro | `examples/basic` | `src/components/app-tabs.{fud,fudspec}` · `src/components/app-card.*` · `package.json` |
+| [x] | 28 | 27 | **README.** Guía corta en inglés del paquete: qué abre, el binario, el `ctx` de los términos y la espera del gesto. Sin citas a SDD | `workbench` | `README.md` |
+| [x] | 29 | 28 | **Cobertura.** `@fudic/workbench` al 100 % en las cuatro métricas, sin `v8 ignore`; `fudic-vscode`, `@fudic/diagnostics` y `@fudic/dom` sin bajar. `pnpm typecheck` y `pnpm build` en verde | todos | — |
 | [ ] | 30 | 29 | **Prueba de Pedro.** La de §6 con el `.vsix` instalado: Ctrl+K V, rojo y verde al guardar, «Abrir en el navegador», y ningún Chrome ni `node` vivo al cerrar VS Code | — | — |
 | [ ] | 31 | 30 | **Cierre.** Estado `Hecho` en SDD-32 y en el `INDEX.md`, entrada en el registro de progreso, la nota de la prueba apuntando a §9 | — | `docs/sdd/*` · `docs/banco-de-trabajo/prueba-arquitectura.md` |

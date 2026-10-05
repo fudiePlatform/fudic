@@ -1,6 +1,6 @@
 # SDD-32 — El banco de trabajo: un componente, sus criterios, en verde o en rojo al guardar
 
-> **Estado:** `En curso` — [tareas](./SDD-32-Task.md), 26 / 31. Redactado el 2026-10-05, con
+> **Estado:** `En curso` — [tareas](./SDD-32-Task.md), 29 / 31. Redactado el 2026-10-05, con
 > las decisiones de §8.2 cerradas.
 > **Paquetes:** `@fudic/workbench` (**nuevo**) · `fudic-vscode` (un comando, un atajo, un panel)
 > · `@fudic/dom` (bug B, §9.1) · `@fudic/diagnostics` (los códigos) · `examples/basic` (el
@@ -791,6 +791,11 @@ VS Code no deja ningún Chrome ni ningún `node` vivo.
 - **Páginas, rutas y layouts.** El banco abre componentes. Un término que necesite navegar a
   otra página (`given route` de verdad) es un término de app y va con la app.
 - **Props `computed`** en la fixture, y **slots** (contenido hijo) en el componente montado.
+- **Las hojas del documento de la app.** El banco monta el componente sin layout, así que las
+  variables que pone una hoja del layout (`tokens.css` en `examples/basic`) no llegan. Un criterio
+  que mide algo que depende de ellas mide otra cosa (el `app-card` del ejemplo, decisión de Pedro
+  del 2026-10-05: el criterio se ajusta a lo que mide el banco). Condición de reapertura: un
+  componente cuyos criterios no se puedan escribir sin esas hojas.
 - **El MCP, la sesión grabada y el botón de aprobar** (IDEA-01 §4). El WebSocket de §4.9 es de
   un sentido; el vocabulario de vuelta se diseña con el MCP delante.
 - **Métricas y Lighthouse.** La página del criterio tiene URL propia y nada del banco dentro, que

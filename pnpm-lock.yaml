@@ -57,6 +57,9 @@ importers:
       '@fudic/vite':
         specifier: workspace:*
         version: link:../../packages/vite
+      '@fudic/workbench':
+        specifier: workspace:*
+        version: link:../../packages/workbench
       '@playwright/test':
         specifier: 1.62.0
         version: 1.62.0

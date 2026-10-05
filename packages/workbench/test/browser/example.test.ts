@@ -24,7 +24,7 @@ describe('app-card of the example', () => {
   let bench: TestBench;
 
   beforeAll(async () => {
-    bench = await startBench(EXAMPLE, 'app-card');
+    bench = await startBench(EXAMPLE, 'app-card', 'app-card-engine-test');
   }, 60_000);
 
   afterAll(async () => {
